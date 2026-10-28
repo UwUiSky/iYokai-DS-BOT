@@ -45,6 +45,7 @@ MESSAGGI_LOCALI: dict[str, str] = {
     "spenta": "L'AI è spenta in questo server. Un amministratore può accenderla con `/ai attiva`.",
     "canale": "L'AI è spenta in questo canale.",
     "privacy": "Il server ha scelto di non mandare messaggi degli utenti all'AI.",
+    "utente_spento": "Hai spento l'assistente AI per te: puoi riaccenderlo con `/utility ai preferenza`.",
     "vietata": "Questa richiesta non è permessa.",
     "troppe": "Troppe richieste in poco tempo: riprova tra un minuto.",
     "tetto": "Il server ha raggiunto il tetto di spesa del mese per l'AI.",
@@ -149,6 +150,7 @@ class ServizioAI:
         self.limitatore = LimitatoreUtente()
         self.coda = CodaAI()
         self._manutenzione: tuple[float, str | None] = (0.0, None)
+        self._preferenze: dict[int, tuple[float, bool]] = {}
 
     @property
     def configurato(self) -> bool:
@@ -184,8 +186,23 @@ class ServizioAI:
         """Dopo un cambio dell'owner: il prossimo controllo rilegge il database."""
         self._manutenzione = (0.0, None)
 
+    async def assistente_acceso(self, user_id: int) -> bool:
+        """La preferenza personale (AI-R-094), letta dal database al più ogni 60 secondi per persona."""
+        scade, valore = self._preferenze.get(user_id, (0.0, True))
+        if time.monotonic() >= scade:
+            valore = await self.repo.assistente_acceso(user_id)
+            self._preferenze[user_id] = (time.monotonic() + 60, valore)
+            if len(self._preferenze) > 5000:
+                self._preferenze.clear()
+        return valore
+
+    def dimentica_preferenza(self, user_id: int) -> None:
+        self._preferenze.pop(user_id, None)
+
     async def richiedi(self, r: RichiestaAI) -> RispostaAI:
         cfg = await self.controlla_accesso(r.guild_id, r.channel_id, r.tipo)
+        if r.conta_utente and not await self.assistente_acceso(r.user_id):
+            raise AINonDisponibile("utente_spento")
         if cfg is not None and r.messaggi_utenti and cfg.privacy == "senza_messaggi":
             raise AINonDisponibile("privacy")
         if richiesta_vietata(r.testo, cfg.parole_vietate if cfg else ()):

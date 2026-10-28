@@ -99,8 +99,13 @@ class CommandSearchCog(commands.Cog):
             return await self.cache_ids_main.ottieni(fetch, serve)
         return await self.cache_ids.ottieni(self.bot.tree.fetch_commands, serve)
 
-    async def _comandi_accessibili(self, interaction: discord.Interaction) -> list[logica.ComandoInfo]:
-        """I comandi che l'utente può usare: livello dei gruppi e `@richiedi` di ogni comando (albero vero)."""
+    async def _comandi_accessibili(
+        self, interaction: discord.Interaction, solo_livelli: bool = False
+    ) -> list[logica.ComandoInfo]:
+        """
+        I comandi che l'utente può usare: livello dei gruppi e `@richiedi` di ogni comando (albero vero).
+        `solo_livelli`: anche quelli di un modulo spento (l'assistente li propone da accendere, §25.29).
+        """
 
         guild_id = _server_del_bot(interaction)
         fuori_dal_bot = guild_id is None and interaction.guild_id is not None
@@ -113,7 +118,7 @@ class CommandSearchCog(commands.Cog):
             return await puo_usare(interaction, livello)
 
         visibili = await logica.filtra_per_livelli(logica.raccogli_comandi(self.bot.tree.get_commands()), puo)
-        if guild_id is None:
+        if guild_id is None or solo_livelli:
             return visibili
 
         async def attivo(modulo: str) -> bool:
@@ -261,20 +266,34 @@ class CommandSearchCog(commands.Cog):
         non ha risposto. None: AI non disponibile, niente toccato. Negli ultimi due casi si
         torna alla ricerca per parole.
         """
+        from cogs.ai import _assistente as assistente
         from cogs.ai.helpdesk import bottone_configurazione, risposta_ai_chiedi
         from core.ai_servizio import AINonDisponibile, servizio_ai
 
+        guild_id = _server_del_bot(interaction)
+        # Prima le regole e il database (§25.12): scoperta delle attività e guida del server, anche con l'AI ferma.
         try:
-            await servizio_ai().controlla_accesso(_server_del_bot(interaction), interaction.channel_id)
+            if await assistente.risposta_locale(interaction, domanda, await self._comandi_accessibili(interaction), guild_id):
+                return True
+        except Exception:
+            logger.warning("Risposta locale dell'assistente non riuscita.", exc_info=True)
+        try:
+            await servizio_ai().controlla_accesso(guild_id, interaction.channel_id)
         except AINonDisponibile:
             return None
         except Exception:
             logger.warning("Accesso all'AI non controllato.", exc_info=True)
             return None
-        await interaction.response.defer(ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
         comandi = await self._comandi_accessibili(interaction)
+        try:
+            livelli = await self._comandi_accessibili(interaction, solo_livelli=True)
+            spenti = await assistente.moduli_spenti_per_ai(livelli, guild_id)
+        except Exception:
+            livelli, spenti = comandi, {}
         testo, citati, _locale = await risposta_ai_chiedi(
-            interaction, domanda, comandi, guild_id=_server_del_bot(interaction)
+            interaction, domanda, livelli if spenti else comandi, guild_id=guild_id, spenti=spenti
         )
         if testo is None:
             return False  # già differita: la ricerca per parole risponde con followup
@@ -283,10 +302,25 @@ class CommandSearchCog(commands.Cog):
         embed = discord.Embed(title="Assistente", description=testo[:4000], color=discord.Color.blurple())
         embed.set_footer(text="Risposta dell'AI: controlla prima di usarla")
         view = RisultatiView(config.WIKI_BASE_URL, citati[0].percorso) if citati else None
+        try:
+            tutti = logica.raccogli_comandi(self.bot.tree.get_commands())
+            extra_ai = await assistente.arricchisci(
+                interaction, domanda, citati, livelli, tutti, lambda serve: self._ids(interaction, serve=serve),
+                guild_id, await lingua_interazione(interaction),
+            )
+        except Exception:
+            logger.warning("Contorno della risposta non riuscito.", exc_info=True)
+            extra_ai = assistente.Arricchimento()
+        for nome, valore in extra_ai.campi:
+            embed.add_field(name=nome[:256], value=valore[:1024], inline=False)
+        if view is None and extra_ai.bottoni:
+            view = assistente.AssistenteView([])
         if view is not None:
-            apri = bottone_configurazione(config.WEB_PANEL_PUBLIC_URL, _server_del_bot(interaction), citati)
+            apri = bottone_configurazione(config.WEB_PANEL_PUBLIC_URL, guild_id, citati)
             if apri is not None:
                 view.add_item(apri)
+            for b in extra_ai.bottoni:
+                view.add_item(b)
         extra = {"view": view} if view is not None and view.children else {}
         await interaction.followup.send(embed=embed, ephemeral=True, **extra)
         return True

@@ -21,6 +21,7 @@ import discord
 from discord.ext import commands
 
 from cogs.ai._comune import NESSUNA_MENZIONE, chiedi, registra_modulo_ai, taglia
+from core.ai_ricerca_logic import ISTRUZIONI_STATO, elenco_per_ai
 from core.ai_servizio import RichiestaAI, servizio_ai
 from core.ai_testi_logic import ISTRUZIONI, comandi_citati, elenco_comandi_per_ai, link_configurazione, riconosci_lingua
 from core.repositories.ai_repo import ai_repo
@@ -49,7 +50,8 @@ _DALL_INTERAZIONE = object()
 
 
 async def risposta_ai_chiedi(
-    interaction: discord.Interaction, domanda: str, comandi: list, guild_id: int | None | object = _DALL_INTERAZIONE
+    interaction: discord.Interaction, domanda: str, comandi: list, guild_id: int | None | object = _DALL_INTERAZIONE,
+    spenti: dict | None = None,
 ) -> tuple[str | None, list, str | None]:
     """
     (testo, comandi citati, None) se l'AI ha risposto; (None, [], testo locale) se no.
@@ -60,7 +62,8 @@ async def risposta_ai_chiedi(
     if guild_id is _DALL_INTERAZIONE:
         guild_id = interaction.guild_id
     conoscenza = await conoscenza_del_server(guild_id)
-    istruzioni = ISTRUZIONI["chiedi"] + "\n\nComandi:\n" + elenco_comandi_per_ai(comandi)
+    istruzioni = ISTRUZIONI["chiedi"] + (ISTRUZIONI_STATO if spenti else "") + "\n\nComandi:\n"
+    istruzioni += elenco_per_ai(comandi, spenti) if spenti else elenco_comandi_per_ai(comandi)
     if conoscenza:
         istruzioni += "\n\nInformazioni sul server:\n" + conoscenza
     risposta, locale = await chiedi(
