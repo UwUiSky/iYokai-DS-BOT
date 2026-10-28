@@ -113,3 +113,26 @@ async def test_avviso_ammesso_pubblica_e_ricorda_l_orario(monkeypatch):
     avviso.assert_awaited_once()
     stato.update_last_known_live.assert_awaited_once()
     repo.touch_published.assert_awaited_once_with("TW", 3, 5)
+
+
+@pytest.mark.asyncio
+async def test_diretta_ravvicinata_non_viene_annunciata_a_meta(monkeypatch):
+    """ALR-033: una diretta dentro la pausa minima è assorbita. L'orario si sposta in avanti,
+    così a pausa scaduta la STESSA diretta non viene annunciata a metà."""
+    avviso, repo, bot, sub, stato = _contesto(monkeypatch)
+    recente = datetime.now(timezone.utc) - timedelta(minutes=10)
+    await _vai(bot, sub, stato, AlertOptions(min_gap_minutes=30, last_published_at=recente), titolo="t")
+    avviso.assert_not_awaited()
+    repo.touch_published.assert_awaited_once_with("TW", 3, 5)
+
+
+@pytest.mark.asyncio
+async def test_filtro_gioco_non_zittisce_youtube(monkeypatch):
+    """YouTube non dice il gioco: il filtro sul gioco vale solo per Twitch e Kick."""
+    avviso, repo, bot, sub, stato = _contesto(monkeypatch)
+    await _vai(bot, sub, stato, AlertOptions(game_filter="Valorant"), titolo="t")
+    avviso.assert_awaited_once()
+
+
+def test_gioco_sconosciuto_non_filtra():
+    assert motivo_silenzio(AlertOptions(game_filter="Valorant"), "t", None, ADESSO) is None

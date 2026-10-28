@@ -64,13 +64,18 @@ async def pubblica_cambio_live(
     avvisi,
     nome: str,
     titolo: str = "",
-    gioco: str = "",
+    gioco: str | None = None,
 ) -> None:
     if _in_attesa((kind, sub.id)):
         return
     # Pausa e filtri (ALR-030/031/032/033/036): lo stato NON avanza, così se il titolo
     # o il gioco cambiano (o la pausa finisce) l'avviso parte al giro dopo.
-    if in_diretta and motivo_silenzio(opz, titolo, gioco, datetime.now(timezone.utc)):
+    motivo = motivo_silenzio(opz, titolo, gioco, datetime.now(timezone.utc)) if in_diretta else None
+    if motivo == "attesa":
+        # La diretta ravvicinata è assorbita: l'orario va avanti, così a pausa scaduta
+        # questa stessa diretta non viene annunciata a metà.
+        await alert_options_repo.touch_published(kind, sub.id, sub.guild_id)
+    if motivo:
         return
     guild = bot.get_guild(sub.guild_id)
     canale = guild.get_channel(sub.channel_id) if guild else None

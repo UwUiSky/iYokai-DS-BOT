@@ -72,16 +72,17 @@ def parse_parole(testo: str) -> list[str]:
     return [p.strip().lower() for p in (testo or "").split(",") if p.strip().lstrip("-").strip()]
 
 
-def motivo_silenzio(opz: AlertOptions, titolo: str, gioco: str, adesso: datetime) -> str | None:
+def motivo_silenzio(opz: AlertOptions, titolo: str, gioco: str | None, adesso: datetime) -> str | None:
     """Perché un avviso «in diretta» NON va pubblicato: pausa, gioco, titolo, attesa; None se si pubblica.
 
     Parole del titolo: una parola con «-» davanti esclude (per le repliche, ALR-032); le altre
-    ammettono (basta una). Gioco: uno dei nomi dell'elenco (maiuscole ignorate).
+    ammettono (basta una). Gioco: uno dei nomi dell'elenco (maiuscole ignorate); `gioco=None`
+    (YouTube, che non lo dice) non filtra.
     """
     if opz.paused:
         return "pausa"
     giochi = parse_parole(opz.game_filter)
-    if giochi and (gioco or "").strip().lower() not in giochi:
+    if giochi and gioco is not None and gioco.strip().lower() not in giochi:
         return "gioco"
     parole = parse_parole(opz.title_words)
     titolo_basso = (titolo or "").lower()
