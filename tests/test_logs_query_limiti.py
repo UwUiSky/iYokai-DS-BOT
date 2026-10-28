@@ -17,7 +17,7 @@ import pytest
 
 import cogs.logging.logs_query as modulo
 from core.repositories.event_log_repo import event_log_repo
-from tests.support.discord_fakes import fake_interaction, fake_member, fake_text_channel
+from tests.support.discord_fakes import fake_interaction, fake_member, fake_role, fake_text_channel
 
 ID_SERVER = 100
 ID_UTENTE = 20
@@ -158,3 +158,26 @@ async def test_export_file_rifiutato_da_discord_risposta_chiara():
 
     assert len(risposte) == 1
     assert "Non sono riuscito" in risposte[0]
+
+
+async def test_logs_ruolo_e_filtro_giorni():
+    await event_log_repo.log_event(ID_SERVER, "role_update", role_id=77, details={"n": 1})
+    await event_log_repo.log_event(ID_SERVER, "role_update", role_id=78)
+    cog = modulo.LogsQueryCog(bot=None)
+    interazione = _interazione()
+    ruolo = fake_role(77)
+
+    await cog.logs_role.callback(cog, interazione, ruolo, 15, 3)
+
+    embed = interazione.response.send_message.call_args.kwargs["embed"]
+    assert embed.description.count("role_update") == 1
+
+
+async def test_logs_utente_con_giorni_senza_eventi_lo_dice():
+    cog = modulo.LogsQueryCog(bot=None)
+    interazione = _interazione()
+
+    await cog.logs_user.callback(cog, interazione, fake_member(ID_UTENTE), 15, 2)
+
+    testo = interazione.response.send_message.call_args.args[0]
+    assert "negli ultimi 2 giorni" in testo

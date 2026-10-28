@@ -6,7 +6,7 @@ regole su cosa ignorare, riepilogo di una cancellazione in blocco,
 archivio di un canale in file sotto i 10 MiB con i messaggi cancellati
 di recente (tenuti solo in memoria, svuotati per autore dalla richiesta
 privacy NF-04). Solo stringhe e numeri, niente discord.py.
-Funzioni coperte: SPEC §8.16 (NF-02), §8.18 (LOG-027, LOG-030)
+Funzioni coperte: SPEC §8.16 (NF-02), §8.18 (LOG-027, LOG-030), §18.6
 """
 
 from __future__ import annotations
@@ -109,6 +109,25 @@ def da_ignorare(
     if testo and ignorati.regex and corrisponde_regex(ignorati.regex, testo):
         return True
     return False
+
+
+def evento_ignorato(
+    ignorati: Ignorati,
+    *,
+    channel_ids: Iterable[int | None] = (),
+    user_id: int | None = None,
+    ruoli: Iterable[int] = (),
+) -> bool:
+    """
+    True se un evento dei log (voce, canali, thread, membri) riguarda un canale,
+    una categoria, un utente o un ruolo ignorati. Prefissi e testi valgono solo
+    per i messaggi. SPEC §18.6.
+    """
+    if ignorati.canali and any(c in ignorati.canali for c in channel_ids if c is not None):
+        return True
+    if user_id is not None and user_id in ignorati.utenti:
+        return True
+    return bool(ignorati.ruoli) and not ignorati.ruoli.isdisjoint(ruoli)
 
 
 def normalizza_prefisso(prefisso: str) -> str | None:

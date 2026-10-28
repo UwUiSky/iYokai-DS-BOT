@@ -8,7 +8,8 @@ Persistenza per i vocali temporanei:
   di gestione — rename/limit/lock/kick — vedi
   core/voice_temp_logic.py per chi può usarli)
 - opzioni del server: modello del nome, canali che nascono bloccati,
-  canale di registro; numero di ogni canale nella sequenza (#127)
+  canale di registro; numero di ogni canale nella sequenza; aspetto del
+  pannello e copia del generatore; altri generatori con regole proprie (#127)
 - stato del blocco (/voice lock) con il valore di «Connetti» di prima,
   che resta anche dopo un riavvio del bot (#144)
 Funzioni coperte: SPEC §12
@@ -33,6 +34,21 @@ class VoiceTempConfig:
     nome_modello: str | None = None
     nasce_bloccato: bool = False
     canale_registro_id: int | None = None
+    pannello_titolo: str | None = None
+    pannello_testo: str | None = None
+    pannello_colore: int | None = None
+    clona_generatore: bool = False
+
+
+@dataclass(frozen=True)
+class GeneratoreExtra:
+    """Un generatore in più (VOC-016) con le sue regole."""
+
+    channel_id: int
+    guild_id: int
+    category_id: int
+    nome_modello: str | None
+    limite_utenti: int
 
 
 @dataclass(frozen=True)
@@ -86,7 +102,8 @@ class VoiceTempRepository:
             """
             SELECT generator_channel_id, category_id, category_cap,
                    role_pc_id, role_console_id, role_mobile_id,
-                   nome_modello, nasce_bloccato, canale_registro_id
+                   nome_modello, nasce_bloccato, canale_registro_id,
+                   pannello_titolo, pannello_testo, pannello_colore, clona_generatore
             FROM voice_temp_config WHERE guild_id = $1
             """,
             guild_id,
@@ -104,6 +121,10 @@ class VoiceTempRepository:
             nome_modello=row["nome_modello"],
             nasce_bloccato=row["nasce_bloccato"],
             canale_registro_id=row["canale_registro_id"],
+            pannello_titolo=row["pannello_titolo"],
+            pannello_testo=row["pannello_testo"],
+            pannello_colore=row["pannello_colore"],
+            clona_generatore=row["clona_generatore"],
         )
 
     async def set_config(
@@ -173,6 +194,96 @@ class VoiceTempRepository:
             nome_modello,
             nasce_bloccato,
             canale_registro_id,
+        )
+
+    async def set_aspetto(
+        self,
+        guild_id: int,
+        titolo: str | None,
+        testo: str | None,
+        colore: int | None,
+        clona_generatore: bool,
+    ) -> None:
+        """#127 VOC-010 (aspetto del pannello) e VOC-013 (canali copiati dal generatore)."""
+        await self._pool.execute(
+            """
+            UPDATE voice_temp_config
+            SET pannello_titolo = $2, pannello_testo = $3, pannello_colore = $4, clona_generatore = $5
+            WHERE guild_id = $1
+            """,
+            guild_id,
+            titolo,
+            testo,
+            colore,
+            clona_generatore,
+        )
+
+    async def aggiungi_generatore(
+        self,
+        guild_id: int,
+        channel_id: int,
+        category_id: int,
+        nome_modello: str | None,
+        limite_utenti: int,
+        massimo: int,
+    ) -> bool:
+        """False se il server ha già `massimo` generatori in più. Riscrive quello già presente."""
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute("SELECT pg_advisory_xact_lock($1)", guild_id)
+                esiste = await conn.fetchval(
+                    "SELECT 1 FROM voice_temp_generatori WHERE channel_id = $1 AND guild_id = $2",
+                    channel_id, guild_id,
+                )
+                totale = await conn.fetchval(
+                    "SELECT count(*) FROM voice_temp_generatori WHERE guild_id = $1", guild_id
+                )
+                if not esiste and totale >= massimo:
+                    return False
+                await conn.execute(
+                    """
+                    INSERT INTO voice_temp_generatori
+                        (channel_id, guild_id, category_id, nome_modello, limite_utenti)
+                    VALUES ($1, $2, $3, $4, $5)
+                    ON CONFLICT (channel_id) DO UPDATE
+                        SET category_id = EXCLUDED.category_id,
+                            nome_modello = EXCLUDED.nome_modello,
+                            limite_utenti = EXCLUDED.limite_utenti
+                    WHERE voice_temp_generatori.guild_id = EXCLUDED.guild_id
+                    """,
+                    channel_id, guild_id, category_id, nome_modello, limite_utenti,
+                )
+        return True
+
+    async def rimuovi_generatore(self, guild_id: int, channel_id: int) -> bool:
+        esito = await self._pool.execute(
+            "DELETE FROM voice_temp_generatori WHERE guild_id = $1 AND channel_id = $2",
+            guild_id, channel_id,
+        )
+        return esito.endswith(" 1")
+
+    async def lista_generatori(self, guild_id: int) -> list[GeneratoreExtra]:
+        righe = await self._pool.fetch(
+            "SELECT * FROM voice_temp_generatori WHERE guild_id = $1 ORDER BY channel_id", guild_id
+        )
+        return [self._riga_generatore(r) for r in righe]
+
+    async def get_generatore(self, guild_id: int, channel_id: int) -> GeneratoreExtra | None:
+        """Il generatore in più con questo canale, se c'è (a ogni ingresso in un vocale)."""
+        riga = await self._pool.fetchrow(
+            "SELECT * FROM voice_temp_generatori WHERE guild_id = $1 AND channel_id = $2",
+            guild_id, channel_id,
+        )
+        return None if riga is None else self._riga_generatore(riga)
+
+    @staticmethod
+    def _riga_generatore(riga) -> GeneratoreExtra:
+        return GeneratoreExtra(
+            channel_id=riga["channel_id"],
+            guild_id=riga["guild_id"],
+            category_id=riga["category_id"],
+            nome_modello=riga["nome_modello"],
+            limite_utenti=riga["limite_utenti"],
         )
 
     async def numeri_usati(self, guild_id: int) -> list[int]:

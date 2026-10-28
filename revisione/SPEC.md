@@ -691,20 +691,20 @@ Totale voci: **514**.
 - `[x]` 8.1 Member join
 - `[x]` 8.2 Member leave
 - `[x]` 8.3 Member ban / unban
-- `[~]` 8.4 Member update — ruoli e nickname, nello stesso evento
+- `[x]` 8.4 Member update — ruoli e nickname, nello stesso evento
   senza uscire in anticipo se solo uno dei due cambia
-  → **Stato 04/10:** 42 ruoli cambiati insieme rompono l'embed (LIM-19).
+  → **Stato 27/10:** elenco dei ruoli tagliato a 1000 caratteri (`tests/test_basic_logs_limiti.py`, 60 ruoli).
 - `[x]` 8.5 Role create / delete
 - `[x]` 8.6 Role **update** (nome, colore, permessi, hoist,
   mentionable) — `cogs/logging/advanced_logs.py`, livello Premium
   (vedi 8.18 sotto)
-- `[~]` 8.7 Channel create / delete / update — update copre nome,
+- `[x]` 8.7 Channel create / delete / update — update copre nome,
   categoria, topic, nsfw, slowmode, posizione; il diff degli
   overwrite di permesso canale-per-canale resta escluso per scelta
   di scope (complessità non richiesta per un log, non un limite
   tecnico)
-  → **Stato 04/10:** spostare un canale genera N messaggi (REVIEW §4); canali offuscati (LIM-38).
-- `[~]` 8.8 Invite create / delete / use — "use" risolto con un nuovo
+  → **Stato 27/10:** spostamenti in un solo messaggio, canali offuscati ignorati, e ora anche il diff dei permessi del canale (aggiunti, rimossi, modificati; `tests/test_advanced_logs_router.py`).
+- `[x]` 8.8 Invite create / delete / use — "use" risolto con un nuovo
   metodo, `invite_tracker.resolve_join_invite(guild, member_id)`
   (`core/invite_tracker.py`), non con `find_used_invite()`
   direttamente: quest'ultimo muta la propria cache ad ogni chiamata
@@ -719,12 +719,12 @@ Totale voci: **514**.
   Cog diversi sullo stesso evento) — riceve la stessa risposta senza
   un secondo fetch/diff. Spam Trap aggiornato per usare lo stesso
   metodo
-  → **Stato 04/10:** LC-6.
-- `[~]` 8.9 **Voice state**: join / leave / move / mute / deafen —
+  → **Stato 28/10:** ingressi insieme attribuiti bene o «sconosciuto», inviti scaricati solo dove servono (LC-6: `tests/test_invite_tracker.py`, `tests/test_invite_sync_solo_dove_serve.py`).
+- `[x]` 8.9 **Voice state**: join / leave / move / mute / deafen —
   "mute"/"deafen" semplificato allo stato EFFETTIVO (server-mute/
   deafen oppure self-mute/self-deafen), non le quattro variabili
   distinte di discord.py, scelta dichiarata per un log leggibile
-  → **Stato 04/10:** il mute volontario è scritto come "mutato dal server" (REVIEW §4).
+  → **Stato 27/10:** mute proprio e mute del server sono eventi distinti (`voice_self_mute` e `voice_mute`).
 - `[x]` 8.10 Webhook create / update / delete — l'evento gateway
   nativo (`on_webhooks_update`) non distingue le tre azioni né dice
   l'autore: risolto via audit log entro una finestra di tolleranza,
@@ -774,8 +774,8 @@ Totale voci: **514**.
   (BACKLOG.md §3): "membri" è l'unica dimensione ad alta cardinalità
   che avrebbe fatto esplodere i thread durante un raid, "canali" e
   "case" restano un'estensione futura separata
-  → **Stato 04/10:** `/logs user|channel` oltre 4096 caratteri (LIM-15). Correzione al testo: la ricerca "per ruolo e per tempo" non esiste (REVIEW §12).
-- `[~]` 8.18 Distinzione log semplificato `[Free]` vs completo
+  → **Stato 27/10:** voci tagliate (LIM-15); `/log cerca utente|canale|ruolo` con filtro «ultimi N giorni». Resta la proiezione su forum per canali e casi (scelta di BACKLOG §3).
+- `[x]` 8.18 Distinzione log semplificato `[Free]` vs completo
   `[Premium]` — due moduli distinti: `cogs/logging/basic_logs.py`
   (`MODULE_LOGGING`, 8.1-8.5, SEMPRE GRATUITO) e
   `cogs/logging/advanced_logs.py` (`MODULE_LOGGING_ADVANCED`,
@@ -783,7 +783,7 @@ Totale voci: **514**.
   volta con `/logs-setup` — è l'attivazione del secondo modulo a
   decidere se gli eventi avanzati iniziano ad arrivarci, non un
   secondo comando di setup
-  → **Stato 04/10:** il modulo avanzato non controlla il premium (REVIEW §12).
+  → **Stato 27/10:** il modulo avanzato controlla il premium (`tests/test_advanced_logs_premium.py`).
 
 ## §9 MUSIC — da correggere secondo la decisione D10 (fase F2); comandi ridotti (deliberatamente)
 
@@ -1214,27 +1214,27 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   `VoiceChannel` è Messageable), inviato sia dalla modalità
   automatica (che prima spostava in totale silenzio) sia da quella
   manuale
-- `[~]` 12.5 Selezione piattaforma all'ingresso (PC / Console /
+- `[x]` 12.5 Selezione piattaforma all'ingresso (PC / Console /
   Mobile) — bottoni SOLO informativi (nessun filtro di visibilità,
   come da decisione finale già registrata) mostrati insieme alla
   notifica 12.4 se il server ha configurato almeno un ruolo
   piattaforma (`/voicetemp-platform-setup`)
-  → **Stato 04/10:** i bottoni muoiono dopo 5 minuti (LIM-26).
-- `[~]` 12.6 Gestione canale: rename, limite utenti, lock, unlock, kick, transfer, claim (proprietario assente), permit, deny, bitrate, nascondi, invita, stato (#127); il blocco resta dopo un riavvio (#144); `/gestione voice opzioni`: nome da modello `{utente}`/`{numero}`, canali che nascono bloccati, canale di registro (#127)
-  → **Stato 04/10:** rinomina senza limiti (LIM-3); `transfer` accetta chiunque (BUG-18).
-- `[~]` 12.7 Eliminazione automatica a canale vuoto
-  → **Stato 04/10:** canali orfani dopo un riavvio (REVIEW §4).
+  → **Stato 27/10:** bottoni persistenti (`timeout=None`, `bot.add_view`).
+- `[x]` 12.6 Gestione canale: rename, limite utenti, lock, unlock, kick, transfer, claim (proprietario assente), permit, deny, bitrate, nascondi, invita, stato (#127); il blocco resta dopo un riavvio (#144); `/gestione voice opzioni`: nome da modello `{utente}`/`{numero}`, canali che nascono bloccati, canale di registro (#127)
+  → **Stato 27/10:** rinomina da `core/channel_rename.py`, `transfer` controllato, blocco nel database, aspetto del pannello (VOC-010), copia del generatore (VOC-013), altri generatori (VOC-016, migrazioni 0300 e 0301).
+- `[x]` 12.7 Eliminazione automatica a canale vuoto
+  → **Stato 27/10:** pulizia all'avvio dei canali rimasti vuoti (`on_ready`, `tests/test_voice_temp_correzioni.py`).
 - `[x]` 12.8 Cap configurabile canali per categoria (`/voicetemp-cap`),
   sempre troncato al limite hard di Discord di 50
 
 ## §13 TICKET SYSTEM
 
 - `[x]` 13.1 Pannello apertura con bottone persistente
-- `[~]` 13.2 Select menu categorie (`/ticket-category add|remove|list`)
+- `[x]` 13.2 Select menu categorie (`/ticket-category add|remove|list`)
   — se il server ne ha configurato almeno una, il pannello mostra il
   select menu invece del bottone unico; retrocompatibile (nessuna
   categoria configurata -> bottone unico storico)
-  → **Stato 04/10:** oltre 25 categorie, o con un'etichetta o un'emoji non valida, il menu si rompe per tutti (LIM-6).
+  → **Stato 27/10:** al massimo 25 voci, etichetta tagliata, emoji non valida rifiutata o tolta (`tests/test_tickets_correzioni.py`).
 - `[x]` 13.3 Creazione canale privato
   → **Stato 21/10:** corretto con #62 (M 6.3 canale nato col numero, M 6.4 un solo ticket aperto sotto blocco).
 - `[x]` 13.4 Claim
@@ -1288,6 +1288,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 13.20 Chiusura: conferma, chi può chiudere, richiesta all'utente con Accetta/Rifiuta e chiusura
   dopo N ore (`/ticket chiedi-chiusura`, azione `ticket_richiesta_chiusura`), transcript in DM a scelta
   (TKT-054, 055, 057, 075; `/ticket opzioni chiusura|messaggi`). (da verificare live)
+
+- `[x]` 13.20 Chiusura in due passi (TKT-051, 063, 027, 026; migrazione 0302): `/ticket opzioni chiusura due_passi:sì` tiene il canale dopo la chiusura (l'utente non lo vede più) con Riapri, Transcript, Elimina; `elimina_dopo_ore`, `categoria_chiusi`, prefissi `nome_chiuso` e `nome_preso`; `/ticket riapri`. Prova: `tests/test_ticket_chiusi.py`
 
 ## §14 UTILITY & SERVER MANAGEMENT
 
@@ -1846,8 +1848,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   del server, poi niente finché un invio non riesce di nuovo (LC-6, M 5.5)
 - `[x]` 18.5 Le impostazioni esistenti restano valide: senza una scelta per
   il tipo vale il canale generale `log_channel_id` (nessun dato da migrare)
-- `[~]` 18.6 Ignora canali, utenti e prefissi: `/log ignora` (migrazione
-  0029) vale per il log dei messaggi; gli altri log non lo usano
+- `[x]` 18.6 Ignora canali, categorie, utenti, ruoli: `/log ignora` vale per i messaggi e per voce, canali, thread e membri (`core/log_ignora_filtro.py`); prefissi ed espressioni solo per i messaggi. Non nasconde mai ruoli, timeout, permessi dei canali, canali cancellati e mute del server (D34)
 - `[ ]` 18.7 Log delle azioni oggi mai registrate: `/lock`, `/unlock`,
   `/slowmode`, `/clear`, `/untimeout`, `/unmute-role`, scadenza dei
   tempban, azioni dell'escalation

@@ -26,6 +26,8 @@ class _FakeConfig:
     nome_modello: str | None = None
     nasce_bloccato: bool = False
     canale_registro_id: int | None = None
+    generator_channel_id: int | None = None
+    clona_generatore: bool = False
 
 
 class _FakeSendable:

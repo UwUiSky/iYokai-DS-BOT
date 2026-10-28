@@ -1,16 +1,15 @@
 # Memoria di dev-log-ticket
 
 ## Aggiornata
-21/10/2026 · ramo `feat/r8tkt` (copia /home/claude/wt/r8tkt, DB iyokai_wr8tkt) · base fa3f4a5 · migrazioni 0220–0229
+27/10/2026 · ramo `feat/r10logt` (copia /home/claude/wt/r10logt, DB iyokai_wr10logt) · migrazioni 0300-0309 (usate 0300, 0301, 0302)
 
 ## In corso
-- Giro r8 chiuso (5 gruppi su 5). Ramo pronto per cacciatore-bug/revisore. Nessun passo aperto.
-- #142 (voce di Yokai) non iniziato: serve il guardiano-limiti, un motore TTS e la voce scelta dall'owner.
+- Giro r10: fatti log (cerca ruolo/giorni, diff permessi, ignora esteso), vocali (aspetto, copia, generatori), ticket (due passi).
+- Test dei file toccati: 658 verdi. Niente smoke né suite (regola owner): smoke da fare dall'orchestratore; poi #139 (parole chiave AI, archivio file), LOG-029, VOC-014/017/021, TKT-070/071/079.
 
 ## Fatto
-- Giri F1–r4: router NF-01/02, snipe NF-03, M 5.x, M 6.1-6.9, #145, NF-13, NF-33, #139 senza AI, #119, #127; su main.
-- r8: 3680adb base 0220 + apertura · 3ade231 /ticket opzioni, lista-nera, sospendi, azzera-pausa, reperibile, apri ·
-  4d220ad presa/chiusura/note/chiedi-chiusura · 98a1d4c #139 AI · 6d3d6b2 documenti. /ticket 21 figli. Migrazione 0220 sola.
+- Giri F1-r8: vedi git log (router, snipe, M 5-7, NF-01/02/03/13/33, #119/#120/#127/#139 in parte).
+- r10: c210f52 /log cerca ruolo+giorni · f364d84 diff permessi canale · poi ignora esteso, VOC-010/013/016, TKT-051/063/027/026.
 
 ## Cose imparate
 - Rinomine sempre da `core/channel_rename.py`; cancellazione dei ticket dallo scheduler, non da un task.
@@ -28,10 +27,11 @@
 - Niente chiavi nuove in guild_config.settings: tabella propria.
 - Misura dei gruppi: scratchpad/tkt_peso.py (stdout solo, 2>/dev/null). Traduzioni: aggiungere senza riordinare il JSON.
 - Migrazione cambiata dopo l'applicazione: DROP tabelle + `DELETE FROM schema_migrations WHERE version=N`.
+- Test ticket: svuotare `ticket_opzioni_repo._cache` e `rename_tracker._renames` nella fixture; `DELETE FROM scheduled_actions`.
+- Peso di `/gestione`: vicino a 6800; descrizioni dei parametri brevi.
+- Mai `git stash` con un test in background.
 
 ## Aperto
-- Router: sanzioni, automod, allarmi e benvenuto non passano ancora dal router (§18.1 `[~]`).
-- #144: /voice lock dopo un riavvio perde un connect=True originale (serve colonna: decide l'orchestratore).
-- Smoke r8: fallisce test_config_import_validation per `backup_livello_permessi` (core/backup_permessi_logic.py, area
-  backup, già su main fa3f4a5): non mio.
-- #120 restano TKT-006, 026, 027, 029, 031, 032, 035, 045, 046, 051, 063, 064, 067, 068, 070, 071, 073, 074, 079, 088.
+- Router: il benvenuto non passa dal router (§18.1 `[~]`, file di utilità).
+- Restano: #119 LOG-029; #127 VOC-014, 017, 021; #120 TKT-006, 029, 031, 032, 035, 045, 046, 064, 067, 068, 070, 071, 073, 074, 079, 088; #139 parole chiave AI e archivio file; 18.7 (area moderazione).
+- 13.10 transcript: serve la prova live con l'intent acceso.

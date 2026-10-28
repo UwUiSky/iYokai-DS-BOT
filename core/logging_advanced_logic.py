@@ -42,6 +42,26 @@ GUILD_TRACKED_KEYS = (
 THREAD_TRACKED_KEYS = ("name", "archived", "locked")
 
 
+def diff_overwrites(before: dict[str, tuple[int, int]], after: dict[str, tuple[int, int]]) -> dict[str, list[str]]:
+    """
+    Permessi di un canale cambiati tra due istantanee (SPEC §8.7). Le mappe
+    sono {"ruolo:ID" o "utente:ID": (permessi concessi, permessi negati)} come
+    interi. Restituisce solo i gruppi non vuoti: aggiunti, rimossi, modificati.
+    """
+    esito = {
+        "aggiunti": sorted(set(after) - set(before)),
+        "rimossi": sorted(set(before) - set(after)),
+        "modificati": sorted(k for k in set(before) & set(after) if before[k] != after[k]),
+    }
+    return {gruppo: voci for gruppo, voci in esito.items() if voci}
+
+
+def menzione_bersaglio(chiave: str) -> str:
+    """«ruolo:ID» o «utente:ID» come menzione."""
+    genere, _, numero = chiave.partition(":")
+    return f"<@&{numero}>" if genere == "ruolo" else f"<@{numero}>"
+
+
 def diff_id_sets(before_ids: set[int], after_ids: set[int]) -> tuple[set[int], set[int]]:
     """Stesso principio di `diff_roles` in basic_logs.py, generico:
     quali ID sono spariti e quali sono nuovi tra due istantanee."""

@@ -518,3 +518,12 @@ caratteri al massimo); i messaggi con bottoni restano sul canale normale; se il 
 o non risponde, i log tornano subito al canale e il webhook si dimentica. Il token è cifrato con la
 chiave OAuth (`core/oauth_crypto.py`, dato associato server+canale); senza chiave la funzione non si
 accende. Spegnendo, i webhook creati dal bot si cancellano. Punto unico: impostazione `log_webhook`.
+## D34 — `/log ignora` non nasconde gli eventi di sicurezza (28/10/2026)
+Dal giro r10 `/log ignora` (canali, categorie, utenti, ruoli) vale anche per voce, canali,
+thread e membri. Così però un ruolo «Staff» ignorato toglieva dal log i ruoli dati e i
+timeout dello staff, e un canale ignorato toglieva i cambi dei suoi permessi.
+Scelta: **restano sempre nel log** i ruoli dati e tolti, i timeout, i cambi dei permessi
+di un canale, i canali cancellati, il mute e il deafen dati dal server. `/log ignora`
+nasconde il resto (soprannomi, ingressi e uscite in voce, mute proprio, canali e thread
+creati o modificati). La regola sta in `cogs/logging/advanced_logs.py` (`VOCE_SEMPRE_NEL_LOG`,
+canali) e `cogs/logging/basic_logs.py` (`on_member_update`).

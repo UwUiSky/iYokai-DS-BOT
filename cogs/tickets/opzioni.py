@@ -382,12 +382,18 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
 
         await self._salva(interaction, pannello, prepara)
 
-    @comando_di_gruppo("ticket", nome="chiusura", descrizione="Conferma prima di chiudere e chi può chiudere.", sottogruppo=OPZIONI)
+    @comando_di_gruppo("ticket", nome="chiusura", descrizione="Conferma, chiusura in due passi, chiusi, nomi.", sottogruppo=OPZIONI)
     @richiedi(Livello.ADMIN)
     @app_commands.describe(
         pannello="Il pannello",
         conferma="Chiedi conferma prima di chiudere",
         utente_chiude="Chi ha aperto il ticket può chiuderlo",
+        due_passi="Chiudere non elimina il canale: resta chiuso con Riapri, Elimina e Transcript",
+        elimina_dopo_ore="Con i due passi: elimina il canale chiuso dopo N ore (0 = mai)",
+        categoria_chiusi="Con i due passi: sposta qui i ticket chiusi",
+        senza_categoria_chiusi="Non spostare più i ticket chiusi",
+        nome_chiuso="Prefisso del nome del canale quando si chiude (o «nessuno»)",
+        nome_preso="Prefisso del nome del canale quando lo staff lo prende (o «nessuno»)",
     )
     @app_commands.autocomplete(pannello=completa_pannelli)
     async def chiusura(
@@ -396,6 +402,12 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
         pannello: app_commands.Range[str, 1, 50],
         conferma: bool | None = None,
         utente_chiude: bool | None = None,
+        due_passi: bool | None = None,
+        elimina_dopo_ore: app_commands.Range[int, 0, 720] | None = None,
+        categoria_chiusi: discord.CategoryChannel | None = None,
+        senza_categoria_chiusi: bool = False,
+        nome_chiuso: app_commands.Range[str, 1, logica.PREFISSO_MAX] | None = None,
+        nome_preso: app_commands.Range[str, 1, logica.PREFISSO_MAX] | None = None,
     ) -> None:
         def prepara(guild):
             valori = {}
@@ -403,6 +415,25 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
                 valori["conferma_chiusura"] = conferma
             if utente_chiude is not None:
                 valori["utente_chiude"] = utente_chiude
+            if due_passi is not None:
+                valori["chiusura_due_passi"] = due_passi
+            if elimina_dopo_ore is not None:
+                valori["elimina_dopo_ore"] = elimina_dopo_ore
+            if categoria_chiusi is not None and senza_categoria_chiusi:
+                raise ValueError("Scegli una categoria dei chiusi oppure toglila, non tutte e due.")
+            if categoria_chiusi is not None:
+                valori["categoria_chiusi"] = categoria_chiusi.id
+            elif senza_categoria_chiusi:
+                valori["categoria_chiusi"] = None
+            for chiave, scelto in (("prefisso_chiuso", nome_chiuso), ("prefisso_preso", nome_preso)):
+                if scelto is not None:
+                    pulito = scelto.strip()
+                    if pulito.lower() == "nessuno":
+                        valori[chiave] = None
+                    elif logica.prefisso_valido(pulito):
+                        valori[chiave] = pulito
+                    else:
+                        raise ValueError("Il prefisso deve avere almeno una lettera o un numero.")
             return valori
 
         await self._salva(interaction, pannello, prepara)

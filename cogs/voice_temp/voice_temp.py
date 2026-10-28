@@ -30,19 +30,18 @@ Discord di 2 ogni 10 minuti (core/channel_rename.py); /voice transfer
 sposta anche i permessi del canale; all'avvio i canali rimasti vuoti
 mentre il bot era spento vengono cancellati.
 Funzioni coperte: SPEC §12, §22 (claim, permit, deny, bitrate, nascondi, invita,
-stato, opzioni di /gestione voice: catalogo #127; blocco salvato nel database, #144)
+stato, opzioni, aspetto del pannello, copia del generatore e altri generatori di
+/gestione voice: catalogo #127; blocco salvato nel database, #144)
 
 SPEC.md §12.8: il cap per categoria (/gestione voice cap) è sempre
 troncato al limite hard di Discord di 50 canali per categoria — vedi
 core/voice_temp_logic.py:effective_category_cap/is_category_full.
 """
 
-# DA FARE (issue #63, fase F1): correzioni aperte per questo file in
-#   revisione/02-piano/MODIFICHE_ESISTENTE.md §7 (Vocali temporanei).
-
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import logging
 
 import discord
@@ -64,6 +63,10 @@ from core.repositories.voice_temp_repo import voice_temp_repo
 from core.role_safety import check_role_assignable
 from core.voice_temp_logic import (
     MAX_MODELLO_NOME,
+    MAX_PANNELLO_TESTO,
+    MAX_PANNELLO_TITOLO,
+    colore_da_testo,
+    impostazioni_da_generatore,
     can_manage_voice_channel,
     errore_modello_nome,
     is_category_full,
@@ -84,6 +87,9 @@ MODULE_VOICE_TEMP = "voice_temp"
 GESTIONE_VOICE = ("voice", "Vocali temporanei: generatore, pannello, limite, ruoli piattaforma")
 
 CREATE_VOICE_CUSTOM_ID = "iyokai_voice_temp_create"
+
+# Generatori in più oltre a quello principale (VOC-016).
+GENERATORI_EXTRA_MAX = 5
 
 # Il nome di un canale Discord va da 1 a 100 caratteri (LIM-3).
 MAX_CHANNEL_NAME_LENGTH = 100
@@ -231,6 +237,7 @@ async def _create_temp_channel(
     owner: discord.Member,
     category: discord.CategoryChannel,
     config,
+    limite_utenti: int = 0,
 ) -> discord.VoiceChannel | None:
     """
     Crea il canale vocale temporaneo, lo registra nel repository, e
@@ -255,6 +262,22 @@ async def _create_temp_channel(
     if config.nasce_bloccato:
         proprietario.update(connect=True)
     overwrites = {guild.default_role: everyone, owner: proprietario}
+    extra: dict = {}
+    generatore = guild.get_channel(config.generator_channel_id) if config.generator_channel_id else None
+    if config.clona_generatore and isinstance(generatore, discord.VoiceChannel):
+        # VOC-013: permessi, limite e qualità del generatore; il blocco e il proprietario
+        # restano quelli di sopra.
+        overwrites = {**generatore.overwrites, **overwrites}
+        if guild.default_role in generatore.overwrites:
+            # Il @everyone del generatore resta (un generatore privato dà vocali privati);
+            # se nascono bloccati, in più «Connetti» negato.
+            tutti = discord.PermissionOverwrite.from_pair(*generatore.overwrites[guild.default_role].pair())
+            if config.nasce_bloccato:
+                tutti.update(connect=False)
+            overwrites[guild.default_role] = tutti
+        extra = impostazioni_da_generatore(generatore.bitrate, generatore.user_limit, int(guild.bitrate_limit))
+    if limite_utenti:
+        extra["user_limit"] = limite_utenti
     async with _blocchi_numero.setdefault(guild.id, asyncio.Lock()):
         numero = primo_numero_libero(await voice_temp_repo.numeri_usati(guild.id))
         try:
@@ -262,6 +285,7 @@ async def _create_temp_channel(
                 name=nome_da_modello(config.nome_modello, owner.display_name, numero),
                 overwrites=overwrites,
                 reason=f"Vocale temporaneo per {owner}",
+                **extra,
             )
         except (discord.Forbidden, discord.HTTPException):
             logger.warning(
@@ -404,18 +428,115 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo(
         "gestione",
+        nome="generatore",
+        descrizione="Altri canali generatori con regole proprie.",
+        sottogruppo=GESTIONE_VOICE,
+    )
+    @app_commands.describe(
+        azione="Cosa fare",
+        canale="Il generatore",
+        categoria="Dove nascono i canali",
+        nome="Modello del nome ({utente}, {numero})",
+        limite="Limite di utenti (0 = nessuno)",
+    )
+    @app_commands.choices(
+        azione=[
+            app_commands.Choice(name="Aggiungi", value="aggiungi"),
+            app_commands.Choice(name="Togli", value="rimuovi"),
+            app_commands.Choice(name="Elenco", value="elenco"),
+        ]
+    )
+    async def voicetemp_generatore(
+        self,
+        interaction: discord.Interaction,
+        azione: str,
+        canale: discord.VoiceChannel | None = None,
+        categoria: discord.CategoryChannel | None = None,
+        nome: app_commands.Range[str, 1, MAX_MODELLO_NOME] | None = None,
+        limite: app_commands.Range[int, 0, 99] = 0,
+    ) -> None:
+        """#127 VOC-016."""
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+        guild_id = interaction.guild.id
+        if azione == "elenco":
+            altri = await voice_temp_repo.lista_generatori(guild_id)
+            righe = [
+                f"<#{g.channel_id}> → <#{g.category_id}>"
+                f" · nome: {discord.utils.escape_markdown(g.nome_modello or 'come il server')}"
+                f" · limite: {g.limite_utenti or 'nessuno'}"
+                for g in altri
+            ]
+            await interaction.response.send_message(
+                "\n".join(righe) if righe else "Nessun generatore in più: c'è solo quello di /gestione voice setup.",
+                ephemeral=True,
+            )
+            return
+        if canale is None:
+            await interaction.response.send_message("Scegli il canale generatore.", ephemeral=True)
+            return
+        if azione == "rimuovi":
+            tolto = await voice_temp_repo.rimuovi_generatore(guild_id, canale.id)
+            await interaction.response.send_message(
+                "Generatore tolto." if tolto else "Quel canale non era un generatore in più.", ephemeral=True
+            )
+            return
+        config = await voice_temp_repo.get_config(guild_id)
+        if config.category_id is None:
+            await interaction.response.send_message(
+                "Configura prima generatore e categoria con /gestione voice setup.", ephemeral=True
+            )
+            return
+        if categoria is None:
+            await interaction.response.send_message("Scegli la categoria dei nuovi canali.", ephemeral=True)
+            return
+        if canale.id == config.generator_channel_id:
+            await interaction.response.send_message(
+                "Quello è già il generatore principale: cambialo con /gestione voice setup.", ephemeral=True
+            )
+            return
+        if nome is not None and (errore := errore_modello_nome(nome)):
+            await interaction.response.send_message(errore, ephemeral=True)
+            return
+        if not await voice_temp_repo.aggiungi_generatore(
+            guild_id, canale.id, categoria.id, nome, limite, GENERATORI_EXTRA_MAX
+        ):
+            await interaction.response.send_message(
+                f"Hai già {GENERATORI_EXTRA_MAX} generatori in più: toglierne uno prima.", ephemeral=True
+            )
+            return
+        await interaction.response.send_message(
+            f"Fatto: entrando in {canale.mention} nasce un vocale in **{categoria.name}**.", ephemeral=True
+        )
+
+    @comando_di_gruppo(
+        "gestione",
         nome="panel",
         descrizione="Pubblica il pannello per la creazione manuale di un vocale.",
         sottogruppo=GESTIONE_VOICE,
     )
     async def voicetemp_panel(self, interaction: discord.Interaction) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            )
+            return
+        config = await voice_temp_repo.get_config(interaction.guild.id)
         embed = discord.Embed(
-            title="🔊 Vocali temporanei",
-            description=(
+            title=config.pannello_titolo or "🔊 Vocali temporanei",
+            description=config.pannello_testo
+            or (
                 "Premi il bottone per crearti un canale vocale personale "
                 "senza essere spostato automaticamente."
             ),
-            color=discord.Color.blurple(),
+            color=(
+                discord.Color(config.pannello_colore)
+                if config.pannello_colore is not None
+                else discord.Color.blurple()
+            ),
         )
         await interaction.response.send_message(embed=embed, view=CreateVoiceView())
 
@@ -513,14 +634,18 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "gestione",
         nome="opzioni",
-        descrizione="Nome dei nuovi canali, canali che nascono bloccati, canale di registro.",
+        descrizione="Nome dei nuovi canali, blocco, registro, copia, pannello.",
         sottogruppo=GESTIONE_VOICE,
     )
     @app_commands.describe(
         nome="Modello del nome: {utente} e {numero} (es. Stanza {numero}). Vuoto: com'è ora",
         chiusi="I nuovi canali nascono bloccati: li apre il proprietario con /voice unlock",
         registro="Canale dove scrivere le azioni sui vocali (creazione, blocco, espulsioni…)",
-        predefiniti="Torna al nome «Canale di {utente}» e toglie il canale di registro",
+        predefiniti="Torna ai valori di partenza",
+        copia_generatore="Copia permessi, limite e qualità del generatore",
+        pannello_titolo="Titolo del pannello",
+        pannello_testo="Testo del pannello",
+        pannello_colore="Colore esadecimale (5865F2)",
     )
     async def voicetemp_opzioni(
         self,
@@ -529,8 +654,12 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         chiusi: bool | None = None,
         registro: discord.TextChannel | None = None,
         predefiniti: bool = False,
+        copia_generatore: bool | None = None,
+        pannello_titolo: app_commands.Range[str, 1, MAX_PANNELLO_TITOLO] | None = None,
+        pannello_testo: app_commands.Range[str, 1, MAX_PANNELLO_TESTO] | None = None,
+        pannello_colore: app_commands.Range[str, 3, 7] | None = None,
     ) -> None:
-        """#127 VOC-011, 012, 015, 018."""
+        """#127 VOC-010, 011, 012, 013, 015, 018."""
         if interaction.guild is None:
             await interaction.response.send_message(
                 "Questo comando è disponibile solo dentro un server.", ephemeral=True
@@ -546,14 +675,30 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         if nome is not None and (errore := errore_modello_nome(nome)):
             await interaction.response.send_message(errore, ephemeral=True)
             return
+        colore = config.pannello_colore
+        if pannello_colore is not None:
+            colore = colore_da_testo(pannello_colore)
+            if colore is None:
+                await interaction.response.send_message(
+                    "Il colore va scritto in esadecimale, per esempio 5865F2.", ephemeral=True
+                )
+                return
         modello = None if predefiniti else (nome or config.nome_modello)
         canale_registro = None if predefiniti else (registro.id if registro else config.canale_registro_id)
         bloccati = config.nasce_bloccato if chiusi is None else chiusi
         await voice_temp_repo.set_opzioni(interaction.guild.id, modello, bloccati, canale_registro)
+        clona = config.clona_generatore if copia_generatore is None else copia_generatore
+        titolo = pannello_titolo or config.pannello_titolo
+        testo = pannello_testo or config.pannello_testo
+        if predefiniti:
+            clona, titolo, testo, colore = False, None, None, None
+        await voice_temp_repo.set_aspetto(interaction.guild.id, titolo, testo, colore, clona)
         await interaction.response.send_message(
             f"Nome dei nuovi canali: **{discord.utils.escape_markdown(modello or 'Canale di {utente}')}**\n"
             f"Nascono bloccati: **{'sì' if bloccati else 'no'}**\n"
-            f"Registro: {f'<#{canale_registro}>' if canale_registro else 'nessuno'}",
+            f"Copiano il generatore: **{'sì' if clona else 'no'}**\n"
+            f"Registro: {f'<#{canale_registro}>' if canale_registro else 'nessuno'}\n"
+            f"Pannello: {'personalizzato' if (titolo or testo or colore is not None) else 'di serie'}",
             ephemeral=True,
         )
 
@@ -1069,6 +1214,13 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             return
         await voice_temp_repo.unregister_channel(channel_id)
 
+    @staticmethod
+    async def _sposta(member: discord.Member, channel: discord.VoiceChannel) -> None:
+        try:
+            await member.move_to(channel, reason="Vocale temporaneo automatico")
+        except (discord.Forbidden, discord.HTTPException):
+            logger.warning("Canale temporaneo creato ma impossibile spostare %s", member.id)
+
     # ================================================================
     # Eventi vocali: creazione automatica + eliminazione a canale vuoto
     # ================================================================
@@ -1103,13 +1255,20 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
                 if isinstance(category, discord.CategoryChannel):
                     channel = await _create_temp_channel(guild, member, category, config)
                     if channel is not None:
-                        try:
-                            await member.move_to(channel, reason="Vocale temporaneo automatico")
-                        except (discord.Forbidden, discord.HTTPException):
-                            logger.warning(
-                                "Canale temporaneo creato ma impossibile spostare %s",
-                                member.id,
-                            )
+                        await self._sposta(member, channel)
+            elif after_channel_id is not None and not await blacklist_repo.is_user_blacklisted(member.id):
+                # VOC-016: un generatore in più, con le sue regole.
+                altro = await voice_temp_repo.get_generatore(guild.id, after_channel_id)
+                category = guild.get_channel(altro.category_id) if altro else None
+                if altro is not None and isinstance(category, discord.CategoryChannel):
+                    regole = dataclasses.replace(
+                        config,
+                        generator_channel_id=altro.channel_id,
+                        nome_modello=altro.nome_modello or config.nome_modello,
+                    )
+                    channel = await _create_temp_channel(guild, member, category, regole, altro.limite_utenti)
+                    if channel is not None:
+                        await self._sposta(member, channel)
 
         # --- Cleanup: il canale lasciato è un temporaneo tracciato ed è vuoto? ---
         if before_channel_id is not None:

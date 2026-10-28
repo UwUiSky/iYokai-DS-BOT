@@ -370,3 +370,14 @@ async def test_archivio_uno_alla_volta_per_server():
     via.set()
     await lavoro
     primo.followup.send.assert_awaited()
+
+
+def test_evento_ignorato_canale_categoria_utente_ruolo():
+    from core.message_log_logic import Ignorati, evento_ignorato
+
+    ig = Ignorati(canali=frozenset({10}), utenti=frozenset({5}), ruoli=frozenset({77}), prefissi=("!",), regex=("x",))
+    assert evento_ignorato(ig, channel_ids=[1, 10, None])
+    assert evento_ignorato(ig, channel_ids=[None], user_id=5)
+    assert evento_ignorato(ig, ruoli=[3, 77])
+    assert not evento_ignorato(ig, channel_ids=[1, None], user_id=6, ruoli=[3])
+    assert not evento_ignorato(Ignorati(), channel_ids=[10], user_id=5)

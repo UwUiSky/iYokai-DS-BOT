@@ -52,9 +52,12 @@ from core.logging_advanced_logic import (
     classify_voice_state_change,
     diff_attributes,
     diff_named_items,
+    diff_overwrites,
+    menzione_bersaglio,
 )
 from core.testo_limiti import DESCRIZIONE_MAX, tronca
 from core.premium import registry
+from core.log_ignora_filtro import evento_da_ignorare
 from core.repositories.event_log_repo import event_log_repo
 from core.repositories.log_eventi_repo import log_eventi_repo
 from core.security_access import premium_sbloccato
@@ -163,6 +166,20 @@ def _channel_snapshot(channel) -> dict:
         "slowmode_delay": getattr(channel, "slowmode_delay", 0),
         "position": getattr(channel, "position", 0),
     }
+
+
+# D34: azioni di moderazione in voce che /log ignora non nasconde.
+VOCE_SEMPRE_NEL_LOG = frozenset({"voice_mute", "voice_unmute", "voice_deafen", "voice_undeafen"})
+
+
+def _overwrites_snapshot(channel) -> dict[str, tuple[int, int]]:
+    """Permessi del canale per ruolo e utente: {«ruolo:ID»: (concessi, negati)}."""
+    istantanea = {}
+    for bersaglio, sovrascrittura in (getattr(channel, "overwrites", None) or {}).items():
+        concessi, negati = sovrascrittura.pair()
+        genere = "ruolo" if isinstance(bersaglio, discord.Role) else "utente"
+        istantanea[f"{genere}:{bersaglio.id}"] = (concessi.value, negati.value)
+    return istantanea
 
 
 def _guild_snapshot(guild: discord.Guild) -> dict:
@@ -354,6 +371,8 @@ class AdvancedLogsCog(commands.Cog):
             return
         if not await logging_avanzato_attivo(channel.guild.id, self.bot):
             return
+        if await evento_da_ignorare(channel.guild, channel):
+            return
         await event_log_repo.log_event(
             channel.guild.id, "channel_create", channel_id=channel.id, details={"name": channel.name}
         )
@@ -365,6 +384,7 @@ class AdvancedLogsCog(commands.Cog):
             return
         if not await logging_avanzato_attivo(channel.guild.id, self.bot):
             return
+        # D34: la cancellazione di un canale resta nel log anche se il canale è ignorato.
         await event_log_repo.log_event(
             channel.guild.id, "channel_delete", channel_id=channel.id, details={"name": channel.name}
         )
@@ -380,6 +400,11 @@ class AdvancedLogsCog(commands.Cog):
         if not await logging_avanzato_attivo(after.guild.id, self.bot):
             return
         changes = diff_attributes(_channel_snapshot(before), _channel_snapshot(after), CHANNEL_TRACKED_KEYS)
+        if changes and await evento_da_ignorare(after.guild, after):
+            changes = {}  # D34: di un canale ignorato restano solo i permessi
+        permessi = diff_overwrites(_overwrites_snapshot(before), _overwrites_snapshot(after))
+        if permessi:
+            changes["permessi"] = permessi
         if not changes:
             return
         await event_log_repo.log_event(
@@ -390,9 +415,10 @@ class AdvancedLogsCog(commands.Cog):
                 after.guild, after.id, changes["position"]["before"], changes["position"]["after"]
             )
             return
-        await send_event_embed(
-            after.guild, "channel_update", f"<#{after.id}>\n" + ", ".join(changes.keys())
-        )
+        testo = f"<#{after.id}>\n" + ", ".join(changes.keys())
+        for gruppo, voci in permessi.items():
+            testo += f"\nPermessi {gruppo}: " + ", ".join(menzione_bersaglio(v) for v in voci)
+        await send_event_embed(after.guild, "channel_update", testo)
 
     # ================================================================
     # 8.8 Inviti (create/delete/use — "use" via resolve_join_invite,
@@ -456,6 +482,9 @@ class AdvancedLogsCog(commands.Cog):
         if not await logging_avanzato_attivo(member.guild.id, self.bot):
             return
         eventi = classify_voice_state_change(_voice_state_snapshot(before), _voice_state_snapshot(after))
+        if eventi and await evento_da_ignorare(member.guild, after.channel, member, (before.channel,)):
+            # D34: mute e deafen dati dal server sono azioni di moderazione, restano.
+            eventi = [e for e in eventi if e in VOCE_SEMPRE_NEL_LOG]
         for event_type in eventi:
             if event_type.startswith("voice_self_") and self._troppo_presto(member, event_type):
                 continue
@@ -568,6 +597,8 @@ class AdvancedLogsCog(commands.Cog):
     async def on_thread_create(self, thread: discord.Thread) -> None:
         if not await logging_avanzato_attivo(thread.guild.id, self.bot):
             return
+        if await evento_da_ignorare(thread.guild, thread):
+            return
         await event_log_repo.log_event(
             thread.guild.id, "thread_create", channel_id=thread.id, details={"name": thread.name}
         )
@@ -577,6 +608,8 @@ class AdvancedLogsCog(commands.Cog):
     async def on_thread_delete(self, thread: discord.Thread) -> None:
         if not await logging_avanzato_attivo(thread.guild.id, self.bot):
             return
+        if await evento_da_ignorare(thread.guild, thread):
+            return
         await event_log_repo.log_event(
             thread.guild.id, "thread_delete", channel_id=thread.id, details={"name": thread.name}
         )
@@ -585,6 +618,8 @@ class AdvancedLogsCog(commands.Cog):
     @commands.Cog.listener()
     async def on_thread_update(self, before: discord.Thread, after: discord.Thread) -> None:
         if not await logging_avanzato_attivo(after.guild.id, self.bot):
+            return
+        if await evento_da_ignorare(after.guild, after):
             return
         changes = diff_attributes(_thread_snapshot(before), _thread_snapshot(after), THREAD_TRACKED_KEYS)
         if not changes:

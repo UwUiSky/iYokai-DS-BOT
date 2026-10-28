@@ -438,6 +438,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("voice_temp_channels", "Canali vocali temporanei",
        colonne_utente=("owner_id",), colonna_server="guild_id", utente="cancella", esporta=True),
     _t("voice_temp_config", "Configurazione dei vocali temporanei", colonna_server="guild_id"),
+    _t("voice_temp_generatori", "Altri canali generatori dei vocali temporanei", colonna_server="guild_id"),
     # ---------------------------------------------------------------- avvisi e feed
     _t("feed_subscriptions", "Feed RSS", colonne_attore=("created_by",), colonna_server="guild_id"),
     _t("twitch_subscriptions", "Avvisi Twitch", colonne_attore=("created_by",), colonna_server="guild_id"),

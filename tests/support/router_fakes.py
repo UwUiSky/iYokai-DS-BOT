@@ -32,3 +32,15 @@ def nessun_evento_spento(monkeypatch):
         return frozenset()
 
     monkeypatch.setattr(log_eventi_repo, "spenti", nessuno)
+    nessun_ignorato(monkeypatch)
+
+
+def nessun_ignorato(monkeypatch):
+    """/log ignora senza database: l'elenco è vuoto."""
+    from core.message_log_logic import Ignorati
+    from core.repositories.log_ignora_repo import log_ignora_repo
+
+    async def vuoto(_guild_id):
+        return Ignorati()
+
+    monkeypatch.setattr(log_ignora_repo, "carica", vuoto)

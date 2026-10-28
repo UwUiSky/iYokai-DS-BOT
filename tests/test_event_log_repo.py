@@ -234,3 +234,27 @@ async def test_get_events_by_type_since_nessun_limite_di_conteggio(repo):
         100, "member_join", since=datetime.now(timezone.utc) - timedelta(days=1)
     )
     assert len(eventi) == 30
+
+
+@pytest.mark.asyncio
+async def test_ricerca_per_ruolo_e_per_tempo(repo, clean_db):
+    await repo.log_event(100, "role_update", role_id=7)
+    await repo.log_event(100, "role_update", role_id=8)
+    await repo.log_event(100, "role_update", role_id=7)
+    await clean_db.execute(
+        "UPDATE event_log SET created_at = now() - interval '10 days' WHERE id = (SELECT min(id) FROM event_log)"
+    )
+    assert len(await repo.get_events_by_role(100, 7)) == 2
+    recenti = await repo.get_events_by_role(100, 7, since=datetime.now(timezone.utc) - timedelta(days=3))
+    assert len(recenti) == 1
+
+
+@pytest.mark.asyncio
+async def test_filtro_tempo_su_utente_e_canale(repo, clean_db):
+    await repo.log_event(100, "member_join", target_user_id=1, channel_id=5)
+    await clean_db.execute("UPDATE event_log SET created_at = now() - interval '10 days'")
+    await repo.log_event(100, "member_join", target_user_id=1, channel_id=5)
+    da = datetime.now(timezone.utc) - timedelta(days=3)
+    assert len(await repo.get_events_by_user(100, 1, since=da)) == 1
+    assert len(await repo.get_events_by_channel(100, 5, since=da)) == 1
+    assert len(await repo.get_events_by_user(100, 1)) == 2

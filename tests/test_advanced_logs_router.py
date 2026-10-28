@@ -162,3 +162,95 @@ async def test_due_spostamenti_di_fila_usano_un_solo_invio_e_lo_scarico_si_ferma
         invio.assert_not_awaited()
     finally:
         modulo.SPOSTAMENTI_ATTESA_SECONDI = 0
+
+
+def _con_permessi(canale, ruolo_id, concessi, negati):
+    import discord
+
+    ruolo = MagicMock(spec=discord.Role)
+    ruolo.id = ruolo_id
+    sovrascrittura = discord.PermissionOverwrite.from_pair(
+        discord.Permissions(concessi), discord.Permissions(negati)
+    )
+    canale.overwrites = {ruolo: sovrascrittura}
+    return canale
+
+
+async def test_cambio_dei_permessi_del_canale_e_nel_log(cog):
+    c, invio = cog
+    prima = _con_permessi(_canale(5), 9, 0, 0)
+    dopo = _con_permessi(_canale(5), 9, 0, 1024)
+    await c.on_guild_channel_update(prima, dopo)
+    descrizione = invio.await_args.args[2]
+    assert "permessi" in descrizione and "<@&9>" in descrizione
+    dettagli = modulo.event_log_repo.log_event.await_args.kwargs["details"]
+    assert dettagli["permessi"] == {"modificati": ["ruolo:9"]}
+
+
+async def test_permessi_uguali_non_generano_log(cog):
+    c, invio = cog
+    await c.on_guild_channel_update(_con_permessi(_canale(5), 9, 0, 1024), _con_permessi(_canale(5), 9, 0, 1024))
+    invio.assert_not_awaited()
+
+
+async def test_canale_ignorato_con_log_ignora_non_genera_log_di_voce_e_canali(cog, monkeypatch):
+    from core.message_log_logic import Ignorati
+    import core.log_ignora_filtro as filtro
+
+    c, invio = cog
+    monkeypatch.setattr(filtro.log_ignora_repo, "carica", AsyncMock(return_value=Ignorati(canali=frozenset({50}))))
+    canale = _canale(50)
+    canale.category_id = None
+    await c.on_guild_channel_create(canale)
+    await c.on_guild_channel_update(_canale(50, posizione=1), _canale(50, posizione=2))
+    invio.assert_not_awaited()
+    modulo.event_log_repo.log_event.assert_not_awaited()
+
+    entra = MagicMock()
+    entra.channel = canale
+    esce = MagicMock()
+    esce.channel = None
+    await c.on_voice_state_update(fake_member(9), esce, entra)
+    invio.assert_not_awaited()
+
+
+async def test_utente_ignorato_non_genera_log_di_voce(cog, monkeypatch):
+    from core.message_log_logic import Ignorati
+    import core.log_ignora_filtro as filtro
+
+    c, invio = cog
+    monkeypatch.setattr(filtro.log_ignora_repo, "carica", AsyncMock(return_value=Ignorati(utenti=frozenset({9}))))
+    altro = _canale(60)
+    altro.category_id = None
+    entra, esce = MagicMock(), MagicMock()
+    entra.channel, esce.channel = altro, None
+    await c.on_voice_state_update(fake_member(9), esce, entra)
+    invio.assert_not_awaited()
+
+
+async def test_log_ignora_non_nasconde_permessi_eliminazioni_e_mute_del_server(cog, monkeypatch):
+    # D34: in un canale ignorato restano nel log i cambi di permessi, la cancellazione del
+    # canale e il mute dato dal server; spariscono gli altri cambi e gli ingressi.
+    from core.message_log_logic import Ignorati
+    import core.log_ignora_filtro as filtro
+
+    c, invio = cog
+    monkeypatch.setattr(filtro.log_ignora_repo, "carica", AsyncMock(return_value=Ignorati(canali=frozenset({5}))))
+    await c.on_guild_channel_update(_con_permessi(_canale(5, nome="a"), 9, 0, 0), _con_permessi(_canale(5, nome="b"), 9, 0, 1024))
+    dettagli = modulo.event_log_repo.log_event.await_args.kwargs["details"]
+    assert set(dettagli) == {"permessi"}
+    modulo.event_log_repo.log_event.reset_mock()
+
+    await c.on_guild_channel_delete(_canale(5))
+    assert modulo.event_log_repo.log_event.await_args.args[1] == "channel_delete"
+    modulo.event_log_repo.log_event.reset_mock()
+
+    canale = _canale(5)
+    prima, dopo = MagicMock(), MagicMock()
+    prima.channel = dopo.channel = canale
+    for stato in (prima, dopo):
+        stato.self_mute = stato.self_deaf = stato.deaf = stato.self_stream = stato.self_video = False
+        stato.suppress = False
+    prima.mute, dopo.mute = False, True
+    await c.on_voice_state_update(fake_member(9), prima, dopo)
+    assert [ch.args[1] for ch in modulo.event_log_repo.log_event.await_args_list] == ["voice_mute"]
