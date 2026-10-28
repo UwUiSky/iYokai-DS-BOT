@@ -315,3 +315,6 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 28/10 | `feat/r10logt` | `cogs/tickets/tickets.py:_riapri` | Presa+chiusura+riapertura in 10 min: terza rinomina rifiutata, il nome resta «chiuso-…» (solo log) | bassa | accettato, VERIFICA_LIVE |
 | 28/10 | `feat/r10logt` | `cogs/voice_temp/voice_temp.py:_create_temp_channel` | Copia generatore: un ruolo con «Connetti» sul generatore entra anche nei vocali nati bloccati | bassa | aperto |
 | 28/10 | `feat/r10logt` | `cogs/voice_temp/voice_temp.py:voicetemp_generatore` | Un vocale temporaneo può essere scelto come generatore in più | bassa | aperto |
+| 28/10 | `feat/r10aiw` | `cogs/ai/summaries.py`, `cogs/ai/config.py:costruisci` | `requires_module` chiudeva riassumi/spiega/stile/costruisci durante la prova gratuita | media | chiuso b302da0 |
+| 28/10 | `feat/r10aiw` | `core/repositories/ai_repo.py:avvia_prova` | Prova ripartiva dopo la cancellazione dei dati del server (90 giorni) | media | chiuso 0be178a (0351) |
+| 28/10 | `feat/r10aiw` | `core/premium_flags.py:applica_cambio_premium` | Memoria cambiata prima di due scritture senza transazione (ereditato da `/owner premium toggle`) | bassa | aperto |

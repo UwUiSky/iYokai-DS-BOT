@@ -1253,3 +1253,12 @@ Serve: pannello web acceso (`WEB_PANEL_PUBLIC_URL`), il bot con «Gestisci serve
 - `/gestione voice opzioni copia_generatore:sì`: un nuovo vocale ha limite, qualità e permessi del generatore. Con titolo, testo e colore del pannello, `/gestione voice panel` li usa.
 - `/gestione voice generatore aggiungi`: entrando nel secondo generatore nasce un vocale nella sua categoria, con il suo nome e limite.
 - `/ticket opzioni chiusura due_passi:sì elimina_dopo_ore:1 categoria_chiusi:… nome_chiuso:chiuso`: chiudendo, il canale resta, l'utente non lo vede, va nella categoria dei chiusi e cambia nome. Riapri (bottone e `/ticket riapri`) lo rimette a posto; Elimina lo toglie; senza azioni sparisce dopo 1 ora. Un utente aggiunto con `/ticket add` non vede il ticket chiuso (dopo la riapertura va riaggiunto). Presa, chiusura e riapertura in 10 minuti: la terza rinomina può non avvenire (limite di Discord).
+
+## AI e pannello web — giro r10 (#95, #91)
+
+- [ ] Manutenzione AI (25.20) — passi: da owner `/ai manutenzione acceso:True messaggio:prova`; `-chiedi` e `/utility ai spiega` rispondono con il messaggio di manutenzione, il resto del bot funziona. `acceso:False`: torna tutto. Da un altro account il comando risponde «solo del proprietario».
+- [ ] Prova gratuita (25.23) — passi: `/owner premium toggle module_name:ai active:True`; in un server non sbloccato `/ai attiva` e conferma. Risultato atteso: messaggio «prova gratuita di 7 giorni», `/ai stato` mostra «Prova gratuita», l'AI risponde. Dopo 7 giorni (o `prova_inizio` portato indietro nel database): «prova finita».
+- [ ] Bottone del pannello (25.27) — con `WEB_PANEL_PUBLIC_URL` impostato: `-chiedi come accendo l'AI` mostra «Apri nel pannello» che apre `/server/<id>/ai`; una domanda su un comando di moderazione non lo mostra.
+- [ ] Pagine legali (24.6, C.5) — `/privacy` e `/termini` si aprono senza accedere; l'elenco dei dati e i fornitori AI sono giusti. Da rileggere come testo legale.
+- [ ] Pagina del proprietario (C.4) — `/proprietario` si apre solo con l'account `OWNER_ID` (altri: «Accesso negato»); «Rendi premium/gratuito» cambia `/owner premium list`; manutenzione AI dal sito come dal comando.
+- [ ] Pagina AI del server (24.2) — `/server/<id>/ai`: senza la casella di consenso non si accende; poi privacy, lunghezza e memoria cambiano `/ai stato`.

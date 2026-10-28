@@ -11,6 +11,7 @@ Funzioni coperte: SPEC §25 (NF-24)
 from __future__ import annotations
 
 from dataclasses import dataclass, fields
+from datetime import datetime
 
 import asyncpg
 
@@ -38,6 +39,7 @@ class ConfigAI:
     menzione: bool = False
     bandiere: bool = False
     moderazione_canali: tuple[int, ...] = ()
+    prova_inizio: datetime | None = None
 
     def quote(self) -> Quote:
         return Quote(
@@ -114,6 +116,36 @@ class AiRepository:
             guild_id, *valori,
         )
         return _config(r)
+
+    async def avvia_prova(self, guild_id: int) -> ConfigAI:
+        """
+        Fa partire il periodo di prova dell'AI, una volta sola per server (AI-R-023). L'inizio
+        resta in `ai_prove` anche dopo la cancellazione dei dati del server: vale il più vecchio.
+        """
+        r = await self._pool.fetchrow(
+            "WITH p AS (INSERT INTO ai_prove (guild_id) VALUES ($1) "
+            "ON CONFLICT (guild_id) DO UPDATE SET guild_id = EXCLUDED.guild_id RETURNING inizio) "
+            "INSERT INTO ai_config (guild_id, prova_inizio) SELECT $1, inizio FROM p "
+            "ON CONFLICT (guild_id) DO UPDATE SET prova_inizio = "
+            "LEAST(COALESCE(ai_config.prova_inizio, EXCLUDED.prova_inizio), EXCLUDED.prova_inizio) RETURNING *",
+            guild_id,
+        )
+        return _config(r)
+
+    # ------------------------------------------------------------ interruttori dell'owner
+    async def manutenzione(self) -> str | None:
+        """Il messaggio di manutenzione globale, o None se l'AI è in servizio (AI-R-020)."""
+        return await self._pool.fetchval("SELECT valore FROM ai_globale WHERE chiave = 'manutenzione'")
+
+    async def imposta_manutenzione(self, acceso: bool, messaggio: str, user_id: int | None) -> None:
+        if not acceso:
+            await self._pool.execute("DELETE FROM ai_globale WHERE chiave = 'manutenzione'")
+            return
+        await self._pool.execute(
+            "INSERT INTO ai_globale (chiave, valore, aggiornato_da) VALUES ('manutenzione', $1, $2) "
+            "ON CONFLICT (chiave) DO UPDATE SET valore = $1, aggiornato_da = $2, aggiornato_il = now()",
+            messaggio, user_id,
+        )
 
     async def registra_consenso(self, guild_id: int, user_id: int, attivo: bool) -> ConfigAI:
         """Accende o spegne l'AI; all'accensione ricorda chi ha dato il consenso e quando."""

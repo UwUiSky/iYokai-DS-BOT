@@ -4,7 +4,7 @@ core/web_panel_logic.py
 Regole di sicurezza del pannello web, senza rete né Discord: quando è
 acceso, token e impronte delle sessioni, `state` OAuth2 firmato, token
 CSRF, limite di frequenza, intestazioni di sicurezza.
-Funzioni coperte: SPEC §24.1 (NF-20, issue #91)
+Funzioni coperte: SPEC §24.1, §24.6, C.5 (NF-20, issue #91)
 """
 
 from __future__ import annotations
@@ -172,3 +172,28 @@ def intestazioni_sicurezza(https: bool) -> dict[str, str]:
     if https:
         intestazioni["Strict-Transport-Security"] = "max-age=31536000"
     return intestazioni
+
+
+# ----------------------------------------------------------------- informativa privacy
+def voci_privacy(registro, giorni_dopo_uscita: int) -> list[dict]:
+    """
+    Le categorie di dati personali dichiarate nel registro dei dati (la stessa fonte della
+    cancellazione e della copia dei dati): così la pagina privacy non resta indietro.
+    Ogni voce: cosa si conserva, cosa succede se chiedi la cancellazione, per quanto tempo.
+    """
+    effetto = {
+        "cancella": "cancellato se lo chiedi",
+        "anonimizza": "reso anonimo se lo chiedi (restano solo i numeri)",
+        "conserva": "resta per la sicurezza dei server",
+    }
+    voci = []
+    for t in registro:
+        if not t.colonne_utente:
+            continue
+        durata = f"tolto dopo {t.scadenza.giorni} giorni" if t.scadenza else "finché serve alla funzione"
+        voci.append({
+            "cosa": t.descrizione, "se_chiedi": effetto.get(t.utente, "non riguarda la tua cancellazione"),
+            "durata": durata, "copia": bool(t.esporta),
+        })
+    voci.sort(key=lambda v: v["cosa"].lower())
+    return voci

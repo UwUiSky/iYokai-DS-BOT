@@ -2088,21 +2088,22 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 Completa la parte C più sotto (pagine di verifica e dell'owner).
 
-- `[~]` 24.1 Accesso con Discord e scelta del server (NF-20)
+- `[x]` 24.1 Accesso con Discord e scelta del server (NF-20)
   → **Stato 14/10:** `core/web_panel_server.py` (aiohttp, nello stesso processo del bot, porta `WEB_PANEL_PORT`): OAuth2 `identify` con `state` legato al browser, sessioni nel database (0150, solo l'impronta), cookie HttpOnly/SameSite=Lax (`Secure` e `__Host-` su https), CSRF, controllo dell'origine, limite di frequenza, CSP. Permessi come `/admin` controllati a **ogni** richiesta (`core/panel_bridge.py`, membri chiesti a Discord tenuti 30 s); il ruolo admin del bot si sceglie solo con «Amministratore» (D28); `X-Forwarded-For` letto solo dai proxy di `WEB_PANEL_TRUSTED_PROXY`. Spento senza le variabili del `.env`. Da provare live.
 - `[~]` 24.2 Una pagina per modulo, con interruttore e impostazioni
-  → **Stato 14/10:** una pagina per server: interruttore di ogni modulo (per categoria), ruoli del bot, lingua, storico, premium. Mancano le impostazioni interne di ogni modulo (canali, testi, soglie).
-- `[~]` 24.3 Il pannello scrive le **stesse** impostazioni dei comandi,
+  → **Stato 27/10 (r10):** una pagina per server: interruttore di ogni modulo (per categoria), ruoli del bot, lingua, storico, premium, marchio, aspetto e, dal r10, `/server/<id>/ai` (consenso e accensione, privacy, lunghezza, memoria; punto unico `core/ai_impostazioni.py`, lo stesso di `/ai`). Mancano le impostazioni interne degli altri moduli (canali, testi, soglie): ognuna va portata dall'area che la possiede in un punto unico come `core/config_schema.py`, poi aggiunta al pannello.
+- `[x]` 24.3 Il pannello scrive le **stesse** impostazioni dei comandi,
   con gli stessi controlli (`core/config_schema.py`)
-  → **Stato 14/10:** moduli e lingua da `core/config_schema.py` (usato anche da `/admin setup attiva`, configurazione guidata, `/admin lingua set`), ruoli da `core.command_access.imposta_ruolo`. Ogni nuova impostazione del pannello va prima portata in un punto unico.
-- `[~]` 24.4 Il bot vede un cambio fatto dal pannello senza riavvio
+  → **Stato 27/10 (r10):** tutte le scritture del pannello passano da un punto unico (moduli, lingua, ruoli, permessi, marchio, aspetto, premium dell'owner `core/premium_flags.py`, manutenzione AI `core/ai_servizio.py`). Prima: moduli e lingua da `core/config_schema.py` (usato anche da `/admin setup attiva`, configurazione guidata, `/admin lingua set`), ruoli da `core.command_access.imposta_ruolo`. Ogni nuova impostazione del pannello va prima portata in un punto unico.
+- `[x]` 24.4 Il bot vede un cambio fatto dal pannello senza riavvio
   → **Stato 14/10:** il pannello gira nel processo del bot e scrive dagli stessi metodi del database, che svuotano le cache; parte anche `modules_updated`.
 - `[ ]` 24.5 Editor visuali: embed, immagine di benvenuto, rank card,
   moduli dei ticket
-- `[ ]` 24.6 Pagine legali: privacy policy e termini
-- `[~]` 24.7 Pagamento del premium: abbonamento dentro Discord e
+- `[~]` 24.6 Pagine legali: privacy policy e termini
+  → **Stato 27/10 (r10):** `/privacy` e `/termini` fatte (vedi C.5). Manca la rilettura del testo da parte dell'owner.
+- `[x]` 24.7 Pagamento del premium: abbonamento dentro Discord e
   pagamento esterno registrato dall'owner (NF-22)
-  → **Stato 14/10:** fatti abbonamento Discord (`premium_entitlements`, 0131), `/admin premium stato` e codici (`/admin premium riscatta`, 0132); pagamento esterno = `/owner premium grant`. Pagina del pannello `/server/<id>/premium` fatta (stesse righe di `/admin premium stato` e link al negozio). Da provare live (serve l'app verificata).
+  → **Stato 14/10:** fatti abbonamento Discord (`premium_entitlements`, 0131), `/admin premium stato` e codici (`/admin premium riscatta`, 0132); pagamento esterno = `/owner premium grant`. Pagina del pannello `/server/<id>/premium` fatta (stesse righe di `/admin premium stato` e link al negozio). Da provare live (serve l'app verificata): `VERIFICA_LIVE.md`.
 
 ## §25 MOTORE AI — in corso (fase F12, issue #95, #50, #132)
 
@@ -2154,15 +2155,15 @@ di quel file.
 - `[x]` 25.17 Regola "l'AI propone, una persona conferma" (AI-R-015)
 - `[x]` 25.18 Livelli di privacy dell'AI per server (AI-R-016)
 - `[x]` 25.19 Tempo di conservazione del contesto dell'AI (AI-R-018)
-- `[~]` 25.20 Modulo AI in manutenzione o a mezzo servizio, senza
+- `[x]` 25.20 Modulo AI in manutenzione o a mezzo servizio, senza
   fermare il resto (AI-R-020)
-  → **Stato 14/10 (r6):** interruttore per server e per canale; se i fornitori sono fermi ogni funzione dà la sua risposta senza AI. Manca un interruttore "manutenzione" globale per l'owner.
+  → **Stato 27/10 (r10):** interruttore per server e per canale; se i fornitori sono fermi ogni funzione dà la sua risposta senza AI. `/ai manutenzione` (solo owner, migrazione 0350, tabella `ai_globale`) ferma l'AI in tutti i server con un messaggio, anche per le risposte in cache; il resto del bot continua.
 - `[ ]` 25.21 AI in un processo separato (AI-R-021)
-- `[~]` 25.22 Coda e limite per molte richieste insieme (AI-R-022)
-  → **Stato 14/10 (r6):** limite al minuto per persona e per la moderazione (20 controlli al minuto per server). Manca una coda vera.
-- `[~]` 25.23 AI come diritto premium a parte, con periodo di prova
+- `[x]` 25.22 Coda e limite per molte richieste insieme (AI-R-022)
+  → **Stato 27/10 (r10):** limite al minuto per persona e per la moderazione (20 controlli al minuto per server). Coda vera in `core/ai_coda_logic.py`: 4 chiamate insieme, fino a 40 in fila (8 per server), attesa massima 25 secondi; oltre, risposta locale «troppe richieste in fila». Il processo separato (25.21) resta a parte.
+- `[x]` 25.23 AI come diritto premium a parte, con periodo di prova
   (AI-R-023)
-  → **Stato 14/10 (r6):** modulo `ai` registrato: l'owner lo rende premium. Manca il periodo di prova.
+  → **Stato 27/10 (r10):** modulo `ai` registrato: l'owner lo rende premium. Se il server non l'ha sbloccato, il consenso di `/ai attiva` fa partire una prova di 7 giorni (una sola volta, `ai_config.prova_inizio`, 0350); finita la prova la porta unica risponde «prova finita». La prova vale anche per i comandi del modulo (`richiede_ai`); l'inizio resta in `ai_prove` (0351) anche dopo la cancellazione dei dati del server: togliere e rimettere il bot non la fa ripartire.
 
 **Assistente e helpdesk**
 
@@ -2170,9 +2171,9 @@ di quel file.
 - `[~]` 25.25 Cerca comando a parole, in qualsiasi lingua (AI-R-026)
   → **Stato 14/10 (r6):** `-chiedi` risponde con l'AI nella lingua della domanda; `-cerca-comando` resta per parole.
 - `[x]` 25.26 Registro unico dei comandi letto dall'AI (AI-R-027)
-- `[~]` 25.27 Risposta con al massimo 3 comandi e bottoni che aprono la
+- `[x]` 25.27 Risposta con al massimo 3 comandi e bottoni che aprono la
   configurazione (AI-R-028)
-  → **Stato 14/10 (r6):** al massimo 3 comandi, cliccabili. Mancano i bottoni che aprono la configurazione.
+  → **Stato 27/10 (r10):** al massimo 3 comandi, cliccabili. Se tra i citati c'è un comando di configurazione (`/ai`, `/admin`, `/moduli`, `/ruoli`) e il pannello è acceso (`WEB_PANEL_PUBLIC_URL`), sotto la risposta c'è il bottone «Apri nel pannello» con la pagina giusta del server (`core/ai_testi_logic.link_configurazione`). Un bot non può aprire un comando slash con un bottone: il link al pannello è l'alternativa più vicina (D18).
 - `[ ]` 25.28 Stato del comando nella risposta (AI-R-029)
 - `[ ]` 25.29 Ricerca che guarda il server e propone di attivare ciò che
   manca (AI-R-030)
@@ -2392,17 +2393,19 @@ completo, con limiti e motivi, è in
 
 ---
 
-# C. WEB PANEL (iYokai Panel) — da fare (NF-20, NF-21, fase F10)
+# C. WEB PANEL (iYokai Panel) — fatto in gran parte (NF-20, NF-21, fase F10)
 
-- `[ ]` C.1 Pagina di verify avanzato (IP, ISP, geo, fingerprint)
-  → **Stato 04/10:** in piano: NF-21, fase F10.
-- `[ ]` C.2 Flusso OAuth2 `identify` (verify)
-- `[ ]` C.3 Flusso OAuth2 `guilds.join` separato (restore utenti)
-- `[ ]` C.4 Dashboard owner: premium list, toggle moduli premium
-  → **Stato 04/10:** in piano: NF-20, fase F10. Le pagine di configurazione dei server sono in §24.
-- `[ ]` C.5 Privacy policy pubblicata + informativa GDPR (prerequisito
+- `[x]` C.1 Pagina di verify avanzato (IP, ISP, geo, fingerprint)
+  → **Stato 27/10 (r10):** fatta in r8 (`/verifica/…`, §4.2): impronte HMAC di rete e browser, doppi, avviso allo staff. Alternativa più vicina (D18, D19): ISP e geolocalizzazione non si raccolgono, per privacy; l'IP non si salva mai in chiaro.
+- `[x]` C.2 Flusso OAuth2 `identify` (verify)
+  → **Stato 27/10 (r10):** fatto: accesso al pannello con `identify` e `state` legato al browser (§24.1); la verifica dei membri usa il link firmato del bot, che lega già la persona.
+- `[x]` C.3 Flusso OAuth2 `guilds.join` separato (restore utenti)
+  → **Stato 27/10 (r10):** fatto: `core/restore_web_server.py` e `core/restore_oauth_logic.py` (§11.11), flusso e callback separati dal pannello.
+- `[x]` C.4 Dashboard owner: premium list, toggle moduli premium
+  → **Stato 27/10 (r10):** pagina `/proprietario` (solo `OWNER_ID`, controllato a ogni richiesta): moduli premium con interruttore (punto unico `core/premium_flags.py`, lo stesso di `/owner premium toggle`), server con stato premium (i 50 più grandi), AI in manutenzione. Le pagine di configurazione dei server sono in §24.
+- `[~]` C.5 Privacy policy pubblicata + informativa GDPR (prerequisito
   legale per C.1, non opzionale)
-  → **Stato 04/10:** anticipata alla fase F5 (NF-04): serve anche per la verifica dell'app.
+  → **Stato 27/10 (r10):** pagine pubbliche `/privacy` e `/termini` nel pannello; l'elenco dei dati è generato dal registro dei dati e i fornitori AI da quelli configurati. Manca: che l'owner rilegga il testo (bozza) e inserisca l'indirizzo pubblico nel Developer Portal.
 
 ---
 

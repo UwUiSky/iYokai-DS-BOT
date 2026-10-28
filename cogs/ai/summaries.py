@@ -21,11 +21,11 @@ from discord import app_commands
 from discord.ext import commands
 
 from cogs.ai._comune import (
-    MODULO_AI, NESSUNA_MENZIONE, SOTTO_AI, chiedi, embed_risposta, registra_modulo_ai, richiesta_da, testo_canale,
+    NESSUNA_MENZIONE, SOTTO_AI, chiedi, embed_risposta, registra_modulo_ai, richiede_ai, richiesta_da,
+    testo_canale,
 )
 from core.ai_testi_logic import ISTRUZIONI, riconosci_lingua
 from core.command_groups import CogConGruppi, comando_di_gruppo
-from core.premium import requires_module
 
 _LINK = re.compile(r"discord(?:app)?\.com/channels/(\d+)/(\d+)/(\d+)")
 
@@ -61,7 +61,7 @@ class AiRiassuntiCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo("utility", nome="riassumi", descrizione="Riassunto degli ultimi messaggi di un canale.", sottogruppo=SOTTO_AI)
     @app_commands.describe(canale="Il canale (vuoto: questo)", messaggi="Quanti messaggi leggere")
-    @requires_module(MODULO_AI)
+    @richiede_ai()
     async def riassumi(
         self, interaction: discord.Interaction, canale: discord.TextChannel | None = None,
         messaggi: app_commands.Range[int, 10, 200] = 50,
@@ -95,7 +95,7 @@ class AiRiassuntiCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo("utility", nome="spiega", descrizione="Spiega in parole semplici un messaggio (dal suo link).", sottogruppo=SOTTO_AI)
     @app_commands.describe(link="Link del messaggio (tasto destro → Copia link)")
-    @requires_module(MODULO_AI)
+    @richiede_ai()
     async def spiega(self, interaction: discord.Interaction, link: app_commands.Range[str, 20, 200]) -> None:
         trovato = _LINK.search(link)
         if trovato is None or int(trovato.group(1)) != interaction.guild_id:
@@ -128,7 +128,7 @@ class AiRiassuntiCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo("utility", nome="stile", descrizione="Un messaggio nuovo scritto come scrivi tu.", sottogruppo=SOTTO_AI)
     @app_commands.describe(argomento="Di cosa deve parlare il messaggio")
-    @requires_module(MODULO_AI)
+    @richiede_ai()
     async def stile(self, interaction: discord.Interaction, argomento: app_commands.Range[str, 3, 200]) -> None:
         await interaction.response.defer(ephemeral=True)
         try:

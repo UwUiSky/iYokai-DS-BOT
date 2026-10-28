@@ -4,7 +4,7 @@ core/ai_cost_logic.py
 Conti dell'AI: stima dei token, costo di una chiamata, quote del server,
 dell'utente e della funzione, tetto di spesa del mese, limite di richieste
 al minuto per utente. Solo numeri, mai il testo.
-Funzioni coperte: SPEC §25.4, §25.14, §25.15, §25.16, §25.63 (AI-R-009..012, AI-R-014, AI-R-069; catalogo AI-002, AI-008)
+Funzioni coperte: SPEC §25.4, §25.14, §25.15, §25.16, §25.23, §25.63 (AI-R-009..012, AI-R-014, AI-R-023, AI-R-069; catalogo AI-002, AI-008)
 """
 
 from __future__ import annotations
@@ -97,3 +97,21 @@ class LimitatoreUtente:
             for uid in [u for u, c in self._colpi.items() if not c][:1000]:
                 del self._colpi[uid]
         return True
+
+
+# ---------------------------------------------------------------- periodo di prova (AI-R-023)
+GIORNI_PROVA = 7
+
+
+def prova_attiva(inizio, ora=None, giorni: int = GIORNI_PROVA) -> bool:
+    """Il periodo di prova dell'AI è iniziato e non è ancora finito (datetime con fuso)."""
+    if inizio is None:
+        return False
+    from datetime import datetime, timedelta, timezone
+
+    ora = ora or datetime.now(timezone.utc)
+    return ora < inizio + timedelta(days=giorni)
+
+
+def prova_finita(inizio, ora=None, giorni: int = GIORNI_PROVA) -> bool:
+    return inizio is not None and not prova_attiva(inizio, ora, giorni)

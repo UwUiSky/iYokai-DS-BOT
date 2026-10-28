@@ -5,7 +5,7 @@ Assistente: risposta di `-chiedi` con l'AI (al massimo 3 comandi veri,
 cliccabili, anche quando la richiesta è un'azione da fare), base di
 conoscenza del server, risposta quando il bot viene menzionato con la
 memoria corta della conversazione.
-Funzioni coperte: SPEC §25.5, §25.24–§25.28, §25.31–§25.34 (AI-R-024..029, AI-R-032..036; catalogo AI-009, AI-011, AI-013)
+Funzioni coperte: SPEC §25.5, §25.24–§25.28 (bottone «Apri nel pannello»), §25.31–§25.34 (AI-R-024..029, AI-R-032..036; catalogo AI-009, AI-011, AI-013)
 
 Chiedere a parole di ESEGUIRE un comando (AI-013): un bot non può far partire
 un comando slash al posto dell'utente né precompilarlo. Alternativa più vicina:
@@ -22,7 +22,7 @@ from discord.ext import commands
 
 from cogs.ai._comune import NESSUNA_MENZIONE, chiedi, registra_modulo_ai, taglia
 from core.ai_servizio import RichiestaAI, servizio_ai
-from core.ai_testi_logic import ISTRUZIONI, comandi_citati, elenco_comandi_per_ai, riconosci_lingua
+from core.ai_testi_logic import ISTRUZIONI, comandi_citati, elenco_comandi_per_ai, link_configurazione, riconosci_lingua
 from core.repositories.ai_repo import ai_repo
 
 logger = logging.getLogger("iyokai.ai_helpdesk")
@@ -37,6 +37,12 @@ async def conoscenza_del_server(guild_id: int | None) -> str:
     voci = await ai_repo.conoscenza_elenco(guild_id)
     testo = "\n".join(f"- {v['titolo']}: {v['testo']}" for v in voci)
     return testo[:MAX_CONOSCENZA_CARATTERI]
+
+
+def bottone_configurazione(url_pannello: str, guild_id: int | None, citati: list) -> discord.ui.Button | None:
+    """Bottone «Apri nel pannello» sotto la risposta, se tra i comandi citati c'è una configurazione (§25.27)."""
+    url = link_configurazione(url_pannello, guild_id, citati)
+    return None if url is None else discord.ui.Button(label="Apri nel pannello", url=url)
 
 
 _DALL_INTERAZIONE = object()

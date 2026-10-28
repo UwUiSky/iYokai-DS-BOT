@@ -129,6 +129,30 @@ def comandi_citati(risposta: str, comandi: list[ComandoNoto], massimo: int = 3) 
     return trovati
 
 
+# Comandi di configurazione: il pannello web ha la pagina giusta (AI-R-028, §25.27).
+GRUPPI_CONFIGURAZIONE = frozenset({"admin", "ai", "moduli", "ruoli"})
+PAGINE_PANNELLO = (  # dal percorso più preciso al più generico
+    ("ai", "ai"), ("admin premium aspetto", "aspetto"), ("admin premium marchio", "marchio"),
+    ("admin premium", "premium"),
+)
+
+
+def link_configurazione(url_pannello: str, guild_id: int | None, citati: list[ComandoNoto]) -> str | None:
+    """
+    L'indirizzo della pagina del pannello dove si fa ciò che spiega il primo comando di configurazione
+    citato (altrimenti la pagina del server). None senza pannello, senza server o senza comandi di
+    configurazione tra quelli citati.
+    """
+    if not url_pannello or guild_id is None:
+        return None
+    for c in citati:
+        if c.percorso.split(" ")[0] not in GRUPPI_CONFIGURAZIONE:
+            continue
+        pagina = next((p for prefisso, p in PAGINE_PANNELLO if c.percorso == prefisso or c.percorso.startswith(prefisso + " ")), "")
+        return "/".join(p for p in (url_pannello.rstrip("/"), "server", str(guild_id), pagina) if p)[:512]
+    return None
+
+
 # ---------------------------------------------------------------- JSON dalle risposte
 def estrai_json(testo: str) -> dict | None:
     """Il primo oggetto JSON nella risposta (i modelli a volte aggiungono testo o ```)."""

@@ -238,7 +238,8 @@
   "tag-aggiungi": "tag-add",
   "tag-togli": "tag-remove",
   "autopost-ferma": "autopost-stop",
-  "promemoria": "reminders"
+  "promemoria": "reminders",
+  "manutenzione": "maintenance"
  },
  "descrizioni": {
   "-cerca-comando": "Searches a command by description.",
@@ -901,7 +902,8 @@
   "note aggiungi": "Adds a note, or an entry to a list.",
   "note elenco": "Shows your notes, or a list.",
   "note rimuovi": "Removes a note or a list entry.",
-  "profilo": "A user's card: name, ID, account age, level, clan, avatar."
+  "profilo": "A user's card: name, ID, account age, level, clan, avatar.",
+  "ai manutenzione": "Owner only: puts the AI in maintenance in every server."
  },
  "parametri": {},
  "menu": {

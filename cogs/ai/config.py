@@ -8,7 +8,7 @@ traduzione automatica dei canali, personaggi del server, base di
 conoscenza, costruzione del server da una descrizione, stato e uso.
 In più il controllo orario delle chiavi con avviso privato all'owner e il
 riepilogo giornaliero dell'uso.
-Funzioni coperte: SPEC §25.4, §25.7, §25.9, §25.13–§25.20, §25.24, §25.35, §25.46, §25.58, §25.75, §25.82, §25.83, §25.96
+Funzioni coperte: SPEC §25.4, §25.7, §25.9, §25.13–§25.20, §25.23, §25.24, §25.35, §25.46, §25.58, §25.75, §25.82, §25.83, §25.96
 """
 
 from __future__ import annotations
@@ -20,15 +20,18 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 import core.channel_router as router
-from cogs.ai._comune import MODULO_AI, NESSUNA_MENZIONE, chiedi, completa_lingue, registra_modulo_ai, richiesta_da, taglia
+from cogs.ai._comune import (
+    NESSUNA_MENZIONE, chiedi, completa_lingue, registra_modulo_ai, richiede_ai, richiesta_da, taglia,
+)
+from core.ai_cost_logic import GIORNI_PROVA, prova_attiva
+from core.ai_impostazioni import TESTO_CONSENSO, accendi_ai, imposta_scelte, spegni_ai
 from core.ai_router import avviso_chiavi
-from core.ai_servizio import servizio_ai
+from core.ai_servizio import imposta_manutenzione_ai, servizio_ai
 from core.ai_testi_logic import ISTRUZIONI, LINGUE, TEMI, leggi_proposta_server, nome_lingua, testo_lore
 from core.bot_ready import attendi_bot_pronto
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
-from core.premium import requires_module
 from core.repositories.ai_repo import ai_repo
 from core.repositories.output_channel_repo import output_channel_repo
 from core.ui_base import BaseModal, BaseView
@@ -39,15 +42,6 @@ SOTTO_CONOSCENZA = ("conoscenza", "Base di conoscenza usata dall'assistente")
 MAX_CONOSCENZA = 50
 MAX_PAROLE_VIETATE = 50
 MAX_CANALI_MODERAZIONE = 10
-
-TESTO_CONSENSO = (
-    "Accendendo l'AI, i testi delle richieste (e, per riassunti, ticket e moderazione, i messaggi "
-    "degli utenti) vengono mandati ai fornitori AI configurati dal proprietario del bot. Si usano "
-    "solo fornitori che dichiarano di **non addestrare** modelli con ciò che ricevono. Prima "
-    "dell'invio si tolgono menzioni, ID, e-mail e inviti. L'AI propone, una persona decide: "
-    "nessuna punizione parte da sola. Puoi spegnere tutto in ogni momento."
-)
-
 
 def _euro(millesimi: int | None) -> str:
     return f"{(millesimi or 0) / 100_000:.2f} €"
@@ -66,8 +60,8 @@ class _ConsensoView(BaseView):
 
     @discord.ui.button(label="Acconsento e accendo", style=discord.ButtonStyle.success)
     async def conferma(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await ai_repo.registra_consenso(interaction.guild_id, interaction.user.id, True)
-        await interaction.response.edit_message(content="AI accesa in questo server.", embed=None, view=None)
+        testo = await accendi_ai(interaction.guild_id, interaction.user.id)
+        await interaction.response.edit_message(content=testo, embed=None, view=None)
 
 
 class _ConoscenzaModal(BaseModal, title="Nuova voce della base di conoscenza"):
@@ -175,6 +169,12 @@ class AiConfigCog(CogConGruppi, commands.Cog):
             inline=False,
         )
         embed.add_field(name="Stato", value="accesa" if cfg.attivo else "spenta")
+        if cfg.prova_inizio is not None:
+            fine = int(cfg.prova_inizio.timestamp()) + GIORNI_PROVA * 86400
+            embed.add_field(
+                name="Prova gratuita",
+                value=f"fino a <t:{fine}:D>" if prova_attiva(cfg.prova_inizio) else "finita",
+            )
         embed.add_field(name="Privacy", value=cfg.privacy.replace("_", " "))
         embed.add_field(name="Memoria", value=f"{cfg.conservazione_minuti} min")
         embed.add_field(
@@ -218,13 +218,25 @@ class AiConfigCog(CogConGruppi, commands.Cog):
     @app_commands.describe(acceso="Sì per accendere, no per spegnere")
     async def attiva(self, interaction: discord.Interaction, acceso: bool) -> None:
         if not acceso:
-            await ai_repo.registra_consenso(interaction.guild_id, interaction.user.id, False)
-            await interaction.response.send_message("AI spenta in questo server.", ephemeral=True)
+            await interaction.response.send_message(await spegni_ai(interaction.guild_id, interaction.user.id), ephemeral=True)
             return
         embed = discord.Embed(title="Consenso all'uso dell'AI", description=TESTO_CONSENSO, color=discord.Color.orange())
         if not servizio_ai().configurato:
             embed.add_field(name="Nota", value="Il proprietario del bot non ha ancora configurato fornitori AI.")
         await interaction.response.send_message(embed=embed, view=_ConsensoView(interaction.user.id), ephemeral=True)
+
+    @comando_di_gruppo("ai", nome="manutenzione", descrizione="Solo proprietario: mette l'AI in manutenzione in tutti i server.")
+    @app_commands.describe(acceso="Sì: l'AI si ferma ovunque (il resto del bot no); no: torna in servizio", messaggio="Cosa vedranno gli utenti")
+    async def manutenzione(
+        self, interaction: discord.Interaction, acceso: bool, messaggio: app_commands.Range[str, 1, 300] | None = None
+    ) -> None:
+        if interaction.user.id != config.OWNER_ID:
+            await interaction.response.send_message("Questo comando è solo del proprietario del bot.", ephemeral=True)
+            return
+        await imposta_manutenzione_ai(acceso, messaggio or "", interaction.user.id)
+        await interaction.response.send_message(
+            "AI in manutenzione in tutti i server." if acceso else "AI di nuovo in servizio.", ephemeral=True
+        )
 
     @comando_di_gruppo("ai", nome="canale", descrizione="Spegne o riaccende l'AI in un canale.")
     @app_commands.describe(canale="Il canale", acceso="Sì: l'AI lavora qui; no: spenta qui")
@@ -265,7 +277,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
         if not campi:
             await interaction.response.send_message("Indica almeno un valore. Lo stato attuale è in `/ai stato`.", ephemeral=True)
             return
-        await ai_repo.imposta(interaction.guild_id, **campi)
+        await imposta_scelte(interaction.guild_id, **campi)
         await interaction.response.send_message("Limiti salvati.", ephemeral=True)
 
     @comando_di_gruppo("ai", nome="privacy", descrizione="Messaggi degli utenti all'AI, memoria e lunghezza delle risposte.")
@@ -286,9 +298,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
         if not campi:
             await interaction.response.send_message("Indica almeno un valore.", ephemeral=True)
             return
-        await ai_repo.imposta(interaction.guild_id, **campi)
-        if memoria_minuti == 0:
-            servizio_ai().memoria.dimentica(interaction.guild_id)
+        await imposta_scelte(interaction.guild_id, **campi)
         await interaction.response.send_message("Scelte salvate.", ephemeral=True)
 
     @comando_di_gruppo("ai", nome="lore", descrizione="Tono e ambientazione del server per ogni testo dell'AI.")
@@ -390,7 +400,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo("ai", nome="costruisci", descrizione="L'AI propone ruoli e canali da una descrizione; tu confermi.")
     @app_commands.describe(descrizione="Che server vuoi? es. 'community di un gioco con tornei'")
-    @requires_module(MODULO_AI)
+    @richiede_ai()
     async def costruisci(self, interaction: discord.Interaction, descrizione: app_commands.Range[str, 10, 500]) -> None:
         await interaction.response.defer(ephemeral=True)
         risposta, locale = await chiedi(

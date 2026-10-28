@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titolo %}Termini · iYokai{% endblock %}
+{% block corpo %}
+<h1>Termini di servizio</h1>
+<p class="tenue">Usando iYokai accetti queste regole semplici.</p>
+<ul>
+  <li>Il bot si usa nel rispetto dei <a href="https://discord.com/terms" rel="noopener noreferrer">Termini di Discord</a> e delle sue linee guida per la community.</li>
+  <li>Chi gestisce un server è responsabile di come configura il bot e delle persone che lo usano lì.</li>
+  <li>Le funzioni premium dipendono dall'abbonamento o dallo sblocco scelto; possono cambiare o fermarsi con un avviso.</li>
+  <li>L'AI può sbagliare: le sue risposte vanno controllate e nessuna decisione di moderazione parte da sola.</li>
+  <li>Abusi, tentativi di aggirare i limiti o di danneggiare il servizio possono portare al blocco dell'account o del server.</li>
+  <li>Il servizio è offerto così com'è, senza garanzia di essere sempre attivo.</li>
+  <li>Come si trattano i dati è scritto nella <a href="/privacy">informativa sulla privacy</a>.</li>
+</ul>
+<p>Per domande: {% if supporto %}<a href="{{ supporto }}" rel="noopener noreferrer">server di supporto</a>{% else %}il server di supporto indicato nella scheda del bot{% endif %}.</p>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block titolo %}Privacy · iYokai{% endblock %}
+{% block corpo %}
+<h1>Informativa sulla privacy</h1>
+<p class="tenue">iYokai è un bot per Discord. Questa pagina dice quali dati conserva, perché, per quanto tempo e come chiederne la copia o la cancellazione.</p>
+
+<h2>Chi tratta i dati</h2>
+<p>Il proprietario del bot, che lo gestisce a titolo personale. Per domande o richieste:
+{% if supporto %}<a href="{{ supporto }}" rel="noopener noreferrer">server di supporto</a>{% else %}il server di supporto indicato nella scheda del bot{% endif %}.</p>
+
+<h2>Che cosa conserva</h2>
+<p>Solo ciò che serve alle funzioni che un server accende. Non vende i dati e <strong>non addestra modelli</strong>. Questo elenco è generato dal registro dei dati del bot, lo stesso che guida la copia e la cancellazione: è sempre aggiornato.</p>
+<table>
+<tr><th>Dato</th><th>Se chiedi la cancellazione</th><th>Per quanto tempo</th><th>Nella copia</th></tr>
+{% for v in voci %}
+<tr><td>{{ v.cosa }}</td><td>{{ v.se_chiedi }}</td><td>{{ v.durata }}</td><td>{{ "sì" if v.copia else "no" }}</td></tr>
+{% endfor %}
+</table>
+<p>Quando il bot esce da un server, i dati di quel server si cancellano dopo {{ giorni_dopo_uscita }} giorni.</p>
+
+<h2>Intelligenza artificiale</h2>
+<p>Le funzioni con l'AI sono spente finché un amministratore del server non dà il consenso, e si possono spegnere in ogni momento. Il testo di una richiesta (e, solo se il server lo permette, i messaggi usati per riassunti, ticket e moderazione) va a un servizio esterno. Prima dell'invio si tolgono menzioni, ID, e-mail e inviti. Si usano solo servizi che dichiarano di non usare ciò che ricevono per addestrare modelli. L'AI propone, una persona decide.</p>
+{% if fornitori_ai %}<p>Servizi AI configurati ora: {{ fornitori_ai|join(", ") }}.</p>
+{% else %}<p>Nessun servizio AI è configurato ora.</p>{% endif %}
+
+<h2>I tuoi diritti</h2>
+<ul>
+  <li>Copia dei tuoi dati e richiesta di cancellazione: <a href="/miei-dati">I miei dati</a>, oppure <code>/utility privacy esporta</code> e <code>/utility privacy cancella</code>.</li>
+  <li>Ban, kick e registri di sicurezza restano, per proteggere i server.</li>
+  <li>Puoi chiedere la rettifica dei dati scrivendo al contatto indicato sopra.</li>
+</ul>
+
+<h2>Accesso a questo sito</h2>
+<p>L'accesso usa Discord (solo l'identificativo e il nome). Il cookie di sessione è tecnico, serve solo a tenerti dentro per 12 ore. Nel database resta solo un'impronta della sessione.</p>
+{% endblock %}

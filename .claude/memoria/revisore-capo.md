@@ -3,6 +3,7 @@
 ## Aggiornata
 28/10/2026 · `feat/r10liv` (livelli/economia r10: SPEC §15 a `[x]`, shop 0340, classifica settimanale, moneta e tassa 0341). Fatto anche il cacciatore. Corretti: minimo pay (0342) e tassa per eccesso (b1c1f45); righe shop controllate prima, codice in DM, scadenze solo server del bot (f92d597); registro (485e139). APPROVATO, smoke da fare.
 28/10/2026 · ramo `feat/r10inviti` (link personali, D32, 0380): fatti anche i controlli del cacciatore; fix 8b9426b (permesso del membro, canale pubblico, tetto 500, verifica invito vivo, race tracker), d45c4f2 (COMMAND_LIST). APPROVATO con 4 basse nel quaderno; smoke da fare.
+28/10/2026 · `feat/r10aiw` (#95 AI r10, 0350–0351): APPROVATO dopo i fix: comandi AI aperti in prova (b302da0, `richiede_ai`), prova non ripetibile dopo la purga (0be178a, `ai_prove`), elenco comandi (c2b8c98). Smoke da fare (regola owner: lo lancia l'orchestratore). Aperte 2 basse nei quaderni.
 21/10/2026 · ramo `feat/r8tkt` (#120 opzioni ticket, #139 AI, migrazione 0220): merge di main (991f977); corretti presa esclusiva/passa/rilascia e note archiviate (bd26b6d), cache opzioni (ad83893), reperibili ricontrollati; test instabile dei due close = doppia lettura in `close`. Esito smoke nel rapporto.
 16/10/2026 · r7mod, r7bak (3be8a40), r7liv.
 
@@ -117,6 +118,39 @@
 - Task programmati per chiave: uno solo per chiave; annullarli quando lo stato torna indietro (riapertura ticket → `scheduler.cancel_for_channel`).
 - Finti: `member.roles` vivo non prova un'istantanea vecchia; `Permissions.all()` per admin; `fake_member` ha `Permissions.none()`; `canale.overwrites` va impostato a mano nei finti.
 - Stato/cache in memoria: chi lo svuota, cosa succede al riavvio; limite accettato → VERIFICA_LIVE.
+- Chiavi `SETTING_X` in `SETTINGS_SCHEMA` (quelle di permessi anche in `CHIAVI_SOLO_PROPRIETARIO`); tabelle nuove in `core/data_registry.py`; metodi di repo senza chiamanti rompono `test_repository_callers.py`. Migrazioni: confrontare i numeri di tutti i rami.
+- Mutazioni: su COPIA del file (cp in scratchpad, `python3 -I` con `str.replace`, poi ripristino).
+- Test instabili di corsa: cercare DUE letture dello stesso stato nello stesso comando; test deterministico con una lettura finta che cambia lo stato dopo la prima.
+- Doppio clic / blocchi: `asyncio.gather` con `tests/support/concorrenza.apri_connessioni`; blocco tolto senza test rosso = test mancante.
+- Presa esclusiva / ruoli self-service / reperibili: ricontrollare i permessi al momento dell'uso; chi perde la presa perde i permessi personali.
+- Task programmati per chiave: uno solo per chiave, il nuovo annulla il vecchio.
+- Finti: `member.roles` vivo non prova un'istantanea vecchia; `Thread.permissions_for` eredita dal padre; thread archiviati non in `get_thread`; `create_autospec(discord.Thread)` per `isinstance`. `Pool.fetchrow` è sola lettura: finto sul `_pool_provider`.
+- Suite completa >10 min: mai. Smoke in background con `nohup` e poll ≤119 s; `pkill -f` col testo del comando uccide la propria shell.
+- Stato/cache in memoria: chi lo svuota, versione contro leggi-poi-set, cosa succede al riavvio. `AllowedMentions(roles=...)` ha `everyone=True` di default.
+- Bot secondario (D15): cercare OGNI azione della sua area ancora chiamata sul principale.
+- Prove gratuite/sblocchi temporanei: controllare TUTTI i cancelli (decoratori `requires_module` compresi) e cosa sopravvive alla purga del server.
+- `locales/comandi.en.json` "nomi" è per SEGMENTO, globale: una chiave nuova rinomina ogni comando con quel nome.
+- Ruoli che aprono un livello più alto: chi li sceglie deve avere quel livello (D28). Ripristini fatti dal bot: tetto = ruolo più alto di chi lancia.
+- DECISIONI: i «casi» di D25 aggiunti da rami diversi vanno numerati contro `git show main:`.
+- Stato in memoria: chi lo ripulisce, cosa succede al riavvio; se limite accettato -> VERIFICA_LIVE.
+- `AllowedMentions(roles=...)` ha `everyone=True` di default. `monkeypatch.undo()` toglie anche il pool del DB.
+- `locales/comandi.en.json` "nomi" è per SEGMENTO, globale: una chiave nuova rinomina ogni comando con quel nome.
+- Ruoli che aprono un livello più alto: chi li sceglie deve avere il permesso di quel livello (D28). Caricamenti fatti dal bot: tetto = ruolo più alto di chi lancia.
+- Limiti per IP del pannello: un secchio per funzione (accesso, verifica), non condiviso.
+- Chiavi `SETTING_X` in `SETTINGS_SCHEMA` (o `SETTINGS_SOLO_OWNER` se solo l'owner le cambia: mai importabili); far girare `test_config_import_validation.py`. Tabelle nuove in `core/data_registry.py`; metodi di repo senza chiamanti rompono `test_repository_callers.py`. Migrazioni: confrontare i numeri di tutti i rami.
+- Mutazioni: su COPIA del file, script con `python3 -I`, `str.replace` contato. Un test che con la mutazione si blocca va reso finito (`asyncio.wait(..., timeout=)`), non lasciato appeso.
+- `monkeypatch.setattr(modulo.asyncio, "sleep", ...)` cambia asyncio.sleep per tutti: per cedere il turno, future + `call_soon`.
+- Tetti in memoria globali (`prenota_uso`): azzerarli nella fixture, o i test dopo il secondo falliscono.
+- Bot secondario (D15): cercare OGNI azione della sua area ancora chiamata sul principale.
+- DECISIONI: i «casi» di D25 vanno numerati e datati contro `git show main:`.
+- Chiavi `SETTING_X` in `SETTINGS_SCHEMA` (o solo owner: `CHIAVI_SOLO_PROPRIETARIO`); `test_config_import_validation.py`. Tabelle nuove in `core/data_registry.py`; metodi di repo senza chiamanti rompono `test_repository_callers.py`.
+- Migrazioni tracciate per NOME: una modificata non si riapplica. Cambi = migrazione nuova; confrontare i numeri di tutti i rami (anche le D di DECISIONI, con `git show <ramo>:`).
+- Mutazioni: su COPIA del file, script `python3 -I` in scratchpad con `str.replace` contato e ripristino. Test che si blocca con la mutazione: `asyncio.wait(..., timeout=)`.
+- Test con id piccoli e `str(x) in str(righe)`: falsi rossi da timestamp. Confrontare i valori.
+- Doppio clic / blocchi: `asyncio.gather` con `tests/support/concorrenza.apri_connessioni`; blocco tolto senza test rosso = test mancante.
+- Task programmati per chiave: uno solo per chiave, riferimento tenuto, fermati in `cog_unload`.
+- Finti: `member.roles` vivo non prova un'istantanea vecchia; `Permissions.all()` per admin; `fake_member` ha `Permissions.none()` di base; `timed_out_until` va letto con `getattr` + `isinstance`.
+- Suite completa >10 min: mai. Smoke in background con `nohup` e ciclo `until`; `pkill -f` col testo del comando uccide la propria shell.
 - `AllowedMentions(roles=...)` ha `everyone=True` di default. `monkeypatch.undo()` toglie anche il pool del DB. `monkeypatch.setattr(asyncio, "sleep")` è globale.
 - `locales/comandi.en.json` "nomi" è per SEGMENTO, globale.
 - Ruoli che aprono un livello più alto: chi li sceglie deve avere quel livello (D28). Ripristini fatti dal bot: tetto = ruolo più alto di chi lancia.

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block titolo %}Proprietario · iYokai Panel{% endblock %}
+{% block corpo %}
+<h1>Pagina del proprietario</h1>
+<p class="tenue">Le stesse azioni di <code>/owner premium toggle</code> e <code>/ai manutenzione</code>. Solo tu la vedi.</p>
+
+<h2>Moduli premium</h2>
+{% if stato.alpha %}<p class="tenue">Fase alpha: tutti i moduli premium sono sbloccati per tutti.</p>{% endif %}
+<table>
+{% for m in stato.moduli %}
+<tr>
+  <td><code>{{ m.nome }}</code> · {{ m.titolo }}</td>
+  <td>{% if not m.capace %}sempre gratuito{% elif m.premium %}<strong>premium</strong>{% else %}gratuito (predisposto){% endif %}</td>
+  <td>{% if m.capace %}
+    <form method="post" action="/proprietario/premium" class="riga">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="nome" value="{{ m.nome }}">
+      <input type="hidden" name="attivo" value="{{ '0' if m.premium else '1' }}">
+      <button type="submit">{{ "Rendi gratuito" if m.premium else "Rendi premium" }}</button>
+    </form>{% endif %}</td>
+</tr>
+{% endfor %}
+</table>
+
+<h2>Server ({{ stato.n_server }})</h2>
+{% if stato.troncato %}<p class="tenue">Sono mostrati i più grandi. L'elenco completo è in <code>/owner premium status-all</code>.</p>{% endif %}
+<ul>{% for r in stato.server %}<li>{{ r }}</li>{% else %}<li>Nessun server.</li>{% endfor %}</ul>
+
+<h2>Intelligenza artificiale</h2>
+<p>Servizi configurati: {{ stato.ai_fornitori|join(", ") if stato.ai_fornitori else "nessuno" }}.</p>
+<form class="carta" method="post" action="/proprietario/ai">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <p>{% if stato.ai_manutenzione is not none %}<strong>In manutenzione</strong>{% if stato.ai_manutenzione %}: {{ stato.ai_manutenzione }}{% endif %}{% else %}In servizio.{% endif %}</p>
+  <label>Messaggio per gli utenti <input type="text" name="messaggio" maxlength="300" value="{{ stato.ai_manutenzione or '' }}"></label>
+  <input type="hidden" name="attivo" value="{{ '0' if stato.ai_manutenzione is not none else '1' }}">
+  <button type="submit">{{ "Rimetti in servizio" if stato.ai_manutenzione is not none else "Metti in manutenzione" }}</button>
+</form>
+{% endblock %}

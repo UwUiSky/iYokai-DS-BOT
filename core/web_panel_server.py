@@ -7,9 +7,11 @@ a ogni richiesta, configurazione dei moduli, dei ruoli del bot, dei gruppi di co
 per ruolo (#148), del bot con marchio proprio (NF-38), dell'aspetto del bot (CFG-030) e della
 lingua dai punti unici dei comandi (D16), storico, premium e wiki dei comandi, «I miei dati»
 (copia e richiesta di cancellazione, #46), verifica dei membri dalla pagina web (link firmato,
-impronte senza IP), link d'invito personali e inviti (`core/web_panel_inviti.py`).
+impronte senza IP), link d'invito personali e inviti (`core/web_panel_inviti.py`),
+informativa privacy e termini (pubbliche) e pagina del proprietario del bot
+(moduli premium, server, AI in manutenzione).
 Pagine HTML semplici (Jinja2 con escape automatico, nessuno script).
-Funzioni coperte: SPEC §24.1–24.4, §24.7, C.4, §4.2–4.3, §23.15 (NF-20, issue #91; NF-22, #93; NF-21, #92; NF-38, #109; CFG-030, #122; #46; NF-27 r10)
+Funzioni coperte: SPEC §24.1–24.4, §24.6, §24.7, C.1–C.5, §4.2–4.3, §23.15 (NF-20, issue #91; NF-22, #93; NF-21, #92; NF-38, #109; CFG-030, #122; #46; NF-27 r10)
 Dipende da: core/panel_bridge.py, core/web_panel_logic.py,
 core/redacted_access_log.py (la query del callback non va nei log)
 
@@ -35,6 +37,7 @@ from core.command_search_logic import cerca
 from core.config_history_logic import TIPI_MODIFICA
 from core.config_schema import ImpostazioneNonValida
 from core.i18n import t
+from core.premium_flags import ModuloNonCambiabile
 from core.redacted_access_log import RedactedAccessLogger
 from core.repositories.data_deletion_request_repo import MOTIVO_MAX
 
@@ -76,6 +79,7 @@ ESITI = {
     "marchio_collegato": ("Bot collegato. Se non è ancora nel server, usa il link d'invito qui sotto.", False),
     "marchio_non_disponibile": ("Il bot con marchio non è attivo su questo bot: avvisa il proprietario.", True),
     "marchio_attendi": ("Tre collegamenti al minuto per server: aspetta e riprova.", True),
+    "ai_consenso": ("Per accendere l'AI devi leggere e accettare il consenso: niente è stato salvato.", True),
     "dati_attendi": ("Una copia dei dati al minuto: aspetta e riprova.", True),
 }
 
@@ -142,6 +146,7 @@ def build_app(
         esito = _esito(request.query.get("esito", ""))
         contesto = {
             "utente_id": request.get(CHIAVE_UTENTE),
+            "proprietario": ponte.e_proprietario(request.get(CHIAVE_UTENTE)),
             "csrf": regole.csrf_per(chiave, request[CHIAVE_TOKEN]) if request.get(CHIAVE_TOKEN) else "",
             "messaggio": esito[0] if esito else None,
             "errore": esito[1] if esito else False,
@@ -520,6 +525,87 @@ def build_app(
         )
         return _pagina(request, "verifica_esito.html", riuscita=riuscita, testo=testo)
 
+    async def pagina_ai(request: web.Request) -> web.StreamResponse:
+        guild, rifiuto = await _server(request)
+        if rifiuto is not None:
+            return rifiuto
+        return _pagina(request, "ai.html", guild=guild, ai=await ponte.stato_ai(guild))
+
+    async def salva_ai(request: web.Request) -> web.StreamResponse:
+        guild, rifiuto = await _server(request)
+        if rifiuto is not None:
+            return rifiuto
+        form, rifiuto = await _modulo_scrittura(request)
+        if rifiuto is not None:
+            return rifiuto
+        azione = form.get("azione")
+        campi: dict = {}
+        if azione == "accendi":
+            if form.get("consenso") != "1":  # il testo del consenso va letto e accettato
+                return _vai(f"/server/{guild.id}/ai?esito=ai_consenso")
+        elif azione == "scelte":
+            try:
+                campi = {"privacy": str(form.get("privacy", "")), "lunghezza": str(form.get("lunghezza", "")),
+                         "conservazione_minuti": int(str(form.get("conservazione_minuti", "")))}
+            except ValueError:
+                return _vai(f"/server/{guild.id}/ai?esito=non_valido")
+        elif azione != "spegni":
+            return _vai(f"/server/{guild.id}/ai?esito=non_valido")
+        try:
+            await ponte.applica_ai(guild, request[CHIAVE_UTENTE], azione, campi)
+        except ImpostazioneNonValida:
+            return _vai(f"/server/{guild.id}/ai?esito=non_valido")
+        return _vai(f"/server/{guild.id}/ai?esito=salvato")
+
+    # ------------------------------------------------ pagine legali e dell'owner
+    async def privacy(request: web.Request) -> web.Response:
+        return _pagina(request, "privacy.html", **ponte.info_legali())
+
+    async def termini(request: web.Request) -> web.Response:
+        return _pagina(request, "termini.html", supporto=ponte.info_legali()["supporto"])
+
+    def _solo_proprietario(request: web.Request):
+        """Una risposta di rifiuto se chi chiede non è il proprietario del bot (controllo a ogni richiesta)."""
+        utente_id = request.get(CHIAVE_UTENTE)
+        if utente_id is None:
+            return _vai("/accedi")
+        if not ponte.e_proprietario(utente_id):
+            return _errore(request, 403, "Accesso negato", "Questa pagina è solo del proprietario del bot.")
+        return None
+
+    async def pagina_proprietario(request: web.Request) -> web.StreamResponse:
+        rifiuto = _solo_proprietario(request)
+        if rifiuto is not None:
+            return rifiuto
+        return _pagina(request, "proprietario.html", stato=await ponte.stato_proprietario(bot))
+
+    async def salva_premium_proprietario(request: web.Request) -> web.StreamResponse:
+        rifiuto = _solo_proprietario(request)
+        if rifiuto is not None:
+            return rifiuto
+        form, rifiuto = await _modulo_scrittura(request)
+        if rifiuto is not None:
+            return rifiuto
+        if form.get("attivo") not in ("0", "1"):
+            return _vai("/proprietario?esito=non_valido")
+        try:
+            await ponte.applica_premium_modulo(str(form.get("nome", ""))[:100], form["attivo"] == "1", request[CHIAVE_UTENTE])
+        except ModuloNonCambiabile:
+            return _vai("/proprietario?esito=non_valido")
+        return _vai("/proprietario?esito=salvato")
+
+    async def salva_ai_proprietario(request: web.Request) -> web.StreamResponse:
+        rifiuto = _solo_proprietario(request)
+        if rifiuto is not None:
+            return rifiuto
+        form, rifiuto = await _modulo_scrittura(request)
+        if rifiuto is not None:
+            return rifiuto
+        if form.get("attivo") not in ("0", "1"):
+            return _vai("/proprietario?esito=non_valido")
+        await ponte.applica_manutenzione_ai(form["attivo"] == "1", str(form.get("messaggio", ""))[:300], request[CHIAVE_UTENTE])
+        return _vai("/proprietario?esito=salvato")
+
     # -------------------------------------------------------------- wiki
     async def wiki(request: web.Request) -> web.Response:
         q = request.query.get("q", "").strip()[:100]
@@ -557,6 +643,13 @@ def build_app(
     app.router.add_post("/miei-dati", azione_dati)
     app.router.add_get(r"/verifica/{token:[0-9a-f\-]{1,200}}", pagina_verifica)
     app.router.add_post(r"/verifica/{token:[0-9a-f\-]{1,200}}", conferma_verifica)
+    app.router.add_get(r"/server/{guild_id:\d{1,20}}/ai", pagina_ai)
+    app.router.add_post(r"/server/{guild_id:\d{1,20}}/ai", salva_ai)
+    app.router.add_get("/privacy", privacy)
+    app.router.add_get("/termini", termini)
+    app.router.add_get("/proprietario", pagina_proprietario)
+    app.router.add_post("/proprietario/premium", salva_premium_proprietario)
+    app.router.add_post("/proprietario/ai", salva_ai_proprietario)
     app.router.add_get("/wiki", wiki)
     app.router.add_get(r"/wiki/{percorso:[a-z0-9_\-/]{1,120}}", wiki_comando)
     web_panel_inviti.registra_rotte(

@@ -23,5 +23,6 @@
 {% if messaggio %}<p class="avviso {{ 'errore' if errore else 'ok' }}">{{ messaggio }}</p>{% endif %}
 {% block corpo %}{% endblock %}
 </main>
+<footer><a href="/privacy">Privacy</a> · <a href="/termini">Termini</a>{% if proprietario %} · <a href="/proprietario">Proprietario</a>{% endif %}</footer>
 </body>
 </html>

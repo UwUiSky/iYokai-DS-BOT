@@ -46,6 +46,9 @@ ECCEZIONI: frozenset[str] = frozenset(
         "/miei-dati",
         "/miei-inviti",
         "/inviti",
+        "/privacy",
+        "/termini",
+        "/proprietario",
     }
 )
 

@@ -9,9 +9,9 @@ quote e tetto di spesa (posto prenotato nel database), lore, dati personali tolt
 della risposta, conti. Se l'AI non può rispondere, `AINonDisponibile`
 porta il motivo e il testo da mostrare: ogni funzione ha la sua risposta
 locale.
-Funzioni coperte: SPEC §25.1–§25.4, §25.9, §25.12, §25.18–§25.20, §25.33, §25.48 (NF-24)
+Funzioni coperte: SPEC §25.1–§25.4, §25.9, §25.12, §25.18–§25.20, §25.22, §25.23, §25.33, §25.48 (NF-24)
 Dipende da: core/ai_router.py, core/ai_cache_logic.py, core/ai_guardrail_logic.py,
-core/ai_cost_logic.py, core/repositories/ai_repo.py
+core/ai_cost_logic.py, core/ai_coda_logic.py, core/repositories/ai_repo.py
 """
 
 from __future__ import annotations
@@ -22,7 +22,8 @@ from collections import OrderedDict, deque
 from dataclasses import dataclass, replace
 
 from core.ai_cache_logic import LIBRERIA_COMUNE, CacheAI, ambito, chiave
-from core.ai_cost_logic import LimitatoreUtente, stima_token
+from core.ai_coda_logic import CodaAI, CodaPiena
+from core.ai_cost_logic import LimitatoreUtente, prova_attiva, prova_finita, stima_token
 from core.ai_guardrail_logic import componi_messaggi, pulisci_dati_personali, pulisci_uscita, richiesta_vietata
 from core.ai_providers import TrasportoHTTP, leggi_fornitori, usa_chiavi_a_pagamento
 from core.ai_router import MotoreAI, NessunFornitore
@@ -36,7 +37,11 @@ MAX_STORIA = 6
 MESSAGGI_LOCALI: dict[str, str] = {
     "non_configurata": "L'AI non è configurata su questo bot: il proprietario deve aggiungere almeno un "
     "fornitore nel file `.env`. Nel frattempo rispondo senza AI.",
-    "premium": "L'AI è una funzione premium: questo server non l'ha sbloccata.",
+    "premium": "L'AI è una funzione premium: questo server non l'ha sbloccata. Accendendola con `/ai attiva` parte una prova gratuita.",
+    "prova_finita": "La prova gratuita dell'AI è finita: per continuare serve il premium.",
+    "manutenzione": "L'AI è in manutenzione: riprova più tardi. Il resto del bot funziona.",
+    "coda_piena": "Ci sono troppe richieste AI in fila: riprova tra poco.",
+    "coda_scaduta": "L'AI ci mette troppo a rispondere: riprova tra poco.",
     "spenta": "L'AI è spenta in questo server. Un amministratore può accenderla con `/ai attiva`.",
     "canale": "L'AI è spenta in questo canale.",
     "privacy": "Il server ha scelto di non mandare messaggi degli utenti all'AI.",
@@ -51,23 +56,28 @@ MESSAGGI_LOCALI: dict[str, str] = {
 }
 
 
-async def _modulo_sbloccato(guild_id: int) -> bool:
-    """Modulo `ai` reso premium dall'owner (D13): vale anche per -chiedi, menzione e funzioni automatiche."""
+async def ai_sbloccata(guild_id: int, prova_inizio, bot=None) -> bool:
+    """
+    Il server può usare l'AI: il modulo non è premium (D13), il server l'ha sbloccato o la prova
+    gratuita è in corso (§25.23). Unico controllo per comandi, -chiedi, menzione e funzioni automatiche.
+    """
     from core.premium import guild_has_premium_access, registry
 
-    if not registry.is_module_premium("ai"):
+    if not registry.is_module_premium("ai") or prova_attiva(prova_inizio):
         return True
-    return await guild_has_premium_access(guild_id, "ai")
+    return await guild_has_premium_access(guild_id, "ai", bot=bot)
 
 
 class AINonDisponibile(Exception):
-    def __init__(self, motivo: str) -> None:
+    def __init__(self, motivo: str, dettaglio: str = "") -> None:
         super().__init__(motivo)
         self.motivo = motivo
+        self.dettaglio = dettaglio
 
     @property
     def testo(self) -> str:
-        return MESSAGGI_LOCALI.get(self.motivo, MESSAGGI_LOCALI["fornitori_fermi"])
+        base = MESSAGGI_LOCALI.get(self.motivo, MESSAGGI_LOCALI["fornitori_fermi"])
+        return f"{base}\n{self.dettaglio}" if self.dettaglio else base
 
 
 @dataclass(frozen=True)
@@ -137,6 +147,8 @@ class ServizioAI:
         self.cache = CacheAI()
         self.memoria = MemoriaCorta()
         self.limitatore = LimitatoreUtente()
+        self.coda = CodaAI()
+        self._manutenzione: tuple[float, str | None] = (0.0, None)
 
     @property
     def configurato(self) -> bool:
@@ -146,16 +158,31 @@ class ServizioAI:
         """La config del server se l'AI può lavorare lì, altrimenti `AINonDisponibile`."""
         if not self.motore.configurato or not self.motore.sa_fare(tipo):
             raise AINonDisponibile("non_configurata")
+        avviso = await self._messaggio_manutenzione()
+        if avviso is not None:
+            raise AINonDisponibile("manutenzione", avviso)
         if guild_id is None:
             return None
         cfg = await self.repo.get_config(guild_id)
         if not cfg.attivo:
             raise AINonDisponibile("spenta")
-        if not await _modulo_sbloccato(guild_id):
-            raise AINonDisponibile("premium")
+        if not await ai_sbloccata(guild_id, cfg.prova_inizio):
+            raise AINonDisponibile("prova_finita" if prova_finita(cfg.prova_inizio) else "premium")
         if channel_id is not None and channel_id in cfg.canali_spenti:
             raise AINonDisponibile("canale")
         return cfg
+
+    async def _messaggio_manutenzione(self) -> str | None:
+        """Il messaggio di manutenzione globale (None = in servizio). Letto dal database al più ogni 15 secondi."""
+        scade, valore = self._manutenzione
+        if time.monotonic() >= scade:
+            valore = await self.repo.manutenzione()
+            self._manutenzione = (time.monotonic() + 15, valore)
+        return valore
+
+    def ricarica_manutenzione(self) -> None:
+        """Dopo un cambio dell'owner: il prossimo controllo rilegge il database."""
+        self._manutenzione = (0.0, None)
 
     async def richiedi(self, r: RichiestaAI) -> RispostaAI:
         cfg = await self.controlla_accesso(r.guild_id, r.channel_id, r.tipo)
@@ -206,6 +233,13 @@ class ServizioAI:
 
         # Quote e tetto: posto prenotato nel database prima della chiamata (atomico tra persone
         # e processi), poi confermato con i numeri veri o annullato se la chiamata non va.
+        try:
+            async with self.coda.posto(guild_conti):
+                return await self._con_posto(r, quote, messaggi, max_token, guild_conti, utente_conti, testo)
+        except CodaPiena as exc:
+            raise AINonDisponibile(exc.motivo) from None
+
+    async def _con_posto(self, r, quote, messaggi, max_token, guild_conti, utente_conti, testo):
         token_previsti = stima_token(" ".join(str(m.get("content", "")) for m in messaggi)) + max_token
         p = await self.repo.prenota(
             guild_conti, utente_conti, r.funzione, quote=quote, immagine=r.tipo == "immagine",
@@ -242,6 +276,13 @@ def servizio_ai() -> ServizioAI:
             logger.warning("Fornitore AI scartato: %s", motivo)
         _servizio = ServizioAI(MotoreAI(fornitori, TrasportoHTTP(), usa_pagamento=usa_chiavi_a_pagamento()))
     return _servizio
+
+
+async def imposta_manutenzione_ai(acceso: bool, messaggio: str, user_id: int | None) -> None:
+    """Il solo punto che mette l'AI in manutenzione (o la rimette in servizio): `/ai manutenzione` e pannello web."""
+    servizio = servizio_ai()
+    await servizio.repo.imposta_manutenzione(acceso, messaggio.strip()[:300], user_id)
+    servizio.ricarica_manutenzione()
 
 
 def imposta_servizio_ai(servizio: ServizioAI | None) -> None:

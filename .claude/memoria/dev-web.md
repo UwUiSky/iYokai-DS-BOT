@@ -1,20 +1,15 @@
 # Memoria di dev-web
 
 ## Aggiornata
-21/10/2026 · ramo `feat/r8web` · giro r8 chiuso (smoke 291 verdi)
+27/10/2026 · ramo `feat/r10aiw` · giro r10 in corso
 
 ## In corso
-- Previsione r8: 5 voci, mi fermo dopo la 5.
-  1. NF-21 #92 verifica web + doppi (migr. 0210) — fatto
-  2. #148 nel pannello: stato, link, risincronizza, revoca — fatto
-  3. NF-38 #109 pagina del marchio nel pannello — fatto
-  4. #122 CFG-030/021 aspetto (comando + pagina `/server/{id}/aspetto`) — fatto
-  5. #46 parte web: pagina `/miei-dati` (copia e richiesta) — fatto
-- Giro chiuso: attendo l'orchestratore (controlli e merge).
-  5. #46 parte OAuth: controllo di ciò che resta
-- Migrazioni riservate: 0210–0219.
+- Giro r10 (r10aiw, anche custode-ai): chiuse 25.20, 25.22, 25.23, 25.27, C.1-C.5, 24.1-24.4, 24.6(~), 24.7
+  e pagina AI del server. Manca solo lo smoke finale (`scripts/smoke.py --base main`) e il rapporto.
+- Migrazioni r10: 0350 (ai_globale, ai_config.prova_inizio); 0351-0359 libere.
 
 ## Fatto
+- r10 9306d42 manutenzione/coda/prova AI; pagine legali, /proprietario; pagina AI e bottone pannello.
 - r8 59f6215 NF-21, dede8e2 #148, d3cbd81 marchio nel pannello, 3b57822 + 8b8decc
   aspetto (CFG-030/021), 0d8fbe9 «I miei dati» (#46). Nessuna migrazione dopo 0210.
 - r6 650d4a2, 7b27a1f, 0d94f23: punto unico `core/config_schema.py`; pannello
@@ -22,6 +17,8 @@
   pagine in `pannello_web/`, sessioni 0150, wiki, premium (#93); D27.
 
 ## Cose imparate
+- `OWNER_ID` e `config` sono congelati: nei test si sostituisce `panel_bridge.e_proprietario`.
+- Percorsi di pagine (`/privacy`…) vanno in ECCEZIONI di test_riferimenti_comandi; niente stringhe `/parola` nel codice.
 - I test di setup sostituiscono `setup_module.db`: ora anche
   `config_schema_module.db`, e i moduli finti vanno registrati.
 - `test_riferimenti_comandi` legge ogni stringa di core: i percorsi del
