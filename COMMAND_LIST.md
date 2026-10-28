@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-22 11:04 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 04:31 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 547 comandi in 25 categorie.**
+**Totale: 549 comandi in 25 categorie.**
 
 ## Admin
 
@@ -97,6 +97,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-22 11:
 - **`/antiraid enable`** — Attiva o disattiva l'Anti-Raid.
 - **`/antiraid filtro-ingresso`** — Azione per un filtro all'ingresso (vale anche fuori da un raid).
 - **`/antiraid join-rate`** — Configura il limite di join in un intervallo di tempo.
+- **`/antiraid livello`** — Livelli di allerta: normale, allerta, alto, blocco.
 - **`/antiraid lockdown-action`** — Cosa fare quando un raid viene rilevato.
 - **`/antiraid nomi-vietati`** — Lista di parole o schemi (con *) vietati nei nomi di chi entra.
 - **`/antiraid ping-ruoli`** — Ruoli dello staff pingati al primo allarme di un raid (vuoto: nessuno).
@@ -520,11 +521,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-22 11:
 - **`/security spamtrap`** — Configura i canali trappola e log dello Spam Trap.
 - **`/security verify blacklist-add`** — Aggiungi un utente alla blacklist.
 - **`/security verify blacklist-remove`** — Rimuovi un utente dalla blacklist.
+- **`/security verify invia`** — Rimanda a un membro il messaggio per verificarsi.
 - **`/security verify manuale`** — Verifica a mano un membro, senza controlli.
 - **`/security verify opzioni`** — Ruolo «non verificato» e ruoli extra.
 - **`/security verify panel`** — Pubblica il pannello di verifica.
 - **`/security verify setup`** — Configura il Verify.
-- **`/security verify statistiche`** — Verifiche riuscite e fallite.
+- **`/security verify statistiche`** — Ingressi, uscite, captcha e verifiche.
 - **`/security verify tempi`** — Promemoria, tempo massimo, azione su chi fallisce, verifica solo ai sospetti.
 - **`/security verify tentativi`** — Tentativi di verifica di un utente.
 - **`/security verify whitelist-add`** — Aggiungi un utente alla whitelist.

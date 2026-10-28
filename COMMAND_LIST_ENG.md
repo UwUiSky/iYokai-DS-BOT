@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-22 11:04 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 04:31 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 547 commands in 25 categories.**
+**Total: 549 commands in 25 categories.**
 
 ## Admin
 
@@ -97,6 +97,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-22 11:0
 - **`/antiraid enable`** — Turns Anti-Raid on or off.
 - **`/antiraid join-filter`** — Action for a join filter (works outside a raid too).
 - **`/antiraid join-rate`** — Sets the join limit in a time window.
+- **`/antiraid level`** — Alert levels: normal, alert, high, lockdown.
 - **`/antiraid list`** — File with every raid account from the last hours.
 - **`/antiraid lockdown-action`** — What to do when a raid is detected.
 - **`/antiraid ping-roles`** — Staff roles pinged on the first raid alert (empty: none).
@@ -524,8 +525,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-22 11:0
 - **`/security verify manual`** — Verifies a member by hand, with no checks.
 - **`/security verify options`** — "Unverified" role and extra roles.
 - **`/security verify panel`** — Publishes the verification panel.
+- **`/security verify send`** — Sends a member the message to verify again.
 - **`/security verify setup`** — Sets up Verify.
-- **`/security verify statistics`** — Successful and failed verifications.
+- **`/security verify statistics`** — Joins, leaves, captchas and verifications.
 - **`/security verify timing`** — Reminder, time limit, action on failures, verification only for suspicious accounts.
 - **`/security verify whitelist-add`** — Adds a user to the whitelist.
 - **`/security verify whitelist-remove`** — Removes a user from the whitelist.
