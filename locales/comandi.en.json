@@ -248,7 +248,11 @@
   "storie": "stories",
   "mistero": "mystery",
   "spirito": "spirit",
-  "frammenti": "fragments"
+  "frammenti": "fragments",
+  "staff": "staff",
+  "incidente": "incident",
+  "regola": "rule",
+  "cerca-log": "search-log"
  },
  "descrizioni": {
   "-cerca-comando": "Searches a command by description.",
@@ -930,7 +934,11 @@
   "ai mistero togli": "Removes a mystery.",
   "utility ai mistero": "Answer a server mystery with the code.",
   "utility ai spirito": "Your Yokai spirit: an affinity that grows with your activity.",
-  "utility ai frammenti": "The lore fragments you collected."
+  "utility ai frammenti": "The lore fragments you collected.",
+  "ai staff": "Staff tools with AI",
+  "ai staff incidente": "Summarises the latest security events of the server.",
+  "ai staff regola": "Tell AutoMod what you want: it proposes the rule, you turn it on.",
+  "ai staff cerca-log": "Search the logs with a question (who, what, when)."
  },
  "parametri": {},
  "menu": {
