@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 import time
 
-from core.odio_libreria_logic import pulisci_lingua, pulisci_variante
+from core.odio_libreria_logic import pulisci_lingua, variante_segnalabile
 from core.repositories.odio_libreria_repo import ParolaOdio, odio_libreria_repo
 
 logger = logging.getLogger("iyokai.odio_libreria")
@@ -58,15 +58,20 @@ class LibreriaOdio:
             self._candidate[guild_id] = (time.monotonic() + DURATA_CACHE, valori)
         return valori
 
-    async def segnala(self, guild_id: int, parole: tuple[str, ...], lingua: str = "") -> list[ParolaOdio]:
-        """Le parole offensive che l'AI ha indicato: ognuna e' una variante da proporre. Non solleva mai."""
+    async def segnala(
+        self, guild_id: int, parole: tuple[str, ...], lingua: str = "", owner_id: int | None = None
+    ) -> list[ParolaOdio]:
+        """
+        Le parole offensive che l'AI ha indicato: ognuna e' una variante da proporre (owner_id None:
+        il server non conta per la soglia globale). Non solleva mai.
+        """
         fatte: list[ParolaOdio] = []
         for parola in parole:
-            variante = pulisci_variante(parola)
+            variante = variante_segnalabile(parola)
             if variante is None:
                 continue
             try:
-                esito = await self.repo.segnala(variante, pulisci_lingua(lingua), guild_id)
+                esito = await self.repo.segnala(variante, pulisci_lingua(lingua), guild_id, owner_id)
             except Exception:  # la libreria non deve mai fermare la moderazione
                 logger.exception("Segnalazione della variante non riuscita")
                 continue

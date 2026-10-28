@@ -2,7 +2,7 @@
 core/repositories/odio_libreria_repo.py
 =======================================
 Libreria mondiale delle parole d'odio e delle loro varianti (D35).
-Tabelle: core/migrations/0390_odio_libreria.sql.
+Tabelle: core/migrations/0390_odio_libreria.sql, 0391 (proprietario del server).
 Funzioni coperte: SPEC §6 (D35)
 """
 
@@ -28,7 +28,7 @@ class ParolaOdio:
     variante: str
     lingua: str
     stato: str
-    server: int = 0  # server diversi che l'hanno segnalata
+    server: int = 0  # in segnala(): proprietari diversi; in elenca(): server che l'hanno segnalata
 
 
 def _parola(r) -> ParolaOdio:
@@ -43,11 +43,12 @@ class OdioLibreriaRepository:
     def _pool(self) -> asyncpg.Pool:
         return self._pool_provider()
 
-    async def segnala(self, variante: str, lingua: str, guild_id: int) -> ParolaOdio | None:
+    async def segnala(self, variante: str, lingua: str, guild_id: int, owner_id: int | None) -> ParolaOdio | None:
         """
         Un server segnala una variante trovata dall'AI. Nuova: entra come candidata. Con
-        segnalazioni da abbastanza server diversi diventa approvata. Una rifiutata resta
-        rifiutata. None se il server ha già troppe candidate.
+        segnalazioni da server di abbastanza proprietari diversi diventa approvata (owner_id
+        None = il server non conta per la soglia). Una rifiutata resta rifiutata. None se il
+        server ha già troppe candidate.
         """
         async with self._pool.acquire() as conn, conn.transaction():
             riga = await conn.fetchrow("SELECT id, variante, lingua, stato FROM odio_parole WHERE variante = $1 FOR UPDATE", variante)
@@ -63,10 +64,13 @@ class OdioLibreriaRepository:
             if riga["stato"] == STATO_RIFIUTATA:
                 return ParolaOdio(riga["id"], riga["variante"], riga["lingua"], riga["stato"])
             await conn.execute(
-                "INSERT INTO odio_segnalazioni (parola_id, guild_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-                riga["id"], guild_id,
+                "INSERT INTO odio_segnalazioni (parola_id, guild_id, owner_id) VALUES ($1, $2, $3) "
+                "ON CONFLICT (parola_id, guild_id) DO UPDATE SET owner_id = EXCLUDED.owner_id",
+                riga["id"], guild_id, owner_id,
             )
-            server = await conn.fetchval("SELECT count(*) FROM odio_segnalazioni WHERE parola_id = $1", riga["id"])
+            server = await conn.fetchval(
+                "SELECT count(DISTINCT owner_id) FROM odio_segnalazioni WHERE parola_id = $1", riga["id"]
+            )
             stato = stato_dopo_segnalazione(riga["stato"], server)
             if stato != riga["stato"]:
                 await conn.execute("UPDATE odio_parole SET stato = $2, aggiornata_il = now() WHERE id = $1", riga["id"], stato)

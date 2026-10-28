@@ -577,5 +577,8 @@ Precisa D35. Scelte fatte dove D35 lasciava aperto:
   fornitori fermi, errore o risposta illeggibile. Il messaggio si cancella e l'utente è avvisato (lato sicuro, D35).
 - Una candidata vale solo nei server che l'hanno segnalata (come parola sospetta, quindi sempre giudicata dall'AI);
   con 3 server diversi o con l'approvazione diventa una voce globale. Una rifiutata non risale.
+  Precisazione (revisione, 28/10/2026): i 3 server devono avere **proprietari diversi** e almeno 25
+  membri (migrazione 0391); parole corte, comuni o lecite non diventano candidate. Con l'AI ferma il
+  messaggio si cancella senza contare il richiamo.
 - Il blocco nativo usa solo gli insulti certi della lista di base (non le parole sospette), vicino a una minaccia.
 

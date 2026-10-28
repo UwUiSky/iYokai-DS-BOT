@@ -224,8 +224,12 @@ class ParoleOdioCog(CogConGruppi, commands.Cog):
         testo = None if messaggio is None else ("" if messaggio.strip() == "-" else messaggio)
         await odio_opzioni.imposta_blocco(interaction.guild.id, attivo, testo, interaction.user.id)
         opz = await odio_opzioni.leggi(interaction.guild.id)
-        avviso = await sincronizza_blocco(interaction.guild, opz)
-        riga = f"Blocco preventivo {'acceso' if opz.blocco else 'spento'}. Testo: «{opz.messaggio}»"
+        riuscito, avviso = await sincronizza_blocco(interaction.guild, opz)
+        if attivo and not riuscito:  # su Discord la regola non c'e': l'impostazione non resta accesa
+            await odio_opzioni.imposta_blocco(interaction.guild.id, False, None, interaction.user.id)
+            opz = await odio_opzioni.leggi(interaction.guild.id)
+        stato = "NON acceso" if attivo and not riuscito else ("acceso" if opz.blocco else "spento")
+        riga = f"Blocco preventivo {stato}. Testo: «{opz.messaggio}»"
         await interaction.followup.send(f"{riga}\n{avviso}" if avviso else riga, ephemeral=True)
 
     @comando_di_gruppo(

@@ -23,6 +23,10 @@ Questo documento spiega le regole, non elenca le parole. Le liste stanno nei fil
      messaggio viene cancellato.
    - Chi ha scritto riceve un richiamo nel canale, che sparisce dopo 10 secondi (se il canale non
      lo permette, arriva in privato). Il richiamo viene contato.
+   - Con l'AI ferma il messaggio si cancella ma il richiamo **non** si conta (può essere un cognome).
+   - Un testo oltre i 2000 caratteri, o che prova a dare ordini all'AI («ignora le istruzioni…»,
+     parentesi graffe, «verdetto»), non si manda all'AI: si cancella (lato sicuro). Anche una
+     risposta dell'AI che non è esattamente il JSON atteso vale il lato sicuro.
    - Con 3 richiami in 60 minuti scatta un timeout di 60 minuti. I tre numeri si cambiano con
      `/automod odio richiami`. Chi può gestire il server non riceve il timeout automatico.
    - **Con l'AI ferma, spenta o in errore il bot sceglie il lato sicuro:** cancella il messaggio e
@@ -49,8 +53,12 @@ Come cresce:
 - Quando l'AI giudica un insulto può indicare altre parole offensive del messaggio. Il bot le
   accetta solo se stanno davvero nel testo e se i filtri non le conoscono già: entrano come
   **candidate**.
-- Una candidata diventa **globale** quando la segnalano **almeno 3 server diversi**, oppure
-  quando la approva il proprietario del bot. Un server solo, anche se segnala cento volte, conta uno.
+- Una candidata diventa **globale** quando la segnalano server di **almeno 3 proprietari diversi**
+  (contano solo i server con almeno 25 membri), oppure quando la approva il proprietario del bot.
+  Un server solo, anche se segnala cento volte, conta uno; tre server dello stesso proprietario
+  contano uno.
+- Non diventano mai candidate: parole sotto le 4 lettere, solo numeri, parole comuni («ciao»,
+  «gente», «people»…) e parole lecite della lista di base.
 - Un server non può riempire la libreria: al massimo 200 candidate per server.
 - Dalla libreria non si salvano testi di messaggi né utenti: solo la variante, la lingua e gli ID
   dei server che l'hanno segnalata.

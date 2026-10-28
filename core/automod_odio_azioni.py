@@ -4,7 +4,8 @@ core/automod_odio_azioni.py
 Azioni della difesa dalle parole d'odio (D35) che parlano con Discord: la regola nativa
 di blocco preventivo (creata e tenuta allineata dal bot) e il trattamento di una parola
 sospetta (giudizio dell'AI, messaggio cancellato, richiamo all'utente che si cancella da
-solo, timeout dopo N richiami in X minuti). La logica sta in core/odio_*.py.
+solo, timeout dopo N richiami in X minuti; con l'AI ferma si cancella senza contare il
+richiamo). La logica sta in core/odio_*.py.
 Funzioni coperte: SPEC §6 (D35)
 """
 
@@ -21,6 +22,7 @@ from core import channel_router as router
 from core import odio_moderazione
 from core.automod_odio_nativo_logic import RULE_NAME_ODIO, costruisci_regex
 from core.automod_parole_logic import trova
+from core.odio_libreria_logic import MIN_MEMBRI_PER_CONTARE
 from core.odio_opzioni import OpzioniOdio
 from core.odio_opzioni import leggi as leggi_opzioni
 from core.odio_richiami_logic import ContatoreRichiami
@@ -35,23 +37,24 @@ VIOLATION_PAROLE_SOSPETTE = "parole_sospette"
 contatore = ContatoreRichiami()
 
 
-async def sincronizza_blocco(guild: discord.Guild, opz: OpzioniOdio) -> str | None:
+async def sincronizza_blocco(guild: discord.Guild, opz: OpzioniOdio) -> tuple[bool, str | None]:
     """
-    Crea, aggiorna o toglie la regola nativa di blocco preventivo. Restituisce un avviso
-    per l'admin (limite di Discord, permessi) oppure None.
+    Crea, aggiorna o toglie la regola nativa di blocco preventivo. Restituisce (riuscito, avviso):
+    riuscito e' False se su Discord la regola non e' come chiesto (limite, permessi, errore).
+    Le regole dell'admin non si toccano mai: si conta solo il posto libero.
     """
     try:
         regole = await guild.fetch_automod_rules()
     except discord.Forbidden:
-        return "Non ho il permesso di gestire le regole AutoMod di questo server (serve Gestire server)."
+        return False, "Non ho il permesso di gestire le regole AutoMod di questo server (serve Gestire server)."
     except discord.HTTPException as errore:
-        return f"Discord non mi ha fatto leggere le regole AutoMod: {str(errore)[:200]}"
+        return False, f"Discord non mi ha fatto leggere le regole AutoMod: {str(errore)[:200]}"
     nostra = next((r for r in regole if r.name == RULE_NAME_ODIO), None)
     try:
         if not opz.blocco:
             if nostra is not None:
                 await nostra.delete(reason="Blocco preventivo delle frasi d'odio spento")
-            return None
+            return True, None
         regex = costruisci_regex()
         trigger = discord.AutoModTrigger(type=discord.AutoModRuleTriggerType.keyword, regex_patterns=list(regex.pattern))
         azioni = [discord.AutoModRuleAction(custom_message=opz.messaggio)]
@@ -60,7 +63,7 @@ async def sincronizza_blocco(guild: discord.Guild, opz: OpzioniOdio) -> str | No
         else:
             a_parole = sum(1 for r in regole if r.trigger.type == discord.AutoModRuleTriggerType.keyword)
             if a_parole >= MAX_REGOLE_A_PAROLE:
-                return (
+                return False, (
                     f"Questo server ha già {MAX_REGOLE_A_PAROLE} regole AutoMod a parole chiave, il massimo di Discord: "
                     "non posso creare il blocco. Elimina una regola dal pannello di Discord e riprova."
                 )
@@ -68,11 +71,11 @@ async def sincronizza_blocco(guild: discord.Guild, opz: OpzioniOdio) -> str | No
                 name=RULE_NAME_ODIO, event_type=discord.AutoModRuleEventType.message_send, trigger=trigger,
                 actions=azioni, enabled=True, reason="Blocco preventivo delle frasi d'odio",
             )
-        if regex.insulti_esclusi:
-            return f"{regex.insulti_esclusi} insulti non sono entrati nella regola (limite di Discord): li ferma comunque il filtro del bot."
     except discord.HTTPException as errore:
-        return f"Discord ha rifiutato la regola: {str(errore)[:200]}"
-    return None
+        return False, f"Discord ha rifiutato la regola: {str(errore)[:200]}"
+    if regex.insulti_esclusi:
+        return True, f"{regex.insulti_esclusi} insulti non sono entrati nella regola (limite di Discord): li ferma comunque il filtro del bot."
+    return True, None
 
 
 def _protetto(membro: discord.Member) -> bool:
@@ -92,17 +95,21 @@ async def controlla_sospetta(message: discord.Message, testo: str, filtro_sospet
     if not esito.cancella:
         return False
     if esito.giudizio is not None:
-        await odio_moderazione.segnala_varianti(guild.id, testo, esito.giudizio, archivio)
+        proprietario = guild.owner_id if (guild.member_count or 0) >= MIN_MEMBRI_PER_CONTARE else None
+        await odio_moderazione.segnala_varianti(guild.id, testo, esito.giudizio, archivio, proprietario)
     cancellato = False
     try:
         await bot_roles.cancella_messaggio(message)
         cancellato = True
-    except (discord.NotFound, discord.Forbidden):
+    except discord.HTTPException:  # gia' cancellato, permessi, errore di Discord
         pass
     opz = await leggi_opzioni(guild.id, archivio)
-    n = contatore.registra(guild.id, autore.id, time.monotonic(), opz.minuti * 60)
+    # Con l'AI ferma il testo non e' stato giudicato (puo' essere un cognome): si cancella, ma
+    # non e' un richiamo e non porta al timeout.
+    giudicato = esito.motivo != odio_moderazione.MOTIVO_AI_FERMA
+    n = contatore.registra(guild.id, autore.id, time.monotonic(), opz.minuti * 60) if giudicato else 0
     azioni = ["delete"] if cancellato else []
-    timeout = n >= opz.soglia and not _protetto(autore)
+    timeout = giudicato and n >= opz.soglia and not _protetto(autore)
     if timeout:
         try:
             await bot_roles.isola(
@@ -123,12 +130,15 @@ def _testo_richiamo(n: int, opz: OpzioniOdio, timeout: bool, ai_ferma: bool) -> 
         base = "Messaggio rimosso per sicurezza: contiene una parola vietata e non ho potuto controllare il contesto."
     if timeout:
         return f"{base} Richiamo {n} di {opz.soglia}: timeout di {opz.timeout_minuti} minuti."
+    if n == 0:
+        return base
     return f"{base} Richiamo {n} di {opz.soglia} in {opz.minuti} minuti."
 
 
 async def _avvisa_utente(message: discord.Message, n: int, opz: OpzioniOdio, timeout: bool, motivo: str) -> None:
     """Risposta nel canale che si cancella dopo pochi secondi; se il canale non lo permette, DM."""
-    testo = _testo_richiamo(n, opz, timeout, motivo in (odio_moderazione.MOTIVO_AI_FERMA, odio_moderazione.MOTIVO_AI_INCERTA))
+    per_sicurezza = (odio_moderazione.MOTIVO_AI_FERMA, odio_moderazione.MOTIVO_AI_INCERTA, odio_moderazione.MOTIVO_NON_GIUDICABILE)
+    testo = _testo_richiamo(n, opz, timeout, motivo in per_sicurezza)
     menzioni = discord.AllowedMentions(users=[message.author], roles=False, everyone=False)
     try:
         await message.channel.send(
@@ -158,7 +168,7 @@ async def _registra(message: discord.Message, azioni: list[str], motivo: str, n:
     embed.add_field(name="Canale", value=message.channel.mention, inline=True)
     embed.add_field(name="Azioni eseguite", value=", ".join(azioni) or "nessuna", inline=True)
     embed.add_field(name="Giudizio", value=_etichetta_motivo(motivo), inline=True)
-    embed.add_field(name="Richiami", value=f"{n} di {opz.soglia} in {opz.minuti} min", inline=True)
+    embed.add_field(name="Richiami", value=f"{n} di {opz.soglia} in {opz.minuti} min" if n else "non contato (AI ferma)", inline=True)
     if contenuto:
         embed.add_field(name="Contenuto", value=contenuto, inline=False)
     await router.invia_a(canale, guild, router.TIPO_AUTOMOD, embed=embed)
@@ -170,4 +180,5 @@ def _etichetta_motivo(motivo: str) -> str:
         odio_moderazione.MOTIVO_CACHE: "stessa frase già giudicata (insulto)",
         odio_moderazione.MOTIVO_AI_FERMA: "AI ferma o spenta: lato sicuro",
         odio_moderazione.MOTIVO_AI_INCERTA: "risposta dell'AI non chiara: lato sicuro",
+        odio_moderazione.MOTIVO_NON_GIUDICABILE: "testo troppo lungo o con ordini per l'AI: lato sicuro",
     }.get(motivo, motivo)
