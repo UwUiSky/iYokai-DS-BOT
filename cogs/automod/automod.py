@@ -31,8 +31,9 @@ tempo (AMD-001/004/006/007, `/automod filtri messaggi`), testo di embed (solo
 per i filtri dei link, anche quando l'anteprima arriva con una modifica) e
 inoltri (AMD-019/020) e tipi di file vietati (AMD-022, `/automod filtri
 contenuto`), canali solo media o senza allegati (AMD-023/024, `/automod
-filtri canale-media`; sticker e inoltri con immagine valgono come media), azione kick (AMD-041).
-Funzioni coperte: SPEC §6 (M 2.1-2.7, AMD-001, 004, 006, 007, 019–024, 041), §23 (NF-31, SIC-042)
+filtri canale-media`; sticker e inoltri con immagine valgono come media), azione kick (AMD-041),
+parole vietate con varianti (AMD-014, core/automod_parole_logic.py: cancella e conta nella scala).
+Funzioni coperte: SPEC §6 (M 2.1-2.7, AMD-001, 004, 006, 007, 014, 019–024, 041), §23 (NF-31, SIC-042)
 """
 
 from __future__ import annotations
@@ -99,6 +100,7 @@ from core.automod_advanced_logic import (
     evaluate_message_violations,
     normalize_domain,
 )
+from core.automod_parole_opzioni import VIOLATION_PAROLE_VIETATE, trova_nel_testo
 from core.automod_rate_tracker import rate_tracker
 from core.repositories.automod_repo import automod_repo
 from core.repositories.automod_advanced_repo import (
@@ -172,6 +174,7 @@ _VIOLATION_LABELS = {
     VIOLATION_ESTENSIONI: "Tipo di file vietato",
     VIOLATION_SOLO_MEDIA: "Canale solo media",
     VIOLATION_SENZA_ALLEGATI: "Canale senza allegati",
+    VIOLATION_PAROLE_VIETATE: "Parole vietate",
 }
 
 # AMD-001: ultimo testo e quante volte di fila, per (server, utente). Tetto in memoria.
@@ -1518,6 +1521,8 @@ class AutomodCog(CogConGruppi, commands.Cog):
                 if await _invito_per_adulti(self.bot, codice, message.guild.id):
                     violazioni = (*violazioni, VIOLATION_INVITI_ADULTI)
                     break
+        if not solo_embed and await trova_nel_testo(message.guild.id, segnali.content, db) is not None:
+            violazioni = (VIOLATION_PAROLE_VIETATE, *violazioni)  # AMD-014
         if not violazioni:
             return
 
@@ -1529,6 +1534,8 @@ class AutomodCog(CogConGruppi, commands.Cog):
                 message, violazione, azioni_configurate, settings, modificato=modificato
             )
             await _log_violation(message, violazione, eseguite, settings)
+            if violazione == VIOLATION_PAROLE_VIETATE and self.bot is not None:
+                self.bot.dispatch("automod_parole_vietate", message)  # la scala la conta escalation.py
             # Se il messaggio è stato cancellato dalla prima
             # violazione, le successive (stesso messaggio, altri
             # filtri scattati insieme) non hanno più nulla da

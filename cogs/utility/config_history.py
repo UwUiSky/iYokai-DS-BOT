@@ -106,6 +106,11 @@ SETTINGS_SCHEMA = {
     "mod_dm_spenti": "azioni_dm",
     "mod_ruoli_immuni": "lista_id",
     "spam_trap_punizione": "punizione_trappola",
+    # Parole vietate dell'AutoMod (core/automod_parole_opzioni.py)
+    "automod_parole_base": "bool",
+    "automod_parole_nick": "bool",
+    "automod_parole_proprie": "lista_parole",
+    "automod_parole_lecite": "lista_parole",
 }
 
 
@@ -171,6 +176,12 @@ CONTROLLI_PER_TIPO = {
     "int_0_7": (_intero_tra(0, 7), "un intero tra 0 e 7"),
     "punizione_trappola": (lambda valore: valore in PUNIZIONI_TRAPPOLA, ", ".join(PUNIZIONI_TRAPPOLA)),
     "durata_timeout": (_intero_tra(MIN_TIMEOUT, MAX_TIMEOUT), "secondi tra 60 e 2419200 (28 giorni)"),
+    "lista_parole": (
+        lambda valore: isinstance(valore, list)
+        and len(valore) <= 100
+        and all(isinstance(v, str) and 0 < len(v) <= 60 for v in valore),
+        "un elenco di al massimo 100 parole (60 caratteri l'una)",
+    ),
     "azioni_dm": (
         lambda valore: isinstance(valore, list) and all(v in AZIONI_CON_DM for v in valore),
         "un elenco di azioni tra " + ", ".join(AZIONI_CON_DM),
@@ -226,7 +237,7 @@ async def errore_cambio_ruolo_admin(guild: discord.Guild, autore, settings: dict
 
 # Chiavi che decidono chi può fare cosa: le cambia solo il proprietario del server,
 # altrimenti un admin potrebbe alzarsi i permessi con un import o un rollback.
-CHIAVI_SOLO_PROPRIETARIO = (SETTING_LIVELLO_BACKUP, SETTING_RUOLI_IMMUNI)
+CHIAVI_SOLO_PROPRIETARIO = (SETTING_LIVELLO_BACKUP, SETTING_RUOLI_IMMUNI, "automod_parole_base")
 
 
 async def errore_chiavi_solo_proprietario(guild: discord.Guild, autore, settings: dict) -> str | None:
