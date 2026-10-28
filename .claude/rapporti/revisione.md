@@ -239,3 +239,8 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 22/10 | `feat/r9nsfw` | `cogs/nsfw/ricerca.py:VistaSegnala` | Prima risposta dopo database e cancellazione: rischio oltre 3 s | bassa | chiuso 2d41f96 |
 | 22/10 | `feat/r9nsfw` | `locales/comandi.en.json` | Menu «Profilo» e «Testo pulito» senza nome inglese | bassa | chiuso 742b61b |
 | 22/10 | `feat/r9nsfw` | `cogs/user_app/personal.py:crea` | Tetto di 25 promemoria letto-poi-scritto: doppio invio può arrivare a 26 | bassa | aperto |
+| 27/10 | `feat/r10util` | `cogs/utility/greetings.py:ExtraBenvenutoModal` | Due etichette oltre 45 caratteri: Discord rifiuta la finestra, `/gestione benvenuto extra` non si apre | alta | chiuso 666243d |
+| 27/10 | `feat/r10util` | `cogs/utility/greetings.py:on_member_ban` | Ban in massa dell'antiraid: un messaggio pubblico per ogni ban | media | chiuso 666243d |
+| 27/10 | `feat/r10util` | `cogs/utility/greetings.py:on_member_join` | Durante un raid fino a 5 reazioni per ingresso (chiamate in più) | bassa | chiuso 666243d |
+| 27/10 | `feat/r10util` | `cogs/utility/greetings.py:on_member_remove/on_member_ban` | Un ban produce addio + messaggio di ban (due eventi); anche un ban per ID di chi non era nel server viene annunciato | bassa | aperto, in VERIFICA_LIVE da far decidere all'owner |
+| 27/10 | `feat/r10util` | `core/greetings_logic.py:analizza_reazioni` | Emoji di un altro server accettata e poi non messa (solo log): l'admin legge «N reazioni» | bassa | aperto |
