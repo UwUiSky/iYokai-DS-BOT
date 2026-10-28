@@ -293,3 +293,7 @@
 - 28/10 · core/invite_service.py invito_discord · nessun tetto sui 1000 inviti per server (LIM-36): server grande li esaurisce · alta · corretto 8b9426b (500)
 - 28/10 · core/invite_service.py _invito_vivo · cache del tracker creduta «viva» dopo cancellazione manuale: link rotto fino al prossimo ingresso · media · corretto 8b9426b
 - 28/10 · core/invite_tracker.py _risolvi/refresh_guild · invito registrato dal bot durante l'await sovrascritto: primo ingresso senza invitante · bassa · corretto 8b9426b
+- 28/10 · core/whitelabel_bot.py inoltra_interazioni · inoltrava al principale interazioni di ogni server/DM: il padrone dell'app marchio registra comandi suoi (installazione utente) e li fa eseguire altrove · alta · corretto 42e71d4
+- 28/10 · cogs/utility/premium_server.py ConfermaSblocco · doppio clic su «Conferma»: la vista attende la lista nera prima di stop(), la cassa paga 2 volte · alta · corretto c636cb1
+- 28/10 · core/log_webhook.py CanaleWebhook.send · file via webhook: se il webhook fallisce il file è già chiuso, ValueError esce da invia_a, transcript ticket perso · media · corretto 294a604
+- 28/10 · core/log_webhook.py avvolgi · righe insieme su canale nuovo creano un webhook ciascuna (tetto 15 per canale) · media · corretto 294a604

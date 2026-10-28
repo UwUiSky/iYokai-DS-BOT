@@ -93,15 +93,15 @@ Totale voci: **514**.
 ## §1 CORE SYSTEM
 
 - `[x]` 1.1 Multi-Tenant Engine — isolamento config per Guild ID
-- `[~]` 1.1 Attivazione/disattivazione feature per server (check runtime)
-  → **Stato 04/10:** funziona; resta una gara nella cache dei moduli (REVIEW §4 Core).
+- `[x]` 1.1 Attivazione/disattivazione feature per server (check runtime)
+  → **Stato r10:** la gara nella cache è chiusa (M 14.9, blocco per server).
 - `[✗]` 1.1 "Scaricamento moduli non utilizzati dalla memoria" — non
   fattibile: `load_extension` è per-processo, non per-guild. Sostituito
   dal check runtime. Vedi § Decisioni in PROGRESS.md
   → **Stato 04/10:** impossibile per come funziona discord.py; l'alternativa (controllo a runtime) è già fatta.
 - `[x]` 1.2 Cog Manager — load / unload / reload
 - `[x]` 1.2 Controllo stato attivazione modulo per server
-- `[~]` 1.2 Evento `modules_updated` — `SetupView.save()` ora emette
+- `[x]` 1.2 Evento `modules_updated` — `SetupView.save()` ora emette
   `interaction.client.dispatch("modules_updated", guild_id,
   module_name, active, changed_by)` per ogni modulo il cui stato è
   DAVVERO cambiato (stesso criterio già usato per lo storico Config
@@ -109,8 +109,8 @@ Totale voci: **514**.
   ancora (stesso schema di invite_tracker prima di Spam Trap): un
   futuro listener si registra con `@commands.Cog.listener()` su
   `on_modules_updated`
-  → **Stato 04/10:** lo emette solo `/setup`; wizard, import, reset e rollback no (REVIEW §12).
-- `[~]` **1.3 Memory Guard**
+  → **Stato r10:** lo emettono anche wizard, import, reset, rollback e pannello (`tests/test_modules_updated.py`).
+- `[x]` **1.3 Memory Guard**
   → **Stato 04/10:** vedi la voce sui VoiceClient.
   - `[x]` Monitoraggio RAM ogni 60 secondi (psutil) — `core/memory_guard.py`, letto per davvero con `psutil.Process().memory_info().rss`, verificato con un test che legge la RAM vera del processo di test (nessun mock)
   - `[x]` Garbage collection forzata su soglia — evoluta a **quattro
@@ -121,9 +121,9 @@ Totale voci: **514**.
     (LRU vera, §1.5), collegata come consumatore reale a
     `core/invite_tracker.py`, che prima cresceva senza limiti con il
     numero di server
-  - `[~]` Distruzione VoiceClient inutilizzati (canale rimasto senza
+  - `[x]` Distruzione VoiceClient inutilizzati (canale rimasto senza
     membri umani)
-    → **Stato 04/10:** scollega anche la radio 24/7 dai canali vuoti (LIM-44).
+    → **Stato r10:** la radio 24/7 è esentata (`tests/test_memory_guard.py`).
   - `[x]` Alert DM al proprietario al superamento soglia (con
     cooldown di 30 minuti tra un alert e l'altro, per non spammare
     l'owner ad ogni tick se la RAM resta alta)
@@ -131,7 +131,7 @@ Totale voci: **514**.
 - `[x]` 1.5 Cache Layer (LRU con dimensione massima) —
   `core/bounded_cache.py`, politica LRU vera verificata esplicitamente
   (un GET conta come uso recente quanto un SET)
-- `[~]` 1.6 Error Handler Globale — `on_error` in `main.py` ora copre
+- `[x]` 1.6 Error Handler Globale — `on_error` in `main.py` ora copre
   anche le eccezioni non catturate nei listener di eventi (non solo
   gli slash command), con alert DM all'owner e cooldown per
   event_method
@@ -162,18 +162,16 @@ Totale voci: **514**.
   `/config rollback` come qualunque altra voce di storico
   → **Stato 04/10:** reset ed esportazione toccano solo `guild_config`, non le tabelle dei singoli moduli (REVIEW §12). (da verificare live)
 - `[x]` 2.2 Wizard di configurazione guidata passo-passo —
-  `/setup-wizard`, un modulo curato alla volta (Moderazione, AutoMod,
-  Logging, Greetings, Vocali temporanei, Ticket) con Attiva/Disattiva
-  + Avanti/Indietro, a differenza di `/setup` (tutti i moduli in un
-  solo select menu)
-- `[~]` 2.3 Lingua per server — comando (`/config language show|set`)
+  `/admin setup wizard` (r10): passo dei ruoli del bot (`imposta_ruolo`) e un passo per ogni categoria di moduli, con Indietro/Avanti/Salva;
+  nel passo dei log offre di creare i canali (M 10.14, #148)
+- `[x]` 2.3 Lingua per server — comando (`/config language show|set`)
   e colonna `language` ora collegati, con un piccolo registro di
   traduzioni (`core/i18n.py`) per un insieme limitato di stringhe
   generiche condivise. **Non un sistema i18n applicato a tutto il
   bot**: la stragrande maggioranza dei messaggi resta in italiano nei
   singoli cog — tradurre l'intero bot è un lavoro enormemente più
   grande di questa singola voce, onestamente non dichiarato completo
-  → **Stato 04/10:** il comando salva la lingua ma nessun messaggio la legge. Lavoro completo: §21 (NF-06, D1).
+  → **Stato r10:** la leggono le risposte (§21.2); il resto dei testi è §21.1.
 - `[ ]` 2.4 Prefisso personalizzato — scartato: slash-command-only per
   non richiedere il Message Content Intent. **La colonna `prefix` in
   `guild_config` è morta e va rimossa o documentata come deprecata**
@@ -205,8 +203,8 @@ Totale voci: **514**.
   `/owner premium-status-all`, un meccanismo di sblocco (whitelist/
   nitro boost/premium via cassa/abbonamenti per modulo) per riga, non
   solo un True/False complessivo
-- `[~]` 3.3 Controllo runtime (`requires_module`)
-  → **Stato 04/10:** 6 moduli "premium" (log avanzati, spam-trap, anti-nuke, anti-raid, global-ban, heatmap) non controllano il premium (REVIEW §12).
+- `[x]` 3.3 Controllo runtime (`requires_module`)
+  → **Stato r10:** i 6 moduli premium controllano il premium, comandi e ascoltatori (`tests/test_security_premium_f1.py`, `test_advanced_logs_premium.py`).
 - `[x]` 3.1 Metodo sblocco: **Boost Nitro** sul server principale
   (`Member.premium_since`) — richiesto esplicitamente dall'utente
   ("per ora attivi solo... nitro boost..."). `core.premium.
@@ -216,11 +214,11 @@ Totale voci: **514**.
   specifico. Assunzione presa per inferenza (nessun dettaglio più
   fine specificato): controlla l'owner del server, non un admin
   qualsiasi — da correggere se non è quello che si intendeva
-- `[~]` 3.1 Metodo sblocco: 1.000.000 coin per modulo — **rimandato**
+- `[x]` 3.1 Metodo sblocco: 1.000.000 coin per modulo — `/admin premium sblocca` (r10, `core/premium_modulo_service.py`, 30 giorni dalla cassa del server, conferma a due passaggi); era **rimandato**
   su richiesta esplicita dell'utente ("per ora attivi solo... nitro
   boost, pagamento mensile|annuale"), non scartato: resta un metodo
   di sblocco previsto, solo non prioritario ora
-  → **Stato 04/10:** in piano con il pagamento vero: §3 e NF-22.
+  → **Stato r10:** fatto con le monete della cassa; il pagamento vero è NF-22.
 - `[x]` 3.1 Metodo sblocco: pagamento **mensile o annuale** per
   modulo — l'utente ha aggiunto "mensile" a quanto originariamente
   previsto ("annuale" da solo). Nessun gateway di pagamento reale
@@ -1809,16 +1807,16 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   riusa la stessa catena di fallback del messaggio di benvenuto
   (system_channel → primo canale scrivibile → DM proprietario),
   estratta in un metodo generico su `iYokaiBot`
-- `[~]` 17.8 Statistiche globali (guild count, shard health, RAM,
+- `[x]` 17.8 Statistiche globali (guild count, shard health, RAM,
   latenza, comandi/minuto, errori) — `/owner stats`, contatori a
   finestra scorrevole di 60s (`core/bot_stats.py`)
-  → **Stato 04/10:** `bot_stats` cresce senza fine (REVIEW §4).
+  → **Stato r10:** la coda ha un tetto (`tests/test_bot_stats.py`).
 - `[x]` 17.9 Leave guild forzato
-- `[~]` 17.10 Pannello premium interattivo con conferma a due step e
+- `[x]` 17.10 Pannello premium interattivo con conferma a due step e
   log persistente di ogni modifica — `/owner premium-panel`, Select
   + conferma, `premium_toggle_history` (append-only, distinta dallo
   stato più recente)
-  → **Stato 04/10:** nessun controllo a 25 moduli (LIM-22).
+  → **Stato r10:** tendina da 25 moduli per pagina (`tests/test_owner_premium_limiti.py`).
 - `[x]` 17.11 **Aggiornamento a caldo** — l'owner aggiorna il bot da
   Discord senza entrare nel server: il bot prende il codice rivisto da
   GitHub (oppure un file allegato dall'owner), controlla che sia
@@ -1910,6 +1908,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[~]` 21.1 Tutti i testi in un file per lingua, italiano e inglese
   (NF-06) — `locales/it.json` e `locales/en.json` (stesse chiavi e segnaposto, `tests/test_i18n_completo.py`);
   `core/i18n.py` (`t`, `lingua_risposta`, `lingua_interazione`)
+  → **Stato r10:** nel catalogo anche setup, wizard, configurazione, privacy, cerca-comando, premium, marchio e app utente (`tests/test_i18n_cog_core.py`; i comandi dell'owner restano in italiano). Mancano i cog delle altre aree.
   → **Stato 14/10:** nel catalogo ci sono i messaggi del gestore errori, del controllo accessi e dei comandi di lingua.
   Gli altri cog scrivono ancora in italiano: si portano nel catalogo file per file, quando li si tocca (21.6).
 - `[x]` 21.2 La lingua del server decide la lingua delle risposte pubbliche — `/admin lingua set`
@@ -2056,8 +2055,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 13/10:** `/moduli candidature crea|elimina|elenco`, `/utility modulo` (0096): fino a 5 domande, Accetta/Rifiuta persistenti, ruolo all'accettazione. Da provare live.
 - `[x]` 23.14 Effetti sonori in vocale (NF-35)
   → **Stato 14/10:** `/music suono` (il gruppo `/fun` ha 25 figli): suono della soundboard del server o di Discord, mandato dal bot musicale del canale (la musica continua) o dal primo libero, che poi esce; pausa di 10 secondi per utente. Da verificare live.
-- `[~]` 23.15 Bot con marchio proprio per i server premium (NF-38)
-  → **Stato 14/10:** `/admin premium marchio` (token da finestra, cifrato; tabella `whitelabel_bots`, 0133): il bot del marchio sta online nel suo server con nome, avatar e testo di stato. **Stato 16/10 (r8):** anche dal pannello, pagina «Bot con marchio» del server (stato senza token, collega, testo di stato, accendi/spegni, scollega), dalle stesse funzioni di `core/whitelabel_bot.py`. **Manca:** far rispondere ai comandi il bot del marchio (oggi rispondono solo con iYokai). Da provare live.
+- `[x]` 23.15 Bot con marchio proprio per i server premium (NF-38)
+  → **Stato 14/10:** `/admin premium marchio` (token da finestra, cifrato; tabella `whitelabel_bots`, 0133): il bot del marchio sta online nel suo server con nome, avatar e testo di stato. **Stato 16/10 (r8):** anche dal pannello, pagina «Bot con marchio» del server (stato senza token, collega, testo di stato, accendi/spegni, scollega), dalle stesse funzioni di `core/whitelabel_bot.py`. **Stato r10:** il bot del marchio registra i comandi nel suo server e il principale li esegue (risposta con nome e avatar del marchio); da provare live. Da provare live.
 - `[x]` 23.16 Profili, collezioni e giochi con le monete, senza soldi
   veri; gioco del conteggio (NF-40)
   → **Stato 15/10:** `/level profilo` è un'immagine (avatar, nome, presentazione, livello, XP, posizione, coin, collezione),
@@ -2369,10 +2368,10 @@ completo, con limiti e motivi, è in
 - `[ ]` B.2 Menu sul messaggio: Traduci, Salva nei segnalibri,
   Ricordamelo, Citazione come immagine, Meme da questa immagine,
   Controlla i link, Segnala alla rete iYokai, Spiega/riassumi (AI)
-- `[~]` B.3 Menu sull'utente: Profilo iYokai (fatto: scheda Discord; mancano livello e clan), Stato nella rete di
-  sicurezza (solo per chi lo chiede, risposta privata)
-- `[~]` B.4 Utility personali: promemoria (fatto), note, liste, fusi orari,
-  conversioni, calcolatrice, QR, colori
+- `[x]` B.3 Menu sull'utente: Profilo iYokai (scheda Discord, livello e clan), Stato nella rete di
+  sicurezza (solo per chi lo chiede, risposta privata). `cogs/user_app/personal.py`, `tests/test_user_app_strumenti.py`
+- `[x]` B.4 Utility personali: promemoria, note, liste, fusi orari,
+  conversioni, calcolatrice, QR, colori. `core/user_app_strumenti.py`, `cogs/user_app/strumenti.py`, migrazione 0360
 - `[ ]` B.5 Risposte salvate personali ("comandi custom" dell'utente):
   testi ed embed richiamabili ovunque
 - `[ ]` B.6 Profilo globale: livello, clan, medaglie, rank card
@@ -2442,13 +2441,14 @@ funzione, è in `revisione/01-analisi/APP_UTENTE_E_DESKTOP.md`.
 Bot che girano nello stesso processo: principale, Mod, Creator, 5
 musicali, più NSFW quando verrà fatto.
 
-- `[~]` iYokai (principale) — comandi e interfaccia
-- `[~]` iYokai Mod (log e moderazione) — D15. Facoltativo (`YOKAI_MOD_TOKEN`), nessun comando e
+- `[x]` iYokai (principale) — comandi e interfaccia
+- `[x]` iYokai Mod (log e moderazione) — D15. Facoltativo (`YOKAI_MOD_TOKEN`), nessun comando e
   nessun listener: gli eventi li ascolta il principale, `core/bot_roles.py` sceglie per server chi
   scrive i log (router, mod-log, AutoMod, allarmi) ed esegue AutoMod, escalation, anti-raid,
   anti-nuke, spam-trap e fine dei tempban. Mod assente, scollegato, senza permesso, sotto il
   bersaglio o in rate limit lungo (oltre 30 s) → fa il principale, una volta sola. Invito in
-  `/utility info`. Non fatto: canali di log via webhook (Mod ha già limiti suoi)
+  `/utility info` e `/admin setup attiva`. Log via webhook (D33): `/log webhook attivo`, `core/log_webhook.py`,
+  migrazione 0361, `tests/test_log_webhook.py`.
 - `[~]` iYokai Creator (backup) — resta; non crea più server, porta e
   tiene aggiornato il server di backup (D8, §11)
 - `[~]` iYokai Music #1-5 — vedi §9

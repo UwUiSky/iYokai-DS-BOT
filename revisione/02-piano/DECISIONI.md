@@ -508,3 +508,13 @@ che il sito gira a un invito Discord vero, dedicato a lui. Regole:
 - Privacy: il link si cancella con il membro (e quando esce dal server) e dopo 365 giorni senza uso;
   chi cancella i suoi dati sparisce come invitato e come invitante diventa `0` (D6).
 Codice: `core/invite_service.py`, `core/web_panel_inviti.py`, comandi `/level inviti link|storico|opzioni`.
+## D33 — I log possono uscire da un webhook del server (28/10/2026)
+
+Con `/log webhook attivo:True` i canali di log scrivono tramite un webhook creato dal bot nel canale
+stesso (serve «Gestisci webhook»). Motivo: i webhook hanno un limite di frequenza loro e portano
+fino a 10 embed per messaggio, quindi un raid non esaurisce il limite del bot.
+Scelte: le righe ravvicinate (2 secondi) si raggruppano in un messaggio solo (10 embed e 5.500
+caratteri al massimo); i messaggi con bottoni restano sul canale normale; se il webhook è cancellato
+o non risponde, i log tornano subito al canale e il webhook si dimentica. Il token è cifrato con la
+chiave OAuth (`core/oauth_crypto.py`, dato associato server+canale); senza chiave la funzione non si
+accende. Spegnendo, i webhook creati dal bot si cancellano. Punto unico: impostazione `log_webhook`.

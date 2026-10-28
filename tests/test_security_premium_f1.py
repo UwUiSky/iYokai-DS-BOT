@@ -239,3 +239,32 @@ async def test_ban_globale_si_propaga_se_il_modulo_non_e_premium(ambiente):
 
     assert propagati == [200]
     bersaglio.ban.assert_awaited_once()
+
+
+async def test_spam_trap_premium_non_sbloccato_il_modulo_non_e_utilizzabile(ambiente):
+    import cogs.security.spam_trap as spam_trap
+
+    await ambiente.set_module_active_for_guild(GUILD_ID, spam_trap.MODULE_SPAM_TRAP, True)
+    bot = await _bot_con("spam_trap")
+    cog = next(c for c in bot.cogs.values() if hasattr(c, "_modulo_utilizzabile"))
+    assert await cog._modulo_utilizzabile(GUILD_ID) is True  # non premium: passa
+    registry.set_module_premium("spam_trap", True)
+    assert await cog._modulo_utilizzabile(GUILD_ID) is False
+    await ambiente.add_guild_to_whitelist(GUILD_ID, added_by=1, reason="test")
+    assert await cog._modulo_utilizzabile(GUILD_ID) is True
+    await bot.close()
+
+
+async def test_heatmap_premium_non_sbloccato_il_listener_non_legge_i_ruoli(ambiente):
+    import cogs.security.permission_heatmap as heatmap
+
+    await ambiente.set_module_active_for_guild(GUILD_ID, heatmap.MODULE_PERMISSION_HEATMAP, True)
+    bot = await _bot_con("permission_heatmap")
+    cog = next(c for c in bot.cogs.values() if hasattr(c, "on_member_update"))
+    registry.set_module_premium("permission_heatmap", True)
+    prima, dopo = fake_member(user_id=5), fake_member(user_id=5)
+    dopo.guild = fake_guild(GUILD_ID)
+    with patch.object(heatmap, "premium_sbloccato", AsyncMock(return_value=False)) as gate:
+        await cog.on_member_update(prima, dopo)
+    gate.assert_awaited_once()
+    await bot.close()

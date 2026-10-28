@@ -3,10 +3,12 @@ core/whitelabel_bot.py
 ======================
 Bot con marchio proprio (NF-38, #109): un server premium collega un'applicazione Discord sua, con il suo nome e il suo
 avatar. Il client del marchio resta connesso solo a quel server (esce da ogni altro), appare online con il nome
-dell'applicazione e mostra il testo di stato scelto. I comandi restano quelli del bot principale: il client del marchio
-non li gestisce.
+dell'applicazione e mostra il testo di stato scelto.
+I comandi sono quelli del bot principale: all'avvio si registrano sull'applicazione del marchio, solo in quel server
+(`core/command_sync.py`, impronta per marchio), e ogni interazione che il client del marchio riceve passa al bot
+principale, che la esegue con i suoi cog. La risposta esce con il nome e l'avatar del marchio.
 Funzioni coperte: SPEC §23 (NF-38)
-Dipende da: core/repositories/whitelabel_repo.py, core/migrations/0133_whitelabel.sql
+Dipende da: core/repositories/whitelabel_repo.py, core/command_sync.py, core/migrations/0133_whitelabel.sql
 """
 
 from __future__ import annotations
@@ -78,25 +80,91 @@ async def verifica_token(token: str) -> InfoApplicazione:
         await client.close()
 
 
-class _ClientMarchio(discord.Client):
-    """Un client senza comandi: sta nel suo server, mostra lo stato e se ne va dagli altri."""
+def scope_marchio(guild_id: int) -> str:
+    return f"marchio:{guild_id}"
 
-    def __init__(self, guild_id: int, testo_stato: str | None) -> None:
+
+def inoltra_interazioni(client: discord.Client, bot) -> None:
+    """
+    Le interazioni che arrivano al client del marchio le esegue il bot principale: l'oggetto `Interaction` nasce
+    dallo stato del principale (suoi cog, sua cache, suoi controlli) e risponde con il token dell'interazione,
+    cioè con l'identità del marchio. Si cambia solo il gestore dell'evento INTERAZIONE_CREATE di questo client.
+    Passano solo le interazioni del server del marchio: chi possiede l'applicazione può registrarle comandi suoi
+    (installazione utente, DM) e farli arrivare da altri server, dove il principale non deve eseguirli.
+    """
+    principale = bot._connection
+    server = str(client.guild_id)
+
+    def inoltra(dati) -> None:
+        if str(dati.get("guild_id")) != server:
+            logger.info("Marchio del server %s: interazione da fuori server ignorata.", server)
+            return
+        principale.parse_interaction_create(dati)
+
+    client._connection.parsers["INTERACTION_CREATE"] = inoltra
+
+
+async def sincronizza_comandi_marchio(client: discord.Client, bot, guild_id: int, application_id: int, stato) -> str:
+    """
+    Registra i comandi globali del principale sull'applicazione del marchio, solo nel suo server. Solo se l'albero
+    è cambiato dall'ultima volta (impronta salvata per questo marchio). Mai eccezioni.
+    """
+    from core.command_sync import sincronizza_se_cambiato
+
+    albero = bot.tree
+    comandi = list(albero.get_commands())
+    traduttore = getattr(albero, "translator", None)
+
+    async def sync() -> None:
+        payload = [
+            await c.get_translated_payload(albero, traduttore) if traduttore is not None else c.to_dict(albero)
+            for c in comandi
+        ]
+        await client.http.bulk_upsert_guild_commands(application_id, guild_id, payload)
+
+    return await sincronizza_se_cambiato(scope_marchio(guild_id), comandi, albero, sync, stato)
+
+
+class _ClientMarchio(discord.Client):
+    """Un client che sta nel suo server, mostra lo stato, se ne va dagli altri e passa i comandi al principale."""
+
+    def __init__(
+        self, guild_id: int, testo_stato: str | None, bot=None, application_id: int | None = None
+    ) -> None:
         intenti = discord.Intents.none()
         intenti.guilds = True
         super().__init__(intents=intenti)
-        self.guild_id = guild_id
+        self.guild_id = guild_id  # prima di inoltra_interazioni, che lo legge
         self.testo_stato = testo_stato
+        self.bot = bot
+        self.application_id_marchio = application_id
+        if bot is not None:
+            inoltra_interazioni(self, bot)
 
     async def on_ready(self) -> None:
         if self.get_guild(self.guild_id) is None:
             await whitelabel_repo.imposta_stato(self.guild_id, STATO_NON_NEL_SERVER)
         else:
             await whitelabel_repo.imposta_stato(self.guild_id, STATO_ATTIVO)
+            await self._registra_comandi()
         for guild in list(self.guilds):
             if guild.id != self.guild_id:
                 await self._esci(guild)
         await self.applica_stato()
+
+    async def _registra_comandi(self) -> None:
+        """Un errore (per esempio manca lo scope dei comandi nell'invito) non ferma il marchio."""
+        if self.bot is None or not self.application_id_marchio:
+            return
+        from core.command_sync import StatoSyncDatabase
+        from core.database import db
+
+        try:
+            await sincronizza_comandi_marchio(
+                self, self.bot, self.guild_id, self.application_id_marchio, StatoSyncDatabase(db.pool)
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Marchio del server %s: comandi non registrati (%s).", self.guild_id, type(exc).__name__)
 
     async def on_guild_join(self, guild: discord.Guild) -> None:
         if guild.id != self.guild_id:
@@ -156,7 +224,7 @@ class GestoreMarchio:
         if not await guild_has_premium_access(guild_id, MODULO_MARCHIO, bot=self.bot):
             await whitelabel_repo.imposta_stato(guild_id, STATO_SENZA_PREMIUM)
             return False
-        client = _ClientMarchio(guild_id, marchio.status_text)
+        client = _ClientMarchio(guild_id, marchio.status_text, self.bot, marchio.application_id)
         self._client[guild_id] = client
         self._task[guild_id] = asyncio.create_task(self._esegui(guild_id, client, token), name=f"marchio-{guild_id}")
         return True

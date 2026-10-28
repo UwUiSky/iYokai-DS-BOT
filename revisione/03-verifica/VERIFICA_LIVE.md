@@ -1227,3 +1227,13 @@ Serve: pannello web acceso (`WEB_PANEL_PUBLIC_URL`), il bot con «Gestisci serve
 - [ ] Server senza permesso o con inviti in pausa — passi: togli «Crea invito» al bot (poi, in un altro giro, metti in pausa gli inviti). Risultato atteso: la pagina dice perché non funziona, senza nomi.
 - [ ] Opzioni — passi: `/level inviti opzioni canale:#registro ruolo:@Membri`; poi la stessa cosa dalla pagina «Inviti» del pannello. Risultato atteso: stesse impostazioni in entrambi; chi non ha il ruolo non ottiene il link; il registro scrive chi entra e con quale link.
 - [ ] Altri tipi — passi: entra con un invito normale e (se il server ha il vanity) con l'indirizzo personalizzato. Risultato atteso: tipo «invito normale» e «indirizzo personalizzato»; senza «Gestisci server» il tipo è «sconosciuto».
+
+
+## Core — giro r10 (#66, #93, #109, #113)
+
+1. `/admin setup wizard`: passo Ruoli (scegli un ruolo mod: si salva subito; ruolo admin senza «Amministratore»: rifiutato), poi un passo per categoria; nel passo Log il bottone crea i canali; «Salva» all'ultimo passo.
+2. `/admin setup attiva` senza categoria: sotto l'elenco compare «Gli altri bot di iYokai» con i link per Mod e bot musicali mancanti.
+3. `/admin premium sblocca modulo:` con cassa da 1.000.000 coin: conferma, poi il modulo è sbloccato per 30 giorni (`/admin premium stato`); con cassa vuota: messaggio chiaro.
+4. Bot con marchio (server premium): reinvita il bot con il link (serve il permesso dei comandi); i comandi compaiono nell'applicazione del marchio e rispondono con il suo nome e avatar; bottoni e menu funzionano.
+5. App utente: menu sull'utente «Profilo iYokai» mostra livello e clan; «Stato nella rete» risponde solo a chi lo chiede. Comandi calcolatrice, conversioni, fusi, colori, QR, note e liste rispondono in privato.
+6. `/log webhook attivo:True` (serve «Gestisci webhook» e la chiave di cifratura): nel canale di log compare il webhook; un raid di prova scrive pochi messaggi con più embed. Cancella il webhook a mano: i log tornano al canale. `attivo:False` cancella i webhook.

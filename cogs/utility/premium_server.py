@@ -1,9 +1,9 @@
 """
 cogs/utility/premium_server.py
 ==============================
-Premium di un server: `/admin premium stato` (NF-22, #93) e gli eventi degli abbonamenti Discord (app premium).
-Funzioni coperte: SPEC §3 (NF-22)
-Dipende da: core/premium_entitlement_service.py, core/premium.py
+Premium di un server: `/admin premium stato|riscatta|sblocca` (NF-22, #93) e gli eventi degli abbonamenti Discord (app premium).
+Funzioni coperte: SPEC §3, §3.1 (NF-22)
+Dipende da: core/premium_entitlement_service.py, core/premium_modulo_service.py, core/premium.py
 """
 
 from __future__ import annotations
@@ -15,12 +15,16 @@ import discord
 from discord.ext import commands
 
 from core.bot_ready import attendi_bot_pronto
+from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.i18n import testo_per
 from discord import app_commands
 
-from core.premium import get_guild_premium_breakdown
+from core.premium import get_guild_premium_breakdown, registry
+from core.premium_modulo_service import EsitoSblocco, sblocca_modulo_con_cassa
+from core.premium_pricing_logic import COSTO_MODULO_IN_COIN, GIORNI_MODULO_IN_COIN
+from core.ui_base import BaseView
 from core.premium_code_service import TroppiTentativi, riscatta_codice
 from core.premium_entitlement_service import allinea_con_discord, registra_evento
 from core.premium_status_logic import righe_stato_server
@@ -36,6 +40,42 @@ def url_negozio(application_id: int | None) -> str | None:
     if not application_id:
         return None
     return "/".join(("https://discord.com/application-directory", str(application_id), "store"))
+
+
+class ConfermaSblocco(BaseView):
+    """Due passaggi: lo sblocco spende 1.000.000 di coin della cassa, non si fa con un clic solo."""
+
+    def __init__(self, guild_id: int, user_id: int, modulo: str) -> None:
+        super().__init__(timeout=60)
+        self.guild_id, self.user_id, self.modulo = guild_id, user_id, modulo
+        self._usata = False
+
+    @discord.ui.button(label="Conferma e spendi", style=discord.ButtonStyle.success)
+    async def conferma(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        # Due clic veloci arrivano entrambi qui (la vista prima attende il controllo della lista nera):
+        # il segno si mette prima di ogni await, così si spende una volta sola.
+        if self._usata:
+            await interaction.response.defer()
+            return
+        self._usata = True
+        self.stop()
+        r = await sblocca_modulo_con_cassa(self.guild_id, self.modulo, self.user_id)
+        if r.esito is EsitoSblocco.SBLOCCATO:
+            testo = await testo_per(
+                interaction, "prem_sblocca_ok", modulo=self.modulo, data=r.scade_il.date().isoformat()
+            )
+        else:
+            testo = await testo_per(interaction, f"prem_sblocca_{r.esito.value}", costo=f"{r.costo:,}".replace(",", "."))
+        await interaction.response.edit_message(content=testo, view=None)
+
+    @discord.ui.button(label="Annulla", style=discord.ButtonStyle.secondary)
+    async def annulla(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        if self._usata:  # la conferma è già partita: «annullato» sarebbe falso
+            await interaction.response.defer()
+            return
+        self._usata = True
+        self.stop()
+        await interaction.response.edit_message(content=await testo_per(interaction, "prem_sblocca_annullato"), view=None)
 
 
 class PremiumServerCog(CogConGruppi, commands.Cog):
@@ -131,6 +171,29 @@ class PremiumServerCog(CogConGruppi, commands.Cog):
         chiave = "prem_riscatta_ok_modulo" if modulo else "prem_riscatta_ok_tutti"
         await interaction.response.send_message(
             await testo_per(interaction, chiave, modulo=modulo or "", data=data), ephemeral=True
+        )
+
+    @autocomplete_protetto(Livello.ADMIN)
+    async def _moduli_premium(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+        trovati = [
+            m for m in registry.all_modules()
+            if registry.is_module_premium(m.name) and current.lower() in f"{m.name} {m.display_name}".lower()
+        ]
+        return [app_commands.Choice(name=m.display_name[:100], value=m.name) for m in trovati[:25]]
+
+    @comando_di_gruppo(
+        "admin", nome="sblocca",
+        descrizione="Sblocca un modulo premium per 30 giorni con le monete della cassa del server.",
+        sottogruppo=SOTTOGRUPPO_PREMIUM,
+    )
+    @app_commands.describe(modulo="Il modulo premium da sbloccare (costa 1.000.000 coin dalla cassa)")
+    @app_commands.autocomplete(modulo=_moduli_premium)
+    async def sblocca(self, interaction: discord.Interaction, modulo: app_commands.Range[str, 1, 100]) -> None:
+        costo = f"{COSTO_MODULO_IN_COIN:,}".replace(",", ".")
+        vista = ConfermaSblocco(interaction.guild.id, interaction.user.id, modulo)
+        await interaction.response.send_message(
+            await testo_per(interaction, "prem_sblocca_chiedi", modulo=modulo, costo=costo, giorni=GIORNI_MODULO_IN_COIN),
+            view=vista, ephemeral=True,
         )
 
 

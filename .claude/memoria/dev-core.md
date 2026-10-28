@@ -1,11 +1,11 @@
 # Memoria di dev-core
 
 ## Aggiornata
-21/10/2026 · ramo `feat/r9nsfw` (base main) · giro r9: per FILE
+27/10/2026 · ramo `feat/r10core` · giro r10 (chiudere le voci [~]; migrazioni 0360-0369)
 
 ## In corso
-- Giro r9 chiuso: #94, #107, #145 (test mancanti), #141 (cog dei bot separati = riavvio). Resta il rapporto.
-- Prossimo passo: verifica live (VERIFICA_LIVE «giro r9»); NF-20 per l'invito NSFW; altre voci SPEC B (traduci, segnalibri, note).
+- Giro r10 chiuso (B.3, B.4, #113 webhook D33, 0360-0361). Test dei file toccati verdi. Smoke da fare (regola owner: non lanciato).
+- Prossimo: owner radio max_length (file musica, altra area); 21.1 per cog di altre aree; #70 voci continuo/F8.
 
 ## Fatto
 - Giri precedenti (R1-bis, smoke, F7 quadro, NF-04 privacy/GDPR 0034-0036/0050, #148 permessi 0039, #145 premium_cache, M 13.1-13.3,
@@ -20,7 +20,13 @@
 - r9 #94 NSFW: `core/nsfw_*` (filtro, fonti RedGifs, servizio D16, worker, bot), cogs/nsfw/ricerca.py, 0240, test_nsfw_*.
   #107: `core/user_app_bot.py`, `core/user_app_logic.py`, cogs/user_app/personal.py; -cerca-comando/-chiedi user-install.
 
+- r10 g1: wizard `cogs/utility/_setup_wizard_views.py` + `core/setup_wizard_logic.py` (costruisci_passi): passo ruoli (imposta_ruolo) e una categoria per passo, bottone «Crea i canali dei log» = callback di `/log crea-canali`.
+
+- r10: `core/premium_modulo_service.py`, `core/bot_inviti.py`, marchio: `inoltra_interazioni` (parsers INTERACTION_CREATE -> stato del principale).
+- r10 g2: B.3/B.4 (`core/user_app_strumenti.py`, 0360); log via webhook `core/log_webhook.py` + 0361 + hook in `channel_router.destinazione` (D33).
+
 ## Cose imparate
+- `View.clear_items()` stacca i figli: dentro un callback tenere `vista = self.view` prima di ricostruire.
 - Alberi separati (NSFW, App): `tests/support/full_tree.build_separate_trees`; cogs con setup no-op se non e la loro istanza.
 - Server senza il bot (app utente): `interaction.is_guild_integration()` falso; `guild` None anche per cache mancante (#147).
 - Discord conta per il limite 8000 solo la traduzione PIU LUNGA per campo (base compresa). Base del codice resta italiano (scarto da D1).
@@ -51,6 +57,5 @@
 - Conteggio caratteri: `admin` 6.4xx su 6.800 (soglia): il prossimo comando admin richiede un nuovo gruppo (D25) o va in un gruppo piu leggero.
 - #136 (`/config export` null), #141 e #138 (giri a parte), #135 `reset_premium_registry`.
 - 14.13 codice morto (continuo), 14.14 lingue (F8). KNOWN_SENZA_MAX_LENGTH: 27 voci in cogs di altre aree.
-- #148: manca solo il picker dei ruoli che chiama `imposta_ruolo` (il link e la callback ci sono).
 - Clan sciolto dalla cancellazione: categoria/canali Discord restano da togliere a mano.
 - Worker musicale da solo non controlla la blacklist all'ingresso (solo il principale).

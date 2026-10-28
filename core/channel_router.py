@@ -18,7 +18,7 @@ import logging
 
 import discord
 
-from core import bot_roles
+from core import bot_roles, log_webhook
 from core.bounded_cache import BoundedCache
 from core.repositories.output_channel_repo import output_channel_repo
 
@@ -214,7 +214,7 @@ async def destinazione(guild: discord.Guild, tipo: str, predefinito_id: int | No
         permessi = (*bot_roles.PERMESSI_LOG, "send_messages_in_threads")
         return PostForum(bot_roles.canale(canale, permessi), tipo, riga.post_id if riga else None)
     if isinstance(canale, discord.TextChannel):
-        return bot_roles.canale(canale)
+        return await log_webhook.avvolgi(bot_roles.canale(canale), await log_webhook.acceso(guild.id))
     return None
 
 

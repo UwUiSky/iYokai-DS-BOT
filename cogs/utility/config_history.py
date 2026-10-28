@@ -38,7 +38,7 @@ from core.config_history_logic import (
     fine_giornata,
     leggi_data,
 )
-from core.i18n import LINGUE, lingua_interazione, t as tr
+from core.i18n import LINGUE, lingua_interazione, t as tr, testo_per
 from core.invio_file import FileTroppoGrande, invia_file_su_interazione
 from core.modules_updated_logic import emetti_modules_updated, stato_moduli
 from core.backup_permessi_logic import LIVELLI as LIVELLI_BACKUP, SETTING_LIVELLO as SETTING_LIVELLO_BACKUP
@@ -60,6 +60,7 @@ MAX_IMPORT_BYTES = 256 * 1024
 # vanno anche in CHIAVI_SOLO_PROPRIETARIO.
 SETTINGS_SCHEMA = {
     "log_channel_id": "id",
+    "log_webhook": "bool",
     "mod_log_channel_id": "id",
     "report_channel_id": "id",
     "custom_command_requests_channel_id": "id",
@@ -425,7 +426,7 @@ class RollbackConfirmView(BaseView):
     ) -> None:
         if interaction.user.id != self.requested_by_id:
             await interaction.response.send_message(
-                "Solo chi ha richiesto il rollback può confermarlo.", ephemeral=True
+                await testo_per(interaction, "cfg_solo_chi_chiede_rollback_conferma"), ephemeral=True
             )
             return
 
@@ -455,11 +456,11 @@ class RollbackConfirmView(BaseView):
 
         if riuscito:
             await interaction.response.edit_message(
-                content="✅ Rollback eseguito.", view=self
+                content=await testo_per(interaction, "cfg_rollback_fatto"), view=self
             )
         else:
             await interaction.response.edit_message(
-                content="❌ Questa voce di storico non esiste più o non si può ripristinare.", view=self
+                content=await testo_per(interaction, "cfg_rollback_impossibile"), view=self
             )
 
     @discord.ui.button(label="Annulla", style=discord.ButtonStyle.secondary)
@@ -468,13 +469,13 @@ class RollbackConfirmView(BaseView):
     ) -> None:
         if interaction.user.id != self.requested_by_id:
             await interaction.response.send_message(
-                "Solo chi ha richiesto il rollback può annullarlo.", ephemeral=True
+                await testo_per(interaction, "cfg_solo_chi_chiede_rollback_annulla"), ephemeral=True
             )
             return
         for child in self.children:
             child.disabled = True
         self.stop()
-        await interaction.response.edit_message(content="Rollback annullato.", view=self)
+        await interaction.response.edit_message(content=await testo_per(interaction, "cfg_rollback_annullato"), view=self)
 
 
 class ResetConfirmView(BaseView):
@@ -496,7 +497,7 @@ class ResetConfirmView(BaseView):
     ) -> None:
         if interaction.user.id != self.requested_by_id:
             await interaction.response.send_message(
-                "Solo chi ha richiesto il reset può confermarlo.", ephemeral=True
+                await testo_per(interaction, "cfg_solo_chi_chiede_reset_conferma"), ephemeral=True
             )
             return
 
@@ -510,9 +511,7 @@ class ResetConfirmView(BaseView):
             child.disabled = True
         self.stop()
         await interaction.response.edit_message(
-            content="✅ Configurazione azzerata: nessun modulo attivo, nessuna "
-            "impostazione, lingua tornata a italiano. Usa /admin config rollback per "
-            "annullare se necessario.",
+            content=await testo_per(interaction, "cfg_reset_fatto"),
             view=self,
         )
 
@@ -522,13 +521,13 @@ class ResetConfirmView(BaseView):
     ) -> None:
         if interaction.user.id != self.requested_by_id:
             await interaction.response.send_message(
-                "Solo chi ha richiesto il reset può annullarlo.", ephemeral=True
+                await testo_per(interaction, "cfg_solo_chi_chiede_reset_annulla"), ephemeral=True
             )
             return
         for child in self.children:
             child.disabled = True
         self.stop()
-        await interaction.response.edit_message(content="Reset annullato.", view=self)
+        await interaction.response.edit_message(content=await testo_per(interaction, "cfg_reset_annullato"), view=self)
 
 
 class ConfigHistoryCog(CogConGruppi, commands.Cog):
@@ -565,14 +564,14 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "accesso_solo_server"), ephemeral=True
             )
             return
 
         if voce is not None:
             entry = await db.get_config_history_entry(voce)
             if entry is None or entry.guild_id != guild.id:  # mai la voce di un altro server
-                await interaction.response.send_message("Voce non trovata in questo server.", ephemeral=True)
+                await interaction.response.send_message(await testo_per(interaction, "cfg_voce_non_trovata"), ephemeral=True)
                 return
             await interaction.response.send_message(dettaglio_prima_dopo(entry), ephemeral=True)
             return
@@ -580,7 +579,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
         data_dal, data_al = leggi_data(dal), leggi_data(al)
         if (dal and data_dal is None) or (al and data_al is None):
             await interaction.response.send_message(
-                "Data non valida: scrivila come 2026-10-01 oppure 01/10/2026.", ephemeral=True
+                await testo_per(interaction, "cfg_data_non_valida"), ephemeral=True
             )
             return
         voci = await db.get_config_history_filtrato(
@@ -593,7 +592,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
         )
         if not voci:
             await interaction.response.send_message(
-                "Nessuna modifica registrata con questi filtri.", ephemeral=True
+                await testo_per(interaction, "cfg_nessuna_modifica"), ephemeral=True
             )
             return
 
@@ -609,7 +608,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
                 )
             except FileTroppoGrande:
                 await interaction.response.send_message(
-                    "Il file è troppo grande per Discord: restringi i filtri.", ephemeral=True
+                    await testo_per(interaction, "cfg_file_troppo_grande_filtri"), ephemeral=True
                 )
             return
 
@@ -632,14 +631,14 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "accesso_solo_server"), ephemeral=True
             )
             return
 
         entry = await db.get_config_history_entry(entry_id)
         if entry is None or entry.guild_id != guild.id:
             await interaction.response.send_message(
-                "Nessuna voce di storico trovata con questo ID in questo server.",
+                await testo_per(interaction, "cfg_voce_id_non_trovata"),
                 ephemeral=True,
             )
             return
@@ -661,15 +660,13 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "accesso_solo_server"), ephemeral=True
             )
             return
 
         view = ResetConfirmView(guild.id, interaction.user.id)
         await interaction.response.send_message(
-            "⚠️ Confermi di voler disattivare **tutti** i moduli e azzerare "
-            "**tutte** le impostazioni di questo server? L'operazione è "
-            "annullabile con /admin config rollback.",
+            await testo_per(interaction, "cfg_reset_chiedi"),
             view=view,
             ephemeral=True,
         )
@@ -684,7 +681,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "accesso_solo_server"), ephemeral=True
             )
             return
 
@@ -712,7 +709,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
             )
         except FileTroppoGrande:
             await interaction.response.send_message(
-                "La configurazione è troppo grande per un file di Discord: non riesco a esportarla.",
+                await testo_per(interaction, "cfg_export_troppo_grande"),
                 ephemeral=True,
             )
 
@@ -729,13 +726,13 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "accesso_solo_server"), ephemeral=True
             )
             return
 
         if file.size > MAX_IMPORT_BYTES:
             await interaction.response.send_message(
-                "Il file è troppo grande per essere una configurazione esportata.",
+                await testo_per(interaction, "cfg_import_troppo_grande"),
                 ephemeral=True,
             )
             return
@@ -745,7 +742,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
             dati = leggi_json_import(grezzo)
         except (ValueError, RecursionError):
             await interaction.response.send_message(
-                "Il file non è un JSON valido (probabilmente non prodotto da /admin config export).",
+                await testo_per(interaction, "cfg_import_json_non_valido"),
                 ephemeral=True,
             )
             return
@@ -777,9 +774,10 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
             interaction.user.id,
         )
         await interaction.response.send_message(
-            f"✅ Configurazione importata: {len(dati['modules'])} moduli, "
-            f"{len(dati['settings'])} impostazioni, lingua `{dati['language']}`. "
-            f"Annullabile con /admin config rollback.",
+            await testo_per(
+                interaction, "cfg_import_fatto",
+                moduli=len(dati["modules"]), impostazioni=len(dati["settings"]), lingua=dati["language"],
+            ),
             ephemeral=True,
         )
 

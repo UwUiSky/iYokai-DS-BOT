@@ -46,3 +46,42 @@ class TestIsLastStep:
 
     def test_non_ultimo_step(self):
         assert is_last_step(2, 5) is False
+
+
+class TestPassiDelWizard:
+    ORDINE = ("moderation", "logging", "utility")
+
+    def test_primo_passo_i_ruoli_poi_una_categoria_per_passo(self):
+        from core.setup_wizard_logic import costruisci_passi
+
+        passi = costruisci_passi({"utility": ["a"], "logging": ["b", "c"]}, self.ORDINE)
+        assert [(p.tipo, p.categoria) for p in passi] == [
+            ("ruoli", None), ("moduli", "logging"), ("moduli", "utility"),
+        ]
+
+    def test_categoria_vuota_non_ha_passo(self):
+        from core.setup_wizard_logic import costruisci_passi
+
+        assert len(costruisci_passi({"logging": []}, self.ORDINE)) == 1
+
+    def test_oltre_25_moduli_si_divide_e_nessun_modulo_si_perde(self):
+        from core.setup_wizard_logic import costruisci_passi
+
+        nomi = [f"m{i}" for i in range(60)]
+        passi = costruisci_passi({"utility": nomi}, self.ORDINE)[1:]
+        assert [len(p.nomi) for p in passi] == [25, 25, 10]
+        assert [p.parte for p in passi] == [1, 2, 3] and passi[0].parti == 3
+        assert [n for p in passi for n in p.nomi] == nomi
+
+    def test_categoria_fuori_ordine_va_in_coda(self):
+        from core.setup_wizard_logic import costruisci_passi
+
+        passi = costruisci_passi({"zeta": ["z"], "utility": ["u"], "alfa": ["a"]}, self.ORDINE)
+        assert [p.categoria for p in passi[1:]] == ["utility", "alfa", "zeta"]
+
+    def test_moduli_da_scrivere_solo_i_cambiati(self):
+        from core.setup_wizard_logic import moduli_da_scrivere
+
+        assert moduli_da_scrivere({"a": True, "b": False, "c": False}, {"a": False, "b": False, "c": True}) == [
+            ("a", False), ("c", True)
+        ]

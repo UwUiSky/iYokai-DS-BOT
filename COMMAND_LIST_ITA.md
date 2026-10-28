@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 04:54 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 11:44 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 560 comandi in 25 categorie.**
+**Totale: 571 comandi in 25 categorie.**
 
 ## Admin
 
@@ -29,9 +29,10 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 04:
 - **`/admin premium aspetto`** — Avatar, banner e descrizione del bot in questo server (premium).
 - **`/admin premium marchio`** — Usa un bot con il tuo nome e il tuo avatar (premium).
 - **`/admin premium riscatta`** — Riscatta un codice premium per questo server.
+- **`/admin premium sblocca`** — Sblocca un modulo premium per 30 giorni con le monete della cassa del server.
 - **`/admin premium stato`** — Mostra come è sbloccato il premium in questo server.
 - **`/admin setup attiva`** — Attiva o disattiva i moduli del bot, per categoria.
-- **`/admin setup wizard`** — Configura passo-passo i moduli principali del bot.
+- **`/admin setup wizard`** — Configura passo-passo ruoli e moduli del bot, una categoria alla volta.
 - **`/admin ticket chiudi-tutti`** — Chiudi i ticket aperti (fino a 25 alla volta).
 - **`/admin ticket chiusura-auto`** — Chiudi i ticket fermi da N minuti (0 = spenta).
 - **`/admin ticket dm`** — Accendi o spegni il ModMail (ticket in DM).
@@ -111,11 +112,20 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 04:
 ## iYokai App (app separata, installata sull'utente)
 
 - **`/Profilo`** — Menu «App» (tasto destro)
+- **`/Stato rete iYokai`** — Menu «App» (tasto destro)
 - **`/Testo pulito`** — Menu «App» (tasto destro)
+- **`/note aggiungi`** — Aggiunge una nota, o una voce a una lista.
+- **`/note elenco`** — Mostra le tue note, o una lista.
+- **`/note rimuovi`** — Toglie una nota o una voce di lista.
 - **`/profilo`** — La scheda di un utente: nome, ID, età dell'account, avatar.
 - **`/promemoria annulla`** — Annulla un tuo promemoria.
 - **`/promemoria crea`** — Ti scrivo in DM tra il tempo che scegli.
 - **`/promemoria elenco`** — Mostra i tuoi promemoria in sospeso.
+- **`/strumenti calcola`** — Calcola un'espressione, es. (2+3)*4 o sqrt(16).
+- **`/strumenti colore`** — Mostra un colore in HEX, RGB e HSL.
+- **`/strumenti converti`** — Converte lunghezze, pesi, volumi, velocità, dati e temperature.
+- **`/strumenti fuso`** — Che ora è in un altro fuso orario.
+- **`/strumenti qr`** — Crea un codice QR da un testo o un link.
 
 ## iYokai NSFW (app separata, solo canali vietati ai minori)
 
@@ -339,6 +349,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 04:
 - **`/log eventi`** — Accendi o spegni ogni singolo evento dei log.
 - **`/log ignora`** — Cosa il log dei messaggi non registra (canali, utenti, ruoli, testi).
 - **`/log stato`** — Mostra dove vanno i log del server.
+- **`/log webhook`** — Manda i log da un webhook del canale, raggruppati, con limiti suoi.
 
 ## Moderazione
 

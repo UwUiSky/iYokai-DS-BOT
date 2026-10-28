@@ -48,9 +48,9 @@ async def test_albero_dell_app_solo_installazione_utente_e_ovunque():
     try:
         tutti = bot.tree.get_commands()
         slash = {c.name for c in bot.tree.get_commands(type=discord.AppCommandType.chat_input)}
-        assert slash == {"promemoria", "profilo"}
+        assert slash == {"promemoria", "profilo", "strumenti", "note"}
         menu = {c.name for c in tutti if isinstance(c, app_commands.ContextMenu)}
-        assert menu == {"Profilo", "Testo pulito"}
+        assert menu == {"Profilo", "Testo pulito", "Stato rete iYokai"}
         for c in tutti:
             assert c.allowed_installs is not None and c.allowed_installs.user and not c.allowed_installs.guild, c.name
             contesti = c.allowed_contexts

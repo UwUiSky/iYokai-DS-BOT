@@ -295,3 +295,11 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 28/10 | `feat/r10inviti` | `core/repositories/invite_stats_repo.py:ultimi_ingressi` | Manca indice (guild_id, joined_at) per server grandi: migrazione nuova (0381) | bassa | aperto |
 | 28/10 | `feat/r10inviti` | `core/web_panel_inviti.py:pagina_admin` | Canale/ruolo salvato fuori dai primi 250 non selezionato: «Salva» lo toglie | bassa | aperto |
 | 28/10 | `feat/r10inviti` | commit 8b9426b | `Refs #NF-27` invece di `Refs #98` (storia non riscritta) | forma | accettato |
+| 28/10 | `feat/r10core` | `cogs/utility/setup.py:setup_wizard` | Menu e bottoni del primo passo in italiano per chi usa l'inglese | bassa | chiuso 3a036cb |
+| 28/10 | `feat/r10core` | `cogs/user_app/strumenti.py:elenco` | Tetto 100 voci, elenco 25 tagliato a metà riga: voci invisibili | media | chiuso 3a56c23 |
+| 28/10 | `feat/r10core` | `COMMAND_LIST*.md` | Non rigenerati con i comandi nuovi | bassa | chiuso f0513ef |
+| 28/10 | `feat/r10core` | `core/user_app_strumenti.py:calcola` | `round(x, n)` impossibile: la virgola diventa punto | bassa | aperto |
+| 28/10 | `feat/r10core` | `locales/comandi.en.json` | `/strumenti` e i suoi figli senza nome inglese | bassa | aperto |
+| 28/10 | `feat/r10core` | `cogs/user_app/personal.py:_livello_e_clan` | Livello e clan mostrati anche dove il modulo livelli è spento | bassa | aperto |
+| 28/10 | `feat/r10core` | `cogs/utility/premium_server.py:sblocca` | Nessun avviso se il modulo è già compreso nel premium del server: si pagano 1M per niente | bassa | aperto |
+| 28/10 | `feat/r10core` | `core/log_webhook.py:_crea_o_leggi` | Webhook creato e salvataggio fallito per errore DB: webhook orfano nel canale | bassa | aperto |

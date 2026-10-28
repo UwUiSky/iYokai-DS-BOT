@@ -269,11 +269,12 @@
   "admin premium": "Server premium: status, codes and branding",
   "admin premium aspetto": "The bot's avatar, banner and description in this server (premium).",
   "admin premium marchio": "Use a bot with your own name and avatar (premium).",
+  "admin premium sblocca": "Unlocks a premium module for 30 days with coins from the server treasury.",
   "admin premium riscatta": "Redeems a premium code for this server.",
   "admin premium stato": "Shows how premium is unlocked in this server.",
   "admin setup": "Module activation and guided setup",
   "admin setup attiva": "Turns the bot's modules on or off, by category.",
-  "admin setup wizard": "Step-by-step setup of the bot's main modules.",
+  "admin setup wizard": "Step-by-step setup of the bot's roles and modules, one category at a time.",
   "admin ticket": "Advanced tickets: panels, form, closing, DM, replies",
   "admin ticket chiudi-tutti": "Closes the open tickets (up to 25 at a time).",
   "admin ticket chiusura-auto": "Closes tickets idle for N minutes (0 = off).",
@@ -879,15 +880,27 @@
   "nsfw-admin autopost": "Posts automatically in an age-restricted channel.",
   "nsfw-admin autopost-ferma": "Stops automatic posting (empty: all of them).",
   "nsfw-admin stato": "Shows the NSFW settings of this server.",
+  "log webhook": "Sends logs through a channel webhook, grouped, with its own rate limits.",
   "promemoria": "Your reminders, in every server and in DMs.",
   "promemoria crea": "I will DM you after the time you choose.",
   "promemoria elenco": "Shows your pending reminders.",
   "promemoria annulla": "Cancels one of your reminders.",
-  "profilo": "A user's card: name, ID, account age, avatar."
+  "strumenti": "Calculator, conversions, time zones, colours and QR code.",
+  "strumenti calcola": "Calculates an expression, e.g. (2+3)*4 or sqrt(16).",
+  "strumenti converti": "Converts lengths, weights, volumes, speeds, data and temperatures.",
+  "strumenti fuso": "What time it is in another time zone.",
+  "strumenti colore": "Shows a colour in HEX, RGB and HSL.",
+  "strumenti qr": "Makes a QR code from a text or link.",
+  "note": "Your notes and lists, in every server and in DMs.",
+  "note aggiungi": "Adds a note, or an entry to a list.",
+  "note elenco": "Shows your notes, or a list.",
+  "note rimuovi": "Removes a note or a list entry.",
+  "profilo": "A user's card: name, ID, account age, level, clan, avatar."
  },
  "parametri": {},
  "menu": {
   "Profilo": "Profile",
-  "Testo pulito": "Clean text"
+  "Testo pulito": "Clean text",
+  "Stato rete iYokai": "iYokai network status"
  }
 }

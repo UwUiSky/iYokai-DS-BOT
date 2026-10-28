@@ -18,6 +18,7 @@ from cogs.utility.config_history import ConfigHistoryCog, ResetConfirmView, Roll
 from cogs.utility.setup import SetupWizardView
 from core.database import Database
 from core.modules_updated_logic import moduli_cambiati
+from core.setup_wizard_logic import costruisci_passi
 from core.premium import PremiumModule, PremiumRegistry
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member
 
@@ -121,11 +122,14 @@ async def test_wizard_emette_per_i_moduli_cambiati(database, reset_premium_regis
     registry.register(b)  # imposta_modulo (D16) accetta solo moduli registrati
     await database.set_module_active_for_guild(GUILD, "wiz_a", True)
     await database.set_module_active_for_guild(GUILD, "wiz_b", False)
-    vista = SetupWizardView(GUILD, [(a, True), (b, False)])
-    vista.selected["wiz_b"] = True
-    vista.step = 1  # ultimo passo
+    passi = costruisci_passi({"utility": ["wiz_a", "wiz_b"]}, ("utility",))
+    vista = SetupWizardView(
+        GUILD, passi, {"wiz_a": a, "wiz_b": b}, {"wiz_a": True, "wiz_b": False}, {}, {"utility": "Utility"}
+    )
+    vista.scelti["wiz_b"] = True
+    vista.step = len(passi) - 1  # ultimo passo
     interazione = _interazione()
 
-    await vista.next_button.callback(interazione)
+    await vista._avanti(interazione)
 
     assert _eventi(interazione) == [("modules_updated", GUILD, "wiz_b", True, 42)]

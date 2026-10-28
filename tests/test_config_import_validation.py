@@ -88,6 +88,7 @@ SETTINGS_VALIDE = {
     "mod_dm_spenti": ["warn", "ban"],
     "mod_ruoli_immuni": [212121212121212121],
     "spam_trap_punizione": "staff",
+    "log_webhook": True,
 }
 
 
