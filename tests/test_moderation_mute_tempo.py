@@ -180,6 +180,19 @@ async def test_scadenza_vecchia_non_tocca_un_mute_piu_nuovo():
 
 
 # ----------------------------------------------------------------- hardmute
+async def test_unmute_lascia_una_riga_nel_log_di_moderazione():
+    """§18.7: anche togliere il ruolo mute si registra."""
+    await _imposta_ruolo_mute()
+    server, membro, cog, inter, _ = _scena([10])
+    await cog.mute_role.callback(cog, inter, membro, "raid", None, False)
+    softban_mute.post_to_mod_log.reset_mock()
+
+    await cog.unmute_role.callback(cog, inter, membro, "tutto a posto")
+
+    softban_mute.post_to_mod_log.assert_awaited_once()
+    assert softban_mute.post_to_mod_log.await_args.args[1].title == "🔊 Mute (ruolo) tolto"
+
+
 async def test_hardmute_toglie_i_ruoli_e_il_unmute_li_ridà():
     await _imposta_ruolo_mute()
     server, membro, cog, inter, _ = _scena([10, 11, 13])
