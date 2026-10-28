@@ -1015,6 +1015,12 @@ class BottoneChiuso(
         if not await _is_ticket_staff(interaction, ticket):
             await interaction.response.send_message("Solo lo staff dei ticket può usare questi bottoni.", ephemeral=True)
             return
+        if self.azione == "e" and ticket.status != "closed":
+            # Bottone rimasto dopo /ticket riapri: un ticket aperto si chiude prima.
+            await interaction.response.send_message(
+                "Il ticket è stato riaperto: chiudilo prima di eliminarlo.", ephemeral=True
+            )
+            return
         await cog.azione_ticket_chiuso(interaction, ticket, self.azione)
 
 
@@ -2575,13 +2581,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         opzioni = await _opzioni_pannello(ticket.panel_id)
         if not opzioni.chiusura_due_passi:
             return False
-        try:
-            utente = guild.get_member(ticket.user_id) or discord.Object(id=ticket.user_id, type=discord.Member)
-            ow = channel.overwrites_for(utente)
-            ow.update(view_channel=False, send_messages=False)
-            await channel.set_permissions(utente, overwrite=ow, reason="Ticket chiuso")
-        except discord.HTTPException:
-            logger.warning("Accesso dell'utente %s al ticket chiuso %s non tolto.", ticket.user_id, channel.id)
+        aggiunti = await self._nascondi_ai_non_staff(guild, channel, ticket, opzioni)
         if opzioni.categoria_chiusi:
             categoria = guild.get_channel(opzioni.categoria_chiusi)
             if isinstance(categoria, discord.CategoryChannel) and len(categoria.channels) < opz_logic.MAX_CANALI_PER_CATEGORIA:
@@ -2596,6 +2596,8 @@ class TicketsCog(CogConGruppi, commands.Cog):
         scadenza = (
             f" Il canale sparirà da solo tra {opzioni.elimina_dopo_ore} ore." if opzioni.elimina_dopo_ore else ""
         )
+        if aggiunti:
+            scadenza += " Chi era stato aggiunto non lo vede più: se riapri, aggiungilo di nuovo con /ticket add."
         try:
             await channel.send(
                 f"Ticket chiuso: il canale resta, ma chi lo ha aperto non lo vede più.{scadenza}\n"
@@ -2607,6 +2609,30 @@ class TicketsCog(CogConGruppi, commands.Cog):
             logger.warning("Bottoni del ticket chiuso non inviati nel canale %s.", channel.id)
         return True
 
+    async def _nascondi_ai_non_staff(self, guild: discord.Guild, channel, ticket, opzioni: Opzioni) -> int:
+        """
+        TKT-051: il ticket chiuso lo vede solo lo staff. Perdono la vista chi lo ha aperto e chi
+        era stato aggiunto (utenti e ruoli fuori dallo staff). Restituisce quanti aggiunti.
+        """
+        restano = set(await _ruoli_staff(guild.id, ticket.panel_id)) | set(opzioni.ruoli_osservatori)
+        restano |= {guild.id, guild.me.id} | {r.id for r in getattr(guild.me, "roles", [])}
+        aggiunti = []
+        for bersaglio, ow in dict(channel.overwrites).items():
+            if bersaglio.id in restano or bersaglio.id == ticket.user_id or ow.view_channel is not True:
+                continue
+            if isinstance(bersaglio, discord.Member) and await _membro_staff(bersaglio, guild.id, ticket.panel_id):
+                continue
+            aggiunti.append(bersaglio)
+        utente = guild.get_member(ticket.user_id) or discord.Object(id=ticket.user_id, type=discord.Member)
+        for bersaglio in (*aggiunti, utente):
+            try:
+                ow = channel.overwrites_for(bersaglio)
+                ow.update(view_channel=False, send_messages=False)
+                await channel.set_permissions(bersaglio, overwrite=ow, reason="Ticket chiuso")
+            except discord.HTTPException:
+                logger.warning("Accesso di %s al ticket chiuso %s non tolto.", bersaglio.id, channel.id)
+        return len(aggiunti)
+
     async def _riapri(self, guild: discord.Guild, channel, ticket, da) -> str:
         """TKT-051: riapre un ticket chiuso. Restituisce il messaggio per chi lo ha chiesto."""
         if ticket.status != "closed":
@@ -2616,6 +2642,8 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return "Chi lo aveva aperto ha già il massimo di ticket aperti: riaprire questo li supererebbe."
         if not await ticket_repo.riapri(channel.id):
             return "Questo ticket è già stato riaperto."
+        # Un'eliminazione già pianificata resterebbe e, a una nuova chiusura, cancellerebbe prima del tempo.
+        await scheduler.cancel_for_channel(guild.id, TICKET_DELETE_ACTION_TYPE, channel.id)
         opzioni = await _opzioni_pannello(ticket.panel_id)
         utente = guild.get_member(ticket.user_id) or discord.Object(id=ticket.user_id, type=discord.Member)
         try:

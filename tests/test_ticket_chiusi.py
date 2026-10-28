@@ -71,6 +71,7 @@ def _scena():
     canale.guild = guild
     canale.category_id = 1
     canale.overwrites_for.return_value = discord.PermissionOverwrite()
+    canale.overwrites = {}
     canale.send = AsyncMock()
     canale.set_permissions = AsyncMock()
     canale.edit = AsyncMock()
@@ -196,3 +197,47 @@ def test_nome_con_prefisso_sostituisce_i_prefissi_noti():
     assert logica.nome_con_prefisso("chiuso-ticket-1", None, ("preso", "chiuso")) == "ticket-1"
     assert len(logica.nome_con_prefisso("a" * 100, "chiuso")) == 100
     assert logica.prefisso_valido("chiuso") and not logica.prefisso_valido("!!!")
+
+
+async def test_chi_era_stato_aggiunto_non_vede_piu_il_ticket_chiuso(cog):
+    # Revisione r10: chiuso il ticket, anche gli utenti e i ruoli aggiunti con /ticket add
+    # perdono la vista; lo staff e il bot la tengono.
+    await _pannello_con_ticket(chiusura_due_passi=True)
+    guild, canale, utente, manager = _scena()
+    aggiunto = fake_member(77)
+    ruolo_aggiunto = MagicMock(spec=discord.Role)
+    ruolo_aggiunto.id = 555
+    vede = discord.PermissionOverwrite(view_channel=True)
+    canale.overwrites = {aggiunto: vede, ruolo_aggiunto: vede, manager: vede, guild.me: vede}
+    await cog.close.callback(cog, _inter(guild, canale, utente), None)
+    nascosti = {
+        c.args[0].id for c in canale.set_permissions.await_args_list if c.kwargs["overwrite"].view_channel is False
+    }
+    assert nascosti == {UTENTE, 77, 555}
+
+
+async def test_elimina_su_un_ticket_riaperto_non_cancella_il_canale(cog):
+    # Revisione r10: il bottone Elimina rimasto dopo /ticket riapri non cancella un ticket aperto.
+    await _pannello_con_ticket(chiusura_due_passi=True)
+    guild, canale, utente, manager = _scena()
+    await cog.close.callback(cog, _inter(guild, canale, utente), None)
+    ticket = await ticket_repo.get_ticket_by_channel(CANALE)
+    await cog._riapri(guild, canale, ticket, manager)
+    cog._elimina_canale = AsyncMock()
+    i = _inter(guild, canale, manager)
+    i.client = MagicMock()
+    i.client.get_cog.return_value = cog
+    await modulo.BottoneChiuso(ticket.id, "e").callback(i)
+    cog._elimina_canale.assert_not_awaited()
+    assert "riaperto" in str(i.response.send_message.call_args)
+
+
+async def test_riaprire_annulla_l_eliminazione_gia_pianificata(cog, clean_db):
+    # Revisione r10: chiuso, riaperto e richiuso, deve restare solo l'eliminazione nuova:
+    # quella vecchia cancellerebbe il canale prima delle N ore promesse.
+    await _pannello_con_ticket(chiusura_due_passi=True, elimina_dopo_ore=24)
+    guild, canale, utente, manager = _scena()
+    await cog.close.callback(cog, _inter(guild, canale, utente), None)
+    ticket = await ticket_repo.get_ticket_by_channel(CANALE)
+    await cog._riapri(guild, canale, ticket, manager)
+    assert await _azioni_di_eliminazione(clean_db) == []

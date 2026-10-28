@@ -176,6 +176,18 @@ class Scheduler:
             action_type,
         )
 
+    async def cancel_for_channel(self, guild_id: int, action_type: str, channel_id: int) -> None:
+        """Annulla le azioni di un tipo ancora in attesa legate a un canale (`channel_id` nel payload)."""
+        from core.database import db
+
+        await db.pool.execute(
+            "DELETE FROM scheduled_actions WHERE guild_id = $1 AND action_type = $2 "
+            "AND executed = FALSE AND payload->>'channel_id' = $3",
+            guild_id,
+            action_type,
+            str(channel_id),
+        )
+
     async def list_pending_for_user(
         self, user_id: int, action_type: str, limit: int = 25
     ) -> list[dict]:
