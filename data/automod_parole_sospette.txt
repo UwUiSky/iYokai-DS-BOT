@@ -1,0 +1,13 @@
+# Parole sospette: sono anche cognomi, nomi o parole normali. Da sole NON fanno
+# scattare il filtro: il bot chiede all'AI il contesto (D35, core/odio_giudizio_logic.py).
+# Una voce per riga; il filtro riconosce da solo maiuscole, cifre al posto delle lettere,
+# accenti e separatori. Le righe con # sono commenti. Come funziona: docs/parole_bandite.md
+negri
+negra
+negre
+zingaro
+zingara
+zingari
+zingare
+paki
+gypsy

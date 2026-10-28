@@ -118,6 +118,8 @@ Segnalazioni del revisore automatico iYokai Advisor Bot, con come sono state sis
 | #75 | NF-04 privacy: cancellazione, esportazione, conservazione | Come #19, #37, #46; pagine privacy e termini pubbliche generate dal registro dei dati | 767be92 (giro r10) | 28/10 |
 | #109 | NF-38 bot con marchio proprio | Collegamento, stato e aspetto da comando e pannello; nel giro r10 il bot marchio registra i comandi nel suo server e li esegue il principale (solo interazioni del suo server) | 767be92 (giro r10) | 28/10 |
 
+- D35 / parole d'odio a livelli (giro r11, ramo `feat/r11odio`, migrazione 0390): blocco nativo con testo del server (`/automod odio blocco`), parole sospette giudicate dall'AI con richiami e timeout (`/automod odio richiami`, lato sicuro con l'AI ferma, cache per frase), libreria mondiale con candidate (3 server o approvazione del proprietario, `/automod odio libreria`), `docs/parole_bandite.md`, limiti in LIMITI.md. Commit: vedi il rapporto del giro.
+
 ## Parziali (issue ancora aperte, voci già fatte)
 
 - #58/#116 (giro r10 AutoMod, ramo `feat/r10amod`): SPEC 6.1–6.8, 6.10 e 6.15 a `[x]`; fatte AMD-013 (`/automod parole add modo:`), AMD-026/027 (`/automod filtri invites permetti:|togli:|propri:`, eccezioni della regola nativa, migrazione 0280) e AMD-070 (`/security escalation enable moltiplicatore: tetto_strike:`, migrazione 0281). `/automod violazioni` e `violazione-togli` (AMD-062/065, indice in 0282). Restano AMD-014 e il resto del catalogo AutoMod.

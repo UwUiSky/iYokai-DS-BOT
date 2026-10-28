@@ -1238,6 +1238,17 @@ Serve: pannello web acceso (`WEB_PANEL_PUBLIC_URL`), il bot con «Gestisci serve
 5. App utente: menu sull'utente «Profilo iYokai» mostra livello e clan; «Stato nella rete» risponde solo a chi lo chiede. Comandi calcolatrice, conversioni, fusi, colori, QR, note e liste rispondono in privato.
 6. `/log webhook attivo:True` (serve «Gestisci webhook» e la chiave di cifratura): nel canale di log compare il webhook; un raid di prova scrive pochi messaggi con più embed. Cancella il webhook a mano: i log tornano al canale. `attivo:False` cancella i webhook.
 
+## giro r11 — parole d'odio a livelli (D35)
+
+Serve: server di prova con AutoMod e AI accesi (`/ai attiva`), account A senza permessi, bot con «Gestisci messaggi» e «Moderare i membri», «Gestisci server» per il blocco nativo. Il proprietario del bot per la libreria.
+
+- [ ] Blocco preventivo — passi: `/automod odio blocco attivo:True`; in Impostazioni server > AutoMod compare «iYokai — Odio»; A scrive una voce di base seguita da una minaccia («… vi ammazzo»). Risultato atteso: Discord ferma il messaggio col banner con il testo predefinito; `messaggio:` cambia il testo; `attivo:False` toglie la regola; con 6 regole a parole già presenti il comando lo dice.
+- [ ] Cognome — passi: A scrive «Simone Negri lavora al supermercato». Risultato atteso: il messaggio resta.
+- [ ] Insulto con parola sospetta — passi: A scrive «questa banda di negri rovina tutto». Risultato atteso: il messaggio sparisce, compare un richiamo («Richiamo 1 di 3…») che si cancella dopo circa 10 secondi; riga nel log AutoMod.
+- [ ] Timeout — passi: A ripete l'insulto (frasi diverse) 3 volte entro un'ora. Risultato atteso: al terzo timeout di 60 minuti; `/automod odio richiami richiami:2 timeout:5` cambia soglia e durata. Un admin non riceve il timeout.
+- [ ] AI ferma — passi: `/ai` spenta nel server (o fornitori fermi); A scrive «Simone Negri lavora al supermercato». Risultato atteso: il messaggio sparisce con l'avviso «non ho potuto controllare il contesto».
+- [ ] Libreria — passi: il proprietario usa `/automod odio libreria azione:elenca`, poi `aggiungi` con una voce di prova e `approva`/`rifiuta` su una candidata. Risultato atteso: la voce aggiunta o approvata vale in un secondo server entro 5 minuti; un altro utente riceve «Solo il proprietario del bot».
+
 ## giro r10 — moderazione
 - `/mod mute durata:2m`: il ruolo Muted sparisce da solo; `/mod caso attive` lo elenca prima.
 - `/mod mute hardmute:True`: spariscono gli altri ruoli (non Booster); `/mod unmute` li ridà.

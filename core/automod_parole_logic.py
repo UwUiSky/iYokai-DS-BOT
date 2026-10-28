@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Iterable
 
 FILE_BASE = Path(__file__).resolve().parent.parent / "data" / "automod_parole_odio.txt"
+FILE_SOSPETTE = Path(__file__).resolve().parent.parent / "data" / "automod_parole_sospette.txt"
 
 MAX_TESTO = 8000  # caratteri guardati per messaggio
 MAX_FINESTRA = 12  # pezzi corti uniti ("n i gg er")
@@ -207,6 +208,19 @@ def carica_base() -> tuple[tuple[tuple[str, bool], ...], tuple[str, ...]]:
         else:
             voci.append((riga, False))
     return tuple(voci), tuple(lecite)
+
+
+@lru_cache(maxsize=1)
+def carica_sospette() -> tuple[str, ...]:
+    """Le parole sospette del file dati (anche cognomi: le giudica l'AI, D35)."""
+    righe = (r.strip() for r in FILE_SOSPETTE.read_text(encoding="utf-8").splitlines())
+    return tuple(r for r in righe if r and not r.startswith("#"))
+
+
+@lru_cache(maxsize=256)
+def costruisci_sospette(extra: tuple[str, ...] = (), lecite: tuple[str, ...] = ()) -> Filtro:
+    """Filtro delle sole parole sospette: quelle del file piu' `extra` (candidate della libreria)."""
+    return costruisci(False, (*carica_sospette(), *extra), lecite)
 
 
 @lru_cache(maxsize=256)

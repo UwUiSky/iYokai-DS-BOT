@@ -564,3 +564,18 @@ di ciascuno.
 Il nome della moneta resta solo testo. Quando il server configura le monete il bot chiede il
 nome e un'immagine; l'immagine compare negli embed accanto al saldo. Senza immagine si usa la
 moneta di iYokai.
+
+## D39 — Parole d'odio: dove sta la libreria e cosa succede senza AI (28/10/2026, scelta di chi sviluppa; da confermare all'owner)
+
+Precisa D35. Scelte fatte dove D35 lasciava aperto:
+- Il proprietario del bot gestisce la libreria (approva, rifiuta, aggiunge) con `/automod odio libreria`,
+  che risponde solo a lui. `/owner` ha già 25 sotto-comandi su 25 e non se ne aggiungono; una pagina
+  nel pannello `/proprietario` può chiamare lo stesso codice (`odio_libreria_repo`) in futuro.
+- Le parole «sospette» (cognomi e parole normali) stanno in un file a parte, `data/automod_parole_sospette.txt`;
+  gli insulti della lista di base restano cancellati subito, senza chiamare l'AI. Così l'AI si paga solo dove serve.
+- «AI ferma» vale per ogni caso in cui il giudizio non arriva: AI spenta nel server, senza consenso, quota finita,
+  fornitori fermi, errore o risposta illeggibile. Il messaggio si cancella e l'utente è avvisato (lato sicuro, D35).
+- Una candidata vale solo nei server che l'hanno segnalata (come parola sospetta, quindi sempre giudicata dall'AI);
+  con 3 server diversi o con l'approvazione diventa una voce globale. Una rifiutata non risale.
+- Il blocco nativo usa solo gli insulti certi della lista di base (non le parole sospette), vicino a una minaccia.
+

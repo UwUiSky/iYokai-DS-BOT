@@ -5,7 +5,10 @@ Parole vietate con varianti (AMD-014): comandi di `/automod odio` per la lista
 di base, le parole proprie e quelle lecite, e controllo dei nomi (nickname e
 nome visualizzato) all'ingresso e al cambio. Il controllo dei messaggi sta in
 cogs/automod/automod.py; il filtro in core/automod_parole_logic.py.
-Funzioni coperte: SPEC §6 (AMD-014)
+Il blocco preventivo con l'AutoMod nativo, i richiami e la libreria mondiale delle
+parole (D35) hanno comandi qui; la parte che parla con Discord sta in
+core/automod_odio_azioni.py.
+Funzioni coperte: SPEC §6 (AMD-014, D35)
 """
 
 from __future__ import annotations
@@ -15,9 +18,15 @@ from discord import app_commands
 from discord.ext import commands
 
 from cogs.automod.automod import MODULE_AUTOMOD, is_member_exempt
+from core.automod_odio_azioni import sincronizza_blocco
 from cogs.moderation._shared import ensure_module_enabled
 from core import automod_parole_opzioni as opzioni_parole
 from core import channel_router as router
+from core import odio_opzioni
+from core.config import config
+from core.odio_libreria_logic import STATI, STATO_APPROVATA, STATO_CANDIDATA, STATO_RIFIUTATA, pulisci_lingua, pulisci_variante
+from core.repositories.odio_libreria_repo import odio_libreria_repo
+from core.odio_libreria_service import libreria_odio
 from core.automod_parole_logic import Filtro, normalizza, trova
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
@@ -30,6 +39,12 @@ SOTTOGRUPPO = ("odio", "Parole vietate con varianti e insulti d'odio.")
 LISTE = [
     app_commands.Choice(name="parole proprie del server", value=opzioni_parole.LISTA_PROPRIE),
     app_commands.Choice(name="parole lecite", value=opzioni_parole.LISTA_LECITE),
+]
+AZIONI_LIBRERIA = [
+    app_commands.Choice(name="elenca", value="elenca"),
+    app_commands.Choice(name="approva", value="approva"),
+    app_commands.Choice(name="rifiuta", value="rifiuta"),
+    app_commands.Choice(name="aggiungi", value="aggiungi"),
 ]
 AZIONI = [
     app_commands.Choice(name="aggiungi", value="aggiungi"),
@@ -117,11 +132,14 @@ class ParoleOdioCog(CogConGruppi, commands.Cog):
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
         o = await opzioni_parole.leggi(interaction.guild.id)
+        od = await odio_opzioni.leggi(interaction.guild.id)
         righe = [
             f"**Lista di base** (insulti d'odio, italiano e inglese): {'accesa' if o.base else 'SPENTA'}",
             f"**Parole proprie**: {len(o.proprie)}",
             f"**Parole lecite**: {len(o.lecite)}",
             f"**Controllo dei nomi**: {'acceso' if o.nick else 'spento'}",
+            f"**Blocco preventivo (AutoMod di Discord)**: {'acceso' if od.blocco else 'spento'}",
+            f"**Richiami**: {od.soglia} in {od.minuti} minuti, poi timeout di {od.timeout_minuti} minuti",
         ]
         await interaction.response.send_message("\n".join(righe), ephemeral=True)
 
@@ -185,6 +203,91 @@ class ParoleOdioCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(
             "Controllo dei nomi acceso." if attiva else "Controllo dei nomi spento.", ephemeral=True
         )
+
+    @comando_di_gruppo(
+        "automod", nome="blocco", descrizione="Blocco preventivo delle frasi d'odio.",
+        sottogruppo=SOTTOGRUPPO,
+    )
+    @app_commands.describe(
+        attivo="Acceso o spento",
+        messaggio="Testo del blocco (max 150); «-» = predefinito",
+    )
+    async def blocco(
+        self,
+        interaction: discord.Interaction,
+        attivo: bool | None = None,
+        messaggio: app_commands.Range[str, 1, odio_opzioni.MAX_MESSAGGIO] | None = None,
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        await interaction.response.defer(ephemeral=True)
+        testo = None if messaggio is None else ("" if messaggio.strip() == "-" else messaggio)
+        await odio_opzioni.imposta_blocco(interaction.guild.id, attivo, testo, interaction.user.id)
+        opz = await odio_opzioni.leggi(interaction.guild.id)
+        avviso = await sincronizza_blocco(interaction.guild, opz)
+        riga = f"Blocco preventivo {'acceso' if opz.blocco else 'spento'}. Testo: «{opz.messaggio}»"
+        await interaction.followup.send(f"{riga}\n{avviso}" if avviso else riga, ephemeral=True)
+
+    @comando_di_gruppo(
+        "automod", nome="richiami", descrizione="Richiami per parole d'odio prima del timeout.",
+        sottogruppo=SOTTOGRUPPO,
+    )
+    @app_commands.describe(
+        richiami="Quanti (3)", minuti="In quanti minuti (60)", timeout="Minuti di timeout (60)",
+    )
+    async def richiami(
+        self,
+        interaction: discord.Interaction,
+        richiami: app_commands.Range[int, 1, odio_opzioni.MAX_SOGLIA] | None = None,
+        minuti: app_commands.Range[int, 1, odio_opzioni.MAX_MINUTI] | None = None,
+        timeout: app_commands.Range[int, 1, odio_opzioni.MAX_TIMEOUT_MINUTI] | None = None,
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        await odio_opzioni.imposta_richiami(interaction.guild.id, richiami, minuti, timeout, interaction.user.id)
+        o = await odio_opzioni.leggi(interaction.guild.id)
+        await interaction.response.send_message(
+            f"{o.soglia} richiami in {o.minuti} minuti portano a un timeout di {o.timeout_minuti} minuti.", ephemeral=True
+        )
+
+    @comando_di_gruppo(
+        "automod", nome="libreria", descrizione="Solo proprietario del bot: libreria delle parole.",
+        sottogruppo=SOTTOGRUPPO,
+    )
+    @app_commands.describe(azione="Cosa fare", testo="La variante", lingua="Lingua, es. it")
+    @app_commands.choices(azione=AZIONI_LIBRERIA)
+    async def libreria(
+        self,
+        interaction: discord.Interaction,
+        azione: app_commands.Choice[str],
+        testo: app_commands.Range[str, 3, opzioni_parole.MAX_LUNGHEZZA_VOCE] | None = None,
+        lingua: app_commands.Range[str, 2, 8] | None = None,
+    ) -> None:
+        if interaction.user.id != config.OWNER_ID:
+            await interaction.response.send_message("Solo il proprietario del bot può usare questo comando.", ephemeral=True)
+            return
+        await interaction.response.send_message(await self._libreria(azione.value, testo, lingua), ephemeral=True)
+
+    @staticmethod
+    async def _libreria(azione: str, testo: str | None, lingua: str | None) -> str:
+        if azione == "elenca":
+            conti = await odio_libreria_repo.conta_per_stato()
+            candidate = await odio_libreria_repo.elenca(STATO_CANDIDATA, 25)
+            righe = [f"{s}: {conti.get(s, 0)}" for s in STATI]
+            righe += [f"`{p.variante.replace(chr(96), '')}` ({p.lingua or '?'}) — {p.server} server" for p in candidate]
+            return "\n".join(righe)[:1900]
+        variante = pulisci_variante(testo or "")
+        if variante is None:
+            return "Serve una variante di 1 o 2 parole, da 3 a 60 caratteri."
+        if azione == "aggiungi":
+            await odio_libreria_repo.aggiungi_base(variante, pulisci_lingua(lingua or ""))
+            libreria_odio.svuota()
+            return "Aggiunta: vale subito in tutti i server."
+        stato = STATO_APPROVATA if azione == "approva" else STATO_RIFIUTATA
+        if not await odio_libreria_repo.imposta_stato(variante, stato):
+            return "Questa variante non è in libreria."
+        libreria_odio.svuota()
+        return "Approvata: vale in tutti i server." if stato == STATO_APPROVATA else "Rifiutata: non varrà mai in nessun server."
 
     @comando_di_gruppo(
         "automod", nome="prova", descrizione="Prova un testo contro le parole vietate, senza agire.",

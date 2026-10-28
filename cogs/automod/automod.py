@@ -33,11 +33,12 @@ inoltri (AMD-019/020) e tipi di file vietati (AMD-022, `/automod filtri
 contenuto`), canali solo media o senza allegati (AMD-023/024, `/automod
 filtri canale-media`; sticker e inoltri con immagine valgono come media), azione kick (AMD-041),
 parole vietate con varianti (AMD-014, core/automod_parole_logic.py: cancella e conta nella scala;
-anche la parola divisa in piu' messaggi brevi di fila, che vengono cancellati tutti).
+anche la parola divisa in piu' messaggi brevi di fila, che vengono cancellati tutti),
+parole sospette (cognomi) giudicate dall'AI con richiami e timeout (D35, core/automod_odio_azioni.py).
 Regole native: parole con gli asterischi del modo (AMD-013), inviti da lasciar
 passare e quelli del server nelle eccezioni (AMD-026/027). Violazioni di un
 utente a pagine e una sola da togliere (AMD-062/065).
-Funzioni coperte: SPEC §6 (M 2.1-2.7, AMD-001, 004, 006, 007, 013, 014, 019–027, 041, 062, 065), §23 (NF-31, SIC-042)
+Funzioni coperte: SPEC §6 (M 2.1-2.7, D35, AMD-001, 004, 006, 007, 013, 014, 019–027, 041, 062, 065), §23 (NF-31, SIC-042)
 """
 
 from __future__ import annotations
@@ -115,7 +116,7 @@ from core.automod_advanced_logic import (
     normalize_domain,
 )
 from core.automod_parole_logic import MessaggiBrevi
-from core.automod_parole_opzioni import VIOLATION_PAROLE_VIETATE, trova_nel_testo
+from core.automod_parole_opzioni import VIOLATION_PAROLE_VIETATE, filtro_sospette, trova_nel_testo
 from core.automod_rate_tracker import rate_tracker
 from core.repositories.automod_repo import automod_repo
 from core.repositories.automod_advanced_repo import (
@@ -125,6 +126,7 @@ from core.repositories.automod_advanced_repo import (
 )
 from core.repositories.moderation_repo import moderation_repo
 from core.database import db
+from core.automod_odio_azioni import controlla_sospetta
 from core.invio_file import invia_file_su_interazione
 from core.premium import PremiumModule, registry
 from cogs.moderation._shared import ensure_module_enabled, post_to_mod_log, try_dm
@@ -1754,6 +1756,10 @@ class AutomodCog(CogConGruppi, commands.Cog):
             if trovata is not None:
                 frammenti = trovata
                 violazioni = (VIOLATION_PAROLE_VIETATE, *violazioni)  # AMD-014
+            else:  # D35: parola sospetta (anche cognome) da sola: la giudica l'AI
+                sospette, _ = await filtro_sospette(message.guild.id, db)
+                if await controlla_sospetta(message, segnali.content, sospette, db):
+                    return
         if not violazioni:
             return
 

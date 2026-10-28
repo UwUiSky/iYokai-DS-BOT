@@ -11,8 +11,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from core.automod_parole_logic import Filtro, Trovato, costruisci, e_voce_di_base, pulisci_voce, trova
+from core.automod_parole_logic import (
+    Filtro,
+    Trovato,
+    costruisci,
+    costruisci_sospette,
+    e_voce_di_base,
+    pulisci_voce,
+    trova,
+)
 from core.database import db as _db
+from core.odio_libreria_service import libreria_odio
 
 # Chiave della violazione nei filtri lato bot (azioni, log, etichette).
 VIOLATION_PAROLE_VIETATE = "parole_vietate"
@@ -59,7 +68,16 @@ async def leggi(guild_id: int, archivio=None) -> OpzioniParole:
 
 async def filtro_del_server(guild_id: int, archivio=None) -> tuple[Filtro, OpzioniParole]:
     opzioni = await leggi(guild_id, archivio)
-    return costruisci(opzioni.base, opzioni.proprie, opzioni.lecite), opzioni
+    globali = await libreria_odio.globali() if opzioni.base else ()  # D35: varianti approvate di tutti i server
+    return costruisci(opzioni.base, (*opzioni.proprie, *globali), opzioni.lecite), opzioni
+
+
+async def filtro_sospette(guild_id: int, archivio=None) -> tuple[Filtro, OpzioniParole]:
+    """D35: filtro delle parole sospette (da giudicare con l'AI); con la lista di base spenta e' vuoto."""
+    opzioni = await leggi(guild_id, archivio)
+    if not opzioni.base:
+        return costruisci(False), opzioni
+    return costruisci_sospette(await libreria_odio.candidate(guild_id), opzioni.lecite), opzioni
 
 
 async def imposta_base(guild_id: int, attiva: bool, conferma: bool, autore_id: int) -> None:
