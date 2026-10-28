@@ -361,17 +361,32 @@ MUSIC_WORKER_MAX = 20
 
 def _leggi_token_music() -> list[str]:
     """
-    Token delle istanze music: 1..5 obbligatori, 6..20 facoltativi.
-    Si legge MUSIC_TOKEN_6, 7, ... finché ce n'è uno; al primo vuoto
-    ci si ferma (niente buchi). Tetto: MUSIC_WORKER_MAX.
+    Token delle istanze music: 1..5 obbligatori, 6..20 facoltativi, in
+    fila. L'avvio si ferma se dopo un vuoto ce n'è un altro (sarebbe
+    ignorato) o se un token dal 6 in poi ripete un'istanza o il bot
+    principale (lo stesso bot in due posti). Tetto: MUSIC_WORKER_MAX.
     """
     token = [_require(f"MUSIC_TOKEN_{i}") for i in range(1, MUSIC_WORKER_MIN + 1)]
+    gia_usati = set(token) | {os.getenv("YOKAI_BOT_TOKEN", "").strip()}
+    vuoto = None
     for i in range(MUSIC_WORKER_MIN + 1, MUSIC_WORKER_MAX + 1):
         valore = os.getenv(f"MUSIC_TOKEN_{i}", "").strip()
         if not valore:
-            break
+            vuoto = vuoto or i
+            continue
+        if vuoto is not None:
+            _ferma(f"'MUSIC_TOKEN_{i}' è impostato ma 'MUSIC_TOKEN_{vuoto}' è vuoto: i token vanno in fila.")
+        if valore in gia_usati:
+            _ferma(f"'MUSIC_TOKEN_{i}' ripete un altro token (istanza music o bot principale).")
+        gia_usati.add(valore)
         token.append(valore)
     return token
+
+
+def _ferma(messaggio: str) -> None:
+    """Interrompe l'avvio con un errore di configurazione (mai il valore del token)."""
+    print(f"\n[CONFIG] ERRORE: {messaggio}\nControlla il tuo file .env.\n", file=sys.stderr)
+    sys.exit(1)
 
 
 def _load_config() -> Config:

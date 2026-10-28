@@ -39,11 +39,31 @@ def test_i_token_dal_sesto_si_leggono_senza_toccare_il_codice(monkeypatch):
     assert "t6" not in repr(cfg)
 
 
-def test_un_buco_ferma_la_lettura(monkeypatch):
+def test_un_buco_ferma_l_avvio(monkeypatch):
+    """MUSIC_TOKEN_8 senza il 7 non deve restare ignorato in silenzio."""
     _pulisci(monkeypatch)
     monkeypatch.setenv("MUSIC_TOKEN_6", "t6")
     monkeypatch.setenv("MUSIC_TOKEN_8", "t8")
-    assert len(_load_config().MUSIC_TOKENS) == 6
+    with pytest.raises(SystemExit):
+        _load_config()
+
+
+def test_un_token_music_ripetuto_ferma_l_avvio(monkeypatch):
+    """Lo stesso token due volte = un solo bot in due posti: due canali dello stesso server se lo rubano."""
+    _pulisci(monkeypatch)
+    import os
+    monkeypatch.setenv("MUSIC_TOKEN_6", os.environ["MUSIC_TOKEN_2"])
+    with pytest.raises(SystemExit):
+        _load_config()
+
+
+def test_un_token_music_uguale_al_bot_principale_ferma_l_avvio(monkeypatch):
+    """La radio del bot principale non deve mai diventare un'istanza dei server."""
+    _pulisci(monkeypatch)
+    import os
+    monkeypatch.setenv("MUSIC_TOKEN_6", os.environ["YOKAI_BOT_TOKEN"])
+    with pytest.raises(SystemExit):
+        _load_config()
 
 
 def test_il_tetto_vale(monkeypatch):
