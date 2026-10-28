@@ -1,7 +1,7 @@
 # Memoria dell'orchestratore
 
 ## Aggiornata
-14/10/2026 · ramo `main` · r2–r5 unite (r5 in verifica suite)
+28/10/2026 · `main` d8ccd3f · giri r6–r11 uniti e pubblicati
 
 ## Dove siamo
 - Il bot è in **zero server**. Nessuna prova live fatta: tutte le voci
@@ -52,6 +52,10 @@
 - Prossimi intervalli migrazioni: mod ≥0140, fun ≥0150, cor ≥0160. Worktree da pulire: bak, caccia_core, core, mod, mus, sec2, util, r5*.
 - Trappole: `ensure_module_enabled` è condiviso con `/report` (esentare); `bot.entitlements(limit=None)`; test non assegnano `db._pool` (monkeypatch); in `cogs/` solo `BaseModal`/`BaseView`; azzerare stato in memoria dei servizi nei test.
 - Lasciati r5: #59 ripiego kick/ban in quarantena (decide owner), SIC-042 parziale (inviti adulti/accorciatori), #115–#118 resto, #129/#130/#131 resto, NF-38 comandi del bot marchio, #122 resto, #140.
+
+- 28/10: r10 (10 rami: parziali della SPEC) e r11 (D35–D41: filtro d'odio con AI e libreria mondiale, inviti per modalità, martello e addio, immagine della moneta, istanze musicali dinamiche) uniti. Suite r11: 7267 verdi + 5 test sistemati. SPEC: 403 fatte, 22 parziali, 86 da fare, 6 non fattibili (517). 579 comandi, 116 migrazioni (ultima 0410 + 0392), 409 prove live aperte, nessuna fatta.
+- Regole owner: smoke/suite UNA volta a giro chiuso (mai per ramo); max 3 agenti alla volta; ogni ramo pubblicato dopo ogni commit (il container si azzera); autore Yokai Bot Dev, non cambiarlo; risposte in una sola lingua.
+- Prossimi numeri liberi: D42; migrazioni da 0420.
 
 ## Coda (in ordine)
 1. Fatti e chiusi: #137, #133, #135, #136, #134, #146, #144.
