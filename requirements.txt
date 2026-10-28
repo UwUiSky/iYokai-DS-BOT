@@ -11,6 +11,9 @@ python-dotenv>=1.0.0
 psutil>=5.9.0
 Pillow>=10.1.0
 
+# Codice QR di iYokai App (`/strumenti qr`): puro Python, nessuna dipendenza
+segno>=1.6.1
+
 # Music (client Lavalink)
 wavelink>=3.5.1
 

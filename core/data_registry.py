@@ -281,6 +281,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("level_reward_roles", "Ruoli premio per livello", colonna_server="guild_id"),
     _t("user_language", "Lingua personale (italiano o inglese)",
        colonne_utente=("user_id",), utente="cancella", esporta=True),
+    _t("user_app_notes", "Note e liste personali di iYokai App",
+       colonne_utente=("user_id",), utente="cancella", esporta=True),
     _t("rank_card_prefs", "Colore e tema della rank card",
        colonne_utente=("user_id",), utente="cancella", esporta=True),
     _t("leveling_levelup_log", "Ultimi 25 level-up del server",

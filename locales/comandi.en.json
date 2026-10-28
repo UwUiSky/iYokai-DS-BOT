@@ -868,11 +868,22 @@
   "promemoria crea": "I will DM you after the time you choose.",
   "promemoria elenco": "Shows your pending reminders.",
   "promemoria annulla": "Cancels one of your reminders.",
-  "profilo": "A user's card: name, ID, account age, avatar."
+  "strumenti": "Calculator, conversions, time zones, colours and QR code.",
+  "strumenti calcola": "Calculates an expression, e.g. (2+3)*4 or sqrt(16).",
+  "strumenti converti": "Converts lengths, weights, volumes, speeds, data and temperatures.",
+  "strumenti fuso": "What time it is in another time zone.",
+  "strumenti colore": "Shows a colour in HEX, RGB and HSL.",
+  "strumenti qr": "Makes a QR code from a text or link.",
+  "note": "Your notes and lists, in every server and in DMs.",
+  "note aggiungi": "Adds a note, or an entry to a list.",
+  "note elenco": "Shows your notes, or a list.",
+  "note rimuovi": "Removes a note or a list entry.",
+  "profilo": "A user's card: name, ID, account age, level, clan, avatar."
  },
  "parametri": {},
  "menu": {
   "Profilo": "Profile",
-  "Testo pulito": "Clean text"
+  "Testo pulito": "Clean text",
+  "Stato rete iYokai": "iYokai network status"
  }
 }

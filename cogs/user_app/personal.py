@@ -8,7 +8,7 @@ e «Testo pulito» (su un messaggio). Ogni comando risponde una volta sola,
 in privato: niente risposte successive (dove l'app non è nel server Discord
 ne ammette al massimo 5). Si carica solo sul client dell'app
 (core/user_app_bot.py): sul bot principale `setup` non fa nulla.
-Funzioni coperte: SPEC §B (NF-36)
+Funzioni coperte: SPEC §B, §B.3 (NF-36)
 """
 
 from __future__ import annotations
@@ -20,7 +20,9 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core.i18n import testo_per
+from core.i18n import lingua_interazione, t, testo_per
+from core.repositories.guild_clan_repo import guild_clan_repo
+from core.repositories.leveling_repo import leveling_repo
 from core.duration_logic import format_duration, parse_duration
 from core.scheduler import scheduler
 from core.user_app_bot import e_istanza_app
@@ -35,17 +37,37 @@ INSTALLAZIONE = app_commands.AppInstallationType(guild=False, user=True)
 OVUNQUE = app_commands.AppCommandContext(guild=True, dm_channel=True, private_channel=True)
 
 
-def _embed_profilo(utente: discord.User) -> discord.Embed:
+def _embed_profilo(utente: discord.User, lingua: str = "it", livello: tuple[int, int] | None = None,
+                   clan: str | None = None) -> discord.Embed:
+    """`livello` = (livello, XP totali) in questo server; `clan` = nome e tag del clan in questo server."""
     embed = discord.Embed(title=utente.display_name[:256], color=utente.accent_color or discord.Color.blurple())
-    embed.add_field(name="Nome utente", value=utente.name[:1024])
-    embed.add_field(name="ID", value=str(utente.id))
-    embed.add_field(name="Account creato", value=discord.utils.format_dt(utente.created_at, "R"))
+    embed.add_field(name=t("app_profilo_nome", lingua), value=utente.name[:1024])
+    embed.add_field(name=t("app_profilo_id", lingua), value=str(utente.id))
+    embed.add_field(name=t("app_profilo_creato", lingua), value=discord.utils.format_dt(utente.created_at, "R"))
+    if livello is not None:
+        embed.add_field(name=t("app_profilo_livello", lingua), value=f"{livello[0]} · {livello[1]:,} XP".replace(",", "."))
+    if clan:
+        embed.add_field(name=t("app_profilo_clan", lingua), value=clan[:1024])
     embed.set_thumbnail(url=utente.display_avatar.url)
     if utente.banner is not None:
         embed.set_image(url=utente.banner.url)
     if utente.bot:
-        embed.set_footer(text="È un bot.")
+        embed.set_footer(text=t("app_profilo_bot", lingua))
     return embed
+
+
+async def _livello_e_clan(guild_id: int | None, user_id: int) -> tuple[tuple[int, int] | None, str | None]:
+    """Livello e clan di una persona nel server dove si usa il comando (niente in DM)."""
+    if not guild_id:
+        return None, None
+    try:
+        totali = await leveling_repo.get_totals(guild_id, user_id)
+        clan = await guild_clan_repo.get_member_clan_in_guild(guild_id, user_id)
+    except Exception:  # noqa: BLE001 - dati in più: il profilo si mostra lo stesso
+        logger.warning("Livello e clan non letti per il profilo.", exc_info=True)
+        return None, None
+    livello = (totali.level, totali.xp_total) if totali.xp_total > 0 else None
+    return livello, (f"[{clan.tag}] {clan.name}" if clan else None)
 
 
 class PersonaleCog(commands.Cog):
@@ -161,7 +183,9 @@ class PersonaleCog(commands.Cog):
             completo = await self.bot.fetch_user(utente.id)  # serve per il banner
         except discord.HTTPException:
             completo = utente
-        await interaction.followup.send(embed=_embed_profilo(completo), ephemeral=True)
+        livello, clan = await _livello_e_clan(interaction.guild_id, utente.id)
+        lingua = await lingua_interazione(interaction)
+        await interaction.followup.send(embed=_embed_profilo(completo, lingua, livello, clan), ephemeral=True)
 
     async def menu_testo_pulito(self, interaction: discord.Interaction, messaggio: discord.Message) -> None:
         pulito = testo_pulito(messaggio.content)
