@@ -467,7 +467,7 @@ al moderatore cosa chiedeva la scala e perché non è partito. Vale per tutti i 
 gradino di timeout non accorcia mai un timeout più lungo già in corso (anche per l'AutoMod).
 La regola sta in un punto solo, `cogs/automod/escalation.py` (`scala_per_warn_manuale`).
 
-## D31 — `/log ignora` non nasconde gli eventi di sicurezza (28/10/2026)
+## D34 — `/log ignora` non nasconde gli eventi di sicurezza (28/10/2026)
 Dal giro r10 `/log ignora` (canali, categorie, utenti, ruoli) vale anche per voce, canali,
 thread e membri. Così però un ruolo «Staff» ignorato toglieva dal log i ruoli dati e i
 timeout dello staff, e un canale ignorato toglieva i cambi dei suoi permessi.

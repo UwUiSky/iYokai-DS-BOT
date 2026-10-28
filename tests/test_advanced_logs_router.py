@@ -229,7 +229,7 @@ async def test_utente_ignorato_non_genera_log_di_voce(cog, monkeypatch):
 
 
 async def test_log_ignora_non_nasconde_permessi_eliminazioni_e_mute_del_server(cog, monkeypatch):
-    # D31: in un canale ignorato restano nel log i cambi di permessi, la cancellazione del
+    # D34: in un canale ignorato restano nel log i cambi di permessi, la cancellazione del
     # canale e il mute dato dal server; spariscono gli altri cambi e gli ingressi.
     from core.message_log_logic import Ignorati
     import core.log_ignora_filtro as filtro

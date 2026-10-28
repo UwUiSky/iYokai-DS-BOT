@@ -1808,7 +1808,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   del server, poi niente finché un invio non riesce di nuovo (LC-6, M 5.5)
 - `[x]` 18.5 Le impostazioni esistenti restano valide: senza una scelta per
   il tipo vale il canale generale `log_channel_id` (nessun dato da migrare)
-- `[x]` 18.6 Ignora canali, categorie, utenti, ruoli: `/log ignora` vale per i messaggi e per voce, canali, thread e membri (`core/log_ignora_filtro.py`); prefissi ed espressioni solo per i messaggi. Non nasconde mai ruoli, timeout, permessi dei canali, canali cancellati e mute del server (D31)
+- `[x]` 18.6 Ignora canali, categorie, utenti, ruoli: `/log ignora` vale per i messaggi e per voce, canali, thread e membri (`core/log_ignora_filtro.py`); prefissi ed espressioni solo per i messaggi. Non nasconde mai ruoli, timeout, permessi dei canali, canali cancellati e mute del server (D34)
 - `[ ]` 18.7 Log delle azioni oggi mai registrate: `/lock`, `/unlock`,
   `/slowmode`, `/clear`, `/untimeout`, `/unmute-role`, scadenza dei
   tempban, azioni dell'escalation

@@ -239,3 +239,9 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 22/10 | `feat/r9nsfw` | `cogs/nsfw/ricerca.py:VistaSegnala` | Prima risposta dopo database e cancellazione: rischio oltre 3 s | bassa | chiuso 2d41f96 |
 | 22/10 | `feat/r9nsfw` | `locales/comandi.en.json` | Menu «Profilo» e «Testo pulito» senza nome inglese | bassa | chiuso 742b61b |
 | 22/10 | `feat/r9nsfw` | `cogs/user_app/personal.py:crea` | Tetto di 25 promemoria letto-poi-scritto: doppio invio può arrivare a 26 | bassa | aperto |
+| 28/10 | `feat/r10logt` | `core/repositories/event_log_repo.py:get_events_by_role` | `/log cerca ruolo` senza indice (tolto in 0001) | media | chiuso 33030a3 (0303) |
+| 28/10 | `feat/r10logt` | `cogs/logging/basic_logs.py:on_member_update` | `/log cerca ruolo` non trova chi ha ricevuto o perso il ruolo (role_update lo tiene solo in details) | media | aperto, per dev-log-ticket |
+| 28/10 | `feat/r10logt` | `cogs/tickets/tickets.py:_riapri` | Tetto ticket per utente letto-poi-scritto alla riapertura | bassa | aperto |
+| 28/10 | `feat/r10logt` | `cogs/tickets/tickets.py:_riapri` | Presa+chiusura+riapertura in 10 min: terza rinomina rifiutata, il nome resta «chiuso-…» (solo log) | bassa | accettato, VERIFICA_LIVE |
+| 28/10 | `feat/r10logt` | `cogs/voice_temp/voice_temp.py:_create_temp_channel` | Copia generatore: un ruolo con «Connetti» sul generatore entra anche nei vocali nati bloccati | bassa | aperto |
+| 28/10 | `feat/r10logt` | `cogs/voice_temp/voice_temp.py:voicetemp_generatore` | Un vocale temporaneo può essere scelto come generatore in più | bassa | aperto |

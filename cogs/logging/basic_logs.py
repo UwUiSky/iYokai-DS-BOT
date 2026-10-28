@@ -407,7 +407,7 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
             return
 
         if nick_changed and await evento_da_ignorare(after.guild, membro=after):
-            # D31: di un membro ignorato sparisce solo il soprannome; ruoli e timeout restano.
+            # D34: di un membro ignorato sparisce solo il soprannome; ruoli e timeout restano.
             nick_changed = False
             if not roles_changed and timeout is None:
                 return

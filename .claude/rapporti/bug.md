@@ -282,3 +282,8 @@
 - 22/10 · cogs/automod/escalation.py _applica_passo · gradino timeout (10m) sostituisce un timeout manuale più lungo (7d) dopo un /mod warn · media · corretto r9mod (revisore, D29)
 - 22/10 · cogs/moderation/actions.py warn_massa · con scala kick/ban, 50 warn in massa = 50 kick/ban senza tetto MOD-002 né permesso ban del moderatore · media · corretto r9mod (revisore, D29)
 - 22/10 · cogs/moderation/channel_control.py lock · lock fisso poi lock a tempo: a scadenza rimette False, il canale non si sblocca da solo · bassa · corretto r9mod (revisore)
+- 28/10 · cogs/tickets/tickets.py _stato_chiuso · ticket chiuso in due passi: utenti e ruoli aggiunti con /ticket add lo leggono ancora · alta · corretto 031a2d3
+- 28/10 · cogs/tickets/tickets.py BottoneChiuso · Elimina rimasto dopo /ticket riapri cancella un ticket aperto (resta «aperto» nel DB) · media · corretto 031a2d3
+- 28/10 · cogs/tickets/tickets.py _riapri · l'eliminazione pianificata resta: chiudi-riapri-richiudi = canale eliminato prima delle N ore · media · corretto 031a2d3
+- 28/10 · cogs/logging/basic_logs.py, advanced_logs.py · /log ignora su utente/ruolo/canale nascondeva ruoli dati, timeout, permessi, canali cancellati, mute del server · alta · corretto a8866f8 (D34)
+- 28/10 · cogs/voice_temp/voice_temp.py _create_temp_channel · copia + «nascono bloccati»: perso il @everyone del generatore privato, vocale visibile a tutti · media · corretto ea2f070

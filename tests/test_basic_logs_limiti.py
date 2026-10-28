@@ -82,7 +82,7 @@ async def test_pochi_ruoli_vengono_mostrati_tutti(canale_log):
 
 
 async def test_log_ignora_non_nasconde_ruoli_e_timeout(canale_log, monkeypatch):
-    # D31: un utente ignorato perde solo il log dei soprannomi; ruoli dati e timeout restano.
+    # D34: un utente ignorato perde solo il log dei soprannomi; ruoli dati e timeout restano.
     from core.message_log_logic import Ignorati
     from core.repositories.log_ignora_repo import log_ignora_repo
 
