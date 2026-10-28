@@ -36,11 +36,16 @@ def _bot_con_comando(eseguiti):
     async def prova(interaction: discord.Interaction):
         eseguiti.append(interaction)
 
+    # Come dopo il login: un'interazione di un server vuole l'utente del bot.
+    bot._connection.user = discord.ClientUser(
+        state=bot._connection, data={"id": "1", "username": "iyokai", "discriminator": "0", "avatar": None}
+    )
     return bot
 
 
-def _interazione_grezza(nome="prova"):
+def _interazione_grezza(nome="prova", guild_id="500"):
     return {
+        "guild_id": guild_id,
         "id": "9001", "application_id": "777", "type": 2, "token": "tok", "version": 1,
         "user": {"id": "5", "username": "u", "discriminator": "0", "avatar": None},
         "data": {"id": "42", "name": nome, "type": 1},
@@ -61,6 +66,27 @@ async def test_l_interazione_del_marchio_la_esegue_il_principale():
     assert len(eseguiti) == 1
     assert eseguiti[0].client is bot  # eseguita con i cog e i controlli del principale
     assert eseguiti[0].application_id == 777  # ma risponde con l'identità del marchio
+    await client.close()
+    await bot.close()
+
+
+@pytest.mark.parametrize("guild_id", ["501", None])
+async def test_le_interazioni_da_fuori_server_non_le_esegue_il_principale(guild_id):
+    """Chi possiede l'applicazione del marchio può registrarle comandi suoi e usarli altrove (installazione
+    utente, DM): il principale non li deve eseguire in un server che non è quello del marchio."""
+    eseguiti = []
+    bot = _bot_con_comando(eseguiti)
+    await bot._async_setup_hook()
+    client = wl._ClientMarchio(500, None, bot, 777)
+    grezza = _interazione_grezza(guild_id=guild_id)
+    if guild_id is None:
+        del grezza["guild_id"]
+
+    client._connection.parsers["INTERACTION_CREATE"](grezza)
+    for _ in range(20):
+        await asyncio.sleep(0)
+
+    assert eseguiti == []
     await client.close()
     await bot.close()
 

@@ -89,10 +89,16 @@ def inoltra_interazioni(client: discord.Client, bot) -> None:
     Le interazioni che arrivano al client del marchio le esegue il bot principale: l'oggetto `Interaction` nasce
     dallo stato del principale (suoi cog, sua cache, suoi controlli) e risponde con il token dell'interazione,
     cioè con l'identità del marchio. Si cambia solo il gestore dell'evento INTERAZIONE_CREATE di questo client.
+    Passano solo le interazioni del server del marchio: chi possiede l'applicazione può registrarle comandi suoi
+    (installazione utente, DM) e farli arrivare da altri server, dove il principale non deve eseguirli.
     """
     principale = bot._connection
+    server = str(client.guild_id)
 
     def inoltra(dati) -> None:
+        if str(dati.get("guild_id")) != server:
+            logger.info("Marchio del server %s: interazione da fuori server ignorata.", server)
+            return
         principale.parse_interaction_create(dati)
 
     client._connection.parsers["INTERACTION_CREATE"] = inoltra
@@ -128,7 +134,7 @@ class _ClientMarchio(discord.Client):
         intenti = discord.Intents.none()
         intenti.guilds = True
         super().__init__(intents=intenti)
-        self.guild_id = guild_id
+        self.guild_id = guild_id  # prima di inoltra_interazioni, che lo legge
         self.testo_stato = testo_stato
         self.bot = bot
         self.application_id_marchio = application_id
