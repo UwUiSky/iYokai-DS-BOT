@@ -366,6 +366,7 @@ class SetupCog(CogConGruppi, commands.Cog):
 
         view = SetupWizardView(guild.id, passi, moduli, stato, ruoli, ETICHETTE_CATEGORIE)
         view.lingua = await lingua_interazione(interaction)
+        view.ricostruisci()  # menu e bottoni nella lingua giusta, non solo l'embed
         await interaction.response.send_message(embed=view.embed(), view=view, ephemeral=True)
         view.message = await interaction.original_response()
 

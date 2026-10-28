@@ -214,8 +214,12 @@ async def test_il_comando_wizard_apre_ruoli_e_una_categoria_per_passo():
             interazione = fake_interaction(guild=guild, user=fake_member(user_id=999))
             interazione.original_response = AsyncMock(return_value=MagicMock())
             cog = setup_module.SetupCog(MagicMock())
-            await cog.setup_wizard.callback(cog, interazione)
+            with patch.object(setup_module, "lingua_interazione", AsyncMock(return_value="en")):
+                await cog.setup_wizard.callback(cog, interazione)
             vista = interazione.response.send_message.await_args.kwargs["view"]
+            # menu e bottoni nella lingua di chi usa il comando, non solo l'embed
+            assert vista.children[0].placeholder == "Bot admin role"
+            assert "Next" in [getattr(c, "label", None) for c in vista.children]
             categorie = [p.categoria for p in vista.passi if p.tipo == "moduli"]
             assert categorie == ["logging", "utility"]  # solo le categorie con moduli registrati
             assert vista.ruoli[TipoRuolo.MOD] is ruolo and vista.ruoli[TipoRuolo.ADMIN] is None
