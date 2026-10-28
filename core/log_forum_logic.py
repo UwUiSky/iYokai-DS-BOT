@@ -19,6 +19,9 @@ MAX_POST_PER_DIMENSIONE = 200
 # Quanti eventi aspettano di essere scritti, in tutto il bot. Oltre, i nuovi si perdono dalla vista
 # (restano nel database e nel canale dei log): un raid non deve riempire la memoria.
 CODA_MAX = 500
+# Dopo un errore di scrittura (permessi tolti, tag obbligatori che non si possono scegliere) la vista
+# di quel forum si ferma per un po': un solo avviso nei log, non uno per ogni evento.
+PAUSA_DOPO_ERRORE_SECONDI = 600.0
 MAX_TITOLO = 100
 MAX_DETTAGLI = 600
 MAX_DESCRIZIONE = 1500
@@ -29,6 +32,16 @@ def titolo_post(dimensione: str, chiave: int, nome: str | None = None) -> str:
     if dimensione == DIM_CASI:
         return f"Caso #{chiave}"
     return f"#{nome or chiave}"[:MAX_TITOLO]
+
+
+def scegli_tag(tag_disponibili) -> object | None:
+    """
+    Il tag da mettere a un post nuovo di un forum con tag obbligatori: il primo che chiunque può usare,
+    altrimenti il primo (il bot può gestire i thread). None se il forum non ha tag.
+    """
+    tag = list(tag_disponibili)
+    liberi = [t for t in tag if not getattr(t, "moderated", False)]
+    return (liberi or tag or [None])[0]
 
 
 def _dettagli(details: dict | None) -> str:

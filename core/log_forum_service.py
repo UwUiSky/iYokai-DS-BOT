@@ -6,6 +6,7 @@ canale, ogni caso di moderazione nel suo post. Gli eventi aspettano in una coda
 e un solo lavoratore li scrive piano (i forum hanno limiti stretti). Se il server
 non ha scelto un forum non succede niente e non costa una query oltre la cache.
 Gli eventi spenti con `/log eventi` non vanno neanche nel forum.
+Un post chiuso si riapre; un forum con tag obbligatori riceve un tag ammesso; dopo un errore la vista di quel forum si ferma per un po'.
 Funzioni coperte: SPEC §8.17
 Dipende da: core/repositories/log_forum_repo.py, core/log_forum_logic.py
 """
@@ -26,7 +27,9 @@ from core.log_forum_logic import (
     DIM_CASI,
     MAX_POST_PER_DIMENSIONE,
     descrizione_caso,
+    PAUSA_DOPO_ERRORE_SECONDI,
     descrizione_evento,
+    scegli_tag,
     titolo_post,
 )
 from core.repositories.log_eventi_repo import log_eventi_repo
@@ -54,6 +57,7 @@ _bot: discord.Client | None = None
 _coda: asyncio.Queue | None = None
 _lavoratore: asyncio.Task | None = None
 _viste: BoundedCache[int, tuple[float, dict[str, int]]] = BoundedCache(5000)
+_sospese: BoundedCache[tuple[int, str], float] = BoundedCache(5000)  # (server, vista) -> fino a quando (monotonic)
 
 
 def avvia(bot: discord.Client) -> None:
@@ -179,10 +183,47 @@ async def _trova_post(guild: discord.Guild, thread_id: int):
         return None
 
 
+def _sospesa(guild_id: int, dimensione: str) -> bool:
+    fino_a = _sospese.get((guild_id, dimensione))
+    return fino_a is not None and time.monotonic() < fino_a
+
+
+def _sospendi(guild_id: int, dimensione: str, motivo: object) -> None:
+    """Ferma la vista di questo forum per un po' e lo scrive una volta sola nei log."""
+    if not _sospesa(guild_id, dimensione):
+        logger.warning(
+            "Vista forum sospesa %d minuti (server %s, vista %s): %s",
+            PAUSA_DOPO_ERRORE_SECONDI // 60, guild_id, dimensione, motivo,
+        )
+    _sospese.set((guild_id, dimensione), time.monotonic() + PAUSA_DOPO_ERRORE_SECONDI)
+
+
+async def _scrivi_nel_post(post, embed: discord.Embed) -> bool:
+    """
+    Scrive in un post che c'è già. Un post chiuso (archiviato o bloccato) si riapre; se non si riesce
+    a riaprirlo o a scriverci, False e il chiamante lo dimentica. NotFound: il post non c'è più.
+    """
+    try:
+        if getattr(post, "archived", False) or getattr(post, "locked", False):
+            await post.edit(archived=False, locked=False)
+        await post.send(embed=embed)
+        return True
+    except discord.NotFound:
+        return False
+    except discord.HTTPException:
+        pass
+    try:  # un solo secondo tentativo, dopo aver riaperto il post
+        await post.edit(archived=False, locked=False)
+        await post.send(embed=embed)
+        return True
+    except discord.HTTPException:
+        return False
+
+
 async def scrivi(guild_id: int, dimensione: str, chiave: int, testo: str) -> bool:
     """Scrive nel post della chiave (lo crea se serve). True se il testo è arrivato."""
     guild = _bot.get_guild(guild_id) if _bot is not None else None
-    if guild is None:
+    if guild is None or _sospesa(guild_id, dimensione):
         return False
     forum_id = (await _forum_scelti(guild_id)).get(dimensione)
     forum = guild.get_channel(forum_id) if forum_id else None
@@ -193,15 +234,23 @@ async def scrivi(guild_id: int, dimensione: str, chiave: int, testo: str) -> boo
     if thread_id is not None:
         post = await _trova_post(guild, thread_id)
         if post is not None and getattr(post, "parent_id", None) == forum.id:
-            try:
-                await post.send(embed=embed)
+            if await _scrivi_nel_post(post, embed):
                 return True
-            except discord.NotFound:
-                pass
-        await log_forum_repo.dimentica_post(guild_id, dimensione, chiave)  # il post non c'è più
+        await log_forum_repo.dimentica_post(guild_id, dimensione, chiave)  # il post non c'è più o non si apre
     if await log_forum_repo.conta_post(guild_id, dimensione) >= MAX_POST_PER_DIMENSIONE:
         return False
     nome = getattr(guild.get_channel(chiave), "name", None) if dimensione == DIM_CANALI else None
-    creato = await forum.create_thread(name=titolo_post(dimensione, chiave, nome), embed=embed)
+    argomenti = {"name": titolo_post(dimensione, chiave, nome), "embed": embed}
+    if forum.flags.require_tag:
+        tag = scegli_tag(forum.available_tags)
+        if tag is None:
+            _sospendi(guild_id, dimensione, "il forum vuole un tag ma non ne ha")
+            return False
+        argomenti["applied_tags"] = [tag]
+    try:
+        creato = await forum.create_thread(**argomenti)
+    except discord.HTTPException as errore:
+        _sospendi(guild_id, dimensione, errore)
+        return False
     await log_forum_repo.salva_post(guild_id, dimensione, chiave, creato.thread.id)
     return True
