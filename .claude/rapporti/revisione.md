@@ -267,3 +267,10 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 28/10 | `feat/r10musa` | `cogs/music/player.py:accoda` (cerca) | Playlist salvate saltano solo-siti-conosciuti (URI vecchi di altri siti) | bassa | aperto (dev-musica) |
 | 28/10 | `feat/r10musa` | `core/alert_options_logic.py:motivo_silenzio` | Parole del titolo degli avvisi solo `.lower()` (accenti non uniti) | bassa | aperto (dev-utilita) |
 | 28/10 | `feat/r10musa` | `core/feed_watcher.py:150` | Feed in pausa con canale irraggiungibile non avanza: raffica alla ripresa | bassa | aperto (dev-utilita) |
+| 28/10 | `feat/r10liv` | `cogs/leveling/leveling.py:pay` | ECO-015 senza minimo; tassa per difetto evitata con pagamenti piccoli | media | chiuso b1c1f45 |
+| 28/10 | `feat/r10liv` | `cogs/leveling/leveling.py:shop_add_item` | File righe non valido: oggetto creato senza righe, chi compra paga e non riceve | media | chiuso f92d597 |
+| 28/10 | `feat/r10liv` | `core/repositories/shop_repo.py:list_expired_roles` | Scadenze di server lasciati in testa al LIMIT 100 bloccano il giro | media | chiuso f92d597 |
+| 28/10 | `feat/r10liv` | `cogs/leveling/leveling.py:_compra` | ECO-067 chiede la riga in DM: solo effimero | bassa | chiuso f92d597 |
+| 28/10 | `feat/r10liv` | `cogs/leveling/leveling.py:shop_list` | Categorie «Armi»/«armi» filtrate insieme ma con due titoli | bassa | aperto (dev-economia) |
+| 28/10 | `feat/r10liv` | `core/leveling_logic.py:nome_moneta_valido` | ECO-001 «testo o emoji»: emoji del server rifiutata (`<>` e oltre 20) | bassa | aperto (owner) |
+| 28/10 | `feat/r10liv` | `cogs/leveling/leveling.py:_compra` | `{utente}` nel testo di risposta pubblico: nome visualizzato non ripulito | bassa | plausibile (dev-economia) |
