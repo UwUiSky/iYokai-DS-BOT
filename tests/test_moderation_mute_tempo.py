@@ -265,8 +265,27 @@ async def test_mute_di_chi_e_uscito_prima_della_fine_non_si_perde():
     await cog.mute_role.callback(cog, inter, membro, "spam", "1h", False)
     [attesa] = await scheduler.list_pending_for_guild(SERVER, SCHEDULED_MUTE_EXPIRE)
     server.get_member = MagicMock(return_value=None)
+    server.fetch_member = AsyncMock(side_effect=_non_trovato())
     await cog.handle_mute_expire(SERVER, MUTO, attesa["payload"])
     assert await moderation_repo.get_mute_state(SERVER, MUTO) is not None  # lo chiude il rientro
+
+
+def _non_trovato():
+    import discord
+
+    return discord.NotFound(MagicMock(status=404, reason="x"), "no")
+
+
+async def test_scadenza_con_membro_fuori_cache_toglie_il_ruolo():
+    await _imposta_ruolo_mute()
+    server, membro, cog, inter, _ = _scena()
+    await cog.mute_role.callback(cog, inter, membro, "spam", "1h", False)
+    [attesa] = await scheduler.list_pending_for_guild(SERVER, SCHEDULED_MUTE_EXPIRE)
+    server.get_member = MagicMock(return_value=None)  # cache fredda: è ancora nel server
+    server.fetch_member = AsyncMock(return_value=membro)
+    await cog.handle_mute_expire(SERVER, MUTO, attesa["payload"])
+    assert 99 not in _ids(membro)
+    assert await moderation_repo.get_mute_state(SERVER, MUTO) is None
 
 
 # --------------------------------------------------------------- sanzioni attive

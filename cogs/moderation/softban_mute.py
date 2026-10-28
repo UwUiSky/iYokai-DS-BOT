@@ -57,7 +57,7 @@ from cogs.moderation._shared import (
     parse_duration,
     post_to_mod_log,
 )
-from cogs.moderation._tempban_modes import info_ruoli, ruoli_da_riprendere
+from cogs.moderation._tempban_modes import info_ruoli, ruoli_da_riprendere, trova_membro
 
 logger = logging.getLogger("iyokai.moderation.softban_mute")
 
@@ -325,7 +325,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         guild = self.bot.get_guild(guild_id)
         if guild is None:
             return
-        member = guild.get_member(user_id)
+        member = await trova_membro(guild, user_id)  # anche a cache fredda
         if member is None:
             # Fuori dal server: il rientro vedrà che è finito e chiuderà tutto.
             await moderation_repo.revoke_active_cases_for_user(
