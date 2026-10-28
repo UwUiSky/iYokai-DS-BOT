@@ -473,6 +473,13 @@ class AiGiocoRepository:
         )
         return esito.endswith(" 1")
 
+    async def giorni_attivi(self, guild_id: int, user_id: int, dal: date) -> int:
+        """In quanti giorni diversi la persona ha scritto o parlato in vocale (conteggi già raccolti dalle statistiche)."""
+        return int(await self._pool.fetchval(
+            "SELECT count(*) FROM activity_member_daily WHERE guild_id = $1 AND user_id = $2 AND day >= $3 "
+            "AND (messages > 0 OR voice_seconds > 0)", guild_id, user_id, dal,
+        ))
+
     # ============================================================ per «cosa posso fare qui?»
     async def eventi_in_corso(self, guild_id: int) -> list[str]:
         righe: list[str] = []

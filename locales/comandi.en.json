@@ -243,7 +243,12 @@
   "preferenza": "preference",
   "boss": "boss",
   "avvia": "start",
-  "rete": "network"
+  "rete": "network",
+  "dungeon": "dungeon",
+  "storie": "stories",
+  "mistero": "mystery",
+  "spirito": "spirit",
+  "frammenti": "fragments"
  },
  "descrizioni": {
   "-cerca-comando": "Searches a command by description.",
@@ -915,7 +920,17 @@
   "ai boss": "World Boss: group event against a monster",
   "ai boss imposta": "Channel, days, time and rewards of the World Boss.",
   "ai boss avvia": "Summons the World Boss right now.",
-  "ai boss rete": "Owner only: publish or close the network boss."
+  "ai boss rete": "Owner only: publish or close the network boss.",
+  "ai dungeon": "Group dungeon told by the AI",
+  "ai dungeon avvia": "Starts a group dungeon in a channel.",
+  "ai dungeon storie": "How many dungeon stories are ready for the server theme.",
+  "ai mistero": "Mysteries hidden for the server",
+  "ai mistero crea": "Hides a mystery with a code and a prize for the server.",
+  "ai mistero elenco": "The server mysteries (the code stays secret).",
+  "ai mistero togli": "Removes a mystery.",
+  "utility ai mistero": "Answer a server mystery with the code.",
+  "utility ai spirito": "Your Yokai spirit: an affinity that grows with your activity.",
+  "utility ai frammenti": "The lore fragments you collected."
  },
  "parametri": {},
  "menu": {
