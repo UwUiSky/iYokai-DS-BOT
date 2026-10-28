@@ -20,6 +20,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.desktop_eventi import avvisa_utente
 from core.duration_logic import format_duration, parse_duration
 from core.i18n import lingua_interazione, t, testo_per
 from core.repositories.guild_clan_repo import guild_clan_repo
@@ -126,6 +127,7 @@ class PersonaleCog(commands.Cog):
     async def consegna(self, guild_id: int, user_id: int, payload: dict) -> None:
         """Handler dello scheduler: DM dall'app, se non va dal bot principale. Se nessuno dei due può, resta nel log."""
         testo = t("app_promemoria_consegna", await _lingua_di(user_id), testo=payload.get("message", "…"))[:2000]
+        await avvisa_utente(user_id, "promemoria", payload.get("message", "…"))
         for client in (self.bot, getattr(self.bot, "bot_principale", None)):
             if client is None:
                 continue

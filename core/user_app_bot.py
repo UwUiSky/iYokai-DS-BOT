@@ -24,7 +24,7 @@ from core.premium import handle_app_command_error
 
 ISTANZA_APP = "app"
 SCOPE_SYNC = "app:global"
-MODULI_COG = ("cogs.user_app.personal", "cogs.user_app.strumenti", "cogs.user_app.messaggi", "cogs.user_app.supporto", "cogs.user_app.risposte", "cogs.user_app.impostazioni", "cogs.user_app.divertimento", "cogs.user_app.radio")
+MODULI_COG = ("cogs.user_app.personal", "cogs.user_app.strumenti", "cogs.user_app.messaggi", "cogs.user_app.supporto", "cogs.user_app.risposte", "cogs.user_app.impostazioni", "cogs.user_app.divertimento", "cogs.user_app.radio", "cogs.user_app.desktop")
 
 
 # Discord accetta 15 menu per tipo (dal 03/03/2026, LIMITI.md §1.3); discord.py 2.7.1 ne conta ancora 5.

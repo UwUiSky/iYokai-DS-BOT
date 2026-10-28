@@ -348,5 +348,19 @@
   "app_playlist_eliminata": "Playlist `{nome}` eliminata.",
   "app_radio_spenta": "La radio iYokai è spenta adesso.",
   "app_radio_ora": "In onda adesso: brano {numero} di {totale}.",
-  "app_radio_testo": "Cerca il testo"
+  "app_radio_testo": "Cerca il testo",
+  "app_desktop_collegato": "Il tuo codice per iYokai Desktop, **si vede solo ora**:\n||`{token}`||\nIncollalo nel programma (comando `collega`). Non darlo a nessuno: chi lo ha vede i tuoi avvisi. Un codice nuovo cancella il vecchio.",
+  "app_desktop_scollegato": "Fatto: il codice non vale più.",
+  "app_desktop_non_collegato": "Non c'è nessun codice attivo.",
+  "app_desktop_avvisi_accesi": "Avvisi accesi: dove c'è iYokai salvo per 90 giorni chi ti menziona o ti risponde, con un testo breve.",
+  "app_desktop_avvisi_spenti": "Avvisi spenti. Non salvo più nulla di nuovo.",
+  "app_desktop_parola_non_valida": "Ogni parola deve avere da 2 a 30 caratteri.",
+  "app_desktop_troppe_parole": "Al massimo {massimo} parole.",
+  "app_desktop_parole_salvate": "Parole chiave salvate: {parole}. Servono gli avvisi accesi.",
+  "app_desktop_parole_tolte": "Parole chiave tolte.",
+  "app_desktop_stato_collegato": "Programma: collegato.",
+  "app_desktop_stato_non_collegato": "Programma: non collegato (usa il comando collega).",
+  "app_desktop_stato_avvisi_si": "Avvisi: accesi.",
+  "app_desktop_stato_avvisi_no": "Avvisi: spenti.",
+  "app_desktop_stato_parole": "Parole chiave: {parole}"
 }

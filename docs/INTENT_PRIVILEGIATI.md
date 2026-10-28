@@ -30,12 +30,13 @@ Members are needed to react to joins and leaves (verification, anti-raid, welcom
 
 ## MESSAGE_CONTENT
 
-Message content is needed by features that read what is written: AutoMod filters, anti-spam and spam-trap, XP for levelling, ticket and spam-trap transcripts, message logs for edits and deletions, snipe, auto-responders, custom commands, the backup mirror, the music request channel and the optional AI features. Without it Discord delivers empty text and these features would look active but do nothing.
+Message content is needed by features that read what is written: AutoMod filters, anti-spam and spam-trap, XP for levelling, ticket and spam-trap transcripts, message logs for edits and deletions, snipe, auto-responders, custom commands, opt-in personal keyword alerts, the backup mirror, the music request channel and the optional AI features. Without it Discord delivers empty text and these features would look active but do nothing.
 
 | Feature | File | Why |
 |---|---|---|
 | AutoMod filters | `cogs/automod/automod.py` | Read text to apply the server rules |
 | Message logs (edits and deletions) | `cogs/logging/message_logs.py` | Audit trail for staff |
+| Desktop alerts (opt-in keywords, mentions, replies) | `cogs/utility/desktop_menzioni.py` | Tell the person who turned alerts on that they were mentioned or a chosen word was written |
 | Snipe | `cogs/utility/snipe.py` | Show the last deleted or edited message where allowed |
 | Levelling (XP per message) | `cogs/leveling/leveling.py` | Count messages, ignore spam |
 | Activity statistics | `cogs/utility/activity_stats.py` | Count messages per channel |

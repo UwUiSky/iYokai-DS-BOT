@@ -15,7 +15,7 @@ FILE = [
     "cogs/user_app/personal.py", "cogs/user_app/strumenti.py", "cogs/utility/log_webhook.py",
     "cogs/user_app/messaggi.py", "cogs/user_app/risposte.py", "cogs/user_app/supporto.py",
     "cogs/user_app/impostazioni.py", "cogs/user_app/divertimento.py",
-    "cogs/user_app/radio.py",
+    "cogs/user_app/radio.py", "cogs/user_app/desktop.py",
 ]
 INVIO = {"send_message", "send", "edit_message", "edit", "edit_original_response"}
 RADICE = pathlib.Path(__file__).resolve().parent.parent

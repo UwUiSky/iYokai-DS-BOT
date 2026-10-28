@@ -113,6 +113,12 @@ class UserAppRepository:
         )
         return [r["nome"] for r in righe]
 
+    async def risposte(self, user_id: int, limite: int = MAX_RISPOSTE) -> list[asyncpg.Record]:
+        """Tutte le risposte con il testo (per i testi da incollare di iYokai Desktop)."""
+        return await self._pool.fetch(
+            "SELECT nome, testo FROM user_app_replies WHERE user_id = $1 ORDER BY nome LIMIT $2", user_id, limite
+        )
+
     async def rimuovi_risposta(self, user_id: int, nome: str) -> bool:
         esito = await self._pool.execute("DELETE FROM user_app_replies WHERE user_id = $1 AND nome = $2", user_id, nome)
         return esito.endswith(" 1")

@@ -20,7 +20,7 @@
   "auto-elenco": "auto-list",
   "auto-ricorda": "auto-remember",
   "auto-rimuovi": "auto-remove",
-  "avvisi": "warnings",
+  "avvisi": "alerts",
   "azzera": "reset",
   "bacheca": "board",
   "benvenuto": "welcome",
@@ -48,7 +48,7 @@
   "chiusura-auto": "auto-close",
   "classifica": "leaderboard",
   "classifica-staff": "staff-leaderboard",
-  "collega": "link",
+  "collega": "connect",
   "collezione": "collection",
   "comandi": "commands",
   "compleanni": "birthdays",
@@ -259,7 +259,9 @@
   "animale": "animal",
   "playlist": "playlist",
   "radio": "radio",
-  "ora": "now"
+  "ora": "now",
+  "desktop": "desktop",
+  "scollega": "disconnect"
  },
  "descrizioni": {
   "-cerca-comando": "Searches a command by description.",
@@ -975,7 +977,13 @@
   "playlist elenco": "Your playlists.",
   "playlist elimina": "Deletes one of your playlists.",
   "radio": "The iYokai radio: what is playing now.",
-  "radio ora": "What plays now on the iYokai radio, with a lyrics search link."
+  "radio ora": "What plays now on the iYokai radio, with a lyrics search link.",
+  "desktop": "Connect the iYokai Desktop program and choose alerts.",
+  "desktop collega": "Creates the personal code for the iYokai Desktop program.",
+  "desktop scollega": "Revokes the code: the program can no longer sign in.",
+  "desktop avvisi": "Turns mention and reply alerts on or off.",
+  "desktop parole": "The keywords that alert you (comma separated; empty removes them).",
+  "desktop stato": "How iYokai Desktop is connected and which alerts you have."
  },
  "parametri": {},
  "menu": {

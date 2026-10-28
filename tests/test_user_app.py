@@ -50,7 +50,7 @@ async def test_albero_dell_app_solo_installazione_utente_e_ovunque():
         slash = {c.name for c in bot.tree.get_commands(type=discord.AppCommandType.chat_input)}
         assert slash == {
             "promemoria", "profilo", "strumenti", "note", "segnalibri", "supporto", "risposta", "impostazioni", "storico",
-            "divertimento", "playlist", "radio",
+            "divertimento", "playlist", "radio", "desktop",
         }
         menu = {c.name for c in tutti if isinstance(c, app_commands.ContextMenu)}
         assert menu == {

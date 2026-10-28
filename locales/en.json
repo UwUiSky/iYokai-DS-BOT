@@ -348,5 +348,19 @@
   "app_playlist_eliminata": "Playlist `{nome}` deleted.",
   "app_radio_spenta": "The iYokai radio is off right now.",
   "app_radio_ora": "On air now: track {numero} of {totale}.",
-  "app_radio_testo": "Search the lyrics"
+  "app_radio_testo": "Search the lyrics",
+  "app_desktop_collegato": "Your code for iYokai Desktop, **shown only now**:\n||`{token}`||\nPaste it into the program (`collega` command). Share it with nobody: whoever has it sees your alerts. A new code replaces the old one.",
+  "app_desktop_scollegato": "Done: the code no longer works.",
+  "app_desktop_non_collegato": "There is no active code.",
+  "app_desktop_avvisi_accesi": "Alerts on: where iYokai is, I keep for 90 days who mentions or replies to you, with a short text.",
+  "app_desktop_avvisi_spenti": "Alerts off. I save nothing new.",
+  "app_desktop_parola_non_valida": "Each word must have 2 to 30 characters.",
+  "app_desktop_troppe_parole": "At most {massimo} words.",
+  "app_desktop_parole_salvate": "Keywords saved: {parole}. Alerts must be on.",
+  "app_desktop_parole_tolte": "Keywords removed.",
+  "app_desktop_stato_collegato": "Program: connected.",
+  "app_desktop_stato_non_collegato": "Program: not connected (use the collega command).",
+  "app_desktop_stato_avvisi_si": "Alerts: on.",
+  "app_desktop_stato_avvisi_no": "Alerts: off.",
+  "app_desktop_stato_parole": "Keywords: {parole}"
 }

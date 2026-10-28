@@ -15,6 +15,7 @@ from dataclasses import dataclass
 
 import discord
 
+from core.desktop_eventi import avvisa_utente
 from core.repositories.user_app_repo import user_app_repo
 
 logger = logging.getLogger("iyokai.support")
@@ -106,6 +107,7 @@ async def inoltra_risposta_staff(client: discord.Client, message: discord.Messag
     riga = await user_app_repo.richiesta_da_thread(message.channel.id)
     if riga is None or riga["stato"] != "aperta":
         return False
+    await avvisa_utente(riga["user_id"], "assistenza", f"Risposta alla richiesta #{riga['id']}")
     try:
         utente = await client.fetch_user(riga["user_id"])
         await utente.send(
