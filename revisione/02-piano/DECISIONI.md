@@ -470,6 +470,8 @@ La regola sta in un punto solo, `cogs/automod/escalation.py` (`scala_per_warn_ma
 
 ## D30 — Il 24/7 in un canale vuoto è premium (27/10/2026)
 
+> **Confermata dall'owner (28/10/2026), con precisazione:** il bot musicale principale fa la radio live dell'owner, sempre 24/7, e nessun server lo controlla. Le 5 istanze (e quelle che si aggiungeranno) restano 24/7 solo con il premium.
+
 `/music nonstop on` mette la coda in loop. Un bot musicale che resta in un canale
 vuoto occupa per sempre uno dei 5 bot musicali, che sono gli stessi per tutti i server:
 cinque persone, in cinque server, potrebbero lasciare tutti gli altri senza musica.
@@ -480,6 +482,8 @@ sempre quando il canale resta vuoto. La radio del bot principale non cambia.
 Da avvisare l'owner.
 
 ## D31 — La lista di base delle parole d'odio non si apre voce per voce (28/10/2026)
+
+> **Superata da D35 (28/10/2026, owner):** una frase lecita che contiene una parola d'odio NON basta a farla passare (es. «questa banda di negri…»). Il contesto lo giudica l'AI (D35).
 
 La lista di base del filtro delle parole vietate (AMD-014, `data/automod_parole_odio.txt`)
 è accesa con l'AutoMod. Una voce di base **non** si può mettere da sola tra le parole lecite
@@ -527,3 +531,36 @@ di un canale, i canali cancellati, il mute e il deafen dati dal server. `/log ig
 nasconde il resto (soprannomi, ingressi e uscite in voce, mute proprio, canali e thread
 creati o modificati). La regola sta in `cogs/logging/advanced_logs.py` (`VOCE_SEMPRE_NEL_LOG`,
 canali) e `cogs/logging/basic_logs.py` (`on_member_update`).
+
+## D35 — Parole d'odio: due livelli, contesto giudicato dall'AI (28/10/2026, owner)
+
+1. **Blocco preventivo (AutoMod nativo):** le frasi palesemente d'odio (insulto + minaccia o
+   incitamento) si bloccano prima dell'invio, con il banner di sistema di Discord e un testo
+   personalizzato (≤150 caratteri, es. «Primo richiamo: la tua affermazione risulta razzista…»).
+   Solo il nativo può mostrare quel banner, e lì il bot non vede il messaggio.
+2. **Parola sospetta da sola (lato bot):** il messaggio arriva al bot, l'AI giudica il contesto.
+   Cognome o uso normale («Simone Negri lavora al supermercato») → passa. Insulto → cancellato,
+   richiamo all'utente che si cancella da solo, richiamo contato; N richiami in un tempo X →
+   timeout (configurabile). Con l'AI ferma: cancella e avvisa (lato sicuro).
+3. **Libreria mondiale multilingue** delle parole bandite e delle loro varianti, che cresce: una
+   variante nuova trovata dall'AI entra come «candidata» e diventa globale dopo segnalazioni da
+   più server o con l'approvazione dell'owner (un server solo non può avvelenare la lista).
+   La libreria è documentata.
+
+## D36 — Link d'invito personali: lo decide il server (28/10/2026, owner)
+
+Precisa D32. Opzione del server: tutti hanno il link personale / solo chi ha «Crea invito» /
+solo un ruolo / spento. Il link personale funziona anche se il server toglie «Crea invito» a
+tutti: l'invito Discord lo crea il bot. Il tetto di 500 link per server resta.
+
+## D37 — Messaggi di ban e di addio (28/10/2026, owner)
+
+Di base escono tutti e due: prima il «martello» (immagine o gif), poi l'addio scherzoso
+(«Ciao, è stato bello vederti»). Il server sceglie: entrambi, solo uno, nessuno, e la grafica
+di ciascuno.
+
+## D38 — Moneta del server: nome senza emoji, immagine propria (28/10/2026, owner)
+
+Il nome della moneta resta solo testo. Quando il server configura le monete il bot chiede il
+nome e un'immagine; l'immagine compare negli embed accanto al saldo. Senza immagine si usa la
+moneta di iYokai.
