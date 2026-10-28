@@ -107,6 +107,41 @@ async def test_il_comando_chiede_conferma_e_il_bottone_spende(clean_db):
     assert await guild_chest_repo.get_balance(GUILD) == 0
 
 
+async def test_due_clic_sulla_stessa_conferma_spendono_una_volta(clean_db):
+    """La vista controlla la lista nera (un await) prima del clic: due clic arrivano entrambi al bottone."""
+    import asyncio
+
+    from cogs.utility.premium_server import ConfermaSblocco
+    from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member
+
+    await guild_chest_repo.deposit(GUILD, 2 * COSTO_MODULO_IN_COIN, REASON_WEEKLY_PERSONAL_DECAY)
+    vista = ConfermaSblocco(GUILD, 7, "mod_premium")
+    clic = [fake_interaction(guild=fake_guild(GUILD), user=fake_member(user_id=7)) for _ in range(2)]
+
+    await asyncio.gather(*(vista.conferma.callback(c) for c in clic))
+
+    assert await guild_chest_repo.get_balance(GUILD) == COSTO_MODULO_IN_COIN
+    risposti = [c for c in clic if c.response.edit_message.await_count or c.response.defer.await_count]
+    assert len(risposti) == 2  # anche il secondo clic riceve una risposta
+
+
+async def test_annulla_dopo_la_conferma_non_dice_annullato(clean_db):
+    import asyncio
+
+    from cogs.utility.premium_server import ConfermaSblocco
+    from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member
+
+    await guild_chest_repo.deposit(GUILD, COSTO_MODULO_IN_COIN, REASON_WEEKLY_PERSONAL_DECAY)
+    vista = ConfermaSblocco(GUILD, 7, "mod_premium")
+    si, no = (fake_interaction(guild=fake_guild(GUILD), user=fake_member(user_id=7)) for _ in range(2))
+
+    await asyncio.gather(vista.conferma.callback(si), vista.annulla.callback(no))
+
+    assert await guild_chest_repo.get_balance(GUILD) == 0
+    no.response.edit_message.assert_not_awaited()
+    no.response.defer.assert_awaited_once()
+
+
 async def test_l_autocomplete_elenca_solo_i_moduli_premium(clean_db):
     from unittest.mock import AsyncMock, MagicMock, patch
 

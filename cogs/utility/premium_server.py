@@ -48,9 +48,16 @@ class ConfermaSblocco(BaseView):
     def __init__(self, guild_id: int, user_id: int, modulo: str) -> None:
         super().__init__(timeout=60)
         self.guild_id, self.user_id, self.modulo = guild_id, user_id, modulo
+        self._usata = False
 
     @discord.ui.button(label="Conferma e spendi", style=discord.ButtonStyle.success)
     async def conferma(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        # Due clic veloci arrivano entrambi qui (la vista prima attende il controllo della lista nera):
+        # il segno si mette prima di ogni await, così si spende una volta sola.
+        if self._usata:
+            await interaction.response.defer()
+            return
+        self._usata = True
         self.stop()
         r = await sblocca_modulo_con_cassa(self.guild_id, self.modulo, self.user_id)
         if r.esito is EsitoSblocco.SBLOCCATO:
@@ -63,6 +70,10 @@ class ConfermaSblocco(BaseView):
 
     @discord.ui.button(label="Annulla", style=discord.ButtonStyle.secondary)
     async def annulla(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        if self._usata:  # la conferma è già partita: «annullato» sarebbe falso
+            await interaction.response.defer()
+            return
+        self._usata = True
         self.stop()
         await interaction.response.edit_message(content=await testo_per(interaction, "prem_sblocca_annullato"), view=None)
 
