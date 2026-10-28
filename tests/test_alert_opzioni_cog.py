@@ -232,6 +232,7 @@ async def test_opzioni_pausa_filtri_e_attesa(ambiente):
     assert "Valorant" in _testo(i2)
 
     i3 = fake_interaction(guild=guild, user=utente)
-    await cog.opzioni.callback(cog, i3, f"KK-{kk}", parole="", pausa=False)
+    # Discord non manda un testo vuoto: «-» toglie il filtro (un gioco «-» zittirebbe ogni diretta).
+    await cog.opzioni.callback(cog, i3, f"KK-{kk}", parole="-", gioco=" - ", pausa=False)
     opz = await modulo.alert_options_repo.get("KK", kk)
-    assert opz.title_words == "" and opz.paused is False
+    assert opz.title_words == "" and opz.game_filter == "" and opz.paused is False

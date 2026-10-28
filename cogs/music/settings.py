@@ -36,6 +36,12 @@ from core.music_settings_logic import (
 SG_MUSICA = ("musica", "Musica: impostazioni del server")
 
 
+def _testo_o_vuoto(testo: str) -> str:
+    """Discord non manda un testo vuoto: «-» vuol dire «nessuna»."""
+    testo = testo.strip()
+    return "" if testo == "-" else testo
+
+
 class MusicSettingsCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -53,7 +59,7 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         canale_vocale="Permetti la musica solo in questo canale vocale",
         tutti_i_canali="Togli la restrizione: la musica è permessa in ogni canale vocale",
         attesa_uscita="Minuti di attesa prima di uscire a coda finita (0 = predefinita)",
-        parole_vietate="Parole non ammesse nei titoli, separate da virgola (vuoto = nessuna)",
+        parole_vietate="Parole non ammesse nei titoli, separate da virgola; «-» toglie l'elenco",
         solo_siti_conosciuti="Accetta solo link di siti conosciuti",
     )
     @app_commands.rename(
@@ -94,7 +100,7 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
             SETTING_MAX_TRACK_MINUTES: durata_massima,
             SETTING_STAY_WHEN_QUEUE_ENDS: resta_a_coda_finita,
             SETTING_IDLE_MINUTES: attesa_uscita,
-            SETTING_BANNED_WORDS: None if parole_vietate is None else parole_vietate.strip(),
+            SETTING_BANNED_WORDS: None if parole_vietate is None else _testo_o_vuoto(parole_vietate),
             SETTING_KNOWN_SITES_ONLY: solo_siti_conosciuti,
         }
         cambi = {k: v for k, v in cambi.items() if v is not None}

@@ -479,8 +479,8 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         annunci="Pubblica nei canali annunci",
         membro="Chi riceve il ruolo in diretta",
         pausa="Metti l'avviso in pausa (o riaccendilo) senza cancellarlo",
-        parole="Parole del titolo, separate da virgola; «-parola» esclude (vuoto: nessun filtro)",
-        gioco="Solo questi giochi, separati da virgola (Twitch e Kick; vuoto: tutti)",
+        parole="Parole del titolo, separate da virgola; «-parola» esclude; «-» da solo toglie il filtro",
+        gioco="Solo questi giochi, separati da virgola (Twitch e Kick); «-» li ammette tutti",
         attesa="Minuti minimi tra due avvisi (0: nessuna pausa)",
         azzera="Torna alle opzioni di base",
     )
@@ -539,9 +539,9 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
             if membro is not None:
                 campi["live_member_id"] = membro.id
             if parole is not None:
-                campi["title_words"] = parole.strip()
+                campi["title_words"] = "" if parole.strip() == "-" else parole.strip()
             if gioco is not None:
-                campi["game_filter"] = gioco.strip()
+                campi["game_filter"] = "" if gioco.strip() == "-" else gioco.strip()
             if attesa is not None:
                 campi["min_gap_minutes"] = attesa
         elif any(v is not None for v in (fine, elimina, membro, parole, gioco, attesa)):

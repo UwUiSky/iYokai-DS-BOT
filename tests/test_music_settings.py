@@ -180,6 +180,20 @@ async def test_comando_impostazioni_senza_opzioni_o_con_opzioni_in_conflitto(mon
     assert "non entrambi" in i.response.inviati[0]
 
 
+@pytest.mark.asyncio
+async def test_parole_vietate_si_svuotano_con_il_trattino(monkeypatch):
+    """Discord non manda un testo vuoto: «-» toglie l'elenco (come le estensioni dell'AutoMod)."""
+    import cogs.music.settings as modulo
+
+    archivio = _Archivio()
+    monkeypatch.setattr(modulo, "db", archivio)
+    cog = MusicSettingsCog(bot=None)
+    await cog.impostazioni.callback(cog, _Interazione(), parole_vietate="aaa, bbb")
+    assert (await load_music_settings(archivio, 900)).banned_words == "aaa, bbb"
+    await cog.impostazioni.callback(cog, _Interazione(), parole_vietate=" - ")
+    assert (await load_music_settings(archivio, 900)).banned_words == ""
+
+
 # ----------------------------- i controlli -----------------------------
 def _cog_con_worker(player, monkeypatch, archivio):
     monkeypatch.setattr(player_module, "db", archivio)
