@@ -318,3 +318,8 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 28/10 | `feat/r10aiw` | `cogs/ai/summaries.py`, `cogs/ai/config.py:costruisci` | `requires_module` chiudeva riassumi/spiega/stile/costruisci durante la prova gratuita | media | chiuso b302da0 |
 | 28/10 | `feat/r10aiw` | `core/repositories/ai_repo.py:avvia_prova` | Prova ripartiva dopo la cancellazione dei dati del server (90 giorni) | media | chiuso 0be178a (0351) |
 | 28/10 | `feat/r10aiw` | `core/premium_flags.py:applica_cambio_premium` | Memoria cambiata prima di due scritture senza transazione (ereditato da `/owner premium toggle`) | bassa | aperto |
+| 28/10 | `feat/r11eco` | `tests/test_leveling_classifica_e_calcolo.py`, `tests/test_guild_clan_cog_behavior.py` | Due test rossi: saldo diventato embed, finto `send_message` senza `file=` | media | chiuso (commit test D38) |
+| 28/10 | `feat/r11eco` | `core/config.py:_leggi_token_music` | Token dopo un vuoto ignorato in silenzio; token 6..20 ripetuto o uguale al bot principale (stesso bot in due canali / sulla radio) | media | chiuso 5c69d2b |
+| 28/10 | `feat/r11eco` | `core/config.py:_leggi_token_music` | Doppioni fra MUSIC_TOKEN_1..5 non controllati (conftest usa lo stesso token finto: va cambiato con suite completa) | bassa | aperto |
+| 28/10 | `feat/r11eco` | `cogs/leveling/leveling.py:_salva_impostazioni_moneta` | D16: il comando compone `prepara_moneta` + `set_immagine_moneta`; il pannello deve fare lo stesso (solo il CHECK 64 KiB lo protegge) | bassa | aperto |
+| 28/10 | `feat/r11eco` | `cogs/fun/coin_games.py:166` | `except Exception` sull'immagine della moneta senza log | bassa | aperto |
