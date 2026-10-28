@@ -196,6 +196,11 @@ async def test_salvataggio_persiste_solo_i_moduli_effettivamente_cambiati():
 async def test_il_comando_wizard_apre_ruoli_e_una_categoria_per_passo():
     import cogs.utility.setup as setup_module
     import core.command_access as command_access
+    from core.premium import registry
+
+    # Solo i moduli finti del test: i cog importati da altri test ne registrano di veri
+    # (il fixture `reset_premium_registry` rimette tutto a posto dopo).
+    registry._modules = {nome: m for nome, m in registry._modules.items() if nome.startswith("wiz_")}
 
     database = Database()
     await database.connect()

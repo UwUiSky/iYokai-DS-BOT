@@ -15,6 +15,8 @@ from datetime import datetime
 SETTING_CASI_ESTERNI = "mod_casi_esterni"
 MOTIVO_PREDEFINITO = "Azione fatta fuori da iYokai (registro di controllo di Discord)"
 MAX_MOTIVO = 512
+# Tipi di caso che un'azione esterna può aprire (l'unban chiude, non apre).
+ACTION_TYPE_POSSIBILI = ("ban", "kick", "timeout")
 
 
 @dataclass(frozen=True)

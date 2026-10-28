@@ -366,7 +366,14 @@ def test_ogni_action_type_dei_cog_e_dichiarato():
                             )
                             trovati.add(getattr(modulo, valore.id))
                         else:
-                            raise AssertionError(f"{percorso}: action_type non leggibile dal test: {ast.dump(valore)}")
+                            # valore calcolato (es. `voce.tipo`): il modulo deve dichiarare i tipi possibili
+                            modulo = importlib.import_module(str(percorso.with_suffix("")).replace("/", "."))
+                            possibili = getattr(modulo, "ACTION_TYPE_POSSIBILI", None)
+                            assert possibili, (
+                                f"{percorso}: action_type non leggibile dal test ({ast.dump(valore)}): "
+                                "usa una costante o dichiara ACTION_TYPE_POSSIBILI"
+                            )
+                            trovati.update(possibili)
     assert trovati, "nessun create_case trovato: il test non guarda niente"
     assert trovati <= trattenuti | non_trattenuti, f"action_type non dichiarati: {trovati - trattenuti - non_trattenuti}"
 

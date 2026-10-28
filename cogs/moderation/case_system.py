@@ -36,7 +36,7 @@ from discord.ext import commands
 from core import bot_roles, moderation_opzioni
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
-from core.moderation_casi_esterni_logic import caso_da_voce
+from core.moderation_casi_esterni_logic import ACTION_TYPE_POSSIBILI, caso_da_voce
 
 from core.repositories.moderation_repo import moderation_repo, ModerationCase
 from core.premium import PremiumModule, registry, requires_module
@@ -218,6 +218,8 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         if voce.tipo == "unban":
             for tipo in ("ban", "tempban"):
                 await moderation_repo.revoke_active_cases_for_user(guild.id, entry.target.id, tipo, entry.user_id)
+            return
+        if voce.tipo not in ACTION_TYPE_POSSIBILI:
             return
         numero = await moderation_repo.create_case(
             guild_id=guild.id,
