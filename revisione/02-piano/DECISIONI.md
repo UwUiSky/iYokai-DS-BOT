@@ -635,3 +635,35 @@ dalla verifica web nello stesso server. Fasce: basso sotto 25, medio da 25, alto
 (coerente con NF-21: niente ban automatici per impronta) e la risposta è privata, per lo staff. `/mod carico giorni:` mostra per ogni
 persona dello staff casi aperti, appelli decisi e ticket presi in carico, con la quota sul totale; senza classifica a premi e senza
 contare i casi della scala automatica. Entrambi usano il modulo del case system. Le letture stanno in `staff_carico_repo` (nessuna tabella nuova).
+
+## D51 — Chiusura di 23.17: missioni a tre livelli, serie protetta, pass di 90 giorni, carico solo per ADMIN (1/11/2026, scelta di chi sviluppa)
+
+Completa «i dettagli da non perdere» di `VOCI_OMESSE.md`. **Una finestra sola:** `/level progressi` non ha più parametri; apre un menu
+(missioni, traguardi, serie, pass, profilo globale) con i bottoni della sezione aperta. Così `/level` pesa 6.444 caratteri (limite 6.800).
+`/economia progressi` ha `attivo` e `obiettivo_server` (tutti e due facoltativi; senza niente dice com'è).
+
+- **Missioni:** del giorno, **della settimana** (dal lunedì, UTC) e **di tutto il server**. Ogni evento conta sulla missione del giorno e su
+  quella della settimana. Quelle del server sommano ciò che ognuno ha fatto *fino al tetto della sua missione della settimana*: nessuno
+  vince da solo («contano le attività di qualità, non la quantità»). Premio a chi ha dato almeno il 10% della sua missione. Obiettivo del
+  server: impostazione `progressi_obiettivo_server` (messaggi a settimana, di base 1.000, da 50 a 100.000; vocale al 60%), un solo punto
+  di scrittura (D16).
+- **Serie:** niente più bonus in monete (i premi sono **solo estetici**): oggetti del profilo a 7, 14, 30, 60, 100 giorni (non si comprano).
+  Regola delle **36 ore**: la serie sale se la riscossione arriva entro 36 ore dall'ultima, altrimenti riparte da 1. **Protezione
+  comprabile:** lo scudo costa 150 monete, se ne tengono al massimo 2, ognuno copre un giorno saltato (24 ore) e si consuma solo se
+  basta a salvare la serie. **Promemoria a 20 ore:** messaggio privato, *solo per chi lo accende* nella sezione Serie, una volta per
+  riscossione. Poiché il `/level daily` ha l'attesa di 24 ore, a 20 ore il messaggio dice «tra circa N ore puoi riscuotere» e quanto
+  resta prima di perdere la serie.
+- **Pass di 90 giorni, 50 livelli:** stagioni fisse di 90 giorni dal 1/1/2026 (chiave «AAAA-MM» dell'inizio). Gli XP del pass si contano
+  a parte (nuova colonna), non dalla classifica mensile, per rispettare i 90 giorni esatti. 500 XP a livello. Traccia libera: 10 + 2n
+  monete a livello. **Traccia premium:** 20 + 4n monete e oggetti estetici ai livelli 10, 25 e 50; si apre con il **boost** del server
+  (gratis) o con **500.000 monete** (come da richiesta, una volta per stagione). I livelli già fatti si pagano anche sulla traccia
+  premium dopo l'apertura.
+- **Traguardi:** per categoria (Livello, Serie, Missioni, Pass, Segreti) e **nascosti** (scudo, settimana piena, missione del server,
+  traccia premium): compaiono solo quando si ottengono; prima si dice quanti restano.
+- **Carico dello staff:** `/mod carico` richiede il livello **ADMIN** (decisione dell'owner), risposta privata, mai classifica. Mostra casi,
+  appelli, ticket, tempo medio alla prima risposta, ticket riaperti (colonna `tickets.riaperto_volte`, 0482), sanzioni proprie annullate
+  in appello, voto medio dei ticket e una **proposta di turni** (4 fasce di 6 ore UTC, le due persone più attive; avviso sulle fasce scoperte).
+- **Vista forum (8.17):** un post archiviato o bloccato si riapre; se non si riapre si dimentica e se ne crea uno nuovo; un forum con
+  tag obbligatori riceve il primo tag non riservato; dopo un rifiuto la vista di quel forum si ferma 10 minuti con un solo avviso nei log.
+
+Tabelle: 0483 (colonne di `progress_serie` e `progress_stagione`, nuova `progress_server_riscatti`, tutte nel registro dei dati).

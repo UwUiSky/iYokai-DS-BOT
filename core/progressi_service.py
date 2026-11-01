@@ -1,11 +1,11 @@
 """
 core/progressi_service.py
 =========================
-Missioni, serie, traguardi e stagione (D49). I server li accendono con
-`/economia progressi`; spenti, i punti di aggancio del livellamento non fanno nulla.
-Gli eventi si contano in memoria e si scrivono ogni 20 secondi (e a mezzanotte UTC, nel loro giorno). Le ricompense in monete
-passano da `leveling_repo.add_coins`, dopo una scrittura atomica che le dà una volta sola.
-Funzioni coperte: SPEC §23.17 (D49)
+Missioni (giorno, settimana, server), serie con protezione e promemoria, traguardi e pass di 90 giorni
+(D49, D51). I server li accendono con `/economia progressi`; spenti, i punti di aggancio del
+livellamento non fanno nulla. Gli eventi (con gli XP) si contano in memoria e si scrivono ogni 20
+secondi (e a mezzanotte UTC, nel loro giorno). Ogni premio esce da una scrittura atomica, una volta sola.
+Funzioni coperte: SPEC §23.17 (D49, D51)
 Dipende da: core/repositories/progressi_repo.py, core/progressi_logic.py
 """
 
@@ -16,25 +16,38 @@ import logging
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 
+import discord
+
 from core.bot_ready import attendi_bot_pronto
-from core.leveling_logic import period_key
 from core.progressi_logic import (
+    EVENTI,
     EVENTO_DAILY,
-    MISSIONE_PER_CHIAVE,
-    MISSIONI,
-    STAGIONE_GRADINI,
+    MISSIONI_GIORNO,
+    MISSIONI_SERVER,
+    MISSIONI_SETTIMANA,
+    OBIETTIVO_SERVER_BASE,
+    OBIETTIVO_SERVER_MAX,
+    OBIETTIVO_SERVER_MIN,
+    SCUDO_PREZZO,
     Statistiche,
-    bonus_serie,
-    gradini_raggiunti,
-    premio_gradini,
+    giorno_del_periodo,
+    lunedi_di,
+    minimo_partecipazione,
+    missioni_dell_evento,
+    obiettivo_server,
+    serve_promemoria,
+    stagione_di,
+    testo_promemoria,
     traguardi_raggiunti,
 )
-from core.repositories.progressi_repo import ProgressiRepository
+from core.repositories.progressi_repo import EsitoPass, ProgressiRepository
 
 logger = logging.getLogger("iyokai.progressi")
 
 SETTING_ATTIVO = "progressi_attivi"
+SETTING_OBIETTIVO_SERVER = "progressi_obiettivo_server"
 PAUSA_SCRITTURA_SECONDI = 20.0
+CONTROLLI_PROMEMORIA_OGNI = 90  # giri di scrittura: 90 x 20 s = ogni 30 minuti
 MAX_PENDENTI = 20_000  # voci diverse in attesa: oltre, gli eventi nuovi si perdono (tetto della memoria)
 
 
@@ -46,14 +59,18 @@ def _pool():
 
 progressi_repo = ProgressiRepository(pool_provider=_pool)
 
-_pendenti: dict[tuple[int, int, str], int] = {}
+_pendenti: dict[tuple[int, int, str], list[int]] = {}  # (server, utente, evento) -> [quantità, XP]
 _giorno_pendenti: date | None = None  # il giorno (UTC) degli eventi in attesa
 _lavoratore: asyncio.Task | None = None
 _bot = None
 
 
+def _adesso() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 def _oggi() -> date:
-    return datetime.now(timezone.utc).date()
+    return _adesso().date()
 
 
 async def attivo(guild_id: int) -> bool:
@@ -70,15 +87,33 @@ async def imposta_attivo(guild_id: int, acceso: bool, da: int | None = None) -> 
     await db.set_guild_setting(guild_id, SETTING_ATTIVO, acceso, changed_by=da)
 
 
+async def obiettivo_server_base(guild_id: int) -> int:
+    from core.database import db
+
+    valore = await db.get_guild_setting(guild_id, SETTING_OBIETTIVO_SERVER)
+    if isinstance(valore, int) and not isinstance(valore, bool) and valore > 0:
+        return max(OBIETTIVO_SERVER_MIN, min(OBIETTIVO_SERVER_MAX, valore))
+    return OBIETTIVO_SERVER_BASE
+
+
+async def imposta_obiettivo_server(guild_id: int, messaggi: int, da: int | None = None) -> None:
+    """Punto unico (D16): quanti messaggi deve scrivere il server in una settimana (le altre missioni ne seguono)."""
+    from core.database import db
+
+    if not OBIETTIVO_SERVER_MIN <= messaggi <= OBIETTIVO_SERVER_MAX:
+        raise ValueError(f"L'obiettivo va da {OBIETTIVO_SERVER_MIN} a {OBIETTIVO_SERVER_MAX}.")
+    await db.set_guild_setting(guild_id, SETTING_OBIETTIVO_SERVER, messaggi, changed_by=da)
+
+
 # ---------------------------------------------------------------- conteggio degli eventi
-async def registra(guild_id: int, user_id: int, evento: str, quantita: int = 1) -> None:
+async def registra(guild_id: int, user_id: int, evento: str, quantita: int = 1, xp: int = 0) -> None:
     """Un evento di livellamento (messaggio con XP, minuto in vocale). Non solleva mai."""
-    await registra_molti(guild_id, [user_id], evento, quantita)
+    await registra_molti(guild_id, [user_id], evento, quantita, xp)
 
 
-async def registra_molti(guild_id: int, user_ids: list[int], evento: str, quantita: int = 1) -> None:
+async def registra_molti(guild_id: int, user_ids: list[int], evento: str, quantita: int = 1, xp: int = 0) -> None:
     global _giorno_pendenti
-    if not user_ids or evento not in MISSIONE_PER_CHIAVE:
+    if not user_ids or evento not in EVENTI:
         return
     try:
         if not await attivo(guild_id):
@@ -91,7 +126,9 @@ async def registra_molti(guild_id: int, user_ids: list[int], evento: str, quanti
             chiave = (guild_id, user_id, evento)
             if chiave not in _pendenti and len(_pendenti) >= MAX_PENDENTI:
                 continue
-            _pendenti[chiave] = _pendenti.get(chiave, 0) + quantita
+            voce = _pendenti.setdefault(chiave, [0, 0])
+            voce[0] += quantita
+            voce[1] += xp
     except Exception:
         logger.warning("Progressi: evento non contato (server %s)", guild_id, exc_info=True)
 
@@ -99,7 +136,7 @@ async def registra_molti(guild_id: int, user_ids: list[int], evento: str, quanti
 async def svuota(guild_id: int | None = None, user_id: int | None = None) -> None:
     """Scrive gli eventi in attesa (tutti, o solo quelli di un utente: prima di un riscatto)."""
     scelti = [
-        (chiave, n) for chiave, n in list(_pendenti.items())
+        (chiave, tuple(voce)) for chiave, voce in list(_pendenti.items())
         if (guild_id is None or chiave[0] == guild_id) and (user_id is None or chiave[1] == user_id)
     ]
     if not scelti:
@@ -108,11 +145,15 @@ async def svuota(guild_id: int | None = None, user_id: int | None = None) -> Non
     for chiave, _ in scelti:
         _pendenti.pop(chiave, None)
     righe = [
-        (g, u, giorno, evento, n, MISSIONE_PER_CHIAVE[evento].obiettivo)
-        for (g, u, evento), n in scelti
+        (g, u, giorno_del_periodo(m, giorno), m.chiave, n, m.obiettivo)
+        for (g, u, evento), (n, _) in scelti
+        for m in missioni_dell_evento(evento)
     ]
+    stagione = stagione_di(giorno)[0]
+    righe_xp = [(g, u, stagione, xp) for (g, u, _), (_, xp) in scelti if xp > 0]
     try:
         await progressi_repo.aggiungi_progressi(righe)
+        await progressi_repo.aggiungi_xp_pass(righe_xp)
     except Exception:
         logger.warning("Progressi: scrittura non riuscita, eventi persi", exc_info=True)
 
@@ -139,30 +180,65 @@ async def ferma() -> None:
 
 async def _lavora() -> None:
     await attendi_bot_pronto(_bot)
+    giri = 0
     while True:
         await asyncio.sleep(PAUSA_SCRITTURA_SECONDI)
         await svuota()
+        giri += 1
+        if giri % CONTROLLI_PROMEMORIA_OGNI == 0:
+            try:
+                await manda_promemoria(_bot)
+            except Exception:
+                logger.warning("Progressi: promemoria della serie non inviati", exc_info=True)
 
 
 # ---------------------------------------------------------------- serie e traguardi
 async def dopo_riscossione(guild_id: int, user_id: int, colonna: str) -> None:
-    """Dopo `/level daily` o `/level work` riuscito. Solo il giornaliero conta (serie, bonus, missione)."""
+    """Dopo `/level daily` o `/level work` riuscito. Solo il giornaliero conta (serie, premi estetici, missione)."""
     if colonna != "last_daily_at":
         return
     try:
         if not await attivo(guild_id):
             return
-        serie, _, nuovo_giorno = await progressi_repo.registra_riscossione(guild_id, user_id, _oggi())
-        if nuovo_giorno:
-            bonus = bonus_serie(serie)
-            if bonus:
-                from core.repositories.leveling_repo import leveling_repo
-
-                await leveling_repo.add_coins(guild_id, user_id, bonus)
+        esito = await progressi_repo.registra_riscossione(guild_id, user_id, _adesso())
+        if esito.contata:
+            await progressi_repo.regala_premi_serie(guild_id, user_id, esito.serie)
         await registra(guild_id, user_id, EVENTO_DAILY)
         await valuta_traguardi(guild_id, user_id)
     except Exception:
         logger.warning("Progressi: riscossione non registrata (server %s)", guild_id, exc_info=True)
+
+
+async def compra_scudo(guild_id: int, user_id: int) -> str:
+    """«ok», «pieno» o «saldo»: la protezione della serie costa SCUDO_PREZZO monete."""
+    return await progressi_repo.compra_scudo(guild_id, user_id, SCUDO_PREZZO)
+
+
+async def imposta_promemoria(guild_id: int, user_id: int, acceso: bool) -> None:
+    await progressi_repo.imposta_promemoria(guild_id, user_id, acceso)
+
+
+async def manda_promemoria(bot) -> int:
+    """Un messaggio privato a chi l'ha chiesto, 20 ore dopo l'ultima riscossione. Una volta per riscossione."""
+    mandati = 0
+    adesso = _adesso()
+    for guild_id, user_id, serie, ultima, scudi in await progressi_repo.da_avvisare():
+        await progressi_repo.segna_avvisato(guild_id, user_id)  # anche se il messaggio non parte: niente riprove
+        if not serve_promemoria(serie, ultima, scudi, adesso) or not await attivo(guild_id):
+            continue
+        utente = bot.get_user(user_id)
+        if utente is None:
+            try:
+                utente = await bot.fetch_user(user_id)
+            except discord.HTTPException:
+                continue
+        guild = bot.get_guild(guild_id)
+        try:
+            await utente.send(testo_promemoria(serie, ultima, scudi, adesso, guild.name if guild else "un server"))
+            mandati += 1
+        except discord.HTTPException:
+            continue  # messaggi privati chiusi
+    return mandati
 
 
 async def statistiche(guild_id: int, user_id: int, livello: int | None = None) -> Statistiche:
@@ -170,12 +246,16 @@ async def statistiche(guild_id: int, user_id: int, livello: int | None = None) -
         from core.repositories.leveling_repo import leveling_repo
 
         livello = (await leveling_repo.get_totals(guild_id, user_id)).level
-    _, record, _ = await progressi_repo.serie_di(guild_id, user_id)
+    _, record, _, _, _ = await progressi_repo.serie_di(guild_id, user_id)
     return Statistiche(
         livello=livello,
         record_serie=record,
         missioni_completate=await progressi_repo.missioni_completate(guild_id, user_id),
         stagioni_complete=await progressi_repo.stagioni_complete(guild_id, user_id),
+        scudi_usati=await progressi_repo.scudi_usati(guild_id, user_id),
+        missioni_settimana=await progressi_repo.missioni_settimana_riscattate(guild_id, user_id),
+        missioni_server=await progressi_repo.missioni_server_riscattate(guild_id, user_id),
+        pass_premium=int(await progressi_repo.ha_aperto_premium(guild_id, user_id)),
     )
 
 
@@ -194,21 +274,36 @@ class EsitoRiscatto:
 
 
 async def riscatta_missioni(guild_id: int, user_id: int) -> EsitoRiscatto:
-    """Le missioni di oggi finite e non ancora riscosse: ogni premio una sola volta."""
+    """Missioni del giorno, della settimana e del server già finite e non riscosse: ogni premio una sola volta."""
     await svuota(guild_id, user_id)
-    monete, quanti = await progressi_repo.riscatta_missioni(
-        guild_id, user_id, _oggi(), [(m.chiave, m.obiettivo, m.premio) for m in MISSIONI]
-    )
+    oggi = _oggi()
+    monete = quanti = 0
+    for gruppo, giorno in ((MISSIONI_GIORNO, oggi), (MISSIONI_SETTIMANA, lunedi_di(oggi))):
+        m, q = await progressi_repo.riscatta_missioni(
+            guild_id, user_id, giorno, [(x.chiave, x.obiettivo, x.premio) for x in gruppo]
+        )
+        monete, quanti = monete + m, quanti + q
+    base = await obiettivo_server_base(guild_id)
+    for ms in MISSIONI_SERVER:
+        m = await progressi_repo.riscatta_server(
+            guild_id, user_id, lunedi_di(oggi), ms.chiave, ms.personale,
+            obiettivo_server(ms, base), minimo_partecipazione(ms), ms.premio,
+        )
+        if m:
+            monete, quanti = monete + m, quanti + 1
     nuovi = await valuta_traguardi(guild_id, user_id) if quanti else []
     return EsitoRiscatto(monete, quanti, tuple(nuovi))
 
 
-async def riscatta_stagione(guild_id: int, user_id: int) -> EsitoRiscatto:
-    """I gradini della stagione del mese raggiunti e non ancora riscossi."""
-    mese = period_key()
-    raggiunti = gradini_raggiunti(await progressi_repo.xp_del_mese(guild_id, user_id, mese))
-    esito = await progressi_repo.riscatta_gradini(guild_id, user_id, mese, raggiunti, premio_gradini)
-    if esito is None:
-        return EsitoRiscatto(0, 0)
-    nuovi = await valuta_traguardi(guild_id, user_id) if raggiunti >= STAGIONE_GRADINI else []
-    return EsitoRiscatto(esito[1], esito[0], tuple(nuovi))
+async def riscatta_pass(guild_id: int, user_id: int) -> tuple[EsitoPass, tuple[str, ...]]:
+    """I livelli del pass raggiunti e non riscossi (e gli oggetti estetici). Restituisce anche i traguardi nuovi."""
+    esito = await progressi_repo.riscatta_pass(guild_id, user_id, stagione_di(_oggi())[0])
+    nuovi = await valuta_traguardi(guild_id, user_id) if not esito.vuoto else []
+    return esito, tuple(nuovi)
+
+
+async def sblocca_premium(guild_id: int, user_id: int, booster: bool) -> tuple[str, tuple[str, ...]]:
+    """Apre la traccia premium: gratis per chi ha il boost del server, altrimenti a pagamento. «ok», «gia», «saldo»."""
+    esito = await progressi_repo.sblocca_premium(guild_id, user_id, stagione_di(_oggi())[0], pagando=not booster)
+    nuovi = await valuta_traguardi(guild_id, user_id) if esito == "ok" else []
+    return esito, tuple(nuovi)

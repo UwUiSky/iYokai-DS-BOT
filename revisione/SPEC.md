@@ -2110,20 +2110,17 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   (non le sottostringhe) e normalizza lettere cirilliche/greche simili, caratteri invisibili, punteggiatura e
   lettere staccate.
   → **Stato 27/10 (r10):** profilo come immagine e sfondo con immagine fatti il 15/10; le vincite dei giochi con le monete restano fuori dalla classifica del mese per scelta (niente premi per il gioco d'azzardo).
-- `[~]` 23.17 Idee rimandate di `BACKLOG.md`: missioni, traguardi,
+- `[x]` 23.17 Idee rimandate di `BACKLOG.md`: missioni, traguardi,
   serie, battle pass, profilo globale positivo, punteggio di rischio,
   carico dello staff (NF-41, fase F14)
-  → **Stato 28/10 (r12, D49, D50):** fatta la prima forma di ogni voce.
-  `/level progressi sezione:` (missioni di oggi, traguardi, serie, stagione, profilo globale) e `/economia progressi attivo:` (spenti
-  di base): `core/progressi_logic.py`, `core/progressi_service.py`, `core/repositories/progressi_repo.py`, `cogs/leveling/progressi.py`,
-  migrazione 0481; gli eventi arrivano dai punti del livellamento (messaggio con XP, minuto in vocale, `/level daily`).
-  `/mod rischio` e `/mod carico` (`core/staff_rischio_logic.py`, `core/repositories/staff_carico_repo.py`, `cogs/moderation/rischio_staff.py`).
-  Test: `tests/test_progressi.py`, `tests/test_staff_rischio.py`.
-  → **Restano** (dettagli da non perdere di `revisione/01-analisi/VOCI_OMESSE.md`, D18): missioni della settimana e di tutto il
-  server; serie con protezione comprabile, promemoria dopo 20 ore, azzeramento dopo 36 ore, premi estetici a 7/14/30/60/100
-  giorni; battle pass di 90 giorni e 50 livelli con traccia «premium del server» (boost o monete); traguardi a categorie e
-  nascosti; carico dello staff con tempo di risposta, ticket riaperti, sanzioni annullate in appello, soddisfazione e
-  proposta di turni.
+  → **Stato 1/11 (r12, D49, D50, D51):** fatto tutto. `/level progressi` apre una finestra con menu: missioni del giorno, della
+  settimana e di tutto il server; traguardi per categoria e nascosti; serie con regola delle 36 ore, scudo comprabile (150 monete),
+  promemoria a 20 ore per chi lo chiede e premi estetici a 7/14/30/60/100 giorni; pass di 90 giorni con 50 livelli e traccia premium
+  (boost o 500.000 monete); profilo globale. `/economia progressi attivo: obiettivo_server:`. `/mod rischio`; `/mod carico` solo ADMIN, con
+  tempo di risposta, ticket riaperti, sanzioni annullate in appello, voto e proposta di turni. File: `core/progressi_logic.py`,
+  `core/progressi_service.py`, `core/repositories/progressi_repo.py`, `cogs/leveling/progressi.py`, `core/staff_rischio_logic.py`,
+  `core/repositories/staff_carico_repo.py`, `cogs/moderation/rischio_staff.py`; migrazioni 0481-0483. Test: `tests/test_progressi.py`,
+  `tests/test_staff_rischio.py`, `tests/test_profiles.py`.
 
 ## §24 PANNELLO WEB: CONFIGURAZIONE DEI SERVER — da fare (fase F10)
 

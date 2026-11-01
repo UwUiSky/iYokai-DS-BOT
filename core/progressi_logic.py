@@ -190,6 +190,20 @@ def serve_promemoria(serie: int, ultima: datetime | None, scudi: int, adesso: da
     return SERIE_PROMEMORIA_ORE <= _ore(ultima, adesso) <= SERIE_LIMITE_ORE + 24 * scudi
 
 
+def testo_promemoria(serie: int, ultima: datetime, scudi: int, adesso: datetime, nome_server: str) -> str:
+    """Il messaggio privato: quanto manca per riscuotere e quanto resta prima di perdere la serie."""
+    ore_dopo = _ore(ultima, adesso)
+    puoi = max(0.0, 24 - ore_dopo)
+    resta = scade_tra_ore(ultima, scudi, adesso) or 0.0
+    quando = "Puoi riscuotere adesso" if puoi <= 0 else f"Potrai riscuotere tra circa {math.ceil(puoi)} ore"
+    return (
+        f"🔥 Hai una serie di **{serie}** giorni su **{nome_server}**. {quando} con `/level daily`; "
+        f"la serie si azzera tra circa {math.ceil(resta)} ore"
+        + (f" (scudi: {scudi})." if scudi else ".")
+        + "\nPer non ricevere più questo avviso: `/level progressi`, sezione Serie."
+    )
+
+
 def premi_serie_raggiunti(serie: int) -> list[str]:
     """Gli oggetti estetici delle tappe già superate (l'assegnazione non li dà due volte)."""
     return [oggetto for tappa, oggetto in sorted(PREMI_SERIE.items()) if serie >= tappa]
@@ -304,7 +318,7 @@ def oggetti_livelli(da_escluso: int, a_incluso: int) -> list[str]:
 
 
 def testo_pass(
-    xp: int, liberi: int, premium_riscossi: int, premium: bool, fine: date, boost: bool = False
+    xp: int, liberi: int, premium_riscossi: int, premium: bool, fine: date, booster: bool = False
 ) -> str:
     raggiunti = livelli_raggiunti(xp)
     righe = [
@@ -321,8 +335,9 @@ def testo_pass(
             )
         )
     else:
+        ce_l_hai = "ce l'hai" if booster else "non ce l'hai"
         righe.append(
-            f"Traccia premium: spenta. Si apre con il boost del server ({'ce l\'hai' if boost else 'non ce l\'hai'}) "
+            f"Traccia premium: spenta. Si apre con il boost del server ({ce_l_hai}) "
             f"o con {PASS_PREZZO_PREMIUM:,} coin. Ha il doppio delle coin e premi estetici ai livelli "
             + ", ".join(str(n) for n in sorted(PREMI_PASS_PREMIUM)) + "."
         )
