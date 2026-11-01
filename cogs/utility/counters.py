@@ -81,7 +81,7 @@ class CountersCog(CogConGruppi, commands.Cog):
             return False
         return True
 
-    @comando_di_gruppo("moduli", nome="crea", descrizione="Crea un canale che mostra un numero.", sottogruppo=_SG_CONTATORI)
+    @comando_di_gruppo("admin-moduli", nome="crea", descrizione="Crea un canale che mostra un numero.", sottogruppo=_SG_CONTATORI)
     @app_commands.describe(
         tipo="Cosa contare",
         canale="Un canale vocale tuo; se non lo scegli ne creo uno chiuso a tutti",
@@ -155,7 +155,7 @@ class CountersCog(CogConGruppi, commands.Cog):
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
 
-    @comando_di_gruppo("moduli", nome="elenco", descrizione="Mostra i contatori del server.", sottogruppo=_SG_CONTATORI)
+    @comando_di_gruppo("admin-moduli", nome="elenco", descrizione="Mostra i contatori del server.", sottogruppo=_SG_CONTATORI)
     async def elenco(self, interaction: discord.Interaction) -> None:
         if not await self._pronto(interaction):
             return
@@ -169,7 +169,7 @@ class CountersCog(CogConGruppi, commands.Cog):
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
 
-    @comando_di_gruppo("moduli", nome="elimina", descrizione="Smetti di aggiornare un contatore (il canale resta).", sottogruppo=_SG_CONTATORI)
+    @comando_di_gruppo("admin-moduli", nome="elimina", descrizione="Smetti di aggiornare un contatore (il canale resta).", sottogruppo=_SG_CONTATORI)
     @app_commands.describe(numero="Il numero mostrato da /moduli contatori elenco")
     async def elimina(self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 2_000_000_000]) -> None:
         if not await self._pronto(interaction):

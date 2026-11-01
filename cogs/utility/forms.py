@@ -223,7 +223,7 @@ class FormsCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.send_modal(FormModal(self, form))
 
-    @comando_di_gruppo("moduli", nome="crea", descrizione="Crea un modulo o una candidatura.", sottogruppo=_SG_MODULI)
+    @comando_di_gruppo("admin-moduli", nome="crea", descrizione="Crea un modulo o una candidatura.", sottogruppo=_SG_MODULI)
     @app_commands.describe(
         nome="Nome corto, senza spazi",
         titolo=f"Titolo della finestra (massimo {MAX_TITOLO} caratteri)",
@@ -275,7 +275,7 @@ class FormsCog(CogConGruppi, commands.Cog):
         }
         await interaction.response.send_message(messaggi[esito], ephemeral=True)
 
-    @comando_di_gruppo("moduli", nome="elimina", descrizione="Elimina un modulo e le sue risposte.", sottogruppo=_SG_MODULI)
+    @comando_di_gruppo("admin-moduli", nome="elimina", descrizione="Elimina un modulo e le sue risposte.", sottogruppo=_SG_MODULI)
     @app_commands.describe(nome="Il modulo da eliminare")
     @app_commands.autocomplete(nome=_nomi_admin)
     async def elimina(self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, MAX_NOME]) -> None:
@@ -287,7 +287,7 @@ class FormsCog(CogConGruppi, commands.Cog):
             ephemeral=True,
         )
 
-    @comando_di_gruppo("moduli", nome="elenco", descrizione="I moduli di questo server.", sottogruppo=_SG_MODULI)
+    @comando_di_gruppo("admin-moduli", nome="elenco", descrizione="I moduli di questo server.", sottogruppo=_SG_MODULI)
     async def elenco(self, interaction: discord.Interaction) -> None:
         if not await self._pronto(interaction):
             return

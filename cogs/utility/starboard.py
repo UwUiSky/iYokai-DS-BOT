@@ -183,7 +183,7 @@ class StarboardCog(CogConGruppi, commands.Cog):
         return True
 
     @comando_di_gruppo(
-        "moduli",
+        "admin-moduli",
         nome="imposta",
         descrizione="Scegli il canale della bacheca e la soglia di stelle.",
         sottogruppo=_SG_STARBOARD,
@@ -231,7 +231,7 @@ class StarboardCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "moduli",
+        "admin-moduli",
         nome="soglia",
         descrizione="Cambia quante stelle servono per finire in bacheca.",
         sottogruppo=_SG_STARBOARD,
@@ -249,7 +249,7 @@ class StarboardCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(
-        "moduli",
+        "admin-moduli",
         nome="disattiva",
         descrizione="Spegni la bacheca.",
         sottogruppo=_SG_STARBOARD,

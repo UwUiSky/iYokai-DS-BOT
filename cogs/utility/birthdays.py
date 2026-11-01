@@ -139,7 +139,7 @@ class BirthdaysCog(CogConGruppi, commands.Cog):
         )
 
     # ---- admin
-    @comando_di_gruppo("moduli", nome="canale", descrizione="Scegli il canale degli auguri (vuoto per spegnerli).", sottogruppo=_SG_COMPLEANNI)
+    @comando_di_gruppo("admin-moduli", nome="canale", descrizione="Scegli il canale degli auguri (vuoto per spegnerli).", sottogruppo=_SG_COMPLEANNI)
     @app_commands.describe(
         canale="Dove fare gli auguri",
         messaggio=f"Il testo, con {{users}} al posto dei festeggiati (massimo {MAX_MESSAGGIO} caratteri)",
@@ -171,7 +171,7 @@ class BirthdaysCog(CogConGruppi, commands.Cog):
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
 
-    @comando_di_gruppo("moduli", nome="ruolo", descrizione="Un ruolo per 24 ore a chi compie gli anni (vuoto per toglierlo).", sottogruppo=_SG_COMPLEANNI)
+    @comando_di_gruppo("admin-moduli", nome="ruolo", descrizione="Un ruolo per 24 ore a chi compie gli anni (vuoto per toglierlo).", sottogruppo=_SG_COMPLEANNI)
     @app_commands.describe(ruolo="Il ruolo del compleanno")
     async def ruolo(self, interaction: discord.Interaction, ruolo: discord.Role | None = None) -> None:
         if not await self._pronto(interaction):

@@ -84,7 +84,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "moduli",
+        "admin-moduli",
         nome="feed",
         descrizione="Segui un feed RSS/Atom.",
         sottogruppo=SOTTOGRUPPO,
@@ -162,7 +162,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "moduli",
+        "admin-moduli",
         nome="webhook",
         descrizione="Crea un webhook per pubblicare da servizi esterni.",
         sottogruppo=SOTTOGRUPPO,
@@ -239,7 +239,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "moduli",
+        "admin-moduli",
         nome="rimuovi",
         descrizione="Rimuove un avviso o un webhook.",
         sottogruppo=SOTTOGRUPPO,
@@ -289,7 +289,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
             )
 
     @comando_di_gruppo(
-        "moduli",
+        "admin-moduli",
         nome="twitch",
         descrizione="Avvisa quando uno streamer Twitch va live.",
         sottogruppo=SOTTOGRUPPO,
@@ -338,7 +338,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "moduli",
+        "admin-moduli",
         nome="youtube-live",
         descrizione="Avvisa quando un canale YouTube va live.",
         sottogruppo=SOTTOGRUPPO,
@@ -398,7 +398,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "moduli",
+        "admin-moduli",
         nome="kick",
         descrizione="Avvisa quando un canale Kick va in diretta.",
         sottogruppo=SOTTOGRUPPO,
@@ -462,7 +462,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "moduli",
+        "admin-moduli",
         nome="opzioni",
         descrizione="Opzioni di un avviso: ruolo, fine diretta, bottone.",
         sottogruppo=SOTTOGRUPPO,
@@ -610,7 +610,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "moduli",
+        "admin-moduli",
         nome="ruolo-live",
         descrizione="Ruolo dato a chi è in diretta.",
         sottogruppo=SOTTOGRUPPO,
@@ -655,7 +655,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "moduli",
+        "admin-moduli",
         nome="guida-social",
         descrizione="Avvisi per TikTok, Instagram e X.",
         sottogruppo=SOTTOGRUPPO,
@@ -668,7 +668,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "moduli",
+        "admin-moduli",
         nome="elenco",
         descrizione="Elenca gli avvisi del server.",
         sottogruppo=SOTTOGRUPPO,

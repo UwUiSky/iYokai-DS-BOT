@@ -216,7 +216,7 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
             return False
         return True
 
-    @comando_di_gruppo("moduli", nome="impostazioni", descrizione="Escludi canali o ruoli dalle statistiche.", sottogruppo=_SG)
+    @comando_di_gruppo("admin-moduli", nome="impostazioni", descrizione="Escludi canali o ruoli dalle statistiche.", sottogruppo=_SG)
     @app_commands.describe(
         canale="Canale da escludere (o da rimettere se già escluso)",
         ruolo="Ruolo da escludere (o da rimettere se già escluso)",
@@ -243,7 +243,7 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
         righe.append(f"Ruoli esclusi: {', '.join(f'<@&{r}>' for r in imp.ignored_roles[:20]) or 'nessuno'}")
         await interaction.response.send_message("\n".join(righe)[:2000], ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("moduli", nome="ruolo-aggiungi", descrizione="Dai un ruolo a chi è attivo e toglilo a chi smette.", sottogruppo=_SG)
+    @comando_di_gruppo("admin-moduli", nome="ruolo-aggiungi", descrizione="Dai un ruolo a chi è attivo e toglilo a chi smette.", sottogruppo=_SG)
     @app_commands.describe(
         ruolo="Il ruolo da dare", metrica="Cosa contare", soglia="Quanto serve nel periodo",
         giorni="Periodo in giorni (da 1 a 90)", togli="Togli il ruolo a chi scende sotto la soglia (sì)",
@@ -290,7 +290,7 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
 
-    @comando_di_gruppo("moduli", nome="ruolo-elimina", descrizione="Elimina una regola dei ruoli per attività.", sottogruppo=_SG)
+    @comando_di_gruppo("admin-moduli", nome="ruolo-elimina", descrizione="Elimina una regola dei ruoli per attività.", sottogruppo=_SG)
     @app_commands.describe(regola="Il numero della regola (lo trovi in /moduli statistiche elenco)")
     async def ruolo_elimina(self, interaction: discord.Interaction, regola: app_commands.Range[int, 1, 2_000_000_000]) -> None:
         if not await self._pronto(interaction):
@@ -300,7 +300,7 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "activitystat_regola_eliminata") if ok else await testo_per(interaction, "activitystat_non_trovo_questa_regola"), ephemeral=True
         )
 
-    @comando_di_gruppo("moduli", nome="elenco", descrizione="Mostra regole ed esclusioni delle statistiche.", sottogruppo=_SG)
+    @comando_di_gruppo("admin-moduli", nome="elenco", descrizione="Mostra regole ed esclusioni delle statistiche.", sottogruppo=_SG)
     async def elenco(self, interaction: discord.Interaction) -> None:
         if not await self._pronto(interaction):
             return
@@ -317,7 +317,7 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
         embed = discord.Embed(title=await testo_per(interaction, "activitystat_statistiche_di_attivita"), description="\n".join(righe)[:4000], color=discord.Color.blurple())
         await interaction.response.send_message(embed=embed, ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("moduli", nome="diagnosi", descrizione="Perché le statistiche non si contano?", sottogruppo=_SG)
+    @comando_di_gruppo("admin-moduli", nome="diagnosi", descrizione="Perché le statistiche non si contano?", sottogruppo=_SG)
     async def diagnosi(self, interaction: discord.Interaction) -> None:
         if not await self._pronto(interaction):
             return
