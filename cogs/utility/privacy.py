@@ -24,7 +24,7 @@ from core.i18n import testo_per
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.invio_file import invia_file
-from cogs.ai._privacy_ai import proposta_per
+from cogs.ai._privacy_ai import proposte_per
 from core.repositories.data_deletion_request_repo import (
     MOTIVO_MAX,
     STATO_RIFIUTATA,
@@ -116,13 +116,12 @@ class PrivacyCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message("Nessuna richiesta in attesa.", ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)  # l'AI può metterci qualche secondo
-        righe = []
-        for r in richieste:
-            proposta = await proposta_per(r["motivo"])
-            righe.append(
-                f"**{r['id']}** · utente `{r['user_id']}` · {discord.utils.format_dt(r['richiesta_il'], 'R')}"
-                + (f" · {r['motivo']}" if r["motivo"] else "") + f"\n{proposta.riga()}"
-            )
+        proposte = await proposte_per([r["motivo"] for r in richieste])
+        righe = [
+            f"**{r['id']}** · utente `{r['user_id']}` · {discord.utils.format_dt(r['richiesta_il'], 'R')}"
+            + (f" · {r['motivo']}" if r["motivo"] else "") + f"\n{proposta.riga()}"
+            for r, proposta in zip(richieste, proposte)
+        ]
         await invia_a_pagine(interaction, "Richieste di cancellazione", righe, dopo_defer=True)
 
     @comando_di_gruppo(

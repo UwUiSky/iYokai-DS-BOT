@@ -45,3 +45,17 @@ async def test_con_ai_la_proposta_viene_dal_modello(clean_db, monkeypatch):
         assert p.da_ai and p.azione == "chiarire"
     finally:
         imposta_servizio_ai(None)
+
+
+async def test_tante_richieste_al_massimo_dieci_chiamate_all_ai(clean_db, monkeypatch):
+    """Fino a 100 richieste in attesa: l'AI legge solo le prime 10, le altre hanno la proposta fissa (15 minuti, costo)."""
+    monkeypatch.setattr(ai_repo, "_pool_provider", lambda: clean_db)
+    risposta = '{"riassunto": "Vuole sparire", "azione": "eseguire"}'
+    servizio, trasporto = servizio_finto(ai_repo, trasporto=TrasportoFinto(risposte={"alfa": risposta}), fornitori=[fornitore("alfa", tipi=("giudizio",))])
+    imposta_servizio_ai(servizio)
+    try:
+        proposte = await privacy_ai.proposte_per([f"motivo numero {i}" for i in range(14)] + [None])
+        assert len(proposte) == 15 and len(trasporto.chiamate) <= privacy_ai.MAX_PROPOSTE_AI
+        assert all(p.da_ai for p in proposte[:10]) and not any(p.da_ai for p in proposte[10:])
+    finally:
+        imposta_servizio_ai(None)
