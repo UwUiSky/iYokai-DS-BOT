@@ -362,3 +362,34 @@ async def test_imposta_ruolo_admin_senza_amministratore_rifiutato(finto_db):
     amministratore = fake_member(6, guild_permissions=discord.Permissions(administrator=True))
     await ca.imposta_ruolo(guild, ca.TipoRuolo.ADMIN, ruolo, changed_by=6, autore=amministratore)
     assert await ca.leggi_ruolo(77, ca.TipoRuolo.ADMIN) == RUOLO
+
+
+# ---- Livello.FOUNDER (D60): passa solo guild.owner_id ----
+
+def _decidi_founder(user_id, *, perm_all=True, ruolo=True, guild_owner_id=OWNER_SERVER):
+    return decidi_accesso(
+        Livello.FOUNDER, user_id=user_id, owner_bot_id=OWNER_BOT, guild_owner_id=guild_owner_id,
+        permessi=discord.Permissions.all() if perm_all else discord.Permissions.none(),
+        ruoli_utente_ids={RUOLO} if ruolo else set(), ruolo_configurato_id=RUOLO,
+    )
+
+
+def test_founder_passa_solo_il_proprietario_del_server():
+    assert _decidi_founder(OWNER_SERVER, perm_all=False, ruolo=False) is True
+    assert _decidi_founder(UTENTE) is False  # nemmeno con administrator e ruolo admin del bot
+    assert _decidi_founder(OWNER_BOT) is False  # nemmeno l'owner del bot
+    assert _decidi_founder(OWNER_SERVER, guild_owner_id=None) is False
+
+
+async def test_founder_il_check_rifiuta_un_amministratore_con_il_messaggio_giusto(finto_db):
+    finto_db.valori[(77, ca.SETTING_ADMIN_ROLE)] = RUOLO
+    inter = _interazione(perm="administrator", ruoli=[RUOLO])
+    with pytest.raises(ca.AccessoNegato) as e:
+        await ca.controlla(inter, Livello.FOUNDER)
+    assert e.value.chiave == "accesso_founder"
+    assert "proprietario del server" in e.value.messaggio
+
+
+async def test_founder_il_check_ammette_il_proprietario(finto_db):
+    assert await ca.puo_usare(_interazione(user_id=OWNER_SERVER), Livello.FOUNDER) is True
+    assert await ca.puo_usare(_interazione(user_id=OWNER_BOT, perm="administrator"), Livello.FOUNDER) is False

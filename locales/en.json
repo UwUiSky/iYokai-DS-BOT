@@ -1,5 +1,6 @@
 {
   "accesso_admin": "You cannot use this command: you need the \"Manage Server\" permission or the bot's admin role.",
+  "accesso_founder": "This command is reserved for the server owner.",
   "accesso_log": "You cannot use this command: you need the \"Manage Server\" permission or the bot's admin role.",
   "accesso_mod": "You cannot use this command: you need the \"Timeout Members\" permission or the bot's mod role.",
   "accesso_modban": "You cannot use this command: you need the \"Ban Members\" permission or the bot's ban role.",

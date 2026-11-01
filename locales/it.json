@@ -1,5 +1,6 @@
 {
   "accesso_admin": "Non puoi usare questo comando: serve il permesso «Gestisci server» o il ruolo admin del bot.",
+  "accesso_founder": "Questo comando è riservato al proprietario del server.",
   "accesso_log": "Non puoi usare questo comando: serve il permesso «Gestisci server» o il ruolo admin del bot.",
   "accesso_mod": "Non puoi usare questo comando: serve il permesso «Metti in timeout i membri» o il ruolo mod del bot.",
   "accesso_modban": "Non puoi usare questo comando: serve il permesso «Banna i membri» o il ruolo ban del bot.",
