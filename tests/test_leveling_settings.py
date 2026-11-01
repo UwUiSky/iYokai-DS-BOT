@@ -520,9 +520,9 @@ def _messaggio_inviato(interazione) -> str:
 
 
 @pytest.mark.asyncio
-async def test_i_comandi_stanno_sotto_level_impostazioni(cog_comandi):
+async def test_i_comandi_stanno_sotto_economia_livelli(cog_comandi):
     _, comandi, _ = cog_comandi
-    nomi = sorted(n for n in comandi if n.startswith("level impostazioni"))
+    nomi = sorted(n for n in comandi if n.startswith("economia livelli"))
     assert nomi == [
         "economia livelli annuncio",
         "economia livelli card",

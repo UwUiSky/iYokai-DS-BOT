@@ -18,7 +18,7 @@ from cogs.utility.snipe import setup as snipe_setup
 from core.command_groups import GRUPPI
 from tests.support.percorsi import percorsi_del_gruppo
 
-ATTESI = {"ping", "poll", "serverstats", "reactionsnipe", "reminder set", "reminder list", "reminder cancel"}
+ATTESI = {"ping", "serverstats", "snipe reazione", "reminder set", "reminder list", "reminder cancel"}
 VECCHI_TOP = {"ping", "poll", "serverstats", "reactionsnipe", "reminder"}
 
 
@@ -28,6 +28,7 @@ async def test_utility_ha_i_comandi_giusti_ed_e_aperto_a_tutti():
         await setup(bot)
     gruppo = GRUPPI["utility"]
     assert ATTESI <= percorsi_del_gruppo("utility")
+    assert "crea" in percorsi_del_gruppo("sondaggi")  # D56: i sondaggi hanno il loro gruppo
     assert gruppo.livello is None and gruppo.default_permissions is None
     assert gruppo.guild_only is True
     assert len(gruppo.commands) <= 25

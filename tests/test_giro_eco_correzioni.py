@@ -404,7 +404,7 @@ async def comandi(monkeypatch, clean_db):
 async def test_chi_non_e_admin_non_puo_usare_level_impostazioni(comandi, nome):
     from core.command_access import AccessoNegato
 
-    comando = comandi[f"level impostazioni {nome}"]
+    comando = comandi[f"economia livelli {nome}"]
     interazione = fake_interaction(guild=fake_guild(GUILD), user=fake_member(user_id=42))
 
     with pytest.raises((AccessoNegato, discord.app_commands.CheckFailure)):

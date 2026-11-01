@@ -33,7 +33,7 @@ async def test_scheduled_messages_cog_si_carica_e_si_registra_correttamente():
     assert module.premium_capable is False
 
     assert {
-        "messaggi programma", "messaggi programmati", "messaggi annulla",
-    } <= percorsi_del_gruppo("admin")
+        "programmati crea", "programmati elenco", "programmati annulla",
+    } <= percorsi_del_gruppo("messaggi")
 
     assert SCHEDULED_MESSAGE_ACTION_TYPE in scheduler._handlers

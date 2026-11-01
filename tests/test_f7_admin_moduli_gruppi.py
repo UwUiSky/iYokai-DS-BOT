@@ -26,8 +26,10 @@ ADMIN_ATTESI = {
     "config history", "config rollback", "config reset", "config export", "config import",
     "lingua show", "lingua set",
     "setup attiva", "setup wizard",
-    "messaggi programma", "messaggi programmati", "messaggi annulla",
-    "messaggi sticky-set", "messaggi sticky-togli",
+}
+# D56: i messaggi programmati e fissi sono il gruppo /messaggi.
+MESSAGGI_ATTESI = {
+    "programmati crea", "programmati elenco", "programmati annulla", "fissi imposta", "fissi togli",
 }
 # D25 (15/10): il blocco backup è il gruppo di primo livello /backup.
 BACKUP_ATTESI = {"main", "crea", "collega", "promuovi", "restore-utenti", "restore-modo"}
@@ -59,6 +61,8 @@ async def test_admin_e_moduli_hanno_i_comandi_giusti_e_il_livello_giusto():
     bot = await _carica_cog()
     assert ADMIN_ATTESI <= percorsi_del_gruppo("admin")
     assert MODULI_ATTESI <= percorsi_del_gruppo("moduli")
+    assert MESSAGGI_ATTESI <= percorsi_del_gruppo("messaggi")
+    assert not {p for p in percorsi_del_gruppo("admin") if p.startswith("messaggi ")}
     assert BACKUP_ATTESI <= percorsi_del_gruppo("backup")
     assert not {p for p in percorsi_del_gruppo("admin") if p.startswith("backup ")}
     assert GRUPPI["admin"].livello is Livello.ADMIN
@@ -71,7 +75,7 @@ async def test_admin_e_moduli_hanno_i_comandi_giusti_e_il_livello_giusto():
 
 async def test_admin_e_moduli_rispettano_i_tetti_e_non_duplicano_i_permessi():
     await _carica_cog()
-    for nome in ("admin", "moduli"):
+    for nome in ("admin", "moduli", "messaggi"):
         gruppo = GRUPPI[nome]
         assert len(gruppo.commands) <= 25
         for figlio in gruppo.commands:

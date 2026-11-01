@@ -166,7 +166,7 @@ async def cog(db_pronto):
     from cogs.utility.politica import PoliticaCog
 
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
-    gruppo = app_commands.Group(name="fun", description="giochi")
+    gruppo = app_commands.Group(name="immagini", description="immagini")
 
     @gruppo.command(name="meme", description="un meme")
     async def meme(interaction):  # pragma: no cover
