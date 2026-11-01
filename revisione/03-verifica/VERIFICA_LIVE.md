@@ -1302,3 +1302,5 @@ Serve: server di prova con AutoMod e AI accesi (`/ai attiva`), account A senza p
 15. `/ai privacy`-come-owner: `/owner privacy richieste` mostra per ogni richiesta una riga di riassunto con l'azione proposta dall'AI (o «proposta fissa» se l'AI è ferma); `approva` e `rifiuta` restano a mano.
 16. `/ai modello` (solo owner): senza opzioni elenca i fornitori; `fornitore:x fascia:alta` e `tetto_token:300` valgono subito; `togli_tetto:Sì` lo toglie.
 17. Canale con `/ai traduzione`: tre messaggi di fila della stessa persona danno una sola traduzione.
+18. iYokai App: `/trova cosa:promemoria` elenca comandi e menu; `/assistente domanda:...` risponde con l'AI e, con l'AI ferma o spenta da `/utility ai preferenza`, ripiega sulla ricerca.
+19. Pannello: `/server/<id>/ai` ha i link a «Altre scelte» (lore, quote, parole vietate, canali spenti: si ritrovano poi in `/ai stato`), «Riepilogo» (ultimo riepilogo) e «Uso dell'AI».

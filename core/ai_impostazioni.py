@@ -129,3 +129,35 @@ async def spegni_ai(guild_id: int, user_id: int) -> str:
 
     await ai_repo.registra_consenso(guild_id, user_id, False)
     return "AI spenta in questo server."
+
+
+MAX_PAROLE_VIETATE = 50
+MAX_CANALI_SPENTI = 100
+
+
+def pulisci_parole_vietate(testo: str) -> tuple[str, ...]:
+    """Una voce per riga (o separata da virgola): minuscole, 2-60 caratteri, senza doppioni, al massimo 50."""
+    viste: list[str] = []
+    for pezzo in testo.replace(",", "\n").splitlines():
+        voce = " ".join(pezzo.lower().split())
+        if 2 <= len(voce) <= 60 and voce not in viste:
+            viste.append(voce)
+    return tuple(viste[:MAX_PAROLE_VIETATE])
+
+
+async def imposta_parole_vietate(guild_id: int, testo: str) -> tuple[str, ...]:
+    """L'elenco intero delle parole che l'AI rifiuta (pannello web)."""
+    from core.repositories.ai_repo import ai_repo
+
+    parole = pulisci_parole_vietate(testo)
+    await ai_repo.imposta(guild_id, parole_vietate=parole)
+    return parole
+
+
+async def imposta_canali_spenti(guild_id: int, ids: list[int], validi: set[int]) -> tuple[int, ...]:
+    """I canali dove l'AI resta spenta: solo canali veri del server, al massimo 100 (pannello web)."""
+    from core.repositories.ai_repo import ai_repo
+
+    scelti = tuple(dict.fromkeys(i for i in ids if i in validi))[:MAX_CANALI_SPENTI]
+    await ai_repo.imposta(guild_id, canali_spenti=scelti)
+    return scelti

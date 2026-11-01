@@ -2351,10 +2351,12 @@ di quel file.
 
 **Pannello web**
 
-- `[ ]` 25.91 Pagina AI del pannello (AI-R-098; vedi 24.2)
+- `[x]` 25.91 Pagina AI del pannello (AI-R-098; vedi 24.2)
+  → **Stato 29/10 (r12ai):** core/web_panel_ai.py (una riga in web_panel_server): oltre alla pagina base, /server/<id>/ai/altro con lore, tetto di spesa e quote, parole vietate e canali spenti, dagli stessi punti dei comandi (core/ai_impostazioni.py). Test: tests/test_web_panel_ai.py
 - `[x]` 25.92 Riepilogo del server visibile sul pannello (AI-R-099)
-  → **Stato 29/10 (r12ai):** l'ultimo riepilogo è salvato in `ai_riepiloghi.ultimo_testo`; la pagina del pannello lo legge dalle rotte AI (vedi 25.91).
-- `[ ]` 25.93 Pagina "Uso dell'AI" nel centro privacy (AI-R-100)
+  → **Stato 29/10 (r12ai):** l'ultimo riepilogo è salvato in `ai_riepiloghi.ultimo_testo`; la pagina `/server/<id>/ai/riepilogo` del pannello lo mostra (vedi 25.91).
+- `[x]` 25.93 Pagina "Uso dell'AI" nel centro privacy (AI-R-100)
+  → **Stato 29/10 (r12ai):** /server/<id>/ai/uso: livello dei messaggi, servizi esterni in uso e tabella di cosa conserva l'AI (dal registro dei dati, stessa fonte della privacy policy).
 
 **Richieste dell'owner del 05/10/2026** (D19)
 
