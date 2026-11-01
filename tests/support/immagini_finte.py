@@ -89,11 +89,13 @@ def jpeg_con_mp4(n_byte: int = 6000) -> bytes:
 
 
 def qr(testo: str, lato: int = 220) -> Image.Image:
-    """Un QR vero (libreria `qrcode` non richiesta): si disegna a mano con un codificatore minimo se manca zxing."""
+    """Un QR vero, costruito con lo stesso zxing-cpp che lo leggera' nel processo figlio."""
     import zxingcpp
 
     barcode = zxingcpp.create_barcode(testo, zxingcpp.BarcodeFormat.QRCode)
-    img = barcode.to_image(scale=6, add_quiet_zones=True).convert("RGB")
+    grezzo = barcode.to_image(scale=6, add_quiet_zones=True)
+    alto, largo = memoryview(grezzo).shape
+    img = Image.frombytes("L", (largo, alto), bytes(memoryview(grezzo).cast("B"))).convert("RGB")
     return img.resize((lato, lato), Image.NEAREST)
 
 

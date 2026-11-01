@@ -18,6 +18,8 @@ import struct
 import sys
 from pathlib import Path
 
+from PIL import Image
+
 RADICE = str(Path(__file__).resolve().parent.parent)
 if RADICE not in sys.path:  # con -I la cartella non c'e' di suo
     sys.path.insert(0, RADICE)
@@ -27,6 +29,8 @@ MAX_ICC = 1024 * 1024
 MAX_EXIF = 256 * 1024
 MAX_TESTO = 1024 * 1024
 LATO_ANALISI = 1024
+MAX_QR = 5
+MAX_TESTO_QR = 2000
 NOME = re.compile(r"^[0-9a-f]{32}$")
 
 
@@ -64,9 +68,35 @@ def _metadati(img) -> list[str]:
     return motivi
 
 
-def analizza(percorso: Path) -> tuple[dict, bytes]:
-    from PIL import Image
+def _qr(img) -> list[str]:
+    """I testi dei QR trovati (solo formato QR, al massimo 5, ognuno al massimo 2000 caratteri)."""
+    try:
+        import zxingcpp
+    except ImportError:
+        return []
+    trovati = zxingcpp.read_barcodes(img.convert("RGB"), formats=zxingcpp.BarcodeFormat.QRCode)
+    return [t.text[:MAX_TESTO_QR] for t in trovati[:MAX_QR] if t.text]
 
+
+def _png_pulito(img) -> bytes:
+    """PNG nuovo ricostruito dai soli pixel: spariscono metadati, profili e dati nascosti."""
+    modo = "RGBA" if "A" in img.getbands() or "transparency" in img.info else "RGB"
+    pixel = img.convert(modo)
+    pulita = Image.frombytes(modo, pixel.size, pixel.tobytes())
+    buf = io.BytesIO()
+    pulita.save(buf, "PNG", compress_level=3)
+    return buf.getvalue()
+
+
+def _contenuto(img) -> tuple[dict, bytes]:
+    from core.immagini_impronte import dhash
+
+    img.seek(0)
+    img = img.copy() if getattr(img, "is_animated", False) else img
+    return {"dhash": f"{dhash(img):016x}", "qr": _qr(img)}, _png_pulito(img)
+
+
+def analizza(percorso: Path) -> tuple[dict, bytes]:
     from core.safe_image import FORMATI_AMMESSI, ImmagineTroppoGrande, safe_open_image
 
     try:
@@ -84,7 +114,12 @@ def analizza(percorso: Path) -> tuple[dict, bytes]:
         return {"esito": "errore", "motivo": "troppo_grande"}, b""
     except Exception as errore:  # decoder: qualunque cosa e' sospetta
         return {"esito": "errore", "motivo": "decodifica", "dettaglio": type(errore).__name__}, b""
+    try:
+        extra, png = _contenuto(img)
+    except Exception as errore:
+        return {"esito": "errore", "motivo": "elaborazione", "dettaglio": type(errore).__name__}, b""
     info = {
+        **extra,
         "esito": "ok",
         "formato": formato,
         "larghezza": larghezza,
@@ -92,7 +127,7 @@ def analizza(percorso: Path) -> tuple[dict, bytes]:
         "fotogrammi": fotogrammi,
         "motivi": motivi,
     }
-    return info, b""
+    return info, png
 
 
 def main(argv: list[str]) -> int:
