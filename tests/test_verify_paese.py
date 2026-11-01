@@ -306,3 +306,19 @@ async def test_chi_e_in_attesa_o_rifiutato_non_passa_da_un_ip_senza_paese(monkey
         assert not ok and "staff" in testo.lower()
     assert amb.cog.run_checks_and_finalize.await_count == 0
 
+
+@pytest.mark.asyncio
+async def test_due_verifiche_insieme_da_fuori_non_passano_entrambe_sotto_soglia(monkeypatch, clean_db):
+    import asyncio
+
+    from tests.support.concorrenza import apri_connessioni
+
+    amb = _ambiente(monkeypatch, clean_db)
+    await _prepara(clean_db, soglia=2)
+    geoip_paesi.usa_lettore(_LettoreFinto({"203.0.113.1": {"country": {"iso_code": "RO"}},
+                                           "203.0.113.2": {"country": {"iso_code": "BR"}}}))
+    await apri_connessioni(clean_db)
+    esiti = await asyncio.gather(_verifica(amb, 11, "203.0.113.1"), _verifica(amb, 12, "203.0.113.2"))
+    # In fila la seconda si fermerebbe: insieme, almeno una deve restare in attesa.
+    assert [ok for ok, _ in esiti].count(False) >= 1
+    assert await clean_db.fetchval("SELECT count(*) FROM verify_paese WHERE stato = 'attesa'") >= 1

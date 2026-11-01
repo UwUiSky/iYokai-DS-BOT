@@ -80,13 +80,15 @@ async def valuta(guild: discord.Guild, membro: discord.Member, ip: str) -> str |
     minuti = await db.get_guild_setting(guild.id, SETTING_MINUTI, MINUTI_DI_BASE) or MINUTI_DI_BASE
     da_fuori = paese not in paesi
     canale = await _canale_staff(guild)
-    fermare = False
-    if da_fuori and soglia > 0 and canale is not None:  # senza nessuno da avvisare non si ferma in silenzio
-        recenti = await repo.conta_da_fuori(guild.id, paesi, minuti, membro.id)
-        fermare = tenere_in_attesa(True, recenti + 1, soglia)
-    await repo.registra(guild.id, membro.id, paese, None, STATO_ATTESA if fermare else STATO_OK)
-    if not fermare:
+    # Prima si salva, poi si conta: due verifiche insieme si vedono a vicenda e non passano
+    # entrambe sotto la soglia.
+    await repo.registra(guild.id, membro.id, paese, None, STATO_OK)
+    if not (da_fuori and soglia > 0 and canale is not None):  # senza nessuno da avvisare non si ferma in silenzio
         return None
+    recenti = await repo.conta_da_fuori(guild.id, paesi, minuti, membro.id)
+    if not tenere_in_attesa(True, recenti + 1, soglia):
+        return None
+    await repo.registra(guild.id, membro.id, paese, None, STATO_ATTESA)
     try:
         await canale.send(
             embed=await _embed_avviso(guild, membro, paese, lingua, soglia, minuti),
