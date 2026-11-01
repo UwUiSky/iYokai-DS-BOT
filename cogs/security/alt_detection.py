@@ -2,7 +2,7 @@
 cogs/security/alt_detection.py
 ==============================
 Account doppi trovati dalla verifica web (NF-21): l'avviso allo staff nel
-canale del log della verifica e `/security alt elenco`. Nessun ban
+canale del log della verifica e `/admin-sicurezza alt elenco`. Nessun ban
 automatico: decide lo staff. La verifica dalla pagina e il confronto delle
 impronte stanno in `core/panel_bridge.py` e `core/alt_detection_logic.py`.
 Funzioni coperte: SPEC §4.2, §4.3 (NF-21)
@@ -51,7 +51,7 @@ def embed_elenco(righe) -> discord.Embed:
     if not righe:
         embed.description = (
             "Nessun doppio trovato. Le coppie si vedono qui solo se il server usa la "
-            "verifica dalla pagina web (`/security verify setup`, modalità Pagina web)."
+            "verifica dalla pagina web (`/admin-sicurezza verify setup`, modalità Pagina web)."
         )
         return embed
     embed.description = "\n".join(

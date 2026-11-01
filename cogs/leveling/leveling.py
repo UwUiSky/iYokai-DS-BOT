@@ -1536,7 +1536,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         descrizione="Rimuove un ruolo-premio configurato.",
         sottogruppo=SOTTOGRUPPI["admin-ruoli premio"],
     )
-    @app_commands.describe(reward_id="ID della ricompensa (vedi /ruoli premio elenco)")
+    @app_commands.describe(reward_id="ID della ricompensa (vedi /admin-ruoli premio elenco)")
     async def level_roles_remove(self, interaction: discord.Interaction, reward_id: int) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
@@ -2193,7 +2193,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
             return
 
-        # Addebito e accredito nella stessa transazione, come /economia assegna-lobby.
+        # Addebito e accredito nella stessa transazione, come /admin-economia assegna-lobby.
         riuscito = await guild_chest_repo.pay_members(
             guild.id, [membro.id], importo, reason=REASON_EVENT_WINNER_PRIZE
         )
@@ -3319,7 +3319,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 )
 
     # ================================================================
-    # Impostazioni dei livelli (NF-15, #86) — /economia livelli
+    # Impostazioni dei livelli (NF-15, #86) — /admin-livelli
     # ================================================================
     @comando_di_gruppo(
         "admin-livelli",

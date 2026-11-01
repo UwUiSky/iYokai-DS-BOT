@@ -11,7 +11,7 @@ chiusi, ripiego nel canale dove il promemoria è stato impostato
 consegnato (scritto nel log, non ritentato all'infinito).
 Catalogo #128: promemoria che si ripete (UTL-098), nel canale invece
 che in DM (UTL-099), annullare tutti i propri (UTL-102), lo staff vede
-e annulla quelli del server (UTL-103, `/messaggi promemoria`: è per lo staff, D56).
+e annulla quelli del server (UTL-103, `/admin-messaggi promemoria`: è per lo staff, D56).
 """
 
 from __future__ import annotations

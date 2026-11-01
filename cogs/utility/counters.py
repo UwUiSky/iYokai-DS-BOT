@@ -2,7 +2,7 @@
 cogs/utility/counters.py
 ========================
 Canali contatore (NF-16, SPEC §23.2): canali vocali il cui nome mostra un numero (membri, ticket, ruoli, canali, emoji,
-online, boost, obiettivo). Comandi in `/moduli contatori`; il giro che aggiorna i nomi
+online, boost, obiettivo). Comandi in `/admin-moduli contatori`; il giro che aggiorna i nomi
 sta in core/counter_worker.py ed è ospitato da questo cog (parte con lui, si ferma con lui).
 Funzioni coperte: SPEC §23 (NF-16)
 """
@@ -170,7 +170,7 @@ class CountersCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo("admin-moduli", nome="elimina", descrizione="Smetti di aggiornare un contatore (il canale resta).", sottogruppo=_SG_CONTATORI)
-    @app_commands.describe(numero="Il numero mostrato da /moduli contatori elenco")
+    @app_commands.describe(numero="Il numero mostrato da /admin-moduli contatori elenco")
     async def elimina(self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 2_000_000_000]) -> None:
         if not await self._pronto(interaction):
             return

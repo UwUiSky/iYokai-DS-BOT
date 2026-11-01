@@ -72,7 +72,7 @@ def nome_lingua(codice: str) -> str:
 # ---------------------------------------------------------------- istruzioni per funzione
 ISTRUZIONI: dict[str, str] = {
     "chiedi": "Aiuta l'utente a usare il bot. Usa SOLO i comandi dell'elenco. Proponi al massimo 3 comandi, "
-    "ognuno su una riga che comincia con il percorso esatto tra barre, es. /mod timeout. Se la richiesta "
+    "ognuno su una riga che comincia con il percorso esatto tra barre, es. /mod-sanzioni timeout. Se la richiesta "
     "è un'azione (es. 'metti in timeout Mario 10 minuti'), indica il comando e i valori da inserire.",
     "riassumi": "Riassumi la conversazione in punti brevi (al massimo 10). Non citare dati personali.",
     "traduci": "Traduci il testo nella lingua richiesta. Rispondi solo con la traduzione.",

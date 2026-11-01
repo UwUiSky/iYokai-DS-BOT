@@ -1,7 +1,7 @@
 """
 cogs/ai/staff.py
 ================
-`/ai staff`: riassunto di un incidente (dagli eventi di sicurezza già salvati), assistente per le regole di AutoMod
+`/admin-ai staff`: riassunto di un incidente (dagli eventi di sicurezza già salvati), assistente per le regole di AutoMod
 (l'AI propone, una persona conferma con il bottone) e ricerca nei log con una domanda (l'AI propone i filtri, la
 ricerca la fa il database). Funzionano anche con l'AI ferma. Risposte solo a chi ha lanciato il comando.
 Funzioni coperte: SPEC §25.39, §25.40, §25.44 (AI-R-041, AI-R-042, AI-R-047)

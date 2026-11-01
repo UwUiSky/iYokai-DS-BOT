@@ -162,7 +162,7 @@ async def scala_per_warn_manuale(
 ) -> str | None:
     """
     M 1.10: un warn dato a mano conta un'infrazione, se il server l'ha
-    scelto (`/security escalation enable warn_manuali:`). Restituisce cosa
+    scelto (`/admin-sicurezza escalation enable warn_manuali:`). Restituisce cosa
     ha fatto la scala, da dire al moderatore, o None. Il gradino «warn»
     non aggiunge un secondo warn: l'utente l'ha appena ricevuto.
     D29: il gradino parte solo se `moderatore` potrebbe farlo da sé; con
@@ -297,7 +297,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
         sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
     )
     @app_commands.describe(
-        warn_manuali="Conta anche i warn dati a mano con /mod warn. Vuoto: resta com'è",
+        warn_manuali="Conta anche i warn dati a mano con /mod-sanzioni warn. Vuoto: resta com'è",
         moltiplicatore="Il timeout oltre l'ultimo gradino dura base x questo numero a ogni ricaduta (1 = fisso)",
         tetto_strike="Ricadute contate per il moltiplicatore (da 1 a 10). Vuoto: resta com'è",
     )

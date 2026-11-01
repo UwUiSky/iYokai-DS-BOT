@@ -2,7 +2,7 @@
 cogs/moderation/ban_appeal.py
 =============================
 Appello contro i ban manuali (ban e tempban). Se il server ha scelto un
-canale per gli appelli (`/modban appelli canale`), il messaggio privato
+canale per gli appelli (`/mod-ban appelli canale`), il messaggio privato
 mandato PRIMA del ban porta il bottone «Fai appello»: l'utente scrive il
 testo in un modulo (un appello ogni 24 ore), lo staff lo trova nel canale
 con i bottoni Accetta e Rifiuta. Accettare toglie il ban (prima di segnare «accettato», solo quello contestato)

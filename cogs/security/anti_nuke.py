@@ -23,7 +23,7 @@ vocale, palco, categoria, forum).
 Punizione (quarantena, ruoli tolti o ban): una sola per attacco. Se
 quarantena o ruoli tolti non tolgono il potere, ripiego facoltativo
 (espulsione o ban, spento di base). Un
-attacco e' un caso numerato (/antinuke casi), un DM al
+attacco e' un caso numerato (/admin-antinuke casi), un DM al
 proprietario, un avviso; gli eventi che arrivano dopo la punizione non ne
 creano altri finche' la punizione tiene. Impostazioni che cambiano chi e'
 esente o quanto e' forte la difesa: solo il proprietario e gli extra owner
@@ -217,7 +217,7 @@ async def _punish_actor(
 async def _ripiego(member: discord.Member, config: AntiNukeConfig, reason: str, fallimento: str) -> str:
     """
     Quarantena o ruoli tolti non hanno tolto il potere: se il server l'ha
-    scelto (`/antinuke punish-action ripiego:`) si espelle o si banna.
+    scelto (`/admin-antinuke punish-action ripiego:`) si espelle o si banna.
     Restituisce cosa è successo davvero, per il caso e l'avviso.
     """
     scelta = config.ripiego_quarantena
@@ -256,7 +256,7 @@ def _categoria_del_canale(channel: discord.abc.GuildChannel) -> int | None:
 async def _alert_staff(guild: discord.Guild, settings: SecuritySettings, embed: discord.Embed) -> None:
     """DM al proprietario e avviso nel canale degli allarmi (#59 3.18).
 
-    Il canale lo sceglie `/antinuke canale-allarmi` (router dei canali,
+    Il canale lo sceglie `/admin-antinuke canale-allarmi` (router dei canali,
     puo' essere anche un forum); senza scelta vale quello dell'anti-raid.
     """
     if guild.owner is not None:
@@ -756,7 +756,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         nome="rilascia",
         descrizione="Toglie la quarantena all'autore di un caso e gli rimette i ruoli.",
     )
-    @app_commands.describe(caso="Numero del caso (vedi /antinuke casi)")
+    @app_commands.describe(caso="Numero del caso (vedi /admin-antinuke casi)")
     @requires_module(MODULE_ANTI_NUKE)
     async def rilascia(
         self, interaction: discord.Interaction, caso: app_commands.Range[int, 1, 1_000_000]
@@ -1016,7 +1016,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
             color=discord.Color.red(),
         )
         if tolti:
-            embed.set_footer(text=f"Per rilasciare e rimettere i ruoli: /antinuke rilascia caso:{numero}")
+            embed.set_footer(text=f"Per rilasciare e rimettere i ruoli: /admin-antinuke rilascia caso:{numero}")
         await _alert_staff(guild, settings, embed)
         # SIC-011: se il server l'ha scelto, un attacco riconosciuto accende il panico.
         await panico_automatico(guild, f"Anti-Nuke: {category}")

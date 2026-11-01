@@ -8,7 +8,7 @@
   {% for t in tipi %}<option value="{{ t }}" {{ 'selected' if t == tipo }}>{{ t }}</option>{% endfor %}</select>
   <button type="submit">Filtra</button>
 </form>
-<p class="tenue">Le stesse voci di <code>/admin config storico</code>: comandi e pannello scrivono nello stesso storico. Ultime {{ voci|length }}.</p>
+<p class="tenue">Le stesse voci di <code>/admin-bot config storico</code>: comandi e pannello scrivono nello stesso storico. Ultime {{ voci|length }}.</p>
 <table>
 <tr><th>#</th><th>Quando (UTC)</th><th>Chi</th><th>Tipo</th><th>Chiave</th><th>Prima</th><th>Dopo</th></tr>
 {% for v in voci %}

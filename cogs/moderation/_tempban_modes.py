@@ -2,7 +2,7 @@
 cogs/moderation/_tempban_modes.py
 ================================
 Aiuti per il ban temporaneo con rientro e per il ban in isolamento
-(/modban tempban, opzione `modo`): invito da mandare prima del ban,
+(/mod-ban tempban, opzione `modo`): invito da mandare prima del ban,
 ruolo e canale di isolamento, ruoli salvati e ridati, rientro con OAuth, membro dalla cache o
 da Discord, stato ripristinato se l'azione fallisce.
 Funzioni coperte: SPEC §5.11, §5.12 (issue #138)

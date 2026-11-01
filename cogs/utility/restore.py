@@ -2,11 +2,11 @@
 cogs/utility/restore.py
 ===========================
 Restore massivo utenti via OAuth2 (SPEC.md §11.11/§11.12) — comandi
-/backup restore-modo e /backup restore-utenti, più i listener che tengono
+/admin-backup ripristino modo e /admin-backup ripristino utenti, più i listener che tengono
 aggiornata la retention dei token salvati (uscita spontanea/kick/
 ban, come concordato esplicitamente con l'utente).
 
-Tre modalità per server (impostate con /backup restore-modo),
+Tre modalità per server (impostate con /admin-backup ripristino modo),
 esattamente come discusso: server NUOVI raccolgono il consenso al
 momento della verifica (verify_oauth, non gestito qui — vedi
 cogs/security/verify.py per il pannello che offre il link);
@@ -210,7 +210,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
         )
 
     # ------------------------------------------------------------
-    # /backup restore-utenti
+    # /admin-backup ripristino utenti
     # ------------------------------------------------------------
     @comando_di_gruppo(
         "admin-backup",
@@ -428,7 +428,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
             )
             + (
                 f"\n⚠️ Ruolo verificato non assegnato (controlla il ruolo scelto in "
-                f"/security verify setup): {contatori['ruolo_non_assegnato']}"
+                f"/admin-sicurezza verify setup): {contatori['ruolo_non_assegnato']}"
                 if contatori["ruolo_non_assegnato"]
                 else ""
             )
@@ -470,7 +470,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
     ) -> bool:
         """
         SEC-4/SEC-17: il ruolo verificato può aver preso permessi
-        pericolosi dopo il /security verify setup, quindi si ricontrolla al
+        pericolosi dopo il /admin-sicurezza verify setup, quindi si ricontrolla al
         momento dell'assegnazione. Se non va bene l'utente resta nel
         server senza il ruolo (False) e resta un avviso nei log.
         """

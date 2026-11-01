@@ -19,7 +19,7 @@ blocco (salvata nel database, controllata ogni minuto).
 Quarantena: il ruolo "Quarantined" (core/security_quarantine.py) si crea
 quando si attiva il modulo, non durante il raid. Con il "blocco della
 quarantena" attivo chi non è fidato non può liberare un membro a mano né
-dargli altri ruoli (si usa /antiraid rilascia, che è la stessa
+dargli altri ruoli (si usa /admin-antiraid rilascia, che è la stessa
 funzione dell'anti-nuke). Le impostazioni che indeboliscono la difesa
 (blocco, rilascio col blocco attivo) le cambia solo chi gestisce:
 proprietario ed extra owner.
@@ -32,10 +32,10 @@ visualizzato. Segnali di raid in più: account creati vicini e nomi simili
 tra gli ultimi ingressi (SIC-030/031), soglia contata solo sui sospetti
 (SIC-029). Al raid: kick o ban (SIC-032), anche di chi è entrato poco prima
 (SIC-033), ping dei ruoli dello staff (SIC-034), elenco completo con
-/antiraid elenco (SIC-035), segnale di rete tra server (SIC-037) e
-segnalazione a chi gestisce il bot con /antiraid segnala (SIC-038).
+/admin-antiraid elenco (SIC-035), segnale di rete tra server (SIC-037) e
+segnalazione a chi gestisce il bot con /admin-antiraid segnala (SIC-038).
 
-Livelli di allerta con nome (`/antiraid livello`, SIC-036): normale, allerta, alto,
+Livelli di allerta con nome (`/admin-antiraid livello`, SIC-036): normale, allerta, alto,
 blocco stringono le regole attive, a mano (con una durata) o da soli all'inizio di un raid.
 Funzioni coperte: SPEC §7.1 (SIC-023…038)
 """
@@ -174,7 +174,7 @@ def _embed_avviso(avviso: _Avviso) -> discord.Embed:
         description=f"Ultimi ingressi (dal più vecchio):\n{righe}"[:4096],
         color=discord.Color.red(),
     )
-    embed.set_footer(text="Elenco completo: /antiraid elenco")
+    embed.set_footer(text="Elenco completo: /admin-antiraid elenco")
     return embed
 
 
@@ -492,7 +492,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         descrizione="Impedisce a chi non è fidato di togliere la quarantena a mano.",
     )
     @app_commands.describe(
-        enabled="Se attivo, togliere la quarantena a mano viene annullato: usa /antiraid rilascia"
+        enabled="Se attivo, togliere la quarantena a mano viene annullato: usa /admin-antiraid rilascia"
     )
     @requires_module(MODULE_ANTI_RAID)
     async def quarantine_hold(self, interaction: discord.Interaction, enabled: bool) -> None:
@@ -546,7 +546,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             altri = ", ".join(f"#{n}" for n in esito.altri_casi)
             testo = (
                 f"{membro.mention} resta in quarantena: ha casi anti-nuke attivi ({altri}). "
-                "Si rilasciano con /antinuke rilascia."
+                "Si rilasciano con /admin-antinuke rilascia."
             )
         else:
             testo = f"{membro.mention} è fuori dalla quarantena."
@@ -593,9 +593,9 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await security_repo.save_settings(_replace(settings, **cambi))
         testo = f"Filtro **{filtro.name}**: {azione.name.lower()}."
         if filtro.value == FILTRO_NOME_VIETATO and not settings.anti_raid.nomi_vietati:
-            testo += " La lista è vuota: aggiungi gli schemi con /antiraid nomi-vietati."
+            testo += " La lista è vuota: aggiungi gli schemi con /admin-antiraid nomi-vietati."
         if filtro.value == FILTRO_ETA:
-            testo += f" Età minima: {settings.anti_raid.min_account_age_seconds} secondi (/antiraid account-age)."
+            testo += f" Età minima: {settings.anti_raid.min_account_age_seconds} secondi (/admin-antiraid account-age)."
         await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(
@@ -850,7 +850,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         embed = discord.Embed(
             title="🛡️ Anti-Raid — quarantena", description=dettaglio[:4096], color=discord.Color.orange()
         )
-        embed.set_footer(text="Per liberare un membro: /antiraid rilascia")
+        embed.set_footer(text="Per liberare un membro: /admin-antiraid rilascia")
         await _alert_staff(guild, settings, embed)
 
     @commands.Cog.listener()

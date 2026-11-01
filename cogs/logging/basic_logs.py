@@ -3,8 +3,8 @@ cogs/logging/basic_logs.py
 =============================
 Logging semplificato: join, leave, ban, unban, creazione/eliminazione
 ruoli, cambi di ruolo e nickname sui membri. Modulo SEMPRE GRATUITO
-(MODULE_LOGGING). Comandi /log canale (anche per messaggi, voce e server,
-con canale di testo o forum) e /log stato. Dove scrive lo decide
+(MODULE_LOGGING). Comandi /admin-log canale (anche per messaggi, voce e server,
+con canale di testo o forum) e /admin-log stato. Dove scrive lo decide
 core/channel_router.py.
 Funzioni coperte: SPEC §8.1-§8.5, §8.17, §8.18 (catalogo log: regex RE2, canali per tipo), §18
 
@@ -12,7 +12,7 @@ Ogni evento, oltre a mandare l'embed live nel canale configurato
 (come sempre), viene ora anche salvato nel log eventi unificato
 (core/repositories/event_log_repo.py, BACKLOG.md §3) — un embed su
 Discord sparisce se il canale viene cancellato o il log scrolla via;
-la riga nel DB resta, consultabile da /log cerca utente e /log cerca canale
+la riga nel DB resta, consultabile da /admin-log cerca utente e /admin-log cerca canale
 (cogs/logging/logs_query.py), esportabile, e soggetta a retention
 configurabile. Le due cose convivono, non si sostituiscono: l'embed
 per la visibilità in tempo reale, il DB per la storia. Se l'invio
@@ -236,7 +236,7 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
         dove = "nel forum (un post per tipo)" if isinstance(channel, discord.ForumChannel) else "in"
         await interaction.response.send_message(
             f"I log «{DESCRIZIONE_TIPO[tipo]}» verranno inviati {dove} {channel.mention}. "
-            f"Ricorda di attivare il modulo con /admin setup attiva se non l'hai già fatto.",
+            f"Ricorda di attivare il modulo con /admin-bot setup attiva se non l'hai già fatto.",
             ephemeral=True,
         )
 
@@ -317,7 +317,7 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
         (serve interrogare l'audit log con una query separata, che
         aggiungerebbe un'altra chiamata API per ogni singola uscita —
         non ne vale la pena per un log "semplificato"). Un kick fatto
-        con /modban kick di iYokai risulta già loggato con motivo e
+        con /mod-ban kick di iYokai risulta già loggato con motivo e
         moderatore nel case system di Moderation: questo evento resta
         un log generico di presenza, non sostituisce quello.
         """

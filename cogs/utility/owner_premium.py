@@ -502,7 +502,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         module_name="Nome tecnico del modulo (vedi /owner premium list) o «tutti»",
         duration="Mensile (30 giorni), annuale (365 giorni) o permanente",
-        guild_id="ID del server; vuoto = crea un codice che il server riscatta con /admin premium riscatta",
+        guild_id="ID del server; vuoto = crea un codice che il server riscatta con /admin-bot premium riscatta",
     )
     @app_commands.choices(
         duration=[

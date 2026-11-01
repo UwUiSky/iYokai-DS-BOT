@@ -191,7 +191,7 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
         descrizione="Annulla un messaggio programmato.",
         sottogruppo=SOTTOGRUPPI["admin-messaggi programmati"],
     )
-    @app_commands.describe(schedule_id="ID (mostrato da /messaggi programmati elenco)")
+    @app_commands.describe(schedule_id="ID (mostrato da /admin-messaggi programmati elenco)")
     async def cancel_scheduled_message(
         self, interaction: discord.Interaction, schedule_id: int
     ) -> None:

@@ -1,7 +1,7 @@
 """
 cogs/automod/parole_odio.py
 ===========================
-Parole vietate con varianti (AMD-014): comandi di `/automod odio` per la lista
+Parole vietate con varianti (AMD-014): comandi di `/admin-automod odio` per la lista
 di base, le parole proprie e quelle lecite, e controllo dei nomi (nickname e
 nome visualizzato) all'ingresso e al cambio. Il controllo dei messaggi sta in
 cogs/automod/automod.py; il filtro in core/automod_parole_logic.py.

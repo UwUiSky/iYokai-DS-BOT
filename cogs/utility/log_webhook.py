@@ -1,7 +1,7 @@
 """
 cogs/utility/log_webhook.py
 ===========================
-`/log webhook`: accende o spegne i log via webhook del server (#113, D33). Le righe di log escono da un webhook
+`/admin-log webhook`: accende o spegne i log via webhook del server (#113, D33). Le righe di log escono da un webhook
 del canale, raggruppate fino a 10 in un messaggio; i webhook hanno limiti di frequenza propri, separati da quelli
 del bot. Serve il permesso «Gestisci webhook» e la chiave di cifratura del bot; senza, i log escono dal canale come prima.
 Funzioni coperte: SPEC §E, #113

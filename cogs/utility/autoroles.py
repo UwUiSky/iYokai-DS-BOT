@@ -5,7 +5,7 @@ Ruoli automatici all'ingresso, ruoli ridati a chi rientra entro 30 giorni,
 ruoli dati dopo un ritardo (NF-07, SPEC §22.1-22.3); condizioni su altri
 ruoli, ruolo ridato se tolto, sincronizzazione dei membri già presenti
 (catalogo #123, RUO-034..038). Comandi: i comandi `auto-...` di
-`/ruoli`; la logica è in core/autorole_logic.py.
+`/admin-ruoli`; la logica è in core/autorole_logic.py.
 Funzioni coperte: SPEC §22 (NF-07)
 """
 

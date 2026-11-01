@@ -2,8 +2,8 @@
 cogs/security/lockdown.py
 =========================
 Blocco totale del server e modalita' panico (NF-29, #100).
-Comandi: `/mod blocco attiva|togli` (chi gestisce il server) e
-`/security panico attiva|togli|configura|stato` (amministratori).
+Comandi: `/mod-canali blocco attiva|togli` (chi gestisce il server) e
+`/admin-sicurezza panico attiva|togli|configura|stato` (amministratori).
 Il lavoro con Discord sta in `core/lockdown_service.py`, le regole in
 `core/lockdown_logic.py`, lo stato in `core/repositories/lockdown_repo.py`.
 Funzioni coperte: SPEC §23 (NF-29), catalogo SIC-011..015
@@ -117,7 +117,7 @@ class LockdownCog(CogConGruppi, commands.Cog):
             return
         await interaction.followup.send(esito.messaggio[:2000], ephemeral=True)
 
-    # ------------------------------------------------------------ /mod blocco
+    # ------------------------------------------------------------ /mod-canali blocco
     @comando_di_gruppo(
         "mod-canali",
         nome="attiva",
@@ -141,7 +141,7 @@ class LockdownCog(CogConGruppi, commands.Cog):
             return
         await self._togli(interaction)
 
-    # ------------------------------------------------------------ /security panico
+    # ------------------------------------------------------------ /admin-sicurezza panico
     @comando_di_gruppo(
         "admin-sicurezza",
         nome="attiva",

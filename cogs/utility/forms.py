@@ -5,7 +5,7 @@ Moduli e candidature (NF-34, SPEC §23): l'admin crea un modulo con fino a 5 dom
 (candidatura staff, ingresso in un clan); chi lo compila lo fa in una finestra (modale) e la
 risposta arriva in un canale dello staff con i bottoni Accetta e Rifiuta (persistenti).
 Accettare può dare un ruolo. Una sola candidatura in attesa per persona e modulo.
-Comandi: `/moduli candidature crea|elimina|elenco`, `/utility modulo`.
+Comandi: `/admin-moduli candidature crea|elimina|elenco`, `/utility modulo`.
 Funzioni coperte: SPEC §23 (NF-34)
 """
 
@@ -39,7 +39,7 @@ BUTTON_PREFIX = "iyokai_form"
 _SG_MODULI = ("candidature", "Moduli e candidature")
 _NESSUNA_MENZIONE = discord.AllowedMentions.none()
 _NON_ATTIVO = (
-    "Questo modulo non è attivo su questo server. Un amministratore può attivarlo con /admin setup attiva."
+    "Questo modulo non è attivo su questo server. Un amministratore può attivarlo con /admin-bot setup attiva."
 )
 
 
@@ -270,7 +270,7 @@ class FormsCog(CogConGruppi, commands.Cog):
         )
         messaggi = {
             "ok": f"Modulo `{nome}` creato con {len(elenco)} domande. Chi vuole compilarlo usa `/utility modulo`.",
-            "esiste": f"Esiste già un modulo `{nome}`: eliminalo prima con `/moduli candidature elimina`.",
+            "esiste": f"Esiste già un modulo `{nome}`: eliminalo prima con `/admin-moduli candidature elimina`.",
             "pieno": f"Questo server ha già {MAX_MODULI} moduli: eliminane uno.",
         }
         await interaction.response.send_message(messaggi[esito], ephemeral=True)

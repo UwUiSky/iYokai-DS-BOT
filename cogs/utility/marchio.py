@@ -1,8 +1,8 @@
 """
 cogs/utility/marchio.py
 =======================
-`/admin premium marchio` (NF-38, #109): un server premium collega un bot suo, con nome e avatar suoi.
-`/admin premium aspetto` (CFG-030, #122): avatar, banner e descrizione dello stesso iYokai, solo in questo server.
+`/admin-bot premium marchio` (NF-38, #109): un server premium collega un bot suo, con nome e avatar suoi.
+`/admin-bot premium aspetto` (CFG-030, #122): avatar, banner e descrizione dello stesso iYokai, solo in questo server.
 Il token si scrive in una finestra (mai come opzione del comando), si prova con Discord e si salva cifrato.
 Le azioni passano da `core/whitelabel_bot.py`, le stesse del pannello web (D16).
 Funzioni coperte: SPEC §23 (NF-38), catalogo #122 (CFG-030)

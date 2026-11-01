@@ -3,7 +3,7 @@ cogs/utility/activity_stats.py
 ==============================
 Statistiche di attività (NF-25, #96): conta messaggi e minuti in vocale per
 canale e per membro (solo somme per giorno, scritte a lotti ogni minuto),
-dà e toglie i ruoli per attività. Comandi: /moduli statistiche …; la lettura
+dà e toglie i ruoli per attività. Comandi: /admin-moduli statistiche …; la lettura
 dei numeri sta in /utility serverstats (cogs/utility/server_stats.py).
 Funzioni coperte: SPEC §23 (NF-25)
 """
@@ -291,7 +291,7 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo("admin-moduli", nome="ruolo-elimina", descrizione="Elimina una regola dei ruoli per attività.", sottogruppo=_SG)
-    @app_commands.describe(regola="Il numero della regola (lo trovi in /moduli statistiche elenco)")
+    @app_commands.describe(regola="Il numero della regola (lo trovi in /admin-moduli statistiche elenco)")
     async def ruolo_elimina(self, interaction: discord.Interaction, regola: app_commands.Range[int, 1, 2_000_000_000]) -> None:
         if not await self._pronto(interaction):
             return

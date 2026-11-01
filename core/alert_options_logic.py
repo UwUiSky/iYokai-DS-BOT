@@ -31,15 +31,15 @@ GUIDA_SOCIAL = (
     "**1. Feed «ponte» (consigliato)**\n"
     "Un servizio esterno trasforma il profilo in un feed RSS (per esempio un'istanza di RSSHub, "
     "o un servizio a pagamento che offre feed per i social). Poi usa "
-    "`/moduli alert feed` incollando l'indirizzo del feed. Controllo ogni 5 minuti.\n\n"
+    "`/admin-moduli alert feed` incollando l'indirizzo del feed. Controllo ogni 5 minuti.\n\n"
     "**2. Webhook in ingresso**\n"
-    "Con `/moduli alert webhook` ottieni un indirizzo segreto. Collegalo a uno strumento di "
+    "Con `/admin-moduli alert webhook` ottieni un indirizzo segreto. Collegalo a uno strumento di "
     "automazione (Zapier, Make, IFTTT, n8n) che manda un messaggio JSON, "
     "per esempio `{\"message\": \"Nuovo video!\", \"url\": \"https://…\"}`, quando c'è un post nuovo.\n\n"
     "**Chiave a pagamento (facoltativa)**\n"
     "Chi vuole il collegamento diretto può farlo con il servizio a pagamento di un fornitore terzo: "
     "il bot non la richiede e non la conserva.\n\n"
-    "**Kick** invece ha un'interfaccia gratuita: `/moduli alert kick`. "
+    "**Kick** invece ha un'interfaccia gratuita: `/admin-moduli alert kick`. "
     "Il proprietario del bot imposta `KICK_CLIENT_ID` e `KICK_CLIENT_SECRET`."
 )
 

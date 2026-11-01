@@ -7,7 +7,7 @@ mostro scritto dall'AI secondo la lore (o pronto, con l'AI ferma), immagine dise
 premi con tetti, boss di rete pubblicato dall'owner (solo totali in comune).
 Funzioni coperte: SPEC §25.49–§25.52, §25.59, §25.64, §25.70 (AI-R-054..057, AI-R-064, AI-R-070, AI-R-077)
 
-I comandi stanno in `/ai boss` (D43): `/fun` ha già 25 figli. I bottoni dell'evento sono di tutti.
+I comandi stanno in `/admin-ai boss` (D43): `/fun` ha già 25 figli. I bottoni dell'evento sono di tutti.
 """
 
 from __future__ import annotations

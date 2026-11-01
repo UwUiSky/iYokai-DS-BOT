@@ -271,7 +271,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
 
         avvisi = []
         if not sbloccato:
-            avvisi.append("Lo sblocco automatico è fallito: usa /modban unban.")
+            avvisi.append("Lo sblocco automatico è fallito: usa /mod-ban unban.")
         if dm is None:
             avvisi.append("Non è stato possibile notificare l'utente in DM.")
         if avvisi:

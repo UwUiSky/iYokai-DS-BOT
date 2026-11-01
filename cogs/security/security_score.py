@@ -2,7 +2,7 @@
 cogs/security/security_score.py
 ====================================
 Security Score (SPEC.md §7.5): health-check della configurazione di
-sicurezza del server, un comando `/security score` che restituisce
+sicurezza del server, un comando `/admin-sicurezza score` che restituisce
 un punteggio 0-100 + consigli azionabili. Logica pura in
 core/security_logic.py (compute_security_score) — qui solo la
 raccolta dei segnali reali (permessi, 2FA, moduli attivi).

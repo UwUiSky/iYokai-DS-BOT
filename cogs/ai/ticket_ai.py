@@ -10,7 +10,7 @@ Funzioni coperte: SPEC §25.65–§25.68 (AI-R-071..074; catalogo AI-019)
 
 Il bottone "Chiedi all'assistente" sta nel messaggio di apertura (vista persistente
 di questo file) e fa la stessa cosa del comando. Con la prima risposta automatica accesa per
-il pannello (`/ai staff prima-risposta`), l'AI risponde da sola una volta sola per ticket.
+il pannello (`/admin-ai staff prima-risposta`), l'AI risponde da sola una volta sola per ticket.
 Funzioni coperte anche: SPEC §25.66 (AI-R-072)
 """
 

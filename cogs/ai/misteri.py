@@ -5,7 +5,7 @@ Misteri: l'admin nasconde un codice e un indizio. Quando qualcuno trova il codic
 un premio: XP ai membri attivi, oppure un canale segreto aperto per qualche ora.
 Funzioni coperte: SPEC §25.56 (AI-R-061)
 
-I comandi dell'admin stanno in `/ai mistero`, quello per rispondere in `/assistente mistero` (D43):
+I comandi dell'admin stanno in `/admin-ai mistero`, quello per rispondere in `/assistente mistero` (D43):
 `/fun` ha già 25 figli. L'XP «per 24 ore» diventa un'unica ricompensa di XP (D18: non si tocca il calcolo dei livelli).
 """
 

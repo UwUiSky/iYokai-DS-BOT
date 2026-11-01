@@ -16,7 +16,7 @@ Decisioni prese) è: se una regola con lo stesso nome esiste già,
 AGGIORNARLA senza MAI cancellare ciò che un amministratore ha
 aggiunto a mano dal pannello Discord a quella stessa regola — ma
 SENZA impedire a iYokai di far sparire una parola che era sua e che
-l'admin ha rimosso dalla configurazione (es. /automod
+l'admin ha rimosso dalla configurazione (es. /admin-automod
 badword-remove). Le due cose sembrano in tensione ("non cancellare
 mai" vs "un comando di rimozione deve funzionare davvero"), e si
 risolvono solo distinguendo la PROVENIENZA di ogni parola:
@@ -98,7 +98,7 @@ class DesiredRule:
     `previously_synced_*` è la parte che rende possibile distinguere
     "parole che l'admin ha aggiunto a mano dal pannello Discord" da
     "parole che iYokai stesso aveva scritto in un sync precedente e
-    che ORA non vuole più" (es. l'admin ha fatto /automod
+    che ORA non vuole più" (es. l'admin ha fatto /admin-automod
     badword-remove). Senza questa distinzione, un merge che fa solo
     "esistenti ∪ nuove" non potrebbe mai far sparire una parola: la
     rimozione dalla configurazione salvata non avrebbe alcun effetto

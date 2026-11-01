@@ -1,7 +1,7 @@
 """
 core/setup_wizard_logic.py
 ==========================
-Logica pura della configurazione guidata (`/admin setup wizard`): quali passi
+Logica pura della configurazione guidata (`/admin-bot setup wizard`): quali passi
 ci sono e quali moduli sono cambiati. Nessuna dipendenza da Discord o dal database.
 Funzioni coperte: SPEC §2.2, M 10.14 (#66), 22.16
 """
@@ -28,7 +28,7 @@ class CanaleWizard:
 
 
 # Categorie dei moduli (core.premium.CATEGORIE_MODULI) -> canale da creare. I log hanno
-# il loro bottone (`/log crea-canali`: categoria e un canale per tipo).
+# il loro bottone (`/admin-log crea-canali`: categoria e un canale per tipo).
 CANALI_PER_CATEGORIA: dict[str, CanaleWizard] = {
     "moderation": CanaleWizard("mod-log", "mod-log", "Casi di moderazione", True),
     "security": CanaleWizard("allarmi", "allarmi-sicurezza", "Allarmi dell'anti-nuke", True),

@@ -3,7 +3,7 @@ cogs/utility/feed_alerts.py
 ==============================
 Comandi di Custom RSS/Alert (SPEC.md §10.3, §10.7, §10.8, §10.9, §10.13).
 Il polling vero vive nei watcher di core/ (servizi bot-wide, non legati a
-questo cog) — qui solo /moduli alert feed|twitch|youtube-live|kick|webhook|
+questo cog) — qui solo /admin-moduli alert feed|twitch|youtube-live|kick|webhook|
 opzioni|ruolo-live|guida-social|rimuovi|elenco per gestire le
 sottoscrizioni e le loro opzioni.
 """
@@ -55,7 +55,7 @@ MAX_CARATTERI_RIGA = 300
 async def _tetto_raggiunto(interaction: discord.Interaction, servizio: str) -> None:
     await interaction.response.send_message(
         f"Questo server ha già {MAX_LIVE_PER_SERVER} avvisi {servizio}, il massimo consentito. "
-        "Rimuovine uno con /moduli alert rimuovi prima di aggiungerne un altro.",
+        "Rimuovine uno con /admin-moduli alert rimuovi prima di aggiungerne un altro.",
         ephemeral=True,
     )
 
@@ -233,7 +233,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
             f"✅ Webhook creato (ID `WH-{webhook.id}`) per **{label}**.\n\n{corpo_url}\n\n"
             f"⚠️ Questo URL/token è SEGRETO: chiunque lo conosca può pubblicare in "
             f"{channel.mention}. Non lo mostrerò di nuovo — se lo perdi, crealo di nuovo "
-            f"e rimuovi quello vecchio con /moduli alert rimuovi."
+            f"e rimuovi quello vecchio con /admin-moduli alert rimuovi."
             f"{avviso_riavvio}",
             ephemeral=True,
         )
@@ -563,7 +563,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         if campi.get("crosspost"):
             extra += "\nLa pubblicazione funziona solo se l'avviso va in un canale di annunci."
         if campi.get("live_member_id") and not await alert_options_repo.get_live_role(guild.id):
-            extra += "\nImposta anche il ruolo con /moduli alert ruolo-live."
+            extra += "\nImposta anche il ruolo con /admin-moduli alert ruolo-live."
         await interaction.response.send_message(
             "✅ Opzioni aggiornate.\n" + self._riepilogo(subscription_id, opz) + extra, ephemeral=True
         )

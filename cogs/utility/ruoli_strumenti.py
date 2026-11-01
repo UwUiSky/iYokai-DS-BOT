@@ -1,7 +1,7 @@
 """
 cogs/utility/ruoli_strumenti.py
 ===============================
-Strumenti sui ruoli. Per lo staff, il gruppo `/ruoli`: dare e togliere
+Strumenti sui ruoli. Per lo staff, il gruppo `/admin-ruoli`: dare e togliere
 ruoli a un membro (anche a tempo), togliergli tutto, operazioni di massa
 con stima, stop e avviso finale, creare e modificare un ruolo, diagnosi,
 ruoli a scelta. Per tutti, `/utility ruolo`: prendere e lasciare i ruoli
@@ -401,7 +401,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
     ) -> None:
         guild = interaction.guild
         if guild.id in self.operazioni:
-            await self._rifiuta(interaction, "C'è già un'operazione di massa in corso: aspetta o fermala con /ruoli massa-ferma.")
+            await self._rifiuta(interaction, "C'è già un'operazione di massa in corso: aspetta o fermala con /admin-ruoli massa-ferma.")
             return
         try:
             filtro = FiltroMassa(
@@ -458,7 +458,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
         verbo = "dare" if azione == AZIONE_DAI else "togliere"
         await interaction.followup.send(
             f"Avviata: {verbo} {ruolo.mention} a {len(membri)} membri, {stima_in_parole(stima_secondi(len(membri)))}. "
-            f"Avviso finale in {getattr(canale, 'mention', 'questo canale')}. Per fermarla: /ruoli massa-ferma.",
+            f"Avviso finale in {getattr(canale, 'mention', 'questo canale')}. Per fermarla: /admin-ruoli massa-ferma.",
             ephemeral=True,
             allowed_mentions=NESSUNA_MENZIONE,
         )
@@ -686,7 +686,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
             if togli:
                 await membro.remove_roles(*togli, reason="Ruolo a scelta")
         except discord.HTTPException:
-            return "Discord ha rifiutato il cambio: avvisa lo staff (/ruoli diagnosi)."
+            return "Discord ha rifiutato il cambio: avvisa lo staff (/admin-ruoli diagnosi)."
         if not dai and not togli:
             return "Nessun cambio."
         parti = []

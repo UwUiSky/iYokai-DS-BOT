@@ -1,7 +1,7 @@
 """
 cogs/moderation/opzioni.py
 ==========================
-Opzioni di moderazione del server (`/mod opzioni`): giorni di messaggi
+Opzioni di moderazione del server (`/mod-sanzioni opzioni`): giorni di messaggi
 cancellati al ban, durata predefinita del timeout, DM per tipo di azione,
 ruoli immuni alla moderazione manuale, casi per le azioni fatte fuori da
 iYokai, avvisi allo staff. La logica e il salvataggio sono in

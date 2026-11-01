@@ -1,7 +1,7 @@
 """
 core/ai_impostazioni.py
 =======================
-Il punto unico (D16) per le scelte AI di un server che comandi `/ai` e pannello
+Il punto unico (D16) per le scelte AI di un server che comandi `/admin-ai` e pannello
 web cambiano allo stesso modo: accensione con il consenso (e prova gratuita),
 privacy, memoria, lunghezza delle risposte e quote. Valida, scrive e ripulisce.
 Funzioni coperte: SPEC §24.2, §24.3, §25.4, §25.23, §25.82, §25.69 (NF-20, NF-24)

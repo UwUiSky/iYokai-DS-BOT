@@ -31,7 +31,7 @@ TIPO_MESSAGGI = "messaggi"
 TIPO_VOCE = "voce"
 TIPO_SERVER = "server"
 TIPI_LOG = (TIPO_EVENTI, TIPO_MESSAGGI, TIPO_VOCE, TIPO_SERVER)
-# Tipi di uscita che non sono log: non entrano in TIPI_LOG, quindi /log setup
+# Tipi di uscita che non sono log: non entrano in TIPI_LOG, quindi /admin-log setup
 # non crea canali per loro. Si scelgono dal comando della funzione che li usa.
 TIPO_ALLARMI = "allarmi"  # allarmi dell'anti-nuke (#59 3.18)
 TIPO_PHISHING = "phishing"  # log del filtro phishing (SIC-043)
@@ -175,7 +175,7 @@ async def avvisa_proprietario(guild: discord.Guild, tipo: str, channel_id: int, 
             await proprietario.send(
                 f"Non riesco a scrivere i log «{DESCRIZIONE_TIPO.get(tipo, tipo)}» "
                 f"in <#{channel_id}> su **{guild.name}**: {motivo}. "
-                f"Controlla i permessi o scegli un altro canale con /log canale. "
+                f"Controlla i permessi o scegli un altro canale con /admin-log canale. "
                 f"Questo avviso non si ripete finché il problema resta."
             )
         except discord.Forbidden:

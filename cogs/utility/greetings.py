@@ -240,12 +240,12 @@ class UsciteModal(BaseModal, title="Ban e addio: cosa esce e la grafica"):
         config = await greetings_repo.get_config(guild.id)
         avviso = ""
         if modo != uscite.MODO_NESSUNO and (not config.goodbye_enabled or config.goodbye_channel_id is None):
-            avviso = " Il canale dell'addio però non è attivo: configuralo con `/gestione benvenuto addio`."
+            avviso = " Il canale dell'addio però non è attivo: configuralo con `/admin-benvenuto addio`."
         await interaction.followup.send(f"Salvato: escono {uscite.ETICHETTE_MODO[modo]}.{avviso}", ephemeral=True)
 
 
 class ExtraBenvenutoView(BaseView):
-    """`/gestione benvenuto extra`: due finestre, i testi del benvenuto e quella di ban e addio (D37)."""
+    """`/admin-benvenuto extra`: due finestre, i testi del benvenuto e quella di ban e addio (D37)."""
 
     def __init__(self, config) -> None:
         super().__init__(timeout=300)
@@ -754,7 +754,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             await greetings_repo.clear_welcome_background(guild.id)
         avviso = ""
         if attiva and not attuale.welcome_enabled:
-            avviso = " Il benvenuto però è spento: attivalo con `/gestione benvenuto benvenuto`."
+            avviso = " Il benvenuto però è spento: attivalo con `/admin-benvenuto messaggio`."
         await interaction.followup.send(
             f"Immagine di benvenuto {'attivata' if attiva else 'disattivata'}.{avviso}", ephemeral=True
         )

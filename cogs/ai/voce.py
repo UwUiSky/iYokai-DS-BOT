@@ -2,7 +2,7 @@
 cogs/ai/voce.py
 ===============
 La voce di Yokai: veri messaggi vocali di Discord scritti dal bot, con sotto «Trascrivi» e «Nella mia lingua»
-(vedono la risposta solo chi preme, nella lingua del loro client); `/ai voce imposta|parla`, `/assistente parla`,
+(vedono la risposta solo chi preme, nella lingua del loro client); `/admin-ai voce imposta|parla`, `/assistente parla`,
 saluti a voce nei canali scelti. Il menu «Trascrivi vocale» sui vocali delle persone sta nell'app (cogs/user_app/voce_app.py). Senza motore vocale il bot manda
 solo il testo. Il motore si accende da `.env` (VOCE_MODELLO_DIR).
 Funzioni coperte: SPEC §14.19, §25.102, §25.103, §25.104, §25.105 (AI-R-109..112, D22)

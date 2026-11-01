@@ -115,7 +115,7 @@ class BackupRepository:
         associato (NULL), se non esisteva già una riga per questo
         server. Se esisteva già, non tocca il backup_guild_id
         esistente (evita di cancellare un abbinamento già fatto
-        rilanciando /backup main per errore)."""
+        rilanciando /admin-backup main per errore)."""
         await self._pool.execute(
             """
             INSERT INTO backup_pairs (main_guild_id, backup_guild_id)
@@ -163,7 +163,7 @@ class BackupRepository:
         return self._row_to_pair(row) if row is not None else None
 
     async def segna_allineamento(self, main_guild_id: int, esito: str) -> None:
-        """11.17: ora ed esito dell'ultimo giro, mostrati da /backup stato."""
+        """11.17: ora ed esito dell'ultimo giro, mostrati da /admin-backup stato."""
         await self._pool.execute(
             "UPDATE backup_pairs SET ultimo_allineamento = now(), esito_allineamento = $2 "
             "WHERE main_guild_id = $1",
@@ -173,7 +173,7 @@ class BackupRepository:
 
     async def get_pair_by_backup_guild_id(self, backup_guild_id: int) -> BackupPair | None:
         """Trova la coppia partendo dal server BACKUP (l'inverso di
-        get_pair, che parte dal main) — serve a /backup promuovi per
+        get_pair, che parte dal main) — serve a /admin-backup promuovi per
         capire "di quale main ero il backup" quando il comando viene
         lanciato dentro al server backup stesso (SPEC.md §11.13)."""
         row = await self._pool.fetchrow(
@@ -213,8 +213,8 @@ class BackupRepository:
         """
         async with self._pool.acquire() as conn:
             async with conn.transaction():
-                # BUG-34: la coppia storica resta, altrimenti /backup
-                # restore-utenti rifiuta il server appena promosso.
+                # BUG-34: la coppia storica resta, altrimenti /admin-backup
+                # ripristino utenti rifiuta il server appena promosso.
                 await conn.execute(
                     """
                     INSERT INTO backup_pair_history (old_main_guild_id, promoted_guild_id)

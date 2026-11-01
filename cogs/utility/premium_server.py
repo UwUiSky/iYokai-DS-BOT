@@ -1,7 +1,7 @@
 """
 cogs/utility/premium_server.py
 ==============================
-Premium di un server: `/admin premium stato|riscatta|sblocca` (NF-22, #93) e gli eventi degli abbonamenti Discord (app premium).
+Premium di un server: `/admin-bot premium stato|riscatta|sblocca` (NF-22, #93) e gli eventi degli abbonamenti Discord (app premium).
 Funzioni coperte: SPEC §3, §3.1 (NF-22)
 Dipende da: core/premium_entitlement_service.py, core/premium_modulo_service.py, core/premium.py
 """

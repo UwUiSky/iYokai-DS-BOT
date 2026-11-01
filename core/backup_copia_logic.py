@@ -18,7 +18,7 @@ from core.backup_mirror_logic import NOME_CANALE_OFFUSCATO
 
 MAX_CANALI = 500
 MAX_RUOLI = 250
-MOTIVO = "Copia con /backup di iYokai"
+MOTIVO = "Copia con /admin-backup di iYokai"
 
 
 @dataclass

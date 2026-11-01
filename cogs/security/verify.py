@@ -4,23 +4,23 @@ cogs/security/verify.py
 Verify Base (SPEC.md §4.1, §4.4, §4.5, §4.6). Modulo SEMPRE GRATUITO,
 come da schema.
 
-Due modalità mutuamente esclusive, scelte a `/security verify setup`:
+Due modalità mutuamente esclusive, scelte a `/admin-sicurezza verify setup`:
 - button: bottone persistente (stesso pattern di TicketPanelView) —
   supporta il captcha, perché un click su bottone È un'Interaction e
   può aprire un Modal.
 - reaction: l'utente reagisce a un messaggio con un'emoji — NON
   supporta il captcha: una reazione non è un'Interaction, non può
   aprire un Modal. La combinazione reaction+captcha viene rifiutata
-  esplicitamente a `/security verify setup`, non implementata a metà con un
+  esplicitamente a `/admin-sicurezza verify setup`, non implementata a metà con un
   flusso DM fragile.
 
-Ruoli (impostazioni del server, `/security verify opzioni`): un ruolo
+Ruoli (impostazioni del server, `/admin-sicurezza verify opzioni`): un ruolo
 «non verificato» dato all'ingresso e tolto alla verifica (VER-014) e fino
 a tre ruoli in più dati insieme a quello di verifica (VER-015). Lo staff
 può verificare a mano un membro (VER-016), cercare i tentativi di un
 utente (VER-031) e vedere le statistiche (VER-030).
 
-Captcha (`/security verify setup`, opzione `captcha_tipo`): «testo» e' una
+Captcha (`/admin-sicurezza verify setup`, opzione `captcha_tipo`): «testo» e' una
 somma scritta nel modulo; «immagine» (NF-18) manda un'immagine con lettere
 storte e un bottone che apre il modulo per ricopiarle. Tempo massimo 3 minuti,
 3 tentativi (core/captcha_image.py).
@@ -28,7 +28,7 @@ storte e un bottone che apre il modulo per ricopiarle. Tempo massimo 3 minuti,
 Il membro può verificarsi anche con /utility verifica (VER-010), lo stesso
 percorso del bottone del pannello.
 
-Tempi e azioni (`/security verify tempi`): promemoria in DM dopo X minuti
+Tempi e azioni (`/admin-sicurezza verify tempi`): promemoria in DM dopo X minuti
 (VER-008; con i DM chiusi un avviso nel canale del pannello che sparisce dopo
 pochi secondi, VER-009), tempo massimo con kick o ban alla scadenza
 (VER-011, scadenze nello scheduler: reggono un riavvio), azione su chi non

@@ -38,12 +38,12 @@ MAX_STORIA = 6
 MESSAGGI_LOCALI: dict[str, str] = {
     "non_configurata": "L'AI non è configurata su questo bot: il proprietario deve aggiungere almeno un "
     "fornitore nel file `.env`. Nel frattempo rispondo senza AI.",
-    "premium": "L'AI è una funzione premium: questo server non l'ha sbloccata. Accendendola con `/ai attiva` parte una prova gratuita.",
+    "premium": "L'AI è una funzione premium: questo server non l'ha sbloccata. Accendendola con `/admin-ai attiva` parte una prova gratuita.",
     "prova_finita": "La prova gratuita dell'AI è finita: per continuare serve il premium.",
     "manutenzione": "L'AI è in manutenzione: riprova più tardi. Il resto del bot funziona.",
     "coda_piena": "Ci sono troppe richieste AI in fila: riprova tra poco.",
     "coda_scaduta": "L'AI ci mette troppo a rispondere: riprova tra poco.",
-    "spenta": "L'AI è spenta in questo server. Un amministratore può accenderla con `/ai attiva`.",
+    "spenta": "L'AI è spenta in questo server. Un amministratore può accenderla con `/admin-ai attiva`.",
     "canale": "L'AI è spenta in questo canale.",
     "privacy": "Il server ha scelto di non mandare messaggi degli utenti all'AI.",
     "utente_spento": "Hai spento l'assistente AI per te: puoi riaccenderlo con `/assistente preferenza`.",

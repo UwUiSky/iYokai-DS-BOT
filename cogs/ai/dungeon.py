@@ -8,7 +8,7 @@ riusato in ogni server con lo stesso tema; l'AI scrive solo i rami che mancano. 
 una storia pronta.
 Funzioni coperte: SPEC §25.53–§25.55, §25.99 (AI-R-058..060, AI-R-106)
 
-I comandi stanno in `/ai dungeon` (D43): `/fun` ha già 25 figli. I bottoni sono di tutti.
+I comandi stanno in `/admin-ai dungeon` (D43): `/fun` ha già 25 figli. I bottoni sono di tutti.
 """
 
 from __future__ import annotations

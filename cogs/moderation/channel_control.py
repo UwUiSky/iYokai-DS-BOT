@@ -1,7 +1,7 @@
 """
 cogs/moderation/channel_control.py
 =====================================
-Comandi di controllo sul canale: /mod lock, /mod unlock, /mod slowmode. Modulo
+Comandi di controllo sul canale: /mod-canali lock, /mod-canali unlock, /mod-canali slowmode. Modulo
 SEMPRE GRATUITO (MODULE_CHANNEL_CONTROL, premium_capable=False), come
 da schema ("Lock/Unlock" e "Slowmode" sono [Free]). Ogni comando scrive
 una riga nel log di moderazione (M 1.8); il motivo del lock è al massimo

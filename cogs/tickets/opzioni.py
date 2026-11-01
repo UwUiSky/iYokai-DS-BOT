@@ -5,7 +5,7 @@ Opzioni dei pannelli dei ticket e regole di apertura (catalogo #120): limiti, pa
 orari, chi può aprire, nome e categorie del canale, avvisi, DM, permessi, squadra,
 presa in carico, chiusura; lista nera, sospensione, staff reperibile; apertura da
 comando (anche per conto di un utente o da un messaggio).
-Comandi: `/ticket-pannelli opzioni …` (admin), `/ticket-gestione lista-nera`, `/ticket-gestione sospendi` (admin),
+Comandi: `/admin-ticket-opzioni …` (admin), `/admin-ticket lista-nera`, `/admin-ticket sospendi` (admin),
 `/ticket azzera-pausa`, `/ticket reperibile` (staff dei ticket), `/ticket apri`.
 Le regole stanno in core/ticket_opzioni_logic.py; ogni opzione si salva da
 ticket_opzioni_repo.imposta (D16).
@@ -116,7 +116,7 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
             testo, embed=embed_opzioni(panel, opzioni), ephemeral=True, allowed_mentions=NIENTE
         )
 
-    # ================================================================ /ticket-pannelli opzioni …
+    # ================================================================ /admin-ticket-opzioni …
     @comando_di_gruppo("admin-ticket-opzioni", nome="limiti", descrizione="Tetto di ticket aperti, pausa e ruoli esenti.")
     @richiedi(Livello.ADMIN)
     @app_commands.describe(

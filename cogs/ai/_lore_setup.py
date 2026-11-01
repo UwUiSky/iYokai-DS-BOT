@@ -2,7 +2,7 @@
 cogs/ai/_lore_setup.py
 =====================
 Passo «scegli il tema» da offrire alla fine della configurazione guidata: un menu con i temi pronti, saltabile.
-Senza scelta vale il tema Yokai. Usa lo stesso punto di `/ai lore`.
+Senza scelta vale il tema Yokai. Usa lo stesso punto di `/admin-ai lore`.
 Funzioni coperte: SPEC §25.47 (AI-R-052)
 """
 
@@ -21,7 +21,7 @@ logger = logging.getLogger("iyokai.ai_lore_setup")
 
 TESTO_PASSO = (
     "Un'ultima cosa: che tema ha il tuo server? Il tema dà il tono ai testi dell'AI e ai giochi "
-    "(boss, dungeon, misteri). Puoi saltare: vale il tema Yokai. Lo cambi quando vuoi con `/ai lore`."
+    "(boss, dungeon, misteri). Puoi saltare: vale il tema Yokai. Lo cambi quando vuoi con `/admin-ai lore`."
 )
 
 
@@ -37,7 +37,7 @@ class _ScegliTema(discord.ui.Select):
         await imposta_lore(interaction.guild_id, tema, None, nomi_a_tema=False)
         self.view.stop()
         await interaction.response.edit_message(
-            content=f"Tema «{tema}» salvato. Con `/ai lore` puoi aggiungere parole tue o far dare il nome alla moneta.", view=None
+            content=f"Tema «{tema}» salvato. Con `/admin-ai lore` puoi aggiungere parole tue o far dare il nome alla moneta.", view=None
         )
 
 

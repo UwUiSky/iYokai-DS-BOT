@@ -2,8 +2,8 @@
 cogs/music/settings.py
 ==========================
 Impostazioni musicali del server (issue #126: MUS-047, MUS-044, MUS-055,
-MUS-059, MUS-066, MUS-054, MUS-062, MUS-064): /admin musica impostazioni e /admin musica riepilogo.
-Solo admin (lo dà il gruppo /admin). La logica sta in
+MUS-059, MUS-066, MUS-054, MUS-062, MUS-064): /admin-musica impostazioni e /admin-musica riepilogo.
+Solo admin (lo dà il gruppo /admin-musica). La logica sta in
 core/music_settings_logic.py; i controlli che le usano sono in
 cogs/music/player.py e core/music_fleet.py.
 """

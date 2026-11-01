@@ -1,14 +1,14 @@
 """
 cogs/utility/backup.py
 ======================
-Gruppo /backup (D25): coppia main e backup (main, crea, collega, promuovi),
+Gruppo /admin-backup (D25, D60): coppia main e backup (main, crea, collega, promuovi),
 copie datate della struttura (salva, lista, carica, elimina), stato e annullo
 del caricamento (mai sopra il ruolo più alto di chi carica), esportazioni e
 importazione, chat salvate (fino a 1000 messaggi) da ricaricare dopo,
 modelli condivisibili con un codice e sincronia di ban e ruoli tra due server
 dello stesso owner (NF-39), copia di un canale o di un ruolo, livelli di
 permesso e registro.
-/backup restore-modo e restore-utenti sono in cogs/utility/restore.py.
+/admin-backup ripristino modo e restore-utenti sono in cogs/utility/restore.py.
 Funzioni coperte: SPEC §11.12, §11.13, §11.15, §11.16, M 12.1, M 12.9, M 12.17, NF-39,
 BKP-009, BKP-010, BKP-014, BKP-015, BKP-018, BKP-019, BKP-024…027, BKP-032…037
 """
@@ -157,7 +157,7 @@ class BackupCog(CogConGruppi, commands.Cog):
             return True
         await interaction.response.send_message(
             f"⛔ In questo server: «{LIVELLI.get(livello, LIVELLI[LIVELLO_PREDEFINITO])}» "
-            "(si cambia con /backup permessi).",
+            "(si cambia con /founder backup permessi).",
             ephemeral=True,
         )
         return False
@@ -182,12 +182,12 @@ class BackupCog(CogConGruppi, commands.Cog):
     async def avvia_lavoro(self, interaction: discord.Interaction, fonte: str, totale: int, dettaglio: str, lavoro) -> str:
         """
         Un caricamento in sottofondo, uno per server: `lavoro(avanza)` restituisce un
-        riepilogo con `annullato` e `testo()`. Stato e annullo da /backup stato e annulla.
+        riepilogo con `annullato` e `testo()`. Stato e annullo da /admin-backup stato e annulla.
         """
         guild = interaction.guild
         caricamento_id = await backup_struttura_repo.avvia_caricamento(guild.id, interaction.user.id, fonte, totale)
         if caricamento_id is None:
-            return "⏳ C'è già un caricamento in corso: guarda /backup stato o fermalo con /backup annulla."
+            return "⏳ C'è già un caricamento in corso: guarda /admin-backup stato o fermalo con /admin-backup annulla."
 
         async def avanza(passo: str, fatti: int, totale: int) -> bool:
             return await backup_struttura_repo.aggiorna_caricamento(caricamento_id, passo, fatti, totale)
@@ -196,7 +196,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         compito = asyncio.create_task(self._esegui(lavoro, avanza, caricamento_id, interaction.channel))
         self._lavori.add(compito)
         compito.add_done_callback(self._lavori.discard)
-        return "▶️ Caricamento avviato. Avanzamento: /backup stato · per fermarlo: /backup annulla."
+        return "▶️ Caricamento avviato. Avanzamento: /admin-backup stato · per fermarlo: /admin-backup annulla."
 
     async def _esegui(self, lavoro, avanza, caricamento_id: int, canale) -> None:
         """Il riepilogo va nel canale: il lavoro può durare più di 15 minuti."""
@@ -301,7 +301,7 @@ class BackupCog(CogConGruppi, commands.Cog):
             "1. Crea un server nuovo (anche da un modello).",
             f"2. Invita **iYokai** con [questo link]({link_main})."
             + (f" Invita anche **iYokai Creator** con [questo link]({link_creator})." if link_creator else " (Il Creator non è attivo: avvisa l'owner del bot.)"),
-            f"3. Nel server nuovo lancia `/backup collega` con il codice `{codice}`.",
+            f"3. Nel server nuovo lancia `/admin-backup collega` con il codice `{codice}`.",
         ]
         if modello:
             passi.insert(
@@ -321,7 +321,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         nome="collega",
         descrizione="Collega QUESTO server come backup, con il codice ricevuto dal server principale.",
     )
-    @app_commands.describe(codice="Codice dato da /backup crea nel server principale")
+    @app_commands.describe(codice="Codice dato da /admin-backup crea nel server principale")
     async def collega(
         self, interaction: discord.Interaction, codice: app_commands.Range[str, 4, 24]
     ) -> None:
@@ -365,8 +365,8 @@ class BackupCog(CogConGruppi, commands.Cog):
             )
             return
         messaggi = {
-            ESITO_SCADUTO: "⌛ Il codice è scaduto: creane uno nuovo con /backup crea.",
-            ESITO_GIA_USATO: "⚠️ Il codice è già stato usato: creane uno nuovo con /backup crea.",
+            ESITO_SCADUTO: "⌛ Il codice è scaduto: creane uno nuovo con /admin-backup crea.",
+            ESITO_GIA_USATO: "⚠️ Il codice è già stato usato: creane uno nuovo con /admin-backup crea.",
             ESITO_GIA_COLLEGATO: (
                 "⚠️ Collegamento non possibile: o questo server fa già parte di un'altra coppia, "
                 "o il server principale ha già un backup o una copia in corso."
@@ -389,8 +389,8 @@ class BackupCog(CogConGruppi, commands.Cog):
     async def promuovi_backup(self, interaction: discord.Interaction) -> None:
         """
         SPEC.md §11.13 — il backup promosso diventa main senza backup:
-        un admin ne crea uno nuovo con /backup crea (un bot non può
-        creare server, D8). La coppia storica resta per /backup restore-utenti.
+        un admin ne crea uno nuovo con /admin-backup crea (un bot non può
+        creare server, D8). La coppia storica resta per /admin-backup ripristino utenti.
 
         Va lanciato DENTRO al server che finora era il backup — non
         serve altro ID: lo troviamo risalendo da backup_guild_id a
@@ -506,7 +506,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @comando_di_gruppo("admin-backup", nome="carica", descrizione="Ricarica in questo server una copia salvata, scegliendo le parti.")
-    @app_commands.describe(copia="Numero della copia (da /backup lista)")
+    @app_commands.describe(copia="Numero della copia (da /admin-backup lista)")
     async def carica(self, interaction: discord.Interaction, copia: app_commands.Range[int, 1]) -> None:
         if not await self._puo(interaction, AZIONE_CARICA):
             return
@@ -524,7 +524,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo("admin-backup", nome="elimina", descrizione="Elimina una copia salvata.")
-    @app_commands.describe(copia="Numero della copia (da /backup lista)")
+    @app_commands.describe(copia="Numero della copia (da /admin-backup lista)")
     async def elimina(self, interaction: discord.Interaction, copia: app_commands.Range[int, 1]) -> None:
         if not await self._puo(interaction, AZIONE_CREA):
             return
@@ -582,7 +582,7 @@ class BackupCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo("admin-backup", nome="modello", descrizione="Modelli: condividi una copia con un codice o carica quella di un altro server.")
     @app_commands.describe(
         azione="Cosa fare",
-        copia="Per «pubblica» e «ritira»: numero della copia (da /backup lista)",
+        copia="Per «pubblica» e «ritira»: numero della copia (da /admin-backup lista)",
         codice="Per «usa»: il codice del modello",
     )
     @app_commands.choices(
@@ -618,7 +618,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         if azione.value == "pubblica":
             nuovo = await backup_struttura_repo.pubblica_modello(guild.id, copia)
             testo = (
-                f"🧩 Modello pronto: codice `{nuovo}`. Chi lo ha può caricarlo con /backup modello "
+                f"🧩 Modello pronto: codice `{nuovo}`. Chi lo ha può caricarlo con /admin-backup modello "
                 "(ban, membri e permessi dei singoli non passano)." if nuovo else "Copia non trovata (le chat salvate non diventano modelli)."
             )
         else:
@@ -854,7 +854,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo("admin-backup", nome="carica", descrizione="Ricarica una chat salvata in un canale, anche diverso.", sottogruppo=SOTTOGRUPPI["admin-backup chat"])
-    @app_commands.describe(copia="Numero della chat salvata (da /backup lista)", canale="Canale dove ricaricarla (se vuoto, questo)")
+    @app_commands.describe(copia="Numero della chat salvata (da /admin-backup lista)", canale="Canale dove ricaricarla (se vuoto, questo)")
     async def chat_carica(
         self, interaction: discord.Interaction, copia: app_commands.Range[int, 1],
         canale: discord.TextChannel | None = None,
@@ -974,7 +974,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         return await struttura.leggi_reazioni(msg)
 
     @comando_di_gruppo("admin-backup", nome="importa", descrizione="Importa la struttura da un file JSON, scegliendo cosa applicare.")
-    @app_commands.describe(file="File JSON esportato con /backup esporta (al massimo 10 MiB)")
+    @app_commands.describe(file="File JSON esportato con /admin-backup esporta (al massimo 10 MiB)")
     async def importa(self, interaction: discord.Interaction, file: discord.Attachment) -> None:
         if not await self._puo(interaction, AZIONE_CARICA):
             return

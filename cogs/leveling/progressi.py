@@ -2,7 +2,7 @@
 cogs/leveling/progressi.py
 ==========================
 /level progressi: una finestra con un menu (missioni del giorno, della settimana e del server, traguardi,
-serie di giorni con protezione, pass di 90 giorni con traccia premium, profilo globale). /economia
+serie di giorni con protezione, pass di 90 giorni con traccia premium, profilo globale). /admin-livelli
 progressi: lo staff li accende e sceglie l'obiettivo del server. Le monete le accredita
 core/progressi_service.py in modo atomico.
 Funzioni coperte: SPEC §23.17 (NF-41, D49, D51)
@@ -57,7 +57,7 @@ MENU = (
 TITOLI = dict(MENU)
 SPENTO = (
     "Missioni, serie, traguardi e pass sono spenti su questo server. "
-    "Un amministratore li accende con `/economia progressi`."
+    "Un amministratore li accende con `/admin-livelli progressi`."
 )
 
 

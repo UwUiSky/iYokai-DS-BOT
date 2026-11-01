@@ -1,7 +1,7 @@
 """
 cogs/ai/riepilogo.py
 ====================
-`/ai riepilogo imposta|anteprima`: ogni giorno o ogni settimana, a un'ora scelta, il bot pubblica nel canale scelto un
+`/admin-ai riepilogo imposta|anteprima`: ogni giorno o ogni settimana, a un'ora scelta, il bot pubblica nel canale scelto un
 riepilogo fatto di numeri (attivi, canale vivace, messaggio più votato, clan cresciuto); l'AI ne scrive solo il tono e,
 se l'admin lo chiede, riassume le discussioni dei canali scelti. `/assistente avviso`: la persona segue fino a 3 parole
 e riceve un avviso in privato quando se ne parla molto in un canale che vede. Funzionano anche con l'AI ferma.

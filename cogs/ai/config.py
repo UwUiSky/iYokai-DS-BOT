@@ -1,7 +1,7 @@
 """
 cogs/ai/config.py
 =================
-Il gruppo `/ai` (D26): consenso e interruttore del server, canali spenti,
+Il gruppo `/admin-ai` (D26): consenso e interruttore del server, canali spenti,
 limiti e tetto di spesa, privacy e memoria, lore con temi pronti, parole
 vietate, funzioni automatiche (menzione, bandiere), moderazione con l'AI,
 traduzione automatica dei canali, personaggi del server, base di
@@ -322,7 +322,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
             }.items() if v is not None
         }
         if not campi:
-            await interaction.response.send_message("Indica almeno un valore. Lo stato attuale è in `/ai stato`.", ephemeral=True)
+            await interaction.response.send_message("Indica almeno un valore. Lo stato attuale è in `/admin-ai stato`.", ephemeral=True)
             return
         await imposta_scelte(interaction.guild_id, **campi)
         await interaction.response.send_message("Limiti salvati.", ephemeral=True)

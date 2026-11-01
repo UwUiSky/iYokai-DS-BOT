@@ -160,7 +160,7 @@ class PremiumRegistry:
         return self._modules.get(name)
 
     def modules_in_category(self, category: str) -> list[PremiumModule]:
-        """Moduli di una categoria, ordinati per nome (usato da /admin setup attiva)."""
+        """Moduli di una categoria, ordinati per nome (usato da /admin-bot setup attiva)."""
         return [m for m in self.all_modules() if m.category == category]
 
     def all_modules(self) -> list[PremiumModule]:

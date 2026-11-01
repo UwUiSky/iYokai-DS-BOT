@@ -3,7 +3,7 @@ cogs/utility/birthdays.py
 =========================
 Compleanni (NF-26, SPEC §23.4): ogni utente registra giorno e mese (niente anno) e può
 cancellarli; il giorno giusto il bot fa gli auguri in un canale e può dare un ruolo per 24 ore.
-Comandi: `/level compleanno imposta|rimuovi` (utente), `/moduli compleanni canale|ruolo` (admin).
+Comandi: `/level compleanno imposta|rimuovi` (utente), `/admin-moduli compleanni canale|ruolo` (admin).
 Il giro è in core/birthday_worker.py ed è ospitato da questo cog.
 Funzioni coperte: SPEC §23 (NF-26)
 """

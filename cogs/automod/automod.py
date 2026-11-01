@@ -9,7 +9,7 @@ da schema — "Filtri base" è [Free].
 Ogni comando che cambia la configurazione richiama subito
 `_sync_guild()`: l'esperienza voluta è "plug and play" — l'admin
 aggiunge una parola e la regola Discord viene aggiornata all'istante,
-senza un comando /automod sync separato da ricordarsi di lanciare.
+senza un comando /admin-automod sync separato da ricordarsi di lanciare.
 
 Questo file contiene ANCHE i filtri AutoMod avanzati lato bot
 (SPEC.md §6.3-§6.14: anti-link, anti-spam, anti-caps, anti-zalgo,
@@ -17,20 +17,20 @@ anti-mass-mention, eccezioni per canale/ruolo, azioni configurabili,
 log) — stesso modulo/stesso cog dei filtri base sopra, non uno
 separato: sono entrambi "AutoMod", solo con motore diverso (native
 Discord vs. `on_message` nel bot), e vivono sotto lo stesso comando
-`/automod`.
+`/admin-automod`.
 
 I filtri lato bot controllano anche i messaggi MODIFICATI (`on_message_edit`,
 AMD-021): la modifica non conta come messaggio in più per l'anti-spam, e un
 messaggio modificato più volte vale un solo warn per violazione.
-Il blocco del phishing (NF-31, `/filtri phishing`) usa la lista di
+Il blocco del phishing (NF-31, `/admin-filtri phishing`) usa la lista di
 core/phishing_list_fetcher.py: cancella il messaggio e mette in timeout.
 Due categorie hanno un interruttore proprio (SIC-042): accorciatori di link
 e inviti a server per adulti (il server dell'invito lo chiede a Discord).
 Filtri in più: messaggi ripetuti, troppo corti, link e menzioni contati nel
-tempo (AMD-001/004/006/007, `/filtri messaggi`), testo di embed (solo
+tempo (AMD-001/004/006/007, `/admin-filtri messaggi`), testo di embed (solo
 per i filtri dei link, anche quando l'anteprima arriva con una modifica) e
-inoltri (AMD-019/020) e tipi di file vietati (AMD-022, `/filtri
-contenuto`), canali solo media o senza allegati (AMD-023/024, `/automod
+inoltri (AMD-019/020) e tipi di file vietati (AMD-022, `/admin-filtri
+contenuto`), canali solo media o senza allegati (AMD-023/024, `/admin-automod
 filtri canale-media`; sticker e inoltri con immagine valgono come media), azione kick (AMD-041),
 parole vietate con varianti (AMD-014, core/automod_parole_logic.py: cancella e conta nella scala;
 anche la parola divisa in piu' messaggi brevi di fila, che vengono cancellati tutti),
@@ -136,7 +136,7 @@ logger = logging.getLogger("iyokai.automod")
 
 MODULE_AUTOMOD = "automod"
 
-# Oltre questa lunghezza /automod badword-list manda l'elenco come file
+# Oltre questa lunghezza /admin-automod badword-list manda l'elenco come file
 # (un messaggio Discord tiene 2000 caratteri).
 MAX_ELENCO_IN_CHAT = 1900
 VIOLAZIONI_PER_PAGINA = 10
@@ -614,7 +614,7 @@ AVVISO_TROPPE_REGOLE = (
     f"Questo server ha già {MAX_KEYWORD_RULES} regole AutoMod a parole "
     f"chiave, il massimo di Discord: non posso crearne un'altra. "
     f"Elimina una regola dal pannello di Discord (Impostazioni server → "
-    f"AutoMod) e poi usa `/automod sync`."
+    f"AutoMod) e poi usa `/admin-automod sync`."
 )
 
 
@@ -1193,7 +1193,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
             f"Blocco del phishing {'attivato: cancello il messaggio e metto in timeout chi lo ha scritto' if enabled else 'disattivato'}. "
             f"Accorciatori di link: {'bloccati' if c.phishing_accorciatori else 'permessi'}. "
             f"Inviti a server per adulti: {'bloccati' if c.phishing_inviti_adulti else 'permessi'}. "
-            "Se blocco un dominio per sbaglio, mettilo nella whitelist con `/filtri anti-link-domain`."
+            "Se blocco un dominio per sbaglio, mettilo nella whitelist con `/admin-filtri anti-link-domain`."
             + (f" I link bloccati si scrivono in {canale_log.mention}." if canale_log is not None else ""),
             ephemeral=True,
         )
@@ -1481,7 +1481,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(
         violation="Quale filtro", delete="Cancella il messaggio", warn="Assegna un warn",
-        mute="Timeout temporaneo (durata: /automod mute-duration)", ban="Banna l'utente",
+        mute="Timeout temporaneo (durata: /admin-automod mute-duration)", ban="Banna l'utente",
         kick="Espelle l'utente",
     )
     @app_commands.choices(
@@ -1562,7 +1562,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
         await interaction.response.send_message(
             f"Violazioni di **{discord.utils.escape_markdown(str(utente))}** ({totale}), pagina {pagina} di {pagine}:\n{elenco}\n"
-            f"Per toglierne una: `/automod violazione-togli numero:`",
+            f"Per toglierne una: `/admin-automod violazione-togli numero:`",
             ephemeral=True,
             allowed_mentions=discord.AllowedMentions.none(),
         )
@@ -1572,7 +1572,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         nome="violazione-togli",
         descrizione="Toglie una violazione dal registro AutoMod.",
     )
-    @app_commands.describe(numero="Il numero della violazione (quello dopo # in /automod violazioni)")
+    @app_commands.describe(numero="Il numero della violazione (quello dopo # in /admin-automod violazioni)")
     async def violazione_togli(
         self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 2_147_483_647]
     ) -> None:

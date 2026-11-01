@@ -13,7 +13,7 @@ nessuna query, rimossi).
 Niente proiezione su Forum per i membri (alta cardinalità — un
 server da 50.000 membri creerebbe 50.000 thread, e un raid farebbe esplodere
 il rate limit proprio quando il logging serve di più). Per canali e casi
-(bassa cardinalità) c'è `/log vista-forum`: dopo ogni scrittura il registro
+(bassa cardinalità) c'è `/admin-log vista-forum`: dopo ogni scrittura il registro
 avvisa `core/log_forum_service.py`, che non fa nulla se il server non l'ha scelta.
 Funzioni coperte: SPEC §8.17
 """

@@ -7,7 +7,7 @@ ban istantaneo. Modulo CANDIDATO PREMIUM.
 SEC-8b: prima di tutto il resto, _handle_trigger controlla se chi ha
 scritto nella trappola è esente (permesso "Gestisci messaggi" o
 "Amministratore", uno dei ruoli staff configurati con
-/security spamtrap, o un ruolo sopra quello del bot) — in quel caso non
+/admin-sicurezza spamtrap, o un ruolo sopra quello del bot) — in quel caso non
 scatta nessun ban né propagazione al global-ban. AppealActionsView
 richiede "Bannare i membri" a chi preme i bottoni Unban/Reject/Reply.
 
@@ -34,14 +34,14 @@ I bottoni dell'appello (Unban, Reject, Reply) sono persistenti: il
 loro custom_id porta server, caso e utente, e setup() li registra con
 `bot.add_dynamic_items`. Rispondono anche dopo un riavvio del bot.
 
-Punizione a scelta (SIC-040, `/security spamtrap punizione:`): il ban è
+Punizione a scelta (SIC-040, `/admin-sicurezza spamtrap punizione:`): il ban è
 la sequenza qui sopra; kick, timeout, solo cancellazione o «decide lo
 staff» cancellano il messaggio e fanno solo quello, senza ban globale né
 purge. Con «decide lo staff» il caso va nei log con i bottoni Ban e Kick,
 persistenti come quelli dell'appello.
 
 Più canali trappola (SIC-039): oltre a quello principale fino a 4 in più
-(`canale_extra_aggiungi` e `canale_extra_togli` di `/security spamtrap`),
+(`canale_extra_aggiungi` e `canale_extra_togli` di `/admin-sicurezza spamtrap`),
 salvati nelle impostazioni del server. Scrivere in uno qualunque è la trappola.
 
 Funzioni coperte: SPEC §7.3, SIC-039/040, §23 (NF-30: un DM di chi ha un ban manuale riceve il bottone di appello)

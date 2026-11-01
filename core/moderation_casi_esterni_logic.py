@@ -3,7 +3,7 @@ core/moderation_casi_esterni_logic.py
 =====================================
 Dal registro di controllo di Discord al caso di moderazione: ban, kick e
 timeout fatti dal menu di Discord o da altri bot entrano nei casi del server
-(se il server lo ha acceso con `/mod opzioni imposta casi_esterni:`).
+(se il server lo ha acceso con `/mod-sanzioni opzioni imposta casi_esterni:`).
 Funzioni coperte: SPEC §5.2 (MOD-047)
 """
 

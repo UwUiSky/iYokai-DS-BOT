@@ -1,8 +1,8 @@
 """
 cogs/utility/config_strumenti.py
 ================================
-Strumenti di configurazione del server e informazioni sul bot (#122): `/admin config pulizia` (CFG-019),
-`/admin config sincronizza` (CFG-020), `/admin config nickname-bot` (CFG-021) e `/utility info` (CFG-046).
+Strumenti di configurazione del server e informazioni sul bot (#122): `/admin-bot config pulizia` (CFG-019),
+`/admin-bot config sincronizza` (CFG-020), `/admin-bot config nickname-bot` (CFG-021) e `/utility info` (CFG-046).
 Funzioni coperte: SPEC §20 (NF-05), catalogo #122, parte E (D15)
 Dipende da: core/bot_aspetto.py, core/config_cleanup_logic.py, core/command_permissions.py, core/bot_info.py, core/bot_roles.py
 """

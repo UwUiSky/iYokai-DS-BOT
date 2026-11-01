@@ -17,9 +17,9 @@ questo modulo).
 Gli elenchi restano dentro i limiti di un embed: ogni riga è tagliata
 e l'elenco si ferma a 4000 caratteri con "…e altri N".
 In più: storico filtrato per tipo, cambio del motivo di un caso,
-eliminazione di un caso, classifica dello staff (/mod caso), note da
-togliere, cambiare o svuotare (/mod nota), warn da togliere o azzerare
-e classifica dei warn (/mod avvisi). Le azioni che cancellano dati
+eliminazione di un caso, classifica dello staff (/mod-casi caso), note da
+togliere, cambiare o svuotare (/mod-casi nota), warn da togliere o azzerare
+e classifica dei warn (/mod-casi avvisi). Le azioni che cancellano dati
 (elimina caso, svuota note, azzera warn) chiedono "Gestire il server".
 Casi anche per ban, kick e timeout fatti fuori da iYokai (MOD-047, se acceso).
 Avviso allo staff quando rientra chi ha dei casi (MOD-064, se acceso).
@@ -411,7 +411,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     # ================================================================
-    # /mod caso: modifica motivo, elimina, classifica staff
+    # /mod-casi caso: modifica motivo, elimina, classifica staff
     # ================================================================
     @comando_di_gruppo(
         "mod-casi",
@@ -560,7 +560,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     # ================================================================
-    # /mod nota: toglie, cambia, svuota
+    # /mod-casi nota: toglie, cambia, svuota
     # ================================================================
     @comando_di_gruppo(
         "mod-casi",
@@ -616,7 +616,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "casesystem_cancellate_note_di", n=n, mention=member.mention), ephemeral=True)
 
     # ================================================================
-    # /mod avvisi: togliere i warn e la classifica
+    # /mod-casi avvisi: togliere i warn e la classifica
     # ================================================================
     @comando_di_gruppo(
         "mod-casi",

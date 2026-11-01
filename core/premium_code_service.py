@@ -2,7 +2,7 @@
 core/premium_code_service.py
 ============================
 Codici premium da riscattare, a tempo o permanenti (CFG-038, #122). L'owner crea un codice (o concede
-direttamente) e il server lo riscatta con `/admin premium riscatta`. Un codice sblocca un modulo oppure tutti.
+direttamente) e il server lo riscatta con `/admin-bot premium riscatta`. Un codice sblocca un modulo oppure tutti.
 Funzioni coperte: SPEC §3, catalogo #122
 Dipende da: core/repositories/premium_code_repo.py, core/migrations/0132_codici_premium.sql
 """

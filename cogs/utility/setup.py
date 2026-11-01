@@ -28,7 +28,7 @@ Come funziona
    basta "selezionare quelli da accendere", la selezione RAPPRESENTA
    lo stato finale desiderato.
 Funzioni coperte: SPEC §2.1, §2.2, M 10.14 (#66), #148, REVIEW.md BUG-2 (issue #4, #38, #43, #49).
-Il wizard (`/admin setup wizard`) sta in cogs/utility/_setup_wizard_views.py.
+Il wizard (`/admin-bot setup wizard`) sta in cogs/utility/_setup_wizard_views.py.
 """
 
 from __future__ import annotations
@@ -54,7 +54,7 @@ from cogs.utility._setup_wizard_views import SetupWizardView  # noqa: F401  (esp
 logger = logging.getLogger("iyokai.setup")
 
 # Limite reale di Discord: un Select accetta al massimo 25 opzioni.
-# Per questo /admin setup attiva mostra un Select per categoria (BUG-2).
+# Per questo /admin-bot setup attiva mostra un Select per categoria (BUG-2).
 MAX_SELECT_OPTIONS = 25
 
 # BUG-2: nomi leggibili delle categorie di core.premium.CATEGORIE_MODULI.
@@ -315,7 +315,7 @@ class SetupCog(CogConGruppi, commands.Cog):
         """Elenco di sola lettura: stato di tutti i moduli, per categoria."""
         embed = discord.Embed(
             title="Stato dei moduli",
-            description="Scegli una categoria in `/admin setup attiva categoria:` per modificarla.",
+            description="Scegli una categoria in `/admin-bot setup attiva categoria:` per modificarla.",
         )
         for valore, etichetta in ETICHETTE_CATEGORIE.items():
             righe = []

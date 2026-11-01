@@ -1,7 +1,7 @@
 """
 core/clear_filter_logic.py
 ==========================
-Filtri di /mod clear, scritti come funzione semplice sui dati di un
+Filtri di /mod-canali clear, scritti come funzione semplice sui dati di un
 messaggio: si provano senza Discord.
 Funzioni coperte: SPEC §5.7 (MOD-069, 071, 073-079, 083, 084, 086)
 """

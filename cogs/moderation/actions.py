@@ -169,7 +169,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     ) -> None:
         """
         Un ban o un kick diretto sostituisce un isolamento o un tempban in corso:
-        via scadenza, stato, invito di rientro e caso (altrimenti un `/modban unban`
+        via scadenza, stato, invito di rientro e caso (altrimenti un `/mod-ban unban`
         successivo prenderebbe la strada dell'isolamento e non sbannerebbe).
         """
         stato = await moderation_repo.get_tempban_state(guild.id, user_id)
@@ -316,7 +316,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         member="Il membro da bannare",
         reason="Motivo del ban",
-        delete_message_days="Giorni di messaggi da cancellare (0-7). Vuoto: quelli di /mod opzioni",
+        delete_message_days="Giorni di messaggi da cancellare (0-7). Vuoto: quelli di /mod-sanzioni opzioni",
     )
     async def ban(
         self,
@@ -821,7 +821,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(
         member="Il membro da mettere in timeout",
-        duration="Durata, es. 10m, 1h, 7d (max 28 giorni). Vuoto: quella di /mod opzioni",
+        duration="Durata, es. 10m, 1h, 7d (max 28 giorni). Vuoto: quella di /mod-sanzioni opzioni",
         reason="Motivo del timeout",
     )
     async def timeout(
@@ -1038,7 +1038,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         utenti=f"ID o menzioni separati da spazi (al massimo {MAX_UTENTI_MASSA})",
         reason="Motivo del ban",
-        delete_message_days="Giorni di messaggi da cancellare (0-7). Vuoto: quelli di /mod opzioni",
+        delete_message_days="Giorni di messaggi da cancellare (0-7). Vuoto: quelli di /mod-sanzioni opzioni",
     )
     async def ban_massa(
         self,
@@ -1119,7 +1119,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         for uid in ids:
             stato = await moderation_repo.get_tempban_state(guild.id, uid)
             if stato is not None and stato["modo"] == MODO_ISOLAMENTO:
-                saltati.append(f"`{uid}`: in isolamento, usa /modban unban")
+                saltati.append(f"`{uid}`: in isolamento, usa /mod-ban unban")
                 continue
             try:
                 await guild.unban(discord.Object(id=uid), reason=audit_reason(reason))

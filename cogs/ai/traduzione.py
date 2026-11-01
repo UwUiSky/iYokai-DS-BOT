@@ -2,8 +2,8 @@
 cogs/ai/traduzione.py
 =====================
 Traduzione con l'AI: `/assistente traduci`, traduzione automatica dei canali
-scelti con `/ai traduzione`, traduzione quando qualcuno reagisce con la
-bandiera di un paese (`/ai funzioni bandiere`). Le traduzioni passano dalla
+scelti con `/admin-ai traduzione`, traduzione quando qualcuno reagisce con la
+bandiera di un paese (`/admin-ai funzioni bandiere`). Le traduzioni passano dalla
 cache: lo stesso testo non si ritraduce.
 Funzioni coperte: SPEC §25.74–§25.81 (i messaggi di fila della stessa persona si traducono insieme, §25.77) (AI-R-081..088; catalogo AI-020, AI-021)
 
