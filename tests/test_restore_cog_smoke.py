@@ -1,7 +1,7 @@
 """
 tests/test_restore_cog_smoke.py
 ===================================
-Smoke test del cog Restore (/backup restore-modo|restore-utenti).
+Smoke test del cog Restore (/admin-backup ripristino modo|restore-utenti).
 """
 
 import discord

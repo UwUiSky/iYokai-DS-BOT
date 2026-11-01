@@ -1,8 +1,8 @@
 """
 cogs/utility/marchio.py
 =======================
-`/admin premium marchio` (NF-38, #109): un server premium collega un bot suo, con nome e avatar suoi.
-`/admin premium aspetto` (CFG-030, #122): avatar, banner e descrizione dello stesso iYokai, solo in questo server.
+`/admin-bot premium marchio` (NF-38, #109): un server premium collega un bot suo, con nome e avatar suoi.
+`/admin-bot premium aspetto` (CFG-030, #122): avatar, banner e descrizione dello stesso iYokai, solo in questo server.
 Il token si scrive in una finestra (mai come opzione del comando), si prova con Discord e si salva cifrato.
 Le azioni passano da `core/whitelabel_bot.py`, le stesse del pannello web (D16).
 Funzioni coperte: SPEC §23 (NF-38), catalogo #122 (CFG-030)
@@ -112,7 +112,7 @@ class MarchioCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------------
     @comando_di_gruppo(
-        "admin", nome="marchio", descrizione="Usa un bot con il tuo nome e il tuo avatar (premium).",
+        "admin-bot", nome="marchio", descrizione="Usa un bot con il tuo nome e il tuo avatar (premium).",
         sottogruppo=SOTTOGRUPPO_PREMIUM,
     )
     @app_commands.describe(azione="Cosa fare", testo="Solo per «testo di stato»: la frase da mostrare (vuoto = nessuna)")
@@ -162,7 +162,7 @@ class MarchioCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------------
     @comando_di_gruppo(
-        "admin", nome="aspetto", descrizione="Avatar, banner e descrizione del bot in questo server (premium).",
+        "admin-bot", nome="aspetto", descrizione="Avatar, banner e descrizione del bot in questo server (premium).",
         sottogruppo=SOTTOGRUPPO_PREMIUM,
     )
     @app_commands.describe(

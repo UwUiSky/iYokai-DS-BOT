@@ -2,11 +2,11 @@
 cogs/logging/logs_query.py
 =============================
 Interfaccia comandi sul log eventi unificato (BACKLOG.md §3):
-/log cerca utente, canale e ruolo (con filtro «ultimi N giorni»),
-/log esporta. Nessuna logica propria
+/admin-log cerca utente, canale e ruolo (con filtro «ultimi N giorni»),
+/admin-log esporta. Nessuna logica propria
 oltre alla formattazione — legge tramite core/repositories/
 event_log_repo.py, scritto da cogs/logging/basic_logs.py.
-/log archivio-canale scarica gli ultimi messaggi di un canale in un file,
+/admin-log archivio-canale scarica gli ultimi messaggi di un canale in un file,
 con quelli cancellati nell'ultima ora (LOG-027, LOG-030).
 Funzioni coperte: SPEC §8.17, §8.18 (LOG-027, LOG-030)
 
@@ -66,7 +66,7 @@ def _etichetta_periodo(giorni: int | None) -> str:
 # Un file allegato deve restare sotto i 10 MiB (LIM-55). Ci fermiamo a
 # 8 per lasciare margine al resto della richiesta.
 MAX_EXPORT_FILE_BYTES = 8 * 1024 * 1024
-# Server con un /log archivio-canale in corso (uno alla volta per server).
+# Server con un /admin-log archivio-canale in corso (uno alla volta per server).
 _archivi_in_corso: set[int] = set()
 
 
@@ -100,7 +100,7 @@ def _format_entries(entries: list[EventLogEntry]) -> str:
     testo = "\n".join(mostrate)
     escluse = len(entries) - len(mostrate)
     if escluse:
-        testo += f"\n…e altre {escluse} voci: usa /log esporta per vederle tutte."
+        testo += f"\n…e altre {escluse} voci: usa /admin-log esporta per vederle tutte."
     return testo
 
 
@@ -137,7 +137,7 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "log",
+        "admin-log",
         nome="utente",
         descrizione="Mostra lo storico eventi di un utente.",
         sottogruppo=("cerca", "Cerca nello storico eventi del server."),
@@ -178,7 +178,7 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @comando_di_gruppo(
-        "log",
+        "admin-log",
         nome="canale",
         descrizione="Mostra lo storico eventi di un canale.",
         sottogruppo=("cerca", "Cerca nello storico eventi del server."),
@@ -219,7 +219,7 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @comando_di_gruppo(
-        "log",
+        "admin-log",
         nome="ruolo",
         descrizione="Mostra lo storico eventi di un ruolo.",
         sottogruppo=("cerca", "Cerca nello storico eventi del server."),
@@ -262,7 +262,7 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @comando_di_gruppo(
-        "log",
+        "admin-log",
         nome="esporta",
         descrizione="Esporta lo storico eventi completo del server come file JSON.",
     )
@@ -315,7 +315,7 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
 
 
     @comando_di_gruppo(
-        "log",
+        "admin-log",
         nome="archivio-canale",
         descrizione="Scarica in un file gli ultimi messaggi di un canale, anche quelli appena cancellati.",
     )

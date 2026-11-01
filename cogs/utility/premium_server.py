@@ -1,7 +1,7 @@
 """
 cogs/utility/premium_server.py
 ==============================
-Premium di un server: `/admin premium stato|riscatta|sblocca` (NF-22, #93) e gli eventi degli abbonamenti Discord (app premium).
+Premium di un server: `/admin-bot premium stato|riscatta|sblocca` (NF-22, #93) e gli eventi degli abbonamenti Discord (app premium).
 Funzioni coperte: SPEC §3, §3.1 (NF-22)
 Dipende da: core/premium_entitlement_service.py, core/premium_modulo_service.py, core/premium.py
 """
@@ -126,7 +126,7 @@ class PremiumServerCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------------
     @comando_di_gruppo(
-        "admin", nome="stato", descrizione="Mostra come è sbloccato il premium in questo server.",
+        "admin-bot", nome="stato", descrizione="Mostra come è sbloccato il premium in questo server.",
         sottogruppo=SOTTOGRUPPO_PREMIUM,
     )
     async def stato(self, interaction: discord.Interaction) -> None:
@@ -153,7 +153,7 @@ class PremiumServerCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(embed=embed, ephemeral=True)
 
     @comando_di_gruppo(
-        "admin", nome="riscatta", descrizione="Riscatta un codice premium per questo server.",
+        "admin-bot", nome="riscatta", descrizione="Riscatta un codice premium per questo server.",
         sottogruppo=SOTTOGRUPPO_PREMIUM,
     )
     @app_commands.describe(codice="Il codice che hai ricevuto, es. YOKAI-ABCD-EFGH-JKMN")
@@ -182,7 +182,7 @@ class PremiumServerCog(CogConGruppi, commands.Cog):
         return [app_commands.Choice(name=m.display_name[:100], value=m.name) for m in trovati[:25]]
 
     @comando_di_gruppo(
-        "admin", nome="sblocca",
+        "admin-bot", nome="sblocca",
         descrizione="Sblocca un modulo premium per 30 giorni con le monete della cassa del server.",
         sottogruppo=SOTTOGRUPPO_PREMIUM,
     )

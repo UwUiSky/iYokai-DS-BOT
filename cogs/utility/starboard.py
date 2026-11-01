@@ -2,7 +2,7 @@
 cogs/utility/starboard.py
 =========================
 Starboard (NF-08, SPEC §22.4): un messaggio che riceve abbastanza stelle
-viene copiato nel canale "bacheca". Comandi in `/moduli starboard`.
+viene copiato nel canale "bacheca". Comandi in `/admin-moduli starboard`.
 Funzioni coperte: SPEC §22 (NF-08)
 """
 
@@ -183,7 +183,7 @@ class StarboardCog(CogConGruppi, commands.Cog):
         return True
 
     @comando_di_gruppo(
-        "moduli",
+        "admin-moduli",
         nome="imposta",
         descrizione="Scegli il canale della bacheca e la soglia di stelle.",
         sottogruppo=_SG_STARBOARD,
@@ -231,7 +231,7 @@ class StarboardCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "moduli",
+        "admin-moduli",
         nome="soglia",
         descrizione="Cambia quante stelle servono per finire in bacheca.",
         sottogruppo=_SG_STARBOARD,
@@ -245,11 +245,11 @@ class StarboardCog(CogConGruppi, commands.Cog):
         if await starboard_repo.set_threshold(interaction.guild.id, numero):
             testo = f"Ora servono {numero} stelle."
         else:
-            testo = "La bacheca non è ancora impostata: usa prima `/moduli starboard imposta`."
+            testo = "La bacheca non è ancora impostata: usa prima `/admin-moduli starboard imposta`."
         await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(
-        "moduli",
+        "admin-moduli",
         nome="disattiva",
         descrizione="Spegni la bacheca.",
         sottogruppo=_SG_STARBOARD,

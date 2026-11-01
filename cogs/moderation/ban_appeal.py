@@ -2,7 +2,7 @@
 cogs/moderation/ban_appeal.py
 =============================
 Appello contro i ban manuali (ban e tempban). Se il server ha scelto un
-canale per gli appelli (`/modban appelli canale`), il messaggio privato
+canale per gli appelli (`/mod-ban appelli canale`), il messaggio privato
 mandato PRIMA del ban porta il bottone «Fai appello»: l'utente scrive il
 testo in un modulo (un appello ogni 24 ore), lo staff lo trova nel canale
 con i bottoni Accetta e Rifiuta. Accettare toglie il ban (prima di segnare «accettato», solo quello contestato)
@@ -349,7 +349,7 @@ class ModerationBanAppealCog(CogConGruppi, commands.Cog):
         await chiudi_casi_dopo_sban(guild, user, self.bot.user.id)
 
     @comando_di_gruppo(
-        "modban",
+        "mod-ban",
         nome="canale",
         descrizione="Sceglie il canale staff per gli appelli (vuoto per spegnerli).",
         sottogruppo=("appelli", "Appelli contro i ban."),
@@ -372,7 +372,7 @@ class ModerationBanAppealCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(
-        "modban",
+        "mod-ban",
         nome="elenco",
         descrizione="Mostra gli ultimi appelli del server.",
         sottogruppo=("appelli", "Appelli contro i ban."),

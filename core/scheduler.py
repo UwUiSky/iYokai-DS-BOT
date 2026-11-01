@@ -153,7 +153,7 @@ class Scheduler:
     async def cancel(self, action_id: int) -> None:
         """
         Annulla un'azione pianificata prima che scada (es. un admin
-        fa /modban unban manuale prima che scada il tempban automatico:
+        fa /mod-ban unban manuale prima che scada il tempban automatico:
         l'azione pianificata va cancellata per non eseguire un
         secondo unban ridondante più avanti).
         """
@@ -229,7 +229,7 @@ class Scheduler:
         Come list_pending_for_user(), ma filtrata per SERVER invece
         che per utente — per funzionalità admin dove non conta chi
         ha pianificato l'azione, conta a quale server appartiene
-        (es. /messaggi programmati elenco, dove qualunque admin deve poter
+        (es. /admin-messaggi programmati elenco, dove qualunque admin deve poter
         vedere tutti i messaggi programmati del proprio server, non
         solo quelli creati da sé stesso).
         """

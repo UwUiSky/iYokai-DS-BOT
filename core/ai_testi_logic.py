@@ -72,7 +72,7 @@ def nome_lingua(codice: str) -> str:
 # ---------------------------------------------------------------- istruzioni per funzione
 ISTRUZIONI: dict[str, str] = {
     "chiedi": "Aiuta l'utente a usare il bot. Usa SOLO i comandi dell'elenco. Proponi al massimo 3 comandi, "
-    "ognuno su una riga che comincia con il percorso esatto tra barre, es. /mod timeout. Se la richiesta "
+    "ognuno su una riga che comincia con il percorso esatto tra barre, es. /mod-sanzioni timeout. Se la richiesta "
     "è un'azione (es. 'metti in timeout Mario 10 minuti'), indica il comando e i valori da inserire.",
     "riassumi": "Riassumi la conversazione in punti brevi (al massimo 10). Non citare dati personali.",
     "traduci": "Traduci il testo nella lingua richiesta. Rispondi solo con la traduzione.",
@@ -130,10 +130,10 @@ def comandi_citati(risposta: str, comandi: list[ComandoNoto], massimo: int = 3) 
 
 
 # Comandi di configurazione: il pannello web ha la pagina giusta (AI-R-028, §25.27).
-GRUPPI_CONFIGURAZIONE = frozenset({"admin", "ai", "moduli", "ruoli"})
+GRUPPI_CONFIGURAZIONE = frozenset({"admin-bot", "admin-ai", "admin-moduli", "admin-ruoli"})
 PAGINE_PANNELLO = (  # dal percorso più preciso al più generico
-    ("ai", "ai"), ("admin premium aspetto", "aspetto"), ("admin premium marchio", "marchio"),
-    ("admin premium", "premium"),
+    ("admin-ai", "ai"), ("admin-bot premium aspetto", "aspetto"), ("admin-bot premium marchio", "marchio"),
+    ("admin-bot premium", "premium"),
 )
 
 

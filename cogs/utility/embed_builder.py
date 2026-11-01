@@ -3,7 +3,7 @@ cogs/utility/embed_builder.py
 =============================
 Costruttore di embed (NF-17, SPEC §22.6): l'admin compone un embed con titolo,
 testo, colore, immagini e campi, lo vede in anteprima, lo pubblica e lo modifica
-anche dopo. Comandi in `/messaggi embed *`. Tutti i limiti si controllano
+anche dopo. Comandi in `/admin-messaggi embed *`. Tutti i limiti si controllano
 al salvataggio (core/embed_builder_logic.py).
 Funzioni coperte: SPEC §22 (NF-17)
 """
@@ -94,7 +94,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
     # ================================================================
     # Crea
     # ================================================================
-    @comando_di_gruppo("messaggi", nome="crea", descrizione="Crea un embed e guarda l'anteprima.", sottogruppo=SOTTOGRUPPI["messaggi embed"])
+    @comando_di_gruppo("admin-messaggi", nome="crea", descrizione="Crea un embed e guarda l'anteprima.", sottogruppo=SOTTOGRUPPI["admin-messaggi embed"])
     @app_commands.describe(
         nome=f"Il nome per ritrovarlo (a-z, cifre, - e _; massimo {MAX_NOME})",
         titolo="Il titolo",
@@ -152,7 +152,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
     # ================================================================
     # Modifica
     # ================================================================
-    @comando_di_gruppo("messaggi", nome="modifica", descrizione="Cambia un embed salvato (e il messaggio già pubblicato).", sottogruppo=SOTTOGRUPPI["messaggi embed"])
+    @comando_di_gruppo("admin-messaggi", nome="modifica", descrizione="Cambia un embed salvato (e il messaggio già pubblicato).", sottogruppo=SOTTOGRUPPI["admin-messaggi embed"])
     @app_commands.describe(
         nome="L'embed da cambiare",
         titolo=f"Nuovo titolo (\"{_CANCELLA}\" lo toglie)",
@@ -260,14 +260,14 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
                 nota = " Il messaggio pubblicato è stato aggiornato."
             else:
                 await saved_embed_repo.set_published(interaction.guild.id, nome, None, None)
-                nota = " Il messaggio pubblicato non c'era più: ripubblicalo con `/messaggi embed pubblica`."
+                nota = " Il messaggio pubblicato non c'era più: ripubblicalo con `/admin-messaggi embed pubblica`."
         await saved_embed_repo.update_data(interaction.guild.id, nome, a_json(dati))
         await interaction.followup.send(await testo_per(interaction, "embedbuilder_embed_aggiornato", nota=nota), embed=embed, ephemeral=True)
 
     # ================================================================
     # Pubblica, elenco, elimina
     # ================================================================
-    @comando_di_gruppo("messaggi", nome="pubblica", descrizione="Manda un embed salvato in un canale.", sottogruppo=SOTTOGRUPPI["messaggi embed"])
+    @comando_di_gruppo("admin-messaggi", nome="pubblica", descrizione="Manda un embed salvato in un canale.", sottogruppo=SOTTOGRUPPI["admin-messaggi embed"])
     @app_commands.describe(nome="L'embed da mandare", canale="Il canale (di norma quello dove sei)")
     async def pubblica(
         self,
@@ -305,7 +305,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
 
-    @comando_di_gruppo("messaggi", nome="elenco", descrizione="Mostra gli embed salvati.", sottogruppo=SOTTOGRUPPI["messaggi embed"])
+    @comando_di_gruppo("admin-messaggi", nome="elenco", descrizione="Mostra gli embed salvati.", sottogruppo=SOTTOGRUPPI["admin-messaggi embed"])
     async def elenco(self, interaction: discord.Interaction) -> None:
         if not await self._pronto(interaction):
             return
@@ -320,7 +320,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
 
-    @comando_di_gruppo("messaggi", nome="elimina", descrizione="Elimina un embed salvato (il messaggio pubblicato resta).", sottogruppo=SOTTOGRUPPI["messaggi embed"])
+    @comando_di_gruppo("admin-messaggi", nome="elimina", descrizione="Elimina un embed salvato (il messaggio pubblicato resta).", sottogruppo=SOTTOGRUPPI["admin-messaggi embed"])
     @app_commands.describe(nome="L'embed da eliminare")
     async def elimina(self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, MAX_NOME]) -> None:
         if not await self._pronto(interaction):

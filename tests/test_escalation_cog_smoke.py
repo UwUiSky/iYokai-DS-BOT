@@ -16,7 +16,7 @@ async def test_escalation_cog_si_carica_correttamente():
 
     assert bot.get_cog("EscalationCog") is not None
 
-    escalation_group = bot.tree.get_command("security").get_command("escalation")
+    escalation_group = bot.tree.get_command("admin-sicurezza").get_command("escalation")
     assert escalation_group is not None
 
     sottocomandi = {c.name for c in escalation_group.commands}

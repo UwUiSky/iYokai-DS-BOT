@@ -23,6 +23,6 @@ async def test_security_score_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is False
 
-    comando = bot.tree.get_command("security").get_command("score")
+    comando = bot.tree.get_command("admin-sicurezza").get_command("score")
     assert comando is not None
     await bot.remove_cog("SecurityScoreCog")

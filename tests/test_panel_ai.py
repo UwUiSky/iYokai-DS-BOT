@@ -2,7 +2,7 @@
 tests/test_panel_ai.py
 ======================
 Pagina AI del server nel pannello (SPEC §24.2): consenso letto prima di accendere,
-spegnimento, privacy, lunghezza e memoria dagli stessi punti dei comandi `/ai`.
+spegnimento, privacy, lunghezza e memoria dagli stessi punti dei comandi `/admin-ai`.
 """
 
 import pytest

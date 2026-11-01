@@ -1,7 +1,7 @@
 """
 cogs/automod/parole_odio.py
 ===========================
-Parole vietate con varianti (AMD-014): comandi di `/automod odio` per la lista
+Parole vietate con varianti (AMD-014): comandi di `/admin-automod odio` per la lista
 di base, le parole proprie e quelle lecite, e controllo dei nomi (nickname e
 nome visualizzato) all'ingresso e al cambio. Il controllo dei messaggi sta in
 cogs/automod/automod.py; il filtro in core/automod_parole_logic.py.
@@ -135,7 +135,7 @@ class ParoleOdioCog(CogConGruppi, commands.Cog):
     # Comandi
     # ================================================================
     @comando_di_gruppo(
-        "automod", nome="stato", descrizione="Mostra come sono impostate le parole vietate.", sottogruppo=SOTTOGRUPPO
+        "admin-automod", nome="stato", descrizione="Mostra come sono impostate le parole vietate.", sottogruppo=SOTTOGRUPPO
     )
     async def stato(self, interaction: discord.Interaction) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
@@ -153,7 +153,7 @@ class ParoleOdioCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message("\n".join(righe), ephemeral=True)
 
     @comando_di_gruppo(
-        "automod", nome="base", descrizione="Accende o spegne la lista di base degli insulti d'odio.",
+        "admin-automod", nome="base", descrizione="Accende o spegne la lista di base degli insulti d'odio.",
         sottogruppo=SOTTOGRUPPO,
     )
     @app_commands.describe(attiva="Accesa o spenta", conferma="Serve per spegnerla: scrivi true")
@@ -171,7 +171,7 @@ class ParoleOdioCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "automod", nome="parola", descrizione="Aggiunge o toglie una parola propria o una parola lecita.",
+        "admin-automod", nome="parola", descrizione="Aggiunge o toglie una parola propria o una parola lecita.",
         sottogruppo=SOTTOGRUPPO,
     )
     @app_commands.describe(
@@ -201,7 +201,7 @@ class ParoleOdioCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(messaggio, ephemeral=True)
 
     @comando_di_gruppo(
-        "automod", nome="nomi", descrizione="Controlla nickname e nomi visualizzati all'ingresso e al cambio.",
+        "admin-automod", nome="nomi", descrizione="Controlla nickname e nomi visualizzati all'ingresso e al cambio.",
         sottogruppo=SOTTOGRUPPO,
     )
     @app_commands.describe(attiva="Acceso o spento")
@@ -214,7 +214,7 @@ class ParoleOdioCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "automod", nome="blocco", descrizione="Blocco preventivo delle frasi d'odio.",
+        "admin-automod", nome="blocco", descrizione="Blocco preventivo delle frasi d'odio.",
         sottogruppo=SOTTOGRUPPO,
     )
     @app_commands.describe(
@@ -242,7 +242,7 @@ class ParoleOdioCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(f"{riga}\n{avviso}" if avviso else riga, ephemeral=True)
 
     @comando_di_gruppo(
-        "automod", nome="richiami", descrizione="Richiami per parole d'odio prima del timeout.",
+        "admin-automod", nome="richiami", descrizione="Richiami per parole d'odio prima del timeout.",
         sottogruppo=SOTTOGRUPPO,
     )
     @app_commands.describe(
@@ -309,7 +309,7 @@ class ParoleOdioCog(CogConGruppi, commands.Cog):
         return "Approvata: ora è certa in tutti i server (si cancella senza chiedere all'AI)." if stato == STATO_APPROVATA else "Rifiutata: non varrà mai in nessun server."
 
     @comando_di_gruppo(
-        "automod", nome="prova", descrizione="Prova un testo contro le parole vietate, senza agire.",
+        "admin-automod", nome="prova", descrizione="Prova un testo contro le parole vietate, senza agire.",
         sottogruppo=SOTTOGRUPPO,
     )
     @app_commands.describe(testo="Il testo da provare")

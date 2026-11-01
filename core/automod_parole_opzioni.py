@@ -97,7 +97,7 @@ async def aggiungi_voce(guild_id: int, lista: str, voce: str, autore_id: int) ->
     if len(voce) > MAX_LUNGHEZZA_VOCE or pulisci_voce(voce) is None:
         raise ValueError("La voce deve avere almeno 3 lettere e al massimo 60 caratteri.")
     if lista == LISTA_LECITE and e_voce_di_base(voce):
-        raise ValueError("È un insulto della lista di base: non può diventare lecito. Per spegnere la base usa `/automod odio base`.")
+        raise ValueError("È un insulto della lista di base: non può diventare lecito. Per spegnere la base usa `/admin-automod odio base`.")
     attuali = list(getattr(await leggi(guild_id), lista))
     if voce.casefold() in (a.casefold() for a in attuali):
         return False

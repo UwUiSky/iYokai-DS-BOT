@@ -1,7 +1,7 @@
 """
 core/log_ignora_filtro.py
 =========================
-Applica l'elenco di /log ignora (canali, categorie, utenti, ruoli) agli
+Applica l'elenco di /admin-log ignora (canali, categorie, utenti, ruoli) agli
 eventi dei log che non sono messaggi: voce, canali, thread, membri.
 Non nasconde mai ruoli, timeout, permessi dei canali, canali cancellati e
 mute del server (D34): lo decide chi chiama.
@@ -15,7 +15,7 @@ from core.repositories.log_ignora_repo import log_ignora_repo
 
 
 async def evento_da_ignorare(guild: discord.Guild, canale=None, membro=None, canali_extra=()) -> bool:
-    """/log ignora (SPEC §18.6): canali, categorie, utenti e ruoli valgono per tutti i log."""
+    """/admin-log ignora (SPEC §18.6): canali, categorie, utenti e ruoli valgono per tutti i log."""
     ignorati = await log_ignora_repo.carica(guild.id)
     if not (ignorati.canali or ignorati.utenti or ignorati.ruoli):
         return False

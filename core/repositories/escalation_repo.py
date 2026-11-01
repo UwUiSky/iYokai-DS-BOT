@@ -33,7 +33,7 @@ class EscalationConfig:
     enabled: bool
     reset_after_days: int
     ladder: list[LadderStep]
-    # M 1.10: anche i warn dati a mano (/mod warn) salgono la scala.
+    # M 1.10: anche i warn dati a mano (/mod-sanzioni warn) salgono la scala.
     conta_warn_manuali: bool = False
     # AMD-070: timeout che cresce a ogni ricaduta oltre l'ultimo gradino (1 = fisso).
     moltiplicatore: float = 1.0

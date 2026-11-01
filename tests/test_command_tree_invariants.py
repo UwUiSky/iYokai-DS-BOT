@@ -115,7 +115,7 @@ MAX_COMANDI_PRIMO_LIVELLO = 100
 MAX_COMANDI_PRIMO_LIVELLO_D56 = 60  # D56: tetto nostro; i posti liberi restano per le esigenze future
 OBIETTIVO_FIGLI = 18
 # Gruppi già sopra 18 figli (D56: si punta a 18). Non se ne aggiungono: si divide in sotto-gruppi.
-KNOWN_OLTRE_18: frozenset[str] = frozenset({"ai", "ticket", "music", "backup"})
+KNOWN_OLTRE_18: frozenset[str] = frozenset({"admin-ai", "ticket", "music"})
 MAX_NOME = 32
 MAX_DESCRIZIONE = 100
 REGEX_NOME = re.compile(r"^[-_ʼ\w]{1,32}$")  # \w include lettere e cifre unicode
@@ -364,20 +364,20 @@ async def test_primo_livello_entro_100_comandi():
 # ----------------------------------------------------------------------
 KNOWN_SENZA_MAX_LENGTH: frozenset[str] = frozenset(
     {
-    "messaggi programmati crea:duration",
+    "admin-messaggi programmati crea:duration",
     "fun rate:thing",
-    "modban tempban:duration",
-    "modban unban:user_id",
-    "moduli alert feed:feed_url",
-    "moduli alert feed:label",
-    "moduli alert feed:message_template",
-    "moduli alert rimuovi:subscription_id",
-    "moduli alert twitch:label",
-    "moduli alert twitch:twitch_login",
-    "moduli alert webhook:label",
-    "moduli alert webhook:message_template",
-    "moduli alert youtube-live:label",
-    "moduli alert youtube-live:youtube_channel_id",
+    "mod-ban tempban:duration",
+    "mod-ban unban:user_id",
+    "admin-moduli alert feed:feed_url",
+    "admin-moduli alert feed:label",
+    "admin-moduli alert feed:message_template",
+    "admin-moduli alert rimuovi:subscription_id",
+    "admin-moduli alert twitch:label",
+    "admin-moduli alert twitch:twitch_login",
+    "admin-moduli alert webhook:label",
+    "admin-moduli alert webhook:message_template",
+    "admin-moduli alert youtube-live:label",
+    "admin-moduli alert youtube-live:youtube_channel_id",
     "owner radio add-local:filename",
     "owner radio add-local:label",
     "owner radio add-track:label",

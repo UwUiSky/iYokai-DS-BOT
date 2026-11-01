@@ -14,7 +14,7 @@ Come si sposta un comando (ricetta)
 -----------------------------------
 1. Il cog eredita `CogConGruppi` PRIMA di `commands.Cog`.
 2. Al posto di `@app_commands.command(name=..., description=...)` scrivi
-   `@comando_di_gruppo("admin", nome=..., descrizione=..., sottogruppo=None)`:
+   `@comando_di_gruppo("admin-bot", nome=..., descrizione=..., sottogruppo=None)`:
    deve essere il decoratore PIÙ ESTERNO; describe, choices, rename,
    autocomplete, checks.cooldown restano sotto, come oggi.
 3. Togli i check di permesso (`has_permissions`, `richiedi`): li dà il
@@ -25,7 +25,7 @@ Come si sposta un comando (ricetta)
    Un Group del cog con lo stesso nome del gruppo condiviso dà ValueError.
 5. Gli autocomplete sotto un gruppo protetto usano `autocomplete_protetto`.
 6. Nei test il comando resta `cog.metodo.callback(cog, interaction, ...)`.
-Esempio: cogs/logging/basic_logs.py (`/log canale`). Se il cog ha un suo
+Esempio: cogs/logging/basic_logs.py (`/admin-log canale`). Se il cog ha un suo
 `cog_load`/`cog_unload`, deve chiamare `await super().cog_load()` / `cog_unload()`.
 
 Nessun gruppo entra da solo nell'albero del bot: i gruppi vuoti non si
@@ -53,25 +53,31 @@ NOME_CHIEDI = "-chiedi"
 # nome: (descrizione, permesso predefinito di Discord o None, livello)
 _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "owner": ("Comandi riservati al proprietario del bot", "administrator", Livello.OWNER),
-    "admin": ("Impianto del bot: setup, configurazione, lingua, politica dei comandi", "manage_guild", Livello.ADMIN),
-    "backup": ("Backup del server: copia, ripristino, modelli, sincronia, esportazioni", "administrator", Livello.ADMIN),
-    "gestione": ("Gestione del server: benvenuto e canali vocali temporanei", "manage_guild", Livello.ADMIN),
-    "economia": ("Economia del server: livelli, XP, monete, negozio e annunci (staff)", "manage_guild", Livello.ADMIN),
-    "moduli": ("Moduli del server: alert, starboard, contatori, compleanni, inviti", "manage_guild", Livello.ADMIN),
-    "ruoli": ("Ruoli del server: dai e togli, premio, automatici, menu, in massa, diagnosi", "manage_roles", Livello.ADMIN),
-    "messaggi": ("Messaggi del server: embed, tag, risposte automatiche, programmati, fissi", "manage_guild", Livello.ADMIN),
-    "giveaway": ("Giveaway del server (staff): avvio, modelli, programmati", "manage_guild", Livello.ADMIN),
-    "ticket-gestione": ("Ticket (admin): impianto, categorie, ruoli, ModMail, risposte", "manage_guild", Livello.ADMIN),
-    "ticket-pannelli": ("Pannelli dei ticket (admin): crea, pubblica, modulo e opzioni", "manage_guild", Livello.ADMIN),
-    "filtri": ("AutoMod: filtri automatici sui messaggi e loro azioni", "manage_guild", Livello.ADMIN),
-    "security": ("Sicurezza: panico, verifica, ban globale, spam-trap", "administrator", Livello.SECURITY),
-    "antinuke": ("Anti-nuke: soglie, fiducia, guardie e casi", "administrator", Livello.SECURITY),
-    "ai": ("Intelligenza artificiale del server: consenso, limiti, lore, conoscenza, funzioni", "manage_guild", Livello.ADMIN),
-    "antiraid": ("Anti-raid: soglie, filtri all'ingresso, segnali e allarmi", "administrator", Livello.SECURITY),
-    "automod": ("Moderazione automatica: parole vietate, esenzioni, violazioni", "manage_guild", Livello.ADMIN),
-    "mod": ("Moderazione: avvisi, timeout, silenzio, pulizia, blocco canali", "moderate_members", Livello.MOD),
-    "modban": ("Moderazione dura: ban, kick, softban e sban", "ban_members", Livello.MODBAN),
-    "log": ("Registro degli eventi: canali, stato, ricerca ed esportazione", "manage_guild", Livello.LOG),
+    "admin-bot": ("Impianto del bot: setup, configurazione, lingua, politica dei comandi, premium", "manage_guild", Livello.ADMIN),
+    "admin-musica": ("Musica del server (admin): canale delle richieste, impostazioni, riepilogo", "manage_guild", Livello.ADMIN),
+    "admin-ai": ("AI del server (admin): consenso, limiti, lore, conoscenza, funzioni, staff", "manage_guild", Livello.ADMIN),
+    "admin-automod": ("AutoMod (admin): parole vietate, esenzioni, violazioni, odio", "manage_guild", Livello.ADMIN),
+    "admin-filtri": ("Filtri automatici sui messaggi (admin) e loro azioni", "manage_guild", Livello.ADMIN),
+    "admin-sicurezza": ("Sicurezza (admin): panico, verifica, ban globale, spam-trap, escalation", "administrator", Livello.SECURITY),
+    "admin-antinuke": ("Anti-nuke (admin): soglie, fiducia, guardie e casi", "administrator", Livello.SECURITY),
+    "admin-antiraid": ("Anti-raid (admin): soglie, filtri all'ingresso, segnali e allarmi", "administrator", Livello.SECURITY),
+    "admin-moduli": ("Moduli del server (admin): alert, starboard, contatori, compleanni, inviti", "manage_guild", Livello.ADMIN),
+    "admin-economia": ("Economia (admin): negozio, cassa, premi in monete, annunci del mese", "manage_guild", Livello.ADMIN),
+    "admin-livelli": ("Livelli e XP (admin): guadagno, annunci, premi, esclusioni, progressi", "manage_guild", Livello.ADMIN),
+    "admin-ruoli": ("Ruoli del server (admin): dai e togli, premio, automatici, menu, in massa", "manage_roles", Livello.ADMIN),
+    "admin-log": ("Registro degli eventi (admin): canali, stato, ricerca, esportazione", "manage_guild", Livello.LOG),
+    "admin-messaggi": ("Messaggi del server (admin): embed, tag, risposte, programmati, fissi", "manage_guild", Livello.ADMIN),
+    "admin-giveaway": ("Giveaway del server (admin): avvio, modelli, programmati", "manage_guild", Livello.ADMIN),
+    "admin-ticket": ("Ticket (admin): impianto, categorie, ruoli, ModMail, risposte, pannelli", "manage_guild", Livello.ADMIN),
+    "admin-ticket-opzioni": ("Opzioni dei pannelli ticket (admin): limiti, orari, accesso, chiusura", "manage_guild", Livello.ADMIN),
+    "admin-backup": ("Backup del server (admin): copia, ripristino, modelli, chat, esportazioni", "administrator", Livello.ADMIN),
+    "admin-benvenuto": ("Benvenuto, addio e boost (admin): messaggi, immagine, anteprima", "manage_guild", Livello.ADMIN),
+    "admin-vocali": ("Vocali temporanei (admin): generatore, pannello, limite, ruoli piattaforma", "manage_guild", Livello.ADMIN),
+    "mod-sanzioni": ("Moderazione: avvisi, timeout, silenzio, in massa, opzioni", "moderate_members", Livello.MOD),
+    "mod-casi": ("Moderazione: casi, note, avvisi dati, rischio e carico dello staff", "moderate_members", Livello.MOD),
+    "mod-canali": ("Moderazione dei canali: blocco, lentezza, pulizia dei messaggi", "moderate_members", Livello.MOD),
+    "mod-ban": ("Moderazione dura: ban, kick, softban, sban, in massa, appelli", "ban_members", Livello.MODBAN),
+    "founder": ("Solo per il proprietario del server (gli altri admin lo vedono ma sono rifiutati)", "administrator", Livello.FOUNDER),
     "ticket": ("Gestione del ticket in cui ti trovi", None, None),
     "voice": ("Gestione del tuo canale vocale temporaneo", None, None),
     "music": ("Musica nei canali vocali", None, None),
@@ -88,28 +94,31 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
 }
 
 
-# I sotto-gruppi dei comandi spostati dal riordino D56: nome e descrizione in un posto solo.
-# Chiave: "gruppo sotto-gruppo". Il cog scrive `sottogruppo=SOTTOGRUPPI["ruoli premio"]`.
+# I sotto-gruppi dei comandi spostati dai riordini D56 e D60: nome e descrizione in un posto solo.
+# Chiave: "gruppo sotto-gruppo". Il cog scrive `sottogruppo=SOTTOGRUPPI["admin-ruoli premio"]`.
 SOTTOGRUPPI: dict[str, tuple[str, str]] = {
+    "founder backup": ("backup", "Backup: sincronia e chi può creare o caricare"),
+    "founder moderazione": ("moderazione", "Moderazione: ruoli immuni"),
+    "admin-backup copia": ("copia", "Copia un canale o un ruolo"),
+    "admin-backup chat": ("chat", "Chat salvate: salva e ricarica"),
+    "admin-backup ripristino": ("ripristino", "Ripristino degli utenti via OAuth2"),
+    "admin-ticket pannelli": ("pannelli", "Pannelli dei ticket: crea, pubblica, modulo"),
     "utility snipe": ("snipe", "Messaggi cancellati, modificati e reazioni tolte"),
-    "admin politica": ("politica", "Politica dei comandi: spegni, limita, ignora, diagnosi"),
-    "messaggi programmati": ("programmati", "Messaggi programmati a orario"),
-    "messaggi fissi": ("fissi", "Messaggi fissi in fondo al canale"),
-    "messaggi risposte": ("risposte", "Risposte automatiche a parole chiave"),
-    "messaggi tag": ("tag", "Tag: comandi personalizzati con testo"),
-    "messaggi embed": ("embed", "Embed personalizzati"),
-    "ticket-gestione categoria": ("categoria", "Categorie dei ticket"),
-    "ticket-gestione ruolo": ("ruolo", "Ruoli di supporto dei ticket"),
-    "ticket-gestione modmail": ("modmail", "ModMail: ticket dai messaggi privati"),
-    "ticket-gestione risposte": ("risposte", "Risposte standard dei ticket"),
-    "ticket-pannelli opzioni": ("opzioni", "Opzioni dei pannelli dei ticket (admin)"),
-    "ticket-pannelli modulo": ("modulo", "Domande del modulo di apertura"),
-    "ruoli premio": ("premio", "Ruoli premio per livello"),
-    "ruoli auto": ("auto", "Ruoli automatici all'ingresso"),
-    "ruoli menu": ("menu", "Menu per scegliere i ruoli"),
+    "admin-bot politica": ("politica", "Politica dei comandi: spegni, limita, ignora, diagnosi"),
+    "admin-messaggi programmati": ("programmati", "Messaggi programmati a orario"),
+    "admin-messaggi fissi": ("fissi", "Messaggi fissi in fondo al canale"),
+    "admin-messaggi risposte": ("risposte", "Risposte automatiche a parole chiave"),
+    "admin-messaggi tag": ("tag", "Tag: comandi personalizzati con testo"),
+    "admin-messaggi embed": ("embed", "Embed personalizzati"),
+    "admin-ticket categoria": ("categoria", "Categorie dei ticket"),
+    "admin-ticket ruolo": ("ruolo", "Ruoli di supporto dei ticket"),
+    "admin-ticket modmail": ("modmail", "ModMail: ticket dai messaggi privati"),
+    "admin-ticket risposte": ("risposte", "Risposte standard dei ticket"),
+    "admin-ruoli premio": ("premio", "Ruoli premio per livello"),
+    "admin-ruoli auto": ("auto", "Ruoli automatici all'ingresso"),
+    "admin-ruoli menu": ("menu", "Menu per scegliere i ruoli"),
     "monete shop": ("shop", "Negozio del server"),
-    "economia livelli": ("livelli", "Impostazioni di livelli e XP"),
-    "economia annunci": ("annunci", "Annunci di fine mese: vincitori e clan"),
+    "admin-economia annunci": ("annunci", "Annunci di fine mese: vincitori e clan"),
     "owner ai": ("ai", "AI globale: manutenzione, modelli, rete del boss"),
 }
 

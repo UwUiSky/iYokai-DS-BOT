@@ -2,7 +2,7 @@
 cogs/utility/lingua.py
 ======================
 `/utility lingua`: ogni utente sceglie la sua lingua (italiano o inglese) per le risposte
-che vede solo lui. Quelle pubbliche seguono la lingua del server (`/admin lingua set`).
+che vede solo lui. Quelle pubbliche seguono la lingua del server (`/admin-bot lingua set`).
 Funzioni coperte: SPEC §21 (NF-06, #77). Dati: tabella `user_language` (0130, registro dei dati).
 Nessun controllo di modulo: è una preferenza personale, non una funzione del server.
 """

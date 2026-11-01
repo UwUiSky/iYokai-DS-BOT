@@ -2,7 +2,7 @@
 core/bot_inviti.py
 ==================
 Gli altri bot di iYokai in un server: chi c'è, chi manca, il link per invitarlo e cosa resta ridotto senza di lui
-(D15, #113). Lo mostra `/admin setup attiva` (senza categoria). Nessuna chiamata a Discord: legge i client già avviati.
+(D15, #113). Lo mostra `/admin-bot setup attiva` (senza categoria). Nessuna chiamata a Discord: legge i client già avviati.
 Funzioni coperte: SPEC §E (iYokai Mod, Music), #113
 Dipende da: core/bot_roles.py, core/bot_info.py, core/music_fleet.py
 """

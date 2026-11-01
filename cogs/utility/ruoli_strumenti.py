@@ -1,7 +1,7 @@
 """
 cogs/utility/ruoli_strumenti.py
 ===============================
-Strumenti sui ruoli. Per lo staff, il gruppo `/ruoli`: dare e togliere
+Strumenti sui ruoli. Per lo staff, il gruppo `/admin-ruoli`: dare e togliere
 ruoli a un membro (anche a tempo), togliergli tutto, operazioni di massa
 con stima, stop e avviso finale, creare e modificare un ruolo, diagnosi,
 ruoli a scelta. Per tutti, `/utility ruolo`: prendere e lasciare i ruoli
@@ -302,7 +302,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
             return  # il membro è uscito nel frattempo
         # Gli altri errori risalgono: lo scheduler ritenta più tardi.
 
-    @comando_di_gruppo("ruoli", nome="dai", descrizione="Dai uno o più ruoli a un membro, anche per un tempo.")
+    @comando_di_gruppo("admin-ruoli", nome="dai", descrizione="Dai uno o più ruoli a un membro, anche per un tempo.")
     @app_commands.describe(
         membro="A chi dare i ruoli",
         ruolo="Il ruolo da dare",
@@ -323,7 +323,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
     ) -> None:
         await self._cambia(interaction, membro, [ruolo, ruolo2, ruolo3], AZIONE_DAI, durata, motivo)
 
-    @comando_di_gruppo("ruoli", nome="togli", descrizione="Togli uno o più ruoli a un membro, anche per un tempo.")
+    @comando_di_gruppo("admin-ruoli", nome="togli", descrizione="Togli uno o più ruoli a un membro, anche per un tempo.")
     @app_commands.describe(
         membro="A chi togliere i ruoli",
         ruolo="Il ruolo da togliere",
@@ -344,7 +344,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
     ) -> None:
         await self._cambia(interaction, membro, [ruolo, ruolo2, ruolo3], AZIONE_TOGLI, durata, motivo)
 
-    @comando_di_gruppo("ruoli", nome="azzera", descrizione="Togli tutti i ruoli a un membro, con conferma.")
+    @comando_di_gruppo("admin-ruoli", nome="azzera", descrizione="Togli tutti i ruoli a un membro, con conferma.")
     @app_commands.describe(membro="A chi togliere tutti i ruoli", motivo="Il motivo, finisce nel registro di Discord")
     async def azzera(
         self,
@@ -368,7 +368,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
     # ================================================================
     # Operazioni di massa
     # ================================================================
-    @comando_di_gruppo("ruoli", nome="massa", descrizione="Dai o togli un ruolo a molti membri insieme, con filtri.")
+    @comando_di_gruppo("admin-ruoli", nome="massa", descrizione="Dai o togli un ruolo a molti membri insieme, con filtri.")
     @app_commands.describe(
         azione="Dare o togliere",
         ruolo="Il ruolo",
@@ -401,7 +401,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
     ) -> None:
         guild = interaction.guild
         if guild.id in self.operazioni:
-            await self._rifiuta(interaction, "C'è già un'operazione di massa in corso: aspetta o fermala con /ruoli massa-ferma.")
+            await self._rifiuta(interaction, "C'è già un'operazione di massa in corso: aspetta o fermala con /admin-ruoli massa-ferma.")
             return
         try:
             filtro = FiltroMassa(
@@ -458,7 +458,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
         verbo = "dare" if azione == AZIONE_DAI else "togliere"
         await interaction.followup.send(
             f"Avviata: {verbo} {ruolo.mention} a {len(membri)} membri, {stima_in_parole(stima_secondi(len(membri)))}. "
-            f"Avviso finale in {getattr(canale, 'mention', 'questo canale')}. Per fermarla: /ruoli massa-ferma.",
+            f"Avviso finale in {getattr(canale, 'mention', 'questo canale')}. Per fermarla: /admin-ruoli massa-ferma.",
             ephemeral=True,
             allowed_mentions=NESSUNA_MENZIONE,
         )
@@ -511,7 +511,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
         except discord.HTTPException:
             logger.warning("Avviso finale dell'operazione di massa non inviato")
 
-    @comando_di_gruppo("ruoli", nome="massa-ferma", descrizione="Ferma l'operazione di massa in corso.")
+    @comando_di_gruppo("admin-ruoli", nome="massa-ferma", descrizione="Ferma l'operazione di massa in corso.")
     async def massa_ferma(self, interaction: discord.Interaction) -> None:
         operazione = self.operazioni.get(interaction.guild.id)
         if operazione is None:
@@ -526,7 +526,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
     # ================================================================
     # Crea, modifica, diagnosi
     # ================================================================
-    @comando_di_gruppo("ruoli", nome="crea", descrizione="Crea un ruolo nuovo.")
+    @comando_di_gruppo("admin-ruoli", nome="crea", descrizione="Crea un ruolo nuovo.")
     @app_commands.describe(
         nome="Il nome del ruolo",
         colore="Colore, es. #FF8800",
@@ -563,7 +563,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.send_message(await testo_per(interaction, "ruolistrumen_creato", mention=nuovo.mention), ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("ruoli", nome="modifica", descrizione="Cambia nome, colore e opzioni di un ruolo.")
+    @comando_di_gruppo("admin-ruoli", nome="modifica", descrizione="Cambia nome, colore e opzioni di un ruolo.")
     @app_commands.describe(
         ruolo="Il ruolo da cambiare",
         nome="Il nome nuovo",
@@ -611,7 +611,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.send_message(await testo_per(interaction, "ruolistrumen_aggiornato", mention=ruolo.mention), ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("ruoli", nome="diagnosi", descrizione="Scopri perché il bot non riesce a dare un ruolo.")
+    @comando_di_gruppo("admin-ruoli", nome="diagnosi", descrizione="Scopri perché il bot non riesce a dare un ruolo.")
     @app_commands.describe(ruolo="Il ruolo da controllare")
     async def diagnosi(self, interaction: discord.Interaction, ruolo: discord.Role) -> None:
         guild = interaction.guild
@@ -629,7 +629,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
     # ================================================================
     # Ruoli a scelta
     # ================================================================
-    @comando_di_gruppo("ruoli", nome="scelta", descrizione="Ruoli che i membri si prendono da soli con /utility ruolo.")
+    @comando_di_gruppo("admin-ruoli", nome="scelta", descrizione="Ruoli che i membri si prendono da soli con /utility ruolo.")
     @app_commands.describe(azione="Cosa fare", ruolo="Il ruolo (per aggiungi e rimuovi)")
     @app_commands.choices(
         azione=[
@@ -686,7 +686,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
             if togli:
                 await membro.remove_roles(*togli, reason="Ruolo a scelta")
         except discord.HTTPException:
-            return "Discord ha rifiutato il cambio: avvisa lo staff (/ruoli diagnosi)."
+            return "Discord ha rifiutato il cambio: avvisa lo staff (/admin-ruoli diagnosi)."
         if not dai and not togli:
             return "Nessun cambio."
         parti = []

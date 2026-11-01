@@ -8,7 +8,7 @@ Dipende da: core/database.py (`get_full_config`, `set_guild_setting`, `remove_gu
 
 Regole: si guardano solo le chiavi note (che nome portano: canale, categoria o ruolo). Una voce si toglie solo se
 Discord conferma che non c'è: se il server non è in memoria (guild None) non si tocca niente. Ogni modifica
-finisce nello storico, quindi `/admin config rollback` la annulla.
+finisce nello storico, quindi `/admin-bot config rollback` la annulla.
 Un canale non in memoria può essere un thread archiviato: prima di toglierlo lo si chiede a Discord
 (`fetch_channel`). Solo «non trovato» lo condanna; qualsiasi altro errore lo lascia dov'è.
 """

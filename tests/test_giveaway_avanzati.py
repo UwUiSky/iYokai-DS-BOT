@@ -416,7 +416,7 @@ async def test_giveaway_con_opzioni_avanzate(cog_comandi):
     bypass, extra = fake_role(role_id=8), fake_role(role_id=9)
     interazione = _interazione()
 
-    await comandi["giveaway avvia"].callback(
+    await comandi["admin-giveaway avvia"].callback(
         cog, interazione, prize="Nitro", duration_minutes=60, winners=1, min_level=0,
         required_role=None, min_messaggi=20, ruolo_bypass=bypass, ruolo_extra=extra,
         ingressi_extra=3, inizia_tra=None,
@@ -435,7 +435,7 @@ async def test_giveaway_programmato_non_posta_subito(cog_comandi):
     cog, comandi, giveaway = cog_comandi
     interazione = _interazione()
 
-    await comandi["giveaway avvia"].callback(
+    await comandi["admin-giveaway avvia"].callback(
         cog, interazione, prize="Nitro", duration_minutes=60, winners=1, min_level=0,
         required_role=None, min_messaggi=0, ruolo_bypass=None, ruolo_extra=None,
         ingressi_extra=0, inizia_tra=30,
@@ -453,7 +453,7 @@ async def test_extra_senza_ruolo_e_rifiutato(cog_comandi):
     cog, comandi, giveaway = cog_comandi
     interazione = _interazione()
 
-    await comandi["giveaway avvia"].callback(
+    await comandi["admin-giveaway avvia"].callback(
         cog, interazione, prize="Nitro", duration_minutes=60, winners=1, min_level=0,
         required_role=None, min_messaggi=0, ruolo_bypass=None, ruolo_extra=None,
         ingressi_extra=3, inizia_tra=None,
@@ -466,7 +466,7 @@ async def test_extra_senza_ruolo_e_rifiutato(cog_comandi):
 @pytest.mark.asyncio
 async def test_modello_salva_elenca_avvia_elimina(cog_comandi):
     cog, comandi, giveaway = cog_comandi
-    comando = comandi["giveaway modello"]
+    comando = comandi["admin-giveaway modello"]
     base = dict(
         nome="classico", premio="Nitro", vincitori=2, durata_minuti=90, min_livello=0,
         ruolo_richiesto=None, min_messaggi=0, ruolo_bypass=None, ruolo_extra=None,
@@ -494,7 +494,7 @@ async def test_modello_salva_elenca_avvia_elimina(cog_comandi):
 async def test_modello_inesistente_non_avvia_nulla(cog_comandi):
     cog, comandi, giveaway = cog_comandi
     interazione = _interazione()
-    await comandi["giveaway modello"].callback(
+    await comandi["admin-giveaway modello"].callback(
         cog, interazione, azione=_scelta("avvia"), nome="boh", premio=None, vincitori=None,
         durata_minuti=None, min_livello=None, ruolo_richiesto=None, min_messaggi=None,
         ruolo_bypass=None, ruolo_extra=None, ingressi_extra=None, inizia_tra=None,
@@ -629,7 +629,7 @@ async def test_elenco_modelli_sta_nei_2000_caratteri(cog_comandi):
         )
     interazione = _interazione()
 
-    await comandi["giveaway modello"].callback(
+    await comandi["admin-giveaway modello"].callback(
         cog, interazione, azione=_scelta("elenco"), nome=None, premio=None, vincitori=None,
         durata_minuti=None, min_livello=None, ruolo_richiesto=None, min_messaggi=None,
         ruolo_bypass=None, ruolo_extra=None, ingressi_extra=None, inizia_tra=None,
@@ -645,7 +645,7 @@ async def test_programmati_elenca_con_errore_e_annulla(cog_comandi):
     cog, comandi, giveaway = cog_comandi
     gid = await _crea(giveaway, starts_at=ORA + timedelta(hours=1), duration_seconds=600)
     await giveaway.segna_errore(gid, "canale 500 non raggiungibile")
-    comando = comandi["giveaway programmati"]
+    comando = comandi["admin-giveaway programmati"]
 
     interazione = _interazione()
     await comando.callback(cog, interazione, azione=_scelta("elenco"), numero=None)
@@ -669,7 +669,7 @@ async def test_programmato_in_un_canale_dove_il_bot_non_scrive_e_rifiutato(cog_c
         ),
     )
 
-    await comandi["giveaway avvia"].callback(
+    await comandi["admin-giveaway avvia"].callback(
         cog, interazione, prize="Nitro", duration_minutes=60, winners=1, min_level=0,
         required_role=None, min_messaggi=0, ruolo_bypass=None, ruolo_extra=None,
         ingressi_extra=0, inizia_tra=30,

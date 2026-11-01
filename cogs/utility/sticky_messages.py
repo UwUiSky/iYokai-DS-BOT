@@ -111,10 +111,10 @@ class StickyMessagesCog(CogConGruppi, commands.Cog):
     # Comandi
     # ================================================================
     @comando_di_gruppo(
-        "messaggi",
+        "admin-messaggi",
         nome="imposta",
         descrizione="Imposta lo sticky message di un canale.",
-        sottogruppo=SOTTOGRUPPI["messaggi fissi"],
+        sottogruppo=SOTTOGRUPPI["admin-messaggi fissi"],
     )
     @app_commands.describe(
         channel="Il canale dove impostare lo sticky",
@@ -157,10 +157,10 @@ class StickyMessagesCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "messaggi",
+        "admin-messaggi",
         nome="togli",
         descrizione="Rimuove lo sticky message di un canale.",
-        sottogruppo=SOTTOGRUPPI["messaggi fissi"],
+        sottogruppo=SOTTOGRUPPI["admin-messaggi fissi"],
     )
     @app_commands.describe(channel="Il canale da cui rimuovere lo sticky")
     async def remove_sticky(

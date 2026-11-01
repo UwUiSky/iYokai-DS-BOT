@@ -454,9 +454,9 @@ class iYokaiBot(commands.AutoShardedBot):
         embed = discord.Embed(
             title="👋 Thanks for adding iYokai!",
             description=(
-                "Run `/admin setup attiva` to choose which modules you want active on "
+                "Run `/admin-bot setup attiva` to choose which modules you want active on "
                 "this server. Everything starts disabled until you turn it on. "
-                "To give the AI texts a theme, use `/ai lore`."
+                "To give the AI texts a theme, use `/admin-ai lore`."
             ),
             color=discord.Color.blurple(),
         )
@@ -761,7 +761,7 @@ async def main() -> None:
     # webhook configurato (SEC-14): nessun motivo di tenere una porta
     # in ascolto per una funzione che nessun server usa. Se il primo
     # webhook viene creato dopo l'avvio, il server parte al riavvio
-    # successivo — /moduli alert webhook lo segnala nella risposta.
+    # successivo — /admin-moduli alert webhook lo segnala nella risposta.
     custom_webhook_runner = None
     if await custom_webhook_repo.has_any_webhook():
         custom_webhook_app = custom_webhook_build_app(
@@ -773,13 +773,13 @@ async def main() -> None:
         )
         if not config.ALERTS_WEBHOOK_PUBLIC_BASE_URL:
             logger.info(
-                "ALERTS_WEBHOOK_PUBLIC_BASE_URL non configurata: /moduli alert webhook "
+                "ALERTS_WEBHOOK_PUBLIC_BASE_URL non configurata: /admin-moduli alert webhook "
                 "mostrerà solo il token, non un URL completo, finché non viene impostata."
             )
     else:
         logger.info(
             "Nessun webhook custom configurato: server webhook disattivato "
-            "(si avvia da solo al prossimo riavvio, dopo il primo /moduli alert webhook)."
+            "(si avvia da solo al prossimo riavvio, dopo il primo /admin-moduli alert webhook)."
         )
     bot.custom_webhook_server_running = custom_webhook_runner is not None
 

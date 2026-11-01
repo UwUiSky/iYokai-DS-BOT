@@ -4,7 +4,7 @@ cogs/logging/advanced_logs.py
 Logging Avanzato (SPEC.md §8.6-§8.15) — livello Premium del Logging,
 distinto dal Logging semplificato SEMPRE GRATUITO di
 `cogs/logging/basic_logs.py` (SPEC.md §8.17). Questi eventi arrivano nella
-destinazione scelta con `/log canale` (tipo «server» per canali, inviti,
+destinazione scelta con `/admin-log canale` (tipo «server» per canali, inviti,
 webhook, emoji, sticker, thread, soundboard e impostazioni; tipo «voce» per
 le entrate e uscite dai vocali) solo se il server ha acceso e sbloccato
 `MODULE_LOGGING_ADVANCED`. Il controllo sta in `logging_avanzato_attivo`:
@@ -168,7 +168,7 @@ def _channel_snapshot(channel) -> dict:
     }
 
 
-# D34: azioni di moderazione in voce che /log ignora non nasconde.
+# D34: azioni di moderazione in voce che /admin-log ignora non nasconde.
 VOCE_SEMPRE_NEL_LOG = frozenset({"voice_mute", "voice_unmute", "voice_deafen", "voice_undeafen"})
 
 

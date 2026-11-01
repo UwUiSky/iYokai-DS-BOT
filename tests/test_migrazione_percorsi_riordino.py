@@ -16,6 +16,9 @@ from core import database as database_module
 
 SQL = (Path(__file__).parent.parent / "core/migrations/0485_percorsi_comandi_riordino.sql").read_text()
 COPPIE = re.findall(r"\('([^']+)', '([^']+)'\)", SQL.split("WITH m(vecchio, nuovo)", 2)[1])
+# D60 ha spostato di nuovo i comandi dello staff: i percorsi nuovi di D56 che sono finiti nella 0488 non stanno più nell'albero.
+SQL_D60 = (Path(__file__).parent.parent / "core/migrations/0488_percorsi_comandi_ruoli.sql").read_text()
+VECCHI_D60 = {v for v, _ in re.findall(r"\('([^']+)', '([^']+)'\)", SQL_D60.split("WITH m(vecchio, nuovo)", 2)[1])}
 
 
 def test_la_mappa_ha_152_spostamenti_senza_doppioni():
@@ -34,7 +37,7 @@ async def test_percorsi_vecchi_spariti_e_nuovi_presenti_nell_albero_vero():
     try:
         assert not falliti, falliti
         percorsi = set(percorsi_dei_comandi(list(GRUPPI.values())))
-        mancano = sorted(n for _, n in COPPIE if n not in percorsi)
+        mancano = sorted(n for _, n in COPPIE if n not in percorsi and n not in VECCHI_D60)
         assert not mancano, f"Percorsi nuovi che non esistono: {mancano}"
         restano = sorted(v for v, _ in COPPIE if v in percorsi)
         assert not restano, f"Percorsi vecchi ancora nell'albero: {restano}"

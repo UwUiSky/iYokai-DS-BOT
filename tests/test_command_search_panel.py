@@ -36,8 +36,8 @@ def _wiki(monkeypatch, url: str) -> None:
 def _bot(n_gruppi_extra: int = 0) -> commands.Bot:
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     gruppi = costruisci_gruppi()
-    for nome in ("fun", "mod", "modban", "level"):
-        gruppi[nome].add_command(app_commands.Command(name="uno", description=f"Comando di {nome}", callback=_cb))
+    for nome in ("fun", "mod-sanzioni", "mod-ban", "level"):
+        gruppi[nome].add_command(app_commands.Command(name="uno", description="Esclusivo zzzban" if nome == "mod-ban" else f"Comando di {nome}", callback=_cb))
         bot.tree.add_command(gruppi[nome])
     for i in range(n_gruppi_extra):
         g = app_commands.Group(name=f"extra{i}", description="extra")
@@ -57,7 +57,7 @@ def cog(monkeypatch):
     monkeypatch.setattr(modulo, "command_usage_repo", repo)
     c.repo = repo
     # Nessun accesso a Discord: gli ID arrivano da qui.
-    c.cache_ids.ottieni = AsyncMock(return_value={"fun": 5, "mod": 6, "modban": 7, "level": 8, "-cerca-comando": 9})
+    c.cache_ids.ottieni = AsyncMock(return_value={"fun": 5, "mod-sanzioni": 6, "mod-ban": 7, "level": 8, "-cerca-comando": 9})
 
     async def solo_mod(interaction, livello):
         return livello is Livello.MOD
@@ -99,9 +99,9 @@ async def test_pannello_senza_testo_mostra_ultimo_comando_e_categorie_filtrate(c
     assert inviato["ephemeral"] is True
     assert "</fun uno:5>" in inviato["embed"].description
     etichette = _etichette(inviato["view"])
-    # Visibili: fun, level (senza livello), mod (puo_usare); non modban. "generali" per i comandi di primo livello.
-    assert "fun" in etichette and "level" in etichette and "mod" in etichette and "generali" in etichette
-    assert "modban" not in etichette
+    # Visibili: fun, level (senza livello), mod (puo_usare); non mod-ban. "generali" per i comandi di primo livello.
+    assert "fun" in etichette and "level" in etichette and "mod-sanzioni" in etichette and "generali" in etichette
+    assert "mod-ban" not in etichette
     cog.repo.ultimo.assert_awaited_once_with(i.guild.id, i.user.id)
 
 
@@ -176,7 +176,7 @@ async def test_ricerca_con_testo_da_risultati_con_menzione_e_opzioni(cog):
 
 async def test_ricerca_non_mostra_comandi_di_gruppi_non_accessibili(cog):
     i = fake_interaction()
-    await cog.search.callback(cog, i, query="modban")
+    await cog.search.callback(cog, i, query="zzzban")
     inviato = _invio(i)
     assert "Nessun comando trovato" in inviato["embed"].title
 
@@ -205,8 +205,8 @@ async def test_completamento_al_massimo_25_scelte_e_solo_gruppi_accessibili(monk
     scelte = await c.autocompleta_query(i, "")
     assert 0 < len(scelte) <= 25
     assert all(isinstance(s, app_commands.Choice) and len(s.name) <= 100 and len(s.value) <= 100 for s in scelte)
-    assert not any(s.value.startswith("modban") for s in scelte)
-    assert not any(s.value.startswith("mod ") for s in scelte)
+    assert not any(s.value.startswith("mod-ban") for s in scelte)
+    assert not any(s.value.startswith("mod-sanzioni ") for s in scelte)
 
 
 async def test_completamento_filtra_per_testo(cog):
@@ -216,11 +216,11 @@ async def test_completamento_filtra_per_testo(cog):
 
 async def test_chiedi_mostra_lo_stesso_pannello(cog):
     i = fake_interaction()
-    cog.repo.ultimo.return_value = "mod uno"
+    cog.repo.ultimo.return_value = "mod-sanzioni uno"
     await cog.chiedi.callback(cog, i)
     inviato = _invio(i)
-    assert "</mod uno:6>" in inviato["embed"].description
-    assert "mod" in _etichette(inviato["view"])
+    assert "</mod-sanzioni uno:6>" in inviato["embed"].description
+    assert "mod-sanzioni" in _etichette(inviato["view"])
 
 
 async def test_il_cog_registra_chiedi_di_primo_livello_anche_in_dm():

@@ -27,18 +27,39 @@ OWNER = "owner"
 MIXED = "mixed"
 
 AUDIENCE: dict[str, str] = {
-    # AutoMod e sicurezza
-    "economia": STAFF,  # gruppo condiviso (core/command_groups.py)
-    "automod": STAFF,
-    "security": STAFF,  # gruppo condiviso (core/command_groups.py)
-    "antinuke": STAFF,  # gruppo condiviso (core/command_groups.py), D25
-    "ai": STAFF,  # gruppo condiviso (core/command_groups.py), D26
-    "antiraid": STAFF,  # gruppo condiviso (core/command_groups.py), D25
+    # Staff, sotto il loro ruolo (D60)
+    "admin-ai": STAFF,  # gruppo condiviso per ruolo (D60)
+    "admin-antinuke": STAFF,  # gruppo condiviso per ruolo (D60)
+    "admin-antiraid": STAFF,  # gruppo condiviso per ruolo (D60)
+    "admin-automod": STAFF,  # gruppo condiviso per ruolo (D60)
+    "admin-backup": STAFF,  # gruppo condiviso per ruolo (D60)
+    "admin-benvenuto": STAFF,  # gruppo condiviso per ruolo (D60)
+    "admin-bot": STAFF,  # gruppo condiviso per ruolo (D60)
+    "admin-economia": STAFF,  # gruppo condiviso per ruolo (D60)
+    "admin-filtri": STAFF,  # gruppo condiviso per ruolo (D60)
+    "admin-giveaway": STAFF,  # gruppo condiviso per ruolo (D60)
+    "admin-livelli": STAFF,  # gruppo condiviso per ruolo (D60)
+    "admin-log": STAFF,  # gruppo condiviso per ruolo (D60)
+    "admin-messaggi": STAFF,  # gruppo condiviso per ruolo (D60)
+    "admin-moduli": STAFF,  # gruppo condiviso per ruolo (D60)
+    "admin-musica": STAFF,  # gruppo condiviso per ruolo (D60)
+    "admin-ruoli": STAFF,  # gruppo condiviso per ruolo (D60)
+    "admin-sicurezza": STAFF,  # gruppo condiviso per ruolo (D60)
+    "admin-ticket": STAFF,  # gruppo condiviso per ruolo (D60)
+    "admin-ticket-opzioni": STAFF,  # gruppo condiviso per ruolo (D60)
+    "admin-vocali": STAFF,  # gruppo condiviso per ruolo (D60)
+    "mod-ban": STAFF,  # gruppo condiviso per ruolo (D60)
+    "mod-canali": STAFF,  # gruppo condiviso per ruolo (D60)
+    "mod-casi": STAFF,  # gruppo condiviso per ruolo (D60)
+    "mod-sanzioni": STAFF,  # gruppo condiviso per ruolo (D60)
+    "founder": STAFF,  # gruppo condiviso per ruolo (D60)
+    "assistente": PUBLIC,  # gruppo condiviso per tutti (D56)
+    "giochi": PUBLIC,  # gruppo condiviso per tutti (D56)
+    "immagini": PUBLIC,  # gruppo condiviso per tutti (D56)
+    "monete": PUBLIC,  # gruppo condiviso per tutti (D56)
+    "sondaggi": PUBLIC,  # gruppo condiviso per tutti (D56)
     # Moderazione
-    "mod": STAFF,  # gruppo condiviso
-    "modban": STAFF,  # gruppo condiviso
     # Log
-    "log": STAFF,  # gruppo condiviso (core/command_groups.py)
     # Fun
     "fun": PUBLIC,
     # Livelli, economia, clan
@@ -54,11 +75,6 @@ AUDIENCE: dict[str, str] = {
     "-cerca-comando": PUBLIC,  # primo livello, col trattino (D24, 06/10/2026)
     "-chiedi": PUBLIC,  # primo livello, mostra il pannello di -cerca-comando (#147)
     "utility": PUBLIC,  # gruppo condiviso (core/command_groups.py)
-    "admin": STAFF,  # gruppo condiviso
-    "backup": STAFF,  # gruppo condiviso (core/command_groups.py), D25
-    "moduli": STAFF,  # gruppo condiviso
-    "gestione": STAFF,  # gruppo condiviso
-    "ruoli": STAFF,  # gruppo condiviso (core/command_groups.py), D25
     # Owner: /owner è solo nel server dell'owner, non nell'albero globale
 }
 

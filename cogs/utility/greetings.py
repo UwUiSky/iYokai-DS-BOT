@@ -240,12 +240,12 @@ class UsciteModal(BaseModal, title="Ban e addio: cosa esce e la grafica"):
         config = await greetings_repo.get_config(guild.id)
         avviso = ""
         if modo != uscite.MODO_NESSUNO and (not config.goodbye_enabled or config.goodbye_channel_id is None):
-            avviso = " Il canale dell'addio però non è attivo: configuralo con `/gestione benvenuto addio`."
+            avviso = " Il canale dell'addio però non è attivo: configuralo con `/admin-benvenuto addio`."
         await interaction.followup.send(f"Salvato: escono {uscite.ETICHETTE_MODO[modo]}.{avviso}", ephemeral=True)
 
 
 class ExtraBenvenutoView(BaseView):
-    """`/gestione benvenuto extra`: due finestre, i testi del benvenuto e quella di ban e addio (D37)."""
+    """`/admin-benvenuto extra`: due finestre, i testi del benvenuto e quella di ban e addio (D37)."""
 
     def __init__(self, config) -> None:
         super().__init__(timeout=300)
@@ -493,10 +493,9 @@ class GreetingsCog(CogConGruppi, commands.Cog):
     # ================================================================
 
     @comando_di_gruppo(
-        "gestione",
-        nome="benvenuto",
+        "admin-benvenuto",
+        nome="messaggio",
         descrizione="Configura il messaggio di benvenuto.",
-        sottogruppo=_SG_BENVENUTO,
     )
     @app_commands.describe(
         enabled="Attiva o disattiva il welcome message",
@@ -550,10 +549,9 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin-benvenuto",
         nome="extra",
         descrizione="Benvenuto: DM, varianti, reazioni; messaggi di ban e addio.",
-        sottogruppo=_SG_BENVENUTO,
     )
     async def welcome_extra(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
@@ -568,10 +566,9 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin-benvenuto",
         nome="addio",
         descrizione="Configura il messaggio di addio.",
-        sottogruppo=_SG_BENVENUTO,
     )
     @app_commands.describe(
         enabled="Attiva o disattiva il goodbye message",
@@ -622,10 +619,9 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin-benvenuto",
         nome="boost",
         descrizione="Configura il messaggio di boost.",
-        sottogruppo=_SG_BENVENUTO,
     )
     @app_commands.describe(
         enabled="Attiva o disattiva il boost message",
@@ -676,10 +672,9 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin-benvenuto",
         nome="immagine",
         descrizione="Aggiungi al benvenuto un'immagine con avatar, nome e numero del membro.",
-        sottogruppo=_SG_BENVENUTO,
     )
     @app_commands.describe(
         attiva="Attiva o disattiva l'immagine",
@@ -759,16 +754,15 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             await greetings_repo.clear_welcome_background(guild.id)
         avviso = ""
         if attiva and not attuale.welcome_enabled:
-            avviso = " Il benvenuto però è spento: attivalo con `/gestione benvenuto benvenuto`."
+            avviso = " Il benvenuto però è spento: attivalo con `/admin-benvenuto messaggio`."
         await interaction.followup.send(
             f"Immagine di benvenuto {'attivata' if attiva else 'disattivata'}.{avviso}", ephemeral=True
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin-benvenuto",
         nome="anteprima",
         descrizione="Mostra un'anteprima di come apparirebbe un messaggio.",
-        sottogruppo=_SG_BENVENUTO,
     )
     @app_commands.describe(kind="Quale messaggio vedere in anteprima")
     @app_commands.choices(

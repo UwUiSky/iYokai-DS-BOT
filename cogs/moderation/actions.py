@@ -169,7 +169,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     ) -> None:
         """
         Un ban o un kick diretto sostituisce un isolamento o un tempban in corso:
-        via scadenza, stato, invito di rientro e caso (altrimenti un `/modban unban`
+        via scadenza, stato, invito di rientro e caso (altrimenti un `/mod-ban unban`
         successivo prenderebbe la strada dell'isolamento e non sbannerebbe).
         """
         stato = await moderation_repo.get_tempban_state(guild.id, user_id)
@@ -213,7 +213,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     # /warn
     # ================================================================
     @comando_di_gruppo(
-        "mod",
+        "mod-sanzioni",
         nome="warn",
         descrizione="Assegna un warn a un membro.",
     )
@@ -255,7 +255,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     # /kick
     # ================================================================
     @comando_di_gruppo(
-        "modban",
+        "mod-ban",
         nome="kick",
         descrizione="Espelle un membro dal server.",
     )
@@ -309,14 +309,14 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     # /ban
     # ================================================================
     @comando_di_gruppo(
-        "modban",
+        "mod-ban",
         nome="ban",
         descrizione="Banna permanentemente un membro.",
     )
     @app_commands.describe(
         member="Il membro da bannare",
         reason="Motivo del ban",
-        delete_message_days="Giorni di messaggi da cancellare (0-7). Vuoto: quelli di /mod opzioni",
+        delete_message_days="Giorni di messaggi da cancellare (0-7). Vuoto: quelli di /mod-sanzioni opzioni",
     )
     async def ban(
         self,
@@ -369,7 +369,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     # /tempban (con rientro o in isolamento, #138)
     # ================================================================
     @comando_di_gruppo(
-        "modban",
+        "mod-ban",
         nome="tempban",
         descrizione="Banna un membro per una durata definita.",
     )
@@ -728,7 +728,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     # /unban
     # ================================================================
     @comando_di_gruppo(
-        "modban",
+        "mod-ban",
         nome="unban",
         descrizione="Rimuove il ban da un utente.",
     )
@@ -815,13 +815,13 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     # /timeout e /untimeout
     # ================================================================
     @comando_di_gruppo(
-        "mod",
+        "mod-sanzioni",
         nome="timeout",
         descrizione="Mette in timeout un membro (max 28 giorni).",
     )
     @app_commands.describe(
         member="Il membro da mettere in timeout",
-        duration="Durata, es. 10m, 1h, 7d (max 28 giorni). Vuoto: quella di /mod opzioni",
+        duration="Durata, es. 10m, 1h, 7d (max 28 giorni). Vuoto: quella di /mod-sanzioni opzioni",
         reason="Motivo del timeout",
     )
     async def timeout(
@@ -896,7 +896,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         await post_to_mod_log(interaction.guild, embed)
 
     @comando_di_gruppo(
-        "mod",
+        "mod-sanzioni",
         nome="untimeout",
         descrizione="Rimuove il timeout da un membro.",
     )
@@ -1030,7 +1030,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(embed=embed)
 
     @comando_di_gruppo(
-        "modban",
+        "mod-ban",
         nome="ban",
         descrizione="Banna più utenti insieme, anche fuori dal server (ID o menzioni).",
         sottogruppo=("massa", "Azioni su più utenti insieme."),
@@ -1038,7 +1038,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         utenti=f"ID o menzioni separati da spazi (al massimo {MAX_UTENTI_MASSA})",
         reason="Motivo del ban",
-        delete_message_days="Giorni di messaggi da cancellare (0-7). Vuoto: quelli di /mod opzioni",
+        delete_message_days="Giorni di messaggi da cancellare (0-7). Vuoto: quelli di /mod-sanzioni opzioni",
     )
     async def ban_massa(
         self,
@@ -1099,7 +1099,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         await self._chiudi_massa(interaction, "🔨 Ban in massa", discord.Color.red(), reason, fatti, saltati)
 
     @comando_di_gruppo(
-        "modban",
+        "mod-ban",
         nome="unban",
         descrizione="Toglie il ban a più utenti insieme (ID).",
         sottogruppo=("massa", "Azioni su più utenti insieme."),
@@ -1119,7 +1119,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         for uid in ids:
             stato = await moderation_repo.get_tempban_state(guild.id, uid)
             if stato is not None and stato["modo"] == MODO_ISOLAMENTO:
-                saltati.append(f"`{uid}`: in isolamento, usa /modban unban")
+                saltati.append(f"`{uid}`: in isolamento, usa /mod-ban unban")
                 continue
             try:
                 await guild.unban(discord.Object(id=uid), reason=audit_reason(reason))
@@ -1138,7 +1138,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         await self._chiudi_massa(interaction, "🔓 Unban in massa", discord.Color.green(), reason, fatti, saltati)
 
     @comando_di_gruppo(
-        "modban",
+        "mod-ban",
         nome="kick",
         descrizione="Espelle più membri insieme (ID o menzioni).",
         sottogruppo=("massa", "Azioni su più utenti insieme."),
@@ -1182,7 +1182,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         await self._chiudi_massa(interaction, "👢 Kick in massa", discord.Color.orange(), reason, fatti, saltati)
 
     @comando_di_gruppo(
-        "mod",
+        "mod-sanzioni",
         nome="timeout",
         descrizione="Mette in timeout più membri insieme (max 28 giorni).",
         sottogruppo=("massa", "Azioni su più membri insieme."),
@@ -1245,7 +1245,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "mod",
+        "mod-sanzioni",
         nome="warn",
         descrizione="Assegna un warn a più membri insieme.",
         sottogruppo=("massa", "Azioni su più membri insieme."),

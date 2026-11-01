@@ -2,7 +2,7 @@
 tests/test_music_settings.py
 ================================
 Impostazioni musicali del server (issue #126: MUS-044, 047, 055, 059, 066).
-Logica pura, lettura/scrittura su PostgreSQL vero, comandi /admin musica e i
+Logica pura, lettura/scrittura su PostgreSQL vero, comandi /admin-musica e i
 controlli che le usano.
 """
 

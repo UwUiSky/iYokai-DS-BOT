@@ -249,8 +249,8 @@ async def test_i_comandi_stanno_in_moduli_starboard():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await modulo.setup(bot)
     for nome in ("imposta", "soglia", "disattiva"):
-        assert comando_nel_gruppo("moduli", f"starboard {nome}") is not None
-    opzioni = {o["name"]: o for o in comando_nel_gruppo("moduli", "starboard soglia").to_dict(bot.tree)["options"]}
+        assert comando_nel_gruppo("admin-moduli", f"starboard {nome}") is not None
+    opzioni = {o["name"]: o for o in comando_nel_gruppo("admin-moduli", "starboard soglia").to_dict(bot.tree)["options"]}
     assert opzioni["numero"]["max_value"] == SOGLIA_MAX
 
 

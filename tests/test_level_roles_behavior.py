@@ -217,7 +217,7 @@ async def test_monthly_winners_disable_senza_configurazione_avvisa(cog_e_winners
 
 
 # ----------------------------------------------------------------------
-# /economia annunci clan-set|disable (SPEC.md §15.10, top 3 gilde mensile) —
+# /admin-economia annunci clan-set|disable (SPEC.md §15.10, top 3 gilde mensile) —
 # stesso cog, stesso schema di /monthly-winners sopra
 # ----------------------------------------------------------------------
 @pytest.fixture

@@ -171,9 +171,9 @@ def test_funzioni_pure_dei_cog():
 
 
 def test_comandi_citati_e_proposte():
-    comandi = [ComandoNoto("mod timeout", "Timeout"), ComandoNoto("modban ban", "Ban"), ComandoNoto("ticket add", "Aggiungi")]
-    citati = comandi_citati("Usa /mod timeout utente: Mario durata: 10m, poi /modban ban o /inventato", comandi)
-    assert [c.percorso for c in citati] == ["mod timeout", "modban ban"]
+    comandi = [ComandoNoto("mod-sanzioni timeout", "Timeout"), ComandoNoto("mod-ban ban", "Ban"), ComandoNoto("ticket add", "Aggiungi")]
+    citati = comandi_citati("Usa /mod-sanzioni timeout utente: Mario durata: 10m, poi /mod-ban ban o /inventato", comandi)
+    assert [c.percorso for c in citati] == ["mod-sanzioni timeout", "mod-ban ban"]
     assert leggi_proposta_server("niente json") is None
     p = leggi_proposta_server('```{"ruoli": ' + str(list(map(str, range(20)))).replace("'", '"') + "}```")
     assert len(p.ruoli) == 10
@@ -186,23 +186,23 @@ async def test_chiedi_con_assistente_ai_e_ritorno_alla_ricerca(repo, monkeypatch
     from cogs.utility import command_search
     from core.command_search_logic import ComandoInfo
 
-    comandi = [ComandoInfo("mod timeout", "Mette in timeout un membro", "mod", ())]
+    comandi = [ComandoInfo("mod-sanzioni timeout", "Mette in timeout un membro", "mod", ())]
     cog = command_search.CommandSearchCog(bot=None)
 
     async def accessibili(interaction):
         return comandi
 
     async def ids(interaction, serve=()):
-        return {"mod": 42}
+        return {"mod-sanzioni": 42}
 
     monkeypatch.setattr(cog, "_comandi_accessibili", accessibili)
     monkeypatch.setattr(cog, "_ids", ids)
-    _usa(repo, risposte={"alfa": "Usa /mod timeout con utente Mario e durata 10m."})
+    _usa(repo, risposte={"alfa": "Usa /mod-sanzioni timeout con utente Mario e durata 10m."})
     await repo.registra_consenso(G, U, True)
     i = _inter()
     await cog.chiedi.callback(cog, i, "metti in timeout Mario per 10 minuti")
     embed = i.followup.send.call_args.kwargs["embed"]
-    assert embed.title == "Assistente" and "</mod timeout:42>" in embed.description
+    assert embed.title == "Assistente" and "</mod-sanzioni timeout:42>" in embed.description
 
     # AI spenta nel server: si torna alla ricerca per parole, senza errori
     await repo.registra_consenso(G, U, False)
@@ -340,7 +340,7 @@ async def test_spiega_non_svela_un_thread_privato(repo):
 
 
 async def test_canale_e_vietate_passano_dagli_stessi_punti_del_pannello(repo):
-    """D16: `/ai canale` e `/ai vietate` salvano come il pannello (imposta_canali_spenti, imposta_parole_vietate)."""
+    """D16: `/admin-ai canale` e `/admin-ai vietate` salvano come il pannello (imposta_canali_spenti, imposta_parole_vietate)."""
     _usa(repo)
     cog = cfg_mod.AiConfigCog(bot=None)
     await repo.imposta(G, canali_spenti=(999,))  # canale cancellato nel frattempo

@@ -106,7 +106,7 @@ async def contesto_comando(
         if not await db.is_module_active_for_guild(guild_id, modulo):
             spenti.append(modulo)
     configurato = False
-    if guild_id is not None and info.gruppo == "ai" and not spenti:
+    if guild_id is not None and info.gruppo == "admin-ai" and not spenti:
         configurato = (await ai_repo.get_config(guild_id)).attivo
     return logica.ContestoComando(
         permesso=permesso, moduli_mancanti=tuple(mancanti), premium_bloccato=premium,

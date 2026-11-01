@@ -3,7 +3,7 @@ core/lockdown_service.py
 ========================
 Il lavoro con Discord del blocco totale e del panico (NF-29, #100): chiudere
 i canali, il livello di verifica e gli inviti, salvare cio' che c'era prima
-e riaprire tutto com'era. Lo usano i comandi (`/mod blocco`, `/security
+e riaprire tutto com'era. Lo usano i comandi (`/mod-canali blocco`, `/admin-sicurezza
 panico`) e, se il server lo ha acceso, anti-nuke e anti-raid.
 Funzioni coperte: SPEC §23 (NF-29), catalogo SIC-011..015
 
@@ -52,7 +52,7 @@ logger = logging.getLogger("iyokai.lockdown")
 _blocchi: BoundedCache[tuple[int, int], asyncio.Lock] = BoundedCache(max_size=5000)
 # Server in cui qualcuno ha chiesto «togli» mentre il blocco era ancora in corso.
 _da_fermare: set[int] = set()
-# Server in panico -> True se in panico /mod e /modban sono riservati (SIC-012). Cache in memoria:
+# Server in panico -> True se in panico i gruppi mod-… sono riservati (SIC-012). Cache in memoria:
 # si legge a ogni comando di moderazione, non si interroga il database ogni volta.
 _panico: dict[int, bool] = {}
 _lavori: set[asyncio.Task] = set()

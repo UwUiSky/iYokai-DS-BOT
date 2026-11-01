@@ -450,8 +450,8 @@ async def test_albero_dei_comandi_nuovi():
     finally:
         await db.close()
     for nome in ("elenco", "modifica", "accesso"):
-        assert comando_nel_gruppo("ruoli", f"menu {nome}") is not None
-    crea = {o["name"]: o for o in comando_nel_gruppo("ruoli", "menu crea").to_dict(bot.tree)["options"]}
+        assert comando_nel_gruppo("admin-ruoli", f"menu {nome}") is not None
+    crea = {o["name"]: o for o in comando_nel_gruppo("admin-ruoli", "menu crea").to_dict(bot.tree)["options"]}
     assert len(crea["comportamento"]["choices"]) == len(COMPORTAMENTI)
 
 

@@ -3,7 +3,7 @@ core/modules_updated_logic.py
 =================================
 L'evento `modules_updated` (guild_id, modulo, attivo, utente) parte da OGNI
 percorso che cambia lo stato dei moduli (M 10.13): salvataggio di
-`/admin setup attiva`, wizard, importazione, reset e rollback. Chi cambia
+`/admin-bot setup attiva`, wizard, importazione, reset e rollback. Chi cambia
 molti moduli in un colpo (import, reset, rollback) confronta lo stato
 prima e dopo: si emette solo per i moduli davvero cambiati.
 """

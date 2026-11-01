@@ -119,7 +119,7 @@ async def test_comando_server_nel_gruppo_dello_staff():
 
     bot = ext.Bot(command_prefix="!", intents=discord.Intents.default())
     await modulo.setup(bot)
-    assert comando_nel_gruppo("messaggi", "promemoria") is not None
+    assert comando_nel_gruppo("admin-messaggi", "promemoria") is not None
     from core.command_groups import GRUPPI
 
     assert GRUPPI["utility"].get_command("reminder").get_command("server") is None  # D56: per lo staff

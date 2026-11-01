@@ -162,7 +162,7 @@ async def scala_per_warn_manuale(
 ) -> str | None:
     """
     M 1.10: un warn dato a mano conta un'infrazione, se il server l'ha
-    scelto (`/security escalation enable warn_manuali:`). Restituisce cosa
+    scelto (`/admin-sicurezza escalation enable warn_manuali:`). Restituisce cosa
     ha fatto la scala, da dire al moderatore, o None. Il gradino «warn»
     non aggiunge un secondo warn: l'utente l'ha appena ricevuto.
     D29: il gradino parte solo se `moderatore` potrebbe farlo da sé; con
@@ -291,13 +291,13 @@ class EscalationCog(CogConGruppi, commands.Cog):
     # Comandi
     # ================================================================
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="enable",
         descrizione="Attiva l'escalation ladder.",
         sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
     )
     @app_commands.describe(
-        warn_manuali="Conta anche i warn dati a mano con /mod warn. Vuoto: resta com'è",
+        warn_manuali="Conta anche i warn dati a mano con /mod-sanzioni warn. Vuoto: resta com'è",
         moltiplicatore="Il timeout oltre l'ultimo gradino dura base x questo numero a ogni ricaduta (1 = fisso)",
         tetto_strike="Ricadute contate per il moltiplicatore (da 1 a 10). Vuoto: resta com'è",
     )
@@ -334,7 +334,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="disable",
         descrizione="Disattiva l'escalation ladder.",
         sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
@@ -346,7 +346,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "escalation_escalation_ladder_disattivata"), ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="set-reset-days",
         descrizione="Giorni di buona condotta per azzerare il conteggio.",
         sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
@@ -363,7 +363,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="set-step",
         descrizione="Configura l'azione per un livello della scala.",
         sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
@@ -407,7 +407,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="remove-step",
         descrizione="Rimuove un livello dalla scala personalizzata.",
         sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
@@ -425,7 +425,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
             )
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="reset",
         descrizione="Azzera il conteggio infrazioni di un membro.",
         sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
@@ -440,7 +440,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="status",
         descrizione="Mostra la scala di escalation configurata.",
         sottogruppo=("escalation", "Scala di escalation delle sanzioni."),

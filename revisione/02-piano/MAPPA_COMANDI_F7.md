@@ -290,22 +290,22 @@ mod del bot). Un admin può cambiarlo in Integrazioni.
 | Gruppo | `default_permissions` | `guild_only` | Controllo nel codice |
 |---|---|---|---|
 | `/owner` | `administrator` | sì, e registrato solo nel server dell'owner | `user.id == OWNER_ID` |
-| `/admin`, `/gestione`, `/moduli`, `/economia`, `/ai` | `manage_guild` | sì | ruolo admin del bot |
-| `/messaggi`, `/giveaway`, `/ticket-gestione`, `/ticket-pannelli`, `/filtri` (D56, 01/11/2026) | `manage_guild` | sì | ruolo admin del bot (livello ADMIN del gruppo) |
-| `/ruoli` | `manage_roles` | sì | ruolo admin del bot (livello ADMIN) |
-| `/backup` | `administrator` | sì | ruolo admin del bot |
-| `/security` | `administrator` | sì | ruolo admin del bot |
-| `/automod` | `manage_guild` | sì | ruolo admin del bot |
-| `/mod` | `moderate_members` | sì | livello del gruppo (nessun permesso Discord per sotto-comando) |
-| `/modban` | `ban_members` | sì | livello del gruppo; `kick` sotto `ban_members` |
-| `/log` | `manage_guild` | sì | livello del gruppo (nessun `view_audit_log` per sotto-comando) |
+| `/admin-bot`, `/admin-musica`, `/admin-ai`, `/admin-automod`, `/admin-filtri`, `/admin-moduli`, `/admin-economia`, `/admin-livelli`, `/admin-messaggi`, `/admin-giveaway`, `/admin-ticket`, `/admin-ticket-opzioni`, `/admin-benvenuto`, `/admin-vocali` (D60) | `manage_guild` | sì | ruolo admin del bot (livello ADMIN del gruppo) |
+| `/admin-ruoli` | `manage_roles` | sì | ruolo admin del bot (livello ADMIN) |
+| `/admin-backup` | `administrator` | sì | ruolo admin del bot (livello ADMIN) |
+| `/admin-sicurezza`, `/admin-antinuke`, `/admin-antiraid` | `administrator` | sì | ruolo admin del bot (livello SECURITY) |
+| `/admin-log` | `manage_guild` | sì | livello LOG del gruppo (nessun `view_audit_log` per sotto-comando) |
+| `/mod-sanzioni`, `/mod-casi`, `/mod-canali` | `moderate_members` | sì | livello MOD del gruppo (nessun permesso Discord per sotto-comando) |
+| `/mod-ban` | `ban_members` | sì | livello MODBAN del gruppo; `kick` sotto `ban_members` |
+| `/founder` (D60) | `administrator` | sì | `Livello.FOUNDER`: solo `guild.owner_id`; gli altri amministratori lo vedono e sono rifiutati |
 | `/ticket`, `/voice`, `/music`, `/level`, `/clan`, `/fun`, `/utility`, `/immagini`, `/giochi`, `/sondaggi`, `/assistente`, `/monete` (D56) | nessuno (tutti) | sì | `forceclose` e le azioni staff nel codice |
 | `/gif` (riservato, vuoto: non si sincronizza) | nessuno (tutti) | sì | — |
 | `/premium`, `/vip` (D57: nascono solo quando una funzione è premium o VIP) | nessuno (tutti) | sì | livello della funzione, controllato quando parte il comando |
 
-Regola D56: un gruppo è per tutti o per lo staff; un test (`tests/test_command_groups.py`) controlla che
+Regola D56 e D60: un gruppo è per tutti o per lo staff; un test (`tests/test_command_groups.py`) controlla che
 ogni gruppo abbia livello e permesso corrispondenti e che nessun comando con livello stia in un gruppo
-per tutti. Lo staff «whitelistato» senza il permesso Discord li vedrà con l'aggiornamento dei permessi dal
+per tutti. D60: il prefisso del nome dice il ruolo (`admin-`, `mod-`, `founder`) e nessun gruppo per tutti inizia con
+quelle parole. Lo staff «whitelistato» senza il permesso Discord li vedrà con l'aggiornamento dei permessi dal
 pannello (OAuth `applications.commands.permissions.update`), che si farà col pannello. `/owner` ora ha
 8 figli: i sotto-gruppi `ai`, `radio`, `system`, `premium`, `blacklist`, `cog`, `privacy` e il comando `parole-odio`.
 
@@ -368,3 +368,45 @@ e per le traduzioni). Nuovi gruppi: `/immagini`, `/giochi`, `/sondaggi`, `/assis
 (per tutti), `/messaggi`, `/giveaway`, `/ticket-gestione`, `/ticket-pannelli`, `/filtri` (staff), più
 `/gif` riservato. `/owner` riceve `ai` (boss-rete, manutenzione, modello) e `parole-odio`.
 Peso: limite vero 8.000, avviso a 6.800 (test: avviso, non errore).
+
+## Riordino per ruolo del 01/11/2026 (D60)
+
+I percorsi dei comandi dello staff della §4 e del riordino D56 sono superati: il ruolo è il prefisso del nome del
+gruppo (`/admin-<modulo>`, `/mod-<modulo>`, `/founder`). 377 comandi cambiano percorso; la tabella vecchio → nuovo è
+la migrazione `core/migrations/0488_percorsi_comandi_ruoli.sql` (stessi percorsi per la politica dei comandi e le
+traduzioni). I 19 gruppi staff di prima non esistono più; i 25 nuovi sono (figli, caratteri di Discord):
+
+| Gruppo | Da | Figli | Caratteri |
+|---|---|---|---|
+| `/admin-bot` | `/admin` (senza musica) | 5 | 3.820 |
+| `/admin-musica` | `/admin musica` | 3 | 888 |
+| `/admin-ai` | `/ai` | 19 | 5.180 |
+| `/admin-automod` | `/automod` | 9 | 2.271 |
+| `/admin-filtri` | `/filtri` | 16 | 4.312 |
+| `/admin-sicurezza` | `/security` | 8 | 5.547 |
+| `/admin-antinuke` | `/antinuke` | 12 | 2.830 |
+| `/admin-antiraid` | `/antiraid` | 17 | 3.100 |
+| `/admin-moduli` | `/moduli` | 8 | 4.807 |
+| `/admin-economia` | `/economia` (senza livelli) | 8 | 2.463 |
+| `/admin-livelli` | `/economia livelli`, `xp`, `progressi` | 10 | 2.941 |
+| `/admin-ruoli` | `/ruoli` | 12 | 4.523 |
+| `/admin-log` | `/log` | 11 | 2.217 |
+| `/admin-messaggi` | `/messaggi` | 6 | 3.348 |
+| `/admin-giveaway` | `/giveaway` | 3 | 1.200 |
+| `/admin-ticket` | `/ticket-gestione`, `/ticket-pannelli` (senza opzioni) | 15 | 3.429 |
+| `/admin-ticket-opzioni` | `/ticket-pannelli opzioni` | 10 | 2.837 |
+| `/admin-backup` | `/backup` (senza i 2 del founder) | 17 | 3.421 |
+| `/admin-benvenuto` | `/gestione benvenuto` | 6 | 1.347 |
+| `/admin-vocali` | `/gestione voice` | 6 | 1.476 |
+| `/mod-sanzioni` | `/mod` (avvisi, timeout, mute, massa, opzioni) | 7 | 1.816 |
+| `/mod-casi` | `/mod` (caso, nota, avvisi, rischio, carico) | 5 | 2.392 |
+| `/mod-canali` | `/mod` (lock, unlock, slowmode, clear, blocco) | 5 | 1.547 |
+| `/mod-ban` | `/modban` | 7 | 1.742 |
+| `/founder` | `/backup sincronia`, `/backup permessi`, `/mod opzioni immuni` | 2 | 761 |
+
+Casi particolari: `/economia xp` → `/admin-livelli membro`; `/ticket-pannelli modulo aggiungi|togli|mostra` →
+`/admin-ticket pannelli modulo-aggiungi|modulo-togli|modulo-mostra` (profondità 3); `/backup chat-salva|chat-carica|
+copia-canale|copia-ruolo|restore-modo|restore-utenti` → `/admin-backup chat salva|chat carica|copia canale|copia ruolo|
+ripristino modo|ripristino utenti`; `/gestione benvenuto benvenuto` → `/admin-benvenuto messaggio`. `/admin-ai` resta a 19
+figli (`KNOWN_OLTRE_18`); `/admin-antiraid` è a 17: al prossimo comando va diviso. Comandi globali: 39 (43 con `/gif`,
+`/premium`, `/ultra`, `/vip`), tetto D56 60. Sempre aperti nella politica dei comandi: `admin-bot` e `owner`.

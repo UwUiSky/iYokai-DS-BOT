@@ -2,7 +2,7 @@
 core/progressi_service.py
 =========================
 Missioni (giorno, settimana, server), serie con protezione e promemoria, traguardi e pass di 90 giorni
-(D49, D51). I server li accendono con `/economia progressi`; spenti, i punti di aggancio del
+(D49, D51). I server li accendono con `/admin-livelli progressi`; spenti, i punti di aggancio del
 livellamento non fanno nulla. Gli eventi (con gli XP) si contano in memoria e si scrivono ogni 20
 secondi (e a mezzanotte UTC, nel loro giorno). Ogni premio esce da una scrittura atomica, una volta sola.
 Funzioni coperte: SPEC §23.17 (D49, D51)

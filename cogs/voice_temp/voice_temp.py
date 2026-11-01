@@ -31,9 +31,9 @@ sposta anche i permessi del canale; all'avvio i canali rimasti vuoti
 mentre il bot era spento vengono cancellati.
 Funzioni coperte: SPEC §12, §22 (claim, permit, deny, bitrate, nascondi, invita,
 stato, opzioni, aspetto del pannello, copia del generatore e altri generatori di
-/gestione voice: catalogo #127; blocco salvato nel database, #144)
+/admin-vocali: catalogo #127; blocco salvato nel database, #144)
 
-SPEC.md §12.8: il cap per categoria (/gestione voice cap) è sempre
+SPEC.md §12.8: il cap per categoria (/admin-vocali cap) è sempre
 troncato al limite hard di Discord di 50 canali per categoria — vedi
 core/voice_temp_logic.py:effective_category_cap/is_category_full.
 """
@@ -84,7 +84,7 @@ logger = logging.getLogger("iyokai.voice_temp")
 
 MODULE_VOICE_TEMP = "voice_temp"
 
-# Sotto-gruppo di /gestione con i comandi degli admin.
+# Sotto-gruppo dei comandi degli admin.
 GESTIONE_VOICE = ("voice", "Vocali temporanei: generatore, pannello, limite, ruoli piattaforma")
 
 CREATE_VOICE_CUSTOM_ID = "iyokai_voice_temp_create"
@@ -181,7 +181,7 @@ class PlatformRoleView(BaseView):
 
             # SEC-4/SEC-17: assegnazione self-service, ricontrolla il
             # ruolo scelto — può aver preso permessi pericolosi dopo
-            # /gestione voice piattaforme.
+            # /admin-vocali piattaforme.
             motivo_rifiuto = check_role_assignable(guild, ruolo_scelto, guild.me, self_service=True)
             if motivo_rifiuto is not None:
                 await interaction.response.send_message(motivo_rifiuto, ephemeral=True)
@@ -395,10 +395,9 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
     # Configurazione
     # ================================================================
     @comando_di_gruppo(
-        "gestione",
+        "admin-vocali",
         nome="setup",
         descrizione="Configura il canale generatore e la categoria dei vocali temporanei.",
-        sottogruppo=GESTIONE_VOICE,
     )
     @app_commands.describe(
         generator="Il canale vocale che, se raggiunto, crea un vocale temporaneo",
@@ -424,10 +423,9 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin-vocali",
         nome="generatore",
         descrizione="Altri canali generatori con regole proprie.",
-        sottogruppo=GESTIONE_VOICE,
     )
     @app_commands.describe(
         azione="Cosa fare",
@@ -510,10 +508,9 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin-vocali",
         nome="panel",
         descrizione="Pubblica il pannello per la creazione manuale di un vocale.",
-        sottogruppo=GESTIONE_VOICE,
     )
     async def voicetemp_panel(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
@@ -538,10 +535,9 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, view=CreateVoiceView())
 
     @comando_di_gruppo(
-        "gestione",
+        "admin-vocali",
         nome="cap",
         descrizione="Imposta il numero massimo di vocali temporanei per categoria.",
-        sottogruppo=GESTIONE_VOICE,
     )
     @app_commands.describe(
         cap="Canali massimi nella categoria (max 50, limite di Discord). Vuoto: nessun limite."
@@ -572,10 +568,9 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin-vocali",
         nome="piattaforme",
         descrizione="Configura i ruoli informativi PC/Console/Mobile per i vocali temporanei.",
-        sottogruppo=GESTIONE_VOICE,
     )
     @app_commands.describe(
         pc="Ruolo per chi gioca da PC (facoltativo)",
@@ -628,10 +623,9 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin-vocali",
         nome="opzioni",
         descrizione="Nome dei nuovi canali, blocco, registro, copia, pannello.",
-        sottogruppo=GESTIONE_VOICE,
     )
     @app_commands.describe(
         nome="Modello del nome: {utente} e {numero} (es. Stanza {numero}). Vuoto: com'è ora",

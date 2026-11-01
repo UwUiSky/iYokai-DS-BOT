@@ -299,7 +299,7 @@ async def test_i_comandi_stanno_sotto_ruoli_auto():
     bot = ext.Bot(command_prefix="!", intents=discord.Intents.default())
     await modulo.setup(bot)
     for nome in ("aggiungi", "togli", "elenco", "ricorda"):
-        assert comando_nel_gruppo("ruoli", f"auto {nome}") is not None
+        assert comando_nel_gruppo("admin-ruoli", f"auto {nome}") is not None
 
 
 @pytest.mark.asyncio

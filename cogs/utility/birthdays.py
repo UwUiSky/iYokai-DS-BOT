@@ -3,7 +3,7 @@ cogs/utility/birthdays.py
 =========================
 Compleanni (NF-26, SPEC §23.4): ogni utente registra giorno e mese (niente anno) e può
 cancellarli; il giorno giusto il bot fa gli auguri in un canale e può dare un ruolo per 24 ore.
-Comandi: `/level compleanno imposta|rimuovi` (utente), `/moduli compleanni canale|ruolo` (admin).
+Comandi: `/level compleanno imposta|rimuovi` (utente), `/admin-moduli compleanni canale|ruolo` (admin).
 Il giro è in core/birthday_worker.py ed è ospitato da questo cog.
 Funzioni coperte: SPEC §23 (NF-26)
 """
@@ -139,7 +139,7 @@ class BirthdaysCog(CogConGruppi, commands.Cog):
         )
 
     # ---- admin
-    @comando_di_gruppo("moduli", nome="canale", descrizione="Scegli il canale degli auguri (vuoto per spegnerli).", sottogruppo=_SG_COMPLEANNI)
+    @comando_di_gruppo("admin-moduli", nome="canale", descrizione="Scegli il canale degli auguri (vuoto per spegnerli).", sottogruppo=_SG_COMPLEANNI)
     @app_commands.describe(
         canale="Dove fare gli auguri",
         messaggio=f"Il testo, con {{users}} al posto dei festeggiati (massimo {MAX_MESSAGGIO} caratteri)",
@@ -171,7 +171,7 @@ class BirthdaysCog(CogConGruppi, commands.Cog):
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
 
-    @comando_di_gruppo("moduli", nome="ruolo", descrizione="Un ruolo per 24 ore a chi compie gli anni (vuoto per toglierlo).", sottogruppo=_SG_COMPLEANNI)
+    @comando_di_gruppo("admin-moduli", nome="ruolo", descrizione="Un ruolo per 24 ore a chi compie gli anni (vuoto per toglierlo).", sottogruppo=_SG_COMPLEANNI)
     @app_commands.describe(ruolo="Il ruolo del compleanno")
     async def ruolo(self, interaction: discord.Interaction, ruolo: discord.Role | None = None) -> None:
         if not await self._pronto(interaction):

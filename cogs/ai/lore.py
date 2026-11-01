@@ -54,7 +54,7 @@ class _PersonaggioModal(BaseModal, title="Nuovo personaggio AI"):
             await interaction.response.send_message("Esiste già un personaggio con questo nome.", ephemeral=True)
             return
         await interaction.response.send_message(
-            f"Personaggio «{creato.nome}» creato. Un amministratore lo rende disponibile con `/ai personaggio`.",
+            f"Personaggio «{creato.nome}» creato. Un amministratore lo rende disponibile con `/admin-ai personaggio`.",
             ephemeral=True, allowed_mentions=NESSUNA_MENZIONE,
         )
 

@@ -3,7 +3,7 @@ tests/test_bot_aspetto.py
 =========================
 Aspetto del bot per server (CFG-021, CFG-030, #122): campi toccati o tolti,
 controllo delle immagini, premium, limite sui cambi di immagine, errori di
-Discord, e il comando `/admin premium aspetto`.
+Discord, e il comando `/admin-bot premium aspetto`.
 """
 
 import io

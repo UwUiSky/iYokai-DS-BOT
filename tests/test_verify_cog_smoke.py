@@ -29,7 +29,7 @@ async def test_verify_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is False  # sempre gratis, come da schema
 
-    verify_group = bot.tree.get_command("security").get_command("verify")
+    verify_group = bot.tree.get_command("admin-sicurezza").get_command("verify")
     assert verify_group is not None
 
     sottocomandi = {c.name for c in verify_group.commands}

@@ -1,7 +1,7 @@
 """
 cogs/ai/config.py
 =================
-Il gruppo `/ai` (D26): consenso e interruttore del server, canali spenti,
+Il gruppo `/admin-ai` (D26): consenso e interruttore del server, canali spenti,
 limiti e tetto di spesa, privacy e memoria, lore con temi pronti, parole
 vietate, funzioni automatiche (menzione, bandiere), moderazione con l'AI,
 traduzione automatica dei canali, personaggi del server, base di
@@ -160,7 +160,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
         ][:25]
 
     # ------------------------------------------------------------ stato e accensione
-    @comando_di_gruppo("ai", nome="stato", descrizione="Stato dell'AI nel server: fornitori, scelte e uso del mese.")
+    @comando_di_gruppo("admin-ai", nome="stato", descrizione="Stato dell'AI nel server: fornitori, scelte e uso del mese.")
     async def stato(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True)
         servizio = servizio_ai()
@@ -219,7 +219,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
             )
         await interaction.followup.send(embed=embed, ephemeral=True)
 
-    @comando_di_gruppo("ai", nome="attiva", descrizione="Accende o spegne l'AI nel server (serve il consenso).")
+    @comando_di_gruppo("admin-ai", nome="attiva", descrizione="Accende o spegne l'AI nel server (serve il consenso).")
     @app_commands.describe(acceso="Sì per accendere, no per spegnere")
     async def attiva(self, interaction: discord.Interaction, acceso: bool) -> None:
         if not acceso:
@@ -279,7 +279,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
         righe.append(f"Tetto di lunghezza: {servizio.tetto_token or 'nessuno (vale la scelta di ogni server)'}")
         await interaction.response.send_message("\n".join(righe), ephemeral=True)
 
-    @comando_di_gruppo("ai", nome="canale", descrizione="Spegne o riaccende l'AI in un canale.")
+    @comando_di_gruppo("admin-ai", nome="canale", descrizione="Spegne o riaccende l'AI in un canale.")
     @app_commands.describe(canale="Il canale", acceso="Sì: l'AI lavora qui; no: spenta qui")
     async def canale(self, interaction: discord.Interaction, canale: discord.TextChannel, acceso: bool) -> None:
         cfg = await ai_repo.get_config(interaction.guild_id)
@@ -296,7 +296,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
         )
 
     # ------------------------------------------------------------ limiti, privacy, lore
-    @comando_di_gruppo("ai", nome="limiti", descrizione="Tetto di spesa e quote: per utente, funzione, immagini.")
+    @comando_di_gruppo("admin-ai", nome="limiti", descrizione="Tetto di spesa e quote: per utente, funzione, immagini.")
     @app_commands.describe(
         tetto_euro_cent="Spesa massima al mese in centesimi (0 = solo servizi gratuiti)",
         utente_giorno="Richieste al giorno per persona (0 = senza tetto)",
@@ -322,12 +322,12 @@ class AiConfigCog(CogConGruppi, commands.Cog):
             }.items() if v is not None
         }
         if not campi:
-            await interaction.response.send_message("Indica almeno un valore. Lo stato attuale è in `/ai stato`.", ephemeral=True)
+            await interaction.response.send_message("Indica almeno un valore. Lo stato attuale è in `/admin-ai stato`.", ephemeral=True)
             return
         await imposta_scelte(interaction.guild_id, **campi)
         await interaction.response.send_message("Limiti salvati.", ephemeral=True)
 
-    @comando_di_gruppo("ai", nome="privacy", descrizione="Messaggi degli utenti all'AI, memoria e lunghezza delle risposte.")
+    @comando_di_gruppo("admin-ai", nome="privacy", descrizione="Messaggi degli utenti all'AI, memoria e lunghezza delle risposte.")
     @app_commands.describe(
         livello="completa: anche riassunti, ticket e moderazione; senza_messaggi: solo richieste dirette",
         memoria_minuti="Per quanti minuti l'AI ricorda la conversazione (0 = niente)",
@@ -348,7 +348,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
         await imposta_scelte(interaction.guild_id, **campi)
         await interaction.response.send_message("Scelte salvate.", ephemeral=True)
 
-    @comando_di_gruppo("ai", nome="lore", descrizione="Tono e ambientazione del server per ogni testo dell'AI.")
+    @comando_di_gruppo("admin-ai", nome="lore", descrizione="Tono e ambientazione del server per ogni testo dell'AI.")
     @app_commands.describe(
         tema="Un tema pronto", testo="Le tue parole (vuoto con tema 'nessuno': toglie la lore)",
         nomi_a_tema="Sì: il tema dà il nome alla moneta, ai punti e ai titoli dei livelli",
@@ -370,7 +370,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
             risposta += f"\nNomi a tema: moneta «{nomi['moneta']}», punti «{nomi['punti']}», titoli «{nomi['titoli']}»."
         await interaction.response.send_message(risposta, ephemeral=True)
 
-    @comando_di_gruppo("ai", nome="vietate", descrizione="Parole o argomenti che l'AI deve rifiutare.")
+    @comando_di_gruppo("admin-ai", nome="vietate", descrizione="Parole o argomenti che l'AI deve rifiutare.")
     @app_commands.describe(azione="Cosa fare", parola="Parola o frase (per aggiungi e togli)")
     @app_commands.choices(azione=[app_commands.Choice(name=n, value=n) for n in ("aggiungi", "togli", "elenco")])
     async def vietate(
@@ -396,14 +396,14 @@ class AiConfigCog(CogConGruppi, commands.Cog):
         await imposta_parole_vietate(interaction.guild_id, "\n".join(parole))
         await interaction.response.send_message("Elenco aggiornato.", ephemeral=True)
 
-    @comando_di_gruppo("ai", nome="funzioni", descrizione="Accende le funzioni automatiche: risposta alla menzione, bandiere.")
+    @comando_di_gruppo("admin-ai", nome="funzioni", descrizione="Accende le funzioni automatiche: risposta alla menzione, bandiere.")
     @app_commands.describe(funzione="menzione: il bot risponde quando lo nomini; bandiere: traduce chi reagisce con una bandiera", acceso="Sì o no")
     @app_commands.choices(funzione=[app_commands.Choice(name=n, value=n) for n in ("menzione", "bandiere")])
     async def funzioni(self, interaction: discord.Interaction, funzione: str, acceso: bool) -> None:
         await ai_repo.imposta(interaction.guild_id, **{funzione: acceso})
         await interaction.response.send_message(f"{funzione}: {'accesa' if acceso else 'spenta'}.", ephemeral=True)
 
-    @comando_di_gruppo("ai", nome="moderazione", descrizione="L'AI segnala allo staff i messaggi sospetti di un canale.")
+    @comando_di_gruppo("admin-ai", nome="moderazione", descrizione="L'AI segnala allo staff i messaggi sospetti di un canale.")
     @app_commands.describe(canale="Canale da sorvegliare", acceso="Sì o no", avvisi="Dove mandare le segnalazioni (vuoto: canale dei log)")
     async def moderazione(
         self, interaction: discord.Interaction, canale: discord.TextChannel, acceso: bool,
@@ -424,7 +424,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
             "canale scelto (o in quello dei log); lo staff decide.", ephemeral=True,
         )
 
-    @comando_di_gruppo("ai", nome="traduzione", descrizione="Traduce da solo ogni messaggio di un canale in una lingua.")
+    @comando_di_gruppo("admin-ai", nome="traduzione", descrizione="Traduce da solo ogni messaggio di un canale in una lingua.")
     @app_commands.describe(canale="Il canale", lingua="Lingua di arrivo (vuoto: spegne)")
     @app_commands.autocomplete(lingua=_lingue)
     async def traduzione(self, interaction: discord.Interaction, canale: discord.TextChannel, lingua: app_commands.Range[str, 2, 5] | None = None) -> None:
@@ -439,7 +439,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
             f"Traduzione automatica in {canale.mention}: {nome_lingua(lingua) if lingua else 'spenta'}.", ephemeral=True
         )
 
-    @comando_di_gruppo("ai", nome="personaggio", descrizione="Installa, toglie o cancella un personaggio AI del server.")
+    @comando_di_gruppo("admin-ai", nome="personaggio", descrizione="Installa, toglie o cancella un personaggio AI del server.")
     @app_commands.describe(azione="Cosa fare", nome="Il personaggio")
     @app_commands.autocomplete(nome=_personaggi)
     @app_commands.choices(azione=[app_commands.Choice(name=n, value=n) for n in ("installa", "togli", "cancella")])
@@ -453,7 +453,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
             allowed_mentions=NESSUNA_MENZIONE,
         )
 
-    @comando_di_gruppo("ai", nome="costruisci", descrizione="L'AI propone ruoli e canali da una descrizione; tu confermi.")
+    @comando_di_gruppo("admin-ai", nome="costruisci", descrizione="L'AI propone ruoli e canali da una descrizione; tu confermi.")
     @app_commands.describe(descrizione="Che server vuoi? es. 'community di un gioco con tornei'")
     @richiede_ai()
     async def costruisci(self, interaction: discord.Interaction, descrizione: app_commands.Range[str, 10, 500]) -> None:
@@ -476,11 +476,11 @@ class AiConfigCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(embed=embed, view=_CostruisciView(interaction.user.id, proposta), ephemeral=True)
 
     # ------------------------------------------------------------ base di conoscenza
-    @comando_di_gruppo("ai", nome="aggiungi", descrizione="Aggiunge una voce alla base di conoscenza.", sottogruppo=SOTTO_CONOSCENZA)
+    @comando_di_gruppo("admin-ai", nome="aggiungi", descrizione="Aggiunge una voce alla base di conoscenza.", sottogruppo=SOTTO_CONOSCENZA)
     async def conoscenza_aggiungi(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_modal(_ConoscenzaModal())
 
-    @comando_di_gruppo("ai", nome="elenco", descrizione="Le voci della base di conoscenza.", sottogruppo=SOTTO_CONOSCENZA)
+    @comando_di_gruppo("admin-ai", nome="elenco", descrizione="Le voci della base di conoscenza.", sottogruppo=SOTTO_CONOSCENZA)
     async def conoscenza_elenco(self, interaction: discord.Interaction) -> None:
         voci = await ai_repo.conoscenza_elenco(interaction.guild_id)
         testo = "\n".join(f"#{v['id']} **{v['titolo']}** — {taglia(v['testo'], 80)}" for v in voci)
@@ -488,7 +488,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
             taglia(testo or "Nessuna voce.", 2000), ephemeral=True, allowed_mentions=NESSUNA_MENZIONE
         )
 
-    @comando_di_gruppo("ai", nome="togli", descrizione="Toglie una voce dalla base di conoscenza.", sottogruppo=SOTTO_CONOSCENZA)
+    @comando_di_gruppo("admin-ai", nome="togli", descrizione="Toglie una voce dalla base di conoscenza.", sottogruppo=SOTTO_CONOSCENZA)
     @app_commands.describe(numero="Il numero della voce (da elenco)")
     async def conoscenza_togli(self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 2_000_000_000]) -> None:
         ok = await ai_repo.conoscenza_togli(interaction.guild_id, numero)

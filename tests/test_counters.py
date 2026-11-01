@@ -266,8 +266,8 @@ async def test_albero_dei_comandi():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await modulo.setup(bot)
     for nome in ("crea", "elimina", "elenco"):
-        assert comando_nel_gruppo("moduli", f"contatori {nome}") is not None
-    crea = {o["name"]: o for o in comando_nel_gruppo("moduli", "contatori crea").to_dict(bot.tree)["options"]}
+        assert comando_nel_gruppo("admin-moduli", f"contatori {nome}") is not None
+    crea = {o["name"]: o for o in comando_nel_gruppo("admin-moduli", "contatori crea").to_dict(bot.tree)["options"]}
     assert len(crea["tipo"]["choices"]) == len(TIPI)
     assert crea["etichetta"]["max_length"] <= 85
 

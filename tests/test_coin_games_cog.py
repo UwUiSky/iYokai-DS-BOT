@@ -1,7 +1,7 @@
 """
 tests/test_coin_games_cog.py
 ============================
-NF-40 (#111): comandi /giochi gioca, /fun misura, /moduli conteggio e il listener
+NF-40 (#111): comandi /giochi gioca, /fun misura, /admin-moduli conteggio e il listener
 del gioco del conteggio. Archivio su PostgreSQL vero.
 Funzioni coperte: SPEC §23.16
 """
@@ -121,7 +121,7 @@ async def test_gioca_richiede_anche_il_modulo_livelli(scena):
 
 @pytest.mark.asyncio
 async def test_i_comandi_sono_sotto_fun(scena):
-    for nome in ("giochi gioca", "fun misura", "moduli conteggio"):
+    for nome in ("giochi gioca", "fun misura", "admin-moduli conteggio"):
         assert nome in scena.comandi
 
 
@@ -219,7 +219,7 @@ async def test_misura_rifiuta_i_temi_su_caratteristiche_protette(scena):
 # ----------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_conteggio_imposta_stato_e_spegni(scena):
-    comando = scena.comandi["moduli conteggio"]
+    comando = scena.comandi["admin-moduli conteggio"]
     canale = fake_text_channel(channel_id=555)
     await comando.callback(scena.cog, _interazione(), azione=_scelta("imposta"), canale=canale)
     assert (await scena.conteggio.get(GUILD)).channel_id == 555
@@ -240,7 +240,7 @@ async def test_conteggio_non_si_imposta_dove_il_bot_non_puo_reagire(scena):
     )
     interazione = _interazione()
 
-    await scena.comandi["moduli conteggio"].callback(
+    await scena.comandi["admin-moduli conteggio"].callback(
         scena.cog, interazione, azione=_scelta("imposta"), canale=canale
     )
 

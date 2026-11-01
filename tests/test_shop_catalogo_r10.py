@@ -245,7 +245,7 @@ def _allegato(testo: str, size: int | None = None):
 @pytest.mark.asyncio
 async def test_shop_add_con_tutti_i_nuovi_campi_e_un_file_di_righe(scena):
     interazione = _interazione()
-    await scena.comandi["economia shop-add"].callback(
+    await scena.comandi["admin-economia shop-add"].callback(
         scena.cog, interazione, name="Chiave", price=5, role=None, description=None,
         scorte=None, ruolo_richiesto=None, posizione=3, categoria="Giochi",
         risposta="Grazie {utente}!", durata_ruolo_ore=None,
@@ -261,13 +261,13 @@ async def test_shop_add_con_tutti_i_nuovi_campi_e_un_file_di_righe(scena):
 @pytest.mark.asyncio
 async def test_shop_add_rifiuta_file_troppo_grande_e_durata_senza_ruolo(scena):
     grande = _interazione()
-    await scena.comandi["economia shop-add"].callback(
+    await scena.comandi["admin-economia shop-add"].callback(
         scena.cog, grande, name="Chiave", price=5, righe=_allegato("A", size=70_000),
     )
     assert "troppo grande" in _testi(grande)
 
     senza_ruolo = _interazione()
-    await scena.comandi["economia shop-add"].callback(
+    await scena.comandi["admin-economia shop-add"].callback(
         scena.cog, senza_ruolo, name="Vip", price=5, durata_ruolo_ore=2,
     )
     assert "dà un ruolo" in _testi(senza_ruolo)
@@ -278,14 +278,14 @@ async def test_shop_add_rifiuta_file_troppo_grande_e_durata_senza_ruolo(scena):
 async def test_shop_edit_cambia_e_toglie_categoria_e_risposta(scena):
     item_id = await scena.negozio.add_item(GUILD, name="X", price=10, category="A", reply_text="ciao")
     interazione = _interazione()
-    await scena.comandi["economia shop-edit"].callback(
+    await scena.comandi["admin-economia shop-edit"].callback(
         scena.cog, interazione, item_id=item_id, posizione=4, categoria="B", senza_risposta=True,
     )
     o = await scena.negozio.get_item(item_id, GUILD)
     assert (o.sort_order, o.category, o.reply_text) == (4, "B", None)
 
     interazione = _interazione()
-    await scena.comandi["economia shop-edit"].callback(
+    await scena.comandi["admin-economia shop-edit"].callback(
         scena.cog, interazione, item_id=item_id, senza_categoria=True,
         righe=_allegato("uno\ndue"),
     )
@@ -297,7 +297,7 @@ async def test_shop_edit_cambia_e_toglie_categoria_e_risposta(scena):
 async def test_shop_edit_durata_su_oggetto_senza_ruolo_non_scrive(scena):
     item_id = await scena.negozio.add_item(GUILD, name="X", price=10)
     interazione = _interazione()
-    await scena.comandi["economia shop-edit"].callback(
+    await scena.comandi["admin-economia shop-edit"].callback(
         scena.cog, interazione, item_id=item_id, durata_ruolo_ore=5, posizione=9,
     )
     assert "dà un ruolo" in _testi(interazione)
@@ -423,7 +423,7 @@ async def test_membro_uscito_o_ruolo_gia_tolto_chiude_senza_errori(scena, clean_
 async def test_shop_add_con_righe_non_valide_non_mette_in_vendita_niente(scena, testo):
     """Prima l'oggetto restava in vendita senza righe: chi lo comprava pagava e non riceveva nulla."""
     interazione = _interazione()
-    await scena.comandi["economia shop-add"].callback(
+    await scena.comandi["admin-economia shop-add"].callback(
         scena.cog, interazione, name="Chiave", price=5, righe=_allegato(testo),
     )
     assert "Aggiunto" not in _testi(interazione)

@@ -1,7 +1,7 @@
 """
 cogs/ai/moderazione.py
 ======================
-Aiuto alla moderazione: nei canali scelti con `/ai moderazione` l'AI legge i
+Aiuto alla moderazione: nei canali scelti con `/admin-ai moderazione` l'AI legge i
 messaggi nuovi e segnala allo staff quelli sospetti (motivo e gravità), nel
 canale delle segnalazioni AI (router, tipo "ai"; senza scelta: il canale dei
 log). L'AI non punisce: lo staff decide.

@@ -94,7 +94,7 @@ comandi è in [`COMMAND_LIST.md`](COMMAND_LIST.md).
 | **Owner** | premium, blacklist, gestione dei moduli, statistiche, annunci |
 
 In programma: canali di log per tipo e su forum, log dei messaggi,
-nuova struttura dei comandi (`/owner`, `/admin`, `/mod`, `/security`…),
+nuova struttura dei comandi (`/owner`, `/admin-…`, `/mod-…`, `/founder`),
 italiano e inglese, ruolo automatico, starboard, comandi personalizzati,
 immagini di benvenuto e di livello, pannello web, app installabile
 dall'utente, programma per PC, motore AI.
@@ -193,7 +193,7 @@ se nel `.env` ci sono `OAUTH2_CLIENT_ID`, `OAUTH2_CLIENT_SECRET`,
    `WEB_BIND_HOST:WEB_PANEL_PORT` (di base `127.0.0.1:8422`).
 4. Se il proxy è sulla stessa macchina, `WEB_PANEL_TRUSTED_PROXY=127.0.0.1`:
    solo così il limite di frequenza vede l'IP vero di chi visita, e la verifica
-   dalla pagina web (`/security verify setup method:Pagina web`) riconosce gli
+   dalla pagina web (`/admin-sicurezza verify setup method:Pagina web`) riconosce gli
    account doppi: un IP interno (proxy, Docker) non fa impronta.
 5. Riavvia il bot e apri `WEB_PANEL_PUBLIC_URL`.
 

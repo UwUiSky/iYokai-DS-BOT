@@ -173,5 +173,5 @@ def testo_avviso(member_mention: str, member_id: int, doppi: list[Doppio], limit
     return (
         f"{member_mention} (`{member_id}`) si è verificato dalla pagina web con la stessa connessione di:\n"
         + "\n".join(righe)
-        + "\nNessuna azione automatica: controlla tu. Elenco completo con `/security alt elenco`."
+        + "\nNessuna azione automatica: controlla tu. Elenco completo con `/admin-sicurezza alt elenco`."
     )

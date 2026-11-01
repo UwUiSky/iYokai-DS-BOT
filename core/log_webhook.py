@@ -1,7 +1,7 @@
 """
 core/log_webhook.py
 ===================
-Log via webhook (#113, D33): se il server lo ha acceso (`/log webhook`), le righe di log di un canale di testo
+Log via webhook (#113, D33): se il server lo ha acceso (`/admin-log webhook`), le righe di log di un canale di testo
 escono da un webhook del canale, raggruppate fino a 10 embed in un solo messaggio (attesa massima 2 secondi).
 I webhook hanno limiti di frequenza propri, separati da quelli del bot: un picco di log non consuma le richieste
 del bot. Messaggi con bottoni o file e ogni errore del webhook (cancellato, permesso tolto) tornano al canale normale.
@@ -109,7 +109,7 @@ async def _crea_o_leggi(canale: discord.TextChannel, client) -> discord.Webhook 
     if me is None or not canale.permissions_for(me).manage_webhooks:
         return None
     try:
-        nuovo = await canale.create_webhook(name=NOME_WEBHOOK, reason="Log via webhook (/log webhook)")
+        nuovo = await canale.create_webhook(name=NOME_WEBHOOK, reason="Log via webhook (/admin-log webhook)")
         await log_webhook_repo.salva(canale.guild.id, canale.id, nuovo.id, nuovo.token)
     except ChiaveNonConfigurata:
         await nuovo.delete(reason="Chiave di cifratura mancante")

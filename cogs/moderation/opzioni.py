@@ -1,7 +1,7 @@
 """
 cogs/moderation/opzioni.py
 ==========================
-Opzioni di moderazione del server (`/mod opzioni`): giorni di messaggi
+Opzioni di moderazione del server (`/mod-sanzioni opzioni`): giorni di messaggi
 cancellati al ban, durata predefinita del timeout, DM per tipo di azione,
 ruoli immuni alla moderazione manuale, casi per le azioni fatte fuori da
 iYokai, avvisi allo staff. La logica e il salvataggio sono in
@@ -17,7 +17,7 @@ from discord.ext import commands
 
 from cogs.moderation._shared import MODULE_ACTIONS, ensure_module_enabled, format_duration, parse_duration
 from core import moderation_opzioni as opzioni
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import SOTTOGRUPPI, CogConGruppi, comando_di_gruppo
 from core.i18n import testo_per
 
 SOTTOGRUPPO = ("opzioni", "Opzioni di moderazione del server.")
@@ -81,7 +81,7 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
         return True
 
     @comando_di_gruppo(
-        "mod",
+        "mod-sanzioni",
         nome="imposta",
         descrizione="Messaggi al ban, timeout, casi esterni, avvisi. Vuoto: mostra le opzioni.",
         sottogruppo=SOTTOGRUPPO,
@@ -136,7 +136,7 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "mod",
+        "mod-sanzioni",
         nome="dm",
         descrizione="Sceglie se l'utente riceve un DM per un tipo di azione.",
         sottogruppo=SOTTOGRUPPO,
@@ -156,10 +156,10 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "mod",
+        "founder",
         nome="immuni",
         descrizione="Ruoli che la moderazione manuale non tocca (solo il proprietario).",
-        sottogruppo=SOTTOGRUPPO,
+        sottogruppo=SOTTOGRUPPI["founder moderazione"],
     )
     @app_commands.describe(azione="Aggiungere o togliere", ruolo="Il ruolo")
     @app_commands.choices(

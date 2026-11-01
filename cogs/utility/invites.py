@@ -7,7 +7,7 @@ normale, vanity, sconosciuto); si vede quante persone ha invitato un membro, la 
 server (10 righe), lo storico di un membro e da chi è stato invitato. Ogni membro può avere il
 suo link personale «finto vanity» sul sito (core/invite_service.py). L'attribuzione è "giusta o
 sconosciuta", ma con ingressi simultanei può mancare: lo diciamo sempre (LC-6).
-Comandi: `/level inviti utente|classifica|storico|link`; le opzioni in `/moduli inviti`.
+Comandi: `/level inviti utente|classifica|storico|link`; le opzioni in `/admin-moduli inviti`.
 Funzioni coperte: SPEC §23 (NF-27, link personali r10)
 """
 
@@ -190,11 +190,11 @@ class InvitesCog(CogConGruppi, commands.Cog):
             ephemeral=True,
         )
 
-    @comando_di_gruppo("moduli", nome="inviti", descrizione="Registro degli inviti e chi ha il link personale.")
+    @comando_di_gruppo("admin-moduli", nome="inviti", descrizione="Registro degli inviti e chi ha il link personale.")
     @app_commands.describe(
         canale="Dove scrivere chi entra e con quale link",
         ruolo="Solo chi ha questo ruolo può avere il link personale",
-        togli="Togli il canale del registro o il ruolo (il modulo si accende con /admin setup attiva)",
+        togli="Togli il canale del registro o il ruolo (il modulo si accende con /admin-bot setup attiva)",
         chi="Chi ha il link personale",
     )
     @app_commands.choices(chi=[

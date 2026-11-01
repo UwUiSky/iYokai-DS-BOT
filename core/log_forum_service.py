@@ -5,7 +5,7 @@ La vista dei log su un forum: ogni evento con un canale va nel post di quel
 canale, ogni caso di moderazione nel suo post. Gli eventi aspettano in una coda
 e un solo lavoratore li scrive piano (i forum hanno limiti stretti). Se il server
 non ha scelto un forum non succede niente e non costa una query oltre la cache.
-Gli eventi spenti con `/log eventi` non vanno neanche nel forum.
+Gli eventi spenti con `/admin-log eventi` non vanno neanche nel forum.
 Un post chiuso si riapre; un forum con tag obbligatori riceve un tag ammesso; dopo un errore la vista di quel forum si ferma per un po'.
 Funzioni coperte: SPEC §8.17
 Dipende da: core/repositories/log_forum_repo.py, core/log_forum_logic.py
@@ -83,7 +83,7 @@ async def ferma() -> None:
 
 
 def invalida(guild_id: int) -> None:
-    """Dopo `/log vista-forum`: la scelta nuova vale subito."""
+    """Dopo `/admin-log vista-forum`: la scelta nuova vale subito."""
     _viste.delete(guild_id)
 
 
@@ -122,7 +122,7 @@ async def notifica_evento(
     try:
         scelti = await _forum_scelti(guild_id)
         if not scelti or not await log_eventi_repo.evento_acceso(guild_id, event_type):
-            return  # evento spento con `/log eventi`: il server non lo vuole, neanche nel forum
+            return  # evento spento con `/admin-log eventi`: il server non lo vuole, neanche nel forum
         testo = descrizione_evento(
             event_type, actor_id=actor_id, target_user_id=target_user_id, role_id=role_id,
             case_number=case_number, details=details,

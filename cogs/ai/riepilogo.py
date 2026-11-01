@@ -1,7 +1,7 @@
 """
 cogs/ai/riepilogo.py
 ====================
-`/ai riepilogo imposta|anteprima`: ogni giorno o ogni settimana, a un'ora scelta, il bot pubblica nel canale scelto un
+`/admin-ai riepilogo imposta|anteprima`: ogni giorno o ogni settimana, a un'ora scelta, il bot pubblica nel canale scelto un
 riepilogo fatto di numeri (attivi, canale vivace, messaggio più votato, clan cresciuto); l'AI ne scrive solo il tono e,
 se l'admin lo chiede, riassume le discussioni dei canali scelti. `/assistente avviso`: la persona segue fino a 3 parole
 e riceve un avviso in privato quando se ne parla molto in un canale che vede. Funzionano anche con l'AI ferma.
@@ -186,7 +186,7 @@ class AiRiepilogoCog(CogConGruppi, commands.Cog):
                         pass
 
     # ---------------------------------------------------------------- comandi
-    @comando_di_gruppo("ai", nome="imposta", descrizione="Riepilogo del server: canale, ora, frequenza e canali da leggere.", sottogruppo=SOTTO_RIEPILOGO)
+    @comando_di_gruppo("admin-ai", nome="imposta", descrizione="Riepilogo del server: canale, ora, frequenza e canali da leggere.", sottogruppo=SOTTO_RIEPILOGO)
     @app_commands.describe(
         attivo="Sì: pubblica il riepilogo. No: spento", canale="Dove pubblicarlo", ora="Ora di pubblicazione (fuso di Roma)",
         frequenza="Ogni giorno o ogni lunedì", leggi_canale="Aggiunge o toglie un canale da cui l'AI riassume le discussioni",
@@ -217,7 +217,7 @@ class AiRiepilogoCog(CogConGruppi, commands.Cog):
         )
         await interaction.response.send_message(testo, ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("ai", nome="anteprima", descrizione="Mostra a te il riepilogo di adesso, senza pubblicarlo.", sottogruppo=SOTTO_RIEPILOGO)
+    @comando_di_gruppo("admin-ai", nome="anteprima", descrizione="Mostra a te il riepilogo di adesso, senza pubblicarlo.", sottogruppo=SOTTO_RIEPILOGO)
     async def riepilogo_anteprima(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True)
         cfg = await ai_riepilogo_repo.config(interaction.guild_id)

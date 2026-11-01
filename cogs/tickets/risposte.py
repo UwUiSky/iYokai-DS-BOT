@@ -17,7 +17,7 @@ dell'utente, scelta tra le risposte approvate quando le parole non bastano, ruol
 chiamare (moderatore o amministratore). L'AI non scrive mai testo libero all'utente
 (core/ticket_ai_logic.py). Con l'AI ferma resta tutto per parole
 (core/ticket_standard_logic.py). Il timer passa dallo scheduler (azione `ticket_sollecito`).
-Comandi: `/ticket-gestione risposte standard|sollecito|risposte-lista|risposta-modifica|risposta-elimina`.
+Comandi: `/admin-ticket risposte standard|sollecito|risposte-lista|risposta-modifica|risposta-elimina`.
 Funzioni coperte: SPEC §25.97, §25.98
 """
 
@@ -543,10 +543,10 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         return panel
 
     @comando_di_gruppo(
-        "ticket-gestione",
+        "admin-ticket",
         nome="standard",
         descrizione="Risposte standard imparate dallo staff.",
-        sottogruppo=SOTTOGRUPPI["ticket-gestione risposte"],
+        sottogruppo=SOTTOGRUPPI["admin-ticket risposte"],
     )
     @app_commands.describe(pannello="Il pannello", attive="Accese o spente")
     @app_commands.autocomplete(pannello=completa_pannelli)
@@ -566,7 +566,7 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(
-        "ticket-gestione",
+        "admin-ticket",
         nome="sollecito",
         descrizione="Sollecito dopo N minuti senza staff (0 = spento).",
     )
@@ -608,10 +608,10 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(testo, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
 
     @comando_di_gruppo(
-        "ticket-gestione",
+        "admin-ticket",
         nome="elenco",
         descrizione="Elenca le risposte standard del server.",
-        sottogruppo=SOTTOGRUPPI["ticket-gestione risposte"],
+        sottogruppo=SOTTOGRUPPI["admin-ticket risposte"],
     )
     @app_commands.describe(stato="Quali mostrare")
     @app_commands.choices(
@@ -634,10 +634,10 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(logica.taglia("\n".join(righe), 1900), ephemeral=True)
 
     @comando_di_gruppo(
-        "ticket-gestione",
+        "admin-ticket",
         nome="modifica",
         descrizione="Correggi una risposta standard.",
-        sottogruppo=SOTTOGRUPPI["ticket-gestione risposte"],
+        sottogruppo=SOTTOGRUPPI["admin-ticket risposte"],
     )
     @app_commands.describe(numero="Numero della risposta")
     async def modifica(self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 2**31 - 1]) -> None:
@@ -648,10 +648,10 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         await interaction.response.send_modal(ModuloRispostaStandard(r))
 
     @comando_di_gruppo(
-        "ticket-gestione",
+        "admin-ticket",
         nome="elimina",
         descrizione="Elimina una risposta standard.",
-        sottogruppo=SOTTOGRUPPI["ticket-gestione risposte"],
+        sottogruppo=SOTTOGRUPPI["admin-ticket risposte"],
     )
     @app_commands.describe(numero="Numero della risposta")
     async def elimina(self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 2**31 - 1]) -> None:

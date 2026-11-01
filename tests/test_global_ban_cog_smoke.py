@@ -23,7 +23,7 @@ async def test_global_ban_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is True
 
-    gruppo = bot.tree.get_command("security").get_command("globalban")
+    gruppo = bot.tree.get_command("admin-sicurezza").get_command("globalban")
     assert gruppo is not None
 
     nomi_comandi = {c.name for c in gruppo.commands}

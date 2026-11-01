@@ -19,7 +19,7 @@ async def _opzione_word(nome_comando: str) -> dict:
     # comando nella forma che viene mandata a Discord.
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.none())
     await bot.add_cog(modulo_automod.AutomodCog(bot))
-    comando = bot.tree.get_command("automod").get_command("parole").get_command(nome_comando)
+    comando = bot.tree.get_command("admin-automod").get_command("parole").get_command(nome_comando)
     dati = comando.to_dict(bot.tree)
     await bot.remove_cog("AutomodCog")
     return next(o for o in dati["options"] if o["name"] == "word")

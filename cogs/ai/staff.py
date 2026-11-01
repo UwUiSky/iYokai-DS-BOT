@@ -1,7 +1,7 @@
 """
 cogs/ai/staff.py
 ================
-`/ai staff`: riassunto di un incidente (dagli eventi di sicurezza già salvati), assistente per le regole di AutoMod
+`/admin-ai staff`: riassunto di un incidente (dagli eventi di sicurezza già salvati), assistente per le regole di AutoMod
 (l'AI propone, una persona conferma con il bottone) e ricerca nei log con una domanda (l'AI propone i filtri, la
 ricerca la fa il database). Funzionano anche con l'AI ferma. Risposte solo a chi ha lanciato il comando.
 Funzioni coperte: SPEC §25.39, §25.40, §25.44 (AI-R-041, AI-R-042, AI-R-047)
@@ -128,7 +128,7 @@ class AiStaffCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @comando_di_gruppo("ai", nome="incidente", descrizione="Riassume gli ultimi eventi di sicurezza del server.", sottogruppo=SOTTO_STAFF)
+    @comando_di_gruppo("admin-ai", nome="incidente", descrizione="Riassume gli ultimi eventi di sicurezza del server.", sottogruppo=SOTTO_STAFF)
     @app_commands.describe(ore="Quante ore indietro guardare (di base 24)")
     async def incidente(self, interaction: discord.Interaction, ore: app_commands.Range[int, 1, 168] = 24) -> None:
         await interaction.response.defer(ephemeral=True)
@@ -140,7 +140,7 @@ class AiStaffCog(CogConGruppi, commands.Cog):
         embed.set_footer(text="Solo gli eventi già salvati. Controlla prima di agire: decide una persona.")
         await interaction.followup.send(embed=embed, ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("ai", nome="regola", descrizione="Scrivi cosa vuoi da AutoMod: ti propongo la regola, la attivi tu.", sottogruppo=SOTTO_STAFF)
+    @comando_di_gruppo("admin-ai", nome="regola", descrizione="Scrivi cosa vuoi da AutoMod: ti propongo la regola, la attivi tu.", sottogruppo=SOTTO_STAFF)
     @app_commands.describe(richiesta="Per esempio: niente link dai nuovi, o troppi messaggi in fila")
     async def regola(self, interaction: discord.Interaction, richiesta: app_commands.Range[str, 3, 300]) -> None:
         await interaction.response.defer(ephemeral=True)
@@ -155,7 +155,7 @@ class AiStaffCog(CogConGruppi, commands.Cog):
         embed.set_footer(text="Scritta dall'AI: non è attiva finché non premi Attiva." if proposta.dall_ai else "Scelta con le tue parole: non è attiva finché non premi Attiva.")
         await interaction.followup.send(embed=embed, view=RegolaView(interaction.user.id, proposta), ephemeral=True)
 
-    @comando_di_gruppo("ai", nome="cerca-log", descrizione="Cerca nei log con una domanda (chi, cosa, quando).", sottogruppo=SOTTO_STAFF)
+    @comando_di_gruppo("admin-ai", nome="cerca-log", descrizione="Cerca nei log con una domanda (chi, cosa, quando).", sottogruppo=SOTTO_STAFF)
     @app_commands.describe(domanda="Per esempio: cosa è successo a @Mario negli ultimi tre giorni?")
     async def cerca_log(self, interaction: discord.Interaction, domanda: app_commands.Range[str, 3, 300]) -> None:
         await interaction.response.defer(ephemeral=True)
