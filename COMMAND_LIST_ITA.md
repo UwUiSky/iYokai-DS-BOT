@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 13:52 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 02:06 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 579 comandi in 25 categorie.**
+**Totale: 634 comandi in 25 categorie.**
 
 ## Admin
 
@@ -112,21 +112,76 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 13:
 
 ## iYokai App (app separata, installata sull'utente)
 
+- **`/Citazione come immagine`** — Menu «App» (tasto destro)
+- **`/Controlla i link`** — Menu «App» (tasto destro)
+- **`/Meme da questa immagine`** — Menu «App» (tasto destro)
 - **`/Profilo`** — Menu «App» (tasto destro)
+- **`/Ricordamelo`** — Menu «App» (tasto destro)
+- **`/Salva come risposta pronta`** — Menu «App» (tasto destro)
+- **`/Salva nei segnalibri`** — Menu «App» (tasto destro)
+- **`/Segnala alla rete iYokai`** — Menu «App» (tasto destro)
+- **`/Spiega o riassumi`** — Menu «App» (tasto destro)
 - **`/Stato rete iYokai`** — Menu «App» (tasto destro)
 - **`/Testo pulito`** — Menu «App» (tasto destro)
+- **`/Traduci`** — Menu «App» (tasto destro)
+- **`/desktop avvisi`** — Accendi o spegni gli avvisi per menzioni e risposte sul programma.
+- **`/desktop collega`** — Crea il codice personale per il programma iYokai Desktop.
+- **`/desktop parole`** — Le parole chiave che ti avvisano (separate da virgole; vuoto le toglie).
+- **`/desktop scollega`** — Revoca il codice: il programma non entra più.
+- **`/desktop stato`** — Come è collegato iYokai Desktop e quali avvisi hai.
+- **`/divertimento animale`** — Mostra l'immagine di un animale a caso.
+- **`/divertimento barzelletta`** — Racconta una barzelletta a caso.
+- **`/divertimento casuale`** — Preferiresti, argomento, consiglio, oggetto magico.
+- **`/divertimento citazione`** — Mostra una citazione a caso.
+- **`/divertimento curiosita`** — Mostra una curiosità a caso.
+- **`/divertimento dado`** — Tira un dado, o una formula come 3d6+2.
+- **`/divertimento effetto`** — Effetto sull'avatar: arcobaleno, R.I.P., ricercato, triggered.
+- **`/divertimento forbici`** — Carta, forbici, sasso contro il bot.
+- **`/divertimento immagine`** — Cerca un'immagine adatta a tutti su Pixabay.
+- **`/divertimento meme`** — Un meme con testo sopra e sotto, su un'immagine o su un avatar.
+- **`/divertimento moneta`** — Lancia una moneta: testa o croce.
+- **`/divertimento numero`** — Un numero a caso in un intervallo.
+- **`/divertimento palla8`** — Fai una domanda alla palla magica 8.
+- **`/divertimento scegli`** — Scelgo a caso tra le opzioni che scrivi.
+- **`/divertimento ship`** — Calcola la compatibilità tra due utenti.
+- **`/divertimento testo`** — Scrivi un testo in uno stile speciale.
+- **`/divertimento valuta`** — Valuta qualcosa da 0 a 10.
+- **`/impostazioni dm`** — L'app può scriverti in DM (promemoria, ricordamelo)?
+- **`/impostazioni lingua`** — Italiano o inglese per le risposte che vedi solo tu.
+- **`/impostazioni mostra`** — Le tue impostazioni di adesso.
+- **`/impostazioni profilo`** — Gli altri vedono il tuo profilo globale (livello, clan, medaglie).
+- **`/impostazioni risposte`** — Le risposte dei comandi le vedi solo tu, o le vedono tutti.
+- **`/impostazioni storico`** — Salvare i tuoi ultimi comandi (spegnere cancella lo storico).
 - **`/note aggiungi`** — Aggiunge una nota, o una voce a una lista.
 - **`/note elenco`** — Mostra le tue note, o una lista.
 - **`/note rimuovi`** — Toglie una nota o una voce di lista.
-- **`/profilo`** — La scheda di un utente: nome, ID, età dell'account, avatar.
+- **`/playlist aggiungi`** — Aggiunge un brano a una tua playlist.
+- **`/playlist crea`** — Crea una playlist vuota.
+- **`/playlist elenco`** — Le tue playlist.
+- **`/playlist elimina`** — Elimina una tua playlist.
+- **`/playlist mostra`** — Mostra i brani di una tua playlist.
+- **`/playlist togli`** — Toglie un brano da una tua playlist.
+- **`/profilo`** — La scheda di un utente; il tuo profilo globale e la rank card.
 - **`/promemoria annulla`** — Annulla un tuo promemoria.
 - **`/promemoria crea`** — Ti scrivo in DM tra il tempo che scegli.
 - **`/promemoria elenco`** — Mostra i tuoi promemoria in sospeso.
+- **`/radio ora`** — Cosa suona adesso nella radio iYokai, con il link per cercare il testo.
+- **`/risposta elenco`** — Le tue risposte pronte.
+- **`/risposta rimuovi`** — Toglie una risposta pronta.
+- **`/risposta salva`** — Salva una risposta pronta (testo, o embed con titolo, colore e immagine).
+- **`/risposta usa`** — Scrive una tua risposta pronta come risposta dell'app.
+- **`/segnalibri elenco`** — Mostra i tuoi segnalibri, i più recenti prima.
+- **`/segnalibri rimuovi`** — Toglie un segnalibro.
+- **`/storico azzera`** — Cancella il tuo storico dei comandi.
+- **`/storico elenco`** — I tuoi ultimi comandi.
 - **`/strumenti calcola`** — Calcola un'espressione, es. (2+3)*4 o sqrt(16).
 - **`/strumenti colore`** — Mostra un colore in HEX, RGB e HSL.
 - **`/strumenti converti`** — Converte lunghezze, pesi, volumi, velocità, dati e temperature.
 - **`/strumenti fuso`** — Che ora è in un altro fuso orario.
 - **`/strumenti qr`** — Crea un codice QR da un testo o un link.
+- **`/supporto apri`** — Apri una richiesta di assistenza con lo staff di iYokai.
+- **`/supporto elenco`** — Le tue ultime richieste di assistenza.
+- **`/supporto rispondi`** — Scrivi allo staff nella tua richiesta aperta.
 
 ## iYokai NSFW (app separata, solo canali vietati ai minori)
 
