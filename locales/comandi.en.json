@@ -256,7 +256,8 @@
   "avviso": "alert",
   "prima-risposta": "first-answer",
   "voce": "voice",
-  "parla": "speak"
+  "parla": "speak",
+  "trova": "find"
  },
  "descrizioni": {
   "-cerca-comando": "Searches a command by description.",
@@ -952,12 +953,15 @@
   "ai voce imposta": "Voice: on or off, tone and greeting channels.",
   "ai voce parla": "Yokai says an announcement out loud in a channel.",
   "utility ai parla": "Yokai says a phrase out loud in this channel.",
-  "ai modello": "Owner only: a provider model, tier and job types; length cap."
+  "ai modello": "Owner only: a provider model, tier and job types; length cap.",
+  "trova": "Find an iYokai App feature: commands and message menus.",
+  "assistente": "Your personal assistant: ask how to do something."
  },
  "parametri": {},
  "menu": {
   "Profilo": "Profile",
   "Testo pulito": "Clean text",
-  "Stato rete iYokai": "iYokai network status"
+  "Stato rete iYokai": "iYokai network status",
+  "Trascrivi vocale": "Transcribe voice message"
  }
 }
