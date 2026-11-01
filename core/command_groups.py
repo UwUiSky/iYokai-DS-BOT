@@ -74,6 +74,7 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "admin-antinuke": ("Anti-nuke (admin): soglie, fiducia, guardie e casi", "administrator", Livello.SECURITY),
     "admin-antiraid": ("Anti-raid (admin): soglie, filtri all'ingresso, segnali e allarmi", "administrator", Livello.SECURITY),
     "admin-moduli": ("Moduli del server (admin): alert, starboard, contatori, compleanni, inviti", "manage_guild", Livello.ADMIN),
+    "admin-economia": ("Economia (admin): negozio, cassa, premi in monete, annunci del mese", "manage_guild", Livello.ADMIN),
     "ticket": ("Gestione del ticket in cui ti trovi", None, None),
     "voice": ("Gestione del tuo canale vocale temporaneo", None, None),
     "music": ("Musica nei canali vocali", None, None),
@@ -111,7 +112,7 @@ SOTTOGRUPPI: dict[str, tuple[str, str]] = {
     "ruoli menu": ("menu", "Menu per scegliere i ruoli"),
     "monete shop": ("shop", "Negozio del server"),
     "economia livelli": ("livelli", "Impostazioni di livelli e XP"),
-    "economia annunci": ("annunci", "Annunci di fine mese: vincitori e clan"),
+    "admin-economia annunci": ("annunci", "Annunci di fine mese: vincitori e clan"),
     "owner ai": ("ai", "AI globale: manutenzione, modelli, rete del boss"),
 }
 

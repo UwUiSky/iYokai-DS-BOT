@@ -1580,10 +1580,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
     # ================================================================
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="vincitori-set",
         descrizione="Imposta il canale dove annunciare i vincitori del mese.",
-        sottogruppo=SOTTOGRUPPI["economia annunci"],
+        sottogruppo=SOTTOGRUPPI["admin-economia annunci"],
     )
     @app_commands.describe(channel="Canale dell'annuncio")
     async def monthly_winners_set(
@@ -1602,10 +1602,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="vincitori-off",
         descrizione="Disattiva l'annuncio dei vincitori del mese.",
-        sottogruppo=SOTTOGRUPPI["economia annunci"],
+        sottogruppo=SOTTOGRUPPI["admin-economia annunci"],
     )
     async def monthly_winners_disable(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
@@ -1820,7 +1820,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await _codice_in_privato(interaction.user, nome, guild, acquisto.riga)
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="shop-add",
         descrizione="Aggiunge un oggetto allo shop.",
     )
@@ -1900,7 +1900,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await _rispondi_shop(interaction, testo, righe is not None)
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="shop-edit",
         descrizione="Cambia un oggetto dello shop (prezzo, scorte, ruolo richiesto...).",
     )
@@ -2020,7 +2020,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await _rispondi_shop(interaction, testo, righe is not None)
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="shop-remove",
         descrizione="Rimuove un oggetto dallo shop.",
     )
@@ -2074,7 +2074,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, file=file)
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="cassa-premium",
         descrizione="Sblocca un mese di bot premium spendendo dalla cassa.",
     )
@@ -2118,7 +2118,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="assegna-lobby",
         descrizione="Premio partecipazione: assegna coin a chi è in vocale ORA, dalla cassa del server.",
     )
@@ -2171,7 +2171,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="assegna-winner",
         descrizione="Premio vincitore: assegna coin a un membro, dalla cassa del server.",
     )
@@ -2274,7 +2274,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="monete",
         descrizione="Modifica il saldo di un membro.",
     )
@@ -2589,10 +2589,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="clan-set",
         descrizione="Imposta il canale dove annunciare la top 3 gilde del mese.",
-        sottogruppo=SOTTOGRUPPI["economia annunci"],
+        sottogruppo=SOTTOGRUPPI["admin-economia annunci"],
     )
     @app_commands.describe(channel="Canale dell'annuncio (la 'bacheca clan')")
     async def clan_bacheca_set(
@@ -2611,10 +2611,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="clan-off",
         descrizione="Disattiva l'annuncio automatico della top 3 gilde.",
-        sottogruppo=SOTTOGRUPPI["economia annunci"],
+        sottogruppo=SOTTOGRUPPI["admin-economia annunci"],
     )
     async def clan_bacheca_disable(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
