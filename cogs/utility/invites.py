@@ -190,7 +190,7 @@ class InvitesCog(CogConGruppi, commands.Cog):
             ephemeral=True,
         )
 
-    @comando_di_gruppo("level", nome="opzioni", descrizione="Registro degli inviti e chi ha il link personale.", sottogruppo=_SG_INVITI)
+    @comando_di_gruppo("moduli", nome="inviti", descrizione="Registro degli inviti e chi ha il link personale.")
     @app_commands.describe(
         canale="Dove scrivere chi entra e con quale link",
         ruolo="Solo chi ha questo ruolo può avere il link personale",

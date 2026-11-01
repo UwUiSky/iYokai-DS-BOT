@@ -212,7 +212,7 @@ class CoinGamesCog(CogConGruppi, commands.Cog):
     # /fun conteggio e il gioco in sé
     # ================================================================
     @comando_di_gruppo(
-        "fun",
+        "moduli",
         nome="conteggio",
         descrizione="Gioco del conteggio: scegli il canale dove contare a turno 1, 2, 3...",
     )
