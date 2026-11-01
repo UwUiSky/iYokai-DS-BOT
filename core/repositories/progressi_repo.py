@@ -156,9 +156,10 @@ class ProgressiRepository:
         )
 
     async def missioni_settimana_riscattate(self, guild_id: int, user_id: int) -> int:
+        """Il massimo di missioni della settimana riscosse in una stessa settimana (per «settimana piena»)."""
         return await self._pool.fetchval(
-            "SELECT count(*) FROM progress_missioni WHERE guild_id = $1 AND user_id = $2 "
-            "AND riscattata AND chiave LIKE 'sett\\_%'",
+            "SELECT COALESCE(max(n), 0) FROM (SELECT count(*) AS n FROM progress_missioni "
+            "WHERE guild_id = $1 AND user_id = $2 AND riscattata AND chiave LIKE 'sett\\_%' GROUP BY giorno) s",
             guild_id, user_id,
         )
 

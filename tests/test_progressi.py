@@ -312,6 +312,43 @@ async def test_serie_nel_database_con_scudi_e_record(repo):
 
 
 @pytest.mark.asyncio
+async def test_le_serie_di_prima_della_regola_delle_36_ore_non_si_azzerano(repo, clean_db):
+    """Righe scritte con la vecchia regola (solo `ultimo_giorno`): la migrazione 0484 dà loro l'ora."""
+    from pathlib import Path
+
+    ieri = OGGI - timedelta(days=1)
+    await clean_db.execute(
+        "INSERT INTO progress_serie (guild_id, user_id, serie, record, ultimo_giorno) VALUES ($1, $2, 9, 9, $3)",
+        SERVER, A, ieri,
+    )
+    sql = (Path(__file__).parent.parent / "core/migrations/0484_serie_ora_di_prima.sql").read_text()
+    await clean_db.execute(sql)
+    assert serie_attuale(9, (await repo.serie_di(SERVER, A))[2], 0, ADESSO) == 9
+    for ora in (0, 23):  # oggi a qualsiasi ora la serie sale, come con la regola di prima
+        await clean_db.execute(
+            "UPDATE progress_serie SET serie = 9, ultima_at = NULL, ultimo_giorno = $3 WHERE guild_id = $1 AND user_id = $2",
+            SERVER, A, ieri,
+        )
+        await clean_db.execute(sql)
+        esito = await repo.registra_riscossione(SERVER, A, datetime(2026, 10, 28, ora, 30, tzinfo=timezone.utc))
+        assert (esito.serie, esito.contata) == (10, True)
+
+
+@pytest.mark.asyncio
+async def test_settimana_piena_vuole_tutte_le_missioni_della_stessa_settimana(repo):
+    m = MISSIONI_SETTIMANA[0]
+    for settimane in range(3):  # una missione a settimana, per tre settimane
+        lunedi = LUNEDI - timedelta(days=7 * settimane)
+        await repo.aggiungi_progressi([(SERVER, A, lunedi, m.chiave, m.obiettivo, m.obiettivo)])
+        await repo.riscatta_missioni(SERVER, A, lunedi, [(m.chiave, m.obiettivo, m.premio)])
+    assert await repo.missioni_settimana_riscattate(SERVER, A) == 1
+    for x in MISSIONI_SETTIMANA[1:]:
+        await repo.aggiungi_progressi([(SERVER, A, LUNEDI, x.chiave, x.obiettivo, x.obiettivo)])
+    await repo.riscatta_missioni(SERVER, A, LUNEDI, [(x.chiave, x.obiettivo, x.premio) for x in MISSIONI_SETTIMANA])
+    assert await repo.missioni_settimana_riscattate(SERVER, A) == len(MISSIONI_SETTIMANA)
+
+
+@pytest.mark.asyncio
 async def test_lo_scudo_si_compra_con_le_monete_fino_al_massimo_e_salva_la_serie(repo, guadagni, clean_db):
     assert await repo.compra_scudo(SERVER, A, SCUDO_PREZZO) == "saldo"
     await guadagni.add_coins(SERVER, A, SCUDO_PREZZO * 3)

@@ -666,4 +666,4 @@ Completa «i dettagli da non perdere» di `VOCI_OMESSE.md`. **Una finestra sola:
 - **Vista forum (8.17):** un post archiviato o bloccato si riapre; se non si riapre si dimentica e se ne crea uno nuovo; un forum con
   tag obbligatori riceve il primo tag non riservato; dopo un rifiuto la vista di quel forum si ferma 10 minuti con un solo avviso nei log.
 
-Tabelle: 0483 (colonne di `progress_serie` e `progress_stagione`, nuova `progress_server_riscatti`, tutte nel registro dei dati).
+Tabelle: 0483 (colonne di `progress_serie` e `progress_stagione`, nuova `progress_server_riscatti`, tutte nel registro dei dati); 0484 dà alle serie di prima (solo il giorno) l'ora di mezzogiorno UTC, così non si azzerano.

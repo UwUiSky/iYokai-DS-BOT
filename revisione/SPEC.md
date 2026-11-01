@@ -2119,7 +2119,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   (boost o 500.000 monete); profilo globale. `/economia progressi attivo: obiettivo_server:`. `/mod rischio`; `/mod carico` solo ADMIN, con
   tempo di risposta, ticket riaperti, sanzioni annullate in appello, voto e proposta di turni. File: `core/progressi_logic.py`,
   `core/progressi_service.py`, `core/repositories/progressi_repo.py`, `cogs/leveling/progressi.py`, `core/staff_rischio_logic.py`,
-  `core/repositories/staff_carico_repo.py`, `cogs/moderation/rischio_staff.py`; migrazioni 0481-0483. Test: `tests/test_progressi.py`,
+  `core/repositories/staff_carico_repo.py`, `cogs/moderation/rischio_staff.py`; migrazioni 0481-0484. Test: `tests/test_progressi.py`,
   `tests/test_staff_rischio.py`, `tests/test_profiles.py`.
 
 ## §24 PANNELLO WEB: CONFIGURAZIONE DEI SERVER — da fare (fase F10)
