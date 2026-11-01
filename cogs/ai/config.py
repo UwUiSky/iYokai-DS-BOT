@@ -35,7 +35,7 @@ from core.ai_servizio import imposta_manutenzione_ai, imposta_scelte_owner, serv
 from core.ai_testi_logic import ISTRUZIONI, LINGUE, TEMI, leggi_proposta_server, nome_lingua, testo_lore
 from core.bot_ready import attendi_bot_pronto
 from core.command_access import Livello, autocomplete_protetto
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.config import config
 from core.repositories.ai_repo import ai_repo
 from core.repositories.output_channel_repo import output_channel_repo
@@ -230,7 +230,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
             embed.add_field(name="Nota", value="Il proprietario del bot non ha ancora configurato fornitori AI.")
         await interaction.response.send_message(embed=embed, view=_ConsensoView(interaction.user.id), ephemeral=True)
 
-    @comando_di_gruppo("ai", nome="manutenzione", descrizione="Solo proprietario: mette l'AI in manutenzione in tutti i server.")
+    @comando_di_gruppo("owner", nome="manutenzione", descrizione="Solo proprietario: mette l'AI in manutenzione in tutti i server.", sottogruppo=SOTTOGRUPPI["owner ai"])
     @app_commands.describe(acceso="Sì: l'AI si ferma ovunque (il resto del bot no); no: torna in servizio", messaggio="Cosa vedranno gli utenti")
     async def manutenzione(
         self, interaction: discord.Interaction, acceso: bool, messaggio: app_commands.Range[str, 1, 300] | None = None
@@ -243,14 +243,14 @@ class AiConfigCog(CogConGruppi, commands.Cog):
             "AI in manutenzione in tutti i server." if acceso else "AI di nuovo in servizio.", ephemeral=True
         )
 
-    @autocomplete_protetto(Livello.ADMIN)
+    @autocomplete_protetto(Livello.OWNER)
     async def _completa_fornitore(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
         if interaction.user.id != config.OWNER_ID:
             return []
         nomi = [f.nome for f in servizio_ai().motore._fornitori_base if current.lower() in f.nome.lower()]
         return [app_commands.Choice(name=n, value=n) for n in nomi[:25]]
 
-    @comando_di_gruppo("ai", nome="modello", descrizione="Solo proprietario: modello, fascia e tipi di un fornitore; tetto di lunghezza.")
+    @comando_di_gruppo("owner", nome="modello", descrizione="Solo proprietario: modello, fascia e tipi di un fornitore; tetto di lunghezza.", sottogruppo=SOTTOGRUPPI["owner ai"])
     @app_commands.describe(
         fornitore="Quale fornitore cambiare (vuoto: mostra le scelte attuali)", modello="Nome del modello",
         fascia="bassa: chiacchiere; media; alta: lavori che contano", tipi="Lavori che gli dai, separati da virgola (chat,testo,codice...)",
