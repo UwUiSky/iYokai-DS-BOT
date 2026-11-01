@@ -38,8 +38,8 @@ class PollCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "utility",
-        nome="poll",
+        "sondaggi",
+        nome="crea",
         descrizione="Crea un sondaggio (fino a 10 opzioni).",
     )
     @app_commands.describe(
