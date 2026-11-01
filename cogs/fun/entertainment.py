@@ -208,7 +208,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
         risultato = roll_dice(self._rng, sides=sides)
         await interaction.response.send_message(await testo_per(interaction, "entertainmen_hai_tirato_un", pubblica=True, risultato=risultato, sides=sides))
 
-    @comando_di_gruppo("fun", nome="rps", descrizione="Carta, forbici, sasso contro il bot.")
+    @comando_di_gruppo("giochi", nome="rps", descrizione="Carta, forbici, sasso contro il bot.")
     @app_commands.describe(scelta="Sasso, carta o forbici")
     @app_commands.choices(
         scelta=[
@@ -289,7 +289,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.send_message(f"🧠 {random_fact(self._rng)}")
 
-    @comando_di_gruppo("fun", nome="grayscale", descrizione="Trasforma un'immagine in scala di grigi.")
+    @comando_di_gruppo("immagini", nome="grayscale", descrizione="Trasforma un'immagine in scala di grigi.")
     @app_commands.describe(
         image="Immagine da elaborare (facoltativa: senza, usa l'avatar)",
         utente="Usa l'avatar di questo utente invece dell'allegato/del tuo",
@@ -307,7 +307,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
             interaction, image, utente, "grayscale.png", apply_grayscale
         )
 
-    @comando_di_gruppo("fun", nome="invert", descrizione="Inverte i colori di un'immagine.")
+    @comando_di_gruppo("immagini", nome="invert", descrizione="Inverte i colori di un'immagine.")
     @app_commands.describe(
         image="Immagine da elaborare (facoltativa: senza, usa l'avatar)",
         utente="Usa l'avatar di questo utente invece dell'allegato/del tuo",
@@ -325,7 +325,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
             interaction, image, utente, "invert.png", apply_invert
         )
 
-    @comando_di_gruppo("fun", nome="blur", descrizione="Applica una sfocatura a un'immagine.")
+    @comando_di_gruppo("immagini", nome="blur", descrizione="Applica una sfocatura a un'immagine.")
     @app_commands.describe(
         image="Immagine da elaborare (facoltativa: senza, usa l'avatar)",
         utente="Usa l'avatar di questo utente invece dell'allegato/del tuo",
@@ -345,7 +345,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
             interaction, image, utente, "blur.png", apply_blur, raggio
         )
 
-    @comando_di_gruppo("fun", nome="pixelate", descrizione="Pixela un'immagine.")
+    @comando_di_gruppo("immagini", nome="pixelate", descrizione="Pixela un'immagine.")
     @app_commands.describe(
         image="Immagine da elaborare (facoltativa: senza, usa l'avatar)",
         utente="Usa l'avatar di questo utente invece dell'allegato/del tuo",
@@ -365,7 +365,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
             interaction, image, utente, "pixelate.png", apply_pixelate, dimensione_blocco
         )
 
-    @comando_di_gruppo("fun", nome="meme", descrizione="Genera un meme con testo sopra/sotto.")
+    @comando_di_gruppo("immagini", nome="meme", descrizione="Genera un meme con testo sopra/sotto.")
     @app_commands.describe(
         top_text="Testo in alto (facoltativo)",
         bottom_text="Testo in basso (facoltativo)",
@@ -393,7 +393,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
             interaction, image, utente, "meme.png", render_meme, top_text, bottom_text
         )
 
-    @comando_di_gruppo("fun", nome="animal", descrizione="Mostra un'immagine casuale di un animale.")
+    @comando_di_gruppo("immagini", nome="animal", descrizione="Mostra un'immagine casuale di un animale.")
     @app_commands.describe(specie="Che animale vuoi vedere?")
     @app_commands.choices(
         specie=[
@@ -438,7 +438,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
             }
         self._ultima_ricerca_immagini[utente_id] = ora
 
-    @comando_di_gruppo("fun", nome="search-image", descrizione="Cerca un'immagine SFW su Pixabay.")
+    @comando_di_gruppo("immagini", nome="search-image", descrizione="Cerca un'immagine SFW su Pixabay.")
     @app_commands.describe(query="Cosa vuoi cercare? (massimo 100 caratteri)")
     async def search_image(
         self, interaction: discord.Interaction, query: app_commands.Range[str, 1, 100]

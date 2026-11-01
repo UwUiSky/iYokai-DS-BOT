@@ -91,7 +91,7 @@ class CoinGamesCog(CogConGruppi, commands.Cog):
     # /fun gioca
     # ================================================================
     @comando_di_gruppo(
-        "fun",
+        "giochi",
         nome="gioca",
         descrizione="Gioca le tue coin: monetina, dadi o slot.",
     )
