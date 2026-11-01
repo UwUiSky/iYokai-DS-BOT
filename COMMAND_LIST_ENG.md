@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 02:13 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 02:39 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 639 commands in 25 categories.**
+**Total: 665 commands in 25 categories.**
 
 ## Admin
 
@@ -54,9 +54,14 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 02:1
 ## Ai
 
 - **`/ai banned-words`** — Words or topics the AI must refuse.
+- **`/ai boss network`** — Owner only: publish or close the network boss.
+- **`/ai boss set`** — Channel, days, time and rewards of the World Boss.
+- **`/ai boss start`** — Summons the World Boss right now.
 - **`/ai build`** — The AI suggests roles and channels from a description; you confirm.
 - **`/ai channel`** — Turns the AI off or back on in a channel.
 - **`/ai character`** — Installs, removes or deletes a server AI character.
+- **`/ai dungeon start`** — Starts a group dungeon in a channel.
+- **`/ai dungeon stories`** — How many dungeon stories are ready for the server theme.
 - **`/ai enable`** — Turns the AI on or off in the server (consent required).
 - **`/ai features`** — Turns on automatic features: reply to mentions, flags.
 - **`/ai knowledge add`** — Adds an entry to the knowledge base.
@@ -66,9 +71,21 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 02:1
 - **`/ai lore`** — Server tone and setting used in every AI text.
 - **`/ai maintenance`** — Owner only: puts the AI in maintenance in every server.
 - **`/ai moderation`** — The AI flags suspicious messages of a channel to the staff.
+- **`/ai mystery create`** — Hides a mystery with a code and a prize for the server.
+- **`/ai mystery list`** — The server mysteries (the code stays secret).
+- **`/ai mystery remove`** — Removes a mystery.
 - **`/ai privacy`** — User messages sent to the AI, memory and answer length.
+- **`/ai staff first-answer`** — Turns the AI first automatic answer on or off in a ticket panel.
+- **`/ai staff incident`** — Summarises the latest security events of the server.
+- **`/ai staff rule`** — Tell AutoMod what you want: it proposes the rule, you turn it on.
+- **`/ai staff search-log`** — Search the logs with a question (who, what, when).
 - **`/ai status`** — AI status in the server: providers, settings and monthly usage.
+- **`/ai summary preview`** — Shows you the digest as of now, without publishing it.
+- **`/ai summary set`** — Server digest: channel, hour, frequency and channels to read.
+- **`/ai template`** — Owner only: a provider model, tier and job types; length cap.
 - **`/ai translation`** — Automatically translates every message of a channel.
+- **`/ai voice set`** — Voice: on or off, tone and greeting channels.
+- **`/ai voice speak`** — Yokai says an announcement out loud in a channel.
 
 ## Help (top level)
 
@@ -122,7 +139,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 02:1
 - **`/Report to iYokai network`** — “Apps” menu (right click)
 - **`/Save as saved reply`** — “Apps” menu (right click)
 - **`/Save to bookmarks`** — “Apps” menu (right click)
+- **`/Transcribe voice message`** — “Apps” menu (right click)
 - **`/Translate`** — “Apps” menu (right click)
+- **`/assistant`** — Your personal assistant: ask how to do something.
 - **`/bookmarks list`** — Shows your bookmarks, newest first.
 - **`/bookmarks remove`** — Removes a bookmark.
 - **`/desktop alerts`** — Turns mention and reply alerts on or off.
@@ -130,6 +149,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 02:1
 - **`/desktop disconnect`** — Revokes the code: the program can no longer sign in.
 - **`/desktop status`** — How iYokai Desktop is connected and which alerts you have.
 - **`/desktop words`** — The keywords that alert you (comma separated; empty removes them).
+- **`/find`** — Find an iYokai App feature: commands and message menus.
 - **`/fun 8ball`** — Ask the magic 8 ball a question.
 - **`/fun animal`** — Show a random animal picture.
 - **`/fun choose`** — I pick at random among the options you write.
@@ -657,13 +677,19 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 02:1
 
 ## Utility
 
+- **`/utility ai alert`** — Follow up to 3 words: I notify you when they are discussed a lot.
 - **`/utility ai character`** — Talk to a server AI character.
 - **`/utility ai create-character`** — Creates an AI character to chat with.
 - **`/utility ai explain`** — Explains a message in simple words (from its link).
+- **`/utility ai fragments`** — The lore fragments you collected.
 - **`/utility ai imagine`** — Generates an image from a description.
 - **`/utility ai lore`** — Lore card about a name, a place or a yokai.
+- **`/utility ai mystery`** — Answer a server mystery with the code.
 - **`/utility ai pack`** — Buy 5 extra AI images with server coins.
-- **`/utility ai style`** — A new message written the way you write.
+- **`/utility ai preference`** — Your AI choices: replies for you and a style others may imitate.
+- **`/utility ai speak`** — Yokai says a phrase out loud in this channel.
+- **`/utility ai spirit`** — Your Yokai spirit: an affinity that grows with your activity.
+- **`/utility ai style`** — A new message written like you write (or like someone who allows it).
 - **`/utility ai summarize`** — Summary of the latest messages of a channel.
 - **`/utility ai translate`** — Translates a text into the language you choose.
 - **`/utility ai upscale`** — Upscales and cleans up an image you upload.

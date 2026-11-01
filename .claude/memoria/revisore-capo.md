@@ -20,6 +20,14 @@ Giri r6–r9: APPROVATI, basse aperte nel quaderno.
 ## In corso
 - Niente. Al prossimo giro: righe aperte del quaderno per il ramo riconsegnato.
 - `feat/r11eco`: 3 basse nel quaderno. Rami r6–r10: solo le righe aperte. `f7-quadro` APPROVATO, manca l'unione.
+01/11/2026 · `feat/r12ai` (§25 AI r12, 0420–0429): merge di main (D45 del ramo → D52), cacciatore + revisione. 9 fix (bozze senza dati su GitHub, scelte owner prima di sa_fare, privacy max 10 AI, traduzione piena, cache voce, menu app senza server, prima risposta ticket in compito, D16 canale/vietate, allegati con guild_id). APPROVATO; smoke da fare (migrazioni: suite completa).
+28/10/2026 · r11util, r11odio, r11eco, r10liv, r10inviti, r10aiw: APPROVATI dopo i fix (commit nel quaderno), basse aperte; smoke da fare.
+Giri r6–r10: tutti APPROVATI, basse aperte nel quaderno.
+
+## In corso
+- `feat/r12ai`: 5 basse nel quaderno (bug.md e revisione.md, righe 01/11 r12ai). Migrazioni 0420–0429: suite completa a fine giro (orchestratore).
+- `feat/r11eco`: 3 basse nel quaderno. Migrazione 0410: suite completa a fine giro (orchestratore).
+- Rami r10/r9/r8/r7/r6: solo le righe aperte del quaderno alla riconsegna. `f7-quadro` APPROVATO, manca l'unione.
 
 ## Fatto
 - Letti per intero: giro-mod, r3–r11, r12resto (commit nel quaderno).
@@ -74,6 +82,9 @@ Giri r6–r9: APPROVATI, basse aperte nel quaderno.
 - Finti: `member.roles` vivo; `fake_member` ha `Permissions.none()`; `Thread.permissions_for` = padre; `monkeypatch.setattr(asyncio, "sleep")` è globale.
 - `AllowedMentions(roles=...)` ha `everyone=True` di default. Azioni automatiche: tetto = ciò che può fare il moderatore (D28, D29).
 - Regex native Discord 10×260; jolly ripetuti = tempo esponenziale. Risposta cambiata in embed/file: cercare tutti i test del comando.
+- Due pytest insieme sullo stesso database = test rossi a caso (clean_db svuota): mai test in parallelo nella stessa copia.
+- Testo degli utenti verso servizi esterni non AI (GitHub): `pulisci_dati_personali` + chiavi (`per_repo`). Menu di iYokai App: AI con `guild_id=None`.
+- Cache su disco con tetto: cercare chi chiama la pulizia. Lavoro AI in un flusso Discord (apertura ticket, elenchi): in un compito a parte o con tetto di chiamate.
 
 ## Aperto
 - Domande all'owner: SPEC 23.16, D18 limite ticket per utente, primo DM ModMail, D27, IPv4 = basso (NF-21), D29, SIC-045.

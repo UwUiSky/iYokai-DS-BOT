@@ -61,8 +61,8 @@ async def test_report_errore_di_invio_avvisa_chi_segnala(db_finto):
     await cog.report.callback(cog, interazione, fake_member(user_id=77), "Insulti in chat")
 
     canale.send.assert_awaited_once()
-    interazione.response.send_message.assert_awaited_once()
-    risposta = interazione.response.send_message.call_args
+    interazione.followup.send.assert_awaited_once()
+    risposta = interazione.followup.send.call_args
     assert "Non riesco a inviare la segnalazione" in risposta.args[0]
     assert risposta.kwargs["ephemeral"] is True
 

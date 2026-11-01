@@ -50,13 +50,13 @@ async def test_albero_dell_app_solo_installazione_utente_e_ovunque():
         slash = {c.name for c in bot.tree.get_commands(type=discord.AppCommandType.chat_input)}
         assert slash == {
             "promemoria", "profilo", "strumenti", "note", "segnalibri", "supporto", "risposta", "impostazioni", "storico",
-            "divertimento", "playlist", "radio", "desktop",
+            "divertimento", "playlist", "radio", "desktop", "trova", "assistente",
         }
         menu = {c.name for c in tutti if isinstance(c, app_commands.ContextMenu)}
         assert menu == {
             "Profilo", "Testo pulito", "Stato rete iYokai", "Traduci", "Salva nei segnalibri", "Ricordamelo",
             "Citazione come immagine", "Meme da questa immagine", "Controlla i link", "Segnala alla rete iYokai",
-            "Spiega o riassumi", "Salva come risposta pronta",
+            "Spiega o riassumi", "Salva come risposta pronta", "Trascrivi vocale",
         }
         assert sum(1 for c in tutti if isinstance(c, app_commands.ContextMenu) and c.type is discord.AppCommandType.message) <= 15
         assert sum(1 for c in tutti if isinstance(c, app_commands.ContextMenu) and c.type is discord.AppCommandType.user) <= 15

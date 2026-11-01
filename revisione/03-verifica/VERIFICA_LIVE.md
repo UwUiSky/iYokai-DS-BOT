@@ -1284,6 +1284,28 @@ Serve: server di prova con AutoMod e AI accesi (`/ai attiva`), account A senza p
 3. `senza_immagine: Sì`: torna la moneta gialla di iYokai.
 4. Aggiungi `MUSIC_TOKEN_6` nel `.env` e riavvia: parte «Music worker 6»; `/music play` lo assegna quando i primi 5 sono occupati. Un `/music stop` su un server non ferma la radio del bot principale.
 
+## AI giro r12 (r12ai)
+1. Assistente: `-chiedi cosa posso fare qui` elenca eventi e comandi; `-chiedi attiva la musica` con modulo spento mostra il bottone per l'admin; «Configura tutto» accende i moduli.
+2. `/ai boss imposta` poi `/ai boss avvia`: annuncio con immagine, bottoni di azione, premi a fine evento; con AI spenta il mostro è quello pronto.
+3. `/ai dungeon avvia`: classi, voto a bottoni, finale; `/ai dungeon storie` conta la libreria.
+4. `/ai mistero crea` e `/utility ai mistero` con il codice: premio al server o canale segreto che si richiude.
+5. `/utility ai spirito` e `/utility ai frammenti`; `/utility ai preferenza acceso:No` e poi `-chiedi`: non risponde.
+6. Wizard `/admin setup wizard`: alla fine compare la scelta del tema; `/ai lore tema:pirati nomi_a_tema:Sì` cambia moneta, punti e titoli (`/level` senza immagine).
+7. `/utility report` con e senza `categoria`: il messaggio allo staff ha «Etichetta»; il menu cambia la categoria solo allo staff.
+8. `/ai staff incidente`, `/ai staff regola testo:niente link` (poi Attiva e controlla `/automod status`), `/ai staff cerca-log`.
+9. **Da attivare dall'owner:** ricerca sul web (`RICERCA_WEB_URL`, `RICERCA_WEB_CHIAVE`): poi `-chiedi domanda cerca:Sì`.
+10. `/ai riepilogo imposta` con canale e orario, poi `/ai riepilogo anteprima`: totali veri dei messaggi, canale più vivace; `/utility ai avviso parola:...` avvisa in DM alla parola chiave.
+11. Ticket: bottone «Assistente» nel ticket aperto; prima risposta automatica solo se accesa nel pannello (`/ai staff prima-risposta`); risposte standard con allegato ancora disponibili dopo un riavvio.
+12. **Voce (da attivare dall'owner):** installare `sherpa-onnx`, mettere il modello Piper «paola» in `VOCE_MODELLO_DIR`, riavviare. Poi `/ai voce imposta attiva:Sì tono:scherzosa`, `/ai voce parla testo:Ciao`: arriva un vero vocale con sotto «Trascrivi» e «Nella mia lingua» (risposta privata, lingua del client). `/utility ai parla`. Tono piccante: solo nei canali NSFW. `/ai voce imposta saluti_canale:#generale` e scrivi «buongiorno» in due: un solo saluto a voce con i nomi.
+13. **Trascrizione (da attivare dall'owner):** `VOCE_TRASCRIZIONE_URL` https e `VOCE_TRASCRIZIONE_ADDESTRA=no`; in iYokai App tasto destro su un vocale, «Trascrivi vocale».
+14. **Bozze di codice (da attivare dall'owner con `GITHUB_BOZZE_TOKEN` e `GITHUB_BOZZE_REPO`):** da un altro server `/utility ...` richiesta di un comando, l'owner approva; entro 10 minuti arriva in DM il link della pull request in bozza (o la bozza come file se il token manca). La pull request resta in bozza.
+15. `/ai privacy`-come-owner: `/owner privacy richieste` mostra per ogni richiesta una riga di riassunto con l'azione proposta dall'AI (o «proposta fissa» se l'AI è ferma); `approva` e `rifiuta` restano a mano.
+16. `/ai modello` (solo owner): senza opzioni elenca i fornitori; `fornitore:x fascia:alta` e `tetto_token:300` valgono subito; `togli_tetto:Sì` lo toglie.
+17. Canale con `/ai traduzione`: tre messaggi di fila della stessa persona danno una sola traduzione.
+18. iYokai App: `/trova cosa:promemoria` elenca comandi e menu; `/assistente domanda:...` risponde con l'AI e, con l'AI ferma o spenta da `/utility ai preferenza`, ripiega sulla ricerca.
+19. Pannello: `/server/<id>/ai` ha i link a «Altre scelte» (lore, quote, parole vietate, canali spenti: si ritrovano poi in `/ai stato`), «Riepilogo» (ultimo riepilogo) e «Uso dell'AI».
+20. `/utility ai preferenza stile:Sì` da una persona; un'altra usa `/utility ai stile argomento:... di:@persona`: arriva un testo nello stile con la nota «non l'ha scritto lui». Senza il permesso: rifiutato e l'AI non parte.
+
 ## giro r12 — resto (D48, D49, D50)
 
 - [ ] Risposta con jolly (14.7) — passi: `/moduli comandi risposta-crea parola:ciao* risposta:Ciao!`; scrivi «ciaooo a tutti» e «ciao». Risultato atteso: risponde a tutti e due; `parola:***` è rifiutata.

@@ -351,3 +351,8 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 01/11 | `feat/r12piatt` | `core/user_app_ai.py:chiedi_ai_app` | Traduci/Spiega in un server con privacy AI «senza_messaggi»: l'app manda lo stesso il testo (guild_id=None). Da far decidere all'owner | bassa | aperto |
 | 01/11 | `feat/r12resto` | `cogs/leveling/progressi.py:VistaProgressi._riscuoti` | Molte query prima della prima risposta senza `defer()` (rischio oltre 3 s sotto carico) | bassa | aperto, per dev-economia |
 | 01/11 | `feat/r12resto` | `core/repositories/staff_carico_repo.py:carico` | Chi ha solo sanzioni annullate nel periodo (nessun caso, appello o ticket) non compare | bassa | aperto |
+| 01/11 | `feat/r12ai` | `cogs/ai/config.py:canale`, `vietate` | D16: non passavano da `imposta_canali_spenti`/`imposta_parole_vietate` (spazi e canali cancellati diversi dal pannello; il 101° canale ne toglieva uno) | media | chiuso |
+| 01/11 | `feat/r12ai` | `core/repositories/ai_ticket_repo.py:allegati_di` | Query senza `guild_id` | bassa | chiuso |
+| 01/11 | `feat/r12ai` | `core/data_registry.py` (`ai_vocali`) | Nota «testo scritto dal bot»: con `/utility parla` è testo della persona, senza `user_id` (non si cancella per persona; scade a 90 giorni) | bassa | aperto |
+| 01/11 | `feat/r12ai` | `cogs/ai/voce.py:voce_parla` | `/ai voce parla` non guarda «voce accesa» né i permessi del bot nel canale scelto | bassa | aperto |
+| 01/11 | `feat/r12ai` | `cogs/user_app/assistente_app.py:_ids` | `fetch_commands()` a ogni `/trova` e a ogni ripiego: una chiamata HTTP per uso, da tenere in memoria | bassa | aperto |

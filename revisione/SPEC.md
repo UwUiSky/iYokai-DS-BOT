@@ -1411,7 +1411,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   scheduler), azzera, operazioni di massa (una per server, stima, stop, arresto dopo 10 errori di fila), crea, modifica,
   diagnosi, ruoli a scelta (tetto 25, migrazione 0231) presi dai membri con `/utility ruolo` (RUO-042, 043, 090–109, 113;
   giro r8, 21/10)
-- `[ ]` 14.19 **Voce di Yokai: messaggi vocali** — il bot manda veri
+- `[x]` 14.19 **Voce di Yokai: messaggi vocali** — il bot manda veri
   messaggi vocali di Discord da un testo, nella lingua del testo. Sotto
   ogni vocale un messaggio con due bottoni: "Trascrivi" e "Nella mia
   lingua" (li vede solo chi preme, nella lingua del suo client). Si usa
@@ -2190,9 +2190,10 @@ di quel file.
 - `[x]` 25.10 Pausa automatica del fornitore che dà errori (AI-R-003)
 - `[x]` 25.11 Libreria dei contenuti generati, che cresce da sola
   (AI-R-005)
-- `[~]` 25.12 Smistamento delle domande: prima regole e database, AI
+- `[x]` 25.12 Smistamento delle domande: prima regole e database, AI
   solo se serve (AI-R-006)
   → **Stato 14/10 (r6):** cache e libreria comune prima dell'AI; `-chiedi` torna alla ricerca per parole. Manca uno smistamento a regole per tutte le funzioni.
+  → **Stato 29/10 (r12ai):** smistamento locale prima dell'AI (`core/ai_ricerca_logic.py`).
 - `[x]` 25.13 Passaggio alle chiavi a pagamento con un interruttore
   (AI-R-008)
 - `[x]` 25.14 Quota per utente (AI-R-011; catalogo AI-002)
@@ -2205,7 +2206,8 @@ di quel file.
 - `[x]` 25.20 Modulo AI in manutenzione o a mezzo servizio, senza
   fermare il resto (AI-R-020)
   → **Stato 27/10 (r10):** interruttore per server e per canale; se i fornitori sono fermi ogni funzione dà la sua risposta senza AI. `/ai manutenzione` (solo owner, migrazione 0350, tabella `ai_globale`) ferma l'AI in tutti i server con un messaggio, anche per le risposte in cache; il resto del bot continua.
-- `[ ]` 25.21 AI in un processo separato (AI-R-021)
+- `[✗]` 25.21 AI in un processo separato (AI-R-021)
+  → **Stato 29/10 (r12ai):** [✗] Rimandata (D52): era una proposta, non una richiesta dell'owner. Coda e limiti di 25.22 bastano alle misure; un secondo processo duplicherebbe pool, cache e quote su 2 CPU. Si riapre se le misure lo chiedono.
 - `[x]` 25.22 Coda e limite per molte richieste insieme (AI-R-022)
   → **Stato 27/10 (r10):** limite al minuto per persona e per la moderazione (20 controlli al minuto per server). Coda vera in `core/ai_coda_logic.py`: 4 chiamate insieme, fino a 40 in fila (8 per server), attesa massima 25 secondi; oltre, risposta locale «troppe richieste in fila». Il processo separato (25.21) resta a parte.
 - `[x]` 25.23 AI come diritto premium a parte, con periodo di prova
@@ -2215,73 +2217,98 @@ di quel file.
 **Assistente e helpdesk**
 
 - `[x]` 25.24 Base di conoscenza caricata dall'admin (AI-R-025)
-- `[~]` 25.25 Cerca comando a parole, in qualsiasi lingua (AI-R-026)
+- `[x]` 25.25 Cerca comando a parole, in qualsiasi lingua (AI-R-026)
   → **Stato 14/10 (r6):** `-chiedi` risponde con l'AI nella lingua della domanda; `-cerca-comando` resta per parole.
+  → **Stato 29/10 (r12ai):** ricerca per parole in ogni lingua, poi AI (`cogs/utility/command_search.py`).
 - `[x]` 25.26 Registro unico dei comandi letto dall'AI (AI-R-027)
 - `[x]` 25.27 Risposta con al massimo 3 comandi e bottoni che aprono la
   configurazione (AI-R-028)
   → **Stato 27/10 (r10):** al massimo 3 comandi, cliccabili. Se tra i citati c'è un comando di configurazione (`/ai`, `/admin`, `/moduli`, `/ruoli`) e il pannello è acceso (`WEB_PANEL_PUBLIC_URL`), sotto la risposta c'è il bottone «Apri nel pannello» con la pagina giusta del server (`core/ai_testi_logic.link_configurazione`). Un bot non può aprire un comando slash con un bottone: il link al pannello è l'alternativa più vicina (D18).
-- `[ ]` 25.28 Stato del comando nella risposta (AI-R-029)
-- `[ ]` 25.29 Ricerca che guarda il server e propone di attivare ciò che
+- `[x]` 25.28 Stato del comando nella risposta (AI-R-029)
+  → **Stato 29/10 (r12ai):** stato del comando (acceso, spento, serve permesso) nella risposta.
+- `[x]` 25.29 Ricerca che guarda il server e propone di attivare ciò che
   manca (AI-R-030)
-- `[ ]` 25.30 Richiesta composta: più comandi in fila e "Configura
+  → **Stato 29/10 (r12ai):** propone di attivare i moduli spenti con bottone per l'admin.
+- `[x]` 25.30 Richiesta composta: più comandi in fila e "Configura
   tutto" (AI-R-031)
-- `[~]` 25.31 Scoperta delle funzioni: "cosa posso fare qui?" (AI-R-032)
+  → **Stato 29/10 (r12ai):** piano in più passi e «Configura tutto».
+- `[x]` 25.31 Scoperta delle funzioni: "cosa posso fare qui?" (AI-R-032)
   → **Stato 14/10 (r6):** `-chiedi` risponde anche a "cosa posso fare qui?" con l'elenco dei comandi che la persona può usare.
+  → **Stato 29/10 (r12ai):** «cosa posso fare qui?» con eventi in corso e comandi vicini.
 - `[x]` 25.32 Il bot risponde in chat quando viene menzionato (AI-R-034;
   catalogo AI-009)
 - `[x]` 25.33 Memoria corta della conversazione (AI-R-035; catalogo
   AI-011)
-- `[~]` 25.34 Chiedere a parole di eseguire un comando (AI-R-036;
+- `[x]` 25.34 Chiedere a parole di eseguire un comando (AI-R-036;
   catalogo AI-013)
   → **Stato 14/10 (r6):** un bot non può lanciare un comando slash per l'utente né precompilarlo: l'AI indica il comando cliccabile e i valori da mettere; la persona lo lancia.
+  → **Stato 29/10 (r12ai):** **alternativa (D18):** il bot non può eseguire comandi a nome della persona; «Configura tutto» accende i moduli dal punto unico e mostra i passi cliccabili.
 - `[x]` 25.35 Costruzione del server con l'AI (AI-R-037; catalogo
   AI-025)
-- `[~]` 25.36 Messaggi "nello stile" di un utente (AI-R-038; catalogo
+- `[x]` 25.36 Messaggi "nello stile" di un utente (AI-R-038; catalogo
   AI-024)
   → **Stato 14/10 (r6):** `/utility ai stile` usa solo i messaggi di chi lo chiede: imitare un'altra persona senza consenso non si fa (privacy).
+  → **Stato 29/10 (r12ai):** /utility ai stile ha l'opzione «di»: imitare un'altra persona si può solo se lei lo ha permesso con /utility ai preferenza stile:Sì (migrazione 0429, di partenza no); il messaggio dice che non l'ha scritto lei. Test: tests/test_ai_stile.py
 
 **Moderazione e sicurezza con AI**
 
 - `[x]` 25.37 Aiuto alla moderazione: l'AI segnala, lo staff decide
   (AI-R-039; catalogo AI-018)
-- `[ ]` 25.38 Classificazione delle segnalazioni degli utenti (AI-R-040)
-- `[ ]` 25.39 Riassunto di un incidente (AI-R-041)
-- `[ ]` 25.40 Assistente per le regole di AutoMod (AI-R-042)
+- `[x]` 25.38 Classificazione delle segnalazioni degli utenti (AI-R-040)
+  → **Stato 29/10 (r12ai):** categoria e urgenza su `/utility report` (scelta della persona, AI o parole); menu staff persistente.
+- `[x]` 25.39 Riassunto di un incidente (AI-R-041)
+  → **Stato 29/10 (r12ai):** **alternativa (D42):** `/ai staff incidente` al posto di `/security panico riassunto` (`/security` e `/automod` sono al limite di peso); elenco in ordine senza AI.
+- `[x]` 25.40 Assistente per le regole di AutoMod (AI-R-042)
+  → **Stato 29/10 (r12ai):** **alternativa (D42):** `/ai staff regola`; bottone «Attiva», nessuna regola parte da sola.
 
 **Riassunti e ricerca**
 
-- `[ ]` 25.41 Riepilogo del server, ogni giorno o ogni settimana
+- `[x]` 25.41 Riepilogo del server, ogni giorno o ogni settimana
   (AI-R-044)
-- `[ ]` 25.42 Contenuto del riepilogo fatto di numeri (AI-R-045)
-- `[ ]` 25.43 Avviso su parole chiave quando una discussione si accende
+  → **Stato 29/10 (r12ai):** `/ai riepilogo imposta` (canale, ora, frequenza, canali letti); pubblica da solo, un solo bot (prenotazione), migrazioni 0422-0423.
+- `[x]` 25.42 Contenuto del riepilogo fatto di numeri (AI-R-045)
+  → **Stato 29/10 (r12ai):** numeri da statistiche, bacheca stelle e clan; l'AI scrive solo il tono e non può perdere le menzioni. Alternativa: «discussione più lunga» diventa «canale più vivace» (non c'è un conteggio per discussione).
+- `[x]` 25.43 Avviso su parole chiave quando una discussione si accende
   (AI-R-046)
-- `[ ]` 25.44 Ricerca nei log con una domanda (AI-R-047)
-- `[ ]` 25.45 Ricerca assistita sul web o su una base di conoscenza
+  → **Stato 29/10 (r12ai):** `/utility ai avviso`: 3 parole, soglia 10 messaggi in 10 minuti, avviso in privato solo se la persona vede il canale; conteggi in memoria.
+- `[x]` 25.44 Ricerca nei log con una domanda (AI-R-047)
+  → **Stato 29/10 (r12ai):** **alternativa (D42):** `/ai staff cerca-log` al posto di `/log cerca domanda`; l'AI propone i filtri, cerca il database.
+- `[x]` 25.45 Ricerca assistita sul web o su una base di conoscenza
   (AI-R-048)
+  → **Stato 29/10 (r12ai):** opzione `cerca` di `-chiedi`; **da attivare:** `RICERCA_WEB_URL` e `RICERCA_WEB_CHIAVE` in `.env` (spenta se mancano).
 
 **Lore, giochi e narrazione**
 
 - `[x]` 25.46 Temi pronti (AI-R-050)
-- `[ ]` 25.47 La lore viene chiesta durante il setup (AI-R-052)
+- `[x]` 25.47 La lore viene chiesta durante il setup (AI-R-052)
+  → **Stato 29/10 (r12ai):** passo del tema alla fine del wizard (saltabile) e riga nel benvenuto.
 - `[x]` 25.48 La lore entra in ogni testo dell'AI del server (AI-R-053)
-- `[ ]` 25.49 World Boss: evento di gruppo contro un mostro (AI-R-054)
-- `[ ]` 25.50 World Boss: comparsa a orario e avvio a mano (AI-R-055)
-- `[ ]` 25.51 World Boss: mostro creato dall'AI secondo la lore
+- `[x]` 25.49 World Boss: evento di gruppo contro un mostro (AI-R-054)
+  → **Stato 29/10 (r12ai):** `/ai boss` (`cogs/ai/boss.py`).
+- `[x]` 25.50 World Boss: comparsa a orario e avvio a mano (AI-R-055)
+  → **Stato 29/10 (r12ai):** orario e avvio a mano.
+- `[x]` 25.51 World Boss: mostro creato dall'AI secondo la lore
   (AI-R-056)
-- `[ ]` 25.52 World Boss: danno secondo il livello, vita secondo i
+  → **Stato 29/10 (r12ai):** mostro dalla libreria o scritto dall'AI.
+- `[x]` 25.52 World Boss: danno secondo il livello, vita secondo i
   membri attivi (AI-R-057)
-- `[ ]` 25.53 Dungeon di gruppo con scelte votate (AI-R-058)
-- `[ ]` 25.54 Dungeon: la storia continua scritta dall'AI (AI-R-059)
-- `[ ]` 25.55 Dungeon: esito secondo classi e livelli di chi vota
+  → **Stato 29/10 (r12ai):** danno per livello, vita per attivi.
+- `[x]` 25.53 Dungeon di gruppo con scelte votate (AI-R-058)
+  → **Stato 29/10 (r12ai):** `/ai dungeon` con voto a bottoni.
+- `[x]` 25.54 Dungeon: la storia continua scritta dall'AI (AI-R-059)
+  → **Stato 29/10 (r12ai):** stanze mancanti scritte dall'AI e salvate.
+- `[x]` 25.55 Dungeon: esito secondo classi e livelli di chi vota
   (AI-R-060)
-- `[ ]` 25.56 Misteri: frammenti di storia nascosti dall'admin
+  → **Stato 29/10 (r12ai):** esito per classi e livelli.
+- `[x]` 25.56 Misteri: frammenti di storia nascosti dall'admin
   (AI-R-061)
+  → **Stato 29/10 (r12ai):** **alternativa (D18):** il premio «XP per 24 ore» è un premio XP una tantum; canale segreto riaperto e richiuso dallo scheduler.
 - `[x]` 25.57 Personaggi AI creati dagli utenti (AI-R-062; catalogo
   AI-014)
 - `[x]` 25.58 Installare e togliere personaggi dal server (AI-R-063;
   catalogo AI-015)
-- `[ ]` 25.59 Boss ed eventi di gioco uguali in più server (AI-R-064)
+- `[x]` 25.59 Boss ed eventi di gioco uguali in più server (AI-R-064)
+  → **Stato 29/10 (r12ai):** mostri e storie in libreria comune per tema.
 
 **Immagini, voce e media**
 
@@ -2293,25 +2320,33 @@ di quel file.
   catalogo AI-007)
 - `[x]` 25.63 Quota di immagini e pacchetti in più (AI-R-069; catalogo
   AI-008)
-- `[ ]` 25.64 Immagine del boss nell'annuncio (AI-R-070)
+- `[x]` 25.64 Immagine del boss nell'annuncio (AI-R-070)
+  → **Stato 29/10 (r12ai):** immagine del boss nell'annuncio.
 
 **Ticket e staff**
 
-- `[~]` 25.65 Bottone "Chiedi all'assistente" dentro il ticket
+- `[x]` 25.65 Bottone "Chiedi all'assistente" dentro il ticket
   (AI-R-071)
   → **Stato 14/10 (r6):** `/ticket assistente` al posto del bottone (il messaggio di apertura è dei file dei ticket).
-- `[ ]` 25.66 Prima risposta automatica nei ticket (AI-R-072)
+  → **Stato 29/10 (r12ai):** bottone «Chiedi all'assistente» nel messaggio di apertura (vista persistente `aitk:chiedi`, solo dove l'AI è accesa); il comando resta.
+- `[x]` 25.66 Prima risposta automatica nei ticket (AI-R-072)
+  → **Stato 29/10 (r12ai):** `/ai staff prima-risposta` per pannello; una sola risposta per ticket, subito se c'è già testo (motivo, modulo) o al primo messaggio; la risposta standard dello staff ha la precedenza; migrazione 0424.
 - `[x]` 25.67 Bozza di risposta per lo staff (AI-R-073)
 - `[x]` 25.68 Smistamento dei ticket (AI-R-074)
 
 **Livelli, economia e community**
 
-- `[ ]` 25.69 Nomi a tema per moneta, punti e titoli (AI-R-076)
-- `[ ]` 25.70 Premi del World Boss (AI-R-077)
-- `[ ]` 25.71 Frammenti di lore da collezionare (AI-R-078)
-- `[ ]` 25.72 Spirito Yokai: affinità che cresce con l'attività
+- `[x]` 25.69 Nomi a tema per moneta, punti e titoli (AI-R-076)
+  → **Stato 29/10 (r12ai):** nomi a tema (`/ai lore nomi_a_tema`), migrazione 0422.
+- `[x]` 25.70 Premi del World Boss (AI-R-077)
+  → **Stato 29/10 (r12ai):** premi con tetti e ruolo a tempo.
+- `[x]` 25.71 Frammenti di lore da collezionare (AI-R-078)
+  → **Stato 29/10 (r12ai):** `/utility ai frammenti`.
+- `[x]` 25.72 Spirito Yokai: affinità che cresce con l'attività
   (AI-R-079)
-- `[ ]` 25.73 Traguardo "primo comando scoperto con l'AI" (AI-R-080)
+  → **Stato 29/10 (r12ai):** `/utility ai spirito`.
+- `[x]` 25.73 Traguardo "primo comando scoperto con l'AI" (AI-R-080)
+  → **Stato 29/10 (r12ai):** traguardo registrato.
 
 **Traduzione e lingue**
 
@@ -2320,8 +2355,9 @@ di quel file.
   catalogo AI-020)
 - `[x]` 25.76 Traduzione reagendo con una bandiera (AI-R-083; catalogo
   AI-021)
-- `[ ]` 25.77 Traduzione che raccoglie i messaggi successivi dello
+- `[x]` 25.77 Traduzione che raccoglie i messaggi successivi dello
   stesso autore (AI-R-084; catalogo AI-022; NF-36)
+  → **Stato 29/10 (r12ai):** core/traduzione_gruppo_logic.py e cogs/ai/traduzione.py: i messaggi di fila della stessa persona (attesa 4 s, al massimo 6 messaggi e 1500 caratteri) si traducono con una sola richiesta; la risposta cita il primo messaggio. Test: tests/test_ai_cogs.py, tests/test_ai_voce.py
 - `[x]` 25.78 Elenco delle lingue per la traduzione (AI-R-085; catalogo
   AI-023; NF-36)
 - `[x]` 25.79 Riconoscere la lingua della domanda (AI-R-086)
@@ -2331,43 +2367,54 @@ di quel file.
 
 **Owner e analisi**
 
-- `[~]` 25.82 Scelta del modello e della lunghezza delle risposte
+- `[x]` 25.82 Scelta del modello e della lunghezza delle risposte
   (AI-R-089; catalogo AI-012)
   → **Stato 14/10 (r6):** lunghezza delle risposte per server (`/ai privacy`); i modelli si scelgono nel `.env` per fornitore.
+  → **Stato 29/10 (r12ai):** /ai modello (solo owner, core/ai_override_logic.py, imposta_scelte_owner): modello di ogni fornitore e tetto di lunghezza delle risposte per tutti i server, a caldo, migrazione 0428 (D52). Test: tests/test_ai_scelte_owner.py
 - `[x]` 25.83 Spesa e uso visti dall'owner (AI-R-090)
-- `[ ]` 25.84 Richieste di cancellazione dei dati lette prima dall'AI
+- `[x]` 25.84 Richieste di cancellazione dei dati lette prima dall'AI
   (AI-R-091)
+  → **Stato 29/10 (r12ai):** core/ai_privacy_logic.py, cogs/ai/_privacy_ai.py: /owner privacy richieste mostra per ogni richiesta un riassunto e un'azione proposta dall'AI (eseguire, chiedere chiarimenti, rifiutare), o una proposta fissa se l'AI è ferma. Non cancella nulla: approva e rifiuta restano a mano. Test: tests/test_ai_privacy.py
 
 **App utente e Desktop**
 
-- `[ ]` 25.85 Cerca comando e scoperta delle funzioni dentro l'app
+- `[x]` 25.85 Cerca comando e scoperta delle funzioni dentro l'app
   utente (AI-R-092)
-- `[ ]` 25.86 Assistente AI personale (AI-R-093)
-- `[ ]` 25.87 Preferenza personale: assistente acceso o spento
+  → **Stato 29/10 (r12ai):** cogs/user_app/assistente_app.py, core/user_app_assistente_logic.py: /trova in iYokai App cerca tra comandi e menu sul messaggio dell'app, senza AI. Test: tests/test_user_app_assistente.py
+- `[x]` 25.86 Assistente AI personale (AI-R-093)
+  → **Stato 29/10 (r12ai):** /assistente in iYokai App: assistente personale con l'AI che conosce l'elenco delle funzioni dell'app, memoria breve, rispetta la preferenza personale (/utility ai preferenza); con l'AI ferma risponde come /trova.
+- `[x]` 25.87 Preferenza personale: assistente acceso o spento
   (AI-R-094)
-- `[~]` 25.88 Spiega o riassumi un messaggio (AI-R-095; vedi B.2)
+  → **Stato 29/10 (r12ai):** `/utility ai preferenza`.
+- `[x]` 25.88 Spiega o riassumi un messaggio (AI-R-095; vedi B.2)
   → **Stato 14/10 (r6):** `/utility ai spiega` con il link del messaggio; il menu sul messaggio arriva con l'app utente (B.2).
+  → **Stato 29/10 (r12ai):** Fatto dal ramo r12piatt (B.2): menu «Spiega o riassumi» sul messaggio dell'app, con /utility ai spiega nel bot principale.
 - `[x]` 25.89 "Spiega questo Yokai": scheda di lore a richiesta
   (AI-R-096)
-- `[ ]` 25.90 Desktop: traduzione rapida (AI-R-097; vedi D.8)
+- `[x]` 25.90 Desktop: traduzione rapida (AI-R-097; vedi D.8)
+  → **Stato 29/10 (r12ai):** Fatto dal ramo r12piatt (D.8): traduzione rapida di iYokai Desktop, che usa la stessa funzione di traduzione dell'app.
 
 **Pannello web**
 
-- `[ ]` 25.91 Pagina AI del pannello (AI-R-098; vedi 24.2)
-- `[ ]` 25.92 Riepilogo del server visibile sul pannello (AI-R-099)
-- `[ ]` 25.93 Pagina "Uso dell'AI" nel centro privacy (AI-R-100)
+- `[x]` 25.91 Pagina AI del pannello (AI-R-098; vedi 24.2)
+  → **Stato 29/10 (r12ai):** core/web_panel_ai.py (una riga in web_panel_server): oltre alla pagina base, /server/<id>/ai/altro con lore, tetto di spesa e quote, parole vietate e canali spenti, dagli stessi punti dei comandi (core/ai_impostazioni.py). Test: tests/test_web_panel_ai.py
+- `[x]` 25.92 Riepilogo del server visibile sul pannello (AI-R-099)
+  → **Stato 29/10 (r12ai):** l'ultimo riepilogo è salvato in `ai_riepiloghi.ultimo_testo`; la pagina `/server/<id>/ai/riepilogo` del pannello lo mostra (vedi 25.91).
+- `[x]` 25.93 Pagina "Uso dell'AI" nel centro privacy (AI-R-100)
+  → **Stato 29/10 (r12ai):** /server/<id>/ai/uso: livello dei messaggi, servizi esterni in uso e tabella di cosa conserva l'AI (dal registro dei dati, stessa fonte della privacy policy).
 
 **Richieste dell'owner del 05/10/2026** (D19)
 
-- `[~]` 25.94 Scelta del servizio per tipo di lavoro e per fascia:
+- `[x]` 25.94 Scelta del servizio per tipo di lavoro e per fascia:
   chat semplice, testo, giudizio, codice, traduzione, confronto,
   immagini, audio, musica, video (AI-R-101)
   → **Stato 14/10 (r6):** tipi chat, testo, giudizio, codice, traduzione, confronto, immagine; audio, musica e video sono accettati nella configurazione ma non hanno ancora un trasporto.
+  → **Stato 29/10 (r12ai):** /ai modello cambia fascia e tipi di lavoro di ogni fornitore a caldo; l'audio passa dal motore della voce (D44); musica e video restano accettati ma senza trasporto, per mancanza di un servizio adatto (D52, alternativa D18).
 - `[x]` 25.95 Quote di ogni servizio contate in anticipo, con cambio
   di servizio prima di finirle (AI-R-102)
 - `[x]` 25.96 Controllo delle chiavi ogni ora e avviso all'owner
   (AI-R-103)
-- `[~]` 25.97 Risposte standard imparate dalle risposte dello staff
+- `[x]` 25.97 Risposte standard imparate dalle risposte dello staff
   nei ticket, con i loro allegati (AI-R-104; vedi §13)
   → **Stato 13/10 (parte senza AI):** alla chiusura il bot propone nel canale dei log la prima risposta dello staff (allegati
   ricaricati nel log); bottoni Approva/Modifica/Scarta (persistenti); ricerca per parole (`core/ticket_standard_logic.py`);
@@ -2379,6 +2426,7 @@ di quel file.
   → **Stato 21/10 (parte con l'AI):** se le parole non bastano e l'AI è accesa nel server, l'AI sceglie tra le sole risposte
   approvate (`core/ticket_ai_logic.py`, porta `core/ai_servizio.py`); non scrive testo libero. Restano: parole chiave proposte
   dall'AI e archivio durevole dei file.
+  → **Stato 29/10 (r12ai):** parole chiave scelte anche dall'AI, file delle risposte conservati nel database (migrazione 0425) e rimandati con la risposta; la scelta della risposta migliore era già fatta (#139).
 - `[x]` 25.98 Ticket senza risposta dopo N minuti: il bot chiede
   nella lingua dell'utente, risponde se sa, altrimenti chiama il ruolo
   giusto (AI-R-105; vedi §13)
@@ -2388,21 +2436,28 @@ di quel file.
   → **Stato 21/10 (parte con l'AI):** sollecito tradotto nella lingua dell'utente (senza AI: italiano o italiano e inglese);
   se il pannello non ha un ruolo scelto, l'AI dice se chiamare il ruolo moderatore o amministratore del bot (senza AI:
   i ruoli di supporto). (da verificare live)
-- `[ ]` 25.99 Storie di dungeon intere, con tutte le strade e i
+- `[x]` 25.99 Storie di dungeon intere, con tutte le strade e i
   finali, salvate e riusate in ogni server con lo stesso tema
   (AI-R-106)
-- `[ ]` 25.100 Funzione richiesta che non esiste: bozza del codice in
+  → **Stato 29/10 (r12ai):** storie intere salvate in libreria.
+- `[x]` 25.100 Funzione richiesta che non esiste: bozza del codice in
   una pull request per l'owner (AI-R-107)
-- `[ ]` 25.101 Cerca comando: mostra anche le alternative, spiegate
+  → **Stato 29/10 (r12ai):** cogs/ai/bozze.py, core/ai_bozza_logic.py, core/github_bozze.py, migrazione 0427: una richiesta di comando approvata dall'owner (flusso già esistente) diventa una bozza scritta dall'AI (tipo codice, al massimo 5 al giorno), salvata in ai_bozze e, con GITHUB_BOZZE_TOKEN e GITHUB_BOZZE_REPO, una pull request in bozza con un file di proposta in bozze_ai/. Senza token la bozza arriva all'owner come file in DM. Non unisce mai. Test: tests/test_ai_bozze.py
+- `[x]` 25.101 Cerca comando: mostra anche le alternative, spiegate
   (AI-R-108; vedi §21)
-- `[ ]` 25.102 Sintesi vocale sul server, con cache dell'audio e toni
+  → **Stato 29/10 (r12ai):** alternative spiegate.
+- `[x]` 25.102 Sintesi vocale sul server, con cache dell'audio e toni
   della voce scelti dall'admin (AI-R-109; vedi 14.19)
-- `[ ]` 25.103 Trascrizione e traduzione del vocale nella lingua di chi
+  → **Stato 29/10 (r12ai):** cogs/ai/voce.py, core/voice_*.py (profili e toni, cache, motore Piper Paola via sherpa-onnx dietro MotoreVoce). Si accende da .env (VOCE_MODELLO_DIR); spento il bot manda solo il testo. Da attivare: installare sherpa-onnx e il modello. Test: tests/test_ai_voce.py
+- `[x]` 25.103 Trascrizione e traduzione del vocale nella lingua di chi
   preme il bottone (AI-R-110)
-- `[ ]` 25.104 Trascrivi e traduci i vocali registrati dalle persone,
+  → **Stato 29/10 (r12ai):** VocaleView (aivc:tr, aivc:tl): bottoni persistenti sotto ogni vocale, risposta privata nella lingua del client; testo salvato 90 giorni in ai_vocali (migrazione 0426).
+- `[x]` 25.104 Trascrivi e traduci i vocali registrati dalle persone,
   anche dall'app utente (AI-R-111)
-- `[ ]` 25.105 Saluti a voce: risposta al "buongiorno" con il nome, una
+  → **Stato 29/10 (r12ai):** Menu «Trascrivi vocale» in iYokai App (cogs/user_app/voce_app.py), limite 120 s e 8 MiB. Spento finché manca VOCE_TRASCRIZIONE_URL con VOCE_TRASCRIZIONE_ADDESTRA=no (D19). Da attivare: scegliere il servizio.
+- `[x]` 25.105 Saluti a voce: risposta al "buongiorno" con il nome, una
   sola risposta per più persone (AI-R-112)
+  → **Stato 29/10 (r12ai):** Saluti a voce nei canali scelti con /ai voce imposta: raccolta di 6 s con fino a 3 nomi, pausa di 2 minuti per canale, frasi fisse in cache senza scadenza.
 
 ---
 

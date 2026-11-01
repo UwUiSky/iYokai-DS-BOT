@@ -330,3 +330,13 @@
 - 01/11 · core/migrations/0483_progressi_v2.sql · `ultima_at` nuova e vuota: con la regola delle 36 ore le serie di prima ripartivano da 1 · media · confermato, corretto a0d6ab3 (0484)
 - 01/11 · core/repositories/progressi_repo.py missioni_settimana_riscattate · «settimana piena» contava missioni di settimane diverse (3 in 3 settimane) · bassa · confermato, corretto a0d6ab3
 - 01/11 · cogs/leveling/progressi.py VistaProgressi._riscuoti · riscatto + ricostruzione della scheda (~20 query) prima della risposta, senza defer · bassa · plausibile, aperto
+- 01/11 · `feat/r12ai` core/ai_bozza_logic.py · testo della persona (e-mail, menzioni, ID, chiavi) finiva su GitHub nel corpo e nel file · alta · corretto 3e77ac9
+- 01/11 · `feat/r12ai` core/ai_servizio.py controlla_accesso · scelte dell'owner lette dopo `sa_fare`: dopo un riavvio un tipo dato dall'owner era «non configurata» · media · corretto 482a151
+- 01/11 · `feat/r12ai` cogs/utility/privacy.py privacy_richieste · fino a 100 chiamate AI in fila: oltre i 15 minuti dell'interazione · media · corretto (commit privacy)
+- 01/11 · `feat/r12ai` core/traduzione_gruppo_logic.py aggiungi · messaggio oltre 6/1500 caratteri mai tradotto · media · corretto
+- 01/11 · `feat/r12ai` core/voice_client.py · CacheVoce.pulisci mai chiamata: cartella senza tetto · media · corretto
+- 01/11 · `feat/r12ai` cogs/ai/voce.py trascrivi_e_traduci · menu dell'app chiedeva l'AI del server (spesso senza bot): traduzione mai partita · media · corretto
+- 01/11 · `feat/r12ai` cogs/tickets/tickets.py _crea_ticket · prima risposta AI attesa prima di chiusura automatica, sollecito e «Ticket creato» · media · corretto
+- 01/11 · `feat/r12ai` cogs/ai/voce.py parla · se il testo di ripiego fallisce (permessi) l'errore sale e il followup non parte; vocale partito + messaggio sotto fallito = doppio · bassa · aperto
+- 01/11 · `feat/r12ai` core/voice_client.py genera · wait_for non ferma il thread di sintesi: con il timeout il turno si libera e due sintesi vanno insieme · bassa · plausibile
+- 01/11 · `feat/r12ai` cogs/ai/ticket_ai.py on_message · seconda lettura del ticket dal database per ogni messaggio di ogni server (TicketsCog già la fa) · bassa · aperto

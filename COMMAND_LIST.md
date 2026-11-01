@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 02:13 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 02:39 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 639 comandi in 25 categorie.**
+**Totale: 665 comandi in 25 categorie.**
 
 ## Admin
 
@@ -54,21 +54,38 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 02:
 ## Ai
 
 - **`/ai attiva`** — Accende o spegne l'AI nel server (serve il consenso).
+- **`/ai boss avvia`** — Fa comparire subito il World Boss.
+- **`/ai boss imposta`** — Canale, giorni, ora e premi del World Boss.
+- **`/ai boss rete`** — Solo proprietario: pubblica o chiude il boss di rete.
 - **`/ai canale`** — Spegne o riaccende l'AI in un canale.
 - **`/ai conoscenza aggiungi`** — Aggiunge una voce alla base di conoscenza.
 - **`/ai conoscenza elenco`** — Le voci della base di conoscenza.
 - **`/ai conoscenza togli`** — Toglie una voce dalla base di conoscenza.
 - **`/ai costruisci`** — L'AI propone ruoli e canali da una descrizione; tu confermi.
+- **`/ai dungeon avvia`** — Avvia un dungeon di gruppo in un canale.
+- **`/ai dungeon storie`** — Quante storie di dungeon ci sono pronte per il tema del server.
 - **`/ai funzioni`** — Accende le funzioni automatiche: risposta alla menzione, bandiere.
 - **`/ai limiti`** — Tetto di spesa e quote: per utente, funzione, immagini.
 - **`/ai lore`** — Tono e ambientazione del server per ogni testo dell'AI.
 - **`/ai manutenzione`** — Solo proprietario: mette l'AI in manutenzione in tutti i server.
+- **`/ai mistero crea`** — Nasconde un mistero con un codice e un premio per il server.
+- **`/ai mistero elenco`** — I misteri del server (il codice resta segreto).
+- **`/ai mistero togli`** — Toglie un mistero.
+- **`/ai modello`** — Solo proprietario: modello, fascia e tipi di un fornitore; tetto di lunghezza.
 - **`/ai moderazione`** — L'AI segnala allo staff i messaggi sospetti di un canale.
 - **`/ai personaggio`** — Installa, toglie o cancella un personaggio AI del server.
 - **`/ai privacy`** — Messaggi degli utenti all'AI, memoria e lunghezza delle risposte.
+- **`/ai riepilogo anteprima`** — Mostra a te il riepilogo di adesso, senza pubblicarlo.
+- **`/ai riepilogo imposta`** — Riepilogo del server: canale, ora, frequenza e canali da leggere.
+- **`/ai staff cerca-log`** — Cerca nei log con una domanda (chi, cosa, quando).
+- **`/ai staff incidente`** — Riassume gli ultimi eventi di sicurezza del server.
+- **`/ai staff prima-risposta`** — Accende o spegne la prima risposta automatica dell'AI in un pannello ticket.
+- **`/ai staff regola`** — Scrivi cosa vuoi da AutoMod: ti propongo la regola, la attivi tu.
 - **`/ai stato`** — Stato dell'AI nel server: fornitori, scelte e uso del mese.
 - **`/ai traduzione`** — Traduce da solo ogni messaggio di un canale in una lingua.
 - **`/ai vietate`** — Parole o argomenti che l'AI deve rifiutare.
+- **`/ai voce imposta`** — Voce di Yokai: accesa o spenta, tono e canali dei saluti.
+- **`/ai voce parla`** — Yokai dice un annuncio a voce in un canale.
 
 ## Aiuto (primo livello)
 
@@ -124,6 +141,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 02:
 - **`/Stato rete iYokai`** — Menu «App» (tasto destro)
 - **`/Testo pulito`** — Menu «App» (tasto destro)
 - **`/Traduci`** — Menu «App» (tasto destro)
+- **`/Trascrivi vocale`** — Menu «App» (tasto destro)
+- **`/assistente`** — Il tuo assistente personale: chiedi come fare una cosa.
 - **`/desktop avvisi`** — Accendi o spegni gli avvisi per menzioni e risposte sul programma.
 - **`/desktop collega`** — Crea il codice personale per il programma iYokai Desktop.
 - **`/desktop parole`** — Le parole chiave che ti avvisano (separate da virgole; vuoto le toglie).
@@ -182,6 +201,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 02:
 - **`/supporto apri`** — Apri una richiesta di assistenza con lo staff di iYokai.
 - **`/supporto elenco`** — Le tue ultime richieste di assistenza.
 - **`/supporto rispondi`** — Scrivi allo staff nella tua richiesta aperta.
+- **`/trova`** — Cerca una funzione di iYokai App: comandi e menu sul messaggio.
 
 ## iYokai NSFW (app separata, solo canali vietati ai minori)
 
@@ -657,15 +677,21 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 02:
 
 ## Utility
 
+- **`/utility ai avviso`** — Segui fino a 3 parole: ti avviso quando se ne parla molto.
 - **`/utility ai crea-personaggio`** — Crea un personaggio AI con cui chattare.
+- **`/utility ai frammenti`** — I frammenti di lore che hai raccolto.
 - **`/utility ai immagina`** — Genera un'immagine da una descrizione.
 - **`/utility ai ingrandisci`** — Ingrandisce e ripulisce un'immagine che carichi.
 - **`/utility ai lore`** — Scheda di lore su un nome, un luogo o uno yokai.
+- **`/utility ai mistero`** — Rispondi a un mistero del server con il codice.
 - **`/utility ai pacchetto`** — Compra 5 immagini AI in più con le monete del server.
+- **`/utility ai parla`** — Yokai dice una frase a voce in questo canale.
 - **`/utility ai personaggio`** — Parla con un personaggio AI del server.
+- **`/utility ai preferenza`** — Le tue scelte sull'AI: risposte per te e stile imitabile dagli altri.
 - **`/utility ai riassumi`** — Riassunto degli ultimi messaggi di un canale.
 - **`/utility ai spiega`** — Spiega in parole semplici un messaggio (dal suo link).
-- **`/utility ai stile`** — Un messaggio nuovo scritto come scrivi tu.
+- **`/utility ai spirito`** — Il tuo spirito Yokai: cresce con la tua attività.
+- **`/utility ai stile`** — Un messaggio nuovo scritto come scrivi tu (o come chi lo permette).
 - **`/utility ai traduci`** — Traduce un testo nella lingua che scegli.
 - **`/utility editsnipe`** — Mostra l'ultimo messaggio modificato in questo canale.
 - **`/utility info`** — Informazioni sul bot: versione, invito e supporto.

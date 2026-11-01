@@ -159,6 +159,7 @@ class MotoreAI:
 
     def __init__(self, fornitori: list[Fornitore], trasporto, *, usa_pagamento: bool = False) -> None:
         self.fornitori = fornitori
+        self._fornitori_base = list(fornitori)  # quelli del `.env`: le scelte dell'owner si applicano sopra
         self.trasporto = trasporto
         self.usa_pagamento = usa_pagamento
         self.stato = StatoFornitori()
@@ -166,6 +167,12 @@ class MotoreAI:
     @property
     def configurato(self) -> bool:
         return bool(self.fornitori)
+
+    def applica_override(self, override: dict[str, dict]) -> None:
+        """Modello, fascia e tipi scelti dall'owner (AI-R-089, AI-R-101)."""
+        from core.ai_override_logic import applica
+
+        self.fornitori = applica(self._fornitori_base, override)
 
     def sa_fare(self, tipo: str) -> bool:
         return any(tipo in f.tipi and (self.usa_pagamento or not f.a_pagamento) for f in self.fornitori)
