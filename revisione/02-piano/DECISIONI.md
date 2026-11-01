@@ -925,3 +925,12 @@ client, ma può fermare il file prima che lo aprano i membri:
   ogni server può dare l'accesso a chi gestisce i ruoli dalle Integrazioni di Discord.
 - Nomi `/cerca-comando` e `/chiedi` (scelta dell'owner 01/11): niente trattino iniziale. La doppia `/` non è
   ammessa da Discord (nei nomi solo lettere, numeri, `-`, `_`). Migrazione 0491 per i percorsi salvati.
+
+## D63 — Blocco AutoMod del catalogo: regole con condizioni e azioni (01/11/2026, scelta di chi sviluppa)
+Disegno: tabella `automod_regole` (filtro o regola personale; evento, condizioni, azioni, contatore in JSONB),
+`automod_liste`; un solo modulo per eseguire le azioni (`core/automod_azioni.py`); 7 comandi nuovi solo in
+`/admin-automod` (regole, liste, riepilogo, azzera, gruppo, pulizia, immagini) con editor a pannello.
+Le regex dei server girano solo con `re2`. Un'azione che fallisce per permessi si sospende per 10 minuti.
+AMD-018 (stato online e attività) richiede l'intent Presenze: si fa dietro un interruttore **spento di base**;
+finché è spento il bot non chiede l'intent a Discord. Filtro immagini (D62): un processo nuovo per immagine,
+servizio di sistema `iyokai-sandbox` con utente senza permessi e senza rete; ripiego dichiarato se manca.
