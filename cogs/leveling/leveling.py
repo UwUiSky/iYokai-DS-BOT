@@ -3740,8 +3740,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await giveaway_repo.set_message_id(giveaway_id, messaggio.id)
 
     @comando_di_gruppo(
-        "economia",
-        nome="giveaway",
+        "giveaway",
+        nome="avvia",
         descrizione="Avvia un giveaway.",
     )
     @app_commands.describe(
@@ -3786,8 +3786,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "economia",
-        nome="giveaway-modello",
+        "giveaway",
+        nome="modello",
         descrizione="Modelli di giveaway: salva, elenca, elimina, avvia.",
     )
     @app_commands.describe(
@@ -3896,8 +3896,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "economia",
-        nome="giveaway-programmati",
+        "giveaway",
+        nome="programmati",
         descrizione="Giveaway programmati: elenca (anche quelli in errore) o annulla.",
     )
     @app_commands.describe(azione="Cosa fare", numero="Numero del giveaway (solo annulla)")

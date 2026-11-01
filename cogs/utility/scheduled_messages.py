@@ -18,7 +18,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.admin_mentions_logic import menzioni_ammesse, utente_puo_pingare_ruoli
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
 from core.duration_logic import format_duration, parse_duration
 from core.i18n import testo_per
@@ -96,10 +96,10 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
     # Comandi
     # ================================================================
     @comando_di_gruppo(
-        "admin",
-        nome="programma",
+        "messaggi",
+        nome="crea",
         descrizione="Programma un messaggio.",
-        sottogruppo=("messaggi", "Messaggi programmati e messaggi fissi"),
+        sottogruppo=SOTTOGRUPPI["messaggi programmati"],
     )
     @app_commands.describe(
         channel="Il canale dove pubblicare il messaggio",
@@ -153,10 +153,10 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin",
-        nome="programmati",
+        "messaggi",
+        nome="elenco",
         descrizione="Mostra i messaggi programmati di questo server.",
-        sottogruppo=("messaggi", "Messaggi programmati e messaggi fissi"),
+        sottogruppo=SOTTOGRUPPI["messaggi programmati"],
     )
     async def list_scheduled_messages(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
@@ -186,10 +186,10 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @comando_di_gruppo(
-        "admin",
+        "messaggi",
         nome="annulla",
         descrizione="Annulla un messaggio programmato.",
-        sottogruppo=("messaggi", "Messaggi programmati e messaggi fissi"),
+        sottogruppo=SOTTOGRUPPI["messaggi programmati"],
     )
     @app_commands.describe(schedule_id="ID (mostrato da /admin messaggi programmati)")
     async def cancel_scheduled_message(
