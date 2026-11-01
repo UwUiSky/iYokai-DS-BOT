@@ -59,3 +59,13 @@ async def test_tetto_di_lunghezza_limita_le_risposte(servizio):
     assert await imposta_scelte_owner(togli_tetto=True) is None
     await s._leggi_scelte_owner()
     assert s.tetto_token is None
+
+
+async def test_dopo_un_riavvio_le_scelte_valgono_dalla_prima_richiesta(servizio, clean_db):
+    """Un tipo dato dall'owner (codice a «beta») vale anche per la prima richiesta di un servizio appena creato."""
+    await ai_repo.registra_consenso(G, U, True)
+    assert await imposta_scelte_owner("beta", None, None, "chat,codice", user_id=1) is None
+    nuovo, _ = servizio_finto(ai_repo, fornitori=[fornitore("beta", tipi=("chat",))], trasporto=TrasportoFinto(risposte={"beta": "y"}))
+    imposta_servizio_ai(nuovo)
+    risposta = await nuovo.richiedi(RichiestaAI(user_id=U, funzione="chiedi", tipo="codice", testo="ciao", guild_id=G, riusa=False))
+    assert risposta.testo == "y"

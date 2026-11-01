@@ -161,9 +161,9 @@ class ServizioAI:
 
     async def controlla_accesso(self, guild_id: int | None, channel_id: int | None = None, tipo: str = "chat"):
         """La config del server se l'AI può lavorare lì, altrimenti `AINonDisponibile`."""
+        await self._leggi_scelte_owner()  # prima del controllo: i tipi scelti dall'owner valgono già dalla prima richiesta
         if not self.motore.configurato or not self.motore.sa_fare(tipo):
             raise AINonDisponibile("non_configurata")
-        await self._leggi_scelte_owner()
         avviso = await self._messaggio_manutenzione()
         if avviso is not None:
             raise AINonDisponibile("manutenzione", avviso)
