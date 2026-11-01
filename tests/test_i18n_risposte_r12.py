@@ -57,8 +57,11 @@ async def test_pannello_di_verifica_nella_lingua_del_server_non_di_chi_lo_pubbli
 
     await scenario.configura(captcha=False)
     await user_language_repo.set(1, "en")
-    interazione = fake_interaction(guild=scenario.server, user=fake_member(user_id=1, name="owner"))
-    await scenario.cog.panel_cmd.callback(scenario.cog, interazione)
+    try:
+        interazione = fake_interaction(guild=scenario.server, user=fake_member(user_id=1, name="owner"))
+        await scenario.cog.panel_cmd.callback(scenario.cog, interazione)
+    finally:
+        await user_language_repo.clear(1)  # i file di test che seguono non usano clean_db
     embed = interazione.response.send_message.call_args.kwargs["embed"]
     assert embed.title == t("verify_server_verification", "it")
     assert embed.title != t("verify_server_verification", "en")
