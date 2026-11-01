@@ -306,7 +306,7 @@ async def test_chiamata_fallita_libera_il_posto_e_rende_il_credito(repo):
 
 
 async def test_modulo_premium_non_sbloccato_ferma_anche_le_funzioni_automatiche(repo, monkeypatch):
-    """D13: se l'owner rende premium il modulo ai, la porta unica rifiuta anche -chiedi e i listener."""
+    """D13: se l'owner rende premium il modulo ai, la porta unica rifiuta anche chiedi e i listener."""
     from core import premium
 
     servizio, trasporto = servizio_finto(repo)

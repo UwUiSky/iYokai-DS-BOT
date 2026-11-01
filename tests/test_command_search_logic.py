@@ -79,7 +79,7 @@ class TestCerca:
 
 
 def test_menziona_percorsi_solo_a_confine_di_parola():
-    """Risposta dell'AI di -chiedi: `/mod ban` diventa cliccabile, `/mod banlist` resta com'è."""
+    """Risposta dell'AI di chiedi: `/mod ban` diventa cliccabile, `/mod banlist` resta com'è."""
     from core.command_search_logic import menziona_percorsi
 
     ids = {"mod": 42}

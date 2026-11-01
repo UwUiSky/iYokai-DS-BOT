@@ -61,7 +61,7 @@ MESSAGGI_LOCALI: dict[str, str] = {
 async def ai_sbloccata(guild_id: int, prova_inizio, bot=None) -> bool:
     """
     Il server può usare l'AI: il modulo non è premium (D13), il server l'ha sbloccato o la prova
-    gratuita è in corso (§25.23). Unico controllo per comandi, -chiedi, menzione e funzioni automatiche.
+    gratuita è in corso (§25.23). Unico controllo per comandi, chiedi, menzione e funzioni automatiche.
     """
     from core.premium import guild_has_premium_access, registry
 

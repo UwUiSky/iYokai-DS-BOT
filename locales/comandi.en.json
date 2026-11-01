@@ -1,7 +1,7 @@
 {
  "nomi": {
-  "-cerca-comando": "-search-command",
-  "-chiedi": "-ask",
+  "cerca-comando": "-search-command",
+  "chiedi": "-ask",
   "addio": "goodbye",
   "archivio-canale": "channel-archive",
   "aggiungi": "add",
@@ -286,8 +286,8 @@
   "modo": "mode"
  },
  "descrizioni": {
-  "-cerca-comando": "Searches a command by description.",
-  "-chiedi": "Ask for help: I will show you the right commands.",
+  "cerca-comando": "Searches a command by description.",
+  "chiedi": "Ask for help: I will show you the right commands.",
   "admin-bot config": "Configuration: channels, history, restore and export",
   "admin-bot config canale-report": "Sets the reports channel.",
   "admin-bot config canale-suggerimenti": "Sets the suggestions channel.",

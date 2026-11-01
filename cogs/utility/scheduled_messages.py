@@ -110,7 +110,7 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
         self,
         interaction: discord.Interaction,
         channel: discord.TextChannel,
-        duration: str,
+        duration: app_commands.Range[str, 1, 20],
         message: TestoProgrammato,
     ) -> None:
         guild = interaction.guild

@@ -1,7 +1,7 @@
 """
 cogs.utility._command_search_views.py
 ====================================
-Interfaccia del pannello di -cerca-comando (issue #147): bottoni delle
+Interfaccia del pannello di cerca-comando (issue #147): bottoni delle
 categorie (a pagine), elenco dei comandi di una categoria, bottone wiki.
 
 Limiti rispettati: al massimo 20 bottoni categoria (righe 0-3) più frecce e

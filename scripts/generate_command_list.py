@@ -81,7 +81,7 @@ async def main() -> None:
             await altro.close()
 
         # La categoria è il gruppo di primo livello (D24); i comandi
-        # singoli di primo livello (-cerca-comando, -chiedi) vanno in "aiuto".
+        # singoli di primo livello (cerca-comando, chiedi) vanno in "aiuto".
         per_lingua = {"it": defaultdict(list), "en": defaultdict(list)}
         for cmd in comandi_top_level:
             categoria = per_app.get(id(cmd)) or (cmd.name if isinstance(cmd, app_commands.Group) else "aiuto")

@@ -987,16 +987,16 @@ Servono: modulo avvisi acceso, `KICK_CLIENT_ID` e `KICK_CLIENT_SECRET` (e per Tw
 
 Prima di tutto: nel `.env` almeno un fornitore compatibile OpenAI (`AI_FORNITORI`, `AI_URL_<NOME>`, `AI_KEY_<NOME>`, `AI_MODELLO_<NOME>`, `AI_TIPI_<NOME>`, `AI_ADDESTRA_<NOME>=no`). Per le immagini un fornitore con il tipo `immagine` e `AI_MODELLO_IMMAGINI_<NOME>`.
 
-- [ ] Senza fornitori — togli `AI_FORNITORI`, riavvia: il bot parte; `/assistente traduci` risponde che l'AI non è configurata; `-chiedi come si banna` dà la ricerca per parole; `/admin-ai stato` dice «Nessuno».
+- [ ] Senza fornitori — togli `AI_FORNITORI`, riavvia: il bot parte; `/assistente traduci` risponde che l'AI non è configurata; `chiedi come si banna` dà la ricerca per parole; `/admin-ai stato` dice «Nessuno».
 - [ ] Fornitore che addestra — metti `AI_ADDESTRA_<NOME>=si`: all'avvio il log dice «Fornitore AI scartato … D19» (mai la chiave).
 - [ ] Consenso — `/admin-ai attiva acceso:Sì`: compare il testo del consenso; un altro admin non può premere il bottone; dopo «Acconsento» `/admin-ai stato` dice «accesa». `/admin-ai attiva acceso:No` spegne.
-- [ ] `-chiedi metti in timeout Mario per 10 minuti` — risposta «Assistente» con al massimo 3 comandi cliccabili (`/mod-sanzioni timeout`) e i valori da mettere. Con l'AI spenta torna la ricerca per parole.
+- [ ] `chiedi metti in timeout Mario per 10 minuti` — risposta «Assistente» con al massimo 3 comandi cliccabili (`/mod-sanzioni timeout`) e i valori da mettere. Con l'AI spenta torna la ricerca per parole.
 - [ ] Menzione — `/admin-ai funzioni funzione:menzione acceso:Sì`, poi scrivi `@iYokai mi chiamo Luca`, poi `@iYokai come mi chiamo?`: risponde Luca (memoria corta); con `/admin-ai privacy memoria_minuti:0` non lo ricorda più. Nessun @everyone nella risposta anche se lo chiedi.
 - [ ] Riassunto, spiegazione, stile — `/assistente riassumi messaggi:50` (privato); `/assistente spiega link:<link>`; `/assistente stile argomento:la pizza`. Con `/admin-ai privacy livello:senza_messaggi` riassumi risponde che il server non manda messaggi all'AI e mostra i numeri del canale.
 - [ ] Traduzioni — `/assistente traduci testo:ciao lingua:en`; `/admin-ai traduzione canale:#int lingua:en`: un messaggio in italiano riceve la risposta 🌐, uno già in inglese no; `/admin-ai funzioni bandiere Sì` e reazione 🇫🇷 a un messaggio: traduzione che sparisce dopo 2 minuti; una seconda 🇫🇷 sullo stesso messaggio non la ripete.
 - [ ] Immagini — `/assistente immagina descrizione:un gatto samurai`: immagine con i bottoni; «Variazione» ne fa un'altra; «Ingrandisci» manda il doppio della risoluzione; un altro utente non può premere i bottoni. `/admin-ai limiti immagini_settimana:1`: la seconda immagine è rifiutata; `/admin-ai limiti prezzo_pacchetto:100` e `/assistente pacchetto` scala le monete e permette altre immagini. `/assistente ingrandisci immagine:<png>` funziona anche con l'AI spenta; un PDF è rifiutato.
 - [ ] Lore e personaggi — `/admin-ai lore tema:yokai testo:Il santuario di Kitsune`; `/assistente lore argomento:Kitsune` usa l'ambientazione. `/assistente crea-personaggio`, poi `/admin-ai personaggio azione:installa nome:…`, poi `/assistente personaggio nome:… messaggio:ciao`: risponde nel personaggio. Prima dell'installazione il personaggio non è disponibile.
-- [ ] Base di conoscenza — `/admin-ai conoscenza aggiungi` (finestra), `elenco`, `togli numero:…`; `-chiedi` usa le voci del server.
+- [ ] Base di conoscenza — `/admin-ai conoscenza aggiungi` (finestra), `elenco`, `togli numero:…`; `chiedi` usa le voci del server.
 - [ ] Ticket — in un ticket aperto: l'utente usa `/ticket assistente` → risposta pubblica segnata come automatica; lo staff → bozza e smistamento visibili solo a lui. Fuori da un ticket: messaggio d'errore.
 - [ ] Moderazione — `/admin-ai moderazione canale:#generale acceso:Sì avvisi:#staff`: un insulto pesante produce una segnalazione in #staff (gravità, motivo, link); nessuna azione automatica.
 - [ ] Costruisci — `/admin-ai costruisci descrizione:community di un gioco con tornei`: anteprima di ruoli e canali; «Annulla» non crea niente; «Crea tutto» crea (togli al bot «Gestisci canali» e verifica il conteggio dei non riusciti).
@@ -1129,7 +1129,7 @@ Serve: due applicazioni nuove nel Developer Portal (iYokai NSFW e iYokai App), i
 - [ ] `NF-36` menu — tasto destro su un utente → App → «Profilo»: scheda privata con avatar e banner. Su un messaggio
   con grassetto e un link con `?utm_source=…` → «Testo pulito»: testo senza formattazione e senza `utm_`.
 - [ ] `NF-36` principale — nel Portal del bot principale attiva anche «User Install». Installa iYokai sul tuo account;
-  in un server senza il bot `-cerca-comando` e `-chiedi` funzionano come in DM (solo comandi per tutti).
+  in un server senza il bot `cerca-comando` e `chiedi` funzionano come in DM (solo comandi per tutti).
 - [ ] `NF-36` politica — in un server con il bot principale ma senza iYokai App, `/admin-bot politica` limita i comandi a un altro canale: `/promemoria elenco` dell'app installata sull'utente risponde lo stesso.
 - [ ] `NF-36` inglese — con Discord in inglese il menu «App» mostra «Profile» e «Clean text».
 - [ ] `NF-36` risposte pubbliche — in un server dove non hai «Usa app esterne» le risposte restano private.
@@ -1267,9 +1267,9 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 
 ## AI e pannello web — giro r10 (#95, #91)
 
-- [ ] Manutenzione AI (25.20) — passi: da owner `/owner ai manutenzione acceso:True messaggio:prova`; `-chiedi` e `/assistente spiega` rispondono con il messaggio di manutenzione, il resto del bot funziona. `acceso:False`: torna tutto. Da un altro account il comando risponde «solo del proprietario».
+- [ ] Manutenzione AI (25.20) — passi: da owner `/owner ai manutenzione acceso:True messaggio:prova`; `chiedi` e `/assistente spiega` rispondono con il messaggio di manutenzione, il resto del bot funziona. `acceso:False`: torna tutto. Da un altro account il comando risponde «solo del proprietario».
 - [ ] Prova gratuita (25.23) — passi: `/owner premium toggle module_name:ai active:True`; in un server non sbloccato `/admin-ai attiva` e conferma. Risultato atteso: messaggio «prova gratuita di 7 giorni», `/admin-ai stato` mostra «Prova gratuita», l'AI risponde. Dopo 7 giorni (o `prova_inizio` portato indietro nel database): «prova finita».
-- [ ] Bottone del pannello (25.27) — con `WEB_PANEL_PUBLIC_URL` impostato: `-chiedi come accendo l'AI` mostra «Apri nel pannello» che apre `/server/<id>/admin-ai`; una domanda su un comando di moderazione non lo mostra.
+- [ ] Bottone del pannello (25.27) — con `WEB_PANEL_PUBLIC_URL` impostato: `chiedi come accendo l'AI` mostra «Apri nel pannello» che apre `/server/<id>/admin-ai`; una domanda su un comando di moderazione non lo mostra.
 - [ ] Pagine legali (24.6, C.5) — `/privacy` e `/termini` si aprono senza accedere; l'elenco dei dati e i fornitori AI sono giusti. Da rileggere come testo legale.
 - [ ] Pagina del proprietario (C.4) — `/proprietario` si apre solo con l'account `OWNER_ID` (altri: «Accesso negato»); «Rendi premium/gratuito» cambia `/owner premium list`; manutenzione AI dal sito come dal comando.
 - [ ] Pagina AI del server (24.2) — `/server/<id>/admin-ai`: senza la casella di consenso non si accende; poi privacy, lunghezza e memoria cambiano `/admin-ai stato`.
@@ -1285,15 +1285,15 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 4. Aggiungi `MUSIC_TOKEN_6` nel `.env` e riavvia: parte «Music worker 6»; `/music play` lo assegna quando i primi 5 sono occupati. Un `/music stop` su un server non ferma la radio del bot principale.
 
 ## AI giro r12 (r12ai)
-1. Assistente: `-chiedi cosa posso fare qui` elenca eventi e comandi; `-chiedi attiva la musica` con modulo spento mostra il bottone per l'admin; «Configura tutto» accende i moduli.
+1. Assistente: `chiedi cosa posso fare qui` elenca eventi e comandi; `chiedi attiva la musica` con modulo spento mostra il bottone per l'admin; «Configura tutto» accende i moduli.
 2. `/admin-ai boss imposta` poi `/admin-ai boss avvia`: annuncio con immagine, bottoni di azione, premi a fine evento; con AI spenta il mostro è quello pronto.
 3. `/admin-ai dungeon avvia`: classi, voto a bottoni, finale; `/admin-ai dungeon storie` conta la libreria.
 4. `/admin-ai mistero crea` e `/assistente mistero` con il codice: premio al server o canale segreto che si richiude.
-5. `/assistente spirito` e `/assistente frammenti`; `/assistente preferenza acceso:No` e poi `-chiedi`: non risponde.
+5. `/assistente spirito` e `/assistente frammenti`; `/assistente preferenza acceso:No` e poi `chiedi`: non risponde.
 6. Wizard `/admin-bot setup wizard`: alla fine compare la scelta del tema; `/admin-ai lore tema:pirati nomi_a_tema:Sì` cambia moneta, punti e titoli (`/level` senza immagine).
 7. `/utility report` con e senza `categoria`: il messaggio allo staff ha «Etichetta»; il menu cambia la categoria solo allo staff.
 8. `/admin-ai staff incidente`, `/admin-ai staff regola testo:niente link` (poi Attiva e controlla `/admin-automod status`), `/admin-ai staff cerca-log`.
-9. **Da attivare dall'owner:** ricerca sul web (`RICERCA_WEB_URL`, `RICERCA_WEB_CHIAVE`): poi `-chiedi domanda cerca:Sì`.
+9. **Da attivare dall'owner:** ricerca sul web (`RICERCA_WEB_URL`, `RICERCA_WEB_CHIAVE`): poi `chiedi domanda cerca:Sì`.
 10. `/admin-ai riepilogo imposta` con canale e orario, poi `/admin-ai riepilogo anteprima`: totali veri dei messaggi, canale più vivace; `/assistente avviso parola:...` avvisa in DM alla parola chiave.
 11. Ticket: bottone «Assistente» nel ticket aperto; prima risposta automatica solo se accesa nel pannello (`/admin-ai staff prima-risposta`); risposte standard con allegato ancora disponibili dopo un riavvio.
 12. **Voce (da attivare dall'owner):** installare `sherpa-onnx`, mettere il modello Piper «paola» in `VOCE_MODELLO_DIR`, riavviare. Poi `/admin-ai voce imposta attiva:Sì tono:scherzosa`, `/admin-ai voce parla testo:Ciao`: arriva un vero vocale con sotto «Trascrivi» e «Nella mia lingua» (risposta privata, lingua del client). `/assistente parla`. Tono piccante: solo nei canali NSFW. `/admin-ai voce imposta saluti_canale:#generale` e scrivi «buongiorno» in due: un solo saluto a voce con i nomi.

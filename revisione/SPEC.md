@@ -1959,7 +1959,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   è la traduzione. Le descrizioni delle OPZIONI (562) non sono ancora tradotte (cricchetto `MINIMO_PARAMETRI_TRADOTTI`).
 - `[x]` 21.4 `COMMAND_LIST_ITA.md` e `COMMAND_LIST_ENG.md` generati da `scripts/generate_command_list.py`
   (anche `/owner`, che prima mancava)
-- `[x]` 21.5 `-cerca-comando`: sinonimi nelle due lingue, solo i comandi che l'utente può usare e con il
+- `[x]` 21.5 `cerca-comando`: sinonimi nelle due lingue, solo i comandi che l'utente può usare e con il
   modulo attivo — punteggio sul testo italiano E inglese, parole vuote e gruppi di sinonimi inglesi, risultati,
   completamento e pannello nella lingua di chi cerca (`cerca_*` nel catalogo); `filtra_per_moduli` toglie i
   comandi i cui moduli (`MODULE_*` del file) sono tutti spenti nel server. Restano in italiano le etichette dei
@@ -2162,7 +2162,7 @@ Completa la parte C più sotto (pagine di verifica e dell'owner).
 ## §25 MOTORE AI — in corso (fase F12, issue #95, #50, #132)
 
 Stato 14/10 (r6): motore in `core/ai_*.py` (porta unica `core/ai_servizio.py`), fornitori dal `.env`
-(D26), comandi `/admin-ai`, `/assistente`, `-chiedi`, `/ticket assistente`; migrazione 0140.
+(D26), comandi `/admin-ai`, `/assistente`, `chiedi`, `/ticket assistente`; migrazione 0140.
 
 Prerequisiti: privacy policy pubblicata con l'elenco dei fornitori;
 consenso dell'admin per server; tetto di spesa (D13). Vietato usare i
@@ -2199,7 +2199,7 @@ di quel file.
   (AI-R-005)
 - `[x]` 25.12 Smistamento delle domande: prima regole e database, AI
   solo se serve (AI-R-006)
-  → **Stato 14/10 (r6):** cache e libreria comune prima dell'AI; `-chiedi` torna alla ricerca per parole. Manca uno smistamento a regole per tutte le funzioni.
+  → **Stato 14/10 (r6):** cache e libreria comune prima dell'AI; `chiedi` torna alla ricerca per parole. Manca uno smistamento a regole per tutte le funzioni.
   → **Stato 29/10 (r12ai):** smistamento locale prima dell'AI (`core/ai_ricerca_logic.py`).
 - `[x]` 25.13 Passaggio alle chiavi a pagamento con un interruttore
   (AI-R-008)
@@ -2225,7 +2225,7 @@ di quel file.
 
 - `[x]` 25.24 Base di conoscenza caricata dall'admin (AI-R-025)
 - `[x]` 25.25 Cerca comando a parole, in qualsiasi lingua (AI-R-026)
-  → **Stato 14/10 (r6):** `-chiedi` risponde con l'AI nella lingua della domanda; `-cerca-comando` resta per parole.
+  → **Stato 14/10 (r6):** `chiedi` risponde con l'AI nella lingua della domanda; `cerca-comando` resta per parole.
   → **Stato 29/10 (r12ai):** ricerca per parole in ogni lingua, poi AI (`cogs/utility/command_search.py`).
 - `[x]` 25.26 Registro unico dei comandi letto dall'AI (AI-R-027)
 - `[x]` 25.27 Risposta con al massimo 3 comandi e bottoni che aprono la
@@ -2240,7 +2240,7 @@ di quel file.
   tutto" (AI-R-031)
   → **Stato 29/10 (r12ai):** piano in più passi e «Configura tutto».
 - `[x]` 25.31 Scoperta delle funzioni: "cosa posso fare qui?" (AI-R-032)
-  → **Stato 14/10 (r6):** `-chiedi` risponde anche a "cosa posso fare qui?" con l'elenco dei comandi che la persona può usare.
+  → **Stato 14/10 (r6):** `chiedi` risponde anche a "cosa posso fare qui?" con l'elenco dei comandi che la persona può usare.
   → **Stato 29/10 (r12ai):** «cosa posso fare qui?» con eventi in corso e comandi vicini.
 - `[x]` 25.32 Il bot risponde in chat quando viene menzionato (AI-R-034;
   catalogo AI-009)
@@ -2282,7 +2282,7 @@ di quel file.
   → **Stato 29/10 (r12ai):** **alternativa (D42):** `/admin-ai staff cerca-log` al posto di `/admin-log cerca domanda`; l'AI propone i filtri, cerca il database.
 - `[x]` 25.45 Ricerca assistita sul web o su una base di conoscenza
   (AI-R-048)
-  → **Stato 29/10 (r12ai):** opzione `cerca` di `-chiedi`; **da attivare:** `RICERCA_WEB_URL` e `RICERCA_WEB_CHIAVE` in `.env` (spenta se mancano).
+  → **Stato 29/10 (r12ai):** opzione `cerca` di `chiedi`; **da attivare:** `RICERCA_WEB_URL` e `RICERCA_WEB_CHIAVE` in `.env` (spenta se mancano).
 
 **Lore, giochi e narrazione**
 
@@ -2472,7 +2472,7 @@ di quel file.
 
 **Stato 21/10 (r9):** applicazione separata (`YOKAI_APP_TOKEN`, `core/user_app_bot.py`, albero suo):
 `/promemoria crea|elenco|annulla` (DM), `/profilo`, menu «Profilo» e «Testo pulito». Sul bot principale
-`-cerca-comando` e `-chiedi` sono installabili dall'utente (dove il bot non c'è valgono come in DM). I comandi
+`cerca-comando` e `chiedi` sono installabili dall'utente (dove il bot non c'è valgono come in DM). I comandi
 installati sull'utente contano negli stessi 100 dell'app (`LIMITI.md` §1.3).
 
 Comandi che l'utente installa **su di sé** e usa ovunque: in qualsiasi

@@ -1,7 +1,7 @@
 """
 cogs/utility/command_search.py
 ==================================
--cerca-comando e -chiedi (issue #147), comandi di primo livello usabili anche in DM e
+cerca-comando e chiedi (issue #147), comandi di primo livello usabili anche in DM e
 installabili dall'utente (NF-36, #107): dove il bot non c'è valgono come in DM.
 
 - Senza testo: pannello effimero con l'ultimo comando usato (tabella `command_usage`,
@@ -12,7 +12,7 @@ installabili dall'utente (NF-36, #107): dove il bot non c'è valgono come in DM.
   (ID da `fetch_commands`: cache che si ricarica per scadenza o quando manca un ID).
 - Nessun risultato: propone di aprire una richiesta allo sviluppatore, riusando il modal
   di cogs/utility/custom_command_requests.py.
-- -chiedi: con l'AI accesa nel server risponde l'assistente (cogs/ai/helpdesk.py) con al
+- chiedi: con l'AI accesa nel server risponde l'assistente (cogs/ai/helpdesk.py) con al
   massimo 3 comandi cliccabili; senza AI, o se l'AI non risponde, la ricerca per parole.
 - Bottone "Apri nella wiki" se WIKI_BASE_URL è impostato.
 
@@ -233,7 +233,7 @@ class CommandSearchCog(commands.Cog):
             for nome, valore in logica.suggerimenti(current, comandi, lingua=await lingua_interazione(interaction))
         ]
 
-    # `-chiedi` (primo livello): senza testo il pannello; con testo l'assistente AI o la ricerca.
+    # `chiedi` (primo livello): senza testo il pannello; con testo l'assistente AI o la ricerca.
     @app_commands.command(name=NOME_CHIEDI, description="Chiedi aiuto: ti mostro i comandi giusti.")
     @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     @app_commands.allowed_installs(guilds=True, users=True)

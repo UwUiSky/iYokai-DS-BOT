@@ -304,7 +304,7 @@ class Config:
 
     # --- Wiki dei comandi (issue #147) --------------------------------
     # Indirizzo della wiki del sito (es. "https://yokai.example/wiki"):
-    # se impostato, -cerca-comando mostra il bottone "Apri nella wiki".
+    # se impostato, cerca-comando mostra il bottone "Apri nella wiki".
     WIKI_BASE_URL: str = field(default="")
 
     # SKU dell'abbonamento premium venduto dentro Discord (NF-22). 0 = vale qualsiasi SKU dell'applicazione.

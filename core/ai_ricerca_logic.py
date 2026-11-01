@@ -259,7 +259,7 @@ def elenco_scoperta(
         if propri:
             righe.append(f"**{titolo}**")
             righe += [f"- /{c.percorso}: {c.descrizione}" for c in propri]
-    return "\n".join(righe) if righe else "Per ora non trovo attività da proporti: prova `-cerca-comando`."
+    return "\n".join(righe) if righe else "Per ora non trovo attività da proporti: prova `cerca-comando`."
 
 
 # ---------------------------------------------------------------- piano in più passi

@@ -1,7 +1,7 @@
 """
 core/command_search_logic.py
 ================================
-Logica pura di -cerca-comando e del suo pannello (issue #147; nessuna
+Logica pura di cerca-comando e del suo pannello (issue #147; nessuna
 infrastruttura di embedding/NLP disponibile): punteggio per sovrapposizione di
 parole tra la query e nome+descrizione di ogni comando, con un bonus
 se la query intera compare come sottostringa. Semplice ma sufficiente
@@ -107,7 +107,7 @@ def score_command(query: str, name: str, description: str, bonus_sottostringa: b
 
 
 # ======================================================================
-# Pannello e ricerca di -cerca-comando (issue #147)
+# Pannello e ricerca di cerca-comando (issue #147)
 # ======================================================================
 MAX_RISULTATI = 5
 MAX_SUGGERIMENTI = 25  # limite di Discord per il completamento

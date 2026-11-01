@@ -2,7 +2,7 @@
 tests/test_ai_cogs.py
 =====================
 I comandi dell'AI con un fornitore finto e il database vero (SPEC §25):
-consenso prima dell'accensione, risposta locale senza AI, -chiedi con
+consenso prima dell'accensione, risposta locale senza AI, chiedi con
 l'assistente e ritorno alla ricerca per parole, traduzione, immagine con i
 bottoni, ingrandimento, pacchetti, ticket, costruzione del server, e le
 funzioni pure dei cog.
@@ -227,7 +227,7 @@ def test_risposte_ai_strane_non_rompono_i_cog():
 
 
 async def test_chiedi_con_motore_in_errore_torna_alla_ricerca(repo, monkeypatch):
-    """Errore imprevisto dopo il defer (es. database): -chiedi risponde con la ricerca per parole."""
+    """Errore imprevisto dopo il defer (es. database): chiedi risponde con la ricerca per parole."""
     from cogs.utility import command_search
 
     cog = command_search.CommandSearchCog(bot=None)

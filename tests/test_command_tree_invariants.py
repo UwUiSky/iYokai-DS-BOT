@@ -362,28 +362,7 @@ async def test_primo_livello_entro_100_comandi():
 # Cricchetto: contiene le opzioni che OGGI non lo hanno. Il test fallisce se
 # ne compare una nuova o se una viene sistemata e non tolta da qui.
 # ----------------------------------------------------------------------
-KNOWN_SENZA_MAX_LENGTH: frozenset[str] = frozenset(
-    {
-    "admin-messaggi programmati crea:duration",
-    "fun rate:thing",
-    "mod-ban tempban:duration",
-    "mod-ban unban:user_id",
-    "admin-moduli alert feed:feed_url",
-    "admin-moduli alert feed:label",
-    "admin-moduli alert feed:message_template",
-    "admin-moduli alert rimuovi:subscription_id",
-    "admin-moduli alert twitch:label",
-    "admin-moduli alert twitch:twitch_login",
-    "admin-moduli alert webhook:label",
-    "admin-moduli alert webhook:message_template",
-    "admin-moduli alert youtube-live:label",
-    "admin-moduli alert youtube-live:youtube_channel_id",
-    "owner radio add-local:filename",
-    "owner radio add-local:label",
-    "owner radio add-track:label",
-    "owner radio add-track:query",
-    }
-)
+KNOWN_SENZA_MAX_LENGTH: frozenset[str] = frozenset()
 
 
 async def test_ogni_opzione_di_testo_ha_un_massimo():

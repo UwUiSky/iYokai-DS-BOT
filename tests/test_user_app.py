@@ -2,7 +2,7 @@
 tests/test_user_app.py
 ======================
 NF-36 (#107): iYokai App installabile dall'utente (albero separato) e i
-comandi del principale installabili dall'utente (-cerca-comando, -chiedi).
+comandi del principale installabili dall'utente (cerca-comando, chiedi).
 """
 
 from datetime import datetime, timezone

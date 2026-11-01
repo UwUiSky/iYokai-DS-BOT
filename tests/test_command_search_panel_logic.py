@@ -1,7 +1,7 @@
 """
 tests/test_command_search_panel_logic.py
 ========================================
-Logica pura del pannello e della ricerca di -cerca-comando (issue #147):
+Logica pura del pannello e della ricerca di cerca-comando (issue #147):
 raccolta dei comandi con le opzioni, menzioni cliccabili, pagine,
 suggerimenti (max 25), sinonimi italiani, filtro per accesso, cache degli ID.
 Funzioni coperte: NF-06 (issue #147)
@@ -29,24 +29,24 @@ def _albero():
     )
     sotto = app_commands.Group(name="lista", description="Liste", parent=gruppo)
     sotto.add_command(app_commands.Command(name="mostra", description="Mostra la lista", callback=_nulla))
-    piatto = app_commands.Command(name="-cerca-comando", description="Cerca un comando", callback=_nulla)
+    piatto = app_commands.Command(name="cerca-comando", description="Cerca un comando", callback=_nulla)
     return [gruppo, piatto]
 
 
 def test_raccogli_comandi_espande_gruppi_e_opzioni():
     info = {c.percorso: c for c in L.raccogli_comandi(_albero())}
-    assert set(info) == {"modban ban", "modban lista mostra", "-cerca-comando"}
+    assert set(info) == {"modban ban", "modban lista mostra", "cerca-comando"}
     ban = info["modban ban"]
     assert ban.gruppo == "modban"
     assert [(o.nome, o.obbligatoria) for o in ban.opzioni] == [("utente", True), ("motivo", False)]
-    assert info["-cerca-comando"].gruppo == "-cerca-comando"
+    assert info["cerca-comando"].gruppo == "cerca-comando"
 
 
 def test_menzione_usa_l_id_del_comando_di_primo_livello():
-    ids = {"modban": 42, "-cerca-comando": 7}
+    ids = {"modban": 42, "cerca-comando": 7}
     assert L.menzione("modban ban", ids) == "</modban ban:42>"
     assert L.menzione("modban lista mostra", ids) == "</modban lista mostra:42>"
-    assert L.menzione("-cerca-comando", ids) == "</-cerca-comando:7>"
+    assert L.menzione("cerca-comando", ids) == "</cerca-comando:7>"
 
 
 def test_menzione_senza_id_ricade_sul_testo():
@@ -80,7 +80,7 @@ def test_suggerimenti_filtrano_per_testo():
     comandi = L.raccogli_comandi(_albero())
     valori = [v for _, v in L.suggerimenti("banna", comandi)]
     assert valori[0] == "modban ban"
-    assert "-cerca-comando" not in valori
+    assert "cerca-comando" not in valori
 
 
 def test_cerca_trova_per_sinonimo_italiano():
@@ -138,7 +138,7 @@ def test_url_wiki_solo_se_impostato_e_valido():
     assert L.url_wiki("ftp://x", None) is None
     assert L.url_wiki("https://wiki.example/", None) == "https://wiki.example"
     assert L.url_wiki("https://wiki.example/", "mod ban") == "https://wiki.example/mod/ban"
-    assert L.url_wiki("https://wiki.example", "-cerca-comando") == "https://wiki.example/-cerca-comando"
+    assert L.url_wiki("https://wiki.example", "cerca-comando") == "https://wiki.example/cerca-comando"
 
 
 def test_embed_risultati_sotto_i_limiti_di_discord():

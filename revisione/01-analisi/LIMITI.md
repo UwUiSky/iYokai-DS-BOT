@@ -78,7 +78,7 @@ Parole usate:
 | Livelli di sotto-gruppo | 1 (`/gruppo sottogruppo comando`) | Application Commands |
 | Opzioni per comando | 25 | Application Commands |
 | Scelte fisse per opzione | 25 | Application Commands |
-| Nome di comando o opzione | da 1 a 32 caratteri; solo `-` `_` `ʼ` (apostrofo U+02BC, non il `'` normale), lettere e cifre: regex `^[-_ʼ\p{L}\p{N}\p{sc=Deva}\p{sc=Thai}]{1,32}$` (letta il 01/11/2026). Il trattino è ammesso: `admin-ticket`, `mod-ban`, `-cerca-comando` | Application Commands |
+| Nome di comando o opzione | da 1 a 32 caratteri; solo `-` `_` `ʼ` (apostrofo U+02BC, non il `'` normale), lettere e cifre: regex `^[-_ʼ\p{L}\p{N}\p{sc=Deva}\p{sc=Thai}]{1,32}$` (letta il 01/11/2026). Il trattino è ammesso: `admin-ticket`, `mod-ban`, `cerca-comando` | Application Commands |
 | Descrizione | da 1 a 100 caratteri | Application Commands |
 | Somma di nomi, descrizioni e valori di un comando | 8000 caratteri | Application Commands |
 | Testo libero di un'opzione, senza `max_length` | fino a 6000 caratteri | Application Commands |
@@ -92,7 +92,7 @@ Parole usate:
 
 Applicazioni separate, ognuna con i suoi tetti: **iYokai NSFW** (`/nsfw`, `/nsfw-admin`, segno `nsfw`
 su entrambi) e **iYokai App** (installata solo sull'utente: `/promemoria`, `/profilo`, 2 menu su 15+15).
-Sul principale `-cerca-comando` e `-chiedi` sono installabili anche dall'utente: non aggiungono posti,
+Sul principale `cerca-comando` e `chiedi` sono installabili anche dall'utente: non aggiungono posti,
 sono gli stessi comandi. Un comando nuovo solo-utente sul principale toglierebbe un posto ai suoi 100.
 Dove l'app non è nel server: una risposta e al massimo 5 messaggi dopo, per 15 minuti; i comandi
 dell'app rispondono una volta sola.
