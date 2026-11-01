@@ -24,7 +24,7 @@ from discord.ext import commands
 from core import channel_router as router
 from core.bounded_cache import BoundedCache
 from core.channel_router import SETTING_LOG_CHANNEL, TIPO_MESSAGGI
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
 from core.i18n import testo_per
 from core.premium import PremiumModule, registry
@@ -167,7 +167,10 @@ class SnipeCog(CogConGruppi, commands.Cog):
         return voce
 
     @comando_di_gruppo(
-        "utility", nome="snipe", descrizione="Mostra l'ultimo messaggio cancellato in questo canale."
+        "utility",
+        nome="messaggio",
+        descrizione="Mostra l'ultimo messaggio cancellato in questo canale.",
+        sottogruppo=SOTTOGRUPPI["utility snipe"],
     )
     async def snipe(self, interaction: discord.Interaction) -> None:
         voce = await self._ricordato(interaction, self._ultimo_cancellato)
@@ -185,7 +188,10 @@ class SnipeCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "utility", nome="editsnipe", descrizione="Mostra l'ultimo messaggio modificato in questo canale."
+        "utility",
+        nome="modifica",
+        descrizione="Mostra l'ultimo messaggio modificato in questo canale.",
+        sottogruppo=SOTTOGRUPPI["utility snipe"],
     )
     async def editsnipe(self, interaction: discord.Interaction) -> None:
         voce = await self._ricordato(interaction, self._ultima_modifica)
@@ -226,8 +232,9 @@ class SnipeCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo(
         "utility",
-        nome="reactionsnipe",
+        nome="reazione",
         descrizione="Mostra l'ultima reazione rimossa in questo canale.",
+        sottogruppo=SOTTOGRUPPI["utility snipe"],
     )
     async def reactionsnipe(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None or interaction.channel is None:
