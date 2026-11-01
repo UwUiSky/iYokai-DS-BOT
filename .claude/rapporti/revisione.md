@@ -385,3 +385,12 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 01/11 | `feat/r14paese` | `core/verify_paese_staff.py:valuta` | Si valuta prima dei controlli: whitelist e chi ha già il ruolo possono finire in attesa e avvisare lo staff | bassa | aperto |
 | 01/11 | `feat/r14paese` | `core/geoip_paesi.py` | Lettore aperto una volta e mai chiuso (dura quanto il processo; il file nuovo vale dopo il riavvio, come dice VERIFICA_LIVE) | bassa | aperto |
 | 01/11 | `feat/r14paese` | `core/verify_paese_staff.py:BottoneDecisione.callback` | Clic da un altro server: nessuna risposta (interazione «non riuscita») | bassa | aperto |
+| 01/11 | `feat/r14lingue` | `.gitignore` | Righe `# ===` fuse con la regola seguente: `.env`, `__pycache__/`, `logs/*.log`, `.vscode/`, `.pytest_cache/` non più ignorati | alta | chiuso (5afa1c1) |
+| 01/11 | `feat/r14lingue` | `tests/test_i18n.py:17` | Test rosso: fr ora ricade su en-US (D58), non sull'italiano | media | chiuso (5fc82bf) |
+| 01/11 | `feat/r14lingue` | `core/lingua_richieste.py:invia_richiesta` | Tetto di un giorno segnato dopo il DM: due moduli inviati insieme mandavano due DM | media | chiuso (fb493e7) |
+| 01/11 | `feat/r14lingue` | `core/command_translator.py:carica_traduzioni` | `setdefault` con lingua sconosciuta allargava la cache; `en` dava vuoto invece di en-US | bassa | chiuso (7a66e08) |
+| 01/11 | `feat/r14lingue` | `revisione/SPEC.md` 21.4a | Non elencati tra le cose che mancano: script di traduzione con AI (D54/D58), parole chiave di ricerca per lingua (D18) | media | chiuso (6f3a7a3) |
+| 01/11 | `feat/r14lingue` | `tests/test_lingue_struttura.py` | Bot, owner e interazione sono `MagicMock` liberi, non i finti fedeli di `discord_fakes` | bassa | aperto |
+| 01/11 | `feat/r14lingue` | `core/command_translator.py:aiuto_comando` | Utente italiano senza `aiuto` in it riceve la spiegazione inglese (come `t()`); da decidere | bassa | aperto |
+| 01/11 | `feat/r14lingue` | `core/i18n.py:_ALIAS` | `es-419` (spagnolo latino) non va su `es-ES`: nessuna traduzione quando ci sarà | bassa | aperto |
+| 01/11 | `feat/r14lingue` | `core/lingua_richieste.py:pulisci` | Docstring dice «a capo ridotti a uno», in realtà diventano spazi | bassa | aperto |

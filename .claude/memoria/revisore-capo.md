@@ -1,10 +1,10 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
+01/11/2026 · `feat/r14lingue` (D58, #77): main già unito, 5 fix (5afa1c1, 5fc82bf, fb493e7, 7a66e08, 6f3a7a3); 4 basse aperte. APPROVATO. Smoke da fare: i18n, translator, lingue_struttura, cerca-comando.
 01/11/2026 · `feat/r14paese` (D53, 0490): merge main (becf64f), 4 fix (fde536c, 9462b25, 735d4a0, a7b0cd3); 4 basse aperte. APPROVATO. Smoke da fare: 0490, verify, panel_bridge.
 01/11/2026 · `feat/r13ruoli` (D60): merge main (D61), 4 fix (61052f4, 0a029de, 4e96294, test admin-livelli); 2 basse aperte. Smoke da fare: 0488, cerca-comando, ai_ricerca.
-01/11/2026 · `feat/r13gruppi` (D56 riordino, D57 livelli, 0485–0487): merge di main, 5 fix (4907600, 56fab94, 680e80e, c3e860f, f14859e) + test sui percorsi nuovi (0441060). 4 aperte nel quaderno. Smoke da fare: migrazioni, quindi suite completa (orchestratore).
-01/11/2026 · r12 (lingue, aifree, ai, resto, piatt): tutti APPROVATI dopo i fix (commit nel quaderno); basse aperte nel quaderno.
+01/11/2026 · r13gruppi e r12 (lingue, aifree, ai, resto, piatt): tutti APPROVATI dopo i fix (commit nel quaderno); basse aperte nel quaderno.
 Giri r6–r11: tutti APPROVATI dopo i fix; basse aperte nel quaderno. `f7-quadro` APPROVATO, manca l'unione.
 
 ## In corso
@@ -21,6 +21,7 @@ Giri r6–r11: tutti APPROVATI dopo i fix; basse aperte nel quaderno. `f7-quadro
 - Lingue: `testo_per` senza `pubblica=True` = lingua personale; embed costruiti a pezzi li trova `tests/test_i18n_pubblica.py`. `comandi.en.json`: "nomi" per SEGMENTO, "descrizioni" per percorso; modificarlo a testo (json.dumps cambia il rientro).
 - Controllare il contenuto di ogni commit, non il messaggio; testi che promettono una funzione vanno confrontati col codice; voci `[x]` col catalogo e col test citato (D18).
 - Ambiente: `source` dello script env in ogni bash, mai riavviare postgres, database proprio per ramo. Regola owner: niente smoke né suite, «smoke da fare» nel rapporto. Commit senza righe di attribuzione (CLAUDE.md del ramo).
+- Diff di `.gitignore` e file di configurazione: leggerli sempre (una riga fusa coi commenti smette di ignorare `.env`); test con `git check-ignore --no-index`.
 - Merge di main: conflitti nei documenti e in `comandi.en.json`; `COMMAND_LIST*` con `scripts/generate_command_list.py` (errore finale innocuo; se cambia solo la data, scartare).
 - Migrazioni per NOME: mai modificarle; numeri confrontati su tutti i rami (`git ls-tree`). Test di una migrazione: `read_text()` ed `execute`, due volte (rilancio).
 - `db._…` usate da un cog = manca una funzione pubblica. `SETTING_X` in `SETTINGS_SCHEMA`; tabelle in `core/data_registry.py`; metodi senza chiamanti rompono `test_repository_callers.py`.
