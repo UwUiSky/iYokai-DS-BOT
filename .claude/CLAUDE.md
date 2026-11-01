@@ -52,16 +52,13 @@ memoria compressa, come fermarsi).
 ## Test: smoke mirato, suite completa solo quando serve
 
 - **Mentre si lavora a una voce:** solo i test di quella voce.
-- **Smoke unico a fine giro (regola dell'owner):** nessun agente lancia
-  lo smoke sul suo ramo. Un ramo finito si committa, si pubblica e si
-  segna «smoke da fare». Quando tutti i rami del giro sono finiti e uniti,
-  l'orchestratore lancia **una sola volta** `python3 scripts/smoke.py`
-  (o la suite completa, se il giro tocca migrazioni, `core/database.py`,
-  `main.py` o `tests/conftest.py`), poi si correggono gli errori uno per uno.
-- **Suite completa** (`python3 -m pytest -q`, circa 6 minuti): a fine
-  fase, dopo modifiche a `core/database.py`, alle migrazioni, a
-  `main.py` o a `tests/conftest.py`, e prima di un rilascio. Non a ogni
-  commit.
+- **Fine giro (regola dell'owner):** nessun agente lancia lo smoke o la suite sul suo
+  ramo. Un ramo finito si committa, si pubblica e si segna «smoke da fare». Dopo il merge
+  l'orchestratore lancia solo i test del blocco unito e delle parti che tocca
+  (invarianti dei comandi, migrazioni nuove, cog cambiati), poi si correggono gli errori.
+- **Suite completa** (`python3 -m pytest -q`, circa 1 ora e mezza: ~7.900 test su
+  PostgreSQL vero): **una sola volta, quando tutto il lavoro è finito**, prima del
+  rilascio. Mai durante lo sviluppo.
 - Prima il test che fallisce (per il motivo giusto), poi il fix.
 - Database di test: `postgresql://postgres:testpass@127.0.0.1:5432/iyokai_test`
   (da `tests/conftest.py`; si cambia con `DATABASE_URL`). Se dà
