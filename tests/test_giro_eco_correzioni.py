@@ -382,7 +382,8 @@ async def test_rank_con_un_errore_qualunque_dell_avatar_manda_la_card(monkeypatc
 def test_pillow_minimo_e_quello_che_serve_a_load_default_con_size():
     testo = open("requirements.txt", encoding="utf-8").read()
     riga = next(r for r in testo.splitlines() if r.lower().startswith("pillow"))
-    assert ">=10.1" in riga or ">=11" in riga or ">=12" in riga
+    minimo = tuple(int(x) for x in riga.split(">=", 1)[1].strip().split(".")[:2])
+    assert minimo >= (10, 1)
 
 
 # ----------------------------------------------------------------------
