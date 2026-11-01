@@ -292,7 +292,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         return await solo_chi_gestisce(interaction, settings.anti_nuke)
 
     @comando_di_gruppo(
-        "antinuke",
+        "admin-antinuke",
         nome="enable",
         descrizione="Attiva o disattiva l'Anti-Nuke.",
     )
@@ -331,7 +331,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(avviso, ephemeral=True)
 
     @comando_di_gruppo(
-        "antinuke",
+        "admin-antinuke",
         nome="limits",
         descrizione="Configura la soglia di rilevamento per una categoria.",
     )
@@ -378,7 +378,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "antinuke",
+        "admin-antinuke",
         nome="trusted-add",
         descrizione="Esenta un utente, un bot o un webhook dai controlli Anti-Nuke.",
     )
@@ -459,7 +459,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "antinuke",
+        "admin-antinuke",
         nome="trusted-remove",
         descrizione="Rimuove un utente, un bot o un webhook dalla lista fidati Anti-Nuke.",
     )
@@ -491,7 +491,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "antinuke_rimosso_dalla_lista_fidati", id_utente=id_utente), ephemeral=True)
 
     @comando_di_gruppo(
-        "antinuke",
+        "admin-antinuke",
         nome="trusted-list",
         descrizione="Elenca chi è esentato dai controlli Anti-Nuke e con quali limiti.",
     )
@@ -519,7 +519,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "antinuke",
+        "admin-antinuke",
         nome="punish-action",
         descrizione="Cosa fare all'autore di un'azione distruttiva di massa.",
     )
@@ -563,7 +563,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
             await self._prepara_quarantena(interaction)
 
     @comando_di_gruppo(
-        "antinuke",
+        "admin-antinuke",
         nome="recovery",
         descrizione="Attiva/disattiva la ricreazione automatica di canali/ruoli cancellati durante un attacco.",
     )
@@ -578,7 +578,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "antinuke_recovery_automatico", v1=(await testo_per(interaction, "greetings_attivato")) if enabled else (await testo_per(interaction, "greetings_disattivato"))), ephemeral=True)
 
     @comando_di_gruppo(
-        "antinuke",
+        "admin-antinuke",
         nome="canale-allarmi",
         descrizione="Sceglie dove arrivano gli allarmi dell'Anti-Nuke (canale o forum).",
     )
@@ -598,7 +598,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "antinuke",
+        "admin-antinuke",
         nome="status",
         descrizione="Mostra la configurazione attuale dell'Anti-Nuke.",
     )
@@ -640,7 +640,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message("\n".join(righe), ephemeral=True)
 
     @comando_di_gruppo(
-        "antinuke",
+        "admin-antinuke",
         nome="guardie",
         descrizione="Protezioni su azioni singole: permessi dei ruoli, ruoli ai membri, link, bot.",
     )
@@ -690,7 +690,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "antinuke",
+        "admin-antinuke",
         nome="casi",
         descrizione="Registro degli attacchi fermati: elenco o dettaglio di un caso.",
     )
@@ -752,7 +752,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "antinuke",
+        "admin-antinuke",
         nome="rilascia",
         descrizione="Toglie la quarantena all'autore di un caso e gli rimette i ruoli.",
     )
