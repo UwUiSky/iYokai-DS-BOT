@@ -1,111 +1,405 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 13:02 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 18:11 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 665 comandi in 35 categorie.**
+**Totale: 665 comandi in 41 categorie.**
 
-## Admin
+## Admin: AI
 
-- **`/admin config canale-report`** — Imposta il canale delle segnalazioni.
-- **`/admin config canale-suggerimenti`** — Imposta il canale dei suggerimenti.
-- **`/admin config export`** — Esporta la configurazione di questo server in un file.
-- **`/admin config history`** — Mostra le ultime modifiche alla configurazione.
-- **`/admin config import`** — Importa una configurazione da un file esportato con /admin config export.
-- **`/admin config nickname-bot`** — Cambia il nome del bot in questo server.
-- **`/admin config pulizia`** — Toglie dalla configurazione canali e ruoli che non esistono più.
-- **`/admin config reset`** — Azzera la configurazione di questo server.
-- **`/admin config rollback`** — Ripristina il valore precedente di una modifica.
-- **`/admin config sincronizza`** — Riscrive i permessi dei comandi di questo server.
-- **`/admin lingua set`** — Imposta la lingua di questo server.
-- **`/admin lingua show`** — Mostra la lingua impostata per questo server.
-- **`/admin musica canale-richieste`** — Canale dove si scrive un titolo per metterlo in coda, con il player.
-- **`/admin musica impostazioni`** — Cambia le impostazioni musicali del server.
-- **`/admin musica riepilogo`** — Mostra tutte le impostazioni musicali del server.
-- **`/admin politica canali`** — Dove il bot risponde ai comandi.
-- **`/admin politica comando`** — Spegne o riaccende un singolo comando.
-- **`/admin politica diagnosi`** — Scopre perché un comando non funziona qui.
-- **`/admin politica elenco`** — Mostra la politica dei comandi e, se vuoi, azzera un elenco.
-- **`/admin politica ignora`** — Il bot ignora un ruolo o un utente.
-- **`/admin premium aspetto`** — Avatar, banner e descrizione del bot in questo server (premium).
-- **`/admin premium marchio`** — Usa un bot con il tuo nome e il tuo avatar (premium).
-- **`/admin premium riscatta`** — Riscatta un codice premium per questo server.
-- **`/admin premium sblocca`** — Sblocca un modulo premium per 30 giorni con le monete della cassa del server.
-- **`/admin premium stato`** — Mostra come è sbloccato il premium in questo server.
-- **`/admin setup attiva`** — Attiva o disattiva i moduli del bot, per categoria.
-- **`/admin setup wizard`** — Configura passo-passo ruoli e moduli del bot, una categoria alla volta.
+- **`/admin-ai attiva`** — Accende o spegne l'AI nel server (serve il consenso).
+- **`/admin-ai boss avvia`** — Fa comparire subito il World Boss.
+- **`/admin-ai boss imposta`** — Canale, giorni, ora e premi del World Boss.
+- **`/admin-ai canale`** — Spegne o riaccende l'AI in un canale.
+- **`/admin-ai conoscenza aggiungi`** — Aggiunge una voce alla base di conoscenza.
+- **`/admin-ai conoscenza elenco`** — Le voci della base di conoscenza.
+- **`/admin-ai conoscenza togli`** — Toglie una voce dalla base di conoscenza.
+- **`/admin-ai costruisci`** — L'AI propone ruoli e canali da una descrizione; tu confermi.
+- **`/admin-ai dungeon avvia`** — Avvia un dungeon di gruppo in un canale.
+- **`/admin-ai dungeon storie`** — Quante storie di dungeon ci sono pronte per il tema del server.
+- **`/admin-ai funzioni`** — Accende le funzioni automatiche: risposta alla menzione, bandiere.
+- **`/admin-ai limiti`** — Tetto di spesa e quote: per utente, funzione, immagini.
+- **`/admin-ai lore`** — Tono e ambientazione del server per ogni testo dell'AI.
+- **`/admin-ai mistero crea`** — Nasconde un mistero con un codice e un premio per il server.
+- **`/admin-ai mistero elenco`** — I misteri del server (il codice resta segreto).
+- **`/admin-ai mistero togli`** — Toglie un mistero.
+- **`/admin-ai moderazione`** — L'AI segnala allo staff i messaggi sospetti di un canale.
+- **`/admin-ai personaggio`** — Installa, toglie o cancella un personaggio AI del server.
+- **`/admin-ai privacy`** — Messaggi degli utenti all'AI, memoria e lunghezza delle risposte.
+- **`/admin-ai riepilogo anteprima`** — Mostra a te il riepilogo di adesso, senza pubblicarlo.
+- **`/admin-ai riepilogo imposta`** — Riepilogo del server: canale, ora, frequenza e canali da leggere.
+- **`/admin-ai staff cerca-log`** — Cerca nei log con una domanda (chi, cosa, quando).
+- **`/admin-ai staff incidente`** — Riassume gli ultimi eventi di sicurezza del server.
+- **`/admin-ai staff prima-risposta`** — Accende o spegne la prima risposta automatica dell'AI in un pannello ticket.
+- **`/admin-ai staff regola`** — Scrivi cosa vuoi da AutoMod: ti propongo la regola, la attivi tu.
+- **`/admin-ai stato`** — Stato dell'AI nel server: fornitori, scelte e uso del mese.
+- **`/admin-ai traduzione`** — Traduce da solo ogni messaggio di un canale in una lingua.
+- **`/admin-ai vietate`** — Parole o argomenti che l'AI deve rifiutare.
+- **`/admin-ai voce imposta`** — Voce di Yokai: accesa o spenta, tono e canali dei saluti.
+- **`/admin-ai voce parla`** — Yokai dice un annuncio a voce in un canale.
 
-## Ai
+## Admin: anti-nuke
 
-- **`/ai attiva`** — Accende o spegne l'AI nel server (serve il consenso).
-- **`/ai boss avvia`** — Fa comparire subito il World Boss.
-- **`/ai boss imposta`** — Canale, giorni, ora e premi del World Boss.
-- **`/ai canale`** — Spegne o riaccende l'AI in un canale.
-- **`/ai conoscenza aggiungi`** — Aggiunge una voce alla base di conoscenza.
-- **`/ai conoscenza elenco`** — Le voci della base di conoscenza.
-- **`/ai conoscenza togli`** — Toglie una voce dalla base di conoscenza.
-- **`/ai costruisci`** — L'AI propone ruoli e canali da una descrizione; tu confermi.
-- **`/ai dungeon avvia`** — Avvia un dungeon di gruppo in un canale.
-- **`/ai dungeon storie`** — Quante storie di dungeon ci sono pronte per il tema del server.
-- **`/ai funzioni`** — Accende le funzioni automatiche: risposta alla menzione, bandiere.
-- **`/ai limiti`** — Tetto di spesa e quote: per utente, funzione, immagini.
-- **`/ai lore`** — Tono e ambientazione del server per ogni testo dell'AI.
-- **`/ai mistero crea`** — Nasconde un mistero con un codice e un premio per il server.
-- **`/ai mistero elenco`** — I misteri del server (il codice resta segreto).
-- **`/ai mistero togli`** — Toglie un mistero.
-- **`/ai moderazione`** — L'AI segnala allo staff i messaggi sospetti di un canale.
-- **`/ai personaggio`** — Installa, toglie o cancella un personaggio AI del server.
-- **`/ai privacy`** — Messaggi degli utenti all'AI, memoria e lunghezza delle risposte.
-- **`/ai riepilogo anteprima`** — Mostra a te il riepilogo di adesso, senza pubblicarlo.
-- **`/ai riepilogo imposta`** — Riepilogo del server: canale, ora, frequenza e canali da leggere.
-- **`/ai staff cerca-log`** — Cerca nei log con una domanda (chi, cosa, quando).
-- **`/ai staff incidente`** — Riassume gli ultimi eventi di sicurezza del server.
-- **`/ai staff prima-risposta`** — Accende o spegne la prima risposta automatica dell'AI in un pannello ticket.
-- **`/ai staff regola`** — Scrivi cosa vuoi da AutoMod: ti propongo la regola, la attivi tu.
-- **`/ai stato`** — Stato dell'AI nel server: fornitori, scelte e uso del mese.
-- **`/ai traduzione`** — Traduce da solo ogni messaggio di un canale in una lingua.
-- **`/ai vietate`** — Parole o argomenti che l'AI deve rifiutare.
-- **`/ai voce imposta`** — Voce di Yokai: accesa o spenta, tono e canali dei saluti.
-- **`/ai voce parla`** — Yokai dice un annuncio a voce in un canale.
+- **`/admin-antinuke canale-allarmi`** — Sceglie dove arrivano gli allarmi dell'Anti-Nuke (canale o forum).
+- **`/admin-antinuke casi`** — Registro degli attacchi fermati: elenco o dettaglio di un caso.
+- **`/admin-antinuke enable`** — Attiva o disattiva l'Anti-Nuke.
+- **`/admin-antinuke guardie`** — Protezioni su azioni singole: permessi dei ruoli, ruoli ai membri, link, bot.
+- **`/admin-antinuke limits`** — Configura la soglia di rilevamento per una categoria.
+- **`/admin-antinuke punish-action`** — Cosa fare all'autore di un'azione distruttiva di massa.
+- **`/admin-antinuke recovery`** — Attiva/disattiva la ricreazione automatica di canali/ruoli cancellati durante un attacco.
+- **`/admin-antinuke rilascia`** — Toglie la quarantena all'autore di un caso e gli rimette i ruoli.
+- **`/admin-antinuke status`** — Mostra la configurazione attuale dell'Anti-Nuke.
+- **`/admin-antinuke trusted-add`** — Esenta un utente, un bot o un webhook dai controlli Anti-Nuke.
+- **`/admin-antinuke trusted-list`** — Elenca chi è esentato dai controlli Anti-Nuke e con quali limiti.
+- **`/admin-antinuke trusted-remove`** — Rimuove un utente, un bot o un webhook dalla lista fidati Anti-Nuke.
+
+## Admin: anti-raid
+
+- **`/admin-antiraid account-age`** — Età minima dell'account per non essere considerato sospetto.
+- **`/admin-antiraid alert-channel`** — Canale dove ricevere gli alert di sicurezza (Anti-Raid + Anti-Nuke).
+- **`/admin-antiraid avatar-check`** — Attiva/disattiva il rilevamento avatar assente.
+- **`/admin-antiraid elenco`** — File con tutti gli account dei raid nelle ultime ore.
+- **`/admin-antiraid enable`** — Attiva o disattiva l'Anti-Raid.
+- **`/admin-antiraid filtro-ingresso`** — Azione per un filtro all'ingresso (vale anche fuori da un raid).
+- **`/admin-antiraid join-rate`** — Configura il limite di join in un intervallo di tempo.
+- **`/admin-antiraid livello`** — Livelli di allerta: normale, allerta, alto, blocco.
+- **`/admin-antiraid lockdown-action`** — Cosa fare quando un raid viene rilevato.
+- **`/admin-antiraid nomi-vietati`** — Lista di parole o schemi (con *) vietati nei nomi di chi entra.
+- **`/admin-antiraid ping-ruoli`** — Ruoli dello staff pingati al primo allarme di un raid (vuoto: nessuno).
+- **`/admin-antiraid quarantine-hold`** — Impedisce a chi non è fidato di togliere la quarantena a mano.
+- **`/admin-antiraid rilascia`** — Toglie la quarantena a un membro (il modo giusto, col blocco attivo).
+- **`/admin-antiraid segnala`** — Segnala a chi gestisce il bot un raid che non è stato riconosciuto.
+- **`/admin-antiraid segnali`** — Segnali di raid sugli ultimi ingressi e azione su chi è entrato prima.
+- **`/admin-antiraid status`** — Mostra la configurazione attuale dell'Anti-Raid.
+- **`/admin-antiraid username-check`** — Attiva/disattiva il rilevamento pattern username sospetti.
+
+## Admin: AutoMod
+
+- **`/admin-automod esenzioni channel-add`** — Esenta un canale da tutti i filtri AutoMod avanzati.
+- **`/admin-automod esenzioni channel-remove`** — Rimuove l'esenzione di un canale.
+- **`/admin-automod esenzioni role-add`** — Esenta un ruolo da tutti i filtri AutoMod avanzati.
+- **`/admin-automod esenzioni role-remove`** — Rimuove l'esenzione di un ruolo.
+- **`/admin-automod log-channel`** — Imposta il canale dove pubblicare il log delle azioni AutoMod avanzate.
+- **`/admin-automod mute-duration`** — Imposta la durata del timeout usato dall'azione 'mute' dell'AutoMod.
+- **`/admin-automod odio base`** — Accende o spegne la lista di base degli insulti d'odio.
+- **`/admin-automod odio blocco`** — Blocco preventivo delle frasi d'odio.
+- **`/admin-automod odio nomi`** — Controlla nickname e nomi visualizzati all'ingresso e al cambio.
+- **`/admin-automod odio parola`** — Aggiunge o toglie una parola propria o una parola lecita.
+- **`/admin-automod odio prova`** — Prova un testo contro le parole vietate, senza agire.
+- **`/admin-automod odio richiami`** — Richiami per parole d'odio prima del timeout.
+- **`/admin-automod odio stato`** — Mostra come sono impostate le parole vietate.
+- **`/admin-automod parole add`** — Aggiunge una parola vietata.
+- **`/admin-automod parole list`** — Mostra le parole vietate configurate.
+- **`/admin-automod parole remove`** — Rimuove una parola vietata.
+- **`/admin-automod status`** — Mostra la configurazione attuale dei filtri AutoMod avanzati.
+- **`/admin-automod sync`** — Forza una sincronizzazione manuale delle regole AutoMod.
+- **`/admin-automod violazione-togli`** — Toglie una violazione dal registro AutoMod.
+- **`/admin-automod violazioni`** — Mostra le violazioni AutoMod di un utente, a pagine.
+
+## Admin: backup
+
+- **`/admin-backup annulla`** — Ferma il caricamento in corso (ciò che è già fatto resta).
+- **`/admin-backup carica`** — Ricarica in questo server una copia salvata, scegliendo le parti.
+- **`/admin-backup chat carica`** — Ricarica una chat salvata in un canale, anche diverso.
+- **`/admin-backup chat salva`** — Salva gli ultimi messaggi di un canale (fino a 1000) per ricaricarli dopo.
+- **`/admin-backup collega`** — Collega QUESTO server come backup, con il codice ricevuto dal server principale.
+- **`/admin-backup copia canale`** — Copia un canale con i permessi; una categoria con i suoi canali.
+- **`/admin-backup copia ruolo`** — Copia un ruolo con i permessi e, a scelta, i permessi nei canali.
+- **`/admin-backup crea`** — Prepara il backup: codice di collegamento e link per il nuovo server.
+- **`/admin-backup elimina`** — Elimina una copia salvata.
+- **`/admin-backup esporta`** — Esporta struttura, canali, ruoli, ban o reazioni in un file.
+- **`/admin-backup importa`** — Importa la struttura da un file JSON, scegliendo cosa applicare.
+- **`/admin-backup lista`** — Le copie salvate di questo server, con la data.
+- **`/admin-backup main`** — Registra questo server come 'main' per il Backup System.
+- **`/admin-backup modello`** — Modelli: condividi una copia con un codice o carica quella di un altro server.
+- **`/admin-backup promuovi`** — Promuove QUESTO server (finora backup) a nuovo main, se il main originale è perso.
+- **`/admin-backup registro`** — Chi ha usato backup, modelli e sincronie (ultimi 20, 365 giorni).
+- **`/admin-backup ripristino modo`** — Scegli come questo server gestisce il restore utenti via OAuth2.
+- **`/admin-backup ripristino utenti`** — Ripristina in QUESTO server gli utenti dell'ultimo snapshot di un altro server.
+- **`/admin-backup salva`** — Salva una copia datata della struttura di questo server.
+- **`/admin-backup stato`** — Avanzamento dell'ultimo caricamento in questo server.
+
+## Admin: benvenuto
+
+- **`/admin-benvenuto addio`** — Configura il messaggio di addio.
+- **`/admin-benvenuto anteprima`** — Mostra un'anteprima di come apparirebbe un messaggio.
+- **`/admin-benvenuto boost`** — Configura il messaggio di boost.
+- **`/admin-benvenuto extra`** — Benvenuto: DM, varianti, reazioni; messaggi di ban e addio.
+- **`/admin-benvenuto immagine`** — Aggiungi al benvenuto un'immagine con avatar, nome e numero del membro.
+- **`/admin-benvenuto messaggio`** — Configura il messaggio di benvenuto.
+
+## Admin: impianto del bot
+
+- **`/admin-bot config canale-report`** — Imposta il canale delle segnalazioni.
+- **`/admin-bot config canale-suggerimenti`** — Imposta il canale dei suggerimenti.
+- **`/admin-bot config export`** — Esporta la configurazione di questo server in un file.
+- **`/admin-bot config history`** — Mostra le ultime modifiche alla configurazione.
+- **`/admin-bot config import`** — Importa una configurazione da un file esportato con /admin-bot config export.
+- **`/admin-bot config nickname-bot`** — Cambia il nome del bot in questo server.
+- **`/admin-bot config pulizia`** — Toglie dalla configurazione canali e ruoli che non esistono più.
+- **`/admin-bot config reset`** — Azzera la configurazione di questo server.
+- **`/admin-bot config rollback`** — Ripristina il valore precedente di una modifica.
+- **`/admin-bot config sincronizza`** — Riscrive i permessi dei comandi di questo server.
+- **`/admin-bot lingua set`** — Imposta la lingua di questo server.
+- **`/admin-bot lingua show`** — Mostra la lingua impostata per questo server.
+- **`/admin-bot politica canali`** — Dove il bot risponde ai comandi.
+- **`/admin-bot politica comando`** — Spegne o riaccende un singolo comando.
+- **`/admin-bot politica diagnosi`** — Scopre perché un comando non funziona qui.
+- **`/admin-bot politica elenco`** — Mostra la politica dei comandi e, se vuoi, azzera un elenco.
+- **`/admin-bot politica ignora`** — Il bot ignora un ruolo o un utente.
+- **`/admin-bot premium aspetto`** — Avatar, banner e descrizione del bot in questo server (premium).
+- **`/admin-bot premium marchio`** — Usa un bot con il tuo nome e il tuo avatar (premium).
+- **`/admin-bot premium riscatta`** — Riscatta un codice premium per questo server.
+- **`/admin-bot premium sblocca`** — Sblocca un modulo premium per 30 giorni con le monete della cassa del server.
+- **`/admin-bot premium stato`** — Mostra come è sbloccato il premium in questo server.
+- **`/admin-bot setup attiva`** — Attiva o disattiva i moduli del bot, per categoria.
+- **`/admin-bot setup wizard`** — Configura passo-passo ruoli e moduli del bot, una categoria alla volta.
+
+## Admin: economia
+
+- **`/admin-economia annunci clan-off`** — Disattiva l'annuncio automatico della top 3 gilde.
+- **`/admin-economia annunci clan-set`** — Imposta il canale dove annunciare la top 3 gilde del mese.
+- **`/admin-economia annunci vincitori-off`** — Disattiva l'annuncio dei vincitori del mese.
+- **`/admin-economia annunci vincitori-set`** — Imposta il canale dove annunciare i vincitori del mese.
+- **`/admin-economia assegna-lobby`** — Premio partecipazione: assegna coin a chi è in vocale ORA, dalla cassa del server.
+- **`/admin-economia assegna-winner`** — Premio vincitore: assegna coin a un membro, dalla cassa del server.
+- **`/admin-economia cassa-premium`** — Sblocca un mese di bot premium spendendo dalla cassa.
+- **`/admin-economia monete`** — Modifica il saldo di un membro.
+- **`/admin-economia shop-add`** — Aggiunge un oggetto allo shop.
+- **`/admin-economia shop-edit`** — Cambia un oggetto dello shop (prezzo, scorte, ruolo richiesto...).
+- **`/admin-economia shop-remove`** — Rimuove un oggetto dallo shop.
+
+## Admin: filtri
+
+- **`/admin-filtri actions-set`** — Configura quali azioni eseguire quando un filtro avanzato scatta.
+- **`/admin-filtri anti-attachment`** — Configura l'anti-attachment-spam (troppi allegati in poco tempo).
+- **`/admin-filtri anti-caps`** — Configura l'anti-caps (troppo maiuscolo).
+- **`/admin-filtri anti-link-domain`** — Aggiunge o rimuove un dominio dalla whitelist/blacklist link.
+- **`/admin-filtri anti-link-mode`** — Imposta la modalità del filtro link.
+- **`/admin-filtri anti-mention`** — Configura l'anti-mass-mention (troppi utenti taggati in un messaggio).
+- **`/admin-filtri anti-spam-emoji`** — Configura l'anti-spam emoji (troppe emoji in un messaggio).
+- **`/admin-filtri anti-spam-messages`** — Configura l'anti-spam messaggi (troppi messaggi in poco tempo).
+- **`/admin-filtri anti-spam-sticker`** — Configura l'anti-spam sticker (troppi sticker in poco tempo).
+- **`/admin-filtri anti-zalgo`** — Attiva o disattiva l'anti-zalgo (testo con segni diacritici anomali).
+- **`/admin-filtri canale-media`** — Canale solo media, senza allegati o normale.
+- **`/admin-filtri contenuto`** — Embed e inoltri controllati dai filtri; tipi di file vietati.
+- **`/admin-filtri forma-testo`** — Limiti sulla forma del messaggio: a-capo, lunghezza, spoiler (0 = spento).
+- **`/admin-filtri invites`** — Attiva o disattiva il blocco automatico degli inviti Discord.
+- **`/admin-filtri messaggi`** — Ripetuti, troppo corti, link e menzioni contati nel tempo (0 = spento).
+- **`/admin-filtri phishing`** — Attiva o disattiva il blocco dei link di phishing (finti regali, finti login).
+
+## Admin: giveaway
+
+- **`/admin-giveaway avvia`** — Avvia un giveaway.
+- **`/admin-giveaway modello`** — Modelli di giveaway: salva, elenca, elimina, avvia.
+- **`/admin-giveaway programmati`** — Giveaway programmati: elenca (anche quelli in errore) o annulla.
+
+## Admin: livelli e XP
+
+- **`/admin-livelli annuncio`** — Dove e quando annunciare i level-up.
+- **`/admin-livelli card`** — Mostra o nascondi in questo server gli sfondi con immagine di card e profili.
+- **`/admin-livelli escludi`** — Un canale, una categoria o un ruolo non dà XP (rifallo per toglierlo).
+- **`/admin-livelli membro`** — Modifica XP e livello di un membro.
+- **`/admin-livelli moltiplicatore`** — XP moltiplicati in un canale o per un ruolo (fattore 1 = toglie la regola).
+- **`/admin-livelli mostra`** — Mostra le impostazioni dei livelli di questo server.
+- **`/admin-livelli negozio`** — Chiedi conferma prima di ogni acquisto nel negozio (si può spegnere).
+- **`/admin-livelli premi`** — Ruoli-premio: tienili tutti o tieni solo quello più alto.
+- **`/admin-livelli progressi`** — Accende o spegne missioni, serie, traguardi e pass, e fissa l'obiettivo del server.
+- **`/admin-livelli xp`** — Quanti XP e coin si guadagnano, e come si sommano i moltiplicatori.
+
+## Admin: log
+
+- **`/admin-log archivio-canale`** — Scarica in un file gli ultimi messaggi di un canale, anche quelli appena cancellati.
+- **`/admin-log canale`** — Imposta il canale (o il forum) dei log del server.
+- **`/admin-log cerca canale`** — Mostra lo storico eventi di un canale.
+- **`/admin-log cerca ruolo`** — Mostra lo storico eventi di un ruolo.
+- **`/admin-log cerca utente`** — Mostra lo storico eventi di un utente.
+- **`/admin-log crea-canali`** — Crea una categoria privata con un canale per ogni tipo di log.
+- **`/admin-log crea-forum`** — Crea un forum privato per i log: un post per ogni tipo.
+- **`/admin-log esporta`** — Esporta lo storico eventi completo del server come file JSON.
+- **`/admin-log eventi`** — Accendi o spegni ogni singolo evento dei log.
+- **`/admin-log ignora`** — Cosa i log non registrano (canali, utenti, ruoli; testi solo per i messaggi).
+- **`/admin-log stato`** — Mostra dove vanno i log del server.
+- **`/admin-log vista-forum`** — Un forum con un post per canale o per caso. Senza forum, la vista si spegne.
+- **`/admin-log webhook`** — Manda i log da un webhook del canale, raggruppati, con limiti suoi.
+
+## Admin: messaggi
+
+- **`/admin-messaggi embed crea`** — Crea un embed e guarda l'anteprima.
+- **`/admin-messaggi embed elenco`** — Mostra gli embed salvati.
+- **`/admin-messaggi embed elimina`** — Elimina un embed salvato (il messaggio pubblicato resta).
+- **`/admin-messaggi embed modifica`** — Cambia un embed salvato (e il messaggio già pubblicato).
+- **`/admin-messaggi embed pubblica`** — Manda un embed salvato in un canale.
+- **`/admin-messaggi fissi imposta`** — Imposta lo sticky message di un canale.
+- **`/admin-messaggi fissi togli`** — Rimuove lo sticky message di un canale.
+- **`/admin-messaggi programmati annulla`** — Annulla un messaggio programmato.
+- **`/admin-messaggi programmati crea`** — Programma un messaggio.
+- **`/admin-messaggi programmati elenco`** — Mostra i messaggi programmati di questo server.
+- **`/admin-messaggi promemoria`** — Per lo staff: i promemoria impostati in questo server.
+- **`/admin-messaggi risposte crea`** — Crea una risposta automatica.
+- **`/admin-messaggi risposte elenco`** — Mostra le risposte automatiche del server.
+- **`/admin-messaggi risposte elimina`** — Elimina una risposta automatica.
+- **`/admin-messaggi tag crea`** — Crea un comando personalizzato.
+- **`/admin-messaggi tag elenco`** — Mostra i comandi personalizzati del server.
+- **`/admin-messaggi tag elimina`** — Elimina un comando personalizzato.
+- **`/admin-messaggi tag modifica`** — Cambia un comando personalizzato.
+- **`/admin-messaggi tag prefisso`** — Scegli il prefisso per usare i comandi scrivendo nel canale.
+
+## Admin: moduli
+
+- **`/admin-moduli alert elenco`** — Elenca gli avvisi del server.
+- **`/admin-moduli alert feed`** — Segui un feed RSS/Atom.
+- **`/admin-moduli alert guida-social`** — Avvisi per TikTok, Instagram e X.
+- **`/admin-moduli alert kick`** — Avvisa quando un canale Kick va in diretta.
+- **`/admin-moduli alert opzioni`** — Opzioni di un avviso: ruolo, fine diretta, bottone.
+- **`/admin-moduli alert rimuovi`** — Rimuove un avviso o un webhook.
+- **`/admin-moduli alert ruolo-live`** — Ruolo dato a chi è in diretta.
+- **`/admin-moduli alert twitch`** — Avvisa quando uno streamer Twitch va live.
+- **`/admin-moduli alert webhook`** — Crea un webhook per pubblicare da servizi esterni.
+- **`/admin-moduli alert youtube-live`** — Avvisa quando un canale YouTube va live.
+- **`/admin-moduli candidature crea`** — Crea un modulo o una candidatura.
+- **`/admin-moduli candidature elenco`** — I moduli di questo server.
+- **`/admin-moduli candidature elimina`** — Elimina un modulo e le sue risposte.
+- **`/admin-moduli compleanni canale`** — Scegli il canale degli auguri (vuoto per spegnerli).
+- **`/admin-moduli compleanni ruolo`** — Un ruolo per 24 ore a chi compie gli anni (vuoto per toglierlo).
+- **`/admin-moduli contatori crea`** — Crea un canale che mostra un numero.
+- **`/admin-moduli contatori elenco`** — Mostra i contatori del server.
+- **`/admin-moduli contatori elimina`** — Smetti di aggiornare un contatore (il canale resta).
+- **`/admin-moduli conteggio`** — Gioco del conteggio: scegli il canale dove contare a turno 1, 2, 3...
+- **`/admin-moduli inviti`** — Registro degli inviti e chi ha il link personale.
+- **`/admin-moduli starboard disattiva`** — Spegni la bacheca.
+- **`/admin-moduli starboard imposta`** — Scegli il canale della bacheca e la soglia di stelle.
+- **`/admin-moduli starboard soglia`** — Cambia quante stelle servono per finire in bacheca.
+- **`/admin-moduli statistiche diagnosi`** — Perché le statistiche non si contano?
+- **`/admin-moduli statistiche elenco`** — Mostra regole ed esclusioni delle statistiche.
+- **`/admin-moduli statistiche impostazioni`** — Escludi canali o ruoli dalle statistiche.
+- **`/admin-moduli statistiche ruolo-aggiungi`** — Dai un ruolo a chi è attivo e toglilo a chi smette.
+- **`/admin-moduli statistiche ruolo-elimina`** — Elimina una regola dei ruoli per attività.
+
+## Admin: musica
+
+- **`/admin-musica canale-richieste`** — Canale dove si scrive un titolo per metterlo in coda, con il player.
+- **`/admin-musica impostazioni`** — Cambia le impostazioni musicali del server.
+- **`/admin-musica riepilogo`** — Mostra tutte le impostazioni musicali del server.
+
+## Admin: ruoli
+
+- **`/admin-ruoli auto aggiungi`** — Aggiungi un ruolo dato in automatico a chi entra.
+- **`/admin-ruoli auto elenco`** — Mostra i ruoli automatici del server.
+- **`/admin-ruoli auto ricorda`** — Ridai i ruoli a chi esce e rientra entro un certo tempo.
+- **`/admin-ruoli auto sincronizza`** — Dai i ruoli automatici anche ai membri già nel server.
+- **`/admin-ruoli auto togli`** — Togli un ruolo dato in automatico a chi entra.
+- **`/admin-ruoli azzera`** — Togli tutti i ruoli a un membro, con conferma.
+- **`/admin-ruoli crea`** — Crea un ruolo nuovo.
+- **`/admin-ruoli dai`** — Dai uno o più ruoli a un membro, anche per un tempo.
+- **`/admin-ruoli diagnosi`** — Scopri perché il bot non riesce a dare un ruolo.
+- **`/admin-ruoli massa`** — Dai o togli un ruolo a molti membri insieme, con filtri.
+- **`/admin-ruoli massa-ferma`** — Ferma l'operazione di massa in corso.
+- **`/admin-ruoli menu accesso`** — Limita un menu a certi ruoli o escludine altri.
+- **`/admin-ruoli menu aggiungi`** — Aggiungi un'opzione a un role menu.
+- **`/admin-ruoli menu crea`** — Crea un nuovo role menu.
+- **`/admin-ruoli menu elenco`** — Mostra i menu di ruoli del server, con gli ID.
+- **`/admin-ruoli menu elimina`** — Elimina un role menu.
+- **`/admin-ruoli menu modifica`** — Cambia titolo, descrizione o comportamento di un menu già pubblicato.
+- **`/admin-ruoli menu togli`** — Rimuovi un'opzione da un role menu.
+- **`/admin-ruoli modifica`** — Cambia nome, colore e opzioni di un ruolo.
+- **`/admin-ruoli premio aggiungi`** — Assegna un ruolo a chi raggiunge un livello.
+- **`/admin-ruoli premio elenco`** — Mostra i ruoli-premio configurati su questo server.
+- **`/admin-ruoli premio togli`** — Rimuove un ruolo-premio configurato.
+- **`/admin-ruoli scelta`** — Ruoli che i membri si prendono da soli con /utility ruolo.
+- **`/admin-ruoli togli`** — Togli uno o più ruoli a un membro, anche per un tempo.
+
+## Admin: sicurezza
+
+- **`/admin-sicurezza alt elenco`** — Gli account doppi trovati dalla verifica web.
+- **`/admin-sicurezza escalation disable`** — Disattiva l'escalation ladder.
+- **`/admin-sicurezza escalation enable`** — Attiva l'escalation ladder.
+- **`/admin-sicurezza escalation remove-step`** — Rimuove un livello dalla scala personalizzata.
+- **`/admin-sicurezza escalation reset`** — Azzera il conteggio infrazioni di un membro.
+- **`/admin-sicurezza escalation set-reset-days`** — Giorni di buona condotta per azzerare il conteggio.
+- **`/admin-sicurezza escalation set-step`** — Configura l'azione per un livello della scala.
+- **`/admin-sicurezza escalation status`** — Mostra la scala di escalation configurata.
+- **`/admin-sicurezza globalban controlla`** — Da quanti server della rete questo utente è stato bannato dalla Spam Trap.
+- **`/admin-sicurezza globalban disable`** — Abbandona la rete di ban globali.
+- **`/admin-sicurezza globalban enable`** — Aderisci alla rete di ban globali (propaga e ricevi).
+- **`/admin-sicurezza globalban status`** — Mostra lo stato e la storia recente del ban globale.
+- **`/admin-sicurezza heatmap`** — Mostra quali ruoli hanno permessi critici e chi li possiede.
+- **`/admin-sicurezza panico attiva`** — Accende il panico: blocco totale con le regole d'emergenza.
+- **`/admin-sicurezza panico configura`** — Scelte del panico: ruoli avvisati, categorie escluse, sblocco, regole.
+- **`/admin-sicurezza panico stato`** — Mostra se il server e' bloccato e le scelte del panico.
+- **`/admin-sicurezza panico togli`** — Spegne il panico e riapre il server com'era.
+- **`/admin-sicurezza score`** — Calcola il punteggio di sicurezza del server con consigli.
+- **`/admin-sicurezza spamtrap`** — Configura i canali trappola e log dello Spam Trap.
+- **`/admin-sicurezza verify blacklist-add`** — Aggiungi un utente alla blacklist.
+- **`/admin-sicurezza verify blacklist-remove`** — Rimuovi un utente dalla blacklist.
+- **`/admin-sicurezza verify invia`** — Rimanda a un membro il messaggio per verificarsi.
+- **`/admin-sicurezza verify manuale`** — Verifica a mano un membro, senza controlli.
+- **`/admin-sicurezza verify opzioni`** — Ruolo «non verificato» e ruoli extra.
+- **`/admin-sicurezza verify panel`** — Pubblica il pannello di verifica.
+- **`/admin-sicurezza verify setup`** — Configura il Verify.
+- **`/admin-sicurezza verify statistiche`** — Ingressi, uscite, captcha e verifiche.
+- **`/admin-sicurezza verify tempi`** — Promemoria, tempo massimo, azione su chi fallisce, verifica solo ai sospetti.
+- **`/admin-sicurezza verify tentativi`** — Tentativi di verifica di un utente.
+- **`/admin-sicurezza verify whitelist-add`** — Aggiungi un utente alla whitelist.
+- **`/admin-sicurezza verify whitelist-remove`** — Rimuovi un utente dalla whitelist.
+
+## Admin: ticket
+
+- **`/admin-ticket categoria aggiungi`** — Aggiungi (o aggiorna) una categoria di ticket.
+- **`/admin-ticket categoria elenco`** — Elenca le categorie di ticket configurate.
+- **`/admin-ticket categoria togli`** — Rimuovi una categoria di ticket.
+- **`/admin-ticket chiudi-tutti`** — Chiudi i ticket aperti (fino a 25 alla volta).
+- **`/admin-ticket chiusura-auto`** — Chiudi i ticket fermi da N minuti (0 = spenta).
+- **`/admin-ticket limite`** — Quanti ticket aperti alla volta può avere ogni utente (predefinito 1).
+- **`/admin-ticket lista-nera`** — Utenti e ruoli che non possono aprire ticket.
+- **`/admin-ticket modmail attiva`** — Accendi o spegni il ModMail (ticket in DM).
+- **`/admin-ticket modmail blocca`** — Blocca o sblocca un utente dal ModMail.
+- **`/admin-ticket panel`** — Pubblica il pannello per l'apertura dei ticket in questo canale.
+- **`/admin-ticket pannelli crea`** — Crea un pannello di ticket.
+- **`/admin-ticket pannelli elenco`** — Elenca i pannelli di ticket del server.
+- **`/admin-ticket pannelli modulo-aggiungi`** — Aggiungi una domanda al modulo (max 5).
+- **`/admin-ticket pannelli modulo-mostra`** — Mostra le domande del modulo di un pannello.
+- **`/admin-ticket pannelli modulo-togli`** — Togli una domanda dal modulo.
+- **`/admin-ticket pannelli pubblica`** — Pubblica qui i bottoni di uno o più pannelli.
+- **`/admin-ticket pannelli rimuovi`** — Elimina un pannello e il suo modulo.
+- **`/admin-ticket risposte elenco`** — Elenca le risposte standard del server.
+- **`/admin-ticket risposte elimina`** — Elimina una risposta standard.
+- **`/admin-ticket risposte modifica`** — Correggi una risposta standard.
+- **`/admin-ticket risposte standard`** — Risposte standard imparate dallo staff.
+- **`/admin-ticket ruolo aggiungi`** — Aggiungi un ruolo di supporto.
+- **`/admin-ticket ruolo elenco`** — Elenca i ruoli di supporto configurati.
+- **`/admin-ticket ruolo togli`** — Rimuovi un ruolo di supporto.
+- **`/admin-ticket setup`** — Configura la categoria (e opzionalmente il ruolo di supporto) per i ticket.
+- **`/admin-ticket sollecito`** — Sollecito dopo N minuti senza staff (0 = spento).
+- **`/admin-ticket sospendi`** — Sospendi l'apertura dei ticket (senza motivo: riprendi).
+- **`/admin-ticket stats`** — Statistiche del sistema di ticket.
+- **`/admin-ticket voto`** — Voto a stelle in DM alla chiusura.
+
+## Admin: opzioni dei ticket
+
+- **`/admin-ticket-opzioni accesso`** — Chi può aprire: regole per ruolo, lette dall'alto.
+- **`/admin-ticket-opzioni avvisi`** — Chi avvisare all'apertura e primo messaggio fissato.
+- **`/admin-ticket-opzioni canale`** — Nome del canale e categorie di riserva.
+- **`/admin-ticket-opzioni chiusura`** — Conferma, chiusura in due passi, chiusi, nomi.
+- **`/admin-ticket-opzioni limiti`** — Tetto di ticket aperti, pausa e ruoli esenti.
+- **`/admin-ticket-opzioni messaggi`** — DM all'utente e testi di presa e rilascio.
+- **`/admin-ticket-opzioni mostra`** — Tutte le opzioni di un pannello.
+- **`/admin-ticket-opzioni orari`** — Orari di apertura e cosa succede fuori orario.
+- **`/admin-ticket-opzioni permessi`** — Permessi dell'utente, osservatori, ruoli durante, squadra.
+- **`/admin-ticket-opzioni presa`** — Presa in carico: categoria, esclusiva, assegnazione automatica.
+
+## Admin: vocali temporanei
+
+- **`/admin-vocali cap`** — Imposta il numero massimo di vocali temporanei per categoria.
+- **`/admin-vocali generatore`** — Altri canali generatori con regole proprie.
+- **`/admin-vocali opzioni`** — Nome dei nuovi canali, blocco, registro, copia, pannello.
+- **`/admin-vocali panel`** — Pubblica il pannello per la creazione manuale di un vocale.
+- **`/admin-vocali piattaforme`** — Configura i ruoli informativi PC/Console/Mobile per i vocali temporanei.
+- **`/admin-vocali setup`** — Configura il canale generatore e la categoria dei vocali temporanei.
 
 ## Aiuto (primo livello)
 
 - **`/-cerca-comando`** — Cerca un comando per descrizione.
 - **`/-chiedi`** — Chiedi aiuto: ti mostro i comandi giusti.
-
-## Antinuke
-
-- **`/antinuke canale-allarmi`** — Sceglie dove arrivano gli allarmi dell'Anti-Nuke (canale o forum).
-- **`/antinuke casi`** — Registro degli attacchi fermati: elenco o dettaglio di un caso.
-- **`/antinuke enable`** — Attiva o disattiva l'Anti-Nuke.
-- **`/antinuke guardie`** — Protezioni su azioni singole: permessi dei ruoli, ruoli ai membri, link, bot.
-- **`/antinuke limits`** — Configura la soglia di rilevamento per una categoria.
-- **`/antinuke punish-action`** — Cosa fare all'autore di un'azione distruttiva di massa.
-- **`/antinuke recovery`** — Attiva/disattiva la ricreazione automatica di canali/ruoli cancellati durante un attacco.
-- **`/antinuke rilascia`** — Toglie la quarantena all'autore di un caso e gli rimette i ruoli.
-- **`/antinuke status`** — Mostra la configurazione attuale dell'Anti-Nuke.
-- **`/antinuke trusted-add`** — Esenta un utente, un bot o un webhook dai controlli Anti-Nuke.
-- **`/antinuke trusted-list`** — Elenca chi è esentato dai controlli Anti-Nuke e con quali limiti.
-- **`/antinuke trusted-remove`** — Rimuove un utente, un bot o un webhook dalla lista fidati Anti-Nuke.
-
-## Antiraid
-
-- **`/antiraid account-age`** — Età minima dell'account per non essere considerato sospetto.
-- **`/antiraid alert-channel`** — Canale dove ricevere gli alert di sicurezza (Anti-Raid + Anti-Nuke).
-- **`/antiraid avatar-check`** — Attiva/disattiva il rilevamento avatar assente.
-- **`/antiraid elenco`** — File con tutti gli account dei raid nelle ultime ore.
-- **`/antiraid enable`** — Attiva o disattiva l'Anti-Raid.
-- **`/antiraid filtro-ingresso`** — Azione per un filtro all'ingresso (vale anche fuori da un raid).
-- **`/antiraid join-rate`** — Configura il limite di join in un intervallo di tempo.
-- **`/antiraid livello`** — Livelli di allerta: normale, allerta, alto, blocco.
-- **`/antiraid lockdown-action`** — Cosa fare quando un raid viene rilevato.
-- **`/antiraid nomi-vietati`** — Lista di parole o schemi (con *) vietati nei nomi di chi entra.
-- **`/antiraid ping-ruoli`** — Ruoli dello staff pingati al primo allarme di un raid (vuoto: nessuno).
-- **`/antiraid quarantine-hold`** — Impedisce a chi non è fidato di togliere la quarantena a mano.
-- **`/antiraid rilascia`** — Toglie la quarantena a un membro (il modo giusto, col blocco attivo).
-- **`/antiraid segnala`** — Segnala a chi gestisce il bot un raid che non è stato riconosciuto.
-- **`/antiraid segnali`** — Segnali di raid sugli ultimi ingressi e azione su chi è entrato prima.
-- **`/antiraid status`** — Mostra la configurazione attuale dell'Anti-Raid.
-- **`/antiraid username-check`** — Attiva/disattiva il rilevamento pattern username sospetti.
 
 ## iYokai App (app separata, installata sull'utente)
 
@@ -212,54 +506,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 13:
 - **`/assistente stile`** — Un messaggio nuovo scritto come scrivi tu (o come chi lo permette).
 - **`/assistente traduci`** — Traduce un testo nella lingua che scegli.
 
-## AutoMod
-
-- **`/automod esenzioni channel-add`** — Esenta un canale da tutti i filtri AutoMod avanzati.
-- **`/automod esenzioni channel-remove`** — Rimuove l'esenzione di un canale.
-- **`/automod esenzioni role-add`** — Esenta un ruolo da tutti i filtri AutoMod avanzati.
-- **`/automod esenzioni role-remove`** — Rimuove l'esenzione di un ruolo.
-- **`/automod log-channel`** — Imposta il canale dove pubblicare il log delle azioni AutoMod avanzate.
-- **`/automod mute-duration`** — Imposta la durata del timeout usato dall'azione 'mute' dell'AutoMod.
-- **`/automod odio base`** — Accende o spegne la lista di base degli insulti d'odio.
-- **`/automod odio blocco`** — Blocco preventivo delle frasi d'odio.
-- **`/automod odio nomi`** — Controlla nickname e nomi visualizzati all'ingresso e al cambio.
-- **`/automod odio parola`** — Aggiunge o toglie una parola propria o una parola lecita.
-- **`/automod odio prova`** — Prova un testo contro le parole vietate, senza agire.
-- **`/automod odio richiami`** — Richiami per parole d'odio prima del timeout.
-- **`/automod odio stato`** — Mostra come sono impostate le parole vietate.
-- **`/automod parole add`** — Aggiunge una parola vietata.
-- **`/automod parole list`** — Mostra le parole vietate configurate.
-- **`/automod parole remove`** — Rimuove una parola vietata.
-- **`/automod status`** — Mostra la configurazione attuale dei filtri AutoMod avanzati.
-- **`/automod sync`** — Forza una sincronizzazione manuale delle regole AutoMod.
-- **`/automod violazione-togli`** — Toglie una violazione dal registro AutoMod.
-- **`/automod violazioni`** — Mostra le violazioni AutoMod di un utente, a pagine.
-
-## Backup
-
-- **`/backup annulla`** — Ferma il caricamento in corso (ciò che è già fatto resta).
-- **`/backup carica`** — Ricarica in questo server una copia salvata, scegliendo le parti.
-- **`/backup chat-carica`** — Ricarica una chat salvata in un canale, anche diverso.
-- **`/backup chat-salva`** — Salva gli ultimi messaggi di un canale (fino a 1000) per ricaricarli dopo.
-- **`/backup collega`** — Collega QUESTO server come backup, con il codice ricevuto dal server principale.
-- **`/backup copia-canale`** — Copia un canale con i permessi; una categoria con i suoi canali.
-- **`/backup copia-ruolo`** — Copia un ruolo con i permessi e, a scelta, i permessi nei canali.
-- **`/backup crea`** — Prepara il backup: codice di collegamento e link per il nuovo server.
-- **`/backup elimina`** — Elimina una copia salvata.
-- **`/backup esporta`** — Esporta struttura, canali, ruoli, ban o reazioni in un file.
-- **`/backup importa`** — Importa la struttura da un file JSON, scegliendo cosa applicare.
-- **`/backup lista`** — Le copie salvate di questo server, con la data.
-- **`/backup main`** — Registra questo server come 'main' per il Backup System.
-- **`/backup modello`** — Modelli: condividi una copia con un codice o carica quella di un altro server.
-- **`/backup permessi`** — Chi può creare e chi può caricare i backup (solo l'owner).
-- **`/backup promuovi`** — Promuove QUESTO server (finora backup) a nuovo main, se il main originale è perso.
-- **`/backup registro`** — Chi ha usato backup, modelli e sincronie (ultimi 20, 365 giorni).
-- **`/backup restore-modo`** — Scegli come questo server gestisce il restore utenti via OAuth2.
-- **`/backup restore-utenti`** — Ripristina in QUESTO server gli utenti dell'ultimo snapshot di un altro server.
-- **`/backup salva`** — Salva una copia datata della struttura di questo server.
-- **`/backup sincronia`** — Tieni uguali ban e ruoli con un altro tuo server.
-- **`/backup stato`** — Avanzamento dell'ultimo caricamento in questo server.
-
 ## Clan
 
 - **`/clan boost gilda`** — Acquista un boost ×2 per 24h per TUTTI i membri, dalla tesoreria.
@@ -277,48 +523,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 13:
 - **`/clan tesoreria dona`** — Dona coin personali alla tesoreria della tua gilda.
 - **`/clan tesoreria trasferisci`** — Trasferisci coin dalla tesoreria a un'altra TUA gilda (anche su un altro server).
 
-## Economia
+## Founder (proprietario del server)
 
-- **`/economia annunci clan-off`** — Disattiva l'annuncio automatico della top 3 gilde.
-- **`/economia annunci clan-set`** — Imposta il canale dove annunciare la top 3 gilde del mese.
-- **`/economia annunci vincitori-off`** — Disattiva l'annuncio dei vincitori del mese.
-- **`/economia annunci vincitori-set`** — Imposta il canale dove annunciare i vincitori del mese.
-- **`/economia assegna-lobby`** — Premio partecipazione: assegna coin a chi è in vocale ORA, dalla cassa del server.
-- **`/economia assegna-winner`** — Premio vincitore: assegna coin a un membro, dalla cassa del server.
-- **`/economia cassa-premium`** — Sblocca un mese di bot premium spendendo dalla cassa.
-- **`/economia livelli annuncio`** — Dove e quando annunciare i level-up.
-- **`/economia livelli card`** — Mostra o nascondi in questo server gli sfondi con immagine di card e profili.
-- **`/economia livelli escludi`** — Un canale, una categoria o un ruolo non dà XP (rifallo per toglierlo).
-- **`/economia livelli moltiplicatore`** — XP moltiplicati in un canale o per un ruolo (fattore 1 = toglie la regola).
-- **`/economia livelli mostra`** — Mostra le impostazioni dei livelli di questo server.
-- **`/economia livelli negozio`** — Chiedi conferma prima di ogni acquisto nel negozio (si può spegnere).
-- **`/economia livelli premi`** — Ruoli-premio: tienili tutti o tieni solo quello più alto.
-- **`/economia livelli xp`** — Quanti XP e coin si guadagnano, e come si sommano i moltiplicatori.
-- **`/economia monete`** — Modifica il saldo di un membro.
-- **`/economia progressi`** — Accende o spegne missioni, serie, traguardi e pass, e fissa l'obiettivo del server.
-- **`/economia shop-add`** — Aggiunge un oggetto allo shop.
-- **`/economia shop-edit`** — Cambia un oggetto dello shop (prezzo, scorte, ruolo richiesto...).
-- **`/economia shop-remove`** — Rimuove un oggetto dallo shop.
-- **`/economia xp`** — Modifica XP e livello di un membro.
-
-## Filtri AutoMod (staff)
-
-- **`/filtri actions-set`** — Configura quali azioni eseguire quando un filtro avanzato scatta.
-- **`/filtri anti-attachment`** — Configura l'anti-attachment-spam (troppi allegati in poco tempo).
-- **`/filtri anti-caps`** — Configura l'anti-caps (troppo maiuscolo).
-- **`/filtri anti-link-domain`** — Aggiunge o rimuove un dominio dalla whitelist/blacklist link.
-- **`/filtri anti-link-mode`** — Imposta la modalità del filtro link.
-- **`/filtri anti-mention`** — Configura l'anti-mass-mention (troppi utenti taggati in un messaggio).
-- **`/filtri anti-spam-emoji`** — Configura l'anti-spam emoji (troppe emoji in un messaggio).
-- **`/filtri anti-spam-messages`** — Configura l'anti-spam messaggi (troppi messaggi in poco tempo).
-- **`/filtri anti-spam-sticker`** — Configura l'anti-spam sticker (troppi sticker in poco tempo).
-- **`/filtri anti-zalgo`** — Attiva o disattiva l'anti-zalgo (testo con segni diacritici anomali).
-- **`/filtri canale-media`** — Canale solo media, senza allegati o normale.
-- **`/filtri contenuto`** — Embed e inoltri controllati dai filtri; tipi di file vietati.
-- **`/filtri forma-testo`** — Limiti sulla forma del messaggio: a-capo, lunghezza, spoiler (0 = spento).
-- **`/filtri invites`** — Attiva o disattiva il blocco automatico degli inviti Discord.
-- **`/filtri messaggi`** — Ripetuti, troppo corti, link e menzioni contati nel tempo (0 = spento).
-- **`/filtri phishing`** — Attiva o disattiva il blocco dei link di phishing (finti regali, finti login).
+- **`/founder backup permessi`** — Chi può creare e chi può caricare i backup (solo l'owner).
+- **`/founder backup sincronia`** — Tieni uguali ban e ruoli con un altro tuo server.
+- **`/founder moderazione immuni`** — Ruoli che la moderazione manuale non tocca (solo il proprietario).
 
 ## Divertimento
 
@@ -337,31 +546,10 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 13:
 - **`/fun ship`** — Calcola la compatibilità tra due utenti.
 - **`/fun testo`** — Scrivi un testo in uno stile speciale.
 
-## Gestione
-
-- **`/gestione benvenuto addio`** — Configura il messaggio di addio.
-- **`/gestione benvenuto anteprima`** — Mostra un'anteprima di come apparirebbe un messaggio.
-- **`/gestione benvenuto benvenuto`** — Configura il messaggio di benvenuto.
-- **`/gestione benvenuto boost`** — Configura il messaggio di boost.
-- **`/gestione benvenuto extra`** — Benvenuto: DM, varianti, reazioni; messaggi di ban e addio.
-- **`/gestione benvenuto immagine`** — Aggiungi al benvenuto un'immagine con avatar, nome e numero del membro.
-- **`/gestione voice cap`** — Imposta il numero massimo di vocali temporanei per categoria.
-- **`/gestione voice generatore`** — Altri canali generatori con regole proprie.
-- **`/gestione voice opzioni`** — Nome dei nuovi canali, blocco, registro, copia, pannello.
-- **`/gestione voice panel`** — Pubblica il pannello per la creazione manuale di un vocale.
-- **`/gestione voice piattaforme`** — Configura i ruoli informativi PC/Console/Mobile per i vocali temporanei.
-- **`/gestione voice setup`** — Configura il canale generatore e la categoria dei vocali temporanei.
-
 ## Giochi
 
 - **`/giochi gioca`** — Gioca le tue coin: monetina, dadi o slot.
 - **`/giochi rps`** — Carta, forbici, sasso contro il bot.
-
-## Giveaway (staff)
-
-- **`/giveaway avvia`** — Avvia un giveaway.
-- **`/giveaway modello`** — Modelli di giveaway: salva, elenca, elimina, avvia.
-- **`/giveaway programmati`** — Giveaway programmati: elenca (anche quelli in errore) o annulla.
 
 ## Immagini
 
@@ -394,123 +582,59 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 13:
 - **`/level progressi`** — Missioni, serie, traguardi e pass di 90 giorni, in un menu.
 - **`/level rank`** — Mostra la rank card: livello, XP, posizione e coin.
 
-## Log
+## Mod: ban
 
-- **`/log archivio-canale`** — Scarica in un file gli ultimi messaggi di un canale, anche quelli appena cancellati.
-- **`/log canale`** — Imposta il canale (o il forum) dei log del server.
-- **`/log cerca canale`** — Mostra lo storico eventi di un canale.
-- **`/log cerca ruolo`** — Mostra lo storico eventi di un ruolo.
-- **`/log cerca utente`** — Mostra lo storico eventi di un utente.
-- **`/log crea-canali`** — Crea una categoria privata con un canale per ogni tipo di log.
-- **`/log crea-forum`** — Crea un forum privato per i log: un post per ogni tipo.
-- **`/log esporta`** — Esporta lo storico eventi completo del server come file JSON.
-- **`/log eventi`** — Accendi o spegni ogni singolo evento dei log.
-- **`/log ignora`** — Cosa i log non registrano (canali, utenti, ruoli; testi solo per i messaggi).
-- **`/log stato`** — Mostra dove vanno i log del server.
-- **`/log vista-forum`** — Un forum con un post per canale o per caso. Senza forum, la vista si spegne.
-- **`/log webhook`** — Manda i log da un webhook del canale, raggruppati, con limiti suoi.
+- **`/mod-ban appelli canale`** — Sceglie il canale staff per gli appelli (vuoto per spegnerli).
+- **`/mod-ban appelli elenco`** — Mostra gli ultimi appelli del server.
+- **`/mod-ban ban`** — Banna permanentemente un membro.
+- **`/mod-ban kick`** — Espelle un membro dal server.
+- **`/mod-ban massa ban`** — Banna più utenti insieme, anche fuori dal server (ID o menzioni).
+- **`/mod-ban massa kick`** — Espelle più membri insieme (ID o menzioni).
+- **`/mod-ban massa unban`** — Toglie il ban a più utenti insieme (ID).
+- **`/mod-ban softban`** — Banna e sbanna subito un membro, per cancellarne i messaggi recenti.
+- **`/mod-ban tempban`** — Banna un membro per una durata definita.
+- **`/mod-ban unban`** — Rimuove il ban da un utente.
 
-## Messaggi (staff)
+## Mod: canali
 
-- **`/messaggi embed crea`** — Crea un embed e guarda l'anteprima.
-- **`/messaggi embed elenco`** — Mostra gli embed salvati.
-- **`/messaggi embed elimina`** — Elimina un embed salvato (il messaggio pubblicato resta).
-- **`/messaggi embed modifica`** — Cambia un embed salvato (e il messaggio già pubblicato).
-- **`/messaggi embed pubblica`** — Manda un embed salvato in un canale.
-- **`/messaggi fissi imposta`** — Imposta lo sticky message di un canale.
-- **`/messaggi fissi togli`** — Rimuove lo sticky message di un canale.
-- **`/messaggi programmati annulla`** — Annulla un messaggio programmato.
-- **`/messaggi programmati crea`** — Programma un messaggio.
-- **`/messaggi programmati elenco`** — Mostra i messaggi programmati di questo server.
-- **`/messaggi promemoria`** — Per lo staff: i promemoria impostati in questo server.
-- **`/messaggi risposte crea`** — Crea una risposta automatica.
-- **`/messaggi risposte elenco`** — Mostra le risposte automatiche del server.
-- **`/messaggi risposte elimina`** — Elimina una risposta automatica.
-- **`/messaggi tag crea`** — Crea un comando personalizzato.
-- **`/messaggi tag elenco`** — Mostra i comandi personalizzati del server.
-- **`/messaggi tag elimina`** — Elimina un comando personalizzato.
-- **`/messaggi tag modifica`** — Cambia un comando personalizzato.
-- **`/messaggi tag prefisso`** — Scegli il prefisso per usare i comandi scrivendo nel canale.
+- **`/mod-canali blocco attiva`** — Blocca tutti i canali, gli inviti e gli ingressi del server.
+- **`/mod-canali blocco togli`** — Riapre il server com'era prima del blocco.
+- **`/mod-canali clear`** — Cancella un numero di messaggi, con filtri opzionali.
+- **`/mod-canali lock`** — Blocca la possibilità di scrivere in un canale.
+- **`/mod-canali slowmode`** — Imposta lo slowmode su un canale.
+- **`/mod-canali unlock`** — Sblocca la possibilità di scrivere in un canale.
 
-## Moderazione
+## Mod: casi e note
 
-- **`/mod avvisi azzera`** — Toglie tutti i warn attivi di un membro (serve «Gestire il server»).
-- **`/mod avvisi classifica`** — I membri con più warn attivi.
-- **`/mod avvisi togli`** — Toglie un singolo warn (per numero di caso).
-- **`/mod blocco attiva`** — Blocca tutti i canali, gli inviti e gli ingressi del server.
-- **`/mod blocco togli`** — Riapre il server com'era prima del blocco.
-- **`/mod carico`** — Carico dello staff e turni proposti. Solo amministratori, mai pubblico.
-- **`/mod caso attive`** — Sanzioni ancora in corso: tempban, timeout, mute, lock a tempo.
-- **`/mod caso classifica-staff`** — Classifica dei moderatori per numero di azioni, o casi di uno solo.
-- **`/mod caso elimina`** — Elimina un caso (serve «Gestire il server»).
-- **`/mod caso motivo`** — Cambia il motivo di un caso già registrato.
-- **`/mod caso registra`** — Registra un caso senza eseguire l'azione (sanzione data fuori dal bot).
-- **`/mod caso storico`** — Mostra lo storico casi di un membro.
-- **`/mod caso vedi`** — Mostra i dettagli di un singolo caso.
-- **`/mod clear`** — Cancella un numero di messaggi, con filtri opzionali.
-- **`/mod lock`** — Blocca la possibilità di scrivere in un canale.
-- **`/mod massa timeout`** — Mette in timeout più membri insieme (max 28 giorni).
-- **`/mod massa warn`** — Assegna un warn a più membri insieme.
-- **`/mod mute`** — Silenzia un membro con un ruolo dedicato (alternativa al timeout).
-- **`/mod nota aggiungi`** — Aggiunge una nota su un utente.
-- **`/mod nota elenca`** — Elenca le note su un utente.
-- **`/mod nota modifica`** — Cambia il testo di una nota.
-- **`/mod nota rimuovi`** — Toglie una nota (il numero è nell'elenco delle note).
-- **`/mod nota svuota`** — Cancella tutte le note di un membro (serve «Gestire il server»).
-- **`/mod opzioni dm`** — Sceglie se l'utente riceve un DM per un tipo di azione.
-- **`/mod opzioni immuni`** — Ruoli che la moderazione manuale non tocca (solo il proprietario).
-- **`/mod opzioni imposta`** — Messaggi al ban, timeout, casi esterni, avvisi. Vuoto: mostra le opzioni.
-- **`/mod rischio`** — Punteggio di rischio di un membro, con i motivi. Solo un aiuto per decidere.
-- **`/mod slowmode`** — Imposta lo slowmode su un canale.
-- **`/mod timeout`** — Mette in timeout un membro (max 28 giorni).
-- **`/mod unlock`** — Sblocca la possibilità di scrivere in un canale.
-- **`/mod unmute`** — Rimuove il ruolo mute da un membro.
-- **`/mod untimeout`** — Rimuove il timeout da un membro.
-- **`/mod warn`** — Assegna un warn a un membro.
+- **`/mod-casi avvisi azzera`** — Toglie tutti i warn attivi di un membro (serve «Gestire il server»).
+- **`/mod-casi avvisi classifica`** — I membri con più warn attivi.
+- **`/mod-casi avvisi togli`** — Toglie un singolo warn (per numero di caso).
+- **`/mod-casi carico`** — Carico dello staff e turni proposti. Solo amministratori, mai pubblico.
+- **`/mod-casi caso attive`** — Sanzioni ancora in corso: tempban, timeout, mute, lock a tempo.
+- **`/mod-casi caso classifica-staff`** — Classifica dei moderatori per numero di azioni, o casi di uno solo.
+- **`/mod-casi caso elimina`** — Elimina un caso (serve «Gestire il server»).
+- **`/mod-casi caso motivo`** — Cambia il motivo di un caso già registrato.
+- **`/mod-casi caso registra`** — Registra un caso senza eseguire l'azione (sanzione data fuori dal bot).
+- **`/mod-casi caso storico`** — Mostra lo storico casi di un membro.
+- **`/mod-casi caso vedi`** — Mostra i dettagli di un singolo caso.
+- **`/mod-casi nota aggiungi`** — Aggiunge una nota su un utente.
+- **`/mod-casi nota elenca`** — Elenca le note su un utente.
+- **`/mod-casi nota modifica`** — Cambia il testo di una nota.
+- **`/mod-casi nota rimuovi`** — Toglie una nota (il numero è nell'elenco delle note).
+- **`/mod-casi nota svuota`** — Cancella tutte le note di un membro (serve «Gestire il server»).
+- **`/mod-casi rischio`** — Punteggio di rischio di un membro, con i motivi. Solo un aiuto per decidere.
 
-## Ban (modban)
+## Mod: sanzioni
 
-- **`/modban appelli canale`** — Sceglie il canale staff per gli appelli (vuoto per spegnerli).
-- **`/modban appelli elenco`** — Mostra gli ultimi appelli del server.
-- **`/modban ban`** — Banna permanentemente un membro.
-- **`/modban kick`** — Espelle un membro dal server.
-- **`/modban massa ban`** — Banna più utenti insieme, anche fuori dal server (ID o menzioni).
-- **`/modban massa kick`** — Espelle più membri insieme (ID o menzioni).
-- **`/modban massa unban`** — Toglie il ban a più utenti insieme (ID).
-- **`/modban softban`** — Banna e sbanna subito un membro, per cancellarne i messaggi recenti.
-- **`/modban tempban`** — Banna un membro per una durata definita.
-- **`/modban unban`** — Rimuove il ban da un utente.
-
-## Moduli
-
-- **`/moduli alert elenco`** — Elenca gli avvisi del server.
-- **`/moduli alert feed`** — Segui un feed RSS/Atom.
-- **`/moduli alert guida-social`** — Avvisi per TikTok, Instagram e X.
-- **`/moduli alert kick`** — Avvisa quando un canale Kick va in diretta.
-- **`/moduli alert opzioni`** — Opzioni di un avviso: ruolo, fine diretta, bottone.
-- **`/moduli alert rimuovi`** — Rimuove un avviso o un webhook.
-- **`/moduli alert ruolo-live`** — Ruolo dato a chi è in diretta.
-- **`/moduli alert twitch`** — Avvisa quando uno streamer Twitch va live.
-- **`/moduli alert webhook`** — Crea un webhook per pubblicare da servizi esterni.
-- **`/moduli alert youtube-live`** — Avvisa quando un canale YouTube va live.
-- **`/moduli candidature crea`** — Crea un modulo o una candidatura.
-- **`/moduli candidature elenco`** — I moduli di questo server.
-- **`/moduli candidature elimina`** — Elimina un modulo e le sue risposte.
-- **`/moduli compleanni canale`** — Scegli il canale degli auguri (vuoto per spegnerli).
-- **`/moduli compleanni ruolo`** — Un ruolo per 24 ore a chi compie gli anni (vuoto per toglierlo).
-- **`/moduli contatori crea`** — Crea un canale che mostra un numero.
-- **`/moduli contatori elenco`** — Mostra i contatori del server.
-- **`/moduli contatori elimina`** — Smetti di aggiornare un contatore (il canale resta).
-- **`/moduli conteggio`** — Gioco del conteggio: scegli il canale dove contare a turno 1, 2, 3...
-- **`/moduli inviti`** — Registro degli inviti e chi ha il link personale.
-- **`/moduli starboard disattiva`** — Spegni la bacheca.
-- **`/moduli starboard imposta`** — Scegli il canale della bacheca e la soglia di stelle.
-- **`/moduli starboard soglia`** — Cambia quante stelle servono per finire in bacheca.
-- **`/moduli statistiche diagnosi`** — Perché le statistiche non si contano?
-- **`/moduli statistiche elenco`** — Mostra regole ed esclusioni delle statistiche.
-- **`/moduli statistiche impostazioni`** — Escludi canali o ruoli dalle statistiche.
-- **`/moduli statistiche ruolo-aggiungi`** — Dai un ruolo a chi è attivo e toglilo a chi smette.
-- **`/moduli statistiche ruolo-elimina`** — Elimina una regola dei ruoli per attività.
+- **`/mod-sanzioni massa timeout`** — Mette in timeout più membri insieme (max 28 giorni).
+- **`/mod-sanzioni massa warn`** — Assegna un warn a più membri insieme.
+- **`/mod-sanzioni mute`** — Silenzia un membro con un ruolo dedicato (alternativa al timeout).
+- **`/mod-sanzioni opzioni dm`** — Sceglie se l'utente riceve un DM per un tipo di azione.
+- **`/mod-sanzioni opzioni imposta`** — Messaggi al ban, timeout, casi esterni, avvisi. Vuoto: mostra le opzioni.
+- **`/mod-sanzioni timeout`** — Mette in timeout un membro (max 28 giorni).
+- **`/mod-sanzioni unmute`** — Rimuove il ruolo mute da un membro.
+- **`/mod-sanzioni untimeout`** — Rimuove il timeout da un membro.
+- **`/mod-sanzioni warn`** — Assegna un warn a un membro.
 
 ## Monete
 
@@ -596,67 +720,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 13:
 - **`/owner system shell`** — Esegue un comando shell (con conferma).
 - **`/owner system stats`** — Statistiche globali del bot.
 
-## Ruoli
-
-- **`/ruoli auto aggiungi`** — Aggiungi un ruolo dato in automatico a chi entra.
-- **`/ruoli auto elenco`** — Mostra i ruoli automatici del server.
-- **`/ruoli auto ricorda`** — Ridai i ruoli a chi esce e rientra entro un certo tempo.
-- **`/ruoli auto sincronizza`** — Dai i ruoli automatici anche ai membri già nel server.
-- **`/ruoli auto togli`** — Togli un ruolo dato in automatico a chi entra.
-- **`/ruoli azzera`** — Togli tutti i ruoli a un membro, con conferma.
-- **`/ruoli crea`** — Crea un ruolo nuovo.
-- **`/ruoli dai`** — Dai uno o più ruoli a un membro, anche per un tempo.
-- **`/ruoli diagnosi`** — Scopri perché il bot non riesce a dare un ruolo.
-- **`/ruoli massa`** — Dai o togli un ruolo a molti membri insieme, con filtri.
-- **`/ruoli massa-ferma`** — Ferma l'operazione di massa in corso.
-- **`/ruoli menu accesso`** — Limita un menu a certi ruoli o escludine altri.
-- **`/ruoli menu aggiungi`** — Aggiungi un'opzione a un role menu.
-- **`/ruoli menu crea`** — Crea un nuovo role menu.
-- **`/ruoli menu elenco`** — Mostra i menu di ruoli del server, con gli ID.
-- **`/ruoli menu elimina`** — Elimina un role menu.
-- **`/ruoli menu modifica`** — Cambia titolo, descrizione o comportamento di un menu già pubblicato.
-- **`/ruoli menu togli`** — Rimuovi un'opzione da un role menu.
-- **`/ruoli modifica`** — Cambia nome, colore e opzioni di un ruolo.
-- **`/ruoli premio aggiungi`** — Assegna un ruolo a chi raggiunge un livello.
-- **`/ruoli premio elenco`** — Mostra i ruoli-premio configurati su questo server.
-- **`/ruoli premio togli`** — Rimuove un ruolo-premio configurato.
-- **`/ruoli scelta`** — Ruoli che i membri si prendono da soli con /utility ruolo.
-- **`/ruoli togli`** — Togli uno o più ruoli a un membro, anche per un tempo.
-
-## Sicurezza
-
-- **`/security alt elenco`** — Gli account doppi trovati dalla verifica web.
-- **`/security escalation disable`** — Disattiva l'escalation ladder.
-- **`/security escalation enable`** — Attiva l'escalation ladder.
-- **`/security escalation remove-step`** — Rimuove un livello dalla scala personalizzata.
-- **`/security escalation reset`** — Azzera il conteggio infrazioni di un membro.
-- **`/security escalation set-reset-days`** — Giorni di buona condotta per azzerare il conteggio.
-- **`/security escalation set-step`** — Configura l'azione per un livello della scala.
-- **`/security escalation status`** — Mostra la scala di escalation configurata.
-- **`/security globalban controlla`** — Da quanti server della rete questo utente è stato bannato dalla Spam Trap.
-- **`/security globalban disable`** — Abbandona la rete di ban globali.
-- **`/security globalban enable`** — Aderisci alla rete di ban globali (propaga e ricevi).
-- **`/security globalban status`** — Mostra lo stato e la storia recente del ban globale.
-- **`/security heatmap`** — Mostra quali ruoli hanno permessi critici e chi li possiede.
-- **`/security panico attiva`** — Accende il panico: blocco totale con le regole d'emergenza.
-- **`/security panico configura`** — Scelte del panico: ruoli avvisati, categorie escluse, sblocco, regole.
-- **`/security panico stato`** — Mostra se il server e' bloccato e le scelte del panico.
-- **`/security panico togli`** — Spegne il panico e riapre il server com'era.
-- **`/security score`** — Calcola il punteggio di sicurezza del server con consigli.
-- **`/security spamtrap`** — Configura i canali trappola e log dello Spam Trap.
-- **`/security verify blacklist-add`** — Aggiungi un utente alla blacklist.
-- **`/security verify blacklist-remove`** — Rimuovi un utente dalla blacklist.
-- **`/security verify invia`** — Rimanda a un membro il messaggio per verificarsi.
-- **`/security verify manuale`** — Verifica a mano un membro, senza controlli.
-- **`/security verify opzioni`** — Ruolo «non verificato» e ruoli extra.
-- **`/security verify panel`** — Pubblica il pannello di verifica.
-- **`/security verify setup`** — Configura il Verify.
-- **`/security verify statistiche`** — Ingressi, uscite, captcha e verifiche.
-- **`/security verify tempi`** — Promemoria, tempo massimo, azione su chi fallisce, verifica solo ai sospetti.
-- **`/security verify tentativi`** — Tentativi di verifica di un utente.
-- **`/security verify whitelist-add`** — Aggiungi un utente alla whitelist.
-- **`/security verify whitelist-remove`** — Rimuovi un utente dalla whitelist.
-
 ## Sondaggi
 
 - **`/sondaggi crea`** — Crea un sondaggio (fino a 10 opzioni).
@@ -682,51 +745,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 13:
 - **`/ticket rilascia`** — Lascia la presa in carico di questo ticket.
 - **`/ticket rispondi`** — Rispondi all'utente di questa conversazione ModMail.
 - **`/ticket transcript`** — Ricevi il transcript senza chiudere il ticket.
-
-## Ticket: gestione (staff)
-
-- **`/ticket-gestione categoria aggiungi`** — Aggiungi (o aggiorna) una categoria di ticket.
-- **`/ticket-gestione categoria elenco`** — Elenca le categorie di ticket configurate.
-- **`/ticket-gestione categoria togli`** — Rimuovi una categoria di ticket.
-- **`/ticket-gestione chiudi-tutti`** — Chiudi i ticket aperti (fino a 25 alla volta).
-- **`/ticket-gestione chiusura-auto`** — Chiudi i ticket fermi da N minuti (0 = spenta).
-- **`/ticket-gestione limite`** — Quanti ticket aperti alla volta può avere ogni utente (predefinito 1).
-- **`/ticket-gestione lista-nera`** — Utenti e ruoli che non possono aprire ticket.
-- **`/ticket-gestione modmail attiva`** — Accendi o spegni il ModMail (ticket in DM).
-- **`/ticket-gestione modmail blocca`** — Blocca o sblocca un utente dal ModMail.
-- **`/ticket-gestione panel`** — Pubblica il pannello per l'apertura dei ticket in questo canale.
-- **`/ticket-gestione risposte elenco`** — Elenca le risposte standard del server.
-- **`/ticket-gestione risposte elimina`** — Elimina una risposta standard.
-- **`/ticket-gestione risposte modifica`** — Correggi una risposta standard.
-- **`/ticket-gestione risposte standard`** — Risposte standard imparate dallo staff.
-- **`/ticket-gestione ruolo aggiungi`** — Aggiungi un ruolo di supporto.
-- **`/ticket-gestione ruolo elenco`** — Elenca i ruoli di supporto configurati.
-- **`/ticket-gestione ruolo togli`** — Rimuovi un ruolo di supporto.
-- **`/ticket-gestione setup`** — Configura la categoria (e opzionalmente il ruolo di supporto) per i ticket.
-- **`/ticket-gestione sollecito`** — Sollecito dopo N minuti senza staff (0 = spento).
-- **`/ticket-gestione sospendi`** — Sospendi l'apertura dei ticket (senza motivo: riprendi).
-- **`/ticket-gestione stats`** — Statistiche del sistema di ticket.
-- **`/ticket-gestione voto`** — Voto a stelle in DM alla chiusura.
-
-## Ticket: pannelli (staff)
-
-- **`/ticket-pannelli crea`** — Crea un pannello di ticket.
-- **`/ticket-pannelli elenco`** — Elenca i pannelli di ticket del server.
-- **`/ticket-pannelli modulo aggiungi`** — Aggiungi una domanda al modulo (max 5).
-- **`/ticket-pannelli modulo mostra`** — Mostra le domande del modulo di un pannello.
-- **`/ticket-pannelli modulo togli`** — Togli una domanda dal modulo.
-- **`/ticket-pannelli opzioni accesso`** — Chi può aprire: regole per ruolo, lette dall'alto.
-- **`/ticket-pannelli opzioni avvisi`** — Chi avvisare all'apertura e primo messaggio fissato.
-- **`/ticket-pannelli opzioni canale`** — Nome del canale e categorie di riserva.
-- **`/ticket-pannelli opzioni chiusura`** — Conferma, chiusura in due passi, chiusi, nomi.
-- **`/ticket-pannelli opzioni limiti`** — Tetto di ticket aperti, pausa e ruoli esenti.
-- **`/ticket-pannelli opzioni messaggi`** — DM all'utente e testi di presa e rilascio.
-- **`/ticket-pannelli opzioni mostra`** — Tutte le opzioni di un pannello.
-- **`/ticket-pannelli opzioni orari`** — Orari di apertura e cosa succede fuori orario.
-- **`/ticket-pannelli opzioni permessi`** — Permessi dell'utente, osservatori, ruoli durante, squadra.
-- **`/ticket-pannelli opzioni presa`** — Presa in carico: categoria, esclusiva, assegnazione automatica.
-- **`/ticket-pannelli pubblica`** — Pubblica qui i bottoni di uno o più pannelli.
-- **`/ticket-pannelli rimuovi`** — Elimina un pannello e il suo modulo.
 
 ## Utility
 
