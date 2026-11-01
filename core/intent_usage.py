@@ -88,6 +88,9 @@ USI: dict[str, tuple[UsoIntent, ...]] = {
         UsoIntent("AI help desk", "cogs/ai/helpdesk.py", "Answer questions, only with the server's consent"),
         UsoIntent("AI moderation", "cogs/ai/moderazione.py", "Judge flagged messages, only with the server's consent"),
         UsoIntent("AI translation", "cogs/ai/traduzione.py", "Translate messages, only with the server's consent"),
+        UsoIntent("AI channel summary", "cogs/ai/riepilogo.py", "Summarise a channel the staff chose, only with the server's consent"),
+        UsoIntent("AI ticket assistant", "cogs/ai/ticket_ai.py", "Suggest a first answer inside tickets, only with the server's consent"),
+        UsoIntent("Yokai voice", "cogs/ai/voce.py", "Read or transcribe a message when someone asks, only with the server's consent"),
     ),
     INTENT_PRESENCES: (),
 }
