@@ -1502,10 +1502,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
     # ================================================================
 
     @comando_di_gruppo(
-        "gestione",
-        nome="livello-add",
+        "ruoli",
+        nome="aggiungi",
         descrizione="Assegna un ruolo a chi raggiunge un livello.",
-        sottogruppo=_SG_RUOLI,
+        sottogruppo=SOTTOGRUPPI["ruoli premio"],
     )
     @app_commands.describe(
         level="Livello richiesto", role="Ruolo da assegnare al raggiungimento"
@@ -1532,10 +1532,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
-        nome="livello-remove",
+        "ruoli",
+        nome="togli",
         descrizione="Rimuove un ruolo-premio configurato.",
-        sottogruppo=_SG_RUOLI,
+        sottogruppo=SOTTOGRUPPI["ruoli premio"],
     )
     @app_commands.describe(reward_id="ID della ricompensa (vedi /gestione ruoli livello-list)")
     async def level_roles_remove(self, interaction: discord.Interaction, reward_id: int) -> None:
@@ -1552,10 +1552,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
 
     @comando_di_gruppo(
-        "gestione",
-        nome="livello-list",
+        "ruoli",
+        nome="elenco",
         descrizione="Mostra i ruoli-premio configurati su questo server.",
-        sottogruppo=_SG_RUOLI,
+        sottogruppo=SOTTOGRUPPI["ruoli premio"],
     )
     async def level_roles_list(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
