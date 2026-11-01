@@ -130,11 +130,11 @@ async def test_il_traduttore_risponde_solo_in_inglese_e_il_payload_ha_le_localiz
         await bot.tree.set_translator(tr.TraduttoreYokai())
         modban = bot.tree.get_command("mod-ban")
         carico = await modban.get_translated_payload(bot.tree, bot.tree.translator)
-        assert carico["description_localizations"]["en-US"] == tr.descrizione_inglese("modban")
-        assert carico["description_localizations"]["en-GB"] == tr.descrizione_inglese("modban")
+        assert carico["description_localizations"]["en-US"] == tr.descrizione_inglese("mod-ban")
+        assert carico["description_localizations"]["en-GB"] == tr.descrizione_inglese("mod-ban")
         assert "it" not in carico["description_localizations"] and "fr" not in carico["description_localizations"]
-        gestione = await bot.tree.get_command("gestione").get_translated_payload(bot.tree, bot.tree.translator)
-        assert gestione["name_localizations"]["en-US"] == "management"
+        gestione = await bot.tree.get_command("admin-vocali").get_translated_payload(bot.tree, bot.tree.translator)
+        assert gestione["name_localizations"]["en-US"] == "admin-voice"
         assert discord.Locale.italian.value == "it"
     finally:
         await _chiudi(creato_qui, bot)
@@ -149,7 +149,7 @@ async def test_l_impronta_della_sync_cambia_se_cambia_una_traduzione(monkeypatch
         comandi = bot.tree.get_commands()
         prima = await impronta_albero_tradotto(comandi, bot.tree)
         dati = tr.carica_traduzioni()
-        monkeypatch.setitem(dati["descrizioni"], "modban", "Another text.")
+        monkeypatch.setitem(dati["descrizioni"], "mod-ban", "Another text.")
         assert await impronta_albero_tradotto(comandi, bot.tree) != prima
     finally:
         await _chiudi(creato_qui, bot)
