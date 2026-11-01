@@ -122,7 +122,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
             return False
         return True
 
-    @comando_di_gruppo("messaggi", nome="crea", descrizione="Crea una risposta automatica.", sottogruppo=SOTTOGRUPPI["messaggi risposte"])
+    @comando_di_gruppo("admin-messaggi", nome="crea", descrizione="Crea una risposta automatica.", sottogruppo=SOTTOGRUPPI["admin-messaggi risposte"])
     @app_commands.describe(
         parola="La parola o frase che fa scattare la risposta (* = pezzo di parola)",
         risposta="Cosa risponde il bot. Segnaposto: {user} {username} {server} {channel}",
@@ -171,7 +171,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
         }
         await interaction.response.send_message(messaggi[esito], ephemeral=True)
 
-    @comando_di_gruppo("messaggi", nome="elimina", descrizione="Elimina una risposta automatica.", sottogruppo=SOTTOGRUPPI["messaggi risposte"])
+    @comando_di_gruppo("admin-messaggi", nome="elimina", descrizione="Elimina una risposta automatica.", sottogruppo=SOTTOGRUPPI["admin-messaggi risposte"])
     @app_commands.describe(numero="Il numero mostrato da /messaggi risposte elenco")
     async def risposta_elimina(self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 2_000_000_000]) -> None:
         if not await self._pronto(interaction):
@@ -182,7 +182,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "autoresponde_risposta_eliminata") if fatta else await testo_per(interaction, "autoresponde_non_esiste_una_risposta_con"), ephemeral=True
         )
 
-    @comando_di_gruppo("messaggi", nome="elenco", descrizione="Mostra le risposte automatiche del server.", sottogruppo=SOTTOGRUPPI["messaggi risposte"])
+    @comando_di_gruppo("admin-messaggi", nome="elenco", descrizione="Mostra le risposte automatiche del server.", sottogruppo=SOTTOGRUPPI["admin-messaggi risposte"])
     async def risposte(self, interaction: discord.Interaction) -> None:
         if not await self._pronto(interaction):
             return

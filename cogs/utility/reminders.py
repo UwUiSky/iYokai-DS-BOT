@@ -277,7 +277,7 @@ class RemindersCog(CogConGruppi, commands.Cog):
         return guild is not None and azione["guild_id"] == guild.id and await puo_usare(interaction, Livello.ADMIN)
 
     @comando_di_gruppo(
-        "messaggi",
+        "admin-messaggi",
         nome="promemoria",
         descrizione="Per lo staff: i promemoria impostati in questo server.",
     )
