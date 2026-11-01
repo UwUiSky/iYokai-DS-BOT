@@ -24,6 +24,7 @@ from core import automod_parole_opzioni as opzioni_parole
 from core import channel_router as router
 from core import odio_opzioni
 from core.config import config
+from core.i18n import testo_per
 from core.odio_libreria_logic import (
     STATI,
     STATO_APPROVATA,
@@ -165,7 +166,7 @@ class ParoleOdioCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(f"{errore} Rilancia il comando con `conferma: true`.", ephemeral=True)
             return
         await interaction.response.send_message(
-            "Lista di base accesa." if attiva else "Lista di base spenta: gli insulti d'odio non sono più bloccati.",
+            await testo_per(interaction, "paroleodio_lista_di_base_accesa") if attiva else await testo_per(interaction, "paroleodio_lista_di_base_spenta_gli"),
             ephemeral=True,
         )
 
@@ -209,7 +210,7 @@ class ParoleOdioCog(CogConGruppi, commands.Cog):
             return
         await opzioni_parole.imposta_nick(interaction.guild.id, attiva, interaction.user.id)
         await interaction.response.send_message(
-            "Controllo dei nomi acceso." if attiva else "Controllo dei nomi spento.", ephemeral=True
+            await testo_per(interaction, "paroleodio_controllo_dei_nomi_acceso") if attiva else await testo_per(interaction, "paroleodio_controllo_dei_nomi_spento"), ephemeral=True
         )
 
     @comando_di_gruppo(
@@ -259,7 +260,7 @@ class ParoleOdioCog(CogConGruppi, commands.Cog):
         await odio_opzioni.imposta_richiami(interaction.guild.id, richiami, minuti, timeout, interaction.user.id)
         o = await odio_opzioni.leggi(interaction.guild.id)
         await interaction.response.send_message(
-            f"{o.soglia} richiami in {o.minuti} minuti portano a un timeout di {o.timeout_minuti} minuti.", ephemeral=True
+            await testo_per(interaction, "paroleodio_richiami_in_minuti_portano_un", soglia=o.soglia, minuti=o.minuti, timeout_minuti=o.timeout_minuti), ephemeral=True
         )
 
     @comando_di_gruppo(
@@ -276,7 +277,7 @@ class ParoleOdioCog(CogConGruppi, commands.Cog):
         lingua: app_commands.Range[str, 2, 8] | None = None,
     ) -> None:
         if interaction.user.id != config.OWNER_ID:
-            await interaction.response.send_message("Solo il proprietario del bot può usare questo comando.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "paroleodio_solo_il_proprietario_del_bot"), ephemeral=True)
             return
         await interaction.response.send_message(await self._libreria(azione.value, testo, lingua), ephemeral=True)
 

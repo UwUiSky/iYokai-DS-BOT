@@ -30,6 +30,7 @@ from core.config import config
 from core.custom_webhook_logic import build_webhook_url
 from core.database import db
 from core.feed_alert_gate import MODULE_FEED_ALERTS
+from core.i18n import testo_per
 from core.kick_api_logic import normalizza_slug
 from core.repositories.alert_options_repo import alert_options_repo
 from core.repositories.custom_webhook_repo import custom_webhook_repo
@@ -105,14 +106,13 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
         if not await db.is_module_active_for_guild(guild.id, MODULE_FEED_ALERTS):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return
@@ -120,9 +120,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         # 10.5, 10.6, 10.13: la pagina di un profilo social non è un feed. Si spiega la strada regolare.
         if profilo_social_senza_feed(feed_url):
             await interaction.response.send_message(
-                "Quella è la pagina di un profilo (TikTok, Instagram o X), non un feed: non posso leggerla. "
-                "Serve l'indirizzo di un feed RSS «ponte» di un servizio esterno, oppure un webhook. "
-                "Guarda `/moduli alert guida-social`.",
+                await testo_per(interaction, "feedalerts_quella_la_pagina_di_un"),
                 ephemeral=True,
             )
             return
@@ -153,17 +151,13 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         )
         if subscription_id is None:
             await interaction.followup.send(
-                f"Questo server ha già {MAX_FEED_PER_SERVER} feed, il massimo consentito. "
-                "Rimuovine uno con /moduli alert rimuovi prima di aggiungerne un altro.",
+                await testo_per(interaction, "feedalerts_questo_server_ha_gia_feed", v1=MAX_FEED_PER_SERVER),
                 ephemeral=True,
             )
             return
 
         await interaction.followup.send(
-            f"✅ Sottoscrizione creata (ID `RSS-{subscription_id}`): notificherò in "
-            f"{channel.mention} i nuovi contenuti da **{label}**. "
-            f"Il primo controllo (entro 5 minuti) memorizza solo lo stato attuale, "
-            f"non pubblica lo storico esistente.",
+            await testo_per(interaction, "feedalerts_sottoscrizione_creata_id_rss_notifichero", subscription_id=subscription_id, mention=channel.mention, label=label),
             ephemeral=True,
         )
 
@@ -188,14 +182,13 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
         if not await db.is_module_active_for_guild(guild.id, MODULE_FEED_ALERTS):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return
@@ -262,8 +255,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         prefisso, _, numero_testo = subscription_id.upper().partition("-")
         if not numero_testo.isdigit():
             await interaction.response.send_message(
-                "Formato ID non valido. Usa il formato mostrato da /moduli alert elenco, "
-                "es. RSS-3, TW-2 o WH-1.",
+                await testo_per(interaction, "feedalerts_formato_id_non_valido_usa"),
                 ephemeral=True,
             )
             return
@@ -281,8 +273,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
             rimossa = await custom_webhook_repo.remove_webhook(numero, guild.id)
         else:
             await interaction.response.send_message(
-                "Prefisso non riconosciuto. Usa RSS-<numero>, TW-<numero>, YT-<numero>, "
-                "KK-<numero> o WH-<numero> (vedi /moduli alert elenco).",
+                await testo_per(interaction, "feedalerts_prefisso_non_riconosciuto_usa_rss"),
                 ephemeral=True,
             )
             return
@@ -290,10 +281,10 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         if rimossa:
             if prefisso != "WH":
                 await alert_options_repo.delete(prefisso, numero, guild.id)
-            await interaction.response.send_message("Sottoscrizione rimossa.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "feedalerts_sottoscrizione_rimossa"), ephemeral=True)
         else:
             await interaction.response.send_message(
-                "Nessuna sottoscrizione trovata con questo ID in questo server.",
+                await testo_per(interaction, "feedalerts_nessuna_sottoscrizione_trovata_con_quest"),
                 ephemeral=True,
             )
 
@@ -318,14 +309,13 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
         if not await db.is_module_active_for_guild(guild.id, MODULE_FEED_ALERTS):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return
@@ -343,8 +333,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
             return
 
         await interaction.response.send_message(
-            f"✅ Sottoscrizione Twitch creata (ID `TW-{subscription_id}`): notificherò in "
-            f"{channel.mention} quando **{label}** va live o termina la diretta.",
+            await testo_per(interaction, "feedalerts_sottoscrizione_twitch_creata_id_tw", subscription_id=subscription_id, mention=channel.mention, label=label),
             ephemeral=True,
         )
 
@@ -369,14 +358,13 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
         if not await db.is_module_active_for_guild(guild.id, MODULE_FEED_ALERTS):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return
@@ -430,21 +418,19 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
         if not await db.is_module_active_for_guild(guild.id, MODULE_FEED_ALERTS):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return
         slug = normalizza_slug(kick)
         if slug is None:
             await interaction.response.send_message(
-                "Nome del canale Kick non valido: usa solo lettere, numeri, `_` e `-` "
-                "(oppure il link kick.com/nome).",
+                await testo_per(interaction, "feedalerts_nome_del_canale_kick_non"),
                 ephemeral=True,
             )
             return
@@ -517,7 +503,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         letto = leggi_id_avviso(id_avviso)
         if letto is None:
             await interaction.response.send_message(
-                "Formato ID non valido. Usa quello di /moduli alert elenco, es. RSS-3, TW-2, YT-1 o KK-4.",
+                await testo_per(interaction, "feedalerts_formato_id_non_valido_usa_2"),
                 ephemeral=True,
             )
             return
@@ -525,12 +511,12 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         subscription_id = id_avviso
         if not await self._esiste(sigla, numero, guild.id):
             await interaction.response.send_message(
-                "Nessuna sottoscrizione trovata con questo ID in questo server.", ephemeral=True
+                await testo_per(interaction, "feedalerts_nessuna_sottoscrizione_trovata_con_quest"), ephemeral=True
             )
             return
         if azzera:
             await alert_options_repo.delete(sigla, numero, guild.id)
-            await interaction.response.send_message("✅ Opzioni riportate ai valori di base.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "feedalerts_opzioni_riportate_ai_valori_di"), ephemeral=True)
             return
 
         campi: dict = {}
@@ -557,7 +543,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
                 campi["min_gap_minutes"] = attesa
         elif any(v is not None for v in (fine, elimina, membro, parole, gioco, attesa)):
             await interaction.response.send_message(
-                "Fine diretta, ruolo «in diretta», filtri e pausa minima valgono solo per Twitch, YouTube e Kick.", ephemeral=True
+                await testo_per(interaction, "feedalerts_fine_diretta_ruolo_in_diretta"), ephemeral=True
             )
             return
         if pausa is not None:
@@ -637,35 +623,33 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         if ruolo is None:
             attuale = await alert_options_repo.get_live_role(guild.id)
             await interaction.response.send_message(
-                f"Ruolo «in diretta»: <@&{attuale}>." if attuale else "Nessun ruolo «in diretta» impostato.",
+                await testo_per(interaction, "feedalerts_ruolo_in_diretta", attuale=attuale) if attuale else await testo_per(interaction, "feedalerts_nessun_ruolo_in_diretta_impostato"),
                 ephemeral=True,
                 allowed_mentions=discord.AllowedMentions.none(),
             )
             return
         if ruolo.is_default() or ruolo.managed:
             await interaction.response.send_message(
-                "Questo ruolo non si può usare: serve un ruolo normale, non @everyone né di un'integrazione.",
+                await testo_per(interaction, "feedalerts_questo_ruolo_non_si_puo"),
                 ephemeral=True,
             )
             return
         proprietario = interaction.user.id == guild.owner_id
         if not proprietario and ruolo >= interaction.user.top_role:
             await interaction.response.send_message(
-                "Non puoi scegliere un ruolo uguale o superiore al tuo.", ephemeral=True
+                await testo_per(interaction, "activitystat_non_puoi_scegliere_un_ruolo"), ephemeral=True
             )
             return
         me = guild.me
         if me is None or not me.guild_permissions.manage_roles or ruolo >= me.top_role:
             await interaction.response.send_message(
-                "Non riesco a dare questo ruolo: mi serve il permesso «Gestire i ruoli» "
-                "e il mio ruolo più alto deve stare sopra quello scelto.",
+                await testo_per(interaction, "feedalerts_non_riesco_dare_questo_ruolo"),
                 ephemeral=True,
             )
             return
         await alert_options_repo.set_live_role(guild.id, ruolo.id)
         await interaction.response.send_message(
-            f"✅ Ruolo «in diretta» impostato su {ruolo.mention}. Lo riceve chi è collegato a un avviso "
-            "Twitch, YouTube o Kick con `/moduli alert opzioni` (campo `membro`) e lo perde a fine diretta.",
+            await testo_per(interaction, "feedalerts_ruolo_in_diretta_impostato_su", mention=ruolo.mention),
             ephemeral=True,
             allowed_mentions=discord.AllowedMentions.none(),
         )
@@ -678,7 +662,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
     )
     async def guida_social(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_message(
-            embed=discord.Embed(title="Avvisi da TikTok, Instagram e X", description=GUIDA_SOCIAL,
+            embed=discord.Embed(title=await testo_per(interaction, "feedalerts_avvisi_da_tiktok_instagram"), description=GUIDA_SOCIAL,
                                 color=discord.Color.blurple()),
             ephemeral=True,
         )
@@ -702,7 +686,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
 
         if not (feed_subs or twitch_subs or youtube_subs or kick_subs or webhooks):
             await interaction.response.send_message(
-                "Nessuna sottoscrizione attiva su questo server.", ephemeral=True
+                await testo_per(interaction, "feedalerts_nessuna_sottoscrizione_attiva_su_questo"), ephemeral=True
             )
             return
 
@@ -731,7 +715,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
             for w in webhooks
         ]
         embed = discord.Embed(
-            title="🔔 Sottoscrizioni attive",
+            title=await testo_per(interaction, "feedalerts_sottoscrizioni_attive"),
             description=_elenco_tagliato(righe),
             color=discord.Color.blurple(),
         )

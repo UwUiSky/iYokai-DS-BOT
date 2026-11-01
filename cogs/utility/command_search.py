@@ -66,7 +66,7 @@ class _NoResultsView(BaseView):
 
     @discord.ui.button(label="No, grazie", style=discord.ButtonStyle.secondary)
     async def annulla(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        embed = discord.Embed(title="Va bene", color=discord.Color.greyple())
+        embed = discord.Embed(title=await testo_per(interaction, "commandsearc_va_bene", pubblica=True), color=discord.Color.greyple())
         await interaction.response.edit_message(embed=embed, view=None)
 
 
@@ -308,8 +308,8 @@ class CommandSearchCog(commands.Cog):
             return False  # già differita: la ricerca per parole risponde con followup
         ids = await self._ids(interaction, serve={c.gruppo for c in citati})
         testo = logica.menziona_percorsi(testo, [c.percorso for c in citati], ids)
-        embed = discord.Embed(title="Assistente", description=testo[:4000], color=discord.Color.blurple())
-        embed.set_footer(text="Risposta dell'AI: controlla prima di usarla")
+        embed = discord.Embed(title=await testo_per(interaction, "commandsearc_assistente"), description=testo[:4000], color=discord.Color.blurple())
+        embed.set_footer(text=await testo_per(interaction, "commandsearc_risposta_dell_ai_controlla_prima"))
         view = RisultatiView(config.WIKI_BASE_URL, citati[0].percorso) if citati else None
         try:
             tutti = logica.raccogli_comandi(self.bot.tree.get_commands())

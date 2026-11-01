@@ -30,6 +30,7 @@ from discord.ext import commands, tasks
 from core.command_access import Livello, richiedi
 from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
 from core.database import db
+from core.i18n import testo_per
 from core.role_safety import check_role_assignable
 from core.lore_nomi_logic import titolo_livello
 from core.repositories.ai_repo import ai_repo
@@ -208,14 +209,13 @@ async def _comando_rifiutato(interaction: discord.Interaction) -> bool:
     """
     if interaction.guild is None:
         await interaction.response.send_message(
-            "Questo comando è disponibile solo dentro un server.", ephemeral=True
+            await testo_per(interaction, "guild_only_command"), ephemeral=True
         )
         return True
     if await db.is_module_active_for_guild(interaction.guild.id, MODULE_LEVELING):
         return False
     await interaction.response.send_message(
-        "Questo modulo non è attivo su questo server. "
-        "Un amministratore può attivarlo con `/admin setup attiva`.",
+        await testo_per(interaction, "leveling_questo_modulo_non_attivo_su"),
         ephemeral=True,
     )
     return True
@@ -362,7 +362,7 @@ class BottoneInvitoClan(
             return False
         if interaction.user.id != self.user_id:
             await interaction.response.send_message(
-                "Questo invito non è per te.", ephemeral=True
+                await testo_per(interaction, "leveling_questo_invito_non_per_te"), ephemeral=True
             )
             return False
         return True
@@ -377,31 +377,30 @@ class BottoneInvitoClan(
     async def _rispondi(self, interaction: discord.Interaction) -> None:
         if datetime.now(timezone.utc).timestamp() > self.scadenza:
             await interaction.response.edit_message(
-                content="⌛ Questo invito è scaduto.", view=None
+                content=await testo_per(interaction, "leveling_questo_invito_scaduto", pubblica=True), view=None
             )
             return
         if self.azione == "rifiuta":
             await interaction.response.edit_message(
-                content=f"{interaction.user.mention} ha rifiutato l'invito.", view=None
+                content=await testo_per(interaction, "leveling_ha_rifiutato_invito", pubblica=True, mention=interaction.user.mention), view=None
             )
             return
 
         esito = await guild_clan_repo.add_member(self.clan_id, interaction.user.id)
         if esito == EsitoIngresso.GILDA_INESISTENTE:
             await interaction.response.edit_message(
-                content="Questa gilda non esiste più.", view=None
+                content=await testo_per(interaction, "leveling_questa_gilda_non_esiste_piu", pubblica=True), view=None
             )
             return
         if esito == EsitoIngresso.GIA_IN_UNA_GILDA:
             await interaction.response.send_message(
-                "Fai già parte di una gilda in questo server: per accettare lasciala prima "
-                "con `/clan lascia`.",
+                await testo_per(interaction, "leveling_fai_gia_parte_di_una"),
                 ephemeral=True,
             )
             return
         if esito == EsitoIngresso.GILDA_PIENA:
             await interaction.response.send_message(
-                "La gilda è al completo: riprova quando si libera un posto.", ephemeral=True
+                await testo_per(interaction, "leveling_la_gilda_al_completo_riprova"), ephemeral=True
             )
             return
 
@@ -410,7 +409,7 @@ class BottoneInvitoClan(
         nome = taglia(clan.name, MAX_NOME_CLAN) if clan is not None else "la gilda"
         # Prima la risposta (entro 3 secondi), poi ruoli e permessi.
         await interaction.response.edit_message(
-            content=f"✅ {interaction.user.mention} è entrato in **{nome}**.", view=None
+            content=await testo_per(interaction, "leveling_entrato_in", pubblica=True, mention=interaction.user.mention, nome=nome), view=None
         )
         if clan is not None:
             categoria = guild.get_channel(clan.category_id) if clan.category_id is not None else None
@@ -559,7 +558,7 @@ class ConfermaAcquistoView(BaseView):
             return False
         if interaction.user.id != self.autore_id:
             await interaction.response.send_message(
-                "Solo chi ha usato il comando può confermare.", ephemeral=True
+                await testo_per(interaction, "leveling_solo_chi_ha_usato_il"), ephemeral=True
             )
             return False
         return True
@@ -567,7 +566,7 @@ class ConfermaAcquistoView(BaseView):
     @discord.ui.button(label="Conferma", style=discord.ButtonStyle.success)
     async def conferma(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         if self._usata:  # nessun await tra controllo e segno: due clic non passano insieme
-            await interaction.response.send_message("Già fatto.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "leveling_gia_fatto"), ephemeral=True)
             return
         self._usata = True
         self.stop()
@@ -581,7 +580,7 @@ class ConfermaAcquistoView(BaseView):
     async def annulla(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         self._usata = True
         self.stop()
-        await interaction.response.edit_message(content="Acquisto annullato.", view=None)
+        await interaction.response.edit_message(content=await testo_per(interaction, "leveling_acquisto_annullato", pubblica=True), view=None)
 
 
 MAX_FILE_RIGHE_SHOP = 64 * 1024
@@ -832,7 +831,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             # BUG-17: nessun await tra controllo e assegnazione: è atomico.
             if self.claimed_by is not None:
                 await interaction.response.send_message(
-                    "Questo drop è già stato raccolto.", ephemeral=True
+                    await testo_per(interaction, "leveling_questo_drop_gia_stato_raccolto"), ephemeral=True
                 )
                 return
 
@@ -1093,7 +1092,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
                     esadecimale = colore_valido(colore)
                     if esadecimale is None:
                         await interaction.followup.send(
-                            "Il colore deve essere nel formato #RRGGBB, per esempio #FF8800.",
+                            await testo_per(interaction, "leveling_il_colore_deve_essere_nel"),
                             ephemeral=True,
                         )
                         return
@@ -1141,19 +1140,20 @@ class LevelingCog(CogConGruppi, commands.Cog):
             logger.exception("Rank card non disegnata per %s: mando l'embed.", target.id)
             ai_cfg = await ai_repo.get_config(interaction.guild.id)  # nomi a tema (§25.69)
             embed = discord.Embed(
-                title=f"Livello di {target.display_name}", color=discord.Color.blurple()
+                title=await testo_per(interaction, "leveling_livello_di", display_name=target.display_name, pubblica=True), color=discord.Color.blurple()
             )
             embed.set_thumbnail(url=target.display_avatar.url)
             embed.add_field(
-                name="Livello",
+                name=await testo_per(interaction, "app_profilo_livello", pubblica=True),
                 value=titolo_livello(ai_cfg.lore_tema, ai_cfg.prefisso_titolo, totali.level) if ai_cfg.prefisso_titolo else str(totali.level),
                 inline=True,
             )
-            embed.add_field(name=f"{ai_cfg.nome_punti or 'XP'} totale", value=str(totali.xp_total), inline=True)
-            embed.add_field(name="Coin", value=str(totali.coins_total), inline=True)
+            nome_xp = f"{ai_cfg.nome_punti} totale" if ai_cfg.nome_punti else await testo_per(interaction, "leveling_xp_totale", pubblica=True)
+            embed.add_field(name=nome_xp, value=str(totali.xp_total), inline=True)
+            embed.add_field(name=await testo_per(interaction, "leveling_coin", pubblica=True), value=str(totali.coins_total), inline=True)
             embed.add_field(
-                name="Progresso al prossimo livello",
-                value=f"{progresso}/{richiesti} XP" if richiesti else "Livello massimo",
+                name=await testo_per(interaction, "leveling_progresso_al_prossimo_livello", pubblica=True),
+                value=await testo_per(interaction, "leveling_xp", progresso=progresso, richiesti=richiesti, pubblica=True) if richiesti else await testo_per(interaction, "leveling_livello_massimo", pubblica=True),
                 inline=False,
             )
             await interaction.followup.send(nota, embed=embed)
@@ -1181,7 +1181,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             righe += ["", f"**Moltiplicatori di XP** ({modo})", *moltiplicatori]
         if not righe:
             await interaction.response.send_message(
-                "Questo server non ha ruoli-premio né moltiplicatori di XP.", ephemeral=True
+                await testo_per(interaction, "leveling_questo_server_non_ha_ruoli"), ephemeral=True
             )
             return
         await invia_lista(
@@ -1225,7 +1225,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         ultimi = await leveling_repo.ultimi_level_up(interaction.guild.id)
         if not ultimi:
             await interaction.response.send_message(
-                "Nessun level-up registrato finora su questo server.", ephemeral=True
+                await testo_per(interaction, "leveling_nessun_level_up_registrato_finora"), ephemeral=True
             )
             return
         righe = [
@@ -1233,7 +1233,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             for utente, livello, quando in ultimi
         ]
         embed = discord.Embed(
-            title="📈 Livelli recenti", description="\n".join(righe), color=discord.Color.blurple()
+            title=await testo_per(interaction, "leveling_livelli_recenti", pubblica=True), description="\n".join(righe), color=discord.Color.blurple()
         )
         await interaction.response.send_message(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
@@ -1318,7 +1318,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
 
         moneta = await self._moneta(interaction.guild.id)
-        await interaction.response.send_message(f"Hai lavorato e guadagnato **{guadagno}** {moneta}!")
+        await interaction.response.send_message(await testo_per(interaction, "leveling_hai_lavorato_guadagnato", pubblica=True, guadagno=guadagno, moneta=moneta))
 
     @comando_di_gruppo(
         "level",
@@ -1336,12 +1336,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
         if member.id == interaction.user.id:
             await interaction.response.send_message(
-                "Non puoi pagare te stesso.", ephemeral=True
+                await testo_per(interaction, "leveling_non_puoi_pagare_te_stesso"), ephemeral=True
             )
             return
         if member.bot:
             await interaction.response.send_message(
-                "Non puoi pagare un bot.", ephemeral=True
+                await testo_per(interaction, "leveling_non_puoi_pagare_un_bot"), ephemeral=True
             )
             return
 
@@ -1349,7 +1349,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         moneta = impostazioni.currency_name
         if impostazioni.pay_max and amount > impostazioni.pay_max:
             await interaction.response.send_message(
-                f"In questo server si possono trasferire al massimo **{impostazioni.pay_max}** {moneta} alla volta.",
+                await testo_per(interaction, "leveling_in_questo_server_si_possono", pay_max=impostazioni.pay_max, moneta=moneta),
                 ephemeral=True,
             )
             return
@@ -1358,7 +1358,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         minimo = max(impostazioni.pay_min, 2 if tassa else 0)
         if amount < minimo:
             await interaction.response.send_message(
-                f"In questo server si trasferiscono almeno **{minimo}** {moneta} alla volta.",
+                await testo_per(interaction, "leveling_in_questo_server_si_trasferiscono", minimo=minimo, moneta=moneta),
                 ephemeral=True,
             )
             return
@@ -1367,7 +1367,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
         if not riuscito:
             await interaction.response.send_message(
-                f"Non hai abbastanza {moneta} per questo trasferimento.", ephemeral=True
+                await testo_per(interaction, "leveling_non_hai_abbastanza_per_questo", moneta=moneta), ephemeral=True
             )
             return
 
@@ -1425,7 +1425,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         if not voci:
             await interaction.response.send_message(
-                "Nessun dato ancora disponibile per questa classifica.", ephemeral=True
+                await testo_per(interaction, "leveling_nessun_dato_ancora_disponibile_per"), ephemeral=True
             )
             return
 
@@ -1468,7 +1468,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         impostazioni = (await self._config(interaction.guild.id)).impostazioni
         if impostazioni.max_level and livello > impostazioni.max_level:
             await interaction.response.send_message(
-                f"Il livello massimo di questo server è {impostazioni.max_level}.", ephemeral=True
+                await testo_per(interaction, "leveling_il_livello_massimo_di_questo", max_level=impostazioni.max_level), ephemeral=True
             )
             return
         target = member or interaction.user
@@ -1493,7 +1493,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 "*Senza moltiplicatori.*"
             )
         embed = discord.Embed(
-            title=f"Verso il livello {livello}", description=testo, color=discord.Color.blurple()
+            title=await testo_per(interaction, "leveling_verso_il_livello", livello=livello), description=testo, color=discord.Color.blurple()
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -1527,7 +1527,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         await level_reward_repo.add_reward(guild.id, level_threshold=level, role_id=role.id)
         await interaction.response.send_message(
-            f"✅ Chi raggiunge il livello **{level}** riceverà il ruolo {role.mention}.",
+            await testo_per(interaction, "leveling_chi_raggiunge_il_livello_ricevera", level=level, mention=role.mention),
             ephemeral=True,
         )
 
@@ -1545,10 +1545,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         rimossa = await level_reward_repo.remove_reward(reward_id, guild.id)
         if rimossa:
-            await interaction.response.send_message("Ruolo-premio rimosso.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "leveling_ruolo_premio_rimosso"), ephemeral=True)
         else:
             await interaction.response.send_message(
-                "Nessun ruolo-premio trovato con questo ID in questo server.", ephemeral=True
+                await testo_per(interaction, "leveling_nessun_ruolo_premio_trovato_con"), ephemeral=True
             )
 
     @comando_di_gruppo(
@@ -1565,7 +1565,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         ricompense = await level_reward_repo.list_rewards(guild.id)
         if not ricompense:
             await interaction.response.send_message(
-                "Nessun ruolo-premio configurato su questo server.", ephemeral=True
+                await testo_per(interaction, "leveling_nessun_ruolo_premio_configurato_su"), ephemeral=True
             )
             return
 
@@ -1597,8 +1597,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             guild.id, channel.id, already_covered_period=previous_period_key()
         )
         await interaction.response.send_message(
-            f"✅ I vincitori del mese verranno annunciati in {channel.mention} "
-            f"all'inizio di ogni mese (il primo annuncio al prossimo cambio mese).",
+            await testo_per(interaction, "leveling_vincitori_del_mese_verranno_annunciati", mention=channel.mention),
             ephemeral=True,
         )
 
@@ -1613,10 +1612,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
 
         if await monthly_winners_repo.disable(guild.id):
-            await interaction.response.send_message("Annuncio mensile disattivato.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "leveling_annuncio_mensile_disattivato"), ephemeral=True)
         else:
             await interaction.response.send_message(
-                "L'annuncio mensile non era attivo su questo server.", ephemeral=True
+                await testo_per(interaction, "leveling_annuncio_mensile_non_era_attivo"), ephemeral=True
             )
 
     # ================================================================
@@ -1642,8 +1641,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
         oggetti = await shop_repo.list_items(guild.id, categoria=categoria)
         if not oggetti:
             await interaction.response.send_message(
-                "Lo shop di questo server è vuoto." if categoria is None
-                else "Nessun oggetto in questa categoria.",
+                await testo_per(interaction, "leveling_lo_shop_di_questo_server") if categoria is None
+                else await testo_per(interaction, "leveling_nessun_oggetto_in_questa_categoria"),
                 ephemeral=True,
             )
             return
@@ -1692,7 +1691,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 nome = taglia(oggetto.name, MAX_NOME_OGGETTO)
                 moneta = await self._moneta(interaction.guild.id)
                 await interaction.response.send_message(
-                    f"Vuoi comprare **{nome}** per **{oggetto.price}** {moneta}?",
+                    await testo_per(interaction, "leveling_vuoi_comprare_per", nome=nome, price=oggetto.price, moneta=moneta),
                     ephemeral=True,
                     view=ConfermaAcquistoView(self, interaction, item_id, oggetto.price),
                 )
@@ -1710,14 +1709,14 @@ class LevelingCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None or not isinstance(interaction.user, discord.Member):
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
         oggetto = await shop_repo.get_item(item_id, guild.id)
         if oggetto is None:
             await interaction.response.send_message(
-                "Nessun oggetto trovato con questo ID.", ephemeral=True
+                await testo_per(interaction, "leveling_nessun_oggetto_trovato_con_questo"), ephemeral=True
             )
             return
 
@@ -1725,7 +1724,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             r.id == oggetto.required_role_id for r in interaction.user.roles
         ):
             await interaction.response.send_message(
-                f"Per comprarlo serve il ruolo <@&{oggetto.required_role_id}>.", ephemeral=True
+                await testo_per(interaction, "leveling_per_comprarlo_serve_il_ruolo", required_role_id=oggetto.required_role_id), ephemeral=True
             )
             return
 
@@ -1737,7 +1736,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             ruolo_shop = guild.get_role(oggetto.role_id)
             if ruolo_shop is None:
                 await interaction.response.send_message(
-                    "Questo oggetto non è più acquistabile: il suo ruolo non esiste più.",
+                    await testo_per(interaction, "leveling_questo_oggetto_non_piu_acquistabile"),
                     ephemeral=True,
                 )
                 return
@@ -1757,24 +1756,23 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
         if acquisto.esito == EsitoAcquisto.PREZZO_CAMBIATO:
             await interaction.response.send_message(
-                f"Il prezzo è cambiato mentre confermavi (era **{prezzo_atteso}** {moneta}): "
-                "nessun acquisto. Rilancia il comando per vedere il prezzo nuovo.",
+                await testo_per(interaction, "leveling_il_prezzo_cambiato_mentre_confermavi", prezzo_atteso=prezzo_atteso, moneta=moneta),
                 ephemeral=True,
             )
             return
         if acquisto.esito == EsitoAcquisto.GIA_ACQUISTATO:
             await interaction.response.send_message(
-                "Hai già acquistato questo oggetto.", ephemeral=True
+                await testo_per(interaction, "leveling_hai_gia_acquistato_questo_oggetto"), ephemeral=True
             )
             return
         if acquisto.esito == EsitoAcquisto.ESAURITO:
             await interaction.response.send_message(
-                "Questo oggetto è esaurito.", ephemeral=True
+                await testo_per(interaction, "leveling_questo_oggetto_esaurito"), ephemeral=True
             )
             return
         if acquisto.esito == EsitoAcquisto.SALDO_INSUFFICIENTE:
             await interaction.response.send_message(
-                f"Non hai abbastanza {moneta} — servono **{oggetto.price}**.", ephemeral=True
+                await testo_per(interaction, "leveling_non_hai_abbastanza_servono", moneta=moneta, price=oggetto.price), ephemeral=True
             )
             return
 
@@ -1812,8 +1810,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 interaction.user.id,
             )
             await interaction.followup.send(
-                "Non sono riuscito a darti il ruolo: l'acquisto è annullato e i "
-                f"**{oggetto.price}** {moneta} ti sono stati restituiti.",
+                await testo_per(interaction, "leveling_non_sono_riuscito_darti_il", price=oggetto.price, moneta=moneta),
                 ephemeral=True,
             )
             return
@@ -1860,7 +1857,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         name = name.strip()
         if not name:
             await interaction.response.send_message(
-                "Il nome dell'oggetto non può essere vuoto.", ephemeral=True
+                await testo_per(interaction, "leveling_il_nome_dell_oggetto_non"), ephemeral=True
             )
             return
 
@@ -1872,7 +1869,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         if durata_ruolo_ore is not None and role is None:
             await interaction.response.send_message(
-                "La durata serve solo se l'oggetto dà un ruolo.", ephemeral=True
+                await testo_per(interaction, "leveling_la_durata_serve_solo_se"), ephemeral=True
             )
             return
         righe_file = None
@@ -1950,7 +1947,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         if name is not None:
             if not name.strip():
                 await interaction.response.send_message(
-                    "Il nome dell'oggetto non può essere vuoto.", ephemeral=True
+                    await testo_per(interaction, "leveling_il_nome_dell_oggetto_non"), ephemeral=True
                 )
                 return
             campi["name"] = name.strip()
@@ -1982,7 +1979,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             campi["role_duration_hours"] = durata_ruolo_ore
         if not campi and righe is None:
             await interaction.response.send_message(
-                "Scegli almeno un valore da cambiare.", ephemeral=True
+                await testo_per(interaction, "leveling_scegli_almeno_un_valore_da"), ephemeral=True
             )
             return
         righe_file = None
@@ -2033,10 +2030,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
 
         if await shop_repo.remove_item(item_id, guild.id):
-            await interaction.response.send_message("Oggetto rimosso dallo shop.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "leveling_oggetto_rimosso_dallo_shop"), ephemeral=True)
         else:
             await interaction.response.send_message(
-                "Nessun oggetto trovato con questo ID in questo server.", ephemeral=True
+                await testo_per(interaction, "leveling_nessun_oggetto_trovato_con_questo_2"), ephemeral=True
             )
 
     # ================================================================
@@ -2062,8 +2059,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
         movimenti = await guild_chest_repo.list_ledger(guild.id, limit=5)
 
         embed = discord.Embed(
-            title="🏛️ Cassa del server",
-            description=f"Saldo attuale: **{saldo}** {await self._moneta(guild.id)}",
+            title=await testo_per(interaction, "leveling_cassa_del_server", pubblica=True),
+            description=await testo_per(interaction, "leveling_saldo_attuale", pubblica=True, saldo=saldo, v2=await self._moneta(guild.id)),
             color=discord.Color.gold(),
         )
         file = await self._con_moneta(embed, guild.id)
@@ -2072,7 +2069,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             for m in movimenti:
                 segno = "+" if m.amount > 0 else ""
                 righe.append(f"`{m.created_at:%Y-%m-%d}` {segno}{m.amount} — {m.reason}")
-            embed.add_field(name="Ultimi movimenti", value="\n".join(righe), inline=False)
+            embed.add_field(name=await testo_per(interaction, "leveling_ultimi_movimenti", pubblica=True), value="\n".join(righe), inline=False)
         await interaction.response.send_message(embed=embed, file=file)
 
     @comando_di_gruppo(
@@ -2096,29 +2093,27 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         if risultato.outcome == PurchaseOutcome.GUILD_NOT_CONFIGURED:
             await interaction.response.send_message(
-                "Configurazione del server non trovata — riprova più tardi.", ephemeral=True
+                await testo_per(interaction, "leveling_configurazione_del_server_non_trovata"), ephemeral=True
             )
         elif risultato.outcome == PurchaseOutcome.ALREADY_PURCHASED:
             await interaction.response.send_message(
-                f"Il {tier}° mese di premium è già stato acquistato da questo server.",
+                await testo_per(interaction, "leveling_il_mese_di_premium_gia", tier=tier),
                 ephemeral=True,
             )
         elif risultato.outcome == PurchaseOutcome.TIME_NOT_UNLOCKED:
             mesi_richiesti = TIER_MONTHS_REQUIRED[tier]
             await interaction.response.send_message(
-                f"Il {tier}° mese di premium si sblocca solo dopo {mesi_richiesti} mesi "
-                "dall'ingresso del bot in questo server — non è ancora passato abbastanza tempo.",
+                await testo_per(interaction, "leveling_il_mese_di_premium_si", tier=tier, mesi_richiesti=mesi_richiesti),
                 ephemeral=True,
             )
         elif risultato.outcome == PurchaseOutcome.INSUFFICIENT_FUNDS:
             await interaction.response.send_message(
-                f"La cassa non basta — servono **{risultato.cost}** coin per il {tier}° mese.",
+                await testo_per(interaction, "leveling_la_cassa_non_basta_servono", cost=risultato.cost, tier=tier),
                 ephemeral=True,
             )
         else:
             await interaction.response.send_message(
-                f"✅ {tier}° mese di premium sbloccato per **{risultato.cost}** coin dalla "
-                f"cassa! Premium attivo fino al {risultato.new_premium_until:%Y-%m-%d}."
+                await testo_per(interaction, "leveling_mese_di_premium_sbloccato_per", pubblica=True, tier=tier, cost=risultato.cost, new_premium_until=risultato.new_premium_until)
             )
 
     @comando_di_gruppo(
@@ -2153,7 +2148,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         ]
         if not presenti:
             await interaction.followup.send(
-                "Nessuno è in vocale in questo momento — nessuna coin assegnata.", ephemeral=True
+                await testo_per(interaction, "leveling_nessuno_in_vocale_in_questo"), ephemeral=True
             )
             return
 
@@ -2165,15 +2160,13 @@ class LevelingCog(CogConGruppi, commands.Cog):
         if not riuscito:
             saldo = await guild_chest_repo.get_balance(guild.id)
             await interaction.followup.send(
-                f"La cassa non basta — servono **{costo_totale}** coin per **{len(presenti)}** "
-                f"persone in vocale (ne avete **{saldo}**).",
+                await testo_per(interaction, "leveling_la_cassa_non_basta_servono_2", costo_totale=costo_totale, v2=len(presenti), saldo=saldo),
                 ephemeral=True,
             )
             return
 
         await interaction.followup.send(
-            f"✅ Assegnate **{importo}** coin a **{len(presenti)}** persone in vocale "
-            f"(**{costo_totale}** coin totali dalla cassa)."
+            await testo_per(interaction, "leveling_assegnate_coin_persone_in_vocale", pubblica=True, importo=importo, v2=len(presenti), costo_totale=costo_totale)
         )
 
     @comando_di_gruppo(
@@ -2195,7 +2188,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         # SEC-21: nessun premio a chi è in blacklist.
         if await blacklist_repo.is_user_blacklisted(membro.id):
             await interaction.response.send_message(
-                "Questo utente non può ricevere premi.", ephemeral=True
+                await testo_per(interaction, "leveling_questo_utente_non_puo_ricevere"), ephemeral=True
             )
             return
 
@@ -2206,13 +2199,13 @@ class LevelingCog(CogConGruppi, commands.Cog):
         if not riuscito:
             saldo = await guild_chest_repo.get_balance(guild.id)
             await interaction.response.send_message(
-                f"La cassa non basta — servono **{importo}** coin (ne avete **{saldo}**).",
+                await testo_per(interaction, "leveling_la_cassa_non_basta_servono_3", importo=importo, saldo=saldo),
                 ephemeral=True,
             )
             return
 
         await interaction.response.send_message(
-            f"🏆 {membro.mention} ha vinto **{importo}** coin dalla cassa del server!"
+            await testo_per(interaction, "leveling_ha_vinto_coin_dalla_cassa", pubblica=True, mention=membro.mention, importo=importo)
         )
 
     @comando_di_gruppo(
@@ -2237,17 +2230,17 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
         if membro.bot:
             await interaction.response.send_message(
-                "I bot non hanno XP.", ephemeral=True
+                await testo_per(interaction, "leveling_bot_non_hanno_xp"), ephemeral=True
             )
             return
         if azione.value != "azzera" and valore == 0 and azione.value in ("aggiungi", "togli"):
             await interaction.response.send_message(
-                "Indica quanti XP (almeno 1).", ephemeral=True
+                await testo_per(interaction, "leveling_indica_quanti_xp_almeno"), ephemeral=True
             )
             return
         if azione.value == "livello" and valore > LIVELLO_MASSIMO:
             await interaction.response.send_message(
-                f"Il livello massimo impostabile è {LIVELLO_MASSIMO}.", ephemeral=True
+                await testo_per(interaction, "leveling_il_livello_massimo_impostabile", v1=LIVELLO_MASSIMO), ephemeral=True
             )
             return
         # Dopo la scrittura si toccano i ruoli su Discord: si risponde con defer.
@@ -2298,11 +2291,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
         if await _comando_rifiutato(interaction):
             return
         if membro.bot:
-            await interaction.response.send_message("I bot non hanno coin.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "leveling_bot_non_hanno_coin"), ephemeral=True)
             return
         if azione.value != "azzera" and not importo and not (azione.value == "imposta" and importo == 0):
             await interaction.response.send_message(
-                "Indica l'importo.", ephemeral=True
+                await testo_per(interaction, "leveling_indica_importo"), ephemeral=True
             )
             return
         guild = interaction.guild
@@ -2315,7 +2308,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             esito.prima, esito.dopo,
         )
         await interaction.response.send_message(
-            f"✅ {membro.mention}: saldo **{esito.prima} → {esito.dopo}** {await self._moneta(guild.id)}.",
+            await testo_per(interaction, "leveling_saldo", mention=membro.mention, prima=esito.prima, dopo=esito.dopo, v4=await self._moneta(guild.id)),
             ephemeral=True,
             allowed_mentions=discord.AllowedMentions.none(),
         )
@@ -2350,7 +2343,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
         if guild is None or not isinstance(interaction.user, discord.Member):
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
@@ -2364,14 +2357,14 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         if await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id):
             await interaction.followup.send(
-                "Fai già parte di una gilda in questo server — lasciala prima di crearne una nuova.",
+                await testo_per(interaction, "leveling_fai_gia_parte_di_una_2"),
                 ephemeral=True,
             )
             return
 
         if await guild_clan_repo.is_tag_taken(guild.id, tag):
             await interaction.followup.send(
-                f"Il tag `{tag}` è già usato da un'altra gilda in questo server.",
+                await testo_per(interaction, "leveling_il_tag_gia_usato_da", tag=tag),
                 ephemeral=True,
             )
             return
@@ -2392,12 +2385,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
         except discord.Forbidden:
             await interaction.followup.send(
-                "Non ho i permessi per creare una categoria in questo server.", ephemeral=True
+                await testo_per(interaction, "leveling_non_ho_permessi_per_creare"), ephemeral=True
             )
             return
         except discord.HTTPException:
             await interaction.followup.send(
-                "Creazione della categoria fallita — riprova più tardi.", ephemeral=True
+                await testo_per(interaction, "leveling_creazione_della_categoria_fallita_riprov"), ephemeral=True
             )
             return
 
@@ -2424,9 +2417,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await sync_member_clan_role(guild, categoria, interaction.user, ROLE_OWNER)
 
         await interaction.followup.send(
-            f"✅ Gilda **{name}** (`{tag}`) creata! Per ufficializzarla servono "
-            f"**{CREATION_DEFICIT}** coin in tesoreria entro **{CREATION_GRACE_HOURS} ore** "
-            f"(`/clan tesoreria dona`) — altrimenti verrà eliminata automaticamente."
+            await testo_per(interaction, "leveling_gilda_creata_per_ufficializzarla_servono", pubblica=True, name=name, tag=tag, v3=CREATION_DEFICIT, v4=CREATION_GRACE_HOURS)
         )
 
     @comando_di_gruppo(
@@ -2451,7 +2442,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         if clan is None:
             await interaction.response.send_message(
-                "Nessuna gilda trovata." if tag else "Non fai parte di nessuna gilda in questo server.",
+                await testo_per(interaction, "leveling_nessuna_gilda_trovata") if tag else await testo_per(interaction, "leveling_non_fai_parte_di_nessuna"),
                 ephemeral=True,
             )
             return
@@ -2465,13 +2456,13 @@ class LevelingCog(CogConGruppi, commands.Cog):
             title=taglia(f"🛡️ [{clan.tag}] {clan.name}", LIMITE_TITOLO_EMBED),
             color=discord.Color.blurple(),
         )
-        embed.add_field(name="Stato", value=stato, inline=False)
-        embed.add_field(name="Capo Clan", value=f"<@{clan.owner_id}>", inline=True)
+        embed.add_field(name=await testo_per(interaction, "ricerca_stato", pubblica=True), value=stato, inline=False)
+        embed.add_field(name=await testo_per(interaction, "leveling_capo_clan", pubblica=True), value=f"<@{clan.owner_id}>", inline=True)
         if clan.co_owner_id is not None:
-            embed.add_field(name="Co-Owner", value=f"<@{clan.co_owner_id}>", inline=True)
-        embed.add_field(name="Membri", value=f"{n_membri}/{clan.max_members}", inline=True)
-        embed.add_field(name="Tesoreria", value=f"{clan.treasury_balance} coin", inline=True)
-        embed.add_field(name="XP totale", value=str(clan.total_xp), inline=True)
+            embed.add_field(name=await testo_per(interaction, "leveling_co_owner", pubblica=True), value=f"<@{clan.co_owner_id}>", inline=True)
+        embed.add_field(name=await testo_per(interaction, "leveling_membri", pubblica=True), value=f"{n_membri}/{clan.max_members}", inline=True)
+        embed.add_field(name=await testo_per(interaction, "leveling_tesoreria", pubblica=True), value=await testo_per(interaction, "leveling_coin_2", treasury_balance=clan.treasury_balance, pubblica=True), inline=True)
+        embed.add_field(name=await testo_per(interaction, "leveling_xp_totale", pubblica=True), value=str(clan.total_xp), inline=True)
         ore_accumulate = voice_ticks_to_hours(clan.total_voice_ticks)
         ore_richieste = next_channel_voice_hours_requirement(clan.channels_unlocked)
         prossimo_costo = next_channel_unlock_cost(clan.channels_unlocked)
@@ -2482,7 +2473,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 f"{clan.channels_unlocked} — prossimo: **{prossimo_costo}** coin + "
                 f"**{ore_richieste}**h vocali (ne avete {ore_accumulate})"
             )
-        embed.add_field(name="Canali sbloccati", value=valore_canali, inline=False)
+        embed.add_field(name=await testo_per(interaction, "leveling_canali_sbloccati", pubblica=True), value=valore_canali, inline=False)
 
         righe_boost = _righe_boost_attivi(
             benefici_attivi(
@@ -2492,12 +2483,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
         )
         if righe_boost:
-            embed.add_field(name="Boost di gilda", value="\n".join(righe_boost), inline=False)
+            embed.add_field(name=await testo_per(interaction, "leveling_boost_di_gilda", pubblica=True), value="\n".join(righe_boost), inline=False)
 
         movimenti = await guild_clan_repo.list_ledger(clan.id, limit=MOVIMENTI_IN_CLAN_INFO)
         if movimenti:
             embed.add_field(
-                name="Ultimi movimenti",
+                name=await testo_per(interaction, "leveling_ultimi_movimenti", pubblica=True),
                 value="\n".join(_riga_movimento(m) for m in movimenti),
                 inline=False,
             )
@@ -2527,7 +2518,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         if clan is None:
             await interaction.response.send_message(
-                "Nessuna gilda trovata." if tag else "Non fai parte di nessuna gilda in questo server.",
+                await testo_per(interaction, "leveling_nessuna_gilda_trovata") if tag else await testo_per(interaction, "leveling_non_fai_parte_di_nessuna"),
                 ephemeral=True,
             )
             return
@@ -2568,7 +2559,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             voci = await guild_clan_repo.get_monthly_clan_leaderboard(guild.id)
             if not voci:
                 await interaction.response.send_message(
-                    "Nessuna gilda ha guadagnato XP questo mese in questo server.",
+                    await testo_per(interaction, "leveling_nessuna_gilda_ha_guadagnato_xp"),
                     ephemeral=True,
                 )
                 return
@@ -2581,7 +2572,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             classifica = await guild_clan_repo.get_clan_leaderboard(guild.id)
             if not classifica:
                 await interaction.response.send_message(
-                    "Nessuna gilda in questo server ancora.", ephemeral=True
+                    await testo_per(interaction, "leveling_nessuna_gilda_in_questo_server"), ephemeral=True
                 )
                 return
             righe = [
@@ -2615,8 +2606,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             guild.id, channel.id, already_covered_period=clan_previous_period_key()
         )
         await interaction.response.send_message(
-            f"✅ La top 3 gilde del mese verrà annunciata in {channel.mention} "
-            f"all'inizio di ogni mese (il primo annuncio al prossimo cambio mese).",
+            await testo_per(interaction, "leveling_la_top_gilde_del_mese", mention=channel.mention),
             ephemeral=True,
         )
 
@@ -2634,11 +2624,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         if await clan_leaderboard_config_repo.disable(guild.id):
             await interaction.response.send_message(
-                "Annuncio della top 3 gilde disattivato.", ephemeral=True
+                await testo_per(interaction, "leveling_annuncio_della_top_gilde_disattivato"), ephemeral=True
             )
         else:
             await interaction.response.send_message(
-                "L'annuncio della top 3 gilde non era attivo su questo server.", ephemeral=True
+                await testo_per(interaction, "leveling_annuncio_della_top_gilde_non"), ephemeral=True
             )
 
     @comando_di_gruppo(
@@ -2657,7 +2647,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
         if clan is None:
             await interaction.followup.send(
-                "Non fai parte di nessuna gilda in questo server.", ephemeral=True
+                await testo_per(interaction, "leveling_non_fai_parte_di_nessuna"), ephemeral=True
             )
             return
         if clan.owner_id != interaction.user.id:
@@ -2693,7 +2683,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 logger.warning("Impossibile eliminare la categoria della gilda %s.", clan.id)
 
         await guild_clan_repo.delete_clan(clan.id)
-        await interaction.followup.send(f"La gilda **{clan.name}** è stata sciolta.")
+        await interaction.followup.send(await testo_per(interaction, "leveling_la_gilda_stata_sciolta", pubblica=True, name=clan.name))
 
     @comando_di_gruppo(
         "clan",
@@ -2712,32 +2702,32 @@ class LevelingCog(CogConGruppi, commands.Cog):
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
         if clan is None:
             await interaction.followup.send(
-                "Non fai parte di nessuna gilda in questo server.", ephemeral=True
+                await testo_per(interaction, "leveling_non_fai_parte_di_nessuna"), ephemeral=True
             )
             return
 
         chi_invita = await guild_clan_repo.get_member(clan.id, interaction.user.id)
         if chi_invita is None or chi_invita.role not in RUOLI_UFFICIALI:
             await interaction.followup.send(
-                "Solo il Capo Clan, il Co-Owner o un Admin Clan possono invitare nuovi membri.", ephemeral=True
+                await testo_per(interaction, "leveling_solo_il_capo_clan_il"), ephemeral=True
             )
             return
 
         if membro.bot:
             await interaction.followup.send(
-                "Non puoi invitare un bot in una gilda.", ephemeral=True
+                await testo_per(interaction, "leveling_non_puoi_invitare_un_bot"), ephemeral=True
             )
             return
 
         if await guild_clan_repo.get_member_clan_in_guild(guild.id, membro.id) is not None:
             await interaction.followup.send(
-                f"{membro.mention} fa già parte di una gilda in questo server.", ephemeral=True
+                await testo_per(interaction, "leveling_fa_gia_parte_di_una", mention=membro.mention), ephemeral=True
             )
             return
 
         if await guild_clan_repo.count_members(clan.id) >= clan.max_members:
             await interaction.followup.send(
-                f"La gilda ha già raggiunto il limite di **{clan.max_members}** membri.", ephemeral=True
+                await testo_per(interaction, "leveling_la_gilda_ha_gia_raggiunto", max_members=clan.max_members), ephemeral=True
             )
             return
 
@@ -2751,9 +2741,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         view.add_item(BottoneInvitoClan("accetta", clan.id, membro.id, scadenza))
         view.add_item(BottoneInvitoClan("rifiuta", clan.id, membro.id, scadenza))
         await interaction.followup.send(
-            f"{membro.mention}, {interaction.user.mention} ti invita nella gilda "
-            f"**{taglia(clan.name, MAX_NOME_CLAN)}** (`{clan.tag}`). "
-            f"L'invito scade <t:{scadenza}:R>.",
+            await testo_per(interaction, "leveling_ti_invita_nella_gilda_invito", pubblica=True, mention=membro.mention, mention_2=interaction.user.mention, v3=taglia(clan.name, MAX_NOME_CLAN), tag=clan.tag, scadenza=scadenza),
             view=view,
         )
 
@@ -2773,12 +2761,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
         if clan is None:
             await interaction.followup.send(
-                "Non fai parte di nessuna gilda in questo server.", ephemeral=True
+                await testo_per(interaction, "leveling_non_fai_parte_di_nessuna"), ephemeral=True
             )
             return
         if clan.owner_id == interaction.user.id:
             await interaction.followup.send(
-                "Il Capo Clan non può lasciare la gilda — usa `/clan sciogli` per scioglierla.",
+                await testo_per(interaction, "leveling_il_capo_clan_non_puo"),
                 ephemeral=True,
             )
             return
@@ -2789,7 +2777,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await clear_member_clan_presence(guild, categoria, interaction.user)
 
         await interaction.followup.send(
-            f"Hai lasciato la gilda **{taglia(clan.name, MAX_NOME_CLAN)}**.", ephemeral=True
+            await testo_per(interaction, "leveling_hai_lasciato_la_gilda", v1=taglia(clan.name, MAX_NOME_CLAN)), ephemeral=True
         )
 
     @comando_di_gruppo(
@@ -2809,35 +2797,34 @@ class LevelingCog(CogConGruppi, commands.Cog):
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
         if clan is None:
             await interaction.followup.send(
-                "Non fai parte di nessuna gilda in questo server.", ephemeral=True
+                await testo_per(interaction, "leveling_non_fai_parte_di_nessuna"), ephemeral=True
             )
             return
 
         chi_espelle = await guild_clan_repo.get_member(clan.id, interaction.user.id)
         if chi_espelle is None or chi_espelle.role not in RUOLI_UFFICIALI:
             await interaction.followup.send(
-                "Solo il Capo Clan, il Co-Owner o un Admin Clan possono espellere membri.", ephemeral=True
+                await testo_per(interaction, "leveling_solo_il_capo_clan_il_2"), ephemeral=True
             )
             return
 
         target = await guild_clan_repo.get_member(clan.id, membro.id)
         if target is None:
             await interaction.followup.send(
-                f"{membro.mention} non fa parte della tua gilda.", ephemeral=True
+                await testo_per(interaction, "leveling_non_fa_parte_della_tua", mention=membro.mention), ephemeral=True
             )
             return
 
         if membro.id == clan.owner_id:
             await interaction.followup.send(
-                "Il Capo Clan non può essere espulso — usa `/clan sciogli` per sciogliere la gilda.",
+                await testo_per(interaction, "leveling_il_capo_clan_non_puo_2"),
                 ephemeral=True,
             )
             return
 
         if chi_espelle.role == ROLE_ADMIN and target.role in (ROLE_ADMIN, ROLE_CO_OWNER):
             await interaction.followup.send(
-                "Un Admin Clan non può espellere un altro Admin Clan né il Co-Owner — "
-                "serve il Capo Clan.",
+                await testo_per(interaction, "leveling_un_admin_clan_non_puo"),
                 ephemeral=True,
             )
             return
@@ -2848,7 +2835,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await clear_member_clan_presence(guild, categoria, membro)
 
         await interaction.followup.send(
-            f"✅ {membro.mention} è stato espulso da **{clan.name}**."
+            await testo_per(interaction, "leveling_stato_espulso_da", pubblica=True, mention=membro.mention, name=clan.name)
         )
 
     @comando_di_gruppo(
@@ -2873,26 +2860,26 @@ class LevelingCog(CogConGruppi, commands.Cog):
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
         if clan is None:
             await interaction.followup.send(
-                "Non fai parte di nessuna gilda in questo server.", ephemeral=True
+                await testo_per(interaction, "leveling_non_fai_parte_di_nessuna"), ephemeral=True
             )
             return
 
         if clan.owner_id != interaction.user.id:
             await interaction.followup.send(
-                "Solo il Capo Clan può cambiare il ruolo dei membri.", ephemeral=True
+                await testo_per(interaction, "leveling_solo_il_capo_clan_puo_2"), ephemeral=True
             )
             return
 
         if membro.id == clan.owner_id:
             await interaction.followup.send(
-                "Il Capo Clan non può cambiare il proprio ruolo.", ephemeral=True
+                await testo_per(interaction, "leveling_il_capo_clan_non_puo_3"), ephemeral=True
             )
             return
 
         target = await guild_clan_repo.get_member(clan.id, membro.id)
         if target is None:
             await interaction.followup.send(
-                f"{membro.mention} non fa parte della tua gilda.", ephemeral=True
+                await testo_per(interaction, "leveling_non_fa_parte_della_tua", mention=membro.mention), ephemeral=True
             )
             return
 
@@ -2909,12 +2896,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
         if esito == EsitoRuolo.NON_MEMBRO:
             await interaction.followup.send(
-                f"{membro.mention} non fa parte della tua gilda.", ephemeral=True
+                await testo_per(interaction, "leveling_non_fa_parte_della_tua", mention=membro.mention), ephemeral=True
             )
             return
         if esito == EsitoRuolo.CO_OWNER_GIA_PRESO:
             await interaction.followup.send(
-                "La gilda ha già un Co-Owner: riportalo prima a un altro ruolo.",
+                await testo_per(interaction, "leveling_la_gilda_ha_gia_un"),
                 ephemeral=True,
             )
             return
@@ -2951,21 +2938,21 @@ class LevelingCog(CogConGruppi, commands.Cog):
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
         if clan is None:
             await interaction.followup.send(
-                "Non fai parte di nessuna gilda in questo server.", ephemeral=True
+                await testo_per(interaction, "leveling_non_fai_parte_di_nessuna"), ephemeral=True
             )
             return
 
         chi_acquista = await guild_clan_repo.get_member(clan.id, interaction.user.id)
         if chi_acquista is None or chi_acquista.role not in RUOLI_UFFICIALI:
             await interaction.followup.send(
-                "Solo il Capo Clan, il Co-Owner o un Admin Clan possono acquistare nuovi canali.", ephemeral=True
+                await testo_per(interaction, "leveling_solo_il_capo_clan_il_3"), ephemeral=True
             )
             return
 
         costo = next_channel_unlock_cost(clan.channels_unlocked)
         if costo is None:
             await interaction.followup.send(
-                "La tua gilda ha già sbloccato tutti i canali extra disponibili.", ephemeral=True
+                await testo_per(interaction, "leveling_la_tua_gilda_ha_gia"), ephemeral=True
             )
             return
 
@@ -2973,16 +2960,14 @@ class LevelingCog(CogConGruppi, commands.Cog):
         ore_accumulate = voice_ticks_to_hours(clan.total_voice_ticks)
         if ore_accumulate < ore_richieste:
             await interaction.followup.send(
-                f"Servono **{ore_richieste}** ore vocali accumulate dalla gilda per il prossimo "
-                f"canale (ne avete accumulate **{ore_accumulate}**).",
+                await testo_per(interaction, "leveling_servono_ore_vocali_accumulate_dalla", ore_richieste=ore_richieste, ore_accumulate=ore_accumulate),
                 ephemeral=True,
             )
             return
 
         if clan.treasury_balance < costo:
             await interaction.followup.send(
-                f"La tesoreria della gilda non basta — servono **{costo}** coin "
-                f"(ne avete **{clan.treasury_balance}**).",
+                await testo_per(interaction, "leveling_la_tesoreria_della_gilda_non", costo=costo, treasury_balance=clan.treasury_balance),
                 ephemeral=True,
             )
             return
@@ -2990,7 +2975,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         categoria = guild.get_channel(clan.category_id) if clan.category_id is not None else None
         if categoria is None:
             await interaction.followup.send(
-                "La categoria della tua gilda non esiste più su Discord — contatta lo staff.",
+                await testo_per(interaction, "leveling_la_categoria_della_tua_gilda"),
                 ephemeral=True,
             )
             return
@@ -3000,8 +2985,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         # attimo prima, questo non passa.
         if not await guild_clan_repo.unlock_channel(clan.id, clan.channels_unlocked, costo):
             await interaction.followup.send(
-                "L'acquisto non è andato a buon fine: la tesoreria o i canali sbloccati sono "
-                "cambiati nel frattempo. Riprova.",
+                await testo_per(interaction, "leveling_acquisto_non_andato_buon_fine"),
                 ephemeral=True,
             )
             return
@@ -3028,8 +3012,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
 
         await interaction.followup.send(
-            f"✅ Nuovo canale **{tipo}** sbloccato per **{clan.name}** — spesi **{costo}** coin "
-            f"dalla tesoreria."
+            await testo_per(interaction, "leveling_nuovo_canale_sbloccato_per_spesi", pubblica=True, tipo=tipo, name=clan.name, costo=costo)
         )
 
 
@@ -3050,7 +3033,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
         if clan is None:
             await interaction.response.send_message(
-                "Non fai parte di nessuna gilda in questo server.", ephemeral=True
+                await testo_per(interaction, "leveling_non_fai_parte_di_nessuna"), ephemeral=True
             )
             return
 
@@ -3059,7 +3042,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
         if nuovo_saldo is None:
             await interaction.response.send_message(
-                f"Non hai abbastanza coin personali — servono **{importo}**.", ephemeral=True
+                await testo_per(interaction, "leveling_non_hai_abbastanza_coin_personali", importo=importo), ephemeral=True
             )
             return
 
@@ -3093,13 +3076,13 @@ class LevelingCog(CogConGruppi, commands.Cog):
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
         if clan is None:
             await interaction.response.send_message(
-                "Non fai parte di nessuna gilda in questo server.", ephemeral=True
+                await testo_per(interaction, "leveling_non_fai_parte_di_nessuna"), ephemeral=True
             )
             return
 
         if clan.owner_id != interaction.user.id:
             await interaction.response.send_message(
-                "Solo il Capo Clan può trasferire la tesoreria verso un'altra tua gilda.",
+                await testo_per(interaction, "leveling_solo_il_capo_clan_puo_3"),
                 ephemeral=True,
             )
             return
@@ -3114,15 +3097,13 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         if not candidate:
             await interaction.response.send_message(
-                f"Non sei Capo Clan di nessun'altra gilda con tag `{tag_destinazione}` "
-                f"(su nessun server).",
+                await testo_per(interaction, "leveling_non_sei_capo_clan_di", tag_destinazione=tag_destinazione),
                 ephemeral=True,
             )
             return
         if len(candidate) > 1:
             await interaction.response.send_message(
-                f"Hai più di una gilda con tag `{tag_destinazione}` (su server diversi) — "
-                f"rinomina il tag di una delle due per distinguerle prima di trasferire.",
+                await testo_per(interaction, "leveling_hai_piu_di_una_gilda", tag_destinazione=tag_destinazione),
                 ephemeral=True,
             )
             return
@@ -3131,8 +3112,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         riuscito = await guild_clan_repo.transfer_between_treasuries(clan.id, destinazione.id, importo)
         if not riuscito:
             await interaction.response.send_message(
-                f"La tesoreria di **{clan.name}** non basta — servono **{importo}** coin "
-                f"(ne avete **{clan.treasury_balance}**).",
+                await testo_per(interaction, "leveling_la_tesoreria_di_non_basta", name=clan.name, importo=importo, treasury_balance=clan.treasury_balance),
                 ephemeral=True,
             )
             return
@@ -3174,7 +3154,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
         if clan is None:
             await interaction.response.send_message(
-                "Non fai parte di nessuna gilda in questo server.", ephemeral=True
+                await testo_per(interaction, "leveling_non_fai_parte_di_nessuna"), ephemeral=True
             )
             return
 
@@ -3186,7 +3166,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
         if esito.stato is StatoBoost.NON_MEMBRO:
             await interaction.response.send_message(
-                "Non fai più parte di questa gilda.", ephemeral=True
+                await testo_per(interaction, "leveling_non_fai_piu_parte_di"), ephemeral=True
             )
             return
         if esito.stato is StatoBoost.GIA_ATTIVO:
@@ -3201,7 +3181,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
         if esito.stato is not StatoBoost.ACQUISTATO:
             await interaction.response.send_message(
-                f"Non hai abbastanza coin personali — servono **{costo}**.",
+                await testo_per(interaction, "leveling_non_hai_abbastanza_coin_personali_2", costo=costo),
                 ephemeral=True,
             )
             return
@@ -3229,14 +3209,14 @@ class LevelingCog(CogConGruppi, commands.Cog):
         clan = await guild_clan_repo.get_member_clan_in_guild(guild.id, interaction.user.id)
         if clan is None:
             await interaction.response.send_message(
-                "Non fai parte di nessuna gilda in questo server.", ephemeral=True
+                await testo_per(interaction, "leveling_non_fai_parte_di_nessuna"), ephemeral=True
             )
             return
 
         chi_acquista = await guild_clan_repo.get_member(clan.id, interaction.user.id)
         if chi_acquista is None or chi_acquista.role not in RUOLI_UFFICIALI:
             await interaction.response.send_message(
-                "Solo il Capo Clan, il Co-Owner o un Admin Clan possono acquistare il boost di gilda.",
+                await testo_per(interaction, "leveling_solo_il_capo_clan_il_4"),
                 ephemeral=True,
             )
             return
@@ -3247,7 +3227,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         esito = await guild_clan_repo.buy_guild_boost(clan.id, tipo_boost, adesso)
         if esito.stato is StatoBoost.ASSENTE:
             await interaction.response.send_message(
-                "Questa gilda non esiste più.", ephemeral=True
+                await testo_per(interaction, "leveling_questa_gilda_non_esiste_piu"), ephemeral=True
             )
             return
         if esito.stato is StatoBoost.GIA_ATTIVO:
@@ -3264,8 +3244,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             gilda_aggiornata = await guild_clan_repo.get_clan(clan.id)
             saldo = gilda_aggiornata.treasury_balance if gilda_aggiornata else clan.treasury_balance
             await interaction.response.send_message(
-                f"La tesoreria della gilda non basta — servono **{costo}** coin "
-                f"(ne avete **{saldo}**).",
+                await testo_per(interaction, "leveling_la_tesoreria_della_gilda_non_2", costo=costo, saldo=saldo),
                 ephemeral=True,
             )
             return
@@ -3305,7 +3284,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 or giveaway.ends_at <= datetime.now(timezone.utc)
             ):
                 await interaction.response.send_message(
-                    "Questo giveaway non è più attivo.", ephemeral=True
+                    await testo_per(interaction, "leveling_questo_giveaway_non_piu_attivo"), ephemeral=True
                 )
                 return
 
@@ -3337,7 +3316,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 )
             else:
                 await interaction.response.send_message(
-                    "Avevi già partecipato a questo giveaway.", ephemeral=True
+                    await testo_per(interaction, "leveling_avevi_gia_partecipato_questo_giveaway"), ephemeral=True
                 )
 
     # ================================================================
@@ -3500,7 +3479,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         guild_id = interaction.guild.id
         if allegato is not None and togli:
             await interaction.response.send_message(
-                "Scegli: o carichi un'immagine, o la togli.", ephemeral=True
+                await testo_per(interaction, "leveling_scegli_carichi_un_immagine_la"), ephemeral=True
             )
             return
         immagine = None
@@ -3508,12 +3487,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
         if allegato is not None:
             if allegato.size > MAX_IMAGE_BYTES:
                 await interaction.response.send_message(
-                    "L'immagine è troppo grande: al massimo 8 MB.", ephemeral=True
+                    await testo_per(interaction, "asp_immagine_grande"), ephemeral=True
                 )
                 return
             if not (allegato.content_type or "").startswith("image/"):
                 await interaction.response.send_message(
-                    "La moneta deve essere un'immagine (PNG, JPEG, WEBP).", ephemeral=True
+                    await testo_per(interaction, "leveling_la_moneta_deve_essere_un"), ephemeral=True
                 )
                 return
             await interaction.response.defer(ephemeral=True)
@@ -3522,18 +3501,18 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 immagine = await run_image_task(prepara_moneta, await allegato.read())
             except MonetaNonValida:
                 await interaction.followup.send(
-                    "Non riesco ad aprire questa immagine: prova con un PNG o un JPEG più piccolo.",
+                    await testo_per(interaction, "leveling_non_riesco_ad_aprire_questa"),
                     ephemeral=True,
                 )
                 return
             except discord.HTTPException:
                 await interaction.followup.send(
-                    "Non sono riuscito a scaricare l'immagine: riprova.", ephemeral=True
+                    await testo_per(interaction, "leveling_non_sono_riuscito_scaricare_immagine"), ephemeral=True
                 )
                 return
         if not campi and immagine is None and not togli:
             await interaction.response.send_message(
-                "Scegli almeno un valore da cambiare.", ephemeral=True
+                await testo_per(interaction, "leveling_scegli_almeno_un_valore_da"), ephemeral=True
             )
             return
         try:
@@ -3595,7 +3574,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
     async def _salva_impostazioni(self, interaction: discord.Interaction, campi: dict) -> None:
         if not campi:
             await interaction.response.send_message(
-                "Scegli almeno un valore da cambiare.", ephemeral=True
+                await testo_per(interaction, "leveling_scegli_almeno_un_valore_da"), ephemeral=True
             )
             return
         try:
@@ -3605,7 +3584,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
         config = await leveling_settings_repo.get_config(interaction.guild.id)
         await interaction.response.send_message(
-            "✅ Impostazioni salvate.", embed=_embed_impostazioni(config), ephemeral=True
+            await testo_per(interaction, "leveling_impostazioni_salvate"), embed=_embed_impostazioni(config), ephemeral=True
         )
 
     @comando_di_gruppo(
@@ -3629,7 +3608,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
         if (canale is None) == (ruolo is None):
             await interaction.response.send_message(
-                "Scegli un canale oppure un ruolo, non entrambi.", ephemeral=True
+                await testo_per(interaction, "leveling_scegli_un_canale_oppure_un"), ephemeral=True
             )
             return
         tipo, bersaglio = (
@@ -3647,7 +3626,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 await leveling_settings_repo.set_rule(interaction.guild.id, tipo, bersaglio.id)
             except RegolaPiena:
                 await interaction.response.send_message(
-                    f"❌ Hai già {MAX_REGOLE_PER_TIPO} esclusioni di questo tipo.", ephemeral=True
+                    await testo_per(interaction, "leveling_hai_gia_esclusioni_di_questo", v1=MAX_REGOLE_PER_TIPO), ephemeral=True
                 )
                 return
             testo = f"✅ {bersaglio.mention} non dà più XP."
@@ -3676,7 +3655,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
         if (canale is None) == (ruolo is None):
             await interaction.response.send_message(
-                "Scegli un canale oppure un ruolo, non entrambi.", ephemeral=True
+                await testo_per(interaction, "leveling_scegli_un_canale_oppure_un"), ephemeral=True
             )
             return
         tipo, bersaglio = (
@@ -3692,7 +3671,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 )
             except RegolaPiena:
                 await interaction.response.send_message(
-                    f"❌ Hai già {MAX_REGOLE_PER_TIPO} moltiplicatori di questo tipo.",
+                    await testo_per(interaction, "leveling_hai_gia_moltiplicatori_di_questo", v1=MAX_REGOLE_PER_TIPO),
                     ephemeral=True,
                 )
                 return
@@ -3718,7 +3697,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if ingressi_extra > 0 and bonus_role_id is None:
             await interaction.response.send_message(
-                "Gli ingressi extra servono a un ruolo: indica anche quale.", ephemeral=True
+                await testo_per(interaction, "leveling_gli_ingressi_extra_servono_un"), ephemeral=True
             )
             return
         programmato = inizia_tra is not None
@@ -3745,8 +3724,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
         if programmato:
             await interaction.response.send_message(
-                f"🗓️ Giveaway programmato: parte <t:{int(inizio.timestamp())}:R> in questo canale "
-                f"e dura {durata_minuti} minuti.",
+                await testo_per(interaction, "leveling_giveaway_programmato_parte_in_questo", v1=int(inizio.timestamp()), durata_minuti=durata_minuti),
                 ephemeral=True,
             )
             return
@@ -3796,7 +3774,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
         if interaction.guild is None or interaction.channel is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
         await self._avvia_giveaway(
@@ -3847,7 +3825,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
         if interaction.guild is None or interaction.channel is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
         guild_id = interaction.guild.id
@@ -3856,7 +3834,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         if cosa == "elenco":
             modelli = await giveaway_repo.list_templates(guild_id)
             if not modelli:
-                await interaction.response.send_message("Nessun modello salvato.", ephemeral=True)
+                await interaction.response.send_message(await testo_per(interaction, "leveling_nessun_modello_salvato"), ephemeral=True)
                 return
             righe = [
                 taglia(f"• **{m.name}** — {m.prize}, {m.winners_count} vincitori, {m.duration_minutes} min", 76)
@@ -3866,25 +3844,25 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
 
         if nome is None:
-            await interaction.response.send_message("Indica il nome del modello.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "leveling_indica_il_nome_del_modello"), ephemeral=True)
             return
 
         if cosa == "elimina":
             tolto = await giveaway_repo.delete_template(guild_id, nome)
             await interaction.response.send_message(
-                "✅ Modello eliminato." if tolto else "Questo modello non esiste.", ephemeral=True
+                await testo_per(interaction, "leveling_modello_eliminato") if tolto else await testo_per(interaction, "leveling_questo_modello_non_esiste"), ephemeral=True
             )
             return
 
         if cosa == "salva":
             if premio is None or durata_minuti is None:
                 await interaction.response.send_message(
-                    "Per salvare servono almeno il premio e la durata.", ephemeral=True
+                    await testo_per(interaction, "leveling_per_salvare_servono_almeno_il"), ephemeral=True
                 )
                 return
             if ingressi_extra and ruolo_extra is None:
                 await interaction.response.send_message(
-                    "Gli ingressi extra servono a un ruolo: indica anche quale.", ephemeral=True
+                    await testo_per(interaction, "leveling_gli_ingressi_extra_servono_un"), ephemeral=True
                 )
                 return
             try:
@@ -3899,15 +3877,15 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 )
             except ModelloPieno:
                 await interaction.response.send_message(
-                    "Ci sono già 25 modelli: eliminane uno prima.", ephemeral=True
+                    await testo_per(interaction, "leveling_ci_sono_gia_modelli_eliminane"), ephemeral=True
                 )
                 return
-            await interaction.response.send_message(f"✅ Modello **{nome}** salvato.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "leveling_modello_salvato", nome=nome), ephemeral=True)
             return
 
         modello = await giveaway_repo.get_template(guild_id, nome)  # cosa == "avvia"
         if modello is None:
-            await interaction.response.send_message("Questo modello non esiste.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "leveling_questo_modello_non_esiste"), ephemeral=True)
             return
         await self._avvia_giveaway(
             interaction, prize=modello.prize, durata_minuti=modello.duration_minutes,
@@ -3934,27 +3912,27 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
         guild_id = interaction.guild.id
         if azione.value == "annulla":
             if numero is None:
                 await interaction.response.send_message(
-                    "Indica il numero del giveaway da annullare (lo vedi nell'elenco).",
+                    await testo_per(interaction, "leveling_indica_il_numero_del_giveaway"),
                     ephemeral=True,
                 )
                 return
             tolto = await giveaway_repo.cancel_scheduled(guild_id, numero)
             await interaction.response.send_message(
-                f"✅ Giveaway {numero} annullato." if tolto
-                else "Nessun giveaway programmato con questo numero (o è già partito).",
+                await testo_per(interaction, "leveling_giveaway_annullato", numero=numero) if tolto
+                else await testo_per(interaction, "leveling_nessun_giveaway_programmato_con_questo"),
                 ephemeral=True,
             )
             return
         programmati = await giveaway_repo.list_scheduled(guild_id)
         if not programmati:
-            await interaction.response.send_message("Nessun giveaway programmato.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "leveling_nessun_giveaway_programmato"), ephemeral=True)
             return
         righe = []
         for g in programmati:

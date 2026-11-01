@@ -21,6 +21,7 @@ from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.premium import PremiumModule, registry
 from cogs.moderation._shared import MODULE_REPORT, ensure_module_enabled
 
@@ -50,7 +51,7 @@ class ModerationReportCog(CogConGruppi, commands.Cog):
             interaction.guild.id, SETTING_REPORT_CHANNEL, channel.id
         )
         await interaction.response.send_message(
-            f"Le segnalazioni verranno inviate in {channel.mention}.",
+            await testo_per(interaction, "report_le_segnalazioni_verranno_inviate_in", mention=channel.mention),
             ephemeral=True,
         )
 
@@ -76,9 +77,7 @@ class ModerationReportCog(CogConGruppi, commands.Cog):
         )
         if channel_id is None:
             await interaction.response.send_message(
-                "Il sistema di segnalazioni non è ancora stato configurato "
-                "su questo server. Un amministratore deve usare "
-                "/admin config canale-report.",
+                await testo_per(interaction, "report_il_sistema_di_segnalazioni_non"),
                 ephemeral=True,
             )
             return
@@ -86,25 +85,24 @@ class ModerationReportCog(CogConGruppi, commands.Cog):
         channel = interaction.guild.get_channel(channel_id)
         if channel is None:
             await interaction.response.send_message(
-                "Il canale delle segnalazioni configurato non esiste più. "
-                "Un amministratore deve riconfigurarlo con /admin config canale-report.",
+                await testo_per(interaction, "report_il_canale_delle_segnalazioni_configurato"),
                 ephemeral=True,
             )
             return
 
         embed = discord.Embed(
-            title="🚩 Nuova segnalazione",
+            title=await testo_per(interaction, "report_nuova_segnalazione", pubblica=True),
             color=discord.Color.gold(),
         )
         embed.add_field(
-            name="Segnalato", value=f"{member.mention} ({member.id})", inline=False
+            name=await testo_per(interaction, "report_segnalato", pubblica=True), value=f"{member.mention} ({member.id})", inline=False
         )
         embed.add_field(
-            name="Segnalato da",
+            name=await testo_per(interaction, "report_segnalato_da", pubblica=True),
             value=f"{interaction.user.mention} ({interaction.user.id})",
             inline=False,
         )
-        embed.add_field(name="Motivo", value=reason, inline=False)
+        embed.add_field(name=await testo_per(interaction, "channelcontr_motivo", pubblica=True), value=reason, inline=False)
         embed.timestamp = discord.utils.utcnow()
         await interaction.response.defer(ephemeral=True)  # l'etichetta con l'AI può metterci un po'
         vista = None
@@ -122,22 +120,19 @@ class ModerationReportCog(CogConGruppi, commands.Cog):
             await channel.send(embed=embed, view=vista) if vista else await channel.send(embed=embed)
         except discord.Forbidden:
             await interaction.followup.send(
-                "Non riesco a inviare la segnalazione nel canale configurato "
-                "(permessi mancanti). Contatta un amministratore.",
+                await testo_per(interaction, "report_non_riesco_inviare_la_segnalazione"),
                 ephemeral=True,
             )
             return
         except discord.HTTPException:
             await interaction.followup.send(
-                "Non riesco a inviare la segnalazione nel canale configurato "
-                "(errore di Discord). Riprova tra poco o contatta un "
-                "amministratore.",
+                await testo_per(interaction, "report_non_riesco_inviare_la_segnalazione_2"),
                 ephemeral=True,
             )
             return
 
         await interaction.followup.send(
-            "Segnalazione inviata allo staff. Grazie.", ephemeral=True
+            await testo_per(interaction, "report_segnalazione_inviata_allo_staff_grazie"), ephemeral=True
         )
 
 

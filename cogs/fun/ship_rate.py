@@ -20,6 +20,7 @@ from core.fun_logic import (
     rate_flavor_text,
     ship_flavor_text,
 )
+from core.i18n import testo_per
 from core.premium import PremiumModule, registry
 
 MODULE_FUN = "fun"
@@ -45,21 +46,20 @@ class ShipRateCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
         if not await db.is_module_active_for_guild(guild.id, MODULE_FUN):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return
 
         percentuale = compute_ship_percentage(user1.id, user2.id)
         embed = discord.Embed(
-            title="💘 Ship",
+            title=await testo_per(interaction, "shiprate_ship", pubblica=True),
             description=(
                 f"**{user1.display_name}** + **{user2.display_name}**\n\n"
                 f"{_barra_percentuale(percentuale)} **{percentuale}%**\n\n"
@@ -75,21 +75,20 @@ class ShipRateCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
         if not await db.is_module_active_for_guild(guild.id, MODULE_FUN):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return
 
         punteggio = compute_rate_score(thing)
         embed = discord.Embed(
-            title="⭐ Rate",
+            title=await testo_per(interaction, "shiprate_rate", pubblica=True),
             description=f"**{thing}**: {punteggio}/10\n\n{rate_flavor_text(punteggio)}",
             color=discord.Color.gold(),
         )

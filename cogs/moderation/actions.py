@@ -51,6 +51,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core import moderation_opzioni
 from core.database import db
+from core.i18n import testo_per
 from core.repositories.moderation_repo import moderation_repo
 from core.scheduler import scheduler, in_seconds
 from core.tempban_logic import (
@@ -155,7 +156,7 @@ async def _log_e_risposta(
     """
     await post_to_mod_log(interaction.guild, embed)
     if not dm_inviato:
-        embed.set_footer(text="Non è stato possibile notificare l'utente in DM.")
+        embed.set_footer(text=await testo_per(interaction, "actions_non_stato_possibile_notificare_utente", pubblica=True))
     await interaction.followup.send(embed=embed)
 
 
@@ -286,8 +287,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         except discord.HTTPException:
             await delete_dm(dm)
             await interaction.followup.send(
-                "Non sono riuscito a espellere questo utente: controlla i "
-                "miei permessi e la posizione del mio ruolo.",
+                await testo_per(interaction, "actions_non_sono_riuscito_espellere_questo"),
                 ephemeral=True,
             )
             return
@@ -420,8 +420,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             preparati = await tempban_modes.prepara_isolamento(guild)
             if preparati is None:
                 await interaction.followup.send(
-                    "Non sono riuscito a preparare ruolo e canale di isolamento: "
-                    "controlla i miei permessi.",
+                    await testo_per(interaction, "actions_non_sono_riuscito_preparare_ruolo"),
                     ephemeral=True,
                 )
                 return
@@ -438,9 +437,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                 # Senza invito e senza autorizzazione l'utente non potrebbe più
                 # rientrare: si ferma prima di bannare.
                 await interaction.followup.send(
-                    "Non posso creare un invito di rientro (nessun canale me lo permette) e "
-                    "l'utente non ha autorizzato il rientro automatico: non banno. "
-                    "Dammi «Creare invito» su un canale, oppure usa un'altra modalità.",
+                    await testo_per(interaction, "actions_non_posso_creare_un_invito"),
                     ephemeral=True,
                 )
                 return
@@ -556,17 +553,14 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         await _log_e_risposta(interaction, _embed(case_number, False), dm is not None)
         if canali_non_nascosti:
             await interaction.followup.send(
-                f"Attenzione: {canali_non_nascosti} canali non sono stati nascosti "
-                "(Discord ha rifiutato): l'utente li vede ancora. Controlla i miei permessi "
-                "su quei canali.",
+                await testo_per(interaction, "actions_attenzione_canali_non_sono_stati", canali_non_nascosti=canali_non_nascosti),
                 ephemeral=True,
             )
         if dm is None and invito is not None:
             # DM chiuso: l'invito (non scade, un solo uso) non deve restare
             # orfano. Lo vede solo il moderatore, che lo gira all'utente.
             await interaction.followup.send(
-                f"Messaggio privato non consegnato. Invito di rientro da girare a {member.mention}: "
-                f"{invito.url}",
+                await testo_per(interaction, "actions_messaggio_privato_non_consegnato_invito", mention=member.mention, url=invito.url),
                 ephemeral=True,
             )
 
@@ -750,7 +744,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         try:
             uid = int(user_id)
         except ValueError:
-            await interaction.response.send_message("ID utente non valido.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "actions_id_utente_non_valido"), ephemeral=True)
             return
 
         # Ban in isolamento (#138): l'utente è ancora nel server, si libera qui.
@@ -767,12 +761,12 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                     await self._rilascia_isolamento(interaction.guild, member, stato, reason)
                 except discord.HTTPException:
                     await interaction.followup.send(
-                        "Non sono riuscito a liberare l'utente: controlla i miei permessi.",
+                        await testo_per(interaction, "actions_non_sono_riuscito_liberare_utente"),
                         ephemeral=True,
                     )
                     return
                 await self._fine_isolamento(interaction, uid)
-                await interaction.followup.send(f"Utente `{uid}` liberato dall'isolamento.")
+                await interaction.followup.send(await testo_per(interaction, "actions_utente_liberato_dall_isolamento", pubblica=True, uid=uid))
                 return
 
         try:
@@ -782,26 +776,26 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                 # Uscito durante l'isolamento e non bannato: al rientro riprende i ruoli.
                 await moderation_repo.mark_tempban_state_expired(interaction.guild.id, uid)
                 await self._fine_isolamento(interaction, uid)
-                await interaction.response.send_message(f"Utente `{uid}` liberato dall'isolamento.")
+                await interaction.response.send_message(await testo_per(interaction, "actions_utente_liberato_dall_isolamento", pubblica=True, uid=uid))
                 return
             await interaction.response.send_message(
-                "Questo utente non risulta bannato.", ephemeral=True
+                await testo_per(interaction, "actions_questo_utente_non_risulta_bannato"), ephemeral=True
             )
             return
         except discord.HTTPException:
             await interaction.response.send_message(
-                "Non sono riuscito a sbannare questo utente: controlla i miei permessi.",
+                await testo_per(interaction, "actions_non_sono_riuscito_sbannare_questo"),
                 ephemeral=True,
             )
             return
 
         await self._dopo_unban(interaction.client, interaction.guild.id, uid, interaction.user.id, stato)
 
-        await interaction.response.send_message(f"Utente `{uid}` sbannato.")
-        log_embed = discord.Embed(title="🔓 Unban", color=discord.Color.green())
-        log_embed.add_field(name="Utente", value=f"`{uid}`", inline=False)
-        log_embed.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
-        log_embed.add_field(name="Motivo", value=reason, inline=False)
+        await interaction.response.send_message(await testo_per(interaction, "actions_utente_sbannato", pubblica=True, uid=uid))
+        log_embed = discord.Embed(title=await testo_per(interaction, "actions_unban", pubblica=True), color=discord.Color.green())
+        log_embed.add_field(name=await testo_per(interaction, "banappeal_utente", pubblica=True), value=f"`{uid}`", inline=False)
+        log_embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore", pubblica=True), value=interaction.user.mention, inline=True)
+        log_embed.add_field(name=await testo_per(interaction, "channelcontr_motivo", pubblica=True), value=reason, inline=False)
         await post_to_mod_log(interaction.guild, log_embed)
 
         # Se il ban era partito da qui verso la rete di ban globali, lo si
@@ -814,7 +808,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             return
         if tolti:
             await interaction.followup.send(
-                f"Il ban era arrivato anche ad altri server della rete: tolto da {tolti}.", ephemeral=True
+                await testo_per(interaction, "actions_il_ban_era_arrivato_anche", tolti=tolti), ephemeral=True
             )
 
     # ================================================================
@@ -849,7 +843,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             predefinita = (await moderation_opzioni.leggi(interaction.guild.id)).durata_timeout
             if predefinita is None:
                 await interaction.response.send_message(
-                    "Scrivi una durata, oppure impostane una predefinita con `/mod opzioni imposta durata_timeout:`.",
+                    await testo_per(interaction, "actions_scrivi_una_durata_oppure_impostane"),
                     ephemeral=True,
                 )
                 return
@@ -863,9 +857,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
 
         if duration_seconds > MAX_TIMEOUT_SECONDS:
             await interaction.response.send_message(
-                "Il timeout nativo di Discord non può superare i 28 giorni. "
-                "Per durate più lunghe usa /modban tempban se l'intento è "
-                "allontanare l'utente dal server.",
+                await testo_per(interaction, "actions_il_timeout_nativo_di_discord"),
                 ephemeral=True,
             )
             return
@@ -877,8 +869,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             )
         except discord.HTTPException:
             await interaction.response.send_message(
-                "Non sono riuscito a mettere in timeout questo utente: "
-                "controlla i miei permessi e la posizione del mio ruolo.",
+                await testo_per(interaction, "actions_non_sono_riuscito_mettere_in"),
                 ephemeral=True,
             )
             return
@@ -920,8 +911,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             await member.timeout(None, reason="Timeout rimosso manualmente")
         except discord.HTTPException:
             await interaction.response.send_message(
-                "Non sono riuscito a rimuovere il timeout da questo utente: "
-                "controlla i miei permessi.",
+                await testo_per(interaction, "actions_non_sono_riuscito_rimuovere_il"),
                 ephemeral=True,
             )
             return
@@ -934,10 +924,10 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                 interaction.guild.id, case.case_number, interaction.user.id
             )
 
-        await interaction.response.send_message(f"Timeout rimosso da {member.mention}.")
-        log_embed = discord.Embed(title="🔊 Timeout rimosso", color=discord.Color.green())
-        log_embed.add_field(name="Utente", value=f"{member.mention} ({member.id})", inline=False)
-        log_embed.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
+        await interaction.response.send_message(await testo_per(interaction, "actions_timeout_rimosso_da", pubblica=True, mention=member.mention))
+        log_embed = discord.Embed(title=await testo_per(interaction, "actions_timeout_rimosso", pubblica=True), color=discord.Color.green())
+        log_embed.add_field(name=await testo_per(interaction, "banappeal_utente", pubblica=True), value=f"{member.mention} ({member.id})", inline=False)
+        log_embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore", pubblica=True), value=interaction.user.mention, inline=True)
         await post_to_mod_log(interaction.guild, log_embed)
 
     # ================================================================
@@ -954,7 +944,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         ids, tagliato = leggi_utenti(utenti)
         if not ids:
             await interaction.response.send_message(
-                "Non ho trovato utenti: scrivi ID o menzioni separati da spazi.", ephemeral=True
+                await testo_per(interaction, "actions_non_ho_trovato_utenti_scrivi"), ephemeral=True
             )
             return None
         if (
@@ -964,14 +954,14 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         ):
             # MOD-002: tetto di usi all'ora, perché un account rubato non svuoti il server.
             await interaction.response.send_message(
-                f"Hai già usato questo comando {MAX_USI_ORA} volte nell'ultima ora: riprova più tardi.",
+                await testo_per(interaction, "actions_hai_gia_usato_questo_comando", v1=MAX_USI_ORA),
                 ephemeral=True,
             )
             return None
         await interaction.response.defer()
         if tagliato:
             await interaction.followup.send(
-                f"Elenco troppo lungo: agisco sui primi {MAX_UTENTI_MASSA}.", ephemeral=True
+                await testo_per(interaction, "actions_elenco_troppo_lungo_agisco_sui", v1=MAX_UTENTI_MASSA), ephemeral=True
             )
         return ids
 
@@ -1034,8 +1024,8 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         reason: str, fatti: list[str], saltati: list[str],
     ) -> None:
         embed = discord.Embed(title=titolo, color=colore, description=riepilogo(fatti, saltati))
-        embed.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
-        embed.add_field(name="Motivo", value=reason, inline=False)
+        embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore", pubblica=True), value=interaction.user.mention, inline=True)
+        embed.add_field(name=await testo_per(interaction, "channelcontr_motivo", pubblica=True), value=reason, inline=False)
         await post_to_mod_log(interaction.guild, embed)
         await interaction.followup.send(embed=embed)
 
@@ -1216,7 +1206,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             return
         if secondi > MAX_TIMEOUT_SECONDS:
             await interaction.response.send_message(
-                "Il timeout nativo di Discord non può superare i 28 giorni.", ephemeral=True
+                await testo_per(interaction, "actions_il_timeout_nativo_di_discord_2"), ephemeral=True
             )
             return
         ids = await self._prepara_massa(interaction, utenti, reason)

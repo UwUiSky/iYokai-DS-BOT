@@ -36,6 +36,7 @@ from cogs.utility.role_menus import ROLEMENU_TEMP_ACTION_TYPE
 from core.birthday_worker import BIRTHDAY_ROLE_ACTION_TYPE
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.premium import PremiumModule, registry
 from core.repositories.autorole_repo import autorole_repo
 from core.repositories.verify_repo import verify_repo
@@ -319,13 +320,12 @@ class AutorolesCog(CogConGruppi, commands.Cog):
     async def _modulo_attivo(self, interaction: discord.Interaction) -> bool:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return False
         if not await db.is_module_active_for_guild(interaction.guild.id, MODULE_AUTOROLES):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return False
@@ -370,7 +370,7 @@ class AutorolesCog(CogConGruppi, commands.Cog):
         )
         if not ok:
             await interaction.response.send_message(
-                f"Questo server ha già {MAX_REGOLE} ruoli automatici: togline uno prima.", ephemeral=True
+                await testo_per(interaction, "autoroles_questo_server_ha_gia_ruoli", v1=MAX_REGOLE), ephemeral=True
             )
             return
         await interaction.response.send_message(
@@ -419,7 +419,7 @@ class AutorolesCog(CogConGruppi, commands.Cog):
             else "Ruoli ridati a chi rientra: spento."
         )
         embed = discord.Embed(
-            title="Ruoli automatici", description="\n".join(righe)[:4000] + f"\n\n{ricorda}"
+            title=await testo_per(interaction, "autoroles_ruoli_automatici"), description="\n".join(righe)[:4000] + f"\n\n{ricorda}"
         )
         await interaction.response.send_message(
             embed=embed, ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
@@ -462,14 +462,14 @@ class AutorolesCog(CogConGruppi, commands.Cog):
             return
         guild = interaction.guild
         if guild.id in self.sincronie:
-            await interaction.response.send_message("Una sincronizzazione è già in corso.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "autoroles_una_sincronizzazione_gia_in_corso"), ephemeral=True)
             return
         if not await autorole_repo.list_rules(guild.id):
-            await interaction.response.send_message("Non ci sono ruoli automatici da dare.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "autoroles_non_ci_sono_ruoli_automatici"), ephemeral=True)
             return
         self.sincronie[guild.id] = asyncio.create_task(self.sincronizza(guild, interaction.channel))
         await interaction.response.send_message(
-            "Sincronizzazione avviata: un membro al secondo. L'esito arriva in questo canale.", ephemeral=True
+            await testo_per(interaction, "autoroles_sincronizzazione_avviata_un_membro_al"), ephemeral=True
         )
 
 

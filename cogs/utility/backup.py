@@ -38,6 +38,7 @@ from core.backup_permessi_logic import (
 )
 from core import server_sync_logic as sync
 from core.database import db
+from core.i18n import testo_per
 from core.repositories.backup_sincronia_repo import backup_sincronia_repo
 from core.repositories.backup_struttura_repo import MAX_COPIE_PER_SERVER, backup_struttura_repo
 from core.ui_base import BaseView
@@ -126,7 +127,7 @@ class ScegliPartiView(BaseView):
     @discord.ui.button(label="Carica", style=discord.ButtonStyle.danger, row=1)
     async def conferma(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         if not self.scelte:
-            await interaction.response.send_message("Scegli almeno una parte.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "backup_scegli_almeno_una_parte"), ephemeral=True)
             return
         self.stop()
         testo = await self.cog.avvia_caricamento(interaction, self.dati, self.scelte, self.fonte)
@@ -147,7 +148,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return False
         livello = await db.get_guild_setting(guild.id, SETTING_LIVELLO, LIVELLO_PREDEFINITO)
@@ -224,15 +225,14 @@ class BackupCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
         await backup_repo.define_main(guild.id)
         await registra_uso(guild.id, interaction.user.id, "main")
         await interaction.response.send_message(
-            "✅ Questo server è ora registrato come 'main' per il Backup System. "
-            "Usa /backup crea per collegare un server di backup.",
+            await testo_per(interaction, "backup_questo_server_ora_registrato_come"),
             ephemeral=True,
         )
 
@@ -260,26 +260,25 @@ class BackupCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
         if not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message(
-                "Serve il permesso Amministratore.", ephemeral=True
+                await testo_per(interaction, "backup_serve_il_permesso_amministratore"), ephemeral=True
             )
             return
 
         coppia = await backup_repo.get_pair(guild.id)
         if coppia is None:
             await interaction.response.send_message(
-                "Devi prima registrare questo server con /backup main.", ephemeral=True
+                await testo_per(interaction, "backup_devi_prima_registrare_questo_server"), ephemeral=True
             )
             return
 
         if await backup_repo.has_active_job(guild.id):
             await interaction.response.send_message(
-                "⏳ C'è già una copia in coda o in corso per questo server: "
-                "attendi che finisca prima di prepararne un'altra.",
+                await testo_per(interaction, "backup_gia_una_copia_in_coda"),
                 ephemeral=True,
             )
             return
@@ -310,11 +309,11 @@ class BackupCog(CogConGruppi, commands.Cog):
                 f"   Modello: {url_modello}" if url_modello else "   Modello non creato: Discord ha rifiutato.",
             )
         embed = discord.Embed(
-            title="📦 Collegamento del backup",
+            title=await testo_per(interaction, "backup_collegamento_del_backup"),
             description="\n".join(passi)[:4000],
             color=discord.Color.blurple(),
         )
-        embed.set_footer(text=f"Il codice vale fino a {scadenza:%d/%m %H:%M} UTC e si usa una volta sola.")
+        embed.set_footer(text=await testo_per(interaction, "backup_il_codice_vale_fino_utc", scadenza=scadenza))
         await interaction.followup.send(embed=embed, ephemeral=True)
 
     @comando_di_gruppo(
@@ -329,20 +328,19 @@ class BackupCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
         if not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message(
-                "Serve il permesso Amministratore.", ephemeral=True
+                await testo_per(interaction, "backup_serve_il_permesso_amministratore"), ephemeral=True
             )
             return
 
         creator = getattr(self.bot, "backup_creator_client", None)
         if creator is None or creator.get_guild(guild.id) is None:
             await interaction.response.send_message(
-                "⚠️ **iYokai Creator** non è in questo server: invitalo (il link è in "
-                "`/backup crea`) e rilancia il comando.",
+                await testo_per(interaction, "backup_iyokai_creator_non_in_questo"),
                 ephemeral=True,
             )
             return
@@ -362,8 +360,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         if esito.esito == ESITO_OK:
             await registra_uso(guild.id, interaction.user.id, "collega", f"job #{esito.job_id}")
             await interaction.followup.send(
-                f"✅ Server collegato come backup (job `#{esito.job_id}`). Il Creator copia "
-                "la struttura e gli ultimi 50 messaggi di ogni canale: riceverai un DM quando ha finito, poi lo tiene aggiornato.",
+                await testo_per(interaction, "backup_server_collegato_come_backup_job", job_id=esito.job_id),
                 ephemeral=True,
             )
             return
@@ -402,7 +399,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
@@ -412,8 +409,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         coppia = await backup_repo.get_pair_by_backup_guild_id(guild.id)
         if coppia is None:
             await interaction.response.send_message(
-                "⚠️ Questo server non risulta registrato come backup di nessun main — "
-                "non c'è nulla da promuovere.",
+                await testo_per(interaction, "backup_questo_server_non_risulta_registrato"),
                 ephemeral=True,
             )
             return
@@ -426,9 +422,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         await registra_uso(guild.id, interaction.user.id, "promuovi", str(coppia.main_guild_id))
 
         await interaction.response.send_message(
-            "👑 Questo server è stato promosso a **main**. Il vecchio main "
-            f"(`{coppia.main_guild_id}`) non è più abbinato a questo backup. "
-            "Per avere un nuovo backup: crea un server nuovo e lancia qui `/backup crea`.",
+            await testo_per(interaction, "backup_questo_server_stato_promosso_main", main_guild_id=coppia.main_guild_id),
             ephemeral=True,
         )
 
@@ -455,19 +449,19 @@ class BackupCog(CogConGruppi, commands.Cog):
             try:
                 dati["ban"] = await struttura.leggi_ban(guild)
             except discord.HTTPException:
-                await interaction.followup.send("⚠️ Mi serve il permesso «Banna membri» per leggere i ban.", ephemeral=True)
+                await interaction.followup.send(await testo_per(interaction, "backup_mi_serve_il_permesso_banna"), ephemeral=True)
                 return
         if membri:
             dati["membri"] = struttura.leggi_membri(guild)
         if messaggi:
             dati["messaggi"] = await self._ultimi_messaggi(guild, messaggi)
         if len(struttura.in_json(dati)) > struttura.MAX_FILE_BYTE:
-            await interaction.followup.send("⚠️ La copia supera 10 MiB: salvala con meno messaggi o senza membri.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "backup_la_copia_supera_mib_salvala"), ephemeral=True)
             return
         copia_id = await backup_struttura_repo.salva_struttura(guild.id, nome, interaction.user.id, dati)
         if copia_id is None:
             await interaction.followup.send(
-                f"⚠️ Ci sono già {MAX_COPIE_PER_SERVER} copie: eliminane una con /backup elimina.", ephemeral=True
+                await testo_per(interaction, "backup_ci_sono_gia_copie_eliminane", v1=MAX_COPIE_PER_SERVER), ephemeral=True
             )
             return
         await registra_uso(guild.id, interaction.user.id, "salva", f"#{copia_id} {nome}")
@@ -499,7 +493,7 @@ class BackupCog(CogConGruppi, commands.Cog):
             return
         copie = await backup_struttura_repo.lista_strutture(interaction.guild.id)
         if not copie:
-            await interaction.response.send_message("Nessuna copia salvata: usa /backup salva.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "backup_nessuna_copia_salvata_usa_backup"), ephemeral=True)
             return
         righe = [
             f"`#{c.id}` {'💬' if c.chat else '🏗️'} **{discord.utils.escape_markdown(c.nome)}** · "
@@ -507,8 +501,8 @@ class BackupCog(CogConGruppi, commands.Cog):
             + (f" · modello `{c.codice_modello}`" if c.codice_modello else "")
             for c in copie
         ]
-        embed = discord.Embed(title="📦 Copie salvate", description="\n".join(righe)[:4000], color=discord.Color.blurple())
-        embed.set_footer(text=f"Al massimo {MAX_COPIE_PER_SERVER} copie per server.")
+        embed = discord.Embed(title=await testo_per(interaction, "backup_copie_salvate"), description="\n".join(righe)[:4000], color=discord.Color.blurple())
+        embed.set_footer(text=await testo_per(interaction, "backup_al_massimo_copie_per_server", v1=MAX_COPIE_PER_SERVER))
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @comando_di_gruppo("backup", nome="carica", descrizione="Ricarica in questo server una copia salvata, scegliendo le parti.")
@@ -518,13 +512,13 @@ class BackupCog(CogConGruppi, commands.Cog):
             return
         dati = await backup_struttura_repo.leggi_struttura(interaction.guild.id, copia)
         if dati is None:
-            await interaction.response.send_message("Copia non trovata: guarda /backup lista.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "backup_copia_non_trovata_guarda_backup"), ephemeral=True)
             return
         if dati.get("tipo") == "chat":
-            await interaction.response.send_message("Questa è una chat salvata: usa /backup chat-carica.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "backup_questa_una_chat_salvata_usa"), ephemeral=True)
             return
         await interaction.response.send_message(
-            f"Copia `#{copia}`: scegli cosa caricare. Ciò che esiste già (stesso nome) si riusa.",
+            await testo_per(interaction, "backup_copia_scegli_cosa_caricare_cio", copia=copia),
             view=ScegliPartiView(self, interaction.user.id, dati, f"copia #{copia}"),
             ephemeral=True,
         )
@@ -535,10 +529,10 @@ class BackupCog(CogConGruppi, commands.Cog):
         if not await self._puo(interaction, AZIONE_CREA):
             return
         if not await backup_struttura_repo.elimina_struttura(interaction.guild.id, copia):
-            await interaction.response.send_message("Copia non trovata.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "backup_copia_non_trovata"), ephemeral=True)
             return
         await registra_uso(interaction.guild.id, interaction.user.id, "elimina", f"#{copia}")
-        await interaction.response.send_message(f"🗑️ Copia `#{copia}` eliminata.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "backup_copia_eliminata", copia=copia), ephemeral=True)
 
     @comando_di_gruppo("backup", nome="stato", descrizione="Avanzamento dell'ultimo caricamento in questo server.")
     async def stato(self, interaction: discord.Interaction) -> None:
@@ -568,7 +562,7 @@ class BackupCog(CogConGruppi, commands.Cog):
                     f"{coppia.esito_allineamento or '—'}"
                 )
         if not righe:
-            await interaction.response.send_message("Nessun caricamento in questo server.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "backup_nessun_caricamento_in_questo_server"), ephemeral=True)
             return
         await interaction.response.send_message("\n".join(righe)[:1900], ephemeral=True)
 
@@ -577,10 +571,10 @@ class BackupCog(CogConGruppi, commands.Cog):
         if not await self._puo(interaction, AZIONE_CARICA):
             return
         if not await backup_struttura_repo.chiedi_annullo(interaction.guild.id):
-            await interaction.response.send_message("Nessun caricamento in corso.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "backup_nessun_caricamento_in_corso"), ephemeral=True)
             return
         await registra_uso(interaction.guild.id, interaction.user.id, "annulla")
-        await interaction.response.send_message("⏹️ Annullo chiesto: si ferma al prossimo passo.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "backup_annullo_chiesto_si_ferma_al"), ephemeral=True)
 
     # ------------------------------------------------------------
     # Modelli (NF-39)
@@ -609,18 +603,17 @@ class BackupCog(CogConGruppi, commands.Cog):
         if azione.value == "usa":
             trovato = await backup_struttura_repo.leggi_modello(codice.strip()) if codice else None
             if trovato is None:
-                await interaction.response.send_message("Modello non trovato: controlla il codice.", ephemeral=True)
+                await interaction.response.send_message(await testo_per(interaction, "backup_modello_non_trovato_controlla_il"), ephemeral=True)
                 return
             nome, dati = trovato
             await interaction.response.send_message(
-                f"Modello «{discord.utils.escape_markdown(nome)}» (senza ban, membri e permessi dei singoli): "
-                "scegli cosa caricare.",
+                await testo_per(interaction, "backup_modello_senza_ban_membri_permessi", v1=discord.utils.escape_markdown(nome)),
                 view=ScegliPartiView(self, interaction.user.id, struttura.senza_dati_personali(dati), f"modello {codice}"),
                 ephemeral=True,
             )
             return
         if copia is None:
-            await interaction.response.send_message("Scrivi il numero della copia nell'opzione «copia».", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "backup_scrivi_il_numero_della_copia"), ephemeral=True)
             return
         if azione.value == "pubblica":
             nuovo = await backup_struttura_repo.pubblica_modello(guild.id, copia)
@@ -658,7 +651,7 @@ class BackupCog(CogConGruppi, commands.Cog):
     ) -> None:
         guild = interaction.guild
         if guild is None or interaction.user.id != guild.owner_id:
-            await interaction.response.send_message("⛔ La sincronia la gestisce solo l'owner del server.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "backup_la_sincronia_la_gestisce_solo"), ephemeral=True)
             return
         if azione.value == "elenco":
             elenco = await backup_sincronia_repo.sincronie_di(guild.id)
@@ -670,7 +663,7 @@ class BackupCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message("\n".join(righe) or "Nessuna sincronia.", ephemeral=True)
             return
         if server is None or not server.isdigit() or int(server) == guild.id:
-            await interaction.response.send_message("Scrivi l'ID dell'altro server nell'opzione «server».", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "backup_scrivi_id_dell_altro_server"), ephemeral=True)
             return
         altro_id = int(server)
         if azione.value == "disattiva":
@@ -679,10 +672,10 @@ class BackupCog(CogConGruppi, commands.Cog):
         else:
             altro = self.bot.get_guild(altro_id)
             if altro is None:
-                await interaction.response.send_message("Non sono in quel server: invitami prima.", ephemeral=True)
+                await interaction.response.send_message(await testo_per(interaction, "backup_non_sono_in_quel_server"), ephemeral=True)
                 return
             if not sync.stesso_proprietario(interaction.user.id, guild.owner_id, altro.owner_id):
-                await interaction.response.send_message("⛔ Devi essere l'owner di entrambi i server.", ephemeral=True)
+                await interaction.response.send_message(await testo_per(interaction, "backup_devi_essere_owner_di_entrambi"), ephemeral=True)
                 return
             fatto = await backup_sincronia_repo.attiva(guild.id, altro_id, ban, ruoli, interaction.user.id)
             testo = (
@@ -777,7 +770,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         try:
             esito = await copia_canale(interaction.guild, canale, nome)
         except discord.HTTPException:
-            await interaction.followup.send("⚠️ Discord ha rifiutato la copia: controlla i miei permessi.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "backup_discord_ha_rifiutato_la_copia"), ephemeral=True)
             return
         if esito.errore:
             await interaction.followup.send(f"⚠️ {esito.errore}", ephemeral=True)
@@ -805,7 +798,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         try:
             esito = await copia_ruolo(interaction.guild, ruolo, nome, permessi_canali)
         except discord.HTTPException:
-            await interaction.followup.send("⚠️ Discord ha rifiutato la copia: controlla i miei permessi.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "backup_discord_ha_rifiutato_la_copia"), ephemeral=True)
             return
         if esito.errore:
             await interaction.followup.send(f"⚠️ {esito.errore}", ephemeral=True)
@@ -834,30 +827,29 @@ class BackupCog(CogConGruppi, commands.Cog):
             return
         canale = canale or interaction.channel
         if not isinstance(canale, discord.TextChannel):
-            await interaction.response.send_message("Scegli un canale di testo.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "embedbuilder_scegli_un_canale_di_testo"), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         try:
             messaggi = await leggi_chat(canale, quanti)
         except discord.HTTPException:
-            await interaction.followup.send("⚠️ Non riesco a leggere quel canale: controlla i miei permessi.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "backup_non_riesco_leggere_quel_canale"), ephemeral=True)
             return
         dati = {"versione": struttura.VERSIONE, "tipo": "chat", "canale": canale.name, "messaggi": messaggi}
         if len(struttura.in_json(dati)) > struttura.MAX_FILE_BYTE:
-            await interaction.followup.send("⚠️ Troppi dati: salva meno messaggi.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "backup_troppi_dati_salva_meno_messaggi"), ephemeral=True)
             return
         copia_id = await backup_struttura_repo.salva_struttura(
             interaction.guild.id, nome or f"chat #{canale.name}"[:50], interaction.user.id, dati
         )
         if copia_id is None:
             await interaction.followup.send(
-                f"⚠️ Ci sono già {MAX_COPIE_PER_SERVER} copie: eliminane una con /backup elimina.", ephemeral=True
+                await testo_per(interaction, "backup_ci_sono_gia_copie_eliminane", v1=MAX_COPIE_PER_SERVER), ephemeral=True
             )
             return
         await registra_uso(interaction.guild.id, interaction.user.id, "chat-salva", f"#{copia_id} {canale.name}")
         await interaction.followup.send(
-            f"✅ Chat salvata come copia `#{copia_id}`: {len(messaggi)} messaggi. "
-            "Gli allegati si ricaricano come file finché il loro link vale (circa un giorno), poi come link.",
+            await testo_per(interaction, "backup_chat_salvata_come_copia_messaggi", copia_id=copia_id, v2=len(messaggi)),
             ephemeral=True,
         )
 
@@ -872,10 +864,10 @@ class BackupCog(CogConGruppi, commands.Cog):
         canale = canale or interaction.channel
         dati = await backup_struttura_repo.leggi_struttura(interaction.guild.id, copia)
         if dati is None or dati.get("tipo") != "chat":
-            await interaction.response.send_message("Chat salvata non trovata: guarda /backup lista.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "backup_chat_salvata_non_trovata_guarda"), ephemeral=True)
             return
         if not isinstance(canale, discord.TextChannel):
-            await interaction.response.send_message("Scegli un canale di testo.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "embedbuilder_scegli_un_canale_di_testo"), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         try:
@@ -884,7 +876,7 @@ class BackupCog(CogConGruppi, commands.Cog):
             webhook = None
         if webhook is None:
             await interaction.followup.send(
-                "⚠️ Non posso usare un webhook in quel canale: serve «Gestisci webhook» e meno di 15 webhook.",
+                await testo_per(interaction, "backup_non_posso_usare_un_webhook"),
                 ephemeral=True,
             )
             return
@@ -933,7 +925,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         try:
             righe = await self._righe_da_esportare(interaction, tipo, canale, ruolo, messaggio)
         except discord.HTTPException:
-            await interaction.followup.send("⚠️ Discord ha rifiutato la lettura: controlla i miei permessi.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "backup_discord_ha_rifiutato_la_lettura"), ephemeral=True)
             return
         if isinstance(righe, str):
             await interaction.followup.send(righe, ephemeral=True)
@@ -941,11 +933,11 @@ class BackupCog(CogConGruppi, commands.Cog):
         tipo_csv = "canali" if tipo == "canale" else "ruoli" if tipo == "ruolo" else tipo
         contenuto, estensione = struttura.esporta(tipo_csv, formato.value if formato else "json", righe)
         if len(contenuto) > struttura.MAX_FILE_BYTE:
-            await interaction.followup.send("⚠️ Il file supera 10 MiB.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "backup_il_file_supera_mib"), ephemeral=True)
             return
         await registra_uso(guild.id, interaction.user.id, "esporta", tipo)
         await interaction.followup.send(
-            f"📄 Esportazione «{cosa.name}».",
+            await testo_per(interaction, "backup_esportazione", name=cosa.name),
             file=discord.File(io.BytesIO(contenuto), filename=f"{tipo}-{guild.id}.{estensione}"),
             ephemeral=True,
         )
@@ -987,13 +979,13 @@ class BackupCog(CogConGruppi, commands.Cog):
         if not await self._puo(interaction, AZIONE_CARICA):
             return
         if file.size > struttura.MAX_FILE_BYTE:
-            await interaction.response.send_message("⚠️ Il file supera 10 MiB.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "backup_il_file_supera_mib"), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         try:
             contenuto = await file.read()
         except discord.HTTPException:
-            await interaction.followup.send("⚠️ Non riesco a leggere il file: riprova.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "backup_non_riesco_leggere_il_file"), ephemeral=True)
             return
         dati, errori = struttura.leggi_json(contenuto)
         if dati is None:
@@ -1006,7 +998,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         # darebbe ruoli a ID scelti da chi l'ha scritto.
         dati.pop("membri", None)
         await interaction.followup.send(
-            "File valido: scegli cosa caricare. Ciò che esiste già (stesso nome) si riusa.",
+            await testo_per(interaction, "backup_file_valido_scegli_cosa_caricare"),
             view=ScegliPartiView(self, interaction.user.id, dati, f"file {file.filename[:60]}"),
             ephemeral=True,
         )
@@ -1020,11 +1012,11 @@ class BackupCog(CogConGruppi, commands.Cog):
     async def permessi(self, interaction: discord.Interaction, livello: app_commands.Choice[str]) -> None:
         guild = interaction.guild
         if guild is None or interaction.user.id != guild.owner_id:
-            await interaction.response.send_message("⛔ Solo l'owner del server sceglie il livello.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "backup_solo_owner_del_server_sceglie"), ephemeral=True)
             return
         await db.set_guild_setting(guild.id, SETTING_LIVELLO, livello.value)
         await registra_uso(guild.id, interaction.user.id, "permessi", livello.value)
-        await interaction.response.send_message(f"✅ Backup: «{livello.name}».", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "backup_backup", name=livello.name), ephemeral=True)
 
     @comando_di_gruppo("backup", nome="registro", descrizione="Chi ha usato backup, modelli e sincronie (ultimi 20, 365 giorni).")
     async def registro(self, interaction: discord.Interaction) -> None:
@@ -1032,14 +1024,14 @@ class BackupCog(CogConGruppi, commands.Cog):
             return
         righe = await backup_struttura_repo.leggi_registro(interaction.guild.id)
         if not righe:
-            await interaction.response.send_message("Registro vuoto.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "backup_registro_vuoto"), ephemeral=True)
             return
         testo = "\n".join(
             f"{discord.utils.format_dt(r['creato_il'], 'd')} <@{r['user_id']}> **{r['azione']}** "
             f"{discord.utils.escape_markdown(r['dettaglio'])}"
             for r in righe
         )
-        embed = discord.Embed(title="📜 Registro del backup", description=testo[:4000], color=discord.Color.blurple())
+        embed = discord.Embed(title=await testo_per(interaction, "backup_registro_del_backup"), description=testo[:4000], color=discord.Color.blurple())
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 

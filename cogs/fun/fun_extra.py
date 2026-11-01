@@ -20,6 +20,7 @@ from core import fun_extra_logic as logica
 from core import image_effects_logic as effetti
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 
 NESSUNA_MENZIONE = discord.AllowedMentions.none()
 
@@ -50,13 +51,12 @@ class FunExtraCog(CogConGruppi, commands.Cog):
     async def _modulo_attivo(self, interaction: discord.Interaction) -> bool:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return False
         if not await db.is_module_active_for_guild(interaction.guild.id, MODULE_FUN):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return False

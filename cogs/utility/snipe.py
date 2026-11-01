@@ -26,6 +26,7 @@ from core.bounded_cache import BoundedCache
 from core.channel_router import SETTING_LOG_CHANNEL, TIPO_MESSAGGI
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.premium import PremiumModule, registry
 from core.message_log_logic import da_ignorare
 from core.repositories.log_ignora_repo import log_ignora_repo
@@ -153,14 +154,14 @@ class SnipeCog(CogConGruppi, commands.Cog):
             return None
         if not await db.is_module_active_for_guild(interaction.guild.id, MODULE_SNIPE):
             await interaction.response.send_message(
-                "Snipe non è attivo su questo server: un amministratore lo accende con /admin setup attiva.",
+                await testo_per(interaction, "snipe_snipe_non_attivo_su_questo"),
                 ephemeral=True,
             )
             return None
         voce = cache.get(interaction.channel.id)
         if voce is None:
             await interaction.response.send_message(
-                "Nessun messaggio da mostrare in questo canale (li ricordo per 5 minuti).",
+                await testo_per(interaction, "snipe_nessun_messaggio_da_mostrare_in"),
                 ephemeral=True,
             )
         return voce
@@ -173,12 +174,12 @@ class SnipeCog(CogConGruppi, commands.Cog):
         if voce is None:
             return
         embed = discord.Embed(
-            title="🎯 Snipe",
+            title=await testo_per(interaction, "snipe_snipe", pubblica=True),
             description=testo_snipe(voce.content, list(voce.allegati)),
             color=discord.Color.red(),
             timestamp=voce.quando,
         )
-        embed.set_footer(text=f"Scritto da {voce.author_nome}")
+        embed.set_footer(text=await testo_per(interaction, "snipe_scritto_da", pubblica=True, author_nome=voce.author_nome))
         await interaction.response.send_message(
             embed=embed, allowed_mentions=discord.AllowedMentions.none()
         )
@@ -191,14 +192,14 @@ class SnipeCog(CogConGruppi, commands.Cog):
         if voce is None:
             return
         embed = discord.Embed(
-            title="🎯 Editsnipe",
-            description=f"[Vai al messaggio]({voce.jump_url})",
+            title=await testo_per(interaction, "snipe_editsnipe", pubblica=True),
+            description=await testo_per(interaction, "snipe_vai_al_messaggio", pubblica=True, jump_url=voce.jump_url),
             color=discord.Color.orange(),
             timestamp=voce.quando,
         )
-        embed.add_field(name="Prima", value=testo_snipe(voce.prima, [], CAMPO_MAX), inline=False)
-        embed.add_field(name="Dopo", value=testo_snipe(voce.dopo, [], CAMPO_MAX), inline=False)
-        embed.set_footer(text=f"Scritto da {voce.author_nome}")
+        embed.add_field(name=await testo_per(interaction, "snipe_prima", pubblica=True), value=testo_snipe(voce.prima, [], CAMPO_MAX), inline=False)
+        embed.add_field(name=await testo_per(interaction, "snipe_dopo", pubblica=True), value=testo_snipe(voce.dopo, [], CAMPO_MAX), inline=False)
+        embed.set_footer(text=await testo_per(interaction, "snipe_scritto_da", pubblica=True, author_nome=voce.author_nome))
         await interaction.response.send_message(
             embed=embed, allowed_mentions=discord.AllowedMentions.none()
         )
@@ -235,17 +236,15 @@ class SnipeCog(CogConGruppi, commands.Cog):
         rimossa = self._last_removed_reaction.get(interaction.channel.id)
         if rimossa is None:
             await interaction.response.send_message(
-                "Nessuna reazione rimossa recentemente in questo canale.",
+                await testo_per(interaction, "snipe_nessuna_reazione_rimossa_recentemente_in"),
                 ephemeral=True,
             )
             return
 
         embed = discord.Embed(
-            title="🎯 Reactionsnipe",
+            title=await testo_per(interaction, "snipe_reactionsnipe", pubblica=True),
             description=(
-                f"{rimossa.emoji} rimossa da <@{rimossa.user_id}> dal "
-                f"[messaggio](https://discord.com/channels/{interaction.guild.id}/"
-                f"{interaction.channel.id}/{rimossa.message_id})."
+                await testo_per(interaction, "snipe_rimossa_da_dal_messaggio_https", emoji=rimossa.emoji, user_id=rimossa.user_id, id=interaction.guild.id, id_4=interaction.channel.id, message_id=rimossa.message_id, pubblica=True)
             ),
             color=discord.Color.orange(),
             timestamp=rimossa.removed_at,

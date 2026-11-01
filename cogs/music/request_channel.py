@@ -23,6 +23,7 @@ from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.music_request_logic import (
     MODO_CODA,
     PAUSA_RICHIESTE,
@@ -161,7 +162,7 @@ class MusicRequestCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
         if disattiva:
@@ -172,15 +173,15 @@ class MusicRequestCog(CogConGruppi, commands.Cog):
             if vecchio is not None:
                 await self._cancella_player(vecchio.channel_id, vecchio.message_id)
             await interaction.followup.send(
-                "Canale delle richieste tolto." if vecchio else "Non c'era nessun canale delle richieste.",
+                await testo_per(interaction, "requestchann_canale_delle_richieste_tolto") if vecchio else await testo_per(interaction, "requestchann_non_era_nessun_canale_delle"),
                 ephemeral=True,
             )
             return
         if canale is None:
             attuale = self.canali.get(guild.id)
             await interaction.response.send_message(
-                f"Canale delle richieste: <#{attuale}>." if attuale
-                else "Nessun canale delle richieste. Indica `canale` per sceglierne uno.",
+                await testo_per(interaction, "requestchann_canale_delle_richieste", attuale=attuale) if attuale
+                else await testo_per(interaction, "requestchann_nessun_canale_delle_richieste_indica"),
                 ephemeral=True,
             )
             return
@@ -188,7 +189,7 @@ class MusicRequestCog(CogConGruppi, commands.Cog):
         permessi = canale.permissions_for(guild.me)
         if not (permessi.view_channel and permessi.send_messages and permessi.embed_links):
             await interaction.response.send_message(
-                f"Mi servono i permessi Vedi canale, Invia messaggi e Incorpora link in {canale.mention}.",
+                await testo_per(interaction, "requestchann_mi_servono_permessi_vedi_canale", mention=canale.mention),
                 ephemeral=True,
             )
             return
@@ -197,7 +198,7 @@ class MusicRequestCog(CogConGruppi, commands.Cog):
         try:
             messaggio = await canale.send(embed=embed_player(None), view=PlayerRichiesteView(self))
         except discord.HTTPException:
-            await interaction.followup.send("Non riesco a scrivere in quel canale.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "requestchann_non_riesco_scrivere_in_quel"), ephemeral=True)
             return
         vecchio = await music_request_repo.get(guild.id)
         await music_request_repo.set_channel(guild.id, canale.id, messaggio.id, interaction.user.id)
@@ -284,7 +285,7 @@ class MusicRequestCog(CogConGruppi, commands.Cog):
     async def premi(self, interaction: discord.Interaction, azione: str) -> None:
         musica = self._musica()
         if musica is None or interaction.guild is None:
-            await interaction.response.send_message("La musica non è disponibile ora.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "soundboard_la_musica_non_disponibile_ora"), ephemeral=True)
             return
         player = await musica._giocatore_attivo(interaction)
         if player is None:

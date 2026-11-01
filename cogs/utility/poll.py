@@ -21,6 +21,7 @@ from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.premium import PremiumModule, registry
 
 MODULE_POLL = "poll"
@@ -78,14 +79,13 @@ class PollCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
         if not await db.is_module_active_for_guild(guild.id, MODULE_POLL):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return
@@ -102,7 +102,7 @@ class PollCog(CogConGruppi, commands.Cog):
             opzioni = ["Sì", "No"]
         elif len(opzioni) == 1:
             await interaction.response.send_message(
-                "Servono almeno due opzioni (oppure nessuna, per un sì/no).", ephemeral=True
+                await testo_per(interaction, "poll_servono_almeno_due_opzioni_oppure"), ephemeral=True
             )
             return
 
@@ -118,7 +118,7 @@ class PollCog(CogConGruppi, commands.Cog):
         if discussione and not interaction.channel.permissions_for(interaction.user).create_public_threads:
             # Il thread lo apre il bot: non lo fa per chi nel canale non potrebbe aprirlo da solo.
             await interaction.followup.send(
-                "Sondaggio pubblicato, ma niente thread: in questo canale non puoi creare thread pubblici.",
+                await testo_per(interaction, "poll_sondaggio_pubblicato_ma_niente_thread"),
                 ephemeral=True,
             )
         elif discussione:
@@ -127,7 +127,7 @@ class PollCog(CogConGruppi, commands.Cog):
                 await messaggio.create_thread(name=question[:100], auto_archive_duration=1440)
             except discord.HTTPException:
                 await interaction.followup.send(
-                    "Sondaggio pubblicato, ma non ho potuto aprire il thread (permessi?).", ephemeral=True
+                    await testo_per(interaction, "poll_sondaggio_pubblicato_ma_non_ho"), ephemeral=True
                 )
 
 

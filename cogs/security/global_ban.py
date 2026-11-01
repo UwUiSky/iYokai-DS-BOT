@@ -37,6 +37,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core.database import db
 from core.global_ban_logic import should_propagate_ban
+from core.i18n import testo_per
 from core.premium import PremiumModule, registry, requires_module
 from core.repositories.global_ban_repo import global_ban_repo
 from core.security_access import SETTING_STAFF_ROLES, is_staff_exempt, premium_sbloccato
@@ -260,7 +261,7 @@ class GlobalBanCog(CogConGruppi, commands.Cog):
     ) -> None:
         if not invia and not ricevi:
             await interaction.response.send_message(
-                "Scegli almeno una direzione: invia o ricevi. Per uscire dalla rete usa /security globalban disable.",
+                await testo_per(interaction, "globalban_scegli_almeno_una_direzione_invia"),
                 ephemeral=True,
             )
             return
@@ -287,7 +288,7 @@ class GlobalBanCog(CogConGruppi, commands.Cog):
         await db.set_module_active_for_guild(
             interaction.guild.id, MODULE_GLOBAL_BAN, False, changed_by=interaction.user.id
         )
-        await interaction.response.send_message("❌ Ban globale disattivato.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "globalban_ban_globale_disattivato"), ephemeral=True)
 
     @comando_di_gruppo(
         "security",
@@ -300,7 +301,7 @@ class GlobalBanCog(CogConGruppi, commands.Cog):
     async def controlla(self, interaction: discord.Interaction, utente: discord.User) -> None:
         if not await _aderisce(self.bot, interaction.guild.id):
             await interaction.response.send_message(
-                "Solo i server che partecipano alla rete possono consultarla: /security globalban enable.",
+                await testo_per(interaction, "globalban_solo_server_che_partecipano_alla"),
                 ephemeral=True,
             )
             return
@@ -331,22 +332,21 @@ class GlobalBanCog(CogConGruppi, commands.Cog):
         incoming = await global_ban_repo.get_recent_incoming(interaction.guild.id, limit=5)
 
         embed = discord.Embed(
-            title="🌐 Ban globale — stato",
+            title=await testo_per(interaction, "globalban_ban_globale_stato"),
             description=(
-                f"**Attivo**: {'sì' if attivo else 'no'}\n"
-                f"**Invia i miei ban**: {'sì' if invia else 'no'} · **Ricevo i ban degli altri**: {'sì' if ricevi else 'no'}"
+                await testo_per(interaction, "globalban_attivo_invia_miei_ban_ricevo", v1=(await testo_per(interaction, "mar_si")) if attivo else (await testo_per(interaction, "mar_no")), v2=(await testo_per(interaction, "mar_si")) if invia else (await testo_per(interaction, "mar_no")), v3=(await testo_per(interaction, "mar_si")) if ricevi else (await testo_per(interaction, "mar_no")))
             ),
             color=discord.Color.blue() if attivo else discord.Color.dark_gray(),
         )
         embed.add_field(
-            name="Ban propagati da qui",
+            name=await testo_per(interaction, "globalban_ban_propagati_da_qui"),
             value="\n".join(
                 f"<@{e.user_id}> → server {e.target_guild_id}" for e in outgoing
             ) or "Nessuno.",
             inline=False,
         )
         embed.add_field(
-            name="Ban ricevuti da altri server",
+            name=await testo_per(interaction, "globalban_ban_ricevuti_da_altri_server"),
             value="\n".join(
                 f"<@{e.user_id}> ← server {e.source_guild_id}" for e in incoming
             ) or "Nessuno.",

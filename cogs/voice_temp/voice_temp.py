@@ -57,6 +57,7 @@ from core.channel_rename import (
 from cogs.moderation._shared import actor_from_member
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.permissions import can_moderate
 from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.voice_temp_repo import voice_temp_repo
@@ -165,7 +166,7 @@ class PlatformRoleView(BaseView):
             roles_by_key = _platform_roles(await voice_temp_repo.get_config(guild.id))
             if roles_by_key[key] is None:
                 await interaction.response.send_message(
-                    "Questa piattaforma non è più configurata su questo server.",
+                    await testo_per(interaction, "voicetemp_questa_piattaforma_non_piu_configurata"),
                     ephemeral=True,
                 )
                 return
@@ -173,7 +174,7 @@ class PlatformRoleView(BaseView):
             ruolo_scelto = guild.get_role(roles_by_key[key])
             if ruolo_scelto is None:
                 await interaction.response.send_message(
-                    "Il ruolo configurato per questa piattaforma non esiste più.",
+                    await testo_per(interaction, "voicetemp_il_ruolo_configurato_per_questa"),
                     ephemeral=True,
                 )
                 return
@@ -199,13 +200,13 @@ class PlatformRoleView(BaseView):
                     await interaction.user.add_roles(ruolo_scelto, reason="Selezione piattaforma vocale temporaneo")
             except (discord.Forbidden, discord.HTTPException):
                 await interaction.response.send_message(
-                    "Non ho i permessi per assegnare il ruolo piattaforma.",
+                    await testo_per(interaction, "voicetemp_non_ho_permessi_per_assegnare"),
                     ephemeral=True,
                 )
                 return
 
             await interaction.response.send_message(
-                f"Piattaforma impostata: {ruolo_scelto.mention}.", ephemeral=True
+                await testo_per(interaction, "voicetemp_piattaforma_impostata", mention=ruolo_scelto.mention), ephemeral=True
             )
 
         button.callback = callback
@@ -347,7 +348,7 @@ class CreateVoiceView(BaseView):
 
         if not await db.is_module_active_for_guild(guild.id, MODULE_VOICE_TEMP):
             await interaction.response.send_message(
-                "I vocali temporanei non sono attivi su questo server.",
+                await testo_per(interaction, "voicetemp_vocali_temporanei_non_sono_attivi"),
                 ephemeral=True,
             )
             return
@@ -355,8 +356,7 @@ class CreateVoiceView(BaseView):
         config = await voice_temp_repo.get_config(guild.id)
         if config.category_id is None:
             await interaction.response.send_message(
-                "Il sistema non è ancora configurato. Un amministratore "
-                "deve usare /gestione voice setup.",
+                await testo_per(interaction, "voicetemp_il_sistema_non_ancora_configurato"),
                 ephemeral=True,
             )
             return
@@ -364,8 +364,7 @@ class CreateVoiceView(BaseView):
         category = guild.get_channel(config.category_id)
         if not isinstance(category, discord.CategoryChannel):
             await interaction.response.send_message(
-                "La categoria configurata non esiste più. Un "
-                "amministratore deve riconfigurarla.",
+                await testo_per(interaction, "voicetemp_la_categoria_configurata_non_esiste"),
                 ephemeral=True,
             )
             return
@@ -374,8 +373,7 @@ class CreateVoiceView(BaseView):
         channel = await _create_temp_channel(guild, interaction.user, category, config)
         if channel is None:
             await interaction.followup.send(
-                "Non sono riuscito a creare il canale (permessi mancanti "
-                "o categoria piena).",
+                await testo_per(interaction, "voicetemp_non_sono_riuscito_creare_il"),
                 ephemeral=True,
             )
             return
@@ -384,7 +382,7 @@ class CreateVoiceView(BaseView):
         # della modalità automatica — è esattamente la differenza tra
         # le due modalità richiesta in fase di progettazione.
         await interaction.followup.send(
-            f"Canale creato: {channel.mention}. Entra quando vuoi.",
+            await testo_per(interaction, "voicetemp_canale_creato_entra_quando_vuoi", mention=channel.mention),
             ephemeral=True,
         )
 
@@ -414,15 +412,14 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
     ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.",
+                await testo_per(interaction, "guild_only_command"),
                 ephemeral=True,
             )
             return
 
         await voice_temp_repo.set_config(interaction.guild.id, generator.id, category.id)
         await interaction.response.send_message(
-            f"Configurato: entrando in {generator.mention} verrà creato "
-            f"un vocale temporaneo dentro **{category.name}**.",
+            await testo_per(interaction, "voicetemp_configurato_entrando_in_verra_creato", mention=generator.mention, name=category.name),
             ephemeral=True,
         )
 
@@ -458,7 +455,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         """#127 VOC-016."""
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
         guild_id = interaction.guild.id
@@ -471,31 +468,31 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
                 for g in altri
             ]
             await interaction.response.send_message(
-                "\n".join(righe) if righe else "Nessun generatore in più: c'è solo quello di /gestione voice setup.",
+                "\n".join(righe) if righe else await testo_per(interaction, "voicetemp_nessun_generatore_in_piu_solo"),
                 ephemeral=True,
             )
             return
         if canale is None:
-            await interaction.response.send_message("Scegli il canale generatore.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "voicetemp_scegli_il_canale_generatore"), ephemeral=True)
             return
         if azione == "rimuovi":
             tolto = await voice_temp_repo.rimuovi_generatore(guild_id, canale.id)
             await interaction.response.send_message(
-                "Generatore tolto." if tolto else "Quel canale non era un generatore in più.", ephemeral=True
+                await testo_per(interaction, "voicetemp_generatore_tolto") if tolto else await testo_per(interaction, "voicetemp_quel_canale_non_era_un"), ephemeral=True
             )
             return
         config = await voice_temp_repo.get_config(guild_id)
         if config.category_id is None:
             await interaction.response.send_message(
-                "Configura prima generatore e categoria con /gestione voice setup.", ephemeral=True
+                await testo_per(interaction, "voicetemp_configura_prima_generatore_categoria_con"), ephemeral=True
             )
             return
         if categoria is None:
-            await interaction.response.send_message("Scegli la categoria dei nuovi canali.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "voicetemp_scegli_la_categoria_dei_nuovi"), ephemeral=True)
             return
         if canale.id == config.generator_channel_id:
             await interaction.response.send_message(
-                "Quello è già il generatore principale: cambialo con /gestione voice setup.", ephemeral=True
+                await testo_per(interaction, "voicetemp_quello_gia_il_generatore_principale"), ephemeral=True
             )
             return
         if nome is not None and (errore := errore_modello_nome(nome)):
@@ -505,11 +502,11 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             guild_id, canale.id, categoria.id, nome, limite, GENERATORI_EXTRA_MAX
         ):
             await interaction.response.send_message(
-                f"Hai già {GENERATORI_EXTRA_MAX} generatori in più: toglierne uno prima.", ephemeral=True
+                await testo_per(interaction, "voicetemp_hai_gia_generatori_in_piu", v1=GENERATORI_EXTRA_MAX), ephemeral=True
             )
             return
         await interaction.response.send_message(
-            f"Fatto: entrando in {canale.mention} nasce un vocale in **{categoria.name}**.", ephemeral=True
+            await testo_per(interaction, "voicetemp_fatto_entrando_in_nasce_un", mention=canale.mention, name=categoria.name), ephemeral=True
         )
 
     @comando_di_gruppo(
@@ -521,7 +518,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
     async def voicetemp_panel(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
         config = await voice_temp_repo.get_config(interaction.guild.id)
@@ -556,14 +553,14 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
     ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
         config = await voice_temp_repo.get_config(interaction.guild.id)
         if config.category_id is None:
             await interaction.response.send_message(
-                "Configura prima generatore e categoria con /gestione voice setup.",
+                await testo_per(interaction, "voicetemp_configura_prima_generatore_categoria_con"),
                 ephemeral=True,
             )
             return
@@ -594,14 +591,14 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
     ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
         config = await voice_temp_repo.get_config(interaction.guild.id)
         if config.category_id is None:
             await interaction.response.send_message(
-                "Configura prima generatore e categoria con /gestione voice setup.",
+                await testo_per(interaction, "voicetemp_configura_prima_generatore_categoria_con"),
                 ephemeral=True,
             )
             return
@@ -626,8 +623,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             role_mobile_id=mobile.id if mobile else None,
         )
         await interaction.response.send_message(
-            "Ruoli piattaforma aggiornati. Sono puramente informativi: non "
-            "filtrano la visibilità del canale.",
+            await testo_per(interaction, "voicetemp_ruoli_piattaforma_aggiornati_sono_purame"),
             ephemeral=True,
         )
 
@@ -662,13 +658,13 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         """#127 VOC-010, 011, 012, 013, 015, 018."""
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
         config = await voice_temp_repo.get_config(interaction.guild.id)
         if config.category_id is None:
             await interaction.response.send_message(
-                "Configura prima generatore e categoria con /gestione voice setup.",
+                await testo_per(interaction, "voicetemp_configura_prima_generatore_categoria_con"),
                 ephemeral=True,
             )
             return
@@ -680,7 +676,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             colore = colore_da_testo(pannello_colore)
             if colore is None:
                 await interaction.response.send_message(
-                    "Il colore va scritto in esadecimale, per esempio 5865F2.", ephemeral=True
+                    await testo_per(interaction, "voicetemp_il_colore_va_scritto_in"), ephemeral=True
                 )
                 return
         modello = None if predefiniti else (nome or config.nome_modello)
@@ -710,8 +706,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
     ) -> discord.VoiceChannel | None:
         if not isinstance(interaction.user, discord.Member) or interaction.user.voice is None:
             await interaction.response.send_message(
-                "Devi essere connesso al tuo canale vocale temporaneo "
-                "per usare questo comando.",
+                await testo_per(interaction, "voicetemp_devi_essere_connesso_al_tuo"),
                 ephemeral=True,
             )
             return None
@@ -720,7 +715,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         owner_id = await voice_temp_repo.get_owner(channel.id)
         if owner_id is None:
             await interaction.response.send_message(
-                "Questo non è un canale vocale temporaneo gestito da iYokai.",
+                await testo_per(interaction, "voicetemp_questo_non_un_canale_vocale"),
                 ephemeral=True,
             )
             return None
@@ -728,7 +723,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         actor_has_manage_channels = interaction.user.guild_permissions.manage_channels
         if not can_manage_voice_channel(interaction.user.id, owner_id, actor_has_manage_channels):
             await interaction.response.send_message(
-                "Solo il proprietario del canale (o lo staff) può gestirlo.",
+                await testo_per(interaction, "voicetemp_solo_il_proprietario_del_canale"),
                 ephemeral=True,
             )
             return None
@@ -767,14 +762,13 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             return
         except discord.HTTPException:
             await interaction.followup.send(
-                "Non sono riuscito a rinominare il canale: controlla i miei "
-                "permessi e che il nome sia ammesso da Discord.",
+                await testo_per(interaction, "voicetemp_non_sono_riuscito_rinominare_il"),
                 ephemeral=True,
             )
             return
 
         await interaction.followup.send(
-            f"Canale rinominato in **{name}**.",
+            await testo_per(interaction, "voicetemp_canale_rinominato_in", pubblica=True, name=name),
             allowed_mentions=discord.AllowedMentions.none(),
         )
 
@@ -813,7 +807,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         except discord.HTTPException:
             await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
             return
-        await interaction.response.send_message("Canale bloccato.")
+        await interaction.response.send_message(await testo_per(interaction, "voicetemp_canale_bloccato", pubblica=True))
         await _registra(interaction.guild, f"🔒 {interaction.user.mention} ha bloccato {channel.mention}.")
 
     @comando_di_gruppo("voice", nome="unlock", descrizione="Sblocca il canale.")
@@ -837,7 +831,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
                 await voice_temp_repo.segna_bloccato(channel.id, prima)
             await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
             return
-        await interaction.response.send_message("Canale sbloccato.")
+        await interaction.response.send_message(await testo_per(interaction, "voicetemp_canale_sbloccato", pubblica=True))
         await _registra(interaction.guild, f"🔓 {interaction.user.mention} ha sbloccato {channel.mention}.")
 
     @staticmethod
@@ -874,7 +868,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             return
         if member.voice is None or member.voice.channel is None or member.voice.channel.id != channel.id:
             await interaction.response.send_message(
-                f"{member.mention} non è nel canale: non c'è nessuno da espellere.",
+                await testo_per(interaction, "voicetemp_non_nel_canale_non_nessuno", mention=member.mention),
                 ephemeral=True,
             )
             return
@@ -887,7 +881,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         except discord.HTTPException:
             await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
             return
-        await interaction.response.send_message(f"{member.mention} espulso dal canale.")
+        await interaction.response.send_message(await testo_per(interaction, "voicetemp_espulso_dal_canale", pubblica=True, mention=member.mention))
         await _registra(
             interaction.guild, f"👢 {interaction.user.mention} ha espulso {member.mention} da {channel.mention}."
         )
@@ -904,7 +898,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         # poi i permessi su Discord; se Discord rifiuta la proprietà torna com'era.
         if not await voice_temp_repo.cambia_proprietario(channel.id, vecchio_id, member.id):
             await interaction.response.send_message(
-                "Il canale ha già cambiato proprietario: riprova.", ephemeral=True
+                await testo_per(interaction, "voicetemp_il_canale_ha_gia_cambiato"), ephemeral=True
             )
             return False
         try:
@@ -937,7 +931,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         """VOC-001: il proprietario è uscito ma il canale resta (altri dentro): si può rilevare."""
         if not isinstance(interaction.user, discord.Member) or interaction.user.voice is None:
             await interaction.response.send_message(
-                "Devi essere connesso a un canale vocale temporaneo per usare questo comando.",
+                await testo_per(interaction, "voicetemp_devi_essere_connesso_un_canale"),
                 ephemeral=True,
             )
             return
@@ -945,22 +939,22 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         vecchio_id = await voice_temp_repo.get_owner(channel.id)
         if vecchio_id is None:
             await interaction.response.send_message(
-                "Questo non è un canale vocale temporaneo gestito da iYokai.", ephemeral=True
+                await testo_per(interaction, "voicetemp_questo_non_un_canale_vocale"), ephemeral=True
             )
             return
         if vecchio_id == interaction.user.id:
-            await interaction.response.send_message("Sei già il proprietario del canale.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "voicetemp_sei_gia_il_proprietario_del"), ephemeral=True)
             return
         if any(m.id == vecchio_id for m in channel.members):
             await interaction.response.send_message(
-                "Il proprietario è ancora nel canale: chiedi a lui di usare `/voice transfer`.",
+                await testo_per(interaction, "voicetemp_il_proprietario_ancora_nel_canale"),
                 ephemeral=True,
             )
             return
         if not await self._assegna_proprieta(interaction, channel, interaction.user, vecchio_id):
             return
         await interaction.response.send_message(
-            f"{interaction.user.mention} è il nuovo proprietario del canale.",
+            await testo_per(interaction, "voicetemp_il_nuovo_proprietario_del_canale", pubblica=True, mention=interaction.user.mention),
             allowed_mentions=discord.AllowedMentions.none(),
         )
         await _registra(interaction.guild, f"👑 {interaction.user.mention} ha preso {channel.mention}.")
@@ -979,7 +973,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
             return
         await interaction.response.send_message(
-            f"{member.mention} può entrare nel canale.", allowed_mentions=discord.AllowedMentions.none()
+            await testo_per(interaction, "voicetemp_puo_entrare_nel_canale", pubblica=True, mention=member.mention), allowed_mentions=discord.AllowedMentions.none()
         )
 
     @comando_di_gruppo("voice", nome="deny", descrizione="Vieta a un utente di entrare nel canale.")
@@ -990,7 +984,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             return
         if member.id == interaction.user.id or member.id == await voice_temp_repo.get_owner(channel.id):
             await interaction.response.send_message(
-                "Non puoi vietare l'accesso al proprietario del canale.", ephemeral=True
+                await testo_per(interaction, "voicetemp_non_puoi_vietare_accesso_al"), ephemeral=True
             )
             return
         permesso, motivo = self._puo_espellere(interaction, member)
@@ -1007,7 +1001,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
             return
         await interaction.response.send_message(
-            f"{member.mention} non può più entrare nel canale.", allowed_mentions=discord.AllowedMentions.none()
+            await testo_per(interaction, "voicetemp_non_puo_piu_entrare_nel", pubblica=True, mention=member.mention), allowed_mentions=discord.AllowedMentions.none()
         )
         await _registra(
             interaction.guild, f"⛔ {interaction.user.mention} ha escluso {member.mention} da {channel.mention}."
@@ -1024,7 +1018,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         massimo = interaction.guild.bitrate_limit // 1000
         if kbps > massimo:
             await interaction.response.send_message(
-                f"Questo server arriva al massimo a {int(massimo)} kbps.", ephemeral=True
+                await testo_per(interaction, "voicetemp_questo_server_arriva_al_massimo", v1=int(massimo)), ephemeral=True
             )
             return
         try:
@@ -1032,7 +1026,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         except discord.HTTPException:
             await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
             return
-        await interaction.response.send_message(f"Qualità audio impostata a {kbps} kbps.")
+        await interaction.response.send_message(await testo_per(interaction, "voicetemp_qualita_audio_impostata_kbps", pubblica=True, kbps=kbps))
 
     @comando_di_gruppo("voice", nome="nascondi", descrizione="Nascondi o mostra il canale a chi non è dentro.")
     @app_commands.describe(nascosto="Sì per nasconderlo, no per mostrarlo di nuovo")
@@ -1059,7 +1053,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         except discord.HTTPException:
             await interaction.followup.send(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
             return
-        await interaction.followup.send("Canale nascosto." if nascosto else "Canale di nuovo visibile.")
+        await interaction.followup.send(await testo_per(interaction, "voicetemp_canale_nascosto", pubblica=True) if nascosto else await testo_per(interaction, "voicetemp_canale_di_nuovo_visibile", pubblica=True))
 
     @comando_di_gruppo("voice", nome="invita", descrizione="Manda a un utente un invito al tuo canale.")
     @app_commands.describe(member="L'utente da invitare (può entrare anche se il canale è bloccato)")
@@ -1069,13 +1063,13 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         if channel is None:
             return
         if member.bot:
-            await interaction.response.send_message("Non puoi invitare un bot.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "voicetemp_non_puoi_invitare_un_bot"), ephemeral=True)
             return
         # L'invito vale per il server: il bot lo crea solo per chi potrebbe
         # crearlo da sé, altrimenti aggirerebbe il permesso «Crea invito».
         if not channel.permissions_for(interaction.user).create_instant_invite:
             await interaction.response.send_message(
-                "Non hai il permesso di creare inviti su questo canale: usa /voice permit.",
+                await testo_per(interaction, "voicetemp_non_hai_il_permesso_di"),
                 ephemeral=True,
             )
             return
@@ -1097,14 +1091,13 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             )
         except discord.HTTPException:
             await interaction.followup.send(
-                f"{member.mention} non riceve DM: mandagli tu questo invito (vale un giorno, "
-                f"un solo uso): {invito.url}",
+                await testo_per(interaction, "voicetemp_non_riceve_dm_mandagli_tu", mention=member.mention, url=invito.url),
                 ephemeral=True,
                 allowed_mentions=discord.AllowedMentions.none(),
             )
             return
         await interaction.followup.send(
-            f"Invito mandato in DM a {member.mention}.",
+            await testo_per(interaction, "voicetemp_invito_mandato_in_dm", mention=member.mention),
             ephemeral=True,
             allowed_mentions=discord.AllowedMentions.none(),
         )
@@ -1124,12 +1117,11 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             await channel.edit(status=testo)
         except discord.HTTPException:
             await interaction.response.send_message(
-                "Non sono riuscito a cambiare lo stato: mi serve il permesso "
-                "«Impostare lo stato del canale vocale».",
+                await testo_per(interaction, "voicetemp_non_sono_riuscito_cambiare_lo"),
                 ephemeral=True,
             )
             return
-        await interaction.response.send_message("Stato aggiornato." if testo else "Stato tolto.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "voicetemp_stato_aggiornato") if testo else await testo_per(interaction, "voicetemp_stato_tolto"), ephemeral=True)
 
     @comando_di_gruppo("voice", nome="transfer", descrizione="Trasferisci la proprietà del canale.")
     @app_commands.describe(member="Il nuovo proprietario del canale")
@@ -1139,20 +1131,19 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             return
         if member.bot:
             await interaction.response.send_message(
-                "Non puoi trasferire il canale a un bot.", ephemeral=True
+                await testo_per(interaction, "voicetemp_non_puoi_trasferire_il_canale"), ephemeral=True
             )
             return
         if member.voice is None or member.voice.channel is None or member.voice.channel.id != channel.id:
             await interaction.response.send_message(
-                f"{member.mention} non è nel canale: puoi trasferirlo solo "
-                f"a chi è connesso qui.",
+                await testo_per(interaction, "voicetemp_non_nel_canale_puoi_trasferirlo", mention=member.mention),
                 ephemeral=True,
             )
             return
         vecchio_id = await voice_temp_repo.get_owner(channel.id)
         if member.id == vecchio_id:
             await interaction.response.send_message(
-                f"{member.mention} è già il proprietario del canale.", ephemeral=True
+                await testo_per(interaction, "voicetemp_gia_il_proprietario_del_canale", mention=member.mention), ephemeral=True
             )
             return
 
@@ -1160,7 +1151,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             return
 
         await interaction.response.send_message(
-            f"Proprietà del canale trasferita a {member.mention}."
+            await testo_per(interaction, "voicetemp_proprieta_del_canale_trasferita", pubblica=True, mention=member.mention)
         )
         await _registra(
             interaction.guild,

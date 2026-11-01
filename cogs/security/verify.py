@@ -192,13 +192,12 @@ class CaptchaImmagineModal(BaseModal, title="Verifica"):
         chiave = (self.guild_id, self.user_id)
         sfida = self.cog.sfide.get(chiave)
         if sfida is None:
-            await interaction.followup.send("Il tempo e' scaduto: premi di nuovo «Verify».", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "verify_il_tempo_scaduto_premi_di"), ephemeral=True)
             return
         esito = sfida.prova(self.answer_input.value)
         if esito == "sbagliata":
             await interaction.followup.send(
-                f"Non e' giusto. Ti restano {sfida.tentativi_rimasti} tentativi: premi «Scrivi il codice» "
-                "sotto l'immagine.",
+                await testo_per(interaction, "verify_non_giusto_ti_restano_tentativi", tentativi_rimasti=sfida.tentativi_rimasti),
                 ephemeral=True,
             )
             return
@@ -206,7 +205,7 @@ class CaptchaImmagineModal(BaseModal, title="Verifica"):
         guild = interaction.client.get_guild(self.guild_id)
         member = guild.get_member(self.user_id) if guild is not None else None
         if member is None:
-            await interaction.followup.send("Qualcosa e' andato storto, riprova.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "verify_qualcosa_andato_storto_riprova"), ephemeral=True)
             return
         outcome = await self.cog.run_checks_and_finalize(guild, member, esito == "ok")
         if esito == "ok":
@@ -234,12 +233,12 @@ class CaptchaImmagineView(BaseView):
     @discord.ui.button(label="Scrivi il codice", style=discord.ButtonStyle.primary)
     async def scrivi(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         if interaction.user.id != self.user_id:
-            await interaction.response.send_message("Questo codice e' di un altro utente.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "verify_questo_codice_di_un_altro"), ephemeral=True)
             return
         sfida = self.cog.sfide.get((self.guild_id, self.user_id))
         if sfida is None or sfida.chiusa or sfida.scaduta():
             self.cog.sfide.delete((self.guild_id, self.user_id))
-            await interaction.response.send_message("Il tempo e' scaduto: premi di nuovo «Verify».", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "verify_il_tempo_scaduto_premi_di"), ephemeral=True)
             return
         await interaction.response.send_modal(CaptchaImmagineModal(self.cog, self.guild_id, self.user_id))
 
@@ -299,20 +298,20 @@ async def avvia_verifica(interaction: discord.Interaction) -> None:
     if guild is None or not isinstance(interaction.user, discord.Member):
         # Un clic senza risposta resta "interazione non riuscita".
         await interaction.response.send_message(
-            "La verifica funziona solo dentro un server.", ephemeral=True
+            await testo_per(interaction, "verify_la_verifica_funziona_solo_dentro"), ephemeral=True
         )
         return
 
     if not await db.is_module_active_for_guild(guild.id, MODULE_VERIFY):
         await interaction.response.send_message(
-            "Verify non è attivo su questo server.", ephemeral=True
+            await testo_per(interaction, "verify_verify_non_attivo_su_questo"), ephemeral=True
         )
         return
 
     cog = interaction.client.get_cog("VerifyCog")
     if cog is None:
         await interaction.response.send_message(
-            "La verifica non è disponibile in questo momento. Riprova tra poco.", ephemeral=True
+            await testo_per(interaction, "verify_la_verifica_non_disponibile_in"), ephemeral=True
         )
         return
 
@@ -330,13 +329,12 @@ async def avvia_verifica(interaction: discord.Interaction) -> None:
         link = link_verifica_web(guild.id, interaction.user.id)
         if link is None:
             await interaction.response.send_message(
-                "La verifica dalla pagina web non è disponibile: il pannello web del bot è spento. "
-                "Avvisa lo staff del server.",
+                await testo_per(interaction, "verify_la_verifica_dalla_pagina_web"),
                 ephemeral=True,
             )
             return
         await interaction.response.send_message(
-            "Apri il link e premi «Verificami». Il link è solo tuo e vale 15 minuti.",
+            await testo_per(interaction, "verify_apri_il_link_premi_verificami"),
             view=LinkVerificaView(link),
             ephemeral=True,
         )
@@ -378,7 +376,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         png = await asyncio.to_thread(captcha_image.disegna_immagine, sfida.codice)
         self.sfide.set((guild_id, interaction.user.id), sfida)
         await interaction.followup.send(
-            "Ricopia le lettere dell'immagine (hai 3 minuti e 3 tentativi).",
+            await testo_per(interaction, "verify_ricopia_le_lettere_dell_immagine"),
             file=discord.File(io.BytesIO(png), filename="verifica.png"),
             view=CaptchaImmagineView(self, guild_id, interaction.user.id),
             ephemeral=True,
@@ -714,7 +712,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
     ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.",
+                await testo_per(interaction, "guild_only_command"),
                 ephemeral=True,
             )
             return
@@ -724,23 +722,19 @@ class VerifyCog(CogConGruppi, commands.Cog):
         captcha_enabled = captcha_enabled or immagine
         if method.value == "reaction" and captcha_enabled:
             await interaction.response.send_message(
-                "Il captcha non è supportato in modalità reaction: una "
-                "reazione non può aprire una finestra di verifica. Usa la "
-                "modalità Button se vuoi il captcha.",
+                await testo_per(interaction, "verify_il_captcha_non_supportato_in"),
                 ephemeral=True,
             )
             return
         if method.value == METODO_WEB and captcha_enabled:
             await interaction.response.send_message(
-                "La pagina web sostituisce il captcha: scegli la pagina web senza captcha, "
-                "oppure il bottone con il captcha.",
+                await testo_per(interaction, "verify_la_pagina_web_sostituisce_il"),
                 ephemeral=True,
             )
             return
         if method.value == METODO_WEB and link_verifica_web(interaction.guild.id, interaction.user.id) is None:
             await interaction.response.send_message(
-                "La verifica dalla pagina web richiede il pannello web del bot acceso: per ora non lo è. "
-                "Scegli il bottone o la reazione.",
+                await testo_per(interaction, "verify_la_verifica_dalla_pagina_web_2"),
                 ephemeral=True,
             )
             return
@@ -770,9 +764,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
             )
 
         await interaction.response.send_message(
-            f"Verify configurato: modalità **{method.name}**, ruolo "
-            f"{verified_role.mention}. Usa /security verify panel per pubblicare "
-            f"il pannello.",
+            await testo_per(interaction, "verify_verify_configurato_modalita_ruolo_usa", name=method.name, mention=verified_role.mention),
             ephemeral=True,
         )
 
@@ -790,15 +782,15 @@ class VerifyCog(CogConGruppi, commands.Cog):
         config = await verify_repo.get_config(interaction.guild.id)
         if config.verified_role_id is None:
             await interaction.response.send_message(
-                "Configura prima il Verify con /security verify setup.", ephemeral=True
+                await testo_per(interaction, "verify_configura_prima_il_verify_con"), ephemeral=True
             )
             return
 
         embed = discord.Embed(
-            title="✅ Server Verification",
-            description="Click the button below to verify and gain access to the server."
+            title=await testo_per(interaction, "verify_server_verification", pubblica=True),
+            description=await testo_per(interaction, "verify_click_the_button_below_to", pubblica=True)
             if config.method in ("button", METODO_WEB)
-            else f"React with {VERIFY_REACTION_EMOJI} to verify and gain access to the server.",
+            else await testo_per(interaction, "verify_react_with_to_verify_and", v1=VERIFY_REACTION_EMOJI, pubblica=True),
             color=discord.Color.blurple(),
         )
 
@@ -812,8 +804,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
                 await sent.add_reaction(VERIFY_REACTION_EMOJI)
             except discord.HTTPException:
                 await interaction.followup.send(
-                    f"Non riesco ad aggiungere la reazione {VERIFY_REACTION_EMOJI} al pannello "
-                    "(mi manca Aggiungi reazioni?). Aggiungila a mano: il pannello funziona lo stesso.",
+                    await testo_per(interaction, "verify_non_riesco_ad_aggiungere_la", v1=VERIFY_REACTION_EMOJI),
                     ephemeral=True,
                 )
 
@@ -830,7 +821,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         if not await ensure_module_enabled(interaction, MODULE_VERIFY):
             return
         await verify_repo.add_whitelist(interaction.guild.id, member.id)
-        await interaction.response.send_message(f"{member.mention} aggiunto alla whitelist.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "verify_aggiunto_alla_whitelist", mention=member.mention), ephemeral=True)
 
     @comando_di_gruppo(
         "security",
@@ -843,7 +834,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         if not await ensure_module_enabled(interaction, MODULE_VERIFY):
             return
         await verify_repo.remove_whitelist(interaction.guild.id, member.id)
-        await interaction.response.send_message(f"{member.mention} rimosso dalla whitelist.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "verify_rimosso_dalla_whitelist", mention=member.mention), ephemeral=True)
 
     @comando_di_gruppo(
         "security",
@@ -856,7 +847,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         if not await ensure_module_enabled(interaction, MODULE_VERIFY):
             return
         await verify_repo.add_blacklist(interaction.guild.id, member.id)
-        await interaction.response.send_message(f"{member.mention} aggiunto alla blacklist.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "verify_aggiunto_alla_blacklist", mention=member.mention), ephemeral=True)
 
     @comando_di_gruppo(
         "security",
@@ -869,7 +860,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         if not await ensure_module_enabled(interaction, MODULE_VERIFY):
             return
         await verify_repo.remove_blacklist(interaction.guild.id, member.id)
-        await interaction.response.send_message(f"{member.mention} rimosso dalla blacklist.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "verify_rimosso_dalla_blacklist", mention=member.mention), ephemeral=True)
 
 
     @comando_di_gruppo(
@@ -904,7 +895,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         if azzera:
             await db.set_guild_setting(guild.id, SETTING_RUOLO_NON_VERIFICATO, None)
             await db.set_guild_setting(guild.id, SETTING_RUOLI_EXTRA, None)
-            await interaction.response.send_message("Ruoli extra della verifica tolti.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "verify_ruoli_extra_della_verifica_tolti"), ephemeral=True)
             return
         extra = [r for r in (extra_1, extra_2, extra_3) if r is not None]
         for ruolo in ([non_verificato] if non_verificato else []) + extra:
@@ -921,7 +912,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
                 guild.id, SETTING_RUOLI_EXTRA, [r.id for r in extra][:MAX_RUOLI_EXTRA],
                 changed_by=interaction.user.id,
             )
-        await interaction.response.send_message("Opzioni della verifica salvate.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "verify_opzioni_della_verifica_salvate"), ephemeral=True)
 
     @comando_di_gruppo(
         "utility",
@@ -1008,19 +999,19 @@ class VerifyCog(CogConGruppi, commands.Cog):
         config = await verify_repo.get_config(interaction.guild.id)
         if config.verified_role_id is None:
             await interaction.response.send_message(
-                "Configura prima il Verify con /security verify setup.", ephemeral=True
+                await testo_per(interaction, "verify_configura_prima_il_verify_con"), ephemeral=True
             )
             return
         await interaction.response.defer(ephemeral=True)
         if not await self.dai_ruoli_di_verifica(interaction.guild, member, config.verified_role_id):
             await interaction.followup.send(
-                "Non sono riuscito a dare i ruoli: controlla i miei permessi.", ephemeral=True
+                await testo_per(interaction, "verify_non_sono_riuscito_dare_ruoli"), ephemeral=True
             )
             return
         await verify_repo.log_attempt(
             interaction.guild.id, member.id, True, f"Verificato a mano da {interaction.user.id}"
         )
-        await interaction.followup.send(f"{member.mention} verificato a mano.", ephemeral=True)
+        await interaction.followup.send(await testo_per(interaction, "verify_verificato_mano", mention=member.mention), ephemeral=True)
 
     @comando_di_gruppo(
         "security",
@@ -1036,15 +1027,15 @@ class VerifyCog(CogConGruppi, commands.Cog):
         trovato = await self._da_verificare(interaction.guild.id, membro.id)
         if trovato is None:
             await interaction.response.send_message(
-                "Il membro è già verificato, oppure il Verify non è configurato.", ephemeral=True
+                await testo_per(interaction, "verify_il_membro_gia_verificato_oppure"), ephemeral=True
             )
             return
         guild, _, config = trovato
         if await self._manda_dm(membro, self._testo_invito(guild, config, "Per entrare in")):
-            await interaction.response.send_message(f"Invito inviato a {membro.mention}.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "verify_invito_inviato", mention=membro.mention), ephemeral=True)
         else:
             await interaction.response.send_message(
-                f"{membro.mention} ha i messaggi privati chiusi: non ho potuto scrivergli.", ephemeral=True
+                await testo_per(interaction, "verify_ha_messaggi_privati_chiusi_non", mention=membro.mention), ephemeral=True
             )
 
     @comando_di_gruppo(
@@ -1064,7 +1055,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
             return
         if member is None and not csv:
             await interaction.response.send_message(
-                "Indica un utente, oppure scegli l'esportazione CSV di tutto il server.", ephemeral=True
+                await testo_per(interaction, "verify_indica_un_utente_oppure_scegli"), ephemeral=True
             )
             return
         gid = interaction.guild.id
@@ -1073,14 +1064,14 @@ class VerifyCog(CogConGruppi, commands.Cog):
             return
         tentativi = await verify_repo.get_recent_attempts(gid, member.id, 15)
         if not tentativi:
-            await interaction.response.send_message("Nessun tentativo registrato.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "verify_nessun_tentativo_registrato"), ephemeral=True)
             return
         righe = [
             f"{'✅' if ok else '❌'} {quando.strftime('%d/%m/%Y %H:%M')} — {motivo[:150]}"
             for ok, motivo, quando in tentativi
         ]
         embed = discord.Embed(
-            title=f"Tentativi di {member}", description="\n".join(righe)[:4000], color=discord.Color.blurple()
+            title=await testo_per(interaction, "verify_tentativi_di", member=member), description="\n".join(righe)[:4000], color=discord.Color.blurple()
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -1091,8 +1082,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
             ultimo = _ultimo_csv.get(gid)
             if ultimo is not None and time.monotonic() - ultimo < SECONDI_TRA_CSV:
                 await interaction.response.send_message(
-                    "L'esportazione di tutto il server si può chiedere una volta all'ora. "
-                    "Riprova più tardi, oppure indica un utente.",
+                    await testo_per(interaction, "verify_esportazione_di_tutto_il_server"),
                     ephemeral=True,
                 )
                 return
@@ -1107,7 +1097,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
             sicuro = "'" + motivo if motivo[:1] in ("=", "+", "-", "@") else motivo
             scrittore.writerow([utente, "ok" if ok else "no", sicuro, quando.strftime("%Y-%m-%d %H:%M:%S")])
         file = discord.File(io.BytesIO(buffer.getvalue().encode("utf-8")), filename="verifica_tentativi.csv")
-        await interaction.followup.send(f"{len(righe)} tentativi esportati.", file=file, ephemeral=True)
+        await interaction.followup.send(await testo_per(interaction, "verify_tentativi_esportati", v1=len(righe)), file=file, ephemeral=True)
 
     @comando_di_gruppo(
         "security",
@@ -1123,11 +1113,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
             return
         s = await verify_repo.statistiche(interaction.guild.id, giorni)
         await interaction.response.send_message(
-            f"Ultimi {giorni} giorni.\n"
-            f"Ingressi: **{s['ingressi']}**, uscite: **{s['uscite']}**.\n"
-            f"Captcha inviati: **{s['captcha_inviati']}**, falliti: **{s['captcha_falliti']}**.\n"
-            f"Verifiche completate: **{s['completate']}**.\n"
-            f"Espulsi o bannati per tempo scaduto: **{s['scaduti']}**.",
+            await testo_per(interaction, "verify_ultimi_giorni_ingressi_uscite_captcha", giorni=giorni, v2=s['ingressi'], v3=s['uscite'], v4=s['captcha_inviati'], v5=s['captcha_falliti'], v6=s['completate'], v7=s['scaduti']),
             ephemeral=True,
         )
 

@@ -5,11 +5,13 @@ Test del comportamento REALE dei comandi /alerts — non solo che il
 cog carica, contro PostgreSQL reale.
 """
 
+import re
 import socket
 
 import pytest
 
 from cogs.utility.feed_alerts import MODULE_FEED_ALERTS, FeedAlertsCog
+from core.custom_webhook_logic import hash_webhook_token
 from core.database import Database
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_text_channel
 
@@ -531,7 +533,13 @@ async def test_webhook_create_senza_url_pubblica_configurata_mostra_solo_il_toke
         creati = await repo_di_test.list_webhooks(guild_id)
         assert len(creati) == 1
         assert creati[0].label == "Monitor"
-        assert creati[0].token in messaggio
+        # Nel database c'è solo l'impronta (19.9): il token mostrato è quello che la produce.
+        assert creati[0].token is None
+        token_mostrato = re.search(r"Token: `([^`]+)`", messaggio).group(1)
+        impronta = await database.pool.fetchval(
+            "SELECT token_hash FROM custom_webhooks WHERE id = $1", creati[0].id
+        )
+        assert impronta == hash_webhook_token(token_mostrato)
     finally:
         await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 900000008")
         await database.pool.execute("DELETE FROM custom_webhooks WHERE guild_id = 900000008")
@@ -620,9 +628,11 @@ async def test_webhook_create_list_remove_ciclo_completo(monkeypatch):
         cog = FeedAlertsCog(bot=None)
         canale = _FakeChannel(500)
 
+        interaction_create = _FakeInteraction(guild_id)
         await cog.webhook_create.callback(
-            cog, _FakeInteraction(guild_id), channel=canale, label="Monitor", message_template=None
+            cog, interaction_create, channel=canale, label="Monitor", message_template=None
         )
+        token_mostrato = re.search(r"Token: `([^`]+)`", interaction_create.response.sent_messages[0]).group(1)
 
         interaction_list = _FakeInteraction(guild_id)
         await cog.list_alerts.callback(cog, interaction_list)
@@ -632,7 +642,7 @@ async def test_webhook_create_list_remove_ciclo_completo(monkeypatch):
         # Il token NON deve mai comparire in /alerts list — solo alla
         # creazione, una volta.
         creato = (await repo_di_test.list_webhooks(guild_id))[0]
-        assert creato.token not in descrizione
+        assert token_mostrato not in descrizione
 
         interaction_remove = _FakeInteraction(guild_id)
         await cog.remove.callback(cog, interaction_remove, subscription_id=f"WH-{creato.id}")

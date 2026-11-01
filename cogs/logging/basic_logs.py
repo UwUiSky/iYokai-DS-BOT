@@ -46,6 +46,7 @@ from core.channel_router import (
 )
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.log_ignora_filtro import evento_da_ignorare
 from core.repositories.log_eventi_repo import log_eventi_repo
 from core.repositories.event_log_repo import event_log_repo
@@ -195,7 +196,7 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
     ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.",
+                await testo_per(interaction, "guild_only_command"),
                 ephemeral=True,
             )
             return
@@ -203,7 +204,7 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
         if tipo == TIPO_LOG_SANZIONI:
             if isinstance(channel, discord.ForumChannel):
                 await interaction.response.send_message(
-                    "Le sanzioni vanno in un canale di testo, non in un forum.",
+                    await testo_per(interaction, "basiclogs_le_sanzioni_vanno_in_un"),
                     ephemeral=True,
                 )
                 return
@@ -211,7 +212,7 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
                 return
             await db.set_guild_setting(interaction.guild.id, SETTING_MOD_LOG_CHANNEL, channel.id)
             await interaction.response.send_message(
-                f"Le sanzioni verranno registrate anche in {channel.mention}.",
+                await testo_per(interaction, "basiclogs_le_sanzioni_verranno_registrate_anche", mention=channel.mention),
                 ephemeral=True,
             )
             return
@@ -223,9 +224,7 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
             servono = servono and permessi.create_public_threads and permessi.send_messages_in_threads
         if not servono:
             await interaction.response.send_message(
-                f"Mi mancano i permessi in {channel.mention}: servono Vedere il canale, "
-                f"Inviare messaggi, Incorporare link e, per un forum, Creare post "
-                f"e Inviare messaggi nei post.",
+                await testo_per(interaction, "basiclogs_mi_mancano_permessi_in_servono", mention=channel.mention),
                 ephemeral=True,
             )
             return
@@ -247,7 +246,7 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
     async def logs_status(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.",
+                await testo_per(interaction, "guild_only_command"),
                 ephemeral=True,
             )
             return
@@ -256,7 +255,7 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
         generale = await db.get_guild_setting(guild.id, SETTING_LOG_CHANNEL)
         if generale is None and not await router.output_channel_repo.elenco(guild.id):
             await interaction.response.send_message(
-                "Nessun canale di log configurato. Usa /log canale.",
+                await testo_per(interaction, "basiclogs_nessun_canale_di_log_configurato"),
                 ephemeral=True,
             )
             return

@@ -20,6 +20,7 @@ from discord.ext import commands
 from cogs.moderation._shared import MODULE_CASE_SYSTEM, ensure_module_enabled
 from core.command_access import Livello, richiedi
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.i18n import testo_per
 from core.premium import requires_module
 from core.repositories.staff_carico_repo import staff_carico_repo
 from core.staff_rischio_logic import SegnaliRischio, calcola_rischio, proponi_turni, testo_carico, testo_rischio
@@ -85,7 +86,7 @@ class RischioStaffCog(CogConGruppi, commands.Cog):
         righe = await staff_carico_repo.carico(interaction.guild.id, giorni, escludi)
         ore = await staff_carico_repo.ore_attivita(interaction.guild.id, giorni, escludi)
         embed = discord.Embed(
-            title="Carico dello staff", description=testo_carico(righe, giorni)[:4000], color=discord.Color.blurple()
+            title=await testo_per(interaction, "rischiostaff_carico_dello_staff"), description=testo_carico(righe, giorni)[:4000], color=discord.Color.blurple()
         )
         embed.add_field(name="Turni", value=proponi_turni(ore)[:1000], inline=False)
         embed.set_footer(text="Lo vedono solo gli amministratori. Non è una classifica.")

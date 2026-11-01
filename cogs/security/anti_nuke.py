@@ -48,6 +48,7 @@ from core import bot_roles
 from core import channel_router as router
 from core.bounded_cache import BoundedCache
 from core.database import db
+from core.i18n import testo_per
 from core.lockdown_service import panico_automatico
 from core.permission_risk_logic import critical_permissions_of
 from core.premium import PremiumModule, registry, requires_module
@@ -304,7 +305,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         if not enabled and not await self._solo_chi_gestisce(interaction, settings):
             return
         await security_repo.save_settings(_replace(settings, enabled=enabled))
-        await interaction.response.send_message(f"Anti-Nuke {'attivato' if enabled else 'disattivato'}.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "antinuke_anti_nuke", v1=(await testo_per(interaction, "greetings_attivato")) if enabled else (await testo_per(interaction, "greetings_disattivato"))), ephemeral=True)
         if enabled and settings.anti_nuke.punish_action == "quarantine":
             await self._prepara_quarantena(interaction)
 
@@ -424,7 +425,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         try:
             id_utente = int(user_id)
         except ValueError:
-            await interaction.response.send_message("ID non valido.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "antinuke_id_non_valido"), ephemeral=True)
             return
         settings = await security_repo.get_settings(interaction.guild.id)
         if not await self._solo_chi_gestisce(interaction, settings):
@@ -472,7 +473,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         try:
             id_utente = int(user_id)
         except ValueError:
-            await interaction.response.send_message("ID non valido.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "antinuke_id_non_valido"), ephemeral=True)
             return
         settings = await security_repo.get_settings(interaction.guild.id)
         if not await self._solo_chi_gestisce(interaction, settings):
@@ -487,7 +488,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(errore, ephemeral=True)
             return
         await security_repo.save_settings(_replace(settings, **_campi_fiducia(nuova)))
-        await interaction.response.send_message(f"`{id_utente}` rimosso dalla lista fidati.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "antinuke_rimosso_dalla_lista_fidati", id_utente=id_utente), ephemeral=True)
 
     @comando_di_gruppo(
         "antinuke",
@@ -512,7 +513,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         if len(testo) > 4000:
             testo = testo[:3990].rsplit("\n", 1)[0] + "\n…"
         await interaction.response.send_message(
-            embed=discord.Embed(title="Esentati dall'Anti-Nuke", description=testo, color=discord.Color.blurple()),
+            embed=discord.Embed(title=await testo_per(interaction, "antinuke_esentati_dall_anti_nuke"), description=testo, color=discord.Color.blurple()),
             ephemeral=True,
             allowed_mentions=discord.AllowedMentions.none(),
         )
@@ -574,7 +575,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         if not await self._solo_chi_gestisce(interaction, settings):
             return
         await security_repo.save_settings(_replace(settings, recovery_enabled=enabled))
-        await interaction.response.send_message(f"Recovery automatico {'attivato' if enabled else 'disattivato'}.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "antinuke_recovery_automatico", v1=(await testo_per(interaction, "greetings_attivato")) if enabled else (await testo_per(interaction, "greetings_disattivato"))), ephemeral=True)
 
     @comando_di_gruppo(
         "antinuke",
@@ -593,7 +594,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
             return
         await output_channel_repo.imposta(interaction.guild.id, router.TIPO_ALLARMI, channel.id)
         await interaction.response.send_message(
-            f"Gli allarmi dell'Anti-Nuke arriveranno in {channel.mention}.", ephemeral=True
+            await testo_per(interaction, "antinuke_gli_allarmi_dell_anti_nuke", mention=channel.mention), ephemeral=True
         )
 
     @comando_di_gruppo(
@@ -684,9 +685,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
             await security_repo.save_settings(settings)
         n = settings.anti_nuke
         await interaction.response.send_message(
-            "Guardie: "
-            f"permessi dei ruoli **{n.role_perm_guard}**, ruoli pericolosi ai membri **{'sì' if n.member_role_guard else 'no'}**, "
-            f"link personalizzato **{'sì' if n.vanity_guard else 'no'}**, aggiunta di bot **{'sì' if n.bot_add_guard else 'no'}**.",
+            await testo_per(interaction, "antinuke_guardie_permessi_dei_ruoli_ruoli", role_perm_guard=n.role_perm_guard, v2=(await testo_per(interaction, "mar_si")) if n.member_role_guard else (await testo_per(interaction, "mar_no")), v3=(await testo_per(interaction, "mar_si")) if n.vanity_guard else (await testo_per(interaction, "mar_no")), v4=(await testo_per(interaction, "mar_si")) if n.bot_add_guard else (await testo_per(interaction, "mar_no"))),
             ephemeral=True,
         )
 
@@ -712,19 +711,19 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         if numero is not None:
             caso = await security_repo.get_nuke_case(guild_id, numero)
             if caso is None:
-                await interaction.response.send_message(f"Il caso #{numero} non esiste.", ephemeral=True)
+                await interaction.response.send_message(await testo_per(interaction, "antinuke_il_caso_non_esiste", numero=numero), ephemeral=True)
                 return
-            embed = discord.Embed(title=f"Anti-Nuke — caso #{caso.case_number}", color=discord.Color.red())
-            embed.add_field(name="Autore", value=f"<@{caso.actor_id}> (`{caso.actor_id}`)" if caso.actor_id else "Sconosciuto", inline=False)
-            embed.add_field(name="Categoria", value=caso.category, inline=True)
-            embed.add_field(name="Quando", value=discord.utils.format_dt(caso.created_at, style="F"), inline=True)
-            embed.add_field(name="Cosa è successo", value=(caso.detail or "—")[:1024], inline=False)
-            embed.add_field(name="Punizione", value=(caso.punishment or "—")[:1024], inline=False)
+            embed = discord.Embed(title=await testo_per(interaction, "antinuke_anti_nuke_caso", case_number=caso.case_number), color=discord.Color.red())
+            embed.add_field(name=await testo_per(interaction, "antinuke_autore"), value=f"<@{caso.actor_id}> (`{caso.actor_id}`)" if caso.actor_id else await testo_per(interaction, "antinuke_sconosciuto"), inline=False)
+            embed.add_field(name=await testo_per(interaction, "antinuke_categoria"), value=caso.category, inline=True)
+            embed.add_field(name=await testo_per(interaction, "antinuke_quando"), value=discord.utils.format_dt(caso.created_at, style="F"), inline=True)
+            embed.add_field(name=await testo_per(interaction, "antinuke_cosa_successo"), value=(caso.detail or "—")[:1024], inline=False)
+            embed.add_field(name=await testo_per(interaction, "antinuke_punizione"), value=(caso.punishment or "—")[:1024], inline=False)
             ruoli = " ".join(f"<@&{r}>" for r in caso.removed_role_ids)[:1000] or "Nessuno"
-            embed.add_field(name="Ruoli tolti", value=ruoli, inline=False)
+            embed.add_field(name=await testo_per(interaction, "softbanmute_ruoli_tolti"), value=ruoli, inline=False)
             embed.add_field(
-                name="Stato",
-                value=f"Rilasciato {discord.utils.format_dt(caso.released_at, style='R')}" if caso.released_at else "Non rilasciato",
+                name=await testo_per(interaction, "ricerca_stato"),
+                value=await testo_per(interaction, "antinuke_rilasciato", v1=discord.utils.format_dt(caso.released_at, style='R')) if caso.released_at else await testo_per(interaction, "antinuke_non_rilasciato"),
                 inline=False,
             )
             await interaction.response.send_message(
@@ -743,11 +742,11 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         ]
         pagine = max(1, -(-totale // CASI_PER_PAGINA))
         embed = discord.Embed(
-            title="Attacchi fermati dall'Anti-Nuke",
+            title=await testo_per(interaction, "antinuke_attacchi_fermati_dall_anti_nuke"),
             description="\n".join(righe)[:4000],
             color=discord.Color.red(),
         )
-        embed.set_footer(text=f"Pagina {pagina}/{pagine} · {totale} casi · /antinuke casi numero:N per il dettaglio")
+        embed.set_footer(text=await testo_per(interaction, "antinuke_pagina_casi_antinuke_casi_numero", pagina=pagina, pagine=pagine, totale=totale))
         await interaction.response.send_message(
             embed=embed, ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
         )
@@ -771,16 +770,15 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         registrato = await security_repo.get_nuke_case(guild.id, caso)
         if registrato is None:
-            await interaction.followup.send(f"Il caso #{caso} non esiste.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "antinuke_il_caso_non_esiste_2", caso=caso), ephemeral=True)
             return
         if registrato.released_at is not None:
-            await interaction.followup.send(f"Il caso #{caso} è già stato rilasciato.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "antinuke_il_caso_gia_stato_rilasciato", caso=caso), ephemeral=True)
             return
         membro = guild.get_member(registrato.actor_id) if registrato.actor_id else None
         if membro is None:
             await interaction.followup.send(
-                "L'autore non è nel server (espulso, bannato o uscito): non c'è niente da rimettere. "
-                "Se è bannato, toglilo dai ban.",
+                await testo_per(interaction, "antinuke_autore_non_nel_server_espulso"),
                 ephemeral=True,
             )
             return
@@ -789,7 +787,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         )
         if not esito.riuscito:
             await interaction.followup.send(
-                "Discord non mi ha lasciato cambiare i ruoli di quel membro (il mio ruolo è più in basso del suo?).",
+                await testo_per(interaction, "antinuke_discord_non_mi_ha_lasciato"),
                 ephemeral=True,
             )
             return

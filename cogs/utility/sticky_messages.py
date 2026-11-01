@@ -22,6 +22,7 @@ from discord.ext import commands
 from core.admin_mentions_logic import menzioni_ammesse, utente_puo_pingare_ruoli
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.premium import PremiumModule, registry
 from core.repositories.sticky_message_repo import sticky_message_repo
 from core.sticky_message_logic import should_repost_sticky
@@ -129,14 +130,13 @@ class StickyMessagesCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
         if not await db.is_module_active_for_guild(guild.id, MODULE_STICKY_MESSAGES):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return
@@ -152,8 +152,7 @@ class StickyMessagesCog(CogConGruppi, commands.Cog):
             if vecchio is not None:
                 await self._cancella_messaggio(channel, vecchio.last_message_id)
         await interaction.response.send_message(
-            f"Sticky message impostato per {channel.mention}. "
-            f"Verrà pubblicato al prossimo messaggio in quel canale.",
+            await testo_per(interaction, "stickymessag_sticky_message_impostato_per_verra", mention=channel.mention),
             ephemeral=True,
         )
 
@@ -175,13 +174,13 @@ class StickyMessagesCog(CogConGruppi, commands.Cog):
 
         if not rimosso:
             await interaction.response.send_message(
-                f"Nessuno sticky message configurato per {channel.mention}.",
+                await testo_per(interaction, "stickymessag_nessuno_sticky_message_configurato_per", mention=channel.mention),
                 ephemeral=True,
             )
             return
 
         await interaction.response.send_message(
-            f"Sticky message rimosso da {channel.mention}.", ephemeral=True
+            await testo_per(interaction, "stickymessag_sticky_message_rimosso_da", mention=channel.mention), ephemeral=True
         )
 
 

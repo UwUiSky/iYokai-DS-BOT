@@ -48,6 +48,7 @@ from core import modmail_logic as logica
 from core.channel_router import TIPO_EVENTI
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.moderation_repo import moderation_repo
 from core.spam_trap_logic import BAN_ACTION_TYPE
@@ -95,11 +96,11 @@ class SceltaServerView(BaseView):
     async def _scelto(self, interaction: discord.Interaction) -> None:
         guild = self._server.get(interaction.data["values"][0])
         if guild is None or interaction.user.id != self._utente.id:
-            await interaction.response.send_message("Scelta non valida.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "modmail_scelta_non_valida"), ephemeral=True)
             return
         self.stop()
         try:
-            await interaction.response.edit_message(content=f"Ok: **{guild.name}**. Un attimo...", view=None)
+            await interaction.response.edit_message(content=await testo_per(interaction, "modmail_ok_un_attimo", pubblica=True, name=guild.name), view=None)
         except discord.HTTPException:
             self._cog._menu_aperti.discard(self._utente.id)
             raise
@@ -121,7 +122,7 @@ class ConfermaInvioView(BaseView):
 
     async def _solo_lui(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self._utente.id:
-            await interaction.response.send_message("Scelta non valida.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "modmail_scelta_non_valida"), ephemeral=True)
             return False
         return True
 
@@ -131,7 +132,7 @@ class ConfermaInvioView(BaseView):
             return
         self.stop()
         try:
-            await interaction.response.edit_message(content=f"Ok: invio a **{self._guild.name}**. Un attimo...", view=None)
+            await interaction.response.edit_message(content=await testo_per(interaction, "modmail_ok_invio_un_attimo", pubblica=True, name=self._guild.name), view=None)
         except discord.HTTPException:
             self._cog._menu_aperti.discard(self._utente.id)
             raise
@@ -143,7 +144,7 @@ class ConfermaInvioView(BaseView):
             return
         self.stop()
         self._cog._menu_aperti.discard(self._utente.id)
-        await interaction.response.edit_message(content="Annullato: il messaggio non è stato inviato.", view=None)
+        await interaction.response.edit_message(content=await testo_per(interaction, "modmail_annullato_il_messaggio_non_stato", pubblica=True), view=None)
 
 
 class ModMailCog(CogConGruppi, commands.Cog):
@@ -500,19 +501,18 @@ class ModMailCog(CogConGruppi, commands.Cog):
         if attivo:
             if categoria is None:
                 await interaction.response.send_message(
-                    "Per accendere il ModMail scegli la categoria dei canali dello staff.", ephemeral=True
+                    await testo_per(interaction, "modmail_per_accendere_il_modmail_scegli"), ephemeral=True
                 )
                 return
             await modmail_repo.imposta_categoria(interaction.guild.id, categoria.id, interaction.user.id)
             await interaction.response.send_message(
-                f"ModMail acceso: i messaggi privati al bot aprono un canale in **{categoria.name}**. "
-                "Lo staff risponde con `/ticket rispondi`.",
+                await testo_per(interaction, "modmail_modmail_acceso_messaggi_privati_al", name=categoria.name),
                 ephemeral=True,
             )
             return
         await modmail_repo.imposta_categoria(interaction.guild.id, None)
         await interaction.response.send_message(
-            "ModMail spento. Le conversazioni già aperte restano finché non le chiudi.", ephemeral=True
+            await testo_per(interaction, "modmail_modmail_spento_le_conversazioni_gia"), ephemeral=True
         )
 
     @comando_di_gruppo(
@@ -528,7 +528,7 @@ class ModMailCog(CogConGruppi, commands.Cog):
         if not bloccato:
             tolto = await modmail_repo.sblocca(interaction.guild.id, utente.id)
             await interaction.response.send_message(
-                f"{utente.mention} può usare di nuovo il ModMail." if tolto else f"{utente.mention} non era bloccato.",
+                await testo_per(interaction, "modmail_puo_usare_di_nuovo_il", mention=utente.mention) if tolto else await testo_per(interaction, "modmail_non_era_bloccato", mention=utente.mention),
                 ephemeral=True,
                 allowed_mentions=SENZA_MENZIONI,
             )
@@ -554,14 +554,14 @@ class ModMailCog(CogConGruppi, commands.Cog):
     async def _thread_per_staff(self, interaction: discord.Interaction) -> ModmailThread | None:
         if not await _is_ticket_staff(interaction):
             await interaction.response.send_message(
-                "Solo lo staff (permesso Manage Server o un ruolo di supporto) può usare questo comando.",
+                await testo_per(interaction, "modmail_solo_lo_staff_permesso_manage"),
                 ephemeral=True,
             )
             return None
         thread = await modmail_repo.aperta_del_canale(interaction.channel.id)
         if thread is None:
             await interaction.response.send_message(
-                "Questo comando funziona solo dentro un canale ModMail aperto.", ephemeral=True
+                await testo_per(interaction, "modmail_questo_comando_funziona_solo_dentro"), ephemeral=True
             )
         return thread
 
@@ -591,16 +591,16 @@ class ModMailCog(CogConGruppi, commands.Cog):
             if (allegato.content_type or "").startswith("image/"):
                 embed.set_image(url=allegato.url)
             else:
-                embed.add_field(name="Allegato", value=f"[{logica.taglia(allegato.filename, 60)}]({allegato.url})")
+                embed.add_field(name=await testo_per(interaction, "modmail_allegato", pubblica=True), value=f"[{logica.taglia(allegato.filename, 60)}]({allegato.url})")
         try:
             utente = guild.get_member(thread.user_id) or await self.bot.fetch_user(thread.user_id)
             await utente.send(embed=embed)
         except discord.NotFound:
-            await interaction.followup.send("Questo utente non esiste più.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "modmail_questo_utente_non_esiste_piu"), ephemeral=True)
             return
         except discord.HTTPException:
             await interaction.followup.send(
-                "Non riesco a scrivere all'utente: ha i messaggi privati chiusi o ha bloccato il bot.",
+                await testo_per(interaction, "modmail_non_riesco_scrivere_all_utente"),
                 ephemeral=True,
             )
             return
@@ -624,7 +624,7 @@ class ModMailCog(CogConGruppi, commands.Cog):
         if not await self._chiudi(
             interaction.guild, interaction.channel, thread, interaction.user.id, motivo, avvisa_utente=True, esito=esito
         ):
-            await interaction.followup.send("Questa conversazione era già stata chiusa.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "modmail_questa_conversazione_era_gia_stata"), ephemeral=True)
             return
         testo = "Conversazione chiusa. Questo canale verrà eliminato a breve."
         if not esito.get("transcript"):

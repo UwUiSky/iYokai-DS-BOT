@@ -32,6 +32,7 @@ from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
+from core.i18n import testo_per
 from core.premium import PremiumModule, registry, requires_module
 from core.clear_filter_logic import FiltriClear, descrivi_filtri, messaggio_passa
 from cogs.moderation._shared import (
@@ -94,7 +95,7 @@ class ModerationClearCog(CogConGruppi, commands.Cog):
         target = channel or interaction.channel
         if not isinstance(target, discord.TextChannel):
             await interaction.response.send_message(
-                "Questo comando funziona solo su canali testuali.", ephemeral=True
+                await testo_per(interaction, "channelcontr_questo_comando_funziona_solo_su"), ephemeral=True
             )
             return
 
@@ -103,7 +104,7 @@ class ModerationClearCog(CogConGruppi, commands.Cog):
         permessi = target.permissions_for(interaction.user)
         if not (permessi.view_channel and permessi.manage_messages):
             await interaction.response.send_message(
-                f"Non hai il permesso «Gestire i messaggi» in {target.mention}.", ephemeral=True
+                await testo_per(interaction, "clear_non_hai_il_permesso_gestire", mention=target.mention), ephemeral=True
             )
             return
 
@@ -123,7 +124,7 @@ class ModerationClearCog(CogConGruppi, commands.Cog):
         )
         if bots_only and humans_only:
             await interaction.response.send_message(
-                "«Solo bot» e «solo persone» insieme non cancellano niente.", ephemeral=True
+                await testo_per(interaction, "clear_solo_bot_solo_persone_insieme"), ephemeral=True
             )
             return
 
@@ -137,20 +138,20 @@ class ModerationClearCog(CogConGruppi, commands.Cog):
             eliminati = await target.purge(limit=amount, check=lambda m: messaggio_passa(m, filtri))
         except discord.HTTPException:
             await interaction.followup.send(
-                "Non sono riuscito a cancellare i messaggi: controlla i miei permessi in questo canale.",
+                await testo_per(interaction, "clear_non_sono_riuscito_cancellare_messaggi"),
                 ephemeral=True,
             )
             return
 
         await interaction.followup.send(
-            f"{len(eliminati)} messaggi cancellati.", ephemeral=True
+            await testo_per(interaction, "clear_messaggi_cancellati", v1=len(eliminati)), ephemeral=True
         )
-        embed = discord.Embed(title="🧹 Clear", color=discord.Color.light_grey())
-        embed.add_field(name="Canale", value=target.mention, inline=True)
-        embed.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
-        embed.add_field(name="Cancellati", value=str(len(eliminati)), inline=True)
+        embed = discord.Embed(title=await testo_per(interaction, "clear_clear", pubblica=True), color=discord.Color.light_grey())
+        embed.add_field(name=await testo_per(interaction, "clear_canale", pubblica=True), value=target.mention, inline=True)
+        embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore", pubblica=True), value=interaction.user.mention, inline=True)
+        embed.add_field(name=await testo_per(interaction, "clear_cancellati", pubblica=True), value=str(len(eliminati)), inline=True)
         embed.add_field(
-            name="Filtri", value=truncate_text(descrivi_filtri(filtri), 1000), inline=False
+            name=await testo_per(interaction, "clear_filtri", pubblica=True), value=truncate_text(descrivi_filtri(filtri), 1000), inline=False
         )
         await post_to_mod_log(interaction.guild, embed)
 

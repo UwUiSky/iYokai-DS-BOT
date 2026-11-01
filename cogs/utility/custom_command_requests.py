@@ -29,6 +29,7 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
+from core.i18n import testo_per
 from core.repositories.custom_command_request_repo import (
     CustomCommandRequest,
     custom_command_request_repo,
@@ -144,20 +145,20 @@ class CustomCommandRequestsCog(CogConGruppi, commands.Cog):
             or not interaction.user.guild_permissions.manage_guild
         ):
             await interaction.response.send_message(
-                "Solo lo staff può decidere sulle richieste.", ephemeral=True
+                await testo_per(interaction, "customcomman_solo_lo_staff_puo_decidere"), ephemeral=True
             )
             return
 
         request = await custom_command_request_repo.get_request(request_id)
         if request is None:
             await interaction.response.send_message(
-                "Questa richiesta non esiste più.", ephemeral=True
+                await testo_per(interaction, "customcomman_questa_richiesta_non_esiste_piu"), ephemeral=True
             )
             return
 
         if not can_decide(request.status):
             await interaction.response.send_message(
-                "Questa richiesta è già stata decisa.", ephemeral=True
+                await testo_per(interaction, "customcomman_questa_richiesta_gia_stata_decisa"), ephemeral=True
             )
             return
 
@@ -169,7 +170,7 @@ class CustomCommandRequestsCog(CogConGruppi, commands.Cog):
         )
         if not deciso:  # M 10.9: un altro dello staff ha deciso un istante prima
             await interaction.response.send_message(
-                "Questa richiesta è già stata decisa.", ephemeral=True
+                await testo_per(interaction, "customcomman_questa_richiesta_gia_stata_decisa"), ephemeral=True
             )
             return
 
@@ -207,7 +208,7 @@ class CustomCommandRequestsCog(CogConGruppi, commands.Cog):
         guild = self.bot.get_guild(config.MAIN_GUILD_ID)
         if guild is None:
             await interaction.response.send_message(
-                "Il server principale non è raggiungibile in questo momento. Riprova più tardi.",
+                await testo_per(interaction, "customcomman_il_server_principale_non_raggiungibile"),
                 ephemeral=True,
             )
             return
@@ -216,7 +217,7 @@ class CustomCommandRequestsCog(CogConGruppi, commands.Cog):
         channel = guild.get_channel(channel_id) if channel_id else None
         if not isinstance(channel, discord.TextChannel):
             await interaction.response.send_message(
-                "Il sistema di richiesta comandi non è ancora configurato. Riprova più tardi.",
+                await testo_per(interaction, "customcomman_il_sistema_di_richiesta_comandi"),
                 ephemeral=True,
             )
             return
@@ -242,7 +243,7 @@ class CustomCommandRequestsCog(CogConGruppi, commands.Cog):
             # Una richiesta senza messaggio non la vedrebbe nessuno: si toglie.
             await custom_command_request_repo.delete_request(request_id)
             await interaction.followup.send(
-                "Non è stato possibile inviare la richiesta allo staff. Riprova più tardi.",
+                await testo_per(interaction, "customcomman_non_stato_possibile_inviare_la"),
                 ephemeral=True,
             )
             return
@@ -251,7 +252,7 @@ class CustomCommandRequestsCog(CogConGruppi, commands.Cog):
         self.bot.add_view(view, message_id=messaggio.id)
 
         await interaction.followup.send(
-            "Richiesta inviata! Riceverai un DM quando verrà decisa.", ephemeral=True
+            await testo_per(interaction, "customcomman_richiesta_inviata_riceverai_un_dm"), ephemeral=True
         )
 
     # ================================================================
@@ -275,13 +276,13 @@ class CustomCommandRequestsCog(CogConGruppi, commands.Cog):
     ) -> None:
         if interaction.guild is None or interaction.guild.id != config.MAIN_GUILD_ID:
             await interaction.response.send_message(
-                "Questo comando va usato nel server principale.", ephemeral=True
+                await testo_per(interaction, "customcomman_questo_comando_va_usato_nel"), ephemeral=True
             )
             return
 
         await db.set_guild_setting(interaction.guild.id, SETTING_REQUESTS_CHANNEL, channel.id)
         await interaction.response.send_message(
-            f"Le richieste di comandi verranno pubblicate in {channel.mention}.", ephemeral=True
+            await testo_per(interaction, "customcomman_le_richieste_di_comandi_verranno", mention=channel.mention), ephemeral=True
         )
 
 

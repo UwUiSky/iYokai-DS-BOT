@@ -21,6 +21,7 @@ from core.admin_mentions_logic import menzioni_ammesse, utente_puo_pingare_ruoli
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.duration_logic import format_duration, parse_duration
+from core.i18n import testo_per
 from core.premium import PremiumModule, registry
 from core.lista_limiti_logic import righe_entro_limite
 from core.scheduler import scheduler
@@ -115,14 +116,13 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
         if not await db.is_module_active_for_guild(guild.id, MODULE_SCHEDULED_MESSAGES):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return
@@ -148,9 +148,7 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
         )
 
         await interaction.response.send_message(
-            f"📅 Messaggio programmato per {channel.mention} tra "
-            f"**{format_duration(duration_seconds)}** "
-            f"(ID `{action_id}`, usa `/admin messaggi annulla` per annullarlo).",
+            await testo_per(interaction, "scheduledmes_messaggio_programmato_per_tra_id", mention=channel.mention, v2=format_duration(duration_seconds), action_id=action_id),
             ephemeral=True,
         )
 
@@ -168,7 +166,7 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
         azioni = await scheduler.list_pending_for_guild(guild.id, SCHEDULED_MESSAGE_ACTION_TYPE)
         if not azioni:
             await interaction.response.send_message(
-                "Nessun messaggio programmato per questo server.", ephemeral=True
+                await testo_per(interaction, "scheduledmes_nessun_messaggio_programmato_per_questo"), ephemeral=True
             )
             return
 
@@ -181,7 +179,7 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
 
         descrizione, _ = righe_entro_limite(righe, 4000)  # LIM-13: 4096 al massimo
         embed = discord.Embed(
-            title="📅 Messaggi programmati",
+            title=await testo_per(interaction, "scheduledmes_messaggi_programmati"),
             description=descrizione,
             color=discord.Color.blurple(),
         )
@@ -209,13 +207,13 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
             or azione["guild_id"] != guild.id
         ):
             await interaction.response.send_message(
-                "Nessun messaggio programmato trovato con questo ID in questo server.",
+                await testo_per(interaction, "scheduledmes_nessun_messaggio_programmato_trovato_con"),
                 ephemeral=True,
             )
             return
 
         await scheduler.cancel(schedule_id)
-        await interaction.response.send_message("Messaggio programmato annullato.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "scheduledmes_messaggio_programmato_annullato"), ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:

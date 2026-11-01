@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import discord
 
+from core.i18n import testo_per
 from core.ui_base import BaseView
 
 RIGHE_PER_PAGINA = 10
@@ -106,7 +107,7 @@ class PagineView(BaseView):
             return False
         if interaction.user.id != self.autore_id:
             await interaction.response.send_message(
-                "Solo chi ha usato il comando può sfogliare queste pagine.", ephemeral=True
+                await testo_per(interaction, "pagine_solo_chi_ha_usato_il"), ephemeral=True
             )
             return False
         return True

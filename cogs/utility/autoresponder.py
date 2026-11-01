@@ -30,6 +30,7 @@ from core.autoresponder_logic import (
 from core.bounded_cache import BoundedCache
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.lista_limiti_logic import righe_entro_limite
 from core.premium import PremiumModule, registry
 from core.repositories.autoresponder_repo import autoresponder_repo
@@ -110,13 +111,12 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
     async def _pronto(self, interaction: discord.Interaction) -> bool:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return False
         if not await db.is_module_active_for_guild(interaction.guild.id, MODULE_AUTORESPONDER):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return False
@@ -145,12 +145,12 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
         parola = parola.strip()
         if not parola or not risposta.strip():
             await interaction.response.send_message(
-                "La parola e la risposta non possono essere vuote o fatte di soli spazi.", ephemeral=True
+                await testo_per(interaction, "autoresponde_la_parola_la_risposta_non"), ephemeral=True
             )
             return
         if not jolly_validi(parola):
             await interaction.response.send_message(
-                f"Con il jolly * servono lettere vere e al massimo {MAX_JOLLY} asterischi.", ephemeral=True
+                await testo_per(interaction, "autoresponde_con_il_jolly_servono_lettere", v1=MAX_JOLLY), ephemeral=True
             )
             return
         esito, nuovo_id = await autoresponder_repo.create(
@@ -179,7 +179,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
         fatta = await autoresponder_repo.delete(interaction.guild.id, numero)
         _cache_regole.delete(interaction.guild.id)
         await interaction.response.send_message(
-            "Risposta eliminata." if fatta else "Non esiste una risposta con quel numero.", ephemeral=True
+            await testo_per(interaction, "autoresponde_risposta_eliminata") if fatta else await testo_per(interaction, "autoresponde_non_esiste_una_risposta_con"), ephemeral=True
         )
 
     @comando_di_gruppo("moduli", nome="risposte", descrizione="Mostra le risposte automatiche del server.", sottogruppo=_SG_COMANDI)
@@ -195,7 +195,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
         ] or ["Nessuna risposta automatica."]
         testo, _ = righe_entro_limite(righe, 3900)
         await interaction.response.send_message(
-            embed=discord.Embed(title=f"Risposte automatiche ({len(regole)}/{MAX_RISPOSTE})", description=testo),
+            embed=discord.Embed(title=await testo_per(interaction, "autoresponde_risposte_automatiche", v1=len(regole), v2=MAX_RISPOSTE), description=testo),
             ephemeral=True,
             allowed_mentions=discord.AllowedMentions.none(),
         )

@@ -60,6 +60,7 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
+from core.i18n import testo_per
 from core.main_radio_logic import RadioTrackInfo, compute_current_position, next_track_index
 from core.music_fleet import MusicFleet, handle_worker_voice_update
 from core.music_logic import (
@@ -213,21 +214,20 @@ class MusicCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return False
 
         if not await db.is_module_active_for_guild(guild.id, MODULE_MUSIC):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return False
 
         if not isinstance(interaction.user, discord.Member) or interaction.user.voice is None:
             await interaction.response.send_message(
-                "Devi essere in un canale vocale per usare questo comando.", ephemeral=True
+                await testo_per(interaction, "player_devi_essere_in_un_canale"), ephemeral=True
             )
             return False
 
@@ -468,13 +468,13 @@ class MusicCog(CogConGruppi, commands.Cog):
         if allegato is not None:  # MUS-009: file allegato al comando
             if not allegato_audio(allegato.content_type):
                 await interaction.response.send_message(
-                    "L'allegato deve essere un file audio o video.", ephemeral=True
+                    await testo_per(interaction, "player_allegato_deve_essere_un_file"), ephemeral=True
                 )
                 return
             query = allegato.url
         if not query:
             await interaction.response.send_message(
-                "Scrivi un titolo o un link, oppure allega un file audio.", ephemeral=True
+                await testo_per(interaction, "player_scrivi_un_titolo_un_link"), ephemeral=True
             )
             return
 
@@ -682,13 +682,13 @@ class MusicCog(CogConGruppi, commands.Cog):
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
         if player is None or not player.playing:
             await interaction.response.send_message(
-                "Non c'è nessuna traccia in riproduzione.", ephemeral=True
+                await testo_per(interaction, "player_non_nessuna_traccia_in_riproduzione"), ephemeral=True
             )
             return
 
         await interaction.response.defer()  # M 8.16: Lavalink puo' metterci piu' di 3 secondi
         await player.skip()
-        await interaction.followup.send("⏭️ Traccia saltata.")
+        await interaction.followup.send(await testo_per(interaction, "player_traccia_saltata", pubblica=True))
 
     @comando_di_gruppo("music", nome="stop", descrizione="Ferma la riproduzione e svuota la coda.")
     async def stop(self, interaction: discord.Interaction) -> None:
@@ -705,14 +705,14 @@ class MusicCog(CogConGruppi, commands.Cog):
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
         if player is None:
             await interaction.response.send_message(
-                "Non sono connesso a nessun canale vocale.", ephemeral=True
+                await testo_per(interaction, "player_non_sono_connesso_nessun_canale"), ephemeral=True
             )
             return
 
         await interaction.response.defer()  # M 8.16
         player.queue.clear()
         await player.stop()
-        await interaction.followup.send("⏹️ Riproduzione fermata, coda svuotata.")
+        await interaction.followup.send(await testo_per(interaction, "player_riproduzione_fermata_coda_svuotata", pubblica=True))
 
     @comando_di_gruppo("music", nome="pause", descrizione="Mette in pausa la riproduzione.")
     async def pause(self, interaction: discord.Interaction) -> None:
@@ -729,13 +729,13 @@ class MusicCog(CogConGruppi, commands.Cog):
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
         if player is None or not player.playing:
             await interaction.response.send_message(
-                "Non c'è nessuna traccia in riproduzione.", ephemeral=True
+                await testo_per(interaction, "player_non_nessuna_traccia_in_riproduzione"), ephemeral=True
             )
             return
 
         await interaction.response.defer()  # M 8.16
         await player.pause(True)
-        await interaction.followup.send("⏸️ Messo in pausa.")
+        await interaction.followup.send(await testo_per(interaction, "player_messo_in_pausa", pubblica=True))
 
     @comando_di_gruppo("music", nome="resume", descrizione="Riprende la riproduzione in pausa.")
     async def resume(self, interaction: discord.Interaction) -> None:
@@ -752,13 +752,13 @@ class MusicCog(CogConGruppi, commands.Cog):
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
         if player is None or not player.paused:
             await interaction.response.send_message(
-                "Non c'è nessuna riproduzione in pausa.", ephemeral=True
+                await testo_per(interaction, "player_non_nessuna_riproduzione_in_pausa"), ephemeral=True
             )
             return
 
         await interaction.response.defer()  # M 8.16
         await player.pause(False)
-        await interaction.followup.send("▶️ Ripreso.")
+        await interaction.followup.send(await testo_per(interaction, "player_ripreso", pubblica=True))
 
     @comando_di_gruppo("music", nome="queue", descrizione="Mostra la coda di riproduzione.")
     async def queue_command(self, interaction: discord.Interaction) -> None:
@@ -777,7 +777,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         titoli_in_coda = [truncate_title(t.title, 150) for t in player.queue] if player else []
 
         embed = discord.Embed(
-            title="🎵 Coda di riproduzione",
+            title=await testo_per(interaction, "player_coda_di_riproduzione", pubblica=True),
             description=build_queue_display(titolo_attuale, titoli_in_coda)[
                 :EMBED_DESCRIPTION_LIMIT
             ],
@@ -786,7 +786,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         if player and len(player.queue) > 0:  # MUS-036
             quote = share_by_user([requester_of(t) for t in player.queue])
             if quote:
-                embed.add_field(name="Chi ha messo cosa", value=format_share(quote), inline=False)
+                embed.add_field(name=await testo_per(interaction, "player_chi_ha_messo_cosa", pubblica=True), value=format_share(quote), inline=False)
         await interaction.response.send_message(embed=embed)
 
     @comando_di_gruppo("music", nome="clear-queue", descrizione="Svuota la coda, senza toccare la traccia in riproduzione.")
@@ -812,19 +812,18 @@ class MusicCog(CogConGruppi, commands.Cog):
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
         if player is None:
             await interaction.response.send_message(
-                "Non sono connesso a nessun canale vocale.", ephemeral=True
+                await testo_per(interaction, "player_non_sono_connesso_nessun_canale"), ephemeral=True
             )
             return
 
         if player.queue.is_empty:
-            await interaction.response.send_message("La coda è già vuota.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "player_la_coda_gia_vuota"), ephemeral=True)
             return
 
         tracce_rimosse = len(player.queue)
         player.queue.clear()
         await interaction.response.send_message(
-            f"🗑️ Coda svuotata ({tracce_rimosse} tracce rimosse). "
-            "La traccia in riproduzione non è stata toccata."
+            await testo_per(interaction, "player_coda_svuotata_tracce_rimosse_la", pubblica=True, tracce_rimosse=tracce_rimosse)
         )
 
     @comando_di_gruppo("music", nome="shuffle", descrizione="Mescola l'ordine delle tracce in coda.")
@@ -844,13 +843,13 @@ class MusicCog(CogConGruppi, commands.Cog):
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
         if player is None:
             await interaction.response.send_message(
-                "Non sono connesso a nessun canale vocale.", ephemeral=True
+                await testo_per(interaction, "player_non_sono_connesso_nessun_canale"), ephemeral=True
             )
             return
 
         if len(player.queue) < 2:
             await interaction.response.send_message(
-                "Non c'è abbastanza in coda da mescolare.", ephemeral=True
+                await testo_per(interaction, "player_non_abbastanza_in_coda_da"), ephemeral=True
             )
             return
 
@@ -859,17 +858,17 @@ class MusicCog(CogConGruppi, commands.Cog):
             ordine = own_shuffle_order([requester_of(t) for t in tracce], interaction.user.id)
             if ordine == list(range(len(tracce))):
                 await interaction.response.send_message(
-                    "Non hai abbastanza brani tuoi in coda da mescolare.", ephemeral=True
+                    await testo_per(interaction, "player_non_hai_abbastanza_brani_tuoi"), ephemeral=True
                 )
                 return
             # senza nessun await in mezzo: nessun altro comando vede la coda vuota
             player.queue.clear()
             player.queue.put([tracce[i] for i in ordine])
-            await interaction.response.send_message("🔀 Ho mescolato i tuoi brani in coda.")
+            await interaction.response.send_message(await testo_per(interaction, "player_ho_mescolato_tuoi_brani_in", pubblica=True))
             return
 
         player.queue.shuffle()
-        await interaction.response.send_message("🔀 Coda mescolata.")
+        await interaction.response.send_message(await testo_per(interaction, "player_coda_mescolata", pubblica=True))
 
     @comando_di_gruppo(
         "music",
@@ -891,7 +890,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
         if player is None:
             await interaction.response.send_message(
-                "Non sono connesso a nessun canale vocale.", ephemeral=True
+                await testo_per(interaction, "player_non_sono_connesso_nessun_canale"), ephemeral=True
             )
             return
 
@@ -901,10 +900,10 @@ class MusicCog(CogConGruppi, commands.Cog):
         # stessa coda, non due loop indipendenti.
         if player.queue.mode == wavelink.QueueMode.loop:
             player.queue.mode = wavelink.QueueMode.normal
-            await interaction.response.send_message("Loop traccia disattivato.")
+            await interaction.response.send_message(await testo_per(interaction, "player_loop_traccia_disattivato", pubblica=True))
         else:
             player.queue.mode = wavelink.QueueMode.loop
-            await interaction.response.send_message("🔂 Loop traccia attivato: la traccia corrente si ripete.")
+            await interaction.response.send_message(await testo_per(interaction, "player_loop_traccia_attivato_la_traccia", pubblica=True))
 
     @comando_di_gruppo(
         "music",
@@ -926,16 +925,16 @@ class MusicCog(CogConGruppi, commands.Cog):
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
         if player is None:
             await interaction.response.send_message(
-                "Non sono connesso a nessun canale vocale.", ephemeral=True
+                await testo_per(interaction, "player_non_sono_connesso_nessun_canale"), ephemeral=True
             )
             return
 
         if player.queue.mode == wavelink.QueueMode.loop_all:
             player.queue.mode = wavelink.QueueMode.normal
-            await interaction.response.send_message("Loop coda disattivato.")
+            await interaction.response.send_message(await testo_per(interaction, "player_loop_coda_disattivato", pubblica=True))
         else:
             player.queue.mode = wavelink.QueueMode.loop_all
-            await interaction.response.send_message("🔁 Loop coda attivato: l'intera coda si ripete.")
+            await interaction.response.send_message(await testo_per(interaction, "player_loop_coda_attivato_intera_coda", pubblica=True))
 
     @comando_di_gruppo("music", nome="nowplaying", descrizione="Mostra la traccia in riproduzione con una barra di avanzamento.")
     async def nowplaying(self, interaction: discord.Interaction) -> None:
@@ -952,7 +951,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
         if player is None or player.current is None:
             await interaction.response.send_message(
-                "Nessuna traccia in riproduzione.", ephemeral=True
+                await testo_per(interaction, "player_nessuna_traccia_in_riproduzione"), ephemeral=True
             )
             return
 
@@ -1001,7 +1000,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
         if player is None:
             await interaction.response.send_message(
-                "Non sono connesso a nessun canale vocale.", ephemeral=True
+                await testo_per(interaction, "player_non_sono_connesso_nessun_canale"), ephemeral=True
             )
             return
 
@@ -1035,7 +1034,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
         if player is None:
             await interaction.response.send_message(
-                "Non sono connesso a nessun canale vocale.", ephemeral=True
+                await testo_per(interaction, "player_non_sono_connesso_nessun_canale"), ephemeral=True
             )
             return
 
@@ -1044,7 +1043,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         # MUS-047: mai oltre il massimo, ma "alza" non abbassa mai (volume gia' sopra il massimo)
         nuovo_volume = max(player.volume, clamp_volume(player.volume + amount, impostazioni))
         await player.set_volume(nuovo_volume)
-        await interaction.followup.send(f"🔊 Volume aumentato a {nuovo_volume}.")
+        await interaction.followup.send(await testo_per(interaction, "player_volume_aumentato", pubblica=True, nuovo_volume=nuovo_volume))
 
     @comando_di_gruppo(
         "music",
@@ -1069,14 +1068,14 @@ class MusicCog(CogConGruppi, commands.Cog):
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
         if player is None:
             await interaction.response.send_message(
-                "Non sono connesso a nessun canale vocale.", ephemeral=True
+                await testo_per(interaction, "player_non_sono_connesso_nessun_canale"), ephemeral=True
             )
             return
 
         await interaction.response.defer()  # M 8.16
         nuovo_volume = max(0, player.volume - amount)
         await player.set_volume(nuovo_volume)
-        await interaction.followup.send(f"🔉 Volume diminuito a {nuovo_volume}.")
+        await interaction.followup.send(await testo_per(interaction, "player_volume_diminuito", pubblica=True, nuovo_volume=nuovo_volume))
 
     @comando_di_gruppo("music", nome="disconnect", descrizione="Disconnette il music bot dal canale vocale.")
     async def disconnect(self, interaction: discord.Interaction) -> None:
@@ -1093,7 +1092,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
         if player is None:
             await interaction.response.send_message(
-                "Non sono connesso a nessun canale vocale.", ephemeral=True
+                await testo_per(interaction, "player_non_sono_connesso_nessun_canale"), ephemeral=True
             )
             return
 
@@ -1104,7 +1103,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         await fleet.release_session(
             interaction.guild.id, canale_id or interaction.user.voice.channel.id
         )
-        await interaction.followup.send("👋 Disconnesso.")
+        await interaction.followup.send(await testo_per(interaction, "player_disconnesso", pubblica=True))
 
     # ================================================================
     # Catalogo MUS (issue #126): entrare, saltare, togliere, tornare indietro
@@ -1123,7 +1122,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
         if player is None:
             await interaction.response.send_message(
-                "Non sono connesso a nessun canale vocale.", ephemeral=True
+                await testo_per(interaction, "player_non_sono_connesso_nessun_canale"), ephemeral=True
             )
             return None
         return player
@@ -1151,7 +1150,7 @@ class MusicCog(CogConGruppi, commands.Cog):
             return
         canale_id = interaction.user.voice.channel.id
         if worker_guild.voice_client is not None:
-            await interaction.followup.send("Il music bot è già nel tuo canale vocale.")
+            await interaction.followup.send(await testo_per(interaction, "player_il_music_bot_gia_nel", pubblica=True))
             return
         gestore: MusicNodeManager | None = getattr(self.bot, "music_nodes", None)
         nodo = gestore.node_for(chiave_del_bot(worker_bot)) if gestore else None
@@ -1163,7 +1162,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         if canale_worker is None:
             await self.bot.music_fleet.release_session(interaction.guild.id, canale_id)
             await interaction.followup.send(
-                "Non riesco a raggiungere il tuo canale vocale dall'istanza assegnata."
+                await testo_per(interaction, "player_non_riesco_raggiungere_il_tuo", pubblica=True)
             )
             return
         player, errore = await self._entra_in_canale(canale_worker, nodo)
@@ -1171,7 +1170,7 @@ class MusicCog(CogConGruppi, commands.Cog):
             await self.bot.music_fleet.release_session(interaction.guild.id, canale_id)
             await interaction.followup.send(errore)
             return
-        await interaction.followup.send("🎧 Sono entrato nel canale. Usa /music play per suonare.")
+        await interaction.followup.send(await testo_per(interaction, "player_sono_entrato_nel_canale_usa", pubblica=True))
 
     @comando_di_gruppo("music", nome="skipto", descrizione="Salta direttamente al brano numero N della coda.")
     @app_commands.describe(numero="Posizione nella coda (1 = il prossimo brano)")
@@ -1184,7 +1183,7 @@ class MusicCog(CogConGruppi, commands.Cog):
             return
         if numero > len(player.queue):
             await interaction.response.send_message(
-                f"La coda ha {len(player.queue)} brani: il numero {numero} non c'è.", ephemeral=True
+                await testo_per(interaction, "player_la_coda_ha_brani_il", v1=len(player.queue), numero=numero), ephemeral=True
             )
             return
         saltati = [player.queue[i] for i in range(numero - 1)]
@@ -1195,7 +1194,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         titolo = truncate_title(player.queue[0].title, 150)
         await interaction.response.defer()
         await player.skip()
-        await interaction.followup.send(f"⏭️ Salto a **{titolo}**.")
+        await interaction.followup.send(await testo_per(interaction, "player_salto", pubblica=True, titolo=titolo))
 
     @comando_di_gruppo("music", nome="previous", descrizione="Torna al brano precedente.")
     async def previous(self, interaction: discord.Interaction) -> None:
@@ -1211,7 +1210,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         )
         if posizione is None:
             await interaction.response.send_message(
-                "Non c'è un brano precedente.", ephemeral=True
+                await testo_per(interaction, "player_non_un_brano_precedente"), ephemeral=True
             )
             return
         precedente = storico[posizione]
@@ -1223,7 +1222,7 @@ class MusicCog(CogConGruppi, commands.Cog):
             storico.delete(len(storico) - 1)
         # add_history=False: il brano ripreso e' gia' (o torna a essere) l'ultimo dello storico
         await player.play(precedente, add_history=False)
-        await interaction.followup.send(f"⏮️ Torno a **{truncate_title(precedente.title, 150)}**.")
+        await interaction.followup.send(await testo_per(interaction, "player_torno", pubblica=True, v1=truncate_title(precedente.title, 150)))
 
     @comando_di_gruppo("music", nome="history", descrizione="Mostra gli ultimi brani già suonati.")
     async def history(self, interaction: discord.Interaction) -> None:
@@ -1237,12 +1236,12 @@ class MusicCog(CogConGruppi, commands.Cog):
         recenti = list(reversed(storico))[:MAX_HISTORY_SHOWN]
         if not recenti:
             await interaction.response.send_message(
-                "Non è ancora stato suonato nessun brano prima di questo.", ephemeral=True
+                await testo_per(interaction, "player_non_ancora_stato_suonato_nessun"), ephemeral=True
             )
             return
         righe = [f"{i}. {truncate_title(t.title, 150)}" for i, t in enumerate(recenti, start=1)]
         embed = discord.Embed(
-            title="🕘 Già suonati",
+            title=await testo_per(interaction, "player_gia_suonati", pubblica=True),
             description="\n".join(righe)[:EMBED_DESCRIPTION_LIMIT],
             color=discord.Color.blurple(),
         )
@@ -1271,7 +1270,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
         if player is None:
             await interaction.response.send_message(
-                "Non sono connesso a nessun canale vocale.", ephemeral=True
+                await testo_per(interaction, "player_non_sono_connesso_nessun_canale"), ephemeral=True
             )
             return
 
@@ -1280,14 +1279,13 @@ class MusicCog(CogConGruppi, commands.Cog):
             # D30: un worker fermo in un canale vuoto è tolto a tutti i server. Senza premium
             # il loop c'è, ma a canale vuoto il bot esce come sempre.
             await interaction.response.send_message(
-                "🔁 Loop continuo attivato sulla coda attuale. Se il canale resta vuoto esco "
-                "comunque: restare 24/7 senza ascoltatori è una funzione premium."
+                await testo_per(interaction, "player_loop_continuo_attivato_sulla_coda", pubblica=True)
             )
             return
         # LIM-44: il 24/7 resta anche se il canale si svuota (come la radio).
         player.is_nonstop = True
         player.inactive_channel_tokens = None
-        await interaction.response.send_message("🔁 Loop continuo 24/7 attivato sulla coda attuale.")
+        await interaction.response.send_message(await testo_per(interaction, "player_loop_continuo_attivato_sulla_coda_2", pubblica=True))
 
     @comando_di_gruppo(
         "music",
@@ -1309,14 +1307,14 @@ class MusicCog(CogConGruppi, commands.Cog):
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
         if player is None:
             await interaction.response.send_message(
-                "Non sono connesso a nessun canale vocale.", ephemeral=True
+                await testo_per(interaction, "player_non_sono_connesso_nessun_canale"), ephemeral=True
             )
             return
 
         player.queue.mode = wavelink.QueueMode.normal
         player.is_nonstop = False
         player.inactive_channel_tokens = CANALE_VUOTO_BRANI_DEFAULT
-        await interaction.response.send_message("Loop continuo disattivato.")
+        await interaction.response.send_message(await testo_per(interaction, "player_loop_continuo_disattivato", pubblica=True))
 
     # ================================================================
     # /owner radio — radio condivisa SOLO sul bot principale,
@@ -1404,7 +1402,7 @@ class MusicCog(CogConGruppi, commands.Cog):
 
         traccia = await self._resolve_radio_track(query)
         if traccia is None:
-            await interaction.followup.send("Nessun risultato trovato per questa ricerca.")
+            await interaction.followup.send(await testo_per(interaction, "player_nessun_risultato_trovato_per_questa", pubblica=True))
             return
 
         track_id = await main_radio_repo.add_track(
@@ -1529,12 +1527,12 @@ class MusicCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
         if not isinstance(interaction.user, discord.Member) or interaction.user.voice is None:
             await interaction.response.send_message(
-                "Devi essere in un canale vocale per usare questo comando.", ephemeral=True
+                await testo_per(interaction, "player_devi_essere_in_un_canale"), ephemeral=True
             )
             return
 
@@ -1677,7 +1675,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 

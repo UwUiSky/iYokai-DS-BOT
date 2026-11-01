@@ -27,6 +27,7 @@ from core.command_access import Livello, puo_usare
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.duration_logic import format_duration, parse_duration
+from core.i18n import testo_per
 from core.lista_limiti_logic import righe_entro_limite
 from core.premium import PremiumModule, registry
 from core.scheduler import scheduler
@@ -136,14 +137,13 @@ class RemindersCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
         if not await db.is_module_active_for_guild(guild.id, MODULE_REMINDERS):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return
@@ -156,12 +156,12 @@ class RemindersCog(CogConGruppi, commands.Cog):
             return
         if ripeti_secondi is not None and ripeti_secondi < MIN_RIPETIZIONE_SECONDI:
             await interaction.response.send_message(
-                "Un promemoria si può ripetere al massimo ogni 30 minuti.", ephemeral=True
+                await testo_per(interaction, "reminders_un_promemoria_si_puo_ripetere"), ephemeral=True
             )
             return
         if nel_canale and not interaction.channel.permissions_for(interaction.user).send_messages:
             await interaction.response.send_message(
-                "Non puoi scrivere in questo canale: il promemoria nel canale non si può impostare qui.",
+                await testo_per(interaction, "reminders_non_puoi_scrivere_in_questo"),
                 ephemeral=True,
             )
             return
@@ -170,8 +170,7 @@ class RemindersCog(CogConGruppi, commands.Cog):
         )
         if len(in_sospeso) >= MAX_PROMEMORIA_PER_UTENTE:
             await interaction.response.send_message(
-                f"Puoi avere al massimo {MAX_PROMEMORIA_PER_UTENTE} promemoria in sospeso: "
-                "annullane qualcuno con /utility reminder cancel.",
+                await testo_per(interaction, "reminders_puoi_avere_al_massimo_promemoria", v1=MAX_PROMEMORIA_PER_UTENTE),
                 ephemeral=True,
             )
             return
@@ -208,7 +207,7 @@ class RemindersCog(CogConGruppi, commands.Cog):
         )
         if not azioni:
             await interaction.response.send_message(
-                "Non hai promemoria in sospeso.", ephemeral=True
+                await testo_per(interaction, "reminders_non_hai_promemoria_in_sospeso"), ephemeral=True
             )
             return
 
@@ -220,7 +219,7 @@ class RemindersCog(CogConGruppi, commands.Cog):
 
         descrizione, _ = righe_entro_limite(righe, 4000)  # LIM-13: 4096 al massimo
         embed = discord.Embed(
-            title="⏰ I tuoi promemoria",
+            title=await testo_per(interaction, "reminders_tuoi_promemoria"),
             description=descrizione,
             color=discord.Color.blurple(),
         )
@@ -243,11 +242,11 @@ class RemindersCog(CogConGruppi, commands.Cog):
             azioni = await scheduler.list_pending_for_user(interaction.user.id, REMINDER_ACTION_TYPE, 100)
             for azione in azioni:
                 await scheduler.cancel(azione["id"])
-            await interaction.response.send_message(f"Annullati {len(azioni)} promemoria.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "reminders_annullati_promemoria", v1=len(azioni)), ephemeral=True)
             return
         if reminder_id is None:
             await interaction.response.send_message(
-                "Indica l'ID del promemoria oppure scegli «tutti».", ephemeral=True
+                await testo_per(interaction, "reminders_indica_id_del_promemoria_oppure"), ephemeral=True
             )
             return
 
@@ -258,18 +257,18 @@ class RemindersCog(CogConGruppi, commands.Cog):
             or azione["executed"]
         ):
             await interaction.response.send_message(
-                "Nessun promemoria trovato con questo ID.", ephemeral=True
+                await testo_per(interaction, "reminders_nessun_promemoria_trovato_con_questo"), ephemeral=True
             )
             return
 
         if azione["user_id"] != interaction.user.id and not await self._staff_del_server(interaction, azione):
             await interaction.response.send_message(
-                "Puoi annullare solo i tuoi promemoria.", ephemeral=True
+                await testo_per(interaction, "reminders_puoi_annullare_solo_tuoi_promemoria"), ephemeral=True
             )
             return
 
         await scheduler.cancel(reminder_id)
-        await interaction.response.send_message("Promemoria annullato.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "reminders_promemoria_annullato"), ephemeral=True)
 
     @staticmethod
     async def _staff_del_server(interaction: discord.Interaction, azione: dict) -> bool:
@@ -286,11 +285,11 @@ class RemindersCog(CogConGruppi, commands.Cog):
     async def server_reminders(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
         if guild is None or not await puo_usare(interaction, Livello.ADMIN):
-            await interaction.response.send_message("Solo gli admin del server vedono questo elenco.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "reminders_solo_gli_admin_del_server"), ephemeral=True)
             return
         azioni = await scheduler.list_pending_for_guild(guild.id, REMINDER_ACTION_TYPE, 100)
         if not azioni:
-            await interaction.response.send_message("Nessun promemoria in sospeso in questo server.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "reminders_nessun_promemoria_in_sospeso_in"), ephemeral=True)
             return
         righe = [
             f"`#{a['id']}` <@{a['user_id']}> {discord.utils.format_dt(a['execute_at'], style='R')} — "
@@ -298,8 +297,8 @@ class RemindersCog(CogConGruppi, commands.Cog):
             for a in azioni
         ]
         descrizione, _ = righe_entro_limite(righe, 4000)
-        embed = discord.Embed(title="⏰ Promemoria del server", description=descrizione, color=discord.Color.blurple())
-        embed.set_footer(text="Per annullarne uno: /utility reminder cancel con l'ID.")
+        embed = discord.Embed(title=await testo_per(interaction, "reminders_promemoria_del_server"), description=descrizione, color=discord.Color.blurple())
+        embed.set_footer(text=await testo_per(interaction, "reminders_per_annullarne_uno_utility_reminder"))
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 

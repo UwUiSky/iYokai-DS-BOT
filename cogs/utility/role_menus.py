@@ -345,13 +345,13 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         role = guild.get_role(role_id)
         if role is None:
             await interaction.response.send_message(
-                "This role no longer exists.", ephemeral=True
+                await testo_per(interaction, "rolemenus_this_role_no_longer_exists"), ephemeral=True
             )
             return
 
         menu = await role_menu_repo.get_menu(menu_id)
         if menu is None:
-            await interaction.response.send_message("Questo menu non esiste più.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "rolemenus_questo_menu_non_esiste_piu"), ephemeral=True)
             return
         # fetch_member, add_roles e scheduler possono superare i 3 secondi: si prenota la risposta.
         await interaction.response.defer(ephemeral=True)
@@ -458,7 +458,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
 
         menu = await role_menu_repo.get_menu(menu_id)
         if menu is None:
-            await interaction.response.send_message("Questo menu non esiste più.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "rolemenus_questo_menu_non_esiste_piu"), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         options = await role_menu_repo.get_options(menu_id)
@@ -615,7 +615,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
@@ -629,7 +629,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         target_channel = channel or interaction.channel
         if not isinstance(target_channel, discord.TextChannel):
             await interaction.response.send_message(
-                "Scegli un canale di testo valido.", ephemeral=True
+                await testo_per(interaction, "rolemenus_scegli_un_canale_di_testo"), ephemeral=True
             )
             return
 
@@ -646,10 +646,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         )
 
         await interaction.response.send_message(
-            f"Role menu creato (ID `{menu_id}`, modalità **{mode.name}**). "
-            f"Usa `/gestione ruoli menu-aggiungi` per aggiungere le opzioni — il "
-            f"messaggio verrà pubblicato/aggiornato automaticamente ad "
-            f"ogni opzione aggiunta.",
+            await testo_per(interaction, "rolemenus_role_menu_creato_id_modalita", menu_id=menu_id, name=mode.name),
             ephemeral=True,
         )
 
@@ -680,26 +677,26 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         menu = await role_menu_repo.get_menu(menu_id)
         if menu is None or menu.guild_id != guild.id:
             await interaction.response.send_message(
-                "Nessun role menu trovato con questo ID in questo server.",
+                await testo_per(interaction, "rolemenus_nessun_role_menu_trovato_con"),
                 ephemeral=True,
             )
             return
 
         if menu.mode in ("reaction", "button") and emoji is None:
             await interaction.response.send_message(
-                f"La modalità **{menu.mode}** richiede un'emoji.", ephemeral=True
+                await testo_per(interaction, "rolemenus_la_modalita_richiede_un_emoji", mode=menu.mode), ephemeral=True
             )
             return
         if menu.mode in ("button", "select") and label is None:
             await interaction.response.send_message(
-                f"La modalità **{menu.mode}** richiede un'etichetta.", ephemeral=True
+                await testo_per(interaction, "rolemenus_la_modalita_richiede_un_etichetta", mode=menu.mode), ephemeral=True
             )
             return
 
         conteggio = await role_menu_repo.count_options(menu_id)
         if not can_add_option(conteggio, menu.mode):
             await interaction.response.send_message(
-                f"Limite di opzioni raggiunto per la modalità **{menu.mode}**.",
+                await testo_per(interaction, "rolemenus_limite_di_opzioni_raggiunto_per", mode=menu.mode),
                 ephemeral=True,
             )
             return
@@ -715,16 +712,14 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         if emoji is not None:
             if not valida_emoji(emoji):
                 await interaction.response.send_message(
-                    "Quella non è un'emoji valida: scrivi un'emoji (🎮) oppure una "
-                    "personalizzata nel formato <:nome:id>.",
+                    await testo_per(interaction, "rolemenus_quella_non_un_emoji_valida"),
                     ephemeral=True,
                 )
                 return
             id_personalizzata = id_emoji_personalizzata(emoji)
             if id_personalizzata is not None and self.bot.get_emoji(id_personalizzata) is None:
                 await interaction.response.send_message(
-                    "Non vedo quell'emoji personalizzata: il bot deve essere nel server "
-                    "a cui appartiene.",
+                    await testo_per(interaction, "rolemenus_non_vedo_quell_emoji_personalizzata"),
                     ephemeral=True,
                 )
                 return
@@ -735,14 +730,14 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             # appena pubblicato il messaggio o cambiato le opzioni.
             menu = await role_menu_repo.get_menu(menu_id)
             if menu is None:
-                await interaction.followup.send("Questo menu non esiste più.", ephemeral=True)
+                await interaction.followup.send(await testo_per(interaction, "rolemenus_questo_menu_non_esiste_piu"), ephemeral=True)
                 return
             esistenti = [
                 o for o in await role_menu_repo.get_options(menu_id) if o.role_id != role.id
             ]
             if not can_add_option(len(esistenti), menu.mode):
                 await interaction.followup.send(
-                    f"Limite di opzioni raggiunto per la modalità **{menu.mode}**.",
+                    await testo_per(interaction, "rolemenus_limite_di_opzioni_raggiunto_per", mode=menu.mode),
                     ephemeral=True,
                 )
                 return
@@ -763,7 +758,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             await role_menu_repo.add_option(menu_id, role.id, emoji, label)
 
         await interaction.followup.send(
-            f"Opzione aggiunta: {role.mention}.", ephemeral=True
+            await testo_per(interaction, "rolemenus_opzione_aggiunta", mention=role.mention), ephemeral=True
         )
 
     @comando_di_gruppo(
@@ -783,7 +778,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         menu = await role_menu_repo.get_menu(menu_id)
         if menu is None or menu.guild_id != guild.id:
             await interaction.response.send_message(
-                "Nessun role menu trovato con questo ID in questo server.",
+                await testo_per(interaction, "rolemenus_nessun_role_menu_trovato_con"),
                 ephemeral=True,
             )
             return
@@ -792,12 +787,12 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         async with self._blocco_menu(menu_id):
             menu = await role_menu_repo.get_menu(menu_id)
             if menu is None:
-                await interaction.followup.send("Questo menu non esiste più.", ephemeral=True)
+                await interaction.followup.send(await testo_per(interaction, "rolemenus_questo_menu_non_esiste_piu"), ephemeral=True)
                 return
             opzioni = await role_menu_repo.get_options(menu_id)
             if not any(o.role_id == role.id for o in opzioni):
                 await interaction.followup.send(
-                    "Quel ruolo non fa parte di questo menu.", ephemeral=True
+                    await testo_per(interaction, "rolemenus_quel_ruolo_non_fa_parte"), ephemeral=True
                 )
                 return
 
@@ -829,7 +824,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                 )
                 return
             await role_menu_repo.remove_option(menu_id, role.id)
-        await interaction.followup.send(f"Opzione rimossa: {role.mention}.", ephemeral=True)
+        await interaction.followup.send(await testo_per(interaction, "rolemenus_opzione_rimossa", mention=role.mention), ephemeral=True)
 
     async def _elimina_menu(self, guild: discord.Guild, menu: RoleMenu) -> bool:
         """
@@ -870,7 +865,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             righe.append(f"`{m.id}` · {m.title[:60]} · {m.mode}/{m.behavior} · <#{m.channel_id}> · {n} opzioni")
         testo, _ = righe_entro_limite(righe or ["Nessun menu di ruoli."], 3900)
         await interaction.response.send_message(
-            embed=discord.Embed(title=f"Menu di ruoli ({len(menu)})", description=testo),
+            embed=discord.Embed(title=await testo_per(interaction, "rolemenus_menu_di_ruoli", v1=len(menu)), description=testo),
             ephemeral=True,
             allowed_mentions=discord.AllowedMentions.none(),
         )
@@ -904,7 +899,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         menu = await role_menu_repo.get_menu(menu_id)
         if menu is None or menu.guild_id != guild.id:
             await interaction.response.send_message(
-                "Nessun role menu trovato con questo ID in questo server.", ephemeral=True
+                await testo_per(interaction, "rolemenus_nessun_role_menu_trovato_con"), ephemeral=True
             )
             return
         campi: dict = {}
@@ -921,7 +916,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                 return
             if durata_minuti is not None and nuovo != "temp":
                 await interaction.response.send_message(
-                    "La durata serve solo al comportamento temp: scegli temp oppure togli la durata.", ephemeral=True
+                    await testo_per(interaction, "rolemenus_la_durata_serve_solo_al"), ephemeral=True
                 )
                 return
             campi["behavior"] = nuovo
@@ -929,13 +924,13 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             if menu.mode == "select" and nuovo == "unique":
                 campi["max_selectable"] = 1
         if not campi:
-            await interaction.response.send_message("Non hai indicato nulla da cambiare.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "customcomman_non_hai_indicato_nulla_da"), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         async with self._blocco_menu(menu_id):
             menu = await role_menu_repo.get_menu(menu_id)
             if menu is None:
-                await interaction.followup.send("Questo menu non esiste più.", ephemeral=True)
+                await interaction.followup.send(await testo_per(interaction, "rolemenus_questo_menu_non_esiste_piu"), ephemeral=True)
                 return
             opzioni = await role_menu_repo.get_options(menu_id)
             if opzioni:
@@ -948,7 +943,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                     )
                     return
             await role_menu_repo.update_menu(menu_id, **campi)
-        await interaction.followup.send("Menu aggiornato.", ephemeral=True)
+        await interaction.followup.send(await testo_per(interaction, "rolemenus_menu_aggiornato"), ephemeral=True)
 
     @comando_di_gruppo(
         "gestione",
@@ -980,7 +975,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         menu = await role_menu_repo.get_menu(menu_id)
         if menu is None or menu.guild_id != guild.id:
             await interaction.response.send_message(
-                "Nessun role menu trovato con questo ID in questo server.", ephemeral=True
+                await testo_per(interaction, "rolemenus_nessun_role_menu_trovato_con"), ephemeral=True
             )
             return
         ammessi, esclusi = list(menu.allowed_role_ids), list(menu.excluded_role_ids)
@@ -989,7 +984,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             if ruolo.id not in lista:
                 if len(lista) >= MAX_RUOLI_ACCESSO:
                     await interaction.response.send_message(
-                        f"L'elenco ha già {MAX_RUOLI_ACCESSO} ruoli: togline uno.", ephemeral=True
+                        await testo_per(interaction, "rolemenus_elenco_ha_gia_ruoli_togline", v1=MAX_RUOLI_ACCESSO), ephemeral=True
                     )
                     return
                 lista.append(ruolo.id)
@@ -997,7 +992,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             lista.remove(ruolo.id)
         await role_menu_repo.set_access_lists(menu_id, ammessi, esclusi)
         await interaction.response.send_message(
-            f"Ruoli ammessi: {len(ammessi)} · esclusi: {len(esclusi)}.", ephemeral=True
+            await testo_per(interaction, "rolemenus_ruoli_ammessi_esclusi", v1=len(ammessi), v2=len(esclusi)), ephemeral=True
         )
 
     @comando_di_gruppo(
@@ -1015,7 +1010,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         menu = await role_menu_repo.get_menu(menu_id)
         if menu is None or menu.guild_id != guild.id:
             await interaction.response.send_message(
-                "Nessun role menu trovato con questo ID in questo server.",
+                await testo_per(interaction, "rolemenus_nessun_role_menu_trovato_con"),
                 ephemeral=True,
             )
             return
@@ -1023,12 +1018,11 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         cancellato = await self._elimina_menu(guild, menu)
         if not cancellato:
             await interaction.response.send_message(
-                "Role menu eliminato dal database, ma non sono riuscito a cancellare il "
-                "messaggio: cancellalo a mano.",
+                await testo_per(interaction, "rolemenus_role_menu_eliminato_dal_database"),
                 ephemeral=True,
             )
             return
-        await interaction.response.send_message("Role menu eliminato.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "rolemenus_role_menu_eliminato"), ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:

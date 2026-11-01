@@ -23,6 +23,7 @@ from discord.ext import commands
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.duration_logic import format_duration, parse_duration
+from core.i18n import testo_per
 from core.lista_limiti_logic import righe_entro_limite
 from core.moderation_bulk_logic import MAX_USI_ORA, prenota_uso
 from core.repositories.self_role_repo import self_role_repo
@@ -104,7 +105,7 @@ class ConfermaAzzera(BaseView):
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.autore_id:
-            await interaction.response.send_message("Solo chi ha lanciato il comando può usare questi bottoni.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "ruolistrumen_solo_chi_ha_lanciato_il"), ephemeral=True)
             return False
         return await super().interaction_check(interaction)
 
@@ -114,17 +115,17 @@ class ConfermaAzzera(BaseView):
         # La gerarchia si ricontrolla al click: in 15 minuti i ruoli di entrambi possono cambiare.
         membro = guild.get_member(self.membro.id)
         if membro is None:
-            await interaction.response.edit_message(content="Il membro non è più nel server.", view=None)
+            await interaction.response.edit_message(content=await testo_per(interaction, "ruolistrumen_il_membro_non_piu_nel", pubblica=True), view=None)
             return
         if pari_o_sopra(guild, interaction.user, membro):
             await interaction.response.edit_message(
-                content="Questo membro ora è pari o sopra di te: non puoi togliergli i ruoli.", view=None
+                content=await testo_per(interaction, "ruolistrumen_questo_membro_ora_pari_sopra", pubblica=True), view=None
             )
             return
         self.membro = membro
         ruoli = ruoli_da_azzerare(membro.roles, guild.me.top_role)
         if not ruoli:
-            await interaction.response.edit_message(content="Non c'è nessun ruolo che il bot possa togliere.", view=None)
+            await interaction.response.edit_message(content=await testo_per(interaction, "ruolistrumen_non_nessun_ruolo_che_il", pubblica=True), view=None)
             return
         try:
             await self.membro.remove_roles(*ruoli, reason=motivo_audit(interaction.user, self.motivo))
@@ -145,7 +146,7 @@ class ConfermaAzzera(BaseView):
         guild = interaction.guild
         if pari_o_sopra(guild, interaction.user, self.membro):
             await interaction.response.edit_message(
-                content="Questo membro ora è pari o sopra di te: non puoi ridargli i ruoli.", view=None
+                content=await testo_per(interaction, "ruolistrumen_questo_membro_ora_pari_sopra_2", pubblica=True), view=None
             )
             return
         ruoli = [r for r in self.tolti if gestibile_dal_bot(guild, guild.get_role(r.id))]
@@ -157,7 +158,7 @@ class ConfermaAzzera(BaseView):
             return
         self.stop()
         await interaction.response.edit_message(
-            content=f"Ridati {len(ruoli)} ruoli a {self.membro.mention}.", view=None, allowed_mentions=NESSUNA_MENZIONE
+            content=await testo_per(interaction, "ruolistrumen_ridati_ruoli", pubblica=True, v1=len(ruoli), mention=self.membro.mention), view=None, allowed_mentions=NESSUNA_MENZIONE
         )
 
 
@@ -181,7 +182,7 @@ class SceltaRuoliView(BaseView):
 
     async def _scelto(self, interaction: discord.Interaction) -> None:
         if interaction.user.id != self.membro_id:
-            await interaction.response.send_message("Questo menu non è tuo: usa /utility ruolo.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "ruolistrumen_questo_menu_non_tuo_usa"), ephemeral=True)
             return
         scelti = {int(v) for v in self.menu.values}
         offerti = {int(o.value) for o in self.menu.options}
@@ -361,7 +362,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
             return
         vista = ConfermaAzzera(self, interaction.user.id, membro, motivo)
         await interaction.response.send_message(
-            f"Togliere {len(ruoli)} ruoli a {membro.mention}?", view=vista, ephemeral=True, allowed_mentions=NESSUNA_MENZIONE
+            await testo_per(interaction, "ruolistrumen_togliere_ruoli", v1=len(ruoli), mention=membro.mention), view=vista, ephemeral=True, allowed_mentions=NESSUNA_MENZIONE
         )
 
     # ================================================================
@@ -428,12 +429,12 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
             membri = membri_da_toccare(guild.members, filtro, ruolo.id, azione)
             if not membri:
                 self.operazioni.pop(guild.id, None)
-                await interaction.followup.send("Nessun membro da cambiare con questi filtri.", ephemeral=True)
+                await interaction.followup.send(await testo_per(interaction, "ruolistrumen_nessun_membro_da_cambiare_con"), ephemeral=True)
                 return
             if len(membri) > MAX_MEMBRI_MASSA:
                 self.operazioni.pop(guild.id, None)
                 await interaction.followup.send(
-                    f"Sono {len(membri)} membri: il massimo per un'operazione è {MAX_MEMBRI_MASSA}. Usa i filtri per dividerla.",
+                    await testo_per(interaction, "ruolistrumen_sono_membri_il_massimo_per", v1=len(membri), v2=MAX_MEMBRI_MASSA),
                     ephemeral=True,
                 )
                 return
@@ -442,7 +443,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
             if interaction.user.id != guild.owner_id and not prenota_uso(guild.id, 0, "ruoli_massa", time.monotonic()):
                 self.operazioni.pop(guild.id, None)
                 await interaction.followup.send(
-                    f"In questo server sono già partite {MAX_USI_ORA} operazioni di massa nell'ultima ora: riprova più tardi.",
+                    await testo_per(interaction, "ruolistrumen_in_questo_server_sono_gia", v1=MAX_USI_ORA),
                     ephemeral=True,
                 )
                 return
@@ -518,7 +519,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
             return
         operazione.ferma = True
         await interaction.response.send_message(
-            f"Fermo l'operazione: fatti {operazione.fatti} su {operazione.totale}. L'avviso finale arriva nel canale scelto.",
+            await testo_per(interaction, "ruolistrumen_fermo_operazione_fatti_su_avviso", fatti=operazione.fatti, totale=operazione.totale),
             ephemeral=True,
         )
 
@@ -560,7 +561,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
         except discord.HTTPException as errore:
             await self._rifiuta(interaction, f"Discord ha rifiutato: {errore.text or errore}"[:1900])
             return
-        await interaction.response.send_message(f"Creato {nuovo.mention}.", ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
+        await interaction.response.send_message(await testo_per(interaction, "ruolistrumen_creato", mention=nuovo.mention), ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
     @comando_di_gruppo("ruoli", nome="modifica", descrizione="Cambia nome, colore e opzioni di un ruolo.")
     @app_commands.describe(
@@ -608,7 +609,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
         except discord.HTTPException as errore:
             await self._rifiuta(interaction, f"Discord ha rifiutato: {errore.text or errore}"[:1900])
             return
-        await interaction.response.send_message(f"{ruolo.mention} aggiornato.", ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
+        await interaction.response.send_message(await testo_per(interaction, "ruolistrumen_aggiornato", mention=ruolo.mention), ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
     @comando_di_gruppo("ruoli", nome="diagnosi", descrizione="Scopri perché il bot non riesce a dare un ruolo.")
     @app_commands.describe(ruolo="Il ruolo da controllare")
@@ -712,22 +713,22 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
     async def ruolo_a_scelta(self, interaction: discord.Interaction, ruolo: app_commands.Range[str, 1, 20] | None = None) -> None:
         guild = interaction.guild
         if guild is None:
-            await interaction.response.send_message("Questo comando funziona solo in un server.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "ruolistrumen_questo_comando_funziona_solo_in"), ephemeral=True)
             return
         ruoli = await self._ruoli_a_scelta(guild)
         if not ruoli:
-            await interaction.response.send_message("Questo server non ha ruoli a scelta.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "ruolistrumen_questo_server_non_ha_ruoli"), ephemeral=True)
             return
         if ruolo is None:
             await interaction.response.send_message(
-                "Segna i ruoli che vuoi avere; togli il segno per lasciarli.",
+                await testo_per(interaction, "ruolistrumen_segna_ruoli_che_vuoi_avere"),
                 view=SceltaRuoliView(self, interaction.user, ruoli),
                 ephemeral=True,
             )
             return
         scelto = next((r for r in ruoli if str(r.id) == ruolo.strip()), None)
         if scelto is None:
-            await interaction.response.send_message("Questo ruolo non è a scelta: sceglilo dall'elenco.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "ruolistrumen_questo_ruolo_non_scelta_sceglilo"), ephemeral=True)
             return
         if any(r.id == scelto.id for r in interaction.user.roles):
             testo = await self.applica_scelta(interaction.user, set(), {scelto.id})

@@ -19,6 +19,7 @@ from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.ui_base import BaseView
 from core.premium import PremiumModule, registry
 from core.repositories.activity_stats_repo import activity_stats_repo
@@ -167,7 +168,7 @@ class _PeriodoView(BaseView):
     def _cambia(self, periodo):
         async def _callback(interaction: discord.Interaction) -> None:
             if interaction.user.id != self._autore_id:
-                await interaction.response.send_message("Questi bottoni sono di chi ha lanciato il comando.", ephemeral=True)
+                await interaction.response.send_message(await testo_per(interaction, "serverstats_questi_bottoni_sono_di_chi"), ephemeral=True)
                 return
             await interaction.response.defer()
             giorni = periodo or self.giorni
@@ -216,14 +217,13 @@ class ServerStatsCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
         if not await db.is_module_active_for_guild(guild.id, MODULE_SERVER_STATS):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return
