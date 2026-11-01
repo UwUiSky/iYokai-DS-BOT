@@ -402,7 +402,7 @@ def leggi_link_messaggio(testo: str | None) -> tuple[int, int, int] | None:
 
 
 # ----------------------------------------------------------------------
-# Riassunto per /ticket opzioni mostra (campi entro 1024 caratteri)
+# Riassunto per /ticket-pannelli opzioni mostra (campi entro 1024 caratteri)
 # ----------------------------------------------------------------------
 def _ruoli(ids: tuple[int, ...]) -> str:
     return " ".join(f"<@&{r}>" for r in ids) or "nessuno"

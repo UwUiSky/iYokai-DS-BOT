@@ -657,7 +657,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         sottogruppo=SOTTOGRUPPI["ruoli menu"],
     )
     @app_commands.describe(
-        menu_id="ID del menu (mostrato da /gestione ruoli menu-crea)",
+        menu_id="ID del menu (mostrato da /ruoli menu crea)",
         role="Il ruolo da assegnare",
         emoji="Emoji (obbligatoria per reaction/button)",
         label="Etichetta del bottone/opzione (obbligatoria per button/select)",
@@ -877,7 +877,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         sottogruppo=SOTTOGRUPPI["ruoli menu"],
     )
     @app_commands.describe(
-        menu_id="ID del menu (lo mostra /gestione ruoli menu-elenco)",
+        menu_id="ID del menu (lo mostra /ruoli menu elenco)",
         titolo="Nuovo titolo",
         descrizione="Nuova descrizione",
         comportamento="Nuovo comportamento",

@@ -221,7 +221,7 @@ class Config:
 
     # Pixabay (SPEC.md §16.9, ricerca immagini SFW) — opzionale, vuota
     # finché l'utente non crea una API key gratuita su pixabay.com/
-    # api/docs/. `/fun search-image` (cogs/fun/entertainment.py)
+    # api/docs/. `/immagini search-image` (cogs/fun/entertainment.py)
     # risponde con un messaggio che spiega come attivarla finché è
     # vuota, invece di fallire in modo criptico. Pixabay applica il
     # proprio filtro SFW lato server (`safesearch=true`, impostato

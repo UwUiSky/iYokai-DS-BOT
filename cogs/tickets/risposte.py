@@ -17,7 +17,7 @@ dell'utente, scelta tra le risposte approvate quando le parole non bastano, ruol
 chiamare (moderatore o amministratore). L'AI non scrive mai testo libero all'utente
 (core/ticket_ai_logic.py). Con l'AI ferma resta tutto per parole
 (core/ticket_standard_logic.py). Il timer passa dallo scheduler (azione `ticket_sollecito`).
-Comandi: `/admin ticket standard|sollecito|risposte-lista|risposta-modifica|risposta-elimina`.
+Comandi: `/ticket-gestione risposte standard|sollecito|risposte-lista|risposta-modifica|risposta-elimina`.
 Funzioni coperte: SPEC §25.97, §25.98
 """
 

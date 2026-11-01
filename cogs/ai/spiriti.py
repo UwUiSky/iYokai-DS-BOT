@@ -1,7 +1,7 @@
 """
 cogs/ai/spiriti.py
 ==================
-`/utility ai spirito` (spirito Yokai che cresce con l'attività) e `/utility ai frammenti` (frammenti di lore da
+`/assistente spirito` (spirito Yokai che cresce con l'attività) e `/assistente frammenti` (frammenti di lore da
 collezionare, con la storia finale). Solo conteggi, nessun testo dei messaggi; parte solo su richiesta della persona.
 Funzioni coperte: SPEC §25.71, §25.72 (AI-R-078, AI-R-079)
 """

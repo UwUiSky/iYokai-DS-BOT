@@ -1,9 +1,9 @@
 """
 cogs/ai/images.py
 =================
-Immagini: `/utility ai immagina` (generazione, con i bottoni Variazione e
-Ingrandisci), `/utility ai ingrandisci` (ingrandisce e ripulisce un'immagine
-caricata, sulla macchina del bot), `/utility ai pacchetto` (5 immagini in più
+Immagini: `/assistente immagina` (generazione, con i bottoni Variazione e
+Ingrandisci), `/assistente ingrandisci` (ingrandisce e ripulisce un'immagine
+caricata, sulla macchina del bot), `/assistente pacchetto` (5 immagini in più
 comprate con le monete del server). Quota settimanale per persona.
 Funzioni coperte: SPEC §25.8, §25.60–§25.63 (AI-R-065..069; catalogo AI-005..008)
 

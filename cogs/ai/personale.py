@@ -1,7 +1,7 @@
 """
 cogs/ai/personale.py
 ====================
-Comandi della persona dentro `/utility ai`: assistente acceso o spento per sé.
+Comandi della persona dentro `/assistente`: assistente acceso o spento per sé.
 Funzioni coperte: SPEC §25.87 (AI-R-094)
 """
 

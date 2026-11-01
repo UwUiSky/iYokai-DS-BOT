@@ -3,7 +3,7 @@ cogs/utility/embed_builder.py
 =============================
 Costruttore di embed (NF-17, SPEC §22.6): l'admin compone un embed con titolo,
 testo, colore, immagini e campi, lo vede in anteprima, lo pubblica e lo modifica
-anche dopo. Comandi in `/moduli embed *`. Tutti i limiti si controllano
+anche dopo. Comandi in `/messaggi embed *`. Tutti i limiti si controllano
 al salvataggio (core/embed_builder_logic.py).
 Funzioni coperte: SPEC §22 (NF-17)
 """
@@ -260,7 +260,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
                 nota = " Il messaggio pubblicato è stato aggiornato."
             else:
                 await saved_embed_repo.set_published(interaction.guild.id, nome, None, None)
-                nota = " Il messaggio pubblicato non c'era più: ripubblicalo con `/moduli embed pubblica`."
+                nota = " Il messaggio pubblicato non c'era più: ripubblicalo con `/messaggi embed pubblica`."
         await saved_embed_repo.update_data(interaction.guild.id, nome, a_json(dati))
         await interaction.followup.send(await testo_per(interaction, "embedbuilder_embed_aggiornato", nota=nota), embed=embed, ephemeral=True)
 

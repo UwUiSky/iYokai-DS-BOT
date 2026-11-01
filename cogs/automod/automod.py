@@ -22,14 +22,14 @@ Discord vs. `on_message` nel bot), e vivono sotto lo stesso comando
 I filtri lato bot controllano anche i messaggi MODIFICATI (`on_message_edit`,
 AMD-021): la modifica non conta come messaggio in più per l'anti-spam, e un
 messaggio modificato più volte vale un solo warn per violazione.
-Il blocco del phishing (NF-31, `/automod filtri phishing`) usa la lista di
+Il blocco del phishing (NF-31, `/filtri phishing`) usa la lista di
 core/phishing_list_fetcher.py: cancella il messaggio e mette in timeout.
 Due categorie hanno un interruttore proprio (SIC-042): accorciatori di link
 e inviti a server per adulti (il server dell'invito lo chiede a Discord).
 Filtri in più: messaggi ripetuti, troppo corti, link e menzioni contati nel
-tempo (AMD-001/004/006/007, `/automod filtri messaggi`), testo di embed (solo
+tempo (AMD-001/004/006/007, `/filtri messaggi`), testo di embed (solo
 per i filtri dei link, anche quando l'anteprima arriva con una modifica) e
-inoltri (AMD-019/020) e tipi di file vietati (AMD-022, `/automod filtri
+inoltri (AMD-019/020) e tipi di file vietati (AMD-022, `/filtri
 contenuto`), canali solo media o senza allegati (AMD-023/024, `/automod
 filtri canale-media`; sticker e inoltri con immagine valgono come media), azione kick (AMD-041),
 parole vietate con varianti (AMD-014, core/automod_parole_logic.py: cancella e conta nella scala;
@@ -1193,7 +1193,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
             f"Blocco del phishing {'attivato: cancello il messaggio e metto in timeout chi lo ha scritto' if enabled else 'disattivato'}. "
             f"Accorciatori di link: {'bloccati' if c.phishing_accorciatori else 'permessi'}. "
             f"Inviti a server per adulti: {'bloccati' if c.phishing_inviti_adulti else 'permessi'}. "
-            "Se blocco un dominio per sbaglio, mettilo nella whitelist con `/automod filtri anti-link-domain`."
+            "Se blocco un dominio per sbaglio, mettilo nella whitelist con `/filtri anti-link-domain`."
             + (f" I link bloccati si scrivono in {canale_log.mention}." if canale_log is not None else ""),
             ephemeral=True,
         )

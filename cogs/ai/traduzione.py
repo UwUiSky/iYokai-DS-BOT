@@ -1,7 +1,7 @@
 """
 cogs/ai/traduzione.py
 =====================
-Traduzione con l'AI: `/utility ai traduci`, traduzione automatica dei canali
+Traduzione con l'AI: `/assistente traduci`, traduzione automatica dei canali
 scelti con `/ai traduzione`, traduzione quando qualcuno reagisce con la
 bandiera di un paese (`/ai funzioni bandiere`). Le traduzioni passano dalla
 cache: lo stesso testo non si ritraduce.

@@ -16,7 +16,7 @@ passano da `/ticket rispondi` restano interni: l'utente non li vede mai.
 Configurazione per server: tabella `modmail_config` (categoria dove nascono i
 canali; non in `guild_config.settings` per non toccare lo schema di /admin
 config, che sta in cogs/utility). Il modulo `tickets` deve essere acceso.
-Comandi: `/admin ticket dm`, `/admin ticket dm-blocca`, `/ticket rispondi`,
+Comandi: `/ticket-gestione modmail attiva`, `/ticket-gestione modmail blocca`, `/ticket rispondi`,
 `/ticket dm-chiudi`.
 Funzioni coperte: SPEC §23 (NF-33)
 """

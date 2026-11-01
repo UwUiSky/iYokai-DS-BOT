@@ -539,7 +539,7 @@ class ConfermaAcquistoView(BaseView):
     """
     «Confermi?» prima di un acquisto nel negozio (ECO-069). Solo chi ha dato il
     comando può premere; il bottone vale una volta sola. L'acquisto passa dallo
-    stesso codice di /level shop buy, quindi resta una scrittura atomica.
+    stesso codice di /monete shop buy, quindi resta una scrittura atomica.
     """
 
     def __init__(
@@ -1537,7 +1537,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         descrizione="Rimuove un ruolo-premio configurato.",
         sottogruppo=SOTTOGRUPPI["ruoli premio"],
     )
-    @app_commands.describe(reward_id="ID della ricompensa (vedi /gestione ruoli livello-list)")
+    @app_commands.describe(reward_id="ID della ricompensa (vedi /ruoli premio elenco)")
     async def level_roles_remove(self, interaction: discord.Interaction, reward_id: int) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
@@ -1681,7 +1681,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         descrizione="Acquista un oggetto dello shop.",
         sottogruppo=SOTTOGRUPPI["monete shop"],
     )
-    @app_commands.describe(item_id="ID dell'oggetto (vedi /level shop list)")
+    @app_commands.describe(item_id="ID dell'oggetto (vedi /monete shop list)")
     async def shop_buy(self, interaction: discord.Interaction, item_id: IdOggetto) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -1906,7 +1906,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         descrizione="Cambia un oggetto dello shop (prezzo, scorte, ruolo richiesto...).",
     )
     @app_commands.describe(
-        item_id="ID dell'oggetto (vedi /level shop list)",
+        item_id="ID dell'oggetto (vedi /monete shop list)",
         name="Nuovo nome",
         price="Nuovo prezzo",
         scorte="Nuove scorte (0 = esaurito)",
@@ -2025,7 +2025,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         nome="shop-remove",
         descrizione="Rimuove un oggetto dallo shop.",
     )
-    @app_commands.describe(item_id="ID dell'oggetto (vedi /level shop list)")
+    @app_commands.describe(item_id="ID dell'oggetto (vedi /monete shop list)")
     async def shop_remove_item(self, interaction: discord.Interaction, item_id: IdOggetto) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
@@ -3322,7 +3322,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 )
 
     # ================================================================
-    # Impostazioni dei livelli (NF-15, #86) — /level impostazioni
+    # Impostazioni dei livelli (NF-15, #86) — /economia livelli
     # ================================================================
     @comando_di_gruppo(
         "economia",
@@ -3406,14 +3406,14 @@ class LevelingCog(CogConGruppi, commands.Cog):
         voce_xp="XP per ogni minuto in vocale (0-50)",
         voce_coin="Coin per ogni minuto in vocale (0-50)",
         moltiplicatori="Più moltiplicatori insieme: si sommano oppure vale solo il più alto",
-        daily="Coin di /level daily (0-10000)",
-        lavoro_min="Coin minimi di /level work (0-10000)",
-        lavoro_max="Coin massimi di /level work (0-10000)",
+        daily="Coin di /monete daily (0-10000)",
+        lavoro_min="Coin minimi di /monete work (0-10000)",
+        lavoro_max="Coin massimi di /monete work (0-10000)",
         livello_massimo="Livello massimo raggiungibile (0 = nessun tetto)",
         nome_moneta="Come chiamate la moneta nei messaggi (di base «coin»)",
-        tassa_pay="Percentuale di /level pay che va alla cassa del server (0-50)",
-        massimo_pay="Massimo per ogni /level pay (0 = nessun tetto)",
-        minimo_pay="Minimo per ogni /level pay (0 = nessuno)",
+        tassa_pay="Percentuale di /monete pay che va alla cassa del server (0-50)",
+        massimo_pay="Massimo per ogni /monete pay (0 = nessun tetto)",
+        minimo_pay="Minimo per ogni /monete pay (0 = nessuno)",
         immagine_moneta="Immagine della moneta, mostrata accanto al saldo (di base: la moneta di iYokai)",
         senza_immagine="Sì = togli l'immagine e torna alla moneta di iYokai",
     )

@@ -5,7 +5,7 @@ Comandi personalizzati del server, detti tag (NF-09, SPEC §22.5): un nome,
 un testo o un embed, un ruolo da dare o togliere, una pausa. Si usano con
 `/utility tag` e, se l'admin sceglie un prefisso, anche scrivendo
 `<prefisso>nome` (usa guild_config.prefix, M 10.15). Si gestiscono con
-`/moduli comandi crea|modifica|elimina|elenco|prefisso`.
+`/messaggi tag crea|modifica|elimina|elenco|prefisso`.
 Funzioni coperte: SPEC §22 (NF-09)
 """
 
@@ -284,7 +284,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         )
         messaggi = {
             "ok": f"Comando `{normalizzato}` creato. Si usa con `/utility tag`.",
-            "esiste": f"Esiste già un comando `{normalizzato}`: usa `/moduli comandi modifica`.",
+            "esiste": f"Esiste già un comando `{normalizzato}`: usa `/messaggi tag modifica`.",
             "pieno": f"Questo server ha già {MAX_TAG} comandi personalizzati: eliminane uno.",
         }
         await interaction.response.send_message(messaggi[esito], ephemeral=True)

@@ -1,9 +1,9 @@
 """
 cogs/ai/lore.py
 ===============
-Lore e personaggi: `/utility ai lore` (scheda su un nome o un luogo, scritta
-secondo la lore del server e salvata per riusarla), `/utility ai crea-personaggio`
-(biografia, tratti, gusti, fatti), `/utility ai personaggio` (chatta con un
+Lore e personaggi: `/assistente lore` (scheda su un nome o un luogo, scritta
+secondo la lore del server e salvata per riusarla), `/assistente crea-personaggio`
+(biografia, tratti, gusti, fatti), `/assistente personaggio` (chatta con un
 personaggio installato dall'admin, con la memoria corta).
 Funzioni coperte: SPEC §25.48, §25.57, §25.58, §25.89 (AI-R-053, AI-R-062, AI-R-063, AI-R-096; catalogo AI-014, AI-015)
 

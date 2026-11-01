@@ -539,7 +539,7 @@ async def applica_premium_modulo(nome: str, attivo: bool, user_id: int) -> None:
 
 
 async def applica_manutenzione_ai(acceso: bool, messaggio: str, user_id: int) -> None:
-    """Manutenzione globale dell'AI (stesso punto di `/ai manutenzione`)."""
+    """Manutenzione globale dell'AI (stesso punto di `/owner ai manutenzione`)."""
     from core.ai_servizio import imposta_manutenzione_ai
 
     await imposta_manutenzione_ai(acceso, messaggio, user_id)

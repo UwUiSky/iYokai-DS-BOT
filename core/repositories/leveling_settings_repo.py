@@ -138,7 +138,7 @@ class LevelingSettingsRepository:
             minimo = campi.get("pay_min", attuale.pay_min)
             massimo = campi.get("pay_max", attuale.pay_max)
             if minimo and massimo and minimo > massimo:
-                raise ValueError("Il minimo di /level pay non può superare il massimo.")
+                raise ValueError("Il minimo di /monete pay non può superare il massimo.")
 
         if campi.get("levelup_mode") == "canale_scelto" and not campi.get("levelup_channel_id"):
             attuale = (await self.get_config(guild_id)).impostazioni.levelup_channel_id

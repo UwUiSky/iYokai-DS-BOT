@@ -119,7 +119,7 @@ async def _scheda_serie(guild_id: int, user_id: int) -> tuple[str, bool]:
     adesso = servizio._adesso()
     attuale = serie_attuale(serie, ultima, scudi, adesso)
     righe = [
-        f"Serie attuale: **{attuale}** giorni di fila con `/level daily`. Record: **{record}**.",
+        f"Serie attuale: **{attuale}** giorni di fila con `/monete daily`. Record: **{record}**.",
         f"Se salti più di {SERIE_LIMITE_ORE} ore la serie si azzera. Ogni scudo copre un giorno saltato.",
         f"Scudi: **{scudi}/{SCUDI_MAX}** (costano {SCUDO_PREZZO} coin l'uno).",
     ]

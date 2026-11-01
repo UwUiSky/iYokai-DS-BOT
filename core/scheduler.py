@@ -229,7 +229,7 @@ class Scheduler:
         Come list_pending_for_user(), ma filtrata per SERVER invece
         che per utente — per funzionalità admin dove non conta chi
         ha pianificato l'azione, conta a quale server appartiene
-        (es. /admin messaggi programmati, dove qualunque admin deve poter
+        (es. /messaggi programmati elenco, dove qualunque admin deve poter
         vedere tutti i messaggi programmati del proprio server, non
         solo quelli creati da sé stesso).
         """

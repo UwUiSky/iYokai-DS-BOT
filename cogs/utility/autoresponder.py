@@ -3,7 +3,7 @@ cogs/utility/autoresponder.py
 =============================
 Risposte automatiche (NF-10, SPEC §14.7): quando un messaggio contiene una
 parola o frase scelta, il bot risponde da solo. Condizioni: canale, ruolo,
-corrispondenza esatta o parziale. Comandi: `risposta-...` di `/moduli comandi`.
+corrispondenza esatta o parziale. Comandi: `risposta-...` di `/messaggi`.
 Richiede l'intent `message_content` (D9).
 Funzioni coperte: SPEC §14.7 (NF-10)
 """
@@ -166,13 +166,13 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
         _cache_regole.delete(interaction.guild.id)
         messaggi = {
             "ok": f"Risposta automatica n. {nuovo_id} creata.",
-            "esiste": "Esiste già una risposta con quella parola: eliminala prima con `/moduli comandi risposta-elimina`.",
+            "esiste": "Esiste già una risposta con quella parola: eliminala prima con `/messaggi risposte elimina`.",
             "pieno": f"Questo server ha già {MAX_RISPOSTE} risposte automatiche: eliminane una.",
         }
         await interaction.response.send_message(messaggi[esito], ephemeral=True)
 
     @comando_di_gruppo("messaggi", nome="elimina", descrizione="Elimina una risposta automatica.", sottogruppo=SOTTOGRUPPI["messaggi risposte"])
-    @app_commands.describe(numero="Il numero mostrato da /moduli comandi risposte")
+    @app_commands.describe(numero="Il numero mostrato da /messaggi risposte elenco")
     async def risposta_elimina(self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 2_000_000_000]) -> None:
         if not await self._pronto(interaction):
             return

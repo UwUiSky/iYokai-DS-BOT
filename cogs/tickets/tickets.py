@@ -36,7 +36,7 @@ Limiti di Discord rispettati qui: menu delle categorie (25 voci,
 etichetta 100), nome del canale (100), 2 rinomine ogni 10 minuti (il
 canale nasce già con il numero giusto; /ticket rename passa da
 core/channel_rename.py), ticket aperti per utente (predefinito 1,
-fino a 5 con /gestione ticket limite, impostazione `ticket_max_per_utente`;
+fino a 5 con /ticket-gestione limite, impostazione `ticket_max_per_utente`;
 il controllo è sotto blocco in ticket_repo.create_ticket).
 
 /ticket close: l'eliminazione del canale dopo l'attesa passa dallo
@@ -151,7 +151,7 @@ PRIORITY_EMOJI = {"normal": "🟢", "high": "🟠", "urgent": "🔴"}
 
 # TKT-056: motivo di chiusura salvato col ticket (compare anche nel transcript).
 MAX_MOTIVO_CHIUSURA = 500
-# TKT-058: quanti ticket chiude in una volta /admin ticket chiudi-tutti (ognuno ha il suo transcript).
+# TKT-058: quanti ticket chiude in una volta /ticket-gestione chiudi-tutti (ognuno ha il suo transcript).
 MAX_CHIUSURA_DI_MASSA = 25
 
 # Il nome di un canale Discord va da 1 a 100 caratteri (LIM-3).
@@ -191,7 +191,7 @@ def _messaggio_limite(limite: int) -> str:
 
 
 async def _limite_per_utente(guild_id: int) -> int:
-    """NF-13: quanti ticket aperti può avere un utente (default 1, /gestione ticket limite)."""
+    """NF-13: quanti ticket aperti può avere un utente (default 1, /ticket-gestione limite)."""
     valore = await db.get_guild_setting(guild_id, SETTING_MAX_PER_UTENTE, default=1)
     try:
         return min(max(int(valore), 1), LIMITE_PER_UTENTE_MAX)
@@ -613,7 +613,7 @@ def _category_options(categorie, with_emoji: bool = True) -> list[discord.Select
     """
     Le opzioni del menu delle categorie, sempre dentro i limiti di
     Discord (LIM-6) anche con dati salvati prima dei controlli di
-    /gestione ticket categoria-add: al massimo 25, etichetta tagliata a 100,
+    /ticket-gestione categoria aggiungi: al massimo 25, etichetta tagliata a 100,
     emoji solo se sembra valida, voci senza nome saltate. Il valore è
     l'id della riga (corto e unico), non l'etichetta.
     """
@@ -1712,7 +1712,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             rimosso = True
 
         # Il ruolo può essere anche quello "storico" impostato con
-        # /gestione ticket setup: va tolto pure da lì, altrimenti continua a
+        # /ticket-gestione setup: va tolto pure da lì, altrimenti continua a
         # vedere i ticket. La chiave si toglie del tutto (un `null`
         # verrebbe poi rifiutato da /admin config import).
         if await db.get_guild_setting(guild_id, SETTING_SUPPORT_ROLE) == role.id:

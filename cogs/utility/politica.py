@@ -1,7 +1,7 @@
 """
 cogs/utility/politica.py
 ========================
-`/utility politica`: l'admin decide quali comandi girano nel suo server (CFG-008, CFG-009, CFG-010, CFG-018, #122).
+`/admin politica`: l'admin decide quali comandi girano nel suo server (CFG-008, CFG-009, CFG-010, CFG-018, #122).
 Spegne un singolo comando, limita i comandi ad alcuni canali, fa ignorare ruoli e utenti, e con `diagnosi` scopre
 perché un comando non risponde. La logica e i dati sono in `core/command_policy.py` (un solo punto, D16).
 Funzioni coperte: SPEC §20 (NF-05), catalogo #122

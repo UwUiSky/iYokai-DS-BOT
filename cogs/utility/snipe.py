@@ -119,7 +119,7 @@ class SnipeCog(CogConGruppi, commands.Cog):
         )
 
     async def _vuole_snipe(self, payload: discord.RawMessageDeleteEvent, guild: discord.Guild) -> bool:
-        """Il messaggio cancellato va ricordato per /utility snipe (modulo acceso, non ignorato)."""
+        """Il messaggio cancellato va ricordato per /utility snipe messaggio (modulo acceso, non ignorato)."""
         messaggio = payload.cached_message
         if messaggio is None or messaggio.author.bot:
             return False

@@ -4,7 +4,7 @@ cogs/fun/entertainment.py
 Mini-giochi (SPEC.md §16.1), altri comandi di intrattenimento
 classici (§16.8): testa/croce, dado, carta/forbici/sasso, palla
 magica 8, barzelletta, citazione, curiosità — e image manipulation
-(§16.2)/fun meme (§16.3): scala di grigi, inverti, sfoca, pixela,
+(§16.2)/immagini meme (§16.3): scala di grigi, inverti, sfoca, pixela,
 generatore di meme testo-sopra/testo-sotto. Tutti operano
 sull'allegato passato al comando o, se assente, sull'avatar
 dell'utente (o dell'utente menzionato) — così ogni comando funziona
@@ -17,9 +17,9 @@ Tutti i comandi stanno nel gruppo condiviso `/fun` (core/command_groups.py);
 `/fun ship` e `/fun rate` sono in cogs/fun/ship_rate.py.
 
 Terzo lotto (§16.4 Comandi animal, §16.9 Ricerca immagini SFW):
-`/fun animal` usa tre API pubbliche gratuite senza chiave
+`/immagini animal` usa tre API pubbliche gratuite senza chiave
 (dog.ceo, thecatapi.com, randomfox.ca — core/animal_fetcher.py);
-`/fun search-image` usa Pixabay, che invece richiede una chiave
+`/immagini search-image` usa Pixabay, che invece richiede una chiave
 gratuita (PIXABAY_API_KEY in core/config.py, stesso principio di
 sblocco opzionale già usato per Twitch/YouTube) — a differenza delle
 altre integrazioni opzionali di questo bot, senza quella chiave il

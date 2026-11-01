@@ -17,7 +17,7 @@ STATO: scheletro. Il codice non è ancora scritto (issue #84).
 #   Un ticket fermo si chiude da solo. Alla chiusura l'utente dà un
 #   voto. Limite di ticket aperti per utente.
 # Questo file: Chiude i ticket fermi.
-# Comandi previsti: /admin ticket modulo, /admin ticket pannello, /admin
+# Comandi previsti: /ticket-gestione modulo, /ticket-gestione pannello, /admin
 #   ticket chiusura-auto.
 # File collegati: core/ticket_form_logic.py,
 #   core/repositories/ticket_form_repo.py.
