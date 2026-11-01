@@ -1390,7 +1390,8 @@ class MusicCog(CogConGruppi, commands.Cog):
         label="Nome descrittivo per /owner radio list-tracks (facoltativo)",
     )
     async def nonstop_main_add_track(
-        self, interaction: discord.Interaction, query: str, label: str | None = None
+        self, interaction: discord.Interaction, query: app_commands.Range[str, 1, 500],
+        label: app_commands.Range[str, 1, 200] | None = None
     ) -> None:
         if query.strip().startswith("local:"):
             await interaction.response.send_message(
@@ -1427,7 +1428,8 @@ class MusicCog(CogConGruppi, commands.Cog):
         label="Nome descrittivo per /owner radio list-tracks (facoltativo)",
     )
     async def nonstop_main_add_local(
-        self, interaction: discord.Interaction, filename: str, label: str | None = None
+        self, interaction: discord.Interaction, filename: app_commands.Range[str, 1, 255],
+        label: app_commands.Range[str, 1, 200] | None = None
     ) -> None:
         if not config.MAIN_RADIO_LOCAL_FOLDER:
             await interaction.response.send_message(

@@ -390,7 +390,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         self,
         interaction: discord.Interaction,
         member: discord.Member,
-        duration: str,
+        duration: app_commands.Range[str, 1, 20],
         reason: Reason,
         modo: str = MODO_FUORI,
     ) -> None:
@@ -734,7 +734,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(user_id="ID Discord dell'utente da sbannare", reason="Motivo dello sblocco")
     async def unban(
-        self, interaction: discord.Interaction, user_id: str, reason: Reason
+        self, interaction: discord.Interaction, user_id: app_commands.Range[str, 1, 25], reason: Reason
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
             return
