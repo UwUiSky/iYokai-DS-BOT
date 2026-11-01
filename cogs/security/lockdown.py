@@ -119,7 +119,7 @@ class LockdownCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------ /mod blocco
     @comando_di_gruppo(
-        "mod",
+        "mod-canali",
         nome="attiva",
         descrizione="Blocca tutti i canali, gli inviti e gli ingressi del server.",
         sottogruppo=("blocco", "Blocco totale del server."),
@@ -131,7 +131,7 @@ class LockdownCog(CogConGruppi, commands.Cog):
         await self._attiva(interaction, TIPO_BLOCCO, motivo)
 
     @comando_di_gruppo(
-        "mod",
+        "mod-canali",
         nome="togli",
         descrizione="Riapre il server com'era prima del blocco.",
         sottogruppo=("blocco", "Blocco totale del server."),

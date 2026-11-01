@@ -50,7 +50,7 @@ class ModerationClearCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "mod",
+        "mod-canali",
         nome="clear",
         descrizione="Cancella un numero di messaggi, con filtri opzionali.",
     )

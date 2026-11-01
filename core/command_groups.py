@@ -82,6 +82,7 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "admin-vocali": ("Vocali temporanei (admin): generatore, pannello, limite, ruoli piattaforma", "manage_guild", Livello.ADMIN),
     "mod-sanzioni": ("Moderazione: avvisi, timeout, silenzio, in massa, opzioni", "moderate_members", Livello.MOD),
     "mod-casi": ("Moderazione: casi, note, avvisi dati, rischio e carico dello staff", "moderate_members", Livello.MOD),
+    "mod-canali": ("Moderazione dei canali: blocco, lentezza, pulizia dei messaggi", "moderate_members", Livello.MOD),
     "ticket": ("Gestione del ticket in cui ti trovi", None, None),
     "voice": ("Gestione del tuo canale vocale temporaneo", None, None),
     "music": ("Musica nei canali vocali", None, None),

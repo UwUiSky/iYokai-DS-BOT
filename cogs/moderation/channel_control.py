@@ -93,7 +93,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
         await post_to_mod_log(guild, embed)
 
     @comando_di_gruppo(
-        "mod",
+        "mod-canali",
         nome="lock",
         descrizione="Blocca la possibilità di scrivere in un canale.",
     )
@@ -177,7 +177,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
         await _log(interaction, embed)
 
     @comando_di_gruppo(
-        "mod",
+        "mod-canali",
         nome="unlock",
         descrizione="Sblocca la possibilità di scrivere in un canale.",
     )
@@ -230,7 +230,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
         await _log(interaction, embed)
 
     @comando_di_gruppo(
-        "mod",
+        "mod-canali",
         nome="slowmode",
         descrizione="Imposta lo slowmode su un canale.",
     )
