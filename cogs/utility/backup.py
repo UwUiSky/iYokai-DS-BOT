@@ -56,7 +56,7 @@ from core.backup_link_logic import (
     permessi_invito_main,
 )
 
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import SOTTOGRUPPI, CogConGruppi, comando_di_gruppo
 from core.repositories.backup_mirror_repo import backup_mirror_repo
 from core.repositories.backup_repo import backup_repo
 

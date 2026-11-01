@@ -17,7 +17,7 @@ from discord.ext import commands
 
 from cogs.moderation._shared import MODULE_ACTIONS, ensure_module_enabled, format_duration, parse_duration
 from core import moderation_opzioni as opzioni
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import SOTTOGRUPPI, CogConGruppi, comando_di_gruppo
 from core.i18n import testo_per
 
 SOTTOGRUPPO = ("opzioni", "Opzioni di moderazione del server.")

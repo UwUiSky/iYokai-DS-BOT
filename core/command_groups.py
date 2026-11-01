@@ -14,7 +14,7 @@ Come si sposta un comando (ricetta)
 -----------------------------------
 1. Il cog eredita `CogConGruppi` PRIMA di `commands.Cog`.
 2. Al posto di `@app_commands.command(name=..., description=...)` scrivi
-   `@comando_di_gruppo("admin", nome=..., descrizione=..., sottogruppo=None)`:
+   `@comando_di_gruppo("admin-bot", nome=..., descrizione=..., sottogruppo=None)`:
    deve essere il decoratore PIÙ ESTERNO; describe, choices, rename,
    autocomplete, checks.cooldown restano sotto, come oggi.
 3. Togli i check di permesso (`has_permissions`, `richiedi`): li dà il
@@ -25,7 +25,7 @@ Come si sposta un comando (ricetta)
    Un Group del cog con lo stesso nome del gruppo condiviso dà ValueError.
 5. Gli autocomplete sotto un gruppo protetto usano `autocomplete_protetto`.
 6. Nei test il comando resta `cog.metodo.callback(cog, interaction, ...)`.
-Esempio: cogs/logging/basic_logs.py (`/log canale`). Se il cog ha un suo
+Esempio: cogs/logging/basic_logs.py (`/admin-log canale`). Se il cog ha un suo
 `cog_load`/`cog_unload`, deve chiamare `await super().cog_load()` / `cog_unload()`.
 
 Nessun gruppo entra da solo nell'albero del bot: i gruppi vuoti non si
@@ -53,12 +53,6 @@ NOME_CHIEDI = "-chiedi"
 # nome: (descrizione, permesso predefinito di Discord o None, livello)
 _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "owner": ("Comandi riservati al proprietario del bot", "administrator", Livello.OWNER),
-    "admin": ("Impianto del bot: setup, configurazione, lingua, politica dei comandi", "manage_guild", Livello.ADMIN),
-    "backup": ("Backup del server: copia, ripristino, modelli, sincronia, esportazioni", "administrator", Livello.ADMIN),
-    "gestione": ("Gestione del server: benvenuto e canali vocali temporanei", "manage_guild", Livello.ADMIN),
-    "economia": ("Economia del server: livelli, XP, monete, negozio e annunci (staff)", "manage_guild", Livello.ADMIN),
-    "ticket-pannelli": ("Pannelli dei ticket (admin): crea, pubblica, modulo e opzioni", "manage_guild", Livello.ADMIN),
-    "mod": ("Moderazione: avvisi, timeout, silenzio, pulizia, blocco canali", "moderate_members", Livello.MOD),
     "admin-bot": ("Impianto del bot: setup, configurazione, lingua, politica dei comandi, premium", "manage_guild", Livello.ADMIN),
     "admin-musica": ("Musica del server (admin): canale delle richieste, impostazioni, riepilogo", "manage_guild", Livello.ADMIN),
     "admin-ai": ("AI del server (admin): consenso, limiti, lore, conoscenza, funzioni, staff", "manage_guild", Livello.ADMIN),
@@ -83,7 +77,7 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "mod-casi": ("Moderazione: casi, note, avvisi dati, rischio e carico dello staff", "moderate_members", Livello.MOD),
     "mod-canali": ("Moderazione dei canali: blocco, lentezza, pulizia dei messaggi", "moderate_members", Livello.MOD),
     "mod-ban": ("Moderazione dura: ban, kick, softban, sban, in massa, appelli", "ban_members", Livello.MODBAN),
-    "founder": ("Riservato al proprietario del server: sincronia, permessi dei backup, immuni", "administrator", Livello.FOUNDER),
+    "founder": ("Solo per il proprietario del server (gli altri admin lo vedono ma sono rifiutati)", "administrator", Livello.FOUNDER),
     "ticket": ("Gestione del ticket in cui ti trovi", None, None),
     "voice": ("Gestione del tuo canale vocale temporaneo", None, None),
     "music": ("Musica nei canali vocali", None, None),
@@ -100,8 +94,8 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
 }
 
 
-# I sotto-gruppi dei comandi spostati dal riordino D56: nome e descrizione in un posto solo.
-# Chiave: "gruppo sotto-gruppo". Il cog scrive `sottogruppo=SOTTOGRUPPI["ruoli premio"]`.
+# I sotto-gruppi dei comandi spostati dai riordini D56 e D60: nome e descrizione in un posto solo.
+# Chiave: "gruppo sotto-gruppo". Il cog scrive `sottogruppo=SOTTOGRUPPI["admin-ruoli premio"]`.
 SOTTOGRUPPI: dict[str, tuple[str, str]] = {
     "founder backup": ("backup", "Backup: sincronia e chi può creare o caricare"),
     "founder moderazione": ("moderazione", "Moderazione: ruoli immuni"),
@@ -120,13 +114,10 @@ SOTTOGRUPPI: dict[str, tuple[str, str]] = {
     "admin-ticket ruolo": ("ruolo", "Ruoli di supporto dei ticket"),
     "admin-ticket modmail": ("modmail", "ModMail: ticket dai messaggi privati"),
     "admin-ticket risposte": ("risposte", "Risposte standard dei ticket"),
-    "ticket-pannelli opzioni": ("opzioni", "Opzioni dei pannelli dei ticket (admin)"),
-    "ticket-pannelli modulo": ("modulo", "Domande del modulo di apertura"),
     "admin-ruoli premio": ("premio", "Ruoli premio per livello"),
     "admin-ruoli auto": ("auto", "Ruoli automatici all'ingresso"),
     "admin-ruoli menu": ("menu", "Menu per scegliere i ruoli"),
     "monete shop": ("shop", "Negozio del server"),
-    "economia livelli": ("livelli", "Impostazioni di livelli e XP"),
     "admin-economia annunci": ("annunci", "Annunci di fine mese: vincitori e clan"),
     "owner ai": ("ai", "AI globale: manutenzione, modelli, rete del boss"),
 }
