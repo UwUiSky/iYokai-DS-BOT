@@ -882,7 +882,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "filtri",
+        "admin-filtri",
         nome="invites",
         descrizione="Attiva o disattiva il blocco automatico degli inviti Discord.",
     )
@@ -976,7 +976,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
     # Filtri avanzati lato bot (SPEC.md §6.3-§6.10)
     # ================================================================
     @comando_di_gruppo(
-        "filtri",
+        "admin-filtri",
         nome="anti-link-mode",
         descrizione="Imposta la modalità del filtro link.",
     )
@@ -999,7 +999,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "automod_modalita_anti_link_impostata_su", name=mode.name), ephemeral=True)
 
     @comando_di_gruppo(
-        "filtri",
+        "admin-filtri",
         nome="anti-link-domain",
         descrizione="Aggiunge o rimuove un dominio dalla whitelist/blacklist link.",
     )
@@ -1052,7 +1052,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "filtri",
+        "admin-filtri",
         nome="anti-spam-messages",
         descrizione="Configura l'anti-spam messaggi (troppi messaggi in poco tempo).",
     )
@@ -1078,7 +1078,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "filtri",
+        "admin-filtri",
         nome="anti-spam-emoji",
         descrizione="Configura l'anti-spam emoji (troppe emoji in un messaggio).",
     )
@@ -1095,7 +1095,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "filtri",
+        "admin-filtri",
         nome="anti-spam-sticker",
         descrizione="Configura l'anti-spam sticker (troppi sticker in poco tempo).",
     )
@@ -1121,7 +1121,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "filtri",
+        "admin-filtri",
         nome="anti-caps",
         descrizione="Configura l'anti-caps (troppo maiuscolo).",
     )
@@ -1142,7 +1142,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "filtri",
+        "admin-filtri",
         nome="anti-zalgo",
         descrizione="Attiva o disattiva l'anti-zalgo (testo con segni diacritici anomali).",
     )
@@ -1156,7 +1156,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "automod_anti_zalgo", v1=(await testo_per(interaction, "greetings_attivato")) if enabled else (await testo_per(interaction, "greetings_disattivato"))), ephemeral=True)
 
     @comando_di_gruppo(
-        "filtri",
+        "admin-filtri",
         nome="phishing",
         descrizione="Attiva o disattiva il blocco dei link di phishing (finti regali, finti login).",
     )
@@ -1199,7 +1199,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "filtri",
+        "admin-filtri",
         nome="forma-testo",
         descrizione="Limiti sulla forma del messaggio: a-capo, lunghezza, spoiler (0 = spento).",
     )
@@ -1230,7 +1230,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message("Limiti salvati. " + "; ".join(righe) + ".", ephemeral=True)
 
     @comando_di_gruppo(
-        "filtri",
+        "admin-filtri",
         nome="messaggi",
         descrizione="Ripetuti, troppo corti, link e menzioni contati nel tempo (0 = spento).",
     )
@@ -1287,7 +1287,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "filtri",
+        "admin-filtri",
         nome="contenuto",
         descrizione="Embed e inoltri controllati dai filtri; tipi di file vietati.",
     )
@@ -1325,7 +1325,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "filtri",
+        "admin-filtri",
         nome="canale-media",
         descrizione="Canale solo media, senza allegati o normale.",
     )
@@ -1360,7 +1360,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(f"{canale.mention}: {modo.name.lower()}.", ephemeral=True)
 
     @comando_di_gruppo(
-        "filtri",
+        "admin-filtri",
         nome="anti-mention",
         descrizione="Configura l'anti-mass-mention (troppi utenti taggati in un messaggio).",
     )
@@ -1377,7 +1377,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "filtri",
+        "admin-filtri",
         nome="anti-attachment",
         descrizione="Configura l'anti-attachment-spam (troppi allegati in poco tempo).",
     )
@@ -1475,7 +1475,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
     # Azioni configurabili + log (SPEC.md §6.13/§6.14)
     # ================================================================
     @comando_di_gruppo(
-        "filtri",
+        "admin-filtri",
         nome="actions-set",
         descrizione="Configura quali azioni eseguire quando un filtro avanzato scatta.",
     )
