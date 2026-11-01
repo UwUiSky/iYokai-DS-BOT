@@ -520,13 +520,14 @@ def _messaggio_inviato(interazione) -> str:
 
 
 @pytest.mark.asyncio
-async def test_i_comandi_stanno_sotto_economia_livelli(cog_comandi):
+async def test_i_comandi_stanno_sotto_admin_livelli(cog_comandi):
     _, comandi, _ = cog_comandi
     nomi = sorted(n for n in comandi if n.startswith("admin-livelli"))
     assert nomi == [
         "admin-livelli annuncio",
         "admin-livelli card",
         "admin-livelli escludi",
+        "admin-livelli membro",
         "admin-livelli moltiplicatore",
         "admin-livelli mostra",
         "admin-livelli negozio",
