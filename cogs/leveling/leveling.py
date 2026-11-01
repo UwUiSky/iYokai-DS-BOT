@@ -27,7 +27,6 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
-from core.command_access import Livello, richiedi
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo, togli_comandi_del_cog
 from core.database import db
 from core.i18n import testo_per
@@ -2596,7 +2595,6 @@ class LevelingCog(CogConGruppi, commands.Cog):
         sottogruppo=SOTTOGRUPPI["economia annunci"],
     )
     @app_commands.describe(channel="Canale dell'annuncio (la 'bacheca clan')")
-    @richiedi(Livello.ADMIN)
     async def clan_bacheca_set(
         self, interaction: discord.Interaction, channel: discord.TextChannel
     ) -> None:
@@ -2618,7 +2616,6 @@ class LevelingCog(CogConGruppi, commands.Cog):
         descrizione="Disattiva l'annuncio automatico della top 3 gilde.",
         sottogruppo=SOTTOGRUPPI["economia annunci"],
     )
-    @richiedi(Livello.ADMIN)
     async def clan_bacheca_disable(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
@@ -3330,7 +3327,6 @@ class LevelingCog(CogConGruppi, commands.Cog):
         descrizione="Mostra le impostazioni dei livelli di questo server.",
         sottogruppo=SOTTOGRUPPI["economia livelli"],
     )
-    @richiedi(Livello.ADMIN)
     async def impostazioni_mostra(self, interaction: discord.Interaction) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -3353,7 +3349,6 @@ class LevelingCog(CogConGruppi, commands.Cog):
         solo_premi="Annuncia solo i livelli che danno un ruolo-premio",
     )
     @app_commands.choices(modo=_SCELTE_ANNUNCIO)
-    @richiedi(Livello.ADMIN)
     async def impostazioni_annuncio(
         self,
         interaction: discord.Interaction,
@@ -3386,7 +3381,6 @@ class LevelingCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(modo="'accumula' li tiene tutti, 'sostituisci' toglie i precedenti")
     @app_commands.choices(modo=_SCELTE_PREMI)
-    @richiedi(Livello.ADMIN)
     async def impostazioni_premi(
         self, interaction: discord.Interaction, modo: app_commands.Choice[str]
     ) -> None:
@@ -3418,7 +3412,6 @@ class LevelingCog(CogConGruppi, commands.Cog):
         senza_immagine="Sì = togli l'immagine e torna alla moneta di iYokai",
     )
     @app_commands.choices(moltiplicatori=_SCELTE_MOLTIPLICATORI)
-    @richiedi(Livello.ADMIN)
     async def impostazioni_xp(
         self,
         interaction: discord.Interaction,
@@ -3551,7 +3544,6 @@ class LevelingCog(CogConGruppi, commands.Cog):
         sottogruppo=SOTTOGRUPPI["economia livelli"],
     )
     @app_commands.describe(conferma="Sì = chiede «Confermi?» prima di comprare; No = compra subito")
-    @richiedi(Livello.ADMIN)
     async def impostazioni_negozio(
         self, interaction: discord.Interaction, conferma: bool
     ) -> None:
@@ -3566,7 +3558,6 @@ class LevelingCog(CogConGruppi, commands.Cog):
         sottogruppo=SOTTOGRUPPI["economia livelli"],
     )
     @app_commands.describe(sfondi="Sì = ognuno vede la sua immagine; No = solo colori e temi")
-    @richiedi(Livello.ADMIN)
     async def impostazioni_card(self, interaction: discord.Interaction, sfondi: bool) -> None:
         """NF-12, LIV-057: lo staff spegne gli sfondi con immagine se qualcuno ne usa di non adatti."""
         if await _comando_rifiutato(interaction):
@@ -3599,7 +3590,6 @@ class LevelingCog(CogConGruppi, commands.Cog):
         canale="Il canale senza XP (anche vocale o forum). Una categoria vale per tutti i suoi canali",
         ruolo="Il ruolo i cui membri non prendono XP",
     )
-    @richiedi(Livello.ADMIN)
     async def impostazioni_escludi(
         self,
         interaction: discord.Interaction,
@@ -3645,7 +3635,6 @@ class LevelingCog(CogConGruppi, commands.Cog):
         canale="Il canale (anche vocale)",
         ruolo="Il ruolo",
     )
-    @richiedi(Livello.ADMIN)
     async def impostazioni_moltiplicatore(
         self,
         interaction: discord.Interaction,
