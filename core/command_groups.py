@@ -83,6 +83,7 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "mod-casi": ("Moderazione: casi, note, avvisi dati, rischio e carico dello staff", "moderate_members", Livello.MOD),
     "mod-canali": ("Moderazione dei canali: blocco, lentezza, pulizia dei messaggi", "moderate_members", Livello.MOD),
     "mod-ban": ("Moderazione dura: ban, kick, softban, sban, in massa, appelli", "ban_members", Livello.MODBAN),
+    "founder": ("Riservato al proprietario del server: sincronia, permessi dei backup, immuni", "administrator", Livello.FOUNDER),
     "ticket": ("Gestione del ticket in cui ti trovi", None, None),
     "voice": ("Gestione del tuo canale vocale temporaneo", None, None),
     "music": ("Musica nei canali vocali", None, None),
@@ -102,6 +103,8 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
 # I sotto-gruppi dei comandi spostati dal riordino D56: nome e descrizione in un posto solo.
 # Chiave: "gruppo sotto-gruppo". Il cog scrive `sottogruppo=SOTTOGRUPPI["ruoli premio"]`.
 SOTTOGRUPPI: dict[str, tuple[str, str]] = {
+    "founder backup": ("backup", "Backup: sincronia e chi può creare o caricare"),
+    "founder moderazione": ("moderazione", "Moderazione: ruoli immuni"),
     "admin-backup copia": ("copia", "Copia un canale o un ruolo"),
     "admin-backup chat": ("chat", "Chat salvate: salva e ricarica"),
     "admin-backup ripristino": ("ripristino", "Ripristino degli utenti via OAuth2"),

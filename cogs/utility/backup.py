@@ -631,7 +631,7 @@ class BackupCog(CogConGruppi, commands.Cog):
     # ------------------------------------------------------------
     # Sincronia di ban e ruoli (NF-39)
     # ------------------------------------------------------------
-    @comando_di_gruppo("backup", nome="sincronia", descrizione="Tieni uguali ban e ruoli con un altro tuo server.")
+    @comando_di_gruppo("founder", nome="sincronia", descrizione="Tieni uguali ban e ruoli con un altro tuo server.", sottogruppo=SOTTOGRUPPI["founder backup"])
     @app_commands.describe(
         azione="Cosa fare",
         server="ID dell'altro server (per «attiva» e «disattiva»)",
@@ -1006,7 +1006,7 @@ class BackupCog(CogConGruppi, commands.Cog):
     # ------------------------------------------------------------
     # Permessi e registro (BKP-018, BKP-019)
     # ------------------------------------------------------------
-    @comando_di_gruppo("backup", nome="permessi", descrizione="Chi può creare e chi può caricare i backup (solo l'owner).")
+    @comando_di_gruppo("founder", nome="permessi", descrizione="Chi può creare e chi può caricare i backup (solo l'owner).", sottogruppo=SOTTOGRUPPI["founder backup"])
     @app_commands.describe(livello="Chi può fare cosa")
     @app_commands.choices(livello=[app_commands.Choice(name=v, value=k) for k, v in LIVELLI.items()])
     async def permessi(self, interaction: discord.Interaction, livello: app_commands.Choice[str]) -> None:

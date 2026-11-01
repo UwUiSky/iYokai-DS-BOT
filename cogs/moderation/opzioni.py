@@ -156,10 +156,10 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "mod",
+        "founder",
         nome="immuni",
         descrizione="Ruoli che la moderazione manuale non tocca (solo il proprietario).",
-        sottogruppo=SOTTOGRUPPO,
+        sottogruppo=SOTTOGRUPPI["founder moderazione"],
     )
     @app_commands.describe(azione="Aggiungere o togliere", ruolo="Il ruolo")
     @app_commands.choices(
