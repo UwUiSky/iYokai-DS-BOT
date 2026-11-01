@@ -855,3 +855,17 @@ Aggiorna D57 (VIP 5 diventa **Ultra**, VIP 20 diventa **VIP**). All'avvio tutto 
   e un solo punto decide il livello di ogni funzione (D57): issue #151.
 - Il router AI sceglie i servizi permessi dal livello (gratuiti per tutti; a consumo da Ultra; grandi da VIP o con
   chiave propria) e tiene il conto della spesa per livello (D13).
+
+## D61 — Copia sicura delle immagini nei log e nei backup (01/11/2026, richiesta dell'owner)
+Le immagini degli utenti sono il punto d'ingresso più comune per gli attacchi (decoder bucati, file
+travestiti). Regole per log, backup e pannello:
+- Si salvano **i byte così come arrivano**, senza aprirli con Pillow: nessun decoder tocca un file solo
+  per conservarlo. Nome casuale, impronta SHA-256, tetto di dimensione, tipo riconosciuto dai primi byte
+  e solo da un elenco chiuso (PNG, JPEG, GIF, WEBP); il resto si salva come file generico.
+- Le anteprime si fanno solo con `safe_open_image` (formati chiusi, tetto di pixel) in un processo a
+  parte con limiti di memoria e di tempo, e si **ricodificano** in PNG (spariscono metadati e contenuto nascosto).
+- Il pannello e il sito non mostrano mai il file originale in linea: download con
+  `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: sandbox`,
+  da un sotto-dominio separato senza cookie di sessione. Mai SVG o HTML caricati dagli utenti in linea.
+- Cartella fuori dalla radice del sito; conservazione a tempo e cancellazione con `/privacy` (data registry).
+- Aggiornamenti di sicurezza delle librerie (Pillow, aiohttp, …) si applicano subito, senza aspettare il giro.
