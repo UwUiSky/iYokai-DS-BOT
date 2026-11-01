@@ -45,6 +45,7 @@ from core import bot_roles
 from core.bounded_cache import BoundedCache
 from core.database import db
 from core.escalation_ladder_logic import get_ladder_action
+from core.i18n import testo_per
 from core.repositories.escalation_repo import escalation_repo
 from core.repositories.moderation_repo import moderation_repo
 from cogs.automod.automod import MODULE_AUTOMOD, _is_safe_from_automated_action
@@ -342,7 +343,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
         if interaction.guild is None:
             return
         await escalation_repo.set_enabled(interaction.guild.id, False)
-        await interaction.response.send_message("Escalation ladder disattivata.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "escalation_escalation_ladder_disattivata"), ephemeral=True)
 
     @comando_di_gruppo(
         "security",
@@ -358,7 +359,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
             return
         await escalation_repo.set_reset_after_days(interaction.guild.id, days)
         await interaction.response.send_message(
-            f"Il conteggio si azzererà dopo {days} giorni senza infrazioni.", ephemeral=True
+            await testo_per(interaction, "escalation_il_conteggio_si_azzerera_dopo", days=days), ephemeral=True
         )
 
     @comando_di_gruppo(
@@ -392,7 +393,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
 
         if action.value == "timeout" and duration_minutes is None:
             await interaction.response.send_message(
-                "Specifica una durata in minuti per l'azione timeout.", ephemeral=True
+                await testo_per(interaction, "escalation_specifica_una_durata_in_minuti"), ephemeral=True
             )
             return
 
@@ -417,10 +418,10 @@ class EscalationCog(CogConGruppi, commands.Cog):
             return
         rimosso = await escalation_repo.remove_step(interaction.guild.id, level)
         if rimosso:
-            await interaction.response.send_message(f"Livello {level} rimosso.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "escalation_livello_rimosso", level=level), ephemeral=True)
         else:
             await interaction.response.send_message(
-                "Nessun gradino personalizzato trovato a questo livello.", ephemeral=True
+                await testo_per(interaction, "escalation_nessun_gradino_personalizzato_trovato_qu"), ephemeral=True
             )
 
     @comando_di_gruppo(
@@ -435,7 +436,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
             return
         await escalation_repo.reset_violations(interaction.guild.id, member.id)
         await interaction.response.send_message(
-            f"Conteggio infrazioni di {member.mention} azzerato.", ephemeral=True
+            await testo_per(interaction, "escalation_conteggio_infrazioni_di_azzerato", mention=member.mention), ephemeral=True
         )
 
     @comando_di_gruppo(
@@ -457,7 +458,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
             righe.append(f"**{step.level}**: {testo_azione}")
 
         embed = discord.Embed(
-            title="🪜 Escalation Ladder",
+            title=await testo_per(interaction, "escalation_escalation_ladder"),
             description=(
                 f"Stato: {'attiva' if config.enabled else 'disattivata'}\n"
                 f"Reset dopo: {config.reset_after_days} giorni di buona condotta\n"

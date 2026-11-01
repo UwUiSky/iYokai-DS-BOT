@@ -18,6 +18,7 @@ from discord.ext import commands
 from cogs.moderation._shared import MODULE_ACTIONS, ensure_module_enabled, format_duration, parse_duration
 from core import moderation_opzioni as opzioni
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.i18n import testo_per
 
 SOTTOGRUPPO = ("opzioni", "Opzioni di moderazione del server.")
 
@@ -74,7 +75,7 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
             return False
         if not _puo_gestire(interaction):
             await interaction.response.send_message(
-                "Le opzioni le cambia chi ha «Gestire il server».", ephemeral=True
+                await testo_per(interaction, "opzioni_le_opzioni_le_cambia_chi"), ephemeral=True
             )
             return False
         return True
@@ -115,7 +116,7 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
                     return
                 if not opzioni.MIN_TIMEOUT <= secondi <= opzioni.MAX_TIMEOUT:
                     await interaction.response.send_message(
-                        "La durata del timeout va da 1 minuto a 28 giorni.", ephemeral=True
+                        await testo_per(interaction, "opzioni_la_durata_del_timeout_va"), ephemeral=True
                     )
                     return
             await opzioni.imposta_durata_timeout(guild.id, secondi, interaction.user.id)
@@ -151,7 +152,7 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
             return
         await opzioni.imposta_dm(interaction.guild.id, azione.value, attivo, interaction.user.id)
         await interaction.response.send_message(
-            f"DM per **{azione.name}**: {'acceso' if attivo else 'spento'}.", ephemeral=True
+            await testo_per(interaction, "opzioni_dm_per", name=azione.name, v2=(await testo_per(interaction, "opzioni_acceso")) if attivo else (await testo_per(interaction, "opzioni_spento"))), ephemeral=True
         )
 
     @comando_di_gruppo(
@@ -176,11 +177,11 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
         # Decide chi si può moderare: lo sceglie solo il proprietario.
         if interaction.user.id != guild.owner_id:
             await interaction.response.send_message(
-                "I ruoli immuni li sceglie solo il proprietario del server.", ephemeral=True
+                await testo_per(interaction, "opzioni_ruoli_immuni_li_sceglie_solo"), ephemeral=True
             )
             return
         if ruolo.is_default():
-            await interaction.response.send_message("@everyone non può essere immune.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "opzioni_everyone_non_puo_essere_immune"), ephemeral=True)
             return
         errore = await opzioni.cambia_ruolo_immune(
             guild.id, ruolo.id, azione.value == "aggiungi", interaction.user.id
@@ -189,8 +190,7 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(errore, ephemeral=True)
             return
         await interaction.response.send_message(
-            f"{ruolo.mention} {'ora è immune' if azione.value == 'aggiungi' else 'non è più immune'}: "
-            "warn, kick, ban, timeout e mute dati a mano non lo toccano (tu sì).",
+            await testo_per(interaction, "opzioni_warn_kick_ban_timeout_mute", mention=ruolo.mention, v2=(await testo_per(interaction, "opzioni_ora_immune")) if azione.value == 'aggiungi' else (await testo_per(interaction, "opzioni_non_piu_immune"))),
             ephemeral=True,
             allowed_mentions=discord.AllowedMentions.none(),
         )

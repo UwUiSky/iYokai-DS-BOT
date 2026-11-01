@@ -36,6 +36,7 @@ from cogs.utility.backup import registra_uso
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
+from core.i18n import testo_per
 from core.oauth_crypto import OAuthEncryptionNotConfigured
 from core.repositories.backup_repo import backup_repo
 from core.repositories.backup_user_snapshot_repo import backup_user_snapshot_repo
@@ -191,7 +192,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
     ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
@@ -223,7 +224,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
     ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
@@ -231,7 +232,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
             source_guild_id = int(server_di_origine)
         except ValueError:
             await interaction.response.send_message(
-                "L'ID del server di origine deve essere un numero.", ephemeral=True
+                await testo_per(interaction, "restore_id_del_server_di_origine"), ephemeral=True
             )
             return
 
@@ -243,9 +244,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
         # M 12.13 (BUG-34): vale anche la coppia storica dopo una promozione.
         if not await backup_repo.is_backup_of(source_guild_id, interaction.guild.id):
             await interaction.response.send_message(
-                "⚠️ Questo server non è registrato come backup di quello indicato. "
-                "Il restore è permesso solo dal server di origine verso il suo "
-                "backup designato (vedi /backup main e /backup crea).",
+                await testo_per(interaction, "restore_questo_server_non_registrato_come"),
                 ephemeral=True,
             )
             return
@@ -253,7 +252,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
         snapshot = await backup_user_snapshot_repo.get_snapshot(source_guild_id)
         if not snapshot:
             await interaction.response.send_message(
-                "⚠️ Nessuno snapshot trovato per quel server — nessun utente da ripristinare.",
+                await testo_per(interaction, "restore_nessuno_snapshot_trovato_per_quel"),
                 ephemeral=True,
             )
             return
@@ -265,7 +264,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
         async with restore_oauth_repo.blocco_restore(interaction.guild.id) as preso:
             if not preso:
                 await interaction.followup.send(
-                    "⏳ C'è già un ripristino in corso per questo server: attendi che finisca.",
+                    await testo_per(interaction, "restore_gia_un_ripristino_in_corso"),
                     ephemeral=True,
                 )
                 return

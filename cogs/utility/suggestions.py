@@ -23,6 +23,7 @@ from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.premium import PremiumModule, registry
 from core.repositories.suggestion_repo import Suggestion, suggestion_repo
 from core.suggestion_logic import (
@@ -130,7 +131,7 @@ class SuggestionsCog(CogConGruppi, commands.Cog):
         async def callback(interaction: discord.Interaction) -> None:
             if not self._e_staff(interaction):
                 await interaction.response.send_message(
-                    "Solo lo staff può decidere sui suggerimenti.", ephemeral=True
+                    await testo_per(interaction, "suggestions_solo_lo_staff_puo_decidere"), ephemeral=True
                 )
                 return
             await interaction.response.send_modal(MotivoModal(self, suggestion_id, new_status))
@@ -146,20 +147,20 @@ class SuggestionsCog(CogConGruppi, commands.Cog):
     ) -> None:
         if not self._e_staff(interaction):
             await interaction.response.send_message(
-                "Solo lo staff può decidere sui suggerimenti.", ephemeral=True
+                await testo_per(interaction, "suggestions_solo_lo_staff_puo_decidere"), ephemeral=True
             )
             return
 
         suggestion = await suggestion_repo.get_suggestion(suggestion_id)
         if suggestion is None:
             await interaction.response.send_message(
-                "Questo suggerimento non esiste più.", ephemeral=True
+                await testo_per(interaction, "suggestions_questo_suggerimento_non_esiste_piu"), ephemeral=True
             )
             return
 
         if not can_decide(suggestion.status) or suggestion.status == new_status:
             await interaction.response.send_message(
-                "Questo suggerimento è già stato deciso.", ephemeral=True
+                await testo_per(interaction, "suggestions_questo_suggerimento_gia_stato_deciso"), ephemeral=True
             )
             return
 
@@ -174,7 +175,7 @@ class SuggestionsCog(CogConGruppi, commands.Cog):
         )
         if not deciso:
             await interaction.response.send_message(
-                "Questo suggerimento è già stato deciso.", ephemeral=True
+                await testo_per(interaction, "suggestions_questo_suggerimento_gia_stato_deciso"), ephemeral=True
             )
             return
 
@@ -260,14 +261,13 @@ class SuggestionsCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
         if not await db.is_module_active_for_guild(guild.id, MODULE_SUGGESTIONS):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return
@@ -275,8 +275,7 @@ class SuggestionsCog(CogConGruppi, commands.Cog):
         channel_id = await db.get_guild_setting(guild.id, SETTING_SUGGESTIONS_CHANNEL)
         if channel_id is None:
             await interaction.response.send_message(
-                "Il canale dei suggerimenti non è ancora stato configurato "
-                "(un amministratore deve usare /admin config canale-suggerimenti).",
+                await testo_per(interaction, "suggestions_il_canale_dei_suggerimenti_non"),
                 ephemeral=True,
             )
             return
@@ -284,7 +283,7 @@ class SuggestionsCog(CogConGruppi, commands.Cog):
         channel = guild.get_channel(channel_id)
         if not isinstance(channel, discord.TextChannel):
             await interaction.response.send_message(
-                "Il canale dei suggerimenti configurato non è più raggiungibile.",
+                await testo_per(interaction, "suggestions_il_canale_dei_suggerimenti_configurato"),
                 ephemeral=True,
             )
             return
@@ -310,7 +309,7 @@ class SuggestionsCog(CogConGruppi, commands.Cog):
                 else "Discord ha rifiutato il messaggio."
             )
             await interaction.followup.send(
-                f"{motivo} Il suggerimento non è stato inviato.", ephemeral=True
+                await testo_per(interaction, "suggestions_il_suggerimento_non_stato_inviato", motivo=motivo), ephemeral=True
             )
             return
 
@@ -327,7 +326,7 @@ class SuggestionsCog(CogConGruppi, commands.Cog):
             )
 
         await interaction.followup.send(
-            f"Suggerimento pubblicato in {channel.mention}!", ephemeral=True
+            await testo_per(interaction, "suggestions_suggerimento_pubblicato_in", mention=channel.mention), ephemeral=True
         )
 
 

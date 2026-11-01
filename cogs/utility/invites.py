@@ -24,6 +24,7 @@ from core.command_access import Livello, richiedi
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config_schema import ImpostazioneNonValida
 from core.database import db
+from core.i18n import testo_per
 from core.invite_tracker import invite_tracker
 from core.premium import PremiumModule, registry
 from core.repositories.invite_stats_repo import invite_stats_repo
@@ -99,13 +100,12 @@ class InvitesCog(CogConGruppi, commands.Cog):
     async def _pronto(self, interaction: discord.Interaction) -> bool:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return False
         if not await db.is_module_active_for_guild(interaction.guild.id, MODULE_INVITES):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return False
@@ -181,14 +181,12 @@ class InvitesCog(CogConGruppi, commands.Cog):
         indirizzo = invite_service.indirizzo(link)
         if indirizzo is None:
             await interaction.response.send_message(
-                "Il sito del bot non è attivo: il link personale non può funzionare. Avvisa il proprietario del bot.",
+                await testo_per(interaction, "invites_il_sito_del_bot_non"),
                 ephemeral=True,
             )
             return
         await interaction.response.send_message(
-            f"Il tuo link personale: {indirizzo}\n"
-            "Chi lo apre entra nel server e l'ingresso viene contato come tuo. "
-            "Il link non cambia, nemmeno se cambi nome. Lo trovi anche sul sito, in «I miei inviti».",
+            await testo_per(interaction, "invites_il_tuo_link_personale_chi", indirizzo=indirizzo),
             ephemeral=True,
         )
 
@@ -219,7 +217,7 @@ class InvitesCog(CogConGruppi, commands.Cog):
         chi: app_commands.Choice[str] | None = None,
     ) -> None:
         if interaction.guild is None:
-            await interaction.response.send_message("Questo comando è disponibile solo dentro un server.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "guild_only_command"), ephemeral=True)
             return
         guild = interaction.guild
         nuova_modalita = chi.value if chi else invite_service.NON_CAMBIARE

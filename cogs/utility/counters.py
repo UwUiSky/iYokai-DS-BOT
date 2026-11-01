@@ -28,6 +28,7 @@ from core.counter_logic import (
 )
 from core.counter_worker import CounterWorker
 from core.database import db
+from core.i18n import testo_per
 from core.premium import PremiumModule, registry
 from core.repositories.counter_repo import counter_repo
 
@@ -69,13 +70,12 @@ class CountersCog(CogConGruppi, commands.Cog):
     async def _pronto(self, interaction: discord.Interaction) -> bool:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return False
         if not await db.is_module_active_for_guild(interaction.guild.id, MODULE_COUNTERS):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return False
@@ -101,7 +101,7 @@ class CountersCog(CogConGruppi, commands.Cog):
             return
         guild = interaction.guild
         if tipo == "goal" and obiettivo is None:
-            await interaction.response.send_message("Per l'obiettivo indica il numero da raggiungere.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "counters_per_obiettivo_indica_il_numero"), ephemeral=True)
             return
         testo = etichetta or ETICHETTE_DI_BASE[tipo]
         errore = valida_etichetta(testo, tipo)
@@ -112,14 +112,13 @@ class CountersCog(CogConGruppi, commands.Cog):
             permessi = canale.permissions_for(guild.me)
             if not (permessi.manage_channels and permessi.view_channel):
                 await interaction.response.send_message(
-                    f"Per rinominare {canale.mention} al bot serve il permesso «Gestire i canali» su quel canale.",
+                    await testo_per(interaction, "counters_per_rinominare_al_bot_serve", mention=canale.mention),
                     ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
                 )
                 return
             if not canale.permissions_for(interaction.user).manage_channels:
                 await interaction.response.send_message(
-                    f"Per collegare un contatore a {canale.mention} serve il permesso «Gestire i canali» "
-                    "anche a te su quel canale: il bot lo rinominerebbe al tuo posto.",
+                    await testo_per(interaction, "counters_per_collegare_un_contatore_serve", mention=canale.mention),
                     ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
                 )
                 return
@@ -135,7 +134,7 @@ class CountersCog(CogConGruppi, commands.Cog):
                 creato = True
             except discord.HTTPException:
                 await interaction.followup.send(
-                    "Non riesco a creare il canale: al bot serve il permesso «Gestire i canali».", ephemeral=True
+                    await testo_per(interaction, "counters_non_riesco_creare_il_canale"), ephemeral=True
                 )
                 return
         esito = await counter_repo.create(guild.id, canale.id, tipo, testo, obiettivo, interaction.user.id)
@@ -152,7 +151,7 @@ class CountersCog(CogConGruppi, commands.Cog):
             await interaction.followup.send(messaggi[esito], ephemeral=True)
             return
         await interaction.followup.send(
-            f"Contatore creato su {canale.mention}: si aggiorna al massimo ogni 10 minuti (limite di Discord).",
+            await testo_per(interaction, "counters_contatore_creato_su_si_aggiorna", mention=canale.mention),
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
 
@@ -166,7 +165,7 @@ class CountersCog(CogConGruppi, commands.Cog):
             for c in contatori
         ] or ["Nessun contatore."]
         await interaction.response.send_message(
-            embed=discord.Embed(title=f"Contatori ({len(contatori)}/{MAX_CONTATORI})", description="\n".join(righe)),
+            embed=discord.Embed(title=await testo_per(interaction, "counters_contatori", v1=len(contatori), v2=MAX_CONTATORI), description="\n".join(righe)),
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
 
@@ -177,8 +176,8 @@ class CountersCog(CogConGruppi, commands.Cog):
             return
         fatto = await counter_repo.delete(interaction.guild.id, numero)
         await interaction.response.send_message(
-            "Contatore tolto: il canale resta com'è, lo puoi cancellare a mano." if fatto
-            else "Non c'è un contatore con quel numero.",
+            await testo_per(interaction, "counters_contatore_tolto_il_canale_resta") if fatto
+            else await testo_per(interaction, "counters_non_un_contatore_con_quel"),
             ephemeral=True,
         )
 

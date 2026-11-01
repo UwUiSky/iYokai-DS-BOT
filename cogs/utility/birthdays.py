@@ -21,6 +21,7 @@ from core.birthday_logic import MAX_MESSAGGIO, data_valida
 from core.birthday_worker import BIRTHDAY_ROLE_ACTION_TYPE, MODULE_BIRTHDAYS, BirthdayWorker
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.premium import PremiumModule, registry
 from core.repositories.birthday_repo import birthday_repo
 from core.role_safety import check_role_assignable
@@ -86,13 +87,12 @@ class BirthdaysCog(CogConGruppi, commands.Cog):
     async def _pronto(self, interaction: discord.Interaction) -> bool:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return False
         if not await db.is_module_active_for_guild(interaction.guild.id, MODULE_BIRTHDAYS):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return False
@@ -125,7 +125,7 @@ class BirthdaysCog(CogConGruppi, commands.Cog):
             return
         fatto = await birthday_repo.remove_birthday(interaction.guild.id, interaction.user.id)
         await interaction.response.send_message(
-            "Compleanno cancellato." if fatto else "Non avevi un compleanno registrato.", ephemeral=True
+            await testo_per(interaction, "birthdays_compleanno_cancellato") if fatto else await testo_per(interaction, "birthdays_non_avevi_un_compleanno_registrato"), ephemeral=True
         )
 
     @comando_di_gruppo("level", nome="mostra", descrizione="Mostra il compleanno che hai registrato.", sottogruppo=_SG_COMPLEANNO)
@@ -134,7 +134,7 @@ class BirthdaysCog(CogConGruppi, commands.Cog):
             return
         data = await birthday_repo.get_birthday(interaction.guild.id, interaction.user.id)
         await interaction.response.send_message(
-            f"Hai registrato il {data[0]} {_MESI[data[1] - 1]}." if data else "Non hai registrato nessun compleanno.",
+            f"Hai registrato il {data[0]} {_MESI[data[1] - 1]}." if data else await testo_per(interaction, "birthdays_non_hai_registrato_nessun_compleanno"),
             ephemeral=True,
         )
 
@@ -154,12 +154,12 @@ class BirthdaysCog(CogConGruppi, commands.Cog):
             return
         if canale is None:
             await birthday_repo.set_channel(interaction.guild.id, None, None, False)
-            await interaction.response.send_message("Auguri di compleanno spenti.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "birthdays_auguri_di_compleanno_spenti"), ephemeral=True)
             return
         permessi = canale.permissions_for(interaction.guild.me)
         if not (permessi.view_channel and permessi.send_messages):
             await interaction.response.send_message(
-                f"In {canale.mention} al bot servono i permessi per vedere e scrivere.",
+                await testo_per(interaction, "birthdays_in_al_bot_servono_permessi", mention=canale.mention),
                 ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
             )
             return
@@ -167,7 +167,7 @@ class BirthdaysCog(CogConGruppi, commands.Cog):
             interaction.guild.id, canale.id, messaggio, utente_puo_pingare_ruoli(interaction.user)
         )
         await interaction.response.send_message(
-            f"Auguri in {canale.mention}: un solo messaggio al giorno per tutti i festeggiati.",
+            await testo_per(interaction, "birthdays_auguri_in_un_solo_messaggio", mention=canale.mention),
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
 
@@ -183,7 +183,7 @@ class BirthdaysCog(CogConGruppi, commands.Cog):
                 return
         await birthday_repo.set_role(interaction.guild.id, ruolo.id if ruolo else None)
         await interaction.response.send_message(
-            f"Il ruolo {ruolo.mention} durerà 24 ore." if ruolo else "Nessun ruolo di compleanno.",
+            await testo_per(interaction, "birthdays_il_ruolo_durera_ore", mention=ruolo.mention) if ruolo else await testo_per(interaction, "birthdays_nessun_ruolo_di_compleanno"),
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
 

@@ -18,6 +18,7 @@ from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.premium import PremiumModule, registry
 from core.repositories.starboard_repo import starboard_repo
 from core.role_menu_logic import valida_emoji
@@ -170,13 +171,12 @@ class StarboardCog(CogConGruppi, commands.Cog):
     async def _modulo_attivo(self, interaction: discord.Interaction) -> bool:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return False
         if not await db.is_module_active_for_guild(interaction.guild.id, MODULE_STARBOARD):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return False
@@ -208,13 +208,13 @@ class StarboardCog(CogConGruppi, commands.Cog):
             return
         if not valida_emoji(emoji):
             await interaction.response.send_message(
-                "L'emoji non è valida: serve una sola emoji.", ephemeral=True
+                await testo_per(interaction, "starboard_emoji_non_valida_serve_una"), ephemeral=True
             )
             return
         permessi = canale.permissions_for(interaction.guild.me)
         if not (permessi.send_messages and permessi.embed_links):
             await interaction.response.send_message(
-                f"Nel canale {canale.mention} al bot servono i permessi per scrivere e incorporare link.",
+                await testo_per(interaction, "starboard_nel_canale_al_bot_servono", mention=canale.mention),
                 ephemeral=True,
                 allowed_mentions=_NESSUNA_MENZIONE,
             )
@@ -259,7 +259,7 @@ class StarboardCog(CogConGruppi, commands.Cog):
             return
         spenta = await starboard_repo.disable(interaction.guild.id)
         await interaction.response.send_message(
-            "Bacheca spenta." if spenta else "La bacheca non era impostata.", ephemeral=True
+            await testo_per(interaction, "starboard_bacheca_spenta") if spenta else await testo_per(interaction, "starboard_la_bacheca_non_era_impostata"), ephemeral=True
         )
 
 

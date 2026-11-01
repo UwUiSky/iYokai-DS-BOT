@@ -27,6 +27,7 @@ from discord.ext import commands, tasks
 from core import lockdown_service as servizio
 from core.bot_ready import attendi_bot_pronto
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.i18n import testo_per
 from core.lockdown_logic import (
     MAX_CATEGORIE_ESCLUSE,
     MAX_MOTIVO,
@@ -54,7 +55,7 @@ async def _rifiuta_senza_gestione(interaction: discord.Interaction) -> bool:
     if _gestisce(interaction):
         return False
     await interaction.response.send_message(
-        "Serve il permesso «Gestire il server» per bloccare o riaprire il server.", ephemeral=True
+        await testo_per(interaction, "lockdown_serve_il_permesso_gestire_il"), ephemeral=True
     )
     return True
 
@@ -68,8 +69,7 @@ async def _puo_riaprire_panico(interaction: discord.Interaction) -> bool:
     if puo_agire_in_panico(interaction.user.id, guild.owner_id, impostazioni.anti_nuke):
         return True
     await interaction.response.send_message(
-        "Il panico e' acceso con i comandi riservati: lo toglie solo il proprietario o un utente fidato "
-        "dell'anti-nuke.",
+        await testo_per(interaction, "lockdown_il_panico_acceso_con_comandi"),
         ephemeral=True,
     )
     return False
@@ -98,8 +98,7 @@ class LockdownCog(CogConGruppi, commands.Cog):
         except Exception:
             logger.exception("Blocco non riuscito (server %s)", interaction.guild.id)
             await interaction.followup.send(
-                "Errore imprevisto: il blocco potrebbe essere rimasto a meta'. "
-                "Usa «togli» per riaprire tutto com'era.",
+                await testo_per(interaction, "lockdown_errore_imprevisto_il_blocco_potrebbe"),
                 ephemeral=True,
             )
             return
@@ -112,7 +111,7 @@ class LockdownCog(CogConGruppi, commands.Cog):
         except Exception:
             logger.exception("Sblocco non riuscito (server %s)", interaction.guild.id)
             await interaction.followup.send(
-                "Errore imprevisto durante la riapertura. Rilancia «togli»: riprende da dove si e' fermato.",
+                await testo_per(interaction, "lockdown_errore_imprevisto_durante_la_riapertura"),
                 ephemeral=True,
             )
             return
@@ -197,7 +196,7 @@ class LockdownCog(CogConGruppi, commands.Cog):
             interaction.user.id, guild.owner_id, settings.anti_nuke
         ):
             await interaction.response.send_message(
-                "Solo il proprietario o un utente fidato dell'anti-nuke cambia le scelte del panico.",
+                await testo_per(interaction, "lockdown_solo_il_proprietario_un_utente"),
                 ephemeral=True,
             )
             return
@@ -210,12 +209,12 @@ class LockdownCog(CogConGruppi, commands.Cog):
             categorie.append(escludi_categoria.id)
         if len(ruoli) > MAX_RUOLI_AVVISO:
             await interaction.response.send_message(
-                f"Al massimo {MAX_RUOLI_AVVISO} ruoli da avvisare: toglierne qualcuno prima.", ephemeral=True
+                await testo_per(interaction, "lockdown_al_massimo_ruoli_da_avvisare", v1=MAX_RUOLI_AVVISO), ephemeral=True
             )
             return
         if len(categorie) > MAX_CATEGORIE_ESCLUSE:
             await interaction.response.send_message(
-                f"Al massimo {MAX_CATEGORIE_ESCLUSE} categorie escluse: includerne qualcuna prima.",
+                await testo_per(interaction, "lockdown_al_massimo_categorie_escluse_includerne", v1=MAX_CATEGORIE_ESCLUSE),
                 ephemeral=True,
             )
             return

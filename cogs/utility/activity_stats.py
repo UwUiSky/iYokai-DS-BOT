@@ -29,6 +29,7 @@ from core.activity_stats_logic import (
 )
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.repositories.activity_stats_repo import ActivitySettings, activity_stats_repo
 
 logger = logging.getLogger("iyokai.activity_stats")
@@ -204,13 +205,12 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
     async def _pronto(self, interaction: discord.Interaction) -> bool:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return False
         if not await db.is_module_active_for_guild(interaction.guild.id, MODULE_SERVER_STATS):
             await interaction.response.send_message(
-                "Il modulo Server Stats non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "activitystat_il_modulo_server_stats_non"),
                 ephemeral=True,
             )
             return False
@@ -267,21 +267,21 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
             return
         guild = interaction.guild
         if ruolo.is_default() or ruolo.managed:
-            await interaction.response.send_message("Questo ruolo non si può assegnare.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "activitystat_questo_ruolo_non_si_puo"), ephemeral=True)
             return
         if interaction.user.id != guild.owner_id and ruolo >= interaction.user.top_role:
             await interaction.response.send_message(
-                "Non puoi scegliere un ruolo uguale o superiore al tuo.", ephemeral=True
+                await testo_per(interaction, "activitystat_non_puoi_scegliere_un_ruolo"), ephemeral=True
             )
             return
         if guild.me is not None and ruolo >= guild.me.top_role:
             await interaction.response.send_message(
-                "Il mio ruolo più alto è sotto quello scelto: spostami più in alto e riprova.", ephemeral=True
+                await testo_per(interaction, "activitystat_il_mio_ruolo_piu_alto"), ephemeral=True
             )
             return
         if not await self._repo.add_rule(guild.id, ruolo.id, metrica.value, soglia, giorni, togli):
             await interaction.response.send_message(
-                f"Hai già {MAX_REGOLE_PER_SERVER} regole: eliminane una prima.", ephemeral=True
+                await testo_per(interaction, "activitystat_hai_gia_regole_eliminane_una", v1=MAX_REGOLE_PER_SERVER), ephemeral=True
             )
             return
         await interaction.response.send_message(
@@ -297,7 +297,7 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
             return
         ok = await self._repo.delete_rule(interaction.guild.id, regola)
         await interaction.response.send_message(
-            "Regola eliminata." if ok else "Non trovo questa regola.", ephemeral=True
+            await testo_per(interaction, "activitystat_regola_eliminata") if ok else await testo_per(interaction, "activitystat_non_trovo_questa_regola"), ephemeral=True
         )
 
     @comando_di_gruppo("moduli", nome="elenco", descrizione="Mostra regole ed esclusioni delle statistiche.", sottogruppo=_SG)
@@ -314,7 +314,7 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
         ] or ["Nessuna regola."]
         righe.append(f"\nCanali esclusi: {', '.join(f'<#{c}>' for c in imp.ignored_channels[:20]) or 'nessuno'}")
         righe.append(f"Ruoli esclusi: {', '.join(f'<@&{r}>' for r in imp.ignored_roles[:20]) or 'nessuno'}")
-        embed = discord.Embed(title="Statistiche di attività", description="\n".join(righe)[:4000], color=discord.Color.blurple())
+        embed = discord.Embed(title=await testo_per(interaction, "activitystat_statistiche_di_attivita"), description="\n".join(righe)[:4000], color=discord.Color.blurple())
         await interaction.response.send_message(embed=embed, ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE)
 
     @comando_di_gruppo("moduli", nome="diagnosi", descrizione="Perché le statistiche non si contano?", sottogruppo=_SG)

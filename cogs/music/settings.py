@@ -16,6 +16,7 @@ from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.music_settings_logic import (
     MAX_IDLE_MINUTES,
     MAX_PAROLE_VIETATE,
@@ -87,12 +88,12 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
         if canale_vocale is not None and tutti_i_canali:
             await interaction.response.send_message(
-                "Scegli `canale-vocale` oppure `tutti-i-canali`, non entrambi.", ephemeral=True
+                await testo_per(interaction, "settings_scegli_canale_vocale_oppure_tutti"), ephemeral=True
             )
             return
         cambi = {
@@ -108,8 +109,7 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
             cambi[SETTING_ALLOWED_CHANNEL] = canale_vocale.id
         if not cambi and not tutti_i_canali:
             await interaction.response.send_message(
-                "Non hai cambiato nulla: indica almeno un'opzione. "
-                "Per vedere i valori attuali usa `/admin musica riepilogo`.",
+                await testo_per(interaction, "settings_non_hai_cambiato_nulla_indica"),
                 ephemeral=True,
             )
             return
@@ -122,7 +122,7 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
 
         impostazioni = await load_music_settings(db, guild.id)
         embed = discord.Embed(
-            title="✅ Impostazioni musicali aggiornate",
+            title=await testo_per(interaction, "settings_impostazioni_musicali_aggiornate"),
             description="\n".join(summary_lines(impostazioni)),
             color=discord.Color.green(),
         )
@@ -138,16 +138,16 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
         impostazioni = await load_music_settings(db, guild.id)
         embed = discord.Embed(
-            title="🎵 Impostazioni musicali",
+            title=await testo_per(interaction, "settings_impostazioni_musicali"),
             description="\n".join(summary_lines(impostazioni)),
             color=discord.Color.blurple(),
         )
-        embed.set_footer(text="Si cambiano con /admin musica impostazioni")
+        embed.set_footer(text=await testo_per(interaction, "settings_si_cambiano_con_admin_musica"))
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 

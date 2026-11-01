@@ -22,6 +22,7 @@ from discord import app_commands
 from core import channel_router as router
 from core import lockdown_service
 from core.database import db
+from core.i18n import testo_per
 from core.lockdown_logic import puo_agire_in_panico
 from core.repositories.security_repo import security_repo
 from core.duration_logic import format_duration, parse_duration  # noqa: F401 — re-export
@@ -112,7 +113,7 @@ async def validate_reason(interaction: discord.Interaction, reason: str) -> bool
     """
     if not is_valid_reason(reason):
         await interaction.response.send_message(
-            "Il motivo deve avere almeno 3 caratteri significativi.",
+            await testo_per(interaction, "shared_il_motivo_deve_avere_almeno"),
             ephemeral=True,
         )
         return False
@@ -147,7 +148,7 @@ async def ensure_module_enabled(
     """
     if interaction.guild is None:
         await interaction.response.send_message(
-            "Questo comando è disponibile solo dentro un server.",
+            await testo_per(interaction, "guild_only_command"),
             ephemeral=True,
         )
         return False
@@ -158,8 +159,7 @@ async def ensure_module_enabled(
         impostazioni = await security_repo.get_settings(interaction.guild.id)
         if not puo_agire_in_panico(interaction.user.id, interaction.guild.owner_id, impostazioni.anti_nuke):
             await interaction.response.send_message(
-                "Il server e' in panico: in questo momento i comandi di moderazione li usano solo il proprietario "
-                "e gli utenti fidati.",
+                await testo_per(interaction, "shared_il_server_in_panico_in"),
                 ephemeral=True,
             )
             return False
@@ -167,8 +167,7 @@ async def ensure_module_enabled(
     enabled = await db.is_module_active_for_guild(interaction.guild.id, module_name)
     if not enabled:
         await interaction.response.send_message(
-            "Questo modulo non è attivo su questo server. "
-            "Un amministratore può attivarlo con /admin setup attiva.",
+            await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
             ephemeral=True,
         )
         return False
@@ -213,7 +212,7 @@ async def check_can_moderate(
     moderator = guild.get_member(interaction.user.id)
     if moderator is None:
         await interaction.response.send_message(
-            "Non riesco a verificare i tuoi permessi in questo server.",
+            await testo_per(interaction, "shared_non_riesco_verificare_tuoi_permessi"),
             ephemeral=True,
         )
         return False
