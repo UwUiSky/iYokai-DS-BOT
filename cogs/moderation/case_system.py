@@ -36,6 +36,7 @@ from discord.ext import commands
 from core import bot_roles, moderation_opzioni
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.moderation_casi_esterni_logic import ACTION_TYPE_POSSIBILI, caso_da_voce
 
 from core.repositories.moderation_repo import moderation_repo, ModerationCase
@@ -93,7 +94,7 @@ async def _rifiuta_senza_gestione(interaction: discord.Interaction) -> bool:
     if _puo_gestire(interaction):
         return False
     await interaction.response.send_message(
-        "Serve il permesso «Gestire il server» per questa azione.", ephemeral=True
+        await testo_per(interaction, "casesystem_serve_il_permesso_gestire_il"), ephemeral=True
     )
     return True
 
@@ -251,9 +252,9 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         await interaction.response.defer(ephemeral=True)
         righe = await righe_sanzioni_attive(interaction.guild)
         embed = discord.Embed(
-            title="Sanzioni a tempo in corso",
+            title=await testo_per(interaction, "casesystem_sanzioni_tempo_in_corso"),
             color=discord.Color.blurple(),
-            description=join_within_limit(righe, "…e altre {n}.") if righe else "Nessuna.",
+            description=join_within_limit(righe, "…e altre {n}.") if righe else await testo_per(interaction, "casesystem_nessuna"),
         )
         await interaction.followup.send(
             embed=embed, ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
@@ -286,19 +287,19 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         )
         if not casi:
             await interaction.response.send_message(
-                f"Nessun caso registrato per {member.mention}.", ephemeral=True
+                await testo_per(interaction, "casesystem_nessun_caso_registrato_per", mention=member.mention), ephemeral=True
             )
             return
 
         embed = discord.Embed(
-            title=f"Storico moderazione — {member.display_name}",
+            title=await testo_per(interaction, "casesystem_storico_moderazione", display_name=member.display_name),
             color=discord.Color.blurple(),
             description=join_within_limit(
                 [_format_case_line(c) for c in casi], "…e altri {n} casi."
             ),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        embed.set_footer(text=f"Ultimi {len(casi)} casi")
+        embed.set_footer(text=await testo_per(interaction, "casesystem_ultimi_casi", v1=len(casi)))
         await interaction.response.send_message(embed=embed)
 
     @comando_di_gruppo(
@@ -318,32 +319,32 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         case = await moderation_repo.get_case(interaction.guild.id, case_number)
         if case is None:
             await interaction.response.send_message(
-                f"Nessun caso #{case_number} trovato su questo server.",
+                await testo_per(interaction, "casesystem_nessun_caso_trovato_su_questo", case_number=case_number),
                 ephemeral=True,
             )
             return
 
         embed = discord.Embed(
-            title=f"Caso #{case.case_number} — {case.action_type}",
+            title=await testo_per(interaction, "casesystem_caso", case_number=case.case_number, action_type=case.action_type),
             color=_ACTION_COLORS.get(case.action_type, discord.Color.greyple()),
         )
-        embed.add_field(name="Utente", value=f"<@{case.user_id}> ({case.user_id})", inline=False)
-        embed.add_field(name="Moderatore", value=f"<@{case.moderator_id}>", inline=True)
+        embed.add_field(name=await testo_per(interaction, "banappeal_utente"), value=f"<@{case.user_id}> ({case.user_id})", inline=False)
+        embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore"), value=f"<@{case.moderator_id}>", inline=True)
         embed.add_field(
-            name="Data", value=case.created_at.strftime("%d/%m/%Y %H:%M"), inline=True
+            name=await testo_per(interaction, "casesystem_data"), value=case.created_at.strftime("%d/%m/%Y %H:%M"), inline=True
         )
         embed.add_field(
-            name="Motivo",
+            name=await testo_per(interaction, "channelcontr_motivo"),
             value=truncate_text(case.reason or "Nessun motivo fornito", MAX_FIELD_LENGTH),
             inline=False,
         )
 
         if case.active:
-            embed.add_field(name="Stato", value="Attivo", inline=True)
+            embed.add_field(name=await testo_per(interaction, "ricerca_stato"), value=await testo_per(interaction, "casesystem_attivo"), inline=True)
         else:
             revocato_da = f"<@{case.revoked_by}>" if case.revoked_by else "sconosciuto"
             embed.add_field(
-                name="Stato",
+                name=await testo_per(interaction, "ricerca_stato"),
                 value=f"Revocato da {revocato_da} il "
                 f"{case.revoked_at.strftime('%d/%m/%Y %H:%M') if case.revoked_at else '?'}",
                 inline=True,
@@ -372,7 +373,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
             interaction.guild.id, member.id, interaction.user.id, note
         )
         await interaction.response.send_message(
-            f"Nota aggiunta per {member.mention}.", ephemeral=True
+            await testo_per(interaction, "casesystem_nota_aggiunta_per", mention=member.mention), ephemeral=True
         )
 
     @comando_di_gruppo(
@@ -392,7 +393,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         note = await moderation_repo.list_notes_for_user(interaction.guild.id, member.id)
         if not note:
             await interaction.response.send_message(
-                f"Nessuna nota per {member.mention}.", ephemeral=True
+                await testo_per(interaction, "casesystem_nessuna_nota_per", mention=member.mention), ephemeral=True
             )
             return
 
@@ -403,7 +404,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         ]
         descrizione = join_within_limit(righe, "…e altre {n} note.")
         embed = discord.Embed(
-            title=f"Note — {member.display_name}",
+            title=await testo_per(interaction, "casesystem_note", display_name=member.display_name),
             description=descrizione,
             color=discord.Color.blurple(),
         )
@@ -429,13 +430,13 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
             return
         if not await moderation_repo.update_case_reason(interaction.guild.id, case_number, reason):
             await interaction.response.send_message(
-                f"Nessun caso #{case_number} trovato su questo server.", ephemeral=True
+                await testo_per(interaction, "casesystem_nessun_caso_trovato_su_questo", case_number=case_number), ephemeral=True
             )
             return
-        await interaction.response.send_message(f"Motivo del caso #{case_number} aggiornato.", ephemeral=True)
-        embed = discord.Embed(title=f"✏️ Motivo cambiato — caso #{case_number}", color=discord.Color.blurple())
-        embed.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
-        embed.add_field(name="Nuovo motivo", value=truncate_text(reason, MAX_FIELD_LENGTH), inline=False)
+        await interaction.response.send_message(await testo_per(interaction, "casesystem_motivo_del_caso_aggiornato", case_number=case_number), ephemeral=True)
+        embed = discord.Embed(title=await testo_per(interaction, "casesystem_motivo_cambiato_caso", case_number=case_number), color=discord.Color.blurple())
+        embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore"), value=interaction.user.mention, inline=True)
+        embed.add_field(name=await testo_per(interaction, "casesystem_nuovo_motivo"), value=truncate_text(reason, MAX_FIELD_LENGTH), inline=False)
         await post_to_mod_log(interaction.guild, embed)
 
     @comando_di_gruppo(
@@ -453,12 +454,12 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
             return
         if not await moderation_repo.delete_case(interaction.guild.id, case_number):
             await interaction.response.send_message(
-                f"Nessun caso #{case_number} trovato su questo server.", ephemeral=True
+                await testo_per(interaction, "casesystem_nessun_caso_trovato_su_questo", case_number=case_number), ephemeral=True
             )
             return
-        await interaction.response.send_message(f"Caso #{case_number} eliminato.", ephemeral=True)
-        embed = discord.Embed(title=f"🗑️ Caso #{case_number} eliminato", color=discord.Color.dark_grey())
-        embed.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
+        await interaction.response.send_message(await testo_per(interaction, "casesystem_caso_eliminato", case_number=case_number), ephemeral=True)
+        embed = discord.Embed(title=await testo_per(interaction, "casesystem_caso_eliminato_2", case_number=case_number), color=discord.Color.dark_grey())
+        embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore"), value=interaction.user.mention, inline=True)
         await post_to_mod_log(interaction.guild, embed)
 
     @comando_di_gruppo(
@@ -507,11 +508,11 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
             title=f"{_ACTION_ICONS.get(tipo.value, '•')} Caso #{numero} registrato a mano",
             color=_ACTION_COLORS.get(tipo.value, discord.Color.blurple()),
         )
-        embed.add_field(name="Utente", value=f"<@{utente.id}> ({utente.id})", inline=False)
-        embed.add_field(name="Tipo", value=tipo.name, inline=True)
-        embed.add_field(name="Moderatore", value=moderatore.mention, inline=True)
-        embed.add_field(name="Motivo", value=truncate_text(reason, MAX_FIELD_LENGTH), inline=False)
-        embed.set_footer(text=f"Registrato da {interaction.user.display_name}. Nessuna azione eseguita.")
+        embed.add_field(name=await testo_per(interaction, "banappeal_utente"), value=f"<@{utente.id}> ({utente.id})", inline=False)
+        embed.add_field(name=await testo_per(interaction, "casesystem_tipo"), value=tipo.name, inline=True)
+        embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore"), value=moderatore.mention, inline=True)
+        embed.add_field(name=await testo_per(interaction, "channelcontr_motivo"), value=truncate_text(reason, MAX_FIELD_LENGTH), inline=False)
+        embed.set_footer(text=await testo_per(interaction, "casesystem_registrato_da_nessuna_azione_eseguita", display_name=interaction.user.display_name))
         await interaction.response.send_message(
             embed=embed, ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
         )
@@ -543,7 +544,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
             )
             if not casi:
                 await interaction.response.send_message(
-                    f"Nessun caso fatto da {moderatore.mention}.", ephemeral=True
+                    await testo_per(interaction, "casesystem_nessun_caso_fatto_da", mention=moderatore.mention), ephemeral=True
                 )
                 return
             testo = join_within_limit([_format_case_line(c) for c in casi], "…e altri {n} casi.")
@@ -551,7 +552,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         else:
             classifica = await moderation_repo.moderator_ranking(interaction.guild.id)
             if not classifica:
-                await interaction.response.send_message("Ancora nessun caso registrato.", ephemeral=True)
+                await interaction.response.send_message(await testo_per(interaction, "casesystem_ancora_nessun_caso_registrato"), ephemeral=True)
                 return
             testo = "\n".join(f"{i}. <@{m}> — {n} azioni" for i, (m, n) in enumerate(classifica, 1))
             titolo = "Moderatori più attivi"
@@ -573,9 +574,9 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
             return
         if not await moderation_repo.delete_note(interaction.guild.id, nota_id):
-            await interaction.response.send_message(f"Nessuna nota #{nota_id} su questo server.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "casesystem_nessuna_nota_su_questo_server", nota_id=nota_id), ephemeral=True)
             return
-        await interaction.response.send_message(f"Nota #{nota_id} tolta.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "casesystem_nota_tolta", nota_id=nota_id), ephemeral=True)
 
     @comando_di_gruppo(
         "mod",
@@ -594,9 +595,9 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
             return
         if not await moderation_repo.update_note(interaction.guild.id, nota_id, note):
-            await interaction.response.send_message(f"Nessuna nota #{nota_id} su questo server.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "casesystem_nessuna_nota_su_questo_server", nota_id=nota_id), ephemeral=True)
             return
-        await interaction.response.send_message(f"Nota #{nota_id} aggiornata.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "casesystem_nota_aggiornata", nota_id=nota_id), ephemeral=True)
 
     @comando_di_gruppo(
         "mod",
@@ -612,7 +613,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         if await _rifiuta_senza_gestione(interaction):
             return
         n = await moderation_repo.delete_notes_for_user(interaction.guild.id, member.id)
-        await interaction.response.send_message(f"Cancellate {n} note di {member.mention}.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "casesystem_cancellate_note_di", n=n, mention=member.mention), ephemeral=True)
 
     # ================================================================
     # /mod avvisi: togliere i warn e la classifica
@@ -631,13 +632,13 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         caso = await moderation_repo.get_case(interaction.guild.id, case_number)
         if caso is None or caso.action_type != "warn":
             await interaction.response.send_message(
-                f"Il caso #{case_number} non esiste o non è un warn.", ephemeral=True
+                await testo_per(interaction, "casesystem_il_caso_non_esiste_non", case_number=case_number), ephemeral=True
             )
             return
         if not await moderation_repo.revoke_case(interaction.guild.id, case_number, interaction.user.id):
-            await interaction.response.send_message("Questo warn è già stato tolto.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "casesystem_questo_warn_gia_stato_tolto"), ephemeral=True)
             return
-        await interaction.response.send_message(f"Warn #{case_number} tolto a <@{caso.user_id}>.")
+        await interaction.response.send_message(await testo_per(interaction, "casesystem_warn_tolto", pubblica=True, case_number=case_number, user_id=caso.user_id))
 
     @comando_di_gruppo(
         "mod",
@@ -655,7 +656,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         n = await moderation_repo.revoke_active_cases_for_user(
             interaction.guild.id, member.id, "warn", interaction.user.id
         )
-        await interaction.response.send_message(f"Tolti {n} warn a {member.mention}.")
+        await interaction.response.send_message(await testo_per(interaction, "casesystem_tolti_warn", pubblica=True, n=n, mention=member.mention))
 
     @comando_di_gruppo(
         "mod",
@@ -669,10 +670,10 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
             return
         classifica = await moderation_repo.warn_ranking(interaction.guild.id)
         if not classifica:
-            await interaction.response.send_message("Nessun warn attivo sul server.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "casesystem_nessun_warn_attivo_sul_server"), ephemeral=True)
             return
         testo = "\n".join(f"{i}. <@{u}> — {n} warn" for i, (u, n) in enumerate(classifica, 1))
-        embed = discord.Embed(title="Più warn attivi", description=testo, color=discord.Color.yellow())
+        embed = discord.Embed(title=await testo_per(interaction, "casesystem_piu_warn_attivi"), description=testo, color=discord.Color.yellow())
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 

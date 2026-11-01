@@ -57,6 +57,7 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core import bot_roles
 from core import channel_router as router
+from core.i18n import testo_per
 from core.phishing_list_fetcher import lista_phishing
 from core.phishing_logic import codici_invito, server_per_adulti
 from core.repositories.output_channel_repo import output_channel_repo
@@ -859,7 +860,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         config = await automod_repo.get_config(interaction.guild.id)
         if not config.custom_badwords:
             await interaction.response.send_message(
-                "Nessuna parola vietata configurata.", ephemeral=True
+                await testo_per(interaction, "automod_nessuna_parola_vietata_configurata"), ephemeral=True
             )
             return
 
@@ -904,7 +905,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
             return
         if enabled is None and permetti is None and togli is None and propri is None:
             await interaction.response.send_message(
-                "Scegli almeno un'opzione: enabled, permetti, togli o propri.", ephemeral=True
+                await testo_per(interaction, "automod_scegli_almeno_un_opzione_enabled"), ephemeral=True
             )
             return
 
@@ -997,7 +998,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
             mode=mode.value, whitelist=settings.config.anti_link.whitelist, blacklist=settings.config.anti_link.blacklist,
         ))
         await automod_advanced_repo.save_settings(nuova)
-        await interaction.response.send_message(f"Modalità anti-link impostata su **{mode.name}**.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "automod_modalita_anti_link_impostata_su", name=mode.name), ephemeral=True)
 
     @comando_di_gruppo(
         "automod",
@@ -1024,7 +1025,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         dominio = normalize_domain(domain)
         if not dominio:
             await interaction.response.send_message(
-                "Non riconosco un dominio in quello che hai scritto. Esempio: `esempio.com`.",
+                await testo_per(interaction, "automod_non_riconosco_un_dominio_in"),
                 ephemeral=True,
             )
             return
@@ -1034,8 +1035,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         if action.value == "add":
             if dominio not in attuale and len(attuale) >= MAX_DOMINI_LISTA:
                 await interaction.response.send_message(
-                    f"La {lista.name.lower()} ha già {MAX_DOMINI_LISTA} domini, il massimo. "
-                    "Rimuovi un dominio con `/automod filtri anti-link-domain` prima di aggiungerne altri.",
+                    await testo_per(interaction, "automod_la_ha_gia_domini_il", v1=lista.name.lower(), v2=MAX_DOMINI_LISTA),
                     ephemeral=True,
                 )
                 return
@@ -1050,7 +1050,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
         await automod_advanced_repo.save_settings(_replace_settings(settings, anti_link=nuovo_link_config))
         await interaction.response.send_message(
-            f"Dominio `{dominio}` {'aggiunto a' if action.value == 'add' else 'rimosso da'} {lista.name}.",
+            await testo_per(interaction, "automod_dominio", dominio=dominio, v2=(await testo_per(interaction, "automod_aggiunto")) if action.value == 'add' else (await testo_per(interaction, "automod_rimosso_da")), name=lista.name),
             ephemeral=True,
         )
 
@@ -1077,7 +1077,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
         await automod_advanced_repo.save_settings(nuova)
         await interaction.response.send_message(
-            f"Anti-spam messaggi {'attivato' if enabled else 'disattivato'} (max {max_messages} ogni {seconds}s).",
+            await testo_per(interaction, "automod_anti_spam_messaggi_max_ogni", v1=(await testo_per(interaction, "greetings_attivato")) if enabled else (await testo_per(interaction, "greetings_disattivato")), max_messages=max_messages, seconds=seconds),
             ephemeral=True,
         )
 
@@ -1095,7 +1095,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         nuova = _replace_settings(settings, anti_spam_emoji=ThresholdFilterConfig(enabled=enabled, max_count=max_emoji))
         await automod_advanced_repo.save_settings(nuova)
         await interaction.response.send_message(
-            f"Anti-spam emoji {'attivato' if enabled else 'disattivato'} (max {max_emoji} per messaggio).",
+            await testo_per(interaction, "automod_anti_spam_emoji_max_per", v1=(await testo_per(interaction, "greetings_attivato")) if enabled else (await testo_per(interaction, "greetings_disattivato")), max_emoji=max_emoji),
             ephemeral=True,
         )
 
@@ -1122,7 +1122,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
         await automod_advanced_repo.save_settings(nuova)
         await interaction.response.send_message(
-            f"Anti-spam sticker {'attivato' if enabled else 'disattivato'} (max {max_sticker} ogni {seconds}s).",
+            await testo_per(interaction, "automod_anti_spam_sticker_max_ogni", v1=(await testo_per(interaction, "greetings_attivato")) if enabled else (await testo_per(interaction, "greetings_disattivato")), max_sticker=max_sticker, seconds=seconds),
             ephemeral=True,
         )
 
@@ -1144,7 +1144,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
         await automod_advanced_repo.save_settings(nuova)
         await interaction.response.send_message(
-            f"Anti-caps {'attivato' if enabled else 'disattivato'} (soglia {percent}%, min {min_length} lettere).",
+            await testo_per(interaction, "automod_anti_caps_soglia_min_lettere", v1=(await testo_per(interaction, "greetings_attivato")) if enabled else (await testo_per(interaction, "greetings_disattivato")), percent=percent, min_length=min_length),
             ephemeral=True,
         )
 
@@ -1161,7 +1161,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         settings = await automod_advanced_repo.get_settings(interaction.guild.id)
         nuova = _replace_settings(settings, anti_zalgo_enabled=enabled)
         await automod_advanced_repo.save_settings(nuova)
-        await interaction.response.send_message(f"Anti-zalgo {'attivato' if enabled else 'disattivato'}.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "automod_anti_zalgo", v1=(await testo_per(interaction, "greetings_attivato")) if enabled else (await testo_per(interaction, "greetings_disattivato"))), ephemeral=True)
 
     @comando_di_gruppo(
         "automod",
@@ -1364,7 +1364,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
             testo.append(canale.id)
         if len(media) > MAX_CANALI_MEDIA or len(testo) > MAX_CANALI_MEDIA:
             await interaction.response.send_message(
-                f"Al massimo {MAX_CANALI_MEDIA} canali per tipo.", ephemeral=True
+                await testo_per(interaction, "automod_al_massimo_canali_per_tipo", v1=MAX_CANALI_MEDIA), ephemeral=True
             )
             return
         await automod_advanced_repo.save_settings(
@@ -1386,7 +1386,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         nuova = _replace_settings(settings, anti_mass_mention=ThresholdFilterConfig(enabled=enabled, max_count=max_mentions))
         await automod_advanced_repo.save_settings(nuova)
         await interaction.response.send_message(
-            f"Anti-mass-mention {'attivato' if enabled else 'disattivato'} (max {max_mentions} per messaggio).",
+            await testo_per(interaction, "automod_anti_mass_mention_max_per", v1=(await testo_per(interaction, "greetings_attivato")) if enabled else (await testo_per(interaction, "greetings_disattivato")), max_mentions=max_mentions),
             ephemeral=True,
         )
 
@@ -1413,7 +1413,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
         await automod_advanced_repo.save_settings(nuova)
         await interaction.response.send_message(
-            f"Anti-attachment-spam {'attivato' if enabled else 'disattivato'} (max {max_attachments} ogni {seconds}s).",
+            await testo_per(interaction, "automod_anti_attachment_spam_max_ogni", v1=(await testo_per(interaction, "greetings_attivato")) if enabled else (await testo_per(interaction, "greetings_disattivato")), max_attachments=max_attachments, seconds=seconds),
             ephemeral=True,
         )
 
@@ -1437,7 +1437,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         if channel.id not in settings.exempt_channel_ids:
             nuova = _replace_settings(settings, exempt_channel_ids=settings.exempt_channel_ids + (channel.id,))
             await automod_advanced_repo.save_settings(nuova)
-        await interaction.response.send_message(f"Canale {channel.mention} esentato dai filtri avanzati.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "automod_canale_esentato_dai_filtri_avanzati", mention=channel.mention), ephemeral=True)
 
     @comando_di_gruppo(
         "automod",
@@ -1453,7 +1453,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
             settings, exempt_channel_ids=tuple(c for c in settings.exempt_channel_ids if c != channel.id)
         )
         await automod_advanced_repo.save_settings(nuova)
-        await interaction.response.send_message(f"Esenzione rimossa per {channel.mention}.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "automod_esenzione_rimossa_per", mention=channel.mention), ephemeral=True)
 
     @comando_di_gruppo(
         "automod",
@@ -1468,7 +1468,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         if role.id not in settings.exempt_role_ids:
             nuova = _replace_settings(settings, exempt_role_ids=settings.exempt_role_ids + (role.id,))
             await automod_advanced_repo.save_settings(nuova)
-        await interaction.response.send_message(f"Ruolo {role.mention} esentato dai filtri avanzati.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "automod_ruolo_esentato_dai_filtri_avanzati", mention=role.mention), ephemeral=True)
 
     @comando_di_gruppo(
         "automod",
@@ -1484,7 +1484,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
             settings, exempt_role_ids=tuple(r for r in settings.exempt_role_ids if r != role.id)
         )
         await automod_advanced_repo.save_settings(nuova)
-        await interaction.response.send_message(f"Esenzione rimossa per {role.mention}.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "automod_esenzione_rimossa_per", mention=role.mention), ephemeral=True)
 
     # ================================================================
     # Azioni configurabili + log (SPEC.md §6.13/§6.14)
@@ -1540,13 +1540,13 @@ class AutomodCog(CogConGruppi, commands.Cog):
         limite = 28 * 24 * 3600
         if seconds <= 0 or seconds > limite:
             await interaction.response.send_message(
-                f"La durata deve essere tra 1 secondo e {limite} secondi (28 giorni, limite di Discord).",
+                await testo_per(interaction, "automod_la_durata_deve_essere_tra", limite=limite),
                 ephemeral=True,
             )
             return
         settings = await automod_advanced_repo.get_settings(interaction.guild.id)
         await automod_advanced_repo.save_settings(_replace_settings(settings, mute_duration_seconds=seconds))
-        await interaction.response.send_message(f"Durata del mute AutoMod impostata a {seconds} secondi.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "automod_durata_del_mute_automod_impostata", seconds=seconds), ephemeral=True)
 
     @comando_di_gruppo(
         "automod",
@@ -1596,10 +1596,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
             return
         tolta = await automod_advanced_repo.delete_action(interaction.guild.id, numero)
         await interaction.response.send_message(
-            f"Violazione #{numero} tolta dal registro. Il conteggio della scala di escalation "
-            f"non cambia: per azzerarlo usa `/security escalation reset`."
+            await testo_per(interaction, "automod_violazione_tolta_dal_registro_il", numero=numero)
             if tolta
-            else f"Non c'è nessuna violazione #{numero} in questo server.",
+            else await testo_per(interaction, "automod_non_nessuna_violazione_in_questo", numero=numero),
             ephemeral=True,
         )
 
@@ -1613,7 +1612,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
             return
         settings = await automod_advanced_repo.get_settings(interaction.guild.id)
         await automod_advanced_repo.save_settings(_replace_settings(settings, log_channel_id=channel.id))
-        await interaction.response.send_message(f"Canale di log AutoMod impostato su {channel.mention}.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "automod_canale_di_log_automod_impostato", mention=channel.mention), ephemeral=True)
 
     @comando_di_gruppo(
         "automod",

@@ -36,6 +36,7 @@ from core.embed_builder_logic import (
     da_json,
     valida,
 )
+from core.i18n import testo_per
 from core.lista_limiti_logic import righe_entro_limite
 from core.nome_logic import normalizza_nome
 from core.premium import PremiumModule, registry
@@ -67,13 +68,12 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
     async def _pronto(self, interaction: discord.Interaction) -> bool:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return False
         if not await db.is_module_active_for_guild(interaction.guild.id, MODULE_EMBED_BUILDER):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return False
@@ -120,7 +120,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
         normalizzato = normalizza_nome(nome)
         if normalizzato is None:
             await interaction.response.send_message(
-                "Il nome può avere solo lettere minuscole (a-z), cifre, - e _, senza spazi.", ephemeral=True
+                await testo_per(interaction, "forms_il_nome_puo_avere_solo"), ephemeral=True
             )
             return
         await interaction.response.defer(ephemeral=True)
@@ -138,14 +138,13 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
             return
         esito = await saved_embed_repo.create(interaction.guild.id, normalizzato, a_json(dati), interaction.user.id)
         if esito == "esiste":
-            await interaction.followup.send(f"Esiste già un embed `{normalizzato}`: usa `/moduli embed modifica`.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "embedbuilder_esiste_gia_un_embed_usa", normalizzato=normalizzato), ephemeral=True)
             return
         if esito == "pieno":
-            await interaction.followup.send(f"Questo server ha già {MAX_EMBED} embed salvati: eliminane uno.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "embedbuilder_questo_server_ha_gia_embed", v1=MAX_EMBED), ephemeral=True)
             return
         await interaction.followup.send(
-            f"Embed `{normalizzato}` salvato. Anteprima qui sotto; per aggiungere campi usa `/moduli embed modifica`, "
-            "per mandarlo in un canale `/moduli embed pubblica`.",
+            await testo_per(interaction, "embedbuilder_embed_salvato_anteprima_qui_sotto", normalizzato=normalizzato),
             embed=costruisci(dati),
             ephemeral=True,
         )
@@ -199,10 +198,10 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
     ) -> None:
         salvato = await saved_embed_repo.get(interaction.guild.id, nome)
         if salvato is None:
-            await interaction.followup.send("Non c'è un embed con quel nome.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "embedbuilder_non_un_embed_con_quel"), ephemeral=True)
             return
         if (campo_nome is None) != (campo_valore is None):
-            await interaction.followup.send("Per aggiungere un campo servono nome e testo insieme.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "embedbuilder_per_aggiungere_un_campo_servono"), ephemeral=True)
             return
         attuale = da_json(salvato.data)
 
@@ -214,7 +213,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
         campi = list(attuale.fields)
         if togli_campo is not None:
             if togli_campo > len(campi):
-                await interaction.followup.send(f"L'embed ha {len(campi)} campi.", ephemeral=True)
+                await interaction.followup.send(await testo_per(interaction, "embedbuilder_embed_ha_campi", v1=len(campi)), ephemeral=True)
                 return
             del campi[togli_campo - 1]
         if campo_nome is not None:
@@ -253,7 +252,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
                 except discord.HTTPException as errore:
                     logger.warning("Embed %s: messaggio non aggiornato: %s", nome, errore)
                     await interaction.followup.send(
-                        "L'embed non è stato cambiato: Discord non mi lascia modificare il messaggio già pubblicato.",
+                        await testo_per(interaction, "embedbuilder_embed_non_stato_cambiato_discord"),
                         ephemeral=True,
                     )
                     return
@@ -263,7 +262,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
                 await saved_embed_repo.set_published(interaction.guild.id, nome, None, None)
                 nota = " Il messaggio pubblicato non c'era più: ripubblicalo con `/moduli embed pubblica`."
         await saved_embed_repo.update_data(interaction.guild.id, nome, a_json(dati))
-        await interaction.followup.send(f"Embed aggiornato.{nota}", embed=embed, ephemeral=True)
+        await interaction.followup.send(await testo_per(interaction, "embedbuilder_embed_aggiornato", nota=nota), embed=embed, ephemeral=True)
 
     # ================================================================
     # Pubblica, elenco, elimina
@@ -280,16 +279,16 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
             return
         destinazione = canale or interaction.channel
         if not isinstance(destinazione, discord.TextChannel):
-            await interaction.response.send_message("Scegli un canale di testo.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "embedbuilder_scegli_un_canale_di_testo"), ephemeral=True)
             return
         salvato = await saved_embed_repo.get(interaction.guild.id, nome)
         if salvato is None:
-            await interaction.response.send_message("Non c'è un embed con quel nome.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "embedbuilder_non_un_embed_con_quel"), ephemeral=True)
             return
         permessi = destinazione.permissions_for(interaction.guild.me)
         if not (permessi.send_messages and permessi.embed_links):
             await interaction.response.send_message(
-                f"In {destinazione.mention} al bot servono i permessi per scrivere e incorporare link.",
+                await testo_per(interaction, "embedbuilder_in_al_bot_servono_permessi", mention=destinazione.mention),
                 ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
             )
             return
@@ -298,11 +297,11 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
                 embed=costruisci(da_json(salvato.data)), allowed_mentions=_NESSUNA_MENZIONE
             )
         except discord.HTTPException:
-            await interaction.response.send_message("Discord non ha accettato il messaggio.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "embedbuilder_discord_non_ha_accettato_il"), ephemeral=True)
             return
         await saved_embed_repo.set_published(interaction.guild.id, nome, destinazione.id, inviato.id)
         await interaction.response.send_message(
-            f"Embed pubblicato in {destinazione.mention}. Se lo cambi con `/moduli embed modifica` si aggiorna da solo.",
+            await testo_per(interaction, "embedbuilder_embed_pubblicato_in_se_lo", mention=destinazione.mention),
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
 
@@ -317,7 +316,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
         ] or ["Nessun embed salvato."]
         testo, _ = righe_entro_limite(righe, 3900)
         await interaction.response.send_message(
-            embed=discord.Embed(title=f"Embed salvati ({len(salvati)}/{MAX_EMBED})", description=testo),
+            embed=discord.Embed(title=await testo_per(interaction, "embedbuilder_embed_salvati", v1=len(salvati), v2=MAX_EMBED), description=testo),
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
 
@@ -328,7 +327,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
             return
         fatto = await saved_embed_repo.delete(interaction.guild.id, nome)
         await interaction.response.send_message(
-            "Embed eliminato." if fatto else "Non c'è un embed con quel nome.", ephemeral=True
+            await testo_per(interaction, "embedbuilder_embed_eliminato") if fatto else await testo_per(interaction, "embedbuilder_non_un_embed_con_quel"), ephemeral=True
         )
 
 

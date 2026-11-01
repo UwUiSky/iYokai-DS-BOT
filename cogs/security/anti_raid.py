@@ -59,6 +59,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.bot_ready import attendi_bot_pronto
 from core.bounded_cache import BoundedCache
 from core.database import db
+from core.i18n import testo_per
 from core.lockdown_service import panico_automatico
 from core.premium import PremiumModule, registry, requires_module
 from core.repositories.security_repo import SecuritySettings, security_repo
@@ -257,7 +258,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         settings = await security_repo.get_settings(interaction.guild.id)
         await security_repo.save_settings(_replace(settings, enabled=enabled))
         await interaction.response.send_message(
-            f"Anti-Raid {'attivato' if enabled else 'disattivato'}.", ephemeral=True
+            await testo_per(interaction, "antiraid_anti_raid", v1=(await testo_per(interaction, "greetings_attivato")) if enabled else (await testo_per(interaction, "greetings_disattivato"))), ephemeral=True
         )
         if not enabled:
             return
@@ -326,7 +327,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             return
         settings = await security_repo.get_settings(interaction.guild.id)
         await security_repo.save_settings(_replace(settings, min_account_age_seconds=seconds))
-        await interaction.response.send_message(f"Età minima account impostata a {seconds} secondi.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "antiraid_eta_minima_account_impostata_secondi", seconds=seconds), ephemeral=True)
 
     @comando_di_gruppo(
         "antiraid",
@@ -339,7 +340,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             return
         settings = await security_repo.get_settings(interaction.guild.id)
         await security_repo.save_settings(_replace(settings, check_username_pattern=enabled))
-        await interaction.response.send_message(f"Rilevamento pattern username {'attivato' if enabled else 'disattivato'}.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "antiraid_rilevamento_pattern_username", v1=(await testo_per(interaction, "greetings_attivato")) if enabled else (await testo_per(interaction, "greetings_disattivato"))), ephemeral=True)
 
     @comando_di_gruppo(
         "antiraid",
@@ -352,7 +353,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             return
         settings = await security_repo.get_settings(interaction.guild.id)
         await security_repo.save_settings(_replace(settings, check_avatar_pattern=enabled))
-        await interaction.response.send_message(f"Rilevamento avatar assente {'attivato' if enabled else 'disattivato'}.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "antiraid_rilevamento_avatar_assente", v1=(await testo_per(interaction, "greetings_attivato")) if enabled else (await testo_per(interaction, "greetings_disattivato"))), ephemeral=True)
 
     @comando_di_gruppo(
         "antiraid",
@@ -374,7 +375,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             return
         settings = await security_repo.get_settings(interaction.guild.id)
         await security_repo.save_settings(_replace(settings, lockdown_action=action.value))
-        await interaction.response.send_message(f"Azione di lockdown impostata su **{action.name}**.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "antiraid_azione_di_lockdown_impostata_su", name=action.name), ephemeral=True)
 
     @comando_di_gruppo(
         "antiraid",
@@ -387,7 +388,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             return
         settings = await security_repo.get_settings(interaction.guild.id)
         await security_repo.save_settings(_replace(settings, alert_channel_id=channel.id))
-        await interaction.response.send_message(f"Canale di alert impostato su {channel.mention}.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "antiraid_canale_di_alert_impostato_su", mention=channel.mention), ephemeral=True)
 
     @comando_di_gruppo(
         "antiraid",
@@ -502,7 +503,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             return
         await security_repo.save_settings(_replace(settings, quarantine_hold=enabled))
         await interaction.response.send_message(
-            f"Blocco della quarantena {'attivato' if enabled else 'disattivato'}.", ephemeral=True
+            await testo_per(interaction, "antiraid_blocco_della_quarantena", v1=(await testo_per(interaction, "greetings_attivato")) if enabled else (await testo_per(interaction, "greetings_disattivato"))), ephemeral=True
         )
 
     @comando_di_gruppo(
@@ -525,7 +526,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         )
         if ruolo is None or ruolo not in membro.roles:
             await interaction.response.send_message(
-                f"{membro.mention} non è in quarantena.", ephemeral=True,
+                await testo_per(interaction, "antiraid_non_in_quarantena", mention=membro.mention), ephemeral=True,
                 allowed_mentions=discord.AllowedMentions.none(),
             )
             return
@@ -535,7 +536,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         )
         if not esito.riuscito:
             await interaction.followup.send(
-                "Discord non mi ha lasciato togliere il ruolo (il mio ruolo è più in basso?).", ephemeral=True
+                await testo_per(interaction, "antiraid_discord_non_mi_ha_lasciato"), ephemeral=True
             )
             return
         await security_repo.log_action(
@@ -630,25 +631,25 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         if operazione.value == "svuota":
             lista = []
         elif not voce:
-            await interaction.response.send_message("Scrivi lo schema.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "antiraid_scrivi_lo_schema"), ephemeral=True)
             return
         elif operazione.value == "aggiungi":
             if voce in lista:
-                await interaction.response.send_message(f"`{voce}` è già nella lista.", ephemeral=True)
+                await interaction.response.send_message(await testo_per(interaction, "antiraid_gia_nella_lista", voce=voce), ephemeral=True)
                 return
             if len(lista) >= MAX_NOMI_VIETATI:
                 await interaction.response.send_message(
-                    f"La lista è piena ({MAX_NOMI_VIETATI} schemi): togline uno.", ephemeral=True
+                    await testo_per(interaction, "antiraid_la_lista_piena_schemi_togline", v1=MAX_NOMI_VIETATI), ephemeral=True
                 )
                 return
             lista.append(voce)
         elif voce in lista:
             lista.remove(voce)
         else:
-            await interaction.response.send_message(f"`{voce}` non è nella lista.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "antiraid_non_nella_lista", voce=voce), ephemeral=True)
             return
         await security_repo.save_settings(_replace(settings, nomi_vietati=tuple(lista)))
-        await interaction.response.send_message(f"Lista aggiornata: {len(lista)} schemi.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "antiraid_lista_aggiornata_schemi", v1=len(lista)), ephemeral=True)
 
     @comando_di_gruppo(
         "antiraid",
@@ -713,7 +714,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await security_repo.save_settings(_replace(settings, ruoli_ping=ruoli[:MAX_RUOLI_PING]))
         testo = " ".join(f"<@&{i}>" for i in ruoli) or "nessuno"
         await interaction.response.send_message(
-            f"Ruoli avvisati al raid: {testo}.", ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
+            await testo_per(interaction, "antiraid_ruoli_avvisati_al_raid", testo=testo), ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
         )
 
     @comando_di_gruppo(
@@ -732,7 +733,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             for r in await security_repo.raid_joins(interaction.guild.id, dal)
         ]
         if not righe:
-            await interaction.response.send_message(f"Nessun account di raid nelle ultime {ore} ore.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "antiraid_nessun_account_di_raid_nelle", ore=ore), ephemeral=True)
             return
         await invia_file_su_interazione(
             interaction,
@@ -771,11 +772,11 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
                 file=discord.File(io.BytesIO(elenco_testo(righe).encode()), filename=f"segnalazione-{interaction.guild.id}.txt"),
             )
         except discord.HTTPException:
-            await interaction.followup.send("Non sono riuscito a mandare la segnalazione: riprova più tardi.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "antiraid_non_sono_riuscito_mandare_la"), ephemeral=True)
             return
         await security_repo.log_action(interaction.guild.id, "raid_segnalato", interaction.user.id, (nota or "")[:500])
         await interaction.followup.send(
-            f"Segnalazione mandata con {len(righe)} ingressi recenti. Grazie!", ephemeral=True
+            await testo_per(interaction, "antiraid_segnalazione_mandata_con_ingressi_recent", v1=len(righe)), ephemeral=True
         )
 
     @commands.Cog.listener()

@@ -46,6 +46,7 @@ from core.channel_router import TIPO_EVENTI
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.repositories.ticket_form_repo import PannelloTicket, ticket_form_repo
 from core.repositories.ticket_repo import ticket_repo
 from core.repositories.ticket_standard_repo import RispostaStandard, ticket_standard_repo
@@ -133,18 +134,18 @@ class ModuloRispostaStandard(BaseModal):
         parole = logica.parole_da_testo_staff(self.parole.value)
         if not parole:
             await interaction.response.send_message(
-                "Servono parole chiave vere (non solo «ciao», «grazie»…): senza, la risposta non scatterebbe mai.",
+                await testo_per(interaction, "risposte_servono_parole_chiave_vere_non"),
                 ephemeral=True,
             )
             return
         corpo = self.corpo.value.strip()
         if not corpo:
-            await interaction.response.send_message("La risposta non può essere vuota.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "risposte_la_risposta_non_puo_essere"), ephemeral=True)
             return
         if not await ticket_standard_repo.aggiorna(
             self._id, logica.taglia(self.titolo.value, logica.MAX_TITOLO), logica.parole_come_testo(parole), corpo
         ):
-            await interaction.response.send_message("Questa risposta non esiste più.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "risposte_questa_risposta_non_esiste_piu"), ephemeral=True)
             return
         r = await ticket_standard_repo.per_id(self._id)
         await interaction.response.send_message(
@@ -183,7 +184,7 @@ class BottoneRispostaStandard(
             return False
         if not await _is_ticket_staff(interaction):
             await interaction.response.send_message(
-                "Solo lo staff (permesso Manage Server o un ruolo di supporto) può decidere.", ephemeral=True
+                await testo_per(interaction, "risposte_solo_lo_staff_permesso_manage"), ephemeral=True
             )
             return False
         return True
@@ -195,7 +196,7 @@ class BottoneRispostaStandard(
     async def callback(self, interaction: discord.Interaction) -> None:
         r = await ticket_standard_repo.per_id(self.reply_id)
         if r is None or r.guild_id != (interaction.guild.id if interaction.guild else 0):
-            await interaction.response.send_message("Questa proposta non esiste più.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "risposte_questa_proposta_non_esiste_piu"), ephemeral=True)
             return
         if self.azione == "mod":
             await interaction.response.send_modal(ModuloRispostaStandard(r))
@@ -203,18 +204,18 @@ class BottoneRispostaStandard(
         if self.azione == "no":
             if r.status == "approved":
                 await interaction.response.send_message(
-                    "È già approvata: per toglierla usa `/admin ticket risposta-elimina`.", ephemeral=True
+                    await testo_per(interaction, "risposte_gia_approvata_per_toglierla_usa"), ephemeral=True
                 )
                 return
             if not await ticket_standard_repo.scarta(r.guild_id, r.id):
                 await interaction.response.send_message(
-                    "Era già stata decisa: se è approvata usa `/admin ticket risposta-elimina`.", ephemeral=True
+                    await testo_per(interaction, "risposte_era_gia_stata_decisa_se"), ephemeral=True
                 )
                 return
             await interaction.response.edit_message(embed=embed_proposta(r, "scartata"), view=None)
             return
         if not await ticket_standard_repo.approva(r.id, interaction.user.id):
-            await interaction.response.send_message("Era già stata decisa.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "risposte_era_gia_stata_decisa"), ephemeral=True)
             return
         r = await ticket_standard_repo.per_id(r.id)
         await interaction.response.edit_message(embed=embed_proposta(r, "approvata"), view=_vista_approvata(r.id))
@@ -515,7 +516,7 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
             return None
         panel = await ticket_form_repo.pannello_per_nome(interaction.guild.id, nome.strip())
         if panel is None:
-            await interaction.response.send_message(f"Nessun pannello chiamato **{nome.strip()[:100]}**.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "opzioni_nessun_pannello_chiamato", v1=nome.strip()[:100]), ephemeral=True)
         return panel
 
     @comando_di_gruppo(
@@ -565,7 +566,7 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
             return
         if ruolo is not None and ruolo.id == interaction.guild.id:
             await interaction.response.send_message(
-                "@everyone non si può chiamare: scegli un ruolo dello staff.", ephemeral=True
+                await testo_per(interaction, "risposte_everyone_non_si_puo_chiamare"), ephemeral=True
             )
             return
         try:
@@ -602,7 +603,7 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
             return
         risposte = await ticket_standard_repo.elenca(interaction.guild.id, stato.value if stato else None, 25)
         if not risposte:
-            await interaction.response.send_message("Nessuna risposta standard.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "risposte_nessuna_risposta_standard"), ephemeral=True)
             return
         righe = [
             f"`#{r.id}` {'✅' if r.status == 'approved' else '⏳'} {logica.taglia(r.title, 60)} · usata {r.use_count} volte"
@@ -620,7 +621,7 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
     async def modifica(self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 2**31 - 1]) -> None:
         r = await ticket_standard_repo.per_id(numero)
         if r is None or interaction.guild is None or r.guild_id != interaction.guild.id:
-            await interaction.response.send_message("Nessuna risposta con questo numero.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "risposte_nessuna_risposta_con_questo_numero"), ephemeral=True)
             return
         await interaction.response.send_modal(ModuloRispostaStandard(r))
 
@@ -635,9 +636,9 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         if interaction.guild is None:
             return
         if await ticket_standard_repo.elimina(interaction.guild.id, numero):
-            await interaction.response.send_message(f"Risposta #{numero} eliminata.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "risposte_risposta_eliminata", numero=numero), ephemeral=True)
         else:
-            await interaction.response.send_message("Nessuna risposta con questo numero.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "risposte_nessuna_risposta_con_questo_numero"), ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:

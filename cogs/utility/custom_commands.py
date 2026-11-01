@@ -36,6 +36,7 @@ from core.custom_command_logic import (
     valida_prefisso,
 )
 from core.database import db
+from core.i18n import testo_per
 from core.nome_logic import normalizza_nome
 from core.lista_limiti_logic import righe_entro_limite
 from core.premium import PremiumModule, registry
@@ -174,25 +175,25 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
         if not await db.is_module_active_for_guild(guild.id, MODULE_CUSTOM_COMMANDS):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server.", ephemeral=True
+                await testo_per(interaction, "module_not_active"), ephemeral=True
             )
             return
         normalizzato = normalizza_nome(nome)
         tag = await custom_command_repo.get_tag(guild.id, normalizzato) if normalizzato else None
         if tag is None:
             await interaction.response.send_message(
-                "Questo server non ha un comando con quel nome.", ephemeral=True
+                await testo_per(interaction, "customcomman_questo_server_non_ha_un"), ephemeral=True
             )
             return
         residuo = self._pausa(tag, guild.id, interaction.user.id)
         if residuo > 0:
             await interaction.response.send_message(
-                f"Aspetta ancora {int(residuo) + 1} secondi prima di riusarlo.", ephemeral=True
+                await testo_per(interaction, "customcomman_aspetta_ancora_secondi_prima_di", v1=int(residuo) + 1), ephemeral=True
             )
             return
         # Dare o togliere il ruolo sono chiamate a Discord che possono superare i 3 secondi
@@ -214,13 +215,12 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
     async def _pronto(self, interaction: discord.Interaction) -> bool:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return False
         if not await db.is_module_active_for_guild(interaction.guild.id, MODULE_CUSTOM_COMMANDS):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return False
@@ -230,7 +230,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
     async def _controlla_ruolo(interaction, ruolo, azione) -> bool:
         if (ruolo is None) != (azione == "nessuna"):
             await interaction.response.send_message(
-                "Ruolo e azione vanno insieme: scegli un ruolo e un'azione, oppure nessuno dei due.",
+                await testo_per(interaction, "customcomman_ruolo_azione_vanno_insieme_scegli"),
                 ephemeral=True,
             )
             return False
@@ -266,7 +266,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         normalizzato = normalizza_nome(nome)
         if normalizzato is None:
             await interaction.response.send_message(
-                "Il nome può avere solo lettere minuscole (a-z), cifre, - e _, senza spazi.", ephemeral=True
+                await testo_per(interaction, "forms_il_nome_puo_avere_solo"), ephemeral=True
             )
             return
         if not await self._controlla_ruolo(interaction, ruolo, azione):
@@ -327,14 +327,14 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             campi["role_id"] = ruolo.id if ruolo else None
             campi["role_action"] = azione
         elif ruolo is not None:
-            await interaction.response.send_message("Se scegli un ruolo, scegli anche l'azione.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "customcomman_se_scegli_un_ruolo_scegli"), ephemeral=True)
             return
         if not campi or normalizzato is None:
-            await interaction.response.send_message("Non hai indicato nulla da cambiare.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "customcomman_non_hai_indicato_nulla_da"), ephemeral=True)
             return
         fatto = await custom_command_repo.update_tag(interaction.guild.id, normalizzato, **campi)
         await interaction.response.send_message(
-            "Comando aggiornato." if fatto else "Non esiste un comando con quel nome.", ephemeral=True
+            await testo_per(interaction, "customcomman_comando_aggiornato") if fatto else await testo_per(interaction, "customcomman_non_esiste_un_comando_con"), ephemeral=True
         )
 
     @comando_di_gruppo("moduli", nome="elimina", descrizione="Elimina un comando personalizzato.", sottogruppo=_SG_COMANDI)
@@ -346,7 +346,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         normalizzato = normalizza_nome(nome)
         fatto = normalizzato is not None and await custom_command_repo.delete_tag(interaction.guild.id, normalizzato)
         await interaction.response.send_message(
-            "Comando eliminato." if fatto else "Non esiste un comando con quel nome.", ephemeral=True
+            await testo_per(interaction, "customcomman_comando_eliminato") if fatto else await testo_per(interaction, "customcomman_non_esiste_un_comando_con"), ephemeral=True
         )
 
     @comando_di_gruppo("moduli", nome="elenco", descrizione="Mostra i comandi personalizzati del server.", sottogruppo=_SG_COMANDI)
@@ -358,7 +358,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         righe = [f"`{t.name}` — {t.uses} usi" for t in tag] or ["Nessun comando personalizzato."]
         testo, _ = righe_entro_limite(righe, 3800)
         piede = f"\n\nPrefisso: `{prefisso}`" if prefisso else "\n\nPrefisso: nessuno (solo `/utility tag`)."
-        embed = discord.Embed(title=f"Comandi personalizzati ({len(tag)}/{MAX_TAG})", description=testo + piede)
+        embed = discord.Embed(title=await testo_per(interaction, "customcomman_comandi_personalizzati", v1=len(tag), v2=MAX_TAG), description=testo + piede)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @comando_di_gruppo("moduli", nome="prefisso", descrizione="Scegli il prefisso per usare i comandi scrivendo nel canale.", sottogruppo=_SG_COMANDI)
@@ -369,7 +369,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         if simbolo == "":
             await custom_command_repo.set_prefix(interaction.guild.id, None)
             _cache_prefissi.set(interaction.guild.id, (None, time.monotonic() + _TTL_PREFISSO))
-            await interaction.response.send_message("Prefisso spento: i comandi si usano con `/utility tag`.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "customcomman_prefisso_spento_comandi_si_usano"), ephemeral=True)
             return
         errore = valida_prefisso(simbolo)
         if errore is not None:
@@ -378,7 +378,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         await custom_command_repo.set_prefix(interaction.guild.id, simbolo)
         _cache_prefissi.set(interaction.guild.id, (simbolo, time.monotonic() + _TTL_PREFISSO))
         await interaction.response.send_message(
-            f"Prefisso `{simbolo}` attivo: scrivendo `{simbolo}nome` parte il comando.", ephemeral=True
+            await testo_per(interaction, "customcomman_prefisso_attivo_scrivendo_nome_parte", simbolo=simbolo), ephemeral=True
         )
 
 

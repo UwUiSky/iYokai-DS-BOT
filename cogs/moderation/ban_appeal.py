@@ -41,6 +41,7 @@ from core.ban_appeal_logic import (
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.bounded_cache import BoundedCache
 from core.database import db
+from core.i18n import testo_per
 from core.repositories.modmail_repo import modmail_repo
 from core.ui_base import BaseModal, BaseView
 from core.repositories.moderation_repo import moderation_repo
@@ -284,16 +285,16 @@ async def decidi_appello(interaction: discord.Interaction, appello_id: int, acce
     guild = interaction.guild
     if guild is None or not interaction.user.guild_permissions.ban_members:
         await interaction.response.send_message(
-            "Solo chi può bannare i membri decide sugli appelli.", ephemeral=True
+            await testo_per(interaction, "banappeal_solo_chi_puo_bannare_membri"), ephemeral=True
         )
         return
     appello = await moderation_repo.get_appeal(appello_id)
     if appello is None or appello["guild_id"] != guild.id:
-        await interaction.response.send_message("Appello non trovato.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "banappeal_appello_non_trovato"), ephemeral=True)
         return
     stato = STATO_ACCETTATO if accetta else STATO_RIFIUTATO
     if appello["stato"] != STATO_APERTO or appello_id in _APPELLI_IN_CORSO:
-        await interaction.response.send_message("Questo appello è già stato deciso.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "banappeal_questo_appello_gia_stato_deciso"), ephemeral=True)
         return
     # Subito, senza await in mezzo: due clic insieme non passano entrambi.
     _APPELLI_IN_CORSO.add(appello_id)
@@ -311,7 +312,7 @@ async def decidi_appello(interaction: discord.Interaction, appello_id: int, acce
                 await interaction.followup.send(esito, ephemeral=True)
                 return
         if not await moderation_repo.decide_appeal(appello_id, stato, interaction.user.id):
-            await interaction.followup.send("Questo appello è già stato deciso.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "banappeal_questo_appello_gia_stato_deciso"), ephemeral=True)
             return
     finally:
         _APPELLI_IN_CORSO.discard(appello_id)
@@ -327,13 +328,13 @@ async def decidi_appello(interaction: discord.Interaction, appello_id: int, acce
         avviso += " (Non sono riuscito a scrivere all'utente.)"
     embed = interaction.message.embeds[0] if interaction.message and interaction.message.embeds else discord.Embed()
     embed.color = discord.Color.green() if accetta else discord.Color.red()
-    embed.set_footer(text=f"{'Accettato' if accetta else 'Rifiutato'} da {interaction.user.display_name}")
+    embed.set_footer(text=await testo_per(interaction, "banappeal_da", v1=(await testo_per(interaction, "banappeal_accettato")) if accetta else (await testo_per(interaction, "banappeal_rifiutato")), display_name=interaction.user.display_name))
     await interaction.edit_original_response(embed=embed, view=None)
     log = discord.Embed(
         title=f"Appello #{appello_id} {stato}", color=embed.color,
     )
-    log.add_field(name="Utente", value=f"<@{uid}>", inline=True)
-    log.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
+    log.add_field(name=await testo_per(interaction, "banappeal_utente"), value=f"<@{uid}>", inline=True)
+    log.add_field(name=await testo_per(interaction, "channelcontr_moderatore"), value=interaction.user.mention, inline=True)
     await post_to_mod_log(guild, log)
     if avviso:
         await interaction.followup.send(avviso.strip(), ephemeral=True)
@@ -391,12 +392,12 @@ class ModerationBanAppealCog(CogConGruppi, commands.Cog):
             return
         appelli = await moderation_repo.list_appeals(interaction.guild.id, stato.value if stato else None)
         if not appelli:
-            await interaction.response.send_message("Nessun appello.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "banappeal_nessun_appello"), ephemeral=True)
             return
         righe = [
             f"**#{a['id']}** — <@{a['user_id']}> — {a['stato']} — caso #{a['case_number']}" for a in appelli
         ]
-        embed = discord.Embed(title="Appelli", description="\n".join(righe)[:4000], color=discord.Color.blurple())
+        embed = discord.Embed(title=await testo_per(interaction, "banappeal_appelli"), description="\n".join(righe)[:4000], color=discord.Color.blurple())
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 

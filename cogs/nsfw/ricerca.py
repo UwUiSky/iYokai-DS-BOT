@@ -19,6 +19,7 @@ from discord.ext import commands
 
 from core import nsfw_servizio as servizio
 from core.config import config
+from core.i18n import testo_per
 from core.nsfw_bot import e_istanza_nsfw
 from core.nsfw_filter_logic import MAX_TAG_PERMESSI, canale_ammesso
 from core.ui_base import BaseView
@@ -46,7 +47,7 @@ class VistaSegnala(BaseView):
         messaggio = interaction.message
         esito = await servizio.segnala(messaggio.id, interaction.user.id) if messaggio else None
         if esito is None:
-            await interaction.followup.send("Questo contenuto non è nel registro.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "ricerca_questo_contenuto_non_nel_registro"), ephemeral=True)
             return
         try:
             await messaggio.delete()
@@ -118,7 +119,7 @@ class NsfwCog(commands.Cog):
             await interaction.followup.send(scelta, ephemeral=True)
             return
         esito = await servizio.pubblica(interaction.channel, scelta, vista_pubblicazione())
-        await interaction.followup.send("Pubblicato." if not isinstance(esito, str) else esito, ephemeral=True)
+        await interaction.followup.send(await testo_per(interaction, "ricerca_pubblicato") if not isinstance(esito, str) else esito, ephemeral=True)
 
     cerca.autocomplete("tag")(_tag_permessi)
 
@@ -126,7 +127,7 @@ class NsfwCog(commands.Cog):
     async def _solo_staff(self, interaction: discord.Interaction) -> bool:
         if _puo_gestire(interaction):
             return True
-        await interaction.response.send_message("Serve il permesso «Gestisci server».", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "ricerca_serve_il_permesso_gestisci_server"), ephemeral=True)
         return False
 
     @admin.command(name="attiva", description="Accende o spegne l'istanza NSFW in questo server.")
@@ -183,7 +184,7 @@ class NsfwCog(commands.Cog):
         if not await self._solo_staff(interaction):
             return
         tolte = await servizio.ferma_autopost(interaction.guild.id, canale.id if canale else None)
-        await interaction.response.send_message(f"Pubblicazioni automatiche fermate: {tolte}.", ephemeral=True)
+        await interaction.response.send_message(await testo_per(interaction, "ricerca_pubblicazioni_automatiche_fermate", tolte=tolte), ephemeral=True)
 
     @admin.command(name="stato", description="Mostra le impostazioni NSFW del server.")
     async def stato(self, interaction: discord.Interaction) -> None:
@@ -191,15 +192,15 @@ class NsfwCog(commands.Cog):
             return
         config_server = await servizio.leggi(interaction.guild.id)
         autopost = await servizio.elenco_autopost(interaction.guild.id)
-        embed = discord.Embed(title="Istanza NSFW", color=discord.Color.dark_red())
-        embed.add_field(name="Stato", value="accesa" if config_server.attivo else "spenta", inline=False)
+        embed = discord.Embed(title=await testo_per(interaction, "ricerca_istanza_nsfw"), color=discord.Color.dark_red())
+        embed.add_field(name=await testo_per(interaction, "ricerca_stato"), value=await testo_per(interaction, "ricerca_accesa") if config_server.attivo else await testo_per(interaction, "ricerca_spenta"), inline=False)
         tag = ", ".join(f"`{t}`" for t in config_server.tag_permessi) or "nessuno"
         embed.add_field(
-            name=f"Lista permessa ({len(config_server.tag_permessi)}/{MAX_TAG_PERMESSI})", value=tag[:1024], inline=False
+            name=await testo_per(interaction, "ricerca_lista_permessa", v1=len(config_server.tag_permessi), v2=MAX_TAG_PERMESSI), value=tag[:1024], inline=False
         )
         righe = [f"<#{a.channel_id}>: `{a.tag or 'a caso'}` ogni {a.intervallo_minuti} min" for a in autopost]
-        embed.add_field(name="Pubblicazione automatica", value="\n".join(righe)[:1024] or "nessuna", inline=False)
-        embed.set_footer(text="La lista vietata è fissa nel codice e vale sempre.")
+        embed.add_field(name=await testo_per(interaction, "ricerca_pubblicazione_automatica"), value="\n".join(righe)[:1024] or "nessuna", inline=False)
+        embed.set_footer(text=await testo_per(interaction, "ricerca_la_lista_vietata_fissa_nel"))
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 

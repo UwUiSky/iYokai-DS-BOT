@@ -38,7 +38,7 @@ from core.greetings_logic import (
     scegli_testo,
 )
 from core import greetings_uscite_logic as uscite
-from core.i18n import lingua_risposta, t
+from core.i18n import lingua_risposta, t, testo_per
 from core.ui_base import BaseModal, BaseView
 from core.premium import PremiumModule, registry
 from core.repositories.greetings_repo import greetings_repo
@@ -135,8 +135,7 @@ class ExtraBenvenutoModal(BaseModal, title="Benvenuto: DM, varianti, reazioni"):
             return
         await greetings_repo.set_welcome_extra(guild.id, dm, varianti, reazioni, ban)
         await interaction.response.send_message(
-            f"Salvato: DM {'con testo suo' if dm else 'come il canale'}, "
-            f"{len(varianti)} varianti, {len(reazioni)} reazioni, ban {'con testo suo' if ban else 'con il testo di base'}.",
+            await testo_per(interaction, "greetings_salvato_dm_varianti_reazioni_ban", v1=(await testo_per(interaction, "greetings_con_testo_suo")) if dm else (await testo_per(interaction, "greetings_come_il_canale")), v2=len(varianti), v3=len(reazioni), v4=(await testo_per(interaction, "greetings_con_testo_suo")) if ban else (await testo_per(interaction, "greetings_con_il_testo_di_base"))),
             ephemeral=True,
         )
 
@@ -215,7 +214,7 @@ class UsciteModal(BaseModal, title="Ban e addio: cosa esce e la grafica"):
             return
         modo = self.modo.values[0] if self.modo.values else ""
         if not uscite.modo_valido(modo):
-            await interaction.response.send_message("Scelta non valida.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "modmail_scelta_non_valida"), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)  # file e link si controllano: può servire qualche secondo
         azioni = {}
@@ -516,7 +515,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
@@ -528,7 +527,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         )
         if enabled and canale_finale is None:
             await interaction.response.send_message(
-                "Specifica un canale per attivare il welcome message.", ephemeral=True
+                await testo_per(interaction, "greetings_specifica_un_canale_per_attivare"), ephemeral=True
             )
             return
 
@@ -547,7 +546,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             ping_ruoli=_ping_ruoli(interaction, message, config_attuale.welcome_ping_ruoli),
         )
         await interaction.response.send_message(
-            f"Welcome message {'attivato' if enabled else 'disattivato'}.", ephemeral=True
+            await testo_per(interaction, "greetings_welcome_message", v1=(await testo_per(interaction, "greetings_attivato")) if enabled else (await testo_per(interaction, "greetings_disattivato"))), ephemeral=True
         )
 
     @comando_di_gruppo(
@@ -559,12 +558,12 @@ class GreetingsCog(CogConGruppi, commands.Cog):
     async def welcome_extra(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
         config = await greetings_repo.get_config(interaction.guild.id)
         await interaction.response.send_message(
-            "Cosa vuoi cambiare? Il testo del ban si scrive in «Testi e reazioni» (vuoto = quello di base).",
+            await testo_per(interaction, "greetings_cosa_vuoi_cambiare_il_testo"),
             view=ExtraBenvenutoView(config), ephemeral=True,
         )
 
@@ -589,7 +588,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
@@ -601,7 +600,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         )
         if enabled and canale_finale is None:
             await interaction.response.send_message(
-                "Specifica un canale per attivare il goodbye message.", ephemeral=True
+                await testo_per(interaction, "greetings_specifica_un_canale_per_attivare_2"), ephemeral=True
             )
             return
 
@@ -619,7 +618,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             ping_ruoli=_ping_ruoli(interaction, message, config_attuale.goodbye_ping_ruoli),
         )
         await interaction.response.send_message(
-            f"Goodbye message {'attivato' if enabled else 'disattivato'}.", ephemeral=True
+            await testo_per(interaction, "greetings_goodbye_message", v1=(await testo_per(interaction, "greetings_attivato")) if enabled else (await testo_per(interaction, "greetings_disattivato"))), ephemeral=True
         )
 
     @comando_di_gruppo(
@@ -643,7 +642,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
@@ -655,7 +654,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         )
         if enabled and canale_finale is None:
             await interaction.response.send_message(
-                "Specifica un canale per attivare il boost message.", ephemeral=True
+                await testo_per(interaction, "greetings_specifica_un_canale_per_attivare_3"), ephemeral=True
             )
             return
 
@@ -673,7 +672,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             ping_ruoli=_ping_ruoli(interaction, message, config_attuale.boost_ping_ruoli),
         )
         await interaction.response.send_message(
-            f"Boost message {'attivato' if enabled else 'disattivato'}.", ephemeral=True
+            await testo_per(interaction, "greetings_boost_message", v1=(await testo_per(interaction, "greetings_attivato")) if enabled else (await testo_per(interaction, "greetings_disattivato"))), ephemeral=True
         )
 
     @comando_di_gruppo(
@@ -709,7 +708,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
         colore = None
@@ -717,17 +716,17 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             colore = colore_valido(colore_testo)
             if colore is None:
                 await interaction.response.send_message(
-                    "Il colore va scritto come #RRGGBB, per esempio #FFFFFF.", ephemeral=True
+                    await testo_per(interaction, "greetings_il_colore_va_scritto_come"), ephemeral=True
                 )
                 return
         if sfondo is not None:
             if sfondo.size > MAX_SFONDO_BYTE:
                 await interaction.response.send_message(
-                    "Lo sfondo pesa troppo: il limite è 3 MB.", ephemeral=True
+                    await testo_per(interaction, "greetings_lo_sfondo_pesa_troppo_il"), ephemeral=True
                 )
                 return
             if not (sfondo.content_type or "").startswith("image/"):
-                await interaction.response.send_message("Lo sfondo deve essere un'immagine.", ephemeral=True)
+                await interaction.response.send_message(await testo_per(interaction, "greetings_lo_sfondo_deve_essere_un"), ephemeral=True)
                 return
         # Il lavoro con l'immagine può durare qualche secondo.
         await interaction.response.defer(ephemeral=True)
@@ -737,12 +736,12 @@ class GreetingsCog(CogConGruppi, commands.Cog):
                 pronto = await run_image_task(prepara_sfondo, await sfondo.read())
             except ImmagineTroppoGrande:
                 await interaction.followup.send(
-                    "Lo sfondo ha troppi pixel: il limite è 16 megapixel (circa 4000×4000).", ephemeral=True
+                    await testo_per(interaction, "greetings_lo_sfondo_ha_troppi_pixel"), ephemeral=True
                 )
                 return
             except Exception:
                 await interaction.followup.send(
-                    "Non riesco ad aprire lo sfondo: usa un PNG, JPEG o WebP.", ephemeral=True
+                    await testo_per(interaction, "greetings_non_riesco_ad_aprire_lo"), ephemeral=True
                 )
                 return
         attuale = await greetings_repo.get_config(guild.id)
@@ -783,7 +782,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None or not isinstance(interaction.user, discord.Member):
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
@@ -801,7 +800,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         except Exception:
             logger.exception("Anteprima del messaggio non riuscita nel server %s.", guild.id)
             await interaction.response.send_message(
-                "Non riesco a mostrare l'anteprima di questo messaggio.", ephemeral=True
+                await testo_per(interaction, "greetings_non_riesco_mostrare_anteprima_di"), ephemeral=True
             )
             return
         if kind.value == "welcome" and config.welcome_image_enabled:

@@ -33,6 +33,7 @@ from core.command_access import Livello, richiedi
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.fun_logic import MAX_TEMA_MISURA, compute_misura, tema_ammesso
+from core.i18n import testo_per
 from core.repositories.counting_game_repo import counting_game_repo
 from core.moneta_server import aggiungi_moneta
 from core.repositories.leveling_repo import leveling_repo
@@ -75,13 +76,12 @@ class CoinGamesCog(CogConGruppi, commands.Cog):
         """Vero (dopo aver risposto) se il comando non può girare: fuori da un server o modulo spento."""
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return True
         if not await db.is_module_active_for_guild(interaction.guild.id, MODULE_FUN):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return True
@@ -112,14 +112,13 @@ class CoinGamesCog(CogConGruppi, commands.Cog):
             return
         if not await db.is_module_active_for_guild(interaction.guild.id, MODULE_LEVELING):
             await interaction.response.send_message(
-                "Le coin vivono nel modulo Livelli, che qui non è attivo: "
-                "un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "coingames_le_coin_vivono_nel_modulo"),
                 ephemeral=True,
             )
             return
         if gioco.value == "monetina" and (scelta is None or scelta.value not in LATI_MONETINA):
             await interaction.response.send_message(
-                "Per la monetina scegli testa o croce.", ephemeral=True
+                await testo_per(interaction, "coingames_per_la_monetina_scegli_testa"), ephemeral=True
             )
             return
 
@@ -144,13 +143,13 @@ class CoinGamesCog(CogConGruppi, commands.Cog):
             )
             if resto > 0:
                 await interaction.response.send_message(
-                    f"Piano! Aspetta ancora {resto} secondi tra una partita e l'altra.",
+                    await testo_per(interaction, "coingames_piano_aspetta_ancora_secondi_tra", resto=resto),
                     ephemeral=True,
                 )
                 return
             totali = await leveling_repo.get_totals(interaction.guild.id, interaction.user.id)
             await interaction.response.send_message(
-                f"Non hai abbastanza coin: ne hai **{totali.coins_total}**, ne servono **{puntata}**.",
+                await testo_per(interaction, "coingames_non_hai_abbastanza_coin_ne", coins_total=totali.coins_total, puntata=puntata),
                 ephemeral=True,
             )
             return
@@ -194,18 +193,16 @@ class CoinGamesCog(CogConGruppi, commands.Cog):
             return
         if not tema_ammesso(tema):
             await interaction.response.send_message(
-                "Su questo tema non misuro: scegline un altro (niente caratteristiche "
-                "personali come origine, religione, salute o orientamento).",
+                await testo_per(interaction, "coingames_su_questo_tema_non_misuro"),
                 ephemeral=True,
             )
             return
         bersaglio = membro or interaction.user
         percentuale = compute_misura(bersaglio.id, tema, datetime.now(timezone.utc).date())
         embed = discord.Embed(
-            title="📏 Misura",
+            title=await testo_per(interaction, "coingames_misura"),
             description=(
-                f"**{tema.strip()}** di **{bersaglio.display_name}**\n\n"
-                f"{_barra(percentuale)} **{percentuale}%**\n\nDomani potrebbe cambiare."
+                await testo_per(interaction, "coingames_di_domani_potrebbe_cambiare", v1=tema.strip(), display_name=bersaglio.display_name, v3=_barra(percentuale), percentuale=percentuale)
             ),
             color=discord.Color.blurple(),
         )
@@ -233,7 +230,7 @@ class CoinGamesCog(CogConGruppi, commands.Cog):
         guild_id = interaction.guild.id
         if azione.value == "imposta":
             if canale is None:
-                await interaction.response.send_message("Indica il canale.", ephemeral=True)
+                await interaction.response.send_message(await testo_per(interaction, "coingames_indica_il_canale"), ephemeral=True)
                 return
             motivo = motivo_se_il_bot_non_puo(
                 canale, interaction.guild.me, PERMESSI_DI_REAZIONE
@@ -245,24 +242,22 @@ class CoinGamesCog(CogConGruppi, commands.Cog):
                 return
             await counting_game_repo.set_channel(guild_id, canale.id)
             await interaction.response.send_message(
-                f"✅ Si conta in {canale.mention}: scrivete **1**, poi **2**, e così via, "
-                "a turno (nessuno due volte di fila). Chi sbaglia riporta tutto a zero.",
+                await testo_per(interaction, "coingames_si_conta_in_scrivete_poi", mention=canale.mention),
                 ephemeral=True,
             )
         elif azione.value == "spegni":
             spento = await counting_game_repo.disable(guild_id)
             await interaction.response.send_message(
-                "✅ Gioco del conteggio spento." if spento else "Il gioco non era attivo.",
+                await testo_per(interaction, "coingames_gioco_del_conteggio_spento") if spento else await testo_per(interaction, "coingames_il_gioco_non_era_attivo"),
                 ephemeral=True,
             )
         else:
             stato = await counting_game_repo.get(guild_id)
             if stato is None:
-                await interaction.response.send_message("Il gioco non è attivo.", ephemeral=True)
+                await interaction.response.send_message(await testo_per(interaction, "coingames_il_gioco_non_attivo"), ephemeral=True)
                 return
             await interaction.response.send_message(
-                f"Canale: <#{stato.channel_id}> · Ultimo numero: **{stato.current}** · "
-                f"Record: **{stato.best}**",
+                await testo_per(interaction, "coingames_canale_ultimo_numero_record", channel_id=stato.channel_id, current=stato.current, best=stato.best),
                 ephemeral=True,
             )
 

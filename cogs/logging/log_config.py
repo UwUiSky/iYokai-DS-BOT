@@ -26,6 +26,7 @@ from core import channel_router as router
 from core.channel_router import DESCRIZIONE_TIPO, SETTING_LOG_CHANNEL, TIPI_LOG, TIPO_EVENTI
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.message_log_logic import (
     GENERI_IGNORA,
     IGNORATI_MAX_PER_SERVER,
@@ -158,14 +159,14 @@ class LogConfigCog(CogConGruppi, commands.Cog):
     ) -> None:
         guild = interaction.guild
         if guild is None:
-            await interaction.response.send_message("Questo comando funziona solo in un server.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "ruolistrumen_questo_comando_funziona_solo_in"), ephemeral=True)
             return
         repo = log_forum_service.log_forum_repo
         if forum is None:
             tolta = await repo.togli_forum(guild.id, dimensione)
             log_forum_service.invalida(guild.id)
             await interaction.response.send_message(
-                "Vista spenta. I post già creati restano nel forum." if tolta else "Questa vista non era accesa.",
+                await testo_per(interaction, "logconfig_vista_spenta_post_gia_creati") if tolta else await testo_per(interaction, "logconfig_questa_vista_non_era_accesa"),
                 ephemeral=True,
             )
             return
@@ -191,7 +192,7 @@ class LogConfigCog(CogConGruppi, commands.Cog):
     async def crea_canali(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
         if guild is None:
-            await interaction.response.send_message("Questo comando funziona solo in un server.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "ruolistrumen_questo_comando_funziona_solo_in"), ephemeral=True)
             return
         mancano = permessi_mancanti(guild.me.guild_permissions, PERMESSI_CANALI)
         if mancano:
@@ -201,8 +202,7 @@ class LogConfigCog(CogConGruppi, commands.Cog):
             return
         if len(guild.channels) + 1 + len(TIPI_LOG) > MAX_CANALI_SERVER:
             await interaction.response.send_message(
-                f"Il server è quasi al limite di {MAX_CANALI_SERVER} canali: non c'è posto per "
-                f"{1 + len(TIPI_LOG)} canali nuovi.",
+                await testo_per(interaction, "logconfig_il_server_quasi_al_limite", v1=MAX_CANALI_SERVER, v2=1 + len(TIPI_LOG)),
                 ephemeral=True,
             )
             return
@@ -241,7 +241,7 @@ class LogConfigCog(CogConGruppi, commands.Cog):
     async def crea_forum(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
         if guild is None:
-            await interaction.response.send_message("Questo comando funziona solo in un server.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "ruolistrumen_questo_comando_funziona_solo_in"), ephemeral=True)
             return
         mancano = permessi_mancanti(guild.me.guild_permissions, PERMESSI_FORUM)
         if mancano:
@@ -251,7 +251,7 @@ class LogConfigCog(CogConGruppi, commands.Cog):
             return
         if len(guild.channels) + 1 > MAX_CANALI_SERVER:
             await interaction.response.send_message(
-                f"Il server ha già {MAX_CANALI_SERVER} canali.", ephemeral=True
+                await testo_per(interaction, "logconfig_il_server_ha_gia_canali", v1=MAX_CANALI_SERVER), ephemeral=True
             )
             return
         await interaction.response.defer(ephemeral=True)
@@ -262,8 +262,7 @@ class LogConfigCog(CogConGruppi, commands.Cog):
         except discord.HTTPException as errore:
             logger.warning("crea-forum fallito (server %s): %s", guild.id, errore)
             await interaction.followup.send(
-                "Non sono riuscito a creare il forum. Servono le Community attive sul server "
-                "e il permesso Gestire i canali.",
+                await testo_per(interaction, "logconfig_non_sono_riuscito_creare_il"),
                 ephemeral=True,
             )
             return
@@ -271,8 +270,7 @@ class LogConfigCog(CogConGruppi, commands.Cog):
             await router.output_channel_repo.imposta(guild.id, tipo, forum.id)
         await db.set_guild_setting(guild.id, SETTING_LOG_CHANNEL, forum.id)
         await interaction.followup.send(
-            f"Fatto: i log vanno in {forum.mention}, con un post per tipo "
-            f"(nascono al primo log). Ricorda di attivare il modulo con /admin setup attiva.",
+            await testo_per(interaction, "logconfig_fatto_log_vanno_in_con", mention=forum.mention),
             ephemeral=True,
         )
 
@@ -306,7 +304,7 @@ class LogConfigCog(CogConGruppi, commands.Cog):
         espressione: app_commands.Range[str, 1, REGEX_MAX_LUNGHEZZA] | None = None,
     ) -> None:
         if interaction.guild is None:
-            await interaction.response.send_message("Questo comando funziona solo in un server.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "ruolistrumen_questo_comando_funziona_solo_in"), ephemeral=True)
             return
         guild_id = interaction.guild.id
         if azione == "elenco":
@@ -351,7 +349,7 @@ class LogConfigCog(CogConGruppi, commands.Cog):
     )
     async def eventi(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
-            await interaction.response.send_message("Questo comando funziona solo in un server.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "ruolistrumen_questo_comando_funziona_solo_in"), ephemeral=True)
             return
         spenti = await log_eventi_repo.spenti(interaction.guild.id)
         await interaction.response.send_message(

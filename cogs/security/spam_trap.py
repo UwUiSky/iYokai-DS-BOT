@@ -328,13 +328,13 @@ class StaffDecisionView(BaseView):
             or not getattr(interaction.user.guild_permissions, permesso)
         ):
             await interaction.response.send_message(
-                "Non hai il permesso per questa azione.", ephemeral=True
+                await testo_per(interaction, "spamtrap_non_hai_il_permesso_per"), ephemeral=True
             )
             return
         chiave = (self.guild_id, self.user_id)
         if chiave in _DECISIONI_IN_CORSO:
             await interaction.response.send_message(
-                "Un altro moderatore sta già decidendo per questo utente.", ephemeral=True
+                await testo_per(interaction, "spamtrap_un_altro_moderatore_sta_gia"), ephemeral=True
             )
             return
         _DECISIONI_IN_CORSO.add(chiave)
@@ -358,7 +358,7 @@ class StaffDecisionView(BaseView):
         deciso = await self._gia_deciso(interaction)
         if deciso is not None:
             await interaction.followup.send(
-                f"Già deciso: **{deciso.action_type}** (caso #{deciso.case_number}).", ephemeral=True
+                await testo_per(interaction, "spamtrap_gia_deciso_caso", action_type=deciso.action_type, case_number=deciso.case_number), ephemeral=True
             )
             try:
                 await interaction.edit_original_response(
@@ -381,7 +381,7 @@ class StaffDecisionView(BaseView):
                 await interaction.followup.send(motivo, ephemeral=True)
                 return
         elif azione == "kick":
-            await interaction.followup.send("L'utente non è più nel server.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "spamtrap_utente_non_piu_nel_server"), ephemeral=True)
             return
         try:
             if azione == "ban":
@@ -393,7 +393,7 @@ class StaffDecisionView(BaseView):
                 await bot_roles.espelli(membro, reason=MOTIVO_STAFF)
         except discord.HTTPException:
             await interaction.followup.send(
-                "Non ci sono riuscito: controlla i miei permessi e la posizione del mio ruolo.",
+                await testo_per(interaction, "spamtrap_non_ci_sono_riuscito_controlla"),
                 ephemeral=True,
             )
             return
@@ -403,7 +403,7 @@ class StaffDecisionView(BaseView):
         )
         try:
             await interaction.edit_original_response(
-                content=f"Deciso da {interaction.user.mention}: **{azione}** (caso #{numero}).",
+                content=await testo_per(interaction, "spamtrap_deciso_da_caso", pubblica=True, mention=interaction.user.mention, azione=azione, numero=numero),
                 view=StaffDecisionView(self.guild_id, self.user_id, disabled=True),
                 allowed_mentions=discord.AllowedMentions.none(),
             )
@@ -444,7 +444,7 @@ class AppealActionsView(BaseView):
             or not interaction.user.guild_permissions.ban_members
         ):
             await interaction.response.send_message(
-                "Solo chi ha il permesso di bannare può usare questi pulsanti.",
+                await testo_per(interaction, "spamtrap_solo_chi_ha_il_permesso"),
                 ephemeral=True,
             )
             return False
@@ -471,7 +471,7 @@ class AppealActionsView(BaseView):
 
         guild = interaction.client.get_guild(self.guild_id)
         if guild is None:
-            await interaction.followup.send("I'm no longer in that server.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "spamtrap_no_longer_in_that_server"), ephemeral=True)
             return
 
         try:
@@ -553,7 +553,7 @@ class StaffReplyModal(BaseModal, title="Reply to user"):
         except discord.HTTPException:
             await interaction.followup.send(await testo_per(interaction, "trap_dm_non_consegnato"), ephemeral=True)
             return
-        await interaction.followup.send("Message sent.", ephemeral=True)
+        await interaction.followup.send(await testo_per(interaction, "spamtrap_message_sent"), ephemeral=True)
 
 
 class SpamTrapCog(CogConGruppi, commands.Cog):
@@ -632,15 +632,14 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.",
+                await testo_per(interaction, "guild_only_command"),
                 ephemeral=True,
             )
             return
 
         if trap_channel is not None and log_channel is not None and trap_channel.id == log_channel.id:
             await interaction.response.send_message(
-                "Il canale trappola e il canale dei log devono essere due canali diversi: "
-                "chi scrive nella trappola viene bannato, e lo staff deve poter scrivere nei log.",
+                await testo_per(interaction, "spamtrap_il_canale_trappola_il_canale"),
                 ephemeral=True,
             )
             return
@@ -680,12 +679,7 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
                 except discord.HTTPException:
                     pass
             await interaction.followup.send(
-                "Non sono riuscito a creare i canali dello Spam Trap.\n"
-                f"Discord ha risposto: «{str(errore)[:300]}»\n"
-                "Un server può avere al massimo 500 canali (50 per categoria) e mi "
-                "serve il permesso Gestisci canali. Se il limite è raggiunto elimina "
-                "un canale, oppure indica due canali che esistono già con le opzioni "
-                "`trap_channel` e `log_channel`.",
+                await testo_per(interaction, "spamtrap_non_sono_riuscito_creare_canali", v1=str(errore)[:300]),
                 ephemeral=True,
             )
             return

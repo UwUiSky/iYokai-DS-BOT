@@ -19,6 +19,7 @@ from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
+from core.i18n import testo_per
 from core.premium import PremiumModule, registry
 from core.scheduler import in_seconds, scheduler
 from cogs.moderation._shared import (
@@ -45,7 +46,7 @@ MAX_SLOWMODE_SECONDS = 21600
 async def _log(interaction: discord.Interaction, embed: discord.Embed) -> None:
     """Riga nel log di moderazione, con chi ha dato il comando (M 1.8)."""
     copia = embed.copy()
-    copia.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
+    copia.add_field(name=await testo_per(interaction, "channelcontr_moderatore", pubblica=True), value=interaction.user.mention, inline=True)
     await post_to_mod_log(interaction.guild, copia)
 
 
@@ -114,7 +115,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
         target = channel or interaction.channel
         if not isinstance(target, discord.TextChannel):
             await interaction.response.send_message(
-                "Questo comando funziona solo su canali testuali.", ephemeral=True
+                await testo_per(interaction, "channelcontr_questo_comando_funziona_solo_su"), ephemeral=True
             )
             return
 
@@ -127,7 +128,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
                 return
             if secondi > MAX_LOCK_SECONDS:
                 await interaction.response.send_message(
-                    "Un lock a tempo dura al massimo 30 giorni.", ephemeral=True
+                    await testo_per(interaction, "channelcontr_un_lock_tempo_dura_al"), ephemeral=True
                 )
                 return
 
@@ -142,7 +143,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
             )
         except discord.HTTPException:
             await interaction.response.send_message(
-                "Non ho i permessi per modificare questo canale.", ephemeral=True
+                await testo_per(interaction, "channelcontr_non_ho_permessi_per_modificare"), ephemeral=True
             )
             return
 
@@ -166,12 +167,12 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
             )
 
         embed = discord.Embed(
-            title="🔒 Canale bloccato",
+            title=await testo_per(interaction, "channelcontr_canale_bloccato"),
             description=descrizione,
             color=discord.Color.red(),
         )
         if reason:
-            embed.add_field(name="Motivo", value=reason)
+            embed.add_field(name=await testo_per(interaction, "channelcontr_motivo"), value=reason)
         await interaction.response.send_message(embed=embed)
         await _log(interaction, embed)
 
@@ -192,7 +193,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
         target = channel or interaction.channel
         if not isinstance(target, discord.TextChannel):
             await interaction.response.send_message(
-                "Questo comando funziona solo su canali testuali.", ephemeral=True
+                await testo_per(interaction, "channelcontr_questo_comando_funziona_solo_su"), ephemeral=True
             )
             return
 
@@ -214,15 +215,15 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
             )
         except discord.HTTPException:
             await interaction.response.send_message(
-                "Non ho i permessi per modificare questo canale.", ephemeral=True
+                await testo_per(interaction, "channelcontr_non_ho_permessi_per_modificare"), ephemeral=True
             )
             return
 
         await scheduler.cancel_for_user(interaction.guild.id, target.id, SCHEDULED_CHANNEL_UNLOCK)
 
         embed = discord.Embed(
-            title="🔓 Canale sbloccato",
-            description=f"{target.mention} è stato sbloccato.",
+            title=await testo_per(interaction, "channelcontr_canale_sbloccato"),
+            description=await testo_per(interaction, "channelcontr_stato_sbloccato", mention=target.mention),
             color=discord.Color.green(),
         )
         await interaction.response.send_message(embed=embed)
@@ -249,7 +250,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
         target = channel or interaction.channel
         if not isinstance(target, discord.TextChannel):
             await interaction.response.send_message(
-                "Questo comando funziona solo su canali testuali.", ephemeral=True
+                await testo_per(interaction, "channelcontr_questo_comando_funziona_solo_su"), ephemeral=True
             )
             return
 
@@ -257,7 +258,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
             await target.edit(slowmode_delay=seconds)
         except discord.HTTPException:
             await interaction.response.send_message(
-                "Non ho i permessi per modificare questo canale.", ephemeral=True
+                await testo_per(interaction, "channelcontr_non_ho_permessi_per_modificare"), ephemeral=True
             )
             return
 
@@ -266,7 +267,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
         else:
             messaggio = f"Slowmode impostato a {seconds}s in {target.mention}."
         await interaction.response.send_message(messaggio)
-        embed = discord.Embed(title="🐌 Slowmode", description=messaggio, color=discord.Color.blurple())
+        embed = discord.Embed(title=await testo_per(interaction, "channelcontr_slowmode"), description=messaggio, color=discord.Color.blurple())
         await _log(interaction, embed)
 
 

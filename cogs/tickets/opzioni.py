@@ -34,6 +34,7 @@ from core import ticket_opzioni_logic as logica
 from core.command_access import Livello, richiedi
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.repositories.ticket_form_repo import PannelloTicket, ticket_form_repo
 from core.repositories.ticket_opzioni_repo import TroppeRegole, ticket_opzioni_repo
 from core.role_safety import check_role_assignable
@@ -90,12 +91,12 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
     @staticmethod
     async def _pannello(interaction: discord.Interaction, nome: str) -> PannelloTicket | None:
         if interaction.guild is None:
-            await interaction.response.send_message("Questo comando funziona solo in un server.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "ruolistrumen_questo_comando_funziona_solo_in"), ephemeral=True)
             return None
         panel = await ticket_form_repo.pannello_per_nome(interaction.guild.id, nome.strip())
         if panel is None:
             await interaction.response.send_message(
-                f"Nessun pannello chiamato **{nome.strip()[:100]}**.", ephemeral=True, allowed_mentions=NIENTE
+                await testo_per(interaction, "opzioni_nessun_pannello_chiamato", v1=nome.strip()[:100]), ephemeral=True, allowed_mentions=NIENTE
             )
         return panel
 
@@ -204,7 +205,7 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
             regole = await ticket_opzioni_repo.imposta_regola(panel.id, ruolo.id, permetti)
         except TroppeRegole:
             await interaction.response.send_message(
-                f"Il pannello ha già {logica.MAX_REGOLE_ACCESSO} regole: togline una.", ephemeral=True
+                await testo_per(interaction, "opzioni_il_pannello_ha_gia_regole", v1=logica.MAX_REGOLE_ACCESSO), ephemeral=True
             )
             return
         righe = [f"{i + 1}. <@&{rid}> → {'permetti' if p else 'nega'}" for i, (rid, p) in enumerate(regole)]
@@ -470,12 +471,12 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
                 for tid, is_role, m in await ticket_opzioni_repo.lista_nera(guild.id)
             ]
             await interaction.response.send_message(
-                ("Lista nera dei ticket (le 25 più recenti):\n" + "\n".join(righe))[:2000] if righe else "La lista nera è vuota.",
+                ("Lista nera dei ticket (le 25 più recenti):\n" + "\n".join(righe))[:2000] if righe else await testo_per(interaction, "opzioni_la_lista_nera_vuota"),
                 ephemeral=True, allowed_mentions=NIENTE,
             )
             return
         if (utente is None) == (ruolo is None) or (ruolo is not None and ruolo.id == guild.id):
-            await interaction.response.send_message("Scegli un utente oppure un ruolo (non @everyone).", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "opzioni_scegli_un_utente_oppure_un"), ephemeral=True)
             return
         bersaglio = utente or ruolo
         if azione.value == "togli":
@@ -483,13 +484,13 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
             testo = f"{bersaglio.mention} può di nuovo aprire ticket." if tolto else f"{bersaglio.mention} non era in lista nera."
         else:
             if utente is not None and (utente.id == interaction.user.id or utente.bot):
-                await interaction.response.send_message("Non puoi mettere in lista nera te stesso o un bot.", ephemeral=True)
+                await interaction.response.send_message(await testo_per(interaction, "opzioni_non_puoi_mettere_in_lista"), ephemeral=True)
                 return
             try:
                 await ticket_opzioni_repo.blocca(guild.id, bersaglio.id, ruolo is not None, motivo, interaction.user.id)
             except TroppeRegole:
                 await interaction.response.send_message(
-                    f"La lista nera ha già {logica.MAX_LISTA_NERA} voci: togline qualcuna.", ephemeral=True
+                    await testo_per(interaction, "opzioni_la_lista_nera_ha_gia", v1=logica.MAX_LISTA_NERA), ephemeral=True
                 )
                 return
             testo = f"{bersaglio.mention} non può più aprire ticket. Lo staff resta escluso dal blocco."
@@ -508,7 +509,7 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
         if motivo is None:
             ripreso = await ticket_opzioni_repo.riprendi(guild.id)
             await interaction.response.send_message(
-                "Apertura dei ticket ripresa." if ripreso else "L'apertura dei ticket non era sospesa.", ephemeral=True
+                await testo_per(interaction, "opzioni_apertura_dei_ticket_ripresa") if ripreso else await testo_per(interaction, "opzioni_apertura_dei_ticket_non_era"), ephemeral=True
             )
             return
         fino = datetime.now(timezone.utc) + timedelta(hours=ore) if ore else None
@@ -522,17 +523,17 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
     @app_commands.describe(utente="L'utente")
     async def azzera_pausa(self, interaction: discord.Interaction, utente: discord.Member) -> None:
         if not await _is_ticket_staff(interaction):
-            await interaction.response.send_message("Solo lo staff dei ticket può farlo.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "opzioni_solo_lo_staff_dei_ticket"), ephemeral=True)
             return
         await ticket_opzioni_repo.azzera_pausa(interaction.guild.id, utente.id)
         await interaction.response.send_message(
-            f"{utente.mention} può aprire subito un altro ticket.", ephemeral=True, allowed_mentions=NIENTE
+            await testo_per(interaction, "opzioni_puo_aprire_subito_un_altro", mention=utente.mention), ephemeral=True, allowed_mentions=NIENTE
         )
 
     @comando_di_gruppo("ticket", nome="reperibile", descrizione="Entra o esci dallo staff avvisato a ogni nuovo ticket.")
     async def reperibile(self, interaction: discord.Interaction) -> None:
         if not await _is_ticket_staff(interaction):
-            await interaction.response.send_message("Solo lo staff dei ticket può farlo.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "opzioni_solo_lo_staff_dei_ticket"), ephemeral=True)
             return
         esito = await ticket_opzioni_repo.cambia_reperibile(interaction.guild.id, interaction.user.id)
         testo = {
@@ -563,7 +564,7 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
     ) -> None:
         guild = interaction.guild
         if guild is None or not await db.is_module_active_for_guild(guild.id, MODULE_TICKETS):
-            await interaction.response.send_message("Il sistema di ticket non è attivo su questo server.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "opzioni_il_sistema_di_ticket_non"), ephemeral=True)
             return
         panel = None
         if pannello is not None:
@@ -576,18 +577,18 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
             category = guild.get_channel(category_id) if category_id else None
         if not isinstance(category, discord.CategoryChannel):
             await interaction.response.send_message(
-                "Manca la categoria dei ticket: scegli un pannello o chiedi a un amministratore.", ephemeral=True
+                await testo_per(interaction, "opzioni_manca_la_categoria_dei_ticket"), ephemeral=True
             )
             return
         staff = await _membro_staff(interaction.user, guild.id, panel.id if panel else None)
         if (utente is not None or aggiungi_autore) and not staff:
             await interaction.response.send_message(
-                "Solo lo staff dei ticket può aprire per un altro utente o aggiungere l'autore del messaggio.",
+                await testo_per(interaction, "opzioni_solo_lo_staff_dei_ticket_2"),
                 ephemeral=True,
             )
             return
         if utente is not None and utente.bot:
-            await interaction.response.send_message("Non si apre un ticket per un bot.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "opzioni_non_si_apre_un_ticket"), ephemeral=True)
             return
         dati = {
             "motivo": motivo,

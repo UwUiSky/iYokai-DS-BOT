@@ -21,6 +21,7 @@ from discord.ext import commands
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.nome_logic import normalizza_nome
 from core.form_logic import (
     ACCEPTED, MAX_MODULI, MAX_NOME, MAX_RISPOSTA, MAX_TITOLO, REJECTED,
@@ -99,15 +100,15 @@ class FormsCog(CogConGruppi, commands.Cog):
 
     async def decidi(self, interaction: discord.Interaction, response_id: int, stato: str) -> None:
         if not isinstance(interaction.user, discord.Member) or not interaction.user.guild_permissions.manage_guild:
-            await interaction.response.send_message("Solo lo staff può decidere sulle candidature.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "forms_solo_lo_staff_puo_decidere"), ephemeral=True)
             return
         risposta = await form_repo.get_response(response_id)
         form = await form_repo.get_form_by_id(risposta.form_id) if risposta else None
         if risposta is None or form is None or risposta.guild_id != getattr(interaction.guild, "id", None):
-            await interaction.response.send_message("Questa candidatura non esiste più.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "forms_questa_candidatura_non_esiste_piu"), ephemeral=True)
             return
         if not puo_decidere(risposta.status) or not await form_repo.decide(response_id, stato, interaction.user.id):
-            await interaction.response.send_message("Questa candidatura è già stata decisa.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "forms_questa_candidatura_gia_stata_decisa"), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         decisa = await form_repo.get_response(response_id)
@@ -154,17 +155,17 @@ class FormsCog(CogConGruppi, commands.Cog):
         canale = guild.get_channel(form.review_channel_id) if guild else None
         if canale is None:
             await interaction.response.send_message(
-                "Il canale dove arrivano le candidature non esiste più: avvisa lo staff.", ephemeral=True
+                await testo_per(interaction, "forms_il_canale_dove_arrivano_le"), ephemeral=True
             )
             return
         await interaction.response.defer(ephemeral=True)
         try:
             risposta_id = await form_repo.add_response(form, interaction.user.id, valori)
         except asyncpg.ForeignKeyViolationError:
-            await interaction.followup.send("Questo modulo è stato eliminato mentre lo compilavi.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "forms_questo_modulo_stato_eliminato_mentre"), ephemeral=True)
             return
         if risposta_id is None:
-            await interaction.followup.send("Hai già una candidatura in attesa per questo modulo.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "forms_hai_gia_una_candidatura_in"), ephemeral=True)
             return
         try:
             risposta = await form_repo.get_response(risposta_id)
@@ -179,18 +180,18 @@ class FormsCog(CogConGruppi, commands.Cog):
             if not isinstance(errore, discord.HTTPException):
                 raise
             await interaction.followup.send(
-                "Non sono riuscito a consegnare la candidatura allo staff (permessi del canale). Riprova più tardi.",
+                await testo_per(interaction, "forms_non_sono_riuscito_consegnare_la"),
                 ephemeral=True,
             )
             return
         await form_repo.set_review_message(risposta_id, messaggio.id)
         self.bot.add_view(view, message_id=messaggio.id)
-        await interaction.followup.send("Candidatura inviata. Ti avviseremo in privato quando verrà decisa.", ephemeral=True)
+        await interaction.followup.send(await testo_per(interaction, "forms_candidatura_inviata_ti_avviseremo_in"), ephemeral=True)
 
     # ---------------------------------------------------------------- comandi
     async def _pronto(self, interaction: discord.Interaction) -> bool:
         if interaction.guild is None:
-            await interaction.response.send_message("Questo comando è disponibile solo dentro un server.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "guild_only_command"), ephemeral=True)
             return False
         if not await db.is_module_active_for_guild(interaction.guild.id, MODULE_FORMS):
             await interaction.response.send_message(_NON_ATTIVO, ephemeral=True)
@@ -218,7 +219,7 @@ class FormsCog(CogConGruppi, commands.Cog):
             return
         form = await form_repo.get_form(interaction.guild.id, nome)
         if form is None:
-            await interaction.response.send_message("Non c'è nessun modulo con questo nome.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "forms_non_nessun_modulo_con_questo"), ephemeral=True)
             return
         await interaction.response.send_modal(FormModal(self, form))
 
@@ -244,7 +245,7 @@ class FormsCog(CogConGruppi, commands.Cog):
         normalizzato = normalizza_nome(nome)
         if normalizzato is None:
             await interaction.response.send_message(
-                "Il nome può avere solo lettere minuscole (a-z), cifre, - e _, senza spazi.", ephemeral=True
+                await testo_per(interaction, "forms_il_nome_puo_avere_solo"), ephemeral=True
             )
             return
         nome = normalizzato
@@ -255,7 +256,7 @@ class FormsCog(CogConGruppi, commands.Cog):
         permessi = canale.permissions_for(interaction.guild.me)
         if not (permessi.view_channel and permessi.send_messages and permessi.embed_links):
             await interaction.response.send_message(
-                f"In {canale.mention} al bot servono i permessi per vedere, scrivere e incorporare link.",
+                await testo_per(interaction, "forms_in_al_bot_servono_permessi", mention=canale.mention),
                 ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
             )
             return
@@ -282,7 +283,7 @@ class FormsCog(CogConGruppi, commands.Cog):
             return
         fatto = await form_repo.delete_form(interaction.guild.id, nome)
         await interaction.response.send_message(
-            "Modulo eliminato, insieme alle sue risposte." if fatto else "Non c'è nessun modulo con questo nome.",
+            await testo_per(interaction, "forms_modulo_eliminato_insieme_alle_sue") if fatto else await testo_per(interaction, "forms_non_nessun_modulo_con_questo"),
             ephemeral=True,
         )
 
@@ -292,7 +293,7 @@ class FormsCog(CogConGruppi, commands.Cog):
             return
         moduli = await form_repo.list_forms(interaction.guild.id)
         if not moduli:
-            await interaction.response.send_message("Nessun modulo: creane uno con `/moduli candidature crea`.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "forms_nessun_modulo_creane_uno_con"), ephemeral=True)
             return
         righe = [f"`{f.name}`: {f.title} ({len(f.domande)} domande) → <#{f.review_channel_id}>" for f in moduli]
         await interaction.response.send_message("\n".join(righe), ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE)

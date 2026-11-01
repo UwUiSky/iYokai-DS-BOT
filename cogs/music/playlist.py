@@ -21,6 +21,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.i18n import testo_per
 from core.music_playlist_logic import (
     FILE_MAX_BYTE,
     MAX_BRANI_PER_PLAYLIST,
@@ -104,14 +105,14 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
             return
         musica = self._musica()
         if musica is None:
-            await interaction.response.send_message("La musica non è disponibile ora.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "soundboard_la_musica_non_disponibile_ora"), ephemeral=True)
             return
         player = await musica._giocatore_attivo(interaction)
         if player is None:
             return
         brani, fuori = brani_da_coda(player.current, player.queue)
         if not brani:
-            await interaction.response.send_message("Non c'è niente da salvare: la coda è vuota.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "playlist_non_niente_da_salvare_la"), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         try:
@@ -133,14 +134,14 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
     ) -> None:
         musica = self._musica()
         if musica is None:
-            await interaction.response.send_message("La musica non è disponibile ora.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "soundboard_la_musica_non_disponibile_ora"), ephemeral=True)
             return
         if not await musica._controlli_base(interaction):
             return
         await interaction.response.defer()
         brani = await music_playlist_repo.get(interaction.user.id, nome)
         if not brani:
-            await interaction.followup.send("Non hai una playlist con questo nome.")
+            await interaction.followup.send(await testo_per(interaction, "playlist_non_hai_una_playlist_con", pubblica=True))
             return
 
         async def cerca(nodo, _nodo_locale):
@@ -158,12 +159,12 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
         riassunti = await music_playlist_repo.list_for_user(interaction.user.id)
         if not riassunti:
             await interaction.response.send_message(
-                "Non hai playlist salvate. Mettine una in coda e salvala con il comando salva.",
+                await testo_per(interaction, "playlist_non_hai_playlist_salvate_mettine"),
                 ephemeral=True,
             )
             return
         embed = discord.Embed(
-            title=f"💾 Le tue playlist ({len(riassunti)}/{MAX_PLAYLIST_PER_UTENTE})",
+            title=await testo_per(interaction, "playlist_le_tue_playlist", v1=len(riassunti), v2=MAX_PLAYLIST_PER_UTENTE),
             description="\n".join(riga_elenco(r.nome, r.numero_brani, r.durata_ms) for r in riassunti),
             color=discord.Color.blurple(),
         )
@@ -178,7 +179,7 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
     ) -> None:
         tolta = await music_playlist_repo.delete(interaction.user.id, nome)
         await interaction.response.send_message(
-            f"🗑️ Playlist **{nome}** cancellata." if tolta else "Non hai una playlist con questo nome.",
+            await testo_per(interaction, "playlist_playlist_cancellata", nome=nome) if tolta else await testo_per(interaction, "playlist_non_hai_una_playlist_con"),
             ephemeral=True,
         )
 
@@ -192,12 +193,12 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
     ) -> None:
         brani = await music_playlist_repo.get(interaction.user.id, nome)
         if not brani:
-            await interaction.response.send_message("Non hai una playlist con questo nome.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "playlist_non_hai_una_playlist_con"), ephemeral=True)
             return
         nome_file = re.sub(r"[^\w-]+", "_", nome)[:40] or "playlist"
         file = discord.File(io.BytesIO(file_esportazione(nome, brani)), filename=f"{nome_file}.json")
         await interaction.response.send_message(
-            f"📄 Playlist **{nome}** ({len(brani)} brani). La ricarichi con il comando importa.",
+            await testo_per(interaction, "playlist_playlist_brani_la_ricarichi_con", nome=nome, v2=len(brani)),
             file=file,
             ephemeral=True,
         )
@@ -218,14 +219,14 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
             return
         if file.size > FILE_MAX_BYTE:
             await interaction.response.send_message(
-                f"Il file supera {FILE_MAX_BYTE // 1024} KB.", ephemeral=True
+                await testo_per(interaction, "playlist_il_file_supera_kb", v1=FILE_MAX_BYTE // 1024), ephemeral=True
             )
             return
         await interaction.response.defer(ephemeral=True)
         try:
             contenuto = await file.read()
         except discord.HTTPException:
-            await interaction.followup.send("Non riesco a leggere il file.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "playlist_non_riesco_leggere_il_file"), ephemeral=True)
             return
         brani, errore = leggi_file_importazione(contenuto)
         if errore:
@@ -237,7 +238,7 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
             await interaction.followup.send(MSG_TETTO, ephemeral=True)
             return
         await interaction.followup.send(
-            f"📥 Playlist **{pulito}** importata: {len(brani)} brani.", ephemeral=True
+            await testo_per(interaction, "playlist_playlist_importata_brani", pulito=pulito, v2=len(brani)), ephemeral=True
         )
 
 

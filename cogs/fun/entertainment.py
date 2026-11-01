@@ -53,6 +53,7 @@ from core.fun_extra_logic import tira_formula
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
+from core.i18n import testo_per
 from core.image_manipulation import apply_blur, apply_grayscale, apply_invert, apply_pixelate
 from core.image_search_fetcher import image_search_fetcher
 from core.meme_logic import render_meme
@@ -77,14 +78,13 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return False
 
         if not await db.is_module_active_for_guild(guild.id, MODULE_FUN):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return False
@@ -102,13 +102,13 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
             return True
         if not (image.content_type or "").startswith("image/"):
             await interaction.response.send_message(
-                "L'allegato non è un'immagine.", ephemeral=True
+                await testo_per(interaction, "app_fun_non_immagine"), ephemeral=True
             )
             return False
         if image.size > MAX_IMAGE_BYTES:
             limite_mb = MAX_IMAGE_BYTES // (1024 * 1024)
             await interaction.response.send_message(
-                f"L'immagine è troppo grande (massimo {limite_mb} MB).", ephemeral=True
+                await testo_per(interaction, "entertainmen_immagine_troppo_grande_massimo_mb", limite_mb=limite_mb), ephemeral=True
             )
             return False
         return True
@@ -152,12 +152,12 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
 
         dati = await self._scarica_immagine(interaction, image, utente)
         if dati is None:
-            await interaction.followup.send("Non sono riuscito a scaricare l'immagine.")
+            await interaction.followup.send(await testo_per(interaction, "app_immagine_non_scaricata", pubblica=True))
             return
 
         risultato = await run_image_task(elabora, dati, *argomenti)
         if risultato is None:
-            await interaction.followup.send("Non sono riuscito a elaborare questa immagine.")
+            await interaction.followup.send(await testo_per(interaction, "app_immagine_non_elaborata", pubblica=True))
             return
 
         await interaction.followup.send(
@@ -201,12 +201,12 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
 
         if sides < 2 or sides > 1000:
             await interaction.response.send_message(
-                "Il dado deve avere tra 2 e 1000 facce.", ephemeral=True
+                await testo_per(interaction, "entertainmen_il_dado_deve_avere_tra"), ephemeral=True
             )
             return
 
         risultato = roll_dice(self._rng, sides=sides)
-        await interaction.response.send_message(f"🎲 Hai tirato un **{risultato}** (d{sides}).")
+        await interaction.response.send_message(await testo_per(interaction, "entertainmen_hai_tirato_un", pubblica=True, risultato=risultato, sides=sides))
 
     @comando_di_gruppo("fun", nome="rps", descrizione="Carta, forbici, sasso contro il bot.")
     @app_commands.describe(scelta="Sasso, carta o forbici")
@@ -245,7 +245,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
 
         risposta = answer_8ball(self._rng)
         embed = discord.Embed(
-            title="🎱 Palla magica 8",
+            title=await testo_per(interaction, "entertainmen_palla_magica", pubblica=True),
             description=f"**Domanda:** {domanda}\n**Risposta:** {risposta}",
             color=discord.Color.dark_purple(),
         )
@@ -385,7 +385,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
 
         if not top_text and not bottom_text:
             await interaction.response.send_message(
-                "Serve almeno un testo (sopra o sotto).", ephemeral=True
+                await testo_per(interaction, "entertainmen_serve_almeno_un_testo_sopra"), ephemeral=True
             )
             return
 
@@ -411,7 +411,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
         url = await animal_fetcher.fetch_image_url(specie.value)
         if url is None:
             await interaction.followup.send(
-                "Non sono riuscito a recuperare un'immagine in questo momento. Riprova più tardi.",
+                await testo_per(interaction, "entertainmen_non_sono_riuscito_recuperare_un"),
                 ephemeral=True,
             )
             return
@@ -448,8 +448,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
 
         if not config.PIXABAY_API_KEY:
             await interaction.response.send_message(
-                "La ricerca immagini non è configurata su questo bot: serve una chiave "
-                "gratuita di Pixabay (PIXABAY_API_KEY) — vedi .env.example.",
+                await testo_per(interaction, "entertainmen_la_ricerca_immagini_non_configurata"),
                 ephemeral=True,
             )
             return
@@ -457,7 +456,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
         attesa = self._secondi_di_pausa(interaction.user.id)
         if attesa:
             await interaction.response.send_message(
-                f"Aspetta {attesa} secondi prima di una nuova ricerca.", ephemeral=True
+                await testo_per(interaction, "entertainmen_aspetta_secondi_prima_di_una", attesa=attesa), ephemeral=True
             )
             return
         self._segna_ricerca(interaction.user.id)
@@ -469,14 +468,14 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
         )
         if risultato is None:
             await interaction.followup.send(
-                "Nessun risultato per questa ricerca (o Pixabay non risponde).", ephemeral=True
+                await testo_per(interaction, "app_fun_nessun_risultato"), ephemeral=True
             )
             return
 
         nome_file = f"pixabay.{risultato.estensione}"
         embed = discord.Embed(
-            title="Risultato della ricerca",
-            description=f"Immagine da [Pixabay]({risultato.pagina})",
+            title=await testo_per(interaction, "entertainmen_risultato_della_ricerca"),
+            description=await testo_per(interaction, "entertainmen_immagine_da_pixabay", pagina=risultato.pagina),
             color=discord.Color.blue(),
         )
         embed.set_image(url=f"attachment://{nome_file}")

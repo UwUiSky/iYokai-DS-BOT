@@ -34,6 +34,7 @@ from discord.ext import commands
 from cogs.logging import message_logs
 from core import channel_router as router
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.i18n import testo_per
 from core.message_log_logic import ARCHIVIO_BYTE_MAX, ARCHIVIO_MESSAGGI_MAX, file_archivio
 from core.repositories.event_log_repo import EventLogEntry, event_log_repo
 from core.repositories.log_eventi_repo import log_eventi_repo
@@ -156,7 +157,7 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
@@ -170,7 +171,7 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
             return
 
         embed = discord.Embed(
-            title=f"📜 Storico eventi — {member}",
+            title=await testo_per(interaction, "logsquery_storico_eventi", member=member),
             description=_format_entries(eventi),
             color=discord.Color.blurple(),
         )
@@ -197,7 +198,7 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
@@ -211,7 +212,7 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
             return
 
         embed = discord.Embed(
-            title=f"📜 Storico eventi — #{channel.name}",
+            title=await testo_per(interaction, "logsquery_storico_eventi_2", name=channel.name),
             description=_format_entries(eventi),
             color=discord.Color.blurple(),
         )
@@ -238,7 +239,7 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
@@ -269,7 +270,7 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
@@ -308,7 +309,7 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
         except discord.HTTPException as errore:
             logger.warning("Export dei log non inviato (server %s): %s", guild.id, errore)
             await interaction.followup.send(
-                "Non sono riuscito a inviare il file dell'export. Riprova tra poco.",
+                await testo_per(interaction, "logsquery_non_sono_riuscito_inviare_il"),
                 ephemeral=True,
             )
 
@@ -329,22 +330,22 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
         messaggi: app_commands.Range[int, 1, ARCHIVIO_MESSAGGI_MAX] = 200,
     ) -> None:
         if interaction.guild is None:
-            await interaction.response.send_message("Questo comando funziona solo in un server.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "ruolistrumen_questo_comando_funziona_solo_in"), ephemeral=True)
             return
         tuoi = canale.permissions_for(interaction.user)
         if not (tuoi.view_channel and tuoi.read_message_history):
-            await interaction.response.send_message("Non puoi leggere la cronologia di quel canale.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "logsquery_non_puoi_leggere_la_cronologia"), ephemeral=True)
             return
         miei = canale.permissions_for(interaction.guild.me)
         if router.canale_nascosto(canale) or not (miei.view_channel and miei.read_message_history):
             await interaction.response.send_message(
-                "Non posso leggere la cronologia di quel canale (mi serve «Leggere la cronologia»).", ephemeral=True
+                await testo_per(interaction, "logsquery_non_posso_leggere_la_cronologia"), ephemeral=True
             )
             return
         # Un archivio alla volta per server: 20.000 messaggi pesano su memoria e rate limit.
         if interaction.guild.id in _archivi_in_corso:
             await interaction.response.send_message(
-                "Sto già preparando un archivio per questo server. Riprova quando è pronto.", ephemeral=True
+                await testo_per(interaction, "logsquery_sto_gia_preparando_un_archivio"), ephemeral=True
             )
             return
         _archivi_in_corso.add(interaction.guild.id)
@@ -378,7 +379,7 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
         if troncato:
             limite = ARCHIVIO_BYTE_MAX // (1024 * 1024)
             await interaction.followup.send(
-                f"Mi sono fermato a {len(letti)} messaggi: oltre {limite} MiB di testo l'archivio non si fa.",
+                await testo_per(interaction, "logsquery_mi_sono_fermato_messaggi_oltre", v1=len(letti), limite=limite),
                 ephemeral=True,
             )
         try:
@@ -392,7 +393,7 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
                 )
         except discord.HTTPException as errore:
             logger.warning("Archivio del canale %s non inviato: %s", canale.id, errore)
-            await interaction.followup.send("Non sono riuscito a mandare il file. Riprova tra poco.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "logsquery_non_sono_riuscito_mandare_il"), ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:

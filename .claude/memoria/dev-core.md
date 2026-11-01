@@ -4,6 +4,7 @@
 28/10/2026 · ramo `feat/r12resto` (agente r12resto) · giro r12 (lotto «resto», migrazioni 0480-0499, D48-D50)
 
 ## In corso
+- r12lingue (21.1/21.6): ~45 cog nel catalogo it/en (strumento semi-automatico, frasi con variabili italiane lasciate). Postgres giu: test con DB da rilanciare (cog toccati: git diff main -- cogs). Prossimo: modalita server (`testo_guild` in core/i18n.py) per log/staff; resta ~150 frasi con variabili italiane e i log in funzioni sincrone. Smoke da fare.
 - Lotto r12 chiuso nel codice; resta solo: lanciare i test degli invarianti, commit e push. Smoke da fare (lo lancia l'orchestratore).
 - Rimandata a r12ai: 14.19 (voce di Yokai). Migrazioni usate: 0480 (log_forum), 0481 (progressi).
 - Prossimo giro: owner radio max_length (musica); 21.1 per cog di altre aree; #70 voci continuo/F8.

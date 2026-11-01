@@ -78,6 +78,7 @@ from core.channel_rename import (
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.repositories.ticket_form_repo import (
     DomandaModulo,
     PannelloGiaEsistente,
@@ -277,7 +278,7 @@ async def _open_ticket_channel(
     chiave = (guild.id, utente.id)
     if chiave in _aperture_in_corso:
         await interaction.followup.send(
-            "Sto già aprendo il tuo ticket, un attimo.", ephemeral=True
+            await testo_per(interaction, "tickets_sto_gia_aprendo_il_tuo"), ephemeral=True
         )
         return None
     _aperture_in_corso.add(chiave)
@@ -414,7 +415,7 @@ async def _crea_ticket(
     already_open = await ticket_repo.count_open_tickets_for_user(guild.id, utente.id)
     if already_open >= limite:
         await interaction.followup.send(
-            _messaggio_limite(limite) if not per_conto else f"{utente.mention} ha già il massimo di ticket aperti.",
+            _messaggio_limite(limite) if not per_conto else await testo_per(interaction, "tickets_ha_gia_il_massimo_di", mention=utente.mention),
             ephemeral=True,
         )
         return None
@@ -422,7 +423,7 @@ async def _crea_ticket(
     category = _categoria_con_posto(guild, category, opzioni)
     if category is None:
         await interaction.followup.send(
-            "Le categorie dei ticket sono piene (50 canali ciascuna): avvisa lo staff.", ephemeral=True
+            await testo_per(interaction, "tickets_le_categorie_dei_ticket_sono"), ephemeral=True
         )
         return None
     ruoli_staff = await _ruoli_staff(guild.id, panel_id)
@@ -454,14 +455,13 @@ async def _crea_ticket(
         )
     except discord.Forbidden:
         await interaction.followup.send(
-            "Non ho i permessi per creare un canale in quella categoria.",
+            await testo_per(interaction, "tickets_non_ho_permessi_per_creare"),
             ephemeral=True,
         )
         return None
     except discord.HTTPException:
         await interaction.followup.send(
-            "Impossibile creare il canale del ticket (la categoria "
-            "potrebbe aver raggiunto il limite di 50 canali).",
+            await testo_per(interaction, "tickets_impossibile_creare_il_canale_del"),
             ephemeral=True,
         )
         return None
@@ -486,7 +486,7 @@ async def _crea_ticket(
             logger.warning("Canale del ticket doppio %s non eliminato.", channel.id)
         pieno = isinstance(errore, PannelloPienoError)
         await interaction.followup.send(
-            "Questo pannello ha già il massimo di ticket aperti: riprova più tardi." if pieno else _messaggio_limite(limite),
+            await testo_per(interaction, "tickets_questo_pannello_ha_gia_il") if pieno else _messaggio_limite(limite),
             ephemeral=True,
         )
         return None
@@ -502,16 +502,16 @@ async def _crea_ticket(
             f"risponderà a breve."
         )
     embed = discord.Embed(
-        title=f"Ticket #{ticket_number:04d}",
+        title=await testo_per(interaction, "tickets_ticket", ticket_number=ticket_number),
         description=descrizione,
         color=discord.Color.blurple(),
     )
     if category_label is not None:
-        embed.add_field(name="Categoria", value=truncate_label(category_label))
+        embed.add_field(name=await testo_per(interaction, "antinuke_categoria"), value=truncate_label(category_label))
     if per_conto:
-        embed.add_field(name="Aperto dallo staff", value=interaction.user.mention)
+        embed.add_field(name=await testo_per(interaction, "tickets_aperto_dallo_staff"), value=interaction.user.mention)
     if motivo:
-        embed.add_field(name="Motivo", value=motivo[:1024], inline=False)
+        embed.add_field(name=await testo_per(interaction, "channelcontr_motivo"), value=motivo[:1024], inline=False)
     if citato is not None:
         testo_citato = (citato.content or "(senza testo)")[:900]
         embed.add_field(
@@ -521,7 +521,7 @@ async def _crea_ticket(
         )
     if fuori_orario:
         embed.add_field(
-            name="Fuori orario",
+            name=await testo_per(interaction, "tickets_fuori_orario"),
             value=(opzioni.fuori_orario_testo or "Lo staff risponde negli orari di apertura: "
                    + opz_logic.orari_come_testo(opzioni.orari, opzioni.fuso))[:1024],
             inline=False,
@@ -567,7 +567,7 @@ async def _crea_ticket(
             logger.exception("Sollecito del ticket %s non pianificato.", channel.id)
 
     await interaction.followup.send(
-        f"Ticket creato: {channel.mention}", ephemeral=True
+        await testo_per(interaction, "tickets_ticket_creato", mention=channel.mention), ephemeral=True
     )
     return channel
 
@@ -622,15 +622,14 @@ class TicketCategorySelectView(BaseView):
         scelta = next((c for c in categorie if str(c.id) == id_scelto), None)
         if scelta is None:
             await interaction.response.send_message(
-                "Questa categoria non è più disponibile.", ephemeral=True
+                await testo_per(interaction, "tickets_questa_categoria_non_piu_disponibile"), ephemeral=True
             )
             return
 
         category_channel = self._guild.get_channel(scelta.category_id)
         if not isinstance(category_channel, discord.CategoryChannel):
             await interaction.response.send_message(
-                "La categoria Discord collegata non esiste più. "
-                "Un amministratore deve riconfigurarla.",
+                await testo_per(interaction, "tickets_la_categoria_discord_collegata_non"),
                 ephemeral=True,
             )
             return
@@ -668,7 +667,7 @@ class TicketPanelView(BaseView):
 
         if not await db.is_module_active_for_guild(guild.id, MODULE_TICKETS):
             await interaction.response.send_message(
-                "Il sistema di ticket non è attivo su questo server.",
+                await testo_per(interaction, "opzioni_il_sistema_di_ticket_non"),
                 ephemeral=True,
             )
             return
@@ -702,9 +701,7 @@ class TicketPanelView(BaseView):
         category_id = await db.get_guild_setting(guild.id, SETTING_CATEGORY)
         if category_id is None:
             await interaction.response.send_message(
-                "Il sistema di ticket non è ancora stato configurato "
-                "(manca la categoria). Un amministratore deve usare "
-                "/gestione ticket setup.",
+                await testo_per(interaction, "tickets_il_sistema_di_ticket_non"),
                 ephemeral=True,
             )
             return
@@ -712,8 +709,7 @@ class TicketPanelView(BaseView):
         category = guild.get_channel(category_id)
         if not isinstance(category, discord.CategoryChannel):
             await interaction.response.send_message(
-                "La categoria configurata per i ticket non esiste più. "
-                "Un amministratore deve riconfigurarla con /gestione ticket setup.",
+                await testo_per(interaction, "tickets_la_categoria_configurata_per_ticket"),
                 ephemeral=True,
             )
             return
@@ -763,13 +759,13 @@ class ModuloTicket(BaseModal):
         panel = await ticket_form_repo.pannello_per_id(self._panel.id)
         if panel is None:
             await interaction.response.send_message(
-                "Questo pannello non esiste più.", ephemeral=True
+                await testo_per(interaction, "tickets_questo_pannello_non_esiste_piu"), ephemeral=True
             )
             return
         category = guild.get_channel(panel.category_id)
         if not isinstance(category, discord.CategoryChannel):
             await interaction.response.send_message(
-                "La categoria Discord del pannello non esiste più. Un amministratore deve riconfigurarla.",
+                await testo_per(interaction, "tickets_la_categoria_discord_del_pannello"),
                 ephemeral=True,
             )
             return
@@ -788,13 +784,13 @@ async def apri_da_pannello(interaction: discord.Interaction, panel_id: int) -> N
         return
     if not await db.is_module_active_for_guild(guild.id, MODULE_TICKETS):
         await interaction.response.send_message(
-            "Il sistema di ticket non è attivo su questo server.", ephemeral=True
+            await testo_per(interaction, "opzioni_il_sistema_di_ticket_non"), ephemeral=True
         )
         return
     panel = await ticket_form_repo.pannello_per_id(panel_id)
     if panel is None or panel.guild_id != guild.id:
         await interaction.response.send_message(
-            "Questo pannello non è più disponibile.", ephemeral=True
+            await testo_per(interaction, "tickets_questo_pannello_non_piu_disponibile"), ephemeral=True
         )
         return
     limite = await _limite_per_utente(guild.id)
@@ -809,7 +805,7 @@ async def apri_da_pannello(interaction: discord.Interaction, panel_id: int) -> N
     category = guild.get_channel(panel.category_id)
     if not isinstance(category, discord.CategoryChannel):
         await interaction.response.send_message(
-            "La categoria Discord del pannello non esiste più. Un amministratore deve riconfigurarla.",
+            await testo_per(interaction, "tickets_la_categoria_discord_del_pannello"),
             ephemeral=True,
         )
         return
@@ -957,7 +953,7 @@ class BottoneVoto(
         registrato = await ticket_repo.set_rating(self.ticket_id, interaction.user.id, self.stelle)
         if not registrato:
             await interaction.response.send_message(
-                "Hai già votato questo ticket, oppure non è tuo.", ephemeral=True
+                await testo_per(interaction, "tickets_hai_gia_votato_questo_ticket"), ephemeral=True
             )
             return
         await interaction.response.edit_message(
@@ -1010,15 +1006,15 @@ class BottoneChiuso(
         cog = interaction.client.get_cog("TicketsCog")
         ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id)
         if cog is None or ticket is None or ticket.id != self.ticket_id:
-            await interaction.response.send_message("Questo ticket non c'è più.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "tickets_questo_ticket_non_piu"), ephemeral=True)
             return
         if not await _is_ticket_staff(interaction, ticket):
-            await interaction.response.send_message("Solo lo staff dei ticket può usare questi bottoni.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "tickets_solo_lo_staff_dei_ticket"), ephemeral=True)
             return
         if self.azione == "e" and ticket.status != "closed":
             # Bottone rimasto dopo /ticket riapri: un ticket aperto si chiude prima.
             await interaction.response.send_message(
-                "Il ticket è stato riaperto: chiudilo prima di eliminarlo.", ephemeral=True
+                await testo_per(interaction, "tickets_il_ticket_stato_riaperto_chiudilo"), ephemeral=True
             )
             return
         await cog.azione_ticket_chiuso(interaction, ticket, self.azione)
@@ -1065,20 +1061,20 @@ class BottoneRichiestaChiusura(
     async def callback(self, interaction: discord.Interaction) -> None:
         ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id)
         if ticket is None or ticket.id != self.ticket_id or ticket.status != "open" or ticket.chiusura_richiesta_at is None:
-            await interaction.response.send_message("Questa richiesta non vale più.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "tickets_questa_richiesta_non_vale_piu"), ephemeral=True)
             return
         if interaction.user.id != ticket.user_id:
-            await interaction.response.send_message("Risponde solo chi ha aperto il ticket.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "tickets_risponde_solo_chi_ha_aperto"), ephemeral=True)
             return
         if self.scelta == "r":
             await ticket_repo.annulla_richiesta_chiusura(interaction.channel.id)
             await interaction.response.edit_message(
-                content="L'utente ha ancora bisogno di aiuto: il ticket resta aperto.", view=None
+                content=await testo_per(interaction, "tickets_utente_ha_ancora_bisogno_di", pubblica=True), view=None
             )
             return
         cog = interaction.client.get_cog("TicketsCog")
         if cog is None:
-            await interaction.response.send_message("I ticket non sono disponibili ora: riprova tra poco.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "tickets_ticket_non_sono_disponibili_ora"), ephemeral=True)
             return
         await cog.esegui_close(interaction, ticket, "Chiusura accettata dall'utente")
 
@@ -1099,7 +1095,7 @@ class ConfermaChiusura(BaseView):
     async def conferma(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id)
         if ticket is None or ticket.status != "open":
-            await interaction.response.edit_message(content="Questo ticket è già stato chiuso.", view=None)
+            await interaction.response.edit_message(content=await testo_per(interaction, "tickets_questo_ticket_gia_stato_chiuso", pubblica=True), view=None)
             return
         self.stop()
         await self._cog.esegui_close(interaction, ticket, self._motivo)
@@ -1157,7 +1153,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
     ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.",
+                await testo_per(interaction, "guild_only_command"),
                 ephemeral=True,
             )
             return
@@ -1187,12 +1183,12 @@ class TicketsCog(CogConGruppi, commands.Cog):
     ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
         await db.set_guild_setting(interaction.guild.id, SETTING_MAX_PER_UTENTE, int(massimo))
         await interaction.response.send_message(
-            f"Ogni utente potrà avere al massimo **{massimo}** ticket aperti alla volta.",
+            await testo_per(interaction, "tickets_ogni_utente_potra_avere_al", massimo=massimo),
             ephemeral=True,
         )
 
@@ -1207,8 +1203,8 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
 
         embed = discord.Embed(
-            title="🎫 Supporto",
-            description="Premi il bottone qui sotto per aprire un ticket privato con lo staff.",
+            title=await testo_per(interaction, "tickets_supporto", pubblica=True),
+            description=await testo_per(interaction, "tickets_premi_il_bottone_qui_sotto", pubblica=True),
             color=discord.Color.blurple(),
         )
         await interaction.response.send_message(embed=embed, view=TicketPanelView())
@@ -1238,7 +1234,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         panel = await ticket_form_repo.pannello_per_nome(interaction.guild.id, nome.strip())
         if panel is None:
             await interaction.response.send_message(
-                f"Nessun pannello chiamato **{nome.strip()[:100]}**. Vedi `/admin ticket pannello-lista`.",
+                await testo_per(interaction, "tickets_nessun_pannello_chiamato_vedi_admin", v1=nome.strip()[:100]),
                 ephemeral=True,
             )
         return panel
@@ -1274,7 +1270,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
         if emoji is not None and not looks_like_emoji(emoji):
             await interaction.response.send_message(
-                "Quella non sembra un'emoji valida: usa un'emoji normale o una personalizzata del server.",
+                await testo_per(interaction, "tickets_quella_non_sembra_un_emoji"),
                 ephemeral=True,
             )
             return
@@ -1289,18 +1285,17 @@ class TicketsCog(CogConGruppi, commands.Cog):
             )
         except PannelloGiaEsistente:
             await interaction.response.send_message(
-                f"Esiste già un pannello chiamato **{nome_pulito}**.", ephemeral=True
+                await testo_per(interaction, "tickets_esiste_gia_un_pannello_chiamato", nome_pulito=nome_pulito), ephemeral=True
             )
             return
         except TroppiPannelli:
             await interaction.response.send_message(
-                f"Un server può avere al massimo {form.MAX_PANNELLI_PER_SERVER} pannelli.",
+                await testo_per(interaction, "tickets_un_server_puo_avere_al", v1=form.MAX_PANNELLI_PER_SERVER),
                 ephemeral=True,
             )
             return
         await interaction.response.send_message(
-            f"Pannello **{panel.name}** creato. Aggiungi le domande con `/admin ticket modulo-aggiungi` "
-            "e pubblicalo con `/admin ticket pannello-pubblica`.",
+            await testo_per(interaction, "tickets_pannello_creato_aggiungi_le_domande", name=panel.name),
             ephemeral=True,
         )
 
@@ -1320,9 +1315,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
         await ticket_form_repo.rimuovi_pannello(interaction.guild.id, panel.name)
         await interaction.response.send_message(
-            f"Pannello **{panel.name}** eliminato, con il suo modulo e le risposte standard "
-            "imparate da questo pannello. I messaggi già pubblicati mostreranno "
-            "«pannello non più disponibile».",
+            await testo_per(interaction, "tickets_pannello_eliminato_con_il_suo", name=panel.name),
             ephemeral=True,
         )
 
@@ -1338,7 +1331,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         pannelli = await ticket_form_repo.elenca_pannelli(interaction.guild.id)
         if not pannelli:
             await interaction.response.send_message(
-                "Nessun pannello. Creane uno con `/admin ticket pannello-crea`.", ephemeral=True
+                await testo_per(interaction, "tickets_nessun_pannello_creane_uno_con"), ephemeral=True
             )
             return
         righe = []
@@ -1377,11 +1370,11 @@ class TicketsCog(CogConGruppi, commands.Cog):
         for nome in form.nomi_da_elenco(pannelli):
             panel = await ticket_form_repo.pannello_per_nome(interaction.guild.id, nome)
             if panel is None:
-                await interaction.response.send_message(f"Nessun pannello chiamato **{nome[:100]}**.", ephemeral=True)
+                await interaction.response.send_message(await testo_per(interaction, "opzioni_nessun_pannello_chiamato", v1=nome[:100]), ephemeral=True)
                 return
             trovati.append(panel)
         if not trovati:
-            await interaction.response.send_message("Indica almeno un pannello.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "tickets_indica_almeno_un_pannello"), ephemeral=True)
             return
         try:
             vista = vista_pannelli(trovati)
@@ -1426,13 +1419,12 @@ class TicketsCog(CogConGruppi, commands.Cog):
             nuova = await ticket_form_repo.aggiungi_domanda(panel.id, etichetta, segnaposto, obbligatoria, lunga)
         except TroppeDomande:
             await interaction.response.send_message(
-                f"Il modulo ha già {form.MAX_DOMANDE} domande: è il massimo di Discord. "
-                "Togline una con `/admin ticket modulo-rimuovi`.",
+                await testo_per(interaction, "tickets_il_modulo_ha_gia_domande", v1=form.MAX_DOMANDE),
                 ephemeral=True,
             )
             return
         await interaction.response.send_message(
-            f"Domanda {nuova.position} aggiunta al pannello **{panel.name}**.", ephemeral=True
+            await testo_per(interaction, "tickets_domanda_aggiunta_al_pannello", position=nuova.position, name=panel.name), ephemeral=True
         )
 
     @comando_di_gruppo(
@@ -1453,9 +1445,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         if panel is None:
             return
         if await ticket_form_repo.rimuovi_domanda(panel.id, numero):
-            await interaction.response.send_message(f"Domanda {numero} tolta.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "tickets_domanda_tolta", numero=numero), ephemeral=True)
         else:
-            await interaction.response.send_message(f"Non c'è una domanda {numero}.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "tickets_non_una_domanda", numero=numero), ephemeral=True)
 
     @comando_di_gruppo(
         "admin",
@@ -1474,7 +1466,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         domande = await ticket_form_repo.elenca_domande(panel.id)
         if not domande:
             await interaction.response.send_message(
-                f"Il pannello **{panel.name}** non ha domande: il ticket si apre subito.", ephemeral=True
+                await testo_per(interaction, "tickets_il_pannello_non_ha_domande", name=panel.name), ephemeral=True
             )
             return
         righe = [
@@ -1535,7 +1527,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
         await ticket_form_repo.imposta_voto(panel.id, attivo)
         await interaction.response.send_message(
-            f"Voto {'acceso' if attivo else 'spento'} per **{panel.name}**.", ephemeral=True
+            await testo_per(interaction, "tickets_voto_per", v1=(await testo_per(interaction, "opzioni_acceso")) if attivo else (await testo_per(interaction, "opzioni_spento")), name=panel.name), ephemeral=True
         )
 
     # ================================================================
@@ -1565,13 +1557,12 @@ class TicketsCog(CogConGruppi, commands.Cog):
         label = label.strip()
         if not label:
             await interaction.response.send_message(
-                "Il nome della categoria non può essere vuoto.", ephemeral=True
+                await testo_per(interaction, "tickets_il_nome_della_categoria_non"), ephemeral=True
             )
             return
         if emoji is not None and not looks_like_emoji(emoji.strip()):
             await interaction.response.send_message(
-                "Quella non sembra un'emoji. Usa un'emoji standard (es. 🎫) "
-                "oppure un'emoji personalizzata di questo server.",
+                await testo_per(interaction, "tickets_quella_non_sembra_un_emoji_2"),
                 ephemeral=True,
             )
             return
@@ -1581,8 +1572,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         esistenti = await ticket_repo.list_categories(interaction.guild.id)
         if len(esistenti) >= MAX_TICKET_CATEGORIES and label not in {c.label for c in esistenti}:
             await interaction.response.send_message(
-                f"Hai già {MAX_TICKET_CATEGORIES} categorie, il massimo che un menu di "
-                "Discord può mostrare. Rimuovine una con /gestione ticket categoria-remove.",
+                await testo_per(interaction, "tickets_hai_gia_categorie_il_massimo", v1=MAX_TICKET_CATEGORIES),
                 ephemeral=True,
             )
             return
@@ -1590,7 +1580,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         emoji = emoji.strip() if emoji is not None else None
         await ticket_repo.add_category(interaction.guild.id, label, category.id, emoji)
         await interaction.response.send_message(
-            f"Categoria **{label}** impostata su **{category.name}**.", ephemeral=True
+            await testo_per(interaction, "tickets_categoria_impostata_su", label=label, name=category.name), ephemeral=True
         )
 
     @comando_di_gruppo(
@@ -1609,10 +1599,10 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
         rimossa = await ticket_repo.remove_category(interaction.guild.id, label.strip())
         if rimossa:
-            await interaction.response.send_message(f"Categoria **{label}** rimossa.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "tickets_categoria_rimossa", label=label), ephemeral=True)
         else:
             await interaction.response.send_message(
-                f"Nessuna categoria chiamata **{label}**.", ephemeral=True
+                await testo_per(interaction, "tickets_nessuna_categoria_chiamata", label=label), ephemeral=True
             )
 
     @comando_di_gruppo(
@@ -1627,7 +1617,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         categorie = await ticket_repo.list_categories(interaction.guild.id)
         if not categorie:
             await interaction.response.send_message(
-                "Nessuna categoria configurata: il pannello mostra il bottone unico.",
+                await testo_per(interaction, "tickets_nessuna_categoria_configurata_il_pannell"),
                 ephemeral=True,
             )
             return
@@ -1647,7 +1637,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         if len(mostrate) < len(categorie):
             mostrate.append(f"…e altre {len(categorie) - len(mostrate)}.")
         embed = discord.Embed(
-            title="Categorie dei ticket",
+            title=await testo_per(interaction, "tickets_categorie_dei_ticket"),
             description="\n".join(mostrate),
             color=discord.Color.blurple(),
         )
@@ -1671,7 +1661,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             attuali.append(role.id)
             await db.set_guild_setting(interaction.guild.id, SETTING_SUPPORT_ROLES, attuali)
         await interaction.response.send_message(
-            f"{role.mention} aggiunto ai ruoli di supporto.", ephemeral=True
+            await testo_per(interaction, "tickets_aggiunto_ai_ruoli_di_supporto", mention=role.mention), ephemeral=True
         )
 
     @comando_di_gruppo(
@@ -1703,12 +1693,11 @@ class TicketsCog(CogConGruppi, commands.Cog):
 
         if not rimosso:
             await interaction.response.send_message(
-                f"{role.mention} non è tra i ruoli di supporto.", ephemeral=True
+                await testo_per(interaction, "tickets_non_tra_ruoli_di_supporto", mention=role.mention), ephemeral=True
             )
             return
         await interaction.response.send_message(
-            f"{role.mention} rimosso dai ruoli di supporto. I ticket già aperti "
-            "restano visibili al ruolo finché non vengono chiusi.",
+            await testo_per(interaction, "tickets_rimosso_dai_ruoli_di_supporto", mention=role.mention),
             ephemeral=True,
         )
 
@@ -1723,7 +1712,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
         ruoli_id = await _support_role_ids(interaction.guild.id)
         if not ruoli_id:
-            await interaction.response.send_message("Nessun ruolo di supporto configurato.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "tickets_nessun_ruolo_di_supporto_configurato"), ephemeral=True)
             return
         righe = [f"<@&{rid}>" for rid in ruoli_id]
         await interaction.response.send_message(", ".join(righe), ephemeral=True)
@@ -1747,27 +1736,27 @@ class TicketsCog(CogConGruppi, commands.Cog):
         if operator is not None:
             stats = await ticket_repo.get_operator_stats(interaction.guild.id, operator.id)
             embed = discord.Embed(
-                title=f"Statistiche ticket — {operator.display_name}",
+                title=await testo_per(interaction, "tickets_statistiche_ticket", display_name=operator.display_name),
                 color=discord.Color.blurple(),
             )
-            embed.add_field(name="Presi in carico", value=str(stats.claimed_count))
-            embed.add_field(name="Chiusi", value=str(stats.closed_count))
+            embed.add_field(name=await testo_per(interaction, "tickets_presi_in_carico"), value=str(stats.claimed_count))
+            embed.add_field(name=await testo_per(interaction, "tickets_chiusi"), value=str(stats.closed_count))
             embed.add_field(
-                name="Tempo medio di prima risposta",
+                name=await testo_per(interaction, "tickets_tempo_medio_di_prima_risposta"),
                 value=format_duration_seconds(stats.avg_response_seconds),
             )
         else:
             stats = await ticket_repo.get_guild_stats(interaction.guild.id)
-            embed = discord.Embed(title="Statistiche ticket del server", color=discord.Color.blurple())
-            embed.add_field(name="Totali", value=str(stats.total_count))
-            embed.add_field(name="Aperti", value=str(stats.open_count))
-            embed.add_field(name="Chiusi", value=str(stats.closed_count))
+            embed = discord.Embed(title=await testo_per(interaction, "tickets_statistiche_ticket_del_server"), color=discord.Color.blurple())
+            embed.add_field(name=await testo_per(interaction, "tickets_totali"), value=str(stats.total_count))
+            embed.add_field(name=await testo_per(interaction, "tickets_aperti"), value=str(stats.open_count))
+            embed.add_field(name=await testo_per(interaction, "tickets_chiusi"), value=str(stats.closed_count))
             embed.add_field(
-                name="Tempo medio di prima risposta",
+                name=await testo_per(interaction, "tickets_tempo_medio_di_prima_risposta"),
                 value=format_duration_seconds(stats.avg_response_seconds),
             )
             media, voti = await ticket_repo.get_rating_summary(interaction.guild.id)
-            embed.add_field(name="Voto medio", value=form.Media(media, voti).testo())
+            embed.add_field(name=await testo_per(interaction, "tickets_voto_medio"), value=form.Media(media, voti).testo())
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -1775,7 +1764,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id)
         if ticket is None or ticket.status != "open":
             await interaction.response.send_message(
-                "Questo comando funziona solo dentro un canale ticket aperto.",
+                await testo_per(interaction, "tickets_questo_comando_funziona_solo_dentro"),
                 ephemeral=True,
             )
             return None
@@ -1785,8 +1774,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         """Come _get_ticket_or_reply, ma solo per lo staff dei ticket (anche la squadra del pannello, TKT-044)."""
         if not await _is_ticket_staff(interaction, await ticket_repo.get_ticket_by_channel(interaction.channel.id)):
             await interaction.response.send_message(
-                "Solo lo staff (permesso Manage Server o un ruolo di "
-                "supporto configurato) può usare questo comando.",
+                await testo_per(interaction, "tickets_solo_lo_staff_permesso_manage"),
                 ephemeral=True,
             )
             return None
@@ -1802,8 +1790,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         esclusiva = opzioni.claim_esclusivo != "no"
         if esclusiva and ticket.claimed_by not in (None, interaction.user.id) and not _puo_scavalcare(interaction.user):
             await interaction.response.send_message(
-                f"Il ticket è già di <@{ticket.claimed_by}>: deve lasciarlo con `/ticket rilascia` "
-                "(o passartelo con `/ticket passa`) prima che tu lo prenda.",
+                await testo_per(interaction, "tickets_il_ticket_gia_di_deve", claimed_by=ticket.claimed_by),
                 ephemeral=True,
                 allowed_mentions=discord.AllowedMentions.none(),
             )
@@ -1812,7 +1799,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         # Con l'esclusiva vince uno solo anche se due lo prendono insieme (chi scavalca no).
         solo_se_libero = esclusiva and ticket.claimed_by is None
         if not await ticket_repo.claim_ticket(interaction.channel.id, interaction.user.id, solo_se_libero=solo_se_libero):
-            await interaction.followup.send("Un altro dello staff ha appena preso questo ticket.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "tickets_un_altro_dello_staff_ha"), ephemeral=True)
             return
         testo = await self._dopo_presa(
             interaction.guild, interaction.channel, ticket, interaction.user, precedente=ticket.claimed_by
@@ -1889,12 +1876,12 @@ class TicketsCog(CogConGruppi, commands.Cog):
     async def _bersaglio_o_risposta(interaction: discord.Interaction, member, ruolo):
         """TKT-047: un utente oppure un ruolo intero (mai @everyone). None dopo aver risposto."""
         if (member is None) == (ruolo is None):
-            await interaction.response.send_message("Scegli un utente oppure un ruolo.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "tickets_scegli_un_utente_oppure_un"), ephemeral=True)
             return None
         bersaglio = member or ruolo
         if ruolo is not None and ruolo.id == interaction.guild.id:
             await interaction.response.send_message(
-                "@everyone non si può aggiungere o togliere: aprirebbe il ticket a tutti.", ephemeral=True
+                await testo_per(interaction, "tickets_everyone_non_si_puo_aggiungere"), ephemeral=True
             )
             return None
         return bersaglio
@@ -1920,12 +1907,12 @@ class TicketsCog(CogConGruppi, commands.Cog):
             )
         except discord.HTTPException:
             await interaction.response.send_message(
-                "Non sono riuscito ad aggiungere il destinatario: controlla i miei permessi sul canale.",
+                await testo_per(interaction, "tickets_non_sono_riuscito_ad_aggiungere"),
                 ephemeral=True,
             )
             return
         await interaction.response.send_message(
-            f"{bersaglio.mention} aggiunto al ticket.", allowed_mentions=discord.AllowedMentions.none()
+            await testo_per(interaction, "tickets_aggiunto_al_ticket", pubblica=True, mention=bersaglio.mention), allowed_mentions=discord.AllowedMentions.none()
         )
 
     @comando_di_gruppo("ticket", nome="remove", descrizione="Rimuovi un utente o un ruolo da questo ticket.")
@@ -1948,7 +1935,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             or ruolo.id in await _support_role_ids(interaction.guild.id)
         ):
             await interaction.response.send_message(
-                "Questo ruolo è dello staff dei ticket o del bot: toglierlo bloccherebbe chi deve rispondere.",
+                await testo_per(interaction, "tickets_questo_ruolo_dello_staff_dei"),
                 ephemeral=True,
             )
             return
@@ -1957,12 +1944,12 @@ class TicketsCog(CogConGruppi, commands.Cog):
             await interaction.channel.set_permissions(bersaglio, overwrite=None)
         except discord.HTTPException:
             await interaction.response.send_message(
-                "Non sono riuscito a rimuovere il destinatario: controlla i miei permessi sul canale.",
+                await testo_per(interaction, "tickets_non_sono_riuscito_rimuovere_il"),
                 ephemeral=True,
             )
             return
         await interaction.response.send_message(
-            f"{bersaglio.mention} rimosso dal ticket.", allowed_mentions=discord.AllowedMentions.none()
+            await testo_per(interaction, "tickets_rimosso_dal_ticket", pubblica=True, mention=bersaglio.mention), allowed_mentions=discord.AllowedMentions.none()
         )
 
     @comando_di_gruppo("ticket", nome="rilascia", descrizione="Lascia la presa in carico di questo ticket.")
@@ -1971,11 +1958,11 @@ class TicketsCog(CogConGruppi, commands.Cog):
         if ticket is None:
             return
         if ticket.claimed_by is None:
-            await interaction.response.send_message("Nessuno ha preso in carico questo ticket.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "tickets_nessuno_ha_preso_in_carico"), ephemeral=True)
             return
         if ticket.claimed_by != interaction.user.id and not interaction.user.guild_permissions.manage_guild:
             await interaction.response.send_message(
-                "Solo chi lo ha preso in carico (o chi ha Manage Server) può rilasciarlo.", ephemeral=True
+                await testo_per(interaction, "tickets_solo_chi_lo_ha_preso"), ephemeral=True
             )
             return
         await interaction.response.defer()
@@ -2003,7 +1990,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
         if collega.bot or not await _membro_staff(collega, interaction.guild.id, ticket.panel_id):
             await interaction.response.send_message(
-                f"{collega.mention} non fa parte dello staff dei ticket.",
+                await testo_per(interaction, "tickets_non_fa_parte_dello_staff", mention=collega.mention),
                 ephemeral=True,
                 allowed_mentions=discord.AllowedMentions.none(),
             )
@@ -2014,7 +2001,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             and not _puo_scavalcare(interaction.user)
         ):
             await interaction.response.send_message(
-                f"Il ticket è di <@{ticket.claimed_by}>: lo passa solo lui (o chi ha Manage Server).",
+                await testo_per(interaction, "tickets_il_ticket_di_lo_passa", claimed_by=ticket.claimed_by),
                 ephemeral=True,
                 allowed_mentions=discord.AllowedMentions.none(),
             )
@@ -2044,7 +2031,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
                 )
             except discord.HTTPException:
                 await interaction.followup.send(
-                    "Non riesco a creare il thread: mi serve il permesso «Crea thread privati».", ephemeral=True
+                    await testo_per(interaction, "tickets_non_riesco_creare_il_thread"), ephemeral=True
                 )
                 return
             await ticket_repo.imposta_note_thread(interaction.channel.id, thread.id)
@@ -2052,7 +2039,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             await thread.add_user(interaction.user)
         except discord.HTTPException:
             logger.warning("Staff %s non aggiunto al thread delle note %s.", interaction.user.id, thread.id)
-        await interaction.followup.send(f"Note dello staff: {thread.mention}", ephemeral=True)
+        await interaction.followup.send(await testo_per(interaction, "tickets_note_dello_staff", mention=thread.mention), ephemeral=True)
 
     async def _thread_delle_note(self, guild: discord.Guild, thread_id: int | None):
         """
@@ -2090,7 +2077,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         await interaction.response.defer()
         richiesta = await ticket_repo.richiedi_chiusura(interaction.channel.id)
         if richiesta is None:
-            await interaction.followup.send("Questo ticket non è più aperto.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "tickets_questo_ticket_non_piu_aperto"), ephemeral=True)
             return
         await scheduler.schedule(
             interaction.guild.id, ticket.user_id, TICKET_RICHIESTA_CHIUSURA_ACTION_TYPE, in_seconds(ore * 3600),
@@ -2100,8 +2087,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         vista.add_item(BottoneRichiestaChiusura(ticket.id, "a"))
         vista.add_item(BottoneRichiestaChiusura(ticket.id, "r"))
         await interaction.followup.send(
-            f"<@{ticket.user_id}>, {interaction.user.mention} chiede se il tuo problema è risolto. "
-            f"Se non rispondi entro {ore} ore il ticket si chiude da solo.",
+            await testo_per(interaction, "tickets_chiede_se_il_tuo_problema", pubblica=True, user_id=ticket.user_id, mention=interaction.user.mention, ore=ore),
             view=vista_inizio(interaction.channel, vista),
             allowed_mentions=discord.AllowedMentions(users=[discord.Object(id=ticket.user_id)]),
         )
@@ -2139,7 +2125,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             testo = await self._build_transcript_text(interaction.channel, ticket)
         except discord.HTTPException:
             await interaction.followup.send(
-                "Non riesco a leggere i messaggi del canale: controlla i miei permessi.", ephemeral=True
+                await testo_per(interaction, "tickets_non_riesco_leggere_messaggi_del"), ephemeral=True
             )
             return
         for nome_file, contenuto in self._transcript_files(testo, ticket.ticket_number):
@@ -2179,14 +2165,13 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
         except discord.HTTPException:
             await interaction.followup.send(
-                "Non sono riuscito a rinominare il canale: controlla i miei "
-                "permessi e che il nome sia valido.",
+                await testo_per(interaction, "tickets_non_sono_riuscito_rinominare_il"),
                 ephemeral=True,
             )
             return
 
         await interaction.followup.send(
-            f"Ticket rinominato in **{name}**.",
+            await testo_per(interaction, "tickets_ticket_rinominato_in", pubblica=True, name=name),
             allowed_mentions=discord.AllowedMentions.none(),
         )
 
@@ -2530,7 +2515,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
                 chiusi += 1
                 if chiusi % 5 == 0:
                     # Ogni transcript richiede tempo: un messaggio ogni 5 tiene informato chi ha lanciato il comando.
-                    await interaction.followup.send(f"Chiusi finora {chiusi} ticket...", ephemeral=True)
+                    await interaction.followup.send(await testo_per(interaction, "tickets_chiusi_finora_ticket", chiusi=chiusi), ephemeral=True)
         restanti = await ticket_repo.count_open_tickets(guild.id)
         testo = f"Chiusi {chiusi} ticket."
         if falliti:
@@ -2680,7 +2665,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             try:
                 testo = await self._build_transcript_text(interaction.channel, ticket)
             except discord.HTTPException:
-                await interaction.followup.send("Non riesco a leggere i messaggi del canale.", ephemeral=True)
+                await interaction.followup.send(await testo_per(interaction, "tickets_non_riesco_leggere_messaggi_del_2"), ephemeral=True)
                 return
             for nome_file, contenuto in self._transcript_files(testo, ticket.ticket_number):
                 await interaction.followup.send(
@@ -2696,7 +2681,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
                 except discord.HTTPException:
                     pass
         else:
-            await interaction.response.send_message("Elimino il canale.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "tickets_elimino_il_canale"), ephemeral=True)
             try:
                 await self._elimina_canale(interaction.channel.id, f"Ticket eliminato da {interaction.user}")
             except discord.HTTPException:
@@ -2710,11 +2695,11 @@ class TicketsCog(CogConGruppi, commands.Cog):
         ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id)
         if ticket is None or ticket.status != "closed":
             await interaction.response.send_message(
-                "Questo comando funziona solo in un ticket chiuso il cui canale è rimasto.", ephemeral=True
+                await testo_per(interaction, "tickets_questo_comando_funziona_solo_in"), ephemeral=True
             )
             return
         if not await _is_ticket_staff(interaction, ticket):
-            await interaction.response.send_message("Solo lo staff dei ticket può riaprire un ticket.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "tickets_solo_lo_staff_dei_ticket_2"), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         await interaction.followup.send(
@@ -2751,11 +2736,11 @@ class TicketsCog(CogConGruppi, commands.Cog):
         ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id)
         if ticket is not None and ticket.status != "open":
             # Due /ticket close quasi insieme: il secondo trova il ticket già chiuso.
-            await interaction.response.send_message("Questo ticket è già stato chiuso.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "tickets_questo_ticket_gia_stato_chiuso"), ephemeral=True)
             return
         if ticket is None:
             await interaction.response.send_message(
-                "Questo comando funziona solo dentro un canale ticket aperto.", ephemeral=True
+                await testo_per(interaction, "tickets_questo_comando_funziona_solo_dentro"), ephemeral=True
             )
             return
         opzioni = await _opzioni_pannello(ticket.panel_id)
@@ -2765,16 +2750,16 @@ class TicketsCog(CogConGruppi, commands.Cog):
             and not await _is_ticket_staff(interaction, ticket)
         ):
             # TKT-042: gli osservatori vedono e non scrivono; non chiudono il ticket degli altri.
-            await interaction.response.send_message("Chi osserva il ticket non può chiuderlo.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "tickets_chi_osserva_il_ticket_non"), ephemeral=True)
             return
         if not opzioni.utente_chiude and interaction.user.id == ticket.user_id and not await _is_ticket_staff(interaction, ticket):
             await interaction.response.send_message(
-                "In questo pannello i ticket li chiude lo staff: scrivi qui se hai finito.", ephemeral=True
+                await testo_per(interaction, "tickets_in_questo_pannello_ticket_li"), ephemeral=True
             )
             return
         if opzioni.conferma_chiusura:
             await interaction.response.send_message(
-                "Vuoi davvero chiudere questo ticket?", view=ConfermaChiusura(self, interaction.user.id, motivo),
+                await testo_per(interaction, "tickets_vuoi_davvero_chiudere_questo_ticket"), view=ConfermaChiusura(self, interaction.user.id, motivo),
                 ephemeral=True,
             )
             return
@@ -2786,7 +2771,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             interaction.guild.id, interaction.channel.id, interaction.user.id, motivo, ticket.user_id,
             f"Ticket chiuso da {interaction.user}",
         ):
-            await interaction.response.send_message("Questo ticket è già stato chiuso.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "tickets_questo_ticket_gia_stato_chiuso"), ephemeral=True)
             return
         ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id) or ticket
         due_passi = (await _opzioni_pannello(ticket.panel_id)).chiusura_due_passi
@@ -2818,8 +2803,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         """
         if not await _is_ticket_staff(interaction):
             await interaction.response.send_message(
-                "Solo lo staff (permesso Manage Server o un ruolo di "
-                "supporto configurato) può forzare la chiusura.",
+                await testo_per(interaction, "tickets_solo_lo_staff_permesso_manage_2"),
                 ephemeral=True,
             )
             return
@@ -2827,7 +2811,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id)
         if ticket is None:
             await interaction.response.send_message(
-                "Questo comando funziona solo dentro un canale ticket.", ephemeral=True
+                await testo_per(interaction, "tickets_questo_comando_funziona_solo_dentro_2"), ephemeral=True
             )
             return
 
@@ -2837,7 +2821,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         )
         ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id) or ticket
         await interaction.response.send_message(
-            f"Ticket chiuso forzatamente da {interaction.user.mention}. Elimino il canale.",
+            await testo_per(interaction, "tickets_ticket_chiuso_forzatamente_da_elimino", pubblica=True, mention=interaction.user.mention),
             allowed_mentions=discord.AllowedMentions.none(),
         )
         if appena_chiuso:

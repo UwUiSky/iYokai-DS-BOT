@@ -35,6 +35,7 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core.database import db
+from core.i18n import testo_per
 from core.moderation_mute_logic import (
     MAX_MUTE_SECONDI,
     mute_finito,
@@ -237,8 +238,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         except discord.HTTPException:
             await delete_dm(dm)
             await interaction.followup.send(
-                "Non sono riuscito a fare il softban di questo utente: "
-                "controlla i miei permessi e la posizione del mio ruolo.",
+                await testo_per(interaction, "softbanmute_non_sono_riuscito_fare_il"),
                 ephemeral=True,
             )
             return
@@ -394,7 +394,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
                 return
             if secondi > MAX_MUTE_SECONDI:
                 await interaction.response.send_message(
-                    "Un mute a tempo dura al massimo un anno. Per un mute senza fine lascia la durata vuota.",
+                    await testo_per(interaction, "softbanmute_un_mute_tempo_dura_al"),
                     ephemeral=True,
                 )
                 return
@@ -405,8 +405,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         role = await _get_or_create_mute_role(guild)
         if role is None:
             await interaction.followup.send(
-                "Non sono riuscito a creare il ruolo mute: controlla i miei "
-                "permessi e che il server non abbia già 250 ruoli.",
+                await testo_per(interaction, "softbanmute_non_sono_riuscito_creare_il"),
                 ephemeral=True,
             )
             return
@@ -443,8 +442,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
                     precedente["case_number"], precedente["finisce_il"],
                 )
             await interaction.followup.send(
-                "Non sono riuscito ad assegnare il ruolo mute: controlla i "
-                "miei permessi e la posizione del mio ruolo.",
+                await testo_per(interaction, "softbanmute_non_sono_riuscito_ad_assegnare"),
                 ephemeral=True,
             )
             return
@@ -477,12 +475,12 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         embed = _case_embed(titolo, discord.Color.dark_grey(), member, interaction.user, reason, case_number)
         if fine is not None:
             embed.add_field(
-                name="Fine",
+                name=await testo_per(interaction, "softbanmute_fine"),
                 value=f"{discord.utils.format_dt(fine, 'R')} ({format_duration(secondi)})",
                 inline=True,
             )
         if hardmute:
-            embed.add_field(name="Ruoli tolti", value=str(len(ruoli_ora)), inline=True)
+            embed.add_field(name=await testo_per(interaction, "softbanmute_ruoli_tolti"), value=str(len(ruoli_ora)), inline=True)
         await post_to_mod_log(guild, embed)
         await try_dm(member, embed, azione="mute", guild_id=guild.id)
         await interaction.followup.send(embed=embed)
@@ -504,7 +502,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         role_id = await db.get_guild_setting(interaction.guild.id, SETTING_MUTE_ROLE_ID)
         if role_id is None:
             await interaction.response.send_message(
-                "Nessun ruolo mute configurato su questo server.", ephemeral=True
+                await testo_per(interaction, "softbanmute_nessun_ruolo_mute_configurato_su"), ephemeral=True
             )
             return
 
@@ -512,24 +510,23 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         stato = await moderation_repo.get_mute_state(interaction.guild.id, member.id)
         if (role is None or role not in member.roles) and stato is None:
             await interaction.response.send_message(
-                f"{member.mention} non ha il ruolo mute.", ephemeral=True
+                await testo_per(interaction, "softbanmute_non_ha_il_ruolo_mute", mention=member.mention), ephemeral=True
             )
             return
 
         await interaction.response.defer()
         if not await self._rilascia_mute(interaction.guild, member, stato, reason, interaction.user.id):
             await interaction.followup.send(
-                "Non sono riuscito a sistemare i ruoli: controlla i "
-                "miei permessi e la posizione del mio ruolo.",
+                await testo_per(interaction, "softbanmute_non_sono_riuscito_sistemare_ruoli"),
                 ephemeral=True,
             )
             return
 
-        await interaction.followup.send(f"Ruolo mute rimosso da {member.mention}.")
-        log_embed = discord.Embed(title="🔊 Mute (ruolo) tolto", color=discord.Color.green())
-        log_embed.add_field(name="Utente", value=f"{member.mention} ({member.id})", inline=False)
-        log_embed.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
-        log_embed.add_field(name="Motivo", value=reason, inline=False)
+        await interaction.followup.send(await testo_per(interaction, "softbanmute_ruolo_mute_rimosso_da", pubblica=True, mention=member.mention))
+        log_embed = discord.Embed(title=await testo_per(interaction, "softbanmute_mute_ruolo_tolto"), color=discord.Color.green())
+        log_embed.add_field(name=await testo_per(interaction, "banappeal_utente"), value=f"{member.mention} ({member.id})", inline=False)
+        log_embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore"), value=interaction.user.mention, inline=True)
+        log_embed.add_field(name=await testo_per(interaction, "channelcontr_motivo"), value=reason, inline=False)
         await post_to_mod_log(interaction.guild, log_embed)
 
 

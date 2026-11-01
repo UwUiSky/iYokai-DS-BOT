@@ -136,6 +136,12 @@ async def testo_per(interaction: Any, key: str, *, pubblica: bool = False, **val
     return t(key, await lingua_interazione(interaction, pubblica=pubblica), **valori)
 
 
+async def testo_guild(guild: Any, key: str, **valori: Any) -> str:
+    """Come `testo_per`, ma per i messaggi senza interazione (log, staff): decide la lingua del server."""
+    guild_id = getattr(guild, "id", guild)
+    return t(key, await lingua_risposta(guild_id if isinstance(guild_id, int) else None, pubblica=True), **valori)
+
+
 async def imposta_lingua_utente(user_id: int, scelta: str | None) -> str | None:
     """
     Un solo punto per scrivere la lingua personale (comando e futuro pannello).
