@@ -112,6 +112,10 @@ import warnings
 MAX_CARATTERI_COMANDO = 8000
 SOGLIA_ALLARME_CARATTERI = 6800
 MAX_COMANDI_PRIMO_LIVELLO = 100
+MAX_COMANDI_PRIMO_LIVELLO_D56 = 60  # D56: tetto nostro; i posti liberi restano per le esigenze future
+OBIETTIVO_FIGLI = 18
+# Gruppi già sopra 18 figli (D56: si punta a 18). Non se ne aggiungono: si divide in sotto-gruppi.
+KNOWN_OLTRE_18: frozenset[str] = frozenset({"ai", "ticket", "music", "backup"})
 MAX_NOME = 32
 MAX_DESCRIZIONE = 100
 REGEX_NOME = re.compile(r"^[-_ʼ\w]{1,32}$")  # \w include lettere e cifre unicode
@@ -217,6 +221,44 @@ async def test_avviso_caratteri_oltre_6800():
                 f"Il limite di Discord è {MAX_CARATTERI_COMANDO}: valuta di spostare un blocco in un gruppo nuovo.",
                 stacklevel=1,
             )
+    finally:
+        await _chiudi(creato_qui, bot)
+
+
+async def test_primo_livello_entro_il_tetto_di_60_e_con_premium_e_vip():
+    """D56: al massimo 60 comandi di primo livello, contando `/owner` e anche `/premium` e `/vip`."""
+    creato_qui, bot = await _albero_vero()
+    try:
+        assert len(_radici(bot)) + 2 <= MAX_COMANDI_PRIMO_LIVELLO_D56
+        assert MAX_COMANDI_PRIMO_LIVELLO_D56 <= MAX_COMANDI_PRIMO_LIVELLO
+    finally:
+        await _chiudi(creato_qui, bot)
+
+
+async def test_figli_oltre_18_solo_nei_gruppi_gia_noti():
+    creato_qui, bot = await _albero_vero()
+    try:
+        sopra = {
+            _percorso(n)
+            for n in _tutti_i_nodi(_radici(bot))
+            if isinstance(n, app_commands.Group) and len(n.commands) > OBIETTIVO_FIGLI
+        }
+        assert sorted(sopra - KNOWN_OLTRE_18) == [], f"Gruppi con più di {OBIETTIVO_FIGLI} figli: dividi in sotto-gruppi (D56)"
+        assert sorted(KNOWN_OLTRE_18 - sopra) == [], f"Ora sono a {OBIETTIVO_FIGLI} figli o meno: toglili da KNOWN_OLTRE_18"
+    finally:
+        await _chiudi(creato_qui, bot)
+
+
+async def test_solo_proprietario_sta_solo_in_owner():
+    """D56: un comando che dice «Solo proprietario» nella descrizione sta sotto `/owner`."""
+    creato_qui, bot = await _albero_vero()
+    try:
+        fuori = [
+            _percorso(n)
+            for n in _tutti_i_nodi(_radici(bot))
+            if "olo proprietario" in str(n.description) and _percorso(n).split()[0] != "owner"
+        ]
+        assert fuori == [], f"Comandi solo-owner fuori da /owner: {fuori}"
     finally:
         await _chiudi(creato_qui, bot)
 
