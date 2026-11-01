@@ -20,6 +20,7 @@ from aiohttp import web
 
 from core import desktop_logic as logica
 from core import desktop_staff as staff
+from core.desktop_eventi import vede_il_canale
 from core.ai_testi_logic import LINGUE
 from core.repositories.desktop_repo import desktop_repo
 from core.repositories.main_radio_repo import main_radio_repo
@@ -98,8 +99,8 @@ def registra_rotte(app: web.Application, *, bot, ip, url_pannello: str, ponte, a
         membro = _membro_in(guild, utente) if guild else None
         if membro is None:
             return False
-        canale = guild.get_channel(riga["channel_id"]) if riga["channel_id"] else None
-        return canale is None or canale.permissions_for(membro).view_channel
+        canale = guild.get_channel_or_thread(riga["channel_id"]) if riga["channel_id"] else None
+        return canale is None or vede_il_canale(canale, membro)
 
     def _evento(riga) -> dict:
         link = logica.link_messaggio(riga["guild_id"], riga["channel_id"], riga["message_id"]) if riga["message_id"] else None

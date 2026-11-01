@@ -3,7 +3,7 @@ cogs/utility/desktop_menzioni.py
 ================================
 Avvisi per iYokai Desktop (SPEC D.5, D.6): quando qualcuno menziona una persona, le risponde o scrive una sua
 parola chiave, il bot mette l'avviso in coda per il programma. Solo per chi ha acceso gli avvisi (spenti di base)
-e solo se la persona è nel server e vede il canale. Si salva un testo breve, per 90 giorni.
+e solo se la persona è nel server e vede il canale (in un thread privato: solo chi ne fa parte). Si salva un testo breve, per 90 giorni.
 Funzioni coperte: SPEC D.5, D.6 (#108)
 Dipende da: core/desktop_logic.py, core/repositories/desktop_repo.py
 """
@@ -16,6 +16,7 @@ import time
 import discord
 from discord.ext import commands
 
+from core.desktop_eventi import vede_il_canale
 from core.desktop_logic import chi_avvisare, testo_breve
 from core.repositories.desktop_repo import desktop_repo
 
@@ -49,7 +50,7 @@ class DesktopMenzioniCog(commands.Cog):
 
             def vede(utente_id: int) -> bool:
                 membro = message.guild.get_member(utente_id)
-                return membro is not None and message.channel.permissions_for(membro).view_channel
+                return membro is not None and vede_il_canale(message.channel, membro)
 
             avvisi = chi_avvisare(
                 autore_id=message.author.id, contenuto=message.content,

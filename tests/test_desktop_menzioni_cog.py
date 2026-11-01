@@ -90,3 +90,21 @@ async def test_avvisa_utente_solo_se_collegato(repo):
     assert ev[0]["tipo"] == "promemoria" and ev[0]["testo"] == "bevi acqua"
     with pytest.raises(ValueError):
         await desktop_eventi.avvisa_utente(10, "inventato", "x")
+
+
+async def test_thread_privato_solo_per_chi_ne_fa_parte(repo):
+    """I permessi di un thread sono quelli del padre: un thread privato non deve avvisare chi non ne fa parte."""
+    await repo.imposta_menzioni(10, True)
+    await repo.imposta_parole(10, ["torneo"])
+    await repo.imposta_menzioni(11, True)
+    await repo.imposta_parole(11, ["torneo"])
+    msg = _messaggio(contenuto="torneo segreto", vedono=(10, 11))
+    thread = MagicMock(spec=discord.Thread)
+    thread.id, thread.name, thread.owner_id = 78, "staff", 99
+    thread.is_private.return_value = True
+    thread.permissions_for = msg.channel.permissions_for
+    thread.get_member = MagicMock(side_effect=lambda uid: SimpleNamespace(id=uid) if uid == 11 else None)
+    msg.channel = thread
+    await dm.DesktopMenzioniCog(MagicMock()).on_message(msg)
+    assert await repo.eventi(10) == []  # vede il canale padre ma non è nel thread privato
+    assert [e["tipo"] for e in await repo.eventi(11)] == ["parola"]

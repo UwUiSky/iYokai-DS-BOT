@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
+import discord
 import pytest
 from aiohttp.test_utils import TestClient, TestServer
 
@@ -29,6 +30,7 @@ def _guild(gid=G, nome="Casa", vede=True, membri=(ME,)):
     canale = MagicMock()
     canale.permissions_for = MagicMock(return_value=SimpleNamespace(view_channel=vede))
     g.get_channel = MagicMock(return_value=canale)
+    g.get_channel_or_thread = g.get_channel  # discord.py: i thread si trovano solo così
     return g
 
 
@@ -204,3 +206,16 @@ async def test_radio(mondo, monkeypatch):
 async def test_la_pagina_della_api_resta_chiusa_ai_riquadri(mondo):
     r = await mondo.client.get("/api/desktop/io", headers=_auth(mondo))
     assert r.headers["X-Frame-Options"] == "DENY" and r.headers["Cache-Control"] == "no-store"
+
+
+async def test_eventi_di_un_thread_privato_solo_se_ne_fai_parte(mondo):
+    await mondo.repo.aggiungi_evento(ME, "parola", guild_id=G, channel_id=8, message_id=80, testo="segreto")
+    thread = MagicMock(spec=discord.Thread)
+    thread.owner_id = 1
+    thread.is_private.return_value = True
+    thread.permissions_for = MagicMock(return_value=SimpleNamespace(view_channel=True, manage_threads=False))
+    thread.get_member = MagicMock(return_value=None)
+    mondo.guild.get_channel_or_thread = MagicMock(side_effect=lambda c: thread if c == 8 else None)
+    assert (await (await mondo.client.get("/api/desktop/eventi", headers=_auth(mondo))).json())["eventi"] == []
+    thread.get_member.return_value = SimpleNamespace(id=ME)
+    assert len((await (await mondo.client.get("/api/desktop/eventi", headers=_auth(mondo))).json())["eventi"]) == 1
