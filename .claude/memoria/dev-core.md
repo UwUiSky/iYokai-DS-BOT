@@ -4,12 +4,11 @@
 28/10/2026 · ramo `feat/r12resto` (agente r12resto) · giro r12 (lotto «resto», migrazioni 0480-0499, D48-D50)
 
 ## In corso
-- r12lingue (21.1/21.6): ~45 cog nel catalogo it/en (strumento semi-automatico, frasi con variabili italiane lasciate). Postgres giu: test con DB da rilanciare (cog toccati: git diff main -- cogs). Prossimo: modalita server (`testo_guild` in core/i18n.py) per log/staff; resta ~150 frasi con variabili italiane e i log in funzioni sincrone. Smoke da fare.
-- Lotto r12 chiuso nel codice; resta solo: lanciare i test degli invarianti, commit e push. Smoke da fare (lo lancia l'orchestratore).
-- Rimandata a r12ai: 14.19 (voce di Yokai). Migrazioni usate: 0480 (log_forum), 0481 (progressi).
-- Prossimo giro: owner radio max_length (musica); 21.1 per cog di altre aree; #70 voci continuo/F8.
+- r13gruppi (D56/D57) quasi chiuso: resta merge di origin/main, esito dei test dei cog toccati, rapporto. Smoke/suite da fare (c'e una migrazione: 0485 percorsi, 0486 livelli_funzione).
+- Rimandato: persistenza/pannello dei livelli, aggancio ai pagamenti (`ha_livello` oggi vale solo per OWNER_ID), permessi per ruolo dal pannello (OAuth), `/gif` ancora vuoto.
 
 ## Fatto
+- r13gruppi: 152 comandi spostati (un commit per gruppo), 11 gruppi nuovi in `_DEFINIZIONI`, sotto-gruppi in `SOTTOGRUPPI`; 4 solo-owner in `/owner ai|parole-odio`; migrazione 0485 (guild_config, history, command_usage); `core/livelli_funzione.py` + `/premium` `/vip` dinamici (0486); invarianti D56 nei test.
 - r12 (resto): 14.7 jolly `*` autoresponder; 18.1 benvenuto nel router (forum, `TIPO_BENVENUTO`); 18.7 log della scala (`_scrivi_nel_log`);
   22.16 wizard con bottone «Crea il canale» (`CANALI_PER_CATEGORIA`, `crea_e_collega`); 8.17 `/log vista-forum` (`core/log_forum_*`, 0480, D48);
   10.5/10.6/10.13 profili social rifiutati nei feed; 23.17 `/level progressi` + `/economia progressi` (`core/progressi_*`, 0481, D49) e
@@ -39,15 +38,12 @@
 - Comando staff dentro un gruppo pubblico (`utility`): `@richiedi(Livello.ADMIN)` su ogni comando + `@autocomplete_protetto`.
 - Migrazione applicata e poi rinominata: `delete from schema_migrations where version=N` e drop della tabella nel DB di prova.
 - `monkeypatch.undo()` in un test con `clean_db` annulla anche il pool: ripristinare il singolo attributo.
-- Il token OAuth, gli state e i corpi delle risposte Discord non vanno mai in log o messaggi.
 - Un cog con `CogConGruppi` che definisce `cog_load`/`cog_unload` deve chiamare `await super().cog_load()`: senza, i suoi comandi spariscono dall'albero (test_command_translator lo vede).
-- Funzioni importate che iniziano con `test` (es. `testo_x`) vengono raccolte da pytest: importarle con un alias.
 - Punti di aggancio nei repo (`event_log_repo`, `moderation_repo`, `leveling_repo`): import tardivo del servizio per evitare cicli, servizio che non solleva mai.
 - Gruppo `moduli` a 6.793/6.800 caratteri: ogni parola in più nelle descrizioni lo manda sopra l'allarme.
 - Gruppo `level` a 6.444/6.800: `/level progressi` e senza parametri (menu in una finestra); non aggiungere parametri a `/level`.
 - Un select in una `BaseView` con bottoni che cambiano per sezione: si ricostruisce la vista a ogni cambio (`costruisci`) e si usa `edit_message`.
 - Nel test di una vista con select: `interaction.data = {"values": [...]}`; `fake_member` ha `premium_since` come mock: va messo a None.
-- Python 3.11: niente backslash dentro le espressioni degli f-string (si calcola prima).
 - 23.17 chiusa (D51, migrazioni 0482-0483): pass di 90 giorni da 1/1/2026, XP del pass nella colonna `progress_stagione.xp`.
 
 ## Aperto
@@ -59,3 +55,6 @@
 - 14.13 codice morto (continuo), 14.14 lingue (F8). KNOWN_SENZA_MAX_LENGTH: 27 voci in cogs di altre aree.
 - Clan sciolto dalla cancellazione: categoria/canali Discord restano da togliere a mano.
 - Worker musicale da solo non controlla la blacklist all'ingresso (solo il principale).
+- Riordino gruppi: i percorsi si cambiano con script sulla mappa M.json; gli offset AST sono in byte (attenzione alle lettere accentate).
+- `/assistente` esiste anche in iYokai App (app diversa): i test dei riferimenti danno la precedenza al principale.
+- Tra i gruppi per tutti non entra mai un comando con `@richiedi`: lo controlla test_command_groups.
