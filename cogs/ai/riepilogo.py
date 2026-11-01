@@ -186,7 +186,7 @@ class AiRiepilogoCog(CogConGruppi, commands.Cog):
                         pass
 
     # ---------------------------------------------------------------- comandi
-    @comando_di_gruppo("ai", nome="imposta", descrizione="Riepilogo del server: canale, ora, frequenza e canali da leggere.", sottogruppo=SOTTO_RIEPILOGO)
+    @comando_di_gruppo("admin-ai", nome="imposta", descrizione="Riepilogo del server: canale, ora, frequenza e canali da leggere.", sottogruppo=SOTTO_RIEPILOGO)
     @app_commands.describe(
         attivo="Sì: pubblica il riepilogo. No: spento", canale="Dove pubblicarlo", ora="Ora di pubblicazione (fuso di Roma)",
         frequenza="Ogni giorno o ogni lunedì", leggi_canale="Aggiunge o toglie un canale da cui l'AI riassume le discussioni",
@@ -217,7 +217,7 @@ class AiRiepilogoCog(CogConGruppi, commands.Cog):
         )
         await interaction.response.send_message(testo, ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("ai", nome="anteprima", descrizione="Mostra a te il riepilogo di adesso, senza pubblicarlo.", sottogruppo=SOTTO_RIEPILOGO)
+    @comando_di_gruppo("admin-ai", nome="anteprima", descrizione="Mostra a te il riepilogo di adesso, senza pubblicarlo.", sottogruppo=SOTTO_RIEPILOGO)
     async def riepilogo_anteprima(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True)
         cfg = await ai_riepilogo_repo.config(interaction.guild_id)

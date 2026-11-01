@@ -168,7 +168,7 @@ class AiVoceCog(CogConGruppi, commands.Cog):
             return "Questo testo non si può trasformare in voce."
         return None
 
-    @comando_di_gruppo("ai", nome="imposta", descrizione="Voce di Yokai: accesa o spenta, tono e canali dei saluti.", sottogruppo=SOTTO_VOCE)
+    @comando_di_gruppo("admin-ai", nome="imposta", descrizione="Voce di Yokai: accesa o spenta, tono e canali dei saluti.", sottogruppo=SOTTO_VOCE)
     @app_commands.describe(attiva="Sì: la voce è accesa nel server", tono="Il tono della voce (piccante solo nei canali NSFW)",
                            saluti_canale="Aggiunge o toglie un canale dove Yokai risponde ai saluti a voce")
     @app_commands.choices(tono=[app_commands.Choice(name=t, value=t) for t in TONI])
@@ -196,7 +196,7 @@ class AiVoceCog(CogConGruppi, commands.Cog):
         )
         await interaction.response.send_message(testo, ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("ai", nome="parla", descrizione="Yokai dice un annuncio a voce in un canale.", sottogruppo=SOTTO_VOCE)
+    @comando_di_gruppo("admin-ai", nome="parla", descrizione="Yokai dice un annuncio a voce in un canale.", sottogruppo=SOTTO_VOCE)
     @app_commands.describe(testo="Cosa dire", canale="Dove (vuoto: qui)")
     async def voce_parla(self, interaction: discord.Interaction, testo: app_commands.Range[str, 3, MAX_TESTO], canale: discord.TextChannel | None = None) -> None:
         destinazione = canale or interaction.channel

@@ -100,7 +100,7 @@ class AiMisteriCog(CogConGruppi, commands.Cog):
         if canale is not None:
             await canale.set_permissions(guild.default_role, view_channel=payload.get("prima"), reason="Fine del premio del mistero")
 
-    @comando_di_gruppo("ai", nome="crea", descrizione="Nasconde un mistero con un codice e un premio per il server.", sottogruppo=SOTTO_MISTERO)
+    @comando_di_gruppo("admin-ai", nome="crea", descrizione="Nasconde un mistero con un codice e un premio per il server.", sottogruppo=SOTTO_MISTERO)
     @app_commands.describe(
         premio="Il premio: XP ai membri attivi o un canale segreto aperto a tutti", xp="Quanti XP (premio XP, al massimo 500)",
         canale="Il canale segreto (premio canale)", ore="Quante ore resta aperto il canale",
@@ -115,7 +115,7 @@ class AiMisteriCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.send_modal(_MisteroModal(premio.value, canale.id if premio.value == "canale" else xp, ore))
 
-    @comando_di_gruppo("ai", nome="elenco", descrizione="I misteri del server (il codice resta segreto).", sottogruppo=SOTTO_MISTERO)
+    @comando_di_gruppo("admin-ai", nome="elenco", descrizione="I misteri del server (il codice resta segreto).", sottogruppo=SOTTO_MISTERO)
     async def mistero_elenco(self, interaction: discord.Interaction) -> None:
         misteri = await ai_gioco_repo.misteri(interaction.guild_id)
         if not misteri:
@@ -128,7 +128,7 @@ class AiMisteriCog(CogConGruppi, commands.Cog):
         ]
         await interaction.response.send_message(taglia("\n".join(righe), 1900), ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("ai", nome="togli", descrizione="Toglie un mistero.", sottogruppo=SOTTO_MISTERO)
+    @comando_di_gruppo("admin-ai", nome="togli", descrizione="Toglie un mistero.", sottogruppo=SOTTO_MISTERO)
     @app_commands.describe(numero="Il numero nell'elenco")
     async def mistero_togli(self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 2_000_000_000]) -> None:
         tolto = await ai_gioco_repo.mistero_togli(interaction.guild_id, numero)

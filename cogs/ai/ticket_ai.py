@@ -162,7 +162,7 @@ class AiTicketCog(CogConGruppi, commands.Cog):
         except Exception:  # noqa: BLE001 - un errore dell'AI non ferma mai un ticket
             logger.warning("Prima risposta automatica non riuscita.", exc_info=True)
 
-    @comando_di_gruppo("ai", nome="prima-risposta", descrizione="Accende o spegne la prima risposta automatica dell'AI in un pannello ticket.", sottogruppo=SOTTO_STAFF)
+    @comando_di_gruppo("admin-ai", nome="prima-risposta", descrizione="Accende o spegne la prima risposta automatica dell'AI in un pannello ticket.", sottogruppo=SOTTO_STAFF)
     @app_commands.describe(pannello="Il pannello dei ticket", attiva="Sì: l'AI risponde da sola una volta, lo staff la vede")
     @app_commands.autocomplete(pannello=completa_pannelli)
     async def prima_risposta_cmd(self, interaction: discord.Interaction, pannello: app_commands.Range[str, 1, 50], attiva: bool) -> None:

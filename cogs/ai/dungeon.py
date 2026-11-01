@@ -337,7 +337,7 @@ class AiDungeonCog(CogConGruppi, commands.Cog):
     async def _prima(self) -> None:
         await attendi_bot_pronto(self.bot)
 
-    @comando_di_gruppo("ai", nome="avvia", descrizione="Avvia un dungeon di gruppo in un canale.", sottogruppo=SOTTO_DUNGEON)
+    @comando_di_gruppo("admin-ai", nome="avvia", descrizione="Avvia un dungeon di gruppo in un canale.", sottogruppo=SOTTO_DUNGEON)
     @app_commands.describe(canale="Dove giocare (vuoto: questo canale)")
     async def dungeon_avvia(self, interaction: discord.Interaction, canale: discord.TextChannel | None = None) -> None:
         destinazione = canale or interaction.channel
@@ -348,7 +348,7 @@ class AiDungeonCog(CogConGruppi, commands.Cog):
         partita_id, motivo = await avvia_partita(self.bot, interaction.guild, destinazione, interaction.user.id)
         await interaction.followup.send(f"Dungeon aperto in {destinazione.mention}." if partita_id else motivo, ephemeral=True)
 
-    @comando_di_gruppo("ai", nome="storie", descrizione="Quante storie di dungeon ci sono pronte per il tema del server.", sottogruppo=SOTTO_DUNGEON)
+    @comando_di_gruppo("admin-ai", nome="storie", descrizione="Quante storie di dungeon ci sono pronte per il tema del server.", sottogruppo=SOTTO_DUNGEON)
     async def dungeon_storie(self, interaction: discord.Interaction) -> None:
         tema, _ = await tema_del_server(interaction.guild_id)
         n = await ai_gioco_repo.storie_conta(tema)
