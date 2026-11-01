@@ -2,7 +2,7 @@
 tests/test_command_translator.py
 ================================
 NF-06 (#77, D1): nomi e descrizioni dei comandi in inglese, controllati sull'albero VERO
-(owner compreso) e sugli alberi delle istanze separate (NSFW, App). Senza locales/comandi.en.json o con una voce ripetuta il test fallisce.
+(owner compreso) e sugli alberi delle istanze separate (NSFW, App). Senza locales/en-US/comandi.json o con una voce ripetuta il test fallisce.
 """
 
 import collections
@@ -33,7 +33,7 @@ async def test_ogni_comando_e_gruppo_ha_la_descrizione_inglese():
     creato_qui, bot = await _albero_vero()
     try:
         mancanti = [_percorso(n) for n in _tutti_i_nodi(_radici(bot)) if tr.descrizione_inglese(_percorso(n)) is None]
-        assert mancanti == [], f"Senza descrizione in locales/comandi.en.json: {mancanti[:15]} (+{max(0, len(mancanti) - 15)})"
+        assert mancanti == [], f"Senza descrizione in locales/en-US/comandi.json: {mancanti[:15]} (+{max(0, len(mancanti) - 15)})"
     finally:
         await _chiudi(creato_qui, bot)
 
@@ -167,5 +167,29 @@ async def test_un_nome_tradotto_non_cambia_un_altro_comando_con_lo_stesso_nome()
         nomi = {_percorso(n): _nome_en(n) for n in _tutti_i_nodi(_radici(bot))}
         assert nomi["music pause"] == "pause"
         assert nomi["monete attese"] == "cooldowns"
+    finally:
+        await _chiudi(creato_qui, bot)
+
+
+async def test_i_nomi_tradotti_di_ogni_lingua_sono_validi_con_il_prefisso_dello_staff():
+    """D58: in ogni lingua presente nomi validi per Discord, `admin-`/`mod-`/`founder` intatti, nessun duplicato tra fratelli."""
+    creato_qui, bot = await _albero_vero()
+    try:
+        problemi = []
+        nodi = list(_tutti_i_nodi(_radici(bot)))
+        for lingua, sezioni in tr.carica_tutte(forza=True).items():
+            if lingua == "it":
+                continue
+            for segmento, nome in sezioni["nomi"].items():
+                if not tr.nome_valido(nome):
+                    problemi.append(f"{lingua}: nome non valido {nome!r}")
+                if segmento.startswith(tr.PREFISSI_NON_TRADOTTI) and tr.nome_tradotto(segmento, lingua) is None:
+                    problemi.append(f"{lingua}: {segmento} -> {nome} cambia il prefisso")
+            for padre in [None] + [n for n in nodi if isinstance(n, app_commands.Group)]:
+                figli = _radici(bot) if padre is None else list(padre.commands)
+                visti = collections.Counter(tr.nome_tradotto(f.name, lingua) or f.name for f in figli)
+                problemi += [f"{lingua}: duplicato {nome}" for nome, n in visti.items() if n > 1]
+            problemi += [f"{lingua}: descrizione oltre 100: {k}" for k, d in sezioni["descrizioni"].items() if len(d) > tr.MAX_DESCRIZIONE]
+        assert problemi == []
     finally:
         await _chiudi(creato_qui, bot)

@@ -193,11 +193,18 @@ def test_conta_caratteri_segue_la_regola_ufficiale():
     assert conta_caratteri(gruppo) == 1 + 2 + conta_caratteri(cmd)
 
 
+def peso_con_lingue(nodo) -> int:
+    """D58: per ogni campo conta la versione più lunga tra tutte le lingue presenti (base compresa)."""
+    from core.command_translator import caratteri_con_traduzioni
+
+    return max(conta_caratteri(nodo), caratteri_con_traduzioni(nodo))
+
+
 async def test_caratteri_per_comando_di_primo_livello_sotto_8000():
     creato_qui, bot = await _albero_vero()
     try:
         for cmd in _radici(bot):
-            n = conta_caratteri(cmd)
+            n = peso_con_lingue(cmd)
             assert n <= MAX_CARATTERI_COMANDO, (
                 f"'/{cmd.name}' pesa {n} caratteri: Discord rifiuta oltre "
                 f"{MAX_CARATTERI_COMANDO}. Dividi il gruppo."
@@ -211,9 +218,9 @@ async def test_avviso_caratteri_oltre_6800():
     creato_qui, bot = await _albero_vero()
     try:
         sopra = {
-            c.name: conta_caratteri(c)
+            c.name: peso_con_lingue(c)
             for c in _radici(bot)
-            if conta_caratteri(c) > SOGLIA_ALLARME_CARATTERI
+            if peso_con_lingue(c) > SOGLIA_ALLARME_CARATTERI
         }
         if sopra:
             warnings.warn(

@@ -20,6 +20,7 @@ Python 3.11 · discord.py 2.7 · PostgreSQL · Lavalink
 - [Le applicazioni del progetto](#le-applicazioni-del-progetto)
 - [Installazione](#installazione)
 - [Configurazione](#configurazione)
+- [Lingue](#lingue)
 - [Test](#test)
 - [Struttura della repository](#struttura-della-repository)
 - [Come si lavora](#come-si-lavora)
@@ -199,6 +200,32 @@ se nel `.env` ci sono `OAUTH2_CLIENT_ID`, `OAUTH2_CLIENT_SECRET`,
 
 Prove da fare su Discord: `revisione/03-verifica/VERIFICA_LIVE.md`,
 sezione «Pannello web».
+
+---
+
+## Lingue
+
+Ogni lingua ha una cartella in `locales/` con il codice di Discord: `it`, `en-US` (vale anche per `en-GB`),
+`de`, `es-ES`, `fr`, `ja`, `ko`, `ru`, `uk`, `zh-CN`. Dentro:
+
+- `testi.json`: risposte, embed, finestre e bottoni (chiave → testo; i segnaposto `{nome}` restano uguali);
+- `comandi.json`: nomi, descrizioni e opzioni dei comandi (`nomi`, `descrizioni`, `parametri`, `menu`) e la
+  spiegazione lunga (`aiuto`, percorso → testo). Discord la mostra nella lingua del client.
+
+L'italiano è la base; `it` e `en-US` sono complete, le altre otto sono vuote (da tradurre). Dove manca un testo si usa
+`en-US`, poi l'italiano: il bot funziona sempre.
+
+**Correggere una lingua:** apri solo il suo `testi.json` o `comandi.json`, cambia il testo, tieni uguali i segnaposto.
+I nomi dei comandi: minuscoli, 1-32 caratteri, senza spazi; il prefisso `admin-`, `mod-` e `founder` non si traduce;
+le descrizioni al massimo 100 caratteri.
+
+**Aggiungere una lingua:** `python3 scripts/nuova_lingua.py <codice>` crea la cartella con tutte le chiavi vuote;
+poi si aggiunge il codice a `LINGUE` in `core/i18n.py`. Per salvarla come lingua personale serve anche una migrazione
+che allarga il CHECK di `user_language`.
+
+**Controllo:** `python3 scripts/controlla_lingue.py` scrive `locales/RIEPILOGO.md` con, per ogni lingua, le chiavi
+mancanti, quelle uguali all'italiano e i segnaposto diversi. Gli utenti chiedono una lingua nuova da `/utility lingua`
+(bottone «Chiedi una lingua»): la richiesta arriva in DM all'owner.
 
 ---
 

@@ -6,13 +6,13 @@ Nomi e descrizioni dei comandi tradotti da Discord (NF-06, #77, SPEC §21, D1, D
 Come funziona
 -------------
 - La lingua di base nel codice resta l'italiano (nomi e descrizioni scritti nei cog).
-- Ogni lingua ha il suo `locales/<lingua>/comandi.json` (codici di Discord: en-US, de, es-ES, fr,
+- Ogni lingua ha il suo file `comandi.json` in `locales` (una cartella per lingua; codici di Discord: en-US, de, es-ES, fr,
   ja, ko, ru, uk, zh-CN; `en-GB` usa `en-US`). Sezioni:
     * `nomi`: segmento italiano -> segmento tradotto (vale in tutto l'albero);
     * `descrizioni`: percorso del comando ("modban tempban") -> descrizione;
     * `parametri`: "percorso:parametro" -> descrizione dell'opzione;
     * `menu`: nome di un menu del tasto destro ("Testo pulito") -> nome tradotto (maiuscole e spazi ammessi);
-    * `aiuto`: percorso -> spiegazione lunga, letta da /info e /cerca-comando (ripiego lingua -> en-US -> it).
+    * `aiuto`: percorso -> spiegazione lunga, letta da cerca-comando (ripiego lingua -> en-US -> it).
 - Il traduttore `TraduttoreYokai` manda a Discord solo le chiavi tradotte; per l'italiano e per le
   lingue non gestite risponde None (Discord usa la base). Un file vuoto = nessuna localizzazione.
 - Un nome tradotto non valido per Discord (maiuscole, caratteri non ammessi, oltre 32 caratteri), uno
@@ -66,7 +66,7 @@ def _leggi_lingua(lingua: str) -> dict[str, dict[str, str]]:
     for sezione in SEZIONI:
         voce = grezzo.get(sezione)
         risultato[sezione] = (
-            {k: v for k, v in voce.items() if isinstance(k, str) and isinstance(v, str)}
+            {k: v for k, v in voce.items() if isinstance(k, str) and isinstance(v, str) and v}
             if isinstance(voce, dict)
             else {}
         )

@@ -2,7 +2,7 @@
 core/i18n.py
 ============
 NF-06 / D58 (#77, SPEC §21): tutti i testi del bot in una cartella per lingua
-(`locales/<lingua>/testi.json`, codici di Discord: it, en-US, de, es-ES, fr, ja, ko, ru, uk, zh-CN).
+(file `testi.json` in `locales`, una cartella per lingua; codici di Discord: it, en-US, de, es-ES, fr, ja, ko, ru, uk, zh-CN).
 Le lingue nuove partono vuote: ripiego lingua -> en-US -> it. Un solo modulo legge le lingue.
 Il codice salvato nel database resta `it` / `en` (alias di `en-US`).
 
@@ -69,14 +69,14 @@ def lingue_presenti() -> tuple[str, ...]:
 
 
 def carica_catalogo(forza: bool = False) -> dict[str, dict[str, str]]:
-    """Legge i file delle lingue (una volta sola). Un file mancante o rotto dà un catalogo vuoto per quella lingua."""
+    """Legge i file delle lingue (una volta sola). Un file mancante o rotto dà un catalogo vuoto per quella lingua; un testo vuoto vale «da tradurre» e si ignora."""
     if _CATALOGO and not forza:
         return _CATALOGO
     _CATALOGO.clear()
     for lingua in LINGUE:
         try:
             dati = json.loads(percorso_testi(lingua).read_text(encoding="utf-8"))
-            _CATALOGO[lingua] = {k: v for k, v in dati.items() if isinstance(k, str) and isinstance(v, str)}
+            _CATALOGO[lingua] = {k: v for k, v in dati.items() if isinstance(k, str) and isinstance(v, str) and v}
         except (OSError, ValueError):
             logger.error("Catalogo delle lingue illeggibile: %s/%s", lingua, FILE_TESTI)
             _CATALOGO[lingua] = {}

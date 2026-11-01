@@ -44,7 +44,7 @@ def test_percorsi_ammessi(buono):
     [
         "main.py", "tests/test_x.py", "cogs/utility/ping.txt", "../cogs/x.py", "cogs/../main.py", "/etc/passwd",
         "cogs//x.py", "cogs/x/.py", "core/hot_patch.py", "cogs/utility/ping.py\\..\\..\\x.py", "cogs", "",
-        "cogs/uti lity/x.py", "cogs/9x.py", "scripts/x.py", "locales/it.json",
+        "cogs/uti lity/x.py", "cogs/9x.py", "scripts/x.py", "locales/it/testi.json",
     ],
 )
 def test_percorsi_rifiutati(cattivo):
@@ -250,7 +250,7 @@ def _github(extra=None, token=""):
         f"/compare/{BASE}...{SHA}": (200, {"files": [
             {"filename": "cogs/utility/a.py", "status": "modified"},
             {"filename": "core/c.py", "status": "added"},
-            {"filename": "locales/it.json", "status": "modified"},
+            {"filename": "locales/it/testi.json", "status": "modified"},
             {"filename": "main.py", "status": "modified"},
             {"filename": "cogs/utility/vecchio.py", "status": "removed"},
         ]}),

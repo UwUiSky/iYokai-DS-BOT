@@ -1373,5 +1373,18 @@
   "feedalerts_ruolo_in_diretta_impostato_su": "✅ \"Live\" role set to {mention}. Whoever is linked to a Twitch, YouTube or Kick alert with `/admin-moduli alert opzioni` (the `membro` field) gets it and loses it when the stream ends.",
   "feedalerts_avvisi_da_tiktok_instagram": "Alerts from TikTok, Instagram and X",
   "feedalerts_nessuna_sottoscrizione_attiva_su_questo": "No active subscriptions on this server.",
-  "feedalerts_sottoscrizioni_attive": "🔔 Active subscriptions"
+  "feedalerts_sottoscrizioni_attive": "🔔 Active subscriptions",
+  "lingua_richiesta_bottone": "Request a language",
+  "lingua_richiesta_titolo": "Request a language",
+  "lingua_richiesta_nome_label": "Language name",
+  "lingua_richiesta_nome_segnaposto": "For example: Portuguese",
+  "lingua_richiesta_nota_label": "Note (optional)",
+  "lingua_richiesta_ok": "Request sent. Thank you! The owner will read it: new languages arrive when someone translates them.",
+  "lingua_richiesta_limite": "You already requested a language today. Try again tomorrow.",
+  "lingua_richiesta_nome_vuoto": "Write the name of the language.",
+  "lingua_richiesta_non_inviata": "I could not send the request. Try again later.",
+  "lingua_richiesta_dm_titolo": "**Language request**",
+  "lingua_richiesta_dm_lingua": "Language: {lingua}",
+  "lingua_richiesta_dm_da": "From: {utente}, server: {dove}",
+  "lingua_richiesta_dm_nota": "Note: {nota}"
 }

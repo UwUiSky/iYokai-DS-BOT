@@ -1,9 +1,10 @@
 """
 cogs/utility/lingua.py
 ======================
-`/utility lingua`: ogni utente sceglie la sua lingua (italiano o inglese) per le risposte
-che vede solo lui. Quelle pubbliche seguono la lingua del server (`/admin-bot lingua set`).
-Funzioni coperte: SPEC §21 (NF-06, #77). Dati: tabella `user_language` (0130, registro dei dati).
+`/utility lingua`: ogni utente sceglie la sua lingua per le risposte che vede solo lui. Quelle
+pubbliche seguono la lingua del server (`/admin-bot lingua set`). Il bottone «Chiedi una lingua» apre
+un modulo e manda la richiesta all'owner (`core/lingua_richieste.py`, una al giorno per utente).
+Funzioni coperte: SPEC §21 (NF-06, #77, D58). Dati: tabella `user_language` (0130, registro dei dati).
 Nessun controllo di modulo: è una preferenza personale, non una funzione del server.
 """
 
@@ -14,7 +15,56 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
-from core.i18n import imposta_lingua_utente, lingua_server, lingua_utente, t
+from core import lingua_richieste as richieste
+from core.i18n import imposta_lingua_utente, lingua_interazione, lingua_server, lingua_utente, t
+from core.ui_base import BaseModal, BaseView
+
+_TESTO_ESITO = {
+    richieste.Esito.INVIATA: "lingua_richiesta_ok",
+    richieste.Esito.LIMITE: "lingua_richiesta_limite",
+    richieste.Esito.NOME_VUOTO: "lingua_richiesta_nome_vuoto",
+    richieste.Esito.NON_INVIATA: "lingua_richiesta_non_inviata",
+}
+
+
+class RichiestaLinguaModal(BaseModal):
+    def __init__(self, bot: commands.Bot, lingua: str) -> None:
+        super().__init__(title=t("lingua_richiesta_titolo", lingua)[:45], timeout=300)
+        self.bot = bot
+        self.lingua = lingua
+        self.nome = discord.ui.TextInput(
+            label=t("lingua_richiesta_nome_label", lingua)[:45],
+            placeholder=t("lingua_richiesta_nome_segnaposto", lingua)[:100],
+            max_length=richieste.MAX_NOME_LINGUA,
+        )
+        self.nota = discord.ui.TextInput(
+            label=t("lingua_richiesta_nota_label", lingua)[:45],
+            style=discord.TextStyle.paragraph,
+            required=False,
+            max_length=richieste.MAX_NOTA,
+        )
+        self.add_item(self.nome)
+        self.add_item(self.nota)
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(ephemeral=True)  # il DM all'owner può durare più di 3 secondi
+        esito = await richieste.invia_richiesta(
+            self.bot, interaction.user, interaction.guild, self.nome.value, self.nota.value
+        )
+        await interaction.followup.send(t(_TESTO_ESITO[esito], self.lingua), ephemeral=True)
+
+
+class ChiediLinguaView(BaseView):
+    def __init__(self, bot: commands.Bot, lingua: str) -> None:
+        super().__init__(timeout=300)
+        self.bot = bot
+        self.lingua = lingua
+        bottone = discord.ui.Button(label=t("lingua_richiesta_bottone", lingua)[:80], style=discord.ButtonStyle.secondary)
+        bottone.callback = self._apri
+        self.add_item(bottone)
+
+    async def _apri(self, interaction: discord.Interaction) -> None:
+        await interaction.response.send_modal(RichiestaLinguaModal(self.bot, self.lingua))
 
 
 class LinguaCog(CogConGruppi, commands.Cog):
@@ -52,7 +102,8 @@ class LinguaCog(CogConGruppi, commands.Cog):
                 if salvata
                 else t("lingua_utente_azzerata", server)
             )
-        await interaction.response.send_message(testo, ephemeral=True)
+        vista = ChiediLinguaView(self.bot, await lingua_interazione(interaction))
+        await interaction.response.send_message(testo, view=vista, ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:

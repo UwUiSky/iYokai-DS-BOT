@@ -1373,5 +1373,18 @@
   "feedalerts_ruolo_in_diretta_impostato_su": "✅ Ruolo «in diretta» impostato su {mention}. Lo riceve chi è collegato a un avviso Twitch, YouTube o Kick con `/admin-moduli alert opzioni` (campo `membro`) e lo perde a fine diretta.",
   "feedalerts_avvisi_da_tiktok_instagram": "Avvisi da TikTok, Instagram e X",
   "feedalerts_nessuna_sottoscrizione_attiva_su_questo": "Nessuna sottoscrizione attiva su questo server.",
-  "feedalerts_sottoscrizioni_attive": "🔔 Sottoscrizioni attive"
+  "feedalerts_sottoscrizioni_attive": "🔔 Sottoscrizioni attive",
+  "lingua_richiesta_bottone": "Chiedi una lingua",
+  "lingua_richiesta_titolo": "Chiedi una lingua",
+  "lingua_richiesta_nome_label": "Nome della lingua",
+  "lingua_richiesta_nome_segnaposto": "Per esempio: Portoghese",
+  "lingua_richiesta_nota_label": "Nota (facoltativa)",
+  "lingua_richiesta_ok": "Richiesta inviata. Grazie! L'owner la leggerà: le lingue nuove arrivano quando c'è chi le traduce.",
+  "lingua_richiesta_limite": "Hai già chiesto una lingua oggi. Riprova domani.",
+  "lingua_richiesta_nome_vuoto": "Scrivi il nome della lingua.",
+  "lingua_richiesta_non_inviata": "Non sono riuscito a inviare la richiesta. Riprova più tardi.",
+  "lingua_richiesta_dm_titolo": "**Richiesta di una lingua**",
+  "lingua_richiesta_dm_lingua": "Lingua: {lingua}",
+  "lingua_richiesta_dm_da": "Da: {utente}, server: {dove}",
+  "lingua_richiesta_dm_nota": "Nota: {nota}"
 }

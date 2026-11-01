@@ -1,7 +1,7 @@
 """
 tests/test_i18n_completo.py
 ===========================
-NF-06 (#77): catalogo dei testi (locales/it.json, locales/en.json), lingua per server e per utente.
+NF-06 (#77): catalogo dei testi (locales/it/testi.json, locales/en-US/testi.json), lingua per server e per utente.
 Senza il catalogo o con una chiave solo in una lingua il test fallisce.
 """
 
