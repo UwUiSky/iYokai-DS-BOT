@@ -748,3 +748,12 @@ un livello gratuito (grandi aziende, aziende cinesi e altri): indirizzo, modelli
 tipi di lavoro, limiti al minuto e al giorno, se addestrano sui dati (D19). L'owner
 mette solo la chiave. Il router sceglie il servizio per tipo di lavoro e quota rimasta.
 Le chiavi a pagamento restano spente finché non le pagano gli abbonamenti premium.
+
+## D57 — Livelli di abbonamento scelti dal pannello, per funzione (01/11/2026, richiesta dell'owner)
+All'avvio tutto il bot è gratuito per tutti. Più avanti l'owner sceglie dal pannello web,
+funzione per funzione, il livello: gratuito, premium, VIP 5 o VIP 20 (es. AI a pagamento:
+servizi economici su VIP 5, servizi costosi su VIP 20).
+- Un solo punto del codice legge il livello di ogni funzione (D16), usato da comandi e pannello.
+- Il bot mostra da solo i comandi per livello: `/premium` elenca i comandi premium,
+  `/vip` quelli di VIP 5 e VIP 20, aggiornati quando l'owner cambia il pannello, senza riavvio.
+- Si predispone ora (livello di default = gratuito per tutto), si attiva con il pannello.
