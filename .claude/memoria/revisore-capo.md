@@ -1,19 +1,12 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
-29/10/2026 · `feat/r12resto` (D48–D50, 0480–0481): cacciatore + revisione. Corretti ReDoS del jolly (1adb71f), doppioni del wizard (d13b332), eventi spenti nel forum (9e3b497), giorno delle missioni (21dd796); SPEC 23.17/16.10 a `[~]` (9abe0f3); COMMAND_LIST (eb25a2c). APPROVATO; smoke da fare (migrazioni: suite completa). /moduli 6793/6800.
-01/11/2026 · `feat/r12piatt` (Desktop 0452, App 0451, webhook 0450, pagine per modulo, editor, wiki; D45–D47): cacciatore + revisione. Corretti thread privati nel Desktop (795142b), avvisi dopo scollega (530fd71), pagine per modulo (fb65019), benvenuto D12 (56a4538), COMMAND_LIST (ffec881). APPROVATO, 4 basse; smoke da fare (migrazioni: suite completa). Merge: DECISIONI D45–47 contro D48–50 di main.
-28/10/2026 · `feat/r11util` (D36 modalità link, D37 ban/addio, 0400). Fatto anche il cacciatore. Corretti: martello prima dell'addio, PNG RGBA grandi, «ruolo» senza ruolo (d4d1e0a); COMMAND_LIST (a56ef5e). APPROVATO, 3 basse nel quaderno; smoke da fare. /gestione 6742/6800.
-28/10/2026 · `feat/r11odio` (D35/D39, 0390+0391): fatto anche il cacciatore. Corretti: regex native con varianti e prefissi comuni, testo intero all'AI e niente AI per testi manipolati, risposta rigida, AI ferma senza richiamo, blocco fallito non resta acceso, libreria a proprietari diversi + parole comuni (vedi commit). APPROVATO, smoke da fare (migrazione 0391: suite completa).
-28/10/2026 · `feat/r10liv` (livelli/economia r10: SPEC §15 a `[x]`, shop 0340, classifica settimanale, moneta e tassa 0341). Fatto anche il cacciatore. Corretti: minimo pay (0342) e tassa per eccesso (b1c1f45); righe shop controllate prima, codice in DM, scadenze solo server del bot (f92d597); registro (485e139). APPROVATO, smoke da fare.
-28/10/2026 · ramo `feat/r10inviti` (link personali, D32, 0380): fatti anche i controlli del cacciatore; fix 8b9426b (permesso del membro, canale pubblico, tetto 500, verifica invito vivo, race tracker), d45c4f2 (COMMAND_LIST). APPROVATO con 4 basse nel quaderno; smoke da fare.
-28/10/2026 · `feat/r10aiw` (#95 AI r10, 0350–0351): APPROVATO dopo i fix: comandi AI aperti in prova (b302da0, `richiede_ai`), prova non ripetibile dopo la purga (0be178a, `ai_prove`), elenco comandi (c2b8c98). Smoke da fare (regola owner: lo lancia l'orchestratore). Aperte 2 basse nei quaderni.
-21/10/2026 · ramo `feat/r8tkt` (#120 opzioni ticket, #139 AI, migrazione 0220): merge di main (991f977); corretti presa esclusiva/passa/rilascia e note archiviate (bd26b6d), cache opzioni (ad83893), reperibili ricontrollati; test instabile dei due close = doppia lettura in `close`. Esito smoke nel rapporto.
-16/10/2026 · r7mod, r7bak (3be8a40), r7liv.
-28/10/2026 · `feat/r11eco` (D30 MUSIC_TOKEN_6..20, D38 immagine moneta 0410, D41): cacciatore + revisione. 2 test rossi = test non adeguati all'embed/file (corretti). Fix token music in fila e senza doppioni (5c69d2b). APPROVATO con 3 basse; smoke da fare.
-Giri r10 (liv, inviti, aiw, sec, filtro, logt, core, mod) e r8/r9: tutti APPROVATI, basse aperte nel quaderno.
+01/11/2026 · `feat/r12ai` (§25 AI r12, 0420–0429): merge di main (D45 del ramo → D52), cacciatore + revisione. 9 fix (bozze senza dati su GitHub, scelte owner prima di sa_fare, privacy max 10 AI, traduzione piena, cache voce, menu app senza server, prima risposta ticket in compito, D16 canale/vietate, allegati con guild_id). APPROVATO; smoke da fare (migrazioni: suite completa).
+28/10/2026 · r11util, r11odio, r11eco, r10liv, r10inviti, r10aiw: APPROVATI dopo i fix (commit nel quaderno), basse aperte; smoke da fare.
+Giri r6–r10: tutti APPROVATI, basse aperte nel quaderno.
 
 ## In corso
+- `feat/r12ai`: 5 basse nel quaderno (bug.md e revisione.md, righe 01/11 r12ai). Migrazioni 0420–0429: suite completa a fine giro (orchestratore).
 - `feat/r11eco`: 3 basse nel quaderno. Migrazione 0410: suite completa a fine giro (orchestratore).
 - Rami r10/r9/r8/r7/r6: solo le righe aperte del quaderno alla riconsegna. `f7-quadro` APPROVATO, manca l'unione.
 
@@ -55,6 +48,9 @@ Giri r10 (liv, inviti, aiw, sec, filtro, logt, core, mod) e r8/r9: tutti APPROVA
 - Bot secondari (D15, Mod, marchio, app): cercare OGNI azione chiamata sul principale. App utente: `is_guild_integration()` falso = saltare le cose del server.
 - Comandi con più opzioni: tutti i controlli PRIMA del primo salvataggio. Opzioni «vuoto = togli»: Discord non manda testi vuoti.
 - Liste/inviti da mostrare: tetto e «e altre N»; inviti del bot per un membro = permesso del membro.
+- Due pytest insieme sullo stesso database = test rossi a caso (clean_db svuota): mai test in parallelo nella stessa copia.
+- Testo degli utenti verso servizi esterni non AI (GitHub): `pulisci_dati_personali` + chiavi (`per_repo`). Menu di iYokai App: AI con `guild_id=None`.
+- Cache su disco con tetto: cercare chi chiama la pulizia. Lavoro AI in un flusso Discord (apertura ticket, elenchi): in un compito a parte o con tetto di chiamate.
 
 ## Aperto
 - Domande all'owner: SPEC 23.16, D18 limite ticket per utente, primo DM ModMail, D27, IPv4 = basso (NF-21), D29, SIC-045.

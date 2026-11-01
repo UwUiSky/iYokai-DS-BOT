@@ -326,3 +326,13 @@
 - 01/11 · core/repositories/desktop_repo.py utenti_con_avvisi · avvisi salvati anche dopo scollega · media · corretto 530fd71
 - 01/11 · core/config_impostazioni.py _converti · tipo di canale e ruolo non controllati come nel comando · media · corretto fb65019
 - 01/11 · core/web_editor.py salva_benvenuto · ping ruoli spento cambiando canale, canali vocali accettati · media · corretto 56a4538
+- 01/11 · `feat/r12ai` core/ai_bozza_logic.py · testo della persona (e-mail, menzioni, ID, chiavi) finiva su GitHub nel corpo e nel file · alta · corretto 3e77ac9
+- 01/11 · `feat/r12ai` core/ai_servizio.py controlla_accesso · scelte dell'owner lette dopo `sa_fare`: dopo un riavvio un tipo dato dall'owner era «non configurata» · media · corretto 482a151
+- 01/11 · `feat/r12ai` cogs/utility/privacy.py privacy_richieste · fino a 100 chiamate AI in fila: oltre i 15 minuti dell'interazione · media · corretto (commit privacy)
+- 01/11 · `feat/r12ai` core/traduzione_gruppo_logic.py aggiungi · messaggio oltre 6/1500 caratteri mai tradotto · media · corretto
+- 01/11 · `feat/r12ai` core/voice_client.py · CacheVoce.pulisci mai chiamata: cartella senza tetto · media · corretto
+- 01/11 · `feat/r12ai` cogs/ai/voce.py trascrivi_e_traduci · menu dell'app chiedeva l'AI del server (spesso senza bot): traduzione mai partita · media · corretto
+- 01/11 · `feat/r12ai` cogs/tickets/tickets.py _crea_ticket · prima risposta AI attesa prima di chiusura automatica, sollecito e «Ticket creato» · media · corretto
+- 01/11 · `feat/r12ai` cogs/ai/voce.py parla · se il testo di ripiego fallisce (permessi) l'errore sale e il followup non parte; vocale partito + messaggio sotto fallito = doppio · bassa · aperto
+- 01/11 · `feat/r12ai` core/voice_client.py genera · wait_for non ferma il thread di sintesi: con il timeout il turno si libera e due sintesi vanno insieme · bassa · plausibile
+- 01/11 · `feat/r12ai` cogs/ai/ticket_ai.py on_message · seconda lettura del ticket dal database per ogni messaggio di ogni server (TicketsCog già la fa) · bassa · aperto
