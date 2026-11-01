@@ -200,9 +200,9 @@ class CoinGamesCog(CogConGruppi, commands.Cog):
         bersaglio = membro or interaction.user
         percentuale = compute_misura(bersaglio.id, tema, datetime.now(timezone.utc).date())
         embed = discord.Embed(
-            title=await testo_per(interaction, "coingames_misura"),
+            title=await testo_per(interaction, "coingames_misura", pubblica=True),
             description=(
-                await testo_per(interaction, "coingames_di_domani_potrebbe_cambiare", v1=tema.strip(), display_name=bersaglio.display_name, v3=_barra(percentuale), percentuale=percentuale)
+                await testo_per(interaction, "coingames_di_domani_potrebbe_cambiare", v1=tema.strip(), display_name=bersaglio.display_name, v3=_barra(percentuale), percentuale=percentuale, pubblica=True)
             ),
             color=discord.Color.blurple(),
         )

@@ -59,7 +59,7 @@ class ShipRateCog(CogConGruppi, commands.Cog):
 
         percentuale = compute_ship_percentage(user1.id, user2.id)
         embed = discord.Embed(
-            title=await testo_per(interaction, "shiprate_ship"),
+            title=await testo_per(interaction, "shiprate_ship", pubblica=True),
             description=(
                 f"**{user1.display_name}** + **{user2.display_name}**\n\n"
                 f"{_barra_percentuale(percentuale)} **{percentuale}%**\n\n"
@@ -88,7 +88,7 @@ class ShipRateCog(CogConGruppi, commands.Cog):
 
         punteggio = compute_rate_score(thing)
         embed = discord.Embed(
-            title=await testo_per(interaction, "shiprate_rate"),
+            title=await testo_per(interaction, "shiprate_rate", pubblica=True),
             description=f"**{thing}**: {punteggio}/10\n\n{rate_flavor_text(punteggio)}",
             color=discord.Color.gold(),
         )

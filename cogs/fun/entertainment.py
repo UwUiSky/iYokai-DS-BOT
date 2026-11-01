@@ -474,8 +474,8 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
 
         nome_file = f"pixabay.{risultato.estensione}"
         embed = discord.Embed(
-            title=await testo_per(interaction, "entertainmen_risultato_della_ricerca"),
-            description=await testo_per(interaction, "entertainmen_immagine_da_pixabay", pagina=risultato.pagina),
+            title=await testo_per(interaction, "entertainmen_risultato_della_ricerca", pubblica=True),
+            description=await testo_per(interaction, "entertainmen_immagine_da_pixabay", pagina=risultato.pagina, pubblica=True),
             color=discord.Color.blue(),
         )
         embed.set_image(url=f"attachment://{nome_file}")

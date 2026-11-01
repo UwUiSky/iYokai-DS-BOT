@@ -242,9 +242,9 @@ class SnipeCog(CogConGruppi, commands.Cog):
             return
 
         embed = discord.Embed(
-            title=await testo_per(interaction, "snipe_reactionsnipe"),
+            title=await testo_per(interaction, "snipe_reactionsnipe", pubblica=True),
             description=(
-                await testo_per(interaction, "snipe_rimossa_da_dal_messaggio_https", emoji=rimossa.emoji, user_id=rimossa.user_id, id=interaction.guild.id, id_4=interaction.channel.id, message_id=rimossa.message_id)
+                await testo_per(interaction, "snipe_rimossa_da_dal_messaggio_https", emoji=rimossa.emoji, user_id=rimossa.user_id, id=interaction.guild.id, id_4=interaction.channel.id, message_id=rimossa.message_id, pubblica=True)
             ),
             color=discord.Color.orange(),
             timestamp=rimossa.removed_at,

@@ -1140,20 +1140,20 @@ class LevelingCog(CogConGruppi, commands.Cog):
             logger.exception("Rank card non disegnata per %s: mando l'embed.", target.id)
             ai_cfg = await ai_repo.get_config(interaction.guild.id)  # nomi a tema (§25.69)
             embed = discord.Embed(
-                title=await testo_per(interaction, "leveling_livello_di", display_name=target.display_name), color=discord.Color.blurple()
+                title=await testo_per(interaction, "leveling_livello_di", display_name=target.display_name, pubblica=True), color=discord.Color.blurple()
             )
             embed.set_thumbnail(url=target.display_avatar.url)
             embed.add_field(
-                name=await testo_per(interaction, "app_profilo_livello"),
+                name=await testo_per(interaction, "app_profilo_livello", pubblica=True),
                 value=titolo_livello(ai_cfg.lore_tema, ai_cfg.prefisso_titolo, totali.level) if ai_cfg.prefisso_titolo else str(totali.level),
                 inline=True,
             )
-            nome_xp = f"{ai_cfg.nome_punti} totale" if ai_cfg.nome_punti else await testo_per(interaction, "leveling_xp_totale")
+            nome_xp = f"{ai_cfg.nome_punti} totale" if ai_cfg.nome_punti else await testo_per(interaction, "leveling_xp_totale", pubblica=True)
             embed.add_field(name=nome_xp, value=str(totali.xp_total), inline=True)
-            embed.add_field(name=await testo_per(interaction, "leveling_coin"), value=str(totali.coins_total), inline=True)
+            embed.add_field(name=await testo_per(interaction, "leveling_coin", pubblica=True), value=str(totali.coins_total), inline=True)
             embed.add_field(
-                name=await testo_per(interaction, "leveling_progresso_al_prossimo_livello"),
-                value=await testo_per(interaction, "leveling_xp", progresso=progresso, richiesti=richiesti) if richiesti else await testo_per(interaction, "leveling_livello_massimo"),
+                name=await testo_per(interaction, "leveling_progresso_al_prossimo_livello", pubblica=True),
+                value=await testo_per(interaction, "leveling_xp", progresso=progresso, richiesti=richiesti, pubblica=True) if richiesti else await testo_per(interaction, "leveling_livello_massimo", pubblica=True),
                 inline=False,
             )
             await interaction.followup.send(nota, embed=embed)
@@ -1233,7 +1233,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             for utente, livello, quando in ultimi
         ]
         embed = discord.Embed(
-            title=await testo_per(interaction, "leveling_livelli_recenti"), description="\n".join(righe), color=discord.Color.blurple()
+            title=await testo_per(interaction, "leveling_livelli_recenti", pubblica=True), description="\n".join(righe), color=discord.Color.blurple()
         )
         await interaction.response.send_message(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
@@ -2456,13 +2456,13 @@ class LevelingCog(CogConGruppi, commands.Cog):
             title=taglia(f"🛡️ [{clan.tag}] {clan.name}", LIMITE_TITOLO_EMBED),
             color=discord.Color.blurple(),
         )
-        embed.add_field(name=await testo_per(interaction, "ricerca_stato"), value=stato, inline=False)
-        embed.add_field(name=await testo_per(interaction, "leveling_capo_clan"), value=f"<@{clan.owner_id}>", inline=True)
+        embed.add_field(name=await testo_per(interaction, "ricerca_stato", pubblica=True), value=stato, inline=False)
+        embed.add_field(name=await testo_per(interaction, "leveling_capo_clan", pubblica=True), value=f"<@{clan.owner_id}>", inline=True)
         if clan.co_owner_id is not None:
-            embed.add_field(name=await testo_per(interaction, "leveling_co_owner"), value=f"<@{clan.co_owner_id}>", inline=True)
-        embed.add_field(name=await testo_per(interaction, "leveling_membri"), value=f"{n_membri}/{clan.max_members}", inline=True)
-        embed.add_field(name=await testo_per(interaction, "leveling_tesoreria"), value=await testo_per(interaction, "leveling_coin_2", treasury_balance=clan.treasury_balance), inline=True)
-        embed.add_field(name=await testo_per(interaction, "leveling_xp_totale"), value=str(clan.total_xp), inline=True)
+            embed.add_field(name=await testo_per(interaction, "leveling_co_owner", pubblica=True), value=f"<@{clan.co_owner_id}>", inline=True)
+        embed.add_field(name=await testo_per(interaction, "leveling_membri", pubblica=True), value=f"{n_membri}/{clan.max_members}", inline=True)
+        embed.add_field(name=await testo_per(interaction, "leveling_tesoreria", pubblica=True), value=await testo_per(interaction, "leveling_coin_2", treasury_balance=clan.treasury_balance, pubblica=True), inline=True)
+        embed.add_field(name=await testo_per(interaction, "leveling_xp_totale", pubblica=True), value=str(clan.total_xp), inline=True)
         ore_accumulate = voice_ticks_to_hours(clan.total_voice_ticks)
         ore_richieste = next_channel_voice_hours_requirement(clan.channels_unlocked)
         prossimo_costo = next_channel_unlock_cost(clan.channels_unlocked)
@@ -2473,7 +2473,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 f"{clan.channels_unlocked} — prossimo: **{prossimo_costo}** coin + "
                 f"**{ore_richieste}**h vocali (ne avete {ore_accumulate})"
             )
-        embed.add_field(name=await testo_per(interaction, "leveling_canali_sbloccati"), value=valore_canali, inline=False)
+        embed.add_field(name=await testo_per(interaction, "leveling_canali_sbloccati", pubblica=True), value=valore_canali, inline=False)
 
         righe_boost = _righe_boost_attivi(
             benefici_attivi(
@@ -2483,12 +2483,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
         )
         if righe_boost:
-            embed.add_field(name=await testo_per(interaction, "leveling_boost_di_gilda"), value="\n".join(righe_boost), inline=False)
+            embed.add_field(name=await testo_per(interaction, "leveling_boost_di_gilda", pubblica=True), value="\n".join(righe_boost), inline=False)
 
         movimenti = await guild_clan_repo.list_ledger(clan.id, limit=MOVIMENTI_IN_CLAN_INFO)
         if movimenti:
             embed.add_field(
-                name=await testo_per(interaction, "leveling_ultimi_movimenti"),
+                name=await testo_per(interaction, "leveling_ultimi_movimenti", pubblica=True),
                 value="\n".join(_riga_movimento(m) for m in movimenti),
                 inline=False,
             )

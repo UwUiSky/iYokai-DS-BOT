@@ -777,7 +777,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         titoli_in_coda = [truncate_title(t.title, 150) for t in player.queue] if player else []
 
         embed = discord.Embed(
-            title=await testo_per(interaction, "player_coda_di_riproduzione"),
+            title=await testo_per(interaction, "player_coda_di_riproduzione", pubblica=True),
             description=build_queue_display(titolo_attuale, titoli_in_coda)[
                 :EMBED_DESCRIPTION_LIMIT
             ],
@@ -786,7 +786,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         if player and len(player.queue) > 0:  # MUS-036
             quote = share_by_user([requester_of(t) for t in player.queue])
             if quote:
-                embed.add_field(name=await testo_per(interaction, "player_chi_ha_messo_cosa"), value=format_share(quote), inline=False)
+                embed.add_field(name=await testo_per(interaction, "player_chi_ha_messo_cosa", pubblica=True), value=format_share(quote), inline=False)
         await interaction.response.send_message(embed=embed)
 
     @comando_di_gruppo("music", nome="clear-queue", descrizione="Svuota la coda, senza toccare la traccia in riproduzione.")
@@ -1241,7 +1241,7 @@ class MusicCog(CogConGruppi, commands.Cog):
             return
         righe = [f"{i}. {truncate_title(t.title, 150)}" for i, t in enumerate(recenti, start=1)]
         embed = discord.Embed(
-            title=await testo_per(interaction, "player_gia_suonati"),
+            title=await testo_per(interaction, "player_gia_suonati", pubblica=True),
             description="\n".join(righe)[:EMBED_DESCRIPTION_LIMIT],
             color=discord.Color.blurple(),
         )

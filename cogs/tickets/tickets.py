@@ -537,16 +537,16 @@ async def _crea_ticket(
             f"risponderà a breve."
         )
     embed = discord.Embed(
-        title=await testo_per(interaction, "tickets_ticket", ticket_number=ticket_number),
+        title=await testo_per(interaction, "tickets_ticket", ticket_number=ticket_number, pubblica=True),
         description=descrizione,
         color=discord.Color.blurple(),
     )
     if category_label is not None:
-        embed.add_field(name=await testo_per(interaction, "antinuke_categoria"), value=truncate_label(category_label))
+        embed.add_field(name=await testo_per(interaction, "antinuke_categoria", pubblica=True), value=truncate_label(category_label))
     if per_conto:
-        embed.add_field(name=await testo_per(interaction, "tickets_aperto_dallo_staff"), value=interaction.user.mention)
+        embed.add_field(name=await testo_per(interaction, "tickets_aperto_dallo_staff", pubblica=True), value=interaction.user.mention)
     if motivo:
-        embed.add_field(name=await testo_per(interaction, "channelcontr_motivo"), value=motivo[:1024], inline=False)
+        embed.add_field(name=await testo_per(interaction, "channelcontr_motivo", pubblica=True), value=motivo[:1024], inline=False)
     if citato is not None:
         testo_citato = (citato.content or "(senza testo)")[:900]
         embed.add_field(
@@ -556,7 +556,7 @@ async def _crea_ticket(
         )
     if fuori_orario:
         embed.add_field(
-            name=await testo_per(interaction, "tickets_fuori_orario"),
+            name=await testo_per(interaction, "tickets_fuori_orario", pubblica=True),
             value=(opzioni.fuori_orario_testo or "Lo staff risponde negli orari di apertura: "
                    + opz_logic.orari_come_testo(opzioni.orari, opzioni.fuso))[:1024],
             inline=False,

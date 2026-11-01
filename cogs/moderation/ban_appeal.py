@@ -328,13 +328,13 @@ async def decidi_appello(interaction: discord.Interaction, appello_id: int, acce
         avviso += " (Non sono riuscito a scrivere all'utente.)"
     embed = interaction.message.embeds[0] if interaction.message and interaction.message.embeds else discord.Embed()
     embed.color = discord.Color.green() if accetta else discord.Color.red()
-    embed.set_footer(text=await testo_per(interaction, "banappeal_da", v1=(await testo_per(interaction, "banappeal_accettato")) if accetta else (await testo_per(interaction, "banappeal_rifiutato")), display_name=interaction.user.display_name))
+    embed.set_footer(text=await testo_per(interaction, "banappeal_da", v1=(await testo_per(interaction, "banappeal_accettato", pubblica=True)) if accetta else (await testo_per(interaction, "banappeal_rifiutato", pubblica=True)), display_name=interaction.user.display_name, pubblica=True))
     await interaction.edit_original_response(embed=embed, view=None)
     log = discord.Embed(
         title=f"Appello #{appello_id} {stato}", color=embed.color,
     )
-    log.add_field(name=await testo_per(interaction, "banappeal_utente"), value=f"<@{uid}>", inline=True)
-    log.add_field(name=await testo_per(interaction, "channelcontr_moderatore"), value=interaction.user.mention, inline=True)
+    log.add_field(name=await testo_per(interaction, "banappeal_utente", pubblica=True), value=f"<@{uid}>", inline=True)
+    log.add_field(name=await testo_per(interaction, "channelcontr_moderatore", pubblica=True), value=interaction.user.mention, inline=True)
     await post_to_mod_log(guild, log)
     if avviso:
         await interaction.followup.send(avviso.strip(), ephemeral=True)

@@ -292,14 +292,14 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
             return
 
         embed = discord.Embed(
-            title=await testo_per(interaction, "casesystem_storico_moderazione", display_name=member.display_name),
+            title=await testo_per(interaction, "casesystem_storico_moderazione", display_name=member.display_name, pubblica=True),
             color=discord.Color.blurple(),
             description=join_within_limit(
                 [_format_case_line(c) for c in casi], "…e altri {n} casi."
             ),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        embed.set_footer(text=await testo_per(interaction, "casesystem_ultimi_casi", v1=len(casi)))
+        embed.set_footer(text=await testo_per(interaction, "casesystem_ultimi_casi", v1=len(casi), pubblica=True))
         await interaction.response.send_message(embed=embed)
 
     @comando_di_gruppo(
@@ -325,26 +325,26 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
             return
 
         embed = discord.Embed(
-            title=await testo_per(interaction, "casesystem_caso", case_number=case.case_number, action_type=case.action_type),
+            title=await testo_per(interaction, "casesystem_caso", case_number=case.case_number, action_type=case.action_type, pubblica=True),
             color=_ACTION_COLORS.get(case.action_type, discord.Color.greyple()),
         )
-        embed.add_field(name=await testo_per(interaction, "banappeal_utente"), value=f"<@{case.user_id}> ({case.user_id})", inline=False)
-        embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore"), value=f"<@{case.moderator_id}>", inline=True)
+        embed.add_field(name=await testo_per(interaction, "banappeal_utente", pubblica=True), value=f"<@{case.user_id}> ({case.user_id})", inline=False)
+        embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore", pubblica=True), value=f"<@{case.moderator_id}>", inline=True)
         embed.add_field(
-            name=await testo_per(interaction, "casesystem_data"), value=case.created_at.strftime("%d/%m/%Y %H:%M"), inline=True
+            name=await testo_per(interaction, "casesystem_data", pubblica=True), value=case.created_at.strftime("%d/%m/%Y %H:%M"), inline=True
         )
         embed.add_field(
-            name=await testo_per(interaction, "channelcontr_motivo"),
+            name=await testo_per(interaction, "channelcontr_motivo", pubblica=True),
             value=truncate_text(case.reason or "Nessun motivo fornito", MAX_FIELD_LENGTH),
             inline=False,
         )
 
         if case.active:
-            embed.add_field(name=await testo_per(interaction, "ricerca_stato"), value=await testo_per(interaction, "casesystem_attivo"), inline=True)
+            embed.add_field(name=await testo_per(interaction, "ricerca_stato", pubblica=True), value=await testo_per(interaction, "casesystem_attivo", pubblica=True), inline=True)
         else:
             revocato_da = f"<@{case.revoked_by}>" if case.revoked_by else "sconosciuto"
             embed.add_field(
-                name=await testo_per(interaction, "ricerca_stato"),
+                name=await testo_per(interaction, "ricerca_stato", pubblica=True),
                 value=f"Revocato da {revocato_da} il "
                 f"{case.revoked_at.strftime('%d/%m/%Y %H:%M') if case.revoked_at else '?'}",
                 inline=True,
@@ -434,9 +434,9 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
             )
             return
         await interaction.response.send_message(await testo_per(interaction, "casesystem_motivo_del_caso_aggiornato", case_number=case_number), ephemeral=True)
-        embed = discord.Embed(title=await testo_per(interaction, "casesystem_motivo_cambiato_caso", case_number=case_number), color=discord.Color.blurple())
-        embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore"), value=interaction.user.mention, inline=True)
-        embed.add_field(name=await testo_per(interaction, "casesystem_nuovo_motivo"), value=truncate_text(reason, MAX_FIELD_LENGTH), inline=False)
+        embed = discord.Embed(title=await testo_per(interaction, "casesystem_motivo_cambiato_caso", case_number=case_number, pubblica=True), color=discord.Color.blurple())
+        embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore", pubblica=True), value=interaction.user.mention, inline=True)
+        embed.add_field(name=await testo_per(interaction, "casesystem_nuovo_motivo", pubblica=True), value=truncate_text(reason, MAX_FIELD_LENGTH), inline=False)
         await post_to_mod_log(interaction.guild, embed)
 
     @comando_di_gruppo(
@@ -458,8 +458,8 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
             )
             return
         await interaction.response.send_message(await testo_per(interaction, "casesystem_caso_eliminato", case_number=case_number), ephemeral=True)
-        embed = discord.Embed(title=await testo_per(interaction, "casesystem_caso_eliminato_2", case_number=case_number), color=discord.Color.dark_grey())
-        embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore"), value=interaction.user.mention, inline=True)
+        embed = discord.Embed(title=await testo_per(interaction, "casesystem_caso_eliminato_2", case_number=case_number, pubblica=True), color=discord.Color.dark_grey())
+        embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore", pubblica=True), value=interaction.user.mention, inline=True)
         await post_to_mod_log(interaction.guild, embed)
 
     @comando_di_gruppo(
@@ -508,11 +508,11 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
             title=f"{_ACTION_ICONS.get(tipo.value, '•')} Caso #{numero} registrato a mano",
             color=_ACTION_COLORS.get(tipo.value, discord.Color.blurple()),
         )
-        embed.add_field(name=await testo_per(interaction, "banappeal_utente"), value=f"<@{utente.id}> ({utente.id})", inline=False)
-        embed.add_field(name=await testo_per(interaction, "casesystem_tipo"), value=tipo.name, inline=True)
-        embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore"), value=moderatore.mention, inline=True)
-        embed.add_field(name=await testo_per(interaction, "channelcontr_motivo"), value=truncate_text(reason, MAX_FIELD_LENGTH), inline=False)
-        embed.set_footer(text=await testo_per(interaction, "casesystem_registrato_da_nessuna_azione_eseguita", display_name=interaction.user.display_name))
+        embed.add_field(name=await testo_per(interaction, "banappeal_utente", pubblica=True), value=f"<@{utente.id}> ({utente.id})", inline=False)
+        embed.add_field(name=await testo_per(interaction, "casesystem_tipo", pubblica=True), value=tipo.name, inline=True)
+        embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore", pubblica=True), value=moderatore.mention, inline=True)
+        embed.add_field(name=await testo_per(interaction, "channelcontr_motivo", pubblica=True), value=truncate_text(reason, MAX_FIELD_LENGTH), inline=False)
+        embed.set_footer(text=await testo_per(interaction, "casesystem_registrato_da_nessuna_azione_eseguita", display_name=interaction.user.display_name, pubblica=True))
         await interaction.response.send_message(
             embed=embed, ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
         )

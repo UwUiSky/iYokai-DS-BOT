@@ -167,12 +167,12 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
             )
 
         embed = discord.Embed(
-            title=await testo_per(interaction, "channelcontr_canale_bloccato"),
+            title=await testo_per(interaction, "channelcontr_canale_bloccato", pubblica=True),
             description=descrizione,
             color=discord.Color.red(),
         )
         if reason:
-            embed.add_field(name=await testo_per(interaction, "channelcontr_motivo"), value=reason)
+            embed.add_field(name=await testo_per(interaction, "channelcontr_motivo", pubblica=True), value=reason)
         await interaction.response.send_message(embed=embed)
         await _log(interaction, embed)
 
@@ -222,8 +222,8 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
         await scheduler.cancel_for_user(interaction.guild.id, target.id, SCHEDULED_CHANNEL_UNLOCK)
 
         embed = discord.Embed(
-            title=await testo_per(interaction, "channelcontr_canale_sbloccato"),
-            description=await testo_per(interaction, "channelcontr_stato_sbloccato", mention=target.mention),
+            title=await testo_per(interaction, "channelcontr_canale_sbloccato", pubblica=True),
+            description=await testo_per(interaction, "channelcontr_stato_sbloccato", mention=target.mention, pubblica=True),
             color=discord.Color.green(),
         )
         await interaction.response.send_message(embed=embed)
@@ -267,7 +267,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
         else:
             messaggio = f"Slowmode impostato a {seconds}s in {target.mention}."
         await interaction.response.send_message(messaggio)
-        embed = discord.Embed(title=await testo_per(interaction, "channelcontr_slowmode"), description=messaggio, color=discord.Color.blurple())
+        embed = discord.Embed(title=await testo_per(interaction, "channelcontr_slowmode", pubblica=True), description=messaggio, color=discord.Color.blurple())
         await _log(interaction, embed)
 
 

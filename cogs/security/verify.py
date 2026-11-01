@@ -787,10 +787,10 @@ class VerifyCog(CogConGruppi, commands.Cog):
             return
 
         embed = discord.Embed(
-            title=await testo_per(interaction, "verify_server_verification"),
-            description=await testo_per(interaction, "verify_click_the_button_below_to")
+            title=await testo_per(interaction, "verify_server_verification", pubblica=True),
+            description=await testo_per(interaction, "verify_click_the_button_below_to", pubblica=True)
             if config.method in ("button", METODO_WEB)
-            else await testo_per(interaction, "verify_react_with_to_verify_and", v1=VERIFY_REACTION_EMOJI),
+            else await testo_per(interaction, "verify_react_with_to_verify_and", v1=VERIFY_REACTION_EMOJI, pubblica=True),
             color=discord.Color.blurple(),
         )
 

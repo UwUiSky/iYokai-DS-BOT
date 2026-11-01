@@ -591,7 +591,7 @@ class ModMailCog(CogConGruppi, commands.Cog):
             if (allegato.content_type or "").startswith("image/"):
                 embed.set_image(url=allegato.url)
             else:
-                embed.add_field(name=await testo_per(interaction, "modmail_allegato"), value=f"[{logica.taglia(allegato.filename, 60)}]({allegato.url})")
+                embed.add_field(name=await testo_per(interaction, "modmail_allegato", pubblica=True), value=f"[{logica.taglia(allegato.filename, 60)}]({allegato.url})")
         try:
             utente = guild.get_member(thread.user_id) or await self.bot.fetch_user(thread.user_id)
             await utente.send(embed=embed)

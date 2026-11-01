@@ -146,12 +146,12 @@ class ModerationClearCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(
             await testo_per(interaction, "clear_messaggi_cancellati", v1=len(eliminati)), ephemeral=True
         )
-        embed = discord.Embed(title=await testo_per(interaction, "clear_clear"), color=discord.Color.light_grey())
-        embed.add_field(name=await testo_per(interaction, "clear_canale"), value=target.mention, inline=True)
-        embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore"), value=interaction.user.mention, inline=True)
-        embed.add_field(name=await testo_per(interaction, "clear_cancellati"), value=str(len(eliminati)), inline=True)
+        embed = discord.Embed(title=await testo_per(interaction, "clear_clear", pubblica=True), color=discord.Color.light_grey())
+        embed.add_field(name=await testo_per(interaction, "clear_canale", pubblica=True), value=target.mention, inline=True)
+        embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore", pubblica=True), value=interaction.user.mention, inline=True)
+        embed.add_field(name=await testo_per(interaction, "clear_cancellati", pubblica=True), value=str(len(eliminati)), inline=True)
         embed.add_field(
-            name=await testo_per(interaction, "clear_filtri"), value=truncate_text(descrivi_filtri(filtri), 1000), inline=False
+            name=await testo_per(interaction, "clear_filtri", pubblica=True), value=truncate_text(descrivi_filtri(filtri), 1000), inline=False
         )
         await post_to_mod_log(interaction.guild, embed)
 

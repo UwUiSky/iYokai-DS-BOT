@@ -792,10 +792,10 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         await self._dopo_unban(interaction.client, interaction.guild.id, uid, interaction.user.id, stato)
 
         await interaction.response.send_message(await testo_per(interaction, "actions_utente_sbannato", pubblica=True, uid=uid))
-        log_embed = discord.Embed(title=await testo_per(interaction, "actions_unban"), color=discord.Color.green())
-        log_embed.add_field(name=await testo_per(interaction, "banappeal_utente"), value=f"`{uid}`", inline=False)
-        log_embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore"), value=interaction.user.mention, inline=True)
-        log_embed.add_field(name=await testo_per(interaction, "channelcontr_motivo"), value=reason, inline=False)
+        log_embed = discord.Embed(title=await testo_per(interaction, "actions_unban", pubblica=True), color=discord.Color.green())
+        log_embed.add_field(name=await testo_per(interaction, "banappeal_utente", pubblica=True), value=f"`{uid}`", inline=False)
+        log_embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore", pubblica=True), value=interaction.user.mention, inline=True)
+        log_embed.add_field(name=await testo_per(interaction, "channelcontr_motivo", pubblica=True), value=reason, inline=False)
         await post_to_mod_log(interaction.guild, log_embed)
 
         # Se il ban era partito da qui verso la rete di ban globali, lo si
@@ -925,9 +925,9 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             )
 
         await interaction.response.send_message(await testo_per(interaction, "actions_timeout_rimosso_da", pubblica=True, mention=member.mention))
-        log_embed = discord.Embed(title=await testo_per(interaction, "actions_timeout_rimosso"), color=discord.Color.green())
-        log_embed.add_field(name=await testo_per(interaction, "banappeal_utente"), value=f"{member.mention} ({member.id})", inline=False)
-        log_embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore"), value=interaction.user.mention, inline=True)
+        log_embed = discord.Embed(title=await testo_per(interaction, "actions_timeout_rimosso", pubblica=True), color=discord.Color.green())
+        log_embed.add_field(name=await testo_per(interaction, "banappeal_utente", pubblica=True), value=f"{member.mention} ({member.id})", inline=False)
+        log_embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore", pubblica=True), value=interaction.user.mention, inline=True)
         await post_to_mod_log(interaction.guild, log_embed)
 
     # ================================================================

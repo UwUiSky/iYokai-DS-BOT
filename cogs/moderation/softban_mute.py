@@ -475,12 +475,12 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         embed = _case_embed(titolo, discord.Color.dark_grey(), member, interaction.user, reason, case_number)
         if fine is not None:
             embed.add_field(
-                name=await testo_per(interaction, "softbanmute_fine"),
+                name=await testo_per(interaction, "softbanmute_fine", pubblica=True),
                 value=f"{discord.utils.format_dt(fine, 'R')} ({format_duration(secondi)})",
                 inline=True,
             )
         if hardmute:
-            embed.add_field(name=await testo_per(interaction, "softbanmute_ruoli_tolti"), value=str(len(ruoli_ora)), inline=True)
+            embed.add_field(name=await testo_per(interaction, "softbanmute_ruoli_tolti", pubblica=True), value=str(len(ruoli_ora)), inline=True)
         await post_to_mod_log(guild, embed)
         await try_dm(member, embed, azione="mute", guild_id=guild.id)
         await interaction.followup.send(embed=embed)
@@ -523,10 +523,10 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
             return
 
         await interaction.followup.send(await testo_per(interaction, "softbanmute_ruolo_mute_rimosso_da", pubblica=True, mention=member.mention))
-        log_embed = discord.Embed(title=await testo_per(interaction, "softbanmute_mute_ruolo_tolto"), color=discord.Color.green())
-        log_embed.add_field(name=await testo_per(interaction, "banappeal_utente"), value=f"{member.mention} ({member.id})", inline=False)
-        log_embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore"), value=interaction.user.mention, inline=True)
-        log_embed.add_field(name=await testo_per(interaction, "channelcontr_motivo"), value=reason, inline=False)
+        log_embed = discord.Embed(title=await testo_per(interaction, "softbanmute_mute_ruolo_tolto", pubblica=True), color=discord.Color.green())
+        log_embed.add_field(name=await testo_per(interaction, "banappeal_utente", pubblica=True), value=f"{member.mention} ({member.id})", inline=False)
+        log_embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore", pubblica=True), value=interaction.user.mention, inline=True)
+        log_embed.add_field(name=await testo_per(interaction, "channelcontr_motivo", pubblica=True), value=reason, inline=False)
         await post_to_mod_log(interaction.guild, log_embed)
 
 

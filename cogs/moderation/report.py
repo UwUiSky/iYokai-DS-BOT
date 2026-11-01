@@ -91,18 +91,18 @@ class ModerationReportCog(CogConGruppi, commands.Cog):
             return
 
         embed = discord.Embed(
-            title=await testo_per(interaction, "report_nuova_segnalazione"),
+            title=await testo_per(interaction, "report_nuova_segnalazione", pubblica=True),
             color=discord.Color.gold(),
         )
         embed.add_field(
-            name=await testo_per(interaction, "report_segnalato"), value=f"{member.mention} ({member.id})", inline=False
+            name=await testo_per(interaction, "report_segnalato", pubblica=True), value=f"{member.mention} ({member.id})", inline=False
         )
         embed.add_field(
-            name=await testo_per(interaction, "report_segnalato_da"),
+            name=await testo_per(interaction, "report_segnalato_da", pubblica=True),
             value=f"{interaction.user.mention} ({interaction.user.id})",
             inline=False,
         )
-        embed.add_field(name=await testo_per(interaction, "channelcontr_motivo"), value=reason, inline=False)
+        embed.add_field(name=await testo_per(interaction, "channelcontr_motivo", pubblica=True), value=reason, inline=False)
         embed.timestamp = discord.utils.utcnow()
         await interaction.response.defer(ephemeral=True)  # l'etichetta con l'AI può metterci un po'
         vista = None
