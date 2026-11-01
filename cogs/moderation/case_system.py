@@ -240,7 +240,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         await post_to_mod_log(guild, embed)
 
     @comando_di_gruppo(
-        "mod",
+        "mod-casi",
         nome="attive",
         descrizione="Sanzioni ancora in corso: tempban, timeout, mute, lock a tempo.",
         sottogruppo=("caso", "Storico e dettagli dei casi di moderazione."),
@@ -261,7 +261,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "mod",
+        "mod-casi",
         nome="storico",
         descrizione="Mostra lo storico casi di un membro.",
         sottogruppo=("caso", "Storico e dettagli dei casi di moderazione."),
@@ -303,7 +303,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed)
 
     @comando_di_gruppo(
-        "mod",
+        "mod-casi",
         nome="vedi",
         descrizione="Mostra i dettagli di un singolo caso.",
         sottogruppo=("caso", "Storico e dettagli dei casi di moderazione."),
@@ -353,7 +353,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed)
 
     @comando_di_gruppo(
-        "mod",
+        "mod-casi",
         nome="aggiungi",
         descrizione="Aggiunge una nota su un utente.",
         sottogruppo=("nota", "Note dello staff su un utente."),
@@ -377,7 +377,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "mod",
+        "mod-casi",
         nome="elenca",
         descrizione="Elenca le note su un utente.",
         sottogruppo=("nota", "Note dello staff su un utente."),
@@ -414,7 +414,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
     # /mod caso: modifica motivo, elimina, classifica staff
     # ================================================================
     @comando_di_gruppo(
-        "mod",
+        "mod-casi",
         nome="motivo",
         descrizione="Cambia il motivo di un caso già registrato.",
         sottogruppo=("caso", "Storico e dettagli dei casi di moderazione."),
@@ -440,7 +440,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         await post_to_mod_log(interaction.guild, embed)
 
     @comando_di_gruppo(
-        "mod",
+        "mod-casi",
         nome="elimina",
         descrizione="Elimina un caso (serve «Gestire il server»).",
         sottogruppo=("caso", "Storico e dettagli dei casi di moderazione."),
@@ -463,7 +463,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         await post_to_mod_log(interaction.guild, embed)
 
     @comando_di_gruppo(
-        "mod",
+        "mod-casi",
         nome="registra",
         descrizione="Registra un caso senza eseguire l'azione (sanzione data fuori dal bot).",
         sottogruppo=("caso", "Storico e dettagli dei casi di moderazione."),
@@ -519,7 +519,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         await post_to_mod_log(interaction.guild, embed)
 
     @comando_di_gruppo(
-        "mod",
+        "mod-casi",
         nome="classifica-staff",
         descrizione="Classifica dei moderatori per numero di azioni, o casi di uno solo.",
         sottogruppo=("caso", "Storico e dettagli dei casi di moderazione."),
@@ -563,7 +563,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
     # /mod nota: toglie, cambia, svuota
     # ================================================================
     @comando_di_gruppo(
-        "mod",
+        "mod-casi",
         nome="rimuovi",
         descrizione="Toglie una nota (il numero è nell'elenco delle note).",
         sottogruppo=("nota", "Note dello staff su un utente."),
@@ -579,7 +579,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "casesystem_nota_tolta", nota_id=nota_id), ephemeral=True)
 
     @comando_di_gruppo(
-        "mod",
+        "mod-casi",
         nome="modifica",
         descrizione="Cambia il testo di una nota.",
         sottogruppo=("nota", "Note dello staff su un utente."),
@@ -600,7 +600,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "casesystem_nota_aggiornata", nota_id=nota_id), ephemeral=True)
 
     @comando_di_gruppo(
-        "mod",
+        "mod-casi",
         nome="svuota",
         descrizione="Cancella tutte le note di un membro (serve «Gestire il server»).",
         sottogruppo=("nota", "Note dello staff su un utente."),
@@ -619,7 +619,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
     # /mod avvisi: togliere i warn e la classifica
     # ================================================================
     @comando_di_gruppo(
-        "mod",
+        "mod-casi",
         nome="togli",
         descrizione="Toglie un singolo warn (per numero di caso).",
         sottogruppo=("avvisi", "Warn: toglierli, azzerarli, classifica."),
@@ -641,7 +641,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "casesystem_warn_tolto", pubblica=True, case_number=case_number, user_id=caso.user_id))
 
     @comando_di_gruppo(
-        "mod",
+        "mod-casi",
         nome="azzera",
         descrizione="Toglie tutti i warn attivi di un membro (serve «Gestire il server»).",
         sottogruppo=("avvisi", "Warn: toglierli, azzerarli, classifica."),
@@ -659,7 +659,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "casesystem_tolti_warn", pubblica=True, n=n, mention=member.mention))
 
     @comando_di_gruppo(
-        "mod",
+        "mod-casi",
         nome="classifica",
         descrizione="I membri con più warn attivi.",
         sottogruppo=("avvisi", "Warn: toglierli, azzerarli, classifica."),

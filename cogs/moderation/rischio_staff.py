@@ -39,7 +39,7 @@ class RischioStaffCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "mod",
+        "mod-casi",
         nome="rischio",
         descrizione="Punteggio di rischio di un membro, con i motivi. Solo un aiuto per decidere.",
     )
@@ -70,7 +70,7 @@ class RischioStaffCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "mod",
+        "mod-casi",
         nome="carico",
         descrizione="Carico dello staff e turni proposti. Solo amministratori, mai pubblico.",
     )
