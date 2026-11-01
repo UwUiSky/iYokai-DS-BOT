@@ -50,7 +50,7 @@ class GitHubBozze:
     async def _http(self, metodo: str, percorso: str, corpo: dict | None) -> dict:
         intestazioni = {"Authorization": f"Bearer {self.config.token}", "Accept": "application/vnd.github+json"}
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=TIMEOUT_SECONDI)) as s:
-            async with s.request(metodo, f"{API}/repos/{self.config.repo}{percorso}", json=corpo, headers=intestazioni) as r:
+            async with s.request(metodo, f"{API}/repos/{self.config.repo}/{percorso}", json=corpo, headers=intestazioni) as r:
                 if r.status >= 400:
                     raise RuntimeError(f"GitHub: stato {r.status}")
                 return await r.json(content_type=None)
@@ -60,12 +60,12 @@ class GitHubBozze:
         if self.config is None:
             return None
         try:
-            base = await self._trasporto("GET", f"/git/ref/heads/{self.config.base}", None)
-            await self._trasporto("POST", "/git/refs", {"ref": f"refs/heads/{ramo}", "sha": base["object"]["sha"]})
-            await self._trasporto("PUT", f"/contents/{percorso_file}", {
+            base = await self._trasporto("GET", f"git/ref/heads/{self.config.base}", None)
+            await self._trasporto("POST", "git/refs", {"ref": f"refs/heads/{ramo}", "sha": base["object"]["sha"]})
+            await self._trasporto("PUT", f"contents/{percorso_file}", {
                 "message": titolo, "branch": ramo, "content": base64.b64encode(contenuto.encode()).decode(),
             })
-            pr = await self._trasporto("POST", "/pulls", {"title": titolo, "head": ramo, "base": self.config.base, "body": corpo, "draft": True})
+            pr = await self._trasporto("POST", "pulls", {"title": titolo, "head": ramo, "base": self.config.base, "body": corpo, "draft": True})
             url = pr.get("html_url")
             return url if isinstance(url, str) else None
         except Exception:  # noqa: BLE001

@@ -27,7 +27,8 @@ from core.ai_cost_logic import GIORNI_PROVA, prova_attiva
 from core.ai_impostazioni import TESTO_CONSENSO, accendi_ai, imposta_lore, imposta_scelte, spegni_ai
 from core.config_schema import ImpostazioneNonValida
 from core.ai_router import avviso_chiavi
-from core.ai_servizio import imposta_manutenzione_ai, servizio_ai
+from core import ai_override_logic as ov
+from core.ai_servizio import imposta_manutenzione_ai, imposta_scelte_owner, servizio_ai
 from core.ai_testi_logic import ISTRUZIONI, LINGUE, TEMI, leggi_proposta_server, nome_lingua, testo_lore
 from core.bot_ready import attendi_bot_pronto
 from core.command_access import Livello, autocomplete_protetto
@@ -238,6 +239,42 @@ class AiConfigCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(
             "AI in manutenzione in tutti i server." if acceso else "AI di nuovo in servizio.", ephemeral=True
         )
+
+    @autocomplete_protetto(Livello.ADMIN)
+    async def _completa_fornitore(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+        if interaction.user.id != config.OWNER_ID:
+            return []
+        nomi = [f.nome for f in servizio_ai().motore._fornitori_base if current.lower() in f.nome.lower()]
+        return [app_commands.Choice(name=n, value=n) for n in nomi[:25]]
+
+    @comando_di_gruppo("ai", nome="modello", descrizione="Solo proprietario: modello, fascia e tipi di un fornitore; tetto di lunghezza.")
+    @app_commands.describe(
+        fornitore="Quale fornitore cambiare (vuoto: mostra le scelte attuali)", modello="Nome del modello",
+        fascia="bassa: chiacchiere; media; alta: lavori che contano", tipi="Lavori che gli dai, separati da virgola (chat,testo,codice...)",
+        tetto_token="Lunghezza massima di ogni risposta in token, per tutti i server (100-4000)", togli_tetto="Sì: toglie il tetto",
+    )
+    @app_commands.choices(fascia=[app_commands.Choice(name=n, value=n) for n in ("bassa", "media", "alta")])
+    @app_commands.autocomplete(fornitore=_completa_fornitore)
+    async def modello(
+        self, interaction: discord.Interaction, fornitore: app_commands.Range[str, 1, 40] | None = None, modello: app_commands.Range[str, 1, 80] | None = None,
+        fascia: str | None = None, tipi: app_commands.Range[str, 1, 100] | None = None,
+        tetto_token: app_commands.Range[int, 100, 4000] | None = None, togli_tetto: bool = False,
+    ) -> None:
+        if interaction.user.id != config.OWNER_ID:
+            await interaction.response.send_message("Questo comando è solo del proprietario del bot.", ephemeral=True)
+            return
+        if fornitore is not None or tetto_token is not None or togli_tetto:
+            errore = await imposta_scelte_owner(
+                fornitore, modello, fascia, tipi, tetto_token, interaction.user.id, togli_tetto=togli_tetto
+            )
+            if errore:
+                await interaction.response.send_message(errore, ephemeral=True)
+                return
+        servizio = servizio_ai()
+        await servizio._leggi_scelte_owner()
+        righe = [ov.riga_fornitore(f) for f in servizio.motore.fornitori] or ["Nessun fornitore nel `.env`."]
+        righe.append(f"Tetto di lunghezza: {servizio.tetto_token or 'nessuno (vale la scelta di ogni server)'}")
+        await interaction.response.send_message("\n".join(righe), ephemeral=True)
 
     @comando_di_gruppo("ai", nome="canale", descrizione="Spegne o riaccende l'AI in un canale.")
     @app_commands.describe(canale="Il canale", acceso="Sì: l'AI lavora qui; no: spenta qui")

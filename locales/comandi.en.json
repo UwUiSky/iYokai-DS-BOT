@@ -951,7 +951,8 @@
   "ai voce": "Yokai's voice: voice messages written by the bot",
   "ai voce imposta": "Voice: on or off, tone and greeting channels.",
   "ai voce parla": "Yokai says an announcement out loud in a channel.",
-  "utility ai parla": "Yokai says a phrase out loud in this channel."
+  "utility ai parla": "Yokai says a phrase out loud in this channel.",
+  "ai modello": "Owner only: a provider model, tier and job types; length cap."
  },
  "parametri": {},
  "menu": {

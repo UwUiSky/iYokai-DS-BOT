@@ -618,3 +618,13 @@ XP una tantum. Il boss di rete lo pubblica solo l'owner. Tutto parte spento e fu
 
 Il motore di sintesi vocale è un modello aperto scelto da `.env`; resta spento finché l'owner non sceglie la voce (D22).
 Il processo AI separato (25.21) resta rimandato: bastano coda e misure già fatte (25.22); si riapre se le misure lo chiedono.
+
+## D45 — Scelte dell'owner per l'AI, bozze di codice, processo separato (01/11/2026)
+
+`/ai modello` (solo owner, dentro `/ai` perché `/owner` è pieno) cambia a caldo modello, fascia e tipi di ogni fornitore
+e il tetto di lunghezza delle risposte; le scelte stanno in `ai_globale` (migrazione 0428) sopra il `.env` e passano da
+un solo punto (`imposta_scelte_owner`). Audio: serve il motore della voce (D44), senza quota; musica e video restano
+accettati nella configurazione ma senza trasporto, perché non c'è un servizio adatto al costo che l'owner accetta.
+Le bozze di codice (AI-R-107) partono solo da richieste già approvate dall'owner e non si uniscono mai da sole.
+Il processo AI separato (25.21) è `[✗]`: era una proposta, non una richiesta dell'owner; con la coda di 25.22 le misure
+non lo chiedono, e un secondo processo duplicherebbe pool, cache e quote su una macchina da 2 CPU.

@@ -139,6 +139,21 @@ class AiRepository:
         """Il messaggio di manutenzione globale, o None se l'AI è in servizio (AI-R-020)."""
         return await self._pool.fetchval("SELECT valore FROM ai_globale WHERE chiave = 'manutenzione'")
 
+    async def globali(self, chiavi: tuple[str, ...]) -> dict[str, str]:
+        """Valori globali dell'owner (scelte sopra il `.env`) per le chiavi chieste."""
+        righe = await self._pool.fetch("SELECT chiave, valore FROM ai_globale WHERE chiave = ANY($1::text[])", list(chiavi))
+        return {r["chiave"]: r["valore"] for r in righe}
+
+    async def imposta_globale(self, chiave: str, valore: str | None, user_id: int | None) -> None:
+        if valore is None:
+            await self._pool.execute("DELETE FROM ai_globale WHERE chiave = $1", chiave)
+            return
+        await self._pool.execute(
+            "INSERT INTO ai_globale (chiave, valore, aggiornato_da) VALUES ($1, $2, $3) "
+            "ON CONFLICT (chiave) DO UPDATE SET valore = $2, aggiornato_da = $3, aggiornato_il = now()",
+            chiave, valore, user_id,
+        )
+
     async def imposta_manutenzione(self, acceso: bool, messaggio: str, user_id: int | None) -> None:
         if not acceso:
             await self._pool.execute("DELETE FROM ai_globale WHERE chiave = 'manutenzione'")

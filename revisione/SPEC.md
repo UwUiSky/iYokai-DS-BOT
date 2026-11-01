@@ -2162,7 +2162,8 @@ di quel file.
 - `[x]` 25.20 Modulo AI in manutenzione o a mezzo servizio, senza
   fermare il resto (AI-R-020)
   → **Stato 27/10 (r10):** interruttore per server e per canale; se i fornitori sono fermi ogni funzione dà la sua risposta senza AI. `/ai manutenzione` (solo owner, migrazione 0350, tabella `ai_globale`) ferma l'AI in tutti i server con un messaggio, anche per le risposte in cache; il resto del bot continua.
-- `[ ]` 25.21 AI in un processo separato (AI-R-021)
+- `[✗]` 25.21 AI in un processo separato (AI-R-021)
+  → **Stato 29/10 (r12ai):** [✗] Rimandata (D45): era una proposta, non una richiesta dell'owner. Coda e limiti di 25.22 bastano alle misure; un secondo processo duplicherebbe pool, cache e quote su 2 CPU. Si riapre se le misure lo chiedono.
 - `[x]` 25.22 Coda e limite per molte richieste insieme (AI-R-022)
   → **Stato 27/10 (r10):** limite al minuto per persona e per la moderazione (20 controlli al minuto per server). Coda vera in `core/ai_coda_logic.py`: 4 chiamate insieme, fino a 40 in fila (8 per server), attesa massima 25 secondi; oltre, risposta locale «troppe richieste in fila». Il processo separato (25.21) resta a parte.
 - `[x]` 25.23 AI come diritto premium a parte, con periodo di prova
@@ -2321,9 +2322,10 @@ di quel file.
 
 **Owner e analisi**
 
-- `[~]` 25.82 Scelta del modello e della lunghezza delle risposte
+- `[x]` 25.82 Scelta del modello e della lunghezza delle risposte
   (AI-R-089; catalogo AI-012)
   → **Stato 14/10 (r6):** lunghezza delle risposte per server (`/ai privacy`); i modelli si scelgono nel `.env` per fornitore.
+  → **Stato 29/10 (r12ai):** /ai modello (solo owner, core/ai_override_logic.py, imposta_scelte_owner): modello di ogni fornitore e tetto di lunghezza delle risposte per tutti i server, a caldo, migrazione 0428 (D45). Test: tests/test_ai_scelte_owner.py
 - `[x]` 25.83 Spesa e uso visti dall'owner (AI-R-090)
 - `[x]` 25.84 Richieste di cancellazione dei dati lette prima dall'AI
   (AI-R-091)
@@ -2352,10 +2354,11 @@ di quel file.
 
 **Richieste dell'owner del 05/10/2026** (D19)
 
-- `[~]` 25.94 Scelta del servizio per tipo di lavoro e per fascia:
+- `[x]` 25.94 Scelta del servizio per tipo di lavoro e per fascia:
   chat semplice, testo, giudizio, codice, traduzione, confronto,
   immagini, audio, musica, video (AI-R-101)
   → **Stato 14/10 (r6):** tipi chat, testo, giudizio, codice, traduzione, confronto, immagine; audio, musica e video sono accettati nella configurazione ma non hanno ancora un trasporto.
+  → **Stato 29/10 (r12ai):** /ai modello cambia fascia e tipi di lavoro di ogni fornitore a caldo; l'audio passa dal motore della voce (D44); musica e video restano accettati ma senza trasporto, per mancanza di un servizio adatto (D45, alternativa D18).
 - `[x]` 25.95 Quote di ogni servizio contate in anticipo, con cambio
   di servizio prima di finirle (AI-R-102)
 - `[x]` 25.96 Controllo delle chiavi ogni ora e avviso all'owner
