@@ -887,3 +887,10 @@ client, ma può fermare il file prima che lo aprano i membri:
   filtro truffe, multilingue.
 - **Account rubati che spammano:** spam-trap e anti-raid già attivi; in più il primo messaggio con immagine
   sospetta di un account mette l'utente in timeout e avvisa lo staff.
+- **Percorso unico per ogni immagine scaricata dal bot (log, backup, ticket, filtro):** 1) i byte vanno in una
+  **cartella di quarantena** sul server, fuori dal sito, mai aperti dal processo del bot; 2) l'analisi gira in una
+  **sandbox**: processo separato, utente di sistema senza permessi, niente rete, sola lettura sulla quarantena,
+  tetti di memoria e di tempo; 3) se l'immagine è pulita, nei log va **una copia ricodificata** (PNG nuovo fatto
+  nella sandbox: è la "foto" dell'immagine, senza il file originale), mai l'originale; 4) se è sospetta o
+  malevola, nei log va solo l'avviso "immagine con contenuto malevolo" con autore, canale, impronta e motivo,
+  senza file; l'originale resta in quarantena per il tempo minimo e poi si cancella. Vale anche D61.
