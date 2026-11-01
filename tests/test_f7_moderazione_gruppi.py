@@ -69,13 +69,13 @@ ATTESI: dict[tuple[str, str | None], set[str]] = {
         "opzioni", "manuale", "tentativi", "statistiche", "tempi", "invia",
     },
     ("automod", None): {"sync", "mute-duration", "log-channel", "status", "violazioni", "violazione-togli"},
-    ("automod", "filtri"): {
+    ("filtri", None): {
         "invites", "anti-link-mode", "anti-link-domain", "anti-spam-messages", "anti-spam-emoji",
         "anti-spam-sticker", "anti-caps", "anti-zalgo", "phishing", "forma-testo", "anti-mention", "anti-attachment", "actions-set",
         "messaggi", "contenuto", "canale-media",
     },
     ("automod", "parole"): {"add", "remove", "list"},
-    ("automod", "odio"): {"stato", "base", "parola", "nomi", "prova", "blocco", "richiami", "libreria"},
+    ("automod", "odio"): {"stato", "base", "parola", "nomi", "prova", "blocco", "richiami"},
     ("automod", "esenzioni"): {"channel-add", "channel-remove", "role-add", "role-remove"},
     ("log", None): {"canale", "stato", "esporta", "archivio-canale"},
     ("log", "cerca"): {"utente", "canale", "ruolo"},
@@ -88,6 +88,7 @@ LIVELLI = {
     "antinuke": Livello.SECURITY,
     "antiraid": Livello.SECURITY,
     "automod": Livello.ADMIN,
+    "filtri": Livello.ADMIN,
     "log": Livello.LOG,
 }
 

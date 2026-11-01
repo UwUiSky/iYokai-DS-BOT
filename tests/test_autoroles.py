@@ -293,13 +293,13 @@ async def test_comando_aggiungi_ok(cog):
 
 
 @pytest.mark.asyncio
-async def test_i_comandi_stanno_sotto_gestione_ruoli():
+async def test_i_comandi_stanno_sotto_ruoli_auto():
     from discord.ext import commands as ext
 
     bot = ext.Bot(command_prefix="!", intents=discord.Intents.default())
     await modulo.setup(bot)
-    for nome in ("auto-aggiungi", "auto-rimuovi", "auto-elenco", "auto-ricorda"):
-        assert comando_nel_gruppo("gestione", f"ruoli {nome}") is not None
+    for nome in ("aggiungi", "togli", "elenco", "ricorda"):
+        assert comando_nel_gruppo("ruoli", f"auto {nome}") is not None
 
 
 @pytest.mark.asyncio

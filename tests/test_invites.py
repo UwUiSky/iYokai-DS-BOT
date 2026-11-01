@@ -141,8 +141,9 @@ async def test_i_comandi_avvisano_sull_attribuzione():
 async def test_albero_dei_comandi():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await modulo.setup(bot)
-    for nome in ("utente", "classifica", "storico", "link", "opzioni"):
+    for nome in ("utente", "classifica", "storico", "link"):
         assert comando_nel_gruppo("level", f"inviti {nome}") is not None
+    assert comando_nel_gruppo("moduli", "inviti") is not None  # D56: le opzioni sono per lo staff
 
 
 @pytest.mark.asyncio

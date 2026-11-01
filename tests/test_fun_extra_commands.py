@@ -54,7 +54,8 @@ async def test_albero_fun_ha_i_sei_nuovi_e_resta_sotto_25():
     bot = commands.Bot(command_prefix="!", intents=d.Intents.none())
     for m in (e, c, s, x):
         await m.setup(bot)
-    assert {"scegli", "numero", "testo", "casuale", "scherzo", "effetto"} <= percorsi_del_gruppo("fun")
+    assert {"scegli", "numero", "testo", "casuale", "scherzo"} <= percorsi_del_gruppo("fun")
+    assert "effetto" in percorsi_del_gruppo("immagini")  # D56: gli effetti sulle immagini
     assert len(GRUPPI["fun"].commands) <= 25
     comando_nel_gruppo("fun", "testo").to_dict(bot.tree)
 
@@ -136,7 +137,7 @@ async def test_meme_testi_con_limite():
 
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.none())
     await e.setup(bot)
-    par = {o.name: o for o in comando_nel_gruppo("fun", "meme").parameters}
+    par = {o.name: o for o in comando_nel_gruppo("immagini", "meme").parameters}
     assert par["top_text"].max_value == 100 and par["bottom_text"].max_value == 100
 
 

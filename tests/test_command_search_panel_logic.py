@@ -163,9 +163,9 @@ def test_embed_risultati_elenca_le_opzioni_e_la_menzione():
 
 
 def test_embed_pannello_con_e_senza_ultimo_comando_e_dm():
-    ids = {"fun": 5}
+    ids = {"giochi": 5}
     con = L.embed_pannello("giochi gioca", ids, in_dm=False)
-    assert "</fun gioca:5>" in con.description
+    assert "</giochi gioca:5>" in con.description
     senza = L.embed_pannello(None, ids, in_dm=False)
     assert "</" not in senza.description
     dm = L.embed_pannello(None, ids, in_dm=True)

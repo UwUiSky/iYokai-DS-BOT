@@ -26,7 +26,7 @@ async def test_sticky_messages_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is False
 
-    assert {"messaggi sticky-set", "messaggi sticky-togli"} <= percorsi_del_gruppo("admin")
+    assert {"fissi imposta", "fissi togli"} <= percorsi_del_gruppo("messaggi")
 
     assert "on_message" in bot.extra_events
 
@@ -36,7 +36,7 @@ async def test_sticky_set_dichiara_la_lunghezza_massima_del_testo():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await sticky_messages_setup(bot)
 
-    comando = comando_nel_gruppo("admin", "messaggi sticky-set")
+    comando = comando_nel_gruppo("messaggi", "fissi imposta")
     opzioni = {o["name"]: o for o in comando.to_dict(bot.tree)["options"]}
 
     assert opzioni["message"]["max_length"] == 2000
