@@ -15,7 +15,11 @@ class TestT:
         assert t("module_not_active", "en") == "This module is not active on this server."
 
     def test_lingua_non_supportata_ricade_sull_italiano(self):
-        assert t("module_not_active", "fr") == "Questo modulo non è attivo su questo server."
+        assert t("module_not_active", "pt-BR") == "Questo modulo non è attivo su questo server."
+
+    def test_lingua_presente_ma_vuota_ricade_sull_inglese(self):
+        # D58: ripiego lingua -> en-US -> it (fr non ha ancora testi).
+        assert t("module_not_active", "fr") == t("module_not_active", "en")
 
     def test_chiave_inesistente_restituisce_la_chiave_stessa(self):
         assert t("chiave_mai_esistita", "it") == "chiave_mai_esistita"
