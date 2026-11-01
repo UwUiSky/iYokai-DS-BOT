@@ -1298,7 +1298,7 @@ Serve: server di prova con AutoMod e AI accesi (`/ai attiva`), account A senza p
 - [ ] Pass di 90 giorni (23.17, D51) — in «Pass di 90 giorni»: «Riscuoti» e «Apri la traccia premium» (con un account booster, o con 500.000 coin). Risultato atteso: coin per livello, traccia premium doppia, badge ai livelli 10, 25, 50.
 - [ ] Carico solo admin (23.17, D51) — `/mod carico` con un moderatore non admin: rifiutato; con un admin: elenco con tempi di risposta, riaperti, annullate in appello, voto, e il campo «Turni».
 - [ ] Forum con post bloccato (8.17) — blocca o archivia un post della vista e genera un evento; metti «tag obbligatori» al forum. Risultato atteso: il post si riapre (o ne nasce uno con un tag), nessun errore ripetuto nei log.
-- [ ] Rischio (23.17, D50) — passi: `/mod rischio member:@account-con-warn`. Risultato atteso: punteggio con i motivi (messaggio privato) e l'elenco dello staff con la quota di lavoro; il bot non compare tra lo staff.
+- [ ] Rischio (23.17, D50) — passi: `/mod rischio member:@account-con-warn`. Risultato atteso: punteggio con i motivi, in un messaggio privato.
 - [ ] Transcript alla chiusura (13.10) — con l'intent Message Content acceso: apri un ticket, scrivi due messaggi con un allegato, chiudilo. Risultato atteso: il transcript nel canale log ha il testo e l'allegato.
 - [ ] NSFW (16.10) — da attivare: app «iYokai NSFW» nel Developer Portal e `NSFW_TOKEN` nel `.env`; poi `/nsfw-admin attiva` e `/nsfw cerca` in un canale con il flag età.
 - [ ] Kick (23.11) — da attivare: `KICK_CLIENT_ID` e `KICK_CLIENT_SECRET` nel `.env`; poi `/moduli alert kick` e `/moduli alert ruolo-live`.

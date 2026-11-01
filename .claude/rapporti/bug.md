@@ -322,3 +322,7 @@
 - 29/10 · core/log_forum_service.py notifica_evento · eventi spenti con /log eventi finivano nel forum · media · corretto 9e3b497
 - 29/10 · core/progressi_service.py svuota · giorno letto alla scrittura: eventi delle 23:59 nelle missioni del giorno dopo · bassa · corretto 21dd796
 - 29/10 · core/log_forum_service.py scrivi · post chiuso (locked) o forum con tag obbligatori: Forbidden/400 a ogni evento, mai dimenticato · bassa · aperto
+- 01/11 · core/log_forum_service.py scrivi · (riga del 29/10) post chiuso e tag obbligatori · bassa · corretto a160667
+- 01/11 · core/migrations/0483_progressi_v2.sql · `ultima_at` nuova e vuota: con la regola delle 36 ore le serie di prima ripartivano da 1 · media · confermato, corretto a0d6ab3 (0484)
+- 01/11 · core/repositories/progressi_repo.py missioni_settimana_riscattate · «settimana piena» contava missioni di settimane diverse (3 in 3 settimane) · bassa · confermato, corretto a0d6ab3
+- 01/11 · cogs/leveling/progressi.py VistaProgressi._riscuoti · riscatto + ricostruzione della scheda (~20 query) prima della risposta, senza defer · bassa · plausibile, aperto

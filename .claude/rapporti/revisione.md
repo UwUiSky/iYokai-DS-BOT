@@ -340,3 +340,5 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 29/10 | `feat/r12resto` | gruppo `/moduli` | 6793/6800: un solo testo in più fa scattare l'allarme D25 | bassa | aperto |
 | 29/10 | `feat/r12resto` | `cogs/moderation/rischio_staff.py` /mod carico | Il carico di ogni membro dello staff lo vede ogni moderatore (gruppo `mod`); VOCI_OMESSE dice «mai classifica pubblica»: valutare livello ADMIN | bassa | aperto (domanda owner) |
 | 29/10 | `feat/r12resto` | commit 9e3b497 | `Refs #8` sbagliato (giusto #109); storia non riscritta | bassa | aperto |
+| 01/11 | `feat/r12resto` | `cogs/leveling/progressi.py:VistaProgressi._riscuoti` | Molte query prima della prima risposta senza `defer()` (rischio oltre 3 s sotto carico) | bassa | aperto, per dev-economia |
+| 01/11 | `feat/r12resto` | `core/repositories/staff_carico_repo.py:carico` | Chi ha solo sanzioni annullate nel periodo (nessun caso, appello o ticket) non compare | bassa | aperto |
