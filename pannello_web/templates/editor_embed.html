@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block titolo %}Editor embed · {{ guild.name }} · iYokai Panel{% endblock %}
+{% block corpo %}
+<h1>Editor embed</h1>
+<p><a href="/server/{{ guild.id }}">&larr; {{ guild.name }}</a> · <a href="/server/{{ guild.id }}/editor/benvenuto">Messaggio di benvenuto</a></p>
+{% if salvato %}<p class="avviso ok">Embed {{ salvato }}.</p>{% endif %}
+{% if errori %}<div class="avviso errore"><ul>{% for e in errori %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+{% if elenco %}<p>Salvati: {% for n in elenco %}<a href="/server/{{ guild.id }}/editor/embed?modifica={{ n }}">{{ n }}</a> {% endfor %}</p>{% endif %}
+<form class="carta" method="post" action="/server/{{ guild.id }}/editor/embed">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <p><label>Nome (a-z, cifre, - e _)<br><input name="nome" maxlength="32" value="{{ form.nome }}"></label></p>
+  <p><label>Titolo<br><input name="titolo" maxlength="256" value="{{ form.titolo }}"></label></p>
+  <p><label>Testo<br><textarea name="descrizione" maxlength="4096" rows="5">{{ form.descrizione }}</textarea></label></p>
+  <p><label>Colore (#RRGGBB)<br><input name="colore" maxlength="7" value="{{ form.colore }}"></label></p>
+  <p><label>Immagine (indirizzo https)<br><input name="immagine" maxlength="2000" value="{{ form.immagine }}"></label></p>
+  <p><label>Miniatura (indirizzo https)<br><input name="miniatura" maxlength="2000" value="{{ form.miniatura }}"></label></p>
+  <p><label>Piede<br><input name="piede" maxlength="2048" value="{{ form.piede }}"></label></p>
+  {% for n, v, i in form.campi %}
+  <p class="riga"><label>Campo {{ loop.index }}<br><input name="campo{{ loop.index }}_nome" maxlength="256" value="{{ n }}"></label>
+    <input name="campo{{ loop.index }}_valore" maxlength="1024" value="{{ v }}" aria-label="Valore del campo {{ loop.index }}">
+    <label><input type="checkbox" name="campo{{ loop.index }}_inline" value="1" {{ 'checked' if i }}> affiancato</label></p>
+  {% endfor %}
+  <div class="riga">
+    <button type="submit" name="azione" value="anteprima" class="secondario">Anteprima</button>
+    <button type="submit" name="azione" value="salva">Salva</button>
+    <button type="submit" name="azione" value="elimina" class="secondario">Elimina</button>
+  </div>
+</form>
+{% if anteprima %}
+<h2>Anteprima</h2>
+<div class="carta" style="border-left:4px solid {{ anteprima.colore }}">
+  {% if anteprima.titolo %}<strong>{{ anteprima.titolo }}</strong>{% endif %}
+  {% if anteprima.descrizione %}<p style="white-space:pre-wrap">{{ anteprima.descrizione }}</p>{% endif %}
+  {% for n, v, i in anteprima.campi %}<p><strong>{{ n }}</strong><br>{{ v }}</p>{% endfor %}
+  {% if anteprima.immagine %}<p class="tenue">Immagine: {{ anteprima.immagine }}</p>{% endif %}
+  {% if anteprima.miniatura %}<p class="tenue">Miniatura: {{ anteprima.miniatura }}</p>{% endif %}
+  {% if anteprima.piede %}<p class="tenue">{{ anteprima.piede }}</p>{% endif %}
+</div>
+<p class="tenue">Per mandarlo in un canale usa il comando di pubblicazione degli embed.</p>
+{% endif %}
+{% endblock %}

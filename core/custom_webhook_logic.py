@@ -22,6 +22,7 @@ Dipende da: core/template_renderer.py (SEC-6)
 
 from __future__ import annotations
 
+import hashlib
 import secrets
 
 from core.template_renderer import render_template
@@ -48,6 +49,12 @@ def generate_webhook_token() -> str:
     incrementale indovinabile.
     """
     return secrets.token_urlsafe(32)
+
+
+def hash_webhook_token(token: str) -> str:
+    """Impronta SHA-256 del token: è l'unica cosa che sta nel database (19.9, SEC-16).
+    Il token ha 256 bit casuali: non serve un sale."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 def build_webhook_url(base_url: str, token: str) -> str:

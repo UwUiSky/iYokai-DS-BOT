@@ -37,6 +37,7 @@ from core import alt_detection_logic as doppi_logica
 from core.command_search_logic import ComandoInfo, raccogli_comandi
 from core.config import config
 from core.config_history_logic import TIPI_MODIFICA
+from core.config_impostazioni import SCHEDE, campi_modulo, imposta_impostazione, valori_modulo
 from core.config_schema import ImpostazioneNonValida, imposta_lingua_server, imposta_modulo
 from core.data_registry import GIORNI_DOPO_USCITA, REGISTRO
 from core.database import db
@@ -196,6 +197,18 @@ def comandi_del_bot(bot) -> list[ComandoInfo]:
 # ---------------------------------------------------------------- scrittura
 async def applica_modulo(bot, guild: discord.Guild, nome: str, attivo: bool, user_id: int) -> bool:
     return await imposta_modulo(bot, guild.id, nome, attivo, user_id)
+
+
+def moduli_con_impostazioni() -> set[str]:
+    return {nome for nome in SCHEDE if campi_modulo(nome)}
+
+
+async def stato_modulo(guild: discord.Guild, nome: str) -> list[dict]:
+    return await valori_modulo(guild, nome)
+
+
+async def applica_impostazione(guild: discord.Guild, nome: str, chiave: str, testo: str, user_id: int) -> bool:
+    return await imposta_impostazione(guild, nome, chiave, testo, user_id)
 
 
 async def applica_lingua(guild: discord.Guild, codice: str, user_id: int) -> str:

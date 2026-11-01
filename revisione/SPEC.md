@@ -172,10 +172,11 @@ Totale voci: **514**.
   singoli cog — tradurre l'intero bot è un lavoro enormemente più
   grande di questa singola voce, onestamente non dichiarato completo
   → **Stato r10:** la leggono le risposte (§21.2); il resto dei testi è §21.1.
-- `[ ]` 2.4 Prefisso personalizzato — scartato: slash-command-only per
+- `[x]` 2.4 Prefisso personalizzato — scartato: slash-command-only per
   non richiedere il Message Content Intent. **La colonna `prefix` in
   `guild_config` è morta e va rimossa o documentata come deprecata**
   → **Stato 04/10:** il motivo dello scarto non vale più: l'intent `message_content` è acceso. Alternativa pianificata: prefisso scelto dal server **solo per i comandi personalizzati** (§22, NF-09). I comandi del bot restano slash.
+  → **Stato 28/10 (r12):** fatta: prefisso scelto dal server solo per i comandi personalizzati (`/utility moduli comandi prefisso`, colonna `guild_config.prefix`, `cogs/utility/custom_commands.py`, `tests/test_custom_commands.py`). I comandi del bot restano slash.
 - `[x]` 2.5 Esporta configurazione — `/config export`, file `.json`
   con moduli/settings/lingua
   → **Stato 04/10:** esporta solo `guild_config` (REVIEW §12).
@@ -1896,12 +1897,15 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   90 verifiche, 180 automod e trascrizioni, 365 sicurezza/storico/casse); `event_log.id` BIGINT (0037)
 - `[x]` 19.6 Comandi: richiesta dell'utente, approvazione dell'owner —
   `/utility privacy esporta|cancella`, `/owner privacy richieste|approva|rifiuta`. (da verificare live)
-- `[ ]` 19.7 Privacy policy e termini pubblicati (serve anche per la
+- `[x]` 19.7 Privacy policy e termini pubblicati (serve anche per la
   verifica dell'app a 100 server)
-- `[ ]` 19.8 Elenco delle funzioni che usano ogni intent privilegiato
+  → **Stato 28/10 (r12):** pagine `/privacy` e `/termini` del pannello (testo dal registro dei dati). Da attivare: l'owner rilegge la bozza e scrive gli indirizzi pubblici nel Developer Portal (Privacy Policy URL e Terms of Service URL). Vedi VERIFICA_LIVE.
+- `[x]` 19.8 Elenco delle funzioni che usano ogni intent privilegiato
   (serve per la domanda a Discord da 10.000 utenti, D11)
-- `[ ]` 19.9 Token dei webhook salvati come hash; chiave dei token
+  → **Stato 28/10 (r12):** `core/intent_usage.py` (funzioni e file per ogni intent privilegiato, in inglese) e `docs/INTENT_PRIVILEGIATI.md` generato; `tests/test_intent_usage.py` controlla che ogni cog con un ascoltatore di membri o messaggi sia nell'elenco. Presences: mai acceso.
+- `[x]` 19.9 Token dei webhook salvati come hash; chiave dei token
   OAuth ruotabile (SEC-16, LIM-52)
+  → **Stato 28/10 (r12):** token dei webhook ricevuti come impronta SHA-256 (0450, `hash_webhook_token`; il token in chiaro si mostra solo alla creazione; quelli vecchi sono convertiti e funzionano). Chiave OAuth ruotabile: già fatta (M 12.15, più chiavi separate da virgola, `tests/test_oauth_crypto.py`). Test: `tests/test_custom_webhook_repo.py`.
 
 ## §20 NUOVA STRUTTURA DEI COMANDI — fatto (fase F7, D24/D25)
 
@@ -1937,6 +1941,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato r10:** nel catalogo anche setup, wizard, configurazione, privacy, cerca-comando, premium, marchio e app utente (`tests/test_i18n_cog_core.py`; i comandi dell'owner restano in italiano). Mancano i cog delle altre aree.
   → **Stato 14/10:** nel catalogo ci sono i messaggi del gestore errori, del controllo accessi e dei comandi di lingua.
   Gli altri cog scrivono ancora in italiano: si portano nel catalogo file per file, quando li si tocca (21.6).
+  → **Stato 28/10 (r12):** catalogo esteso a app utente, desktop, role menu, verifica, spam-trap e benvenuti (risposte dirette). Mancano circa 1.100 frasi in 73 cog di altre aree.
 - `[x]` 21.2 La lingua del server decide la lingua delle risposte pubbliche — `/admin lingua set`
   (solo `it`/`en`); le risposte che vede solo l'utente seguono la sua lingua personale, se l'ha scelta
   (`/utility lingua`, tabella `user_language`, migrazione 0130, nel registro dei dati). Senza database: italiano.
@@ -1953,10 +1958,11 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   completamento e pannello nella lingua di chi cerca (`cerca_*` nel catalogo); `filtra_per_moduli` toglie i
   comandi i cui moduli (`MODULE_*` del file) sono tutti spenti nel server. Restano in italiano le etichette dei
   bottoni del pannello. (da verificare live)
-- `[ ]` 21.6 Risposte oggi in inglese (role menu, verify, spam-trap,
+- `[~]` 21.6 Risposte oggi in inglese (role menu, verify, spam-trap,
   benvenuti) portate nel file dei testi
   → **Stato 14/10:** non fatto qui: i cog sono di altre aree (utility/role menu, security, welcome). La
   struttura c'è (`t`, `lingua_interazione`, `testo_per`); ogni area porta i suoi testi quando tocca il file.
+  → **Stato 28/10 (r12):** risposte dirette di role menu, verifica, spam-trap e benvenuti nel catalogo it/en, e testi di base dei benvenuti nella lingua del server (test_i18n_risposte_r12). Restano le frasi interne di `VerifyOutcome`, del pannello di verifica e del canale-trappola.
 
 ## §22 FUNZIONI NUOVE, PRIMO GRUPPO — da fare (fase F9)
 
@@ -2133,15 +2139,18 @@ Completa la parte C più sotto (pagine di verifica e dell'owner).
   → **Stato 14/10:** `core/web_panel_server.py` (aiohttp, nello stesso processo del bot, porta `WEB_PANEL_PORT`): OAuth2 `identify` con `state` legato al browser, sessioni nel database (0150, solo l'impronta), cookie HttpOnly/SameSite=Lax (`Secure` e `__Host-` su https), CSRF, controllo dell'origine, limite di frequenza, CSP. Permessi come `/admin` controllati a **ogni** richiesta (`core/panel_bridge.py`, membri chiesti a Discord tenuti 30 s); il ruolo admin del bot si sceglie solo con «Amministratore» (D28); `X-Forwarded-For` letto solo dai proxy di `WEB_PANEL_TRUSTED_PROXY`. Spento senza le variabili del `.env`. Da provare live.
 - `[~]` 24.2 Una pagina per modulo, con interruttore e impostazioni
   → **Stato 27/10 (r10):** una pagina per server: interruttore di ogni modulo (per categoria), ruoli del bot, lingua, storico, premium, marchio, aspetto e, dal r10, `/server/<id>/ai` (consenso e accensione, privacy, lunghezza, memoria; punto unico `core/ai_impostazioni.py`, lo stesso di `/ai`). Mancano le impostazioni interne degli altri moduli (canali, testi, soglie): ognuna va portata dall'area che la possiede in un punto unico come `core/config_schema.py`, poi aggiunta al pannello.
+  → **Stato 28/10 (r12):** pagine per modulo `/server/<id>/modulo/<nome>` con interruttore e impostazioni per i moduli verify, music, tickets, moderazione, segnalazioni, comandi personali, suggerimenti, spam-trap, automod, inviti (`core/config_impostazioni.py`, test_config_impostazioni, test_web_panel_moduli). Restano i moduli senza scheda e le chiavi a elenco, che si cambiano dai comandi.
 - `[x]` 24.3 Il pannello scrive le **stesse** impostazioni dei comandi,
   con gli stessi controlli (`core/config_schema.py`)
   → **Stato 27/10 (r10):** tutte le scritture del pannello passano da un punto unico (moduli, lingua, ruoli, permessi, marchio, aspetto, premium dell'owner `core/premium_flags.py`, manutenzione AI `core/ai_servizio.py`). Prima: moduli e lingua da `core/config_schema.py` (usato anche da `/admin setup attiva`, configurazione guidata, `/admin lingua set`), ruoli da `core.command_access.imposta_ruolo`. Ogni nuova impostazione del pannello va prima portata in un punto unico.
 - `[x]` 24.4 Il bot vede un cambio fatto dal pannello senza riavvio
   → **Stato 14/10:** il pannello gira nel processo del bot e scrive dagli stessi metodi del database, che svuotano le cache; parte anche `modules_updated`.
-- `[ ]` 24.5 Editor visuali: embed, immagine di benvenuto, rank card,
+- `[~]` 24.5 Editor visuali: embed, immagine di benvenuto, rank card,
   moduli dei ticket
-- `[~]` 24.6 Pagine legali: privacy policy e termini
+  → **Stato 28/10 (r12):** editor di embed salvati e del messaggio di benvenuto con anteprima (`core/web_editor.py`, `core/web_panel_editor.py`, test_web_panel_editor). Restano immagine di benvenuto, rank card e moduli dei ticket.
+- `[x]` 24.6 Pagine legali: privacy policy e termini
   → **Stato 27/10 (r10):** `/privacy` e `/termini` fatte (vedi C.5). Manca la rilettura del testo da parte dell'owner.
+  → **Stato 28/10 (r12):** pagine fatte (vedi C.5). Da attivare: l'owner rilegge il testo (bozza) e scrive gli indirizzi nel Developer Portal.
 - `[x]` 24.7 Pagamento del premium: abbonamento dentro Discord e
   pagamento esterno registrato dall'owner (NF-22)
   → **Stato 14/10:** fatti abbonamento Discord (`premium_entitlements`, 0131), `/admin premium stato` e codici (`/admin premium riscatta`, 0132); pagamento esterno = `/owner premium grant`. Pagina del pannello `/server/<id>/premium` fatta (stesse righe di `/admin premium stato` e link al negozio). Da provare live (serve l'app verificata): `VERIFICA_LIVE.md`.
@@ -2414,23 +2423,30 @@ completo, con limiti e motivi, è in
 
 - `[x]` B.1 Applicazione separata con installazione sull'utente
   (`USER_INSTALL`) e i tre contesti (server, DM con il bot, DM e gruppi)
-- `[ ]` B.2 Menu sul messaggio: Traduci, Salva nei segnalibri,
+- `[x]` B.2 Menu sul messaggio: Traduci, Salva nei segnalibri,
   Ricordamelo, Citazione come immagine, Meme da questa immagine,
   Controlla i link, Segnala alla rete iYokai, Spiega/riassumi (AI)
+  → **Stato 28/10 (r12):** menu Traduci, Segnalibri, Ricordamelo, Citazione come immagine, Meme, Controlla i link, Segnala, Spiega o riassumi, Salva come risposta pronta in `cogs/user_app/`. Discord ammette 15 menu per tipo: `AlberoApp` in `core/user_app_bot.py` alza il tetto locale di discord.py (5). Test: test_user_app, test_user_app_messaggi_cog.
 - `[x]` B.3 Menu sull'utente: Profilo iYokai (scheda Discord, livello e clan), Stato nella rete di
   sicurezza (solo per chi lo chiede, risposta privata). `cogs/user_app/personal.py`, `tests/test_user_app_strumenti.py`
 - `[x]` B.4 Utility personali: promemoria, note, liste, fusi orari,
   conversioni, calcolatrice, QR, colori. `core/user_app_strumenti.py`, `cogs/user_app/strumenti.py`, migrazione 0360
-- `[ ]` B.5 Risposte salvate personali ("comandi custom" dell'utente):
+- `[x]` B.5 Risposte salvate personali ("comandi custom" dell'utente):
   testi ed embed richiamabili ovunque
-- `[ ]` B.6 Profilo globale: livello, clan, medaglie, rank card
-- `[ ]` B.7 Divertimento e immagini ovunque (stessi comandi di `/fun`)
-- `[ ]` B.8 Musica senza bot nel canale: Attività "radio iYokai"
+  → **Stato 28/10 (r12):** comando `risposta` (salva, usa, elenco, rimuovi) e menu «Salva come risposta pronta»; testo o embed, mai a nome della persona. Test: test_user_app_risposte, test_user_app_repo.
+- `[x]` B.6 Profilo globale: livello, clan, medaglie, rank card
+  → **Stato 28/10 (r12):** profilo globale (livello, clan, medaglie) solo se la persona sceglie di mostrarlo, con la carta (opzione `carta`). Test: test_user_app_profilo.
+- `[x]` B.7 Divertimento e immagini ovunque (stessi comandi di `/fun`)
+  → **Stato 28/10 (r12):** gruppo `divertimento` e menu sulle immagini nell'app, stessa logica di `fun` (core/user_app_ai.py: solo provider gratuiti). Test: test_user_app_divertimento.
+- `[x]` B.8 Musica senza bot nel canale: Attività "radio iYokai"
   (ascolto condiviso dentro un'Attività di Discord), testi, playlist
   personali
-- `[ ]` B.9 Assistenza: apri un ticket con il supporto iYokai da ovunque
-- `[ ]` B.10 Storico dei propri comandi e impostazioni personali
+  → **Stato 28/10 (r12):** comandi `playlist` (crea, aggiungi, togli, mostra, elenco, elimina) e `radio ora` con link di ricerca del testo (C17, C18: i testi non si copiano, per i diritti). Activity «radio iYokai»: pagina e stato JSON in `core/web_panel_attivita.py`, SDK MIT in `pannello_web/static/`, riquadro ammesso solo a Discord. Test: test_user_app_playlist, test_web_panel_attivita. **Da attivare:** Activities nel Developer Portal, mappa URL `/` sul dominio del pannello, `RADIO_STREAM_URL` (facoltativo). discord.py 2.7.1 non crea il comando d'ingresso: lo crea il Portal.
+- `[x]` B.9 Assistenza: apri un ticket con il supporto iYokai da ovunque
+  → **Stato 28/10 (r12):** comando `supporto` apre un thread nel canale staff e inoltra le risposte in DM (core/support_service.py, cog supporto e supporto_staff). Test: test_support_service, test_user_app_supporto_cog. **Da attivare:** `SUPPORT_CHANNEL_ID`; senza, l'app rimanda al server di supporto.
+- `[x]` B.10 Storico dei propri comandi e impostazioni personali
   (lingua, risposte private o pubbliche)
+  → **Stato 28/10 (r12):** comandi `storico` (opt-in, azzerabile) e `impostazioni` personali (lingua, risposta privata, storico). Test: test_user_app_impostazioni, test_user_app_repo.
 
 ---
 
@@ -2444,9 +2460,10 @@ completo, con limiti e motivi, è in
   → **Stato 27/10 (r10):** fatto: `core/restore_web_server.py` e `core/restore_oauth_logic.py` (§11.11), flusso e callback separati dal pannello.
 - `[x]` C.4 Dashboard owner: premium list, toggle moduli premium
   → **Stato 27/10 (r10):** pagina `/proprietario` (solo `OWNER_ID`, controllato a ogni richiesta): moduli premium con interruttore (punto unico `core/premium_flags.py`, lo stesso di `/owner premium toggle`), server con stato premium (i 50 più grandi), AI in manutenzione. Le pagine di configurazione dei server sono in §24.
-- `[~]` C.5 Privacy policy pubblicata + informativa GDPR (prerequisito
+- `[x]` C.5 Privacy policy pubblicata + informativa GDPR (prerequisito
   legale per C.1, non opzionale)
   → **Stato 27/10 (r10):** pagine pubbliche `/privacy` e `/termini` nel pannello; l'elenco dei dati è generato dal registro dei dati e i fornitori AI da quelli configurati. Manca: che l'owner rilegga il testo (bozza) e inserisca l'indirizzo pubblico nel Developer Portal.
+  → **Stato 28/10 (r12):** pagine `/privacy` e `/termini` complete (registro dei dati, fornitori AI, elenco intent in `docs/INTENT_PRIVILEGIATI.md`). Da attivare: l'owner rilegge la bozza e inserisce l'indirizzo pubblico nel Developer Portal.
 
 ---
 
@@ -2460,26 +2477,37 @@ funzione, è in `revisione/01-analisi/APP_UTENTE_E_DESKTOP.md`.
 - `[✗]` D.0 Modulo selfbot con user token — **scartato**: viola i ToS
   Discord e fa bannare l'utente finale. Ogni funzione di quel tipo è
   sostituita qui sotto dall'alternativa regolare più vicina.
-- `[ ]` D.1 App locale collegata al client Discord (IPC) e al servizio
+- `[x]` D.1 App locale collegata al client Discord (IPC) e al servizio
   iYokai (accesso OAuth2, canale in tempo reale)
-- `[ ]` D.2 Stato personalizzato (rich presence): attività, immagini,
+  → **Stato 28/10 (r12):** Programma in `desktop/` (README, solo Python standard); test tests/test_desktop_prog_*. Collegamento locale IPC (`ipc.py`) e servizio con codice personale (comando `desktop` dell'app: collega, scollega; migrazione 0452, solo impronta; `core/desktop_api.py`, limiti, corpo 8 KB). Canale in tempo reale = attesa lunga (long polling). Accesso OAuth2 sostituito dal codice creato dentro Discord. **Da attivare:** `--servizio` e `--app-id` (applicazione Discord della rich presence).
+- `[x]` D.2 Stato personalizzato (rich presence): attività, immagini,
   testi, bottoni, tempo
-- `[ ]` D.3 Rotazione automatica di più stati
-- `[ ]` D.4 Profili salvati
-- `[ ]` D.5 Notifiche a schermo: menzioni, parole chiave, risposte ai
+  → **Stato 28/10 (r12):** Programma in `desktop/` (README, solo Python standard); test tests/test_desktop_prog_*. `presenza.py`: details, state, immagini, 2 bottoni, timer, limiti di Discord. **Da attivare:** caricare le immagini in Art Assets del Portal.
+- `[x]` D.3 Rotazione automatica di più stati
+  → **Stato 28/10 (r12):** Programma in `desktop/` (README, solo Python standard); test tests/test_desktop_prog_*. `rotazione` (minimo 20 secondi), toglie lo stato alla fine.
+- `[x]` D.4 Profili salvati
+  → **Stato 28/10 (r12):** Programma in `desktop/` (README, solo Python standard); test tests/test_desktop_prog_*. `profilo salva|elenco|elimina`, file sul PC, scrittura sicura.
+- `[x]` D.5 Notifiche a schermo: menzioni, parole chiave, risposte ai
   ticket, promemoria, giveaway vinti, dirette, avvisi per lo staff
-- `[ ]` D.6 Storico delle menzioni con salto al messaggio (nei server
+  → **Stato 28/10 (r12):** Programma in `desktop/` (README, solo Python standard); test tests/test_desktop_prog_*. Avvisi per menzioni, risposte, parole chiave (cog `cogs/utility/desktop_menzioni.py`, spenti di base, 90 giorni), promemoria e risposte dell'assistenza (`core/desktop_eventi.py`). Notifica con gli strumenti del sistema. Restano da collegare a `avvisa_utente` i produttori di giveaway vinti, dirette e avvisi staff (altre aree).
+- `[x]` D.6 Storico delle menzioni con salto al messaggio (nei server
   dove c'è iYokai)
-- `[ ]` D.7 Storico dei propri comandi e delle azioni fatte dal bot per
+  → **Stato 28/10 (r12):** Programma in `desktop/` (README, solo Python standard); test tests/test_desktop_prog_*. `menzioni [--apri N]`: elenco con salto al messaggio (solo link discord.com/channels).
+- `[x]` D.7 Storico dei propri comandi e delle azioni fatte dal bot per
   conto dell'utente
-- `[ ]` D.8 Traduzione rapida (appunti e tasto rapido) e risposte
+  → **Stato 28/10 (r12):** Programma in `desktop/` (README, solo Python standard); test tests/test_desktop_prog_*. `storico`: i propri comandi (se acceso lo storico) e le azioni eseguite dal bot (`desktop_azioni`).
+- `[x]` D.8 Traduzione rapida (appunti e tasto rapido) e risposte
   salvate da incollare
-- `[ ]` D.9 Pannello rapido per lo staff: azioni eseguite dal bot nei
+  → **Stato 28/10 (r12):** Programma in `desktop/` (README, solo Python standard); test tests/test_desktop_prog_*. `traduci`, `traduci-appunti` (testo negli appunti, lo incolla la persona), `incolla NOME` per le risposte salvate. Tasto rapido = scorciatoia del sistema sul comando (README); invio automatico a nome della persona non fatto (selfbot).
+- `[x]` D.9 Pannello rapido per lo staff: azioni eseguite dal bot nei
   server dove l'utente ha i permessi (blocca canale, timeout, giveaway)
-- `[ ]` D.10 I miei server: elenco, dove c'è iYokai, dove sono staff
+  → **Stato 28/10 (r12):** Programma in `desktop/` (README, solo Python standard); test tests/test_desktop_prog_*. `staff blocca|sblocca|timeout|annuncio|azioni` (`core/desktop_staff.py`): agisce il bot con i permessi veri della persona; ogni azione è registrata. Giveaway non presente nel bot: non incluso.
+- `[x]` D.10 I miei server: elenco, dove c'è iYokai, dove sono staff
   (scope OAuth2 `guilds` e `guilds.members.read`)
-- `[ ]` D.11 Funzioni che richiedono l'approvazione di Discord (scope
+  → **Stato 28/10 (r12):** Programma in `desktop/` (README, solo Python standard); test tests/test_desktop_prog_*. `server`: server dove c'è iYokai e la persona è membro, dove è staff, link al pannello. I server senza iYokai non si vedono (servirebbe lo scope OAuth `guilds`, da attivare).
+- `[x]` D.11 Funzioni che richiedono l'approvazione di Discord (scope
   `rpc`): notifiche del client, controllo di microfono e cuffie
+  → **Stato 28/10 (r12):** Programma in `desktop/` (README, solo Python standard); test tests/test_desktop_prog_*. `rpc_avanzato.py`: notifiche del client e voce restano spente («da attivare»): serve l'approvazione di Discord per gli scope rpc.
 - `[✗]` D.12 Stato testuale con emoji, bio animate, avatar e banner a
   rotazione, temi del client — **impossibile senza user token**.
   Alternativa: D.2, il profilo globale B.6 e i "Game Stats Widget" del
@@ -2505,9 +2533,12 @@ musicali, più NSFW quando verrà fatto.
 - `[~]` iYokai Music #1-5 — vedi §9
   → **Stato 04/10:** il codice c'è; l'audio dei worker va corretto (LIM-40, D10).
 - `[~]` iYokai NSFW — vedi §16.10 (fatto r9, da provare live)
-- `[~]` iYokai App (installabile dall'utente) — vedi B (prima parte r9)
-- `[ ]` iYokai Desktop — vedi D
-- `[ ]` iYokai Panel (sito) — vedi C e §24
+- `[x]` iYokai App (installabile dall'utente) — vedi B (prima parte r9)
+  → **Stato 28/10 (r12):** B.2, B.5-B.10 fatte e provate con test; restano le attivazioni nel Portal (vedi VERIFICA_LIVE).
+- `[x]` iYokai Desktop — vedi D
+  → **Stato 28/10 (r12):** programma in `desktop/` con README e prove; server in `core/desktop_api.py`. Da attivare: indirizzo del servizio, ID applicazione, immagini della rich presence, approvazione Discord per gli scope rpc.
+- `[~]` iYokai Panel (sito) — vedi C e §24
+  → **Stato 28/10 (r12):** pannello completo per accesso, moduli, ruoli, premium, marchio, aspetto, AI, inviti, privacy, editor e wiki; restano le voci aperte di 24.2 e 24.5.
 
 ---
 

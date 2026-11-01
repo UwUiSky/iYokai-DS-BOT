@@ -268,7 +268,7 @@ async def test_appello_consegnato_con_transcript_e_poi_blocco_di_24_ore(scenario
     invio = scenario.thread.send.call_args.kwargs
     assert [allegato.filename for allegato in invio["files"]] == ["transcript-case-1.html"]
     assert_embed_valido(invio["embed"])
-    assert "submitted" in dm.channel.send.call_args.args[0]
+    assert "mandato allo staff" in dm.channel.send.call_args.args[0]
 
 
 async def test_invio_allo_staff_fallito_non_fa_partire_il_blocco(scenario):
@@ -279,7 +279,7 @@ async def test_invio_allo_staff_fallito_non_fa_partire_il_blocco(scenario):
     await scenario.cog.on_message(dm)
 
     assert await spam_trap_repo.get_last_appeal(GUILD_ID, UTENTE_ID) is None
-    assert "try again" in dm.channel.send.call_args.args[0].lower()
+    assert "riprova" in dm.channel.send.call_args.args[0].lower()
     # Il thread rimasto vuoto viene tolto.
     scenario.thread.delete.assert_awaited_once()
 

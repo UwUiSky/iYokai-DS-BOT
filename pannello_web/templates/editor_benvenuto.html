@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block titolo %}Benvenuto · {{ guild.name }} · iYokai Panel{% endblock %}
+{% block corpo %}
+<h1>Messaggio di benvenuto</h1>
+<p><a href="/server/{{ guild.id }}">&larr; {{ guild.name }}</a> · <a href="/server/{{ guild.id }}/editor/embed">Editor embed</a></p>
+{% if salvato %}<p class="avviso ok">Salvato.</p>{% endif %}
+{% if errori %}<div class="avviso errore"><ul>{% for e in errori %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+<form class="carta" method="post" action="/server/{{ guild.id }}/editor/benvenuto">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <p><label>Messaggio<br><textarea name="messaggio" maxlength="2500" rows="5">{{ stato.messaggio }}</textarea></label></p>
+  <p class="tenue">Segnaposto: {user}, {username}, {displayname}, {userid}, {server}, {serverid}, {membercount}, {ordinal}.</p>
+  <p><label>Canale<br><select name="canale"><option value="">— nessuno —</option>
+    {% for id, nome in canali %}<option value="{{ id }}" {{ 'selected' if id == stato.canale }}>{{ nome }}</option>{% endfor %}</select></label></p>
+  <p><label><input type="checkbox" name="attivo" value="1" {{ 'checked' if stato.attivo }}> Acceso</label>
+     <label><input type="checkbox" name="dm" value="1" {{ 'checked' if stato.dm }}> Anche in messaggio privato</label></p>
+  <div class="riga">
+    <button type="submit" name="azione" value="anteprima" class="secondario">Anteprima</button>
+    <button type="submit" name="azione" value="salva">Salva</button>
+  </div>
+</form>
+{% if anteprima %}<h2>Anteprima</h2><div class="carta" style="white-space:pre-wrap">{{ anteprima }}</div>{% endif %}
+{% endblock %}

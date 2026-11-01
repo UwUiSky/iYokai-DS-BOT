@@ -155,7 +155,7 @@ class TestFlussoConCasoAttivo:
         messaggio = _FakeMessage(_FakeUser(ID_UTENTE))
         await cog._handle_possible_appeal(messaggio)
 
-        assert any("24 hours" in (testo or "") for testo in messaggio.channel.sent)
+        assert any("24 ore" in (testo or "") for testo in messaggio.channel.sent)
 
     @pytest.mark.asyncio
     async def test_caso_in_un_server_che_il_bot_ha_lasciato_viene_ignorato(
@@ -248,7 +248,7 @@ class TestRateLimitDM:
 
         primo = _FakeMessage(utente, "voglio fare appello")
         await cog._handle_possible_appeal(primo)
-        assert "multiple servers" in primo.channel.sent[0]
+        assert "più server" in primo.channel.sent[0]
 
         # Niente altro deve partire dopo la domanda: fermiamo qui il
         # flusso dell'appello vero, che non è l'oggetto di questo test.

@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 23:34 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 02:07 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 584 commands in 25 categories.**
+**Total: 639 commands in 25 categories.**
 
 ## Admin
 
@@ -112,21 +112,76 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 23:3
 
 ## iYokai App (separate app, installed on the user)
 
+- **`/Check links`** — “Apps” menu (right click)
 - **`/Clean text`** — “Apps” menu (right click)
+- **`/Explain or summarize`** — “Apps” menu (right click)
+- **`/Meme from this image`** — “Apps” menu (right click)
 - **`/Profile`** — “Apps” menu (right click)
+- **`/Quote as image`** — “Apps” menu (right click)
+- **`/Remind me`** — “Apps” menu (right click)
+- **`/Report to iYokai network`** — “Apps” menu (right click)
+- **`/Save as saved reply`** — “Apps” menu (right click)
+- **`/Save to bookmarks`** — “Apps” menu (right click)
+- **`/Translate`** — “Apps” menu (right click)
+- **`/bookmarks list`** — Shows your bookmarks, newest first.
+- **`/bookmarks remove`** — Removes a bookmark.
+- **`/desktop alerts`** — Turns mention and reply alerts on or off.
+- **`/desktop connect`** — Creates the personal code for the iYokai Desktop program.
+- **`/desktop disconnect`** — Revokes the code: the program can no longer sign in.
+- **`/desktop status`** — How iYokai Desktop is connected and which alerts you have.
+- **`/desktop words`** — The keywords that alert you (comma separated; empty removes them).
+- **`/fun 8ball`** — Ask the magic 8 ball a question.
+- **`/fun animal`** — Show a random animal picture.
+- **`/fun choose`** — I pick at random among the options you write.
+- **`/fun coin`** — Flip a coin: heads or tails.
+- **`/fun dice`** — Roll a die, or a formula like 3d6+2.
+- **`/fun effect`** — Avatar effect: rainbow, R.I.P., wanted, triggered.
+- **`/fun fact`** — Show a random fun fact.
+- **`/fun image`** — Search for a family-friendly image on Pixabay.
+- **`/fun joke`** — Tell a random joke.
+- **`/fun meme`** — A meme with top and bottom text, on an image or an avatar.
+- **`/fun number`** — A random number in a range.
+- **`/fun quote`** — Show a random quote.
+- **`/fun random`** — Would you rather, topic, advice, magic item.
+- **`/fun rate`** — Rate something from 0 to 10.
+- **`/fun rps`** — Rock, paper, scissors against the bot.
+- **`/fun ship`** — Compute the compatibility between two users.
+- **`/fun text`** — Write a text in a special style.
+- **`/history list`** — Your latest commands.
+- **`/history reset`** — Deletes your command history.
 - **`/iYokai network status`** — “Apps” menu (right click)
 - **`/notes add`** — Adds a note, or an entry to a list.
 - **`/notes list`** — Shows your notes, or a list.
 - **`/notes remove`** — Removes a note or a list entry.
+- **`/playlist add`** — Adds a track to one of your playlists.
+- **`/playlist create`** — Creates an empty playlist.
+- **`/playlist delete`** — Deletes one of your playlists.
+- **`/playlist list`** — Your playlists.
+- **`/playlist remove`** — Removes a track from one of your playlists.
+- **`/playlist show`** — Shows the tracks of one of your playlists.
 - **`/profile`** — A user's card: name, ID, account age, level, clan, avatar.
+- **`/radio now`** — What plays now on the iYokai radio, with a lyrics search link.
 - **`/reminders cancel`** — Cancels one of your reminders.
 - **`/reminders create`** — I will DM you after the time you choose.
 - **`/reminders list`** — Shows your pending reminders.
+- **`/saved-reply list`** — Your saved replies.
+- **`/saved-reply remove`** — Removes a saved reply.
+- **`/saved-reply save`** — Save a reply (text, or embed with title, color and image).
+- **`/saved-reply use`** — Posts one of your saved replies as an app reply.
+- **`/settings dm`** — Can the app DM you (reminders, remind me)?
+- **`/settings history`** — Save your latest commands (turning it off deletes the history).
+- **`/settings language`** — Italian or English for the replies only you see.
+- **`/settings profile`** — Others see your global profile (level, clans, medals).
+- **`/settings replies`** — Command replies are seen only by you, or by everyone.
+- **`/settings show`** — Your current settings.
 - **`/strumenti calcola`** — Calculates an expression, e.g. (2+3)*4 or sqrt(16).
 - **`/strumenti colore`** — Shows a colour in HEX, RGB and HSL.
 - **`/strumenti converti`** — Converts lengths, weights, volumes, speeds, data and temperatures.
 - **`/strumenti fuso`** — What time it is in another time zone.
 - **`/strumenti qr`** — Makes a QR code from a text or link.
+- **`/support list`** — Your latest support requests.
+- **`/support open`** — Open a support request with the iYokai staff.
+- **`/support reply`** — Write to the staff in your open request.
 
 ## iYokai NSFW (separate app, age-restricted channels only)
 
@@ -183,13 +238,13 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 23:3
 - **`/backup cancel`** — Stops the running load (what is done stays).
 - **`/backup chat-load`** — Loads a saved chat into a channel, even a different one.
 - **`/backup chat-save`** — Saves the latest messages of a channel (up to 1000) to load them later.
+- **`/backup connect`** — Links THIS server as backup, with the code received from the main server.
 - **`/backup copy-channel`** — Copies a channel with its permissions; a category with its channels.
 - **`/backup copy-role`** — Copies a role with its permissions and, optionally, its channel permissions.
 - **`/backup create`** — Prepares the backup: link code and link for the new server.
 - **`/backup delete`** — Deletes a saved copy.
 - **`/backup export`** — Exports structure, channels, roles, bans or reactions to a file.
 - **`/backup import`** — Imports the structure from a JSON file, picking what to apply.
-- **`/backup link`** — Links THIS server as backup, with the code received from the main server.
 - **`/backup list`** — The saved copies of this server, with their date.
 - **`/backup load`** — Loads a saved copy into this server, picking the parts.
 - **`/backup log`** — Who used backups, templates and syncs (last 20, 365 days).
@@ -362,6 +417,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 23:3
 
 ## Moderation
 
+- **`/mod alerts leaderboard`** — Members with the most active warnings.
+- **`/mod alerts remove`** — Removes a single warning (by case number).
+- **`/mod alerts reset`** — Removes all of a member's active warnings (needs "Manage Server").
 - **`/mod bulk timeout`** — Times out several members at once (max 28 days).
 - **`/mod bulk warn`** — Warns several members at once.
 - **`/mod case active`** — Sanctions still running: tempbans, timeouts, mutes, timed locks.
@@ -391,9 +449,6 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 23:3
 - **`/mod unmute`** — Removes the mute role from a member.
 - **`/mod untimeout`** — Removes a member's timeout.
 - **`/mod warn`** — Gives a member a warning.
-- **`/mod warnings leaderboard`** — Members with the most active warnings.
-- **`/mod warnings remove`** — Removes a single warning (by case number).
-- **`/mod warnings reset`** — Removes all of a member's active warnings (needs "Manage Server").
 - **`/mod workload`** — How much work each staff member has done (cases, appeals, tickets).
 
 ## Bans (modban)
@@ -580,6 +635,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 23:3
 - **`/ticket on-call`** — Join or leave the staff notified on every new ticket.
 - **`/ticket open`** — Open a ticket (staff also for a user or from a message).
 - **`/ticket options access`** — Who can open: per-role rules, read from the top.
+- **`/ticket options alerts`** — Who to ping on opening and pinned first message.
 - **`/ticket options channel`** — Channel name and fallback categories.
 - **`/ticket options claiming`** — Claiming: category, exclusivity, auto-assignment.
 - **`/ticket options closing`** — Confirmation before closing and who can close.
@@ -588,7 +644,6 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-10-28 23:3
 - **`/ticket options messages`** — DMs to the user and claim/release texts.
 - **`/ticket options permissions`** — User permissions, observers, roles while open, staff team.
 - **`/ticket options show`** — All the options of a panel.
-- **`/ticket options warnings`** — Who to ping on opening and pinned first message.
 - **`/ticket pass`** — Hands the ticket over to a colleague.
 - **`/ticket priority`** — Sets this ticket's priority.
 - **`/ticket release`** — Gives up taking charge of this ticket.

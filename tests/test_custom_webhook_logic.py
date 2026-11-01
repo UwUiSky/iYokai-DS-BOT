@@ -145,3 +145,12 @@ class TestRenderWebhookMessage:
     def test_payload_completamente_vuoto_con_template_default_non_solleva(self):
         risultato = render_webhook_message(DEFAULT_MESSAGE_TEMPLATE, "Label", {})
         assert "Label" in risultato
+
+
+def test_hash_webhook_token_e_stabile_e_non_contiene_il_token():
+    from core.custom_webhook_logic import hash_webhook_token
+
+    impronta = hash_webhook_token("abc")
+    assert impronta == hash_webhook_token("abc")
+    assert len(impronta) == 64 and "abc" not in impronta
+    assert impronta != hash_webhook_token("abd")

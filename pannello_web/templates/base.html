@@ -14,7 +14,7 @@
     {% if utente_id %}<a href="/miei-inviti">I miei inviti</a> <a href="/miei-dati">I miei dati</a>{% endif %}
     {% if utente_id %}
     <form method="post" action="/esci"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="secondario" type="submit">Esci</button></form>
-    {% else %}
+    {% elif not statica %}
     <a class="bottone" href="/accedi">Accedi con Discord</a>
     {% endif %}
   </nav>

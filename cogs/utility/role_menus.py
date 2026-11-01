@@ -40,6 +40,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.i18n import testo_per
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.premium import PremiumModule, registry
@@ -338,9 +339,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             return
 
         if not await db.is_module_active_for_guild(guild.id, MODULE_ROLE_MENUS):
-            await interaction.response.send_message(
-                "This feature is not active on this server.", ephemeral=True
-            )
+            await interaction.response.send_message(await testo_per(interaction, "rm_non_attivo"), ephemeral=True)
             return
 
         role = guild.get_role(role_id)
@@ -454,9 +453,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             return
 
         if not await db.is_module_active_for_guild(guild.id, MODULE_ROLE_MENUS):
-            await interaction.response.send_message(
-                "This feature is not active on this server.", ephemeral=True
-            )
+            await interaction.response.send_message(await testo_per(interaction, "rm_non_attivo"), ephemeral=True)
             return
 
         menu = await role_menu_repo.get_menu(menu_id)
@@ -487,7 +484,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                 await interaction.followup.send(errore, ephemeral=True)
                 return
 
-        await interaction.followup.send("Your roles have been updated.", ephemeral=True)
+        await interaction.followup.send(await testo_per(interaction, "rm_ruoli_aggiornati"), ephemeral=True)
 
     # ================================================================
     # Modalità reaction

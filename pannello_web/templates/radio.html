@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radio iYokai</title>
+<link rel="stylesheet" href="/static/pannello.css">
+</head>
+<body>
+<main id="radio" data-client="{{ client_id }}" data-base="/attivita/radio/" data-flusso="{{ flusso }}" data-spenta="{{ testo_spenta }}">
+  <h1>Radio iYokai</h1>
+  <p id="brano" aria-live="polite">{{ testo_spenta }}</p>
+  <progress id="avanzamento" value="0" max="1"></progress>
+  {% if flusso %}<audio id="audio" controls hidden></audio>{% endif %}
+</main>
+<script src="/static/discord-sdk.js"></script>
+<script src="/static/radio.js"></script>
+</body>
+</html>

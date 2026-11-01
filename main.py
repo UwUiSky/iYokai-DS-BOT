@@ -796,6 +796,7 @@ async def main() -> None:
             url_pubblico=config.WEB_PANEL_PUBLIC_URL,
             chiave=config.WEB_PANEL_SECRET_KEY,
             proxy_fidati=proxy_fidati(config.WEB_PANEL_TRUSTED_PROXY),
+            radio_flusso=config.RADIO_STREAM_URL,
         )
         web_panel_runner = await web_panel_start_server(web_panel_app, config.WEB_BIND_HOST, config.WEB_PANEL_PORT)
     else:

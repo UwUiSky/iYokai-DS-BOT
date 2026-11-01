@@ -7,11 +7,12 @@ a ogni richiesta, configurazione dei moduli, dei ruoli del bot, dei gruppi di co
 per ruolo (#148), del bot con marchio proprio (NF-38), dell'aspetto del bot (CFG-030) e della
 lingua dai punti unici dei comandi (D16), storico, premium e wiki dei comandi, «I miei dati»
 (copia e richiesta di cancellazione, #46), verifica dei membri dalla pagina web (link firmato,
-impronte senza IP), link d'invito personali e inviti (`core/web_panel_inviti.py`),
+impronte senza IP), l'interfaccia di iYokai Desktop (`core/desktop_api.py`), link d'invito personali e inviti (`core/web_panel_inviti.py`),
 informativa privacy e termini (pubbliche) e pagina del proprietario del bot
 (moduli premium, server, AI in manutenzione).
-Pagine HTML semplici (Jinja2 con escape automatico, nessuno script).
-Funzioni coperte: SPEC §24.1–24.4, §24.6, §24.7, C.1–C.5, §4.2–4.3, §23.15 (NF-20, issue #91; NF-22, #93; NF-21, #92; NF-38, #109; CFG-030, #122; #46; NF-27 r10)
+Pagine HTML semplici (Jinja2 con escape automatico, nessuno script). Unica eccezione: la pagina «radio iYokai»
+dentro Discord (`core/web_panel_attivita.py`, B.8), con script propri e il suo riquadro ammesso solo a Discord.
+Funzioni coperte: SPEC §24.1–24.4, §24.6, §24.7, C.1–C.5, §4.2–4.3, §23.15, B.8 (NF-20, issue #91; NF-22, #93; NF-21, #92; NF-38, #109; CFG-030, #122; #46; NF-27 r10)
 Dipende da: core/panel_bridge.py, core/web_panel_logic.py,
 core/redacted_access_log.py (la query del callback non va nei log)
 
@@ -30,7 +31,7 @@ from itertools import groupby
 import jinja2
 from aiohttp import BodyPartReader, MultipartReader, web
 
-from core import alt_detection_logic as verifica, panel_bridge, web_panel_inviti, web_panel_logic as regole
+from core import alt_detection_logic as verifica, desktop_api, panel_bridge, web_panel_attivita, web_panel_editor, web_panel_inviti, web_panel_logic as regole
 from core.bot_aspetto import MAX_IMMAGINE
 from core.command_access import RuoloAdminNegato
 from core.command_search_logic import cerca
@@ -104,6 +105,7 @@ def build_app(
     chiave: str,
     proxy_fidati: frozenset[str] = frozenset(),
     ponte=panel_bridge,
+    radio_flusso: str = "",
 ) -> web.Application:
     """
     `sessioni`: `WebPanelSessionRepository`. `oauth`: oggetto con
@@ -131,6 +133,11 @@ def build_app(
         loader=jinja2.FileSystemLoader(CARTELLA / "templates"), autoescape=True, enable_async=False
     )
     foglio_stile = (CARTELLA / "static" / "pannello.css").read_bytes()
+    file_radio = {  # i soli altri file statici: la pagina «radio iYokai» dentro Discord
+        nome: ((CARTELLA / "static" / nome).read_bytes(), tipo)
+        for nome, tipo in (("discord-sdk.js", "text/javascript"), ("radio.js", "text/javascript"))
+    }
+    intestazioni_radio = web_panel_attivita.intestazioni_attivita(https)
 
     # ------------------------------------------------------------ aiuti
     def _cookie(risposta: web.StreamResponse, nome: str, valore: str, durata: int) -> None:
@@ -210,7 +217,10 @@ def build_app(
         except Exception:  # noqa: BLE001 - una pagina d'errore, mai il dettaglio all'utente
             logger.exception("Errore nel pannello web su %s %s", request.method, request.path)
             risposta = web.Response(text="Errore interno.", status=500)
-        risposta.headers.update(intestazioni)
+        in_discord = web_panel_attivita.e_apertura_attivita(request.path, request.query)
+        if in_discord:  # solo qui la pagina può stare in un riquadro di Discord
+            risposta.headers.pop("X-Frame-Options", None)
+        risposta.headers.update(intestazioni_radio if in_discord else intestazioni)
         return risposta
 
     @web.middleware
@@ -227,7 +237,13 @@ def build_app(
     async def stile(request: web.Request) -> web.Response:
         return web.Response(body=foglio_stile, content_type="text/css", headers={"Cache-Control": "max-age=3600"})
 
+    async def file_statico(request: web.Request) -> web.Response:
+        corpo, tipo = file_radio[request.match_info["nome"]]
+        return web.Response(body=corpo, content_type=tipo, headers={"Cache-Control": "max-age=3600"})
+
     async def home(request: web.Request) -> web.Response:
+        if web_panel_attivita.e_apertura_attivita(request.path, request.query):
+            return pagina_radio()
         server = await ponte.server_gestibili(bot, request[CHIAVE_UTENTE]) if request.get(CHIAVE_UTENTE) else []
         return _pagina(request, "home.html", server=server)
 
@@ -289,8 +305,37 @@ def build_app(
         ]
         permessi = await ponte.stato_permessi_comandi(guild, request[CHIAVE_UTENTE])
         return _pagina(
-            request, "server.html", guild=guild, stato=stato, categorie=categorie, lingue=LINGUE, permessi=permessi
+            request, "server.html", guild=guild, stato=stato, categorie=categorie, lingue=LINGUE, permessi=permessi,
+            con_impostazioni=ponte.moduli_con_impostazioni(),
         )
+
+    async def pagina_modulo(request: web.Request) -> web.StreamResponse:
+        guild, rifiuto = await _server(request)
+        if rifiuto is not None:
+            return rifiuto
+        nome = request.match_info["nome"]
+        modulo = next((m for m in (await ponte.stato_server(guild))["moduli"] if m["nome"] == nome), None)
+        if modulo is None or nome not in ponte.moduli_con_impostazioni():
+            return _errore(request, 404, "Modulo non trovato", "Questo modulo non ha impostazioni da qui.")
+        return _pagina(request, "modulo.html", guild=guild, m=modulo, campi=await ponte.stato_modulo(guild, nome))
+
+    async def salva_impostazione(request: web.Request) -> web.StreamResponse:
+        guild, rifiuto = await _server(request)
+        if rifiuto is not None:
+            return rifiuto
+        form, rifiuto = await _modulo_scrittura(request)
+        if rifiuto is not None:
+            return rifiuto
+        nome = request.match_info["nome"]
+        esito = "non_valido"
+        try:
+            cambiato = await ponte.applica_impostazione(
+                guild, nome, str(form.get("chiave", "")), str(form.get("valore", ""))[:400], request[CHIAVE_UTENTE]
+            )
+            esito = "salvato" if cambiato else "invariato"
+        except ImpostazioneNonValida:
+            pass
+        return _vai(f"/server/{guild.id}/modulo/{nome}?esito={esito}")
 
     async def salva_modulo(request: web.Request) -> web.StreamResponse:
         guild, rifiuto = await _server(request)
@@ -623,12 +668,18 @@ def build_app(
 
     app = web.Application(middlewares=[sicurezza, sessione], client_max_size=DIMENSIONE_MASSIMA_RICHIESTA)
     app.router.add_get("/static/pannello.css", stile)
+    app.router.add_get(r"/static/{nome:discord-sdk\.js|radio\.js}", file_statico)
+    pagina_radio = web_panel_attivita.registra_rotte(
+        app, ambiente=ambiente, client_id=client_id, flusso=radio_flusso, testo_spenta="La radio è spenta."
+    )
     app.router.add_get("/", home)
     app.router.add_get("/accedi", accedi)
     app.router.add_get("/callback", callback)
     app.router.add_post("/esci", esci)
     app.router.add_get(r"/server/{guild_id:\d{1,20}}", pagina_server)
     app.router.add_post(r"/server/{guild_id:\d{1,20}}/modulo", salva_modulo)
+    app.router.add_get(r"/server/{guild_id:\d{1,20}}/modulo/{nome:[a-z0-9_]{1,60}}", pagina_modulo)
+    app.router.add_post(r"/server/{guild_id:\d{1,20}}/modulo/{nome:[a-z0-9_]{1,60}}", salva_impostazione)
     app.router.add_post(r"/server/{guild_id:\d{1,20}}/ruolo", salva_ruolo)
     app.router.add_post(r"/server/{guild_id:\d{1,20}}/lingua", salva_lingua)
     app.router.add_post(r"/server/{guild_id:\d{1,20}}/permessi", salva_permessi)
@@ -652,6 +703,8 @@ def build_app(
     app.router.add_post("/proprietario/ai", salva_ai_proprietario)
     app.router.add_get("/wiki", wiki)
     app.router.add_get(r"/wiki/{percorso:[a-z0-9_\-/]{1,120}}", wiki_comando)
+    web_panel_editor.registra_rotte(app, pagina=_pagina, server=_server, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE)
+    desktop_api.registra_rotte(app, bot=bot, ip=_ip, url_pannello=url_pubblico.rstrip("/"), ponte=ponte)
     web_panel_inviti.registra_rotte(
         app, bot=bot, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura, ip=_ip,
         chiave_utente=CHIAVE_UTENTE,
