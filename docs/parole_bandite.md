@@ -10,7 +10,7 @@ Questo documento spiega le regole, non elenca le parole. Le liste stanno nei fil
    razzista della lista di base vicino a una minaccia o a un incitamento (in un verso o
    nell'altro), viene fermata *prima* dell'invio. Chi scrive vede il banner di Discord con il
    testo scelto dal server (fino a 150 caratteri). Il bot non vede quel messaggio.
-   - Si accende con `/automod odio blocco`. Di base è spento.
+   - Si accende con `/admin-automod odio blocco`. Di base è spento.
    - Il testo predefinito è: «Primo richiamo: la tua affermazione risulta razzista. Rispetta le regole del server.»
    - Il bot crea e tiene allineata una regola chiamata «iYokai — Odio». Conta come una delle 6
      regole a parole chiave che Discord permette: se il server le ha già tutte, il bot lo dice.
@@ -28,7 +28,7 @@ Questo documento spiega le regole, non elenca le parole. Le liste stanno nei fil
      parentesi graffe, «verdetto»), non si manda all'AI: si cancella (lato sicuro). Anche una
      risposta dell'AI che non è esattamente il JSON atteso vale il lato sicuro.
    - Con 3 richiami in 60 minuti scatta un timeout di 60 minuti. I tre numeri si cambiano con
-     `/automod odio richiami`. Chi può gestire il server non riceve il timeout automatico.
+     `/admin-automod odio richiami`. Chi può gestire il server non riceve il timeout automatico.
    - **Con l'AI ferma, spenta o in errore il bot sceglie il lato sicuro:** cancella il messaggio e
      lo dice. Il server sceglie se mandare messaggi all'AI (consenso dell'admin, D19): senza
      consenso vale lo stesso lato sicuro.
