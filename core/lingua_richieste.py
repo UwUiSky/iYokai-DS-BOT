@@ -68,12 +68,16 @@ async def invia_richiesta(
     bot: Any, utente: Any, server: Any, nome_grezzo: str | None, nota_grezza: str | None,
     adesso: dt.datetime | None = None,
 ) -> Esito:
-    """Controlla, manda il DM all'owner e segna il giorno. Il tetto si consuma solo se il DM parte."""
+    """
+    Controlla, manda il DM all'owner e segna il giorno. Il giorno si segna PRIMA del DM (due moduli
+    inviati insieme non passano entrambi) e si toglie se il DM non parte: il tetto si consuma solo se arriva.
+    """
     nome = pulisci(nome_grezzo, MAX_NOME_LINGUA)
     if not nome:
         return Esito.NOME_VUOTO
     if ha_gia_richiesto(utente.id, adesso):
         return Esito.LIMITE
+    _ultimo_giorno.set(utente.id, _oggi(adesso))
     nota = pulisci(nota_grezza, MAX_NOTA)
     try:
         owner = bot.get_user(config.OWNER_ID) or await bot.fetch_user(config.OWNER_ID)
@@ -82,6 +86,6 @@ async def invia_richiesta(
         )
     except (discord.HTTPException, AttributeError) as exc:
         logger.warning("Richiesta di lingua non recapitata all'owner (%s).", type(exc).__name__)
+        _ultimo_giorno.delete(utente.id)
         return Esito.NON_INVIATA
-    _ultimo_giorno.set(utente.id, _oggi(adesso))
     return Esito.INVIATA

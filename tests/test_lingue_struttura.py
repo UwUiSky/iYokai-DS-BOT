@@ -202,3 +202,19 @@ async def test_il_modulo_ha_i_limiti_e_risponde_all_utente():
     await modulo.on_submit(interazione)
     assert interazione.followup.send.call_args.args[0] == i18n.t("lingua_richiesta_ok", "it")
     assert interazione.followup.send.call_args.kwargs["ephemeral"] is True
+
+
+async def test_due_moduli_inviati_insieme_mandano_un_solo_dm():
+    """Doppio invio (due moduli aperti): il tetto si prende prima del DM, non dopo."""
+    import asyncio
+
+    rich._ultimo_giorno.clear()
+
+    async def lento(*_a, **_k):
+        await asyncio.sleep(0.05)
+
+    owner = MagicMock(send=AsyncMock(side_effect=lento))
+    bot = MagicMock(get_user=MagicMock(return_value=owner))
+    esiti = await asyncio.gather(*(rich.invia_richiesta(bot, _utente(), None, "Olandese", "") for _ in range(3)))
+    assert sorted(e.value for e in esiti) == ["inviata", "limite", "limite"]
+    assert owner.send.await_count == 1
