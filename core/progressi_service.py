@@ -194,7 +194,7 @@ async def _lavora() -> None:
 
 # ---------------------------------------------------------------- serie e traguardi
 async def dopo_riscossione(guild_id: int, user_id: int, colonna: str) -> None:
-    """Dopo `/level daily` o `/level work` riuscito. Solo il giornaliero conta (serie, premi estetici, missione)."""
+    """Dopo `/monete daily` o `/monete work` riuscito. Solo il giornaliero conta (serie, premi estetici, missione)."""
     if colonna != "last_daily_at":
         return
     try:

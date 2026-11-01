@@ -22,14 +22,14 @@ Discord vs. `on_message` nel bot), e vivono sotto lo stesso comando
 I filtri lato bot controllano anche i messaggi MODIFICATI (`on_message_edit`,
 AMD-021): la modifica non conta come messaggio in più per l'anti-spam, e un
 messaggio modificato più volte vale un solo warn per violazione.
-Il blocco del phishing (NF-31, `/automod filtri phishing`) usa la lista di
+Il blocco del phishing (NF-31, `/filtri phishing`) usa la lista di
 core/phishing_list_fetcher.py: cancella il messaggio e mette in timeout.
 Due categorie hanno un interruttore proprio (SIC-042): accorciatori di link
 e inviti a server per adulti (il server dell'invito lo chiede a Discord).
 Filtri in più: messaggi ripetuti, troppo corti, link e menzioni contati nel
-tempo (AMD-001/004/006/007, `/automod filtri messaggi`), testo di embed (solo
+tempo (AMD-001/004/006/007, `/filtri messaggi`), testo di embed (solo
 per i filtri dei link, anche quando l'anteprima arriva con una modifica) e
-inoltri (AMD-019/020) e tipi di file vietati (AMD-022, `/automod filtri
+inoltri (AMD-019/020) e tipi di file vietati (AMD-022, `/filtri
 contenuto`), canali solo media o senza allegati (AMD-023/024, `/automod
 filtri canale-media`; sticker e inoltri con immagine valgono come media), azione kick (AMD-041),
 parole vietate con varianti (AMD-014, core/automod_parole_logic.py: cancella e conta nella scala;
@@ -882,10 +882,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "automod",
+        "filtri",
         nome="invites",
         descrizione="Attiva o disattiva il blocco automatico degli inviti Discord.",
-        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
     )
     @app_commands.describe(
         enabled="True per bloccare gli inviti, False per consentirli",
@@ -977,10 +976,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
     # Filtri avanzati lato bot (SPEC.md §6.3-§6.10)
     # ================================================================
     @comando_di_gruppo(
-        "automod",
+        "filtri",
         nome="anti-link-mode",
         descrizione="Imposta la modalità del filtro link.",
-        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
     )
     @app_commands.describe(mode="off = spento, whitelist = solo i domini elencati, blacklist = blocca i domini elencati")
     @app_commands.choices(
@@ -1001,10 +999,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "automod_modalita_anti_link_impostata_su", name=mode.name), ephemeral=True)
 
     @comando_di_gruppo(
-        "automod",
+        "filtri",
         nome="anti-link-domain",
         descrizione="Aggiunge o rimuove un dominio dalla whitelist/blacklist link.",
-        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
     )
     @app_commands.describe(action="add o remove", lista="whitelist o blacklist", domain="Il dominio, es. esempio.com")
     @app_commands.choices(
@@ -1055,10 +1052,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "automod",
+        "filtri",
         nome="anti-spam-messages",
         descrizione="Configura l'anti-spam messaggi (troppi messaggi in poco tempo).",
-        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
     )
     @app_commands.describe(enabled="Attiva/disattiva", max_messages="Numero massimo consentito", seconds="Finestra in secondi (da 1 a 300)")
     async def anti_spam_messages(
@@ -1082,10 +1078,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "automod",
+        "filtri",
         nome="anti-spam-emoji",
         descrizione="Configura l'anti-spam emoji (troppe emoji in un messaggio).",
-        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
     )
     @app_commands.describe(enabled="Attiva/disattiva", max_emoji="Numero massimo di emoji per messaggio")
     async def anti_spam_emoji(self, interaction: discord.Interaction, enabled: bool, max_emoji: int = 5) -> None:
@@ -1100,10 +1095,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "automod",
+        "filtri",
         nome="anti-spam-sticker",
         descrizione="Configura l'anti-spam sticker (troppi sticker in poco tempo).",
-        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
     )
     @app_commands.describe(enabled="Attiva/disattiva", max_sticker="Numero massimo consentito", seconds="Finestra in secondi (da 1 a 300)")
     async def anti_spam_sticker(
@@ -1127,10 +1121,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "automod",
+        "filtri",
         nome="anti-caps",
         descrizione="Configura l'anti-caps (troppo maiuscolo).",
-        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
     )
     @app_commands.describe(enabled="Attiva/disattiva", percent="Percentuale di lettere maiuscole per far scattare il filtro", min_length="Lunghezza minima del messaggio (in lettere) da valutare")
     async def anti_caps(
@@ -1149,10 +1142,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "automod",
+        "filtri",
         nome="anti-zalgo",
         descrizione="Attiva o disattiva l'anti-zalgo (testo con segni diacritici anomali).",
-        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
     )
     @app_commands.describe(enabled="Attiva/disattiva")
     async def anti_zalgo(self, interaction: discord.Interaction, enabled: bool) -> None:
@@ -1164,10 +1156,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "automod_anti_zalgo", v1=(await testo_per(interaction, "greetings_attivato")) if enabled else (await testo_per(interaction, "greetings_disattivato"))), ephemeral=True)
 
     @comando_di_gruppo(
-        "automod",
+        "filtri",
         nome="phishing",
         descrizione="Attiva o disattiva il blocco dei link di phishing (finti regali, finti login).",
-        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
     )
     @app_commands.describe(
         enabled="Attiva/disattiva",
@@ -1202,16 +1193,15 @@ class AutomodCog(CogConGruppi, commands.Cog):
             f"Blocco del phishing {'attivato: cancello il messaggio e metto in timeout chi lo ha scritto' if enabled else 'disattivato'}. "
             f"Accorciatori di link: {'bloccati' if c.phishing_accorciatori else 'permessi'}. "
             f"Inviti a server per adulti: {'bloccati' if c.phishing_inviti_adulti else 'permessi'}. "
-            "Se blocco un dominio per sbaglio, mettilo nella whitelist con `/automod filtri anti-link-domain`."
+            "Se blocco un dominio per sbaglio, mettilo nella whitelist con `/filtri anti-link-domain`."
             + (f" I link bloccati si scrivono in {canale_log.mention}." if canale_log is not None else ""),
             ephemeral=True,
         )
 
     @comando_di_gruppo(
-        "automod",
+        "filtri",
         nome="forma-testo",
         descrizione="Limiti sulla forma del messaggio: a-capo, lunghezza, spoiler (0 = spento).",
-        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
     )
     @app_commands.describe(
         max_a_capo="Massimo di righe a capo (muri di testo); 0 = spento",
@@ -1240,10 +1230,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message("Limiti salvati. " + "; ".join(righe) + ".", ephemeral=True)
 
     @comando_di_gruppo(
-        "automod",
+        "filtri",
         nome="messaggi",
         descrizione="Ripetuti, troppo corti, link e menzioni contati nel tempo (0 = spento).",
-        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
     )
     @app_commands.describe(
         max_ripetuti="Stesso testo mandato più di N volte di fila",
@@ -1298,10 +1287,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "automod",
+        "filtri",
         nome="contenuto",
         descrizione="Embed e inoltri controllati dai filtri; tipi di file vietati.",
-        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
     )
     @app_commands.describe(
         embed="I filtri dei link leggono anche gli embed del messaggio",
@@ -1337,10 +1325,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "automod",
+        "filtri",
         nome="canale-media",
         descrizione="Canale solo media, senza allegati o normale.",
-        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
     )
     @app_commands.describe(canale="Il canale", modo="Cosa vale nel canale")
     @app_commands.choices(
@@ -1373,10 +1360,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(f"{canale.mention}: {modo.name.lower()}.", ephemeral=True)
 
     @comando_di_gruppo(
-        "automod",
+        "filtri",
         nome="anti-mention",
         descrizione="Configura l'anti-mass-mention (troppi utenti taggati in un messaggio).",
-        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
     )
     @app_commands.describe(enabled="Attiva/disattiva", max_mentions="Numero massimo di menzioni per messaggio")
     async def anti_mention(self, interaction: discord.Interaction, enabled: bool, max_mentions: int = 5) -> None:
@@ -1391,10 +1377,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "automod",
+        "filtri",
         nome="anti-attachment",
         descrizione="Configura l'anti-attachment-spam (troppi allegati in poco tempo).",
-        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
     )
     @app_commands.describe(enabled="Attiva/disattiva", max_attachments="Numero massimo consentito", seconds="Finestra in secondi (da 1 a 300)")
     async def anti_attachment(
@@ -1490,10 +1475,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
     # Azioni configurabili + log (SPEC.md §6.13/§6.14)
     # ================================================================
     @comando_di_gruppo(
-        "automod",
+        "filtri",
         nome="actions-set",
         descrizione="Configura quali azioni eseguire quando un filtro avanzato scatta.",
-        sottogruppo=("filtri", "Filtri automatici sui messaggi."),
     )
     @app_commands.describe(
         violation="Quale filtro", delete="Cancella il messaggio", warn="Assegna un warn",

@@ -1,7 +1,7 @@
 """
 tests/test_ai_spiriti.py
 ========================
-`/utility ai spirito` e `/utility ai frammenti` (§25.71, §25.72): misure vere dal database, Discord finto, AI ferma.
+`/assistente spirito` e `/assistente frammenti` (§25.71, §25.72): misure vere dal database, Discord finto, AI ferma.
 """
 
 from datetime import date

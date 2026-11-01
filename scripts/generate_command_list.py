@@ -73,18 +73,18 @@ async def main() -> None:
         # Le applicazioni separate (istanza NSFW, iYokai App) hanno un albero proprio: categorie a parte.
         from tests.support.full_tree import build_separate_trees
 
-        per_app: dict[str, str] = {}
+        per_app: dict[int, str] = {}  # per oggetto: `/assistente` esiste in due app diverse
         for altro in await build_separate_trees():
             for c in altro.tree.get_commands():
                 comandi_top_level.append(c)
-                per_app[c.name] = f"app:{altro.istanza}"
+                per_app[id(c)] = f"app:{altro.istanza}"
             await altro.close()
 
         # La categoria è il gruppo di primo livello (D24); i comandi
         # singoli di primo livello (-cerca-comando, -chiedi) vanno in "aiuto".
         per_lingua = {"it": defaultdict(list), "en": defaultdict(list)}
         for cmd in comandi_top_level:
-            categoria = per_app.get(cmd.name) or (cmd.name if isinstance(cmd, app_commands.Group) else "aiuto")
+            categoria = per_app.get(id(cmd)) or (cmd.name if isinstance(cmd, app_commands.Group) else "aiuto")
             for lingua in ("it", "en"):
                 per_lingua[lingua][categoria].extend(_foglie(cmd, lingua))
 
@@ -138,6 +138,9 @@ def _scrivi_markdown(per_categoria: dict[str, list[tuple[str, str]]], file_nome:
         "ticket": "Ticket",
         "utility": "Utility",
         "voice": "Vocali",
+        "immagini": "Immagini", "giochi": "Giochi", "sondaggi": "Sondaggi", "assistente": "Assistente AI", "monete": "Monete",
+        "messaggi": "Messaggi (staff)", "giveaway": "Giveaway (staff)", "ticket-gestione": "Ticket: gestione (staff)",
+        "ticket-pannelli": "Ticket: pannelli (staff)", "filtri": "Filtri AutoMod (staff)", "premium": "Premium", "vip": "VIP",
         "app:nsfw": "iYokai NSFW (app separata, solo canali vietati ai minori)",
         "app:app": "iYokai App (app separata, installata sull'utente)",
     }
@@ -149,6 +152,9 @@ def _scrivi_markdown(per_categoria: dict[str, list[tuple[str, str]]], file_nome:
             "mod": "Moderation", "modban": "Bans (modban)", "moduli": "Modules", "music": "Music",
             "owner": "Owner", "security": "Security", "ticket": "Tickets", "utility": "Utility",
             "voice": "Voice", "economia": "Economy", "ruoli": "Roles",
+            "immagini": "Images", "giochi": "Games", "sondaggi": "Polls", "assistente": "AI assistant", "monete": "Coins",
+            "messaggi": "Messages (staff)", "giveaway": "Giveaway (staff)", "ticket-gestione": "Ticket management (staff)",
+            "ticket-pannelli": "Ticket panels (staff)", "filtri": "AutoMod filters (staff)", "premium": "Premium", "vip": "VIP",
             "app:nsfw": "iYokai NSFW (separate app, age-restricted channels only)",
             "app:app": "iYokai App (separate app, installed on the user)",
         }

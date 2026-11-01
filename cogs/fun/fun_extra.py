@@ -161,7 +161,7 @@ class FunExtraCog(CogConGruppi, commands.Cog):
             frase = f"😏 {logica.presa_in_giro(self._rng, utente.mention)}"
         await self._scrivi(interaction, frase)
 
-    @comando_di_gruppo("fun", nome="effetto", descrizione="Effetto sull'avatar: arcobaleno, R.I.P., ricercato, triggered.")
+    @comando_di_gruppo("immagini", nome="effetto", descrizione="Effetto sull'avatar: arcobaleno, R.I.P., ricercato, triggered.")
     @app_commands.describe(
         tipo="Che effetto", image="Immagine (facoltativa: senza, usa l'avatar)",
         utente="Usa l'avatar di questo utente", nome="Nome sul manifesto o sulla lapide (massimo 40)",

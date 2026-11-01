@@ -5,7 +5,7 @@ Misteri: l'admin nasconde un codice e un indizio. Quando qualcuno trova il codic
 un premio: XP ai membri attivi, oppure un canale segreto aperto per qualche ora.
 Funzioni coperte: SPEC §25.56 (AI-R-061)
 
-I comandi dell'admin stanno in `/ai mistero`, quello per rispondere in `/utility ai mistero` (D43):
+I comandi dell'admin stanno in `/ai mistero`, quello per rispondere in `/assistente mistero` (D43):
 `/fun` ha già 25 figli. L'XP «per 24 ore» diventa un'unica ricompensa di XP (D18: non si tocca il calcolo dei livelli).
 """
 
@@ -134,7 +134,7 @@ class AiMisteriCog(CogConGruppi, commands.Cog):
         tolto = await ai_gioco_repo.mistero_togli(interaction.guild_id, numero)
         await interaction.response.send_message("Mistero tolto." if tolto else "Non trovo quel mistero.", ephemeral=True)
 
-    @comando_di_gruppo("utility", nome="mistero", descrizione="Rispondi a un mistero del server con il codice.", sottogruppo=SOTTO_AI)
+    @comando_di_gruppo("assistente", nome="mistero", descrizione="Rispondi a un mistero del server con il codice.")
     @app_commands.describe(codice="Il codice che hai trovato")
     async def rispondi(self, interaction: discord.Interaction, codice: app_commands.Range[str, 3, 60]) -> None:
         motivo = TENTATIVI.consenti(interaction.guild_id, interaction.user.id)

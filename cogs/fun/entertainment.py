@@ -4,7 +4,7 @@ cogs/fun/entertainment.py
 Mini-giochi (SPEC.md §16.1), altri comandi di intrattenimento
 classici (§16.8): testa/croce, dado, carta/forbici/sasso, palla
 magica 8, barzelletta, citazione, curiosità — e image manipulation
-(§16.2)/fun meme (§16.3): scala di grigi, inverti, sfoca, pixela,
+(§16.2)/immagini meme (§16.3): scala di grigi, inverti, sfoca, pixela,
 generatore di meme testo-sopra/testo-sotto. Tutti operano
 sull'allegato passato al comando o, se assente, sull'avatar
 dell'utente (o dell'utente menzionato) — così ogni comando funziona
@@ -17,9 +17,9 @@ Tutti i comandi stanno nel gruppo condiviso `/fun` (core/command_groups.py);
 `/fun ship` e `/fun rate` sono in cogs/fun/ship_rate.py.
 
 Terzo lotto (§16.4 Comandi animal, §16.9 Ricerca immagini SFW):
-`/fun animal` usa tre API pubbliche gratuite senza chiave
+`/immagini animal` usa tre API pubbliche gratuite senza chiave
 (dog.ceo, thecatapi.com, randomfox.ca — core/animal_fetcher.py);
-`/fun search-image` usa Pixabay, che invece richiede una chiave
+`/immagini search-image` usa Pixabay, che invece richiede una chiave
 gratuita (PIXABAY_API_KEY in core/config.py, stesso principio di
 sblocco opzionale già usato per Twitch/YouTube) — a differenza delle
 altre integrazioni opzionali di questo bot, senza quella chiave il
@@ -208,7 +208,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
         risultato = roll_dice(self._rng, sides=sides)
         await interaction.response.send_message(await testo_per(interaction, "entertainmen_hai_tirato_un", pubblica=True, risultato=risultato, sides=sides))
 
-    @comando_di_gruppo("fun", nome="rps", descrizione="Carta, forbici, sasso contro il bot.")
+    @comando_di_gruppo("giochi", nome="rps", descrizione="Carta, forbici, sasso contro il bot.")
     @app_commands.describe(scelta="Sasso, carta o forbici")
     @app_commands.choices(
         scelta=[
@@ -289,7 +289,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.send_message(f"🧠 {random_fact(self._rng)}")
 
-    @comando_di_gruppo("fun", nome="grayscale", descrizione="Trasforma un'immagine in scala di grigi.")
+    @comando_di_gruppo("immagini", nome="grayscale", descrizione="Trasforma un'immagine in scala di grigi.")
     @app_commands.describe(
         image="Immagine da elaborare (facoltativa: senza, usa l'avatar)",
         utente="Usa l'avatar di questo utente invece dell'allegato/del tuo",
@@ -307,7 +307,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
             interaction, image, utente, "grayscale.png", apply_grayscale
         )
 
-    @comando_di_gruppo("fun", nome="invert", descrizione="Inverte i colori di un'immagine.")
+    @comando_di_gruppo("immagini", nome="invert", descrizione="Inverte i colori di un'immagine.")
     @app_commands.describe(
         image="Immagine da elaborare (facoltativa: senza, usa l'avatar)",
         utente="Usa l'avatar di questo utente invece dell'allegato/del tuo",
@@ -325,7 +325,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
             interaction, image, utente, "invert.png", apply_invert
         )
 
-    @comando_di_gruppo("fun", nome="blur", descrizione="Applica una sfocatura a un'immagine.")
+    @comando_di_gruppo("immagini", nome="blur", descrizione="Applica una sfocatura a un'immagine.")
     @app_commands.describe(
         image="Immagine da elaborare (facoltativa: senza, usa l'avatar)",
         utente="Usa l'avatar di questo utente invece dell'allegato/del tuo",
@@ -345,7 +345,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
             interaction, image, utente, "blur.png", apply_blur, raggio
         )
 
-    @comando_di_gruppo("fun", nome="pixelate", descrizione="Pixela un'immagine.")
+    @comando_di_gruppo("immagini", nome="pixelate", descrizione="Pixela un'immagine.")
     @app_commands.describe(
         image="Immagine da elaborare (facoltativa: senza, usa l'avatar)",
         utente="Usa l'avatar di questo utente invece dell'allegato/del tuo",
@@ -365,7 +365,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
             interaction, image, utente, "pixelate.png", apply_pixelate, dimensione_blocco
         )
 
-    @comando_di_gruppo("fun", nome="meme", descrizione="Genera un meme con testo sopra/sotto.")
+    @comando_di_gruppo("immagini", nome="meme", descrizione="Genera un meme con testo sopra/sotto.")
     @app_commands.describe(
         top_text="Testo in alto (facoltativo)",
         bottom_text="Testo in basso (facoltativo)",
@@ -393,7 +393,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
             interaction, image, utente, "meme.png", render_meme, top_text, bottom_text
         )
 
-    @comando_di_gruppo("fun", nome="animal", descrizione="Mostra un'immagine casuale di un animale.")
+    @comando_di_gruppo("immagini", nome="animal", descrizione="Mostra un'immagine casuale di un animale.")
     @app_commands.describe(specie="Che animale vuoi vedere?")
     @app_commands.choices(
         specie=[
@@ -438,7 +438,7 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
             }
         self._ultima_ricerca_immagini[utente_id] = ora
 
-    @comando_di_gruppo("fun", nome="search-image", descrizione="Cerca un'immagine SFW su Pixabay.")
+    @comando_di_gruppo("immagini", nome="search-image", descrizione="Cerca un'immagine SFW su Pixabay.")
     @app_commands.describe(query="Cosa vuoi cercare? (massimo 100 caratteri)")
     async def search_image(
         self, interaction: discord.Interaction, query: app_commands.Range[str, 1, 100]

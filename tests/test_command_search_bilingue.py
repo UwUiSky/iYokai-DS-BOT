@@ -94,7 +94,7 @@ async def test_i_moduli_di_un_comando_vengono_dal_file_che_lo_definisce():
         con_moduli = [c for c in tutti if c.moduli]
         assert len(con_moduli) > 50, "i comandi dei moduli accendibili devono dichiarare il modulo"
         assert any(not c.moduli for c in tutti), "ci devono essere comandi sempre disponibili"
-        gioco = next(c for c in tutti if c.percorso == "fun rps")
+        gioco = next(c for c in tutti if c.percorso == "giochi rps")
         assert "fun" in gioco.moduli
     finally:
         await close_full_bot(bot)

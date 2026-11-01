@@ -2,7 +2,7 @@
 tests/test_shop_conferma.py
 ===========================
 ECO-069 (#125): conferma prima dell'acquisto nel negozio, che l'admin può
-accendere o spegnere (`/level impostazioni negozio`). Di base è spenta: il
+accendere o spegnere (`/economia livelli negozio`). Di base è spenta: il
 comportamento di prima non cambia.
 Funzioni coperte: SPEC §15.4 (catalogo #125)
 """
@@ -73,7 +73,7 @@ async def _saldo(scena, utente=1):
 @pytest.mark.asyncio
 async def test_spenta_si_compra_subito(scena):
     interazione = _interazione()
-    await scena.comandi["level shop buy"].callback(scena.cog, interazione, item_id=scena.item_id)
+    await scena.comandi["monete shop buy"].callback(scena.cog, interazione, item_id=scena.item_id)
     assert await _saldo(scena) == 400
     assert "view" not in interazione.response.send_message.await_args.kwargs
 
@@ -82,7 +82,7 @@ async def test_spenta_si_compra_subito(scena):
 async def test_accesa_prima_chiede_e_non_addebita(scena):
     await scena.impostazioni.set_options(GUILD, shop_confirm=True)
     interazione = _interazione()
-    await scena.comandi["level shop buy"].callback(scena.cog, interazione, item_id=scena.item_id)
+    await scena.comandi["monete shop buy"].callback(scena.cog, interazione, item_id=scena.item_id)
 
     chiamata = interazione.response.send_message.await_args
     assert "Adesivo" in chiamata.args[0] and "100" in chiamata.args[0]
@@ -94,7 +94,7 @@ async def test_accesa_prima_chiede_e_non_addebita(scena):
 async def test_conferma_compra_una_volta_e_toglie_i_bottoni(scena):
     await scena.impostazioni.set_options(GUILD, shop_confirm=True)
     comando = _interazione()
-    await scena.comandi["level shop buy"].callback(scena.cog, comando, item_id=scena.item_id)
+    await scena.comandi["monete shop buy"].callback(scena.cog, comando, item_id=scena.item_id)
     vista = comando.response.send_message.await_args.kwargs["view"]
     conferma = [b for b in vista.children if b.label == "Conferma"][0]
 
@@ -115,7 +115,7 @@ async def test_conferma_compra_una_volta_e_toglie_i_bottoni(scena):
 async def test_annulla_non_compra(scena):
     await scena.impostazioni.set_options(GUILD, shop_confirm=True)
     comando = _interazione()
-    await scena.comandi["level shop buy"].callback(scena.cog, comando, item_id=scena.item_id)
+    await scena.comandi["monete shop buy"].callback(scena.cog, comando, item_id=scena.item_id)
     vista = comando.response.send_message.await_args.kwargs["view"]
     annulla = [b for b in vista.children if b.label == "Annulla"][0]
 
@@ -130,7 +130,7 @@ async def test_annulla_non_compra(scena):
 async def test_il_clic_di_un_altro_utente_e_rifiutato(scena):
     await scena.impostazioni.set_options(GUILD, shop_confirm=True)
     comando = _interazione()
-    await scena.comandi["level shop buy"].callback(scena.cog, comando, item_id=scena.item_id)
+    await scena.comandi["monete shop buy"].callback(scena.cog, comando, item_id=scena.item_id)
     vista = comando.response.send_message.await_args.kwargs["view"]
 
     estraneo = _interazione(user_id=2)
@@ -140,7 +140,7 @@ async def test_il_clic_di_un_altro_utente_e_rifiutato(scena):
 
 @pytest.mark.asyncio
 async def test_comando_negozio_accende_e_spegne(scena):
-    comando = scena.comandi["level impostazioni negozio"]
+    comando = scena.comandi["economia livelli negozio"]
     await comando.callback(scena.cog, _interazione(), conferma=True)
     assert (await scena.impostazioni.get_config(GUILD)).impostazioni.shop_confirm is True
     await comando.callback(scena.cog, _interazione(), conferma=False)
@@ -151,7 +151,7 @@ async def test_comando_negozio_accende_e_spegne(scena):
 async def test_prezzo_cambiato_dopo_la_finestra_rifiuta_e_non_addebita(scena):
     await scena.impostazioni.set_options(GUILD, shop_confirm=True)
     comando = _interazione()
-    await scena.comandi["level shop buy"].callback(scena.cog, comando, item_id=scena.item_id)
+    await scena.comandi["monete shop buy"].callback(scena.cog, comando, item_id=scena.item_id)
     vista = comando.response.send_message.await_args.kwargs["view"]
     conferma = [b for b in vista.children if b.label == "Conferma"][0]
 
@@ -187,7 +187,7 @@ async def test_senza_conferma_il_prezzo_cambiato_tra_lettura_e_acquisto_non_adde
 
     monkeypatch.setattr(scena.negozio, "buy_item", buy_dopo_modifica)
     interazione = _interazione()
-    await scena.comandi["level shop buy"].callback(scena.cog, interazione, item_id=scena.item_id)
+    await scena.comandi["monete shop buy"].callback(scena.cog, interazione, item_id=scena.item_id)
 
     assert await _saldo(scena) == 500
     assert "prezzo è cambiato" in interazione.response.send_message.await_args.args[0]

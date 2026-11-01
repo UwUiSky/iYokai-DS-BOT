@@ -26,7 +26,7 @@ from core import boss_logic as logica
 from core.ai_servizio import RichiestaAI
 from core.bot_ready import attendi_bot_pronto
 from core.boss_image import disegna_boss
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.config import config
 from core.repositories.activity_stats_repo import activity_stats_repo
 from core.repositories.ai_gioco_repo import BossConfig, BossEvento, ai_gioco_repo
@@ -388,7 +388,7 @@ class AiBossCog(CogConGruppi, commands.Cog):
         ev_id, motivo = await avvia_evento(self.bot, interaction.guild, destinazione, cfg)
         await interaction.followup.send(f"Il boss è comparso in {destinazione.mention}." if ev_id else motivo, ephemeral=True)
 
-    @comando_di_gruppo("ai", nome="rete", descrizione="Solo proprietario: pubblica o chiude il boss di rete.", sottogruppo=SOTTO_BOSS)
+    @comando_di_gruppo("owner", nome="boss-rete", descrizione="Solo proprietario: pubblica o chiude il boss di rete.", sottogruppo=SOTTOGRUPPI["owner ai"])
     @app_commands.describe(nome="Nome del mostro (vuoto: chiude il boss di rete)", aspetto="Come appare", vita_extra="Vita in più")
     async def boss_rete(
         self, interaction: discord.Interaction, nome: app_commands.Range[str, 2, 40] | None = None,

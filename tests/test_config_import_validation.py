@@ -84,7 +84,7 @@ SETTINGS_VALIDE = {
     "music_banned_words": "parola, altra",
     "music_idle_minutes": 5,
     "music_known_sites_only": False,
-    "policy_comandi_off": ["fun meme"],
+    "policy_comandi_off": ["immagini meme"],
     "policy_canali_ok": [171717171717171717],
     "policy_canali_no": [181818181818181818],
     "policy_ignora_ruoli": [191919191919191919],

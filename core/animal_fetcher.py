@@ -8,7 +8,7 @@ dog.ceo (cane), thecatapi.com (gatto), randomfox.ca (volpe).
 A differenza di core/twitch_watcher.py e core/youtube_watcher.py,
 questo servizio non ha un `tasks.loop` periodico: la richiesta
 avviene una sola volta, sincronamente con l'esecuzione del comando
-`/fun animal`, perché non c'è nulla da monitorare nel tempo — è solo
+`/immagini animal`, perché non c'è nulla da monitorare nel tempo — è solo
 "dammi un'immagine adesso". Stesso principio di gestione errori
 (mai un'eccezione che risale al chiamante, log + None se la
 richiesta fallisce) e stessa sessione aiohttp riusata tra chiamate.

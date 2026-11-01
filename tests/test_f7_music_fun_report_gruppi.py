@@ -78,12 +78,12 @@ async def test_fun_ha_tutti_i_comandi_nel_gruppo_condiviso():
     await ent_setup(bot)
     await ship_setup(bot)
     try:
-        assert percorsi_del_gruppo("fun") >= {
-            "coinflip", "dice", "rps", "8ball", "joke", "quote", "fact", "grayscale", "invert",
-            "blur", "pixelate", "meme", "animal", "search-image", "ship", "rate",
-        }
+        assert percorsi_del_gruppo("fun") >= {"coinflip", "dice", "8ball", "joke", "quote", "fact", "ship", "rate"}
+        # D56: immagini e giochi contro il bot hanno i loro gruppi
+        assert percorsi_del_gruppo("immagini") >= {"grayscale", "invert", "blur", "pixelate", "meme", "animal", "search-image"}
+        assert "rps" in percorsi_del_gruppo("giochi")
         top = {c.name for c in bot.tree.get_commands()}
-        assert "fun" in top and not top & {"ship", "rate"}
+        assert {"fun", "immagini", "giochi"} <= top and not top & {"ship", "rate"}
         assert GRUPPI["fun"].livello is None
     finally:
         await _scarica(bot)

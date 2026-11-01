@@ -760,6 +760,13 @@ servizi economici su VIP 5, servizi costosi su VIP 20).
 - Il bot mostra da solo i comandi per livello: `/premium` elenca i comandi premium,
   `/vip` quelli di VIP 5 e VIP 20, aggiornati quando l'owner cambia il pannello, senza riavvio.
 - Si predispone ora (livello di default = gratuito per tutto), si attiva con il pannello.
+- I comandi premium/VIP restano nel loro gruppo (`/music`, `/ai`, …): il livello si controlla quando il
+  comando parte (un solo punto, `core/livelli_funzione.py`), con un messaggio chiaro se manca.
+- `/premium` e `/vip` sono gruppi con pochi sotto-comandi fissi (`elenco` con `area` a completamento, `info`):
+  l'elenco è a pagine (embed entro i limiti, bottoni, menu di al massimo 25 voci) e si costruisce dalla
+  tabella `livelli_funzione`. Con 30, 100 o 665 funzioni l'albero non cambia (limiti di 25 figli e 8.000
+  caratteri mai toccati). Si registra o si toglie solo il gruppo intero (nessuna funzione premium/VIP:
+  nessun gruppo), con una sola sincronizzazione per cambio e attesa minima.
 
 ## D58 — Bot multilingue: una cartella per lingua, comandi tradotti, richiesta di lingue nuove (01/11/2026, richiesta dell'owner)
 Lingue di partenza: le stesse del sito (repo iYokai-Site, `src/i18n`): it, en, de, es-ES, fr,
@@ -792,3 +799,44 @@ niente e non manda alla AI ogni messaggio, solo le richieste delle funzioni. La 
 - Server con privacy AI «senza_messaggi»: chi addestra non riceve mai nulla di quel server.
 - `AI_AMMETTI_ADDESTRANO=si|no` (iniziale: `si`) li spegne tutti in un colpo, utile alla revisione di Discord.
 - D19 resta valida: iYokai non addestra modelli. Aggiornata con un rimando a D55.
+
+## D56 — Gruppi per tema e per chi li usa; tetto di 60 comandi di primo livello (01/11/2026, richiesta dell'owner)
+
+Aggiorna D25. Un gruppo di primo livello nuovo si può creare **per tema** o **per
+pubblico**, non solo quando un gruppo supera i 6.800 caratteri. Regole:
+
+1. Un gruppo è **per tutti** (nessun permesso predefinito) **o per lo staff**
+   (permesso predefinito e livello). Un comando che chiede il livello admin, mod o
+   sicurezza non sta in un gruppo per tutti. I comandi solo per l'owner del bot (OWNER_ID, non il founder di un server) stanno
+   in `/owner`, divisi in sotto-gruppi per area (`/owner ai`, `/owner premium`, …); `/owner` si
+   registra solo nel server dell'owner e ogni comando controlla OWNER_ID. L'uso normale
+   dell'AI resta in `/ai`; chiavi, modelli, quote e parametri globali vanno in `/owner ai`.
+2. Tetto: **60 comandi di primo livello globali** (Discord ne ammette 100). I 40 posti
+   restano liberi per le esigenze future. Oggi 33.
+3. Ogni gruppo e sotto-gruppo punta a **18 figli** (Discord: 25). Sopra i 18 si
+   divide in sotto-gruppi; sopra i 25 non si va mai.
+4. Peso: il limite vero è **8.000 caratteri** per gruppo (Discord). A 6.800 scatta solo un
+   **avviso** (non un tetto): si può arrivare fino a 8.000, cercando di restarci sotto con
+   margine per le traduzioni (D58). Vicino a 8.000 si sposta un blocco intero in un gruppo nuovo.
+5. Profondità massima 3: gruppo, sotto-gruppo, comando.
+6. Nomi italiani brevi, la parola d'uso dove esiste (`gif`, `giveaway`). I gruppi
+   staff di un'area per tutti hanno il nome dell'area col trattino (`ticket-gestione`).
+7. Un elenco che cresce (GIF, giochi, filtri, effetti) è un'opzione a completamento,
+   non un comando per voce.
+8. Ogni gruppo nuovo passa dal `guardiano-limiti` e ha la sua riga in
+   `MAPPA_COMANDI_F7.md` §5.
+
+Primo uso (riordino del 01/11/2026): nascono `/immagini`, `/giochi`, `/sondaggi`,
+`/assistente`, `/monete`, `/gif` (per tutti) e `/messaggi`, `/giveaway`,
+`/ticket-gestione`, `/ticket-pannelli`, `/filtri` (staff, `manage_guild`, livello
+admin). 152 comandi cambiano percorso; i comandi spenti nella politica dei server
+seguono il nome nuovo. Già approvato per dopo: se `/economia` supera 6.800, il blocco
+`economia livelli` diventa il gruppo `/xp`.
+Il quinto caso di D25 (`/gestione ruoli` resta dov'è) è superato: tutto sui ruoli sta in `/ruoli`.
+In più (D57): nascono `/premium` e `/vip`, per tutti, che elencano i comandi del loro livello (solo quando serve).
+Visibilità (01/11/2026, owner): ogni gruppo ha il permesso predefinito del suo livello (per tutti: nessuno;
+mod: `moderate_members`, o `kick`/`ban` se più adatto; admin: `manage_guild`; `/owner` solo nel server
+dell'owner con controllo di OWNER_ID), così Discord nasconde da solo i comandi a chi non li può usare.
+Discord applica i permessi solo al primo livello: per questo un gruppo non mescola utenti e staff (un test
+lo controlla). Lo staff «whitelistato» senza quei permessi li vedrà con l'aggiornamento dei permessi dal
+pannello (OAuth `applications.commands.permissions.update`): si farà col pannello.

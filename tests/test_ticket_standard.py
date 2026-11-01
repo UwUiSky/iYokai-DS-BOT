@@ -23,6 +23,7 @@ from core.repositories.ticket_repo import ticket_repo
 from core.repositories.ticket_standard_repo import ticket_standard_repo
 from core.scheduler import Scheduler
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member, fake_message, fake_role, fake_text_channel
+from core.command_groups import GRUPPI
 from tests.support.percorsi import percorsi_del_gruppo
 
 GUILD = 100
@@ -498,9 +499,9 @@ async def test_setup_registra_bottoni_handler_e_comandi_nei_limiti():
     await tickets_module.setup(bot)
     await modulo.setup(bot)
     try:
-        assert {"ticket standard", "ticket sollecito", "ticket risposte-lista", "ticket risposta-modifica",
-                "ticket risposta-elimina"} <= percorsi_del_gruppo("admin")
-        assert len({p for p in percorsi_del_gruppo("admin") if p.startswith("ticket ")}) <= 25
+        assert {"risposte standard", "sollecito", "risposte elenco", "risposte modifica",
+                "risposte elimina"} <= percorsi_del_gruppo("ticket-gestione")
+        assert len(GRUPPI["ticket-gestione"].commands) <= 25
     finally:
         for c in list(bot.cogs):
             await bot.remove_cog(c)

@@ -65,7 +65,7 @@ Come cresce:
 - Dalla libreria non si salvano testi di messaggi né utenti: solo la variante, la lingua e gli ID
   dei server che l'hanno segnalata.
 
-Il proprietario del bot gestisce la libreria con `/automod odio libreria` (elenca le candidate con
+Il proprietario del bot gestisce la libreria con `/owner parole-odio` (elenca le candidate con
 il numero di server, approva, rifiuta, aggiungi una voce di base). Il comando risponde solo a lui.
 
 ## Limiti di Discord che contano qui

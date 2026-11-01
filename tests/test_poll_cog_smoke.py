@@ -26,7 +26,7 @@ async def test_poll_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is False
 
-    assert "poll" in percorsi_del_gruppo("utility")
+    assert "crea" in percorsi_del_gruppo("sondaggi")
 
 
 async def test_poll_dichiara_i_limiti_di_discord_su_domanda_e_risposte():
@@ -39,7 +39,7 @@ async def test_poll_dichiara_i_limiti_di_discord_su_domanda_e_risposte():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await poll_setup(bot)
 
-    opzioni = {o["name"]: o for o in comando_nel_gruppo("utility", "poll").to_dict(bot.tree)["options"]}
+    opzioni = {o["name"]: o for o in comando_nel_gruppo("sondaggi", "crea").to_dict(bot.tree)["options"]}
 
     assert opzioni["question"]["max_length"] == 300
     risposte = [nome for nome in opzioni if nome.startswith("option")]

@@ -41,7 +41,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.i18n import testo_per
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
 from core.premium import PremiumModule, registry
 from core.repositories.blacklist_repo import blacklist_repo
@@ -577,10 +577,10 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
     # ================================================================
 
     @comando_di_gruppo(
-        "gestione",
-        nome="menu-crea",
+        "ruoli",
+        nome="crea",
         descrizione="Crea un nuovo role menu.",
-        sottogruppo=_SG_RUOLI,
+        sottogruppo=SOTTOGRUPPI["ruoli menu"],
     )
     @app_commands.describe(
         title="Titolo del menu",
@@ -651,13 +651,13 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
-        nome="menu-aggiungi",
+        "ruoli",
+        nome="aggiungi",
         descrizione="Aggiungi un'opzione a un role menu.",
-        sottogruppo=_SG_RUOLI,
+        sottogruppo=SOTTOGRUPPI["ruoli menu"],
     )
     @app_commands.describe(
-        menu_id="ID del menu (mostrato da /gestione ruoli menu-crea)",
+        menu_id="ID del menu (mostrato da /ruoli menu crea)",
         role="Il ruolo da assegnare",
         emoji="Emoji (obbligatoria per reaction/button)",
         label="Etichetta del bottone/opzione (obbligatoria per button/select)",
@@ -762,10 +762,10 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
-        nome="menu-togli",
+        "ruoli",
+        nome="togli",
         descrizione="Rimuovi un'opzione da un role menu.",
-        sottogruppo=_SG_RUOLI,
+        sottogruppo=SOTTOGRUPPI["ruoli menu"],
     )
     @app_commands.describe(menu_id="ID del menu", role="Il ruolo da rimuovere dal menu")
     async def remove_option_cmd(
@@ -849,10 +849,10 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         return messaggio_sparito
 
     @comando_di_gruppo(
-        "gestione",
-        nome="menu-elenco",
+        "ruoli",
+        nome="elenco",
         descrizione="Mostra i menu di ruoli del server, con gli ID.",
-        sottogruppo=_SG_RUOLI,
+        sottogruppo=SOTTOGRUPPI["ruoli menu"],
     )
     async def list_cmd(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
@@ -871,13 +871,13 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
-        nome="menu-modifica",
+        "ruoli",
+        nome="modifica",
         descrizione="Cambia titolo, descrizione o comportamento di un menu già pubblicato.",
-        sottogruppo=_SG_RUOLI,
+        sottogruppo=SOTTOGRUPPI["ruoli menu"],
     )
     @app_commands.describe(
-        menu_id="ID del menu (lo mostra /gestione ruoli menu-elenco)",
+        menu_id="ID del menu (lo mostra /ruoli menu elenco)",
         titolo="Nuovo titolo",
         descrizione="Nuova descrizione",
         comportamento="Nuovo comportamento",
@@ -946,10 +946,10 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(await testo_per(interaction, "rolemenus_menu_aggiornato"), ephemeral=True)
 
     @comando_di_gruppo(
-        "gestione",
-        nome="menu-accesso",
+        "ruoli",
+        nome="accesso",
         descrizione="Limita un menu a certi ruoli o escludine altri.",
-        sottogruppo=_SG_RUOLI,
+        sottogruppo=SOTTOGRUPPI["ruoli menu"],
     )
     @app_commands.describe(
         menu_id="ID del menu",
@@ -996,10 +996,10 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
-        nome="menu-elimina",
+        "ruoli",
+        nome="elimina",
         descrizione="Elimina un role menu.",
-        sottogruppo=_SG_RUOLI,
+        sottogruppo=SOTTOGRUPPI["ruoli menu"],
     )
     @app_commands.describe(menu_id="ID del menu da eliminare")
     async def delete_cmd(self, interaction: discord.Interaction, menu_id: int) -> None:

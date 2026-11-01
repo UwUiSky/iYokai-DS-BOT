@@ -46,7 +46,7 @@ MESSAGGI_LOCALI: dict[str, str] = {
     "spenta": "L'AI è spenta in questo server. Un amministratore può accenderla con `/ai attiva`.",
     "canale": "L'AI è spenta in questo canale.",
     "privacy": "Il server ha scelto di non mandare messaggi degli utenti all'AI.",
-    "utente_spento": "Hai spento l'assistente AI per te: puoi riaccenderlo con `/utility ai preferenza`.",
+    "utente_spento": "Hai spento l'assistente AI per te: puoi riaccenderlo con `/assistente preferenza`.",
     "vietata": "Questa richiesta non è permessa.",
     "troppe": "Troppe richieste in poco tempo: riprova tra un minuto.",
     "tetto": "Il server ha raggiunto il tetto di spesa del mese per l'AI.",
@@ -325,7 +325,7 @@ def servizio_ai() -> ServizioAI:
 
 
 async def imposta_manutenzione_ai(acceso: bool, messaggio: str, user_id: int | None) -> None:
-    """Il solo punto che mette l'AI in manutenzione (o la rimette in servizio): `/ai manutenzione` e pannello web."""
+    """Il solo punto che mette l'AI in manutenzione (o la rimette in servizio): `/owner ai manutenzione` e pannello web."""
     servizio = servizio_ai()
     await servizio.repo.imposta_manutenzione(acceso, messaggio.strip()[:300], user_id)
     servizio.ricarica_manutenzione()
@@ -335,7 +335,7 @@ async def imposta_scelte_owner(
     nome: str | None = None, modello: str | None = None, fascia: str | None = None, tipi: str | None = None,
     tetto_token: int | None = None, user_id: int | None = None, *, togli_tetto: bool = False,
 ) -> str | None:
-    """Il solo punto che cambia modello, fascia, tipi di un fornitore e il tetto di lunghezza: `/ai modello` e pannello web.
+    """Il solo punto che cambia modello, fascia, tipi di un fornitore e il tetto di lunghezza: `/owner ai modello` e pannello web.
     Restituisce il motivo dell'errore, o None se è fatto."""
     from core import ai_override_logic as ov
 

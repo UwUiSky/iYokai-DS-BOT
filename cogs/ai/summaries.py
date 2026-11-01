@@ -1,14 +1,14 @@
 """
 cogs/ai/summaries.py
 ====================
-`/utility ai riassumi` (ultimi messaggi di un canale), `/utility ai spiega`
-(un messaggio dato con il suo link), `/utility ai stile` (un messaggio nuovo
+`/assistente riassumi` (ultimi messaggi di un canale), `/assistente spiega`
+(un messaggio dato con il suo link), `/assistente stile` (un messaggio nuovo
 scritto come scrivi tu, dai tuoi messaggi del canale, o come un'altra persona che l'ha permesso).
 Funzioni coperte: SPEC §25.6, §25.36, §25.88 (AI-R-043, AI-R-038, AI-R-095; catalogo AI-024)
 
 Senza AI: riassumi mostra i numeri del canale (messaggi, persone, le più attive).
 "Nello stile di un utente" (AI-024) usa i messaggi di chi lo chiede, o di un'altra persona solo se
-l'ha permesso con `/utility ai preferenza stile:Sì` (privacy, D19).
+l'ha permesso con `/assistente preferenza stile:Sì` (privacy, D19).
 """
 
 from __future__ import annotations
@@ -60,7 +60,7 @@ class AiRiassuntiCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @comando_di_gruppo("utility", nome="riassumi", descrizione="Riassunto degli ultimi messaggi di un canale.", sottogruppo=SOTTO_AI)
+    @comando_di_gruppo("assistente", nome="riassumi", descrizione="Riassunto degli ultimi messaggi di un canale.")
     @app_commands.describe(canale="Il canale (vuoto: questo)", messaggi="Quanti messaggi leggere")
     @richiede_ai()
     async def riassumi(
@@ -94,7 +94,7 @@ class AiRiassuntiCog(CogConGruppi, commands.Cog):
             ephemeral=True,
         )
 
-    @comando_di_gruppo("utility", nome="spiega", descrizione="Spiega in parole semplici un messaggio (dal suo link).", sottogruppo=SOTTO_AI)
+    @comando_di_gruppo("assistente", nome="spiega", descrizione="Spiega in parole semplici un messaggio (dal suo link).")
     @app_commands.describe(link="Link del messaggio (tasto destro → Copia link)")
     @richiede_ai()
     async def spiega(self, interaction: discord.Interaction, link: app_commands.Range[str, 20, 200]) -> None:
@@ -127,7 +127,7 @@ class AiRiassuntiCog(CogConGruppi, commands.Cog):
             return
         await interaction.followup.send(embed=embed_risposta("Spiegazione", risposta.testo, da_cache=risposta.da_cache), ephemeral=True)
 
-    @comando_di_gruppo("utility", nome="stile", descrizione="Un messaggio nuovo scritto come scrivi tu (o come chi lo permette).", sottogruppo=SOTTO_AI)
+    @comando_di_gruppo("assistente", nome="stile", descrizione="Un messaggio nuovo scritto come scrivi tu (o come chi lo permette).")
     @app_commands.describe(argomento="Di cosa deve parlare il messaggio", di="Un'altra persona che ha permesso il suo stile (vuoto: tu)")
     @richiede_ai()
     async def stile(
@@ -138,7 +138,7 @@ class AiRiassuntiCog(CogConGruppi, commands.Cog):
             # Imitare un'altra persona solo se l'ha permesso lei (AI-R-038, D19).
             if di.bot or not await ai_repo.stile_consentito(di.id):
                 await interaction.response.send_message(
-                    "Questa persona non ha permesso il suo stile: si accende con `/utility ai preferenza stile:Sì`.", ephemeral=True
+                    "Questa persona non ha permesso il suo stile: si accende con `/assistente preferenza stile:Sì`.", ephemeral=True
                 )
                 return
         await interaction.response.defer(ephemeral=True)

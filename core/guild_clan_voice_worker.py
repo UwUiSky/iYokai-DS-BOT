@@ -15,7 +15,7 @@ tetto) vive nel database tramite core/repositories/clan_voice_
 activity_repo.py, già committato.
 Valgono le stesse regole anti-farm dell'XP vocale normale
 (core.leveling_logic.is_eligible_for_voice_xp).
-Chi è escluso dall'XP (canale, categoria o ruolo, `/level impostazioni
+Chi è escluso dall'XP (canale, categoria o ruolo, `/economia livelli
 escludi`) non matura nulla nemmeno per la gilda: stessa regola dell'XP
 testuale dei clan.
 Le letture e le scritture sono raggruppate per server e per clan

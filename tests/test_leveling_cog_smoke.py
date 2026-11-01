@@ -34,15 +34,15 @@ async def test_leveling_cog_si_carica_correttamente():
 
     assert "on_message" in bot.extra_events
 
-    assert {"rank", "balance", "daily", "work", "pay", "leaderboard", "shop list", "shop buy", "cassa"} <= percorsi_del_gruppo("level")
-    assert {"livello-add", "livello-remove", "livello-list"} <= {
-        p.split()[-1] for p in percorsi_del_gruppo("gestione") if p.startswith("ruoli ")
-    }
+    assert {"rank", "leaderboard"} <= percorsi_del_gruppo("level")
+    assert {"balance", "daily", "work", "pay", "shop list", "shop buy", "cassa"} <= percorsi_del_gruppo("monete")
+    assert {"premio aggiungi", "premio togli", "premio elenco"} <= percorsi_del_gruppo("ruoli")
     assert {
-        "vincitori-set", "vincitori-off", "shop-add", "shop-remove",
-        "cassa-premium", "assegna-lobby", "assegna-winner", "giveaway", "xp", "monete",
+        "annunci vincitori-set", "annunci vincitori-off", "annunci clan-set", "annunci clan-off", "shop-add", "shop-remove",
+        "cassa-premium", "assegna-lobby", "assegna-winner", "xp", "monete",
     } <= percorsi_del_gruppo("economia")
-    assert {"bacheca set", "bacheca disable", "tesoreria dona", "boost individuale", "boost gilda"} <= percorsi_del_gruppo("clan")
+    assert "avvia" in percorsi_del_gruppo("giveaway")
+    assert {"tesoreria dona", "boost individuale", "boost gilda"} <= percorsi_del_gruppo("clan")
 
     # Il task periodico deve essere avviato (non sollevare eccezioni
     # all'avvio del cog) — before_loop attende bot.wait_until_ready(),

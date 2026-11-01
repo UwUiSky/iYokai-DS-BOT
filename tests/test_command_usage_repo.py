@@ -19,7 +19,7 @@ async def repo(clean_db, db_pool):
 
 
 async def test_una_riga_per_server_e_utente_con_l_ultimo_comando(repo, db_pool):
-    await repo.registra(1, 10, "fun gioca")
+    await repo.registra(1, 10, "giochi gioca")
     await repo.registra(1, 10, "mod avvisa")
     await repo.registra(2, 10, "level top")
     assert await repo.ultimo(1, 10) == "mod avvisa"

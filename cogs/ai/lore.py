@@ -1,9 +1,9 @@
 """
 cogs/ai/lore.py
 ===============
-Lore e personaggi: `/utility ai lore` (scheda su un nome o un luogo, scritta
-secondo la lore del server e salvata per riusarla), `/utility ai crea-personaggio`
-(biografia, tratti, gusti, fatti), `/utility ai personaggio` (chatta con un
+Lore e personaggi: `/assistente lore` (scheda su un nome o un luogo, scritta
+secondo la lore del server e salvata per riusarla), `/assistente crea-personaggio`
+(biografia, tratti, gusti, fatti), `/assistente personaggio` (chatta con un
 personaggio installato dall'admin, con la memoria corta).
 Funzioni coperte: SPEC §25.48, §25.57, §25.58, §25.89 (AI-R-053, AI-R-062, AI-R-063, AI-R-096; catalogo AI-014, AI-015)
 
@@ -67,7 +67,7 @@ class AiLoreCog(CogConGruppi, commands.Cog):
         elenco = await ai_repo.personaggi(interaction.guild_id, solo_installati=True)
         return [app_commands.Choice(name=p.nome, value=p.nome) for p in elenco if current.lower() in p.nome.lower()][:25]
 
-    @comando_di_gruppo("utility", nome="lore", descrizione="Scheda di lore su un nome, un luogo o uno yokai.", sottogruppo=SOTTO_AI)
+    @comando_di_gruppo("assistente", nome="lore", descrizione="Scheda di lore su un nome, un luogo o uno yokai.")
     @app_commands.describe(argomento="Di cosa vuoi la scheda")
     @requires_module(MODULO_AI)
     async def lore(self, interaction: discord.Interaction, argomento: app_commands.Range[str, 2, 100]) -> None:
@@ -84,12 +84,12 @@ class AiLoreCog(CogConGruppi, commands.Cog):
             return
         await interaction.followup.send(embed=embed_risposta(argomento, risposta.testo, da_cache=risposta.da_cache), ephemeral=True)
 
-    @comando_di_gruppo("utility", nome="crea-personaggio", descrizione="Crea un personaggio AI con cui chattare.", sottogruppo=SOTTO_AI)
+    @comando_di_gruppo("assistente", nome="crea-personaggio", descrizione="Crea un personaggio AI con cui chattare.")
     @requires_module(MODULO_AI)
     async def crea_personaggio(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_modal(_PersonaggioModal())
 
-    @comando_di_gruppo("utility", nome="personaggio", descrizione="Parla con un personaggio AI del server.", sottogruppo=SOTTO_AI)
+    @comando_di_gruppo("assistente", nome="personaggio", descrizione="Parla con un personaggio AI del server.")
     @app_commands.describe(nome="Il personaggio", messaggio="Cosa gli dici")
     @app_commands.autocomplete(nome=_installati)
     @requires_module(MODULO_AI)

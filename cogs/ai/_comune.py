@@ -1,7 +1,7 @@
 """
 cogs/ai/_comune.py
 ==================
-Pezzi comuni ai cog dell'AI: sotto-gruppo `/utility ai`, modulo premium
+Pezzi comuni ai cog dell'AI: sotto-gruppo `/assistente`, modulo premium
 "ai", richiesta allo snodo con la risposta locale già pronta, testi divisi
 per i limiti di Discord.
 Funzioni coperte: SPEC §25 (NF-24)

@@ -201,12 +201,12 @@ COMANDI_VICINI: dict[str, tuple[tuple[str, str], ...]] = {
     "ticket apri": (("utility report", "segnala un utente, senza aprire una conversazione"),),
     "automod parole add": (
         ("automod odio parola", "gestisce le parole d'odio, anche quelle lecite"),
-        ("automod filtri messaggi", "conta messaggi ripetuti, link e menzioni"),
+        ("filtri messaggi", "conta messaggi ripetuti, link e menzioni"),
     ),
     "log cerca utente": (("mod caso storico", "mostra solo le sanzioni, non tutti gli eventi"),),
     "mod caso storico": (("log cerca utente", "mostra tutti gli eventi del registro, non solo le sanzioni"),),
-    "utility ai riassumi": (("utility ai spiega", "spiega un solo messaggio, non un canale"),),
-    "utility ai spiega": (("utility ai riassumi", "riassume gli ultimi messaggi di un canale"),),
+    "assistente riassumi": (("assistente spiega", "spiega un solo messaggio, non un canale"),),
+    "assistente spiega": (("assistente riassumi", "riassume gli ultimi messaggi di un canale"),),
 }
 
 
@@ -229,8 +229,13 @@ def testo_vicini(righe: Sequence[tuple[str, str]]) -> str:
 
 # ---------------------------------------------------------------- scoperta
 GRUPPI_ATTIVITA: tuple[tuple[str, str], ...] = (
-    ("fun", "Giochi e divertimento"),
-    ("level", "Livelli, monete e negozio"),
+    ("fun", "Divertimento"),
+    ("giochi", "Giochi"),
+    ("immagini", "Immagini"),
+    ("sondaggi", "Sondaggi"),
+    ("assistente", "Assistente AI"),
+    ("level", "Livelli e profilo"),
+    ("monete", "Monete e negozio"),
     ("clan", "Clan"),
     ("music", "Musica"),
     ("utility", "Strumenti per tutti"),

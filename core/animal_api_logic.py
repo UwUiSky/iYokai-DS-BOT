@@ -2,7 +2,7 @@
 core/animal_api_logic.py
 =============================
 Interpretazione delle risposte JSON delle tre API pubbliche usate da
-`/fun animal` (SPEC.md §16.4) — logica pura, testabile senza rete:
+`/immagini animal` (SPEC.md §16.4) — logica pura, testabile senza rete:
 riceve il payload già deserializzato e restituisce l'URL
 dell'immagine, o None se il payload non ha la forma aspettata (mai
 un'eccezione che interromperebbe il comando).

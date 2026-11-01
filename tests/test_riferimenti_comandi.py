@@ -107,9 +107,13 @@ async def test_ogni_comando_citato_nei_messaggi_esiste_nell_albero():
         assert not falliti, f"Cog falliti nel caricamento: {falliti}"
         radici = {c.name: c for c in bot.tree.get_commands()}
         radici.setdefault("owner", GRUPPI["owner"])
+        from cogs.utility.livelli_comandi import crea_gruppi
+
+        radici.update({g.name: g for g in crea_gruppi()})  # /premium e /vip nascono solo quando servono (D57)
         separati = await build_separate_trees()
         for altro in separati:  # istanze con un albero proprio (NSFW, App)
-            radici.update({c.name: c for c in altro.tree.get_commands()})
+            for c in altro.tree.get_commands():
+                radici.setdefault(c.name, c)  # il principale vince: `/assistente` esiste anche in iYokai App (app diversa)
             await altro.close()
         errori = []
         for file, riga, grezzo in riferimenti_nel_codice():

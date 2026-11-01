@@ -5,7 +5,8 @@ Sincronizza i comandi con Discord solo se l'albero è cambiato: si calcola
 l'impronta (sha256) dei comandi di ogni ambito e la si confronta con
 quella salvata nel database (tabella `command_sync_state`). Un errore di
 sync non aggiorna l'impronta: all'avvio dopo si riprova.
-Funzioni coperte: SPEC §20 (NF-05)
+`SincronizzatoreDifferito` unisce i cambi dell'albero a bot avviato (D57).
+Funzioni coperte: SPEC §20 (NF-05), D57
 Dipende da: core/migrations/0021_command_sync_state.sql;
 revisione/02-piano/MAPPA_COMANDI_F7.md §6
 """
@@ -155,3 +156,74 @@ async def sincronizza_all_avvio(
             scope, tree.get_commands(guild=guild), tree, lambda: tree.sync(guild=guild), stato
         )
     return esiti
+
+
+class SincronizzatoreDifferito:
+    """
+    Sincronizza l'albero dopo un cambio, con attesa: tanti cambi ravvicinati fanno una
+    sola sync, e tra due sync passa almeno `intervallo_minimo` secondi (limiti di Discord).
+    Un cambio che arriva mentre la sync è in corso ne chiede un'altra, dopo l'intervallo.
+    `sync` è una funzione asincrona senza argomenti; `pronto` (facoltativa) aspetta che il
+    bot sia collegato, perché prima la sync darebbe solo errore.
+    """
+
+    def __init__(
+        self,
+        sync: Callable[[], Awaitable[Any]],
+        *,
+        attesa: float = 30.0,
+        intervallo_minimo: float = 120.0,
+        pronto: Callable[[], Awaitable[Any]] | None = None,
+    ) -> None:
+        self._sync = sync
+        self._pronto = pronto
+        self._attesa = attesa
+        self._intervallo = intervallo_minimo
+        self._compito = None
+        self._in_sync = False
+        self._ancora = False
+        self._ultima: float | None = None
+        self.eseguite = 0
+
+    def richiedi(self) -> None:
+        """Chiede una sync; se ce n'è già una in attesa non ne aggiunge un'altra."""
+        import asyncio
+
+        if self._compito is not None and not self._compito.done():
+            if self._in_sync:
+                self._ancora = True  # l'albero è cambiato dopo l'inizio della sync in corso
+            return
+        self._compito = asyncio.get_running_loop().create_task(self._esegui())
+
+    async def _esegui(self) -> None:
+        import asyncio
+
+        while True:
+            attesa = self._attesa
+            if self._ultima is not None:
+                trascorso = asyncio.get_running_loop().time() - self._ultima
+                attesa = max(attesa, self._intervallo - trascorso)
+            await asyncio.sleep(attesa)
+            if self._pronto is not None:
+                await self._pronto()
+            self._ancora = False
+            self._in_sync = True
+            try:
+                await self._sync()
+            except Exception as exc:
+                logger.warning("Sync differita fallita (%s).", type(exc).__name__)
+            finally:
+                self._in_sync = False
+            self.eseguite += 1
+            self._ultima = asyncio.get_running_loop().time()
+            if not self._ancora:
+                return
+
+    async def attendi(self) -> None:
+        """Aspetta la sync in corso (per i test e per lo spegnimento)."""
+        if self._compito is not None:
+            await self._compito
+
+    def ferma(self) -> None:
+        if self._compito is not None and not self._compito.done():
+            self._compito.cancel()

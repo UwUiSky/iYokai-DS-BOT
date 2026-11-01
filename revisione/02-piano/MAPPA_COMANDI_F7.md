@@ -290,13 +290,24 @@ mod del bot). Un admin può cambiarlo in Integrazioni.
 | Gruppo | `default_permissions` | `guild_only` | Controllo nel codice |
 |---|---|---|---|
 | `/owner` | `administrator` | sì, e registrato solo nel server dell'owner | `user.id == OWNER_ID` |
-| `/admin`, `/gestione`, `/moduli` | `manage_guild` | sì | ruolo admin del bot |
+| `/admin`, `/gestione`, `/moduli`, `/economia`, `/ai` | `manage_guild` | sì | ruolo admin del bot |
+| `/messaggi`, `/giveaway`, `/ticket-gestione`, `/ticket-pannelli`, `/filtri` (D56, 01/11/2026) | `manage_guild` | sì | ruolo admin del bot (livello ADMIN del gruppo) |
+| `/ruoli` | `manage_roles` | sì | ruolo admin del bot (livello ADMIN) |
+| `/backup` | `administrator` | sì | ruolo admin del bot |
 | `/security` | `administrator` | sì | ruolo admin del bot |
 | `/automod` | `manage_guild` | sì | ruolo admin del bot |
 | `/mod` | `moderate_members` | sì | livello del gruppo (nessun permesso Discord per sotto-comando) |
 | `/modban` | `ban_members` | sì | livello del gruppo; `kick` sotto `ban_members` |
 | `/log` | `manage_guild` | sì | livello del gruppo (nessun `view_audit_log` per sotto-comando) |
-| `/ticket`, `/voice`, `/music`, `/level`, `/clan`, `/fun`, `/utility` | nessuno (tutti) | sì | `forceclose` e le azioni staff nel codice |
+| `/ticket`, `/voice`, `/music`, `/level`, `/clan`, `/fun`, `/utility`, `/immagini`, `/giochi`, `/sondaggi`, `/assistente`, `/monete` (D56) | nessuno (tutti) | sì | `forceclose` e le azioni staff nel codice |
+| `/gif` (riservato, vuoto: non si sincronizza) | nessuno (tutti) | sì | — |
+| `/premium`, `/vip` (D57: nascono solo quando una funzione è premium o VIP) | nessuno (tutti) | sì | livello della funzione, controllato quando parte il comando |
+
+Regola D56: un gruppo è per tutti o per lo staff; un test (`tests/test_command_groups.py`) controlla che
+ogni gruppo abbia livello e permesso corrispondenti e che nessun comando con livello stia in un gruppo
+per tutti. Lo staff «whitelistato» senza il permesso Discord li vedrà con l'aggiornamento dei permessi dal
+pannello (OAuth `applications.commands.permissions.update`), che si farà col pannello. `/owner` ora ha
+8 figli: i sotto-gruppi `ai`, `radio`, `system`, `premium`, `blacklist`, `cog`, `privacy` e il comando `parole-odio`.
 
 Oggi nessun comando ha `default_permissions` e nessuno è `guild_only`:
 tutti e 97 compaiono anche in DM (la tabella `contexts` è vuota).
@@ -348,3 +359,12 @@ fuse in `log canale`). Nessun comando perso, senza posto o duplicato. Caratteri
 massimi: `/gestione` 4816, `/security` 3685, `/owner` 3315 (limite 8000, allarme
 6800). `-cerca-comando` (123 caratteri) non è nella tabella §5: nessun permesso
 e usabile anche in DM (confermato dall'owner l'11/10).
+
+## Riordino dei gruppi del 01/11/2026 (D56)
+
+I percorsi della §4 sono superati per 152 comandi. La tabella vecchio → nuovo è la migrazione
+`core/migrations/0485_percorsi_comandi_riordino.sql`, più `0487` per `/utility reminder server` → `/messaggi promemoria` (stessi percorsi usati per la politica dei comandi
+e per le traduzioni). Nuovi gruppi: `/immagini`, `/giochi`, `/sondaggi`, `/assistente`, `/monete`
+(per tutti), `/messaggi`, `/giveaway`, `/ticket-gestione`, `/ticket-pannelli`, `/filtri` (staff), più
+`/gif` riservato. `/owner` riceve `ai` (boss-rete, manutenzione, modello) e `parole-odio`.
+Peso: limite vero 8.000, avviso a 6.800 (test: avviso, non errore).

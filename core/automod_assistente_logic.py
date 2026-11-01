@@ -103,7 +103,7 @@ def applica(config: AutomodAdvancedConfig, p: Proposta) -> AutomodAdvancedConfig
 def descrizione(p: Proposta) -> str:
     stato = "attiva" if p.attivo else "spegni"
     if p.filtro == "anti_link":
-        return f"Filtro link: modalità «{p.modo if p.attivo else 'off'}». Per i domini usa `/automod filtri anti-link-domain`."
+        return f"Filtro link: modalità «{p.modo if p.attivo else 'off'}». Per i domini usa `/filtri anti-link-domain`."
     if p.filtro == "anti_spam_messaggi":
         return f"Anti-spam messaggi: {stato}, massimo {p.massimo} messaggi ogni {p.secondi} secondi."
     if p.filtro == "anti_spam_emoji":

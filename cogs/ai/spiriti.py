@@ -1,7 +1,7 @@
 """
 cogs/ai/spiriti.py
 ==================
-`/utility ai spirito` (spirito Yokai che cresce con l'attività) e `/utility ai frammenti` (frammenti di lore da
+`/assistente spirito` (spirito Yokai che cresce con l'attività) e `/assistente frammenti` (frammenti di lore da
 collezionare, con la storia finale). Solo conteggi, nessun testo dei messaggi; parte solo su richiesta della persona.
 Funzioni coperte: SPEC §25.71, §25.72 (AI-R-078, AI-R-079)
 """
@@ -67,7 +67,7 @@ class AiSpiritiCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @comando_di_gruppo("utility", nome="spirito", descrizione="Il tuo spirito Yokai: cresce con la tua attività.", sottogruppo=SOTTO_AI)
+    @comando_di_gruppo("assistente", nome="spirito", descrizione="Il tuo spirito Yokai: cresce con la tua attività.")
     @app_commands.describe(scelta="Vuoi un altro spirito? Scegli cosa ti rappresenta (vuoto: lo decide la tua attività)")
     @app_commands.choices(scelta=[app_commands.Choice(name=a, value=a) for a in logica.ASSI] + [app_commands.Choice(name="automatico", value="auto")])
     async def spirito(self, interaction: discord.Interaction, scelta: str | None = None) -> None:
@@ -81,7 +81,7 @@ class AiSpiritiCog(CogConGruppi, commands.Cog):
         tema, _ = await tema_del_server(g)
         await interaction.followup.send(embed=embed_spirito(interaction.user.display_name, tema, aff, indice, scelto in logica.ASSI), ephemeral=True)
 
-    @comando_di_gruppo("utility", nome="frammenti", descrizione="I frammenti di lore che hai raccolto.", sottogruppo=SOTTO_AI)
+    @comando_di_gruppo("assistente", nome="frammenti", descrizione="I frammenti di lore che hai raccolto.")
     async def frammenti(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True)
         g, u = interaction.guild_id, interaction.user.id

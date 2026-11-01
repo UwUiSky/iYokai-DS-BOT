@@ -397,3 +397,5 @@ resto.
     aperta? La tabella nuova ha una regola di pulizia?
 20. **Canali nascosti:** il codice ignora i canali chiamati
     `___hidden___`?
+
+21. **Gruppo per tutti o per lo staff (D56):** il comando sta in un gruppo con il permesso del suo livello? Un comando che chiede livello mod, admin o sicurezza non sta mai in un gruppo senza permesso predefinito (Discord lo applica solo al primo livello). Il gruppo ha al più 18 figli (mai oltre 25) e pesa meno di 8.000 caratteri (avviso a 6.800)?

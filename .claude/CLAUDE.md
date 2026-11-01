@@ -107,7 +107,7 @@ commit, documentazione, issue. Frasi brevi e parole semplici.
 ## Commit, push e issue
 
 - Autore: `Yokai Bot Dev <dev@yokai-bot.local>`. Messaggio in italiano,
-  con `Refs #N`. In fondo le righe di attribuzione della sessione.
+  con `Refs #N`. Nessuna riga di attribuzione in fondo (regola dell'owner).
 - Un codice (o un piccolo gruppo legato) per commit.
 - Dopo il push: lo SHA locale e quello remoto devono coincidere.
 - Un'issue si **chiude quando il fix è unito con i suoi test**, con un
@@ -123,10 +123,10 @@ commit, documentazione, issue. Frasi brevi e parole semplici.
 - Nessun segreto nel repository, nei commit, nelle issue o nei log
   (token, `DATABASE_URL`, password Lavalink, chiavi OAuth). Nei file di
   esempio solo segnaposto. Non committare `.env` né file in `logs/`.
-- Nessun comando di primo livello nuovo prima della fase F7 (97 su 100)
-  e nessun sotto-comando nuovo in `/owner` (25 su 25). Dopo F7: nessun
-  comando di primo livello nuovo; un nuovo **gruppo** solo se un gruppo supera i 6.800
-  caratteri (D25), con decisione scritta. Al massimo 25 figli per gruppo.
+- Gruppi di comandi (D56): massimo 60 di primo livello (Discord 100), 25 figli per
+  gruppo (si punta a 18), profondità 3. Peso: limite vero 8.000 caratteri per gruppo,
+  avviso a 6.800. I comandi solo per l'owner del bot stanno in `/owner`, divisi in
+  sotto-gruppi per area (`/owner ai`, …), con controllo di OWNER_ID.
 - Non riscrivere la storia git senza richiesta esplicita dell'owner.
 - iYokai **non addestra modelli**. I servizi AI che addestrano sui dati si
   usano solo come ripiego e mai sui server che lo vietano (D19, D55).

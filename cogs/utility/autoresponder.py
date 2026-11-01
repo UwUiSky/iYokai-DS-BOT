@@ -3,7 +3,7 @@ cogs/utility/autoresponder.py
 =============================
 Risposte automatiche (NF-10, SPEC §14.7): quando un messaggio contiene una
 parola o frase scelta, il bot risponde da solo. Condizioni: canale, ruolo,
-corrispondenza esatta o parziale. Comandi: `risposta-...` di `/moduli comandi`.
+corrispondenza esatta o parziale. Comandi: `risposta-...` di `/messaggi`.
 Richiede l'intent `message_content` (D9).
 Funzioni coperte: SPEC §14.7 (NF-10)
 """
@@ -28,7 +28,7 @@ from core.autoresponder_logic import (
     scegli_risposta,
 )
 from core.bounded_cache import BoundedCache
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
 from core.i18n import testo_per
 from core.lista_limiti_logic import righe_entro_limite
@@ -122,7 +122,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
             return False
         return True
 
-    @comando_di_gruppo("moduli", nome="risposta-crea", descrizione="Crea una risposta automatica.", sottogruppo=_SG_COMANDI)
+    @comando_di_gruppo("messaggi", nome="crea", descrizione="Crea una risposta automatica.", sottogruppo=SOTTOGRUPPI["messaggi risposte"])
     @app_commands.describe(
         parola="La parola o frase che fa scattare la risposta (* = pezzo di parola)",
         risposta="Cosa risponde il bot. Segnaposto: {user} {username} {server} {channel}",
@@ -166,13 +166,13 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
         _cache_regole.delete(interaction.guild.id)
         messaggi = {
             "ok": f"Risposta automatica n. {nuovo_id} creata.",
-            "esiste": "Esiste già una risposta con quella parola: eliminala prima con `/moduli comandi risposta-elimina`.",
+            "esiste": "Esiste già una risposta con quella parola: eliminala prima con `/messaggi risposte elimina`.",
             "pieno": f"Questo server ha già {MAX_RISPOSTE} risposte automatiche: eliminane una.",
         }
         await interaction.response.send_message(messaggi[esito], ephemeral=True)
 
-    @comando_di_gruppo("moduli", nome="risposta-elimina", descrizione="Elimina una risposta automatica.", sottogruppo=_SG_COMANDI)
-    @app_commands.describe(numero="Il numero mostrato da /moduli comandi risposte")
+    @comando_di_gruppo("messaggi", nome="elimina", descrizione="Elimina una risposta automatica.", sottogruppo=SOTTOGRUPPI["messaggi risposte"])
+    @app_commands.describe(numero="Il numero mostrato da /messaggi risposte elenco")
     async def risposta_elimina(self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 2_000_000_000]) -> None:
         if not await self._pronto(interaction):
             return
@@ -182,7 +182,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "autoresponde_risposta_eliminata") if fatta else await testo_per(interaction, "autoresponde_non_esiste_una_risposta_con"), ephemeral=True
         )
 
-    @comando_di_gruppo("moduli", nome="risposte", descrizione="Mostra le risposte automatiche del server.", sottogruppo=_SG_COMANDI)
+    @comando_di_gruppo("messaggi", nome="elenco", descrizione="Mostra le risposte automatiche del server.", sottogruppo=SOTTOGRUPPI["messaggi risposte"])
     async def risposte(self, interaction: discord.Interaction) -> None:
         if not await self._pronto(interaction):
             return

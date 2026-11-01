@@ -48,9 +48,7 @@ async def test_role_menus_cog_si_carica_correttamente(clean_db):
     assert module is not None
     assert module.premium_capable is False
 
-    assert {"ruoli menu-crea", "ruoli menu-aggiungi", "ruoli menu-togli", "ruoli menu-elimina"} <= percorsi_del_gruppo(
-        "gestione"
-    )
+    assert {"menu crea", "menu aggiungi", "menu togli", "menu elimina"} <= percorsi_del_gruppo("ruoli")
 
     assert {"on_raw_reaction_add", "on_raw_reaction_remove"} <= set(bot.extra_events.keys())
 

@@ -5,7 +5,7 @@ Ruoli automatici all'ingresso, ruoli ridati a chi rientra entro 30 giorni,
 ruoli dati dopo un ritardo (NF-07, SPEC §22.1-22.3); condizioni su altri
 ruoli, ruolo ridato se tolto, sincronizzazione dei membri già presenti
 (catalogo #123, RUO-034..038). Comandi: i comandi `auto-...` di
-`/gestione ruoli`; la logica è in core/autorole_logic.py.
+`/ruoli`; la logica è in core/autorole_logic.py.
 Funzioni coperte: SPEC §22 (NF-07)
 """
 
@@ -34,7 +34,7 @@ from core.autorole_logic import (
 )
 from cogs.utility.role_menus import ROLEMENU_TEMP_ACTION_TYPE
 from core.birthday_worker import BIRTHDAY_ROLE_ACTION_TYPE
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
 from core.i18n import testo_per
 from core.premium import PremiumModule, registry
@@ -332,10 +332,10 @@ class AutorolesCog(CogConGruppi, commands.Cog):
         return True
 
     @comando_di_gruppo(
-        "gestione",
-        nome="auto-aggiungi",
+        "ruoli",
+        nome="aggiungi",
         descrizione="Aggiungi un ruolo dato in automatico a chi entra.",
-        sottogruppo=_SG_RUOLI,
+        sottogruppo=SOTTOGRUPPI["ruoli auto"],
     )
     @app_commands.describe(
         ruolo="Il ruolo da dare a chi entra",
@@ -380,10 +380,10 @@ class AutorolesCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
-        nome="auto-rimuovi",
+        "ruoli",
+        nome="togli",
         descrizione="Togli un ruolo dato in automatico a chi entra.",
-        sottogruppo=_SG_RUOLI,
+        sottogruppo=SOTTOGRUPPI["ruoli auto"],
     )
     @app_commands.describe(ruolo="Il ruolo da non dare più")
     async def auto_rimuovi(self, interaction: discord.Interaction, ruolo: discord.Role) -> None:
@@ -400,10 +400,10 @@ class AutorolesCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
-        nome="auto-elenco",
+        "ruoli",
+        nome="elenco",
         descrizione="Mostra i ruoli automatici del server.",
-        sottogruppo=_SG_RUOLI,
+        sottogruppo=SOTTOGRUPPI["ruoli auto"],
     )
     async def auto_elenco(self, interaction: discord.Interaction) -> None:
         if not await self._modulo_attivo(interaction):
@@ -426,10 +426,10 @@ class AutorolesCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
-        nome="auto-ricorda",
+        "ruoli",
+        nome="ricorda",
         descrizione="Ridai i ruoli a chi esce e rientra entro un certo tempo.",
-        sottogruppo=_SG_RUOLI,
+        sottogruppo=SOTTOGRUPPI["ruoli auto"],
     )
     @app_commands.describe(
         attivo="Ricordare i ruoli di chi esce?",
@@ -452,10 +452,10 @@ class AutorolesCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(
-        "gestione",
-        nome="auto-sincronizza",
+        "ruoli",
+        nome="sincronizza",
         descrizione="Dai i ruoli automatici anche ai membri già nel server.",
-        sottogruppo=_SG_RUOLI,
+        sottogruppo=SOTTOGRUPPI["ruoli auto"],
     )
     async def auto_sincronizza(self, interaction: discord.Interaction) -> None:
         if not await self._modulo_attivo(interaction):

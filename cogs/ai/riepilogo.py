@@ -3,7 +3,7 @@ cogs/ai/riepilogo.py
 ====================
 `/ai riepilogo imposta|anteprima`: ogni giorno o ogni settimana, a un'ora scelta, il bot pubblica nel canale scelto un
 riepilogo fatto di numeri (attivi, canale vivace, messaggio più votato, clan cresciuto); l'AI ne scrive solo il tono e,
-se l'admin lo chiede, riassume le discussioni dei canali scelti. `/utility ai avviso`: la persona segue fino a 3 parole
+se l'admin lo chiede, riassume le discussioni dei canali scelti. `/assistente avviso`: la persona segue fino a 3 parole
 e riceve un avviso in privato quando se ne parla molto in un canale che vede. Funzionano anche con l'AI ferma.
 Funzioni coperte: SPEC §25.41, §25.42, §25.43, §25.92 (AI-R-044, AI-R-045, AI-R-046, AI-R-099)
 """
@@ -224,7 +224,7 @@ class AiRiepilogoCog(CogConGruppi, commands.Cog):
         testo, parte = await componi_riepilogo(interaction.guild, cfg)
         await interaction.followup.send(embed=embed_riepilogo(interaction.guild, testo, parte, cfg.frequenza), ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("utility", nome="avviso", descrizione="Segui fino a 3 parole: ti avviso quando se ne parla molto.", sottogruppo=SOTTO_AI)
+    @comando_di_gruppo("assistente", nome="avviso", descrizione="Segui fino a 3 parole: ti avviso quando se ne parla molto.")
     @app_commands.describe(azione="Cosa fare", parola="La parola (per aggiungi e togli)")
     @app_commands.choices(azione=[app_commands.Choice(name=n, value=n) for n in ("aggiungi", "togli", "elenco")])
     async def avviso(self, interaction: discord.Interaction, azione: str, parola: app_commands.Range[str, 2, 30] | None = None) -> None:

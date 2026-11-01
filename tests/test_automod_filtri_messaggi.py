@@ -301,7 +301,7 @@ async def test_seconds_ha_un_minimo_e_un_massimo(nome_comando):
 
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.none())
     await bot.add_cog(modulo_automod.AutomodCog(bot))
-    comando = bot.tree.get_command("automod").get_command("filtri").get_command(nome_comando)
+    comando = bot.tree.get_command("filtri").get_command(nome_comando)
     dati = comando.to_dict(bot.tree)
     await bot.remove_cog("AutomodCog")
     opzione = next(o for o in dati["options"] if o["name"] == "seconds")

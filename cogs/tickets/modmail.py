@@ -16,7 +16,7 @@ passano da `/ticket rispondi` restano interni: l'utente non li vede mai.
 Configurazione per server: tabella `modmail_config` (categoria dove nascono i
 canali; non in `guild_config.settings` per non toccare lo schema di /admin
 config, che sta in cogs/utility). Il modulo `tickets` deve essere acceso.
-Comandi: `/admin ticket dm`, `/admin ticket dm-blocca`, `/ticket rispondi`,
+Comandi: `/ticket-gestione modmail attiva`, `/ticket-gestione modmail blocca`, `/ticket rispondi`,
 `/ticket dm-chiudi`.
 Funzioni coperte: SPEC §23 (NF-33)
 """
@@ -46,7 +46,7 @@ from cogs.tickets.tickets import (
 from core import channel_router as router
 from core import modmail_logic as logica
 from core.channel_router import TIPO_EVENTI
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
 from core.i18n import testo_per
 from core.repositories.blacklist_repo import blacklist_repo
@@ -484,10 +484,10 @@ class ModMailCog(CogConGruppi, commands.Cog):
     # Comandi
     # ================================================================
     @comando_di_gruppo(
-        "admin",
-        nome="dm",
+        "ticket-gestione",
+        nome="attiva",
         descrizione="Accendi o spegni il ModMail (ticket in DM).",
-        sottogruppo=ADMIN_TICKET,
+        sottogruppo=SOTTOGRUPPI["ticket-gestione modmail"],
     )
     @app_commands.describe(
         attivo="Acceso o spento",
@@ -516,10 +516,10 @@ class ModMailCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin",
-        nome="dm-blocca",
+        "ticket-gestione",
+        nome="blocca",
         descrizione="Blocca o sblocca un utente dal ModMail.",
-        sottogruppo=ADMIN_TICKET,
+        sottogruppo=SOTTOGRUPPI["ticket-gestione modmail"],
     )
     @app_commands.describe(utente="L'utente", bloccato="Sì per bloccarlo")
     async def dm_blocca(self, interaction: discord.Interaction, utente: discord.User, bloccato: bool = True) -> None:

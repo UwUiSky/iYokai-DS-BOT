@@ -225,9 +225,9 @@ async def test_crea_dice_il_tetto_e_i_duplicati(scena):
 async def test_albero_dei_comandi():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await modulo.setup(bot)
-    for nome in ("risposta-crea", "risposta-elimina", "risposte"):
-        assert comando_nel_gruppo("moduli", f"comandi {nome}") is not None
-    crea = {o["name"]: o for o in comando_nel_gruppo("moduli", "comandi risposta-crea").to_dict(bot.tree)["options"]}
+    for nome in ("crea", "elimina", "elenco"):
+        assert comando_nel_gruppo("messaggi", f"risposte {nome}") is not None
+    crea = {o["name"]: o for o in comando_nel_gruppo("messaggi", "risposte crea").to_dict(bot.tree)["options"]}
     assert crea["risposta"]["max_length"] == 2000 and crea["parola"]["max_length"] == 100
 
 

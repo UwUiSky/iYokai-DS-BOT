@@ -27,6 +27,7 @@ from tests.support.discord_fakes import (
     fake_role,
     fake_text_channel,
 )
+from core.command_groups import GRUPPI
 from tests.support.percorsi import percorsi_del_gruppo
 
 ID_SERVER = 100
@@ -434,8 +435,8 @@ async def test_i_comandi_stanno_nei_gruppi_e_sotto_i_25_figli(scena):
     await modulo.setup(bot)
     try:
         assert {"rispondi", "dm-chiudi"} <= percorsi_del_gruppo("ticket")
-        assert {"ticket dm", "ticket dm-blocca"} <= percorsi_del_gruppo("admin")
-        assert len({p for p in percorsi_del_gruppo("admin") if p.startswith("ticket ")}) <= 25
+        assert {"modmail attiva", "modmail blocca"} <= percorsi_del_gruppo("ticket-gestione")
+        assert len(GRUPPI["ticket-gestione"].commands) <= 25
         assert len(percorsi_del_gruppo("ticket")) <= 25
     finally:
         for cog in list(bot.cogs):

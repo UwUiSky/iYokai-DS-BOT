@@ -283,10 +283,12 @@ async def test_setup_registra_i_bottoni_dinamici_e_i_comandi_stanno_nei_limiti()
         assert bot._connection._view_store._dynamic_items  # BottonePannello, BottoneVoto
         from tests.support.percorsi import percorsi_del_gruppo
 
-        gestione = {p for p in percorsi_del_gruppo("admin") if p.startswith("ticket ")}
-        assert {"ticket pannello-crea", "ticket pannello-pubblica", "ticket modulo-aggiungi",
-                "ticket chiusura-auto", "ticket voto"} <= gestione
-        assert len(gestione) <= 25
+        from core.command_groups import GRUPPI
+
+        # D56: i pannelli in /ticket-pannelli, chiusura e voto in /ticket-gestione
+        assert {"crea", "pubblica", "modulo aggiungi"} <= percorsi_del_gruppo("ticket-pannelli")
+        assert {"chiusura-auto", "voto"} <= percorsi_del_gruppo("ticket-gestione")
+        assert len(GRUPPI["ticket-pannelli"].commands) <= 25 and len(GRUPPI["ticket-gestione"].commands) <= 25
     finally:
         for cog in list(bot.cogs):
             await bot.remove_cog(cog)
@@ -325,7 +327,7 @@ async def test_voto_chiesto_in_dm_solo_se_acceso_nel_pannello(scheduler_di_test)
 
 
 # ====================================================================
-# Comandi di /gestione ticket
+# Comandi di /ticket-gestione
 # ====================================================================
 async def _cog():
     return modulo.TicketsCog(MagicMock())

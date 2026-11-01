@@ -11,7 +11,7 @@ chiusi, ripiego nel canale dove il promemoria è stato impostato
 consegnato (scritto nel log, non ritentato all'infinito).
 Catalogo #128: promemoria che si ripete (UTL-098), nel canale invece
 che in DM (UTL-099), annullare tutti i propri (UTL-102), lo staff vede
-e annulla quelli del server (UTL-103).
+e annulla quelli del server (UTL-103, `/messaggi promemoria`: è per lo staff, D56).
 """
 
 from __future__ import annotations
@@ -277,10 +277,9 @@ class RemindersCog(CogConGruppi, commands.Cog):
         return guild is not None and azione["guild_id"] == guild.id and await puo_usare(interaction, Livello.ADMIN)
 
     @comando_di_gruppo(
-        "utility",
-        nome="server",
+        "messaggi",
+        nome="promemoria",
         descrizione="Per lo staff: i promemoria impostati in questo server.",
-        sottogruppo=SOTTOGRUPPO,
     )
     async def server_reminders(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild

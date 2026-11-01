@@ -197,7 +197,7 @@ def testo_promemoria(serie: int, ultima: datetime, scudi: int, adesso: datetime,
     resta = scade_tra_ore(ultima, scudi, adesso) or 0.0
     quando = "Puoi riscuotere adesso" if puoi <= 0 else f"Potrai riscuotere tra circa {math.ceil(puoi)} ore"
     return (
-        f"🔥 Hai una serie di **{serie}** giorni su **{nome_server}**. {quando} con `/level daily`; "
+        f"🔥 Hai una serie di **{serie}** giorni su **{nome_server}**. {quando} con `/monete daily`; "
         f"la serie si azzera tra circa {math.ceil(resta)} ore"
         + (f" (scudi: {scudi})." if scudi else ".")
         + "\nPer non ricevere più questo avviso: `/level progressi`, sezione Serie."

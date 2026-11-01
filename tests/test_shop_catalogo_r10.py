@@ -309,17 +309,17 @@ async def test_la_lista_raggruppa_per_categoria_e_filtra(scena):
     await scena.negozio.add_item(GUILD, name="Spada", price=10, category="Armi")
     await scena.negozio.add_item(GUILD, name="Adesivo", price=1)
     interazione = _interazione()
-    await scena.comandi["level shop list"].callback(scena.cog, interazione)
+    await scena.comandi["monete shop list"].callback(scena.cog, interazione)
     testo = interazione.response.send_message.await_args.kwargs["embed"].description
     assert testo.index("Senza categoria") < testo.index("Adesivo") < testo.index("Armi") < testo.index("Spada")
 
     interazione = _interazione()
-    await scena.comandi["level shop list"].callback(scena.cog, interazione, categoria="armi")
+    await scena.comandi["monete shop list"].callback(scena.cog, interazione, categoria="armi")
     testo = interazione.response.send_message.await_args.kwargs["embed"].description
     assert "Spada" in testo and "Adesivo" not in testo
 
     interazione = _interazione()
-    await scena.comandi["level shop list"].callback(scena.cog, interazione, categoria="boh")
+    await scena.comandi["monete shop list"].callback(scena.cog, interazione, categoria="boh")
     assert "Nessun oggetto" in _testi(interazione)
 
 
@@ -331,7 +331,7 @@ async def test_il_codice_lo_vede_solo_chi_compra_e_il_testo_di_risposta_si_compo
     await scena.negozio.add_lines(item_id, GUILD, ["XYZ-123"])
     await scena.monete.add_coins(GUILD, 1, 100)
     interazione = _interazione()
-    await scena.comandi["level shop buy"].callback(scena.cog, interazione, item_id=item_id)
+    await scena.comandi["monete shop buy"].callback(scena.cog, interazione, item_id=item_id)
     chiamata = interazione.response.send_message.await_args
     assert chiamata.kwargs["ephemeral"] is True
     assert "XYZ-123" in chiamata.args[0]
@@ -339,7 +339,7 @@ async def test_il_codice_lo_vede_solo_chi_compra_e_il_testo_di_risposta_si_compo
 
     altro = _interazione(user_id=2)
     await scena.monete.add_coins(GUILD, 2, 100)
-    await scena.comandi["level shop buy"].callback(scena.cog, altro, item_id=item_id)
+    await scena.comandi["monete shop buy"].callback(scena.cog, altro, item_id=item_id)
     assert "esaurito" in _testi(altro).lower()
 
 
@@ -349,7 +349,7 @@ async def test_la_lista_mostra_righe_rimaste_e_durata(scena):
     await scena.negozio.add_lines(item_id, GUILD, ["a", "b"])
     await scena.negozio.add_item(GUILD, name="Vip", price=20, role_id=55, role_duration_hours=48)
     interazione = _interazione()
-    await scena.comandi["level shop list"].callback(scena.cog, interazione)
+    await scena.comandi["monete shop list"].callback(scena.cog, interazione)
     testo = interazione.response.send_message.await_args.kwargs["embed"].description
     assert "rimasti 2" in testo and "dura 48 h" in testo
 
@@ -360,7 +360,7 @@ async def test_acquisto_di_un_ruolo_a_tempo_dice_la_scadenza_e_il_giro_lo_toglie
     item_id = await scena.negozio.add_item(GUILD, name="Vip", price=10, role_id=55, role_duration_hours=2)
     await scena.monete.add_coins(GUILD, 1, 100)
     interazione = _interazione(ruolo=ruolo)
-    await scena.comandi["level shop buy"].callback(scena.cog, interazione, item_id=item_id)
+    await scena.comandi["monete shop buy"].callback(scena.cog, interazione, item_id=item_id)
     assert "Il ruolo dura fino a" in _testi(interazione)
 
     membro = fake_member(1, roles=[ruolo])
@@ -437,7 +437,7 @@ async def test_il_codice_arriva_anche_in_privato(scena):
     await scena.negozio.add_lines(item_id, GUILD, ["XYZ-123"])
     await scena.monete.add_coins(GUILD, 1, 100)
     interazione = _interazione()
-    await scena.comandi["level shop buy"].callback(scena.cog, interazione, item_id=item_id)
+    await scena.comandi["monete shop buy"].callback(scena.cog, interazione, item_id=item_id)
     interazione.user.send.assert_awaited_once()
     assert "XYZ-123" in str(interazione.user.send.await_args)
 
@@ -445,7 +445,7 @@ async def test_il_codice_arriva_anche_in_privato(scena):
     await scena.negozio.add_lines(item_id, GUILD, ["ABC-9"])
     chiuso = _interazione()
     chiuso.user.send.side_effect = discord.Forbidden(SimpleNamespace(status=403, reason="no"), "dm")
-    await scena.comandi["level shop buy"].callback(scena.cog, chiuso, item_id=item_id)
+    await scena.comandi["monete shop buy"].callback(scena.cog, chiuso, item_id=item_id)
     assert "ABC-9" in _testi(chiuso)
 
 

@@ -384,7 +384,7 @@ Totale voci: **514**.
   → **Stato 27/10 (r10, #58, #116):** `/automod parole add modo:` (intera, dentro, inizio, fine) mette gli asterischi della regola nativa e rifiuta oltre 60 caratteri (AMD-013); `parole remove` toglie tutte le forme di una parola. Le eccezioni messe a mano restano (LIM-29). Provato con `tests/test_automod_inviti_parole.py`.
 - `[x]` 6.2 Anti-invite (via AutoMod nativo, regex)
   → **Stato 04/10:** LIM-29.
-  → **Stato 27/10 (r10, #58, #116):** `/automod filtri invites permetti:|togli:|propri:` lascia passare inviti scelti (AMD-026) e quelli del server (AMD-027) con la lista delle eccezioni della regola nativa; al massimo 8 inviti (3 voci l'uno, 25 voci); merge a tre vie che conserva le eccezioni dell'admin; `on_invite_create` e `on_invite_delete` aggiornano la regola (migrazione 0280); con «propri» passa anche l'invito personalizzato; se Discord non dà gli inviti restano le eccezioni dell'ultimo sync.
+  → **Stato 27/10 (r10, #58, #116):** `/filtri invites permetti:|togli:|propri:` lascia passare inviti scelti (AMD-026) e quelli del server (AMD-027) con la lista delle eccezioni della regola nativa; al massimo 8 inviti (3 voci l'uno, 25 voci); merge a tre vie che conserva le eccezioni dell'admin; `on_invite_create` e `on_invite_delete` aggiornano la regola (migrazione 0280); con «propri» passa anche l'invito personalizzato; se Discord non dà gli inviti restano le eccezioni dell'ultimo sync.
 - `[x]` 6.3b Messaggi modificati controllati di nuovo dai filtri lato bot (AMD-021, #116); la modifica non conta per l'anti-spam
 - `[x]` 6.3 Anti-link generico (whitelist/blacklist domini) — lato
   bot (`core/automod_advanced_logic.py`), non regola nativa: Discord
@@ -444,10 +444,10 @@ Totale voci: **514**.
   dedicato, `/automod log-channel` + `/automod status` (riepilogo
   configurazione)
   → **Stato 27/10 (r10, #116):** `/automod violazioni utente: pagina:` (10 per pagina, AMD-062) e `/automod violazione-togli numero:` (solo del server, AMD-065); indice in migrazione 0282. `tests/test_automod_inviti_parole.py`.
-- `[x]` 6.16 Filtri in più (#116, r6): messaggi ripetuti, troppo corti, link e menzioni nel tempo (`/automod filtri messaggi`, AMD-001, 004, 006, 007), embed e inoltri letti dai filtri e tipi di file vietati (`contenuto`, AMD-019, 020, 022), canali solo media o senza allegati (`canale-media`, AMD-023, 024), azione kick in `actions-set` (AMD-041)
+- `[x]` 6.16 Filtri in più (#116, r6): messaggi ripetuti, troppo corti, link e menzioni nel tempo (`/filtri messaggi`, AMD-001, 004, 006, 007), embed e inoltri letti dai filtri e tipi di file vietati (`contenuto`, AMD-019, 020, 022), canali solo media o senza allegati (`canale-media`, AMD-023, 024), azione kick in `actions-set` (AMD-041)
 - `[x]` 6.15 Smart AutoMod Escalation Ladder (BACKLOG.md §11) — scala
 - `[x]` 6.17 Parole vietate con varianti (#116, r10, AMD-014): filtro lato bot con normalizzazione (maiuscole, cifre e simboli al posto delle lettere, lettere simili di altri alfabeti, accenti, caratteri invisibili, markdown, separatori, lettere ripetute, lettere censurate con `*`/`█`, parola spezzata a metà, testo girato con U+202E, parola divisa in più messaggi brevi di fila), lista di base di insulti d'odio it/en in `data/automod_parole_odio.txt` accesa di base (spegnerla chiede `conferma`), parole proprie e lecite dell'admin (una voce di base non può diventare lecita) (`/automod odio base|parola|nomi|prova|stato`), cancella il messaggio, conta nella scala di escalation e scrive nel log AutoMod; nickname e nomi visualizzati ripuliti all'ingresso e al cambio (`core/automod_parole_logic.py`, `cogs/automod/parole_odio.py`)
-- `[x]` 6.18 Parole d'odio a livelli (D35, r11): blocco preventivo con una regola nativa dell'AutoMod (insulto di base + minaccia o incitamento, testo del banner del server ≤150 caratteri, predefinito «Primo richiamo: la tua affermazione risulta razzista…», `/automod odio blocco`); parola sospetta da sola (cognomi, `data/automod_parole_sospette.txt`) giudicata dall'AI (lavoro «moderazione», `conta_utente=False`, testo pulito, decisione in cache per frase): uso normale passa, insulto cancellato con richiamo che si cancella da solo (o DM) e richiami contati, N richiami in X minuti (3 in 60) portano al timeout (1 ora), configurabili con `/automod odio richiami`; con l'AI ferma si cancella e si avvisa; libreria mondiale multilingue (tabelle `odio_parole`, `odio_segnalazioni`, migrazione 0390) con stati base/candidata/approvata/rifiutata, candidata globale con 3 server di proprietari diversi (0391) o con l'approvazione del proprietario (`/automod odio libreria`), spiegata in `docs/parole_bandite.md` (`core/odio_*.py`, `core/automod_odio_nativo_logic.py`, `core/automod_odio_azioni.py`, test `tests/test_automod_odio_d35.py`). Manca solo la pagina nel pannello `/proprietario` (il comando basta, D39).
+- `[x]` 6.18 Parole d'odio a livelli (D35, r11): blocco preventivo con una regola nativa dell'AutoMod (insulto di base + minaccia o incitamento, testo del banner del server ≤150 caratteri, predefinito «Primo richiamo: la tua affermazione risulta razzista…», `/automod odio blocco`); parola sospetta da sola (cognomi, `data/automod_parole_sospette.txt`) giudicata dall'AI (lavoro «moderazione», `conta_utente=False`, testo pulito, decisione in cache per frase): uso normale passa, insulto cancellato con richiamo che si cancella da solo (o DM) e richiami contati, N richiami in X minuti (3 in 60) portano al timeout (1 ora), configurabili con `/automod odio richiami`; con l'AI ferma si cancella e si avvisa; libreria mondiale multilingue (tabelle `odio_parole`, `odio_segnalazioni`, migrazione 0390) con stati base/candidata/approvata/rifiutata, candidata globale con 3 server di proprietari diversi (0391) o con l'approvazione del proprietario (`/owner parole-odio`), spiegata in `docs/parole_bandite.md` (`core/odio_*.py`, `core/automod_odio_nativo_logic.py`, `core/automod_odio_azioni.py`, test `tests/test_automod_odio_d35.py`). Manca solo la pagina nel pannello `/proprietario` (il comando basta, D39).
   di severità crescente **nel tempo** in base a quante volte un
   utente ha già triggerato l'AutoMod nativo, con reset dopo un
   periodo configurabile di buona condotta. Concettualmente diversa
@@ -1284,7 +1284,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   in carico, chiuse, tempo medio di prima risposta (per operatore o
   per l'intero server)
 - `[x]` 13.13 Configurazione ruoli di supporto multipli
-  (`/gestione ticket ruolo-add|ruolo-remove|ruolo-list`) — combinati con il ruolo
+  (`/ticket-gestione ruolo aggiungi|ruolo-remove|ruolo-list`) — combinati con il ruolo
   legacy singolo per retrocompatibilità, nessuna migrazione richiesta
   → **Stato 21/10:** `remove` toglie anche il ruolo storico (M 6.7).
 - `[x]` 13.14 Apertura da comando (`/ticket apri`): pannello o motivo, lo staff anche per conto di un
@@ -1292,22 +1292,22 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   tasto destro sarebbe un comando di primo livello in più: si usa il link). (da verificare live)
 - `[x]` 13.15 Regole di apertura per pannello e per server: tetto di ticket aperti, ruoli esenti, pausa
   tra due aperture con azzeramento, regole di accesso per ruolo, lista nera, orari con fuso e
-  comportamento fuori orario, sospensione con motivo (TKT-017…024; `/ticket opzioni limiti|orari|accesso`,
-  `/ticket lista-nera`, `/ticket sospendi`, `/ticket azzera-pausa`; migrazione 0220). (da verificare live)
+  comportamento fuori orario, sospensione con motivo (TKT-017…024; `/ticket-pannelli opzioni limiti|orari|accesso`,
+  `/ticket-gestione lista-nera`, `/ticket-gestione sospendi`, `/ticket azzera-pausa`; migrazione 0220). (da verificare live)
 - `[x]` 13.16 Canale: nome da modello (`{numero}` `{num}` `{utente}` `{nickname}`), categorie di riserva
-  sopra i 50 canali (TKT-025, 030; `/ticket opzioni canale`).
+  sopra i 50 canali (TKT-025, 030; `/ticket-pannelli opzioni canale`).
 - `[x]` 13.17 Avvisi all'apertura: ruoli, `@here`, staff reperibile (`/ticket reperibile`), ping cancellato,
-  primo messaggio fissato, DM di apertura e di chiusura (TKT-033, 037, 038, 039; `/ticket opzioni avvisi|messaggi`). (da verificare live)
+  primo messaggio fissato, DM di apertura e di chiusura (TKT-033, 037, 038, 039; `/ticket-pannelli opzioni avvisi|messaggi`). (da verificare live)
 - `[x]` 13.18 Permessi: permessi tolti all'utente, ruoli osservatori, ruoli dati durante il ticket e tolti
-  alla chiusura, squadra di staff per pannello (TKT-041…044; `/ticket opzioni permessi`).
+  alla chiusura, squadra di staff per pannello (TKT-041…044; `/ticket-pannelli opzioni permessi`).
 - `[x]` 13.19 Presa in carico: categoria dei presi, esclusiva (gli altri non scrivono o non vedono),
   al primo dello staff che risponde, testi di presa e rilascio, thread privato delle note
-  (`/ticket note`), bottone «Torna all'inizio» (TKT-028, 034, 040, 050, 052, 053; `/ticket opzioni presa`). (da verificare live)
+  (`/ticket note`), bottone «Torna all'inizio» (TKT-028, 034, 040, 050, 052, 053; `/ticket-pannelli opzioni presa`). (da verificare live)
 - `[x]` 13.20 Chiusura: conferma, chi può chiudere, richiesta all'utente con Accetta/Rifiuta e chiusura
   dopo N ore (`/ticket chiedi-chiusura`, azione `ticket_richiesta_chiusura`), transcript in DM a scelta
-  (TKT-054, 055, 057, 075; `/ticket opzioni chiusura|messaggi`). (da verificare live)
+  (TKT-054, 055, 057, 075; `/ticket-pannelli opzioni chiusura|messaggi`). (da verificare live)
 
-- `[x]` 13.20 Chiusura in due passi (TKT-051, 063, 027, 026; migrazione 0302): `/ticket opzioni chiusura due_passi:sì` tiene il canale dopo la chiusura (l'utente non lo vede più) con Riapri, Transcript, Elimina; `elimina_dopo_ore`, `categoria_chiusi`, prefissi `nome_chiuso` e `nome_preso`; `/ticket riapri`. Prova: `tests/test_ticket_chiusi.py`
+- `[x]` 13.20 Chiusura in due passi (TKT-051, 063, 027, 026; migrazione 0302): `/ticket-pannelli opzioni chiusura due_passi:sì` tiene il canale dopo la chiusura (l'utente non lo vede più) con Riapri, Transcript, Elimina; `elimina_dopo_ore`, `categoria_chiusi`, prefissi `nome_chiuso` e `nome_preso`; `/ticket riapri`. Prova: `tests/test_ticket_chiusi.py`
 
 ## §14 UTILITY & SERVER MANAGEMENT
 
@@ -1337,7 +1337,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 04/10:** LIM-10.
   → **Stato 27/10 (r10):** controllato nel codice e con i test: i problemi dello stato 04/10 sono corretti (vedi `REGISTRO_RISOLTE.md`).
 - `[x]` 14.7 Autoresponder (con jolly e condizioni) — NF-10 (#81)
-  → **Stato 28/10 (r12):** fatto. `/moduli comandi risposta-crea|risposta-elimina|risposte`
+  → **Stato 28/10 (r12):** fatto. `/messaggi risposte crea|risposta-elimina|risposte`
   (`core/autoresponder_logic.py`, `cogs/utility/autoresponder.py`, 0083): parola intera o frase uguale, jolly `*` dentro la
   parola (`ciao*`, al massimo 5), condizioni di canale e ruolo, una risposta per messaggio, pausa per canale, mai ai bot,
   niente ping veri. Con il Message Content Intent acceso (D9). Test: `tests/test_autoresponder.py`.
@@ -1349,11 +1349,11 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   notifica di ritorno al richiedente
   → **Stato 04/10:** due staff possono decidere insieme (REVIEW §5). I comandi creati dal server sono in §22 (NF-09).
   → **Stato 27/10 (r10):** controllato nel codice e con i test: i problemi dello stato 04/10 sono corretti (vedi `REGISTRO_RISOLTE.md`).
-- `[x]` 14.9 Snipe — `/utility snipe`: l'ultimo messaggio cancellato nel
+- `[x]` 14.9 Snipe — `/utility snipe messaggio`: l'ultimo messaggio cancellato nel
   canale (testo tagliato a 4096, allegati per nome), ricordato 5
   minuti solo in memoria, solo se il server accende il modulo `snipe`
   (privacy). Niente menzioni vere nella risposta (NF-03, issue #74)
-- `[x]` 14.10 Editsnipe — `/utility editsnipe`: ultima modifica con
+- `[x]` 14.10 Editsnipe — `/utility snipe modifica`: ultima modifica con
   prima e dopo (campi 1024), stesse regole di 14.9
 - `[x]` 14.11 Reactionsnipe — `/reactionsnipe`, NON richiede il
   Message Content Intent: `on_raw_reaction_remove` restituisce
@@ -1391,7 +1391,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   DM, fallback nel canale se i DM sono chiusi
   → **Stato 04/10:** promemoria lunghi persi in silenzio (LIM-13).
   → **Stato 21/10 (catalogo #128, giro r8):** promemoria ripetuti (minimo 30 minuti, riprogrammati prima della consegna),
-  pubblicati in un canale, «annulla tutti», elenco e annullamento del server per lo staff (`/utility reminder server`)
+  pubblicati in un canale, «annulla tutti», elenco e annullamento del server per lo staff (`/messaggi promemoria`)
   (UTL-098, 099, 102, 103).
   → **Stato 27/10 (r10):** controllato nel codice e con i test: i problemi dello stato 04/10 sono corretti (vedi `REGISTRO_RISOLTE.md`).
 - `[x]` 14.17 Scheduled messages — `/schedule-message set|list|cancel`,
@@ -1427,14 +1427,14 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 15.2 Anti-farm XP vocale (self_deaf, soli nel canale, AFK, 2h
   stesso canale, cap giornaliero)
 - `[x]` 15.3 Economy: daily, work, pay, balance
-  → **Stato 27/10 (r10):** l'attesa sta dentro la scrittura (una INSERT … ON CONFLICT … WHERE attesa finita), due invii insieme pagano una volta (`test_leveling_daily_work_insieme.py`). Nome della moneta scelto dal server, minimo, tetto e tassa su `/level pay` (ECO-001, ECO-015, 0341, 0342): `/level impostazioni xp nome_moneta|tassa_pay|minimo_pay|massimo_pay`; la tassa (per eccesso, così i pagamenti piccoli non la evitano) va alla cassa nella stessa transazione. **Stato 28/10 (r11, D38/D41):** nome solo testo (niente emoji), immagine della moneta (`guild_coin_images`, 0410, `/level impostazioni xp immagine_moneta`) come miniatura in saldo, cassa, giochi e info gilda; senza immagine la moneta di iYokai.
+  → **Stato 27/10 (r10):** l'attesa sta dentro la scrittura (una INSERT … ON CONFLICT … WHERE attesa finita), due invii insieme pagano una volta (`test_leveling_daily_work_insieme.py`). Nome della moneta scelto dal server, minimo, tetto e tassa su `/monete pay` (ECO-001, ECO-015, 0341, 0342): `/economia livelli xp nome_moneta|tassa_pay|minimo_pay|massimo_pay`; la tassa (per eccesso, così i pagamenti piccoli non la evitano) va alla cassa nella stessa transazione. **Stato 28/10 (r11, D38/D41):** nome solo testo (niente emoji), immagine della moneta (`guild_coin_images`, 0410, `/economia livelli xp immagine_moneta`) come miniatura in saldo, cassa, giochi e info gilda; senza immagine la moneta di iYokai.
 - `[x]` 15.4 Shop — `/shop list|buy|add-item|remove-item`, oggetti
   con prezzo e un ruolo opzionale da concedere all'acquisto
   → **Stato 04/10:** toglie le monete anche se il ruolo non viene dato (BUG-14); lista senza tetto (LIM-18).
   → **Stato 13/10:** sistemati (9.2, 9.12). Aggiunti scorte limitate, ruolo richiesto per comprare,
-  `/economia shop-edit` e conferma prima dell'acquisto (`/level impostazioni negozio`, spenta di base);
+  `/economia shop-edit` e conferma prima dell'acquisto (`/economia livelli negozio`, spenta di base);
   migrazioni 0094 e 0095.
-  → **Stato 27/10 (r10, 0340):** fatti anche ECO-063 (ruolo che scade: `durata_ruolo_ore`, giro ogni 5 minuti nel cog, dopo la scadenza si può ricomprare), ECO-065 (`posizione`), ECO-066 (`categoria`, filtro in `/level shop list`), ECO-067 (oggetto «a elenco»: file `.txt` con una riga per acquisto, la riga la vede solo chi compra e arriva anche in DM; un file vuoto, con troppe righe o righe troppo lunghe non crea l'oggetto, torna libera se l'acquisto è rimborsato) ed ECO-068 (`risposta` con `{utente}` e `{oggetto}`). Prove: `tests/test_shop_catalogo_r10.py`.
+  → **Stato 27/10 (r10, 0340):** fatti anche ECO-063 (ruolo che scade: `durata_ruolo_ore`, giro ogni 5 minuti nel cog, dopo la scadenza si può ricomprare), ECO-065 (`posizione`), ECO-066 (`categoria`, filtro in `/monete shop list`), ECO-067 (oggetto «a elenco»: file `.txt` con una riga per acquisto, la riga la vede solo chi compra e arriva anche in DM; un file vuoto, con troppe righe o righe troppo lunghe non crea l'oggetto, torna libera se l'acquisto è rimborsato) ed ECO-068 (`risposta` con `{utente}` e `{oggetto}`). Prove: `tests/test_shop_catalogo_r10.py`.
   → **Stato 14/10 (giro correzioni):** la conferma vale per il prezzo mostrato (se cambia, `buy_item` con
   `prezzo_atteso` rifiuta senza addebito; il prezzo si legge con la riga bloccata); `item_id` va da 1 a 2147483647;
   il nome di soli spazi è rifiutato.
@@ -1462,7 +1462,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   personale, non duplicato: `core.leveling_logic.period_key()`
   riusato direttamente. **ANNUNCIO AUTOMATICO in "bacheca clan"**
   aggiunto su richiesta esplicita dell'utente ("ogni mese, il bot
-  pubblica in bacheca clan la top 3"): `/clan bacheca set|disable`
+  pubblica in bacheca clan la top 3"): `/economia annunci clan-set|disable`
   configura un canale per server, tick orario idempotente (uno
   annuncio per mese anche con riavvii) — stesso schema di 15.11
   sotto, tabella di configurazione separata
@@ -1697,7 +1697,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 ## §16 FUN & IMMAGINI — SFW presente; NSFW da fare (fase F11)
 
 - `[x]` 16.1 Mini-giochi — `/fun coinflip`, `/fun dice [facce]`,
-  `/fun rps` (carta/forbici/sasso contro il bot), `/fun 8ball
+  `/giochi rps` (carta/forbici/sasso contro il bot), `/fun 8ball
   <domanda>`. A differenza di Ship/Rate (deterministici via hash,
   §16.5/§16.7), qui il risultato è genuinamente casuale ad ogni
   chiamata — è il punto di un mini-gioco (`core/minigames_logic.py`,
@@ -1705,8 +1705,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   `random` globale usato direttamente, per restare testabile con un
   seed). **Sotto-comandi di un gruppo `/fun`, non comandi top-level
   separati** — vedi la nota tecnica sotto 16.8
-- `[x]` 16.2 Image manipulation — `/fun grayscale`, `/fun invert`,
-  `/fun blur [raggio]`, `/fun pixelate [dimensione-blocco]`, tutti
+- `[x]` 16.2 Image manipulation — `/immagini grayscale`, `/immagini invert`,
+  `/immagini blur [raggio]`, `/immagini pixelate [dimensione-blocco]`, tutti
   con priorità allegato > utente menzionato > avatar dell'autore
   (`core/image_manipulation.py`, funzioni pure Pillow che restituiscono
   `bytes | None`, mai un'eccezione — `None` se l'input non è
@@ -1717,7 +1717,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   Sotto-comandi del gruppo `/fun` esistente — vedi nota tecnica sotto
   16.8, nessun nuovo slot top-level consumato
   → **Stato 04/10:** SEC-20 corretto il 04/10 (`b2303a5`). (da verificare live)
-- `[x]` 16.3 Comandi meme — `/fun meme [top-text] [bottom-text]`,
+- `[x]` 16.3 Comandi meme — `/immagini meme [top-text] [bottom-text]`,
   stile classico Impact (testo bianco, contorno nero) su qualunque
   immagine (allegato > utente menzionato > avatar autore), testo
   automaticamente a capo se troppo lungo (`core/meme_logic.py`,
@@ -1725,7 +1725,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   incorporato nel repository). Richiede almeno uno tra top/bottom
   text, altrimenti messaggio d'errore effimero. Stesso gruppo `/fun`,
   nessun nuovo slot top-level
-- `[x]` 16.4 Comandi animal — `/fun animal <specie>` (cane/gatto/
+- `[x]` 16.4 Comandi animal — `/immagini animal <specie>` (cane/gatto/
   volpe), immagine casuale da tre API pubbliche GRATUITE, nessuna
   chiave richiesta: dog.ceo, thecatapi.com, randomfox.ca
   (`core/animal_fetcher.py` interpreta le risposte con `core/animal_
@@ -1766,7 +1766,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   di §16 (16.2/16.3/16.4/16.9) andrà sotto questo stesso gruppo o un
   gruppo analogo, non come nuovo comando top-level
   → **Stato 04/10:** Correzione al testo: i comandi di primo livello erano 97, non 96.
-- `[x]` 16.9 Ricerca immagini SFW — `/fun search-image <query>`, via
+- `[x]` 16.9 Ricerca immagini SFW — `/immagini search-image <query>`, via
   Pixabay (`PIXABAY_API_KEY`, opzionale come Twitch/YouTube ma —
   a differenza di quelle — il comando non può funzionare affatto
   senza: risponde spiegando come attivare la chiave gratuita invece
@@ -1969,9 +1969,9 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 ## §22 FUNZIONI NUOVE, PRIMO GRUPPO — da fare (fase F9)
 
 - `[x]` 22.1 Ruolo automatico all'ingresso (NF-07)
-  → **Stato 13/10:** `/gestione ruoli auto-aggiungi|auto-rimuovi|auto-elenco` (0080); salta i bot, aspetta schermata di verifica e ruolo Verify, in pausa durante un raid. Da provare live.
+  → **Stato 13/10:** `/ruoli auto aggiungi|auto-rimuovi|auto-elenco` (0080); salta i bot, aspetta schermata di verifica e ruolo Verify, in pausa durante un raid. Da provare live.
 - `[x]` 22.2 Ruoli ridati a chi rientra entro 30 giorni (NF-07)
-  → **Stato 13/10:** `/gestione ruoli auto-ricorda`: ruoli ricordati al massimo 30 giorni (0080).
+  → **Stato 13/10:** `/ruoli auto ricorda`: ruoli ricordati al massimo 30 giorni (0080).
 - `[x]` 22.3 Ruoli dati dopo un ritardo (NF-07)
   → **Stato 13/10:** ritardo configurabile per regola, via scheduler (0080).
   → **Stato 21/10 (catalogo #123, giro r8):** condizioni «solo con» e «non con» altri ruoli (ricontrollate allo
@@ -1981,9 +1981,9 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 13/10:** `/moduli starboard imposta|soglia|disattiva` (0081): un post per messaggio, canali vietati ai minori esclusi. Da provare live.
 - `[x]` 22.5 Comandi personalizzati creati dal server: testo o embed,
   ruolo, pausa; prefisso facoltativo solo per questi (NF-09)
-  → **Stato 13/10:** `/moduli comandi crea|modifica|elimina|elenco|prefisso`, `/utility tag` (0082); massimo 50 per server, menzioni neutralizzate. Resta lo scripting avanzato (condizioni, variabili, cron).
+  → **Stato 13/10:** `/messaggi tag crea|modifica|elimina|elenco|prefisso`, `/utility tag` (0082); massimo 50 per server, menzioni neutralizzate. Resta lo scripting avanzato (condizioni, variabili, cron).
 - `[x]` 22.6 Costruttore di embed con anteprima e modifica (NF-17)
-  → **Stato 13/10:** `/moduli embed crea|modifica|pubblica|elenco|elimina` (0086), limiti Discord controllati al salvataggio.
+  → **Stato 13/10:** `/messaggi embed crea|modifica|pubblica|elenco|elimina` (0086), limiti Discord controllati al salvataggio.
 - `[x]` 22.7 Immagine di benvenuto con avatar, nome e sfondo (NF-11)
   → **Stato 13/10:** `/gestione benvenuto immagine` (0084): 4 modelli e sfondo proprio. L'editor completo resta al pannello web (NF-20).
 - `[x]` 22.8 Rank card come immagine (NF-12)
@@ -1992,36 +1992,36 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 15/10:** sfondo con immagine propria (`/level rank sfondo:<immagine>`, 0202): ritagliata e ricompressa
   (JPEG 800x360, al massimo 256 KiB) con `safe_open_image` in un thread; vale anche per il profilo; `reimposta` la toglie.
   Per tutti (scelta: MEE6 la fa pagare, qui niente premium per un'immagine); lo staff la spegne nel suo server con
-  `/level impostazioni card sfondi:No` (alternativa a LIV-057). `rank_card_prefs` e `rank_card_sfondi` sono nel registro dei dati.
+  `/economia livelli card sfondi:No` (alternativa a LIV-057). `rank_card_prefs` e `rank_card_sfondi` sono nel registro dei dati.
 - `[x]` 22.9 Ticket: modulo con domande prima dell'apertura (NF-13)
-  → **Stato 13/10:** fino a 5 domande per pannello (`/admin ticket modulo-aggiungi|modulo-rimuovi|modulo-mostra`), finestra
+  → **Stato 13/10:** fino a 5 domande per pannello (`/ticket-pannelli modulo aggiungi|modulo-rimuovi|modulo-mostra`), finestra
   Discord, risposte nell'embed del ticket (migrazione 0100). Pannello con 0 domande: il ticket si apre subito.
 - `[x]` 22.10 Ticket: più pannelli in un messaggio (NF-13)
   → **Stato 13/10:** fino a 25 pannelli per server (`pannello-crea|rimuovi|lista|pubblica`); un messaggio porta fino a 25 bottoni
-  persistenti (`DynamicItem`, custom_id `tkt:pan:<id>`). Il pannello storico (`/gestione ticket panel`) resta com'è.
+  persistenti (`DynamicItem`, custom_id `tkt:pan:<id>`). Il pannello storico (`/ticket-gestione panel`) resta com'è.
 - `[x]` 22.11 Ticket: chiusura automatica per inattività o utente
   uscito (NF-13)
-  → **Stato 13/10:** per inattività (`/admin ticket chiusura-auto`, scheduler, azione `ticket_autoclose`, 5 min - 30 giorni,
+  → **Stato 13/10:** per inattività (`/ticket-gestione chiusura-auto`, scheduler, azione `ticket_autoclose`, 5 min - 30 giorni,
   vale per i ticket nati da un pannello) e quando l'utente lascia il server.
 - `[x]` 22.12 Ticket: voto a fine ticket e limite per utente (NF-13)
-  → **Stato 13/10:** voto a 5 stelle in DM alla chiusura (`/admin ticket voto`), una volta sola, media in `/gestione ticket stats`.
-  Limite di ticket aperti per utente configurabile da 1 a 5, predefinito 1 (`/gestione ticket limite`, impostazione
+  → **Stato 13/10:** voto a 5 stelle in DM alla chiusura (`/ticket-gestione voto`), una volta sola, media in `/ticket-gestione stats`.
+  Limite di ticket aperti per utente configurabile da 1 a 5, predefinito 1 (`/ticket-gestione limite`, impostazione
   `ticket_max_per_utente`, migrazione 0106 che sostituisce l'indice unico con un controllo sotto blocco in `ticket_repo.create_ticket`).
 - `[x]` 22.13 Modalità dei reaction roles: unique, verify, drop,
   reversed, binding, temp, lock; ruoli ammessi ed esclusi (NF-14)
-  → **Stato 13/10:** `/gestione ruoli menu-crea|menu-modifica|menu-accesso|menu-elenco` (0085). Da provare live.
+  → **Stato 13/10:** `/ruoli menu crea|menu-modifica|menu-accesso|menu-elenco` (0085). Da provare live.
 - `[x]` 22.14 Livelli: canali e ruoli senza XP, moltiplicatori, canale
   del level-up, premi "accumula" o "togli i precedenti", valori
   configurabili (NF-15)
   → **Stato 15/10 (catalogo #124/#125):** `/level premi` elenco pubblico di ruoli-premio e moltiplicatori (LIV-048, LIV-027);
-  `/level attese` con le pause di daily e work (ECO-020); `/level livelli-recenti` con gli ultimi 25 level-up (LIV-039, 0203, anche ad annuncio spento).
-  → **Stato 11/10:** `/level impostazioni` (mostra, annuncio, premi, xp,
+  `/monete attese` con le pause di daily e work (ECO-020); `/level livelli-recenti` con gli ultimi 25 level-up (LIV-039, 0203, anche ad annuncio spento).
+  → **Stato 11/10:** `/economia livelli` (mostra, annuncio, premi, xp,
   escludi, moltiplicatore); migrazione 0030; `core/repositories/leveling_settings_repo.py`.
   Annuncio: spento, canale corrente, DM, canale scelto, livello minimo, ogni N,
   solo con premio. Moltiplicatori: somma o massimo. Restano fuori `/daily` e `/work`
   (importi fissi) e il tetto di livello.
-  → **Stato 13/10:** fatti anche gli importi di `/level daily` e `/work` e il livello
-  massimo (LIV-005): `/level impostazioni xp daily|lavoro_min|lavoro_max|livello_massimo`
+  → **Stato 13/10:** fatti anche gli importi di `/monete daily` e `/work` e il livello
+  massimo (LIV-005): `/economia livelli xp daily|lavoro_min|lavoro_max|livello_massimo`
   (migrazione 0090). Al tetto gli XP salgono ma il livello no, e non c'è annuncio.
   → **Stato 14/10 (giro correzioni):** `/economia xp livello` ha un tetto assoluto di 1000
   (`LIVELLO_MASSIMO`) e `level_for_xp` usa la formula chiusa (nessun ciclo); l'XP a mano passa
@@ -2063,21 +2063,21 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 13/10:** `/level compleanno imposta|rimuovi|mostra`, `/moduli compleanni canale|ruolo` (0088): solo giorno e mese.
 - `[x]` 23.5 Inviti: comando personale e classifica (NF-27)
   → **Stato 13/10:** `/level inviti utente|classifica` (0089), con avviso sull'attribuzione (LC-6). Da provare live.
-  → **Stato 28/10 (r10, D32):** link personali «finto vanity» (alternativa D18 al vanity vero, che vuole il boost 3): `/level inviti link`, pagina «I miei inviti» e `/invito/<slug>` sul sito (redirect a un invito Discord dedicato, creato una volta e ricreato se sparisce, limite per IP, nessun nome); storico con tipo di link (personale, normale, vanity, sconosciuto) e uscite (0380); `/level inviti storico` (da chi è stato invitato e ultimi invitati), `utente` dice anche da chi; opzioni (modulo acceso/spento, canale del registro, ruolo che può avere il link) da `core/invite_service.py` con `/level inviti opzioni` e pagina «Inviti» del pannello; tabelle nel registro dati (D6). Il vanity vero si segue con `guild.vanity_invite()`. Da provare live.
-  → **Stato 28/10 (r11, D36):** chi ha il link personale lo decide il server: tutti / solo chi ha «Crea invito» / solo un ruolo / spento (`/level inviti opzioni chi:`, pagina `/server/<id>/inviti`, un solo punto `core/invite_service.py`; chiave `inviti_link_mode`). Il permesso «Crea invito» del membro conta solo nella seconda modalità; il canale resta uno visibile a @everyone. Test: `tests/test_invite_service.py`.
+  → **Stato 28/10 (r10, D32):** link personali «finto vanity» (alternativa D18 al vanity vero, che vuole il boost 3): `/level inviti link`, pagina «I miei inviti» e `/invito/<slug>` sul sito (redirect a un invito Discord dedicato, creato una volta e ricreato se sparisce, limite per IP, nessun nome); storico con tipo di link (personale, normale, vanity, sconosciuto) e uscite (0380); `/level inviti storico` (da chi è stato invitato e ultimi invitati), `utente` dice anche da chi; opzioni (modulo acceso/spento, canale del registro, ruolo che può avere il link) da `core/invite_service.py` con `/moduli inviti` e pagina «Inviti» del pannello; tabelle nel registro dati (D6). Il vanity vero si segue con `guild.vanity_invite()`. Da provare live.
+  → **Stato 28/10 (r11, D36):** chi ha il link personale lo decide il server: tutti / solo chi ha «Crea invito» / solo un ruolo / spento (`/moduli inviti chi:`, pagina `/server/<id>/inviti`, un solo punto `core/invite_service.py`; chiave `inviti_link_mode`). Il permesso «Crea invito» del membro conta solo nella seconda modalità; il canale resta uno visibile a @everyone. Test: `tests/test_invite_service.py`.
 - `[x]` 23.6 Giveaway avanzati: modelli, più ingressi, requisito sui
   messaggi, programmati (NF-28)
   → **Nota:** il requisito sui messaggi conta dall'inizio del giveaway, non dallo storico (che arriva con NF-25): da far accettare all'owner.
-  → **Stato 13/10:** `/economia giveaway` (min_messaggi, ruolo_bypass, ruolo_extra +
-  ingressi_extra, inizia_tra) e `/economia giveaway-modello` (salva, elenco, elimina, avvia;
+  → **Stato 13/10:** `/giveaway avvia` (min_messaggi, ruolo_bypass, ruolo_extra +
+  ingressi_extra, inizia_tra) e `/giveaway modello` (salva, elenco, elimina, avvia;
   25 modelli per server); migrazione 0091. I messaggi si contano **dall'inizio del giveaway** (non lo storico):
   il conteggio storico per canale e membro arriva con NF-25. Il worker fa partire i programmati.
   Avviso ai vincitori in thread e forum: già fatto (M 9.15).
-  → **Stato 14/10 (revisione):** senza conferma l'acquisto nello shop vale per il prezzo letto (se cambia, nessun addebito); `/economia xp` avvisa se i ruoli-premio non si aggiornano; `/fun conteggio` e i giveaway programmati controllano i permessi del bot nel canale; l'annuncio dei vincitori avvisa solo i vincitori.
+  → **Stato 14/10 (revisione):** senza conferma l'acquisto nello shop vale per il prezzo letto (se cambia, nessun addebito); `/economia xp` avvisa se i ruoli-premio non si aggiornano; `/moduli conteggio` e i giveaway programmati controllano i permessi del bot nel canale; l'annuncio dei vincitori avvisa solo i vincitori.
   → **Stato 14/10 (giro correzioni):** i comandi staff stanno nel gruppo `/economia` (D25), non più in `/gestione`.
   Il worker conclude un giveaway con una scrittura condizionata (`mark_ended` vero a uno solo: un annuncio solo);
   un programmato che non parte (canale sparito, bot senza permessi, invio rifiutato) non si chiude: resta con il
-  motivo (migrazione 0098) e `/economia giveaway-programmati` lo elenca o lo annulla; «Partecipa» è rifiutato dopo
+  motivo (migrazione 0098) e `/giveaway programmati` lo elenca o lo annulla; «Partecipa» è rifiutato dopo
   `ends_at`; i messaggi si contano con l'attesa dell'XP e non nei canali esclusi; l'elenco dei modelli sta in 2000
   caratteri; il blocco dei salvataggi usa una chiave propria (non quella di `security_repo`).
 - `[x]` 23.7 Blocco totale del server e "panic mode" (NF-29)
@@ -2091,8 +2091,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 28/10 (r12):** `/moduli alert kick` e `/moduli alert ruolo-live` (vedi 10.6). Test: `tests/test_kick_watcher.py`
   (alert, ruolo dato e tolto, tetto per server). Da attivare: `KICK_CLIENT_ID/SECRET` nel `.env`.
 - `[x]` 23.12 Ticket via messaggio privato (NF-33)
-  → **Stato 13/10:** `cogs/tickets/modmail.py`: un DM apre un canale dello staff (`/admin ticket dm`), risposta anche anonima
-  (`/ticket rispondi`), chiusura con transcript solo al log (`/ticket dm-chiudi`), blocco utenti (`/admin ticket dm-blocca`),
+  → **Stato 13/10:** `cogs/tickets/modmail.py`: un DM apre un canale dello staff (`/ticket-gestione modmail attiva`), risposta anche anonima
+  (`/ticket rispondi`), chiusura con transcript solo al log (`/ticket dm-chiudi`), blocco utenti (`/ticket-gestione modmail blocca`),
   menu se l'utente è in più server (migrazione 0101). Il testo dei messaggi non è salvato nel database.
   Con un solo server il primo DM chiede conferma con un bottone prima di creare il canale; il menu e la conferma scadono
   e liberano l'utente. Il blocco (`modmail_blocks`) è conservato come l'elenco della verifica.
@@ -2106,15 +2106,15 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   veri; gioco del conteggio (NF-40)
   → **Stato 15/10:** `/level profilo` è un'immagine (avatar, nome, presentazione, livello, XP, posizione, coin, collezione),
   con il colore dello sfondo comprato, il tema della rank card e lo sfondo con immagine propria; i badge (emoji) nel testo; se il disegno fallisce, l'embed di prima.
-  → **Stato 13/10:** `/fun gioca` (monetina, dadi, slot; puntata 1-10000, una sola scrittura sul saldo, pausa di 5 s),
+  → **Stato 13/10:** `/giochi gioca` (monetina, dadi, slot; puntata 1-10000, una sola scrittura sul saldo, pausa di 5 s),
   `/fun misura` (tema libero, stabile per il giorno, rifiuta temi su caratteristiche protette),
-  `/fun conteggio` (canale, spegni, stato; a turno, record) con `core/repositories/counting_game_repo.py` (migrazione 0092);
+  `/moduli conteggio` (canale, spegni, stato; a turno, record) con `core/repositories/counting_game_repo.py` (migrazione 0092);
   `/level profilo` (presentazione di 140 caratteri, badge, sfondo come colore) e `/level collezione negozio|compra|equipaggia`
   (14 oggetti nel codice, migrazione 0093, acquisto atomico). Resta fuori: sfondo con immagine (serve il disegno della card
   e un controllo delle immagini) e profilo come immagine; le vincite dei giochi non contano nella classifica del mese.
   → **Stato 14/10 (giro correzioni):** l'attesa tra due partite la decide il database nella stessa scrittura
   della puntata (`leveling_totals.ultima_partita_at`, migrazione 0097): dieci richieste insieme giocano una partita
-  sola; `/fun gioca` richiede anche il modulo Livelli; il filtro di `/fun misura` guarda le parole intere
+  sola; `/giochi gioca` richiede anche il modulo Livelli; il filtro di `/fun misura` guarda le parole intere
   (non le sottostringhe) e normalizza lettere cirilliche/greche simili, caratteri invisibili, punteggiatura e
   lettere staccate.
   → **Stato 27/10 (r10):** profilo come immagine e sfondo con immagine fatti il 15/10; le vincite dei giochi con le monete restano fuori dalla classifica del mese per scelta (niente premi per il gioco d'azzardo).
@@ -2157,7 +2157,7 @@ Completa la parte C più sotto (pagine di verifica e dell'owner).
 ## §25 MOTORE AI — in corso (fase F12, issue #95, #50, #132)
 
 Stato 14/10 (r6): motore in `core/ai_*.py` (porta unica `core/ai_servizio.py`), fornitori dal `.env`
-(D26), comandi `/ai`, `/utility ai`, `-chiedi`, `/ticket assistente`; migrazione 0140.
+(D26), comandi `/ai`, `/assistente`, `-chiedi`, `/ticket assistente`; migrazione 0140.
 
 Prerequisiti: privacy policy pubblicata con l'elenco dei fornitori;
 consenso dell'admin per server; tetto di spesa (D13). Vietato usare i
@@ -2207,7 +2207,7 @@ di quel file.
 - `[x]` 25.19 Tempo di conservazione del contesto dell'AI (AI-R-018)
 - `[x]` 25.20 Modulo AI in manutenzione o a mezzo servizio, senza
   fermare il resto (AI-R-020)
-  → **Stato 27/10 (r10):** interruttore per server e per canale; se i fornitori sono fermi ogni funzione dà la sua risposta senza AI. `/ai manutenzione` (solo owner, migrazione 0350, tabella `ai_globale`) ferma l'AI in tutti i server con un messaggio, anche per le risposte in cache; il resto del bot continua.
+  → **Stato 27/10 (r10):** interruttore per server e per canale; se i fornitori sono fermi ogni funzione dà la sua risposta senza AI. `/owner ai manutenzione` (solo owner, migrazione 0350, tabella `ai_globale`) ferma l'AI in tutti i server con un messaggio, anche per le risposte in cache; il resto del bot continua.
 - `[✗]` 25.21 AI in un processo separato (AI-R-021)
   → **Stato 29/10 (r12ai):** [✗] Rimandata (D52): era una proposta, non una richiesta dell'owner. Coda e limiti di 25.22 bastano alle misure; un secondo processo duplicherebbe pool, cache e quote su 2 CPU. Si riapre se le misure lo chiedono.
 - `[x]` 25.22 Coda e limite per molte richieste insieme (AI-R-022)
@@ -2249,8 +2249,8 @@ di quel file.
   AI-025)
 - `[x]` 25.36 Messaggi "nello stile" di un utente (AI-R-038; catalogo
   AI-024)
-  → **Stato 14/10 (r6):** `/utility ai stile` usa solo i messaggi di chi lo chiede: imitare un'altra persona senza consenso non si fa (privacy).
-  → **Stato 29/10 (r12ai):** /utility ai stile ha l'opzione «di»: imitare un'altra persona si può solo se lei lo ha permesso con /utility ai preferenza stile:Sì (migrazione 0429, di partenza no); il messaggio dice che non l'ha scritto lei. Test: tests/test_ai_stile.py
+  → **Stato 14/10 (r6):** `/assistente stile` usa solo i messaggi di chi lo chiede: imitare un'altra persona senza consenso non si fa (privacy).
+  → **Stato 29/10 (r12ai):** /assistente stile ha l'opzione «di»: imitare un'altra persona si può solo se lei lo ha permesso con /assistente preferenza stile:Sì (migrazione 0429, di partenza no); il messaggio dice che non l'ha scritto lei. Test: tests/test_ai_stile.py
 
 **Moderazione e sicurezza con AI**
 
@@ -2272,7 +2272,7 @@ di quel file.
   → **Stato 29/10 (r12ai):** numeri da statistiche, bacheca stelle e clan; l'AI scrive solo il tono e non può perdere le menzioni. Alternativa: «discussione più lunga» diventa «canale più vivace» (non c'è un conteggio per discussione).
 - `[x]` 25.43 Avviso su parole chiave quando una discussione si accende
   (AI-R-046)
-  → **Stato 29/10 (r12ai):** `/utility ai avviso`: 3 parole, soglia 10 messaggi in 10 minuti, avviso in privato solo se la persona vede il canale; conteggi in memoria.
+  → **Stato 29/10 (r12ai):** `/assistente avviso`: 3 parole, soglia 10 messaggi in 10 minuti, avviso in privato solo se la persona vede il canale; conteggi in memoria.
 - `[x]` 25.44 Ricerca nei log con una domanda (AI-R-047)
   → **Stato 29/10 (r12ai):** **alternativa (D42):** `/ai staff cerca-log` al posto di `/log cerca domanda`; l'AI propone i filtri, cerca il database.
 - `[x]` 25.45 Ricerca assistita sul web o su una base di conoscenza
@@ -2343,10 +2343,10 @@ di quel file.
 - `[x]` 25.70 Premi del World Boss (AI-R-077)
   → **Stato 29/10 (r12ai):** premi con tetti e ruolo a tempo.
 - `[x]` 25.71 Frammenti di lore da collezionare (AI-R-078)
-  → **Stato 29/10 (r12ai):** `/utility ai frammenti`.
+  → **Stato 29/10 (r12ai):** `/assistente frammenti`.
 - `[x]` 25.72 Spirito Yokai: affinità che cresce con l'attività
   (AI-R-079)
-  → **Stato 29/10 (r12ai):** `/utility ai spirito`.
+  → **Stato 29/10 (r12ai):** `/assistente spirito`.
 - `[x]` 25.73 Traguardo "primo comando scoperto con l'AI" (AI-R-080)
   → **Stato 29/10 (r12ai):** traguardo registrato.
 
@@ -2372,7 +2372,7 @@ di quel file.
 - `[x]` 25.82 Scelta del modello e della lunghezza delle risposte
   (AI-R-089; catalogo AI-012)
   → **Stato 14/10 (r6):** lunghezza delle risposte per server (`/ai privacy`); i modelli si scelgono nel `.env` per fornitore.
-  → **Stato 29/10 (r12ai):** /ai modello (solo owner, core/ai_override_logic.py, imposta_scelte_owner): modello di ogni fornitore e tetto di lunghezza delle risposte per tutti i server, a caldo, migrazione 0428 (D52). Test: tests/test_ai_scelte_owner.py
+  → **Stato 29/10 (r12ai):** /owner ai modello (solo owner, core/ai_override_logic.py, imposta_scelte_owner): modello di ogni fornitore e tetto di lunghezza delle risposte per tutti i server, a caldo, migrazione 0428 (D52). Test: tests/test_ai_scelte_owner.py
 - `[x]` 25.83 Spesa e uso visti dall'owner (AI-R-090)
 - `[x]` 25.84 Richieste di cancellazione dei dati lette prima dall'AI
   (AI-R-091)
@@ -2384,13 +2384,13 @@ di quel file.
   utente (AI-R-092)
   → **Stato 29/10 (r12ai):** cogs/user_app/assistente_app.py, core/user_app_assistente_logic.py: /trova in iYokai App cerca tra comandi e menu sul messaggio dell'app, senza AI. Test: tests/test_user_app_assistente.py
 - `[x]` 25.86 Assistente AI personale (AI-R-093)
-  → **Stato 29/10 (r12ai):** /assistente in iYokai App: assistente personale con l'AI che conosce l'elenco delle funzioni dell'app, memoria breve, rispetta la preferenza personale (/utility ai preferenza); con l'AI ferma risponde come /trova.
+  → **Stato 29/10 (r12ai):** /assistente in iYokai App: assistente personale con l'AI che conosce l'elenco delle funzioni dell'app, memoria breve, rispetta la preferenza personale (/assistente preferenza); con l'AI ferma risponde come /trova.
 - `[x]` 25.87 Preferenza personale: assistente acceso o spento
   (AI-R-094)
-  → **Stato 29/10 (r12ai):** `/utility ai preferenza`.
+  → **Stato 29/10 (r12ai):** `/assistente preferenza`.
 - `[x]` 25.88 Spiega o riassumi un messaggio (AI-R-095; vedi B.2)
-  → **Stato 14/10 (r6):** `/utility ai spiega` con il link del messaggio; il menu sul messaggio arriva con l'app utente (B.2).
-  → **Stato 29/10 (r12ai):** Fatto dal ramo r12piatt (B.2): menu «Spiega o riassumi» sul messaggio dell'app, con /utility ai spiega nel bot principale.
+  → **Stato 14/10 (r6):** `/assistente spiega` con il link del messaggio; il menu sul messaggio arriva con l'app utente (B.2).
+  → **Stato 29/10 (r12ai):** Fatto dal ramo r12piatt (B.2): menu «Spiega o riassumi» sul messaggio dell'app, con /assistente spiega nel bot principale.
 - `[x]` 25.89 "Spiega questo Yokai": scheda di lore a richiesta
   (AI-R-096)
 - `[x]` 25.90 Desktop: traduzione rapida (AI-R-097; vedi D.8)
@@ -2411,7 +2411,7 @@ di quel file.
   chat semplice, testo, giudizio, codice, traduzione, confronto,
   immagini, audio, musica, video (AI-R-101)
   → **Stato 14/10 (r6):** tipi chat, testo, giudizio, codice, traduzione, confronto, immagine; audio, musica e video sono accettati nella configurazione ma non hanno ancora un trasporto.
-  → **Stato 29/10 (r12ai):** /ai modello cambia fascia e tipi di lavoro di ogni fornitore a caldo; l'audio passa dal motore della voce (D44); musica e video restano accettati ma senza trasporto, per mancanza di un servizio adatto (D52, alternativa D18).
+  → **Stato 29/10 (r12ai):** /owner ai modello cambia fascia e tipi di lavoro di ogni fornitore a caldo; l'audio passa dal motore della voce (D44); musica e video restano accettati ma senza trasporto, per mancanza di un servizio adatto (D52, alternativa D18).
 - `[x]` 25.95 Quote di ogni servizio contate in anticipo, con cambio
   di servizio prima di finirle (AI-R-102)
 - `[x]` 25.96 Controllo delle chiavi ogni ora e avviso all'owner
@@ -2420,7 +2420,7 @@ di quel file.
   nei ticket, con i loro allegati (AI-R-104; vedi §13)
   → **Stato 13/10 (parte senza AI):** alla chiusura il bot propone nel canale dei log la prima risposta dello staff (allegati
   ricaricati nel log); bottoni Approva/Modifica/Scarta (persistenti); ricerca per parole (`core/ticket_standard_logic.py`);
-  accese per pannello (`/admin ticket standard`), migrazione 0102. Resta con l'AI: scelta della risposta migliore e delle
+  accese per pannello (`/ticket-gestione risposte standard`), migrazione 0102. Resta con l'AI: scelta della risposta migliore e delle
   parole chiave, riconoscimento del tema oltre le parole, archivio durevole dei file (oggi: link nel canale dei log).
   **Dati personali (giro 14/10, migrazione 0105):** la riga ricorda `user_id` di chi aveva scritto (esportazione e cancellazione
   dati nel registro); titolo, parole e corpo non tengono menzioni, e-mail, link, numeri lunghi né il nome dell'utente
@@ -2432,7 +2432,7 @@ di quel file.
 - `[x]` 25.98 Ticket senza risposta dopo N minuti: il bot chiede
   nella lingua dell'utente, risponde se sa, altrimenti chiama il ruolo
   giusto (AI-R-105; vedi §13)
-  → **Stato 13/10 (parte senza AI):** timer nello scheduler (`ticket_sollecito`, `/admin ticket sollecito`), domanda in
+  → **Stato 13/10 (parte senza AI):** timer nello scheduler (`ticket_sollecito`, `/ticket-gestione sollecito`), domanda in
   italiano, risposta standard se c'è, altrimenti chiama il ruolo scelto per il pannello (o i ruoli di supporto). Resta con
   l'AI: lingua dell'utente e scelta tra moderatore e amministratore secondo il caso.
   → **Stato 21/10 (parte con l'AI):** sollecito tradotto nella lingua dell'utente (senza AI: italiano o italiano e inglese);
@@ -2789,8 +2789,8 @@ e 16.3 Comandi meme** (4/0/11 → 6/0/9), tutto basato su Pillow, senza
 alcuna dipendenza esterna o chiave API (a differenza del terzo lotto
 previsto, 16.4/16.9, che avrà bisogno di un servizio esterno per le
 immagini di animali/ricerca SFW). Cinque nuovi sotto-comandi —
-`/fun grayscale`, `/fun invert`, `/fun blur [raggio]`, `/fun pixelate
-[dimensione-blocco]`, `/fun meme [top-text] [bottom-text]` — tutti
+`/immagini grayscale`, `/immagini invert`, `/immagini blur [raggio]`, `/immagini pixelate
+[dimensione-blocco]`, `/immagini meme [top-text] [bottom-text]` — tutti
 aggiunti come sotto-comandi del gruppo `/fun` già esistente in
 `cogs/fun/entertainment.py` (nessun nuovo slot top-level: il conteggio
 resta a 97/100, verificato dalla guardia di regressione in
@@ -2810,7 +2810,7 @@ richiedere sempre un allegato esplicito: allegato > utente menzionato
 cog), con validazione di tipo MIME e dimensione massima (15 MB)
 sull'allegato prima di elaborarlo. Il calcolo Pillow (CPU-bound) gira
 sempre in `asyncio.to_thread(...)` nel cog, mai nel modulo `core/`
-puro, per non bloccare il loop asyncio del bot. `/fun meme` richiede
+puro, per non bloccare il loop asyncio del bot. `/immagini meme` richiede
 almeno uno tra top-text e bottom-text, altrimenti risponde con un
 messaggio d'errore effimero invece di generare un meme vuoto.
 Terzo e ultimo lotto di questo settore (16.4 Comandi animal + 16.9
@@ -2820,10 +2820,10 @@ restano da fare in commit separati.
 **§16 Fun & Immagini, terzo e ultimo lotto: chiusi 16.4 Comandi
 animal e 16.9 Ricerca immagini SFW** (6/0/9 → 8/0/7). Due nuovi
 sotto-comandi del gruppo `/fun` esistente — nessun nuovo slot
-top-level, il totale resta a 97/100. `/fun animal <specie>`
+top-level, il totale resta a 97/100. `/immagini animal <specie>`
 (cane/gatto/volpe) usa tre API pubbliche GRATUITE senza chiave
 (dog.ceo, thecatapi.com, randomfox.ca — `core/animal_fetcher.py`,
-`core/animal_api_logic.py`), a differenza di `/fun search-image
+`core/animal_api_logic.py`), a differenza di `/immagini search-image
 <query>` (§16.9) che usa Pixabay e QUINDI richiede una chiave
 gratuita (`PIXABAY_API_KEY` in `core/config.py`, stesso principio di
 sblocco opzionale già usato per Twitch/YouTube) — con una differenza
