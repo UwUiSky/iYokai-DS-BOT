@@ -128,12 +128,14 @@ def scegli_fornitori(
     *,
     usa_pagamento: bool = False,
     solo_gratuiti: bool = False,
+    senza_addestranti: bool = False,
     ora: float | None = None,
 ) -> list[Fornitore]:
     """
     I fornitori da provare, in ordine: sanno fare il tipo, fascia almeno quella chiesta,
     non in pausa, sotto l'85 % delle quote. Vince la fascia più bassa che basta, poi
-    la quota più libera; a parità, l'ordine di `AI_FORNITORI`.
+    la quota più libera; a parità, l'ordine di `AI_FORNITORI`. Chi addestra sui dati viene
+    sempre dopo chi non addestra (ripiego, D55) e con `senza_addestranti` non entra mai.
     """
     minimo = FASCE.index(fascia) if fascia in FASCE else 0
     adatti = []
@@ -142,6 +144,8 @@ def scegli_fornitori(
             continue
         if f.a_pagamento and not usa_pagamento:
             continue
+        if f.addestra and senza_addestranti:
+            continue
         if solo_gratuiti and (f.costo_cent_milione > 0 or f.a_pagamento):
             continue
         if stato.in_pausa(f.nome, ora):
@@ -149,9 +153,9 @@ def scegli_fornitori(
         uso = stato.uso(f, ora)
         if uso >= SOGLIA_QUOTA:
             continue
-        adatti.append((f.livello, round(uso, 2), posizione, f))
-    adatti.sort(key=lambda t: t[:3])
-    return [t[3] for t in adatti]
+        adatti.append((f.addestra, f.livello, round(uso, 2), posizione, f))
+    adatti.sort(key=lambda t: t[:4])
+    return [t[4] for t in adatti]
 
 
 class MotoreAI:
@@ -188,9 +192,11 @@ class MotoreAI:
     async def esegui(
         self, tipo: str, fascia: str, *, messaggi: list[dict] | None = None, prompt: str = "",
         max_token: int = 600, solo_gratuiti: bool = False,
+        senza_addestranti: bool = False,
     ) -> EsitoMotore:
         candidati = scegli_fornitori(
-            self.fornitori, tipo, fascia, self.stato, usa_pagamento=self.usa_pagamento, solo_gratuiti=solo_gratuiti
+            self.fornitori, tipo, fascia, self.stato, usa_pagamento=self.usa_pagamento, solo_gratuiti=solo_gratuiti,
+            senza_addestranti=senza_addestranti,
         )
         for f in candidati:
             try:

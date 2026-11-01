@@ -6,6 +6,9 @@ Ogni fornitore parla il formato "compatibile OpenAI" (chat, immagini,
 elenco dei modelli): lo usano quasi tutti i servizi, anche quelli locali.
 Funzioni coperte: SPEC §25.1, §25.13, §25.94 (NF-24; AI-R-001, AI-R-008, AI-R-101)
 
+Il file `config/ai_fornitori.env` (non nel repository, accanto al `.env`) può
+contenere le stesse variabili; quelle già nell'ambiente hanno la precedenza.
+
 Variabili (una serie per fornitore, NOME in maiuscolo):
 - `AI_FORNITORI`: nomi separati da virgola, nell'ordine di preferenza.
 - `AI_KEY_<NOME>`: la chiave (vuota solo per un servizio sulla stessa macchina).
@@ -13,8 +16,12 @@ Variabili (una serie per fornitore, NOME in maiuscolo):
 - `AI_MODELLO_<NOME>`, `AI_MODELLO_IMMAGINI_<NOME>`: nomi dei modelli.
 - `AI_TIPI_<NOME>`: lavori che sa fare (vedi `TIPI`).
 - `AI_FASCIA_<NOME>`: `bassa`, `media` o `alta`.
-- `AI_ADDESTRA_<NOME>`: deve valere `no` (il servizio dichiara di non
-  addestrare su ciò che riceve). Altrimenti il fornitore non si usa (D19).
+- `AI_ADDESTRA_<NOME>`: `no` (il servizio non addestra su ciò che riceve) o
+  `si` (nel livello gratuito addestra). Senza una delle due il fornitore si
+  scarta. Chi addestra è ammesso (D55) ma il router lo usa solo come ripiego,
+  e mai sui server con privacy «senza_messaggi» (D19, D55).
+- `AI_AMMETTI_ADDESTRANO`: `si` (valore iniziale) o `no` per escludere in un colpo
+  tutti i fornitori che addestrano.
 - `AI_LIMITI_<NOME>`: `rpm=30,rpg=1000,tpm=6000,tpg=500000` (richieste al
   minuto e al giorno, token al minuto e al giorno). Vuoto: nessun tetto noto.
 - `AI_PAGAMENTO_<NOME>`: `si` per una chiave a pagamento; si usa solo con
@@ -29,6 +36,7 @@ import logging
 import os
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Mapping
 
 import aiohttp
@@ -61,6 +69,7 @@ class Fornitore:
     tipi: frozenset[str] = frozenset()
     fascia: str = "bassa"
     a_pagamento: bool = False
+    addestra: bool = False  # nel livello usato dichiara di addestrare sui dati (D55)
     costo_cent_milione: int = 0
     limiti: LimitiFornitore = LimitiFornitore()
 
@@ -107,6 +116,29 @@ def _e_locale(url: str) -> bool:
     return host in _HOST_LOCALI or url.startswith(("http://[::1]",))
 
 
+FILE_FORNITORI = Path(__file__).resolve().parent.parent / "config" / "ai_fornitori.env"
+
+
+def env_con_file(env: Mapping[str, str] | None = None, percorso: Path | None = None) -> dict[str, str]:
+    """Le variabili AI_* del file dei fornitori sotto quelle già nell'ambiente (l'ambiente vince). Senza file: l'ambiente."""
+    env = dict(os.environ if env is None else env)
+    percorso = FILE_FORNITORI if percorso is None else percorso
+    if not percorso.is_file():
+        return env
+    from dotenv import dotenv_values
+
+    for chiave, valore in dotenv_values(percorso).items():
+        if chiave.startswith("AI_") and valore and not env.get(chiave):  # un valore vuoto nel `.env` non copre il file
+            env[chiave] = valore
+    return env
+
+
+def ammetti_addestranti(env: Mapping[str, str] | None = None) -> bool:
+    """Interruttore globale (D55): `AI_AMMETTI_ADDESTRANO=no` spegne tutti i fornitori che addestrano. Iniziale: sì."""
+    env = os.environ if env is None else env
+    return (env.get("AI_AMMETTI_ADDESTRANO") or "si").strip().lower() not in ("no", "false", "0")
+
+
 def leggi_fornitori(env: Mapping[str, str] | None = None) -> tuple[list[Fornitore], list[str]]:
     """
     I fornitori validi e, a parte, i motivi per cui gli altri sono stati scartati
@@ -134,8 +166,12 @@ def leggi_fornitori(env: Mapping[str, str] | None = None) -> tuple[list[Fornitor
         if not chiave and not _e_locale(url):
             scarti.append(f"{nome}: manca AI_KEY_{su}")
             continue
-        if (env.get(f"AI_ADDESTRA_{su}") or "").strip().lower() != "no":
-            scarti.append(f"{nome}: AI_ADDESTRA_{su} deve valere 'no' (D19)")
+        addestra = (env.get(f"AI_ADDESTRA_{su}") or "").strip().lower()
+        if addestra not in ("no", "si", "sì"):
+            scarti.append(f"{nome}: AI_ADDESTRA_{su} deve valere 'no' o 'si' (D19, D55)")
+            continue
+        if addestra != "no" and not ammetti_addestranti(env):
+            scarti.append(f"{nome}: addestra sui dati e AI_AMMETTI_ADDESTRANO=no (D55)")
             continue
         tipi = frozenset(t.strip().lower() for t in (env.get(f"AI_TIPI_{su}") or "chat,testo").split(",")) & set(TIPI)
         fascia = (env.get(f"AI_FASCIA_{su}") or "bassa").strip().lower()
@@ -148,7 +184,7 @@ def leggi_fornitori(env: Mapping[str, str] | None = None) -> tuple[list[Fornitor
                 modello=(env.get(f"AI_MODELLO_{su}") or "").strip(),
                 modello_immagini=(env.get(f"AI_MODELLO_IMMAGINI_{su}") or "").strip(),
                 tipi=tipi, fascia=fascia,
-                a_pagamento=_si(env.get(f"AI_PAGAMENTO_{su}")),
+                a_pagamento=_si(env.get(f"AI_PAGAMENTO_{su}")), addestra=addestra != "no",
                 costo_cent_milione=int(costo) if costo.isdigit() else 0,
                 limiti=leggi_limiti(env.get(f"AI_LIMITI_{su}")),
             )
