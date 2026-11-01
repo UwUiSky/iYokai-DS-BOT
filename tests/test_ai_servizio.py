@@ -60,6 +60,16 @@ async def test_canale_spento_e_privacy(repo):
     assert await _motivo(servizio, _r(messaggi_utenti=True, tipo="testo")) == "privacy"
 
 
+async def test_server_senza_messaggi_non_manda_nulla_a_chi_addestra(repo):
+    """D55: chi addestra è solo un ripiego, e mai sui server con privacy «senza_messaggi»."""
+    servizio, trasporto = servizio_finto(repo, fornitori=[fornitore("addestra", addestra=True)])
+    await repo.registra_consenso(G, U, True)
+    assert (await servizio.richiedi(_r())).testo == "risposta di addestra"  # privacy completa: ripiego ammesso
+    await repo.imposta(G, privacy="senza_messaggi")
+    assert await _motivo(servizio, _r(testo="un'altra domanda", riusa=False)) == "fornitori_fermi"
+    assert len(trasporto.chiamate) == 1
+
+
 async def test_richiesta_vietata_e_troppe(repo):
     servizio, _ = servizio_finto(repo)
     await repo.registra_consenso(G, U, True)

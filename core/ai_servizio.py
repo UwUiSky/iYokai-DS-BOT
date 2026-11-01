@@ -26,7 +26,7 @@ from core.ai_cache_logic import LIBRERIA_COMUNE, CacheAI, ambito, chiave
 from core.ai_coda_logic import CodaAI, CodaPiena
 from core.ai_cost_logic import LimitatoreUtente, prova_attiva, prova_finita, stima_token
 from core.ai_guardrail_logic import componi_messaggi, pulisci_dati_personali, pulisci_uscita, richiesta_vietata
-from core.ai_providers import TrasportoHTTP, leggi_fornitori, usa_chiavi_a_pagamento
+from core.ai_providers import TrasportoHTTP, env_con_file, leggi_fornitori, usa_chiavi_a_pagamento
 from core.ai_router import MotoreAI, NessunFornitore
 from core.ai_testi_logic import testo_lore
 
@@ -275,11 +275,14 @@ class ServizioAI:
         # e processi), poi confermato con i numeri veri o annullato se la chiamata non va.
         try:
             async with self.coda.posto(guild_conti):
-                return await self._con_posto(r, quote, messaggi, max_token, guild_conti, utente_conti, testo)
+                senza_addestranti = cfg is not None and cfg.privacy == "senza_messaggi"
+                return await self._con_posto(
+                    r, quote, messaggi, max_token, guild_conti, utente_conti, testo, senza_addestranti
+                )
         except CodaPiena as exc:
             raise AINonDisponibile(exc.motivo) from None
 
-    async def _con_posto(self, r, quote, messaggi, max_token, guild_conti, utente_conti, testo):
+    async def _con_posto(self, r, quote, messaggi, max_token, guild_conti, utente_conti, testo, senza_addestranti=False):
         token_previsti = stima_token(" ".join(str(m.get("content", "")) for m in messaggi)) + max_token
         p = await self.repo.prenota(
             guild_conti, utente_conti, r.funzione, quote=quote, immagine=r.tipo == "immagine",
@@ -289,7 +292,8 @@ class ServizioAI:
             raise AINonDisponibile(p.motivo)
         try:
             esito = await self.motore.esegui(
-                r.tipo, r.fascia, messaggi=messaggi, prompt=testo, max_token=max_token, solo_gratuiti=p.solo_gratuiti
+                r.tipo, r.fascia, messaggi=messaggi, prompt=testo, max_token=max_token, solo_gratuiti=p.solo_gratuiti,
+                senza_addestranti=senza_addestranti,
             )
         except BaseException as exc:
             await self.repo.annulla(p)
@@ -311,10 +315,12 @@ def servizio_ai() -> ServizioAI:
     """Il servizio condiviso, costruito al primo uso dal `.env`."""
     global _servizio
     if _servizio is None:
-        fornitori, scarti = leggi_fornitori()
+        env = env_con_file()
+        fornitori, scarti = leggi_fornitori(env)
         for motivo in scarti:
-            logger.warning("Fornitore AI scartato: %s", motivo)
-        _servizio = ServizioAI(MotoreAI(fornitori, TrasportoHTTP(), usa_pagamento=usa_chiavi_a_pagamento()))
+            # Il file dei fornitori elenca tutti i servizi: quelli senza chiave sono normali, non un guasto.
+            logger.log(logging.INFO if "manca AI_KEY_" in motivo else logging.WARNING, "Fornitore AI scartato: %s", motivo)
+        _servizio = ServizioAI(MotoreAI(fornitori, TrasportoHTTP(), usa_pagamento=usa_chiavi_a_pagamento(env)))
     return _servizio
 
 

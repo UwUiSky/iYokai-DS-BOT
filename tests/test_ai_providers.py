@@ -6,7 +6,7 @@ di non addestrare, https obbligatorio, chiave obbligatoria tranne in locale,
 limiti letti, interruttore delle chiavi a pagamento. Nessuna rete.
 """
 
-from core.ai_providers import leggi_fornitori, leggi_limiti, usa_chiavi_a_pagamento
+from core.ai_providers import ammetti_addestranti, env_con_file, leggi_fornitori, leggi_limiti, usa_chiavi_a_pagamento
 from tests.support.ai_finto import chiave_finta
 
 
@@ -35,13 +35,59 @@ def test_fornitore_valido_con_tipi_fascia_limiti():
     assert chiave_finta("alfa") not in repr(f)
 
 
-def test_chi_addestra_o_non_lo_dice_viene_scartato():
-    for valore in (None, "si", ""):
+def test_chi_non_dichiara_l_addestramento_viene_scartato():
+    for valore in (None, "", "forse"):
         env = _env(AI_URL_ALFA="https://alfa.example/v1", AI_KEY_ALFA=chiave_finta("a"))
         if valore is not None:
             env["AI_ADDESTRA_ALFA"] = valore
         fornitori, scarti = leggi_fornitori(env)
-        assert fornitori == [] and "D19" in scarti[0]
+        assert fornitori == [] and "AI_ADDESTRA_ALFA" in scarti[0]
+
+
+def test_chi_addestra_si_segna_e_non_si_scarta_d55():
+    env = _env(AI_URL_ALFA="https://alfa.example/v1", AI_KEY_ALFA=chiave_finta("a"), AI_ADDESTRA_ALFA="si")
+    fornitori, scarti = leggi_fornitori(env)
+    assert scarti == [] and fornitori[0].addestra is True
+    env["AI_ADDESTRA_ALFA"] = "no"
+    assert leggi_fornitori(env)[0][0].addestra is False
+
+
+def test_interruttore_ammetti_addestranti_li_spegne_tutti():
+    env = _env(AI_URL_ALFA="https://alfa.example/v1", AI_KEY_ALFA=chiave_finta("a"), AI_ADDESTRA_ALFA="si")
+    assert ammetti_addestranti({}) is True
+    assert ammetti_addestranti({"AI_AMMETTI_ADDESTRANO": "no"}) is False
+    fornitori, scarti = leggi_fornitori({**env, "AI_AMMETTI_ADDESTRANO": "no"})
+    assert fornitori == [] and "AI_AMMETTI_ADDESTRANO" in scarti[0]
+
+
+def test_stessa_chiave_per_i_modelli_dello_stesso_servizio():
+    """`gemini_lite` e `gemini_flash` usano `AI_KEY_GEMINI` se non hanno una chiave propria."""
+    base = {"AI_FORNITORI": "gemini_lite,gemini_flash", "AI_KEY_GEMINI": chiave_finta("g")}
+    for n in ("GEMINI_LITE", "GEMINI_FLASH"):
+        base[f"AI_URL_{n}"] = "https://g.example/v1"
+        base[f"AI_ADDESTRA_{n}"] = "si"
+    base["AI_KEY_GEMINI_FLASH"] = chiave_finta("propria")
+    fornitori, scarti = leggi_fornitori(base)
+    assert scarti == [] and [f.chiave for f in fornitori] == [chiave_finta("g"), chiave_finta("propria")]
+
+
+def test_file_dei_fornitori_accanto_al_env(tmp_path):
+    file = tmp_path / "ai_fornitori.env"
+    file.write_text(
+        "AI_FORNITORI=alfa\nAI_URL_ALFA=https://alfa.example/v1\nAI_ADDESTRA_ALFA=si\nAI_KEY_ALFA=\n", encoding="utf-8"
+    )
+    env = env_con_file({"AI_KEY_ALFA": chiave_finta("a"), "AI_FORNITORI": ""}, file)
+    assert env["AI_FORNITORI"] == "alfa" and env["AI_KEY_ALFA"] == chiave_finta("a")  # l'ambiente vince
+    assert leggi_fornitori(env)[0][0].nome == "alfa"
+    assert env_con_file({"X": "1"}, tmp_path / "manca.env") == {"X": "1"}
+
+
+def test_l_ambiente_pieno_vince_sul_file_quello_vuoto_no(tmp_path):
+    file = tmp_path / "ai_fornitori.env"
+    file.write_text("AI_KEY_ALFA=dal-file\nAI_KEY_BETA=dal-file\nALTRO=x\n", encoding="utf-8")
+    env = env_con_file({"AI_KEY_ALFA": "dall-ambiente", "AI_KEY_BETA": ""}, file)
+    assert env["AI_KEY_ALFA"] == "dall-ambiente" and env["AI_KEY_BETA"] == "dal-file"
+    assert "ALTRO" not in env  # dal file solo le variabili AI_*
 
 
 def test_http_e_chiave_obbligatori_tranne_in_locale():
@@ -51,6 +97,13 @@ def test_http_e_chiave_obbligatori_tranne_in_locale():
     assert "AI_KEY_ALFA" in scarti[0]
     fornitori, _ = leggi_fornitori(_env(AI_URL_ALFA="http://127.0.0.1:11434/v1", AI_ADDESTRA_ALFA="no"))
     assert fornitori[0].chiave == ""
+
+
+def test_indirizzo_con_segnaposto_scartato():
+    """Cloudflare: chi incolla la chiave e lascia ACCOUNT_ID non deve avere un fornitore che dà sempre 404."""
+    url = "https://api.cloudflare.com/client/v4/accounts/ACCOUNT_ID/ai/v1"
+    fornitori, scarti = leggi_fornitori(_env(AI_URL_ALFA=url, AI_KEY_ALFA=chiave_finta("a"), AI_ADDESTRA_ALFA="no"))
+    assert fornitori == [] and "ACCOUNT_ID" in scarti[0]
 
 
 def test_nome_non_valido_scartato():

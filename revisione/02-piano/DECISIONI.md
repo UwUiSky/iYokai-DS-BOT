@@ -177,6 +177,10 @@ Per questo ogni servizio ha in tabella la voce "può ricevere messaggi":
   mostri, immagini, codice, domande generiche).
 Prima di ogni invio si tolgono comunque menzioni, ID, email e inviti.
 
+**Aggiornamento (D55, 01/11/2026).** I servizi che nel livello gratuito addestrano sui dati sono
+ammessi come ripiego: il router preferisce sempre chi non addestra, e sui server con privacy
+«senza_messaggi» chi addestra non si usa mai. Resta fermo che iYokai non addestra niente.
+
 **Cosa si salva e chi lo riusa.**
 
 | Contenuto | Dove vale |
@@ -425,9 +429,8 @@ l'AI quando è accesa; nei ticket `/ticket assistente`.
 OpenAI, quindi si aggiungono senza toccare il codice. Senza fornitori il bot parte e ogni
 comando AI dà la sua risposta senza AI.
 
-**Addestramento (più stretto di D19).** Un fornitore entra solo se nel `.env` c'è
-`AI_ADDESTRA_<NOME>=no`: chi addestra sui dati ricevuti non si usa per niente, nemmeno per
-i testi senza messaggi degli utenti. Così non serve la doppia lista "può ricevere messaggi".
+**Addestramento (più stretto di D19; allentato da D55).** Ogni fornitore dichiara nel `.env`
+`AI_ADDESTRA_<NOME>=no|si`. Dal 01/11/2026 (D55) anche chi addestra è ammesso, ma solo come ripiego.
 
 **Spesa.** Tetto mensile per server in centesimi; 0 (il valore iniziale) vuol dire solo
 fornitori gratuiti (D13). Le chiavi a pagamento si usano solo con
@@ -781,3 +784,11 @@ ja, ko, ru, uk, zh-CN. Tutte sono tra le lingue che Discord supporta per i nomi 
 - Traduzione: uno script usa i servizi AI configurati (D54) per riempire le chiavi mancanti,
   segnandole "da rivedere"; i test controllano segnaposto, lunghezze e regole di Discord.
 - Ordine: dopo il riordino dei comandi (D56), per non tradurre due volte i nomi.
+## D55 — Ammessi anche i servizi AI che addestrano, solo come ripiego (01/11/2026, decisione dell'owner)
+L'owner ammette anche i servizi che nel livello gratuito addestrano sui dati: iYokai non addestra
+niente e non manda alla AI ogni messaggio, solo le richieste delle funzioni. La protezione resta:
+- `AI_ADDESTRA_<NOME>=si` non scarta più il fornitore, lo segna «addestra»; senza `no` o `si` si scarta.
+- Il router mette **sempre** prima chi non addestra; chi addestra serve solo se gli altri mancano o sono senza quota.
+- Server con privacy AI «senza_messaggi»: chi addestra non riceve mai nulla di quel server.
+- `AI_AMMETTI_ADDESTRANO=si|no` (iniziale: `si`) li spegne tutti in un colpo, utile alla revisione di Discord.
+- D19 resta valida: iYokai non addestra modelli. Aggiornata con un rimando a D55.

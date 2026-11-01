@@ -1,7 +1,7 @@
 # Memoria di custode-ai
 
 ## Aggiornata
-05/10/2026 · ramo `main` · ultimo commit `3dc9031`
+01/11/2026 · ramo `feat/r12aifree` (D54, D55)
 
 ## In corso
 - In attesa dell'elenco dei servizi AI dall'owner.
@@ -10,6 +10,8 @@
   `tests/test_ai_router.py` e servizi finti.
 
 ## Fatto
+- 01/11 D55: fornitori che addestrano ammessi come ripiego (`Fornitore.addestra`, `senza_addestranti` nel router,
+  `AI_AMMETTI_ADDESTRANO`); file `config/ai_fornitori.env.example` (31 servizi, 8 accesi) e `docs/servizi_ai.md`.
 - Solo gli scheletri: `core/ai_router.py`, `ai_cache_logic.py`,
   `ai_cost_logic.py`, `ai_guardrail_logic.py`.
 - Disegno dello snodo scritto in `.claude/agents/custode-ai.md`
@@ -30,5 +32,6 @@
 - Da fare prima della produzione: controllare la licenza di Paola.
 
 ## Aperto
+- Nomi dei modelli NVIDIA/Pollinations/Cloudflare da confermare con chiavi vere; trasporto audio ed embedding mancanti.
 - Elenco dei servizi e delle chiavi (nomi delle variabili) dall'owner.
 - Issue: #95 (snodo), #50, #139, #140.

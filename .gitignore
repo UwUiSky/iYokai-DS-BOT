@@ -2,6 +2,7 @@
 # SEGRETI — non deve MAI finire nel repository
 # ============================================================
 .env
+config/ai_fornitori.env
 .env.local
 .env.*.local
 *.pem

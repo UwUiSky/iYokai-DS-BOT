@@ -128,8 +128,8 @@ commit, documentazione, issue. Frasi brevi e parole semplici.
   comando di primo livello nuovo; un nuovo **gruppo** solo se un gruppo supera i 6.800
   caratteri (D25), con decisione scritta. Al massimo 25 figli per gruppo.
 - Non riscrivere la storia git senza richiesta esplicita dell'owner.
-- iYokai **non addestra modelli** e non manda messaggi degli utenti a
-  servizi AI che li usano per addestrare (D19).
+- iYokai **non addestra modelli**. I servizi AI che addestrano sui dati si
+  usano solo come ripiego e mai sui server che lo vietano (D19, D55).
 - Niente automazione di account utente (selfbot): viola le regole di
   Discord. Per le funzioni di quel tipo vale l'alternativa regolare
   descritta in `revisione/01-analisi/APP_UTENTE_E_DESKTOP.md`.

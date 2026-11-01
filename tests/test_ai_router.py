@@ -119,3 +119,34 @@ async def test_richiesta_rifiutata_non_mette_in_pausa():
     motore = MotoreAI([a, b], TrasportoFinto(errori={"a": ErroreFornitore(400)}))
     assert (await motore.esegui("chat", "bassa", messaggi=[])).fornitore == "b"
     assert not motore.stato.in_pausa("a")
+
+
+def test_chi_non_addestra_vince_sempre_anche_se_di_fascia_piu_alta_d55():
+    addestra, pulito = fornitore("addestra", addestra=True), fornitore("pulito", fascia="media")
+    scelti = scegli_fornitori([addestra, pulito], "chat", "bassa", StatoFornitori())
+    assert [f.nome for f in scelti] == ["pulito", "addestra"]
+
+
+def test_chi_addestra_resta_come_ripiego_se_l_altro_e_senza_quota():
+    addestra, pulito = fornitore("addestra", addestra=True), fornitore("pulito", limiti=LimitiFornitore(rpm=10))
+    stato = StatoFornitori()
+    for _ in range(9):
+        stato.registra("pulito", 1)
+    assert [f.nome for f in scegli_fornitori([addestra, pulito], "chat", "bassa", stato)] == ["addestra"]
+
+
+def test_server_senza_messaggi_non_usa_mai_chi_addestra():
+    addestra, pulito = fornitore("addestra", addestra=True), fornitore("pulito")
+    assert scegli_fornitori([addestra], "chat", "bassa", StatoFornitori(), senza_addestranti=True) == []
+    scelti = scegli_fornitori([addestra, pulito], "chat", "bassa", StatoFornitori(), senza_addestranti=True)
+    assert [f.nome for f in scelti] == ["pulito"]
+
+
+async def test_esegui_con_senza_addestranti_non_chiama_chi_addestra():
+    addestra = fornitore("addestra", addestra=True)
+    trasporto = TrasportoFinto()
+    motore = MotoreAI([addestra], trasporto)
+    with pytest.raises(NessunFornitore):
+        await motore.esegui("chat", "bassa", messaggi=[], senza_addestranti=True)
+    assert trasporto.chiamate == []
+    assert (await motore.esegui("chat", "bassa", messaggi=[])).fornitore == "addestra"
