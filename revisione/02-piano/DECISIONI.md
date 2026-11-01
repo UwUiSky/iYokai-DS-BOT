@@ -869,3 +869,21 @@ travestiti). Regole per log, backup e pannello:
   da un sotto-dominio separato senza cookie di sessione. Mai SVG o HTML caricati dagli utenti in linea.
 - Cartella fuori dalla radice del sito; conservazione a tempo e cancellazione con `/privacy` (data registry).
 - Aggiornamenti di sicurezza delle librerie (Pillow, aiohttp, …) si applicano subito, senza aspettare il giro.
+
+## D62 — Difesa dalle immagini trappola e dalle truffe a tema giveaway (01/11/2026, richiesta dell'owner)
+L'owner ha subito il furto degli account collegati subito dopo aver copiato un'immagine ricevuta su Discord.
+Il client di Discord (Electron/Chromium) decodifica l'immagine anche per copiarla: un file costruito apposta
+può sfruttare un difetto del decoder (precedente reale: libwebp, CVE-2023-4863). Il bot non può correggere il
+client, ma può fermare il file prima che lo aprano i membri:
+- **Filtro immagini sospette (AutoMod):** ogni allegato immagine si controlla in un processo a parte, senza
+  mostrarlo: tipo vero dai primi byte contro l'estensione, dati in coda dopo la fine dell'immagine (file
+  "poliglotti"), blocchi o metadati anomali, dimensioni dichiarate assurde, decodifica di prova con
+  `safe_open_image` e limiti. Se è sospetto: il messaggio si cancella, l'autore riceve un avviso, lo staff un log
+  (senza ripubblicare il file).
+- **Libreria delle immagini trappola:** impronta (SHA-256 e impronta percettiva) delle immagini segnalate; come
+  D39, 3 owner diversi la rendono condivisa, l'owner del bot la rende certa. Un'immagine certa si blocca ovunque.
+- **QR e truffe giveaway:** i QR code nelle immagini si leggono; un link verso login, regali Nitro o giveaway
+  falsi si blocca. Parole e schemi delle truffe note (es. finti giveaway di personaggi famosi) entrano nel
+  filtro truffe, multilingue.
+- **Account rubati che spammano:** spam-trap e anti-raid già attivi; in più il primo messaggio con immagine
+  sospetta di un account mette l'utente in timeout e avvisa lo staff.
