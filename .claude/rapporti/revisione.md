@@ -356,3 +356,7 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 01/11 | `feat/r12ai` | `core/data_registry.py` (`ai_vocali`) | Nota «testo scritto dal bot»: con `/utility parla` è testo della persona, senza `user_id` (non si cancella per persona; scade a 90 giorni) | bassa | aperto |
 | 01/11 | `feat/r12ai` | `cogs/ai/voce.py:voce_parla` | `/ai voce parla` non guarda «voce accesa» né i permessi del bot nel canale scelto | bassa | aperto |
 | 01/11 | `feat/r12ai` | `cogs/user_app/assistente_app.py:_ids` | `fetch_commands()` a ogni `/trova` e a ogni ripiego: una chiamata HTTP per uso, da tenere in memoria | bassa | aperto |
+| 01/11 | `feat/r12aifree` | `tests/test_ai_providers.py` (`env_con_file`) | La precedenza ambiente/file non era provata (chiave del file vuota): mutazione verde | media | chiuso (d097c29) |
+| 01/11 | `feat/r12aifree` | `core/ai_providers.py:leggi_fornitori` | Cloudflare con ACCOUNT_ID non sostituito accettato: 404 a ogni prova, ed è il primo scelto (non addestra) | media | chiuso (0aaa9db) |
+| 01/11 | `feat/r12aifree` | `core/ai_providers.py:160` | Ripiego `AI_KEY_<prima parte>`: un fornitore personale con lo stesso prefisso e un altro host (es. `groq_proxy`) riceve la chiave di `AI_KEY_GROQ`. Con i nomi del file nessuna collisione; avviso nella docstring/file o ripiego solo se l'host coincide | bassa | aperto |
+| 01/11 | `feat/r12aifree` | `core/ai_providers.py:171` | Lo scarto dice «manca AI_KEY_GEMINI_LITE» e non nomina `AI_KEY_GEMINI` del servizio | bassa | aperto |

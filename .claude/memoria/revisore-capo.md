@@ -1,90 +1,34 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
-29/10/2026 · `feat/r12resto` (D48–D50, 0480–0481): cacciatore + revisione. Corretti ReDoS del jolly (1adb71f), doppioni del wizard (d13b332), eventi spenti nel forum (9e3b497), giorno delle missioni (21dd796); SPEC 23.17/16.10 a `[~]` (9abe0f3); COMMAND_LIST (eb25a2c). APPROVATO; smoke da fare (migrazioni: suite completa). /moduli 6793/6800.
-01/11/2026 · `feat/r12piatt` (Desktop 0452, App 0451, webhook 0450, pagine per modulo, editor, wiki; D45–D47): cacciatore + revisione. Corretti thread privati nel Desktop (795142b), avvisi dopo scollega (530fd71), pagine per modulo (fb65019), benvenuto D12 (56a4538), COMMAND_LIST (ffec881). APPROVATO, 4 basse; smoke da fare (migrazioni: suite completa). Merge: DECISIONI D45–47 contro D48–50 di main.
-28/10/2026 · `feat/r11util` (D36 modalità link, D37 ban/addio, 0400). Fatto anche il cacciatore. Corretti: martello prima dell'addio, PNG RGBA grandi, «ruolo» senza ruolo (d4d1e0a); COMMAND_LIST (a56ef5e). APPROVATO, 3 basse nel quaderno; smoke da fare. /gestione 6742/6800.
-28/10/2026 · `feat/r11odio` (D35/D39, 0390+0391): fatto anche il cacciatore. Corretti: regex native con varianti e prefissi comuni, testo intero all'AI e niente AI per testi manipolati, risposta rigida, AI ferma senza richiamo, blocco fallito non resta acceso, libreria a proprietari diversi + parole comuni (vedi commit). APPROVATO, smoke da fare (migrazione 0391: suite completa).
-28/10/2026 · `feat/r10liv` (livelli/economia r10: SPEC §15 a `[x]`, shop 0340, classifica settimanale, moneta e tassa 0341). Fatto anche il cacciatore. Corretti: minimo pay (0342) e tassa per eccesso (b1c1f45); righe shop controllate prima, codice in DM, scadenze solo server del bot (f92d597); registro (485e139). APPROVATO, smoke da fare.
-28/10/2026 · ramo `feat/r10inviti` (link personali, D32, 0380): fatti anche i controlli del cacciatore; fix 8b9426b (permesso del membro, canale pubblico, tetto 500, verifica invito vivo, race tracker), d45c4f2 (COMMAND_LIST). APPROVATO con 4 basse nel quaderno; smoke da fare.
-28/10/2026 · `feat/r10aiw` (#95 AI r10, 0350–0351): APPROVATO dopo i fix: comandi AI aperti in prova (b302da0, `richiede_ai`), prova non ripetibile dopo la purga (0be178a, `ai_prove`), elenco comandi (c2b8c98). Smoke da fare (regola owner: lo lancia l'orchestratore). Aperte 2 basse nei quaderni.
-21/10/2026 · ramo `feat/r8tkt` (#120 opzioni ticket, #139 AI, migrazione 0220): merge di main (991f977); corretti presa esclusiva/passa/rilascia e note archiviate (bd26b6d), cache opzioni (ad83893), reperibili ricontrollati; test instabile dei due close = doppia lettura in `close`. Esito smoke nel rapporto.
-16/10/2026 · r7mod, r7bak (3be8a40), r7liv.
-28/10/2026 · `feat/r11eco` (D30 MUSIC_TOKEN_6..20, D38 immagine moneta 0410, D41): cacciatore + revisione. 2 test rossi = test non adeguati all'embed/file (corretti). Fix token music in fila e senza doppioni (5c69d2b). APPROVATO con 3 basse; smoke da fare.
-Giri r10 (liv, inviti, aiw, sec, filtro, logt, core, mod) e r8/r9: tutti APPROVATI, basse aperte nel quaderno.
-01/11/2026 · `feat/r12resto` seconda parte (D51, 0482–0484): cacciatore + revisione. Corretti serie di prima azzerate (0484) e «settimana piena» su settimane diverse (a0d6ab3). APPROVATO; smoke da fare (migrazioni: suite completa). /level e /economia sotto 6800 (test verde).
-29/10/2026 · `feat/r12resto` prima parte (D48–D50, 0480–0481): APPROVATO dopo 1adb71f, d13b332, 9e3b497, 21dd796, 9abe0f3, eb25a2c.
-28/10/2026 · r11util, r11odio, r11eco, r10 (liv, inviti, aiw, sec, filtro, logt, core, mod): tutti APPROVATI dopo i fix; basse nel quaderno.
-Giri r6–r9: APPROVATI, basse aperte nel quaderno.
+01/11/2026 · `feat/r12aifree` (D54 file dei servizi AI gratuiti, D55 chi addestra come ripiego): cacciatore + revisione. Corretti: test della precedenza ambiente/file (d097c29), indirizzo con ACCOUNT_ID scartato (0aaa9db). APPROVATO, 2 basse nel quaderno; smoke da fare (nessuna migrazione).
+01/11/2026 · `feat/r12ai` (§25, 0420–0429): 9 fix, APPROVATO, 5 basse; smoke da fare (migrazioni: suite completa).
+01/11/2026 · `feat/r12resto` (D48–D51, 0480–0484) e `feat/r12piatt` (D45–D47, 0450–0452): APPROVATI dopo i fix (commit nel quaderno); smoke da fare (suite completa).
+Giri r6–r11: tutti APPROVATI dopo i fix; basse aperte nel quaderno.
 
 ## In corso
 - Niente. Al prossimo giro: righe aperte del quaderno per il ramo riconsegnato.
-- `feat/r11eco`: 3 basse nel quaderno. Rami r6–r10: solo le righe aperte. `f7-quadro` APPROVATO, manca l'unione.
-01/11/2026 · `feat/r12ai` (§25 AI r12, 0420–0429): merge di main (D45 del ramo → D52), cacciatore + revisione. 9 fix (bozze senza dati su GitHub, scelte owner prima di sa_fare, privacy max 10 AI, traduzione piena, cache voce, menu app senza server, prima risposta ticket in compito, D16 canale/vietate, allegati con guild_id). APPROVATO; smoke da fare (migrazioni: suite completa).
-28/10/2026 · r11util, r11odio, r11eco, r10liv, r10inviti, r10aiw: APPROVATI dopo i fix (commit nel quaderno), basse aperte; smoke da fare.
-Giri r6–r10: tutti APPROVATI, basse aperte nel quaderno.
-
-## In corso
-- `feat/r12ai`: 5 basse nel quaderno (bug.md e revisione.md, righe 01/11 r12ai). Migrazioni 0420–0429: suite completa a fine giro (orchestratore).
-- `feat/r11eco`: 3 basse nel quaderno. Migrazione 0410: suite completa a fine giro (orchestratore).
-- Rami r10/r9/r8/r7/r6: solo le righe aperte del quaderno alla riconsegna. `f7-quadro` APPROVATO, manca l'unione.
+- `feat/r12ai` 5 basse, `feat/r11eco` 3 basse; migrazioni 0410/0420–0429: suite completa a fine giro (orchestratore). `f7-quadro` APPROVATO, manca l'unione.
 
 ## Fatto
-- Letti per intero: giro-mod, r3–r11, r12resto (commit nel quaderno).
+- Letti per intero: giro-mod, r3–r12 (commit nel quaderno).
 
 ## Cose imparate
-- Jolly/glob in regex (`\S*` ripetuti) = tempo esponenziale: cercare i pezzi da sinistra (lineare). Voci `[x]` di NF-41 e simili: confrontare con «dettagli da non perdere» di VOCI_OMESSE.
-- Avvisi/eventi per canale: `permissions_for` di un thread = padre; thread privato = guardare membri/owner/manage_threads; `get_channel` non trova i thread (`get_channel_or_thread`). Pagine web: niente tetto 25 (è dei menu di Discord); tipo del canale come l'opzione del comando.
-- Stato globale per (server, utente) in un modulo: nei test va pulito (fixture autouse), altrimenti passa da un test all'altro. Segnali «fatto» si danno DOPO l'invio, non prima.
-- safe_open_image può restituire un'immagine senza `format` (RGBA ridotta): il formato si legge dal file.
-- Regex native Discord: 10×260 caratteri; prefissi comuni (albero) e niente `\w*` finale fanno spazio; `\b` non scatta dopo un simbolo in fondo. AI come giudice: niente testo tagliato (insulto in coda), JSON rigido, soglie «N server» = N proprietari.
-- Controllare il contenuto di ogni commit, non il messaggio. Voci SPEC a `[x]`: confrontare con il catalogo (`revisione/01-analisi/catalogo/`, riga del codice ECO/LIV) se la funzione è completa (D18).
-- Ambiente: `source` dello script env in ogni bash; mai riavviare postgres; database proprio per ramo. Regola owner: niente smoke né suite dagli agenti, solo i test dei file toccati, «smoke da fare» nel rapporto.
-- Merge di main: conflitti nei documenti e in `comandi.en.json` ("nomi" per SEGMENTO, globale; menu in `menu`); `COMMAND_LIST*` con `scripts/generate_command_list.py`.
-- `db._…` usate da un cog = manca una funzione pubblica. Chiavi `SETTING_X` in `SETTINGS_SCHEMA`; tabelle nuove in `core/data_registry.py`; metodi di repo senza chiamanti rompono `test_repository_callers.py`.
-- Migrazioni per NOME: mai modificarne una; numeri confrontati su tutti i rami (`git ls-tree` per ramo remoto).
-- Peso dei gruppi (D25): script con `_albero_vero`/`conta_caratteri` di `tests/test_command_tree_invariants.py`.
-- Mutazioni: su copia; meglio test scritto prima del fix e visto rosso. Test che si blocca: `asyncio.wait(..., timeout=)`.
-- Doppio clic: `asyncio.gather` con `tests/support/concorrenza.apri_connessioni`. Test instabili: due letture dello stesso stato.
-- Giri periodici con `LIMIT`: righe che non si chiudono mai (server lasciato) bloccano le altre; filtrare o chiudere.
-- Creazione in due passi (oggetto, poi dati): validare tutto PRIMA del primo passo.
-- Arrotondamenti di tasse/percentuali: per difetto si evitano spezzando; per eccesso.
-- Task per chiave: uno solo, fermati in `cog_unload`. Finti: `member.roles` vivo; `_FakeGuild` senza `name`; `monkeypatch.setattr(asyncio, "sleep")` è globale.
-- `AllowedMentions(roles=...)` ha `everyone=True` di default. Azioni automatiche da un moderatore: tetto = ciò che lui può fare (D28, D29).
-- Bot secondario (D15); App utente (`is_guild_integration()` falso = salta ciò che è del server).
-- Controllare il contenuto di ogni commit, non il messaggio; testo all'utente che promette una funzione va confrontato col codice. Voci `[x]`: aprire il test citato.
-- Ambiente: `source` dello script env in ogni bash; mai riavviare postgres; mai `cd` nello script env. Regola owner: niente smoke né suite, solo test dei file toccati; comandi pytest lunghi in background.
-- Risposta cambiata da testo a embed/file: cercare TUTTI i test e i finti `send_message` dei comandi toccati (r11: 2 rossi così).
-- `tests/conftest.py` usa lo stesso token finto per tutti: un controllo doppioni sui token obbligatori romperebbe ogni test (e toccare conftest = suite completa).
-- Merge di main: conflitti nei documenti e in `comandi.en.json` ("nomi" per SEGMENTO, globale; menu in `menu`); `COMMAND_LIST*` con `scripts/generate_command_list.py` (errore finale innocuo).
-- `db._…` usate da un cog = manca una funzione pubblica. Chiavi `SETTING_X` in `SETTINGS_SCHEMA` (solo owner: `CHIAVI_SOLO_PROPRIETARIO`) + `test_config_import_validation.py`. Tabelle nuove in `core/data_registry.py`; metodi senza chiamanti rompono `test_repository_callers.py`.
-- Migrazioni per NOME: mai modificarle; numeri e D di DECISIONI confrontati su tutti i rami (`git ls-tree`/`git show <ramo>:`).
-- Mutazioni: copia in scratchpad, `python3 -I` con `str.replace` contato, ripristino; meglio test scritto prima del fix e visto rosso. Test appeso: `asyncio.wait(..., timeout=)`.
-- Doppio clic: `asyncio.gather` con `tests/support/concorrenza.apri_connessioni`; segno sincrono prima del primo await. Test instabili: due letture dello stesso stato.
-- Task per chiave: uno solo, fermato in `cog_unload`. Stato in memoria: chi lo svuota, riavvio (es. `music_sessions` svuotata all'avvio).
-- Finti: `member.roles` vivo; `fake_member` ha `Permissions.none()`; `Thread.permissions_for` = padre; `monkeypatch.setattr(asyncio, "sleep")` è globale; `monkeypatch.undo()` toglie il pool.
-- `AllowedMentions(roles=...)` ha `everyone=True`. Azioni automatiche da un moderatore: tetto = ciò che lui può fare (D28, D29).
-- Bot secondari (D15, Mod, marchio, app): cercare OGNI azione chiamata sul principale. App utente: `is_guild_integration()` falso = saltare le cose del server.
-- Comandi con più opzioni: tutti i controlli PRIMA del primo salvataggio. Opzioni «vuoto = togli»: Discord non manda testi vuoti.
-- Liste/inviti da mostrare: tetto e «e altre N»; inviti del bot per un membro = permesso del membro.
-- Colonna nuova che sostituisce una vecchia (es. `ultima_at` al posto di `ultimo_giorno`): la migrazione deve riempirla dalle righe di prima, o i dati veri si azzerano.
-- Statistiche dei traguardi «in una settimana/una volta»: contare per periodo (GROUP BY), non il totale.
 - Controllare il contenuto di ogni commit, non il messaggio; testi che promettono una funzione vanno confrontati col codice; voci `[x]` col catalogo e col test citato (D18).
-- Ambiente: `source` dello script env in ogni bash, mai `cd` nello script, mai riavviare postgres. Regola owner: niente smoke né suite, solo test dei file toccati, «smoke da fare» nel rapporto.
-- Migrazioni per NOME: mai modificarle; numeri confrontati su tutti i rami (`git ls-tree` per ramo remoto). Test di una migrazione: `read_text()` del file ed `execute`.
-- Peso dei gruppi (D25): `tests/test_command_tree_invariants.py -k caratteri` (lo script a parte non parte: client non inizializzato).
-- `db._…` usate da un cog = manca una funzione pubblica. Chiavi `SETTING_X` in `SETTINGS_SCHEMA` + `test_config_import_validation.py`; tabelle nuove in `core/data_registry.py`; metodi senza chiamanti rompono `test_repository_callers.py`.
-- Mutazioni: copia in scratchpad o test scritto prima e visto rosso. Test appeso: `asyncio.wait(..., timeout=)`.
-- Doppio clic: `asyncio.gather` con `tests/support/concorrenza.apri_connessioni`; INSERT ON CONFLICT + SELECT FOR UPDATE nella stessa transazione regge.
-- Giri periodici con `LIMIT`: righe mai chiuse bloccano le altre; filtrare o segnare.
-- Creazione in due passi: validare tutto PRIMA del primo passo. Arrotondamenti di tasse: per eccesso.
-- Task per chiave: uno solo, fermato in `cog_unload`. Stato in memoria: chi lo svuota, riavvio.
-- Finti: `member.roles` vivo; `fake_member` ha `Permissions.none()`; `Thread.permissions_for` = padre; `monkeypatch.setattr(asyncio, "sleep")` è globale.
-- `AllowedMentions(roles=...)` ha `everyone=True` di default. Azioni automatiche: tetto = ciò che può fare il moderatore (D28, D29).
+- Ambiente: `source` dello script env in ogni bash, mai `cd` nello script, mai riavviare postgres, database proprio per ramo. Regola owner: niente smoke né suite, solo test dei file toccati (pytest lunghi in background), «smoke da fare» nel rapporto. `test_config_import_validation.py` è lento: non serve per l'area AI.
+- Merge di main: conflitti nei documenti e in `comandi.en.json`; `COMMAND_LIST*` con `scripts/generate_command_list.py`; D di DECISIONI confrontati su tutti i rami.
+- Migrazioni per NOME: mai modificarle; numeri confrontati su tutti i rami (`git ls-tree`). Test di una migrazione: `read_text()` ed `execute`.
+- `db._…` usate da un cog = manca una funzione pubblica. `SETTING_X` in `SETTINGS_SCHEMA` + `test_config_import_validation.py`; tabelle nuove in `core/data_registry.py`; metodi senza chiamanti rompono `test_repository_callers.py`.
+- Mutazioni: script in scratchpad con `str.replace` contato e ripristino (`python3 -I`); un test di precedenza deve avere valori pieni da tutte e due le parti.
+- Doppio clic: `asyncio.gather` con `tests/support/concorrenza.apri_connessioni`; segno sincrono prima del primo await. Test instabili: due letture dello stesso stato; mai due pytest sullo stesso database.
+- Task per chiave: uno solo, fermato in `cog_unload`. Stato in memoria: chi lo svuota, riavvio. Giri con `LIMIT`: righe mai chiuse bloccano le altre.
+- Creazione in due passi / comandi con più opzioni: validare tutto PRIMA del primo salvataggio. Tasse: per eccesso. Colonna che sostituisce una vecchia: riempirla nella migrazione.
+- Finti: `member.roles` vivo; `fake_member` ha `Permissions.none()`; `Thread.permissions_for` = padre; thread privati a parte; `monkeypatch.setattr(asyncio, "sleep")` è globale.
+- `AllowedMentions(roles=...)` ha `everyone=True`. Azioni automatiche: tetto = ciò che può fare il moderatore (D28, D29). Bot secondari (D15): cercare ogni azione sul principale; App utente: `guild_id=None`.
 - Regex native Discord 10×260; jolly ripetuti = tempo esponenziale. Risposta cambiata in embed/file: cercare tutti i test del comando.
-- Due pytest insieme sullo stesso database = test rossi a caso (clean_db svuota): mai test in parallelo nella stessa copia.
-- Testo degli utenti verso servizi esterni non AI (GitHub): `pulisci_dati_personali` + chiavi (`per_repo`). Menu di iYokai App: AI con `guild_id=None`.
-- Cache su disco con tetto: cercare chi chiama la pulizia. Lavoro AI in un flusso Discord (apertura ticket, elenchi): in un compito a parte o con tetto di chiamate.
+- AI: testo degli utenti verso servizi non AI con `pulisci_dati_personali`; lavoro AI nei flussi Discord in un compito a parte; cache su disco: chi chiama la pulizia. D55: filtro «addestra» in `scegli_fornitori`, la cache non manda testo fuori (ok servirla ai server «senza_messaggi»).
+- File di esempio con segnaposto (ACCOUNT_ID ecc.): il caricatore deve scartarli, non accettarli.
+- Statistiche «in una settimana»: GROUP BY per periodo. Liste da mostrare: tetto e «e altre N».
 
 ## Aperto
 - Domande all'owner: SPEC 23.16, D18 limite ticket per utente, primo DM ModMail, D27, IPv4 = basso (NF-21), D29, SIC-045.
