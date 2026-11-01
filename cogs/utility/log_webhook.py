@@ -26,7 +26,7 @@ class LogWebhookCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "log", nome="webhook",
+        "admin-log", nome="webhook",
         descrizione="Manda i log da un webhook del canale, raggruppati, con limiti suoi.",
     )
     @app_commands.describe(attivo="Sì per accendere, no per spegnere (e cancellare i webhook creati)")

@@ -173,7 +173,7 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
     # Comandi di configurazione
     # ================================================================
     @comando_di_gruppo(
-        "log", nome="canale", descrizione="Imposta il canale (o il forum) dei log del server."
+        "admin-log", nome="canale", descrizione="Imposta il canale (o il forum) dei log del server."
     )
     @app_commands.describe(
         channel="Canale di testo o forum dove verranno inviati i log",
@@ -241,7 +241,7 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "log", nome="stato", descrizione="Mostra dove vanno i log del server."
+        "admin-log", nome="stato", descrizione="Mostra dove vanno i log del server."
     )
     async def logs_status(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:

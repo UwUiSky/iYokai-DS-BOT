@@ -137,7 +137,7 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "log",
+        "admin-log",
         nome="utente",
         descrizione="Mostra lo storico eventi di un utente.",
         sottogruppo=("cerca", "Cerca nello storico eventi del server."),
@@ -178,7 +178,7 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @comando_di_gruppo(
-        "log",
+        "admin-log",
         nome="canale",
         descrizione="Mostra lo storico eventi di un canale.",
         sottogruppo=("cerca", "Cerca nello storico eventi del server."),
@@ -219,7 +219,7 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @comando_di_gruppo(
-        "log",
+        "admin-log",
         nome="ruolo",
         descrizione="Mostra lo storico eventi di un ruolo.",
         sottogruppo=("cerca", "Cerca nello storico eventi del server."),
@@ -262,7 +262,7 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @comando_di_gruppo(
-        "log",
+        "admin-log",
         nome="esporta",
         descrizione="Esporta lo storico eventi completo del server come file JSON.",
     )
@@ -315,7 +315,7 @@ class LogsQueryCog(CogConGruppi, commands.Cog):
 
 
     @comando_di_gruppo(
-        "log",
+        "admin-log",
         nome="archivio-canale",
         descrizione="Scarica in un file gli ultimi messaggi di un canale, anche quelli appena cancellati.",
     )

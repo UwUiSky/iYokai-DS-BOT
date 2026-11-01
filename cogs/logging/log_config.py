@@ -141,7 +141,7 @@ class LogConfigCog(CogConGruppi, commands.Cog):
         await super().cog_unload()
 
     @comando_di_gruppo(
-        "log", nome="vista-forum",
+        "admin-log", nome="vista-forum",
         descrizione="Un forum con un post per canale o per caso. Senza forum, la vista si spegne.",
     )
     @app_commands.describe(
@@ -186,7 +186,7 @@ class LogConfigCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "log", nome="crea-canali",
+        "admin-log", nome="crea-canali",
         descrizione="Crea una categoria privata con un canale per ogni tipo di log.",
     )
     async def crea_canali(self, interaction: discord.Interaction) -> None:
@@ -235,7 +235,7 @@ class LogConfigCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "log", nome="crea-forum",
+        "admin-log", nome="crea-forum",
         descrizione="Crea un forum privato per i log: un post per ogni tipo.",
     )
     async def crea_forum(self, interaction: discord.Interaction) -> None:
@@ -275,7 +275,7 @@ class LogConfigCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "log", nome="ignora",
+        "admin-log", nome="ignora",
         descrizione="Cosa i log non registrano (canali, utenti, ruoli; testi solo per i messaggi).",
     )
     @app_commands.describe(
@@ -344,7 +344,7 @@ class LogConfigCog(CogConGruppi, commands.Cog):
 
 
     @comando_di_gruppo(
-        "log", nome="eventi",
+        "admin-log", nome="eventi",
         descrizione="Accendi o spegni ogni singolo evento dei log.",
     )
     async def eventi(self, interaction: discord.Interaction) -> None:
