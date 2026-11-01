@@ -77,6 +77,7 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "admin-giveaway": ("Giveaway del server (admin): avvio, modelli, programmati", "manage_guild", Livello.ADMIN),
     "admin-ticket": ("Ticket (admin): impianto, categorie, ruoli, ModMail, risposte, pannelli", "manage_guild", Livello.ADMIN),
     "admin-ticket-opzioni": ("Opzioni dei pannelli ticket (admin): limiti, orari, accesso, chiusura", "manage_guild", Livello.ADMIN),
+    "admin-backup": ("Backup del server (admin): copia, ripristino, modelli, chat, esportazioni", "administrator", Livello.ADMIN),
     "ticket": ("Gestione del ticket in cui ti trovi", None, None),
     "voice": ("Gestione del tuo canale vocale temporaneo", None, None),
     "music": ("Musica nei canali vocali", None, None),
@@ -96,6 +97,9 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
 # I sotto-gruppi dei comandi spostati dal riordino D56: nome e descrizione in un posto solo.
 # Chiave: "gruppo sotto-gruppo". Il cog scrive `sottogruppo=SOTTOGRUPPI["ruoli premio"]`.
 SOTTOGRUPPI: dict[str, tuple[str, str]] = {
+    "admin-backup copia": ("copia", "Copia un canale o un ruolo"),
+    "admin-backup chat": ("chat", "Chat salvate: salva e ricarica"),
+    "admin-backup ripristino": ("ripristino", "Ripristino degli utenti via OAuth2"),
     "admin-ticket pannelli": ("pannelli", "Pannelli dei ticket: crea, pubblica, modulo"),
     "utility snipe": ("snipe", "Messaggi cancellati, modificati e reazioni tolte"),
     "admin-bot politica": ("politica", "Politica dei comandi: spegni, limita, ignora, diagnosi"),

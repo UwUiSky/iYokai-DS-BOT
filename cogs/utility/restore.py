@@ -169,9 +169,10 @@ class RestoreCog(CogConGruppi, commands.Cog):
     # Configurazione
     # ------------------------------------------------------------
     @comando_di_gruppo(
-        "backup",
-        nome="restore-modo",
+        "admin-backup",
+        nome="modo",
         descrizione="Scegli come questo server gestisce il restore utenti via OAuth2.",
+        sottogruppo=SOTTOGRUPPI["admin-backup ripristino"],
     )
     @app_commands.describe(
         modalita="Come raccogliere il consenso per il restore automatico",
@@ -212,9 +213,10 @@ class RestoreCog(CogConGruppi, commands.Cog):
     # /backup restore-utenti
     # ------------------------------------------------------------
     @comando_di_gruppo(
-        "backup",
-        nome="restore-utenti",
+        "admin-backup",
+        nome="utenti",
         descrizione="Ripristina in QUESTO server gli utenti dell'ultimo snapshot di un altro server.",
+        sottogruppo=SOTTOGRUPPI["admin-backup ripristino"],
     )
     @app_commands.describe(
         server_di_origine="ID del server (main originale) da cui ripristinare gli utenti"
