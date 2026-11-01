@@ -167,6 +167,9 @@ def leggi_fornitori(env: Mapping[str, str] | None = None) -> tuple[list[Fornitor
         if not chiave and not _e_locale(url):
             scarti.append(f"{nome}: manca AI_KEY_{su}")
             continue
+        if "ACCOUNT_ID" in url:  # segnaposto del file di esempio non sostituito: darebbe sempre 404
+            scarti.append(f"{nome}: sostituisci ACCOUNT_ID in AI_URL_{su}")
+            continue
         addestra = (env.get(f"AI_ADDESTRA_{su}") or "").strip().lower()
         if addestra not in ("no", "si", "sì"):
             scarti.append(f"{nome}: AI_ADDESTRA_{su} deve valere 'no' o 'si' (D19, D55)")

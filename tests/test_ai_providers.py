@@ -99,6 +99,13 @@ def test_http_e_chiave_obbligatori_tranne_in_locale():
     assert fornitori[0].chiave == ""
 
 
+def test_indirizzo_con_segnaposto_scartato():
+    """Cloudflare: chi incolla la chiave e lascia ACCOUNT_ID non deve avere un fornitore che dà sempre 404."""
+    url = "https://api.cloudflare.com/client/v4/accounts/ACCOUNT_ID/ai/v1"
+    fornitori, scarti = leggi_fornitori(_env(AI_URL_ALFA=url, AI_KEY_ALFA=chiave_finta("a"), AI_ADDESTRA_ALFA="no"))
+    assert fornitori == [] and "ACCOUNT_ID" in scarti[0]
+
+
 def test_nome_non_valido_scartato():
     _, scarti = leggi_fornitori({"AI_FORNITORI": "a b!"})
     assert "nome non valido" in scarti[0]

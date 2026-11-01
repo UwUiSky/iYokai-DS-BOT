@@ -35,6 +35,9 @@ def test_con_le_chiavi_tutti_i_fornitori_elencati_si_leggono():
     for nome in env["AI_FORNITORI"].split(","):
         env[f"AI_KEY_{nome.upper().split('_')[0]}"] = chiave_finta(nome)
     fornitori, scarti = leggi_fornitori(env)
+    assert scarti == ["cloudflare_llama: sostituisci ACCOUNT_ID in AI_URL_CLOUDFLARE_LLAMA"]
+    env["AI_URL_CLOUDFLARE_LLAMA"] = env["AI_URL_CLOUDFLARE_LLAMA"].replace("ACCOUNT_ID", "0123abcd")
+    fornitori, scarti = leggi_fornitori(env)
     assert scarti == []
     assert len(fornitori) == len(env["AI_FORNITORI"].split(","))
     for f in fornitori:
