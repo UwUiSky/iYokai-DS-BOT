@@ -82,6 +82,14 @@ def test_file_dei_fornitori_accanto_al_env(tmp_path):
     assert env_con_file({"X": "1"}, tmp_path / "manca.env") == {"X": "1"}
 
 
+def test_l_ambiente_pieno_vince_sul_file_quello_vuoto_no(tmp_path):
+    file = tmp_path / "ai_fornitori.env"
+    file.write_text("AI_KEY_ALFA=dal-file\nAI_KEY_BETA=dal-file\nALTRO=x\n", encoding="utf-8")
+    env = env_con_file({"AI_KEY_ALFA": "dall-ambiente", "AI_KEY_BETA": ""}, file)
+    assert env["AI_KEY_ALFA"] == "dall-ambiente" and env["AI_KEY_BETA"] == "dal-file"
+    assert "ALTRO" not in env  # dal file solo le variabili AI_*
+
+
 def test_http_e_chiave_obbligatori_tranne_in_locale():
     _, scarti = leggi_fornitori(_env(AI_URL_ALFA="http://alfa.example/v1", AI_KEY_ALFA="k", AI_ADDESTRA_ALFA="no"))
     assert "https" in scarti[0]
