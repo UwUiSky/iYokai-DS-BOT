@@ -91,14 +91,14 @@ class AiImmaginiCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @comando_di_gruppo("utility", nome="immagina", descrizione="Genera un'immagine da una descrizione.", sottogruppo=SOTTO_AI)
+    @comando_di_gruppo("assistente", nome="immagina", descrizione="Genera un'immagine da una descrizione.")
     @app_commands.describe(descrizione="Cosa disegnare")
     @requires_module(MODULO_AI)
     async def immagina(self, interaction: discord.Interaction, descrizione: app_commands.Range[str, 3, 500]) -> None:
         await interaction.response.defer(thinking=True)
         await genera(interaction, descrizione)
 
-    @comando_di_gruppo("utility", nome="ingrandisci", descrizione="Ingrandisce e ripulisce un'immagine che carichi.", sottogruppo=SOTTO_AI)
+    @comando_di_gruppo("assistente", nome="ingrandisci", descrizione="Ingrandisce e ripulisce un'immagine che carichi.")
     @app_commands.describe(immagine="PNG, JPEG, WEBP o GIF (fino a 8 MB)")
     async def ingrandisci(self, interaction: discord.Interaction, immagine: discord.Attachment) -> None:
         if (immagine.content_type or "").split(";")[0] not in _TIPI_IMMAGINE or immagine.size > MAX_IMAGE_BYTES:
@@ -112,8 +112,7 @@ class AiImmaginiCog(CogConGruppi, commands.Cog):
             return
         await _manda_ingrandita(interaction, dati)
 
-    @comando_di_gruppo("utility", nome="pacchetto", descrizione="Compra 5 immagini AI in più con le monete del server.", sottogruppo=SOTTO_AI)
-    @requires_module(MODULO_AI)
+    @comando_di_gruppo("assistente", nome="pacchetto", descrizione="Compra 5 immagini AI in più con le monete del server.")    @requires_module(MODULO_AI)
     async def pacchetto(self, interaction: discord.Interaction) -> None:
         cfg = await ai_repo.get_config(interaction.guild_id)
         prezzo = cfg.prezzo_pacchetto_immagini

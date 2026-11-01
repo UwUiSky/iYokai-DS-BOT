@@ -134,7 +134,7 @@ class AiMisteriCog(CogConGruppi, commands.Cog):
         tolto = await ai_gioco_repo.mistero_togli(interaction.guild_id, numero)
         await interaction.response.send_message("Mistero tolto." if tolto else "Non trovo quel mistero.", ephemeral=True)
 
-    @comando_di_gruppo("utility", nome="mistero", descrizione="Rispondi a un mistero del server con il codice.", sottogruppo=SOTTO_AI)
+    @comando_di_gruppo("assistente", nome="mistero", descrizione="Rispondi a un mistero del server con il codice.")
     @app_commands.describe(codice="Il codice che hai trovato")
     async def rispondi(self, interaction: discord.Interaction, codice: app_commands.Range[str, 3, 60]) -> None:
         motivo = TENTATIVI.consenti(interaction.guild_id, interaction.user.id)

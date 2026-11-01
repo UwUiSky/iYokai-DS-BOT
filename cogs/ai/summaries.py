@@ -60,7 +60,7 @@ class AiRiassuntiCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @comando_di_gruppo("utility", nome="riassumi", descrizione="Riassunto degli ultimi messaggi di un canale.", sottogruppo=SOTTO_AI)
+    @comando_di_gruppo("assistente", nome="riassumi", descrizione="Riassunto degli ultimi messaggi di un canale.")
     @app_commands.describe(canale="Il canale (vuoto: questo)", messaggi="Quanti messaggi leggere")
     @richiede_ai()
     async def riassumi(
@@ -94,7 +94,7 @@ class AiRiassuntiCog(CogConGruppi, commands.Cog):
             ephemeral=True,
         )
 
-    @comando_di_gruppo("utility", nome="spiega", descrizione="Spiega in parole semplici un messaggio (dal suo link).", sottogruppo=SOTTO_AI)
+    @comando_di_gruppo("assistente", nome="spiega", descrizione="Spiega in parole semplici un messaggio (dal suo link).")
     @app_commands.describe(link="Link del messaggio (tasto destro → Copia link)")
     @richiede_ai()
     async def spiega(self, interaction: discord.Interaction, link: app_commands.Range[str, 20, 200]) -> None:
@@ -127,7 +127,7 @@ class AiRiassuntiCog(CogConGruppi, commands.Cog):
             return
         await interaction.followup.send(embed=embed_risposta("Spiegazione", risposta.testo, da_cache=risposta.da_cache), ephemeral=True)
 
-    @comando_di_gruppo("utility", nome="stile", descrizione="Un messaggio nuovo scritto come scrivi tu (o come chi lo permette).", sottogruppo=SOTTO_AI)
+    @comando_di_gruppo("assistente", nome="stile", descrizione="Un messaggio nuovo scritto come scrivi tu (o come chi lo permette).")
     @app_commands.describe(argomento="Di cosa deve parlare il messaggio", di="Un'altra persona che ha permesso il suo stile (vuoto: tu)")
     @richiede_ai()
     async def stile(

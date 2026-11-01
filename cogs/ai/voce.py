@@ -211,7 +211,7 @@ class AiVoceCog(CogConGruppi, commands.Cog):
         partito = await parla(self.bot, destinazione, testo, "ANNOUNCEMENT", guild_id=interaction.guild_id, chi=interaction.user)
         await interaction.followup.send(f"Vocale in {destinazione.mention}." if partito else SPENTA, ephemeral=True)
 
-    @comando_di_gruppo("utility", nome="parla", descrizione="Yokai dice una frase a voce in questo canale.", sottogruppo=SOTTO_AI)
+    @comando_di_gruppo("assistente", nome="parla", descrizione="Yokai dice una frase a voce in questo canale.")
     @app_commands.describe(testo="Cosa dire")
     async def utility_parla(self, interaction: discord.Interaction, testo: app_commands.Range[str, 3, MAX_TESTO]) -> None:
         if interaction.guild_id is None or not isinstance(interaction.channel, discord.TextChannel):

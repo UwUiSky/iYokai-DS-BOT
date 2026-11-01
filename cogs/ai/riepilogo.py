@@ -224,7 +224,7 @@ class AiRiepilogoCog(CogConGruppi, commands.Cog):
         testo, parte = await componi_riepilogo(interaction.guild, cfg)
         await interaction.followup.send(embed=embed_riepilogo(interaction.guild, testo, parte, cfg.frequenza), ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("utility", nome="avviso", descrizione="Segui fino a 3 parole: ti avviso quando se ne parla molto.", sottogruppo=SOTTO_AI)
+    @comando_di_gruppo("assistente", nome="avviso", descrizione="Segui fino a 3 parole: ti avviso quando se ne parla molto.")
     @app_commands.describe(azione="Cosa fare", parola="La parola (per aggiungi e togli)")
     @app_commands.choices(azione=[app_commands.Choice(name=n, value=n) for n in ("aggiungi", "togli", "elenco")])
     async def avviso(self, interaction: discord.Interaction, azione: str, parola: app_commands.Range[str, 2, 30] | None = None) -> None:

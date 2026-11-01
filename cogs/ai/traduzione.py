@@ -88,7 +88,7 @@ class AiTraduzioneCog(CogConGruppi, commands.Cog):
     async def _completa(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
         return completa_lingue(current)
 
-    @comando_di_gruppo("utility", nome="traduci", descrizione="Traduce un testo nella lingua che scegli.", sottogruppo=SOTTO_AI)
+    @comando_di_gruppo("assistente", nome="traduci", descrizione="Traduce un testo nella lingua che scegli.")
     @app_commands.describe(testo="Il testo da tradurre", lingua="Lingua di arrivo")
     @app_commands.autocomplete(lingua=_completa)
     @requires_module(MODULO_AI)

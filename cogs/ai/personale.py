@@ -21,7 +21,7 @@ class AiPersonaleCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @comando_di_gruppo("utility", nome="preferenza", descrizione="Le tue scelte sull'AI: risposte per te e stile imitabile dagli altri.", sottogruppo=SOTTO_AI)
+    @comando_di_gruppo("assistente", nome="preferenza", descrizione="Le tue scelte sull'AI: risposte per te e stile imitabile dagli altri.")
     @app_commands.describe(
         acceso="Sì: l'assistente ti risponde. No: per te resta spento",
         stile="Sì: gli altri possono chiedere un messaggio scritto nel tuo stile (di partenza no)",
