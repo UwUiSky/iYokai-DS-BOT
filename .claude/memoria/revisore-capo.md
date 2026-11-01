@@ -1,6 +1,7 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
+01/11/2026 · `feat/r14paese` (D53, 0490): merge main (becf64f), 4 fix (fde536c, 9462b25, 735d4a0, a7b0cd3); 4 basse aperte. APPROVATO. Smoke da fare: 0490, verify, panel_bridge.
 01/11/2026 · `feat/r13ruoli` (D60): merge main (D61), 4 fix (61052f4, 0a029de, 4e96294, test admin-livelli); 2 basse aperte. Smoke da fare: 0488, cerca-comando, ai_ricerca.
 01/11/2026 · `feat/r13gruppi` (D56 riordino, D57 livelli, 0485–0487): merge di main, 5 fix (4907600, 56fab94, 680e80e, c3e860f, f14859e) + test sui percorsi nuovi (0441060). 4 aperte nel quaderno. Smoke da fare: migrazioni, quindi suite completa (orchestratore).
 01/11/2026 · r12 (lingue, aifree, ai, resto, piatt): tutti APPROVATI dopo i fix (commit nel quaderno); basse aperte nel quaderno.
@@ -13,6 +14,7 @@ Giri r6–r11: tutti APPROVATI dopo i fix; basse aperte nel quaderno. `f7-quadro
 - Letti per intero: giro-mod, r3–r13 (commit nel quaderno).
 
 ## Cose imparate
+- Stati decisi dallo staff (attesa/rifiuto) si leggono PRIMA di ogni uscita anticipata (dato mancante = porta aperta). Soglie a conteggio: salvare poi contare. Il ramo senza issue: `Refs D<n>`, mai un numero a caso.
 - Riordino a regex: tabelle di percorsi SENZA `/` (es. COMANDI_VICINI) e sotto-comandi già vecchi sfuggono; confronto albero base/HEAD (livello, permesso, autocomplete) con uno script di dump; scansione `/percorso` contro l'albero vero.
 - Riordino dei comandi: i test cercano i percorsi in molti modi (`get_command` a catena, `comando_nel_gruppo(g, f"…")`, `percorsi_del_gruppo`, insiemi ATTESI). Scansione con la tabella della migrazione su tutti i test, poi le corse. Controlli scritti nel corpo (`puo_usare`) sfuggono ai test che leggono solo `.checks`.
 - Corse lunghe: `-v --tb=no -rf` (righe man mano), mai `timeout` esterno (niente riepilogo); due metà su due database propri; `pkill -f` col proprio comando: usare `[.]`.

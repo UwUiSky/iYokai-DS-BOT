@@ -1386,5 +1386,16 @@
   "lingua_richiesta_dm_titolo": "**Language request**",
   "lingua_richiesta_dm_lingua": "Language: {lingua}",
   "lingua_richiesta_dm_da": "From: {utente}, server: {dove}",
-  "lingua_richiesta_dm_nota": "Note: {nota}"
+  "lingua_richiesta_dm_nota": "Note: {nota}",
+  "verify_paese_titolo": "Out-of-country verification: on hold",
+  "verify_paese_descrizione": "{utente} (`{id}`) verified from country **{paese}**, which is not one of the server's countries. At least {soglia} out-of-country verifications in the last {minuti} minutes. Client language: {lingua}.\nThis is only a hint: approve if the person looks real, reject if it looks like a raid.",
+  "verify_paese_attesa_utente": "Your verification is on hold: the staff must approve it. You will get the role as soon as they decide.",
+  "verify_paese_rifiutata_utente": "The staff did not approve your verification. If you think this is a mistake, contact a moderator.",
+  "verify_paese_solo_admin": "Only admins can decide on this verification.",
+  "verify_paese_gia_deciso": "This verification has already been decided.",
+  "verify_paese_membro_uscito": "The person is no longer in the server.",
+  "verify_paese_approvata_da": "Approved by {staff}.",
+  "verify_paese_bottone_approva": "Approve",
+  "verify_paese_bottone_rifiuta": "Reject",
+  "verify_paese_rifiutata_da": "Rejected by {staff}: {utente} stays unverified."
 }

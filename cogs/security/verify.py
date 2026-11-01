@@ -83,6 +83,7 @@ from core.ui_base import BaseModal, BaseView
 from core.scheduler import in_seconds, scheduler
 from core.security_quarantine import ruolo_quarantena
 from core.security_raid_state import raid_in_corso
+from core.verify_paese_staff import BottoneDecisione
 from core.verify_logic import (
     AZIONI_FALLITA,
     FALLIMENTI_CAPTCHA_PRIMA_DELL_AZIONE,
@@ -327,6 +328,14 @@ async def avvia_verifica(interaction: discord.Interaction) -> None:
         return
     if config.method == METODO_WEB:
         link = link_verifica_web(guild.id, interaction.user.id)
+        if link is not None and await db.get_guild_setting(guild.id, "verify_paesi"):
+            # D53: segnale debole in più, la lingua del client Discord (non serve l'IP).
+            from core.repositories.verify_paese_repo import verify_paese_repo
+
+            try:
+                await verify_paese_repo.salva_lingua(guild.id, interaction.user.id, str(interaction.locale))
+            except Exception:
+                logger.warning("Lingua del client non salvata nel server %s.", guild.id, exc_info=True)
         if link is None:
             await interaction.response.send_message(
                 await testo_per(interaction, "verify_la_verifica_dalla_pagina_web"),
@@ -1165,6 +1174,7 @@ async def setup(bot: commands.Bot) -> None:
     cog = VerifyCog(bot)
     await bot.add_cog(cog)
     bot.add_view(VerifyPanelView())
+    bot.add_dynamic_items(BottoneDecisione)
     scheduler.register_handler(VERIFY_PROMEMORIA, cog.handle_promemoria)
     scheduler.register_handler(VERIFY_SCADENZA, cog.handle_scadenza)
     scheduler.register_handler(VERIFY_ETA, cog.handle_eta)
