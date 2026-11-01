@@ -117,15 +117,19 @@ class AiTraduzioneCog(CogConGruppi, commands.Cog):
         if not servizio_ai().configurato:
             return
         # I messaggi di fila della stessa persona si traducono insieme (AI-R-084).
-        if self.raccolta.aggiungi(message.channel.id, message.author.id, message.id, message.content):
+        esito = self.raccolta.aggiungi(message.channel.id, message.author.id, message.id, message.content)
+        if esito is None:  # raccolta piena: questo messaggio si traduce da solo
+            await self._traduci_testo(message, [message.id], message.content, lingua)
+        elif esito:
             await asyncio.sleep(ATTESA_SECONDI)
             await self._traduci_raccolta(message, lingua)
 
     async def _traduci_raccolta(self, ultimo: discord.Message, lingua: str) -> None:
         chiusa = self.raccolta.chiudi(ultimo.channel.id, ultimo.author.id)
-        if chiusa is None:
-            return
-        ids, testo = chiusa
+        if chiusa is not None:
+            await self._traduci_testo(ultimo, *chiusa, lingua)
+
+    async def _traduci_testo(self, ultimo: discord.Message, ids: list[int], testo: str, lingua: str) -> None:
         if not serve_tradurre(testo, lingua) or all(self._gia_fatto(i, lingua) for i in ids):
             return
         risposta, _ = await self._traduci(

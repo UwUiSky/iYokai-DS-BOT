@@ -21,14 +21,16 @@ class RaccoltaMessaggi:
 
     _aperte: dict = field(default_factory=dict)
 
-    def aggiungi(self, canale: int, autore: int, message_id: int, testo: str) -> bool:
-        """True se questo messaggio apre la raccolta (chi chiama programma la chiusura); False se si accoda o è pieno."""
+    def aggiungi(self, canale: int, autore: int, message_id: int, testo: str) -> bool | None:
+        """True se il messaggio apre la raccolta (chi chiama programma la chiusura); False se si accoda;
+        None se la raccolta è piena: il messaggio resta fuori e chi chiama lo traduce da solo."""
         chiave = (canale, autore)
         if chiave in self._aperte:
             ids, parti = self._aperte[chiave]
-            if len(ids) < MAX_MESSAGGI and sum(len(p) for p in parti) + len(testo) <= MAX_CARATTERI:
-                ids.append(message_id)
-                parti.append(testo)
+            if len(ids) >= MAX_MESSAGGI or sum(len(p) for p in parti) + len(testo) > MAX_CARATTERI:
+                return None
+            ids.append(message_id)
+            parti.append(testo)
             return False
         self._aperte[chiave] = ([message_id], [testo])
         return True

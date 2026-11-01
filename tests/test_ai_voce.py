@@ -234,3 +234,15 @@ def test_raccolta_messaggi_della_stessa_persona():
     for i in range(MAX_MESSAGGI + 3):
         r.aggiungi(5, 5, i, "x")
     assert len(r.chiudi(5, 5)[0]) == MAX_MESSAGGI
+
+
+def test_raccolta_piena_il_messaggio_resta_fuori_e_va_tradotto_da_solo():
+    """Un messaggio che non entra nella raccolta non deve sparire: aggiungi dice None e chi chiama lo traduce da solo."""
+    from core.traduzione_gruppo_logic import MAX_CARATTERI, MAX_MESSAGGI, RaccoltaMessaggi
+
+    r = RaccoltaMessaggi()
+    assert r.aggiungi(1, 1, 1, "a" * (MAX_CARATTERI - 10)) is True
+    assert r.aggiungi(1, 1, 2, "b" * 50) is None
+    for i in range(MAX_MESSAGGI):
+        assert r.aggiungi(2, 2, i, "x") in (True, False)
+    assert r.aggiungi(2, 2, 99, "y") is None
