@@ -470,6 +470,9 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonne_attore=("owner_id",), utente="anonimizza", anonimizza=(("owner_id", "0"),),
        nota="ID del server e del suo proprietario: servono a contare proprietari diversi (soglia 3); "
             "con la cancellazione il proprietario diventa 0, e la soglia diventa solo più difficile"),
+    _t("quarantena_file", "File di immagini in quarantena (D61, D62): impronta, nome casuale, scadenza",
+       colonna_server="guild_id", scadenza=Scadenza("scade_il", 0),
+       nota="nessun dato dell'autore; il file vero sta su disco e lo cancella core/immagini_quarantena.py alla scadenza (72 ore al massimo)"),
     _t("birthday_config", "Impostazioni dei compleanni", colonna_server="guild_id"),
     _t("autorole_rules", "Ruoli automatici all'ingresso", colonne_attore=("created_by",), colonna_server="guild_id"),
     _t("autorole_config", "Impostazioni dei ruoli automatici", colonna_server="guild_id"),
