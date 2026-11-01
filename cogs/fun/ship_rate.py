@@ -71,7 +71,7 @@ class ShipRateCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo("fun", nome="rate", descrizione="Valuta qualcosa da 0 a 10.")
     @app_commands.describe(thing="Cosa vuoi far valutare")
-    async def rate(self, interaction: discord.Interaction, thing: str) -> None:
+    async def rate(self, interaction: discord.Interaction, thing: app_commands.Range[str, 1, 100]) -> None:
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(

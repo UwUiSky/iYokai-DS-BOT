@@ -1,9 +1,11 @@
 # Memoria di dev-core
 
 ## Aggiornata
-01/11/2026 · ramo `feat/r13ruoli` · D60 applicata; revisione fatta (fix del revisore: comandi vicini, nomi vecchi in cerca-comando, riferimenti).
+01/11/2026 · ramo `feat/r14lunghezze` · #67/#70: tutte le opzioni di testo hanno `max_length`; cricchetto vuoto.
 
 ## In corso
+- r14lunghezze pubblicato. Smoke da fare dopo l'unione (tree_invariants, cog feed_alerts, fun, mod-ban, messaggi programmati, radio).
+- Restano #67: 11.11 (hash token webhook, migrazione, F5), 11.12 (F13). #70: 14.10, 14.12, 14.13, 14.14 (non piccoli).
 - r13ruoli chiuso e pubblicato. Smoke da fare dopo l'unione (0488, command_permissions/access/groups/policy).
 - Rimandato: persistenza/pannello dei livelli (D57), permessi per ruolo dal pannello (OAuth), nascondere `/founder` agli admin.
 
@@ -38,6 +40,6 @@
   ma è rifiutato (D60 punto 4, da decidere).
 - NSFW: risposta RedGifs scritta a memoria, da controllare live; server con solo il bot NSFW non scade mai.
 - `tests/test_premium_invalidazione.py` assegna `db._pool`: da togliere.
-- #136, #141, #138, #135. 14.13 codice morto, 14.14 lingue (F8). KNOWN_SENZA_MAX_LENGTH: 27 voci di altre aree.
+- #136, #141, #138, #135. 14.13 codice morto, 14.14 lingue (F8). KNOWN_SENZA_MAX_LENGTH vuoto: ogni opzione nuova senza Range fa fallire il test.
 - Clan sciolto: categoria/canali restano da togliere a mano. Worker musicale non controlla la blacklist all'ingresso.
 - `/assistente` esiste anche in iYokai App: i test dei riferimenti danno la precedenza al principale.

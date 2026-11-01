@@ -98,10 +98,10 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
     async def add(
         self,
         interaction: discord.Interaction,
-        feed_url: str,
+        feed_url: app_commands.Range[str, 1, 512],
         channel: discord.TextChannel,
-        label: str,
-        message_template: str | None = None,
+        label: app_commands.Range[str, 1, 100],
+        message_template: app_commands.Range[str, 1, 500] | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -176,8 +176,8 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         self,
         interaction: discord.Interaction,
         channel: discord.TextChannel,
-        label: str,
-        message_template: str | None = None,
+        label: app_commands.Range[str, 1, 100],
+        message_template: app_commands.Range[str, 1, 500] | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -247,7 +247,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         subscription_id="ID con prefisso, es. TW-2 o WH-1"
     )
-    async def remove(self, interaction: discord.Interaction, subscription_id: str) -> None:
+    async def remove(self, interaction: discord.Interaction, subscription_id: app_commands.Range[str, 1, 20]) -> None:
         guild = interaction.guild
         if guild is None:
             return
@@ -302,9 +302,9 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
     async def add_twitch(
         self,
         interaction: discord.Interaction,
-        twitch_login: str,
+        twitch_login: app_commands.Range[str, 1, 25],
         channel: discord.TextChannel,
-        label: str,
+        label: app_commands.Range[str, 1, 100],
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -351,9 +351,9 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
     async def add_youtube_live(
         self,
         interaction: discord.Interaction,
-        youtube_channel_id: str,
+        youtube_channel_id: app_commands.Range[str, 1, 100],
         channel: discord.TextChannel,
-        label: str,
+        label: app_commands.Range[str, 1, 100],
     ) -> None:
         guild = interaction.guild
         if guild is None:
