@@ -97,3 +97,34 @@ async def test_giro_con_ai_ferma_non_salva_nulla(repo, clean_db):
 async def test_richieste_non_approvate_restano_fuori(repo, clean_db):
     rid = await _richiesta(clean_db, "inattesa", stato="pending")
     assert rid not in [r.id for r in await repo.da_preparare(50)]
+
+
+async def test_nel_repository_niente_dati_personali_ne_segreti(repo, clean_db):
+    """Il testo della persona e la bozza dell'AI finiscono su GitHub: menzioni, ID, e-mail e chiavi si tolgono."""
+    rid = await clean_db.fetchval(
+        "INSERT INTO custom_command_requests (requester_guild_id, requester_guild_name, user_id, username_snapshot, "
+        "command_name, description, example, status) VALUES (1, 'g', 2, 'u', 'saluta', "
+        "'Scrivete a mario.rossi@example.com, sono <@123456789012345678>, chiave ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123', 'es', 'approved') RETURNING id"
+    )
+    _usa([fornitore("alfa", tipi=("codice",), fascia="alta")], {"alfa": "## Codice\nTOKEN = 'ghp_ZYXWVUTSRQPONMLKJIHGFEDCBA9876'"})
+    chiamate = []
+
+    async def trasporto(metodo, percorso, corpo):
+        chiamate.append(corpo)
+        return {"object": {"sha": "abc"}, "html_url": "https://github.com/a/b/pull/1"}
+
+    imposta_github_bozze(GitHubBozze(ConfigGitHub("t", "a/b"), trasporto))
+    cog = bozze.AiBozzeCog(bot=None)
+
+    async def avvisa(*_):
+        return None
+
+    cog._avvisa_owner = avvisa
+    await cog.giro()
+    inviato = repr(chiamate)
+    import base64
+    inviato += "".join(base64.b64decode(c["content"]).decode() for c in chiamate if c and "content" in c)
+    assert chiamate, "la pull request doveva partire"
+    for vietato in ("mario.rossi@example.com", "123456789012345678", "ghp_ABCDEFGHIJ", "ghp_ZYXWVUTSRQ"):
+        assert vietato not in inviato, vietato
+    assert rid

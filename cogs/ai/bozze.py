@@ -34,7 +34,7 @@ async def prepara_bozza(r: logica.Richiesta) -> tuple[str, str | None, str] | No
     ))
     if risposta is None or not risposta.testo.strip():
         return None
-    bozza = risposta.testo[: logica.MAX_BOZZA]
+    bozza = logica.per_repo(risposta.testo)[: logica.MAX_BOZZA]
     url = await github_bozze().apri_bozza(
         logica.nome_ramo(r), logica.percorso_file(r), logica.contenuto_file(r, bozza), logica.titolo_pr(r), logica.corpo_pr(r)
     )
