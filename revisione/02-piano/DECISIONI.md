@@ -757,3 +757,27 @@ servizi economici su VIP 5, servizi costosi su VIP 20).
 - Il bot mostra da solo i comandi per livello: `/premium` elenca i comandi premium,
   `/vip` quelli di VIP 5 e VIP 20, aggiornati quando l'owner cambia il pannello, senza riavvio.
 - Si predispone ora (livello di default = gratuito per tutto), si attiva con il pannello.
+
+## D58 — Bot multilingue: una cartella per lingua, comandi tradotti, richiesta di lingue nuove (01/11/2026, richiesta dell'owner)
+Lingue di partenza: le stesse del sito (repo iYokai-Site, `src/i18n`): it, en, de, es-ES, fr,
+ja, ko, ru, uk, zh-CN. Tutte sono tra le lingue che Discord supporta per i nomi dei comandi.
+- Struttura: `locales/<lingua>/testi.json` (risposte, embed, finestre, bottoni) e
+  `locales/<lingua>/comandi.json` (nome, descrizione, opzioni, scelte di ogni comando, più
+  la spiegazione lunga per `/info` e `/cerca-comando`). L'owner corregge una lingua aprendo
+  solo il suo file. Ripiego: lingua → en → it. Un controllo segna le chiavi mancanti o
+  uguali all'italiano ("da tradurre") per ogni lingua.
+- Comandi nella lingua di chi scrive: si usano le localizzazioni native di Discord
+  (`name_localizations`, `description_localizations`). L'utente vede e scrive il comando
+  nella sua lingua; al bot arriva sempre il nome base, quindi il comando parte uguale.
+  Vincoli: nome 1-32 caratteri, regola dei caratteri di Discord, nomi delle opzioni unici
+  per lingua; per il tetto di 8.000 caratteri conta, campo per campo, la versione più lunga
+  tra tutte le lingue: un test lo controlla con margine (D25/D56).
+- `/info` e `/cerca-comando` leggono la spiegazione dal file della lingua dell'utente; la
+  ricerca in linguaggio naturale funziona in ogni lingua (parole chiave per lingua + AI se
+  accesa) e propone i comandi con un menu.
+- Lingua mancante: l'utente apre un modulo "richiedi una lingua"; la richiesta va all'owner;
+  approvata, uno script crea `locales/<lingua>/` con tutte le chiavi da tradurre. Per le
+  lingue che Discord non supporta nei nomi dei comandi si traducono solo i testi.
+- Traduzione: uno script usa i servizi AI configurati (D54) per riempire le chiavi mancanti,
+  segnandole "da rivedere"; i test controllano segnaposto, lunghezze e regole di Discord.
+- Ordine: dopo il riordino dei comandi (D56), per non tradurre due volte i nomi.
