@@ -2,7 +2,7 @@
 core/repositories/command_usage_repo.py
 =======================================
 Ultimo comando usato per server e utente (tabella `command_usage`,
-migrazione 0022). Serve al pannello di -cerca-comando (issue #147).
+migrazione 0022). Serve al pannello di cerca-comando (issue #147).
 
 Dato personale: una sola riga per (server, utente), conservata al massimo
 `giorni` giorni e al massimo `tetto` righe in tutto. La pulizia parte da

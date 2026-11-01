@@ -1,7 +1,7 @@
 """
 cogs/ai/_assistente.py
 ==================
-Contorno della risposta di `-chiedi`: scoperta delle attività senza AI, voce
+Contorno della risposta di `chiedi`: scoperta delle attività senza AI, voce
 della base di conoscenza, stato di ogni comando citato, comandi vicini
 spiegati, bottone «Attiva» per i moduli spenti, piano in più passi con
 «Configura tutto» e traguardo del primo comando scoperto con l'AI.

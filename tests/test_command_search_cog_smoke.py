@@ -1,7 +1,7 @@
 """
 tests/test_command_search_cog_smoke.py
 ==========================================
-Smoke test del cog /-cerca-comando (comando di primo livello, col trattino davanti).
+Smoke test del cog /cerca-comando (comando di primo livello, col trattino davanti).
 """
 
 import discord
@@ -21,7 +21,7 @@ async def test_command_search_cog_si_carica_correttamente():
     assert bot.get_cog("CommandSearchCog") is not None
 
     nomi_comandi = {c.name for c in bot.tree.get_commands()}
-    assert NOME_CERCA_COMANDO == "-cerca-comando"
+    assert NOME_CERCA_COMANDO == "cerca-comando"
     assert NOME_CERCA_COMANDO in nomi_comandi  # primo livello, non in /utility
     assert "search" not in nomi_comandi
     assert "cerca-comando" not in percorsi_del_gruppo("utility")
@@ -30,7 +30,7 @@ async def test_command_search_cog_si_carica_correttamente():
 
 
 async def test_cerca_comando_funziona_anche_in_dm():
-    """D24: `-cerca-comando` è usabile anche in DM (richiesta owner 11/10)."""
+    """D24: `cerca-comando` è usabile anche in DM (richiesta owner 11/10)."""
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await command_search_setup(bot)
 
@@ -40,7 +40,7 @@ async def test_cerca_comando_funziona_anche_in_dm():
 
 
 def test_i_nomi_dei_due_comandi_di_primo_livello_stanno_in_command_groups():
-    assert (NOME_CERCA_COMANDO, NOME_CHIEDI) == ("-cerca-comando", "-chiedi")
+    assert (NOME_CERCA_COMANDO, NOME_CHIEDI) == ("cerca-comando", "chiedi")
 
 
 def test_i_due_nomi_con_il_trattino_sono_validi_per_discord():

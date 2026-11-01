@@ -371,8 +371,8 @@ sia il primo tra i bot del server. Cosa può fare il bot e cosa no:
   prova `scripts/prova_ordine_comandi.py` (voce in `VERIFICA_LIVE.md`).
 
 **D24, nota finale (11/10/2026).** I due comandi di primo livello si chiamano
-`-cerca-comando` e `-chiedi` (col trattino, per stare in cima alla lista;
-il resto dei nomi è normale). `-cerca-comando` non funziona in DM. Nascondere
+`cerca-comando` e `chiedi` (col trattino, per stare in cima alla lista;
+il resto dei nomi è normale). `cerca-comando` non funziona in DM. Nascondere
 i comandi per ruolo con un controllo su database non è possibile: il
 controllo parte dopo che il comando è stato lanciato. La strada vera è
 l'OAuth dell'admin con permessi per ruolo (issue #148); per ora valgono
@@ -421,7 +421,7 @@ vietate, funzioni automatiche, moderazione, traduzione, personaggi, base di cono
 costruzione del server: 13 comandi, ~2.500 caratteri) doveva stare in `/admin ai`, ma
 `/admin` è a 6.432 caratteri: con il blocco AI supera i 6.800. Per D25 il blocco intero
 diventa un gruppo di primo livello **`/ai`** (permesso `manage_guild`, livello admin). Le
-funzioni per tutti stanno nel sotto-gruppo **`/utility ai`**; `-chiedi` resta dov'è e usa
+funzioni per tutti stanno nel sotto-gruppo **`/utility ai`**; `chiedi` resta dov'è e usa
 l'AI quando è accesa; nei ticket `/ticket assistente`.
 
 **Fornitori.** L'owner non ha ancora dato l'elenco: il motore li legge dal `.env`
@@ -881,7 +881,7 @@ nome: scrivendo `/admin` compaiono tutti i gruppi `admin-…`.
 8. Primo uso: 25 gruppi staff (20 `admin-`, 4 `mod-`, `/founder`) al posto di 19; 377 comandi cambiano percorso; i
    comandi spenti nella politica seguono il nome nuovo (migrazione 0488). Comandi globali 39 (43 con `/gif`,
    `/premium`, `/ultra`, `/vip`). Le eccezioni messe dagli admin in Impostazioni → Integrazioni si perdono (gli ID
-   dei gruppi sono nuovi): si annuncia prima con `/owner system announce`. `/-cerca-comando` trova anche i nomi vecchi.
+   dei gruppi sono nuovi): si annuncia prima con `/owner system announce`. `/cerca-comando` trova anche i nomi vecchi.
 
 ## D61 — Copia sicura delle immagini nei log e nei backup (01/11/2026, richiesta dell'owner)
 Le immagini degli utenti sono il punto d'ingresso più comune per gli attacchi (decoder bucati, file
@@ -923,5 +923,5 @@ client, ma può fermare il file prima che lo aprano i membri:
   senza file; l'originale resta in quarantena per il tempo minimo e poi si cancella. Vale anche D61.
 - Precisazione dell'owner (01/11): `/admin-ruoli` di base chiede «Gestisci server» come gli altri gruppi admin;
   ogni server può dare l'accesso a chi gestisce i ruoli dalle Integrazioni di Discord.
-- Nomi `/-cerca-comando` e `/-chiedi`: la `/` non è ammessa nei nomi dei comandi (regola di Discord: lettere,
-  numeri, `-`, `_`). Il trattino resta: scrivendo `/` e poi `-` compaiono subito i due comandi.
+- Nomi `/cerca-comando` e `/chiedi` (scelta dell'owner 01/11): niente trattino iniziale. La doppia `/` non è
+  ammessa da Discord (nei nomi solo lettere, numeri, `-`, `_`). Migrazione 0491 per i percorsi salvati.

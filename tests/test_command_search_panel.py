@@ -1,8 +1,8 @@
 """
 tests/test_command_search_panel.py
 ==================================
-Pannello di -cerca-comando senza testo, ricerca con testo, completamento,
--chiedi e registrazione dell'ultimo comando (issue #147). Limiti di Discord
+Pannello di cerca-comando senza testo, ricerca con testo, completamento,
+chiedi e registrazione dell'ultimo comando (issue #147). Limiti di Discord
 verificati sui componenti: al massimo 25, 5 per riga, 5 righe.
 Funzioni coperte: NF-06 (issue #147)
 """
@@ -57,7 +57,7 @@ def cog(monkeypatch):
     monkeypatch.setattr(modulo, "command_usage_repo", repo)
     c.repo = repo
     # Nessun accesso a Discord: gli ID arrivano da qui.
-    c.cache_ids.ottieni = AsyncMock(return_value={"fun": 5, "mod-sanzioni": 6, "mod-ban": 7, "level": 8, "-cerca-comando": 9})
+    c.cache_ids.ottieni = AsyncMock(return_value={"fun": 5, "mod-sanzioni": 6, "mod-ban": 7, "level": 8, "cerca-comando": 9})
 
     async def solo_mod(interaction, livello):
         return livello is Livello.MOD

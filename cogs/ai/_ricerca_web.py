@@ -1,7 +1,7 @@
 """
 cogs/ai/_ricerca_web.py
 =======================
-Risposta con ricerca sul web (opzione `cerca` di `-chiedi`): cerca, l'AI riassume con le fonti; con l'AI ferma restano
+Risposta con ricerca sul web (opzione `cerca` di `chiedi`): cerca, l'AI riassume con le fonti; con l'AI ferma restano
 i risultati con i link. Spenta finché l'owner non configura il servizio di ricerca.
 Funzioni coperte: SPEC §25.45 (AI-R-048)
 """

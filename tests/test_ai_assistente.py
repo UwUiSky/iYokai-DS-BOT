@@ -1,7 +1,7 @@
 """
 tests/test_ai_assistente.py
 ===========================
-Contorno della risposta di -chiedi (§25.12, §25.28–§25.31, §25.73, §25.87, §25.101): scoperta senza AI, stato dei
+Contorno della risposta di chiedi (§25.12, §25.28–§25.31, §25.73, §25.87, §25.101): scoperta senza AI, stato dei
 comandi, alternative, attivazione dei moduli, traguardo, preferenza personale. Database vero, fornitore finto.
 """
 

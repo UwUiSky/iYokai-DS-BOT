@@ -69,7 +69,7 @@ def test_vicini_esistenti_e_non_citati():
 def test_scoperta_elenco_anche_senza_ai():
     t = r.elenco_scoperta(COMANDI, eventi=["Boss: Oni"])
     assert "Boss: Oni" in t and "/giochi gioca" in t and "/mod-ban" not in t
-    assert "-cerca-comando" in r.elenco_scoperta([])
+    assert "cerca-comando" in r.elenco_scoperta([])
 
 
 def test_piano_solo_comandi_veri_senza_doppioni_max_5():

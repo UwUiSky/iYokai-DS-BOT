@@ -72,8 +72,8 @@ AUDIENCE: dict[str, str] = {
     # Vocali temporanei
     "voice": PUBLIC,
     # Utility
-    "-cerca-comando": PUBLIC,  # primo livello, col trattino (D24, 06/10/2026)
-    "-chiedi": PUBLIC,  # primo livello, mostra il pannello di -cerca-comando (#147)
+    "cerca-comando": PUBLIC,  # primo livello, col trattino (D24, 06/10/2026)
+    "chiedi": PUBLIC,  # primo livello, mostra il pannello di cerca-comando (#147)
     "utility": PUBLIC,  # gruppo condiviso (core/command_groups.py)
     # Owner: /owner è solo nel server dell'owner, non nell'albero globale
 }
@@ -90,5 +90,5 @@ KNOWN_MISSING_DEFAULT_PERMISSIONS: frozenset[str] = frozenset(
 )
 
 # Comandi che oggi non sono guild_only (tutti, REVIEW.md LC-2).
-# `-cerca-comando` è usabile anche in DM (D24): resta nel cricchetto.
+# `cerca-comando` è usabile anche in DM (D24): resta nel cricchetto.
 KNOWN_NOT_GUILD_ONLY: frozenset[str] = frozenset(AUDIENCE) - _GRUPPI_YOKAI

@@ -1,7 +1,7 @@
 """
 cogs/ai/helpdesk.py
 ===================
-Assistente: risposta di `-chiedi` con l'AI (al massimo 3 comandi veri,
+Assistente: risposta di `chiedi` con l'AI (al massimo 3 comandi veri,
 cliccabili, anche quando la richiesta è un'azione da fare), base di
 conoscenza del server, risposta quando il bot viene menzionato con la
 memoria corta della conversazione.
