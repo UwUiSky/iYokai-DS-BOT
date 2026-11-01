@@ -840,3 +840,18 @@ dell'owner con controllo di OWNER_ID), così Discord nasconde da solo i comandi 
 Discord applica i permessi solo al primo livello: per questo un gruppo non mescola utenti e staff (un test
 lo controlla). Lo staff «whitelistato» senza quei permessi li vedrà con l'aggiornamento dei permessi dal
 pannello (OAuth `applications.commands.permissions.update`): si farà col pannello.
+
+## D59 — Livelli: Gratuito, Premium, Ultra, VIP e chiave propria (01/11/2026, richiesta dell'owner)
+Aggiorna D57 (VIP 5 diventa **Ultra**, VIP 20 diventa **VIP**). All'avvio tutto è gratuito, AI gratuite comprese.
+- **Premium:** abbonamento mensile o annuale, lifetime a prezzo concordato con l'owner, oppure boost Nitro di
+  uno dei due server indicati dall'owner. Sblocca i moduli che l'owner segna come premium.
+- **Ultra (5 €):** crea un fondo per crediti a consumo sui servizi AI economici; più quota AI.
+- **VIP (20 €):** accesso ai modelli grandi (servizi a pagamento dei big), con la quota divisa fra 3-4 servizi
+  (es. 30 % ciascuno), mai il 100 % della spesa del livello.
+- **Chiave propria:** un utente o un server che mette la sua chiave API ottiene il livello VIP per sé e per il suo
+  server, con il 100 % dei suoi crediti. La chiave si salva cifrata, si usa solo per chi l'ha messa, non va mai nei
+  log, si toglie con un comando o dal pannello. Valgono D19 e D55.
+- Un solo punto decide il livello di un server o di un utente (fonti: abbonamento, boost, lifetime, chiave propria)
+  e un solo punto decide il livello di ogni funzione (D57): issue #151.
+- Il router AI sceglie i servizi permessi dal livello (gratuiti per tutti; a consumo da Ultra; grandi da VIP o con
+  chiave propria) e tiene il conto della spesa per livello (D13).
