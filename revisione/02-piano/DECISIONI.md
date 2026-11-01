@@ -934,3 +934,18 @@ Le regex dei server girano solo con `re2`. Un'azione che fallisce per permessi s
 AMD-018 (stato online e attività) richiede l'intent Presenze: si fa dietro un interruttore **spento di base**;
 finché è spento il bot non chiede l'intent a Discord. Filtro immagini (D62): un processo nuovo per immagine,
 servizio di sistema `iyokai-sandbox` con utente senza permessi e senza rete; ripiego dichiarato se manca.
+
+## D64 — Verifica web: VPN e proxy bloccati subito (01/11/2026, richiesta dell'owner)
+Durante la verifica web, chi arriva da una VPN o da un proxy (pubblico o privato, anche Tor e reti di data center)
+viene **bloccato subito**, senza una prima volta concessa. La pagina gli dice di spegnere VPN o proxy e riprovare.
+Gli admin ricevono un avviso: «<utente> ha provato a verificarsi con VPN/proxy rilevato ed è stato bloccato».
+- Rilevazione a strati, prima locale: elenchi di reti di data center/hosting per ASN (banca dati ASN locale),
+  elenchi pubblici di VPN e proxy, nodi di uscita Tor (elenco ufficiale), intestazioni di proxy nella richiesta
+  (Via, Forwarded, X-Forwarded-For dal client), fuso orario del browser diverso dal paese dell'IP.
+  Poi, se l'owner mette una chiave, un servizio esterno di controllo (es. proxycheck.io, IPQualityScore,
+  vpnapi.io) con cache e tetti giornalieri.
+- Nessun metodo è perfetto: proxy residenziali e alcune VPN private possono passare; reti aziendali, CGNAT
+  mobili e iCloud Private Relay possono sembrare proxy. Per questo l'avviso agli admin ha un bottone «Lascia
+  passare» per i casi sbagliati, e il server può spegnere la regola (di base è accesa).
+- Privacy: l'IP si usa solo in quel momento; si salva solo "VPN/proxy: sì", il metodo e la data (D53, D19).
+  L'uso di un servizio esterno va scritto nell'informativa.
