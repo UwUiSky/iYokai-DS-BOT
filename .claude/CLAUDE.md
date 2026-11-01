@@ -107,7 +107,7 @@ commit, documentazione, issue. Frasi brevi e parole semplici.
 ## Commit, push e issue
 
 - Autore: `Yokai Bot Dev <dev@yokai-bot.local>`. Messaggio in italiano,
-  con `Refs #N`. In fondo le righe di attribuzione della sessione.
+  con `Refs #N`. Nessuna riga di attribuzione in fondo (regola dell'owner).
 - Un codice (o un piccolo gruppo legato) per commit.
 - Dopo il push: lo SHA locale e quello remoto devono coincidere.
 - Un'issue si **chiude quando il fix è unito con i suoi test**, con un

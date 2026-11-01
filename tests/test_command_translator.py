@@ -75,7 +75,10 @@ async def test_i_menu_delle_app_separate_hanno_il_nome_inglese():
 async def test_nessuna_voce_inglese_resta_senza_comando():
     creato_qui, bot = await _albero_vero()
     try:
+        from cogs.utility.livelli_comandi import crea_gruppi
+
         nodi = list(_tutti_i_nodi(_radici(bot))) + await _nodi_separati()
+        nodi += list(_tutti_i_nodi(list(crea_gruppi())))  # /premium e /vip nascono solo quando servono (D57)
         percorsi = {_percorso(n) for n in nodi}
         segmenti = {n.name for n in nodi}
         dati = tr.carica_traduzioni(forza=True)
@@ -163,6 +166,6 @@ async def test_un_nome_tradotto_non_cambia_un_altro_comando_con_lo_stesso_nome()
     try:
         nomi = {_percorso(n): _nome_en(n) for n in _tutti_i_nodi(_radici(bot))}
         assert nomi["music pause"] == "pause"
-        assert nomi["level attese"] == "cooldowns"
+        assert nomi["monete attese"] == "cooldowns"
     finally:
         await _chiudi(creato_qui, bot)
