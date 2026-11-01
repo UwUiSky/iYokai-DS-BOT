@@ -308,7 +308,7 @@ class ProgressiCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, view=vista, ephemeral=True)
 
     @comando_di_gruppo(
-        "economia",
+        "admin-livelli",
         nome="progressi",
         descrizione="Accende o spegne missioni, serie, traguardi e pass, e fissa l'obiettivo del server.",
     )

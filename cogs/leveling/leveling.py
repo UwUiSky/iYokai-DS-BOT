@@ -2210,8 +2210,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "economia",
-        nome="xp",
+        "admin-livelli",
+        nome="membro",
         descrizione="Modifica XP e livello di un membro.",
     )
     @app_commands.describe(
@@ -3322,10 +3322,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
     # Impostazioni dei livelli (NF-15, #86) — /economia livelli
     # ================================================================
     @comando_di_gruppo(
-        "economia",
+        "admin-livelli",
         nome="mostra",
         descrizione="Mostra le impostazioni dei livelli di questo server.",
-        sottogruppo=SOTTOGRUPPI["economia livelli"],
     )
     async def impostazioni_mostra(self, interaction: discord.Interaction) -> None:
         if await _comando_rifiutato(interaction):
@@ -3336,10 +3335,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "economia",
+        "admin-livelli",
         nome="annuncio",
         descrizione="Dove e quando annunciare i level-up.",
-        sottogruppo=SOTTOGRUPPI["economia livelli"],
     )
     @app_commands.describe(
         modo="Dove annunciare: spento, canale in cui scrive, messaggio privato o canale scelto",
@@ -3374,10 +3372,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await self._salva_impostazioni(interaction, campi)
 
     @comando_di_gruppo(
-        "economia",
+        "admin-livelli",
         nome="premi",
         descrizione="Ruoli-premio: tienili tutti o tieni solo quello più alto.",
-        sottogruppo=SOTTOGRUPPI["economia livelli"],
     )
     @app_commands.describe(modo="'accumula' li tiene tutti, 'sostituisci' toglie i precedenti")
     @app_commands.choices(modo=_SCELTE_PREMI)
@@ -3389,10 +3386,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await self._salva_impostazioni(interaction, {"reward_mode": modo.value})
 
     @comando_di_gruppo(
-        "economia",
+        "admin-livelli",
         nome="xp",
         descrizione="Quanti XP e coin si guadagnano, e come si sommano i moltiplicatori.",
-        sottogruppo=SOTTOGRUPPI["economia livelli"],
     )
     @app_commands.describe(
         testo="XP per ogni messaggio che conta (1-100)",
@@ -3538,10 +3534,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(nota, embed=embed, file=file, ephemeral=True)
 
     @comando_di_gruppo(
-        "economia",
+        "admin-livelli",
         nome="negozio",
         descrizione="Chiedi conferma prima di ogni acquisto nel negozio (si può spegnere).",
-        sottogruppo=SOTTOGRUPPI["economia livelli"],
     )
     @app_commands.describe(conferma="Sì = chiede «Confermi?» prima di comprare; No = compra subito")
     async def impostazioni_negozio(
@@ -3552,10 +3547,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await self._salva_impostazioni(interaction, {"shop_confirm": conferma})
 
     @comando_di_gruppo(
-        "economia",
+        "admin-livelli",
         nome="card",
         descrizione="Mostra o nascondi in questo server gli sfondi con immagine di card e profili.",
-        sottogruppo=SOTTOGRUPPI["economia livelli"],
     )
     @app_commands.describe(sfondi="Sì = ognuno vede la sua immagine; No = solo colori e temi")
     async def impostazioni_card(self, interaction: discord.Interaction, sfondi: bool) -> None:
@@ -3581,10 +3575,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "economia",
+        "admin-livelli",
         nome="escludi",
         descrizione="Un canale, una categoria o un ruolo non dà XP (rifallo per toglierlo).",
-        sottogruppo=SOTTOGRUPPI["economia livelli"],
     )
     @app_commands.describe(
         canale="Il canale senza XP (anche vocale o forum). Una categoria vale per tutti i suoi canali",
@@ -3625,10 +3618,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(
-        "economia",
+        "admin-livelli",
         nome="moltiplicatore",
         descrizione="XP moltiplicati in un canale o per un ruolo (fattore 1 = toglie la regola).",
-        sottogruppo=SOTTOGRUPPI["economia livelli"],
     )
     @app_commands.describe(
         fattore="Da 0.1 a 10 (2 = XP doppi); 1 toglie la regola",

@@ -75,6 +75,7 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "admin-antiraid": ("Anti-raid (admin): soglie, filtri all'ingresso, segnali e allarmi", "administrator", Livello.SECURITY),
     "admin-moduli": ("Moduli del server (admin): alert, starboard, contatori, compleanni, inviti", "manage_guild", Livello.ADMIN),
     "admin-economia": ("Economia (admin): negozio, cassa, premi in monete, annunci del mese", "manage_guild", Livello.ADMIN),
+    "admin-livelli": ("Livelli e XP (admin): guadagno, annunci, premi, esclusioni, progressi", "manage_guild", Livello.ADMIN),
     "ticket": ("Gestione del ticket in cui ti trovi", None, None),
     "voice": ("Gestione del tuo canale vocale temporaneo", None, None),
     "music": ("Musica nei canali vocali", None, None),
