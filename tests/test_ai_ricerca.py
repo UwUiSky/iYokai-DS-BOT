@@ -19,8 +19,8 @@ def cmd(percorso, descr="x", moduli=()):
 COMANDI = [
     cmd("modban ban", "Banna permanentemente un membro."),
     cmd("mod timeout", "Mette in timeout un membro."),
-    cmd("fun gioca", "Gioca"),
-    cmd("level balance", "Mostra i tuoi coin."),
+    cmd("giochi gioca", "Gioca"),
+    cmd("monete balance", "Mostra i tuoi coin."),
     cmd("clan crea", "Crea un clan"),
 ]
 
@@ -68,7 +68,7 @@ def test_vicini_esistenti_e_non_citati():
 
 def test_scoperta_elenco_anche_senza_ai():
     t = r.elenco_scoperta(COMANDI, eventi=["Boss: Oni"])
-    assert "Boss: Oni" in t and "/fun gioca" in t and "/modban" not in t
+    assert "Boss: Oni" in t and "/giochi gioca" in t and "/modban" not in t
     assert "-cerca-comando" in r.elenco_scoperta([])
 
 
@@ -76,7 +76,7 @@ def test_piano_solo_comandi_veri_senza_doppioni_max_5():
     passi = [{"comando": "/mod timeout", "valori": "10 minuti <@1>"}] * 2 + [{"comando": "inventato"}]
     passi += [{"comando": c.percorso, "modulo": "leveling"} for c in COMANDI]
     out = r.leggi_piano("ecco " + json.dumps({"passi": passi}), COMANDI)
-    assert [p.comando.percorso for p in out] == ["mod timeout", "modban ban", "fun gioca", "level balance", "clan crea"]
+    assert [p.comando.percorso for p in out] == ["mod timeout", "modban ban", "giochi gioca", "monete balance", "clan crea"]
     assert "<" not in out[0].valori and "@" not in out[0].valori
     assert r.leggi_piano("niente json", COMANDI) == []
     assert r.moduli_del_piano(out, ["leveling", "altro"]) == ["leveling"]

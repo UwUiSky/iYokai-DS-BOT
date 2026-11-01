@@ -2,7 +2,7 @@
 tests/test_politica_comandi.py
 ==============================
 CFG-008, CFG-009, CFG-010, CFG-018 (#122): politica dei comandi di un server (`core/command_policy.py`,
-`/utility politica`, controllo in `BlacklistAwareCommandTree`).
+`/admin politica`, controllo in `BlacklistAwareCommandTree`).
 """
 
 from unittest.mock import AsyncMock
@@ -20,7 +20,7 @@ pytestmark = pytest.mark.asyncio
 
 
 def _valuta(politica, **kw):
-    base = dict(percorso="fun meme", canali=[10], ruoli=[], user_id=1, esente=False)
+    base = dict(percorso="immagini meme", canali=[10], ruoli=[], user_id=1, esente=False)
     base.update(kw)
     return pol.valuta(politica, **base)
 
@@ -31,7 +31,7 @@ def test_politica_vuota_lascia_passare_tutto():
 
 
 def test_comando_spento_vale_per_tutti_ma_non_per_i_gruppi_di_servizio():
-    p = pol.Politica(comandi_off=frozenset({"fun meme", "admin setup attiva"}))
+    p = pol.Politica(comandi_off=frozenset({"immagini meme", "admin setup attiva"}))
     assert _valuta(p) == pol.MOTIVO_COMANDO_OFF
     assert _valuta(p, esente=True) == pol.MOTIVO_COMANDO_OFF  # spento è spento, anche per lo staff
     assert _valuta(p, percorso="admin setup attiva") is None  # /admin non si spegne mai
@@ -58,7 +58,7 @@ def test_ruoli_e_utenti_ignorati_ma_lo_staff_no():
 
 def test_i_gruppi_di_servizio_non_si_bloccano_con_nessuna_regola():
     p = pol.Politica(canali_ok=frozenset({1}), utenti_ignorati=frozenset({7}))
-    for percorso in ("admin config history", "owner system eval", "utility politica elenco"):
+    for percorso in ("admin config history", "owner system eval", "admin politica elenco"):
         assert _valuta(p, percorso=percorso, user_id=7, canali=[2]) is None
 
 
@@ -73,10 +73,10 @@ async def db_pronto(clean_db, monkeypatch):
 
 async def test_modifica_elenco_aggiunge_toglie_e_rispetta_il_tetto(db_pronto):
     db = db_pronto
-    assert await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "fun meme", aggiungi=True, changed_by=1)
-    assert not await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "fun meme", aggiungi=True, changed_by=1)
-    assert (await pol.leggi_politica(700)).comandi_off == {"fun meme"}
-    assert await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "fun meme", aggiungi=False, changed_by=1)
+    assert await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "immagini meme", aggiungi=True, changed_by=1)
+    assert not await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "immagini meme", aggiungi=True, changed_by=1)
+    assert (await pol.leggi_politica(700)).comandi_off == {"immagini meme"}
+    assert await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "immagini meme", aggiungi=False, changed_by=1)
     assert await db.get_guild_setting(700, pol.CHIAVE_COMANDI_OFF, None) is None  # l'elenco vuoto toglie la chiave
     with pytest.raises(pol.VoceNonValida):
         await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "admin setup", aggiungi=True, changed_by=1)
@@ -92,7 +92,7 @@ async def test_modifica_elenco_aggiunge_toglie_e_rispetta_il_tetto(db_pronto):
     assert not await pol.azzera_elenco(700, pol.CHIAVE_CANALI_NO, changed_by=1)
 
 
-def _interazione(comando="fun meme", *, permessi=None, canale_id=10, user_id=40, ruoli=None):
+def _interazione(comando="immagini meme", *, permessi=None, canale_id=10, user_id=40, ruoli=None):
     canale = fake_text_channel(canale_id)
     canale.parent_id = None
     canale.category_id = None
@@ -109,7 +109,7 @@ def _interazione(comando="fun meme", *, permessi=None, canale_id=10, user_id=40,
 
 async def test_il_controllo_dell_albero_ferma_il_comando_spento_e_risponde_effimero(db_pronto, monkeypatch):
     monkeypatch.setattr("core.blacklist_tree.blacklist_repo.is_user_blacklisted", AsyncMock(return_value=False), raising=False)
-    await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "fun meme", aggiungi=True, changed_by=1)
+    await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "immagini meme", aggiungi=True, changed_by=1)
     interazione = _interazione()
     assert await pol.valuta_interazione(interazione) == pol.MOTIVO_COMANDO_OFF
     # chi gestisce il server resta fuori dalle regole sui canali
@@ -122,7 +122,7 @@ async def test_il_controllo_dell_albero_ferma_il_comando_spento_e_risponde_effim
 
 async def test_app_installata_sull_utente_in_un_server_senza_il_bot_ignora_la_politica(db_pronto):
     """La politica è del server per il bot installato lì: l'app sull'utente (NF-36) fuori dal server non la subisce."""
-    await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "fun meme", aggiungi=True, changed_by=1)
+    await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "immagini meme", aggiungi=True, changed_by=1)
     installata = _interazione()
     installata.is_guild_integration = lambda: True
     assert await pol.valuta_interazione(installata) == pol.MOTIVO_COMANDO_OFF
@@ -149,7 +149,7 @@ async def test_i_comandi_fuori_dai_server_o_non_slash_non_sono_toccati(db_pronto
 
 
 async def test_albero_blacklist_manda_il_motivo_in_privato(db_pronto, monkeypatch):
-    await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "fun meme", aggiungi=True, changed_by=1)
+    await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "immagini meme", aggiungi=True, changed_by=1)
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default(), tree_cls=BlacklistAwareCommandTree)
     interazione = _interazione()
     interazione.client = bot
@@ -178,12 +178,12 @@ async def cog(db_pronto):
 
 async def test_comando_spegne_riaccende_e_rifiuta_i_nomi_sbagliati(cog, db_pronto):
     i = _interazione()
-    await cog.comando.callback(cog, i, "/fun meme", False)
-    assert (await pol.leggi_politica(700)).comandi_off == {"fun meme"}
+    await cog.comando.callback(cog, i, "/immagini meme", False)
+    assert (await pol.leggi_politica(700)).comandi_off == {"immagini meme"}
     assert "spento" in i.response.send_message.call_args.args[0]
 
     i = _interazione()
-    await cog.comando.callback(cog, i, "fun meme", True)
+    await cog.comando.callback(cog, i, "immagini meme", True)
     assert (await pol.leggi_politica(700)).vuota
 
     i = _interazione()
@@ -220,13 +220,13 @@ async def test_canali_ignora_ed_elenco(cog, db_pronto):
 
 
 async def test_diagnosi_dice_il_motivo(cog, db_pronto):
-    await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "fun meme", aggiungi=True, changed_by=1)
+    await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "immagini meme", aggiungi=True, changed_by=1)
     i = _interazione(permessi=discord.Permissions(manage_guild=True))
-    await cog.diagnosi.callback(cog, i, "fun meme")
+    await cog.diagnosi.callback(cog, i, "immagini meme")
     assert "spento" in i.followup.send.call_args.kwargs["embed"].description
-    await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "fun meme", aggiungi=False, changed_by=1)
+    await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "immagini meme", aggiungi=False, changed_by=1)
     i = _interazione(permessi=discord.Permissions(manage_guild=True))
-    await cog.diagnosi.callback(cog, i, "fun meme")
+    await cog.diagnosi.callback(cog, i, "immagini meme")
     assert "Nessun problema" in i.followup.send.call_args.kwargs["embed"].description
 
 

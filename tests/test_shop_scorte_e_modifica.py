@@ -211,7 +211,7 @@ async def test_buy_esaurito_non_addebita(scena):
     item_id = await scena.negozio.add_item(GUILD, name="Raro", price=100, stock=0)
     await scena.monete.add_coins(GUILD, 1, 500)
     interazione = _interazione()
-    await scena.comandi["level shop buy"].callback(scena.cog, interazione, item_id=item_id)
+    await scena.comandi["monete shop buy"].callback(scena.cog, interazione, item_id=item_id)
     assert "esaurito" in _testo(interazione).lower()
     assert (await scena.monete.get_totals(GUILD, 1)).coins_total == 500
 
@@ -222,12 +222,12 @@ async def test_buy_senza_il_ruolo_richiesto_e_rifiutato_prima_di_pagare(scena):
     await scena.monete.add_coins(GUILD, 1, 500)
 
     senza = _interazione()
-    await scena.comandi["level shop buy"].callback(scena.cog, senza, item_id=item_id)
+    await scena.comandi["monete shop buy"].callback(scena.cog, senza, item_id=item_id)
     assert "<@&42>" in _testo(senza)
     assert (await scena.monete.get_totals(GUILD, 1)).coins_total == 500
 
     con = _interazione(ruoli=[fake_role(role_id=42)])
-    await scena.comandi["level shop buy"].callback(scena.cog, con, item_id=item_id)
+    await scena.comandi["monete shop buy"].callback(scena.cog, con, item_id=item_id)
     assert (await scena.monete.get_totals(GUILD, 1)).coins_total == 400
 
 
@@ -235,7 +235,7 @@ async def test_buy_senza_il_ruolo_richiesto_e_rifiutato_prima_di_pagare(scena):
 async def test_la_lista_mostra_scorte_e_ruolo_richiesto(scena):
     await scena.negozio.add_item(GUILD, name="Raro", price=100, stock=3, required_role_id=42)
     interazione = _interazione()
-    await scena.comandi["level shop list"].callback(scena.cog, interazione)
+    await scena.comandi["monete shop list"].callback(scena.cog, interazione)
     testo = interazione.response.send_message.await_args.kwargs["embed"].description
     assert "3" in testo and "<@&42>" in testo
 
@@ -266,7 +266,7 @@ async def test_il_nome_di_soli_spazi_e_rifiutato(scena):
 
 @pytest.mark.asyncio
 async def test_item_id_ha_il_tetto_di_32_bit(scena):
-    for nome in ("level shop buy", "economia shop-edit", "economia shop-remove"):
+    for nome in ("monete shop buy", "economia shop-edit", "economia shop-remove"):
         parametro = [p for p in scena.comandi[nome].parameters if p.name == "item_id"][0]
         assert (parametro.min_value, parametro.max_value) == (1, 2_147_483_647), nome
     assert await scena.negozio.get_item(2**40, GUILD) is None

@@ -45,10 +45,10 @@ def cmd(percorso, moduli=()):
 
 async def test_scoperta_risponde_anche_con_ai_ferma(repo):
     i = _inter()
-    ok = await ass.risposta_locale(i, "cosa posso fare qui?", [cmd("fun gioca"), cmd("level balance")], G)
+    ok = await ass.risposta_locale(i, "cosa posso fare qui?", [cmd("giochi gioca"), cmd("monete balance")], G)
     assert ok
     embed = i.followup.send.call_args.kwargs["embed"]
-    assert embed.title == "Cosa puoi fare qui" and "/fun gioca" in embed.description
+    assert embed.title == "Cosa puoi fare qui" and "/giochi gioca" in embed.description
 
 
 async def test_guida_del_server_risponde_senza_ai(repo):

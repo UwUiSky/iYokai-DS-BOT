@@ -133,7 +133,7 @@ async def test_scaricare_il_cog_toglie_i_comandi(clean_db):
 
 
 async def test_bacheca_clan_chiede_il_livello_admin_del_bot(clean_db, monkeypatch):
-    """`/clan bacheca set|disable`: permesso di Discord OPPURE ruolo admin del bot; altrimenti rifiuto."""
+    """`/economia annunci clan-set|disable`: permesso di Discord OPPURE ruolo admin del bot; altrimenti rifiuto."""
     import types
 
     import pytest

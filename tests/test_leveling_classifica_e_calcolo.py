@@ -125,7 +125,7 @@ async def test_balance_mostra_la_posizione(scena):
     await scena.monete.add_coins(GUILD, 1, 100)
     await scena.monete.add_coins(GUILD, 2, 900)
     interazione = _interazione()
-    await scena.comandi["level balance"].callback(scena.cog, interazione, member=None)
+    await scena.comandi["monete balance"].callback(scena.cog, interazione, member=None)
     testo = interazione.response.send_message.await_args.kwargs["embed"].description
     assert "100" in testo and "#2" in testo
 

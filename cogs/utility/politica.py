@@ -79,7 +79,7 @@ class PoliticaCog(CogConGruppi, commands.Cog):
     # ------------------------------------------------------------------
     @comando_di_gruppo("admin", nome="comando", descrizione="Spegne o riaccende un singolo comando.", sottogruppo=SOTTOGRUPPI["admin politica"])
     @richiedi(Livello.ADMIN)
-    @app_commands.describe(comando="Il comando, es. «fun meme»", acceso="Sì = riaccendi, No = spegni")
+    @app_commands.describe(comando="Il comando, es. «immagini meme»", acceso="Sì = riaccendi, No = spegni")
     @app_commands.autocomplete(comando=_suggerisci)
     async def comando(
         self, interaction: discord.Interaction, comando: app_commands.Range[str, 1, 100], acceso: bool = False
@@ -187,7 +187,7 @@ class PoliticaCog(CogConGruppi, commands.Cog):
     # ------------------------------------------------------------------
     @comando_di_gruppo("admin", nome="diagnosi", descrizione="Scopre perché un comando non funziona qui.", sottogruppo=SOTTOGRUPPI["admin politica"])
     @richiedi(Livello.ADMIN)
-    @app_commands.describe(comando="Il comando da controllare, es. «fun meme»")
+    @app_commands.describe(comando="Il comando da controllare, es. «immagini meme»")
     @app_commands.autocomplete(comando=_suggerisci)
     async def diagnosi(self, interaction: discord.Interaction, comando: app_commands.Range[str, 1, 100]) -> None:
         percorso = comando.strip().lstrip("/")

@@ -1,7 +1,7 @@
 """
 tests/test_coin_games_cog.py
 ============================
-NF-40 (#111): comandi /fun gioca, /fun misura, /fun conteggio e il listener
+NF-40 (#111): comandi /giochi gioca, /fun misura, /moduli conteggio e il listener
 del gioco del conteggio. Archivio su PostgreSQL vero.
 Funzioni coperte: SPEC §23.16
 """
@@ -79,7 +79,7 @@ async def _libera_attesa(scena):
 
 
 # ----------------------------------------------------------------------
-# /fun gioca
+# /giochi gioca
 # ----------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_due_partite_insieme_ne_passa_una_sola(scena):
@@ -92,7 +92,7 @@ async def test_due_partite_insieme_ne_passa_una_sola(scena):
     interazioni = [_interazione() for _ in range(5)]
 
     await asyncio.gather(*(
-        scena.comandi["fun gioca"].callback(
+        scena.comandi["giochi gioca"].callback(
             scena.cog, i, gioco=_scelta("monetina"), puntata=10, scelta=_scelta("testa")
         )
         for i in interazioni
@@ -111,7 +111,7 @@ async def test_gioca_richiede_anche_il_modulo_livelli(scena):
     await database_module.db.set_module_active_for_guild(GUILD, "leveling", False)
     interazione = _interazione()
 
-    await scena.comandi["fun gioca"].callback(
+    await scena.comandi["giochi gioca"].callback(
         scena.cog, interazione, gioco=_scelta("dadi"), puntata=10, scelta=None
     )
 
@@ -121,7 +121,7 @@ async def test_gioca_richiede_anche_il_modulo_livelli(scena):
 
 @pytest.mark.asyncio
 async def test_i_comandi_sono_sotto_fun(scena):
-    for nome in ("fun gioca", "fun misura", "fun conteggio"):
+    for nome in ("giochi gioca", "fun misura", "moduli conteggio"):
         assert nome in scena.comandi
 
 
@@ -129,7 +129,7 @@ async def test_i_comandi_sono_sotto_fun(scena):
 async def test_vincita_e_perdita_cambiano_il_saldo(scena):
     await scena.monete.add_coins(GUILD, 1, 100)
     scena.cog._rng = _Rng(0)  # esce testa
-    await scena.comandi["fun gioca"].callback(
+    await scena.comandi["giochi gioca"].callback(
         scena.cog, _interazione(), gioco=_scelta("monetina"), puntata=40, scelta=_scelta("testa")
     )
     assert (await scena.monete.get_totals(GUILD, 1)).coins_total == 140
@@ -137,7 +137,7 @@ async def test_vincita_e_perdita_cambiano_il_saldo(scena):
     await _libera_attesa(scena)
     scena.cog._rng = _Rng(1)  # esce croce
     interazione = _interazione()
-    await scena.comandi["fun gioca"].callback(
+    await scena.comandi["giochi gioca"].callback(
         scena.cog, interazione, gioco=_scelta("monetina"), puntata=40, scelta=_scelta("testa")
     )
     assert (await scena.monete.get_totals(GUILD, 1)).coins_total == 100
@@ -148,7 +148,7 @@ async def test_vincita_e_perdita_cambiano_il_saldo(scena):
 async def test_senza_coin_a_sufficienza_non_si_gioca(scena):
     await scena.monete.add_coins(GUILD, 1, 10)
     interazione = _interazione()
-    await scena.comandi["fun gioca"].callback(
+    await scena.comandi["giochi gioca"].callback(
         scena.cog, interazione, gioco=_scelta("dadi"), puntata=50, scelta=None
     )
     assert "abbastanza" in _testo(interazione)
@@ -159,7 +159,7 @@ async def test_senza_coin_a_sufficienza_non_si_gioca(scena):
 async def test_monetina_senza_lato_e_rifiutata(scena):
     await scena.monete.add_coins(GUILD, 1, 100)
     interazione = _interazione()
-    await scena.comandi["fun gioca"].callback(
+    await scena.comandi["giochi gioca"].callback(
         scena.cog, interazione, gioco=_scelta("monetina"), puntata=10, scelta=None
     )
     assert "testa o croce" in _testo(interazione)
@@ -170,12 +170,12 @@ async def test_monetina_senza_lato_e_rifiutata(scena):
 async def test_due_partite_di_fila_vengono_fermate(scena):
     await scena.monete.add_coins(GUILD, 1, 100)
     scena.cog._rng = random.Random(1)
-    await scena.comandi["fun gioca"].callback(
+    await scena.comandi["giochi gioca"].callback(
         scena.cog, _interazione(), gioco=_scelta("dadi"), puntata=10, scelta=None
     )
     dopo_la_prima = (await scena.monete.get_totals(GUILD, 1)).coins_total
     interazione = _interazione()
-    await scena.comandi["fun gioca"].callback(
+    await scena.comandi["giochi gioca"].callback(
         scena.cog, interazione, gioco=_scelta("dadi"), puntata=10, scelta=None
     )
     assert "Aspetta" in _testo(interazione)
@@ -189,7 +189,7 @@ async def test_modulo_spento_nessuna_partita(scena):
     await database_module.db.set_module_active_for_guild(GUILD, "fun", False)
     await scena.monete.add_coins(GUILD, 1, 100)
     interazione = _interazione()
-    await scena.comandi["fun gioca"].callback(
+    await scena.comandi["giochi gioca"].callback(
         scena.cog, interazione, gioco=_scelta("dadi"), puntata=10, scelta=None
     )
     assert "non è attivo" in _testo(interazione)
@@ -219,7 +219,7 @@ async def test_misura_rifiuta_i_temi_su_caratteristiche_protette(scena):
 # ----------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_conteggio_imposta_stato_e_spegni(scena):
-    comando = scena.comandi["fun conteggio"]
+    comando = scena.comandi["moduli conteggio"]
     canale = fake_text_channel(channel_id=555)
     await comando.callback(scena.cog, _interazione(), azione=_scelta("imposta"), canale=canale)
     assert (await scena.conteggio.get(GUILD)).channel_id == 555
@@ -240,7 +240,7 @@ async def test_conteggio_non_si_imposta_dove_il_bot_non_puo_reagire(scena):
     )
     interazione = _interazione()
 
-    await scena.comandi["fun conteggio"].callback(
+    await scena.comandi["moduli conteggio"].callback(
         scena.cog, interazione, azione=_scelta("imposta"), canale=canale
     )
 

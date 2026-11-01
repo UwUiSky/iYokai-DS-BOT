@@ -2,7 +2,7 @@
 tests/test_f7_ticket_voice_gruppi.py
 ====================================
 I comandi di ticket e vocali temporanei stanno in /ticket, /voice,
-/gestione ticket e /gestione voice, col nome e il livello giusti
+/ticket-gestione e /gestione voice, col nome e il livello giusti
 (mappa F7 passo 3b).
 Funzioni coperte: NF-05 (issue #76)
 """

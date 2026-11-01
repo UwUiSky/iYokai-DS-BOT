@@ -325,7 +325,7 @@ async def test_voto_chiesto_in_dm_solo_se_acceso_nel_pannello(scheduler_di_test)
 
 
 # ====================================================================
-# Comandi di /gestione ticket
+# Comandi di /ticket-gestione
 # ====================================================================
 async def _cog():
     return modulo.TicketsCog(MagicMock())

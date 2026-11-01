@@ -217,7 +217,7 @@ async def test_monthly_winners_disable_senza_configurazione_avvisa(cog_e_winners
 
 
 # ----------------------------------------------------------------------
-# /clan bacheca set|disable (SPEC.md §15.10, top 3 gilde mensile) —
+# /economia annunci clan-set|disable (SPEC.md §15.10, top 3 gilde mensile) —
 # stesso cog, stesso schema di /monthly-winners sopra
 # ----------------------------------------------------------------------
 @pytest.fixture

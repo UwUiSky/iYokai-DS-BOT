@@ -1,8 +1,8 @@
 """
 tests/test_entertainment_animal_and_search_commands.py
 =============================================================
-Test del comportamento REALE di /fun animal (§16.4) e
-/fun search-image (§16.9) — fetcher HTTP sostituiti con fake
+Test del comportamento REALE di /immagini animal (§16.4) e
+/immagini search-image (§16.9) — fetcher HTTP sostituiti con fake
 in-memory (nessuna rete coinvolta), stesso schema di monkeypatch di
 tests/test_feed_alerts_behavior.py per il config env-gated.
 """

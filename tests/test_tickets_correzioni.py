@@ -192,7 +192,7 @@ async def test_remove_toglie_il_ruolo_impostato_con_ticket_setup():
     ruolo = fake_role(ID_RUOLO_SUPPORTO, "Supporto")
     server.guild.get_role.side_effect = lambda role_id: ruolo if role_id == ID_RUOLO_SUPPORTO else None
     cog = TicketsCog(bot=None)
-    # Il ruolo "storico" lo scrive /gestione ticket setup.
+    # Il ruolo "storico" lo scrive /ticket-gestione setup.
     await cog.ticket_setup.callback(cog, server.interazione(server.staff()), server.categoria, ruolo)
     assert await modulo._support_role_ids(ID_SERVER) == [ID_RUOLO_SUPPORTO]
 

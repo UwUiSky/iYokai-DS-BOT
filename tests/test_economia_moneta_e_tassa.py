@@ -144,12 +144,12 @@ async def test_pay_con_tassa_e_tetto(scena, clean_db):
     await scena.monete.add_coins(GUILD, 1, 1000)
 
     troppo = _interazione()
-    await scena.comandi["level pay"].callback(scena.cog, troppo, member=fake_member(2), amount=301)
+    await scena.comandi["monete pay"].callback(scena.cog, troppo, member=fake_member(2), amount=301)
     assert "al massimo **300** gemme" in _testo(troppo)
     assert (await scena.monete.get_totals(GUILD, 1)).coins_total == 1000
 
     ok = _interazione()
-    await scena.comandi["level pay"].callback(scena.cog, ok, member=fake_member(2), amount=200)
+    await scena.comandi["monete pay"].callback(scena.cog, ok, member=fake_member(2), amount=200)
     testo = _testo(ok)
     assert "**200** gemme" in testo and "Tassa" in testo and "**20**" in testo and "**180**" in testo
     assert (await scena.monete.get_totals(GUILD, 2)).coins_total == 180
@@ -159,7 +159,7 @@ async def test_pay_con_tassa_e_tetto(scena, clean_db):
 async def test_pay_senza_impostazioni_resta_com_era(scena):
     await scena.monete.add_coins(GUILD, 1, 100)
     interazione = _interazione()
-    await scena.comandi["level pay"].callback(scena.cog, interazione, member=fake_member(2), amount=60)
+    await scena.comandi["monete pay"].callback(scena.cog, interazione, member=fake_member(2), amount=60)
     assert "**60** coin" in _testo(interazione) and "Tassa" not in _testo(interazione)
     assert (await scena.monete.get_totals(GUILD, 2)).coins_total == 60
 
@@ -170,11 +170,11 @@ async def test_saldo_daily_e_classifica_usano_il_nome_scelto(scena):
     await scena.monete.add_coins(GUILD, 1, 70)
 
     saldo = _interazione()
-    await scena.comandi["level balance"].callback(scena.cog, saldo, member=None)
+    await scena.comandi["monete balance"].callback(scena.cog, saldo, member=None)
     assert "**70** gemme" in saldo.response.send_message.await_args.kwargs["embed"].description
 
     daily = _interazione(user_id=5)
-    await scena.comandi["level daily"].callback(scena.cog, daily)
+    await scena.comandi["monete daily"].callback(scena.cog, daily)
     assert "gemme" in _testo(daily) and "coin" not in _testo(daily)
 
     classifica = _interazione()
@@ -189,7 +189,7 @@ async def test_saldo_daily_e_classifica_usano_il_nome_scelto(scena):
 @pytest.mark.asyncio
 async def test_il_comando_delle_impostazioni_salva_nome_tassa_e_tetto(scena):
     interazione = _interazione()
-    await scena.comandi["level impostazioni xp"].callback(
+    await scena.comandi["economia livelli xp"].callback(
         scena.cog, interazione, nome_moneta="stelle", tassa_pay=5, massimo_pay=100
     )
     i = (await scena.impostazioni.get_config(GUILD)).impostazioni
@@ -203,13 +203,13 @@ async def test_pagamenti_piccoli_non_evitano_la_tassa(scena, clean_db):
     await scena.monete.add_coins(GUILD, 1, 100)
 
     piccolo = _interazione()
-    await scena.comandi["level pay"].callback(scena.cog, piccolo, member=fake_member(2), amount=9)
+    await scena.comandi["monete pay"].callback(scena.cog, piccolo, member=fake_member(2), amount=9)
     assert (await scena.monete.get_totals(GUILD, 2)).coins_total == 8
     assert await cassa.get_balance(GUILD) == 1
 
     # 1 solo: la tassa sarebbe tutto l'importo, quindi si rifiuta e non si muove nulla.
     uno = _interazione()
-    await scena.comandi["level pay"].callback(scena.cog, uno, member=fake_member(2), amount=1)
+    await scena.comandi["monete pay"].callback(scena.cog, uno, member=fake_member(2), amount=1)
     assert "almeno **2**" in _testo(uno)
     assert (await scena.monete.get_totals(GUILD, 1)).coins_total == 91
 
@@ -220,12 +220,12 @@ async def test_pay_sotto_il_minimo_rifiutato(scena):
     await scena.impostazioni.set_options(GUILD, pay_min=50)
     await scena.monete.add_coins(GUILD, 1, 100)
     poco = _interazione()
-    await scena.comandi["level pay"].callback(scena.cog, poco, member=fake_member(2), amount=49)
+    await scena.comandi["monete pay"].callback(scena.cog, poco, member=fake_member(2), amount=49)
     assert "almeno **50**" in _testo(poco)
     assert (await scena.monete.get_totals(GUILD, 1)).coins_total == 100
 
     interazione = _interazione()
-    await scena.comandi["level impostazioni xp"].callback(scena.cog, interazione, minimo_pay=10)
+    await scena.comandi["economia livelli xp"].callback(scena.cog, interazione, minimo_pay=10)
     assert (await scena.impostazioni.get_config(GUILD)).impostazioni.pay_min == 10
 
 
@@ -250,7 +250,7 @@ async def test_comando_salva_l_immagine_ridotta_e_la_mostra(scena):
     from PIL import Image
     import io
     interazione = _interazione()
-    await scena.comandi["level impostazioni xp"].callback(
+    await scena.comandi["economia livelli xp"].callback(
         scena.cog, interazione, nome_moneta="stelle", immagine_moneta=_allegato(_png_grande())
     )
     salvata = await scena.impostazioni.get_immagine_moneta(GUILD)
@@ -263,7 +263,7 @@ async def test_comando_salva_l_immagine_ridotta_e_la_mostra(scena):
 @pytest.mark.asyncio
 async def test_primo_nome_senza_immagine_chiede_l_immagine(scena):
     interazione = _interazione()
-    await scena.comandi["level impostazioni xp"].callback(scena.cog, interazione, nome_moneta="stelle")
+    await scena.comandi["economia livelli xp"].callback(scena.cog, interazione, nome_moneta="stelle")
     assert "immagine_moneta" in _testo(interazione) and "moneta di iYokai" in _testo(interazione)
     assert await scena.impostazioni.get_immagine_moneta(GUILD) is None
 
@@ -271,7 +271,7 @@ async def test_primo_nome_senza_immagine_chiede_l_immagine(scena):
 @pytest.mark.asyncio
 async def test_immagine_rotta_non_salva_nulla(scena):
     interazione = _interazione()
-    await scena.comandi["level impostazioni xp"].callback(
+    await scena.comandi["economia livelli xp"].callback(
         scena.cog, interazione, nome_moneta="stelle", immagine_moneta=_allegato(b"non immagine")
     )
     assert "Non riesco ad aprire" in interazione.followup.send.await_args.args[0]
@@ -283,13 +283,13 @@ async def test_immagine_rotta_non_salva_nulla(scena):
 async def test_senza_immagine_toglie_la_moneta_personale(scena):
     await scena.impostazioni.set_immagine_moneta(GUILD, b"x")
     interazione = _interazione()
-    await scena.comandi["level impostazioni xp"].callback(scena.cog, interazione, senza_immagine=True)
+    await scena.comandi["economia livelli xp"].callback(scena.cog, interazione, senza_immagine=True)
     assert await scena.impostazioni.get_immagine_moneta(GUILD) is None
 
 
 @pytest.mark.asyncio
 async def test_saldo_e_cassa_mostrano_la_stessa_miniatura(scena):
-    for nome, args in (("level balance", {"member": None}), ("level cassa", {})):
+    for nome, args in (("monete balance", {"member": None}), ("monete cassa", {})):
         interazione = _interazione()
         await scena.comandi[nome].callback(scena.cog, interazione, **args)
         kw = interazione.response.send_message.await_args.kwargs
