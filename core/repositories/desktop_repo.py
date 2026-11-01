@@ -71,8 +71,13 @@ class DesktopRepository:
         )
 
     async def utenti_con_avvisi(self) -> dict[int, list[str]]:
-        """Chi ha acceso gli avvisi, con le sue parole chiave: la lista che il bot guarda a ogni messaggio."""
-        righe = await self._pool.fetch("SELECT user_id, parole FROM desktop_prefs WHERE menzioni")
+        """
+        Chi ha acceso gli avvisi ed è collegato, con le sue parole chiave: la lista che il bot guarda a ogni
+        messaggio. Dopo `scollega` non si salvano più testi di altri per nessuno.
+        """
+        righe = await self._pool.fetch(
+            "SELECT p.user_id, p.parole FROM desktop_prefs p JOIN desktop_tokens t ON t.user_id = p.user_id WHERE p.menzioni"
+        )
         return {r["user_id"]: list(r["parole"]) for r in righe}
 
     # ---------------------------------------------------------------- eventi

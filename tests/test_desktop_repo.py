@@ -28,12 +28,16 @@ async def test_avvisi_spenti_di_base_poi_acceso_con_parole(repo):
     assert await repo.utenti_con_avvisi() == {}
     await repo.imposta_parole(5, ["ciao"])
     assert await repo.utenti_con_avvisi() == {}  # le parole da sole non accendono nulla
+    await repo.imposta_token(5, "a" * 64)
+    await repo.imposta_token(6, "b" * 64)
     await repo.imposta_menzioni(5, True)
     await repo.imposta_menzioni(6, True)
     assert await repo.utenti_con_avvisi() == {5: ["ciao"], 6: []}
     assert await repo.preferenze(5) == PreferenzeDesktop(True, ("ciao",))
     await repo.imposta_menzioni(5, False)
     assert await repo.utenti_con_avvisi() == {6: []}
+    await repo.revoca_token(6)
+    assert await repo.utenti_con_avvisi() == {}  # scollegato: nessun testo di altri si salva più per lui
 
 
 async def test_eventi_dopo_id_filtro_e_tetto(repo):

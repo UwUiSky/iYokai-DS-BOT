@@ -17,10 +17,12 @@ from tests.support.discord_fakes import fake_guild, fake_member, fake_message
 
 
 @pytest.fixture
-def repo(monkeypatch, clean_db):
+async def repo(monkeypatch, clean_db):
     r = DesktopRepository(pool_provider=lambda: clean_db)
     monkeypatch.setattr(dm, "desktop_repo", r)
     monkeypatch.setattr(desktop_eventi, "desktop_repo", r)
+    for utente in (10, 11):  # gli avvisi valgono solo per chi ha collegato il programma
+        await r.imposta_token(utente, f"{utente:064d}")
     return r
 
 
@@ -83,6 +85,7 @@ async def test_errore_del_database_non_si_propaga(monkeypatch):
 
 
 async def test_avvisa_utente_solo_se_collegato(repo):
+    await repo.revoca_token(10)
     assert await desktop_eventi.avvisa_utente(10, "promemoria", "bevi") is False
     await repo.imposta_token(10, "c" * 64)
     assert await desktop_eventi.avvisa_utente(10, "promemoria", "bevi\nacqua") is True
