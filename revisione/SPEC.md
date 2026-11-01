@@ -1942,6 +1942,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 14/10:** nel catalogo ci sono i messaggi del gestore errori, del controllo accessi e dei comandi di lingua.
   Gli altri cog scrivono ancora in italiano: si portano nel catalogo file per file, quando li si tocca (21.6).
   → **Stato 28/10 (r12):** catalogo esteso a app utente, desktop, role menu, verifica, spam-trap e benvenuti (risposte dirette). Mancano circa 1.100 frasi in 73 cog di altre aree.
+  → **Stato 01/11 (r12 lingue):** circa 2.500 frasi di ~70 cog nel catalogo; i testi che leggono tutti (pannelli, canali, log dello staff) usano la lingua del server (`tests/test_i18n_pubblica.py`); limiti di Discord anche in inglese (`tests/test_i18n_limiti.py`). Mancano: circa 630 frasi scritte nel codice in 80 file (soprattutto comandi dell'owner, `ai/config`, log di base e dei messaggi, livelli, spam-trap) e i messaggi mandati senza interazione (log automatici, avvisi a orario), ancora in italiano.
 - `[x]` 21.2 La lingua del server decide la lingua delle risposte pubbliche — `/admin lingua set`
   (solo `it`/`en`); le risposte che vede solo l'utente seguono la sua lingua personale, se l'ha scelta
   (`/utility lingua`, tabella `user_language`, migrazione 0130, nel registro dei dati). Senza database: italiano.
@@ -1963,6 +1964,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 14/10:** non fatto qui: i cog sono di altre aree (utility/role menu, security, welcome). La
   struttura c'è (`t`, `lingua_interazione`, `testo_per`); ogni area porta i suoi testi quando tocca il file.
   → **Stato 28/10 (r12):** risposte dirette di role menu, verifica, spam-trap e benvenuti nel catalogo it/en, e testi di base dei benvenuti nella lingua del server (test_i18n_risposte_r12). Restano le frasi interne di `VerifyOutcome`, del pannello di verifica e del canale-trappola.
+  → **Stato 01/11:** il pannello di verifica è nel catalogo, nella lingua del server. Restano le frasi interne di `VerifyOutcome` e del canale-trappola.
 
 ## §22 FUNZIONI NUOVE, PRIMO GRUPPO — da fare (fase F9)
 
