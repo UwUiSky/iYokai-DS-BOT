@@ -37,7 +37,7 @@ from core.greetings_logic import (
     scegli_testo,
 )
 from core import greetings_uscite_logic as uscite
-from core.i18n import lingua_server, t
+from core.i18n import lingua_risposta, t
 from core.ui_base import BaseModal, BaseView
 from core.premium import PremiumModule, registry
 from core.repositories.greetings_repo import greetings_repo
@@ -142,7 +142,7 @@ class ExtraBenvenutoModal(BaseModal, title="Benvenuto: DM, varianti, reazioni"):
 
 async def _modello(salvato: str, predefinito: str, chiave: str, guild_id: int) -> str:
     """Il testo salvato dall'admin com'è; se è ancora quello di base, quello della lingua del server (NF-06)."""
-    return t(chiave, await lingua_server(guild_id)) if salvato == predefinito else salvato
+    return t(chiave, await lingua_risposta(guild_id, None, pubblica=True)) if salvato == predefinito else salvato
 
 
 async def _invia_con_grafica(channel, testo, grafica, menzioni, guild_id: int, nome: str) -> None:
