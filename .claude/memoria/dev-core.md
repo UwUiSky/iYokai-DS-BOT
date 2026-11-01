@@ -1,19 +1,19 @@
 # Memoria di dev-core
 
 ## Aggiornata
-28/10/2026 · ramo `feat/r12resto` (agente r12resto) · giro r12 (lotto «resto», migrazioni 0480-0499, D48-D50)
+01/11/2026 · ramo `feat/r13ruoli` (agente r13ruoli) · D60 applicata, merge di origin/main fatto
 
 ## In corso
-- r13gruppi (D56/D57) quasi chiuso: resta merge di origin/main, esito dei test dei cog toccati, rapporto. Smoke/suite da fare (c'e una migrazione: 0485 percorsi, 0486 livelli_funzione).
-- Rimandato: persistenza/pannello dei livelli, aggancio ai pagamenti (`ha_livello` oggi vale solo per OWNER_ID), permessi per ruolo dal pannello (OAuth), `/gif` ancora vuoto.
+- r13ruoli chiuso e pubblicato. Smoke/suite da fare (migrazione 0488, `core/command_permissions.py`, `core/command_access.py`, `core/command_groups.py`, `core/command_policy.py`).
+- Rimandato: alias dei nomi vecchi in `/-cerca-comando` (mappa rischio 12), persistenza/pannello dei livelli (D57), permessi per ruolo dal pannello (OAuth), nascondere `/founder` agli admin.
 
 ## Fatto
-- r13gruppi: 152 comandi spostati (un commit per gruppo), 11 gruppi nuovi in `_DEFINIZIONI`, sotto-gruppi in `SOTTOGRUPPI`; 4 solo-owner in `/owner ai|parole-odio`; migrazione 0485 (guild_config, history, command_usage); `core/livelli_funzione.py` + `/premium` `/vip` dinamici (0486); invarianti D56 nei test.
-- r12 (resto): 14.7 jolly `*` autoresponder; 18.1 benvenuto nel router (forum, `TIPO_BENVENUTO`); 18.7 log della scala (`_scrivi_nel_log`);
-  22.16 wizard con bottone «Crea il canale» (`CANALI_PER_CATEGORIA`, `crea_e_collega`); 8.17 `/log vista-forum` (`core/log_forum_*`, 0480, D48);
-  10.5/10.6/10.13 profili social rifiutati nei feed; 23.17 `/level progressi` + `/economia progressi` (`core/progressi_*`, 0481, D49) e
-  `/mod rischio` + `/mod carico` (`core/staff_rischio_logic.py`, `staff_carico_repo`, D50). SPEC allineata (22.17, 23.8, 23.11, 13.10, 16.6, 16.10, §4, §7).
-- Giri precedenti: r10 (wizard, #113 webhook, B.3/B.4), r9 (NSFW, App utente), r5 (lingue, policy, premium), F5/F7 (privacy, gruppi), R1-bis: vedi `git log`.
+- r13ruoli (D60): 25 gruppi staff `admin-*` (20), `mod-*` (4), `founder`; 377 percorsi spostati con script AST sui decoratori (un commit per gruppo);
+  `Livello.FOUNDER` (solo `guild.owner_id`); `PREFISSI_SEMPRE_APERTI=("admin-bot","owner")`; migrazione 0488 (policy, history, usage);
+  `GRUPPI_DEL_RUOLO` derivato dai prefissi; traduzioni en (prefisso non tradotto); test invarianti prefisso/livello; docs (MAPPA, LIMITI, SPEC 20.9, VERIFICA_LIVE, COMMAND_LIST).
+- r13gruppi (D56/D57): 152 comandi spostati, 11 gruppi nuovi, migrazioni 0485-0487, `core/livelli_funzione.py`.
+- r12 (resto): jolly autoresponder, benvenuto nel router, log della scala, wizard canali, `/log vista-forum` (0480), progressi (0481-0483), rischio staff (D50).
+- Giri precedenti: r10, r9, r5, F5/F7, R1-bis: vedi `git log`.
 
 ## Cose imparate
 - `View.clear_items()` stacca i figli: dentro un callback tenere `vista = self.view` prima di ricostruire.
@@ -46,6 +46,12 @@
 - Nel test di una vista con select: `interaction.data = {"values": [...]}`; `fake_member` ha `premium_since` come mock: va messo a None.
 - 23.17 chiusa (D51, migrazioni 0482-0483): pass di 90 giorni da 1/1/2026, XP del pass nella colonna `progress_stagione.xp`.
 
+- Riordino per script: la regex dei riferimenti DEVE avere `(?![\w/])` dopo il nome (senza, riscrive gli URL `/ai/altro`); l'AST usa offset in byte;
+  i riferimenti senza `/` (tabelle di percorsi, chiavi di dizionari, `get_command("x")`) non li trova nessun test: grep a parte.
+- `tests/support/percorsi.py` risolve i nomi di gruppo di prima di D60 dalla migrazione 0488 (compat nei test vecchi).
+- Un gruppo con una sola foglia: il prefisso comune dei percorsi e la foglia intera; per le descrizioni dei sotto-gruppi serve la profondita.
+- Lancio test a meta (due DB di prova in parallelo): `iyokai_wruoli` e `iyokai_wruoli_b`.
+
 ## Aperto
 - NSFW: risposta RedGifs scritta a memoria (verified/tags/niches/urls.poster), da controllare live. nsfw_* si puliscono
   solo se il server ha `guild_presence` del principale: un server con solo il bot NSFW non scade mai.
@@ -58,3 +64,4 @@
 - Riordino gruppi: i percorsi si cambiano con script sulla mappa M.json; gli offset AST sono in byte (attenzione alle lettere accentate).
 - `/assistente` esiste anche in iYokai App (app diversa): i test dei riferimenti danno la precedenza al principale.
 - Tra i gruppi per tutti non entra mai un comando con `@richiedi`: lo controlla test_command_groups.
+- `/admin-ai` 19 figli (in KNOWN_OLTRE_18), `/admin-antiraid` 17: al prossimo comando va diviso. `/mod-ban` cercato per "ban" ora vale come parola (trattino).
