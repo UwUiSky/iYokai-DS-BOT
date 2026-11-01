@@ -1372,5 +1372,14 @@
   "feedalerts_ruolo_in_diretta_impostato_su": "✅ \"Live\" role set to {mention}. Whoever is linked to a Twitch, YouTube or Kick alert with `/moduli alert opzioni` (the `membro` field) gets it and loses it when the stream ends.",
   "feedalerts_avvisi_da_tiktok_instagram": "Alerts from TikTok, Instagram and X",
   "feedalerts_nessuna_sottoscrizione_attiva_su_questo": "No active subscriptions on this server.",
-  "feedalerts_sottoscrizioni_attive": "🔔 Active subscriptions"
+  "feedalerts_sottoscrizioni_attive": "🔔 Active subscriptions",
+  "verify_paese_titolo": "Out-of-country verification: on hold",
+  "verify_paese_descrizione": "{utente} (`{id}`) verified from country **{paese}**, which is not one of the server's countries. At least {soglia} out-of-country verifications in the last {minuti} minutes. Client language: {lingua}.\nThis is only a hint: approve if the person looks real, reject if it looks like a raid.",
+  "verify_paese_attesa_utente": "Your verification is on hold: the staff must approve it. You will get the role as soon as they decide.",
+  "verify_paese_rifiutata_utente": "The staff did not approve your verification. If you think this is a mistake, contact a moderator.",
+  "verify_paese_solo_admin": "Only admins can decide on this verification.",
+  "verify_paese_gia_deciso": "This verification has already been decided.",
+  "verify_paese_membro_uscito": "The person is no longer in the server.",
+  "verify_paese_approvata_da": "Approved by {staff}.",
+  "verify_paese_rifiutata_da": "Rejected by {staff}: {utente} stays unverified."
 }

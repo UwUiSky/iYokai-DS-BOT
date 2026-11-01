@@ -36,3 +36,4 @@ cryptography>=42.0.0
 
 # Espressioni regolari scritte dagli admin (/log ignora espressione): motore a tempo lineare, niente ReDoS
 google-re2>=1.1
+maxminddb==2.8.2

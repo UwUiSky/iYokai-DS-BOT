@@ -47,6 +47,7 @@ from core.moderation_opzioni import AZIONI_CON_DM, MAX_TIMEOUT, MIN_TIMEOUT, SET
 from core.spam_trap_logic import PUNIZIONI as PUNIZIONI_TRAPPOLA
 from core.restore_batch_logic import MODE_CLASSIC_INVITE, MODE_ON_DEMAND_OAUTH, MODE_VERIFY_OAUTH
 from core.ui_base import BaseView
+from core.verify_paese_logic import paesi_validi
 
 SUPPORTED_LANGUAGES = LINGUE
 
@@ -87,6 +88,11 @@ SETTINGS_SCHEMA = {
     "verify_solo_sospetti": "bool",
     "verify_azione_eta": "azione_eta",
     "verify_sospesa_fino": "epoch",
+    # Paese dell'account nella verifica web (core/verify_paese_staff.py, D53)
+    "verify_paesi": "paesi_iso",
+    "verify_paesi_soglia": "int_0_200",
+    "verify_paesi_minuti": "int_1_1440",
+    "verify_paesi_canale_id": "id",
     "mute_role_id": "id",
     "admin_role_id": "id",
     "mod_role_id": "id",
@@ -195,6 +201,7 @@ CONTROLLI_PER_TIPO = {
     "azione_verifica": (
         lambda valore: valore in ("niente", "quarantena", "kick", "ban"), "niente, quarantena, kick oppure ban"
     ),
+    "paesi_iso": (paesi_validi, "fino a 10 codici paese di 2 lettere separati da virgola (es. IT, CH), o vuoto"),
     "azione_eta": (lambda valore: valore in ("attendi", "kick"), "attendi oppure kick"),
     "epoch": (_intero_tra(0, 4_102_444_800), "un istante in secondi, tra 0 e il 2100"),
     "data_iso": (_e_una_data_iso, "una data in formato ISO"),
