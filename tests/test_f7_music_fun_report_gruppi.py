@@ -96,9 +96,9 @@ async def test_report_e_report_setup_nei_gruppi_nuovi():
     await report_setup(bot)
     try:
         assert "report" in percorsi_del_gruppo("utility")
-        assert "config canale-report" in percorsi_del_gruppo("admin")
+        assert "config canale-report" in percorsi_del_gruppo("admin-bot")
         assert not {c.name for c in bot.tree.get_commands()} & {"report", "report-setup"}
         assert GRUPPI["utility"].livello is None
-        assert GRUPPI["admin"].livello is Livello.ADMIN
+        assert GRUPPI["admin-bot"].livello is Livello.ADMIN
     finally:
         await _scarica(bot)

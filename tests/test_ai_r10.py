@@ -236,7 +236,7 @@ def test_link_configurazione_porta_alla_pagina_giusta():
     assert link_configurazione(url, 5, [c("admin-bot premium stato")]).endswith("/server/5/premium")
     assert link_configurazione(url, 5, [c("admin-bot lingua set")]).endswith("/server/5")
     # il primo comando di configurazione vince; i comandi d'uso non portano al pannello
-    assert link_configurazione(url, 5, [c("mod-sanzioni timeout"), c("admin-ai attiva")]).endswith("/admin-ai")
+    assert link_configurazione(url, 5, [c("mod-sanzioni timeout"), c("admin-ai attiva")]).endswith("/ai")
     assert link_configurazione(url, 5, [c("mod-sanzioni timeout")]) is None
     assert link_configurazione("", 5, [c("admin-ai attiva")]) is None
     assert link_configurazione(url, None, [c("admin-ai attiva")]) is None

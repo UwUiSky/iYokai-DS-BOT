@@ -193,7 +193,7 @@ async def test_chiedi_con_assistente_ai_e_ritorno_alla_ricerca(repo, monkeypatch
         return comandi
 
     async def ids(interaction, serve=()):
-        return {"mod": 42}
+        return {"mod-sanzioni": 42}
 
     monkeypatch.setattr(cog, "_comandi_accessibili", accessibili)
     monkeypatch.setattr(cog, "_ids", ids)
@@ -202,7 +202,7 @@ async def test_chiedi_con_assistente_ai_e_ritorno_alla_ricerca(repo, monkeypatch
     i = _inter()
     await cog.chiedi.callback(cog, i, "metti in timeout Mario per 10 minuti")
     embed = i.followup.send.call_args.kwargs["embed"]
-    assert embed.title == "Assistente" and "</mod timeout:42>" in embed.description
+    assert embed.title == "Assistente" and "</mod-sanzioni timeout:42>" in embed.description
 
     # AI spenta nel server: si torna alla ricerca per parole, senza errori
     await repo.registra_consenso(G, U, False)

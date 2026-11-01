@@ -1,7 +1,7 @@
 """
 tests/test_moderation_opzioni.py
 ================================
-Opzioni di moderazione del server (`/mod opzioni`): giorni di messaggi al
+Opzioni di moderazione del server (`/mod-sanzioni opzioni`): giorni di messaggi al
 ban (MOD-010), durata predefinita del timeout (MOD-017), DM per tipo di
 azione (MOD-057), ruoli immuni (MOD-068, solo il proprietario).
 """
@@ -82,7 +82,7 @@ async def test_timeout_senza_durata():
     membro, interazione = _scena()
     await _cog().timeout.callback(_cog(), interazione, membro, "spam ripetuto")
     membro.timeout.assert_not_awaited()
-    assert "/mod opzioni" in interazione.response.send_message.call_args.args[0]
+    assert "/mod-sanzioni opzioni" in interazione.response.send_message.call_args.args[0]
 
     await opzioni.imposta_durata_timeout(SERVER, 900, MOD)
     membro, interazione = _scena()

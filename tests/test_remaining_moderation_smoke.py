@@ -31,7 +31,7 @@ async def test_channel_control_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is False  # sempre gratis, come da schema
 
-    comandi = {c.name for c in bot.tree.get_command("mod").commands}
+    comandi = {c.name for c in bot.tree.get_command("mod-canali").commands}
     assert {"lock", "unlock", "slowmode"} <= comandi
     await bot.remove_cog("ModerationChannelControlCog")
 

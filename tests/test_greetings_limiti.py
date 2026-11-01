@@ -289,8 +289,8 @@ async def test_il_messaggio_dei_comandi_ha_il_limite_2000(clean_db):
 
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await greetings_module.setup(bot)
-    for percorso in ("benvenuto benvenuto", "benvenuto addio", "benvenuto boost"):
-        opzioni = {o["name"]: o for o in comando_nel_gruppo("gestione", percorso).to_dict(bot.tree)["options"]}
+    for percorso in ("messaggio", "addio", "boost"):
+        opzioni = {o["name"]: o for o in comando_nel_gruppo("admin-benvenuto", percorso).to_dict(bot.tree)["options"]}
         assert opzioni["message"]["max_length"] == 2000, percorso
 
 

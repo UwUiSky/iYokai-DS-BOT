@@ -130,10 +130,10 @@ def comandi_citati(risposta: str, comandi: list[ComandoNoto], massimo: int = 3) 
 
 
 # Comandi di configurazione: il pannello web ha la pagina giusta (AI-R-028, §25.27).
-GRUPPI_CONFIGURAZIONE = frozenset({"admin", "ai", "moduli", "ruoli"})
+GRUPPI_CONFIGURAZIONE = frozenset({"admin-bot", "admin-ai", "admin-moduli", "admin-ruoli"})
 PAGINE_PANNELLO = (  # dal percorso più preciso al più generico
-    ("ai", "ai"), ("admin premium aspetto", "aspetto"), ("admin premium marchio", "marchio"),
-    ("admin premium", "premium"),
+    ("admin-ai", "ai"), ("admin-bot premium aspetto", "aspetto"), ("admin-bot premium marchio", "marchio"),
+    ("admin-bot premium", "premium"),
 )
 
 

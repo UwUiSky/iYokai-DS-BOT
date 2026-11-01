@@ -173,7 +173,7 @@ async def test_chat_e_struttura_non_si_scambiano(ambiente):
     cog = BackupCog(bot=None)
     i = _interazione(owner=True)
     await cog.carica.callback(cog, i, chat)
-    assert "chat-carica" in i.response.messaggi[0][0]
+    assert "chat carica" in i.response.messaggi[0][0]
     i = _interazione(owner=True)
     i.channel = SimpleNamespace()
     await cog.chat_carica.callback(cog, i, copia, None)

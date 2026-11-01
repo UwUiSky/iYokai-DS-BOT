@@ -52,7 +52,7 @@ def _comando(nome="c"):
 async def test_comando_sotto_un_livello_viene_bloccato_da_check_can_run():
     gruppi = cg.costruisci_gruppi()
     cmd = _comando()
-    cg.aggiungi_a_gruppo("mod", cmd, gruppi=gruppi)
+    cg.aggiungi_a_gruppo("mod-sanzioni", cmd, gruppi=gruppi)
     with pytest.raises(ca.AccessoNegato):
         await cmd._check_can_run(_ix())
     assert await cmd._check_can_run(_ix("moderate_members")) is True
@@ -61,7 +61,7 @@ async def test_comando_sotto_un_livello_viene_bloccato_da_check_can_run():
 async def test_comando_in_un_sottogruppo_viene_bloccato_da_check_can_run():
     gruppi = cg.costruisci_gruppi()
     cmd = _comando()
-    cg.aggiungi_a_gruppo("modban", cmd, sottogruppo=("sotto", "Sotto-gruppo"), gruppi=gruppi)
+    cg.aggiungi_a_gruppo("mod-ban", cmd, sottogruppo=("sotto", "Sotto-gruppo"), gruppi=gruppi)
     with pytest.raises(ca.AccessoNegato):
         await cmd._check_can_run(_ix())
     assert await cmd._check_can_run(_ix("ban_members")) is True
@@ -77,9 +77,9 @@ async def test_gruppi_senza_livello_restano_aperti():
 def test_un_group_semplice_sotto_un_gruppo_protetto_viene_rifiutato():
     gruppi = cg.costruisci_gruppi()
     with pytest.raises(TypeError):
-        app_commands.Group(name="aperto", description="Senza controllo", parent=gruppi["admin"])
+        app_commands.Group(name="aperto", description="Senza controllo", parent=gruppi["admin-bot"])
     with pytest.raises(TypeError):
-        gruppi["admin"].add_command(app_commands.Group(name="aperto2", description="Senza controllo"))
+        gruppi["admin-bot"].add_command(app_commands.Group(name="aperto2", description="Senza controllo"))
 
 
 def test_un_group_semplice_sotto_un_gruppo_aperto_e_ammesso():
@@ -115,7 +115,7 @@ async def test_albero_costruito_con_i_gruppi_veri_registra_e_blocca():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     gruppi = cg.costruisci_gruppi()
     cmd = _comando("ban")
-    cg.aggiungi_a_gruppo("modban", cmd, gruppi=gruppi)
+    cg.aggiungi_a_gruppo("mod-ban", cmd, gruppi=gruppi)
     cg.registra_gruppi_usati(bot.tree, gruppi=gruppi)
     trovato = bot.tree.get_command("mod-ban").get_command("ban")
     with pytest.raises(ca.AccessoNegato):

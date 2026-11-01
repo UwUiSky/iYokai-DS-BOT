@@ -500,8 +500,8 @@ async def test_setup_registra_bottoni_handler_e_comandi_nei_limiti():
     await modulo.setup(bot)
     try:
         assert {"risposte standard", "sollecito", "risposte elenco", "risposte modifica",
-                "risposte elimina"} <= percorsi_del_gruppo("ticket-gestione")
-        assert len(GRUPPI["ticket-gestione"].commands) <= 25
+                "risposte elimina"} <= percorsi_del_gruppo("admin-ticket")
+        assert len(GRUPPI["admin-ticket"].commands) <= 25
     finally:
         for c in list(bot.cogs):
             await bot.remove_cog(c)
