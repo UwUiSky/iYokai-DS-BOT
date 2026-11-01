@@ -335,3 +335,12 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 28/10 | `feat/r11eco` | `core/config.py:_leggi_token_music` | Doppioni fra MUSIC_TOKEN_1..5 non controllati (conftest usa lo stesso token finto: va cambiato con suite completa) | bassa | aperto |
 | 28/10 | `feat/r11eco` | `cogs/leveling/leveling.py:_salva_impostazioni_moneta` | D16: il comando compone `prepara_moneta` + `set_immagine_moneta`; il pannello deve fare lo stesso (solo il CHECK 64 KiB lo protegge) | bassa | aperto |
 | 28/10 | `feat/r11eco` | `cogs/fun/coin_games.py:166` | `except Exception` sull'immagine della moneta senza log | bassa | aperto |
+| 01/11 | `feat/r12piatt` | `cogs/utility/desktop_menzioni.py`, `core/desktop_api.py:_visibile` | Thread privati: permessi = padre, parole chiave mandavano il testo a chi non era nel thread; l'API cercava solo `get_channel` | alta | chiuso 795142b |
+| 01/11 | `feat/r12piatt` | `core/repositories/desktop_repo.py:utenti_con_avvisi` | Dopo `scollega` il bot salvava ancora 90 giorni di testi di altri per nessuno | media | chiuso 530fd71 |
+| 01/11 | `feat/r12piatt` | `core/config_impostazioni.py:_converti` | Canale di tipo sbagliato accettato; ruolo «non verificato» senza `check_role_assignable` del comando (D16/D28); tetto 25 su una pagina web (D18) | media | chiuso fb65019 |
+| 01/11 | `feat/r12piatt` | `core/web_editor.py:salva_benvenuto` | Ping dei ruoli spento in silenzio cambiando solo canale (D12); canali vocali accettati; tetto 25 | media | chiuso 56a4538 |
+| 01/11 | `feat/r12piatt` | `COMMAND_LIST*.md` | Non rigenerato: mancavano 55 comandi e menu di iYokai App | bassa | chiuso ffec881 |
+| 01/11 | `feat/r12piatt` | `core/desktop_staff.py:esegui` | Ignora il modulo spento (`/mod lock` lo controlla); `HTTPException` diverse da Forbidden = 500 senza riga in `desktop_azioni` | bassa | aperto |
+| 01/11 | `feat/r12piatt` | `core/web_editor.py`, `cogs/utility/greetings.py:welcome_setup` | D16: la scrittura del benvenuto è ripetuta (cog e editor), non un punto unico in `core/` | bassa | aperto |
+| 01/11 | `feat/r12piatt` | `core/web_editor.py:stato_benvenuto` | Salvare il testo di base tradotto lo fissa: non segue più la lingua del server | bassa | aperto |
+| 01/11 | `feat/r12piatt` | `core/user_app_ai.py:chiedi_ai_app` | Traduci/Spiega in un server con privacy AI «senza_messaggi»: l'app manda lo stesso il testo (guild_id=None). Da far decidere all'owner | bassa | aperto |

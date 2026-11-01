@@ -1,6 +1,7 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
+01/11/2026 · `feat/r12piatt` (Desktop 0452, App 0451, webhook 0450, pagine per modulo, editor, wiki; D45–D47): cacciatore + revisione. Corretti thread privati nel Desktop (795142b), avvisi dopo scollega (530fd71), pagine per modulo (fb65019), benvenuto D12 (56a4538), COMMAND_LIST (ffec881). APPROVATO, 4 basse; smoke da fare (migrazioni: suite completa). Merge: DECISIONI D45–47 contro D48–50 di main.
 28/10/2026 · `feat/r11util` (D36 modalità link, D37 ban/addio, 0400). Fatto anche il cacciatore. Corretti: martello prima dell'addio, PNG RGBA grandi, «ruolo» senza ruolo (d4d1e0a); COMMAND_LIST (a56ef5e). APPROVATO, 3 basse nel quaderno; smoke da fare. /gestione 6742/6800.
 28/10/2026 · `feat/r11odio` (D35/D39, 0390+0391): fatto anche il cacciatore. Corretti: regex native con varianti e prefissi comuni, testo intero all'AI e niente AI per testi manipolati, risposta rigida, AI ferma senza richiamo, blocco fallito non resta acceso, libreria a proprietari diversi + parole comuni (vedi commit). APPROVATO, smoke da fare (migrazione 0391: suite completa).
 28/10/2026 · `feat/r10liv` (livelli/economia r10: SPEC §15 a `[x]`, shop 0340, classifica settimanale, moneta e tassa 0341). Fatto anche il cacciatore. Corretti: minimo pay (0342) e tassa per eccesso (b1c1f45); righe shop controllate prima, codice in DM, scadenze solo server del bot (f92d597); registro (485e139). APPROVATO, smoke da fare.
@@ -19,6 +20,7 @@ Giri r10 (liv, inviti, aiw, sec, filtro, logt, core, mod) e r8/r9: tutti APPROVA
 - Letti per intero: giro-mod, r3-*, r4-*, r6*, r7*, r8*, r9*, r10*, r11eco (commit nel quaderno).
 
 ## Cose imparate
+- Avvisi/eventi per canale: `permissions_for` di un thread = padre; thread privato = guardare membri/owner/manage_threads; `get_channel` non trova i thread (`get_channel_or_thread`). Pagine web: niente tetto 25 (è dei menu di Discord); tipo del canale come l'opzione del comando.
 - Stato globale per (server, utente) in un modulo: nei test va pulito (fixture autouse), altrimenti passa da un test all'altro. Segnali «fatto» si danno DOPO l'invio, non prima.
 - safe_open_image può restituire un'immagine senza `format` (RGBA ridotta): il formato si legge dal file.
 - Regex native Discord: 10×260 caratteri; prefissi comuni (albero) e niente `\w*` finale fanno spazio; `\b` non scatta dopo un simbolo in fondo. AI come giudice: niente testo tagliato (insulto in coda), JSON rigido, soglie «N server» = N proprietari.

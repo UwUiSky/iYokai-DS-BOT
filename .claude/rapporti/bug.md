@@ -317,3 +317,7 @@
 - 28/10 · core/automod_odio_azioni.py controlla_sospetta · AI ferma = richiamo contato: un cognome porta al timeout · media · corretto r11odio (FIX)
 - 28/10 · cogs/automod/parole_odio.py blocco · tetto 6 o permessi mancanti: impostazione salvata «acceso» e risposta «acceso» · media · corretto r11odio (FIX)
 - 28/10 · core/automod_odio_nativo_logic.py · regola nativa senza varianti (n1gger, terr0ni, f4ggot) · media · corretto r11odio (FIX)
+- 01/11 · cogs/utility/desktop_menzioni.py vede · thread privato: permessi del padre, parola chiave → testo a chi non è nel thread · alta · corretto r12piatt 795142b
+- 01/11 · core/repositories/desktop_repo.py utenti_con_avvisi · avvisi salvati anche dopo scollega · media · corretto 530fd71
+- 01/11 · core/config_impostazioni.py _converti · tipo di canale e ruolo non controllati come nel comando · media · corretto fb65019
+- 01/11 · core/web_editor.py salva_benvenuto · ping ruoli spento cambiando canale, canali vocali accettati · media · corretto 56a4538
