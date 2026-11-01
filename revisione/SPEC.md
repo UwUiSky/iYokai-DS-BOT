@@ -1964,7 +1964,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   lunga tra le lingue (`tests/test_command_tree_invariants.py`); sezione `aiuto` (spiegazione lunga, per ora vuota) letta da
   cerca-comando; `scripts/controlla_lingue.py` (riepilogo) e `scripts/nuova_lingua.py <codice>`; bottone «Chiedi una lingua»
   in `/utility lingua` (modulo nome 50, nota 300, DM all'owner, una al giorno per utente, `core/lingua_richieste.py`).
-  Tests: `tests/test_lingue_struttura.py`. Mancano: tradurre le lingue; la lingua personale resta `it`/`en` finché una migrazione
+  Tests: `tests/test_lingue_struttura.py`. Mancano: tradurre le lingue; lo script che riempie le chiavi mancanti con i
+  servizi AI (D54), segnandole «da rivedere» (D58); le parole chiave di cerca-comando per ogni lingua (oggi solo it/en); la lingua personale resta `it`/`en` finché una migrazione
   non allarga il CHECK di `user_language`; tetto giornaliero in memoria (si azzera al riavvio).
 - `[x]` 21.4 `COMMAND_LIST_ITA.md` e `COMMAND_LIST_ENG.md` generati da `scripts/generate_command_list.py`
   (anche `/owner`, che prima mancava)
