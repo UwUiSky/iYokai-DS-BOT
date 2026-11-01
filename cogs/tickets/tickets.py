@@ -1274,10 +1274,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         return panel
 
     @comando_di_gruppo(
-        "admin",
-        nome="pannello-crea",
+        "ticket-pannelli",
+        nome="crea",
         descrizione="Crea un pannello di ticket.",
-        sottogruppo=ADMIN_TICKET,
     )
     @app_commands.describe(
         nome="Nome del pannello",
@@ -1334,10 +1333,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin",
-        nome="pannello-rimuovi",
+        "ticket-pannelli",
+        nome="rimuovi",
         descrizione="Elimina un pannello e il suo modulo.",
-        sottogruppo=ADMIN_TICKET,
     )
     @app_commands.describe(nome="Il pannello da eliminare")
     @app_commands.autocomplete(nome=_completa_pannelli)
@@ -1354,10 +1352,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin",
-        nome="pannello-lista",
+        "ticket-pannelli",
+        nome="elenco",
         descrizione="Elenca i pannelli di ticket del server.",
-        sottogruppo=ADMIN_TICKET,
     )
     async def pannello_lista(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
@@ -1380,10 +1377,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(testo[:1900], ephemeral=True)
 
     @comando_di_gruppo(
-        "admin",
-        nome="pannello-pubblica",
+        "ticket-pannelli",
+        nome="pubblica",
         descrizione="Pubblica qui i bottoni di uno o più pannelli.",
-        sottogruppo=ADMIN_TICKET,
     )
     @app_commands.describe(
         pannelli="Nomi separati da virgola",
@@ -1419,10 +1415,10 @@ class TicketsCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, view=vista)
 
     @comando_di_gruppo(
-        "admin",
-        nome="modulo-aggiungi",
+        "ticket-pannelli",
+        nome="aggiungi",
         descrizione="Aggiungi una domanda al modulo (max 5).",
-        sottogruppo=ADMIN_TICKET,
+        sottogruppo=SOTTOGRUPPI["ticket-pannelli modulo"],
     )
     @app_commands.describe(
         pannello="Il pannello",
@@ -1462,10 +1458,10 @@ class TicketsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin",
-        nome="modulo-rimuovi",
+        "ticket-pannelli",
+        nome="togli",
         descrizione="Togli una domanda dal modulo.",
-        sottogruppo=ADMIN_TICKET,
+        sottogruppo=SOTTOGRUPPI["ticket-pannelli modulo"],
     )
     @app_commands.describe(pannello="Il pannello", numero="Numero della domanda")
     @app_commands.autocomplete(pannello=_completa_pannelli)
@@ -1484,10 +1480,10 @@ class TicketsCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(await testo_per(interaction, "tickets_non_una_domanda", numero=numero), ephemeral=True)
 
     @comando_di_gruppo(
-        "admin",
-        nome="modulo-mostra",
+        "ticket-pannelli",
+        nome="mostra",
         descrizione="Mostra le domande del modulo di un pannello.",
-        sottogruppo=ADMIN_TICKET,
+        sottogruppo=SOTTOGRUPPI["ticket-pannelli modulo"],
     )
     @app_commands.describe(pannello="Il pannello")
     @app_commands.autocomplete(pannello=_completa_pannelli)
