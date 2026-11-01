@@ -395,10 +395,9 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
     # Configurazione
     # ================================================================
     @comando_di_gruppo(
-        "gestione",
+        "admin-vocali",
         nome="setup",
         descrizione="Configura il canale generatore e la categoria dei vocali temporanei.",
-        sottogruppo=GESTIONE_VOICE,
     )
     @app_commands.describe(
         generator="Il canale vocale che, se raggiunto, crea un vocale temporaneo",
@@ -424,10 +423,9 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin-vocali",
         nome="generatore",
         descrizione="Altri canali generatori con regole proprie.",
-        sottogruppo=GESTIONE_VOICE,
     )
     @app_commands.describe(
         azione="Cosa fare",
@@ -510,10 +508,9 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin-vocali",
         nome="panel",
         descrizione="Pubblica il pannello per la creazione manuale di un vocale.",
-        sottogruppo=GESTIONE_VOICE,
     )
     async def voicetemp_panel(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
@@ -538,10 +535,9 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, view=CreateVoiceView())
 
     @comando_di_gruppo(
-        "gestione",
+        "admin-vocali",
         nome="cap",
         descrizione="Imposta il numero massimo di vocali temporanei per categoria.",
-        sottogruppo=GESTIONE_VOICE,
     )
     @app_commands.describe(
         cap="Canali massimi nella categoria (max 50, limite di Discord). Vuoto: nessun limite."
@@ -572,10 +568,9 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin-vocali",
         nome="piattaforme",
         descrizione="Configura i ruoli informativi PC/Console/Mobile per i vocali temporanei.",
-        sottogruppo=GESTIONE_VOICE,
     )
     @app_commands.describe(
         pc="Ruolo per chi gioca da PC (facoltativo)",
@@ -628,10 +623,9 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin-vocali",
         nome="opzioni",
         descrizione="Nome dei nuovi canali, blocco, registro, copia, pannello.",
-        sottogruppo=GESTIONE_VOICE,
     )
     @app_commands.describe(
         nome="Modello del nome: {utente} e {numero} (es. Stanza {numero}). Vuoto: com'è ora",
