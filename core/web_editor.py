@@ -138,11 +138,13 @@ async def salva_benvenuto(guild, attivo: bool, canale_id: int | None, testo: str
     errore = errore_benvenuto(guild, testo)
     if errore:
         raise ErroreEditor([errore])
-    canale = guild.get_channel(canale_id) if canale_id else None
+    canale = next((c for c in guild.text_channels if c.id == canale_id), None) if canale_id else None
     if attivo and canale is None:
-        raise ErroreEditor(["Scegli il canale dove mandare il benvenuto."])
+        raise ErroreEditor(["Scegli il canale di testo dove mandare il benvenuto."])
     precedente = await greetings_repo.get_config(guild.id)
-    # Dal pannello non si sa se chi scrive ha «Menziona tutti»: i ping di ruolo restano spenti (D12).
+    # D12, come il comando: il ping dei ruoli lo decide chi scrive il testo. Dal pannello non si sa se chi
+    # scrive ha «Menziona tutti»: un testo nuovo lo spegne, lo stesso testo lo lascia com'era.
+    ping = bool(precedente.welcome_ping_ruoli) and testo == precedente.welcome_message
     await greetings_repo.set_welcome(
-        guild.id, attivo, canale.id if canale else (precedente.welcome_channel_id or 0), testo, dm, False
+        guild.id, attivo, canale.id if canale else (precedente.welcome_channel_id or 0), testo, dm, ping
     )

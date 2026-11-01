@@ -81,7 +81,7 @@ def registra_rotte(app: web.Application, *, pagina, server, scrittura, chiave_ut
                       anteprima=editor.anteprima_benvenuto(guild, stato["messaggio"]), errori=[], salvato=None)
 
     def _canali(guild) -> list[tuple[int, str]]:
-        return [(c.id, c.name) for c in guild.text_channels][:25]
+        return [(c.id, c.name) for c in guild.text_channels]  # la pagina web non ha il tetto dei menu di Discord
 
     async def azione_benvenuto(request: web.Request) -> web.StreamResponse:
         guild, rifiuto = await server(request)

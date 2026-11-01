@@ -139,3 +139,26 @@ async def test_anonimo_e_estraneo_non_entrano(ambiente):
             assert r.status in (302, 401, 403)
     finally:
         await anonimo.close()
+
+
+@pytest.mark.asyncio
+async def test_benvenuto_dal_pannello_non_spegne_il_ping_e_vuole_un_canale_di_testo(mondo):
+    """D12 come il comando: cambiare solo canale o stato non tocca il ping dei ruoli scelto da chi ha scritto il testo."""
+    guild = mondo.bot.guilds[0]
+    voce = SimpleNamespace(id=88, name="vocale")
+    guild.get_channel = lambda i: {77: guild.text_channels[0], 88: voce}.get(i)
+    await greetings_repo.set_welcome(GUILD, True, 77, "Ciao {user} @Novità", False, True)
+    client = await _client(mondo.app)
+    try:
+        await _entra(client)
+        p = f"/server/{GUILD}/editor/benvenuto"
+        csrf = await _csrf(client, p)
+        r = await _post(client, p, csrf, azione="salva", messaggio="Ciao {user} @Novità", canale="88", attivo="1")
+        assert r.status == 400  # un canale vocale non è un canale di testo
+        r = await _post(client, p, csrf, azione="salva", messaggio="Ciao {user} @Novità", canale="77", attivo="1", dm="1")
+        assert r.status == 200
+        assert (await greetings_repo.get_config(GUILD)).welcome_ping_ruoli is True  # stesso testo: resta
+        await _post(client, p, csrf, azione="salva", messaggio="Testo nuovo", canale="77", attivo="1")
+        assert (await greetings_repo.get_config(GUILD)).welcome_ping_ruoli is False  # testo nuovo dal pannello: spento
+    finally:
+        await client.close()
