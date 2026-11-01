@@ -114,12 +114,15 @@ async def test_elenco_del_server_solo_per_admin(sched, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_comando_server_nel_sottogruppo():
+async def test_comando_server_nel_gruppo_dello_staff():
     from discord.ext import commands as ext
 
     bot = ext.Bot(command_prefix="!", intents=discord.Intents.default())
     await modulo.setup(bot)
-    assert comando_nel_gruppo("utility", "reminder server") is not None
+    assert comando_nel_gruppo("messaggi", "promemoria") is not None
+    from core.command_groups import GRUPPI
+
+    assert GRUPPI["utility"].get_command("reminder").get_command("server") is None  # D56: per lo staff
 
 
 @pytest.mark.asyncio

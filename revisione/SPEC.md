@@ -1391,7 +1391,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   DM, fallback nel canale se i DM sono chiusi
   → **Stato 04/10:** promemoria lunghi persi in silenzio (LIM-13).
   → **Stato 21/10 (catalogo #128, giro r8):** promemoria ripetuti (minimo 30 minuti, riprogrammati prima della consegna),
-  pubblicati in un canale, «annulla tutti», elenco e annullamento del server per lo staff (`/utility reminder server`)
+  pubblicati in un canale, «annulla tutti», elenco e annullamento del server per lo staff (`/messaggi promemoria`)
   (UTL-098, 099, 102, 103).
   → **Stato 27/10 (r10):** controllato nel codice e con i test: i problemi dello stato 04/10 sono corretti (vedi `REGISTRO_RISOLTE.md`).
 - `[x]` 14.17 Scheduled messages — `/schedule-message set|list|cancel`,

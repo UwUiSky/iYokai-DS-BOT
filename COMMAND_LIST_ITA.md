@@ -1,6 +1,6 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 10:49 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 13:02 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
 **Totale: 665 comandi in 35 categorie.**
 
@@ -422,6 +422,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 10:
 - **`/messaggi programmati annulla`** — Annulla un messaggio programmato.
 - **`/messaggi programmati crea`** — Programma un messaggio.
 - **`/messaggi programmati elenco`** — Mostra i messaggi programmati di questo server.
+- **`/messaggi promemoria`** — Per lo staff: i promemoria impostati in questo server.
 - **`/messaggi risposte crea`** — Crea una risposta automatica.
 - **`/messaggi risposte elenco`** — Mostra le risposte automatiche del server.
 - **`/messaggi risposte elimina`** — Elimina una risposta automatica.
@@ -737,7 +738,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 10:
 - **`/utility privacy esporta`** — Ricevi una copia dei dati che il bot conserva su di te.
 - **`/utility reminder cancel`** — Annulla un promemoria, o tutti i tuoi.
 - **`/utility reminder list`** — Mostra i tuoi promemoria in sospeso.
-- **`/utility reminder server`** — Per lo staff: i promemoria impostati in questo server.
 - **`/utility reminder set`** — Imposta un promemoria.
 - **`/utility report`** — Segnala un utente allo staff del server.
 - **`/utility richiedi-comando`** — Proponi un nuovo comando per il bot.

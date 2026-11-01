@@ -363,7 +363,7 @@ e usabile anche in DM (confermato dall'owner l'11/10).
 ## Riordino dei gruppi del 01/11/2026 (D56)
 
 I percorsi della §4 sono superati per 152 comandi. La tabella vecchio → nuovo è la migrazione
-`core/migrations/0485_percorsi_comandi_riordino.sql` (stessi percorsi usati per la politica dei comandi
+`core/migrations/0485_percorsi_comandi_riordino.sql`, più `0487` per `/utility reminder server` → `/messaggi promemoria` (stessi percorsi usati per la politica dei comandi
 e per le traduzioni). Nuovi gruppi: `/immagini`, `/giochi`, `/sondaggi`, `/assistente`, `/monete`
 (per tutti), `/messaggi`, `/giveaway`, `/ticket-gestione`, `/ticket-pannelli`, `/filtri` (staff), più
 `/gif` riservato. `/owner` riceve `ai` (boss-rete, manutenzione, modello) e `parole-odio`.

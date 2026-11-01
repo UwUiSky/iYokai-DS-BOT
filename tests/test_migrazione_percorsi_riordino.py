@@ -90,3 +90,27 @@ async def test_la_migrazione_si_puo_rilanciare_senza_danni(clean_db):
     await clean_db.execute(SQL)
     row = await clean_db.fetchval("SELECT settings FROM guild_config WHERE guild_id = $1", guild)
     assert (json.loads(row) if isinstance(row, str) else row)["policy_comandi_off"] == ["immagini meme"]
+
+
+async def test_0487_promemoria_del_server_segue_il_gruppo_dello_staff(clean_db):
+    """D56: `/utility reminder server` è per lo staff e diventa `/messaggi promemoria` anche nei dati salvati."""
+    sql = (Path(__file__).parent.parent / "core/migrations/0487_percorso_promemoria_staff.sql").read_text()
+    guild = 777010
+    await clean_db.execute(
+        "INSERT INTO guild_config (guild_id, settings) VALUES ($1, $2::jsonb)",
+        guild,
+        json.dumps({"policy_comandi_off": ["utility reminder server", "fun dice"]}),
+    )
+    await clean_db.execute(
+        "INSERT INTO guild_config_history (guild_id, change_type, key_name, old_value, new_value) VALUES ($1, 'set', 'policy_comandi_off', NULL, $2)",
+        guild,
+        json.dumps(["utility reminder server"]),
+    )
+    await clean_db.execute("INSERT INTO command_usage (guild_id, user_id, command_path) VALUES ($1, 1, 'utility reminder server')", guild)
+    await clean_db.execute(sql)
+    await clean_db.execute(sql)
+    row = await clean_db.fetchval("SELECT settings FROM guild_config WHERE guild_id = $1", guild)
+    assert sorted((json.loads(row) if isinstance(row, str) else row)["policy_comandi_off"]) == ["fun dice", "messaggi promemoria"]
+    cron = await clean_db.fetchrow("SELECT old_value, new_value FROM guild_config_history WHERE guild_id = $1", guild)
+    assert cron["old_value"] is None and json.loads(cron["new_value"]) == ["messaggi promemoria"]
+    assert await clean_db.fetchval("SELECT command_path FROM command_usage WHERE guild_id = $1", guild) == "messaggi promemoria"

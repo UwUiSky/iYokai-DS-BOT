@@ -1,6 +1,6 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:49 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 13:02 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
 **Total: 665 commands in 35 categories.**
 
@@ -419,6 +419,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:4
 - **`/messages embed publish`** — Sends a saved embed to a channel.
 - **`/messages pinned remove`** — Removes a channel's sticky message.
 - **`/messages pinned set`** — Sets a channel's sticky message.
+- **`/messages reminders`** — For staff: the reminders set in this server.
 - **`/messages replies create`** — Creates an automatic reply.
 - **`/messages replies delete`** — Deletes an automatic reply.
 - **`/messages replies list`** — Shows the server's automatic replies.
@@ -745,7 +746,6 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:4
 - **`/utility privacy export`** — Get a copy of the data the bot keeps about you.
 - **`/utility reminder cancel`** — Cancel a reminder, or all of yours.
 - **`/utility reminder list`** — Shows your pending reminders.
-- **`/utility reminder server`** — For staff: the reminders set in this server.
 - **`/utility reminder set`** — Sets a reminder.
 - **`/utility report`** — Reports a user to the server staff.
 - **`/utility request-command`** — Suggests a new command for the bot.

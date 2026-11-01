@@ -8,6 +8,9 @@ Funzioni coperte: NF-05 (issue #76)
 
 from __future__ import annotations
 
+import inspect
+import re
+
 import discord
 import pytest
 from discord import app_commands
@@ -64,6 +67,9 @@ def _comandi_con_livello(nodo):
             livello = getattr(controllo, "livello", None)
             if livello is not None:
                 yield figlio, livello
+        # Anche il controllo scritto nel corpo del comando (`puo_usare(interaction, Livello.X)`).
+        for nome in re.findall(r"puo_usare\(\s*interaction\s*,\s*Livello\.(\w+)", inspect.getsource(figlio.callback)):
+            yield figlio, Livello[nome]
 
 
 async def test_nessun_comando_con_livello_in_un_gruppo_per_tutti():
@@ -79,7 +85,7 @@ async def test_nessun_comando_con_livello_in_un_gruppo_per_tutti():
             if getattr(gruppo, "livello", None) is not None:
                 continue
             for comando, livello in _comandi_con_livello(gruppo):
-                errori.append(f"/{nome} {comando.qualified_name} chiede {livello.value}")
+                errori.append(f"/{comando.qualified_name} chiede {livello.value}")
         assert not errori, "Comandi da staff in un gruppo per tutti: " + "; ".join(errori)
     finally:
         await close_full_bot(bot)
