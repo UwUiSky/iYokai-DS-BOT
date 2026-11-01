@@ -35,6 +35,8 @@ class ConfigAI:
     conservazione_minuti: int = 30
     lore_tema: str | None = None
     lore_testo: str | None = None
+    nome_punti: str | None = None
+    prefisso_titolo: str | None = None
     parole_vietate: tuple[str, ...] = ()
     menzione: bool = False
     bandiere: bool = False
@@ -136,6 +138,21 @@ class AiRepository:
     async def manutenzione(self) -> str | None:
         """Il messaggio di manutenzione globale, o None se l'AI è in servizio (AI-R-020)."""
         return await self._pool.fetchval("SELECT valore FROM ai_globale WHERE chiave = 'manutenzione'")
+
+    async def globali(self, chiavi: tuple[str, ...]) -> dict[str, str]:
+        """Valori globali dell'owner (scelte sopra il `.env`) per le chiavi chieste."""
+        righe = await self._pool.fetch("SELECT chiave, valore FROM ai_globale WHERE chiave = ANY($1::text[])", list(chiavi))
+        return {r["chiave"]: r["valore"] for r in righe}
+
+    async def imposta_globale(self, chiave: str, valore: str | None, user_id: int | None) -> None:
+        if valore is None:
+            await self._pool.execute("DELETE FROM ai_globale WHERE chiave = $1", chiave)
+            return
+        await self._pool.execute(
+            "INSERT INTO ai_globale (chiave, valore, aggiornato_da) VALUES ($1, $2, $3) "
+            "ON CONFLICT (chiave) DO UPDATE SET valore = $2, aggiornato_da = $3, aggiornato_il = now()",
+            chiave, valore, user_id,
+        )
 
     async def imposta_manutenzione(self, acceso: bool, messaggio: str, user_id: int | None) -> None:
         if not acceso:
@@ -334,6 +351,43 @@ class AiRepository:
         """Tutti i canali con traduzione automatica (letti all'avvio, poi tenuti in memoria)."""
         righe = await self._pool.fetch("SELECT channel_id, lingua FROM ai_traduzione_canali")
         return {r["channel_id"]: r["lingua"] for r in righe}
+
+    # ------------------------------------------------------------ preferenza personale e traguardi
+    async def assistente_acceso(self, user_id: int) -> bool:
+        """La persona vuole le risposte dell'AI? Senza riga: sì (AI-R-094)."""
+        valore = await self._pool.fetchval("SELECT assistente FROM ai_utenti WHERE user_id = $1", user_id)
+        return True if valore is None else bool(valore)
+
+    async def imposta_assistente(self, user_id: int, acceso: bool) -> None:
+        await self._pool.execute(
+            "INSERT INTO ai_utenti (user_id, assistente) VALUES ($1, $2) "
+            "ON CONFLICT (user_id) DO UPDATE SET assistente = $2, aggiornato_il = now()",
+            user_id, acceso,
+        )
+
+    async def stile_consentito(self, user_id: int) -> bool:
+        """La persona permette agli altri di chiedere un messaggio nel suo stile? Di partenza no (AI-R-038)."""
+        return bool(await self._pool.fetchval("SELECT stile_consentito FROM ai_utenti WHERE user_id = $1", user_id))
+
+    async def imposta_stile_consentito(self, user_id: int, consentito: bool) -> None:
+        await self._pool.execute(
+            "INSERT INTO ai_utenti (user_id, stile_consentito) VALUES ($1, $2) "
+            "ON CONFLICT (user_id) DO UPDATE SET stile_consentito = $2, aggiornato_il = now()",
+            user_id, consentito,
+        )
+
+    async def traguardo_assegna(self, user_id: int, codice: str) -> bool:
+        """True se il traguardo è nuovo per la persona (AI-R-080)."""
+        esito = await self._pool.execute(
+            "INSERT INTO ai_traguardi (user_id, codice) VALUES ($1, $2) ON CONFLICT DO NOTHING", user_id, codice
+        )
+        return esito.endswith(" 1")
+
+    async def traguardi(self, user_id: int) -> list[str]:
+        righe = await self._pool.fetch(
+            "SELECT codice FROM ai_traguardi WHERE user_id = $1 ORDER BY ottenuto_il LIMIT 25", user_id
+        )
+        return [r["codice"] for r in righe]
 
     # ------------------------------------------------------------ immagini comprate
     async def crediti_aggiungi(self, guild_id: int, user_id: int, quante: int) -> int:

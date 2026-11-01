@@ -455,7 +455,8 @@ class iYokaiBot(commands.AutoShardedBot):
             title="👋 Thanks for adding iYokai!",
             description=(
                 "Run `/admin setup attiva` to choose which modules you want active on "
-                "this server. Everything starts disabled until you turn it on."
+                "this server. Everything starts disabled until you turn it on. "
+                "To give the AI texts a theme, use `/ai lore`."
             ),
             color=discord.Color.blurple(),
         )

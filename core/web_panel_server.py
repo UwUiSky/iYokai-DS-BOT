@@ -31,7 +31,7 @@ from itertools import groupby
 import jinja2
 from aiohttp import BodyPartReader, MultipartReader, web
 
-from core import alt_detection_logic as verifica, desktop_api, panel_bridge, web_panel_attivita, web_panel_editor, web_panel_inviti, web_panel_logic as regole
+from core import alt_detection_logic as verifica, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_editor, web_panel_inviti, web_panel_logic as regole
 from core.bot_aspetto import MAX_IMMAGINE
 from core.command_access import RuoloAdminNegato
 from core.command_search_logic import cerca
@@ -708,6 +708,9 @@ def build_app(
     web_panel_inviti.registra_rotte(
         app, bot=bot, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura, ip=_ip,
         chiave_utente=CHIAVE_UTENTE,
+    )
+    web_panel_ai.registra_rotte(
+        app, bot=bot, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE,
     )
     return app
 

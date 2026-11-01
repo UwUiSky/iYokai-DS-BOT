@@ -36,6 +36,22 @@ class Profilo:
     posseduti: frozenset[str] = field(default_factory=frozenset)
 
 
+async def regala_oggetti_in(conn, guild_id: int, user_id: int, item_ids: list[str]) -> list[str]:
+    """
+    Dà gli oggetti (premi estetici) dentro una transazione già aperta. Restituisce quelli nuovi: chi li
+    aveva già non li riceve due volte. Gli id fuori dal catalogo si ignorano.
+    """
+    validi = [i for i in item_ids if i in PER_ID]
+    if not validi:
+        return []
+    righe = await conn.fetch(
+        "INSERT INTO profile_items (guild_id, user_id, item_id) SELECT $1, $2, i FROM unnest($3::text[]) AS i "
+        "ON CONFLICT DO NOTHING RETURNING item_id",
+        guild_id, user_id, validi,
+    )
+    return [r["item_id"] for r in righe]
+
+
 class ProfileRepository:
     def __init__(self, pool_provider) -> None:
         self._pool_provider = pool_provider
@@ -81,7 +97,7 @@ class ProfileRepository:
         from core.repositories.leveling_repo import spend_coins_in
 
         oggetto = PER_ID.get(item_id)
-        if oggetto is None:
+        if oggetto is None or oggetto.premio:  # i premi non si comprano
             return EsitoAcquisto.SCONOSCIUTO
         try:
             async with self._pool.acquire() as conn:

@@ -99,6 +99,7 @@ SETTINGS_VALIDE = {
     "spam_trap_punizione": "staff",
     "log_webhook": True,
     "progressi_attivi": False,
+    "progressi_obiettivo_server": 800,
 }
 
 

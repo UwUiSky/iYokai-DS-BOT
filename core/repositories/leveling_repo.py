@@ -390,7 +390,7 @@ class LevelingRepository:
         # §23.17: un messaggio che ha dato XP conta per le missioni (se il server le ha accese).
         from core import progressi_service
 
-        await progressi_service.registra(guild_id, user_id, "messaggi")
+        await progressi_service.registra(guild_id, user_id, "messaggi", xp=amount)
         return esito
 
     async def add_voice_minutes(
@@ -519,9 +519,9 @@ class LevelingRepository:
         # §23.17: un minuto in vocale che ha dato XP conta per le missioni.
         from core import progressi_service
 
-        await progressi_service.registra_molti(
-            guild_id, [u for u, g in risultati.items() if g is not None and g.xp_granted > 0], "vocale"
-        )
+        for u, g in risultati.items():
+            if g is not None and g.xp_granted > 0:
+                await progressi_service.registra(guild_id, u, "vocale", xp=g.xp_granted)
         return risultati
 
     async def _riga_bloccata(self, conn, guild_id: int, user_id: int, colonna: str) -> int:

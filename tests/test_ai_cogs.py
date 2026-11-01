@@ -283,7 +283,8 @@ async def test_moderazione_ai_non_usa_la_quota_di_chi_scrive(repo):
     assert (await repo.uso(G, U, "moderazione")).utente_oggi == 1
 
 
-async def test_traduzione_automatica_non_usa_la_quota_di_chi_scrive(repo):
+async def test_traduzione_automatica_non_usa_la_quota_di_chi_scrive(repo, monkeypatch):
+    monkeypatch.setattr(traduzione, "ATTESA_SECONDI", 0)
     trasporto = _usa(repo, risposte={"alfa": "the cat is with you"})
     await _quota_persona_finita(repo)
     cog = traduzione.AiTraduzioneCog(bot=None)
@@ -291,8 +292,26 @@ async def test_traduzione_automatica_non_usa_la_quota_di_chi_scrive(repo):
     messaggio = _messaggio("il gatto è con te")
     await cog.on_message(messaggio)
     assert len(trasporto.chiamate) == 2
-    assert "the cat is with you" in messaggio.reply.call_args.args[0]
+    assert "the cat is with you" in messaggio.channel.send.call_args.args[0]
     assert (await repo.uso(G, U, "traduzione_auto")).utente_oggi == 1
+
+
+async def test_traduzione_automatica_unisce_i_messaggi_di_fila(repo, monkeypatch):
+    """Tre messaggi della stessa persona nell'attesa: una sola richiesta con tutto il testo (AI-R-084)."""
+    import asyncio
+
+    monkeypatch.setattr(traduzione, "ATTESA_SECONDI", 0.2)
+    trasporto = _usa(repo, risposte={"alfa": "the cat is with you and the dog too"})
+    await repo.registra_consenso(G, U, True)
+    cog = traduzione.AiTraduzioneCog(bot=None)
+    cog.canali = {4242: "en"}
+    m1, m2, m3 = (_messaggio(t) for t in ("il gatto è con te", "e anche il cane", "buona giornata a tutti"))
+    m2.id, m3.id = 778, 779
+    await asyncio.gather(cog.on_message(m1), cog.on_message(m2), cog.on_message(m3))
+    assert len(trasporto.chiamate) == 1
+    assert m1.channel.send.await_count == 1
+    contenuto = trasporto.chiamate[0][1][-1]["content"]
+    assert "il gatto" in contenuto and "il cane" in contenuto and "buona giornata" in contenuto
 
 
 async def test_spiega_non_svela_un_thread_privato(repo):
@@ -318,3 +337,31 @@ async def test_spiega_non_svela_un_thread_privato(repo):
     i2.guild.get_channel_or_thread = MagicMock(return_value=thread)
     await cog.spiega.callback(cog, i2, f"https://discord.com/channels/{G}/1/2")
     assert len(trasporto.chiamate) == 1
+
+
+async def test_canale_e_vietate_passano_dagli_stessi_punti_del_pannello(repo):
+    """D16: `/ai canale` e `/ai vietate` salvano come il pannello (imposta_canali_spenti, imposta_parole_vietate)."""
+    _usa(repo)
+    cog = cfg_mod.AiConfigCog(bot=None)
+    await repo.imposta(G, canali_spenti=(999,))  # canale cancellato nel frattempo
+    vivo = fake_text_channel(4242)
+    i = _inter()
+    i.guild.text_channels = [vivo]
+    await cog.canale.callback(cog, i, vivo, False)
+    assert (await repo.get_config(G)).canali_spenti == (4242,)
+    await cog.vietate.callback(cog, _inter(), "aggiungi", "  Due   Spazi ")
+    assert (await repo.get_config(G)).parole_vietate == ("due spazi",)
+    await cog.vietate.callback(cog, _inter(), "togli", "due spazi")
+    assert (await repo.get_config(G)).parole_vietate == ()
+
+
+async def test_canale_con_cento_spenti_rifiuta_invece_di_perderne_uno(repo):
+    _usa(repo)
+    cog = cfg_mod.AiConfigCog(bot=None)
+    canali = [fake_text_channel(5000 + n) for n in range(101)]
+    await repo.imposta(G, canali_spenti=tuple(c.id for c in canali[:100]))
+    i = _inter()
+    i.guild.text_channels = canali
+    await cog.canale.callback(cog, i, canali[100], False)
+    assert "100" in i.response.send_message.call_args.args[0]
+    assert (await repo.get_config(G)).canali_spenti == tuple(c.id for c in canali[:100])

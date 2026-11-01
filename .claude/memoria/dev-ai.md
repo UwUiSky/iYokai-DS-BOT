@@ -1,43 +1,31 @@
 # Memoria di dev-ai
 
 ## Aggiornata
-14/10/2026 · ramo `feat/r6ai` · giro r6
+01/11/2026 · ramo `feat/r12ai` · giro r12 (agente r12ai)
 
 ## In corso
-- Giro r6 chiuso (5 voci su 5). Prossimo passo: esito dello smoke
-  (`scripts/smoke.py --base main`), poi le voci rimaste di §25 (vedi Aperto).
+- Giro r12 chiuso nel lotto: nessuna voce `[~]`/`[ ]` in §25 tranne 25.21 (`[✗]`, D52). Resta da fare: rapporto, smoke
+  e suite completa dell'orchestratore (migrazioni 0420-0429, main.py e user_app_bot toccati).
 
 ## Fatto
-- r6 voce 1 (79e28cc): motore `core/ai_providers.py`, `ai_router.py`,
-  `ai_servizio.py`, `ai_cache_logic.py`, `ai_cost_logic.py`,
-  `ai_guardrail_logic.py`, `ai_testi_logic.py`, `ai_immagini_logic.py`;
-  repo `ai_repo.py`; migrazione 0140; registro dati.
-- r6 voci 2–4 (6add30a): gruppo `/ai` (D26), `/utility ai`, `-chiedi` con
-  l'AI, `/ticket assistente`, menzione, traduzioni, moderazione, chiavi.
-- r6 voce 5: SPEC §25 (45 x, 15 ~), COMMAND_LIST, VERIFICA_LIVE, registro.
+- r12: assistente, boss, dungeon, misteri, spirito, tema/nomi a tema, segnalazioni, `/ai staff`, ricerca web, riepilogo
+  a orario e avvisi, ticket AI (bottone, prima risposta, risposte standard durevoli), voce (`cogs/ai/voce.py`,
+  `core/voice_*`, vocale raw in `core/discord_raw.py`), trascrizione (`core/trascrizione.py`), traduzione unita 25.77,
+  bozze di codice 25.100 (`cogs/ai/bozze.py`), richieste di cancellazione 25.84, `/ai modello` 25.82/25.94, app
+  (`/trova`, `/assistente`, «Trascrivi vocale»), pannello (`core/web_panel_ai.py`), stile con permesso 25.36.
+  Migrazioni 0420-0429. Decisioni D42-D44, D52.
 
 ## Cose imparate
-- I moduli chiamano solo `servizio_ai().richiedi(RichiestaAI(...))` o
-  `cogs/ai/_comune.chiedi()`; `AINonDisponibile.testo` è la risposta locale.
-- Fornitori dal `.env` (`AI_FORNITORI`, `AI_*_<NOME>`), formato compatibile
-  OpenAI; senza `AI_ADDESTRA_<NOME>=no` il fornitore si scarta (D26).
-- Tetto di spesa 0 = solo fornitori gratuiti (D13). Fascia: `testo` e
-  `giudizio` partono da "media", serve un fornitore di quella fascia.
-- Autocomplete sotto `@comando_di_gruppo`: funzione definita prima e
-  `@app_commands.autocomplete(nome=funz)`, non `@cmd.autocomplete`.
-- Opzioni str sempre `Range[str, a, b]` (test invarianti); niente "/parola"
-  nei testi (test_riferimenti_comandi: "€/mese", "/models").
-- I metodi dei repo devono avere `.nome(` in produzione: niente @property.
-- Test: `tests/support/ai_finto.py`; cog con `monkeypatch.setattr(ai_repo,
-  "_pool_provider", lambda: clean_db)` e `imposta_servizio_ai(...)`.
-- test_forget_user fallisce a caso con pytest-randomly anche sulla base
-  (ordine dei test): non è dell'AI.
-- Nel worktree esporta l'ambiente e fai `cd` prima di pytest.
+- Helper di cog senza `setup`: nome con `_` iniziale (la scoperta li salta).
+- `CogConGruppi` con `cog_load` proprio: chiamare `super().cog_load()`.
+- Dopo `defer()` le risposte vanno con `followup.send`; `interaction_check` ridefinito chiama `super()`.
+- Il guardrail scarta testi con "ignora le istruzioni". clean_db non svuota tutto: guild diversi nei test.
+- Menu sul messaggio: non nel bot principale (i test dell'albero non li ammettono); vanno in `cogs/user_app/`, con il
+  modulo in `MODULI_COG` di `core/user_app_bot.py`.
+- Stringhe che iniziano con `/` nel codice sono lette come comandi citati (test_riferimenti_comandi).
+- `ai_globale` ha un CHECK sulle chiavi (0428). Opzioni di testo: sempre `Range[str, 1, N]`.
+- Pesi: `/ai` ~5950 (21 figli), `/utility` ~6590 (limite 6800), `/automod` e `/owner` pieni.
 
 ## Aperto
-- §25 non fatte: World Boss e dungeon (con dev-economia), riepiloghi del
-  server, ricerca nei log, classificazione segnalazioni, AutoMod assistito,
-  prima risposta automatica nei ticket, app utente, pannello, voce,
-  processo separato, coda, prova premium, embedding (`confronto`).
-- Testi AI solo in italiano (non passano da `core/i18n.t`).
-- #139: parte AI delle risposte standard. #140: PR in bozza.
+- Voce e trascrizione spente finché mancano `VOCE_MODELLO_DIR` (+ sherpa-onnx) e `VOCE_TRASCRIZIONE_URL`.
+- Musica e video senza trasporto AI (D52). Testi AI solo in italiano. Card PNG di `/level` senza nomi a tema.

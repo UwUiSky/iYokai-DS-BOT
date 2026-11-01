@@ -600,6 +600,25 @@ Si imposta con `/level impostazioni xp immagine_moneta:` (o `senza_immagine:`).
 La radio del bot principale resta solo di `/owner radio` (un test controlla che i comandi dei server
 usino solo il player dei worker). Da avvisare l'owner.
 
+## D42 — Strumenti dello staff con l'AI dentro `/ai staff` (29/10/2026)
+
+Riassunto di un incidente, regola di AutoMod assistita e ricerca nei log stanno in `/ai staff incidente|regola|cerca-log`
+(admin), al posto di `/security panico riassunto`, `/automod proponi` e `/log cerca domanda`: quei gruppi sono al limite
+di peso (D25) o pieni. Stessa funzione, altro percorso. L'AI propone; la regola AutoMod si attiva solo con il bottone;
+la ricerca nei log non mostra il contenuto dei messaggi. Senza AI: elenco in ordine di tempo, parole per scegliere il
+filtro, filtri dai nomi e dagli ID scritti. Da avvisare l'owner.
+
+## D43 — Libreria dei giochi AI e premi (29/10/2026)
+
+Mostri, storie e stanze scritti dall'AI da zero stanno in tabelle senza server (`ai_mostri`, `ai_storie`, `ai_storie_nodi`)
+e valgono in ogni server con lo stesso tema (D19: nessun testo di utenti). «XP per 24 ore» del mistero diventa un premio
+XP una tantum. Il boss di rete lo pubblica solo l'owner. Tutto parte spento e funziona con l'AI ferma (mostri e storie pronti).
+
+## D44 — Voce di Yokai e processo AI separato (29/10/2026)
+
+Il motore di sintesi vocale è un modello aperto scelto da `.env`; resta spento finché l'owner non sceglie la voce (D22).
+Il processo AI separato (25.21) resta rimandato: bastano coda e misure già fatte (25.22); si riapre se le misure lo chiedono.
+
 ## D45 — iYokai App: dati personali e musica (28/10/2026)
 
 Precisa B.2-B.10 (#107). Il profilo globale (livello, clan, medaglie) lo vede un'altra persona **solo se il
@@ -665,3 +684,44 @@ dalla verifica web nello stesso server. Fasce: basso sotto 25, medio da 25, alto
 (coerente con NF-21: niente ban automatici per impronta) e la risposta è privata, per lo staff. `/mod carico giorni:` mostra per ogni
 persona dello staff casi aperti, appelli decisi e ticket presi in carico, con la quota sul totale; senza classifica a premi e senza
 contare i casi della scala automatica. Entrambi usano il modulo del case system. Le letture stanno in `staff_carico_repo` (nessuna tabella nuova).
+
+## D51 — Chiusura di 23.17: missioni a tre livelli, serie protetta, pass di 90 giorni, carico solo per ADMIN (1/11/2026, scelta di chi sviluppa)
+
+Completa «i dettagli da non perdere» di `VOCI_OMESSE.md`. **Una finestra sola:** `/level progressi` non ha più parametri; apre un menu
+(missioni, traguardi, serie, pass, profilo globale) con i bottoni della sezione aperta. Così `/level` pesa 6.444 caratteri (limite 6.800).
+`/economia progressi` ha `attivo` e `obiettivo_server` (tutti e due facoltativi; senza niente dice com'è).
+
+- **Missioni:** del giorno, **della settimana** (dal lunedì, UTC) e **di tutto il server**. Ogni evento conta sulla missione del giorno e su
+  quella della settimana. Quelle del server sommano ciò che ognuno ha fatto *fino al tetto della sua missione della settimana*: nessuno
+  vince da solo («contano le attività di qualità, non la quantità»). Premio a chi ha dato almeno il 10% della sua missione. Obiettivo del
+  server: impostazione `progressi_obiettivo_server` (messaggi a settimana, di base 1.000, da 50 a 100.000; vocale al 60%), un solo punto
+  di scrittura (D16).
+- **Serie:** niente più bonus in monete (i premi sono **solo estetici**): oggetti del profilo a 7, 14, 30, 60, 100 giorni (non si comprano).
+  Regola delle **36 ore**: la serie sale se la riscossione arriva entro 36 ore dall'ultima, altrimenti riparte da 1. **Protezione
+  comprabile:** lo scudo costa 150 monete, se ne tengono al massimo 2, ognuno copre un giorno saltato (24 ore) e si consuma solo se
+  basta a salvare la serie. **Promemoria a 20 ore:** messaggio privato, *solo per chi lo accende* nella sezione Serie, una volta per
+  riscossione. Poiché il `/level daily` ha l'attesa di 24 ore, a 20 ore il messaggio dice «tra circa N ore puoi riscuotere» e quanto
+  resta prima di perdere la serie.
+- **Pass di 90 giorni, 50 livelli:** stagioni fisse di 90 giorni dal 1/1/2026 (chiave «AAAA-MM» dell'inizio). Gli XP del pass si contano
+  a parte (nuova colonna), non dalla classifica mensile, per rispettare i 90 giorni esatti. 500 XP a livello. Traccia libera: 10 + 2n
+  monete a livello. **Traccia premium:** 20 + 4n monete e oggetti estetici ai livelli 10, 25 e 50; si apre con il **boost** del server
+  (gratis) o con **500.000 monete** (come da richiesta, una volta per stagione). I livelli già fatti si pagano anche sulla traccia
+  premium dopo l'apertura.
+- **Traguardi:** per categoria (Livello, Serie, Missioni, Pass, Segreti) e **nascosti** (scudo, settimana piena, missione del server,
+  traccia premium): compaiono solo quando si ottengono; prima si dice quanti restano.
+- **Carico dello staff:** `/mod carico` richiede il livello **ADMIN** (decisione dell'owner), risposta privata, mai classifica. Mostra casi,
+  appelli, ticket, tempo medio alla prima risposta, ticket riaperti (colonna `tickets.riaperto_volte`, 0482), sanzioni proprie annullate
+  in appello, voto medio dei ticket e una **proposta di turni** (4 fasce di 6 ore UTC, le due persone più attive; avviso sulle fasce scoperte).
+- **Vista forum (8.17):** un post archiviato o bloccato si riapre; se non si riapre si dimentica e se ne crea uno nuovo; un forum con
+  tag obbligatori riceve il primo tag non riservato; dopo un rifiuto la vista di quel forum si ferma 10 minuti con un solo avviso nei log.
+
+Tabelle: 0483 (colonne di `progress_serie` e `progress_stagione`, nuova `progress_server_riscatti`, tutte nel registro dei dati); 0484 dà alle serie di prima (solo il giorno) l'ora di mezzogiorno UTC, così non si azzerano.
+## D52 — Scelte dell'owner per l'AI, bozze di codice, processo separato (01/11/2026)
+
+`/ai modello` (solo owner, dentro `/ai` perché `/owner` è pieno) cambia a caldo modello, fascia e tipi di ogni fornitore
+e il tetto di lunghezza delle risposte; le scelte stanno in `ai_globale` (migrazione 0428) sopra il `.env` e passano da
+un solo punto (`imposta_scelte_owner`). Audio: serve il motore della voce (D44), senza quota; musica e video restano
+accettati nella configurazione ma senza trasporto, perché non c'è un servizio adatto al costo che l'owner accetta.
+Le bozze di codice (AI-R-107) partono solo da richieste già approvate dall'owner e non si uniscono mai da sole.
+Il processo AI separato (25.21) è `[✗]`: era una proposta, non una richiesta dell'owner; con la coda di 25.22 le misure
+non lo chiedono, e un secondo processo duplicherebbe pool, cache e quote su una macchina da 2 CPU.

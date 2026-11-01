@@ -20,6 +20,7 @@ from core.log_forum_logic import (
     MAX_POST_PER_DIMENSIONE,
     descrizione_caso,
     descrizione_evento,
+    scegli_tag,
     titolo_post,
 )
 from core.repositories.log_forum_repo import LogForumRepository
@@ -118,8 +119,12 @@ def mondo(repo, clean_db, monkeypatch):
     monkeypatch.setattr(servizio, "_bot", bot)
     monkeypatch.setattr(servizio, "_coda", asyncio.Queue(maxsize=CODA_MAX))
     servizio._viste.clear()
+    servizio._sospese.clear()
+    forum.flags = discord.ChannelFlags()
+    forum.available_tags = []
     yield forum, server, nuovo
     servizio._viste.clear()
+    servizio._sospese.clear()
 
 
 @pytest.mark.asyncio
@@ -274,3 +279,77 @@ async def test_un_evento_spento_dal_server_non_va_nella_vista(mondo, repo, clean
     assert servizio._coda.empty()
     await servizio.notifica_evento(SERVER, "channel_update", channel_id=5)
     assert servizio._coda.qsize() == 1
+
+
+# ------------------------------------------------------------------ post chiusi e tag obbligatori
+def _errore(stato=403):
+    return discord.HTTPException(MagicMock(status=stato, reason="x"), "no")
+
+
+def test_il_tag_scelto_e_il_primo_che_tutti_possono_usare():
+    riservato = MagicMock(moderated=True)
+    libero = MagicMock(moderated=False)
+    assert scegli_tag([riservato, libero]) is libero
+    assert scegli_tag([riservato]) is riservato  # il bot può gestire i thread
+    assert scegli_tag([]) is None
+
+
+@pytest.mark.asyncio
+async def test_un_post_archiviato_o_bloccato_si_riapre_e_ci_si_scrive(mondo, repo):
+    forum, server, nuovo = mondo
+    await repo.imposta_forum(SERVER, DIM_CASI, 77)
+    await repo.salva_post(SERVER, DIM_CASI, 3, 900)
+    nuovo.archived, nuovo.locked = True, True
+    nuovo.edit = AsyncMock()
+    server.get_thread.return_value = nuovo
+    assert await servizio.scrivi(SERVER, DIM_CASI, 3, "ancora")
+    nuovo.edit.assert_awaited_once_with(archived=False, locked=False)
+    nuovo.send.assert_awaited_once()
+    forum.create_thread.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_un_post_che_non_si_riapre_si_dimentica_e_ne_nasce_uno_nuovo(mondo, repo):
+    forum, server, nuovo = mondo
+    await repo.imposta_forum(SERVER, DIM_CASI, 77)
+    vecchio = _post(555, 77)
+    vecchio.archived, vecchio.locked = False, True
+    vecchio.edit = AsyncMock(side_effect=_errore())
+    vecchio.send = AsyncMock(side_effect=_errore())
+    await repo.salva_post(SERVER, DIM_CASI, 3, 555)
+    server.get_thread.return_value = vecchio
+    assert await servizio.scrivi(SERVER, DIM_CASI, 3, "caso")
+    forum.create_thread.assert_awaited_once()
+    assert await repo.post_di(SERVER, DIM_CASI, 3) == 900
+
+
+@pytest.mark.asyncio
+async def test_un_forum_con_tag_obbligatori_riceve_un_tag_ammesso(mondo, repo):
+    forum, _, _ = mondo
+    await repo.imposta_forum(SERVER, DIM_CASI, 77)
+    forum.flags = discord.ChannelFlags(require_tag=True)
+    riservato, libero = MagicMock(moderated=True), MagicMock(moderated=False)
+    forum.available_tags = [riservato, libero]
+    assert await servizio.scrivi(SERVER, DIM_CASI, 3, "caso")
+    assert forum.create_thread.await_args.kwargs["applied_tags"] == [libero]
+
+
+@pytest.mark.asyncio
+async def test_tag_obbligatori_senza_tag_o_creazione_rifiutata_sospendono_la_vista(mondo, repo, caplog):
+    forum, _, _ = mondo
+    await repo.imposta_forum(SERVER, DIM_CASI, 77)
+    forum.flags = discord.ChannelFlags(require_tag=True)
+    forum.available_tags = []
+    with caplog.at_level("WARNING", logger="iyokai.log_forum"):
+        assert await servizio.scrivi(SERVER, DIM_CASI, 3, "uno") is False
+        assert await servizio.scrivi(SERVER, DIM_CASI, 4, "due") is False  # sospesa: niente di nuovo
+    assert sum("sospesa" in r.message for r in caplog.records) == 1
+    forum.create_thread.assert_not_awaited()
+
+    servizio._sospese.clear()
+    forum.flags = discord.ChannelFlags()
+    forum.create_thread = AsyncMock(side_effect=_errore(400))
+    assert await servizio.scrivi(SERVER, DIM_CASI, 3, "tre") is False  # non solleva
+    assert servizio._sospesa(SERVER, DIM_CASI)
+    assert await servizio.scrivi(SERVER, DIM_CASI, 3, "quattro") is False
+    assert forum.create_thread.await_count == 1

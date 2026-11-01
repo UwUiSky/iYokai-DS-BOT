@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block titolo %}Uso dell'AI · {{ guild.name }}{% endblock %}
+{% block corpo %}
+<h1>Uso dell'AI · {{ guild.name }}</h1>
+<p><a href="/server/{{ guild.id }}/ai">Torna all'AI</a> · <a href="/privacy">Privacy policy</a></p>
+<div class="carta">
+  <p>L'AI è <strong>{{ "accesa" if cfg.attivo else "spenta" }}</strong> in questo server. Livello dei messaggi: <strong>{{ cfg.privacy|replace("_", " ") }}</strong>
+  ({{ "anche riassunti, ticket e moderazione" if cfg.privacy == "completa" else "solo le richieste fatte direttamente al bot" }}).
+  Memoria della conversazione: {{ cfg.conservazione_minuti }} minuti, solo in memoria del bot.</p>
+  <p>Servizi esterni che il bot può chiamare:
+  {% if fornitori %}<strong>{{ fornitori|join(", ") }}</strong>. Il testo di una richiesta va a questi servizi senza nomi né contatti; iYokai non addestra modelli e non usa servizi che addestrano sui messaggi.
+  {% else %}nessuno: il proprietario non ne ha configurati, le funzioni rispondono senza AI.{% endif %}</p>
+</div>
+<h2>Cosa conserva l'AI</h2>
+<table class="carta">
+  <tr><th>Dato</th><th>Per quanto</th><th>Di chi</th></tr>
+  {% for r in righe %}<tr><td>{{ r.cosa }}</td><td>{{ r.quanto }}</td><td>{{ r.chi }}</td></tr>{% endfor %}
+</table>
+<p class="tenue">L'elenco viene dal registro dei dati del bot: è lo stesso della privacy policy.</p>
+{% endblock %}

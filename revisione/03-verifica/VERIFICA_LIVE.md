@@ -1284,6 +1284,28 @@ Serve: server di prova con AutoMod e AI accesi (`/ai attiva`), account A senza p
 3. `senza_immagine: Sì`: torna la moneta gialla di iYokai.
 4. Aggiungi `MUSIC_TOKEN_6` nel `.env` e riavvia: parte «Music worker 6»; `/music play` lo assegna quando i primi 5 sono occupati. Un `/music stop` su un server non ferma la radio del bot principale.
 
+## AI giro r12 (r12ai)
+1. Assistente: `-chiedi cosa posso fare qui` elenca eventi e comandi; `-chiedi attiva la musica` con modulo spento mostra il bottone per l'admin; «Configura tutto» accende i moduli.
+2. `/ai boss imposta` poi `/ai boss avvia`: annuncio con immagine, bottoni di azione, premi a fine evento; con AI spenta il mostro è quello pronto.
+3. `/ai dungeon avvia`: classi, voto a bottoni, finale; `/ai dungeon storie` conta la libreria.
+4. `/ai mistero crea` e `/utility ai mistero` con il codice: premio al server o canale segreto che si richiude.
+5. `/utility ai spirito` e `/utility ai frammenti`; `/utility ai preferenza acceso:No` e poi `-chiedi`: non risponde.
+6. Wizard `/admin setup wizard`: alla fine compare la scelta del tema; `/ai lore tema:pirati nomi_a_tema:Sì` cambia moneta, punti e titoli (`/level` senza immagine).
+7. `/utility report` con e senza `categoria`: il messaggio allo staff ha «Etichetta»; il menu cambia la categoria solo allo staff.
+8. `/ai staff incidente`, `/ai staff regola testo:niente link` (poi Attiva e controlla `/automod status`), `/ai staff cerca-log`.
+9. **Da attivare dall'owner:** ricerca sul web (`RICERCA_WEB_URL`, `RICERCA_WEB_CHIAVE`): poi `-chiedi domanda cerca:Sì`.
+10. `/ai riepilogo imposta` con canale e orario, poi `/ai riepilogo anteprima`: totali veri dei messaggi, canale più vivace; `/utility ai avviso parola:...` avvisa in DM alla parola chiave.
+11. Ticket: bottone «Assistente» nel ticket aperto; prima risposta automatica solo se accesa nel pannello (`/ai staff prima-risposta`); risposte standard con allegato ancora disponibili dopo un riavvio.
+12. **Voce (da attivare dall'owner):** installare `sherpa-onnx`, mettere il modello Piper «paola» in `VOCE_MODELLO_DIR`, riavviare. Poi `/ai voce imposta attiva:Sì tono:scherzosa`, `/ai voce parla testo:Ciao`: arriva un vero vocale con sotto «Trascrivi» e «Nella mia lingua» (risposta privata, lingua del client). `/utility ai parla`. Tono piccante: solo nei canali NSFW. `/ai voce imposta saluti_canale:#generale` e scrivi «buongiorno» in due: un solo saluto a voce con i nomi.
+13. **Trascrizione (da attivare dall'owner):** `VOCE_TRASCRIZIONE_URL` https e `VOCE_TRASCRIZIONE_ADDESTRA=no`; in iYokai App tasto destro su un vocale, «Trascrivi vocale».
+14. **Bozze di codice (da attivare dall'owner con `GITHUB_BOZZE_TOKEN` e `GITHUB_BOZZE_REPO`):** da un altro server `/utility ...` richiesta di un comando, l'owner approva; entro 10 minuti arriva in DM il link della pull request in bozza (o la bozza come file se il token manca). La pull request resta in bozza.
+15. `/ai privacy`-come-owner: `/owner privacy richieste` mostra per ogni richiesta una riga di riassunto con l'azione proposta dall'AI (o «proposta fissa» se l'AI è ferma); `approva` e `rifiuta` restano a mano.
+16. `/ai modello` (solo owner): senza opzioni elenca i fornitori; `fornitore:x fascia:alta` e `tetto_token:300` valgono subito; `togli_tetto:Sì` lo toglie.
+17. Canale con `/ai traduzione`: tre messaggi di fila della stessa persona danno una sola traduzione.
+18. iYokai App: `/trova cosa:promemoria` elenca comandi e menu; `/assistente domanda:...` risponde con l'AI e, con l'AI ferma o spenta da `/utility ai preferenza`, ripiega sulla ricerca.
+19. Pannello: `/server/<id>/ai` ha i link a «Altre scelte» (lore, quote, parole vietate, canali spenti: si ritrovano poi in `/ai stato`), «Riepilogo» (ultimo riepilogo) e «Uso dell'AI».
+20. `/utility ai preferenza stile:Sì` da una persona; un'altra usa `/utility ai stile argomento:... di:@persona`: arriva un testo nello stile con la nota «non l'ha scritto lui». Senza il permesso: rifiutato e l'AI non parte.
+
 ## giro r12 — resto (D48, D49, D50)
 
 - [ ] Risposta con jolly (14.7) — passi: `/moduli comandi risposta-crea parola:ciao* risposta:Ciao!`; scrivi «ciaooo a tutti» e «ciao». Risultato atteso: risponde a tutti e due; `parola:***` è rifiutata.
@@ -1292,8 +1314,13 @@ Serve: server di prova con AutoMod e AI accesi (`/ai attiva`), account A senza p
 - [ ] Wizard con i canali (22.16) — passi: `/admin setup wizard`; nei passi Moderazione, Sicurezza, Community premi «Crea il canale …». Risultato atteso: nasce il canale (riservato i primi due), il mod-log e gli allarmi lo usano, il benvenuto lo ha come canale (si accende dal passo e «Salva»).
 - [ ] Profilo social nei feed (10.5, 10.6, 10.13) — passi: `/moduli alert feed feed_url:https://www.tiktok.com/@qualcuno`. Risultato atteso: rifiutato con il rimando a `/moduli alert guida-social`; un feed vero (anche di RSSHub) passa.
 - [ ] Vista dei log su forum (8.17, D48) — passi: `/log vista-forum dimensione:Un post per canale forum:#log-forum` e `dimensione:Un post per caso`; cambia un permesso di un canale e dai un warn. Risultato atteso: un post «#nome-canale» e un post «Caso #N» con le righe; senza forum il comando spegne la vista.
-- [ ] Missioni e stagione (23.17, D49) — passi: `/economia progressi attivo:Sì`; scrivi qualche messaggio, `/level daily`, poi `/level progressi`. Risultato atteso: la missione «ricompensa giornaliera» è 🎁; «Riscuoti» paga una sola volta; `sezione:Serie di giorni` mostra la serie; `sezione:Stagione del mese` mostra i gradini. Spenti, il comando lo dice e le monete non cambiano.
-- [ ] Rischio e carico (23.17, D50) — passi: `/mod rischio member:@account-con-warn` e `/mod carico giorni:30`. Risultato atteso: punteggio con i motivi (messaggio privato) e l'elenco dello staff con la quota di lavoro; il bot non compare tra lo staff.
+- [ ] Missioni e stagione (23.17, D49; superata dalla finestra di D51) — passi: `/economia progressi attivo:Sì`; scrivi qualche messaggio, `/level daily`, poi `/level progressi`. Risultato atteso: la missione «ricompensa giornaliera» è 🎁; «Riscuoti» paga una sola volta; `sezione:Serie di giorni` mostra la serie; `sezione:Stagione del mese` mostra i gradini. Spenti, il comando lo dice e le monete non cambiano.
+- [ ] Finestra dei progressi (23.17, D51) — passi: `/economia progressi attivo:Sì obiettivo_server:50`; scrivi messaggi e `/level daily`; `/level progressi`, poi cambia sezione dal menu. Risultato atteso: tre gruppi di missioni (oggi, settimana, server), «Riscuoti» paga una volta sola; Traguardi con i segreti nascosti.
+- [ ] Serie e scudo (23.17, D51) — in «Serie di giorni»: «Compra uno scudo», «Accendi il promemoria». Risultato atteso: scudo sul saldo; dopo 20 ore dall'ultimo `/level daily` arriva un messaggio privato; a 7 giorni compare il badge Scintilla in `/level collezione equipaggia`.
+- [ ] Pass di 90 giorni (23.17, D51) — in «Pass di 90 giorni»: «Riscuoti» e «Apri la traccia premium» (con un account booster, o con 500.000 coin). Risultato atteso: coin per livello, traccia premium doppia, badge ai livelli 10, 25, 50.
+- [ ] Carico solo admin (23.17, D51) — `/mod carico` con un moderatore non admin: rifiutato; con un admin: elenco con tempi di risposta, riaperti, annullate in appello, voto, e il campo «Turni».
+- [ ] Forum con post bloccato (8.17) — blocca o archivia un post della vista e genera un evento; metti «tag obbligatori» al forum. Risultato atteso: il post si riapre (o ne nasce uno con un tag), nessun errore ripetuto nei log.
+- [ ] Rischio (23.17, D50) — passi: `/mod rischio member:@account-con-warn`. Risultato atteso: punteggio con i motivi, in un messaggio privato.
 - [ ] Transcript alla chiusura (13.10) — con l'intent Message Content acceso: apri un ticket, scrivi due messaggi con un allegato, chiudilo. Risultato atteso: il transcript nel canale log ha il testo e l'allegato.
 - [ ] NSFW (16.10) — da attivare: app «iYokai NSFW» nel Developer Portal e `NSFW_TOKEN` nel `.env`; poi `/nsfw-admin attiva` e `/nsfw cerca` in un canale con il flag età.
 - [ ] Kick (23.11) — da attivare: `KICK_CLIENT_ID` e `KICK_CLIENT_SECRET` nel `.env`; poi `/moduli alert kick` e `/moduli alert ruolo-live`.

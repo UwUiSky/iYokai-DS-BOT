@@ -1,6 +1,8 @@
 # Memoria di cacciatore-bug
 
 ## Aggiornata
+01/11/2026 · `feat/r12resto` (D51, fatto dal revisore-capo): 2 confermati corretti in a0d6ab3, 1 plausibile (defer in /level progressi).
+01/11/2026 · `feat/r12ai` (giro fatto dal revisore): 7 difetti corretti, 3 basse aperte; righe in `rapporti/bug.md`.
 28/10/2026 · `feat/r10inviti` (giro fatto dal revisore): 5 fix in 8b9426b, righe in `rapporti/bug.md`.
 21/10/2026 · ultimi giri: `feat/r8tkt` (opzioni ticket #120, AI #139; 6 fix 92633fa…f8c87c8, i 4 lasciati li ha chiusi il revisore), `feat/r8web` (6 fix ec769c2…6de5e0f), `feat/r8uti` (c2af58d, 3d722cc, 416859f).
 16/10/2026 · r7mod, r7bak (1172556, b70b41f), r7liv (635507f). 14/10 r6ai (9516f7c), r6web, r6mod. 13/10 r4-tkt/uti/liv.
@@ -19,6 +21,7 @@
 - 28/10 r10logt: aggiunti che leggono il ticket chiuso, Elimina su riaperto, eliminazione vecchia dopo riapertura, log ignora che nasconde ruoli/timeout/permessi, generatore privato copiato reso pubblico.
 
 ## Cose imparate
+- Raccolte/code con tetto: cosa succede all'elemento che non entra (r12ai: messaggio perso). Cache con tetto: chi chiama la pulizia.
 - Due client (Mod/principale): ogni oggetto in cache porta il SUO client; `http.*` via Mod salta i casi speciali di discord.py.
 - Stato solo in memoria: chi lo svuota (evento spento, NF-04, riavvio). Cache «leggi, poi set» con await in mezzo: serve una versione.
 - Difetti frequenti: leggi-poi-scrivi su saldi/contatori/tetti; risposte oltre i limiti; azioni fallite riportate come riuscite.

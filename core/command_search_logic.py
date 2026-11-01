@@ -292,6 +292,9 @@ def _punteggio(query: str, info: ComandoInfo) -> float:
     return migliore
 
 
+punteggio = _punteggio  # punteggio di un comando per una richiesta (usato anche da core/ai_ricerca_logic.py)
+
+
 def cerca(
     query: str, comandi: Sequence[ComandoInfo], limite: int = MAX_RISULTATI, soglia: float = 0.34
 ) -> list[ComandoInfo]:

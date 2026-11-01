@@ -32,6 +32,8 @@ from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_d
 from core.database import db
 from core.i18n import testo_per
 from core.role_safety import check_role_assignable
+from core.lore_nomi_logic import titolo_livello
+from core.repositories.ai_repo import ai_repo
 from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.leveling_repo import leveling_repo
 from core.repositories.level_reward_repo import level_reward_repo
@@ -1136,12 +1138,18 @@ class LevelingCog(CogConGruppi, commands.Cog):
             png = await run_image_task(render_rank_card, dati, avatar, immagine_sfondo)
         except Exception:
             logger.exception("Rank card non disegnata per %s: mando l'embed.", target.id)
+            ai_cfg = await ai_repo.get_config(interaction.guild.id)  # nomi a tema (§25.69)
             embed = discord.Embed(
                 title=await testo_per(interaction, "leveling_livello_di", display_name=target.display_name), color=discord.Color.blurple()
             )
             embed.set_thumbnail(url=target.display_avatar.url)
-            embed.add_field(name=await testo_per(interaction, "app_profilo_livello"), value=str(totali.level), inline=True)
-            embed.add_field(name=await testo_per(interaction, "leveling_xp_totale"), value=str(totali.xp_total), inline=True)
+            embed.add_field(
+                name=await testo_per(interaction, "app_profilo_livello"),
+                value=titolo_livello(ai_cfg.lore_tema, ai_cfg.prefisso_titolo, totali.level) if ai_cfg.prefisso_titolo else str(totali.level),
+                inline=True,
+            )
+            nome_xp = f"{ai_cfg.nome_punti} totale" if ai_cfg.nome_punti else await testo_per(interaction, "leveling_xp_totale")
+            embed.add_field(name=nome_xp, value=str(totali.xp_total), inline=True)
             embed.add_field(name=await testo_per(interaction, "leveling_coin"), value=str(totali.coins_total), inline=True)
             embed.add_field(
                 name=await testo_per(interaction, "leveling_progresso_al_prossimo_livello"),

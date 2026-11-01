@@ -4,7 +4,7 @@ core/ai_impostazioni.py
 Il punto unico (D16) per le scelte AI di un server che comandi `/ai` e pannello
 web cambiano allo stesso modo: accensione con il consenso (e prova gratuita),
 privacy, memoria, lunghezza delle risposte e quote. Valida, scrive e ripulisce.
-Funzioni coperte: SPEC §24.2, §24.3, §25.4, §25.23, §25.82 (NF-20, NF-24)
+Funzioni coperte: SPEC §24.2, §24.3, §25.4, §25.23, §25.82, §25.69 (NF-20, NF-24)
 Dipende da: core/repositories/ai_repo.py, core/ai_cost_logic.py, core/ai_servizio.py
 """
 
@@ -69,6 +69,34 @@ async def imposta_scelte(guild_id: int, **campi):
     return cfg
 
 
+async def imposta_lore(guild_id: int, tema: str | None, testo: str | None = None, *, nomi_a_tema: bool = False) -> dict:
+    """
+    Tema e parole del server per ogni testo dell'AI. Con `nomi_a_tema` il tema dà il nome alla moneta
+    (impostazione del livellamento), ai punti e ai titoli dei livelli (AI-R-076). Senza tema togli i nomi dei punti e dei titoli.
+    Restituisce i nomi applicati (vuoto se nessuno).
+    """
+    from core.ai_testi_logic import TEMI
+    from core.lore_nomi_logic import nomi_del_tema
+    from core.repositories.ai_repo import ai_repo
+
+    if tema is not None and tema not in TEMI:
+        raise ImpostazioneNonValida(f"Il tema «{tema}» non esiste.")
+    campi: dict = {"lore_tema": tema, "lore_testo": (testo or "").strip()[:1000] or None}
+    nomi = nomi_del_tema(tema)
+    if tema is None:
+        campi.update(nome_punti=None, prefisso_titolo=None)
+    elif nomi_a_tema and nomi is not None:
+        campi.update(nome_punti=nomi.punti, prefisso_titolo=nomi.prefisso)
+    await ai_repo.imposta(guild_id, **campi)
+    applicati: dict = {}
+    if nomi_a_tema and nomi is not None:
+        from core.repositories.leveling_settings_repo import leveling_settings_repo
+
+        await leveling_settings_repo.set_options(guild_id, currency_name=nomi.moneta)
+        applicati = {"moneta": nomi.moneta, "punti": nomi.punti, "titoli": nomi.prefisso}
+    return applicati
+
+
 async def _serve_la_prova(guild_id: int) -> bool:
     """L'AI è premium e il server non l'ha sbloccata: vale la prova (una volta sola)."""
     from core.premium import guild_has_premium_access, registry
@@ -101,3 +129,35 @@ async def spegni_ai(guild_id: int, user_id: int) -> str:
 
     await ai_repo.registra_consenso(guild_id, user_id, False)
     return "AI spenta in questo server."
+
+
+MAX_PAROLE_VIETATE = 50
+MAX_CANALI_SPENTI = 100
+
+
+def pulisci_parole_vietate(testo: str) -> tuple[str, ...]:
+    """Una voce per riga (o separata da virgola): minuscole, 2-60 caratteri, senza doppioni, al massimo 50."""
+    viste: list[str] = []
+    for pezzo in testo.replace(",", "\n").splitlines():
+        voce = " ".join(pezzo.lower().split())
+        if 2 <= len(voce) <= 60 and voce not in viste:
+            viste.append(voce)
+    return tuple(viste[:MAX_PAROLE_VIETATE])
+
+
+async def imposta_parole_vietate(guild_id: int, testo: str) -> tuple[str, ...]:
+    """L'elenco intero delle parole che l'AI rifiuta (pannello web)."""
+    from core.repositories.ai_repo import ai_repo
+
+    parole = pulisci_parole_vietate(testo)
+    await ai_repo.imposta(guild_id, parole_vietate=parole)
+    return parole
+
+
+async def imposta_canali_spenti(guild_id: int, ids: list[int], validi: set[int]) -> tuple[int, ...]:
+    """I canali dove l'AI resta spenta: solo canali veri del server, al massimo 100 (pannello web)."""
+    from core.repositories.ai_repo import ai_repo
+
+    scelti = tuple(dict.fromkeys(i for i in ids if i in validi))[:MAX_CANALI_SPENTI]
+    await ai_repo.imposta(guild_id, canali_spenti=scelti)
+    return scelti

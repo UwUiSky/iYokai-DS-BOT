@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block titolo %}Riepilogo · {{ guild.name }}{% endblock %}
+{% block corpo %}
+<h1>Riepilogo del server · {{ guild.name }}</h1>
+<p><a href="/server/{{ guild.id }}/ai">Torna all'AI</a> · <a href="/server/{{ guild.id }}/ai/altro">Altre scelte</a></p>
+<div class="carta">
+  <p>Stato: <strong>{{ "acceso" if cfg.attivo else "spento" }}</strong>{% if canale %} · canale #{{ canale.name }}{% endif %} · ogni {{ cfg.frequenza }} alle {{ cfg.ora }}</p>
+  {% if cfg.ultimo_testo %}
+  <p class="tenue">Ultimo riepilogo{% if cfg.ultimo_invio %}, del {{ cfg.ultimo_invio.strftime("%d/%m/%Y %H:%M") }}{% endif %}:</p>
+  <pre>{{ cfg.ultimo_testo }}</pre>
+  {% else %}
+  <p>Non c'è ancora nessun riepilogo. Si imposta con <code>/ai riepilogo imposta</code>.</p>
+  {% endif %}
+</div>
+{% endblock %}

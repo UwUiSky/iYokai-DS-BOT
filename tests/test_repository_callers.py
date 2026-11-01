@@ -20,7 +20,6 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 KNOWN_UNCALLED = frozenset(
     {
-        "automod_advanced_repo.AutomodAdvancedRepository.get_recent_actions",
         "backup_repo.BackupRepository.get_job",
         "backup_user_snapshot_repo.BackupUserSnapshotRepository.get_snapshot_count",
         "clan_voice_activity_repo.ClanVoiceActivityRepository.get_activity",
@@ -34,7 +33,6 @@ KNOWN_UNCALLED = frozenset(
         "guild_premium_repo.GuildPremiumRepository.purchased_tiers",
         "restore_oauth_repo.RestoreOAuthRepository.delete_token",
         "restore_oauth_repo.RestoreOAuthRepository.purge_expired_voluntary_leaves",
-        "security_repo.SecurityRepository.get_recent_actions",
     }
 )
 
