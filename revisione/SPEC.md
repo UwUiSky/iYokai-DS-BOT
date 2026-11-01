@@ -2385,8 +2385,9 @@ di quel file.
   finali, salvate e riusate in ogni server con lo stesso tema
   (AI-R-106)
   → **Stato 29/10 (r12ai):** storie intere salvate in libreria.
-- `[ ]` 25.100 Funzione richiesta che non esiste: bozza del codice in
+- `[x]` 25.100 Funzione richiesta che non esiste: bozza del codice in
   una pull request per l'owner (AI-R-107)
+  → **Stato 29/10 (r12ai):** cogs/ai/bozze.py, core/ai_bozza_logic.py, core/github_bozze.py, migrazione 0427: una richiesta di comando approvata dall'owner (flusso già esistente) diventa una bozza scritta dall'AI (tipo codice, al massimo 5 al giorno), salvata in ai_bozze e, con GITHUB_BOZZE_TOKEN e GITHUB_BOZZE_REPO, una pull request in bozza con un file di proposta in bozze_ai/. Senza token la bozza arriva all'owner come file in DM. Non unisce mai. Test: tests/test_ai_bozze.py
 - `[x]` 25.101 Cerca comando: mostra anche le alternative, spiegate
   (AI-R-108; vedi §21)
   → **Stato 29/10 (r12ai):** alternative spiegate.

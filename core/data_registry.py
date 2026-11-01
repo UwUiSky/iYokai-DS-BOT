@@ -590,6 +590,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("ai_ticket_pannelli", "Pannelli ticket con la prima risposta automatica dell'AI", colonna_server="guild_id"),
     _t("ai_ticket_risposte", "Ticket che hanno già avuto la risposta automatica (una sola)", colonna_server="guild_id"),
     _t("ai_standard_allegati", "File delle risposte standard dei ticket, conservati nel database", colonna_server="guild_id"),
+    _t("ai_bozze", "Bozze di codice scritte dall'AI per le richieste di comandi approvate dall'owner",
+       scadenza=Scadenza("creato_il", 365), nota="riguarda richieste allo sviluppatore, non dati di un server"),
     _t("ai_voce_config", "Scelte della voce di Yokai nel server (accesa, tono, canali dei saluti)", colonna_server="guild_id"),
     _t("ai_vocali", "Testo dietro ogni vocale di Yokai (per «Trascrivi» e «Nella mia lingua»)", colonna_server="guild_id",
        scadenza=Scadenza("creato_il", 90), nota="il testo scritto dal bot per il vocale; sparisce dopo 90 giorni"),
