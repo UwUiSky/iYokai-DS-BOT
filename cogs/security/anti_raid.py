@@ -247,7 +247,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await super().cog_unload()
 
     @comando_di_gruppo(
-        "antiraid",
+        "admin-antiraid",
         nome="enable",
         descrizione="Attiva o disattiva l'Anti-Raid.",
     )
@@ -277,7 +277,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
             await interaction.followup.send("⚠️ " + "\n⚠️ ".join(avvisi), ephemeral=True)
 
     @comando_di_gruppo(
-        "antiraid",
+        "admin-antiraid",
         nome="join-rate",
         descrizione="Configura il limite di join in un intervallo di tempo.",
     )
@@ -314,7 +314,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "antiraid",
+        "admin-antiraid",
         nome="account-age",
         descrizione="Età minima dell'account per non essere considerato sospetto.",
     )
@@ -330,7 +330,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "antiraid_eta_minima_account_impostata_secondi", seconds=seconds), ephemeral=True)
 
     @comando_di_gruppo(
-        "antiraid",
+        "admin-antiraid",
         nome="username-check",
         descrizione="Attiva/disattiva il rilevamento pattern username sospetti.",
     )
@@ -343,7 +343,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "antiraid_rilevamento_pattern_username", v1=(await testo_per(interaction, "greetings_attivato")) if enabled else (await testo_per(interaction, "greetings_disattivato"))), ephemeral=True)
 
     @comando_di_gruppo(
-        "antiraid",
+        "admin-antiraid",
         nome="avatar-check",
         descrizione="Attiva/disattiva il rilevamento avatar assente.",
     )
@@ -356,7 +356,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "antiraid_rilevamento_avatar_assente", v1=(await testo_per(interaction, "greetings_attivato")) if enabled else (await testo_per(interaction, "greetings_disattivato"))), ephemeral=True)
 
     @comando_di_gruppo(
-        "antiraid",
+        "admin-antiraid",
         nome="lockdown-action",
         descrizione="Cosa fare quando un raid viene rilevato.",
     )
@@ -378,7 +378,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "antiraid_azione_di_lockdown_impostata_su", name=action.name), ephemeral=True)
 
     @comando_di_gruppo(
-        "antiraid",
+        "admin-antiraid",
         nome="alert-channel",
         descrizione="Canale dove ricevere gli alert di sicurezza (Anti-Raid + Anti-Nuke).",
     )
@@ -391,7 +391,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "antiraid_canale_di_alert_impostato_su", mention=channel.mention), ephemeral=True)
 
     @comando_di_gruppo(
-        "antiraid",
+        "admin-antiraid",
         nome="status",
         descrizione="Mostra la configurazione attuale dell'Anti-Raid.",
     )
@@ -437,7 +437,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await security_repo.save_settings(_replace(settings, livello=r.livello_al_raid, livello_fino=fino))
 
     @comando_di_gruppo(
-        "antiraid",
+        "admin-antiraid",
         nome="livello",
         descrizione="Livelli di allerta: normale, allerta, alto, blocco.",
     )
@@ -487,7 +487,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(f"Livello: **{attivo}**{durata}. {automatico.capitalize()}.", ephemeral=True)
 
     @comando_di_gruppo(
-        "antiraid",
+        "admin-antiraid",
         nome="quarantine-hold",
         descrizione="Impedisce a chi non è fidato di togliere la quarantena a mano.",
     )
@@ -507,7 +507,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "antiraid",
+        "admin-antiraid",
         nome="rilascia",
         descrizione="Toglie la quarantena a un membro (il modo giusto, col blocco attivo).",
     )
@@ -558,7 +558,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
     # Filtri all'ingresso e segnali di raid (SIC-023…035, 038)
     # ================================================================
     @comando_di_gruppo(
-        "antiraid",
+        "admin-antiraid",
         nome="filtro-ingresso",
         descrizione="Azione per un filtro all'ingresso (vale anche fuori da un raid).",
     )
@@ -599,7 +599,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(
-        "antiraid",
+        "admin-antiraid",
         nome="nomi-vietati",
         descrizione="Lista di parole o schemi (con *) vietati nei nomi di chi entra.",
     )
@@ -652,7 +652,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "antiraid_lista_aggiornata_schemi", v1=len(lista)), ephemeral=True)
 
     @comando_di_gruppo(
-        "antiraid",
+        "admin-antiraid",
         nome="segnali",
         descrizione="Segnali di raid sugli ultimi ingressi e azione su chi è entrato prima.",
     )
@@ -694,7 +694,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "antiraid",
+        "admin-antiraid",
         nome="ping-ruoli",
         descrizione="Ruoli dello staff pingati al primo allarme di un raid (vuoto: nessuno).",
     )
@@ -718,7 +718,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "antiraid",
+        "admin-antiraid",
         nome="elenco",
         descrizione="File con tutti gli account dei raid nelle ultime ore.",
     )
@@ -744,7 +744,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "antiraid",
+        "admin-antiraid",
         nome="segnala",
         descrizione="Segnala a chi gestisce il bot un raid che non è stato riconosciuto.",
     )
