@@ -25,7 +25,7 @@ GESTIONE_TICKET_ATTESI = {
     "ruolo aggiungi", "ruolo togli", "ruolo elenco",
 }
 VOICE_ATTESI = {"rename", "limit", "lock", "unlock", "kick", "transfer"}
-GESTIONE_VOICE_ATTESI = {"voice setup", "voice panel", "voice cap", "voice piattaforme"}
+GESTIONE_VOICE_ATTESI = {"setup", "panel", "cap", "piattaforme"}
 VECCHI_TOP = {
     "ticket-setup", "ticket-panel", "ticket-stats", "ticket-category", "ticket-support-role",
     "voicetemp-setup", "voicetemp-panel", "voicetemp-cap", "voicetemp-platform-setup",
@@ -44,12 +44,12 @@ async def test_ticket_e_voice_stanno_nei_gruppi_giusti():
     try:
         assert TICKET_ATTESI <= percorsi_del_gruppo("ticket")
         assert VOICE_ATTESI <= percorsi_del_gruppo("voice")
-        assert GESTIONE_TICKET_ATTESI <= percorsi_del_gruppo("ticket-gestione")
-        assert not {p for p in percorsi_del_gruppo("gestione") if p.startswith("ticket ")}
-        assert GESTIONE_VOICE_ATTESI <= percorsi_del_gruppo("gestione")
+        assert GESTIONE_TICKET_ATTESI <= percorsi_del_gruppo("admin-ticket")
+        assert not {p for p in percorsi_del_gruppo("admin-vocali") if p.startswith("ticket ")}
+        assert GESTIONE_VOICE_ATTESI <= percorsi_del_gruppo("admin-vocali")
         top = {c.name for c in bot.tree.get_commands()}
         assert not top & VECCHI_TOP
-        assert {"ticket", "voice", "gestione", "ticket-gestione"} <= top
+        assert {"ticket", "voice", "admin-vocali", "admin-ticket"} <= top
     finally:
         for cog in list(bot.cogs):
             await bot.remove_cog(cog)
@@ -58,14 +58,14 @@ async def test_ticket_e_voice_stanno_nei_gruppi_giusti():
 async def test_ticket_e_voice_aperti_a_tutti_gestione_solo_admin():
     assert GRUPPI["ticket"].livello is None
     assert GRUPPI["voice"].livello is None
-    assert GRUPPI["gestione"].livello is Livello.ADMIN
-    assert GRUPPI["ticket-gestione"].livello is Livello.ADMIN
+    assert GRUPPI["admin-vocali"].livello is Livello.ADMIN
+    assert GRUPPI["admin-ticket"].livello is Livello.ADMIN
 
 
 async def test_un_solo_livello_di_sottogruppi_e_descrizioni_senza_prefisso():
     bot = await _bot()
     try:
-        for nome in ("ticket", "voice", "gestione", "ticket-gestione"):
+        for nome in ("ticket", "voice", "admin-vocali", "admin-ticket"):
             for figlio in GRUPPI[nome].commands:
                 if isinstance(figlio, app_commands.Group):
                     assert not any(isinstance(n, app_commands.Group) for n in figlio.commands)

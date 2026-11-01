@@ -41,55 +41,60 @@ MODULI = (
 
 # (gruppo, sottogruppo o None) -> nomi dei figli attesi
 ATTESI: dict[tuple[str, str | None], set[str]] = {
-    ("mod", None): {"warn", "timeout", "untimeout", "clear", "lock", "unlock", "slowmode", "mute", "unmute"},
-    ("mod", "caso"): {"storico", "vedi", "motivo", "elimina", "classifica-staff", "attive", "registra"},
-    ("mod", "nota"): {"aggiungi", "elenca", "rimuovi", "modifica", "svuota"},
-    ("mod", "avvisi"): {"togli", "azzera", "classifica"},
-    ("mod", "blocco"): {"attiva", "togli"},
-    ("mod", "opzioni"): {"imposta", "dm", "immuni"},
-    ("mod", "massa"): {"timeout", "warn"},
-    ("modban", None): {"ban", "tempban", "softban", "kick", "unban"},
-    ("modban", "appelli"): {"canale", "elenco"},
-    ("modban", "massa"): {"ban", "unban", "kick"},
-    ("security", None): {"heatmap", "score", "spamtrap"},
-    ("security", "escalation"): {"enable", "disable", "set-reset-days", "set-step", "remove-step", "reset", "status"},
-    ("antinuke", None): {
+    ("mod-sanzioni", None): {"warn", "timeout", "untimeout", "mute", "unmute"},
+    ("mod-sanzioni", "massa"): {"timeout", "warn"},
+    ("mod-sanzioni", "opzioni"): {"imposta", "dm"},
+    ("mod-casi", "caso"): {"storico", "vedi", "motivo", "elimina", "classifica-staff", "attive", "registra"},
+    ("mod-casi", "nota"): {"aggiungi", "elenca", "rimuovi", "modifica", "svuota"},
+    ("mod-casi", "avvisi"): {"togli", "azzera", "classifica"},
+    ("mod-canali", None): {"clear", "lock", "unlock", "slowmode"},
+    ("mod-canali", "blocco"): {"attiva", "togli"},
+    ("founder", "moderazione"): {"immuni"},
+    ("mod-ban", None): {"ban", "tempban", "softban", "kick", "unban"},
+    ("mod-ban", "appelli"): {"canale", "elenco"},
+    ("mod-ban", "massa"): {"ban", "unban", "kick"},
+    ("admin-sicurezza", None): {"heatmap", "score", "spamtrap"},
+    ("admin-sicurezza", "escalation"): {"enable", "disable", "set-reset-days", "set-step", "remove-step", "reset", "status"},
+    ("admin-antinuke", None): {
         "enable", "limits", "trusted-add", "trusted-remove", "trusted-list", "punish-action", "recovery", "status",
         "guardie", "casi", "rilascia", "canale-allarmi",
     },
-    ("antiraid", None): {
+    ("admin-antiraid", None): {
         "enable", "join-rate", "account-age", "username-check", "avatar-check",
         "lockdown-action", "alert-channel", "status", "quarantine-hold", "rilascia",
         "filtro-ingresso", "nomi-vietati", "segnali", "ping-ruoli", "elenco", "segnala", "livello",
     },
-    ("security", "panico"): {"attiva", "togli", "configura", "stato"},
-    ("security", "globalban"): {"enable", "disable", "status", "controlla"},
-    ("security", "verify"): {
+    ("admin-sicurezza", "panico"): {"attiva", "togli", "configura", "stato"},
+    ("admin-sicurezza", "globalban"): {"enable", "disable", "status", "controlla"},
+    ("admin-sicurezza", "verify"): {
         "setup", "panel", "whitelist-add", "whitelist-remove", "blacklist-add", "blacklist-remove",
         "opzioni", "manuale", "tentativi", "statistiche", "tempi", "invia",
     },
-    ("automod", None): {"sync", "mute-duration", "log-channel", "status", "violazioni", "violazione-togli"},
-    ("filtri", None): {
+    ("admin-automod", None): {"sync", "mute-duration", "log-channel", "status", "violazioni", "violazione-togli"},
+    ("admin-filtri", None): {
         "invites", "anti-link-mode", "anti-link-domain", "anti-spam-messages", "anti-spam-emoji",
         "anti-spam-sticker", "anti-caps", "anti-zalgo", "phishing", "forma-testo", "anti-mention", "anti-attachment", "actions-set",
         "messaggi", "contenuto", "canale-media",
     },
-    ("automod", "parole"): {"add", "remove", "list"},
-    ("automod", "odio"): {"stato", "base", "parola", "nomi", "prova", "blocco", "richiami"},
-    ("automod", "esenzioni"): {"channel-add", "channel-remove", "role-add", "role-remove"},
-    ("log", None): {"canale", "stato", "esporta", "archivio-canale"},
-    ("log", "cerca"): {"utente", "canale", "ruolo"},
+    ("admin-automod", "parole"): {"add", "remove", "list"},
+    ("admin-automod", "odio"): {"stato", "base", "parola", "nomi", "prova", "blocco", "richiami"},
+    ("admin-automod", "esenzioni"): {"channel-add", "channel-remove", "role-add", "role-remove"},
+    ("admin-log", None): {"canale", "stato", "esporta", "archivio-canale"},
+    ("admin-log", "cerca"): {"utente", "canale", "ruolo"},
 }
 
 LIVELLI = {
-    "mod": Livello.MOD,
-    "modban": Livello.MODBAN,
-    "security": Livello.SECURITY,
-    "antinuke": Livello.SECURITY,
-    "antiraid": Livello.SECURITY,
-    "automod": Livello.ADMIN,
-    "filtri": Livello.ADMIN,
-    "log": Livello.LOG,
+    "mod-sanzioni": Livello.MOD,
+    "mod-casi": Livello.MOD,
+    "mod-canali": Livello.MOD,
+    "mod-ban": Livello.MODBAN,
+    "founder": Livello.FOUNDER,
+    "admin-sicurezza": Livello.SECURITY,
+    "admin-antinuke": Livello.SECURITY,
+    "admin-antiraid": Livello.SECURITY,
+    "admin-automod": Livello.ADMIN,
+    "admin-filtri": Livello.ADMIN,
+    "admin-log": Livello.LOG,
 }
 
 VECCHI_NOMI = {
@@ -97,6 +102,8 @@ VECCHI_NOMI = {
     "unmute-role", "modcase", "modnote", "lock", "unlock", "slowmode", "clear", "mod-log-setup",
     "escalation", "anti-nuke", "anti-raid", "global-ban", "verify", "permission-heatmap",
     "security-score", "spamtrap-setup", "logs", "logs-setup", "logs-status",
+    # i gruppi di prima di D60 (D60: il ruolo è il prefisso)
+    "admin", "mod", "modban", "security", "automod", "filtri", "antinuke", "antiraid", "log", "backup", "gestione",
 }
 
 
