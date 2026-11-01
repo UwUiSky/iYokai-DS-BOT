@@ -77,7 +77,7 @@ from core.channel_rename import (
     rename_tracker,
 )
 from core.command_access import Livello, autocomplete_protetto
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
 from core.i18n import testo_per
 from core.repositories.ticket_form_repo import (
@@ -1173,10 +1173,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         self._attivita_scritta: dict[int, float] = {}
 
     @comando_di_gruppo(
-        "gestione",
+        "ticket-gestione",
         nome="setup",
         descrizione="Configura la categoria (e opzionalmente il ruolo di supporto) per i ticket.",
-        sottogruppo=GESTIONE_TICKET,
     )
     @app_commands.describe(
         category="La categoria dove verranno creati i canali dei ticket",
@@ -1207,10 +1206,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(messaggio, ephemeral=True)
 
     @comando_di_gruppo(
-        "gestione",
+        "ticket-gestione",
         nome="limite",
         descrizione="Quanti ticket aperti alla volta può avere ogni utente (predefinito 1).",
-        sottogruppo=GESTIONE_TICKET,
     )
     @app_commands.describe(massimo="Da 1 a 5 ticket aperti per utente")
     async def ticket_limite(
@@ -1230,10 +1228,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "ticket-gestione",
         nome="panel",
         descrizione="Pubblica il pannello per l'apertura dei ticket in questo canale.",
-        sottogruppo=GESTIONE_TICKET,
     )
     async def ticket_panel(self, interaction: discord.Interaction) -> None:
         if not await ensure_module_enabled(interaction, MODULE_TICKETS):
@@ -1514,10 +1511,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message("\n".join(righe), ephemeral=True)
 
     @comando_di_gruppo(
-        "admin",
+        "ticket-gestione",
         nome="chiusura-auto",
         descrizione="Chiudi i ticket fermi da N minuti (0 = spenta).",
-        sottogruppo=ADMIN_TICKET,
     )
     @app_commands.describe(pannello="Il pannello", minuti="Minuti senza messaggi (5-43200)")
     @app_commands.autocomplete(pannello=_completa_pannelli)
@@ -1546,10 +1542,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(
-        "admin",
+        "ticket-gestione",
         nome="voto",
         descrizione="Voto a stelle in DM alla chiusura.",
-        sottogruppo=ADMIN_TICKET,
     )
     @app_commands.describe(pannello="Il pannello", attivo="Chiedi il voto")
     @app_commands.autocomplete(pannello=_completa_pannelli)
@@ -1571,10 +1566,10 @@ class TicketsCog(CogConGruppi, commands.Cog):
     # SPEC.md §13.2 — categorie ticket configurabili
     # ================================================================
     @comando_di_gruppo(
-        "gestione",
-        nome="categoria-add",
+        "ticket-gestione",
+        nome="aggiungi",
         descrizione="Aggiungi (o aggiorna) una categoria di ticket.",
-        sottogruppo=GESTIONE_TICKET,
+        sottogruppo=SOTTOGRUPPI["ticket-gestione categoria"],
     )
     @app_commands.describe(
         label="Nome mostrato nel select menu (es. 'Supporto tecnico')",
@@ -1621,10 +1616,10 @@ class TicketsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
-        nome="categoria-remove",
+        "ticket-gestione",
+        nome="togli",
         descrizione="Rimuovi una categoria di ticket.",
-        sottogruppo=GESTIONE_TICKET,
+        sottogruppo=SOTTOGRUPPI["ticket-gestione categoria"],
     )
     @app_commands.describe(label="Il nome esatto della categoria da rimuovere")
     async def ticket_category_remove(
@@ -1643,10 +1638,10 @@ class TicketsCog(CogConGruppi, commands.Cog):
             )
 
     @comando_di_gruppo(
-        "gestione",
-        nome="categoria-list",
+        "ticket-gestione",
+        nome="elenco",
         descrizione="Elenca le categorie di ticket configurate.",
-        sottogruppo=GESTIONE_TICKET,
+        sottogruppo=SOTTOGRUPPI["ticket-gestione categoria"],
     )
     async def ticket_category_list(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
@@ -1684,10 +1679,10 @@ class TicketsCog(CogConGruppi, commands.Cog):
     # SPEC.md §13.13 — ruoli di supporto multipli
     # ================================================================
     @comando_di_gruppo(
-        "gestione",
-        nome="ruolo-add",
+        "ticket-gestione",
+        nome="aggiungi",
         descrizione="Aggiungi un ruolo di supporto.",
-        sottogruppo=GESTIONE_TICKET,
+        sottogruppo=SOTTOGRUPPI["ticket-gestione ruolo"],
     )
     @app_commands.describe(role="Il ruolo da aggiungere")
     async def ticket_support_role_add(self, interaction: discord.Interaction, role: discord.Role) -> None:
@@ -1702,10 +1697,10 @@ class TicketsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
-        nome="ruolo-remove",
+        "ticket-gestione",
+        nome="togli",
         descrizione="Rimuovi un ruolo di supporto.",
-        sottogruppo=GESTIONE_TICKET,
+        sottogruppo=SOTTOGRUPPI["ticket-gestione ruolo"],
     )
     @app_commands.describe(role="Il ruolo da rimuovere")
     async def ticket_support_role_remove(self, interaction: discord.Interaction, role: discord.Role) -> None:
@@ -1739,10 +1734,10 @@ class TicketsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
-        nome="ruolo-list",
+        "ticket-gestione",
+        nome="elenco",
         descrizione="Elenca i ruoli di supporto configurati.",
-        sottogruppo=GESTIONE_TICKET,
+        sottogruppo=SOTTOGRUPPI["ticket-gestione ruolo"],
     )
     async def ticket_support_role_list(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
@@ -1758,10 +1753,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
     # SPEC.md §13.12 — statistiche
     # ================================================================
     @comando_di_gruppo(
-        "gestione",
+        "ticket-gestione",
         nome="stats",
         descrizione="Statistiche del sistema di ticket.",
-        sottogruppo=GESTIONE_TICKET,
     )
     @app_commands.describe(operator="Mostra le statistiche di questo operatore invece di quelle del server")
     async def ticket_stats(
@@ -2508,10 +2502,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         return True
 
     @comando_di_gruppo(
-        "admin",
+        "ticket-gestione",
         nome="chiudi-tutti",
         descrizione="Chiudi i ticket aperti (fino a 25 alla volta).",
-        sottogruppo=ADMIN_TICKET,
     )
     @app_commands.describe(motivo="Il motivo, salvato in ogni ticket")
     async def chiudi_tutti(
