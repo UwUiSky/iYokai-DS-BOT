@@ -92,3 +92,18 @@ def test_menziona_percorsi_solo_a_confine_di_parola():
     assert menziona_percorsi("/mod ban lista", ["mod ban", "mod ban lista"], ids) == "</mod ban lista:42>"
     assert menziona_percorsi("/mod ban", ["mod ban"], {}) == "`/mod ban`"
     assert menziona_percorsi("niente", [], ids) == "niente"
+
+
+def test_un_nome_di_prima_di_d60_trova_il_comando_col_nome_nuovo():
+    """D60: chi scrive il nome vecchio (`/gestione voice setup`, `modban ban`) trova il comando spostato, primo."""
+    nuovi = [
+        ComandoInfo("admin-vocali setup", "Crea il canale generatore.", "admin-vocali", ()),
+        ComandoInfo("mod-ban ban", "Banna un membro.", "mod-ban", ()),
+        ComandoInfo("mod-ban tempban", "Banna un membro per un tempo.", "mod-ban", ()),
+        ComandoInfo("voice nome", "Rinomina il tuo canale.", "voice", ()),
+    ]
+    assert cerca("/gestione voice setup", nuovi)[0].percorso == "admin-vocali setup"
+    assert cerca("modban ban", nuovi)[0].percorso == "mod-ban ban"
+    assert cerca("/modban tempban", nuovi)[0].percorso == "mod-ban tempban"
+    # Il gruppo vecchio intero porta ai comandi che aveva.
+    assert {c.percorso for c in cerca("/modban", nuovi)} >= {"mod-ban ban", "mod-ban tempban"}
