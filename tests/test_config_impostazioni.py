@@ -98,3 +98,40 @@ async def test_rifiuta_valori_chiavi_e_moduli_sbagliati(guild, modulo, chiave, v
     with pytest.raises(ImpostazioneNonValida):
         await ci.imposta_impostazione(guild, modulo, chiave, valore, 9)
     assert await db.get_guild_setting(G, chiave) is None
+
+
+async def test_canale_del_tipo_giusto(guild):
+    """Un canale vocale non va dove serve un canale di testo (e viceversa): i comandi ammettono solo quel tipo."""
+    with pytest.raises(ImpostazioneNonValida):
+        await ci.imposta_impostazione(guild, "moderation_report", "report_channel_id", "31", 9)
+    with pytest.raises(ImpostazioneNonValida):
+        await ci.imposta_impostazione(guild, "music", "music_allowed_voice_channel_id", "21", 9)
+    assert await ci.imposta_impostazione(guild, "music", "music_allowed_voice_channel_id", "31", 9)
+
+
+async def test_pagina_senza_tetto_di_25(guild):
+    guild.text_channels = [SimpleNamespace(id=100 + i, name=f"c{i}") for i in range(40)]
+    righe = {r["chiave"]: r for r in await ci.valori_modulo(guild, "moderation_report")}
+    assert len(righe["report_channel_id"]["opzioni"]) == 40
+    assert await ci.imposta_impostazione(guild, "moderation_report", "report_channel_id", "139", 9)
+
+
+async def test_ruolo_non_verificato_con_il_controllo_del_comando(guild, monkeypatch):
+    """Come `/verify opzioni`: il ruolo che il bot dà a chi entra passa da check_role_assignable con chi lo sceglie."""
+    autore = SimpleNamespace(id=9)
+    guild.get_member = lambda i: autore if i == 9 else None
+    visti = []
+
+    def controllo(g, ruolo, attore, *, self_service):
+        visti.append((ruolo.id, attore, self_service))
+        return "Questo ruolo è pari o sopra il tuo ruolo più alto: non puoi usarlo qui."
+
+    monkeypatch.setattr(ci, "check_role_assignable", controllo)
+    with pytest.raises(ImpostazioneNonValida, match="sopra il tuo ruolo"):
+        await ci.imposta_impostazione(guild, "verify", "verify_unverified_role_id", "11", 9)
+    assert visti == [(11, autore, True)]
+    with pytest.raises(ImpostazioneNonValida):
+        await ci.imposta_impostazione(guild, "verify", "verify_unverified_role_id", "11", 777)  # non è nel server
+    assert await db.get_guild_setting(G, "verify_unverified_role_id") is None
+    monkeypatch.setattr(ci, "check_role_assignable", lambda *a, **k: None)
+    assert await ci.imposta_impostazione(guild, "verify", "verify_unverified_role_id", "11", 9)

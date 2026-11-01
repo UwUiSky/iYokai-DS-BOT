@@ -18,9 +18,11 @@ import discord
 
 from core.config_schema import ImpostazioneNonValida
 from core.database import db
+from core.role_safety import check_role_assignable
 
 BOOL, NUMERO, TESTO, SCELTA, CANALE, CANALE_VOCE, RUOLO = "bool", "numero", "testo", "scelta", "canale", "canale_voce", "ruolo"
-MAX_OPZIONI = 25  # un menu di Discord e una pagina corta: non si mostrano più di 25 canali o ruoli
+# Ruoli che il bot dà da solo a chiunque entri: stesso controllo del comando (`/verify opzioni`).
+RUOLI_DATI_DAL_BOT = frozenset({"verify_unverified_role_id"})
 SCELTE = {
     "captcha_tipo": ("testo", "immagine"),
     "azione_verifica": ("niente", "quarantena", "kick", "ban"),
@@ -112,14 +114,16 @@ def _scelte(tipo_schema: str) -> tuple[str, ...]:
     return SCELTE.get(tipo_schema, ())
 
 
-def _opzioni(guild: discord.Guild, tipo: str) -> list[tuple[int, str]]:
+def _candidati(guild: discord.Guild, tipo: str) -> list:
+    """Ruoli (senza @everyone né ruoli gestiti), canali vocali o di testo: gli stessi tipi delle opzioni dei comandi."""
     if tipo == RUOLO:
-        voci = [(r.id, r.name) for r in guild.roles if not r.is_default() and not r.managed]
-    elif tipo == CANALE_VOCE:
-        voci = [(c.id, c.name) for c in guild.voice_channels]
-    else:
-        voci = [(c.id, c.name) for c in guild.text_channels]
-    return voci[:MAX_OPZIONI]
+        return [r for r in guild.roles if not r.is_default() and not r.managed]
+    return list(guild.voice_channels if tipo == CANALE_VOCE else guild.text_channels)
+
+
+def _opzioni(guild: discord.Guild, tipo: str) -> list[tuple[int, str]]:
+    """Tutte le voci: la pagina web non ha il tetto di 25 dei menu di Discord."""
+    return [(v.id, v.name) for v in _candidati(guild, tipo)]
 
 
 async def valori_modulo(guild: discord.Guild, nome: str) -> list[dict]:
@@ -137,7 +141,7 @@ async def valori_modulo(guild: discord.Guild, nome: str) -> list[dict]:
     return righe
 
 
-def _converti(campo: Campo, testo: str, guild: discord.Guild):
+def _converti(campo: Campo, testo: str, guild: discord.Guild, changed_by: int | None):
     """Dal testo del modulo al valore da salvare; None = togliere l'impostazione. Storto = ImpostazioneNonValida."""
     testo = (testo or "").strip()
     if campo.tipo == BOOL:
@@ -156,9 +160,16 @@ def _converti(campo: Campo, testo: str, guild: discord.Guild):
             identificativo = int(testo)
         except ValueError:
             raise ImpostazioneNonValida("Scelta non valida.") from None
-        esiste = (guild.get_role(identificativo) if campo.tipo == RUOLO else guild.get_channel(identificativo)) is not None
-        if not esiste or identificativo == guild.id:
-            raise ImpostazioneNonValida("Questo canale o ruolo non esiste in questo server.")
+        scelto = next((v for v in _candidati(guild, campo.tipo) if v.id == identificativo), None)
+        if scelto is None:
+            raise ImpostazioneNonValida("Questo canale o ruolo non esiste in questo server (o è di un altro tipo).")
+        if campo.chiave in RUOLI_DATI_DAL_BOT:
+            autore = guild.get_member(changed_by) if changed_by else None
+            motivo = "Non ti trovo in questo server." if autore is None else check_role_assignable(
+                guild, scelto, autore, self_service=True
+            )
+            if motivo is not None:
+                raise ImpostazioneNonValida(motivo)
         return identificativo
     return testo
 
@@ -171,7 +182,7 @@ async def imposta_impostazione(guild: discord.Guild, nome: str, chiave: str, tes
     campo = next((c for c in campi_modulo(nome) if c.chiave == chiave), None)
     if campo is None:
         raise ImpostazioneNonValida("Questa impostazione non esiste.")
-    nuovo = _converti(campo, testo, guild)
+    nuovo = _converti(campo, testo, guild, changed_by)
     storia = _storia()
     if nuovo is not None:
         tipo_schema = storia.SETTINGS_SCHEMA[chiave]
