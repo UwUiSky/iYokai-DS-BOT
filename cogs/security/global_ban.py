@@ -246,7 +246,7 @@ class GlobalBanCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="enable",
         descrizione="Aderisci alla rete di ban globali (propaga e ricevi).",
         sottogruppo=("globalban", "Rete di ban globali tra server."),
@@ -279,7 +279,7 @@ class GlobalBanCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="disable",
         descrizione="Abbandona la rete di ban globali.",
         sottogruppo=("globalban", "Rete di ban globali tra server."),
@@ -291,7 +291,7 @@ class GlobalBanCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "globalban_ban_globale_disattivato"), ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="controlla",
         descrizione="Da quanti server della rete questo utente è stato bannato dalla Spam Trap.",
         sottogruppo=("globalban", "Rete di ban globali tra server."),
@@ -319,7 +319,7 @@ class GlobalBanCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="status",
         descrizione="Mostra lo stato e la storia recente del ban globale.",
         sottogruppo=("globalban", "Rete di ban globali tra server."),

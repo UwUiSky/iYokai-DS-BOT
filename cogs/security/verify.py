@@ -674,7 +674,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
     # Comandi
     # ================================================================
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="setup",
         descrizione="Configura il Verify.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
@@ -769,7 +769,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="panel",
         descrizione="Pubblica il pannello di verifica.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
@@ -811,7 +811,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         await verify_repo.set_panel_message(interaction.guild.id, sent.channel.id, sent.id)
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="whitelist-add",
         descrizione="Aggiungi un utente alla whitelist.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
@@ -824,7 +824,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "verify_aggiunto_alla_whitelist", mention=member.mention), ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="whitelist-remove",
         descrizione="Rimuovi un utente dalla whitelist.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
@@ -837,7 +837,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "verify_rimosso_dalla_whitelist", mention=member.mention), ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="blacklist-add",
         descrizione="Aggiungi un utente alla blacklist.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
@@ -850,7 +850,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "verify_aggiunto_alla_blacklist", mention=member.mention), ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="blacklist-remove",
         descrizione="Rimuovi un utente dalla blacklist.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
@@ -864,7 +864,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
 
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="opzioni",
         descrizione="Ruolo «non verificato» e ruoli extra.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
@@ -924,7 +924,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         await avvia_verifica(interaction)
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="tempi",
         descrizione="Promemoria, tempo massimo, azione su chi fallisce, verifica solo ai sospetti.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
@@ -987,7 +987,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="manuale",
         descrizione="Verifica a mano un membro, senza controlli.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
@@ -1014,7 +1014,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(await testo_per(interaction, "verify_verificato_mano", mention=member.mention), ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="invia",
         descrizione="Rimanda a un membro il messaggio per verificarsi.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
@@ -1039,7 +1039,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
             )
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="tentativi",
         descrizione="Tentativi di verifica di un utente.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
@@ -1100,7 +1100,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(await testo_per(interaction, "verify_tentativi_esportati", v1=len(righe)), file=file, ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="statistiche",
         descrizione="Ingressi, uscite, captcha e verifiche.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),

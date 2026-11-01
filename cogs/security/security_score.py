@@ -104,7 +104,7 @@ class SecurityScoreCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="score",
         descrizione="Calcola il punteggio di sicurezza del server con consigli.",
     )

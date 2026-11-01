@@ -143,7 +143,7 @@ class LockdownCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------ /security panico
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="attiva",
         descrizione="Accende il panico: blocco totale con le regole d'emergenza.",
         sottogruppo=("panico", "Modalita' panico: blocco d'emergenza del server."),
@@ -153,7 +153,7 @@ class LockdownCog(CogConGruppi, commands.Cog):
         await self._attiva(interaction, TIPO_PANICO, motivo)
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="togli",
         descrizione="Spegne il panico e riapre il server com'era.",
         sottogruppo=("panico", "Modalita' panico: blocco d'emergenza del server."),
@@ -164,7 +164,7 @@ class LockdownCog(CogConGruppi, commands.Cog):
         await self._togli(interaction)
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="configura",
         descrizione="Scelte del panico: ruoli avvisati, categorie escluse, sblocco, regole.",
         sottogruppo=("panico", "Modalita' panico: blocco d'emergenza del server."),
@@ -241,7 +241,7 @@ class LockdownCog(CogConGruppi, commands.Cog):
         )[:1900]
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="stato",
         descrizione="Mostra se il server e' bloccato e le scelte del panico.",
         sottogruppo=("panico", "Modalita' panico: blocco d'emergenza del server."),

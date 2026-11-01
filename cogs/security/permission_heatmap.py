@@ -77,7 +77,7 @@ class PermissionHeatmapCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="heatmap",
         descrizione="Mostra quali ruoli hanno permessi critici e chi li possiede.",
     )

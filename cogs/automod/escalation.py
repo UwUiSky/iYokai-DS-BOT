@@ -291,7 +291,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
     # Comandi
     # ================================================================
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="enable",
         descrizione="Attiva l'escalation ladder.",
         sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
@@ -334,7 +334,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="disable",
         descrizione="Disattiva l'escalation ladder.",
         sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
@@ -346,7 +346,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "escalation_escalation_ladder_disattivata"), ephemeral=True)
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="set-reset-days",
         descrizione="Giorni di buona condotta per azzerare il conteggio.",
         sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
@@ -363,7 +363,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="set-step",
         descrizione="Configura l'azione per un livello della scala.",
         sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
@@ -407,7 +407,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="remove-step",
         descrizione="Rimuove un livello dalla scala personalizzata.",
         sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
@@ -425,7 +425,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
             )
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="reset",
         descrizione="Azzera il conteggio infrazioni di un membro.",
         sottogruppo=("escalation", "Scala di escalation delle sanzioni."),
@@ -440,7 +440,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="status",
         descrizione="Mostra la scala di escalation configurata.",
         sottogruppo=("escalation", "Scala di escalation delle sanzioni."),

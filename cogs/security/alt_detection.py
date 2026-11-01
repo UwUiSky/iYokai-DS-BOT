@@ -68,7 +68,7 @@ class AltDetectionCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "security", nome="elenco", descrizione="Gli account doppi trovati dalla verifica web.", sottogruppo=SOTTOGRUPPO
+        "admin-sicurezza", nome="elenco", descrizione="Gli account doppi trovati dalla verifica web.", sottogruppo=SOTTOGRUPPO
     )
     async def elenco_cmd(self, interaction: discord.Interaction) -> None:
         if not await ensure_module_enabled(interaction, MODULO_VERIFY):

@@ -595,7 +595,7 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
         return note
 
     @comando_di_gruppo(
-        "security",
+        "admin-sicurezza",
         nome="spamtrap",
         descrizione="Configura i canali trappola e log dello Spam Trap.",
     )
