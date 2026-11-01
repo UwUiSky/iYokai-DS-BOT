@@ -1,13 +1,13 @@
 """
 cogs/logging/log_config.py
 ==========================
-Comandi di /log per scegliere o creare i canali dei log: /log crea-canali
-(una categoria privata con un canale per tipo), /log crea-forum (un forum,
-un post per tipo), /log ignora (cosa il log dei messaggi non registra) e
-/log eventi (accendere o spegnere ogni evento), /log vista-forum (un forum con un
+Comandi di /admin-log per scegliere o creare i canali dei log: /admin-log crea-canali
+(una categoria privata con un canale per tipo), /admin-log crea-forum (un forum,
+un post per tipo), /admin-log ignora (cosa il log dei messaggi non registra) e
+/admin-log eventi (accendere o spegnere ogni evento), /admin-log vista-forum (un forum con un
 post per canale o per caso). I canali creati sono
 visibili anche a iYokai Mod, se è nel server.
-/log canale e /log stato stanno in basic_logs.py.
+/admin-log canale e /admin-log stato stanno in basic_logs.py.
 Funzioni coperte: SPEC §18 (NF-01), §8.16 (NF-02), §8.17, §8.19 (LOG-017), parte E (D15)
 Dipende da: core/channel_router.py, core/repositories/log_ignora_repo.py,
 core/repositories/log_eventi_repo.py
@@ -141,7 +141,7 @@ class LogConfigCog(CogConGruppi, commands.Cog):
         await super().cog_unload()
 
     @comando_di_gruppo(
-        "log", nome="vista-forum",
+        "admin-log", nome="vista-forum",
         descrizione="Un forum con un post per canale o per caso. Senza forum, la vista si spegne.",
     )
     @app_commands.describe(
@@ -186,7 +186,7 @@ class LogConfigCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "log", nome="crea-canali",
+        "admin-log", nome="crea-canali",
         descrizione="Crea una categoria privata con un canale per ogni tipo di log.",
     )
     async def crea_canali(self, interaction: discord.Interaction) -> None:
@@ -210,12 +210,12 @@ class LogConfigCog(CogConGruppi, commands.Cog):
         creati: list[str] = []
         try:
             categoria = await guild.create_category(
-                NOME_CATEGORIA, overwrites=_riservato(guild), reason="/log crea-canali"
+                NOME_CATEGORIA, overwrites=_riservato(guild), reason="/admin-log crea-canali"
             )
             for tipo in TIPI_LOG:
                 canale = await guild.create_text_channel(
                     NOME_CANALE[tipo], category=categoria, overwrites=_riservato(guild),
-                    topic=DESCRIZIONE_TIPO[tipo][:1024], reason="/log crea-canali",
+                    topic=DESCRIZIONE_TIPO[tipo][:1024], reason="/admin-log crea-canali",
                 )
                 await router.output_channel_repo.imposta(guild.id, tipo, canale.id)
                 if tipo == TIPO_EVENTI:
@@ -230,12 +230,12 @@ class LogConfigCog(CogConGruppi, commands.Cog):
             return
         await interaction.followup.send(
             "Fatto. Ho creato la categoria privata e questi canali:\n" + "\n".join(creati)
-            + "\nRicorda di attivare il modulo con /admin setup attiva se non l'hai già fatto.",
+            + "\nRicorda di attivare il modulo con /admin-bot setup attiva se non l'hai già fatto.",
             ephemeral=True,
         )
 
     @comando_di_gruppo(
-        "log", nome="crea-forum",
+        "admin-log", nome="crea-forum",
         descrizione="Crea un forum privato per i log: un post per ogni tipo.",
     )
     async def crea_forum(self, interaction: discord.Interaction) -> None:
@@ -257,7 +257,7 @@ class LogConfigCog(CogConGruppi, commands.Cog):
         await interaction.response.defer(ephemeral=True)
         try:
             forum = await guild.create_forum(
-                NOME_FORUM, overwrites=_riservato(guild), reason="/log crea-forum"
+                NOME_FORUM, overwrites=_riservato(guild), reason="/admin-log crea-forum"
             )
         except discord.HTTPException as errore:
             logger.warning("crea-forum fallito (server %s): %s", guild.id, errore)
@@ -275,7 +275,7 @@ class LogConfigCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "log", nome="ignora",
+        "admin-log", nome="ignora",
         descrizione="Cosa i log non registrano (canali, utenti, ruoli; testi solo per i messaggi).",
     )
     @app_commands.describe(
@@ -344,7 +344,7 @@ class LogConfigCog(CogConGruppi, commands.Cog):
 
 
     @comando_di_gruppo(
-        "log", nome="eventi",
+        "admin-log", nome="eventi",
         descrizione="Accendi o spegni ogni singolo evento dei log.",
     )
     async def eventi(self, interaction: discord.Interaction) -> None:

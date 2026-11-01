@@ -489,7 +489,7 @@ async def test_accumula_non_toglie_nulla(scena_premi):
 
 
 # ----------------------------------------------------------------------
-# Comandi /economia livelli
+# Comandi /admin-livelli
 # ----------------------------------------------------------------------
 @pytest.fixture
 async def cog_comandi(monkeypatch, clean_db):
@@ -520,18 +520,19 @@ def _messaggio_inviato(interazione) -> str:
 
 
 @pytest.mark.asyncio
-async def test_i_comandi_stanno_sotto_economia_livelli(cog_comandi):
+async def test_i_comandi_stanno_sotto_admin_livelli(cog_comandi):
     _, comandi, _ = cog_comandi
-    nomi = sorted(n for n in comandi if n.startswith("economia livelli"))
+    nomi = sorted(n for n in comandi if n.startswith("admin-livelli"))
     assert nomi == [
-        "economia livelli annuncio",
-        "economia livelli card",
-        "economia livelli escludi",
-        "economia livelli moltiplicatore",
-        "economia livelli mostra",
-        "economia livelli negozio",
-        "economia livelli premi",
-        "economia livelli xp",
+        "admin-livelli annuncio",
+        "admin-livelli card",
+        "admin-livelli escludi",
+        "admin-livelli membro",
+        "admin-livelli moltiplicatore",
+        "admin-livelli mostra",
+        "admin-livelli negozio",
+        "admin-livelli premi",
+        "admin-livelli xp",
     ]
 
 
@@ -541,7 +542,7 @@ async def test_comando_annuncio_salva_e_mostra(cog_comandi):
     interazione = _interazione()
     scelta = type("C", (), {"value": "dm"})()
 
-    await comandi["economia livelli annuncio"].callback(
+    await comandi["admin-livelli annuncio"].callback(
         cog, interazione, modo=scelta, canale=None, livello_minimo=10, ogni=5, solo_premi=None
     )
 
@@ -556,7 +557,7 @@ async def test_comando_annuncio_canale_scelto_senza_canale_dice_errore(cog_coman
     interazione = _interazione()
     scelta = type("C", (), {"value": "canale_scelto"})()
 
-    await comandi["economia livelli annuncio"].callback(
+    await comandi["admin-livelli annuncio"].callback(
         cog, interazione, modo=scelta, canale=None, livello_minimo=None, ogni=None, solo_premi=None
     )
 
@@ -569,7 +570,7 @@ async def test_comando_xp_senza_valori_non_scrive(cog_comandi):
     cog, comandi, _ = cog_comandi
     interazione = _interazione()
 
-    await comandi["economia livelli xp"].callback(
+    await comandi["admin-livelli xp"].callback(
         cog, interazione, testo=None, attesa=None, voce_xp=None, voce_coin=None, moltiplicatori=None
     )
 
@@ -583,10 +584,10 @@ async def test_comando_escludi_aggiunge_e_poi_toglie(cog_comandi):
     cog, comandi, repo = cog_comandi
     canale = fake_text_channel(channel_id=321)
 
-    await comandi["economia livelli escludi"].callback(cog, _interazione(), canale=canale, ruolo=None)
+    await comandi["admin-livelli escludi"].callback(cog, _interazione(), canale=canale, ruolo=None)
     assert (await repo.get_config(GUILD)).canali_esclusi == {321}
 
-    await comandi["economia livelli escludi"].callback(cog, _interazione(), canale=canale, ruolo=None)
+    await comandi["admin-livelli escludi"].callback(cog, _interazione(), canale=canale, ruolo=None)
     assert (await repo.get_config(GUILD)).canali_esclusi == frozenset()
 
 
@@ -595,7 +596,7 @@ async def test_comando_escludi_vuole_un_solo_bersaglio(cog_comandi):
     cog, comandi, _ = cog_comandi
     interazione = _interazione()
 
-    await comandi["economia livelli escludi"].callback(cog, interazione, canale=None, ruolo=None)
+    await comandi["admin-livelli escludi"].callback(cog, interazione, canale=None, ruolo=None)
 
     assert "un canale oppure un ruolo" in _messaggio_inviato(interazione)
 
@@ -605,12 +606,12 @@ async def test_comando_moltiplicatore_imposta_e_con_fattore_1_toglie(cog_comandi
     cog, comandi, repo = cog_comandi
     ruolo = fake_role(role_id=88, name="vip")
 
-    await comandi["economia livelli moltiplicatore"].callback(
+    await comandi["admin-livelli moltiplicatore"].callback(
         cog, _interazione(), fattore=2.0, canale=None, ruolo=ruolo
     )
     assert (await repo.get_config(GUILD)).mult_ruoli == {88: 2.0}
 
-    await comandi["economia livelli moltiplicatore"].callback(
+    await comandi["admin-livelli moltiplicatore"].callback(
         cog, _interazione(), fattore=1.0, canale=None, ruolo=ruolo
     )
     assert (await repo.get_config(GUILD)).mult_ruoli == {}
@@ -626,7 +627,7 @@ async def test_comando_mostra_rientra_nei_limiti_degli_embed(cog_comandi):
         await repo.set_rule(GUILD, "mult_ruolo", 10**17 + i, 2.0)
     interazione = _interazione()
 
-    await comandi["economia livelli mostra"].callback(cog, interazione)
+    await comandi["admin-livelli mostra"].callback(cog, interazione)
 
     embed = interazione.response.send_message.await_args.kwargs["embed"]
     assert len(embed) <= 6000

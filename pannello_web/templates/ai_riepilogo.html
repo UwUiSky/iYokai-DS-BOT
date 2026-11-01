@@ -9,7 +9,7 @@
   <p class="tenue">Ultimo riepilogo{% if cfg.ultimo_invio %}, del {{ cfg.ultimo_invio.strftime("%d/%m/%Y %H:%M") }}{% endif %}:</p>
   <pre>{{ cfg.ultimo_testo }}</pre>
   {% else %}
-  <p>Non c'è ancora nessun riepilogo. Si imposta con <code>/ai riepilogo imposta</code>.</p>
+  <p>Non c'è ancora nessun riepilogo. Si imposta con <code>/admin-ai riepilogo imposta</code>.</p>
   {% endif %}
 </div>
 {% endblock %}

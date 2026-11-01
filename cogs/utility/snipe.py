@@ -107,7 +107,7 @@ class SnipeCog(CogConGruppi, commands.Cog):
     # SPEC.md §14.9 / §14.10 — Snipe ed Editsnipe
     # ================================================================
     async def _ignorato(self, guild: discord.Guild, channel_id: int, message: discord.Message) -> bool:
-        """Canali, utenti e prefissi di /log ignora valgono anche per snipe."""
+        """Canali, utenti e prefissi di /admin-log ignora valgono anche per snipe."""
         canale = guild.get_channel_or_thread(channel_id)
         return da_ignorare(
             await log_ignora_repo.carica(guild.id),

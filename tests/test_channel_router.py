@@ -312,7 +312,7 @@ async def test_cambiando_forum_il_log_va_nel_forum_nuovo_non_nel_post_vecchio(re
     await repo.imposta(900, router.TIPO_VOCE, 50)
     dest = await router.destinazione(server, router.TIPO_VOCE, None)
     await dest.send(embed=discord.Embed(title="a"))
-    await repo.imposta(900, router.TIPO_VOCE, 60)  # /log canale tipo:voce nel forum nuovo
+    await repo.imposta(900, router.TIPO_VOCE, 60)  # /admin-log canale tipo:voce nel forum nuovo
     dest = await router.destinazione(server, router.TIPO_VOCE, None)
     await dest.send(embed=discord.Embed(title="b"))
 

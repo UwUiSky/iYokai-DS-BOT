@@ -156,7 +156,7 @@ async def url_e_sicuro(url: str) -> bool:
     Lo stesso controllo che safe_get applica prima di connettersi,
     senza scaricare nulla: schema, porta e almeno un IP pubblico a cui
     il nome host risolve. Un URL malformato vale False, non solleva
-    mai (BUG-20). Usato da /moduli alert feed per rifiutare subito un URL che
+    mai (BUG-20). Usato da /admin-moduli alert feed per rifiutare subito un URL che
     non verrebbe mai scaricato.
     """
     parsed = _destinazione_ammessa(url)

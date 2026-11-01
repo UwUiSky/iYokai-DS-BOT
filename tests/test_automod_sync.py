@@ -135,7 +135,7 @@ class TestRimozioneParoleTraTreVie:
     Il caso che ha richiesto il merge a tre vie: una parola che
     iYokai stesso aveva sincronizzato in passato deve poter
     SPARIRE dalla regola Discord quando l'admin la rimuove dalla
-    configurazione (/automod badword-remove) — ma senza intaccare
+    configurazione (/admin-automod badword-remove) — ma senza intaccare
     parole che l'admin ha aggiunto direttamente dal pannello Discord.
     """
 

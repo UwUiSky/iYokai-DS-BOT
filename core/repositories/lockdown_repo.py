@@ -20,7 +20,7 @@ class ConfigBlocco:
     categorie_escluse: tuple[int, ...] = ()
     ruoli_avviso: tuple[int, ...] = ()
     sblocco_auto_minuti: int = 0  # 0 = niente sblocco automatico
-    solo_proprietario: bool = True  # in panico: solo proprietario e fidati usano /mod e /modban
+    solo_proprietario: bool = True  # in panico: solo proprietario e fidati usano i gruppi mod-…
     automatico: bool = False  # il panico parte da solo (anti-nuke, anti-raid)
 
 

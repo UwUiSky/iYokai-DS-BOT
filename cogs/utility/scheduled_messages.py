@@ -96,10 +96,10 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
     # Comandi
     # ================================================================
     @comando_di_gruppo(
-        "messaggi",
+        "admin-messaggi",
         nome="crea",
         descrizione="Programma un messaggio.",
-        sottogruppo=SOTTOGRUPPI["messaggi programmati"],
+        sottogruppo=SOTTOGRUPPI["admin-messaggi programmati"],
     )
     @app_commands.describe(
         channel="Il canale dove pubblicare il messaggio",
@@ -153,10 +153,10 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "messaggi",
+        "admin-messaggi",
         nome="elenco",
         descrizione="Mostra i messaggi programmati di questo server.",
-        sottogruppo=SOTTOGRUPPI["messaggi programmati"],
+        sottogruppo=SOTTOGRUPPI["admin-messaggi programmati"],
     )
     async def list_scheduled_messages(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
@@ -186,12 +186,12 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @comando_di_gruppo(
-        "messaggi",
+        "admin-messaggi",
         nome="annulla",
         descrizione="Annulla un messaggio programmato.",
-        sottogruppo=SOTTOGRUPPI["messaggi programmati"],
+        sottogruppo=SOTTOGRUPPI["admin-messaggi programmati"],
     )
-    @app_commands.describe(schedule_id="ID (mostrato da /messaggi programmati elenco)")
+    @app_commands.describe(schedule_id="ID (mostrato da /admin-messaggi programmati elenco)")
     async def cancel_scheduled_message(
         self, interaction: discord.Interaction, schedule_id: int
     ) -> None:

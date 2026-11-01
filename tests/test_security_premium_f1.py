@@ -40,7 +40,7 @@ MODULI = {
 }
 
 # Uscire dalla rete dei ban globali deve restare sempre possibile.
-SEMPRE_PERMESSI = {"security globalban disable"}
+SEMPRE_PERMESSI = {"admin-sicurezza globalban disable"}
 
 
 class _ConfigSenzaSbloccoAlpha:

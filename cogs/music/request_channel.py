@@ -147,10 +147,9 @@ class MusicRequestCog(CogConGruppi, commands.Cog):
     # Comando di configurazione
     # ------------------------------------------------------------------
     @comando_di_gruppo(
-        "admin",
+        "admin-musica",
         nome="canale-richieste",
         descrizione="Canale dove si scrive un titolo per metterlo in coda, con il player.",
-        sottogruppo=SG_MUSICA,
     )
     @app_commands.describe(canale="Canale testuale delle richieste", disattiva="Togli il canale")
     async def canale_richieste(

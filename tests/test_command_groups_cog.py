@@ -70,7 +70,7 @@ class CogProva(CogConGruppi, commands.Cog):
     async def _autocompleta(self, interaction: discord.Interaction, current: str):
         return [app_commands.Choice(name="a", value="a")]
 
-    @comando_di_gruppo("admin", nome="prova", descrizione="Comando di prova", sottogruppo=("config", "Impostazioni"))
+    @comando_di_gruppo("admin-bot", nome="prova", descrizione="Comando di prova", sottogruppo=("config", "Impostazioni"))
     @app_commands.describe(valore="Un numero", scelta="Una scelta", testo="Un testo")
     @app_commands.choices(scelta=[app_commands.Choice(name="Uno", value="1")])
     @app_commands.rename(valore="numero")
@@ -90,7 +90,7 @@ class CogProva(CogConGruppi, commands.Cog):
         self.chiamate.append("aperto")
 
 
-def _trova(cog, gruppo="admin", sotto="config", nome="prova"):
+def _trova(cog, gruppo="admin-bot", sotto="config", nome="prova"):
     nodo = cog.gruppi_yokai[gruppo]
     if sotto:
         nodo = nodo.get_command(sotto)
@@ -147,11 +147,11 @@ async def test_il_comando_sta_nel_gruppo_e_non_al_primo_livello():
     cog = CogProva(bot)
     await bot.add_cog(cog)
     radici = {c.name for c in bot.tree.get_commands()}
-    assert radici == {"admin", "ticket"}
+    assert radici == {"admin-bot", "ticket"}
     assert "prova" not in radici and "aperto" not in radici
     assert _trova(cog) is not None
     assert _trova(cog, "ticket", None, "aperto") is not None
-    sotto = cog.gruppi_yokai["admin"].get_command("config")
+    sotto = cog.gruppi_yokai["admin-bot"].get_command("config")
     assert isinstance(sotto, ca.GruppoYokai)
 
 
@@ -180,10 +180,10 @@ async def test_il_ricaricamento_non_duplica():
     nuovo = CogProva(bot)
     nuovo.gruppi_yokai = cog.gruppi_yokai
     await bot.add_cog(nuovo)
-    sotto = cog.gruppi_yokai["admin"].get_command("config")
+    sotto = cog.gruppi_yokai["admin-bot"].get_command("config")
     assert [c.name for c in sotto.commands] == ["prova"]
     assert sotto.get_command("prova").binding is nuovo
-    assert [c.name for c in bot.tree.get_commands()].count("admin") == 1
+    assert [c.name for c in bot.tree.get_commands()].count("admin-bot") == 1
 
 
 async def test_registrare_due_volte_lo_stesso_cog_non_duplica():
@@ -191,7 +191,7 @@ async def test_registrare_due_volte_lo_stesso_cog_non_duplica():
     cog = CogProva(bot)
     registra_comandi_del_cog(cog, gruppi=cog.gruppi_yokai, tree=bot.tree)
     registra_comandi_del_cog(cog, gruppi=cog.gruppi_yokai, tree=bot.tree)
-    assert len(cog.gruppi_yokai["admin"].get_command("config").commands) == 1
+    assert len(cog.gruppi_yokai["admin-bot"].get_command("config").commands) == 1
     togli_comandi_del_cog(cog)
     assert bot.tree.get_commands() == []
 
@@ -201,7 +201,7 @@ async def test_lo_scaricamento_toglie_comando_sottogruppo_e_gruppo_vuoto():
     cog = CogProva(bot)
     await bot.add_cog(cog)
     await bot.remove_cog("CogProva")
-    assert cog.gruppi_yokai["admin"].commands == []
+    assert cog.gruppi_yokai["admin-bot"].commands == []
     assert cog.gruppi_yokai["ticket"].commands == []
     assert bot.tree.get_commands() == []
 
@@ -259,7 +259,7 @@ async def test_un_altro_cog_non_ruba_il_nome_di_un_comando():
 def test_un_group_semplice_sotto_un_gruppo_protetto_resta_vietato():
     gruppi = cg.costruisci_gruppi()
     with pytest.raises(TypeError):
-        gruppi["admin"].add_command(app_commands.Group(name="x", description="y"))
+        gruppi["admin-bot"].add_command(app_commands.Group(name="x", description="y"))
 
 
 def test_gruppo_sconosciuto_da_errore_chiaro():
@@ -273,7 +273,7 @@ def test_gruppo_sconosciuto_da_errore_chiaro():
 
 
 # ----------------------------------------------------------------------
-# Il cog vero: BasicLogsCog nel gruppo /log
+# Il cog vero: BasicLogsCog nel gruppo /admin-log
 # ----------------------------------------------------------------------
 @pytest.fixture
 async def log_cog(monkeypatch):
@@ -291,12 +291,12 @@ async def test_basic_logs_mette_i_comandi_in_log_e_non_al_primo_livello(log_cog)
     bot, cog, _ = log_cog
     radici = {c.name: c for c in bot.tree.get_commands()}
     assert "logs-setup" not in radici and "logs-status" not in radici
-    assert {c.name for c in radici["log"].commands} == {"canale", "stato"}
+    assert {c.name for c in radici["admin-log"].commands} == {"canale", "stato"}
 
 
 async def test_log_canale_blocca_chi_non_ha_il_livello(log_cog):
     bot, cog, _ = log_cog
-    cmd = bot.tree.get_command("log").get_command("canale")
+    cmd = bot.tree.get_command("admin-log").get_command("canale")
     with pytest.raises(ca.AccessoNegato):
         await cmd._check_can_run(_ix())
     assert await cmd._check_can_run(_ix("manage_guild")) is True
@@ -313,14 +313,14 @@ async def test_callback_di_log_canale_funziona_come_oggi(log_cog):
 
 async def test_callback_legato_dal_comando_vero(log_cog):
     bot, cog, database = log_cog
-    cmd = bot.tree.get_command("log").get_command("canale")
+    cmd = bot.tree.get_command("admin-log").get_command("canale")
     await cmd._do_call(_ix("manage_guild"), {"channel": fake_text_channel(channel_id=556)})
     assert database.scritti[(77, basic_logs.SETTING_LOG_CHANNEL)] == 556
 
 
 async def test_caratteri_del_gruppo_log_entro_i_limiti(log_cog):
     bot, _, _ = log_cog
-    gruppo = bot.tree.get_command("log")
+    gruppo = bot.tree.get_command("admin-log")
     assert conta_caratteri(gruppo) < 8000
     for cmd in gruppo.commands:
         assert len(cmd.description) <= 100
@@ -332,13 +332,13 @@ async def test_reload_e_unload_di_basic_logs(monkeypatch):
     bot = _bot()
     await bot.add_cog(basic_logs.BasicLogsCog(bot))
     await bot.remove_cog("BasicLogsCog")
-    assert bot.tree.get_command("log") is None
+    assert bot.tree.get_command("admin-log") is None
     await bot.add_cog(basic_logs.BasicLogsCog(bot))
     await bot.add_cog(basic_logs.BasicLogsCog(bot), override=True)
-    assert [c.name for c in bot.tree.get_command("log").commands].count("canale") == 1
+    assert [c.name for c in bot.tree.get_command("admin-log").commands].count("canale") == 1
     await bot.remove_cog("BasicLogsCog")
-    assert bot.tree.get_command("log") is None
-    assert cg.GRUPPI["log"].commands == []
+    assert bot.tree.get_command("admin-log") is None
+    assert cg.GRUPPI["admin-log"].commands == []
 
 
 # ----------------------------------------------------------------------

@@ -3,13 +3,14 @@ core/command_policy.py
 ======================
 Politica dei comandi di un server (CFG-008, CFG-009, CFG-010 del catalogo #122; diagnosi CFG-018).
 
-Cosa può decidere l'admin, con `/admin politica ...`:
+Cosa può decidere l'admin, con `/admin-bot politica ...`:
 - spegnere UN comando (non un modulo intero);
 - limitare i comandi ad alcuni canali (elenco dei permessi) o vietarli in altri;
 - far ignorare al bot certi ruoli e certi utenti.
 
 Regole di sicurezza (così nessuno si chiude fuori):
-- i comandi di `/admin`, `/owner` e `/admin politica` non si spengono mai;
+- i comandi di `/admin-bot` (che comprende `/admin-bot politica`) e `/owner` non si spengono mai; gli altri gruppi
+  `admin-…` si possono spegnere (D60);
 - l'owner del bot, il proprietario del server e chi ha «Gestisci server» non sono mai bloccati da canali o da
   ruoli/utenti ignorati (un comando spento invece vale per tutti, tranne i gruppi qui sopra);
 - un canale vale anche se è il thread o la categoria sotto cui sta.
@@ -36,7 +37,7 @@ TUTTE_LE_CHIAVI = (CHIAVE_COMANDI_OFF, *CHIAVI_ID)
 MAX_VOCI = 250
 MAX_LUNGHEZZA_PERCORSO = 100
 # Mai spenti: servono a rimettere a posto la politica.
-PREFISSI_SEMPRE_APERTI = ("admin", "owner")
+PREFISSI_SEMPRE_APERTI = ("admin-bot", "owner")
 
 _blocchi_elenco: dict[int, asyncio.Lock] = {}
 

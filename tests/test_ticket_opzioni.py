@@ -1,7 +1,7 @@
 """
 tests/test_ticket_opzioni.py
 ============================
-#120 (catalogo ticket): /ticket-pannelli opzioni …, lista nera, sospensione, pausa, reperibili,
+#120 (catalogo ticket): /admin-ticket-opzioni …, lista nera, sospensione, pausa, reperibili,
 /ticket apri (anche per conto di un utente e da un messaggio) e l'apertura con le
 opzioni del pannello. Database vero; Discord finto.
 """

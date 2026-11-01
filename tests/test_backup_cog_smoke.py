@@ -1,7 +1,7 @@
 """
 tests/test_backup_cog_smoke.py
 ==================================
-Smoke test del cog Backup (/backup main|crea|promuovi).
+Smoke test del cog Backup (/admin-backup main|crea|promuovi).
 """
 
 import discord

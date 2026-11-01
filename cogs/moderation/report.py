@@ -4,7 +4,7 @@ cogs/moderation/report.py
 Sistema di report: un membro qualsiasi può segnalare un altro utente
 allo staff. Modulo SEMPRE GRATUITO (MODULE_REPORT), come da schema.
 
-/admin config canale-report imposta il canale dove arrivano le segnalazioni
+/admin-bot config canale-report imposta il canale dove arrivano le segnalazioni
 (solo admin del bot, lo dà il gruppo) — usa la colonna "settings" di
 guild_config (vedi core/database.py), non "modules": è configurazione,
 non un interruttore attivo/spento.
@@ -35,7 +35,7 @@ class ModerationReportCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "admin",
+        "admin-bot",
         nome="canale-report",
         descrizione="Imposta il canale delle segnalazioni.",
         sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),

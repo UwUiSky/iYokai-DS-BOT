@@ -28,7 +28,7 @@ async def test_logging_cog_si_carica_e_tutti_i_listener_sono_registrati():
     assert module is not None
     assert module.premium_capable is False
 
-    gruppo_log = bot.tree.get_command("log")
+    gruppo_log = bot.tree.get_command("admin-log")
     assert {c.name for c in gruppo_log.commands} == {"canale", "stato"}
     await bot.remove_cog("BasicLogsCog")
 

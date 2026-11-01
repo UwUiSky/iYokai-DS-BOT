@@ -5,7 +5,7 @@ I filtri AutoMod lato bot provati uno per uno con messaggi che hanno
 davvero un contenuto (BUG-5): prima l'intent `message_content` era
 spento e i filtri leggevano messaggi vuoti.
 
-Ogni filtro viene acceso con il suo comando `/automod …` (database
+Ogni filtro viene acceso con il suo comando `/admin-automod …` (database
 vero), poi il messaggio passa da `on_message`. I messaggi sono finti
 fedeli (`tests/support/discord_fakes.py`).
 """
@@ -301,7 +301,7 @@ async def test_seconds_ha_un_minimo_e_un_massimo(nome_comando):
 
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.none())
     await bot.add_cog(modulo_automod.AutomodCog(bot))
-    comando = bot.tree.get_command("filtri").get_command(nome_comando)
+    comando = bot.tree.get_command("admin-filtri").get_command(nome_comando)
     dati = comando.to_dict(bot.tree)
     await bot.remove_cog("AutomodCog")
     opzione = next(o for o in dati["options"] if o["name"] == "seconds")

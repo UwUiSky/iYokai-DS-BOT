@@ -1,7 +1,7 @@
 """
 tests/test_giveaway_command_behavior.py
 ===========================================
-Test del comportamento REALE di /giveaway (creazione) e della view
+Test del comportamento REALE di /admin-giveaway (creazione) e della view
 di partecipazione — contro PostgreSQL vero.
 """
 

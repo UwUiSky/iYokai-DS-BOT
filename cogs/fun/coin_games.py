@@ -2,7 +2,7 @@
 cogs/fun/coin_games.py
 ======================
 Giochi con le monete (/giochi gioca), misuratore a tema libero (/fun misura) e
-gioco del conteggio in un canale (/moduli conteggio). Le monete del bot non si
+gioco del conteggio in un canale (/admin-moduli conteggio). Le monete del bot non si
 comprano con soldi veri.
 Funzioni coperte: SPEC §23.16 (NF-40)
 Dipende da: core/coin_games_logic.py, core/repositories/counting_game_repo.py
@@ -209,10 +209,10 @@ class CoinGamesCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed)
 
     # ================================================================
-    # /moduli conteggio e il gioco in sé
+    # /admin-moduli conteggio e il gioco in sé
     # ================================================================
     @comando_di_gruppo(
-        "moduli",
+        "admin-moduli",
         nome="conteggio",
         descrizione="Gioco del conteggio: scegli il canale dove contare a turno 1, 2, 3...",
     )

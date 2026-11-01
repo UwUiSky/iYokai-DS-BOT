@@ -1,7 +1,7 @@
 """
 cogs/utility/politica.py
 ========================
-`/admin politica`: l'admin decide quali comandi girano nel suo server (CFG-008, CFG-009, CFG-010, CFG-018, #122).
+`/admin-bot politica`: l'admin decide quali comandi girano nel suo server (CFG-008, CFG-009, CFG-010, CFG-018, #122).
 Spegne un singolo comando, limita i comandi ad alcuni canali, fa ignorare ruoli e utenti, e con `diagnosi` scopre
 perché un comando non risponde. La logica e i dati sono in `core/command_policy.py` (un solo punto, D16).
 Funzioni coperte: SPEC §20 (NF-05), catalogo #122
@@ -77,7 +77,7 @@ class PoliticaCog(CogConGruppi, commands.Cog):
         return [app_commands.Choice(name=p[:100], value=p[:100]) for p in sorted(trovati)[:MAX_SUGGERIMENTI]]
 
     # ------------------------------------------------------------------
-    @comando_di_gruppo("admin", nome="comando", descrizione="Spegne o riaccende un singolo comando.", sottogruppo=SOTTOGRUPPI["admin politica"])
+    @comando_di_gruppo("admin-bot", nome="comando", descrizione="Spegne o riaccende un singolo comando.", sottogruppo=SOTTOGRUPPI["admin-bot politica"])
     @richiedi(Livello.ADMIN)
     @app_commands.describe(comando="Il comando, es. «immagini meme»", acceso="Sì = riaccendi, No = spegni")
     @app_commands.autocomplete(comando=_suggerisci)
@@ -106,7 +106,7 @@ class PoliticaCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, chiave, comando=percorso), ephemeral=True)
 
     # ------------------------------------------------------------------
-    @comando_di_gruppo("admin", nome="canali", descrizione="Dove il bot risponde ai comandi.", sottogruppo=SOTTOGRUPPI["admin politica"])
+    @comando_di_gruppo("admin-bot", nome="canali", descrizione="Dove il bot risponde ai comandi.", sottogruppo=SOTTOGRUPPI["admin-bot politica"])
     @richiedi(Livello.ADMIN)
     @app_commands.describe(regola="Solo in questo canale, o mai in questo canale", canale="Canale o categoria", togli="Sì = togli la regola")
     @app_commands.choices(
@@ -124,7 +124,7 @@ class PoliticaCog(CogConGruppi, commands.Cog):
     ) -> None:
         await self._modifica_id(interaction, _ELENCHI[regola.value][0], canale.id, aggiungi=not togli)
 
-    @comando_di_gruppo("admin", nome="ignora", descrizione="Il bot ignora un ruolo o un utente.", sottogruppo=SOTTOGRUPPI["admin politica"])
+    @comando_di_gruppo("admin-bot", nome="ignora", descrizione="Il bot ignora un ruolo o un utente.", sottogruppo=SOTTOGRUPPI["admin-bot politica"])
     @richiedi(Livello.ADMIN)
     @app_commands.describe(ruolo="Ruolo da ignorare", utente="Utente da ignorare", togli="Sì = togli la regola")
     async def ignora(
@@ -156,7 +156,7 @@ class PoliticaCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, testo), ephemeral=True)
 
     # ------------------------------------------------------------------
-    @comando_di_gruppo("admin", nome="elenco", descrizione="Mostra la politica dei comandi e, se vuoi, azzera un elenco.", sottogruppo=SOTTOGRUPPI["admin politica"])
+    @comando_di_gruppo("admin-bot", nome="elenco", descrizione="Mostra la politica dei comandi e, se vuoi, azzera un elenco.", sottogruppo=SOTTOGRUPPI["admin-bot politica"])
     @richiedi(Livello.ADMIN)
     @app_commands.describe(azzera="Elenco da svuotare (vuoto = solo mostra)")
     @app_commands.choices(
@@ -185,7 +185,7 @@ class PoliticaCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(content=avviso, embed=embed, ephemeral=True)
 
     # ------------------------------------------------------------------
-    @comando_di_gruppo("admin", nome="diagnosi", descrizione="Scopre perché un comando non funziona qui.", sottogruppo=SOTTOGRUPPI["admin politica"])
+    @comando_di_gruppo("admin-bot", nome="diagnosi", descrizione="Scopre perché un comando non funziona qui.", sottogruppo=SOTTOGRUPPI["admin-bot politica"])
     @richiedi(Livello.ADMIN)
     @app_commands.describe(comando="Il comando da controllare, es. «immagini meme»")
     @app_commands.autocomplete(comando=_suggerisci)

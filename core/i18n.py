@@ -7,7 +7,7 @@ controllati da `tests/test_i18n_completo.py`).
 
 Quale lingua si usa
 -------------------
-- Risposta pubblica: la lingua del SERVER (`/admin lingua set`).
+- Risposta pubblica: la lingua del SERVER (`/admin-bot lingua set`).
 - Risposta che vede solo l'utente: la sua lingua PERSONALE (`/utility lingua`)
   se l'ha scelta, altrimenti quella del server.
 - Fuori da un server (DM): la lingua personale, altrimenti l'italiano.

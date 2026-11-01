@@ -64,7 +64,7 @@ def format_guild_status_line(
 
 def righe_stato_server(dettaglio: dict, scadenze: list[str]) -> list[str]:
     """
-    Le righe di `/admin premium stato`: un sblocco per riga, scritto in modo che lo capisca anche chi non è
+    Le righe di `/admin-bot premium stato`: un sblocco per riga, scritto in modo che lo capisca anche chi non è
     tecnico. `dettaglio` viene da `core.premium.get_guild_premium_breakdown`; `scadenze` sono le date degli
     abbonamenti per modulo, già formattate.
     """

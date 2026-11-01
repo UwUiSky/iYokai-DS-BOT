@@ -197,7 +197,7 @@ def scegli_bersaglio(
     regex: str | None = None,
 ) -> tuple[str, str] | str:
     """
-    Da cosa ha scelto chi usa /log ignora ricava (genere, valore). Se la scelta
+    Da cosa ha scelto chi usa /admin-log ignora ricava (genere, valore). Se la scelta
     non va bene restituisce il messaggio da mostrare.
     """
     scelti = [x for x in (channel_id, user_id, prefisso, role_id, regex) if x is not None]
@@ -281,7 +281,7 @@ class CancellatiRecenti:
 
 
 # L'unica memoria dei cancellati del processo: la scrive il log dei messaggi,
-# la legge /log archivio-canale, la svuota core/forget_user_service.py.
+# la legge /admin-log archivio-canale, la svuota core/forget_user_service.py.
 cancellati_recenti = CancellatiRecenti(time.monotonic)
 
 

@@ -1,4 +1,4 @@
-"""NF-25 (#96): cog di raccolta, ruoli per attività, comandi /moduli statistiche e viste di /utility serverstats."""
+"""NF-25 (#96): cog di raccolta, ruoli per attività, comandi /admin-moduli statistiche e viste di /utility serverstats."""
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
@@ -176,7 +176,7 @@ async def test_albero_e_limiti():
     await s.setup(bot)
     assert {"statistiche impostazioni", "statistiche ruolo-aggiungi", "statistiche ruolo-elimina",
             "statistiche elenco", "statistiche diagnosi"} <= percorsi_del_gruppo("moduli")
-    assert conta_caratteri(GRUPPI["moduli"]) < 8000
+    assert conta_caratteri(GRUPPI["admin-moduli"]) < 8000
     vista = {o.name: o for o in comando_nel_gruppo("utility", "serverstats").parameters}["vista"]
     assert len(vista.choices) <= 25
     await bot.remove_cog("ActivityStatsCog")

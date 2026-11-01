@@ -100,7 +100,7 @@ async def test_il_comando_xp_accetta_importi_e_tetto(cog_e_repo):
         for c in registra_comandi_del_cog(cog, gruppi=costruisci_gruppi(), tree=None)
     }
     interazione = _interazione()
-    await comandi["economia livelli xp"].callback(
+    await comandi["admin-livelli xp"].callback(
         cog, interazione, testo=None, attesa=None, voce_xp=None, voce_coin=None,
         moltiplicatori=None, daily=250, lavoro_min=5, lavoro_max=15, livello_massimo=20,
     )

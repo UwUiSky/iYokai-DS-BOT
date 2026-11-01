@@ -185,14 +185,14 @@ async def test_add_e_remove_errore_di_discord_risposta_chiara(nome):
 
 
 # ====================================================================
-# M 6.7 — /ticket-gestione ruolo togli toglie anche il ruolo storico
+# M 6.7 — /admin-ticket ruolo togli toglie anche il ruolo storico
 # ====================================================================
 async def test_remove_toglie_il_ruolo_impostato_con_ticket_setup():
     server = Server()
     ruolo = fake_role(ID_RUOLO_SUPPORTO, "Supporto")
     server.guild.get_role.side_effect = lambda role_id: ruolo if role_id == ID_RUOLO_SUPPORTO else None
     cog = TicketsCog(bot=None)
-    # Il ruolo "storico" lo scrive /ticket-gestione setup.
+    # Il ruolo "storico" lo scrive /admin-ticket setup.
     await cog.ticket_setup.callback(cog, server.interazione(server.staff()), server.categoria, ruolo)
     assert await modulo._support_role_ids(ID_SERVER) == [ID_RUOLO_SUPPORTO]
 
@@ -303,7 +303,7 @@ async def test_ticket_category_add_dichiara_i_limiti_delle_opzioni():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await bot.add_cog(TicketsCog(bot))
     try:
-        gruppo = bot.tree.get_command("ticket-gestione").get_command("categoria")
+        gruppo = bot.tree.get_command("admin-ticket").get_command("categoria")
         for nome in ("aggiungi", "togli"):
             opzioni = {o["name"]: o for o in gruppo.get_command(nome).to_dict(bot.tree)["options"]}
             assert opzioni["label"]["min_length"] == 1
@@ -717,6 +717,6 @@ async def test_comando_limite_salva_il_valore_e_rifiuta_fuori_scala():
     )
     await cog.ticket_limite.callback(cog, i, 3)
     assert await db.get_guild_setting(ID_SERVER, "ticket_max_per_utente") == 3
-    comando = bot.tree.get_command("ticket-gestione").get_command("limite")
+    comando = bot.tree.get_command("admin-ticket").get_command("limite")
     opzione = comando.to_dict(bot.tree)["options"][0]
     assert (opzione["min_value"], opzione["max_value"]) == (1, 5)

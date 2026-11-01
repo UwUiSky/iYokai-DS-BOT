@@ -196,7 +196,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
     # /softban
     # ================================================================
     @comando_di_gruppo(
-        "modban",
+        "mod-ban",
         nome="softban",
         descrizione="Banna e sbanna subito un membro, per cancellarne i messaggi recenti.",
     )
@@ -271,7 +271,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
 
         avvisi = []
         if not sbloccato:
-            avvisi.append("Lo sblocco automatico è fallito: usa /modban unban.")
+            avvisi.append("Lo sblocco automatico è fallito: usa /mod-ban unban.")
         if dm is None:
             avvisi.append("Non è stato possibile notificare l'utente in DM.")
         if avvisi:
@@ -360,7 +360,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
     # /mute-role e /unmute-role
     # ================================================================
     @comando_di_gruppo(
-        "mod",
+        "mod-sanzioni",
         nome="mute",
         descrizione="Silenzia un membro con un ruolo dedicato (alternativa al timeout).",
     )
@@ -486,7 +486,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(embed=embed)
 
     @comando_di_gruppo(
-        "mod",
+        "mod-sanzioni",
         nome="unmute",
         descrizione="Rimuove il ruolo mute da un membro.",
     )

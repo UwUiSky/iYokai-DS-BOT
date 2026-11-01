@@ -78,12 +78,14 @@ Parole usate:
 | Livelli di sotto-gruppo | 1 (`/gruppo sottogruppo comando`) | Application Commands |
 | Opzioni per comando | 25 | Application Commands |
 | Scelte fisse per opzione | 25 | Application Commands |
-| Nome di comando o opzione | da 1 a 32 caratteri | Application Commands |
+| Nome di comando o opzione | da 1 a 32 caratteri; solo `-` `_` `ʼ` (apostrofo U+02BC, non il `'` normale), lettere e cifre: regex `^[-_ʼ\p{L}\p{N}\p{sc=Deva}\p{sc=Thai}]{1,32}$` (letta il 01/11/2026). Il trattino è ammesso: `admin-ticket`, `mod-ban`, `-cerca-comando` | Application Commands |
 | Descrizione | da 1 a 100 caratteri | Application Commands |
 | Somma di nomi, descrizioni e valori di un comando | 8000 caratteri | Application Commands |
 | Testo libero di un'opzione, senza `max_length` | fino a 6000 caratteri | Application Commands |
 | Creazioni di comandi al giorno per server | 200 | Application Commands |
 | `default_permissions` | vale solo sul comando o gruppo di primo livello | discord.py `app_commands/commands.py` (REVIEW L9) |
+| Chi ha `administrator` | **usa tutti i comandi**: nessuna impostazione nasconde un comando agli amministratori. Un comando che deve passare solo a una persona (`/founder`: `guild.owner_id`) si controlla nel codice (`Livello.FOUNDER`) e lo rifiuta agli altri amministratori | Application Commands, «Members with the Administrator permission can use all commands» (D60) |
+| Filtro mentre si scrive `/` | confronta l'inizio del nome (forum di supporto Discord): scrivendo `/admin` compaiono tutti i gruppi `admin-…`. Un comando che l'utente non può usare non compare. Da provare su desktop, web e telefono (`VERIFICA_LIVE.md`) | docs.discord.com, forum di supporto (D60) |
 | Comandi installabili dall'utente (`integration_types` = utente) | **nessun tetto a parte**: i tetti sono per tipo (100 slash, 15 utente, 15 messaggio) e contano tutti i comandi globali dell'app, installati sul server o sull'utente. `integration_types` è solo un campo del comando. Verificato il 21/10/2026 | [Application Commands](https://docs.discord.com/developers/interactions/application-commands) |
 | `integration_types` e `contexts` | solo sui comandi globali e solo al primo livello; un sotto-comando li eredita dal gruppo | Application Commands; discord.py `allowed_installs` |
 | Comando `nsfw` | visibile solo a chi ha 18 anni, in un canale vietato ai minori (o in DM con l'opzione 18+ attiva); un'app con **App Discovery** attivo non può avere comandi o contenuti `nsfw` | Application Commands |
@@ -95,9 +97,8 @@ sono gli stessi comandi. Un comando nuovo solo-utente sul principale toglierebbe
 Dove l'app non è nel server: una risposta e al massimo 5 messaggi dopo, per 15 minuti; i comandi
 dell'app rispondono una volta sola.
 
-Stato di iYokai (misurato): 97 comandi di primo livello su 100;
-`/owner` 25 su 25; `/automod` 22 su 25; peso massimo 2943 caratteri su
-8000 (`/automod`).
+Stato di iYokai (misurato, D60): 39 comandi globali di primo livello (tetto D56: 60); gruppi staff `admin-…` (20), `mod-…` (4) e
+`/founder`; peso massimo 5.547 caratteri su 8.000 (`/admin-sicurezza`); `/admin-ai` ha 19 figli su 25.
 
 ### 1.4 Interazioni e tempi
 
@@ -386,7 +387,10 @@ resto.
 14. **Bottoni:** se il messaggio deve vivere oltre un riavvio, la View è
     persistente (`timeout=None`, `custom_id` fisso, `add_view` all'avvio)?
 15. **Comandi:** la funzione entra in un gruppo esistente senza superare
-    25 sotto-comandi? Nessun comando di primo livello nuovo?
+    25 sotto-comandi? Nessun comando di primo livello nuovo? Il nome del
+    gruppo dice il ruolo (`admin-`, `mod-`, `founder`) e nessun gruppo per
+    tutti inizia con quelle parole (D60)? Il nome usa solo i caratteri
+    ammessi (trattino sì, apostrofo `ʼ` U+02BC)?
 16. **Risorse del server:** si controllano i tetti (250 ruoli, 500
     canali, 50 per categoria, 15 webhook per canale, 6 regole AutoMod)?
 17. **Cicli lunghi:** un ciclo su molti utenti o server ha una pausa,

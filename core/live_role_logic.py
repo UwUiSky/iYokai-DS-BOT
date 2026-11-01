@@ -2,7 +2,7 @@
 core/live_role_logic.py
 =======================
 Dà e toglie il ruolo «in diretta» a chi è collegato a un avviso Twitch o Kick
-(NF-32). Il collegamento è scelto dall'admin con /moduli alert ruolo-live;
+(NF-32). Il collegamento è scelto dall'admin con /admin-moduli alert ruolo-live;
 non serve l'intent delle presenze. Funzioni coperte: SPEC §10.13 (NF-32)
 """
 

@@ -685,7 +685,7 @@ async def test_spenti_la_finestra_lo_dice_ma_il_profilo_globale_si_vede(mondo, m
     cog = modulo.ProgressiCog(MagicMock())
     i = _interazione()
     await cog.progressi.callback(cog, i)
-    assert "/economia progressi" in i.response.send_message.await_args.kwargs["embed"].description
+    assert "/admin-livelli progressi" in i.response.send_message.await_args.kwargs["embed"].description
 
     embed, vista = await modulo.costruisci(i.guild, i.user, "globale")
     assert "Server in cui giochi" in embed.description

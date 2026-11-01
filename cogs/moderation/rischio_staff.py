@@ -1,8 +1,8 @@
 """
 cogs/moderation/rischio_staff.py
 ================================
-/mod rischio: il punteggio di rischio di un membro (casi, trappola anti-spam, età dell'account,
-doppi della verifica web). /mod carico: quanto lavoro ha fatto ogni persona dello staff, con tempi di risposta, ticket riaperti,
+/mod-casi rischio: il punteggio di rischio di un membro (casi, trappola anti-spam, età dell'account,
+doppi della verifica web). /mod-casi carico: quanto lavoro ha fatto ogni persona dello staff, con tempi di risposta, ticket riaperti,
 sanzioni annullate in appello, voto dei ticket e una proposta di turni. Solo per gli amministratori.
 Servono a chi decide: nessuna azione parte da qui. Risposte private.
 Funzioni coperte: SPEC §23.17 (NF-41, D50)
@@ -39,7 +39,7 @@ class RischioStaffCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "mod",
+        "mod-casi",
         nome="rischio",
         descrizione="Punteggio di rischio di un membro, con i motivi. Solo un aiuto per decidere.",
     )
@@ -70,7 +70,7 @@ class RischioStaffCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "mod",
+        "mod-casi",
         nome="carico",
         descrizione="Carico dello staff e turni proposti. Solo amministratori, mai pubblico.",
     )

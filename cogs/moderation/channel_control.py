@@ -1,7 +1,7 @@
 """
 cogs/moderation/channel_control.py
 =====================================
-Comandi di controllo sul canale: /mod lock, /mod unlock, /mod slowmode. Modulo
+Comandi di controllo sul canale: /mod-canali lock, /mod-canali unlock, /mod-canali slowmode. Modulo
 SEMPRE GRATUITO (MODULE_CHANNEL_CONTROL, premium_capable=False), come
 da schema ("Lock/Unlock" e "Slowmode" sono [Free]). Ogni comando scrive
 una riga nel log di moderazione (M 1.8); il motivo del lock è al massimo
@@ -93,7 +93,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
         await post_to_mod_log(guild, embed)
 
     @comando_di_gruppo(
-        "mod",
+        "mod-canali",
         nome="lock",
         descrizione="Blocca la possibilità di scrivere in un canale.",
     )
@@ -177,7 +177,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
         await _log(interaction, embed)
 
     @comando_di_gruppo(
-        "mod",
+        "mod-canali",
         nome="unlock",
         descrizione="Sblocca la possibilità di scrivere in un canale.",
     )
@@ -230,7 +230,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
         await _log(interaction, embed)
 
     @comando_di_gruppo(
-        "mod",
+        "mod-canali",
         nome="slowmode",
         descrizione="Imposta lo slowmode su un canale.",
     )

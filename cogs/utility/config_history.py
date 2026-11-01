@@ -1,11 +1,11 @@
 """
 cogs/utility/config_history.py
 ==================================
-Comandi /admin config: storico (con filtri, vista prima/dopo e CSV) e rollback
+Comandi /admin-bot config: storico (con filtri, vista prima/dopo e CSV) e rollback
 delle modifiche, reset, esporta/importa (con controllo dello schema prima di
 scrivere) e lingua del server. È solo l'interfaccia comandi: legge e scrive con i metodi di
 core/database.py. Nessun controllo "modulo attivo": deve funzionare
-anche prima che qualunque modulo sia acceso, come /admin setup attiva.
+anche prima che qualunque modulo sia acceso, come /admin-bot setup attiva.
 Funzioni coperte: SPEC §2.1, §2.3 (solo infrastruttura), §2.5, §2.6,
 §2.7; REVIEW.md BUG-6, BUG-31, BUG-32; catalogo #122 (CFG-004, CFG-005).
 """
@@ -287,7 +287,7 @@ async def errore_chiavi_solo_proprietario(guild: discord.Guild, autore, settings
 
 def errore_schema_import(dati) -> str | None:
     """
-    Controlla lo schema di un file per /admin config import PRIMA di scrivere.
+    Controlla lo schema di un file per /admin-bot config import PRIMA di scrivere.
     Restituisce il motivo del rifiuto in italiano, oppure None se valido.
     Moduli e chiavi sconosciuti fanno rifiutare tutto il file (non
     vengono ignorati): meglio nessuna modifica che un import a metà.
@@ -316,7 +316,7 @@ def _rifiuta_costante(nome: str):
 
 def leggi_json_import(grezzo: bytes):
     """
-    Decodifica il file di /admin config import (UTF-8, BOM ammesso). Solleva
+    Decodifica il file di /admin-bot config import (UTF-8, BOM ammesso). Solleva
     ValueError o RecursionError se non è un JSON accettabile: NaN,
     interi smisurati, annidamento troppo profondo, byte non UTF-8.
     """
@@ -367,7 +367,7 @@ def _riassunto_cambi(nome: str, prima: dict, dopo: dict) -> str:
 
 
 def testo_conferma_rollback(entry) -> str:
-    """Domanda di conferma di /admin config rollback, sempre sotto il limite di Discord."""
+    """Domanda di conferma di /admin-bot config rollback, sempre sotto il limite di Discord."""
     vecchio, nuovo = entry.old_value, entry.new_value
     if _e_una_configurazione_intera(vecchio) and _e_una_configurazione_intera(nuovo):
         testo = (
@@ -556,7 +556,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "admin",
+        "admin-bot",
         nome="history",
         descrizione="Mostra le ultime modifiche alla configurazione.",
         sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),
@@ -642,12 +642,12 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @comando_di_gruppo(
-        "admin",
+        "admin-bot",
         nome="rollback",
         descrizione="Ripristina il valore precedente di una modifica.",
         sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),
     )
-    @app_commands.describe(entry_id="ID della voce di storico (mostrato da /admin config history)")
+    @app_commands.describe(entry_id="ID della voce di storico (mostrato da /admin-bot config history)")
     async def rollback(self, interaction: discord.Interaction, entry_id: int) -> None:
         guild = interaction.guild
         if guild is None:
@@ -672,7 +672,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin",
+        "admin-bot",
         nome="reset",
         descrizione="Azzera la configurazione di questo server.",
         sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),
@@ -693,7 +693,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin",
+        "admin-bot",
         nome="export",
         descrizione="Esporta la configurazione di questo server in un file.",
         sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),
@@ -722,7 +722,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
                 contenuto.encode("utf-8"),
                 f"iyokai-config-{guild.id}.json",
                 contenuto=(
-                    "Configurazione esportata. Usa /admin config import su un altro server "
+                    "Configurazione esportata. Usa /admin-bot config import su un altro server "
                     "per applicarla (SOVRASCRIVE tutto ciò che c'è già)."
                 ),
                 dividi=False,
@@ -735,12 +735,12 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
             )
 
     @comando_di_gruppo(
-        "admin",
+        "admin-bot",
         nome="import",
-        descrizione="Importa una configurazione da un file esportato con /admin config export.",
+        descrizione="Importa una configurazione da un file esportato con /admin-bot config export.",
         sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),
     )
-    @app_commands.describe(file="Il file .json prodotto da /admin config export")
+    @app_commands.describe(file="Il file .json prodotto da /admin-bot config export")
     async def import_config(
         self, interaction: discord.Interaction, file: discord.Attachment
     ) -> None:
@@ -806,7 +806,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
     # SPEC.md §2.3 — Lingua per server
     # ================================================================
     @comando_di_gruppo(
-        "admin",
+        "admin-bot",
         nome="show",
         descrizione="Mostra la lingua impostata per questo server.",
         sottogruppo=("lingua", "Lingua del server"),
@@ -819,7 +819,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(tr("lingua_attuale_server", mia, lingua=lingua), ephemeral=True)
 
     @comando_di_gruppo(
-        "admin",
+        "admin-bot",
         nome="set",
         descrizione="Imposta la lingua di questo server.",
         sottogruppo=("lingua", "Lingua del server"),

@@ -791,7 +791,7 @@ class MusicCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo("music", nome="clear-queue", descrizione="Svuota la coda, senza toccare la traccia in riproduzione.")
     async def clear_queue(self, interaction: discord.Interaction) -> None:
-        # NON "clear": nome già usato da /mod clear (cancella
+        # NON "clear": nome già usato da /mod-canali clear (cancella
         # messaggi) — un doppione avrebbe fatto fallire la REGISTRAZIONE
         # dell'intero MusicCog in silenzio (bug reale trovato qui:
         # core/cog_manager.load_all_cogs cattura e LOGGA ogni eccezione

@@ -1501,10 +1501,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
     # ================================================================
 
     @comando_di_gruppo(
-        "ruoli",
+        "admin-ruoli",
         nome="aggiungi",
         descrizione="Assegna un ruolo a chi raggiunge un livello.",
-        sottogruppo=SOTTOGRUPPI["ruoli premio"],
+        sottogruppo=SOTTOGRUPPI["admin-ruoli premio"],
     )
     @app_commands.describe(
         level="Livello richiesto", role="Ruolo da assegnare al raggiungimento"
@@ -1531,12 +1531,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "ruoli",
+        "admin-ruoli",
         nome="togli",
         descrizione="Rimuove un ruolo-premio configurato.",
-        sottogruppo=SOTTOGRUPPI["ruoli premio"],
+        sottogruppo=SOTTOGRUPPI["admin-ruoli premio"],
     )
-    @app_commands.describe(reward_id="ID della ricompensa (vedi /ruoli premio elenco)")
+    @app_commands.describe(reward_id="ID della ricompensa (vedi /admin-ruoli premio elenco)")
     async def level_roles_remove(self, interaction: discord.Interaction, reward_id: int) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
@@ -1551,10 +1551,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
 
     @comando_di_gruppo(
-        "ruoli",
+        "admin-ruoli",
         nome="elenco",
         descrizione="Mostra i ruoli-premio configurati su questo server.",
-        sottogruppo=SOTTOGRUPPI["ruoli premio"],
+        sottogruppo=SOTTOGRUPPI["admin-ruoli premio"],
     )
     async def level_roles_list(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
@@ -1580,10 +1580,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
     # ================================================================
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="vincitori-set",
         descrizione="Imposta il canale dove annunciare i vincitori del mese.",
-        sottogruppo=SOTTOGRUPPI["economia annunci"],
+        sottogruppo=SOTTOGRUPPI["admin-economia annunci"],
     )
     @app_commands.describe(channel="Canale dell'annuncio")
     async def monthly_winners_set(
@@ -1602,10 +1602,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="vincitori-off",
         descrizione="Disattiva l'annuncio dei vincitori del mese.",
-        sottogruppo=SOTTOGRUPPI["economia annunci"],
+        sottogruppo=SOTTOGRUPPI["admin-economia annunci"],
     )
     async def monthly_winners_disable(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
@@ -1820,7 +1820,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await _codice_in_privato(interaction.user, nome, guild, acquisto.riga)
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="shop-add",
         descrizione="Aggiunge un oggetto allo shop.",
     )
@@ -1900,7 +1900,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await _rispondi_shop(interaction, testo, righe is not None)
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="shop-edit",
         descrizione="Cambia un oggetto dello shop (prezzo, scorte, ruolo richiesto...).",
     )
@@ -2020,7 +2020,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await _rispondi_shop(interaction, testo, righe is not None)
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="shop-remove",
         descrizione="Rimuove un oggetto dallo shop.",
     )
@@ -2074,7 +2074,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, file=file)
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="cassa-premium",
         descrizione="Sblocca un mese di bot premium spendendo dalla cassa.",
     )
@@ -2118,7 +2118,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="assegna-lobby",
         descrizione="Premio partecipazione: assegna coin a chi è in vocale ORA, dalla cassa del server.",
     )
@@ -2171,7 +2171,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="assegna-winner",
         descrizione="Premio vincitore: assegna coin a un membro, dalla cassa del server.",
     )
@@ -2193,7 +2193,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
             return
 
-        # Addebito e accredito nella stessa transazione, come /economia assegna-lobby.
+        # Addebito e accredito nella stessa transazione, come /admin-economia assegna-lobby.
         riuscito = await guild_chest_repo.pay_members(
             guild.id, [membro.id], importo, reason=REASON_EVENT_WINNER_PRIZE
         )
@@ -2210,8 +2210,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "economia",
-        nome="xp",
+        "admin-livelli",
+        nome="membro",
         descrizione="Modifica XP e livello di un membro.",
     )
     @app_commands.describe(
@@ -2274,7 +2274,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="monete",
         descrizione="Modifica il saldo di un membro.",
     )
@@ -2589,10 +2589,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="clan-set",
         descrizione="Imposta il canale dove annunciare la top 3 gilde del mese.",
-        sottogruppo=SOTTOGRUPPI["economia annunci"],
+        sottogruppo=SOTTOGRUPPI["admin-economia annunci"],
     )
     @app_commands.describe(channel="Canale dell'annuncio (la 'bacheca clan')")
     async def clan_bacheca_set(
@@ -2611,10 +2611,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "economia",
+        "admin-economia",
         nome="clan-off",
         descrizione="Disattiva l'annuncio automatico della top 3 gilde.",
-        sottogruppo=SOTTOGRUPPI["economia annunci"],
+        sottogruppo=SOTTOGRUPPI["admin-economia annunci"],
     )
     async def clan_bacheca_disable(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
@@ -3319,13 +3319,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 )
 
     # ================================================================
-    # Impostazioni dei livelli (NF-15, #86) — /economia livelli
+    # Impostazioni dei livelli (NF-15, #86) — /admin-livelli
     # ================================================================
     @comando_di_gruppo(
-        "economia",
+        "admin-livelli",
         nome="mostra",
         descrizione="Mostra le impostazioni dei livelli di questo server.",
-        sottogruppo=SOTTOGRUPPI["economia livelli"],
     )
     async def impostazioni_mostra(self, interaction: discord.Interaction) -> None:
         if await _comando_rifiutato(interaction):
@@ -3336,10 +3335,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "economia",
+        "admin-livelli",
         nome="annuncio",
         descrizione="Dove e quando annunciare i level-up.",
-        sottogruppo=SOTTOGRUPPI["economia livelli"],
     )
     @app_commands.describe(
         modo="Dove annunciare: spento, canale in cui scrive, messaggio privato o canale scelto",
@@ -3374,10 +3372,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await self._salva_impostazioni(interaction, campi)
 
     @comando_di_gruppo(
-        "economia",
+        "admin-livelli",
         nome="premi",
         descrizione="Ruoli-premio: tienili tutti o tieni solo quello più alto.",
-        sottogruppo=SOTTOGRUPPI["economia livelli"],
     )
     @app_commands.describe(modo="'accumula' li tiene tutti, 'sostituisci' toglie i precedenti")
     @app_commands.choices(modo=_SCELTE_PREMI)
@@ -3389,10 +3386,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await self._salva_impostazioni(interaction, {"reward_mode": modo.value})
 
     @comando_di_gruppo(
-        "economia",
+        "admin-livelli",
         nome="xp",
         descrizione="Quanti XP e coin si guadagnano, e come si sommano i moltiplicatori.",
-        sottogruppo=SOTTOGRUPPI["economia livelli"],
     )
     @app_commands.describe(
         testo="XP per ogni messaggio che conta (1-100)",
@@ -3538,10 +3534,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(nota, embed=embed, file=file, ephemeral=True)
 
     @comando_di_gruppo(
-        "economia",
+        "admin-livelli",
         nome="negozio",
         descrizione="Chiedi conferma prima di ogni acquisto nel negozio (si può spegnere).",
-        sottogruppo=SOTTOGRUPPI["economia livelli"],
     )
     @app_commands.describe(conferma="Sì = chiede «Confermi?» prima di comprare; No = compra subito")
     async def impostazioni_negozio(
@@ -3552,10 +3547,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await self._salva_impostazioni(interaction, {"shop_confirm": conferma})
 
     @comando_di_gruppo(
-        "economia",
+        "admin-livelli",
         nome="card",
         descrizione="Mostra o nascondi in questo server gli sfondi con immagine di card e profili.",
-        sottogruppo=SOTTOGRUPPI["economia livelli"],
     )
     @app_commands.describe(sfondi="Sì = ognuno vede la sua immagine; No = solo colori e temi")
     async def impostazioni_card(self, interaction: discord.Interaction, sfondi: bool) -> None:
@@ -3581,10 +3575,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "economia",
+        "admin-livelli",
         nome="escludi",
         descrizione="Un canale, una categoria o un ruolo non dà XP (rifallo per toglierlo).",
-        sottogruppo=SOTTOGRUPPI["economia livelli"],
     )
     @app_commands.describe(
         canale="Il canale senza XP (anche vocale o forum). Una categoria vale per tutti i suoi canali",
@@ -3625,10 +3618,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(
-        "economia",
+        "admin-livelli",
         nome="moltiplicatore",
         descrizione="XP moltiplicati in un canale o per un ruolo (fattore 1 = toglie la regola).",
-        sottogruppo=SOTTOGRUPPI["economia livelli"],
     )
     @app_commands.describe(
         fattore="Da 0.1 a 10 (2 = XP doppi); 1 toglie la regola",
@@ -3731,7 +3723,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await giveaway_repo.set_message_id(giveaway_id, messaggio.id)
 
     @comando_di_gruppo(
-        "giveaway",
+        "admin-giveaway",
         nome="avvia",
         descrizione="Avvia un giveaway.",
     )
@@ -3777,7 +3769,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "giveaway",
+        "admin-giveaway",
         nome="modello",
         descrizione="Modelli di giveaway: salva, elenca, elimina, avvia.",
     )
@@ -3887,7 +3879,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "giveaway",
+        "admin-giveaway",
         nome="programmati",
         descrizione="Giveaway programmati: elenca (anche quelli in errore) o annulla.",
     )

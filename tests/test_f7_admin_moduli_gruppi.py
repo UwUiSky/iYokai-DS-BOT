@@ -1,7 +1,7 @@
 """
 tests/test_f7_admin_moduli_gruppi.py
 ====================================
-I comandi di configurazione stanno in /admin e /moduli, col nome e il
+I comandi di configurazione stanno in /admin e /admin-moduli, col nome e il
 livello giusti (mappa F7 passo 2c): nessun comando di primo livello
 vecchio, nessun controllo di permesso duplicato sui comandi, tetti di Discord rispettati.
 Funzioni coperte: NF-05 (issue #76)
@@ -27,12 +27,12 @@ ADMIN_ATTESI = {
     "lingua show", "lingua set",
     "setup attiva", "setup wizard",
 }
-# D56: i messaggi programmati e fissi sono il gruppo /messaggi.
+# D56: i messaggi programmati e fissi sono il gruppo /admin-messaggi.
 MESSAGGI_ATTESI = {
     "programmati crea", "programmati elenco", "programmati annulla", "fissi imposta", "fissi togli",
 }
 # D25 (15/10): il blocco backup è il gruppo di primo livello /backup.
-BACKUP_ATTESI = {"main", "crea", "collega", "promuovi", "restore-utenti", "restore-modo"}
+BACKUP_ATTESI = {"main", "crea", "collega", "promuovi", "ripristino utenti", "ripristino modo"}
 MODULI_ATTESI = {
     "alert feed", "alert webhook", "alert rimuovi", "alert twitch", "alert youtube-live", "alert elenco",
 }
@@ -59,23 +59,23 @@ async def _carica_cog():
 
 async def test_admin_e_moduli_hanno_i_comandi_giusti_e_il_livello_giusto():
     bot = await _carica_cog()
-    assert ADMIN_ATTESI <= percorsi_del_gruppo("admin")
-    assert MODULI_ATTESI <= percorsi_del_gruppo("moduli")
-    assert MESSAGGI_ATTESI <= percorsi_del_gruppo("messaggi")
-    assert not {p for p in percorsi_del_gruppo("admin") if p.startswith("messaggi ")}
-    assert BACKUP_ATTESI <= percorsi_del_gruppo("backup")
-    assert not {p for p in percorsi_del_gruppo("admin") if p.startswith("backup ")}
-    assert GRUPPI["admin"].livello is Livello.ADMIN
-    assert GRUPPI["moduli"].livello is Livello.ADMIN
-    assert GRUPPI["admin"].default_permissions == discord.Permissions(manage_guild=True)
-    assert GRUPPI["moduli"].default_permissions == discord.Permissions(manage_guild=True)
+    assert ADMIN_ATTESI <= percorsi_del_gruppo("admin-bot")
+    assert MODULI_ATTESI <= percorsi_del_gruppo("admin-moduli")
+    assert MESSAGGI_ATTESI <= percorsi_del_gruppo("admin-messaggi")
+    assert not {p for p in percorsi_del_gruppo("admin-bot") if p.startswith("messaggi ")}
+    assert BACKUP_ATTESI <= percorsi_del_gruppo("admin-backup")
+    assert not {p for p in percorsi_del_gruppo("admin-bot") if p.startswith("backup ")}
+    assert GRUPPI["admin-bot"].livello is Livello.ADMIN
+    assert GRUPPI["admin-moduli"].livello is Livello.ADMIN
+    assert GRUPPI["admin-bot"].default_permissions == discord.Permissions(manage_guild=True)
+    assert GRUPPI["admin-moduli"].default_permissions == discord.Permissions(manage_guild=True)
     # nessun vecchio comando di primo livello nell'albero
     assert not VECCHI_TOP & {c.name for c in bot.tree.get_commands()}
 
 
 async def test_admin_e_moduli_rispettano_i_tetti_e_non_duplicano_i_permessi():
     await _carica_cog()
-    for nome in ("admin", "moduli", "messaggi"):
+    for nome in ("admin-bot", "admin-moduli", "admin-messaggi"):
         gruppo = GRUPPI[nome]
         assert len(gruppo.commands) <= 25
         for figlio in gruppo.commands:

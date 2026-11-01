@@ -856,6 +856,33 @@ Aggiorna D57 (VIP 5 diventa **Ultra**, VIP 20 diventa **VIP**). All'avvio tutto 
 - Il router AI sceglie i servizi permessi dal livello (gratuiti per tutti; a consumo da Ultra; grandi da VIP o con
   chiave propria) e tiene il conto della spesa per livello (D13).
 
+## D60 — Comandi dello staff sotto il loro ruolo: prefisso nel nome del gruppo (01/11/2026, richiesta dell'owner)
+L'owner vuole trovare i comandi dello staff «a un clic», sotto il ruolo: `/admin <modulo> <sottocategoria>`. Un solo
+`/admin` non entra nei limiti di Discord (8.000 caratteri e 25 figli per comando; lo staff pesava circa 69.600).
+Alternativa più vicina (D18): il **ruolo diventa il prefisso del nome del gruppo**. Discord filtra per l'inizio del
+nome: scrivendo `/admin` compaiono tutti i gruppi `admin-…`.
+1. Gruppi admin: `/admin-<modulo>` (es. `/admin-ticket pannelli crea`). Gruppi mod: `/mod-<modulo>`. Proprietario del
+   server: un solo gruppo `/founder <modulo> <azione>`. Owner del bot: `/owner` (D56, invariato).
+2. I gruppi per tutti non hanno prefisso (`/ticket apri`, `/music play`) e nessun loro nome inizia con `admin`, `mod`
+   o `founder` (un test lo controlla). Per questo `/moduli` diventa `/admin-moduli` e `/modban` diventa `/mod-ban`.
+3. Il prefisso non si traduce (D58): in ogni lingua `admin-`, `mod-`, `founder`. Si traduce solo il resto.
+4. Permessi predefiniti: `admin-` `manage_guild` (eccezioni scritte: `admin-ruoli` `manage_roles`; `admin-sicurezza`,
+   `admin-antinuke`, `admin-antiraid`, `admin-backup` `administrator`); `mod-` `moderate_members` (`mod-ban`:
+   `ban_members`); `founder` `administrator`.
+5. **Founder** = `guild.owner_id` (Discord lo dichiara). `Livello.FOUNDER` fa passare solo lui: non l'owner del bot,
+   non il ruolo admin del bot. Gli altri amministratori vedono `/founder` perché Discord fa usare tutto a chi ha
+   `administrator`, ma il codice li rifiuta. Col pannello (OAuth `applications.commands.permissions.update`) si potrà
+   nascondere `/founder` a tutti tranne al proprietario: si farà col pannello.
+6. Valgono le regole D56 (≤ 60 globali, 18 figli, avviso 6.800, profondità 3). Aggiorna D56 punto 6: i gruppi staff
+   si chiamano `<ruolo>-<modulo>`, non più `<area>-gestione`. Nessun testo di Discord supera 100 caratteri; se un
+   gruppo supera 6.800 si accorciano le descrizioni delle opzioni (le spiegazioni lunghe vanno nell'aiuto di `/info`).
+7. Politica dei comandi: il gruppo `admin-bot` resta sempre acceso (altrimenti un admin spegne la politica stessa);
+   gli altri `admin-…` si possono spegnere.
+8. Primo uso: 25 gruppi staff (20 `admin-`, 4 `mod-`, `/founder`) al posto di 19; 377 comandi cambiano percorso; i
+   comandi spenti nella politica seguono il nome nuovo (migrazione 0488). Comandi globali 39 (43 con `/gif`,
+   `/premium`, `/ultra`, `/vip`). Le eccezioni messe dagli admin in Impostazioni → Integrazioni si perdono (gli ID
+   dei gruppi sono nuovi): si annuncia prima con `/owner system announce`. `/-cerca-comando` trova anche i nomi vecchi.
+
 ## D61 — Copia sicura delle immagini nei log e nei backup (01/11/2026, richiesta dell'owner)
 Le immagini degli utenti sono il punto d'ingresso più comune per gli attacchi (decoder bucati, file
 travestiti). Regole per log, backup e pannello:

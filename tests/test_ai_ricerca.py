@@ -17,8 +17,8 @@ def cmd(percorso, descr="x", moduli=()):
 
 
 COMANDI = [
-    cmd("modban ban", "Banna permanentemente un membro."),
-    cmd("mod timeout", "Mette in timeout un membro."),
+    cmd("mod-ban ban", "Banna permanentemente un membro."),
+    cmd("mod-sanzioni timeout", "Mette in timeout un membro."),
     cmd("giochi gioca", "Gioca"),
     cmd("monete balance", "Mostra i tuoi coin."),
     cmd("clan crea", "Crea un clan"),
@@ -38,7 +38,7 @@ def test_faq_esatta_ignora_parole_vuote():
 
 
 def test_ricerca_sicura_solo_se_un_comando_e_evidente():
-    assert r.scegli_strada("/modban ban", COMANDI).strada is r.Strada.RICERCA
+    assert r.scegli_strada("/mod-ban ban", COMANDI).strada is r.Strada.RICERCA
     lunga = "voglio sapere come fare per fermare chi scrive troppo veloce nel canale generale"
     assert r.scegli_strada(lunga, COMANDI).strada is r.Strada.AI
     assert r.scegli_strada("qualcosa di strano", COMANDI).strada is r.Strada.AI
@@ -60,23 +60,23 @@ def test_moduli_da_proporre_senza_doppioni_e_al_massimo_3():
 
 
 def test_vicini_esistenti_e_non_citati():
-    esistenti = {c.percorso: c for c in COMANDI + [cmd("modban tempban"), cmd("modban softban")]}
-    v = r.vicini_di("modban ban", esistenti, gia_citati=["modban softban"])
-    assert [c.percorso for c, _ in v] == ["modban tempban", "mod timeout"]
+    esistenti = {c.percorso: c for c in COMANDI + [cmd("mod-ban tempban"), cmd("mod-ban softban")]}
+    v = r.vicini_di("mod-ban ban", esistenti, gia_citati=["mod-ban softban"])
+    assert [c.percorso for c, _ in v] == ["mod-ban tempban", "mod-sanzioni timeout"]
     assert r.vicini_di("non esiste", esistenti) == []
 
 
 def test_scoperta_elenco_anche_senza_ai():
     t = r.elenco_scoperta(COMANDI, eventi=["Boss: Oni"])
-    assert "Boss: Oni" in t and "/giochi gioca" in t and "/modban" not in t
+    assert "Boss: Oni" in t and "/giochi gioca" in t and "/mod-ban" not in t
     assert "-cerca-comando" in r.elenco_scoperta([])
 
 
 def test_piano_solo_comandi_veri_senza_doppioni_max_5():
-    passi = [{"comando": "/mod timeout", "valori": "10 minuti <@1>"}] * 2 + [{"comando": "inventato"}]
+    passi = [{"comando": "/mod-sanzioni timeout", "valori": "10 minuti <@1>"}] * 2 + [{"comando": "inventato"}]
     passi += [{"comando": c.percorso, "modulo": "leveling"} for c in COMANDI]
     out = r.leggi_piano("ecco " + json.dumps({"passi": passi}), COMANDI)
-    assert [p.comando.percorso for p in out] == ["mod timeout", "modban ban", "giochi gioca", "monete balance", "clan crea"]
+    assert [p.comando.percorso for p in out] == ["mod-sanzioni timeout", "mod-ban ban", "giochi gioca", "monete balance", "clan crea"]
     assert "<" not in out[0].valori and "@" not in out[0].valori
     assert r.leggi_piano("niente json", COMANDI) == []
     assert r.moduli_del_piano(out, ["leveling", "altro"]) == ["leveling"]
@@ -88,7 +88,7 @@ def test_richiesta_composta():
 
 
 def test_elenco_per_ai_segna_i_moduli_spenti():
-    t = r.elenco_per_ai(COMANDI[:2], {"mod timeout": "moderation_actions"})
+    t = r.elenco_per_ai(COMANDI[:2], {"mod-sanzioni timeout": "moderation_actions"})
     assert "(modulo moderation_actions spento" in t.splitlines()[1] and "spento" not in t.splitlines()[0]
 
 

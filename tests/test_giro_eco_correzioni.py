@@ -387,7 +387,7 @@ def test_pillow_minimo_e_quello_che_serve_a_load_default_con_size():
 
 
 # ----------------------------------------------------------------------
-# Permessi veri di /economia livelli e tetto di 25 sotto concorrenza
+# Permessi veri di /admin-livelli e tetto di 25 sotto concorrenza
 # ----------------------------------------------------------------------
 @pytest.fixture
 async def comandi(monkeypatch, clean_db):
@@ -405,7 +405,7 @@ async def comandi(monkeypatch, clean_db):
 async def test_chi_non_e_admin_non_puo_usare_level_impostazioni(comandi, nome):
     from core.command_access import AccessoNegato
 
-    comando = comandi[f"economia livelli {nome}"]
+    comando = comandi[f"admin-livelli {nome}"]
     interazione = fake_interaction(guild=fake_guild(GUILD), user=fake_member(user_id=42))
 
     with pytest.raises((AccessoNegato, discord.app_commands.CheckFailure)):
@@ -414,7 +414,7 @@ async def test_chi_non_e_admin_non_puo_usare_level_impostazioni(comandi, nome):
 
 @pytest.mark.asyncio
 async def test_un_admin_puo_usare_level_impostazioni(comandi):
-    comando = comandi["economia livelli mostra"]
+    comando = comandi["admin-livelli mostra"]
     admin = fake_member(user_id=42, guild_permissions=discord.Permissions(manage_guild=True))
     interazione = fake_interaction(guild=fake_guild(GUILD), user=admin)
 

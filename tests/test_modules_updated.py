@@ -3,7 +3,7 @@ tests/test_modules_updated.py
 ================================
 M 10.13 (REVIEW §12, 1.2): l'evento `modules_updated` parte da OGNI
 percorso che cambia lo stato dei moduli: wizard, import, reset, rollback
-(oltre al salvataggio di `/admin setup attiva`, già coperto in test_setup_cog).
+(oltre al salvataggio di `/admin-bot setup attiva`, già coperto in test_setup_cog).
 """
 
 import json

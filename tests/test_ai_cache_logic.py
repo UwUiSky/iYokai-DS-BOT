@@ -16,9 +16,9 @@ def test_normalizza_e_chiave():
 
 def test_trova_uguale_e_simile():
     c = CacheAI()
-    c.metti(0, "chat", "istr", "come si banna un utente dal server", "usa /modban ban", ora=0)
-    assert c.trova(0, "chat", "istr", "Come si banna un utente dal server?", ora=1) == "usa /modban ban"
-    assert c.trova(0, "chat", "istr", "come si banna un utente dal server oggi", ora=1) == "usa /modban ban"  # 7/8
+    c.metti(0, "chat", "istr", "come si banna un utente dal server", "usa /mod-ban ban", ora=0)
+    assert c.trova(0, "chat", "istr", "Come si banna un utente dal server?", ora=1) == "usa /mod-ban ban"
+    assert c.trova(0, "chat", "istr", "come si banna un utente dal server oggi", ora=1) == "usa /mod-ban ban"  # 7/8
     assert c.trova(0, "chat", "istr", "come si banna un utente", ora=1) is None  # 5/7
     assert somiglianza("a b c d e f g", "a b c d e f g h") >= 0.85
     assert c.trova(0, "chat", "istr", "qualcosa di diverso", ora=1) is None

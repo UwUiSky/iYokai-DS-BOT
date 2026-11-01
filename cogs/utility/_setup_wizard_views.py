@@ -1,7 +1,7 @@
 """
 cogs/utility/_setup_wizard_views.py
 ===================================
-Interfaccia della configurazione guidata (`/admin setup wizard`): un passo per i
+Interfaccia della configurazione guidata (`/admin-bot setup wizard`): un passo per i
 ruoli del bot, poi un passo per ogni categoria di moduli. I ruoli si salvano
 subito (`imposta_ruolo`, punto unico D16); i moduli alla fine (`imposta_modulo`).
 Funzioni coperte: SPEC §2.2, 22.16, M 10.14 (#66), #148
@@ -217,7 +217,7 @@ class SetupWizardView(BaseView):
             return
         cambiati = moduli_da_scrivere(self.iniziale, self.scelti)
         for nome, attivo in cambiati:
-            # M 10.13 e D16: stesso punto unico di /admin setup attiva e del pannello.
+            # M 10.13 e D16: stesso punto unico di /admin-bot setup attiva e del pannello.
             await imposta_modulo(interaction.client, self.guild_id, nome, attivo, interaction.user.id)
         self.stop()
         await interaction.response.edit_message(
@@ -245,7 +245,7 @@ class SetupWizardView(BaseView):
         await interaction.followup.send(testo, ephemeral=True)
 
     async def _crea_canali_log(self, interaction: discord.Interaction) -> None:
-        """Offre `/log crea-canali`: stessa funzione del comando, niente copia."""
+        """Offre `/admin-log crea-canali`: stessa funzione del comando, niente copia."""
         cog = interaction.client.get_cog(NOME_COG_LOG)
         if cog is None:
             await interaction.response.send_message(
@@ -326,7 +326,7 @@ async def _crea_se_manca(interaction: discord.Interaction, canale: CanaleWizard)
             canale.nome,
             overwrites=_riservato(guild) if canale.riservato else {},
             topic=canale.argomento[:1024],
-            reason="/admin setup wizard",
+            reason="/admin-bot setup wizard",
         )
     except discord.HTTPException as errore:
         logger.warning("wizard: canale %s non creato (server %s): %s", canale.chiave, guild.id, errore)

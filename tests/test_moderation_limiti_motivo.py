@@ -15,15 +15,15 @@ from cogs.moderation.actions import ModerationActionsCog
 from cogs.moderation.softban_mute import ModerationSoftbanMuteCog
 
 COMANDI_CON_MOTIVO = (
-    ("mod", "warn"),
-    ("modban", "kick"),
-    ("modban", "ban"),
-    ("modban", "tempban"),
-    ("modban", "unban"),
-    ("mod", "timeout"),
-    ("modban", "softban"),
-    ("mod", "mute"),
-    ("mod", "unmute"),
+    ("mod-sanzioni", "warn"),
+    ("mod-ban", "kick"),
+    ("mod-ban", "ban"),
+    ("mod-ban", "tempban"),
+    ("mod-ban", "unban"),
+    ("mod-sanzioni", "timeout"),
+    ("mod-ban", "softban"),
+    ("mod-sanzioni", "mute"),
+    ("mod-sanzioni", "unmute"),
 )
 
 

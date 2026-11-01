@@ -6,16 +6,19 @@ infrastruttura di embedding/NLP disponibile): punteggio per sovrapposizione di
 parole tra la query e nome+descrizione di ogni comando, con un bonus
 se la query intera compare come sottostringa. Semplice ma sufficiente
 per query in linguaggio naturale corte tipiche di un comando slash
-("banna qualcuno", "crea un sondaggio").
+("banna qualcuno", "crea un sondaggio"). I nomi di prima di D60 portano
+al comando spostato (tabella della migrazione 0488).
 """
 
 from __future__ import annotations
 
 import asyncio
+import functools
 import logging
 import time
 from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from urllib.parse import quote, urlparse
 
 import discord
@@ -272,12 +275,27 @@ def _varianti(query: str) -> list[str]:
     return varianti
 
 
+_MIGRAZIONE_D60 = Path(__file__).resolve().parent / "migrations" / "0488_percorsi_comandi_ruoli.sql"
+
+
+@functools.cache
+def _nomi_prima_di_d60() -> dict[str, str]:
+    """nuovo -> vecchio percorso dei comandi spostati da D60. La tabella è una sola: quella della migrazione 0488."""
+    testo = _MIGRAZIONE_D60.read_text(encoding="utf-8").split("WITH m(vecchio, nuovo)", 2)[1]
+    return {nuovo: vecchio for vecchio, nuovo in re.findall(r"\('([^']+)', '([^']+)'\)", testo)}
+
+
 def _punteggio(query: str, info: ComandoInfo) -> float:
     pulita = query.strip().lstrip("/").strip().lower()
     if not pulita:
         return 0.0
     if pulita == info.percorso.lower():
         return 10.0
+    vecchio = _nomi_prima_di_d60().get(info.percorso)
+    if vecchio == pulita:  # D60: il nome di prima porta al comando spostato
+        return 10.0
+    if vecchio and vecchio.startswith(pulita + " "):
+        return 2.0
     if info.percorso_en and pulita == info.percorso_en.lower():
         return 10.0
     testi = [(info.percorso, info.descrizione)]

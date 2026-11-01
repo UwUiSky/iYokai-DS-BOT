@@ -34,7 +34,7 @@ async def test_voice_temp_cog_si_carica_correttamente():
     top = {c.name for c in bot.tree.get_commands()}
     assert "voice" in top
     assert not top & {"voicetemp-setup", "voicetemp-panel", "voicetemp-cap", "voicetemp-platform-setup"}
-    assert {"gestione"} <= top
+    assert {"admin-vocali"} <= top
 
     assert "on_voice_state_update" in bot.extra_events
 

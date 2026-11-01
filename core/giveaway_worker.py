@@ -117,7 +117,7 @@ class GiveawayWorker:
         sola: due giri insieme non lo mandano due volte), poi si scrive nel
         canale. Se il canale non c'è più, il bot non ha i permessi o l'invio
         fallisce, il giveaway resta programmato con il motivo dell'errore
-        (lo staff lo vede in /giveaway programmati): niente tentativi
+        (lo staff lo vede in /admin-giveaway programmati): niente tentativi
         all'infinito e niente giveaway "finito" mai partito.
         """
         from cogs.leveling.leveling import LevelingCog  # qui dentro: il cog importa questo modulo

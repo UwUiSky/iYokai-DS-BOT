@@ -11,7 +11,7 @@ Anche i permessi dei gruppi di comandi per ruolo (#148): stato, link di
 autorizzazione, risincronizzazione e revoca, dalle funzioni di
 `core/command_permissions.py`. La verifica dalla pagina web (NF-21) passa di qui: impronte, doppi, poi gli
 stessi controlli e ruoli del bottone di verifica. Il bot con marchio proprio (NF-38) passa dalle
-stesse funzioni di `core/whitelabel_bot.py` usate da `/admin premium marchio`; l'aspetto del bot per
+stesse funzioni di `core/whitelabel_bot.py` usate da `/admin-bot premium marchio`; l'aspetto del bot per
 server (CFG-030) da `core/bot_aspetto.py`. La pagina «I miei dati» (#46) usa le funzioni di
 `/utility privacy esporta|cancella`.
 Funzioni coperte: SPEC §24.1–24.4, §24.2, §24.6, §24.7, C.4, C.5, §4.2, §4.3, §23.15 (NF-20, issue #91; NF-22, #93; NF-21, #92; #148; NF-38, #109; CFG-030, #122; #46)
@@ -86,7 +86,7 @@ async def _membro(guild: discord.Guild, user_id: int, *, chiedi_a_discord: bool)
 
 async def puo_gestire(guild: discord.Guild, user_id: int, *, chiedi_a_discord: bool = True) -> bool:
     """
-    Stessa regola dei comandi di `/admin` (Livello.ADMIN): «Gestisci server»,
+    Stessa regola dei comandi di `admin-…` (Livello.ADMIN): «Gestisci server»,
     il ruolo admin del bot o il proprietario del server. Si controlla a ogni
     richiesta, con lo stato attuale del server.
     """
@@ -162,7 +162,7 @@ async def storico(guild_id: int, tipo: str | None = None) -> list:
 
 
 async def stato_premium(bot, guild: discord.Guild) -> dict:
-    """Le stesse righe di `/admin premium stato`, più il link al negozio di Discord."""
+    """Le stesse righe di `/admin-bot premium stato`, più il link al negozio di Discord."""
     from cogs.utility.premium_server import url_negozio
     from core.premium import get_guild_premium_breakdown
     from core.premium_status_logic import righe_stato_server
@@ -547,7 +547,7 @@ async def applica_manutenzione_ai(acceso: bool, messaggio: str, user_id: int) ->
 
 # ---------------------------------------------------------------- AI del server
 async def stato_ai(guild: discord.Guild) -> dict:
-    """Le scelte AI del server (le stesse di `/ai stato`) e il testo del consenso."""
+    """Le scelte AI del server (le stesse di `/admin-ai stato`) e il testo del consenso."""
     from core.ai_cost_logic import GIORNI_PROVA, prova_attiva
     from core.ai_impostazioni import LUNGHEZZE, PRIVACY, TESTO_CONSENSO
     from core.ai_servizio import servizio_ai
@@ -564,7 +564,7 @@ async def stato_ai(guild: discord.Guild) -> dict:
 
 
 async def applica_ai(guild: discord.Guild, user_id: int, azione: str, campi: dict) -> str:
-    """Accende (con il consenso letto), spegne o cambia le scelte AI: stessi punti dei comandi `/ai`."""
+    """Accende (con il consenso letto), spegne o cambia le scelte AI: stessi punti dei comandi `/admin-ai`."""
     from core.ai_impostazioni import accendi_ai, imposta_scelte, spegni_ai
 
     if azione == "accendi":

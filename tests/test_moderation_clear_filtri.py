@@ -1,7 +1,7 @@
 """
 tests/test_moderation_clear_filtri.py
 =====================================
-Filtri di /mod clear (core/clear_filter_logic.py) e righe di log di
+Filtri di /mod-canali clear (core/clear_filter_logic.py) e righe di log di
 clear, lock, unlock, slowmode (M 1.8).
 """
 

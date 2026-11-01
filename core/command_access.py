@@ -46,10 +46,11 @@ class Livello(enum.Enum):
     MODBAN = "modban"
     SECURITY = "security"
     LOG = "log"
+    FOUNDER = "founder"
 
 
 class TipoRuolo(enum.Enum):
-    """Ruoli del bot che l'admin sceglie nel passo di /admin setup attiva."""
+    """Ruoli del bot che l'admin sceglie nel passo di /admin-bot setup attiva."""
 
     ADMIN = SETTING_ADMIN_ROLE
     MOD = SETTING_MOD_ROLE
@@ -86,6 +87,7 @@ _MESSAGGI: dict[Livello, str] = {
     Livello.LOG: "Non puoi usare questo comando: serve il permesso «Gestisci server» o il ruolo admin del bot.",
     Livello.MOD: "Non puoi usare questo comando: serve il permesso «Metti in timeout i membri» o il ruolo mod del bot.",
     Livello.MODBAN: "Non puoi usare questo comando: serve il permesso «Banna i membri» o il ruolo ban del bot.",
+    Livello.FOUNDER: "Questo comando è riservato al proprietario del server.",
 }
 MESSAGGIO_SOLO_SERVER = "Questo comando si usa solo dentro un server."
 
@@ -121,6 +123,8 @@ def decidi_accesso(
     """
     if livello is Livello.OWNER:
         return user_id == owner_bot_id
+    if livello is Livello.FOUNDER:  # D60: solo guild.owner_id, né permessi né ruoli
+        return guild_owner_id is not None and user_id == guild_owner_id
     permesso, _ = _REGOLE[livello]
     if guild_owner_id is not None and user_id == guild_owner_id:
         return True
@@ -181,7 +185,7 @@ def errore_ruolo_admin(
     («Amministratore»). Metterne uno nuovo (diverso da quello attuale)
     richiede «Amministratore» o la proprietà del server; toglierlo no.
     Restituisce il motivo del rifiuto, o None. Punto unico per pannello,
-    `/admin config import` e `/admin config rollback`.
+    `/admin-bot config import` e `/admin-bot config rollback`.
     """
     if nuovo is None or nuovo == vecchio:
         return None
@@ -237,8 +241,11 @@ async def controlla(interaction: discord.Interaction, livello: Livello) -> bool:
     if guild is None or not isinstance(utente, discord.Member):
         raise AccessoNegato(livello, MESSAGGIO_SOLO_SERVER)
 
-    _, tipo = _REGOLE[livello]
-    configurato = await leggi_ruolo(guild.id, tipo)
+    if livello is Livello.FOUNDER:
+        configurato = None
+    else:
+        _, tipo = _REGOLE[livello]
+        configurato = await leggi_ruolo(guild.id, tipo)
     ok = decidi_accesso(
         livello,
         user_id=utente.id,

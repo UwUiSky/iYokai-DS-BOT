@@ -224,7 +224,7 @@ class SuggestionsCog(CogConGruppi, commands.Cog):
     # Comandi
     # ================================================================
     @comando_di_gruppo(
-        "admin",
+        "admin-bot",
         nome="canale-suggerimenti",
         descrizione="Imposta il canale dei suggerimenti.",
         sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),

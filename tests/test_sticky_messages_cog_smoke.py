@@ -36,7 +36,7 @@ async def test_sticky_set_dichiara_la_lunghezza_massima_del_testo():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await sticky_messages_setup(bot)
 
-    comando = comando_nel_gruppo("messaggi", "fissi imposta")
+    comando = comando_nel_gruppo("admin-messaggi", "fissi imposta")
     opzioni = {o["name"]: o for o in comando.to_dict(bot.tree)["options"]}
 
     assert opzioni["message"]["max_length"] == 2000

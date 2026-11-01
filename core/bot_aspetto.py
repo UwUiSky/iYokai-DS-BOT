@@ -3,7 +3,7 @@ core/bot_aspetto.py
 ===================
 Aspetto del bot in un solo server (CFG-021, CFG-030, #122): nickname, avatar, banner e descrizione
 del profilo del bot in quel server, senza un secondo bot. Discord salva il profilo: niente tabelle.
-Punto unico (D16) per `/admin config nickname-bot`, `/admin premium aspetto` e il pannello web.
+Punto unico (D16) per `/admin-bot config nickname-bot`, `/admin-bot premium aspetto` e il pannello web.
 Funzioni coperte: catalogo #122 (CFG-021, CFG-030)
 Dipende da: core/safe_image.py (controllo delle immagini), core/premium.py
 """

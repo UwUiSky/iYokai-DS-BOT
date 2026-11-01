@@ -160,7 +160,7 @@ async def test_coda_piena_scarta_i_nuovi(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_coppia_scollegata_ferma_la_coda_del_canale(monkeypatch):
-    """Dopo /backup promuovi (mirror tolto) i messaggi in attesa non vanno più al vecchio backup."""
+    """Dopo /admin-backup promuovi (mirror tolto) i messaggi in attesa non vanno più al vecchio backup."""
     import core.backup_mirror_dispatch as modulo
 
     monkeypatch.setattr(modulo, "PAUSA_RATE_LIMIT", 0.01)

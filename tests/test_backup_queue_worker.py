@@ -328,7 +328,7 @@ async def test_coppia_con_job_in_corso_non_si_allinea(database_e_repo, monkeypat
 
 @pytest.mark.asyncio
 async def test_promozione_durante_l_allineamento_non_riaccende_il_mirror(database_e_repo, monkeypatch):
-    """Un giro lungo finisce dopo /backup promuovi: la mappa del mirror non torna in vita."""
+    """Un giro lungo finisce dopo /admin-backup promuovi: la mappa del mirror non torna in vita."""
     _database, repo, mirror_repo = database_e_repo
     import core.backup_queue_worker as worker_module
 

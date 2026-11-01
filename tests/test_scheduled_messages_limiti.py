@@ -171,7 +171,7 @@ async def test_testo_dei_comandi_ha_il_limite_1800():
     await sched_setup(bot)
     await reminders_setup(bot)
 
-    for gruppo, percorso in (("messaggi", "programmati crea"), ("utility", "reminder set")):
+    for gruppo, percorso in (("admin-messaggi", "programmati crea"), ("utility", "reminder set")):
         opzioni = {o["name"]: o for o in comando_nel_gruppo(gruppo, percorso).to_dict(bot.tree)["options"]}
         assert opzioni["message"]["max_length"] == 1800, percorso
         assert opzioni["message"]["min_length"] == 1, percorso

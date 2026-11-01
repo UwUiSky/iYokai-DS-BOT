@@ -306,7 +306,7 @@ async def test_archivio_canale_manda_il_file_e_controlla_i_permessi(monkeypatch)
 
 
 # ====================================================================
-# D15 — i canali creati da /log li vede anche iYokai Mod
+# D15 — i canali creati da /admin-log li vede anche iYokai Mod
 # ====================================================================
 def test_canali_riservati_visibili_anche_a_mod():
     guild = fake_guild(guild_id=SERVER)

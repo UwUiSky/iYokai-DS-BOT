@@ -2,7 +2,7 @@
 tests/test_feed_alerts_limiti.py
 ====================================
 Issue #67, voce 11.8 (LIM-16): tetto di feed per server e lista
-`/moduli alert elenco` che non supera i 4096 caratteri di un embed.
+`/admin-moduli alert elenco` che non supera i 4096 caratteri di un embed.
 """
 
 from types import SimpleNamespace

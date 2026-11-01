@@ -1,7 +1,7 @@
 """
 tests/test_setup_wizard.py
 ==========================
-Il wizard di `/admin setup wizard` (SPEC §2.2, M 10.14, #148): un passo per i ruoli del bot,
+Il wizard di `/admin-bot setup wizard` (SPEC §2.2, M 10.14, #148): un passo per i ruoli del bot,
 un passo per ogni categoria di moduli, i ruoli salvati subito, i moduli alla fine.
 Click simulati con un'Interaction finta fedele; salvataggio vero sul database.
 """
@@ -140,7 +140,7 @@ async def test_senza_il_cog_dei_log_il_bottone_manda_al_comando():
     interazione = _clic()
     interazione.client.get_cog = MagicMock(return_value=None)
     await _bottone(vista, "Crea i canali dei log").callback(interazione)
-    assert "/log crea-canali" in interazione.response.send_message.await_args.args[0]
+    assert "/admin-log crea-canali" in interazione.response.send_message.await_args.args[0]
 
 
 async def test_gli_altri_passi_non_hanno_il_bottone_dei_canali():

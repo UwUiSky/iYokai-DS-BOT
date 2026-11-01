@@ -31,7 +31,7 @@ async def test_spam_trap_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is True  # candidato premium, come da schema
 
-    setup_cmd = bot.tree.get_command("security").get_command("spamtrap")
+    setup_cmd = bot.tree.get_command("admin-sicurezza").get_command("spamtrap")
     assert setup_cmd is not None
     param_names = {p.name for p in setup_cmd.parameters}
     assert {"trap_channel", "log_channel"} <= param_names

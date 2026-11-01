@@ -1,7 +1,7 @@
 """
 tests/test_automod_badword_list.py
 ==================================
-/automod badword-list con un elenco lungo (LIM-5): un messaggio tiene
+/admin-automod badword-list con un elenco lungo (LIM-5): un messaggio tiene
 2000 caratteri, l'elenco può arrivare a 1000 parole. Oltre la soglia
 l'elenco viene mandato come file di testo.
 """

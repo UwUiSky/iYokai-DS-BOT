@@ -21,9 +21,12 @@ GUILD = 5000
 
 # ------------------------------------------------------------------ gruppi per ruolo
 def test_i_gruppi_di_ogni_ruolo_sono_quelli_della_issue():
-    assert cp.GRUPPI_DEL_RUOLO[TipoRuolo.ADMIN] == ("admin", "gestione", "moduli", "security", "automod", "log")
-    assert cp.GRUPPI_DEL_RUOLO[TipoRuolo.MOD] == ("mod",)
-    assert cp.GRUPPI_DEL_RUOLO[TipoRuolo.MODBAN] == ("modban",)
+    admin = cp.GRUPPI_DEL_RUOLO[TipoRuolo.ADMIN]
+    assert len(admin) == 20 and all(n.startswith("admin-") for n in admin)  # D60: tutti i gruppi `admin-…`
+    assert {"admin-bot", "admin-sicurezza", "admin-log", "admin-ticket-opzioni"} <= set(admin)
+    assert cp.GRUPPI_DEL_RUOLO[TipoRuolo.MOD] == ("mod-sanzioni", "mod-casi", "mod-canali")
+    assert cp.GRUPPI_DEL_RUOLO[TipoRuolo.MODBAN] == ("mod-ban",)
+    assert not any("founder" in g for g in cp.GRUPPI_DEL_RUOLO.values())  # solo il proprietario del server
 
 
 def test_i_gruppi_esistono_nella_mappa_dei_comandi():
@@ -200,7 +203,9 @@ def _token(scade_tra_ore=100):
     return cp.TokenPermessi("AT", "RT", datetime.now(timezone.utc) + timedelta(hours=scade_tra_ore), user_id=77)
 
 
-COMANDI = {"admin": 1, "gestione": 2, "moduli": 3, "security": 4, "automod": 5, "log": 6, "mod": 7, "modban": 8}
+_ADMIN, _MOD, _MODBAN = (cp.GRUPPI_DEL_RUOLO[t] for t in (TipoRuolo.ADMIN, TipoRuolo.MOD, TipoRuolo.MODBAN))
+COMANDI = {nome: i for i, nome in enumerate([*_ADMIN, *_MOD, *_MODBAN], start=1)}  # admin 1-20, mod 21-23, modban 24
+ID_MOD = COMANDI["mod-sanzioni"]
 
 
 @pytest.mark.asyncio
@@ -213,21 +218,21 @@ async def test_senza_autorizzazione_non_scrive_niente_e_lo_dice():
 
 
 @pytest.mark.asyncio
-async def test_il_ruolo_admin_arriva_a_sei_gruppi():
+async def test_il_ruolo_admin_arriva_a_tutti_i_gruppi_admin():
     client = ClientFinto()
     esito = await cp.applica_ruolo(GUILD, TipoRuolo.ADMIN, None, 33, repo=RepoFinto(_token()), client=client, app_id=1, comandi=COMANDI)
 
     assert esito.stato == cp.STATO_OK
-    assert sorted(client.scritti) == [1, 2, 3, 4, 5, 6]
+    assert sorted(client.scritti) == list(range(1, 21))
     assert client.scritti[1] == [{"id": "33", "type": 1, "permission": True}]
     assert sorted(esito.gruppi_scritti) == sorted(cp.GRUPPI_DEL_RUOLO[TipoRuolo.ADMIN])
 
 
 @pytest.mark.asyncio
-async def test_il_ruolo_mod_arriva_solo_a_mod():
+async def test_il_ruolo_mod_arriva_solo_ai_gruppi_mod():
     client = ClientFinto()
     await cp.applica_ruolo(GUILD, TipoRuolo.MOD, 5, 6, repo=RepoFinto(_token()), client=client, app_id=1, comandi=COMANDI)
-    assert list(client.scritti) == [7]
+    assert sorted(client.scritti) == [21, 22, 23]
 
 
 @pytest.mark.asyncio
@@ -244,7 +249,7 @@ async def test_token_in_scadenza_viene_rinnovato_e_salvato():
 @pytest.mark.asyncio
 async def test_token_rifiutato_da_discord_viene_dimenticato():
     repo = RepoFinto(_token())
-    client = ClientFinto(fallisce_su={7: 401})
+    client = ClientFinto(fallisce_su={ID_MOD: 401})
 
     esito = await cp.applica_ruolo(GUILD, TipoRuolo.MOD, None, 6, repo=repo, client=client, app_id=1, comandi=COMANDI)
 
@@ -259,30 +264,30 @@ async def test_un_gruppo_che_fallisce_non_ferma_gli_altri():
     esito = await cp.applica_ruolo(GUILD, TipoRuolo.ADMIN, None, 33, repo=RepoFinto(_token()), client=client, app_id=1, comandi=COMANDI)
 
     assert esito.stato == cp.STATO_PARZIALE
-    assert sorted(client.scritti) == [1, 3, 4, 5, 6]
-    assert esito.errori == {"gestione": 500}
+    assert sorted(client.scritti) == [i for i in range(1, 21) if i != 2]
+    assert esito.errori == {_ADMIN[1]: 500}
 
 
 @pytest.mark.asyncio
 async def test_gruppo_non_ancora_sincronizzato_viene_saltato():
-    comandi = {k: v for k, v in COMANDI.items() if k != "log"}
+    comandi = {k: v for k, v in COMANDI.items() if k != "admin-log"}
     client = ClientFinto()
 
     esito = await cp.applica_ruolo(GUILD, TipoRuolo.ADMIN, None, 33, repo=RepoFinto(_token()), client=client, app_id=1, comandi=comandi)
 
-    assert esito.saltati == ["log"]
-    assert 6 not in client.scritti
+    assert esito.saltati == ["admin-log"]
+    assert COMANDI["admin-log"] not in client.scritti
 
 
 @pytest.mark.asyncio
 async def test_troppe_regole_su_un_gruppo_si_segnalano_senza_scrivere():
     cento = [{"id": str(i), "type": 2, "permission": True} for i in range(100)]
-    client = ClientFinto(esistenti={7: cento})
+    client = ClientFinto(esistenti={ID_MOD: cento})
 
     esito = await cp.applica_ruolo(GUILD, TipoRuolo.MOD, None, 6, repo=RepoFinto(_token()), client=client, app_id=1, comandi=COMANDI)
 
-    assert esito.errori == {"mod": "troppe_regole"}
-    assert 7 not in client.scritti
+    assert esito.errori == {"mod-sanzioni": "troppe_regole"}
+    assert ID_MOD not in client.scritti
 
 
 # ------------------------------------------------------------------ archivio dei token

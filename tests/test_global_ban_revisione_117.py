@@ -7,7 +7,7 @@ Difetti trovati da cacciatore e revisore nel ban globale:
 - se un'altra sorgente ha ancora bannato l'utente lì, il suo ban resta;
 - lo staff (admin/mod, bot, ruolo staff) del server di arrivo non viene bannato;
 - la pulizia del registro e' una volta per giro e il registro ha gli indici;
-- `/modban unban` toglie anche i ban propagati.
+- `/mod-ban unban` toglie anche i ban propagati.
 """
 
 import asyncio
@@ -188,7 +188,7 @@ async def test_propagazione_annullata_non_lascia_un_ban_senza_riga(ambiente):
     assert await global_ban_repo.active_propagations(1, USER) == [2]  # il ban e la sua riga vanno insieme
 
 
-# ---------------------------------------------------------------- /modban unban
+# ---------------------------------------------------------------- /mod-ban unban
 async def test_modban_unban_toglie_anche_i_ban_propagati(monkeypatch):
     import cogs.moderation.actions as actions
 

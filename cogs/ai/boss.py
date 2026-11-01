@@ -7,7 +7,7 @@ mostro scritto dall'AI secondo la lore (o pronto, con l'AI ferma), immagine dise
 premi con tetti, boss di rete pubblicato dall'owner (solo totali in comune).
 Funzioni coperte: SPEC §25.49–§25.52, §25.59, §25.64, §25.70 (AI-R-054..057, AI-R-064, AI-R-070, AI-R-077)
 
-I comandi stanno in `/ai boss` (D43): `/fun` ha già 25 figli. I bottoni dell'evento sono di tutti.
+I comandi stanno in `/admin-ai boss` (D43): `/fun` ha già 25 figli. I bottoni dell'evento sono di tutti.
 """
 
 from __future__ import annotations
@@ -330,7 +330,7 @@ class AiBossCog(CogConGruppi, commands.Cog):
             await membro.remove_roles(ruolo, reason="Fine del premio del World Boss")
 
     # ------------------------------------------------------------ comandi
-    @comando_di_gruppo("ai", nome="imposta", descrizione="Canale, giorni, ora e premi del World Boss.", sottogruppo=SOTTO_BOSS)
+    @comando_di_gruppo("admin-ai", nome="imposta", descrizione="Canale, giorni, ora e premi del World Boss.", sottogruppo=SOTTO_BOSS)
     @app_commands.describe(
         canale="Dove compare il boss", giorni="Giorni: ven, lun,gio, ogni giorno", ora="Ora di comparsa (0-23)",
         fuso="Fuso orario, es. Europe/Rome", acceso="Boss a orario acceso o spento", rete="Partecipa ai boss di rete",
@@ -376,7 +376,7 @@ class AiBossCog(CogConGruppi, commands.Cog):
         )
         await interaction.response.send_message(testo, ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("ai", nome="avvia", descrizione="Fa comparire subito il World Boss.", sottogruppo=SOTTO_BOSS)
+    @comando_di_gruppo("admin-ai", nome="avvia", descrizione="Fa comparire subito il World Boss.", sottogruppo=SOTTO_BOSS)
     @app_commands.describe(canale="Dove far comparire il boss (vuoto: il canale scelto o questo)")
     async def boss_avvia(self, interaction: discord.Interaction, canale: discord.TextChannel | None = None) -> None:
         cfg = await ai_gioco_repo.boss_config(interaction.guild_id)
