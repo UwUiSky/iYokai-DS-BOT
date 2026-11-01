@@ -35,10 +35,9 @@ def scarica(destinazione: str) -> str:
     ultimo_errore: Exception | None = None
     for anno, mese in mesi_da_provare(date.today()):
         indirizzo = INDIRIZZO.format(anno=anno, mese=mese)
+        temporaneo = tempfile.NamedTemporaryFile(dir=cartella, suffix=".parziale", delete=False)
         try:
-            with urllib.request.urlopen(indirizzo, timeout=120) as risposta, tempfile.NamedTemporaryFile(
-                dir=cartella, delete=False
-            ) as temporaneo:
+            with urllib.request.urlopen(indirizzo, timeout=120) as risposta, temporaneo:
                 with gzip.GzipFile(fileobj=risposta) as dati:
                     shutil.copyfileobj(dati, temporaneo)
             _controlla(temporaneo.name)
@@ -46,15 +45,22 @@ def scarica(destinazione: str) -> str:
             return indirizzo
         except (urllib.error.URLError, OSError, ValueError) as errore:
             ultimo_errore = errore
+        finally:
+            if os.path.exists(temporaneo.name):
+                os.remove(temporaneo.name)  # niente resti a metà nella cartella
     raise SystemExit(f"Scaricamento non riuscito: {ultimo_errore}")
 
 
 def _controlla(percorso: str) -> None:
     import maxminddb
 
-    with maxminddb.open_database(percorso) as lettore:
-        if lettore.get("8.8.8.8") is None:
-            raise ValueError("la banca dati scaricata non è valida")
+    try:
+        with maxminddb.open_database(percorso) as lettore:
+            valida = lettore.get("8.8.8.8") is not None
+    except maxminddb.InvalidDatabaseError:
+        valida = False
+    if not valida:
+        raise ValueError("la banca dati scaricata non è valida")
 
 
 if __name__ == "__main__":
