@@ -1,7 +1,7 @@
 """
 tests/test_ruoli_strumenti.py
 =============================
-Catalogo #123: strumenti sui ruoli (`/ruoli`, `/utility ruolo`). Logica
+Catalogo #123: strumenti sui ruoli (`/admin-ruoli`, `/utility ruolo`). Logica
 pura, archivio dei ruoli a scelta su PostgreSQL vero, comandi del cog.
 """
 
@@ -386,7 +386,7 @@ async def test_utility_ruolo_non_da_un_ruolo_diventato_forte(ambiente):
 
 @pytest.mark.asyncio
 async def test_due_massa_insieme_ne_parte_una_sola(ambiente, monkeypatch):
-    """Due /ruoli massa lanciati insieme: il controllo e la prenotazione non hanno await in mezzo."""
+    """Due /admin-ruoli massa lanciati insieme: il controllo e la prenotazione non hanno await in mezzo."""
     import asyncio
 
     a = ambiente

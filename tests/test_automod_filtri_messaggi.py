@@ -5,7 +5,7 @@ I filtri AutoMod lato bot provati uno per uno con messaggi che hanno
 davvero un contenuto (BUG-5): prima l'intent `message_content` era
 spento e i filtri leggevano messaggi vuoti.
 
-Ogni filtro viene acceso con il suo comando `/automod …` (database
+Ogni filtro viene acceso con il suo comando `/admin-automod …` (database
 vero), poi il messaggio passa da `on_message`. I messaggi sono finti
 fedeli (`tests/support/discord_fakes.py`).
 """

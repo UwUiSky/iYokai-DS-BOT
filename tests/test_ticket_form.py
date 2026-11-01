@@ -285,7 +285,7 @@ async def test_setup_registra_i_bottoni_dinamici_e_i_comandi_stanno_nei_limiti()
 
         from core.command_groups import GRUPPI
 
-        # D56: i pannelli in /ticket-pannelli, chiusura e voto in /ticket-gestione
+        # D56: i pannelli in /ticket-pannelli, chiusura e voto in /admin-ticket
         assert {"crea", "pubblica", "modulo aggiungi"} <= percorsi_del_gruppo("ticket-pannelli")
         assert {"chiusura-auto", "voto"} <= percorsi_del_gruppo("ticket-gestione")
         assert len(GRUPPI["ticket-pannelli"].commands) <= 25 and len(GRUPPI["ticket-gestione"].commands) <= 25
@@ -327,7 +327,7 @@ async def test_voto_chiesto_in_dm_solo_se_acceso_nel_pannello(scheduler_di_test)
 
 
 # ====================================================================
-# Comandi di /ticket-gestione
+# Comandi di /admin-ticket
 # ====================================================================
 async def _cog():
     return modulo.TicketsCog(MagicMock())

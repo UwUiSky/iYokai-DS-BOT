@@ -1,13 +1,13 @@
 """
 tests/test_case_system_limiti.py
 ================================
-/mod caso storico, /mod caso vedi e /mod nota elenca restano dentro i
+/mod-casi caso storico, /mod-casi caso vedi e /mod-casi nota elenca restano dentro i
 limiti di un embed (LIM-8): descrizione entro 4096, campo entro 1024,
-con "…e altri N" quando non ci sta tutto. /mod nota aggiungi dichiara la
+con "…e altri N" quando non ci sta tutto. /mod-casi nota aggiungi dichiara la
 lunghezza massima della nota.
 
 Database vero (clean_db): le note e i casi li scrive il codice di
-produzione (comando /mod nota aggiungi e repository delle sanzioni).
+produzione (comando /mod-casi nota aggiungi e repository delle sanzioni).
 """
 
 import discord

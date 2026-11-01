@@ -185,14 +185,14 @@ async def test_add_e_remove_errore_di_discord_risposta_chiara(nome):
 
 
 # ====================================================================
-# M 6.7 — /ticket-gestione ruolo togli toglie anche il ruolo storico
+# M 6.7 — /admin-ticket ruolo togli toglie anche il ruolo storico
 # ====================================================================
 async def test_remove_toglie_il_ruolo_impostato_con_ticket_setup():
     server = Server()
     ruolo = fake_role(ID_RUOLO_SUPPORTO, "Supporto")
     server.guild.get_role.side_effect = lambda role_id: ruolo if role_id == ID_RUOLO_SUPPORTO else None
     cog = TicketsCog(bot=None)
-    # Il ruolo "storico" lo scrive /ticket-gestione setup.
+    # Il ruolo "storico" lo scrive /admin-ticket setup.
     await cog.ticket_setup.callback(cog, server.interazione(server.staff()), server.categoria, ruolo)
     assert await modulo._support_role_ids(ID_SERVER) == [ID_RUOLO_SUPPORTO]
 

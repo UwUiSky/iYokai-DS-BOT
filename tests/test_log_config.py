@@ -1,8 +1,8 @@
 """
 tests/test_log_config.py
 ========================
-/log crea-canali, /log crea-forum, /log ignora, /log canale su un forum e
-/log stato (NF-01, NF-02). I comandi si provano sul gruppo vero.
+/admin-log crea-canali, /admin-log crea-forum, /admin-log ignora, /admin-log canale su un forum e
+/admin-log stato (NF-01, NF-02). I comandi si provano sul gruppo vero.
 """
 
 from unittest.mock import AsyncMock, MagicMock

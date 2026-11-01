@@ -29,7 +29,7 @@ async def test_tickets_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is False
 
-    # Nessun vecchio comando di primo livello: tutto sta in /ticket e /ticket-gestione.
+    # Nessun vecchio comando di primo livello: tutto sta in /ticket e /admin-ticket.
     top = {c.name for c in bot.tree.get_commands()}
     assert not top & {"ticket-setup", "ticket-panel", "ticket-category", "ticket-support-role", "ticket-stats"}
 

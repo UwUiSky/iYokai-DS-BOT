@@ -2,7 +2,7 @@
 tests/test_politica_comandi.py
 ==============================
 CFG-008, CFG-009, CFG-010, CFG-018 (#122): politica dei comandi di un server (`core/command_policy.py`,
-`/admin politica`, controllo in `BlacklistAwareCommandTree`).
+`/admin-bot politica`, controllo in `BlacklistAwareCommandTree`).
 """
 
 from unittest.mock import AsyncMock
@@ -31,10 +31,10 @@ def test_politica_vuota_lascia_passare_tutto():
 
 
 def test_comando_spento_vale_per_tutti_ma_non_per_i_gruppi_di_servizio():
-    p = pol.Politica(comandi_off=frozenset({"immagini meme", "admin setup attiva"}))
+    p = pol.Politica(comandi_off=frozenset({"immagini meme", "admin-bot setup attiva"}))
     assert _valuta(p) == pol.MOTIVO_COMANDO_OFF
     assert _valuta(p, esente=True) == pol.MOTIVO_COMANDO_OFF  # spento è spento, anche per lo staff
-    assert _valuta(p, percorso="admin setup attiva") is None  # /admin non si spegne mai
+    assert _valuta(p, percorso="admin-bot setup attiva") is None  # /admin non si spegne mai
     assert _valuta(p, percorso="fun dado") is None
 
 
@@ -58,7 +58,7 @@ def test_ruoli_e_utenti_ignorati_ma_lo_staff_no():
 
 def test_i_gruppi_di_servizio_non_si_bloccano_con_nessuna_regola():
     p = pol.Politica(canali_ok=frozenset({1}), utenti_ignorati=frozenset({7}))
-    for percorso in ("admin config history", "owner system eval", "admin politica elenco"):
+    for percorso in ("admin-bot config history", "owner system eval", "admin-bot politica elenco"):
         assert _valuta(p, percorso=percorso, user_id=7, canali=[2]) is None
 
 
@@ -79,7 +79,7 @@ async def test_modifica_elenco_aggiunge_toglie_e_rispetta_il_tetto(db_pronto):
     assert await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "immagini meme", aggiungi=False, changed_by=1)
     assert await db.get_guild_setting(700, pol.CHIAVE_COMANDI_OFF, None) is None  # l'elenco vuoto toglie la chiave
     with pytest.raises(pol.VoceNonValida):
-        await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "admin setup", aggiungi=True, changed_by=1)
+        await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "admin-bot setup", aggiungi=True, changed_by=1)
     with pytest.raises(pol.VoceNonValida):
         await pol.modifica_elenco(700, pol.CHIAVE_CANALI_OK, -4, aggiungi=True, changed_by=1)
     with pytest.raises(KeyError):
@@ -192,7 +192,7 @@ async def test_comando_spegne_riaccende_e_rifiuta_i_nomi_sbagliati(cog, db_pront
     assert (await pol.leggi_politica(700)).vuota
 
     i = _interazione()
-    await cog.comando.callback(cog, i, "admin setup", False)
+    await cog.comando.callback(cog, i, "admin-bot setup", False)
     assert "non si spengono" in i.response.send_message.call_args.args[0]
 
 

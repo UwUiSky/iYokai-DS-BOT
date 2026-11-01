@@ -273,7 +273,7 @@ def test_gruppo_sconosciuto_da_errore_chiaro():
 
 
 # ----------------------------------------------------------------------
-# Il cog vero: BasicLogsCog nel gruppo /log
+# Il cog vero: BasicLogsCog nel gruppo /admin-log
 # ----------------------------------------------------------------------
 @pytest.fixture
 async def log_cog(monkeypatch):

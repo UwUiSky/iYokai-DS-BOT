@@ -54,9 +54,9 @@ LUNGHEZZE_ATTESE = {
     ("clan membri", "tag"): 5,
     ("clan compra-canale", "nome"): 100,
     ("clan tesoreria trasferisci", "tag_destinazione"): 5,
-    ("economia shop-add", "name"): 80,
-    ("economia shop-add", "description"): 200,
-    ("giveaway avvia", "prize"): 200,
+    ("admin-economia shop-add", "name"): 80,
+    ("admin-economia shop-add", "description"): 200,
+    ("admin-giveaway avvia", "prize"): 200,
 }
 
 

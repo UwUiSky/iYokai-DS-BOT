@@ -165,7 +165,7 @@ async def test_kick_timeout_warn_in_massa():
 
 
 async def test_warn_in_massa_avvisa_lo_staff_oltre_la_soglia():
-    """MOD-036 vale anche per /mod massa warn: solo l'avviso, nessuna punizione."""
+    """MOD-036 vale anche per /mod-sanzioni massa warn: solo l'avviso, nessuna punizione."""
     from core import moderation_opzioni
 
     await moderation_opzioni.imposta_avviso_warn(SERVER, 1, MOD)

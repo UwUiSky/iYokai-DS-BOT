@@ -1,7 +1,7 @@
 """
 tests/test_bot_inviti.py
 ========================
-Gli altri bot di iYokai in `/admin setup attiva` (#113): chi c'è, chi manca, link e conseguenza.
+Gli altri bot di iYokai in `/admin-bot setup attiva` (#113): chi c'è, chi manca, link e conseguenza.
 Client veri non collegati (`commands.Bot`), nessuna chiamata a Discord.
 """
 

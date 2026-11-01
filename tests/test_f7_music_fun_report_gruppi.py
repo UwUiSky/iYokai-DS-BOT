@@ -3,7 +3,7 @@ tests/test_f7_music_fun_report_gruppi.py
 ========================================
 I comandi di musica, radio, fun e report stanno nei gruppi giusti, col
 nome giusto (mappa F7 passo 3b): /music (con loop, volume, nonstop),
-/owner radio, /fun, /utility report, /admin config canale-report.
+/owner radio, /fun, /utility report, /admin-bot config canale-report.
 Funzioni coperte: NF-05 (issue #76)
 """
 

@@ -2,7 +2,7 @@
 tests/test_shop_conferma.py
 ===========================
 ECO-069 (#125): conferma prima dell'acquisto nel negozio, che l'admin può
-accendere o spegnere (`/economia livelli negozio`). Di base è spenta: il
+accendere o spegnere (`/admin-livelli negozio`). Di base è spenta: il
 comportamento di prima non cambia.
 Funzioni coperte: SPEC §15.4 (catalogo #125)
 """
@@ -140,7 +140,7 @@ async def test_il_clic_di_un_altro_utente_e_rifiutato(scena):
 
 @pytest.mark.asyncio
 async def test_comando_negozio_accende_e_spegne(scena):
-    comando = scena.comandi["economia livelli negozio"]
+    comando = scena.comandi["admin-livelli negozio"]
     await comando.callback(scena.cog, _interazione(), conferma=True)
     assert (await scena.impostazioni.get_config(GUILD)).impostazioni.shop_confirm is True
     await comando.callback(scena.cog, _interazione(), conferma=False)

@@ -2,7 +2,7 @@
 tests/test_f7_ticket_voice_gruppi.py
 ====================================
 I comandi di ticket e vocali temporanei stanno in /ticket, /voice,
-/ticket-gestione e /gestione voice, col nome e il livello giusti
+/admin-ticket e /admin-vocali, col nome e il livello giusti
 (mappa F7 passo 3b).
 Funzioni coperte: NF-05 (issue #76)
 """
@@ -18,7 +18,7 @@ from core.command_groups import GRUPPI
 from tests.support.percorsi import percorsi_del_gruppo
 
 TICKET_ATTESI = {"claim", "add", "remove", "rename", "priority", "close", "forceclose"}
-# D56: la gestione dei ticket è il gruppo /ticket-gestione.
+# D56: la gestione dei ticket è il gruppo /admin-ticket.
 GESTIONE_TICKET_ATTESI = {
     "setup", "panel", "stats",
     "categoria aggiungi", "categoria togli", "categoria elenco",

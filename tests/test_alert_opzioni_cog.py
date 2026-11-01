@@ -1,7 +1,7 @@
 """
 tests/test_alert_opzioni_cog.py
 ===============================
-Comandi /moduli alert kick, opzioni, ruolo-live, guida-social, rimuovi e
+Comandi /admin-moduli alert kick, opzioni, ruolo-live, guida-social, rimuovi e
 elenco (NF-32, #129), contro PostgreSQL reale e interazioni finte fedeli.
 """
 

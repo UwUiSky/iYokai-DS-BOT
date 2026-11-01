@@ -104,7 +104,7 @@ async def test_blocco_della_quarantena_e_rilascio_col_blocco_solo_a_chi_gestisce
     assert "Solo il proprietario" in _risposta(non_owner)
     assert await security_repo.get_settings(GUILD_ID) == prima
 
-    # Col blocco acceso rilasciare e' roba di chi gestisce; spento, basta il gruppo /security.
+    # Col blocco acceso rilasciare e' roba di chi gestisce; spento, basta il gruppo /admin-sicurezza.
     quarantined = fake_role(role_id=QID, name="Quarantined")
     server.get_role.side_effect = lambda rid: quarantined if rid == QID else None
     await security_repo.save_settings(

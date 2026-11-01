@@ -3,7 +3,7 @@ tests/test_f7_gestione_livelli_gruppi.py
 ========================================
 Livelli, economia, clan, benvenuto e ruoli stanno nei gruppi giusti, col
 nome giusto (mappa F7 passo 3a, D56): /level, /monete, /clan (pubblici), /economia,
-/ruoli, /giveaway, /gestione benvenuto (solo admin dal gruppo). Nessun vecchio comando
+/admin-ruoli, /admin-giveaway, /admin-benvenuto (solo admin dal gruppo). Nessun vecchio comando
 di primo livello, nessun prefisso [Admin], tetti di Discord rispettati.
 Funzioni coperte: NF-05 (issue #76, #24)
 """
@@ -96,7 +96,7 @@ async def test_livelli_di_accesso(clean_db):
         assert GRUPPI["monete"].livello is None
         assert GRUPPI["gestione"].livello is Livello.ADMIN
         assert GRUPPI["economia"].livello is Livello.ADMIN
-        # D56: la bacheca clan è per lo staff, quindi sta in /economia annunci
+        # D56: la bacheca clan è per lo staff, quindi sta in /admin-economia annunci
         assert GRUPPI["clan"].get_command("bacheca") is None
         # i comandi pubblici non hanno controlli di permesso propri
         for percorso in ("crea", "boost gilda", "tesoreria dona"):
@@ -138,7 +138,7 @@ async def test_scaricare_il_cog_toglie_i_comandi(clean_db):
 
 
 async def test_bacheca_clan_chiede_il_livello_admin_del_bot(clean_db, monkeypatch):
-    """`/economia annunci clan-set|clan-off`: il gruppo chiede il livello admin del bot (permesso di Discord OPPURE ruolo admin)."""
+    """`/admin-economia annunci clan-set|clan-off`: il gruppo chiede il livello admin del bot (permesso di Discord OPPURE ruolo admin)."""
     import types
 
     import pytest

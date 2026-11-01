@@ -89,10 +89,10 @@ def errore_del_riferimento(grezzo: str, radici: dict[str, object]) -> str | None
 
 
 def test_il_riconoscitore_distingue_comandi_e_prosa():
-    assert [g for _, _, g in _trovati_in("usa /admin setup attiva per attivarlo")] == ["/admin setup attiva per"]
+    assert [g for _, _, g in _trovati_in("usa /admin-bot setup attiva per attivarlo")] == ["/admin-bot setup attiva per"]
     assert _trovati_in("vedi https://x.it/users/me e cogs/utility/setup.py") == []
     assert _trovati_in("percorso /guilds/123") == []
-    assert [g for _, _, g in _trovati_in("Run `/admin setup attiva`.")] == ["/admin setup attiva"]
+    assert [g for _, _, g in _trovati_in("Run `/admin-bot setup attiva`.")] == ["/admin-bot setup attiva"]
     assert [g for _, _, g in _trovati_in('scrivi "/setup" o \'/play\'')] == ["/setup", "/play"]
 
 

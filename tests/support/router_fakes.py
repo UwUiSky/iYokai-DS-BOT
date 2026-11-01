@@ -36,7 +36,7 @@ def nessun_evento_spento(monkeypatch):
 
 
 def nessun_ignorato(monkeypatch):
-    """/log ignora senza database: l'elenco è vuoto."""
+    """/admin-log ignora senza database: l'elenco è vuoto."""
     from core.message_log_logic import Ignorati
     from core.repositories.log_ignora_repo import log_ignora_repo
 

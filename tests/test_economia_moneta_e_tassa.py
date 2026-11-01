@@ -189,7 +189,7 @@ async def test_saldo_daily_e_classifica_usano_il_nome_scelto(scena):
 @pytest.mark.asyncio
 async def test_il_comando_delle_impostazioni_salva_nome_tassa_e_tetto(scena):
     interazione = _interazione()
-    await scena.comandi["economia livelli xp"].callback(
+    await scena.comandi["admin-livelli xp"].callback(
         scena.cog, interazione, nome_moneta="stelle", tassa_pay=5, massimo_pay=100
     )
     i = (await scena.impostazioni.get_config(GUILD)).impostazioni
@@ -225,7 +225,7 @@ async def test_pay_sotto_il_minimo_rifiutato(scena):
     assert (await scena.monete.get_totals(GUILD, 1)).coins_total == 100
 
     interazione = _interazione()
-    await scena.comandi["economia livelli xp"].callback(scena.cog, interazione, minimo_pay=10)
+    await scena.comandi["admin-livelli xp"].callback(scena.cog, interazione, minimo_pay=10)
     assert (await scena.impostazioni.get_config(GUILD)).impostazioni.pay_min == 10
 
 
@@ -250,7 +250,7 @@ async def test_comando_salva_l_immagine_ridotta_e_la_mostra(scena):
     from PIL import Image
     import io
     interazione = _interazione()
-    await scena.comandi["economia livelli xp"].callback(
+    await scena.comandi["admin-livelli xp"].callback(
         scena.cog, interazione, nome_moneta="stelle", immagine_moneta=_allegato(_png_grande())
     )
     salvata = await scena.impostazioni.get_immagine_moneta(GUILD)
@@ -263,7 +263,7 @@ async def test_comando_salva_l_immagine_ridotta_e_la_mostra(scena):
 @pytest.mark.asyncio
 async def test_primo_nome_senza_immagine_chiede_l_immagine(scena):
     interazione = _interazione()
-    await scena.comandi["economia livelli xp"].callback(scena.cog, interazione, nome_moneta="stelle")
+    await scena.comandi["admin-livelli xp"].callback(scena.cog, interazione, nome_moneta="stelle")
     assert "immagine_moneta" in _testo(interazione) and "moneta di iYokai" in _testo(interazione)
     assert await scena.impostazioni.get_immagine_moneta(GUILD) is None
 
@@ -271,7 +271,7 @@ async def test_primo_nome_senza_immagine_chiede_l_immagine(scena):
 @pytest.mark.asyncio
 async def test_immagine_rotta_non_salva_nulla(scena):
     interazione = _interazione()
-    await scena.comandi["economia livelli xp"].callback(
+    await scena.comandi["admin-livelli xp"].callback(
         scena.cog, interazione, nome_moneta="stelle", immagine_moneta=_allegato(b"non immagine")
     )
     assert "Non riesco ad aprire" in interazione.followup.send.await_args.args[0]
@@ -283,7 +283,7 @@ async def test_immagine_rotta_non_salva_nulla(scena):
 async def test_senza_immagine_toglie_la_moneta_personale(scena):
     await scena.impostazioni.set_immagine_moneta(GUILD, b"x")
     interazione = _interazione()
-    await scena.comandi["economia livelli xp"].callback(scena.cog, interazione, senza_immagine=True)
+    await scena.comandi["admin-livelli xp"].callback(scena.cog, interazione, senza_immagine=True)
     assert await scena.impostazioni.get_immagine_moneta(GUILD) is None
 
 

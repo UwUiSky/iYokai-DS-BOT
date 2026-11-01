@@ -1,7 +1,7 @@
 """
 tests/test_f7_admin_moduli_gruppi.py
 ====================================
-I comandi di configurazione stanno in /admin e /moduli, col nome e il
+I comandi di configurazione stanno in /admin e /admin-moduli, col nome e il
 livello giusti (mappa F7 passo 2c): nessun comando di primo livello
 vecchio, nessun controllo di permesso duplicato sui comandi, tetti di Discord rispettati.
 Funzioni coperte: NF-05 (issue #76)
@@ -27,7 +27,7 @@ ADMIN_ATTESI = {
     "lingua show", "lingua set",
     "setup attiva", "setup wizard",
 }
-# D56: i messaggi programmati e fissi sono il gruppo /messaggi.
+# D56: i messaggi programmati e fissi sono il gruppo /admin-messaggi.
 MESSAGGI_ATTESI = {
     "programmati crea", "programmati elenco", "programmati annulla", "fissi imposta", "fissi togli",
 }

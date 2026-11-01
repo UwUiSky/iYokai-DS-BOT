@@ -280,7 +280,7 @@ async def test_comando_xp_rifiuta_livelli_oltre_il_massimo(cog_comandi):
     cog, comandi, repo, _ = cog_comandi
     interazione = _interazione()
 
-    await comandi["economia xp"].callback(
+    await comandi["admin-livelli membro"].callback(
         cog, interazione, azione=_scelta("livello"), membro=fake_member(user_id=9), valore=5000
     )
 
@@ -293,7 +293,7 @@ async def test_comando_xp_passa_lesecutore_ai_ruoli(cog_comandi):
     cog, comandi, repo, sincronizza = cog_comandi
     interazione = _interazione()
 
-    await comandi["economia xp"].callback(
+    await comandi["admin-livelli membro"].callback(
         cog, interazione, azione=_scelta("livello"), membro=fake_member(user_id=9), valore=3
     )
 
@@ -335,8 +335,8 @@ def _scelta(valore):
 @pytest.mark.asyncio
 async def test_i_comandi_stanno_sotto_economia(cog_comandi):
     _, comandi, _, _ = cog_comandi
-    assert "economia xp" in comandi
-    assert "economia monete" in comandi
+    assert "admin-livelli membro" in comandi
+    assert "admin-economia monete" in comandi
 
 
 @pytest.mark.asyncio
@@ -345,7 +345,7 @@ async def test_comando_xp_risponde_dopo_defer_e_allinea_i_ruoli(cog_comandi):
     interazione = _interazione()
     membro = fake_member(user_id=9)
 
-    await comandi["economia xp"].callback(
+    await comandi["admin-livelli membro"].callback(
         cog, interazione, azione=_scelta("livello"), membro=membro, valore=6
     )
 
@@ -363,7 +363,7 @@ async def test_comando_xp_avvisa_se_i_ruoli_non_si_aggiornano(cog_comandi):
     sincronizza.return_value = False
     interazione = _interazione()
 
-    await comandi["economia xp"].callback(
+    await comandi["admin-livelli membro"].callback(
         cog, interazione, azione=_scelta("livello"), membro=fake_member(user_id=9), valore=6
     )
 
@@ -378,7 +378,7 @@ async def test_comando_xp_rifiuta_i_bot(cog_comandi):
     interazione = _interazione()
     bot = fake_member(user_id=9, bot=True)
 
-    await comandi["economia xp"].callback(
+    await comandi["admin-livelli membro"].callback(
         cog, interazione, azione=_scelta("aggiungi"), membro=bot, valore=10
     )
 
@@ -390,13 +390,13 @@ async def test_comando_monete_aggiunge_e_azzera(cog_comandi):
     cog, comandi, repo, _ = cog_comandi
     membro = fake_member(user_id=9)
 
-    await comandi["economia monete"].callback(
+    await comandi["admin-economia monete"].callback(
         cog, _interazione(), azione=_scelta("aggiungi"), membro=membro, importo=250
     )
     assert (await repo.get_totals(GUILD, 9)).coins_total == 250
 
     interazione = _interazione()
-    await comandi["economia monete"].callback(
+    await comandi["admin-economia monete"].callback(
         cog, interazione, azione=_scelta("azzera"), membro=membro, importo=None
     )
     assert (await repo.get_totals(GUILD, 9)).coins_total == 0
@@ -408,7 +408,7 @@ async def test_comando_monete_senza_importo_non_scrive(cog_comandi):
     cog, comandi, repo, _ = cog_comandi
     interazione = _interazione()
 
-    await comandi["economia monete"].callback(
+    await comandi["admin-economia monete"].callback(
         cog, interazione, azione=_scelta("aggiungi"), membro=fake_member(user_id=9), importo=None
     )
 

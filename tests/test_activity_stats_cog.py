@@ -1,4 +1,4 @@
-"""NF-25 (#96): cog di raccolta, ruoli per attività, comandi /moduli statistiche e viste di /utility serverstats."""
+"""NF-25 (#96): cog di raccolta, ruoli per attività, comandi /admin-moduli statistiche e viste di /utility serverstats."""
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 

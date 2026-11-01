@@ -2,7 +2,7 @@
 tests/test_log_forum.py
 =======================
 Vista dei log su un forum (SPEC §8.17): un post per canale o per caso. Logica pura,
-tabelle vere, servizio con un forum finto e comando /log vista-forum.
+tabelle vere, servizio con un forum finto e comando /admin-log vista-forum.
 """
 
 import asyncio
@@ -267,7 +267,7 @@ async def test_il_comando_rifiuta_un_forum_senza_i_permessi(repo, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_un_evento_spento_dal_server_non_va_nella_vista(mondo, repo, clean_db, monkeypatch):
-    """`/log eventi` spento = il server non lo vuole: neanche nel forum."""
+    """`/admin-log eventi` spento = il server non lo vuole: neanche nel forum."""
     from core.log_eventi_logic import interruttore_di
     from core.repositories.log_eventi_repo import LogEventiRepository
 

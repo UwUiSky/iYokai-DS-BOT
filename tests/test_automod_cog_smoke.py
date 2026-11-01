@@ -26,7 +26,7 @@ async def test_automod_cog_si_carica_correttamente():
     assert automod_group is not None
 
     parole = automod_group.get_command("parole")
-    assert automod_group.get_command("filtri") is None  # D56: i filtri sono il gruppo /filtri
+    assert automod_group.get_command("filtri") is None  # D56: i filtri sono il gruppo /admin-filtri
     filtri = bot.tree.get_command("filtri")
     assert filtri is not None
     esenzioni = automod_group.get_command("esenzioni")

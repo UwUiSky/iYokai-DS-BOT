@@ -1,7 +1,7 @@
 """
 tests/test_escalation_warn_manuali.py
 =====================================
-M 1.10 (#57): i warn dati a mano con /mod warn salgono la scala di
+M 1.10 (#57): i warn dati a mano con /mod-sanzioni warn salgono la scala di
 escalation, se il server l'ha scelto. Spento di base. Database vero.
 """
 

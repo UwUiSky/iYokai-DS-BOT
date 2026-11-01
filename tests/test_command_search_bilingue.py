@@ -30,20 +30,20 @@ def _comandi():
 
 
 def test_il_comando_porta_con_se_la_versione_inglese():
-    ban = next(c for c in _comandi() if c.percorso == "modban ban")
-    assert ban.percorso_en == "modban ban"
+    ban = next(c for c in _comandi() if c.percorso == "mod-ban ban")
+    assert ban.percorso_en == "mod-ban ban"
     assert ban.descrizione_en == "Permanently bans a member."
 
 
 @pytest.mark.parametrize(
     "domanda, atteso",
     [
-        ("ban a member", "modban ban"),
-        ("kick someone out", "modban ban"),
-        ("I want to silence someone", "mod mute"),
-        ("delete messages", "mod clear"),
-        ("bannare qualcuno", "modban ban"),          # l'italiano non si rompe
-        ("cancella messaggi", "mod clear"),
+        ("ban a member", "mod-ban ban"),
+        ("kick someone out", "mod-ban ban"),
+        ("I want to silence someone", "mod-sanzioni mute"),
+        ("delete messages", "mod-canali clear"),
+        ("bannare qualcuno", "mod-ban ban"),          # l'italiano non si rompe
+        ("cancella messaggi", "mod-canali clear"),
     ],
 )
 def test_la_ricerca_trova_il_comando_in_entrambe_le_lingue(domanda, atteso):
@@ -63,7 +63,7 @@ def test_i_risultati_si_mostrano_nella_lingua_di_chi_cerca():
 def test_il_completamento_mostra_la_descrizione_inglese_agli_utenti_inglesi():
     voci = logica.suggerimenti("modban", _comandi(), lingua="en")
     assert voci and "Permanently bans a member." in voci[0][0]
-    assert voci[0][1] == "modban ban"  # il valore resta il percorso di base
+    assert voci[0][1] == "mod-ban ban"  # il valore resta il percorso di base
 
 
 @pytest.mark.asyncio

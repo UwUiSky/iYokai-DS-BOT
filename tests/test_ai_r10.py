@@ -231,22 +231,22 @@ def test_link_configurazione_porta_alla_pagina_giusta():
 
     c = lambda p: ComandoNoto(p, "x")  # noqa: E731
     url = "https://pannello.example/"
-    assert link_configurazione(url, 5, [c("ai privacy")]) == "https://pannello.example/server/5/ai"
-    assert link_configurazione(url, 5, [c("admin premium aspetto")]).endswith("/server/5/aspetto")
-    assert link_configurazione(url, 5, [c("admin premium stato")]).endswith("/server/5/premium")
-    assert link_configurazione(url, 5, [c("admin lingua set")]).endswith("/server/5")
+    assert link_configurazione(url, 5, [c("admin-ai privacy")]) == "https://pannello.example/server/5/ai"
+    assert link_configurazione(url, 5, [c("admin-bot premium aspetto")]).endswith("/server/5/aspetto")
+    assert link_configurazione(url, 5, [c("admin-bot premium stato")]).endswith("/server/5/premium")
+    assert link_configurazione(url, 5, [c("admin-bot lingua set")]).endswith("/server/5")
     # il primo comando di configurazione vince; i comandi d'uso non portano al pannello
-    assert link_configurazione(url, 5, [c("mod timeout"), c("ai attiva")]).endswith("/ai")
-    assert link_configurazione(url, 5, [c("mod timeout")]) is None
-    assert link_configurazione("", 5, [c("ai attiva")]) is None
-    assert link_configurazione(url, None, [c("ai attiva")]) is None
+    assert link_configurazione(url, 5, [c("mod-sanzioni timeout"), c("admin-ai attiva")]).endswith("/admin-ai")
+    assert link_configurazione(url, 5, [c("mod-sanzioni timeout")]) is None
+    assert link_configurazione("", 5, [c("admin-ai attiva")]) is None
+    assert link_configurazione(url, None, [c("admin-ai attiva")]) is None
 
 
 def test_bottone_configurazione_e_un_link():
     from cogs.ai.helpdesk import bottone_configurazione
     from core.ai_testi_logic import ComandoNoto
 
-    b = bottone_configurazione("https://p.example", 9, [ComandoNoto("ai stato", "x")])
+    b = bottone_configurazione("https://p.example", 9, [ComandoNoto("admin-ai stato", "x")])
     assert b.url == "https://p.example/server/9/ai" and b.label == "Apri nel pannello"
     assert bottone_configurazione("https://p.example", 9, [ComandoNoto("mod ban", "x")]) is None
 
@@ -261,8 +261,8 @@ async def test_chiedi_aggiunge_il_bottone_del_pannello_per_un_comando_di_configu
     from tests.test_command_search_bug147 import _albero_con_richiedi
 
     monkeypatch.setattr(ai_servizio, "servizio_ai", lambda: SimpleNamespace(controlla_accesso=AsyncMock()))
-    citati = [SimpleNamespace(percorso="ai attiva", descrizione="Accende l'AI", gruppo="ai", moduli=(), livelli=())]
-    monkeypatch.setattr(helpdesk, "risposta_ai_chiedi", AsyncMock(return_value=("Usa /ai attiva", citati, None)))
+    citati = [SimpleNamespace(percorso="admin-ai attiva", descrizione="Accende l'AI", gruppo="ai", moduli=(), livelli=())]
+    monkeypatch.setattr(helpdesk, "risposta_ai_chiedi", AsyncMock(return_value=("Usa /admin-ai attiva", citati, None)))
     finto = SimpleNamespace(WEB_PANEL_PUBLIC_URL="https://p.example", WIKI_BASE_URL="", MAIN_GUILD_ID=1)
     monkeypatch.setattr(modulo, "config", finto)
     cog = modulo.CommandSearchCog(_albero_con_richiedi())
