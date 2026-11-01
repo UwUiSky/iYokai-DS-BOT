@@ -53,6 +53,9 @@ Message content is needed by features that read what is written: AutoMod filters
 | AI help desk | `cogs/ai/helpdesk.py` | Answer questions, only with the server's consent |
 | AI moderation | `cogs/ai/moderazione.py` | Judge flagged messages, only with the server's consent |
 | AI translation | `cogs/ai/traduzione.py` | Translate messages, only with the server's consent |
+| AI channel summary | `cogs/ai/riepilogo.py` | Summarise a channel the staff chose, only with the server's consent |
+| AI ticket assistant | `cogs/ai/ticket_ai.py` | Suggest a first answer inside tickets, only with the server's consent |
+| Yokai voice | `cogs/ai/voce.py` | Read or transcribe a message when someone asks, only with the server's consent |
 
 ## GUILD_PRESENCES
 

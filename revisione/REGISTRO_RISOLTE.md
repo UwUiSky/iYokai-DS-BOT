@@ -6,6 +6,15 @@ Le prove ancora da fare su Discord restano in `03-verifica/VERIFICA_LIVE.md`.
 
 | Issue | Problema | Come è stato sistemato | Commit | Data |
 |---|---|---|---|---|
+| #57, #59, #60, #61, #66, #69 | Correzioni della fase F1 (moderazione, sicurezza, verifica, log, utility, owner): pezzi rimasti | Fatti nei giri r1-r12; controllo voce per voce sul codice del 01/11 | eeacd37 | 01/11 |
+| #82 | Immagine di benvenuto | Fatta; l'editor nel pannello si segue in #91 | eeacd37 | 01/11 |
+| #95, #132, #50 | Motore AI e funzioni AI mancanti | SPEC §25 chiusa (r12ai), 25.21 scartata (D52) | e14fe21 | 01/11 |
+| #112 | Idee rimandate di BACKLOG | Tutte fatte o con alternativa | eeacd37 | 01/11 |
+| #118 | Catalogo verifica dei nuovi membri | 15 voci su 15 fatte | eeacd37 | 01/11 |
+| #138 | Ban temporaneo con rientro e ban in isolamento | Fatto | eeacd37 | 01/11 |
+| #141 | Aggiornamento a caldo riservato all'owner | Fatto | eeacd37 | 01/11 |
+| #147 | /cerca-comando come aiuto evoluto | Fatto | eeacd37 | 01/11 |
+| #93, #107, #108, #113, #139, #140 | Pagamento premium, app utente, Desktop, iYokai Mod, ticket con AI, bozze in PR | Codice in main; resta la prova su Discord (verifica-live) | eeacd37 | 01/11 |
 | #145 | Il verdetto premium dei log avanzati restava 60 s dopo sblocco o revoca | Punto unico `core/premium_cache.invalida_cache_premium`, chiamato da whitelist, cassa, abbonamenti per modulo, codici, abbonamenti Discord, flag del modulo e pulizia dei server; test per ogni via (`tests/test_premium_invalidazione.py`) | fac29e1, 3ce8626, d933659 | 21/10 |
 | #137 | Il messaggio privato di kick/ban partiva dopo l'azione e non arrivava | Il DM parte prima di kick, ban, tempban, softban (`try_dm_message`); se non arriva lo dice nella risposta | f0e2056 | 06/10 |
 | #133 | Problemi di sicurezza del giro del 05/10 | Correzioni in anti-raid, anti-nuke, verifica (cache a versione); benvenuto privato sospeso durante un raid | f045c97 | 06/10 |
