@@ -37,7 +37,11 @@ def gif(w: int = 20, h: int = 20) -> bytes:
 
 
 def gif_animata(fotogrammi: int = 5) -> bytes:
-    img = [Image.new("P", (16, 16), n % 200) for n in range(fotogrammi)]
+    img = []
+    for n in range(fotogrammi):
+        fotogramma = Image.new("RGB", (16, 16), (10, 10, 10))
+        ImageDraw.Draw(fotogramma).rectangle((n % 12, 0, n % 12 + 3, 15), fill=(250, 40 + n, 40))
+        img.append(fotogramma)
     return _salva(img[0], "GIF", save_all=True, append_images=img[1:], duration=50, loop=0)
 
 
