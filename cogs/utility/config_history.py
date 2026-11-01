@@ -556,7 +556,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "admin",
+        "admin-bot",
         nome="history",
         descrizione="Mostra le ultime modifiche alla configurazione.",
         sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),
@@ -642,7 +642,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @comando_di_gruppo(
-        "admin",
+        "admin-bot",
         nome="rollback",
         descrizione="Ripristina il valore precedente di una modifica.",
         sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),
@@ -672,7 +672,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin",
+        "admin-bot",
         nome="reset",
         descrizione="Azzera la configurazione di questo server.",
         sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),
@@ -693,7 +693,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin",
+        "admin-bot",
         nome="export",
         descrizione="Esporta la configurazione di questo server in un file.",
         sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),
@@ -735,7 +735,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
             )
 
     @comando_di_gruppo(
-        "admin",
+        "admin-bot",
         nome="import",
         descrizione="Importa una configurazione da un file esportato con /admin config export.",
         sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),
@@ -806,7 +806,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
     # SPEC.md §2.3 — Lingua per server
     # ================================================================
     @comando_di_gruppo(
-        "admin",
+        "admin-bot",
         nome="show",
         descrizione="Mostra la lingua impostata per questo server.",
         sottogruppo=("lingua", "Lingua del server"),
@@ -819,7 +819,7 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(tr("lingua_attuale_server", mia, lingua=lingua), ephemeral=True)
 
     @comando_di_gruppo(
-        "admin",
+        "admin-bot",
         nome="set",
         descrizione="Imposta la lingua di questo server.",
         sottogruppo=("lingua", "Lingua del server"),

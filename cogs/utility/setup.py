@@ -210,7 +210,7 @@ class SetupCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "admin",
+        "admin-bot",
         nome="attiva",
         descrizione="Attiva o disattiva i moduli del bot, per categoria.",
         sottogruppo=("setup", "Attivazione dei moduli e configurazione guidata"),
@@ -327,7 +327,7 @@ class SetupCog(CogConGruppi, commands.Cog):
         return embed
 
     @comando_di_gruppo(
-        "admin",
+        "admin-bot",
         nome="wizard",
         descrizione="Configura passo-passo ruoli e moduli del bot, una categoria alla volta.",
         sottogruppo=("setup", "Attivazione dei moduli e configurazione guidata"),

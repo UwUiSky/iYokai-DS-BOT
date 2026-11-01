@@ -72,6 +72,7 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "mod": ("Moderazione: avvisi, timeout, silenzio, pulizia, blocco canali", "moderate_members", Livello.MOD),
     "modban": ("Moderazione dura: ban, kick, softban e sban", "ban_members", Livello.MODBAN),
     "log": ("Registro degli eventi: canali, stato, ricerca ed esportazione", "manage_guild", Livello.LOG),
+    "admin-bot": ("Impianto del bot: setup, configurazione, lingua, politica dei comandi, premium", "manage_guild", Livello.ADMIN),
     "ticket": ("Gestione del ticket in cui ti trovi", None, None),
     "voice": ("Gestione del tuo canale vocale temporaneo", None, None),
     "music": ("Musica nei canali vocali", None, None),
@@ -92,7 +93,7 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
 # Chiave: "gruppo sotto-gruppo". Il cog scrive `sottogruppo=SOTTOGRUPPI["ruoli premio"]`.
 SOTTOGRUPPI: dict[str, tuple[str, str]] = {
     "utility snipe": ("snipe", "Messaggi cancellati, modificati e reazioni tolte"),
-    "admin politica": ("politica", "Politica dei comandi: spegni, limita, ignora, diagnosi"),
+    "admin-bot politica": ("politica", "Politica dei comandi: spegni, limita, ignora, diagnosi"),
     "messaggi programmati": ("programmati", "Messaggi programmati a orario"),
     "messaggi fissi": ("fissi", "Messaggi fissi in fondo al canale"),
     "messaggi risposte": ("risposte", "Risposte automatiche a parole chiave"),

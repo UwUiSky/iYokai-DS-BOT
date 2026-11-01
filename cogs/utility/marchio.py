@@ -112,7 +112,7 @@ class MarchioCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------------
     @comando_di_gruppo(
-        "admin", nome="marchio", descrizione="Usa un bot con il tuo nome e il tuo avatar (premium).",
+        "admin-bot", nome="marchio", descrizione="Usa un bot con il tuo nome e il tuo avatar (premium).",
         sottogruppo=SOTTOGRUPPO_PREMIUM,
     )
     @app_commands.describe(azione="Cosa fare", testo="Solo per «testo di stato»: la frase da mostrare (vuoto = nessuna)")
@@ -162,7 +162,7 @@ class MarchioCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------------
     @comando_di_gruppo(
-        "admin", nome="aspetto", descrizione="Avatar, banner e descrizione del bot in questo server (premium).",
+        "admin-bot", nome="aspetto", descrizione="Avatar, banner e descrizione del bot in questo server (premium).",
         sottogruppo=SOTTOGRUPPO_PREMIUM,
     )
     @app_commands.describe(

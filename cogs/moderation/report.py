@@ -35,7 +35,7 @@ class ModerationReportCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "admin",
+        "admin-bot",
         nome="canale-report",
         descrizione="Imposta il canale delle segnalazioni.",
         sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),

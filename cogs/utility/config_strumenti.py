@@ -65,7 +65,7 @@ class ConfigStrumentiCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------------
     @comando_di_gruppo(
-        "admin", nome="pulizia", descrizione="Toglie dalla configurazione canali e ruoli che non esistono più.",
+        "admin-bot", nome="pulizia", descrizione="Toglie dalla configurazione canali e ruoli che non esistono più.",
         sottogruppo=SOTTOGRUPPO_CONFIG,
     )
     @app_commands.describe(applica="Sì = toglie davvero; No = mostra solo cosa toglierebbe")
@@ -88,7 +88,7 @@ class ConfigStrumentiCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------------
     @comando_di_gruppo(
-        "admin", nome="sincronizza", descrizione="Riscrive i permessi dei comandi di questo server.",
+        "admin-bot", nome="sincronizza", descrizione="Riscrive i permessi dei comandi di questo server.",
         sottogruppo=SOTTOGRUPPO_CONFIG,
     )
     async def sincronizza(self, interaction: discord.Interaction) -> None:
@@ -117,7 +117,7 @@ class ConfigStrumentiCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------------
     @comando_di_gruppo(
-        "admin", nome="nickname-bot", descrizione="Cambia il nome del bot in questo server.",
+        "admin-bot", nome="nickname-bot", descrizione="Cambia il nome del bot in questo server.",
         sottogruppo=SOTTOGRUPPO_CONFIG,
     )
     @app_commands.describe(nome="Il nuovo nome (massimo 32 caratteri); vuoto = torna al nome normale")
