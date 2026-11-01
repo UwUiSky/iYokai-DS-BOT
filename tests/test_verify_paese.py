@@ -322,3 +322,15 @@ async def test_due_verifiche_insieme_da_fuori_non_passano_entrambe_sotto_soglia(
     # In fila la seconda si fermerebbe: insieme, almeno una deve restare in attesa.
     assert [ok for ok, _ in esiti].count(False) >= 1
     assert await clean_db.fetchval("SELECT count(*) FROM verify_paese WHERE stato = 'attesa'") >= 1
+
+
+@pytest.mark.asyncio
+async def test_i_bottoni_dello_staff_parlano_la_lingua_del_server(monkeypatch, clean_db):
+    amb = _ambiente(monkeypatch, clean_db)
+    await _prepara(clean_db, soglia=1)
+    await database_module.db.set_guild_language(GUILD, "en")
+    geoip_paesi.usa_lettore(_LettoreFinto({"203.0.113.1": {"country": {"iso_code": "RO"}}}))
+    ok, _ = await _verifica(amb, 21, "203.0.113.1")
+    assert not ok
+    etichette = [b.item.label for b in amb.staff.send.await_args.kwargs["view"].children]
+    assert etichette == ["Approve", "Reject"]

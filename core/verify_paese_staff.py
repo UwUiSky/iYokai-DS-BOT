@@ -92,7 +92,10 @@ async def valuta(guild: discord.Guild, membro: discord.Member, ip: str) -> str |
     try:
         await canale.send(
             embed=await _embed_avviso(guild, membro, paese, lingua, soglia, minuti),
-            view=vista_decisione(guild.id, membro.id),
+            view=vista_decisione(guild.id, membro.id, (
+                await testo_guild(guild, "verify_paese_bottone_approva"),
+                await testo_guild(guild, "verify_paese_bottone_rifiuta"),
+            )),
             allowed_mentions=discord.AllowedMentions.none(),
         )
     except discord.HTTPException:
@@ -117,10 +120,11 @@ class BottoneDecisione(
     discord.ui.DynamicItem[discord.ui.Button],
     template=r"verifypaese:(?P<s>si|no):(?P<g>[0-9]+):(?P<u>[0-9]+)",
 ):
-    def __init__(self, guild_id: int, user_id: int, approva: bool) -> None:
+    def __init__(self, guild_id: int, user_id: int, approva: bool, etichetta: str = "") -> None:
+        # L'etichetta conta solo all'invio; ricostruito da Discord al clic, il bottone non la mostra.
         super().__init__(
             discord.ui.Button(
-                label="Approva" if approva else "Rifiuta",
+                label=(etichetta or ("Approva" if approva else "Rifiuta"))[:80],
                 style=discord.ButtonStyle.success if approva else discord.ButtonStyle.danger,
                 custom_id=f"verifypaese:{'si' if approva else 'no'}:{guild_id}:{user_id}",
             )
@@ -137,10 +141,10 @@ class BottoneDecisione(
         await decidi(interaction, self.user_id, self.approva)
 
 
-def vista_decisione(guild_id: int, user_id: int) -> BaseView:
+def vista_decisione(guild_id: int, user_id: int, etichette: tuple[str, str] = ("", "")) -> BaseView:
     vista = BaseView(timeout=None)
-    vista.add_item(BottoneDecisione(guild_id, user_id, True))
-    vista.add_item(BottoneDecisione(guild_id, user_id, False))
+    vista.add_item(BottoneDecisione(guild_id, user_id, True, etichette[0]))
+    vista.add_item(BottoneDecisione(guild_id, user_id, False, etichette[1]))
     return vista
 
 

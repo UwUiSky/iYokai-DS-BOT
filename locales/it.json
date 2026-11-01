@@ -1382,5 +1382,7 @@
   "verify_paese_gia_deciso": "Questa verifica è già stata decisa.",
   "verify_paese_membro_uscito": "La persona non è più nel server.",
   "verify_paese_approvata_da": "Approvata da {staff}.",
+  "verify_paese_bottone_approva": "Approva",
+  "verify_paese_bottone_rifiuta": "Rifiuta",
   "verify_paese_rifiutata_da": "Rifiutata da {staff}: {utente} resta non verificato."
 }

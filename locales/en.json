@@ -1382,5 +1382,7 @@
   "verify_paese_gia_deciso": "This verification has already been decided.",
   "verify_paese_membro_uscito": "The person is no longer in the server.",
   "verify_paese_approvata_da": "Approved by {staff}.",
+  "verify_paese_bottone_approva": "Approve",
+  "verify_paese_bottone_rifiuta": "Reject",
   "verify_paese_rifiutata_da": "Rejected by {staff}: {utente} stays unverified."
 }
