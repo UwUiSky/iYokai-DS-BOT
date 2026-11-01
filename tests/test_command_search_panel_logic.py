@@ -35,8 +35,8 @@ def _albero():
 
 def test_raccogli_comandi_espande_gruppi_e_opzioni():
     info = {c.percorso: c for c in L.raccogli_comandi(_albero())}
-    assert set(info) == {"mod-ban ban", "modban lista mostra", "-cerca-comando"}
-    ban = info["mod-ban ban"]
+    assert set(info) == {"modban ban", "modban lista mostra", "-cerca-comando"}
+    ban = info["modban ban"]
     assert ban.gruppo == "modban"
     assert [(o.nome, o.obbligatoria) for o in ban.opzioni] == [("utente", True), ("motivo", False)]
     assert info["-cerca-comando"].gruppo == "-cerca-comando"
@@ -44,13 +44,13 @@ def test_raccogli_comandi_espande_gruppi_e_opzioni():
 
 def test_menzione_usa_l_id_del_comando_di_primo_livello():
     ids = {"modban": 42, "-cerca-comando": 7}
-    assert L.menzione("mod-ban ban", ids) == "</modban ban:42>"
+    assert L.menzione("modban ban", ids) == "</modban ban:42>"
     assert L.menzione("modban lista mostra", ids) == "</modban lista mostra:42>"
     assert L.menzione("-cerca-comando", ids) == "</-cerca-comando:7>"
 
 
 def test_menzione_senza_id_ricade_sul_testo():
-    assert L.menzione("mod-ban ban", {}) == "`/mod-ban ban`"
+    assert L.menzione("modban ban", {}) == "`/modban ban`"
 
 
 def test_pagine_non_superano_il_massimo_e_correggono_l_indice():
@@ -79,7 +79,7 @@ def test_suggerimenti_al_massimo_25_con_nome_e_valore_corti():
 def test_suggerimenti_filtrano_per_testo():
     comandi = L.raccogli_comandi(_albero())
     valori = [v for _, v in L.suggerimenti("banna", comandi)]
-    assert valori[0] == "mod-ban ban"
+    assert valori[0] == "modban ban"
     assert "-cerca-comando" not in valori
 
 
@@ -88,7 +88,7 @@ def test_cerca_trova_per_sinonimo_italiano():
     # "cacciare" e "allontana" non compaiono in nessuna descrizione: li trova solo il sinonimo di "banna".
     for parola in ("cacciare", "allontana"):
         trovati = L.cerca(parola, comandi)
-        assert trovati and trovati[0].percorso == "mod-ban ban", parola
+        assert trovati and trovati[0].percorso == "modban ban", parola
 
 
 def test_le_varianti_dei_sinonimi_non_prendono_il_bonus_sottostringa():
@@ -99,13 +99,13 @@ def test_le_varianti_dei_sinonimi_non_prendono_il_bonus_sottostringa():
 
 def test_cerca_percorso_esatto_vince_e_toglie_la_barra():
     comandi = L.raccogli_comandi(_albero())
-    assert L.cerca("/mod-ban lista mostra", comandi)[0].percorso == "modban lista mostra"
+    assert L.cerca("/modban lista mostra", comandi)[0].percorso == "modban lista mostra"
 
 
 def test_percorso_esatto_batte_un_comando_che_lo_cita_nella_descrizione():
-    esatto = L.ComandoInfo("mod-ban ban", "zzz", "modban", ())
-    citato = L.ComandoInfo("aaa", "mod-ban ban", "aaa", ())
-    assert L.cerca("mod-ban ban", [citato, esatto])[0] is esatto
+    esatto = L.ComandoInfo("modban ban", "zzz", "modban", ())
+    citato = L.ComandoInfo("aaa", "modban ban", "aaa", ())
+    assert L.cerca("modban ban", [citato, esatto])[0] is esatto
 
 
 def test_url_wiki_oltre_512_caratteri_ricade_sulla_base():
@@ -155,7 +155,7 @@ def test_embed_risultati_sotto_i_limiti_di_discord():
 
 def test_embed_risultati_elenca_le_opzioni_e_la_menzione():
     comandi = L.raccogli_comandi(_albero())
-    ban = [c for c in comandi if c.percorso == "mod-ban ban"]
+    ban = [c for c in comandi if c.percorso == "modban ban"]
     embed = L.embed_risultati(ban, {"modban": 42}, "ban")
     testo = embed.fields[0].value
     assert "</modban ban:42>" in testo

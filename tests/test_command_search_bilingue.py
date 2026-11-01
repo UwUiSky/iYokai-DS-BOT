@@ -15,14 +15,15 @@ def _albero():
     async def cb(interaction):  # pragma: no cover
         pass
 
-    modban = app_commands.Group(name="modban", description="Moderazione dura: ban, kick, softban e sban")
+    modban = app_commands.Group(name="mod-ban", description="Moderazione dura: ban, kick, softban e sban")
     modban.add_command(app_commands.Command(name="ban", description="Banna permanentemente un membro.", callback=cb))
-    mod = app_commands.Group(name="mod", description="Moderazione")
+    mod = app_commands.Group(name="mod-sanzioni", description="Moderazione")
     mod.add_command(app_commands.Command(name="mute", description="Silenzia un membro con un ruolo dedicato.", callback=cb))
-    mod.add_command(app_commands.Command(name="clear", description="Cancella un numero di messaggi.", callback=cb))
+    canali = app_commands.Group(name="mod-canali", description="Moderazione dei canali")
+    canali.add_command(app_commands.Command(name="clear", description="Cancella un numero di messaggi.", callback=cb))
     gestione = app_commands.Group(name="gestione", description="Gestione del server")
     gestione.add_command(app_commands.Command(name="crea", description="Crea qualcosa.", callback=cb))
-    return [modban, mod]
+    return [modban, mod, canali]
 
 
 def _comandi():
@@ -61,7 +62,7 @@ def test_i_risultati_si_mostrano_nella_lingua_di_chi_cerca():
 
 
 def test_il_completamento_mostra_la_descrizione_inglese_agli_utenti_inglesi():
-    voci = logica.suggerimenti("modban", _comandi(), lingua="en")
+    voci = logica.suggerimenti("mod-ban", _comandi(), lingua="en")
     assert voci and "Permanently bans a member." in voci[0][0]
     assert voci[0][1] == "mod-ban ban"  # il valore resta il percorso di base
 
