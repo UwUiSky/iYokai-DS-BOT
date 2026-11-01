@@ -760,6 +760,13 @@ servizi economici su VIP 5, servizi costosi su VIP 20).
 - Il bot mostra da solo i comandi per livello: `/premium` elenca i comandi premium,
   `/vip` quelli di VIP 5 e VIP 20, aggiornati quando l'owner cambia il pannello, senza riavvio.
 - Si predispone ora (livello di default = gratuito per tutto), si attiva con il pannello.
+- I comandi premium/VIP restano nel loro gruppo (`/music`, `/ai`, …): il livello si controlla quando il
+  comando parte (un solo punto, `core/livelli_funzione.py`), con un messaggio chiaro se manca.
+- `/premium` e `/vip` sono gruppi con pochi sotto-comandi fissi (`elenco` con `area` a completamento, `info`):
+  l'elenco è a pagine (embed entro i limiti, bottoni, menu di al massimo 25 voci) e si costruisce dalla
+  tabella `livelli_funzione`. Con 30, 100 o 665 funzioni l'albero non cambia (limiti di 25 figli e 8.000
+  caratteri mai toccati). Si registra o si toglie solo il gruppo intero (nessuna funzione premium/VIP:
+  nessun gruppo), con una sola sincronizzazione per cambio e attesa minima.
 
 ## D58 — Bot multilingue: una cartella per lingua, comandi tradotti, richiesta di lingue nuove (01/11/2026, richiesta dell'owner)
 Lingue di partenza: le stesse del sito (repo iYokai-Site, `src/i18n`): it, en, de, es-ES, fr,
@@ -826,4 +833,10 @@ admin). 152 comandi cambiano percorso; i comandi spenti nella politica dei serve
 seguono il nome nuovo. Già approvato per dopo: se `/economia` supera 6.800, il blocco
 `economia livelli` diventa il gruppo `/xp`.
 Il quinto caso di D25 (`/gestione ruoli` resta dov'è) è superato: tutto sui ruoli sta in `/ruoli`.
-In più (D57): nascono `/premium` e `/vip`, per tutti, che elencano i comandi del loro livello.
+In più (D57): nascono `/premium` e `/vip`, per tutti, che elencano i comandi del loro livello (solo quando serve).
+Visibilità (01/11/2026, owner): ogni gruppo ha il permesso predefinito del suo livello (per tutti: nessuno;
+mod: `moderate_members`, o `kick`/`ban` se più adatto; admin: `manage_guild`; `/owner` solo nel server
+dell'owner con controllo di OWNER_ID), così Discord nasconde da solo i comandi a chi non li può usare.
+Discord applica i permessi solo al primo livello: per questo un gruppo non mescola utenti e staff (un test
+lo controlla). Lo staff «whitelistato» senza quei permessi li vedrà con l'aggiornamento dei permessi dal
+pannello (OAuth `applications.commands.permissions.update`): si farà col pannello.

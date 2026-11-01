@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:16 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:49 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 665 commands in 25 categories.**
+**Total: 665 commands in 35 categories.**
 
 ## Admin
 
@@ -18,14 +18,14 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:1
 - **`/admin config sync`** — Rewrites this server's command permissions.
 - **`/admin language set`** — Sets this server's language.
 - **`/admin language show`** — Shows the language set for this server.
-- **`/admin messages cancel`** — Cancels a scheduled message.
-- **`/admin messages schedule`** — Schedules a message.
-- **`/admin messages scheduled`** — Shows this server's scheduled messages.
-- **`/admin messages sticky-set`** — Sets a channel's sticky message.
-- **`/admin messages sticky-togli`** — Removes a channel's sticky message.
 - **`/admin music request-channel`** — Channel where typing a title queues it, with the player.
 - **`/admin music settings`** — Changes the server's music settings.
 - **`/admin music summary`** — Shows all the server's music settings.
+- **`/admin policy channels`** — Where the bot answers commands.
+- **`/admin policy comando`** — Turns a single command off or on again.
+- **`/admin policy diagnosis`** — Finds out why a command does not work here.
+- **`/admin policy ignore`** — The bot ignores a role or a user.
+- **`/admin policy list`** — Shows the command policy and, if you want, clears a list.
 - **`/admin premium appearance`** — The bot's avatar, banner and description in this server (premium).
 - **`/admin premium branding`** — Use a bot with your own name and avatar (premium).
 - **`/admin premium redeem`** — Redeems a premium code for this server.
@@ -33,28 +33,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:1
 - **`/admin premium status`** — Shows how premium is unlocked in this server.
 - **`/admin setup enable`** — Turns the bot's modules on or off, by category.
 - **`/admin setup wizard`** — Step-by-step setup of the bot's roles and modules, one category at a time.
-- **`/admin ticket auto-close`** — Closes tickets idle for N minutes (0 = off).
-- **`/admin ticket close-all`** — Closes the open tickets (up to 25 at a time).
-- **`/admin ticket dm`** — Turns ModMail (tickets in DM) on or off.
-- **`/admin ticket dm-block`** — Blocks or unblocks a user from ModMail.
-- **`/admin ticket form-add`** — Adds a question to the form (max 5).
-- **`/admin ticket form-remove`** — Removes a question from the form.
-- **`/admin ticket form-show`** — Shows the questions of a panel's form.
-- **`/admin ticket panel-create`** — Creates a ticket panel.
-- **`/admin ticket panel-list`** — Lists the server's ticket panels.
-- **`/admin ticket panel-publish`** — Publishes the buttons of one or more panels here.
-- **`/admin ticket panel-remove`** — Deletes a panel and its form.
-- **`/admin ticket reminder`** — Reminder after N minutes without staff (0 = off).
-- **`/admin ticket replies-list`** — Lists the server's standard replies.
-- **`/admin ticket reply-delete`** — Deletes a standard reply.
-- **`/admin ticket reply-edit`** — Corrects a standard reply.
-- **`/admin ticket standard`** — Standard replies learned by the staff.
-- **`/admin ticket vote`** — Star rating in DM at closing.
 
 ## Ai
 
 - **`/ai banned-words`** — Words or topics the AI must refuse.
-- **`/ai boss network`** — Owner only: publish or close the network boss.
 - **`/ai boss set`** — Channel, days, time and rewards of the World Boss.
 - **`/ai boss start`** — Summons the World Boss right now.
 - **`/ai build`** — The AI suggests roles and channels from a description; you confirm.
@@ -69,7 +51,6 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:1
 - **`/ai knowledge remove`** — Removes an entry from the knowledge base.
 - **`/ai limits`** — Spending cap and quotas: per user, per feature, images.
 - **`/ai lore`** — Server tone and setting used in every AI text.
-- **`/ai maintenance`** — Owner only: puts the AI in maintenance in every server.
 - **`/ai moderation`** — The AI flags suspicious messages of a channel to the staff.
 - **`/ai mystery create`** — Hides a mystery with a code and a prize for the server.
 - **`/ai mystery list`** — The server mysteries (the code stays secret).
@@ -82,7 +63,6 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:1
 - **`/ai status`** — AI status in the server: providers, settings and monthly usage.
 - **`/ai summary preview`** — Shows you the digest as of now, without publishing it.
 - **`/ai summary set`** — Server digest: channel, hour, frequency and channels to read.
-- **`/ai template`** — Owner only: a provider model, tier and job types; length cap.
 - **`/ai translation`** — Automatically translates every message of a channel.
 - **`/ai voice set`** — Voice: on or off, tone and greeting channels.
 - **`/ai voice speak`** — Yokai says an announcement out loud in a channel.
@@ -141,7 +121,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:1
 - **`/Save to bookmarks`** — “Apps” menu (right click)
 - **`/Transcribe voice message`** — “Apps” menu (right click)
 - **`/Translate`** — “Apps” menu (right click)
-- **`/assistant`** — Your personal assistant: ask how to do something.
+- **`/assistant`** — AI features for everyone: summaries, translations, images, characters
 - **`/bookmarks list`** — Shows your bookmarks, newest first.
 - **`/bookmarks remove`** — Removes a bookmark.
 - **`/desktop alerts`** — Turns mention and reply alerts on or off.
@@ -213,32 +193,34 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:1
 - **`/nsfw-admin tag-add`** — Adds a tag to the server allowlist.
 - **`/nsfw-admin tag-remove`** — Removes a tag from the server allowlist.
 
+## AI assistant
+
+- **`/assistant alert`** — Follow up to 3 words: I notify you when they are discussed a lot.
+- **`/assistant character`** — Talk to a server AI character.
+- **`/assistant create-character`** — Creates an AI character to chat with.
+- **`/assistant explain`** — Explains a message in simple words (from its link).
+- **`/assistant fragments`** — The lore fragments you collected.
+- **`/assistant imagine`** — Generates an image from a description.
+- **`/assistant lore`** — Lore card about a name, a place or a yokai.
+- **`/assistant mystery`** — Answer a server mystery with the code.
+- **`/assistant pack`** — Buy 5 extra AI images with server coins.
+- **`/assistant preference`** — Your AI choices: replies for you and a style others may imitate.
+- **`/assistant speak`** — Yokai says a phrase out loud in this channel.
+- **`/assistant spirit`** — Your Yokai spirit: an affinity that grows with your activity.
+- **`/assistant style`** — A new message written like you write (or like someone who allows it).
+- **`/assistant summarize`** — Summary of the latest messages of a channel.
+- **`/assistant translate`** — Translates a text into the language you choose.
+- **`/assistant upscale`** — Upscales and cleans up an image you upload.
+
 ## AutoMod
 
 - **`/automod exemptions channel-add`** — Exempts a channel from all advanced AutoMod filters.
 - **`/automod exemptions channel-remove`** — Removes a channel's exemption.
 - **`/automod exemptions role-add`** — Exempts a role from all advanced AutoMod filters.
 - **`/automod exemptions role-remove`** — Removes a role's exemption.
-- **`/automod filters actions-set`** — Sets which actions run when an advanced filter triggers.
-- **`/automod filters anti-attachment`** — Configures anti attachment-spam (too many attachments in a short time).
-- **`/automod filters anti-caps`** — Configures anti-caps (too many capital letters).
-- **`/automod filters anti-link-domain`** — Adds or removes a domain from the link whitelist/blacklist.
-- **`/automod filters anti-link-mode`** — Sets the link filter mode.
-- **`/automod filters anti-mention`** — Configures anti mass-mention (too many users tagged in one message).
-- **`/automod filters anti-spam-emoji`** — Configures emoji anti-spam (too many emoji in one message).
-- **`/automod filters anti-spam-messages`** — Configures message anti-spam (too many messages in a short time).
-- **`/automod filters anti-spam-sticker`** — Configures sticker anti-spam (too many stickers in a short time).
-- **`/automod filters anti-zalgo`** — Turns anti-zalgo on or off (text with abnormal diacritics).
-- **`/automod filters content`** — Embeds and forwards checked by filters; banned file types.
-- **`/automod filters invites`** — Turns the automatic Discord invite block on or off.
-- **`/automod filters media-channel`** — Media-only channel, no attachments or normal.
-- **`/automod filters messages`** — Repeated, too short, links and mentions counted over time (0 = off).
-- **`/automod filters phishing`** — Turn the phishing link block on or off (fake gifts, fake logins).
-- **`/automod filters text-shape`** — Limits on message shape: line breaks, length, spoilers (0 = off).
 - **`/automod log-channel`** — Sets the channel for the advanced AutoMod action log.
 - **`/automod mute-duration`** — Sets the timeout length used by the AutoMod 'mute' action.
 - **`/automod odio base`** — Turns the base list of hate slurs on or off.
-- **`/automod odio libreria`** — Bot owner only: the worldwide library of hate words.
 - **`/automod odio lockdown`** — Preventive block of hateful phrases.
 - **`/automod odio nomi`** — Checks nicknames and display names on join and on change.
 - **`/automod odio parola`** — Adds or removes a custom word or an allowed word.
@@ -280,8 +262,6 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:1
 
 ## Clan
 
-- **`/clan board disable`** — Turns off the automatic top 3 guilds announcement.
-- **`/clan board set`** — Sets the channel for the monthly top 3 guilds announcement.
 - **`/clan boost guild`** — Buys a x2 boost for 24h for ALL members, from the treasury.
 - **`/clan boost individual`** — Buys a personal x2 boost for 24h on your guild voice tick.
 - **`/clan buy-channel`** — Unlocks a new extra channel for your guild.
@@ -299,76 +279,66 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:1
 
 ## Economy
 
+- **`/economy announcements clan-off`** — Turns off the automatic top 3 guilds announcement.
+- **`/economy announcements clan-set`** — Sets the channel for the monthly top 3 guilds announcement.
+- **`/economy announcements winners-off`** — Turns off the monthly winners announcement.
+- **`/economy announcements winners-set`** — Sets the channel for the monthly winners announcement.
 - **`/economy award-lobby`** — Participation prize: gives coins to those in voice NOW, from the server treasury.
 - **`/economy award-winner`** — Winner prize: gives coins to a member, from the server treasury.
 - **`/economy coins`** — Edits a member's balance.
-- **`/economy giveaway`** — Starts a giveaway.
-- **`/economy giveaway-modello`** — Giveaway templates: save, list, delete, start.
-- **`/economy giveaway-programmati`** — Scheduled giveaways: list (including failed ones) or cancel.
+- **`/economy levels announcement`** — Where and when to announce level-ups.
+- **`/economy levels card`** — Shows or hides image backgrounds of cards and profiles in this server.
+- **`/economy levels exclude`** — A channel, category or role gives no XP (repeat to undo).
+- **`/economy levels multiplier`** — XP multiplied in a channel or for a role (factor 1 = removes the rule).
+- **`/economy levels rewards`** — Reward roles: keep them all or only the highest.
+- **`/economy levels shop`** — Asks for confirmation before each shop purchase (can be turned off).
+- **`/economy levels show`** — Shows this server's level settings.
+- **`/economy levels xp`** — How much XP and coins are earned, and how multipliers add up.
 - **`/economy premium-cashbox`** — Unlocks one month of premium bot by spending from the treasury.
 - **`/economy progress`** — Turns missions, streaks, achievements and pass on or off; sets the server goal.
 - **`/economy shop-add`** — Adds an item to the shop.
 - **`/economy shop-edit`** — Edits a shop item (price, stock, required role...).
 - **`/economy shop-remove`** — Removes an item from the shop.
-- **`/economy winners-off`** — Turns off the monthly winners announcement.
-- **`/economy winners-set`** — Sets the channel for the monthly winners announcement.
 - **`/economy xp`** — Edits a member's XP and level.
+
+## AutoMod filters (staff)
+
+- **`/filters actions-set`** — Sets which actions run when an advanced filter triggers.
+- **`/filters anti-attachment`** — Configures anti attachment-spam (too many attachments in a short time).
+- **`/filters anti-caps`** — Configures anti-caps (too many capital letters).
+- **`/filters anti-link-domain`** — Adds or removes a domain from the link whitelist/blacklist.
+- **`/filters anti-link-mode`** — Sets the link filter mode.
+- **`/filters anti-mention`** — Configures anti mass-mention (too many users tagged in one message).
+- **`/filters anti-spam-emoji`** — Configures emoji anti-spam (too many emoji in one message).
+- **`/filters anti-spam-messages`** — Configures message anti-spam (too many messages in a short time).
+- **`/filters anti-spam-sticker`** — Configures sticker anti-spam (too many stickers in a short time).
+- **`/filters anti-zalgo`** — Turns anti-zalgo on or off (text with abnormal diacritics).
+- **`/filters content`** — Embeds and forwards checked by filters; banned file types.
+- **`/filters invites`** — Turns the automatic Discord invite block on or off.
+- **`/filters media-channel`** — Media-only channel, no attachments or normal.
+- **`/filters messages`** — Repeated, too short, links and mentions counted over time (0 = off).
+- **`/filters phishing`** — Turn the phishing link block on or off (fake gifts, fake logins).
+- **`/filters text-shape`** — Limits on message shape: line breaks, length, spoilers (0 = off).
 
 ## Fun
 
 - **`/fun 8ball`** — Ask the magic 8-ball a question.
-- **`/fun animal`** — Shows a random animal picture.
-- **`/fun blur`** — Blurs an image.
 - **`/fun choose`** — I pick at random among the options you write.
 - **`/fun coinflip`** — Flips a coin: heads or tails.
-- **`/fun counting`** — Counting game: pick the channel where people count 1, 2, 3... in turn.
 - **`/fun dice`** — Rolls a die.
-- **`/fun effect`** — Avatar effect: rainbow, R.I.P., wanted, triggered.
 - **`/fun fact`** — Shows a random fun fact.
-- **`/fun grayscale`** — Turns an image to grayscale.
-- **`/fun invert`** — Inverts an image's colors.
 - **`/fun joke`** — Tells a random joke.
 - **`/fun measure`** — Measures from 0 to 100% how much of something you choose.
-- **`/fun meme`** — Makes a meme with top/bottom text.
 - **`/fun number`** — A random number in a range.
-- **`/fun pixelate`** — Pixelates an image.
-- **`/fun play`** — Play your coins: coin flip, dice or slots.
 - **`/fun prank`** — A harmless prank on a user.
 - **`/fun quote`** — Shows a random quote.
 - **`/fun random`** — Would you rather, topic, advice, magic item.
 - **`/fun rate`** — Rates something from 0 to 10.
-- **`/fun rps`** — Rock, paper, scissors against the bot.
-- **`/fun search-image`** — Searches a SFW image on Pixabay.
 - **`/fun ship`** — Computes the compatibility between two users.
 - **`/fun text`** — Write a text in a special style.
 
 ## Management
 
-- **`/management roles auto-add`** — Adds a role given automatically to new members.
-- **`/management roles auto-list`** — Shows the server's automatic roles.
-- **`/management roles auto-remember`** — Gives roles back to people who leave and rejoin within a set time.
-- **`/management roles auto-remove`** — Removes a role given automatically to new members.
-- **`/management roles auto-sync`** — Give the automatic roles to members already in the server too.
-- **`/management roles level-add`** — Gives a role to whoever reaches a level.
-- **`/management roles level-list`** — Shows the reward roles configured on this server.
-- **`/management roles level-remove`** — Removes a configured reward role.
-- **`/management roles menu-access`** — Limits a menu to certain roles or excludes others.
-- **`/management roles menu-add`** — Adds an option to a role menu.
-- **`/management roles menu-create`** — Creates a new role menu.
-- **`/management roles menu-delete`** — Deletes a role menu.
-- **`/management roles menu-edit`** — Changes title, description or behavior of an already published menu.
-- **`/management roles menu-list`** — Shows the server's role menus, with IDs.
-- **`/management roles menu-remove`** — Removes an option from a role menu.
-- **`/management ticket category-add`** — Adds (or updates) a ticket category.
-- **`/management ticket category-list`** — Lists the configured ticket categories.
-- **`/management ticket category-remove`** — Removes a ticket category.
-- **`/management ticket limite`** — How many open tickets each user can have at once (default 1).
-- **`/management ticket panel`** — Publishes the ticket opening panel in this channel.
-- **`/management ticket role-list`** — Lists the configured support roles.
-- **`/management ticket ruolo-add`** — Adds a support role.
-- **`/management ticket ruolo-remove`** — Removes a support role.
-- **`/management ticket setup`** — Sets the category (and optionally the support role) for tickets.
-- **`/management ticket stats`** — Ticket system statistics.
 - **`/management voice cap`** — Sets the maximum number of temporary voice channels per category.
 - **`/management voice generator`** — Extra generator channels with their own rules.
 - **`/management voice options`** — Name of new channels, lock, log, copy, panel.
@@ -382,42 +352,47 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:1
 - **`/management welcome preview`** — Shows a preview of how a message would look.
 - **`/management welcome welcome`** — Sets up the welcome message.
 
+## Games
+
+- **`/games play`** — Play your coins: coin flip, dice or slots.
+- **`/games rps`** — Rock, paper, scissors against the bot.
+
+## Giveaway (staff)
+
+- **`/giveaway scheduled`** — Scheduled giveaways: list (including failed ones) or cancel.
+- **`/giveaway start`** — Starts a giveaway.
+- **`/giveaway template`** — Giveaway templates: save, list, delete, start.
+
+## Images
+
+- **`/images animal`** — Shows a random animal picture.
+- **`/images blur`** — Blurs an image.
+- **`/images effect`** — Avatar effect: rainbow, R.I.P., wanted, triggered.
+- **`/images grayscale`** — Turns an image to grayscale.
+- **`/images invert`** — Inverts an image's colors.
+- **`/images meme`** — Makes a meme with top/bottom text.
+- **`/images pixelate`** — Pixelates an image.
+- **`/images search-image`** — Searches a SFW image on Pixabay.
+
 ## Levels
 
-- **`/level balance`** — Shows your coins.
 - **`/level birthday remove`** — Deletes your birthday.
 - **`/level birthday set`** — Saves your birthday (day and month only).
 - **`/level birthday show`** — Shows the birthday you saved.
 - **`/level calcola`** — How many messages or voice minutes are missing to reach a level.
-- **`/level cashbox`** — Shows the server treasury balance.
 - **`/level collection buy`** — Buys a badge or background with your coins.
 - **`/level collection equip`** — Puts a badge or background on your profile (no item removes it).
 - **`/level collection shop`** — Shows badges and backgrounds on sale and the ones you own.
-- **`/level cooldowns`** — When you can use daily and work again.
-- **`/level daily`** — Claims the daily reward.
 - **`/level invites history`** — Who invited a member and the last people they brought in.
 - **`/level invites leaderboard`** — The 10 members who invited the most people.
 - **`/level invites link`** — Your personal invite link, served through the bot's website.
-- **`/level invites options`** — Invite log channel and who has the personal link.
 - **`/level invites user`** — How many people a member invited.
 - **`/level leaderboard`** — Shows the server leaderboard.
-- **`/level pay`** — Transfers coins to another user.
 - **`/level profile`** — Shows a member's profile; with "presentazione" you change yours.
 - **`/level progress`** — Missions, streaks, achievements and the 90-day pass, in a menu.
 - **`/level rank`** — Shows the rank card: level, XP, position and coins.
 - **`/level recent-levels`** — The last 25 level-ups in the server.
 - **`/level rewards`** — Shows level reward roles and active XP multipliers.
-- **`/level settings announcement`** — Where and when to announce level-ups.
-- **`/level settings card`** — Shows or hides image backgrounds of cards and profiles in this server.
-- **`/level settings exclude`** — A channel, category or role gives no XP (repeat to undo).
-- **`/level settings multiplier`** — XP multiplied in a channel or for a role (factor 1 = removes the rule).
-- **`/level settings rewards`** — Reward roles: keep them all or only the highest.
-- **`/level settings shop`** — Asks for confirmation before each shop purchase (can be turned off).
-- **`/level settings show`** — Shows this server's level settings.
-- **`/level settings xp`** — How much XP and coins are earned, and how multipliers add up.
-- **`/level shop buy`** — Buys a shop item.
-- **`/level shop list`** — Shows the items available in the shop.
-- **`/level work`** — Work to earn some coins.
 
 ## Log
 
@@ -434,6 +409,27 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:1
 - **`/log search user`** — Shows a user's event history.
 - **`/log status`** — Shows where the server logs go.
 - **`/log webhook`** — Sends logs through a channel webhook, grouped, with its own rate limits.
+
+## Messages (staff)
+
+- **`/messages embed create`** — Creates an embed and shows the preview.
+- **`/messages embed delete`** — Deletes a saved embed (the published message stays).
+- **`/messages embed edit`** — Edits a saved embed (and the already published message).
+- **`/messages embed list`** — Shows the saved embeds.
+- **`/messages embed publish`** — Sends a saved embed to a channel.
+- **`/messages pinned remove`** — Removes a channel's sticky message.
+- **`/messages pinned set`** — Sets a channel's sticky message.
+- **`/messages replies create`** — Creates an automatic reply.
+- **`/messages replies delete`** — Deletes an automatic reply.
+- **`/messages replies list`** — Shows the server's automatic replies.
+- **`/messages scheduled cancel`** — Cancels a scheduled message.
+- **`/messages scheduled create`** — Schedules a message.
+- **`/messages scheduled list`** — Shows this server's scheduled messages.
+- **`/messages tag create`** — Creates a custom command.
+- **`/messages tag delete`** — Deletes a custom command.
+- **`/messages tag edit`** — Edits a custom command.
+- **`/messages tag list`** — Shows the server's custom commands.
+- **`/messages tag prefix`** — Picks the prefix to use commands by typing in the channel.
 
 ## Moderation
 
@@ -501,22 +497,11 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:1
 - **`/modules applications list`** — This server's forms.
 - **`/modules birthdays channel`** — Picks the wishes channel (empty to turn them off).
 - **`/modules birthdays role`** — A role for 24 hours for whoever has a birthday (empty to remove it).
-- **`/modules commands create`** — Creates a custom command.
-- **`/modules commands delete`** — Deletes a custom command.
-- **`/modules commands edit`** — Edits a custom command.
-- **`/modules commands list`** — Shows the server's custom commands.
-- **`/modules commands prefix`** — Picks the prefix to use commands by typing in the channel.
-- **`/modules commands replies`** — Shows the server's automatic replies.
-- **`/modules commands reply-create`** — Creates an automatic reply.
-- **`/modules commands reply-delete`** — Deletes an automatic reply.
 - **`/modules counters create`** — Creates a channel that shows a number.
 - **`/modules counters delete`** — Stops updating a counter (the channel stays).
 - **`/modules counters list`** — Shows the server's counters.
-- **`/modules embed create`** — Creates an embed and shows the preview.
-- **`/modules embed delete`** — Deletes a saved embed (the published message stays).
-- **`/modules embed edit`** — Edits a saved embed (and the already published message).
-- **`/modules embed list`** — Shows the saved embeds.
-- **`/modules embed publish`** — Sends a saved embed to a channel.
+- **`/modules counting`** — Counting game: pick the channel where people count 1, 2, 3... in turn.
+- **`/modules invites`** — Invite log channel and who has the personal link.
 - **`/modules starboard disattiva`** — Turns the board off.
 - **`/modules starboard set`** — Picks the board channel and the star threshold.
 - **`/modules starboard threshold`** — Changes how many stars are needed to reach the board.
@@ -525,6 +510,17 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:1
 - **`/modules statistics ruolo-aggiungi`** — Give a role to active members and remove it when they stop.
 - **`/modules statistics ruolo-elimina`** — Delete an activity role rule.
 - **`/modules statistics settings`** — Exclude channels or roles from the statistics.
+
+## Coins
+
+- **`/coins balance`** — Shows your coins.
+- **`/coins cashbox`** — Shows the server treasury balance.
+- **`/coins cooldowns`** — When you can use daily and work again.
+- **`/coins daily`** — Claims the daily reward.
+- **`/coins pay`** — Transfers coins to another user.
+- **`/coins shop buy`** — Buys a shop item.
+- **`/coins shop list`** — Shows the items available in the shop.
+- **`/coins work`** — Work to earn some coins.
 
 ## Music
 
@@ -559,6 +555,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:1
 
 ## Owner
 
+- **`/owner ai maintenance`** — Owner only: puts the AI in maintenance in every server.
+- **`/owner ai network-boss`** — Owner only: publish or close the network boss.
+- **`/owner ai template`** — Owner only: a provider model, tier and job types; length cap.
 - **`/owner blacklist server-add`** — Globally blocks a server (the bot leaves if already there).
 - **`/owner blacklist server-list`** — Shows the globally blocked servers.
 - **`/owner blacklist server-remove`** — Removes a server from the global blacklist.
@@ -568,6 +567,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:1
 - **`/owner cog load`** — Loads an extension (e.g. cogs.moderation.actions).
 - **`/owner cog reload`** — Reloads an extension, optionally updating it from GitHub or a file.
 - **`/owner cog unload`** — Unloads an extension.
+- **`/owner hate-words`** — Bot owner only: the worldwide library of hate words.
 - **`/owner premium grant`** — Grants premium to a server, or creates a code to redeem.
 - **`/owner premium list`** — Shows the premium status of all modules.
 - **`/owner premium panel`** — Interactive panel to turn premium modules on or off.
@@ -597,14 +597,29 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:1
 
 ## Roles
 
+- **`/roles auto add`** — Adds a role given automatically to new members.
+- **`/roles auto list`** — Shows the server's automatic roles.
+- **`/roles auto remove`** — Removes a role given automatically to new members.
+- **`/roles auto ricorda`** — Gives roles back to people who leave and rejoin within a set time.
+- **`/roles auto sync`** — Give the automatic roles to members already in the server too.
 - **`/roles bulk`** — Give or remove a role to many members at once, with filters.
 - **`/roles bulk-stop`** — Stop the bulk operation in progress.
 - **`/roles create`** — Create a new role.
 - **`/roles diagnosis`** — Find out why the bot cannot give a role.
 - **`/roles edit`** — Change name, color and options of a role.
 - **`/roles give`** — Give one or more roles to a member, also for a time.
+- **`/roles menu access`** — Limits a menu to certain roles or excludes others.
+- **`/roles menu add`** — Adds an option to a role menu.
+- **`/roles menu create`** — Creates a new role menu.
+- **`/roles menu delete`** — Deletes a role menu.
+- **`/roles menu edit`** — Changes title, description or behavior of an already published menu.
+- **`/roles menu list`** — Shows the server's role menus, with IDs.
+- **`/roles menu remove`** — Removes an option from a role menu.
 - **`/roles remove`** — Remove one or more roles from a member, also for a time.
 - **`/roles reset`** — Remove all roles from a member, with confirmation.
+- **`/roles reward add`** — Gives a role to whoever reaches a level.
+- **`/roles reward list`** — Shows the reward roles configured on this server.
+- **`/roles reward remove`** — Removes a configured reward role.
 - **`/roles self-roles`** — Roles members take by themselves with /utility role.
 
 ## Security
@@ -641,12 +656,15 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:1
 - **`/security verify whitelist-add`** — Adds a user to the whitelist.
 - **`/security verify whitelist-remove`** — Removes a user from the whitelist.
 
+## Polls
+
+- **`/polls create`** — Creates a poll (up to 10 options).
+
 ## Tickets
 
 - **`/ticket add`** — Adds a user or role to this ticket.
 - **`/ticket ask-close`** — Ask the user whether the ticket can be closed.
 - **`/ticket assistant`** — AI assistant answer (for staff: draft and triage).
-- **`/ticket blacklist`** — Users and roles that cannot open tickets.
 - **`/ticket claim`** — Takes charge of this ticket.
 - **`/ticket close`** — Closes this ticket.
 - **`/ticket dm-close`** — Closes this ModMail conversation.
@@ -654,16 +672,6 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:1
 - **`/ticket notes`** — Private staff thread to discuss the ticket.
 - **`/ticket on-call`** — Join or leave the staff notified on every new ticket.
 - **`/ticket open`** — Open a ticket (staff also for a user or from a message).
-- **`/ticket options access`** — Who can open: per-role rules, read from the top.
-- **`/ticket options alerts`** — Who to ping on opening and pinned first message.
-- **`/ticket options channel`** — Channel name and fallback categories.
-- **`/ticket options claiming`** — Claiming: category, exclusivity, auto-assignment.
-- **`/ticket options closing`** — Confirmation before closing and who can close.
-- **`/ticket options hours`** — Opening hours and what happens outside them.
-- **`/ticket options limits`** — Open-ticket cap, cooldown and exempt roles.
-- **`/ticket options messages`** — DMs to the user and claim/release texts.
-- **`/ticket options permissions`** — User permissions, observers, roles while open, staff team.
-- **`/ticket options show`** — All the options of a panel.
 - **`/ticket pass`** — Hands the ticket over to a colleague.
 - **`/ticket priority`** — Sets this ticket's priority.
 - **`/ticket release`** — Gives up taking charge of this ticket.
@@ -672,28 +680,55 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:1
 - **`/ticket reply`** — Replies to the user of this ModMail conversation.
 - **`/ticket reset-cooldown`** — Remove a user's cooldown between tickets.
 - **`/ticket riapri`** — Reopens this closed ticket (if the panel keeps the channel).
-- **`/ticket suspend`** — Suspend ticket opening (no reason: resume).
 - **`/ticket transcript`** — Get the transcript without closing the ticket.
+
+## Ticket management (staff)
+
+- **`/ticket-manage auto-close`** — Closes tickets idle for N minutes (0 = off).
+- **`/ticket-manage blacklist`** — Users and roles that cannot open tickets.
+- **`/ticket-manage category add`** — Adds (or updates) a ticket category.
+- **`/ticket-manage category list`** — Lists the configured ticket categories.
+- **`/ticket-manage category remove`** — Removes a ticket category.
+- **`/ticket-manage close-all`** — Closes the open tickets (up to 25 at a time).
+- **`/ticket-manage limite`** — How many open tickets each user can have at once (default 1).
+- **`/ticket-manage modmail block`** — Blocks or unblocks a user from ModMail.
+- **`/ticket-manage modmail enable`** — Turns ModMail (tickets in DM) on or off.
+- **`/ticket-manage panel`** — Publishes the ticket opening panel in this channel.
+- **`/ticket-manage reminder`** — Reminder after N minutes without staff (0 = off).
+- **`/ticket-manage replies delete`** — Deletes a standard reply.
+- **`/ticket-manage replies edit`** — Corrects a standard reply.
+- **`/ticket-manage replies list`** — Lists the server's standard replies.
+- **`/ticket-manage replies standard`** — Standard replies learned by the staff.
+- **`/ticket-manage role add`** — Adds a support role.
+- **`/ticket-manage role list`** — Lists the configured support roles.
+- **`/ticket-manage role remove`** — Removes a support role.
+- **`/ticket-manage setup`** — Sets the category (and optionally the support role) for tickets.
+- **`/ticket-manage stats`** — Ticket system statistics.
+- **`/ticket-manage suspend`** — Suspend ticket opening (no reason: resume).
+- **`/ticket-manage vote`** — Star rating in DM at closing.
+
+## Ticket panels (staff)
+
+- **`/ticket-panels create`** — Creates a ticket panel.
+- **`/ticket-panels form add`** — Adds a question to the form (max 5).
+- **`/ticket-panels form remove`** — Removes a question from the form.
+- **`/ticket-panels form show`** — Shows the questions of a panel's form.
+- **`/ticket-panels list`** — Lists the server's ticket panels.
+- **`/ticket-panels options access`** — Who can open: per-role rules, read from the top.
+- **`/ticket-panels options alerts`** — Who to ping on opening and pinned first message.
+- **`/ticket-panels options channel`** — Channel name and fallback categories.
+- **`/ticket-panels options claiming`** — Claiming: category, exclusivity, auto-assignment.
+- **`/ticket-panels options closing`** — Confirmation before closing and who can close.
+- **`/ticket-panels options hours`** — Opening hours and what happens outside them.
+- **`/ticket-panels options limits`** — Open-ticket cap, cooldown and exempt roles.
+- **`/ticket-panels options messages`** — DMs to the user and claim/release texts.
+- **`/ticket-panels options permissions`** — User permissions, observers, roles while open, staff team.
+- **`/ticket-panels options show`** — All the options of a panel.
+- **`/ticket-panels publish`** — Publishes the buttons of one or more panels here.
+- **`/ticket-panels remove`** — Deletes a panel and its form.
 
 ## Utility
 
-- **`/utility ai alert`** — Follow up to 3 words: I notify you when they are discussed a lot.
-- **`/utility ai character`** — Talk to a server AI character.
-- **`/utility ai create-character`** — Creates an AI character to chat with.
-- **`/utility ai explain`** — Explains a message in simple words (from its link).
-- **`/utility ai fragments`** — The lore fragments you collected.
-- **`/utility ai imagine`** — Generates an image from a description.
-- **`/utility ai lore`** — Lore card about a name, a place or a yokai.
-- **`/utility ai mystery`** — Answer a server mystery with the code.
-- **`/utility ai pack`** — Buy 5 extra AI images with server coins.
-- **`/utility ai preference`** — Your AI choices: replies for you and a style others may imitate.
-- **`/utility ai speak`** — Yokai says a phrase out loud in this channel.
-- **`/utility ai spirit`** — Your Yokai spirit: an affinity that grows with your activity.
-- **`/utility ai style`** — A new message written like you write (or like someone who allows it).
-- **`/utility ai summarize`** — Summary of the latest messages of a channel.
-- **`/utility ai translate`** — Translates a text into the language you choose.
-- **`/utility ai upscale`** — Upscales and cleans up an image you upload.
-- **`/utility editsnipe`** — Shows the last edited message in this channel.
 - **`/utility form`** — Fills in a form or application of this server.
 - **`/utility info`** — Bot information: version, invite and support.
 - **`/utility language`** — Shows or changes your personal language (Italian or English).
@@ -706,15 +741,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:1
 - **`/utility lookup server`** — Server card: owner, date, numbers, boosts.
 - **`/utility lookup user`** — Member card: ID, dates and roles.
 - **`/utility ping`** — Checks whether iYokai Main is online and its latency.
-- **`/utility policy channels`** — Where the bot answers commands.
-- **`/utility policy comando`** — Turns a single command off or on again.
-- **`/utility policy diagnosis`** — Finds out why a command does not work here.
-- **`/utility policy ignore`** — The bot ignores a role or a user.
-- **`/utility policy list`** — Shows the command policy and, if you want, clears a list.
-- **`/utility poll`** — Creates a poll (up to 10 options).
 - **`/utility privacy cancella`** — Request the deletion of your personal data.
 - **`/utility privacy export`** — Get a copy of the data the bot keeps about you.
-- **`/utility reactionsnipe`** — Shows the last removed reaction in this channel.
 - **`/utility reminder cancel`** — Cancel a reminder, or all of yours.
 - **`/utility reminder list`** — Shows your pending reminders.
 - **`/utility reminder server`** — For staff: the reminders set in this server.
@@ -723,7 +751,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 10:1
 - **`/utility request-command`** — Suggests a new command for the bot.
 - **`/utility role`** — Take or leave the server's self-assignable roles.
 - **`/utility serverstats`** — Shows the server statistics, with a growth chart.
-- **`/utility snipe`** — Shows the last deleted message in this channel.
+- **`/utility snipe edit`** — Shows the last edited message in this channel.
+- **`/utility snipe message`** — Shows the last deleted message in this channel.
+- **`/utility snipe reaction`** — Shows the last removed reaction in this channel.
 - **`/utility suggest`** — Suggest an idea for this server.
 - **`/utility tag`** — Uses a custom command of this server.
 - **`/utility verify`** — Verify yourself in this server (same as the panel button).
