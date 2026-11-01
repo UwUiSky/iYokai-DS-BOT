@@ -294,7 +294,8 @@ Totale voci: **514**.
   - `[x]` Impronta della rete (IPv4, /64 per IPv6): HMAC con sale segreto e id del server, mai l'IP
   - `[x]` Impronta del browser (User-Agent e lingua), stesso HMAC
   - `[x]` OAuth2 `identify`: non serve, il link è legato al membro dal bot (firma); l'alternativa regolare (D18) è questa
-  - `[✗]` ISP / localizzazione: non raccolti (privacy, D19). Nessuna alternativa da aggiungere: l'impronta di rete (IPv4 o /64) basta a riconoscere i doppi, e raccogliere dove abita una persona sarebbe sproporzionato (GDPR, minimizzazione dei dati)
+  - `[x]` Paese (D53, r14): dall'IP solo durante la verifica web, con banca dati MMDB locale (`GEOIP_PAESI_MMDB`, `scripts/aggiorna_geoip.py`); si salva solo il codice ISO (tabella `verify_paese`, 0490, 30 giorni, nel registro dei dati). Impostazioni `verify_paesi`, `verify_paesi_soglia`, `verify_paesi_minuti`, `verify_paesi_canale_id`: oltre la soglia la verifica resta in attesa e lo staff approva o rifiuta con due bottoni; mai blocco automatico. Segnale debole: lingua del client Discord
+  - `[✗]` ISP e città: non raccolti (privacy, D19, D53). L'impronta di rete (IPv4 o /64) basta a riconoscere i doppi
   - `[x]` Salvataggio: `verify_impronte` (0210), 30 giorni, nel registro dei dati
 - `[x]` 4.3 Sistema Anti-Alt — NF-21 (#92), solo nello stesso server
   - `[x]` Database delle impronte e dei doppi (`verify_doppi`, 90 giorni)
