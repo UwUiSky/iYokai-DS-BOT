@@ -31,6 +31,9 @@ from core.repositories.blacklist_repo import blacklist_repo
 logger = logging.getLogger("iyokai.blacklist_tree")
 
 
+from core.livelli_funzione import motivo_negato as motivo_negato_livello  # noqa: E402
+
+
 class BlacklistAwareCommandTree(discord.app_commands.CommandTree):
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if await blacklist_repo.is_user_blacklisted(interaction.user.id):
@@ -59,6 +62,15 @@ class BlacklistAwareCommandTree(discord.app_commands.CommandTree):
                 await interaction.response.send_message(
                     await testo_per(interaction, motivo), ephemeral=True
                 )
+            except discord.HTTPException:
+                pass
+            return False
+
+        # D57: livello di abbonamento della funzione (tutto gratuito finché l'owner non cambia i livelli).
+        negato = await motivo_negato_livello(interaction)
+        if negato is not None:
+            try:
+                await interaction.response.send_message(negato, ephemeral=True)
             except discord.HTTPException:
                 pass
             return False

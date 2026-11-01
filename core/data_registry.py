@@ -573,6 +573,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonna_server="guild_id"),
     _t("music_playlists", "Playlist musicali salvate da un utente (NF-19)", colonne_utente=("user_id",),
        utente="cancella", esporta=True, server="conserva", nota="dell'utente, valide in ogni server"),
+    _t("livelli_funzione", "Livello di abbonamento di ogni funzione (D57)", server="conserva",
+       nota="impostazione globale del bot, non di un server"),
     _t("command_sync_state", "Impronta dell'ultima sincronizzazione dei comandi", server="conserva"),
     # ---------------------------------------------------------------- motore AI (NF-24, D19)
     _t("ai_config", "Scelte AI del server (consenso, quote, lore, privacy)", colonne_attore=("consenso_da",),

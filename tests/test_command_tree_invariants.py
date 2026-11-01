@@ -107,6 +107,7 @@ async def test_select_moduli_setup_per_categoria_entra_nel_limite_di_25():
 # Mappa F7 §3 punto 6: limiti per comando di primo livello (D24)
 # ----------------------------------------------------------------------
 import re
+import warnings
 
 MAX_CARATTERI_COMANDO = 8000
 SOGLIA_ALLARME_CARATTERI = 6800
@@ -201,8 +202,8 @@ async def test_caratteri_per_comando_di_primo_livello_sotto_8000():
         await _chiudi(creato_qui, bot)
 
 
-async def test_allarme_caratteri_oltre_6800():
-    """Allarme al 85%: dà tempo di dividere un gruppo prima del limite."""
+async def test_avviso_caratteri_oltre_6800():
+    """D56: a 6.800 solo un avviso (non un tetto): il limite vero è 8.000, margine per le traduzioni."""
     creato_qui, bot = await _albero_vero()
     try:
         sopra = {
@@ -210,10 +211,12 @@ async def test_allarme_caratteri_oltre_6800():
             for c in _radici(bot)
             if conta_caratteri(c) > SOGLIA_ALLARME_CARATTERI
         }
-        assert not sopra, (
-            f"Sopra l'allarme di {SOGLIA_ALLARME_CARATTERI} caratteri: {sopra}. "
-            f"Il limite di Discord è {MAX_CARATTERI_COMANDO}."
-        )
+        if sopra:
+            warnings.warn(
+                f"Sopra l'avviso di {SOGLIA_ALLARME_CARATTERI} caratteri: {sopra}. "
+                f"Il limite di Discord è {MAX_CARATTERI_COMANDO}: valuta di spostare un blocco in un gruppo nuovo.",
+                stacklevel=1,
+            )
     finally:
         await _chiudi(creato_qui, bot)
 

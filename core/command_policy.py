@@ -36,7 +36,7 @@ TUTTE_LE_CHIAVI = (CHIAVE_COMANDI_OFF, *CHIAVI_ID)
 MAX_VOCI = 250
 MAX_LUNGHEZZA_PERCORSO = 100
 # Mai spenti: servono a rimettere a posto la politica.
-PREFISSI_SEMPRE_APERTI = ("admin", "owner", "utility politica")
+PREFISSI_SEMPRE_APERTI = ("admin", "owner")
 
 _blocchi_elenco: dict[int, asyncio.Lock] = {}
 

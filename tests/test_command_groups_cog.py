@@ -321,7 +321,7 @@ async def test_callback_legato_dal_comando_vero(log_cog):
 async def test_caratteri_del_gruppo_log_entro_i_limiti(log_cog):
     bot, _, _ = log_cog
     gruppo = bot.tree.get_command("log")
-    assert conta_caratteri(gruppo) < 6800
+    assert conta_caratteri(gruppo) < 8000
     for cmd in gruppo.commands:
         assert len(cmd.description) <= 100
         assert not cmd.description.startswith("[")
