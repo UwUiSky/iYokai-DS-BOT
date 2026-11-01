@@ -4,18 +4,21 @@
 01/11/2026 · ramo `feat/r14lunghezze` · #67/#70: tutte le opzioni di testo hanno `max_length`; cricchetto vuoto.
 
 ## In corso
+- r14lingue (D58) pubblicato. Smoke da fare dopo l'unione (i18n, translator, command_sync, tree_invariants, riferimenti, cog utility/lingua).
 - r14lunghezze pubblicato. Smoke da fare dopo l'unione (tree_invariants, cog feed_alerts, fun, mod-ban, messaggi programmati, radio).
 - Restano #67: 11.11 (hash token webhook, migrazione, F5), 11.12 (F13). #70: 14.10, 14.12, 14.13, 14.14 (non piccoli).
 - r13ruoli chiuso e pubblicato. Smoke da fare dopo l'unione (0488, command_permissions/access/groups/policy).
 - Rimandato: persistenza/pannello dei livelli (D57), permessi per ruolo dal pannello (OAuth), nascondere `/founder` agli admin.
 
 ## Fatto
+- r14lingue (D58, #77): `locales/<lingua>/testi.json`+`comandi.json` (10 lingue Discord, 8 vuote), ripiego lingua->en-US->it, `core/lingue_controllo.py` + 2 script, bottone «Chiedi una lingua» in `/utility lingua` (`core/lingua_richieste.py`), `aiuto` in comandi.json letto da cerca-comando, peso 8000 su tutte le lingue.
 - r13ruoli (D60): 25 gruppi staff (`admin-*` 20, `mod-*` 4, `founder`), 377 percorsi spostati; `Livello.FOUNDER`;
   `PREFISSI_SEMPRE_APERTI=("admin-bot","owner")`; migrazione 0488; `GRUPPI_DEL_RUOLO` dai prefissi; traduzioni en.
 - r13gruppi (D56/D57): 152 comandi spostati, 11 gruppi, 0485-0487, `core/livelli_funzione.py`.
 - Giri precedenti (r12, r10, r9, r5, F5/F7, R1-bis): vedi `git log`.
 
 ## Cose imparate
+- Lingue: codice salvato nel DB `it`/`en` (CHECK 0130); `en`/`en-GB` sono alias di `en-US`; testo vuoto = da tradurre (ignorato). `lingua_valida` = solo lingue con testi.
 - Riordino per script: regex dei riferimenti con `(?![\w/])` dopo il nome (altrimenti riscrive gli URL `/ai/altro`);
   offset AST in byte. I riferimenti senza `/` (tabelle di percorsi come `COMANDI_VICINI`, chiavi, `get_command("x")`)
   e i sotto-comandi già vecchi prima (es. `/security antinuke`) non li trova nessun test: grep a parte, poi i test di quei file.
@@ -35,6 +38,7 @@
 - Test a metà su due DB: `iyokai_wruoli` e `iyokai_wruoli2`.
 
 ## Aperto
+- Lingue: tetto richiesta giornaliero in memoria (si azzera al riavvio); lingua personale ammette solo it/en finché una migrazione non allarga il CHECK di `user_language`; `aiuto` vuoto in tutte le lingue.
 - `/admin-ai` 19 figli (KNOWN_OLTRE_18), `/admin-antiraid` 17: al prossimo comando si dividono.
 - `/admin-ruoli`: Discord `manage_roles`, codice `Livello.ADMIN` (`manage_guild`): chi ha solo «Gestisci ruoli» lo vede
   ma è rifiutato (D60 punto 4, da decidere).

@@ -1,7 +1,7 @@
 """
 tests/test_i18n_completo.py
 ===========================
-NF-06 (#77): catalogo dei testi (locales/it.json, locales/en.json), lingua per server e per utente.
+NF-06 (#77): catalogo dei testi (locales/it/testi.json, locales/en-US/testi.json), lingua per server e per utente.
 Senza il catalogo o con una chiave solo in una lingua il test fallisce.
 """
 
@@ -17,7 +17,7 @@ SEGNAPOSTO = re.compile(r"\{(\w+)\}")
 
 
 def _file(lingua):
-    return json.loads((i18n.CARTELLA_LOCALES / f"{lingua}.json").read_text(encoding="utf-8"))
+    return json.loads(i18n.percorso_testi(i18n.normalizza_lingua(lingua)).read_text(encoding="utf-8"))
 
 
 def test_le_due_lingue_hanno_le_stesse_chiavi():
@@ -44,14 +44,15 @@ def test_t_riempie_i_segnaposto_e_non_solleva_mai():
     assert i18n.t("err_attesa", "en", secondi=4) == "Wait 4 seconds before running this command again."
     assert "{secondi}" in i18n.t("err_attesa", "it")  # segnaposto mancante: resta com'è
     assert i18n.t("chiave_che_non_esiste", "en") == "chiave_che_non_esiste"
-    assert i18n.t("operation_cancelled", "fr") == _file("it")["operation_cancelled"]
+    assert i18n.t("operation_cancelled", "fr") == _file("en")["operation_cancelled"]  # fr vuoto: ripiego en-US
 
 
 def test_locale_di_discord_a_lingua_del_bot():
     assert i18n.da_locale_discord("it") == "it"
-    assert i18n.da_locale_discord("en-US") == "en"
-    assert i18n.da_locale_discord("en-GB") == "en"
-    assert i18n.da_locale_discord("fr") is None
+    assert i18n.da_locale_discord("en-US") == "en-US"
+    assert i18n.da_locale_discord("en-GB") == "en-US"
+    assert i18n.da_locale_discord("fr") == "fr"
+    assert i18n.da_locale_discord("es-419") is None
 
 
 @pytest.mark.asyncio

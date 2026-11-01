@@ -38,4 +38,4 @@ def test_nessuna_risposta_con_frase_scritta_nel_codice():
                     s = _testo(c)
                     if s and re.search(r"[a-zà-ù]{3}", s):
                         trovate.append(f"{nome}:{nodo.lineno}: {s[:60]!r}")
-    assert trovate == [], "Frasi nel codice: spostale in locales/it.json e en.json: " + "; ".join(trovate)
+    assert trovate == [], "Frasi nel codice: spostale in locales/it/testi.json e en-US/testi.json: " + "; ".join(trovate)

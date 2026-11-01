@@ -55,4 +55,5 @@ htmlcov/
 deploy/lavalink/plugins/
 deploy/lavalink/radio-local/
 data/hot_patch/
+locales/RIEPILOGO.md
 data/geoip/*.mmdb

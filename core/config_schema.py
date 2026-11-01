@@ -12,7 +12,7 @@ Dipende da: core/database.py, core/premium.py (registro dei moduli), core/i18n.p
 from __future__ import annotations
 
 from core.database import db
-from core.i18n import LINGUE, lingua_valida
+from core.i18n import lingua_valida, lingue_disponibili
 from core.premium import registry
 
 
@@ -28,9 +28,9 @@ def valida_modulo(nome: str) -> str:
 
 
 def valida_lingua(codice: str) -> str:
-    """Una delle lingue del bot (`LINGUE`)."""
+    """Una delle lingue del bot con testi tradotti."""
     if not lingua_valida(codice):
-        raise ImpostazioneNonValida("Lingua non valida: scegli tra " + ", ".join(LINGUE) + ".")
+        raise ImpostazioneNonValida("Lingua non valida: scegli tra " + ", ".join(lingue_disponibili()) + ".")
     return codice
 
 

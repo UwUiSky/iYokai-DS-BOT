@@ -44,7 +44,7 @@ def impronta_albero(comandi: Sequence[Any], tree: app_commands.CommandTree) -> s
 async def impronta_albero_tradotto(comandi: Sequence[Any], tree: app_commands.CommandTree) -> str:
     """
     Come `impronta_albero`, ma con le traduzioni dei comandi (NF-06): senza, cambiare un testo in
-    locales/comandi.en.json non farebbe risincronizzare. Senza traduttore, o se la traduzione
+    locales/en-US/comandi.json non farebbe risincronizzare. Senza traduttore, o se la traduzione
     fallisce, ricade sull'impronta semplice.
     """
     traduttore = getattr(tree, "translator", None)

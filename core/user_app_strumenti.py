@@ -26,7 +26,7 @@ MAX_ZONE_PROPOSTE = 25
 
 
 class ErroreStrumento(ValueError):
-    """`chiave`: la chiave del messaggio per l'utente (locales/it.json)."""
+    """`chiave`: la chiave del messaggio per l'utente (locales/it/testi.json)."""
 
     def __init__(self, chiave: str) -> None:
         super().__init__(chiave)

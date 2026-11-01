@@ -1,9 +1,10 @@
 """
 core/i18n.py
 ============
-NF-06 (#77, SPEC §21): tutti i testi del bot in un file per lingua
-(`locales/it.json`, `locales/en.json`, stesse chiavi e stessi segnaposto,
-controllati da `tests/test_i18n_completo.py`).
+NF-06 / D58 (#77, SPEC §21): tutti i testi del bot in una cartella per lingua
+(file `testi.json` in `locales`, una cartella per lingua; codici di Discord: it, en-US, de, es-ES, fr, ja, ko, ru, uk, zh-CN).
+Le lingue nuove partono vuote: ripiego lingua -> en-US -> it. Un solo modulo legge le lingue.
+Il codice salvato nel database resta `it` / `en` (alias di `en-US`).
 
 Quale lingua si usa
 -------------------
@@ -15,8 +16,8 @@ Quale lingua si usa
 
 `t(chiave, lingua, **valori)` non solleva mai: lingua o chiave sconosciute
 ricadono sull'italiano e poi sulla chiave stessa.
-Un testo nuovo si aggiunge in entrambi i file; un test fallisce se le chiavi
-o i segnaposto non coincidono.
+Un testo nuovo si aggiunge in it e en-US; un test fallisce se le chiavi o i segnaposto non coincidono.
+`scripts/controlla_lingue.py` riassume lo stato di ogni lingua.
 """
 
 from __future__ import annotations
@@ -28,26 +29,64 @@ from typing import Any
 
 logger = logging.getLogger("iyokai.i18n")
 
-LINGUE: tuple[str, ...] = ("it", "en")
+LINGUE: tuple[str, ...] = ("it", "en-US", "de", "es-ES", "fr", "ja", "ko", "ru", "uk", "zh-CN")
 DEFAULT_LANGUAGE = "it"
+LINGUA_RIPIEGO = "en-US"
 CARTELLA_LOCALES = pathlib.Path(__file__).resolve().parent.parent / "locales"
+FILE_TESTI = "testi.json"
+FILE_COMANDI = "comandi.json"
+# Codici storici o di Discord che puntano a una cartella.
+_ALIAS: dict[str, str] = {"en": "en-US", "en-GB": "en-US"}
+# Il database ammette solo questi codici (CHECK di `user_language`): `en-US` si salva come `en`.
+_SALVATI: dict[str, str] = {"en-US": "en"}
 
 _CATALOGO: dict[str, dict[str, str]] = {}
 
 
+def normalizza_lingua(codice: Any) -> str | None:
+    """Il codice della cartella (`en` -> `en-US`), o None se la lingua non esiste."""
+    if not isinstance(codice, str):
+        return None
+    codice = _ALIAS.get(codice, codice)
+    return codice if codice in LINGUE else None
+
+
+def cartella_lingua(lingua: str) -> pathlib.Path:
+    return CARTELLA_LOCALES / lingua
+
+
+def percorso_testi(lingua: str) -> pathlib.Path:
+    return cartella_lingua(lingua) / FILE_TESTI
+
+
+def percorso_comandi(lingua: str) -> pathlib.Path:
+    return cartella_lingua(lingua) / FILE_COMANDI
+
+
+def lingue_presenti() -> tuple[str, ...]:
+    """Le lingue che hanno la cartella su disco (nell'ordine di `LINGUE`)."""
+    return tuple(l for l in LINGUE if cartella_lingua(l).is_dir())
+
+
 def carica_catalogo(forza: bool = False) -> dict[str, dict[str, str]]:
-    """Legge i file delle lingue (una volta sola). Un file mancante o rotto dà un catalogo vuoto per quella lingua."""
+    """Legge i file delle lingue (una volta sola). Un file mancante o rotto dà un catalogo vuoto per quella lingua; un testo vuoto vale «da tradurre» e si ignora."""
     if _CATALOGO and not forza:
         return _CATALOGO
     _CATALOGO.clear()
     for lingua in LINGUE:
         try:
-            dati = json.loads((CARTELLA_LOCALES / f"{lingua}.json").read_text(encoding="utf-8"))
-            _CATALOGO[lingua] = {k: v for k, v in dati.items() if isinstance(k, str) and isinstance(v, str)}
+            dati = json.loads(percorso_testi(lingua).read_text(encoding="utf-8"))
+            _CATALOGO[lingua] = {k: v for k, v in dati.items() if isinstance(k, str) and isinstance(v, str) and v}
         except (OSError, ValueError):
-            logger.error("Catalogo delle lingue illeggibile: %s.json", lingua)
+            logger.error("Catalogo delle lingue illeggibile: %s/%s", lingua, FILE_TESTI)
             _CATALOGO[lingua] = {}
     return _CATALOGO
+
+
+def lingue_disponibili() -> tuple[str, ...]:
+    """I codici (come si salvano nel database) delle lingue che hanno almeno un testo tradotto."""
+    catalogo = carica_catalogo()
+    return tuple(_SALVATI.get(l, l) for l in LINGUE if catalogo.get(l))
 
 
 class _Sicuro(dict):
@@ -58,10 +97,12 @@ class _Sicuro(dict):
 def t(key: str, language: str | None = None, **valori: Any) -> str:
     """Il testo `key` nella lingua richiesta, con i segnaposto riempiti con `valori`."""
     catalogo = carica_catalogo()
-    lingua = language if language in catalogo else DEFAULT_LANGUAGE
-    testo = catalogo.get(lingua, {}).get(key)
-    if testo is None:
-        testo = catalogo.get(DEFAULT_LANGUAGE, {}).get(key)
+    lingua = normalizza_lingua(language) or DEFAULT_LANGUAGE
+    testo = None
+    for candidata in (lingua, LINGUA_RIPIEGO, DEFAULT_LANGUAGE):
+        testo = catalogo.get(candidata, {}).get(key)
+        if testo is not None:
+            break
     if testo is None:
         return key
     if valori:
@@ -73,17 +114,14 @@ def t(key: str, language: str | None = None, **valori: Any) -> str:
 
 
 def lingua_valida(codice: Any) -> bool:
-    return isinstance(codice, str) and codice in LINGUE
+    """Una lingua che si può salvare: ha testi tradotti (it, en, e le nuove quando avranno testi)."""
+    return isinstance(codice, str) and codice in lingue_disponibili()
 
 
 def da_locale_discord(locale: Any) -> str | None:
-    """`it` per l'italiano di Discord, `en` per ogni inglese, altrimenti None (lingua non gestita)."""
-    testo = str(getattr(locale, "value", locale) or "").lower()
-    if testo.startswith("it"):
-        return "it"
-    if testo.startswith("en"):
-        return "en"
-    return None
+    """La cartella per un locale di Discord (`en-GB` -> `en-US`), o None se non la gestiamo."""
+    testo = str(getattr(locale, "value", locale) or "")
+    return normalizza_lingua(testo)
 
 
 async def lingua_utente(user_id: int | None) -> str | None:

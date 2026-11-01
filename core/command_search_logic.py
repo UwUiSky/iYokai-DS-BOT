@@ -26,7 +26,7 @@ from discord import app_commands
 
 import re
 
-from core.i18n import t
+from core.i18n import normalizza_lingua, t
 
 logger = logging.getLogger("iyokai.command_search")
 
@@ -137,6 +137,8 @@ class ComandoInfo:
     percorso_en: str = ""
     descrizione_en: str = ""
     moduli: tuple = ()
+    # D58: le altre lingue presenti, come ((lingua, percorso, descrizione), ...). Vuoto finché non si traduce.
+    tradotte: tuple = ()
 
 
 def moduli_del_comando(cmd) -> tuple[str, ...]:
@@ -173,9 +175,15 @@ def raccogli_comandi(comandi: Iterable, prefisso: str = "", livelli: tuple = ())
             Opzione(p.name, str(p.description or ""), bool(p.required))
             for p in getattr(cmd, "parameters", ())
         )
-        from core.command_translator import descrizione_inglese, nome_inglese
+        from core.command_translator import descrizione_inglese, lingue_dei_comandi, nome_inglese, nome_tradotto
+        from core.command_translator import descrizione_tradotta
 
         percorso_en = " ".join(nome_inglese(s) or s for s in percorso.split(" "))
+        tradotte = tuple(
+            (l, " ".join(nome_tradotto(s, l) or s for s in percorso.split(" ")), d)
+            for l in lingue_dei_comandi()
+            if l != "en-US" and (d := descrizione_tradotta(cmd.qualified_name, l))
+        )
         risultati.append(
             ComandoInfo(
                 percorso, cmd.description or "(nessuna descrizione)", percorso.split(" ")[0], opzioni,
@@ -183,6 +191,7 @@ def raccogli_comandi(comandi: Iterable, prefisso: str = "", livelli: tuple = ())
                 percorso_en=percorso_en,
                 descrizione_en=descrizione_inglese(cmd.qualified_name) or "",
                 moduli=moduli_del_comando(cmd),
+                tradotte=tradotte,
             )
         )
     return risultati
@@ -301,6 +310,7 @@ def _punteggio(query: str, info: ComandoInfo) -> float:
     testi = [(info.percorso, info.descrizione)]
     if info.percorso_en:
         testi.append((info.percorso_en, info.descrizione_en))
+    testi.extend((nome, descr) for _, nome, descr in info.tradotte)
     migliore = 0.0
     varianti = _varianti(pulita)
     for nome, descrizione in testi:
@@ -323,9 +333,14 @@ def cerca(
 
 
 def mostra(c: ComandoInfo, lingua: str) -> tuple[str, str]:
-    """(percorso, descrizione) da far vedere: in inglese se la lingua lo chiede e la traduzione c'è."""
-    if lingua == "en" and c.percorso_en and c.descrizione_en:
-        return c.percorso_en, c.descrizione_en
+    """(percorso, descrizione) da far vedere nella lingua; ripiego en-US, poi l'italiano."""
+    scelta = normalizza_lingua(lingua)
+    if scelta and scelta != "it":
+        for codice, nome, descrizione in c.tradotte:
+            if codice == scelta:
+                return nome, descrizione
+        if c.percorso_en and c.descrizione_en:
+            return c.percorso_en, c.descrizione_en
     return c.percorso, c.descrizione
 
 
@@ -422,6 +437,17 @@ def _testo_opzioni(opzioni: Sequence[Opzione], lingua: str = "it") -> str:
     return "\n".join(righe)
 
 
+def _con_aiuto(valore: str, percorso: str, lingua: str) -> str:
+    """Aggiunge la spiegazione lunga (comandi.json, sezione `aiuto`) se c'è e se resta posto nel campo."""
+    from core.command_translator import aiuto_comando
+
+    aiuto = aiuto_comando(percorso, lingua)
+    posto = 1024 - len(valore) - 2
+    if not aiuto or posto < 40:
+        return valore
+    return f"{valore}\n\n{_taglia(aiuto, posto)}"
+
+
 def embed_risultati(
     risultati: Sequence[ComandoInfo], ids: Mapping[str, int], query: str, lingua: str = "it"
 ) -> discord.Embed:
@@ -431,6 +457,8 @@ def embed_risultati(
     for c in risultati[:MAX_RISULTATI]:
         percorso_mostrato, descrizione = mostra(c, lingua)
         valore = f"{menzione(c.percorso, ids)}\n{_taglia(descrizione, 150)}\n{_testo_opzioni(c.opzioni, lingua)}"
+        if c is risultati[0]:
+            valore = _con_aiuto(valore, c.percorso, lingua)
         embed.add_field(name=_taglia(f"/{percorso_mostrato}", 256), value=_taglia(valore, 1024, False), inline=False)
     return embed
 

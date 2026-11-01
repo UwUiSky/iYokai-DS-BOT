@@ -1941,7 +1941,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 ## §21 LINGUE E RICERCA DEI COMANDI — da fare (fase F8)
 
 - `[~]` 21.1 Tutti i testi in un file per lingua, italiano e inglese
-  (NF-06) — `locales/it.json` e `locales/en.json` (stesse chiavi e segnaposto, `tests/test_i18n_completo.py`);
+  (NF-06) — `locales/<lingua>/testi.json`, cartelle it e en-US (stesse chiavi e segnaposto, `tests/test_i18n_completo.py`);
   `core/i18n.py` (`t`, `lingua_risposta`, `lingua_interazione`)
   → **Stato r10:** nel catalogo anche setup, wizard, configurazione, privacy, cerca-comando, premium, marchio e app utente (`tests/test_i18n_cog_core.py`; i comandi dell'owner restano in italiano). Mancano i cog delle altre aree.
   → **Stato 14/10:** nel catalogo ci sono i messaggi del gestore errori, del controllo accessi e dei comandi di lingua.
@@ -1952,11 +1952,21 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   (solo `it`/`en`); le risposte che vede solo l'utente seguono la sua lingua personale, se l'ha scelta
   (`/utility lingua`, tabella `user_language`, migrazione 0130, nel registro dei dati). Senza database: italiano.
 - `[x]` 21.3 Nomi e descrizioni dei comandi tradotti da Discord secondo la lingua dell'utente (D1) —
-  `core/command_translator.py` + `locales/comandi.en.json` (nomi, descrizioni di tutti i 447 comandi e gruppi,
+  `core/command_translator.py` + `locales/en-US/comandi.json` (nomi, descrizioni di tutti i 447 comandi e gruppi,
   owner compreso); `TraduttoreYokai` risponde per en-US/en-GB; l'impronta della sync include le traduzioni;
   test sull'albero vero (fratelli unici, nome 32, descrizione 100, totale 8000 contando la traduzione più lunga per campo).
   **Scarto da D1:** la base nel codice resta l'italiano (cambiarla vorrebbe dire rinominare ~300 comandi); l'inglese
   è la traduzione. Le descrizioni delle OPZIONI (562) non sono ancora tradotte (cricchetto `MINIMO_PARAMETRI_TRADOTTI`).
+- `[~]` 21.4a Struttura multilingue (D58): `locales/<lingua>/testi.json` e `comandi.json`, codici di Discord `it`, `en-US` (vale
+  anche `en-GB`), `de`, `es-ES`, `fr`, `ja`, `ko`, `ru`, `uk`, `zh-CN`; le 8 nuove sono vuote (non tradotte: scelta dell'owner).
+  Ripiego lingua → en-US → it in `core/i18n.py` (un testo vuoto vale «da tradurre»); il traduttore dei comandi legge ogni
+  `comandi.json` (nomi validi per Discord, prefissi `admin-`/`mod-`/`founder` intatti); peso dei comandi con la versione più
+  lunga tra le lingue (`tests/test_command_tree_invariants.py`); sezione `aiuto` (spiegazione lunga, per ora vuota) letta da
+  cerca-comando; `scripts/controlla_lingue.py` (riepilogo) e `scripts/nuova_lingua.py <codice>`; bottone «Chiedi una lingua»
+  in `/utility lingua` (modulo nome 50, nota 300, DM all'owner, una al giorno per utente, `core/lingua_richieste.py`).
+  Tests: `tests/test_lingue_struttura.py`. Mancano: tradurre le lingue; lo script che riempie le chiavi mancanti con i
+  servizi AI (D54), segnandole «da rivedere» (D58); le parole chiave di cerca-comando per ogni lingua (oggi solo it/en); la lingua personale resta `it`/`en` finché una migrazione
+  non allarga il CHECK di `user_language`; tetto giornaliero in memoria (si azzera al riavvio).
 - `[x]` 21.4 `COMMAND_LIST_ITA.md` e `COMMAND_LIST_ENG.md` generati da `scripts/generate_command_list.py`
   (anche `/owner`, che prima mancava)
 - `[x]` 21.5 `cerca-comando`: sinonimi nelle due lingue, solo i comandi che l'utente può usare e con il

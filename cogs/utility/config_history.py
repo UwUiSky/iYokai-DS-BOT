@@ -38,7 +38,7 @@ from core.config_history_logic import (
     fine_giornata,
     leggi_data,
 )
-from core.i18n import LINGUE, lingua_interazione, t as tr, testo_per
+from core.i18n import lingua_interazione, lingue_disponibili, t as tr, testo_per
 from core.invio_file import FileTroppoGrande, invia_file_su_interazione
 from core.modules_updated_logic import emetti_modules_updated, stato_moduli
 from core.backup_permessi_logic import LIVELLI as LIVELLI_BACKUP, SETTING_LIVELLO as SETTING_LIVELLO_BACKUP
@@ -49,7 +49,6 @@ from core.restore_batch_logic import MODE_CLASSIC_INVITE, MODE_ON_DEMAND_OAUTH, 
 from core.ui_base import BaseView
 from core.verify_paese_logic import paesi_validi
 
-SUPPORTED_LANGUAGES = LINGUE
 
 
 # Un export reale pesa pochi KB: oltre questo limite il file non è nostro.
@@ -311,8 +310,8 @@ def errore_schema_import(dati) -> str | None:
         return f"`modules` contiene moduli sconosciuti: {_elenco_nomi(sconosciuti)}."
     if not isinstance(settings, dict):
         return "`settings` deve essere un elenco chiave → valore."
-    if not isinstance(language, str) or language not in SUPPORTED_LANGUAGES:
-        return f"Lingua non supportata. Ammesse: {', '.join(SUPPORTED_LANGUAGES)}."
+    if not isinstance(language, str) or language not in lingue_disponibili():
+        return f"Lingua non supportata. Ammesse: {', '.join(lingue_disponibili())}."
     return _errore_settings(settings)
 
 

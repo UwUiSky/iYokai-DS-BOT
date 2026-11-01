@@ -18,7 +18,7 @@ LIMITI_EMBED = {"title": 256, "description": 4096, "name": 256, "value": 1024}
 
 
 def _catalogo(lingua):
-    return json.loads((i18n.CARTELLA_LOCALES / f"{lingua}.json").read_text(encoding="utf-8"))
+    return json.loads(i18n.percorso_testi(lingua).read_text(encoding="utf-8"))
 
 
 def _chiave_letterale(nodo):
