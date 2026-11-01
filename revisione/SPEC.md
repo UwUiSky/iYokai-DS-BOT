@@ -2325,8 +2325,9 @@ di quel file.
   (AI-R-089; catalogo AI-012)
   → **Stato 14/10 (r6):** lunghezza delle risposte per server (`/ai privacy`); i modelli si scelgono nel `.env` per fornitore.
 - `[x]` 25.83 Spesa e uso visti dall'owner (AI-R-090)
-- `[ ]` 25.84 Richieste di cancellazione dei dati lette prima dall'AI
+- `[x]` 25.84 Richieste di cancellazione dei dati lette prima dall'AI
   (AI-R-091)
+  → **Stato 29/10 (r12ai):** core/ai_privacy_logic.py, cogs/ai/_privacy_ai.py: /owner privacy richieste mostra per ogni richiesta un riassunto e un'azione proposta dall'AI (eseguire, chiedere chiarimenti, rifiutare), o una proposta fissa se l'AI è ferma. Non cancella nulla: approva e rifiuta restano a mano. Test: tests/test_ai_privacy.py
 
 **App utente e Desktop**
 

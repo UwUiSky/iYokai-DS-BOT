@@ -95,8 +95,8 @@ async def test_richieste_elenca_quelle_in_attesa(cog):
 
     await c.privacy_richieste.callback(c, i)
 
-    embed = i.response.send_message.await_args.kwargs["embed"]
-    assert "1001" in embed.description
+    embed = i.followup.send.await_args.kwargs["embed"]
+    assert "1001" in embed.description and "decidi tu" in embed.description
 
 
 async def test_richieste_vuote(cog):
