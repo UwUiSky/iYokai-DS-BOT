@@ -577,10 +577,10 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
     # ================================================================
 
     @comando_di_gruppo(
-        "ruoli",
+        "admin-ruoli",
         nome="crea",
         descrizione="Crea un nuovo role menu.",
-        sottogruppo=SOTTOGRUPPI["ruoli menu"],
+        sottogruppo=SOTTOGRUPPI["admin-ruoli menu"],
     )
     @app_commands.describe(
         title="Titolo del menu",
@@ -651,10 +651,10 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "ruoli",
+        "admin-ruoli",
         nome="aggiungi",
         descrizione="Aggiungi un'opzione a un role menu.",
-        sottogruppo=SOTTOGRUPPI["ruoli menu"],
+        sottogruppo=SOTTOGRUPPI["admin-ruoli menu"],
     )
     @app_commands.describe(
         menu_id="ID del menu (mostrato da /ruoli menu crea)",
@@ -762,10 +762,10 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "ruoli",
+        "admin-ruoli",
         nome="togli",
         descrizione="Rimuovi un'opzione da un role menu.",
-        sottogruppo=SOTTOGRUPPI["ruoli menu"],
+        sottogruppo=SOTTOGRUPPI["admin-ruoli menu"],
     )
     @app_commands.describe(menu_id="ID del menu", role="Il ruolo da rimuovere dal menu")
     async def remove_option_cmd(
@@ -849,10 +849,10 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         return messaggio_sparito
 
     @comando_di_gruppo(
-        "ruoli",
+        "admin-ruoli",
         nome="elenco",
         descrizione="Mostra i menu di ruoli del server, con gli ID.",
-        sottogruppo=SOTTOGRUPPI["ruoli menu"],
+        sottogruppo=SOTTOGRUPPI["admin-ruoli menu"],
     )
     async def list_cmd(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
@@ -871,10 +871,10 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "ruoli",
+        "admin-ruoli",
         nome="modifica",
         descrizione="Cambia titolo, descrizione o comportamento di un menu già pubblicato.",
-        sottogruppo=SOTTOGRUPPI["ruoli menu"],
+        sottogruppo=SOTTOGRUPPI["admin-ruoli menu"],
     )
     @app_commands.describe(
         menu_id="ID del menu (lo mostra /ruoli menu elenco)",
@@ -946,10 +946,10 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(await testo_per(interaction, "rolemenus_menu_aggiornato"), ephemeral=True)
 
     @comando_di_gruppo(
-        "ruoli",
+        "admin-ruoli",
         nome="accesso",
         descrizione="Limita un menu a certi ruoli o escludine altri.",
-        sottogruppo=SOTTOGRUPPI["ruoli menu"],
+        sottogruppo=SOTTOGRUPPI["admin-ruoli menu"],
     )
     @app_commands.describe(
         menu_id="ID del menu",
@@ -996,10 +996,10 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "ruoli",
+        "admin-ruoli",
         nome="elimina",
         descrizione="Elimina un role menu.",
-        sottogruppo=SOTTOGRUPPI["ruoli menu"],
+        sottogruppo=SOTTOGRUPPI["admin-ruoli menu"],
     )
     @app_commands.describe(menu_id="ID del menu da eliminare")
     async def delete_cmd(self, interaction: discord.Interaction, menu_id: int) -> None:

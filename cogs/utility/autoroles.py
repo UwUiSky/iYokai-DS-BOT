@@ -332,10 +332,10 @@ class AutorolesCog(CogConGruppi, commands.Cog):
         return True
 
     @comando_di_gruppo(
-        "ruoli",
+        "admin-ruoli",
         nome="aggiungi",
         descrizione="Aggiungi un ruolo dato in automatico a chi entra.",
-        sottogruppo=SOTTOGRUPPI["ruoli auto"],
+        sottogruppo=SOTTOGRUPPI["admin-ruoli auto"],
     )
     @app_commands.describe(
         ruolo="Il ruolo da dare a chi entra",
@@ -380,10 +380,10 @@ class AutorolesCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "ruoli",
+        "admin-ruoli",
         nome="togli",
         descrizione="Togli un ruolo dato in automatico a chi entra.",
-        sottogruppo=SOTTOGRUPPI["ruoli auto"],
+        sottogruppo=SOTTOGRUPPI["admin-ruoli auto"],
     )
     @app_commands.describe(ruolo="Il ruolo da non dare più")
     async def auto_rimuovi(self, interaction: discord.Interaction, ruolo: discord.Role) -> None:
@@ -400,10 +400,10 @@ class AutorolesCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "ruoli",
+        "admin-ruoli",
         nome="elenco",
         descrizione="Mostra i ruoli automatici del server.",
-        sottogruppo=SOTTOGRUPPI["ruoli auto"],
+        sottogruppo=SOTTOGRUPPI["admin-ruoli auto"],
     )
     async def auto_elenco(self, interaction: discord.Interaction) -> None:
         if not await self._modulo_attivo(interaction):
@@ -426,10 +426,10 @@ class AutorolesCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "ruoli",
+        "admin-ruoli",
         nome="ricorda",
         descrizione="Ridai i ruoli a chi esce e rientra entro un certo tempo.",
-        sottogruppo=SOTTOGRUPPI["ruoli auto"],
+        sottogruppo=SOTTOGRUPPI["admin-ruoli auto"],
     )
     @app_commands.describe(
         attivo="Ricordare i ruoli di chi esce?",
@@ -452,10 +452,10 @@ class AutorolesCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(
-        "ruoli",
+        "admin-ruoli",
         nome="sincronizza",
         descrizione="Dai i ruoli automatici anche ai membri già nel server.",
-        sottogruppo=SOTTOGRUPPI["ruoli auto"],
+        sottogruppo=SOTTOGRUPPI["admin-ruoli auto"],
     )
     async def auto_sincronizza(self, interaction: discord.Interaction) -> None:
         if not await self._modulo_attivo(interaction):
