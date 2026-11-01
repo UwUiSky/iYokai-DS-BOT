@@ -1074,7 +1074,9 @@
   "admin-backup copia": "Copy a channel or a role",
   "admin-backup ripristino": "Restore users via OAuth2",
   "founder backup": "Backup: sync and who can create or load",
-  "founder moderazione": "Moderation: immune roles"
+  "founder moderazione": "Moderation: immune roles",
+  "admin-sicurezza alt": "Duplicate accounts found by web verification.",
+  "mod-sanzioni opzioni": "Server moderation options."
  },
  "parametri": {},
  "menu": {

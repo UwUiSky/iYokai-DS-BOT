@@ -47,7 +47,7 @@ def check_role_assignable(
     passare da un moderatore (acquisto shop, level-roles automatico,
     click su un role menu, verify, ruolo piattaforma dei vocali
     temporanei). self_service=False per un'assegnazione manuale fatta
-    da chi ha già i permessi di moderazione (es. un comando di /mod-… che
+    da chi ha già i permessi di moderazione (es. un comando di mod-… che
     assegna un ruolo), dove il controllo di gerarchia resta ma quello sui
     permessi pericolosi no: un moderatore autorizzato può assegnare a
     mano un ruolo "forte" a un altro membro fidato.

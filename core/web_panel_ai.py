@@ -1,8 +1,8 @@
 """
 core/web_panel_ai.py
 ====================
-Pagine AI del pannello web, oltre a quella base: `/server/<id>/admin-ai/altro` (lore, limiti, parole vietate, canali spenti),
-`/server/<id>/admin-ai/riepilogo` (l'ultimo riepilogo del server) e `/server/<id>/admin-ai/uso` («Uso dell'AI»: cosa tiene l'AI,
+Pagine AI del pannello web, oltre a quella base: `/server/<id>/ai/altro` (lore, limiti, parole vietate, canali spenti),
+`/server/<id>/ai/riepilogo` (l'ultimo riepilogo del server) e `/server/<id>/ai/uso` («Uso dell'AI»: cosa tiene l'AI,
 per quanto, e quali servizi esterni usa). Le scelte passano dagli stessi punti dei comandi `/admin-ai` (D16).
 Si registra con una riga da `core/web_panel_server.py`; sessione, permessi, CSRF e limiti sono quelli del pannello.
 Funzioni coperte: SPEC §25.91, §25.92, §25.93 (AI-R-098, AI-R-099, AI-R-100)

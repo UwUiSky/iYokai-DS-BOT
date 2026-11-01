@@ -22,12 +22,12 @@ async def test_automod_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is False  # sempre gratis, come da schema
 
-    automod_group = bot.tree.get_command("automod")
+    automod_group = bot.tree.get_command("admin-automod")
     assert automod_group is not None
 
     parole = automod_group.get_command("parole")
     assert automod_group.get_command("filtri") is None  # D56: i filtri sono il gruppo /admin-filtri
-    filtri = bot.tree.get_command("filtri")
+    filtri = bot.tree.get_command("admin-filtri")
     assert filtri is not None
     esenzioni = automod_group.get_command("esenzioni")
     assert {c.name for c in parole.commands} == {"add", "remove", "list"}

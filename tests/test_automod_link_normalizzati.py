@@ -95,7 +95,7 @@ async def test_comando_domain_ha_un_limite_di_lunghezza():
 
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.none())
     await bot.add_cog(modulo_automod.AutomodCog(bot))
-    comando = bot.tree.get_command("filtri").get_command("anti-link-domain")
+    comando = bot.tree.get_command("admin-filtri").get_command("anti-link-domain")
     dati = comando.to_dict(bot.tree)
     await bot.remove_cog("AutomodCog")
     opzione = next(o for o in dati["options"] if o["name"] == "domain")

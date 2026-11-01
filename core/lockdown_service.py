@@ -52,7 +52,7 @@ logger = logging.getLogger("iyokai.lockdown")
 _blocchi: BoundedCache[tuple[int, int], asyncio.Lock] = BoundedCache(max_size=5000)
 # Server in cui qualcuno ha chiesto «togli» mentre il blocco era ancora in corso.
 _da_fermare: set[int] = set()
-# Server in panico -> True se in panico i gruppi /mod-… sono riservati (SIC-012). Cache in memoria:
+# Server in panico -> True se in panico i gruppi mod-… sono riservati (SIC-012). Cache in memoria:
 # si legge a ogni comando di moderazione, non si interroga il database ogni volta.
 _panico: dict[int, bool] = {}
 _lavori: set[asyncio.Task] = set()

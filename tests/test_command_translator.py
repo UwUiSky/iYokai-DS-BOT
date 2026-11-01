@@ -128,7 +128,7 @@ async def test_il_traduttore_risponde_solo_in_inglese_e_il_payload_ha_le_localiz
     creato_qui, bot = await _albero_vero()
     try:
         await bot.tree.set_translator(tr.TraduttoreYokai())
-        modban = bot.tree.get_command("modban")
+        modban = bot.tree.get_command("mod-ban")
         carico = await modban.get_translated_payload(bot.tree, bot.tree.translator)
         assert carico["description_localizations"]["en-US"] == tr.descrizione_inglese("modban")
         assert carico["description_localizations"]["en-GB"] == tr.descrizione_inglese("modban")

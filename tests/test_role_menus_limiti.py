@@ -75,10 +75,10 @@ async def test_limiti_delle_opzioni_dei_comandi(clean_db):
         await rm.setup(bot)
     finally:
         await db.close()
-    crea = {o["name"]: o for o in comando_nel_gruppo("ruoli", "menu crea").to_dict(bot.tree)["options"]}
+    crea = {o["name"]: o for o in comando_nel_gruppo("admin-ruoli", "menu crea").to_dict(bot.tree)["options"]}
     assert crea["title"]["max_length"] == 256
     assert crea["description"]["max_length"] == 2000
-    aggiungi = {o["name"]: o for o in comando_nel_gruppo("ruoli", "menu aggiungi").to_dict(bot.tree)["options"]}
+    aggiungi = {o["name"]: o for o in comando_nel_gruppo("admin-ruoli", "menu aggiungi").to_dict(bot.tree)["options"]}
     assert aggiungi["label"]["max_length"] == 80
 
 

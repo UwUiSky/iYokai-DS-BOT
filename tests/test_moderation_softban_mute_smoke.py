@@ -19,7 +19,7 @@ async def test_softban_mute_cog_si_carica_correttamente():
 
     assert bot.get_cog("ModerationSoftbanMuteCog") is not None
 
-    assert bot.tree.get_command("modban").get_command("softban") is not None
+    assert bot.tree.get_command("mod-ban").get_command("softban") is not None
     nomi_mod = {c.name for c in bot.tree.get_command("mod").commands}
     assert {"mute", "unmute"} <= nomi_mod
     await bot.remove_cog("ModerationSoftbanMuteCog")
@@ -30,9 +30,9 @@ async def test_reason_obbligatorio_su_softban_e_mute():
     await softban_mute_setup(bot)
 
     comandi = [
-        bot.tree.get_command("modban").get_command("softban"),
-        bot.tree.get_command("mod").get_command("mute"),
-        bot.tree.get_command("mod").get_command("unmute"),
+        bot.tree.get_command("mod-ban").get_command("softban"),
+        bot.tree.get_command("mod-sanzioni").get_command("mute"),
+        bot.tree.get_command("mod-sanzioni").get_command("unmute"),
     ]
     for command in comandi:
         reason_param = next(p for p in command.parameters if p.name == "reason")

@@ -49,6 +49,8 @@ ECCEZIONI: frozenset[str] = frozenset(
         "/privacy",
         "/termini",
         "/proprietario",
+        # pagina del pannello web `/server/<id>/ai` (core/web_panel_server.py): non è il comando `/admin-ai`
+        "/ai",
     }
 )
 

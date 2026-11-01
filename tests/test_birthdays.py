@@ -274,7 +274,7 @@ async def test_albero_dei_comandi():
     for nome in ("imposta", "rimuovi", "mostra"):
         assert comando_nel_gruppo("level", f"compleanno {nome}") is not None
     for nome in ("canale", "ruolo"):
-        assert comando_nel_gruppo("moduli", f"compleanni {nome}") is not None
+        assert comando_nel_gruppo("admin-moduli", f"compleanni {nome}") is not None
     opz = {o["name"]: o for o in comando_nel_gruppo("level", "compleanno imposta").to_dict(bot.tree)["options"]}
     assert opz["giorno"]["max_value"] == 31 and opz["mese"]["max_value"] == 12
 

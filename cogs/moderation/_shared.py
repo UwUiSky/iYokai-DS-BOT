@@ -154,7 +154,7 @@ async def ensure_module_enabled(
         return False
 
     if module_name != MODULE_REPORT and lockdown_service.panico_riservato(interaction.guild.id):
-        # SIC-012: durante il panico i gruppi /mod-… li usano solo proprietario e fidati
+        # SIC-012: durante il panico i gruppi mod-… li usano solo proprietario e fidati
         # (/report resta aperto: e' il canale con cui i membri avvisano lo staff).
         impostazioni = await security_repo.get_settings(interaction.guild.id)
         if not puo_agire_in_panico(interaction.user.id, interaction.guild.owner_id, impostazioni.anti_nuke):

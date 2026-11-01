@@ -150,7 +150,7 @@ async def test_nessun_prefisso_admin_e_nessun_check_di_permesso_locale(bot):
 
 
 async def test_log_canale_ha_il_tipo_con_le_scelte(bot):
-    comando = bot.tree.get_command("log").get_command("canale")
+    comando = bot.tree.get_command("admin-log").get_command("canale")
     opzioni = {o["name"]: o for o in comando.to_dict(bot.tree)["options"]}
     assert opzioni["channel"]["required"] is True
     assert opzioni["tipo"].get("required", False) is False

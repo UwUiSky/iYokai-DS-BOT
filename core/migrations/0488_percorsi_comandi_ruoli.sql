@@ -1,4 +1,4 @@
--- D60: i comandi dello staff passano sotto il loro ruolo (`/admin-…`, `/mod-…`, `/founder`). I percorsi salvati
+-- D60: i comandi dello staff passano sotto il loro ruolo (`admin-…`, `mod-…`, `/founder`). I percorsi salvati
 -- nel database seguono il nome nuovo, così un comando spento nella politica dei server resta spento e le
 -- statistiche non si perdono. Come la 0485: tre posti salvano percorsi: guild_config (policy_comandi_off),
 -- guild_config_history (stessa chiave, valori vecchio e nuovo del registro modifiche) e command_usage.

@@ -18,32 +18,38 @@ from discord import app_commands
 from core import command_groups as cg
 from core.command_access import Livello
 
-ATTESI = [
-    "owner", "admin", "backup", "gestione", "economia", "moduli", "ruoli", "messaggi", "giveaway", "ticket-gestione", "ticket-pannelli", "filtri",
-    "security", "antinuke", "ai", "antiraid", "automod", "mod", "modban",
-    "log", "ticket", "voice", "music", "level", "monete", "clan", "fun", "immagini", "giochi", "sondaggi", "assistente", "gif", "utility",
+ADMIN_ATTESI = [
+    "admin-bot", "admin-musica", "admin-ai", "admin-automod", "admin-filtri", "admin-sicurezza", "admin-antinuke", "admin-antiraid",
+    "admin-moduli", "admin-economia", "admin-livelli", "admin-ruoli", "admin-log", "admin-messaggi", "admin-giveaway", "admin-ticket",
+    "admin-ticket-opzioni", "admin-backup", "admin-benvenuto", "admin-vocali",
 ]
+MOD_ATTESI = ["mod-sanzioni", "mod-casi", "mod-canali", "mod-ban"]
+ATTESI = [
+    "owner", *ADMIN_ATTESI, *MOD_ATTESI, "founder",
+    "ticket", "voice", "music", "level", "monete", "clan", "fun", "immagini", "giochi", "sondaggi", "assistente", "gif", "utility",
+]
+# Eccezioni al permesso `manage_guild` dei gruppi admin (D60): sicurezza e backup chiedono administrator, i ruoli manage_roles.
 PERMESSI = {
-    "admin": "manage_guild", "backup": "administrator", "gestione": "manage_guild", "economia": "manage_guild", "moduli": "manage_guild", "ruoli": "manage_roles", "antinuke": "administrator", "antiraid": "administrator", "ai": "manage_guild",
-    "automod": "manage_guild", "log": "manage_guild",
-    "security": "administrator", "owner": "administrator",
-    "mod": "moderate_members", "modban": "ban_members",
-    "messaggi": "manage_guild", "giveaway": "manage_guild", "ticket-gestione": "manage_guild", "ticket-pannelli": "manage_guild", "filtri": "manage_guild",
+    **{n: "manage_guild" for n in ADMIN_ATTESI},
+    "admin-ruoli": "manage_roles", "admin-backup": "administrator", "admin-sicurezza": "administrator",
+    "admin-antinuke": "administrator", "admin-antiraid": "administrator",
+    "owner": "administrator", "founder": "administrator",
+    "mod-sanzioni": "moderate_members", "mod-casi": "moderate_members", "mod-canali": "moderate_members", "mod-ban": "ban_members",
 }
 LIVELLI = {
-    "owner": Livello.OWNER, "admin": Livello.ADMIN, "backup": Livello.ADMIN, "gestione": Livello.ADMIN, "economia": Livello.ADMIN,
-    "moduli": Livello.ADMIN, "ruoli": Livello.ADMIN, "automod": Livello.ADMIN, "security": Livello.SECURITY, "antinuke": Livello.SECURITY, "antiraid": Livello.SECURITY, "ai": Livello.ADMIN,
-    "mod": Livello.MOD, "modban": Livello.MODBAN, "log": Livello.LOG,
-    "messaggi": Livello.ADMIN, "giveaway": Livello.ADMIN, "ticket-gestione": Livello.ADMIN, "ticket-pannelli": Livello.ADMIN, "filtri": Livello.ADMIN,
+    **{n: Livello.ADMIN for n in ADMIN_ATTESI},
+    "admin-sicurezza": Livello.SECURITY, "admin-antinuke": Livello.SECURITY, "admin-antiraid": Livello.SECURITY, "admin-log": Livello.LOG,
+    "owner": Livello.OWNER, "founder": Livello.FOUNDER,
+    "mod-sanzioni": Livello.MOD, "mod-casi": Livello.MOD, "mod-canali": Livello.MOD, "mod-ban": Livello.MODBAN,
 }
 
 # Permesso predefinito di Discord per livello (D56: Discord lo applica solo al primo livello).
 PERMESSO_PER_LIVELLO = {
     Livello.OWNER: "administrator", Livello.ADMIN: "manage_guild", Livello.SECURITY: "administrator",
-    Livello.LOG: "manage_guild", Livello.MOD: "moderate_members", Livello.MODBAN: "ban_members",
+    Livello.LOG: "manage_guild", Livello.MOD: "moderate_members", Livello.MODBAN: "ban_members", Livello.FOUNDER: "administrator",
 }
 # Eccezioni scritte (livello admin nel codice): i ruoli chiedono manage_roles, il backup administrator.
-ECCEZIONI_PERMESSO = {"ruoli": "manage_roles", "backup": "administrator"}
+ECCEZIONI_PERMESSO = {"admin-ruoli": "manage_roles", "admin-backup": "administrator"}
 
 
 @pytest.mark.parametrize("nome", ATTESI)
@@ -139,13 +145,13 @@ def test_aggiungi_a_sottogruppo_lo_crea_una_volta_con_il_controllo_del_padre():
         pass
 
     cmd = app_commands.Command(name="x", description="X", callback=cb)
-    cg.aggiungi_a_gruppo("admin", cmd, sottogruppo=("config", "Configurazione del server"), gruppi=gruppi)
+    cg.aggiungi_a_gruppo("admin-bot", cmd, sottogruppo=("config", "Configurazione del server"), gruppi=gruppi)
     cmd2 = app_commands.Command(name="y", description="Y", callback=cb)
-    cg.aggiungi_a_gruppo("admin", cmd2, sottogruppo=("config", "Configurazione del server"), gruppi=gruppi)
-    sotto = [c for c in gruppi["admin"].commands if c.name == "config"]
+    cg.aggiungi_a_gruppo("admin-bot", cmd2, sottogruppo=("config", "Configurazione del server"), gruppi=gruppi)
+    sotto = [c for c in gruppi["admin-bot"].commands if c.name == "config"]
     assert len(sotto) == 1 and isinstance(sotto[0], app_commands.Group)
     assert sorted(c.name for c in sotto[0].commands) == ["x", "y"]
-    assert sotto[0].parent is gruppi["admin"]
+    assert sotto[0].parent is gruppi["admin-bot"]
 
 
 def test_registra_gruppi_usati_salta_i_vuoti():
@@ -169,3 +175,54 @@ def test_nessun_gruppo_registrato_di_default_nell_albero_vero():
 
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     assert bot.tree.get_commands() == []
+
+
+# ---- D60: il ruolo e il prefisso del nome ----
+
+_LIVELLO_PER_PREFISSO = {
+    "admin-": {Livello.ADMIN, Livello.SECURITY, Livello.LOG},
+    "mod-": {Livello.MOD, Livello.MODBAN},
+}
+
+
+def test_il_prefisso_del_nome_dice_il_ruolo_del_gruppo():
+    """Un gruppo `admin-…` ha livello admin/sicurezza/log, uno `mod-…` mod/modban, `founder` solo FOUNDER."""
+    errori = []
+    for nome in cg.nomi_gruppi():
+        livello = getattr(cg.ottieni_gruppo(nome), "livello", None)
+        if nome == "founder":
+            if livello is not Livello.FOUNDER:
+                errori.append(f"/{nome}: livello {livello}")
+        elif nome == "owner":
+            if livello is not Livello.OWNER:
+                errori.append(f"/{nome}: livello {livello}")
+        elif nome.startswith(tuple(_LIVELLO_PER_PREFISSO)):
+            prefisso = next(p for p in _LIVELLO_PER_PREFISSO if nome.startswith(p))
+            if livello not in _LIVELLO_PER_PREFISSO[prefisso]:
+                errori.append(f"/{nome}: livello {livello} non adatto al prefisso {prefisso}")
+        elif livello is not None:
+            errori.append(f"/{nome}: ha il livello {livello} ma il nome non dice il ruolo (admin-, mod-, founder)")
+    assert not errori, "; ".join(errori)
+
+
+def test_nessun_gruppo_per_tutti_inizia_con_admin_mod_o_founder():
+    """D60: scrivendo `/admin`, `/mod` o `/founder` compaiono solo i gruppi dello staff."""
+    per_tutti = [n for n in cg.nomi_gruppi() if getattr(cg.ottieni_gruppo(n), "livello", None) is None]
+    assert per_tutti
+    sbagliati = [n for n in per_tutti if n.startswith(("admin", "mod", "founder"))]
+    assert not sbagliati, f"Gruppi per tutti con il nome di un ruolo: {sbagliati} (cambia nome)"
+
+
+def test_i_gruppi_staff_sono_venticinque_e_i_vecchi_non_ci_sono_piu():
+    staff = [n for n in cg.nomi_gruppi() if n.startswith(("admin-", "mod-")) or n == "founder"]
+    assert len(staff) == 25
+    vecchi = {"admin", "backup", "gestione", "economia", "moduli", "ruoli", "messaggi", "giveaway", "ticket-gestione", "ticket-pannelli",
+              "filtri", "security", "antinuke", "ai", "antiraid", "automod", "mod", "modban", "log"}
+    assert not vecchi & set(cg.nomi_gruppi())
+
+
+def test_founder_e_riservato_al_proprietario_del_server():
+    g = cg.ottieni_gruppo("founder")
+    assert g.livello is Livello.FOUNDER
+    assert g.default_permissions == discord.Permissions(administrator=True)
+    assert "proprietario" in g.description and len(g.description) <= 100

@@ -117,6 +117,6 @@ async def test_albero_costruito_con_i_gruppi_veri_registra_e_blocca():
     cmd = _comando("ban")
     cg.aggiungi_a_gruppo("modban", cmd, gruppi=gruppi)
     cg.registra_gruppi_usati(bot.tree, gruppi=gruppi)
-    trovato = bot.tree.get_command("modban").get_command("ban")
+    trovato = bot.tree.get_command("mod-ban").get_command("ban")
     with pytest.raises(ca.AccessoNegato):
         await trovato._check_can_run(_ix())

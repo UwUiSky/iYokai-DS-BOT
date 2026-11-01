@@ -143,7 +143,7 @@ async def test_albero_dei_comandi():
     await modulo.setup(bot)
     for nome in ("utente", "classifica", "storico", "link"):
         assert comando_nel_gruppo("level", f"inviti {nome}") is not None
-    assert comando_nel_gruppo("moduli", "inviti") is not None  # D56: le opzioni sono per lo staff
+    assert comando_nel_gruppo("admin-moduli", "inviti") is not None  # D56: le opzioni sono per lo staff
 
 
 @pytest.mark.asyncio

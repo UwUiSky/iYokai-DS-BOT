@@ -86,7 +86,7 @@ async def _membro(guild: discord.Guild, user_id: int, *, chiedi_a_discord: bool)
 
 async def puo_gestire(guild: discord.Guild, user_id: int, *, chiedi_a_discord: bool = True) -> bool:
     """
-    Stessa regola dei comandi di `/admin-…` (Livello.ADMIN): «Gestisci server»,
+    Stessa regola dei comandi di `admin-…` (Livello.ADMIN): «Gestisci server»,
     il ruolo admin del bot o il proprietario del server. Si controlla a ogni
     richiesta, con lo stato attuale del server.
     """

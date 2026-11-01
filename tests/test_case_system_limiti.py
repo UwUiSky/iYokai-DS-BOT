@@ -54,7 +54,7 @@ async def test_modnote_add_dichiara_la_lunghezza_massima():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await bot.add_cog(ModerationCaseSystemCog(bot))
 
-    comando = bot.tree.get_command("mod").get_command("nota").get_command("aggiungi")
+    comando = bot.tree.get_command("mod-casi").get_command("nota").get_command("aggiungi")
     opzioni = {o["name"]: o for o in comando.to_dict(bot.tree)["options"]}
     await bot.remove_cog("ModerationCaseSystemCog")
 

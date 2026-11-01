@@ -17,7 +17,7 @@ async def test_logs_query_cog_si_carica_correttamente():
 
     assert bot.get_cog("LogsQueryCog") is not None
 
-    gruppo = bot.tree.get_command("log")
+    gruppo = bot.tree.get_command("admin-log")
     cerca = gruppo.get_command("cerca")
     assert {c.name for c in cerca.commands} == {"utente", "canale", "ruolo"}
     assert gruppo.get_command("esporta") is not None

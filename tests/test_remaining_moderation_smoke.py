@@ -51,7 +51,7 @@ async def test_report_si_carica_correttamente():
     from core.command_groups import GRUPPI
 
     assert GRUPPI["utility"].get_command("report") is not None
-    assert GRUPPI["admin"].get_command("config").get_command("canale-report") is not None
+    assert GRUPPI["admin-bot"].get_command("config").get_command("canale-report") is not None
 
 
 async def test_clear_si_carica_e_parametri_leggibili_attraverso_decorator():
@@ -64,7 +64,7 @@ async def test_clear_si_carica_e_parametri_leggibili_attraverso_decorator():
     assert module is not None
     assert module.premium_capable is True  # candidato premium, come da schema
 
-    clear_cmd = bot.tree.get_command("mod").get_command("clear")
+    clear_cmd = bot.tree.get_command("mod-canali").get_command("clear")
     assert clear_cmd is not None, "Il comando /mod-canali clear non risulta registrato"
 
     param_names = {p.name for p in clear_cmd.parameters}

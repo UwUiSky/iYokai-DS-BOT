@@ -35,7 +35,7 @@ async def test_case_system_cog_si_carica_e_i_parametri_sono_letti_correttamente(
     # Verifica il punto critico: il comando /mod-casi caso storico deve
     # avere un parametro "member" di tipo Member, non essersi
     # perso dietro il *args/**kwargs del decorator @requires_module.
-    modcase_group = bot.tree.get_command("mod").get_command("caso")
+    modcase_group = bot.tree.get_command("mod-casi").get_command("caso")
     assert modcase_group is not None, "Il sottogruppo /mod-casi caso non risulta registrato"
 
     history_cmd = modcase_group.get_command("storico")
@@ -53,7 +53,7 @@ async def test_case_system_cog_si_carica_e_i_parametri_sono_letti_correttamente(
     assert "case_number" in [p.name for p in view_cmd.parameters]
 
     # Stessa verifica sul sottogruppo /mod-casi nota.
-    modnote_group = bot.tree.get_command("mod").get_command("nota")
+    modnote_group = bot.tree.get_command("mod-casi").get_command("nota")
     assert modnote_group is not None
 
     add_cmd = modnote_group.get_command("aggiungi")

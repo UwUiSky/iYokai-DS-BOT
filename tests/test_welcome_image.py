@@ -295,7 +295,7 @@ async def test_il_comando_sta_sotto_gestione_benvenuto():
 
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await modulo.setup(bot)
-    cmd = comando_nel_gruppo("gestione", "benvenuto immagine")
+    cmd = comando_nel_gruppo("admin-benvenuto", "immagine")
     opzioni = {o["name"]: o for o in cmd.to_dict(bot.tree)["options"]}
     assert len(opzioni["modello"]["choices"]) == len(MODELLI)
     assert opzioni["titolo"]["max_length"] <= 100

@@ -303,7 +303,7 @@ async def test_ticket_category_add_dichiara_i_limiti_delle_opzioni():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await bot.add_cog(TicketsCog(bot))
     try:
-        gruppo = bot.tree.get_command("ticket-gestione").get_command("categoria")
+        gruppo = bot.tree.get_command("admin-ticket").get_command("categoria")
         for nome in ("aggiungi", "togli"):
             opzioni = {o["name"]: o for o in gruppo.get_command(nome).to_dict(bot.tree)["options"]}
             assert opzioni["label"]["min_length"] == 1
@@ -717,6 +717,6 @@ async def test_comando_limite_salva_il_valore_e_rifiuta_fuori_scala():
     )
     await cog.ticket_limite.callback(cog, i, 3)
     assert await db.get_guild_setting(ID_SERVER, "ticket_max_per_utente") == 3
-    comando = bot.tree.get_command("ticket-gestione").get_command("limite")
+    comando = bot.tree.get_command("admin-ticket").get_command("limite")
     opzione = comando.to_dict(bot.tree)["options"][0]
     assert (opzione["min_value"], opzione["max_value"]) == (1, 5)
