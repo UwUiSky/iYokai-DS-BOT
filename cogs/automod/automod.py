@@ -777,7 +777,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         self._brevi = MessaggiBrevi()  # AMD-014: parola divisa in piu' messaggi
 
     @comando_di_gruppo(
-        "automod",
+        "admin-automod",
         nome="add",
         descrizione="Aggiunge una parola vietata.",
         sottogruppo=("parole", "Parole vietate."),
@@ -819,7 +819,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(messaggio, ephemeral=True)
 
     @comando_di_gruppo(
-        "automod",
+        "admin-automod",
         nome="remove",
         descrizione="Rimuove una parola vietata.",
         sottogruppo=("parole", "Parole vietate."),
@@ -848,7 +848,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(messaggio, ephemeral=True)
 
     @comando_di_gruppo(
-        "automod",
+        "admin-automod",
         nome="list",
         descrizione="Mostra le parole vietate configurate.",
         sottogruppo=("parole", "Parole vietate."),
@@ -960,7 +960,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(messaggio, ephemeral=True)
 
     @comando_di_gruppo(
-        "automod",
+        "admin-automod",
         nome="sync",
         descrizione="Forza una sincronizzazione manuale delle regole AutoMod.",
     )
@@ -1410,7 +1410,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
     # servirebbero N eccezioni per N filtri, complessità non richiesta)
     # ================================================================
     @comando_di_gruppo(
-        "automod",
+        "admin-automod",
         nome="channel-add",
         descrizione="Esenta un canale da tutti i filtri AutoMod avanzati.",
         sottogruppo=("esenzioni", "Canali e ruoli esentati dai filtri."),
@@ -1425,7 +1425,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "automod_canale_esentato_dai_filtri_avanzati", mention=channel.mention), ephemeral=True)
 
     @comando_di_gruppo(
-        "automod",
+        "admin-automod",
         nome="channel-remove",
         descrizione="Rimuove l'esenzione di un canale.",
         sottogruppo=("esenzioni", "Canali e ruoli esentati dai filtri."),
@@ -1441,7 +1441,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "automod_esenzione_rimossa_per", mention=channel.mention), ephemeral=True)
 
     @comando_di_gruppo(
-        "automod",
+        "admin-automod",
         nome="role-add",
         descrizione="Esenta un ruolo da tutti i filtri AutoMod avanzati.",
         sottogruppo=("esenzioni", "Canali e ruoli esentati dai filtri."),
@@ -1456,7 +1456,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "automod_ruolo_esentato_dai_filtri_avanzati", mention=role.mention), ephemeral=True)
 
     @comando_di_gruppo(
-        "automod",
+        "admin-automod",
         nome="role-remove",
         descrizione="Rimuove l'esenzione di un ruolo.",
         sottogruppo=("esenzioni", "Canali e ruoli esentati dai filtri."),
@@ -1513,7 +1513,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "automod",
+        "admin-automod",
         nome="mute-duration",
         descrizione="Imposta la durata del timeout usato dall'azione 'mute' dell'AutoMod.",
     )
@@ -1533,7 +1533,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "automod_durata_del_mute_automod_impostata", seconds=seconds), ephemeral=True)
 
     @comando_di_gruppo(
-        "automod",
+        "admin-automod",
         nome="violazioni",
         descrizione="Mostra le violazioni AutoMod di un utente, a pagine.",
     )
@@ -1568,7 +1568,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "automod",
+        "admin-automod",
         nome="violazione-togli",
         descrizione="Toglie una violazione dal registro AutoMod.",
     )
@@ -1587,7 +1587,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "automod",
+        "admin-automod",
         nome="log-channel",
         descrizione="Imposta il canale dove pubblicare il log delle azioni AutoMod avanzate.",
     )
@@ -1599,7 +1599,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "automod_canale_di_log_automod_impostato", mention=channel.mention), ephemeral=True)
 
     @comando_di_gruppo(
-        "automod",
+        "admin-automod",
         nome="status",
         descrizione="Mostra la configurazione attuale dei filtri AutoMod avanzati.",
     )
