@@ -11,7 +11,8 @@ contenere le stesse variabili; quelle già nell'ambiente hanno la precedenza.
 
 Variabili (una serie per fornitore, NOME in maiuscolo):
 - `AI_FORNITORI`: nomi separati da virgola, nell'ordine di preferenza.
-- `AI_KEY_<NOME>`: la chiave (vuota solo per un servizio sulla stessa macchina).
+- `AI_KEY_<NOME>`: la chiave (vuota solo per un servizio sulla stessa macchina). Se manca vale
+  `AI_KEY_<PRIMA PARTE>` (`gemini_lite` usa `AI_KEY_GEMINI`): una chiave per servizio, più modelli.
 - `AI_URL_<NOME>`: indirizzo base, es. `https://servizio.example/v1`.
 - `AI_MODELLO_<NOME>`, `AI_MODELLO_IMMAGINI_<NOME>`: nomi dei modelli.
 - `AI_TIPI_<NOME>`: lavori che sa fare (vedi `TIPI`).
@@ -156,7 +157,7 @@ def leggi_fornitori(env: Mapping[str, str] | None = None) -> tuple[list[Fornitor
             continue
         su = nome.upper()
         url = (env.get(f"AI_URL_{su}") or "").strip().rstrip("/")
-        chiave = (env.get(f"AI_KEY_{su}") or "").strip()
+        chiave = (env.get(f"AI_KEY_{su}") or env.get(f"AI_KEY_{su.split('_')[0]}") or "").strip()
         if not url.startswith(("https://", "http://")):
             scarti.append(f"{nome}: manca AI_URL_{su}")
             continue

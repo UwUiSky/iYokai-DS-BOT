@@ -60,6 +60,17 @@ def test_interruttore_ammetti_addestranti_li_spegne_tutti():
     assert fornitori == [] and "AI_AMMETTI_ADDESTRANO" in scarti[0]
 
 
+def test_stessa_chiave_per_i_modelli_dello_stesso_servizio():
+    """`gemini_lite` e `gemini_flash` usano `AI_KEY_GEMINI` se non hanno una chiave propria."""
+    base = {"AI_FORNITORI": "gemini_lite,gemini_flash", "AI_KEY_GEMINI": chiave_finta("g")}
+    for n in ("GEMINI_LITE", "GEMINI_FLASH"):
+        base[f"AI_URL_{n}"] = "https://g.example/v1"
+        base[f"AI_ADDESTRA_{n}"] = "si"
+    base["AI_KEY_GEMINI_FLASH"] = chiave_finta("propria")
+    fornitori, scarti = leggi_fornitori(base)
+    assert scarti == [] and [f.chiave for f in fornitori] == [chiave_finta("g"), chiave_finta("propria")]
+
+
 def test_file_dei_fornitori_accanto_al_env(tmp_path):
     file = tmp_path / "ai_fornitori.env"
     file.write_text(
