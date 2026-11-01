@@ -111,6 +111,28 @@ async def test_file_delle_risposte_standard_restano_nel_database(repo):
         "INSERT INTO ticket_standard_replies (guild_id, panel_id, title, keywords, body) VALUES ($1, $2, 't', 'k', 'b') RETURNING id", G, r
     )
     assert await ai_ticket_repo.salva_allegati(G, rid, [("a.png", b"\x89PNG"), ("b.txt", b"ciao")]) == 2
-    assert await ai_ticket_repo.allegati_di(rid) == [("a.png", b"\x89PNG"), ("b.txt", b"ciao")]
+    assert await ai_ticket_repo.allegati_di(G, rid) == [("a.png", b"\x89PNG"), ("b.txt", b"ciao")]
+    assert await ai_ticket_repo.allegati_di(G + 1, rid) == []  # mai i file di un altro server
     await repo.execute("DELETE FROM ticket_standard_replies WHERE id = $1", rid)
-    assert await ai_ticket_repo.allegati_di(rid) == []  # spariscono con la risposta
+    assert await ai_ticket_repo.allegati_di(G, rid) == []  # spariscono con la risposta
+
+
+async def test_prima_risposta_all_apertura_non_ferma_la_creazione_del_ticket():
+    """L'AI può metterci decine di secondi: chiusura automatica, sollecito e «Ticket creato» non la aspettano."""
+    import asyncio
+    from unittest.mock import MagicMock
+
+    from cogs.tickets import tickets as modulo_ticket
+
+    partita, ferma = asyncio.Event(), asyncio.Event()
+
+    class CogLento:
+        async def dopo_apertura(self, *args):
+            partita.set()
+            await ferma.wait()
+
+    client = MagicMock()
+    client.get_cog.return_value = CogLento()
+    await asyncio.wait_for(modulo_ticket._prima_risposta_ai(client, MagicMock(), 1, 2, 3, "aiuto", []), 1)
+    await asyncio.wait_for(partita.wait(), 1)  # la risposta parte comunque, in un compito a parte
+    ferma.set()

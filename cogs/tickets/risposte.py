@@ -365,7 +365,7 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
                 try:
                     await message.channel.send(
                         embed=embed_risposta_automatica(risposta, ticket.user_id), reference=message,
-                        allowed_mentions=discord.AllowedMentions.none(), files=await self._file_della_risposta(risposta.id),
+                        allowed_mentions=discord.AllowedMentions.none(), files=await self._file_della_risposta(risposta.guild_id, risposta.id),
                     )
                 except discord.HTTPException:
                     logger.warning("Risposta standard non inviata nel ticket %s", message.channel.id)
@@ -377,7 +377,7 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
                 try:
                     await message.channel.send(
                         embed=embed_risposta_automatica(risposta, ticket.user_id), reference=message,
-                        allowed_mentions=discord.AllowedMentions.none(), files=await self._file_della_risposta(risposta.id),
+                        allowed_mentions=discord.AllowedMentions.none(), files=await self._file_della_risposta(risposta.guild_id, risposta.id),
                     )
                 except discord.HTTPException:
                     logger.warning("Risposta standard non inviata nel ticket %s", message.channel.id)
@@ -395,10 +395,10 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         return ai_parole.leggi_parole(testo)
 
     @staticmethod
-    async def _file_della_risposta(reply_id: int) -> list[discord.File]:
+    async def _file_della_risposta(guild_id: int, reply_id: int) -> list[discord.File]:
         """I file conservati nel database, pronti da rimandare con la risposta standard."""
         try:
-            return [discord.File(io.BytesIO(c), filename=n) for n, c in await ai_ticket_repo.allegati_di(reply_id)]
+            return [discord.File(io.BytesIO(c), filename=n) for n, c in await ai_ticket_repo.allegati_di(guild_id, reply_id)]
         except Exception:  # noqa: BLE001 - senza i file la risposta parte comunque
             logger.warning("File della risposta standard %s non letti.", reply_id, exc_info=True)
             return []

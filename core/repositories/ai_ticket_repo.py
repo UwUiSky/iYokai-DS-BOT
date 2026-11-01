@@ -51,8 +51,10 @@ class AiTicketRepository:
             )
         return len(file)
 
-    async def allegati_di(self, reply_id: int) -> list[tuple[str, bytes]]:
-        righe = await self._pool.fetch("SELECT filename, contenuto FROM ai_standard_allegati WHERE reply_id = $1 ORDER BY id", reply_id)
+    async def allegati_di(self, guild_id: int, reply_id: int) -> list[tuple[str, bytes]]:
+        righe = await self._pool.fetch(
+            "SELECT filename, contenuto FROM ai_standard_allegati WHERE guild_id = $1 AND reply_id = $2 ORDER BY id", guild_id, reply_id
+        )
         return [(r["filename"], bytes(r["contenuto"])) for r in righe]
 
 

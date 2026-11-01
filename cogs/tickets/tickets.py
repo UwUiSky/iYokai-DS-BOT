@@ -60,6 +60,7 @@ automatica, voto, limite per utente), §8.18 (risposte standard, in risposte.py)
 
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 import time
@@ -395,15 +396,26 @@ async def _vista_assistente(guild_id: int):
         return None
 
 
+_COMPITI_AI: set[asyncio.Task] = set()  # riferimenti tenuti finché il compito non finisce
+
+
 async def _prima_risposta_ai(client, channel, user_id: int, guild_id: int, panel_id, motivo, campi) -> None:
-    """Prima risposta automatica (§25.66) se in apertura c'è già un testo della persona; mai bloccante."""
-    try:
-        cog = client.get_cog("AiTicketCog")
-        contenuto = "\n".join([motivo or "", *(v for _, v in (campi or []))]).strip()
-        if cog is not None and panel_id is not None and contenuto:
+    """Prima risposta automatica (§25.66) se in apertura c'è già un testo della persona. Parte in un compito a parte:
+    l'apertura del ticket non aspetta l'AI."""
+    cog = client.get_cog("AiTicketCog")
+    contenuto = "\n".join([motivo or "", *(v for _, v in (campi or []))]).strip()
+    if cog is None or panel_id is None or not contenuto:
+        return
+
+    async def lavoro() -> None:
+        try:
             await cog.dopo_apertura(channel, user_id, guild_id, panel_id, contenuto)
-    except Exception:  # noqa: BLE001
-        logger.warning("Prima risposta automatica non riuscita all'apertura.", exc_info=True)
+        except Exception:  # noqa: BLE001
+            logger.warning("Prima risposta automatica non riuscita all'apertura.", exc_info=True)
+
+    compito = asyncio.create_task(lavoro())
+    _COMPITI_AI.add(compito)
+    compito.add_done_callback(_COMPITI_AI.discard)
 
 
 async def _crea_ticket(
