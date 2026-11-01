@@ -22,7 +22,9 @@ from core.premium import handle_app_command_error
 
 ISTANZA_APP = "app"
 SCOPE_SYNC = "app:global"
-MODULI_COG = ("cogs.user_app.personal", "cogs.user_app.strumenti")
+MODULI_COG = (
+    "cogs.user_app.personal", "cogs.user_app.strumenti", "cogs.user_app.voce_app", "cogs.user_app.assistente_app",
+)
 
 
 def e_istanza_app(bot: object) -> bool:

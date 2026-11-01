@@ -2333,17 +2333,21 @@ di quel file.
 
 **App utente e Desktop**
 
-- `[ ]` 25.85 Cerca comando e scoperta delle funzioni dentro l'app
+- `[x]` 25.85 Cerca comando e scoperta delle funzioni dentro l'app
   utente (AI-R-092)
-- `[ ]` 25.86 Assistente AI personale (AI-R-093)
+  → **Stato 29/10 (r12ai):** cogs/user_app/assistente_app.py, core/user_app_assistente_logic.py: /trova in iYokai App cerca tra comandi e menu sul messaggio dell'app, senza AI. Test: tests/test_user_app_assistente.py
+- `[x]` 25.86 Assistente AI personale (AI-R-093)
+  → **Stato 29/10 (r12ai):** /assistente in iYokai App: assistente personale con l'AI che conosce l'elenco delle funzioni dell'app, memoria breve, rispetta la preferenza personale (/utility ai preferenza); con l'AI ferma risponde come /trova.
 - `[x]` 25.87 Preferenza personale: assistente acceso o spento
   (AI-R-094)
   → **Stato 29/10 (r12ai):** `/utility ai preferenza`.
-- `[~]` 25.88 Spiega o riassumi un messaggio (AI-R-095; vedi B.2)
+- `[x]` 25.88 Spiega o riassumi un messaggio (AI-R-095; vedi B.2)
   → **Stato 14/10 (r6):** `/utility ai spiega` con il link del messaggio; il menu sul messaggio arriva con l'app utente (B.2).
+  → **Stato 29/10 (r12ai):** Fatto dal ramo r12piatt (B.2): menu «Spiega o riassumi» sul messaggio dell'app, con /utility ai spiega nel bot principale.
 - `[x]` 25.89 "Spiega questo Yokai": scheda di lore a richiesta
   (AI-R-096)
-- `[ ]` 25.90 Desktop: traduzione rapida (AI-R-097; vedi D.8)
+- `[x]` 25.90 Desktop: traduzione rapida (AI-R-097; vedi D.8)
+  → **Stato 29/10 (r12ai):** Fatto dal ramo r12piatt (D.8): traduzione rapida di iYokai Desktop, che usa la stessa funzione di traduzione dell'app.
 
 **Pannello web**
 
