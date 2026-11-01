@@ -447,7 +447,7 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
         await self._salva(interaction, pannello, lambda guild: {})
 
     # ================================================================ regole del server
-    @comando_di_gruppo("ticket-gestione", nome="lista-nera", descrizione="Utenti e ruoli che non possono aprire ticket.")
+    @comando_di_gruppo("admin-ticket", nome="lista-nera", descrizione="Utenti e ruoli che non possono aprire ticket.")
     @richiedi(Livello.ADMIN)
     @app_commands.describe(
         azione="Aggiungi, togli o mostra",
@@ -496,7 +496,7 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
             testo = f"{bersaglio.mention} non può più aprire ticket. Lo staff resta escluso dal blocco."
         await interaction.response.send_message(testo, ephemeral=True, allowed_mentions=NIENTE)
 
-    @comando_di_gruppo("ticket-gestione", nome="sospendi", descrizione="Sospendi l'apertura dei ticket (senza motivo: riprendi).")
+    @comando_di_gruppo("admin-ticket", nome="sospendi", descrizione="Sospendi l'apertura dei ticket (senza motivo: riprendi).")
     @richiedi(Livello.ADMIN)
     @app_commands.describe(motivo="Il motivo mostrato a chi prova ad aprire", ore="Per quante ore (vuoto = finché non riprendi)")
     async def sospendi(

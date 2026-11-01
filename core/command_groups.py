@@ -57,7 +57,6 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "backup": ("Backup del server: copia, ripristino, modelli, sincronia, esportazioni", "administrator", Livello.ADMIN),
     "gestione": ("Gestione del server: benvenuto e canali vocali temporanei", "manage_guild", Livello.ADMIN),
     "economia": ("Economia del server: livelli, XP, monete, negozio e annunci (staff)", "manage_guild", Livello.ADMIN),
-    "ticket-gestione": ("Ticket (admin): impianto, categorie, ruoli, ModMail, risposte", "manage_guild", Livello.ADMIN),
     "ticket-pannelli": ("Pannelli dei ticket (admin): crea, pubblica, modulo e opzioni", "manage_guild", Livello.ADMIN),
     "mod": ("Moderazione: avvisi, timeout, silenzio, pulizia, blocco canali", "moderate_members", Livello.MOD),
     "modban": ("Moderazione dura: ban, kick, softban e sban", "ban_members", Livello.MODBAN),
@@ -76,6 +75,7 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "admin-log": ("Registro degli eventi (admin): canali, stato, ricerca, esportazione", "manage_guild", Livello.LOG),
     "admin-messaggi": ("Messaggi del server (admin): embed, tag, risposte, programmati, fissi", "manage_guild", Livello.ADMIN),
     "admin-giveaway": ("Giveaway del server (admin): avvio, modelli, programmati", "manage_guild", Livello.ADMIN),
+    "admin-ticket": ("Ticket (admin): impianto, categorie, ruoli, ModMail, risposte, pannelli", "manage_guild", Livello.ADMIN),
     "ticket": ("Gestione del ticket in cui ti trovi", None, None),
     "voice": ("Gestione del tuo canale vocale temporaneo", None, None),
     "music": ("Musica nei canali vocali", None, None),
@@ -95,6 +95,7 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
 # I sotto-gruppi dei comandi spostati dal riordino D56: nome e descrizione in un posto solo.
 # Chiave: "gruppo sotto-gruppo". Il cog scrive `sottogruppo=SOTTOGRUPPI["ruoli premio"]`.
 SOTTOGRUPPI: dict[str, tuple[str, str]] = {
+    "admin-ticket pannelli": ("pannelli", "Pannelli dei ticket: crea, pubblica, modulo"),
     "utility snipe": ("snipe", "Messaggi cancellati, modificati e reazioni tolte"),
     "admin-bot politica": ("politica", "Politica dei comandi: spegni, limita, ignora, diagnosi"),
     "admin-messaggi programmati": ("programmati", "Messaggi programmati a orario"),
@@ -102,10 +103,10 @@ SOTTOGRUPPI: dict[str, tuple[str, str]] = {
     "admin-messaggi risposte": ("risposte", "Risposte automatiche a parole chiave"),
     "admin-messaggi tag": ("tag", "Tag: comandi personalizzati con testo"),
     "admin-messaggi embed": ("embed", "Embed personalizzati"),
-    "ticket-gestione categoria": ("categoria", "Categorie dei ticket"),
-    "ticket-gestione ruolo": ("ruolo", "Ruoli di supporto dei ticket"),
-    "ticket-gestione modmail": ("modmail", "ModMail: ticket dai messaggi privati"),
-    "ticket-gestione risposte": ("risposte", "Risposte standard dei ticket"),
+    "admin-ticket categoria": ("categoria", "Categorie dei ticket"),
+    "admin-ticket ruolo": ("ruolo", "Ruoli di supporto dei ticket"),
+    "admin-ticket modmail": ("modmail", "ModMail: ticket dai messaggi privati"),
+    "admin-ticket risposte": ("risposte", "Risposte standard dei ticket"),
     "ticket-pannelli opzioni": ("opzioni", "Opzioni dei pannelli dei ticket (admin)"),
     "ticket-pannelli modulo": ("modulo", "Domande del modulo di apertura"),
     "admin-ruoli premio": ("premio", "Ruoli premio per livello"),

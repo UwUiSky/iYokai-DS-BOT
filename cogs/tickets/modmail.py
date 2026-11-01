@@ -484,10 +484,10 @@ class ModMailCog(CogConGruppi, commands.Cog):
     # Comandi
     # ================================================================
     @comando_di_gruppo(
-        "ticket-gestione",
+        "admin-ticket",
         nome="attiva",
         descrizione="Accendi o spegni il ModMail (ticket in DM).",
-        sottogruppo=SOTTOGRUPPI["ticket-gestione modmail"],
+        sottogruppo=SOTTOGRUPPI["admin-ticket modmail"],
     )
     @app_commands.describe(
         attivo="Acceso o spento",
@@ -516,10 +516,10 @@ class ModMailCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "ticket-gestione",
+        "admin-ticket",
         nome="blocca",
         descrizione="Blocca o sblocca un utente dal ModMail.",
-        sottogruppo=SOTTOGRUPPI["ticket-gestione modmail"],
+        sottogruppo=SOTTOGRUPPI["admin-ticket modmail"],
     )
     @app_commands.describe(utente="L'utente", bloccato="Sì per bloccarlo")
     async def dm_blocca(self, interaction: discord.Interaction, utente: discord.User, bloccato: bool = True) -> None:
