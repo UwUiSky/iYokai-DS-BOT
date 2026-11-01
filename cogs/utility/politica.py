@@ -16,7 +16,7 @@ from discord.ext import commands
 
 from core import command_policy as pol
 from core.command_access import Livello, autocomplete_protetto, puo_usare, richiedi
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.command_search_logic import raccogli_comandi
 from core.i18n import testo_per
 from core.premium import guild_has_premium_access, registry
@@ -77,7 +77,7 @@ class PoliticaCog(CogConGruppi, commands.Cog):
         return [app_commands.Choice(name=p[:100], value=p[:100]) for p in sorted(trovati)[:MAX_SUGGERIMENTI]]
 
     # ------------------------------------------------------------------
-    @comando_di_gruppo("utility", nome="comando", descrizione="Spegne o riaccende un singolo comando.", sottogruppo=SOTTOGRUPPO)
+    @comando_di_gruppo("admin", nome="comando", descrizione="Spegne o riaccende un singolo comando.", sottogruppo=SOTTOGRUPPI["admin politica"])
     @richiedi(Livello.ADMIN)
     @app_commands.describe(comando="Il comando, es. «fun meme»", acceso="Sì = riaccendi, No = spegni")
     @app_commands.autocomplete(comando=_suggerisci)
@@ -106,7 +106,7 @@ class PoliticaCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, chiave, comando=percorso), ephemeral=True)
 
     # ------------------------------------------------------------------
-    @comando_di_gruppo("utility", nome="canali", descrizione="Dove il bot risponde ai comandi.", sottogruppo=SOTTOGRUPPO)
+    @comando_di_gruppo("admin", nome="canali", descrizione="Dove il bot risponde ai comandi.", sottogruppo=SOTTOGRUPPI["admin politica"])
     @richiedi(Livello.ADMIN)
     @app_commands.describe(regola="Solo in questo canale, o mai in questo canale", canale="Canale o categoria", togli="Sì = togli la regola")
     @app_commands.choices(
@@ -124,7 +124,7 @@ class PoliticaCog(CogConGruppi, commands.Cog):
     ) -> None:
         await self._modifica_id(interaction, _ELENCHI[regola.value][0], canale.id, aggiungi=not togli)
 
-    @comando_di_gruppo("utility", nome="ignora", descrizione="Il bot ignora un ruolo o un utente.", sottogruppo=SOTTOGRUPPO)
+    @comando_di_gruppo("admin", nome="ignora", descrizione="Il bot ignora un ruolo o un utente.", sottogruppo=SOTTOGRUPPI["admin politica"])
     @richiedi(Livello.ADMIN)
     @app_commands.describe(ruolo="Ruolo da ignorare", utente="Utente da ignorare", togli="Sì = togli la regola")
     async def ignora(
@@ -156,7 +156,7 @@ class PoliticaCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, testo), ephemeral=True)
 
     # ------------------------------------------------------------------
-    @comando_di_gruppo("utility", nome="elenco", descrizione="Mostra la politica dei comandi e, se vuoi, azzera un elenco.", sottogruppo=SOTTOGRUPPO)
+    @comando_di_gruppo("admin", nome="elenco", descrizione="Mostra la politica dei comandi e, se vuoi, azzera un elenco.", sottogruppo=SOTTOGRUPPI["admin politica"])
     @richiedi(Livello.ADMIN)
     @app_commands.describe(azzera="Elenco da svuotare (vuoto = solo mostra)")
     @app_commands.choices(
@@ -185,7 +185,7 @@ class PoliticaCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(content=avviso, embed=embed, ephemeral=True)
 
     # ------------------------------------------------------------------
-    @comando_di_gruppo("utility", nome="diagnosi", descrizione="Scopre perché un comando non funziona qui.", sottogruppo=SOTTOGRUPPO)
+    @comando_di_gruppo("admin", nome="diagnosi", descrizione="Scopre perché un comando non funziona qui.", sottogruppo=SOTTOGRUPPI["admin politica"])
     @richiedi(Livello.ADMIN)
     @app_commands.describe(comando="Il comando da controllare, es. «fun meme»")
     @app_commands.autocomplete(comando=_suggerisci)
