@@ -725,3 +725,26 @@ accettati nella configurazione ma senza trasporto, perché non c'è un servizio 
 Le bozze di codice (AI-R-107) partono solo da richieste già approvate dall'owner e non si uniscono mai da sole.
 Il processo AI separato (25.21) è `[✗]`: era una proposta, non una richiesta dell'owner; con la coda di 25.22 le misure
 non lo chiedono, e un secondo processo duplicherebbe pool, cache e quote su una macchina da 2 CPU.
+
+## D53 — Paese dell'account nella verifica, contro i raid (01/11/2026, richiesta dell'owner)
+L'owner vuole sapere almeno il **paese** di chi entra (non la città): in un raid gli
+account arrivano quasi sempre da un paese diverso da quello del server.
+- Il server dichiara il suo paese (o più paesi) nelle impostazioni della verifica.
+- Il paese si ricava dall'IP **solo** durante la verifica web, con una banca dati
+  locale (nessun servizio esterno). Si salva solo il codice del paese (es. `IT`),
+  mai l'IP in chiaro, mai la città. Segnale debole in più: la lingua del client
+  Discord (`interaction.locale`), che non richiede IP.
+- Se in poco tempo arrivano molte verifiche da paesi diversi da quelli del server
+  (soglia configurabile), il bot mette le entrate in attesa e avvisa gli admin, che
+  approvano o rifiutano. Non blocca mai da solo per il paese: è un indizio (come D50).
+- Privacy: dato minimo, scritto nell'informativa, cancellato con `/privacy`;
+  registrato nel data registry. Sostituisce il `[✗]` "ISP / localizzazione" per la
+  parte paese; ISP e città restano non raccolti.
+
+## D54 — File dedicato con i servizi AI gratuiti (01/11/2026, richiesta dell'owner)
+Niente processo AI separato (25.21 resta `[✗]`, confermato dall'owner). Serve invece
+un file dedicato (`config/ai_fornitori.env.example`) con tutti i servizi AI che hanno
+un livello gratuito (grandi aziende, aziende cinesi e altri): indirizzo, modelli,
+tipi di lavoro, limiti al minuto e al giorno, se addestrano sui dati (D19). L'owner
+mette solo la chiave. Il router sceglie il servizio per tipo di lavoro e quota rimasta.
+Le chiavi a pagamento restano spente finché non le pagano gli abbonamenti premium.
