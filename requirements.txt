@@ -34,5 +34,5 @@ jinja2>=3.1.6
 # Cifratura AES-256-GCM dei token OAuth altrui (restore utenti, SPEC.md §11.11)
 cryptography>=42.0.0
 
-# Espressioni regolari scritte dagli admin (/log ignora espressione): motore a tempo lineare, niente ReDoS
+# Espressioni regolari scritte dagli admin (/admin-log ignora espressione): motore a tempo lineare, niente ReDoS
 google-re2>=1.1

@@ -136,7 +136,7 @@ logger = logging.getLogger("iyokai.automod")
 
 MODULE_AUTOMOD = "automod"
 
-# Oltre questa lunghezza /admin-automod badword-list manda l'elenco come file
+# Oltre questa lunghezza /admin-automod parole list manda l'elenco come file
 # (un messaggio Discord tiene 2000 caratteri).
 MAX_ELENCO_IN_CHAT = 1900
 VIOLAZIONI_PER_PAGINA = 10

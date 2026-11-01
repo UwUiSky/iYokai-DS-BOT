@@ -390,53 +390,53 @@ Totale voci: **514**.
   bot (`core/automod_advanced_logic.py`), non regola nativa: Discord
   non supporta un elenco whitelist/blacklist di domini come trigger
   nativo. Modalità `off`/`whitelist`/`blacklist` per server,
-  `/admin-automod anti-link-mode` + `/admin-automod anti-link-domain`
+  `/admin-filtri anti-link-mode` + `/admin-filtri anti-link-domain`
   → **Stato 04/10:** da riprovare con l'intent acceso (BUG-5); lista nera aggirabile (REVIEW §4).
 - `[x]` 6.4 Anti-spam messaggi — soglia messaggi/finestra
   configurabile, finestra mobile in memoria
   (`core/automod_rate_tracker.py`, mai persistita: stato "caldo" di
   pochi secondi, stesso principio di `core/invite_tracker.py`),
-  `/admin-automod anti-spam-messages`
+  `/admin-filtri anti-spam-messages`
   → **Stato 04/10:** il valore `seconds` viene salvato e ignorato (REVIEW §4).
 - `[x]` 6.5 Anti-spam emoji — soglia per SINGOLO messaggio (non nel
   tempo, a differenza di 6.4/6.6/6.10): conta emoji custom Discord +
   un intervallo unicode ampio (nessuna libreria `emoji` aggiunta come
   dipendenza — sotto-conteggio occasionale su emoji unicode rare
-  accettato), `/admin-automod anti-spam-emoji`
+  accettato), `/admin-filtri anti-spam-emoji`
   → **Stato 04/10:** da riprovare con l'intent acceso (BUG-5).
 - `[x]` 6.6 Anti-spam sticker — soglia sticker/finestra, stesso motore
-  a finestra mobile di 6.4, `/admin-automod anti-spam-sticker`
+  a finestra mobile di 6.4, `/admin-filtri anti-spam-sticker`
   → **Stato 04/10:** `seconds` ignorato (REVIEW §4).
 - `[x]` 6.7 Anti-caps — percentuale di lettere maiuscole SUL TOTALE
   DELLE LETTERE (non sul totale caratteri: punteggiatura/numeri non
   contano né a favore né contro), soglia + lunghezza minima
-  configurabili, `/admin-automod anti-caps`
+  configurabili, `/admin-filtri anti-caps`
   → **Stato 04/10:** da riprovare con l'intent acceso (BUG-5).
 - `[x]` 6.8 Anti-zalgo — conteggio segni diacritici unicode
   combinanti (categoria Mn/Me/Mc) oltre una soglia fissa (8, per
   inferenza: il testo normale — accenti italiani compresi — non la
-  supera mai), `/admin-automod anti-zalgo`
+  supera mai), `/admin-filtri anti-zalgo`
   → **Stato 04/10:** da riprovare con l'intent acceso (BUG-5).
 - `[x]` 6.9 Anti-mass-mention — soglia di menzioni (utenti+ruoli) per
   messaggio, `@everyone`/`@here` contano sempre come sopra soglia,
-  `/admin-automod anti-mention`
+  `/admin-filtri anti-mention`
   → **Stato 04/10:** (da verificare live)
 - `[x]` 6.10 Anti-attachment-spam — soglia allegati/finestra, stesso
-  motore a finestra mobile di 6.4/6.6, `/admin-automod anti-attachment`
+  motore a finestra mobile di 6.4/6.6, `/admin-filtri anti-attachment`
   → **Stato 04/10:** da riprovare con l'intent acceso (BUG-5); `seconds` ignorato.
   → **Stato 27/10 (r10):** filtri 6.3–6.10 provati con messaggi che hanno testo (`tests/test_automod_filtri_messaggi.py`: link con porta/sottodominio, maiuscole, emoji, zalgo, finestra di 5 s e 30 s, sticker, allegati). `seconds` è usato davvero (M 2.5). (da verificare live)
 - `[x]` 6.11 Filtri personalizzati per canale — **eccezione**
   (bypassa TUTTI i filtri avanzati insieme, non uno specifico per
   canale: altrimenti servirebbero N eccezioni per N filtri, complessità
-  non richiesta), `/admin-automod exempt-channel-add|remove`
+  non richiesta), `/admin-automod esenzioni channel-add|remove`
 - `[x]` 6.12 Filtri personalizzati per ruolo — stessa logica di 6.11,
-  per ruolo, `/admin-automod exempt-role-add|remove`
+  per ruolo, `/admin-automod esenzioni role-add|remove`
 - `[x]` 6.13 Azioni multiple configurabili (delete + warn + mute +
   ban) — per violazione, con "delete" sempre eseguito per primo se
   presente; rete di sicurezza: mute/ban non si applicano mai
   all'owner o a chi ha `manage_guild`/administrator (delete/warn
   restano, poco invasivi) — scelta di sicurezza per inferenza, non
-  richiesta esplicitamente. `/admin-automod actions-set` + `/admin-automod
+  richiesta esplicitamente. `/admin-filtri actions-set` + `/admin-automod
   mute-duration` (durata del timeout, condivisa da ogni azione
   "mute")
 - `[x]` 6.14 Log delle azioni automod — riga persistente per ogni
@@ -513,7 +513,7 @@ Totale voci: **514**.
   (`guild.audit_logs`, stesso approccio già usato per il cleanup
   webhook/inviti di Spam Trap), con una finestra di tolleranza di 10s
   tra evento e voce di audit log (`core/security_audit.py`). Comandi:
-  `/admin-sicurezza antinuke enable|limits|trusted-add|trusted-remove|
+  `/admin-antinuke enable|limits|trusted-add|trusted-remove|
   trusted-list|punish-action|recovery|status|guardie|casi|rilascia`
   → **Stato 04/10:** può punire il bot stesso (BUG-11).
   → **Stato 21/10 (#59, r9):** `punish-action ripiego:` espelle o banna chi
@@ -2087,7 +2087,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 - `[x]` 23.7 Blocco totale del server e "panic mode" (NF-29)
 - `[x]` 23.8 Anti-nuke con due soglie (al minuto e all'ora) e
   quarantena come punizione di default
-  → **Stato 28/10 (r12):** `/admin-sicurezza anti-nuke soglia … max_per_hour` (0 = soglia oraria spenta); punizione di base `quarantine`
+  → **Stato 28/10 (r12):** `/admin-antinuke limits … max_per_hour` (0 = soglia oraria spenta); punizione di base `quarantine`
   (`core/security_logic.py`). Test: `tests/test_anti_nuke_117.py` (attacco lento), `tests/test_security_fiducia_117.py` (due soglie, default).
 - `[x]` 23.9 Appello anche per i ban dati a mano (NF-30) — `/mod-ban appelli canale|elenco`; bottone «Fai appello» nel DM di ban e tempban, un appello ogni 24 ore, Accetta/Rifiuta solo a chi può bannare (da provare live); chi scrive al bot in privato con un ban manuale attivo riceve il bottone (stesso ingresso dei DM dello spam-trap, un bottone per server, al massimo 25)
 - `[x]` 23.10 Blocco dei link di phishing (NF-31); accorciatori di link e inviti a server per adulti con interruttore proprio (SIC-042, r6)

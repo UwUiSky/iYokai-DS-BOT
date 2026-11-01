@@ -133,7 +133,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 18:1
 - **`/admin-bot config cleanup`** — Removes channels and roles that no longer exist from the settings.
 - **`/admin-bot config export`** — Exports this server's configuration to a file.
 - **`/admin-bot config history`** — Shows the latest configuration changes.
-- **`/admin-bot config import`** — Imports a configuration from a file exported with /admin config export.
+- **`/admin-bot config import`** — Imports a configuration from a file exported with /admin-bot config export.
 - **`/admin-bot config report-channel`** — Sets the reports channel.
 - **`/admin-bot config reset`** — Resets this server's configuration.
 - **`/admin-bot config rollback`** — Restores the previous value of a change.
