@@ -73,3 +73,18 @@ async def test_comandi_disponibili_solo_nei_server(full_tree):
     assert sistemati == [], (
         f"Questi comandi ora sono guild_only: toglili da KNOWN_NOT_GUILD_ONLY: {sistemati}"
     )
+
+
+def test_sempre_aperti_solo_admin_bot_e_owner_gli_altri_admin_si_spengono():
+    """D60: `admin-bot` (con la politica) e `owner` restano accesi; `admin-filtri` e gli altri `admin-…` si spengono."""
+    from core import command_policy as pol
+
+    assert pol.PREFISSI_SEMPRE_APERTI == ("admin-bot", "owner")
+    assert pol.sempre_aperto("admin-bot politica comando")
+    assert pol.sempre_aperto("admin-bot setup attiva")
+    assert pol.sempre_aperto("owner system announce")
+    assert not pol.sempre_aperto("admin-filtri invites")
+    assert not pol.sempre_aperto("admin-musica impostazioni")
+    assert not pol.sempre_aperto("admin-botx politica")  # solo il gruppo intero, non un prefisso di lettere
+    assert not pol.sempre_aperto("mod-ban ban")
+    assert not pol.sempre_aperto("founder backup sincronia")
