@@ -125,7 +125,7 @@ class LivelliComandiCog(commands.Cog):
     def __init__(self, bot: commands.Bot, sincronizzatore: SincronizzatoreDifferito | None = None) -> None:
         self.bot = bot
         self._premium, self._vip = crea_gruppi()
-        self.sincronizzatore = sincronizzatore or SincronizzatoreDifferito(self._sincronizza)
+        self.sincronizzatore = sincronizzatore or SincronizzatoreDifferito(self._sincronizza, pronto=bot.wait_until_ready)
 
     async def cog_load(self) -> None:
         try:

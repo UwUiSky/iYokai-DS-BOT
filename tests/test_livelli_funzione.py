@@ -116,6 +116,39 @@ async def test_sincronizzatore_rispetta_l_intervallo_minimo():
     assert sync.chiamate == 2
 
 
+async def test_sincronizzatore_non_perde_un_cambio_arrivato_durante_la_sync():
+    """Un cambio che arriva mentre la sync parla con Discord ne chiede un'altra: l'albero nuovo non resta indietro."""
+    entrata, uscita = asyncio.Event(), asyncio.Event()
+    chiamate = []
+
+    async def sync():
+        chiamate.append(1)
+        if len(chiamate) == 1:
+            entrata.set()
+            await uscita.wait()
+
+    s = SincronizzatoreDifferito(sync, attesa=0.01, intervallo_minimo=0)
+    s.richiedi()
+    await asyncio.wait_for(entrata.wait(), 2)
+    s.richiedi()  # l'albero è cambiato di nuovo durante la prima sync
+    uscita.set()
+    await asyncio.wait_for(s.attendi(), 2)
+    assert len(chiamate) == 2
+
+
+async def test_sincronizzatore_aspetta_il_bot_pronto():
+    """Senza bot pronto la sync non parte (darebbe errore e il cambio resterebbe fino al riavvio)."""
+    pronto = asyncio.Event()
+    sync = _SyncFinta()
+    s = SincronizzatoreDifferito(sync, attesa=0.01, intervallo_minimo=0, pronto=pronto.wait)
+    s.richiedi()
+    await asyncio.sleep(0.05)
+    assert sync.chiamate == 0
+    pronto.set()
+    await asyncio.wait_for(s.attendi(), 2)
+    assert sync.chiamate == 1
+
+
 async def test_i_sotto_comandi_sono_fissi_e_rispondono():
     from unittest.mock import AsyncMock, MagicMock
 
