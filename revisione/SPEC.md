@@ -2201,9 +2201,10 @@ di quel file.
   → **Stato 29/10 (r12ai):** **alternativa (D18):** il bot non può eseguire comandi a nome della persona; «Configura tutto» accende i moduli dal punto unico e mostra i passi cliccabili.
 - `[x]` 25.35 Costruzione del server con l'AI (AI-R-037; catalogo
   AI-025)
-- `[~]` 25.36 Messaggi "nello stile" di un utente (AI-R-038; catalogo
+- `[x]` 25.36 Messaggi "nello stile" di un utente (AI-R-038; catalogo
   AI-024)
   → **Stato 14/10 (r6):** `/utility ai stile` usa solo i messaggi di chi lo chiede: imitare un'altra persona senza consenso non si fa (privacy).
+  → **Stato 29/10 (r12ai):** /utility ai stile ha l'opzione «di»: imitare un'altra persona si può solo se lei lo ha permesso con /utility ai preferenza stile:Sì (migrazione 0429, di partenza no); il messaggio dice che non l'ha scritto lei. Test: tests/test_ai_stile.py
 
 **Moderazione e sicurezza con AI**
 

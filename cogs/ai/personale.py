@@ -21,14 +21,27 @@ class AiPersonaleCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @comando_di_gruppo("utility", nome="preferenza", descrizione="Accendi o spegni per te le risposte dell'AI.", sottogruppo=SOTTO_AI)
-    @app_commands.describe(acceso="Sì: l'assistente ti risponde. No: per te resta spento")
-    async def preferenza(self, interaction: discord.Interaction, acceso: bool) -> None:
-        await ai_repo.imposta_assistente(interaction.user.id, acceso)
-        servizio_ai().dimentica_preferenza(interaction.user.id)
-        testo = "Assistente acceso per te." if acceso else "Assistente spento per te: non ti risponderà più. Vale in ogni server."
-        await interaction.response.send_message(testo, ephemeral=True)
-
+    @comando_di_gruppo("utility", nome="preferenza", descrizione="Le tue scelte sull'AI: risposte per te e stile imitabile dagli altri.", sottogruppo=SOTTO_AI)
+    @app_commands.describe(
+        acceso="Sì: l'assistente ti risponde. No: per te resta spento",
+        stile="Sì: gli altri possono chiedere un messaggio scritto nel tuo stile (di partenza no)",
+    )
+    async def preferenza(self, interaction: discord.Interaction, acceso: bool | None = None, stile: bool | None = None) -> None:
+        if acceso is None and stile is None:
+            await interaction.response.send_message("Indica almeno una scelta.", ephemeral=True)
+            return
+        righe = []
+        if acceso is not None:
+            await ai_repo.imposta_assistente(interaction.user.id, acceso)
+            servizio_ai().dimentica_preferenza(interaction.user.id)
+            righe.append("Assistente acceso per te." if acceso else "Assistente spento per te: non ti risponderà più. Vale in ogni server.")
+        if stile is not None:
+            await ai_repo.imposta_stile_consentito(interaction.user.id, stile)
+            righe.append(
+                "Gli altri possono chiedere un messaggio nel tuo stile: l'AI legge tuoi messaggi recenti del canale. Puoi toglierlo quando vuoi."
+                if stile else "Nessuno può chiedere un messaggio nel tuo stile."
+            )
+        await interaction.response.send_message("\n".join(righe), ephemeral=True)
 
 async def setup(bot: commands.Bot) -> None:
     registra_modulo_ai()

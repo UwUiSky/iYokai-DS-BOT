@@ -1304,3 +1304,4 @@ Serve: server di prova con AutoMod e AI accesi (`/ai attiva`), account A senza p
 17. Canale con `/ai traduzione`: tre messaggi di fila della stessa persona danno una sola traduzione.
 18. iYokai App: `/trova cosa:promemoria` elenca comandi e menu; `/assistente domanda:...` risponde con l'AI e, con l'AI ferma o spenta da `/utility ai preferenza`, ripiega sulla ricerca.
 19. Pannello: `/server/<id>/ai` ha i link a «Altre scelte» (lore, quote, parole vietate, canali spenti: si ritrovano poi in `/ai stato`), «Riepilogo» (ultimo riepilogo) e «Uso dell'AI».
+20. `/utility ai preferenza stile:Sì` da una persona; un'altra usa `/utility ai stile argomento:... di:@persona`: arriva un testo nello stile con la nota «non l'ha scritto lui». Senza il permesso: rifiutato e l'AI non parte.

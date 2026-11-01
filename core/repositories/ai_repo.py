@@ -365,6 +365,17 @@ class AiRepository:
             user_id, acceso,
         )
 
+    async def stile_consentito(self, user_id: int) -> bool:
+        """La persona permette agli altri di chiedere un messaggio nel suo stile? Di partenza no (AI-R-038)."""
+        return bool(await self._pool.fetchval("SELECT stile_consentito FROM ai_utenti WHERE user_id = $1", user_id))
+
+    async def imposta_stile_consentito(self, user_id: int, consentito: bool) -> None:
+        await self._pool.execute(
+            "INSERT INTO ai_utenti (user_id, stile_consentito) VALUES ($1, $2) "
+            "ON CONFLICT (user_id) DO UPDATE SET stile_consentito = $2, aggiornato_il = now()",
+            user_id, consentito,
+        )
+
     async def traguardo_assegna(self, user_id: int, codice: str) -> bool:
         """True se il traguardo è nuovo per la persona (AI-R-080)."""
         esito = await self._pool.execute(

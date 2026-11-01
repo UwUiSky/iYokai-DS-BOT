@@ -3,12 +3,12 @@ cogs/ai/summaries.py
 ====================
 `/utility ai riassumi` (ultimi messaggi di un canale), `/utility ai spiega`
 (un messaggio dato con il suo link), `/utility ai stile` (un messaggio nuovo
-scritto come scrivi tu, dai TUOI messaggi del canale).
+scritto come scrivi tu, dai tuoi messaggi del canale, o come un'altra persona che l'ha permesso).
 Funzioni coperte: SPEC §25.6, §25.36, §25.88 (AI-R-043, AI-R-038, AI-R-095; catalogo AI-024)
 
 Senza AI: riassumi mostra i numeri del canale (messaggi, persone, le più attive).
-"Nello stile di un utente" (AI-024) usa solo i messaggi di chi lo chiede: copiare
-lo stile di un'altra persona senza il suo consenso non si fa (privacy, D19).
+"Nello stile di un utente" (AI-024) usa i messaggi di chi lo chiede, o di un'altra persona solo se
+l'ha permesso con `/utility ai preferenza stile:Sì` (privacy, D19).
 """
 
 from __future__ import annotations
@@ -25,6 +25,7 @@ from cogs.ai._comune import (
     testo_canale,
 )
 from core.ai_testi_logic import ISTRUZIONI, riconosci_lingua
+from core.repositories.ai_repo import ai_repo
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
 _LINK = re.compile(r"discord(?:app)?\.com/channels/(\d+)/(\d+)/(\d+)")
@@ -126,26 +127,36 @@ class AiRiassuntiCog(CogConGruppi, commands.Cog):
             return
         await interaction.followup.send(embed=embed_risposta("Spiegazione", risposta.testo, da_cache=risposta.da_cache), ephemeral=True)
 
-    @comando_di_gruppo("utility", nome="stile", descrizione="Un messaggio nuovo scritto come scrivi tu.", sottogruppo=SOTTO_AI)
-    @app_commands.describe(argomento="Di cosa deve parlare il messaggio")
+    @comando_di_gruppo("utility", nome="stile", descrizione="Un messaggio nuovo scritto come scrivi tu (o come chi lo permette).", sottogruppo=SOTTO_AI)
+    @app_commands.describe(argomento="Di cosa deve parlare il messaggio", di="Un'altra persona che ha permesso il suo stile (vuoto: tu)")
     @richiede_ai()
-    async def stile(self, interaction: discord.Interaction, argomento: app_commands.Range[str, 3, 200]) -> None:
+    async def stile(
+        self, interaction: discord.Interaction, argomento: app_commands.Range[str, 3, 200], di: discord.Member | None = None
+    ) -> None:
+        modello = di or interaction.user
+        if di is not None and di.id != interaction.user.id:
+            # Imitare un'altra persona solo se l'ha permesso lei (AI-R-038, D19).
+            if di.bot or not await ai_repo.stile_consentito(di.id):
+                await interaction.response.send_message(
+                    "Questa persona non ha permesso il suo stile: si accende con `/utility ai preferenza stile:Sì`.", ephemeral=True
+                )
+                return
         await interaction.response.defer(ephemeral=True)
         try:
-            esempi = await testo_canale(interaction.channel, 200, autore_id=interaction.user.id, max_caratteri=3000)
+            esempi = await testo_canale(interaction.channel, 200, autore_id=modello.id, max_caratteri=3000)
         except discord.Forbidden:
             esempi = ""
         if not esempi:
-            await interaction.followup.send("Non trovo tuoi messaggi recenti in questo canale da usare come esempio.", ephemeral=True)
+            await interaction.followup.send("Non trovo messaggi recenti di questa persona in questo canale da usare come esempio.", ephemeral=True)
             return
         risposta, locale = await chiedi(richiesta_da(
             interaction, "stile", "testo", f"Argomento: {argomento}\n\nEsempi:\n{esempi}",
             istruzioni=ISTRUZIONI["stile"], messaggi_utenti=True, riusa=False,
         ))
-        await interaction.followup.send(
-            risposta.testo[:2000] if risposta else locale, ephemeral=True, allowed_mentions=NESSUNA_MENZIONE
-        )
-
+        testo = risposta.testo[:1900] if risposta else locale
+        if risposta and modello.id != interaction.user.id:
+            testo += f"\n\n_Scritto dall'AI nello stile di {modello.display_name}: non l'ha scritto lui._"
+        await interaction.followup.send(testo[:2000], ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
 async def setup(bot: commands.Bot) -> None:
     registra_modulo_ai()

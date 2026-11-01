@@ -595,7 +595,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("ai_voce_config", "Scelte della voce di Yokai nel server (accesa, tono, canali dei saluti)", colonna_server="guild_id"),
     _t("ai_vocali", "Testo dietro ogni vocale di Yokai (per «Trascrivi» e «Nella mia lingua»)", colonna_server="guild_id",
        scadenza=Scadenza("creato_il", 90), nota="il testo scritto dal bot per il vocale; sparisce dopo 90 giorni"),
-    _t("ai_utenti", "Preferenza personale: assistente AI acceso o spento", colonne_utente=("user_id",),
+    _t("ai_utenti", "Scelte personali sull'AI: assistente acceso o spento, stile imitabile dagli altri", colonne_utente=("user_id",),
        utente="cancella", esporta=True, server="conserva", nota="scelta della persona, valida in ogni server"),
     _t("ai_traguardi", "Traguardi legati all'AI (es. primo comando scoperto con l'AI)", colonne_utente=("user_id",),
        utente="cancella", esporta=True, server="conserva", nota="della persona, validi in ogni server"),

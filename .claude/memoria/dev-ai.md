@@ -1,25 +1,31 @@
 # Memoria di dev-ai
 
 ## Aggiornata
-29/10/2026 · ramo `feat/r12ai` · giro r12 (agente r12ai)
+01/11/2026 · ramo `feat/r12ai` · giro r12 (agente r12ai)
 
 ## In corso
-- Giro r12 parziale. Prossimo passo: riepilogo a orario (migrazione 0425 per `ultimo_testo`; tabelle 0422 già pronte:
-  `ai_riepiloghi`, `ai_avvisi_parole`), poi ticket, 25.77, owner, app/pannello, voce (#142), 25.100.
+- Giro r12 chiuso nel lotto: nessuna voce `[~]`/`[ ]` in §25 tranne 25.21 (`[✗]`, D45). Resta da fare: rapporto, smoke
+  e suite completa dell'orchestratore (migrazioni 0420-0429, main.py e user_app_bot toccati).
 
 ## Fatto
-- r12: assistente locale/vicini/piano (`core/ai_ricerca_logic.py`, `cogs/ai/_assistente.py`), boss (`cogs/ai/boss.py`),
-  dungeon, misteri, spirito/frammenti, tema al setup + nomi a tema (`core/lore_nomi_logic.py`), etichetta segnalazioni,
-  `/ai staff` (incidente, regola, cerca-log), ricerca web (`core/ricerca_web*.py`). Migrazioni 0420-0422. D42-D44.
+- r12: assistente, boss, dungeon, misteri, spirito, tema/nomi a tema, segnalazioni, `/ai staff`, ricerca web, riepilogo
+  a orario e avvisi, ticket AI (bottone, prima risposta, risposte standard durevoli), voce (`cogs/ai/voce.py`,
+  `core/voice_*`, vocale raw in `core/discord_raw.py`), trascrizione (`core/trascrizione.py`), traduzione unita 25.77,
+  bozze di codice 25.100 (`cogs/ai/bozze.py`), richieste di cancellazione 25.84, `/ai modello` 25.82/25.94, app
+  (`/trova`, `/assistente`, «Trascrivi vocale»), pannello (`core/web_panel_ai.py`), stile con permesso 25.36.
+  Migrazioni 0420-0429. Decisioni D42-D45.
 
 ## Cose imparate
 - Helper di cog senza `setup`: nome con `_` iniziale (la scoperta li salta).
 - `CogConGruppi` con `cog_load` proprio: chiamare `super().cog_load()`.
-- Dopo `defer()` le risposte vanno con `followup.send`; i test vecchi vanno adattati.
-- `interaction_check` ridefinito deve chiamare `super()`; i metodi repo con chiamante si tolgono da KNOWN_UNCALLED.
-- Il guardrail scarta testi con "ignora le istruzioni": l'AI non parte, vale la risposta locale.
-- clean_db non svuota tutte le tabelle tra test: usare guild diversi.
-- Pesi: `/ai` ~4000 (17 figli), `/utility` ~6100 (resta poco), `/automod` e `/owner` pieni.
+- Dopo `defer()` le risposte vanno con `followup.send`; `interaction_check` ridefinito chiama `super()`.
+- Il guardrail scarta testi con "ignora le istruzioni". clean_db non svuota tutto: guild diversi nei test.
+- Menu sul messaggio: non nel bot principale (i test dell'albero non li ammettono); vanno in `cogs/user_app/`, con il
+  modulo in `MODULI_COG` di `core/user_app_bot.py`.
+- Stringhe che iniziano con `/` nel codice sono lette come comandi citati (test_riferimenti_comandi).
+- `ai_globale` ha un CHECK sulle chiavi (0428). Opzioni di testo: sempre `Range[str, 1, N]`.
+- Pesi: `/ai` ~5950 (21 figli), `/utility` ~6590 (limite 6800), `/automod` e `/owner` pieni.
 
 ## Aperto
-- Vedi "In corso". Testi AI solo in italiano. `/level` card PNG non usa i nomi a tema (solo l'embed di riserva).
+- Voce e trascrizione spente finché mancano `VOCE_MODELLO_DIR` (+ sherpa-onnx) e `VOCE_TRASCRIZIONE_URL`.
+- Musica e video senza trasporto AI (D45). Testi AI solo in italiano. Card PNG di `/level` senza nomi a tema.
