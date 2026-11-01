@@ -81,7 +81,7 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
         return True
 
     @comando_di_gruppo(
-        "mod",
+        "mod-sanzioni",
         nome="imposta",
         descrizione="Messaggi al ban, timeout, casi esterni, avvisi. Vuoto: mostra le opzioni.",
         sottogruppo=SOTTOGRUPPO,
@@ -136,7 +136,7 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "mod",
+        "mod-sanzioni",
         nome="dm",
         descrizione="Sceglie se l'utente riceve un DM per un tipo di azione.",
         sottogruppo=SOTTOGRUPPO,

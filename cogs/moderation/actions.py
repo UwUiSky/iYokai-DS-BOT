@@ -213,7 +213,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     # /warn
     # ================================================================
     @comando_di_gruppo(
-        "mod",
+        "mod-sanzioni",
         nome="warn",
         descrizione="Assegna un warn a un membro.",
     )
@@ -815,7 +815,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     # /timeout e /untimeout
     # ================================================================
     @comando_di_gruppo(
-        "mod",
+        "mod-sanzioni",
         nome="timeout",
         descrizione="Mette in timeout un membro (max 28 giorni).",
     )
@@ -896,7 +896,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         await post_to_mod_log(interaction.guild, embed)
 
     @comando_di_gruppo(
-        "mod",
+        "mod-sanzioni",
         nome="untimeout",
         descrizione="Rimuove il timeout da un membro.",
     )
@@ -1182,7 +1182,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         await self._chiudi_massa(interaction, "👢 Kick in massa", discord.Color.orange(), reason, fatti, saltati)
 
     @comando_di_gruppo(
-        "mod",
+        "mod-sanzioni",
         nome="timeout",
         descrizione="Mette in timeout più membri insieme (max 28 giorni).",
         sottogruppo=("massa", "Azioni su più membri insieme."),
@@ -1245,7 +1245,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "mod",
+        "mod-sanzioni",
         nome="warn",
         descrizione="Assegna un warn a più membri insieme.",
         sottogruppo=("massa", "Azioni su più membri insieme."),

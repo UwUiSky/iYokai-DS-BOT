@@ -360,7 +360,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
     # /mute-role e /unmute-role
     # ================================================================
     @comando_di_gruppo(
-        "mod",
+        "mod-sanzioni",
         nome="mute",
         descrizione="Silenzia un membro con un ruolo dedicato (alternativa al timeout).",
     )
@@ -486,7 +486,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(embed=embed)
 
     @comando_di_gruppo(
-        "mod",
+        "mod-sanzioni",
         nome="unmute",
         descrizione="Rimuove il ruolo mute da un membro.",
     )
