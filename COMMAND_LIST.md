@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 13:52 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 02:12 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 579 comandi in 25 categorie.**
+**Totale: 665 comandi in 25 categorie.**
 
 ## Admin
 
@@ -54,21 +54,38 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 13:
 ## Ai
 
 - **`/ai attiva`** — Accende o spegne l'AI nel server (serve il consenso).
+- **`/ai boss avvia`** — Fa comparire subito il World Boss.
+- **`/ai boss imposta`** — Canale, giorni, ora e premi del World Boss.
+- **`/ai boss rete`** — Solo proprietario: pubblica o chiude il boss di rete.
 - **`/ai canale`** — Spegne o riaccende l'AI in un canale.
 - **`/ai conoscenza aggiungi`** — Aggiunge una voce alla base di conoscenza.
 - **`/ai conoscenza elenco`** — Le voci della base di conoscenza.
 - **`/ai conoscenza togli`** — Toglie una voce dalla base di conoscenza.
 - **`/ai costruisci`** — L'AI propone ruoli e canali da una descrizione; tu confermi.
+- **`/ai dungeon avvia`** — Avvia un dungeon di gruppo in un canale.
+- **`/ai dungeon storie`** — Quante storie di dungeon ci sono pronte per il tema del server.
 - **`/ai funzioni`** — Accende le funzioni automatiche: risposta alla menzione, bandiere.
 - **`/ai limiti`** — Tetto di spesa e quote: per utente, funzione, immagini.
 - **`/ai lore`** — Tono e ambientazione del server per ogni testo dell'AI.
 - **`/ai manutenzione`** — Solo proprietario: mette l'AI in manutenzione in tutti i server.
+- **`/ai mistero crea`** — Nasconde un mistero con un codice e un premio per il server.
+- **`/ai mistero elenco`** — I misteri del server (il codice resta segreto).
+- **`/ai mistero togli`** — Toglie un mistero.
+- **`/ai modello`** — Solo proprietario: modello, fascia e tipi di un fornitore; tetto di lunghezza.
 - **`/ai moderazione`** — L'AI segnala allo staff i messaggi sospetti di un canale.
 - **`/ai personaggio`** — Installa, toglie o cancella un personaggio AI del server.
 - **`/ai privacy`** — Messaggi degli utenti all'AI, memoria e lunghezza delle risposte.
+- **`/ai riepilogo anteprima`** — Mostra a te il riepilogo di adesso, senza pubblicarlo.
+- **`/ai riepilogo imposta`** — Riepilogo del server: canale, ora, frequenza e canali da leggere.
+- **`/ai staff cerca-log`** — Cerca nei log con una domanda (chi, cosa, quando).
+- **`/ai staff incidente`** — Riassume gli ultimi eventi di sicurezza del server.
+- **`/ai staff prima-risposta`** — Accende o spegne la prima risposta automatica dell'AI in un pannello ticket.
+- **`/ai staff regola`** — Scrivi cosa vuoi da AutoMod: ti propongo la regola, la attivi tu.
 - **`/ai stato`** — Stato dell'AI nel server: fornitori, scelte e uso del mese.
 - **`/ai traduzione`** — Traduce da solo ogni messaggio di un canale in una lingua.
 - **`/ai vietate`** — Parole o argomenti che l'AI deve rifiutare.
+- **`/ai voce imposta`** — Voce di Yokai: accesa o spenta, tono e canali dei saluti.
+- **`/ai voce parla`** — Yokai dice un annuncio a voce in un canale.
 
 ## Aiuto (primo livello)
 
@@ -112,21 +129,79 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 13:
 
 ## iYokai App (app separata, installata sull'utente)
 
+- **`/Citazione come immagine`** — Menu «App» (tasto destro)
+- **`/Controlla i link`** — Menu «App» (tasto destro)
+- **`/Meme da questa immagine`** — Menu «App» (tasto destro)
 - **`/Profilo`** — Menu «App» (tasto destro)
+- **`/Ricordamelo`** — Menu «App» (tasto destro)
+- **`/Salva come risposta pronta`** — Menu «App» (tasto destro)
+- **`/Salva nei segnalibri`** — Menu «App» (tasto destro)
+- **`/Segnala alla rete iYokai`** — Menu «App» (tasto destro)
+- **`/Spiega o riassumi`** — Menu «App» (tasto destro)
 - **`/Stato rete iYokai`** — Menu «App» (tasto destro)
 - **`/Testo pulito`** — Menu «App» (tasto destro)
+- **`/Traduci`** — Menu «App» (tasto destro)
+- **`/Trascrivi vocale`** — Menu «App» (tasto destro)
+- **`/assistente`** — Il tuo assistente personale: chiedi come fare una cosa.
+- **`/desktop avvisi`** — Accendi o spegni gli avvisi per menzioni e risposte sul programma.
+- **`/desktop collega`** — Crea il codice personale per il programma iYokai Desktop.
+- **`/desktop parole`** — Le parole chiave che ti avvisano (separate da virgole; vuoto le toglie).
+- **`/desktop scollega`** — Revoca il codice: il programma non entra più.
+- **`/desktop stato`** — Come è collegato iYokai Desktop e quali avvisi hai.
+- **`/divertimento animale`** — Mostra l'immagine di un animale a caso.
+- **`/divertimento barzelletta`** — Racconta una barzelletta a caso.
+- **`/divertimento casuale`** — Preferiresti, argomento, consiglio, oggetto magico.
+- **`/divertimento citazione`** — Mostra una citazione a caso.
+- **`/divertimento curiosita`** — Mostra una curiosità a caso.
+- **`/divertimento dado`** — Tira un dado, o una formula come 3d6+2.
+- **`/divertimento effetto`** — Effetto sull'avatar: arcobaleno, R.I.P., ricercato, triggered.
+- **`/divertimento forbici`** — Carta, forbici, sasso contro il bot.
+- **`/divertimento immagine`** — Cerca un'immagine adatta a tutti su Pixabay.
+- **`/divertimento meme`** — Un meme con testo sopra e sotto, su un'immagine o su un avatar.
+- **`/divertimento moneta`** — Lancia una moneta: testa o croce.
+- **`/divertimento numero`** — Un numero a caso in un intervallo.
+- **`/divertimento palla8`** — Fai una domanda alla palla magica 8.
+- **`/divertimento scegli`** — Scelgo a caso tra le opzioni che scrivi.
+- **`/divertimento ship`** — Calcola la compatibilità tra due utenti.
+- **`/divertimento testo`** — Scrivi un testo in uno stile speciale.
+- **`/divertimento valuta`** — Valuta qualcosa da 0 a 10.
+- **`/impostazioni dm`** — L'app può scriverti in DM (promemoria, ricordamelo)?
+- **`/impostazioni lingua`** — Italiano o inglese per le risposte che vedi solo tu.
+- **`/impostazioni mostra`** — Le tue impostazioni di adesso.
+- **`/impostazioni profilo`** — Gli altri vedono il tuo profilo globale (livello, clan, medaglie).
+- **`/impostazioni risposte`** — Le risposte dei comandi le vedi solo tu, o le vedono tutti.
+- **`/impostazioni storico`** — Salvare i tuoi ultimi comandi (spegnere cancella lo storico).
 - **`/note aggiungi`** — Aggiunge una nota, o una voce a una lista.
 - **`/note elenco`** — Mostra le tue note, o una lista.
 - **`/note rimuovi`** — Toglie una nota o una voce di lista.
-- **`/profilo`** — La scheda di un utente: nome, ID, età dell'account, avatar.
+- **`/playlist aggiungi`** — Aggiunge un brano a una tua playlist.
+- **`/playlist crea`** — Crea una playlist vuota.
+- **`/playlist elenco`** — Le tue playlist.
+- **`/playlist elimina`** — Elimina una tua playlist.
+- **`/playlist mostra`** — Mostra i brani di una tua playlist.
+- **`/playlist togli`** — Toglie un brano da una tua playlist.
+- **`/profilo`** — La scheda di un utente; il tuo profilo globale e la rank card.
 - **`/promemoria annulla`** — Annulla un tuo promemoria.
 - **`/promemoria crea`** — Ti scrivo in DM tra il tempo che scegli.
 - **`/promemoria elenco`** — Mostra i tuoi promemoria in sospeso.
+- **`/radio ora`** — Cosa suona adesso nella radio iYokai, con il link per cercare il testo.
+- **`/risposta elenco`** — Le tue risposte pronte.
+- **`/risposta rimuovi`** — Toglie una risposta pronta.
+- **`/risposta salva`** — Salva una risposta pronta (testo, o embed con titolo, colore e immagine).
+- **`/risposta usa`** — Scrive una tua risposta pronta come risposta dell'app.
+- **`/segnalibri elenco`** — Mostra i tuoi segnalibri, i più recenti prima.
+- **`/segnalibri rimuovi`** — Toglie un segnalibro.
+- **`/storico azzera`** — Cancella il tuo storico dei comandi.
+- **`/storico elenco`** — I tuoi ultimi comandi.
 - **`/strumenti calcola`** — Calcola un'espressione, es. (2+3)*4 o sqrt(16).
 - **`/strumenti colore`** — Mostra un colore in HEX, RGB e HSL.
 - **`/strumenti converti`** — Converte lunghezze, pesi, volumi, velocità, dati e temperature.
 - **`/strumenti fuso`** — Che ora è in un altro fuso orario.
 - **`/strumenti qr`** — Crea un codice QR da un testo o un link.
+- **`/supporto apri`** — Apri una richiesta di assistenza con lo staff di iYokai.
+- **`/supporto elenco`** — Le tue ultime richieste di assistenza.
+- **`/supporto rispondi`** — Scrivi allo staff nella tua richiesta aperta.
+- **`/trova`** — Cerca una funzione di iYokai App: comandi e menu sul messaggio.
 
 ## iYokai NSFW (app separata, solo canali vietati ai minori)
 
@@ -231,6 +306,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 13:
 - **`/economia giveaway-modello`** — Modelli di giveaway: salva, elenca, elimina, avvia.
 - **`/economia giveaway-programmati`** — Giveaway programmati: elenca (anche quelli in errore) o annulla.
 - **`/economia monete`** — Modifica il saldo di un membro.
+- **`/economia progressi`** — Accende o spegne missioni, serie, traguardi e stagione.
 - **`/economia shop-add`** — Aggiunge un oggetto allo shop.
 - **`/economia shop-edit`** — Cambia un oggetto dello shop (prezzo, scorte, ruolo richiesto...).
 - **`/economia shop-remove`** — Rimuove un oggetto dallo shop.
@@ -337,6 +413,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 13:
 - **`/level pay`** — Trasferisci coin a un altro utente.
 - **`/level premi`** — Mostra i ruoli-premio dei livelli e i moltiplicatori di XP attivi.
 - **`/level profilo`** — Mostra il profilo di un membro; con «presentazione» cambi il tuo.
+- **`/level progressi`** — Missioni di oggi, serie di giorni, traguardi, stagione del mese.
 - **`/level rank`** — Mostra la rank card: livello, XP, posizione e coin.
 - **`/level shop buy`** — Acquista un oggetto dello shop.
 - **`/level shop list`** — Mostra gli oggetti disponibili nello shop.
@@ -355,6 +432,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 13:
 - **`/log eventi`** — Accendi o spegni ogni singolo evento dei log.
 - **`/log ignora`** — Cosa i log non registrano (canali, utenti, ruoli; testi solo per i messaggi).
 - **`/log stato`** — Mostra dove vanno i log del server.
+- **`/log vista-forum`** — Un forum con un post per canale o per caso. Senza forum, la vista si spegne.
 - **`/log webhook`** — Manda i log da un webhook del canale, raggruppati, con limiti suoi.
 
 ## Moderazione
@@ -364,6 +442,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 13:
 - **`/mod avvisi togli`** — Toglie un singolo warn (per numero di caso).
 - **`/mod blocco attiva`** — Blocca tutti i canali, gli inviti e gli ingressi del server.
 - **`/mod blocco togli`** — Riapre il server com'era prima del blocco.
+- **`/mod carico`** — Quanto lavoro ha fatto ogni persona dello staff (casi, appelli, ticket).
 - **`/mod caso attive`** — Sanzioni ancora in corso: tempban, timeout, mute, lock a tempo.
 - **`/mod caso classifica-staff`** — Classifica dei moderatori per numero di azioni, o casi di uno solo.
 - **`/mod caso elimina`** — Elimina un caso (serve «Gestire il server»).
@@ -384,6 +463,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 13:
 - **`/mod opzioni dm`** — Sceglie se l'utente riceve un DM per un tipo di azione.
 - **`/mod opzioni immuni`** — Ruoli che la moderazione manuale non tocca (solo il proprietario).
 - **`/mod opzioni imposta`** — Messaggi al ban, timeout, casi esterni, avvisi. Vuoto: mostra le opzioni.
+- **`/mod rischio`** — Punteggio di rischio di un membro, con i motivi. Solo un aiuto per decidere.
 - **`/mod slowmode`** — Imposta lo slowmode su un canale.
 - **`/mod timeout`** — Mette in timeout un membro (max 28 giorni).
 - **`/mod unlock`** — Sblocca la possibilità di scrivere in un canale.
@@ -597,15 +677,21 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-10-28 13:
 
 ## Utility
 
+- **`/utility ai avviso`** — Segui fino a 3 parole: ti avviso quando se ne parla molto.
 - **`/utility ai crea-personaggio`** — Crea un personaggio AI con cui chattare.
+- **`/utility ai frammenti`** — I frammenti di lore che hai raccolto.
 - **`/utility ai immagina`** — Genera un'immagine da una descrizione.
 - **`/utility ai ingrandisci`** — Ingrandisce e ripulisce un'immagine che carichi.
 - **`/utility ai lore`** — Scheda di lore su un nome, un luogo o uno yokai.
+- **`/utility ai mistero`** — Rispondi a un mistero del server con il codice.
 - **`/utility ai pacchetto`** — Compra 5 immagini AI in più con le monete del server.
+- **`/utility ai parla`** — Yokai dice una frase a voce in questo canale.
 - **`/utility ai personaggio`** — Parla con un personaggio AI del server.
+- **`/utility ai preferenza`** — Le tue scelte sull'AI: risposte per te e stile imitabile dagli altri.
 - **`/utility ai riassumi`** — Riassunto degli ultimi messaggi di un canale.
 - **`/utility ai spiega`** — Spiega in parole semplici un messaggio (dal suo link).
-- **`/utility ai stile`** — Un messaggio nuovo scritto come scrivi tu.
+- **`/utility ai spirito`** — Il tuo spirito Yokai: cresce con la tua attività.
+- **`/utility ai stile`** — Un messaggio nuovo scritto come scrivi tu (o come chi lo permette).
 - **`/utility ai traduci`** — Traduce un testo nella lingua che scegli.
 - **`/utility editsnipe`** — Mostra l'ultimo messaggio modificato in questo canale.
 - **`/utility info`** — Informazioni sul bot: versione, invito e supporto.

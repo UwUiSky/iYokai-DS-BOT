@@ -10,13 +10,12 @@ ruolo o un case di moderazione quando servirà (DB-2, REVIEW.md: i
 due indici che li rendevano "interrogabili" non erano mai usati da
 nessuna query, rimossi).
 
-Decisione presa nell'analisi (BACKLOG.md §3): niente proiezione su
-Forum Discord per membri/messaggi (alta cardinalità — un server da
-50.000 membri creerebbe 50.000 thread potenziali, e un raid da
-centinaia di join farebbe esplodere il rate limit proprio quando il
-logging serve di più). Solo DB + comando di ricerca. La proiezione
-Forum per canali/case (bassa cardinalità) resta un'estensione futura
-separata, non costruita qui.
+Niente proiezione su Forum per i membri (alta cardinalità — un
+server da 50.000 membri creerebbe 50.000 thread, e un raid farebbe esplodere
+il rate limit proprio quando il logging serve di più). Per canali e casi
+(bassa cardinalità) c'è `/log vista-forum`: dopo ogni scrittura il registro
+avvisa `core/log_forum_service.py`, che non fa nulla se il server non l'ha scelta.
+Funzioni coperte: SPEC §8.17
 """
 
 from __future__ import annotations
@@ -26,6 +25,8 @@ from dataclasses import dataclass
 from datetime import datetime
 
 import asyncpg
+
+from core import log_forum_service
 
 
 @dataclass(frozen=True)
@@ -132,6 +133,11 @@ class EventLogRepository:
             role_id,
             case_number,
             json.dumps(details) if details is not None else None,
+        )
+        # 8.17: la vista su forum (spenta se il server non l'ha scelta). Non solleva mai.
+        await log_forum_service.notifica_evento(
+            guild_id, event_type, actor_id=actor_id, target_user_id=target_user_id,
+            channel_id=channel_id, role_id=role_id, case_number=case_number, details=details,
         )
         return row["id"]
 

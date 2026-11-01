@@ -312,6 +312,11 @@ class Config:
 
     # Invito al server di supporto, mostrato da `/utility info` (vuoto = non si mostra).
     SUPPORT_SERVER_URL: str = field(default="")
+    # Canale di testo riservato allo staff di iYokai dove arrivano le richieste di assistenza e le segnalazioni
+    # di iYokai App (B.9, B.2): ognuna apre un thread. 0 = spento; l'app rimanda al server di supporto.
+    SUPPORT_CHANNEL_ID: int = field(default=0)
+    # Indirizzo https del flusso audio della radio, per l'Activity «radio iYokai» (B.8). Vuoto = solo il brano in onda.
+    RADIO_STREAM_URL: str = field(default="")
 
     # --- Aggiornamento a caldo (#141, D21) ---------------------------
     # Spento se non c'è ENABLE_HOT_PATCH=1. `HOT_PATCH_REPO` è "proprietario/repository"; il token serve solo se il
@@ -448,6 +453,8 @@ def _load_config() -> Config:
         WIKI_BASE_URL=_optional("WIKI_BASE_URL", ""),
         PREMIUM_SKU_ID=_optional_int("PREMIUM_SKU_ID", 0),
         SUPPORT_SERVER_URL=_optional("SUPPORT_SERVER_URL", ""),
+        SUPPORT_CHANNEL_ID=_optional_int("SUPPORT_CHANNEL_ID", 0),
+        RADIO_STREAM_URL=_optional("RADIO_STREAM_URL", ""),
         ENABLE_HOT_PATCH=_optional_bool("ENABLE_HOT_PATCH", False),
         HOT_PATCH_REPO=_optional("HOT_PATCH_REPO", "UwUiSky/iYokai-DS-BOT"),
         HOT_PATCH_GITHUB_TOKEN=_optional("HOT_PATCH_GITHUB_TOKEN", ""),

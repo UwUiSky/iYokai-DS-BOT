@@ -85,7 +85,7 @@ async def test_chi_e_gia_verificato_vede_l_avviso_prima_del_captcha(scenario, cl
     await VerifyPanelView().verify_click.callback(interazione)
 
     interazione.response.send_modal.assert_not_called()
-    assert "already verified" in interazione.response.send_message.call_args.args[0]
+    assert "già verificato" in interazione.response.send_message.call_args.args[0]
 
 
 async def test_whitelist_e_blacklist_con_modulo_spento_sono_rifiutate(scenario, clean_db):

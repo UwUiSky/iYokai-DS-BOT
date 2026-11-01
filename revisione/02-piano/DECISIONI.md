@@ -619,7 +619,73 @@ XP una tantum. Il boss di rete lo pubblica solo l'owner. Tutto parte spento e fu
 Il motore di sintesi vocale è un modello aperto scelto da `.env`; resta spento finché l'owner non sceglie la voce (D22).
 Il processo AI separato (25.21) resta rimandato: bastano coda e misure già fatte (25.22); si riapre se le misure lo chiedono.
 
-## D45 — Scelte dell'owner per l'AI, bozze di codice, processo separato (01/11/2026)
+## D45 — iYokai App: dati personali e musica (28/10/2026)
+
+Precisa B.2-B.10 (#107). Il profilo globale (livello, clan, medaglie) lo vede un'altra persona **solo se il
+proprietario lo ha acceso** (`profilo_pubblico`, spento di base); lo storico dei comandi si salva solo se acceso,
+al massimo 100 righe, 90 giorni. Le richieste di assistenza aprono un thread nel canale `SUPPORT_CHANNEL_ID`
+(spento se 0). Menu del messaggio: Discord ne accetta 15 per tipo, discord.py 2.7.1 ne conta 5: l'albero dell'app
+(`AlberoApp`) alza il tetto locale a 15. **Musica (C17, C18):** i testi delle canzoni non si copiano (diritti): si
+dà il link di ricerca. L'Activity «radio iYokai» sta nel pannello (`/attivita/radio`, SDK MIT in
+`pannello_web/static/`); discord.py non crea il comando d'ingresso: lo crea il Portal (Activities, mappa URL).
+Da avvisare l'owner.
+
+## D46 — iYokai Desktop: accesso, avvisi e staff (28/10/2026)
+
+Precisa D.1-D.11 (#108). **Accesso:** un codice personale (`dsk_…`) creato dal comando dell'app e mostrato una
+volta; il servizio salva solo l'impronta SHA-256 (migrazione 0452). Sostituisce l'accesso OAuth2 dal programma
+(nessun segreto nel programma, nessun redirect locale). **Tempo reale:** attesa lunga (fino a 20 s) invece di
+connessione permanente. **Avvisi:** menzioni, risposte e parole chiave si salvano solo per chi li accende, con
+testo breve per 90 giorni (registro dei dati); si mostrano solo se la persona è ancora nel server e vede il canale.
+**Staff:** il programma chiede, agisce il bot con i permessi veri della persona (blocca/sblocca canale, timeout,
+annuncio, mai menzioni); ogni richiesta è registrata. Il programma non usa mai il token dell'account Discord.
+Le funzioni con scope `rpc` restano spente («da attivare») finché Discord non approva l'applicazione.
+
+## D47 — Pannello: pagina per modulo, editor, wiki statica (28/10/2026)
+
+Precisa 24.2, 24.5 e #147. **Pagine per modulo:** `core/config_impostazioni.py` elenca le chiavi di
+`SETTINGS_SCHEMA` che il sito mostra (bool, numeri, testi, scelte, canali e ruoli del server); le chiavi che
+decidono chi può fare cosa e le liste restano ai comandi. Stessi controlli dello schema, stesso storico.
+**Editor:** embed salvati e messaggio di benvenuto con anteprima, con gli stessi controlli e lo stesso archivio dei
+comandi; i ping di ruolo del benvenuto restano spenti dal sito. **Wiki statica:** `scripts/genera_wiki.py` scrive
+un sito dall'albero dei comandi con gli stessi modelli del pannello.
+## D48 — Vista dei log su forum: un post per canale o per caso (28/10/2026, scelta di chi sviluppa)
+
+Chiude 8.17. La proiezione su forum scartata in BACKLOG §3 vale solo per i **membri** (troppi post, raid).
+Per **canali** e **casi** di moderazione, che sono pochi, `/log vista-forum` apre un post per ciascuno. Tetto di 200 post
+per vista e per server; scrittura da una coda unica (500 posti, un messaggio al secondo) perché i forum hanno limiti stretti
+e un raid non deve riempire la memoria. Il registro degli eventi e quello dei casi avvisano il servizio dopo la loro scrittura:
+senza una scelta del server non succede niente. I log di sempre (canale di testo o forum per tipo) non cambiano. Cambiare forum
+scorda i post del vecchio; spegnere la vista lascia i post su Discord.
+
+## D49 — Missioni, serie, traguardi e stagione: spenti di base, monete piccole (28/10/2026, scelta di chi sviluppa)
+
+Chiude la parte «missioni, traguardi, serie, battle pass, profilo globale positivo» di 23.17 (NF-41).
+Un solo comando per i membri, `/level progressi sezione:` (missioni di oggi, traguardi, serie, stagione, profilo globale),
+e uno per lo staff, `/economia progressi attivo:` (impostazione `progressi_attivi`, **spenta di base**: i premi sono monete
+nuove e solo il server decide se vuole farle uscire). Regole:
+- **Missioni** del giorno (UTC), tre fisse: 15 messaggi che danno XP (30 coin), 30 minuti in vocale (40), la ricompensa
+  giornaliera (20). Gli eventi si contano nei punti dove il livellamento li assegna già (`add_text_xp`, `add_voice_minutes`,
+  `claim_daily`), in memoria, e si scrivono ogni 20 secondi; 20.000 voci al massimo in attesa. Il premio esce una volta sola:
+  segna «riscossa» e paga nella stessa transazione.
+- **Serie**: giorni di fila con `/level daily`; ogni 7 giorni un bonus di 5 coin per giorno di serie (tetto 200).
+- **Traguardi**: 9, con emoji (livelli 5/10/25/50, serie 7/30, missioni 10/100, una stagione completa). Senza monete.
+- **Stagione** (il «battle pass»): è il mese; 10 gradini, il gradino n si raggiunge con n x 1.500 XP del mese e vale n x 40 coin.
+- **Profilo globale**: lo vede solo chi lo chiede (messaggio privato), solo numeri positivi (server, livello più alto, serie più lunga,
+  traguardi); niente nomi di server, niente monete, niente sanzioni.
+Le tabelle `progress_*` (0481) sono nel registro dei dati: si cancellano con l'utente e si esportano; missioni e stagioni scadono.
+Nessun premio in soldi veri e niente giochi d'azzardo (vincoli di NF-40 invariati).
+
+## D50 — Punteggio di rischio e carico dello staff: un aiuto, non un giudice (28/10/2026, scelta di chi sviluppa)
+
+Chiude il resto di 23.17. `/mod rischio member:` (da 0 a 100, con i motivi) unisce i segnali che il bot già ha: warn attivi, timeout
+degli ultimi 90 giorni, espulsioni, ban e tempban passati, trappola anti-spam, età dell'account, primo giorno nel server e doppi trovati
+dalla verifica web nello stesso server. Fasce: basso sotto 25, medio da 25, alto da 55. **Nessuna azione parte dal punteggio**
+(coerente con NF-21: niente ban automatici per impronta) e la risposta è privata, per lo staff. `/mod carico giorni:` mostra per ogni
+persona dello staff casi aperti, appelli decisi e ticket presi in carico, con la quota sul totale; senza classifica a premi e senza
+contare i casi della scala automatica. Entrambi usano il modulo del case system. Le letture stanno in `staff_carico_repo` (nessuna tabella nuova).
+
+## D52 — Scelte dell'owner per l'AI, bozze di codice, processo separato (01/11/2026)
 
 `/ai modello` (solo owner, dentro `/ai` perché `/owner` è pieno) cambia a caldo modello, fascia e tipi di ogni fornitore
 e il tetto di lunghezza delle risposte; le scelte stanno in `ai_globale` (migrazione 0428) sopra il `.env` e passano da

@@ -155,3 +155,24 @@ async def test_lock_senza_durata_poi_lock_a_tempo_alla_scadenza_si_sblocca():
     [attesa] = await _attese()
     await cog.handle_unlock(SERVER, CANALE, attesa["payload"])
     assert permessi.send_messages is None
+
+
+async def test_untimeout_lascia_una_riga_nel_log_di_moderazione(monkeypatch):
+    """§18.7: /untimeout si registra nel log di moderazione, con il moderatore."""
+    from cogs.moderation import actions
+    from cogs.moderation._shared import MODULE_ACTIONS
+
+    await db.set_module_active_for_guild(SERVER, MODULE_ACTIONS, True)
+    log = AsyncMock()
+    monkeypatch.setattr(actions, "post_to_mod_log", log)
+    server = fake_guild(SERVER, owner_id=1)
+    membro = fake_member(55)
+    membro.timeout = AsyncMock()
+    interazione = fake_interaction(guild=server, user=fake_member(7))
+    cog = actions.ModerationActionsCog(MagicMock())
+
+    await cog.untimeout.callback(cog, interazione, membro)
+
+    membro.timeout.assert_awaited_once()
+    log.assert_awaited_once()
+    assert log.await_args.args[1].title == "🔊 Timeout rimosso"

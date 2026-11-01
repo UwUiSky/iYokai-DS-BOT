@@ -19,10 +19,12 @@ from discord.ext import commands
 
 from core.admin_mentions_logic import menzioni_ammesse, utente_puo_pingare_ruoli
 from core.autoresponder_logic import (
+    MAX_JOLLY,
     MAX_RISPOSTA,
     MAX_RISPOSTE,
     MAX_TRIGGER,
     PAUSA_CANALE_SECONDI,
+    jolly_validi,
     scegli_risposta,
 )
 from core.bounded_cache import BoundedCache
@@ -122,7 +124,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo("moduli", nome="risposta-crea", descrizione="Crea una risposta automatica.", sottogruppo=_SG_COMANDI)
     @app_commands.describe(
-        parola="La parola o frase che fa scattare la risposta",
+        parola="La parola o frase che fa scattare la risposta (* = pezzo di parola)",
         risposta="Cosa risponde il bot. Segnaposto: {user} {username} {server} {channel}",
         modalita="Come cercare la parola nel messaggio",
         canale="Solo in questo canale (vuoto = ovunque)",
@@ -144,6 +146,11 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
         if not parola or not risposta.strip():
             await interaction.response.send_message(
                 "La parola e la risposta non possono essere vuote o fatte di soli spazi.", ephemeral=True
+            )
+            return
+        if not jolly_validi(parola):
+            await interaction.response.send_message(
+                f"Con il jolly * servono lettere vere e al massimo {MAX_JOLLY} asterischi.", ephemeral=True
             )
             return
         esito, nuovo_id = await autoresponder_repo.create(

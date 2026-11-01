@@ -234,3 +234,135 @@ async def test_il_comando_wizard_apre_ruoli_e_una_categoria_per_passo():
     finally:
         await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 555555561")
         await database.close()
+
+
+# ---- 22.16: un canale per categoria, creato e collegato ----
+def _vista_con(categoria, nomi=("wiz_a",)):
+    moduli = {n: PremiumModule(category=categoria, name=n, display_name=n, description=n) for n in nomi}
+    passi = costruisci_passi({categoria: list(nomi)}, tuple(ETICHETTE_CATEGORIE))
+    vista = SetupWizardView(555555560, passi, moduli, {n: False for n in nomi}, {}, ETICHETTE_CATEGORIE)
+    vista.step = 1
+    vista.ricostruisci()
+    return vista
+
+
+@pytest.mark.parametrize(
+    "categoria, etichetta",
+    [("moderation", "Crea il canale mod-log"), ("security", "Crea il canale allarmi-sicurezza"),
+     ("community", "Crea il canale benvenuto")],
+)
+def test_le_categorie_con_un_canale_hanno_il_bottone(categoria, etichetta):
+    assert _bottone(_vista_con(categoria), etichetta)
+
+
+def test_le_altre_categorie_non_hanno_il_bottone_del_canale():
+    vista = _vista_con("fun")
+    assert not any(str(getattr(c, "label", "")).startswith("Crea il canale") for c in vista.children)
+
+
+def _server_per_canali(guild_id):
+    server = fake_guild(guild_id)
+    server.me.guild_permissions = discord.Permissions(manage_channels=True, view_channel=True, send_messages=True)
+    server.channels = []
+    nuovo = MagicMock()
+    nuovo.id = 7777
+    nuovo.mention = "<#7777>"
+    server.create_text_channel = AsyncMock(return_value=nuovo)
+    return server
+
+
+async def test_il_canale_modlog_si_crea_riservato_e_si_collega(clean_db, monkeypatch):
+    from core.database import db
+
+    monkeypatch.setattr(db, "_pool", clean_db)
+    server = _server_per_canali(555555561)
+    interazione = _clic()
+    interazione.guild = server
+    await _bottone(_vista_con("moderation"), "Crea il canale mod-log").callback(interazione)
+
+    kw = server.create_text_channel.await_args
+    assert kw.args[0] == "mod-log" and kw.kwargs["overwrites"]  # riservato: ci sono regole
+    assert await db.get_guild_setting(555555561, "mod_log_channel_id") == 7777
+    assert "<#7777>" in interazione.followup.send.await_args.args[0]
+
+
+async def test_il_canale_degli_allarmi_va_nel_router(clean_db, monkeypatch):
+    from core.database import db
+    from core.repositories.output_channel_repo import output_channel_repo
+
+    monkeypatch.setattr(db, "_pool", clean_db)
+    server = _server_per_canali(555555562)
+    interazione = _clic()
+    interazione.guild = server
+    await _bottone(_vista_con("security"), "Crea il canale allarmi-sicurezza").callback(interazione)
+    riga = await output_channel_repo.ottieni(555555562, "allarmi")
+    assert riga is not None and riga.channel_id == 7777
+
+
+async def test_il_canale_benvenuto_e_pubblico_e_non_accende_il_modulo(clean_db, monkeypatch):
+    from core.database import db
+    from core.repositories.greetings_repo import greetings_repo
+
+    monkeypatch.setattr(db, "_pool", clean_db)
+    server = _server_per_canali(555555563)
+    interazione = _clic()
+    interazione.guild = server
+    await _bottone(_vista_con("community"), "Crea il canale benvenuto").callback(interazione)
+
+    assert server.create_text_channel.await_args.kwargs["overwrites"] == {}
+    config = await greetings_repo.get_config(555555563)
+    assert config.welcome_channel_id == 7777 and config.welcome_enabled is False
+
+
+async def test_senza_permessi_o_senza_posto_il_canale_non_si_crea(clean_db, monkeypatch):
+    from core.database import db
+
+    monkeypatch.setattr(db, "_pool", clean_db)
+    server = _server_per_canali(555555564)
+    server.me.guild_permissions = discord.Permissions.none()
+    interazione = _clic()
+    interazione.guild = server
+    await _bottone(_vista_con("moderation"), "Crea il canale mod-log").callback(interazione)
+    server.create_text_channel.assert_not_awaited()
+    assert "manage_channels" in interazione.followup.send.await_args.args[0]
+
+    server2 = _server_per_canali(555555565)
+    server2.channels = [MagicMock()] * 500
+    interazione2 = _clic()
+    interazione2.guild = server2
+    await _bottone(_vista_con("moderation"), "Crea il canale mod-log").callback(interazione2)
+    server2.create_text_channel.assert_not_awaited()
+
+
+async def test_il_canale_gia_collegato_non_si_crea_due_volte(clean_db, monkeypatch):
+    """Secondo clic, o doppio clic veloce: un solo canale, il secondo clic indica quello che c'è."""
+    import asyncio
+
+    from core.database import db
+
+    monkeypatch.setattr(db, "_pool", clean_db)
+    server = _server_per_canali(555555566)
+    creato = server.create_text_channel.return_value
+    creato.guild = server
+
+    async def lento(*args, **kwargs):
+        await asyncio.sleep(0.05)
+        server.channels.append(creato)
+        return creato
+
+    server.create_text_channel = AsyncMock(side_effect=lento)
+    server.get_channel = MagicMock(side_effect=lambda cid: creato if cid == 7777 and creato in server.channels else None)
+    vista = _vista_con("moderation")
+    a, b = _clic(), _clic()
+    a.guild = b.guild = server
+    await asyncio.gather(
+        _bottone(vista, "Crea il canale mod-log").callback(a),
+        _bottone(vista, "Crea il canale mod-log").callback(b),
+    )
+    assert server.create_text_channel.await_count == 1
+
+    c = _clic()
+    c.guild = server
+    await _bottone(vista, "Crea il canale mod-log").callback(c)
+    assert server.create_text_channel.await_count == 1
+    assert "<#7777>" in c.followup.send.await_args.args[0]

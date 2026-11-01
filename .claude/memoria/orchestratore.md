@@ -57,6 +57,8 @@
 - Regole owner: smoke/suite UNA volta a giro chiuso (mai per ramo); max 3 agenti alla volta; ogni ramo pubblicato dopo ogni commit (il container si azzera); autore Yokai Bot Dev, non cambiarlo; risposte in una sola lingua.
 - Prossimi numeri liberi: D42; migrazioni da 0420.
 
+- 29/10 PAUSA (limite settimanale): r12 in corso. Su main già unito feat/r12resto (approvato). Rami pubblicati con WIP: feat/r12ai (≈30/55 voci §25 fatte; restano 25.41–43, 25.92, ticket 25.65/66/97, voce #142 25.102–105, 25.100, 25.77, owner 25.82/84/94/21, app/pannello 25.85–93/104), feat/r12piatt (piattaforme e desktop, 34 voci, WIP non verificato), feat/r12resto (dopo il merge: 23.17 completa, /mod carico solo ADMIN, vista forum con post bloccati: in corso). Poi: controlli su r12ai e r12piatt, merge, UNA suite completa (migrazioni 0420–0424, 0450+, 0480+), push, chiusura issue.
+
 ## Coda (in ordine)
 1. Fatti e chiusi: #137, #133, #135, #136, #134, #146, #144.
 2. **#66 (utilità), #148, SPEC/VERIFICA_LIVE di F7**, poi (utilità), #71, #69/#70.

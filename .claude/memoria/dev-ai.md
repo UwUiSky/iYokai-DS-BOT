@@ -4,7 +4,7 @@
 01/11/2026 · ramo `feat/r12ai` · giro r12 (agente r12ai)
 
 ## In corso
-- Giro r12 chiuso nel lotto: nessuna voce `[~]`/`[ ]` in §25 tranne 25.21 (`[✗]`, D45). Resta da fare: rapporto, smoke
+- Giro r12 chiuso nel lotto: nessuna voce `[~]`/`[ ]` in §25 tranne 25.21 (`[✗]`, D52). Resta da fare: rapporto, smoke
   e suite completa dell'orchestratore (migrazioni 0420-0429, main.py e user_app_bot toccati).
 
 ## Fatto
@@ -13,7 +13,7 @@
   `core/voice_*`, vocale raw in `core/discord_raw.py`), trascrizione (`core/trascrizione.py`), traduzione unita 25.77,
   bozze di codice 25.100 (`cogs/ai/bozze.py`), richieste di cancellazione 25.84, `/ai modello` 25.82/25.94, app
   (`/trova`, `/assistente`, «Trascrivi vocale»), pannello (`core/web_panel_ai.py`), stile con permesso 25.36.
-  Migrazioni 0420-0429. Decisioni D42-D45.
+  Migrazioni 0420-0429. Decisioni D42-D44, D52.
 
 ## Cose imparate
 - Helper di cog senza `setup`: nome con `_` iniziale (la scoperta li salta).
@@ -28,4 +28,4 @@
 
 ## Aperto
 - Voce e trascrizione spente finché mancano `VOCE_MODELLO_DIR` (+ sherpa-onnx) e `VOCE_TRASCRIZIONE_URL`.
-- Musica e video senza trasporto AI (D45). Testi AI solo in italiano. Card PNG di `/level` senza nomi a tema.
+- Musica e video senza trasporto AI (D52). Testi AI solo in italiano. Card PNG di `/level` senza nomi a tema.

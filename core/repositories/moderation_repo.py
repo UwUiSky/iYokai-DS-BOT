@@ -15,6 +15,8 @@ moderatori che bannano due persone nello stesso istante) serve una
 tabella contatore con incremento ATOMICO dentro una transazione,
 altrimenti due richieste simultanee potrebbero ricevere lo stesso
 numero di caso.
+Dopo ogni caso aperto o revocato il registro avvisa la vista su forum
+(`core/log_forum_service.py`, §8.17).
 """
 
 from __future__ import annotations
@@ -23,6 +25,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 import asyncpg
+
+from core import log_forum_service
 
 
 @dataclass(frozen=True)
@@ -175,6 +179,10 @@ class ModerationRepository:
                     duration_seconds,
                 )
 
+        # 8.17: la vista su forum, un post per caso (spenta se il server non l'ha scelta).
+        await log_forum_service.notifica_caso(
+            guild_id, case_number, action_type, user_id=user_id, moderator_id=moderator_id, motivo=reason
+        )
         return case_number
 
     async def get_case(self, guild_id: int, case_number: int) -> ModerationCase | None:
@@ -347,18 +355,24 @@ class ModerationRepository:
         era già inattivo — così il chiamante distingue "fatto" da
         "non c'era nulla da fare".
         """
-        result = await self._pool.execute(
+        riga = await self._pool.fetchrow(
             """
             UPDATE moderation_cases
             SET active = FALSE, revoked_at = now(), revoked_by = $3
             WHERE guild_id = $1 AND case_number = $2 AND active = TRUE
+            RETURNING user_id, moderator_id, action_type
             """,
             guild_id,
             case_number,
             revoked_by,
         )
-        # asyncpg restituisce una stringa tipo "UPDATE 1" o "UPDATE 0"
-        return result.endswith(" 1")
+        if riga is None:
+            return False
+        await log_forum_service.notifica_caso(
+            guild_id, case_number, riga["action_type"], user_id=riga["user_id"],
+            moderator_id=riga["moderator_id"], revocato_da=revoked_by,
+        )
+        return True
 
     async def revoke_active_cases_for_user(
         self, guild_id: int, user_id: int, action_type: str, revoked_by: int

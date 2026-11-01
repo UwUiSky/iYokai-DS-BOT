@@ -17,6 +17,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core import channel_router as router
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.admin_mentions_logic import (
@@ -26,6 +27,9 @@ from core.admin_mentions_logic import (
 )
 from core.leveling_logic import colore_valido
 from core.greetings_logic import (
+    DEFAULT_BOOST_TEMPLATE,
+    DEFAULT_GOODBYE_TEMPLATE,
+    DEFAULT_WELCOME_TEMPLATE,
     MAX_MESSAGE_LENGTH,
     analizza_reazioni,
     analizza_varianti,
@@ -34,6 +38,7 @@ from core.greetings_logic import (
     scegli_testo,
 )
 from core import greetings_uscite_logic as uscite
+from core.i18n import lingua_risposta, t
 from core.ui_base import BaseModal, BaseView
 from core.premium import PremiumModule, registry
 from core.repositories.greetings_repo import greetings_repo
@@ -134,6 +139,11 @@ class ExtraBenvenutoModal(BaseModal, title="Benvenuto: DM, varianti, reazioni"):
             f"{len(varianti)} varianti, {len(reazioni)} reazioni, ban {'con testo suo' if ban else 'con il testo di base'}.",
             ephemeral=True,
         )
+
+
+async def _modello(salvato: str, predefinito: str, chiave: str, guild_id: int) -> str:
+    """Il testo salvato dall'admin com'è; se è ancora quello di base, quello della lingua del server (NF-06)."""
+    return t(chiave, await lingua_risposta(guild_id, None, pubblica=True)) if salvato == predefinito else salvato
 
 
 async def _invia_con_grafica(channel, testo, grafica, menzioni, guild_id: int, nome: str) -> None:
@@ -329,7 +339,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             return
 
         testo = taglia_messaggio(
-            _render_for_member(scegli_testo(config.welcome_message, config.welcome_variants), member)
+            _render_for_member(scegli_testo(await _modello(config.welcome_message, DEFAULT_WELCOME_TEMPLATE, "greet_base_welcome", member.guild.id), config.welcome_variants), member)
         )
         testo_dm = (
             taglia_messaggio(_render_for_member(config.welcome_dm_message, member))
@@ -340,7 +350,16 @@ class GreetingsCog(CogConGruppi, commands.Cog):
 
         if config.welcome_channel_id is not None:
             channel = member.guild.get_channel(config.welcome_channel_id)
-            if isinstance(channel, discord.TextChannel):
+            if isinstance(channel, discord.ForumChannel):
+                # Router (§18.1): un forum riceve i benvenuti in un solo post, senza immagine né reazioni.
+                dest = await router.destinazione(member.guild, router.TIPO_BENVENUTO, channel.id)
+                if dest is not None:
+                    await router.invia_a(dest, member.guild, router.TIPO_BENVENUTO, content=testo, allowed_mentions=menzioni)
+            elif channel is None:
+                await router.avvisa_proprietario(
+                    member.guild, router.TIPO_BENVENUTO, config.welcome_channel_id, "il canale non esiste più"
+                )
+            elif isinstance(channel, discord.TextChannel):
                 # Durante un raid solo testo: disegnare un'immagine per ogni ingresso è lavoro sprecato.
                 puo_allegare = channel.permissions_for(member.guild.me).attach_files
                 allegato = (
@@ -392,7 +411,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         channel = member.guild.get_channel(config.goodbye_channel_id)
         if not isinstance(channel, discord.TextChannel):
             return
-        testo = taglia_messaggio(_render_for_member(config.goodbye_message, member))
+        testo = taglia_messaggio(_render_for_member(await _modello(config.goodbye_message, DEFAULT_GOODBYE_TEMPLATE, "greet_base_goodbye", member.guild.id), member))
         await _invia_con_grafica(
             channel, testo, await greetings_repo.get_grafica(member.guild.id, uscite.TIPO_ADDIO),
             menzioni_ammesse(config.goodbye_ping_ruoli), member.guild.id, "goodbye",
@@ -460,7 +479,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         if not isinstance(channel, discord.TextChannel):
             return
 
-        testo = taglia_messaggio(_render_for_member(config.boost_message, after))
+        testo = taglia_messaggio(_render_for_member(await _modello(config.boost_message, DEFAULT_BOOST_TEMPLATE, "greet_base_boost", after.guild.id), after))
         try:
             await channel.send(
                 testo, allowed_mentions=menzioni_ammesse(config.boost_ping_ruoli)
@@ -490,7 +509,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         self,
         interaction: discord.Interaction,
         enabled: bool,
-        channel: discord.TextChannel | None = None,
+        channel: discord.TextChannel | discord.ForumChannel | None = None,
         message: TestoMessaggio | None = None,
         dm: bool | None = None,
     ) -> None:

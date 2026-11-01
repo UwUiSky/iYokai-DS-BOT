@@ -2,7 +2,7 @@
 {% block titolo %}{{ guild.name }} · iYokai Panel{% endblock %}
 {% block corpo %}
 <h1>{{ guild.name }}</h1>
-<p><a href="/server/{{ guild.id }}/storico">Storico delle modifiche</a> · <a href="/server/{{ guild.id }}/premium">Premium</a> · <a href="/server/{{ guild.id }}/marchio">Bot con marchio</a> · <a href="/server/{{ guild.id }}/aspetto">Aspetto del bot</a> · <a href="/server/{{ guild.id }}/inviti">Inviti</a> · <a href="/server/{{ guild.id }}/ai">Intelligenza artificiale</a></p>
+<p><a href="/server/{{ guild.id }}/storico">Storico delle modifiche</a> · <a href="/server/{{ guild.id }}/premium">Premium</a> · <a href="/server/{{ guild.id }}/marchio">Bot con marchio</a> · <a href="/server/{{ guild.id }}/aspetto">Aspetto del bot</a> · <a href="/server/{{ guild.id }}/inviti">Inviti</a> · <a href="/server/{{ guild.id }}/ai">Intelligenza artificiale</a> · <a href="/server/{{ guild.id }}/editor/embed">Editor embed</a> · <a href="/server/{{ guild.id }}/editor/benvenuto">Benvenuto</a></p>
 
 <h2>Lingua del server</h2>
 <form class="carta riga" method="post" action="/server/{{ guild.id }}/lingua">
@@ -64,6 +64,7 @@ ma il bot li blocca lo stesso.</p>
       <span class="etichetta">{{ 'acceso' if m.attivo else 'spento' }}</span></div>
     <p class="tenue">{{ m.descrizione }}</p>
     <button type="submit" class="{{ 'secondario' if m.attivo }}">{{ 'Spegni' if m.attivo else 'Accendi' }}</button>
+    {% if m.nome in con_impostazioni %}<a class="bottone secondario" href="/server/{{ guild.id }}/modulo/{{ m.nome }}">Impostazioni</a>{% endif %}
   </form>
 {% endfor %}
 </div>

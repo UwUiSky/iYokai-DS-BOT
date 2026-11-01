@@ -4,10 +4,11 @@ cogs/logging/log_config.py
 Comandi di /log per scegliere o creare i canali dei log: /log crea-canali
 (una categoria privata con un canale per tipo), /log crea-forum (un forum,
 un post per tipo), /log ignora (cosa il log dei messaggi non registra) e
-/log eventi (accendere o spegnere ogni evento). I canali creati sono
+/log eventi (accendere o spegnere ogni evento), /log vista-forum (un forum con un
+post per canale o per caso). I canali creati sono
 visibili anche a iYokai Mod, se è nel server.
 /log canale e /log stato stanno in basic_logs.py.
-Funzioni coperte: SPEC §18 (NF-01), §8.16 (NF-02), §8.19 (LOG-017), parte E (D15)
+Funzioni coperte: SPEC §18 (NF-01), §8.16 (NF-02), §8.17, §8.19 (LOG-017), parte E (D15)
 Dipende da: core/channel_router.py, core/repositories/log_ignora_repo.py,
 core/repositories/log_eventi_repo.py
 """
@@ -34,6 +35,8 @@ from core.message_log_logic import (
     scegli_bersaglio,
     testo_elenco_ignorati,
 )
+from core import log_forum_service
+from core.log_forum_logic import DIM_CANALI, DIM_CASI, MAX_POST_PER_DIMENSIONE
 from core.log_eventi_logic import INTERRUTTORI, spenti_da_scelta
 from core.repositories.log_eventi_repo import log_eventi_repo
 from core.repositories.log_ignora_repo import log_ignora_repo
@@ -127,6 +130,59 @@ def permessi_mancanti(permessi: discord.Permissions, richiesti: tuple[str, ...])
 class LogConfigCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+
+    async def cog_load(self) -> None:
+        await super().cog_load()
+        log_forum_service.avvia(self.bot)
+
+    async def cog_unload(self) -> None:
+        await log_forum_service.ferma()
+        await super().cog_unload()
+
+    @comando_di_gruppo(
+        "log", nome="vista-forum",
+        descrizione="Un forum con un post per canale o per caso. Senza forum, la vista si spegne.",
+    )
+    @app_commands.describe(
+        dimensione="Cosa ha un post: ogni canale o ogni caso di moderazione",
+        forum="Il forum scelto (vuoto: spegne questa vista)",
+    )
+    @app_commands.choices(
+        dimensione=[
+            app_commands.Choice(name="Un post per canale", value=DIM_CANALI),
+            app_commands.Choice(name="Un post per caso di moderazione", value=DIM_CASI),
+        ]
+    )
+    async def vista_forum(
+        self, interaction: discord.Interaction, dimensione: str, forum: discord.ForumChannel | None = None
+    ) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message("Questo comando funziona solo in un server.", ephemeral=True)
+            return
+        repo = log_forum_service.log_forum_repo
+        if forum is None:
+            tolta = await repo.togli_forum(guild.id, dimensione)
+            log_forum_service.invalida(guild.id)
+            await interaction.response.send_message(
+                "Vista spenta. I post già creati restano nel forum." if tolta else "Questa vista non era accesa.",
+                ephemeral=True,
+            )
+            return
+        mancano = permessi_mancanti(forum.permissions_for(guild.me), log_forum_service.PERMESSI_FORUM)
+        if mancano:
+            await interaction.response.send_message(
+                f"Nel forum {forum.mention} mi mancano dei permessi: " + ", ".join(mancano), ephemeral=True
+            )
+            return
+        await repo.imposta_forum(guild.id, dimensione, forum.id)
+        log_forum_service.invalida(guild.id)
+        cosa = "ogni canale" if dimensione == DIM_CANALI else "ogni caso di moderazione"
+        await interaction.response.send_message(
+            f"Fatto: in {forum.mention} nasce un post per {cosa} (al massimo {MAX_POST_PER_DIMENSIONE}), "
+            "al primo evento. I log di sempre non cambiano. Il modulo dei log deve essere attivo.",
+            ephemeral=True,
+        )
 
     @comando_di_gruppo(
         "log", nome="crea-canali",

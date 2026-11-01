@@ -119,3 +119,40 @@ class TestHasAnyWebhook:
         await repo.remove_webhook(a.id, guild_id=100)
 
         assert await repo.has_any_webhook() is True
+
+
+class TestTokenSalvatoComeImpronta:
+    """SEC-16 / 19.9: nel database c'è solo l'impronta del token, mai il token."""
+
+    @pytest.mark.asyncio
+    async def test_il_token_in_chiaro_non_e_nel_database(self, repo, clean_db):
+        from core.custom_webhook_logic import hash_webhook_token
+
+        creato = await repo.create_webhook(100, 500, "Monitor", 1)
+
+        riga = await clean_db.fetchrow("SELECT * FROM custom_webhooks WHERE id = $1", creato.id)
+        assert riga["token"] is None
+        assert riga["token_hash"] == hash_webhook_token(creato.token)
+        assert creato.token not in str(dict(riga))
+
+    @pytest.mark.asyncio
+    async def test_l_elenco_non_ha_il_token(self, repo):
+        await repo.create_webhook(100, 500, "Monitor", 1)
+
+        assert (await repo.list_webhooks(100))[0].token is None
+
+    @pytest.mark.asyncio
+    async def test_un_webhook_vecchio_in_chiaro_diventa_impronta_e_funziona(self, repo, clean_db):
+        from core.custom_webhook_logic import hash_webhook_token
+        from core.migrations import MIGRATIONS_DIR
+
+        await clean_db.execute(
+            "INSERT INTO custom_webhooks (guild_id, channel_id, token, label, message_template, created_by)"
+            " VALUES (100, 500, 'vecchio-token', 'Vecchio', 'x', 1)"
+        )
+        await clean_db.execute((MIGRATIONS_DIR / "0450_webhook_token_hash.sql").read_text(encoding="utf-8"))
+
+        riga = await clean_db.fetchrow("SELECT * FROM custom_webhooks WHERE label = 'Vecchio'")
+        assert riga["token"] is None
+        assert riga["token_hash"] == hash_webhook_token("vecchio-token")
+        assert (await repo.get_by_token("vecchio-token")).label == "Vecchio"

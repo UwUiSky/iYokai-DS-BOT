@@ -48,7 +48,7 @@ from core.escalation_ladder_logic import get_ladder_action
 from core.repositories.escalation_repo import escalation_repo
 from core.repositories.moderation_repo import moderation_repo
 from cogs.automod.automod import MODULE_AUTOMOD, _is_safe_from_automated_action
-from cogs.moderation._shared import actor_from_member
+from cogs.moderation._shared import actor_from_member, post_to_mod_log
 from core.permissions import can_moderate
 
 logger = logging.getLogger("iyokai.automod.escalation")
@@ -133,7 +133,22 @@ async def _applica_passo(
             await member.send(f"⚠️ {reason} (caso #{case_number})")
         except discord.HTTPException:
             pass
+    await _scrivi_nel_log(member, step, reason, case_number)
     return case_number
+
+
+async def _scrivi_nel_log(member: discord.Member, step, reason: str, case_number: int) -> None:
+    """§18.7: ogni gradino applicato lascia una riga nel log di moderazione (mai solleva)."""
+    azione = step.action_type + (f" {step.duration_seconds // 60} min" if step.action_type == "timeout" else "")
+    embed = discord.Embed(title="⚖️ Scala di escalation", color=discord.Color.orange())
+    embed.add_field(name="Utente", value=f"{member.mention} ({member.id})", inline=False)
+    embed.add_field(name="Azione", value=azione, inline=True)
+    embed.add_field(name="Caso", value=f"#{case_number}", inline=True)
+    embed.add_field(name="Motivo", value=reason[:1000], inline=False)
+    try:
+        await post_to_mod_log(member.guild, embed)
+    except Exception:  # il log è un'aggiunta: non deve rompere la scala
+        logger.warning("Riga di log della scala non scritta (server %s)", member.guild.id, exc_info=True)
 
 
 async def scala_per_warn_manuale(
