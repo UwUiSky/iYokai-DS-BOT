@@ -18,7 +18,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
 from core.embed_builder_logic import (
     MAX_CAMPI,
@@ -94,7 +94,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
     # ================================================================
     # Crea
     # ================================================================
-    @comando_di_gruppo("moduli", nome="crea", descrizione="Crea un embed e guarda l'anteprima.", sottogruppo=_SG_MESSAGGI)
+    @comando_di_gruppo("messaggi", nome="crea", descrizione="Crea un embed e guarda l'anteprima.", sottogruppo=SOTTOGRUPPI["messaggi embed"])
     @app_commands.describe(
         nome=f"Il nome per ritrovarlo (a-z, cifre, - e _; massimo {MAX_NOME})",
         titolo="Il titolo",
@@ -152,7 +152,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
     # ================================================================
     # Modifica
     # ================================================================
-    @comando_di_gruppo("moduli", nome="modifica", descrizione="Cambia un embed salvato (e il messaggio già pubblicato).", sottogruppo=_SG_MESSAGGI)
+    @comando_di_gruppo("messaggi", nome="modifica", descrizione="Cambia un embed salvato (e il messaggio già pubblicato).", sottogruppo=SOTTOGRUPPI["messaggi embed"])
     @app_commands.describe(
         nome="L'embed da cambiare",
         titolo=f"Nuovo titolo (\"{_CANCELLA}\" lo toglie)",
@@ -267,7 +267,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
     # ================================================================
     # Pubblica, elenco, elimina
     # ================================================================
-    @comando_di_gruppo("moduli", nome="pubblica", descrizione="Manda un embed salvato in un canale.", sottogruppo=_SG_MESSAGGI)
+    @comando_di_gruppo("messaggi", nome="pubblica", descrizione="Manda un embed salvato in un canale.", sottogruppo=SOTTOGRUPPI["messaggi embed"])
     @app_commands.describe(nome="L'embed da mandare", canale="Il canale (di norma quello dove sei)")
     async def pubblica(
         self,
@@ -305,7 +305,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
 
-    @comando_di_gruppo("moduli", nome="elenco", descrizione="Mostra gli embed salvati.", sottogruppo=_SG_MESSAGGI)
+    @comando_di_gruppo("messaggi", nome="elenco", descrizione="Mostra gli embed salvati.", sottogruppo=SOTTOGRUPPI["messaggi embed"])
     async def elenco(self, interaction: discord.Interaction) -> None:
         if not await self._pronto(interaction):
             return
@@ -320,7 +320,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
 
-    @comando_di_gruppo("moduli", nome="elimina", descrizione="Elimina un embed salvato (il messaggio pubblicato resta).", sottogruppo=_SG_MESSAGGI)
+    @comando_di_gruppo("messaggi", nome="elimina", descrizione="Elimina un embed salvato (il messaggio pubblicato resta).", sottogruppo=SOTTOGRUPPI["messaggi embed"])
     @app_commands.describe(nome="L'embed da eliminare")
     async def elimina(self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, MAX_NOME]) -> None:
         if not await self._pronto(interaction):
