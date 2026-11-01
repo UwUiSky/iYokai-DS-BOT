@@ -866,7 +866,7 @@ nome: scrivendo `/admin` compaiono tutti i gruppi `admin-…`.
 2. I gruppi per tutti non hanno prefisso (`/ticket apri`, `/music play`) e nessun loro nome inizia con `admin`, `mod`
    o `founder` (un test lo controlla). Per questo `/moduli` diventa `/admin-moduli` e `/modban` diventa `/mod-ban`.
 3. Il prefisso non si traduce (D58): in ogni lingua `admin-`, `mod-`, `founder`. Si traduce solo il resto.
-4. Permessi predefiniti: `admin-` `manage_guild` (eccezioni scritte: `admin-ruoli` `manage_roles`; `admin-sicurezza`,
+4. Permessi predefiniti: `admin-` `manage_guild` (eccezioni scritte: `admin-sicurezza`,
    `admin-antinuke`, `admin-antiraid`, `admin-backup` `administrator`); `mod-` `moderate_members` (`mod-ban`:
    `ban_members`); `founder` `administrator`.
 5. **Founder** = `guild.owner_id` (Discord lo dichiara). `Livello.FOUNDER` fa passare solo lui: non l'owner del bot,
@@ -921,3 +921,7 @@ client, ma può fermare il file prima che lo aprano i membri:
   nella sandbox: è la "foto" dell'immagine, senza il file originale), mai l'originale; 4) se è sospetta o
   malevola, nei log va solo l'avviso "immagine con contenuto malevolo" con autore, canale, impronta e motivo,
   senza file; l'originale resta in quarantena per il tempo minimo e poi si cancella. Vale anche D61.
+- Precisazione dell'owner (01/11): `/admin-ruoli` di base chiede «Gestisci server» come gli altri gruppi admin;
+  ogni server può dare l'accesso a chi gestisce i ruoli dalle Integrazioni di Discord.
+- Nomi `/-cerca-comando` e `/-chiedi`: la `/` non è ammessa nei nomi dei comandi (regola di Discord: lettere,
+  numeri, `-`, `_`). Il trattino resta: scrivendo `/` e poi `-` compaiono subito i due comandi.

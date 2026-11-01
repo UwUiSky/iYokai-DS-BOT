@@ -64,7 +64,7 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "admin-moduli": ("Moduli del server (admin): alert, starboard, contatori, compleanni, inviti", "manage_guild", Livello.ADMIN),
     "admin-economia": ("Economia (admin): negozio, cassa, premi in monete, annunci del mese", "manage_guild", Livello.ADMIN),
     "admin-livelli": ("Livelli e XP (admin): guadagno, annunci, premi, esclusioni, progressi", "manage_guild", Livello.ADMIN),
-    "admin-ruoli": ("Ruoli del server (admin): dai e togli, premio, automatici, menu, in massa", "manage_roles", Livello.ADMIN),
+    "admin-ruoli": ("Ruoli del server (admin): dai e togli, premio, automatici, menu, in massa", "manage_guild", Livello.ADMIN),
     "admin-log": ("Registro degli eventi (admin): canali, stato, ricerca, esportazione", "manage_guild", Livello.LOG),
     "admin-messaggi": ("Messaggi del server (admin): embed, tag, risposte, programmati, fissi", "manage_guild", Livello.ADMIN),
     "admin-giveaway": ("Giveaway del server (admin): avvio, modelli, programmati", "manage_guild", Livello.ADMIN),
