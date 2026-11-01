@@ -39,6 +39,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 from core.command_access import TipoRuolo
+from core.command_groups import nomi_gruppi
 
 logger = logging.getLogger("iyokai.command_permissions")
 
@@ -60,11 +61,12 @@ STATO_SENZA_AUTORIZZAZIONE = "senza_autorizzazione"
 STATO_TOKEN_NON_VALIDO = "token_non_valido"
 STATO_DA_RIPROVARE = "da_riprovare"  # Discord non risponde (429, 5xx, rete): il token resta
 
-# Quali gruppi apre ogni ruolo scelto nel setup (issue #148).
+# Quali gruppi apre ogni ruolo scelto nel setup (issue #148). D60: il prefisso del nome dice il ruolo.
+# `/founder` non è qui: passa solo il proprietario del server, qualunque ruolo si scelga.
 GRUPPI_DEL_RUOLO: dict[TipoRuolo, tuple[str, ...]] = {
-    TipoRuolo.ADMIN: ("admin", "gestione", "moduli", "security", "automod", "log"),
-    TipoRuolo.MOD: ("mod",),
-    TipoRuolo.MODBAN: ("modban",),
+    TipoRuolo.ADMIN: tuple(n for n in nomi_gruppi() if n.startswith("admin-")),
+    TipoRuolo.MOD: ("mod-sanzioni", "mod-casi", "mod-canali"),
+    TipoRuolo.MODBAN: ("mod-ban",),
 }
 
 
