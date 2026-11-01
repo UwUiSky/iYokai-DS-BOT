@@ -112,7 +112,8 @@ class AiImmaginiCog(CogConGruppi, commands.Cog):
             return
         await _manda_ingrandita(interaction, dati)
 
-    @comando_di_gruppo("assistente", nome="pacchetto", descrizione="Compra 5 immagini AI in più con le monete del server.")    @requires_module(MODULO_AI)
+    @comando_di_gruppo("assistente", nome="pacchetto", descrizione="Compra 5 immagini AI in più con le monete del server.")
+    @requires_module(MODULO_AI)
     async def pacchetto(self, interaction: discord.Interaction) -> None:
         cfg = await ai_repo.get_config(interaction.guild_id)
         prezzo = cfg.prezzo_pacchetto_immagini

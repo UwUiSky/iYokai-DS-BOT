@@ -67,7 +67,8 @@ class AiSpiritiCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @comando_di_gruppo("assistente", nome="spirito", descrizione="Il tuo spirito Yokai: cresce con la tua attività.")    @app_commands.describe(scelta="Vuoi un altro spirito? Scegli cosa ti rappresenta (vuoto: lo decide la tua attività)")
+    @comando_di_gruppo("assistente", nome="spirito", descrizione="Il tuo spirito Yokai: cresce con la tua attività.")
+    @app_commands.describe(scelta="Vuoi un altro spirito? Scegli cosa ti rappresenta (vuoto: lo decide la tua attività)")
     @app_commands.choices(scelta=[app_commands.Choice(name=a, value=a) for a in logica.ASSI] + [app_commands.Choice(name="automatico", value="auto")])
     async def spirito(self, interaction: discord.Interaction, scelta: str | None = None) -> None:
         await interaction.response.defer(ephemeral=True)
