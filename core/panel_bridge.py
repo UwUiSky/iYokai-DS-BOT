@@ -301,6 +301,12 @@ async def verifica_web(
         nuovi = await fingerprint_repo.salva_doppi(guild_id, user_id, [(d.altro_user_id, d.livello) for d in doppi])
         if nuovi:
             await avvisa_staff(guild, membro, [d for d in doppi if d.altro_user_id in nuovi])
+    from core.verify_paese_staff import valuta as valuta_paese
+
+    # D53: il paese dall'IP (solo qui, mai salvato); se va in attesa decide lo staff.
+    in_attesa = await valuta_paese(guild, membro, ip)
+    if in_attesa is not None:
+        return False, in_attesa
     esito = await cog.run_checks_and_finalize(guild, membro, captcha_ok=True)
     return esito.success, esito.reason
 

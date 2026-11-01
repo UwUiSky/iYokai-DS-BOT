@@ -53,6 +53,10 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
         _c("verify_azione_fallita", "Se sbaglia il captcha", SCELTA),
         _c("verify_solo_sospetti", "Verifica solo gli account sospetti", BOOL),
         _c("verify_azione_eta", "Account troppo nuovo", SCELTA),
+        _c("verify_paesi", "Paesi del server (codici di 2 lettere, es. IT, CH)", TESTO),
+        _c("verify_paesi_soglia", "Verifiche da fuori paese prima dell'attesa (0 = spento)", NUMERO),
+        _c("verify_paesi_minuti", "Finestra della soglia (minuti, 1-1440)", NUMERO),
+        _c("verify_paesi_canale_id", "Canale dove lo staff approva o rifiuta", CANALE),
     ),
     "music": (
         _c("music_max_volume", "Volume massimo (0-200)", NUMERO),

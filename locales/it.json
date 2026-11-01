@@ -1373,5 +1373,16 @@
   "feedalerts_ruolo_in_diretta_impostato_su": "✅ Ruolo «in diretta» impostato su {mention}. Lo riceve chi è collegato a un avviso Twitch, YouTube o Kick con `/admin-moduli alert opzioni` (campo `membro`) e lo perde a fine diretta.",
   "feedalerts_avvisi_da_tiktok_instagram": "Avvisi da TikTok, Instagram e X",
   "feedalerts_nessuna_sottoscrizione_attiva_su_questo": "Nessuna sottoscrizione attiva su questo server.",
-  "feedalerts_sottoscrizioni_attive": "🔔 Sottoscrizioni attive"
+  "feedalerts_sottoscrizioni_attive": "🔔 Sottoscrizioni attive",
+  "verify_paese_titolo": "Verifica da fuori paese: in attesa",
+  "verify_paese_descrizione": "{utente} (`{id}`) si è verificato dal paese **{paese}**, che non è tra quelli del server. Almeno {soglia} verifiche da fuori paese negli ultimi {minuti} minuti. Lingua del client: {lingua}.\nÈ solo un indizio: approva se la persona è vera, rifiuta se sembra un raid.",
+  "verify_paese_attesa_utente": "La tua verifica è in attesa dello staff, che deve approvarla. Riceverai il ruolo appena decide.",
+  "verify_paese_rifiutata_utente": "Lo staff non ha approvato la tua verifica. Se pensi sia un errore, scrivi a un moderatore.",
+  "verify_paese_solo_admin": "Solo gli admin possono decidere su questa verifica.",
+  "verify_paese_gia_deciso": "Questa verifica è già stata decisa.",
+  "verify_paese_membro_uscito": "La persona non è più nel server.",
+  "verify_paese_approvata_da": "Approvata da {staff}.",
+  "verify_paese_bottone_approva": "Approva",
+  "verify_paese_bottone_rifiuta": "Rifiuta",
+  "verify_paese_rifiutata_da": "Rifiutata da {staff}: {utente} resta non verificato."
 }
