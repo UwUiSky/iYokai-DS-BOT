@@ -48,10 +48,9 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "admin",
+        "admin-musica",
         nome="impostazioni",
         descrizione="Cambia le impostazioni musicali del server.",
-        sottogruppo=SG_MUSICA,
     )
     @app_commands.describe(
         volume_massimo="Volume massimo permesso (0-200)",
@@ -129,10 +128,9 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(embed=embed, ephemeral=True)
 
     @comando_di_gruppo(
-        "admin",
+        "admin-musica",
         nome="riepilogo",
         descrizione="Mostra tutte le impostazioni musicali del server.",
-        sottogruppo=SG_MUSICA,
     )
     async def riepilogo(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild

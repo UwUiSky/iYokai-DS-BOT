@@ -73,6 +73,7 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "modban": ("Moderazione dura: ban, kick, softban e sban", "ban_members", Livello.MODBAN),
     "log": ("Registro degli eventi: canali, stato, ricerca ed esportazione", "manage_guild", Livello.LOG),
     "admin-bot": ("Impianto del bot: setup, configurazione, lingua, politica dei comandi, premium", "manage_guild", Livello.ADMIN),
+    "admin-musica": ("Musica del server (admin): canale delle richieste, impostazioni, riepilogo", "manage_guild", Livello.ADMIN),
     "ticket": ("Gestione del ticket in cui ti trovi", None, None),
     "voice": ("Gestione del tuo canale vocale temporaneo", None, None),
     "music": ("Musica nei canali vocali", None, None),
