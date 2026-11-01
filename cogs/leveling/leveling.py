@@ -28,7 +28,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from core.command_access import Livello, richiedi
-from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
+from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo, togli_comandi_del_cog
 from core.database import db
 from core.i18n import testo_per
 from core.role_safety import check_role_assignable
@@ -1190,7 +1190,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "level",
+        "monete",
         nome="attese",
         descrizione="Quando potrai di nuovo usare daily e work.",
     )
@@ -1238,7 +1238,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
     @comando_di_gruppo(
-        "level",
+        "monete",
         nome="balance",
         descrizione="Mostra i tuoi coin.",
     )
@@ -1264,7 +1264,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "level",
+        "monete",
         nome="daily",
         descrizione="Riscuoti la ricompensa giornaliera.",
     )
@@ -1293,7 +1293,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "level",
+        "monete",
         nome="work",
         descrizione="Lavora per guadagnare qualche coin.",
     )
@@ -1321,7 +1321,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "leveling_hai_lavorato_guadagnato", pubblica=True, guadagno=guadagno, moneta=moneta))
 
     @comando_di_gruppo(
-        "level",
+        "monete",
         nome="pay",
         descrizione="Trasferisci coin a un altro utente.",
     )
@@ -1623,10 +1623,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
     # ================================================================
 
     @comando_di_gruppo(
-        "level",
+        "monete",
         nome="list",
         descrizione="Mostra gli oggetti disponibili nello shop.",
-        sottogruppo=_SG_SHOP,
+        sottogruppo=SOTTOGRUPPI["monete shop"],
     )
     @app_commands.describe(categoria="Mostra solo questa categoria (facoltativo)")
     async def shop_list(
@@ -1674,10 +1674,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await invia_lista(interaction, "🛒 Shop", righe, discord.Color.green())
 
     @comando_di_gruppo(
-        "level",
+        "monete",
         nome="buy",
         descrizione="Acquista un oggetto dello shop.",
-        sottogruppo=_SG_SHOP,
+        sottogruppo=SOTTOGRUPPI["monete shop"],
     )
     @app_commands.describe(item_id="ID dell'oggetto (vedi /level shop list)")
     async def shop_buy(self, interaction: discord.Interaction, item_id: IdOggetto) -> None:
@@ -2046,7 +2046,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
 
     @comando_di_gruppo(
-        "level",
+        "monete",
         nome="cassa",
         descrizione="Mostra il saldo della cassa del server.",
     )
