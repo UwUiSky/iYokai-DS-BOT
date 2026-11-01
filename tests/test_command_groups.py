@@ -28,10 +28,10 @@ ATTESI = [
     "owner", *ADMIN_ATTESI, *MOD_ATTESI, "founder",
     "ticket", "voice", "music", "level", "monete", "clan", "fun", "immagini", "giochi", "sondaggi", "assistente", "gif", "utility",
 ]
-# Eccezioni al permesso `manage_guild` dei gruppi admin (D60): sicurezza e backup chiedono administrator, i ruoli manage_roles.
+# Eccezioni al permesso `manage_guild` dei gruppi admin (D60): sicurezza e backup chiedono administrator. I ruoli seguono la regola: manage_guild (scelta dell'owner 01/11).
 PERMESSI = {
     **{n: "manage_guild" for n in ADMIN_ATTESI},
-    "admin-ruoli": "manage_roles", "admin-backup": "administrator", "admin-sicurezza": "administrator",
+    "admin-backup": "administrator", "admin-sicurezza": "administrator",
     "admin-antinuke": "administrator", "admin-antiraid": "administrator",
     "owner": "administrator", "founder": "administrator",
     "mod-sanzioni": "moderate_members", "mod-casi": "moderate_members", "mod-canali": "moderate_members", "mod-ban": "ban_members",
@@ -48,8 +48,8 @@ PERMESSO_PER_LIVELLO = {
     Livello.OWNER: "administrator", Livello.ADMIN: "manage_guild", Livello.SECURITY: "administrator",
     Livello.LOG: "manage_guild", Livello.MOD: "moderate_members", Livello.MODBAN: "ban_members", Livello.FOUNDER: "administrator",
 }
-# Eccezioni scritte (livello admin nel codice): i ruoli chiedono manage_roles, il backup administrator.
-ECCEZIONI_PERMESSO = {"admin-ruoli": "manage_roles", "admin-backup": "administrator"}
+# Eccezioni scritte (livello admin nel codice): il backup administrator.
+ECCEZIONI_PERMESSO = {"admin-backup": "administrator"}
 
 
 @pytest.mark.parametrize("nome", ATTESI)
