@@ -308,7 +308,7 @@ async def test_traduzione_automatica_unisce_i_messaggi_di_fila(repo, monkeypatch
     m1, m2, m3 = (_messaggio(t) for t in ("il gatto è con te", "e anche il cane", "buona giornata a tutti"))
     m2.id, m3.id = 778, 779
     await asyncio.gather(cog.on_message(m1), cog.on_message(m2), cog.on_message(m3))
-    assert len(trasporto.chiamate) == 2
+    assert len(trasporto.chiamate) == 1
     assert m1.channel.send.await_count == 1
     contenuto = trasporto.chiamate[0][1][-1]["content"]
     assert "il gatto" in contenuto and "il cane" in contenuto and "buona giornata" in contenuto

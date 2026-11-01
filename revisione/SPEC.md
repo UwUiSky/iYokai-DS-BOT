@@ -2309,8 +2309,9 @@ di quel file.
   catalogo AI-020)
 - `[x]` 25.76 Traduzione reagendo con una bandiera (AI-R-083; catalogo
   AI-021)
-- `[ ]` 25.77 Traduzione che raccoglie i messaggi successivi dello
+- `[x]` 25.77 Traduzione che raccoglie i messaggi successivi dello
   stesso autore (AI-R-084; catalogo AI-022; NF-36)
+  → **Stato 29/10 (r12ai):** core/traduzione_gruppo_logic.py e cogs/ai/traduzione.py: i messaggi di fila della stessa persona (attesa 4 s, al massimo 6 messaggi e 1500 caratteri) si traducono con una sola richiesta; la risposta cita il primo messaggio. Test: tests/test_ai_cogs.py, tests/test_ai_voce.py
 - `[x]` 25.78 Elenco delle lingue per la traduzione (AI-R-085; catalogo
   AI-023; NF-36)
 - `[x]` 25.79 Riconoscere la lingua della domanda (AI-R-086)
