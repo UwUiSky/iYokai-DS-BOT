@@ -77,13 +77,13 @@ def valida_file(dati: bytes) -> tuple[str | None, str | None]:
     """(estensione, errore) di un file caricato: formato e pixel controllati da safe_image (16 MP)."""
     from PIL import Image, UnidentifiedImageError
 
-    from core.safe_image import ImmagineTroppoGrande
+    from core.safe_image import FORMATI_AMMESSI, ImmagineTroppoGrande
 
     if len(dati) > MAX_BYTE_GRAFICA:
         return None, "Il file pesa troppo: il limite è 3 MB."
     try:
         # Il formato si legge dal file: l'immagine ridotta da safe_open_image può non averlo più.
-        formato = Image.open(io.BytesIO(dati)).format
+        formato = Image.open(io.BytesIO(dati), formats=FORMATI_AMMESSI).format
         safe_open_image(dati)
     except ImmagineTroppoGrande:
         return None, "L'immagine ha troppi pixel: riducila (WebP fino a 4 megapixel, gli altri fino a 16)."

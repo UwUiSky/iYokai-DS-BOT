@@ -346,3 +346,27 @@ def test_png_trasparente_grande_accettato():
 def test_webp_oltre_il_suo_limite_ha_un_messaggio_giusto():
     estensione, errore = uscite.valida_file(_png("WEBP", (3000, 2000)))
     assert estensione is None and "16 megapixel" not in errore and "pixel" in errore
+
+
+def test_valida_file_non_apre_formati_fuori_elenco(monkeypatch):
+    """Un TIFF non deve arrivare al decoder di Pillow: il formato si legge solo tra quelli ammessi (#149)."""
+    import io as _io
+
+    from PIL import Image
+
+    from core import greetings_uscite_logic as gul
+    from core.safe_image import FORMATI_AMMESSI
+
+    buf = _io.BytesIO()
+    Image.new("RGB", (4, 4)).save(buf, format="TIFF")
+    chiamate = []
+    vero_open = Image.open
+
+    def spia(fp, mode="r", formats=None):
+        chiamate.append(formats)
+        return vero_open(fp, mode, formats)
+
+    monkeypatch.setattr(Image, "open", spia)
+    estensione, errore = gul.valida_file(buf.getvalue())
+    assert estensione is None and errore
+    assert chiamate and all(f is not None and set(f) <= set(FORMATI_AMMESSI) for f in chiamate)
