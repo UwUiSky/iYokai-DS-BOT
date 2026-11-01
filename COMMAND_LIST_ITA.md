@@ -1,6 +1,6 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 02:07 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 02:13 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
 **Totale: 639 comandi in 25 categorie.**
 
@@ -286,7 +286,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 02:
 - **`/economia giveaway-modello`** — Modelli di giveaway: salva, elenca, elimina, avvia.
 - **`/economia giveaway-programmati`** — Giveaway programmati: elenca (anche quelli in errore) o annulla.
 - **`/economia monete`** — Modifica il saldo di un membro.
-- **`/economia progressi`** — Accende o spegne missioni, serie, traguardi e stagione.
+- **`/economia progressi`** — Accende o spegne missioni, serie, traguardi e pass, e fissa l'obiettivo del server.
 - **`/economia shop-add`** — Aggiunge un oggetto allo shop.
 - **`/economia shop-edit`** — Cambia un oggetto dello shop (prezzo, scorte, ruolo richiesto...).
 - **`/economia shop-remove`** — Rimuove un oggetto dallo shop.
@@ -393,7 +393,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 02:
 - **`/level pay`** — Trasferisci coin a un altro utente.
 - **`/level premi`** — Mostra i ruoli-premio dei livelli e i moltiplicatori di XP attivi.
 - **`/level profilo`** — Mostra il profilo di un membro; con «presentazione» cambi il tuo.
-- **`/level progressi`** — Missioni di oggi, serie di giorni, traguardi, stagione del mese.
+- **`/level progressi`** — Missioni, serie, traguardi e pass di 90 giorni, in un menu.
 - **`/level rank`** — Mostra la rank card: livello, XP, posizione e coin.
 - **`/level shop buy`** — Acquista un oggetto dello shop.
 - **`/level shop list`** — Mostra gli oggetti disponibili nello shop.
@@ -422,7 +422,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 02:
 - **`/mod avvisi togli`** — Toglie un singolo warn (per numero di caso).
 - **`/mod blocco attiva`** — Blocca tutti i canali, gli inviti e gli ingressi del server.
 - **`/mod blocco togli`** — Riapre il server com'era prima del blocco.
-- **`/mod carico`** — Quanto lavoro ha fatto ogni persona dello staff (casi, appelli, ticket).
+- **`/mod carico`** — Carico dello staff e turni proposti. Solo amministratori, mai pubblico.
 - **`/mod caso attive`** — Sanzioni ancora in corso: tempban, timeout, mute, lock a tempo.
 - **`/mod caso classifica-staff`** — Classifica dei moderatori per numero di azioni, o casi di uno solo.
 - **`/mod caso elimina`** — Elimina un caso (serve «Gestire il server»).

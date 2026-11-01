@@ -14,7 +14,7 @@ import discord
 import pytest
 
 import cogs.leveling.profiles as modulo
-from core.profile_logic import CATALOGO, MAX_BIO, PER_ID, oggetto, pulisci_bio
+from core.profile_logic import CATALOGO, IN_VENDITA, MAX_BIO, PER_ID, oggetto, pulisci_bio
 from core.repositories.leveling_repo import LevelingRepository
 from core.repositories.profile_repo import EsitoAcquisto, ProfileRepository
 from tests.support.concorrenza import apri_connessioni
@@ -31,7 +31,7 @@ def test_il_catalogo_e_coerente():
     assert len({o.id for o in CATALOGO}) == len(CATALOGO) == len(PER_ID)
     assert len(CATALOGO) <= 25  # una scelta fissa di Discord ne ha al massimo 25
     for o in CATALOGO:
-        assert o.prezzo > 0 and o.tipo in ("badge", "sfondo")
+        assert (o.prezzo > 0) == (not o.premio) and o.tipo in ("badge", "sfondo")
         assert (o.emoji != "") == (o.tipo == "badge")
         assert (o.colore != 0) == (o.tipo == "sfondo")
     assert oggetto("non-esiste") is None
@@ -343,3 +343,23 @@ async def test_profilo_se_il_disegno_fallisce_ricade_sull_embed(scena):
     )
 
     assert isinstance(interazione.followup.send.await_args.kwargs["embed"], discord.Embed)
+
+
+def test_i_premi_non_sono_in_vendita_ne_tra_le_scelte_d_acquisto():
+    assert all(not o.premio for o in IN_VENDITA) and len(IN_VENDITA) < len(CATALOGO)
+    assert all(o.id not in {x.id for x in IN_VENDITA} for o in CATALOGO if o.premio)
+    assert [c.value for c in modulo._SCELTE_ACQUISTO] == [o.id for o in IN_VENDITA]
+    assert [c.value for c in modulo._SCELTE_OGGETTO] == [o.id for o in CATALOGO]
+
+
+@pytest.mark.asyncio
+async def test_un_premio_non_si_compra_ma_si_regala_una_volta_sola(repo, monete, clean_db):
+    from core.repositories.profile_repo import regala_oggetti_in
+
+    await monete.add_coins(GUILD, 1, 99999)
+    assert await repo.buy(GUILD, 1, "scintilla") is EsitoAcquisto.SCONOSCIUTO
+    async with clean_db.acquire() as conn:
+        assert await regala_oggetti_in(conn, GUILD, 1, ["scintilla", "non-esiste"]) == ["scintilla"]
+        assert await regala_oggetti_in(conn, GUILD, 1, ["scintilla"]) == []
+    assert "scintilla" in (await repo.get_profile(GUILD, 1)).posseduti
+    assert await repo.equip(GUILD, 1, "badge", "scintilla")

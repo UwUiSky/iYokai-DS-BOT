@@ -43,6 +43,11 @@
 - Funzioni importate che iniziano con `test` (es. `testo_x`) vengono raccolte da pytest: importarle con un alias.
 - Punti di aggancio nei repo (`event_log_repo`, `moderation_repo`, `leveling_repo`): import tardivo del servizio per evitare cicli, servizio che non solleva mai.
 - Gruppo `moduli` a 6.793/6.800 caratteri: ogni parola in più nelle descrizioni lo manda sopra l'allarme.
+- Gruppo `level` a 6.444/6.800: `/level progressi` e senza parametri (menu in una finestra); non aggiungere parametri a `/level`.
+- Un select in una `BaseView` con bottoni che cambiano per sezione: si ricostruisce la vista a ogni cambio (`costruisci`) e si usa `edit_message`.
+- Nel test di una vista con select: `interaction.data = {"values": [...]}`; `fake_member` ha `premium_since` come mock: va messo a None.
+- Python 3.11: niente backslash dentro le espressioni degli f-string (si calcola prima).
+- 23.17 chiusa (D51, migrazioni 0482-0483): pass di 90 giorni da 1/1/2026, XP del pass nella colonna `progress_stagione.xp`.
 
 ## Aperto
 - NSFW: risposta RedGifs scritta a memoria (verified/tags/niches/urls.poster), da controllare live. nsfw_* si puliscono

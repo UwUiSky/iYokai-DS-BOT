@@ -349,3 +349,5 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 01/11 | `feat/r12piatt` | `core/web_editor.py`, `cogs/utility/greetings.py:welcome_setup` | D16: la scrittura del benvenuto è ripetuta (cog e editor), non un punto unico in `core/` | bassa | aperto |
 | 01/11 | `feat/r12piatt` | `core/web_editor.py:stato_benvenuto` | Salvare il testo di base tradotto lo fissa: non segue più la lingua del server | bassa | aperto |
 | 01/11 | `feat/r12piatt` | `core/user_app_ai.py:chiedi_ai_app` | Traduci/Spiega in un server con privacy AI «senza_messaggi»: l'app manda lo stesso il testo (guild_id=None). Da far decidere all'owner | bassa | aperto |
+| 01/11 | `feat/r12resto` | `cogs/leveling/progressi.py:VistaProgressi._riscuoti` | Molte query prima della prima risposta senza `defer()` (rischio oltre 3 s sotto carico) | bassa | aperto, per dev-economia |
+| 01/11 | `feat/r12resto` | `core/repositories/staff_carico_repo.py:carico` | Chi ha solo sanzioni annullate nel periodo (nessun caso, appello o ticket) non compare | bassa | aperto |

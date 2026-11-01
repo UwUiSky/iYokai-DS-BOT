@@ -1,6 +1,6 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 02:07 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 02:13 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/comandi.en.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
 **Total: 639 commands in 25 categories.**
 
@@ -286,7 +286,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 02:0
 - **`/economy giveaway-modello`** — Giveaway templates: save, list, delete, start.
 - **`/economy giveaway-programmati`** — Scheduled giveaways: list (including failed ones) or cancel.
 - **`/economy premium-cashbox`** — Unlocks one month of premium bot by spending from the treasury.
-- **`/economy progress`** — Turns missions, streaks, achievements and season on or off.
+- **`/economy progress`** — Turns missions, streaks, achievements and pass on or off; sets the server goal.
 - **`/economy shop-add`** — Adds an item to the shop.
 - **`/economy shop-edit`** — Edits a shop item (price, stock, required role...).
 - **`/economy shop-remove`** — Removes an item from the shop.
@@ -383,7 +383,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 02:0
 - **`/level leaderboard`** — Shows the server leaderboard.
 - **`/level pay`** — Transfers coins to another user.
 - **`/level profile`** — Shows a member's profile; with "presentazione" you change yours.
-- **`/level progress`** — Today's missions, daily streak, achievements, monthly season.
+- **`/level progress`** — Missions, streaks, achievements and the 90-day pass, in a menu.
 - **`/level rank`** — Shows the rank card: level, XP, position and coins.
 - **`/level recent-levels`** — The last 25 level-ups in the server.
 - **`/level rewards`** — Shows level reward roles and active XP multipliers.
@@ -449,7 +449,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 02:0
 - **`/mod unmute`** — Removes the mute role from a member.
 - **`/mod untimeout`** — Removes a member's timeout.
 - **`/mod warn`** — Gives a member a warning.
-- **`/mod workload`** — How much work each staff member has done (cases, appeals, tickets).
+- **`/mod workload`** — Staff workload and proposed shifts. Admins only, never public.
 
 ## Bans (modban)
 

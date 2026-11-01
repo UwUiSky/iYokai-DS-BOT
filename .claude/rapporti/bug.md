@@ -326,3 +326,7 @@
 - 01/11 · core/repositories/desktop_repo.py utenti_con_avvisi · avvisi salvati anche dopo scollega · media · corretto 530fd71
 - 01/11 · core/config_impostazioni.py _converti · tipo di canale e ruolo non controllati come nel comando · media · corretto fb65019
 - 01/11 · core/web_editor.py salva_benvenuto · ping ruoli spento cambiando canale, canali vocali accettati · media · corretto 56a4538
+- 01/11 · core/log_forum_service.py scrivi · (riga del 29/10) post chiuso e tag obbligatori · bassa · corretto a160667
+- 01/11 · core/migrations/0483_progressi_v2.sql · `ultima_at` nuova e vuota: con la regola delle 36 ore le serie di prima ripartivano da 1 · media · confermato, corretto a0d6ab3 (0484)
+- 01/11 · core/repositories/progressi_repo.py missioni_settimana_riscattate · «settimana piena» contava missioni di settimane diverse (3 in 3 settimane) · bassa · confermato, corretto a0d6ab3
+- 01/11 · cogs/leveling/progressi.py VistaProgressi._riscuoti · riscatto + ricostruzione della scheda (~20 query) prima della risposta, senza defer · bassa · plausibile, aperto
