@@ -158,53 +158,53 @@ def moduli_da_proporre(stati: Iterable[StatoComando], massimo: int = MAX_ATTIVAZ
 # (comando, ((vicino, in cosa è diverso), ...)): l'AI serve solo a capire la domanda,
 # le differenze sono scritte qui e non cambiano da una risposta all'altra.
 COMANDI_VICINI: dict[str, tuple[tuple[str, str], ...]] = {
-    "modban ban": (
-        ("modban tempban", "il ban dura per un tempo scelto e poi il membro può rientrare"),
-        ("modban softban", "banna e sbanna subito: cancella i messaggi recenti, il membro può rientrare"),
-        ("mod timeout", "non lo allontana: gli toglie solo la parola fino a 28 giorni"),
+    "mod-ban ban": (
+        ("mod-ban tempban", "il ban dura per un tempo scelto e poi il membro può rientrare"),
+        ("mod-ban softban", "banna e sbanna subito: cancella i messaggi recenti, il membro può rientrare"),
+        ("mod-sanzioni timeout", "non lo allontana: gli toglie solo la parola fino a 28 giorni"),
     ),
-    "modban tempban": (
-        ("modban ban", "il ban è permanente"),
-        ("mod timeout", "il membro resta nel server ma non può scrivere"),
+    "mod-ban tempban": (
+        ("mod-ban ban", "il ban è permanente"),
+        ("mod-sanzioni timeout", "il membro resta nel server ma non può scrivere"),
     ),
-    "modban softban": (
-        ("modban ban", "il ban resta finché qualcuno non lo toglie"),
-        ("modban kick", "espelle senza cancellare i messaggi"),
+    "mod-ban softban": (
+        ("mod-ban ban", "il ban resta finché qualcuno non lo toglie"),
+        ("mod-ban kick", "espelle senza cancellare i messaggi"),
     ),
-    "modban kick": (
-        ("modban ban", "il membro non può tornare con un invito"),
-        ("modban softban", "cancella anche i messaggi recenti"),
+    "mod-ban kick": (
+        ("mod-ban ban", "il membro non può tornare con un invito"),
+        ("mod-ban softban", "cancella anche i messaggi recenti"),
     ),
-    "mod timeout": (
-        ("mod mute", "usa un ruolo dedicato invece del timeout di Discord"),
-        ("mod warn", "solo un avviso, nessun blocco"),
+    "mod-sanzioni timeout": (
+        ("mod-sanzioni mute", "usa un ruolo dedicato invece del timeout di Discord"),
+        ("mod-sanzioni warn", "solo un avviso, nessun blocco"),
     ),
-    "mod mute": (("mod timeout", "usa il timeout di Discord, con una durata massima di 28 giorni"),),
-    "mod warn": (
-        ("mod nota aggiungi", "una nota riservata allo staff, il membro non la vede"),
-        ("mod timeout", "oltre all'avviso gli toglie la parola"),
+    "mod-sanzioni mute": (("mod-sanzioni timeout", "usa il timeout di Discord, con una durata massima di 28 giorni"),),
+    "mod-sanzioni warn": (
+        ("mod-casi nota aggiungi", "una nota riservata allo staff, il membro non la vede"),
+        ("mod-sanzioni timeout", "oltre all'avviso gli toglie la parola"),
     ),
-    "mod clear": (
-        ("mod slowmode", "non cancella: rallenta chi scrive"),
-        ("mod lock", "non cancella: blocca la scrittura nel canale"),
+    "mod-canali clear": (
+        ("mod-canali slowmode", "non cancella: rallenta chi scrive"),
+        ("mod-canali lock", "non cancella: blocca la scrittura nel canale"),
     ),
-    "mod lock": (
-        ("mod slowmode", "il canale resta aperto ma a ritmo lento"),
-        ("mod blocco attiva", "blocca tutto il server, non un canale solo"),
+    "mod-canali lock": (
+        ("mod-canali slowmode", "il canale resta aperto ma a ritmo lento"),
+        ("mod-canali blocco attiva", "blocca tutto il server, non un canale solo"),
     ),
-    "mod blocco attiva": (
-        ("mod lock", "blocca un canale solo"),
-        ("security panico attiva", "il panico applica anche le regole d'emergenza"),
+    "mod-canali blocco attiva": (
+        ("mod-canali lock", "blocca un canale solo"),
+        ("admin-sicurezza panico attiva", "il panico applica anche le regole d'emergenza"),
     ),
-    "security panico attiva": (("mod blocco attiva", "blocca il server senza le regole d'emergenza"),),
+    "admin-sicurezza panico attiva": (("mod-canali blocco attiva", "blocca il server senza le regole d'emergenza"),),
     "utility report": (("ticket apri", "apre una conversazione con lo staff invece di una segnalazione"),),
     "ticket apri": (("utility report", "segnala un utente, senza aprire una conversazione"),),
-    "automod parole add": (
-        ("automod odio parola", "gestisce le parole d'odio, anche quelle lecite"),
-        ("filtri messaggi", "conta messaggi ripetuti, link e menzioni"),
+    "admin-automod parole add": (
+        ("admin-automod odio parola", "gestisce le parole d'odio, anche quelle lecite"),
+        ("admin-filtri messaggi", "conta messaggi ripetuti, link e menzioni"),
     ),
-    "log cerca utente": (("mod caso storico", "mostra solo le sanzioni, non tutti gli eventi"),),
-    "mod caso storico": (("log cerca utente", "mostra tutti gli eventi del registro, non solo le sanzioni"),),
+    "admin-log cerca utente": (("mod-casi caso storico", "mostra solo le sanzioni, non tutti gli eventi"),),
+    "mod-casi caso storico": (("admin-log cerca utente", "mostra tutti gli eventi del registro, non solo le sanzioni"),),
     "assistente riassumi": (("assistente spiega", "spiega un solo messaggio, non un canale"),),
     "assistente spiega": (("assistente riassumi", "riassume gli ultimi messaggi di un canale"),),
 }
