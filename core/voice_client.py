@@ -2,7 +2,7 @@
 core/voice_client.py
 ====================
 Il servizio voce: testo → vocale pronto. Prepara il testo, guarda la cache, altrimenti mette la sintesi in coda
-(una alla volta, con tempo massimo). Se il motore manca, è occupato o sbaglia, restituisce None e il bot manda il solo testo.
+(una alla volta, con tempo massimo). Ogni 20 scritture pulisce la cache (scaduti, tetto di spazio). Se il motore manca, è occupato o sbaglia, restituisce None e il bot manda il solo testo.
 Funzioni coperte: SPEC §14.19, §25.102 (AI-R-109)
 """
 
@@ -23,6 +23,7 @@ logger = logging.getLogger("iyokai.voce")
 
 CODA_MASSIMA = 8
 TIMEOUT_SECONDI = 90
+PULIZIA_OGNI = 20
 
 
 @dataclass(frozen=True)
@@ -35,13 +36,16 @@ class Vocale:
 
 
 class ServizioVoce:
-    def __init__(self, motore: MotoreVoce | None, cache: cache_mod.CacheVoce | None = None, *, timeout: float = TIMEOUT_SECONDI, coda_massima: int = CODA_MASSIMA) -> None:
+    def __init__(self, motore: MotoreVoce | None, cache: cache_mod.CacheVoce | None = None, *, timeout: float = TIMEOUT_SECONDI, coda_massima: int = CODA_MASSIMA,
+                 pulizia_ogni: int = PULIZIA_OGNI) -> None:
         self.motore = motore
         self.cache = cache
         self.timeout = timeout
         self.coda_massima = coda_massima
         self._turno = asyncio.Semaphore(1)
         self._in_coda = 0
+        self.pulizia_ogni = pulizia_ogni
+        self._scritture = 0
 
     @property
     def attivo(self) -> bool:
@@ -71,7 +75,13 @@ class ServizioVoce:
         finally:
             self._in_coda -= 1
         if self.cache is not None:
-            await asyncio.to_thread(self.cache.scrivi, k, cache_mod.VocaleSalvato(ogg, durata, onda), fisso)
+            try:  # disco pieno o cartella non scrivibile: il vocale parte lo stesso
+                await asyncio.to_thread(self.cache.scrivi, k, cache_mod.VocaleSalvato(ogg, durata, onda), fisso)
+                self._scritture += 1
+                if self._scritture % self.pulizia_ogni == 0:
+                    await asyncio.to_thread(self.cache.pulisci)
+            except OSError:
+                logger.warning("Cache della voce non scritta o non pulita.", exc_info=True)
         return Vocale(ogg, durata, onda, pronto)
 
 

@@ -246,3 +246,36 @@ def test_raccolta_piena_il_messaggio_resta_fuori_e_va_tradotto_da_solo():
     for i in range(MAX_MESSAGGI):
         assert r.aggiungi(2, 2, i, "x") in (True, False)
     assert r.aggiungi(2, 2, 99, "y") is None
+
+
+async def test_menu_dell_app_traduce_senza_le_regole_del_server(monkeypatch):
+    """Il menu è di iYokai App (installata dalla persona): la traduzione non dipende dall'AI del server, dove il bot
+    spesso non c'è. La richiesta va senza guild_id, come `/assistente`."""
+    cfg = leggi_config({"VOCE_TRASCRIZIONE_URL": "https://x.it/v1", "VOCE_TRASCRIZIONE_ADDESTRA": "no"})
+
+    async def trasporto(cfg, audio, nome):
+        return {"text": "Good morning everyone, how are you today"}
+
+    imposta_trascrittore(Trascrittore(cfg, trasporto))
+    try:
+        i = fake_interaction()
+        i.guild_id, i.channel_id = G, 1
+        i.locale = discord.Locale.italian
+        allegato = MagicMock(duration=3.0, size=100, filename="v.ogg")
+        allegato.is_voice_message.return_value = True
+        allegato.read = AsyncMock(return_value=b"ogg")
+        chiesto = AsyncMock(return_value=(None, "AI ferma"))
+        monkeypatch.setattr(voce, "chiedi", chiesto)
+        await voce.trascrivi_e_traduci(i, MagicMock(attachments=[allegato]))
+        richiesta = chiesto.await_args.args[0]
+        assert richiesta.guild_id is None and richiesta.channel_id is None
+    finally:
+        imposta_trascrittore(None)
+
+
+async def test_la_cache_rispetta_il_tetto_di_spazio(tmp_path):
+    """La cartella della cache non cresce senza fine: il servizio pulisce scaduti e più vecchi oltre il tetto."""
+    s = ServizioVoce(MotoreFinto(), CacheVoce(tmp_path, tetto_byte=1), pulizia_ogni=1)
+    for frase in ("Ciao a tutti", "Buonasera a tutti", "Buonanotte a tutti"):
+        assert await s.genera(frase, profilo("PUBLIC", "dolce"))
+    assert len(list(tmp_path.glob("*.voce"))) == 0

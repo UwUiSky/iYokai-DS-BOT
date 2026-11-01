@@ -110,7 +110,8 @@ class VocaleView(BaseView):
 
 
 async def trascrivi_e_traduci(interaction: discord.Interaction, messaggio: discord.Message) -> None:
-    """Menu «Trascrivi vocale» (AI-R-111): testo del vocale di una persona e traduzione nella lingua del client."""
+    """Menu «Trascrivi vocale» (AI-R-111): testo del vocale di una persona e traduzione nella lingua del client.
+    Il menu è di iYokai App: la richiesta all'AI è della persona, senza server (come `/assistente`)."""
     vocale = next((a for a in messaggio.attachments if a.is_voice_message()), None)
     if vocale is None:
         await interaction.response.send_message("Questo messaggio non è un vocale.", ephemeral=True)
@@ -131,8 +132,8 @@ async def trascrivi_e_traduci(interaction: discord.Interaction, messaggio: disco
     corpo = f"**Testo**\n{taglia(testo, 900)}"
     if riconosci_lingua(testo, "?") != lingua:
         risposta, _ = await chiedi(RichiestaAI(
-            user_id=interaction.user.id, funzione="vocale_persona_traduci", tipo="traduzione", testo=testo, guild_id=interaction.guild_id,
-            channel_id=interaction.channel_id, istruzioni=istruzioni_traduzione(lingua), lingua=lingua, messaggi_utenti=True,
+            user_id=interaction.user.id, funzione="vocale_persona_traduci", tipo="traduzione", testo=testo, guild_id=None,
+            istruzioni=istruzioni_traduzione(lingua), lingua=lingua, messaggi_utenti=True,
         ))
         if risposta:
             corpo += f"\n\n**{LINGUE[lingua].capitalize()}**\n{taglia(risposta.testo, 900)}"
