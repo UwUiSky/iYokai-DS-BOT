@@ -882,3 +882,17 @@ nome: scrivendo `/admin` compaiono tutti i gruppi `admin-…`.
    comandi spenti nella politica seguono il nome nuovo (migrazione 0488). Comandi globali 39 (43 con `/gif`,
    `/premium`, `/ultra`, `/vip`). Le eccezioni messe dagli admin in Impostazioni → Integrazioni si perdono (gli ID
    dei gruppi sono nuovi): si annuncia prima con `/owner system announce`. `/-cerca-comando` trova anche i nomi vecchi.
+
+## D61 — Copia sicura delle immagini nei log e nei backup (01/11/2026, richiesta dell'owner)
+Le immagini degli utenti sono il punto d'ingresso più comune per gli attacchi (decoder bucati, file
+travestiti). Regole per log, backup e pannello:
+- Si salvano **i byte così come arrivano**, senza aprirli con Pillow: nessun decoder tocca un file solo
+  per conservarlo. Nome casuale, impronta SHA-256, tetto di dimensione, tipo riconosciuto dai primi byte
+  e solo da un elenco chiuso (PNG, JPEG, GIF, WEBP); il resto si salva come file generico.
+- Le anteprime si fanno solo con `safe_open_image` (formati chiusi, tetto di pixel) in un processo a
+  parte con limiti di memoria e di tempo, e si **ricodificano** in PNG (spariscono metadati e contenuto nascosto).
+- Il pannello e il sito non mostrano mai il file originale in linea: download con
+  `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: sandbox`,
+  da un sotto-dominio separato senza cookie di sessione. Mai SVG o HTML caricati dagli utenti in linea.
+- Cartella fuori dalla radice del sito; conservazione a tempo e cancellazione con `/privacy` (data registry).
+- Aggiornamenti di sicurezza delle librerie (Pillow, aiohttp, …) si applicano subito, senza aspettare il giro.
