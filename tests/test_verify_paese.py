@@ -290,3 +290,19 @@ def test_bottoni_persistenti_con_id_corti():
     assert len(ids) == 2 and all(len(i) <= 100 for i in ids) and vista.timeout is None
     for item in vista.children:
         assert staff.BottoneDecisione.__discord_ui_compiled_template__.fullmatch(item.custom_id)
+
+
+@pytest.mark.asyncio
+async def test_chi_e_in_attesa_o_rifiutato_non_passa_da_un_ip_senza_paese(monkeypatch, clean_db):
+    # Un IP che la banca dati non conosce (rete privata, VPN, IPv6 nuovo) non deve aprire la porta
+    # a chi lo staff deve ancora decidere o ha già rifiutato.
+    amb = _ambiente(monkeypatch, clean_db)
+    await _prepara(clean_db)
+    geoip_paesi.usa_lettore(_LettoreFinto({}))
+    await amb.repo.registra(GUILD, 6, "BR", None, "attesa")
+    await amb.repo.registra(GUILD, 7, "BR", None, "rifiutata")
+    for user_id, ip in ((6, "10.0.0.1"), (7, "::1"), (6, "2001:db8::1")):
+        ok, testo = await _verifica(amb, user_id, ip)
+        assert not ok and "staff" in testo.lower()
+    assert amb.cog.run_checks_and_finalize.await_count == 0
+

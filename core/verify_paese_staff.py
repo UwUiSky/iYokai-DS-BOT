@@ -63,10 +63,8 @@ async def valuta(guild: discord.Guild, membro: discord.Member, ip: str) -> str |
     paesi = leggi_paesi(await db.get_guild_setting(guild.id, SETTING_PAESI))
     if not paesi:
         return None  # funzione non usata da questo server: non si raccoglie niente
-    paese = geoip_paesi.paese_da_ip(ip)
-    if paese is None:
-        return None
     repo = _repo()
+    # Lo stato deciso dallo staff vale prima del paese: un IP senza paese non apre la porta.
     prima = await repo.leggi(guild.id, membro.id)
     lingua = prima["lingua"] if prima else None
     if prima and prima["stato"] == STATO_ATTESA:
@@ -74,6 +72,9 @@ async def valuta(guild: discord.Guild, membro: discord.Member, ip: str) -> str |
     if prima and prima["stato"] == STATO_RIFIUTATA:
         return await testo_guild(guild, "verify_paese_rifiutata_utente")
     if prima and prima["stato"] == STATO_APPROVATA:
+        return None
+    paese = geoip_paesi.paese_da_ip(ip)
+    if paese is None:
         return None
     soglia = await db.get_guild_setting(guild.id, SETTING_SOGLIA, 0) or 0
     minuti = await db.get_guild_setting(guild.id, SETTING_MINUTI, MINUTI_DI_BASE) or MINUTI_DI_BASE
