@@ -24,7 +24,10 @@ from cogs.ai._comune import (
     NESSUNA_MENZIONE, chiedi, completa_lingue, registra_modulo_ai, richiede_ai, richiesta_da, taglia,
 )
 from core.ai_cost_logic import GIORNI_PROVA, prova_attiva
-from core.ai_impostazioni import TESTO_CONSENSO, accendi_ai, imposta_lore, imposta_scelte, spegni_ai
+from core.ai_impostazioni import (
+    MAX_CANALI_SPENTI, MAX_PAROLE_VIETATE, TESTO_CONSENSO, accendi_ai, imposta_canali_spenti, imposta_lore, imposta_parole_vietate,
+    imposta_scelte, spegni_ai,
+)
 from core.config_schema import ImpostazioneNonValida
 from core.ai_router import avviso_chiavi
 from core import ai_override_logic as ov
@@ -42,8 +45,8 @@ logger = logging.getLogger("iyokai.ai_config")
 
 SOTTO_CONOSCENZA = ("conoscenza", "Base di conoscenza usata dall'assistente")
 MAX_CONOSCENZA = 50
-MAX_PAROLE_VIETATE = 50
 MAX_CANALI_MODERAZIONE = 10
+
 
 def _euro(millesimi: int | None) -> str:
     return f"{(millesimi or 0) / 100_000:.2f} €"
@@ -280,8 +283,14 @@ class AiConfigCog(CogConGruppi, commands.Cog):
     @app_commands.describe(canale="Il canale", acceso="Sì: l'AI lavora qui; no: spenta qui")
     async def canale(self, interaction: discord.Interaction, canale: discord.TextChannel, acceso: bool) -> None:
         cfg = await ai_repo.get_config(interaction.guild_id)
-        spenti = [c for c in cfg.canali_spenti if c != canale.id] + ([] if acceso else [canale.id])
-        await ai_repo.imposta(interaction.guild_id, canali_spenti=tuple(spenti[-100:]))
+        spenti = [c for c in cfg.canali_spenti if c != canale.id]
+        if not acceso:
+            if len(spenti) >= MAX_CANALI_SPENTI:
+                await interaction.response.send_message(f"Al massimo {MAX_CANALI_SPENTI} canali con l'AI spenta.", ephemeral=True)
+                return
+            spenti.append(canale.id)
+        validi = {c.id for c in interaction.guild.text_channels} | {canale.id}
+        await imposta_canali_spenti(interaction.guild_id, spenti, validi)
         await interaction.response.send_message(
             f"AI {'accesa' if acceso else 'spenta'} in {canale.mention}.", ephemeral=True
         )
@@ -375,7 +384,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
                 allowed_mentions=NESSUNA_MENZIONE,
             )
             return
-        voce = parola.strip().lower()
+        voce = " ".join(parola.lower().split())
         if azione == "aggiungi":
             if voce not in parole:
                 if len(parole) >= MAX_PAROLE_VIETATE:
@@ -384,7 +393,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
                 parole.append(voce)
         else:
             parole = [p for p in parole if p != voce]
-        await ai_repo.imposta(interaction.guild_id, parole_vietate=tuple(parole))
+        await imposta_parole_vietate(interaction.guild_id, "\n".join(parole))
         await interaction.response.send_message("Elenco aggiornato.", ephemeral=True)
 
     @comando_di_gruppo("ai", nome="funzioni", descrizione="Accende le funzioni automatiche: risposta alla menzione, bandiere.")

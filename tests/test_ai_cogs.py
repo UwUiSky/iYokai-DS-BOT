@@ -337,3 +337,31 @@ async def test_spiega_non_svela_un_thread_privato(repo):
     i2.guild.get_channel_or_thread = MagicMock(return_value=thread)
     await cog.spiega.callback(cog, i2, f"https://discord.com/channels/{G}/1/2")
     assert len(trasporto.chiamate) == 1
+
+
+async def test_canale_e_vietate_passano_dagli_stessi_punti_del_pannello(repo):
+    """D16: `/ai canale` e `/ai vietate` salvano come il pannello (imposta_canali_spenti, imposta_parole_vietate)."""
+    _usa(repo)
+    cog = cfg_mod.AiConfigCog(bot=None)
+    await repo.imposta(G, canali_spenti=(999,))  # canale cancellato nel frattempo
+    vivo = fake_text_channel(4242)
+    i = _inter()
+    i.guild.text_channels = [vivo]
+    await cog.canale.callback(cog, i, vivo, False)
+    assert (await repo.get_config(G)).canali_spenti == (4242,)
+    await cog.vietate.callback(cog, _inter(), "aggiungi", "  Due   Spazi ")
+    assert (await repo.get_config(G)).parole_vietate == ("due spazi",)
+    await cog.vietate.callback(cog, _inter(), "togli", "due spazi")
+    assert (await repo.get_config(G)).parole_vietate == ()
+
+
+async def test_canale_con_cento_spenti_rifiuta_invece_di_perderne_uno(repo):
+    _usa(repo)
+    cog = cfg_mod.AiConfigCog(bot=None)
+    canali = [fake_text_channel(5000 + n) for n in range(101)]
+    await repo.imposta(G, canali_spenti=tuple(c.id for c in canali[:100]))
+    i = _inter()
+    i.guild.text_channels = canali
+    await cog.canale.callback(cog, i, canali[100], False)
+    assert "100" in i.response.send_message.call_args.args[0]
+    assert (await repo.get_config(G)).canali_spenti == tuple(c.id for c in canali[:100])
