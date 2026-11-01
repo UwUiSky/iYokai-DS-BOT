@@ -117,7 +117,7 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
         )
 
     # ================================================================ /ticket-pannelli opzioni …
-    @comando_di_gruppo("ticket-pannelli", nome="limiti", descrizione="Tetto di ticket aperti, pausa e ruoli esenti.", sottogruppo=SOTTOGRUPPI["ticket-pannelli opzioni"])
+    @comando_di_gruppo("admin-ticket-opzioni", nome="limiti", descrizione="Tetto di ticket aperti, pausa e ruoli esenti.")
     @richiedi(Livello.ADMIN)
     @app_commands.describe(
         pannello="Il pannello",
@@ -146,7 +146,7 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
 
         await self._salva(interaction, pannello, prepara)
 
-    @comando_di_gruppo("ticket-pannelli", nome="orari", descrizione="Orari di apertura e cosa succede fuori orario.", sottogruppo=SOTTOGRUPPI["ticket-pannelli opzioni"])
+    @comando_di_gruppo("admin-ticket-opzioni", nome="orari", descrizione="Orari di apertura e cosa succede fuori orario.")
     @richiedi(Livello.ADMIN)
     @app_commands.describe(
         pannello="Il pannello",
@@ -183,7 +183,7 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
 
         await self._salva(interaction, pannello, prepara)
 
-    @comando_di_gruppo("ticket-pannelli", nome="accesso", descrizione="Chi può aprire: regole per ruolo, lette dall'alto.", sottogruppo=SOTTOGRUPPI["ticket-pannelli opzioni"])
+    @comando_di_gruppo("admin-ticket-opzioni", nome="accesso", descrizione="Chi può aprire: regole per ruolo, lette dall'alto.")
     @richiedi(Livello.ADMIN)
     @app_commands.describe(pannello="Il pannello", ruolo="Il ruolo", regola="Permetti, nega o togli la regola")
     @app_commands.choices(
@@ -216,7 +216,7 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
             allowed_mentions=NIENTE,
         )
 
-    @comando_di_gruppo("ticket-pannelli", nome="canale", descrizione="Nome del canale e categorie di riserva.", sottogruppo=SOTTOGRUPPI["ticket-pannelli opzioni"])
+    @comando_di_gruppo("admin-ticket-opzioni", nome="canale", descrizione="Nome del canale e categorie di riserva.")
     @richiedi(Livello.ADMIN)
     @app_commands.describe(
         pannello="Il pannello",
@@ -242,7 +242,7 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
 
         await self._salva(interaction, pannello, prepara)
 
-    @comando_di_gruppo("ticket-pannelli", nome="avvisi", descrizione="Chi avvisare all'apertura e primo messaggio fissato.", sottogruppo=SOTTOGRUPPI["ticket-pannelli opzioni"])
+    @comando_di_gruppo("admin-ticket-opzioni", nome="avvisi", descrizione="Chi avvisare all'apertura e primo messaggio fissato.")
     @richiedi(Livello.ADMIN)
     @app_commands.describe(
         pannello="Il pannello",
@@ -272,7 +272,7 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
 
         await self._salva(interaction, pannello, prepara)
 
-    @comando_di_gruppo("ticket-pannelli", nome="messaggi", descrizione="DM all'utente e testi di presa e rilascio.", sottogruppo=SOTTOGRUPPI["ticket-pannelli opzioni"])
+    @comando_di_gruppo("admin-ticket-opzioni", nome="messaggi", descrizione="DM all'utente e testi di presa e rilascio.")
     @richiedi(Livello.ADMIN)
     @app_commands.describe(
         pannello="Il pannello",
@@ -307,7 +307,7 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
 
         await self._salva(interaction, pannello, prepara)
 
-    @comando_di_gruppo("ticket-pannelli", nome="permessi", descrizione="Permessi dell'utente, osservatori, ruoli durante, squadra.", sottogruppo=SOTTOGRUPPI["ticket-pannelli opzioni"])
+    @comando_di_gruppo("admin-ticket-opzioni", nome="permessi", descrizione="Permessi dell'utente, osservatori, ruoli durante, squadra.")
     @richiedi(Livello.ADMIN)
     @app_commands.describe(
         pannello="Il pannello",
@@ -343,7 +343,7 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
 
         await self._salva(interaction, pannello, prepara)
 
-    @comando_di_gruppo("ticket-pannelli", nome="presa", descrizione="Presa in carico: categoria, esclusiva, assegnazione automatica.", sottogruppo=SOTTOGRUPPI["ticket-pannelli opzioni"])
+    @comando_di_gruppo("admin-ticket-opzioni", nome="presa", descrizione="Presa in carico: categoria, esclusiva, assegnazione automatica.")
     @richiedi(Livello.ADMIN)
     @app_commands.describe(
         pannello="Il pannello",
@@ -383,7 +383,7 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
 
         await self._salva(interaction, pannello, prepara)
 
-    @comando_di_gruppo("ticket-pannelli", nome="chiusura", descrizione="Conferma, chiusura in due passi, chiusi, nomi.", sottogruppo=SOTTOGRUPPI["ticket-pannelli opzioni"])
+    @comando_di_gruppo("admin-ticket-opzioni", nome="chiusura", descrizione="Conferma, chiusura in due passi, chiusi, nomi.")
     @richiedi(Livello.ADMIN)
     @app_commands.describe(
         pannello="Il pannello",
@@ -439,7 +439,7 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
 
         await self._salva(interaction, pannello, prepara)
 
-    @comando_di_gruppo("ticket-pannelli", nome="mostra", descrizione="Tutte le opzioni di un pannello.", sottogruppo=SOTTOGRUPPI["ticket-pannelli opzioni"])
+    @comando_di_gruppo("admin-ticket-opzioni", nome="mostra", descrizione="Tutte le opzioni di un pannello.")
     @richiedi(Livello.ADMIN)
     @app_commands.describe(pannello="Il pannello")
     @app_commands.autocomplete(pannello=completa_pannelli)
