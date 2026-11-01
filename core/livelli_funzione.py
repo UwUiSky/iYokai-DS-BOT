@@ -218,14 +218,23 @@ def funzione_del_comando(percorso: str, funzioni: dict | None = None) -> str | N
     return None
 
 
-async def ha_livello(interaction, livello: str) -> bool:
+async def ha_livello(interaction, livello: str, chiave: str | None = None) -> bool:
     """
-    Il server o l'utente ha il livello? Oggi non c'è ancora una fonte di abbonamenti: passa solo
-    l'owner del bot. Il collegamento ai pagamenti si farà col pannello (D57).
+    Il server o l'utente ha il livello? Gratuito: sempre. L'owner del bot: sempre.
+    Premium: il server ha accesso premium (core/premium.py: whitelist, acquisto, boost,
+    abbonamento; `chiave` vale come modulo). VIP 5 e VIP 20 non hanno ancora una fonte:
+    il collegamento ai pagamenti si farà col pannello (D57).
     """
     from core.config import config
 
-    return interaction.user.id == config.OWNER_ID
+    if livello == GRATUITO or interaction.user.id == config.OWNER_ID:
+        return True
+    guild = getattr(interaction, "guild", None)
+    if livello == PREMIUM and guild is not None:
+        from core import premium
+
+        return await premium.guild_has_premium_access(guild.id, chiave or "", bot=getattr(interaction, "client", None))
+    return False
 
 
 async def motivo_negato(interaction, funzioni: dict | None = None) -> str | None:
@@ -240,6 +249,6 @@ async def motivo_negato(interaction, funzioni: dict | None = None) -> str | None
     if chiave is None:
         return None
     livello = livello_di(chiave)
-    if livello == GRATUITO or await ha_livello(interaction, livello):
+    if livello == GRATUITO or await ha_livello(interaction, livello, chiave):
         return None
     return f"Questa funzione è del livello {ETICHETTE[livello]}. Guarda /{'vip' if livello != PREMIUM else 'premium'} elenco."

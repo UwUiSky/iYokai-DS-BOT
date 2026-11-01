@@ -226,6 +226,35 @@ async def test_motivo_negato_solo_se_la_funzione_non_e_gratuita():
     assert await lf.motivo_negato(inter) is None
 
 
+async def test_ha_livello_gratuito_per_tutti_e_premium_dal_sistema_premium(monkeypatch):
+    """Gratuito: passa chiunque. Premium: passa il server con premium attivo (core/premium.py), non solo l'owner."""
+    from unittest.mock import MagicMock
+
+    from core import premium
+
+    inter = MagicMock()
+    inter.user.id = 999
+    inter.guild.id = 4242
+    assert await lf.ha_livello(inter, lf.GRATUITO)
+    visti = []
+
+    async def accesso(guild_id, module_name, bot=None):
+        visti.append((guild_id, module_name))
+        return guild_id == 4242
+
+    monkeypatch.setattr(premium, "guild_has_premium_access", accesso)
+    assert await lf.ha_livello(inter, lf.PREMIUM, "finta")
+    assert visti == [(4242, "finta")]
+    inter.guild.id = 1
+    assert not await lf.ha_livello(inter, lf.PREMIUM, "finta")
+    inter.guild = None  # in privato non c'è un server da controllare
+    assert not await lf.ha_livello(inter, lf.PREMIUM, "finta")
+    lf.applica_livello("finta", lf.PREMIUM)
+    inter.command.qualified_name = "fun dice"
+    inter.guild = MagicMock(id=4242)
+    assert await lf.motivo_negato(inter) is None
+
+
 async def test_i_livelli_stanno_nel_database(clean_db, monkeypatch):
     from core import database as database_module
 
