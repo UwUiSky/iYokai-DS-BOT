@@ -218,3 +218,11 @@ async def test_due_moduli_inviati_insieme_mandano_un_solo_dm():
     esiti = await asyncio.gather(*(rich.invia_richiesta(bot, _utente(), None, "Olandese", "") for _ in range(3)))
     assert sorted(e.value for e in esiti) == ["inviata", "limite", "limite"]
     assert owner.send.await_count == 1
+
+
+def test_una_lingua_sconosciuta_non_allarga_la_cache_dei_comandi():
+    prima = set(tr.carica_tutte())
+    for codice in ("xx", "pt-BR", "../it", "en"):
+        assert tr.nome_tradotto("ban", codice) is None or codice == "en"
+        tr.carica_traduzioni(lingua=codice)
+    assert set(tr.carica_tutte()) == prima == set(i18n.LINGUE)

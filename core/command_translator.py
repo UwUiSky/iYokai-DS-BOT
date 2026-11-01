@@ -84,8 +84,9 @@ def carica_tutte(forza: bool = False) -> dict[str, dict[str, dict[str, str]]]:
 
 
 def carica_traduzioni(forza: bool = False, lingua: str = LINGUA_RIPIEGO) -> dict[str, dict[str, str]]:
-    """Le sezioni di una lingua (di norma l'inglese); file mancante o rotto = tutto vuoto."""
-    return carica_tutte(forza).setdefault(lingua, {s: {} for s in SEZIONI})
+    """Le sezioni di una lingua (di norma l'inglese; `en` vale `en-US`); lingua sconosciuta, file mancante o rotto = tutto vuoto."""
+    dati = carica_tutte(forza).get(normalizza_lingua(lingua) or "")
+    return dati if dati is not None else {s: {} for s in SEZIONI}
 
 
 def lingue_dei_comandi() -> tuple[str, ...]:
