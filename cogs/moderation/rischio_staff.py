@@ -18,6 +18,7 @@ from discord.ext import commands
 
 from cogs.moderation._shared import MODULE_CASE_SYSTEM, ensure_module_enabled
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.i18n import testo_per
 from core.premium import requires_module
 from core.repositories.staff_carico_repo import staff_carico_repo
 from core.staff_rischio_logic import SegnaliRischio, calcola_rischio, testo_carico, testo_rischio
@@ -81,7 +82,7 @@ class RischioStaffCog(CogConGruppi, commands.Cog):
         escludi = (self.bot.user.id,) if self.bot.user is not None else ()
         righe = await staff_carico_repo.carico(interaction.guild.id, giorni, escludi)
         embed = discord.Embed(
-            title="Carico dello staff", description=testo_carico(righe, giorni)[:4000], color=discord.Color.blurple()
+            title=await testo_per(interaction, "rischiostaff_carico_dello_staff"), description=testo_carico(righe, giorni)[:4000], color=discord.Color.blurple()
         )
         await interaction.response.send_message(
             embed=embed, ephemeral=True, allowed_mentions=discord.AllowedMentions.none()

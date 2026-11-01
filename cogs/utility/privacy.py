@@ -112,7 +112,7 @@ class PrivacyCog(CogConGruppi, commands.Cog):
     async def privacy_richieste(self, interaction: discord.Interaction) -> None:
         richieste = await data_deletion_request_repo.in_attesa()
         if not richieste:
-            await interaction.response.send_message("Nessuna richiesta in attesa.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "privacy_nessuna_richiesta_in_attesa"), ephemeral=True)
             return
         righe = [
             f"**{r['id']}** · utente `{r['user_id']}` · {discord.utils.format_dt(r['richiesta_il'], 'R')}"
@@ -135,14 +135,14 @@ class PrivacyCog(CogConGruppi, commands.Cog):
         esito = await servizio.esegui_richiesta(db.pool, richiesta, interaction.user.id)
         if esito is None:
             await interaction.followup.send(
-                f"Richiesta {richiesta} non trovata o già chiusa.", ephemeral=True
+                await testo_per(interaction, "privacy_richiesta_non_trovata_gia_chiusa", richiesta=richiesta), ephemeral=True
             )
             return
         testo = servizio.testo_rapporto(esito["rapporto"])
         avvisato = await self._avvisa(esito["user_id"], "I tuoi dati sono stati cancellati.\n" + testo)
         chiusura = "" if avvisato else "\nL'utente ha i messaggi privati chiusi: non è stato avvisato."
         await interaction.followup.send(
-            f"Richiesta {richiesta} eseguita per `{esito['user_id']}`.\n{testo}{chiusura}", ephemeral=True
+            await testo_per(interaction, "privacy_richiesta_eseguita_per", richiesta=richiesta, v2=esito['user_id'], testo=testo, chiusura=chiusura), ephemeral=True
         )
 
     @comando_di_gruppo(
@@ -165,7 +165,7 @@ class PrivacyCog(CogConGruppi, commands.Cog):
         )
         if not chiusa:
             await interaction.followup.send(
-                f"Richiesta {richiesta} non trovata o già chiusa.", ephemeral=True
+                await testo_per(interaction, "privacy_richiesta_non_trovata_gia_chiusa", richiesta=richiesta), ephemeral=True
             )
             return
         avvisato = await self._avvisa(riga["user_id"], f"La tua richiesta di cancellazione è stata rifiutata: {motivo}")

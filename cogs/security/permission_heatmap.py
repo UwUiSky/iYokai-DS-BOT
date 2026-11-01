@@ -27,6 +27,7 @@ from core.automod_rate_tracker import AutomodRateTracker
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core.database import db
+from core.i18n import testo_per
 from core.permission_risk_logic import (
     critical_permissions_of,
     newly_gained_critical_permissions,
@@ -85,14 +86,13 @@ class PermissionHeatmapCog(CogConGruppi, commands.Cog):
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
-                "Questo comando è disponibile solo dentro un server.", ephemeral=True
+                await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
 
         if not await db.is_module_active_for_guild(guild.id, MODULE_PERMISSION_HEATMAP):
             await interaction.response.send_message(
-                "Questo modulo non è attivo su questo server. "
-                "Un amministratore può attivarlo con /admin setup attiva.",
+                await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                 ephemeral=True,
             )
             return
@@ -112,13 +112,13 @@ class PermissionHeatmapCog(CogConGruppi, commands.Cog):
 
         if not righe:
             await interaction.response.send_message(
-                "Nessun ruolo con permessi critici trovato — buon segno.",
+                await testo_per(interaction, "permissionhe_nessun_ruolo_con_permessi_critici"),
                 ephemeral=True,
             )
             return
 
         embed = discord.Embed(
-            title="🛡️ Permission Risk Heatmap",
+            title=await testo_per(interaction, "permissionhe_permission_risk_heatmap"),
             description=_elenco_entro_il_limite(righe),
             color=discord.Color.orange(),
         )

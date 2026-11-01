@@ -632,11 +632,11 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
             return
 
         embed = discord.Embed(
-            title="📜 Storico configurazione",
+            title=await testo_per(interaction, "confighistor_storico_configurazione"),
             description=righe_storico(voci),
             color=discord.Color.blurple(),
         )
-        embed.set_footer(text="/admin config rollback <id> annulla una voce; voce:<id> mostra prima e dopo.")
+        embed.set_footer(text=await testo_per(interaction, "confighistor_admin_config_rollback_id_annulla"))
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @comando_di_gruppo(

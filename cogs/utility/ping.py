@@ -34,6 +34,7 @@ from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.premium import PremiumModule, registry
 
 
@@ -76,8 +77,7 @@ class PingCog(CogConGruppi, commands.Cog):
             enabled = await self._is_enabled_here(interaction.guild.id)
             if not enabled:
                 await interaction.response.send_message(
-                    "Questo modulo non è attivo su questo server. "
-                    "Un amministratore può attivarlo con /admin setup attiva.",
+                    await testo_per(interaction, "ping_questo_modulo_non_attivo_su"),
                     ephemeral=True,
                 )
                 return
@@ -85,7 +85,7 @@ class PingCog(CogConGruppi, commands.Cog):
         # Passo 2: logica vera e propria del comando
         latency_ms = round(self.bot.latency * 1000)
         await interaction.response.send_message(
-            f"Pong! Latenza: {latency_ms}ms"
+            await testo_per(interaction, "ping_pong_latenza_ms", pubblica=True, latency_ms=latency_ms)
         )
 
         # Se in futuro questo diventasse un modulo premium, la riga

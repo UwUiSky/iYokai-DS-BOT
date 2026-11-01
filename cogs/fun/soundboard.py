@@ -23,6 +23,7 @@ from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.i18n import testo_per
 from core.music_settings_logic import channel_not_allowed, load_music_settings
 from core.music_sound_logic import ATTESA_USCITA, PausaUtente, Suono, scelte, trova
 
@@ -119,7 +120,7 @@ class SoundboardCog(CogConGruppi, commands.Cog):
     async def suono(self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, 100]) -> None:
         musica = self.bot.get_cog("MusicCog")
         if musica is None:
-            await interaction.response.send_message("La musica non è disponibile ora.", ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "soundboard_la_musica_non_disponibile_ora"), ephemeral=True)
             return
         if not await musica._controlli_base(interaction):
             return
@@ -127,7 +128,7 @@ class SoundboardCog(CogConGruppi, commands.Cog):
         resta = self.pausa.resta(guild.id, interaction.user.id)
         if resta > 0:
             await interaction.response.send_message(
-                f"Aspetta ancora {int(resta) + 1} secondi prima del prossimo suono.", ephemeral=True
+                await testo_per(interaction, "soundboard_aspetta_ancora_secondi_prima_del", v1=int(resta) + 1), ephemeral=True
             )
             return
         canale_id = interaction.user.voice.channel.id
@@ -140,7 +141,7 @@ class SoundboardCog(CogConGruppi, commands.Cog):
         disponibili = await self._suoni(guild)
         trovato = trova([s for s, _ in disponibili.values()], nome)
         if trovato is None:
-            await interaction.followup.send("Suono non trovato: sceglilo dall'elenco.", ephemeral=True)
+            await interaction.followup.send(await testo_per(interaction, "soundboard_suono_non_trovato_sceglilo_dall"), ephemeral=True)
             return
         oggetto = disponibili[trovato.valore][1]
         self.pausa.segna(guild.id, interaction.user.id)
