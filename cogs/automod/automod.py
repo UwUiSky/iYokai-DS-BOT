@@ -116,6 +116,7 @@ from core.automod_advanced_logic import (
     evaluate_message_violations,
     normalize_domain,
 )
+from core import automod_regole_service as regole_service
 from core.automod_parole_logic import MessaggiBrevi
 from core.automod_parole_opzioni import VIOLATION_PAROLE_VIETATE, filtro_sospette, trova_nel_testo
 from core.automod_rate_tracker import rate_tracker
@@ -1508,6 +1509,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
         nuove_azioni = dict(settings.actions)
         nuove_azioni[violation.value] = scelte
         await automod_advanced_repo.save_settings(_replace_settings(settings, actions=nuove_azioni))
+        await regole_service.imposta_azioni_filtro(
+            interaction.guild.id, violation.value, scelte, settings.mute_duration_seconds, interaction.user.id
+        )
         await interaction.response.send_message(
             f"Azioni per **{violation.name}** impostate: {', '.join(scelte) or 'nessuna'}.", ephemeral=True
         )
@@ -1530,6 +1534,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
             return
         settings = await automod_advanced_repo.get_settings(interaction.guild.id)
         await automod_advanced_repo.save_settings(_replace_settings(settings, mute_duration_seconds=seconds))
+        await regole_service.cambia_durata_mute(interaction.guild.id, settings.mute_duration_seconds, seconds)
         await interaction.response.send_message(await testo_per(interaction, "automod_durata_del_mute_automod_impostata", seconds=seconds), ephemeral=True)
 
     @comando_di_gruppo(

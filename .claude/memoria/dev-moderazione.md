@@ -1,14 +1,16 @@
 # Memoria dev-moderazione
 ## Aggiornata
-2026-10-28, giro r11 (agente r11odio, ramo feat/r11odio, worktree /home/claude/wt/r11odio). Migrazione 0390 usata (0391-0399 libere). Smoke da fare (regola owner: niente smoke).
+2026-11-01, giro r15automod (ramo feat/r15automod, worktree /home/claude/wt/r15automod, filone A di #116, D63). Migrazioni 0500-0503 mie. Smoke da fare.
 ## In corso
-r11 D35 (parole d'odio a livelli) FATTO e pubblicato: manca solo la pagina nel pannello /proprietario (dev-web; il comando /automod odio libreria basta, D39).
-Prossimo giro: SIC-045 (serve /privacy di dev-utilita + scelta owner), SIC-016, SIC-021, AMD-067, MOD-065.
+Piano giro: A1-A4 (poi A5 se il contesto regge). A1 e A2 fatti. Prossimo: A3 (filtri da regola_effettiva + condizioni_ok in cogs/automod/automod.py _controlla, AMD-029/032-040, test), poi A4 core/automod_azioni.py (sostituisce _execute_actions; rimuovere la doppia scrittura legacy settings.actions in actions-set/mute-duration).
+Disegno: scratchpad disegno_automod.md (sessione orchestratore). Filone B (feat/r15immagini) possiede core/immagini_*, cogs/automod/immagini.py, chiavi immagini_*.
 ## Fatto
+- r15 A1 core/automod_regole_logic.py (regole, condizioni_ok, azioni, tetti, re2), A2 migr. 0500/0501, automod_regole_repo, automod_regole_service (punto unico, cache), data_registry; test_automod_regole_logic/_repo. Smoke da fare
 - R14 D53 (paese nella verifica web): core/geoip_paesi, verify_paese_logic, verify_paese_staff (DynamicItem), repo verify_paese (0490), 4 chiavi in SETTINGS_SCHEMA/SCHEDE verify, tests/test_verify_paese.py. Smoke da fare. Ramo feat/r14paese
 - Giri G1-G7, R5-R10 (git log e REGISTRO_RISOLTE): tempban, appelli, verify, lockdown, phishing, captcha, anti-raid, massa, filtri automod, iYokai Mod, catalogo log, ripiego anti-nuke, warn manuali, opzioni mod, lock a tempo, punizione trappola, mute a tempo, casi esterni, VER-017/019/020/030/031, SIC-036/039, AMD-013/014/026/027/062/065/070
 - R11 D35: core/odio_*.py (giudizio, libreria, richiami, opzioni, moderazione), core/automod_odio_nativo_logic.py (regex nativa), core/automod_odio_azioni.py (Discord), repo odio_libreria_repo (0390), comandi /automod odio blocco|richiami|libreria, data/automod_parole_sospette.txt, docs/parole_bandite.md, test tests/test_automod_odio_d35.py
 ## Cose imparate
+- Regole AutoMod: azioni vecchie (delete,warn,mute,kick,ban) -> azioni_dai_nomi_vecchi (ordine di prima); actions-set/mute-duration scrivono anche via servizio (doppia scrittura fino ad A4)
 - Chiavi guild nuove con tipo nuovo: CONTROLLI_PER_TIPO in config_history; i campi in SCHEDE di core/config_impostazioni.py (pannello)
 - D15: Mod non ha listener; azioni di sicurezza via bot_roles; e_un_nostro_bot per "e' il bot"
 - discord.RateLimited NON e' HTTPException: va preso a parte
