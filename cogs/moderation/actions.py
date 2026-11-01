@@ -255,7 +255,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     # /kick
     # ================================================================
     @comando_di_gruppo(
-        "modban",
+        "mod-ban",
         nome="kick",
         descrizione="Espelle un membro dal server.",
     )
@@ -309,7 +309,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     # /ban
     # ================================================================
     @comando_di_gruppo(
-        "modban",
+        "mod-ban",
         nome="ban",
         descrizione="Banna permanentemente un membro.",
     )
@@ -369,7 +369,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     # /tempban (con rientro o in isolamento, #138)
     # ================================================================
     @comando_di_gruppo(
-        "modban",
+        "mod-ban",
         nome="tempban",
         descrizione="Banna un membro per una durata definita.",
     )
@@ -728,7 +728,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     # /unban
     # ================================================================
     @comando_di_gruppo(
-        "modban",
+        "mod-ban",
         nome="unban",
         descrizione="Rimuove il ban da un utente.",
     )
@@ -1030,7 +1030,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(embed=embed)
 
     @comando_di_gruppo(
-        "modban",
+        "mod-ban",
         nome="ban",
         descrizione="Banna più utenti insieme, anche fuori dal server (ID o menzioni).",
         sottogruppo=("massa", "Azioni su più utenti insieme."),
@@ -1099,7 +1099,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         await self._chiudi_massa(interaction, "🔨 Ban in massa", discord.Color.red(), reason, fatti, saltati)
 
     @comando_di_gruppo(
-        "modban",
+        "mod-ban",
         nome="unban",
         descrizione="Toglie il ban a più utenti insieme (ID).",
         sottogruppo=("massa", "Azioni su più utenti insieme."),
@@ -1138,7 +1138,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         await self._chiudi_massa(interaction, "🔓 Unban in massa", discord.Color.green(), reason, fatti, saltati)
 
     @comando_di_gruppo(
-        "modban",
+        "mod-ban",
         nome="kick",
         descrizione="Espelle più membri insieme (ID o menzioni).",
         sottogruppo=("massa", "Azioni su più utenti insieme."),

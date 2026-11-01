@@ -349,7 +349,7 @@ class ModerationBanAppealCog(CogConGruppi, commands.Cog):
         await chiudi_casi_dopo_sban(guild, user, self.bot.user.id)
 
     @comando_di_gruppo(
-        "modban",
+        "mod-ban",
         nome="canale",
         descrizione="Sceglie il canale staff per gli appelli (vuoto per spegnerli).",
         sottogruppo=("appelli", "Appelli contro i ban."),
@@ -372,7 +372,7 @@ class ModerationBanAppealCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(
-        "modban",
+        "mod-ban",
         nome="elenco",
         descrizione="Mostra gli ultimi appelli del server.",
         sottogruppo=("appelli", "Appelli contro i ban."),

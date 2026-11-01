@@ -196,7 +196,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
     # /softban
     # ================================================================
     @comando_di_gruppo(
-        "modban",
+        "mod-ban",
         nome="softban",
         descrizione="Banna e sbanna subito un membro, per cancellarne i messaggi recenti.",
     )
