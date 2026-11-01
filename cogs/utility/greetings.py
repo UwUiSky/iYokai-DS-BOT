@@ -493,10 +493,9 @@ class GreetingsCog(CogConGruppi, commands.Cog):
     # ================================================================
 
     @comando_di_gruppo(
-        "gestione",
-        nome="benvenuto",
+        "admin-benvenuto",
+        nome="messaggio",
         descrizione="Configura il messaggio di benvenuto.",
-        sottogruppo=_SG_BENVENUTO,
     )
     @app_commands.describe(
         enabled="Attiva o disattiva il welcome message",
@@ -550,10 +549,9 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin-benvenuto",
         nome="extra",
         descrizione="Benvenuto: DM, varianti, reazioni; messaggi di ban e addio.",
-        sottogruppo=_SG_BENVENUTO,
     )
     async def welcome_extra(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
@@ -568,10 +566,9 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin-benvenuto",
         nome="addio",
         descrizione="Configura il messaggio di addio.",
-        sottogruppo=_SG_BENVENUTO,
     )
     @app_commands.describe(
         enabled="Attiva o disattiva il goodbye message",
@@ -622,10 +619,9 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin-benvenuto",
         nome="boost",
         descrizione="Configura il messaggio di boost.",
-        sottogruppo=_SG_BENVENUTO,
     )
     @app_commands.describe(
         enabled="Attiva o disattiva il boost message",
@@ -676,10 +672,9 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin-benvenuto",
         nome="immagine",
         descrizione="Aggiungi al benvenuto un'immagine con avatar, nome e numero del membro.",
-        sottogruppo=_SG_BENVENUTO,
     )
     @app_commands.describe(
         attiva="Attiva o disattiva l'immagine",
@@ -765,10 +760,9 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "gestione",
+        "admin-benvenuto",
         nome="anteprima",
         descrizione="Mostra un'anteprima di come apparirebbe un messaggio.",
-        sottogruppo=_SG_BENVENUTO,
     )
     @app_commands.describe(kind="Quale messaggio vedere in anteprima")
     @app_commands.choices(

@@ -78,6 +78,7 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "admin-ticket": ("Ticket (admin): impianto, categorie, ruoli, ModMail, risposte, pannelli", "manage_guild", Livello.ADMIN),
     "admin-ticket-opzioni": ("Opzioni dei pannelli ticket (admin): limiti, orari, accesso, chiusura", "manage_guild", Livello.ADMIN),
     "admin-backup": ("Backup del server (admin): copia, ripristino, modelli, chat, esportazioni", "administrator", Livello.ADMIN),
+    "admin-benvenuto": ("Benvenuto, addio e boost (admin): messaggi, immagine, anteprima", "manage_guild", Livello.ADMIN),
     "ticket": ("Gestione del ticket in cui ti trovi", None, None),
     "voice": ("Gestione del tuo canale vocale temporaneo", None, None),
     "music": ("Musica nei canali vocali", None, None),
