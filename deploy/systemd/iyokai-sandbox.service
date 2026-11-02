@@ -1,0 +1,50 @@
+# Servizio di sistema della sandbox delle immagini (D62, modo A).
+# Esempio: adatta i percorsi, poi vedi docs/immagini-sandbox.md per l'installazione.
+[Unit]
+Description=iYokai sandbox delle immagini
+After=local-fs.target
+
+[Service]
+Type=simple
+# Utente di sistema senza shell e senza permessi (lo crea lo script nei passi di docs/immagini-sandbox.md).
+User=iyokai-sbx
+Group=iyokai-sbx
+ExecStart=/usr/bin/python3 -I /opt/iyokai/core/immagini_servizio.py
+Environment=IYOKAI_QUARANTENA_DIR=/var/lib/iyokai/quarantena
+Environment=IYOKAI_SANDBOX_SOCKET=/run/iyokai-sbx/sock
+# Socket: cartella creata dal servizio, leggibile dal gruppo del bot (iyokai).
+RuntimeDirectory=iyokai-sbx
+RuntimeDirectoryMode=0750
+UMask=0007
+SupplementaryGroups=iyokai
+Restart=on-failure
+RestartSec=3
+
+# Niente rete: solo socket Unix.
+PrivateNetwork=yes
+RestrictAddressFamilies=AF_UNIX
+# Sola lettura su tutto, e sulla quarantena in particolare.
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ReadOnlyPaths=/var/lib/iyokai/quarantena /opt/iyokai
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+SystemCallFilter=@system-service
+SystemCallArchitectures=native
+# Un processo figlio per immagine: tetti dell'insieme (il figlio ha anche i suoi, 512 MiB e 4 s di CPU).
+MemoryMax=768M
+MemorySwapMax=0
+CPUQuota=100%
+TasksMax=16
+LimitCORE=0
+
+[Install]
+WantedBy=multi-user.target

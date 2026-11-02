@@ -159,3 +159,56 @@ def test_avviso_all_owner_al_massimo_ogni_10_minuti():
     c = coda_mod.CodaImmagini()
     assert c.puo_avvisare() is True
     assert c.puo_avvisare() is False
+
+
+@pytest.mark.asyncio
+async def test_servizio_su_socket_da_lo_stesso_esito_del_modo_ridotto(cartella, tmp_path, monkeypatch):
+    from core import immagini_servizio as servizio
+
+    percorso = str(tmp_path / "sbx" / "sock")
+    monkeypatch.setenv(sb.VARIABILE_SOCKET, percorso)
+    server = await servizio.serve(percorso)
+    try:
+        nome = _metti(cartella, f.png(60, 20))
+        r = await sb.analizza(nome)
+        assert r.modo == sb.MODO_SERVIZIO and r.riuscita and (r.info["larghezza"], r.info["altezza"]) == (60, 20)
+        assert r.png.startswith(b"\x89PNG") and r.info["dhash"]
+        cattiva = _metti(cartella, f.png_dichiarato(60000, 60000), "b" * 32)
+        r2 = await sb.analizza(cattiva)
+        assert r2.modo == sb.MODO_SERVIZIO and r2.esito == "errore" and r2.info["motivo"] == "troppo_grande"
+    finally:
+        server.close()
+        await server.wait_closed()
+
+
+@pytest.mark.asyncio
+async def test_servizio_rifiuta_nomi_strani(tmp_path, monkeypatch):
+    from core import immagini_servizio as servizio
+
+    percorso = str(tmp_path / "s" / "sock")
+    server = await servizio.serve(percorso)
+    try:
+        lettore, scrittore = await asyncio.open_unix_connection(percorso)
+        scrittore.write(b"../../etc/passwd\n")
+        grezzo = await lettore.read()
+        info, _ = sb.leggi_uscita(grezzo)
+        assert info["stato"] == "errore" and info["info"]["motivo"] == "nome"
+    finally:
+        server.close()
+        await server.wait_closed()
+
+
+@pytest.mark.asyncio
+async def test_senza_servizio_si_ripiega_sulla_sandbox_ridotta(cartella, tmp_path, monkeypatch):
+    monkeypatch.setenv(sb.VARIABILE_SOCKET, str(tmp_path / "non-esiste"))
+    r = await sb.analizza(_metti(cartella, f.png()))
+    assert r.riuscita and r.modo == sb.MODO_RIDOTTA
+
+
+@pytest.mark.asyncio
+async def test_socket_morto_ripiega_senza_errori(cartella, tmp_path, monkeypatch):
+    morto = tmp_path / "morto"
+    morto.write_bytes(b"")  # esiste, ma nessuno ascolta
+    monkeypatch.setenv(sb.VARIABILE_SOCKET, str(morto))
+    r = await sb.analizza(_metti(cartella, f.png()))
+    assert r.riuscita and r.modo == sb.MODO_RIDOTTA

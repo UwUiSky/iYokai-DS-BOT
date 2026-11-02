@@ -1,9 +1,10 @@
 # Memoria di dev-core
 
 ## Aggiornata
-01/11/2026 · ramo `feat/r14lunghezze` · #67/#70: tutte le opzioni di testo hanno `max_length`; cricchetto vuoto.
+02/11/2026 · ramo `feat/r15immagini` · #153 filone B (D62) fatto B1-B6; B7 è la #152.
 
 ## In corso
+- r15immagini pubblicato. Smoke da fare dopo l'unione (test_immagini_*, tree_invariants, data_registry, migrazioni 0504-0506, i18n, config_import). Da fare dopo il merge col filone A: `/admin-automod immagini` e aggancio a `core/automod_azioni.py` (oggi `cogs/automod/immagini.py::_applica` usa bot_roles/try_dm/post_to_mod_log).
 - r14lingue (D58) pubblicato. Smoke da fare dopo l'unione (i18n, translator, command_sync, tree_invariants, riferimenti, cog utility/lingua).
 - r14lunghezze pubblicato. Smoke da fare dopo l'unione (tree_invariants, cog feed_alerts, fun, mod-ban, messaggi programmati, radio).
 - Restano #67: 11.11 (hash token webhook, migrazione, F5), 11.12 (F13). #70: 14.10, 14.12, 14.13, 14.14 (non piccoli).
@@ -11,6 +12,7 @@
 - Rimandato: persistenza/pannello dei livelli (D57), permessi per ruolo dal pannello (OAuth), nascondere `/founder` agli admin.
 
 ## Fatto
+- r15immagini (D62, #153): `core/immagini_*` (byte, quarantena, sandbox un processo per immagine, coda 100/20, dHash, QR zxing-cpp 3.1.1, libreria trappola D39, pipeline, opzioni D16, azioni), cog `cogs/automod/immagini.py`, `/owner immagini-trappola`, 0504-0506, `deploy/systemd/iyokai-sandbox.service`, `docs/immagini-sandbox.md`, testi `amimg_*`.
 - r14lingue (D58, #77): `locales/<lingua>/testi.json`+`comandi.json` (10 lingue Discord, 8 vuote), ripiego lingua->en-US->it, `core/lingue_controllo.py` + 2 script, bottone «Chiedi una lingua» in `/utility lingua` (`core/lingua_richieste.py`), `aiuto` in comandi.json letto da cerca-comando, peso 8000 su tutte le lingue.
 - r13ruoli (D60): 25 gruppi staff (`admin-*` 20, `mod-*` 4, `founder`), 377 percorsi spostati; `Livello.FOUNDER`;
   `PREFISSI_SEMPRE_APERTI=("admin-bot","owner")`; migrazione 0488; `GRUPPI_DEL_RUOLO` dai prefissi; traduzioni en.
@@ -18,6 +20,7 @@
 - Giri precedenti (r12, r10, r9, r5, F5/F7, R1-bis): vedi `git log`.
 
 ## Cose imparate
+- Sandbox: con `-I` la cartella dello script non è in sys.path (il worker la aggiunge); RLIMIT_FSIZE=0 manda SIGXFSZ (ignorato + `-B`); `unshare -rn` provato una volta. Un test non usa `tests/test_data_registry` su DB sporco: tabelle di altri rami (`verify_*`) lo fanno fallire.
 - Lingue: codice salvato nel DB `it`/`en` (CHECK 0130); `en`/`en-GB` sono alias di `en-US`; testo vuoto = da tradurre (ignorato). `lingua_valida` = solo lingue con testi.
 - Riordino per script: regex dei riferimenti con `(?![\w/])` dopo il nome (altrimenti riscrive gli URL `/ai/altro`);
   offset AST in byte. I riferimenti senza `/` (tabelle di percorsi come `COMANDI_VICINI`, chiavi, `get_command("x")`)

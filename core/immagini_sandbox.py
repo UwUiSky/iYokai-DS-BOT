@@ -172,8 +172,44 @@ def socket_servizio() -> str:
     return os.environ.get(VARIABILE_SOCKET) or SOCKET_SERVIZIO
 
 
+async def _chiedi_al_servizio(nome: str, limiti: Limiti) -> RisultatoSandbox | None:
+    """Modo A: il servizio di sistema. None se non c'e' o non risponde (si passa al modo B)."""
+    percorso = socket_servizio()
+    if not os.path.exists(percorso):
+        return None
+    try:
+        lettore, scrittore = await asyncio.wait_for(asyncio.open_unix_connection(percorso), 2.0)
+    except (OSError, asyncio.TimeoutError):
+        return None
+    try:
+        scrittore.write(nome.encode("ascii") + b"\n")
+        await scrittore.drain()
+        grezzo = await asyncio.wait_for(lettore.read(MAX_USCITA + 65536), limiti.reale + 5.0)
+        # lettore.read puo' dare meno del totale: si legge fino alla chiusura
+        while True:
+            altro = await asyncio.wait_for(lettore.read(MAX_USCITA + 65536), 2.0)
+            if not altro:
+                break
+            grezzo += altro
+            if len(grezzo) > MAX_USCITA + 65536:
+                return RisultatoSandbox("uscita_enorme", modo=MODO_SERVIZIO)
+        info, png = leggi_uscita(grezzo)
+        return RisultatoSandbox(str(info.get("stato", "errore")), info.get("info") or {}, png, MODO_SERVIZIO)
+    except (OSError, asyncio.TimeoutError, ValueError):
+        logger.warning("Sandbox: il servizio non ha risposto bene", exc_info=True)
+        return None
+    finally:
+        scrittore.close()
+
+
 async def analizza(nome: str, limiti: Limiti | None = None) -> RisultatoSandbox:
-    """Modo A se il servizio risponde, altrimenti modo B (sandbox ridotta, dichiarata nel log una volta)."""
+    """Modo A se il servizio risponde, altrimenti modo B (sandbox ridotta, dichiarata nel log da chi chiama)."""
+    limiti = limiti or Limiti()
+    if not NOME.fullmatch(nome):
+        raise ValueError("nome di quarantena non valido")
+    risultato = await _chiedi_al_servizio(nome, limiti)
+    if risultato is not None:
+        return risultato
     risultato = await esegui_locale(nome, limiti)
     risultato.modo = MODO_RIDOTTA
     return risultato
