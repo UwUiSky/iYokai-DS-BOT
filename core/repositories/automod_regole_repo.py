@@ -42,6 +42,10 @@ class AutomodRegoleRepository:
         return await self._pool.fetchval(
             "SELECT count(*) FROM automod_regole WHERE guild_id = $1 AND tipo = 'personale'", guild_id)
 
+    async def livello_di(self, guild_id: int, user_id: int) -> int | None:
+        return await self._pool.fetchval(
+            "SELECT level FROM leveling_totals WHERE guild_id = $1 AND user_id = $2", guild_id, user_id)
+
     async def prossimo_id(self) -> int:
         return await self._pool.fetchval("SELECT nextval(pg_get_serial_sequence('automod_regole', 'id'))")
 

@@ -8,6 +8,7 @@ Funzioni coperte: SPEC §6 (AMD-029..061, AMD-067), D63
 
 from __future__ import annotations
 
+import logging
 from dataclasses import replace
 
 from core.automod_regole_logic import (
@@ -23,6 +24,8 @@ from core.automod_regole_logic import (
 from core.bounded_cache import BoundedCache
 from core.repositories.automod_regole_repo import automod_regole_repo
 
+logger = logging.getLogger(__name__)
+
 _cache: BoundedCache[int, tuple[Regola, ...]] = BoundedCache(2000)
 
 
@@ -36,7 +39,11 @@ def svuota_cache(guild_id: int | None = None) -> None:
 async def regole_del_server(guild_id: int) -> tuple[Regola, ...]:
     trovate = _cache.get(guild_id)
     if trovate is None:
-        trovate = tuple(await automod_regole_repo.elenca(guild_id))
+        try:
+            trovate = tuple(await automod_regole_repo.elenca(guild_id))
+        except Exception:  # i filtri di base devono girare anche se la tabella delle regole ha un problema
+            logger.exception("AutoMod: regole del server %s non leggibili, uso le impostazioni di base.", guild_id)
+            return ()
         _cache.set(guild_id, trovate)
     return trovate
 
@@ -112,3 +119,8 @@ async def cambia_durata_mute(guild_id: int, vecchio: int, nuovo: int) -> None:
     """`mute-duration`: i timeout uguali al valore di prima seguono il nuovo; quelli scelti a mano restano."""
     await automod_regole_repo.cambia_timeout(guild_id, vecchio, nuovo)
     svuota_cache(guild_id)
+
+
+async def livello_di(guild_id: int, user_id: int) -> int:
+    """Il livello di chi scrive (0 se non ha ancora livello). Si chiama solo se una regola lo chiede."""
+    return await automod_regole_repo.livello_di(guild_id, user_id) or 0

@@ -116,7 +116,8 @@ from core.automod_advanced_logic import (
     evaluate_message_violations,
     normalize_domain,
 )
-from core import automod_regole_service as regole_service
+from core import automod_contesto as contesto_regole, automod_regole_service as regole_service
+from core.automod_regole_logic import condizioni_ok
 from core.automod_parole_logic import MessaggiBrevi
 from core.automod_parole_opzioni import VIOLATION_PAROLE_VIETATE, filtro_sospette, trova_nel_testo
 from core.automod_rate_tracker import rate_tracker
@@ -1709,17 +1710,25 @@ class AutomodCog(CogConGruppi, commands.Cog):
         self._brevi.svuota(chiave)
         return [m for m, _ in serie[:-1]]
 
+    def _e_nostro(self, user_id: int) -> bool:
+        return bot_roles.e_un_nostro_bot(user_id, self.bot) if self.bot is not None else False
+
     async def _controlla(self, message: discord.Message, modificato: bool, solo_embed: bool = False) -> None:
-        if message.guild is None or message.author.bot:
-            return
+        if message.guild is None or self._e_nostro(message.author.id):
+            return  # il bot, Mod e i suoi worker non si giudicano mai
         if not isinstance(message.author, discord.Member):
-            return
+            return  # webhook: dalle azioni nuove (A4)
 
         if not await db.is_module_active_for_guild(message.guild.id, MODULE_AUTOMOD):
             return
 
+        regole = await regole_service.regole_del_server(message.guild.id)
+        if (message.author.bot or isinstance(getattr(message, "webhook_id", None), int)) and not contesto_regole.serve_chi_non_e_persona(regole):
+            return
+
         settings = await automod_advanced_repo.get_settings(message.guild.id)
-        if is_member_exempt(message.author, settings, message.channel.id):
+        esente = is_member_exempt(message.author, settings, message.channel.id)
+        if esente and all(r.condizioni.esenzioni_globali for r in regole):
             return
 
         if solo_embed and not settings.config.controlla_embed:
@@ -1751,7 +1760,21 @@ class AutomodCog(CogConGruppi, commands.Cog):
         if not violazioni:
             return
 
+        livello = None
+        if contesto_regole.serve_il_livello(regole):
+            livello = await regole_service.livello_di(message.guild.id, message.author.id)
+        contesto = contesto_regole.contesto_da_messaggio(
+            message, nostro_bot=self._e_nostro, id_applicazione=getattr(self.bot, "application_id", None) if isinstance(getattr(self.bot, "application_id", None), int) else None,
+            livello=livello,
+        )
         for violazione in violazioni:
+            regola = await regole_service.regola_effettiva(message.guild.id, violazione)
+            if not regola.attiva:
+                continue
+            if esente and regola.condizioni.esenzioni_globali:
+                continue
+            if not condizioni_ok(regola.condizioni, contesto):
+                continue
             azioni_configurate = settings.actions.get(
                 violazione, AZIONI_DI_PARTENZA.get(violazione, AZIONI_DI_PARTENZA_GENERALI)
             )
