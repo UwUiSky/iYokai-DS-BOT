@@ -117,7 +117,10 @@ from core.automod_advanced_logic import (
     normalize_domain,
 )
 from core import automod_contesto as contesto_regole, automod_regole_service as regole_service
-from core.automod_regole_logic import condizioni_ok
+from core import automod_azioni as azioni_motore, automod_contatori as contatori
+from core.scheduler import scheduler
+from core.automod_azioni import Bersaglio, e_protetto, esegui_azioni, registra_messaggio
+from core.automod_regole_logic import azioni_dai_nomi_vecchi, condizioni_ok
 from core.automod_parole_logic import MessaggiBrevi
 from core.automod_parole_opzioni import VIOLATION_PAROLE_VIETATE, filtro_sospette, trova_nel_testo
 from core.automod_rate_tracker import rate_tracker
@@ -396,23 +399,15 @@ def build_message_signals(
 def is_member_exempt(member: discord.Member, settings: AutomodAdvancedSettings, channel_id: int) -> bool:
     if channel_id in settings.exempt_channel_ids:
         return True
+    if not hasattr(member, "roles"):  # un webhook non ha ruoli
+        return False
     ruoli_membro = {role.id for role in member.roles}
     return bool(ruoli_membro & set(settings.exempt_role_ids))
 
 
 def _is_safe_from_automated_action(member: discord.Member) -> bool:
-    """
-    Rete di sicurezza per mute/ban automatici: mai su chi ha
-    `manage_guild` o è il proprietario del server — un falso
-    positivo che bannasse per errore un admin dello staff sarebbe un
-    danno molto peggiore di un messaggio malevolo lasciato
-    temporaneamente visibile. Non si applica a "delete"/"warn" (poco
-    invasivi, reversibili). Scelta di sicurezza per inferenza, non
-    richiesta esplicitamente.
-    """
-    if member.guild.owner_id == member.id:
-        return True
-    return member.guild_permissions.administrator or member.guild_permissions.manage_guild
+    """Rete di sicurezza per le sanzioni automatiche: vedi core/automod_azioni.e_protetto."""
+    return e_protetto(member)
 
 
 # Messaggi già avvisati, con tetto: (id messaggio, violazione). Serve a non
@@ -435,96 +430,39 @@ def _warn_da_dare(message_id: int, violazione: str, modificato: bool) -> bool:
     return not (modificato and gia)
 
 
-async def _execute_actions(
+async def _esegui_regola(
     message: discord.Message,
     violation: str,
-    actions: tuple[str, ...],
-    settings: AutomodAdvancedSettings,
+    azioni: tuple,
     modificato: bool = False,
+    contatore: str | None = None,
 ) -> tuple[str, ...]:
     """
-    Esegue le azioni configurate per questa violazione, nell'ordine
-    di VALID_ACTIONS (delete sempre prima). Restituisce quelle
-    DAVVERO eseguite (per il log) — un'azione può non applicarsi
-    (es. mute/ban su un admin protetto) senza bloccare le altre.
+    Esegue le azioni della regola con il motore unico (core/automod_azioni.py). Restituisce i nomi di quelle
+    DAVVERO eseguite (per il log); un'azione che non si applica non ferma le altre.
     """
-    member = message.author
-    eseguite = []
-    protetto = _is_safe_from_automated_action(member)
+    async def avvisa_staff(testo: str, ruolo_id: int | None) -> None:
+        canale = await router.destinazione(message.guild, router.TIPO_AUTOMOD, None)
+        if canale is not None:
+            menzioni = discord.AllowedMentions(roles=[discord.Object(id=ruolo_id)]) if ruolo_id else discord.AllowedMentions.none()
+            await canale.send(testo, allowed_mentions=menzioni)
 
-    for azione in VALID_ACTIONS:
-        if azione not in actions:
-            continue
-
-        if azione == "delete":
-            try:
-                await bot_roles.cancella_messaggio(message)
-                eseguite.append("delete")
-            except (discord.NotFound, discord.Forbidden):
-                pass
-            continue
-
-        if protetto and azione in ("mute", "kick", "ban"):
-            continue
-
-        if azione == "warn":
-            # Lo stesso messaggio, modificato più volte, vale un warn solo
-            # per violazione (senza «delete» il testo resta al suo posto).
-            if not _warn_da_dare(message.id, violation, modificato):
-                continue
-            reason = f"AutoMod: {_VIOLATION_LABELS.get(violation, violation)}"
-            case_number = await moderation_repo.create_case(
-                guild_id=message.guild.id,
-                user_id=member.id,
-                moderator_id=message.guild.me.id if message.guild.me else member.id,
-                action_type="warn",
-                reason=reason,
-            )
-            embed = discord.Embed(
-                title="⚠️ Warn automatico (AutoMod)",
-                description=f"Caso #{case_number} — {reason}",
-                color=discord.Color.yellow(),
-            )
-            await try_dm(member, embed)
-            await post_to_mod_log(message.guild, embed)
-            eseguite.append("warn")
-
-        elif azione == "mute":
-            try:
-                await bot_roles.isola(
-                    member,
-                    timedelta(seconds=settings.mute_duration_seconds),
-                    reason=f"AutoMod: {_VIOLATION_LABELS.get(violation, violation)}",
-                )
-                eseguite.append("mute")
-            except (discord.Forbidden, discord.HTTPException):
-                pass
-
-        elif azione == "kick":
-            # AMD-041: il DM con il motivo parte prima (dopo il kick non arriverebbe).
-            await try_dm(member, discord.Embed(
-                title="Espulso dall'AutoMod",
-                description=f"{message.guild.name}: {_VIOLATION_LABELS.get(violation, violation)}",
-                color=discord.Color.orange(),
-            ))
-            try:
-                await bot_roles.espelli(member, reason=f"AutoMod: {_VIOLATION_LABELS.get(violation, violation)}")
-                eseguite.append("kick")
-            except (discord.Forbidden, discord.HTTPException):
-                pass
-
-        elif azione == "ban":
-            try:
-                motivo = f"AutoMod: {_VIOLATION_LABELS.get(violation, violation)}"
-                await bot_roles.banna(
-                    message.guild, member, reason=motivo, delete_message_seconds=0,
-                    principale=lambda: member.ban(reason=motivo, delete_message_seconds=0),
-                )
-                eseguite.append("ban")
-            except (discord.Forbidden, discord.HTTPException):
-                pass
-
-    return tuple(eseguite)
+    return await esegui_azioni(
+        azioni,
+        Bersaglio(
+            guild=message.guild,
+            membro=message.author if isinstance(message.author, discord.Member) else None,
+            messaggio=message,
+            canale=message.channel,
+            motivo=_VIOLATION_LABELS.get(violation, violation),
+            regola_chiave=violation,
+            regola_nome=_VIOLATION_LABELS.get(violation, violation),
+            contatore=contatore,
+            modificato=modificato,
+            warn_consentito=lambda: _warn_da_dare(message.id, violation, modificato),
+            avvisa_staff=avvisa_staff,
+        ),
+    )
 
 
 async def _log_violation(
@@ -532,10 +470,13 @@ async def _log_violation(
     violation: str,
     actions_taken: tuple[str, ...],
     settings: AutomodAdvancedSettings,
+    regola=None,
 ) -> None:
     contenuto = (message.content or "")[:200]
     await automod_advanced_repo.log_action(
-        message.guild.id, message.author.id, message.channel.id, violation, actions_taken, contenuto
+        message.guild.id, message.author.id, message.channel.id, violation, actions_taken, contenuto,
+        regola_id=getattr(regola, "id", None),
+        contatore=regola.contatore.nome if regola is not None and regola.contatore else None,
     )
 
     if violation in _VIOLAZIONI_PHISHING:
@@ -1507,9 +1448,6 @@ class AutomodCog(CogConGruppi, commands.Cog):
             if attiva
         )
         settings = await automod_advanced_repo.get_settings(interaction.guild.id)
-        nuove_azioni = dict(settings.actions)
-        nuove_azioni[violation.value] = scelte
-        await automod_advanced_repo.save_settings(_replace_settings(settings, actions=nuove_azioni))
         await regole_service.imposta_azioni_filtro(
             interaction.guild.id, violation.value, scelte, settings.mute_duration_seconds, interaction.user.id
         )
@@ -1710,14 +1648,31 @@ class AutomodCog(CogConGruppi, commands.Cog):
         self._brevi.svuota(chiave)
         return [m for m, _ in serie[:-1]]
 
+    async def _controlla_soglia(self, message: discord.Message, violazione: str, regola, modificato: bool) -> tuple[str, ...]:
+        """AMD-058/059/060: se l'utente ha raggiunto una soglia del contatore, scattano le sue azioni e il contatore riparte."""
+        soglia = await contatori.soglia_scattata(message.guild.id, message.author.id, regola.contatore)
+        if soglia is None:
+            return ()
+        await contatori.consuma(message.guild.id, message.author.id, regola.contatore)
+        return await _esegui_regola(message, violazione, soglia.azioni, modificato, regola.contatore.nome)
+
+    async def fine_ruolo_a_tempo(self, guild_id: int, user_id: int, payload: dict) -> None:
+        await azioni_motore.gestisci_ruolo_fine(self.bot, guild_id, user_id, payload)
+
+    async def fine_slowmode_a_tempo(self, guild_id: int, user_id: int, payload: dict) -> None:
+        await azioni_motore.gestisci_slowmode_fine(self.bot, guild_id, user_id, payload)
+
+    async def fine_permessi_a_tempo(self, guild_id: int, user_id: int, payload: dict) -> None:
+        await azioni_motore.gestisci_permessi_fine(self.bot, guild_id, user_id, payload)
+
     def _e_nostro(self, user_id: int) -> bool:
         return bot_roles.e_un_nostro_bot(user_id, self.bot) if self.bot is not None else False
 
     async def _controlla(self, message: discord.Message, modificato: bool, solo_embed: bool = False) -> None:
         if message.guild is None or self._e_nostro(message.author.id):
             return  # il bot, Mod e i suoi worker non si giudicano mai
-        if not isinstance(message.author, discord.Member):
-            return  # webhook: dalle azioni nuove (A4)
+        if not isinstance(message.author, discord.Member) and not isinstance(getattr(message, "webhook_id", None), int):
+            return  # un utente fuori dal server: niente da giudicare (i webhook sì, AMD-040)
 
         if not await db.is_module_active_for_guild(message.guild.id, MODULE_AUTOMOD):
             return
@@ -1725,6 +1680,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
         regole = await regole_service.regole_del_server(message.guild.id)
         if (message.author.bot or isinstance(getattr(message, "webhook_id", None), int)) and not contesto_regole.serve_chi_non_e_persona(regole):
             return
+
+        if not modificato and any(a.t == "cancella_ultimi" for r in regole for a in r.azioni):
+            registra_messaggio(message.guild.id, message.author.id, message.channel.id, message.id)
 
         settings = await automod_advanced_repo.get_settings(message.guild.id)
         esente = is_member_exempt(message.author, settings, message.channel.id)
@@ -1775,13 +1733,17 @@ class AutomodCog(CogConGruppi, commands.Cog):
                 continue
             if not condizioni_ok(regola.condizioni, contesto):
                 continue
-            azioni_configurate = settings.actions.get(
-                violazione, AZIONI_DI_PARTENZA.get(violazione, AZIONI_DI_PARTENZA_GENERALI)
+            azioni = regola.azioni if regola.id is not None else azioni_dai_nomi_vecchi(
+                AZIONI_DI_PARTENZA.get(violazione, AZIONI_DI_PARTENZA_GENERALI), settings.mute_duration_seconds
             )
-            eseguite = await _execute_actions(
-                message, violazione, azioni_configurate, settings, modificato=modificato
+            eseguite = await _esegui_regola(
+                message, violazione, azioni, modificato=modificato, contatore=regola.contatore.nome if regola.contatore else None
             )
-            await _log_violation(message, violazione, eseguite, settings)
+            await _log_violation(message, violazione, eseguite, settings, regola)
+            if regola.contatore and regola.contatore.soglie and isinstance(message.author, discord.Member):
+                eseguite_soglia = await self._controlla_soglia(message, violazione, regola, modificato)
+                if "delete" in eseguite_soglia:
+                    eseguite = (*eseguite, "delete")
             if violazione == VIOLATION_PAROLE_VIETATE:
                 if "delete" in eseguite:
                     await _cancella_frammenti(message, frammenti)
@@ -1849,4 +1811,8 @@ async def setup(bot: commands.Bot) -> None:
             premium_capable=False,
         )
     )
-    await bot.add_cog(AutomodCog(bot))
+    cog = AutomodCog(bot)
+    await bot.add_cog(cog)
+    scheduler.register_handler(azioni_motore.AZIONE_RUOLO_FINE, cog.fine_ruolo_a_tempo)
+    scheduler.register_handler(azioni_motore.AZIONE_SLOWMODE_FINE, cog.fine_slowmode_a_tempo)
+    scheduler.register_handler(azioni_motore.AZIONE_PERMESSI_FINE, cog.fine_permessi_a_tempo)

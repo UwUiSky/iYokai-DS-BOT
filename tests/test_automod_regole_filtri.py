@@ -155,3 +155,18 @@ async def test_i_bot_si_giudicano_solo_se_la_regola_lo_dice_mai_il_proprio(cog):
     proprio = _msg(bot=True, autore=999)
     await cog.on_message(proprio)
     proprio.delete.assert_not_awaited()
+
+
+async def test_un_webhook_si_giudica_solo_se_la_regola_lo_dice(cog):
+    await _caps_attivo(cog)
+    wh = _msg(autore=77)
+    wh.webhook_id = 5000
+    wh.author = type("W", (), {"id": 77, "bot": True, "mention": "<@77>", "name": "hook"})()
+    await cog.on_message(wh)
+    wh.delete.assert_not_awaited()
+    await _regola(Condizioni(autori=("webhook",)))
+    wh2 = _msg(autore=77)
+    wh2.webhook_id = 5000
+    wh2.author = wh.author
+    await cog.on_message(wh2)
+    wh2.delete.assert_awaited_once()

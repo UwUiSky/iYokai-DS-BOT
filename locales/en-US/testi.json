@@ -1397,5 +1397,13 @@
   "verify_paese_approvata_da": "Approved by {staff}.",
   "verify_paese_bottone_approva": "Approve",
   "verify_paese_bottone_rifiuta": "Reject",
-  "verify_paese_rifiutata_da": "Rejected by {staff}: {utente} stays unverified."
+  "verify_paese_rifiutata_da": "Rejected by {staff}: {utente} stays unverified.",
+  "amregole_azzerato": "Done: reset {righe} violations in the counter \"{nome}\".",
+  "amregole_riga_riepilogo": "`{tipo}`: {totale} times, {utenti} people",
+  "amregole_nulla_da_mostrare": "There is nothing to show.",
+  "amregole_titolo_riepilogo": "AutoMod summary",
+  "amregole_pagina": "Page {pagina} of {pagine}",
+  "amregole_nessuna_riga": "No violations in the counter \"{nome}\".",
+  "amregole_conferma_azzera": "Reset {righe} violations",
+  "amregole_chiedi_azzera": "Reset {righe} violations of the counter \"{nome}\"? The log stays, only the counts restart."
 }

@@ -1397,5 +1397,13 @@
   "verify_paese_approvata_da": "Approvata da {staff}.",
   "verify_paese_bottone_approva": "Approva",
   "verify_paese_bottone_rifiuta": "Rifiuta",
-  "verify_paese_rifiutata_da": "Rifiutata da {staff}: {utente} resta non verificato."
+  "verify_paese_rifiutata_da": "Rifiutata da {staff}: {utente} resta non verificato.",
+  "amregole_azzerato": "Fatto: azzerate {righe} violazioni nel contatore «{nome}».",
+  "amregole_riga_riepilogo": "`{tipo}`: {totale} volte, {utenti} persone",
+  "amregole_nulla_da_mostrare": "Non c'è niente da mostrare.",
+  "amregole_titolo_riepilogo": "Riepilogo AutoMod",
+  "amregole_pagina": "Pagina {pagina} di {pagine}",
+  "amregole_nessuna_riga": "Nessuna violazione nel contatore «{nome}».",
+  "amregole_conferma_azzera": "Azzera {righe} violazioni",
+  "amregole_chiedi_azzera": "Vuoi azzerare {righe} violazioni del contatore «{nome}»? Il registro resta, ripartono solo i conteggi."
 }

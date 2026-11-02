@@ -2,9 +2,10 @@
 ## Aggiornata
 2026-11-01, giro r15automod (ramo feat/r15automod, worktree /home/claude/wt/r15automod, filone A di #116, D63). Migrazioni 0500-0503 mie. Smoke da fare.
 ## In corso
-Piano giro: A1-A4 (poi A5 se il contesto regge). A1-A3 fatti (A3: _controlla usa regole_service + condizioni_ok; webhook ancora esclusi). Prossimo: A4 core/automod_azioni.py (sostituisce _execute_actions; rimuovere la doppia scrittura legacy settings.actions in actions-set/mute-duration).
-Disegno: scratchpad disegno_automod.md (sessione orchestratore). Filone B (feat/r15immagini) possiede core/immagini_*, cogs/automod/immagini.py, chiavi immagini_*.
+A1-A5 fatti. Prossimo: A6 pannello `/admin-automod regole` (cogs/automod/regole.py, View 14 min, categorie, modali; test di forma) poi A7 liste/regex/solo YouTube. A8-A11 restano.
+Hook per il filone B: `core.automod_azioni.esegui_azioni(azioni, Bersaglio(...))` (azioni da `azioni_da_json`), chiavi filtro in `regola_effettiva`.
 ## Fatto
+- r15 A4 core/automod_azioni.py (20 azioni, ordine D63, scudo protetti, 403=sospesa 10 min, fine a tempo via scheduler, webhook), A5 migr. 0502, contatori (core/automod_contatori.py), /admin-automod riepilogo e azzera (cogs/automod/regole.py), test_automod_azioni/_contatori. Smoke da fare
 - r15 A3 core/automod_contesto.py, _controlla con regola attiva/condizioni/esenzioni per regola/bot solo se la regola li accetta; service fail-open se la tabella non si legge; test_automod_regole_filtri. Smoke da fare
 - r15 A1 core/automod_regole_logic.py (regole, condizioni_ok, azioni, tetti, re2), A2 migr. 0500/0501, automod_regole_repo, automod_regole_service (punto unico, cache), data_registry; test_automod_regole_logic/_repo. Smoke da fare
 - R14 D53 (paese nella verifica web): core/geoip_paesi, verify_paese_logic, verify_paese_staff (DynamicItem), repo verify_paese (0490), 4 chiavi in SETTINGS_SCHEMA/SCHEDE verify, tests/test_verify_paese.py. Smoke da fare. Ramo feat/r14paese
@@ -30,6 +31,8 @@ Disegno: scratchpad disegno_automod.md (sessione orchestratore). Filone B (feat/
 - Test del cog automod: db finto passato come `archivio` alle funzioni (mai db._pool); libreria_odio va finta (AsyncMock) senza pool
 - Str.replace sostituisce TUTTE le occorrenze; con piu' decorator uguali cercare l'indice dopo il nome del comando
 ## Aperto
+- AMD-018 (stato/attivita) non fatto: serve intent Presenze, decide l'owner
+- decide_staff (A8, 0503) non ancora: l'azione e' nel JSON ma il motore la ignora
 - Test con _FakeMessage senza webhook_id: nel cog usare sempre getattr per gli attributi nuovi
 - MOD-065 (motivo facoltativo): cambia la firma di tutti i comandi
 - #119 LOG-029; #113 log via webhook; OAuth rientro oltre 7 giorni; alt_detection (#92)

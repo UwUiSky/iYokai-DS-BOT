@@ -407,6 +407,8 @@
   "admin-automod violazioni": "Shows a user's AutoMod violations, in pages.",
   "admin-automod log-channel": "Sets the channel for the advanced AutoMod action log.",
   "admin-automod mute-duration": "Sets the timeout length used by the AutoMod 'mute' action.",
+  "admin-automod riepilogo": "AutoMod violations summary for the server, in pages.",
+  "admin-automod azzera": "Resets an AutoMod rule counter.",
   "admin-automod odio": "Banned words with variants and hate slurs.",
   "admin-automod odio base": "Turns the base list of hate slurs on or off.",
   "admin-automod odio blocco": "Preventive block of hateful phrases.",
