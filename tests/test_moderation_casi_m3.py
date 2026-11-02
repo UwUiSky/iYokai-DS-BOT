@@ -207,3 +207,14 @@ async def test_un_caso_automod_con_la_sanzione_in_corso_non_scade(clean_db, tipo
     await db.set_guild_setting(G, SETTING_SCADENZA_AUTOMOD, 7)
     n = await moderation_repo.create_case(G, 1, 10, tipo, "AutoMod: spam", 86400 * 30, origine="automod")
     assert await clean_db.fetchval("SELECT expires_at FROM moderation_cases WHERE case_number = $1", n) is None
+
+
+async def test_un_caso_nascosto_non_conta_nel_rischio_del_membro():
+    from core.repositories.staff_carico_repo import staff_carico_repo
+
+    n = await moderation_repo.create_case(G, 1, 10, "warn", "x")
+    b = await moderation_repo.create_case(G, 1, 10, "ban", "y")
+    assert (await staff_carico_repo.segnali_utente(G, 1))[0::3] == (1, 1)
+    await moderation_repo.set_case_hidden(G, n, True)
+    await moderation_repo.set_case_hidden(G, b, True)
+    assert await staff_carico_repo.segnali_utente(G, 1) == (0, 0, 0, 0, 0)
