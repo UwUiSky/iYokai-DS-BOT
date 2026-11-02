@@ -302,3 +302,35 @@ async def test_dm_staff_scrive_ai_membri_dello_staff_e_salta_chi_non_c_e():
     fatte = await M.esegui_azioni(A({"t": "dm_staff", "utenti": [501, 502]}), b)
     assert fatte == ("dm_staff",)
     staff.send.assert_awaited_once()  # prima: discord.Object senza .send, AttributeError e messaggio non giudicato
+
+
+def _con_ruoli(posizione_membro: int, posizione_bot: int):
+    me = fake_member(user_id=999, roles=[fake_role(role_id=90, position=posizione_bot)], bot=True)
+    guild = fake_guild(guild_id=G, me=me)
+    membro = fake_member(user_id=42, roles=[fake_role(role_id=91, position=posizione_membro)])
+    return _bers(membro, guild)
+
+
+@pytest.mark.parametrize("senza_scudo", [False, True])
+async def test_membro_sopra_il_bot_non_si_tocca_e_non_sospende_l_azione_per_tutto_il_server(monkeypatch, senza_scudo):
+    b, avvisi = _con_ruoli(posizione_membro=5, posizione_bot=3)
+    b.senza_scudo = senza_scudo
+    isola = AsyncMock(side_effect=discord.Forbidden(MagicMock(status=403, reason="x"), "no"))
+    monkeypatch.setattr(M.bot_roles, "isola", isola)
+    assert await M.esegui_azioni(A({"t": "timeout", "secondi": 60}), b) == ()
+    isola.assert_not_awaited()  # Discord rifiuterebbe: niente 403 inutili
+    assert not M.sospesa(G, "timeout") and avvisi.await_count == 0
+    sotto, _ = _con_ruoli(posizione_membro=2, posizione_bot=3)
+    sotto.senza_scudo = senza_scudo
+    isola.side_effect = None
+    assert await M.esegui_azioni(A({"t": "timeout", "secondi": 60}), sotto) == ("mute",)
+
+
+async def test_l_owner_del_bot_e_protetto(monkeypatch):
+    from core.config import config
+
+    b, _ = _bers(fake_member(user_id=config.OWNER_ID))
+    isola = AsyncMock()
+    monkeypatch.setattr(M.bot_roles, "isola", isola)
+    assert await M.esegui_azioni(A({"t": "timeout", "secondi": 60}), b) == ()
+    isola.assert_not_awaited()

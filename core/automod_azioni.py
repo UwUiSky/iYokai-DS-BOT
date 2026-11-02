@@ -2,8 +2,9 @@
 core/automod_azioni.py
 ======================
 Esegue le azioni di una regola AutoMod, una funzione corta per tipo, nell'ordine fisso di D63 (cancella, DM,
-sanzione, ruolo e nickname, canale, avviso, staff). Scudo dei protetti su ogni azione invasiva; se Discord
-risponde 403 l'azione si sospende per 10 minuti nel server e lo staff è avvisato una volta sola.
+sanzione, ruolo e nickname, canale, avviso, staff). Scudo dei protetti su ogni azione invasiva; chi sta sopra il
+ruolo del bot non si tocca (nemmeno senza scudo); se Discord risponde 403 l'azione si sospende per 10 minuti
+nel server e lo staff è avvisato una volta sola.
 Funzione pubblica per gli altri filoni: `esegui_azioni(azioni, Bersaglio(...))`.
 Funzioni coperte: SPEC §6 (AMD-040, 042-046, 048-053, 055, 056), D63
 """
@@ -77,10 +78,27 @@ class Bersaglio:
 
 
 def e_protetto(member: discord.Member) -> bool:
-    """Mai sanzioni automatiche al proprietario del server né a chi ha `manage_guild` o `administrator`."""
-    if member.guild.owner_id == member.id:
+    """Mai sanzioni automatiche al proprietario del server, all'owner del bot né a chi ha `manage_guild` o `administrator`."""
+    from core.config import config
+
+    if member.guild.owner_id == member.id or member.id == config.OWNER_ID:
         return True
     return member.guild_permissions.administrator or member.guild_permissions.manage_guild
+
+
+def fuori_portata(member: discord.Member) -> bool:
+    """
+    True se né il bot né Mod possono sanzionarlo: proprietario del server, o ruolo più alto pari o sopra quello
+    del bot. Discord risponderebbe 403, ma non è un permesso mancato al bot: l'azione non si sospende.
+    """
+    guild = member.guild
+    if guild.owner_id == member.id:
+        return True
+    posizione = getattr(getattr(member, "top_role", None), "position", 0)
+    me = guild.me
+    if me is None or posizione == 0:  # senza ruoli lo raggiunge chiunque abbia un ruolo
+        return False
+    return posizione >= getattr(getattr(me, "top_role", None), "position", 0) and bot_roles.esecutore(guild, None, sopra=member) is None
 
 
 # ---------------------------------------------------------------- memoria con tetto
@@ -421,14 +439,15 @@ async def esegui_azioni(azioni: tuple[Azione, ...] | list[Azione], b: Bersaglio)
 
     eseguite: list[str] = []
     protetto = b.membro is not None and not b.senza_scudo and e_protetto(b.membro)
+    irraggiungibile = b.membro is not None and fuori_portata(b.membro)  # vale anche senza scudo: Discord rifiuterebbe
     if any(a.t == "decide_staff" for a in azioni):  # le sanzioni aspettano lo staff; il resto parte subito
-        b.rinviate = tuple(a for a in azioni if a.t in RINVIABILI) if not protetto else ()
+        b.rinviate = tuple(a for a in azioni if a.t in RINVIABILI) if not (protetto or irraggiungibile) else ()
         azioni = [a for a in azioni if a.t not in RINVIABILI]
     for azione in ordina_azioni(azioni):
         funzione = _FUNZIONI.get(azione.t)
         if funzione is None or sospesa(b.guild.id, azione.t):
             continue
-        if azione.t in AZIONI_SULL_UTENTE and (b.membro is None or protetto):
+        if azione.t in AZIONI_SULL_UTENTE and (b.membro is None or protetto or irraggiungibile):
             continue
         if azione.t in ("warn", "dm", "cancella_ultimi", "azzera") and b.membro is None:
             continue

@@ -144,7 +144,10 @@ async def test_staff_ed_esenti_si_controllano_come_tutti(ambiente, monkeypatch, 
     await ambiente.cog.on_message(ambiente.msg)
     ambiente.azioni.cancella.assert_awaited_once_with(ambiente.msg)
     ambiente.dm.assert_awaited_once()
-    ambiente.azioni.isola.assert_awaited_once()
+    if caso == "proprietario":  # Discord non lascia isolare il proprietario: niente 403 inutili, niente sospensione
+        ambiente.azioni.isola.assert_not_awaited()
+    else:
+        ambiente.azioni.isola.assert_awaited_once()
     ambiente.log.send.assert_awaited_once()
 
 
