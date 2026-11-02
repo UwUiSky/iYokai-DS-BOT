@@ -117,6 +117,9 @@ from core.automod_advanced_logic import (
     normalize_domain,
 )
 from core import automod_contesto as contesto_regole, automod_regole_service as regole_service
+from core import automod_liste_service as liste_service
+from core.automod_decisioni import BottoneDecisione
+from core.automod_innesco_logic import innesco_scatta
 from core import automod_azioni as azioni_motore, automod_contatori as contatori
 from core.scheduler import scheduler
 from core.automod_azioni import Bersaglio, e_protetto, esegui_azioni, registra_messaggio
@@ -436,6 +439,8 @@ async def _esegui_regola(
     azioni: tuple,
     modificato: bool = False,
     contatore: str | None = None,
+    etichetta: str | None = None,
+    canale_log_id: int | None = None,
 ) -> tuple[str, ...]:
     """
     Esegue le azioni della regola con il motore unico (core/automod_azioni.py). Restituisce i nomi di quelle
@@ -454,10 +459,11 @@ async def _esegui_regola(
             membro=message.author if isinstance(message.author, discord.Member) else None,
             messaggio=message,
             canale=message.channel,
-            motivo=_VIOLATION_LABELS.get(violation, violation),
+            motivo=etichetta or _VIOLATION_LABELS.get(violation, violation),
             regola_chiave=violation,
-            regola_nome=_VIOLATION_LABELS.get(violation, violation),
+            regola_nome=etichetta or _VIOLATION_LABELS.get(violation, violation),
             contatore=contatore,
+            canale_log_id=canale_log_id,
             modificato=modificato,
             warn_consentito=lambda: _warn_da_dare(message.id, violation, modificato),
             avvisa_staff=avvisa_staff,
@@ -479,6 +485,7 @@ async def _log_violation(
         contatore=regola.contatore.nome if regola is not None and regola.contatore else None,
     )
 
+    nome_violazione = regola.nome if regola is not None and regola.tipo == "personale" else _VIOLATION_LABELS.get(violation, violation)
     if violation in _VIOLAZIONI_PHISHING:
         # SIC-043: il phishing ha un canale suo (router, anche forum); senza scelta vale il log dell'AutoMod.
         canale = await router.destinazione(message.guild, router.TIPO_PHISHING, settings.log_channel_id)
@@ -488,7 +495,7 @@ async def _log_violation(
         return
 
     embed = discord.Embed(
-        title=f"🛡️ AutoMod — {_VIOLATION_LABELS.get(violation, violation)}",
+        title=f"🛡️ AutoMod — {nome_violazione}",
         color=discord.Color.orange(),
     )
     embed.add_field(name="Utente", value=f"{message.author.mention} ({message.author.id})", inline=False)
@@ -1648,13 +1655,25 @@ class AutomodCog(CogConGruppi, commands.Cog):
         self._brevi.svuota(chiave)
         return [m for m, _ in serie[:-1]]
 
+    async def _personali_scattate(self, message: discord.Message, regole: tuple, testo: str, modificato: bool) -> tuple[str, ...]:
+        """Le chiavi delle regole personali (evento messaggio o modifica) il cui innesco scatta su questo testo."""
+        candidate = [
+            r for r in regole
+            if r.tipo == "personale" and r.attiva and r.innesco and (r.evento == "messaggio" or (r.evento == "modifica" and modificato))
+        ]
+        if not candidate:
+            return ()
+        liste = await liste_service.voci_per_regole(message.guild.id)
+        return tuple(r.chiave for r in candidate if innesco_scatta(r.innesco, testo, liste))
+
     async def _controlla_soglia(self, message: discord.Message, violazione: str, regola, modificato: bool) -> tuple[str, ...]:
         """AMD-058/059/060: se l'utente ha raggiunto una soglia del contatore, scattano le sue azioni e il contatore riparte."""
         soglia = await contatori.soglia_scattata(message.guild.id, message.author.id, regola.contatore)
         if soglia is None:
             return ()
         await contatori.consuma(message.guild.id, message.author.id, regola.contatore)
-        return await _esegui_regola(message, violazione, soglia.azioni, modificato, regola.contatore.nome)
+        return await _esegui_regola(message, violazione, soglia.azioni, modificato, regola.contatore.nome,
+                                    regola.nome if regola.tipo == "personale" else None)
 
     async def fine_ruolo_a_tempo(self, guild_id: int, user_id: int, payload: dict) -> None:
         await azioni_motore.gestisci_ruolo_fine(self.bot, guild_id, user_id, payload)
@@ -1715,6 +1734,8 @@ class AutomodCog(CogConGruppi, commands.Cog):
                 sospette, _ = await filtro_sospette(message.guild.id, db)
                 if await controlla_sospetta(message, segnali.content, sospette, db):
                     return
+        if not solo_embed:  # AMD-011/012/016/025: le regole personali con un innesco sul testo
+            violazioni = (*violazioni, *await self._personali_scattate(message, regole, segnali.content, modificato))
         if not violazioni:
             return
 
@@ -1737,7 +1758,8 @@ class AutomodCog(CogConGruppi, commands.Cog):
                 AZIONI_DI_PARTENZA.get(violazione, AZIONI_DI_PARTENZA_GENERALI), settings.mute_duration_seconds
             )
             eseguite = await _esegui_regola(
-                message, violazione, azioni, modificato=modificato, contatore=regola.contatore.nome if regola.contatore else None
+                message, violazione, azioni, modificato=modificato, contatore=regola.contatore.nome if regola.contatore else None,
+                etichetta=regola.nome if regola.tipo == "personale" else None, canale_log_id=settings.log_channel_id,
             )
             await _log_violation(message, violazione, eseguite, settings, regola)
             if regola.contatore and regola.contatore.soglie and isinstance(message.author, discord.Member):
@@ -1813,6 +1835,7 @@ async def setup(bot: commands.Bot) -> None:
     )
     cog = AutomodCog(bot)
     await bot.add_cog(cog)
+    bot.add_dynamic_items(BottoneDecisione)
     scheduler.register_handler(azioni_motore.AZIONE_RUOLO_FINE, cog.fine_ruolo_a_tempo)
     scheduler.register_handler(azioni_motore.AZIONE_SLOWMODE_FINE, cog.fine_slowmode_a_tempo)
     scheduler.register_handler(azioni_motore.AZIONE_PERMESSI_FINE, cog.fine_permessi_a_tempo)

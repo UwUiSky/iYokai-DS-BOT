@@ -15,9 +15,10 @@ from discord import app_commands
 from discord.ext import commands
 
 from cogs.automod.automod import MODULE_AUTOMOD, _VIOLATION_LABELS
+from core.automod_liste_pannello import apri_liste
 from core.automod_regole_pannello import apri_pannello
 from cogs.moderation._shared import ensure_module_enabled
-from core import automod_immagini_impostazioni as immagini_cfg, automod_regole_service as regole_service
+from core import automod_immagini_impostazioni as immagini_cfg, automod_liste_service as liste_service, automod_regole_service as regole_service
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.i18n import testo_per
@@ -86,6 +87,21 @@ class RegoleCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(await testo_per(interaction, "amregole_cmd_nessuna"), ephemeral=True)
             return
         await apri_pannello(interaction, dict(_VIOLATION_LABELS), regola)
+
+    @autocomplete_protetto(Livello.ADMIN)
+    async def _completa_lista(self, interaction: discord.Interaction, scritto: str) -> list[app_commands.Choice[str]]:
+        nomi = [*liste_service.LISTE_DI_SISTEMA, *await liste_service.liste_del_server(interaction.guild.id)]
+        return [app_commands.Choice(name=n[:100], value=n) for n in nomi if scritto.lower() in n.lower()][:25]
+
+    @comando_di_gruppo(
+        "admin-automod", nome="liste", descrizione="Apre il pannello delle liste con nome: parole e domini."
+    )
+    @app_commands.describe(lista="Una lista da aprire subito (vuoto: l'elenco)")
+    @app_commands.autocomplete(lista=_completa_lista)
+    async def liste(self, interaction: discord.Interaction, lista: app_commands.Range[str, 1, 32] | None = None) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        await apri_liste(interaction, lista)
 
     @comando_di_gruppo(
         "admin-automod", nome="gruppo", descrizione="Accende o spegne tutte le regole di un gruppo."

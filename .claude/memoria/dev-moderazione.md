@@ -2,9 +2,10 @@
 ## Aggiornata
 2026-11-01, giro r15automod (ramo feat/r15automod, worktree /home/claude/wt/r15automod, filone A di #116, D63). Migrazioni 0500-0503 mie. Smoke da fare.
 ## In corso
-A1-A6 fatti. Prossimo: A7 (liste con nome AMD-016, innesco delle regole personali: regex re2/lista/domini/sole parole permesse; modello Solo YouTube, vetrine inviti, liste parolacce con credito licenza) + pannello `liste`; A8 migr. 0503 decide_staff. Numeri: A11 usa 0509 (0504-0506 immagini, 0507-0508 VPN).
-Hook per il filone B: `core.automod_azioni.esegui_azioni(azioni, Bersaglio(...))`; impostazioni immagini via core/automod_immagini_impostazioni.py (TODO: sostituire con core.immagini_opzioni.imposta() dopo il merge di feat/r15immagini).
+A1-A8 fatti. Fatto anche l'innesco delle regole personali (regex re2, lista, domini, sole parole permesse). Prossimo: merge origin/main (feat/r15immagini e' su main): `/admin-automod immagini` -> core.immagini_opzioni.imposta(); cogs/automod/immagini.py::_applica -> core.automod_azioni.esegui_azioni (regola "immagini_sospette", nessuna esenzione). Poi A9 (eventi non-messaggio 009/010/017/075), A10 (calore/gruppi 067-069/072), A11 (migr. 0509, pulizia 073/074).
+SEMPRE: DATABASE_URL=postgresql://postgres:testpass@127.0.0.1:5432/iyokai_wautomod esplicito (env non persiste fra comandi: uso scratchpad/envw.sh).
 ## Fatto
+- r15 A7 liste con nome (core/automod_liste_service.py, repo, pannello core/automod_liste_pannello.py, /admin-automod liste), liste di sistema in data/automod/, innesco personale (core/automod_innesco_logic.py), modelli (core/automod_modelli.py), finestra Innesco. A8 migr. 0503 + core/automod_decisioni.py (decide lo staff, bottoni persistenti). test_automod_liste/_innesco_logic/_decisioni. Smoke da fare
 - r15 A6 pannello regole (core/automod_regole_pannello.py + core/automod_pannello_logic.py), comandi /admin-automod regole, gruppo, immagini; 100 testi amregole_*; test_automod_pannello_logic/_regole_pannello/_regole_comandi. Smoke da fare
 - r15 A4 core/automod_azioni.py (20 azioni, ordine D63, scudo protetti, 403=sospesa 10 min, fine a tempo via scheduler, webhook), A5 migr. 0502, contatori (core/automod_contatori.py), /admin-automod riepilogo e azzera (cogs/automod/regole.py), test_automod_azioni/_contatori. Smoke da fare
 - r15 A3 core/automod_contesto.py, _controlla con regola attiva/condizioni/esenzioni per regola/bot solo se la regola li accetta; service fail-open se la tabella non si legge; test_automod_regole_filtri. Smoke da fare

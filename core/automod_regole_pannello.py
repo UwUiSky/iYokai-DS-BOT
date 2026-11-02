@@ -15,7 +15,9 @@ from datetime import datetime, timezone
 import discord
 
 from core import automod_pannello_logic as L
+from core import automod_liste_service as servizio_liste
 from core import automod_regole_service as servizio
+from core.automod_modelli import MODELLI, modello
 from core.automod_contesto import contesto_da_membro
 from core.automod_regole_logic import (
     AZIONI_CANALE_STAFF_MENU,
@@ -26,6 +28,8 @@ from core.automod_regole_logic import (
     MAX_NOME,
     MAX_NOME_THREAD,
     MAX_TESTO_DM,
+    MAX_TESTO_PROVA,
+    innesco_da_json,
     Contatore,
     Regola,
     RegolaNonValida,
@@ -39,7 +43,7 @@ from core.i18n import lingua_interazione, t
 DURATA_PANNELLO_S = 14 * 60  # il token dell'interazione dura 15 minuti
 COSA_MODIFICARE = (
     "canali_inclusi", "canali_esclusi", "ruoli_inclusi", "ruoli_esclusi", "utenti_esclusi", "chi", "sanzioni",
-    "messaggi", "canale", "contatore", "gruppo",
+    "messaggi", "canale", "contatore", "gruppo", "innesco",
 )
 SELEZIONI = {  # sezione -> (campo delle condizioni, tipo di menu nativo)
     "canali_inclusi": ("canali_inclusi", "canale"), "canali_esclusi": ("canali_esclusi", "canale"),
@@ -91,6 +95,7 @@ class PannelloRegole(discord.ui.View):
         self.sezione: str | None = None
         self.messaggio = ""
         self.elimina_armato = False
+        self.scelta_modello = False
         self.regole: tuple[Regola, ...] = ()
 
     # ------------------------------------------------------------ utilità
@@ -138,9 +143,15 @@ class PannelloRegole(discord.ui.View):
                 opz(f"{'🟢' if acc else '⚪'} {nome}", chiave) for chiave, nome, acc in voci])
             reg.callback = self._scelta_regola
             self.add_item(reg)
+        if self.scelta_modello:
+            mod = discord.ui.Select(custom_id="am:r:mod", placeholder=self.tx("ph_modello"),
+                                    options=[opz(self.tx(f"mod_{m}"), m) for m in MODELLI])
+            mod.callback = self._scelto_modello
+            self.add_item(mod)
         for etichetta, id_, fn, off in (
             ("◀", "am:r:prec", self._prec, self.pagina == 0), ("▶", "am:r:succ", self._succ, self.pagina >= pagine - 1),
             (self.tx("btn_nuova"), "am:r:nuova", self._nuova, False),
+            (self.tx("btn_modello"), "am:r:modello", self._mostra_modelli, False),
         ):
             b = discord.ui.Button(label=etichetta[:45], custom_id=id_, disabled=off)
             b.callback = fn
@@ -158,7 +169,8 @@ class PannelloRegole(discord.ui.View):
         self.clear_items()
         r = self.bozza
         cosa = discord.ui.Select(custom_id="am:r:cosa", placeholder=self.tx("ph_cosa"), options=[
-            opz(self.tx(f"cosa_{c}"), c, default=c == self.sezione) for c in COSA_MODIFICARE])
+            opz(self.tx(f"cosa_{c}"), c, default=c == self.sezione) for c in COSA_MODIFICARE
+            if c != "innesco" or r.tipo == "personale"])
         cosa.callback = self._scelta_cosa
         self.add_item(cosa)
         if self.sezione in SELEZIONI:
@@ -239,6 +251,16 @@ class PannelloRegole(discord.ui.View):
         self.nuova, self.sezione, self.messaggio, self.elimina_armato = False, None, "", False
         await self._ridisegna(interaction)
 
+    async def _mostra_modelli(self, interaction: discord.Interaction) -> None:
+        self.scelta_modello = True
+        await self._ridisegna(interaction)
+
+    async def _scelto_modello(self, interaction: discord.Interaction) -> None:
+        chiave = interaction.data["values"][0]
+        self.bozza = modello(chiave, self.tx(f"mod_{chiave}"))
+        self.nuova, self.sezione, self.messaggio, self.scelta_modello = True, None, "", False
+        await self._ridisegna(interaction)
+
     async def _nuova(self, interaction: discord.Interaction) -> None:
         async def invio(i: discord.Interaction, v: dict) -> None:
             nome = (v["nome"] or "").strip()
@@ -294,7 +316,7 @@ class PannelloRegole(discord.ui.View):
         await self._ridisegna(interaction)
 
     async def _indietro(self, interaction: discord.Interaction) -> None:
-        self.bozza, self.sezione, self.messaggio = None, None, ""
+        self.bozza, self.sezione, self.messaggio, self.scelta_modello = None, None, "", False
         await self._carica()
         await self._ridisegna(interaction)
 
@@ -348,7 +370,8 @@ class PannelloRegole(discord.ui.View):
     # ------------------------------------------------------------ finestre
     def _modale(self, sezione: str) -> ModaleCampi:
         costruttori = {"chi": self._m_chi, "sanzioni": self._m_sanzioni, "messaggi": self._m_messaggi,
-                       "canale": self._m_canale, "contatore": self._m_contatore, "gruppo": self._m_gruppo}
+                       "canale": self._m_canale, "contatore": self._m_contatore, "gruppo": self._m_gruppo,
+                       "innesco": self._m_innesco}
         return costruttori[sezione]()
 
     async def _chiudi_modale(self, i: discord.Interaction, errore: RegolaNonValida | None = None) -> None:
@@ -510,6 +533,36 @@ class PannelloRegole(discord.ui.View):
             campo("y", self.tx("f_cont_y"), 4, str(s0.minuti) if s0 else "10"),
             campo("scad", self.tx("f_cont_scad"), 3, str(c.scadenza_giorni or "") if c else ""),
             campo("azione", self.tx("f_cont_azione"), 30, (s0.azioni[0].t if s0 else "timeout 10m"), segnaposto="timeout 10m"),
+        ], invio)
+
+    def _m_innesco(self) -> ModaleCampi:
+        i = self.bozza.innesco or {}
+        contenuto = "\n".join(i.get("regex", i.get("parole", ())))
+
+        async def invio(i_, v):
+            try:
+                tipo = v["tipo"].strip().lower()
+                dati: dict = {"tipo": tipo}
+                righe = servizio_liste.leggi_voci(v["contenuto"])
+                if tipo == "regex":
+                    dati["regex"] = [r.strip() for r in v["contenuto"].splitlines() if r.strip()]
+                elif righe:
+                    dati["parole"] = list(righe)
+                nomi = [n.strip() for n in v["liste"].split(",") if n.strip()]
+                if nomi:
+                    dati["liste"] = nomi
+                if tipo == "domini":
+                    dati["modo"] = (v["modo"].strip().lower() or "vietati")
+                self.bozza = replace(self.bozza, innesco=innesco_da_json(dati))
+            except RegolaNonValida as e:
+                return await self._chiudi_modale(i_, e)
+            await self._chiudi_modale(i_)
+
+        return ModaleCampi(self.tx("cosa_innesco"), [
+            campo("tipo", self.tx("f_tipo_innesco"), 14, i.get("tipo", ""), segnaposto="regex, lista, domini, solo_permesse, sempre"),
+            campo("contenuto", self.tx("f_contenuto"), MAX_TESTO_PROVA, contenuto, lungo=True),
+            campo("liste", self.tx("f_liste"), 200, ", ".join(i.get("liste", ())), segnaposto="@parolacce-it, mia-lista"),
+            campo("modo", self.tx("f_modo"), 8, i.get("modo", ""), segnaposto="vietati / permessi"),
         ], invio)
 
     def _m_gruppo(self) -> ModaleCampi:

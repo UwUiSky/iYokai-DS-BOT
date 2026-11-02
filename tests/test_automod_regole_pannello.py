@@ -82,7 +82,7 @@ async def test_modifica_nel_caso_peggiore_entro_i_limiti(sezione):
     _controlla_forma(vista, vista.schermata_regola())
 
 
-@pytest.mark.parametrize("sezione", ["chi", "sanzioni", "messaggi", "canale", "contatore", "gruppo"])
+@pytest.mark.parametrize("sezione", ["chi", "sanzioni", "messaggi", "canale", "contatore", "gruppo", "innesco"])
 async def test_ogni_finestra_ha_al_massimo_5_campi_con_limite_di_lunghezza(sezione):
     vista, _ = _vista()
     vista.bozza = _peggiore()
@@ -99,6 +99,7 @@ def test_i_testi_usati_dal_pannello_ci_sono_in_tutte_e_due_le_lingue():
     chiavi = set(re.findall(r'tx\("([a-z_]+)"', codice)) | set(re.findall(r'"amregole_([a-z_]+)"', codice))
     chiavi |= {f"cat_{c}" for c in L.CATEGORIE} | {f"cosa_{c}" for c in P.COSA_MODIFICARE}
     chiavi |= {f"az_{a}" for a in (*L.AZIONI_UTENTE_MENU, *L.AZIONI_CANALE_STAFF_MENU)}
+    chiavi |= {f"mod_{m}" for m in P.MODELLI} | {"ph_modello"}
     chiavi |= {"ph_categoria", "ph_regola", "ph_cosa", "ph_azioni_utente", "ph_azioni_canale", "ph_canali", "ph_ruoli", "ph_utenti",
                "btn_nuova", "btn_indietro", "btn_salva", "btn_elimina", "btn_elimina_si", "btn_prova", "btn_acceso", "btn_spento"}
     for lingua in ("it", "en-US"):
@@ -107,7 +108,7 @@ def test_i_testi_usati_dal_pannello_ci_sono_in_tutte_e_due_le_lingue():
         assert not mancano, (lingua, mancano)
         for k in chiavi:
             testo = catalogo[f"amregole_{k}"]
-            if k.startswith(("cat_", "cosa_", "az_", "btn_", "f_")):
+            if k.startswith(("cat_", "cosa_", "az_", "btn_", "f_", "mod_")):
                 assert len(testo) <= 36, (k, testo)  # le lingue lunghe hanno spazio fino a 45
 
 

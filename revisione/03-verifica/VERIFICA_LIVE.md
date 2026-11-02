@@ -1358,3 +1358,6 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - [ ] Un bot o un webhook non esentato non viene giudicato, salvo una regola che include «bot»/«webhook»; il bot stesso mai.
 - [ ] `/admin-automod regole`: scegli categoria e regola, cambia canali/ruoli dai menu nativi, apri le finestre (Chi e quando, Sanzioni, Messaggi, Canale e ruoli, Contatore, Gruppo e calore) su PC e su telefono; «Salva» avvisa se al bot mancano permessi; «Prova» dice se la regola vale per una persona.
 - [ ] `/admin-automod gruppo nome: attivo:` accende/spegne le regole del gruppo; `/admin-automod immagini` risponde «non disponibile» finché non c'è il filtro immagini.
+- [ ] `/admin-automod regole` → «Da modello» → «Solo link di YouTube»: salva, poi un link YouTube passa e uno Vimeo viene cancellato. Prova anche «Parolacce» e «Siti-vetrina degli inviti».
+- [ ] `/admin-automod liste`: crea una lista, aggiungi e togli voci (finestra con paragrafo), le liste `@…` sono in sola lettura.
+- [ ] Regola con azione «Decide lo staff» e una sanzione: nel log arriva il riquadro con Applica/Ignora; dopo un riavvio del bot i bottoni funzionano ancora; il secondo che preme riceve «già deciso».

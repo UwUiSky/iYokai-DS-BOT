@@ -98,6 +98,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 18:
 - **`/admin-automod regole`** — Pannello delle regole: condizioni, azioni, contatore, gruppo e calore (D63).
 - **`/admin-automod gruppo`** — Accende o spegne tutte le regole di un gruppo (AMD-067).
 - **`/admin-automod immagini`** — Impostazioni del filtro per le immagini sospette (D62/D63; serve il filone immagini).
+- **`/admin-automod liste`** — Pannello delle liste con nome: parole e domini, più `@parolacce-it`, `@parolacce-en`, `@vetrine-inviti` in sola lettura (D63).
 - **`/admin-automod violazioni`** — Mostra le violazioni AutoMod di un utente, a pagine.
 
 ## Admin: backup

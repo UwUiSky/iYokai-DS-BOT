@@ -65,6 +65,8 @@ class Bersaglio:
     canale: Any = None
     modificato: bool = False
     contatore: str | None = None  # il contatore della regola, per l'azione `azzera`
+    canale_log_id: int | None = None  # il canale del log AutoMod scelto dal server
+    rinviate: tuple = ()  # le sanzioni che aspettano lo staff (azione `decide_staff`)
     warn_consentito: Callable[[], bool] | None = None
     avvisa_staff: Callable[[str, int | None], Awaitable[None]] | None = None
 
@@ -377,6 +379,13 @@ async def _dm_staff(a: Azione, b: Bersaglio) -> bool:
     return any(inviati)
 
 
+async def _decide_staff(a: Azione, b: Bersaglio) -> bool:
+    """AMD-047: le sanzioni della regola aspettano il bottone di un moderatore (vedi core/automod_decisioni.py)."""
+    from core.automod_decisioni import chiedi_allo_staff
+
+    return await chiedi_allo_staff(b, list(b.rinviate))
+
+
 async def _azzera(a: Azione, b: Bersaglio) -> bool:
     """AMD-061: azzera i contatori dell'utente (quelli scelti, o quello della regola) e, se serve, la scala."""
     from core.repositories.automod_advanced_repo import automod_advanced_repo
@@ -397,7 +406,7 @@ _FUNZIONI: dict[str, Callable[[Azione, Bersaglio], Awaitable[bool]]] = {
     "mute_ruolo": _mute_ruolo, "kick": _kick, "ban": _ban, "ban_tempo": _ban_tempo, "ruolo": _ruolo,
     "nickname": _nickname, "slowmode": _slowmode, "permessi": _permessi, "thread_archivia": _thread_archivia,
     "thread_apri": _thread_apri, "avviso_canale": _avviso_canale, "log": _log, "dm_staff": _dm_staff,
-    "azzera": _azzera,
+    "azzera": _azzera, "decide_staff": _decide_staff,
 }
 
 
@@ -406,8 +415,13 @@ async def esegui_azioni(azioni: tuple[Azione, ...] | list[Azione], b: Bersaglio)
     Esegue le azioni nell'ordine di D63 e restituisce i nomi di quelle DAVVERO eseguite (per il log).
     Un'azione che non si applica o fallisce non ferma le altre.
     """
+    from core.automod_decisioni import RINVIABILI
+
     eseguite: list[str] = []
     protetto = b.membro is not None and e_protetto(b.membro)
+    if any(a.t == "decide_staff" for a in azioni):  # le sanzioni aspettano lo staff; il resto parte subito
+        b.rinviate = tuple(a for a in azioni if a.t in RINVIABILI) if not protetto else ()
+        azioni = [a for a in azioni if a.t not in RINVIABILI]
     for azione in ordina_azioni(azioni):
         funzione = _FUNZIONI.get(azione.t)
         if funzione is None or sospesa(b.guild.id, azione.t):
