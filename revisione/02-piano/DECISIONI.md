@@ -967,3 +967,13 @@ Gli admin ricevono un avviso: «<utente> ha provato a verificarsi con VPN/proxy 
 - Precisazione dell'owner (02/11): l'owner del bot (OWNER_ID) vede sempre anche i **nomi** dei server nello
   storico, con un comando in `/owner` (sotto-gruppo adatto, es. `/owner privacy` o `/owner verifica`) e nel pannello
   owner. Gli admin dei server vedono il numero, i nomi solo dei server che lo consentono.
+
+## D66 — Blocchi Moderazione (#115) e Ticket (#120): scelte di base (02/11/2026, scelta di chi sviluppa, da confermare all'owner)
+Disegno: scratchpad `disegno_mod_ticket.md` (guardiano). Nessun gruppo nuovo; menu col tasto destro: «Segnala
+messaggio», «Apri ticket», «Scheda moderazione». Scelte prese secondo la raccomandazione del guardiano:
+clear fino a 1.000 messaggi (al massimo 100 più vecchi di 14 giorni); motivo obbligatorio di base (il server può
+renderlo facoltativo); l'utente vede le sue sanzioni (acceso, senza note e casi nascosti); moderazione anonima
+spenta; prove non immagine (PDF, TXT) conservate grezze, mai aperte, solo dal pannello, 180 giorni; scadenza casi
+AutoMod 0 (mai, il server sceglie); ZIP dei ticket solo con immagini ricodificate; Google Drive più avanti con OAuth
+dal pannello, ora archivio interno + canale archivio (D18); Bloxlink con chiave per server cifrata; ticket a thread
+come opzione (issue a parte); dehoist automatico spento.
