@@ -543,10 +543,9 @@ class PannelloRegole(discord.ui.View):
             try:
                 tipo = v["tipo"].strip().lower()
                 dati: dict = {"tipo": tipo}
-                righe = servizio_liste.leggi_voci(v["contenuto"])
-                if tipo == "regex":
+                if tipo == "regex":  # una regex per riga: le virgole fanno parte della regex, il tetto è 260
                     dati["regex"] = [r.strip() for r in v["contenuto"].splitlines() if r.strip()]
-                elif righe:
+                elif righe := servizio_liste.leggi_voci(v["contenuto"]):
                     dati["parole"] = list(righe)
                 nomi = [n.strip() for n in v["liste"].split(",") if n.strip()]
                 if nomi:

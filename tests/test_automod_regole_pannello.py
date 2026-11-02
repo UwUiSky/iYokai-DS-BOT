@@ -182,3 +182,12 @@ async def test_solo_chi_ha_aperto_il_pannello_lo_usa():
     vista, inter = _vista()
     assert await vista.interaction_check(fake_interaction(user=fake_member(user_id=5)))
     assert not await vista.interaction_check(fake_interaction(user=fake_member(user_id=6)))
+
+
+async def test_finestra_innesco_accetta_regex_lunghe_fino_a_260_con_virgole():
+    vista, inter = _vista()
+    vista.bozza = Regola(chiave="p:0", tipo="personale", nome="Prova")
+    lunga = r"(compra|vendi)\s+\w{2,8}\s+" + "x" * 150  # oltre i 60 caratteri di una voce di lista, sotto i 260
+    modale = vista._modale("innesco")
+    await modale._su_invio(_risposta(inter), {"tipo": "regex", "contenuto": lunga, "liste": "", "modo": ""})
+    assert vista.bozza.innesco == {"tipo": "regex", "regex": [lunga]}, vista.messaggio
