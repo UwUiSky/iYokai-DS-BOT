@@ -52,6 +52,14 @@ async def test_attesa_troppo_lunga_viene_uccisa_dal_tempo_vero():
 
 
 @pytest.mark.asyncio
+async def test_figlio_che_chiude_l_uscita_e_resta_vivo_viene_ucciso_dal_tempo_vero():
+    # Un figlio compromesso chiude stdout e dorme: senza tetto sull'attesa la coda resterebbe ferma per sempre.
+    codice = "import os, time; os.close(1); time.sleep(30)"
+    r = await asyncio.wait_for(sb.esegui_locale("a" * 32, sb.Limiti(cpu=4, reale=1.0), py(codice)), 10)
+    assert r.esito == "ucciso_tempo"
+
+
+@pytest.mark.asyncio
 async def test_uscita_enorme_viene_fermata():
     r = await sb.esegui_locale(
         "a" * 32, PICCOLI, py("import sys\nwhile True: sys.stdout.buffer.write(b'x' * 1000000)")

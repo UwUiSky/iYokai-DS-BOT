@@ -148,8 +148,13 @@ async def esegui_locale(
         except (ProcessLookupError, PermissionError):
             proc.kill()
 
+    async def leggi_e_attendi() -> tuple[bytes | None, int | None]:
+        # Anche l'attesa della fine sta nel tempo vero: un figlio che chiude stdout e resta vivo non blocca la coda.
+        grezzo = await leggi()
+        return grezzo, (await proc.wait() if grezzo is not None else None)
+
     try:
-        grezzo = await asyncio.wait_for(leggi(), limiti.reale)
+        grezzo, codice = await asyncio.wait_for(leggi_e_attendi(), limiti.reale)
     except asyncio.TimeoutError:
         uccidi()
         await proc.wait()
@@ -158,7 +163,6 @@ async def esegui_locale(
         uccidi()
         await proc.wait()
         return RisultatoSandbox("uscita_enorme")
-    codice = await proc.wait()
     if codice != 0 or not grezzo:
         return RisultatoSandbox("ucciso")
     try:
