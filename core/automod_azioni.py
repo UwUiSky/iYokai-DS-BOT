@@ -201,6 +201,7 @@ async def _warn(a: Azione, b: Bersaglio) -> bool:
     numero = await moderation_repo.create_case(
         guild_id=b.guild.id, user_id=b.membro.id,
         moderator_id=b.guild.me.id if b.guild.me else b.membro.id, action_type="warn", reason=motivo,
+        origine="automod",
     )
     embed = discord.Embed(title="⚠️ Warn automatico (AutoMod)", description=f"Caso #{numero} — {motivo}",
                           color=discord.Color.yellow())
@@ -226,7 +227,7 @@ async def _mute_ruolo(a: Azione, b: Bersaglio) -> bool:
     await scheduler.cancel_for_user(b.guild.id, b.membro.id, SCHEDULED_MUTE_EXPIRE)
     numero = await moderation_repo.create_case(
         guild_id=b.guild.id, user_id=b.membro.id, moderator_id=b.guild.me.id if b.guild.me else b.membro.id,
-        action_type=MUTE_ROLE_ACTION_TYPE, reason=b.motivo_audit, duration_seconds=a.get("secondi"),
+        action_type=MUTE_ROLE_ACTION_TYPE, reason=b.motivo_audit, duration_seconds=a.get("secondi"), origine="automod",
     )
     await moderation_repo.save_mute_state(b.guild.id, b.membro.id, False, [], numero, fine)
     await scheduler.schedule(b.guild.id, b.membro.id, SCHEDULED_MUTE_EXPIRE, fine, {"caso": numero})
@@ -282,7 +283,7 @@ async def _ban_tempo(a: Azione, b: Bersaglio) -> bool:
         raise
     numero = await moderation_repo.create_case(
         guild_id=b.guild.id, user_id=b.membro.id, moderator_id=b.guild.me.id if b.guild.me else b.membro.id,
-        action_type=TEMPBAN_ACTION_TYPE, reason=motivo, duration_seconds=secondi,
+        action_type=TEMPBAN_ACTION_TYPE, reason=motivo, duration_seconds=secondi, origine="automod",
     )
     await moderation_repo.cancel_tempban_jobs(b.guild.id, b.membro.id)
     await scheduler.schedule(b.guild.id, b.membro.id, SCHEDULED_TEMPBAN_EXPIRE,

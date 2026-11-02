@@ -29,8 +29,6 @@ import asyncpg
 from core import log_forum_service
 
 
-SETTING_SCADENZA_AUTOMOD = "mod_scadenza_automod_giorni"
-
 
 @dataclass(frozen=True)
 class ModerationCase:
@@ -143,24 +141,21 @@ class ModerationRepository:
         action_type: str,
         reason: str | None = None,
         duration_seconds: int | None = None,
-        origine: str | None = None,
+        origine: str = "manuale",
     ) -> int:
         """
         Crea un nuovo caso, con numerazione atomica. Restituisce il
-        case_number assegnato. `origine`: manuale (base), automod, esterno;
-        un motivo che inizia con «AutoMod» vale come automod. I casi AutoMod
-        scadono dopo `mod_scadenza_automod_giorni` giorni (0 = mai, MOD-048).
+        case_number assegnato. `origine`: manuale (base), automod, esterno: chi
+        crea un caso AutoMod lo dice. I casi AutoMod scadono dopo i giorni
+        scelti dal server (0 = mai, MOD-048).
         """
-        if origine is None:
-            origine = "automod" if (reason or "").startswith("AutoMod") else "manuale"
         scade_il = None
         if origine == "automod":
-            giorni = await self._pool.fetchval(
-                "SELECT settings ->> $2 FROM guild_config WHERE guild_id = $1",
-                guild_id, SETTING_SCADENZA_AUTOMOD,
-            )
-            if giorni and str(giorni).isdigit() and int(giorni) > 0:
-                scade_il = datetime.now(timezone.utc) + timedelta(days=min(int(giorni), 200))
+            from core import moderation_opzioni  # una sola strada per l'impostazione (D16)
+
+            giorni = (await moderation_opzioni.leggi(guild_id)).scadenza_automod
+            if giorni:
+                scade_il = datetime.now(timezone.utc) + timedelta(days=giorni)
         async with self._pool.acquire() as conn:
             async with conn.transaction():
                 # UPSERT del contatore + incremento atomico in una

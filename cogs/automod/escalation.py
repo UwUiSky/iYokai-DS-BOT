@@ -128,6 +128,7 @@ async def _applica_passo(
         action_type=ESCALATION_ACTION_TYPE,
         reason=reason,
         duration_seconds=step.duration_seconds if step.action_type == "timeout" else None,
+        origine="automod",
     )
     if step.action_type == "warn":
         try:

@@ -267,6 +267,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
             action_type=voce.tipo,
             reason=voce.motivo,
             duration_seconds=voce.durata_secondi,
+            origine="esterno",
         )
         embed = discord.Embed(
             title=f"{_ACTION_ICONS.get(voce.tipo, '•')} Caso #{numero} (fatto fuori da iYokai)",

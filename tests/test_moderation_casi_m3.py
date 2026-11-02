@@ -16,7 +16,8 @@ from cogs.moderation._shared import MODULE_CASE_SYSTEM, SETTING_MOD_LOG_CHANNEL
 from cogs.moderation.case_system import ModerationCaseSystemCog
 from core.database import db
 from core import moderation_casi_logic
-from core.repositories.moderation_repo import SETTING_SCADENZA_AUTOMOD, moderation_repo
+from core.moderation_opzioni import SETTING_SCADENZA_AUTOMOD
+from core.repositories.moderation_repo import moderation_repo
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member, fake_text_channel
 
 G = 100
@@ -103,7 +104,7 @@ async def test_azzera_tutti_i_warn_in_una_query():
 
 async def test_casi_automod_scadono_solo_se_il_server_lo_vuole(clean_db):
     await db.set_guild_setting(G, SETTING_SCADENZA_AUTOMOD, 30)
-    n = await moderation_repo.create_case(G, 1, 10, "warn", "AutoMod: spam")
+    n = await moderation_repo.create_case(G, 1, 10, "warn", "AutoMod: spam", origine="automod")
     m = await moderation_repo.create_case(G, 1, 10, "warn", "a mano")
     righe = {r["case_number"]: r for r in await clean_db.fetch("SELECT * FROM moderation_cases")}
     assert righe[n]["origine"] == "automod" and righe[n]["expires_at"] is not None
@@ -115,7 +116,7 @@ async def test_casi_automod_scadono_solo_se_il_server_lo_vuole(clean_db):
 
 
 async def test_senza_scadenza_impostata_il_caso_automod_non_scade(clean_db):
-    n = await moderation_repo.create_case(G, 1, 10, "warn", "AutoMod: spam")
+    n = await moderation_repo.create_case(G, 1, 10, "warn", "AutoMod: spam", origine="automod")
     assert await clean_db.fetchval("SELECT expires_at FROM moderation_cases WHERE case_number = $1", n) is None
 
 
@@ -190,3 +191,10 @@ async def test_durata_di_un_warn_e_rifiutata():
     cog = ModerationCaseSystemCog(bot=None)
     await cog.case_duration.callback(cog, inter, n, "2h")
     assert "non ha una durata" in _testo(inter)
+
+
+async def test_un_motivo_che_inizia_con_automod_scritto_a_mano_non_fa_scadere_il_caso(clean_db):
+    await db.set_guild_setting(G, SETTING_SCADENZA_AUTOMOD, 30)
+    n = await moderation_repo.create_case(G, 1, 10, "warn", "AutoMod non c'entra: insulti")
+    riga = await clean_db.fetchrow("SELECT origine, expires_at FROM moderation_cases WHERE case_number = $1", n)
+    assert riga["origine"] == "manuale" and riga["expires_at"] is None
