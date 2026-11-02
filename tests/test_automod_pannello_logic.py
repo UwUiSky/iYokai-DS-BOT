@@ -128,3 +128,11 @@ def test_embed_nel_caso_peggiore_resta_entro_i_limiti():
     campi = P.campi_embed(r)
     assert all(len(v) <= 1024 for _, v in campi)
     assert sum(len(n) + len(v) for n, v in campi) < 6000
+
+
+def test_campi_dell_embed_nella_lingua_del_pannello():
+    r = Regola(chiave="p:1", tipo="personale", nome="n", condizioni=Condizioni(senza_ruoli=True), innesco={"tipo": "sempre"})
+    nomi_en = [n for n, _ in P.campi_embed(r, "en-US")]
+    assert nomi_en == ["Trigger", "Conditions", "Actions", "Group and heat"]
+    assert "Only people without roles" in P.campi_embed(r, "en-US")[1][1]
+    assert [n for n, _ in P.campi_embed(r, "it")][1] == "Condizioni"

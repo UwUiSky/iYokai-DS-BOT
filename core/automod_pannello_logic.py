@@ -2,8 +2,8 @@
 core/automod_pannello_logic.py
 ==============================
 Logica pura del pannello delle regole AutoMod: categorie, lettura dei testi scritti nelle finestre (intervalli,
-orari, durate, menzioni), parametri di base delle azioni, permessi che mancano al bot, testo dei campi dell'embed.
-Niente discord.py: si prova con semplici input e output.
+orari, durate, menzioni), parametri di base delle azioni, permessi che mancano al bot, campi dell'embed (testi
+del catalogo). Niente discord.py: si prova con semplici input e output.
 Funzioni coperte: SPEC §6 (AMD-029..056, AMD-067), D63
 """
 
@@ -221,8 +221,8 @@ def _taglia(testo: str, massimo: int = 1024) -> str:
     return testo if len(testo) <= massimo else testo[: massimo - 1] + "…"
 
 
-def _ids(titolo: str, ids: tuple[int, ...], prefisso: str) -> str:
-    return f"{titolo}: " + (", ".join(f"<{prefisso}{i}>" for i in ids[:25]) if ids else "tutti")
+def _ids(titolo: str, ids: tuple[int, ...], prefisso: str, tutti: str) -> str:
+    return f"{titolo}: " + (", ".join(f"<{prefisso}{i}>" for i in ids[:25]) if ids else tutti)
 
 
 def descrivi_azione(a: Azione) -> str:
@@ -231,32 +231,42 @@ def descrivi_azione(a: Azione) -> str:
     return f"`{a.t}`" + (f" ({extra})" if extra else "")
 
 
-def campi_embed(regola: Regola) -> list[tuple[str, str]]:
-    """I campi dell'embed di una regola: Condizioni, Azioni, Contatore, Calore e gruppo. Ognuno ≤ 1024 caratteri."""
-    c = regola.condizioni
+def campi_embed(regola: Regola, lingua: str = "it") -> list[tuple[str, str]]:
+    """I campi dell'embed di una regola (testi del catalogo `amregole_e_*`). Ognuno ≤ 1024 caratteri."""
+    from core.i18n import t
+
+    def tx(chiave: str, **valori) -> str:
+        return t(f"amregole_e_{chiave}", lingua, **valori)
+
+    c, tutti = regola.condizioni, tx("tutti")
     righe = [
-        _ids("Canali inclusi", c.canali_inclusi, "#"), _ids("Canali esclusi", c.canali_esclusi, "#") if c.canali_esclusi else "",
-        _ids("Ruoli inclusi", c.ruoli_inclusi, "@&") + (f" ({c.ruoli_modo})" if c.ruoli_inclusi else ""),
-        _ids("Ruoli esclusi", c.ruoli_esclusi, "@&") if c.ruoli_esclusi else "",
-        "Solo chi non ha ruoli" if c.senza_ruoli else "",
-        _ids("Utenti esclusi", c.utenti_esclusi, "@") if c.utenti_esclusi else "",
+        _ids(tx("canali_inclusi"), c.canali_inclusi, "#", tutti),
+        _ids(tx("canali_esclusi"), c.canali_esclusi, "#", tutti) if c.canali_esclusi else "",
+        _ids(tx("ruoli_inclusi"), c.ruoli_inclusi, "@&", tutti) + (f" ({c.ruoli_modo})" if c.ruoli_inclusi else ""),
+        _ids(tx("ruoli_esclusi"), c.ruoli_esclusi, "@&", tutti) if c.ruoli_esclusi else "",
+        tx("senza_ruoli") if c.senza_ruoli else "",
+        _ids(tx("utenti_esclusi"), c.utenti_esclusi, "@", tutti) if c.utenti_esclusi else "",
     ]
-    for nome, (mn, mx) in (("Età dell'account (giorni)", c.eta_account_giorni), ("Nel server da (giorni)", c.nel_server_giorni),
-                           ("Livello", c.livello)):
+    for nome, (mn, mx) in (("eta", c.eta_account_giorni), ("nel_server", c.nel_server_giorni), ("livello", c.livello)):
         if (mn, mx) != (None, None):
-            righe.append(f"{nome}: {'' if mn is None else mn}-{'' if mx is None else mx}")
+            righe.append(f"{tx(nome)}: {'' if mn is None else mn}-{'' if mx is None else mx}")
     if c.orari:
-        righe.append(f"Orario: {c.orari.dalle}-{c.orari.alle} ({c.orari.fuso}), giorni {','.join(map(str, c.orari.giorni))}")
-    righe.append(f"Thread: {c.thread} · Autori: {', '.join(c.autori)} · Esenzioni del server: {'sì' if c.esenzioni_globali else 'no'}")
-    campi = [("Condizioni", _taglia("\n".join(r for r in righe if r)))]
-    campi.append(("Azioni", _taglia("\n".join(descrivi_azione(a) for a in regola.azioni) or "nessuna")))
+        righe.append(tx("orario", dalle=c.orari.dalle, alle=c.orari.alle, fuso=c.orari.fuso,
+                        giorni=",".join(map(str, c.orari.giorni))))
+    righe.append(tx("riga_base", thread=c.thread, autori=", ".join(c.autori),
+                    esenzioni=tx("si") if c.esenzioni_globali else tx("no")))
+    campi = [(tx("condizioni"), _taglia("\n".join(r for r in righe if r)))]
+    campi.append((tx("azioni"), _taglia("\n".join(descrivi_azione(a) for a in regola.azioni) or tx("nessuna"))))
     if regola.contatore:
         ct = regola.contatore
-        soglie = "; ".join(f"{s.violazioni} in {s.minuti} min → " + ", ".join(a.t for a in s.azioni) for s in ct.soglie) or "nessuna soglia"
-        campi.append(("Contatore", _taglia(f"{ct.nome}" + (f" (scade in {ct.scadenza_giorni} giorni)" if ct.scadenza_giorni else "") + f"\n{soglie}")))
-    campi.append(("Gruppo e calore", f"Gruppo: {regola.gruppo or '-'} · Calore: {regola.calore}% · {'Accesa' if regola.attiva else 'Spenta'}"))
+        soglie = "; ".join(tx("soglia", n=s.violazioni, minuti=s.minuti, azioni=", ".join(a.t for a in s.azioni))
+                           for s in ct.soglie) or tx("nessuna_soglia")
+        scade = f" {tx('scade', giorni=ct.scadenza_giorni)}" if ct.scadenza_giorni else ""
+        campi.append((tx("contatore"), _taglia(f"{ct.nome}{scade}\n{soglie}")))
+    campi.append((tx("gruppo_calore"), tx("riga_gruppo", gruppo=regola.gruppo or "-", calore=regola.calore,
+                                          stato=tx("accesa") if regola.attiva else tx("spenta"))[:1024]))
     if regola.innesco:
-        campi.insert(0, ("Innesco", _taglia(", ".join(f"{k}={str(v)[:80]}" for k, v in regola.innesco.items()))))
+        campi.insert(0, (tx("innesco"), _taglia(", ".join(f"{k}={str(v)[:80]}" for k, v in regola.innesco.items()))))
     return campi
 
 

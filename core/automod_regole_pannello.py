@@ -199,7 +199,7 @@ class PannelloRegole(discord.ui.View):
             b.callback = self._elimina
             self.add_item(b)
         embed = discord.Embed(title=f"{r.nome} ({r.chiave})"[:256], color=discord.Color.orange() if r.attiva else discord.Color.dark_grey())
-        for nome, valore in L.campi_embed(r):
+        for nome, valore in L.campi_embed(r, self.lingua):
             embed.add_field(name=nome, value=valore, inline=False)
         if self.messaggio:
             embed.description = self.messaggio[:1500]
