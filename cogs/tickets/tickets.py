@@ -117,6 +117,10 @@ from core.ticket_logic import (
     split_text_by_size,
     truncate_label,
 )
+from core import ticket_transcript_logic as tr_logic
+from core.immagini_pipeline import analizza_immagine
+from core.immagini_byte_logic import PULITA
+from core.ticket_transcript_logic import AllegatoT
 from core.premium import PremiumModule, registry
 from core.role_safety import motivo_ruolo_automatico_non_assegnabile
 from core.scheduler import in_seconds, scheduler
@@ -175,6 +179,7 @@ _ATTIVITA_OGNI_SECONDI = 60
 # Un file allegato deve restare sotto i 10 MiB (LIM-55). Ci fermiamo a
 # 8 per lasciare margine al resto della richiesta.
 MAX_TRANSCRIPT_FILE_BYTES = 8 * 1024 * 1024
+MAX_BYTE_IMMAGINE_TRANSCRIPT = 8 * 1024 * 1024  # un'immagine più grande resta solo nome e peso
 
 # Chi sta aprendo un ticket in questo momento: (id server, id utente).
 # Ferma il doppio clic prima che nasca un secondo canale. La garanzia
@@ -2470,13 +2475,13 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.defer(ephemeral=True)
         try:
-            testo = await self._build_transcript_text(interaction.channel, ticket)
+            file_pronti = await self._file_transcript(interaction.guild, interaction.channel, ticket)
         except discord.HTTPException:
             await interaction.followup.send(
                 await testo_per(interaction, "tickets_non_riesco_leggere_messaggi_del"), ephemeral=True
             )
             return
-        for nome_file, contenuto in self._transcript_files(testo, ticket.ticket_number):
+        for nome_file, contenuto in file_pronti:
             await interaction.followup.send(
                 file=discord.File(io.BytesIO(contenuto), filename=nome_file), ephemeral=True
             )
@@ -2548,6 +2553,10 @@ class TicketsCog(CogConGruppi, commands.Cog):
         Senza l'intent Message Content Discord consegna i messaggi
         vuoti (BUG-5): in quel caso l'intestazione lo dice.
         """
+        messaggi = [m async for m in channel.history(limit=None, oldest_first=True)]
+        return self._testo_da_messaggi(ticket, messaggi)
+
+    def _testo_da_messaggi(self, ticket, messaggi) -> str:
         header = [
             f"Transcript ticket #{ticket.ticket_number:04d}",
             f"Aperto da: {ticket.user_id} il {ticket.created_at.isoformat()}",
@@ -2560,7 +2569,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         if not self.bot.intents.message_content:
             header.append(MESSAGE_CONTENT_WARNING)
         righe = []
-        async for messaggio in channel.history(limit=None, oldest_first=True):
+        for messaggio in messaggi:
             righe.append(
                 format_transcript_line(
                     messaggio.created_at.strftime("%Y-%m-%d %H:%M"),
@@ -2586,17 +2595,87 @@ class TicketsCog(CogConGruppi, commands.Cog):
             for numero, parte in enumerate(parti, start=1)
         ]
 
+    async def _allegati_trascritti(self, guild: discord.Guild, messaggio, conteggio: list[int]) -> tuple[AllegatoT, ...]:
+        """
+        TKT-070/074: nome, peso e impronta di ogni allegato. Le immagini passano dalla pipeline (D62):
+        si tiene solo la copia ricodificata di quelle pulite, mai l'originale.
+        """
+        risultato = []
+        for allegato in messaggio.attachments:
+            png, sha = b"", ""
+            tipo = (getattr(allegato, "content_type", None) or "").lower()
+            e_immagine = tipo.startswith("image/") or allegato.filename.lower().endswith(
+                (".png", ".jpg", ".jpeg", ".gif", ".webp")
+            )
+            if e_immagine and conteggio[0] < tr_logic.MAX_IMMAGINI and (allegato.size or 0) <= MAX_BYTE_IMMAGINE_TRANSCRIPT:
+                conteggio[0] += 1
+                try:
+                    esito = await analizza_immagine(await allegato.read(), allegato.filename, tipo or None, guild.id)
+                    sha = esito.sha256
+                    if esito.verdetto == PULITA and esito.non_analizzata is None and esito.png:
+                        png = esito.png
+                except Exception:  # noqa: BLE001 - un allegato che non si legge non ferma il transcript
+                    logger.warning("Allegato del transcript non analizzato nel ticket %s.", messaggio.channel.id, exc_info=True)
+            risultato.append(AllegatoT(allegato.filename, allegato.size or 0, sha, png))
+        return tuple(risultato)
+
+    async def _file_transcript(self, guild: discord.Guild, channel, ticket) -> list[tuple[str, bytes]]:
+        """
+        I file del transcript secondo il pannello (TKT-071): testo, HTML o entrambi, più lo ZIP delle immagini
+        controllate (TKT-074). Con le opzioni di base è identico al transcript testuale di sempre.
+        """
+        opzioni = await _opzioni_pannello(ticket.panel_id)
+        formato = tr_logic.formato_valido(opzioni.transcript_formato)
+        if formato == "testo" and not opzioni.allegati_zip:
+            return self._transcript_files(await self._build_transcript_text(channel, ticket), ticket.ticket_number)
+        messaggi = [m async for m in channel.history(limit=None, oldest_first=True)]
+        base = f"ticket-{ticket.ticket_number:04d}"
+        file_pronti: list[tuple[str, bytes]] = []
+        if formato in ("testo", "entrambi"):
+            file_pronti += self._transcript_files(self._testo_da_messaggi(ticket, messaggi), ticket.ticket_number)
+        conteggio = [0]
+        convertiti = []
+        tutti: list[AllegatoT] = []
+        for m in messaggi:
+            allegati = await self._allegati_trascritti(guild, m, conteggio)
+            tutti += allegati
+            testo = m.content or ""
+            for e in getattr(m, "embeds", None) or []:
+                testo += "\n" + "\n".join(x for x in (getattr(e, "title", None), getattr(e, "description", None)) if x)
+            convertiti.append(tr_logic.MessaggioT(
+                m.created_at.strftime("%Y-%m-%d %H:%M"), str(m.author), testo.strip(), allegati,
+                bool(getattr(m.author, "bot", False)),
+            ))
+        if formato in ("html", "entrambi"):
+            riga = lambda k, v: (k, str(v))  # noqa: E731
+            testata = tr_logic.IntestazioneT(
+                ticket.ticket_number,
+                tuple(riga(k, v) for k, v in (
+                    ("Aperto da", ticket.user_id), ("Aperto il", ticket.created_at.isoformat()),
+                    ("Categoria", ticket.category_label or "n/d"), ("Priorità", ticket.priority),
+                    ("Preso in carico da", ticket.claimed_by or "nessuno"),
+                ) + ((("Motivo di chiusura", ticket.close_reason),) if ticket.close_reason else ())),
+                None if self.bot.intents.message_content else MESSAGE_CONTENT_WARNING,
+            )
+            parti = tr_logic.html_in_parti(testata, convertiti)
+            for numero, pagina in enumerate(parti, start=1):
+                nome = f"{base}-transcript.html" if len(parti) == 1 else f"{base}-transcript-parte-{numero}-di-{len(parti)}.html"
+                file_pronti.append((nome, pagina.encode("utf-8")))
+        if opzioni.allegati_zip:
+            archivio = tr_logic.zip_allegati(tutti)
+            if archivio:
+                file_pronti.append((f"{base}-allegati.zip", archivio))
+        return file_pronti
+
     async def _deliver_transcript(
         self, guild: discord.Guild, channel: discord.TextChannel, ticket, *, dm: bool = True
     ) -> None:
         """SPEC.md §13.11: invio nel canale log configurato + DM all'utente (se il pannello lo vuole, TKT-075)."""
         try:
-            testo = await self._build_transcript_text(channel, ticket)
+            file_del_transcript = await self._file_transcript(guild, channel, ticket)
         except discord.HTTPException:
             logger.warning("Impossibile leggere la history del ticket %s per il transcript", channel.id)
             return
-
-        file_del_transcript = self._transcript_files(testo, ticket.ticket_number)
 
         # Il canale dei log può essere un forum: il router lo gestisce (post nel forum).
         predefinito = await db.get_guild_setting(guild.id, SETTING_LOG_CHANNEL)
@@ -3010,11 +3089,11 @@ class TicketsCog(CogConGruppi, commands.Cog):
         if azione == "t":
             await interaction.response.defer(ephemeral=True)
             try:
-                testo = await self._build_transcript_text(interaction.channel, ticket)
+                file_pronti = await self._file_transcript(interaction.guild, interaction.channel, ticket)
             except discord.HTTPException:
                 await interaction.followup.send(await testo_per(interaction, "tickets_non_riesco_leggere_messaggi_del_2"), ephemeral=True)
                 return
-            for nome_file, contenuto in self._transcript_files(testo, ticket.ticket_number):
+            for nome_file, contenuto in file_pronti:
                 await interaction.followup.send(
                     file=discord.File(io.BytesIO(contenuto), filename=nome_file), ephemeral=True
                 )

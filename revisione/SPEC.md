@@ -1318,6 +1318,10 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   menu messaggio «Apri ticket» (TKT-009), livello addetto/admin dei ruoli (TKT-045; `/admin-ticket ruolo aggiungi livello:`;
   senza ruoli admin vale lo staff come prima), ticket «solo admin» (TKT-046; `/admin-ticket-opzioni accesso solo_admin:`
   e menu «Gestisci» sul benvenuto, `tkt:gst:<id>`). (da verificare live)
+- `[x]` 13.22 Blocco T2 del catalogo (D66, migrazione 0524): transcript HTML con autoescape, CSP e nessuna
+  risorsa remota (avatar a iniziali), formato testo|html|entrambi (TKT-070, 071; `/admin-ticket-opzioni chiusura formato:`)
+  e ZIP con le sole immagini ricodificate dalla pipeline D62 più l'elenco degli altri file (TKT-074; `allegati_zip:`).
+  Core in `core/ticket_transcript_logic.py`. File sopra 8 MiB: senza immagini, poi in parti. (da verificare live)
 
 ## §14 UTILITY & SERVER MANAGEMENT
 

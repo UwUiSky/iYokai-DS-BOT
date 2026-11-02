@@ -251,3 +251,11 @@ async def test_menu_apri_ticket_esiste_con_nome_valido():
         assert [m.name for m in menu] == ["Apri ticket"]
     finally:
         await bot.close()
+
+
+async def test_formato_del_transcript_nel_pannello_e_solo_tra_quelli_ammessi(clean_db):
+    p = await _pannello()
+    o = await ticket_opzioni_repo.imposta(p.id, transcript_formato="html", allegati_zip=True)
+    assert (o.transcript_formato, o.allegati_zip) == ("html", True)
+    with pytest.raises(Exception):
+        await ticket_opzioni_repo.imposta(p.id, transcript_formato="pdf")

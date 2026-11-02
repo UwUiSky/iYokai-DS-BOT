@@ -283,7 +283,7 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
                 await interaction.response.send_message(await testo_per(interaction, "opzioni_accesso_niente_da_fare"), ephemeral=True)
             else:
                 await interaction.response.send_message(
-                    await testo_per(interaction, "opzioni_solo_admin_impostato", valore="sì" if solo_admin else "no"), ephemeral=True
+                    await testo_per(interaction, "opzioni_solo_admin_impostato", valore=await testo_per(interaction, "opzioni_solo_admin_si" if solo_admin else "opzioni_solo_admin_no")), ephemeral=True
                 )
             return
         permetti = {"permetti": True, "nega": False}.get(regola.value)
@@ -481,7 +481,10 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
         senza_categoria_chiusi="Non spostare più i ticket chiusi",
         nome_chiuso="Prefisso del nome del canale quando si chiude (o «nessuno»)",
         nome_preso="Prefisso del nome del canale quando lo staff lo prende (o «nessuno»)",
+        formato="Formato del transcript: testo, html o entrambi",
+        allegati_zip="Aggiungi uno ZIP con le immagini controllate (mai gli originali)",
     )
+    @app_commands.choices(formato=[app_commands.Choice(name=n, value=n) for n in ("testo", "html", "entrambi")])
     @app_commands.autocomplete(pannello=completa_pannelli)
     async def chiusura(
         self,
@@ -495,9 +498,15 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
         senza_categoria_chiusi: bool = False,
         nome_chiuso: app_commands.Range[str, 1, logica.PREFISSO_MAX] | None = None,
         nome_preso: app_commands.Range[str, 1, logica.PREFISSO_MAX] | None = None,
+        formato: app_commands.Choice[str] | None = None,
+        allegati_zip: bool | None = None,
     ) -> None:
         def prepara(guild):
             valori = {}
+            if formato is not None:
+                valori["transcript_formato"] = formato.value
+            if allegati_zip is not None:
+                valori["allegati_zip"] = allegati_zip
             if conferma is not None:
                 valori["conferma_chiusura"] = conferma
             if utente_chiude is not None:

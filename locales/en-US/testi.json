@@ -1493,5 +1493,7 @@
   "tickets_solo_admin_disattivato": "Ticket visible to all staff again.",
   "tickets_solo_admin_nessun_ruolo": "No role is a ticket admin: set the level with /admin-ticket ruolo aggiungi.",
   "opzioni_accesso_niente_da_fare": "Give a rule for a role, or choose solo_admin.",
-  "opzioni_solo_admin_impostato": "Panel: ticket admins only = {valore}."
+  "opzioni_solo_admin_impostato": "Panel: ticket admins only = {valore}.",
+  "opzioni_solo_admin_si": "yes",
+  "opzioni_solo_admin_no": "no"
 }

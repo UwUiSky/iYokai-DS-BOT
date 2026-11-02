@@ -76,6 +76,8 @@ class Opzioni:
     prefisso_chiuso: str | None = None
     prefisso_preso: str | None = None
     solo_admin: bool = False
+    transcript_formato: str = "testo"
+    allegati_zip: bool = False
 
 
 # ----------------------------------------------------------------------
@@ -437,6 +439,7 @@ def riassunto(o: Opzioni) -> list[tuple[str, str]]:
                      f"In due passi: {_si(o.chiusura_due_passi)} · elimina dopo: "
                      f"{f'{o.elimina_dopo_ore} ore' if o.elimina_dopo_ore else 'mai'} · categoria dei chiusi: "
                      f"{f'<#{o.categoria_chiusi}>' if o.categoria_chiusi else 'nessuna'}\n"
-                     f"Nome da chiuso: {o.prefisso_chiuso or 'invariato'} · da preso: {o.prefisso_preso or 'invariato'}"),
+                     f"Nome da chiuso: {o.prefisso_chiuso or 'invariato'} · da preso: {o.prefisso_preso or 'invariato'}\n"
+                     f"Transcript: {o.transcript_formato} · ZIP delle immagini: {_si(o.allegati_zip)}"),
     ]
     return [(nome, valore[:1024]) for nome, valore in righe]

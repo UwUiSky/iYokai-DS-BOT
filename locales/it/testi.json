@@ -1493,5 +1493,7 @@
   "tickets_solo_admin_disattivato": "Ticket di nuovo visibile a tutto lo staff.",
   "tickets_solo_admin_nessun_ruolo": "Nessun ruolo è admin dei ticket: imposta il livello con /admin-ticket ruolo aggiungi.",
   "opzioni_accesso_niente_da_fare": "Indica una regola per un ruolo, oppure scegli solo_admin.",
-  "opzioni_solo_admin_impostato": "Pannello: solo admin dei ticket = {valore}."
+  "opzioni_solo_admin_impostato": "Pannello: solo admin dei ticket = {valore}.",
+  "opzioni_solo_admin_si": "sì",
+  "opzioni_solo_admin_no": "no"
 }
