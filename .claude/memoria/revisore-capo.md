@@ -1,6 +1,7 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
+02/11/2026 · `feat/r15vpn` (D64, D65, 0507, 0508, #155): merge main (0b07b2f), 6 fix (e5e4774, 14568f1, a895a2c, 9ff3e96, 38ec7c5, 72e1fed); 6 basse/medie aperte nel quaderno. APPROVATO. Smoke da fare: 0507, 0508, verify_vpn*, panel_bridge, panel_proprietario, modmail, data_registry, aggiorna_vpn.
 01/11/2026 · `feat/r14lingue` (D58, #77): main già unito, 5 fix (5afa1c1, 5fc82bf, fb493e7, 7a66e08, 6f3a7a3); 4 basse aperte. APPROVATO. Smoke da fare: i18n, translator, lingue_struttura, cerca-comando.
 01/11/2026 · `feat/r14paese` (D53, 0490): merge main (becf64f), 4 fix (fde536c, 9462b25, 735d4a0, a7b0cd3); 4 basse aperte. APPROVATO. Smoke da fare: 0490, verify, panel_bridge.
 01/11/2026 · `feat/r13ruoli` (D60): merge main (D61), 4 fix (61052f4, 0a029de, 4e96294, test admin-livelli); 2 basse aperte. Smoke da fare: 0488, cerca-comando, ai_ricerca.
@@ -21,6 +22,8 @@ Giri r6–r11: tutti APPROVATI dopo i fix; basse aperte nel quaderno. `f7-quadro
 - Lingue: `testo_per` senza `pubblica=True` = lingua personale; embed costruiti a pezzi li trova `tests/test_i18n_pubblica.py`. `comandi.en.json`: "nomi" per SEGMENTO, "descrizioni" per percorso; modificarlo a testo (json.dumps cambia il rientro).
 - Controllare il contenuto di ogni commit, non il messaggio; testi che promettono una funzione vanno confrontati col codice; voci `[x]` col catalogo e col test citato (D18).
 - Ambiente: `source` dello script env in ogni bash, mai riavviare postgres, database proprio per ramo. Regola owner: niente smoke né suite, «smoke da fare» nel rapporto. Commit senza righe di attribuzione (CLAUDE.md del ramo).
+- Database di test condiviso con altri agenti = fallimenti a caso (tabelle di altri rami, righe sparite): rifare la corsa su un database proprio creato e poi tolto.
+- Elenchi scaricati: reindirizzamenti https→http (urllib li segue) e reti enormi (0.0.0.0/0) da scartare. Righe aggiunte a messaggi pubblici: `testo_guild`.
 - Diff di `.gitignore` e file di configurazione: leggerli sempre (una riga fusa coi commenti smette di ignorare `.env`); test con `git check-ignore --no-index`.
 - Merge di main: conflitti nei documenti e in `comandi.en.json`; `COMMAND_LIST*` con `scripts/generate_command_list.py` (errore finale innocuo; se cambia solo la data, scartare).
 - Migrazioni per NOME: mai modificarle; numeri confrontati su tutti i rami (`git ls-tree`). Test di una migrazione: `read_text()` ed `execute`, due volte (rilancio).

@@ -87,6 +87,9 @@ SETTINGS_SCHEMA = {
     "verify_solo_sospetti": "bool",
     "verify_azione_eta": "azione_eta",
     "verify_sospesa_fino": "epoch",
+    # VPN e proxy nella verifica web (core/verify_vpn_staff.py, D64); di base acceso
+    "verify_blocca_vpn": "bool",
+    "verify_condividi_nome": "bool",  # D65: farsi nominare negli avvisi degli altri server
     # Paese dell'account nella verifica web (core/verify_paese_staff.py, D53)
     "verify_paesi": "paesi_iso",
     "verify_paesi_soglia": "int_0_200",

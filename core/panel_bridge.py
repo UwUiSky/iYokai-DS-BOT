@@ -278,7 +278,8 @@ async def pagina_verifica(bot, guild_id: int, user_id: int) -> tuple[str | None,
 
 
 async def verifica_web(
-    bot, chiave: str, guild_id: int, user_id: int, ip: str, user_agent: str | None, lingua: str | None
+    bot, chiave: str, guild_id: int, user_id: int, ip: str, user_agent: str | None, lingua: str | None,
+    *, segnali_intestazioni: tuple[str, ...] = (), fuso: str | None = None,
 ) -> tuple[bool, str]:
     """
     La verifica dalla pagina: salva le impronte (mai l'IP), cerca i doppi nello
@@ -292,6 +293,13 @@ async def verifica_web(
     cog = bot.get_cog("VerifyCog")
     if cog is None:
         return False, "La verifica non è disponibile in questo momento. Riprova tra poco."
+    from core import verify_blocchi
+    from core.verify_vpn_staff import controlla as controlla_vpn
+
+    # D64: VPN o proxy = bloccata subito, prima di salvare qualsiasi impronta (nessuna «prima volta»).
+    bloccata = await controlla_vpn(bot, guild, membro, ip, chiave, segnali_intestazioni, fuso)
+    if bloccata is not None:
+        return False, await verify_blocchi.dopo_blocco(guild, user_id, bloccata)
     impronte = doppi_logica.impronte_richiesta(chiave, guild_id, ip, user_agent, lingua)
     uguali = await fingerprint_repo.registra(guild_id, user_id, impronte)
     doppi = doppi_logica.valuta_doppi(uguali, user_id, ipv4=doppi_logica.e_ipv4(ip))
@@ -306,8 +314,11 @@ async def verifica_web(
     # D53: il paese dall'IP (solo qui, mai salvato); se va in attesa decide lo staff.
     in_attesa = await valuta_paese(guild, membro, ip)
     if in_attesa is not None:
-        return False, in_attesa
+        return False, await verify_blocchi.dopo_blocco(guild, user_id, in_attesa)
     esito = await cog.run_checks_and_finalize(guild, membro, captcha_ok=True)
+    if not esito.success:  # D65: ogni blocco invita a scrivere in privato
+        return False, await verify_blocchi.dopo_blocco(guild, user_id, esito.reason)
+    await verify_blocchi.dopo_riuscita(guild, user_id)
     return esito.success, esito.reason
 
 
@@ -535,6 +546,13 @@ async def stato_proprietario(bot) -> dict:
         "ai_fornitori": [f.nome for f in servizio_ai().motore.fornitori],
         "ai_manutenzione": await ai_repo.manutenzione(),
     }
+
+
+async def storico_vpn_proprietario(bot, user_id: int) -> list[dict]:
+    """Storico VPN/proxy con i nomi dei server (D65), stesso punto di `/owner system storico-vpn`."""
+    from core.verify_vpn_staff import storico_owner
+
+    return await storico_owner(bot, user_id)
 
 
 async def applica_premium_modulo(nome: str, attivo: bool, user_id: int) -> None:

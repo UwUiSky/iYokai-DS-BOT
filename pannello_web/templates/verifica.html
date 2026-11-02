@@ -6,9 +6,13 @@
 <p>Premi il bottone per completare la verifica e ricevere l'accesso al server.</p>
 <form method="post" action="/verifica/{{ token }}">
   <input type="hidden" name="campo" value="{{ campo }}">
+  <input type="hidden" name="fuso" id="fuso" value="">
   <button type="submit">Verificami</button>
 </form>
+<script src="/static/verifica.js"></script>
 </div>
+<p class="tenue">Se usi una VPN o un proxy, spegnili prima di premere il bottone: se il server lo richiede, la verifica
+viene fermata subito e potrai riprovare dopo averli spenti.</p>
 <h2>Che cosa salviamo</h2>
 <p class="tenue">Per riconoscere gli account doppi salviamo per {{ giorni }} giorni due impronte cifrate
 (HMAC con una chiave segreta) della tua connessione e del tuo browser. Il tuo indirizzo IP non viene mai salvato
@@ -19,4 +23,13 @@ i comandi privacy del bot.</p>
 sul nostro server, senza servizi esterni) e la lingua del tuo Discord. Salviamo solo il codice del paese (per esempio
 «IT») per 30 giorni, mai l'indirizzo e mai la città. Serve a fermare i raid: se molte persone arrivano da fuori paese
 in pochi minuti, lo staff approva o rifiuta a mano. Il paese da solo non ti blocca mai.</p>
+<p class="tenue">Per riconoscere VPN e proxy controlliamo, nel momento in cui premi il bottone, il tuo indirizzo
+con elenchi e banche dati sul nostro server (reti di hosting e data center, uscite Tor, elenchi di VPN), le
+intestazioni di proxy della richiesta e il fuso orario del tuo browser. Se il proprietario del bot ha attivato un
+servizio esterno di controllo (proxycheck.io), il tuo indirizzo viene mandato a quel servizio solo in quel momento,
+con un tetto giornaliero. L'indirizzo non viene salvato: restano solo l'esito, il metodo che ha fatto scattare il
+controllo e la data, per 30 giorni. Se un admin ti lascia passare, il server lo ricorda per 180 giorni: gli altri
+server con questo bot ne vedono il numero (non quali, salvo quelli che scelgono di farsi nominare, e il
+proprietario del bot) e tu passi lo stesso, con un avviso ai loro admin. Se la verifica ti blocca e scrivi in
+privato al bot, apriamo un ticket con lo staff e allegiamo il motivo (un giorno).</p>
 {% endblock %}

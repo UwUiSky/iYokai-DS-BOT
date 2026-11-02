@@ -760,6 +760,7 @@
   "owner system richieste-canale": "Sets the requests channel (main server only).",
   "owner system shell": "Runs a shell command (with confirmation).",
   "owner system stats": "Global bot statistics.",
+  "owner system storico-vpn": "Bot owner only: servers that let a person through despite a VPN/proxy flag.",
   "admin-sicurezza alt elenco": "Duplicate accounts found by web verification.",
   "admin-sicurezza escalation": "Sanction escalation ladder.",
   "admin-sicurezza escalation disable": "Turns the escalation ladder off.",
