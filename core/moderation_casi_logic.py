@@ -2,8 +2,8 @@
 core/moderation_casi_logic.py
 =============================
 Regole dei casi di moderazione che non hanno bisogno di Discord: durata nuova di un caso,
-testo dell'esportazione dei casi di un membro.
-Funzioni coperte: SPEC §5.3 (MOD-012, MOD-043)
+testo dell'esportazione dei casi di un membro, tipi di caso che possono scadere.
+Funzioni coperte: SPEC §5.3 (MOD-012, MOD-043, MOD-048)
 """
 
 from __future__ import annotations
@@ -13,6 +13,14 @@ from datetime import datetime
 # Tipi di caso che hanno una fine e quindi una durata da cambiare.
 TIPI_CON_DURATA = ("tempban", "timeout", "mute_role")
 MAX_TIMEOUT_S = 28 * 86400  # limite di Discord per il timeout
+# MOD-048: un caso di questi tipi «attivo» vuol dire sanzione in corso (appello, durata, sban):
+# non scade mai da solo, anche se l'ha dato l'AutoMod.
+TIPI_SENZA_SCADENZA = ("ban", "tempban", "softban", "isolamento", "timeout", "mute_role")
+
+
+def caso_puo_scadere(tipo: str) -> bool:
+    """True se un caso AutoMod di questo tipo può smettere di contare dopo i giorni scelti."""
+    return tipo not in TIPI_SENZA_SCADENZA
 
 
 def errore_durata_caso(tipo: str, attivo: bool, secondi: int) -> str | None:

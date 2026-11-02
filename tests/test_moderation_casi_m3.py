@@ -198,3 +198,12 @@ async def test_un_motivo_che_inizia_con_automod_scritto_a_mano_non_fa_scadere_il
     n = await moderation_repo.create_case(G, 1, 10, "warn", "AutoMod non c'entra: insulti")
     riga = await clean_db.fetchrow("SELECT origine, expires_at FROM moderation_cases WHERE case_number = $1", n)
     assert riga["origine"] == "manuale" and riga["expires_at"] is None
+
+
+@pytest.mark.parametrize("tipo", ["tempban", "mute_role", "timeout", "ban"])
+async def test_un_caso_automod_con_la_sanzione_in_corso_non_scade(clean_db, tipo):
+    """Un tempban AutoMod di 30 giorni con scadenza a 7: dopo 7 giorni il caso resta attivo,
+    altrimenti l'appello e /mod-casi caso durata non lo trovano più."""
+    await db.set_guild_setting(G, SETTING_SCADENZA_AUTOMOD, 7)
+    n = await moderation_repo.create_case(G, 1, 10, tipo, "AutoMod: spam", 86400 * 30, origine="automod")
+    assert await clean_db.fetchval("SELECT expires_at FROM moderation_cases WHERE case_number = $1", n) is None

@@ -27,6 +27,7 @@ from datetime import datetime, timedelta, timezone
 import asyncpg
 
 from core import log_forum_service
+from core.moderation_casi_logic import caso_puo_scadere
 
 
 
@@ -150,7 +151,7 @@ class ModerationRepository:
         scelti dal server (0 = mai, MOD-048).
         """
         scade_il = None
-        if origine == "automod":
+        if origine == "automod" and caso_puo_scadere(action_type):
             from core import moderation_opzioni  # una sola strada per l'impostazione (D16)
 
             giorni = (await moderation_opzioni.leggi(guild_id)).scadenza_automod
