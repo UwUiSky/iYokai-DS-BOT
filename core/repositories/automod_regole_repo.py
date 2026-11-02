@@ -2,15 +2,19 @@
 core/repositories/automod_regole_repo.py
 ========================================
 Righe della tabella `automod_regole` (filtri e regole personali dei server). Solo lettura e scrittura:
-i controlli e la cache stanno in core/automod_regole_service.py. La tabella nasce nella migrazione 0500.
+i controlli e la cache stanno in core/automod_regole_service.py. Una riga illeggibile si salta, le altre valgono.
+La tabella nasce nella migrazione 0500.
 Funzioni coperte: SPEC §6 (AMD-029..061), D63
 """
 
 from __future__ import annotations
 
 import json
+import logging
 
-from core.automod_regole_logic import Regola, regola_a_json, regola_da_json
+from core.automod_regole_logic import Regola, RegolaNonValida, regola_a_json, regola_da_json
+
+logger = logging.getLogger(__name__)
 
 
 def _json(valore):
@@ -35,8 +39,15 @@ class AutomodRegoleRepository:
         return self._pool_provider()
 
     async def elenca(self, guild_id: int) -> list[Regola]:
+        """Le righe del server; una riga che non passa i controlli si salta (e si scrive nel log), le altre restano."""
         righe = await self._pool.fetch("SELECT * FROM automod_regole WHERE guild_id = $1 ORDER BY id", guild_id)
-        return [_regola(r) for r in righe]
+        lette = []
+        for r in righe:
+            try:
+                lette.append(_regola(r))
+            except RegolaNonValida as errore:
+                logger.warning("AutoMod: regola %s del server %s saltata: %s", r["chiave"], guild_id, errore)
+        return lette
 
     async def conta_personali(self, guild_id: int) -> int:
         return await self._pool.fetchval(

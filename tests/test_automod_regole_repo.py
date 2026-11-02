@@ -148,3 +148,27 @@ async def test_0501_ignora_dati_sporchi(repo_vero):
 def test_azioni_di_partenza_senza_riga_restano_le_stesse():
     # il difetto dei filtri senza riga è quello di prima: cancella (e per il phishing anche il timeout)
     assert [a.t for a in azioni_dai_nomi_vecchi(AZIONI_DI_PARTENZA["phishing"] if "phishing" in AZIONI_DI_PARTENZA else AZIONI_DI_PARTENZA_GENERALI, 600)][0] == "cancella"
+
+
+async def test_una_riga_illeggibile_non_spegne_le_altre_e_non_si_rilegge_a_ogni_messaggio(repo_vero, monkeypatch):
+    from core.repositories import automod_regole_repo as modulo
+
+    await S.salva(50, Regola(chiave="anti_caps", tipo="filtro", nome="anti_caps", attiva=False), 1)
+    await repo_vero.execute(  # una riga che i tetti di oggi rifiutano (es. scritta con tetti più larghi)
+        "INSERT INTO automod_regole (guild_id, chiave, tipo, nome, azioni) VALUES (50, 'p:9', 'personale', 'x', "
+        "'[{\"t\": \"boh\"}]'::jsonb)")
+    S.svuota_cache()
+    letture = 0
+    vera = modulo.automod_regole_repo.elenca
+
+    async def conta(*a, **k):
+        nonlocal letture
+        letture += 1
+        return await vera(*a, **k)
+
+    monkeypatch.setattr(modulo.automod_regole_repo, "elenca", conta)
+    regole = await S.regole_del_server(50)
+    assert [r.chiave for r in regole] == ["anti_caps"]  # la regola spenta resta spenta, la riga rotta si salta
+    assert regole[0].attiva is False
+    await S.regole_del_server(50)
+    assert letture == 1  # in cache: niente query e niente errore nel log a ogni messaggio
