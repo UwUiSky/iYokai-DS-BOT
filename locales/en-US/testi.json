@@ -1478,5 +1478,18 @@
   "clear_restano_vecchi": "{v1} more messages older than 14 days were not deleted (at most {v2} per command): run the command again.",
   "clear_reazioni_bot_senza_permesso": "I need \"Manage Messages\" and \"Read Message History\" in {mention}.",
   "clear_reazioni_fatto": "Reactions removed from {v1} messages.",
-  "clear_reazioni_titolo": "🧹 Reactions removed"
+  "clear_reazioni_titolo": "🧹 Reactions removed",
+  "casesystem_durata_membro_assente": "The member is not in the server: the timeout can't be changed.",
+  "casesystem_durata_non_riuscita": "I couldn't change the duration: check my permissions and role position.",
+  "casesystem_durata_cambiata": "Case #{case_number}: it now ends in {durata}.",
+  "casesystem_durata_log": "⏱️ Duration changed (case #{case_number})",
+  "casesystem_durata_nuova": "New duration",
+  "casesystem_caso_nascosto": "Case #{case_number} hidden: it no longer counts in rankings and alerts.",
+  "casesystem_caso_riattivato": "Case #{case_number} restored.",
+  "casesystem_esporta_vuoto": "This user has no cases or notes.",
+  "casesystem_esporta_pronto": "{v1} cases and {v2} notes in the file.",
+  "casesystem_warn_attivi_titolo": "⚠️ Active warns in the server",
+  "casesystem_azzera_tutti_numero_sbagliato": "That number is wrong: the server has {v1} active warns. Type it again to confirm.",
+  "casesystem_azzera_tutti_fatto": "Removed {v1} warns.",
+  "casesystem_azzera_tutti_log": "🧹 Server warns reset"
 }

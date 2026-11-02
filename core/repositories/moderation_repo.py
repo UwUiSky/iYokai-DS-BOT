@@ -29,6 +29,9 @@ import asyncpg
 from core import log_forum_service
 
 
+SETTING_SCADENZA_AUTOMOD = "mod_scadenza_automod_giorni"
+
+
 @dataclass(frozen=True)
 class ModerationCase:
     case_number: int
@@ -140,11 +143,24 @@ class ModerationRepository:
         action_type: str,
         reason: str | None = None,
         duration_seconds: int | None = None,
+        origine: str | None = None,
     ) -> int:
         """
         Crea un nuovo caso, con numerazione atomica. Restituisce il
-        case_number assegnato.
+        case_number assegnato. `origine`: manuale (base), automod, esterno;
+        un motivo che inizia con «AutoMod» vale come automod. I casi AutoMod
+        scadono dopo `mod_scadenza_automod_giorni` giorni (0 = mai, MOD-048).
         """
+        if origine is None:
+            origine = "automod" if (reason or "").startswith("AutoMod") else "manuale"
+        scade_il = None
+        if origine == "automod":
+            giorni = await self._pool.fetchval(
+                "SELECT settings ->> $2 FROM guild_config WHERE guild_id = $1",
+                guild_id, SETTING_SCADENZA_AUTOMOD,
+            )
+            if giorni and str(giorni).isdigit() and int(giorni) > 0:
+                scade_il = datetime.now(timezone.utc) + timedelta(days=min(int(giorni), 200))
         async with self._pool.acquire() as conn:
             async with conn.transaction():
                 # UPSERT del contatore + incremento atomico in una
@@ -167,8 +183,8 @@ class ModerationRepository:
                     """
                     INSERT INTO moderation_cases
                         (guild_id, case_number, user_id, moderator_id,
-                         action_type, reason, duration_seconds)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                         action_type, reason, duration_seconds, origine, expires_at)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     """,
                     guild_id,
                     case_number,
@@ -177,6 +193,8 @@ class ModerationRepository:
                     action_type,
                     reason,
                     duration_seconds,
+                    origine,
+                    scade_il,
                 )
 
         # 8.17: la vista su forum, un post per caso (spenta se il server non l'ha scelta).
@@ -224,7 +242,7 @@ class ModerationRepository:
         """Quanti casi attivi di un tipo ha un utente (es. i warn non tolti)."""
         return await self._pool.fetchval(
             "SELECT count(*) FROM moderation_cases "
-            "WHERE guild_id = $1 AND user_id = $2 AND action_type = $3 AND active = TRUE",
+            "WHERE guild_id = $1 AND user_id = $2 AND action_type = $3 AND active = TRUE AND NOT hidden",
             guild_id, user_id, action_type,
         )
 
@@ -253,7 +271,7 @@ class ModerationRepository:
             """
             SELECT moderator_id, COUNT(*) AS n
             FROM moderation_cases
-            WHERE guild_id = $1
+            WHERE guild_id = $1 AND NOT hidden
             GROUP BY moderator_id
             ORDER BY n DESC, moderator_id
             LIMIT $2
@@ -268,7 +286,7 @@ class ModerationRepository:
             """
             SELECT user_id, COUNT(*) AS n
             FROM moderation_cases
-            WHERE guild_id = $1 AND action_type = 'warn' AND active = TRUE
+            WHERE guild_id = $1 AND action_type = 'warn' AND active = TRUE AND NOT hidden
             GROUP BY user_id
             ORDER BY n DESC, user_id
             LIMIT $2
@@ -292,6 +310,83 @@ class ModerationRepository:
             guild_id, case_number,
         )
         return result.endswith(" 1")
+
+    async def update_case_duration(self, guild_id: int, case_number: int, secondi: int) -> bool:
+        """Cambia la durata scritta nel caso (MOD-012)."""
+        result = await self._pool.execute(
+            "UPDATE moderation_cases SET duration_seconds = $3 WHERE guild_id = $1 AND case_number = $2",
+            guild_id, case_number, secondi,
+        )
+        return result.endswith(" 1")
+
+    async def set_case_hidden(self, guild_id: int, case_number: int, nascosto: bool) -> bool:
+        """Nasconde o riattiva un caso: non conta più in classifiche, avvisi e rischio (MOD-045)."""
+        result = await self._pool.execute(
+            "UPDATE moderation_cases SET hidden = $3 WHERE guild_id = $1 AND case_number = $2",
+            guild_id, case_number, nascosto,
+        )
+        return result.endswith(" 1")
+
+    async def is_case_hidden(self, guild_id: int, case_number: int) -> bool:
+        return bool(await self._pool.fetchval(
+            "SELECT hidden FROM moderation_cases WHERE guild_id = $1 AND case_number = $2",
+            guild_id, case_number,
+        ))
+
+    async def count_active_warns(self, guild_id: int) -> int:
+        return await self._pool.fetchval(
+            "SELECT count(*) FROM moderation_cases "
+            "WHERE guild_id = $1 AND action_type = 'warn' AND active AND NOT hidden",
+            guild_id,
+        )
+
+    async def list_active_warns(self, guild_id: int, limit: int, offset: int = 0) -> list[ModerationCase]:
+        """Warn attivi di tutto il server, dal più recente (MOD-027)."""
+        rows = await self._pool.fetch(
+            """
+            SELECT case_number, guild_id, user_id, moderator_id, action_type,
+                   reason, duration_seconds, active, created_at, revoked_at, revoked_by
+            FROM moderation_cases
+            WHERE guild_id = $1 AND action_type = 'warn' AND active AND NOT hidden
+            ORDER BY case_number DESC LIMIT $2 OFFSET $3
+            """,
+            guild_id, limit, offset,
+        )
+        return [_row_to_case(row) for row in rows]
+
+    async def revoke_all_warns(self, guild_id: int, revoked_by: int) -> int:
+        """Toglie in una query tutti i warn attivi del server (MOD-030). Ritorna quanti."""
+        result = await self._pool.execute(
+            """
+            UPDATE moderation_cases SET active = FALSE, revoked_at = now(), revoked_by = $2
+            WHERE guild_id = $1 AND action_type = 'warn' AND active
+            """,
+            guild_id, revoked_by,
+        )
+        return int(result.split()[-1])
+
+    async def expire_due_cases(self) -> int:
+        """Chiude i casi con la scadenza passata (AutoMod, MOD-048). Ritorna quanti."""
+        result = await self._pool.execute(
+            """
+            UPDATE moderation_cases SET active = FALSE, revoked_at = now()
+            WHERE active AND expires_at IS NOT NULL AND expires_at <= now()
+            """
+        )
+        return int(result.split()[-1])
+
+    async def list_all_cases_for_user(self, guild_id: int, user_id: int, limit: int = 5000) -> list[ModerationCase]:
+        """Tutti i casi di un utente, dal più vecchio, per l'esportazione (MOD-043)."""
+        rows = await self._pool.fetch(
+            """
+            SELECT case_number, guild_id, user_id, moderator_id, action_type,
+                   reason, duration_seconds, active, created_at, revoked_at, revoked_by
+            FROM moderation_cases WHERE guild_id = $1 AND user_id = $2
+            ORDER BY case_number LIMIT $3
+            """,
+            guild_id, user_id, limit,
+        )
+        return [_row_to_case(row) for row in rows]
 
     async def get_latest_active_case(
         self, guild_id: int, user_id: int, action_type: str

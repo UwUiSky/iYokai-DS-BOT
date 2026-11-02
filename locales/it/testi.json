@@ -1478,5 +1478,18 @@
   "clear_restano_vecchi": "Altri {v1} messaggi più vecchi di 14 giorni non sono stati cancellati (al massimo {v2} per comando): ripeti il comando.",
   "clear_reazioni_bot_senza_permesso": "Mi servono «Gestire i messaggi» e «Leggere la cronologia» in {mention}.",
   "clear_reazioni_fatto": "Reazioni tolte da {v1} messaggi.",
-  "clear_reazioni_titolo": "🧹 Reazioni tolte"
+  "clear_reazioni_titolo": "🧹 Reazioni tolte",
+  "casesystem_durata_membro_assente": "Il membro non è nel server: il timeout non si può cambiare.",
+  "casesystem_durata_non_riuscita": "Non sono riuscito a cambiare la durata: controlla i miei permessi e la posizione del mio ruolo.",
+  "casesystem_durata_cambiata": "Caso #{case_number}: ora finisce tra {durata}.",
+  "casesystem_durata_log": "⏱️ Durata cambiata (caso #{case_number})",
+  "casesystem_durata_nuova": "Nuova durata",
+  "casesystem_caso_nascosto": "Caso #{case_number} nascosto: non conta più in classifiche e avvisi.",
+  "casesystem_caso_riattivato": "Caso #{case_number} riattivato.",
+  "casesystem_esporta_vuoto": "Questo utente non ha casi né note.",
+  "casesystem_esporta_pronto": "{v1} casi e {v2} note nel file.",
+  "casesystem_warn_attivi_titolo": "⚠️ Warn attivi del server",
+  "casesystem_azzera_tutti_numero_sbagliato": "Il numero non è giusto: il server ha {v1} warn attivi. Riscrivilo per confermare.",
+  "casesystem_azzera_tutti_fatto": "Tolti {v1} warn.",
+  "casesystem_azzera_tutti_log": "🧹 Warn del server azzerati"
 }
