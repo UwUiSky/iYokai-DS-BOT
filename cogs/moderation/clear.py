@@ -183,7 +183,9 @@ class ModerationClearCog(CogConGruppi, commands.Cog):
         if prima_id:
             extra["before"] = discord.Object(id=prima_id)
         try:
-            eliminati = await target.purge(limit=amount, check=controllo, **extra)
+            # Sempre dal più nuovo, anche con «dopo»: discord.py, appena trova un messaggio
+            # oltre i 14 giorni, cancella uno per uno anche tutti quelli che seguono.
+            eliminati = await target.purge(limit=amount, check=controllo, oldest_first=False, **extra)
         except discord.HTTPException:
             await interaction.followup.send(
                 await testo_per(interaction, "clear_non_sono_riuscito_cancellare_messaggi"),

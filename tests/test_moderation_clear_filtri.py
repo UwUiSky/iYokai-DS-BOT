@@ -460,3 +460,37 @@ async def test_reazioni_si_ferma_dopo_tre_403(ambiente, monkeypatch):
     await cog.reazioni.callback(cog, inter, 6)
 
     assert sum(m.clear_reactions.await_count for m in msgs) == 3
+
+
+async def test_clear_con_dopo_cancella_i_recenti_in_blocco(ambiente):
+    """Con «dopo» la storia va comunque dal più nuovo: se si parte dai vecchi, discord.py
+    cancella uno per uno anche tutti i recenti (fino a 900 chiamate) e il tetto dei vecchi non serve."""
+    from discord.abc import _purge_helper
+
+    inter, canale, _ = ambiente
+    ora = datetime.now(timezone.utc)
+    messaggi = []  # dal più nuovo al più vecchio
+    for giorni in (0, 0, 0, 1, 1, 20, 20, 20):
+        m = _msg("x")
+        m.created_at = ora - timedelta(days=giorni, minutes=len(messaggi))
+        m.id = discord.utils.time_snowflake(m.created_at)
+        m.type = discord.MessageType.default
+        m.delete = AsyncMock()
+        messaggi.append(m)
+
+    async def storia(limit=None, before=None, after=None, oldest_first=None, around=None):
+        ordine = list(reversed(messaggi)) if (after is not None if oldest_first is None else oldest_first) else messaggi
+        for m in ordine:
+            if after is None or m.id > after.id:
+                yield m
+
+    canale.history = storia
+    canale.delete_messages = AsyncMock()
+    canale.purge = lambda **k: _purge_helper(canale, **k)
+    cog = ModerationClearCog(bot=None)
+
+    await cog.clear.callback(cog, inter, 1000, dopo="1")
+
+    in_blocco = [m for chiamata in canale.delete_messages.await_args_list for m in chiamata.args[0]]
+    assert len(in_blocco) == 5  # i 5 recenti in una chiamata sola
+    assert sum(m.delete.await_count for m in messaggi) == 3  # solo i 3 vecchi uno per uno
