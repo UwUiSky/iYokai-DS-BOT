@@ -949,3 +949,15 @@ Gli admin ricevono un avviso: «<utente> ha provato a verificarsi con VPN/proxy 
   passare» per i casi sbagliati, e il server può spegnere la regola (di base è accesa).
 - Privacy: l'IP si usa solo in quel momento; si salva solo "VPN/proxy: sì", il metodo e la data (D53, D19).
   L'uso di un servizio esterno va scritto nell'informativa.
+
+## D65 — Blocchi della verifica: ticket in privato e storico condiviso dei falsi positivi (02/11/2026, richiesta dell'owner)
+- **Ogni blocco** durante la verifica (VPN/proxy D64, paese D53, account doppio, captcha, qualsiasi motivo) dice
+  all'utente di scrivere in privato al bot: il messaggio apre un ticket (ModMail) con lo staff del server dove
+  voleva entrare, con il motivo del blocco già allegato.
+- **Storico condiviso:** quando lo staff di un server lascia passare un utente segnalato (es. iCloud Private Relay
+  scambiato per VPN), il bot lo ricorda. Negli altri server con iYokai quella persona passa la verifica, ma gli
+  admin ricevono un avviso: «già accettato da N server nonostante VPN/proxy rilevato: può usarla anche per altro»,
+  con lo storico (date, motivi, esito). Gli admin hanno così un elenco di avvisi su queste persone.
+- **Privacy (scelta di chi sviluppa):** di base l'avviso dice **quanti** server l'hanno accettato, non quali,
+  perché i nomi rivelerebbero gli altri server di quella persona. Un server può scegliere di farsi nominare negli
+  avvisi degli altri (consenso del server). Lo storico si cancella con `/privacy` e scade (data registry).
