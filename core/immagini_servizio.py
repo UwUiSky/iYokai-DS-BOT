@@ -66,8 +66,14 @@ async def serve(percorso: str) -> asyncio.AbstractServer:
 
 
 def _dai_al_gruppo_del_bot(percorso: str) -> None:
-    """Cartella e socket al gruppo del bot (il servizio ne e' membro con SupplementaryGroups), cosi' il bot si collega."""
-    nome = os.environ.get("IYOKAI_SANDBOX_GRUPPO", "iyokai")
+    """
+    Di base il socket resta al gruppo del servizio (`iyokai-sbx`) e il bot entra in quel gruppo: il servizio
+    non riceve mai il gruppo del bot, cosi' un worker compromesso non legge i suoi file. Solo se
+    `IYOKAI_SANDBOX_GRUPPO` e' impostata si assegna quel gruppo (il servizio deve esserne membro).
+    """
+    nome = os.environ.get("IYOKAI_SANDBOX_GRUPPO")
+    if not nome:
+        return
     try:
         import grp
 

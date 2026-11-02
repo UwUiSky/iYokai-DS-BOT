@@ -16,6 +16,7 @@ Percorsi d'esempio: il bot gira come utente `iyokai` e sta in `/opt/iyokai`. Ada
 
 ```
 useradd --system --no-create-home --shell /usr/sbin/nologin iyokai-sbx
+usermod -aG iyokai-sbx iyokai
 install -d -o iyokai -g iyokai-sbx -m 2750 /var/lib/iyokai/quarantena
 cp deploy/systemd/iyokai-sandbox.service /etc/systemd/system/
 systemctl daemon-reload
@@ -24,8 +25,9 @@ systemctl status iyokai-sandbox
 ```
 
 Il bot scrive i file in quarantena (utente `iyokai`, file `0640`); il servizio li legge dal gruppo
-`iyokai-sbx`. Il socket è `/run/iyokai-sbx/sock`, assegnato al gruppo `iyokai`: il bot deve esserne
-membro. Per usare altri percorsi: variabili `IYOKAI_QUARANTENA_DIR` (bot e servizio) e
+`iyokai-sbx`. Il socket è `/run/iyokai-sbx/sock` (`0660`, gruppo `iyokai-sbx`): per questo il bot entra nel
+gruppo `iyokai-sbx` (`usermod`, poi riavvio del bot). Il servizio invece non entra mai nel gruppo del bot e non
+vede `.env` né `logs/`: un worker compromesso non può leggere i segreti del bot. Per usare altri percorsi: variabili `IYOKAI_QUARANTENA_DIR` (bot e servizio) e
 `IYOKAI_SANDBOX_SOCKET` (bot e servizio).
 
 `ExecStart` deve usare lo stesso interprete del bot (di solito quello del suo ambiente virtuale): con un

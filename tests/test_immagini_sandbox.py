@@ -261,3 +261,34 @@ async def test_worker_senza_pillow_e_sandbox_non_disponibile_non_malevola(cartel
     )
     r = await sb.esegui_locale(nome, comando=py(codice))
     assert r.esito == "non_disponibile"
+
+
+def test_unita_di_sistema_non_da_al_servizio_il_gruppo_del_bot():
+    # Con il gruppo del bot un worker compromesso leggerebbe i file del bot (.env) e potrebbe rimandarli
+    # dentro il PNG ricodificato. E' il bot a entrare nel gruppo della sandbox, non il contrario.
+    from pathlib import Path
+
+    unita = (Path(sb.__file__).resolve().parent.parent / "deploy/systemd/iyokai-sandbox.service").read_text()
+    righe = [r.strip() for r in unita.splitlines() if r.strip() and not r.lstrip().startswith("#")]
+    assert not any(r.startswith("SupplementaryGroups") for r in righe)
+    assert any(r.startswith("InaccessiblePaths=") and ".env" in r for r in righe)
+
+
+@pytest.mark.asyncio
+async def test_servizio_non_cambia_gruppo_al_socket_se_non_chiesto(tmp_path, monkeypatch):
+    from core import immagini_servizio as servizio
+
+    import grp
+    from types import SimpleNamespace
+
+    monkeypatch.delenv("IYOKAI_SANDBOX_GRUPPO", raising=False)
+    monkeypatch.setattr(grp, "getgrnam", lambda nome: SimpleNamespace(gr_gid=4242))  # come sul server, dove il gruppo c'e'
+    cambi = []
+    monkeypatch.setattr(servizio.os, "chown", lambda *a: cambi.append(a))
+    server = await servizio.serve(str(tmp_path / "g" / "sock"))
+    try:
+        assert cambi == []
+        assert (tmp_path / "g" / "sock").stat().st_mode & 0o777 == 0o660
+    finally:
+        server.close()
+        await server.wait_closed()

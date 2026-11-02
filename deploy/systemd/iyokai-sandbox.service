@@ -13,11 +13,11 @@ Group=iyokai-sbx
 ExecStart=/opt/iyokai/.venv/bin/python3 -I /opt/iyokai/core/immagini_servizio.py
 Environment=IYOKAI_QUARANTENA_DIR=/var/lib/iyokai/quarantena
 Environment=IYOKAI_SANDBOX_SOCKET=/run/iyokai-sbx/sock
-# Socket: cartella creata dal servizio, leggibile dal gruppo del bot (iyokai).
+# Socket: cartella creata dal servizio, gruppo iyokai-sbx. Il bot (utente iyokai) e' membro di iyokai-sbx;
+# il servizio NON riceve il gruppo del bot: un worker compromesso non deve leggere i file del bot.
 RuntimeDirectory=iyokai-sbx
 RuntimeDirectoryMode=0750
 UMask=0007
-SupplementaryGroups=iyokai
 Restart=on-failure
 RestartSec=3
 
@@ -30,6 +30,8 @@ ProtectHome=yes
 PrivateTmp=yes
 PrivateDevices=yes
 ReadOnlyPaths=/var/lib/iyokai/quarantena /opt/iyokai
+# I segreti del bot non si vedono proprio (il trattino: niente errore se il file non c'e').
+InaccessiblePaths=-/opt/iyokai/.env -/opt/iyokai/logs
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectControlGroups=yes
