@@ -78,6 +78,23 @@ async def chiedi_allo_staff(b: Any, rinviate: list[Azione]) -> bool:
     return True
 
 
+async def _puo_applicare(interaction: discord.Interaction, decisione_id: int) -> bool:
+    """«Applica» fa agire il bot al posto del moderatore: servono i permessi di ogni sanzione e un ruolo sopra la persona."""
+    from core.automod_pannello_logic import permessi_mancanti
+
+    riga = await automod_decisioni_repo.ottieni(decisione_id)
+    if riga is None or riga["guild_id"] != interaction.guild.id:
+        return True  # la decisione non c'è o è di un altro server: risponde «già deciso» più avanti
+    staff, guild = interaction.user, interaction.guild
+    if permessi_mancanti(tuple(azione_da_json(a) for a in riga["azioni"]), staff.guild_permissions):
+        return False
+    if staff.id == guild.owner_id:
+        return True
+    persona = guild.get_member(riga["user_id"])
+    sopra = getattr(getattr(persona, "top_role", None), "position", 0)
+    return persona is None or sopra == 0 or getattr(getattr(staff, "top_role", None), "position", 0) > sopra
+
+
 async def decidi(interaction: discord.Interaction, decisione_id: int, esito: str) -> None:
     """Un moderatore preme un bottone: la decisione si chiude una volta sola, poi (se «Applica») partono le sanzioni."""
     from core.automod_azioni import Bersaglio, esegui_azioni
@@ -85,6 +102,9 @@ async def decidi(interaction: discord.Interaction, decisione_id: int, esito: str
     guild = interaction.guild
     permessi = getattr(interaction.user, "guild_permissions", None)
     if guild is None or permessi is None or not (permessi.moderate_members or permessi.manage_guild):
+        await interaction.response.send_message(await testo_per(interaction, "amdec_nessun_permesso"), ephemeral=True)
+        return
+    if esito == "ok" and not await _puo_applicare(interaction, decisione_id):
         await interaction.response.send_message(await testo_per(interaction, "amdec_nessun_permesso"), ephemeral=True)
         return
     riga = await automod_decisioni_repo.decidi(decisione_id, guild.id, STATI[esito], interaction.user.id)

@@ -154,3 +154,28 @@ def test_il_bottone_persistente_si_ricostruisce_dal_custom_id():
     assert len("amdec:no:9223372036854775807") <= 100
     assert not re.fullmatch(D.MODELLO_ID, "amdec:boh:1")
     assert D.vista(5).timeout is None  # una View persistente non scade
+
+
+async def test_applica_chiede_i_permessi_delle_sanzioni_e_un_ruolo_sopra_la_persona(db, log, monkeypatch):
+    b = _bers()
+    monkeypatch.setattr(M.bot_roles, "cancella_messaggio", AsyncMock())
+    await M.esegui_azioni(A({"t": "ban"}, {"t": "decide_staff"}), b)
+    did = await db.fetchval("SELECT id FROM automod_decisioni")
+    banna = AsyncMock()
+    monkeypatch.setattr(M.bot_roles, "banna", banna)
+    monkeypatch.setattr(M, "_dm_prima_dell_azione", AsyncMock())
+    solo_timeout = _click(b.guild, discord.Permissions(moderate_members=True), b.membro)
+    await D.decidi(solo_timeout, did, "ok")  # «Applica» farebbe bannare dal bot chi non può bannare
+    assert "permesso" in solo_timeout.response.send_message.await_args.args[0]
+    b.membro.top_role = fake_role(role_id=70, position=8)
+    b.guild.me.top_role = fake_role(role_id=73, position=20)
+    sotto = _click(b.guild, discord.Permissions(ban_members=True, moderate_members=True), b.membro)
+    sotto.user.top_role = fake_role(role_id=71, position=3)
+    await D.decidi(sotto, did, "ok")  # un moderatore sotto la persona non la sanziona tramite il bot
+    assert "permesso" in sotto.response.send_message.await_args.args[0]
+    assert await db.fetchval("SELECT stato FROM automod_decisioni") == "attesa"
+    banna.assert_not_awaited()
+    sopra = _click(b.guild, discord.Permissions(ban_members=True, moderate_members=True), b.membro)
+    sopra.user.top_role = fake_role(role_id=72, position=9)
+    await D.decidi(sopra, did, "ok")
+    banna.assert_awaited_once()
