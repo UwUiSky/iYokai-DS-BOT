@@ -177,7 +177,7 @@ def socket_servizio() -> str:
 
 
 async def _chiedi_al_servizio(nome: str, limiti: Limiti) -> RisultatoSandbox | None:
-    """Modo A: il servizio di sistema. None se non c'e' o non risponde (si passa al modo B)."""
+    """Modo A: il servizio di sistema. None solo se non c'e' o non accetta il lavoro (si passa al modo B)."""
     percorso = socket_servizio()
     if not os.path.exists(percorso):
         return None
@@ -188,6 +188,12 @@ async def _chiedi_al_servizio(nome: str, limiti: Limiti) -> RisultatoSandbox | N
     try:
         scrittore.write(nome.encode("ascii") + b"\n")
         await scrittore.drain()
+    except OSError:
+        scrittore.close()
+        return None
+    # Da qui il servizio ha il lavoro: se tace o risponde male l'esito e' sospetto. Rifare la stessa immagine
+    # nella sandbox ridotta darebbe all'attacco un secondo tentativo con meno isolamento.
+    try:
         grezzo = await asyncio.wait_for(lettore.read(MAX_USCITA + 65536), limiti.reale + 5.0)
         # lettore.read puo' dare meno del totale: si legge fino alla chiusura
         while True:
@@ -199,9 +205,12 @@ async def _chiedi_al_servizio(nome: str, limiti: Limiti) -> RisultatoSandbox | N
                 return RisultatoSandbox("uscita_enorme", modo=MODO_SERVIZIO)
         info, png = leggi_uscita(grezzo)
         return RisultatoSandbox(str(info.get("stato", "errore")), info.get("info") or {}, png, MODO_SERVIZIO)
-    except (OSError, asyncio.TimeoutError, ValueError):
+    except asyncio.TimeoutError:
+        logger.warning("Sandbox: il servizio non ha risposto in tempo")
+        return RisultatoSandbox("ucciso_tempo", modo=MODO_SERVIZIO)
+    except (OSError, ValueError):
         logger.warning("Sandbox: il servizio non ha risposto bene", exc_info=True)
-        return None
+        return RisultatoSandbox("errore", {"motivo": "servizio"}, modo=MODO_SERVIZIO)
     finally:
         scrittore.close()
 

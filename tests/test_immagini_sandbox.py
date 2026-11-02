@@ -220,3 +220,31 @@ async def test_socket_morto_ripiega_senza_errori(cartella, tmp_path, monkeypatch
     monkeypatch.setenv(sb.VARIABILE_SOCKET, str(morto))
     r = await sb.analizza(_metti(cartella, f.png()))
     assert r.riuscita and r.modo == sb.MODO_RIDOTTA
+
+
+@pytest.mark.asyncio
+async def test_servizio_che_non_risponde_dopo_il_lavoro_non_ripiega_sulla_sandbox_ridotta(cartella, tmp_path, monkeypatch):
+    # Il servizio ha preso l'immagine e poi tace: rifarla nella sandbox ridotta darebbe all'attacco un secondo
+    # tentativo con meno isolamento. Esito sospetto, modo servizio.
+    percorso = str(tmp_path / "muto")
+    fine = asyncio.Event()
+
+    async def muto(lettore, scrittore):
+        await lettore.readline()
+        await fine.wait()
+        scrittore.close()
+
+    server = await asyncio.start_unix_server(muto, path=percorso)
+    monkeypatch.setenv(sb.VARIABILE_SOCKET, percorso)
+
+    async def locale(*a, **k):
+        raise AssertionError("ripiego locale non atteso")
+
+    monkeypatch.setattr(sb, "esegui_locale", locale)
+    try:
+        r = await asyncio.wait_for(sb.analizza(_metti(cartella, f.png()), sb.Limiti(reale=0.2)), 15)
+        assert r.modo == sb.MODO_SERVIZIO and r.esito == "ucciso_tempo"
+    finally:
+        fine.set()
+        server.close()
+        await server.wait_closed()
