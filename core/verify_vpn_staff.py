@@ -180,13 +180,21 @@ async def lascia_passare(interaction: discord.Interaction, user_id: int) -> None
         logger.warning("Messaggio VPN non aggiornato nel server %s.", guild.id)
 
 
-def righe_storico_owner(bot, righe) -> list[str]:
-    """Le righe dello storico per il proprietario del bot: sempre con il nome del server (D65)."""
-    risultato = []
-    for r in righe:
+async def storico_owner(bot, user_id: int) -> list[dict]:
+    """
+    Solo per il proprietario del bot (D65): i server che hanno lasciato passare la persona, sempre con il
+    nome. Lo stesso punto per `/owner system storico-vpn` e per la pagina del proprietario nel pannello.
+    """
+    voci = []
+    for r in await _repo().storico_completo(user_id):
         server = bot.get_guild(r["guild_id"])
-        nome = server.name[:60] if server is not None else "?"
-        risultato.append(
-            f"{r['creato_il'].date().isoformat()} · **{nome}** (`{r['guild_id']}`) · {r['metodo'] or '-'} · lasciato passare"
-        )
-    return risultato
+        voci.append({
+            "data": r["creato_il"].date().isoformat(), "nome": server.name[:60] if server is not None else "?",
+            "guild_id": r["guild_id"], "metodo": r["metodo"] or "-",
+        })
+    return voci
+
+
+def righe_storico_owner(voci: list[dict]) -> list[str]:
+    """Le voci di `storico_owner` come righe per Discord."""
+    return [f"{v['data']} · **{v['nome']}** (`{v['guild_id']}`) · {v['metodo']} · lasciato passare" for v in voci]

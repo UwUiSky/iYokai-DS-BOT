@@ -697,11 +697,10 @@ class VerifyCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message("Questo comando è solo del proprietario del bot.", ephemeral=True)
             return
         from cogs.utility._owner_pagine import invia_a_pagine
-        from core.repositories.verify_vpn_repo import verify_vpn_repo
-        from core.verify_vpn_staff import righe_storico_owner
+        from core.verify_vpn_staff import righe_storico_owner, storico_owner
 
         await interaction.response.defer(ephemeral=True)
-        righe = righe_storico_owner(self.bot, await verify_vpn_repo.storico_completo(utente.id))
+        righe = righe_storico_owner(await storico_owner(self.bot, utente.id))
         await invia_a_pagine(
             interaction, f"Storico VPN/proxy di {utente.id}", righe or ["Nessun server l'ha lasciato passare."],
             dopo_defer=True,

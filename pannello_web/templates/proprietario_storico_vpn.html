@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block titolo %}Storico VPN/proxy · iYokai Panel{% endblock %}
+{% block corpo %}
+<h1>Storico VPN/proxy di {{ utente }}</h1>
+<p class="tenue">Solo tu vedi i nomi dei server (D65). Gli admin dei server vedono il numero e i nomi solo dei server che lo consentono.</p>
+<table>
+{% for v in voci %}
+<tr><td>{{ v.data }}</td><td><strong>{{ v.nome }}</strong> (<code>{{ v.guild_id }}</code>)</td><td>{{ v.metodo }}</td><td>lasciato passare</td></tr>
+{% else %}
+<tr><td>Nessun server l'ha lasciato passare.</td></tr>
+{% endfor %}
+</table>
+<p><a href="/proprietario">Torna alla pagina del proprietario</a></p>
+{% endblock %}

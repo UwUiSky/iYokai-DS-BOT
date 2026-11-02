@@ -548,6 +548,13 @@ async def stato_proprietario(bot) -> dict:
     }
 
 
+async def storico_vpn_proprietario(bot, user_id: int) -> list[dict]:
+    """Storico VPN/proxy con i nomi dei server (D65), stesso punto di `/owner system storico-vpn`."""
+    from core.verify_vpn_staff import storico_owner
+
+    return await storico_owner(bot, user_id)
+
+
 async def applica_premium_modulo(nome: str, attivo: bool, user_id: int) -> None:
     """Rende premium o gratuito un modulo (stesso punto di `/owner premium toggle`)."""
     from core.premium_flags import applica_cambio_premium

@@ -633,6 +633,17 @@ def build_app(
             return rifiuto
         return _pagina(request, "proprietario.html", stato=await ponte.stato_proprietario(bot))
 
+    async def storico_vpn_proprietario(request: web.Request) -> web.StreamResponse:
+        """D65: i server che hanno lasciato passare una persona segnalata come VPN/proxy, con i nomi."""
+        rifiuto = _solo_proprietario(request)
+        if rifiuto is not None:
+            return rifiuto
+        utente = request.query.get("utente", "").strip()[:20]
+        if not (utente.isascii() and utente.isdigit()) or int(utente) >= 2**63:
+            return _errore(request, 400, "ID non valido", "Scrivi l'ID Discord della persona (solo cifre).")
+        voci = await ponte.storico_vpn_proprietario(bot, int(utente))
+        return _pagina(request, "proprietario_storico_vpn.html", utente=utente, voci=voci)
+
     async def salva_premium_proprietario(request: web.Request) -> web.StreamResponse:
         rifiuto = _solo_proprietario(request)
         if rifiuto is not None:
@@ -708,6 +719,7 @@ def build_app(
     app.router.add_get("/privacy", privacy)
     app.router.add_get("/termini", termini)
     app.router.add_get("/proprietario", pagina_proprietario)
+    app.router.add_get("/proprietario/storico-vpn", storico_vpn_proprietario)
     app.router.add_post("/proprietario/premium", salva_premium_proprietario)
     app.router.add_post("/proprietario/ai", salva_ai_proprietario)
     app.router.add_get("/wiki", wiki)

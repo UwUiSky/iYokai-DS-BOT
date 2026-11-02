@@ -43,7 +43,7 @@ L'IP si usa solo in quel momento e non si salva. Tabelle (tutte nel registro dei
 `verify_vpn_storico` (server, metodo, data dei «Lascia passare»; 180 giorni). Il servizio esterno riceve l'IP: è scritto
 nell'informativa. Gli admin vedono solo il **numero** dei server che hanno già accettato la persona; i nomi solo
 dei server con `verify_condividi_nome` acceso; il proprietario del bot vede sempre i nomi con
-`/owner system storico-vpn`.
+`/owner system storico-vpn` e nella pagina del proprietario del pannello (`/proprietario`).
 
 ## Blocchi e ticket (D65)
 Ogni blocco della verifica web (VPN, paese in attesa, controlli del server) invita la persona a scrivere in privato al bot,
