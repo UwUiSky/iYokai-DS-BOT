@@ -1,0 +1,23 @@
+# Parolacce comuni in italiano, scritte per questo progetto (nessuna fonte esterna, nessun credito dovuto).
+# Una voce per riga. Le righe con # sono commenti.
+cazzo
+merda
+stronzo
+stronza
+stronzata
+vaffanculo
+fanculo
+puttana
+troia
+minchia
+coglione
+cretino
+idiota
+bastardo
+bastarda
+figlio di puttana
+testa di cazzo
+rompicoglioni
+pezzo di merda
+deficiente
+imbecille

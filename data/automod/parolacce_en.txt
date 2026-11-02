@@ -1,0 +1,18 @@
+# Common English swear words, written for this project (no external source, no credit due).
+# One entry per line. Lines starting with # are comments.
+fuck
+fucking
+shit
+bullshit
+asshole
+bitch
+bastard
+dickhead
+cunt
+motherfucker
+son of a bitch
+piece of shit
+wanker
+twat
+prick
+douchebag

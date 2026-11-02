@@ -206,6 +206,13 @@ async def _salva_config(database, **overrides) -> None:
     dati = base.__dict__.copy()
     dati.update(overrides)
     await automod_advanced_repo.save_settings(AutomodAdvancedSettings(**dati))
+    # D63: le azioni dei filtri stanno nelle regole del server, non più in settings.actions.
+    from core import automod_regole_service as regole
+
+    await database.pool.execute("DELETE FROM automod_regole WHERE guild_id = $1", GUILD_ID)
+    regole.svuota_cache(GUILD_ID)
+    for chiave, nomi in dati["actions"].items():
+        await regole.imposta_azioni_filtro(GUILD_ID, chiave, tuple(nomi), dati["mute_duration_seconds"], 1)
 
 
 @pytest.mark.asyncio

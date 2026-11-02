@@ -57,6 +57,9 @@ def ambiente(monkeypatch):
     monkeypatch.setattr(cog_mod.bot_roles, "cancella_messaggio", azioni.cancella)
     monkeypatch.setattr(cog_mod.bot_roles, "isola", azioni.isola)
     monkeypatch.setattr(cog_mod, "try_dm", dm)
+    import cogs.moderation._shared as condiviso
+
+    monkeypatch.setattr(condiviso, "try_dm", dm)  # il DM parte dal motore unico delle azioni (core/automod_azioni.py)
     monkeypatch.setattr(cog_mod, "post_to_mod_log", modlog)
     monkeypatch.setattr(cog_mod.libreria_immagini, "segnala", segnala)
     monkeypatch.setattr(cog_mod, "lingua_risposta", AsyncMock(return_value="it"))
@@ -141,7 +144,10 @@ async def test_staff_ed_esenti_si_controllano_come_tutti(ambiente, monkeypatch, 
     await ambiente.cog.on_message(ambiente.msg)
     ambiente.azioni.cancella.assert_awaited_once_with(ambiente.msg)
     ambiente.dm.assert_awaited_once()
-    ambiente.azioni.isola.assert_awaited_once()
+    if caso == "proprietario":  # Discord non lascia isolare il proprietario: niente 403 inutili, niente sospensione
+        ambiente.azioni.isola.assert_not_awaited()
+    else:
+        ambiente.azioni.isola.assert_awaited_once()
     ambiente.log.send.assert_awaited_once()
 
 
@@ -221,3 +227,24 @@ async def test_malevola_dopo_immagini_pulite_mette_comunque_in_timeout(ambiente,
     await ambiente.cog.on_message(ambiente.msg)
     ambiente.azioni.cancella.assert_awaited_once_with(ambiente.msg)
     ambiente.azioni.isola.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_le_azioni_passano_dal_motore_unico_e_la_regola_di_sistema_le_governa(ambiente, monkeypatch):
+    """Regola di sistema «immagini_sospette» (D63): spenta non fa nulla; con azioni sue usa quelle; senza riga, le azioni del filtro."""
+    from core import automod_regole_service as servizio
+    from core.automod_regole_logic import Regola, azioni_da_json
+
+    righe: list[Regola] = []
+    monkeypatch.setattr(servizio, "regole_del_server", AsyncMock(side_effect=lambda g: tuple(righe)))
+    analisi(monkeypatch, esito("sospetta"))
+    await ambiente.cog.on_message(ambiente.msg)
+    ambiente.azioni.cancella.assert_awaited_once()  # nessuna riga: azioni del filtro, anche per lo staff (nessuna esenzione)
+    ambiente.azioni.cancella.reset_mock()
+    righe.append(Regola(chiave="immagini_sospette", tipo="filtro", nome="x", id=1, attiva=False))
+    await ambiente.cog.on_message(ambiente.msg)
+    ambiente.azioni.cancella.assert_not_awaited()  # l'admin l'ha spenta
+    righe[:] = [Regola(chiave="immagini_sospette", tipo="filtro", nome="x", id=1, azioni=azioni_da_json([{"t": "timeout", "secondi": 120}]))]
+    await ambiente.cog.on_message(ambiente.msg)
+    ambiente.azioni.cancella.assert_not_awaited()
+    ambiente.azioni.isola.assert_awaited_once()  # azioni scelte dall'admin
