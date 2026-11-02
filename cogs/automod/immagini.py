@@ -27,7 +27,6 @@ from core import immagini_opzioni as opzioni_immagini
 from core import immagini_quarantena as quarantena
 from core import immagini_trappola_logic as lg
 from core.bot_ready import attendi_bot_pronto
-from core.bounded_cache import BoundedCache
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
@@ -42,7 +41,6 @@ logger = logging.getLogger("iyokai.immagini")
 
 MODULE_AUTOMOD = "automod"
 MAX_ALLEGATI_PER_MESSAGGIO = 4
-MAX_UTENTI_RICORDATI = 20_000
 MAX_VOCI_ELENCO = 15
 AZIONI_LIBRERIA = [
     app_commands.Choice(name="elenca", value="elenca"),
@@ -63,7 +61,6 @@ def e_allegato_immagine(allegato: discord.Attachment) -> bool:
 class ImmaginiCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
-        self._gia_pulite: BoundedCache[tuple[int, int], bool] = BoundedCache(MAX_UTENTI_RICORDATI)
         self._pulizia = tasks.loop(minutes=15)(self._giro_pulizia)
         self._pulizia.before_loop(self._prima)
 
@@ -106,7 +103,6 @@ class ImmaginiCog(CogConGruppi, commands.Cog):
 
     async def _controlla(self, message: discord.Message, allegati, opzioni) -> None:
         membro, guild = message.author, message.guild
-        chiave = (guild.id, membro.id)
         for allegato in allegati:
             if allegato.size > MAX_IMAGE_BYTES:
                 continue
@@ -121,10 +117,7 @@ class ImmaginiCog(CogConGruppi, commands.Cog):
                 esito,
                 opzioni,
                 a_rischio=azioni.autore_a_rischio((adesso - membro.created_at).total_seconds() / 86400, nel_server),
-                primo_invio=chiave not in self._gia_pulite,
             )
-            if esito.non_analizzata is None and esito.verdetto == "pulita":
-                self._gia_pulite.set(chiave, True)
             if esito.da_segnalare:
                 dettaglio = ",".join(esito.motivi)
                 await libreria_immagini.segnala(esito.sha256, esito.dhash, dettaglio, guild.id, guild.owner_id, guild.member_count or 0)

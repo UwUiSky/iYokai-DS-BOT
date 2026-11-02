@@ -210,3 +210,14 @@ async def test_comando_owner_approva_e_aggiunge(ambiente, clean_db, monkeypatch)
     assert "libreria" in inter.response.send_message.await_args.args[0]  # prefisso assente: «non è in libreria»
     await ambiente.cog.libreria.callback(ambiente.cog, inter, scelte["elenca"], None, None)
     assert "approvata: 1" in inter.response.send_message.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_malevola_dopo_immagini_pulite_mette_comunque_in_timeout(ambiente, monkeypatch):
+    # Un account con una storia normale e poi rubato (D62): la prima immagine malevola lo ferma lo stesso.
+    analisi(monkeypatch, esito("pulita", motivi=()))
+    await ambiente.cog.on_message(ambiente.msg)
+    analisi(monkeypatch, esito("malevola"))
+    await ambiente.cog.on_message(ambiente.msg)
+    ambiente.azioni.cancella.assert_awaited_once_with(ambiente.msg)
+    ambiente.azioni.isola.assert_awaited_once()

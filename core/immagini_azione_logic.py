@@ -3,7 +3,7 @@ core/immagini_azione_logic.py
 =============================
 Cosa fare dopo l'esito del filtro immagini (D62), in logica pura: cancellare, avvisare nel canale,
 timeout, DM all'autore, riga nel log. Le azioni sono quelle scelte dal server (cancella, avvisa,
-timeout); un'immagine malevola del primo invio di un autore mette comunque in timeout. Coda piena o
+timeout); un'immagine malevola mette sempre in timeout (account rubati, D62). Coda piena o
 sandbox ferma: il messaggio resta, tranne per un account nuovo (meno di 7 giorni, o nel server da
 meno di 1 giorno), che deve «riprovare fra poco».
 Funzioni coperte: SPEC §6 (D62)
@@ -40,7 +40,7 @@ def autore_a_rischio(giorni_account: float, giorni_nel_server: float | None) -> 
     return giorni_account < GIORNI_ACCOUNT_NUOVO or (giorni_nel_server is not None and giorni_nel_server < GIORNI_NEL_SERVER_NUOVO)
 
 
-def decidi(esito: EsitoImmagine, opzioni: OpzioniImmagini, *, a_rischio: bool, primo_invio: bool) -> Decisione:
+def decidi(esito: EsitoImmagine, opzioni: OpzioniImmagini, *, a_rischio: bool) -> Decisione:
     if esito.non_analizzata == NON_ANALIZZATA_GRANDE:
         return Decisione()
     if esito.non_analizzata in (NON_ANALIZZATA_CODA, NON_ANALIZZATA_SANDBOX):
@@ -51,7 +51,7 @@ def decidi(esito: EsitoImmagine, opzioni: OpzioniImmagini, *, a_rischio: bool, p
         return Decisione()
     if esito.solo_avviso:
         return Decisione(log=True)
-    timeout = opzioni.timeout_minuti if (opzioni.azione == "timeout" or (esito.verdetto == MALEVOLA and primo_invio)) else None
+    timeout = opzioni.timeout_minuti if (opzioni.azione == "timeout" or esito.verdetto == MALEVOLA) else None
     if opzioni.azione == "avvisa" and timeout is None:
         return Decisione(avvisa_nel_canale=True, log=True)
     if timeout is not None:
