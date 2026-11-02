@@ -29,6 +29,7 @@ def test_repr_di_config_non_contiene_nessun_segreto(monkeypatch):
     monkeypatch.setenv("OAUTH2_CLIENT_SECRET", "segreto-oauth2")
     monkeypatch.setenv("WEB_PANEL_SECRET_KEY", "segreto-web-panel")
     monkeypatch.setenv("OAUTH_ENCRYPTION_KEY", "segreto-cifratura")
+    monkeypatch.setenv("VERIFY_IP_ENCRYPTION_KEY", "segreto-cifratura-ip")
 
     config = _load_config()
     testo = repr(config)
@@ -48,6 +49,7 @@ def test_repr_di_config_non_contiene_nessun_segreto(monkeypatch):
         "segreto-oauth2",
         "segreto-web-panel",
         "segreto-cifratura",
+        "segreto-cifratura-ip",
     ]:
         assert valore_segreto not in testo, f"'{valore_segreto}' compare ancora in repr(config)"
 

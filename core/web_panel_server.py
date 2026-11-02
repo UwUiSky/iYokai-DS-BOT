@@ -642,7 +642,8 @@ def build_app(
         if not (utente.isascii() and utente.isdigit()) or int(utente) >= 2**63:
             return _errore(request, 400, "ID non valido", "Scrivi l'ID Discord della persona (solo cifre).")
         voci = await ponte.storico_vpn_proprietario(bot, int(utente))
-        return _pagina(request, "proprietario_storico_vpn.html", utente=utente, voci=voci)
+        ip = await ponte.ip_vpn_proprietario(bot, int(utente))  # D67: solo qui, solo al proprietario
+        return _pagina(request, "proprietario_storico_vpn.html", utente=utente, voci=voci, ip=ip)
 
     async def salva_premium_proprietario(request: web.Request) -> web.StreamResponse:
         rifiuto = _solo_proprietario(request)

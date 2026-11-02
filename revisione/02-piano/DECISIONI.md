@@ -1000,3 +1000,8 @@ Aggiorna D64/D65.
   privato apre il ticket con lo staff dei server dove è stata limitata.
   Limite di Discord: un bot non può mostrare un errore a schermo con testo suo su un messaggio normale; la cosa più
   vicina è il timeout di Discord (avviso di sistema) + il messaggio privato con le istruzioni (D18).
+- **Tetti scelti da chi sviluppa per la parte IP (02/11/2026, r16verifica, da confermare all'owner):** persona che
+  esce o bot tolto dal server 30 giorni; **kick 180 giorni**; **ban finché è attivo e 30 giorni dopo lo sblocco**; tetto
+  assoluto 365 giorni dall'ultimo uso; al massimo 20 IP per persona e server. `/utility privacy cancella` non toglie le
+  righe di chi è bannato o espulso (si valuta a mano). Chiave: `VERIFY_IP_ENCRYPTION_KEY` (senza chiave non si salva).
+  La soglia dello storico: «momenti diversi» = almeno un'ora fra due approvazioni qualsiasi del gruppo.

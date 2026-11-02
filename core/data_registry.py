@@ -680,10 +680,10 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True,
        escludi_dall_esportazione=("ip_impronta", "ip_cifrato"), conserva_utente_se="motivo IN ('ban', 'kick')",
        scadenza=Scadenza(
-           "CASE WHEN motivo = 'ban' THEN NULL ELSE COALESCE(scade_il, ultimo_il + interval '365 days') END", 0),
+           "COALESCE(scade_il, CASE WHEN motivo = 'ban' THEN NULL ELSE ultimo_il + interval '365 days' END)", 0),
        nota="D67: AES-256-GCM, chiave VERIFY_IP_ENCRYPTION_KEY; 30 giorni dopo l'uscita della persona o del bot dal "
-            "server (/privacy cancella prima); dopo un kick 180 giorni; dopo un ban finché è attivo e 30 giorni dopo lo "
-            "sblocco (la richiesta /privacy di chi è bannato o espulso si gestisce a mano); tetto di 365 giorni"),
+            "server (la cancellazione dei dati arriva prima); dopo un kick 180 giorni; dopo un ban finché è attivo e 30 giorni dopo lo "
+            "sblocco (la richiesta di cancellazione di chi è bannato o espulso si gestisce a mano); tetto di 365 giorni"),
     _t("verify_doppi", "Account doppi trovati dalla verifica web, per lo staff",
        colonne_utente=("user_id", "altro_user_id"), colonna_server="guild_id", utente="cancella",
        esporta=True, escludi_dall_esportazione=("user_id", "altro_user_id"), scadenza=Scadenza("trovato_il", 90),

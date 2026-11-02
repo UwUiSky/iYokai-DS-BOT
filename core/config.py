@@ -281,6 +281,9 @@ class Config:
     # — in quel caso il restore via OAuth resta disattivato (nessun
     # crash, il chiamante lo controlla esplicitamente).
     OAUTH_ENCRYPTION_KEY: str = field(default="", repr=False)
+    # D67: chiave (AES-256, base64 di 32 byte) che cifra gli IP della verifica web (`core/verify_ip.py`).
+    # Vuota: gli IP non si salvano affatto (mai in chiaro). Cambiarla rende illeggibili gli IP già salvati.
+    VERIFY_IP_ENCRYPTION_KEY: str = field(default="", repr=False)
     # Porta su cui core/restore_web_server.py ascolta le callback
     # OAuth2 di Discord dopo che un utente autorizza il restore
     # (indirizzo: WEB_BIND_HOST, condiviso con il server webhook sotto).
@@ -447,6 +450,7 @@ def _load_config() -> Config:
         WEB_PANEL_PORT=_optional_int("WEB_PANEL_PORT", 8422),
         WEB_PANEL_TRUSTED_PROXY=_optional("WEB_PANEL_TRUSTED_PROXY", ""),
         OAUTH_ENCRYPTION_KEY=_optional("OAUTH_ENCRYPTION_KEY", ""),
+        VERIFY_IP_ENCRYPTION_KEY=_optional("VERIFY_IP_ENCRYPTION_KEY", ""),
         RESTORE_WEB_PORT=_optional_int("RESTORE_WEB_PORT", 8420),
         ALERTS_WEBHOOK_PORT=_optional_int("ALERTS_WEBHOOK_PORT", 8421),
         ALERTS_WEBHOOK_PUBLIC_BASE_URL=_optional("ALERTS_WEBHOOK_PUBLIC_BASE_URL", ""),
