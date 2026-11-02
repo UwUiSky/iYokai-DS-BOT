@@ -5,7 +5,7 @@ VPN e proxy nella verifica web (D64), senza rete né Discord: IP controllabili, 
 (IPv4 e IPv6), ASN, nodi Tor, intestazioni di proxy, fuso orario del browser e la regola che decide.
 Un segnale forte blocca; uno debole (fuso, intestazione Via) da solo no, due insieme sì.
 Gli IP privati, locali e riservati non si controllano mai: un test o una rete di casa non è bloccata.
-Funzioni coperte: SPEC §4.2 (VPN e proxy, D64)
+Funzioni coperte: SPEC §4.2 (VPN e proxy, D64; soglia dello storico condiviso, D67)
 """
 
 from __future__ import annotations
@@ -204,3 +204,41 @@ def decidi(forti: Iterable[str], deboli: Iterable[str]) -> Rilevazione:
 
 def testo_metodi(metodi: Iterable[str]) -> str:
     return ",".join(metodi)
+
+
+# ------------------------------------------------- storico condiviso (D67)
+SOGLIA_APPROVAZIONI = 3
+DISTANZA_MINIMA_SECONDI = 3600  # due clic nella stessa ora contano come uno
+MASSIMO_RIGHE_STORICO = 50  # il controllo prova le combinazioni: il tetto lo tiene corto
+
+
+def _compatibili(a, b) -> bool:
+    return (
+        a["guild_id"] != b["guild_id"]
+        and a["founder_id"] != b["founder_id"]
+        and a["admin_id"] != b["admin_id"]
+        and abs((a["creato_il"] - b["creato_il"]).total_seconds()) >= DISTANZA_MINIMA_SECONDI
+    )
+
+
+def storico_basta(righe, minimo: int = SOGLIA_APPROVAZIONI) -> bool:
+    """
+    D67: il «Lascia passare» di altri server vale solo con almeno `minimo` approvazioni di server diversi,
+    date a un'ora di distanza una dall'altra, da founder diversi e da admin diversi. Vale la scelta migliore:
+    basta un gruppo di `minimo` righe tutte diverse fra loro. Le righe senza founder o admin (di prima della
+    regola) non contano. Righe: guild_id, founder_id, admin_id, creato_il.
+    """
+    valide = [
+        r for r in righe
+        if r["founder_id"] is not None and r["admin_id"] is not None and r["creato_il"] is not None
+    ][:MASSIMO_RIGHE_STORICO]
+
+    def cerca(scelte: list, da: int) -> bool:
+        if len(scelte) >= minimo:
+            return True
+        for i in range(da, len(valide)):
+            if all(_compatibili(valide[i], s) for s in scelte) and cerca(scelte + [valide[i]], i + 1):
+                return True
+        return False
+
+    return cerca([], 0)

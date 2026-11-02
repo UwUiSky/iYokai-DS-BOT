@@ -303,19 +303,28 @@ def test_tabella_nel_registro_dei_dati_con_scadenza():
 
 
 # ----------------------------------------------------- D65: storico condiviso
+async def _tre_approvazioni(clean_db, user_id, server):
+    """D67: tre approvazioni valide (founder e admin diversi, a ore di distanza)."""
+    for n, guild_id in enumerate(server):
+        await clean_db.execute(
+            "INSERT INTO verify_vpn_storico (guild_id, user_id, metodo, founder_id, admin_id, creato_il) "
+            "VALUES ($1, $2, 'tor', $3, $4, now() - make_interval(hours => $5))",
+            guild_id, user_id, 1000 + n, 2000 + n, n * 3,
+        )
+
+
 @pytest.mark.asyncio
 async def test_se_altri_server_l_hanno_accettata_qui_passa_e_gli_admin_vedono_il_numero(monkeypatch, clean_db):
     amb = _ambiente(monkeypatch, clean_db)
     await _prepara(clean_db)
     altro = fake_guild(guild_id=GUILD + 1, name="Server Segreto", owner_id=1)
     amb.bot.get_guild = MagicMock(side_effect=lambda gid: altro if gid == GUILD + 1 else amb.guild)
-    assert await amb.repo.lascia_passare(GUILD + 1, 90) is True
-    assert await amb.repo.lascia_passare(GUILD + 2, 90) is True
+    await _tre_approvazioni(clean_db, 90, (GUILD + 1, GUILD + 2, GUILD + 3))
     ok, _ = await _verifica(amb, 90, IP_VPN)
     assert ok and amb.cog.run_checks_and_finalize.await_count == 1  # passa, nonostante la VPN
     amb.log.send.assert_awaited_once()
     embed = amb.log.send.await_args.kwargs["embed"]
-    assert "già stato accettato da 2 server nonostante VPN/proxy rilevato" in embed.description
+    assert "già stato accettato da 3 server nonostante VPN/proxy rilevato" in embed.description
     assert "lasciato passare" in embed.description
     assert "Server Segreto" not in embed.description  # di base solo il numero
     assert (await amb.repo.leggi(GUILD, 90))["esito"] == "da_storico"
@@ -331,8 +340,7 @@ async def test_il_nome_si_vede_solo_se_quel_server_ha_dato_il_consenso(monkeypat
     chiuso = fake_guild(guild_id=GUILD + 2, name="Server Chiuso", owner_id=1)
     amb.bot.get_guild = MagicMock(side_effect=lambda gid: {GUILD + 1: altro, GUILD + 2: chiuso}.get(gid, amb.guild))
     await database_module.db.set_guild_setting(GUILD + 1, "verify_condividi_nome", True)
-    await amb.repo.lascia_passare(GUILD + 1, 91)
-    await amb.repo.lascia_passare(GUILD + 2, 91)
+    await _tre_approvazioni(clean_db, 91, (GUILD + 1, GUILD + 2, GUILD + 3))
     await _verifica(amb, 91, IP_VPN)
     descrizione = amb.log.send.await_args.kwargs["embed"].description
     assert "Server Aperto" in descrizione and "Server Chiuso" not in descrizione
