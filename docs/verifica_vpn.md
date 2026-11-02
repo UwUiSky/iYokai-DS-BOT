@@ -21,6 +21,11 @@ dell'IP (un'ora) e tetto giornaliero (`VPN_SERVIZIO_TETTO`, base 900; il livello
 giorno). Timeout, errore o tetto finito: la verifica prosegue senza il servizio. Un reverse proxy locale non
 dichiarato tra i fidati non fa scattare le intestazioni (altrimenti bloccherebbe tutti).
 
+Grandi reti bloccate di base dall'elenco ASN (data center, non accessi di casa): Google (AS15169), Amazon
+(AS16509, AS14618), Microsoft (AS8075), Hetzner (AS24940), OVH (AS16276), DigitalOcean (AS14061), Linode
+(AS63949), Vultr (AS20473), Alibaba (AS45102). Chi esce da queste reti per motivi veri (desktop remoto,
+browser in cloud, alcune reti aziendali) si sblocca con «Lascia passare».
+
 ## Come aggiornare
 - `python3 scripts/aggiorna_geoip.py` (mensile): paesi e ASN di DB-IP in `data/geoip/`; metti i percorsi in `GEOIP_PAESI_MMDB` e `GEOIP_ASN_MMDB`.
 - `python3 scripts/aggiorna_vpn.py` (settimanale): ASN, Tor e reti in `data/vpn/`. Il bot rilegge i file entro un minuto. Un file scaricato rotto o troppo piccolo non sostituisce quello buono. Le reti più larghe di /8 (IPv4) o /16 (IPv6) negli elenchi si ignorano: sarebbero un errore della fonte.
