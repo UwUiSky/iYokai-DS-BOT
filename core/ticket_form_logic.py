@@ -200,3 +200,30 @@ class Media:
         if self.media is None:
             return "nessun voto"
         return f"{self.media:.1f}/5 ({self.voti} voti)"
+
+
+# ----------------------------------------------------------------------
+# TKT-006: motivi pronti del pannello
+# ----------------------------------------------------------------------
+MAX_MOTIVI = 24  # più «Altro» = 25 voci, il tetto di un menu di Discord
+MAX_ETICHETTA_MOTIVO = 80
+MAX_TESTO_MOTIVO = 512
+VALORE_ALTRO = "altro"
+
+
+def motivo_valido(etichetta: str, testo: str | None) -> tuple[str, str | None]:
+    """Etichetta (1–80) e testo (≤ 512, facoltativo) di un motivo pronto."""
+    etichetta = (etichetta or "").strip()
+    testo = (testo or "").strip() or None
+    if not 1 <= len(etichetta) <= MAX_ETICHETTA_MOTIVO:
+        raise ErroreConfigurazione(f"L'etichetta del motivo va da 1 a {MAX_ETICHETTA_MOTIVO} caratteri.")
+    if testo is not None and len(testo) > MAX_TESTO_MOTIVO:
+        raise ErroreConfigurazione(f"Il testo del motivo è lungo al massimo {MAX_TESTO_MOTIVO} caratteri.")
+    return etichetta, testo
+
+
+def opzioni_motivi(motivi) -> list[tuple[str, str, str | None]]:
+    """(valore, etichetta, emoji) delle voci del menu: i motivi (valore = id) e in fondo «Altro»."""
+    voci = [(str(m.id), m.etichetta[:MAX_ETICHETTA_MOTIVO], m.emoji) for m in list(motivi)[:MAX_MOTIVI]]
+    voci.append((VALORE_ALTRO, "Altro", None))
+    return voci

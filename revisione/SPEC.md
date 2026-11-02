@@ -1293,7 +1293,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 21/10:** `remove` toglie anche il ruolo storico (M 6.7).
 - `[x]` 13.14 Apertura da comando (`/ticket apri`): pannello o motivo, lo staff anche per conto di un
   utente, con il link di un messaggio citato e, a scelta, il suo autore (TKT-007/008/009; il menu col
-  tasto destro sarebbe un comando di primo livello in più: si usa il link). (da verificare live)
+  tasto destro: dal 02/11 c'è il menu «Apri ticket» sul messaggio, r16ticket T1). (da verificare live)
 - `[x]` 13.15 Regole di apertura per pannello e per server: tetto di ticket aperti, ruoli esenti, pausa
   tra due aperture con azzeramento, regole di accesso per ruolo, lista nera, orari con fuso e
   comportamento fuori orario, sospensione con motivo (TKT-017…024; `/admin-ticket-opzioni limiti|orari|accesso`,
@@ -1312,6 +1312,12 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   (TKT-054, 055, 057, 075; `/admin-ticket-opzioni chiusura|messaggi`). (da verificare live)
 
 - `[x]` 13.20 Chiusura in due passi (TKT-051, 063, 027, 026; migrazione 0302): `/admin-ticket-opzioni chiusura due_passi:sì` tiene il canale dopo la chiusura (l'utente non lo vede più) con Riapri, Transcript, Elimina; `elimina_dopo_ore`, `categoria_chiusi`, prefissi `nome_chiuso` e `nome_preso`; `/ticket riapri`. Prova: `tests/test_ticket_chiusi.py`
+
+- `[x]` 13.21 Blocco T1 del catalogo (D66, migrazioni 0520–0521): motivi pronti per pannello con «Altro»
+  (TKT-006; `/admin-ticket pannelli motivo-aggiungi|motivo-togli`, menu a scelta dopo il clic sul pannello),
+  menu messaggio «Apri ticket» (TKT-009), livello addetto/admin dei ruoli (TKT-045; `/admin-ticket ruolo aggiungi livello:`;
+  senza ruoli admin vale lo staff come prima), ticket «solo admin» (TKT-046; `/admin-ticket-opzioni accesso solo_admin:`
+  e menu «Gestisci» sul benvenuto, `tkt:gst:<id>`). (da verificare live)
 
 ## §14 UTILITY & SERVER MANAGEMENT
 

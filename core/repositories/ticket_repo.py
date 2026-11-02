@@ -46,6 +46,7 @@ class Ticket:
     chiusura_richiesta_at: datetime | None = None
     ruoli_dati: tuple[int, ...] = ()
     note_thread_id: int | None = None
+    solo_admin: bool = False
 
 
 @dataclass(frozen=True)
@@ -256,6 +257,39 @@ class TicketRepository:
             "SELECT * FROM tickets WHERE channel_id = $1", channel_id
         )
         return _row_to_ticket(row) if row else None
+
+    async def set_solo_admin(self, channel_id: int, valore: bool) -> bool:
+        """TKT-046: il ticket è visibile solo agli admin dei ticket."""
+        esito = await self._pool.execute(
+            "UPDATE tickets SET solo_admin = $2 WHERE channel_id = $1", channel_id, valore
+        )
+        return esito.endswith(" 1")
+
+    # ------------------------------------------------------------ TKT-045 livelli dei ruoli
+    async def imposta_livello_ruolo(self, guild_id: int, role_id: int, livello: str) -> None:
+        await self._pool.execute(
+            "INSERT INTO ticket_ruoli_livello (guild_id, role_id, livello) VALUES ($1, $2, $3) "
+            "ON CONFLICT (guild_id, role_id) DO UPDATE SET livello = EXCLUDED.livello",
+            guild_id, role_id, livello,
+        )
+
+    async def togli_livello_ruolo(self, guild_id: int, role_id: int) -> None:
+        await self._pool.execute(
+            "DELETE FROM ticket_ruoli_livello WHERE guild_id = $1 AND role_id = $2", guild_id, role_id
+        )
+
+    async def livelli_ruoli(self, guild_id: int) -> dict[int, str]:
+        righe = await self._pool.fetch(
+            "SELECT role_id, livello FROM ticket_ruoli_livello WHERE guild_id = $1", guild_id
+        )
+        return {r["role_id"]: r["livello"] for r in righe}
+
+    async def ruoli_admin(self, guild_id: int) -> list[int]:
+        righe = await self._pool.fetch(
+            "SELECT role_id FROM ticket_ruoli_livello WHERE guild_id = $1 AND livello = 'admin' ORDER BY role_id",
+            guild_id,
+        )
+        return [r["role_id"] for r in righe]
 
     async def claim_ticket(self, channel_id: int, staff_id: int, *, solo_se_libero: bool = False) -> bool:
         """Presa in carico; con `solo_se_libero` (TKT-052) vince solo il primo."""
@@ -606,6 +640,7 @@ def _row_to_ticket(row) -> Ticket:
         chiusura_richiesta_at=row["chiusura_richiesta_at"],
         ruoli_dati=tuple(row["ruoli_dati"] or ()),
         note_thread_id=row["note_thread_id"],
+        solo_admin=row["solo_admin"],
     )
 
 

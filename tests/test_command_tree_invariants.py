@@ -146,7 +146,7 @@ def _radici(bot):
     """Comandi globali più `/owner`, che vive solo nel server dell'owner (gruppo condiviso)."""
     from core.command_groups import GRUPPI
 
-    radici = list(bot.tree.get_commands())
+    radici = list(bot.tree.get_commands(type=discord.AppCommandType.chat_input))
     assert bot.tree.get_command("owner") is None, "/owner non deve stare nell'albero globale"
     if GRUPPI["owner"].commands:
         radici.append(GRUPPI["owner"])

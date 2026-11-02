@@ -83,9 +83,81 @@ def embed_opzioni(panel: PannelloTicket, o: logica.Opzioni) -> discord.Embed:
     return embed
 
 
+NOME_MENU_APRI = "Apri ticket"
+
+
+class ScelteMenuApri(discord.ui.View):
+    """TKT-009: allo staff il menu offre anche di aggiungere al ticket l'autore del messaggio."""
+
+    def __init__(self, cog, messaggio: discord.Message, etichette: tuple[str, str]) -> None:
+        super().__init__(timeout=120)
+        self._messaggio = messaggio
+        for aggiungi, etichetta in zip((False, True), etichette):
+            bottone = discord.ui.Button(
+                label=etichetta[:80], style=discord.ButtonStyle.primary if aggiungi else discord.ButtonStyle.secondary
+            )
+            bottone.callback = self._crea_callback(cog, aggiungi)
+            self.add_item(bottone)
+
+    def _crea_callback(self, cog, aggiungi: bool):
+        async def callback(interaction: discord.Interaction) -> None:
+            await interaction.response.defer(ephemeral=True)
+            await cog.apri_dal_messaggio(interaction, self._messaggio, aggiungi)
+
+        return callback
+
+
 class TicketOpzioniCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        self._menu_apri = app_commands.ContextMenu(name=NOME_MENU_APRI, callback=self.menu_apri_ticket)
+        self._menu_apri.guild_only = True
+
+    async def cog_load(self) -> None:
+        await super().cog_load()
+        self.bot.tree.add_command(self._menu_apri)
+
+    async def cog_unload(self) -> None:
+        self.bot.tree.remove_command(NOME_MENU_APRI, type=discord.AppCommandType.message)
+        await super().cog_unload()
+
+    # ---------------------------------------------------------------- TKT-009 tasto destro
+    async def apri_dal_messaggio(self, interaction: discord.Interaction, messaggio: discord.Message, aggiungi_autore: bool) -> None:
+        """Apre il ticket classico citando il messaggio (interazione già deferred)."""
+        guild = interaction.guild
+        category_id = await db.get_guild_setting(guild.id, SETTING_CATEGORY)
+        category = guild.get_channel(category_id) if category_id else None
+        if not isinstance(category, discord.CategoryChannel):
+            await interaction.followup.send(await testo_per(interaction, "opzioni_manca_la_categoria_dei_ticket"), ephemeral=True)
+            return
+        await apri_da_comando(interaction, guild, category, None, link=messaggio.jump_url, aggiungi_autore=aggiungi_autore)
+
+    async def menu_apri_ticket(self, interaction: discord.Interaction, message: discord.Message) -> None:
+        guild = interaction.guild
+        if guild is None or not await db.is_module_active_for_guild(guild.id, MODULE_TICKETS):
+            await interaction.response.send_message(await testo_per(interaction, "opzioni_il_sistema_di_ticket_non"), ephemeral=True)
+            return
+        if message.guild is None or message.guild.id != guild.id:
+            await interaction.response.send_message(await testo_per(interaction, "tickets_menu_apri_non_utilizzabile"), ephemeral=True)
+            return
+        utente = interaction.user
+        puo_aggiungere = (
+            isinstance(utente, discord.Member)
+            and utente.guild_permissions.manage_messages
+            and await _membro_staff(utente, guild.id, None)
+        )
+        if puo_aggiungere:
+            await interaction.response.send_message(
+                await testo_per(interaction, "tickets_menu_apri_staff"),
+                view=ScelteMenuApri(self, message, (
+                    await testo_per(interaction, "tickets_apri_semplice"),
+                    await testo_per(interaction, "tickets_apri_con_autore"),
+                )),
+                ephemeral=True,
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        await self.apri_dal_messaggio(interaction, message, False)
 
     # ---------------------------------------------------------------- aiuti
     @staticmethod
@@ -185,7 +257,10 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo("admin-ticket-opzioni", nome="accesso", descrizione="Chi può aprire: regole per ruolo, lette dall'alto.")
     @richiedi(Livello.ADMIN)
-    @app_commands.describe(pannello="Il pannello", ruolo="Il ruolo", regola="Permetti, nega o togli la regola")
+    @app_commands.describe(
+        pannello="Il pannello", ruolo="Il ruolo", regola="Permetti, nega o togli la regola",
+        solo_admin="Il ticket nasce visibile solo agli admin dei ticket",
+    )
     @app_commands.choices(
         regola=[app_commands.Choice(name=n, value=n) for n in ("permetti", "nega", "togli")]
     )
@@ -194,11 +269,22 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
         self,
         interaction: discord.Interaction,
         pannello: app_commands.Range[str, 1, 50],
-        ruolo: discord.Role,
-        regola: app_commands.Choice[str],
+        ruolo: discord.Role | None = None,
+        regola: app_commands.Choice[str] | None = None,
+        solo_admin: bool | None = None,
     ) -> None:
         panel = await self._pannello(interaction, pannello)
         if panel is None:
+            return
+        if solo_admin is not None:
+            await ticket_opzioni_repo.imposta(panel.id, solo_admin=solo_admin)
+        if ruolo is None or regola is None:
+            if solo_admin is None:
+                await interaction.response.send_message(await testo_per(interaction, "opzioni_accesso_niente_da_fare"), ephemeral=True)
+            else:
+                await interaction.response.send_message(
+                    await testo_per(interaction, "opzioni_solo_admin_impostato", valore="sì" if solo_admin else "no"), ephemeral=True
+                )
             return
         permetti = {"permetti": True, "nega": False}.get(regola.value)
         try:

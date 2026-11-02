@@ -359,13 +359,15 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 18:
 - **`/admin-ticket pannelli modulo-aggiungi`** — Aggiungi una domanda al modulo (max 5).
 - **`/admin-ticket pannelli modulo-mostra`** — Mostra le domande del modulo di un pannello.
 - **`/admin-ticket pannelli modulo-togli`** — Togli una domanda dal modulo.
+- **`/admin-ticket pannelli motivo-aggiungi`** — Aggiungi un motivo pronto al pannello (max 24).
+- **`/admin-ticket pannelli motivo-togli`** — Togli un motivo pronto dal pannello (senza numero: li elenca).
 - **`/admin-ticket pannelli pubblica`** — Pubblica qui i bottoni di uno o più pannelli.
 - **`/admin-ticket pannelli rimuovi`** — Elimina un pannello e il suo modulo.
 - **`/admin-ticket risposte elenco`** — Elenca le risposte standard del server.
 - **`/admin-ticket risposte elimina`** — Elimina una risposta standard.
 - **`/admin-ticket risposte modifica`** — Correggi una risposta standard.
 - **`/admin-ticket risposte standard`** — Risposte standard imparate dallo staff.
-- **`/admin-ticket ruolo aggiungi`** — Aggiungi un ruolo di supporto.
+- **`/admin-ticket ruolo aggiungi`** — Aggiungi un ruolo di supporto (livello addetto o admin).
 - **`/admin-ticket ruolo elenco`** — Elenca i ruoli di supporto configurati.
 - **`/admin-ticket ruolo togli`** — Rimuovi un ruolo di supporto.
 - **`/admin-ticket setup`** — Configura la categoria (e opzionalmente il ruolo di supporto) per i ticket.
