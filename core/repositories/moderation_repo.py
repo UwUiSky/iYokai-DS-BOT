@@ -351,11 +351,14 @@ class ModerationRepository:
         return [_row_to_case(row) for row in rows]
 
     async def revoke_all_warns(self, guild_id: int, revoked_by: int) -> int:
-        """Toglie in una query tutti i warn attivi del server (MOD-030). Ritorna quanti."""
+        """
+        Toglie in una query i warn attivi del server (MOD-030). Ritorna quanti. I nascosti
+        restano: non sono nel numero che lo staff conferma (count_active_warns).
+        """
         result = await self._pool.execute(
             """
             UPDATE moderation_cases SET active = FALSE, revoked_at = now(), revoked_by = $2
-            WHERE guild_id = $1 AND action_type = 'warn' AND active
+            WHERE guild_id = $1 AND action_type = 'warn' AND active AND NOT hidden
             """,
             guild_id, revoked_by,
         )

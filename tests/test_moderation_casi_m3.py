@@ -218,3 +218,15 @@ async def test_un_caso_nascosto_non_conta_nel_rischio_del_membro():
     await moderation_repo.set_case_hidden(G, n, True)
     await moderation_repo.set_case_hidden(G, b, True)
     assert await staff_carico_repo.segnali_utente(G, 1) == (0, 0, 0, 0, 0)
+
+
+async def test_azzera_tutti_toglie_proprio_i_warn_confermati():
+    """Il numero da confermare non conta i nascosti: allora non si tolgono nemmeno."""
+    await moderation_repo.create_case(G, 1, 10, "warn", "x")
+    nascosto = await moderation_repo.create_case(G, 2, 10, "warn", "y")
+    await moderation_repo.set_case_hidden(G, nascosto, True)
+    cog = ModerationCaseSystemCog(bot=None)
+    inter, _ = _inter()
+    await cog.warn_reset_all.callback(cog, inter, 1)
+    assert "1" in _testo(inter)
+    assert (await moderation_repo.get_case(G, nascosto)).active is True
