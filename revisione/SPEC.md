@@ -1322,6 +1322,13 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   risorsa remota (avatar a iniziali), formato testo|html|entrambi (TKT-070, 071; `/admin-ticket-opzioni chiusura formato:`)
   e ZIP con le sole immagini ricodificate dalla pipeline D62 più l'elenco degli altri file (TKT-074; `allegati_zip:`).
   Core in `core/ticket_transcript_logic.py`. File sopra 8 MiB: senza immagini, poi in parti. (da verificare live)
+- `[x]` 13.23 Blocco T3 del catalogo (D66, migrazioni 0522 e 0525): menu «Gestisci» con «Etichette» e «Sposta in un
+  altro pannello». Etichette colorate, 25 per server, nome ≤ 32, mostrate nel colore e in un campo del benvenuto, mai nel
+  nome del canale (TKT-068; `/admin-ticket etichette aggiungi|togli|elenco`). Spostamento: categoria, permessi dello staff,
+  pannello nel database e avviso nel canale; categoria piena = errore chiaro (TKT-067). Articoli (max 200, titolo ≤ 100,
+  testo ≤ 4.000): `/admin-ticket risposte articolo` (finestra, correzione, eliminazione), invio a mano con il completamento di
+  `/ticket rispondi` (valore `a:<numero>`) e suggerimento nel ticket appena aperto per parole chiave, senza AI (TKT-079).
+  Core in `core/ticket_gestione_logic.py` e `core/repositories/ticket_gestione_repo.py`. (da verificare live)
 
 ## §14 UTILITY & SERVER MANAGEMENT
 

@@ -4,8 +4,8 @@
 27/10/2026 · ramo `feat/r10logt` (copia /home/claude/wt/r10logt, DB iyokai_wr10logt) · migrazioni 0300-0309 (usate 0300, 0301, 0302)
 
 ## In corso
-- r16ticket (ramo feat/r16ticket, DB iyokai_wticket, migrazioni 0520-0527): T1 fatto (e8dfb0d), T2 fatto (TKT-070/071/074, 0524). Previsione: T3 poi rapporto.
-- Prossimo: T3 (TKT-067/068/079 nel menu Gestisci `MenuGestisci` in cogs/tickets/tickets.py), T4 (029/064/035; riserva_canali va in una migrazione sua, 0524 e già applicata), T5/T6 = issue #156 e #157.
+- r16ticket (ramo feat/r16ticket, DB iyokai_wticket, migrazioni 0520-0527): T1 fatto (e8dfb0d), T2 fatto (09934c4), T3 fatto (TKT-067/068/079, 0522+0525). Stop dopo T3: rapporto.
+- Prossimo (per chi riprende): T4 (029/064/035) nel ramo; T3 era (TKT-067/068/079 nel menu Gestisci `MenuGestisci` in cogs/tickets/tickets.py), T4 (029/064/035; riserva_canali va in una migrazione sua, 0524 e già applicata), T5/T6 = issue #156 e #157.
 - Smoke da fare dall'orchestratore.
 
 ## Fatto

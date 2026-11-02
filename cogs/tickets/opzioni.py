@@ -38,6 +38,7 @@ from core.i18n import testo_per
 from core.repositories.ticket_form_repo import PannelloTicket, ticket_form_repo
 from core.repositories.ticket_opzioni_repo import TroppeRegole, ticket_opzioni_repo
 from core.role_safety import check_role_assignable
+from core.ui_base import BaseView
 
 logger = logging.getLogger("iyokai.tickets.opzioni")
 
@@ -86,7 +87,7 @@ def embed_opzioni(panel: PannelloTicket, o: logica.Opzioni) -> discord.Embed:
 NOME_MENU_APRI = "Apri ticket"
 
 
-class ScelteMenuApri(discord.ui.View):
+class ScelteMenuApri(BaseView):
     """TKT-009: allo staff il menu offre anche di aggiungere al ticket l'autore del messaggio."""
 
     def __init__(self, cog, messaggio: discord.Message, etichette: tuple[str, str]) -> None:

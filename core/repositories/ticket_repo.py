@@ -258,6 +258,11 @@ class TicketRepository:
         )
         return _row_to_ticket(row) if row else None
 
+    async def set_panel(self, channel_id: int, panel_id: int) -> bool:
+        """TKT-067: il ticket passa a un altro pannello."""
+        esito = await self._pool.execute("UPDATE tickets SET panel_id = $2 WHERE channel_id = $1", channel_id, panel_id)
+        return esito.endswith(" 1")
+
     async def set_solo_admin(self, channel_id: int, valore: bool) -> bool:
         """TKT-046: il ticket è visibile solo agli admin dei ticket."""
         esito = await self._pool.execute(

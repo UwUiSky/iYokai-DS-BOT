@@ -117,7 +117,13 @@ from core.ticket_logic import (
     split_text_by_size,
     truncate_label,
 )
+from core import ticket_gestione_logic as gestione
 from core import ticket_transcript_logic as tr_logic
+from core.repositories.ticket_gestione_repo import (
+    EtichettaGiaEsistente,
+    TroppeEtichette,
+    ticket_gestione_repo,
+)
 from core.immagini_pipeline import analizza_immagine
 from core.immagini_byte_logic import PULITA
 from core.ticket_transcript_logic import AllegatoT
@@ -627,6 +633,10 @@ async def _crea_ticket(
 
     await _avvisi_di_apertura(channel, guild, utente, opzioni, reperibili, ticket_number)
     await _prima_risposta_ai(interaction.client, channel, utente.id, guild.id, panel_id, motivo, campi)
+    try:
+        await suggerisci_articolo(channel, guild.id, motivo, campi)
+    except Exception:  # noqa: BLE001 - il ticket esiste già: il suggerimento non lo blocca
+        logger.warning("Articolo suggerito non riuscito nel ticket %s.", channel.id, exc_info=True)
 
     if panel is not None and panel.autoclose_minutes:
         try:
@@ -1154,7 +1164,156 @@ async def _etichette_gestisci(interaction) -> dict[str, str]:
         "segnaposto": await testo_per(interaction, "tickets_gestisci_segnaposto", pubblica=True),
         "solo_admin": await testo_per(interaction, "tickets_gestisci_solo_admin", pubblica=True),
         "tutti": await testo_per(interaction, "tickets_gestisci_tutto_lo_staff", pubblica=True),
+        "etichette": await testo_per(interaction, "tickets_gestisci_etichette", pubblica=True),
+        "sposta": await testo_per(interaction, "tickets_gestisci_sposta", pubblica=True),
     }
+
+
+async def sposta_ticket(channel, guild: discord.Guild, ticket, nuovo) -> str | None:
+    """
+    TKT-067: porta il ticket in un altro pannello. Cambia categoria, permessi dello staff e pannello nel database.
+    Restituisce None se è andato bene, altrimenti il codice dell'errore («categoria_mancante», «categoria_piena»);
+    in quel caso non cambia niente.
+    """
+    categoria = guild.get_channel(nuovo.category_id)
+    if not isinstance(categoria, discord.CategoryChannel):
+        return "categoria_mancante"
+    cambia_categoria = getattr(channel, "category_id", None) != categoria.id
+    if cambia_categoria and len(categoria.channels) >= 50:
+        return "categoria_piena"
+    vecchi = set(await _ruoli_staff(guild.id, ticket.panel_id))
+    ruoli_admin = await _ruoli_admin(guild.id)
+    nuovi = ruoli_con_accesso(await _ruoli_staff(guild.id, nuovo.id), ruoli_admin, ticket.solo_admin)
+    if cambia_categoria:
+        await channel.edit(category=categoria, reason="Ticket spostato in un altro pannello")
+    for role_id in vecchi - set(nuovi):
+        ruolo = guild.get_role(role_id)
+        if ruolo is not None and role_id != guild.id:
+            await channel.set_permissions(ruolo, overwrite=None, reason="Ticket spostato in un altro pannello")
+    for role_id in nuovi:
+        ruolo = guild.get_role(role_id)
+        if ruolo is not None and role_id != guild.id:
+            await channel.set_permissions(
+                ruolo,
+                overwrite=discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
+                reason="Ticket spostato in un altro pannello",
+            )
+    await ticket_repo.set_panel(channel.id, nuovo.id)
+    return None
+
+
+async def _esegui_sposta(interaction: discord.Interaction, ticket, nuovo) -> None:
+    errore = await sposta_ticket(interaction.channel, interaction.guild, ticket, nuovo)
+    if errore:
+        await interaction.followup.send(
+            await testo_per(interaction, "tickets_sposta_categoria_piena" if errore == "categoria_piena" else "tickets_sposta_categoria_mancante"),
+            ephemeral=True,
+        )
+        return
+    await interaction.followup.send(await testo_per(interaction, "tickets_sposta_fatto", name=nuovo.name), ephemeral=True)
+    try:
+        await interaction.channel.send(
+            await testo_per(interaction, "tickets_sposta_avviso", pubblica=True, chi=interaction.user.mention, name=nuovo.name),
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+    except discord.HTTPException:
+        logger.warning("Avviso di spostamento non inviato nel ticket %s.", interaction.channel.id)
+
+
+class ModuloSposta(BaseModal):
+    """TKT-067: con più di 24 pannelli il nome si scrive."""
+
+    def __init__(self, ticket, titolo: str, campo: str) -> None:
+        super().__init__(title=titolo[:45], timeout=300)
+        self._ticket = ticket
+        self.nome = discord.ui.TextInput(label=campo[:45], max_length=form.MAX_NOME_PANNELLO, custom_id="nome")
+        self.add_item(self.nome)
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        panel = await ticket_form_repo.pannello_per_nome(interaction.guild.id, self.nome.value.strip())
+        if panel is None:
+            await interaction.response.send_message(
+                await testo_per(interaction, "opzioni_nessun_pannello_chiamato", v1=self.nome.value.strip()[:100]), ephemeral=True,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        await _esegui_sposta(interaction, self._ticket, panel)
+
+
+class VistaSposta(BaseView):
+    """TKT-067: menu dei pannelli (fino a 24 + «Altri…»)."""
+
+    def __init__(self, ticket, pannelli) -> None:
+        super().__init__(timeout=180)
+        self._ticket = ticket
+        select = discord.ui.Select(
+            placeholder="…", options=[discord.SelectOption(label=etichetta, value=valore) for valore, etichetta in gestione.voci_sposta(pannelli, ticket.panel_id)]
+        )
+        select.callback = self._on_select
+        self.add_item(select)
+
+    async def _on_select(self, interaction: discord.Interaction) -> None:
+        scelto = self.children[0].values[0]
+        if scelto == gestione.VALORE_ALTRI:
+            await interaction.response.send_modal(ModuloSposta(
+                self._ticket, await testo_per(interaction, "tickets_sposta_altri_titolo"),
+                await testo_per(interaction, "tickets_sposta_altri_campo"),
+            ))
+            return
+        panel = await ticket_form_repo.pannello_per_id(int(scelto))
+        if panel is None or panel.guild_id != interaction.guild.id:
+            await interaction.response.send_message(await testo_per(interaction, "tickets_questo_pannello_non_esiste_piu"), ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        await _esegui_sposta(interaction, self._ticket, panel)
+
+
+class VistaEtichette(BaseView):
+    """TKT-068: scelta multipla delle etichette del ticket. Colora il benvenuto, mai il nome del canale (LIM-3)."""
+
+    def __init__(self, ticket, messaggio, etichette, nome_campo: str, assegnate=()) -> None:
+        super().__init__(timeout=180)
+        self._ticket, self._messaggio, self._nome_campo = ticket, messaggio, nome_campo
+        select = discord.ui.Select(
+            placeholder="…", min_values=0, max_values=max(1, len(etichette)),
+            options=[
+                discord.SelectOption(
+                    label=e.nome[:100], value=str(e.id), default=e.id in assegnate,
+                    emoji=e.emoji if e.emoji and looks_like_emoji(e.emoji) else None,
+                )
+                for e in etichette[:gestione.MAX_ETICHETTE]
+            ],
+        )
+        select.callback = self._on_select
+        self.add_item(select)
+
+    async def _on_select(self, interaction: discord.Interaction) -> None:
+        ids = [int(v) for v in self.children[0].values]
+        assegnate = await ticket_gestione_repo.assegna_etichette(self._ticket.id, interaction.guild.id, ids)
+        embed = discord.Embed.from_dict(self._messaggio.embeds[0].to_dict())
+        gestione.applica_etichette(embed, [(e.nome, e.colore) for e in assegnate], self._nome_campo)
+        await self._messaggio.edit(embeds=[embed])
+        await interaction.response.edit_message(content=await testo_per(interaction, "tickets_etichette_salvate"), view=None)
+
+
+async def suggerisci_articolo(channel, guild_id: int, motivo: str | None, campi) -> None:
+    """TKT-079: se la richiesta somiglia a un articolo approvato, lo propone nel ticket (parole chiave, senza AI)."""
+    testo = "\n".join([motivo or "", *(v for _, v in (campi or []))]).strip()
+    if not testo:
+        return
+    articoli = await ticket_gestione_repo.tutti_gli_approvati(guild_id)
+    scelto = gestione.scegli_articolo(articoli, testo) if articoli else None
+    if scelto is None:
+        return
+    try:
+        await channel.send(
+            embed=discord.Embed(title=truncate_label(scelto.titolo, 256), description=scelto.testo[:4000], color=discord.Color.green()),
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+        await ticket_gestione_repo.conta_uso(scelto.id)
+    except discord.HTTPException:
+        logger.warning("Articolo suggerito non inviato nel ticket %s.", channel.id)
 
 
 async def imposta_solo_admin(channel, guild: discord.Guild, ticket, attivo: bool) -> None:
@@ -1186,7 +1345,10 @@ class MenuGestisci(
     """Menu «Gestisci» dello staff sul messaggio di benvenuto. Per ora: solo admin. Le azioni nuove vanno qui, non in /ticket."""
 
     def __init__(self, ticket_id: int, etichette: dict[str, str] | None = None) -> None:
-        e = etichette or {"segnaposto": "Gestisci", "solo_admin": "Solo admin", "tutti": "Tutto lo staff"}
+        e = etichette or {
+            "segnaposto": "Gestisci", "solo_admin": "Solo admin", "tutti": "Tutto lo staff",
+            "etichette": "Etichette", "sposta": "Sposta in un altro pannello",
+        }
         super().__init__(
             discord.ui.Select(
                 custom_id=f"tkt:gst:{ticket_id}",
@@ -1194,6 +1356,8 @@ class MenuGestisci(
                 options=[
                     discord.SelectOption(label=e["solo_admin"][:100], value="solo_admin"),
                     discord.SelectOption(label=e["tutti"][:100], value="tutti"),
+                    discord.SelectOption(label=e["etichette"][:100], value="etichette"),
+                    discord.SelectOption(label=e["sposta"][:100], value="sposta"),
                 ],
             )
         )
@@ -1212,6 +1376,22 @@ class MenuGestisci(
         logger.exception("Errore nel menu Gestisci dei ticket: %s", error)
         await _rispondi_con_errore(interaction)
 
+    async def _etichette(self, interaction: discord.Interaction, ticket) -> None:
+        """TKT-068: le etichette le assegna ogni membro dello staff dei ticket."""
+        if not await _is_ticket_staff(interaction, ticket):
+            await interaction.response.send_message(await testo_per(interaction, "tickets_solo_lo_staff_permesso_manage_2"), ephemeral=True)
+            return
+        etichette = await ticket_gestione_repo.elenca_etichette(interaction.guild.id)
+        if not etichette or interaction.message is None or not interaction.message.embeds:
+            await interaction.response.send_message(await testo_per(interaction, "tickets_etichette_nessuna_definita"), ephemeral=True)
+            return
+        gia = [e.id for e in await ticket_gestione_repo.etichette_del_ticket(ticket.id)]
+        await interaction.response.send_message(
+            await testo_per(interaction, "tickets_etichette_scegli"),
+            view=VistaEtichette(ticket, interaction.message, etichette, await testo_per(interaction, "tickets_etichette_campo", pubblica=True), gia),
+            ephemeral=True,
+        )
+
     async def callback(self, interaction: discord.Interaction) -> None:
         ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id) if interaction.channel else None
         if ticket is None or ticket.id != self.ticket_id or ticket.status != "open":
@@ -1219,10 +1399,23 @@ class MenuGestisci(
                 await testo_per(interaction, "tickets_questo_comando_funziona_solo_dentro"), ephemeral=True
             )
             return
+        scelta = self.item.values[0]
+        if scelta == "etichette":
+            await self._etichette(interaction, ticket)
+            return
         if not await _is_ticket_admin(interaction, ticket):
             await interaction.response.send_message(await testo_per(interaction, "tickets_solo_admin_dei_ticket"), ephemeral=True)
             return
-        attivo = self.item.values[0] == "solo_admin"
+        if scelta == "sposta":
+            pannelli = await ticket_form_repo.elenca_pannelli(interaction.guild.id)
+            if not gestione.voci_sposta(pannelli, ticket.panel_id):
+                await interaction.response.send_message(await testo_per(interaction, "tickets_sposta_nessun_altro_pannello"), ephemeral=True)
+                return
+            await interaction.response.send_message(
+                await testo_per(interaction, "tickets_sposta_scegli"), view=VistaSposta(ticket, pannelli), ephemeral=True
+            )
+            return
+        attivo = scelta == "solo_admin"
         if attivo and not await _ruoli_admin(interaction.guild.id):
             await interaction.response.send_message(await testo_per(interaction, "tickets_solo_admin_nessun_ruolo"), ephemeral=True)
             return
@@ -1814,6 +2007,77 @@ class TicketsCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(await testo_per(interaction, "tickets_motivo_tolto", numero=numero), ephemeral=True)
         else:
             await interaction.response.send_message(await testo_per(interaction, "tickets_non_un_motivo", numero=numero), ephemeral=True)
+
+    @comando_di_gruppo(
+        "admin-ticket",
+        nome="aggiungi",
+        descrizione="Crea un'etichetta colorata per i ticket (max 25).",
+        sottogruppo=SOTTOGRUPPI["admin-ticket etichette"],
+    )
+    @app_commands.describe(
+        nome="Nome dell'etichetta (max 32 caratteri)", colore="Colore come #RRGGBB (di base blu)", emoji="Emoji accanto al nome"
+    )
+    async def etichetta_aggiungi(
+        self,
+        interaction: discord.Interaction,
+        nome: app_commands.Range[str, 1, gestione.MAX_NOME_ETICHETTA],
+        colore: app_commands.Range[str, 1, 7] | None = None,
+        emoji: app_commands.Range[str, 1, MAX_EMOJI_LENGTH] | None = None,
+    ) -> None:
+        if interaction.guild is None:
+            return
+        try:
+            nome = gestione.etichetta_valida(nome)
+            valore = gestione.colore_valido(colore)
+        except form.ErroreConfigurazione as errore:
+            await interaction.response.send_message(str(errore), ephemeral=True)
+            return
+        try:
+            await ticket_gestione_repo.aggiungi_etichetta(
+                interaction.guild.id, nome, valore, emoji if emoji and looks_like_emoji(emoji) else None
+            )
+        except TroppeEtichette:
+            await interaction.response.send_message(await testo_per(interaction, "tickets_troppe_etichette", massimo=gestione.MAX_ETICHETTE), ephemeral=True)
+            return
+        except EtichettaGiaEsistente:
+            await interaction.response.send_message(await testo_per(interaction, "tickets_etichetta_esiste", nome=nome), ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+            return
+        await interaction.response.send_message(
+            await testo_per(interaction, "tickets_etichetta_aggiunta", nome=nome), ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
+        )
+
+    @comando_di_gruppo(
+        "admin-ticket",
+        nome="togli",
+        descrizione="Togli un'etichetta (sparisce dai ticket che la hanno).",
+        sottogruppo=SOTTOGRUPPI["admin-ticket etichette"],
+    )
+    @app_commands.describe(nome="Il nome dell'etichetta")
+    async def etichetta_togli(
+        self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, gestione.MAX_NOME_ETICHETTA]
+    ) -> None:
+        if interaction.guild is None:
+            return
+        chiave = "tickets_etichetta_tolta" if await ticket_gestione_repo.togli_etichetta(interaction.guild.id, nome) else "tickets_etichetta_non_trovata"
+        await interaction.response.send_message(
+            await testo_per(interaction, chiave, nome=nome.strip()[:40]), ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
+        )
+
+    @comando_di_gruppo(
+        "admin-ticket",
+        nome="elenco",
+        descrizione="Elenca le etichette dei ticket.",
+        sottogruppo=SOTTOGRUPPI["admin-ticket etichette"],
+    )
+    async def etichetta_elenco(self, interaction: discord.Interaction) -> None:
+        if interaction.guild is None:
+            return
+        etichette = await ticket_gestione_repo.elenca_etichette(interaction.guild.id)
+        if not etichette:
+            await interaction.response.send_message(await testo_per(interaction, "tickets_nessuna_etichetta"), ephemeral=True)
+            return
+        righe = [f"{e.emoji + ' ' if e.emoji else ''}{e.nome} · #{e.colore:06X}" for e in etichette]
+        await interaction.response.send_message("\n".join(righe)[:2000], ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
 
     @comando_di_gruppo(
         "admin-ticket",
