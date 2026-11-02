@@ -1,0 +1,11 @@
+# Siti che pubblicano inviti ai server Discord (vetrine). Un dominio per riga.
+discord.me
+invite.gg
+disboard.org
+dsc.gg
+top.gg
+discadia.com
+discordservers.com
+discord.gg
+discord.link
+server-discord.com

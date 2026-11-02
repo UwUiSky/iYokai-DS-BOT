@@ -22,6 +22,7 @@ from core import livelli_funzione as livelli
 from core.command_sync import SincronizzatoreDifferito, StatoSyncDatabase, sincronizza_all_avvio
 from core.config import config
 from core.database import db
+from core.ui_base import BaseView
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ def _embed_pagina(titolo: str, livelli_scelti: tuple[str, ...], area: str | None
     return embed, livelli.voci_pagina(righe, pagina), pagina
 
 
-class ElencoLivelliView(discord.ui.View):
+class ElencoLivelliView(BaseView):
     """Elenco a pagine: bottoni avanti e indietro, menu (al massimo 25 voci) per vedere una funzione."""
 
     def __init__(self, titolo: str, livelli_scelti: tuple[str, ...], area: str | None, autore_id: int, pagina: int = 0) -> None:
@@ -60,6 +61,8 @@ class ElencoLivelliView(discord.ui.View):
             self._voci = []
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
         if interaction.user.id != self.autore_id:
             await interaction.response.send_message("Questo elenco è di un altro utente.", ephemeral=True)
             return False

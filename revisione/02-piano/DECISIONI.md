@@ -977,3 +977,26 @@ spenta; prove non immagine (PDF, TXT) conservate grezze, mai aperte, solo dal pa
 AutoMod 0 (mai, il server sceglie); ZIP dei ticket solo con immagini ricodificate; Google Drive più avanti con OAuth
 dal pannello, ora archivio interno + canale archivio (D18); Bloxlink con chiave per server cifrata; ticket a thread
 come opzione (issue a parte); dehoist automatico spento.
+
+## D67 — Storico condiviso più severo, IP solo per l'owner, account rubati (02/11/2026, richiesta dell'owner)
+Aggiorna D64/D65.
+- **«Lascia passare» condiviso:** vale negli altri server solo se nello storico ci sono **almeno 3 approvazioni**
+  di server diversi, date in **momenti diversi** (non nella stessa ora), da server con **founder diversi** e da
+  **admin diversi** (chi ha premuto il bottone). Sotto la soglia vale solo nel server che l'ha dato.
+- **IP:** si salvano (cifrati) per sicurezza e li vede **solo l'owner del bot** (`/owner`, pannello owner), mai gli
+  admin dei server, mai nei log. Cancellazione: su richiesta con `/privacy`, oppure 30 giorni dopo che il server
+  viene eliminato o che la persona esce dal server. Dopo un **kick o un ban** i dati **restano**.
+  Nota di chi sviluppa: per il GDPR conviene un tetto anche per i ban (es. finché il ban è attivo e 30 giorni dopo
+  lo sblocco) e una richiesta `/privacy` di chi è bannato si gestisce a mano (interesse legittimo di sicurezza).
+- **Invito al ticket in privato:** obbligatorio per **ogni** blocco della verifica, anche captcha e bottone su
+  Discord, non solo la verifica web.
+- **Account rubato (truffe tipo finti giveaway):** di solito spamma messaggi inoltrati, uguali, ovunque. Il bot:
+  1) **un solo avviso riassuntivo** per persona: «account probabilmente compromesso, immagini malevole, N invii in
+  M canali», senza allegare né ricodificare le immagini (niente log da 100 righe, niente banda sprecata);
+  2) **limita subito** la persona (timeout di Discord: è Discord stesso a mostrarle il blocco quando prova a
+  scrivere) e cancella ciò che riesce a mandare;
+  3) le manda in privato: «Sei stato limitato da iYokai per una presunta violazione del tuo account: cambia la
+  password, attiva l'autenticazione a due fattori, controlla le app autorizzate; poi scrivimi qui»; il messaggio in
+  privato apre il ticket con lo staff dei server dove è stata limitata.
+  Limite di Discord: un bot non può mostrare un errore a schermo con testo suo su un messaggio normale; la cosa più
+  vicina è il timeout di Discord (avviso di sistema) + il messaggio privato con le istruzioni (D18).

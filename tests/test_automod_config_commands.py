@@ -144,8 +144,10 @@ async def test_actions_set_salva_le_azioni_scelte(cog):
         ban=False,
     )
 
-    settings = await automod_advanced_repo.get_settings(GUILD_ID)
-    assert settings.actions["anti_caps"] == ("delete", "warn")
+    # D63: le azioni dei filtri stanno nelle regole del server
+    from core import automod_regole_service as regole
+
+    assert [a.t for a in (await regole.regola_effettiva(GUILD_ID, "anti_caps")).azioni] == ["cancella", "warn"]
 
 
 @pytest.mark.asyncio
