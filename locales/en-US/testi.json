@@ -1674,6 +1674,7 @@
   "clear_reazioni_titolo": "🧹 Reactions removed",
   "casesystem_durata_membro_assente": "The member is not in the server: the timeout can't be changed.",
   "casesystem_durata_non_riuscita": "I couldn't change the duration: check my permissions and role position.",
+  "casesystem_durata_serve_permesso": "To change this duration you need the same permission as the sanction (ban, timeout or manage roles).",
   "casesystem_durata_cambiata": "Case #{case_number}: it now ends in {durata}.",
   "casesystem_durata_log": "⏱️ Duration changed (case #{case_number})",
   "casesystem_durata_nuova": "New duration",

@@ -72,6 +72,8 @@ logger = logging.getLogger(__name__)
 
 # File di esportazione: sotto i 10 MiB che Discord accetta.
 MAX_FILE_ESPORTAZIONE = 9 * 1024 * 1024
+# MOD-012: permesso che serve per cambiare la durata di ogni tipo di caso.
+PERMESSO_DURATA = {"tempban": "ban_members", "timeout": "moderate_members", "mute_role": "manage_roles"}
 # Warn del server: se ne leggono al massimo 200 (20 pagine da 10).
 MAX_WARN_ELENCO = 200
 
@@ -691,10 +693,20 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         if errore:
             await interaction.response.send_message(errore, ephemeral=True)
             return
+        # Il bot agisce per chi comanda: serve il permesso della sanzione e la gerarchia.
+        permessi = interaction.user.guild_permissions
+        if not (permessi.administrator or getattr(permessi, PERMESSO_DURATA[caso.action_type])):
+            await interaction.response.send_message(
+                await testo_per(interaction, "casesystem_durata_serve_permesso"), ephemeral=True
+            )
+            return
+        bersaglio = guild.get_member(caso.user_id)
+        if bersaglio is not None and not await check_can_moderate(interaction, bersaglio):
+            return
         await interaction.response.defer(ephemeral=True)
         fine = in_seconds(secondi)
         if caso.action_type == "timeout":
-            membro = guild.get_member(caso.user_id)
+            membro = bersaglio
             if membro is None:
                 await interaction.followup.send(await testo_per(interaction, "casesystem_durata_membro_assente"), ephemeral=True)
                 return

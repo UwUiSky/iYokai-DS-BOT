@@ -1674,6 +1674,7 @@
   "clear_reazioni_titolo": "🧹 Reazioni tolte",
   "casesystem_durata_membro_assente": "Il membro non è nel server: il timeout non si può cambiare.",
   "casesystem_durata_non_riuscita": "Non sono riuscito a cambiare la durata: controlla i miei permessi e la posizione del mio ruolo.",
+  "casesystem_durata_serve_permesso": "Per cambiare questa durata ti serve lo stesso permesso della sanzione (bannare, timeout o gestire i ruoli).",
   "casesystem_durata_cambiata": "Caso #{case_number}: ora finisce tra {durata}.",
   "casesystem_durata_log": "⏱️ Durata cambiata (caso #{case_number})",
   "casesystem_durata_nuova": "Nuova durata",

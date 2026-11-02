@@ -175,10 +175,7 @@ async def test_esporta_manda_un_file():
 
 async def test_durata_timeout_cambia_il_timeout():
     n = await moderation_repo.create_case(G, 1, 10, "timeout", "x", 600)
-    inter, _ = _inter()
-    membro = fake_member(1)
-    membro.edit = AsyncMock()
-    inter.guild.get_member = MagicMock(return_value=membro)
+    inter, membro = _scena_durata(discord.Permissions(moderate_members=True))
     cog = ModerationCaseSystemCog(bot=None)
     await cog.case_duration.callback(cog, inter, n, "2h")
     assert membro.edit.call_args.kwargs["timed_out_until"] > datetime.now(timezone.utc) + timedelta(hours=1, minutes=50)
@@ -230,3 +227,41 @@ async def test_azzera_tutti_toglie_proprio_i_warn_confermati():
     await cog.warn_reset_all.callback(cog, inter, 1)
     assert "1" in _testo(inter)
     assert (await moderation_repo.get_case(G, nascosto)).active is True
+
+
+def _scena_durata(permessi, posizione_membro=5):
+    """Moderatore (ruolo a 40) e membro col timeout, con i ruoli veri per la gerarchia."""
+    from tests.support.discord_fakes import fake_role
+
+    inter, _ = _inter()
+    server = inter.guild
+    server.owner_id = 1234
+    server.me.top_role = fake_role(role_id=3, position=50)
+    mod = fake_member(10, roles=[fake_role(role_id=1, position=40)], guild_permissions=permessi)
+    membro = fake_member(1, roles=[fake_role(role_id=2, position=posizione_membro)])
+    membro.edit = AsyncMock()
+    server.get_member = MagicMock(side_effect={10: mod, 1: membro}.get)
+    inter.user = mod
+    return inter, membro
+
+
+async def test_durata_di_un_tempban_serve_bannare(monkeypatch):
+    """Accorciare un tempban vuol dire sbannare: con il solo «Metti in timeout» non si può."""
+    import cogs.moderation.case_system as modulo
+
+    n = await moderation_repo.create_case(G, 1, 10, "tempban", "x", 86400)
+    pianifica = AsyncMock()
+    monkeypatch.setattr(modulo.scheduler, "schedule", pianifica)
+    inter, _ = _scena_durata(discord.Permissions(moderate_members=True))
+    cog = ModerationCaseSystemCog(bot=None)
+    await cog.case_duration.callback(cog, inter, n, "1m")
+    pianifica.assert_not_awaited()
+    assert (await moderation_repo.get_case(G, n)).duration_seconds == 86400
+
+
+async def test_durata_di_un_timeout_rispetta_la_gerarchia():
+    n = await moderation_repo.create_case(G, 1, 10, "timeout", "x", 600)
+    inter, membro = _scena_durata(discord.Permissions(moderate_members=True), posizione_membro=45)
+    cog = ModerationCaseSystemCog(bot=None)
+    await cog.case_duration.callback(cog, inter, n, "1m")
+    membro.edit.assert_not_awaited()
