@@ -29,6 +29,10 @@ def _pulito(monkeypatch):
     M._ultimi._data.clear()
     monkeypatch.setattr(M.scheduler, "schedule", AsyncMock(return_value=1))
     monkeypatch.setattr(M.scheduler, "cancel_for_user", AsyncMock())
+    yield
+    M._sospese._data.clear()  # una sospensione lasciata qui fermerebbe le azioni nei test di altri file (stesso server)
+    M._pause._data.clear()
+    M._ultimi._data.clear()
 
 
 def _bers(membro=None, guild=None, **kw):
