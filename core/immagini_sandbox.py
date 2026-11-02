@@ -169,6 +169,9 @@ async def esegui_locale(
         info, png = leggi_uscita(grezzo)
     except ValueError:
         return RisultatoSandbox("errore", {"motivo": "uscita_illeggibile"})
+    if info.get("esito") == "non_disponibile":
+        logger.error("Sandbox: il processo figlio non trova Pillow (interprete sbagliato?)")
+        return RisultatoSandbox("non_disponibile", info)
     return RisultatoSandbox("ok" if info.get("esito") == "ok" else "errore", info, png)
 
 

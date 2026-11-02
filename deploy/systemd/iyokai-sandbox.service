@@ -9,7 +9,8 @@ Type=simple
 # Utente di sistema senza shell e senza permessi (lo crea lo script nei passi di docs/immagini-sandbox.md).
 User=iyokai-sbx
 Group=iyokai-sbx
-ExecStart=/usr/bin/python3 -I /opt/iyokai/core/immagini_servizio.py
+# Lo stesso interprete del bot (quello con Pillow e zxing-cpp): senza, il filtro dice «sandbox non disponibile».
+ExecStart=/opt/iyokai/.venv/bin/python3 -I /opt/iyokai/core/immagini_servizio.py
 Environment=IYOKAI_QUARANTENA_DIR=/var/lib/iyokai/quarantena
 Environment=IYOKAI_SANDBOX_SOCKET=/run/iyokai-sbx/sock
 # Socket: cartella creata dal servizio, leggibile dal gruppo del bot (iyokai).

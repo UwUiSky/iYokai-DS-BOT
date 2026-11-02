@@ -28,6 +28,9 @@ Il bot scrive i file in quarantena (utente `iyokai`, file `0640`); il servizio l
 membro. Per usare altri percorsi: variabili `IYOKAI_QUARANTENA_DIR` (bot e servizio) e
 `IYOKAI_SANDBOX_SOCKET` (bot e servizio).
 
+`ExecStart` deve usare lo stesso interprete del bot (di solito quello del suo ambiente virtuale): con un
+Python senza Pillow il servizio risponde «sandbox non disponibile» e le immagini restano non analizzate.
+
 L'unità non usa `MemoryDenyWriteExecute`: provalo sul server e accendilo se Pillow e zxing-cpp
 continuano a funzionare.
 

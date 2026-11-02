@@ -5,6 +5,7 @@ Processo figlio della sandbox (D62): analizza UN'immagine della quarantena e scr
 stdout (lunghezza + JSON, poi lunghezza + PNG ricodificato). Parte con `python3 -I -B`, con i
 limiti di memoria, tempo e file messi da `core/immagini_sandbox.py`. Non parla con Discord né col
 database. Qualunque errore del decoder finisce in un esito «errore»: chi legge lo tratta da sospetto.
+Senza Pillow l'esito e' «non_disponibile» (manca la sandbox, non e' colpa dell'immagine).
 Funzioni coperte: SPEC §6 (D62)
 """
 
@@ -18,7 +19,10 @@ import struct
 import sys
 from pathlib import Path
 
-from PIL import Image
+try:
+    from PIL import Image
+except ImportError:  # interprete senza le librerie del bot: la sandbox non c'e', l'immagine non e' colpevole
+    Image = None
 
 RADICE = str(Path(__file__).resolve().parent.parent)
 if RADICE not in sys.path:  # con -I la cartella non c'e' di suo
@@ -134,6 +138,9 @@ def main(argv: list[str]) -> int:
     if len(argv) != 2 or not NOME.fullmatch(argv[1]):
         _scrivi({"esito": "errore", "motivo": "nome"})
         return 2
+    if Image is None:
+        _scrivi({"esito": "non_disponibile", "motivo": "pillow"})
+        return 0
     base = Path(os.environ.get("IYOKAI_QUARANTENA_DIR") or "/var/lib/iyokai/quarantena")
     info, png = analizza(base / argv[1])
     _scrivi(info, png)

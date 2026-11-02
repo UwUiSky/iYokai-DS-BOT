@@ -248,3 +248,16 @@ async def test_servizio_che_non_risponde_dopo_il_lavoro_non_ripiega_sulla_sandbo
         fine.set()
         server.close()
         await server.wait_closed()
+
+
+@pytest.mark.asyncio
+async def test_worker_senza_pillow_e_sandbox_non_disponibile_non_malevola(cartella):
+    # Un interprete senza Pillow (per esempio l'unita' con il python di sistema e non quello del bot) non deve
+    # far diventare malevola ogni immagine: e' la sandbox che manca.
+    nome = _metti(cartella, f.png())
+    codice = (
+        "import sys, runpy; sys.modules['PIL'] = None; "
+        f"sys.argv = ['w', {nome!r}]; runpy.run_path({str(sb.WORKER)!r}, run_name='__main__')"
+    )
+    r = await sb.esegui_locale(nome, comando=py(codice))
+    assert r.esito == "non_disponibile"
