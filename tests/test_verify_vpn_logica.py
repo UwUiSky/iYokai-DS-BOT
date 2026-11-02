@@ -143,3 +143,13 @@ def test_due_segnali_deboli_insieme_bloccano():
     r = logica.decidi([logica.METODO_TOR, logica.METODO_TOR], [logica.METODO_FUSO])  # niente doppioni
     assert r.metodi == (logica.METODO_TOR, logica.METODO_FUSO)
     assert logica.testo_metodi(r.metodi) == "tor,fuso"
+
+
+def test_reti_troppo_larghe_negli_elenchi_si_ignorano():
+    """Un elenco sbagliato con 0.0.0.0/0 o ::/0 bloccherebbe tutti: reti più larghe di /8 (IPv4) e /16 (IPv6) no."""
+    elenco = logica.ElencoReti.da_testo("0.0.0.0/0\n0.0.0.0/1\n::/0\n2000::/3\n4.0.0.0/8\n2600:1f00::/24\n")
+    assert len(elenco) == 2
+    assert not elenco.contiene(logica.ip_controllabile("9.9.9.9"))
+    assert not elenco.contiene(logica.ip_controllabile("2001:4860:4860::8888"))
+    assert elenco.contiene(logica.ip_controllabile("4.1.2.3"))
+    assert elenco.contiene(logica.ip_controllabile("2600:1f00::1"))

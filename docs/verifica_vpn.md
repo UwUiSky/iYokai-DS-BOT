@@ -23,7 +23,7 @@ dichiarato tra i fidati non fa scattare le intestazioni (altrimenti bloccherebbe
 
 ## Come aggiornare
 - `python3 scripts/aggiorna_geoip.py` (mensile): paesi e ASN di DB-IP in `data/geoip/`; metti i percorsi in `GEOIP_PAESI_MMDB` e `GEOIP_ASN_MMDB`.
-- `python3 scripts/aggiorna_vpn.py` (settimanale): ASN, Tor e reti in `data/vpn/`. Il bot rilegge i file entro un minuto. Un file scaricato rotto o troppo piccolo non sostituisce quello buono.
+- `python3 scripts/aggiorna_vpn.py` (settimanale): ASN, Tor e reti in `data/vpn/`. Il bot rilegge i file entro un minuto. Un file scaricato rotto o troppo piccolo non sostituisce quello buono. Le reti più larghe di /8 (IPv4) o /16 (IPv6) negli elenchi si ignorano: sarebbero un errore della fonte.
 - `python3 scripts/aggiorna_vpn.py --fusi`: rigenera `fuso_paesi.txt` dal database dei fusi di sistema.
 `asn_hosting.txt` e `fuso_paesi.txt` sono nel repository; gli altri elenchi sono generati (gitignore).
 

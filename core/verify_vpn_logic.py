@@ -28,6 +28,7 @@ METODI_DEBOLI = (METODO_FUSO, METODO_VIA)
 TUTTI_I_METODI = METODI_FORTI + METODI_DEBOLI
 
 _ASN_MASSIMO = 4294967295
+PREFISSO_MINIMO = {4: 8, 6: 16}  # una rete più larga in un elenco è un errore: bloccherebbe mezzo internet
 _FUSO = re.compile(r"^[A-Za-z][A-Za-z0-9_+\-]*(/[A-Za-z0-9_+\-]+){0,2}$")
 FUSO_MAX = 64
 
@@ -65,16 +66,21 @@ class ElencoReti:
 
     @classmethod
     def da_testo(cls, testo: str) -> ElencoReti:
-        """Una rete (o un indirizzo) per riga; `#` e `;` aprono un commento; le righe storte si ignorano."""
+        """
+        Una rete (o un indirizzo) per riga; `#` e `;` aprono un commento; le righe storte si ignorano,
+        e così le reti più larghe di /8 (IPv4) o /16 (IPv6).
+        """
         reti = []
         for riga in testo.splitlines():
             riga = riga.split("#", 1)[0].split(";", 1)[0].strip()
             if not riga:
                 continue
             try:
-                reti.append(ipaddress.ip_network(riga, strict=False))
+                rete = ipaddress.ip_network(riga, strict=False)
             except ValueError:
                 continue
+            if rete.prefixlen >= PREFISSO_MINIMO[rete.version]:
+                reti.append(rete)
         return cls(reti)
 
     def __len__(self) -> int:
