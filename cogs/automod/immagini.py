@@ -3,7 +3,8 @@ cogs/automod/immagini.py
 ========================
 Filtro delle immagini sospette (D62): ogni allegato immagine di un server con il filtro acceso passa
 dal percorso unico (core/immagini_pipeline.py: byte, libreria, quarantena, sandbox) e l'esito si applica
-con cancella, avviso o timeout, DM all'autore e riga nel log (senza ripubblicare il file). In piu' il
+con cancella, avviso o timeout, DM all'autore e riga nel log (senza ripubblicare il file). Vale per
+tutti, staff e canali o ruoli esenti compresi: un account staff rubato e' il caso tipico (D63). In piu' il
 comando dell'owner `/owner immagini-trappola` per la libreria condivisa (D39 per le immagini).
 Funzioni coperte: SPEC §6 (D62)
 Dipende da: core/immagini_pipeline.py, core/immagini_azione_logic.py, core/immagini_trappola_service.py
@@ -35,7 +36,6 @@ from core.immagini_byte_logic import MALEVOLA, estensione_di, tipo_atteso
 from core.immagini_coda import coda_immagini
 from core.immagini_pipeline import EsitoImmagine, analizza_immagine, impronte
 from core.immagini_trappola_service import libreria_immagini
-from core.repositories.automod_advanced_repo import automod_advanced_repo
 from core.safe_image import MAX_IMAGE_BYTES
 
 logger = logging.getLogger("iyokai.immagini")
@@ -58,13 +58,6 @@ def e_allegato_immagine(allegato: discord.Attachment) -> bool:
     return tipo.startswith("image/") or tipo_atteso(allegato.filename, allegato.content_type) is not None or estensione_di(
         allegato.filename
     ) in ("bmp", "avif", "heic", "tiff", "svg")
-
-
-def e_protetto(membro: discord.Member) -> bool:
-    """Come per le altre azioni automatiche: mai su chi gestisce il server o ne e' il proprietario."""
-    if membro.guild.owner_id == membro.id:
-        return True
-    return membro.guild_permissions.administrator or membro.guild_permissions.manage_guild
 
 
 class ImmaginiCog(CogConGruppi, commands.Cog):
@@ -107,18 +100,9 @@ class ImmaginiCog(CogConGruppi, commands.Cog):
             opzioni = await opzioni_immagini.leggi(guild.id)
             if not opzioni.attivo or not await db.is_module_active_for_guild(guild.id, MODULE_AUTOMOD):
                 return
-            if e_protetto(message.author) or await self._esente(message):
-                return
             await self._controlla(message, allegati, opzioni)
         except Exception:
             logger.exception("Filtro immagini: errore imprevisto")
-
-    @staticmethod
-    async def _esente(message: discord.Message) -> bool:
-        impostazioni = await automod_advanced_repo.get_settings(message.guild.id)
-        if message.channel.id in impostazioni.exempt_channel_ids:
-            return True
-        return bool({r.id for r in message.author.roles} & set(impostazioni.exempt_role_ids))
 
     async def _controlla(self, message: discord.Message, allegati, opzioni) -> None:
         membro, guild = message.author, message.guild

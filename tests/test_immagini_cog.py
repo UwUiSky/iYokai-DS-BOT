@@ -51,7 +51,9 @@ def ambiente(monkeypatch):
     segnala = AsyncMock()
     monkeypatch.setattr(cog_mod, "opzioni_immagini", SimpleNamespace(leggi=AsyncMock(return_value=op.OpzioniImmagini(True, "cancella", 10, 222))))
     monkeypatch.setattr(cog_mod.db, "is_module_active_for_guild", AsyncMock(return_value=True))
-    monkeypatch.setattr(cog_mod.automod_advanced_repo, "get_settings", AsyncMock(return_value=SimpleNamespace(exempt_channel_ids=(), exempt_role_ids=())))
+    from core.repositories.automod_advanced_repo import automod_advanced_repo
+
+    monkeypatch.setattr(automod_advanced_repo, "get_settings", AsyncMock(return_value=SimpleNamespace(exempt_channel_ids=(), exempt_role_ids=())))
     monkeypatch.setattr(cog_mod.bot_roles, "cancella_messaggio", azioni.cancella)
     monkeypatch.setattr(cog_mod.bot_roles, "isola", azioni.isola)
     monkeypatch.setattr(cog_mod, "try_dm", dm)
@@ -117,16 +119,30 @@ async def test_filtro_spento_non_scarica_nulla(ambiente, monkeypatch):
     ambiente.msg.attachments[0].read.assert_not_called()
 
 
+@pytest.mark.parametrize("caso", ["gestisce_server", "amministratore", "proprietario", "canale_esente", "ruolo_esente"])
 @pytest.mark.asyncio
-async def test_protetti_ed_esenti_non_si_controllano(ambiente, monkeypatch):
+async def test_staff_ed_esenti_si_controllano_come_tutti(ambiente, monkeypatch, caso):
+    from core.repositories.automod_advanced_repo import automod_advanced_repo
+
+    # Un account staff rubato e' il caso tipico (D63): le esenzioni AutoMod non valgono per questo filtro.
     analisi(monkeypatch, esito("malevola"))
-    ambiente.membro.guild_permissions = discord.Permissions(manage_guild=True)
+    ruolo = MagicMock(id=999)
+    ambiente.membro.roles = [ruolo]
+    if caso == "gestisce_server":
+        ambiente.membro.guild_permissions = discord.Permissions(manage_guild=True)
+    elif caso == "amministratore":
+        ambiente.membro.guild_permissions = discord.Permissions(administrator=True)
+    elif caso == "proprietario":
+        ambiente.guild.owner_id = ambiente.membro.id
+    elif caso == "canale_esente":
+        automod_advanced_repo.get_settings.return_value = SimpleNamespace(exempt_channel_ids=(ambiente.msg.channel.id,), exempt_role_ids=())
+    else:
+        automod_advanced_repo.get_settings.return_value = SimpleNamespace(exempt_channel_ids=(), exempt_role_ids=(999,))
     await ambiente.cog.on_message(ambiente.msg)
-    ambiente.msg.attachments[0].read.assert_not_called()
-    ambiente.membro.guild_permissions = discord.Permissions.none()
-    cog_mod.automod_advanced_repo.get_settings.return_value = SimpleNamespace(exempt_channel_ids=(ambiente.msg.channel.id,), exempt_role_ids=())
-    await ambiente.cog.on_message(ambiente.msg)
-    ambiente.msg.attachments[0].read.assert_not_called()
+    ambiente.azioni.cancella.assert_awaited_once_with(ambiente.msg)
+    ambiente.dm.assert_awaited_once()
+    ambiente.azioni.isola.assert_awaited_once()
+    ambiente.log.send.assert_awaited_once()
 
 
 @pytest.mark.asyncio
