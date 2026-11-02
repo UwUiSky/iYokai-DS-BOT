@@ -3,18 +3,30 @@ core/clear_filter_logic.py
 ==========================
 Filtri di /mod-canali clear, scritti come funzione semplice sui dati di un
 messaggio: si provano senza Discord.
-Funzioni coperte: SPEC §5.7 (MOD-069, 071, 073-079, 083, 084, 086)
+Funzioni coperte: SPEC §5.7 (MOD-069-071, 073-079, 083-086, 089)
 """
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 
 _LINK = re.compile(r"https?://\S+", re.IGNORECASE)
 _INVITO = re.compile(
     r"(?:discord\.gg|discord(?:app)?\.com/invite)/[\w-]+", re.IGNORECASE
 )
+# Emoji: intervalli Unicode più usati, selettori di variante, giunzione ZWJ, bandiere
+# e le emoji personalizzate del server (<:nome:id> e <a:nome:id>).
+_EMOJI_PERSONALIZZATA = re.compile(r"<a?:\w+:\d+>")
+_EMOJI_UNICODE = re.compile(
+    "[\U0001F000-\U0001FAFF\u2190-\u21FF\u2300-\u23FF\u2460-\u27BF\u2900-\u297F"
+    "\u2B00-\u2BFF\u3030\u303D\u3297\u3299\u00A9\u00AE\u200D\u20E3\uFE0E\uFE0F]"
+)
+
+TIPI_CLEAR = ("webhook", "iyokai", "emoji", "solo-testo", "sospetti")
+MODI_TESTO = ("contiene", "inizia", "finisce", "uguale")
+ETA_SOSPETTO = timedelta(days=7)
 
 
 @dataclass(frozen=True)
@@ -31,6 +43,54 @@ class FiltriClear:
     solo_menzioni: bool = False
     ruolo_id: int | None = None
     salta_fissati: bool = False
+    tipo: str | None = None
+    modo: str = "contiene"
+    bot_id: int | None = None  # serve al tipo «iyokai»
+
+
+def _solo_emoji(testo: str) -> bool:
+    """True se il testo ha solo emoji (e spazi): niente altre lettere."""
+    resto = _EMOJI_PERSONALIZZATA.sub("", testo)
+    resto = _EMOJI_UNICODE.sub("", resto)
+    return bool(testo.strip()) and not resto.strip()
+
+
+def _autore_sospetto(autore) -> bool:
+    """Senza avatar, oppure solo il ruolo @everyone, oppure account sotto i 7 giorni."""
+    if getattr(autore, "avatar", True) is None:
+        return True
+    ruoli = getattr(autore, "roles", None)
+    if ruoli is not None and len(ruoli) <= 1:
+        return True
+    creato = getattr(autore, "created_at", None)
+    if isinstance(creato, datetime):
+        return datetime.now(timezone.utc) - creato < ETA_SOSPETTO
+    return False
+
+
+def _tipo_passa(msg, tipo: str, bot_id: int | None) -> bool:
+    if tipo == "webhook":
+        return getattr(msg, "webhook_id", None) is not None
+    if tipo == "iyokai":
+        return bot_id is not None and msg.author.id == bot_id
+    if tipo == "emoji":
+        return _solo_emoji(msg.content or "")
+    if tipo == "solo-testo":
+        return not (msg.attachments or msg.embeds or getattr(msg, "stickers", None))
+    if tipo == "sospetti":
+        return _autore_sospetto(msg.author)
+    return True
+
+
+def _testo_passa(testo: str, cercato: str, modo: str) -> bool:
+    cercato = cercato.lower()
+    if modo == "inizia":
+        return testo.startswith(cercato)
+    if modo == "finisce":
+        return testo.endswith(cercato)
+    if modo == "uguale":
+        return testo == cercato
+    return cercato in testo
 
 
 def messaggio_passa(msg, filtri: FiltriClear) -> bool:
@@ -48,7 +108,9 @@ def messaggio_passa(msg, filtri: FiltriClear) -> bool:
         return False
     if filtri.solo_allegati and not msg.attachments:
         return False
-    if filtri.contiene and filtri.contiene.lower() not in testo:
+    if filtri.contiene and not _testo_passa(testo, filtri.contiene, filtri.modo):
+        return False
+    if filtri.tipo and not _tipo_passa(msg, filtri.tipo, filtri.bot_id):
         return False
     if filtri.non_contiene and filtri.non_contiene.lower() in testo:
         return False
@@ -85,7 +147,10 @@ def descrivi_filtri(filtri: FiltriClear) -> str:
         if attivo:
             parti.append(nome)
     if filtri.contiene:
-        parti.append(f"contiene «{filtri.contiene}»")
+        verbo = {"inizia": "inizia con", "finisce": "finisce con", "uguale": "è uguale a"}.get(filtri.modo, "contiene")
+        parti.append(f"{verbo} «{filtri.contiene}»")
+    if filtri.tipo:
+        parti.append(f"tipo {filtri.tipo}")
     if filtri.non_contiene:
         parti.append(f"non contiene «{filtri.non_contiene}»")
     if filtri.ruolo_id:

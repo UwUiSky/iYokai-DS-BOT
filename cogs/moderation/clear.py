@@ -15,16 +15,19 @@ sulle cancellazioni singole.
 
 Filtri (core/clear_filter_logic.py): utente, ruolo, solo bot, solo persone,
 allegati, testo contenuto o non contenuto, link, inviti, embed, menzioni,
-salta i fissati. Il testo dei messaggi serve il Message Content Intent
+salta i fissati, tipo (webhook, iYokai, solo emoji, solo testo,
+sospetti) e modo del testo (contiene, inizia, finisce, uguale). Il testo dei messaggi serve il Message Content Intent
 (acceso in main.py; sotto i 10.000 utenti basta l'interruttore nel
 Developer Portal, da 10.000 serve la domanda a Discord, da rifare ogni
 anno). Il canale può essere diverso da quello del comando; chi usa il comando
 deve poter vedere e gestire i messaggi di quel canale. Ogni pulizia
 scrive una riga nel log di moderazione (M 1.8).
-Funzioni coperte: SPEC §5.4 (MOD-069, 071, 073-079, 083, 084, 086, 088)
+Funzioni coperte: SPEC §5.4 (MOD-069-071, 073-079, 083-086, 088, 089)
 """
 
 from __future__ import annotations
+
+from typing import Literal
 
 import discord
 from discord import app_commands
@@ -69,6 +72,8 @@ class ModerationClearCog(CogConGruppi, commands.Cog):
         mentions_only="Cancella solo i messaggi con menzioni",
         role="Cancella solo i messaggi di chi ha questo ruolo",
         skip_pinned="Salta i messaggi fissati",
+        tipo="Cancella solo un tipo di messaggi (webhook, iYokai, solo emoji, solo testo, sospetti)",
+        modo="Come cercare il testo di «contains» (default: contiene)",
     )
     @requires_module(MODULE_CLEAR)
     async def clear(
@@ -88,6 +93,8 @@ class ModerationClearCog(CogConGruppi, commands.Cog):
         mentions_only: bool = False,
         role: discord.Role | None = None,
         skip_pinned: bool = False,
+        tipo: Literal["webhook", "iyokai", "emoji", "solo-testo", "sospetti"] | None = None,
+        modo: Literal["contiene", "inizia", "finisce", "uguale"] = "contiene",
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_CLEAR):
             return
@@ -121,6 +128,9 @@ class ModerationClearCog(CogConGruppi, commands.Cog):
             solo_menzioni=mentions_only,
             ruolo_id=role.id if role else None,
             salta_fissati=skip_pinned,
+            tipo=tipo,
+            modo=modo,
+            bot_id=getattr(getattr(interaction.client, "user", None), "id", None),
         )
         if bots_only and humans_only:
             await interaction.response.send_message(

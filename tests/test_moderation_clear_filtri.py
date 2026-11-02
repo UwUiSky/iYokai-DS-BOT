@@ -201,3 +201,81 @@ async def test_clear_senza_gestire_messaggi_nel_canale_non_cancella(ambiente):
     await cog.clear.callback(cog, inter, 10)
 
     canale.purge.assert_not_awaited()
+
+
+# --- M1: filtri «tipo» e «modo» (MOD-070, 077, 079, 084, 085, 089) ---
+
+from datetime import datetime, timedelta, timezone  # noqa: E402
+
+
+def _msg_tipo(testo="", *, autore_id=5, bot=False, webhook=None, allegati=(), embeds=(),
+              sticker=(), avatar="x", ruoli=1, eta_giorni=100):
+    m = _msg(testo, bot=bot, allegati=allegati, embeds=embeds, webhook=webhook)
+    m.author.id = autore_id
+    m.author.avatar = avatar
+    m.author.roles = [MagicMock(id=i) for i in range(ruoli)]
+    m.author.created_at = datetime.now(timezone.utc) - timedelta(days=eta_giorni)
+    m.stickers = list(sticker)
+    return m
+
+
+@pytest.mark.parametrize(
+    "tipo,messaggio,atteso",
+    [
+        ("webhook", _msg_tipo(webhook=9, bot=True), True),
+        ("webhook", _msg_tipo(bot=True), False),
+        ("iyokai", _msg_tipo(autore_id=999, bot=True), True),
+        ("iyokai", _msg_tipo(autore_id=998, bot=True), False),
+        ("emoji", _msg_tipo("😀😀 👍"), True),
+        ("emoji", _msg_tipo("<:ok:123456789012345678> <a:x:1>"), True),
+        ("emoji", _msg_tipo("ciao 😀"), False),
+        ("emoji", _msg_tipo(""), False),
+        ("solo-testo", _msg_tipo("ciao"), True),
+        ("solo-testo", _msg_tipo("ciao", allegati=[1]), False),
+        ("solo-testo", _msg_tipo("ciao", embeds=[1]), False),
+        ("solo-testo", _msg_tipo("ciao", sticker=[1]), False),
+        ("sospetti", _msg_tipo("x", avatar=None), True),
+        ("sospetti", _msg_tipo("x", ruoli=1), True),
+        ("sospetti", _msg_tipo("x", ruoli=3, eta_giorni=2), True),
+        ("sospetti", _msg_tipo("x", ruoli=3, eta_giorni=100), False),
+    ],
+)
+def test_filtro_tipo(tipo, messaggio, atteso):
+    assert messaggio_passa(messaggio, FiltriClear(tipo=tipo, bot_id=999)) is atteso
+
+
+@pytest.mark.parametrize(
+    "modo,testo,atteso",
+    [
+        ("contiene", "dico ciao a te", True),
+        ("inizia", "Ciao a te", True),
+        ("inizia", "dico ciao", False),
+        ("finisce", "dico CIAO", True),
+        ("finisce", "ciao dico", False),
+        ("uguale", "CIAO", True),
+        ("uguale", "ciao!", False),
+    ],
+)
+def test_filtro_modo_del_testo(modo, testo, atteso):
+    assert messaggio_passa(_msg(testo), FiltriClear(contiene="ciao", modo=modo)) is atteso
+
+
+async def test_clear_passa_tipo_e_modo_ai_filtri(ambiente):
+    inter, canale, canale_log = ambiente
+    cog = ModerationClearCog(bot=None)
+
+    await cog.clear.callback(cog, inter, 50, contains="ciao", tipo="solo-testo", modo="inizia")
+
+    check = canale.purge.call_args.kwargs["check"]
+    assert check(_msg_tipo("ciao a tutti")) and not check(_msg_tipo("dico ciao"))
+    embed = canale_log.send.call_args.kwargs["embed"]
+    assert any("solo-testo" in f.value for f in embed.fields)
+
+
+def test_clear_ha_i_filtri_nuovi_e_sta_nei_limiti():
+    import inspect
+    from discord import app_commands
+    cmd = ModerationClearCog.clear
+    nomi = [p.name for p in cmd.parameters] if hasattr(cmd, "parameters") else list(inspect.signature(cmd.callback).parameters)
+    assert "tipo" in nomi and "modo" in nomi
+    assert len([n for n in nomi if n not in ("self", "interaction")]) <= 25
