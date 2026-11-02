@@ -1356,3 +1356,5 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - [ ] Un ban automatico: il DM arriva PRIMA del ban; se il bot non può bannare (ruolo sotto), il DM si cancella e lo staff riceve un solo avviso (azione sospesa 10 minuti).
 - [ ] `/admin-automod riepilogo vista:violazioni` e `vista:ultime` mostrano righe e pagine; `/admin-automod azzera` chiede conferma e poi azzera.
 - [ ] Un bot o un webhook non esentato non viene giudicato, salvo una regola che include «bot»/«webhook»; il bot stesso mai.
+- [ ] `/admin-automod regole`: scegli categoria e regola, cambia canali/ruoli dai menu nativi, apri le finestre (Chi e quando, Sanzioni, Messaggi, Canale e ruoli, Contatore, Gruppo e calore) su PC e su telefono; «Salva» avvisa se al bot mancano permessi; «Prova» dice se la regola vale per una persona.
+- [ ] `/admin-automod gruppo nome: attivo:` accende/spegne le regole del gruppo; `/admin-automod immagini` risponde «non disponibile» finché non c'è il filtro immagini.

@@ -2,9 +2,10 @@
 ## Aggiornata
 2026-11-01, giro r15automod (ramo feat/r15automod, worktree /home/claude/wt/r15automod, filone A di #116, D63). Migrazioni 0500-0503 mie. Smoke da fare.
 ## In corso
-A1-A5 fatti. Prossimo: A6 pannello `/admin-automod regole` (cogs/automod/regole.py, View 14 min, categorie, modali; test di forma) poi A7 liste/regex/solo YouTube. A8-A11 restano.
-Hook per il filone B: `core.automod_azioni.esegui_azioni(azioni, Bersaglio(...))` (azioni da `azioni_da_json`), chiavi filtro in `regola_effettiva`.
+A1-A6 fatti. Prossimo: A7 (liste con nome AMD-016, innesco delle regole personali: regex re2/lista/domini/sole parole permesse; modello Solo YouTube, vetrine inviti, liste parolacce con credito licenza) + pannello `liste`; A8 migr. 0503 decide_staff. Numeri: A11 usa 0509 (0504-0506 immagini, 0507-0508 VPN).
+Hook per il filone B: `core.automod_azioni.esegui_azioni(azioni, Bersaglio(...))`; impostazioni immagini via core/automod_immagini_impostazioni.py (TODO: sostituire con core.immagini_opzioni.imposta() dopo il merge di feat/r15immagini).
 ## Fatto
+- r15 A6 pannello regole (core/automod_regole_pannello.py + core/automod_pannello_logic.py), comandi /admin-automod regole, gruppo, immagini; 100 testi amregole_*; test_automod_pannello_logic/_regole_pannello/_regole_comandi. Smoke da fare
 - r15 A4 core/automod_azioni.py (20 azioni, ordine D63, scudo protetti, 403=sospesa 10 min, fine a tempo via scheduler, webhook), A5 migr. 0502, contatori (core/automod_contatori.py), /admin-automod riepilogo e azzera (cogs/automod/regole.py), test_automod_azioni/_contatori. Smoke da fare
 - r15 A3 core/automod_contesto.py, _controlla con regola attiva/condizioni/esenzioni per regola/bot solo se la regola li accetta; service fail-open se la tabella non si legge; test_automod_regole_filtri. Smoke da fare
 - r15 A1 core/automod_regole_logic.py (regole, condizioni_ok, azioni, tetti, re2), A2 migr. 0500/0501, automod_regole_repo, automod_regole_service (punto unico, cache), data_registry; test_automod_regole_logic/_repo. Smoke da fare
@@ -31,6 +32,7 @@ Hook per il filone B: `core.automod_azioni.esegui_azioni(azioni, Bersaglio(...))
 - Test del cog automod: db finto passato come `archivio` alle funzioni (mai db._pool); libreria_odio va finta (AsyncMock) senza pool
 - Str.replace sostituisce TUTTE le occorrenze; con piu' decorator uguali cercare l'indice dopo il nome del comando
 ## Aperto
+- Codice con View/Modal senza cog va in core/ (ogni file in cogs/ vuole setup())
 - AMD-018 (stato/attivita) non fatto: serve intent Presenze, decide l'owner
 - decide_staff (A8, 0503) non ancora: l'azione e' nel JSON ma il motore la ignora
 - Test con _FakeMessage senza webhook_id: nel cog usare sempre getattr per gli attributi nuovi

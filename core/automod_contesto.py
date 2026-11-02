@@ -74,3 +74,18 @@ def serve_il_livello(regole: tuple[Regola, ...]) -> bool:
 
 def serve_chi_non_e_persona(regole: tuple[Regola, ...]) -> bool:
     return any(r.attiva and set(r.condizioni.autori) != {"persone"} for r in regole)
+
+
+def contesto_da_membro(membro: Any, canale: Any, *, evento: str = "messaggio", adesso: datetime | None = None) -> Contesto:
+    """Il contesto di un membro in un canale, per «Prova» nel pannello: non serve un messaggio vero."""
+    adesso = adesso or datetime.now(timezone.utc)
+    categoria, padre, in_thread = _posto_del_canale(canale)
+    return Contesto(
+        evento=evento, autore_id=membro.id,
+        ruoli_ids=frozenset(r.id for r in getattr(membro, "roles", ()) if r.id != membro.guild.id),
+        e_bot=bool(getattr(membro, "bot", False)),
+        eta_account_giorni=_giorni(getattr(membro, "created_at", None), adesso),
+        nel_server_giorni=_giorni(getattr(membro, "joined_at", None), adesso),
+        canale_id=_int(getattr(canale, "id", None)), categoria_id=categoria, thread_padre_id=padre, in_thread=in_thread,
+        ora=adesso,
+    )

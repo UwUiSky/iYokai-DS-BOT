@@ -14,9 +14,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from cogs.automod.automod import MODULE_AUTOMOD
+from cogs.automod.automod import MODULE_AUTOMOD, _VIOLATION_LABELS
+from core.automod_regole_pannello import apri_pannello
 from cogs.moderation._shared import ensure_module_enabled
-from core import automod_regole_service as regole_service
+from core import automod_immagini_impostazioni as immagini_cfg, automod_regole_service as regole_service
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.i18n import testo_per
@@ -60,9 +61,87 @@ class ConfermaAzzera(discord.ui.View):
             content=await testo_per(interaction, "amregole_azzerato", righe=toccate, nome=self.nome), view=None)
 
 
+AZIONI_IMMAGINI = [app_commands.Choice(name=n, value=n) for n in immagini_cfg.AZIONI]
+
+
 class RegoleCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+
+    @autocomplete_protetto(Livello.ADMIN)
+    async def _completa_regola(self, interaction: discord.Interaction, scritto: str) -> list[app_commands.Choice[str]]:
+        scelte = [(chiave, etichetta) for chiave, etichetta in _VIOLATION_LABELS.items()]
+        scelte += [(r.chiave, r.nome) for r in await regole_service.regole_del_server(interaction.guild.id) if r.tipo == "personale"]
+        return [app_commands.Choice(name=n[:100], value=k) for k, n in scelte if scritto.lower() in n.lower()][:25]
+
+    @comando_di_gruppo(
+        "admin-automod", nome="regole", descrizione="Apre il pannello delle regole AutoMod: condizioni e azioni."
+    )
+    @app_commands.describe(regola="Una regola da aprire subito (vuoto: l'elenco)")
+    @app_commands.autocomplete(regola=_completa_regola)
+    async def regole(self, interaction: discord.Interaction, regola: app_commands.Range[str, 1, 40] | None = None) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        if regola and regola not in _VIOLATION_LABELS and not regola.startswith("p:"):
+            await interaction.response.send_message(await testo_per(interaction, "amregole_cmd_nessuna"), ephemeral=True)
+            return
+        await apri_pannello(interaction, dict(_VIOLATION_LABELS), regola)
+
+    @comando_di_gruppo(
+        "admin-automod", nome="gruppo", descrizione="Accende o spegne tutte le regole di un gruppo."
+    )
+    @app_commands.describe(nome="Il nome del gruppo", attivo="Sì: accese, no: spente")
+    async def gruppo(self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, 32], attivo: bool) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        n = await regole_service.attiva_gruppo(interaction.guild.id, nome, attivo)
+        stato = await testo_per(interaction, "amregole_gruppo_acceso" if attivo else "amregole_gruppo_spento")
+        await interaction.response.send_message(
+            await testo_per(interaction, "amregole_gruppo_fatto", nome=nome, n=n, stato=stato), ephemeral=True)
+
+    @comando_di_gruppo(
+        "admin-automod", nome="immagini", descrizione="Impostazioni del filtro per le immagini sospette."
+    )
+    @app_commands.describe(
+        filtro="Accende o spegne il filtro", azione="Cosa fare di un'immagine sospetta",
+        timeout_minuti="Minuti di timeout (se l'azione è timeout)", canale_log="Canale dove scrivere i casi",
+    )
+    @app_commands.choices(azione=AZIONI_IMMAGINI)
+    async def immagini(
+        self,
+        interaction: discord.Interaction,
+        filtro: bool | None = None,
+        azione: app_commands.Choice[str] | None = None,
+        timeout_minuti: app_commands.Range[int, 1, 40_320] | None = None,
+        canale_log: discord.TextChannel | None = None,
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        gid = interaction.guild.id
+        try:
+            cambi = {"filtro": filtro, "azione": azione.value if azione else None, "timeout": timeout_minuti,
+                     "canale": canale_log.id if canale_log else None}
+            fatti = False
+            for nome, valore in cambi.items():
+                if valore is not None:
+                    await immagini_cfg.imposta(gid, nome, valore, interaction.user.id)
+                    fatti = True
+            if fatti:
+                await interaction.response.send_message(await testo_per(interaction, "amregole_img_fatto"), ephemeral=True)
+                return
+            v = await immagini_cfg.leggi(gid)
+        except immagini_cfg.ImmaginiNonDisponibili:
+            await interaction.response.send_message(await testo_per(interaction, "amregole_img_non_disponibile"), ephemeral=True)
+            return
+        except immagini_cfg.ValoreNonValido as errore:
+            await interaction.response.send_message(await testo_per(interaction, "amregole_img_errore", errore=errore), ephemeral=True)
+            return
+        await interaction.response.send_message(await testo_per(
+            interaction, "amregole_img_stato",
+            stato=await testo_per(interaction, "amregole_img_acceso" if v["filtro"] else "amregole_img_spento"),
+            azione=v["azione"] or "cancella", minuti=v["timeout"] or 60,
+            canale=f"<#{v['canale']}>" if v["canale"] else await testo_per(interaction, "amregole_img_nessun_canale")),
+            ephemeral=True)
 
     @comando_di_gruppo(
         "admin-automod", nome="riepilogo", descrizione="Riepilogo delle violazioni AutoMod del server, a pagine."
