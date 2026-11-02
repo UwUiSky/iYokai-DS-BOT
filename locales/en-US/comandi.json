@@ -411,6 +411,7 @@
   "admin-automod odio base": "Turns the base list of hate slurs on or off.",
   "admin-automod odio blocco": "Preventive block of hateful phrases.",
   "owner parole-odio": "Bot owner only: the worldwide library of hate words.",
+  "owner immagini-trappola": "Bot owner only: the shared library of trap images.",
   "admin-automod odio nomi": "Checks nicknames and display names on join and on change.",
   "admin-automod odio parola": "Adds or removes a custom word or an allowed word.",
   "admin-automod odio prova": "Tests a text against the banned words without acting.",
