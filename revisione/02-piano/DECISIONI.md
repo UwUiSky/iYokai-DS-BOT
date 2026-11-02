@@ -934,3 +934,33 @@ Le regex dei server girano solo con `re2`. Un'azione che fallisce per permessi s
 AMD-018 (stato online e attività) richiede l'intent Presenze: si fa dietro un interruttore **spento di base**;
 finché è spento il bot non chiede l'intent a Discord. Filtro immagini (D62): un processo nuovo per immagine,
 servizio di sistema `iyokai-sandbox` con utente senza permessi e senza rete; ripiego dichiarato se manca.
+
+## D64 — Verifica web: VPN e proxy bloccati subito (01/11/2026, richiesta dell'owner)
+Durante la verifica web, chi arriva da una VPN o da un proxy (pubblico o privato, anche Tor e reti di data center)
+viene **bloccato subito**, senza una prima volta concessa. La pagina gli dice di spegnere VPN o proxy e riprovare.
+Gli admin ricevono un avviso: «<utente> ha provato a verificarsi con VPN/proxy rilevato ed è stato bloccato».
+- Rilevazione a strati, prima locale: elenchi di reti di data center/hosting per ASN (banca dati ASN locale),
+  elenchi pubblici di VPN e proxy, nodi di uscita Tor (elenco ufficiale), intestazioni di proxy nella richiesta
+  (Via, Forwarded, X-Forwarded-For dal client), fuso orario del browser diverso dal paese dell'IP.
+  Poi, se l'owner mette una chiave, un servizio esterno di controllo (es. proxycheck.io, IPQualityScore,
+  vpnapi.io) con cache e tetti giornalieri.
+- Nessun metodo è perfetto: proxy residenziali e alcune VPN private possono passare; reti aziendali, CGNAT
+  mobili e iCloud Private Relay possono sembrare proxy. Per questo l'avviso agli admin ha un bottone «Lascia
+  passare» per i casi sbagliati, e il server può spegnere la regola (di base è accesa).
+- Privacy: l'IP si usa solo in quel momento; si salva solo "VPN/proxy: sì", il metodo e la data (D53, D19).
+  L'uso di un servizio esterno va scritto nell'informativa.
+
+## D65 — Blocchi della verifica: ticket in privato e storico condiviso dei falsi positivi (02/11/2026, richiesta dell'owner)
+- **Ogni blocco** durante la verifica (VPN/proxy D64, paese D53, account doppio, captcha, qualsiasi motivo) dice
+  all'utente di scrivere in privato al bot: il messaggio apre un ticket (ModMail) con lo staff del server dove
+  voleva entrare, con il motivo del blocco già allegato.
+- **Storico condiviso:** quando lo staff di un server lascia passare un utente segnalato (es. iCloud Private Relay
+  scambiato per VPN), il bot lo ricorda. Negli altri server con iYokai quella persona passa la verifica, ma gli
+  admin ricevono un avviso: «già accettato da N server nonostante VPN/proxy rilevato: può usarla anche per altro»,
+  con lo storico (date, motivi, esito). Gli admin hanno così un elenco di avvisi su queste persone.
+- **Privacy (scelta di chi sviluppa):** di base l'avviso dice **quanti** server l'hanno accettato, non quali,
+  perché i nomi rivelerebbero gli altri server di quella persona. Un server può scegliere di farsi nominare negli
+  avvisi degli altri (consenso del server). Lo storico si cancella con `/privacy` e scade (data registry).
+- Precisazione dell'owner (02/11): l'owner del bot (OWNER_ID) vede sempre anche i **nomi** dei server nello
+  storico, con un comando in `/owner` (sotto-gruppo adatto, es. `/owner privacy` o `/owner verifica`) e nel pannello
+  owner. Gli admin dei server vedono il numero, i nomi solo dei server che lo consentono.
