@@ -2,7 +2,8 @@
 core/immagini_trappola_service.py
 =================================
 Libreria delle immagini trappola vista dal filtro (D62): ricerca per SHA-256 e per impronta
-percettiva, segnalazione, scelte dell'owner del bot. Le liste per l'impronta stanno in cache breve.
+percettiva, segnalazione, scelte dell'owner del bot. Le liste per l'impronta stanno in cache breve;
+`versione` cresce a ogni cambio che puo' cambiare un verdetto (la usa la cache del filtro).
 Un database fermo non ferma mai il filtro: la ricerca da' «non trovata».
 Funzioni coperte: SPEC §6 (D62)
 Dipende da: core/repositories/immagini_trappola_repo.py
@@ -28,6 +29,7 @@ class LibreriaImmagini:
         self.repo = repo or immagini_trappola_repo
         self._globali: tuple[float, list[Voce]] = (0.0, [])
         self._server: dict[int, tuple[float, list[Voce]]] = {}
+        self.versione = 0
 
     def svuota(self) -> None:
         self._globali = (0.0, [])
@@ -77,11 +79,14 @@ class LibreriaImmagini:
             logger.exception("Segnalazione dell'immagine non riuscita")
             return None
         self.svuota()
+        if esito is not None and esito.stato in lg.STATI_GLOBALI:
+            self.versione += 1
         return esito
 
     async def aggiungi(self, sha256: str, dhash: int | None, motivo: str) -> None:
         await self.repo.aggiungi(sha256, dhash, motivo)
         self.svuota()
+        self.versione += 1
 
     async def imposta_stato(self, riferimento: str, stato: str) -> str:
         """`ok`, `non_valido` (impronta o prefisso illeggibili), `assente` o `ambiguo`."""
@@ -99,6 +104,7 @@ class LibreriaImmagini:
         if not await self.repo.imposta_stato(sha, stato):
             return "assente"
         self.svuota()
+        self.versione += 1
         return "ok"
 
     async def elenca(self, stato: str, limite: int = 25) -> list[Voce]:

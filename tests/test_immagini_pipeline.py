@@ -206,3 +206,26 @@ def test_una_sospetta_non_diventa_segnalazione():
     # Solo le malevole vanno in libreria: una sospetta (metadati grossi, coda strana) vista in 3 server
     # diventerebbe «condivisa», cioe' malevola con timeout ovunque.
     assert not pl.EsitoImmagine("sospetta", "a", ("png_testo_enorme",)).da_segnalare
+
+
+@pytest.mark.asyncio
+async def test_immagine_resa_certa_dopo_la_cache_si_blocca_subito(ambiente):
+    # La cache dei verdetti dura 24 ore: una scelta dell'owner sulla libreria vale subito, non il giorno dopo.
+    lib, _, _ = ambiente
+    dati = f._salva(_foto(6), "PNG")
+    assert (await pl.analizza_immagine(dati, "a.png", None, GUILD)).verdetto == "pulita"
+    sha, dh = await pl.impronte(dati)
+    await lib.aggiungi(sha, dh, "prova")
+    assert (await pl.analizza_immagine(dati, "a.png", None, GUILD)).verdetto == "malevola"
+    await lib.imposta_stato(sha, lg.RIFIUTATA)
+    assert (await pl.analizza_immagine(dati, "a.png", None, GUILD)).verdetto == "pulita"
+
+
+@pytest.mark.asyncio
+async def test_impronta_simile_resa_certa_dopo_la_cache_si_blocca_subito(ambiente):
+    lib, _, _ = ambiente
+    ritoccata = f._salva(_foto(8).resize((180, 180)), "JPEG", quality=60)
+    assert (await pl.analizza_immagine(ritoccata, "x.jpg", None, GUILD)).verdetto == "pulita"
+    sha, dh = await pl.impronte(f._salva(_foto(8), "PNG"))
+    await lib.aggiungi(sha, dh, "prova")
+    assert (await pl.analizza_immagine(ritoccata, "x.jpg", None, GUILD)).verdetto == "malevola"

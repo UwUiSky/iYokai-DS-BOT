@@ -4,7 +4,8 @@ core/immagini_pipeline.py
 Percorso unico di un'immagine scaricata dal bot (D61, D62): controlli sui byte (nessun decoder) ->
 libreria delle impronte -> quarantena -> coda -> sandbox -> esito {pulita, sospetta, malevola} con la
 copia ricodificata. Il verdetto di una stessa immagine si ricorda per SHA-256 (24 ore): in un raid
-si analizza una volta sola. Coda piena o sandbox ferma: i controlli sui byte e la libreria girano
+si analizza una volta sola. La libreria per SHA-256 si guarda sempre prima, e un cambio della libreria
+(owner, nuova condivisa) rende vecchia la cache. Coda piena o sandbox ferma: i controlli sui byte e la libreria girano
 comunque, il resto e' «non analizzata». Niente Discord qui: lo fa il cog.
 Funzioni coperte: SPEC §6 (D61, D62)
 """
@@ -55,7 +56,7 @@ class EsitoImmagine:
         return self.verdetto == MALEVOLA and not self.da_libreria and not self.solo_avviso and self.non_analizzata is None
 
 
-_cache: BoundedCache[tuple[int, str], tuple[float, EsitoImmagine]] = BoundedCache(MAX_VERDETTI_IN_CACHE)
+_cache: BoundedCache[tuple[int, str], tuple[float, int, EsitoImmagine]] = BoundedCache(MAX_VERDETTI_IN_CACHE)
 _modo_dichiarato = False
 
 
@@ -65,14 +66,15 @@ def svuota_cache() -> None:
 
 def _dalla_cache(guild_id: int, sha: str) -> EsitoImmagine | None:
     voce = _cache.get((guild_id, sha))
-    if voce and time.monotonic() < voce[0]:
-        return voce[1]
+    if voce and time.monotonic() < voce[0] and voce[1] == libreria_immagini.versione:
+        return voce[2]
     return None
 
 
 def _ricorda(guild_id: int, esito: EsitoImmagine) -> EsitoImmagine:
     # Il PNG non si tiene in memoria: la cache serve a non rifare l'analisi, non a conservare immagini.
-    _cache.set((guild_id, esito.sha256), (time.monotonic() + SECONDI_CACHE, replace(esito, png=b"")))
+    voce = (time.monotonic() + SECONDI_CACHE, libreria_immagini.versione, replace(esito, png=b""))
+    _cache.set((guild_id, esito.sha256), voce)
     return esito
 
 
@@ -96,12 +98,12 @@ async def analizza_immagine(dati: bytes, nome_file: str, content_type: str | Non
     byte = controlla_byte(dati, nome_file, content_type)
     if byte.troppo_grande:
         return EsitoImmagine(PULITA, byte.sha256, non_analizzata=NON_ANALIZZATA_GRANDE)
+    trovata = await _libreria_per_sha(byte.sha256, guild_id)
+    if trovata is not None:
+        return trovata
     nota = _dalla_cache(guild_id, byte.sha256)
     if nota is not None:
         return nota
-    trovata = await _libreria_per_sha(byte.sha256, guild_id)
-    if trovata is not None:
-        return _ricorda(guild_id, trovata)
     motivi = tuple(m.codice for m in byte.motivi)
     if byte.verdetto != PULITA:
         # Un file gia' strano dai byte non si decodifica: il decoder e' proprio cio' che l'attacco cerca.
