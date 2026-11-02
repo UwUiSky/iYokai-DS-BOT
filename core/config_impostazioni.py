@@ -27,6 +27,7 @@ SCELTE = {
     "captcha_tipo": ("testo", "immagine"),
     "azione_verifica": ("niente", "quarantena", "kick", "ban"),
     "azione_eta": ("attendi", "kick"),
+    "azione_immagini": ("cancella", "avvisa", "timeout"),
     "modalita_link_inviti": ("tutti", "crea_invito", "ruolo", "spento"),
 }
 
@@ -99,6 +100,10 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
         _c("odio_richiami_soglia", "Richiami prima del timeout (1-20)", NUMERO),
         _c("odio_richiami_minuti", "Finestra dei richiami (minuti, 1-1440)", NUMERO),
         _c("odio_timeout_minuti", "Durata del timeout (minuti, 1-40320)", NUMERO),
+        _c("immagini_filtro_attivo", "Filtro immagini sospette", BOOL),
+        _c("immagini_azione", "Azione sulle immagini sospette", SCELTA),
+        _c("immagini_timeout_minuti", "Timeout per le immagini sospette (minuti, 1-40320)", NUMERO),
+        _c("immagini_canale_log_id", "Canale del registro delle immagini sospette", CANALE),
     ),
     "invites": (
         _c("inviti_log_channel_id", "Canale del registro degli inviti", CANALE),

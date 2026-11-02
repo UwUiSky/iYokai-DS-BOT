@@ -1,0 +1,14 @@
+# Frasi tipiche dei link delle truffe (italiano), una per riga, in minuscolo. Righe con # sono commenti.
+# Contano solo se il link non e' di un sito ufficiale (D62).
+nitro gratis
+nitro-gratis
+regalo nitro
+regalo-nitro
+ritira il tuo premio
+ritira-premio
+riscatta il premio
+hai vinto
+verifica il tuo account
+verifica-account
+accedi per ritirare
+sorteggio-nitro
