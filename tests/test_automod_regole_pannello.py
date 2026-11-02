@@ -178,7 +178,12 @@ async def test_elimina_chiede_due_volte(db_regole):
     assert await servizio.regole_del_server(GID) == ()
 
 
-async def test_solo_chi_ha_aperto_il_pannello_lo_usa():
+async def test_solo_chi_ha_aperto_il_pannello_lo_usa(monkeypatch):
+    from unittest.mock import AsyncMock
+
+    from core import ui_base
+
+    monkeypatch.setattr(ui_base, "_utente_o_server_in_blacklist", AsyncMock(return_value=False))
     vista, inter = _vista()
     assert await vista.interaction_check(fake_interaction(user=fake_member(user_id=5)))
     assert not await vista.interaction_check(fake_interaction(user=fake_member(user_id=6)))

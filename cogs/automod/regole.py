@@ -15,6 +15,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from cogs.automod.automod import MODULE_AUTOMOD, _VIOLATION_LABELS
+from core.ui_base import BaseView
 from core.automod_liste_pannello import apri_liste
 from core.automod_regole_pannello import apri_pannello
 from cogs.moderation._shared import ensure_module_enabled
@@ -42,7 +43,7 @@ async def _nomi_contatori(guild_id: int) -> list[str]:
     return sorted(nomi)
 
 
-class ConfermaAzzera(discord.ui.View):
+class ConfermaAzzera(BaseView):
     """Un bottone per confermare l'azzeramento: lo vede e lo usa solo chi ha dato il comando."""
 
     def __init__(self, autore_id: int, guild_id: int, nome: str, dal: datetime | None, user_id: int | None, etichetta: str):
@@ -51,7 +52,7 @@ class ConfermaAzzera(discord.ui.View):
         self.conferma.label = etichetta[:45]
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        return interaction.user.id == self.autore_id
+        return interaction.user.id == self.autore_id and await super().interaction_check(interaction)
 
     @discord.ui.button(style=discord.ButtonStyle.danger, label="OK", custom_id="am:azzera:ok")
     async def conferma(self, interaction: discord.Interaction, bottone: discord.ui.Button) -> None:
