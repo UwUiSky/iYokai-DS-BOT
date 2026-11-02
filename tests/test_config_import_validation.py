@@ -67,6 +67,8 @@ SETTINGS_VALIDE = {
     "verify_azione_fallita": "quarantena",
     "verify_solo_sospetti": False,
     "verify_azione_eta": "kick",
+    "verify_blocca_vpn": False,
+    "verify_condividi_nome": True,
     "verify_paesi": "IT, CH",
     "verify_paesi_soglia": 5,
     "verify_paesi_minuti": 10,

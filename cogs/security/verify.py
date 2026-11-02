@@ -84,6 +84,7 @@ from core.scheduler import in_seconds, scheduler
 from core.security_quarantine import ruolo_quarantena
 from core.security_raid_state import raid_in_corso
 from core.verify_paese_staff import BottoneDecisione
+from core.verify_vpn_staff import BottoneLasciaPassare
 from core.verify_logic import (
     AZIONI_FALLITA,
     FALLIMENTI_CAPTCHA_PRIMA_DELL_AZIONE,
@@ -1174,7 +1175,7 @@ async def setup(bot: commands.Bot) -> None:
     cog = VerifyCog(bot)
     await bot.add_cog(cog)
     bot.add_view(VerifyPanelView())
-    bot.add_dynamic_items(BottoneDecisione)
+    bot.add_dynamic_items(BottoneDecisione, BottoneLasciaPassare)
     scheduler.register_handler(VERIFY_PROMEMORIA, cog.handle_promemoria)
     scheduler.register_handler(VERIFY_SCADENZA, cog.handle_scadenza)
     scheduler.register_handler(VERIFY_ETA, cog.handle_eta)

@@ -31,6 +31,10 @@ SCELTE = {
 }
 
 
+# Valore che vale quando il server non ha scelto: la pagina lo mostra, non resta «non impostato».
+VALORI_DI_BASE = {"verify_blocca_vpn": True}
+
+
 @dataclass(frozen=True)
 class Campo:
     chiave: str
@@ -53,6 +57,8 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
         _c("verify_azione_fallita", "Se sbaglia il captcha", SCELTA),
         _c("verify_solo_sospetti", "Verifica solo gli account sospetti", BOOL),
         _c("verify_azione_eta", "Account troppo nuovo", SCELTA),
+        _c("verify_blocca_vpn", "Blocca chi si verifica con VPN o proxy", BOOL),
+        _c("verify_condividi_nome", "Fatti nominare negli avvisi degli altri server (storico VPN)", BOOL),
         _c("verify_paesi", "Paesi del server (codici di 2 lettere, es. IT, CH)", TESTO),
         _c("verify_paesi_soglia", "Verifiche da fuori paese prima dell'attesa (0 = spento)", NUMERO),
         _c("verify_paesi_minuti", "Finestra della soglia (minuti, 1-1440)", NUMERO),
@@ -136,7 +142,7 @@ async def valori_modulo(guild: discord.Guild, nome: str) -> list[dict]:
     righe = []
     for campo in campi_modulo(nome):
         riga = {"chiave": campo.chiave, "etichetta": campo.etichetta, "tipo": campo.tipo,
-                "valore": await db.get_guild_setting(guild.id, campo.chiave)}
+                "valore": await db.get_guild_setting(guild.id, campo.chiave, VALORI_DI_BASE.get(campo.chiave))}
         if campo.tipo == SCELTA:
             riga["scelte"] = _scelte(schema[campo.chiave])
         elif campo.tipo in (CANALE, CANALE_VOCE, RUOLO):
