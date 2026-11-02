@@ -445,3 +445,71 @@ async def test_comando_owner_storico_mostra_i_nomi_solo_al_proprietario(monkeypa
     embed = i.followup.send.await_args.kwargs["embed"]
     assert "Server Segreto" in embed.description and f"`{GUILD + 9}`" in embed.description
     assert len(embed.description) <= 4096
+
+
+# ------------------------------------------------------------ pagina web
+@pytest.fixture
+async def web(monkeypatch, clean_db):
+    import aiohttp
+    from aiohttp.test_utils import TestClient, TestServer
+
+    from core import alt_detection_logic as alt, web_panel_server
+    from core.repositories.web_panel_session_repo import WebPanelSessionRepository
+
+    amb = _ambiente(monkeypatch, clean_db)
+    registro = AsyncMock(return_value=(True, "Verificato."))
+    monkeypatch.setattr(panel_bridge, "verifica_web", registro)
+    monkeypatch.setattr(panel_bridge, "pagina_verifica", AsyncMock(return_value=("Server", None)))
+    app = web_panel_server.build_app(
+        bot=amb.bot, sessioni=WebPanelSessionRepository(pool_provider=lambda: clean_db), oauth=MagicMock(),
+        client_id="1", client_secret="s" * 8, url_pubblico="http://pannello.test", chiave=CHIAVE,
+    )
+    client = TestClient(TestServer(app), cookie_jar=aiohttp.CookieJar(unsafe=True))
+    await client.start_server()
+    yield SimpleNamespace(client=client, registro=registro, token=alt.crea_token(CHIAVE, GUILD, 1), web=web_panel_server)
+    await client.close()
+
+
+async def _invia(web, fuso, **intestazioni):
+    pagina = await web.client.get(f"/verifica/{web.token}")
+    import re
+    campo = re.search(r'name="campo" value="([^"]+)"', await pagina.text()).group(1)
+    return pagina, await web.client.post(f"/verifica/{web.token}", data={"campo": campo, "fuso": fuso}, headers=intestazioni)
+
+
+@pytest.mark.asyncio
+async def test_la_pagina_manda_il_fuso_e_solo_li_si_apre_lo_script_del_sito(web):
+    pagina, risposta = await _invia(web, "Europe/Rome")
+    testo = await pagina.text()
+    assert 'name="fuso"' in testo and '/static/verifica.js' in testo and "VPN" in testo
+    assert "script-src 'self'" in pagina.headers["Content-Security-Policy"]
+    assert "unsafe-inline" not in pagina.headers["Content-Security-Policy"]
+    js = await web.client.get("/static/verifica.js")
+    assert js.status == 200 and "resolvedOptions().timeZone" in await js.text()
+    altra = await web.client.get("/privacy")
+    assert "script-src" not in altra.headers["Content-Security-Policy"]
+    assert risposta.status == 200
+    assert web.registro.await_args.kwargs["fuso"] == "Europe/Rome"
+    assert web.registro.await_args.kwargs["segnali_intestazioni"] == ()  # da rete locale: le intestazioni non contano
+
+
+@pytest.mark.asyncio
+async def test_fuso_storto_si_scarta_e_i_segnali_di_proxy_arrivano_dalla_richiesta(web, monkeypatch):
+    visti = []
+    monkeypatch.setattr(web.web.vpn_logica, "segnali_intestazioni",
+                        lambda remoto, intest, fidati: visti.append((remoto, dict(intest), fidati)) or ("intestazioni",))
+    await _invia(web, "<script>alert(1)</script>", **{"X-Forwarded-For": "1.1.1.1"})
+    assert web.registro.await_args.kwargs["fuso"] is None
+    assert web.registro.await_args.kwargs["segnali_intestazioni"] == ("intestazioni",)
+    assert visti[0][0] == "127.0.0.1" and visti[0][1]["X-Forwarded-For"] == "1.1.1.1" and visti[0][2] == frozenset()
+
+
+@pytest.mark.asyncio
+async def test_pagina_di_esito_dopo_un_blocco_ha_il_link_per_riprovare(web):
+    web.registro.return_value = (False, "Abbiamo rilevato una VPN o un proxy. Spegni VPN o proxy e riprova.")
+    _, risposta = await _invia(web, "")
+    testo = await risposta.text()
+    assert "Spegni VPN o proxy e riprova" in testo and f'href="/verifica/{web.token}"' in testo
+    web.registro.return_value = (True, "Verificato.")
+    _, risposta = await _invia(web, "")
+    assert "Riprova la verifica" not in await risposta.text()

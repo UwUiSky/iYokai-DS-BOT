@@ -31,7 +31,7 @@ from itertools import groupby
 import jinja2
 from aiohttp import BodyPartReader, MultipartReader, web
 
-from core import alt_detection_logic as verifica, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_editor, web_panel_inviti, web_panel_logic as regole
+from core import alt_detection_logic as verifica, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_editor, web_panel_inviti, web_panel_logic as regole, verify_vpn_logic as vpn_logica
 from core.bot_aspetto import MAX_IMMAGINE
 from core.command_access import RuoloAdminNegato
 from core.command_search_logic import cerca
@@ -135,7 +135,9 @@ def build_app(
     foglio_stile = (CARTELLA / "static" / "pannello.css").read_bytes()
     file_radio = {  # i soli altri file statici: la pagina «radio iYokai» dentro Discord
         nome: ((CARTELLA / "static" / nome).read_bytes(), tipo)
-        for nome, tipo in (("discord-sdk.js", "text/javascript"), ("radio.js", "text/javascript"))
+        for nome, tipo in (
+            ("discord-sdk.js", "text/javascript"), ("radio.js", "text/javascript"), ("verifica.js", "text/javascript")
+        )
     }
     intestazioni_radio = web_panel_attivita.intestazioni_attivita(https)
 
@@ -221,6 +223,8 @@ def build_app(
         if in_discord:  # solo qui la pagina può stare in un riquadro di Discord
             risposta.headers.pop("X-Frame-Options", None)
         risposta.headers.update(intestazioni_radio if in_discord else intestazioni)
+        if request.path.startswith("/verifica/"):  # D64: solo qui, lo script che manda il fuso orario
+            risposta.headers["Content-Security-Policy"] = regole.CSP_VERIFICA
         return risposta
 
     @web.middleware
@@ -567,8 +571,13 @@ def build_app(
         riuscita, testo = await ponte.verifica_web(
             bot, chiave, *chi, _ip(request),
             request.headers.get("User-Agent"), request.headers.get("Accept-Language"),
+            segnali_intestazioni=vpn_logica.segnali_intestazioni(request.remote, request.headers, proxy_fidati),
+            fuso=vpn_logica.fuso_pulito(str(form.get("fuso", ""))),
         )
-        return _pagina(request, "verifica_esito.html", riuscita=riuscita, testo=testo)
+        return _pagina(
+            request, "verifica_esito.html", riuscita=riuscita, testo=testo,
+            riprova=None if riuscita else f"/verifica/{token}",
+        )
 
     async def pagina_ai(request: web.Request) -> web.StreamResponse:
         guild, rifiuto = await _server(request)
@@ -668,7 +677,7 @@ def build_app(
 
     app = web.Application(middlewares=[sicurezza, sessione], client_max_size=DIMENSIONE_MASSIMA_RICHIESTA)
     app.router.add_get("/static/pannello.css", stile)
-    app.router.add_get(r"/static/{nome:discord-sdk\.js|radio\.js}", file_statico)
+    app.router.add_get(r"/static/{nome:discord-sdk\.js|radio\.js|verifica\.js}", file_statico)
     pagina_radio = web_panel_attivita.registra_rotte(
         app, ambiente=ambiente, client_id=client_id, flusso=radio_flusso, testo_spenta="La radio è spenta."
     )

@@ -157,6 +157,10 @@ CSP = (
 )
 
 
+# La pagina di verifica carica un solo script dello stesso sito (il fuso orario, D64).
+CSP_VERIFICA = CSP.replace("default-src 'none';", "default-src 'none'; script-src 'self';", 1)
+
+
 def intestazioni_sicurezza(https: bool) -> dict[str, str]:
     intestazioni = {
         "Content-Security-Policy": CSP,
