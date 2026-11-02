@@ -89,6 +89,12 @@ async def salva(dati: bytes, guild_id: int, sha256: str, ore: int = ORE_SOSPETTA
     return voce
 
 
+async def prolunga(nome: str, ore: int = ORE_SOSPETTA) -> None:
+    """Un file che l'analisi ha trovato sospetto resta per il tempo delle sospette."""
+    percorso_di(nome)
+    await db.pool.execute("UPDATE quarantena_file SET scade_il = now() + make_interval(hours => $2) WHERE nome = $1", nome, ore)
+
+
 async def cancella(nome: str) -> None:
     """Toglie file e riga. Si puo' chiamare piu' volte."""
     percorso = percorso_di(nome)

@@ -120,6 +120,13 @@ async def _conserva(dati: bytes, guild_id: int, sha: str) -> None:
         logger.warning("Quarantena non scritta", exc_info=True)
 
 
+async def _prolunga(nome: str) -> None:
+    try:
+        await quarantena.prolunga(nome)
+    except Exception:
+        logger.warning("Quarantena: scadenza non allungata", exc_info=True)
+
+
 async def _con_sandbox(dati: bytes, byte, guild_id: int) -> EsitoImmagine:
     global _modo_dichiarato
     try:
@@ -143,6 +150,8 @@ async def _con_sandbox(dati: bytes, byte, guild_id: int) -> EsitoImmagine:
             logger.warning("Filtro immagini: sandbox ridotta (servizio iyokai-sandbox non raggiungibile)")
         esito = await _esito_da_sandbox(risultato, byte.sha256, guild_id)
         tenere = esito.verdetto != PULITA
+        if tenere:
+            await _prolunga(voce.nome)
         return _ricorda(guild_id, esito)
     finally:
         if not tenere:

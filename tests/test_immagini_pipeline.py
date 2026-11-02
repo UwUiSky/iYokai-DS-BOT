@@ -152,6 +152,9 @@ async def test_processo_ucciso_dai_limiti_e_malevolo_e_si_conserva(ambiente, mon
     e = await pl.analizza_immagine(f.png(), "a.png", None, GUILD)
     assert e.verdetto == "malevola" and "sandbox_ucciso" in e.motivi
     assert len(list(quar.iterdir())) == 1
+    # Resta per il tempo delle sospette (72 ore), non per quello di sicurezza delle pulite (1 ora).
+    ore = await ambiente[2].fetchval("SELECT extract(epoch FROM scade_il - now()) / 3600 FROM quarantena_file")
+    assert ore > q.ORE_SOSPETTA - 1
 
 
 @pytest.mark.asyncio
