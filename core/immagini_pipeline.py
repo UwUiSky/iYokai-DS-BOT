@@ -51,7 +51,8 @@ class EsitoImmagine:
 
     @property
     def da_segnalare(self) -> bool:
-        return self.verdetto != PULITA and not self.da_libreria and not self.solo_avviso and self.non_analizzata is None
+        """Solo le malevole nuove vanno in libreria: una sospetta condivisa da 3 server diventerebbe malevola ovunque."""
+        return self.verdetto == MALEVOLA and not self.da_libreria and not self.solo_avviso and self.non_analizzata is None
 
 
 _cache: BoundedCache[tuple[int, str], tuple[float, EsitoImmagine]] = BoundedCache(MAX_VERDETTI_IN_CACHE)

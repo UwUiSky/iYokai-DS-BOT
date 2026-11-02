@@ -200,3 +200,9 @@ def test_da_segnalare_solo_per_i_casi_nuovi():
     assert pl.EsitoImmagine("malevola", "a").da_segnalare
     assert not pl.EsitoImmagine("pulita", "a").da_segnalare
     assert not pl.EsitoImmagine("malevola", "a", da_libreria=True).da_segnalare
+
+
+def test_una_sospetta_non_diventa_segnalazione():
+    # Solo le malevole vanno in libreria: una sospetta (metadati grossi, coda strana) vista in 3 server
+    # diventerebbe «condivisa», cioe' malevola con timeout ovunque.
+    assert not pl.EsitoImmagine("sospetta", "a", ("png_testo_enorme",)).da_segnalare
