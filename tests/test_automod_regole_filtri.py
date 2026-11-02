@@ -170,3 +170,21 @@ async def test_un_webhook_si_giudica_solo_se_la_regola_lo_dice(cog):
     wh2.author = wh.author
     await cog.on_message(wh2)
     wh2.delete.assert_awaited_once()
+
+
+async def test_esenti_e_bot_non_vanno_al_giudizio_delle_parole_sospette(cog, monkeypatch):
+    from unittest.mock import AsyncMock
+
+    # Una regola che ignora le esenzioni e accetta i bot non deve portare all'AI (D35) chi prima non ci arrivava.
+    await _caps_attivo(cog)
+    s = await automod_advanced_repo.get_settings(GUILD_ID)
+    await automod_advanced_repo.save_settings(modulo_automod._replace_settings(s, exempt_channel_ids=(111,)))
+    await _regola(Condizioni(esenzioni_globali=False, autori=("persone", "bot")))
+    giudice = AsyncMock(return_value=False)
+    monkeypatch.setattr(modulo_automod, "controlla_sospetta", giudice)
+    monkeypatch.setattr(modulo_automod, "filtro_sospette", AsyncMock(return_value=((), None)))
+    await cog.on_message(_msg("ciao a tutti", canale=111))
+    await cog.on_message(_msg("ciao a tutti", canale=222, bot=True, autore=31))
+    giudice.assert_not_awaited()
+    await cog.on_message(_msg("ciao a tutti", canale=222))
+    giudice.assert_awaited_once()  # una persona non esente sì, come prima

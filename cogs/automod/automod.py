@@ -1731,7 +1731,8 @@ class AutomodCog(CogConGruppi, commands.Cog):
             if trovata is not None:
                 frammenti = trovata
                 violazioni = (VIOLATION_PAROLE_VIETATE, *violazioni)  # AMD-014
-            else:  # D35: parola sospetta (anche cognome) da sola: la giudica l'AI
+            elif not esente and not message.author.bot and isinstance(message.author, discord.Member):
+                # D35: parola sospetta (anche cognome) da sola: la giudica l'AI. Esenti, bot e webhook mai, come prima.
                 sospette, _ = await filtro_sospette(message.guild.id, db)
                 if await controlla_sospetta(message, segnali.content, sospette, db):
                     return
