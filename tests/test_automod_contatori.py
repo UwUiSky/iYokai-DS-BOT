@@ -159,3 +159,21 @@ async def test_comando_riepilogo_e_azzera(repo, monkeypatch):
     inter = fake_interaction(guild=fake_guild(guild_id=GUILD_ID))
     await cog.azzera.callback(cog, inter, "urla", None, None)
     assert "view" not in inter.followup.send.await_args.kwargs  # niente da azzerare: nessun bottone
+
+
+async def test_due_messaggi_insieme_fanno_scattare_la_soglia_una_volta_sola(cog, clean_db, monkeypatch):
+    import asyncio
+
+    import core.automod_azioni as azioni
+
+    await _caps_attivo(cog)
+    isola = AsyncMock()
+    monkeypatch.setattr(azioni.bot_roles, "isola", isola)
+    await servizio.salva(GUILD_ID, Regola(chiave="anti_caps", tipo="filtro", nome="anti_caps",
+                                          contatore=Contatore("urla", soglie=(_soglia(2, 10, 900),)),
+                                          azioni=azioni_dai_nomi_vecchi(("delete",), 600)), 1)
+    if hasattr(clean_db, "acquire"):
+        from tests.support.concorrenza import apri_connessioni
+        await apri_connessioni(clean_db)
+    await asyncio.gather(*(cog.on_message(_msg()) for _ in range(3)))
+    isola.assert_awaited_once()  # una sola soglia: il contatore si consuma una volta

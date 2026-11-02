@@ -1671,7 +1671,8 @@ class AutomodCog(CogConGruppi, commands.Cog):
         soglia = await contatori.soglia_scattata(message.guild.id, message.author.id, regola.contatore)
         if soglia is None:
             return ()
-        await contatori.consuma(message.guild.id, message.author.id, regola.contatore)
+        if not await contatori.consuma(message.guild.id, message.author.id, regola.contatore):
+            return ()  # un altro messaggio arrivato insieme ha già consumato il contatore: la soglia scatta una volta
         return await _esegui_regola(message, violazione, soglia.azioni, modificato, regola.contatore.nome,
                                     regola.nome if regola.tipo == "personale" else None)
 
