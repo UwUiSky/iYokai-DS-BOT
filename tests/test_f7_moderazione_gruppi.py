@@ -47,7 +47,7 @@ ATTESI: dict[tuple[str, str | None], set[str]] = {
     ("mod-casi", "caso"): {"storico", "vedi", "motivo", "elimina", "classifica-staff", "attive", "registra"},
     ("mod-casi", "nota"): {"aggiungi", "elenca", "rimuovi", "modifica", "svuota"},
     ("mod-casi", "avvisi"): {"togli", "azzera", "classifica"},
-    ("mod-canali", None): {"clear", "lock", "unlock", "slowmode"},
+    ("mod-canali", None): {"clear", "reazioni", "lock", "unlock", "slowmode"},
     ("mod-canali", "blocco"): {"attiva", "togli"},
     ("founder", "moderazione"): {"immuni"},
     ("mod-ban", None): {"ban", "tempban", "softban", "kick", "unban"},

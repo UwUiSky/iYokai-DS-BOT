@@ -1471,5 +1471,12 @@
   "amimg_owner_serve_impronta": "Serve un'impronta SHA-256 (64 caratteri) o i primi 6 caratteri.",
   "amimg_owner_solo_proprietario": "Solo il proprietario del bot può usare questo comando.",
   "amimg_owner_troppo_grande": "L'immagine è troppo grande (massimo 8 MB).",
-  "amimg_sandbox_ridotta": "Controllo in modalità ridotta: il servizio di isolamento non risponde."
+  "amimg_sandbox_ridotta": "Controllo in modalità ridotta: il servizio di isolamento non risponde.",
+  "clear_regex_serve_testo": "Con «regex» scrivi anche il testo in «contains».",
+  "clear_regex_non_valida": "{motivo}",
+  "clear_valore_non_valido": "{motivo}",
+  "clear_restano_vecchi": "Altri {v1} messaggi più vecchi di 14 giorni non sono stati cancellati (al massimo {v2} per comando): ripeti il comando.",
+  "clear_reazioni_bot_senza_permesso": "Mi servono «Gestire i messaggi» e «Leggere la cronologia» in {mention}.",
+  "clear_reazioni_fatto": "Reazioni tolte da {v1} messaggi.",
+  "clear_reazioni_titolo": "🧹 Reazioni tolte"
 }

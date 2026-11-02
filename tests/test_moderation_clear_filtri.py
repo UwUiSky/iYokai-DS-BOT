@@ -279,3 +279,184 @@ def test_clear_ha_i_filtri_nuovi_e_sta_nei_limiti():
     nomi = [p.name for p in cmd.parameters] if hasattr(cmd, "parameters") else list(inspect.signature(cmd.callback).parameters)
     assert "tipo" in nomi and "modo" in nomi
     assert len([n for n in nomi if n not in ("self", "interaction")]) <= 25
+
+
+# --- M2: regex, prima/dopo, età, tetti, reazioni (MOD-072, 080, 081, 082, 087) ---
+
+from core.clear_filter_logic import (  # noqa: E402
+    MAX_CLEAR_AMOUNT,
+    MAX_VECCHI,
+    crea_controllo,
+    leggi_riferimento_messaggio,
+)
+
+
+def test_filtro_regex_con_re2():
+    f = FiltriClear(contiene=r"^\d{3}-\d{4}$", modo="regex")
+    assert messaggio_passa(_msg("555-1234"), f)
+    assert not messaggio_passa(_msg("ciao"), f)
+
+
+def test_leggi_riferimento_id_e_link():
+    assert leggi_riferimento_messaggio("123456789012345678", 55) == 123456789012345678
+    assert leggi_riferimento_messaggio("https://discord.com/channels/1/55/777", 55) == 777
+    with pytest.raises(ValueError):
+        leggi_riferimento_messaggio("https://discord.com/channels/1/66/777", 55)
+    with pytest.raises(ValueError):
+        leggi_riferimento_messaggio("boh", 55)
+
+
+def test_filtro_eta_dei_messaggi():
+    vecchio = _msg("x")
+    vecchio.created_at = datetime.now(timezone.utc) - timedelta(hours=3)
+    assert messaggio_passa(vecchio, FiltriClear(piu_vecchi_di_s=3600))
+    assert not messaggio_passa(vecchio, FiltriClear(piu_nuovi_di_s=3600))
+    assert messaggio_passa(vecchio, FiltriClear(piu_nuovi_di_s=86400))
+
+
+def test_tetto_dei_messaggi_vecchi_a_100():
+    ora = datetime.now(timezone.utc)
+    controllo, stato = crea_controllo(FiltriClear(), ora=ora)
+    vecchi = []
+    for _ in range(MAX_VECCHI + 30):
+        m = _msg("x")
+        m.created_at = ora - timedelta(days=20)
+        vecchi.append(m)
+    recente = _msg("x")
+    recente.created_at = ora - timedelta(days=1)
+    scelti = [m for m in vecchi if controllo(m)]
+    assert len(scelti) == MAX_VECCHI and stato.vecchi_saltati == 30
+    assert controllo(recente)
+
+
+def test_tetto_totale_a_mille():
+    assert MAX_CLEAR_AMOUNT == 1000
+
+
+async def test_clear_oltre_200_e_prima_dopo(ambiente):
+    inter, canale, _ = ambiente
+    cog = ModerationClearCog(bot=None)
+
+    await cog.clear.callback(cog, inter, 1000, dopo="100", prima="https://discord.com/channels/1/55/200")
+
+    k = canale.purge.call_args.kwargs
+    assert k["limit"] == 1000 and k["after"].id == 100 and k["before"].id == 200
+
+
+async def test_clear_link_di_un_altro_canale_non_cancella(ambiente):
+    inter, canale, _ = ambiente
+    cog = ModerationClearCog(bot=None)
+
+    await cog.clear.callback(cog, inter, 10, dopo="https://discord.com/channels/1/66/200")
+
+    canale.purge.assert_not_awaited()
+    assert inter.response.send_message.call_args.kwargs["ephemeral"] is True
+
+
+async def test_clear_regex_sbagliata_non_cancella(ambiente):
+    inter, canale, _ = ambiente
+    cog = ModerationClearCog(bot=None)
+
+    await cog.clear.callback(cog, inter, 10, contains=r"(a)\1", modo="regex")
+
+    canale.purge.assert_not_awaited()
+
+
+async def test_clear_modo_regex_senza_testo_non_cancella(ambiente):
+    inter, canale, _ = ambiente
+    cog = ModerationClearCog(bot=None)
+
+    await cog.clear.callback(cog, inter, 10, modo="regex")
+
+    canale.purge.assert_not_awaited()
+
+
+async def test_clear_durata_sbagliata_non_cancella(ambiente):
+    inter, canale, _ = ambiente
+    cog = ModerationClearCog(bot=None)
+
+    await cog.clear.callback(cog, inter, 10, piu_vecchi_di="boh")
+
+    canale.purge.assert_not_awaited()
+
+
+async def test_clear_dice_quanti_vecchi_restano(ambiente):
+    inter, canale, _ = ambiente
+
+    async def finto_purge(limit, check, **k):
+        ora = datetime.now(timezone.utc)
+        for _ in range(MAX_VECCHI + 5):
+            m = _msg("x")
+            m.created_at = ora - timedelta(days=20)
+            check(m)
+        return [1, 2]
+
+    canale.purge = finto_purge
+    cog = ModerationClearCog(bot=None)
+
+    await cog.clear.callback(cog, inter, 1000)
+
+    assert "5" in inter.followup.send.call_args.args[0]
+
+
+# reazioni
+
+def _msg_reazioni(reazioni):
+    m = MagicMock()
+    m.reactions = [MagicMock(emoji=e) for e in reazioni]
+    m.clear_reactions = AsyncMock()
+    m.clear_reaction = AsyncMock()
+    return m
+
+
+def _storia(messaggi):
+    async def gen(limit=None):
+        for m in messaggi[:limit]:
+            yield m
+    return gen
+
+
+async def test_reazioni_toglie_tutte(ambiente, monkeypatch):
+    import cogs.moderation.clear as modulo
+    monkeypatch.setattr(modulo, "PAUSA_REAZIONI", 0)
+    inter, canale, canale_log = ambiente
+    msgs = [_msg_reazioni(["👍"]), _msg_reazioni([]), _msg_reazioni(["🎉"])]
+    canale.history = _storia(msgs)
+    cog = ModerationClearCog(bot=None)
+
+    await cog.reazioni.callback(cog, inter, 3)
+
+    msgs[0].clear_reactions.assert_awaited()
+    msgs[1].clear_reactions.assert_not_awaited()
+    msgs[2].clear_reactions.assert_awaited()
+    canale_log.send.assert_awaited()
+
+
+async def test_reazioni_solo_una_emoji(ambiente, monkeypatch):
+    import cogs.moderation.clear as modulo
+    monkeypatch.setattr(modulo, "PAUSA_REAZIONI", 0)
+    inter, canale, _ = ambiente
+    msgs = [_msg_reazioni(["👍", "🎉"]), _msg_reazioni(["🎉"])]
+    canale.history = _storia(msgs)
+    cog = ModerationClearCog(bot=None)
+
+    await cog.reazioni.callback(cog, inter, 2, emoji="👍")
+
+    msgs[0].clear_reaction.assert_awaited_with("👍")
+    msgs[1].clear_reaction.assert_not_awaited()
+    msgs[0].clear_reactions.assert_not_awaited()
+
+
+async def test_reazioni_si_ferma_dopo_tre_403(ambiente, monkeypatch):
+    import cogs.moderation.clear as modulo
+    monkeypatch.setattr(modulo, "PAUSA_REAZIONI", 0)
+    inter, canale, _ = ambiente
+    msgs = [_msg_reazioni(["👍"]) for _ in range(6)]
+    for m in msgs:
+        m.clear_reactions.side_effect = discord.Forbidden(MagicMock(status=403, reason="x"), "x")
+    canale.history = _storia(msgs)
+    cog = ModerationClearCog(bot=None)
+
+    await cog.reazioni.callback(cog, inter, 6)
+
+    assert sum(m.clear_reactions.await_count for m in msgs) == 3

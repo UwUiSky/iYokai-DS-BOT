@@ -611,6 +611,7 @@
   "mod-casi caso storico": "Shows a member's case history.",
   "mod-casi caso vedi": "Shows the details of a single case.",
   "mod-canali clear": "Deletes a number of messages, with optional filters.",
+  "mod-canali reazioni": "Removes reactions from the latest messages of a channel, without deleting them.",
   "mod-canali lock": "Blocks the ability to write in a channel.",
   "mod-sanzioni massa": "Actions on several members at once.",
   "mod-sanzioni massa timeout": "Times out several members at once (max 28 days).",

@@ -1354,3 +1354,8 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 ## giro r16mod — blocco Moderazione (#115)
 - `/mod-canali clear amount:50 tipo:solo-testo`, poi `tipo:emoji`, `tipo:webhook`, `tipo:iyokai`, `tipo:sospetti`: si cancellano solo i messaggi di quel tipo (solo emoji = nessuna lettera; sospetti = senza avatar, solo @everyone o account sotto i 7 giorni). La riga nel log dice il tipo.
 - `/mod-canali clear amount:50 contains:ciao modo:inizia` (poi `finisce`, `uguale`): conta il punto del testo.
+- `/mod-canali clear amount:300 contains:^\d+$ modo:regex`: cancella i messaggi fatti solo di numeri; una regex sbagliata (`(a)\1`) è rifiutata senza cancellare.
+- `/mod-canali clear amount:50 dopo:<ID> prima:<link di un messaggio>`: solo quelli in mezzo; un link di un altro canale è rifiutato.
+- `/mod-canali clear amount:50 piu_vecchi_di:2h` e `piu_nuovi_di:30m`: solo i messaggi di quell'età.
+- `/mod-canali clear amount:1000` in un canale con oltre 100 messaggi più vecchi di 14 giorni: se ne cancellano 100 e la risposta dice quanti restano.
+- `/mod-canali reazioni quanti:20` (poi con `emoji:👍`): le reazioni spariscono, i messaggi restano; riga nel log di moderazione.
