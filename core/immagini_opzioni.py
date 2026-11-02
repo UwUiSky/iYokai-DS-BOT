@@ -3,7 +3,7 @@ core/immagini_opzioni.py
 ========================
 Impostazioni del filtro immagini sospette (D62), in un solo punto (D16): acceso (spento di base),
 azione (cancella, avvisa, timeout), minuti del timeout e canale del log. Le usano il cog del filtro
-e, dopo l'unione con il filone AutoMod, il comando `/admin-automod immagini` e il pannello.
+e, dopo l'unione con il filone AutoMod, il comando «immagini» del gruppo admin-automod e il pannello.
 Funzioni coperte: SPEC §6 (D62)
 """
 
