@@ -18,7 +18,7 @@ from cogs.automod.automod import MODULE_AUTOMOD, _VIOLATION_LABELS
 from core.automod_liste_pannello import apri_liste
 from core.automod_regole_pannello import apri_pannello
 from cogs.moderation._shared import ensure_module_enabled
-from core import automod_immagini_impostazioni as immagini_cfg, automod_liste_service as liste_service, automod_regole_service as regole_service
+from core import immagini_opzioni, automod_liste_service as liste_service, automod_regole_service as regole_service
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.i18n import testo_per
@@ -62,7 +62,7 @@ class ConfermaAzzera(discord.ui.View):
             content=await testo_per(interaction, "amregole_azzerato", righe=toccate, nome=self.nome), view=None)
 
 
-AZIONI_IMMAGINI = [app_commands.Choice(name=n, value=n) for n in immagini_cfg.AZIONI]
+AZIONI_IMMAGINI = [app_commands.Choice(name=n, value=n) for n in immagini_opzioni.AZIONI]
 
 
 class RegoleCog(CogConGruppi, commands.Cog):
@@ -134,29 +134,22 @@ class RegoleCog(CogConGruppi, commands.Cog):
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
         gid = interaction.guild.id
-        try:
-            cambi = {"filtro": filtro, "azione": azione.value if azione else None, "timeout": timeout_minuti,
-                     "canale": canale_log.id if canale_log else None}
-            fatti = False
-            for nome, valore in cambi.items():
-                if valore is not None:
-                    await immagini_cfg.imposta(gid, nome, valore, interaction.user.id)
-                    fatti = True
-            if fatti:
-                await interaction.response.send_message(await testo_per(interaction, "amregole_img_fatto"), ephemeral=True)
+        if any(v is not None for v in (filtro, azione, timeout_minuti, canale_log)):
+            try:
+                await immagini_opzioni.imposta(
+                    gid, interaction.user.id, attivo=filtro, azione=azione.value if azione else None,
+                    timeout_minuti=timeout_minuti, canale_log_id=canale_log.id if canale_log else None)
+            except ValueError as errore:
+                await interaction.response.send_message(await testo_per(interaction, "amregole_img_errore", errore=errore), ephemeral=True)
                 return
-            v = await immagini_cfg.leggi(gid)
-        except immagini_cfg.ImmaginiNonDisponibili:
-            await interaction.response.send_message(await testo_per(interaction, "amregole_img_non_disponibile"), ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "amregole_img_fatto"), ephemeral=True)
             return
-        except immagini_cfg.ValoreNonValido as errore:
-            await interaction.response.send_message(await testo_per(interaction, "amregole_img_errore", errore=errore), ephemeral=True)
-            return
+        v = await immagini_opzioni.leggi(gid)
         await interaction.response.send_message(await testo_per(
             interaction, "amregole_img_stato",
-            stato=await testo_per(interaction, "amregole_img_acceso" if v["filtro"] else "amregole_img_spento"),
-            azione=v["azione"] or "cancella", minuti=v["timeout"] or 60,
-            canale=f"<#{v['canale']}>" if v["canale"] else await testo_per(interaction, "amregole_img_nessun_canale")),
+            stato=await testo_per(interaction, "amregole_img_acceso" if v.attivo else "amregole_img_spento"),
+            azione=v.azione, minuti=v.timeout_minuti,
+            canale=f"<#{v.canale_log_id}>" if v.canale_log_id else await testo_per(interaction, "amregole_img_nessun_canale")),
             ephemeral=True)
 
     @comando_di_gruppo(

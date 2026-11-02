@@ -1509,7 +1509,6 @@
   "amregole_gruppo_fatto": "Gruppo «{nome}»: {n} regole {stato}.",
   "amregole_gruppo_acceso": "accese",
   "amregole_gruppo_spento": "spente",
-  "amregole_img_non_disponibile": "Il filtro immagini non è ancora disponibile in questa versione.",
   "amregole_img_stato": "Filtro immagini: {stato}. Azione: {azione}. Timeout: {minuti} minuti. Canale del log: {canale}.",
   "amregole_img_fatto": "Impostazioni del filtro immagini aggiornate.",
   "amregole_img_errore": "Valore non valido: {errore}",

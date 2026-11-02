@@ -1509,7 +1509,6 @@
   "amregole_gruppo_fatto": "Group \"{nome}\": {n} rules {stato}.",
   "amregole_gruppo_acceso": "turned on",
   "amregole_gruppo_spento": "turned off",
-  "amregole_img_non_disponibile": "The image filter is not available in this version yet.",
   "amregole_img_stato": "Image filter: {stato}. Action: {azione}. Timeout: {minuti} minutes. Log channel: {canale}.",
   "amregole_img_fatto": "Image filter settings updated.",
   "amregole_img_errore": "Invalid value: {errore}",

@@ -66,6 +66,7 @@ class Bersaglio:
     modificato: bool = False
     contatore: str | None = None  # il contatore della regola, per l'azione `azzera`
     canale_log_id: int | None = None  # il canale del log AutoMod scelto dal server
+    senza_scudo: bool = False  # il filtro immagini (D63) controlla e ferma anche lo staff: un account staff rubato è il caso tipico
     rinviate: tuple = ()  # le sanzioni che aspettano lo staff (azione `decide_staff`)
     warn_consentito: Callable[[], bool] | None = None
     avvisa_staff: Callable[[str, int | None], Awaitable[None]] | None = None
@@ -418,7 +419,7 @@ async def esegui_azioni(azioni: tuple[Azione, ...] | list[Azione], b: Bersaglio)
     from core.automod_decisioni import RINVIABILI
 
     eseguite: list[str] = []
-    protetto = b.membro is not None and e_protetto(b.membro)
+    protetto = b.membro is not None and not b.senza_scudo and e_protetto(b.membro)
     if any(a.t == "decide_staff" for a in azioni):  # le sanzioni aspettano lo staff; il resto parte subito
         b.rinviate = tuple(a for a in azioni if a.t in RINVIABILI) if not protetto else ()
         azioni = [a for a in azioni if a.t not in RINVIABILI]
@@ -434,6 +435,8 @@ async def esegui_azioni(azioni: tuple[Azione, ...] | list[Azione], b: Bersaglio)
             if await funzione(azione, b):
                 eseguite.append(_NOME_NEL_LOG.get(azione.t, azione.t))
         except discord.Forbidden:
+            if b.senza_scudo and b.membro is not None and e_protetto(b.membro):
+                continue  # Discord non lascia sanzionare proprietario e amministratori: non è un permesso mancato al bot
             await _sospendi(b, azione.t)
         except discord.HTTPException as errore:
             logger.info("AutoMod: azione %s non riuscita nel server %s: %s", azione.t, b.guild.id, errore)

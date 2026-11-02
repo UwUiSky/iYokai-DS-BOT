@@ -13,7 +13,6 @@ from discord import app_commands
 
 import cogs.automod.regole as modulo
 import cogs.moderation._shared as condiviso
-from core import automod_immagini_impostazioni as img
 from core import automod_regole_service as servizio
 from core.automod_regole_logic import Regola
 from core.database import Database
@@ -30,7 +29,6 @@ def cog(clean_db, monkeypatch):
     db_finto.is_module_active_for_guild.return_value = True
     db_finto.get_guild_setting.return_value = None
     monkeypatch.setattr(condiviso, "db", db_finto)
-    monkeypatch.setattr(img, "db", db_finto)
     monkeypatch.setattr(automod_regole_repo, "_pool_provider", lambda: clean_db)
     monkeypatch.setattr(automod_advanced_repo, "_pool_provider", lambda: clean_db)
     servizio.svuota_cache()
@@ -61,33 +59,21 @@ async def test_gruppo_accende_e_spegne(cog):
     assert all(not r.attiva for r in await servizio.regole_del_server(GID))
 
 
-async def test_immagini_senza_chiavi_nello_schema_dice_non_disponibile(cog, monkeypatch):
-    monkeypatch.setattr(img, "disponibili", lambda: False)
-    inter = fake_interaction(guild=fake_guild(guild_id=GID))
-    await cog.immagini.callback(cog, inter, True, None, None, None)
-    assert "non è ancora disponibile" in inter.response.send_message.await_args.args[0]
-
-
-async def test_immagini_scrive_le_quattro_chiavi_con_i_controlli_dello_schema(cog, monkeypatch):
-    import cogs.utility.config_history as storia
-
-    schema = {"immagini_filtro_attivo": "bool", "immagini_azione": "azione_img", "immagini_timeout_minuti": "numero_img",
-              "immagini_canale_log_id": "id"}
-    monkeypatch.setattr(storia, "SETTINGS_SCHEMA", {**storia.SETTINGS_SCHEMA, **schema})
-    monkeypatch.setattr(storia, "CONTROLLI_PER_TIPO", {**storia.CONTROLLI_PER_TIPO,
-                        "azione_img": (lambda v: v in ("cancella", "avvisa", "timeout"), "x"),
-                        "numero_img": (lambda v: isinstance(v, int) and v > 0, "un numero positivo")})
-    assert img.disponibili()
+async def test_immagini_scrive_con_il_setter_del_filtro_e_mostra_lo_stato(cog, monkeypatch):
+    chiamate = AsyncMock()
+    monkeypatch.setattr(modulo.immagini_opzioni, "imposta", chiamate)
     inter = fake_interaction(guild=fake_guild(guild_id=GID))
     canale = type("C", (), {"id": 777})()
     await cog.immagini.callback(cog, inter, True, app_commands.Choice(name="timeout", value="timeout"), 30, canale)
-    chiamate = {c.args[1]: c.args[2] for c in cog.db.set_guild_setting.await_args_list}
-    assert chiamate == {"immagini_filtro_attivo": True, "immagini_azione": "timeout", "immagini_timeout_minuti": 30,
-                        "immagini_canale_log_id": 777}
-    with pytest.raises(img.ValoreNonValido):
-        await img.imposta(GID, "azione", "esplodi", 1)
-    # senza opzioni: mostra lo stato
-    cog.db.get_guild_setting.side_effect = lambda g, k: {"immagini_filtro_attivo": True, "immagini_azione": "avvisa"}.get(k)
+    chiamate.assert_awaited_once_with(GID, inter.user.id, attivo=True, azione="timeout", timeout_minuti=30, canale_log_id=777)
+    chiamate.side_effect = ValueError("azione: cancella, avvisa, timeout.")
     inter2 = fake_interaction(guild=fake_guild(guild_id=GID))
-    await cog.immagini.callback(cog, inter2, None, None, None, None)
-    assert "avvisa" in inter2.response.send_message.await_args.args[0]
+    await cog.immagini.callback(cog, inter2, None, app_commands.Choice(name="x", value="x"), None, None)
+    assert "non valido" in inter2.response.send_message.await_args.args[0].lower() or "invalid" in inter2.response.send_message.await_args.args[0].lower()
+    # senza opzioni: mostra lo stato
+    monkeypatch.setattr(modulo.immagini_opzioni, "leggi", AsyncMock(return_value=modulo.immagini_opzioni.OpzioniImmagini(
+        attivo=True, azione="avvisa", timeout_minuti=15, canale_log_id=5)))
+    inter3 = fake_interaction(guild=fake_guild(guild_id=GID))
+    await cog.immagini.callback(cog, inter3, None, None, None, None)
+    testo = inter3.response.send_message.await_args.args[0]
+    assert "avvisa" in testo and "15" in testo and "<#5>" in testo

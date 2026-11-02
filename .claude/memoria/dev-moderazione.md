@@ -3,8 +3,8 @@
 2026-11-01, giro r15automod (ramo feat/r15automod, worktree /home/claude/wt/r15automod, filone A di #116, D63). Migrazioni 0500-0503 mie. Smoke da fare.
 2026-11-02, giro r15vpn (ramo feat/r15vpn, D64+D65, migrazioni 0507 e 0508). Smoke da fare. Prima: 2026-10-28, giro r11 (agente r11odio, ramo feat/r11odio, worktree /home/claude/wt/r11odio). Migrazione 0390 usata (0391-0399 libere). Smoke da fare (regola owner: niente smoke).
 ## In corso
-A1-A8 fatti. Fatto anche l'innesco delle regole personali (regex re2, lista, domini, sole parole permesse). Prossimo: merge origin/main (feat/r15immagini e' su main): `/admin-automod immagini` -> core.immagini_opzioni.imposta(); cogs/automod/immagini.py::_applica -> core.automod_azioni.esegui_azioni (regola "immagini_sospette", nessuna esenzione). Poi A9 (eventi non-messaggio 009/010/017/075), A10 (calore/gruppi 067-069/072), A11 (migr. 0509, pulizia 073/074).
-SEMPRE: DATABASE_URL=postgresql://postgres:testpass@127.0.0.1:5432/iyokai_wautomod esplicito (env non persiste fra comandi: uso scratchpad/envw.sh).
+A1-A8 fatti + merge di main (immagini): `/admin-automod immagini` usa core.immagini_opzioni; cogs/automod/immagini.py::_applica passa da esegui_azioni (regola di sistema "immagini_sospette", senza_scudo=True). Prossimo: A9 (eventi non-messaggio: 009 vocali, 010 thread a raffica, 017 nomi, 075 ruolo/ingresso/uscita/caso; AMD-018 solo dietro interruttore spento), A10 (calore/gruppi 067-069/072), A11 (migr. 0509, pulizia 073/074).
+SEMPRE: DATABASE_URL=postgresql://postgres:testpass@127.0.0.1:5432/iyokai_wautomod esplicito (env non persiste fra comandi: scratchpad/envw.sh).
 ## Fatto
 - r15 A7 liste con nome (core/automod_liste_service.py, repo, pannello core/automod_liste_pannello.py, /admin-automod liste), liste di sistema in data/automod/, innesco personale (core/automod_innesco_logic.py), modelli (core/automod_modelli.py), finestra Innesco. A8 migr. 0503 + core/automod_decisioni.py (decide lo staff, bottoni persistenti). test_automod_liste/_innesco_logic/_decisioni. Smoke da fare
 - r15 A6 pannello regole (core/automod_regole_pannello.py + core/automod_pannello_logic.py), comandi /admin-automod regole, gruppo, immagini; 100 testi amregole_*; test_automod_pannello_logic/_regole_pannello/_regole_comandi. Smoke da fare
@@ -16,6 +16,7 @@ SEMPRE: DATABASE_URL=postgresql://postgres:testpass@127.0.0.1:5432/iyokai_wautom
 - Giri G1-G7, R5-R10 (git log e REGISTRO_RISOLTE): tempban, appelli, verify, lockdown, phishing, captcha, anti-raid, massa, filtri automod, iYokai Mod, catalogo log, ripiego anti-nuke, warn manuali, opzioni mod, lock a tempo, punizione trappola, mute a tempo, casi esterni, VER-017/019/020/030/031, SIC-036/039, AMD-013/014/026/027/062/065/070
 - R11 D35: core/odio_*.py (giudizio, libreria, richiami, opzioni, moderazione), core/automod_odio_nativo_logic.py (regex nativa), core/automod_odio_azioni.py (Discord), repo odio_libreria_repo (0390), comandi /automod odio blocco|richiami|libreria, data/automod_parole_sospette.txt, docs/parole_bandite.md, test tests/test_automod_odio_d35.py
 ## Cose imparate
+- Sostituendo un blocco di codice con slice (index..index) controlla cosa c'e' in mezzo: ho cancellato riepilogo/azzera (lo ha trovato test_repository_callers)
 - Regole AutoMod: azioni vecchie (delete,warn,mute,kick,ban) -> azioni_dai_nomi_vecchi (ordine di prima); actions-set/mute-duration scrivono anche via servizio (doppia scrittura fino ad A4)
 - Verifica web: i segnali delle intestazioni si ignorano se il socket e' privato o proxy fidato (reverse proxy non dichiarato bloccherebbe tutti); IP non globali mai bloccati (is_global)
 - Locales comandi.json: mai riscrivere con json.dump (chiavi ordinate/escape): inserire la riga di testo

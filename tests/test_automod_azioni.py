@@ -274,3 +274,18 @@ async def test_ban_a_tempo_pianifica_lo_sban_e_ha_il_dm_prima(monkeypatch):
     assert crea.await_args.kwargs["duration_seconds"] == 7 * 86400
     assert M.scheduler.schedule.await_args.args[2] == SCHEDULED_TEMPBAN_EXPIRE
     assert M.scheduler.schedule.await_args.args[4] == {"case_number": 9, "modo": "fuori"}
+
+
+async def test_senza_scudo_si_sanziona_anche_lo_staff_ma_un_403_su_un_admin_non_sospende(monkeypatch):
+    admin = fake_member(user_id=7, guild_permissions=discord.Permissions(administrator=True))
+    b, avvisi = _bers(admin)
+    b.senza_scudo = True
+    isola = AsyncMock(side_effect=discord.Forbidden(MagicMock(status=403, reason="x"), "no"))
+    monkeypatch.setattr(M.bot_roles, "isola", isola)
+    await M.esegui_azioni(A({"t": "timeout", "secondi": 60}), b)
+    isola.assert_awaited_once()  # ci prova (con lo scudo non lo farebbe)
+    assert not M.sospesa(G, "timeout") and avvisi.await_count == 0  # Discord rifiuta gli admin: non è colpa dei permessi del bot
+    normale, _ = _bers()
+    normale.senza_scudo = True
+    await M.esegui_azioni(A({"t": "timeout", "secondi": 60}), normale)
+    assert M.sospesa(G, "timeout")  # un membro normale che dà 403 è davvero un permesso mancato al bot
