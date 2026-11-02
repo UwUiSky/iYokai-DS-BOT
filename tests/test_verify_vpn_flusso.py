@@ -520,3 +520,21 @@ async def test_pagina_di_esito_dopo_un_blocco_ha_il_link_per_riprovare(web):
     web.registro.return_value = (True, "Verificato.")
     _, risposta = await _invia(web, "")
     assert "Riprova la verifica" not in await risposta.text()
+
+
+@pytest.mark.asyncio
+async def test_la_riga_di_lascia_passare_e_nella_lingua_del_server(monkeypatch, clean_db):
+    """Il messaggio nel registro è pubblico: la riga aggiunta segue la lingua del server, non quella di chi clicca."""
+    from core import verify_vpn_staff as staff
+
+    amb = _ambiente(monkeypatch, clean_db)
+    await _prepara(clean_db)
+    await database_module.db.set_guild_language(GUILD, "en")
+    monkeypatch.setattr(staff, "puo_usare", AsyncMock(return_value=True))
+    from core.i18n import imposta_lingua_utente
+
+    await imposta_lingua_utente(77, "it")  # chi clicca ha scelto l'italiano per sé
+    i = _interazione(amb)
+    await staff.lascia_passare(i, 62)
+    riga = i.message.edit.await_args.kwargs["embed"].fields[0].value
+    assert riga.startswith("<@77>") and "lasciato passare" not in riga

@@ -170,7 +170,8 @@ async def lascia_passare(interaction: discord.Interaction, user_id: int) -> None
         await interaction.response.send_message(await testo_per(interaction, "verify_vpn_gia_passata"), ephemeral=True)
         return
     await interaction.response.defer()
-    riga = await testo_per(interaction, "verify_vpn_lasciato_da", staff=interaction.user.mention, utente=f"<@{user_id}>")
+    # il messaggio nel registro è pubblico: lingua del server, non di chi clicca
+    riga = await testo_guild(guild, "verify_vpn_lasciato_da", staff=interaction.user.mention, utente=f"<@{user_id}>")
     try:
         base = interaction.message.embeds[0] if interaction.message and interaction.message.embeds else discord.Embed()
         base.add_field(name="​", value=riga[:1024], inline=False)
