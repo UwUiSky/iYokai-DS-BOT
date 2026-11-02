@@ -134,6 +134,11 @@ SETTINGS_SCHEMA = {
     "odio_richiami_soglia": "int_1_20",
     "odio_richiami_minuti": "int_1_1440",
     "odio_timeout_minuti": "int_1_40320",
+    # Filtro immagini sospette (core/immagini_opzioni.py, D62)
+    "immagini_filtro_attivo": "bool",
+    "immagini_azione": "azione_immagini",
+    "immagini_timeout_minuti": "int_1_40320",
+    "immagini_canale_log_id": "id",
     # Inviti e link personali (core/invite_links_logic.py)
     "inviti_log_channel_id": "id",
     "inviti_link_role_id": "id",
@@ -201,6 +206,7 @@ CONTROLLI_PER_TIPO = {
         lambda valore: valore in ("niente", "quarantena", "kick", "ban"), "niente, quarantena, kick oppure ban"
     ),
     "paesi_iso": (paesi_validi, "fino a 10 codici paese di 2 lettere separati da virgola (es. IT, CH), o vuoto"),
+    "azione_immagini": (lambda valore: valore in ("cancella", "avvisa", "timeout"), "cancella, avvisa oppure timeout"),
     "azione_eta": (lambda valore: valore in ("attendi", "kick"), "attendi oppure kick"),
     "epoch": (_intero_tra(0, 4_102_444_800), "un istante in secondi, tra 0 e il 2100"),
     "data_iso": (_e_una_data_iso, "una data in formato ISO"),

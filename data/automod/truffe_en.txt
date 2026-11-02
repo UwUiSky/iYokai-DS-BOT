@@ -1,0 +1,18 @@
+# Typical scam link phrases (English), one per line, lowercase. Lines with # are comments.
+# They only count when the link is not an official site (D62).
+free nitro
+free-nitro
+nitro-gift
+nitro gift
+claim your reward
+claim-reward
+claim your prize
+you have won
+verify your account
+verify-account
+login to claim
+steam-gift
+airdrop
+nitro-giveaway
+giveaway-claim
+seed phrase
