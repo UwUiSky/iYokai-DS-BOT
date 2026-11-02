@@ -961,3 +961,6 @@ Gli admin ricevono un avviso: «<utente> ha provato a verificarsi con VPN/proxy 
 - **Privacy (scelta di chi sviluppa):** di base l'avviso dice **quanti** server l'hanno accettato, non quali,
   perché i nomi rivelerebbero gli altri server di quella persona. Un server può scegliere di farsi nominare negli
   avvisi degli altri (consenso del server). Lo storico si cancella con `/privacy` e scade (data registry).
+- Precisazione dell'owner (02/11): l'owner del bot (OWNER_ID) vede sempre anche i **nomi** dei server nello
+  storico, con un comando in `/owner` (sotto-gruppo adatto, es. `/owner privacy` o `/owner verifica`) e nel pannello
+  owner. Gli admin dei server vedono il numero, i nomi solo dei server che lo consentono.
