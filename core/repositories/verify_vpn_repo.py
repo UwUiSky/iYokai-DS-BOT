@@ -95,6 +95,14 @@ class VerifyVpnRepository:
         )
 
 
+    async def storico_completo(self, user_id: int, massimo: int = 200):
+        """Solo per il proprietario del bot: tutte le volte che un server ha lasciato passare la persona."""
+        return await self._pool.fetch(
+            "SELECT guild_id, metodo, creato_il FROM verify_vpn_storico WHERE user_id = $1 ORDER BY creato_il DESC LIMIT $2",
+            user_id, massimo,
+        )
+
+
 def _get_pool() -> asyncpg.Pool:
     from core.database import db
 

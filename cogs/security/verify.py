@@ -72,6 +72,7 @@ from core.i18n import testo_per
 from core.bounded_cache import BoundedCache
 from core.panel_bridge import METODO_WEB, link_verifica_web
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.config import config as config_bot
 
 from core.database import db
 from core.premium import PremiumModule, registry
@@ -683,6 +684,29 @@ class VerifyCog(CogConGruppi, commands.Cog):
     # ================================================================
     # Comandi
     # ================================================================
+    @comando_di_gruppo(
+        "owner",
+        nome="storico-vpn",
+        descrizione="Solo proprietario: i server che hanno lasciato passare una persona segnalata come VPN/proxy.",
+        sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
+    )
+    @app_commands.describe(utente="La persona di cui vedere lo storico (D65)")
+    async def storico_vpn(self, interaction: discord.Interaction, utente: discord.User) -> None:
+        """Il proprietario del bot vede sempre i nomi dei server; gli admin solo il numero (D65)."""
+        if interaction.user.id != config_bot.OWNER_ID:
+            await interaction.response.send_message("Questo comando è solo del proprietario del bot.", ephemeral=True)
+            return
+        from cogs.utility._owner_pagine import invia_a_pagine
+        from core.repositories.verify_vpn_repo import verify_vpn_repo
+        from core.verify_vpn_staff import righe_storico_owner
+
+        await interaction.response.defer(ephemeral=True)
+        righe = righe_storico_owner(self.bot, await verify_vpn_repo.storico_completo(utente.id))
+        await invia_a_pagine(
+            interaction, f"Storico VPN/proxy di {utente.id}", righe or ["Nessun server l'ha lasciato passare."],
+            dopo_defer=True,
+        )
+
     @comando_di_gruppo(
         "admin-sicurezza",
         nome="setup",

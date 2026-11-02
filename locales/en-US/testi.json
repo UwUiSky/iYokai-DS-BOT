@@ -1415,6 +1415,6 @@
   "verify_blocco_ticket": "If you think this is a mistake, send me a private message: I will open a ticket with the staff of {server} and attach the reason.",
   "verify_vpn_storico_titolo": "Verification: already accepted by other servers",
   "verify_vpn_storico_descrizione": "{utente} verified with a detected VPN/proxy ({metodo}), but was already accepted by {n} servers despite a detected VPN/proxy: they may use it for other things too. They passed here.",
-  "verify_vpn_storico_riga": "• {data} · {metodo} · {esito}",
+  "verify_vpn_storico_riga": "• {data} - {metodo} - {esito}",
   "verify_vpn_storico_esito": "let through"
 }

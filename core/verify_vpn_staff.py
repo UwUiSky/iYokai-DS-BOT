@@ -178,3 +178,15 @@ async def lascia_passare(interaction: discord.Interaction, user_id: int) -> None
         await interaction.message.edit(embed=base, view=None, allowed_mentions=discord.AllowedMentions.none())
     except discord.HTTPException:
         logger.warning("Messaggio VPN non aggiornato nel server %s.", guild.id)
+
+
+def righe_storico_owner(bot, righe) -> list[str]:
+    """Le righe dello storico per il proprietario del bot: sempre con il nome del server (D65)."""
+    risultato = []
+    for r in righe:
+        server = bot.get_guild(r["guild_id"])
+        nome = server.name[:60] if server is not None else "?"
+        risultato.append(
+            f"{r['creato_il'].date().isoformat()} · **{nome}** (`{r['guild_id']}`) · {r['metodo'] or '-'} · lasciato passare"
+        )
+    return risultato

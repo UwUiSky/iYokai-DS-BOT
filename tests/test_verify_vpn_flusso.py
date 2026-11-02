@@ -420,3 +420,28 @@ async def test_il_dm_dopo_un_blocco_apre_il_ticket_modmail_con_il_motivo(monkeyp
     cog._server_candidati = AsyncMock(return_value=[])
     await cog._dm_in_arrivo(messaggio)
     cog._apri.assert_not_awaited()
+
+
+# --------------------------------------------- D65: il proprietario vede i nomi
+@pytest.mark.asyncio
+async def test_comando_owner_storico_mostra_i_nomi_solo_al_proprietario(monkeypatch, clean_db):
+    from cogs.security import verify as cog_verify
+    from core.config import config
+
+    amb = _ambiente(monkeypatch, clean_db)
+    altro = fake_guild(guild_id=GUILD + 1, name="Server Segreto", owner_id=1)
+    amb.bot.get_guild = MagicMock(side_effect=lambda gid: altro if gid == GUILD + 1 else None)
+    await amb.repo.lascia_passare(GUILD + 1, 300)
+    await amb.repo.lascia_passare(GUILD + 9, 300)  # server che il bot non vede più
+    cog = cog_verify.VerifyCog(amb.bot)
+    i = _interazione(amb)
+    i.user = fake_member(config.OWNER_ID + 1)  # non è il proprietario
+    await cog.storico_vpn.callback(cog, i, fake_member(300))
+    assert "proprietario" in i.response.send_message.await_args.args[0]
+    i = _interazione(amb)
+    i.user = fake_member(config.OWNER_ID)
+    i.followup.send = AsyncMock()
+    await cog.storico_vpn.callback(cog, i, fake_member(300))
+    embed = i.followup.send.await_args.kwargs["embed"]
+    assert "Server Segreto" in embed.description and f"`{GUILD + 9}`" in embed.description
+    assert len(embed.description) <= 4096
