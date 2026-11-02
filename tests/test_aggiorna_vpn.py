@@ -18,6 +18,11 @@ OGGI = date(2026, 11, 1)
 
 
 class _Risposta(io.BytesIO):
+    url = "https://example.com/x"  # dove si arriva dopo i reindirizzamenti
+
+    def geturl(self):
+        return self.url
+
     def __enter__(self):
         return self
 
@@ -110,3 +115,13 @@ def test_fusi_generati_dal_file_dei_fusi_e_quello_del_repo_e_valido(tmp_path):
     assert len(nel_repo) > 300 and nel_repo["Europe/Rome"] == frozenset({"IT"})
     assert not logica.fuso_incoerente("Europe/Rome", "IT", nel_repo)
     assert logica.fuso_incoerente("America/New_York", "IT", nel_repo)
+
+
+def test_reindirizzamento_verso_http_rifiutato(monkeypatch, tmp_path):
+    """urllib segue anche un reindirizzamento da https a http: il file arrivato così non si usa."""
+    (tmp_path / "tor_uscita.txt").write_text("buono\n")
+    monkeypatch.setattr(_Risposta, "url", "http://example.com/x")
+    _finto(monkeypatch, "".join(f"1.2.3.{n}\n" for n in range(200)).encode())
+    with pytest.raises(ValueError):
+        script.aggiorna(_fonte("tor_uscita.txt"), str(tmp_path), OGGI)
+    assert (tmp_path / "tor_uscita.txt").read_text() == "buono\n"

@@ -65,6 +65,8 @@ def _scarica_testo(indirizzo: str) -> str:
     if not indirizzo.startswith("https://"):
         raise ValueError("solo indirizzi https")
     with urllib.request.urlopen(indirizzo, timeout=60) as risposta:
+        if not risposta.geturl().startswith("https://"):  # urllib segue anche i reindirizzamenti verso http
+            raise ValueError("reindirizzato fuori da https")
         dati = risposta.read(TETTO_BYTE + 1)
     if len(dati) > TETTO_BYTE:
         raise ValueError("file troppo grande")
