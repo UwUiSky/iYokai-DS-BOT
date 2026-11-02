@@ -376,7 +376,8 @@ async def _dm_staff(a: Azione, b: Bersaglio) -> bool:
                           description=f"{b.guild.name}: {b.motivo}"[:1000])
     if b.membro is not None:
         embed.add_field(name="Utente", value=f"{b.membro.mention} ({b.membro.id})")
-    inviati = [await try_dm(discord.Object(id=u), embed, guild_id=b.guild.id) for u in a.get("utenti", ())]
+    staff = [m for m in (b.guild.get_member(u) for u in a.get("utenti", ())) if m is not None]  # chi ha lasciato il server si salta
+    inviati = [await try_dm(m, embed, guild_id=b.guild.id) for m in staff]
     return any(inviati)
 
 

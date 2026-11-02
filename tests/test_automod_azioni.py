@@ -293,3 +293,12 @@ async def test_senza_scudo_si_sanziona_anche_lo_staff_ma_un_403_su_un_admin_non_
     normale.senza_scudo = True
     await M.esegui_azioni(A({"t": "timeout", "secondi": 60}), normale)
     assert M.sospesa(G, "timeout")  # un membro normale che dà 403 è davvero un permesso mancato al bot
+
+
+async def test_dm_staff_scrive_ai_membri_dello_staff_e_salta_chi_non_c_e():
+    b, _ = _bers()
+    staff = fake_member(user_id=501)
+    b.guild.get_member = MagicMock(side_effect=lambda i: staff if i == 501 else None)
+    fatte = await M.esegui_azioni(A({"t": "dm_staff", "utenti": [501, 502]}), b)
+    assert fatte == ("dm_staff",)
+    staff.send.assert_awaited_once()  # prima: discord.Object senza .send, AttributeError e messaggio non giudicato
