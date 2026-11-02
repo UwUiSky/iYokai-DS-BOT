@@ -17,6 +17,7 @@ futuro si aggiungono altri filtri.
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from dataclasses import dataclass
 
 import asyncpg
@@ -283,12 +284,14 @@ class AutomodAdvancedRepository:
         violation: str,
         actions_taken: tuple[str, ...],
         content_excerpt: str | None,
+        regola_id: int | None = None,
+        contatore: str | None = None,
     ) -> None:
         await self._pool.execute(
             """
             INSERT INTO automod_action_log
-                (guild_id, user_id, channel_id, violation, actions_taken, content_excerpt)
-            VALUES ($1, $2, $3, $4, $5::jsonb, $6)
+                (guild_id, user_id, channel_id, violation, actions_taken, content_excerpt, regola_id, contatore)
+            VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8)
             """,
             guild_id,
             user_id,
@@ -296,7 +299,63 @@ class AutomodAdvancedRepository:
             violation,
             json.dumps(list(actions_taken)),
             content_excerpt,
+            regola_id,
+            contatore,
         )
+
+    async def conta_contatore(self, guild_id: int, user_id: int, nome: str, dal: datetime) -> int:
+        """AMD-059: le violazioni di un utente nel contatore `nome` dal momento `dal` (usa l'indice della 0502)."""
+        return await self._pool.fetchval(
+            "SELECT count(*) FROM automod_action_log WHERE guild_id = $1 AND user_id = $2 AND contatore = $3 "
+            "AND created_at >= $4", guild_id, user_id, nome, dal)
+
+    async def svuota_contatore_utente(self, guild_id: int, user_id: int, nome: str) -> int:
+        """Dopo una soglia scattata le violazioni contate si consumano: il registro resta, il contatore riparte."""
+        esito = await self._pool.execute(
+            "UPDATE automod_action_log SET contatore = NULL WHERE guild_id = $1 AND user_id = $2 AND contatore = $3",
+            guild_id, user_id, nome)
+        return int(esito.split()[-1])
+
+    async def conta_da_azzerare(self, guild_id: int, nome: str, dal: datetime | None, user_id: int | None) -> int:
+        return await self._pool.fetchval(
+            "SELECT count(*) FROM automod_action_log WHERE guild_id = $1 AND contatore = $2 "
+            "AND ($3::timestamptz IS NULL OR created_at >= $3) AND ($4::bigint IS NULL OR user_id = $4)",
+            guild_id, nome, dal, user_id)
+
+    async def azzera_a_lotti(
+        self, guild_id: int, nome: str, dal: datetime | None, user_id: int | None, lotto: int = 5000
+    ) -> int:
+        """AMD-066: azzera il contatore a lotti (mai un UPDATE enorme in una volta). Restituisce le righe toccate."""
+        totale = 0
+        while True:
+            esito = await self._pool.execute(
+                "UPDATE automod_action_log SET contatore = NULL WHERE id IN ("
+                "SELECT id FROM automod_action_log WHERE guild_id = $1 AND contatore = $2 "
+                "AND ($3::timestamptz IS NULL OR created_at >= $3) AND ($4::bigint IS NULL OR user_id = $4) LIMIT $5)",
+                guild_id, nome, dal, user_id, lotto)
+            fatte = int(esito.split()[-1])
+            totale += fatte
+            if fatte < lotto:
+                return totale
+
+    async def riepilogo_violazioni(self, guild_id: int, dal: datetime, limite: int, offset: int) -> tuple[list[dict], int]:
+        """AMD-063: per ogni tipo di violazione quante volte e a quante persone, dalla più frequente."""
+        righe = await self._pool.fetch(
+            "SELECT violation, count(*) AS totale, count(DISTINCT user_id) AS utenti FROM automod_action_log "
+            "WHERE guild_id = $1 AND created_at >= $2 GROUP BY violation ORDER BY totale DESC, violation LIMIT $3 OFFSET $4",
+            guild_id, dal, limite, offset)
+        gruppi = await self._pool.fetchval(
+            "SELECT count(DISTINCT violation) FROM automod_action_log WHERE guild_id = $1 AND created_at >= $2",
+            guild_id, dal)
+        return [dict(r) for r in righe], gruppi
+
+    async def recenti_pagina(self, guild_id: int, limite: int, offset: int) -> tuple[list[dict], int]:
+        """AMD-064: le ultime violazioni del server, a pagine."""
+        righe = await self._pool.fetch(
+            "SELECT user_id, channel_id, violation, actions_taken, created_at FROM automod_action_log "
+            "WHERE guild_id = $1 ORDER BY created_at DESC, id DESC LIMIT $2 OFFSET $3", guild_id, limite, offset)
+        totale = await self._pool.fetchval("SELECT count(*) FROM automod_action_log WHERE guild_id = $1", guild_id)
+        return [{**dict(r), "actions_taken": tuple(json.loads(r["actions_taken"]))} for r in righe], totale
 
     async def get_user_actions(
         self, guild_id: int, user_id: int, limit: int, offset: int = 0

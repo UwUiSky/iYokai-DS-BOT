@@ -421,3 +421,20 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 02/11 | `feat/r15immagini` | `core/immagini_quarantena.py:cartella` | Ripiego in `/tmp/iyokai-quarantena` con `exist_ok`: una cartella creata prima da un altro utente locale viene usata | bassa | aperto |
 | 02/11 | `feat/r15immagini` | migrazioni | Il disegno del filone A prevede una 0504 (pulizia): con 0504–0506 prese qui, il filone A deve usare un numero nuovo | nota | aperto |
 | 02/11 | `feat/r15immagini` | soglia 25 membri | `member_count` conta bot e account finti, come D39: non è «non aggirabile» | bassa | aperto |
+| 02/11 | `feat/r15automod` | `tests/test_automod_azioni.py` fixture | Sospensione finta del timeout restava dopo il file e faceva fallire i contatori (stesso server 666) | bassa | chiuso (c9a9dee) |
+| 02/11 | `feat/r15automod` | `core/automod_azioni.py:_dm_staff` | DM a `discord.Object` senza `send`: AttributeError, messaggio non giudicato né registrato | alta | chiuso (c9852c0) |
+| 02/11 | `feat/r15automod` | `core/automod_azioni.py:esegui_azioni` | Owner del bot non protetto; un membro sopra il ruolo del bot dava 403 e sospendeva il timeout per tutto il server 10 min (anche dal filtro immagini) | alta | chiuso (885acee) |
+| 02/11 | `feat/r15automod` | `cogs/automod/automod.py:_controlla_soglia` | Messaggi insieme: la soglia del contatore scattava due volte (due timeout/kick) | media | chiuso (389201c) |
+| 02/11 | `feat/r15automod` | `cogs/automod/automod.py:_controlla` | Con una regola senza esenzioni o per i bot, esenti e bot andavano al giudizio AI delle sospette (D35) | media | chiuso (28c12c9) |
+| 02/11 | `feat/r15automod` | `core/automod_decisioni.py:decidi` | «Applica» con il solo moderate_members faceva bannare dal bot; nessun controllo di gerarchia | alta | chiuso (4284b22) |
+| 02/11 | `feat/r15automod` | `core/automod_regole_pannello.py:_m_innesco` | Regex oltre 60 caratteri rifiutate (passavano dal lettore delle liste) | media | chiuso (79138ab) |
+| 02/11 | `feat/r15automod` | `core/automod_regole_pannello.py:_prova` | Prova senza innesco sul testo (D18, disegno §3.2) | media | chiuso (c2b1a65) |
+| 02/11 | `feat/r15automod` | `core/repositories/automod_regole_repo.py:elenca` | Una riga illeggibile: tutto il server alle azioni di base (regole spente comprese), query ed errore a ogni messaggio | media | chiuso (1e4c79f) |
+| 02/11 | `feat/r15automod` | `core/automod_pannello_logic.py:campi_embed` | Campi dell'embed solo in italiano (D58) | bassa | chiuso (23e00c8) |
+| 02/11 | `feat/r15automod` | `core/automod_azioni.py:_ultimi` | Caso peggiore 20.000 utenti × 50 messaggi in memoria (~150 MB) | bassa | aperto |
+| 02/11 | `feat/r15automod` | `core/automod_liste_service.py:aggiungi_voci/togli_voci/salva_lista` | Leggi-poi-scrivi: due admin insieme perdono voci; tetti 20 liste/50 regole superabili di 1; KeyError se la lista sparisce intanto | bassa | aperto |
+| 02/11 | `feat/r15automod` | `core/automod_modelli.py`, `automod_pannello_logic.PARAMETRI_BASE`, segnaposto del pannello | Testi di partenza e segnaposto in italiano fisso | bassa | aperto |
+| 02/11 | `feat/r15automod` | `core/automod_regole_pannello.py:_m_sanzioni/_m_contatore` | Campo svuotato non toglie l'azione; riaprire il contatore perde la durata del timeout | bassa | aperto |
+| 02/11 | `feat/r15automod` | pannello «Nuova regola» | Eventi non messaggio (ingresso, nome, vocale…) si salvano ma non scattano fino ad A9 | nota | aperto (A9) |
+| 02/11 | `feat/r15automod` | `cogs/automod/regole.py:riepilogo` | Le regole personali appaiono come `p:N`, non con il nome | bassa | aperto |
+| 02/11 | `feat/r15automod` | `core/repositories/automod_regole_repo.py:livello_di` | Legge `leveling_totals` fuori da leveling_repo (D16) | bassa | aperto |

@@ -22,6 +22,10 @@ from discord.ext import commands, tasks
 
 from cogs.moderation._shared import post_to_mod_log, try_dm
 from core import bot_roles
+from core import automod_regole_service as regole_service
+from core.automod_azioni import Bersaglio, esegui_azioni
+from core.automod_contesto import contesto_da_messaggio
+from core.automod_regole_logic import azioni_da_json, condizioni_ok
 from core import immagini_azione_logic as azioni
 from core import immagini_opzioni as opzioni_immagini
 from core import immagini_quarantena as quarantena
@@ -38,6 +42,8 @@ from core.immagini_trappola_service import libreria_immagini
 from core.safe_image import MAX_IMAGE_BYTES
 
 logger = logging.getLogger("iyokai.immagini")
+
+REGOLA_IMMAGINI = "immagini_sospette"  # regola di sistema: azioni, condizioni e interruttore stanno in automod_regole
 
 MODULE_AUTOMOD = "automod"
 MAX_ALLEGATI_PER_MESSAGGIO = 4
@@ -128,38 +134,40 @@ class ImmaginiCog(CogConGruppi, commands.Cog):
                 return
 
     async def _applica(self, message: discord.Message, esito: EsitoImmagine, d: azioni.Decisione, opzioni) -> None:
+        """Le azioni passano dal motore unico (core/automod_azioni.py, regola di sistema «immagini_sospette»)."""
         guild, membro = message.guild, message.author
         lingua = await lingua_risposta(guild.id, pubblica=True)
+        regola = await regole_service.regola_effettiva(guild.id, REGOLA_IMMAGINI, azioni_da_json(self._azioni(d, esito, lingua)))
         eseguite: list[str] = []
-        if d.dm:
-            testo = t(d.dm, lingua, server=guild.name, motivo=self._motivi(esito, lingua), minuti=d.timeout_minuti or 0)
-            await try_dm(membro, discord.Embed(description=testo, color=discord.Color.orange()), guild_id=guild.id)
-        if d.cancella:
-            try:
-                await bot_roles.cancella_messaggio(message)
-                eseguite.append(t("amimg_azione_cancellato", lingua))
-            except (discord.NotFound, discord.Forbidden, discord.HTTPException):
-                pass
-        if d.timeout_minuti:
-            try:
-                await bot_roles.isola(membro, timedelta(minutes=d.timeout_minuti), reason=t("amimg_motivo_audit", lingua)[:200])
-                eseguite.append(t("amimg_azione_timeout", lingua, minuti=d.timeout_minuti))
-            except (discord.Forbidden, discord.HTTPException):
-                pass
-        if d.avvisa_nel_canale:
-            try:
-                await message.channel.send(
-                    t("amimg_avviso_canale", lingua, utente=membro.mention),
-                    delete_after=30,
-                    allowed_mentions=discord.AllowedMentions(users=[membro]),
-                )
-                eseguite.append(t("amimg_azione_avvisato", lingua))
-            except (discord.Forbidden, discord.HTTPException):
-                pass
+        if regola.attiva and (regola.id is None or condizioni_ok(
+                regola.condizioni, contesto_da_messaggio(message, nostro_bot=lambda u: bot_roles.e_un_nostro_bot(u, self.bot)))):
+            # Nessuna esenzione di base (D63): il filtro controlla anche lo staff. Lo scudo dei protetti vale solo per le sanzioni.
+            motivo = t("amimg_motivo_audit", lingua)[:200]
+            nomi = await esegui_azioni(
+                regola.azioni if regola.id is not None and regola.azioni else azioni_da_json(self._azioni(d, esito, lingua)),
+                Bersaglio(guild=guild, motivo=motivo, regola_chiave=REGOLA_IMMAGINI, regola_nome=motivo, membro=membro,
+                          messaggio=message, canale=message.channel, canale_log_id=opzioni.canale_log_id, senza_scudo=True),
+            )
+            etichette = {"delete": "amimg_azione_cancellato", "mute": "amimg_azione_timeout", "avviso_canale": "amimg_azione_avvisato"}
+            eseguite = [t(etichette[n], lingua, minuti=d.timeout_minuti or 0) for n in nomi if n in etichette]
         if d.log:
             await self._log(message, esito, eseguite, lingua, opzioni)
         if d.avvisa_owner and coda_immagini.puo_avvisare():
             await self._avvisa_owner(lingua)
+
+    def _azioni(self, d: azioni.Decisione, esito: EsitoImmagine, lingua: str) -> list[dict]:
+        """La decisione del filtro nel formato delle azioni AutoMod (ordine fisso: DM, cancella, timeout, avviso)."""
+        fuori: list[dict] = []
+        if d.dm:
+            fuori.append({"t": "dm", "testo": t(d.dm, lingua, server="{server}", motivo=self._motivi(esito, lingua),
+                                                minuti=d.timeout_minuti or 0)[:1000]})
+        if d.cancella:
+            fuori.append({"t": "cancella"})
+        if d.timeout_minuti:
+            fuori.append({"t": "timeout", "secondi": d.timeout_minuti * 60})
+        if d.avvisa_nel_canale:
+            fuori.append({"t": "avviso_canale", "testo": t("amimg_avviso_canale", lingua, utente="{utente}")[:300], "dopo_s": 30})
+        return fuori
 
     @staticmethod
     def _motivi(esito: EsitoImmagine, lingua: str) -> str:
