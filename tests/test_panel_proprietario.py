@@ -133,3 +133,31 @@ def test_e_proprietario_confronta_con_owner_id():
 
     assert panel_bridge.e_proprietario(cfg.OWNER_ID) and not panel_bridge.e_proprietario(cfg.OWNER_ID + 1)
     assert not panel_bridge.e_proprietario(None)
+
+
+@pytest.mark.asyncio
+async def test_proprietario_vede_lo_storico_vpn_con_i_nomi_dei_server(ambiente, owner, monkeypatch):  # noqa: F811
+    """D65: l'owner del bot vede i nomi dei server anche nel pannello, come con `/owner system storico-vpn`."""
+    from core.repositories.verify_vpn_repo import verify_vpn_repo
+    from tests.test_web_panel_server import GUILD
+
+    await verify_vpn_repo.lascia_passare(GUILD, 777)
+    await verify_vpn_repo.lascia_passare(GUILD + 99, 777)  # server che il bot non vede più
+    client = await _client(ambiente.app)
+    try:
+        r = await client.get("/proprietario/storico-vpn?utente=777", allow_redirects=False)
+        assert r.status == 302  # senza accesso
+        await _entra(client)
+        pagina = await (await client.get("/proprietario")).text()
+        assert pagina.count('action="/proprietario/storico-vpn"') == 1
+        assert pagina.index("<title>") < pagina.index("</title>") < pagina.index("Storico VPN/proxy")
+        testo = await (await client.get("/proprietario/storico-vpn?utente=777")).text()
+        assert "Server &lt;b&gt;di&lt;/b&gt; prova" in testo and str(GUILD + 99) in testo
+        vuoto = await (await client.get("/proprietario/storico-vpn?utente=778")).text()
+        assert "Nessun server" in vuoto
+        for storto in ("abc", "²", "9" * 20):  # né lettere, né cifre strane, né oltre BIGINT
+            assert (await client.get(f"/proprietario/storico-vpn?utente={storto}")).status == 400
+        _proprietario(monkeypatch, ESTRANEO)
+        assert (await client.get("/proprietario/storico-vpn?utente=777")).status == 403
+    finally:
+        await client.close()

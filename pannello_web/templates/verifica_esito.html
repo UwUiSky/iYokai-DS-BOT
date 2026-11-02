@@ -3,5 +3,6 @@
 {% block corpo %}
 <h1>{{ 'Verifica riuscita' if riuscita else 'Verifica non riuscita' }}</h1>
 <p class="avviso {{ 'ok' if riuscita else 'errore' }}">{{ testo }}</p>
+{% if riprova %}<p><a href="{{ riprova }}">Riprova la verifica</a></p>{% endif %}
 <p>Puoi chiudere questa pagina e tornare su Discord.</p>
 {% endblock %}

@@ -35,4 +35,11 @@
   <input type="hidden" name="attivo" value="{{ '0' if stato.ai_manutenzione is not none else '1' }}">
   <button type="submit">{{ "Rimetti in servizio" if stato.ai_manutenzione is not none else "Metti in manutenzione" }}</button>
 </form>
+
+<h2>Storico VPN/proxy</h2>
+<p class="tenue">I server che hanno lasciato passare una persona segnalata come VPN/proxy, con i nomi (lo stesso di <code>/owner system storico-vpn</code>).</p>
+<form class="riga" method="get" action="/proprietario/storico-vpn">
+  <label>ID Discord <input type="text" name="utente" inputmode="numeric" pattern="[0-9]{1,20}" maxlength="20" required></label>
+  <button type="submit">Mostra</button>
+</form>
 {% endblock %}

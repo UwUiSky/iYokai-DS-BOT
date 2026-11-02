@@ -934,6 +934,9 @@ Le regex dei server girano solo con `re2`. Un'azione che fallisce per permessi s
 AMD-018 (stato online e attività) richiede l'intent Presenze: si fa dietro un interruttore **spento di base**;
 finché è spento il bot non chiede l'intent a Discord. Filtro immagini (D62): un processo nuovo per immagine,
 servizio di sistema `iyokai-sandbox` con utente senza permessi e senza rete; ripiego dichiarato se manca.
+Correzione (02/11/2026, orchestratore): il filtro immagini trappola vale per **tutti**, staff, proprietario e canali o
+ruoli esenti compresi (un account staff rubato è il caso tipico); le esenzioni AutoMod non valgono qui. Azione uguale:
+cancella, avviso e log; timeout se l'immagine è malevola.
 
 ## D64 — Verifica web: VPN e proxy bloccati subito (01/11/2026, richiesta dell'owner)
 Durante la verifica web, chi arriva da una VPN o da un proxy (pubblico o privato, anche Tor e reti di data center)

@@ -322,6 +322,7 @@ struttura di `cogs/utility/ping.py`. Viene scoperto e caricato da solo.
 - Paese nella verifica web (D53): se un server lo attiva, il bot ricava dall'IP solo il codice del
   paese con una banca dati locale e salva solo quello (mai IP né città), per 30 giorni. Per attivarlo:
   `python3 scripts/aggiorna_geoip.py` e `GEOIP_PAESI_MMDB` nel `.env`. Senza il file la funzione è spenta.
+  VPN e proxy (D64): `GEOIP_ASN_MMDB`, `python3 scripts/aggiorna_vpn.py`, fonti e licenze in `docs/verifica_vpn.md`.
 - Attribuzione: *IP to Country Lite* di [DB-IP.com](https://db-ip.com), licenza
   [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 - Una vulnerabilità si segnala in privato all'owner, non con una issue

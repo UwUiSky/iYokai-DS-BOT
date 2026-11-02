@@ -698,6 +698,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 18:
 - **`/owner cog load`** — Carica un'estensione (es. cogs.moderation.actions).
 - **`/owner cog reload`** — Ricarica un'estensione, anche aggiornandola da GitHub o da un file.
 - **`/owner cog unload`** — Scarica un'estensione.
+- **`/owner immagini-trappola`** — Solo proprietario del bot: libreria delle immagini trappola.
 - **`/owner parole-odio`** — Solo proprietario del bot: libreria delle parole.
 - **`/owner premium grant`** — Concede il premium a un server, o crea un codice da riscattare.
 - **`/owner premium list`** — Mostra lo stato premium di tutti i moduli.

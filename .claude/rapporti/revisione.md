@@ -394,3 +394,30 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 01/11 | `feat/r14lingue` | `core/command_translator.py:aiuto_comando` | Utente italiano senza `aiuto` in it riceve la spiegazione inglese (come `t()`); da decidere | bassa | aperto |
 | 01/11 | `feat/r14lingue` | `core/i18n.py:_ALIAS` | `es-419` (spagnolo latino) non va su `es-ES`: nessuna traduzione quando ci sarà | bassa | aperto |
 | 01/11 | `feat/r14lingue` | `core/lingua_richieste.py:pulisci` | Docstring dice «a capo ridotti a uno», in realtà diventano spazi | bassa | aperto |
+| 02/11 | `feat/r15vpn` | `core/panel_bridge.py:verifica_web` | Il blocco restava 24 ore anche dopo una verifica riuscita: un DM per altro apriva un ticket a sorpresa col motivo vecchio | media | chiuso (e5e4774) |
+| 02/11 | `feat/r15vpn` | pannello, pagina del proprietario | D65 chiede lo storico con i nomi anche nel pannello owner: mancava (D18) | media | chiuso (14568f1) |
+| 02/11 | `feat/r15vpn` | `core/verify_vpn_staff.py:lascia_passare` | Riga nel registro pubblico nella lingua di chi clicca, non del server | bassa | chiuso (a895a2c) |
+| 02/11 | `feat/r15vpn` | `scripts/aggiorna_vpn.py:_scarica_testo` | urllib segue i reindirizzamenti https→http: elenco accettato da http | bassa | chiuso (9ff3e96) |
+| 02/11 | `feat/r15vpn` | `core/verify_vpn_logic.py:ElencoReti.da_testo` | Un `0.0.0.0/0` o `::/0` in un elenco scaricato bloccava tutti | media | chiuso (38ec7c5) |
+| 02/11 | `feat/r15vpn` | `docs/verifica_vpn.md` | Grandi reti cloud bloccate di base (Google, Amazon, Microsoft…) non elencate | bassa | chiuso (72e1fed) |
+| 02/11 | `feat/r15vpn` | `core/verify_vpn_logic.py:segnali_intestazioni` | Dietro il proxy fidato (produzione con HTTPS) lo strato intestazioni è sempre spento; si potrebbero contare le voci di `X-Forwarded-For` prima di quella del proxy | media | aperto |
+| 02/11 | `feat/r15vpn` | `core/repositories/verify_vpn_repo.py:ha_eccezione` | I 30 giorni dell'eccezione dipendono solo dalla pulizia del registro (nessuna data nella query) | bassa | aperto |
+| 02/11 | `feat/r15vpn` | `core/verify_blocchi.py:dopo_blocco` | Blocco su B senza ModMail lascia quello di A: il DM apre il ticket su A | bassa | aperto |
+| 02/11 | `feat/r15vpn` | `core/verify_vpn_staff.py:BottoneLasciaPassare.callback` | Clic da un altro server: nessuna risposta (come paese) | bassa | aperto |
+| 02/11 | `feat/r15vpn` | `core/verify_vpn_dati.py:_apri_asn` | MMDB ASN aperto una volta: il file del mese nuovo vale dopo il riavvio, i documenti non lo dicono | bassa | aperto |
+| 02/11 | `feat/r15vpn` | `core/verify_paese_staff.py:171` | Stessa riga pubblica con `testo_per` (lingua di chi clicca) del punto chiuso in a895a2c | bassa | aperto |
+| 02/11 | `feat/r15vpn` | D65, storico | Un server qualsiasi può «lasciar passare» un account e farlo passare in tutti gli altri (con avviso): è la decisione, da far sapere all'owner | nota | aperto |
+| 02/11 | `feat/r15immagini` | `core/immagini_sandbox.py:esegui_locale` | Dopo la fine di stdout `proc.wait()` senza tetto: un figlio che chiude l'uscita e dorme fermava la coda per sempre | alta | chiuso (vedi log del ramo, fix 1) |
+| 02/11 | `feat/r15immagini` | `core/immagini_sandbox.py:_chiedi_al_servizio` | Servizio che tace dopo aver preso il lavoro = ripiego locale: stessa immagine rifatta con meno isolamento | alta | chiuso (fix 2) |
+| 02/11 | `feat/r15immagini` | `core/immagini_worker.py`, unità systemd | Worker senza Pillow (python di sistema) = uscita 1 = «ucciso» = malevola su ogni immagine, timeout a tutti | alta | chiuso (fix 3) |
+| 02/11 | `feat/r15immagini` | `cogs/automod/immagini.py:on_message` | Staff ed esenti saltati: correzione dell'orchestratore, si controllano tutti (riga sotto D63) | media | chiuso (fix 4) |
+| 02/11 | `feat/r15immagini` | `core/immagini_azione_logic.py:decidi` | Timeout della malevola solo se l'autore non aveva mandato immagini pulite dall'avvio: l'account rubato con storia passava | media | chiuso (fix 5) |
+| 02/11 | `feat/r15immagini` | `core/immagini_pipeline.py:da_segnalare` | Anche le sospette diventavano segnalazioni: con 3 server = condivisa = malevola ovunque (disegno §4.5: solo malevole) | media | chiuso (fix 6) |
+| 02/11 | `feat/r15immagini` | `core/immagini_pipeline.py:analizza_immagine` | Cache 24 h letta prima della libreria: una certa/rifiutata dall'owner non valeva per un giorno | media | chiuso (fix 7) |
+| 02/11 | `feat/r15immagini` | `core/immagini_pipeline.py:_con_sandbox` | Sospetta dalla sandbox restava 1 ora in quarantena, non 72 | bassa | chiuso (fix 8) |
+| 02/11 | `feat/r15immagini` | `deploy/systemd/iyokai-sandbox.service` | `SupplementaryGroups=iyokai`: il worker leggeva `.env` del bot e poteva rimandarlo nel PNG dei log | alta | chiuso (fix 9) |
+| 02/11 | `feat/r15immagini` | `core/immagini_sandbox.py` modo B | Sandbox ridotta: il figlio gira come utente del bot e legge `.env`; dichiarato, ma il PNG pulito (B7) non va pubblicato in modo ridotto | media | aperto (per B7, #152) |
+| 02/11 | `feat/r15immagini` | `cogs/automod/immagini.py:e_allegato_immagine` | AVIF/HEIC/BMP/SVG vanno in sandbox e tornano «sospetta» (decoder chiuso): falso positivo su AVIF legittimi | bassa | aperto |
+| 02/11 | `feat/r15immagini` | `core/immagini_quarantena.py:cartella` | Ripiego in `/tmp/iyokai-quarantena` con `exist_ok`: una cartella creata prima da un altro utente locale viene usata | bassa | aperto |
+| 02/11 | `feat/r15immagini` | migrazioni | Il disegno del filone A prevede una 0504 (pulizia): con 0504–0506 prese qui, il filone A deve usare un numero nuovo | nota | aperto |
+| 02/11 | `feat/r15immagini` | soglia 25 membri | `member_count` conta bot e account finti, come D39: non è «non aggirabile» | bassa | aperto |

@@ -72,6 +72,7 @@ from core.i18n import testo_per
 from core.bounded_cache import BoundedCache
 from core.panel_bridge import METODO_WEB, link_verifica_web
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.config import config as config_bot
 
 from core.database import db
 from core.premium import PremiumModule, registry
@@ -84,6 +85,7 @@ from core.scheduler import in_seconds, scheduler
 from core.security_quarantine import ruolo_quarantena
 from core.security_raid_state import raid_in_corso
 from core.verify_paese_staff import BottoneDecisione
+from core.verify_vpn_staff import BottoneLasciaPassare
 from core.verify_logic import (
     AZIONI_FALLITA,
     FALLIMENTI_CAPTCHA_PRIMA_DELL_AZIONE,
@@ -683,6 +685,28 @@ class VerifyCog(CogConGruppi, commands.Cog):
     # Comandi
     # ================================================================
     @comando_di_gruppo(
+        "owner",
+        nome="storico-vpn",
+        descrizione="Solo proprietario: i server che hanno lasciato passare una persona segnalata come VPN/proxy.",
+        sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
+    )
+    @app_commands.describe(utente="La persona di cui vedere lo storico (D65)")
+    async def storico_vpn(self, interaction: discord.Interaction, utente: discord.User) -> None:
+        """Il proprietario del bot vede sempre i nomi dei server; gli admin solo il numero (D65)."""
+        if interaction.user.id != config_bot.OWNER_ID:
+            await interaction.response.send_message("Questo comando è solo del proprietario del bot.", ephemeral=True)
+            return
+        from cogs.utility._owner_pagine import invia_a_pagine
+        from core.verify_vpn_staff import righe_storico_owner, storico_owner
+
+        await interaction.response.defer(ephemeral=True)
+        righe = righe_storico_owner(await storico_owner(self.bot, utente.id))
+        await invia_a_pagine(
+            interaction, f"Storico VPN/proxy di {utente.id}", righe or ["Nessun server l'ha lasciato passare."],
+            dopo_defer=True,
+        )
+
+    @comando_di_gruppo(
         "admin-sicurezza",
         nome="setup",
         descrizione="Configura il Verify.",
@@ -1174,7 +1198,7 @@ async def setup(bot: commands.Bot) -> None:
     cog = VerifyCog(bot)
     await bot.add_cog(cog)
     bot.add_view(VerifyPanelView())
-    bot.add_dynamic_items(BottoneDecisione)
+    bot.add_dynamic_items(BottoneDecisione, BottoneLasciaPassare)
     scheduler.register_handler(VERIFY_PROMEMORIA, cog.handle_promemoria)
     scheduler.register_handler(VERIFY_SCADENZA, cog.handle_scadenza)
     scheduler.register_handler(VERIFY_ETA, cog.handle_eta)

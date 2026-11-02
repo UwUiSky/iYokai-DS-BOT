@@ -27,8 +27,13 @@ SCELTE = {
     "captcha_tipo": ("testo", "immagine"),
     "azione_verifica": ("niente", "quarantena", "kick", "ban"),
     "azione_eta": ("attendi", "kick"),
+    "azione_immagini": ("cancella", "avvisa", "timeout"),
     "modalita_link_inviti": ("tutti", "crea_invito", "ruolo", "spento"),
 }
+
+
+# Valore che vale quando il server non ha scelto: la pagina lo mostra, non resta «non impostato».
+VALORI_DI_BASE = {"verify_blocca_vpn": True}
 
 
 @dataclass(frozen=True)
@@ -53,6 +58,8 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
         _c("verify_azione_fallita", "Se sbaglia il captcha", SCELTA),
         _c("verify_solo_sospetti", "Verifica solo gli account sospetti", BOOL),
         _c("verify_azione_eta", "Account troppo nuovo", SCELTA),
+        _c("verify_blocca_vpn", "Blocca chi si verifica con VPN o proxy", BOOL),
+        _c("verify_condividi_nome", "Fatti nominare negli avvisi degli altri server (storico VPN)", BOOL),
         _c("verify_paesi", "Paesi del server (codici di 2 lettere, es. IT, CH)", TESTO),
         _c("verify_paesi_soglia", "Verifiche da fuori paese prima dell'attesa (0 = spento)", NUMERO),
         _c("verify_paesi_minuti", "Finestra della soglia (minuti, 1-1440)", NUMERO),
@@ -93,6 +100,10 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
         _c("odio_richiami_soglia", "Richiami prima del timeout (1-20)", NUMERO),
         _c("odio_richiami_minuti", "Finestra dei richiami (minuti, 1-1440)", NUMERO),
         _c("odio_timeout_minuti", "Durata del timeout (minuti, 1-40320)", NUMERO),
+        _c("immagini_filtro_attivo", "Filtro immagini sospette", BOOL),
+        _c("immagini_azione", "Azione sulle immagini sospette", SCELTA),
+        _c("immagini_timeout_minuti", "Timeout per le immagini sospette (minuti, 1-40320)", NUMERO),
+        _c("immagini_canale_log_id", "Canale del registro delle immagini sospette", CANALE),
     ),
     "invites": (
         _c("inviti_log_channel_id", "Canale del registro degli inviti", CANALE),
@@ -136,7 +147,7 @@ async def valori_modulo(guild: discord.Guild, nome: str) -> list[dict]:
     righe = []
     for campo in campi_modulo(nome):
         riga = {"chiave": campo.chiave, "etichetta": campo.etichetta, "tipo": campo.tipo,
-                "valore": await db.get_guild_setting(guild.id, campo.chiave)}
+                "valore": await db.get_guild_setting(guild.id, campo.chiave, VALORI_DI_BASE.get(campo.chiave))}
         if campo.tipo == SCELTA:
             riga["scelte"] = _scelte(schema[campo.chiave])
         elif campo.tipo in (CANALE, CANALE_VOCE, RUOLO):

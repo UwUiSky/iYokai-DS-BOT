@@ -53,6 +53,7 @@ from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.moderation_repo import moderation_repo
 from core.spam_trap_logic import BAN_ACTION_TYPE
 from core.repositories.modmail_repo import ConversazioneGiaAperta, ModmailThread, modmail_repo
+from core.repositories.verify_blocchi_repo import verify_blocchi_repo
 from core.scheduler import in_seconds, scheduler
 from core.ticket_logic import build_transcript_text, format_transcript_line, split_text_by_size
 from core.ui_base import BaseView
@@ -213,6 +214,14 @@ class ModMailCog(CogConGruppi, commands.Cog):
         if utente.id in self._menu_aperti:
             await self._rispondi_dm(message, "Rispondi prima alla domanda qui sopra (scegli o conferma): poi scrivimi di nuovo.")
             return
+        # D65: chi scrive dopo un blocco della verifica apre il ticket col server dove voleva entrare.
+        blocco = await verify_blocchi_repo.recente(utente.id)
+        if blocco is not None:
+            guild_bloccato = self.bot.get_guild(blocco["guild_id"])
+            if guild_bloccato is not None and await self._server_ok(guild_bloccato, utente):
+                await verify_blocchi_repo.cancella(utente.id)
+                await self._apri(guild_bloccato, utente, message, motivo=blocco["motivo"])
+                return
         candidati = await self._server_candidati(utente)
         decisione = logica.decidi_server([g.id for g in candidati])
         if decisione.esito is logica.Esito.NESSUN_SERVER:
@@ -261,7 +270,9 @@ class ModMailCog(CogConGruppi, commands.Cog):
     # ================================================================
     # Apertura e inoltro
     # ================================================================
-    async def _apri(self, guild: discord.Guild, utente: discord.abc.User, primo: discord.Message) -> None:
+    async def _apri(
+        self, guild: discord.Guild, utente: discord.abc.User, primo: discord.Message, motivo: str | None = None
+    ) -> None:
         categoria_id = await modmail_repo.categoria(guild.id)
         categoria = guild.get_channel(categoria_id) if categoria_id else None
         if not isinstance(categoria, discord.CategoryChannel):
@@ -316,6 +327,8 @@ class ModMailCog(CogConGruppi, commands.Cog):
             color=COLORE_STAFF,
         )
         intestazione.add_field(name="Account creato", value=discord.utils.format_dt(utente.created_at, "R"))
+        if motivo:  # D65: il blocco della verifica che l'ha portato qui
+            intestazione.add_field(name="Blocco della verifica", value=motivo[:1024], inline=False)
         membro = guild.get_member(utente.id)
         if membro is not None and membro.joined_at is not None:
             intestazione.add_field(name="Nel server dal", value=discord.utils.format_dt(membro.joined_at, "R"))
