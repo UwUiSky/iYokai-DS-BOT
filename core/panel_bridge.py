@@ -318,6 +318,7 @@ async def verifica_web(
     esito = await cog.run_checks_and_finalize(guild, membro, captcha_ok=True)
     if not esito.success:  # D65: ogni blocco invita a scrivere in privato
         return False, await verify_blocchi.dopo_blocco(guild, user_id, esito.reason)
+    await verify_blocchi.dopo_riuscita(guild, user_id)
     return esito.success, esito.reason
 
 

@@ -42,6 +42,10 @@ class VerifyBlocchiRepository:
     async def cancella(self, user_id: int) -> None:
         await self._pool.execute("DELETE FROM verify_blocchi WHERE user_id = $1", user_id)
 
+    async def cancella_del_server(self, user_id: int, guild_id: int) -> None:
+        """Toglie il blocco solo se è di quel server (la persona lì si è verificata)."""
+        await self._pool.execute("DELETE FROM verify_blocchi WHERE user_id = $1 AND guild_id = $2", user_id, guild_id)
+
 
 def _get_pool() -> asyncpg.Pool:
     from core.database import db

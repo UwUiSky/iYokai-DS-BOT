@@ -377,6 +377,13 @@ async def test_ogni_blocco_invita_a_scrivere_in_privato_e_ricorda_il_motivo(monk
     amb.cog.run_checks_and_finalize.return_value = VerifyOutcome(True, "Verificato.")
     ok, testo = await _verifica(amb, 103, IP_PULITO)  # chi passa non lascia blocchi
     assert ok and await blocchi.recente(103) is None
+    # chi passa dopo un blocco non apre più un ticket «a sorpresa» col motivo vecchio
+    ok, _ = await _verifica(amb, 102, IP_PULITO)
+    assert ok and await blocchi.recente(102) is None
+    # un blocco di un altro server resta: la riuscita qui non lo tocca
+    await blocchi.registra(104, GUILD + 1, "Paese in attesa")
+    ok, _ = await _verifica(amb, 104, IP_PULITO)
+    assert ok and (await blocchi.recente(104))["guild_id"] == GUILD + 1
 
 
 @pytest.mark.asyncio
