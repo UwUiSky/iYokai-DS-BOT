@@ -19,6 +19,7 @@ from core import automod_liste_service as servizio_liste
 from core import automod_regole_service as servizio
 from core.automod_modelli import MODELLI, modello
 from core.automod_contesto import contesto_da_membro
+from core.automod_innesco_logic import innesco_scatta
 from core.automod_regole_logic import (
     AZIONI_CANALE_STAFF_MENU,
     AZIONI_UTENTE_MENU,
@@ -348,6 +349,7 @@ class PannelloRegole(discord.ui.View):
         await self._ridisegna(interaction)
 
     async def _prova(self, interaction: discord.Interaction) -> None:
+        """Prova senza agire: le condizioni su una persona e l'innesco su un testo (come `odio prova`)."""
         async def invio(i: discord.Interaction, v: dict) -> None:
             try:
                 utente = L.leggi_id(v["utente"])
@@ -355,17 +357,25 @@ class PannelloRegole(discord.ui.View):
                 self.messaggio = self.tx("errore", testo=str(errore))
                 await i.response.edit_message(embed=self.schermata_regola(), view=self)
                 return
+            esiti = []
             membro = self.guild.get_member(utente) if utente else None
-            if membro is None:
-                self.messaggio = self.tx("prova_nessun_membro")
-            else:
+            if membro is not None:
                 ctx = contesto_da_membro(membro, i.channel, evento=self.bozza.evento)
                 vale = condizioni_ok(self.bozza.condizioni, ctx)
-                self.messaggio = self.tx("prova_vale" if vale else "prova_non_vale", utente=membro.display_name)
+                esiti.append(self.tx("prova_vale" if vale else "prova_non_vale", utente=membro.display_name))
+            elif utente:
+                esiti.append(self.tx("prova_nessun_membro"))
+            testo = (v.get("testo") or "").strip()
+            if testo and self.bozza.innesco:
+                scatta = innesco_scatta(self.bozza.innesco, testo, await servizio_liste.voci_per_regole(self.guild.id))
+                esiti.append(self.tx("prova_innesco_si" if scatta else "prova_innesco_no"))
+            self.messaggio = " ".join(esiti) or self.tx("prova_nessun_membro")
             await i.response.edit_message(embed=self.schermata_regola(), view=self)
 
-        await interaction.response.send_modal(ModaleCampi(self.tx("btn_prova"), [
-            campo("utente", self.tx("f_utente_prova"), 40, segnaposto="ID o @menzione")], invio))
+        campi = [campo("utente", self.tx("f_utente_prova"), 40, segnaposto="ID o @menzione")]
+        if self.bozza.innesco:
+            campi.append(campo("testo", self.tx("f_testo_prova"), MAX_TESTO_PROVA, lungo=True))
+        await interaction.response.send_modal(ModaleCampi(self.tx("btn_prova"), campi, invio))
 
     # ------------------------------------------------------------ finestre
     def _modale(self, sezione: str) -> ModaleCampi:

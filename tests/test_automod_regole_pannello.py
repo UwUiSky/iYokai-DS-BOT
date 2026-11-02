@@ -191,3 +191,16 @@ async def test_finestra_innesco_accetta_regex_lunghe_fino_a_260_con_virgole():
     modale = vista._modale("innesco")
     await modale._su_invio(_risposta(inter), {"tipo": "regex", "contenuto": lunga, "liste": "", "modo": ""})
     assert vista.bozza.innesco == {"tipo": "regex", "regex": [lunga]}, vista.messaggio
+
+
+async def test_prova_dice_anche_se_l_innesco_scatta_su_un_testo():
+    vista, inter = _vista()
+    vista.bozza = Regola(chiave="p:0", tipo="personale", nome="Prova", innesco={"tipo": "regex", "regex": ["compra"]})
+    vista.guild.get_member = lambda i: None
+    await vista._prova(inter)
+    modale = inter.response.send_modal.await_args.args[0]
+    assert len(modale._campi) <= 5 and all(c.max_length for c in modale._campi)
+    await modale._su_invio(_risposta(inter), {"utente": "", "testo": "compra adesso"})
+    assert vista.messaggio == P.t("amregole_prova_innesco_si", "it")
+    await modale._su_invio(_risposta(inter), {"utente": "", "testo": "ciao"})
+    assert vista.messaggio == P.t("amregole_prova_innesco_no", "it")
