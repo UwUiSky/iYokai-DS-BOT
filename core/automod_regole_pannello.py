@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 
 import discord
 
+from core.ui_base import BaseModal, BaseView
 from core import automod_pannello_logic as L
 from core import automod_liste_service as servizio_liste
 from core import automod_regole_service as servizio
@@ -59,7 +60,7 @@ def opz(label: str, value: str, descr: str | None = None, default: bool = False)
     return discord.SelectOption(label=label[:80], value=value, description=descr[:100] if descr else None, default=default)
 
 
-class ModaleCampi(discord.ui.Modal):
+class ModaleCampi(BaseModal):
     """Una finestra con al massimo 5 campi di testo; `su_invio(interaction, valori)` legge le risposte."""
 
     def __init__(self, titolo: str, campi: list[discord.ui.TextInput], su_invio):
@@ -82,7 +83,7 @@ def campo(id_: str, etichetta: str, massimo: int, valore: str = "", *, lungo: bo
     )
 
 
-class PannelloRegole(discord.ui.View):
+class PannelloRegole(BaseView):
     def __init__(self, interaction: discord.Interaction, lingua: str, etichette: dict[str, str]):
         super().__init__(timeout=DURATA_PANNELLO_S)
         self.guild = interaction.guild
@@ -104,7 +105,7 @@ class PannelloRegole(discord.ui.View):
         return t(f"amregole_{chiave}", self.lingua, **valori)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        return interaction.user.id == self.autore_id
+        return interaction.user.id == self.autore_id and await super().interaction_check(interaction)
 
     def _nome(self, r: Regola) -> str:
         return self.etichette.get(r.chiave, r.nome)

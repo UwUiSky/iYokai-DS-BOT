@@ -14,6 +14,7 @@ from typing import Any
 
 import discord
 
+from core.ui_base import BaseView
 from core import channel_router as router
 from core.automod_regole_logic import Azione, azione_a_json, azione_da_json
 from core.i18n import testo_guild, testo_per
@@ -46,7 +47,7 @@ class BottoneDecisione(discord.ui.DynamicItem[discord.ui.Button], template=MODEL
 
 
 def vista(decisione_id: int, *, disabled: bool = False, etichette: tuple[str, str] | None = None) -> discord.ui.View:
-    v = discord.ui.View(timeout=None)
+    v = BaseView(timeout=None)
     for esito, etichetta in zip(("ok", "no"), etichette or (None, None)):
         v.add_item(BottoneDecisione(esito, decisione_id, etichetta=etichetta, disabled=disabled))
     return v
