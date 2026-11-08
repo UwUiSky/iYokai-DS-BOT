@@ -1697,6 +1697,7 @@
   "arub_azione_cancellati": "messaggi cancellati",
   "arub_azione_nessuna": "nessuna (permessi mancanti?)",
   "arub_piede": "Un solo avviso per persona, aggiornato a ogni nuovo invio. Nessun file allegato.",
+  "modmail_scegli_server_blocco": "Sei stato bloccato o limitato in più server. Scegli con quale staff parlare: quando la conversazione sarà chiusa, scrivimi di nuovo per gli altri.",
   "arub_dm_titolo": "Account limitato",
   "arub_dm": "Sei stato limitato da iYokai per una presunta violazione del tuo account: cambia la password, attiva l'autenticazione a due fattori, controlla le app autorizzate; poi scrivimi qui.",
   "arub_stato": "Difesa dagli account rubati: {stato}. Timeout: {uguali} minuti per i messaggi uguali, {malevole} per le immagini malevole.",

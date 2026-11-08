@@ -1697,6 +1697,7 @@
   "arub_azione_cancellati": "messages deleted",
   "arub_azione_nessuna": "none (missing permissions?)",
   "arub_piede": "One alert per person, updated on every new send. No files attached.",
+  "modmail_scegli_server_blocco": "You were blocked or limited in more than one server. Choose which staff to talk to: when the conversation is closed, write to me again for the others.",
   "arub_dm_titolo": "Account restricted",
   "arub_dm": "iYokai has restricted you for a suspected breach of your account: change your password, turn on two-factor authentication, check your authorized apps; then write to me here.",
   "arub_stato": "Stolen-account defense: {stato}. Timeout: {uguali} minutes for repeated messages, {malevole} for malicious images.",
