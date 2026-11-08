@@ -107,3 +107,22 @@ async def test_canale_cancellato_toglie_la_riga(cog):
     await servizio.imposta(G, 111, ogni="1h")
     await cog.on_guild_channel_delete(canale(111))
     assert await repo.conta(G) == 0
+
+
+async def test_errore_su_un_canale_non_fa_perdere_il_giro_degli_altri(cog, clean_db, monkeypatch):
+    """I giri sono già segnati: un errore su un canale non deve saltare gli altri del ciclo."""
+    await servizio.imposta(G, 111, ogni="1h")
+    await servizio.imposta(G, 222, ogni="1h")
+    await clean_db.execute("UPDATE automod_pulizie SET ultimo_giro = now() - interval '2 hours'")
+    canali = {111: canale(111), 222: canale(222)}
+    cog.bot.get_channel = lambda cid: canali.get(cid)
+
+    async def pulisci(c, p, *a):
+        if p.canale_id == 111:
+            raise discord.HTTPException(MagicMock(status=500), "errore")
+        return EsitoGiro()
+
+    finto = AsyncMock(side_effect=pulisci)
+    monkeypatch.setattr(modulo, "pulisci", finto)
+    assert await cog.giro() == 1
+    assert {c.args[1].canale_id for c in finto.await_args_list} == {111, 222}

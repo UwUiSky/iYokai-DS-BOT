@@ -65,7 +65,11 @@ class PuliziaAutomodCog(CogConGruppi, commands.Cog):
                 continue  # non in cache: se il canale è stato cancellato lo toglie on_guild_channel_delete
             if not await db.is_module_active_for_guild(p.guild_id, MODULE_AUTOMOD):
                 continue
-            esito = await pulisci(canale, p)
+            try:
+                esito = await pulisci(canale, p)
+            except Exception:  # noqa: BLE001 — il giro degli altri canali è già segnato: non va perso
+                logger.warning("Pulizia %s/%s non riuscita.", p.guild_id, p.canale_id, exc_info=True)
+                continue
             fatti += 1
             if esito.fermo:
                 await automod_pulizie_repo.spegni(p.guild_id, p.canale_id)
