@@ -296,3 +296,16 @@ async def test_rilascio_non_ridà_la_vista_agli_addetti_di_un_ticket_solo_admin(
     await cog.rilascia.callback(cog, i)
     assert 8 not in _ruoli_toccati(i.channel)
 
+
+async def test_solo_admin_toglie_anche_i_permessi_personali_degli_addetti_non_dell_autore():
+    t = await _ticket_solo_admin("no")
+    s = Server()
+    addetto = fake_member(40, roles=[fake_role(role_id=8, name="addetto")], guild_permissions=discord.Permissions())
+    admin = fake_member(41, roles=[fake_role(role_id=7, name="admin")], guild_permissions=discord.Permissions())
+    autore = fake_member(UTENTE, roles=[fake_role(role_id=8, name="addetto")], guild_permissions=discord.Permissions())
+    canale = fake_text_channel(300)
+    vede = discord.PermissionOverwrite(view_channel=True)
+    canale.overwrites = {addetto: vede, admin: vede, autore: vede}
+    await modulo.imposta_solo_admin(canale, s.guild, t, True)
+    tolti = {c.args[0].id for c in canale.set_permissions.await_args_list if c.kwargs.get("overwrite") is None}
+    assert 40 in tolti and 41 not in tolti and UTENTE not in tolti

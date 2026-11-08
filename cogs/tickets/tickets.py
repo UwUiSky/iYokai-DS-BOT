@@ -1318,8 +1318,8 @@ async def suggerisci_articolo(channel, guild_id: int, motivo: str | None, campi)
 
 async def imposta_solo_admin(channel, guild: discord.Guild, ticket, attivo: bool) -> None:
     """
-    TKT-046: toglie (o rimette) nel canale i ruoli degli addetti. Chi ha «Gestisci server» e i ruoli
-    admin restano. Una sola modifica di permessi per ruolo.
+    TKT-046: toglie (o rimette) nel canale i ruoli degli addetti e, all'attivazione, i permessi personali
+    degli addetti. Chi ha «Gestisci server», i ruoli admin e l'autore restano. Una modifica per ruolo o persona.
     """
     ruoli_staff = await _ruoli_staff(guild.id, ticket.panel_id)
     ruoli_admin = await _ruoli_admin(guild.id)
@@ -1336,6 +1336,17 @@ async def imposta_solo_admin(channel, guild: discord.Guild, ticket, attivo: bool
                 ruolo, overwrite=discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
                 reason="Ticket di nuovo a tutto lo staff",
             )
+    if attivo:
+        # Reperibili e chi aveva preso il ticket hanno un permesso personale: agli addetti va tolto
+        # (l'autore resta sempre, anche se è un addetto).
+        for bersaglio in list(dict(channel.overwrites)):
+            if (
+                not isinstance(bersaglio, discord.Member) or bersaglio.id == ticket.user_id
+                or not await _membro_staff(bersaglio, guild.id, ticket.panel_id)
+                or await _membro_admin(bersaglio, guild.id, ticket.panel_id)
+            ):
+                continue
+            await channel.set_permissions(bersaglio, overwrite=None, reason="Ticket solo admin")
     await ticket_repo.set_solo_admin(channel.id, attivo)
 
 
