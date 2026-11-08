@@ -1885,6 +1885,7 @@
   "scheda_azione_ban": "Ban",
   "scheda_azione_nota": "Nota",
   "scheda_serve_modban": "Kick e ban li dà chi ha il ruolo di /mod-ban.",
+  "report_troppe_segnalazioni": "Hai già mandato {massimo} segnalazioni negli ultimi 10 minuti: riprova più tardi.",
   "segnala_modulo_titolo": "Segnala messaggio",
   "segnala_modulo_motivo": "Perché lo segnali?",
   "segnala_se_stesso": "Non puoi segnalare un tuo messaggio.",

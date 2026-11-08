@@ -1885,6 +1885,7 @@
   "scheda_azione_ban": "Ban",
   "scheda_azione_nota": "Note",
   "scheda_serve_modban": "Kick and ban need the /mod-ban role.",
+  "report_troppe_segnalazioni": "You already sent {massimo} reports in the last 10 minutes: try again later.",
   "segnala_modulo_titolo": "Report message",
   "segnala_modulo_motivo": "Why are you reporting it?",
   "segnala_se_stesso": "You cannot report your own message.",

@@ -8,18 +8,23 @@ allo staff. Modulo SEMPRE GRATUITO (MODULE_REPORT), come da schema.
 (solo admin del bot, lo dà il gruppo) — usa la colonna "settings" di
 guild_config (vedi core/database.py), non "modules": è configurazione,
 non un interruttore attivo/spento.
+`invia_segnalazione` è il punto unico per `/utility report` e il menu «Segnala messaggio» (MOD-105), con un
+tetto di segnalazioni per persona e server contro lo spam.
+Funzioni coperte: SPEC §5.7 (MOD-105)
 """
 
 from __future__ import annotations
 
 import io
 import logging
+import time
 from typing import Literal
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.bounded_cache import BoundedCache
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.i18n import testo_per
@@ -29,6 +34,21 @@ from cogs.moderation._shared import MODULE_REPORT, ensure_module_enabled
 logger = logging.getLogger("iyokai.report")
 
 SETTING_REPORT_CHANNEL = "report_channel_id"
+# Tetto contro lo spam: al massimo 5 segnalazioni ogni 10 minuti per persona e server.
+MAX_SEGNALAZIONI = 5
+FINESTRA_SEGNALAZIONI_S = 600
+_segnalazioni_fatte: BoundedCache[tuple[int, int], list[float]] = BoundedCache(10_000)
+
+
+def _segna_segnalazione(guild_id: int, user_id: int) -> bool:
+    """Segna una segnalazione (senza await: due invii insieme contano due). False se la persona è oltre il tetto."""
+    adesso = time.monotonic()
+    recenti = [t for t in _segnalazioni_fatte.get((guild_id, user_id), []) if adesso - t < FINESTRA_SEGNALAZIONI_S]
+    if len(recenti) >= MAX_SEGNALAZIONI:
+        _segnalazioni_fatte.set((guild_id, user_id), recenti)
+        return False
+    _segnalazioni_fatte.set((guild_id, user_id), [*recenti, adesso])
+    return True
 
 
 MAX_CAMPO = 1024
@@ -80,6 +100,12 @@ async def invia_segnalazione(
         await interaction.response.send_message(
             await testo_per(interaction, "report_il_canale_delle_segnalazioni_configurato"),
             ephemeral=True,
+        )
+        return
+
+    if not _segna_segnalazione(interaction.guild.id, interaction.user.id):
+        await interaction.response.send_message(
+            await testo_per(interaction, "report_troppe_segnalazioni", massimo=MAX_SEGNALAZIONI), ephemeral=True
         )
         return
 
