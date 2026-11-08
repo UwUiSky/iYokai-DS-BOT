@@ -194,3 +194,26 @@ async def test_senza_canale_di_log_nessun_avviso_ma_si_agisce(ambiente):
     await tre_invii(ambiente)
     ambiente.isola.assert_awaited_once()
     ambiente.log.send.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_invii_contemporanei_un_solo_avviso_e_un_solo_timeout(ambiente, monkeypatch):
+    """Lo spam arriva a raffica: due messaggi gestiti insieme non devono creare due avvisi né due timeout."""
+    import asyncio
+
+    async def lingua_lenta(*_a, **_k):
+        await asyncio.sleep(0)
+        return "it"
+
+    async def invio_lento(*_a, **_k):
+        await asyncio.sleep(0)
+        return SimpleNamespace(id=5000)
+
+    monkeypatch.setattr(ar, "lingua_risposta", lingua_lenta)
+    ambiente.log.send.side_effect = invio_lento
+    for n in range(2):
+        await ar.controlla_messaggio(ambiente.bot, messaggio(ambiente, n, 10 + n))
+    ambiente.isola.side_effect = lambda *a, **k: ambiente.membro.is_timed_out.configure_mock(return_value=True)
+    await asyncio.gather(*(ar.controlla_messaggio(ambiente.bot, messaggio(ambiente, n, 10 + n)) for n in (2, 3)))
+    ambiente.log.send.assert_awaited_once()
+    ambiente.isola.assert_awaited_once()

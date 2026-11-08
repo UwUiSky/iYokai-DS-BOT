@@ -13,6 +13,7 @@ Dipende da: core/account_rubato_logic.py, core/automod_azioni.py, core/verify_bl
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 
@@ -35,6 +36,15 @@ PAUSA_DM_S = 6 * 3600  # un solo messaggio privato per persona, anche se continu
 registro = lg.RegistroInvii()
 _avvisi: BoundedCache[tuple[int, int], tuple[int, int]] = BoundedCache(5_000)  # (server, persona) -> (canale, messaggio)
 _dm_fatti: BoundedCache[int, float] = BoundedCache(5_000)
+_serrature: BoundedCache[int, asyncio.Lock] = BoundedCache(5_000)  # una persona alla volta: lo spam arriva a raffica
+
+
+def _serratura(user_id: int) -> asyncio.Lock:
+    serratura = _serrature.get(user_id)
+    if serratura is None:
+        serratura = asyncio.Lock()
+        _serrature.set(user_id, serratura)
+    return serratura
 
 
 def firma_da_messaggio(message: discord.Message) -> str | None:
@@ -63,6 +73,12 @@ async def controlla_messaggio(bot: discord.Client, message: discord.Message, *, 
 
 
 async def gestisci(bot: discord.Client, sintesi: Sintesi, message: discord.Message | None) -> bool:
+    """Agisce in ogni server della sintesi, una persona alla volta (un solo avviso e un solo timeout)."""
+    async with _serratura(sintesi.user_id):
+        return await _gestisci(bot, sintesi, message)
+
+
+async def _gestisci(bot: discord.Client, sintesi: Sintesi, message: discord.Message | None) -> bool:
     limitato_in: list[discord.Guild] = []
     for guild_id in sintesi.guild_ids:
         guild = bot.get_guild(guild_id)
