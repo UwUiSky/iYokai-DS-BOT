@@ -206,6 +206,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
        nota="dura 24 ore; la riga sparisce quando l'avviso parte"),
     _t("moderation_motivi", "Motivi pronti di moderazione del server", colonne_attore=("autore_id",),
        colonna_server="guild_id", nota="testi scelti dallo staff, senza dati degli utenti"),
+    _t("moderation_motivi_semina", "Server a cui è già stato dato l'elenco di base dei motivi pronti (D68)",
+       colonna_server="guild_id", nota="solo il server e la data, senza dati degli utenti"),
     _t("moderation_slowmode_lungo", "Canali con slowmode lungo gestito dal bot (MOD-099)", colonna_server="guild_id",
        nota="solo canali e secondi, senza dati degli utenti"),
     _t("moderation_slowmode_ultimi", "Ultimo messaggio di ogni utente nei canali con slowmode lungo",

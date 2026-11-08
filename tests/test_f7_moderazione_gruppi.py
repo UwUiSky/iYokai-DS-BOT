@@ -25,6 +25,7 @@ MODULI = (
     "cogs.moderation.softban_mute",
     "cogs.moderation.voce",
     "cogs.moderation.nickname",
+    "cogs.moderation.motivo_pronto",
     "cogs.moderation.opzioni",
     "cogs.security.anti_nuke",
     "cogs.security.anti_raid",
@@ -44,13 +45,13 @@ MODULI = (
 
 # (gruppo, sottogruppo o None) -> nomi dei figli attesi
 ATTESI: dict[tuple[str, str | None], set[str]] = {
-    ("mod-sanzioni", None): {"warn", "timeout", "untimeout", "mute", "unmute", "nick"},
+    ("mod-sanzioni", None): {"warn", "timeout", "untimeout", "mute", "unmute", "nick", "applica"},
     ("mod-sanzioni", "massa"): {"timeout", "warn"},
     ("mod-sanzioni", "opzioni"): {"imposta", "dm"},
     ("mod-casi", "caso"): {"storico", "vedi", "motivo", "elimina", "classifica-staff", "attive", "registra", "durata", "nascondi", "esporta"},
     ("mod-casi", "nota"): {"aggiungi", "elenca", "rimuovi", "modifica", "svuota"},
     ("mod-casi", "avvisi"): {"togli", "azzera", "classifica", "elenco", "azzera-tutti"},
-    ("mod-casi", "motivi"): {"aggiungi", "elenco", "togli"},
+    ("mod-casi", "motivi"): {"aggiungi", "elenco", "togli", "modifica"},
     ("mod-canali", None): {"clear", "reazioni", "lock", "unlock", "slowmode"},
     ("mod-canali", "blocco"): {"attiva", "togli"},
     ("mod-canali", "vocale"): {"muta", "sordina", "scollega", "sposta", "sposta-tutti", "dove"},

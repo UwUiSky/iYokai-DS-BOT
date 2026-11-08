@@ -33,12 +33,14 @@ async def _amb(monkeypatch, clean_db):
     monkeypatch.setattr(database_module.db, "_pool", clean_db)
     database_module.db._modules_cache.clear()
     motivi._cache.clear()
+    motivi._seminati.add(G)  # l'elenco di base (D68) ha un suo test: qui si parte da un server senza motivi
     await db.set_module_active_for_guild(G, MODULE_ACTIONS, True)
     await db.set_module_active_for_guild(G, MODULE_CASE_SYSTEM, True)
     await db.set_guild_setting(G, SETTING_MOD_LOG_CHANNEL, ID_CANALE_LOG)
     yield
     database_module.db._modules_cache.clear()
     motivi._cache.clear()
+    motivi._seminati.clear()
 
 
 def _testo(scena):

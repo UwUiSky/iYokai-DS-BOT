@@ -787,20 +787,64 @@ class ModerationRepository:
 
     async def list_motivi(self, guild_id: int) -> list[dict]:
         rows = await self._pool.fetch(
-            "SELECT id, nome, testo FROM moderation_motivi WHERE guild_id = $1 ORDER BY lower(nome)", guild_id
+            "SELECT id, nome, testo, severita, azione, durata_s FROM moderation_motivi WHERE guild_id = $1 ORDER BY lower(nome)",
+            guild_id,
         )
         return [dict(r) for r in rows]
+
+    async def get_motivo(self, guild_id: int, nome: str) -> dict | None:
+        r = await self._pool.fetchrow(
+            "SELECT id, nome, testo, severita, azione, durata_s FROM moderation_motivi "
+            "WHERE guild_id = $1 AND lower(nome) = lower($2)",
+            guild_id, nome,
+        )
+        return dict(r) if r else None
 
     async def count_motivi(self, guild_id: int) -> int:
         return await self._pool.fetchval("SELECT count(*) FROM moderation_motivi WHERE guild_id = $1", guild_id)
 
-    async def add_motivo(self, guild_id: int, nome: str, testo: str, autore_id: int) -> int | None:
+    async def add_motivo(
+        self, guild_id: int, nome: str, testo: str, autore_id: int,
+        severita: str | None = None, azione: str | None = None, durata_s: int | None = None,
+    ) -> int | None:
         """L'id del motivo nuovo; None se esiste già uno con lo stesso nome (maiuscole non contano)."""
         return await self._pool.fetchval(
-            "INSERT INTO moderation_motivi (guild_id, nome, testo, autore_id) VALUES ($1, $2, $3, $4) "
-            "ON CONFLICT DO NOTHING RETURNING id",
-            guild_id, nome, testo, autore_id,
+            "INSERT INTO moderation_motivi (guild_id, nome, testo, autore_id, severita, azione, durata_s) "
+            "VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING RETURNING id",
+            guild_id, nome, testo, autore_id, severita, azione, durata_s,
         )
+
+    async def update_motivo(self, guild_id: int, nome: str, campi: dict) -> bool:
+        """Cambia testo, severita, azione e durata_s (solo le chiavi in `campi`). False se il motivo non c'è."""
+        ammessi = [c for c in ("testo", "severita", "azione", "durata_s") if c in campi]
+        if not ammessi:
+            return await self.get_motivo(guild_id, nome) is not None
+        imposta = ", ".join(f"{c} = ${i + 3}" for i, c in enumerate(ammessi))
+        esito = await self._pool.execute(
+            f"UPDATE moderation_motivi SET {imposta} WHERE guild_id = $1 AND lower(nome) = lower($2)",
+            guild_id, nome, *[campi[c] for c in ammessi],
+        )
+        return esito.endswith(" 1")
+
+    async def semina_motivi(self, guild_id: int, elenco: tuple[dict, ...], tetto: int) -> bool:
+        """D68: dà al server l'elenco di base una volta sola (fino al tetto, senza nomi doppi). True se l'ha dato ora."""
+        async with self._pool.acquire() as conn, conn.transaction():
+            nuovo = await conn.fetchval(
+                "INSERT INTO moderation_motivi_semina (guild_id) VALUES ($1) ON CONFLICT DO NOTHING RETURNING guild_id", guild_id
+            )
+            if nuovo is None:
+                return False
+            presenti = await conn.fetchval("SELECT count(*) FROM moderation_motivi WHERE guild_id = $1", guild_id)
+            for m in elenco:
+                if presenti >= tetto:
+                    break
+                id_nuovo = await conn.fetchval(
+                    "INSERT INTO moderation_motivi (guild_id, nome, testo, autore_id, severita, azione, durata_s) "
+                    "VALUES ($1, $2, $3, 0, $4, $5, $6) ON CONFLICT DO NOTHING RETURNING id",
+                    guild_id, m["nome"], m["testo"], m["severita"], m["azione"], m["durata_s"],
+                )
+                presenti += 1 if id_nuovo else 0
+            return True
 
     async def delete_motivo(self, guild_id: int, nome: str) -> bool:
         esito = await self._pool.execute(

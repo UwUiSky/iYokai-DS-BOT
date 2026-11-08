@@ -1409,3 +1409,7 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - `/mod-sanzioni nick membro:@X nuovo:Prova`, poi senza `nuovo`: il soprannome cambia e si azzera; senza «Gestire i soprannomi» è rifiutato; su chi sta più in alto di te è rifiutato.
 - `/mod-ban massa entrati minuti:10 azione:Espelli motivo:prova` con un account di prova appena entrato: compare il numero e «Conferma»/«Annulla»; «Conferma» lo espelle (caso nel registro); un altro utente che preme il bottone è rifiutato.
 
+## giro r18mod, D68 — motivi pronti con sanzione (#115)
+- Server nuovo: `/mod-casi motivi elenco` mostra 14 motivi con severità e sanzione (Spam lieve warn, Insulti media timeout 1h, Raid gravissima ban...). `/mod-casi motivi togli nome:Spam`, poi di nuovo `elenco`: Spam non torna.
+- `/mod-casi motivi aggiungi nome:Bestemmie testo:... severita:Media azione:Timeout durata:2h` e `/mod-casi motivi modifica nome:Insulti azione:Kick`: l'elenco mostra la sanzione nuova. `durata` con azione Warn è rifiutata.
+- `/mod-sanzioni applica membro:@X motivo:` (scegli «Insulti» dal completamento, che mostra `[media, timeout 1h]`): messaggio privato col menu, «Cambia durata», «Conferma», «Annulla». Cambia in Kick: il tasto durata si spegne. Con Timeout e «Cambia durata» 6h poi «Conferma»: timeout di 6 ore e caso nel registro. Un altro staff che preme i tasti è rifiutato. Un motivo scritto a mano è rifiutato con la spiegazione.
