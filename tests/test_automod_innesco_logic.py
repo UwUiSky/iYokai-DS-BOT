@@ -7,6 +7,8 @@ Funzioni coperte: SPEC §6 (AMD-011, AMD-012, AMD-016, AMD-025)
 
 import time
 
+import pytest
+
 from core.automod_innesco_logic import innesco_scatta
 
 
@@ -55,3 +57,60 @@ def test_innesco_vuoto_o_sconosciuto_non_scatta_e_sempre_scatta():
     assert not innesco_scatta({}, "qualsiasi cosa")
     assert not innesco_scatta({"tipo": "stato"}, "qualsiasi cosa")
     assert innesco_scatta({"tipo": "sempre"}, "")
+
+
+# ---------------------------------------------------------------- ruoli e casi dalla finestra (A9, pannello)
+
+
+def test_filtro_ruoli_legge_id_e_menzioni():
+    from core.automod_innesco_logic import leggi_filtro_evento
+
+    f = leggi_filtro_evento("ruolo_dato", "123456789012345678, <@&223456789012345678> 123456789012345678")
+    assert f == {"ruoli": [123456789012345678, 223456789012345678]}
+    assert leggi_filtro_evento("ruolo_tolto", "  ") == {}  # vuoto: qualsiasi ruolo
+
+
+def test_filtro_casi_legge_i_tipi_in_minuscolo():
+    from core.automod_innesco_logic import leggi_filtro_evento
+
+    assert leggi_filtro_evento("caso", "Warn, ban  mute") == {"casi": ["warn", "ban", "mute"]}
+    assert leggi_filtro_evento("caso", "") == {}
+
+
+def test_filtro_per_altri_eventi_e_ignorato():
+    from core.automod_innesco_logic import leggi_filtro_evento
+
+    assert leggi_filtro_evento("messaggio", "123456789012345678") == {}
+    assert leggi_filtro_evento("ingresso", "warn") == {}
+
+
+def test_filtro_scrive_il_testo_della_finestra():
+    from core.automod_innesco_logic import scrivi_filtro_evento
+
+    assert scrivi_filtro_evento("caso", {"tipo": "sempre", "casi": ["warn", "ban"]}) == "warn, ban"
+    assert scrivi_filtro_evento("ruolo_dato", {"ruoli": [1, 2]}) == "1, 2"
+    assert scrivi_filtro_evento("messaggio", {}) == ""
+
+
+# ---------------------------------------------------------------- soglie per canale (AMD-008)
+
+
+def test_soglia_canale_legge_numero_e_secondi():
+    from core.automod_innesco_logic import leggi_soglia_canale, parametri_soglia_canale, scrivi_soglia_canale
+
+    assert leggi_soglia_canale("12/8") == {"numero": 12, "secondi": 8}
+    assert leggi_soglia_canale(" 5 / 30 ") == {"numero": 5, "secondi": 30}
+    assert leggi_soglia_canale("") == {}
+    assert parametri_soglia_canale({"tipo": "soglia_canale"}) == (10, 10)
+    assert parametri_soglia_canale({"numero": 3, "secondi": 60}) == (3, 60)
+    assert scrivi_soglia_canale({"numero": 3, "secondi": 60}) == "3/60"
+    assert scrivi_soglia_canale({}) == ""
+
+
+@pytest.mark.parametrize("testo", ["abc", "1/2/3", "0/10", "10/0", "10/99999", "20000/10", "-1/5"])
+def test_soglia_canale_storta(testo):
+    from core.automod_innesco_logic import leggi_soglia_canale
+    from core.automod_regole_logic import RegolaNonValida
+
+    with pytest.raises(RegolaNonValida):
+        leggi_soglia_canale(testo)

@@ -209,3 +209,48 @@ async def test_prova_dice_anche_se_l_innesco_scatta_su_un_testo():
     assert vista.messaggio == P.t("amregole_prova_innesco_si", "it")
     await modale._su_invio(_risposta(inter), {"utente": "", "testo": "ciao"})
     assert vista.messaggio == P.t("amregole_prova_innesco_no", "it")
+
+
+async def test_finestra_innesco_salva_ruoli_per_gli_eventi_ruolo():
+    vista, inter = _vista()
+    vista.bozza = Regola(chiave="p:0", tipo="personale", nome="Prova", evento="ruolo_dato")
+    modale = vista._modale("innesco")
+    assert len(modale._campi) <= 5 and any(c.custom_id == "filtro" for c in modale._campi)
+    await modale._su_invio(_risposta(inter), {"tipo": "sempre", "contenuto": "", "liste": "", "modo": "",
+                                             "filtro": "<@&123456789012345678> 223456789012345678"})
+    assert vista.bozza.innesco == {"tipo": "sempre", "ruoli": [123456789012345678, 223456789012345678]}, vista.messaggio
+
+
+async def test_finestra_innesco_salva_i_tipi_di_caso():
+    vista, inter = _vista()
+    vista.bozza = Regola(chiave="p:0", tipo="personale", nome="Prova", evento="caso")
+    modale = vista._modale("innesco")
+    await modale._su_invio(_risposta(inter), {"tipo": "sempre", "contenuto": "", "liste": "", "modo": "", "filtro": "Warn, ban"})
+    assert vista.bozza.innesco == {"tipo": "sempre", "casi": ["warn", "ban"]}, vista.messaggio
+
+
+async def test_finestra_innesco_mostra_il_filtro_salvato_e_non_perde_i_numeri():
+    vista, inter = _vista()
+    vista.bozza = Regola(chiave="p:0", tipo="personale", nome="Prova", evento="caso",
+                         innesco={"tipo": "sempre", "casi": ["kick"], "numero": 4, "secondi": 20})
+    modale = vista._modale("innesco")
+    assert next(c for c in modale._campi if c.custom_id == "filtro").default == "kick"
+    await modale._su_invio(_risposta(inter), {"tipo": "sempre", "contenuto": "", "liste": "", "modo": "", "filtro": "kick"})
+    assert vista.bozza.innesco == {"tipo": "sempre", "casi": ["kick"], "numero": 4, "secondi": 20}
+
+
+async def test_finestra_innesco_senza_filtro_per_un_evento_di_messaggio():
+    vista, inter = _vista()
+    vista.bozza = Regola(chiave="p:0", tipo="personale", nome="Prova", evento="messaggio")
+    assert all(c.custom_id != "filtro" for c in vista._modale("innesco")._campi)
+
+
+async def test_finestra_innesco_soglia_per_canale():
+    vista, inter = _vista()
+    vista.bozza = Regola(chiave="p:0", tipo="personale", nome="Prova", evento="messaggio")
+    modale = vista._modale("innesco")
+    assert any(c.custom_id == "soglia" for c in modale._campi) and len(modale._campi) <= 5
+    await modale._su_invio(_risposta(inter), {"tipo": "soglia_canale", "contenuto": "", "liste": "", "modo": "", "soglia": "12/8"})
+    assert vista.bozza.innesco == {"tipo": "soglia_canale", "numero": 12, "secondi": 8}, vista.messaggio
+    await modale._su_invio(_risposta(inter), {"tipo": "soglia_canale", "contenuto": "", "liste": "", "modo": "", "soglia": "xx"})
+    assert vista.bozza.innesco == {"tipo": "soglia_canale", "numero": 12, "secondi": 8}  # storto: resta com'era

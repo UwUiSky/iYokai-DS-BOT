@@ -20,7 +20,7 @@ from core import automod_liste_service as servizio_liste
 from core import automod_regole_service as servizio
 from core.automod_modelli import MODELLI, modello
 from core.automod_contesto import contesto_da_membro
-from core.automod_innesco_logic import innesco_scatta
+from core.automod_innesco_logic import EVENTI_RUOLO, innesco_scatta, leggi_filtro_evento, leggi_soglia_canale, scrivi_filtro_evento, scrivi_soglia_canale
 from core.automod_regole_logic import (
     AZIONI_CANALE_STAFF_MENU,
     AZIONI_UTENTE_MENU,
@@ -563,17 +563,27 @@ class PannelloRegole(BaseView):
                     dati["liste"] = nomi
                 if tipo == "domini":
                     dati["modo"] = (v["modo"].strip().lower() or "vietati")
+                dati.update({k: i[k] for k in ("numero", "secondi", "limite") if k in i})  # i numeri non si perdono
+                dati.update(leggi_filtro_evento(self.bozza.evento, v.get("filtro", "")))
+                if tipo == "soglia_canale":  # AMD-008: «messaggi/secondi» in tutto il canale
+                    dati.update(leggi_soglia_canale(v.get("soglia", "")))
                 self.bozza = replace(self.bozza, innesco=innesco_da_json(dati))
             except RegolaNonValida as e:
                 return await self._chiudi_modale(i_, e)
             await self._chiudi_modale(i_)
 
-        return ModaleCampi(self.tx("cosa_innesco"), [
-            campo("tipo", self.tx("f_tipo_innesco"), 14, i.get("tipo", ""), segnaposto="regex, lista, domini, solo_permesse, sempre"),
+        campi = [
+            campo("tipo", self.tx("f_tipo_innesco"), 14, i.get("tipo", ""), segnaposto="regex, lista, domini, solo_permesse, soglia_canale, sempre"),
             campo("contenuto", self.tx("f_contenuto"), MAX_TESTO_PROVA, contenuto, lungo=True),
             campo("liste", self.tx("f_liste"), 200, ", ".join(i.get("liste", ())), segnaposto="@parolacce-it, mia-lista"),
             campo("modo", self.tx("f_modo"), 8, i.get("modo", ""), segnaposto="vietati / permessi"),
-        ], invio)
+        ]
+        if self.bozza.evento in (*EVENTI_RUOLO, "caso"):  # AMD-075: quali ruoli o quali tipi di caso (vuoto: qualsiasi)
+            campi.append(campo("filtro", self.tx("f_filtro_ruoli" if self.bozza.evento != "caso" else "f_filtro_casi"), 400,
+                               scrivi_filtro_evento(self.bozza.evento, i), segnaposto=self.tx("filtro_vuoto")))
+        elif self.bozza.evento in ("messaggio", "modifica"):
+            campi.append(campo("soglia", self.tx("f_soglia_canale"), 12, scrivi_soglia_canale(i), segnaposto="10/10"))
+        return ModaleCampi(self.tx("cosa_innesco"), campi, invio)
 
     def _m_gruppo(self) -> ModaleCampi:
         async def invio(i, v):

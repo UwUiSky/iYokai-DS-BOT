@@ -22,6 +22,7 @@ from dataclasses import dataclass
 
 import asyncpg
 
+from core.automod_calore_logic import config_a_json as calore_a_json, config_da_json as calore_da_json
 from core.automod_advanced_logic import (
     AntiLinkConfig,
     AutomodAdvancedConfig,
@@ -126,6 +127,7 @@ def _to_json(settings: AutomodAdvancedSettings) -> str:
             "estensioni_vietate": list(config.estensioni_vietate),
             "canali_solo_media": list(config.canali_solo_media),
             "canali_senza_allegati": list(config.canali_senza_allegati),
+            "calore": calore_a_json(config.calore),
             "exempt_channel_ids": list(settings.exempt_channel_ids),
             "exempt_role_ids": list(settings.exempt_role_ids),
             "actions": {k: list(v) for k, v in settings.actions.items()},
@@ -205,6 +207,7 @@ def _from_json(guild_id: int, raw: str) -> AutomodAdvancedSettings:
         estensioni_vietate=tuple(data.get("estensioni_vietate", [])),
         canali_solo_media=tuple(data.get("canali_solo_media", [])),
         canali_senza_allegati=tuple(data.get("canali_senza_allegati", [])),
+        calore=calore_da_json(data.get("calore")),
     )
 
     return AutomodAdvancedSettings(

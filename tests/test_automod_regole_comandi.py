@@ -107,3 +107,18 @@ async def test_immagini_minuti_dell_account_rubato_dal_punto_unico(cog, monkeypa
     inter2 = fake_interaction(guild=fake_guild(guild_id=GID))
     await cog.immagini.callback(cog, inter2, None, None, None, None, None, None, 99_999)
     assert "40320" in inter2.response.send_message.await_args.args[0]
+
+
+async def test_calore_senza_opzioni_mostra_lo_stato_e_con_opzioni_scrive(cog):
+    inter = fake_interaction(guild=fake_guild(guild_id=GID))
+    await cog.calore.callback(cog, inter, None, None, None, None, None, None, None)
+    assert (await automod_advanced_repo.get_settings(GID)).config.calore.attivo is False
+    inter2 = fake_interaction(guild=fake_guild(guild_id=GID))
+    await cog.calore.callback(cog, inter2, True, 150, 8, 15, 4, 20, False)
+    c = (await automod_advanced_repo.get_settings(GID)).config.calore
+    assert (c.attivo, c.soglia, c.calo_per_minuto, c.fermo_minuti, c.fermo_peso, c.timeout_secondi, c.warn) == (
+        True, 150, 8, 15, 4, 1200, False)
+    inter3 = fake_interaction(guild=fake_guild(guild_id=GID))
+    await cog.calore.callback(cog, inter3, None, None, None, None, None, 0, None)  # solo il timeout cambia
+    c = (await automod_advanced_repo.get_settings(GID)).config.calore
+    assert (c.soglia, c.timeout_secondi) == (150, 0)

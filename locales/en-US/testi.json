@@ -1825,5 +1825,22 @@
   "tickets_articolo_salvato": "Article #{id} saved.",
   "tickets_troppi_articoli": "The server already has {massimo} articles.",
   "tickets_articolo_non_trovato": "No article with that number.",
-  "tickets_articolo_eliminato": "Article #{id} deleted."
+  "tickets_articolo_eliminato": "Article #{id} deleted.",
+  "amcalore_si": "yes",
+  "amcalore_no": "no",
+  "amcalore_stato": "Heat on: {stato}. Threshold {soglia} points, loss {calo} per minute. Channel idle for {fermo} minutes (0: off): points ×{peso}. Timeout at the threshold: {timeout} minutes. Warning: {avviso}.",
+  "ampulizia_motivo": "Automatic channel cleanup (AutoMod)",
+  "ampulizia_stato": "Cleanup of {canale}: every {ogni}, messages: {tipo}, pinned too: {fissati}, {stato}. The first run starts after one full interval.",
+  "ampulizia_accesa": "on",
+  "ampulizia_spenta": "off",
+  "ampulizia_non_valida": "A new cleanup needs an interval from 1h to 30d (for example 6h, 2d, 1h30m).",
+  "ampulizia_troppe": "The server already has {massimo} cleaned channels: remove one first.",
+  "ampulizia_tolta": "Cleanup of {canale} removed.",
+  "ampulizia_nessuna_riga": "{canale} has no cleanup.",
+  "ampulizia_senza_permessi": "Warning: I lack permissions in the channel (view it, read history, manage messages): I cannot clean until I have them.",
+  "ampulizia_fermata": "The cleanup of {canale} was turned off: Discord refused deletion three times. Check my permissions and turn it back on with /admin-automod pulizia.",
+  "amregole_f_filtro_ruoli": "Roles (IDs or mentions)",
+  "amregole_f_filtro_casi": "Case types",
+  "amregole_filtro_vuoto": "Empty: any",
+  "amregole_f_soglia_canale": "Channel threshold (messages/seconds)"
 }
