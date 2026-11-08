@@ -129,10 +129,14 @@ class VistaProposta(BaseView):
     async def conferma(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         if self._partita:  # un doppio clic non deve ripetere la sanzione
             return
-        if self.azione in AZIONI_DEL_MODBAN and not await puo_usare(interaction, Livello.MODBAN):
-            await interaction.response.send_message(await testo_per(interaction, "motivopronto_serve_modban"), ephemeral=True)
+        self._partita = True  # segnato prima del primo await: due clic insieme danno una sola sanzione
+        # Il livello può cambiare mentre la proposta è aperta: si ricontrolla per ogni sanzione.
+        livello = Livello.MODBAN if self.azione in AZIONI_DEL_MODBAN else Livello.MOD
+        if not await puo_usare(interaction, livello):
+            self._partita = False
+            chiave = "motivopronto_serve_modban" if livello is Livello.MODBAN else "motivopronto_serve_mod"
+            await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
             return
-        self._partita = True
         self.stop()
         nome_cog, nome_comando = _COMANDO[self.azione]
         cog = interaction.client.get_cog(nome_cog)

@@ -1844,6 +1844,7 @@
   "motivopronto_solo_autore": "Solo chi ha dato il comando può usare questi tasti.",
   "motivopronto_annullato": "Annullato.",
   "motivopronto_fatto": "Sanzione data.",
+  "motivopronto_serve_mod": "Non hai più il livello di moderazione: la sanzione non è stata data.",
   "motivopronto_serve_modban": "Kick e ban li dà chi ha il ruolo di /mod-ban. Scegli un'altra sanzione o chiedi a chi può.",
   "modm_staff_di": "Staff di {server}",
   "modm_server": "Server",

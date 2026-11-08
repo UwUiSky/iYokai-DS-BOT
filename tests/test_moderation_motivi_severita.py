@@ -305,3 +305,33 @@ async def test_il_livello_si_ricontrolla_alla_conferma(server_pronto, _livello):
     await vista.conferma.callback(scena.interazione)
     assert scena.bersaglio.ban.call_count == 0
     scena.interazione.response.send_message.assert_called_once()
+
+
+async def test_il_livello_mod_si_ricontrolla_alla_conferma_anche_per_timeout(server_pronto, _livello):
+    """Chi perde il ruolo Mod mentre la proposta è aperta non dà più nemmeno un timeout."""
+    scena = Scena()
+    vista, _ = await _applica(scena, "Insulti")
+    scena.interazione.client.get_cog.return_value = ModerationActionsCog(bot=None)
+    _livello.return_value = False
+    scena.interazione.response.send_message.reset_mock()
+    await vista.conferma.callback(scena.interazione)
+    assert scena.bersaglio.timeout.call_count == 0
+    assert await moderation_repo.list_cases_for_user(server_pronto, ID_BERSAGLIO) == []
+    scena.interazione.response.send_message.assert_called_once()
+
+
+async def test_doppio_clic_insieme_su_un_kick_non_ripete(server_pronto, _livello):
+    """Due clic che arrivano insieme: il controllo del livello attende, ma la sanzione parte una volta sola."""
+    import asyncio
+
+    async def lento(*_a, **_k):
+        await asyncio.sleep(0)
+        return True
+
+    _livello.side_effect = lento
+    scena = Scena()
+    vista, _ = await _applica(scena, "Evasione sanzione")
+    scena.interazione.client.get_cog.return_value = ModerationActionsCog(bot=None)
+    await asyncio.gather(vista.conferma.callback(scena.interazione), vista.conferma.callback(scena.interazione))
+    assert scena.bersaglio.kick.call_count <= 1
+    assert len(await moderation_repo.list_cases_for_user(server_pronto, ID_BERSAGLIO)) <= 1
