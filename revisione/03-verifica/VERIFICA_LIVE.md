@@ -1416,3 +1416,10 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - `/mod-sanzioni opzioni imposta anonimo:True`, poi un warn a un account di prova: il suo DM dice «Staff di <server>», il canale di log e il caso nominano il moderatore.
 - `/mod-sanzioni opzioni dm azione:Kick attivo:True testo:True`: si apre la finestra; scrivi «Via da {server}: {motivo} ({moderatore})», salva: l'anteprima è corretta. Un kick di prova manda quel testo nel DM; finestra vuota = torna il messaggio di base.
 - AutoMod: una regola con warn manda il DM dal nuovo punto (stesso testo del server, nessun moderatore: «Staff di <server>»).
+
+## giro r18mod, M8 — scheda, tasto destro, mie sanzioni (#115)
+- `/mod-casi scheda utente:@X` e con l'ID di uno che ha lasciato il server: la scheda mostra date, casi attivi, ultimi casi, note; solo chi è nel server ha il «Rischio».
+- Tasto destro su un membro, «App», «Scheda moderazione»: scheda col rischio e 5 tasti. «Warn» apre una finestra col motivo e dà un warn vero (caso nel registro, DM, log). «Timeout» chiede motivo e durata (es. 1h). «Ban» con durata 7d fa un tempban, senza durata un ban. «Nota» salva una nota. Con un account con solo il ruolo Mod (senza quello di `/mod-ban`) Kick e Ban sono spenti.
+- Tasto destro su un membro che ha lasciato il server (da un messaggio vecchio): solo «Nota» è acceso.
+- Tasto destro su un messaggio, «App», «Segnala messaggio» con un account senza permessi: finestra col motivo; nel canale delle segnalazioni arrivano link, testo e i 5 messaggi prima; con un messaggio lungo (oltre 1.024 caratteri) c'è anche `contesto.txt`. Sul proprio messaggio è rifiutato.
+- `/utility mie-sanzioni` con un account che ha un warn: lo elenca (mai le note, mai un caso nascosto con `/mod-casi caso nascondi`). Con `/mod-sanzioni opzioni imposta anonimo:True` il moderatore diventa «Staff di <server>»; con `utente_vede_casi:False` il comando dice che il server non le mostra.

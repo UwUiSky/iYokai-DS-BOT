@@ -240,6 +240,32 @@ class ModerationRepository:
         )
         return [_row_to_case(row) for row in rows]
 
+    async def count_cases_by_type(self, guild_id: int, user_id: int) -> dict[str, tuple[int, int]]:
+        """Per ogni tipo di caso di un utente: (attivi, totali). I casi nascosti non contano (MOD-106)."""
+        rows = await self._pool.fetch(
+            "SELECT action_type, count(*) FILTER (WHERE active) AS attivi, count(*) AS totali "
+            "FROM moderation_cases WHERE guild_id = $1 AND user_id = $2 AND NOT hidden GROUP BY action_type",
+            guild_id, user_id,
+        )
+        return {r["action_type"]: (r["attivi"], r["totali"]) for r in rows}
+
+    async def list_visible_cases_for_user(self, guild_id: int, user_id: int, limit: int = 10) -> list[ModerationCase]:
+        """I casi di un utente che può vedere lui stesso (MOD-114): mai i nascosti. Dal più recente."""
+        rows = await self._pool.fetch(
+            """
+            SELECT case_number, guild_id, user_id, moderator_id, action_type,
+                   reason, duration_seconds, active, created_at, revoked_at, revoked_by
+            FROM moderation_cases
+            WHERE guild_id = $1 AND user_id = $2 AND NOT hidden
+            ORDER BY case_number DESC LIMIT $3
+            """,
+            guild_id, user_id, limit,
+        )
+        return [_row_to_case(row) for row in rows]
+
+    async def count_notes_for_user(self, guild_id: int, user_id: int) -> int:
+        return await self._pool.fetchval("SELECT count(*) FROM moderation_notes WHERE guild_id = $1 AND user_id = $2", guild_id, user_id)
+
     async def count_active_cases(self, guild_id: int, user_id: int, action_type: str) -> int:
         """Quanti casi attivi di un tipo ha un utente (es. i warn non tolti)."""
         return await self._pool.fetchval(

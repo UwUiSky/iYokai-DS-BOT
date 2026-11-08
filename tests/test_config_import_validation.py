@@ -112,6 +112,7 @@ SETTINGS_VALIDE = {
     "mod_avviso_rientro": True,
     "mod_motivo_obbligatorio": False,
     "mod_anonimo": True,
+    "mod_utente_vede_casi": False,
     "mod_dm_testo_warn": "Hai ricevuto un warn: {motivo}",
     "mod_dm_testo_kick": "",
     "mod_dm_testo_ban": "Ban da {server}",

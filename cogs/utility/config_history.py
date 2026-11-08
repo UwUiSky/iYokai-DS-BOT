@@ -128,6 +128,7 @@ SETTINGS_SCHEMA = {
     "mod_avviso_rientro": "bool",
     "mod_motivo_obbligatorio": "bool",
     "mod_anonimo": "bool",
+    "mod_utente_vede_casi": "bool",
     "mod_dm_testo_warn": "testo_1500",
     "mod_dm_testo_kick": "testo_1500",
     "mod_dm_testo_ban": "testo_1500",

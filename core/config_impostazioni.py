@@ -87,6 +87,7 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
         _c("mod_avviso_rientro", "Avvisa chi rientra con avvisi attivi", BOOL),
         _c("mod_motivo_obbligatorio", "Il motivo delle sanzioni è obbligatorio (altrimenti si può omettere)", BOOL),
         _c("mod_scadenza_automod_giorni", "Giorni dopo i quali i casi AutoMod non contano più (0 = mai)", NUMERO),
+        _c("mod_utente_vede_casi", "Ogni utente vede i propri casi con /utility mie-sanzioni", BOOL),
         _c("mod_anonimo", "Nei DM delle sanzioni non nominare il moderatore (Staff di <server>)", BOOL),
         _c("mod_dm_testo_warn", "Testo del DM per il warn", TESTO),
         _c("mod_dm_testo_kick", "Testo del DM per il kick", TESTO),

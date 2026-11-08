@@ -25,6 +25,7 @@ SETTING_AVVISO_RIENTRO = "mod_avviso_rientro"
 SETTING_SCADENZA_AUTOMOD = "mod_scadenza_automod_giorni"
 SETTING_MOTIVO_OBBLIGATORIO = "mod_motivo_obbligatorio"
 SETTING_ANONIMO = "mod_anonimo"
+SETTING_UTENTE_VEDE_CASI = "mod_utente_vede_casi"
 MAX_TESTO_DM = 1500
 MAX_SCADENZA_AUTOMOD = 200
 
@@ -56,6 +57,7 @@ class OpzioniModerazione:
     motivo_obbligatorio: bool = True  # MOD-065: base sì, come prima
     anonimo: bool = False  # MOD-050: il DM dice «Staff di <server>» invece del nome del moderatore
     dm_testi: dict[str, str] = field(default_factory=dict)  # MOD-059: testo del server per ogni azione
+    utente_vede_casi: bool = True  # MOD-114: /utility mie-sanzioni (base sì)
 
 
 async def leggi(guild_id: int) -> OpzioniModerazione:
@@ -69,6 +71,7 @@ async def leggi(guild_id: int) -> OpzioniModerazione:
     scadenza = await db.get_guild_setting(guild_id, SETTING_SCADENZA_AUTOMOD, 0)
     obbligatorio = await db.get_guild_setting(guild_id, SETTING_MOTIVO_OBBLIGATORIO, True)
     anonimo = await db.get_guild_setting(guild_id, SETTING_ANONIMO, False)
+    vede = await db.get_guild_setting(guild_id, SETTING_UTENTE_VEDE_CASI, True)
     testi = {}
     for azione in AZIONI_CON_DM:
         testo = await db.get_guild_setting(guild_id, setting_testo_dm(azione))
@@ -86,6 +89,7 @@ async def leggi(guild_id: int) -> OpzioniModerazione:
         motivo_obbligatorio=obbligatorio is not False,
         anonimo=anonimo is True,
         dm_testi=testi,
+        utente_vede_casi=vede is not False,
     )
 
 
@@ -152,6 +156,11 @@ async def imposta_motivo_obbligatorio(guild_id: int, obbligatorio: bool, autore_
 async def imposta_anonimo(guild_id: int, attivo: bool, autore_id: int) -> None:
     """MOD-050: nei DM delle sanzioni il moderatore non si nomina. Log e casi tengono il nome."""
     await db.set_guild_setting(guild_id, SETTING_ANONIMO, attivo, changed_by=autore_id)
+
+
+async def imposta_utente_vede_casi(guild_id: int, attivo: bool, autore_id: int) -> None:
+    """MOD-114: ogni utente vede i propri casi con `/utility mie-sanzioni` (base sì)."""
+    await db.set_guild_setting(guild_id, SETTING_UTENTE_VEDE_CASI, attivo, changed_by=autore_id)
 
 
 async def imposta_dm_testo(guild_id: int, azione: str, testo: str | None, autore_id: int) -> None:

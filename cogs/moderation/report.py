@@ -12,6 +12,7 @@ non un interruttore attivo/spento.
 
 from __future__ import annotations
 
+import io
 import logging
 from typing import Literal
 
@@ -28,6 +29,112 @@ from cogs.moderation._shared import MODULE_REPORT, ensure_module_enabled
 logger = logging.getLogger("iyokai.report")
 
 SETTING_REPORT_CHANNEL = "report_channel_id"
+
+
+MAX_CAMPO = 1024
+MESSAGGI_DI_CONTESTO = 5
+
+
+async def _aggiungi_messaggio(interaction: discord.Interaction, embed: discord.Embed, messaggio: discord.Message) -> discord.File | None:
+    """MOD-105: link, testo (1.024 al massimo) e i 5 messaggi prima, con il testo intero in un file. None se non serve il file."""
+    embed.add_field(name=await testo_per(interaction, "report_messaggio", pubblica=True), value=messaggio.jump_url, inline=False)
+    testo = messaggio.content or ""
+    if testo:
+        embed.add_field(name=await testo_per(interaction, "report_testo", pubblica=True), value=testo[: MAX_CAMPO - 1] + ("…" if len(testo) > MAX_CAMPO else ""), inline=False)
+    try:
+        prima = [m async for m in messaggio.channel.history(limit=MESSAGGI_DI_CONTESTO, before=messaggio)]
+    except (discord.Forbidden, discord.HTTPException, AttributeError):
+        prima = []
+    prima.reverse()
+    vuoto = await testo_per(interaction, "report_senza_testo", pubblica=True)
+    righe = [f"{m.author} ({m.author.id}): {m.content or vuoto}" for m in prima]
+    if righe:
+        riepilogo = "\n".join(r[:150] for r in righe)
+        embed.add_field(name=await testo_per(interaction, "report_messaggi_prima", pubblica=True), value=riepilogo[: MAX_CAMPO - 1] + ("…" if len(riepilogo) > MAX_CAMPO else ""), inline=False)
+    if len(testo) <= MAX_CAMPO and len("\n".join(righe)) <= MAX_CAMPO:
+        return None
+    intero = "\n".join([*righe, f"--- segnalato ---\n{messaggio.author} ({messaggio.author.id}): {testo}"])
+    return discord.File(io.BytesIO(intero.encode("utf-8")), filename="contesto.txt")
+
+
+async def invia_segnalazione(
+    interaction: discord.Interaction,
+    member: discord.abc.User,
+    reason: str,
+    categoria: str | None = None,
+    messaggio: discord.Message | None = None,
+) -> None:
+    """Manda la segnalazione nel canale dello staff e risponde a chi l'ha fatta. Con `messaggio` (MOD-105) aggiunge il testo e il contesto."""
+    channel_id = await db.get_guild_setting(
+        interaction.guild.id, SETTING_REPORT_CHANNEL
+    )
+    if channel_id is None:
+        await interaction.response.send_message(
+            await testo_per(interaction, "report_il_sistema_di_segnalazioni_non"),
+            ephemeral=True,
+        )
+        return
+
+    channel = interaction.guild.get_channel(channel_id)
+    if channel is None:
+        await interaction.response.send_message(
+            await testo_per(interaction, "report_il_canale_delle_segnalazioni_configurato"),
+            ephemeral=True,
+        )
+        return
+
+    embed = discord.Embed(
+        title=await testo_per(interaction, "report_nuova_segnalazione", pubblica=True),
+        color=discord.Color.gold(),
+    )
+    embed.add_field(
+        name=await testo_per(interaction, "report_segnalato", pubblica=True), value=f"{member.mention} ({member.id})", inline=False
+    )
+    embed.add_field(
+        name=await testo_per(interaction, "report_segnalato_da", pubblica=True),
+        value=f"{interaction.user.mention} ({interaction.user.id})",
+        inline=False,
+    )
+    embed.add_field(name=await testo_per(interaction, "channelcontr_motivo", pubblica=True), value=reason, inline=False)
+    embed.timestamp = discord.utils.utcnow()
+    file = None
+    if messaggio is not None:
+        file = await _aggiungi_messaggio(interaction, embed, messaggio)
+    await interaction.response.defer(ephemeral=True)  # l'etichetta con l'AI può metterci un po'
+    vista = None
+    try:
+        from cogs.ai.segnalazioni import CAMPO, EtichettaView, etichetta_segnalazione
+        from core.segnalazioni_logic import testo_etichetta
+
+        etichetta = await etichetta_segnalazione(interaction.guild.id, interaction.user.id, reason, categoria)
+        embed.add_field(name=CAMPO, value=testo_etichetta(etichetta), inline=False)
+        vista = EtichettaView()
+    except Exception:
+        logger.warning("Segnalazione senza etichetta.", exc_info=True)
+
+    try:
+        argomenti = {"embed": embed}
+        if vista:
+            argomenti["view"] = vista
+        if file is not None:
+            argomenti["file"] = file
+        await channel.send(**argomenti)
+    except discord.Forbidden:
+        await interaction.followup.send(
+            await testo_per(interaction, "report_non_riesco_inviare_la_segnalazione"),
+            ephemeral=True,
+        )
+        return
+    except discord.HTTPException:
+        await interaction.followup.send(
+            await testo_per(interaction, "report_non_riesco_inviare_la_segnalazione_2"),
+            ephemeral=True,
+        )
+        return
+
+    await interaction.followup.send(
+        await testo_per(interaction, "report_segnalazione_inviata_allo_staff_grazie"), ephemeral=True
+    )
 
 
 class ModerationReportCog(CogConGruppi, commands.Cog):
@@ -72,68 +179,7 @@ class ModerationReportCog(CogConGruppi, commands.Cog):
         if not await ensure_module_enabled(interaction, MODULE_REPORT):
             return
 
-        channel_id = await db.get_guild_setting(
-            interaction.guild.id, SETTING_REPORT_CHANNEL
-        )
-        if channel_id is None:
-            await interaction.response.send_message(
-                await testo_per(interaction, "report_il_sistema_di_segnalazioni_non"),
-                ephemeral=True,
-            )
-            return
-
-        channel = interaction.guild.get_channel(channel_id)
-        if channel is None:
-            await interaction.response.send_message(
-                await testo_per(interaction, "report_il_canale_delle_segnalazioni_configurato"),
-                ephemeral=True,
-            )
-            return
-
-        embed = discord.Embed(
-            title=await testo_per(interaction, "report_nuova_segnalazione", pubblica=True),
-            color=discord.Color.gold(),
-        )
-        embed.add_field(
-            name=await testo_per(interaction, "report_segnalato", pubblica=True), value=f"{member.mention} ({member.id})", inline=False
-        )
-        embed.add_field(
-            name=await testo_per(interaction, "report_segnalato_da", pubblica=True),
-            value=f"{interaction.user.mention} ({interaction.user.id})",
-            inline=False,
-        )
-        embed.add_field(name=await testo_per(interaction, "channelcontr_motivo", pubblica=True), value=reason, inline=False)
-        embed.timestamp = discord.utils.utcnow()
-        await interaction.response.defer(ephemeral=True)  # l'etichetta con l'AI può metterci un po'
-        vista = None
-        try:
-            from cogs.ai.segnalazioni import CAMPO, EtichettaView, etichetta_segnalazione
-            from core.segnalazioni_logic import testo_etichetta
-
-            etichetta = await etichetta_segnalazione(interaction.guild.id, interaction.user.id, reason, categoria)
-            embed.add_field(name=CAMPO, value=testo_etichetta(etichetta), inline=False)
-            vista = EtichettaView()
-        except Exception:
-            logger.warning("Segnalazione senza etichetta.", exc_info=True)
-
-        try:
-            await channel.send(embed=embed, view=vista) if vista else await channel.send(embed=embed)
-        except discord.Forbidden:
-            await interaction.followup.send(
-                await testo_per(interaction, "report_non_riesco_inviare_la_segnalazione"),
-                ephemeral=True,
-            )
-            return
-        except discord.HTTPException:
-            await interaction.followup.send(
-                await testo_per(interaction, "report_non_riesco_inviare_la_segnalazione_2"),
-                ephemeral=True,
-            )
-            return
-
-        await interaction.followup.send(
-            await testo_per(interaction, "report_segnalazione_inviata_allo_staff_grazie"), ephemeral=True
-        )
+        await invia_segnalazione(interaction, member, reason, categoria)
 
 
 async def setup(bot: commands.Bot) -> None:
