@@ -522,6 +522,22 @@ async def _avviso_thread_allo_staff(guild, thread, opzioni, utente, numero: int)
         logger.warning("Avviso del thread %s non inviato allo staff.", thread.id)
 
 
+async def _elimina_canale_pronto(canale, motivo: str) -> None:
+    """Un canale uscito dalla riserva senza diventare un ticket si elimina: non resta vuoto per sempre."""
+    try:
+        await canale.delete(reason=motivo)
+    except discord.HTTPException:
+        logger.warning("Canale di riserva %s non eliminato.", canale.id)
+
+
+async def _svuota_riserva(guild, panel_id: int, motivo: str) -> None:
+    """TKT-035: elimina tutti i canali pronti del pannello (riserva spenta o pannello eliminato)."""
+    while (canale_id := await ticket_automazioni_repo.prendi_riserva(panel_id)) is not None:
+        canale = guild.get_channel(canale_id)
+        if canale is not None:
+            await _elimina_canale_pronto(canale, motivo)
+
+
 async def _canale_dalla_riserva(guild, category, panel_id, nome, overwrites, motivo):
     """TKT-035: usa un canale vuoto già pronto del pannello (stessa categoria), se c'è. Una sola modifica."""
     if panel_id is None:
@@ -532,12 +548,14 @@ async def _canale_dalla_riserva(guild, category, panel_id, nome, overwrites, mot
             return None
         canale = guild.get_channel(canale_id)
         if not isinstance(canale, discord.TextChannel):
-            continue
+            continue  # cancellato a mano
         if canale.category_id != category.id:
-            continue  # la categoria è cambiata: il canale non serve a questo ticket
+            await _elimina_canale_pronto(canale, "Riserva: la categoria del pannello è cambiata")
+            continue
         try:
             await canale.edit(name=nome, overwrites=overwrites, reason=motivo)
         except discord.HTTPException:
+            await _elimina_canale_pronto(canale, "Riserva: canale non modificabile")
             continue
         rename_tracker.record(canale.id)
         return canale
@@ -581,9 +599,10 @@ async def _crea_ticket(
         return None
 
     come_thread = opzioni.tipo == "thread" and opzioni.canale_padre_id is not None
+    categoria_pannello = category  # i canali pronti (TKT-035) stanno qui e ci sono già: non serve posto
     if not come_thread:
         category = _categoria_con_posto(guild, category, opzioni)
-        if category is None:
+        if category is None and not await ticket_automazioni_repo.ha_riserva(panel_id):
             await interaction.followup.send(
                 await testo_per(interaction, "tickets_le_categorie_dei_ticket_sono"), ephemeral=True
             )
@@ -620,7 +639,12 @@ async def _crea_ticket(
                 await interaction.followup.send(await testo_per(interaction, errore_thread, **_dati_errore_thread(guild, opzioni)), ephemeral=True)
                 return None
         else:
-            channel = await _canale_dalla_riserva(guild, category, panel_id, nome, overwrites, motivo_canale)
+            channel = await _canale_dalla_riserva(guild, categoria_pannello, panel_id, nome, overwrites, motivo_canale)
+            if channel is None and category is None:
+                await interaction.followup.send(
+                    await testo_per(interaction, "tickets_le_categorie_dei_ticket_sono"), ephemeral=True
+                )
+                return None
             if channel is None:
                 channel = await category.create_text_channel(name=nome, overwrites=overwrites, reason=motivo_canale)
     except discord.Forbidden:
@@ -1936,6 +1960,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         panel = await self._pannello_o_risposta(interaction, nome)
         if panel is None:
             return
+        await _svuota_riserva(interaction.guild, panel.id, "Pannello dei ticket eliminato")
         await ticket_form_repo.rimuovi_pannello(interaction.guild.id, panel.name)
         await interaction.response.send_message(
             await testo_per(interaction, "tickets_pannello_eliminato_con_il_suo", name=panel.name),
@@ -3750,6 +3775,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         ticket è già chiuso e qui non cambia nulla.
         """
         self._attivita_scritta.pop(channel.id, None)
+        await ticket_automazioni_repo.togli_riserva(channel.id)  # TKT-035: un canale pronto cancellato a mano
         if await ticket_repo.close_ticket_of_deleted_channel(channel.id):
             logger.info(
                 "Ticket chiuso perché il suo canale %s è stato cancellato a mano.", channel.id

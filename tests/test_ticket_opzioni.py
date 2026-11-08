@@ -427,3 +427,24 @@ async def test_cache_delle_opzioni_si_svuota_a_ogni_modifica_e_risparmia_le_quer
     monkeypatch.setattr(ticket_opzioni_repo, "_pool_provider", Contatore)
     await ticket_opzioni_repo.situazione(ID_SERVER, UTENTE, [], p.id)
     assert len(letture) == 2 and not any("ticket_panel_opzioni" in q for q in letture)
+
+
+async def test_categoria_piena_ma_con_un_canale_pronto_apre_il_ticket():
+    """TKT-035: il canale pronto è già nella categoria; piena di 50 non deve bloccare l'apertura."""
+    from core.repositories.ticket_automazioni_repo import ticket_automazioni_repo
+
+    s = Server()
+    s.categoria.channels = [object()] * 50
+    pronto = fake_text_channel(4242, "ticket-pronto")
+    pronto.__class__ = discord.TextChannel
+    pronto.category_id = ID_CATEGORIA
+    pronto.guild = s.guild
+    pronto.edit = AsyncMock()
+    pronto.send = AsyncMock(return_value=MagicMock(pin=AsyncMock(), delete=AsyncMock()))
+    s.guild.get_channel = MagicMock(side_effect=lambda i: {ID_CATEGORIA: s.categoria, 4242: pronto}.get(i))
+    p = await _pannello()
+    await ticket_automazioni_repo.aggiungi_riserva(4242, ID_SERVER, p.id)
+    panel = await ticket_form_repo.pannello_per_id(p.id)
+    await modulo._open_ticket_channel(s.inter(s.membro(UTENTE)), s.guild, s.categoria, panel.name, panel=panel)
+    pronto.edit.assert_awaited_once()
+    assert (await ticket_repo.get_ticket_by_channel(4242)) is not None

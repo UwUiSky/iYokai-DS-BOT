@@ -139,6 +139,11 @@ class TicketAutomazioniRepository:
             panel_id,
         )
 
+    async def ha_riserva(self, panel_id: int | None) -> bool:
+        if panel_id is None:
+            return False
+        return bool(await self._pool.fetchval("SELECT 1 FROM ticket_riserva WHERE panel_id = $1 LIMIT 1", panel_id))
+
     async def togli_riserva(self, channel_id: int) -> None:
         await self._pool.execute("DELETE FROM ticket_riserva WHERE channel_id = $1", channel_id)
 

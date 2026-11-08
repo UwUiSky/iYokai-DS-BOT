@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 import discord
 from discord.ext import commands, tasks
 
-from cogs.tickets.tickets import _opzioni_pannello
+from cogs.tickets.tickets import _opzioni_pannello, _svuota_riserva
 from core import ticket_autoclose_worker as regole
 from core.i18n import testo_guild
 from core.repositories.ticket_automazioni_repo import ticket_automazioni_repo as repo
@@ -161,11 +161,13 @@ class TicketInattivitaCog(commands.Cog):
         """Un canale vuoto per giro e per pannello, al massimo: niente creazioni di massa."""
         for riga in await repo.pannelli_con_riserva():
             guild = self.bot.get_guild(riga["guild_id"])
-            categoria = guild.get_channel(riga["category_id"]) if guild is not None else None
-            if not isinstance(categoria, discord.CategoryChannel):
+            if guild is None:
                 continue
             if riga["riserva_canali"] == 0:
-                await self._svuota_riserva(guild, riga["panel_id"])
+                await _svuota_riserva(guild, riga["panel_id"], "Riserva di canali spenta")
+                continue
+            categoria = guild.get_channel(riga["category_id"])
+            if not isinstance(categoria, discord.CategoryChannel):
                 continue
             if not regole.canali_da_creare(riga["riserva_canali"], riga["presenti"]):
                 continue
@@ -185,15 +187,6 @@ class TicketInattivitaCog(commands.Cog):
                 logger.warning("Canale di riserva non creato per il pannello %s.", riga["panel_id"])
                 continue
             await repo.aggiungi_riserva(canale.id, guild.id, riga["panel_id"])
-
-    async def _svuota_riserva(self, guild, panel_id: int) -> None:
-        while (canale_id := await repo.prendi_riserva(panel_id)) is not None:
-            canale = guild.get_channel(canale_id)
-            if canale is not None:
-                try:
-                    await canale.delete(reason="Riserva di canali spenta")
-                except discord.HTTPException:
-                    logger.warning("Canale di riserva %s non eliminato.", canale_id)
 
 
 async def setup(bot: commands.Bot) -> None:

@@ -397,3 +397,62 @@ async def test_avviso_di_chiusura_della_regola_dice_il_vero_nella_lingua_del_ser
     assert "panel rule" in kwargs["avviso"]
     assert ("deleted" in kwargs["avviso"]) is not resta
     assert ("stays" in kwargs["avviso"]) is resta
+
+
+def _pronto(canale_id, categoria_id, edit_errore=False):
+    c = fake_text_channel(canale_id, "ticket-pronto")
+    c.__class__ = discord.TextChannel
+    c.category_id = categoria_id
+    c.edit = AsyncMock(side_effect=discord.HTTPException(MagicMock(status=403), "no") if edit_errore else None)
+    c.delete = AsyncMock()
+    return c
+
+
+async def test_canale_di_riserva_non_usabile_si_elimina_e_non_resta_orfano():
+    """Categoria cambiata o modifica rifiutata: il canale esce dalla riserva e va eliminato (prima restava vuoto per sempre)."""
+    p = await _pannello()
+    altrove, rotto = _pronto(7001, 901), _pronto(7002, 900, edit_errore=True)
+    await repo.aggiungi_riserva(7001, GUILD, p.id)
+    await repo.aggiungi_riserva(7002, GUILD, p.id)
+    guild = SimpleNamespace(get_channel={7001: altrove, 7002: rotto}.get)
+    assert await modulo_ticket._canale_dalla_riserva(guild, SimpleNamespace(id=900), p.id, "n", {}, "m") is None
+    altrove.delete.assert_awaited_once()
+    rotto.delete.assert_awaited_once()
+
+
+async def test_riserva_spenta_si_svuota_anche_se_la_categoria_non_c_e_piu():
+    p = await _pannello()
+    await ticket_opzioni_repo.imposta(p.id, riserva_canali=0)
+    await repo.aggiungi_riserva(7001, GUILD, p.id)
+    pronto = _pronto(7001, 900)
+    cog, _ = _scena(pronto)  # la categoria 900 non esiste più
+    await cog.rifornisci_riserva()
+    pronto.delete.assert_awaited_once()
+    assert await repo.prendi_riserva(p.id) is None
+
+
+async def test_pannello_eliminato_porta_via_i_suoi_canali_di_riserva():
+    from cogs.tickets.tickets import TicketsCog
+    from tests.support.discord_fakes import fake_interaction
+
+    p = await _pannello()
+    await repo.aggiungi_riserva(7001, GUILD, p.id)
+    pronto = _pronto(7001, 900)
+    interaction = fake_interaction()
+    interaction.guild.id = GUILD
+    interaction.guild.get_channel = {7001: pronto}.get
+    cog = TicketsCog.__new__(TicketsCog)
+    await TicketsCog.pannello_rimuovi.callback(cog, interaction, "Supporto")
+    pronto.delete.assert_awaited_once()
+
+
+async def test_canale_di_riserva_cancellato_a_mano_esce_dalla_riserva():
+    from cogs.tickets.tickets import TicketsCog
+
+    p = await _pannello()
+    await ticket_opzioni_repo.imposta(p.id, riserva_canali=2)
+    await repo.aggiungi_riserva(7001, GUILD, p.id)
+    cog = TicketsCog.__new__(TicketsCog)
+    cog._attivita_scritta = {}
+    await cog.on_guild_channel_delete(SimpleNamespace(id=7001))
+    assert (await repo.pannelli_con_riserva())[0]["presenti"] == 0  # il giro ne rifà uno
