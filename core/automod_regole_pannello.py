@@ -564,7 +564,7 @@ class PannelloRegole(BaseView):
                 if tipo == "domini":
                     dati["modo"] = (v["modo"].strip().lower() or "vietati")
                 dati.update({k: i[k] for k in ("numero", "secondi", "limite") if k in i})  # i numeri non si perdono
-                dati.update(leggi_filtro_evento(self.bozza.evento, v.get("filtro", "")))
+                dati.update(leggi_filtro_evento(self.bozza.evento, v.get("filtro", ""), lambda r: self.guild.get_role(r) is not None))
                 if tipo == "soglia_canale":  # AMD-008: «messaggi/secondi» in tutto il canale
                     dati.update(leggi_soglia_canale(v.get("soglia", "")))
                 self.bozza = replace(self.bozza, innesco=innesco_da_json(dati))

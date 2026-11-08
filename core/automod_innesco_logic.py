@@ -68,18 +68,33 @@ def innesco_scatta(innesco: dict, testo: str, liste: dict[str, tuple[str, ...]] 
 
 # ---------------------------------------------------------------- ruoli e casi (eventi ruolo_dato, ruolo_tolto, caso)
 
-_ID_RUOLO = re.compile(r"\d{15,20}")
+_ID_RUOLO = re.compile(r"(?:<@&)?(\d{15,20})>?")
 EVENTI_RUOLO = ("ruolo_dato", "ruolo_tolto")
 
 
-def leggi_filtro_evento(evento: str, testo: str) -> dict:
-    """Dal testo della finestra: i ruoli (id o menzioni) per ruolo_dato e ruolo_tolto, i tipi di caso per caso.
-    Vuoto = qualsiasi. Gli altri eventi non hanno filtro."""
+def _leggi_ruoli(testo: str, ruolo_esiste) -> list[int]:
+    """Ogni voce dev'essere un ID o una menzione di un ruolo del server: un nome non diventa «qualsiasi ruolo»."""
+    from core.automod_regole_logic import RegolaNonValida
+
+    ruoli = []
+    for voce in (v for v in re.split(r"[\s,;]+", testo) if v):
+        m = _ID_RUOLO.fullmatch(voce)
+        if m is None:
+            raise RegolaNonValida(f"ruoli: «{voce[:40]}» non è un ID né una menzione di ruolo")
+        if ruolo_esiste is not None and not ruolo_esiste(int(m.group(1))):
+            raise RegolaNonValida(f"ruoli: {m.group(1)} non è un ruolo di questo server")
+        ruoli.append(int(m.group(1)))
+    return list(dict.fromkeys(ruoli))
+
+
+def leggi_filtro_evento(evento: str, testo: str, ruolo_esiste=None) -> dict:
+    """Dal testo della finestra: i ruoli (id o menzioni, solo del server se `ruolo_esiste` è dato) per ruolo_dato e
+    ruolo_tolto, i tipi di caso per caso. Vuoto = qualsiasi. Gli altri eventi non hanno filtro."""
     testo = (testo or "").strip()
     if not testo:
         return {}
     if evento in EVENTI_RUOLO:
-        return {"ruoli": [int(i) for i in dict.fromkeys(_ID_RUOLO.findall(testo))]}
+        return {"ruoli": _leggi_ruoli(testo, ruolo_esiste)}
     if evento == "caso":
         return {"casi": list(dict.fromkeys(p.lower() for p in re.split(r"[\s,;]+", testo) if p))}
     return {}

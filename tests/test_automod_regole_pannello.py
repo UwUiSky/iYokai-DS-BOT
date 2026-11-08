@@ -214,11 +214,22 @@ async def test_prova_dice_anche_se_l_innesco_scatta_su_un_testo():
 async def test_finestra_innesco_salva_ruoli_per_gli_eventi_ruolo():
     vista, inter = _vista()
     vista.bozza = Regola(chiave="p:0", tipo="personale", nome="Prova", evento="ruolo_dato")
+    vista.guild.get_role = {123456789012345678: object(), 223456789012345678: object()}.get
     modale = vista._modale("innesco")
     assert len(modale._campi) <= 5 and any(c.custom_id == "filtro" for c in modale._campi)
     await modale._su_invio(_risposta(inter), {"tipo": "sempre", "contenuto": "", "liste": "", "modo": "",
                                              "filtro": "<@&123456789012345678> 223456789012345678"})
     assert vista.bozza.innesco == {"tipo": "sempre", "ruoli": [123456789012345678, 223456789012345678]}, vista.messaggio
+
+
+async def test_finestra_innesco_rifiuta_un_ruolo_di_un_altro_server():
+    vista, inter = _vista()
+    vista.bozza = Regola(chiave="p:0", tipo="personale", nome="Prova", evento="ruolo_dato")
+    vista.guild.get_role = {123456789012345678: object()}.get
+    modale = vista._modale("innesco")
+    await modale._su_invio(_risposta(inter), {"tipo": "sempre", "contenuto": "", "liste": "", "modo": "",
+                                             "filtro": "123456789012345678, 999456789012345678"})
+    assert vista.bozza.innesco == {}  # la bozza non cambia, l'errore è nell'embed
 
 
 async def test_finestra_innesco_salva_i_tipi_di_caso():

@@ -70,6 +70,23 @@ def test_filtro_ruoli_legge_id_e_menzioni():
     assert leggi_filtro_evento("ruolo_tolto", "  ") == {}  # vuoto: qualsiasi ruolo
 
 
+def test_filtro_ruoli_rifiuta_nomi_e_ruoli_di_altri_server():
+    """Un nome al posto dell'ID non deve diventare «qualsiasi ruolo»; un ruolo che il server non ha si rifiuta."""
+    import pytest
+
+    from core.automod_innesco_logic import leggi_filtro_evento
+    from core.automod_regole_logic import RegolaNonValida
+
+    with pytest.raises(RegolaNonValida):
+        leggi_filtro_evento("ruolo_dato", "@Moderatori")
+    with pytest.raises(RegolaNonValida):
+        leggi_filtro_evento("ruolo_dato", "123456789012345678 Moderatori")
+    del_server = {123456789012345678}.__contains__
+    assert leggi_filtro_evento("ruolo_dato", "123456789012345678", del_server) == {"ruoli": [123456789012345678]}
+    with pytest.raises(RegolaNonValida):
+        leggi_filtro_evento("ruolo_dato", "<@&223456789012345678>", del_server)
+
+
 def test_filtro_casi_legge_i_tipi_in_minuscolo():
     from core.automod_innesco_logic import leggi_filtro_evento
 
