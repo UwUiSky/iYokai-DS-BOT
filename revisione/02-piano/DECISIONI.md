@@ -1017,6 +1017,11 @@ Aggiorna D64/D65.
   `kick`. Esportazione `/privacy` della persona: server, esito, date, motivo e scadenza, **non** l'IP (né in
   chiaro né cifrato): il diritto di accesso all'IP stesso (GDPR art. 15) si soddisfa a mano dall'owner con
   `/owner system storico-vpn`. Nessun'altra via mostra l'IP agli admin.
+- **Falsi positivi dell'account rubato (revisione r17automod, 08/11/2026, scelta di chi revisiona):** nessuna esenzione
+  dello staff, ma chi ha «Gestisci messaggi» nel canale va limitato solo con lo stesso messaggio in **5** canali (un
+  annuncio in 3 canali è normale); i **canali annunci** e i loro thread non contano (le immagini malevole sì); un testo
+  senza link né @everyone conta solo da **40** caratteri («buongiorno a tutti» in tre canali non è spam), con un link
+  o un inoltro da 12. Bot e webhook (anche i crosspost dei canali seguiti) non contano mai.
 - Precisazione dell'owner (08/11): IP dopo un **kick 180 giorni**, dopo un **ban 1 anno** dal ban (lo sblocco non lo
   cambia). **IP, e-mail e numeri di telefono** dell'account si danno a terzi **solo su richiesta di un giudice** e solo per
   la persona indicata; tutto il resto si dà su richiesta con `/privacy`. Nota di chi sviluppa (GDPR art. 15): la persona

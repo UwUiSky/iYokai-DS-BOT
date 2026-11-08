@@ -2,7 +2,8 @@
 core/account_rubato_logic.py
 ============================
 Riconosce un account probabilmente rubato (D67), in logica pura: immagini malevole, oppure lo stesso messaggio
-(o lo stesso inoltro) in 3 canali diversi, anche di server diversi, in 2 minuti. Tiene in memoria, con tetto,
+(o lo stesso inoltro) in 3 canali diversi, anche di server diversi, in 2 minuti (5 per chi gestisce i messaggi:
+gli annunci dello staff). Testi brevi o senza link non contano. Tiene in memoria, con tetto,
 gli ultimi invii di ogni persona; non conta mai il bot stesso (il chiamante scarta bot e webhook).
 Funzioni coperte: SPEC §6.20 (D67, #153)
 """
@@ -18,7 +19,9 @@ from core.bounded_cache import BoundedCache
 
 FINESTRA_S = 120
 MIN_CANALI_UGUALI = 3
-MIN_CARATTERI = 12  # sotto, un messaggio uguale non dice nulla («ok», «ciao»)
+MIN_CANALI_STAFF = 5  # chi gestisce i messaggi può mandare un annuncio in 3 canali: per lui ne servono 5
+MIN_CARATTERI = 12  # testo con un link o @everyone: sotto, un messaggio uguale non dice nulla
+MIN_CARATTERI_SOLO_TESTO = 40  # testo senza link: «buongiorno a tutti» in tre canali non è un account rubato
 MAX_INVII_PER_PERSONA = 60
 MAX_PERSONE = 20_000
 TIMEOUT_MALEVOLE_S = 86_400
@@ -28,6 +31,7 @@ MOTIVO_MALEVOLE = "malevole"
 MOTIVO_UGUALI = "uguali"
 
 _SPAZI = re.compile(r"\s+")
+_LINK = re.compile(r"https?://|www\.|discord(?:app)?\.(?:gg|com/invite)/|@everyone|@here", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -55,12 +59,17 @@ class Sintesi:
 def firma_messaggio(testo: str | None, allegati: list[tuple[str, int]] = (), inoltrati: list[str] = ()) -> str | None:
     """
     Impronta del contenuto: testo normalizzato, nomi e misure degli allegati, testo degli inoltri. None se
-    non c'è niente di abbastanza specifico (testo breve senza allegati né inoltri).
+    non c'è niente di abbastanza specifico: senza allegati serve un inoltro di almeno 12 caratteri, o un testo
+    di almeno 12 caratteri con un link o @everyone, oppure di almeno 40 caratteri.
     """
-    parti = [_SPAZI.sub(" ", (testo or "")).strip().casefold()]
-    parti += [_SPAZI.sub(" ", i).strip().casefold() for i in inoltrati if i]
-    parti += [f"{nome.casefold()}:{misura}" for nome, misura in allegati]
-    specifico = bool(allegati) or any(len(p) >= MIN_CARATTERI for p in parti if p)
+    proprio = _SPAZI.sub(" ", (testo or "")).strip().casefold()
+    inoltri = [_SPAZI.sub(" ", i).strip().casefold() for i in inoltrati if i]
+    parti = [proprio, *inoltri, *(f"{nome.casefold()}:{misura}" for nome, misura in allegati)]
+    specifico = (
+        bool(allegati)
+        or any(len(i) >= MIN_CARATTERI for i in inoltri)  # l'inoltro uguale ovunque è lo schema tipico (D67)
+        or len(proprio) >= (MIN_CARATTERI if _LINK.search(proprio) else MIN_CARATTERI_SOLO_TESTO)
+    )
     if not specifico:
         return None
     return hashlib.sha1("\x1f".join(parti).encode("utf-8", "replace")).hexdigest()
@@ -74,6 +83,7 @@ class _Invio:
     messaggio_id: int
     firma: str
     malevola: bool
+    min_canali: int = MIN_CANALI_UGUALI
     gestito: bool = False  # già passato in una sintesi: non si cancella una seconda volta
 
 
@@ -92,8 +102,11 @@ class RegistroInvii:
         self._persone: BoundedCache[int, _Persona] = BoundedCache(MAX_PERSONE)
 
     def registra(self, user_id: int, guild_id: int, canale_id: int, messaggio_id: int, firma: str, ora: float, *,
-                 malevola: bool = False) -> Sintesi | None:
-        """Segna l'invio. Restituisce la sintesi se l'account sembra rubato (e a ogni invio dopo), altrimenti None."""
+                 malevola: bool = False, min_canali: int = MIN_CANALI_UGUALI) -> Sintesi | None:
+        """
+        Segna l'invio. Restituisce la sintesi se l'account sembra rubato (e a ogni invio dopo), altrimenti None.
+        `min_canali`: quanti canali diversi servono per questo invio (di più per lo staff, MIN_CANALI_STAFF).
+        """
         persona = self._persone.get(user_id)
         if persona is None:
             persona = _Persona()
@@ -104,7 +117,7 @@ class RegistroInvii:
                 gia.malevola = gia.malevola or malevola
                 break
         else:
-            persona.invii.append(_Invio(ora, guild_id, canale_id, messaggio_id, firma, malevola))
+            persona.invii.append(_Invio(ora, guild_id, canale_id, messaggio_id, firma, malevola, min_canali))
         return self._sintesi(user_id, persona, ora)
 
     def _pota(self, persona: _Persona, ora: float) -> None:
@@ -118,7 +131,8 @@ class RegistroInvii:
         per_firma: dict[str, list[_Invio]] = {}
         for i in persona.invii:
             per_firma.setdefault(i.firma, []).append(i)
-        uguali = [g for f, g in per_firma.items() if len({i.canale_id for i in g}) >= MIN_CANALI_UGUALI or f in persona.firme_segnalate]
+        uguali = [g for f, g in per_firma.items()
+                  if len({i.canale_id for i in g}) >= max(i.min_canali for i in g) or f in persona.firme_segnalate]
         if not malevoli and not uguali:
             return None
         gia = ora < persona.segnalata_fino

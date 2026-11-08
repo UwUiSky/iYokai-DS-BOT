@@ -5,8 +5,8 @@ Difesa dagli account rubati (D67): quando una persona manda immagini malevole o 
 canali o server in poco tempo, il bot (1) manda allo staff UN SOLO avviso riassuntivo per persona, aggiornato
 invece di nuovi messaggi, senza allegati né copie delle immagini; (2) la limita subito con il timeout di Discord
 e cancella quello che ha mandato; (3) le scrive in privato di mettere al sicuro l'account; il suo messaggio
-privato dopo apre il ticket ModMail con lo staff (core/verify_blocchi.py). Nessuna esenzione dello staff: un
-account staff rubato è il caso tipico. Opzione per server accesa di base (core/account_rubato_opzioni.py).
+privato dopo apre il ticket ModMail con lo staff (core/verify_blocchi.py). Nessuna esenzione dello staff (un
+account staff rubato è il caso tipico): per lui servono solo più canali; i canali annunci non contano. Opzione per server accesa di base (core/account_rubato_opzioni.py).
 Funzioni coperte: SPEC §6.20 (D67, #153)
 Dipende da: core/account_rubato_logic.py, core/automod_azioni.py, core/verify_blocchi.py
 """
@@ -61,15 +61,25 @@ async def controlla_messaggio(bot: discord.Client, message: discord.Message, *, 
     guild = message.guild
     if guild is None or message.author.bot or getattr(message, "webhook_id", None) or not isinstance(message.author, discord.Member):
         return False
+    if not malevola and _canale_annunci(message.channel):
+        return False  # gli annunci (e i loro crosspost) non sono spam di un account rubato
     firma = firma_da_messaggio(message)
     if firma is None and not malevola:
         return False
+    staff = message.channel.permissions_for(message.author).manage_messages
     sintesi = registro.registra(
-        message.author.id, guild.id, message.channel.id, message.id, firma or f"msg:{message.id}", time.monotonic(), malevola=malevola
+        message.author.id, guild.id, message.channel.id, message.id, firma or f"msg:{message.id}", time.monotonic(),
+        malevola=malevola, min_canali=lg.MIN_CANALI_STAFF if staff else lg.MIN_CANALI_UGUALI,
     )
     if sintesi is None:
         return False
     return await gestisci(bot, sintesi, message)
+
+
+def _canale_annunci(canale) -> bool:
+    """Canale annunci, o un suo thread."""
+    tipo = getattr(getattr(canale, "parent", None), "type", None) if isinstance(canale, discord.Thread) else getattr(canale, "type", None)
+    return tipo == discord.ChannelType.news
 
 
 async def gestisci(bot: discord.Client, sintesi: Sintesi, message: discord.Message | None) -> bool:

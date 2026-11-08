@@ -9,12 +9,19 @@ from core import account_rubato_logic as lg
 FIRMA = lg.firma_messaggio("Hai vinto un Nitro gratis, ritiralo qui http://x.example")
 
 
-def invio(reg, canale, msg, ora, *, guild=1, user=9, firma=FIRMA, malevola=False):
-    return reg.registra(user, guild, canale, msg, firma, ora, malevola=malevola)
+def invio(reg, canale, msg, ora, *, guild=1, user=9, firma=FIRMA, malevola=False, min_canali=lg.MIN_CANALI_UGUALI):
+    return reg.registra(user, guild, canale, msg, firma, ora, malevola=malevola, min_canali=min_canali)
 
 
 def test_firma_ignora_maiuscole_e_spazi():
-    assert lg.firma_messaggio("Ciao  A TUTTI  quanti siete") == lg.firma_messaggio("ciao a tutti quanti siete")
+    assert lg.firma_messaggio("Ciao  A TUTTI  http://x.example") == lg.firma_messaggio("ciao a tutti http://x.example")
+    assert lg.firma_messaggio("Ciao a tutti http://x.example") is not None
+
+
+def test_firma_testo_senza_link_solo_se_lungo():
+    assert lg.firma_messaggio("Buongiorno a tutti, come state?") is None
+    assert lg.firma_messaggio("Nitro gratis @everyone") is not None
+    assert lg.firma_messaggio("Scrivimi in privato per ricevere Nitro gratis, solo oggi!!") is not None
 
 
 def test_firma_none_per_testo_breve_senza_allegati():
@@ -24,8 +31,8 @@ def test_firma_none_per_testo_breve_senza_allegati():
 
 
 def test_firma_cambia_con_gli_allegati_e_con_gli_inoltri():
-    base = lg.firma_messaggio("guarda qua sotto adesso")
-    assert lg.firma_messaggio("guarda qua sotto adesso", [("a.png", 10)]) != base
+    base = lg.firma_messaggio("guarda qua sotto adesso www.x.example")
+    assert lg.firma_messaggio("guarda qua sotto adesso www.x.example", [("a.png", 10)]) != base
     assert lg.firma_messaggio("", inoltrati=["messaggio inoltrato lungo abbastanza"]) is not None
 
 
@@ -68,7 +75,7 @@ def test_stesso_canale_tre_volte_non_segnala():
 def test_messaggi_diversi_non_segnalano():
     reg = lg.RegistroInvii()
     for n in range(4):
-        assert invio(reg, n, n, n, firma=lg.firma_messaggio(f"messaggio numero {n} diverso dagli altri")) is None
+        assert invio(reg, n, n, n, firma=lg.firma_messaggio(f"messaggio numero {n} diverso dagli altri http://x.example")) is None
 
 
 def test_persone_diverse_non_si_sommano():
@@ -117,7 +124,7 @@ def test_dopo_la_finestra_si_riparte_da_prima_volta():
 def test_memoria_con_tetto():
     reg = lg.RegistroInvii()
     for n in range(lg.MAX_INVII_PER_PERSONA + 40):
-        invio(reg, n, n, 0, firma=lg.firma_messaggio(f"messaggio unico numero {n} lungo"))
+        invio(reg, n, n, 0, firma=lg.firma_messaggio(f"messaggio unico numero {n} lungo http://x.example"))
     assert len(reg._persone.get(9).invii) == lg.MAX_INVII_PER_PERSONA
 
 
@@ -137,3 +144,10 @@ def test_ogni_messaggio_si_passa_da_cancellare_una_sola_volta():
     assert len(invio(reg, 3, 33, 2).messaggi) == 3
     s = invio(reg, 4, 44, 3)
     assert s.messaggi == ((1, 4, 44),) and s.invii == 4
+
+
+def test_per_lo_staff_servono_cinque_canali():
+    reg = lg.RegistroInvii()
+    for n in range(1, 5):
+        assert invio(reg, n, n, n, min_canali=lg.MIN_CANALI_STAFF) is None
+    assert invio(reg, 5, 5, 5, min_canali=lg.MIN_CANALI_STAFF) is not None

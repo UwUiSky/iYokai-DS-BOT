@@ -27,6 +27,7 @@ def messaggio(ambiente, n, canale_id, *, testo=TESTO, guild=None, membro=None):
     canale = ambiente.canali.setdefault(canale_id, fake_text_channel(canale_id))
     msg = fake_message(1000 + n, author=membro or ambiente.membro, channel=canale, guild=guild, content=testo)
     msg.attachments, msg.message_snapshots, msg.webhook_id = [], [], None
+    canale.permissions_for = MagicMock(return_value=discord.Permissions.none())
     return msg
 
 
@@ -216,4 +217,32 @@ async def test_invii_contemporanei_un_solo_avviso_e_un_solo_timeout(ambiente, mo
     ambiente.isola.side_effect = lambda *a, **k: ambiente.membro.is_timed_out.configure_mock(return_value=True)
     await asyncio.gather(*(ar.controlla_messaggio(ambiente.bot, messaggio(ambiente, n, 10 + n)) for n in (2, 3)))
     ambiente.log.send.assert_awaited_once()
+    ambiente.isola.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_saluto_senza_link_in_tre_canali_non_fa_nulla(ambiente):
+    for n in range(4):
+        assert await ar.controlla_messaggio(ambiente.bot, messaggio(ambiente, n, 10 + n, testo="Buongiorno a tutti!!")) is False
+    ambiente.isola.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_canale_annunci_non_conta(ambiente):
+    for n in range(4):
+        msg = messaggio(ambiente, n, 10 + n)
+        msg.channel.type = discord.ChannelType.news
+        assert await ar.controlla_messaggio(ambiente.bot, msg) is False
+    ambiente.isola.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_annuncio_dello_staff_in_tre_canali_non_basta_in_cinque_si(ambiente):
+    """Nessuna esenzione: chi gestisce i messaggi si limita anche lui, ma servono 5 canali e non 3."""
+    def da_staff(n):
+        msg = messaggio(ambiente, n, 10 + n)
+        msg.channel.permissions_for = MagicMock(return_value=discord.Permissions(manage_messages=True))
+        return msg
+
+    assert [await ar.controlla_messaggio(ambiente.bot, da_staff(n)) for n in range(5)] == [False] * 4 + [True]
     ambiente.isola.assert_awaited_once()
