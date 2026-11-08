@@ -47,6 +47,7 @@ def _riepilogo(guild: discord.Guild, o: opzioni.OpzioniModerazione) -> discord.E
         value=f"{o.scadenza_automod} giorni" if o.scadenza_automod else "mai",
         inline=False,
     )
+    embed.add_field(name="Motivo delle sanzioni", value="obbligatorio" if o.motivo_obbligatorio else "facoltativo", inline=False)
     embed.add_field(name="Giorni di messaggi cancellati al ban", value=str(o.giorni_ban), inline=False)
     embed.add_field(
         name="Timeout senza durata",
@@ -98,6 +99,7 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
         avviso_warn="Avvisa lo staff quando chi riceve un warn ne ha già questi (0 = spento)",
         avviso_rientro="Avvisa lo staff quando rientra nel server chi ha dei casi",
         scadenza_automod="Dopo quanti giorni i casi dell'AutoMod non contano più (0 = mai)",
+        motivo_obbligatorio="Il motivo delle sanzioni è obbligatorio (sì) o si può omettere (no)",
     )
     async def imposta(
         self,
@@ -108,6 +110,7 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
         avviso_warn: app_commands.Range[int, 0, opzioni.MAX_SOGLIA_WARN] | None = None,
         avviso_rientro: bool | None = None,
         scadenza_automod: app_commands.Range[int, 0, opzioni.MAX_SCADENZA_AUTOMOD] | None = None,
+        motivo_obbligatorio: bool | None = None,
     ) -> None:
         if not await self._controlli(interaction):
             return
@@ -138,6 +141,8 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
             await opzioni.imposta_avviso_rientro(guild.id, avviso_rientro, interaction.user.id)
         if scadenza_automod is not None:
             await opzioni.imposta_scadenza_automod(guild.id, scadenza_automod, interaction.user.id)
+        if motivo_obbligatorio is not None:
+            await opzioni.imposta_motivo_obbligatorio(guild.id, motivo_obbligatorio, interaction.user.id)
         await interaction.response.send_message(
             embed=_riepilogo(guild, await opzioni.leggi(guild.id)),
             ephemeral=True,

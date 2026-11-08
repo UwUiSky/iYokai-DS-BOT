@@ -85,6 +85,7 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
         _c("mod_casi_esterni", "Registra anche le azioni fatte fuori dal bot", BOOL),
         _c("mod_avviso_warn_soglia", "Avvisi prima della sanzione automatica (0 = spenta)", NUMERO),
         _c("mod_avviso_rientro", "Avvisa chi rientra con avvisi attivi", BOOL),
+        _c("mod_motivo_obbligatorio", "Il motivo delle sanzioni è obbligatorio (altrimenti si può omettere)", BOOL),
         _c("mod_scadenza_automod_giorni", "Giorni dopo i quali i casi AutoMod non contano più (0 = mai)", NUMERO),
     ),
     "moderation_report": (_c("report_channel_id", "Canale delle segnalazioni", CANALE),),

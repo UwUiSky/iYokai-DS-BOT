@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 12:06 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 13:10 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 679 commands in 41 categories.**
+**Total: 690 commands in 41 categories.**
 
 ## Admin: AI
 
@@ -594,6 +594,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 12:0
 - **`/mod-ban appeals list`** — Shows the server's latest appeals.
 - **`/mod-ban ban`** — Permanently bans a member.
 - **`/mod-ban bulk ban`** — Bans several users at once, even outside the server (IDs or mentions).
+- **`/mod-ban bulk entrati`** — Bans or kicks whoever joined in the last minutes (after a confirmation).
 - **`/mod-ban bulk kick`** — Kicks several members at once (IDs or mentions).
 - **`/mod-ban bulk unban`** — Unbans several users at once (IDs).
 - **`/mod-ban kick`** — Kicks a member from the server.
@@ -608,8 +609,14 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 12:0
 - **`/mod-channels lockdown enable`** — Lock all channels, invites and joins of the server.
 - **`/mod-channels lockdown remove`** — Reopen the server as it was before the lockdown.
 - **`/mod-channels reazioni`** — Removes reactions from the latest messages of a channel, without deleting them.
-- **`/mod-channels slowmode`** — Sets slowmode on a channel.
+- **`/mod-channels slowmode`** — Sets slowmode on a channel or category. With no values: lists channels with slowmode.
 - **`/mod-channels unlock`** — Unblocks the ability to write in a channel.
+- **`/mod-channels vocale disconnect`** — Disconnects a member from voice.
+- **`/mod-channels vocale dove`** — Shows which voice channel a member is in, and asks for an alert when they join.
+- **`/mod-channels vocale muta`** — Mutes or unmutes a member's microphone in voice.
+- **`/mod-channels vocale sordina`** — Deafens or undeafens a member in voice.
+- **`/mod-channels vocale sposta`** — Moves a member to another voice channel.
+- **`/mod-channels vocale sposta-tutti`** — Moves everyone in a voice channel to another one.
 
 ## Mod: cases and notes
 
@@ -628,6 +635,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 12:0
 - **`/mod-cases case record`** — Logs a case without taking the action (sanction given outside the bot).
 - **`/mod-cases case staff-leaderboard`** — Moderator leaderboard by number of actions, or one moderator's cases.
 - **`/mod-cases case view`** — Shows the details of a single case.
+- **`/mod-cases motivi add`** — Adds a saved reason, to pick in the "reason" field (needs "Manage Server").
+- **`/mod-cases motivi list`** — Shows the server's saved reasons.
+- **`/mod-cases motivi remove`** — Removes a saved reason (needs "Manage Server").
 - **`/mod-cases note add`** — Adds a note on a user.
 - **`/mod-cases note clear`** — Deletes all of a member's notes (needs "Manage Server").
 - **`/mod-cases note edit`** — Changes a note's text.
@@ -641,6 +651,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 12:0
 - **`/mod-sanctions bulk timeout`** — Times out several members at once (max 28 days).
 - **`/mod-sanctions bulk warn`** — Warns several members at once.
 - **`/mod-sanctions mute`** — Mutes a member with a dedicated role (alternative to timeout).
+- **`/mod-sanctions nick`** — Changes or resets a member's nickname.
 - **`/mod-sanctions options dm`** — Choose whether the user gets a DM for a type of action.
 - **`/mod-sanctions options set`** — Ban message cleanup, timeout, external cases, alerts. Empty: shows the options.
 - **`/mod-sanctions timeout`** — Times out a member (max 28 days).
@@ -732,7 +743,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 12:0
 - **`/owner system richieste-canale`** — Sets the requests channel (main server only).
 - **`/owner system shell`** — Runs a shell command (with confirmation).
 - **`/owner system stats`** — Global bot statistics.
-- **`/owner system storico-vpn`** — Bot owner only: servers that let a person through despite a VPN/proxy flag.
+- **`/owner system storico-vpn`** — Bot owner only: servers that let a person through (VPN/proxy) and their IPs.
 
 ## Polls
 

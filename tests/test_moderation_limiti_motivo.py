@@ -43,7 +43,9 @@ async def test_il_motivo_dichiara_da_3_a_512_caratteri(albero, gruppo, nome):
     comando = albero.get_command(gruppo).get_command(nome)
     opzioni = {o["name"]: o for o in comando.to_dict(albero)["options"]}
 
-    assert opzioni["reason"]["required"] is True
+    # MOD-065: il motivo è facoltativo nella firma (l'obbligo lo decide il server), ma se c'è ha questi limiti
+    assert opzioni["reason"]["required"] is False
+    assert opzioni["reason"]["autocomplete"] is True  # MOD-116: motivi pronti
     assert opzioni["reason"]["min_length"] == 3
     assert opzioni["reason"]["max_length"] == 512
 

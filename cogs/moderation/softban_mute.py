@@ -20,12 +20,13 @@ su ogni canale di ogni tipo. I canali creati dopo ricevono lo stesso
 blocco da on_guild_channel_create. Il mute può avere una fine (lo toglie lo
 scheduler, anche dopo un riavvio), può essere un hardmute (toglie anche gli
 altri ruoli e li ridà alla fine) e resta se l'utente esce e rientra.
-Funzioni coperte: SPEC §5.1, §5.10 (MOD-014, 015, 021)
+Funzioni coperte: SPEC §5.1, §5.10 (MOD-014, 015, 021, 026)
 """
 
 from __future__ import annotations
 
 import logging
+from typing import Literal
 from datetime import datetime, timezone
 
 import discord
@@ -36,6 +37,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core.database import db
 from core.i18n import testo_per
+from core.moderazione_vocale_logic import scelta_mute_valida
 from core.moderation_mute_logic import (
     MAX_MUTE_SECONDI,
     mute_finito,
@@ -51,7 +53,8 @@ from cogs.moderation._shared import (
     try_dm,
     try_dm_message,
     delete_dm,
-    validate_reason,
+    risolvi_motivo,
+    completa_motivo,
     Reason,
     audit_reason,
     format_duration,
@@ -172,6 +175,30 @@ async def _get_or_create_mute_role(guild: discord.Guild) -> discord.Role | None:
     return role
 
 
+
+async def _voce_del_mute_ok(interaction: discord.Interaction, vocale: str, canale) -> bool:
+    """MOD-026: prima del mute si controlla che scollegare o spostare sia possibile (permessi, canale scelto)."""
+    if vocale == "niente":
+        return True
+    if not scelta_mute_valida(vocale, canale.id if canale else None):
+        await interaction.response.send_message(await testo_per(interaction, "softbanmute_vocale_serve_canale"), ephemeral=True)
+        return False
+    if not interaction.user.guild_permissions.move_members or not interaction.guild.me.guild_permissions.move_members:
+        await interaction.response.send_message(await testo_per(interaction, "softbanmute_vocale_senza_permesso"), ephemeral=True)
+        return False
+    return True
+
+
+async def _togli_dal_vocale(interaction: discord.Interaction, member: discord.Member, vocale: str, canale) -> None:
+    """MOD-026: a mute fatto, scollega o sposta chi è in vocale. Un errore qui non annulla il mute."""
+    if vocale == "niente" or getattr(getattr(member, "voice", None), "channel", None) is None:
+        return
+    try:
+        await member.move_to(canale if vocale == "sposta" else None, reason=audit_reason("Mute"))
+    except discord.HTTPException:
+        await interaction.followup.send(await testo_per(interaction, "softbanmute_vocale_non_riuscito"), ephemeral=True)
+
+
 class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -204,17 +231,21 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         member="Il membro da softban",
         reason="Motivo del softban",
         delete_message_days="Giorni di messaggi da cancellare (1-7, default 1)",
+        dm="Mandare il DM all'utente? Vuoto: come impostato per il server",
     )
+    @app_commands.autocomplete(reason=completa_motivo)
     async def softban(
         self,
         interaction: discord.Interaction,
         member: discord.Member,
-        reason: Reason,
+        reason: Reason | None = None,
         delete_message_days: app_commands.Range[int, 1, 7] = 1,
+        dm: bool | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
             return
-        if not await validate_reason(interaction, reason):
+        reason = await risolvi_motivo(interaction, reason)
+        if reason is None:
             return
         if not await check_can_moderate(interaction, member):
             return
@@ -223,12 +254,12 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
 
         # Il DM parte prima (dopo il ban non arriverebbe); il caso e il
         # log partono solo se l'azione è riuscita (LIM-8).
-        dm = await try_dm_message(
+        dm_inviato = await try_dm_message(
             member,
             _case_embed(
                 "🧹 Softban", discord.Color.dark_orange(), member, interaction.user, reason, None
             ),
-            azione="softban", guild_id=interaction.guild.id,
+            azione="softban", guild_id=interaction.guild.id, forza=dm,
         )
         try:
             await member.ban(
@@ -236,7 +267,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
                 delete_message_seconds=delete_message_days * 86400,
             )
         except discord.HTTPException:
-            await delete_dm(dm)
+            await delete_dm(dm_inviato)
             await interaction.followup.send(
                 await testo_per(interaction, "softbanmute_non_sono_riuscito_fare_il"),
                 ephemeral=True,
@@ -272,7 +303,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         avvisi = []
         if not sbloccato:
             avvisi.append("Lo sblocco automatico è fallito: usa /mod-ban unban.")
-        if dm is None:
+        if dm_inviato is None:
             avvisi.append("Non è stato possibile notificare l'utente in DM.")
         if avvisi:
             embed.set_footer(text=" ".join(avvisi))
@@ -369,20 +400,30 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         reason="Motivo del mute",
         durata="Per quanto tempo (es. 2h, 3d). Vuoto: finché non lo togli (max 1 anno)",
         hardmute="Toglie anche tutti gli altri ruoli e li ridà alla fine del mute",
+        vocale="Se è in vocale: lascialo, scollegalo o spostalo (default: niente)",
+        canale_vocale="Il vocale dove spostarlo (serve con «sposta»)",
+        dm="Mandare il DM all'utente? Vuoto: come impostato per il server",
     )
+    @app_commands.autocomplete(reason=completa_motivo)
     async def mute_role(
         self,
         interaction: discord.Interaction,
         member: discord.Member,
-        reason: Reason,
+        reason: Reason | None = None,
         durata: app_commands.Range[str, 1, 20] | None = None,
         hardmute: bool = False,
+        vocale: Literal["niente", "scollega", "sposta"] = "niente",
+        canale_vocale: discord.VoiceChannel | discord.StageChannel | None = None,
+        dm: bool | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
             return
-        if not await validate_reason(interaction, reason):
+        reason = await risolvi_motivo(interaction, reason)
+        if reason is None:
             return
         if not await check_can_moderate(interaction, member):
+            return
+        if not await _voce_del_mute_ok(interaction, vocale, canale_vocale):
             return
 
         secondi = None
@@ -482,8 +523,9 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         if hardmute:
             embed.add_field(name=await testo_per(interaction, "softbanmute_ruoli_tolti", pubblica=True), value=str(len(ruoli_ora)), inline=True)
         await post_to_mod_log(guild, embed)
-        await try_dm(member, embed, azione="mute", guild_id=guild.id)
+        await try_dm(member, embed, azione="mute", guild_id=guild.id, forza=dm)
         await interaction.followup.send(embed=embed)
+        await _togli_dal_vocale(interaction, member, vocale, canale_vocale)
 
     @comando_di_gruppo(
         "mod-sanzioni",
@@ -491,12 +533,14 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         descrizione="Rimuove il ruolo mute da un membro.",
     )
     @app_commands.describe(member="Il membro da cui rimuovere il mute", reason="Motivo")
+    @app_commands.autocomplete(reason=completa_motivo)
     async def unmute_role(
-        self, interaction: discord.Interaction, member: discord.Member, reason: Reason
+        self, interaction: discord.Interaction, member: discord.Member, reason: Reason | None = None
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
             return
-        if not await validate_reason(interaction, reason):
+        reason = await risolvi_motivo(interaction, reason)
+        if reason is None:
             return
 
         role_id = await db.get_guild_setting(interaction.guild.id, SETTING_MUTE_ROLE_ID)

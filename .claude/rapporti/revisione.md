@@ -471,3 +471,14 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 08/11 | `feat/r16ticket` | `core/ticket_transcript_logic.html_in_parti` | Messaggio troncato perde i nomi degli allegati | bassa | aperto |
 | 08/11 | `feat/r16ticket` | `opzioni.accesso` | `ruolo` senza `regola` risponde «niente da fare» senza dire cosa manca | bassa | aperto |
 | 08/11 | `feat/r16ticket` | TKT-079 | Articoli: «approvato» non si cambia; invio a mano solo in ModMail; suggerimento senza AI (più prudente del disegno) | nota | aperto |
+| 08/11 | `feat/r17mod` | `cogs/moderation/voce.py:_sorvegliati` | Sorveglianze scadute senza ingresso restavano in memoria per sempre | media | chiuso (68052b8) |
+| 08/11 | `feat/r17mod` | `cogs/moderation/channel_control.py` slowmode lungo | Canale cancellato restava in tabella e cache: occupava uno dei 50 posti, compariva nell'elenco, non si toglieva | media | chiuso (5e63065) |
+| 08/11 | `feat/r17mod` | `cogs/moderation/actions.py:_ban_uno_alla_volta` | Ripiego del ban in blocco (anche `entrati`, 200): niente stop dopo tre 403 né pausa | media | chiuso (82bda8f) |
+| 08/11 | `feat/r17mod` | `channel_control._carica_lunghi`, `voce._carica` | Segno «caricato» prima della lettura: un errore del DB spegneva slowmode lungo e sorveglianze fino al riavvio | media | chiuso (0051d75) |
+| 08/11 | `feat/r17mod` | `channel_control.py:slowmode` | Testi pubblici (lungo, categoria) nella lingua di chi comanda; test_i18n_pubblica rosso | media | chiuso (f45b4b2) |
+| 08/11 | `feat/r17mod` | `actions.py` docstring, `_shared.MotivoFacoltativo` | Docstring senza M5/M7; alias mai usato | bassa | chiuso (3c67401) |
+| 08/11 | `feat/r17mod` | `actions.py:ConfermaEntrati` | Bottoni «Conferma/Annulla» fissi in italiano (come il resto del progetto); testo di conferma mostra «kick»/«ban» grezzi; a tempo scaduto i bottoni restano visibili | bassa | aperto |
+| 08/11 | `feat/r17mod` | `voce.py:vocale_dove` | Tetto 50 letto poi scritto (supera di poco con clic insieme); col tetto pieno non si rinnova una sorveglianza già propria; lo staff che perde il permesso riceve ancora l'avviso fino a 24 h | bassa | aperto |
+| 08/11 | `feat/r17mod` | `channel_control.slowmode categoria:` | Nessun controllo di «Gestire i canali» di chi comanda sui canali della categoria (come già per `channel:`) | bassa | aperto |
+| 08/11 | `feat/r17mod` | `core/moderation_motivi.espandi` | `#m<id>` sconosciuto (motivo tolto o di un altro server) finisce nel caso come testo «#m12»: nessuna fuga, ma motivo vuoto di senso | bassa | aperto |
+| 08/11 | `feat/r17mod` | SPEC §5.6 / §5.9 | Non fatte e scritte: MOD-102 (dopo r17automod), durata nel motivo pronto (da decidere, D18) | — | aperto |

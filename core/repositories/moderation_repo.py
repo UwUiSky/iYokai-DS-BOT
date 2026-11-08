@@ -743,6 +743,112 @@ class ModerationRepository:
         return [dict(r) for r in rows]
 
 
+    # --- sorveglianza della voce (MOD-112) ---
+
+    async def add_vocale_sorveglia(self, guild_id: int, user_id: int, staff_id: int, scade_at) -> None:
+        await self._pool.execute(
+            "INSERT INTO moderation_vocale_sorveglia (guild_id, user_id, staff_id, scade_at) "
+            "VALUES ($1, $2, $3, $4) "
+            "ON CONFLICT (guild_id, user_id, staff_id) DO UPDATE SET scade_at = EXCLUDED.scade_at",
+            guild_id, user_id, staff_id, scade_at,
+        )
+
+    async def vocale_sorveglianti(self, guild_id: int, user_id: int) -> list[int]:
+        """Lo staff che aspetta l'ingresso in vocale di `user_id` (solo sorveglianze non scadute)."""
+        rows = await self._pool.fetch(
+            "SELECT staff_id FROM moderation_vocale_sorveglia "
+            "WHERE guild_id = $1 AND user_id = $2 AND scade_at > now() ORDER BY staff_id",
+            guild_id, user_id,
+        )
+        return [r["staff_id"] for r in rows]
+
+    async def delete_vocale_sorveglia(self, guild_id: int, user_id: int) -> None:
+        await self._pool.execute(
+            "DELETE FROM moderation_vocale_sorveglia WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
+        )
+
+    async def count_vocale_sorveglia(self, guild_id: int) -> int:
+        return await self._pool.fetchval(
+            "SELECT count(*) FROM moderation_vocale_sorveglia WHERE guild_id = $1 AND scade_at > now()", guild_id
+        )
+
+    async def utenti_sorvegliati(self) -> list[tuple[int, int, object]]:
+        """(server, utente, scadenza più lontana) delle sorveglianze attive: riempie la cache all'avvio."""
+        rows = await self._pool.fetch(
+            "SELECT guild_id, user_id, max(scade_at) AS scade_at FROM moderation_vocale_sorveglia "
+            "WHERE scade_at > now() GROUP BY guild_id, user_id"
+        )
+        return [(r["guild_id"], r["user_id"], r["scade_at"]) for r in rows]
+
+
+    # --- motivi pronti (MOD-113) ---
+
+    async def list_motivi(self, guild_id: int) -> list[dict]:
+        rows = await self._pool.fetch(
+            "SELECT id, nome, testo FROM moderation_motivi WHERE guild_id = $1 ORDER BY lower(nome)", guild_id
+        )
+        return [dict(r) for r in rows]
+
+    async def count_motivi(self, guild_id: int) -> int:
+        return await self._pool.fetchval("SELECT count(*) FROM moderation_motivi WHERE guild_id = $1", guild_id)
+
+    async def add_motivo(self, guild_id: int, nome: str, testo: str, autore_id: int) -> int | None:
+        """L'id del motivo nuovo; None se esiste già uno con lo stesso nome (maiuscole non contano)."""
+        return await self._pool.fetchval(
+            "INSERT INTO moderation_motivi (guild_id, nome, testo, autore_id) VALUES ($1, $2, $3, $4) "
+            "ON CONFLICT DO NOTHING RETURNING id",
+            guild_id, nome, testo, autore_id,
+        )
+
+    async def delete_motivo(self, guild_id: int, nome: str) -> bool:
+        esito = await self._pool.execute(
+            "DELETE FROM moderation_motivi WHERE guild_id = $1 AND lower(nome) = lower($2)", guild_id, nome
+        )
+        return esito.endswith(" 1")
+
+
+    # --- slowmode lungo (MOD-099) ---
+
+    async def set_slowmode_lungo(self, guild_id: int, channel_id: int, secondi: int) -> None:
+        await self._pool.execute(
+            "INSERT INTO moderation_slowmode_lungo (guild_id, channel_id, secondi) VALUES ($1, $2, $3) "
+            "ON CONFLICT (guild_id, channel_id) DO UPDATE SET secondi = EXCLUDED.secondi",
+            guild_id, channel_id, secondi,
+        )
+
+    async def list_slowmode_lungo(self, guild_id: int) -> list[tuple[int, int]]:
+        rows = await self._pool.fetch(
+            "SELECT channel_id, secondi FROM moderation_slowmode_lungo WHERE guild_id = $1 ORDER BY channel_id", guild_id
+        )
+        return [(r["channel_id"], r["secondi"]) for r in rows]
+
+    async def all_slowmode_lungo(self) -> dict[int, int]:
+        """Tutti i canali con slowmode lungo (canale -> secondi): riempie la cache del listener."""
+        rows = await self._pool.fetch("SELECT channel_id, secondi FROM moderation_slowmode_lungo")
+        return {r["channel_id"]: r["secondi"] for r in rows}
+
+    async def delete_slowmode_lungo(self, guild_id: int, channel_id: int) -> None:
+        await self._pool.execute(
+            "DELETE FROM moderation_slowmode_lungo WHERE guild_id = $1 AND channel_id = $2", guild_id, channel_id
+        )
+        await self._pool.execute(
+            "DELETE FROM moderation_slowmode_ultimi WHERE guild_id = $1 AND channel_id = $2", guild_id, channel_id
+        )
+
+    async def set_slowmode_ultimo(self, guild_id: int, channel_id: int, user_id: int, quando) -> None:
+        await self._pool.execute(
+            "INSERT INTO moderation_slowmode_ultimi (guild_id, channel_id, user_id, ultimo_at) VALUES ($1, $2, $3, $4) "
+            "ON CONFLICT (guild_id, channel_id, user_id) DO UPDATE SET ultimo_at = EXCLUDED.ultimo_at",
+            guild_id, channel_id, user_id, quando,
+        )
+
+    async def get_slowmode_ultimo(self, guild_id: int, channel_id: int, user_id: int):
+        return await self._pool.fetchval(
+            "SELECT ultimo_at FROM moderation_slowmode_ultimi WHERE guild_id = $1 AND channel_id = $2 AND user_id = $3",
+            guild_id, channel_id, user_id,
+        )
+
+
 def _row_to_case(row) -> ModerationCase:
     return ModerationCase(
         case_number=row["case_number"],

@@ -23,6 +23,8 @@ MODULI = (
     "cogs.moderation.channel_control",
     "cogs.moderation.clear",
     "cogs.moderation.softban_mute",
+    "cogs.moderation.voce",
+    "cogs.moderation.nickname",
     "cogs.moderation.opzioni",
     "cogs.security.anti_nuke",
     "cogs.security.anti_raid",
@@ -42,18 +44,20 @@ MODULI = (
 
 # (gruppo, sottogruppo o None) -> nomi dei figli attesi
 ATTESI: dict[tuple[str, str | None], set[str]] = {
-    ("mod-sanzioni", None): {"warn", "timeout", "untimeout", "mute", "unmute"},
+    ("mod-sanzioni", None): {"warn", "timeout", "untimeout", "mute", "unmute", "nick"},
     ("mod-sanzioni", "massa"): {"timeout", "warn"},
     ("mod-sanzioni", "opzioni"): {"imposta", "dm"},
     ("mod-casi", "caso"): {"storico", "vedi", "motivo", "elimina", "classifica-staff", "attive", "registra", "durata", "nascondi", "esporta"},
     ("mod-casi", "nota"): {"aggiungi", "elenca", "rimuovi", "modifica", "svuota"},
     ("mod-casi", "avvisi"): {"togli", "azzera", "classifica", "elenco", "azzera-tutti"},
+    ("mod-casi", "motivi"): {"aggiungi", "elenco", "togli"},
     ("mod-canali", None): {"clear", "reazioni", "lock", "unlock", "slowmode"},
     ("mod-canali", "blocco"): {"attiva", "togli"},
+    ("mod-canali", "vocale"): {"muta", "sordina", "scollega", "sposta", "sposta-tutti", "dove"},
     ("founder", "moderazione"): {"immuni"},
     ("mod-ban", None): {"ban", "tempban", "softban", "kick", "unban"},
     ("mod-ban", "appelli"): {"canale", "elenco"},
-    ("mod-ban", "massa"): {"ban", "unban", "kick"},
+    ("mod-ban", "massa"): {"ban", "unban", "kick", "entrati"},
     ("admin-sicurezza", None): {"heatmap", "score", "spamtrap"},
     ("admin-sicurezza", "escalation"): {"enable", "disable", "set-reset-days", "set-step", "remove-step", "reset", "status"},
     ("admin-antinuke", None): {

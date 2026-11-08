@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 12:06 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 13:10 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 679 comandi in 41 categorie.**
+**Totale: 690 comandi in 41 categorie.**
 
 ## Admin: AI
 
@@ -595,6 +595,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 12:
 - **`/mod-ban ban`** — Banna permanentemente un membro.
 - **`/mod-ban kick`** — Espelle un membro dal server.
 - **`/mod-ban massa ban`** — Banna più utenti insieme, anche fuori dal server (ID o menzioni).
+- **`/mod-ban massa entrati`** — Banna o espelle chi è entrato negli ultimi minuti (dopo una conferma).
 - **`/mod-ban massa kick`** — Espelle più membri insieme (ID o menzioni).
 - **`/mod-ban massa unban`** — Toglie il ban a più utenti insieme (ID).
 - **`/mod-ban softban`** — Banna e sbanna subito un membro, per cancellarne i messaggi recenti.
@@ -608,8 +609,14 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 12:
 - **`/mod-canali clear`** — Cancella un numero di messaggi, con filtri opzionali.
 - **`/mod-canali lock`** — Blocca la possibilità di scrivere in un canale.
 - **`/mod-canali reazioni`** — Toglie le reazioni dagli ultimi messaggi di un canale, senza cancellarli.
-- **`/mod-canali slowmode`** — Imposta lo slowmode su un canale.
+- **`/mod-canali slowmode`** — Slowmode di un canale o di una categoria. Senza valori: mostra i canali con slowmode.
 - **`/mod-canali unlock`** — Sblocca la possibilità di scrivere in un canale.
+- **`/mod-canali vocale dove`** — Mostra in quale vocale è un membro, e chiedi un avviso quando entra.
+- **`/mod-canali vocale muta`** — Silenzia o riattiva il microfono di un membro in vocale.
+- **`/mod-canali vocale scollega`** — Scollega un membro dal vocale.
+- **`/mod-canali vocale sordina`** — Sordina o riattiva l'audio di un membro in vocale.
+- **`/mod-canali vocale sposta`** — Sposta un membro in un altro vocale.
+- **`/mod-canali vocale sposta-tutti`** — Sposta tutti i membri di un vocale in un altro.
 
 ## Mod: casi e note
 
@@ -629,6 +636,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 12:
 - **`/mod-casi caso registra`** — Registra un caso senza eseguire l'azione (sanzione data fuori dal bot).
 - **`/mod-casi caso storico`** — Mostra lo storico casi di un membro.
 - **`/mod-casi caso vedi`** — Mostra i dettagli di un singolo caso.
+- **`/mod-casi motivi aggiungi`** — Aggiunge un motivo pronto, da richiamare nel campo «motivo» (serve «Gestire il server»).
+- **`/mod-casi motivi elenco`** — Mostra i motivi pronti del server.
+- **`/mod-casi motivi togli`** — Toglie un motivo pronto (serve «Gestire il server»).
 - **`/mod-casi nota aggiungi`** — Aggiunge una nota su un utente.
 - **`/mod-casi nota elenca`** — Elenca le note su un utente.
 - **`/mod-casi nota modifica`** — Cambia il testo di una nota.
@@ -641,6 +651,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 12:
 - **`/mod-sanzioni massa timeout`** — Mette in timeout più membri insieme (max 28 giorni).
 - **`/mod-sanzioni massa warn`** — Assegna un warn a più membri insieme.
 - **`/mod-sanzioni mute`** — Silenzia un membro con un ruolo dedicato (alternativa al timeout).
+- **`/mod-sanzioni nick`** — Cambia o azzera il soprannome di un membro.
 - **`/mod-sanzioni opzioni dm`** — Sceglie se l'utente riceve un DM per un tipo di azione.
 - **`/mod-sanzioni opzioni imposta`** — Messaggi al ban, timeout, casi esterni, avvisi. Vuoto: mostra le opzioni.
 - **`/mod-sanzioni timeout`** — Mette in timeout un membro (max 28 giorni).
@@ -732,7 +743,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 12:
 - **`/owner system richieste-canale`** — Imposta il canale delle richieste (solo nel server principale).
 - **`/owner system shell`** — Esegue un comando shell (con conferma).
 - **`/owner system stats`** — Statistiche globali del bot.
-- **`/owner system storico-vpn`** — Solo proprietario: i server che hanno lasciato passare una persona segnalata come VPN/proxy.
+- **`/owner system storico-vpn`** — Solo proprietario: server che l'hanno lasciata passare e IP della persona (VPN/proxy).
 
 ## Sondaggi
 

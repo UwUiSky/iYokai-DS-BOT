@@ -23,6 +23,7 @@ SETTING_RUOLI_IMMUNI = "mod_ruoli_immuni"
 SETTING_AVVISO_WARN = "mod_avviso_warn_soglia"
 SETTING_AVVISO_RIENTRO = "mod_avviso_rientro"
 SETTING_SCADENZA_AUTOMOD = "mod_scadenza_automod_giorni"
+SETTING_MOTIVO_OBBLIGATORIO = "mod_motivo_obbligatorio"
 MAX_SCADENZA_AUTOMOD = 200
 
 # Azioni che mandano un DM all'utente; per ognuna il server può spegnerlo.
@@ -45,6 +46,7 @@ class OpzioniModerazione:
     avviso_warn: int = 0  # 0 = spento
     avviso_rientro: bool = False
     scadenza_automod: int = 0  # giorni; 0 = i casi AutoMod non scadono
+    motivo_obbligatorio: bool = True  # MOD-065: base sì, come prima
 
 
 async def leggi(guild_id: int) -> OpzioniModerazione:
@@ -56,6 +58,7 @@ async def leggi(guild_id: int) -> OpzioniModerazione:
     soglia = await db.get_guild_setting(guild_id, SETTING_AVVISO_WARN, 0)
     rientro = await db.get_guild_setting(guild_id, SETTING_AVVISO_RIENTRO, False)
     scadenza = await db.get_guild_setting(guild_id, SETTING_SCADENZA_AUTOMOD, 0)
+    obbligatorio = await db.get_guild_setting(guild_id, SETTING_MOTIVO_OBBLIGATORIO, True)
     return OpzioniModerazione(
         giorni_ban=int(giorni) if isinstance(giorni, int) and 0 <= giorni <= 7 else 0,
         durata_timeout=durata if isinstance(durata, int) and MIN_TIMEOUT <= durata <= MAX_TIMEOUT else None,
@@ -65,6 +68,7 @@ async def leggi(guild_id: int) -> OpzioniModerazione:
         avviso_warn=soglia if isinstance(soglia, int) and 0 <= soglia <= MAX_SOGLIA_WARN else 0,
         avviso_rientro=rientro is True,
         scadenza_automod=giorni_scadenza_validi(scadenza),
+        motivo_obbligatorio=obbligatorio is not False,
     )
 
 
@@ -121,6 +125,11 @@ async def imposta_scadenza_automod(guild_id: int, giorni: int, autore_id: int) -
     if not 0 <= giorni <= MAX_SCADENZA_AUTOMOD:
         raise ValueError(f"I giorni vanno da 0 a {MAX_SCADENZA_AUTOMOD}.")
     await db.set_guild_setting(guild_id, SETTING_SCADENZA_AUTOMOD, giorni, changed_by=autore_id)
+
+
+async def imposta_motivo_obbligatorio(guild_id: int, obbligatorio: bool, autore_id: int) -> None:
+    """MOD-065: il motivo dei comandi di sanzione è obbligatorio (base) o facoltativo."""
+    await db.set_guild_setting(guild_id, SETTING_MOTIVO_OBBLIGATORIO, obbligatorio, changed_by=autore_id)
 
 
 def avviso_warn_scatta(warn_attivi: int, soglia: int) -> bool:

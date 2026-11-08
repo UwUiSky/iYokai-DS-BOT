@@ -47,6 +47,7 @@ from core.moderation_casi_esterni_logic import ACTION_TYPE_POSSIBILI, caso_da_vo
 
 from core.repositories.moderation_repo import moderation_repo, ModerationCase
 from core.premium import PremiumModule, registry, requires_module
+from core import moderation_motivi
 from core.scheduler import in_seconds, scheduler
 from cogs.leveling._pagine import invia_lista
 from cogs.moderation.softban_mute import SCHEDULED_MUTE_EXPIRE
@@ -64,6 +65,8 @@ from cogs.moderation._shared import (
     ensure_module_enabled,
     join_within_limit,
     post_to_mod_log,
+    completa_motivo,
+    risolvi_motivo,
     truncate_text,
     validate_reason,
 )
@@ -74,6 +77,7 @@ logger = logging.getLogger(__name__)
 MAX_FILE_ESPORTAZIONE = 9 * 1024 * 1024
 # MOD-012: permesso che serve per cambiare la durata di ogni tipo di caso.
 PERMESSO_DURATA = {"tempban": "ban_members", "timeout": "moderate_members", "mute_role": "manage_roles"}
+SOTTOGRUPPO_MOTIVI = ("motivi", "Motivi pronti per le sanzioni.")
 # Warn del server: se ne leggono al massimo 200 (20 pagine da 10).
 MAX_WARN_ELENCO = 200
 
@@ -460,14 +464,16 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         descrizione="Cambia il motivo di un caso già registrato.",
         sottogruppo=("caso", "Storico e dettagli dei casi di moderazione."),
     )
-    @app_commands.describe(case_number="Il numero del caso", reason="Il nuovo motivo")
+    @app_commands.describe(case_number="Il numero del caso", reason="Il nuovo motivo (anche un motivo pronto)")
+    @app_commands.autocomplete(reason=completa_motivo)
     @requires_module(MODULE_CASE_SYSTEM)
     async def case_reason(
         self, interaction: discord.Interaction, case_number: app_commands.Range[int, 1, INT4_MAX], reason: Reason
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
             return
-        if not await validate_reason(interaction, reason):
+        reason = await risolvi_motivo(interaction, reason, obbligatorio=True)
+        if reason is None:
             return
         if not await moderation_repo.update_case_reason(interaction.guild.id, case_number, reason):
             await interaction.response.send_message(
@@ -479,6 +485,72 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore", pubblica=True), value=interaction.user.mention, inline=True)
         embed.add_field(name=await testo_per(interaction, "casesystem_nuovo_motivo", pubblica=True), value=truncate_text(reason, MAX_FIELD_LENGTH), inline=False)
         await post_to_mod_log(interaction.guild, embed)
+
+    # ================================================================
+    # /mod-casi motivi: motivi pronti (MOD-113)
+    # ================================================================
+    @comando_di_gruppo(
+        "mod-casi",
+        nome="aggiungi",
+        descrizione="Aggiunge un motivo pronto, da richiamare nel campo «motivo» (serve «Gestire il server»).",
+        sottogruppo=SOTTOGRUPPO_MOTIVI,
+    )
+    @app_commands.describe(nome="Nome breve del motivo (fino a 32 caratteri)", testo="Il testo del motivo (da 3 a 512 caratteri)")
+    async def motivo_aggiungi(
+        self,
+        interaction: discord.Interaction,
+        nome: app_commands.Range[str, 1, moderation_motivi.MAX_NOME],
+        testo: app_commands.Range[str, moderation_motivi.MIN_TESTO, moderation_motivi.MAX_TESTO],
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
+            return
+        if await _rifiuta_senza_gestione(interaction):
+            return
+        try:
+            await moderation_motivi.aggiungi(interaction.guild.id, nome, testo, interaction.user.id)
+        except ValueError as errore:
+            chiave = {"tetto": "casesystem_motivi_tetto", "doppio": "casesystem_motivi_doppio"}.get(str(errore), "casesystem_motivi_non_valido")
+            await interaction.response.send_message(
+                await testo_per(interaction, chiave, v1=moderation_motivi.MAX_MOTIVI), ephemeral=True
+            )
+            return
+        await interaction.response.send_message(await testo_per(interaction, "casesystem_motivi_aggiunto", nome=nome), ephemeral=True)
+
+    @comando_di_gruppo(
+        "mod-casi",
+        nome="elenco",
+        descrizione="Mostra i motivi pronti del server.",
+        sottogruppo=SOTTOGRUPPO_MOTIVI,
+    )
+    async def motivo_elenco(self, interaction: discord.Interaction) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
+            return
+        elenco = await moderation_motivi.elenco(interaction.guild.id)
+        if not elenco:
+            await interaction.response.send_message(await testo_per(interaction, "casesystem_motivi_nessuno"), ephemeral=True)
+            return
+        righe = [f"**{m['nome']}**: {truncate_text(m['testo'], 120)}" for m in elenco]
+        embed = discord.Embed(
+            title=await testo_per(interaction, "casesystem_motivi_titolo"),
+            description="\n".join(righe)[:4000],
+            color=discord.Color.blurple(),
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @comando_di_gruppo(
+        "mod-casi",
+        nome="togli",
+        descrizione="Toglie un motivo pronto (serve «Gestire il server»).",
+        sottogruppo=SOTTOGRUPPO_MOTIVI,
+    )
+    @app_commands.describe(nome="Il nome del motivo da togliere")
+    async def motivo_togli(self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, moderation_motivi.MAX_NOME]) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
+            return
+        if await _rifiuta_senza_gestione(interaction):
+            return
+        chiave = "casesystem_motivi_tolto" if await moderation_motivi.togli(interaction.guild.id, nome) else "casesystem_motivi_non_trovato"
+        await interaction.response.send_message(await testo_per(interaction, chiave, nome=nome), ephemeral=True)
 
     @comando_di_gruppo(
         "mod-casi",
