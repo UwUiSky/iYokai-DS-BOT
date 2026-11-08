@@ -37,8 +37,9 @@ anche la parola divisa in piu' messaggi brevi di fila, che vengono cancellati tu
 parole sospette (cognomi) giudicate dall'AI con richiami e timeout (D35, core/automod_odio_azioni.py).
 Regole native: parole con gli asterischi del modo (AMD-013), inviti da lasciar
 passare e quelli del server nelle eccezioni (AMD-026/027). Violazioni di un
-utente a pagine e una sola da togliere (AMD-062/065).
-Funzioni coperte: SPEC §6 (M 2.1-2.7, D35, AMD-001, 004, 006, 007, 013, 014, 019–027, 041, 062, 065), §23 (NF-31, SIC-042)
+utente a pagine e una sola da togliere (AMD-062/065). Calore delle regole (AMD-068/069/072) e soglia
+per canale delle regole personali, con quiete dopo lo scatto (AMD-008).
+Funzioni coperte: SPEC §6 (M 2.1-2.7, D35, AMD-001, 004, 006, 007, 008, 013, 014, 019–027, 041, 062, 065, 068, 069, 072), §23 (NF-31, SIC-042)
 """
 
 from __future__ import annotations
@@ -127,6 +128,7 @@ from core.automod_regole_logic import azioni_dai_nomi_vecchi, condizioni_ok
 from core.automod_parole_logic import MessaggiBrevi
 from core.automod_parole_opzioni import VIOLATION_PAROLE_VIETATE, filtro_sospette, trova_nel_testo
 from core.automod_rate_tracker import rate_tracker
+from core.bounded_cache import BoundedCache
 from core import automod_calore_logic as calore_logic
 from core.repositories.automod_repo import automod_repo
 from core.repositories.automod_advanced_repo import (
@@ -424,6 +426,8 @@ def _adesso() -> float:
 termometro = calore_logic.Termometro()
 canali_fermi = calore_logic.CanaliFermi()
 _ETICHETTA_CALORE = "Calore"
+# AMD-008: fine della quiete dopo uno scatto della soglia per canale, (server, canale, regola) -> ora.
+_quiete_soglia_canale = BoundedCache(20_000)
 
 _AVVISATI_MAX = 2000
 _avvisati: "OrderedDict[tuple[int, str], None]" = OrderedDict()
@@ -1678,7 +1682,8 @@ class AutomodCog(CogConGruppi, commands.Cog):
 
     @staticmethod
     def _innesco_messaggio(regola, message: discord.Message, testo: str, liste: dict, modificato: bool) -> bool:
-        """Il testo fa scattare l'innesco; la soglia per canale (AMD-008) conta i messaggi di tutti, bot esclusi."""
+        """Il testo fa scattare l'innesco; la soglia per canale (AMD-008) conta i messaggi di tutti, bot esclusi,
+        e dopo uno scatto resta quieta per i secondi della soglia."""
         if regola.innesco.get("tipo") != "soglia_canale":
             return innesco_scatta(regola.innesco, testo, liste)
         if modificato or message.author.bot or isinstance(getattr(message, "webhook_id", None), int):
@@ -1689,6 +1694,11 @@ class AutomodCog(CogConGruppi, commands.Cog):
         if conta < numero:
             return False
         rate_tracker.forget(message.guild.id, message.channel.id, (categoria,))  # lo scatto vale una volta, poi si riparte
+        chiave, adesso = (message.guild.id, message.channel.id, regola.chiave), _adesso()
+        fine_quiete = _quiete_soglia_canale.get(chiave)
+        if fine_quiete is not None and adesso < fine_quiete:
+            return False  # niente scatti a raffica: dopo uno scatto il canale resta quieto per la finestra
+        _quiete_soglia_canale.set(chiave, adesso + secondi)
         return True
 
     async def _scalda(self, message: discord.Message, regola, settings, modificato: bool, ultimo: float | None) -> None:
