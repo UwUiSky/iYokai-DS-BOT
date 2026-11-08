@@ -1825,5 +1825,22 @@
   "tickets_articolo_salvato": "Articolo #{id} salvato.",
   "tickets_troppi_articoli": "Il server ha già {massimo} articoli.",
   "tickets_articolo_non_trovato": "Nessun articolo con questo numero.",
-  "tickets_articolo_eliminato": "Articolo #{id} eliminato."
+  "tickets_articolo_eliminato": "Articolo #{id} eliminato.",
+  "amcalore_si": "sì",
+  "amcalore_no": "no",
+  "amcalore_stato": "Calore acceso: {stato}. Soglia {soglia} punti, calo {calo} al minuto. Canale fermo da {fermo} minuti (0: spento): punti ×{peso}. Timeout alla soglia: {timeout} minuti. Avviso (warn): {avviso}.",
+  "ampulizia_motivo": "Pulizia automatica del canale (AutoMod)",
+  "ampulizia_stato": "Pulizia di {canale}: ogni {ogni}, messaggi: {tipo}, anche i fissati: {fissati}, {stato}. Il primo giro parte dopo un intero intervallo.",
+  "ampulizia_accesa": "accesa",
+  "ampulizia_spenta": "spenta",
+  "ampulizia_non_valida": "Serve un intervallo da 1h a 30d (per esempio 6h, 2d, 1h30m) per una pulizia nuova.",
+  "ampulizia_troppe": "Il server ha già {massimo} canali con la pulizia: togline uno prima.",
+  "ampulizia_tolta": "Pulizia di {canale} tolta.",
+  "ampulizia_nessuna_riga": "{canale} non ha una pulizia.",
+  "ampulizia_senza_permessi": "Attenzione: nel canale mi mancano permessi (vedere il canale, leggere la cronologia, gestire i messaggi): finché mancano non posso pulire.",
+  "ampulizia_fermata": "La pulizia di {canale} si è spenta: Discord ha rifiutato tre volte la cancellazione. Controlla i miei permessi e riaccendila con /admin-automod pulizia.",
+  "amregole_f_filtro_ruoli": "Ruoli (ID o menzioni)",
+  "amregole_f_filtro_casi": "Tipi di caso",
+  "amregole_filtro_vuoto": "Vuoto: qualsiasi",
+  "amregole_f_soglia_canale": "Soglia del canale (messaggi/secondi)"
 }

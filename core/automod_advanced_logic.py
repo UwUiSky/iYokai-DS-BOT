@@ -212,6 +212,19 @@ class CapsFilterConfig:
 
 
 @dataclass(frozen=True)
+class CaloreConfig:
+    """Calore (AMD-068/069/072): ogni regola dà punti, i punti calano, alla soglia scattano le azioni del server."""
+
+    attivo: bool = False
+    soglia: int = 100
+    calo_per_minuto: int = 5
+    fermo_minuti: int = 0  # 0 = il canale fermo non pesa di più
+    fermo_peso: int = 2
+    timeout_secondi: int = 600  # 0 = nessun timeout
+    warn: bool = True
+
+
+@dataclass(frozen=True)
 class AutomodAdvancedConfig:
     """Configurazione completa dei filtri §6.3-§6.10 per un server."""
 
@@ -246,6 +259,8 @@ class AutomodAdvancedConfig:
     # AMD-023/024: canali solo media e canali senza allegati.
     canali_solo_media: tuple[int, ...] = ()
     canali_senza_allegati: tuple[int, ...] = ()
+    # AMD-068/069/072: punteggio «calore».
+    calore: CaloreConfig = field(default_factory=CaloreConfig)
 
 
 # Nomi delle violazioni possibili — usati come chiave sia per

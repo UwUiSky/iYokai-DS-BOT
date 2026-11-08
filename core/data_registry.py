@@ -223,6 +223,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("automod_decisioni", "Decisioni chieste allo staff dalle regole AutoMod",
        colonne_utente=("user_id",), colonne_attore=("decisa_da",), colonna_server="guild_id", utente="cancella", esporta=True,
        scadenza=Scadenza("creata_il", 30)),
+    _t("automod_pulizie", "Pulizia dei canali a intervalli (AutoMod)", colonne_attore=("creata_da",), colonna_server="guild_id"),
     _t("automod_liste", "Liste con nome dell'AutoMod (parole e domini)", colonna_server="guild_id"),
     _t("automod_escalation_config", "Scala delle punizioni: impostazioni", colonna_server="guild_id"),
     _t("automod_escalation_steps", "Scala delle punizioni: gradini", colonna_server="guild_id"),

@@ -37,8 +37,9 @@ anche la parola divisa in piu' messaggi brevi di fila, che vengono cancellati tu
 parole sospette (cognomi) giudicate dall'AI con richiami e timeout (D35, core/automod_odio_azioni.py).
 Regole native: parole con gli asterischi del modo (AMD-013), inviti da lasciar
 passare e quelli del server nelle eccezioni (AMD-026/027). Violazioni di un
-utente a pagine e una sola da togliere (AMD-062/065).
-Funzioni coperte: SPEC §6 (M 2.1-2.7, D35, AMD-001, 004, 006, 007, 013, 014, 019–027, 041, 062, 065), §23 (NF-31, SIC-042)
+utente a pagine e una sola da togliere (AMD-062/065). Calore delle regole (AMD-068/069/072) e soglia
+per canale delle regole personali, con quiete dopo lo scatto (AMD-008).
+Funzioni coperte: SPEC §6 (M 2.1-2.7, D35, AMD-001, 004, 006, 007, 008, 013, 014, 019–027, 041, 062, 065, 068, 069, 072), §23 (NF-31, SIC-042)
 """
 
 from __future__ import annotations
@@ -48,7 +49,7 @@ import logging
 import re
 import time
 from collections import OrderedDict
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 import discord
 from discord import app_commands
@@ -119,7 +120,7 @@ from core.automod_advanced_logic import (
 from core import automod_contesto as contesto_regole, automod_regole_service as regole_service
 from core import automod_liste_service as liste_service
 from core.automod_decisioni import BottoneDecisione
-from core.automod_innesco_logic import innesco_scatta
+from core.automod_innesco_logic import innesco_scatta, parametri_soglia_canale
 from core import automod_azioni as azioni_motore, automod_contatori as contatori
 from core.scheduler import scheduler
 from core.automod_azioni import Bersaglio, e_protetto, esegui_azioni, registra_messaggio
@@ -127,6 +128,8 @@ from core.automod_regole_logic import azioni_dai_nomi_vecchi, condizioni_ok
 from core.automod_parole_logic import MessaggiBrevi
 from core.automod_parole_opzioni import VIOLATION_PAROLE_VIETATE, filtro_sospette, trova_nel_testo
 from core.automod_rate_tracker import rate_tracker
+from core.bounded_cache import BoundedCache
+from core import automod_calore_logic as calore_logic
 from core.repositories.automod_repo import automod_repo
 from core.repositories.automod_advanced_repo import (
     AutomodAdvancedSettings,
@@ -415,6 +418,17 @@ def _is_safe_from_automated_action(member: discord.Member) -> bool:
 
 # Messaggi già avvisati, con tetto: (id messaggio, violazione). Serve a non
 # dare un warn a ogni modifica dello stesso messaggio.
+def _adesso() -> float:
+    return time.monotonic()
+
+
+# AMD-068/069/072: calore di ogni persona e ora dell'ultimo messaggio di ogni canale (in memoria, con tetto).
+termometro = calore_logic.Termometro()
+canali_fermi = calore_logic.CanaliFermi()
+_ETICHETTA_CALORE = "Calore"
+# AMD-008: fine della quiete dopo uno scatto della soglia per canale, (server, canale, regola) -> ora.
+_quiete_soglia_canale = BoundedCache(20_000)
+
 _AVVISATI_MAX = 2000
 _avvisati: "OrderedDict[tuple[int, str], None]" = OrderedDict()
 
@@ -1664,7 +1678,42 @@ class AutomodCog(CogConGruppi, commands.Cog):
         if not candidate:
             return ()
         liste = await liste_service.voci_per_regole(message.guild.id)
-        return tuple(r.chiave for r in candidate if innesco_scatta(r.innesco, testo, liste))
+        return tuple(r.chiave for r in candidate if self._innesco_messaggio(r, message, testo, liste, modificato))
+
+    @staticmethod
+    def _innesco_messaggio(regola, message: discord.Message, testo: str, liste: dict, modificato: bool) -> bool:
+        """Il testo fa scattare l'innesco; la soglia per canale (AMD-008) conta i messaggi di tutti, bot esclusi,
+        e dopo uno scatto resta quieta per i secondi della soglia."""
+        if regola.innesco.get("tipo") != "soglia_canale":
+            return innesco_scatta(regola.innesco, testo, liste)
+        if modificato or message.author.bot or isinstance(getattr(message, "webhook_id", None), int):
+            return False
+        numero, secondi = parametri_soglia_canale(regola.innesco)
+        categoria = f"canale:{regola.chiave}"
+        conta = rate_tracker.record_and_count(message.guild.id, message.channel.id, categoria, datetime.now(timezone.utc), secondi)
+        if conta < numero:
+            return False
+        rate_tracker.forget(message.guild.id, message.channel.id, (categoria,))  # lo scatto vale una volta, poi si riparte
+        chiave, adesso = (message.guild.id, message.channel.id, regola.chiave), _adesso()
+        fine_quiete = _quiete_soglia_canale.get(chiave)
+        if fine_quiete is not None and adesso < fine_quiete:
+            return False  # niente scatti a raffica: dopo uno scatto il canale resta quieto per la finestra
+        _quiete_soglia_canale.set(chiave, adesso + secondi)
+        return True
+
+    async def _scalda(self, message: discord.Message, regola, settings, modificato: bool, ultimo: float | None) -> None:
+        """AMD-068/069/072: la regola dà punti di calore; alla soglia scattano le azioni del server e il calore riparte."""
+        c = settings.config.calore
+        if not c.attivo or modificato or regola.calore <= 0 or not isinstance(message.author, discord.Member):
+            return
+        adesso = _adesso()
+        totale = termometro.aggiungi(message.guild.id, message.author.id, calore_logic.punti(regola.calore, c, ultimo, adesso),
+                                     adesso, c.calo_per_minuto)
+        if totale < c.soglia:
+            return
+        termometro.azzera(message.guild.id, message.author.id)
+        await _esegui_regola(message, "calore", calore_logic.azioni_calore(c), etichetta=_ETICHETTA_CALORE,
+                             canale_log_id=settings.log_channel_id)
 
     async def _controlla_soglia(self, message: discord.Message, violazione: str, regola, modificato: bool) -> tuple[str, ...]:
         """AMD-058/059/060: se l'utente ha raggiunto una soglia del contatore, scattano le sue azioni e il contatore riparte."""
@@ -1705,6 +1754,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
             registra_messaggio(message.guild.id, message.author.id, message.channel.id, message.id)
 
         settings = await automod_advanced_repo.get_settings(message.guild.id)
+        ultimo_nel_canale = None
+        if settings.config.calore.attivo and not modificato:
+            ultimo_nel_canale = canali_fermi.segna(message.guild.id, message.channel.id, _adesso())
         esente = is_member_exempt(message.author, settings, message.channel.id)
         if esente and all(r.condizioni.esenzioni_globali for r in regole):
             return
@@ -1764,6 +1816,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
                 etichetta=regola.nome if regola.tipo == "personale" else None, canale_log_id=settings.log_channel_id,
             )
             await _log_violation(message, violazione, eseguite, settings, regola)
+            await self._scalda(message, regola, settings, modificato, ultimo_nel_canale)
             if regola.contatore and regola.contatore.soglie and isinstance(message.author, discord.Member):
                 eseguite_soglia = await self._controlla_soglia(message, violazione, regola, modificato)
                 if "delete" in eseguite_soglia:

@@ -496,3 +496,13 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 08/11 | `feat/r17automod` | `core/account_rubato.py` (`_avvisi`, `_dm_fatti`) | Avviso unico e tetto DM solo in RAM: dopo un riavvio nuovo avviso e nuovo DM | bassa | aperto |
 | 08/11 | `feat/r17automod` | `core/automod_eventi.py` (`ruolo_dato`) | Un altro bot che rimette il ruolo tolto da una regola: giro frenato a 3 regole ogni 10 s, non fermato | bassa | aperto |
 | 08/11 | `feat/r17automod` | `cogs/tickets/modmail.py` | Testi DM del ModMail ancora in italiano fisso (prima del ramo; il nuovo è nel catalogo) | bassa | aperto |
+| 08/11 | `feat/r18automod` | `cogs/automod/pulizia.py:giro` | Un'eccezione su un canale (es. 403 sulla cronologia) usciva dal ciclo: gli altri canali già segnati perdevano un intero intervallo | media | chiuso (b06e3df) |
+| 08/11 | `feat/r18automod` | `cogs/automod/automod.py:_innesco_messaggio` | Soglia per canale: con traffico alto scattava ogni N messaggi (slowmode e log a raffica); ora quiete per la finestra | media | chiuso (bf9a609) |
+| 08/11 | `feat/r18automod` | `core/automod_innesco_logic.py:leggi_filtro_evento` | Filtro ruoli: un nome al posto dell'ID diventava «qualsiasi ruolo»; ruoli di altri server accettati | media | chiuso (fcd1452) |
+| 08/11 | `feat/r18automod` | `core/automod_calore_opzioni.py:imposta` | Unico punto (D16) senza limiti: un valore storto si salvava e tornava di base in silenzio | bassa | chiuso (8fd7903) |
+| 08/11 | `feat/r18automod` | `COMMAND_LIST*.md` | Toccati a mano: totale e nome inglese sbagliati; rigenerati | bassa | chiuso (78b289c) |
+| 08/11 | `feat/r18automod` | `cogs/automod/automod.py:_ETICHETTA_CALORE` | «Calore» fisso in italiano nel motivo (DM, caso, audit), come le etichette dei filtri già esistenti | bassa | aperto |
+| 08/11 | `feat/r18automod` | `core/automod_pulizia_service.py:imposta` | Tetto 10 per server: conta-poi-scrivi, due comandi insieme possono fare 11 | bassa | aperto |
+| 08/11 | `feat/r18automod` | `cogs/automod/pulizia.py:giro` | Canale non in cache (server non disponibile): il giro segnato si perde fino al prossimo intervallo | bassa | aperto |
+| 08/11 | `feat/r18automod` | `cogs/automod/pulizia.py` | 10 canali ogni 5 minuti per tutto il bot: con molti server le pulizie arrivano in ritardo (ordine per ultimo_giro, nessuna persa) | bassa | aperto |
+| 08/11 | `feat/r18automod` | `core/automod_innesco_logic.py` (casi) | Tipi di caso non controllati: un errore di battitura non scatta mai | bassa | aperto |
