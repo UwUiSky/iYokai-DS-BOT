@@ -21,6 +21,12 @@ PERMESSI_BOT: dict[str, str] = {
 }
 
 
+def controlla_thread(attivo: bool | None, canale_padre_id: int | None) -> None:
+    """Accendere i ticket a thread senza un canale padre non ha senso: ValueError col testo per l'admin."""
+    if attivo and canale_padre_id is None:
+        raise ValueError("Per i ticket come thread scegli anche `canale_thread` (il canale dove nascono).")
+
+
 def nome_thread(nome: str) -> str:
     """Il nome del thread: al massimo 100 caratteri, mai vuoto."""
     return (nome.strip() or "ticket")[:MAX_NOME_THREAD]

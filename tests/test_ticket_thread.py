@@ -229,3 +229,16 @@ async def test_thread_non_si_crea_se_chi_apre_non_vede_il_canale_padre():
     padre.create_thread.assert_not_awaited()
     from core.i18n import t
     assert t("tickets_thread_utente_non_vede", "en-US") != "tickets_thread_utente_non_vede"
+
+
+async def test_thread_acceso_senza_canale_padre_si_rifiuta():
+    """Prima `thread:sì` senza canale si salvava e i ticket restavano canali senza dirlo all'admin."""
+    import cogs.tickets.opzioni as opz_cog
+
+    p = await ticket_form_repo.crea_pannello(GUILD, "Supporto", 900, "Supporto")
+    inter = fake_interaction()
+    inter.guild.id = GUILD
+    cog = opz_cog.TicketOpzioniCog(bot=None)
+    await opz_cog.TicketOpzioniCog.canale.callback(cog, inter, "Supporto", thread=True)
+    assert "canale_thread" in str(inter.response.send_message.call_args)
+    assert (await ticket_opzioni_repo.opzioni(p.id)).tipo == "canale"

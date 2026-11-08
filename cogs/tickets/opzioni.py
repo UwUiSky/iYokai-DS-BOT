@@ -32,6 +32,7 @@ from cogs.tickets.tickets import (
 )
 from core import ticket_autoclose_worker as regole
 from core import ticket_opzioni_logic as logica
+from core import ticket_thread_logic as thread_logic
 from core.command_access import Livello, richiedi
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
@@ -331,7 +332,13 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
         canale_thread: discord.TextChannel | None = None,
         canale_avvisi: discord.TextChannel | None = None,
     ) -> None:
+        padre_salvato = None
+        if thread and canale_thread is None and interaction.guild is not None:
+            panel = await ticket_form_repo.pannello_per_nome(interaction.guild.id, pannello.strip())
+            padre_salvato = (await ticket_opzioni_repo.opzioni(panel.id)).canale_padre_id if panel else None
+
         def prepara(guild):
+            thread_logic.controlla_thread(thread, canale_thread.id if canale_thread else padre_salvato)
             valori = {}
             if thread is not None:
                 valori["tipo"] = "thread" if thread else "canale"
