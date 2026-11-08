@@ -30,7 +30,12 @@ dai warn in massa non partono mai kick e ban (D29).
 Azioni su più utenti insieme (MOD-002…006): ban (anche di chi non è nel
 server, con il ban in blocco di Discord), unban, kick, timeout e warn; un
 caso per utente, un solo riepilogo nel log. Chi non si può moderare viene
-saltato con il motivo.
+saltato con il motivo. `/mod-ban massa entrati` (MOD-007): ban o kick di chi è
+entrato negli ultimi minuti, dopo una conferma; tetto 200, pausa, stop dopo tre 403.
+
+Opzioni dei comandi (MOD-009, 011, 058, 065, 116): motivo facoltativo nella firma
+(l'obbligo lo decide il server), motivi pronti dal completamento, `dm` sì/no,
+giorni di messaggi nel tempban, messaggi cancellati al kick.
 
 Con la soglia scelta dal server (MOD-036) chi riceve un warn avendone già troppi
 fa scattare un avviso allo staff nel log di moderazione, senza punire.

@@ -53,7 +53,6 @@ SETTING_MOD_LOG_CHANNEL = "mod_log_channel_id"
 MAX_REASON_LENGTH = 512
 Reason = app_commands.Range[str, 3, MAX_REASON_LENGTH]
 # MOD-065: il motivo dei comandi di sanzione è facoltativo nella firma; l'obbligo lo decide il server.
-MotivoFacoltativo = Reason | None
 MOTIVO_NON_INDICATO = "Nessun motivo indicato"
 
 
