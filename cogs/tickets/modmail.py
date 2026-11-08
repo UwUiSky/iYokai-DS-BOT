@@ -47,7 +47,6 @@ from core import channel_router as router
 from core import modmail_logic as logica
 from core.channel_router import TIPO_EVENTI
 from core import ticket_gestione_logic as gestione
-from core.command_access import Livello, autocomplete_protetto
 from core.repositories.ticket_gestione_repo import ticket_gestione_repo
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
@@ -77,10 +76,12 @@ def _autore_riga(m: discord.Message) -> str:
     return str(m.author)
 
 
-@autocomplete_protetto(Livello.MOD)
 async def completa_articoli_modmail(interaction: discord.Interaction, corrente: str):
-    """TKT-079: gli articoli della base di conoscenza; il valore è «a:<numero>» (mai il testo, che può superare 100 caratteri)."""
-    if interaction.guild is None:
+    """
+    TKT-079: gli articoli della base di conoscenza; il valore è «a:<numero>» (mai il testo, che può superare 100
+    caratteri). Li vede chi può usare `/ticket rispondi`: lo staff dei ticket.
+    """
+    if interaction.guild is None or not await _is_ticket_staff(interaction):
         return []
     articoli = await ticket_gestione_repo.cerca_articoli(interaction.guild.id, corrente, 25, solo_approvati=True)
     return [app_commands.Choice(name=f"{a.titolo}"[:100], value=gestione.valore_articolo(a.id)) for a in articoli]

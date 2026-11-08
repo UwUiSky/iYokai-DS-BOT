@@ -242,3 +242,14 @@ async def test_sposta_un_ruolo_che_non_si_cambia_non_lascia_il_ticket_a_meta():
     assert await modulo.sposta_ticket(canale, s.guild, t, nuovo) is None
     assert 33 in {c.args[0].id for c in canale.set_permissions.await_args_list}
     assert (await ticket_repo.get_ticket_by_channel(777)).panel_id == nuovo.id
+
+
+async def test_il_completamento_degli_articoli_vale_per_lo_staff_dei_ticket_senza_timeout():
+    await repo.salva_articolo(GUILD, "Rimborso", "Scrivi alla ricevuta", "", 1)
+    await db.set_guild_setting(GUILD, modulo.SETTING_SUPPORT_ROLES, [8])
+    s = Server()
+    staff = fake_member(30, roles=[fake_role(role_id=8, name="supporto")], guild_permissions=discord.Permissions())
+    scelte = await modmail.completa_articoli_modmail(fake_interaction(guild=s.guild, user=staff), "")
+    assert [c.name for c in scelte] == ["Rimborso"] and len(scelte[0].value) <= 100
+    estraneo = fake_member(31, guild_permissions=discord.Permissions())
+    assert await modmail.completa_articoli_modmail(fake_interaction(guild=s.guild, user=estraneo), "") == []
