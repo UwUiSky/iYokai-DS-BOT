@@ -1831,6 +1831,7 @@
   "tickets_canale_resta_chiuso": "The channel stays here, closed: staff can reopen or delete it.",
   "tickets_thread_padre_mancante": "This panel's thread channel no longer exists: tell an admin.",
   "tickets_thread_troppi": "The server already has 1,000 active threads, Discord's maximum: try again later.",
+  "tickets_thread_utente_non_vede": "The ticket is created as a thread in {canale}, but the person opening it can't see that channel or write in threads: tell an admin.",
   "tickets_thread_permessi": "I'm missing permissions in {canale}: {permessi}. Tell an admin.",
   "tickets_thread_avviso_titolo": "New ticket #{numero:04d}",
   "tickets_thread_avviso_testo": "{utente} opened a ticket: {thread}\nIf you can't see it, press \"Join\".",

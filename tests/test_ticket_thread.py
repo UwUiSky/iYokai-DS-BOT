@@ -215,3 +215,17 @@ async def test_chiusura_di_massa_e_uscita_dell_utente_trovano_i_thread():
     membro = SimpleNamespace(id=20, guild=interaction.guild)
     await cog.on_member_remove(membro)
     assert cog._chiudi_da_sistema.await_args.args[1] is thread
+
+
+async def test_thread_non_si_crea_se_chi_apre_non_vede_il_canale_padre():
+    """Un thread privato si vede solo se si vede il canale padre: prima nasceva un ticket che l'utente non poteva aprire."""
+    padre, _ = _padre()
+    utente = fake_member(20)
+    tutto = SimpleNamespace(view_channel=True, create_private_threads=True, send_messages_in_threads=True, manage_threads=True)
+    cieco = SimpleNamespace(view_channel=False, send_messages_in_threads=False)
+    padre.permissions_for.side_effect = lambda chi: cieco if chi is utente else tutto
+    esito = await modulo._crea_thread_privato(_guild(padre), OPZ, "n", "m", utente=utente)
+    assert esito == (None, "tickets_thread_utente_non_vede")
+    padre.create_thread.assert_not_awaited()
+    from core.i18n import t
+    assert t("tickets_thread_utente_non_vede", "en-US") != "tickets_thread_utente_non_vede"

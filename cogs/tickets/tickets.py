@@ -475,11 +475,11 @@ def _dati_errore_thread(guild, opzioni) -> dict:
     return {"canale": padre.mention if padre is not None else "", "permessi": ", ".join(mancanti)}
 
 
-async def _crea_thread_privato(guild, opzioni, nome: str, motivo: str):
+async def _crea_thread_privato(guild, opzioni, nome: str, motivo: str, *, utente=None):
     """
     TKT-031: il ticket nasce come thread privato nel canale padre del pannello. Restituisce (thread, None)
-    oppure (None, chiave del testo d'errore). Prima si controllano i permessi del bot e il tetto di 1.000
-    thread attivi di Discord (niente chiamata inutile).
+    oppure (None, chiave del testo d'errore). Prima si controllano i permessi del bot, che chi apre veda
+    il canale padre (altrimenti non vede il thread) e il tetto di 1.000 thread attivi di Discord.
     """
     padre = guild.get_channel(opzioni.canale_padre_id)
     if not isinstance(padre, discord.TextChannel):
@@ -488,6 +488,10 @@ async def _crea_thread_privato(guild, opzioni, nome: str, motivo: str):
         return None, "tickets_thread_troppi"
     if thread_logic.permessi_mancanti(padre.permissions_for(guild.me)):
         return None, "tickets_thread_permessi"
+    if utente is not None:
+        suoi = padre.permissions_for(utente)
+        if not (suoi.view_channel and suoi.send_messages_in_threads):
+            return None, "tickets_thread_utente_non_vede"
     thread = await padre.create_thread(
         name=thread_logic.nome_thread(nome), type=discord.ChannelType.private_thread, invitable=False,
         auto_archive_duration=thread_logic.ARCHIVIO_MINUTI, reason=motivo,
@@ -634,7 +638,7 @@ async def _crea_ticket(
     try:
         motivo_canale = f"Ticket aperto da {interaction.user}"[:512]
         if come_thread:
-            channel, errore_thread = await _crea_thread_privato(guild, opzioni, nome, motivo_canale)
+            channel, errore_thread = await _crea_thread_privato(guild, opzioni, nome, motivo_canale, utente=utente)
             if channel is None:
                 await interaction.followup.send(await testo_per(interaction, errore_thread, **_dati_errore_thread(guild, opzioni)), ephemeral=True)
                 return None
