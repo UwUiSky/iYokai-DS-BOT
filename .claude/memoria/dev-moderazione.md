@@ -1,11 +1,11 @@
 # Memoria dev-moderazione
 ## Aggiornata
-2026-11-01, giro r15automod (ramo feat/r15automod, worktree /home/claude/wt/r15automod, filone A di #116, D63). Migrazioni 0500-0503 mie. Smoke da fare.
-2026-11-02, giro r16verifica (ramo feat/r16verifica, D67 parte verifica, migrazione 0530, #155). Smoke da fare. Prima: giro r15vpn (D64+D65, 0507/0508); 2026-10-28, giro r11 (agente r11odio, ramo feat/r11odio, worktree /home/claude/wt/r11odio). Migrazione 0390 usata (0391-0399 libere). Smoke da fare (regola owner: niente smoke).
+2026-11-08, giro r17automod (ramo feat/r17automod, worktree /home/claude/wt/r17automod, DB iyokai_w17am, migrazioni da 0509 e da 0531 mie). Smoke da fare. Prima: r15automod (A1-A8), r16verifica (0530), r15vpn.
 ## In corso
-A1-A8 fatti + merge di main (immagini): `/admin-automod immagini` usa core.immagini_opzioni; cogs/automod/immagini.py::_applica passa da esegui_azioni (regola di sistema "immagini_sospette", senza_scudo=True). Prossimo: A9 (eventi non-messaggio: 009 vocali, 010 thread a raffica, 017 nomi, 075 ruolo/ingresso/uscita/caso; AMD-018 solo dietro interruttore spento), A10 (calore/gruppi 067-069/072), A11 (migr. 0509, pulizia 073/074).
-SEMPRE: DATABASE_URL=postgresql://postgres:testpass@127.0.0.1:5432/iyokai_wautomod esplicito (env non persiste fra comandi: scratchpad/envw.sh).
+Previsione giro r17: D67 fatto, poi A9, poi stop con rapporto. Prossimo: A10 calore e gruppi (AMD-068/069/072: campo Regola.calore gia' nel modello; valore in memoria per server+utente, calo lineare letto al bisogno), poi A11 (migr. 0509, tabella automod_pulizie, pulizia 073/074, AMD-008 soglie per canale). main.py deve usare core.automod_eventi.chiede_intent_presenze() per intents.presences (non mio).
+Comando: DATABASE_URL=postgresql://postgres:testpass@127.0.0.1:5432/iyokai_w17am in ogni comando (mai iyokai_test).
 ## Fatto
+- r17 D67 account rubato (#153): core/account_rubato_logic.py (registro invii: malevola o stessa firma in 3 canali/120 s), core/account_rubato.py (avviso unico aggiornato, timeout 1h/24h, cancella invii contati, DM, verify_blocchi.registra_limitazione), cogs/automod/account_rubato.py, opzione account_rubato_attivo (accesa) in /admin-automod immagini; il filtro immagini gli passa le malevole. test_automod_account_rubato(_logic). Smoke da fare
 - r15 A7 liste con nome (core/automod_liste_service.py, repo, pannello core/automod_liste_pannello.py, /admin-automod liste), liste di sistema in data/automod/, innesco personale (core/automod_innesco_logic.py), modelli (core/automod_modelli.py), finestra Innesco. A8 migr. 0503 + core/automod_decisioni.py (decide lo staff, bottoni persistenti). test_automod_liste/_innesco_logic/_decisioni. Smoke da fare
 - r15 A6 pannello regole (core/automod_regole_pannello.py + core/automod_pannello_logic.py), comandi /admin-automod regole, gruppo, immagini; 100 testi amregole_*; test_automod_pannello_logic/_regole_pannello/_regole_comandi. Smoke da fare
 - r15 A4 core/automod_azioni.py (20 azioni, ordine D63, scudo protetti, 403=sospesa 10 min, fine a tempo via scheduler, webhook), A5 migr. 0502, contatori (core/automod_contatori.py), /admin-automod riepilogo e azzera (cogs/automod/regole.py), test_automod_azioni/_contatori. Smoke da fare
@@ -17,6 +17,7 @@ SEMPRE: DATABASE_URL=postgresql://postgres:testpass@127.0.0.1:5432/iyokai_wautom
 - Giri G1-G7, R5-R10 (git log e REGISTRO_RISOLTE): tempban, appelli, verify, lockdown, phishing, captcha, anti-raid, massa, filtri automod, iYokai Mod, catalogo log, ripiego anti-nuke, warn manuali, opzioni mod, lock a tempo, punizione trappola, mute a tempo, casi esterni, VER-017/019/020/030/031, SIC-036/039, AMD-013/014/026/027/062/065/070
 - R11 D35: core/odio_*.py (giudizio, libreria, richiami, opzioni, moderazione), core/automod_odio_nativo_logic.py (regex nativa), core/automod_odio_azioni.py (Discord), repo odio_libreria_repo (0390), comandi /automod odio blocco|richiami|libreria, data/automod_parole_sospette.txt, docs/parole_bandite.md, test tests/test_automod_odio_d35.py
 ## Cose imparate
+- Testi: locales/it e en-US testi.json, riga in coda (no json.dump); un test che mette un'opzione nuova letta da db va patchato (db non connesso nei test di cog)
 - Scadenze IP (verify_ip): il ban vince sempre (on_member_remove arriva anche dopo il ban); kick riconosciuto dal registro audit, senza permesso = uscita volontaria; log IP: mai exc_info, solo type(errore)
 - data_registry: test_riferimenti_comandi legge anche le note: mai «/privacy», scrivere «/utility privacy cancella»
 - Sostituendo un blocco di codice con slice (index..index) controlla cosa c'e' in mezzo: ho cancellato riepilogo/azzera (lo ha trovato test_repository_callers)
@@ -42,6 +43,7 @@ SEMPRE: DATABASE_URL=postgresql://postgres:testpass@127.0.0.1:5432/iyokai_wautom
 - Test del cog automod: db finto passato come `archivio` alle funzioni (mai db._pool); libreria_odio va finta (AsyncMock) senza pool
 - Str.replace sostituisce TUTTE le occorrenze; con piu' decorator uguali cercare l'indice dopo il nome del comando
 ## Aperto
+- D67: verify_blocchi ha UNA riga per persona (PK user_id): con account limitato in piu' server il ticket si apre solo nell'ultimo; per tutti serve cambiare PK (migr. 0531) e cogs/tickets/modmail.py (non mio, in revisione r16ticket)
 - Codice con View/Modal senza cog va in core/ (ogni file in cogs/ vuole setup())
 - AMD-018 (stato/attivita) non fatto: serve intent Presenze, decide l'owner
 - decide_staff (A8, 0503) non ancora: l'azione e' nel JSON ma il motore la ignora

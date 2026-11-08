@@ -1685,5 +1685,19 @@
   "casesystem_warn_attivi_titolo": "⚠️ Active warns in the server",
   "casesystem_azzera_tutti_numero_sbagliato": "That number is wrong: the server has {v1} active warns. Type it again to confirm.",
   "casesystem_azzera_tutti_fatto": "Removed {v1} warns.",
-  "casesystem_azzera_tutti_log": "🧹 Server warns reset"
+  "casesystem_azzera_tutti_log": "🧹 Server warns reset",
+  "arub_titolo": "Account probably compromised",
+  "arub_riepilogo": "{cause}: {invii} sends in {canali} channels ({server} servers).",
+  "arub_motivo_malevole": "malicious images",
+  "arub_motivo_uguali": "identical messages",
+  "arub_motivo_audit": "Account probably compromised ({cause})",
+  "arub_campo_persona": "Person",
+  "arub_campo_azioni": "Actions",
+  "arub_azione_timeout": "Discord timeout",
+  "arub_azione_cancellati": "messages deleted",
+  "arub_azione_nessuna": "none (missing permissions?)",
+  "arub_piede": "One alert per person, updated on every new send. No files attached.",
+  "arub_dm_titolo": "Account restricted",
+  "arub_dm": "iYokai has restricted you for a suspected breach of your account: change your password, turn on two-factor authentication, check your authorized apps; then write to me here.",
+  "arub_stato": "Stolen-account defense: {stato}."
 }

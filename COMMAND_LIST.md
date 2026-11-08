@@ -80,7 +80,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 12:
 - **`/admin-automod esenzioni role-add`** — Esenta un ruolo da tutti i filtri AutoMod avanzati.
 - **`/admin-automod esenzioni role-remove`** — Rimuove l'esenzione di un ruolo.
 - **`/admin-automod gruppo`** — Accende o spegne tutte le regole di un gruppo.
-- **`/admin-automod immagini`** — Impostazioni del filtro per le immagini sospette.
+- **`/admin-automod immagini`** — Impostazioni del filtro per le immagini sospette e della difesa dagli account rubati (opzione `account_rubato`).
 - **`/admin-automod liste`** — Apre il pannello delle liste con nome: parole e domini.
 - **`/admin-automod log-channel`** — Imposta il canale dove pubblicare il log delle azioni AutoMod avanzate.
 - **`/admin-automod mute-duration`** — Imposta la durata del timeout usato dall'azione 'mute' dell'AutoMod.

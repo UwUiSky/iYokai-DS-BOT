@@ -105,6 +105,7 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
         _c("immagini_azione", "Azione sulle immagini sospette", SCELTA),
         _c("immagini_timeout_minuti", "Timeout per le immagini sospette (minuti, 1-40320)", NUMERO),
         _c("immagini_canale_log_id", "Canale del registro delle immagini sospette", CANALE),
+        _c("account_rubato_attivo", "Difesa dagli account rubati", BOOL),
     ),
     "invites": (
         _c("inviti_log_channel_id", "Canale del registro degli inviti", CANALE),

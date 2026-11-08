@@ -1685,5 +1685,19 @@
   "casesystem_warn_attivi_titolo": "⚠️ Warn attivi del server",
   "casesystem_azzera_tutti_numero_sbagliato": "Il numero non è giusto: il server ha {v1} warn attivi. Riscrivilo per confermare.",
   "casesystem_azzera_tutti_fatto": "Tolti {v1} warn.",
-  "casesystem_azzera_tutti_log": "🧹 Warn del server azzerati"
+  "casesystem_azzera_tutti_log": "🧹 Warn del server azzerati",
+  "arub_titolo": "Account probabilmente compromesso",
+  "arub_riepilogo": "{cause}: {invii} invii in {canali} canali ({server} server).",
+  "arub_motivo_malevole": "immagini malevole",
+  "arub_motivo_uguali": "messaggi uguali",
+  "arub_motivo_audit": "Account probabilmente compromesso ({cause})",
+  "arub_campo_persona": "Persona",
+  "arub_campo_azioni": "Azioni",
+  "arub_azione_timeout": "timeout di Discord",
+  "arub_azione_cancellati": "messaggi cancellati",
+  "arub_azione_nessuna": "nessuna (permessi mancanti?)",
+  "arub_piede": "Un solo avviso per persona, aggiornato a ogni nuovo invio. Nessun file allegato.",
+  "arub_dm_titolo": "Account limitato",
+  "arub_dm": "Sei stato limitato da iYokai per una presunta violazione del tuo account: cambia la password, attiva l'autenticazione a due fattori, controlla le app autorizzate; poi scrivimi qui.",
+  "arub_stato": "Difesa dagli account rubati: {stato}."
 }

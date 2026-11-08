@@ -71,9 +71,23 @@ async def test_immagini_scrive_con_il_setter_del_filtro_e_mostra_lo_stato(cog, m
     await cog.immagini.callback(cog, inter2, None, app_commands.Choice(name="x", value="x"), None, None)
     assert "non valido" in inter2.response.send_message.await_args.args[0].lower() or "invalid" in inter2.response.send_message.await_args.args[0].lower()
     # senza opzioni: mostra lo stato
+    monkeypatch.setattr(modulo.account_rubato_opzioni, "attivo", AsyncMock(return_value=True))
     monkeypatch.setattr(modulo.immagini_opzioni, "leggi", AsyncMock(return_value=modulo.immagini_opzioni.OpzioniImmagini(
         attivo=True, azione="avvisa", timeout_minuti=15, canale_log_id=5)))
     inter3 = fake_interaction(guild=fake_guild(guild_id=GID))
     await cog.immagini.callback(cog, inter3, None, None, None, None)
     testo = inter3.response.send_message.await_args.args[0]
     assert "avvisa" in testo and "15" in testo and "<#5>" in testo
+
+
+async def test_immagini_account_rubato_si_scrive_dal_punto_unico_e_si_vede_nello_stato(cog, monkeypatch):
+    scrive = AsyncMock()
+    monkeypatch.setattr(modulo.account_rubato_opzioni, "imposta", scrive)
+    inter = fake_interaction(guild=fake_guild(guild_id=GID))
+    await cog.immagini.callback(cog, inter, None, None, None, None, False)
+    scrive.assert_awaited_once_with(GID, inter.user.id, False)
+    monkeypatch.setattr(modulo.account_rubato_opzioni, "attivo", AsyncMock(return_value=False))
+    monkeypatch.setattr(modulo.immagini_opzioni, "leggi", AsyncMock(return_value=modulo.immagini_opzioni.OpzioniImmagini()))
+    inter2 = fake_interaction(guild=fake_guild(guild_id=GID))
+    await cog.immagini.callback(cog, inter2, None, None, None, None)
+    assert "account rubati" in inter2.response.send_message.await_args.args[0]

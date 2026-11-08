@@ -19,7 +19,7 @@ from core.ui_base import BaseView
 from core.automod_liste_pannello import apri_liste
 from core.automod_regole_pannello import apri_pannello
 from cogs.moderation._shared import ensure_module_enabled
-from core import immagini_opzioni, automod_liste_service as liste_service, automod_regole_service as regole_service
+from core import account_rubato_opzioni, immagini_opzioni, automod_liste_service as liste_service, automod_regole_service as regole_service
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.i18n import testo_per
@@ -122,6 +122,7 @@ class RegoleCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         filtro="Accende o spegne il filtro", azione="Cosa fare di un'immagine sospetta",
         timeout_minuti="Minuti di timeout (se l'azione è timeout)", canale_log="Canale dove scrivere i casi",
+        account_rubato="Difesa dagli account rubati (acceso di base): limita e avvisa lo staff",
     )
     @app_commands.choices(azione=AZIONI_IMMAGINI)
     async def immagini(
@@ -131,12 +132,15 @@ class RegoleCog(CogConGruppi, commands.Cog):
         azione: app_commands.Choice[str] | None = None,
         timeout_minuti: app_commands.Range[int, 1, 40_320] | None = None,
         canale_log: discord.TextChannel | None = None,
+        account_rubato: bool | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
         gid = interaction.guild.id
-        if any(v is not None for v in (filtro, azione, timeout_minuti, canale_log)):
+        if any(v is not None for v in (filtro, azione, timeout_minuti, canale_log, account_rubato)):
             try:
+                if account_rubato is not None:
+                    await account_rubato_opzioni.imposta(gid, interaction.user.id, account_rubato)
                 await immagini_opzioni.imposta(
                     gid, interaction.user.id, attivo=filtro, azione=azione.value if azione else None,
                     timeout_minuti=timeout_minuti, canale_log_id=canale_log.id if canale_log else None)
@@ -150,7 +154,9 @@ class RegoleCog(CogConGruppi, commands.Cog):
             interaction, "amregole_img_stato",
             stato=await testo_per(interaction, "amregole_img_acceso" if v.attivo else "amregole_img_spento"),
             azione=v.azione, minuti=v.timeout_minuti,
-            canale=f"<#{v.canale_log_id}>" if v.canale_log_id else await testo_per(interaction, "amregole_img_nessun_canale")),
+            canale=f"<#{v.canale_log_id}>" if v.canale_log_id else await testo_per(interaction, "amregole_img_nessun_canale"))
+            + "\n" + await testo_per(interaction, "arub_stato", stato=await testo_per(
+                interaction, "amregole_img_acceso" if await account_rubato_opzioni.attivo(gid) else "amregole_img_spento")),
             ephemeral=True)
 
     @comando_di_gruppo(
