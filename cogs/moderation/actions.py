@@ -1133,17 +1133,25 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
     async def _ban_uno_alla_volta(
         self, guild: discord.Guild, ids: list[int], reason: str, giorni: int
     ) -> set[int]:
-        """Ban singoli al posto del ban in blocco. Gli ID bannati davvero."""
+        """Ban singoli al posto del ban in blocco, con una pausa; tre 403 di fila fermano tutto. Gli ID bannati davvero."""
         bannati: set[int] = set()
+        di_fila = 0
         for uid in ids:
             try:
                 await guild.ban(
                     discord.Object(id=uid), reason=audit_reason(f"Ban in massa: {reason}"),
                     delete_message_seconds=giorni * 86400,
                 )
+            except discord.Forbidden:
+                di_fila += 1
+                if di_fila >= MAX_403_DI_FILA:  # tre 403 di fila: ci si ferma (rischio blocco IP)
+                    break
+                continue
             except discord.HTTPException:
                 continue
+            di_fila = 0
             bannati.add(uid)
+            await asyncio.sleep(PAUSA_ENTRATI)
         return bannati
 
     async def _chiudi_massa(

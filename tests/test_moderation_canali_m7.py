@@ -323,6 +323,20 @@ async def test_conferma_ban_usa_il_ban_in_blocco_e_crea_i_casi():
     assert len(await repo.list_cases_for_user(G, membri[0].id)) == 1
 
 
+async def test_ban_uno_alla_volta_si_ferma_dopo_tre_403():
+    """Se il ban in blocco è vietato si passa ai ban singoli: dopo tre 403 di fila ci si ferma (rischio blocco IP)."""
+    scena = Scena()
+    _entrati(scena, 6)
+    risposta = MagicMock(status=403, reason="Forbidden")
+    scena.server.bulk_ban = AsyncMock(side_effect=discord.Forbidden(risposta, "no"))
+    scena.server.ban = AsyncMock(side_effect=discord.Forbidden(risposta, "no"))
+    cog = ModerationActionsCog(bot=None)
+    await cog.entrati.callback(cog, scena.interazione, 10, "ban", "raid in corso")
+    vista = scena.interazione.response.send_message.call_args.kwargs["view"]
+    await vista.esegui(fake_interaction(guild=scena.server, user=scena.moderatore))
+    assert scena.server.ban.await_count == 3
+
+
 async def test_conferma_kick_espelle_uno_per_uno():
     scena = Scena()
     membri = _entrati(scena, 3)
