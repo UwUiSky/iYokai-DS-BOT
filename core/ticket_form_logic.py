@@ -222,8 +222,8 @@ def motivo_valido(etichetta: str, testo: str | None) -> tuple[str, str | None]:
     return etichetta, testo
 
 
-def opzioni_motivi(motivi) -> list[tuple[str, str, str | None]]:
-    """(valore, etichetta, emoji) delle voci del menu: i motivi (valore = id) e in fondo «Altro»."""
+def opzioni_motivi(motivi, altro: str = "Altro") -> list[tuple[str, str, str | None]]:
+    """(valore, etichetta, emoji) delle voci del menu: i motivi (valore = id) e in fondo «Altro» (testo del catalogo)."""
     voci = [(str(m.id), m.etichetta[:MAX_ETICHETTA_MOTIVO], m.emoji) for m in list(motivi)[:MAX_MOTIVI]]
-    voci.append((VALORE_ALTRO, "Altro", None))
+    voci.append((VALORE_ALTRO, altro[:MAX_ETICHETTA_MOTIVO], None))
     return voci

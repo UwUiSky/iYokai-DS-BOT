@@ -79,12 +79,12 @@ def scegli_articolo(articoli, testo_richiesta: str):
     return per_id[scelta.id] if scelta else None
 
 
-def voci_sposta(pannelli, corrente_id: int | None) -> list[tuple[str, str]]:
+def voci_sposta(pannelli, corrente_id: int | None, altri: str = "Altri…") -> list[tuple[str, str]]:
     """(valore, etichetta) del menu «Sposta»: fino a 24 pannelli (escluso quello attuale) e «Altri…» se ce ne sono di più."""
     altri = [p for p in pannelli if p.id != corrente_id]
     voci = [(str(p.id), p.name[:100]) for p in altri[:MAX_PANNELLI_NEL_MENU]]
     if len(altri) > MAX_PANNELLI_NEL_MENU:
-        voci.append((VALORE_ALTRI, "Altri…"))
+        voci.append((VALORE_ALTRI, altri[:100]))
     return voci
 
 

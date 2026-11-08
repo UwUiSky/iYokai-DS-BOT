@@ -309,3 +309,18 @@ async def test_solo_admin_toglie_anche_i_permessi_personali_degli_addetti_non_de
     await modulo.imposta_solo_admin(canale, s.guild, t, True)
     tolti = {c.args[0].id for c in canale.set_permissions.await_args_list if c.kwargs.get("overwrite") is None}
     assert 40 in tolti and 41 not in tolti and UTENTE not in tolti
+
+
+async def test_altro_nel_menu_dei_motivi_viene_dal_catalogo(scheduler_di_test, monkeypatch):
+    p = await _pannello()
+    await ticket_form_repo.aggiungi_motivo(p.id, "Acquisto")
+
+    async def chiave(_interaction, nome, **_):
+        return f"<{nome}>"
+
+    monkeypatch.setattr(modulo, "testo_per", chiave)
+    i = Server().interazione()
+    await modulo.apri_da_pannello(i, p.id)
+    select = i.response.send_message.await_args.kwargs["view"].children[0]
+    assert select.options[-1].label == "<tickets_motivo_altro>"
+    assert select.placeholder == "<tickets_motivo_segnaposto>"

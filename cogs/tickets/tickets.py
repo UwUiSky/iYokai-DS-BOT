@@ -909,7 +909,10 @@ async def apri_da_pannello(interaction: discord.Interaction, panel_id: int) -> N
     if motivi:
         # TKT-006: prima si sceglie il motivo (o «Altro»), poi la finestra del modulo o il ticket.
         await interaction.response.send_message(
-            await testo_per(interaction, "tickets_scegli_il_motivo"), view=VistaMotivi(panel, motivi), ephemeral=True
+            await testo_per(interaction, "tickets_scegli_il_motivo"), view=VistaMotivi(panel, motivi, (
+                await testo_per(interaction, "tickets_motivo_segnaposto"), await testo_per(interaction, "tickets_motivo_altro"),
+            )),
+            ephemeral=True,
         )
         return
     domande = await ticket_form_repo.elenca_domande(panel.id)
@@ -950,18 +953,18 @@ class ModuloAltroMotivo(BaseModal):
 class VistaMotivi(BaseView):
     """TKT-006: menu dei motivi pronti del pannello (al massimo 24 + «Altro»). Vive solo per questa risposta."""
 
-    def __init__(self, panel: PannelloTicket, motivi) -> None:
+    def __init__(self, panel: PannelloTicket, motivi, testi: tuple[str, str] = ("…", "Altro")) -> None:
         super().__init__(timeout=180)
         self._panel = panel
         self._motivi = {str(m.id): m for m in motivi}
         select = discord.ui.Select(
-            placeholder="…",
+            placeholder=testi[0][:150],
             options=[
                 discord.SelectOption(
                     label=etichetta, value=valore,
                     emoji=emoji if emoji and looks_like_emoji(emoji) else None,
                 )
-                for valore, etichetta, emoji in form.opzioni_motivi(motivi)
+                for valore, etichetta, emoji in form.opzioni_motivi(motivi, testi[1])
             ],
         )
         select.callback = self._on_select
@@ -1246,11 +1249,15 @@ class ModuloSposta(BaseModal):
 class VistaSposta(BaseView):
     """TKT-067: menu dei pannelli (fino a 24 + «Altri…»)."""
 
-    def __init__(self, ticket, pannelli) -> None:
+    def __init__(self, ticket, pannelli, altri: str = "Altri…") -> None:
         super().__init__(timeout=180)
         self._ticket = ticket
         select = discord.ui.Select(
-            placeholder="…", options=[discord.SelectOption(label=etichetta, value=valore) for valore, etichetta in gestione.voci_sposta(pannelli, ticket.panel_id)]
+            placeholder="…",
+            options=[
+                discord.SelectOption(label=etichetta, value=valore)
+                for valore, etichetta in gestione.voci_sposta(pannelli, ticket.panel_id, altri)
+            ],
         )
         select.callback = self._on_select
         self.add_item(select)
@@ -1425,7 +1432,8 @@ class MenuGestisci(
                 await interaction.response.send_message(await testo_per(interaction, "tickets_sposta_nessun_altro_pannello"), ephemeral=True)
                 return
             await interaction.response.send_message(
-                await testo_per(interaction, "tickets_sposta_scegli"), view=VistaSposta(ticket, pannelli), ephemeral=True
+                await testo_per(interaction, "tickets_sposta_scegli"), view=VistaSposta(ticket, pannelli, await testo_per(interaction, "tickets_sposta_altri")),
+                ephemeral=True,
             )
             return
         attivo = scelta == "solo_admin"
