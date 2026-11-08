@@ -127,3 +127,13 @@ def test_la_sintesi_porta_i_messaggi_da_cancellare():
     invio(reg, 2, 22, 1, guild=20)
     s = invio(reg, 3, 33, 2, guild=30)
     assert set(s.messaggi) == {(10, 1, 11), (20, 2, 22), (30, 3, 33)}
+
+
+def test_ogni_messaggio_si_passa_da_cancellare_una_sola_volta():
+    """Ogni nuovo invio dopo la segnalazione porta solo sé stesso: niente cancellazioni ripetute (429 di Discord)."""
+    reg = lg.RegistroInvii()
+    invio(reg, 1, 11, 0)
+    invio(reg, 2, 22, 1)
+    assert len(invio(reg, 3, 33, 2).messaggi) == 3
+    s = invio(reg, 4, 44, 3)
+    assert s.messaggi == ((1, 4, 44),) and s.invii == 4

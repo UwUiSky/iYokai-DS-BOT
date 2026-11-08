@@ -40,7 +40,7 @@ class Sintesi:
     server: int
     guild_ids: tuple[int, ...]
     motivi: tuple[str, ...]
-    messaggi: tuple[tuple[int, int, int], ...]  # (server, canale, messaggio) degli invii contati: da cancellare
+    messaggi: tuple[tuple[int, int, int], ...]  # (server, canale, messaggio) contati e non ancora passati: da cancellare
     prima_volta: bool  # True solo alla prima segnalazione: da lì in poi l'avviso si aggiorna
 
     @property
@@ -74,6 +74,7 @@ class _Invio:
     messaggio_id: int
     firma: str
     malevola: bool
+    gestito: bool = False  # già passato in una sintesi: non si cancella una seconda volta
 
 
 @dataclass
@@ -124,6 +125,9 @@ class RegistroInvii:
         contati = malevoli + [i for g in uguali for i in g if not i.malevola]
         for gruppo in uguali:
             persona.firme_segnalate.add(gruppo[0].firma)
+        nuovi = [i for i in contati if not i.gestito]
+        for i in nuovi:
+            i.gestito = True
         motivi = tuple(m for m, presente in ((MOTIVO_MALEVOLE, bool(malevoli)), (MOTIVO_UGUALI, bool(uguali))) if presente)
         persona.segnalata_fino = ora + self._finestra
         return Sintesi(
@@ -133,6 +137,6 @@ class RegistroInvii:
             server=len({i.guild_id for i in contati}),
             guild_ids=tuple(sorted({i.guild_id for i in contati})),
             motivi=motivi,
-            messaggi=tuple((i.guild_id, i.canale_id, i.messaggio_id) for i in contati),
+            messaggi=tuple((i.guild_id, i.canale_id, i.messaggio_id) for i in nuovi),
             prima_volta=not gia,
         )
