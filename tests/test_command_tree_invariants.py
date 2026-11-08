@@ -413,3 +413,44 @@ async def test_i_limiti_interi_delle_opzioni_entrano_nei_53_bit_di_discord():
         assert fuori == [], f"Limiti interi oltre 2**53-1: {fuori}"
     finally:
         await _chiudi(creato_qui, bot)
+
+
+# ----------------------------------------------------------------------
+# Disegno Moderazione/Ticket (#115, #120), §4: menu col tasto destro e firme.
+# ----------------------------------------------------------------------
+MAX_MENU_PER_TIPO = 15  # Discord, dal 03/03/2026 (LIM tab. 76)
+MAX_OPZIONI_PER_COMANDO = 25
+
+
+async def test_menu_col_tasto_destro_al_massimo_15_per_tipo_e_nomi_entro_32():
+    creato_qui, bot = await _albero_vero()
+    try:
+        for tipo in (discord.AppCommandType.user, discord.AppCommandType.message):
+            menu = bot.tree.get_commands(type=tipo)
+            assert len(menu) <= MAX_MENU_PER_TIPO, f"{len(menu)} menu di tipo {tipo.name} (massimo 15)."
+            for voce in menu:
+                assert 1 <= len(voce.name) <= 32, f"Nome del menu troppo lungo: {voce.name!r}"
+    finally:
+        await _chiudi(creato_qui, bot)
+
+
+async def test_nessuna_opzione_obbligatoria_dopo_una_facoltativa_e_al_massimo_25_opzioni():
+    """Con un ordine sbagliato Discord rifiuta TUTTO l'albero alla sincronizzazione."""
+    creato_qui, bot = await _albero_vero()
+    try:
+        errori = []
+        for nodo in _tutti_i_nodi(_radici(bot)):
+            if isinstance(nodo, app_commands.Group):
+                continue
+            opzioni = list(nodo.parameters)
+            if len(opzioni) > MAX_OPZIONI_PER_COMANDO:
+                errori.append(f"{nodo.qualified_name}: {len(opzioni)} opzioni (massimo 25)")
+            visto_facoltativa = False
+            for p in opzioni:
+                if not p.required:
+                    visto_facoltativa = True
+                elif visto_facoltativa:
+                    errori.append(f"{nodo.qualified_name}: «{p.name}» obbligatoria dopo una facoltativa")
+        assert errori == [], errori
+    finally:
+        await _chiudi(creato_qui, bot)

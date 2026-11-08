@@ -42,6 +42,11 @@ def _riepilogo(guild: discord.Guild, o: opzioni.OpzioniModerazione) -> discord.E
     dm = ", ".join(_NOMI_AZIONI[a] for a in opzioni.AZIONI_CON_DM if a not in o.dm_spenti) or "nessuna"
     immuni = " ".join(f"<@&{r}>" for r in o.ruoli_immuni) or "nessuno"
     embed = discord.Embed(title="Opzioni di moderazione", color=discord.Color.blurple())
+    embed.add_field(
+        name="Scadenza dei casi AutoMod",
+        value=f"{o.scadenza_automod} giorni" if o.scadenza_automod else "mai",
+        inline=False,
+    )
     embed.add_field(name="Giorni di messaggi cancellati al ban", value=str(o.giorni_ban), inline=False)
     embed.add_field(
         name="Timeout senza durata",
@@ -92,6 +97,7 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
         casi_esterni="Crea un caso anche per ban, kick e timeout fatti dal menu di Discord o da altri bot",
         avviso_warn="Avvisa lo staff quando chi riceve un warn ne ha già questi (0 = spento)",
         avviso_rientro="Avvisa lo staff quando rientra nel server chi ha dei casi",
+        scadenza_automod="Dopo quanti giorni i casi dell'AutoMod non contano più (0 = mai)",
     )
     async def imposta(
         self,
@@ -101,6 +107,7 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
         casi_esterni: bool | None = None,
         avviso_warn: app_commands.Range[int, 0, opzioni.MAX_SOGLIA_WARN] | None = None,
         avviso_rientro: bool | None = None,
+        scadenza_automod: app_commands.Range[int, 0, opzioni.MAX_SCADENZA_AUTOMOD] | None = None,
     ) -> None:
         if not await self._controlli(interaction):
             return
@@ -129,6 +136,8 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
             await opzioni.imposta_avviso_warn(guild.id, avviso_warn, interaction.user.id)
         if avviso_rientro is not None:
             await opzioni.imposta_avviso_rientro(guild.id, avviso_rientro, interaction.user.id)
+        if scadenza_automod is not None:
+            await opzioni.imposta_scadenza_automod(guild.id, scadenza_automod, interaction.user.id)
         await interaction.response.send_message(
             embed=_riepilogo(guild, await opzioni.leggi(guild.id)),
             ephemeral=True,

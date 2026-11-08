@@ -22,6 +22,8 @@ SETTING_DM_SPENTI = "mod_dm_spenti"
 SETTING_RUOLI_IMMUNI = "mod_ruoli_immuni"
 SETTING_AVVISO_WARN = "mod_avviso_warn_soglia"
 SETTING_AVVISO_RIENTRO = "mod_avviso_rientro"
+SETTING_SCADENZA_AUTOMOD = "mod_scadenza_automod_giorni"
+MAX_SCADENZA_AUTOMOD = 200
 
 # Azioni che mandano un DM all'utente; per ognuna il server può spegnerlo.
 AZIONI_CON_DM = ("warn", "kick", "ban", "tempban", "softban", "timeout", "mute")
@@ -42,6 +44,7 @@ class OpzioniModerazione:
     casi_esterni: bool = False
     avviso_warn: int = 0  # 0 = spento
     avviso_rientro: bool = False
+    scadenza_automod: int = 0  # giorni; 0 = i casi AutoMod non scadono
 
 
 async def leggi(guild_id: int) -> OpzioniModerazione:
@@ -52,6 +55,7 @@ async def leggi(guild_id: int) -> OpzioniModerazione:
     esterni = await db.get_guild_setting(guild_id, SETTING_CASI_ESTERNI, False)
     soglia = await db.get_guild_setting(guild_id, SETTING_AVVISO_WARN, 0)
     rientro = await db.get_guild_setting(guild_id, SETTING_AVVISO_RIENTRO, False)
+    scadenza = await db.get_guild_setting(guild_id, SETTING_SCADENZA_AUTOMOD, 0)
     return OpzioniModerazione(
         giorni_ban=int(giorni) if isinstance(giorni, int) and 0 <= giorni <= 7 else 0,
         durata_timeout=durata if isinstance(durata, int) and MIN_TIMEOUT <= durata <= MAX_TIMEOUT else None,
@@ -60,6 +64,7 @@ async def leggi(guild_id: int) -> OpzioniModerazione:
         casi_esterni=esterni is True,
         avviso_warn=soglia if isinstance(soglia, int) and 0 <= soglia <= MAX_SOGLIA_WARN else 0,
         avviso_rientro=rientro is True,
+        scadenza_automod=giorni_scadenza_validi(scadenza),
     )
 
 
@@ -102,6 +107,20 @@ async def imposta_avviso_warn(guild_id: int, soglia: int, autore_id: int) -> Non
 
 async def imposta_avviso_rientro(guild_id: int, attivo: bool, autore_id: int) -> None:
     await db.set_guild_setting(guild_id, SETTING_AVVISO_RIENTRO, attivo, changed_by=autore_id)
+
+
+def giorni_scadenza_validi(valore) -> int:
+    """Giorni di scadenza dei casi AutoMod da un valore salvato (anche testo dal JSON); 0 se non valido."""
+    if isinstance(valore, str) and valore.isdigit():
+        valore = int(valore)
+    return valore if isinstance(valore, int) and not isinstance(valore, bool) and 0 <= valore <= MAX_SCADENZA_AUTOMOD else 0
+
+
+async def imposta_scadenza_automod(guild_id: int, giorni: int, autore_id: int) -> None:
+    """MOD-048: dopo `giorni` giorni i casi AutoMod non contano più. 0 = mai."""
+    if not 0 <= giorni <= MAX_SCADENZA_AUTOMOD:
+        raise ValueError(f"I giorni vanno da 0 a {MAX_SCADENZA_AUTOMOD}.")
+    await db.set_guild_setting(guild_id, SETTING_SCADENZA_AUTOMOD, giorni, changed_by=autore_id)
 
 
 def avviso_warn_scatta(warn_attivi: int, soglia: int) -> bool:

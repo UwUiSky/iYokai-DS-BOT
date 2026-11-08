@@ -344,8 +344,11 @@ Totale voci: **514**.
 - `[x]` 5.6 Slowmode
   → **Stato 11/10:** ora scrive nel log di moderazione.
 - `[x]` 5.7 Clear avanzato con filtri
-  → **Stato 11/10:** filtri nuovi (testo, link, inviti, embed, menzioni, ruolo, persone, fissati), canale a scelta, riga di log (MOD-069, 071, 073-079, 083, 084, 086, 088). Filtro allegati da riprovare con l'intent acceso (BUG-5).
+  → **Stato 11/10:** filtri nuovi (testo, link, inviti, embed, menzioni, ruolo, persone, fissati), canale a scelta, riga di log (MOD-069, 071, 073-076, 078, 083, 086, 088). Filtro allegati da riprovare con l'intent acceso (BUG-5).
   → **Fatto (r10):** l'intent `message_content` è acceso in `main.py`; il filtro allegati ha il suo test. Resta la prova su Discord (VERIFICA_LIVE).
+  → **Correzione (r16mod, M1):** MOD-077 (solo emoji) e MOD-079 (solo testo) NON erano fatti: i filtri mancavano. Ora ci sono, con `tipo:` (webhook, iyokai, emoji, solo-testo, sospetti: MOD-084, 089, 085) e `modo:` (contiene, inizia, finisce, uguale: MOD-070). Prove su Discord in VERIFICA_LIVE.
+  → **Fatto (r16mod, M2):** `modo:regex` (RE2, MOD-072), `dopo:`/`prima:` con ID o link (MOD-081), `piu_vecchi_di:`/`piu_nuovi_di:` (MOD-082), fino a 1.000 messaggi con al massimo 100 più vecchi di 14 giorni per comando (MOD-087, D66), nuovo `/mod-canali reazioni` (MOD-080: toglie le reazioni senza cancellare; tetto 100, pausa, stop dopo 3 risposte 403).
+  → **Fatto (r16mod, M3):** `/mod-casi caso durata|nascondi|esporta` (MOD-012, 045, 043), `/mod-casi avvisi elenco|azzera-tutti` (MOD-027, 030), scadenza dei casi AutoMod con `/mod-sanzioni opzioni imposta scadenza_automod:` (MOD-048, base 0 = mai). Migrazione 0510.
 - `[x]` 5.8 DM all'utente moderato
   → **Stato 04/10:** il DM parte prima dell'azione (LIM-8).
 - `[x]` 5.9 **"Reason obbligatorio"** — `reason: str` (non più

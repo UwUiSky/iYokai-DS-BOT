@@ -24,24 +24,32 @@ e classifica dei warn (/mod-casi avvisi). Le azioni che cancellano dati
 Casi anche per ban, kick e timeout fatti fuori da iYokai (MOD-047, se acceso).
 Avviso allo staff quando rientra chi ha dei casi (MOD-064, se acceso).
 Sanzioni ancora attive (MOD-013): tempban, timeout, mute con ruolo e lock a tempo.
-Funzioni coperte: SPEC §5.2, §5.3 (MOD-013, 046, 047, 049, 064, 027..031, 037, 039, 041, 042, 044, 054..056)
+Casi: durata nuova (MOD-012), esportazione (MOD-043), nascosti (MOD-045), elenco e azzeramento dei
+warn del server (MOD-027, 030), scadenza dei casi AutoMod (MOD-048).
+Funzioni coperte: SPEC §5.2, §5.3 (MOD-012, 013, 027..031, 037, 039, 041..049, 054..056, 064)
 """
 
 from __future__ import annotations
 
+import io
+import logging
+
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 from core import bot_roles, moderation_opzioni
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.moderation_casi_logic import errore_durata_caso, testo_esportazione
 from core.i18n import testo_per
 from core.moderation_casi_esterni_logic import ACTION_TYPE_POSSIBILI, caso_da_voce
 
 from core.repositories.moderation_repo import moderation_repo, ModerationCase
 from core.premium import PremiumModule, registry, requires_module
-from core.scheduler import scheduler
+from core.scheduler import in_seconds, scheduler
+from cogs.leveling._pagine import invia_lista
+from cogs.moderation.softban_mute import SCHEDULED_MUTE_EXPIRE
 from cogs.moderation.actions import SCHEDULED_TEMPBAN_EXPIRE
 from cogs.moderation.channel_control import SCHEDULED_CHANNEL_UNLOCK
 from cogs.moderation._shared import (
@@ -49,6 +57,9 @@ from cogs.moderation._shared import (
     MAX_LINE_TEXT_LENGTH,
     MODULE_CASE_SYSTEM,
     Reason,
+    audit_reason,
+    format_duration,
+    parse_duration,
     check_can_moderate,
     ensure_module_enabled,
     join_within_limit,
@@ -56,6 +67,15 @@ from cogs.moderation._shared import (
     truncate_text,
     validate_reason,
 )
+
+logger = logging.getLogger(__name__)
+
+# File di esportazione: sotto i 10 MiB che Discord accetta.
+MAX_FILE_ESPORTAZIONE = 9 * 1024 * 1024
+# MOD-012: permesso che serve per cambiare la durata di ogni tipo di caso.
+PERMESSO_DURATA = {"tempban": "ban_members", "timeout": "moderate_members", "mute_role": "manage_roles"}
+# Warn del server: se ne leggono al massimo 200 (20 pagine da 10).
+MAX_WARN_ELENCO = 200
 
 # Una nota finisce nella descrizione di un embed insieme alle altre:
 # 1000 caratteri bastano e tengono leggibile l'elenco.
@@ -169,6 +189,26 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
+    async def cog_load(self) -> None:
+        await super().cog_load()
+        self.scadenza_casi.start()
+
+    async def cog_unload(self) -> None:
+        self.scadenza_casi.cancel()
+        await super().cog_unload()
+
+    @tasks.loop(hours=1)
+    async def scadenza_casi(self) -> None:
+        """MOD-048: i casi AutoMod con la scadenza passata non contano più."""
+        try:
+            await moderation_repo.expire_due_cases()
+        except Exception:  # noqa: BLE001 - un errore del database non ferma il giro dopo
+            logger.exception("Scadenza dei casi AutoMod non riuscita.")
+
+    @scadenza_casi.before_loop
+    async def _prima_della_scadenza(self) -> None:
+        await self.bot.wait_until_ready()
+
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:
         """MOD-064: se il server lo vuole, lo staff sa quando rientra chi ha già dei casi."""
@@ -229,6 +269,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
             action_type=voce.tipo,
             reason=voce.motivo,
             duration_seconds=voce.durata_secondi,
+            origine="esterno",
         )
         embed = discord.Embed(
             title=f"{_ACTION_ICONS.get(voce.tipo, '•')} Caso #{numero} (fatto fuori da iYokai)",
@@ -616,6 +657,157 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "casesystem_cancellate_note_di", n=n, mention=member.mention), ephemeral=True)
 
     # ================================================================
+    # /mod-casi caso: durata, nascondi, esporta (M3)
+    # ================================================================
+    @comando_di_gruppo(
+        "mod-casi",
+        nome="durata",
+        descrizione="Cambia la durata di un tempban, di un timeout o di un mute ancora in corso.",
+        sottogruppo=("caso", "Storico e dettagli dei casi di moderazione."),
+    )
+    @app_commands.describe(
+        case_number="Il numero del caso", durata="La nuova durata, contata da adesso (es. 2h, 7d)"
+    )
+    @requires_module(MODULE_CASE_SYSTEM)
+    async def case_duration(
+        self,
+        interaction: discord.Interaction,
+        case_number: app_commands.Range[int, 1, INT4_MAX],
+        durata: app_commands.Range[str, 2, 20],
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
+            return
+        guild = interaction.guild
+        try:
+            secondi = parse_duration(durata)
+        except ValueError as exc:
+            await interaction.response.send_message(str(exc), ephemeral=True)
+            return
+        caso = await moderation_repo.get_case(guild.id, case_number)
+        if caso is None:
+            await interaction.response.send_message(
+                await testo_per(interaction, "casesystem_nessun_caso_trovato_su_questo", case_number=case_number), ephemeral=True
+            )
+            return
+        errore = errore_durata_caso(caso.action_type, caso.active, secondi)
+        if errore:
+            await interaction.response.send_message(errore, ephemeral=True)
+            return
+        # Il bot agisce per chi comanda: serve il permesso della sanzione e la gerarchia.
+        permessi = interaction.user.guild_permissions
+        if not (permessi.administrator or getattr(permessi, PERMESSO_DURATA[caso.action_type])):
+            await interaction.response.send_message(
+                await testo_per(interaction, "casesystem_durata_serve_permesso"), ephemeral=True
+            )
+            return
+        bersaglio = guild.get_member(caso.user_id)
+        if bersaglio is not None and not await check_can_moderate(interaction, bersaglio):
+            return
+        await interaction.response.defer(ephemeral=True)
+        fine = in_seconds(secondi)
+        if caso.action_type == "timeout":
+            membro = bersaglio
+            if membro is None:
+                await interaction.followup.send(await testo_per(interaction, "casesystem_durata_membro_assente"), ephemeral=True)
+                return
+            try:
+                await membro.edit(timed_out_until=fine, reason=audit_reason(f"Durata del caso #{case_number} cambiata"))
+            except discord.HTTPException:
+                await interaction.followup.send(await testo_per(interaction, "casesystem_durata_non_riuscita"), ephemeral=True)
+                return
+        elif caso.action_type == "tempban":
+            stato = await moderation_repo.get_tempban_state(guild.id, caso.user_id)
+            await moderation_repo.cancel_tempban_jobs(guild.id, caso.user_id)
+            if stato:
+                await moderation_repo.save_tempban_state(
+                    guild.id, caso.user_id, stato["modo"], list(stato["ruoli"]), fine,
+                    stato["invito_codice"], case_number, stato["oauth_rientro"],
+                )
+            await scheduler.schedule(
+                guild_id=guild.id, user_id=caso.user_id, action_type=SCHEDULED_TEMPBAN_EXPIRE,
+                execute_at=fine, payload={"case_number": case_number, "modo": stato["modo"] if stato else "ban"},
+            )
+        else:  # mute con ruolo
+            stato = await moderation_repo.get_mute_state(guild.id, caso.user_id)
+            await scheduler.cancel_for_user(guild.id, caso.user_id, SCHEDULED_MUTE_EXPIRE)
+            await moderation_repo.save_mute_state(
+                guild.id, caso.user_id, bool(stato and stato["hard"]), list(stato["ruoli"]) if stato else [],
+                case_number, fine,
+            )
+            await scheduler.schedule(
+                guild_id=guild.id, user_id=caso.user_id, action_type=SCHEDULED_MUTE_EXPIRE,
+                execute_at=fine, payload={"caso": case_number},
+            )
+        await moderation_repo.update_case_duration(guild.id, case_number, secondi)
+        await interaction.followup.send(
+            await testo_per(interaction, "casesystem_durata_cambiata", case_number=case_number, durata=format_duration(secondi)),
+            ephemeral=True,
+        )
+        embed = discord.Embed(
+            title=await testo_per(interaction, "casesystem_durata_log", case_number=case_number, pubblica=True),
+            color=discord.Color.blurple(),
+        )
+        embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore", pubblica=True), value=interaction.user.mention, inline=True)
+        embed.add_field(name=await testo_per(interaction, "casesystem_durata_nuova", pubblica=True), value=format_duration(secondi), inline=True)
+        await post_to_mod_log(guild, embed)
+
+    @comando_di_gruppo(
+        "mod-casi",
+        nome="nascondi",
+        descrizione="Nasconde un caso (non conta in classifiche e avvisi) o lo riattiva.",
+        sottogruppo=("caso", "Storico e dettagli dei casi di moderazione."),
+    )
+    @app_commands.describe(case_number="Il numero del caso", nascosto="Sì per nascondere, no per riattivare")
+    @requires_module(MODULE_CASE_SYSTEM)
+    async def case_hide(
+        self,
+        interaction: discord.Interaction,
+        case_number: app_commands.Range[int, 1, INT4_MAX],
+        nascosto: bool = True,
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
+            return
+        if not await moderation_repo.set_case_hidden(interaction.guild.id, case_number, nascosto):
+            await interaction.response.send_message(
+                await testo_per(interaction, "casesystem_nessun_caso_trovato_su_questo", case_number=case_number), ephemeral=True
+            )
+            return
+        chiave = "casesystem_caso_nascosto" if nascosto else "casesystem_caso_riattivato"
+        await interaction.response.send_message(await testo_per(interaction, chiave, case_number=case_number), ephemeral=True)
+        embed = discord.Embed(
+            title=await testo_per(interaction, chiave, case_number=case_number, pubblica=True), color=discord.Color.dark_grey()
+        )
+        embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore", pubblica=True), value=interaction.user.mention, inline=True)
+        await post_to_mod_log(interaction.guild, embed)
+
+    @comando_di_gruppo(
+        "mod-casi",
+        nome="esporta",
+        descrizione="Manda in un file di testo i casi e le note di un membro.",
+        sottogruppo=("caso", "Storico e dettagli dei casi di moderazione."),
+    )
+    @app_commands.describe(utente="Il membro (anche se ha lasciato il server)")
+    @requires_module(MODULE_CASE_SYSTEM)
+    async def case_export(self, interaction: discord.Interaction, utente: discord.User) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
+            return
+        await interaction.response.defer(ephemeral=True)
+        casi = await moderation_repo.list_all_cases_for_user(interaction.guild.id, utente.id)
+        note = await moderation_repo.list_notes_for_user(interaction.guild.id, utente.id, 1000)
+        if not casi and not note:
+            await interaction.followup.send(await testo_per(interaction, "casesystem_esporta_vuoto"), ephemeral=True)
+            return
+        testo = testo_esportazione(utente.id, casi, note)
+        dati = testo.encode("utf-8")
+        if len(dati) > MAX_FILE_ESPORTAZIONE:  # sotto i 10 MiB dei file di Discord
+            dati = dati[:MAX_FILE_ESPORTAZIONE].decode("utf-8", errors="ignore").encode("utf-8")
+        await interaction.followup.send(
+            await testo_per(interaction, "casesystem_esporta_pronto", v1=len(casi), v2=len(note)),
+            file=discord.File(io.BytesIO(dati), filename=f"casi_{utente.id}.txt"),
+            ephemeral=True,
+        )
+
+    # ================================================================
     # /mod-casi avvisi: togliere i warn e la classifica
     # ================================================================
     @comando_di_gruppo(
@@ -675,6 +867,58 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         testo = "\n".join(f"{i}. <@{u}> — {n} warn" for i, (u, n) in enumerate(classifica, 1))
         embed = discord.Embed(title=await testo_per(interaction, "casesystem_piu_warn_attivi"), description=testo, color=discord.Color.yellow())
         await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @comando_di_gruppo(
+        "mod-casi",
+        nome="elenco",
+        descrizione="Tutti i warn attivi del server, a pagine.",
+        sottogruppo=("avvisi", "Warn: toglierli, azzerarli, classifica."),
+    )
+    @requires_module(MODULE_CASE_SYSTEM)
+    async def warn_list(self, interaction: discord.Interaction) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
+            return
+        warn = await moderation_repo.list_active_warns(interaction.guild.id, MAX_WARN_ELENCO)
+        if not warn:
+            await interaction.response.send_message(await testo_per(interaction, "casesystem_nessun_warn_attivo_sul_server"), ephemeral=True)
+            return
+        righe = [
+            f"**#{c.case_number}** <@{c.user_id}> — {truncate_text(c.reason or '-', MAX_LINE_TEXT_LENGTH)}" for c in warn
+        ]
+        await invia_lista(
+            interaction, await testo_per(interaction, "casesystem_warn_attivi_titolo"), righe,
+            discord.Color.yellow(), ephemeral=True,
+        )
+
+    @comando_di_gruppo(
+        "mod-casi",
+        nome="azzera-tutti",
+        descrizione="Toglie i warn attivi di tutto il server (serve «Gestire il server»).",
+        sottogruppo=("avvisi", "Warn: toglierli, azzerarli, classifica."),
+    )
+    @app_commands.describe(conferma="Scrivi quanti warn attivi ha il server adesso (lo vedi con /mod-casi avvisi elenco)")
+    @requires_module(MODULE_CASE_SYSTEM)
+    async def warn_reset_all(
+        self, interaction: discord.Interaction, conferma: app_commands.Range[int, 0, INT4_MAX]
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
+            return
+        if await _rifiuta_senza_gestione(interaction):
+            return
+        quanti = await moderation_repo.count_active_warns(interaction.guild.id)
+        if conferma != quanti:
+            await interaction.response.send_message(
+                await testo_per(interaction, "casesystem_azzera_tutti_numero_sbagliato", v1=quanti), ephemeral=True
+            )
+            return
+        n = await moderation_repo.revoke_all_warns(interaction.guild.id, interaction.user.id)
+        await interaction.response.send_message(await testo_per(interaction, "casesystem_azzera_tutti_fatto", v1=n), ephemeral=True)
+        embed = discord.Embed(
+            title=await testo_per(interaction, "casesystem_azzera_tutti_log", pubblica=True), color=discord.Color.dark_grey()
+        )
+        embed.add_field(name=await testo_per(interaction, "channelcontr_moderatore", pubblica=True), value=interaction.user.mention, inline=True)
+        embed.add_field(name=await testo_per(interaction, "clear_cancellati", pubblica=True), value=str(n), inline=True)
+        await post_to_mod_log(interaction.guild, embed)
 
 
 async def setup(bot: commands.Bot) -> None:

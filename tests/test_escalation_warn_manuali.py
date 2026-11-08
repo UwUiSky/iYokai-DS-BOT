@@ -98,6 +98,9 @@ async def test_tre_warn_manuali_fanno_scattare_il_gradino(monkeypatch):
     assert isola.await_args.args[1].total_seconds() == 3600
     assert "infrazione #3" in interazione.followup.send.await_args.args[0]
     assert await _tipi(A) == ["automod_escalation"] * 2 + ["warn"] * 3
+    origini = {r["action_type"]: r["origine"] for r in await db.pool.fetch(
+        "SELECT action_type, origine FROM moderation_cases WHERE guild_id = $1", SERVER)}
+    assert origini == {"automod_escalation": "automod", "warn": "manuale"}  # MOD-048
 
 
 async def test_ogni_gradino_applicato_lascia_una_riga_nel_log_di_moderazione(monkeypatch):

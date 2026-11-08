@@ -103,7 +103,7 @@ class StaffCaricoRepository:
         return ore
 
     async def segnali_utente(self, guild_id: int, user_id: int) -> tuple[int, int, int, int, int]:
-        """(warn attivi, timeout 90 giorni, kick, ban o tempban, spam trap) dai casi di moderazione."""
+        """(warn attivi, timeout 90 giorni, kick, ban o tempban, spam trap) dai casi non nascosti (MOD-045)."""
         riga = await self._pool.fetchrow(
             """
             SELECT
@@ -112,7 +112,7 @@ class StaffCaricoRepository:
                 count(*) FILTER (WHERE action_type IN ('kick', 'spam_trap_kick')) AS kick,
                 count(*) FILTER (WHERE action_type IN ('ban', 'tempban', 'softban', 'spam_trap_ban')) AS ban,
                 count(*) FILTER (WHERE action_type LIKE 'spam_trap%') AS trappola
-            FROM moderation_cases WHERE guild_id = $1 AND user_id = $2
+            FROM moderation_cases WHERE guild_id = $1 AND user_id = $2 AND NOT hidden
             """,
             guild_id, user_id,
         )

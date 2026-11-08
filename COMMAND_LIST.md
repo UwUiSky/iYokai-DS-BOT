@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 18:54 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 12:06 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 665 comandi in 41 categorie.**
+**Totale: 679 comandi in 41 categorie.**
 
 ## Admin: AI
 
@@ -74,10 +74,14 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 18:
 
 ## Admin: AutoMod
 
+- **`/admin-automod azzera`** — Azzera un contatore delle regole AutoMod.
 - **`/admin-automod esenzioni channel-add`** — Esenta un canale da tutti i filtri AutoMod avanzati.
 - **`/admin-automod esenzioni channel-remove`** — Rimuove l'esenzione di un canale.
 - **`/admin-automod esenzioni role-add`** — Esenta un ruolo da tutti i filtri AutoMod avanzati.
 - **`/admin-automod esenzioni role-remove`** — Rimuove l'esenzione di un ruolo.
+- **`/admin-automod gruppo`** — Accende o spegne tutte le regole di un gruppo.
+- **`/admin-automod immagini`** — Impostazioni del filtro per le immagini sospette.
+- **`/admin-automod liste`** — Apre il pannello delle liste con nome: parole e domini.
 - **`/admin-automod log-channel`** — Imposta il canale dove pubblicare il log delle azioni AutoMod avanzate.
 - **`/admin-automod mute-duration`** — Imposta la durata del timeout usato dall'azione 'mute' dell'AutoMod.
 - **`/admin-automod odio base`** — Accende o spegne la lista di base degli insulti d'odio.
@@ -90,15 +94,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 18:
 - **`/admin-automod parole add`** — Aggiunge una parola vietata.
 - **`/admin-automod parole list`** — Mostra le parole vietate configurate.
 - **`/admin-automod parole remove`** — Rimuove una parola vietata.
+- **`/admin-automod regole`** — Apre il pannello delle regole AutoMod: condizioni e azioni.
+- **`/admin-automod riepilogo`** — Riepilogo delle violazioni AutoMod del server, a pagine.
 - **`/admin-automod status`** — Mostra la configurazione attuale dei filtri AutoMod avanzati.
 - **`/admin-automod sync`** — Forza una sincronizzazione manuale delle regole AutoMod.
 - **`/admin-automod violazione-togli`** — Toglie una violazione dal registro AutoMod.
-- **`/admin-automod riepilogo`** — Riepilogo delle violazioni AutoMod del server, a pagine (D63, AMD-063/064).
-- **`/admin-automod azzera`** — Azzera un contatore delle regole AutoMod, con conferma (D63, AMD-066).
-- **`/admin-automod regole`** — Pannello delle regole: condizioni, azioni, contatore, gruppo e calore (D63).
-- **`/admin-automod gruppo`** — Accende o spegne tutte le regole di un gruppo (AMD-067).
-- **`/admin-automod immagini`** — Impostazioni del filtro per le immagini sospette (D62/D63; serve il filone immagini).
-- **`/admin-automod liste`** — Pannello delle liste con nome: parole e domini, più `@parolacce-it`, `@parolacce-en`, `@vetrine-inviti` in sola lettura (D63).
 - **`/admin-automod violazioni`** — Mostra le violazioni AutoMod di un utente, a pagine.
 
 ## Admin: backup
@@ -607,19 +607,25 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 18:
 - **`/mod-canali blocco togli`** — Riapre il server com'era prima del blocco.
 - **`/mod-canali clear`** — Cancella un numero di messaggi, con filtri opzionali.
 - **`/mod-canali lock`** — Blocca la possibilità di scrivere in un canale.
+- **`/mod-canali reazioni`** — Toglie le reazioni dagli ultimi messaggi di un canale, senza cancellarli.
 - **`/mod-canali slowmode`** — Imposta lo slowmode su un canale.
 - **`/mod-canali unlock`** — Sblocca la possibilità di scrivere in un canale.
 
 ## Mod: casi e note
 
 - **`/mod-casi avvisi azzera`** — Toglie tutti i warn attivi di un membro (serve «Gestire il server»).
+- **`/mod-casi avvisi azzera-tutti`** — Toglie i warn attivi di tutto il server (serve «Gestire il server»).
 - **`/mod-casi avvisi classifica`** — I membri con più warn attivi.
+- **`/mod-casi avvisi elenco`** — Tutti i warn attivi del server, a pagine.
 - **`/mod-casi avvisi togli`** — Toglie un singolo warn (per numero di caso).
 - **`/mod-casi carico`** — Carico dello staff e turni proposti. Solo amministratori, mai pubblico.
 - **`/mod-casi caso attive`** — Sanzioni ancora in corso: tempban, timeout, mute, lock a tempo.
 - **`/mod-casi caso classifica-staff`** — Classifica dei moderatori per numero di azioni, o casi di uno solo.
+- **`/mod-casi caso durata`** — Cambia la durata di un tempban, di un timeout o di un mute ancora in corso.
 - **`/mod-casi caso elimina`** — Elimina un caso (serve «Gestire il server»).
+- **`/mod-casi caso esporta`** — Manda in un file di testo i casi e le note di un membro.
 - **`/mod-casi caso motivo`** — Cambia il motivo di un caso già registrato.
+- **`/mod-casi caso nascondi`** — Nasconde un caso (non conta in classifiche e avvisi) o lo riattiva.
 - **`/mod-casi caso registra`** — Registra un caso senza eseguire l'azione (sanzione data fuori dal bot).
 - **`/mod-casi caso storico`** — Mostra lo storico casi di un membro.
 - **`/mod-casi caso vedi`** — Mostra i dettagli di un singolo caso.
@@ -726,6 +732,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-01 18:
 - **`/owner system richieste-canale`** — Imposta il canale delle richieste (solo nel server principale).
 - **`/owner system shell`** — Esegue un comando shell (con conferma).
 - **`/owner system stats`** — Statistiche globali del bot.
+- **`/owner system storico-vpn`** — Solo proprietario: i server che hanno lasciato passare una persona segnalata come VPN/proxy.
 
 ## Sondaggi
 

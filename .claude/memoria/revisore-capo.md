@@ -1,12 +1,12 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
+02/11/2026 · `feat/r16mod` (M1–M3, #115, D66): merge main (2d560e9), 6 fix (06021a6, 9e7dda7, d069d00, 6ac5246, 467d512, 861c0aa); 6 basse aperte. APPROVATO. Smoke da fare: clear_filtri, casi_m3, automod_azioni, escalation_*, staff_rischio, 0510, tree_invariants, f7_moderazione_gruppi, i18n, riferimenti.
 02/11/2026 · `feat/r15automod` (D63 A1–A8, #116): main già unito, 10 fix (c9a9dee, c9852c0, 885acee, 389201c, 28c12c9, 4284b22, 79138ab, c2b1a65, 1e4c79f, 23e00c8) + documenti 535d5d1; 7 basse aperte. APPROVATO. Smoke da fare: test_automod_*, immagini_cog, 0500–0503, tree_invariants, riferimenti, i18n.
 02/11/2026 · `feat/r15immagini` (D62/D63, #153): main già unito, 10 fix (sandbox attesa, no ripiego dopo lavoro preso, worker senza Pillow, staff controllati, malevola = timeout, solo malevole in libreria, cache/libreria, 72 h, gruppo systemd, docstring). APPROVATO. Smoke da fare: test_immagini_*, migrazioni 0504–0506, riferimenti.
 02/11/2026 · `feat/r15vpn` (D64, D65, 0507, 0508, #155): merge main (0b07b2f), 6 fix (e5e4774, 14568f1, a895a2c, 9ff3e96, 38ec7c5, 72e1fed); 6 basse/medie aperte nel quaderno. APPROVATO. Smoke da fare: 0507, 0508, verify_vpn*, panel_bridge, panel_proprietario, modmail, data_registry, aggiorna_vpn.
 01/11/2026 · `feat/r14lingue` (D58, #77): main già unito, 5 fix (5afa1c1, 5fc82bf, fb493e7, 7a66e08, 6f3a7a3); 4 basse aperte. APPROVATO. Smoke da fare: i18n, translator, lingue_struttura, cerca-comando.
-01/11/2026 · `feat/r14paese` (D53, 0490): merge main (becf64f), 4 fix (fde536c, 9462b25, 735d4a0, a7b0cd3); 4 basse aperte. APPROVATO. Smoke da fare: 0490, verify, panel_bridge.
-Giri r6–r13: tutti APPROVATI dopo i fix (commit e basse nel quaderno). `f7-quadro` APPROVATO, manca l'unione.
+Giri r6–r14paese: tutti APPROVATI dopo i fix (commit e basse nel quaderno). `f7-quadro` APPROVATO, manca l'unione.
 
 ## In corso
 - Niente. Al prossimo giro: righe aperte del quaderno per il ramo riconsegnato.
@@ -35,6 +35,7 @@ Giri r6–r13: tutti APPROVATI dopo i fix (commit e basse nel quaderno). `f7-qua
 - `AllowedMentions(roles=...)` ha `everyone=True`. Azioni automatiche: tetto = ciò che può fare il moderatore (D28, D29). Bot secondari (D15); App utente: `guild_id=None`.
 - Sandbox: ogni attesa del figlio dentro il tempo vero; dopo che il servizio ha preso il lavoro, niente ripiego più debole; uscita >0 da interprete rotto ≠ malevola. Unità systemd: mai il gruppo del bot al servizio (il PNG torna nei log = canale di fuga).
 - Regex native Discord 10×260; jolly ripetuti = tempo esponenziale.
+- `purge` di discord.py: dopo il primo messaggio oltre 14 giorni passa a cancellare uno per uno TUTTO il resto; con `after` legge dal più vecchio: serve `oldest_first=False`. Scadenze automatiche dei casi: mai su sanzioni in corso (active = in corso per ban/tempban/timeout/mute).
 - Motore azioni: 403 su chi Discord non lascia toccare (proprietario, ruolo ≥ bot) non è un permesso mancato: niente sospensione per server. Finti: posizione 0 = raggiungibile. «Applica» dello staff = il bot agisce per lui: permessi di ogni sanzione + gerarchia. Soglie: scatta solo chi consuma (UPDATE conta righe).
 - AI: `pulisci_dati_personali` verso servizi non AI; filtro «addestra» in `scegli_fornitori` (D55). File di esempio con segnaposto: il caricatore li scarta.
 

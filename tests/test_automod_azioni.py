@@ -258,6 +258,7 @@ async def test_mute_col_ruolo_crea_il_caso_lo_stato_e_la_scadenza(monkeypatch):
     monkeypatch.setattr(moderation_repo, "save_mute_state", salva)
     assert await M.esegui_azioni(A({"t": "mute_ruolo", "secondi": 3600}), b) == ("mute_ruolo",)
     assert salva.await_args.args[:2] == (G, 42) and salva.await_args.args[4] == 3
+    assert moderation_repo.create_case.await_args.kwargs["origine"] == "automod"  # MOD-048: può scadere
     assert M.scheduler.schedule.await_args.args[2] == sm.SCHEDULED_MUTE_EXPIRE
     assert M.scheduler.schedule.await_args.args[4] == {"caso": 3}
 
@@ -276,6 +277,7 @@ async def test_ban_a_tempo_pianifica_lo_sban_e_ha_il_dm_prima(monkeypatch):
     assert await M.esegui_azioni(A({"t": "ban_tempo", "giorni": 7}), b) == ("ban_tempo",)
     assert ordine == ["dm", "ban"]
     assert crea.await_args.kwargs["duration_seconds"] == 7 * 86400
+    assert crea.await_args.kwargs["origine"] == "automod"
     assert M.scheduler.schedule.await_args.args[2] == SCHEDULED_TEMPBAN_EXPIRE
     assert M.scheduler.schedule.await_args.args[4] == {"case_number": 9, "modo": "fuori"}
 
@@ -334,3 +336,16 @@ async def test_l_owner_del_bot_e_protetto(monkeypatch):
     monkeypatch.setattr(M.bot_roles, "isola", isola)
     assert await M.esegui_azioni(A({"t": "timeout", "secondi": 60}), b) == ()
     isola.assert_not_awaited()
+
+
+async def test_il_warn_dell_automod_crea_un_caso_con_origine_automod(monkeypatch):
+    import cogs.moderation._shared as condiviso
+    from core.repositories.moderation_repo import moderation_repo
+
+    b, _ = _bers()
+    crea = AsyncMock(return_value=4)
+    monkeypatch.setattr(moderation_repo, "create_case", crea)
+    monkeypatch.setattr(condiviso, "try_dm", AsyncMock())
+    monkeypatch.setattr(condiviso, "post_to_mod_log", AsyncMock())
+    assert await M.esegui_azioni(A({"t": "warn"}), b) == ("warn",)
+    assert crea.await_args.kwargs["origine"] == "automod"

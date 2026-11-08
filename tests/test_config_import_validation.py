@@ -105,6 +105,7 @@ SETTINGS_VALIDE = {
     "mod_ruoli_immuni": [212121212121212121],
     "mod_casi_esterni": True,
     "mod_avviso_warn_soglia": 3,
+    "mod_scadenza_automod_giorni": 30,
     "mod_avviso_rientro": True,
     "spam_trap_punizione": "staff",
     "log_webhook": True,
