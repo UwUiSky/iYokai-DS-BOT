@@ -2441,7 +2441,10 @@ class TicketsCog(CogConGruppi, commands.Cog):
                 channel, opzioni.prefisso_preso, (opzioni.prefisso_preso, opzioni.prefisso_chiuso), "Ticket preso in carico"
             )
         if opzioni.claim_esclusivo != "no":
-            await self._permessi_staff(guild, channel, ticket.panel_id, esclusiva=opzioni.claim_esclusivo, titolare=staff)
+            await self._permessi_staff(
+                guild, channel, ticket.panel_id, esclusiva=opzioni.claim_esclusivo, titolare=staff,
+                solo_admin=ticket.solo_admin,
+            )
             if precedente is not None and precedente not in (staff.id, ticket.user_id):
                 await self._togli_permessi_personali(guild, channel, precedente)
         if opzioni.testo_presa:
@@ -2460,13 +2463,17 @@ class TicketsCog(CogConGruppi, commands.Cog):
         except discord.HTTPException:
             logger.warning("Permessi di %s non tolti dal ticket %s.", user_id, channel.id)
 
-    async def _permessi_staff(self, guild: discord.Guild, channel, panel_id, *, esclusiva: str, titolare=None) -> None:
+    async def _permessi_staff(
+        self, guild: discord.Guild, channel, panel_id, *, esclusiva: str, titolare=None, solo_admin: bool = False
+    ) -> None:
         """
         TKT-050: con la presa esclusiva i ruoli dello staff non scrivono ("scrivere") o non vedono
         ("vedere"); chi ha il ticket scrive sempre. esclusiva="no" rimette i ruoli come all'apertura.
         Si cambia un permesso solo: overwrites_for + update + overwrite=.
+        TKT-046: in un ticket «solo admin» i ruoli degli addetti non si toccano (restano fuori).
         """
-        for role_id in await _ruoli_staff(guild.id, panel_id):
+        ruoli = ruoli_con_accesso(await _ruoli_staff(guild.id, panel_id), await _ruoli_admin(guild.id), solo_admin)
+        for role_id in ruoli:
             role = guild.get_role(role_id)
             if role is None or role_id == guild.id:
                 continue
@@ -2586,7 +2593,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         await ticket_repo.release_ticket(interaction.channel.id)
         opzioni = await _opzioni_pannello(ticket.panel_id)
         if opzioni.claim_esclusivo != "no":
-            await self._permessi_staff(interaction.guild, interaction.channel, ticket.panel_id, esclusiva="no")
+            await self._permessi_staff(
+                interaction.guild, interaction.channel, ticket.panel_id, esclusiva="no", solo_admin=ticket.solo_admin
+            )
             if ticket.claimed_by != ticket.user_id:
                 await self._togli_permessi_personali(interaction.guild, interaction.channel, ticket.claimed_by)
         testo = (

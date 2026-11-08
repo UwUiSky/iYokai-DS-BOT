@@ -259,3 +259,40 @@ async def test_formato_del_transcript_nel_pannello_e_solo_tra_quelli_ammessi(cle
     assert (o.transcript_formato, o.allegati_zip) == ("html", True)
     with pytest.raises(Exception):
         await ticket_opzioni_repo.imposta(p.id, transcript_formato="pdf")
+
+
+# ====================================================================
+# Revisione: «solo admin» resta tale dopo presa, rilascio e reperibili
+# ====================================================================
+async def _ticket_solo_admin(claim_esclusivo: str):
+    p = await _pannello()
+    await ticket_opzioni_repo.imposta(p.id, claim_esclusivo=claim_esclusivo)
+    await ticket_repo.imposta_livello_ruolo(GUILD, 7, "admin")
+    await db.set_guild_setting(GUILD, modulo.SETTING_SUPPORT_ROLES, [7, 8])
+    await ticket_repo.create_ticket(GUILD, UTENTE, 300, ticket_number=1, panel_id=p.id)
+    await ticket_repo.set_solo_admin(300, True)
+    return await ticket_repo.get_ticket_by_channel(300)
+
+
+def _ruoli_toccati(canale) -> set[int]:
+    return {c.args[0].id for c in canale.set_permissions.await_args_list}
+
+
+async def test_presa_in_carico_non_ridà_la_vista_agli_addetti_di_un_ticket_solo_admin(cog):
+    t = await _ticket_solo_admin("scrivere")
+    canale = fake_text_channel(300)
+    staff = fake_member(31, roles=[fake_role(role_id=7, name="admin")])
+    await cog._dopo_presa(Server().guild, canale, t, staff)
+    assert 8 not in _ruoli_toccati(canale) and 7 in _ruoli_toccati(canale)
+
+
+async def test_rilascio_non_ridà_la_vista_agli_addetti_di_un_ticket_solo_admin(cog):
+    t = await _ticket_solo_admin("scrivere")
+    await ticket_repo.claim_ticket(300, 31)
+    s = Server()
+    m = fake_member(31, roles=[fake_role(role_id=7, name="admin")], guild_permissions=discord.Permissions())
+    i = fake_interaction(guild=s.guild, user=m)
+    i.channel = fake_text_channel(300)
+    await cog.rilascia.callback(cog, i)
+    assert 8 not in _ruoli_toccati(i.channel)
+
