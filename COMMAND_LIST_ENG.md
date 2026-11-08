@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 18:54 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 12:06 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 665 commands in 41 categories.**
+**Total: 679 commands in 41 categories.**
 
 ## Admin: AI
 
@@ -78,6 +78,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 18:5
 - **`/admin-automod exemptions channel-remove`** — Removes a channel's exemption.
 - **`/admin-automod exemptions role-add`** — Exempts a role from all advanced AutoMod filters.
 - **`/admin-automod exemptions role-remove`** — Removes a role's exemption.
+- **`/admin-automod gruppo`** — Turns all rules of a group on or off.
+- **`/admin-automod images`** — Settings for the suspicious image filter.
+- **`/admin-automod liste`** — Opens the AutoMod named lists panel: words and domains.
 - **`/admin-automod log-channel`** — Sets the channel for the advanced AutoMod action log.
 - **`/admin-automod mute-duration`** — Sets the timeout length used by the AutoMod 'mute' action.
 - **`/admin-automod odio base`** — Turns the base list of hate slurs on or off.
@@ -87,7 +90,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 18:5
 - **`/admin-automod odio prova`** — Tests a text against the banned words without acting.
 - **`/admin-automod odio richiami`** — How many warnings for hate words lead to a timeout.
 - **`/admin-automod odio status`** — Shows how the banned words are set up.
+- **`/admin-automod regole`** — Opens the AutoMod rules panel: conditions and actions.
+- **`/admin-automod reset`** — Resets an AutoMod rule counter.
 - **`/admin-automod status`** — Shows the current advanced AutoMod filter setup.
+- **`/admin-automod summary`** — AutoMod violations summary for the server, in pages.
 - **`/admin-automod sync`** — Forces a manual sync of the AutoMod rules.
 - **`/admin-automod violazione-togli`** — Removes one violation from the AutoMod log.
 - **`/admin-automod violazioni`** — Shows a user's AutoMod violations, in pages.
@@ -601,16 +607,22 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 18:5
 - **`/mod-channels lock`** — Blocks the ability to write in a channel.
 - **`/mod-channels lockdown enable`** — Lock all channels, invites and joins of the server.
 - **`/mod-channels lockdown remove`** — Reopen the server as it was before the lockdown.
+- **`/mod-channels reazioni`** — Removes reactions from the latest messages of a channel, without deleting them.
 - **`/mod-channels slowmode`** — Sets slowmode on a channel.
 - **`/mod-channels unlock`** — Unblocks the ability to write in a channel.
 
 ## Mod: cases and notes
 
+- **`/mod-cases alerts azzera-tutti`** — Removes the active warns of the whole server (needs Manage Server).
 - **`/mod-cases alerts leaderboard`** — Members with the most active warnings.
+- **`/mod-cases alerts list`** — All active warns in the server, in pages.
 - **`/mod-cases alerts remove`** — Removes a single warning (by case number).
 - **`/mod-cases alerts reset`** — Removes all of a member's active warnings (needs "Manage Server").
 - **`/mod-cases case active`** — Sanctions still running: tempbans, timeouts, mutes, timed locks.
 - **`/mod-cases case delete`** — Deletes a case (needs "Manage Server").
+- **`/mod-cases case durata`** — Changes the duration of a tempban, timeout or mute still in progress.
+- **`/mod-cases case export`** — Sends a member's cases and notes in a text file.
+- **`/mod-cases case hide`** — Hides a case (it stops counting in rankings and alerts) or restores it.
 - **`/mod-cases case history`** — Shows a member's case history.
 - **`/mod-cases case reason`** — Changes the reason of an already logged case.
 - **`/mod-cases case record`** — Logs a case without taking the action (sanction given outside the bot).
@@ -693,6 +705,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 18:5
 - **`/owner cog reload`** — Reloads an extension, optionally updating it from GitHub or a file.
 - **`/owner cog unload`** — Unloads an extension.
 - **`/owner hate-words`** — Bot owner only: the worldwide library of hate words.
+- **`/owner immagini-trappola`** — Bot owner only: the shared library of trap images.
 - **`/owner premium grant`** — Grants premium to a server, or creates a code to redeem.
 - **`/owner premium list`** — Shows the premium status of all modules.
 - **`/owner premium panel`** — Interactive panel to turn premium modules on or off.
@@ -719,6 +732,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-01 18:5
 - **`/owner system richieste-canale`** — Sets the requests channel (main server only).
 - **`/owner system shell`** — Runs a shell command (with confirmation).
 - **`/owner system stats`** — Global bot statistics.
+- **`/owner system storico-vpn`** — Bot owner only: servers that let a person through despite a VPN/proxy flag.
 
 ## Polls
 
