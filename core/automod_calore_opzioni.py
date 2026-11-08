@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 from core.automod_advanced_logic import CaloreConfig
+from core.automod_calore_logic import controlla
 from core.repositories.automod_advanced_repo import automod_advanced_repo
 
 CAMPI = ("attivo", "soglia", "calo_per_minuto", "fermo_minuti", "fermo_peso", "timeout_secondi", "warn")
@@ -21,11 +22,12 @@ async def leggi(guild_id: int) -> CaloreConfig:
 
 
 async def imposta(guild_id: int, **cambi) -> CaloreConfig:
-    """Cambia solo i campi dati (non None). Un nome che non esiste è un errore di chi chiama."""
+    """Cambia solo i campi dati (non None). Un nome che non esiste o un valore fuori dai limiti: ValueError."""
     sconosciuti = set(cambi) - set(CAMPI)
     if sconosciuti:
         raise ValueError(f"campi del calore sconosciuti: {sorted(sconosciuti)}")
     settings = await automod_advanced_repo.get_settings(guild_id)
     nuovo = replace(settings.config.calore, **{k: v for k, v in cambi.items() if v is not None})
+    controlla(nuovo)
     await automod_advanced_repo.save_settings(replace(settings, config=replace(settings.config, calore=nuovo)))
     return nuovo

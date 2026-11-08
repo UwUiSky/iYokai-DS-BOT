@@ -103,3 +103,9 @@ def config_da_json(dati) -> CaloreConfig:
 def config_a_json(c: CaloreConfig) -> dict:
     return {"attivo": c.attivo, "soglia": c.soglia, "calo_per_minuto": c.calo_per_minuto, "fermo_minuti": c.fermo_minuti,
             "fermo_peso": c.fermo_peso, "timeout_secondi": c.timeout_secondi, "warn": c.warn}
+
+
+def controlla(c: CaloreConfig) -> None:
+    """Un valore fuori dai limiti è un errore (ValueError): rileggerlo lo riporterebbe in silenzio a quello di base."""
+    if config_da_json(config_a_json(c)) != c:
+        raise ValueError("impostazioni del calore fuori dai limiti")

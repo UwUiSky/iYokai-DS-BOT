@@ -67,3 +67,22 @@ def test_config_a_json_e_ritorno():
     assert lg.config_da_json(lg.config_a_json(c)) == c
     assert lg.config_da_json({}) == CaloreConfig()
     assert lg.config_da_json({"soglia": -5, "fermo_peso": 999}).soglia == 100  # valori storti: di base
+
+
+async def test_imposta_rifiuta_valori_fuori_dai_limiti_senza_salvare(monkeypatch):
+    """Unico punto di scrittura (D16): il pannello web non ha i Range del comando, i limiti li controlla imposta."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    import pytest
+
+    from core import automod_calore_opzioni as opzioni
+
+    impostazioni = MagicMock()
+    impostazioni.config = MagicMock(calore=CaloreConfig())
+    repo = MagicMock(get_settings=AsyncMock(return_value=impostazioni), save_settings=AsyncMock())
+    monkeypatch.setattr(opzioni, "automod_advanced_repo", repo)
+    for cambio in ({"soglia": 5000}, {"soglia": 0}, {"calo_per_minuto": -1}, {"fermo_peso": 0},
+                   {"timeout_secondi": lg.MAX_TIMEOUT_S + 1}, {"attivo": "sì"}, {"soglia": True}):
+        with pytest.raises(ValueError):
+            await opzioni.imposta(1, **cambio)
+    repo.save_settings.assert_not_awaited()
