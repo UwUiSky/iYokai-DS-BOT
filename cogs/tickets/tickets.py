@@ -509,8 +509,11 @@ async def _entrano_nel_thread(thread, user_ids: list[int]) -> None:
 
 
 async def _avviso_thread_allo_staff(guild, thread, opzioni, utente, numero: int) -> None:
-    """TKT-032: avviso con il bottone «Entra» nel canale degli avvisi (o nel canale padre)."""
-    dove = guild.get_channel(opzioni.canale_avvisi_id or 0) or guild.get_channel(opzioni.canale_padre_id or 0)
+    """
+    TKT-032: avviso con il bottone «Entra» nel canale degli avvisi dello staff. Mai nel canale padre:
+    lo vede chiunque possa aprire un ticket. Senza canale degli avvisi lo staff entra dalla menzione del ruolo.
+    """
+    dove = guild.get_channel(opzioni.canale_avvisi_id or 0)
     if dove is None:
         return
     embed = discord.Embed(

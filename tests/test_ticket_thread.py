@@ -242,3 +242,12 @@ async def test_thread_acceso_senza_canale_padre_si_rifiuta():
     await opz_cog.TicketOpzioniCog.canale.callback(cog, inter, "Supporto", thread=True)
     assert "canale_thread" in str(inter.response.send_message.call_args)
     assert (await ticket_opzioni_repo.opzioni(p.id)).tipo == "canale"
+
+
+async def test_senza_canale_avvisi_l_avviso_non_finisce_nel_canale_padre():
+    """Il canale padre lo vedono tutti quelli che aprono ticket: l'avviso «X ha aperto un ticket» lì lo vedrebbero tutti."""
+    padre, thread = _padre()
+    padre.send = AsyncMock()
+    guild = SimpleNamespace(id=GUILD, get_channel=lambda i: {500: padre}.get(i))
+    await modulo._avviso_thread_allo_staff(guild, thread, OPZ, SimpleNamespace(mention="<@20>"), 1)
+    padre.send.assert_not_awaited()
