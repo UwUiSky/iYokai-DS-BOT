@@ -518,3 +518,11 @@ class TestElencoIntentAttivi:
 
         assert "members" in risultato
         assert "message_content" in risultato
+
+
+def test_intent_presenze_solo_con_l_interruttore_dello_stato(monkeypatch):
+    """AMD-018 (D63): spento di base il bot non chiede le presenze; acceso le chiede, o la regola «stato» non vede nulla."""
+    monkeypatch.delenv("AUTOMOD_STATO_ATTIVO", raising=False)
+    assert iYokaiBot().intents.presences is False
+    monkeypatch.setenv("AUTOMOD_STATO_ATTIVO", "1")
+    assert iYokaiBot().intents.presences is True
