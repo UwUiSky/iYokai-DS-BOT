@@ -152,9 +152,13 @@ class ModerationRepository:
         """
         scade_il = None
         if origine == "automod" and caso_puo_scadere(action_type):
-            from core import moderation_opzioni  # una sola strada per l'impostazione (D16)
+            from core import moderation_opzioni  # chiave e tetto da un solo punto (D16)
 
-            giorni = (await moderation_opzioni.leggi(guild_id)).scadenza_automod
+            giorni = await self._pool.fetchval(
+                "SELECT settings ->> $2 FROM guild_config WHERE guild_id = $1",
+                guild_id, moderation_opzioni.SETTING_SCADENZA_AUTOMOD,
+            )
+            giorni = moderation_opzioni.giorni_scadenza_validi(giorni)
             if giorni:
                 scade_il = datetime.now(timezone.utc) + timedelta(days=giorni)
         async with self._pool.acquire() as conn:

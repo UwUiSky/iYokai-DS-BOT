@@ -64,7 +64,7 @@ async def leggi(guild_id: int) -> OpzioniModerazione:
         casi_esterni=esterni is True,
         avviso_warn=soglia if isinstance(soglia, int) and 0 <= soglia <= MAX_SOGLIA_WARN else 0,
         avviso_rientro=rientro is True,
-        scadenza_automod=scadenza if isinstance(scadenza, int) and 0 <= scadenza <= MAX_SCADENZA_AUTOMOD else 0,
+        scadenza_automod=giorni_scadenza_validi(scadenza),
     )
 
 
@@ -107,6 +107,13 @@ async def imposta_avviso_warn(guild_id: int, soglia: int, autore_id: int) -> Non
 
 async def imposta_avviso_rientro(guild_id: int, attivo: bool, autore_id: int) -> None:
     await db.set_guild_setting(guild_id, SETTING_AVVISO_RIENTRO, attivo, changed_by=autore_id)
+
+
+def giorni_scadenza_validi(valore) -> int:
+    """Giorni di scadenza dei casi AutoMod da un valore salvato (anche testo dal JSON); 0 se non valido."""
+    if isinstance(valore, str) and valore.isdigit():
+        valore = int(valore)
+    return valore if isinstance(valore, int) and not isinstance(valore, bool) and 0 <= valore <= MAX_SCADENZA_AUTOMOD else 0
 
 
 async def imposta_scadenza_automod(guild_id: int, giorni: int, autore_id: int) -> None:
