@@ -20,12 +20,13 @@ su ogni canale di ogni tipo. I canali creati dopo ricevono lo stesso
 blocco da on_guild_channel_create. Il mute può avere una fine (lo toglie lo
 scheduler, anche dopo un riavvio), può essere un hardmute (toglie anche gli
 altri ruoli e li ridà alla fine) e resta se l'utente esce e rientra.
-Funzioni coperte: SPEC §5.1, §5.10 (MOD-014, 015, 021)
+Funzioni coperte: SPEC §5.1, §5.10 (MOD-014, 015, 021, 026)
 """
 
 from __future__ import annotations
 
 import logging
+from typing import Literal
 from datetime import datetime, timezone
 
 import discord
@@ -36,6 +37,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core.database import db
 from core.i18n import testo_per
+from core.moderazione_vocale_logic import scelta_mute_valida
 from core.moderation_mute_logic import (
     MAX_MUTE_SECONDI,
     mute_finito,
@@ -170,6 +172,30 @@ async def _get_or_create_mute_role(guild: discord.Guild) -> discord.Role | None:
     await _cover_all_channels(guild, role)
     await db.set_guild_setting(guild.id, SETTING_MUTE_ROLE_ID, role.id)
     return role
+
+
+
+async def _voce_del_mute_ok(interaction: discord.Interaction, vocale: str, canale) -> bool:
+    """MOD-026: prima del mute si controlla che scollegare o spostare sia possibile (permessi, canale scelto)."""
+    if vocale == "niente":
+        return True
+    if not scelta_mute_valida(vocale, canale.id if canale else None):
+        await interaction.response.send_message(await testo_per(interaction, "softbanmute_vocale_serve_canale"), ephemeral=True)
+        return False
+    if not interaction.user.guild_permissions.move_members or not interaction.guild.me.guild_permissions.move_members:
+        await interaction.response.send_message(await testo_per(interaction, "softbanmute_vocale_senza_permesso"), ephemeral=True)
+        return False
+    return True
+
+
+async def _togli_dal_vocale(interaction: discord.Interaction, member: discord.Member, vocale: str, canale) -> None:
+    """MOD-026: a mute fatto, scollega o sposta chi è in vocale. Un errore qui non annulla il mute."""
+    if vocale == "niente" or getattr(getattr(member, "voice", None), "channel", None) is None:
+        return
+    try:
+        await member.move_to(canale if vocale == "sposta" else None, reason=audit_reason("Mute"))
+    except discord.HTTPException:
+        await interaction.followup.send(await testo_per(interaction, "softbanmute_vocale_non_riuscito"), ephemeral=True)
 
 
 class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
@@ -369,6 +395,8 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         reason="Motivo del mute",
         durata="Per quanto tempo (es. 2h, 3d). Vuoto: finché non lo togli (max 1 anno)",
         hardmute="Toglie anche tutti gli altri ruoli e li ridà alla fine del mute",
+        vocale="Se è in vocale: lascialo, scollegalo o spostalo (default: niente)",
+        canale_vocale="Il vocale dove spostarlo (serve con «sposta»)",
     )
     async def mute_role(
         self,
@@ -377,12 +405,16 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         reason: Reason,
         durata: app_commands.Range[str, 1, 20] | None = None,
         hardmute: bool = False,
+        vocale: Literal["niente", "scollega", "sposta"] = "niente",
+        canale_vocale: discord.VoiceChannel | discord.StageChannel | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
             return
         if not await validate_reason(interaction, reason):
             return
         if not await check_can_moderate(interaction, member):
+            return
+        if not await _voce_del_mute_ok(interaction, vocale, canale_vocale):
             return
 
         secondi = None
@@ -484,6 +516,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         await post_to_mod_log(guild, embed)
         await try_dm(member, embed, azione="mute", guild_id=guild.id)
         await interaction.followup.send(embed=embed)
+        await _togli_dal_vocale(interaction, member, vocale, canale_vocale)
 
     @comando_di_gruppo(
         "mod-sanzioni",

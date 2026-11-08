@@ -350,6 +350,7 @@ Totale voci: **514**.
   → **Correzione (r16mod, M1):** MOD-077 (solo emoji) e MOD-079 (solo testo) NON erano fatti: i filtri mancavano. Ora ci sono, con `tipo:` (webhook, iyokai, emoji, solo-testo, sospetti: MOD-084, 089, 085) e `modo:` (contiene, inizia, finisce, uguale: MOD-070). Prove su Discord in VERIFICA_LIVE.
   → **Fatto (r16mod, M2):** `modo:regex` (RE2, MOD-072), `dopo:`/`prima:` con ID o link (MOD-081), `piu_vecchi_di:`/`piu_nuovi_di:` (MOD-082), fino a 1.000 messaggi con al massimo 100 più vecchi di 14 giorni per comando (MOD-087, D66), nuovo `/mod-canali reazioni` (MOD-080: toglie le reazioni senza cancellare; tetto 100, pausa, stop dopo 3 risposte 403).
   → **Fatto (r16mod, M3):** `/mod-casi caso durata|nascondi|esporta` (MOD-012, 045, 043), `/mod-casi avvisi elenco|azzera-tutti` (MOD-027, 030), scadenza dei casi AutoMod con `/mod-sanzioni opzioni imposta scadenza_automod:` (MOD-048, base 0 = mai). Migrazione 0510.
+  → **Fatto (r17mod, M4):** `/mod-canali vocale muta|sordina|scollega|sposta|sposta-tutti|dove` (MOD-022, 023, 024, 025, 112; spostamento di massa al massimo 200, pausa, stop dopo 3 risposte 403; `dove avvisa:True` = avviso privato allo staff all'ingresso, 24 ore, al massimo 50 per server) e `/mod-sanzioni mute vocale:scollega|sposta canale_vocale:` (MOD-026). Migrazione 0514.
 - `[x]` 5.8 DM all'utente moderato
   → **Stato 04/10:** il DM parte prima dell'azione (LIM-8).
 - `[x]` 5.9 **"Reason obbligatorio"** — `reason: str` (non più

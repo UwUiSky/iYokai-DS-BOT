@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 12:06 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 12:29 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 679 comandi in 41 categorie.**
+**Totale: 685 comandi in 41 categorie.**
 
 ## Admin: AI
 
@@ -610,6 +610,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 12:
 - **`/mod-canali reazioni`** — Toglie le reazioni dagli ultimi messaggi di un canale, senza cancellarli.
 - **`/mod-canali slowmode`** — Imposta lo slowmode su un canale.
 - **`/mod-canali unlock`** — Sblocca la possibilità di scrivere in un canale.
+- **`/mod-canali vocale dove`** — Mostra in quale vocale è un membro, e chiedi un avviso quando entra.
+- **`/mod-canali vocale muta`** — Silenzia o riattiva il microfono di un membro in vocale.
+- **`/mod-canali vocale scollega`** — Scollega un membro dal vocale.
+- **`/mod-canali vocale sordina`** — Sordina o riattiva l'audio di un membro in vocale.
+- **`/mod-canali vocale sposta`** — Sposta un membro in un altro vocale.
+- **`/mod-canali vocale sposta-tutti`** — Sposta tutti i membri di un vocale in un altro.
 
 ## Mod: casi e note
 
@@ -732,7 +738,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 12:
 - **`/owner system richieste-canale`** — Imposta il canale delle richieste (solo nel server principale).
 - **`/owner system shell`** — Esegue un comando shell (con conferma).
 - **`/owner system stats`** — Statistiche globali del bot.
-- **`/owner system storico-vpn`** — Solo proprietario: i server che hanno lasciato passare una persona segnalata come VPN/proxy.
+- **`/owner system storico-vpn`** — Solo proprietario: server che l'hanno lasciata passare e IP della persona (VPN/proxy).
 
 ## Sondaggi
 

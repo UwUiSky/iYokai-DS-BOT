@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 12:06 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 12:29 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 679 commands in 41 categories.**
+**Total: 685 commands in 41 categories.**
 
 ## Admin: AI
 
@@ -610,6 +610,12 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 12:0
 - **`/mod-channels reazioni`** — Removes reactions from the latest messages of a channel, without deleting them.
 - **`/mod-channels slowmode`** — Sets slowmode on a channel.
 - **`/mod-channels unlock`** — Unblocks the ability to write in a channel.
+- **`/mod-channels vocale disconnect`** — Disconnects a member from voice.
+- **`/mod-channels vocale dove`** — Shows which voice channel a member is in, and asks for an alert when they join.
+- **`/mod-channels vocale muta`** — Mutes or unmutes a member's microphone in voice.
+- **`/mod-channels vocale sordina`** — Deafens or undeafens a member in voice.
+- **`/mod-channels vocale sposta`** — Moves a member to another voice channel.
+- **`/mod-channels vocale sposta-tutti`** — Moves everyone in a voice channel to another one.
 
 ## Mod: cases and notes
 
@@ -732,7 +738,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 12:0
 - **`/owner system richieste-canale`** — Sets the requests channel (main server only).
 - **`/owner system shell`** — Runs a shell command (with confirmation).
 - **`/owner system stats`** — Global bot statistics.
-- **`/owner system storico-vpn`** — Bot owner only: servers that let a person through despite a VPN/proxy flag.
+- **`/owner system storico-vpn`** — Bot owner only: servers that let a person through (VPN/proxy) and their IPs.
 
 ## Polls
 

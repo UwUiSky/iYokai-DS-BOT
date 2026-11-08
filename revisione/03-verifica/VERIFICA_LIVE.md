@@ -1380,3 +1380,11 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - `/mod-sanzioni opzioni imposta scadenza_automod:1`: un warn dell'AutoMod passa a non attivo dopo un giorno; un tempban o un timeout dell'AutoMod restano attivi.
 - `/mod-canali clear amount:200 dopo:<ID di un messaggio di 20 giorni fa>`: i recenti spariscono subito (in blocco), solo i vecchi uno per uno.
 - `/mod-casi caso durata` su un tempban da chi ha solo «Metti in timeout»: rifiutato; su un timeout di chi ha un ruolo più alto: rifiutato.
+
+## giro r17mod, M4 — voce (#115)
+- `/mod-canali vocale muta membro:@X` (poi `attivo:False`) e `sordina`: il mute/sordina del server compare e si toglie; chi non ha «Silenziare i membri» (o «Mettere in sordina») è rifiutato con il nome del permesso; riga nel log di moderazione.
+- `/mod-canali vocale scollega membro:@X` e `sposta membro:@X canale:#altro`: il membro esce o cambia canale; se non è in vocale il messaggio lo dice.
+- `/mod-canali vocale sposta-tutti da:#A a:#B` con 5+ persone in #A: tutte passano in #B; con oltre 200 la risposta dice quanti ne restano.
+- `/mod-sanzioni mute membro:@X motivo:... vocale:scollega` mentre è in vocale: riceve il mute e viene scollegato; con `vocale:sposta` senza `canale_vocale` il mute non parte.
+- `/mod-canali vocale dove membro:@X`: da in vocale dice il canale; fuori dal vocale con `avvisa:True` ti arriva un messaggio privato appena entra (una sola volta).
+

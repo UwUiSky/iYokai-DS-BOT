@@ -327,12 +327,6 @@ class ModerationRepository:
         )
         return result.endswith(" 1")
 
-    async def is_case_hidden(self, guild_id: int, case_number: int) -> bool:
-        return bool(await self._pool.fetchval(
-            "SELECT hidden FROM moderation_cases WHERE guild_id = $1 AND case_number = $2",
-            guild_id, case_number,
-        ))
-
     async def count_active_warns(self, guild_id: int) -> int:
         return await self._pool.fetchval(
             "SELECT count(*) FROM moderation_cases "
@@ -747,6 +741,43 @@ class ModerationRepository:
             guild_id, limit,
         )
         return [dict(r) for r in rows]
+
+
+    # --- sorveglianza della voce (MOD-112) ---
+
+    async def add_vocale_sorveglia(self, guild_id: int, user_id: int, staff_id: int, scade_at) -> None:
+        await self._pool.execute(
+            "INSERT INTO moderation_vocale_sorveglia (guild_id, user_id, staff_id, scade_at) "
+            "VALUES ($1, $2, $3, $4) "
+            "ON CONFLICT (guild_id, user_id, staff_id) DO UPDATE SET scade_at = EXCLUDED.scade_at",
+            guild_id, user_id, staff_id, scade_at,
+        )
+
+    async def vocale_sorveglianti(self, guild_id: int, user_id: int) -> list[int]:
+        """Lo staff che aspetta l'ingresso in vocale di `user_id` (solo sorveglianze non scadute)."""
+        rows = await self._pool.fetch(
+            "SELECT staff_id FROM moderation_vocale_sorveglia "
+            "WHERE guild_id = $1 AND user_id = $2 AND scade_at > now() ORDER BY staff_id",
+            guild_id, user_id,
+        )
+        return [r["staff_id"] for r in rows]
+
+    async def delete_vocale_sorveglia(self, guild_id: int, user_id: int) -> None:
+        await self._pool.execute(
+            "DELETE FROM moderation_vocale_sorveglia WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
+        )
+
+    async def count_vocale_sorveglia(self, guild_id: int) -> int:
+        return await self._pool.fetchval(
+            "SELECT count(*) FROM moderation_vocale_sorveglia WHERE guild_id = $1 AND scade_at > now()", guild_id
+        )
+
+    async def utenti_sorvegliati(self) -> list[tuple[int, int]]:
+        """Tutte le coppie (server, utente) con una sorveglianza attiva: serve a riempire la cache all'avvio."""
+        rows = await self._pool.fetch(
+            "SELECT DISTINCT guild_id, user_id FROM moderation_vocale_sorveglia WHERE scade_at > now()"
+        )
+        return [(r["guild_id"], r["user_id"]) for r in rows]
 
 
 def _row_to_case(row) -> ModerationCase:
