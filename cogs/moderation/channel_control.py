@@ -327,9 +327,9 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
             await interaction.followup.send(await testo_per(interaction, "channelcontr_non_ho_permessi_per_modificare"), ephemeral=True)
             return
 
-        luogo = canali[0].mention if len(canali) == 1 else await testo_per(interaction, "channelcontr_slowmode_n_canali", v1=fatti)
+        luogo = canali[0].mention if len(canali) == 1 else await testo_per(interaction, "channelcontr_slowmode_n_canali", v1=fatti, pubblica=True)
         if secondi_lungo is not None:
-            messaggio = await testo_per(interaction, "channelcontr_slowmode_lungo_ok", durata=format_duration(secondi_lungo), luogo=luogo)
+            messaggio = await testo_per(interaction, "channelcontr_slowmode_lungo_ok", durata=format_duration(secondi_lungo), luogo=luogo, pubblica=True)
         elif seconds == 0:
             messaggio = f"Slowmode disattivato in {luogo}."
         else:
