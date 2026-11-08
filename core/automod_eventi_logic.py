@@ -40,11 +40,14 @@ class Conteggi:
     def __init__(self) -> None:
         self._eventi: BoundedCache[tuple, deque] = BoundedCache(_TETTO)
 
-    def conta(self, chiave: tuple, ora: float, finestra_s: int) -> int:
-        """Segna l'evento di adesso e restituisce quanti ce ne sono nella finestra (adesso compreso)."""
+    def conta(self, chiave: tuple, ora: float, finestra_s: int, soglia: int) -> int:
+        """
+        Segna l'evento di adesso e restituisce quanti ce ne sono nella finestra (adesso compreso), fino alla soglia:
+        bastano gli ultimi `soglia` eventi per sapere se è raggiunta, e la memoria resta piccola.
+        """
         coda = self._eventi.get(chiave)
-        if coda is None:
-            coda = deque(maxlen=200)
+        if coda is None or coda.maxlen != max(1, soglia):
+            coda = deque(maxlen=max(1, soglia))
             self._eventi.set(chiave, coda)
         coda.append(ora)
         while coda and ora - coda[0] > finestra_s:
@@ -114,14 +117,14 @@ def innesco_evento_scatta(
             return True
         if tipo == "spostamenti_vocali":
             numero, secondi = innesco.get("numero", SPOSTAMENTI_DI_BASE[0]), innesco.get("secondi", SPOSTAMENTI_DI_BASE[1])
-            return conteggi.conta(chiave, ora, secondi) >= numero
+            return conteggi.conta(chiave, ora, secondi, numero) >= numero
         return False
     if evento == "thread":
         if tipo == "sempre":
             return True
         if tipo == "thread_raffica":
             numero, secondi = innesco.get("numero", THREAD_DI_BASE[0]), innesco.get("secondi", THREAD_DI_BASE[1])
-            return conteggi.conta(chiave, ora, secondi) >= numero
+            return conteggi.conta(chiave, ora, secondi, numero) >= numero
         return False
     if evento in ("nome", "stato"):
         if tipo == "sempre":

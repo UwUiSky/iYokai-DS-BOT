@@ -117,3 +117,11 @@ def test_ruoli_e_casi_nell_innesco_si_validano():
         innesco_da_json({"tipo": "sempre", "casi": ["x"] * 11})
     with pytest.raises(RegolaNonValida):
         innesco_da_json({"tipo": "sempre", "ruoli": ["a"]})
+
+
+def test_soglia_alta_scatta_anche_oltre_duecento():
+    """L'innesco accetta fino a 10.000: la coda non deve fermarsi prima della soglia (prima teneva solo 200 eventi)."""
+    c = lg.Conteggi()
+    innesco = {"tipo": "thread_raffica", "numero": 250, "secondi": 3600}
+    esiti = [scatta("thread", innesco, conteggi=c, ora=n) for n in range(250)]
+    assert esiti[-1] and not any(esiti[:-1])
