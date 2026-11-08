@@ -327,12 +327,6 @@ class ModerationRepository:
         )
         return result.endswith(" 1")
 
-    async def is_case_hidden(self, guild_id: int, case_number: int) -> bool:
-        return bool(await self._pool.fetchval(
-            "SELECT hidden FROM moderation_cases WHERE guild_id = $1 AND case_number = $2",
-            guild_id, case_number,
-        ))
-
     async def count_active_warns(self, guild_id: int) -> int:
         return await self._pool.fetchval(
             "SELECT count(*) FROM moderation_cases "
