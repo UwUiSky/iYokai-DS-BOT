@@ -4,8 +4,7 @@
 27/10/2026 · ramo `feat/r10logt` (copia /home/claude/wt/r10logt, DB iyokai_wr10logt) · migrazioni 0300-0309 (usate 0300, 0301, 0302)
 
 ## In corso
-- r16ticket (ramo feat/r16ticket, DB iyokai_wticket, migrazioni 0520-0527): T1 fatto (e8dfb0d), T2 fatto (09934c4), T3 fatto (TKT-067/068/079, 0522+0525). Stop dopo T3: rapporto.
-- Prossimo (per chi riprende): T4 (029/064/035) nel ramo; T3 era (TKT-067/068/079 nel menu Gestisci `MenuGestisci` in cogs/tickets/tickets.py), T4 (029/064/035; riserva_canali va in una migrazione sua, 0524 e già applicata), T5/T6 = issue #156 e #157.
+- r18ticket (feat/r18ticket, DB iyokai_w18tk): T4 (0534) e #156 thread privati (0526) fatti, in un commit. Resta: prova live (VERIFICA_LIVE) e smoke dall'orchestratore.
 - Smoke da fare dall'orchestratore.
 
 ## Fatto
@@ -13,6 +12,9 @@
 - r10: c210f52 /log cerca ruolo+giorni · f364d84 diff permessi canale · poi ignora esteso, VOC-010/013/016, TKT-051/063/027/026.
 
 ## Cose imparate
+- Thread ticket: `guild.get_channel` NON vede i thread (usa `get_channel_or_thread`); in un DynamicItem l'etichetta sta in `.item`; con il thread niente overwrites/categorie (guardie `isinstance(..., discord.Thread)` in tickets.py).
+- T4: logica pura in core/ticket_autoclose_worker.py, giro ogni 2 min in cogs/tickets/inattivita.py (stato nel DB); la riserva si usa in `_canale_dalla_riserva` (tickets.py). `create_ticket` restituisce il NUMERO, non l'id: nei test `get_ticket_by_channel(...).id`.
+- Ogni chiamata Bash e nuova: `. scratchpad/env18.sh` (DATABASE_URL w18tk) in OGNI comando pytest, se no conftest usa iyokai_test.
 - Menu del tasto destro nel bot principale: test_command_tree_invariants conta solo `chat_input` (`_radici`); i menu hanno il nome inglese in locales/en-US/comandi.json sezione `menu`.
 - Menu Gestisci = `MenuGestisci` (DynamicItem Select, tkt:gst:<id>) aggiunto al benvenuto da `_vista_benvenuto`; le azioni staff nuove vanno li, mai in /ticket.
 - `owner immagini-trappola` senza descrizione inglese: test_command_translator rosso su main (non mio).

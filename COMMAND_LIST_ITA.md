@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 13:32 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 19:05 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 697 comandi in 41 categorie.**
+**Totale: 699 comandi in 41 categorie.**
 
 ## Admin: AI
 
@@ -389,6 +389,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 13:
 ## Admin: opzioni dei ticket
 
 - **`/admin-ticket-opzioni accesso`** — Chi può aprire: regole per ruolo, lette dall'alto.
+- **`/admin-ticket-opzioni attesa`** — Sposta in una categoria i ticket che aspettano l'utente.
 - **`/admin-ticket-opzioni avvisi`** — Chi avvisare all'apertura e primo messaggio fissato.
 - **`/admin-ticket-opzioni canale`** — Nome del canale e categorie di riserva.
 - **`/admin-ticket-opzioni chiusura`** — Conferma, chiusura in due passi, chiusi, nomi.
@@ -398,6 +399,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 13:
 - **`/admin-ticket-opzioni orari`** — Orari di apertura e cosa succede fuori orario.
 - **`/admin-ticket-opzioni permessi`** — Permessi dell'utente, osservatori, ruoli durante, squadra.
 - **`/admin-ticket-opzioni presa`** — Presa in carico: categoria, esclusiva, assegnazione automatica.
+- **`/admin-ticket-opzioni regole`** — Regole: se nessuno scrive da N minuti, chiudi, elimina o scrivi.
 
 ## Admin: vocali temporanei
 

@@ -1825,5 +1825,16 @@
   "tickets_articolo_salvato": "Article #{id} saved.",
   "tickets_troppi_articoli": "The server already has {massimo} articles.",
   "tickets_articolo_non_trovato": "No article with that number.",
-  "tickets_articolo_eliminato": "Article #{id} deleted."
+  "tickets_articolo_eliminato": "Article #{id} deleted.",
+  "tickets_regola_chiusura": "Ticket closed by a panel rule: no messages for {minuti} minutes. This channel will be deleted shortly.",
+  "tickets_thread_padre_mancante": "This panel's thread channel no longer exists: tell an admin.",
+  "tickets_thread_troppi": "The server already has 1,000 active threads, Discord's maximum: try again later.",
+  "tickets_thread_permessi": "I'm missing permissions in {canale}: {permessi}. Tell an admin.",
+  "tickets_thread_avviso_titolo": "New ticket #{numero:04d}",
+  "tickets_thread_avviso_testo": "{utente} opened a ticket: {thread}\nIf you can't see it, press \"Join\".",
+  "tickets_thread_entra": "Join",
+  "tickets_thread_entrato": "You're in: {thread}",
+  "tickets_thread_entra_fallito": "I couldn't add you to the thread.",
+  "tickets_thread_non_trovato": "This ticket no longer exists.",
+  "tickets_thread_non_disponibile": "This action isn't available in thread tickets: only people inside see a private thread."
 }

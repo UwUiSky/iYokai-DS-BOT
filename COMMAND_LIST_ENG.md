@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 13:32 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 19:05 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 697 commands in 41 categories.**
+**Total: 699 commands in 41 categories.**
 
 ## Admin: AI
 
@@ -390,6 +390,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 13:3
 
 - **`/admin-ticket-options access`** — Who can open: per-role rules, read from the top.
 - **`/admin-ticket-options alerts`** — Who to ping on opening and pinned first message.
+- **`/admin-ticket-options attesa`** — Moves tickets waiting for the user to a category.
 - **`/admin-ticket-options channel`** — Channel name and fallback categories.
 - **`/admin-ticket-options claiming`** — Claiming: category, exclusivity, auto-assignment.
 - **`/admin-ticket-options closing`** — Confirmation before closing and who can close.
@@ -397,6 +398,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 13:3
 - **`/admin-ticket-options limits`** — Open-ticket cap, cooldown and exempt roles.
 - **`/admin-ticket-options messages`** — DMs to the user and claim/release texts.
 - **`/admin-ticket-options permissions`** — User permissions, observers, roles while open, staff team.
+- **`/admin-ticket-options regole`** — Rules: if nobody writes for N minutes, close, delete or send a message.
 - **`/admin-ticket-options show`** — All the options of a panel.
 
 ## Admin: temporary voice

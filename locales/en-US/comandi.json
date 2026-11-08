@@ -901,7 +901,7 @@
   "admin-ticket-opzioni limiti": "Open-ticket cap, cooldown and exempt roles.",
   "admin-ticket-opzioni orari": "Opening hours and what happens outside them.",
   "admin-ticket-opzioni accesso": "Who can open: per-role rules, read from the top.",
-  "admin-ticket-opzioni canale": "Channel name and fallback categories.",
+  "admin-ticket-opzioni canale": "Channel name, fallback categories and tickets as private threads.",
   "admin-ticket-opzioni avvisi": "Who to ping on opening and pinned first message.",
   "admin-ticket-opzioni messaggi": "DMs to the user and claim/release texts.",
   "admin-ticket-opzioni permessi": "User permissions, observers, roles while open, staff team.",
@@ -1107,7 +1107,9 @@
   "founder backup": "Backup: sync and who can create or load",
   "founder moderazione": "Moderation: immune roles",
   "admin-sicurezza alt": "Duplicate accounts found by web verification.",
-  "mod-sanzioni opzioni": "Server moderation options."
+  "mod-sanzioni opzioni": "Server moderation options.",
+  "admin-ticket-opzioni attesa": "Moves tickets waiting for the user to a category.",
+  "admin-ticket-opzioni regole": "Rules: if nobody writes for N minutes, close, delete or send a message."
  },
  "parametri": {},
  "menu": {

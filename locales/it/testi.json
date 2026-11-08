@@ -1825,5 +1825,16 @@
   "tickets_articolo_salvato": "Articolo #{id} salvato.",
   "tickets_troppi_articoli": "Il server ha già {massimo} articoli.",
   "tickets_articolo_non_trovato": "Nessun articolo con questo numero.",
-  "tickets_articolo_eliminato": "Articolo #{id} eliminato."
+  "tickets_articolo_eliminato": "Articolo #{id} eliminato.",
+  "tickets_regola_chiusura": "Ticket chiuso da una regola del pannello: nessun messaggio da {minuti} minuti. Questo canale verrà eliminato a breve.",
+  "tickets_thread_padre_mancante": "Il canale dei thread di questo pannello non esiste più: avvisa un admin.",
+  "tickets_thread_troppi": "Il server ha già 1.000 thread attivi, il massimo di Discord: riprova più tardi.",
+  "tickets_thread_permessi": "Mi mancano dei permessi in {canale}: {permessi}. Avvisa un admin.",
+  "tickets_thread_avviso_titolo": "Nuovo ticket #{numero:04d}",
+  "tickets_thread_avviso_testo": "{utente} ha aperto un ticket: {thread}\nSe non lo vedi, premi «Entra».",
+  "tickets_thread_entra": "Entra",
+  "tickets_thread_entrato": "Sei dentro: {thread}",
+  "tickets_thread_entra_fallito": "Non sono riuscito ad aggiungerti al thread.",
+  "tickets_thread_non_trovato": "Questo ticket non esiste più.",
+  "tickets_thread_non_disponibile": "Nei ticket a thread questa azione non c'è: il thread privato lo vede solo chi ci è dentro."
 }

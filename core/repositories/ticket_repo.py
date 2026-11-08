@@ -47,6 +47,7 @@ class Ticket:
     ruoli_dati: tuple[int, ...] = ()
     note_thread_id: int | None = None
     solo_admin: bool = False
+    e_thread: bool = False
 
 
 @dataclass(frozen=True)
@@ -267,6 +268,13 @@ class TicketRepository:
         """TKT-046: il ticket è visibile solo agli admin dei ticket."""
         esito = await self._pool.execute(
             "UPDATE tickets SET solo_admin = $2 WHERE channel_id = $1", channel_id, valore
+        )
+        return esito.endswith(" 1")
+
+    async def set_e_thread(self, channel_id: int, valore: bool) -> bool:
+        """TKT-031: il ticket è un thread privato, non un canale."""
+        esito = await self._pool.execute(
+            "UPDATE tickets SET e_thread = $2 WHERE channel_id = $1", channel_id, valore
         )
         return esito.endswith(" 1")
 
@@ -646,6 +654,7 @@ def _row_to_ticket(row) -> Ticket:
         ruoli_dati=tuple(row["ruoli_dati"] or ()),
         note_thread_id=row["note_thread_id"],
         solo_admin=row["solo_admin"],
+        e_thread=row["e_thread"],
     )
 
 
