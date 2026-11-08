@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import discord
 
+from core.ui_base import BaseView
 from core import automod_liste_service as servizio
 from core.automod_regole_logic import MAX_LUNG_VOCE, MAX_NOME, MAX_TESTO_PROVA, RegolaNonValida
 from core.automod_regole_pannello import DURATA_PANNELLO_S, ModaleCampi, campo, opz
@@ -19,7 +20,7 @@ from core.i18n import lingua_interazione, t
 VOCI_PER_PAGINA = 50
 
 
-class PannelloListe(discord.ui.View):
+class PannelloListe(BaseView):
     def __init__(self, interaction: discord.Interaction, lingua: str):
         super().__init__(timeout=DURATA_PANNELLO_S)
         self.guild_id = interaction.guild.id
@@ -35,7 +36,7 @@ class PannelloListe(discord.ui.View):
         return t(f"amliste_{chiave}", self.lingua, **valori)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        return interaction.user.id == self.autore_id
+        return interaction.user.id == self.autore_id and await super().interaction_check(interaction)
 
     async def carica(self) -> None:
         self.liste = {n: servizio.lista_di_sistema(n) for n in servizio.LISTE_DI_SISTEMA}

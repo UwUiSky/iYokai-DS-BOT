@@ -97,7 +97,12 @@ async def test_pannello_liste_forma_entro_i_limiti(db_liste):
     assert all(b.disabled for b in vista.children if getattr(b, "custom_id", "") in ("am:l:agg", "am:l:togli", "am:l:elimina"))
 
 
-async def test_pannello_liste_non_tocca_quelle_di_sistema_e_usa_solo_il_proprietario(db_liste):
+async def test_pannello_liste_non_tocca_quelle_di_sistema_e_usa_solo_il_proprietario(db_liste, monkeypatch):
+    from unittest.mock import AsyncMock
+
+    from core import ui_base
+
+    monkeypatch.setattr(ui_base, "_utente_o_server_in_blacklist", AsyncMock(return_value=False))
     vista = _vista()
     await vista.carica()
     assert await vista.interaction_check(fake_interaction(user=fake_member(user_id=5)))
