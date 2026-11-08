@@ -341,11 +341,16 @@ class TicketRepository:
         return result.endswith(" 1")
 
     async def riapri(self, channel_id: int) -> bool:
-        """TKT-051: porta di nuovo «aperto» un ticket chiuso (il canale è rimasto). False se non era chiuso."""
+        """
+        TKT-051: porta di nuovo «aperto» un ticket chiuso (il canale è rimasto). False se non era chiuso.
+        L'ora dell'ultima attività riparte da adesso: le regole di inattività (NF-13, TKT-064) non
+        richiudono subito un ticket appena riaperto.
+        """
         esito = await self._pool.execute(
             """
             UPDATE tickets SET status = 'open', closed_at = NULL, closed_by = NULL, close_reason = NULL,
-                   riaperto_volte = riaperto_volte + 1
+                   riaperto_volte = riaperto_volte + 1,
+                   last_activity_at = now(), ultimo_utente_at = now(), ultimo_staff_at = now()
             WHERE channel_id = $1 AND status = 'closed'
             """,
             channel_id,

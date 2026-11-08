@@ -354,3 +354,24 @@ async def test_il_giro_arriva_anche_ai_ticket_oltre_il_tetto(monkeypatch):
     await cog.controlla_ticket(NOW)
     await cog.controlla_ticket(NOW)
     assert 5003 in visti
+
+
+async def test_un_ticket_appena_riaperto_non_si_richiude_subito():
+    """Riaprire un ticket fermo da ore non deve farlo chiudere al giro dopo da una regola di inattività."""
+    p = await _pannello()
+    t = await _ticket(p.id)
+    await repo.aggiungi_regola(p.id, "chiunque", 60, "chiudi", None, False)
+    await repo.aggiungi_regola(p.id, "utente", 60, "chiudi", None, False)
+    vecchio = NOW - timedelta(hours=5)
+    await db.pool.execute(
+        "UPDATE tickets SET created_at = $2, last_activity_at = $2, ultimo_utente_at = $2 WHERE id = $1", t, vecchio
+    )
+    assert await ticket_repo.close_ticket(5001, 1)
+    assert await ticket_repo.riapri(5001)
+    chiudi = AsyncMock(return_value=True)
+    tickets_cog = SimpleNamespace(_chiudi_da_sistema=chiudi, _pianifica_eliminazione_canale=AsyncMock())
+    cog, _ = _scena(_canale_ticket(), tickets_cog=tickets_cog)
+    await cog.controlla_ticket(datetime.now(timezone.utc) + timedelta(minutes=2))
+    chiudi.assert_not_awaited()
+    await cog.controlla_ticket(datetime.now(timezone.utc) + timedelta(minutes=61))
+    chiudi.assert_awaited()
