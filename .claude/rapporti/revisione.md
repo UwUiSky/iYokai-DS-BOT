@@ -438,3 +438,18 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 02/11 | `feat/r15automod` | pannello «Nuova regola» | Eventi non messaggio (ingresso, nome, vocale…) si salvano ma non scattano fino ad A9 | nota | aperto (A9) |
 | 02/11 | `feat/r15automod` | `cogs/automod/regole.py:riepilogo` | Le regole personali appaiono come `p:N`, non con il nome | bassa | aperto |
 | 02/11 | `feat/r15automod` | `core/repositories/automod_regole_repo.py:livello_di` | Legge `leveling_totals` fuori da leveling_repo (D16) | bassa | aperto |
+
+## 08/11/2026 · #120 `feat/r16ticket` T1–T3 (D66; 0520–0522, 0524, 0525): merge main fdb43c8, 5 fix. APPROVATO
+| 08/11 | `feat/r16ticket` | `cogs/tickets/tickets.py:_permessi_staff` | Ticket solo admin: presa «scrivere»/«vedere» e rilascio rimettevano view agli addetti | alta | chiuso (28a555d) |
+| 08/11 | `feat/r16ticket` | `cogs/tickets/tickets.py:imposta_solo_admin` | Reperibili e chi aveva preso il ticket (permesso personale) restavano dentro dopo «Solo admin» | media | chiuso (b0d7f16) |
+| 08/11 | `feat/r16ticket` | `cogs/tickets/tickets.py:sposta_ticket` | Errore di Discord a metà: canale spostato, pannello vecchio nel DB, nessuna risposta | media | chiuso (382a541) |
+| 08/11 | `feat/r16ticket` | `cogs/tickets/modmail.py:completa_articoli_modmail` | Completamento articoli chiuso a `moderate_members`: vuoto per lo staff dei ticket | media | chiuso (4de6d9e) |
+| 08/11 | `feat/r16ticket` | `core/ticket_form_logic.opzioni_motivi`, `ticket_gestione_logic.voci_sposta` | «Altro», «Altri…», segnaposto solo in italiano (D58) | bassa | chiuso (82ae567) |
+| 08/11 | `feat/r16ticket` | `MenuGestisci` (select persistente) | Dopo una scelta il menu resta su quella voce: ripeterla non scatta. Prova live; se serve, rimettere la vista con un edit | bassa | aperto |
+| 08/11 | `feat/r16ticket` | `tests/` | Nessun test su `MenuGestisci.callback` (staff/admin, ticket di un altro canale, `from_custom_id`) né sul menu «Apri ticket» | bassa | aperto |
+| 08/11 | `feat/r16ticket` | `core/ticket_logic.ruoli_con_accesso` | Squadra del pannello senza ruoli admin: «solo admin» lascia il canale ai soli «Gestisci server» | bassa | aperto |
+| 08/11 | `feat/r16ticket` | `ticket_repo.set_panel/set_solo_admin`, `ticket_gestione_repo.conta_uso` | Query senza `guild_id` (ID globali, rischio basso) | bassa | aperto |
+| 08/11 | `feat/r16ticket` | `ticket_support_role_add` (describe `livello`) | Dice «Admin: chiude» ma la chiusura normale resta agli addetti; solo forceclose è admin. Testo o decisione | bassa | aperto |
+| 08/11 | `feat/r16ticket` | `core/ticket_transcript_logic.html_in_parti` | Messaggio troncato perde i nomi degli allegati | bassa | aperto |
+| 08/11 | `feat/r16ticket` | `opzioni.accesso` | `ruolo` senza `regola` risponde «niente da fare» senza dire cosa manca | bassa | aperto |
+| 08/11 | `feat/r16ticket` | TKT-079 | Articoli: «approvato» non si cambia; invio a mano solo in ModMail; suggerimento senza AI (più prudente del disegno) | nota | aperto |
