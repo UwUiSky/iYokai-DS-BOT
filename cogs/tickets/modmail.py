@@ -9,6 +9,8 @@ passano da `/ticket rispondi` restano interni: l'utente non li vede mai.
 - Una sola conversazione aperta per utente in tutti i server (indice unico,
   migrazione 0101): un DM arriva sempre a un canale solo.
 - Un utente presente in più server col ModMail acceso sceglie con un menu.
+- Dopo un blocco della verifica o una limitazione per account rubato (D65, D67) il DM apre il ticket con
+  quel server, col motivo; se i server sono più di uno sceglie da un menu, gli altri al messaggio dopo.
 - Il transcript va solo al canale dei log (mai in DM: contiene le note interne).
 - Il bot non salva il testo dei messaggi: restano nel canale Discord.
 - Il testo degli utenti viene inoltrato senza menzioni attive.
@@ -18,7 +20,7 @@ canali; non in `guild_config.settings` per non toccare lo schema di /admin-bot
 config, che sta in cogs/utility). Il modulo `tickets` deve essere acceso.
 Comandi: `/admin-ticket modmail attiva`, `/admin-ticket modmail blocca`, `/ticket rispondi`,
 `/ticket dm-chiudi`.
-Funzioni coperte: SPEC §23 (NF-33)
+Funzioni coperte: SPEC §23 (NF-33), §4.2 (D65), §6.20 (D67)
 """
 
 from __future__ import annotations
@@ -50,7 +52,7 @@ from core import ticket_gestione_logic as gestione
 from core.repositories.ticket_gestione_repo import ticket_gestione_repo
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
-from core.i18n import testo_per
+from core.i18n import lingua_risposta, t, testo_per
 from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.moderation_repo import moderation_repo
 from core.spam_trap_logic import BAN_ACTION_TYPE
@@ -102,12 +104,14 @@ async def testo_da_articolo(guild_id: int, testo: str) -> str | None:
 class SceltaServerView(BaseView):
     """Menu a tendina nel DM: in quale server vuoi scrivere? Vive 2 minuti, non serve dopo un riavvio."""
 
-    def __init__(self, cog: "ModMailCog", utente: discord.abc.User, messaggio: discord.Message, server: list[discord.Guild]) -> None:
+    def __init__(self, cog: "ModMailCog", utente: discord.abc.User, messaggio: discord.Message, server: list[discord.Guild],
+                 motivi: dict[int, str] | None = None) -> None:
         super().__init__(timeout=120)
         self._cog = cog
         self._utente = utente
         self._messaggio = messaggio
         self._server = {str(g.id): g for g in server}
+        self._motivi = motivi or {}  # blocchi recenti (D65, D67): il motivo va nel ticket di quel server
         select = discord.ui.Select(
             placeholder="Scegli il server...",
             options=[discord.SelectOption(label=g.name[:100], value=str(g.id)) for g in server[: logica.MAX_SERVER_NEL_MENU]],
@@ -130,7 +134,7 @@ class SceltaServerView(BaseView):
         except discord.HTTPException:
             self._cog._menu_aperti.discard(self._utente.id)
             raise
-        await self._cog.apri_da_menu(guild, self._utente, self._messaggio)
+        await self._cog.apri_da_menu(guild, self._utente, self._messaggio, motivo=self._motivi.get(guild.id))
 
 
 class ConfermaInvioView(BaseView):
@@ -239,14 +243,10 @@ class ModMailCog(CogConGruppi, commands.Cog):
         if utente.id in self._menu_aperti:
             await self._rispondi_dm(message, "Rispondi prima alla domanda qui sopra (scegli o conferma): poi scrivimi di nuovo.")
             return
-        # D65: chi scrive dopo un blocco della verifica apre il ticket col server dove voleva entrare.
-        blocco = await verify_blocchi_repo.recente(utente.id)
-        if blocco is not None:
-            guild_bloccato = self.bot.get_guild(blocco["guild_id"])
-            if guild_bloccato is not None and await self._server_ok(guild_bloccato, utente):
-                await verify_blocchi_repo.cancella(utente.id)
-                await self._apri(guild_bloccato, utente, message, motivo=blocco["motivo"])
-                return
+        # D65, D67: chi scrive dopo un blocco della verifica, o dopo essere stato limitato, apre il ticket con quel
+        # server; se i server sono più di uno sceglie da un menu (una conversazione alla volta).
+        if await self._apri_dopo_blocco(utente, message):
+            return
         candidati = await self._server_candidati(utente)
         decisione = logica.decidi_server([g.id for g in candidati])
         if decisione.esito is logica.Esito.NESSUN_SERVER:
@@ -274,7 +274,32 @@ class ModMailCog(CogConGruppi, commands.Cog):
         except discord.HTTPException:
             logger.info("Menu dei server non consegnato all'utente %s", utente.id)
 
-    async def apri_da_menu(self, guild: discord.Guild, utente: discord.abc.User, primo: discord.Message) -> None:
+    async def _apri_dopo_blocco(self, utente: discord.abc.User, message: discord.Message) -> bool:
+        """True se c'era un blocco recente: il ticket è aperto, o è partito il menu per scegliere il server."""
+        blocchi = []
+        for riga in await verify_blocchi_repo.recenti(utente.id):
+            guild = self.bot.get_guild(riga["guild_id"])
+            if guild is not None and await self._server_ok(guild, utente):
+                blocchi.append((guild, riga["motivo"]))
+        if not blocchi:
+            return False
+        if len(blocchi) == 1:
+            guild, motivo = blocchi[0]
+            await verify_blocchi_repo.cancella_del_server(utente.id, guild.id)
+            await self._apri(guild, utente, message, motivo=motivo)
+            return True
+        testo = t("modmail_scegli_server_blocco", await lingua_risposta(None, utente.id))
+        try:
+            await message.channel.send(testo, view=SceltaServerView(
+                self, utente, message, [g for g, _ in blocchi], motivi={g.id: m for g, m in blocchi}))
+            self._menu_aperti.add(utente.id)
+        except discord.HTTPException:
+            logger.info("Menu dei server bloccati non consegnato all'utente %s", utente.id)
+        return True
+
+    async def apri_da_menu(
+        self, guild: discord.Guild, utente: discord.abc.User, primo: discord.Message, motivo: str | None = None
+    ) -> None:
         """Scelta dal menu: in coda dietro ai DM in corso e con tutti i controlli rifatti."""
         self._menu_aperti.discard(utente.id)
         async with self._serratura(utente.id):
@@ -284,13 +309,17 @@ class ModMailCog(CogConGruppi, commands.Cog):
                 return
             if await self._ha_appello_aperto(utente.id) or await blacklist_repo.is_user_blacklisted(utente.id):
                 return
-            await self._apri_se_ancora_possibile(guild, utente, primo)
+            await self._apri_se_ancora_possibile(guild, utente, primo, motivo)
 
-    async def _apri_se_ancora_possibile(self, guild: discord.Guild, utente: discord.abc.User, primo: discord.Message) -> None:
+    async def _apri_se_ancora_possibile(
+        self, guild: discord.Guild, utente: discord.abc.User, primo: discord.Message, motivo: str | None = None
+    ) -> None:
         if not await self._server_ok(guild, utente):
             await self._rispondi_dm(primo, "Questo server non accetta messaggi dal ModMail adesso.")
             return
-        await self._apri(guild, utente, primo)
+        if motivo is not None:  # scelto fra i server del blocco: quel blocco ha aperto il suo ticket
+            await verify_blocchi_repo.cancella_del_server(utente.id, guild.id)
+        await self._apri(guild, utente, primo, motivo=motivo)
 
     # ================================================================
     # Apertura e inoltro
@@ -352,8 +381,8 @@ class ModMailCog(CogConGruppi, commands.Cog):
             color=COLORE_STAFF,
         )
         intestazione.add_field(name="Account creato", value=discord.utils.format_dt(utente.created_at, "R"))
-        if motivo:  # D65: il blocco della verifica che l'ha portato qui
-            intestazione.add_field(name="Blocco della verifica", value=motivo[:1024], inline=False)
+        if motivo:  # D65, D67: il blocco della verifica o la limitazione (account rubato) che l'ha portato qui
+            intestazione.add_field(name="Blocco o limitazione", value=motivo[:1024], inline=False)
         membro = guild.get_member(utente.id)
         if membro is not None and membro.joined_at is not None:
             intestazione.add_field(name="Nel server dal", value=discord.utils.format_dt(membro.joined_at, "R"))

@@ -12,6 +12,10 @@ Giri r6–r14lingue: tutti APPROVATI dopo i fix (commit e basse nel quaderno). `
 02/11/2026 · `feat/r15automod` (D63 A1–A8, #116): main già unito, 10 fix (c9a9dee, c9852c0, 885acee, 389201c, 28c12c9, 4284b22, 79138ab, c2b1a65, 1e4c79f, 23e00c8) + documenti 535d5d1; 7 basse aperte. APPROVATO. Smoke da fare: test_automod_*, immagini_cog, 0500–0503, tree_invariants, riferimenti, i18n.
 02/11/2026 · `feat/r15immagini` (D62/D63, #153): main già unito, 10 fix (sandbox attesa, no ripiego dopo lavoro preso, worker senza Pillow, staff controllati, malevola = timeout, solo malevole in libreria, cache/libreria, 72 h, gruppo systemd, docstring). APPROVATO. Smoke da fare: test_immagini_*, migrazioni 0504–0506, riferimenti.
 Giri r6–r14 e r15vpn/r15immagini precedenti: tutti APPROVATI dopo i fix; basse aperte nel quaderno.
+08/11/2026 · `feat/r17automod` (D67 account rubato #153, A9 eventi #116, 0531): merge main (01a2b07), 6 fix (f98a408, 0586e74, c7743cf, cb3a839, ebe5050, 202e3f7) + voci chieste (7438842 minuti timeout, 7a8647b blocco per server e ticket); 4 basse aperte. APPROVATO. Smoke da fare: test_automod_account_rubato*, automod_eventi*, automod_regole_comandi, immagini_cog, verify_vpn_flusso, verify_blocchi_discord, modmail*, moderation_casi*, 0531, main_bot, intent_usage, config_import_validation, i18n.
+08/11/2026 · `feat/r16verifica` (D67, #155): 2 fix (0ddf19f, d819810). APPROVATO. · `feat/r16ticket` (D66, #120): 5 fix. APPROVATO.
+02/11/2026 · `feat/r16mod` (#115): 6 fix. · `feat/r15automod` (#116): 10 fix. · `feat/r15immagini` (#153): 10 fix. · `feat/r15vpn` (#155): 6 fix. Tutti APPROVATI.
+Giri r6–r14: tutti APPROVATI dopo i fix (commit e basse nel quaderno).
 
 ## In corso
 - Niente. Al prossimo giro: righe aperte del quaderno per il ramo riconsegnato.
@@ -45,6 +49,7 @@ Giri r6–r14 e r15vpn/r15immagini precedenti: tutti APPROVATI dopo i fix; basse
 - `purge` di discord.py: dopo il primo messaggio oltre 14 giorni passa a cancellare uno per uno TUTTO il resto; con `after` legge dal più vecchio: serve `oldest_first=False`. Scadenze automatiche dei casi: mai su sanzioni in corso (active = in corso per ban/tempban/timeout/mute).
 - Motore azioni: 403 su chi Discord non lascia toccare (proprietario, ruolo ≥ bot) non è un permesso mancato: niente sospensione per server. Finti: posizione 0 = raggiungibile. «Applica» dello staff = il bot agisce per lui: permessi di ogni sanzione + gerarchia. Soglie: scatta solo chi consuma (UPDATE conta righe).
 - Scadenze legate all'uscita del bot: usare `guild_presence.left_at` (punto unico, sincronizzato all'avvio), mai listener on_guild_join/remove che riscrivono `scade_il` (il rientro le allunga). `LEAST` in Postgres ignora i NULL.
+- Ascoltatori in RAM per difese a raffica (spam): serratura per persona prima di avviso/timeout; una sintesi deve portare solo i messaggi nuovi. Code con `maxlen` fisso < soglia ammessa = regola muta. Funzioni «chiede_intent» vanno cercate in main.py.
 - AI: `pulisci_dati_personali` verso servizi non AI; filtro «addestra» in `scegli_fornitori` (D55). File di esempio con segnaposto: il caricatore li scarta.
 
 ## Aperto

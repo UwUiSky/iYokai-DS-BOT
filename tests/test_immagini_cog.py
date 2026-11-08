@@ -51,6 +51,7 @@ def ambiente(monkeypatch):
     segnala = AsyncMock()
     monkeypatch.setattr(cog_mod, "opzioni_immagini", SimpleNamespace(leggi=AsyncMock(return_value=op.OpzioniImmagini(True, "cancella", 10, 222))))
     monkeypatch.setattr(cog_mod.db, "is_module_active_for_guild", AsyncMock(return_value=True))
+    monkeypatch.setattr(cog_mod.account_rubato_opzioni, "attivo", AsyncMock(return_value=False))  # la difesa D67 ha i suoi test
     from core.repositories.automod_advanced_repo import automod_advanced_repo
 
     monkeypatch.setattr(automod_advanced_repo, "get_settings", AsyncMock(return_value=SimpleNamespace(exempt_channel_ids=(), exempt_role_ids=())))
@@ -248,3 +249,38 @@ async def test_le_azioni_passano_dal_motore_unico_e_la_regola_di_sistema_le_gove
     await ambiente.cog.on_message(ambiente.msg)
     ambiente.azioni.cancella.assert_not_awaited()
     ambiente.azioni.isola.assert_awaited_once()  # azioni scelte dall'admin
+
+
+@pytest.mark.asyncio
+async def test_malevola_con_difesa_account_rubato_non_logga_ogni_immagine(ambiente, monkeypatch):
+    # D67: un solo avviso riassuntivo per persona (lo scrive core/account_rubato.py), niente log per ogni immagine.
+    monkeypatch.setattr(cog_mod.account_rubato_opzioni, "attivo", AsyncMock(return_value=True))
+    controlla = AsyncMock(return_value=True)
+    monkeypatch.setattr(cog_mod.account_rubato, "controlla_messaggio", controlla)
+    analisi(monkeypatch, esito("malevola"))
+    await ambiente.cog.on_message(ambiente.msg)
+    controlla.assert_awaited_once_with(ambiente.cog.bot, ambiente.msg, malevola=True)
+    ambiente.log.send.assert_not_called()
+    ambiente.dm.assert_not_called()
+    ambiente.segnala.assert_awaited_once()  # la libreria delle impronte si aggiorna lo stesso
+
+
+@pytest.mark.asyncio
+async def test_sospetta_non_e_account_rubato(ambiente, monkeypatch):
+    monkeypatch.setattr(cog_mod.account_rubato_opzioni, "attivo", AsyncMock(return_value=True))
+    controlla = AsyncMock(return_value=True)
+    monkeypatch.setattr(cog_mod.account_rubato, "controlla_messaggio", controlla)
+    analisi(monkeypatch, esito("sospetta"))
+    await ambiente.cog.on_message(ambiente.msg)
+    controlla.assert_not_called()
+    ambiente.log.send.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_malevola_se_la_difesa_non_agisce_resta_il_percorso_di_prima(ambiente, monkeypatch):
+    monkeypatch.setattr(cog_mod.account_rubato_opzioni, "attivo", AsyncMock(return_value=True))
+    monkeypatch.setattr(cog_mod.account_rubato, "controlla_messaggio", AsyncMock(return_value=False))
+    analisi(monkeypatch, esito("malevola"))
+    await ambiente.cog.on_message(ambiente.msg)
+    ambiente.azioni.cancella.assert_awaited_once_with(ambiente.msg)
+    ambiente.log.send.assert_awaited_once()

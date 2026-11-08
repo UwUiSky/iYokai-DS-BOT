@@ -686,7 +686,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True,
        scadenza=Scadenza("creato_il", 30),
        nota="mai l'IP (D64); l'eccezione «Lascia passare» vale 30 giorni"),
-    _t("verify_blocchi", "Ultimo blocco della verifica: server e motivo, per aprire il ticket in privato",
+    _t("verify_blocchi", "Ultimo blocco (verifica o account rubato) per server: motivo, per aprire il ticket in privato",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True,
        scadenza=Scadenza("creato_il", 1), nota="mai l'IP (D65); un giorno"),
     _t("verify_vpn_storico", "Storico dei falsi positivi VPN/proxy lasciati passare dallo staff (server, metodo, data)",

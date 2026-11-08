@@ -45,6 +45,7 @@ MAX_CANALI_PERMESSI = 5
 MAX_AVVISO_DOPO_S = 60
 MAX_MOTIVO = 512
 MAX_TESTO_PROVA = 4000
+MAX_TIPI_CASO = 10
 
 EVENTI = (
     "messaggio", "modifica", "nome", "stato", "vocale", "thread",
@@ -501,7 +502,7 @@ def innesco_da_json(dati: Any) -> dict:
     """Controlla i tetti dell'innesco (le regex solo RE2, ≤ 10, ≤ 260). Restituisce un dizionario pulito."""
     if dati in (None, {}):
         return {}
-    d = _solo_chiavi(dati, {"tipo", "regex", "liste", "modo", "numero", "secondi", "parole", "testo_in", "limite"}, "innesco")
+    d = _solo_chiavi(dati, {"tipo", "regex", "liste", "modo", "numero", "secondi", "parole", "testo_in", "limite", "ruoli", "casi"}, "innesco")
     tipo = _scelta(d.get("tipo"), "innesco.tipo", INNESCHI)
     fuori: dict[str, Any] = {"tipo": tipo}
     if "regex" in d:
@@ -519,6 +520,12 @@ def innesco_da_json(dati: Any) -> dict:
         if not isinstance(d["parole"], list) or len(d["parole"]) > MAX_VOCI_LISTA:
             raise RegolaNonValida(f"innesco.parole: al massimo {MAX_VOCI_LISTA}")
         fuori["parole"] = [_testo(p, "innesco.parole", MAX_LUNG_VOCE) for p in d["parole"]]
+    if "ruoli" in d:  # ruolo_dato e ruolo_tolto: solo questi ruoli (vuoto = qualsiasi)
+        fuori["ruoli"] = list(_ids(d["ruoli"], "innesco.ruoli"))
+    if "casi" in d:  # evento caso: solo questi tipi (warn, mute, ban...; vuoto = qualsiasi)
+        if not isinstance(d["casi"], list) or len(d["casi"]) > MAX_TIPI_CASO:
+            raise RegolaNonValida(f"innesco.casi: al massimo {MAX_TIPI_CASO}")
+        fuori["casi"] = [_testo(c, "innesco.casi", 20).lower() for c in d["casi"]]
     if "modo" in d:
         fuori["modo"] = _scelta(d["modo"], "innesco.modo", ("vietati", "permessi"))
     for nome, alto in (("numero", 10_000), ("secondi", 86_400), ("limite", 10_000)):

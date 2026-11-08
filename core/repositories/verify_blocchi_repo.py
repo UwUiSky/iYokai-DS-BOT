@@ -1,10 +1,10 @@
 """
 core/repositories/verify_blocchi_repo.py
 ========================================
-L'ultimo blocco della verifica di ogni persona (tabella `verify_blocchi`, migrazione 0508, D65): server e
-motivo, mai l'IP. Serve al ModMail: chi scrive in privato al bot dopo un blocco apre un ticket con lo staff
-del server dove voleva entrare, con il motivo già allegato.
-Funzioni coperte: SPEC §4.2 (blocchi e ticket, D65)
+L'ultimo blocco di ogni persona in ogni server (tabella `verify_blocchi`, migrazioni 0508 e 0531, D65, D67):
+motivo e data, mai l'IP. Serve al ModMail: chi scrive in privato al bot dopo un blocco della verifica, o dopo
+essere stato limitato come account rubato, apre un ticket con lo staff di quel server, con il motivo allegato.
+Funzioni coperte: SPEC §4.2 (blocchi e ticket, D65), §6.20 (account rubato, D67)
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ import asyncpg
 
 ORE_VALIDITA = 24
 MOTIVO_MAX = 300
+MAX_RECENTI = 25  # quante voci entrano in un menu di Discord
 
 
 class VerifyBlocchiRepository:
@@ -27,23 +28,24 @@ class VerifyBlocchiRepository:
         await self._pool.execute(
             """
             INSERT INTO verify_blocchi (user_id, guild_id, motivo) VALUES ($1, $2, $3)
-            ON CONFLICT (user_id) DO UPDATE SET guild_id = EXCLUDED.guild_id, motivo = EXCLUDED.motivo, creato_il = now()
+            ON CONFLICT (user_id, guild_id) DO UPDATE SET motivo = EXCLUDED.motivo, creato_il = now()
             """,
             user_id, guild_id, motivo[:MOTIVO_MAX],
         )
 
-    async def recente(self, user_id: int):
-        """(guild_id, motivo) dell'ultimo blocco, se di meno di un giorno fa."""
-        return await self._pool.fetchrow(
-            "SELECT guild_id, motivo FROM verify_blocchi WHERE user_id = $1 AND creato_il > now() - make_interval(hours => $2)",
-            user_id, ORE_VALIDITA,
+    async def recenti(self, user_id: int) -> list:
+        """(guild_id, motivo) dei blocchi di meno di un giorno fa, dal più recente; al massimo 25."""
+        return await self._pool.fetch(
+            """
+            SELECT guild_id, motivo FROM verify_blocchi
+            WHERE user_id = $1 AND creato_il > now() - make_interval(hours => $2)
+            ORDER BY creato_il DESC LIMIT $3
+            """,
+            user_id, ORE_VALIDITA, MAX_RECENTI,
         )
 
-    async def cancella(self, user_id: int) -> None:
-        await self._pool.execute("DELETE FROM verify_blocchi WHERE user_id = $1", user_id)
-
     async def cancella_del_server(self, user_id: int, guild_id: int) -> None:
-        """Toglie il blocco solo se è di quel server (la persona lì si è verificata)."""
+        """Toglie il blocco di quel server (la persona lì si è verificata, o ha aperto il ticket)."""
         await self._pool.execute("DELETE FROM verify_blocchi WHERE user_id = $1 AND guild_id = $2", user_id, guild_id)
 
 

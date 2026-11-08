@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 13:10 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 13:32 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 690 comandi in 41 categorie.**
+**Totale: 697 comandi in 41 categorie.**
 
 ## Admin: AI
 
@@ -355,6 +355,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 13:
 - **`/admin-ticket categoria togli`** — Rimuovi una categoria di ticket.
 - **`/admin-ticket chiudi-tutti`** — Chiudi i ticket aperti (fino a 25 alla volta).
 - **`/admin-ticket chiusura-auto`** — Chiudi i ticket fermi da N minuti (0 = spenta).
+- **`/admin-ticket etichette aggiungi`** — Crea un'etichetta colorata per i ticket (max 25).
+- **`/admin-ticket etichette elenco`** — Elenca le etichette dei ticket.
+- **`/admin-ticket etichette togli`** — Togli un'etichetta (sparisce dai ticket che la hanno).
 - **`/admin-ticket limite`** — Quanti ticket aperti alla volta può avere ogni utente (predefinito 1).
 - **`/admin-ticket lista-nera`** — Utenti e ruoli che non possono aprire ticket.
 - **`/admin-ticket modmail attiva`** — Accendi o spegni il ModMail (ticket in DM).
@@ -365,8 +368,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 13:
 - **`/admin-ticket pannelli modulo-aggiungi`** — Aggiungi una domanda al modulo (max 5).
 - **`/admin-ticket pannelli modulo-mostra`** — Mostra le domande del modulo di un pannello.
 - **`/admin-ticket pannelli modulo-togli`** — Togli una domanda dal modulo.
+- **`/admin-ticket pannelli motivo-aggiungi`** — Aggiungi un motivo pronto al pannello (max 24).
+- **`/admin-ticket pannelli motivo-togli`** — Togli un motivo pronto dal pannello (senza numero: li elenca).
 - **`/admin-ticket pannelli pubblica`** — Pubblica qui i bottoni di uno o più pannelli.
 - **`/admin-ticket pannelli rimuovi`** — Elimina un pannello e il suo modulo.
+- **`/admin-ticket risposte articolo`** — Base di conoscenza: nuovo articolo, correggilo o eliminalo.
 - **`/admin-ticket risposte elenco`** — Elenca le risposte standard del server.
 - **`/admin-ticket risposte elimina`** — Elimina una risposta standard.
 - **`/admin-ticket risposte modifica`** — Correggi una risposta standard.
@@ -404,6 +410,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 13:
 
 ## Aiuto (primo livello)
 
+- **`/Apri ticket`** — Menu «App» (tasto destro)
 - **`/cerca-comando`** — Cerca un comando per descrizione.
 - **`/chiedi`** — Chiedi aiuto: ti mostro i comandi giusti.
 

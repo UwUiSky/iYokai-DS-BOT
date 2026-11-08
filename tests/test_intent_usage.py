@@ -43,8 +43,9 @@ def test_ogni_cog_che_ascolta_i_messaggi_e_nell_elenco():
 def test_gli_intent_accesi_in_main_sono_quelli_dell_elenco():
     sorgente = (RADICE / "main.py").read_text(encoding="utf-8")
     assert "intents.members = True" in sorgente and "intents.message_content = True" in sorgente
-    assert "intents.presences = True" not in sorgente
-    assert iu.USI[iu.INTENT_PRESENCES] == ()
+    assert "intents.presences = True" not in sorgente  # solo con l'interruttore AMD-018 (D63)
+    assert "intents.presences = chiede_intent_presenze()" in sorgente
+    assert iu.file_elencati(iu.INTENT_PRESENCES) == {"cogs/automod/eventi.py"}
 
 
 def test_il_documento_e_aggiornato():

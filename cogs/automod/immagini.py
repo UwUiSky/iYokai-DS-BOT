@@ -21,7 +21,8 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from cogs.moderation._shared import post_to_mod_log, try_dm
-from core import bot_roles
+from core import account_rubato, bot_roles
+from core import account_rubato_opzioni
 from core import automod_regole_service as regole_service
 from core.automod_azioni import Bersaglio, esegui_azioni
 from core.automod_contesto import contesto_da_messaggio
@@ -136,6 +137,8 @@ class ImmaginiCog(CogConGruppi, commands.Cog):
     async def _applica(self, message: discord.Message, esito: EsitoImmagine, d: azioni.Decisione, opzioni) -> None:
         """Le azioni passano dal motore unico (core/automod_azioni.py, regola di sistema «immagini_sospette»)."""
         guild, membro = message.guild, message.author
+        if esito.verdetto == MALEVOLA and await self._account_rubato(message):
+            return  # D67: un solo avviso riassuntivo per persona, niente log per ogni immagine
         lingua = await lingua_risposta(guild.id, pubblica=True)
         regola = await regole_service.regola_effettiva(guild.id, REGOLA_IMMAGINI, azioni_da_json(self._azioni(d, esito, lingua)))
         eseguite: list[str] = []
@@ -154,6 +157,12 @@ class ImmaginiCog(CogConGruppi, commands.Cog):
             await self._log(message, esito, eseguite, lingua, opzioni)
         if d.avvisa_owner and coda_immagini.puo_avvisare():
             await self._avvisa_owner(lingua)
+
+    async def _account_rubato(self, message: discord.Message) -> bool:
+        """Immagine malevola = account probabilmente rubato (D67): True se se ne e' occupata la difesa dedicata."""
+        if not await account_rubato_opzioni.attivo(message.guild.id):
+            return False
+        return await account_rubato.controlla_messaggio(self.bot, message, malevola=True)
 
     def _azioni(self, d: azioni.Decisione, esito: EsitoImmagine, lingua: str) -> list[dict]:
         """La decisione del filtro nel formato delle azioni AutoMod (ordine fisso: DM, cancella, timeout, avviso)."""

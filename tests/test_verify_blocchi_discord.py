@@ -41,7 +41,7 @@ async def test_captcha_sbagliato_invita_al_ticket_e_ricorda_il_blocco(scenario, 
     await scenario.configura(captcha=True)
     testo = await _risposta_modulo(scenario, "sbagliato")
     assert INVITO in testo
-    riga = await blocchi.recente(UTENTE_ID)
+    riga = (await blocchi.recenti(UTENTE_ID))[0]
     assert riga["guild_id"] == GUILD_ID and INVITO not in riga["motivo"] and riga["motivo"]
 
 
@@ -49,13 +49,13 @@ async def test_captcha_sbagliato_invita_al_ticket_e_ricorda_il_blocco(scenario, 
 async def test_captcha_giusto_nessun_invito_e_nessun_blocco_rimasto(scenario, blocchi):
     await scenario.configura(captcha=True)
     await _risposta_modulo(scenario, "sbagliato")
-    assert await blocchi.recente(UTENTE_ID) is not None
+    assert await blocchi.recenti(UTENTE_ID) != []
     modulo = CaptchaModal(scenario.cog, GUILD_ID, UTENTE_ID)
     modulo.answer_input._value = modulo._expected_answer
     interazione = scenario.clic()
     await modulo.on_submit(interazione)
     assert INVITO not in interazione.followup.send.await_args.args[0]
-    assert await blocchi.recente(UTENTE_ID) is None  # niente ticket «a sorpresa» col motivo vecchio
+    assert await blocchi.recenti(UTENTE_ID) == []  # niente ticket «a sorpresa» col motivo vecchio
 
 
 @pytest.mark.asyncio
@@ -65,7 +65,7 @@ async def test_bottone_senza_captcha_bloccato_dal_server_invita_al_ticket(scenar
     interazione = scenario.clic()
     await VerifyPanelView().verify_click.callback(interazione)
     assert INVITO in interazione.followup.send.await_args.args[0]
-    assert await blocchi.recente(UTENTE_ID) is not None
+    assert await blocchi.recenti(UTENTE_ID) != []
 
 
 @pytest.mark.asyncio
@@ -88,7 +88,7 @@ async def test_senza_modmail_pronto_nessun_invito_e_nessuna_riga(scenario, blocc
     monkeypatch.setattr(verify_blocchi, "modmail_pronto", AsyncMock(return_value=False))
     await scenario.configura(captcha=True)
     testo = await _risposta_modulo(scenario, "sbagliato")
-    assert INVITO not in testo and await blocchi.recente(UTENTE_ID) is None
+    assert INVITO not in testo and await blocchi.recenti(UTENTE_ID) == []
 
 
 @pytest.mark.asyncio

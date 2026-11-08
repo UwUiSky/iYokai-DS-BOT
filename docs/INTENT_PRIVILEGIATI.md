@@ -15,6 +15,7 @@ Members are needed to react to joins and leaves (verification, anti-raid, welcom
 | Anti-nuke (mass removals, permission changes) | `cogs/security/anti_nuke.py` | Protect the server from nukes |
 | Permission heatmap and security score | `cogs/security/permission_heatmap.py` | Show who holds risky permissions |
 | Spam-trap | `cogs/security/spam_trap.py` | Catch compromised accounts |
+| AutoMod rules on joins, leaves, nicknames and roles | `cogs/automod/eventi.py` | Apply the server's own AutoMod rules to member events |
 | Autoroles and sticky roles | `cogs/utility/autoroles.py` | Give roles on join, restore on return |
 | Welcome and goodbye messages | `cogs/utility/greetings.py` | Greet members |
 | Invite tracking | `cogs/utility/invites.py` | Credit the inviter |
@@ -35,6 +36,8 @@ Message content is needed by features that read what is written: AutoMod filters
 | Feature | File | Why |
 |---|---|---|
 | AutoMod filters | `cogs/automod/automod.py` | Read text to apply the server rules |
+| Compromised account defence | `cogs/automod/account_rubato.py` | Spot the same scam message sent in many channels and stop it |
+| Trap image filter | `cogs/automod/immagini.py` | Check images in a sandbox before members open them |
 | Message logs (edits and deletions) | `cogs/logging/message_logs.py` | Audit trail for staff |
 | Desktop alerts (opt-in keywords, mentions, replies) | `cogs/utility/desktop_menzioni.py` | Tell the person who turned alerts on that they were mentioned or a chosen word was written |
 | Snipe | `cogs/utility/snipe.py` | Show the last deleted or edited message where allowed |
@@ -59,6 +62,8 @@ Message content is needed by features that read what is written: AutoMod filters
 
 ## GUILD_PRESENCES
 
-Not requested. iYokai never enables the presences intent and does not read online status or activities.
+Not requested by default. Only when the bot owner turns on AUTOMOD_STATO_ATTIVO (off by default) the bot asks for it, so that server AutoMod rules can check a member's custom status text against the server's banned words. Online status and activities are never stored.
 
-No feature uses this intent.
+| Feature | File | Why |
+|---|---|---|
+| AutoMod rules on custom status (off by default) | `cogs/automod/eventi.py` | Check the custom status text against the server rules |

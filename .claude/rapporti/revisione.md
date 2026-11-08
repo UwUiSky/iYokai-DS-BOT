@@ -482,3 +482,17 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 08/11 | `feat/r17mod` | `channel_control.slowmode categoria:` | Nessun controllo di «Gestire i canali» di chi comanda sui canali della categoria (come già per `channel:`) | bassa | aperto |
 | 08/11 | `feat/r17mod` | `core/moderation_motivi.espandi` | `#m<id>` sconosciuto (motivo tolto o di un altro server) finisce nel caso come testo «#m12»: nessuna fuga, ma motivo vuoto di senso | bassa | aperto |
 | 08/11 | `feat/r17mod` | SPEC §5.6 / §5.9 | Non fatte e scritte: MOD-102 (dopo r17automod), durata nel motivo pronto (da decidere, D18) | — | aperto |
+
+## 08/11/2026 · #153 #116 `feat/r17automod` D67 account rubato, A9 eventi (0531): merge main 01a2b07, 6 fix + 2 voci chieste. APPROVATO
+| 08/11 | `feat/r17automod` | `core/account_rubato_logic.py:_sintesi` | Ogni invio dopo la segnalazione ricancellava tutti i precedenti (chiamate a vuoto, 429) | media | chiuso (f98a408) |
+| 08/11 | `feat/r17automod` | `core/account_rubato.py:gestisci` | Due messaggi dello spam gestiti insieme: due avvisi allo staff (manca serratura per persona) | media | chiuso (0586e74) |
+| 08/11 | `feat/r17automod` | `core/account_rubato_logic.py:firma_messaggio`, `account_rubato.py:controlla_messaggio` | Falsi positivi: annuncio dello staff in 3 canali, canali annunci, «buongiorno a tutti» = timeout e cancellazione | alta | chiuso (c7743cf, D67) |
+| 08/11 | `feat/r17automod` | `main.py` (intents) | AMD-018: con l'interruttore acceso l'intent Presenze non era mai chiesto (`chiede_intent_presenze` senza chiamanti); elenco intent senza eventi/account rubato/immagini | media | chiuso (cb3a839) |
+| 08/11 | `feat/r17automod` | `core/automod_eventi_logic.py:Conteggi.conta` | Coda a 200: soglia > 200 (ammessa fino a 10.000) non scattava mai | media | chiuso (ebe5050) |
+| 08/11 | `feat/r17automod` | `core/caso_eventi.py:notifica` | `create_case` aspettava le azioni delle regole «caso»: comandi lenti, interazioni scadute | media | chiuso (202e3f7) |
+| 08/11 | `feat/r17automod` | `core/account_rubato_opzioni.py` | Voce chiesta: minuti di timeout per server (punto unico, comando, pannello) | voce | chiuso (7438842) |
+| 08/11 | `feat/r17automod` | `verify_blocchi` (0531), `cogs/tickets/modmail.py:_apri_dopo_blocco` | Voce chiesta: un blocco per server; un ticket per server (menu se più di uno, una conversazione alla volta) | voce | chiuso (7a8647b) |
+| 08/11 | `feat/r17automod` | `cogs/automod/immagini.py:_account_rubato` | `gestisci` dà True se ha agito in un altro server anche se nel server del messaggio ha fallito: lì l'immagine resta | bassa | aperto |
+| 08/11 | `feat/r17automod` | `core/account_rubato.py` (`_avvisi`, `_dm_fatti`) | Avviso unico e tetto DM solo in RAM: dopo un riavvio nuovo avviso e nuovo DM | bassa | aperto |
+| 08/11 | `feat/r17automod` | `core/automod_eventi.py` (`ruolo_dato`) | Un altro bot che rimette il ruolo tolto da una regola: giro frenato a 3 regole ogni 10 s, non fermato | bassa | aperto |
+| 08/11 | `feat/r17automod` | `cogs/tickets/modmail.py` | Testi DM del ModMail ancora in italiano fisso (prima del ramo; il nuovo è nel catalogo) | bassa | aperto |

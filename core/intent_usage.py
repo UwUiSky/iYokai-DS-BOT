@@ -42,7 +42,9 @@ MOTIVAZIONE = {
         "features. Without it Discord delivers empty text and these features would look active but do nothing."
     ),
     INTENT_PRESENCES: (
-        "Not requested. iYokai never enables the presences intent and does not read online status or activities."
+        "Not requested by default. Only when the bot owner turns on AUTOMOD_STATO_ATTIVO (off by default) the bot asks "
+        "for it, so that server AutoMod rules can check a member's custom status text against the server's banned words. "
+        "Online status and activities are never stored."
     ),
 }
 
@@ -55,6 +57,8 @@ USI: dict[str, tuple[UsoIntent, ...]] = {
         UsoIntent("Anti-nuke (mass removals, permission changes)", "cogs/security/anti_nuke.py", "Protect the server from nukes"),
         UsoIntent("Permission heatmap and security score", "cogs/security/permission_heatmap.py", "Show who holds risky permissions"),
         UsoIntent("Spam-trap", "cogs/security/spam_trap.py", "Catch compromised accounts"),
+        UsoIntent("AutoMod rules on joins, leaves, nicknames and roles", "cogs/automod/eventi.py",
+                  "Apply the server's own AutoMod rules to member events"),
         UsoIntent("Autoroles and sticky roles", "cogs/utility/autoroles.py", "Give roles on join, restore on return"),
         UsoIntent("Welcome and goodbye messages", "cogs/utility/greetings.py", "Greet members"),
         UsoIntent("Invite tracking", "cogs/utility/invites.py", "Credit the inviter"),
@@ -70,6 +74,9 @@ USI: dict[str, tuple[UsoIntent, ...]] = {
     ),
     INTENT_MESSAGE_CONTENT: (
         UsoIntent("AutoMod filters", "cogs/automod/automod.py", "Read text to apply the server rules"),
+        UsoIntent("Compromised account defence", "cogs/automod/account_rubato.py",
+                  "Spot the same scam message sent in many channels and stop it"),
+        UsoIntent("Trap image filter", "cogs/automod/immagini.py", "Check images in a sandbox before members open them"),
         UsoIntent("Message logs (edits and deletions)", "cogs/logging/message_logs.py", "Audit trail for staff"),
         UsoIntent("Desktop alerts (opt-in keywords, mentions, replies)", "cogs/utility/desktop_menzioni.py", "Tell the person who turned alerts on that they were mentioned or a chosen word was written"),
         UsoIntent("Snipe", "cogs/utility/snipe.py", "Show the last deleted or edited message where allowed"),
@@ -92,7 +99,10 @@ USI: dict[str, tuple[UsoIntent, ...]] = {
         UsoIntent("AI ticket assistant", "cogs/ai/ticket_ai.py", "Suggest a first answer inside tickets, only with the server's consent"),
         UsoIntent("Yokai voice", "cogs/ai/voce.py", "Read or transcribe a message when someone asks, only with the server's consent"),
     ),
-    INTENT_PRESENCES: (),
+    INTENT_PRESENCES: (
+        UsoIntent("AutoMod rules on custom status (off by default)", "cogs/automod/eventi.py",
+                  "Check the custom status text against the server rules"),
+    ),
 }
 
 

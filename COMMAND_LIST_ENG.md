@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 13:10 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 13:32 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 690 commands in 41 categories.**
+**Total: 697 commands in 41 categories.**
 
 ## Admin: AI
 
@@ -356,6 +356,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 13:1
 - **`/admin-tickets category list`** — Lists the configured ticket categories.
 - **`/admin-tickets category remove`** — Removes a ticket category.
 - **`/admin-tickets close-all`** — Closes the open tickets (up to 25 at a time).
+- **`/admin-tickets labels add`** — Creates a colored label for tickets (max 25).
+- **`/admin-tickets labels list`** — Lists the ticket labels.
+- **`/admin-tickets labels remove`** — Removes a label (it disappears from tickets that have it).
 - **`/admin-tickets limite`** — How many open tickets each user can have at once (default 1).
 - **`/admin-tickets modmail block`** — Blocks or unblocks a user from ModMail.
 - **`/admin-tickets modmail enable`** — Turns ModMail (tickets in DM) on or off.
@@ -366,8 +369,11 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 13:1
 - **`/admin-tickets panels form-show`** — Shows the questions of a panel's form.
 - **`/admin-tickets panels list`** — Lists the server's ticket panels.
 - **`/admin-tickets panels publish`** — Publishes the buttons of one or more panels here.
+- **`/admin-tickets panels reason-add`** — Adds a ready-made reason to the panel (max 24).
+- **`/admin-tickets panels reason-remove`** — Removes a ready-made reason (no number: lists them).
 - **`/admin-tickets panels remove`** — Deletes a panel and its form.
 - **`/admin-tickets reminder`** — Reminder after N minutes without staff (0 = off).
+- **`/admin-tickets replies article`** — Knowledge base: new article, edit or delete one.
 - **`/admin-tickets replies delete`** — Deletes a standard reply.
 - **`/admin-tickets replies edit`** — Corrects a standard reply.
 - **`/admin-tickets replies list`** — Lists the server's standard replies.
@@ -406,6 +412,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 13:1
 
 - **`/-ask`** — Ask for help: I will show you the right commands.
 - **`/-search-command`** — Searches a command by description.
+- **`/Open ticket`** — “Apps” menu (right click)
 
 ## iYokai App (separate app, installed on the user)
 

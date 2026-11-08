@@ -53,6 +53,7 @@ from core.image_search_fetcher import image_search_fetcher
 from core.animal_fetcher import animal_fetcher
 from core.database import db
 from core.cog_manager import load_all_cogs
+from core.automod_eventi import chiede_intent_presenze
 from core.premium import reload_premium_flags_from_database
 from core.scheduler import scheduler
 from core.memory_guard import memory_guard
@@ -188,6 +189,9 @@ class iYokaiBot(commands.AutoShardedBot):
         # Va acceso anche nel Developer Portal ("Message Content
         # Intent"), altrimenti il bot non riesce a collegarsi.
         intents.message_content = True
+        # Presenze (privilegiato): solo con AUTOMOD_STATO_ATTIVO=1, per le regole AutoMod sullo stato
+        # personalizzato (AMD-018, D63). Spento di base: il bot non lo chiede. Va acceso anche nel portale.
+        intents.presences = chiede_intent_presenze()
 
         super().__init__(
             command_prefix=commands.when_mentioned,  # niente prefisso testuale

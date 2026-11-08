@@ -372,26 +372,26 @@ async def test_ogni_blocco_invita_a_scrivere_in_privato_e_ricorda_il_motivo(monk
     # ModMail non pronto: nessun invito, nessuna riga
     monkeypatch.setattr(verify_blocchi, "modmail_pronto", AsyncMock(return_value=False))
     ok, testo = await _verifica(amb, 100, IP_VPN)
-    assert not ok and "ticket" not in testo.lower() and await blocchi.recente(100) is None
+    assert not ok and "ticket" not in testo.lower() and await blocchi.recenti(100) == []
     monkeypatch.setattr(verify_blocchi, "modmail_pronto", AsyncMock(return_value=True))
     ok, testo = await _verifica(amb, 101, IP_VPN)  # blocco VPN
     assert not ok and "ticket con lo staff di" in testo
-    riga = await blocchi.recente(101)
+    riga = (await blocchi.recenti(101))[0]
     assert riga["guild_id"] == GUILD and "VPN" in riga["motivo"] and "ticket" not in riga["motivo"]
     amb.cog.run_checks_and_finalize.return_value = VerifyOutcome(False, "Il tuo account è troppo nuovo.")
     ok, testo = await _verifica(amb, 102, IP_PULITO)  # blocco dei controlli del server
     assert not ok and "troppo nuovo" in testo and "ticket" in testo
-    assert (await blocchi.recente(102))["motivo"] == "Il tuo account è troppo nuovo."
+    assert (await blocchi.recenti(102))[0]["motivo"] == "Il tuo account è troppo nuovo."
     amb.cog.run_checks_and_finalize.return_value = VerifyOutcome(True, "Verificato.")
     ok, testo = await _verifica(amb, 103, IP_PULITO)  # chi passa non lascia blocchi
-    assert ok and await blocchi.recente(103) is None
+    assert ok and await blocchi.recenti(103) == []
     # chi passa dopo un blocco non apre più un ticket «a sorpresa» col motivo vecchio
     ok, _ = await _verifica(amb, 102, IP_PULITO)
-    assert ok and await blocchi.recente(102) is None
+    assert ok and await blocchi.recenti(102) == []
     # un blocco di un altro server resta: la riuscita qui non lo tocca
     await blocchi.registra(104, GUILD + 1, "Paese in attesa")
     ok, _ = await _verifica(amb, 104, IP_PULITO)
-    assert ok and (await blocchi.recente(104))["guild_id"] == GUILD + 1
+    assert ok and (await blocchi.recenti(104))[0]["guild_id"] == GUILD + 1
 
 
 @pytest.mark.asyncio
@@ -400,12 +400,12 @@ async def test_il_blocco_scade_dopo_un_giorno_e_si_cancella(clean_db):
 
     blocchi = VerifyBlocchiRepository(pool_provider=lambda: clean_db)
     await blocchi.registra(5, GUILD, "x" * 1000)
-    assert len((await blocchi.recente(5))["motivo"]) == 300
+    assert len((await blocchi.recenti(5))[0]["motivo"]) == 300
     await clean_db.execute("UPDATE verify_blocchi SET creato_il = now() - interval '25 hours'")
-    assert await blocchi.recente(5) is None
+    assert await blocchi.recenti(5) == []
     await blocchi.registra(5, GUILD, "ok")
-    await blocchi.cancella(5)
-    assert await blocchi.recente(5) is None
+    await blocchi.cancella_del_server(5, GUILD)
+    assert await blocchi.recenti(5) == []
 
 
 @pytest.mark.asyncio
@@ -429,7 +429,7 @@ async def test_il_dm_dopo_un_blocco_apre_il_ticket_modmail_con_il_motivo(monkeyp
     cog._apri.assert_awaited_once()
     assert cog._apri.await_args.kwargs["motivo"] == "Rilevata una VPN"
     assert cog._apri.await_args.args[0] is guild
-    assert await blocchi.recente(200) is None  # un blocco apre un solo ticket
+    assert await blocchi.recenti(200) == []  # un blocco apre un solo ticket
     # senza blocco il ModMail si comporta come prima (qui: nessun server candidato, nessun ticket)
     cog._apri.reset_mock()
     cog._server_candidati = AsyncMock(return_value=[])
@@ -546,3 +546,73 @@ async def test_la_riga_di_lascia_passare_e_nella_lingua_del_server(monkeypatch, 
     await staff.lascia_passare(i, 62)
     riga = i.message.edit.await_args.kwargs["embed"].fields[0].value
     assert riga.startswith("<@77>") and "lasciato passare" not in riga
+
+
+# ------------------------------------- D67: un blocco per server, ticket per ciascuno
+@pytest.mark.asyncio
+async def test_un_blocco_per_server_non_si_sovrascrivono(clean_db):
+    from core.repositories.verify_blocchi_repo import VerifyBlocchiRepository
+
+    blocchi = VerifyBlocchiRepository(pool_provider=lambda: clean_db)
+    await blocchi.registra(7, GUILD, "primo")
+    await blocchi.registra(7, GUILD + 1, "secondo")
+    await blocchi.registra(7, GUILD, "primo aggiornato")
+    righe = await blocchi.recenti(7)
+    assert [(r["guild_id"], r["motivo"]) for r in righe] == [(GUILD, "primo aggiornato"), (GUILD + 1, "secondo")]
+    await blocchi.cancella_del_server(7, GUILD)
+    assert [r["guild_id"] for r in await blocchi.recenti(7)] == [GUILD + 1]
+
+
+@pytest.mark.asyncio
+async def test_migrazione_0531_chiave_persona_e_server_rilanciabile(clean_db):
+    import pathlib
+
+    sql = (pathlib.Path(__file__).resolve().parents[1] / "core" / "migrations" / "0531_verify_blocchi_per_server.sql").read_text()
+    await clean_db.execute(sql)
+    await clean_db.execute(sql)
+    colonne = await clean_db.fetch(
+        """
+        SELECT a.attname FROM pg_index i JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+        WHERE i.indrelid = 'verify_blocchi'::regclass AND i.indisprimary ORDER BY array_position(i.indkey, a.attnum)
+        """
+    )
+    assert [c["attname"] for c in colonne] == ["user_id", "guild_id"]
+
+
+@pytest.mark.asyncio
+async def test_limitato_in_due_server_sceglie_dal_menu_e_il_motivo_va_nel_ticket(monkeypatch, clean_db):
+    from cogs.tickets import modmail
+    from core.repositories.verify_blocchi_repo import VerifyBlocchiRepository
+
+    blocchi = VerifyBlocchiRepository(pool_provider=lambda: clean_db)
+    monkeypatch.setattr(modmail, "verify_blocchi_repo", blocchi)
+    monkeypatch.setattr(modmail, "lingua_risposta", AsyncMock(return_value="it"))
+    primo, secondo = fake_guild(guild_id=GUILD, name="Primo", owner_id=1), fake_guild(guild_id=GUILD + 1, name="Secondo", owner_id=1)
+    bot = MagicMock()
+    bot.get_guild = MagicMock(side_effect=lambda i: {GUILD: primo, GUILD + 1: secondo}.get(i))
+    cog = modmail.ModMailCog(bot)
+    monkeypatch.setattr(modmail.modmail_repo, "aperta_dell_utente", AsyncMock(return_value=None))
+    monkeypatch.setattr(modmail.blacklist_repo, "is_user_blacklisted", AsyncMock(return_value=False))
+    cog._ha_appello_aperto = AsyncMock(return_value=False)
+    cog._server_ok = AsyncMock(return_value=True)
+    cog._apri = AsyncMock()
+    messaggio = MagicMock()
+    messaggio.author = fake_member(300)
+    messaggio.channel.send = AsyncMock()
+    await blocchi.registra(300, GUILD, "Account probabilmente compromesso (messaggi uguali)")
+    await blocchi.registra(300, GUILD + 1, "Account probabilmente compromesso (immagini malevole)")
+    await cog._dm_in_arrivo(messaggio)
+    cog._apri.assert_not_awaited()  # due server: prima si sceglie
+    vista = messaggio.channel.send.await_args.kwargs["view"]
+    assert isinstance(vista, modmail.SceltaServerView)
+    assert {o.value for o in vista.children[0].options} == {str(GUILD), str(GUILD + 1)}
+    assert "più server" in messaggio.channel.send.await_args.args[0]
+    await cog.apri_da_menu(secondo, messaggio.author, messaggio, motivo=vista._motivi[GUILD + 1])
+    assert cog._apri.await_args.args[0] is secondo
+    assert cog._apri.await_args.kwargs["motivo"].endswith("(immagini malevole)")
+    assert [r["guild_id"] for r in await blocchi.recenti(300)] == [GUILD]  # l'altro server aspetta il prossimo messaggio
+    # il messaggio dopo (conversazione chiusa) apre direttamente l'altro server
+    cog._apri.reset_mock()
+    await cog._dm_in_arrivo(messaggio)
+    assert cog._apri.await_args.args[0] is primo and "messaggi uguali" in cog._apri.await_args.kwargs["motivo"]
+    assert await blocchi.recenti(300) == []

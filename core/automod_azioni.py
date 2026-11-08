@@ -28,6 +28,7 @@ from core.automod_regole_logic import (
     espandi_segnaposto,
     ordina_azioni,
 )
+from core import automod_eventi_logic as eventi_logica
 from core.bounded_cache import BoundedCache
 from core.scheduler import scheduler
 
@@ -452,6 +453,7 @@ async def esegui_azioni(azioni: tuple[Azione, ...] | list[Azione], b: Bersaglio)
             continue
         if azione.t in ("warn", "dm", "cancella_ultimi", "azzera") and b.membro is None:
             continue
+        _segna_effetto(azione, b)  # prima: l'evento arriva appena Discord risponde, e la regola non deve rispondergli (D63)
         try:
             if await funzione(azione, b):
                 eseguite.append(_NOME_NEL_LOG.get(azione.t, azione.t))
@@ -462,6 +464,13 @@ async def esegui_azioni(azioni: tuple[Azione, ...] | list[Azione], b: Bersaglio)
         except discord.HTTPException as errore:
             logger.info("AutoMod: azione %s non riuscita nel server %s: %s", azione.t, b.guild.id, errore)
     return tuple(eseguite)
+
+
+def _segna_effetto(azione: Azione, b: Bersaglio) -> None:
+    """Ricorda che il bot sta per cambiare ruolo, nome o presenza di questa persona: gli eventi che ne nascono si ignorano."""
+    tipo = eventi_logica.EFFETTO_DELL_AZIONE.get(azione.t)
+    if tipo is not None and b.membro is not None:
+        eventi_logica.effetti.segna(b.guild.id, b.membro.id, tipo, azione.get("ruolo_id") if azione.t == "ruolo" else None, time.monotonic())
 
 
 async def _sospendi(b: Bersaglio, tipo: str) -> None:

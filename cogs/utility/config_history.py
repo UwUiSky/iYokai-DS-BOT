@@ -144,6 +144,10 @@ SETTINGS_SCHEMA = {
     "immagini_azione": "azione_immagini",
     "immagini_timeout_minuti": "int_1_40320",
     "immagini_canale_log_id": "id",
+    # Difesa dagli account rubati (core/account_rubato_opzioni.py, D67)
+    "account_rubato_attivo": "bool",
+    "account_rubato_minuti_uguali": "int_1_40320",
+    "account_rubato_minuti_malevole": "int_1_40320",
     # Inviti e link personali (core/invite_links_logic.py)
     "inviti_log_channel_id": "id",
     "inviti_link_role_id": "id",
