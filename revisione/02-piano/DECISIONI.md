@@ -1031,3 +1031,10 @@ Aggiorna D64/D65.
   la persona indicata; tutto il resto si dà su richiesta con `/privacy`. Nota di chi sviluppa (GDPR art. 15): la persona
   stessa ha diritto ai propri dati, IP compreso; si danno solo a lei, dopo aver verificato che è lei (login Discord dal
   pannello), mai ad altri senza ordine del giudice.
+
+## D68 — Motivi pronti con severità e sanzione di base (08/11/2026, richiesta dell'owner)
+I motivi pronti delle sanzioni (`/mod-casi motivi`) hanno anche una **severità** (lieve, media, grave, gravissima) e
+una **sanzione con durata** (es. «Spam» → timeout 1 ora). Il bot porta un elenco **preimpostato** per severità, uguale
+per tutti i server all'inizio (es. lieve: warn; media: timeout 1 h; grave: timeout 24 h o kick; gravissima: ban);
+ogni server può cambiare, togliere o aggiungere motivi. Scegliendo un motivo pronto il bot propone quella sanzione e
+quella durata, che lo staff può cambiare prima di confermare.
