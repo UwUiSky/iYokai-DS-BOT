@@ -202,7 +202,7 @@ class ModerationRepository:
             guild_id, case_number, action_type, user_id=user_id, moderator_id=moderator_id, motivo=reason
         )
         # AMD-075: chi si è registrato (regole AutoMod sul «caso») lo viene a sapere da qui, un solo punto.
-        await caso_eventi.notifica(guild_id, case_number, user_id, moderator_id, action_type, origine, reason)
+        caso_eventi.notifica(guild_id, case_number, user_id, moderator_id, action_type, origine, reason)  # in un compito a parte
         return case_number
 
     async def get_case(self, guild_id: int, case_number: int) -> ModerationCase | None:

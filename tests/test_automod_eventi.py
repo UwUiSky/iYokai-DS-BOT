@@ -5,6 +5,7 @@ Regole AutoMod sugli eventi che non sono messaggi (AMD-009/010/017/018/075): sce
 freni contro i giri a vuoto, ascoltatori del cog e registro dei casi.
 """
 
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -375,7 +376,7 @@ async def test_un_ascoltatore_che_sbaglia_non_ferma_gli_altri():
     caso_eventi.registra(buono)
     caso_eventi.registra(buono)  # due volte = una
     try:
-        await caso_eventi.notifica(1, 2, 3, 4, "warn", "manuale", "m")
+        await caso_eventi.notifica(1, 2, 3, 4, "warn", "manuale", "m")  # il compito a parte
     finally:
         caso_eventi.rimuovi(rotto)
         caso_eventi.rimuovi(buono)
@@ -393,6 +394,29 @@ async def test_create_case_avvisa_chi_ascolta(clean_db, monkeypatch):
     try:
         repo = ModerationRepository(pool_provider=lambda: clean_db)
         numero = await repo.create_case(GUILD, 2, 3, "ban", "spam")
+        await asyncio.gather(*caso_eventi._in_corso)
     finally:
         caso_eventi.rimuovi(visti)
     visti.assert_awaited_once_with(GUILD, numero, 2, 3, "ban", "manuale", "spam")
+
+
+@pytest.mark.asyncio
+async def test_create_case_non_aspetta_le_regole(clean_db, monkeypatch):
+    """Il comando di moderazione risponde subito: una regola lenta sul «caso» gira dopo, a parte."""
+    from core import log_forum_service
+    from core.repositories.moderation_repo import ModerationRepository
+
+    monkeypatch.setattr(log_forum_service, "notifica_caso", AsyncMock())
+    libera = asyncio.Event()
+
+    async def lenta(*_a):
+        await libera.wait()
+
+    caso_eventi.registra(lenta)
+    try:
+        repo = ModerationRepository(pool_provider=lambda: clean_db)
+        await asyncio.wait_for(repo.create_case(GUILD, 2, 3, "warn", "x"), timeout=5)
+    finally:
+        libera.set()
+        await asyncio.gather(*caso_eventi._in_corso)
+        caso_eventi.rimuovi(lenta)
