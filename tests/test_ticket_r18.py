@@ -456,3 +456,11 @@ async def test_canale_di_riserva_cancellato_a_mano_esce_dalla_riserva():
     cog._attivita_scritta = {}
     await cog.on_guild_channel_delete(SimpleNamespace(id=7001))
     assert (await repo.pannelli_con_riserva())[0]["presenti"] == 0  # il giro ne rifà uno
+
+
+def test_messaggio_ripetuto_si_ferma_dopo_tre_invii_finche_nessuno_scrive():
+    """Prima un ticket abbandonato riceveva il sollecito ogni 5 minuti per sempre (migliaia di messaggi)."""
+    r = w.Regola(1, 1, "utente", 10, "messaggio", "ciao", ripeti=True)
+    assert _scatta(r, ultimo_utente=_min(0), ultima_esecuzione=_min(20), adesso=_min(30)) is True  # terzo invio
+    assert _scatta(r, ultimo_utente=_min(0), ultima_esecuzione=_min(30), adesso=_min(500)) is False
+    assert _scatta(r, ultimo_utente=_min(400), ultima_esecuzione=_min(30), adesso=_min(410)) is True  # ha scritto: si riparte

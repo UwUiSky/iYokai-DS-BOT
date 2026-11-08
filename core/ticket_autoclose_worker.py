@@ -17,6 +17,7 @@ MIN_MINUTI = 5
 MAX_MINUTI = 43200  # 30 giorni
 MAX_TESTO_REGOLA = 1000
 MAX_RISERVA = 5
+MAX_RIPETIZIONI = 3  # un messaggio ripetuto si manda al massimo 3 volte finché nessuno scrive
 PAUSA_SPOSTAMENTO_MINUTI = 10  # un ticket si sposta al massimo ogni 10 minuti
 MAX_CANALI_PER_CATEGORIA = 50
 CHI = ("utente", "staff", "chiunque")
@@ -66,7 +67,10 @@ def regola_scattata(
     ultima_esecuzione: datetime | None,
     adesso: datetime,
 ) -> bool:
-    """Vero se nessuno (utente, staff o chiunque) scrive da `minuti` e la regola non è già stata eseguita."""
+    """
+    Vero se nessuno (utente, staff o chiunque) scrive da `minuti` e la regola non è già stata eseguita.
+    Un messaggio ripetuto si ferma dopo MAX_RIPETIZIONI invii; riparte quando qualcuno scrive.
+    """
     if regola.chi == "utente":
         riferimento = ultimo_utente
     elif regola.chi == "staff":
@@ -77,6 +81,8 @@ def regola_scattata(
     if ultima_esecuzione is not None:
         if not regola.ripeti and ultima_esecuzione >= riferimento:
             return False  # già fatta e nessuno ha scritto dopo
+        if ultima_esecuzione - riferimento >= timedelta(minutes=regola.minuti * MAX_RIPETIZIONI):
+            return False  # già mandato MAX_RIPETIZIONI volte senza risposta
         riferimento = max(riferimento, ultima_esecuzione)
     return adesso - riferimento >= timedelta(minutes=regola.minuti)
 

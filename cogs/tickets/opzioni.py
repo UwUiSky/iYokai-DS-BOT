@@ -595,7 +595,7 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
         minuti="Minuti senza messaggi (da 5)",
         azione="Cosa fare: chiudi, elimina o messaggio",
         testo="Il messaggio da scrivere ({utente} = chi ha aperto il ticket)",
-        ripeti="Ripeti il messaggio ogni volta che passano i minuti",
+        ripeti="Ripeti il messaggio ogni N minuti (al massimo 3 volte senza risposta)",
         numero="Numero della regola da togliere (lo trovi nell'elenco)",
     )
     @app_commands.choices(
