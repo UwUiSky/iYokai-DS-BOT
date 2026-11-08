@@ -1843,7 +1843,7 @@
   "motivopronto_durata_troppo_lunga": "A timeout lasts 28 days at most.",
   "motivopronto_solo_autore": "Only whoever ran the command can use these buttons.",
   "motivopronto_annullato": "Cancelled.",
-  "motivopronto_fatto": "Sanction applied.",
+  "motivopronto_fatto": "Proposal closed: the result (sanction given or refused) is in the reply below.",
   "motivopronto_serve_mod": "You no longer have the moderation level: the sanction was not given.",
   "motivopronto_serve_modban": "Kick and ban need the /mod-ban role. Pick another sanction or ask someone who can.",
   "modm_staff_di": "{server} staff",

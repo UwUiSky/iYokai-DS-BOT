@@ -335,3 +335,18 @@ async def test_doppio_clic_insieme_su_un_kick_non_ripete(server_pronto, _livello
     await asyncio.gather(vista.conferma.callback(scena.interazione), vista.conferma.callback(scena.interazione))
     assert scena.bersaglio.kick.call_count <= 1
     assert len(await moderation_repo.list_cases_for_user(server_pronto, ID_BERSAGLIO)) <= 1
+
+
+async def test_una_sanzione_rifiutata_non_e_detta_data(server_pronto):
+    """Se il comando vero rifiuta (gerarchia), la proposta non deve dire «Sanzione data»."""
+    from tests.support.discord_fakes import fake_role
+
+    scena = Scena()
+    vista, _ = await _applica(scena, "Insulti")
+    scena.bersaglio.top_role = fake_role(role_id=9, position=45)
+    scena.bersaglio.roles = [scena.bersaglio.top_role]
+    scena.interazione.client.get_cog.return_value = ModerationActionsCog(bot=None)
+    await vista.conferma.callback(scena.interazione)
+    assert scena.bersaglio.timeout.call_count == 0
+    contenuto = scena.interazione.edit_original_response.call_args.kwargs["content"]
+    assert contenuto != "Sanzione data."
