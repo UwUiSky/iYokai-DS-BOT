@@ -63,8 +63,8 @@ async def _log(interaction: discord.Interaction, titolo_chiave: str, membro, det
 class ModerationVoceCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
-        # (server, utente) con una sorveglianza attiva; evita una query a ogni cambio di stato della voce
-        self._sorvegliati: set[tuple[int, int]] = set()
+        # (server, utente) -> scadenza della sorveglianza; evita una query a ogni cambio di stato della voce
+        self._sorvegliati: dict[tuple[int, int], datetime] = {}
         self._caricato = False
 
     async def _prepara_membro(self, interaction: discord.Interaction, azione: str, membro: discord.Member):
@@ -199,17 +199,26 @@ class ModerationVoceCog(CogConGruppi, commands.Cog):
         if await moderation_repo.count_vocale_sorveglia(guild.id) >= logica.MAX_SORVEGLIANZE_SERVER:
             await rifiuta(interaction, "voce_troppe_sorveglianze", v1=logica.MAX_SORVEGLIANZE_SERVER)
             return
-        scade = logica.scadenza_sorveglianza(datetime.now(timezone.utc))
+        adesso = datetime.now(timezone.utc)
+        scade = logica.scadenza_sorveglianza(adesso)
         await moderation_repo.add_vocale_sorveglia(guild.id, membro.id, interaction.user.id, scade)
-        self._sorvegliati.add((guild.id, membro.id))
+        self._togli_scadute(adesso)
+        chiave = (guild.id, membro.id)
+        self._sorvegliati[chiave] = max(scade, self._sorvegliati.get(chiave, scade))
         await rifiuta(interaction, "voce_dove_avviso_creato", membro=membro.mention, ore=logica.SORVEGLIANZA_ORE)
+
+    def _togli_scadute(self, adesso: datetime) -> None:
+        """Chi non entra mai in vocale non resta in memoria oltre la sua scadenza."""
+        for chiave in [k for k, scade in self._sorvegliati.items() if scade <= adesso]:
+            del self._sorvegliati[chiave]
 
     async def _carica(self) -> None:
         if self._caricato:
             return
         self._caricato = True
         try:
-            self._sorvegliati |= set(await moderation_repo.utenti_sorvegliati())
+            for guild_id, user_id, scade in await moderation_repo.utenti_sorvegliati():
+                self._sorvegliati[(guild_id, user_id)] = max(scade, self._sorvegliati.get((guild_id, user_id), scade))
         except Exception:  # noqa: BLE001 - senza tabella o senza database non si blocca la voce
             logger.warning("Sorveglianze della voce non lette.", exc_info=False)
 
@@ -220,9 +229,9 @@ class ModerationVoceCog(CogConGruppi, commands.Cog):
             return
         await self._carica()
         chiave = (member.guild.id, member.id)
-        if chiave not in self._sorvegliati:
+        scade = self._sorvegliati.pop(chiave, None)
+        if scade is None or scade <= datetime.now(timezone.utc):
             return
-        self._sorvegliati.discard(chiave)
         staff_ids = await moderation_repo.vocale_sorveglianti(member.guild.id, member.id)
         await moderation_repo.delete_vocale_sorveglia(member.guild.id, member.id)
         testo = await testo_guild(member.guild, "voce_avviso_ingresso", membro=member.mention, canale=dopo.channel.mention, server=member.guild.name)

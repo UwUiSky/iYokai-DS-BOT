@@ -772,12 +772,13 @@ class ModerationRepository:
             "SELECT count(*) FROM moderation_vocale_sorveglia WHERE guild_id = $1 AND scade_at > now()", guild_id
         )
 
-    async def utenti_sorvegliati(self) -> list[tuple[int, int]]:
-        """Tutte le coppie (server, utente) con una sorveglianza attiva: serve a riempire la cache all'avvio."""
+    async def utenti_sorvegliati(self) -> list[tuple[int, int, object]]:
+        """(server, utente, scadenza più lontana) delle sorveglianze attive: riempie la cache all'avvio."""
         rows = await self._pool.fetch(
-            "SELECT DISTINCT guild_id, user_id FROM moderation_vocale_sorveglia WHERE scade_at > now()"
+            "SELECT guild_id, user_id, max(scade_at) AS scade_at FROM moderation_vocale_sorveglia "
+            "WHERE scade_at > now() GROUP BY guild_id, user_id"
         )
-        return [(r["guild_id"], r["user_id"]) for r in rows]
+        return [(r["guild_id"], r["user_id"], r["scade_at"]) for r in rows]
 
 
     # --- motivi pronti (MOD-113) ---

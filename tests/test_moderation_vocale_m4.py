@@ -257,6 +257,20 @@ async def test_ingresso_in_vocale_avvisa_lo_staff_una_volta():
     staff.send.assert_awaited_once()
 
 
+async def test_le_sorveglianze_scadute_escono_dalla_memoria(monkeypatch):
+    """Chi non entra mai in vocale non deve restare per sempre nella memoria del cog."""
+    cog = _cog()
+    inter, _ = _amb_cmd({"move_members": True})
+    vera = logica.scadenza_sorveglianza
+    monkeypatch.setattr(logica, "scadenza_sorveglianza", lambda adesso: adesso - timedelta(hours=1))
+    await _cb(cog.vocale_dove)(cog, inter, _bersaglio(uid=21, canale=None), True)
+    monkeypatch.setattr(logica, "scadenza_sorveglianza", vera)
+    inter2, _ = _amb_cmd({"move_members": True})
+    await _cb(cog.vocale_dove)(cog, inter2, _bersaglio(uid=22, canale=None), True)
+    assert (G, 21) not in cog._sorvegliati
+    assert (G, 22) in cog._sorvegliati
+
+
 # --- mute con ruolo + voce (MOD-026) ---
 
 def _mute_env(monkeypatch, perm_staff):
