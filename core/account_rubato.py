@@ -6,7 +6,7 @@ canali o server in poco tempo, il bot (1) manda allo staff UN SOLO avviso riassu
 invece di nuovi messaggi, senza allegati né copie delle immagini; (2) la limita subito con il timeout di Discord
 e cancella quello che ha mandato; (3) le scrive in privato di mettere al sicuro l'account; il suo messaggio
 privato dopo apre il ticket ModMail con lo staff (core/verify_blocchi.py). Nessuna esenzione dello staff (un
-account staff rubato è il caso tipico): per lui servono solo più canali; i canali annunci non contano. Opzione per server accesa di base (core/account_rubato_opzioni.py).
+account staff rubato è il caso tipico): per lui servono solo più canali; i canali annunci non contano. Opzione per server accesa di base e minuti di timeout (core/account_rubato_opzioni.py).
 Funzioni coperte: SPEC §6.20 (D67, #153)
 Dipende da: core/account_rubato_logic.py, core/automod_azioni.py, core/verify_blocchi.py
 """
@@ -115,7 +115,7 @@ async def _in_server(guild: discord.Guild, membro: discord.Member, sintesi: Sint
     if corrente is not None:
         azioni.append({"t": "cancella"})
     if not membro.is_timed_out():
-        azioni.append({"t": "timeout", "secondi": sintesi.timeout_secondi})
+        azioni.append({"t": "timeout", "secondi": await opzioni.timeout_secondi(guild.id, sintesi.malevole)})
     fatte = await esegui_azioni(
         azioni_da_json(azioni),
         Bersaglio(guild=guild, motivo=motivo, regola_chiave=REGOLA, regola_nome=t("arub_titolo", lingua), membro=membro,

@@ -1699,7 +1699,7 @@
   "arub_piede": "Un solo avviso per persona, aggiornato a ogni nuovo invio. Nessun file allegato.",
   "arub_dm_titolo": "Account limitato",
   "arub_dm": "Sei stato limitato da iYokai per una presunta violazione del tuo account: cambia la password, attiva l'autenticazione a due fattori, controlla le app autorizzate; poi scrivimi qui.",
-  "arub_stato": "Difesa dagli account rubati: {stato}.",
+  "arub_stato": "Difesa dagli account rubati: {stato}. Timeout: {uguali} minuti per i messaggi uguali, {malevole} per le immagini malevole.",
   "tickets_solo_admin_dei_ticket": "Solo gli admin dei ticket possono farlo.",
   "tickets_scegli_il_motivo": "Scegli il motivo del ticket:",
   "tickets_motivo_aggiunto": "Motivo «{etichetta}» aggiunto al pannello {name} (posizione {posizione}).",

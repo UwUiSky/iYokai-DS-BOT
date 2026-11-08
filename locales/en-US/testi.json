@@ -1699,7 +1699,7 @@
   "arub_piede": "One alert per person, updated on every new send. No files attached.",
   "arub_dm_titolo": "Account restricted",
   "arub_dm": "iYokai has restricted you for a suspected breach of your account: change your password, turn on two-factor authentication, check your authorized apps; then write to me here.",
-  "arub_stato": "Stolen-account defense: {stato}.",
+  "arub_stato": "Stolen-account defense: {stato}. Timeout: {uguali} minutes for repeated messages, {malevole} for malicious images.",
   "tickets_solo_admin_dei_ticket": "Only ticket admins can do this.",
   "tickets_scegli_il_motivo": "Choose the reason for your ticket:",
   "tickets_motivo_aggiunto": "Reason «{etichetta}» added to panel {name} (position {posizione}).",

@@ -85,7 +85,7 @@ async def test_due_invii_non_fanno_nulla(ambiente):
 async def test_tre_canali_limitano_cancellano_avvisano_una_volta(ambiente):
     assert await tre_invii(ambiente) == [False, False, True]
     ambiente.isola.assert_awaited_once()
-    assert ambiente.isola.await_args.args[1].total_seconds() == lg.TIMEOUT_UGUALI_S
+    assert ambiente.isola.await_args.args[1].total_seconds() == ar.opzioni.MINUTI_UGUALI * 60 == 3_600
     ambiente.cancella.assert_awaited()  # il messaggio che scatta
     ambiente.cancella_molti.assert_not_called()  # gli altri due stanno in canali diversi: uno a uno
     assert ambiente.cancella.await_count == 3
@@ -144,7 +144,7 @@ async def test_opzione_spenta_non_fa_nulla(ambiente, monkeypatch):
 @pytest.mark.asyncio
 async def test_immagine_malevola_limita_subito_per_un_giorno(ambiente):
     assert await ar.controlla_messaggio(ambiente.bot, messaggio(ambiente, 0, 10, testo=""), malevola=True) is True
-    assert ambiente.isola.await_args.args[1].total_seconds() == lg.TIMEOUT_MALEVOLE_S
+    assert ambiente.isola.await_args.args[1].total_seconds() == ar.opzioni.MINUTI_MALEVOLE * 60 == 86_400
     assert "immagini malevole" in ambiente.log.send.await_args.kwargs["embed"].description
 
 
@@ -246,3 +246,36 @@ async def test_annuncio_dello_staff_in_tre_canali_non_basta_in_cinque_si(ambient
 
     assert [await ar.controlla_messaggio(ambiente.bot, da_staff(n)) for n in range(5)] == [False] * 4 + [True]
     ambiente.isola.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_il_server_sceglie_i_minuti_di_timeout(ambiente, monkeypatch):
+    import core.database as database
+
+    scelti = {ar.opzioni.SETTING_MINUTI_UGUALI: 5, ar.opzioni.SETTING_MINUTI_MALEVOLE: 120}
+    monkeypatch.setattr(database.db, "get_guild_setting", AsyncMock(side_effect=lambda g, k, d=None: scelti.get(k, d)))
+    await tre_invii(ambiente)
+    assert ambiente.isola.await_args.args[1].total_seconds() == 300
+    ambiente.membro.is_timed_out.return_value = False
+    await ar.controlla_messaggio(ambiente.bot, messaggio(ambiente, 9, 90, testo=""), malevola=True)
+    assert ambiente.isola.await_args.args[1].total_seconds() == 7_200
+
+
+@pytest.mark.asyncio
+async def test_minuti_fuori_dai_limiti_rifiutati_prima_di_scrivere(monkeypatch):
+    import core.database as database
+
+    scrivi = AsyncMock()
+    monkeypatch.setattr(database.db, "set_guild_setting", scrivi)
+    for sbagliato in ({"uguali": 0}, {"malevole": 40_321}, {"uguali": 10, "malevole": 0}):
+        with pytest.raises(ValueError):
+            await ar.opzioni.imposta_minuti(1, 2, **sbagliato)
+    scrivi.assert_not_called()
+    await ar.opzioni.imposta_minuti(1, 2, malevole=30)
+    scrivi.assert_awaited_once_with(1, ar.opzioni.SETTING_MINUTI_MALEVOLE, 30, changed_by=2)
+
+
+@pytest.mark.asyncio
+async def test_minuti_rotti_nel_database_tornano_a_quelli_di_base():
+    archivio = SimpleNamespace(get_guild_setting=AsyncMock(side_effect=["tanti", True]))
+    assert await ar.opzioni.minuti(1, archivio) == (60, 1_440)

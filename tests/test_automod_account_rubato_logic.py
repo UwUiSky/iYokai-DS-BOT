@@ -48,7 +48,7 @@ def test_tre_canali_uguali_segnalano():
     invio(reg, 2, 2, 1)
     s = invio(reg, 3, 3, 2)
     assert (s.invii, s.canali, s.server, s.prima_volta, s.motivi) == (3, 3, 1, True, (lg.MOTIVO_UGUALI,))
-    assert s.timeout_secondi == lg.TIMEOUT_UGUALI_S
+    assert not s.malevole
 
 
 def test_tre_canali_in_server_diversi_contano_i_server():
@@ -85,11 +85,10 @@ def test_persone_diverse_non_si_sommano():
     assert invio(reg, 3, 3, 2, user=3) is None
 
 
-def test_immagine_malevola_segnala_subito_con_timeout_lungo():
+def test_immagine_malevola_segnala_subito():
     reg = lg.RegistroInvii()
     s = invio(reg, 1, 1, 0, malevola=True)
     assert s.malevole and s.invii == 1 and s.prima_volta
-    assert s.timeout_secondi == lg.TIMEOUT_MALEVOLE_S
 
 
 def test_dopo_la_prima_segnalazione_si_aggiorna_senza_essere_prima_volta():

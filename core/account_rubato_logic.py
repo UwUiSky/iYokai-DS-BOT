@@ -24,8 +24,6 @@ MIN_CARATTERI = 12  # testo con un link o @everyone: sotto, un messaggio uguale 
 MIN_CARATTERI_SOLO_TESTO = 40  # testo senza link: «buongiorno a tutti» in tre canali non è un account rubato
 MAX_INVII_PER_PERSONA = 60
 MAX_PERSONE = 20_000
-TIMEOUT_MALEVOLE_S = 86_400
-TIMEOUT_UGUALI_S = 3_600
 
 MOTIVO_MALEVOLE = "malevole"
 MOTIVO_UGUALI = "uguali"
@@ -50,10 +48,6 @@ class Sintesi:
     @property
     def malevole(self) -> bool:
         return MOTIVO_MALEVOLE in self.motivi
-
-    @property
-    def timeout_secondi(self) -> int:
-        return TIMEOUT_MALEVOLE_S if self.malevole else TIMEOUT_UGUALI_S
 
 
 def firma_messaggio(testo: str | None, allegati: list[tuple[str, int]] = (), inoltrati: list[str] = ()) -> str | None:
