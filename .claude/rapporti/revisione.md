@@ -438,3 +438,15 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 02/11 | `feat/r15automod` | pannello «Nuova regola» | Eventi non messaggio (ingresso, nome, vocale…) si salvano ma non scattano fino ad A9 | nota | aperto (A9) |
 | 02/11 | `feat/r15automod` | `cogs/automod/regole.py:riepilogo` | Le regole personali appaiono come `p:N`, non con il nome | bassa | aperto |
 | 02/11 | `feat/r15automod` | `core/repositories/automod_regole_repo.py:livello_di` | Legge `leveling_totals` fuori da leveling_repo (D16) | bassa | aperto |
+| 02/11 | `feat/r16mod` | `cogs/moderation/clear.py:clear` | Con «dopo» la storia andava dal più vecchio: dopo il primo messaggio oltre 14 giorni discord.py cancellava uno per uno anche tutti i recenti (fino a 900 chiamate) | alta | chiuso (06021a6) |
+| 02/11 | `feat/r16mod` | `core/repositories/moderation_repo.py:create_case` | Origine indovinata dal motivo «AutoMod…»: un motivo scritto a mano faceva scadere il caso, la scala dei warn no; chiave dell'impostazione copiata (D16) | media | chiuso (9e7dda7) |
+| 02/11 | `feat/r16mod` | `core/repositories/moderation_repo.py:create_case` | Scadenza AutoMod anche su ban, tempban, timeout, mute in corso: caso chiuso, appello e cambio di durata impossibili | alta | chiuso (d069d00) |
+| 02/11 | `feat/r16mod` | `core/repositories/staff_carico_repo.py:segnali_utente` | Casi nascosti contati nel rischio del membro | media | chiuso (6ac5246) |
+| 02/11 | `feat/r16mod` | `core/repositories/moderation_repo.py:revoke_all_warns` | Azzera-tutti toglieva anche i nascosti, fuori dal numero confermato | bassa | chiuso (467d512) |
+| 02/11 | `feat/r16mod` | `cogs/moderation/case_system.py:case_duration` | Con il solo moderate_members si accorciava/allungava un tempban; nessuna gerarchia sul membro | alta | chiuso (861c0aa) |
+| 02/11 | `feat/r16mod` | `cogs/moderation/clear.py:clear` | Errore HTTP dopo 15 minuti: followup su token scaduto; una pulizia interrotta a metà non lascia riga di log | bassa | aperto |
+| 02/11 | `feat/r16mod` | `cogs/moderation/clear.py:reazioni` | Un messaggio cancellato nel frattempo (404) ferma tutto il giro (break su HTTPException) | bassa | aperto |
+| 02/11 | `feat/r16mod` | `core/clear_filter_logic.py:_autore_sospetto/_EMOJI_UNICODE` | «sospetti» prende anche webhook e bot senza avatar; «emoji» conta come emoji frecce e riquadri (U+2190-21FF, 2500-25FF), non i tasti 1️⃣ | bassa | aperto |
+| 02/11 | `feat/r16mod` | `cogs/moderation/case_system.py:case_export` | File senza segno dei casi nascosti; nessuna riga di log di chi esporta (dati personali) | bassa | aperto |
+| 02/11 | `feat/r16mod` | `clear_regex_non_valida`, `clear_valore_non_valido`, `errore_durata_caso` | Motivi solo in italiano anche per il server in inglese (D58) | bassa | aperto |
+| 02/11 | `feat/r16mod` | `cogs/security/spam_trap.py:create_case` | Casi della trappola senza origine «automod»: non scadono (da decidere) | nota | aperto |
