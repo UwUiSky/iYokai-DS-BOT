@@ -216,6 +216,7 @@ def _scena(*canali, tickets_cog=None):
     cog = TicketInattivitaCog.__new__(TicketInattivitaCog)
     cog.bot = bot
     cog._regole = {}
+    cog._dopo_id = 0
     return cog, guild
 
 
@@ -330,3 +331,26 @@ async def test_aprire_un_ticket_usa_il_canale_della_riserva():
     # Categoria diversa: il canale pronto non si usa.
     await repo.aggiungi_riserva(7001, GUILD, p.id)
     assert await modulo_ticket._canale_dalla_riserva(guild, SimpleNamespace(id=901), p.id, "n", ow, "m") is None
+
+
+async def test_il_giro_arriva_anche_ai_ticket_oltre_il_tetto(monkeypatch):
+    """Con più ticket del tetto per giro, il giro dopo riparte da dove si era fermato (prima: sempre i primi)."""
+    import cogs.tickets.inattivita as inattivita
+
+    monkeypatch.setattr(inattivita, "MAX_TICKET_PER_GIRO", 2)
+    p = await _pannello()
+    await ticket_opzioni_repo.imposta(p.id, attesa_minuti=30, attesa_categoria_id=777)
+    canali = []
+    for i in range(3):
+        await ticket_repo.create_ticket(GUILD, 20 + i, 5001 + i, panel_id=p.id, ticket_number=i + 1)
+        canali.append(_canale_ticket(canale_id=5001 + i))
+    cog, _ = _scena(*canali)
+    visti = []
+
+    async def _un_ticket(riga, adesso):
+        visti.append(riga["channel_id"])
+
+    cog._un_ticket = _un_ticket
+    await cog.controlla_ticket(NOW)
+    await cog.controlla_ticket(NOW)
+    assert 5003 in visti

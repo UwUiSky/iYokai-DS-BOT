@@ -34,6 +34,7 @@ class TicketInattivitaCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._regole: dict[int, list[Regola]] = {}
+        self._dopo_id = 0  # il giro riprende dal ticket dopo l'ultimo controllato
 
     async def cog_load(self) -> None:
         self._giro.start()
@@ -59,7 +60,10 @@ class TicketInattivitaCog(commands.Cog):
     # ------------------------------------------------------------ ticket aperti
     async def controlla_ticket(self, adesso: datetime) -> None:
         self._regole = {}
-        for riga in (await repo.da_controllare())[:MAX_TICKET_PER_GIRO]:
+        righe = await repo.da_controllare(self._dopo_id, MAX_TICKET_PER_GIRO)
+        # Meno righe del tetto = arrivati in fondo: il giro dopo riparte dal primo.
+        self._dopo_id = righe[-1]["id"] if len(righe) == MAX_TICKET_PER_GIRO else 0
+        for riga in righe:
             try:
                 await self._un_ticket(riga, adesso)
             except Exception:  # noqa: BLE001 - un ticket che dà errore non ferma gli altri
@@ -77,8 +81,9 @@ class TicketInattivitaCog(commands.Cog):
             return
         if isinstance(channel, discord.TextChannel):
             await self._attesa(guild, channel, riga, adesso)
-        for regola in await self._regole_del_pannello(riga["panel_id"]):
-            eseguite = await repo.eseguite(riga["id"])
+        regole_pannello = await self._regole_del_pannello(riga["panel_id"])
+        eseguite = await repo.eseguite(riga["id"]) if regole_pannello else {}
+        for regola in regole_pannello:
             scattata = regole.regola_scattata(
                 regola,
                 creato=riga["created_at"],

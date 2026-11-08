@@ -79,8 +79,11 @@ class TicketAutomazioniRepository:
             channel_id, at,
         )
 
-    async def da_controllare(self) -> list[dict]:
-        """Ticket aperti di un pannello che ha l'attesa o almeno una regola, con lo stato da valutare."""
+    async def da_controllare(self, dopo_id: int = 0, limite: int = 2000) -> list[dict]:
+        """
+        Ticket aperti di un pannello che ha l'attesa o almeno una regola, con lo stato da valutare.
+        In ordine di id, a partire da `dopo_id`: il giro riprende da dove si era fermato.
+        """
         righe = await self._pool.fetch(
             """
             SELECT t.id, t.guild_id, t.user_id, t.channel_id, t.panel_id, t.created_at, t.last_activity_at,
@@ -88,12 +91,13 @@ class TicketAutomazioniRepository:
                    COALESCE(o.attesa_minuti, 0) AS attesa_minuti, o.attesa_categoria_id
             FROM tickets t
             LEFT JOIN ticket_panel_opzioni o ON o.panel_id = t.panel_id
-            WHERE t.status = 'open' AND t.panel_id IS NOT NULL
+            WHERE t.status = 'open' AND t.panel_id IS NOT NULL AND t.id > $1
               AND (COALESCE(o.attesa_minuti, 0) > 0 OR t.in_attesa_da IS NOT NULL
                    OR EXISTS (SELECT 1 FROM ticket_automazioni a WHERE a.panel_id = t.panel_id))
             ORDER BY t.id
-            LIMIT 2000
-            """
+            LIMIT $2
+            """,
+            dopo_id, limite,
         )
         return [dict(r) for r in righe]
 
