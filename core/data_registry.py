@@ -680,7 +680,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True,
        escludi_dall_esportazione=("ip_impronta", "ip_cifrato"), conserva_utente_se="motivo IN ('ban', 'kick')",
        scadenza=Scadenza(
-           "COALESCE(scade_il, CASE WHEN motivo = 'ban' THEN NULL ELSE ultimo_il + interval '365 days' END)", 0),
+           "LEAST(COALESCE(scade_il, CASE WHEN motivo = 'ban' THEN NULL ELSE ultimo_il + interval '365 days' END), "
+           "(SELECT p.left_at + interval '30 days' FROM guild_presence p WHERE p.guild_id = verify_ip.guild_id))", 0),
        nota="D67: AES-256-GCM, chiave VERIFY_IP_ENCRYPTION_KEY; 30 giorni dopo l'uscita della persona o del bot dal "
             "server (la cancellazione dei dati arriva prima); dopo un kick 180 giorni; dopo un ban finché è attivo e 30 giorni dopo lo "
             "sblocco (la richiesta di cancellazione di chi è bannato o espulso si gestisce a mano); tetto di 365 giorni"),

@@ -13,7 +13,6 @@ import asyncpg
 GIORNI_USCITA = 30
 GIORNI_KICK = 180
 GIORNI_DOPO_SBLOCCO = 30
-GIORNI_SERVER_USCITO = 30
 
 
 class VerifyIpRepository:
@@ -93,27 +92,6 @@ class VerifyIpRepository:
             "UPDATE verify_ip SET motivo = 'sblocco', scade_il = now() + make_interval(days => $3) "
             "WHERE guild_id = $1 AND user_id = $2 AND motivo = 'ban'",
             guild_id, user_id, GIORNI_DOPO_SBLOCCO,
-        )
-
-    async def server_uscito(self, guild_id: int) -> None:
-        """Il bot non è più nel server: tutte le sue righe scadono fra 30 giorni, ban compresi."""
-        await self._pool.execute(
-            "UPDATE verify_ip SET scade_il = now() + make_interval(days => $2) WHERE guild_id = $1",
-            guild_id, GIORNI_SERVER_USCITO,
-        )
-
-    async def server_tornato(self, guild_id: int) -> None:
-        """Il bot è rientrato: ogni riga riprende la scadenza che aveva per il suo motivo."""
-        await self._pool.execute(
-            """
-            UPDATE verify_ip SET scade_il = CASE motivo
-                WHEN 'kick' THEN now() + make_interval(days => $2)
-                WHEN 'uscita' THEN now() + make_interval(days => $3)
-                WHEN 'sblocco' THEN now() + make_interval(days => $4)
-                ELSE NULL END
-            WHERE guild_id = $1
-            """,
-            guild_id, GIORNI_KICK, GIORNI_USCITA, GIORNI_DOPO_SBLOCCO,
         )
 
     async def _conta(self, sql: str, *args) -> int:

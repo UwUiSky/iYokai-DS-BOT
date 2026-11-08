@@ -65,8 +65,7 @@ stesso founder in 3 server, stesso admin in 3 server, 3 clic nella stessa ora, s
 - Lo vede **solo il proprietario**: `/owner system storico-vpn` e `/proprietario/storico-vpn`. Mai agli admin, mai nei log
   (se il salvataggio fallisce si logga solo il tipo dell'errore, senza traceback).
 - Scadenza (`scade_il`, pulita dal lavoro giornaliero): persona esce dal server = 30 giorni (rientra: torna senza
-  scadenza); bot tolto dal server = 30 giorni su tutte le righe (se rientra, ogni riga riprende la scadenza del suo
-  motivo); **kick** = 180 giorni; **ban** = nessuna scadenza finché è attivo, 30 giorni dopo lo sblocco; tetto assoluto
+  scadenza); bot tolto dal server = 30 giorni su tutte le righe, ban compresi (si legge da `guild_presence.left_at`, lo stesso conto dei 90 giorni del resto, rimesso a posto anche all'avvio; se il bot rientra prima, niente si cancella e nessuna scadenza si allunga); **kick** = 180 giorni; **ban** = nessuna scadenza finché è attivo, 30 giorni dopo lo sblocco; tetto assoluto
   365 giorni dall'ultimo uso. L'espulsione si riconosce dal registro di Discord (serve il permesso «Vedi il registro
   azioni»; senza, l'uscita conta come volontaria e si cancella prima).
 - `/utility privacy cancella` cancella gli IP, **tranne** quelli con motivo ban o kick (interesse legittimo di sicurezza):

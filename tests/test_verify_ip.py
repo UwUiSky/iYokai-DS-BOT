@@ -7,6 +7,7 @@ persona o del bot dal server; dopo un kick o un ban restano (ban: finché è att
 """
 
 import logging
+from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -167,19 +168,50 @@ async def test_uscita_della_persona_30_giorni_e_il_rientro_la_toglie(monkeypatch
 
 
 @pytest.mark.asyncio
-async def test_il_bot_esce_dal_server_30_giorni_e_se_torna_si_riparte(monkeypatch, clean_db, chiave, repo_ip):
-    await _riga(clean_db, GUILD, 601)
-    await _riga(clean_db, GUILD, 602)
-    await _riga(clean_db, GUILD + 1, 603)
+async def test_il_bot_esce_dal_server_30_giorni_anche_per_i_ban_e_se_torna_nessuna_scadenza_si_allunga(
+    monkeypatch, clean_db, chiave, repo_ip
+):
+    """L'uscita del bot si legge da `guild_presence` (punto unico, rimesso a posto anche all'avvio)."""
+    from core.repositories.guild_presence_repo import GuildPresenceRepository
+
+    presenza = GuildPresenceRepository(pool_provider=lambda: clean_db)
+    amb = _ambiente(monkeypatch, clean_db)
+    cog = _cog(amb)
+    guild = fake_guild(guild_id=GUILD, name="S", owner_id=1)
+    for u in (601, 602, 603):
+        await _riga(clean_db, GUILD, u)
+    await _riga(clean_db, GUILD + 1, 604)
     await verify_ip.persona_bannata(GUILD, 602)
-    await verify_ip.server_uscito(GUILD)
-    righe = {r["user_id"]: r for r in await clean_db.fetch("SELECT user_id, motivo, scade_il, now() AS adesso FROM verify_ip")}
-    assert 29.9 < _giorni(righe[601]) < 30.1 and 29.9 < _giorni(righe[602]) < 30.1  # anche il ban: il server non c'è più
-    assert righe[603]["scade_il"] is None  # un altro server non c'entra
-    await verify_ip.server_tornato(GUILD)
-    righe = {r["user_id"]: r for r in await clean_db.fetch("SELECT user_id, motivo, scade_il FROM verify_ip")}
-    assert righe[601]["scade_il"] is None
-    assert righe[602]["motivo"] == "ban" and righe[602]["scade_il"] is None  # il ban è ancora attivo
+    await verify_ip.persona_uscita(GUILD, 603, espulsa=True)
+    await clean_db.execute("UPDATE verify_ip SET scade_il = now() + interval '10 days' WHERE user_id = 603")
+    # il bot esce e rientra: il kick di 170 giorni fa non riparte da 180
+    for nome in ("on_guild_remove", "on_guild_join"):
+        if hasattr(cog, nome):
+            await getattr(cog, nome)(guild)
+    r = await clean_db.fetchrow("SELECT motivo, scade_il, now() AS adesso FROM verify_ip WHERE user_id = 603")
+    assert r["motivo"] == "kick" and 9.9 < _giorni(r) < 10.1
+    assert await clean_db.fetchval("SELECT scade_il FROM verify_ip WHERE user_id = 602") is None
+    # uscito da 31 giorni: via tutto il server, ban compreso; l'altro server resta
+    await presenza.segna_entrato(GUILD)
+    await presenza.segna_uscito(GUILD, discord.utils.utcnow() - timedelta(days=31))
+    await retention_worker.pulisci_scaduti(clean_db)
+    assert {r["user_id"] for r in await clean_db.fetch("SELECT user_id FROM verify_ip")} == {604}
+
+
+@pytest.mark.asyncio
+async def test_il_bot_uscito_da_poco_o_rientrato_non_cancella_niente(monkeypatch, clean_db, chiave, repo_ip):
+    from core.repositories.guild_presence_repo import GuildPresenceRepository
+
+    presenza = GuildPresenceRepository(pool_provider=lambda: clean_db)
+    await _riga(clean_db, GUILD, 605)
+    await verify_ip.persona_bannata(GUILD, 605)
+    await presenza.segna_entrato(GUILD)
+    await presenza.segna_uscito(GUILD, discord.utils.utcnow() - timedelta(days=29))
+    await retention_worker.pulisci_scaduti(clean_db)
+    assert await clean_db.fetchval("SELECT count(*) FROM verify_ip") == 1
+    await presenza.segna_entrato(GUILD)  # rientrato: left_at torna vuoto
+    await retention_worker.pulisci_scaduti(clean_db)
+    assert await clean_db.fetchval("SELECT count(*) FROM verify_ip") == 1
 
 
 @pytest.mark.asyncio
@@ -276,10 +308,6 @@ async def test_i_listener_applicano_le_regole(monkeypatch, clean_db, chiave, rep
     m630b.bot = False
     await verify_ip.persona_tornata(GUILD, 630)
     assert (await clean_db.fetchval("SELECT motivo FROM verify_ip WHERE user_id = 630")) is None
-    await cog.on_guild_remove(guild)
-    assert await clean_db.fetchval("SELECT count(*) FROM verify_ip WHERE scade_il IS NULL") == 0
-    await cog.on_guild_join(guild)
-    assert await clean_db.fetchval("SELECT count(*) FROM verify_ip WHERE scade_il IS NOT NULL") == 2  # kick (180 giorni) e sblocco (30)
 
 
 @pytest.mark.asyncio

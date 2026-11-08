@@ -550,16 +550,6 @@ class VerifyCog(CogConGruppi, commands.Cog):
         """D67: 30 giorni dopo lo sblocco gli IP si cancellano."""
         await self._ip_aggiorna(guild.id, verify_ip.persona_sbloccata, user.id)
 
-    @commands.Cog.listener()
-    async def on_guild_remove(self, guild: discord.Guild) -> None:
-        """D67: il bot esce dal server (o il server è eliminato): gli IP scadono fra 30 giorni."""
-        await self._ip_aggiorna(guild.id, verify_ip.server_uscito)
-
-    @commands.Cog.listener()
-    async def on_guild_join(self, guild: discord.Guild) -> None:
-        """D67: il bot rientra: gli IP riprendono la scadenza di prima."""
-        await self._ip_aggiorna(guild.id, verify_ip.server_tornato)
-
     @staticmethod
     async def _ip_aggiorna(guild_id: int, funzione, *altri) -> None:
         try:
