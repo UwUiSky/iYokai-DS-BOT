@@ -3,10 +3,11 @@
 2026-11-01, giro r15automod (ramo feat/r15automod, worktree /home/claude/wt/r15automod, filone A di #116, D63). Migrazioni 0500-0503 mie. Smoke da fare.
 2026-11-02, giro r16verifica (ramo feat/r16verifica, D67 parte verifica, migrazione 0530, #155). Smoke da fare. Prima: giro r15vpn (D64+D65, 0507/0508); 2026-10-28, giro r11 (agente r11odio, ramo feat/r11odio, worktree /home/claude/wt/r11odio). Migrazione 0390 usata (0391-0399 libere). Smoke da fare (regola owner: niente smoke).
 ## In corso
-r17mod (ramo feat/r17mod, wt /home/claude/wt/r17mod, DB iyokai_w17mod, migr. 0511-0514, #115): previsione 3 blocchi (M4, M5, M7). M4 fatto. Prossimo: M5 (MOD-009, 011, 058, 065, 113, 116; migr. 0512; cambia firma ~15 comandi, opzioni facoltative DOPO le obbligatorie). M6 NON mio. Testi: scratchpad/r17/addt.py (aggiunge righe senza json.dump).
+r17mod (ramo feat/r17mod, wt /home/claude/wt/r17mod, DB iyokai_w17mod, migr. 0511-0514, #115): previsione 3 blocchi (M4, M5, M7). M4 e M5 fatti. Prossimo: M7 (MOD-098, 099, 100, 101, 102, 007; migr. 0513; /mod-canali slowmode, nick, dehoist in admin-automod odio nomi, massa entrati). M6 NON mio. Testi: scratchpad/r17/addt.py (aggiunge righe senza json.dump).
 A1-A8 fatti + merge di main (immagini): `/admin-automod immagini` usa core.immagini_opzioni; cogs/automod/immagini.py::_applica passa da esegui_azioni (regola di sistema "immagini_sospette", senza_scudo=True). Prossimo: A9 (eventi non-messaggio: 009 vocali, 010 thread a raffica, 017 nomi, 075 ruolo/ingresso/uscita/caso; AMD-018 solo dietro interruttore spento), A10 (calore/gruppi 067-069/072), A11 (migr. 0509, pulizia 073/074).
 SEMPRE: DATABASE_URL=postgresql://postgres:testpass@127.0.0.1:5432/iyokai_wautomod esplicito (env non persiste fra comandi: scratchpad/envw.sh).
 ## Fatto
+- r17 M5: core/moderation_motivi.py (+ migr. 0512, tabella moderation_motivi), _shared.risolvi_motivo/completa_motivo/forza nel DM, reason facoltativo in 14 comandi, dm/giorni_messaggi/cancella_messaggi, /mod-casi motivi, setting mod_motivo_obbligatorio; test_moderation_opzioni_comandi_m5. Smoke da fare
 - r17 M4 voce: core/moderazione_vocale_logic.py, cogs/moderation/voce.py (/mod-canali vocale muta|sordina|scollega|sposta|sposta-tutti|dove, sorveglianza 24h), mute con vocale:/canale_vocale: (softban_mute), migr. 0514 + 5 metodi moderation_repo, data_registry; test_moderation_vocale_m4. Tolto is_case_hidden (senza chiamante). Smoke da fare
 - r15 A7 liste con nome (core/automod_liste_service.py, repo, pannello core/automod_liste_pannello.py, /admin-automod liste), liste di sistema in data/automod/, innesco personale (core/automod_innesco_logic.py), modelli (core/automod_modelli.py), finestra Innesco. A8 migr. 0503 + core/automod_decisioni.py (decide lo staff, bottoni persistenti). test_automod_liste/_innesco_logic/_decisioni. Smoke da fare
 - r15 A6 pannello regole (core/automod_regole_pannello.py + core/automod_pannello_logic.py), comandi /admin-automod regole, gruppo, immagini; 100 testi amregole_*; test_automod_pannello_logic/_regole_pannello/_regole_comandi. Smoke da fare
@@ -44,6 +45,8 @@ SEMPRE: DATABASE_URL=postgresql://postgres:testpass@127.0.0.1:5432/iyokai_wautom
 - Test del cog automod: db finto passato come `archivio` alle funzioni (mai db._pool); libreria_odio va finta (AsyncMock) senza pool
 - Str.replace sostituisce TUTTE le occorrenze; con piu' decorator uguali cercare l'indice dopo il nome del comando
 ## Aperto
+- M5: _prepara_massa ora dà (ids, motivo); nel DM il nome locale del messaggio inviato e' dm_inviato (il parametro dm del comando e' un bool)
+- M5: durata nel motivo pronto non fatta (decidere)
 - Cog nuovo in cogs/moderation: aggiungerlo a MODULI di tests/test_f7_moderazione_gruppi.py oltre ad ATTESI, e il testo en dei comandi in locales/en-US/comandi.json
 - Codice con View/Modal senza cog va in core/ (ogni file in cogs/ vuole setup())
 - AMD-018 (stato/attivita) non fatto: serve intent Presenze, decide l'owner

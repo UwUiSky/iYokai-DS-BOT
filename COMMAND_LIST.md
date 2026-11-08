@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 12:29 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 12:51 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 685 comandi in 41 categorie.**
+**Totale: 688 comandi in 41 categorie.**
 
 ## Admin: AI
 
@@ -635,6 +635,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 12:
 - **`/mod-casi caso registra`** — Registra un caso senza eseguire l'azione (sanzione data fuori dal bot).
 - **`/mod-casi caso storico`** — Mostra lo storico casi di un membro.
 - **`/mod-casi caso vedi`** — Mostra i dettagli di un singolo caso.
+- **`/mod-casi motivi aggiungi`** — Aggiunge un motivo pronto, da richiamare nel campo «motivo» (serve «Gestire il server»).
+- **`/mod-casi motivi elenco`** — Mostra i motivi pronti del server.
+- **`/mod-casi motivi togli`** — Toglie un motivo pronto (serve «Gestire il server»).
 - **`/mod-casi nota aggiungi`** — Aggiunge una nota su un utente.
 - **`/mod-casi nota elenca`** — Elenca le note su un utente.
 - **`/mod-casi nota modifica`** — Cambia il testo di una nota.

@@ -107,6 +107,7 @@ SETTINGS_VALIDE = {
     "mod_avviso_warn_soglia": 3,
     "mod_scadenza_automod_giorni": 30,
     "mod_avviso_rientro": True,
+    "mod_motivo_obbligatorio": False,
     "spam_trap_punizione": "staff",
     "log_webhook": True,
     "progressi_attivi": False,

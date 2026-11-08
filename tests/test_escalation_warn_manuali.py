@@ -245,7 +245,7 @@ async def test_warn_in_massa_non_espelle_ne_banna(monkeypatch):
     await _scala_attiva([("ban", None)])
     cog = _cog()
     membro, interazione = _scena()
-    monkeypatch.setattr(cog, "_prepara_massa", AsyncMock(return_value=[A]))
+    monkeypatch.setattr(cog, "_prepara_massa", AsyncMock(return_value=([A], "motivo valido")))
     monkeypatch.setattr(cog, "_cerca_membro", AsyncMock(return_value=(membro, None)))
     monkeypatch.setattr(cog, "_chiudi_massa", AsyncMock())
     await cog.warn_massa.callback(cog, interazione, str(A), "linguaggio")

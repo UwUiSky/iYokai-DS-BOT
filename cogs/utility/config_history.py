@@ -126,6 +126,7 @@ SETTINGS_SCHEMA = {
     "mod_avviso_warn_soglia": "int_0_200",
     "mod_scadenza_automod_giorni": "int_0_200",
     "mod_avviso_rientro": "bool",
+    "mod_motivo_obbligatorio": "bool",
     "spam_trap_punizione": "punizione_trappola",
     # Parole vietate dell'AutoMod (core/automod_parole_opzioni.py)
     "automod_parole_base": "bool",

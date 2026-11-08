@@ -25,7 +25,7 @@ async def test_softban_mute_cog_si_carica_correttamente():
     await bot.remove_cog("ModerationSoftbanMuteCog")
 
 
-async def test_reason_obbligatorio_su_softban_e_mute():
+async def test_reason_facoltativo_nella_firma_su_softban_e_mute():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await softban_mute_setup(bot)
 
@@ -36,5 +36,5 @@ async def test_reason_obbligatorio_su_softban_e_mute():
     ]
     for command in comandi:
         reason_param = next(p for p in command.parameters if p.name == "reason")
-        assert reason_param.required is True, f"/{command.qualified_name}: reason deve essere obbligatorio"
+        assert reason_param.required is False, f"/{command.qualified_name}: reason è facoltativo nella firma (MOD-065)"
     await bot.remove_cog("ModerationSoftbanMuteCog")

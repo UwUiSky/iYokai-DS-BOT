@@ -780,6 +780,32 @@ class ModerationRepository:
         return [(r["guild_id"], r["user_id"]) for r in rows]
 
 
+    # --- motivi pronti (MOD-113) ---
+
+    async def list_motivi(self, guild_id: int) -> list[dict]:
+        rows = await self._pool.fetch(
+            "SELECT id, nome, testo FROM moderation_motivi WHERE guild_id = $1 ORDER BY lower(nome)", guild_id
+        )
+        return [dict(r) for r in rows]
+
+    async def count_motivi(self, guild_id: int) -> int:
+        return await self._pool.fetchval("SELECT count(*) FROM moderation_motivi WHERE guild_id = $1", guild_id)
+
+    async def add_motivo(self, guild_id: int, nome: str, testo: str, autore_id: int) -> int | None:
+        """L'id del motivo nuovo; None se esiste già uno con lo stesso nome (maiuscole non contano)."""
+        return await self._pool.fetchval(
+            "INSERT INTO moderation_motivi (guild_id, nome, testo, autore_id) VALUES ($1, $2, $3, $4) "
+            "ON CONFLICT DO NOTHING RETURNING id",
+            guild_id, nome, testo, autore_id,
+        )
+
+    async def delete_motivo(self, guild_id: int, nome: str) -> bool:
+        esito = await self._pool.execute(
+            "DELETE FROM moderation_motivi WHERE guild_id = $1 AND lower(nome) = lower($2)", guild_id, nome
+        )
+        return esito.endswith(" 1")
+
+
 def _row_to_case(row) -> ModerationCase:
     return ModerationCase(
         case_number=row["case_number"],

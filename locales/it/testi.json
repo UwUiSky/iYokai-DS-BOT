@@ -1716,5 +1716,18 @@
   "voce_avviso_ingresso": "{membro} è entrato in {canale} ({server}).",
   "softbanmute_vocale_serve_canale": "Con «sposta» devi scegliere il vocale di arrivo.",
   "softbanmute_vocale_senza_permesso": "Per scollegare o spostare serve il permesso «Spostare i membri», a te e al bot.",
-  "softbanmute_vocale_non_riuscito": "Il mute c'è, ma non sono riuscito a scollegare o spostare il membro dal vocale."
+  "softbanmute_vocale_non_riuscito": "Il mute c'è, ma non sono riuscito a scollegare o spostare il membro dal vocale.",
+  "shared_motivo_obbligatorio": "In questo server il motivo è obbligatorio.",
+  "casesystem_motivi_tetto": "Il server ha già {v1} motivi pronti: togline uno prima.",
+  "casesystem_motivi_doppio": "Esiste già un motivo con questo nome.",
+  "casesystem_motivi_non_valido": "Il nome va da 1 a 32 caratteri e il testo da 3 a 512.",
+  "casesystem_motivi_aggiunto": "Motivo «{nome}» aggiunto. Lo trovi nel campo «motivo» dei comandi.",
+  "casesystem_motivi_nessuno": "Nessun motivo pronto. Aggiungine uno con /mod-casi motivi aggiungi.",
+  "casesystem_motivi_titolo": "Motivi pronti",
+  "casesystem_motivi_tolto": "Motivo «{nome}» tolto.",
+  "casesystem_motivi_non_trovato": "Nessun motivo si chiama «{nome}».",
+  "actions_messaggi_cancellati": "Messaggi cancellati",
+  "actions_cancella_canale_non_valido": "Qui non posso cancellare messaggi: usa il comando in un canale di testo.",
+  "actions_cancella_senza_permesso_tuo": "Per cancellare i messaggi ti serve «Gestire i messaggi» in questo canale.",
+  "actions_cancella_senza_permesso_bot": "Al bot serve «Gestire i messaggi» in questo canale."
 }

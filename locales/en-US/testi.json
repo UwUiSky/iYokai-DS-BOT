@@ -1716,5 +1716,18 @@
   "voce_avviso_ingresso": "{membro} joined {canale} ({server}).",
   "softbanmute_vocale_serve_canale": "With \"move\" you must choose the destination voice channel.",
   "softbanmute_vocale_senza_permesso": "Disconnecting or moving needs the \"Move Members\" permission, for you and the bot.",
-  "softbanmute_vocale_non_riuscito": "The mute is applied, but I could not disconnect or move the member from voice."
+  "softbanmute_vocale_non_riuscito": "The mute is applied, but I could not disconnect or move the member from voice.",
+  "shared_motivo_obbligatorio": "In this server the reason is required.",
+  "casesystem_motivi_tetto": "The server already has {v1} saved reasons: remove one first.",
+  "casesystem_motivi_doppio": "A reason with this name already exists.",
+  "casesystem_motivi_non_valido": "The name must be 1 to 32 characters and the text 3 to 512.",
+  "casesystem_motivi_aggiunto": "Reason \"{nome}\" added. You will find it in the \"reason\" field of the commands.",
+  "casesystem_motivi_nessuno": "No saved reasons. Add one with /mod-casi motivi aggiungi.",
+  "casesystem_motivi_titolo": "Saved reasons",
+  "casesystem_motivi_tolto": "Reason \"{nome}\" removed.",
+  "casesystem_motivi_non_trovato": "No reason is called \"{nome}\".",
+  "actions_messaggi_cancellati": "Messages deleted",
+  "actions_cancella_canale_non_valido": "I cannot delete messages here: use the command in a text channel.",
+  "actions_cancella_senza_permesso_tuo": "To delete messages you need \"Manage Messages\" in this channel.",
+  "actions_cancella_senza_permesso_bot": "The bot needs \"Manage Messages\" in this channel."
 }

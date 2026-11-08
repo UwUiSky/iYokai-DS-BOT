@@ -1388,3 +1388,11 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - `/mod-sanzioni mute membro:@X motivo:... vocale:scollega` mentre è in vocale: riceve il mute e viene scollegato; con `vocale:sposta` senza `canale_vocale` il mute non parte.
 - `/mod-canali vocale dove membro:@X`: da in vocale dice il canale; fuori dal vocale con `avvisa:True` ti arriva un messaggio privato appena entra (una sola volta).
 
+## giro r17mod, M5 — opzioni dei comandi (#115)
+- `/mod-sanzioni warn membro:@X` senza motivo: con le opzioni di base risponde «il motivo è obbligatorio»; dopo `/mod-sanzioni opzioni imposta motivo_obbligatorio:False` il warn parte con «Nessun motivo indicato».
+- `/mod-casi motivi aggiungi nome:spam testo:...`, poi in `/mod-sanzioni warn` scrivi nel campo motivo «sp»: compare il suggerimento; scelto, il caso riporta il testo intero. `elenco` e `togli` funzionano; chi non ha «Gestire il server» non può aggiungere né togliere.
+- `/mod-ban tempban membro:@X duration:1h giorni_messaggi:2`: i messaggi di 2 giorni spariscono; senza l'opzione vale quella di `/mod-sanzioni opzioni`.
+- `/mod-ban kick membro:@X cancella_messaggi:5`: spariscono i suoi ultimi 5 messaggi del canale; senza «Gestire i messaggi» il kick non parte.
+- `/mod-sanzioni warn membro:@X dm:False`: nessun DM; con `dm:True` il DM parte anche se spento nelle opzioni del server.
+- `/mod-casi caso motivo` con un motivo pronto nel campo: il caso prende il testo.
+

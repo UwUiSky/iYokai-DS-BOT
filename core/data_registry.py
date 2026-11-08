@@ -204,6 +204,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonne_utente=("user_id",), colonne_attore=("staff_id",), colonna_server="guild_id",
        utente="cancella", esporta=True, scadenza=Scadenza("scade_at", 0),
        nota="dura 24 ore; la riga sparisce quando l'avviso parte"),
+    _t("moderation_motivi", "Motivi pronti di moderazione del server", colonne_attore=("autore_id",),
+       colonna_server="guild_id", nota="testi scelti dallo staff, senza dati degli utenti"),
     _t("automod_action_log", "Azioni dell'automod",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True,
        scadenza=Scadenza("created_at", 180)),

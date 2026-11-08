@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 12:29 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 12:51 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 685 commands in 41 categories.**
+**Total: 688 commands in 41 categories.**
 
 ## Admin: AI
 
@@ -634,6 +634,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 12:2
 - **`/mod-cases case record`** — Logs a case without taking the action (sanction given outside the bot).
 - **`/mod-cases case staff-leaderboard`** — Moderator leaderboard by number of actions, or one moderator's cases.
 - **`/mod-cases case view`** — Shows the details of a single case.
+- **`/mod-cases motivi add`** — Adds a saved reason, to pick in the "reason" field (needs "Manage Server").
+- **`/mod-cases motivi list`** — Shows the server's saved reasons.
+- **`/mod-cases motivi remove`** — Removes a saved reason (needs "Manage Server").
 - **`/mod-cases note add`** — Adds a note on a user.
 - **`/mod-cases note clear`** — Deletes all of a member's notes (needs "Manage Server").
 - **`/mod-cases note edit`** — Changes a note's text.

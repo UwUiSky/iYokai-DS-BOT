@@ -27,7 +27,7 @@ from core.lockdown_logic import puo_agire_in_panico
 from core.repositories.security_repo import security_repo
 from core.duration_logic import format_duration, parse_duration  # noqa: F401 — re-export
 from core.moderation_validation_logic import is_valid_reason
-from core import moderation_opzioni
+from core import moderation_motivi, moderation_opzioni
 from core.permissions import ModerationActor, can_moderate
 
 # Nomi dei tre moduli premium-differenziabili di moderazione, come
@@ -52,6 +52,9 @@ SETTING_MOD_LOG_CHANNEL = "mod_log_channel_id"
 # il testo troppo lungo a Discord, prima che arrivi al bot.
 MAX_REASON_LENGTH = 512
 Reason = app_commands.Range[str, 3, MAX_REASON_LENGTH]
+# MOD-065: il motivo dei comandi di sanzione è facoltativo nella firma; l'obbligo lo decide il server.
+MotivoFacoltativo = Reason | None
+MOTIVO_NON_INDICATO = "Nessun motivo indicato"
 
 
 def audit_reason(text: str) -> str:
@@ -118,6 +121,38 @@ async def validate_reason(interaction: discord.Interaction, reason: str) -> bool
         )
         return False
     return True
+
+
+async def risolvi_motivo(
+    interaction: discord.Interaction, reason: str | None, *, obbligatorio: bool | None = None
+) -> str | None:
+    """
+    MOD-065 e MOD-113: dà il motivo da usare, oppure None dopo aver risposto all'utente.
+    Un motivo pronto (`#m<id>` dal completamento) diventa il suo testo. Senza motivo: errore se il server lo
+    vuole (`mod_motivo_obbligatorio`, base sì, o `obbligatorio=True`), altrimenti «Nessun motivo indicato».
+    """
+    if reason is not None and reason.strip():
+        testo = (await moderation_motivi.espandi(interaction.guild.id, reason.strip()))[:MAX_REASON_LENGTH]
+        if is_valid_reason(testo):
+            return testo
+        await interaction.response.send_message(
+            await testo_per(interaction, "shared_il_motivo_deve_avere_almeno"), ephemeral=True
+        )
+        return None
+    if obbligatorio is None:
+        obbligatorio = (await moderation_opzioni.leggi(interaction.guild.id)).motivo_obbligatorio
+    if obbligatorio:
+        await interaction.response.send_message(await testo_per(interaction, "shared_motivo_obbligatorio"), ephemeral=True)
+        return None
+    return MOTIVO_NON_INDICATO
+
+
+async def completa_motivo(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    """MOD-116: i motivi pronti del server che contengono quello che sta scrivendo (al massimo 25)."""
+    if interaction.guild is None:
+        return []
+    elenco = await moderation_motivi.elenco(interaction.guild.id)
+    return [app_commands.Choice(name=nome, value=valore) for nome, valore in moderation_motivi.suggerimenti(elenco, current)]
 
 
 async def post_to_mod_log(guild: discord.Guild, embed: discord.Embed) -> None:
@@ -253,6 +288,7 @@ async def try_dm_message(
     *,
     azione: str | None = None,
     guild_id: int | None = None,
+    forza: bool | None = None,
 ) -> discord.Message | None:
     """
     Prova a mandare un DM e restituisce il messaggio inviato, o None se
@@ -260,9 +296,12 @@ async def try_dm_message(
     ban: il messaggio parte PRIMA dell'azione, perché dopo non c'è più un
     server in comune e Discord lo rifiuta. Se l'azione fallisce il
     messaggio si cancella con `delete_dm`. Con `azione` e `guild_id` il
-    DM non parte se il server l'ha spento per quell'azione (MOD-057).
+    DM non parte se il server l'ha spento per quell'azione (MOD-057). `forza` (MOD-058, l'opzione `dm` del
+    comando) vince sul server: False = niente DM, True = DM anche se il server l'ha spento.
     """
-    if azione is not None and guild_id is not None and not await moderation_opzioni.dm_attivo(guild_id, azione):
+    if forza is False:
+        return None
+    if forza is None and azione is not None and guild_id is not None and not await moderation_opzioni.dm_attivo(guild_id, azione):
         return None
     try:
         # user qui è sempre un discord.Member/discord.User vero
@@ -286,7 +325,12 @@ async def delete_dm(message: discord.Message | None) -> None:
 
 
 async def try_dm(
-    user: discord.abc.Snowflake, embed: discord.Embed, *, azione: str | None = None, guild_id: int | None = None
+    user: discord.abc.Snowflake,
+    embed: discord.Embed,
+    *,
+    azione: str | None = None,
+    guild_id: int | None = None,
+    forza: bool | None = None,
 ) -> bool:
     """
     Prova a mandare un DM. Restituisce True/False invece di
@@ -294,4 +338,4 @@ async def try_dm(
     fallire l'intero comando di moderazione, solo far sapere al
     moderatore che la notifica non è arrivata.
     """
-    return await try_dm_message(user, embed, azione=azione, guild_id=guild_id) is not None
+    return await try_dm_message(user, embed, azione=azione, guild_id=guild_id, forza=forza) is not None

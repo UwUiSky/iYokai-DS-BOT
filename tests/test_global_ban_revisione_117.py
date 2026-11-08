@@ -194,7 +194,7 @@ async def test_modban_unban_toglie_anche_i_ban_propagati(monkeypatch):
 
     ordine = []
     monkeypatch.setattr(actions, "ensure_module_enabled", AsyncMock(return_value=True))
-    monkeypatch.setattr(actions, "validate_reason", AsyncMock(return_value=True))
+    monkeypatch.setattr(actions, "risolvi_motivo", AsyncMock(side_effect=lambda inter, motivo, **kw: motivo))
     monkeypatch.setattr(actions, "post_to_mod_log", AsyncMock())
     repo = MagicMock()
     repo.get_latest_active_case = AsyncMock(return_value=None)
