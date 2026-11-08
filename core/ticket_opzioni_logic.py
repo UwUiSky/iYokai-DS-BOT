@@ -75,6 +75,9 @@ class Opzioni:
     categoria_chiusi: int | None = None
     prefisso_chiuso: str | None = None
     prefisso_preso: str | None = None
+    solo_admin: bool = False
+    transcript_formato: str = "testo"
+    allegati_zip: bool = False
 
 
 # ----------------------------------------------------------------------
@@ -427,7 +430,7 @@ def riassunto(o: Opzioni) -> list[tuple[str, str]]:
         ("Messaggi", f"DM apertura: {_si(bool(o.dm_apertura))} · DM chiusura: {_si(bool(o.dm_chiusura))} · "
                      f"transcript in DM: {_si(o.transcript_dm)} · testo presa: {_si(bool(o.testo_presa))} · "
                      f"testo rilascio: {_si(bool(o.testo_rilascio))}"),
-        ("Permessi", f"Tolti all'utente: {', '.join(o.permessi_negati) or 'nessuno'}\n"
+        ("Permessi", f"Solo admin dei ticket: {_si(o.solo_admin)}\nTolti all'utente: {', '.join(o.permessi_negati) or 'nessuno'}\n"
                      f"Osservatori: {_ruoli(o.ruoli_osservatori)}\nRuoli durante: {_ruoli(o.ruoli_durante)}\n"
                      f"Squadra: {_ruoli(o.ruoli_staff) if o.ruoli_staff else 'i ruoli di supporto'}"),
         ("Presa in carico", f"Categoria: {f'<#{o.categoria_presi}>' if o.categoria_presi else 'la stessa'} · "
@@ -436,6 +439,7 @@ def riassunto(o: Opzioni) -> list[tuple[str, str]]:
                      f"In due passi: {_si(o.chiusura_due_passi)} · elimina dopo: "
                      f"{f'{o.elimina_dopo_ore} ore' if o.elimina_dopo_ore else 'mai'} · categoria dei chiusi: "
                      f"{f'<#{o.categoria_chiusi}>' if o.categoria_chiusi else 'nessuna'}\n"
-                     f"Nome da chiuso: {o.prefisso_chiuso or 'invariato'} · da preso: {o.prefisso_preso or 'invariato'}"),
+                     f"Nome da chiuso: {o.prefisso_chiuso or 'invariato'} · da preso: {o.prefisso_preso or 'invariato'}\n"
+                     f"Transcript: {o.transcript_formato} · ZIP delle immagini: {_si(o.allegati_zip)}"),
     ]
     return [(nome, valore[:1024]) for nome, valore in righe]

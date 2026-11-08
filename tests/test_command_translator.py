@@ -63,6 +63,12 @@ async def test_i_menu_delle_app_separate_hanno_il_nome_inglese():
         for tipo in (discord.AppCommandType.user, discord.AppCommandType.message):
             menu += altro.tree.get_commands(type=tipo)
         await altro.close()
+    creato_qui, bot = await _albero_vero()
+    try:  # anche i menu del bot principale (es. «Apri ticket»)
+        for tipo in (discord.AppCommandType.user, discord.AppCommandType.message):
+            menu += bot.tree.get_commands(type=tipo)
+    finally:
+        await _chiudi(creato_qui, bot)
     assert menu
     L = app_commands.TranslationContextLocation
     for m in menu:

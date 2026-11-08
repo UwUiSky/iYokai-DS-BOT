@@ -85,6 +85,7 @@ from core.repositories.ticket_form_repo import (
     PannelloGiaEsistente,
     PannelloTicket,
     TroppeDomande,
+    TroppiMotivi,
     TroppiPannelli,
     ticket_form_repo,
 )
@@ -108,10 +109,24 @@ from core.ticket_logic import (
     format_transcript_line,
     is_first_response,
     looks_like_emoji,
+    LIVELLO_ADDETTO,
+    LIVELLO_ADMIN,
+    e_admin_ticket,
     merge_support_role_ids,
+    ruoli_con_accesso,
     split_text_by_size,
     truncate_label,
 )
+from core import ticket_gestione_logic as gestione
+from core import ticket_transcript_logic as tr_logic
+from core.repositories.ticket_gestione_repo import (
+    EtichettaGiaEsistente,
+    TroppeEtichette,
+    ticket_gestione_repo,
+)
+from core.immagini_pipeline import analizza_immagine
+from core.immagini_byte_logic import PULITA
+from core.ticket_transcript_logic import AllegatoT
 from core.premium import PremiumModule, registry
 from core.role_safety import motivo_ruolo_automatico_non_assegnabile
 from core.scheduler import in_seconds, scheduler
@@ -170,6 +185,7 @@ _ATTIVITA_OGNI_SECONDI = 60
 # Un file allegato deve restare sotto i 10 MiB (LIM-55). Ci fermiamo a
 # 8 per lasciare margine al resto della richiesta.
 MAX_TRANSCRIPT_FILE_BYTES = 8 * 1024 * 1024
+MAX_BYTE_IMMAGINE_TRANSCRIPT = 8 * 1024 * 1024  # un'immagine più grande resta solo nome e peso
 
 # Chi sta aprendo un ticket in questo momento: (id server, id utente).
 # Ferma il doppio clic prima che nasca un secondo canale. La garanzia
@@ -227,6 +243,29 @@ async def _membro_staff(member, guild_id: int, panel_id: int | None = None) -> b
     if member.guild_permissions.manage_guild:
         return True
     return bool(set(await _ruoli_staff(guild_id, panel_id)) & {r.id for r in member.roles})
+
+
+async def _ruoli_admin(guild_id: int) -> set[int]:
+    """TKT-045: i ruoli dello staff con livello «admin»."""
+    return set(await ticket_repo.ruoli_admin(guild_id))
+
+
+async def _membro_admin(member, guild_id: int, panel_id: int | None = None) -> bool:
+    """TKT-045: admin dei ticket (chiude, forza, usa «Solo admin»). Vedi core.ticket_logic.e_admin_ticket."""
+    if not isinstance(member, discord.Member) or getattr(member, "bot", False) is True:
+        return False
+    return e_admin_ticket(
+        member.guild_permissions.manage_guild,
+        {r.id for r in member.roles},
+        await _ruoli_staff(guild_id, panel_id),
+        await _ruoli_admin(guild_id),
+    )
+
+
+async def _is_ticket_admin(interaction: discord.Interaction, ticket=None) -> bool:
+    if interaction.guild is None:
+        return False
+    return await _membro_admin(interaction.user, interaction.guild.id, getattr(ticket, "panel_id", None))
 
 
 async def _is_ticket_staff(interaction: discord.Interaction, ticket=None) -> bool:
@@ -397,6 +436,15 @@ async def _vista_assistente(guild_id: int):
         return None
 
 
+async def _vista_benvenuto(interaction, vista_ai, ticket):
+    """Il messaggio di benvenuto: bottone dell'assistente (se c'è) e menu «Gestisci» dello staff (una riga in più)."""
+    if ticket is None:
+        return vista_ai
+    vista = vista_ai if vista_ai is not None else BaseView(timeout=None)
+    vista.add_item(MenuGestisci(ticket.id, await _etichette_gestisci(interaction)))
+    return vista
+
+
 _COMPITI_AI: set[asyncio.Task] = set()  # riferimenti tenuti finché il compito non finisce
 
 
@@ -462,13 +510,16 @@ async def _crea_ticket(
         )
         return None
     ruoli_staff = await _ruoli_staff(guild.id, panel_id)
+    ruoli_admin = await _ruoli_admin(guild.id)
+    # TKT-046: con «solo admin» nel canale entrano solo i ruoli admin (e chi ha «Gestisci server»).
+    ruoli_nel_canale = ruoli_con_accesso(ruoli_staff, ruoli_admin, opzioni.solo_admin)
     # Si ricontrolla a ogni apertura: chi ha perso il ruolo dello staff non vede più i ticket nuovi.
     reperibili = [
         m for m in (guild.get_member(uid) for uid in await ticket_opzioni_repo.reperibili(guild.id))
         if m is not None and m.id != utente.id and not m.bot
-        and (m.guild_permissions.manage_guild or set(ruoli_staff) & {r.id for r in m.roles})
+        and (m.guild_permissions.manage_guild or set(ruoli_nel_canale) & {r.id for r in m.roles})
     ]
-    overwrites = _overwrites_del_ticket(guild, utente, opzioni, ruoli_staff, reperibili)
+    overwrites = _overwrites_del_ticket(guild, utente, opzioni, ruoli_nel_canale, reperibili)
 
     # Il numero si riserva prima, così il canale nasce già con il nome
     # giusto: rinominarlo dopo spenderebbe una delle 2 rinomine che
@@ -527,6 +578,8 @@ async def _crea_ticket(
         return None
 
     await _dai_ruoli_durante(guild, utente, channel.id, opzioni)
+    if opzioni.solo_admin:
+        await ticket_repo.set_solo_admin(channel.id, True)
 
     if panel is not None and panel.welcome_text:
         descrizione = panel.welcome_text.replace("{utente}", utente.mention)[:4000]
@@ -570,7 +623,9 @@ async def _crea_ticket(
         embed.description = descrizione[: max(0, len(descrizione) - eccesso - 1)] + "…"
     try:
         vista_ai = await _vista_assistente(guild.id)
-        primo = await channel.send(content=utente.mention, embed=embed, **({"view": vista_ai} if vista_ai else {}))
+        nuovo = await ticket_repo.get_ticket_by_channel(channel.id)
+        vista = await _vista_benvenuto(interaction, vista_ai, nuovo)
+        primo = await channel.send(content=utente.mention, embed=embed, **({"view": vista} if vista else {}))
         if opzioni.fissa_primo:
             await primo.pin(reason="Primo messaggio del ticket")
     except discord.HTTPException:
@@ -578,6 +633,10 @@ async def _crea_ticket(
 
     await _avvisi_di_apertura(channel, guild, utente, opzioni, reperibili, ticket_number)
     await _prima_risposta_ai(interaction.client, channel, utente.id, guild.id, panel_id, motivo, campi)
+    try:
+        await suggerisci_articolo(channel, guild.id, motivo, campi)
+    except Exception:  # noqa: BLE001 - il ticket esiste già: il suggerimento non lo blocca
+        logger.warning("Articolo suggerito non riuscito nel ticket %s.", channel.id, exc_info=True)
 
     if panel is not None and panel.autoclose_minutes:
         try:
@@ -846,6 +905,16 @@ async def apri_da_pannello(interaction: discord.Interaction, panel_id: int) -> N
             ephemeral=True,
         )
         return
+    motivi = await ticket_form_repo.elenca_motivi(panel.id)
+    if motivi:
+        # TKT-006: prima si sceglie il motivo (o «Altro»), poi la finestra del modulo o il ticket.
+        await interaction.response.send_message(
+            await testo_per(interaction, "tickets_scegli_il_motivo"), view=VistaMotivi(panel, motivi, (
+                await testo_per(interaction, "tickets_motivo_segnaposto"), await testo_per(interaction, "tickets_motivo_altro"),
+            )),
+            ephemeral=True,
+        )
+        return
     domande = await ticket_form_repo.elenca_domande(panel.id)
     if domande:
         # La finestra deve essere la PRIMA risposta all'interazione.
@@ -853,6 +922,92 @@ async def apri_da_pannello(interaction: discord.Interaction, panel_id: int) -> N
         return
     await interaction.response.defer(ephemeral=True)
     await _open_ticket_channel(interaction, guild, category, panel.name, panel=panel)
+
+
+class ModuloAltroMotivo(BaseModal):
+    """TKT-006: «Altro» su un pannello senza modulo: una riga per dire di cosa si ha bisogno."""
+
+    def __init__(self, panel: PannelloTicket, titolo: str, campo: str) -> None:
+        super().__init__(title=titolo[:45], timeout=600)
+        self._panel = panel
+        self.motivo = discord.ui.TextInput(
+            label=campo[:45], style=discord.TextStyle.paragraph, required=True,
+            max_length=form.MAX_TESTO_MOTIVO, custom_id="motivo",
+        )
+        self.add_item(self.motivo)
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        category = guild.get_channel(self._panel.category_id) if guild else None
+        if not isinstance(category, discord.CategoryChannel):
+            await interaction.response.send_message(
+                await testo_per(interaction, "tickets_la_categoria_discord_del_pannello"), ephemeral=True
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        await _open_ticket_channel(
+            interaction, guild, category, self._panel.name, panel=self._panel, motivo=self.motivo.value.strip()
+        )
+
+
+class VistaMotivi(BaseView):
+    """TKT-006: menu dei motivi pronti del pannello (al massimo 24 + «Altro»). Vive solo per questa risposta."""
+
+    def __init__(self, panel: PannelloTicket, motivi, testi: tuple[str, str] = ("…", "Altro")) -> None:
+        super().__init__(timeout=180)
+        self._panel = panel
+        self._motivi = {str(m.id): m for m in motivi}
+        select = discord.ui.Select(
+            placeholder=testi[0][:150],
+            options=[
+                discord.SelectOption(
+                    label=etichetta, value=valore,
+                    emoji=emoji if emoji and looks_like_emoji(emoji) else None,
+                )
+                for valore, etichetta, emoji in form.opzioni_motivi(motivi, testi[1])
+            ],
+        )
+        select.callback = self._on_select
+        self.add_item(select)
+
+    async def _on_select(self, interaction: discord.Interaction) -> None:
+        scelto = self.children[0].values[0]
+        guild = interaction.guild
+        panel = await ticket_form_repo.pannello_per_id(self._panel.id)
+        if guild is None or panel is None:
+            await interaction.response.send_message(
+                await testo_per(interaction, "tickets_questo_pannello_non_esiste_piu"), ephemeral=True
+            )
+            return
+        category = guild.get_channel(panel.category_id)
+        if not isinstance(category, discord.CategoryChannel):
+            await interaction.response.send_message(
+                await testo_per(interaction, "tickets_la_categoria_discord_del_pannello"), ephemeral=True
+            )
+            return
+        domande = await ticket_form_repo.elenca_domande(panel.id)
+        if scelto == form.VALORE_ALTRO:
+            if domande:
+                await interaction.response.send_modal(ModuloTicket(panel, domande))
+            else:
+                await interaction.response.send_modal(ModuloAltroMotivo(
+                    panel, await testo_per(interaction, "tickets_altro_motivo_titolo"),
+                    await testo_per(interaction, "tickets_altro_motivo_campo"),
+                ))
+            return
+        motivo = self._motivi.get(scelto)
+        if motivo is None:
+            await interaction.response.send_message(
+                await testo_per(interaction, "tickets_questa_categoria_non_piu_disponibile"), ephemeral=True
+            )
+            return
+        testo = motivo.testo or motivo.etichetta
+        if domande:
+            dati = {"motivo": testo, "link": None, "utente": None, "aggiungi_autore": False}
+            await interaction.response.send_modal(ModuloTicket(panel, domande, comando=dati))
+            return
+        await interaction.response.defer(ephemeral=True)
+        await _open_ticket_channel(interaction, guild, category, panel.name, panel=panel, motivo=testo)
 
 
 async def _puo_leggere(canale, membro) -> bool:
@@ -1005,6 +1160,292 @@ def vista_pannelli(pannelli: list[PannelloTicket]) -> discord.ui.View:
     for p in pannelli:
         vista.add_item(BottonePannello(p.id, p.button_label, p.button_emoji))
     return vista
+
+
+async def _etichette_gestisci(interaction) -> dict[str, str]:
+    return {
+        "segnaposto": await testo_per(interaction, "tickets_gestisci_segnaposto", pubblica=True),
+        "solo_admin": await testo_per(interaction, "tickets_gestisci_solo_admin", pubblica=True),
+        "tutti": await testo_per(interaction, "tickets_gestisci_tutto_lo_staff", pubblica=True),
+        "etichette": await testo_per(interaction, "tickets_gestisci_etichette", pubblica=True),
+        "sposta": await testo_per(interaction, "tickets_gestisci_sposta", pubblica=True),
+    }
+
+
+async def sposta_ticket(channel, guild: discord.Guild, ticket, nuovo) -> str | None:
+    """
+    TKT-067: porta il ticket in un altro pannello. Cambia categoria, permessi dello staff e pannello nel database.
+    Restituisce None se è andato bene, altrimenti il codice dell'errore («categoria_mancante», «categoria_piena»,
+    «permessi» se Discord non lascia spostare il canale); in quel caso non cambia niente. Dopo lo spostamento il
+    pannello si salva subito: un ruolo che non si riesce a cambiare finisce nel log e non ferma gli altri.
+    """
+    categoria = guild.get_channel(nuovo.category_id)
+    if not isinstance(categoria, discord.CategoryChannel):
+        return "categoria_mancante"
+    cambia_categoria = getattr(channel, "category_id", None) != categoria.id
+    if cambia_categoria and len(categoria.channels) >= 50:
+        return "categoria_piena"
+    vecchi = set(await _ruoli_staff(guild.id, ticket.panel_id))
+    ruoli_admin = await _ruoli_admin(guild.id)
+    nuovi = ruoli_con_accesso(await _ruoli_staff(guild.id, nuovo.id), ruoli_admin, ticket.solo_admin)
+    if cambia_categoria:
+        try:
+            await channel.edit(category=categoria, reason="Ticket spostato in un altro pannello")
+        except discord.HTTPException:
+            logger.warning("Ticket %s non spostato nella categoria %s.", channel.id, categoria.id)
+            return "permessi"
+    await ticket_repo.set_panel(channel.id, nuovo.id)
+    vista = discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
+    for role_id, overwrite in [(r, None) for r in vecchi - set(nuovi)] + [(r, vista) for r in nuovi]:
+        ruolo = guild.get_role(role_id)
+        if ruolo is None or role_id == guild.id:
+            continue
+        try:
+            await channel.set_permissions(ruolo, overwrite=overwrite, reason="Ticket spostato in un altro pannello")
+        except discord.HTTPException:
+            logger.warning("Permessi del ruolo %s non cambiati nel ticket spostato %s.", role_id, channel.id)
+    return None
+
+
+async def _esegui_sposta(interaction: discord.Interaction, ticket, nuovo) -> None:
+    errore = await sposta_ticket(interaction.channel, interaction.guild, ticket, nuovo)
+    if errore:
+        await interaction.followup.send(
+            await testo_per(interaction, f"tickets_sposta_{errore}"),
+            ephemeral=True,
+        )
+        return
+    await interaction.followup.send(await testo_per(interaction, "tickets_sposta_fatto", name=nuovo.name), ephemeral=True)
+    try:
+        await interaction.channel.send(
+            await testo_per(interaction, "tickets_sposta_avviso", pubblica=True, chi=interaction.user.mention, name=nuovo.name),
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+    except discord.HTTPException:
+        logger.warning("Avviso di spostamento non inviato nel ticket %s.", interaction.channel.id)
+
+
+class ModuloSposta(BaseModal):
+    """TKT-067: con più di 24 pannelli il nome si scrive."""
+
+    def __init__(self, ticket, titolo: str, campo: str) -> None:
+        super().__init__(title=titolo[:45], timeout=300)
+        self._ticket = ticket
+        self.nome = discord.ui.TextInput(label=campo[:45], max_length=form.MAX_NOME_PANNELLO, custom_id="nome")
+        self.add_item(self.nome)
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        panel = await ticket_form_repo.pannello_per_nome(interaction.guild.id, self.nome.value.strip())
+        if panel is None:
+            await interaction.response.send_message(
+                await testo_per(interaction, "opzioni_nessun_pannello_chiamato", v1=self.nome.value.strip()[:100]), ephemeral=True,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        await _esegui_sposta(interaction, self._ticket, panel)
+
+
+class VistaSposta(BaseView):
+    """TKT-067: menu dei pannelli (fino a 24 + «Altri…»)."""
+
+    def __init__(self, ticket, pannelli, altri: str = "Altri…") -> None:
+        super().__init__(timeout=180)
+        self._ticket = ticket
+        select = discord.ui.Select(
+            placeholder="…",
+            options=[
+                discord.SelectOption(label=etichetta, value=valore)
+                for valore, etichetta in gestione.voci_sposta(pannelli, ticket.panel_id, altri)
+            ],
+        )
+        select.callback = self._on_select
+        self.add_item(select)
+
+    async def _on_select(self, interaction: discord.Interaction) -> None:
+        scelto = self.children[0].values[0]
+        if scelto == gestione.VALORE_ALTRI:
+            await interaction.response.send_modal(ModuloSposta(
+                self._ticket, await testo_per(interaction, "tickets_sposta_altri_titolo"),
+                await testo_per(interaction, "tickets_sposta_altri_campo"),
+            ))
+            return
+        panel = await ticket_form_repo.pannello_per_id(int(scelto))
+        if panel is None or panel.guild_id != interaction.guild.id:
+            await interaction.response.send_message(await testo_per(interaction, "tickets_questo_pannello_non_esiste_piu"), ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        await _esegui_sposta(interaction, self._ticket, panel)
+
+
+class VistaEtichette(BaseView):
+    """TKT-068: scelta multipla delle etichette del ticket. Colora il benvenuto, mai il nome del canale (LIM-3)."""
+
+    def __init__(self, ticket, messaggio, etichette, nome_campo: str, assegnate=()) -> None:
+        super().__init__(timeout=180)
+        self._ticket, self._messaggio, self._nome_campo = ticket, messaggio, nome_campo
+        select = discord.ui.Select(
+            placeholder="…", min_values=0, max_values=max(1, len(etichette)),
+            options=[
+                discord.SelectOption(
+                    label=e.nome[:100], value=str(e.id), default=e.id in assegnate,
+                    emoji=e.emoji if e.emoji and looks_like_emoji(e.emoji) else None,
+                )
+                for e in etichette[:gestione.MAX_ETICHETTE]
+            ],
+        )
+        select.callback = self._on_select
+        self.add_item(select)
+
+    async def _on_select(self, interaction: discord.Interaction) -> None:
+        ids = [int(v) for v in self.children[0].values]
+        assegnate = await ticket_gestione_repo.assegna_etichette(self._ticket.id, interaction.guild.id, ids)
+        embed = discord.Embed.from_dict(self._messaggio.embeds[0].to_dict())
+        gestione.applica_etichette(embed, [(e.nome, e.colore) for e in assegnate], self._nome_campo)
+        await self._messaggio.edit(embeds=[embed])
+        await interaction.response.edit_message(content=await testo_per(interaction, "tickets_etichette_salvate"), view=None)
+
+
+async def suggerisci_articolo(channel, guild_id: int, motivo: str | None, campi) -> None:
+    """TKT-079: se la richiesta somiglia a un articolo approvato, lo propone nel ticket (parole chiave, senza AI)."""
+    testo = "\n".join([motivo or "", *(v for _, v in (campi or []))]).strip()
+    if not testo:
+        return
+    articoli = await ticket_gestione_repo.tutti_gli_approvati(guild_id)
+    scelto = gestione.scegli_articolo(articoli, testo) if articoli else None
+    if scelto is None:
+        return
+    try:
+        await channel.send(
+            embed=discord.Embed(title=truncate_label(scelto.titolo, 256), description=scelto.testo[:4000], color=discord.Color.green()),
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+        await ticket_gestione_repo.conta_uso(scelto.id)
+    except discord.HTTPException:
+        logger.warning("Articolo suggerito non inviato nel ticket %s.", channel.id)
+
+
+async def imposta_solo_admin(channel, guild: discord.Guild, ticket, attivo: bool) -> None:
+    """
+    TKT-046: toglie (o rimette) nel canale i ruoli degli addetti e, all'attivazione, i permessi personali
+    degli addetti. Chi ha «Gestisci server», i ruoli admin e l'autore restano. Una modifica per ruolo o persona.
+    """
+    ruoli_staff = await _ruoli_staff(guild.id, ticket.panel_id)
+    ruoli_admin = await _ruoli_admin(guild.id)
+    for role_id in ruoli_staff:
+        if role_id in ruoli_admin or role_id == guild.id:
+            continue
+        ruolo = guild.get_role(role_id)
+        if ruolo is None:
+            continue
+        if attivo:
+            await channel.set_permissions(ruolo, overwrite=None, reason="Ticket solo admin")
+        else:
+            await channel.set_permissions(
+                ruolo, overwrite=discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
+                reason="Ticket di nuovo a tutto lo staff",
+            )
+    if attivo:
+        # Reperibili e chi aveva preso il ticket hanno un permesso personale: agli addetti va tolto
+        # (l'autore resta sempre, anche se è un addetto).
+        for bersaglio in list(dict(channel.overwrites)):
+            if (
+                not isinstance(bersaglio, discord.Member) or bersaglio.id == ticket.user_id
+                or not await _membro_staff(bersaglio, guild.id, ticket.panel_id)
+                or await _membro_admin(bersaglio, guild.id, ticket.panel_id)
+            ):
+                continue
+            await channel.set_permissions(bersaglio, overwrite=None, reason="Ticket solo admin")
+    await ticket_repo.set_solo_admin(channel.id, attivo)
+
+
+class MenuGestisci(
+    discord.ui.DynamicItem[discord.ui.Select], template=r"tkt:gst:(?P<id>[0-9]+)"
+):
+    """Menu «Gestisci» dello staff sul messaggio di benvenuto. Per ora: solo admin. Le azioni nuove vanno qui, non in /ticket."""
+
+    def __init__(self, ticket_id: int, etichette: dict[str, str] | None = None) -> None:
+        e = etichette or {
+            "segnaposto": "Gestisci", "solo_admin": "Solo admin", "tutti": "Tutto lo staff",
+            "etichette": "Etichette", "sposta": "Sposta in un altro pannello",
+        }
+        super().__init__(
+            discord.ui.Select(
+                custom_id=f"tkt:gst:{ticket_id}",
+                placeholder=e["segnaposto"][:150],
+                options=[
+                    discord.SelectOption(label=e["solo_admin"][:100], value="solo_admin"),
+                    discord.SelectOption(label=e["tutti"][:100], value="tutti"),
+                    discord.SelectOption(label=e["etichette"][:100], value="etichette"),
+                    discord.SelectOption(label=e["sposta"][:100], value="sposta"),
+                ],
+            )
+        )
+        self.ticket_id = ticket_id
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match):
+        return cls(int(match["id"]))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
+        return not await _utente_o_server_in_blacklist(interaction)
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+        logger.exception("Errore nel menu Gestisci dei ticket: %s", error)
+        await _rispondi_con_errore(interaction)
+
+    async def _etichette(self, interaction: discord.Interaction, ticket) -> None:
+        """TKT-068: le etichette le assegna ogni membro dello staff dei ticket."""
+        if not await _is_ticket_staff(interaction, ticket):
+            await interaction.response.send_message(await testo_per(interaction, "tickets_solo_lo_staff_permesso_manage_2"), ephemeral=True)
+            return
+        etichette = await ticket_gestione_repo.elenca_etichette(interaction.guild.id)
+        if not etichette or interaction.message is None or not interaction.message.embeds:
+            await interaction.response.send_message(await testo_per(interaction, "tickets_etichette_nessuna_definita"), ephemeral=True)
+            return
+        gia = [e.id for e in await ticket_gestione_repo.etichette_del_ticket(ticket.id)]
+        await interaction.response.send_message(
+            await testo_per(interaction, "tickets_etichette_scegli"),
+            view=VistaEtichette(ticket, interaction.message, etichette, await testo_per(interaction, "tickets_etichette_campo", pubblica=True), gia),
+            ephemeral=True,
+        )
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id) if interaction.channel else None
+        if ticket is None or ticket.id != self.ticket_id or ticket.status != "open":
+            await interaction.response.send_message(
+                await testo_per(interaction, "tickets_questo_comando_funziona_solo_dentro"), ephemeral=True
+            )
+            return
+        scelta = self.item.values[0]
+        if scelta == "etichette":
+            await self._etichette(interaction, ticket)
+            return
+        if not await _is_ticket_admin(interaction, ticket):
+            await interaction.response.send_message(await testo_per(interaction, "tickets_solo_admin_dei_ticket"), ephemeral=True)
+            return
+        if scelta == "sposta":
+            pannelli = await ticket_form_repo.elenca_pannelli(interaction.guild.id)
+            if not gestione.voci_sposta(pannelli, ticket.panel_id):
+                await interaction.response.send_message(await testo_per(interaction, "tickets_sposta_nessun_altro_pannello"), ephemeral=True)
+                return
+            await interaction.response.send_message(
+                await testo_per(interaction, "tickets_sposta_scegli"), view=VistaSposta(ticket, pannelli, await testo_per(interaction, "tickets_sposta_altri")),
+                ephemeral=True,
+            )
+            return
+        attivo = scelta == "solo_admin"
+        if attivo and not await _ruoli_admin(interaction.guild.id):
+            await interaction.response.send_message(await testo_per(interaction, "tickets_solo_admin_nessun_ruolo"), ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        await imposta_solo_admin(interaction.channel, interaction.guild, ticket, attivo)
+        await interaction.followup.send(
+            await testo_per(interaction, "tickets_solo_admin_attivato" if attivo else "tickets_solo_admin_disattivato"),
+            ephemeral=True,
+        )
 
 
 class BottoneChiuso(
@@ -1512,6 +1953,155 @@ class TicketsCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo(
         "admin-ticket",
+        nome="motivo-aggiungi",
+        descrizione="Aggiungi un motivo pronto al pannello (max 24).",
+        sottogruppo=SOTTOGRUPPI["admin-ticket pannelli"],
+    )
+    @app_commands.describe(
+        pannello="Il pannello",
+        etichetta="Nome del motivo nel menu (max 80 caratteri)",
+        testo="Testo scritto nel ticket (se vuoto: l'etichetta)",
+        emoji="Emoji accanto al nome",
+    )
+    @app_commands.autocomplete(pannello=_completa_pannelli)
+    async def motivo_aggiungi(
+        self,
+        interaction: discord.Interaction,
+        pannello: app_commands.Range[str, 1, form.MAX_NOME_PANNELLO],
+        etichetta: app_commands.Range[str, 1, form.MAX_ETICHETTA_MOTIVO],
+        testo: app_commands.Range[str, 1, form.MAX_TESTO_MOTIVO] | None = None,
+        emoji: app_commands.Range[str, 1, MAX_EMOJI_LENGTH] | None = None,
+    ) -> None:
+        panel = await self._pannello_o_risposta(interaction, pannello)
+        if panel is None:
+            return
+        try:
+            etichetta, testo = form.motivo_valido(etichetta, testo)
+        except form.ErroreConfigurazione as errore:
+            await interaction.response.send_message(str(errore), ephemeral=True)
+            return
+        if emoji is not None and not looks_like_emoji(emoji):
+            emoji = None
+        try:
+            nuovo = await ticket_form_repo.aggiungi_motivo(panel.id, etichetta, emoji, testo)
+        except TroppiMotivi:
+            await interaction.response.send_message(
+                await testo_per(interaction, "tickets_troppi_motivi", massimo=form.MAX_MOTIVI), ephemeral=True
+            )
+            return
+        await interaction.response.send_message(
+            await testo_per(interaction, "tickets_motivo_aggiunto", etichetta=etichetta, name=panel.name, posizione=nuovo.posizione),
+            ephemeral=True,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+
+    @comando_di_gruppo(
+        "admin-ticket",
+        nome="motivo-togli",
+        descrizione="Togli un motivo pronto dal pannello (senza numero: li elenca).",
+        sottogruppo=SOTTOGRUPPI["admin-ticket pannelli"],
+    )
+    @app_commands.describe(pannello="Il pannello", numero="Numero del motivo (vuoto = elenco)")
+    @app_commands.autocomplete(pannello=_completa_pannelli)
+    async def motivo_togli(
+        self,
+        interaction: discord.Interaction,
+        pannello: app_commands.Range[str, 1, form.MAX_NOME_PANNELLO],
+        numero: app_commands.Range[int, 1, form.MAX_MOTIVI] | None = None,
+    ) -> None:
+        panel = await self._pannello_o_risposta(interaction, pannello)
+        if panel is None:
+            return
+        if numero is None:
+            motivi = await ticket_form_repo.elenca_motivi(panel.id)
+            if not motivi:
+                await interaction.response.send_message(
+                    await testo_per(interaction, "tickets_pannello_senza_motivi", name=panel.name), ephemeral=True
+                )
+                return
+            righe = [f"{m.posizione}. {m.etichetta}" for m in motivi]
+            await interaction.response.send_message(
+                "\n".join(righe)[:2000], ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
+            )
+            return
+        if await ticket_form_repo.rimuovi_motivo(panel.id, numero):
+            await interaction.response.send_message(await testo_per(interaction, "tickets_motivo_tolto", numero=numero), ephemeral=True)
+        else:
+            await interaction.response.send_message(await testo_per(interaction, "tickets_non_un_motivo", numero=numero), ephemeral=True)
+
+    @comando_di_gruppo(
+        "admin-ticket",
+        nome="aggiungi",
+        descrizione="Crea un'etichetta colorata per i ticket (max 25).",
+        sottogruppo=SOTTOGRUPPI["admin-ticket etichette"],
+    )
+    @app_commands.describe(
+        nome="Nome dell'etichetta (max 32 caratteri)", colore="Colore come #RRGGBB (di base blu)", emoji="Emoji accanto al nome"
+    )
+    async def etichetta_aggiungi(
+        self,
+        interaction: discord.Interaction,
+        nome: app_commands.Range[str, 1, gestione.MAX_NOME_ETICHETTA],
+        colore: app_commands.Range[str, 1, 7] | None = None,
+        emoji: app_commands.Range[str, 1, MAX_EMOJI_LENGTH] | None = None,
+    ) -> None:
+        if interaction.guild is None:
+            return
+        try:
+            nome = gestione.etichetta_valida(nome)
+            valore = gestione.colore_valido(colore)
+        except form.ErroreConfigurazione as errore:
+            await interaction.response.send_message(str(errore), ephemeral=True)
+            return
+        try:
+            await ticket_gestione_repo.aggiungi_etichetta(
+                interaction.guild.id, nome, valore, emoji if emoji and looks_like_emoji(emoji) else None
+            )
+        except TroppeEtichette:
+            await interaction.response.send_message(await testo_per(interaction, "tickets_troppe_etichette", massimo=gestione.MAX_ETICHETTE), ephemeral=True)
+            return
+        except EtichettaGiaEsistente:
+            await interaction.response.send_message(await testo_per(interaction, "tickets_etichetta_esiste", nome=nome), ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+            return
+        await interaction.response.send_message(
+            await testo_per(interaction, "tickets_etichetta_aggiunta", nome=nome), ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
+        )
+
+    @comando_di_gruppo(
+        "admin-ticket",
+        nome="togli",
+        descrizione="Togli un'etichetta (sparisce dai ticket che la hanno).",
+        sottogruppo=SOTTOGRUPPI["admin-ticket etichette"],
+    )
+    @app_commands.describe(nome="Il nome dell'etichetta")
+    async def etichetta_togli(
+        self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, gestione.MAX_NOME_ETICHETTA]
+    ) -> None:
+        if interaction.guild is None:
+            return
+        chiave = "tickets_etichetta_tolta" if await ticket_gestione_repo.togli_etichetta(interaction.guild.id, nome) else "tickets_etichetta_non_trovata"
+        await interaction.response.send_message(
+            await testo_per(interaction, chiave, nome=nome.strip()[:40]), ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
+        )
+
+    @comando_di_gruppo(
+        "admin-ticket",
+        nome="elenco",
+        descrizione="Elenca le etichette dei ticket.",
+        sottogruppo=SOTTOGRUPPI["admin-ticket etichette"],
+    )
+    async def etichetta_elenco(self, interaction: discord.Interaction) -> None:
+        if interaction.guild is None:
+            return
+        etichette = await ticket_gestione_repo.elenca_etichette(interaction.guild.id)
+        if not etichette:
+            await interaction.response.send_message(await testo_per(interaction, "tickets_nessuna_etichetta"), ephemeral=True)
+            return
+        righe = [f"{e.emoji + ' ' if e.emoji else ''}{e.nome} · #{e.colore:06X}" for e in etichette]
+        await interaction.response.send_message("\n".join(righe)[:2000], ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+
+    @comando_di_gruppo(
+        "admin-ticket",
         nome="chiusura-auto",
         descrizione="Chiudi i ticket fermi da N minuti (0 = spenta).",
     )
@@ -1684,14 +2274,29 @@ class TicketsCog(CogConGruppi, commands.Cog):
         descrizione="Aggiungi un ruolo di supporto.",
         sottogruppo=SOTTOGRUPPI["admin-ticket ruolo"],
     )
-    @app_commands.describe(role="Il ruolo da aggiungere")
-    async def ticket_support_role_add(self, interaction: discord.Interaction, role: discord.Role) -> None:
+    @app_commands.describe(
+        role="Il ruolo da aggiungere",
+        livello="Addetto: vede e risponde. Admin: chiude, forza la chiusura, «solo admin»",
+    )
+    @app_commands.choices(
+        livello=[app_commands.Choice(name=n, value=n) for n in (LIVELLO_ADDETTO, LIVELLO_ADMIN)]
+    )
+    async def ticket_support_role_add(
+        self, interaction: discord.Interaction, role: discord.Role, livello: app_commands.Choice[str] | None = None
+    ) -> None:
         if interaction.guild is None:
             return
         attuali = await db.get_guild_setting(interaction.guild.id, SETTING_SUPPORT_ROLES, default=[])
         if role.id not in attuali:
             attuali.append(role.id)
             await db.set_guild_setting(interaction.guild.id, SETTING_SUPPORT_ROLES, attuali)
+        if livello is not None:
+            await ticket_repo.imposta_livello_ruolo(interaction.guild.id, role.id, livello.value)
+            await interaction.response.send_message(
+                await testo_per(interaction, "tickets_ruolo_livello_impostato", mention=role.mention, livello=livello.value),
+                ephemeral=True,
+            )
+            return
         await interaction.response.send_message(
             await testo_per(interaction, "tickets_aggiunto_ai_ruoli_di_supporto", mention=role.mention), ephemeral=True
         )
@@ -1715,6 +2320,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             await db.set_guild_setting(guild_id, SETTING_SUPPORT_ROLES, attuali, interaction.user.id)
             rimosso = True
 
+        await ticket_repo.togli_livello_ruolo(guild_id, role.id)
         # Il ruolo può essere anche quello "storico" impostato con
         # /admin-ticket setup: va tolto pure da lì, altrimenti continua a
         # vedere i ticket. La chiave si toglie del tutto (un `null`
@@ -1746,7 +2352,8 @@ class TicketsCog(CogConGruppi, commands.Cog):
         if not ruoli_id:
             await interaction.response.send_message(await testo_per(interaction, "tickets_nessun_ruolo_di_supporto_configurato"), ephemeral=True)
             return
-        righe = [f"<@&{rid}>" for rid in ruoli_id]
+        livelli = await ticket_repo.livelli_ruoli(interaction.guild.id)
+        righe = [f"<@&{rid}> ({livelli.get(rid, LIVELLO_ADDETTO)})" for rid in ruoli_id]
         await interaction.response.send_message(", ".join(righe), ephemeral=True)
 
     # ================================================================
@@ -1855,7 +2462,10 @@ class TicketsCog(CogConGruppi, commands.Cog):
                 channel, opzioni.prefisso_preso, (opzioni.prefisso_preso, opzioni.prefisso_chiuso), "Ticket preso in carico"
             )
         if opzioni.claim_esclusivo != "no":
-            await self._permessi_staff(guild, channel, ticket.panel_id, esclusiva=opzioni.claim_esclusivo, titolare=staff)
+            await self._permessi_staff(
+                guild, channel, ticket.panel_id, esclusiva=opzioni.claim_esclusivo, titolare=staff,
+                solo_admin=ticket.solo_admin,
+            )
             if precedente is not None and precedente not in (staff.id, ticket.user_id):
                 await self._togli_permessi_personali(guild, channel, precedente)
         if opzioni.testo_presa:
@@ -1874,13 +2484,17 @@ class TicketsCog(CogConGruppi, commands.Cog):
         except discord.HTTPException:
             logger.warning("Permessi di %s non tolti dal ticket %s.", user_id, channel.id)
 
-    async def _permessi_staff(self, guild: discord.Guild, channel, panel_id, *, esclusiva: str, titolare=None) -> None:
+    async def _permessi_staff(
+        self, guild: discord.Guild, channel, panel_id, *, esclusiva: str, titolare=None, solo_admin: bool = False
+    ) -> None:
         """
         TKT-050: con la presa esclusiva i ruoli dello staff non scrivono ("scrivere") o non vedono
         ("vedere"); chi ha il ticket scrive sempre. esclusiva="no" rimette i ruoli come all'apertura.
         Si cambia un permesso solo: overwrites_for + update + overwrite=.
+        TKT-046: in un ticket «solo admin» i ruoli degli addetti non si toccano (restano fuori).
         """
-        for role_id in await _ruoli_staff(guild.id, panel_id):
+        ruoli = ruoli_con_accesso(await _ruoli_staff(guild.id, panel_id), await _ruoli_admin(guild.id), solo_admin)
+        for role_id in ruoli:
             role = guild.get_role(role_id)
             if role is None or role_id == guild.id:
                 continue
@@ -2000,7 +2614,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         await ticket_repo.release_ticket(interaction.channel.id)
         opzioni = await _opzioni_pannello(ticket.panel_id)
         if opzioni.claim_esclusivo != "no":
-            await self._permessi_staff(interaction.guild, interaction.channel, ticket.panel_id, esclusiva="no")
+            await self._permessi_staff(
+                interaction.guild, interaction.channel, ticket.panel_id, esclusiva="no", solo_admin=ticket.solo_admin
+            )
             if ticket.claimed_by != ticket.user_id:
                 await self._togli_permessi_personali(interaction.guild, interaction.channel, ticket.claimed_by)
         testo = (
@@ -2153,13 +2769,13 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.defer(ephemeral=True)
         try:
-            testo = await self._build_transcript_text(interaction.channel, ticket)
+            file_pronti = await self._file_transcript(interaction.guild, interaction.channel, ticket)
         except discord.HTTPException:
             await interaction.followup.send(
                 await testo_per(interaction, "tickets_non_riesco_leggere_messaggi_del"), ephemeral=True
             )
             return
-        for nome_file, contenuto in self._transcript_files(testo, ticket.ticket_number):
+        for nome_file, contenuto in file_pronti:
             await interaction.followup.send(
                 file=discord.File(io.BytesIO(contenuto), filename=nome_file), ephemeral=True
             )
@@ -2231,6 +2847,10 @@ class TicketsCog(CogConGruppi, commands.Cog):
         Senza l'intent Message Content Discord consegna i messaggi
         vuoti (BUG-5): in quel caso l'intestazione lo dice.
         """
+        messaggi = [m async for m in channel.history(limit=None, oldest_first=True)]
+        return self._testo_da_messaggi(ticket, messaggi)
+
+    def _testo_da_messaggi(self, ticket, messaggi) -> str:
         header = [
             f"Transcript ticket #{ticket.ticket_number:04d}",
             f"Aperto da: {ticket.user_id} il {ticket.created_at.isoformat()}",
@@ -2243,7 +2863,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         if not self.bot.intents.message_content:
             header.append(MESSAGE_CONTENT_WARNING)
         righe = []
-        async for messaggio in channel.history(limit=None, oldest_first=True):
+        for messaggio in messaggi:
             righe.append(
                 format_transcript_line(
                     messaggio.created_at.strftime("%Y-%m-%d %H:%M"),
@@ -2269,17 +2889,87 @@ class TicketsCog(CogConGruppi, commands.Cog):
             for numero, parte in enumerate(parti, start=1)
         ]
 
+    async def _allegati_trascritti(self, guild: discord.Guild, messaggio, conteggio: list[int]) -> tuple[AllegatoT, ...]:
+        """
+        TKT-070/074: nome, peso e impronta di ogni allegato. Le immagini passano dalla pipeline (D62):
+        si tiene solo la copia ricodificata di quelle pulite, mai l'originale.
+        """
+        risultato = []
+        for allegato in messaggio.attachments:
+            png, sha = b"", ""
+            tipo = (getattr(allegato, "content_type", None) or "").lower()
+            e_immagine = tipo.startswith("image/") or allegato.filename.lower().endswith(
+                (".png", ".jpg", ".jpeg", ".gif", ".webp")
+            )
+            if e_immagine and conteggio[0] < tr_logic.MAX_IMMAGINI and (allegato.size or 0) <= MAX_BYTE_IMMAGINE_TRANSCRIPT:
+                conteggio[0] += 1
+                try:
+                    esito = await analizza_immagine(await allegato.read(), allegato.filename, tipo or None, guild.id)
+                    sha = esito.sha256
+                    if esito.verdetto == PULITA and esito.non_analizzata is None and esito.png:
+                        png = esito.png
+                except Exception:  # noqa: BLE001 - un allegato che non si legge non ferma il transcript
+                    logger.warning("Allegato del transcript non analizzato nel ticket %s.", messaggio.channel.id, exc_info=True)
+            risultato.append(AllegatoT(allegato.filename, allegato.size or 0, sha, png))
+        return tuple(risultato)
+
+    async def _file_transcript(self, guild: discord.Guild, channel, ticket) -> list[tuple[str, bytes]]:
+        """
+        I file del transcript secondo il pannello (TKT-071): testo, HTML o entrambi, più lo ZIP delle immagini
+        controllate (TKT-074). Con le opzioni di base è identico al transcript testuale di sempre.
+        """
+        opzioni = await _opzioni_pannello(ticket.panel_id)
+        formato = tr_logic.formato_valido(opzioni.transcript_formato)
+        if formato == "testo" and not opzioni.allegati_zip:
+            return self._transcript_files(await self._build_transcript_text(channel, ticket), ticket.ticket_number)
+        messaggi = [m async for m in channel.history(limit=None, oldest_first=True)]
+        base = f"ticket-{ticket.ticket_number:04d}"
+        file_pronti: list[tuple[str, bytes]] = []
+        if formato in ("testo", "entrambi"):
+            file_pronti += self._transcript_files(self._testo_da_messaggi(ticket, messaggi), ticket.ticket_number)
+        conteggio = [0]
+        convertiti = []
+        tutti: list[AllegatoT] = []
+        for m in messaggi:
+            allegati = await self._allegati_trascritti(guild, m, conteggio)
+            tutti += allegati
+            testo = m.content or ""
+            for e in getattr(m, "embeds", None) or []:
+                testo += "\n" + "\n".join(x for x in (getattr(e, "title", None), getattr(e, "description", None)) if x)
+            convertiti.append(tr_logic.MessaggioT(
+                m.created_at.strftime("%Y-%m-%d %H:%M"), str(m.author), testo.strip(), allegati,
+                bool(getattr(m.author, "bot", False)),
+            ))
+        if formato in ("html", "entrambi"):
+            riga = lambda k, v: (k, str(v))  # noqa: E731
+            testata = tr_logic.IntestazioneT(
+                ticket.ticket_number,
+                tuple(riga(k, v) for k, v in (
+                    ("Aperto da", ticket.user_id), ("Aperto il", ticket.created_at.isoformat()),
+                    ("Categoria", ticket.category_label or "n/d"), ("Priorità", ticket.priority),
+                    ("Preso in carico da", ticket.claimed_by or "nessuno"),
+                ) + ((("Motivo di chiusura", ticket.close_reason),) if ticket.close_reason else ())),
+                None if self.bot.intents.message_content else MESSAGE_CONTENT_WARNING,
+            )
+            parti = tr_logic.html_in_parti(testata, convertiti)
+            for numero, pagina in enumerate(parti, start=1):
+                nome = f"{base}-transcript.html" if len(parti) == 1 else f"{base}-transcript-parte-{numero}-di-{len(parti)}.html"
+                file_pronti.append((nome, pagina.encode("utf-8")))
+        if opzioni.allegati_zip:
+            archivio = tr_logic.zip_allegati(tutti)
+            if archivio:
+                file_pronti.append((f"{base}-allegati.zip", archivio))
+        return file_pronti
+
     async def _deliver_transcript(
         self, guild: discord.Guild, channel: discord.TextChannel, ticket, *, dm: bool = True
     ) -> None:
         """SPEC.md §13.11: invio nel canale log configurato + DM all'utente (se il pannello lo vuole, TKT-075)."""
         try:
-            testo = await self._build_transcript_text(channel, ticket)
+            file_del_transcript = await self._file_transcript(guild, channel, ticket)
         except discord.HTTPException:
             logger.warning("Impossibile leggere la history del ticket %s per il transcript", channel.id)
             return
-
-        file_del_transcript = self._transcript_files(testo, ticket.ticket_number)
 
         # Il canale dei log può essere un forum: il router lo gestisce (post nel forum).
         predefinito = await db.get_guild_setting(guild.id, SETTING_LOG_CHANNEL)
@@ -2693,11 +3383,11 @@ class TicketsCog(CogConGruppi, commands.Cog):
         if azione == "t":
             await interaction.response.defer(ephemeral=True)
             try:
-                testo = await self._build_transcript_text(interaction.channel, ticket)
+                file_pronti = await self._file_transcript(interaction.guild, interaction.channel, ticket)
             except discord.HTTPException:
                 await interaction.followup.send(await testo_per(interaction, "tickets_non_riesco_leggere_messaggi_del_2"), ephemeral=True)
                 return
-            for nome_file, contenuto in self._transcript_files(testo, ticket.ticket_number):
+            for nome_file, contenuto in file_pronti:
                 await interaction.followup.send(
                     file=discord.File(io.BytesIO(contenuto), filename=nome_file), ephemeral=True
                 )
@@ -2844,6 +3534,12 @@ class TicketsCog(CogConGruppi, commands.Cog):
                 await testo_per(interaction, "tickets_questo_comando_funziona_solo_dentro_2"), ephemeral=True
             )
             return
+        if not await _is_ticket_admin(interaction, ticket):
+            # TKT-045: con dei ruoli admin, gli addetti non forzano la chiusura.
+            await interaction.response.send_message(
+                await testo_per(interaction, "tickets_solo_admin_dei_ticket"), ephemeral=True
+            )
+            return
 
         # Su un ticket già chiuso non cambia nulla nel database.
         appena_chiuso = await ticket_repo.close_ticket(
@@ -2980,4 +3676,4 @@ async def setup(bot: commands.Bot) -> None:
     # già esistenti nei server (pubblicati prima di un riavvio) di
     # continuare a funzionare.
     bot.add_view(TicketPanelView())
-    bot.add_dynamic_items(BottonePannello, BottoneVoto, BottoneRichiestaChiusura, BottoneChiuso)
+    bot.add_dynamic_items(BottonePannello, BottoneVoto, BottoneRichiestaChiusura, BottoneChiuso, MenuGestisci)
