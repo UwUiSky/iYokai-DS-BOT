@@ -1372,8 +1372,10 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - `/mod-canali clear amount:50 piu_vecchi_di:2h` e `piu_nuovi_di:30m`: solo i messaggi di quell'età.
 - `/mod-canali clear amount:1000` in un canale con oltre 100 messaggi più vecchi di 14 giorni: se ne cancellano 100 e la risposta dice quanti restano.
 - `/mod-canali reazioni quanti:20` (poi con `emoji:👍`): le reazioni spariscono, i messaggi restano; riga nel log di moderazione.
-- `/mod-casi caso durata numero:<tempban|timeout|mute> durata:2h`: la fine cambia davvero (timeout sul membro, tempban/mute nello scheduler); su un warn è rifiutato.
-- `/mod-casi caso nascondi numero:N`: il warn non compare più in `/mod-casi avvisi classifica`; `nascosto:False` lo riporta.
+- `/mod-casi caso durata case_number:<tempban|timeout|mute> durata:2h`: la fine cambia davvero (timeout sul membro, tempban/mute nello scheduler); su un warn è rifiutato.
+- `/mod-casi caso nascondi case_number:N`: il warn non compare più in `/mod-casi avvisi classifica`; `nascosto:False` lo riporta.
 - `/mod-casi caso esporta utente:@X`: arriva un file .txt con casi e note.
 - `/mod-casi avvisi elenco` (pagine) e `azzera-tutti conferma:<numero giusto>`; con un numero sbagliato non toglie niente.
-- `/mod-sanzioni opzioni imposta scadenza_automod:1`: un warn dell'AutoMod passa a non attivo dopo un giorno.
+- `/mod-sanzioni opzioni imposta scadenza_automod:1`: un warn dell'AutoMod passa a non attivo dopo un giorno; un tempban o un timeout dell'AutoMod restano attivi.
+- `/mod-canali clear amount:200 dopo:<ID di un messaggio di 20 giorni fa>`: i recenti spariscono subito (in blocco), solo i vecchi uno per uno.
+- `/mod-casi caso durata` su un tempban da chi ha solo «Metti in timeout»: rifiutato; su un timeout di chi ha un ruolo più alto: rifiutato.
