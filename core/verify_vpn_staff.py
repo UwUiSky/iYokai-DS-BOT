@@ -3,13 +3,14 @@ core/verify_vpn_staff.py
 ========================
 VPN e proxy nella verifica web (D64, D65): blocca subito chi si verifica da una VPN o un proxy, avvisa gli
 admin nel canale del registro della verifica con il bottone persistente «Lascia passare» (solo admin), che
-segna un'eccezione per quella persona e la ricorda nello storico condiviso. Se altri server l'hanno già
-lasciata passare, qui passa ma gli admin vedono «già accettato da N server» con lo storico (di base solo il
-numero; i nomi solo dei server con `verify_condividi_nome`). Si salvano solo metodo, esito e data: mai l'IP.
+segna un'eccezione per quella persona e la ricorda nello storico condiviso (con founder e admin, D67). Se
+almeno 3 server diversi (founder diversi, admin diversi, in momenti diversi) l'hanno già lasciata passare, qui
+passa ma gli admin vedono «già accettato da N server» con lo storico (di base solo il numero; i nomi solo dei
+server con `verify_condividi_nome`). Sotto la soglia il «Lascia passare» vale solo nel server che l'ha dato. Nella tabella dell'esito solo metodo, esito e data; l'IP sta cifrato a parte e lo vede solo il proprietario (D67).
 Impostazioni (punto unico: SETTINGS_SCHEMA e `core/config_impostazioni.py`): `verify_blocca_vpn` (base vero),
 `verify_condividi_nome` (base falso).
 Funzioni coperte: SPEC §4.2 (VPN e proxy, D64, D65)
-Dipende da: core/verify_vpn.py, core/repositories/verify_vpn_repo.py
+Dipende da: core/verify_vpn.py, core/verify_ip.py, core/repositories/verify_vpn_repo.py
 """
 
 from __future__ import annotations
@@ -18,13 +19,13 @@ import logging
 
 import discord
 
-from core import verify_vpn
+from core import verify_ip, verify_vpn
 from core.command_access import Livello, puo_usare
 from core.database import db
 from core.i18n import testo_guild, testo_per
 from core.repositories.verify_repo import verify_repo
 from core.ui_base import BaseView
-from core.verify_vpn_logic import testo_metodi
+from core.verify_vpn_logic import storico_basta, testo_metodi
 
 logger = logging.getLogger("iyokai.verify_vpn")
 
@@ -57,26 +58,33 @@ async def controlla(
     """
     Da chiamare all'inizio della verifica web. Restituisce il testo per la persona se va bloccata (la verifica
     NON prosegue), altrimenti None. Regola spenta o eccezione data: non si controlla niente.
+    L'IP si salva cifrato (D67, `core/verify_ip.py`) con l'esito; lo vede solo il proprietario del bot.
     """
+    testo, esito = await _valuta(bot, guild, membro, ip, chiave, segnali_intestazioni, fuso)
+    await verify_ip.salva(guild.id, membro.id, ip, esito, chiave)
+    return testo
+
+
+async def _valuta(bot, guild, membro, ip, chiave, segnali_intestazioni, fuso) -> tuple[str | None, str]:
     if not await db.get_guild_setting(guild.id, SETTING_BLOCCA, True):
-        return None
+        return None, "passato"
     repo = _repo()
     if await repo.ha_eccezione(guild.id, membro.id):
-        return None
+        return None, "eccezione"
     esito = await verify_vpn.rileva(ip, segnali_intestazioni=segnali_intestazioni, fuso=fuso, chiave=chiave)
     if not esito.bloccato:
-        return None
+        return None, "passato"
     metodi = testo_metodi(esito.metodi)
     precedenti = await repo.storico_altri(guild.id, membro.id)
-    if precedenti:  # D65: altri server l'hanno già accettata, qui passa e gli admin lo sanno
+    if precedenti and storico_basta(precedenti):  # D65+D67: abbastanza server diversi l'hanno già accettata
         from core.repositories.verify_vpn_repo import ESITO_DA_STORICO
 
         if await repo.registra_blocco(guild.id, membro.id, metodi, esito=ESITO_DA_STORICO):
             await _avvisa_storico(bot, guild, membro, metodi, precedenti)
-        return None
+        return None, "da_storico"
     if await repo.registra_blocco(guild.id, membro.id, metodi):
         await _avvisa(guild, membro, metodi)
-    return await testo_guild(guild, "verify_vpn_bloccato_utente")
+    return await testo_guild(guild, "verify_vpn_bloccato_utente"), "bloccato"
 
 
 async def _avvisa(guild: discord.Guild, membro: discord.Member, metodi: str) -> None:
@@ -166,7 +174,7 @@ async def lascia_passare(interaction: discord.Interaction, user_id: int) -> None
     if guild is None or not await puo_usare(interaction, Livello.ADMIN):
         await interaction.response.send_message(await testo_per(interaction, "verify_vpn_solo_admin"), ephemeral=True)
         return
-    if not await _repo().lascia_passare(guild.id, user_id):
+    if not await _repo().lascia_passare(guild.id, user_id, founder_id=guild.owner_id, admin_id=interaction.user.id):
         await interaction.response.send_message(await testo_per(interaction, "verify_vpn_gia_passata"), ephemeral=True)
         return
     await interaction.response.defer()

@@ -161,3 +161,24 @@ async def test_proprietario_vede_lo_storico_vpn_con_i_nomi_dei_server(ambiente, 
         assert (await client.get("/proprietario/storico-vpn?utente=777")).status == 403
     finally:
         await client.close()
+
+
+@pytest.mark.asyncio
+async def test_proprietario_vede_gli_ip_cifrati_nella_pagina_e_nessun_altro(ambiente, owner, monkeypatch):  # noqa: F811
+    """D67: gli IP della verifica li vede solo l'owner del bot, in /proprietario/storico-vpn."""
+    from core import oauth_crypto, verify_ip
+    from tests.test_web_panel_server import GUILD
+
+    chiave = oauth_crypto.generate_key()
+    monkeypatch.setattr(verify_ip, "_chiave_cifratura", lambda: chiave)
+    assert await verify_ip.salva(GUILD, 779, "8.8.4.4", "bloccato", "k" * 40)
+    client = await _client(ambiente.app)
+    try:
+        await _entra(client)
+        testo = await (await client.get("/proprietario/storico-vpn?utente=779")).text()
+        assert "8.8.4.4" in testo and "bloccato" in testo
+        _proprietario(monkeypatch, ESTRANEO)
+        r = await client.get("/proprietario/storico-vpn?utente=779")
+        assert r.status == 403 and "8.8.4.4" not in await r.text()
+    finally:
+        await client.close()

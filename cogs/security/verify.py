@@ -67,7 +67,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core import captcha_image
+from core import captcha_image, verify_blocchi, verify_ip
 from core.i18n import testo_per
 from core.bounded_cache import BoundedCache
 from core.panel_bridge import METODO_WEB, link_verifica_web
@@ -171,7 +171,7 @@ class CaptchaModal(BaseModal, title="Verification"):
             await interaction.followup.send(await testo_per(interaction, "verify_qualcosa_storto"), ephemeral=True)
             return
 
-        outcome = await self.cog.run_checks_and_finalize(guild, member, captcha_ok)
+        outcome = await self.cog.run_checks_and_finalize(guild, member, captcha_ok, con_invito=True)
         await interaction.followup.send(outcome.reason, ephemeral=True)
         await proponi_consenso_restore(
             lambda t, view: interaction.followup.send(t, view=view, ephemeral=True),
@@ -210,7 +210,7 @@ class CaptchaImmagineModal(BaseModal, title="Verifica"):
         if member is None:
             await interaction.followup.send(await testo_per(interaction, "verify_qualcosa_andato_storto_riprova"), ephemeral=True)
             return
-        outcome = await self.cog.run_checks_and_finalize(guild, member, esito == "ok")
+        outcome = await self.cog.run_checks_and_finalize(guild, member, esito == "ok", con_invito=True)
         if esito == "ok":
             await interaction.followup.send(outcome.reason, ephemeral=True)
             await proponi_consenso_restore(
@@ -219,8 +219,11 @@ class CaptchaImmagineModal(BaseModal, title="Verifica"):
             )
         else:
             motivo = "i tentativi sono finiti" if esito == "esaurita" else "il tempo e' scaduto"
+            invito = await verify_blocchi.invito(guild)
             await interaction.followup.send(
-                f"Verifica non riuscita: {motivo}. Premi di nuovo «Verify» per un codice nuovo.", ephemeral=True
+                f"Verifica non riuscita: {motivo}. Premi di nuovo «Verify» per un codice nuovo."
+                + (f"\n{invito}" if invito else ""),
+                ephemeral=True,
             )
 
 
@@ -366,7 +369,7 @@ async def avvia_verifica(interaction: discord.Interaction) -> None:
     # Senza captcha: risposta subito (3 secondi), poi controlli,
     # ruolo e log.
     await interaction.response.defer(ephemeral=True)
-    outcome = await cog.run_checks_and_finalize(guild, interaction.user, captcha_ok=True)
+    outcome = await cog.run_checks_and_finalize(guild, interaction.user, captcha_ok=True, con_invito=True)
     await interaction.followup.send(outcome.reason, ephemeral=True)
     await proponi_consenso_restore(
         lambda t, view: interaction.followup.send(t, view=view, ephemeral=True),
@@ -460,6 +463,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         All'ingresso: verifica saltata per chi non è sospetto (VER-013), ruolo
         «non verificato» (VER-014), promemoria e scadenza nello scheduler (VER-008/011).
         """
+        await self._ip_persona_tornata(member)
         if member.bot or not await db.is_module_active_for_guild(member.guild.id, MODULE_VERIFY):
             return
         guild = member.guild
@@ -512,12 +516,46 @@ class VerifyCog(CogConGruppi, commands.Cog):
             if minuti > 0:
                 await scheduler.schedule(guild.id, member.id, tipo, in_seconds(attesa + minuti * 60))
 
+    @staticmethod
+    async def _ip_persona_tornata(member: discord.Member) -> None:
+        """D67: chi rientra prima della scadenza non fa più scadere i suoi IP."""
+        if member.bot:
+            return
+        try:
+            await verify_ip.persona_tornata(member.guild.id, member.id)
+        except Exception as errore:
+            logger.warning("Scadenza degli IP non aggiornata nel server %s (%s).", member.guild.id, type(errore).__name__)
+
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member) -> None:
-        """VER-030: le uscite entrano nelle statistiche."""
+        """VER-030: le uscite entrano nelle statistiche. D67: gli IP della persona scadono fra 30 giorni (180 dopo un kick)."""
+        if not member.bot:
+            try:
+                if await verify_ip.ha_ip(member.guild.id, member.id):
+                    espulsa = await verify_ip.uscita_con_kick(member.guild, member.id)
+                    await verify_ip.persona_uscita(member.guild.id, member.id, espulsa=espulsa)
+            except Exception as errore:
+                logger.warning("Scadenza degli IP non aggiornata nel server %s (%s).", member.guild.id, type(errore).__name__)
         if member.bot or not await db.is_module_active_for_guild(member.guild.id, MODULE_VERIFY):
             return
         await verify_repo.registra_evento(member.guild.id, member.id, "uscita")
+
+    @commands.Cog.listener()
+    async def on_member_ban(self, guild: discord.Guild, user: discord.User) -> None:
+        """D67: dopo un ban gli IP restano finché il ban è attivo."""
+        await self._ip_aggiorna(guild.id, verify_ip.persona_bannata, user.id)
+
+    @commands.Cog.listener()
+    async def on_member_unban(self, guild: discord.Guild, user: discord.User) -> None:
+        """D67: 30 giorni dopo lo sblocco gli IP si cancellano."""
+        await self._ip_aggiorna(guild.id, verify_ip.persona_sbloccata, user.id)
+
+    @staticmethod
+    async def _ip_aggiorna(guild_id: int, funzione, *altri) -> None:
+        try:
+            await funzione(guild_id, *altri)
+        except Exception as errore:
+            logger.warning("Scadenza degli IP non aggiornata nel server %s (%s).", guild_id, type(errore).__name__)
 
     async def _da_verificare(self, guild_id: int, user_id: int):
         """Il membro ancora senza il ruolo di verifica, con il server e la configurazione; altrimenti None."""
@@ -608,8 +646,13 @@ class VerifyCog(CogConGruppi, commands.Cog):
         return True
 
     async def run_checks_and_finalize(
-        self, guild: discord.Guild, member: discord.Member, captcha_ok: bool
+        self, guild: discord.Guild, member: discord.Member, captcha_ok: bool, con_invito: bool = False
     ):
+        """
+        I controlli del server e il ruolo. `con_invito` (bottone, captcha, reazione): se la persona non passa,
+        il testo per lei dice di scrivere in privato al bot per aprire un ticket (D67); la verifica web lo
+        aggiunge da sé (`core/panel_bridge.py`).
+        """
         config = await verify_repo.get_config(guild.id)
 
         # Chi ha già il ruolo è già verificato: niente nuovo tentativo, niente riga nel log.
@@ -679,6 +722,11 @@ class VerifyCog(CogConGruppi, commands.Cog):
                 except discord.HTTPException:
                     pass
 
+        if con_invito:
+            if outcome.success:
+                await verify_blocchi.dopo_riuscita(guild, member.id)
+            else:  # D67: ogni blocco invita a scrivere in privato; il motivo resta per il ticket
+                outcome = VerifyOutcome(False, await verify_blocchi.dopo_blocco(guild, member.id, outcome.reason))
         return outcome
 
     # ================================================================
@@ -687,7 +735,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="storico-vpn",
-        descrizione="Solo proprietario: i server che hanno lasciato passare una persona segnalata come VPN/proxy.",
+        descrizione="Solo proprietario: server che l'hanno lasciata passare e IP della persona (VPN/proxy).",
         sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
     )
     @app_commands.describe(utente="La persona di cui vedere lo storico (D65)")
@@ -701,8 +749,10 @@ class VerifyCog(CogConGruppi, commands.Cog):
 
         await interaction.response.defer(ephemeral=True)
         righe = righe_storico_owner(await storico_owner(self.bot, utente.id))
+        # D67: gli IP li vede solo il proprietario, qui e nella pagina del pannello
+        righe += verify_ip.righe_per_proprietario(await verify_ip.per_proprietario(self.bot, utente.id))
         await invia_a_pagine(
-            interaction, f"Storico VPN/proxy di {utente.id}", righe or ["Nessun server l'ha lasciato passare."],
+            interaction, f"Storico VPN/proxy e IP di {utente.id}", righe or ["Nessun server l'ha lasciato passare."],
             dopo_defer=True,
         )
 
@@ -1176,7 +1226,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         if guild is None:
             return
 
-        outcome = await self.run_checks_and_finalize(guild, payload.member, captcha_ok=True)
+        outcome = await self.run_checks_and_finalize(guild, payload.member, captcha_ok=True, con_invito=True)
 
         try:
             await payload.member.send(outcome.reason)

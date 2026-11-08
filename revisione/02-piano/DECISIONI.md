@@ -1000,3 +1000,20 @@ Aggiorna D64/D65.
   privato apre il ticket con lo staff dei server dove è stata limitata.
   Limite di Discord: un bot non può mostrare un errore a schermo con testo suo su un messaggio normale; la cosa più
   vicina è il timeout di Discord (avviso di sistema) + il messaggio privato con le istruzioni (D18).
+- **Tetti scelti da chi sviluppa per la parte IP (02/11/2026, r16verifica, da confermare all'owner):** persona che
+  esce o bot tolto dal server 30 giorni; **kick 180 giorni**; **ban finché è attivo e 30 giorni dopo lo sblocco**; tetto
+  assoluto 365 giorni dall'ultimo uso; al massimo 20 IP per persona e server. `/utility privacy cancella` non toglie le
+  righe di chi è bannato o espulso (si valuta a mano). Chiave: `VERIFY_IP_ENCRYPTION_KEY` (senza chiave non si salva).
+  La soglia dello storico: «momenti diversi» = almeno un'ora fra due approvazioni qualsiasi del gruppo.
+- **Comportamento esatto delle scadenze IP (revisione r16verifica, 08/11/2026).** Coerente con D67: dopo kick e ban
+  i dati restano; i tetti sono quelli sopra. Ordine di precedenza: (1) **ban attivo**: nessuna scadenza, il tetto dei
+  365 giorni NON lo tocca; un'uscita o un kick dopo il ban non lo cambiano; (2) **sblocco**: 30 giorni; (3) **kick**
+  (dal registro azioni di Discord, entro 30 secondi; senza permesso vale come uscita): 180 giorni, un'uscita dopo non
+  lo accorcia, un rientro non lo toglie; (4) **uscita**: 30 giorni; rientro o nuova verifica web la tolgono;
+  (5) persona presente: tetto di 365 giorni dall'ultima verifica; (6) **bot fuori dal server** da 30 giorni
+  (`guild_presence.left_at`, lo stesso conto dei 90 giorni, rimesso a posto all'avvio): via tutte le righe del
+  server, ban compresi; il rientro del bot non allunga nessuna scadenza. Eventi persi a bot spento: vale il tetto di
+  365 giorni (un ban dato a bot spento non è visto). `/utility privacy cancella`: via tutte le righe tranne `ban` e
+  `kick`. Esportazione `/privacy` della persona: server, esito, date, motivo e scadenza, **non** l'IP (né in
+  chiaro né cifrato): il diritto di accesso all'IP stesso (GDPR art. 15) si soddisfa a mano dall'owner con
+  `/owner system storico-vpn`. Nessun'altra via mostra l'IP agli admin.

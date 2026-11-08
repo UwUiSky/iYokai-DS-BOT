@@ -2,7 +2,7 @@
 core/repositories/verify_vpn_repo.py
 ====================================
 Esito del controllo VPN/proxy nella verifica web (tabella `verify_vpn`, migrazione 0507, D64) e storico
-condiviso dei falsi positivi (`verify_vpn_storico`, 0508, D65). Solo metodo, esito e data: mai l'IP.
+condiviso dei falsi positivi (`verify_vpn_storico`, 0508, D65). Solo metodo, esito e data: mai l'IP (gli IP stanno cifrati in `verify_ip`, D67).
 Funzioni coperte: SPEC §4.2 (VPN e proxy, D64, D65)
 """
 
@@ -57,9 +57,12 @@ class VerifyVpnRepository:
         )
         return bool(riga["avvisare"])
 
-    async def lascia_passare(self, guild_id: int, user_id: int) -> bool:
+    async def lascia_passare(
+        self, guild_id: int, user_id: int, founder_id: int | None = None, admin_id: int | None = None
+    ) -> bool:
         """
-        Eccezione per la persona in questo server, e una riga nello storico condiviso (D65).
+        Eccezione per la persona in questo server, e una riga nello storico condiviso (D65) con il founder del
+        server e l'admin che ha premuto (D67: servono alla soglia di 3 approvazioni diverse).
         False se l'eccezione c'era già.
         """
         fatto = await self._pool.fetchval(
@@ -73,22 +76,23 @@ class VerifyVpnRepository:
                 RETURNING metodo
             ),
             sto AS (
-                INSERT INTO verify_vpn_storico (guild_id, user_id, metodo)
-                SELECT $1::bigint, $2::bigint, metodo FROM ins
-                ON CONFLICT (guild_id, user_id) DO UPDATE SET metodo = EXCLUDED.metodo, creato_il = now()
+                INSERT INTO verify_vpn_storico (guild_id, user_id, metodo, founder_id, admin_id)
+                SELECT $1::bigint, $2::bigint, metodo, $3::bigint, $4::bigint FROM ins
+                ON CONFLICT (guild_id, user_id) DO UPDATE SET metodo = EXCLUDED.metodo, creato_il = now(),
+                    founder_id = EXCLUDED.founder_id, admin_id = EXCLUDED.admin_id
                 RETURNING 1
             )
             SELECT count(*) FROM ins
             """,
-            guild_id, user_id,
+            guild_id, user_id, founder_id, admin_id,
         )
         return bool(fatto)
 
     async def storico_altri(self, guild_id: int, user_id: int, massimo: int = 50):
-        """Le volte che altri server hanno lasciato passare la persona, dalla più recente."""
+        """Le volte che altri server hanno lasciato passare la persona, dalla più recente (con founder e admin, D67)."""
         return await self._pool.fetch(
             """
-            SELECT guild_id, metodo, creato_il FROM verify_vpn_storico
+            SELECT guild_id, metodo, creato_il, founder_id, admin_id FROM verify_vpn_storico
             WHERE user_id = $1 AND guild_id <> $2 ORDER BY creato_il DESC LIMIT $3
             """,
             user_id, guild_id, massimo,

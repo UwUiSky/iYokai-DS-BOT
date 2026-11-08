@@ -1,4 +1,4 @@
-# VPN e proxy nella verifica web (D64, D65)
+# VPN e proxy nella verifica web (D64, D65, D67)
 
 Chi si verifica dalla pagina web da una VPN, un proxy, Tor o una rete di data center viene bloccato subito.
 Nessun metodo è perfetto: proxy residenziali e alcune VPN private passano; reti aziendali, reti mobili
@@ -43,13 +43,34 @@ browser in cloud, alcune reti aziendali) si sblocca con «Lascia passare».
 | Servizio esterno | proxycheck.io, piano gratuito (1.000 richieste/giorno con chiave) | termini del servizio: l'owner li legge prima di mettere la chiave (uso commerciale non chiarito dalla pagina dei prezzi) |
 
 ## Privacy
-L'IP si usa solo in quel momento e non si salva. Tabelle (tutte nel registro dei dati, `/privacy cancella` le toglie):
-`verify_vpn` (esito, metodo, data; 30 giorni), `verify_blocchi` (ultimo blocco, server e motivo; 1 giorno),
-`verify_vpn_storico` (server, metodo, data dei «Lascia passare»; 180 giorni). Il servizio esterno riceve l'IP: è scritto
-nell'informativa. Gli admin vedono solo il **numero** dei server che hanno già accettato la persona; i nomi solo
-dei server con `verify_condividi_nome` acceso; il proprietario del bot vede sempre i nomi con
-`/owner system storico-vpn` e nella pagina del proprietario del pannello (`/proprietario`).
+Tabelle (tutte nel registro dei dati, `/utility privacy cancella` le toglie): `verify_vpn` (esito, metodo, data; 30 giorni),
+`verify_blocchi` (ultimo blocco, server e motivo; 1 giorno), `verify_vpn_storico` (server, metodo, data, founder e admin dei
+«Lascia passare»; 180 giorni), `verify_ip` (vedi sotto). Il servizio esterno riceve l'IP: è scritto nell'informativa.
+Gli admin vedono solo il **numero** dei server che hanno già accettato la persona; i nomi solo dei server con
+`verify_condividi_nome` acceso; il proprietario del bot vede sempre i nomi con `/owner system storico-vpn` e nella
+pagina del proprietario del pannello (`/proprietario/storico-vpn`).
 
-## Blocchi e ticket (D65)
-Ogni blocco della verifica web (VPN, paese in attesa, controlli del server) invita la persona a scrivere in privato al bot,
+## Soglia dello storico condiviso (D67)
+Il «Lascia passare» vale negli altri server solo con **almeno 3 approvazioni** di server diversi, a **un'ora di distanza**
+una dall'altra, da server con **founder (owner del server) diversi** e da **admin diversi** (chi ha premuto il bottone).
+Basta un gruppo di 3 righe tutte diverse fra loro (`core/verify_vpn_logic.py::storico_basta`). Sotto la soglia vale
+solo nel server che l'ha dato. Le righe di prima della regola (senza founder/admin) non contano. Casi provati:
+stesso founder in 3 server, stesso admin in 3 server, 3 clic nella stessa ora, solo 2 approvazioni.
+
+## IP cifrati, solo per il proprietario (D67)
+- Ogni verifica web con IP pubblico salva l'IP in `verify_ip` (migrazione 0530), **cifrato** con AES-256-GCM
+  (`core/oauth_crypto.py`, chiave `VERIFY_IP_ENCRYPTION_KEY` nel `.env`, diversa da `OAUTH_ENCRYPTION_KEY`) e legato
+  a server e persona (dato associato). Senza chiave **non si salva niente**. Una riga per IP (impronta HMAC), al
+  massimo 20 per persona. Non cambiare la chiave: gli IP già salvati diventano «(illeggibile)».
+- Lo vede **solo il proprietario**: `/owner system storico-vpn` e `/proprietario/storico-vpn`. Mai agli admin, mai nei log
+  (se il salvataggio fallisce si logga solo il tipo dell'errore, senza traceback).
+- Scadenza (`scade_il`, pulita dal lavoro giornaliero): persona esce dal server = 30 giorni (rientra: torna senza
+  scadenza); bot tolto dal server = 30 giorni su tutte le righe, ban compresi (si legge da `guild_presence.left_at`, lo stesso conto dei 90 giorni del resto, rimesso a posto anche all'avvio; se il bot rientra prima, niente si cancella e nessuna scadenza si allunga); **kick** = 180 giorni; **ban** = nessuna scadenza finché è attivo, 30 giorni dopo lo sblocco; tetto assoluto
+  365 giorni dall'ultimo uso. L'espulsione si riconosce dal registro di Discord (serve il permesso «Vedi il registro
+  azioni»; senza, l'uscita conta come volontaria e si cancella prima).
+- `/utility privacy cancella` cancella gli IP, **tranne** quelli con motivo ban o kick (interesse legittimo di sicurezza):
+  la richiesta di chi è bannato o espulso si valuta a mano. Tetti scelti da chi sviluppa (D67), da confermare all'owner.
+
+## Blocchi e ticket (D65, D67)
+Ogni blocco della verifica, web o su Discord (VPN, paese in attesa, captcha sbagliato o scaduto, controlli del server, reazione) invita la persona a scrivere in privato al bot,
 se il ModMail del server è pronto. Il primo messaggio apre il ticket con lo staff di quel server e il motivo allegato.

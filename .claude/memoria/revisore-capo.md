@@ -2,6 +2,7 @@
 
 ## Aggiornata
 02/11/2026 · `feat/r16mod` (M1–M3, #115, D66): merge main (2d560e9), 6 fix (06021a6, 9e7dda7, d069d00, 6ac5246, 467d512, 861c0aa); 6 basse aperte. APPROVATO. Smoke da fare: clear_filtri, casi_m3, automod_azioni, escalation_*, staff_rischio, 0510, tree_invariants, f7_moderazione_gruppi, i18n, riferimenti.
+08/11/2026 · `feat/r16verifica` (D67, #155): merge main (d1aebf3), 2 fix (0ddf19f, d819810), comportamento esatto delle scadenze IP scritto sotto D67; 4 basse aperte. APPROVATO. Smoke da fare: 0530, test_verify_ip, verify_vpn_soglia, verify_blocchi_discord, retention, forget, data_registry, panel_proprietario.
 02/11/2026 · `feat/r15automod` (D63 A1–A8, #116): main già unito, 10 fix (c9a9dee, c9852c0, 885acee, 389201c, 28c12c9, 4284b22, 79138ab, c2b1a65, 1e4c79f, 23e00c8) + documenti 535d5d1; 7 basse aperte. APPROVATO. Smoke da fare: test_automod_*, immagini_cog, 0500–0503, tree_invariants, riferimenti, i18n.
 02/11/2026 · `feat/r15immagini` (D62/D63, #153): main già unito, 10 fix (sandbox attesa, no ripiego dopo lavoro preso, worker senza Pillow, staff controllati, malevola = timeout, solo malevole in libreria, cache/libreria, 72 h, gruppo systemd, docstring). APPROVATO. Smoke da fare: test_immagini_*, migrazioni 0504–0506, riferimenti.
 02/11/2026 · `feat/r15vpn` (D64, D65, 0507, 0508, #155): merge main (0b07b2f), 6 fix (e5e4774, 14568f1, a895a2c, 9ff3e96, 38ec7c5, 72e1fed); 6 basse/medie aperte nel quaderno. APPROVATO. Smoke da fare: 0507, 0508, verify_vpn*, panel_bridge, panel_proprietario, modmail, data_registry, aggiorna_vpn.
@@ -37,6 +38,7 @@ Giri r6–r14paese: tutti APPROVATI dopo i fix (commit e basse nel quaderno). `f
 - Regex native Discord 10×260; jolly ripetuti = tempo esponenziale.
 - `purge` di discord.py: dopo il primo messaggio oltre 14 giorni passa a cancellare uno per uno TUTTO il resto; con `after` legge dal più vecchio: serve `oldest_first=False`. Scadenze automatiche dei casi: mai su sanzioni in corso (active = in corso per ban/tempban/timeout/mute).
 - Motore azioni: 403 su chi Discord non lascia toccare (proprietario, ruolo ≥ bot) non è un permesso mancato: niente sospensione per server. Finti: posizione 0 = raggiungibile. «Applica» dello staff = il bot agisce per lui: permessi di ogni sanzione + gerarchia. Soglie: scatta solo chi consuma (UPDATE conta righe).
+- Scadenze legate all'uscita del bot: usare `guild_presence.left_at` (punto unico, sincronizzato all'avvio), mai listener on_guild_join/remove che riscrivono `scade_il` (il rientro le allunga). `LEAST` in Postgres ignora i NULL.
 - AI: `pulisci_dati_personali` verso servizi non AI; filtro «addestra» in `scegli_fornitori` (D55). File di esempio con segnaposto: il caricatore li scarta.
 
 ## Aperto

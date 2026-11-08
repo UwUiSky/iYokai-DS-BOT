@@ -10,5 +10,14 @@
 <tr><td>Nessun server l'ha lasciato passare.</td></tr>
 {% endfor %}
 </table>
+<h2>IP della verifica web</h2>
+<p class="tenue">Cifrati nel database (D67). Solo tu li vedi: mai gli admin dei server, mai i log. Si cancellano con <code>/utility privacy cancella</code> o 30 giorni dopo l'uscita della persona o del bot dal server; dopo un kick o un ban restano.</p>
+<table>
+{% for v in ip %}
+<tr><td>{{ v.data }}</td><td><strong>{{ v.nome }}</strong> (<code>{{ v.guild_id }}</code>)</td><td><code>{{ v.ip }}</code></td><td>{{ v.esito }}</td></tr>
+{% else %}
+<tr><td>Nessun IP salvato.</td></tr>
+{% endfor %}
+</table>
 <p><a href="/proprietario">Torna alla pagina del proprietario</a></p>
 {% endblock %}

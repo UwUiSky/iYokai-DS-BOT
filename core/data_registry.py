@@ -674,7 +674,17 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("verify_vpn_storico", "Storico dei falsi positivi VPN/proxy lasciati passare dallo staff (server, metodo, data)",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True,
        scadenza=Scadenza("creato_il", 180),
-       nota="gli altri server vedono solo il numero, i nomi solo con verify_condividi_nome (D65); 180 giorni"),
+       nota="vale negli altri server solo con 3 approvazioni di server, founder e admin diversi in ore diverse (D67); "
+            "gli altri server vedono solo il numero, i nomi solo con verify_condividi_nome (D65); 180 giorni"),
+    _t("verify_ip", "IP della verifica web, cifrati: li vede solo il proprietario del bot (mai gli admin, mai i log)",
+       colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True,
+       escludi_dall_esportazione=("ip_impronta", "ip_cifrato"), conserva_utente_se="motivo IN ('ban', 'kick')",
+       scadenza=Scadenza(
+           "LEAST(COALESCE(scade_il, CASE WHEN motivo = 'ban' THEN NULL ELSE ultimo_il + interval '365 days' END), "
+           "(SELECT p.left_at + interval '30 days' FROM guild_presence p WHERE p.guild_id = verify_ip.guild_id))", 0),
+       nota="D67: AES-256-GCM, chiave VERIFY_IP_ENCRYPTION_KEY; 30 giorni dopo l'uscita della persona o del bot dal "
+            "server (la cancellazione dei dati arriva prima); dopo un kick 180 giorni; dopo un ban finché è attivo e 30 giorni dopo lo "
+            "sblocco (la richiesta di cancellazione di chi è bannato o espulso si gestisce a mano); tetto di 365 giorni"),
     _t("verify_doppi", "Account doppi trovati dalla verifica web, per lo staff",
        colonne_utente=("user_id", "altro_user_id"), colonna_server="guild_id", utente="cancella",
        esporta=True, escludi_dall_esportazione=("user_id", "altro_user_id"), scadenza=Scadenza("trovato_il", 90),

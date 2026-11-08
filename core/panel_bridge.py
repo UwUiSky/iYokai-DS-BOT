@@ -555,6 +555,13 @@ async def storico_vpn_proprietario(bot, user_id: int) -> list[dict]:
     return await storico_owner(bot, user_id)
 
 
+async def ip_vpn_proprietario(bot, user_id: int) -> list[dict]:
+    """Gli IP cifrati della persona (D67), in chiaro: solo per la pagina del proprietario, mai altrove."""
+    from core import verify_ip
+
+    return await verify_ip.per_proprietario(bot, user_id)
+
+
 async def applica_premium_modulo(nome: str, attivo: bool, user_id: int) -> None:
     """Rende premium o gratuito un modulo (stesso punto di `/owner premium toggle`)."""
     from core.premium_flags import applica_cambio_premium

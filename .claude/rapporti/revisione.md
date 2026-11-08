@@ -450,3 +450,9 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 02/11 | `feat/r16mod` | `cogs/moderation/case_system.py:case_export` | File senza segno dei casi nascosti; nessuna riga di log di chi esporta (dati personali) | bassa | aperto |
 | 02/11 | `feat/r16mod` | `clear_regex_non_valida`, `clear_valore_non_valido`, `errore_durata_caso` | Motivi solo in italiano anche per il server in inglese (D58) | bassa | aperto |
 | 02/11 | `feat/r16mod` | `cogs/security/spam_trap.py:create_case` | Casi della trappola senza origine «automod»: non scadono (da decidere) | nota | aperto |
+| 08/11 | `feat/r16verifica` | `core/repositories/verify_ip_repo.py:server_tornato` | Il rientro del bot faceva ripartire da capo kick (180), uscita e sblocco (30): scadenze allungabili; ora l'uscita del bot si legge da `guild_presence` | media | chiuso (0ddf19f) |
+| 08/11 | `feat/r16verifica` | `core/repositories/verify_ip_repo.py:salva` | Rientro a bot spento: gli IP di un membro presente scadevano a 30 giorni anche dopo una nuova verifica | bassa | chiuso (d819810) |
+| 08/11 | `feat/r16verifica` | `core/migrations/0530_verify_ip_soglia.sql` (commento) | Il commento dice ancora che l'uscita del bot scrive `scade_il` su tutte le righe (ora `guild_presence`); migrazione non toccata | nota | aperto |
+| 08/11 | `feat/r16verifica` | `core/repositories/verify_ip_repo.py:persona_tornata` | Kick e poi rientro: il conto dei 180 giorni continua anche da membro (si cancella prima, verso la privacy) | bassa | aperto (da confermare all'owner) |
+| 08/11 | `feat/r16verifica` | `core/verify_vpn_staff.py:_avvisa_storico` | «già accettato da N server» conta anche righe che non fanno soglia (vecchie, stesso founder) | bassa | aperto |
+| 08/11 | `feat/r16verifica` | `cogs/security/verify.py:CaptchaImmagineModal` | Testo «Verifica non riuscita…» in italiano fisso (già prima del ramo; l'invito aggiunto è dal catalogo) | bassa | aperto |
