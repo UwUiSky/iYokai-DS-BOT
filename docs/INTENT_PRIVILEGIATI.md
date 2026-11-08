@@ -59,6 +59,7 @@ Message content is needed by features that read what is written: AutoMod filters
 | AI channel summary | `cogs/ai/riepilogo.py` | Summarise a channel the staff chose, only with the server's consent |
 | AI ticket assistant | `cogs/ai/ticket_ai.py` | Suggest a first answer inside tickets, only with the server's consent |
 | Yokai voice | `cogs/ai/voce.py` | Read or transcribe a message when someone asks, only with the server's consent |
+| Long slowmode | `cogs/moderation/channel_control.py` | Enforce a slowmode longer than 6 hours chosen by the staff; only the time of the last message is kept |
 
 ## GUILD_PRESENCES
 
