@@ -185,3 +185,33 @@ async def test_thread_archiviato_da_discord_si_riapre_se_il_ticket_e_aperto():
     await ticket_repo.close_ticket_of_deleted_channel(7001)  # ticket chiuso: il thread resta archiviato
     await cog.on_thread_update(prima, dopo)
     dopo.edit.assert_not_awaited()
+
+
+async def test_thread_cancellato_a_mano_chiude_il_ticket():
+    """Discord non manda on_guild_channel_delete per i thread: prima il ticket restava aperto per sempre."""
+    p = await ticket_form_repo.crea_pannello(GUILD, "Supporto", 900, "Supporto")
+    await ticket_repo.create_ticket(GUILD, 20, 7001, panel_id=p.id, ticket_number=1)
+    cog = modulo.TicketsCog.__new__(modulo.TicketsCog)
+    cog._attivita_scritta = {}
+    await cog.on_raw_thread_delete(SimpleNamespace(thread_id=7001, guild_id=GUILD))
+    assert (await ticket_repo.get_ticket_by_channel(7001)).status == "closed"
+
+
+async def test_chiusura_di_massa_e_uscita_dell_utente_trovano_i_thread():
+    """`guild.get_channel` non vede i thread: prima la chiusura di massa li segnava «cancellati» senza chiuderli."""
+    p = await ticket_form_repo.crea_pannello(GUILD, "Supporto", 900, "Supporto")
+    await ticket_repo.create_ticket(GUILD, 20, 7001, panel_id=p.id, ticket_number=1)
+    thread = create_autospec(discord.Thread, instance=True)
+    thread.id = 7001
+    interaction = fake_interaction()
+    interaction.guild.id = GUILD
+    interaction.guild.get_channel = MagicMock(return_value=None)
+    interaction.guild.get_channel_or_thread = MagicMock(side_effect={7001: thread}.get)
+    cog = modulo.TicketsCog.__new__(modulo.TicketsCog)
+    cog._chiudi_da_sistema = AsyncMock(return_value=True)
+    await modulo.TicketsCog.chiudi_tutti.callback(cog, interaction, None)
+    assert cog._chiudi_da_sistema.await_args.args[1] is thread
+    cog._chiudi_da_sistema.reset_mock()
+    membro = SimpleNamespace(id=20, guild=interaction.guild)
+    await cog.on_member_remove(membro)
+    assert cog._chiudi_da_sistema.await_args.args[1] is thread

@@ -3397,7 +3397,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         chiusi = 0
         falliti = 0
         for ticket in await ticket_repo.list_open_tickets(guild.id, MAX_CHIUSURA_DI_MASSA):
-            channel = guild.get_channel(ticket.channel_id)
+            channel = guild.get_channel_or_thread(ticket.channel_id)
             if channel is None:
                 await ticket_repo.close_ticket_of_deleted_channel(ticket.channel_id)
                 continue
@@ -3436,7 +3436,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
     async def on_member_remove(self, member: discord.Member) -> None:
         """NF-13: chi esce dal server non può più rispondere: il suo ticket aperto si chiude."""
         for ticket in await ticket_repo.list_open_tickets_for_user(member.guild.id, member.id):
-            channel = member.guild.get_channel(ticket.channel_id)
+            channel = member.guild.get_channel_or_thread(ticket.channel_id)
             if channel is None:
                 continue
             await self._chiudi_da_sistema(
@@ -3780,6 +3780,13 @@ class TicketsCog(CogConGruppi, commands.Cog):
             logger.info(
                 "Ticket chiuso perché il suo canale %s è stato cancellato a mano.", channel.id
             )
+
+    @commands.Cog.listener()
+    async def on_raw_thread_delete(self, payload: discord.RawThreadDeleteEvent) -> None:
+        """TKT-031: per i thread Discord non manda on_guild_channel_delete; un ticket a thread cancellato si chiude."""
+        self._attivita_scritta.pop(payload.thread_id, None)
+        if await ticket_repo.close_ticket_of_deleted_channel(payload.thread_id):
+            logger.info("Ticket chiuso perché il suo thread %s è stato cancellato.", payload.thread_id)
 
     # ================================================================
     # SPEC.md §13.12 — traccia la prima risposta nel canale ticket

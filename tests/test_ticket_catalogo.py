@@ -209,6 +209,7 @@ async def test_chiudi_tutti_ne_chiude_al_massimo_25_e_dice_quanti_restano(cog, m
         await _ticket(canale=1000 + i, numero=i + 1, utente=500 + i)
         canali[1000 + i] = fake_text_channel(1000 + i)
     guild.get_channel = MagicMock(side_effect=lambda cid: canali.get(cid))
+    guild.get_channel_or_thread = guild.get_channel  # i ticket possono essere thread
     inter = fake_interaction(guild=guild, user=_manager(), channel=fake_text_channel(1))
     await cog.chiudi_tutti.callback(cog, inter, "Fine evento")
 
@@ -285,6 +286,7 @@ async def test_chi_esce_chiude_anche_il_ticket_senza_pannello_e_il_motivo_si_sal
     guild.me = fake_member(999, bot=True)
     canale = fake_text_channel(CANALE)
     guild.get_channel = MagicMock(return_value=canale)
+    guild.get_channel_or_thread = guild.get_channel
     uscito = fake_member(UTENTE)
     uscito.guild = guild
     await cog.on_member_remove(uscito)
@@ -332,6 +334,7 @@ async def test_chiudi_tutti_non_pinga_nessuno_e_manda_avvisi_di_avanzamento(cog)
         await _ticket(canale=1000 + n, numero=n + 1, utente=500 + n)
         canali[1000 + n] = fake_text_channel(1000 + n)
     guild.get_channel = MagicMock(side_effect=lambda cid: canali.get(cid))
+    guild.get_channel_or_thread = guild.get_channel  # i ticket possono essere thread
     inter = fake_interaction(guild=guild, user=_manager(), channel=fake_text_channel(1))
     await cog.chiudi_tutti.callback(cog, inter, "<@123> fine")
     for c in canali.values():
@@ -352,6 +355,7 @@ async def test_chiudi_tutti_prosegue_oltre_il_ticket_che_solleva_e_lo_dice(cog):
         await _ticket(canale=1000 + n, numero=n + 1, utente=500 + n)
         canali[1000 + n] = fake_text_channel(1000 + n)
     guild.get_channel = MagicMock(side_effect=lambda cid: canali.get(cid))
+    guild.get_channel_or_thread = guild.get_channel  # i ticket possono essere thread
     vera = cog._chiudi_da_sistema
 
     async def _a_volte_solleva(guild_, channel, ticket, **kw):
@@ -377,6 +381,7 @@ async def test_chi_esce_dal_server_con_piu_ticket_aperti_li_vede_chiusi_tutti(co
         await ticket_repo.create_ticket(GUILD_ID, 500, 1000 + n, ticket_number=n + 1, max_aperti=2)
         canali[1000 + n] = fake_text_channel(1000 + n)
     guild.get_channel = MagicMock(side_effect=lambda cid: canali.get(cid))
+    guild.get_channel_or_thread = guild.get_channel  # i ticket possono essere thread
     membro = fake_member(500)
     membro.guild = guild
     await cog.on_member_remove(membro)
