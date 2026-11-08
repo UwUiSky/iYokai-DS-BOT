@@ -46,6 +46,8 @@ from cogs.tickets.tickets import (
 from core import channel_router as router
 from core import modmail_logic as logica
 from core.channel_router import TIPO_EVENTI
+from core import ticket_gestione_logic as gestione
+from core.repositories.ticket_gestione_repo import ticket_gestione_repo
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
 from core.i18n import testo_per
@@ -72,6 +74,29 @@ def _autore_riga(m: discord.Message) -> str:
     if getattr(m.author, "bot", False) and m.embeds and m.embeds[0].author and m.embeds[0].author.name:
         return str(m.embeds[0].author.name)
     return str(m.author)
+
+
+async def completa_articoli_modmail(interaction: discord.Interaction, corrente: str):
+    """
+    TKT-079: gli articoli della base di conoscenza; il valore è «a:<numero>» (mai il testo, che può superare 100
+    caratteri). Li vede chi può usare `/ticket rispondi`: lo staff dei ticket.
+    """
+    if interaction.guild is None or not await _is_ticket_staff(interaction):
+        return []
+    articoli = await ticket_gestione_repo.cerca_articoli(interaction.guild.id, corrente, 25, solo_approvati=True)
+    return [app_commands.Choice(name=f"{a.titolo}"[:100], value=gestione.valore_articolo(a.id)) for a in articoli]
+
+
+async def testo_da_articolo(guild_id: int, testo: str) -> str | None:
+    """Se `testo` è «a:<numero>» restituisce il testo di quell'articolo (None se non c'è); altrimenti il testo com'è."""
+    numero = gestione.id_articolo(testo)
+    if numero is None:
+        return testo
+    articolo = await ticket_gestione_repo.articolo(guild_id, numero)
+    if articolo is None or not articolo.approvato:
+        return None
+    await ticket_gestione_repo.conta_uso(articolo.id)
+    return articolo.testo[: logica.MAX_RISPOSTA]
 
 
 class SceltaServerView(BaseView):
@@ -579,8 +604,9 @@ class ModMailCog(CogConGruppi, commands.Cog):
         return thread
 
     @comando_di_gruppo("ticket", nome="rispondi", descrizione="Rispondi all'utente di questa conversazione ModMail.")
+    @app_commands.autocomplete(testo=completa_articoli_modmail)
     @app_commands.describe(
-        testo="La risposta (l'utente la riceve in privato)",
+        testo="La risposta (l'utente la riceve in privato), o scegli un articolo",
         anonimo="Sì per non mostrare il tuo nome all'utente",
         allegato="Un file da inviare (facoltativo)",
     )
@@ -595,6 +621,10 @@ class ModMailCog(CogConGruppi, commands.Cog):
         if thread is None:
             return
         guild = interaction.guild
+        testo = await testo_da_articolo(guild.id, testo)
+        if testo is None:
+            await interaction.response.send_message(await testo_per(interaction, "tickets_articolo_non_trovato"), ephemeral=True)
+            return
         # fetch_user + invio del DM + risposta: più di una chiamata a Discord, quindi defer per primo.
         await interaction.response.defer()
         firma = logica.etichetta_firma(anonimo, interaction.user.display_name, guild.name)

@@ -127,7 +127,7 @@ async def test_nascondi_comando():
     inter, _ = _inter()
     cog = ModerationCaseSystemCog(bot=None)
     await cog.case_hide.callback(cog, inter, 1, True)
-    assert await moderation_repo.is_case_hidden(G, 1)
+    assert await moderation_repo._pool.fetchval("SELECT hidden FROM moderation_cases WHERE guild_id = $1 AND case_number = 1", G)
     inter2, _ = _inter()
     await cog.case_hide.callback(cog, inter2, 99, True)
     assert "Nessun caso" in _testo(inter2)

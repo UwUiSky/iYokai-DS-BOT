@@ -175,3 +175,31 @@ def format_duration_seconds(seconds: float | None) -> str:
     if minuti > 0:
         return f"{minuti}m {secondi}s"
     return f"{secondi}s"
+
+
+# ----------------------------------------------------------------------
+# TKT-045 / TKT-046: livelli dello staff dei ticket
+# ----------------------------------------------------------------------
+LIVELLO_ADDETTO = "addetto"  # vede e risponde
+LIVELLO_ADMIN = "admin"  # chiude, forza la chiusura, usa «Solo admin»
+
+
+def e_admin_ticket(
+    gestisce_server: bool, ruoli_utente: set[int], ruoli_staff: set[int] | list[int], ruoli_admin: set[int]
+) -> bool:
+    """
+    Chi può fare le azioni da admin dei ticket. «Gestisci server» passa sempre. Finché nessun ruolo è
+    admin, ogni membro dello staff può (come prima del livello); poi servono i ruoli admin.
+    """
+    if gestisce_server:
+        return True
+    if not ruoli_admin:
+        return bool(ruoli_utente & set(ruoli_staff))
+    return bool(ruoli_utente & ruoli_admin)
+
+
+def ruoli_con_accesso(ruoli_staff: list[int], ruoli_admin: set[int], solo_admin: bool) -> list[int]:
+    """I ruoli che vedono il canale. Con «solo admin» restano i ruoli admin (se ce ne sono)."""
+    if solo_admin and ruoli_admin:
+        return [r for r in ruoli_staff if r in ruoli_admin]
+    return list(ruoli_staff)

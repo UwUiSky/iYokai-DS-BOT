@@ -52,6 +52,8 @@ from core.repositories.ai_ticket_repo import ai_ticket_repo
 from core.repositories.ticket_form_repo import PannelloTicket, ticket_form_repo
 from core.repositories.ticket_repo import ticket_repo
 from core.repositories.ticket_standard_repo import RispostaStandard, ticket_standard_repo
+from core import ticket_gestione_logic as gestione
+from core.repositories.ticket_gestione_repo import TroppiArticoli, ticket_gestione_repo
 from core.scheduler import scheduler
 from core.ui_base import BaseModal, BaseView, _rispondi_con_errore, _utente_o_server_in_blacklist
 
@@ -246,6 +248,51 @@ async def completa_pannelli(interaction: discord.Interaction, corrente: str):
         for p in pannelli
         if corrente.strip().casefold() in p.name.casefold()
     ][:25]
+
+
+@autocomplete_protetto(Livello.ADMIN)
+async def completa_articoli(interaction: discord.Interaction, corrente: str):
+    """Gli articoli del server con il loro numero (il valore è il numero, mai il testo)."""
+    if interaction.guild is None:
+        return []
+    articoli = await ticket_gestione_repo.cerca_articoli(interaction.guild.id, corrente, 25)
+    return [app_commands.Choice(name=f"#{a.id} {a.titolo}"[:100], value=a.id) for a in articoli]
+
+
+class ModuloArticolo(BaseModal):
+    """TKT-079: titolo (≤ 100) e testo (≤ 4.000) di un articolo, nuovo o da correggere."""
+
+    def __init__(self, articolo=None, titoli: tuple[str, str, str] = ("Articolo", "Titolo", "Testo dell'articolo")) -> None:
+        super().__init__(title=titoli[0][:45], timeout=900)
+        self._articolo = articolo
+        self.titolo = discord.ui.TextInput(
+            label=titoli[1][:45], max_length=gestione.MAX_TITOLO_ARTICOLO, default=articolo.titolo if articolo else None, custom_id="titolo"
+        )
+        self.testo = discord.ui.TextInput(
+            label=titoli[2][:45], style=discord.TextStyle.paragraph, max_length=gestione.MAX_TESTO_ARTICOLO,
+            default=articolo.testo if articolo else None, custom_id="testo",
+        )
+        self.add_item(self.titolo)
+        self.add_item(self.testo)
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        try:
+            titolo, testo = gestione.articolo_valido(self.titolo.value, self.testo.value)
+        except gestione.ErroreConfigurazione as errore:
+            await interaction.response.send_message(str(errore), ephemeral=True)
+            return
+        try:
+            salvato = await ticket_gestione_repo.salva_articolo(
+                interaction.guild.id, titolo, testo, gestione.parole_articolo(titolo, testo), interaction.user.id,
+                self._articolo.id if self._articolo else None,
+            )
+        except TroppiArticoli:
+            await interaction.response.send_message(await testo_per(interaction, "tickets_troppi_articoli", massimo=gestione.MAX_ARTICOLI), ephemeral=True)
+            return
+        if salvato is None:
+            await interaction.response.send_message(await testo_per(interaction, "tickets_articolo_non_trovato"), ephemeral=True)
+            return
+        await interaction.response.send_message(await testo_per(interaction, "tickets_articolo_salvato", id=salvato.id), ephemeral=True)
 
 
 # ====================================================================
@@ -646,6 +693,41 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(await testo_per(interaction, "risposte_nessuna_risposta_con_questo_numero"), ephemeral=True)
             return
         await interaction.response.send_modal(ModuloRispostaStandard(r))
+
+    @comando_di_gruppo(
+        "admin-ticket",
+        nome="articolo",
+        descrizione="Base di conoscenza: nuovo articolo, correggilo o eliminalo.",
+        sottogruppo=SOTTOGRUPPI["admin-ticket risposte"],
+    )
+    @app_commands.describe(numero="Articolo da correggere o eliminare (vuoto = nuovo)", elimina="Elimina l'articolo scelto")
+    @app_commands.autocomplete(numero=completa_articoli)
+    async def articolo(
+        self,
+        interaction: discord.Interaction,
+        numero: app_commands.Range[int, 1, 2**31 - 1] | None = None,
+        elimina: bool = False,
+    ) -> None:
+        if interaction.guild is None:
+            return
+        esistente = None
+        if numero is not None:
+            esistente = await ticket_gestione_repo.articolo(interaction.guild.id, numero)
+            if esistente is None:
+                await interaction.response.send_message(await testo_per(interaction, "tickets_articolo_non_trovato"), ephemeral=True)
+                return
+        if elimina:
+            if esistente is None or not await ticket_gestione_repo.elimina_articolo(interaction.guild.id, esistente.id):
+                await interaction.response.send_message(await testo_per(interaction, "tickets_articolo_non_trovato"), ephemeral=True)
+                return
+            await interaction.response.send_message(await testo_per(interaction, "tickets_articolo_eliminato", id=esistente.id), ephemeral=True)
+            return
+        titoli = (
+            await testo_per(interaction, "tickets_articolo_modulo_titolo"),
+            await testo_per(interaction, "tickets_articolo_campo_titolo"),
+            await testo_per(interaction, "tickets_articolo_campo_testo"),
+        )
+        await interaction.response.send_modal(ModuloArticolo(esistente, titoli))
 
     @comando_di_gruppo(
         "admin-ticket",

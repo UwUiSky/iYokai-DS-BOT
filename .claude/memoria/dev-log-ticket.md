@@ -4,14 +4,18 @@
 27/10/2026 · ramo `feat/r10logt` (copia /home/claude/wt/r10logt, DB iyokai_wr10logt) · migrazioni 0300-0309 (usate 0300, 0301, 0302)
 
 ## In corso
-- Giro r10: fatti log (cerca ruolo/giorni, diff permessi, ignora esteso), vocali (aspetto, copia, generatori), ticket (due passi).
-- Test dei file toccati: 658 verdi. Niente smoke né suite (regola owner): smoke da fare dall'orchestratore; poi #139 (parole chiave AI, archivio file), LOG-029, VOC-014/017/021, TKT-070/071/079.
+- r16ticket (ramo feat/r16ticket, DB iyokai_wticket, migrazioni 0520-0527): T1 fatto (e8dfb0d), T2 fatto (09934c4), T3 fatto (TKT-067/068/079, 0522+0525). Stop dopo T3: rapporto.
+- Prossimo (per chi riprende): T4 (029/064/035) nel ramo; T3 era (TKT-067/068/079 nel menu Gestisci `MenuGestisci` in cogs/tickets/tickets.py), T4 (029/064/035; riserva_canali va in una migrazione sua, 0524 e già applicata), T5/T6 = issue #156 e #157.
+- Smoke da fare dall'orchestratore.
 
 ## Fatto
 - Giri F1-r8: vedi git log (router, snipe, M 5-7, NF-01/02/03/13/33, #119/#120/#127/#139 in parte).
 - r10: c210f52 /log cerca ruolo+giorni · f364d84 diff permessi canale · poi ignora esteso, VOC-010/013/016, TKT-051/063/027/026.
 
 ## Cose imparate
+- Menu del tasto destro nel bot principale: test_command_tree_invariants conta solo `chat_input` (`_radici`); i menu hanno il nome inglese in locales/en-US/comandi.json sezione `menu`.
+- Menu Gestisci = `MenuGestisci` (DynamicItem Select, tkt:gst:<id>) aggiunto al benvenuto da `_vista_benvenuto`; le azioni staff nuove vanno li, mai in /ticket.
+- `owner immagini-trappola` senza descrizione inglese: test_command_translator rosso su main (non mio).
 - Rinomine sempre da `core/channel_rename.py`; cancellazione dei ticket dallo scheduler, non da un task.
 - `channel.set_permissions(x, connect=False)` SOSTITUISCE l'overwrite di x: `overwrites_for` + `update` + `overwrite=`.
 - Listener premium: `core.security_access.premium_sbloccato(guild_id, modulo, bot)`; nei test bot finto con `get_guild` -> None.

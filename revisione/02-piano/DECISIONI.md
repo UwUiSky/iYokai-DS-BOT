@@ -1017,3 +1017,8 @@ Aggiorna D64/D65.
   `kick`. Esportazione `/privacy` della persona: server, esito, date, motivo e scadenza, **non** l'IP (né in
   chiaro né cifrato): il diritto di accesso all'IP stesso (GDPR art. 15) si soddisfa a mano dall'owner con
   `/owner system storico-vpn`. Nessun'altra via mostra l'IP agli admin.
+- Precisazione dell'owner (08/11): IP dopo un **kick 180 giorni**, dopo un **ban 1 anno** dal ban (lo sblocco non lo
+  cambia). **IP, e-mail e numeri di telefono** dell'account si danno a terzi **solo su richiesta di un giudice** e solo per
+  la persona indicata; tutto il resto si dà su richiesta con `/privacy`. Nota di chi sviluppa (GDPR art. 15): la persona
+  stessa ha diritto ai propri dati, IP compreso; si danno solo a lei, dopo aver verificato che è lei (login Discord dal
+  pannello), mai ad altri senza ordine del giudice.
