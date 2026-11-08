@@ -212,6 +212,20 @@ async def test_lo_staff_e_i_bot_non_sono_limitati():
         m.delete.assert_not_called()
 
 
+async def test_canale_cancellato_esce_dallo_slowmode_lungo():
+    """Un canale cancellato non resta nel tetto dei 50 né nell'elenco (non si potrebbe più togliere)."""
+    cog = ModerationChannelControlCog(bot=None)
+    canale = _canale(77)
+    canale.guild = SimpleNamespace(id=G)
+    await moderation_repo.set_slowmode_lungo(G, 77, 8 * 3600)
+    await cog.on_message(_messaggio(canale, 20))
+    assert 77 in cog._lungo
+    await cog.on_guild_channel_delete(canale)
+    assert await moderation_repo.list_slowmode_lungo(G) == []
+    assert 77 not in cog._lungo
+    assert await moderation_repo.get_slowmode_ultimo(G, 77, 20) is None
+
+
 async def test_canali_senza_slowmode_lungo_non_toccano_il_db(monkeypatch):
     cog = ModerationChannelControlCog(bot=None)
     canale = _canale(5)

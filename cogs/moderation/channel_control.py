@@ -398,6 +398,14 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
             return
         await moderation_repo.set_slowmode_ultimo(guild_id, message.channel.id, utente, adesso)
 
+    @commands.Cog.listener()
+    async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel) -> None:
+        """MOD-099: un canale cancellato esce dallo slowmode lungo (altrimenti occupa il tetto e resta nell'elenco)."""
+        if channel.id not in self._lungo and self._lungo_caricato:
+            return
+        await moderation_repo.delete_slowmode_lungo(channel.guild.id, channel.id)
+        self._lungo.pop(channel.id, None)
+
 
 async def setup(bot: commands.Bot) -> None:
     registry.register(
