@@ -339,3 +339,42 @@ async def test_i_menu_si_registrano_con_i_limiti():
     await cog.cog_unload()
     assert not [c for c in bot.tree.get_commands() if isinstance(c, discord.app_commands.ContextMenu)]
     await bot.close()
+
+
+async def test_segnalazioni_a_raffica_hanno_un_tetto():
+    """Una persona non può riempire il canale dello staff: oltre il tetto le segnalazioni sono rifiutate."""
+    from cogs.moderation import report
+
+    report._segnalazioni_fatte.clear()
+    scena = Scena()
+    canale_report = fake_text_channel(9001, "segnalazioni")
+    scena.server.get_channel.side_effect = lambda i: canale_report if i == 9001 else scena.canale_log
+    await db.set_guild_setting(G, SETTING_REPORT_CHANNEL, 9001)
+    for _ in range(report.MAX_SEGNALAZIONI + 3):
+        modulo = scheda.ModuloSegnala(_messaggio(scena.bersaglio, "breve"), "t", "c")
+        modulo.motivo._value = "è spam"
+        await modulo.on_submit(scena.interazione)
+    assert canale_report.send.call_count == report.MAX_SEGNALAZIONI
+    report._segnalazioni_fatte.clear()
+
+
+async def test_segnala_messaggio_risponde_prima_di_leggere_la_cronologia():
+    """La finestra va chiusa entro 3 secondi: il defer parte prima della lettura dei messaggi precedenti."""
+    scena = Scena()
+    canale_report = fake_text_channel(9001, "segnalazioni")
+    scena.server.get_channel.side_effect = lambda i: canale_report if i == 9001 else scena.canale_log
+    await db.set_guild_setting(G, SETTING_REPORT_CHANNEL, 9001)
+    messaggio = _messaggio(scena.bersaglio, "breve", [MagicMock(author=scena.moderatore, content="prima")])
+    ordine = []
+    storia = messaggio.channel.history
+
+    def history(limit, before):
+        ordine.append("cronologia")
+        return storia(limit, before)
+
+    messaggio.channel.history = history
+    scena.interazione.response.defer.side_effect = lambda *a, **k: ordine.append("defer")
+    modulo = scheda.ModuloSegnala(messaggio, "t", "c")
+    modulo.motivo._value = "è spam"
+    await modulo.on_submit(scena.interazione)
+    assert ordine == ["defer", "cronologia"]

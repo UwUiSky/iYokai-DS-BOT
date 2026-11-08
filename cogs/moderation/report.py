@@ -97,10 +97,10 @@ async def invia_segnalazione(
     )
     embed.add_field(name=await testo_per(interaction, "channelcontr_motivo", pubblica=True), value=reason, inline=False)
     embed.timestamp = discord.utils.utcnow()
+    await interaction.response.defer(ephemeral=True)  # cronologia ed etichetta con l'AI possono metterci un po'
     file = None
     if messaggio is not None:
         file = await _aggiungi_messaggio(interaction, embed, messaggio)
-    await interaction.response.defer(ephemeral=True)  # l'etichetta con l'AI può metterci un po'
     vista = None
     try:
         from cogs.ai.segnalazioni import CAMPO, EtichettaView, etichetta_segnalazione
