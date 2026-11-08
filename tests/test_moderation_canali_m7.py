@@ -212,6 +212,21 @@ async def test_lo_staff_e_i_bot_non_sono_limitati():
         m.delete.assert_not_called()
 
 
+async def test_lettura_fallita_dei_lunghi_si_riprova(monkeypatch):
+    """Un errore del database all'avvio non spegne lo slowmode lungo fino al riavvio."""
+    cog = ModerationChannelControlCog(bot=None)
+    canale = _canale(77)
+    await moderation_repo.set_slowmode_lungo(G, 77, 8 * 3600)
+    vera = moderation_repo.all_slowmode_lungo
+    monkeypatch.setattr(moderation_repo, "all_slowmode_lungo", AsyncMock(side_effect=OSError("db giù")))
+    await cog.on_message(_messaggio(canale, 20))
+    monkeypatch.setattr(moderation_repo, "all_slowmode_lungo", vera)
+    await cog.on_message(_messaggio(canale, 20))
+    secondo = _messaggio(canale, 20)
+    await cog.on_message(secondo)
+    secondo.delete.assert_awaited_once()
+
+
 async def test_canale_cancellato_esce_dallo_slowmode_lungo():
     """Un canale cancellato non resta nel tetto dei 50 né nell'elenco (non si potrebbe più togliere)."""
     cog = ModerationChannelControlCog(bot=None)

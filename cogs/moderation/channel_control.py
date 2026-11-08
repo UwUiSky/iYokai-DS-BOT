@@ -80,6 +80,7 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
         # canale -> secondi dello slowmode lungo (riempita alla prima necessità); avvisi già mandati (server, utente) -> istante
         self._lungo: dict[int, int] = {}
         self._lungo_caricato = False
+        self._blocco_lunghi = asyncio.Lock()
         self._avvisi: dict[tuple[int, int], float] = {}
 
     async def handle_unlock(self, guild_id: int, channel_id: int, payload: dict) -> None:
@@ -356,13 +357,18 @@ class ModerationChannelControlCog(CogConGruppi, commands.Cog):
         )
 
     async def _carica_lunghi(self) -> None:
+        """Riempie la cache una volta; se il database non risponde si riprova al messaggio dopo."""
         if self._lungo_caricato:
             return
-        self._lungo_caricato = True
-        try:
-            self._lungo.update(await moderation_repo.all_slowmode_lungo())
-        except Exception:  # noqa: BLE001 - senza tabella o senza database non si ferma la chat
-            logger.warning("Slowmode lunghi non letti.", exc_info=False)
+        async with self._blocco_lunghi:
+            if self._lungo_caricato:
+                return
+            try:
+                self._lungo.update(await moderation_repo.all_slowmode_lungo())
+            except Exception:  # noqa: BLE001 - senza tabella o senza database non si ferma la chat
+                logger.warning("Slowmode lunghi non letti: riprovo al prossimo messaggio.", exc_info=False)
+                return
+            self._lungo_caricato = True
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:

@@ -66,6 +66,7 @@ class ModerationVoceCog(CogConGruppi, commands.Cog):
         # (server, utente) -> scadenza della sorveglianza; evita una query a ogni cambio di stato della voce
         self._sorvegliati: dict[tuple[int, int], datetime] = {}
         self._caricato = False
+        self._blocco_carica = asyncio.Lock()
 
     async def _prepara_membro(self, interaction: discord.Interaction, azione: str, membro: discord.Member):
         """Controlli comuni su un membro: modulo, permesso dello staff, gerarchia, è in vocale, permesso del bot."""
@@ -213,14 +214,19 @@ class ModerationVoceCog(CogConGruppi, commands.Cog):
             del self._sorvegliati[chiave]
 
     async def _carica(self) -> None:
+        """Riempie la cache una volta; se il database non risponde si riprova all'evento dopo."""
         if self._caricato:
             return
-        self._caricato = True
-        try:
-            for guild_id, user_id, scade in await moderation_repo.utenti_sorvegliati():
-                self._sorvegliati[(guild_id, user_id)] = max(scade, self._sorvegliati.get((guild_id, user_id), scade))
-        except Exception:  # noqa: BLE001 - senza tabella o senza database non si blocca la voce
-            logger.warning("Sorveglianze della voce non lette.", exc_info=False)
+        async with self._blocco_carica:
+            if self._caricato:
+                return
+            try:
+                for guild_id, user_id, scade in await moderation_repo.utenti_sorvegliati():
+                    self._sorvegliati[(guild_id, user_id)] = max(scade, self._sorvegliati.get((guild_id, user_id), scade))
+            except Exception:  # noqa: BLE001 - senza tabella o senza database non si blocca la voce
+                logger.warning("Sorveglianze della voce non lette: riprovo al prossimo ingresso.", exc_info=False)
+                return
+            self._caricato = True
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, prima, dopo) -> None:
