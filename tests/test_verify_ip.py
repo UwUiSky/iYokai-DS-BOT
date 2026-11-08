@@ -3,7 +3,7 @@ tests/test_verify_ip.py
 =======================
 D67: gli IP della verifica web si salvano cifrati, legati a server e persona; li vede solo il proprietario del
 bot (mai gli admin, mai i log, mai le eccezioni); si cancellano con /privacy o 30 giorni dopo l'uscita della
-persona o del bot dal server; dopo un kick o un ban restano (ban: finché è attivo e 30 giorni dopo lo sblocco).
+persona o del bot dal server; dopo un kick o un ban restano (ban: un anno dal ban).
 """
 
 import logging
@@ -200,7 +200,8 @@ async def test_il_bot_esce_dal_server_30_giorni_anche_per_i_ban_e_se_torna_nessu
             await getattr(cog, nome)(guild)
     r = await clean_db.fetchrow("SELECT motivo, scade_il, now() AS adesso FROM verify_ip WHERE user_id = 603")
     assert r["motivo"] == "kick" and 9.9 < _giorni(r) < 10.1
-    assert await clean_db.fetchval("SELECT scade_il FROM verify_ip WHERE user_id = 602") is None
+    r = await clean_db.fetchrow("SELECT motivo, scade_il, now() AS adesso FROM verify_ip WHERE user_id = 602")
+    assert r["motivo"] == "ban" and 364.9 < _giorni(r) < 365.1
     # uscito da 31 giorni: via tutto il server, ban compreso; l'altro server resta
     await presenza.segna_entrato(GUILD)
     await presenza.segna_uscito(GUILD, discord.utils.utcnow() - timedelta(days=31))
@@ -235,15 +236,15 @@ async def test_kick_i_dati_restano_180_giorni(monkeypatch, clean_db, chiave, rep
 
 
 @pytest.mark.asyncio
-async def test_ban_nessuna_scadenza_finche_attivo_e_30_giorni_dopo_lo_sblocco(monkeypatch, clean_db, chiave, repo_ip):
+async def test_ban_un_anno_dal_ban_anche_dopo_lo_sblocco(monkeypatch, clean_db, chiave, repo_ip):
     await _riga(clean_db, GUILD, 605)
     await verify_ip.persona_bannata(GUILD, 605)
     await verify_ip.persona_uscita(GUILD, 605, espulsa=False)  # l'uscita che segue il ban non lo cancella
-    r = await clean_db.fetchrow("SELECT motivo, scade_il FROM verify_ip WHERE user_id = 605")
-    assert (r["motivo"], r["scade_il"]) == ("ban", None)
+    r = await clean_db.fetchrow("SELECT motivo, scade_il, now() AS adesso FROM verify_ip WHERE user_id = 605")
+    assert r["motivo"] == "ban" and 364.9 < _giorni(r) < 365.1
     await verify_ip.persona_sbloccata(GUILD, 605)
     r = await clean_db.fetchrow("SELECT motivo, scade_il, now() AS adesso FROM verify_ip WHERE user_id = 605")
-    assert r["motivo"] == "sblocco" and 29.9 < _giorni(r) < 30.1
+    assert r["motivo"] == "sblocco" and 364.9 < _giorni(r) < 365.1
 
 
 @pytest.mark.asyncio
@@ -251,8 +252,8 @@ async def test_ban_prima_dell_uscita_o_uscita_prima_del_ban_vince_sempre_il_ban(
     await _riga(clean_db, GUILD, 606)
     await verify_ip.persona_uscita(GUILD, 606, espulsa=False)
     await verify_ip.persona_bannata(GUILD, 606)
-    r = await clean_db.fetchrow("SELECT motivo, scade_il FROM verify_ip WHERE user_id = 606")
-    assert (r["motivo"], r["scade_il"]) == ("ban", None)
+    r = await clean_db.fetchrow("SELECT motivo, scade_il, now() AS adesso FROM verify_ip WHERE user_id = 606")
+    assert r["motivo"] == "ban" and 364.9 < _giorni(r) < 365.1
 
 
 @pytest.mark.asyncio
@@ -266,7 +267,7 @@ async def test_la_pulizia_toglie_le_scadute_e_mai_un_ban_attivo(monkeypatch, cle
     await clean_db.execute("UPDATE verify_ip SET ultimo_il = now() - interval '5 years' WHERE user_id IN (611, 613)")
     await retention_worker.pulisci_scaduti(clean_db)
     rimasti = {r["user_id"] for r in await clean_db.fetch("SELECT user_id FROM verify_ip")}
-    assert rimasti == {611, 612}  # 610 scaduto, 613 oltre il tetto di un anno, 611 bannato resta
+    assert rimasti == {611, 612}  # 610 scaduto, 613 oltre il tetto di un anno, 611 bannato: un anno dal ban
 
 
 @pytest.mark.asyncio

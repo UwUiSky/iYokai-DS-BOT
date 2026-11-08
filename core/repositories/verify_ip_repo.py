@@ -12,7 +12,7 @@ import asyncpg
 
 GIORNI_USCITA = 30
 GIORNI_KICK = 180
-GIORNI_DOPO_SBLOCCO = 30
+GIORNI_BAN = 365
 
 
 class VerifyIpRepository:
@@ -90,17 +90,18 @@ class VerifyIpRepository:
         )
 
     async def persona_bannata(self, guild_id: int, user_id: int) -> None:
-        """Il ban vince su tutto: nessuna scadenza finché è attivo."""
+        """Il ban vince su tutto: i dati restano un anno dal ban (scelta dell'owner, D67)."""
         await self._pool.execute(
-            "UPDATE verify_ip SET motivo = 'ban', scade_il = NULL WHERE guild_id = $1 AND user_id = $2",
-            guild_id, user_id,
+            "UPDATE verify_ip SET motivo = 'ban', scade_il = now() + make_interval(days => $3) "
+            "WHERE guild_id = $1 AND user_id = $2",
+            guild_id, user_id, GIORNI_BAN,
         )
 
     async def persona_sbloccata(self, guild_id: int, user_id: int) -> None:
+        """Lo sblocco non allunga né accorcia l'anno partito col ban."""
         await self._pool.execute(
-            "UPDATE verify_ip SET motivo = 'sblocco', scade_il = now() + make_interval(days => $3) "
-            "WHERE guild_id = $1 AND user_id = $2 AND motivo = 'ban'",
-            guild_id, user_id, GIORNI_DOPO_SBLOCCO,
+            "UPDATE verify_ip SET motivo = 'sblocco' WHERE guild_id = $1 AND user_id = $2 AND motivo = 'ban'",
+            guild_id, user_id,
         )
 
     async def _conta(self, sql: str, *args) -> int:
