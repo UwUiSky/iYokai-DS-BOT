@@ -1343,14 +1343,14 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   `core/ticket_autoclose_worker.py`, dati in `core/repositories/ticket_automazioni_repo.py`). «In attesa dell'utente»: dopo N minuti
   dall'ultima risposta dello staff il ticket va nella categoria scelta e torna dov'era quando l'utente scrive; al massimo un
   spostamento ogni 10 minuti, categoria da 50 canali = si salta (TKT-029; `/admin-ticket-opzioni attesa`). Regole di inattività:
-  fino a 5 per pannello, minimo 5 minuti, chi (utente, staff, chiunque), azione (chiudi, elimina, messaggio anche ripetuto), testo
+  fino a 5 per pannello, minimo 5 minuti, chi (utente, staff, chiunque), azione (chiudi, elimina, messaggio anche ripetuto, al massimo 3 volte senza risposta), testo
   ≤ 1.000 (TKT-064; `/admin-ticket-opzioni regole`). Riserva da 0 a 5 canali vuoti già pronti per pannello, uno per giro: aprire un
-  ticket li usa con una sola modifica (TKT-035; `limiti riserva`). (da verificare live)
+  ticket li usa con una sola modifica, anche a categoria piena; un canale pronto che non serve più si elimina (TKT-035; `limiti riserva`). (da verificare live)
 - `[x]` 13.25 Ticket come thread privati (#156, D66, migrazione 0526; TKT-031, TKT-032). Opzione per pannello
   (`/admin-ticket-opzioni canale thread:sì canale_thread:#… canale_avvisi:#…`; base: canale come prima). Il thread è privato e non
   invitabile, archivio a 7 giorni (un thread archiviato da Discord con il ticket aperto si riapre). Il bot controlla i permessi nel
-  canale padre e il tetto di 1.000 thread attivi prima di crearlo. Entrano chi apre e i reperibili; i ruoli dello staff sono chiamati
-  nel benvenuto; nel canale degli avvisi (o nel padre) c'è l'embed con il bottone «Entra» (`tkt:ent:<id>`, solo staff) per chi non ha
+  canale padre, che chi apre lo veda e il tetto di 1.000 thread attivi prima di crearlo; un thread cancellato chiude il ticket. Entrano chi apre e i reperibili; i ruoli dello staff sono chiamati
+  nel benvenuto; nel canale degli avvisi (mai nel padre, che vedono tutti) c'è l'embed con il bottone «Entra» (`tkt:ent:<id>`, solo staff) per chi non ha
   «Gestisci thread». Chiusura in due passi: l'utente esce dal thread, `Riapri` lo rimette. Nei thread non valgono categorie, permessi
   per ruolo, presa esclusiva, «Solo admin» e «Sposta». Transcript, ZIP, voto ed eliminazione come per i canali. Core in
   `core/ticket_thread_logic.py`. (da verificare live)
