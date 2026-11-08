@@ -24,6 +24,7 @@ MODULI = (
     "cogs.moderation.clear",
     "cogs.moderation.softban_mute",
     "cogs.moderation.voce",
+    "cogs.moderation.nickname",
     "cogs.moderation.opzioni",
     "cogs.security.anti_nuke",
     "cogs.security.anti_raid",
@@ -43,7 +44,7 @@ MODULI = (
 
 # (gruppo, sottogruppo o None) -> nomi dei figli attesi
 ATTESI: dict[tuple[str, str | None], set[str]] = {
-    ("mod-sanzioni", None): {"warn", "timeout", "untimeout", "mute", "unmute"},
+    ("mod-sanzioni", None): {"warn", "timeout", "untimeout", "mute", "unmute", "nick"},
     ("mod-sanzioni", "massa"): {"timeout", "warn"},
     ("mod-sanzioni", "opzioni"): {"imposta", "dm"},
     ("mod-casi", "caso"): {"storico", "vedi", "motivo", "elimina", "classifica-staff", "attive", "registra", "durata", "nascondi", "esporta"},
@@ -56,7 +57,7 @@ ATTESI: dict[tuple[str, str | None], set[str]] = {
     ("founder", "moderazione"): {"immuni"},
     ("mod-ban", None): {"ban", "tempban", "softban", "kick", "unban"},
     ("mod-ban", "appelli"): {"canale", "elenco"},
-    ("mod-ban", "massa"): {"ban", "unban", "kick"},
+    ("mod-ban", "massa"): {"ban", "unban", "kick", "entrati"},
     ("admin-sicurezza", None): {"heatmap", "score", "spamtrap"},
     ("admin-sicurezza", "escalation"): {"enable", "disable", "set-reset-days", "set-step", "remove-step", "reset", "status"},
     ("admin-antinuke", None): {

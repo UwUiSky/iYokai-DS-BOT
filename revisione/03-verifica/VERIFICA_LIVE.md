@@ -1396,3 +1396,10 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - `/mod-sanzioni warn membro:@X dm:False`: nessun DM; con `dm:True` il DM parte anche se spento nelle opzioni del server.
 - `/mod-casi caso motivo` con un motivo pronto nel campo: il caso prende il testo.
 
+## giro r17mod, M7 — canali, nomi, entrati (#115)
+- `/mod-canali slowmode seconds:30 categoria:<una categoria>`: tutti i canali di testo della categoria prendono 30 secondi; con `seconds:0` si tolgono.
+- `/mod-canali slowmode lunga:2d` in un canale: Discord mostra 6 ore; un utente senza permessi scrive, poi riscrive dopo 7 ore: il secondo messaggio sparisce (con 2 giorni di attesa) e arriva un solo avviso in privato; lo staff scrive senza limiti. `slowmode seconds:0` nello stesso canale toglie anche il lungo.
+- `/mod-canali slowmode` senza valori: elenco dei canali con slowmode, quelli lunghi segnati «gestito dal bot».
+- `/mod-sanzioni nick membro:@X nuovo:Prova`, poi senza `nuovo`: il soprannome cambia e si azzera; senza «Gestire i soprannomi» è rifiutato; su chi sta più in alto di te è rifiutato.
+- `/mod-ban massa entrati minuti:10 azione:Espelli motivo:prova` con un account di prova appena entrato: compare il numero e «Conferma»/«Annulla»; «Conferma» lo espelle (caso nel registro); un altro utente che preme il bottone è rifiutato.
+

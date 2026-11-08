@@ -806,6 +806,48 @@ class ModerationRepository:
         return esito.endswith(" 1")
 
 
+    # --- slowmode lungo (MOD-099) ---
+
+    async def set_slowmode_lungo(self, guild_id: int, channel_id: int, secondi: int) -> None:
+        await self._pool.execute(
+            "INSERT INTO moderation_slowmode_lungo (guild_id, channel_id, secondi) VALUES ($1, $2, $3) "
+            "ON CONFLICT (guild_id, channel_id) DO UPDATE SET secondi = EXCLUDED.secondi",
+            guild_id, channel_id, secondi,
+        )
+
+    async def list_slowmode_lungo(self, guild_id: int) -> list[tuple[int, int]]:
+        rows = await self._pool.fetch(
+            "SELECT channel_id, secondi FROM moderation_slowmode_lungo WHERE guild_id = $1 ORDER BY channel_id", guild_id
+        )
+        return [(r["channel_id"], r["secondi"]) for r in rows]
+
+    async def all_slowmode_lungo(self) -> dict[int, int]:
+        """Tutti i canali con slowmode lungo (canale -> secondi): riempie la cache del listener."""
+        rows = await self._pool.fetch("SELECT channel_id, secondi FROM moderation_slowmode_lungo")
+        return {r["channel_id"]: r["secondi"] for r in rows}
+
+    async def delete_slowmode_lungo(self, guild_id: int, channel_id: int) -> None:
+        await self._pool.execute(
+            "DELETE FROM moderation_slowmode_lungo WHERE guild_id = $1 AND channel_id = $2", guild_id, channel_id
+        )
+        await self._pool.execute(
+            "DELETE FROM moderation_slowmode_ultimi WHERE guild_id = $1 AND channel_id = $2", guild_id, channel_id
+        )
+
+    async def set_slowmode_ultimo(self, guild_id: int, channel_id: int, user_id: int, quando) -> None:
+        await self._pool.execute(
+            "INSERT INTO moderation_slowmode_ultimi (guild_id, channel_id, user_id, ultimo_at) VALUES ($1, $2, $3, $4) "
+            "ON CONFLICT (guild_id, channel_id, user_id) DO UPDATE SET ultimo_at = EXCLUDED.ultimo_at",
+            guild_id, channel_id, user_id, quando,
+        )
+
+    async def get_slowmode_ultimo(self, guild_id: int, channel_id: int, user_id: int):
+        return await self._pool.fetchval(
+            "SELECT ultimo_at FROM moderation_slowmode_ultimi WHERE guild_id = $1 AND channel_id = $2 AND user_id = $3",
+            guild_id, channel_id, user_id,
+        )
+
+
 def _row_to_case(row) -> ModerationCase:
     return ModerationCase(
         case_number=row["case_number"],

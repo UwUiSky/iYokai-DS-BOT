@@ -38,6 +38,7 @@ fa scattare un avviso allo staff nel log di moderazione, senza punire.
 
 from __future__ import annotations
 
+import asyncio
 import datetime
 import logging
 import time
@@ -88,6 +89,8 @@ from core.moderation_bulk_logic import (
     MAX_TESTO_UTENTI, MAX_USI_ORA, MAX_UTENTI_MASSA, leggi_utenti, prenota_uso, riepilogo,
 )
 from core.permissions import can_moderate
+from core import moderazione_canali_logic
+from core.ui_base import BaseView
 from cogs.security.global_ban import revoca_ban_propagati
 
 logger = logging.getLogger("iyokai.moderation.actions")
@@ -159,6 +162,54 @@ async def _log_e_risposta(
     if not dm_inviato:
         embed.set_footer(text=await testo_per(interaction, "actions_non_stato_possibile_notificare_utente", pubblica=True))
     await interaction.followup.send(embed=embed)
+
+
+PAUSA_ENTRATI = 0.3  # secondi fra due espulsioni (limite di frequenza di Discord)
+MAX_403_DI_FILA = 3
+SECONDI_CONFERMA_ENTRATI = 60
+AZIONI_ENTRATI = {"ban": "ban_members", "kick": "kick_members"}
+
+
+class ConfermaEntrati(BaseView):
+    """MOD-007: mostra quanti sono e aspetta «Conferma» di chi ha dato il comando (60 secondi)."""
+
+    def __init__(self, cog, autore_id: int, membri: list, azione: str, reason: str, minuti: int) -> None:
+        super().__init__(timeout=SECONDI_CONFERMA_ENTRATI)
+        self.cog = cog
+        self.autore_id = autore_id
+        self.membri = membri
+        self.azione = azione
+        self.reason = reason
+        self.minuti = minuti
+        self._partita = False
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
+        if interaction.user.id != self.autore_id:
+            await interaction.response.send_message(await testo_per(interaction, "actions_entrati_solo_chi_comanda"), ephemeral=True)
+            return False
+        return True
+
+    async def on_timeout(self) -> None:
+        self.stop()
+
+    @discord.ui.button(label="Conferma", style=discord.ButtonStyle.danger)
+    async def conferma(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await self.esegui(interaction)
+
+    @discord.ui.button(label="Annulla", style=discord.ButtonStyle.secondary)
+    async def annulla(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.stop()
+        await interaction.response.edit_message(content=await testo_per(interaction, "actions_entrati_annullato"), view=None)
+
+    async def esegui(self, interaction: discord.Interaction) -> None:
+        if self._partita:  # un doppio clic non deve ripetere l'azione
+            return
+        self._partita = True
+        self.stop()
+        await interaction.response.edit_message(content="...", view=None)
+        await self.cog._esegui_entrati(interaction, self.membri, self.azione, self.reason)
 
 
 MAX_CANCELLA_AL_KICK = 100
@@ -1175,6 +1226,119 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             await self._chiudi_sanzioni_a_tempo(guild, uid, interaction.user.id)
             fatti.append(f"<@{uid}> (`{uid}`) caso #{numero}")
         await self._chiudi_massa(interaction, "🔨 Ban in massa", discord.Color.red(), reason, fatti, saltati)
+
+    @comando_di_gruppo(
+        "mod-ban",
+        nome="entrati",
+        descrizione="Banna o espelle chi è entrato negli ultimi minuti (dopo una conferma).",
+        sottogruppo=("massa", "Azioni su più utenti insieme."),
+    )
+    @app_commands.describe(
+        minuti="Entrati negli ultimi quanti minuti (1-1440)",
+        azione="Cosa fare a chi è entrato",
+        reason="Motivo (anche un motivo pronto)",
+    )
+    @app_commands.choices(azione=[app_commands.Choice(name="Espelli", value="kick"), app_commands.Choice(name="Banna", value="ban")])
+    @app_commands.autocomplete(reason=completa_motivo)
+    async def entrati(
+        self,
+        interaction: discord.Interaction,
+        minuti: app_commands.Range[int, 1, 1440],
+        azione: str,
+        reason: Reason | None = None,
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
+            return
+        azione = getattr(azione, "value", azione)
+        permesso = AZIONI_ENTRATI[azione]
+        if not getattr(interaction.user.guild_permissions, permesso, False) or not getattr(interaction.guild.me.guild_permissions, permesso, False):
+            await interaction.response.send_message(await testo_per(interaction, "actions_entrati_permesso", permesso=permesso), ephemeral=True)
+            return
+        reason = await risolvi_motivo(interaction, reason)
+        if reason is None:
+            return
+        scelti, restano = moderazione_canali_logic.entrati_da_poco(
+            interaction.guild.members, minuti, datetime.datetime.now(datetime.timezone.utc)
+        )
+        candidati = []
+        for membro in scelti:
+            if await self._non_moderabile(interaction, membro.id, membro) is None:
+                candidati.append(membro)
+        if not candidati:
+            await interaction.response.send_message(await testo_per(interaction, "actions_entrati_nessuno", v1=minuti), ephemeral=True)
+            return
+        resto = await testo_per(interaction, "actions_entrati_resto", v1=restano) if restano else ""
+        vista = ConfermaEntrati(self, interaction.user.id, candidati, azione, reason, minuti)
+        await interaction.response.send_message(
+            await testo_per(interaction, "actions_entrati_conferma", v1=len(candidati), v2=minuti, azione=azione, resto=resto),
+            view=vista, ephemeral=True,
+        )
+
+    async def _esegui_entrati(self, interaction: discord.Interaction, membri: list, azione: str, reason: str) -> None:
+        """Ban in blocco o espulsioni una alla volta (tetto 200, pausa, stop dopo 3 risposte 403). Niente DM: è un'emergenza."""
+        guild = interaction.guild
+        if interaction.user.id != guild.owner_id and not prenota_uso(guild.id, interaction.user.id, azione, time.monotonic()):
+            await interaction.followup.send(await testo_per(interaction, "actions_hai_gia_usato_questo_comando", v1=MAX_USI_ORA), ephemeral=True)
+            return
+        fatti: list[str] = []
+        saltati: list[str] = []
+        vivi = []
+        for membro in membri:  # tra la richiesta e la conferma qualcuno può essere uscito o essere cambiato
+            attuale = guild.get_member(membro.id) or membro
+            motivo = await self._non_moderabile(interaction, membro.id, attuale)
+            if motivo:
+                saltati.append(f"`{membro.id}`: {motivo}")
+            else:
+                vivi.append(attuale)
+        if azione == "ban":
+            giorni = (await moderation_opzioni.leggi(guild.id)).giorni_ban
+            bannati: set[int] = set()
+            if vivi:
+                try:
+                    esito = await guild.bulk_ban(
+                        [discord.Object(id=m.id) for m in vivi],
+                        reason=audit_reason(f"Ban degli ultimi entrati: {reason}"),
+                        delete_message_seconds=giorni * 86400,
+                    )
+                    bannati = {u.id for u in esito.banned}
+                except discord.Forbidden:
+                    bannati = await self._ban_uno_alla_volta(guild, [m.id for m in vivi], reason, giorni)
+                except discord.HTTPException:
+                    bannati = set()
+            for membro in vivi:
+                if membro.id not in bannati:
+                    saltati.append(f"`{membro.id}`: Discord ha rifiutato")
+                    continue
+                numero = await moderation_repo.create_case(
+                    guild_id=guild.id, user_id=membro.id, moderator_id=interaction.user.id, action_type="ban", reason=reason
+                )
+                await self._chiudi_sanzioni_a_tempo(guild, membro.id, interaction.user.id)
+                fatti.append(f"<@{membro.id}> (`{membro.id}`) caso #{numero}")
+            titolo, colore = "🔨 Ban degli ultimi entrati", discord.Color.red()
+        else:
+            di_fila = 0
+            for membro in vivi:
+                try:
+                    await membro.kick(reason=audit_reason(reason))
+                    di_fila = 0
+                except discord.Forbidden:
+                    saltati.append(f"`{membro.id}`: Discord ha rifiutato")
+                    di_fila += 1
+                    if di_fila >= MAX_403_DI_FILA:  # tre 403 di fila: ci si ferma (rischio blocco IP)
+                        break
+                    continue
+                except discord.HTTPException:
+                    saltati.append(f"`{membro.id}`: Discord ha rifiutato")
+                    continue
+                numero = await moderation_repo.create_case(
+                    guild_id=guild.id, user_id=membro.id, moderator_id=interaction.user.id, action_type="kick", reason=reason
+                )
+                await self._chiudi_sanzioni_a_tempo(guild, membro.id, interaction.user.id)
+                fatti.append(f"{membro.mention} (`{membro.id}`) caso #{numero}")
+                await asyncio.sleep(PAUSA_ENTRATI)
+            titolo, colore = "👢 Kick degli ultimi entrati", discord.Color.orange()
+        await self._chiudi_massa(interaction, titolo, colore, reason, fatti, saltati)
+
 
     @comando_di_gruppo(
         "mod-ban",
