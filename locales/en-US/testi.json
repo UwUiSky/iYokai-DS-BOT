@@ -1844,5 +1844,17 @@
   "motivopronto_solo_autore": "Only whoever ran the command can use these buttons.",
   "motivopronto_annullato": "Cancelled.",
   "motivopronto_fatto": "Sanction applied.",
-  "motivopronto_serve_modban": "Kick and ban need the /mod-ban role. Pick another sanction or ask someone who can."
+  "motivopronto_serve_modban": "Kick and ban need the /mod-ban role. Pick another sanction or ask someone who can.",
+  "modm_staff_di": "{server} staff",
+  "modm_server": "Server",
+  "modm_moderatore": "Moderator",
+  "modm_caso": "Case",
+  "modm_durata": "Duration",
+  "modm_motivo": "Reason",
+  "modm_nessun_motivo": "No reason given",
+  "opzioni_dm_testo_titolo": "DM text: {azione}",
+  "opzioni_dm_testo_campo": "Text (empty: default message)",
+  "opzioni_dm_testo_salvato": "DM text for {azione} saved. Preview:\n{anteprima}",
+  "opzioni_dm_testo_tolto": "DM text for {azione} removed: the default message is back.",
+  "opzioni_dm_testo_aiuto": "Placeholders: {elenco}."
 }

@@ -55,7 +55,7 @@ from discord.ext import commands
 from core import bot_roles
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
-from core import moderation_opzioni
+from core import moderation_dm, moderation_opzioni
 from core.database import db
 from core.i18n import testo_per
 from core.repositories.moderation_repo import moderation_repo
@@ -340,7 +340,11 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             "⚠️ Warn", discord.Color.yellow(), member, interaction.user, reason, case_number
         )
         await interaction.response.send_message(embed=embed)
-        await try_dm(member, embed, azione="warn", guild_id=interaction.guild.id, forza=dm)
+        dm_embed = await moderation_dm.costruisci(
+            interaction.guild, "warn", titolo="⚠️ Warn", colore=discord.Color.yellow(), moderatore=interaction.user,
+            motivo=reason, caso=case_number,
+        )
+        await try_dm(member, dm_embed, azione="warn", guild_id=interaction.guild.id, forza=dm)
         await post_to_mod_log(interaction.guild, embed)
         # M 1.10: se il server l'ha scelto, il warn sale la scala di escalation.
         await _avvisa_staff_se_troppi_warn(interaction.guild, member)
@@ -387,7 +391,9 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         # log partono solo se l'azione è riuscita (LIM-8).
         dm_inviato = await try_dm_message(
             member,
-            _case_embed("👢 Kick", discord.Color.orange(), member, interaction.user, reason, None),
+            await moderation_dm.costruisci(
+                interaction.guild, "kick", titolo="👢 Kick", colore=discord.Color.orange(), moderatore=interaction.user, motivo=reason
+            ),
             azione="kick", guild_id=interaction.guild.id, forza=dm,
         )
         try:
@@ -455,7 +461,9 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
 
         dm_inviato = await try_dm_message(
             member,
-            _case_embed("🔨 Ban", discord.Color.red(), member, interaction.user, reason, None),
+            await moderation_dm.costruisci(
+                interaction.guild, "ban", titolo="🔨 Ban", colore=discord.Color.red(), moderatore=interaction.user, motivo=reason
+            ),
             view=await vista_appello(interaction.guild.id),
             azione="ban", guild_id=interaction.guild.id, forza=dm,
         )
@@ -568,18 +576,23 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         titolo = "🔒 Isolamento" if isolamento else "⏳ Tempban"
         durata = ("Durata", format_duration(duration_seconds))
 
-        def _embed(caso: int | None, per_dm: bool) -> discord.Embed:
+        def _embed(caso: int | None) -> discord.Embed:
             e = _case_embed(
                 titolo, discord.Color.dark_red(), member, interaction.user,
                 reason, caso, extra_field=durata,
             )
             e.add_field(name="Fine", value=testo_fine(fine_ts), inline=False)
-            if per_dm and invito is not None:
-                e.add_field(name="Invito per rientrare", value=invito.url, inline=False)
             return e
 
+        extra_dm = [("Fine", testo_fine(fine_ts))]
+        if invito is not None:
+            extra_dm.append(("Invito per rientrare", invito.url))
         dm_inviato = await try_dm_message(
-            member, _embed(None, True),
+            member,
+            await moderation_dm.costruisci(
+                guild, "tempban", titolo=titolo, colore=discord.Color.dark_red(), moderatore=interaction.user,
+                motivo=reason, durata_s=duration_seconds, extra=tuple(extra_dm),
+            ),
             view=None if modo != MODO_FUORI else await vista_appello(guild.id),
             azione="tempban", guild_id=guild.id, forza=dm,
         )
@@ -675,7 +688,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             except discord.HTTPException:
                 logger.warning("Isolamento: messaggio nel canale non inviato (server %s).", guild.id)
 
-        await _log_e_risposta(interaction, _embed(case_number, False), dm_inviato is not None)
+        await _log_e_risposta(interaction, _embed(case_number), dm_inviato is not None)
         if canali_non_nascosti:
             await interaction.followup.send(
                 await testo_per(interaction, "actions_attenzione_canali_non_sono_stati", canali_non_nascosti=canali_non_nascosti),
@@ -1023,7 +1036,11 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             extra_field=("Durata", format_duration(duration_seconds)),
         )
         await interaction.response.send_message(embed=embed)
-        await try_dm(member, embed, azione="timeout", guild_id=interaction.guild.id, forza=dm)
+        dm_embed = await moderation_dm.costruisci(
+            interaction.guild, "timeout", titolo="🔇 Timeout", colore=discord.Color.dark_orange(), moderatore=interaction.user,
+            motivo=reason, caso=case_number, durata_s=duration_seconds,
+        )
+        await try_dm(member, dm_embed, azione="timeout", guild_id=interaction.guild.id, forza=dm)
         await post_to_mod_log(interaction.guild, embed)
 
     @comando_di_gruppo(
@@ -1208,7 +1225,9 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                 # Il DM parte prima del ban: dopo non c'è più un server in comune.
                 dm = await try_dm_message(
                     membro,
-                    _case_embed("🔨 Ban", discord.Color.red(), membro, interaction.user, reason, None),
+                    await moderation_dm.costruisci(
+                        guild, "ban", titolo="🔨 Ban", colore=discord.Color.red(), moderatore=interaction.user, motivo=reason
+                    ),
                     view=await vista_appello(guild.id),
                     azione="ban", guild_id=guild.id,
                 )
@@ -1424,7 +1443,10 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                 saltati.append(f"`{uid}`: {motivo}")
                 continue
             dm = await try_dm_message(
-                membro, _case_embed("👢 Kick", discord.Color.orange(), membro, interaction.user, reason, None),
+                membro,
+                await moderation_dm.costruisci(
+                    guild, "kick", titolo="👢 Kick", colore=discord.Color.orange(), moderatore=interaction.user, motivo=reason
+                ),
                 azione="kick", guild_id=guild.id,
             )
             try:
@@ -1498,7 +1520,11 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                 "🔇 Timeout", discord.Color.dark_orange(), membro, interaction.user, reason, numero,
                 extra_field=("Durata", format_duration(secondi)),
             )
-            await try_dm(membro, embed, azione="timeout", guild_id=guild.id)
+            dm_embed = await moderation_dm.costruisci(
+                guild, "timeout", titolo="🔇 Timeout", colore=discord.Color.dark_orange(), moderatore=interaction.user,
+                motivo=reason, caso=numero, durata_s=secondi,
+            )
+            await try_dm(membro, dm_embed, azione="timeout", guild_id=guild.id)
             fatti.append(f"{membro.mention} (`{uid}`) caso #{numero}")
         await self._chiudi_massa(
             interaction, f"🔇 Timeout in massa ({format_duration(secondi)})", discord.Color.dark_orange(),
@@ -1538,7 +1564,10 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                 guild_id=guild.id, user_id=uid, moderator_id=interaction.user.id, action_type="warn", reason=reason
             )
             await try_dm(
-                membro, _case_embed("⚠️ Warn", discord.Color.yellow(), membro, interaction.user, reason, numero),
+                membro,
+                await moderation_dm.costruisci(
+                    guild, "warn", titolo="⚠️ Warn", colore=discord.Color.yellow(), moderatore=interaction.user, motivo=reason, caso=numero
+                ),
                 azione="warn", guild_id=guild.id,
             )
             await _avvisa_staff_se_troppi_warn(guild, membro)

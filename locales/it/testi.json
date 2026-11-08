@@ -1844,5 +1844,17 @@
   "motivopronto_solo_autore": "Solo chi ha dato il comando può usare questi tasti.",
   "motivopronto_annullato": "Annullato.",
   "motivopronto_fatto": "Sanzione data.",
-  "motivopronto_serve_modban": "Kick e ban li dà chi ha il ruolo di /mod-ban. Scegli un'altra sanzione o chiedi a chi può."
+  "motivopronto_serve_modban": "Kick e ban li dà chi ha il ruolo di /mod-ban. Scegli un'altra sanzione o chiedi a chi può.",
+  "modm_staff_di": "Staff di {server}",
+  "modm_server": "Server",
+  "modm_moderatore": "Moderatore",
+  "modm_caso": "Caso",
+  "modm_durata": "Durata",
+  "modm_motivo": "Motivo",
+  "modm_nessun_motivo": "Nessun motivo indicato",
+  "opzioni_dm_testo_titolo": "Testo del DM: {azione}",
+  "opzioni_dm_testo_campo": "Testo (vuoto: messaggio di base)",
+  "opzioni_dm_testo_salvato": "Testo del DM per {azione} salvato. Anteprima:\n{anteprima}",
+  "opzioni_dm_testo_tolto": "Testo del DM per {azione} tolto: torna il messaggio di base.",
+  "opzioni_dm_testo_aiuto": "Segnaposto: {elenco}."
 }

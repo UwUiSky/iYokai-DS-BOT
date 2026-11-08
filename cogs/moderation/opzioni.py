@@ -16,9 +16,11 @@ from discord import app_commands
 from discord.ext import commands
 
 from cogs.moderation._shared import MODULE_ACTIONS, ensure_module_enabled, format_duration, parse_duration
+from core import moderation_dm
 from core import moderation_opzioni as opzioni
 from core.command_groups import SOTTOGRUPPI, CogConGruppi, comando_di_gruppo
 from core.i18n import testo_per
+from core.ui_base import BaseModal
 
 SOTTOGRUPPO = ("opzioni", "Opzioni di moderazione del server.")
 
@@ -55,6 +57,9 @@ def _riepilogo(guild: discord.Guild, o: opzioni.OpzioniModerazione) -> discord.E
         inline=False,
     )
     embed.add_field(name="DM all'utente per", value=dm[:1024], inline=False)
+    embed.add_field(name="Moderatore nei DM", value="nascosto («Staff di <server>»)" if o.anonimo else "col nome", inline=False)
+    if o.dm_testi:
+        embed.add_field(name="DM con testo del server", value=", ".join(_NOMI_AZIONI[a] for a in o.dm_testi)[:1024], inline=False)
     embed.add_field(name="Ruoli immuni", value=immuni[:1024], inline=False)
     embed.add_field(
         name="Casi per le azioni fatte fuori da iYokai",
@@ -70,6 +75,37 @@ def _riepilogo(guild: discord.Guild, o: opzioni.OpzioniModerazione) -> discord.E
         inline=False,
     )
     return embed
+
+
+class ModuloTestoDm(BaseModal):
+    """MOD-059: una finestra con un solo campo, il testo del DM di un'azione (fino a 1.500 caratteri)."""
+
+    def __init__(self, azione: str, nome: str, attuale: str | None, titolo: str, campo: str) -> None:
+        super().__init__(title=titolo[:45], timeout=600)
+        self.azione = azione
+        self.nome = nome
+        self.testo = discord.ui.TextInput(
+            label=campo[:45], style=discord.TextStyle.paragraph, max_length=opzioni.MAX_TESTO_DM, required=False, default=attuale
+        )
+        self.add_item(self.testo)
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        if not _puo_gestire(interaction):  # i permessi possono cambiare mentre la finestra è aperta
+            await interaction.response.send_message(await testo_per(interaction, "opzioni_le_opzioni_le_cambia_chi"), ephemeral=True)
+            return
+        guild = interaction.guild
+        await opzioni.imposta_dm_testo(guild.id, self.azione, self.testo.value, interaction.user.id)
+        if not self.testo.value.strip():
+            await interaction.response.send_message(await testo_per(interaction, "opzioni_dm_testo_tolto", azione=self.nome), ephemeral=True)
+            return
+        anteprima = moderation_dm.espandi(
+            self.testo.value.strip(), {"server": guild.name, "motivo": "…", "durata": "1 ora", "moderatore": interaction.user.mention}
+        )
+        corpo = await testo_per(interaction, "opzioni_dm_testo_salvato", azione=self.nome, anteprima=anteprima[:1500])
+        aiuto = await testo_per(interaction, "opzioni_dm_testo_aiuto", elenco="{server} {motivo} {durata} {moderatore}")
+        await interaction.response.send_message(
+            f"{corpo}\n{aiuto}"[:2000], ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
+        )
 
 
 class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
@@ -100,6 +136,7 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
         avviso_rientro="Avvisa lo staff quando rientra nel server chi ha dei casi",
         scadenza_automod="Dopo quanti giorni i casi dell'AutoMod non contano più (0 = mai)",
         motivo_obbligatorio="Il motivo delle sanzioni è obbligatorio (sì) o si può omettere (no)",
+        anonimo="Nei messaggi privati delle sanzioni scrivi «Staff di <server>» invece del nome del moderatore",
     )
     async def imposta(
         self,
@@ -111,6 +148,7 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
         avviso_rientro: bool | None = None,
         scadenza_automod: app_commands.Range[int, 0, opzioni.MAX_SCADENZA_AUTOMOD] | None = None,
         motivo_obbligatorio: bool | None = None,
+        anonimo: bool | None = None,
     ) -> None:
         if not await self._controlli(interaction):
             return
@@ -143,6 +181,8 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
             await opzioni.imposta_scadenza_automod(guild.id, scadenza_automod, interaction.user.id)
         if motivo_obbligatorio is not None:
             await opzioni.imposta_motivo_obbligatorio(guild.id, motivo_obbligatorio, interaction.user.id)
+        if anonimo is not None:
+            await opzioni.imposta_anonimo(guild.id, anonimo, interaction.user.id)
         await interaction.response.send_message(
             embed=_riepilogo(guild, await opzioni.leggi(guild.id)),
             ephemeral=True,
@@ -155,16 +195,26 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
         descrizione="Sceglie se l'utente riceve un DM per un tipo di azione.",
         sottogruppo=SOTTOGRUPPO,
     )
-    @app_commands.describe(azione="Il tipo di azione", attivo="Mandare il DM?")
+    @app_commands.describe(
+        azione="Il tipo di azione",
+        attivo="Mandare il DM?",
+        testo="Sì: apre una finestra per scrivere il testo del DM di questa azione (vuoto: messaggio di base)",
+    )
     @app_commands.choices(
         azione=[app_commands.Choice(name=nome, value=valore) for valore, nome in _NOMI_AZIONI.items()]
     )
     async def dm(
-        self, interaction: discord.Interaction, azione: app_commands.Choice[str], attivo: bool
+        self, interaction: discord.Interaction, azione: app_commands.Choice[str], attivo: bool, testo: bool = False
     ) -> None:
         if not await self._controlli(interaction):
             return
         await opzioni.imposta_dm(interaction.guild.id, azione.value, attivo, interaction.user.id)
+        if testo:
+            attuale = (await opzioni.leggi(interaction.guild.id)).dm_testi.get(azione.value)
+            titolo = await testo_per(interaction, "opzioni_dm_testo_titolo", azione=azione.name)
+            campo = await testo_per(interaction, "opzioni_dm_testo_campo")
+            await interaction.response.send_modal(ModuloTestoDm(azione.value, azione.name, attuale, titolo, campo))
+            return
         await interaction.response.send_message(
             await testo_per(interaction, "opzioni_dm_per", name=azione.name, v2=(await testo_per(interaction, "opzioni_acceso")) if attivo else (await testo_per(interaction, "opzioni_spento"))), ephemeral=True
         )
