@@ -74,6 +74,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 13:3
 
 ## Admin: AutoMod
 
+- **`/admin-automod calore`** — Heat: rules add points that fade over time; a penalty fires at the threshold.
 - **`/admin-automod exemptions channel-add`** — Exempts a channel from all advanced AutoMod filters.
 - **`/admin-automod exemptions channel-remove`** — Removes a channel's exemption.
 - **`/admin-automod exemptions role-add`** — Exempts a role from all advanced AutoMod filters.
@@ -90,6 +91,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 13:3
 - **`/admin-automod odio prova`** — Tests a text against the banned words without acting.
 - **`/admin-automod odio richiami`** — How many warnings for hate words lead to a timeout.
 - **`/admin-automod odio status`** — Shows how the banned words are set up.
+- **`/admin-automod pulizia`** — Cleans a channel now and then, by message type.
 - **`/admin-automod regole`** — Opens the AutoMod rules panel: conditions and actions.
 - **`/admin-automod reset`** — Resets an AutoMod rule counter.
 - **`/admin-automod status`** — Shows the current advanced AutoMod filter setup.

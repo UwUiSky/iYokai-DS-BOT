@@ -75,6 +75,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 13:
 ## Admin: AutoMod
 
 - **`/admin-automod azzera`** — Azzera un contatore delle regole AutoMod.
+- **`/admin-automod calore`** — Calore: le regole danno punti che calano col tempo; alla soglia scatta una sanzione.
 - **`/admin-automod esenzioni channel-add`** — Esenta un canale da tutti i filtri AutoMod avanzati.
 - **`/admin-automod esenzioni channel-remove`** — Rimuove l'esenzione di un canale.
 - **`/admin-automod esenzioni role-add`** — Esenta un ruolo da tutti i filtri AutoMod avanzati.
@@ -94,6 +95,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 13:
 - **`/admin-automod parole add`** — Aggiunge una parola vietata.
 - **`/admin-automod parole list`** — Mostra le parole vietate configurate.
 - **`/admin-automod parole remove`** — Rimuove una parola vietata.
+- **`/admin-automod pulizia`** — Pulisce un canale ogni tanto, per tipo di messaggio.
 - **`/admin-automod regole`** — Apre il pannello delle regole AutoMod: condizioni e azioni.
 - **`/admin-automod riepilogo`** — Riepilogo delle violazioni AutoMod del server, a pagine.
 - **`/admin-automod status`** — Mostra la configurazione attuale dei filtri AutoMod avanzati.
