@@ -209,3 +209,36 @@ async def test_il_ticket_aperto_riceve_l_articolo_che_risponde_alla_richiesta():
     canale.send.reset_mock()
     await modulo.suggerisci_articolo(canale, GUILD, "ciao", [("Nick", "mario")])
     canale.send.assert_not_awaited()
+
+
+async def test_sposta_senza_permesso_di_spostare_non_cambia_niente():
+    vecchio = await ticket_form_repo.crea_pannello(GUILD, "Vecchio", 900, "v")
+    nuovo = await ticket_form_repo.crea_pannello(GUILD, "Nuovo", 901, "n")
+    s = Server()
+    s.categoria(901)
+    canale = fake_text_channel(777)
+    canale.edit.side_effect = discord.Forbidden(SimpleNamespace(status=403, reason="no"), "no")
+    t = await _ticket_in_pannello(vecchio)
+    assert await modulo.sposta_ticket(canale, s.guild, t, nuovo) == "permessi"
+    canale.set_permissions.assert_not_awaited()
+    assert (await ticket_repo.get_ticket_by_channel(777)).panel_id == vecchio.id
+
+
+async def test_sposta_un_ruolo_che_non_si_cambia_non_lascia_il_ticket_a_meta():
+    vecchio = await ticket_form_repo.crea_pannello(GUILD, "Vecchio", 900, "v")
+    nuovo = await ticket_form_repo.crea_pannello(GUILD, "Nuovo", 901, "n")
+    await ticket_opzioni_repo.imposta(vecchio.id, ruoli_staff=[11])
+    await ticket_opzioni_repo.imposta(nuovo.id, ruoli_staff=[22, 33])
+    s = Server()
+    s.categoria(901)
+    canale = fake_text_channel(777)
+
+    async def permessi(ruolo, **_):
+        if ruolo.id == 22:
+            raise discord.Forbidden(SimpleNamespace(status=403, reason="no"), "no")
+
+    canale.set_permissions.side_effect = permessi
+    t = await _ticket_in_pannello(vecchio)
+    assert await modulo.sposta_ticket(canale, s.guild, t, nuovo) is None
+    assert 33 in {c.args[0].id for c in canale.set_permissions.await_args_list}
+    assert (await ticket_repo.get_ticket_by_channel(777)).panel_id == nuovo.id

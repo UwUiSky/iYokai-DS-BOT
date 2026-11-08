@@ -1702,6 +1702,7 @@
   "tickets_sposta_avviso": "Ticket moved by {chi} to panel **{name}**.",
   "tickets_sposta_categoria_piena": "The panel's category is full (50 channels): the ticket was not moved.",
   "tickets_sposta_categoria_mancante": "The panel's category no longer exists: the ticket was not moved.",
+  "tickets_sposta_permessi": "Discord does not let me move the channel (I need «Manage Channels» in the new category too): the ticket was not moved.",
   "tickets_sposta_nessun_altro_pannello": "There are no other panels to move the ticket to.",
   "tickets_etichetta_aggiunta": "Label «{nome}» added.",
   "tickets_troppe_etichette": "The server already has {massimo} labels.",

@@ -1702,6 +1702,7 @@
   "tickets_sposta_avviso": "Ticket spostato da {chi} nel pannello **{name}**.",
   "tickets_sposta_categoria_piena": "La categoria del pannello è piena (50 canali): il ticket non è stato spostato.",
   "tickets_sposta_categoria_mancante": "La categoria del pannello non esiste più: il ticket non è stato spostato.",
+  "tickets_sposta_permessi": "Discord non mi lascia spostare il canale (mi serve «Gestisci canali» anche nella categoria nuova): il ticket non è stato spostato.",
   "tickets_sposta_nessun_altro_pannello": "Non ci sono altri pannelli dove spostare il ticket.",
   "tickets_etichetta_aggiunta": "Etichetta «{nome}» aggiunta.",
   "tickets_troppe_etichette": "Il server ha già {massimo} etichette.",

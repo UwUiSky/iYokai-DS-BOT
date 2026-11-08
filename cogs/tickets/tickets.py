@@ -1172,8 +1172,9 @@ async def _etichette_gestisci(interaction) -> dict[str, str]:
 async def sposta_ticket(channel, guild: discord.Guild, ticket, nuovo) -> str | None:
     """
     TKT-067: porta il ticket in un altro pannello. Cambia categoria, permessi dello staff e pannello nel database.
-    Restituisce None se è andato bene, altrimenti il codice dell'errore («categoria_mancante», «categoria_piena»);
-    in quel caso non cambia niente.
+    Restituisce None se è andato bene, altrimenti il codice dell'errore («categoria_mancante», «categoria_piena»,
+    «permessi» se Discord non lascia spostare il canale); in quel caso non cambia niente. Dopo lo spostamento il
+    pannello si salva subito: un ruolo che non si riesce a cambiare finisce nel log e non ferma gli altri.
     """
     categoria = guild.get_channel(nuovo.category_id)
     if not isinstance(categoria, discord.CategoryChannel):
@@ -1185,20 +1186,21 @@ async def sposta_ticket(channel, guild: discord.Guild, ticket, nuovo) -> str | N
     ruoli_admin = await _ruoli_admin(guild.id)
     nuovi = ruoli_con_accesso(await _ruoli_staff(guild.id, nuovo.id), ruoli_admin, ticket.solo_admin)
     if cambia_categoria:
-        await channel.edit(category=categoria, reason="Ticket spostato in un altro pannello")
-    for role_id in vecchi - set(nuovi):
-        ruolo = guild.get_role(role_id)
-        if ruolo is not None and role_id != guild.id:
-            await channel.set_permissions(ruolo, overwrite=None, reason="Ticket spostato in un altro pannello")
-    for role_id in nuovi:
-        ruolo = guild.get_role(role_id)
-        if ruolo is not None and role_id != guild.id:
-            await channel.set_permissions(
-                ruolo,
-                overwrite=discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
-                reason="Ticket spostato in un altro pannello",
-            )
+        try:
+            await channel.edit(category=categoria, reason="Ticket spostato in un altro pannello")
+        except discord.HTTPException:
+            logger.warning("Ticket %s non spostato nella categoria %s.", channel.id, categoria.id)
+            return "permessi"
     await ticket_repo.set_panel(channel.id, nuovo.id)
+    vista = discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
+    for role_id, overwrite in [(r, None) for r in vecchi - set(nuovi)] + [(r, vista) for r in nuovi]:
+        ruolo = guild.get_role(role_id)
+        if ruolo is None or role_id == guild.id:
+            continue
+        try:
+            await channel.set_permissions(ruolo, overwrite=overwrite, reason="Ticket spostato in un altro pannello")
+        except discord.HTTPException:
+            logger.warning("Permessi del ruolo %s non cambiati nel ticket spostato %s.", role_id, channel.id)
     return None
 
 
@@ -1206,7 +1208,7 @@ async def _esegui_sposta(interaction: discord.Interaction, ticket, nuovo) -> Non
     errore = await sposta_ticket(interaction.channel, interaction.guild, ticket, nuovo)
     if errore:
         await interaction.followup.send(
-            await testo_per(interaction, "tickets_sposta_categoria_piena" if errore == "categoria_piena" else "tickets_sposta_categoria_mancante"),
+            await testo_per(interaction, f"tickets_sposta_{errore}"),
             ephemeral=True,
         )
         return
