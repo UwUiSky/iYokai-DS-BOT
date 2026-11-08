@@ -1,6 +1,6 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 19:05 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 20:04 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
 **Totale: 699 comandi in 41 categorie.**
 
@@ -391,7 +391,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 19:
 - **`/admin-ticket-opzioni accesso`** — Chi può aprire: regole per ruolo, lette dall'alto.
 - **`/admin-ticket-opzioni attesa`** — Sposta in una categoria i ticket che aspettano l'utente.
 - **`/admin-ticket-opzioni avvisi`** — Chi avvisare all'apertura e primo messaggio fissato.
-- **`/admin-ticket-opzioni canale`** — Nome del canale e categorie di riserva.
+- **`/admin-ticket-opzioni canale`** — Nome del canale, categorie di riserva e ticket come thread privati.
 - **`/admin-ticket-opzioni chiusura`** — Conferma, chiusura in due passi, chiusi, nomi.
 - **`/admin-ticket-opzioni limiti`** — Tetto di ticket aperti, pausa e ruoli esenti.
 - **`/admin-ticket-opzioni messaggi`** — DM all'utente e testi di presa e rilascio.

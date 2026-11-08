@@ -1,6 +1,6 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 19:05 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 20:04 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
 **Total: 699 commands in 41 categories.**
 
@@ -391,7 +391,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 19:0
 - **`/admin-ticket-options access`** — Who can open: per-role rules, read from the top.
 - **`/admin-ticket-options alerts`** — Who to ping on opening and pinned first message.
 - **`/admin-ticket-options attesa`** — Moves tickets waiting for the user to a category.
-- **`/admin-ticket-options channel`** — Channel name and fallback categories.
+- **`/admin-ticket-options channel`** — Channel name, fallback categories and tickets as private threads.
 - **`/admin-ticket-options claiming`** — Claiming: category, exclusivity, auto-assignment.
 - **`/admin-ticket-options closing`** — Confirmation before closing and who can close.
 - **`/admin-ticket-options hours`** — Opening hours and what happens outside them.
