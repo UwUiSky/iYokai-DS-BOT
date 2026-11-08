@@ -5,8 +5,8 @@ D67: gli IP di chi si verifica dalla pagina web, salvati CIFRATI (AES-256-GCM, `
 `VERIFY_IP_ENCRYPTION_KEY`, legati a server e persona) per la sicurezza. Li vede SOLO il proprietario del bot
 (`/owner system storico-vpn`, pagina `/proprietario/storico-vpn`): mai gli admin, mai i log, mai le eccezioni
 (nei log finisce al massimo il tipo dell'errore). Senza chiave non si salva niente. Qui anche le scadenze:
-30 giorni dopo l'uscita della persona o del bot dal server (questa da `guild_presence`, nel registro dei dati); dopo un kick 180 giorni; dopo un ban finché è
-attivo e 30 giorni dopo lo sblocco; la cancellazione dei dati chiesta dalla persona (`/utility privacy cancella`) vale (tranne ban e kick, che si gestiscono a mano).
+30 giorni dopo l'uscita della persona o del bot dal server (questa da `guild_presence`, nel registro dei dati); dopo un kick 180 giorni; dopo un ban un anno dal
+ban (anche se sbloccato prima); la cancellazione dei dati chiesta dalla persona (`/utility privacy cancella`) vale (tranne ban e kick, che si gestiscono a mano).
 Funzioni coperte: SPEC §4.2 (IP solo per il proprietario, D67)
 Dipende da: core/repositories/verify_ip_repo.py, core/oauth_crypto.py, core/verify_vpn.py (impronta)
 """

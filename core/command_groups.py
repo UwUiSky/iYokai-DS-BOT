@@ -112,6 +112,7 @@ SOTTOGRUPPI: dict[str, tuple[str, str]] = {
     "admin-messaggi embed": ("embed", "Embed personalizzati"),
     "admin-ticket categoria": ("categoria", "Categorie dei ticket"),
     "admin-ticket ruolo": ("ruolo", "Ruoli di supporto dei ticket"),
+    "admin-ticket etichette": ("etichette", "Etichette colorate per i ticket"),
     "admin-ticket modmail": ("modmail", "ModMail: ticket dai messaggi privati"),
     "admin-ticket risposte": ("risposte", "Risposte standard dei ticket"),
     "admin-ruoli premio": ("premio", "Ruoli premio per livello"),

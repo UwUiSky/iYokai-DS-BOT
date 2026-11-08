@@ -357,6 +357,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 13:
 - **`/admin-ticket chiusura-auto`** — Chiudi i ticket fermi da N minuti (0 = spenta).
 - **`/admin-ticket limite`** — Quanti ticket aperti alla volta può avere ogni utente (predefinito 1).
 - **`/admin-ticket lista-nera`** — Utenti e ruoli che non possono aprire ticket.
+- **`/admin-ticket etichette aggiungi`** — Crea un'etichetta colorata per i ticket (max 25).
+- **`/admin-ticket etichette elenco`** — Elenca le etichette dei ticket.
+- **`/admin-ticket etichette togli`** — Togli un'etichetta (sparisce dai ticket che la hanno).
 - **`/admin-ticket modmail attiva`** — Accendi o spegni il ModMail (ticket in DM).
 - **`/admin-ticket modmail blocca`** — Blocca o sblocca un utente dal ModMail.
 - **`/admin-ticket panel`** — Pubblica il pannello per l'apertura dei ticket in questo canale.
@@ -365,13 +368,16 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 13:
 - **`/admin-ticket pannelli modulo-aggiungi`** — Aggiungi una domanda al modulo (max 5).
 - **`/admin-ticket pannelli modulo-mostra`** — Mostra le domande del modulo di un pannello.
 - **`/admin-ticket pannelli modulo-togli`** — Togli una domanda dal modulo.
+- **`/admin-ticket pannelli motivo-aggiungi`** — Aggiungi un motivo pronto al pannello (max 24).
+- **`/admin-ticket pannelli motivo-togli`** — Togli un motivo pronto dal pannello (senza numero: li elenca).
 - **`/admin-ticket pannelli pubblica`** — Pubblica qui i bottoni di uno o più pannelli.
 - **`/admin-ticket pannelli rimuovi`** — Elimina un pannello e il suo modulo.
+- **`/admin-ticket risposte articolo`** — Base di conoscenza: nuovo articolo, correggilo o eliminalo.
 - **`/admin-ticket risposte elenco`** — Elenca le risposte standard del server.
 - **`/admin-ticket risposte elimina`** — Elimina una risposta standard.
 - **`/admin-ticket risposte modifica`** — Correggi una risposta standard.
 - **`/admin-ticket risposte standard`** — Risposte standard imparate dallo staff.
-- **`/admin-ticket ruolo aggiungi`** — Aggiungi un ruolo di supporto.
+- **`/admin-ticket ruolo aggiungi`** — Aggiungi un ruolo di supporto (livello addetto o admin).
 - **`/admin-ticket ruolo elenco`** — Elenca i ruoli di supporto configurati.
 - **`/admin-ticket ruolo togli`** — Rimuovi un ruolo di supporto.
 - **`/admin-ticket setup`** — Configura la categoria (e opzionalmente il ruolo di supporto) per i ticket.

@@ -440,6 +440,13 @@ REGISTRO: tuple[TabellaDati, ...] = (
        filtro_server="panel_id IN (SELECT id FROM ticket_panels WHERE guild_id = $1)"),
     _t("ticket_form_questions", "Domande del modulo dei ticket",
        filtro_server="panel_id IN (SELECT id FROM ticket_panels WHERE guild_id = $1)"),
+    _t("ticket_panel_motivi", "Motivi pronti dei pannelli dei ticket",
+       filtro_server="panel_id IN (SELECT id FROM ticket_panels WHERE guild_id = $1)"),
+    _t("ticket_ruoli_livello", "Livello (addetto o admin) dei ruoli dello staff dei ticket", colonna_server="guild_id"),
+    _t("ticket_etichette_assegnate", "Etichette assegnate ai ticket",
+       filtro_server="ticket_id IN (SELECT id FROM tickets WHERE guild_id = $1)"),
+    _t("ticket_etichette", "Etichette colorate dei ticket", colonna_server="guild_id"),
+    _t("ticket_articoli", "Articoli della base di conoscenza dei ticket", colonne_attore=("creato_da",), colonna_server="guild_id"),
     _t("ticket_panels", "Pannelli dei ticket", colonna_server="guild_id"),
     _t("ticket_categories", "Categorie dei ticket", colonna_server="guild_id"),
     _t("ticket_counters", "Contatore dei ticket", colonna_server="guild_id"),
@@ -691,11 +698,11 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True,
        escludi_dall_esportazione=("ip_impronta", "ip_cifrato"), conserva_utente_se="motivo IN ('ban', 'kick')",
        scadenza=Scadenza(
-           "LEAST(COALESCE(scade_il, CASE WHEN motivo = 'ban' THEN NULL ELSE ultimo_il + interval '365 days' END), "
+           "LEAST(CASE WHEN motivo IN ('ban', 'sblocco') THEN scade_il ELSE LEAST(COALESCE(scade_il, ultimo_il + interval '365 days'), ultimo_il + interval '365 days') END, "
            "(SELECT p.left_at + interval '30 days' FROM guild_presence p WHERE p.guild_id = verify_ip.guild_id))", 0),
        nota="D67: AES-256-GCM, chiave VERIFY_IP_ENCRYPTION_KEY; 30 giorni dopo l'uscita della persona o del bot dal "
-            "server (la cancellazione dei dati arriva prima); dopo un kick 180 giorni; dopo un ban finché è attivo e 30 giorni dopo lo "
-            "sblocco (la richiesta di cancellazione di chi è bannato o espulso si gestisce a mano); tetto di 365 giorni"),
+            "server (la cancellazione dei dati arriva prima); dopo un kick 180 giorni; dopo un ban un anno dal "
+            "ban (la richiesta di cancellazione di chi è bannato o espulso si gestisce a mano); tetto di 365 giorni"),
     _t("verify_doppi", "Account doppi trovati dalla verifica web, per lo staff",
        colonne_utente=("user_id", "altro_user_id"), colonna_server="guild_id", utente="cancella",
        esporta=True, escludi_dall_esportazione=("user_id", "altro_user_id"), scadenza=Scadenza("trovato_il", 90),

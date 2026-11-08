@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 import asyncpg
 
-from core.ticket_form_logic import MAX_DOMANDE, MAX_PANNELLI_PER_SERVER
+from core.ticket_form_logic import MAX_DOMANDE, MAX_MOTIVI, MAX_PANNELLI_PER_SERVER
 
 
 class PannelloGiaEsistente(Exception):
@@ -21,6 +21,10 @@ class PannelloGiaEsistente(Exception):
 
 class TroppiPannelli(Exception):
     """Il server ha già 25 pannelli."""
+
+
+class TroppiMotivi(Exception):
+    """Il pannello ha già 24 motivi pronti (più «Altro» fanno i 25 di un menu)."""
 
 
 class TroppeDomande(Exception):
@@ -41,6 +45,16 @@ class PannelloTicket:
     standard_attive: bool = False
     sollecito_minuti: int | None = None
     ruolo_escalation: int | None = None
+
+
+@dataclass(frozen=True)
+class MotivoPannello:
+    id: int
+    panel_id: int
+    posizione: int
+    etichetta: str
+    emoji: str | None
+    testo: str | None
 
 
 @dataclass(frozen=True)
@@ -201,6 +215,46 @@ class TicketFormRepository:
                     "UPDATE ticket_form_questions SET position = position - 1 "
                     "WHERE panel_id = $1 AND position > $2",
                     panel_id, position,
+                )
+        return True
+
+    # ------------------------------------------------------------ TKT-006 motivi pronti
+    async def elenca_motivi(self, panel_id: int) -> list[MotivoPannello]:
+        righe = await self._pool.fetch(
+            "SELECT * FROM ticket_panel_motivi WHERE panel_id = $1 ORDER BY posizione", panel_id
+        )
+        return [MotivoPannello(r["id"], r["panel_id"], r["posizione"], r["etichetta"], r["emoji"], r["testo"]) for r in righe]
+
+    async def aggiungi_motivo(
+        self, panel_id: int, etichetta: str, emoji: str | None = None, testo: str | None = None
+    ) -> MotivoPannello:
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute("SELECT pg_advisory_xact_lock($1, $2)", 8415, panel_id)
+                ultima = await conn.fetchval(
+                    "SELECT COALESCE(max(posizione), 0) FROM ticket_panel_motivi WHERE panel_id = $1", panel_id
+                )
+                if ultima >= MAX_MOTIVI:
+                    raise TroppiMotivi()
+                r = await conn.fetchrow(
+                    "INSERT INTO ticket_panel_motivi (panel_id, posizione, etichetta, emoji, testo) "
+                    "VALUES ($1, $2, $3, $4, $5) RETURNING *",
+                    panel_id, ultima + 1, etichetta, emoji, testo,
+                )
+        return MotivoPannello(r["id"], r["panel_id"], r["posizione"], r["etichetta"], r["emoji"], r["testo"])
+
+    async def rimuovi_motivo(self, panel_id: int, posizione: int) -> bool:
+        """Toglie il motivo e fa scorrere i successivi (posizioni 1..N)."""
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                esito = await conn.execute(
+                    "DELETE FROM ticket_panel_motivi WHERE panel_id = $1 AND posizione = $2", panel_id, posizione
+                )
+                if not esito.endswith(" 1"):
+                    return False
+                await conn.execute(
+                    "UPDATE ticket_panel_motivi SET posizione = posizione - 1 WHERE panel_id = $1 AND posizione > $2",
+                    panel_id, posizione,
                 )
         return True
 
