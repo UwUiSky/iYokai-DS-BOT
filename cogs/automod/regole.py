@@ -19,7 +19,7 @@ from core.ui_base import BaseView
 from core.automod_liste_pannello import apri_liste
 from core.automod_regole_pannello import apri_pannello
 from cogs.moderation._shared import ensure_module_enabled
-from core import account_rubato_opzioni, immagini_opzioni, automod_liste_service as liste_service, automod_regole_service as regole_service
+from core import automod_calore_opzioni as calore_opzioni, account_rubato_opzioni, immagini_opzioni, automod_liste_service as liste_service, automod_regole_service as regole_service
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.i18n import testo_per
@@ -115,6 +115,31 @@ class RegoleCog(CogConGruppi, commands.Cog):
         stato = await testo_per(interaction, "amregole_gruppo_acceso" if attivo else "amregole_gruppo_spento")
         await interaction.response.send_message(
             await testo_per(interaction, "amregole_gruppo_fatto", nome=nome, n=n, stato=stato), ephemeral=True)
+
+    @comando_di_gruppo(
+        "admin-automod", nome="calore", descrizione="Calore: le regole danno punti che calano col tempo; alla soglia scatta una sanzione."
+    )
+    @app_commands.describe(
+        attivo="Acceso o spento", soglia="Punti a cui scatta la sanzione (1-1000)", calo="Punti persi ogni minuto (0-100)",
+        fermo_minuti="Canale fermo da questi minuti: i punti pesano di più (0: mai)", fermo_peso="Di quante volte pesano (1-10)",
+        timeout_minuti="Minuti di timeout alla soglia (0: nessuno)", avviso="Dai anche un avviso (warn)",
+    )
+    async def calore(
+        self, interaction: discord.Interaction, attivo: bool | None = None,
+        soglia: app_commands.Range[int, 1, 1000] | None = None, calo: app_commands.Range[int, 0, 100] | None = None,
+        fermo_minuti: app_commands.Range[int, 0, 1440] | None = None, fermo_peso: app_commands.Range[int, 1, 10] | None = None,
+        timeout_minuti: app_commands.Range[int, 0, 40320] | None = None, avviso: bool | None = None,
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        c = await calore_opzioni.imposta(
+            interaction.guild.id, attivo=attivo, soglia=soglia, calo_per_minuto=calo, fermo_minuti=fermo_minuti,
+            fermo_peso=fermo_peso, timeout_secondi=None if timeout_minuti is None else timeout_minuti * 60, warn=avviso)
+        si, no = await testo_per(interaction, "amcalore_si"), await testo_per(interaction, "amcalore_no")
+        await interaction.response.send_message(
+            await testo_per(interaction, "amcalore_stato", stato=si if c.attivo else no, soglia=c.soglia, calo=c.calo_per_minuto,
+                            fermo=c.fermo_minuti, peso=c.fermo_peso, timeout=c.timeout_secondi // 60, avviso=si if c.warn else no),
+            ephemeral=True)
 
     @comando_di_gruppo(
         "admin-automod", nome="immagini", descrizione="Impostazioni del filtro per le immagini sospette."
