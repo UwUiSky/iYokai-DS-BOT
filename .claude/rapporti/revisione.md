@@ -438,3 +438,9 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 02/11 | `feat/r15automod` | pannello «Nuova regola» | Eventi non messaggio (ingresso, nome, vocale…) si salvano ma non scattano fino ad A9 | nota | aperto (A9) |
 | 02/11 | `feat/r15automod` | `cogs/automod/regole.py:riepilogo` | Le regole personali appaiono come `p:N`, non con il nome | bassa | aperto |
 | 02/11 | `feat/r15automod` | `core/repositories/automod_regole_repo.py:livello_di` | Legge `leveling_totals` fuori da leveling_repo (D16) | bassa | aperto |
+| 08/11 | `feat/r16verifica` | `core/repositories/verify_ip_repo.py:server_tornato` | Il rientro del bot faceva ripartire da capo kick (180), uscita e sblocco (30): scadenze allungabili; ora l'uscita del bot si legge da `guild_presence` | media | chiuso (0ddf19f) |
+| 08/11 | `feat/r16verifica` | `core/repositories/verify_ip_repo.py:salva` | Rientro a bot spento: gli IP di un membro presente scadevano a 30 giorni anche dopo una nuova verifica | bassa | chiuso (d819810) |
+| 08/11 | `feat/r16verifica` | `core/migrations/0530_verify_ip_soglia.sql` (commento) | Il commento dice ancora che l'uscita del bot scrive `scade_il` su tutte le righe (ora `guild_presence`); migrazione non toccata | nota | aperto |
+| 08/11 | `feat/r16verifica` | `core/repositories/verify_ip_repo.py:persona_tornata` | Kick e poi rientro: il conto dei 180 giorni continua anche da membro (si cancella prima, verso la privacy) | bassa | aperto (da confermare all'owner) |
+| 08/11 | `feat/r16verifica` | `core/verify_vpn_staff.py:_avvisa_storico` | «già accettato da N server» conta anche righe che non fanno soglia (vecchie, stesso founder) | bassa | aperto |
+| 08/11 | `feat/r16verifica` | `cogs/security/verify.py:CaptchaImmagineModal` | Testo «Verifica non riuscita…» in italiano fisso (già prima del ramo; l'invito aggiunto è dal catalogo) | bassa | aperto |
