@@ -168,6 +168,16 @@ async def test_uscita_della_persona_30_giorni_e_il_rientro_la_toglie(monkeypatch
 
 
 @pytest.mark.asyncio
+async def test_chi_si_verifica_di_nuovo_e_nel_server_anche_se_il_rientro_non_e_arrivato(monkeypatch, clean_db, chiave, repo_ip):
+    """Rientro a bot spento (nessun on_member_join): la nuova verifica web basta a togliere la scadenza."""
+    await _riga(clean_db, GUILD, 607)
+    await verify_ip.persona_uscita(GUILD, 607, espulsa=False)
+    await verify_ip.salva(GUILD, 607, "1.1.1.1", "passato", "k" * 40)
+    righe = await clean_db.fetch("SELECT motivo, scade_il FROM verify_ip WHERE user_id = 607")
+    assert len(righe) == 2 and all(r["motivo"] is None and r["scade_il"] is None for r in righe)
+
+
+@pytest.mark.asyncio
 async def test_il_bot_esce_dal_server_30_giorni_anche_per_i_ban_e_se_torna_nessuna_scadenza_si_allunga(
     monkeypatch, clean_db, chiave, repo_ip
 ):

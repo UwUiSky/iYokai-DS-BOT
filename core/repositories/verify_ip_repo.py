@@ -26,7 +26,10 @@ class VerifyIpRepository:
     async def salva(
         self, guild_id: int, user_id: int, impronta: str, cifrato: str, esito: str, massimo: int
     ) -> None:
-        """Una riga per (server, persona, impronta dell'IP); oltre `massimo` per persona si tolgono le più vecchie."""
+        """
+        Una riga per (server, persona, impronta dell'IP); oltre `massimo` per persona si tolgono le più vecchie.
+        Chi si verifica è nel server: via la scadenza di un'uscita o di uno sblocco (rientro a bot spento).
+        """
         async with self._pool.acquire() as conn, conn.transaction():
             await conn.execute(
                 """
@@ -35,6 +38,12 @@ class VerifyIpRepository:
                     esito = EXCLUDED.esito, ultimo_il = now(), ip_cifrato = EXCLUDED.ip_cifrato
                 """,
                 guild_id, user_id, impronta, cifrato, esito,
+            )
+            # chi si verifica è nel server: un'uscita o uno sblocco segnati prima non contano più
+            await conn.execute(
+                "UPDATE verify_ip SET motivo = NULL, scade_il = NULL "
+                "WHERE guild_id = $1 AND user_id = $2 AND motivo IN ('uscita', 'sblocco')",
+                guild_id, user_id,
             )
             await conn.execute(
                 """
