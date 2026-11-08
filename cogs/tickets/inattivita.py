@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 import discord
 from discord.ext import commands, tasks
 
+from cogs.tickets.tickets import _opzioni_pannello
 from core import ticket_autoclose_worker as regole
 from core.i18n import testo_guild
 from core.repositories.ticket_automazioni_repo import ticket_automazioni_repo as repo
@@ -139,10 +140,15 @@ class TicketInattivitaCog(commands.Cog):
         if cog is None or ticket is None or ticket.status != "open":
             return False
         await repo.segna_eseguita(riga["id"], regola.id, adesso)
-        avviso = await testo_guild(guild, "tickets_regola_chiusura", minuti=regola.minuti)
+        # Con la chiusura in due passi il canale resta, a meno che la regola non lo elimini.
+        resta = (await _opzioni_pannello(ticket.panel_id)).chiusura_due_passi and regola.azione != "elimina"
+        avviso = " ".join([
+            await testo_guild(guild, "tickets_regola_chiusura", minuti=regola.minuti),
+            await testo_guild(guild, "tickets_canale_resta_chiuso" if resta else "tickets_canale_eliminato_presto"),
+        ])
         chiuso = await cog._chiudi_da_sistema(
             guild, channel, ticket, motivo="Ticket chiuso da una regola di inattività", avviso=avviso,
-            chiedi_voto=True, ragione="Chiuso per inattività (regola del pannello)",
+            chiedi_voto=True, ragione="Chiuso per inattività (regola del pannello)", avviso_pronto=True,
         )
         if chiuso and regola.azione == "elimina":
             await cog._pianifica_eliminazione_canale(

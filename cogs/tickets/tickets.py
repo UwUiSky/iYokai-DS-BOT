@@ -3329,10 +3329,12 @@ class TicketsCog(CogConGruppi, commands.Cog):
         chiedi_voto: bool,
         chiuso_da: int | None = None,
         ragione: str | None = None,
+        avviso_pronto: bool = False,
     ) -> bool:
         """
         Chiusura fatta dal bot (inattività, utente uscito) o per conto dello staff (chiusura di
         massa): stesso ordine di /ticket close. `ragione` è il motivo salvato col ticket.
+        `avviso_pronto`: il testo dice già se il canale resta (lingua del server), non si cambia.
         """
         if not await self._chiudi_e_pianifica(
             guild.id, channel.id, chiuso_da or guild.me.id, ragione, ticket.user_id, motivo
@@ -3340,7 +3342,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return False
         ticket = await ticket_repo.get_ticket_by_channel(channel.id) or ticket
         due_passi = (await _opzioni_pannello(ticket.panel_id)).chiusura_due_passi
-        if due_passi:
+        if due_passi and not avviso_pronto:
             avviso = avviso.replace("Questo canale verrà eliminato a breve.", TESTO_CANALE_RESTA)
         try:
             await channel.send(avviso, allowed_mentions=discord.AllowedMentions.none())

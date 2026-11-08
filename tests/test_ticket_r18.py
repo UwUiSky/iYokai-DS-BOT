@@ -375,3 +375,25 @@ async def test_un_ticket_appena_riaperto_non_si_richiude_subito():
     chiudi.assert_not_awaited()
     await cog.controlla_ticket(datetime.now(timezone.utc) + timedelta(minutes=61))
     chiudi.assert_awaited()
+
+
+@pytest.mark.parametrize("due_passi,azione,resta", [(True, "chiudi", True), (False, "chiudi", False), (True, "elimina", False)])
+async def test_avviso_di_chiusura_della_regola_dice_il_vero_nella_lingua_del_server(monkeypatch, due_passi, azione, resta):
+    """Server in inglese con chiusura in due passi: prima l'avviso diceva «will be deleted» anche se il canale restava."""
+    import core.i18n as i18n
+
+    monkeypatch.setattr(i18n, "lingua_risposta", AsyncMock(return_value="en-US"))
+    p = await _pannello()
+    await ticket_opzioni_repo.imposta(p.id, chiusura_due_passi=due_passi)
+    await _ticket(p.id)
+    await repo.aggiungi_regola(p.id, "utente", 60, azione, None, False)
+    await repo.segna_scritto(5001, True, _fa(90))
+    chiudi = AsyncMock(return_value=True)
+    tickets_cog = SimpleNamespace(_chiudi_da_sistema=chiudi, _pianifica_eliminazione_canale=AsyncMock())
+    cog, _ = _scena(_canale_ticket(), tickets_cog=tickets_cog)
+    await cog.controlla_ticket(NOW)
+    kwargs = chiudi.await_args.kwargs
+    assert kwargs["avviso_pronto"] is True
+    assert "panel rule" in kwargs["avviso"]
+    assert ("deleted" in kwargs["avviso"]) is not resta
+    assert ("stays" in kwargs["avviso"]) is resta
