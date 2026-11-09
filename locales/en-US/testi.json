@@ -1910,5 +1910,19 @@
   "amregole_f_filtro_ruoli": "Roles (IDs or mentions)",
   "amregole_f_filtro_casi": "Case types",
   "amregole_filtro_vuoto": "Empty: any",
-  "amregole_f_soglia_canale": "Channel threshold (messages/seconds)"
+  "amregole_f_soglia_canale": "Channel threshold (messages/seconds)",
+  "tickets_regola_chiusura": "Ticket closed by a panel rule: no messages for {minuti} minutes.",
+  "tickets_canale_eliminato_presto": "This channel will be deleted shortly.",
+  "tickets_canale_resta_chiuso": "The channel stays here, closed: staff can reopen or delete it.",
+  "tickets_thread_padre_mancante": "This panel's thread channel no longer exists: tell an admin.",
+  "tickets_thread_troppi": "The server already has 1,000 active threads, Discord's maximum: try again later.",
+  "tickets_thread_utente_non_vede": "The ticket is created as a thread in {canale}, but the person opening it can't see that channel or write in threads: tell an admin.",
+  "tickets_thread_permessi": "I'm missing permissions in {canale}: {permessi}. Tell an admin.",
+  "tickets_thread_avviso_titolo": "New ticket #{numero:04d}",
+  "tickets_thread_avviso_testo": "{utente} opened a ticket: {thread}\nIf you can't see it, press \"Join\".",
+  "tickets_thread_entra": "Join",
+  "tickets_thread_entrato": "You're in: {thread}",
+  "tickets_thread_entra_fallito": "I couldn't add you to the thread.",
+  "tickets_thread_non_trovato": "This ticket no longer exists.",
+  "tickets_thread_non_disponibile": "This action isn't available in thread tickets: only people inside see a private thread."
 }

@@ -79,7 +79,7 @@ from core.channel_rename import (
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
-from core.i18n import testo_per
+from core.i18n import testo_guild, testo_per
 from core.repositories.ticket_form_repo import (
     DomandaModulo,
     PannelloGiaEsistente,
@@ -91,6 +91,7 @@ from core.repositories.ticket_form_repo import (
 )
 from core import ticket_form_logic as form
 from core import ticket_opzioni_logic as opz_logic
+from core.repositories.ticket_automazioni_repo import ticket_automazioni_repo
 from core.repositories.ticket_opzioni_repo import ticket_opzioni_repo
 from core.ticket_opzioni_logic import Opzioni
 from core.repositories.ticket_repo import (
@@ -118,6 +119,7 @@ from core.ticket_logic import (
     truncate_label,
 )
 from core import ticket_gestione_logic as gestione
+from core import ticket_thread_logic as thread_logic
 from core import ticket_transcript_logic as tr_logic
 from core.repositories.ticket_gestione_repo import (
     EtichettaGiaEsistente,
@@ -467,6 +469,106 @@ async def _prima_risposta_ai(client, channel, user_id: int, guild_id: int, panel
     compito.add_done_callback(_COMPITI_AI.discard)
 
 
+def _dati_errore_thread(guild, opzioni) -> dict:
+    padre = guild.get_channel(opzioni.canale_padre_id) if opzioni.canale_padre_id else None
+    mancanti = thread_logic.permessi_mancanti(padre.permissions_for(guild.me)) if isinstance(padre, discord.TextChannel) else []
+    return {"canale": padre.mention if padre is not None else "", "permessi": ", ".join(mancanti)}
+
+
+async def _crea_thread_privato(guild, opzioni, nome: str, motivo: str, *, utente=None):
+    """
+    TKT-031: il ticket nasce come thread privato nel canale padre del pannello. Restituisce (thread, None)
+    oppure (None, chiave del testo d'errore). Prima si controllano i permessi del bot, che chi apre veda
+    il canale padre (altrimenti non vede il thread) e il tetto di 1.000 thread attivi di Discord.
+    """
+    padre = guild.get_channel(opzioni.canale_padre_id)
+    if not isinstance(padre, discord.TextChannel):
+        return None, "tickets_thread_padre_mancante"
+    if thread_logic.tetto_raggiunto(len(getattr(guild, "threads", ()))):
+        return None, "tickets_thread_troppi"
+    if thread_logic.permessi_mancanti(padre.permissions_for(guild.me)):
+        return None, "tickets_thread_permessi"
+    if utente is not None:
+        suoi = padre.permissions_for(utente)
+        if not (suoi.view_channel and suoi.send_messages_in_threads):
+            return None, "tickets_thread_utente_non_vede"
+    thread = await padre.create_thread(
+        name=thread_logic.nome_thread(nome), type=discord.ChannelType.private_thread, invitable=False,
+        auto_archive_duration=thread_logic.ARCHIVIO_MINUTI, reason=motivo,
+    )
+    return thread, None
+
+
+async def _entrano_nel_thread(thread, user_ids: list[int]) -> None:
+    """Chi ha aperto il ticket e i reperibili entrano subito; uno che non entra non ferma gli altri."""
+    for uid in thread_logic.chi_aggiungere(user_ids[0], user_ids[1:]):
+        try:
+            await thread.add_user(discord.Object(id=uid))
+        except discord.HTTPException:
+            logger.warning("Utente %s non aggiunto al thread del ticket %s.", uid, thread.id)
+
+
+async def _avviso_thread_allo_staff(guild, thread, opzioni, utente, numero: int) -> None:
+    """
+    TKT-032: avviso con il bottone «Entra» nel canale degli avvisi dello staff. Mai nel canale padre:
+    lo vede chiunque possa aprire un ticket. Senza canale degli avvisi lo staff entra dalla menzione del ruolo.
+    """
+    dove = guild.get_channel(opzioni.canale_avvisi_id or 0)
+    if dove is None:
+        return
+    embed = discord.Embed(
+        title=(await testo_guild(guild, "tickets_thread_avviso_titolo", numero=numero))[:256],
+        description=(await testo_guild(guild, "tickets_thread_avviso_testo", utente=utente.mention, thread=thread.mention))[:4000],
+        color=discord.Color.blurple(),
+    )
+    try:
+        vista = BaseView(timeout=None)
+        vista.add_item(BottoneEntra(thread.id, await testo_guild(guild, "tickets_thread_entra")))
+        await dove.send(embed=embed, view=vista, allowed_mentions=discord.AllowedMentions.none())
+    except discord.HTTPException:
+        logger.warning("Avviso del thread %s non inviato allo staff.", thread.id)
+
+
+async def _elimina_canale_pronto(canale, motivo: str) -> None:
+    """Un canale uscito dalla riserva senza diventare un ticket si elimina: non resta vuoto per sempre."""
+    try:
+        await canale.delete(reason=motivo)
+    except discord.HTTPException:
+        logger.warning("Canale di riserva %s non eliminato.", canale.id)
+
+
+async def _svuota_riserva(guild, panel_id: int, motivo: str) -> None:
+    """TKT-035: elimina tutti i canali pronti del pannello (riserva spenta o pannello eliminato)."""
+    while (canale_id := await ticket_automazioni_repo.prendi_riserva(panel_id)) is not None:
+        canale = guild.get_channel(canale_id)
+        if canale is not None:
+            await _elimina_canale_pronto(canale, motivo)
+
+
+async def _canale_dalla_riserva(guild, category, panel_id, nome, overwrites, motivo):
+    """TKT-035: usa un canale vuoto già pronto del pannello (stessa categoria), se c'è. Una sola modifica."""
+    if panel_id is None:
+        return None
+    for _ in range(3):
+        canale_id = await ticket_automazioni_repo.prendi_riserva(panel_id)
+        if canale_id is None:
+            return None
+        canale = guild.get_channel(canale_id)
+        if not isinstance(canale, discord.TextChannel):
+            continue  # cancellato a mano
+        if canale.category_id != category.id:
+            await _elimina_canale_pronto(canale, "Riserva: la categoria del pannello è cambiata")
+            continue
+        try:
+            await canale.edit(name=nome, overwrites=overwrites, reason=motivo)
+        except discord.HTTPException:
+            await _elimina_canale_pronto(canale, "Riserva: canale non modificabile")
+            continue
+        rename_tracker.record(canale.id)
+        return canale
+    return None
+
+
 async def _crea_ticket(
     interaction: discord.Interaction,
     guild: discord.Guild,
@@ -503,12 +605,15 @@ async def _crea_ticket(
         )
         return None
 
-    category = _categoria_con_posto(guild, category, opzioni)
-    if category is None:
-        await interaction.followup.send(
-            await testo_per(interaction, "tickets_le_categorie_dei_ticket_sono"), ephemeral=True
-        )
-        return None
+    come_thread = opzioni.tipo == "thread" and opzioni.canale_padre_id is not None
+    categoria_pannello = category  # i canali pronti (TKT-035) stanno qui e ci sono già: non serve posto
+    if not come_thread:
+        category = _categoria_con_posto(guild, category, opzioni)
+        if category is None and not await ticket_automazioni_repo.ha_riserva(panel_id):
+            await interaction.followup.send(
+                await testo_per(interaction, "tickets_le_categorie_dei_ticket_sono"), ephemeral=True
+            )
+            return None
     ruoli_staff = await _ruoli_staff(guild.id, panel_id)
     ruoli_admin = await _ruoli_admin(guild.id)
     # TKT-046: con «solo admin» nel canale entrano solo i ruoli admin (e chi ha «Gestisci server»).
@@ -534,11 +639,21 @@ async def _crea_ticket(
     # piena — Discord limita 50 canali per categoria) non resta
     # un ticket "fantasma" senza canale reale.
     try:
-        channel = await category.create_text_channel(
-            name=nome,
-            overwrites=overwrites,
-            reason=f"Ticket aperto da {interaction.user}"[:512],
-        )
+        motivo_canale = f"Ticket aperto da {interaction.user}"[:512]
+        if come_thread:
+            channel, errore_thread = await _crea_thread_privato(guild, opzioni, nome, motivo_canale, utente=utente)
+            if channel is None:
+                await interaction.followup.send(await testo_per(interaction, errore_thread, **_dati_errore_thread(guild, opzioni)), ephemeral=True)
+                return None
+        else:
+            channel = await _canale_dalla_riserva(guild, categoria_pannello, panel_id, nome, overwrites, motivo_canale)
+            if channel is None and category is None:
+                await interaction.followup.send(
+                    await testo_per(interaction, "tickets_le_categorie_dei_ticket_sono"), ephemeral=True
+                )
+                return None
+            if channel is None:
+                channel = await category.create_text_channel(name=nome, overwrites=overwrites, reason=motivo_canale)
     except discord.Forbidden:
         await interaction.followup.send(
             await testo_per(interaction, "tickets_non_ho_permessi_per_creare"),
@@ -578,7 +693,10 @@ async def _crea_ticket(
         return None
 
     await _dai_ruoli_durante(guild, utente, channel.id, opzioni)
-    if opzioni.solo_admin:
+    if come_thread:
+        await ticket_repo.set_e_thread(channel.id, True)
+        await _entrano_nel_thread(channel, [utente.id, *(m.id for m in reperibili)])
+    elif opzioni.solo_admin:
         await ticket_repo.set_solo_admin(channel.id, True)
 
     if panel is not None and panel.welcome_text:
@@ -625,13 +743,20 @@ async def _crea_ticket(
         vista_ai = await _vista_assistente(guild.id)
         nuovo = await ticket_repo.get_ticket_by_channel(channel.id)
         vista = await _vista_benvenuto(interaction, vista_ai, nuovo)
-        primo = await channel.send(content=utente.mention, embed=embed, **({"view": vista} if vista else {}))
+        chiamati = [r for r in ruoli_nel_canale if come_thread and r != guild.id and guild.get_role(r) is not None]
+        primo = await channel.send(
+            content=" ".join([utente.mention, *(f"<@&{r}>" for r in chiamati)])[:2000], embed=embed,
+            allowed_mentions=discord.AllowedMentions(users=[utente], roles=[discord.Object(id=r) for r in chiamati]),
+            **({"view": vista} if vista else {}),
+        )
         if opzioni.fissa_primo:
             await primo.pin(reason="Primo messaggio del ticket")
     except discord.HTTPException:
         logger.warning("Messaggio di benvenuto non inviato (o non fissato) nel ticket %s.", channel.id)
 
     await _avvisi_di_apertura(channel, guild, utente, opzioni, reperibili, ticket_number)
+    if come_thread:
+        await _avviso_thread_allo_staff(guild, channel, opzioni, utente, ticket_number)
     await _prima_risposta_ai(interaction.client, channel, utente.id, guild.id, panel_id, motivo, campi)
     try:
         await suggerisci_articolo(channel, guild.id, motivo, campi)
@@ -1071,7 +1196,10 @@ async def apri_da_comando(
     if channel is None or not aggiungi_autore or not isinstance(autore, discord.Member) or autore.id == titolare.id:
         return
     try:
-        await channel.set_permissions(autore, view_channel=True, send_messages=True, read_message_history=True)
+        if isinstance(channel, discord.Thread):
+            await channel.add_user(autore)
+        else:
+            await channel.set_permissions(autore, view_channel=True, send_messages=True, read_message_history=True)
     except discord.HTTPException:
         logger.warning("Autore del messaggio citato non aggiunto al ticket %s.", channel.id)
 
@@ -1423,6 +1551,9 @@ class MenuGestisci(
         if scelta == "etichette":
             await self._etichette(interaction, ticket)
             return
+        if isinstance(interaction.channel, discord.Thread):
+            await interaction.response.send_message(await testo_per(interaction, "tickets_thread_non_disponibile"), ephemeral=True)
+            return
         if not await _is_ticket_admin(interaction, ticket):
             await interaction.response.send_message(await testo_per(interaction, "tickets_solo_admin_dei_ticket"), ephemeral=True)
             return
@@ -1446,6 +1577,52 @@ class MenuGestisci(
             await testo_per(interaction, "tickets_solo_admin_attivato" if attivo else "tickets_solo_admin_disattivato"),
             ephemeral=True,
         )
+
+
+class BottoneEntra(
+    discord.ui.DynamicItem[discord.ui.Button], template=r"tkt:ent:(?P<id>[0-9]+)"
+):
+    """TKT-032: lo staff che non vede i thread privati entra in un ticket a thread da questo bottone."""
+
+    def __init__(self, thread_id: int, etichetta: str = "Entra") -> None:
+        super().__init__(
+            discord.ui.Button(label=etichetta[:45], style=discord.ButtonStyle.primary, custom_id=f"tkt:ent:{thread_id}")
+        )
+        self.thread_id = thread_id
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match):
+        return cls(int(match["id"]))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
+        return not await _utente_o_server_in_blacklist(interaction)
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+        logger.exception("Errore nel bottone Entra dei ticket: %s", error)
+        await _rispondi_con_errore(interaction)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        ticket = await ticket_repo.get_ticket_by_channel(self.thread_id)
+        guild = interaction.guild
+        if ticket is None or guild is None:
+            await interaction.response.send_message(await testo_per(interaction, "tickets_thread_non_trovato"), ephemeral=True)
+            return
+        if not await _is_ticket_staff(interaction, ticket):
+            await interaction.response.send_message(await testo_per(interaction, "tickets_solo_lo_staff_permesso_manage_2"), ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        try:
+            thread = guild.get_thread(self.thread_id) or await guild.fetch_channel(self.thread_id)
+            await thread.add_user(interaction.user)
+        except discord.NotFound:
+            await interaction.followup.send(await testo_per(interaction, "tickets_thread_non_trovato"), ephemeral=True)
+            return
+        except discord.HTTPException:
+            await interaction.followup.send(await testo_per(interaction, "tickets_thread_entra_fallito"), ephemeral=True)
+            return
+        await interaction.followup.send(await testo_per(interaction, "tickets_thread_entrato", thread=thread.mention), ephemeral=True)
 
 
 class BottoneChiuso(
@@ -1612,6 +1789,8 @@ class TicketsCog(CogConGruppi, commands.Cog):
         self._transcript_in_corso: set[int] = set()
         # canale -> ultimo istante (monotonic) in cui l'attività è finita nel database
         self._attivita_scritta: dict[int, float] = {}
+        # (canale, scritto dall'utente?) -> istante dell'ultima scrittura in database
+        self._chi_scrive: dict[tuple[int, bool], float] = {}
 
     @comando_di_gruppo(
         "admin-ticket",
@@ -1788,6 +1967,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         panel = await self._pannello_o_risposta(interaction, nome)
         if panel is None:
             return
+        await _svuota_riserva(interaction.guild, panel.id, "Pannello dei ticket eliminato")
         await ticket_form_repo.rimuovi_pannello(interaction.guild.id, panel.name)
         await interaction.response.send_message(
             await testo_per(interaction, "tickets_pannello_eliminato_con_il_suo", name=panel.name),
@@ -2450,7 +2630,8 @@ class TicketsCog(CogConGruppi, commands.Cog):
         mostrare. `precedente` è chi aveva il ticket prima: con l'esclusiva perde i suoi permessi.
         """
         opzioni = await _opzioni_pannello(ticket.panel_id)
-        if opzioni.categoria_presi:
+        e_thread = isinstance(channel, discord.Thread)
+        if opzioni.categoria_presi and not e_thread:
             categoria = guild.get_channel(opzioni.categoria_presi)
             if isinstance(categoria, discord.CategoryChannel) and len(categoria.channels) < opz_logic.MAX_CANALI_PER_CATEGORIA:
                 try:
@@ -2461,7 +2642,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             await self._rinomina_con_prefisso(
                 channel, opzioni.prefisso_preso, (opzioni.prefisso_preso, opzioni.prefisso_chiuso), "Ticket preso in carico"
             )
-        if opzioni.claim_esclusivo != "no":
+        if opzioni.claim_esclusivo != "no" and not e_thread:
             await self._permessi_staff(
                 guild, channel, ticket.panel_id, esclusiva=opzioni.claim_esclusivo, titolare=staff,
                 solo_admin=ticket.solo_admin,
@@ -2547,9 +2728,15 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
 
         try:
-            await interaction.channel.set_permissions(
-                bersaglio, view_channel=True, send_messages=True, read_message_history=True
-            )
+            if isinstance(interaction.channel, discord.Thread):
+                if not isinstance(bersaglio, discord.Member):
+                    await interaction.response.send_message(await testo_per(interaction, "tickets_thread_non_disponibile"), ephemeral=True)
+                    return
+                await interaction.channel.add_user(bersaglio)
+            else:
+                await interaction.channel.set_permissions(
+                    bersaglio, view_channel=True, send_messages=True, read_message_history=True
+                )
         except discord.HTTPException:
             await interaction.response.send_message(
                 await testo_per(interaction, "tickets_non_sono_riuscito_ad_aggiungere"),
@@ -2586,7 +2773,13 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
 
         try:
-            await interaction.channel.set_permissions(bersaglio, overwrite=None)
+            if isinstance(interaction.channel, discord.Thread):
+                if not isinstance(bersaglio, discord.Member):
+                    await interaction.response.send_message(await testo_per(interaction, "tickets_thread_non_disponibile"), ephemeral=True)
+                    return
+                await interaction.channel.remove_user(bersaglio)
+            else:
+                await interaction.channel.set_permissions(bersaglio, overwrite=None)
         except discord.HTTPException:
             await interaction.response.send_message(
                 await testo_per(interaction, "tickets_non_sono_riuscito_rimuovere_il"),
@@ -3168,10 +3361,12 @@ class TicketsCog(CogConGruppi, commands.Cog):
         chiedi_voto: bool,
         chiuso_da: int | None = None,
         ragione: str | None = None,
+        avviso_pronto: bool = False,
     ) -> bool:
         """
         Chiusura fatta dal bot (inattività, utente uscito) o per conto dello staff (chiusura di
         massa): stesso ordine di /ticket close. `ragione` è il motivo salvato col ticket.
+        `avviso_pronto`: il testo dice già se il canale resta (lingua del server), non si cambia.
         """
         if not await self._chiudi_e_pianifica(
             guild.id, channel.id, chiuso_da or guild.me.id, ragione, ticket.user_id, motivo
@@ -3179,7 +3374,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return False
         ticket = await ticket_repo.get_ticket_by_channel(channel.id) or ticket
         due_passi = (await _opzioni_pannello(ticket.panel_id)).chiusura_due_passi
-        if due_passi:
+        if due_passi and not avviso_pronto:
             avviso = avviso.replace("Questo canale verrà eliminato a breve.", TESTO_CANALE_RESTA)
         try:
             await channel.send(avviso, allowed_mentions=discord.AllowedMentions.none())
@@ -3209,7 +3404,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         chiusi = 0
         falliti = 0
         for ticket in await ticket_repo.list_open_tickets(guild.id, MAX_CHIUSURA_DI_MASSA):
-            channel = guild.get_channel(ticket.channel_id)
+            channel = guild.get_channel_or_thread(ticket.channel_id)
             if channel is None:
                 await ticket_repo.close_ticket_of_deleted_channel(ticket.channel_id)
                 continue
@@ -3248,7 +3443,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
     async def on_member_remove(self, member: discord.Member) -> None:
         """NF-13: chi esce dal server non può più rispondere: il suo ticket aperto si chiude."""
         for ticket in await ticket_repo.list_open_tickets_for_user(member.guild.id, member.id):
-            channel = member.guild.get_channel(ticket.channel_id)
+            channel = member.guild.get_channel_or_thread(ticket.channel_id)
             if channel is None:
                 continue
             await self._chiudi_da_sistema(
@@ -3287,7 +3482,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         if not opzioni.chiusura_due_passi:
             return False
         aggiunti = await self._nascondi_ai_non_staff(guild, channel, ticket, opzioni)
-        if opzioni.categoria_chiusi:
+        if opzioni.categoria_chiusi and not isinstance(channel, discord.Thread):
             categoria = guild.get_channel(opzioni.categoria_chiusi)
             if isinstance(categoria, discord.CategoryChannel) and len(categoria.channels) < opz_logic.MAX_CANALI_PER_CATEGORIA:
                 try:
@@ -3319,6 +3514,13 @@ class TicketsCog(CogConGruppi, commands.Cog):
         TKT-051: il ticket chiuso lo vede solo lo staff. Perdono la vista chi lo ha aperto e chi
         era stato aggiunto (utenti e ruoli fuori dallo staff). Restituisce quanti aggiunti.
         """
+        if isinstance(channel, discord.Thread):
+            # Thread privato: chi l'ha aperto esce dal thread (lo staff resta); il thread resta aperto per i bottoni.
+            try:
+                await channel.remove_user(discord.Object(id=ticket.user_id))
+            except discord.HTTPException:
+                logger.warning("Utente %s non tolto dal thread chiuso %s.", ticket.user_id, channel.id)
+            return 0
         restano = set(await _ruoli_staff(guild.id, ticket.panel_id)) | set(opzioni.ruoli_osservatori)
         restano |= {guild.id, guild.me.id} | {r.id for r in getattr(guild.me, "roles", [])}
         aggiunti = []
@@ -3352,12 +3554,15 @@ class TicketsCog(CogConGruppi, commands.Cog):
         opzioni = await _opzioni_pannello(ticket.panel_id)
         utente = guild.get_member(ticket.user_id) or discord.Object(id=ticket.user_id, type=discord.Member)
         try:
-            ow = channel.overwrites_for(utente)
-            ow.update(**opz_logic.permessi_utente(opzioni.permessi_negati))
-            await channel.set_permissions(utente, overwrite=ow, reason=f"Ticket riaperto da {da}"[:512])
+            if isinstance(channel, discord.Thread):
+                await channel.add_user(utente)
+            else:
+                ow = channel.overwrites_for(utente)
+                ow.update(**opz_logic.permessi_utente(opzioni.permessi_negati))
+                await channel.set_permissions(utente, overwrite=ow, reason=f"Ticket riaperto da {da}"[:512])
         except discord.HTTPException:
             logger.warning("Accesso dell'utente %s al ticket %s non ridato.", ticket.user_id, channel.id)
-        if opzioni.categoria_chiusi and channel.category_id == opzioni.categoria_chiusi:
+        if opzioni.categoria_chiusi and not isinstance(channel, discord.Thread) and channel.category_id == opzioni.categoria_chiusi:
             pannello = await ticket_form_repo.pannello_per_id(ticket.panel_id) if ticket.panel_id else None
             categoria = guild.get_channel(pannello.category_id) if pannello is not None else None
             if isinstance(categoria, discord.CategoryChannel) and len(categoria.channels) < opz_logic.MAX_CANALI_PER_CATEGORIA:
@@ -3577,10 +3782,18 @@ class TicketsCog(CogConGruppi, commands.Cog):
         ticket è già chiuso e qui non cambia nulla.
         """
         self._attivita_scritta.pop(channel.id, None)
+        await ticket_automazioni_repo.togli_riserva(channel.id)  # TKT-035: un canale pronto cancellato a mano
         if await ticket_repo.close_ticket_of_deleted_channel(channel.id):
             logger.info(
                 "Ticket chiuso perché il suo canale %s è stato cancellato a mano.", channel.id
             )
+
+    @commands.Cog.listener()
+    async def on_raw_thread_delete(self, payload: discord.RawThreadDeleteEvent) -> None:
+        """TKT-031: per i thread Discord non manda on_guild_channel_delete; un ticket a thread cancellato si chiude."""
+        self._attivita_scritta.pop(payload.thread_id, None)
+        if await ticket_repo.close_ticket_of_deleted_channel(payload.thread_id):
+            logger.info("Ticket chiuso perché il suo thread %s è stato cancellato.", payload.thread_id)
 
     # ================================================================
     # SPEC.md §13.12 — traccia la prima risposta nel canale ticket
@@ -3597,6 +3810,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         # NF-13: l'ultimo messaggio di una persona tiene vivo il ticket (chiusura automatica).
         if not message.author.bot and ticket.panel_id is not None:
             await self._segna_attivita(message.channel.id)
+            await self._segna_chi_scrive(message.channel.id, message.author.id == ticket.user_id)
 
         # TKT-055: l'utente che scrive ha risposto alla richiesta di chiusura: il timer non chiude più.
         if ticket.chiusura_richiesta_at is not None and message.author.id == ticket.user_id and not message.author.bot:
@@ -3622,6 +3836,19 @@ class TicketsCog(CogConGruppi, commands.Cog):
 
         await ticket_repo.record_first_response(message.channel.id, datetime.now(timezone.utc))
 
+    @commands.Cog.listener()
+    async def on_thread_update(self, prima: discord.Thread, dopo: discord.Thread) -> None:
+        """TKT-031: Discord archivia da solo un thread fermo; se il ticket è aperto il thread si riapre."""
+        if not dopo.archived or prima.archived or dopo.locked:
+            return
+        ticket = await ticket_repo.get_ticket_by_channel(dopo.id)
+        if ticket is None or ticket.status != "open" or not ticket.e_thread:
+            return
+        try:
+            await dopo.edit(archived=False, reason="Ticket ancora aperto")
+        except discord.HTTPException:
+            logger.warning("Thread del ticket %s non riaperto dopo l'archiviazione.", dopo.id)
+
     async def _assegna_al_primo(self, message: discord.Message, ticket) -> None:
         """TKT-052: il primo dello staff che scrive prende in carico il ticket (vince uno solo)."""
         opzioni = await _opzioni_pannello(ticket.panel_id)
@@ -3638,6 +3865,18 @@ class TicketsCog(CogConGruppi, commands.Cog):
     def _cog_risposte(self):
         """Il cog delle risposte standard (#139), se caricato."""
         return self.bot.get_cog("RisposteStandardCog") if self.bot is not None else None
+
+    async def _segna_chi_scrive(self, channel_id: int, da_utente: bool) -> None:
+        """TKT-029 / TKT-064: ultimo messaggio dell'utente o dello staff, al più una scrittura al minuto."""
+        adesso = time.monotonic()
+        chiave = (channel_id, da_utente)
+        ultima = self._chi_scrive.get(chiave)
+        if ultima is not None and adesso - ultima < _ATTIVITA_OGNI_SECONDI:
+            return
+        if len(self._chi_scrive) >= _ATTIVITA_MAX_VOCI:
+            self._chi_scrive = {c: t for c, t in self._chi_scrive.items() if adesso - t < _ATTIVITA_OGNI_SECONDI}
+        self._chi_scrive[chiave] = adesso
+        await ticket_automazioni_repo.segna_scritto(channel_id, da_utente, datetime.now(timezone.utc))
 
     async def _segna_attivita(self, channel_id: int) -> None:
         """Scrive l'attività nel database al più una volta al minuto per canale."""
@@ -3676,4 +3915,4 @@ async def setup(bot: commands.Bot) -> None:
     # già esistenti nei server (pubblicati prima di un riavvio) di
     # continuare a funzionare.
     bot.add_view(TicketPanelView())
-    bot.add_dynamic_items(BottonePannello, BottoneVoto, BottoneRichiestaChiusura, BottoneChiuso, MenuGestisci)
+    bot.add_dynamic_items(BottonePannello, BottoneVoto, BottoneRichiestaChiusura, BottoneChiuso, MenuGestisci, BottoneEntra)

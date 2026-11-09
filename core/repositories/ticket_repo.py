@@ -47,6 +47,7 @@ class Ticket:
     ruoli_dati: tuple[int, ...] = ()
     note_thread_id: int | None = None
     solo_admin: bool = False
+    e_thread: bool = False
 
 
 @dataclass(frozen=True)
@@ -270,6 +271,13 @@ class TicketRepository:
         )
         return esito.endswith(" 1")
 
+    async def set_e_thread(self, channel_id: int, valore: bool) -> bool:
+        """TKT-031: il ticket è un thread privato, non un canale."""
+        esito = await self._pool.execute(
+            "UPDATE tickets SET e_thread = $2 WHERE channel_id = $1", channel_id, valore
+        )
+        return esito.endswith(" 1")
+
     # ------------------------------------------------------------ TKT-045 livelli dei ruoli
     async def imposta_livello_ruolo(self, guild_id: int, role_id: int, livello: str) -> None:
         await self._pool.execute(
@@ -333,11 +341,16 @@ class TicketRepository:
         return result.endswith(" 1")
 
     async def riapri(self, channel_id: int) -> bool:
-        """TKT-051: porta di nuovo «aperto» un ticket chiuso (il canale è rimasto). False se non era chiuso."""
+        """
+        TKT-051: porta di nuovo «aperto» un ticket chiuso (il canale è rimasto). False se non era chiuso.
+        L'ora dell'ultima attività riparte da adesso: le regole di inattività (NF-13, TKT-064) non
+        richiudono subito un ticket appena riaperto.
+        """
         esito = await self._pool.execute(
             """
             UPDATE tickets SET status = 'open', closed_at = NULL, closed_by = NULL, close_reason = NULL,
-                   riaperto_volte = riaperto_volte + 1
+                   riaperto_volte = riaperto_volte + 1,
+                   last_activity_at = now(), ultimo_utente_at = now(), ultimo_staff_at = now()
             WHERE channel_id = $1 AND status = 'closed'
             """,
             channel_id,
@@ -646,6 +659,7 @@ def _row_to_ticket(row) -> Ticket:
         ruoli_dati=tuple(row["ruoli_dati"] or ()),
         note_thread_id=row["note_thread_id"],
         solo_admin=row["solo_admin"],
+        e_thread=row["e_thread"],
     )
 
 

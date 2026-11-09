@@ -511,3 +511,9 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 09/11 | `feat/r18mod` | `core/moderation_dm.py:durata_a_parole`, campi «Fine»/«Invito», titoli AutoMod | Testi del DM in italiano fisso, non nella lingua del server | bassa | aperto |
 | 09/11 | `feat/r18mod` | `cogs/moderation/motivo_pronto.py:VistaProposta.testo` | Severità mostrata grezza («media») anche in inglese | bassa | aperto |
 | 09/11 | `feat/r18mod` | `cogs/moderation/opzioni.py:_riepilogo` | Righe nuove in italiano fisso (come le vecchie) | bassa | aperto |
+| 09/11 | `feat/r18ticket` | 8 fix: 7322d8b giro a cursore, 2fe4aa8 riapertura, e577521 avviso chiusura (problema 3), b2fc810 riserva, 4a7367b thread cancellati, 9875ec1 utente vede il padre, e38f54f thread senza padre, 9732b72 avviso fuori dal padre, bb5bbd3 tetto ripetizioni | corretti | — | chiuso |
+| 09/11 | `feat/r18ticket` | `cogs/tickets/inattivita.py:_attesa` | Ticket a thread: niente etichetta «in attesa» (disegno T4) | bassa | aperto |
+| 09/11 | `feat/r18ticket` | `cogs/tickets/tickets.py:_nascondi_ai_non_staff` | Thread chiuso in due passi: esce solo chi ha aperto, gli aggiunti con /ticket add restano | bassa | aperto |
+| 09/11 | `feat/r18ticket` | `cogs/tickets/tickets.py:_segna_chi_scrive` | Un aggiunto non staff conta come staff (attesa e regole «staff») | bassa | aperto |
+| 09/11 | `feat/r18ticket` | `cogs/tickets/inattivita.py` | 403 su sposta/crea riserva: avviso nel log a ogni giro, senza fermo dopo 3 rifiuti | bassa | aperto |
+| 09/11 | `feat/r18ticket` | `MenuGestisci` nei thread | «Sposta» e «Solo admin» non disponibili (messaggio chiaro); TKT-067 per i thread chiedeva il cambio nel DB | bassa | aperto |

@@ -30,11 +30,15 @@ from cogs.tickets.tickets import (
     _membro_staff,
     apri_da_comando,
 )
+from core import ticket_autoclose_worker as regole
 from core import ticket_opzioni_logic as logica
+from core import ticket_thread_logic as thread_logic
 from core.command_access import Livello, richiedi
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
 from core.i18n import testo_per
+from core.repositories.ticket_automazioni_repo import TroppeRegole as TroppeRegoleInattivita
+from core.repositories.ticket_automazioni_repo import ticket_automazioni_repo
 from core.repositories.ticket_form_repo import PannelloTicket, ticket_form_repo
 from core.repositories.ticket_opzioni_repo import TroppeRegole, ticket_opzioni_repo
 from core.role_safety import check_role_assignable
@@ -197,6 +201,7 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
         massimo="Ticket aperti nel pannello (0 = senza tetto)",
         pausa_minuti="Minuti tra due aperture dello stesso utente (0 = nessuna)",
         esenti="Ruoli che saltano limiti, orari e sospensione (o «nessuno»)",
+        riserva="Canali vuoti già pronti per aprire i ticket subito (0-5, 0 = nessuno)",
     )
     @app_commands.autocomplete(pannello=completa_pannelli)
     async def limiti(
@@ -206,9 +211,12 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
         massimo: app_commands.Range[int, 0, logica.MAX_APERTI_PANNELLO] | None = None,
         pausa_minuti: app_commands.Range[int, 0, logica.MAX_PAUSA_SECONDI // 60] | None = None,
         esenti: app_commands.Range[str, 1, 500] | None = None,
+        riserva: app_commands.Range[int, 0, regole.MAX_RISERVA] | None = None,
     ) -> None:
         def prepara(guild):
             valori = {}
+            if riserva is not None:
+                valori["riserva_canali"] = riserva
             if massimo is not None:
                 valori["max_aperti"] = massimo or None
             if pausa_minuti is not None:
@@ -303,12 +311,15 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
             allowed_mentions=NIENTE,
         )
 
-    @comando_di_gruppo("admin-ticket-opzioni", nome="canale", descrizione="Nome del canale e categorie di riserva.")
+    @comando_di_gruppo("admin-ticket-opzioni", nome="canale", descrizione="Nome del canale, categorie di riserva e ticket come thread privati.")
     @richiedi(Livello.ADMIN)
     @app_commands.describe(
         pannello="Il pannello",
         nome="Modello: {numero} {num} {utente} {nickname} (o «nessuno»)",
         riserva="Fino a 5 categorie se la principale è piena (o «nessuno»)",
+        thread="Apri i ticket come thread privati (serve il canale dei thread)",
+        canale_thread="Canale dove nascono i thread privati dei ticket",
+        canale_avvisi="Canale degli avvisi con il bottone «Entra» per lo staff",
     )
     @app_commands.autocomplete(pannello=completa_pannelli)
     async def canale(
@@ -317,9 +328,24 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
         pannello: app_commands.Range[str, 1, 50],
         nome: app_commands.Range[str, 1, logica.MAX_NOME_CANALE] | None = None,
         riserva: app_commands.Range[str, 1, 300] | None = None,
+        thread: bool | None = None,
+        canale_thread: discord.TextChannel | None = None,
+        canale_avvisi: discord.TextChannel | None = None,
     ) -> None:
+        padre_salvato = None
+        if thread and canale_thread is None and interaction.guild is not None:
+            panel = await ticket_form_repo.pannello_per_nome(interaction.guild.id, pannello.strip())
+            padre_salvato = (await ticket_opzioni_repo.opzioni(panel.id)).canale_padre_id if panel else None
+
         def prepara(guild):
+            thread_logic.controlla_thread(thread, canale_thread.id if canale_thread else padre_salvato)
             valori = {}
+            if thread is not None:
+                valori["tipo"] = "thread" if thread else "canale"
+            if canale_thread is not None:
+                valori["canale_padre_id"] = canale_thread.id
+            if canale_avvisi is not None:
+                valori["canale_avvisi_id"] = canale_avvisi.id
             if nome is not None:
                 spento = nome.strip().lower() == "nessuno"
                 valori["nome_modello"] = None if spento else logica.controlla_modello_nome(nome)
@@ -534,6 +560,100 @@ class TicketOpzioniCog(CogConGruppi, commands.Cog):
             return valori
 
         await self._salva(interaction, pannello, prepara)
+
+    @comando_di_gruppo("admin-ticket-opzioni", nome="attesa", descrizione="Sposta in una categoria i ticket che aspettano l'utente.")
+    @richiedi(Livello.ADMIN)
+    @app_commands.describe(
+        pannello="Il pannello",
+        categoria="Categoria «in attesa dell'utente»",
+        dopo_minuti="Minuti dalla risposta dello staff (0 = spento)",
+    )
+    @app_commands.autocomplete(pannello=completa_pannelli)
+    async def attesa(
+        self,
+        interaction: discord.Interaction,
+        pannello: app_commands.Range[str, 1, 50],
+        categoria: discord.CategoryChannel | None = None,
+        dopo_minuti: app_commands.Range[int, 0, regole.MAX_MINUTI] | None = None,
+    ) -> None:
+        def prepara(guild):
+            valori = {}
+            if categoria is not None:
+                valori["attesa_categoria_id"] = categoria.id
+            if dopo_minuti is not None:
+                valori["attesa_minuti"] = dopo_minuti
+            return valori
+
+        await self._salva(interaction, pannello, prepara)
+
+    @comando_di_gruppo("admin-ticket-opzioni", nome="regole", descrizione="Regole: se nessuno scrive da N minuti, chiudi, elimina o scrivi.")
+    @richiedi(Livello.ADMIN)
+    @app_commands.describe(
+        pannello="Il pannello",
+        operazione="Aggiungi una regola, toglila o guarda l'elenco",
+        chi="Chi non scrive: utente, staff o chiunque",
+        minuti="Minuti senza messaggi (da 5)",
+        azione="Cosa fare: chiudi, elimina o messaggio",
+        testo="Il messaggio da scrivere ({utente} = chi ha aperto il ticket)",
+        ripeti="Ripeti il messaggio ogni N minuti (al massimo 3 volte senza risposta)",
+        numero="Numero della regola da togliere (lo trovi nell'elenco)",
+    )
+    @app_commands.choices(
+        operazione=[app_commands.Choice(name=n, value=n) for n in ("aggiungi", "togli", "elenco")],
+        chi=[app_commands.Choice(name=n, value=n) for n in regole.CHI],
+        azione=[app_commands.Choice(name=n, value=n) for n in regole.AZIONI],
+    )
+    @app_commands.autocomplete(pannello=completa_pannelli)
+    async def regole_inattivita(
+        self,
+        interaction: discord.Interaction,
+        pannello: app_commands.Range[str, 1, 50],
+        operazione: app_commands.Choice[str],
+        chi: app_commands.Choice[str] | None = None,
+        minuti: app_commands.Range[int, regole.MIN_MINUTI, regole.MAX_MINUTI] | None = None,
+        azione: app_commands.Choice[str] | None = None,
+        testo: app_commands.Range[str, 1, regole.MAX_TESTO_REGOLA] | None = None,
+        ripeti: bool = False,
+        numero: app_commands.Range[int, 1, 2_000_000_000] | None = None,
+    ) -> None:
+        panel = await self._pannello(interaction, pannello)
+        if panel is None:
+            return
+        if operazione.value == "aggiungi":
+            if chi is None or minuti is None or azione is None:
+                await interaction.response.send_message("Per aggiungere servono «chi», «minuti» e «azione».", ephemeral=True)
+                return
+            try:
+                dati = regole.regola_valida(chi.value, minuti, azione.value, testo, ripeti)
+                nuova = await ticket_automazioni_repo.aggiungi_regola(panel.id, *dati)
+            except regole.ErroreRegola as errore:
+                await interaction.response.send_message(str(errore), ephemeral=True)
+                return
+            except TroppeRegoleInattivita:
+                await interaction.response.send_message(
+                    f"Un pannello può avere al massimo {regole.MAX_REGOLE_PANNELLO} regole: toglierne una.", ephemeral=True
+                )
+                return
+            await interaction.response.send_message(f"Regola #{nuova.id} aggiunta.", ephemeral=True)
+            return
+        if operazione.value == "togli":
+            if numero is None:
+                await interaction.response.send_message("Per togliere serve il «numero» della regola.", ephemeral=True)
+                return
+            tolta = await ticket_automazioni_repo.togli_regola(panel.id, numero)
+            await interaction.response.send_message(
+                f"Regola #{numero} tolta." if tolta else "Nessuna regola con questo numero in questo pannello.", ephemeral=True
+            )
+            return
+        elenco = await ticket_automazioni_repo.regole(panel.id)
+        righe = [
+            f"**#{r.id}** · se {r.chi} non scrive da {r.minuti} min → {r.azione}"
+            + (f" «{r.testo[:60]}»" if r.testo else "") + (" (ripetuta)" if r.ripeti else "")
+            for r in elenco
+        ]
+        await interaction.response.send_message(
+            ("\n".join(righe) or "Nessuna regola in questo pannello.")[:2000], ephemeral=True, allowed_mentions=NIENTE
+        )
 
     @comando_di_gruppo("admin-ticket-opzioni", nome="mostra", descrizione="Tutte le opzioni di un pannello.")
     @richiedi(Livello.ADMIN)
