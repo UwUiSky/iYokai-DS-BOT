@@ -91,7 +91,8 @@ class ImageSearchFetcherService:
                     return None
                 payload = await risposta.json()
         except (aiohttp.ClientError, TimeoutError, ValueError) as exc:
-            logger.warning("Impossibile contattare Pixabay: %s", exc)
+            # Niente testo dell'eccezione: aiohttp ci scrive l'indirizzo intero, con la chiave.
+            logger.warning("Impossibile contattare Pixabay (%s).", type(exc).__name__)
             return None
 
         risultati = parse_pixabay_hits(payload)

@@ -106,3 +106,25 @@ async def test_server_irraggiungibile_restituisce_none():
         assert await service.fetch_image("chiave-finta", "gatto", random.Random(1)) is None
     finally:
         await service.close()
+
+
+@pytest.mark.asyncio
+async def test_il_log_non_contiene_mai_la_chiave_se_la_risposta_non_e_json(caplog):
+    """aiohttp mette l'indirizzo completo (con `key=`) nel testo di ContentTypeError: non va nel log."""
+
+    async def html(request):
+        return web.Response(text="<html>no</html>", content_type="text/html")
+
+    app = web.Application()
+    app.router.add_get("/api/", html)
+    server = TestServer(app)
+    await server.start_server()
+    service = ImageSearchFetcherService(search_url=str(server.make_url("/api/")))
+    try:
+        with caplog.at_level("WARNING"):
+            assert await service.fetch_image("CHIAVE-SEGRETA-123", "gatto", random.Random(1)) is None
+        assert "CHIAVE-SEGRETA-123" not in caplog.text
+        assert caplog.text  # il problema resta annotato
+    finally:
+        await service.close()
+        await server.close()
