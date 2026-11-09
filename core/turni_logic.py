@@ -102,7 +102,10 @@ def reset_wow(adesso: datetime) -> dict[str, int]:
 async def splatoon3(cache, adesso: int, scarica=None) -> dict | None:
     """I turni di Splatoon 3, dalla cache comune o dalla fonte; None se la fonte non risponde bene."""
     salvato = await cache.leggi("turni:splatoon3")
-    if salvato is not None and any(t["fine"] > adesso for m in salvato.get("modi", []) for t in m["turni"]):
+    if salvato is not None and (
+        any(t["fine"] > adesso for m in salvato.get("modi", []) for t in m["turni"])
+        or any(t["fine"] > adesso for t in salvato.get("salmon", []))
+    ):
         return salvato
     if scarica is None:
         from core.safe_http import safe_get
