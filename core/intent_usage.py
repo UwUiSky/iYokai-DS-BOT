@@ -74,6 +74,7 @@ USI: dict[str, tuple[UsoIntent, ...]] = {
         UsoIntent("Level resets on leave or ban (off by default)", "cogs/leveling/azzeramenti.py", "Reset the XP of a member who left, only if the server turned it on"),
         UsoIntent("Level reward roles on rejoin", "cogs/leveling/leveling.py", "Give a returning member the reward roles of their level"),
         UsoIntent("Button polls", "cogs/utility/sondaggi_bottoni.py", "Remove the vote of a member who left or was banned"),
+        UsoIntent("Tag triggers on roles", "cogs/utility/inneschi.py", "Run a tag when the server's chosen role is given or taken"),
     ),
     INTENT_MESSAGE_CONTENT: (
         UsoIntent("AutoMod filters", "cogs/automod/automod.py", "Read text to apply the server rules"),

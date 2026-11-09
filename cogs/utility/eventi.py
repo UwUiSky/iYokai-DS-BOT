@@ -316,6 +316,20 @@ class EventiCog(CogConGruppi, commands.Cog):
         await eventi_repo.imposta_evento_discord(e["id"], nativo.id)
         return True
 
+    async def _aggiorna_evento_discord(self, e) -> None:
+        """Dopo `/eventi modifica`: titolo e data dell'evento nativo seguono quelli del bot."""
+        guild = self.bot.get_guild(e["guild_id"])
+        if guild is None or not e["discord_event_id"] or not guild.me.guild_permissions.manage_events:
+            return
+        nativo = guild.get_scheduled_event(e["discord_event_id"])
+        if nativo is None:
+            return
+        inizio = _aware(e["quando"])
+        try:
+            await nativo.edit(name=e["titolo"][: L.MAX_TITOLO], start_time=inizio, end_time=inizio + timedelta(hours=3))
+        except discord.HTTPException:
+            logger.warning("Evento %s: evento nativo non aggiornato", e["id"], exc_info=True)
+
     async def _togli_evento_discord(self, e) -> None:
         guild = self.bot.get_guild(e["guild_id"])
         if guild is None or not e["discord_event_id"]:
@@ -394,6 +408,8 @@ class EventiCog(CogConGruppi, commands.Cog):
         nuovo = await eventi_repo.prendi(e["id"])
         if data is not None:
             await self._pianifica_promemoria(nuovo)
+        if titolo is not None or data is not None:
+            await self._aggiorna_evento_discord(nuovo)
         await self.aggiorna_messaggio(e["id"])
         await self._avvisa_promossi(nuovo, promossi)
         await interaction.followup.send(t("ev_modificato", lingua), ephemeral=True)

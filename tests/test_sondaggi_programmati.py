@@ -316,3 +316,58 @@ async def test_gestisci_annulla_nativo_programmato(nativi, repo, monkeypatch):
     await c
     assert i.response.send_message.await_args.args[0] == M.t("sb_nativo_annullato", "it")
     assert await nativi.prendi(n) is None
+
+
+@pytest.mark.asyncio
+async def test_nativo_end_poll_fallito_si_riprova_e_poi_si_chiude(nativi, monkeypatch):
+    from cogs.utility import poll as P
+
+    nid = await nativi.crea(G, 5, 99, "q", ["a", "b"], durata_ore=24, chiudi_a_voti=1, stato="aperto")
+    await nativi.imposta_messaggio(nid, 910)
+    cog, canale, msg = _cog_poll(monkeypatch, nativi, [[1]])
+    programma = AsyncMock()
+    monkeypatch.setattr(P.scheduler, "schedule", programma)
+    msg.end_poll = AsyncMock(side_effect=discord.HTTPException(MagicMock(status=500), "x"))
+    await cog._voto(MagicMock(message_id=910, channel_id=5), 1)
+    assert programma.await_args.args[2] == P.AZIONE_RIPROVA_CHIUSURA
+    payload = programma.await_args.args[4]
+    assert await nativi.prendi(nid) is not None  # la riga resta finché il poll non è chiuso
+    msg.end_poll = AsyncMock()
+    await cog.riprova_chiusura(G, 99, payload)
+    msg.end_poll.assert_awaited_once()
+    assert await nativi.prendi(nid) is None
+
+
+@pytest.mark.asyncio
+async def test_nativo_riprova_chiusura_messaggio_sparito_pulisce(nativi, monkeypatch):
+    from cogs.utility import poll as P
+
+    nid = await nativi.crea(G, 5, 99, "q", ["a", "b"], durata_ore=24, chiudi_a_voti=1, stato="aperto")
+    await nativi.imposta_messaggio(nid, 911)
+    cog, canale, msg = _cog_poll(monkeypatch, nativi, [[1]])
+    msg.end_poll = AsyncMock(side_effect=discord.NotFound(MagicMock(status=404), "x"))
+    programma = AsyncMock()
+    monkeypatch.setattr(P.scheduler, "schedule", programma)
+    await cog.riprova_chiusura(G, 99, {"id": nid, "channel_id": 5, "message_id": 911, "tentativo": 1})
+    programma.assert_not_awaited()
+    assert await nativi.prendi(nid) is None
+
+
+@pytest.mark.asyncio
+async def test_bottoni_programmato_trova_anche_i_thread(repo, monkeypatch):
+    from cogs.utility import sondaggi_bottoni as M
+
+    s = await _programmato(repo)
+    monkeypatch.setattr(M, "sondaggi_repo", repo)
+    monkeypatch.setattr(M.scheduler, "schedule", AsyncMock())
+    thread = MagicMock()
+    thread.send = AsyncMock(return_value=MagicMock(id=555))
+    guild = MagicMock()
+    guild.get_channel_or_thread.return_value = thread
+    bot = MagicMock()
+    bot.get_channel.return_value = None
+    bot.get_guild.return_value = guild
+    cog = M.SondaggiBottoniCog(bot)
+    cog._disegna = AsyncMock(return_value=(MagicMock(), MagicMock()))
+    await cog.alla_apertura(G, 99, {"id": s})
+    thread.send.assert_awaited_once()

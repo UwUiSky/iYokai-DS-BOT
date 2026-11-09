@@ -1,26 +1,22 @@
 # Memoria di dev-utilita
 
 ## Aggiornata
-09/11/2026 · ramo feat/r20util (worktree /home/claude/wt/r20util, env scratchpad/env_r20util.sh, DB iyokai_w20util) · blocco Utility #128 B8-B15, D69. Migrazioni da 0547 (0546 presa da B7).
+09/11/2026 · r24util (feat/r24util, DB iyokai_wr24util, env /tmp/env_wr24util.sh) · #128 B25-B28 fatti; corretti gli 8 punti del revisore + 3 bassi. Migrazioni: 0565 usata, libere 0566-0569.
 
 ## In corso
-- r23util (feat/r23util): B23 e B24 fatti (0560, 0561). Prossimo: blocchi successivi di #128 (vedi disegno); migrazioni libere da 0562 a 0569. Smoke da fare (non lanciato).
+- #128 parte C finita e corretta (rimandata dal revisore, 8 punti fatti). Prossimo: nuovo parere del revisore; smoke da fare (non lanciato) dell'orchestratore.
 - Aperto per altri: tests/test_command_search_bilingue.py e _bug147 falliscono anche su origin/main.
 
 ## Fatto
-- r23util B23: `inizia_tra` su bottoni (stato programmato, scheduler sondaggio_apri, repo.apri) e su poll nativo (tabella sondaggi_nativi 0560), chiudi_a_voti nativo (on_raw_poll_vote_add/remove, contatore, end_poll), `/sondaggi gestisci` elenco|riepilogo|chiudi, testo sb_opzione_tolta. B24 `/eventi` crea|elenco|modifica|annulla (0561, eventi_repo, cogs/utility/eventi.py, gruppo eventi in command_groups).
-- r22util B22 sondaggio a bottoni: repo con advisory lock, DynamicItem sb:<id>:<n>, pesi, modifica, chiusura (0559). Migrazioni libere da 0559 a 0569.
-- r21util B20 tag reazioni/si_cancella_dopo (scheduler)/cancella_messaggi/anche_modificati; B21 /tag crea|modifica|elimina|prendi, /admin-tag tag creatori|sostituisci|esporta|importa|gruppi (0557 ha tutte le colonne); UTL-184 /mod-ban massa invito.
-- r21util B16 citazioni+uso comandi+registro staff (0555); B17 emoji/sticker/thread/voice vai/massa esporta; B18 regex/inizia/svuota/globali (0556); B19 gruppi /tag e /admin-tag, opzioni, pesi, 4000 (0557). /fun quote NON spostato (cogs/fun e di r21fun).
-- r20util B15 conteggio: traguardo, importa, avvisami (0553). togli_canale cancella anche punteggi, traguardi e avvisi del canale.
-- r20util B14 conteggio: cog nuovo cogs/utility/conteggio.py, /admin-giochi conteggio canale|regole, /giochi conteggio classifica (0552); tolto da coin_games.
-- r20util B13 inviti: riallinea/azzera/esporta/statistiche + segnaposto benvenuto (0551). UTL-184 non fatto (cogs/moderation, non mio).
-- r20util B12 inviti: codici, etichetta+ruolo, crea, cancella (0550). Ruolo solo se codice riconosciuto, non pending, gerarchia di bot e staff.
-- r20util B11 inviti: /admin-inviti impostazioni|bonus|escludi, ingressi finti (0549). Rientro rilevato solo entro 90 giorni (le righe degli usciti scadono).
-- r20util B9-B10 giveaway: partecipanti, riepilogo, opzioni, ruoli escluso/premio, immagine, modifica, riestrai, /fun casuale membro (0548).
-- r20util B8 starboard: classifica/caso/blocca/canale_auto (0547).
-- r19util B1 /utility caratteri|cronometro|novita + gruppo /web (wiki, dizionario, emergenza); B2 /web meteo|film|gioco|prezzo|accorcia (0540); B3 /admin-messaggi scrivi|auto, fissi elenco/modello (0541); B4 embed json|bottoni|altri|V2 (0542); B5 programmati ripeti/ora/salta (payload, niente 0543); B6 compleanni staff/prossimi, iscritti promemoria, fuso, menu Orari (0544); B7 suggerimenti opzioni (0545).
-- Giri vecchi (r4-r11): autorole, starboard, tag, autoresponder, greetings, role menu, embed, contatori, compleanni, inviti, moduli, /ruoli, /utility scheda, suggerimenti decisi, poll, promemoria ripetuti, attività, benvenuto extra, link d'invito personali (git log).
+- r24util B25: core/tag_script_logic.py (async, interprete proprio, tetti 200 op/prof 10/uscita 4000/valore 2000/tempo 1s, regex re2), solo se ha_script() in CustomCommandsCog._prepara.
+- r24util B26: 0562 tag_dati/tag_errori, tag_script_repo, {dati:} (ArchivioMemoria/ArchivioProva), cogs/utility/automazioni.py (/tag prova, /admin-automazioni script errori).
+- r24util B27: 0563 tag_inneschi, tag_inneschi_logic (cron proprio), inneschi.py (reazione/ruolo/intervallo/orario/bottone), CustomCommandsCog.esegui_innesco, hook in BottoneTag.
+- r24util B28: 0564 comandi_server/menu_server/slash_server_stato, slash_server_logic + repo, cogs/utility/slash_server.py (albero per server, sync 1 ogni 5 min, 200/giorno, scheduler slash_server_sync).
+- r23util B23-B24 sondaggi programmati/nativi (0560), eventi (0561). r22util B22 sondaggio a bottoni (0559). r21util B16-B21 citazioni, emoji/sticker, regex, tag opzioni/reazioni, /tag crea (0555-0557).
+- r20util B8-B15 starboard, giveaway, inviti, conteggio (0547-0553). r19util B1-B7 /utility, /web, messaggi auto, embed, programmati, compleanni, suggerimenti (0540-0545).
+- Giri vecchi (r4-r11): autorole, starboard, tag, autoresponder, greetings, role menu, embed, contatori, compleanni, inviti, moduli, /ruoli, attività (git log).
+
+- r24util correzioni: monta_per_avvio (slash_server.py) chiamato da main.setup_hook prima di ogni sync; owner riservato; _monta salta le collisioni; core/tag_eliminazione.pulisci_tag_eliminato (unica pulizia); 0565 tag_dati.autore + 200 chiavi per autore (staff no); asyncio.timeout in esegui; togli_per_ruolo; blacklist e pausa 3 s negli inneschi; regex a pezzi.
 
 ## Cose imparate
 - Menu del tasto destro nel tree: get_commands() li include; command_search li rompe (vedi Aperto). Un cog con ContextMenu: cog_load chiama super().cog_load() (CogConGruppi) e poi add_command.
@@ -38,6 +34,10 @@
 - Pesi: scratchpad/uti19_pesi.py <gruppo>. Dopo B1-B7: utility 18 figli (non aggiungerne: usare opzioni), admin-messaggi 5119/8, admin-bot 4220, level 3182.
 - Elenchi: descrizioni parametri ≤95 caratteri; nessuna opzione obbligatoria dopo una facoltativa; Range su ogni testo libero.
 - Migrazione già applicata in un DB di test: mai riscriverla, usare il numero dopo.
+- Script dei tag: core/tag_script_logic (async). {nome} sconosciuto resta testo (poi render_template). args/username sono dati: escape_mentions. Output tag 4000, ogni valore 2000. Mai eval/exec: c'è un test che lo vieta nel sorgente.
+- Gruppo /admin-automazioni: sottogruppi script/inneschi/slash in SOTTOGRUPPI. Nuovo repo con metodo mai chiamato = fallisce test_repository_callers: non aggiungere metodi non usati.
+- Comandi del server (B28): l'albero mirror del DB (_monta, solo i nostri nomi), sync = tree.sync(guild) con impronta delle definizioni, non dell'albero. Rows asyncpg jsonb tornano come stringa.
+- Range[int,...] ≤ 2**31 (test limiti a 53 bit). Un test che passa dal cog con un repo nuovo deve patcharlo (tag_script_repo, tag_inneschi_repo).
 
 ## Aperto
 - Sondaggi nativi programmati: non compaiono in `/sondaggi gestisci` (solo bottoni) e non si annullano; il conteggio a N voti conta i voti (non i votanti) e perde quelli arrivati col bot spento.
@@ -53,3 +53,6 @@
 - Fuso dell'ora fissa dei programmati: ora Europe/Rome fisso (non c'è un fuso per server); potrebbe usare utente_fuso.
 - `embed modifica` su un messaggio con più embed lo riduce al primo; il menu eventi dei log (24/25) va diviso prima di nuove voci (U14).
 - Scheletri (counters, forms, starboard, birthdays, autoroles, invites, activity_stats, autoresponder, custom_commands, embed_builder): F9/F13. #66: resta 10.14 (setup.py, non mio).
+- B25-B28: {dati:set} ha anche il tetto per autore (200, righe vecchie senza autore non contano). Ora degli script e dei cron: Europe/Rome fisso.
+- B28: la sync d'avvio ora monta prima i comandi del server (da provare su Discord nel server MAIN dopo un riavvio).
+- B27: il bottone con innesco risponde in canale a tutti; l'innesco a tempo parla come il bot (`{user}` = bot). Reazione: nessun filtro sul messaggio, solo canale.

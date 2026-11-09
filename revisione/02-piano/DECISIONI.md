@@ -1078,3 +1078,22 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
 - XP testo e vocale separati: il passato resta nel totale; le due nuove classifiche partono da zero.
 - LIV-088 coperta da LIV-082: una sola classifica, nessun doppione.
 - Peso di `/admin-livelli` misurato in B1: 3.729, nessun sotto-gruppo serve.
+
+## D72 — Economia (#125): scelte aperte del catalogo (10/11/2026, opzione consigliata, da confermare dall'owner)
+
+- Monete solo virtuali: nessun gioco d'azzardo con denaro vero, nessun acquisto di monete con denaro, nessun cambio in denaro.
+- Voto al bot (048/049): come D71, codice pronto per top.gg, spento finché iYokai non è su un elenco.
+- Interessi del deposito e premi degli eventi: pagati dalla cassa del server, mai creati dal nulla.
+- Premium: solo 050 e 037; il resto gratuito, spostabile dal pannello.
+- Banca nuova: i saldi già esistenti restano contanti.
+- Oggetti donati al fondo premi (120): convertiti in credito e tolti dall'inventario.
+- Se `/admin-economia` supera 6.800: prima il sotto-gruppo `negozio`, poi la radice `/admin-eventi`.
+
+## D73 — Musica (#126): fonti e albero (10/11/2026; Spotify chiesto dall'owner, il resto opzione consigliata, da confermare)
+
+- Spotify, Apple Music, Tidal e Deezer: solo metadati (LavaSrc); l'audio si cerca su un'altra fonte (ISRC, poi titolo). Mai la masterDecryptionKey né il cookie arl di Deezer.
+- YouTube solo tramite il plugin di Lavalink; SoundCloud, Bandcamp, Twitch, Vimeo, link diretti: diretti. Yandex: codice pronto, spento di base (richiede un account personale).
+- Mixcloud: non fattibile ora (nessun plugin verificato); si riprova quando ne esce uno.
+- Chiavi solo nell'.env di Lavalink; il bot sa solo se ci sono. App Spotify e account Apple Developer li crea l'owner.
+- `/music` resta ≤18 figli: la coda va nel sotto-gruppo `/music coda`.
+- Premium: nessuna funzione musicale per ora; spostabile dal pannello.

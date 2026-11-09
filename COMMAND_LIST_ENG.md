@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 23:37 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 23:43 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 826 commands in 48 categories.**
+**Total: 836 commands in 49 categories.**
 
 ## Admin: AI
 
@@ -71,6 +71,18 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 23:3
 - **`/admin-antiraid signals`** — Raid signals on the latest joins and action on earlier joiners.
 - **`/admin-antiraid status`** — Shows the current Anti-Raid setup.
 - **`/admin-antiraid username-check`** — Turns suspicious username pattern detection on or off.
+
+## Admin: automations
+
+- **`/admin-automazioni inneschi add`** — Make a tag run by itself: reaction, interval, schedule, button, role.
+- **`/admin-automazioni inneschi avvia-ora`** — Run a trigger right now, to test it.
+- **`/admin-automazioni inneschi list`** — The triggers of the server.
+- **`/admin-automazioni inneschi remove`** — Remove a trigger.
+- **`/admin-automazioni script errori`** — The latest 10 errors of a tag's script.
+- **`/admin-automazioni slash list`** — The server's commands and menu entries.
+- **`/admin-automazioni slash menu`** — Right-click menu entries (on a user or a message) that answer with a tag.
+- **`/admin-automazioni slash publish`** — Create a server command that answers with a tag.
+- **`/admin-automazioni slash remove`** — Remove a server command.
 
 ## Admin: AutoMod
 
@@ -886,6 +898,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 23:3
 - **`/tag create`** — Create a tag of your own (needs the role the server picked).
 - **`/tag delete`** — Delete a tag you created.
 - **`/tag edit`** — Change the text of a tag you created.
+- **`/tag proof`** — Test a tag script: saves nothing and does not write the real data.
 - **`/tag take`** — Take a tag whose author left the server.
 - **`/tag use`** — Uses a custom command of this server.
 
