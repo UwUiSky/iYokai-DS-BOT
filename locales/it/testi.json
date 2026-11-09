@@ -2108,5 +2108,12 @@
   "giveaway_non_ancora_finito": "Questo giveaway non è ancora finito.",
   "giveaway_nessuno_da_ripescare": "Non c'è nessun altro da estrarre.",
   "giveaway_riestratto_ok": "Nuova estrazione fatta: {n} vincitori.",
-  "fun_membro_nessuno": "Non trovo nessun membro da estrarre."
+  "fun_membro_nessuno": "Non trovo nessun membro da estrarre.",
+  "invites_impostazioni_extra": "Età minima dell'account: {eta} giorni · Rientri non validi: {rientri}.",
+  "invites_bonus_non_valido": "Scegli un membro vero e un numero diverso da zero.",
+  "invites_bonus_fatto": "{membro}: {quanti} punti. Bonus totale: {totale}.",
+  "invites_nessun_escluso": "Nessun membro o ruolo escluso.",
+  "invites_scegli_utente_o_ruolo": "Scegli un membro o un ruolo.",
+  "invites_troppi_esclusi": "Puoi escludere al massimo {massimo} tra membri e ruoli.",
+  "invites_escluso_fatto": "Fatto."
 }

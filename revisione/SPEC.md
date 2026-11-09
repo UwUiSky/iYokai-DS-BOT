@@ -1489,6 +1489,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 - `[x]` 15.40 Giveaway esteso (catalogo #128 B9-B10, D69, r20util) — `/admin-giveaway partecipanti|opzioni|modifica` e bottone «Partecipanti» (20 per pagina); bottone «Riepilogo» sul messaggio finale (dinamico); `avvia` e `modello` +`ruolo_escluso`, `ruolo_premio` (controllo gerarchia), `immagine`; `opzioni`: colore, emoji e testo del bottone, risposta a chi partecipa (500), messaggio ai vincitori (1000), canale di log, menu fino a 25 ruoli esclusi; menu «Riestrai giveaway» (ripesca senza chi è stato sostituito); `/fun casuale` +`membro` e `ruolo` (nessun ping). Migrazione 0548.
 
+- `[x]` 23.30 Inviti: bonus, esclusi, ingressi non contati (catalogo #128 B11, D69, r20util) — nuovo gruppo `/admin-inviti` (`admin-moduli inviti` diventa `impostazioni`, con `eta_minima_giorni` e `rientri_finti`), `bonus membro quanti` (±10.000, totale ±100.000), `escludi aggiungi|togli|elenco` (membro o ruolo, max 100; spariscono dalla classifica); gli ingressi con account giovane o rientro sono «finti» (si vedono ma non contano). Migrazione 0549 (sposta anche la politica dei comandi).
+
 ## §15 LEVELS / ECONOMY / GILDE / CLASSIFICHE
 
 - `[x]` 15.1 XP e livelli (testuale + vocale)

@@ -308,7 +308,8 @@
   "salta": "skip",
   "prossimi": "upcoming",
   "stelle": "stars",
-  "partecipanti": "participants"
+  "partecipanti": "participants",
+  "admin-inviti": "admin-invites"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -605,7 +606,6 @@
   "level inviti utente": "How many people a member invited.",
   "level inviti storico": "Who invited a member and the last people they brought in.",
   "level inviti link": "Your personal invite link, served through the bot's website.",
-  "admin-moduli inviti": "Invite log channel and who has the personal link.",
   "level leaderboard": "Shows the server leaderboard.",
   "level livelli-recenti": "The last 25 level-ups in the server.",
   "monete attese": "When you can use daily and work again.",
@@ -1110,7 +1110,7 @@
   "admin-sicurezza": "Security (admin): panic, verify, global ban, spam-trap, escalation",
   "admin-antinuke": "Anti-nuke (admin): thresholds, trust, guards and cases",
   "admin-antiraid": "Anti-raid (admin): thresholds, join filters, signals and alerts",
-  "admin-moduli": "Server modules (admin): alerts, starboard, counters, birthdays, invites",
+  "admin-moduli": "Server modules (admin): alerts, starboard, counters, birthdays",
   "admin-economia": "Economy (admin): shop, treasury, coin prizes, monthly announcements",
   "admin-livelli": "Levels and XP (admin): gain, announcements, rewards, exclusions, progress",
   "admin-ruoli": "Server roles (admin): give and remove, rewards, automatic, menus, bulk",
@@ -1163,7 +1163,11 @@
   "level stelle caso": "A random message from the board.",
   "admin-giveaway partecipanti": "Who takes part in a giveaway, 20 per page.",
   "admin-giveaway opzioni": "Look, messages, log and excluded roles of giveaways.",
-  "admin-giveaway modifica": "Change duration, winners, prize or image of a giveaway."
+  "admin-giveaway modifica": "Change duration, winners, prize or image of a giveaway.",
+  "admin-inviti": "Invites (admin): settings, bonus, excluded, codes, labels, cleanup, export",
+  "admin-inviti impostazioni": "Invite log, personal link and entries that do not count.",
+  "admin-inviti bonus": "Add or remove invites for a member (staff points).",
+  "admin-inviti escludi": "Hide members or roles from the invite leaderboard."
  },
  "parametri": {},
  "menu": {

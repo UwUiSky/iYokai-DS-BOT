@@ -85,7 +85,7 @@ async def test_ingresso_registrato_e_bot_ignorato():
         await cog.on_member_join(bot)
         rec.assert_not_awaited()
         await cog.on_member_join(umano)
-        rec.assert_awaited_once_with(guild.id, 21, 5, "abc", "normale")
+        rec.assert_awaited_once_with(guild.id, 21, 5, "abc", "normale", False)
 
 
 @pytest.mark.asyncio
@@ -102,7 +102,7 @@ async def test_invito_sconosciuto_o_auto_invito_registrati_senza_invitante():
             with patch.object(modulo.invite_tracker, "resolve_join_invite", AsyncMock(return_value=risposta)):
                 await cog.on_member_join(m)
     assert [c.args[2:] for c in rec.await_args_list] == [
-        (None, None, "sconosciuto"), (None, "abc", "normale"), (None, "abc", "normale"),
+        (None, None, "sconosciuto", False), (None, "abc", "normale", False), (None, "abc", "normale", False),
     ]
 
 
@@ -143,7 +143,7 @@ async def test_albero_dei_comandi():
     await modulo.setup(bot)
     for nome in ("utente", "classifica", "storico", "link"):
         assert comando_nel_gruppo("level", f"inviti {nome}") is not None
-    assert comando_nel_gruppo("admin-moduli", "inviti") is not None  # D56: le opzioni sono per lo staff
+    assert comando_nel_gruppo("admin-inviti", "impostazioni") is not None  # D69: le opzioni sono per lo staff
 
 
 @pytest.mark.asyncio

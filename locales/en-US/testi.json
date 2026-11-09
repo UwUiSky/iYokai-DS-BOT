@@ -2108,5 +2108,12 @@
   "giveaway_non_ancora_finito": "This giveaway has not ended yet.",
   "giveaway_nessuno_da_ripescare": "There is nobody else to draw.",
   "giveaway_riestratto_ok": "New draw done: {n} winners.",
-  "fun_membro_nessuno": "I cannot find any member to pick."
+  "fun_membro_nessuno": "I cannot find any member to pick.",
+  "invites_impostazioni_extra": "Minimum account age: {eta} days · Rejoins not counted: {rientri}.",
+  "invites_bonus_non_valido": "Pick a real member and a number other than zero.",
+  "invites_bonus_fatto": "{membro}: {quanti} points. Total bonus: {totale}.",
+  "invites_nessun_escluso": "No member or role is excluded.",
+  "invites_scegli_utente_o_ruolo": "Pick a member or a role.",
+  "invites_troppi_esclusi": "You can exclude {massimo} members and roles at most.",
+  "invites_escluso_fatto": "Done."
 }

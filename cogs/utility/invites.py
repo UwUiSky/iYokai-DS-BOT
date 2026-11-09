@@ -7,7 +7,7 @@ normale, vanity, sconosciuto); si vede quante persone ha invitato un membro, la 
 server (10 righe), lo storico di un membro e da chi è stato invitato. Ogni membro può avere il
 suo link personale «finto vanity» sul sito (core/invite_service.py). L'attribuzione è "giusta o
 sconosciuta", ma con ingressi simultanei può mancare: lo diciamo sempre (LC-6).
-Comandi: `/level inviti utente|classifica|storico|link`; le opzioni in `/admin-moduli inviti`.
+Comandi: `/level inviti utente|classifica|storico|link`; per lo staff `/admin-inviti impostazioni|bonus|escludi`.
 Funzioni coperte: SPEC §23 (NF-27, link personali r10)
 """
 
@@ -28,6 +28,7 @@ from core.i18n import testo_per
 from core.invite_tracker import invite_tracker
 from core.premium import PremiumModule, registry
 from core.repositories.invite_stats_repo import invite_stats_repo
+from core.repositories.inviti_extra_repo import TroppiEsclusi, inviti_extra_repo
 
 logger = logging.getLogger("iyokai.invites")
 
@@ -42,6 +43,32 @@ AVVISO_ATTRIBUZIONE = (
 
 def _data(quando) -> str:
     return f"<t:{int(quando.timestamp())}:d>"
+
+
+def _righe_extra(s) -> str:
+    """Bonus dello staff e ingressi non contati (account giovani o rientri), solo se ce ne sono."""
+    extra = ""
+    if s.bonus:
+        extra += f"\nBonus dello staff: {s.bonus:+d} (totale {s.punti})."
+    if s.finti:
+        extra += f"\nIngressi non contati (account giovani o rientri): {s.finti}."
+    return extra
+
+
+async def _senza_esclusi(guild: discord.Guild, righe: list, limite: int) -> list:
+    """Toglie dalla classifica gli utenti e i ruoli esclusi dallo staff."""
+    if not righe:
+        return []
+    utenti, ruoli = await inviti_extra_repo.esclusi(guild.id)
+    if not utenti and not ruoli:
+        return righe[:limite]
+    tenuti = []
+    for uid, s in righe:
+        membro = guild.get_member(uid)
+        if uid in utenti or (membro is not None and ruoli & {r.id for r in membro.roles}):
+            continue
+        tenuti.append((uid, s))
+    return tenuti[:limite]
 
 
 def _riga_invitato_da(ingresso) -> str:
@@ -62,7 +89,7 @@ class InvitesCog(CogConGruppi, commands.Cog):
             return
         try:
             trovato = await invite_tracker.resolve_join_invite(member.guild, member.id)
-            ingresso = await invite_service.registra_ingresso(member.guild, member.id, trovato)
+            ingresso = await invite_service.registra_ingresso(member.guild, member.id, trovato, member.created_at)
             await self._scrivi_nel_registro(member, ingresso)
         except Exception:
             logger.exception("Errore nel registrare l'invito di %s", member.id)
@@ -121,7 +148,7 @@ class InvitesCog(CogConGruppi, commands.Cog):
         ingresso = await invite_stats_repo.ingresso_di(interaction.guild.id, bersaglio.id)
         await interaction.response.send_message(
             f"{bersaglio.mention} ha invitato {s.totale} persone: {s.presenti} sono ancora nel server, "
-            f"{s.totale - s.presenti} sono uscite.\n{_riga_invitato_da(ingresso)}\n{AVVISO_ATTRIBUZIONE}",
+            f"{s.totale - s.presenti} sono uscite.{_righe_extra(s)}\n{_riga_invitato_da(ingresso)}\n{AVVISO_ATTRIBUZIONE}",
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
 
@@ -129,14 +156,15 @@ class InvitesCog(CogConGruppi, commands.Cog):
     async def classifica(self, interaction: discord.Interaction) -> None:
         if not await self._pronto(interaction):
             return
-        righe = await invite_stats_repo.top(interaction.guild.id)
+        righe = await _senza_esclusi(interaction.guild, await invite_stats_repo.top(interaction.guild.id, 100, tetto=100), 10)
         if not righe:
             await interaction.response.send_message(
                 f"Nessun invito registrato finora.\n{AVVISO_ATTRIBUZIONE}", ephemeral=True
             )
             return
         testo = "\n".join(
-            f"{i}. <@{uid}>: {s.presenti} presenti ({s.totale} in tutto)" for i, (uid, s) in enumerate(righe, 1)
+            f"{i}. <@{uid}>: {s.punti} presenti ({s.totale} in tutto{f', bonus {s.bonus:+d}' if s.bonus else ''})"
+            for i, (uid, s) in enumerate(righe, 1)
         )
         await interaction.response.send_message(
             f"**Classifica inviti**\n{testo}\n{AVVISO_ATTRIBUZIONE}",
@@ -190,12 +218,14 @@ class InvitesCog(CogConGruppi, commands.Cog):
             ephemeral=True,
         )
 
-    @comando_di_gruppo("admin-moduli", nome="inviti", descrizione="Registro degli inviti e chi ha il link personale.")
+    @comando_di_gruppo("admin-inviti", nome="impostazioni", descrizione="Registro degli inviti, link personale e ingressi non contati.")
     @app_commands.describe(
         canale="Dove scrivere chi entra e con quale link",
         ruolo="Solo chi ha questo ruolo può avere il link personale",
         togli="Togli il canale del registro o il ruolo (il modulo si accende con /admin-bot setup attiva)",
         chi="Chi ha il link personale",
+        eta_minima_giorni="Gli account più giovani di tanti giorni non contano (0 = spento)",
+        rientri_finti="Chi esce e rientra conta come ingresso non valido? (non cambia se vuoto)",
     )
     @app_commands.choices(chi=[
         app_commands.Choice(name="tutti", value="tutti"),
@@ -215,6 +245,8 @@ class InvitesCog(CogConGruppi, commands.Cog):
         ruolo: discord.Role | None = None,
         togli: app_commands.Choice[str] | None = None,
         chi: app_commands.Choice[str] | None = None,
+        eta_minima_giorni: app_commands.Range[int, 0, logica.MAX_ETA_MINIMA_GIORNI] | None = None,
+        rientri_finti: bool | None = None,
     ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(await testo_per(interaction, "guild_only_command"), ephemeral=True)
@@ -225,7 +257,10 @@ class InvitesCog(CogConGruppi, commands.Cog):
         nuovo_ruolo = None if togli and togli.value == "ruolo" else (ruolo.id if ruolo else invite_service.NON_CAMBIARE)
         try:
             await invite_service.imposta_opzioni(
-                guild, canale_log=nuovo_canale, ruolo_link=nuovo_ruolo, modalita=nuova_modalita, changed_by=interaction.user.id
+                guild, canale_log=nuovo_canale, ruolo_link=nuovo_ruolo, modalita=nuova_modalita,
+                eta_minima=invite_service.NON_CAMBIARE if eta_minima_giorni is None else eta_minima_giorni,
+                rientri_finti=invite_service.NON_CAMBIARE if rientri_finti is None else rientri_finti,
+                changed_by=interaction.user.id,
             )
         except ImpostazioneNonValida as errore:
             await interaction.response.send_message(str(errore), ephemeral=True)
@@ -235,9 +270,72 @@ class InvitesCog(CogConGruppi, commands.Cog):
             f"Modulo inviti: {'acceso' if o.attivo else 'spento'}.\n"
             f"Registro: {f'<#{o.canale_log_id}>' if o.canale_log_id else 'nessun canale'}.\n"
             f"Link personale: {logica.ETICHETTE_MODALITA[o.modalita]}"
-            f"{f' (<@&{o.ruolo_link_id}>)' if o.modalita == 'ruolo' and o.ruolo_link_id else ''}.",
+            f"{f' (<@&{o.ruolo_link_id}>)' if o.modalita == 'ruolo' and o.ruolo_link_id else ''}.\n"
+            + await testo_per(
+                interaction, "invites_impostazioni_extra", eta=o.eta_minima_giorni or "-",
+                rientri="sì" if o.rientri_finti else "no",
+            ),
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
+
+    @comando_di_gruppo("admin-inviti", nome="bonus", descrizione="Aggiungi o togli inviti a un membro (punti dello staff).")
+    @app_commands.describe(membro="A chi cambiare i punti", quanti="Quanti punti aggiungere (negativo per togliere)")
+    @richiedi(Livello.ADMIN)
+    async def bonus(
+        self, interaction: discord.Interaction, membro: discord.Member,
+        quanti: app_commands.Range[int, -logica.MAX_BONUS, logica.MAX_BONUS],
+    ) -> None:
+        if not await self._pronto(interaction):
+            return
+        if membro.bot or quanti == 0:
+            await interaction.response.send_message(await testo_per(interaction, "invites_bonus_non_valido"), ephemeral=True)
+            return
+        totale = await inviti_extra_repo.aggiungi_bonus(interaction.guild.id, membro.id, quanti, interaction.user.id)
+        logger.info("Inviti: bonus %+d a %s nel server %s da %s", quanti, membro.id, interaction.guild.id, interaction.user.id)
+        await interaction.response.send_message(
+            await testo_per(interaction, "invites_bonus_fatto", membro=membro.mention, quanti=f"{quanti:+d}", totale=totale),
+            ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
+        )
+
+    @comando_di_gruppo("admin-inviti", nome="escludi", descrizione="Nascondi membri o ruoli dalla classifica degli inviti.")
+    @app_commands.describe(azione="Cosa fare", utente="Il membro", ruolo="Il ruolo (chi lo ha non compare)")
+    @app_commands.choices(azione=[
+        app_commands.Choice(name="aggiungi", value="aggiungi"),
+        app_commands.Choice(name="togli", value="togli"),
+        app_commands.Choice(name="elenco", value="elenco"),
+    ])
+    @richiedi(Livello.ADMIN)
+    async def escludi(
+        self, interaction: discord.Interaction, azione: app_commands.Choice[str],
+        utente: discord.Member | None = None, ruolo: discord.Role | None = None,
+    ) -> None:
+        if not await self._pronto(interaction):
+            return
+        guild_id = interaction.guild.id
+        if azione.value == "elenco":
+            utenti, ruoli = await inviti_extra_repo.esclusi(guild_id)
+            righe = [f"<@{u}>" for u in sorted(utenti)[:50]] + [f"<@&{r}>" for r in sorted(ruoli)[:50]]
+            testo = ", ".join(righe) if righe else await testo_per(interaction, "invites_nessun_escluso")
+            await interaction.response.send_message(testo[:1900], ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE)
+            return
+        bersagli = [("utente", utente.id)] if utente else []
+        if ruolo is not None:
+            bersagli.append(("ruolo", ruolo.id))
+        if not bersagli:
+            await interaction.response.send_message(await testo_per(interaction, "invites_scegli_utente_o_ruolo"), ephemeral=True)
+            return
+        try:
+            for tipo, id_ in bersagli:
+                if azione.value == "aggiungi":
+                    await inviti_extra_repo.aggiungi_escluso(guild_id, tipo, id_)
+                else:
+                    await inviti_extra_repo.togli_escluso(guild_id, tipo, id_)
+        except TroppiEsclusi:
+            await interaction.response.send_message(
+                await testo_per(interaction, "invites_troppi_esclusi", massimo=logica.MAX_ESCLUSI), ephemeral=True
+            )
+            return
+        await interaction.response.send_message(await testo_per(interaction, "invites_escluso_fatto"), ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:

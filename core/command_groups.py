@@ -61,7 +61,7 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "admin-sicurezza": ("Sicurezza (admin): panico, verifica, ban globale, spam-trap, escalation", "administrator", Livello.SECURITY),
     "admin-antinuke": ("Anti-nuke (admin): soglie, fiducia, guardie e casi", "administrator", Livello.SECURITY),
     "admin-antiraid": ("Anti-raid (admin): soglie, filtri all'ingresso, segnali e allarmi", "administrator", Livello.SECURITY),
-    "admin-moduli": ("Moduli del server (admin): alert, starboard, contatori, compleanni, inviti", "manage_guild", Livello.ADMIN),
+    "admin-moduli": ("Moduli del server (admin): alert, starboard, contatori, compleanni", "manage_guild", Livello.ADMIN),
     "admin-economia": ("Economia (admin): negozio, cassa, premi in monete, annunci del mese", "manage_guild", Livello.ADMIN),
     "admin-livelli": ("Livelli e XP (admin): guadagno, annunci, premi, esclusioni, progressi", "manage_guild", Livello.ADMIN),
     "admin-ruoli": ("Ruoli del server (admin): dai e togli, premio, automatici, menu, in massa", "manage_guild", Livello.ADMIN),
@@ -90,6 +90,7 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "sondaggi": ("Sondaggi del server", None, None),
     "assistente": ("Funzioni AI per tutti: riassunti, traduzioni, immagini, personaggi", None, None),
     "gif": ("GIF di reazione e di azione", None, None),
+    "admin-inviti": ("Inviti (admin): impostazioni, bonus, esclusi, codici, etichette, pulizia, esportazione", "manage_guild", Livello.ADMIN),
     "web": ("Cerca sul web: Wikipedia, dizionario, emergenze, meteo, film, giochi, prezzi", None, None),
     "utility": ("Strumenti utili: segnalazioni, suggerimenti, promemoria, schede, snipe", None, None),
 }

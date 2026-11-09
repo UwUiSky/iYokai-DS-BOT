@@ -4,9 +4,10 @@
 09/11/2026 · ramo feat/r20util (worktree /home/claude/wt/r20util, env scratchpad/env_r20util.sh, DB iyokai_w20util) · blocco Utility #128 B8-B15, D69. Migrazioni da 0547 (0546 presa da B7).
 
 ## In corso
-- r19util B1-B7 pubblicati e uniti. r20util: B8, B9-B10 chiusi. Prossimo: B11-B13 inviti (0549+), B14-B15 conteggio. Helper: scratchpad/uti20_{agg,commit.sh,guard.sh,doc,pesi}. Smoke da fare (non lanciato).
+- r19util B1-B7 pubblicati e uniti. r20util: B8, B9-B10 chiusi. B11 chiuso. Prossimo: B12 codici/etichette (0550), B13 pulizia/export/segnaposto, B14-B15 conteggio (0551+). Helper: scratchpad/uti20_{agg,commit.sh,guard.sh,doc,pesi}. Smoke da fare (non lanciato).
 
 ## Fatto
+- r20util B11 inviti: /admin-inviti impostazioni|bonus|escludi, ingressi finti (0549). Rientro rilevato solo entro 90 giorni (le righe degli usciti scadono).
 - r20util B9-B10 giveaway: partecipanti, riepilogo, opzioni, ruoli escluso/premio, immagine, modifica, riestrai, /fun casuale membro (0548).
 - r20util B8 starboard: classifica/caso/blocca/canale_auto (0547).
 - r19util B1 /utility caratteri|cronometro|novita + gruppo /web (wiki, dizionario, emergenza); B2 /web meteo|film|gioco|prezzo|accorcia (0540); B3 /admin-messaggi scrivi|auto, fissi elenco/modello (0541); B4 embed json|bottoni|altri|V2 (0542); B5 programmati ripeti/ora/salta (payload, niente 0543); B6 compleanni staff/prossimi, iscritti promemoria, fuso, menu Orari (0544); B7 suggerimenti opzioni (0545).

@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:37 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:43 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 733 comandi in 42 categorie.**
+**Totale: 735 comandi in 43 categorie.**
 
 ## Admin: AI
 
@@ -204,6 +204,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 - **`/admin-giveaway partecipanti`** — Chi partecipa a un giveaway, a pagine da 20.
 - **`/admin-giveaway programmati`** — Giveaway programmati: elenca (anche quelli in errore) o annulla.
 
+## Admin: inviti
+
+- **`/admin-inviti bonus`** — Aggiungi o togli inviti a un membro (punti dello staff).
+- **`/admin-inviti escludi`** — Nascondi membri o ruoli dalla classifica degli inviti.
+- **`/admin-inviti impostazioni`** — Registro degli inviti, link personale e ingressi non contati.
+
 ## Admin: livelli e XP
 
 - **`/admin-livelli annuncio`** — Dove e quando annunciare i level-up.
@@ -283,7 +289,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 - **`/admin-moduli contatori elenco`** — Mostra i contatori del server.
 - **`/admin-moduli contatori elimina`** — Smetti di aggiornare un contatore (il canale resta).
 - **`/admin-moduli conteggio`** — Gioco del conteggio: scegli il canale dove contare a turno 1, 2, 3...
-- **`/admin-moduli inviti`** — Registro degli inviti e chi ha il link personale.
 - **`/admin-moduli starboard disattiva`** — Spegni la bacheca.
 - **`/admin-moduli starboard imposta`** — Scegli il canale della bacheca e la soglia di stelle.
 - **`/admin-moduli starboard soglia`** — Cambia quante stelle servono per finire in bacheca.

@@ -27,6 +27,11 @@ ETICHETTE_TIPO = {
 SETTING_CANALE_LOG = "inviti_log_channel_id"
 SETTING_RUOLO_LINK = "inviti_link_role_id"
 SETTING_MODALITA_LINK = "inviti_link_mode"
+SETTING_ETA_MINIMA = "inviti_eta_minima_giorni"
+SETTING_RIENTRI_FINTI = "inviti_rientri_finti"
+MAX_ETA_MINIMA_GIORNI = 365
+MAX_BONUS = 10_000
+MAX_ESCLUSI = 100
 
 # D36: chi può avere il link personale.
 MODO_TUTTI = "tutti"
@@ -137,3 +142,17 @@ def indirizzo_link(url_pubblico: str, slug: str) -> str:
 
 def indirizzo_discord(codice: str) -> str:
     return f"https://discord.gg/{codice}"
+
+
+def ingresso_finto(creato_il, adesso, eta_minima_giorni: int, *, rientro: bool, rientri_finti: bool) -> bool:
+    """Un ingresso non conta davvero se l'account è più giovane del minimo o se è un rientro (e il server lo chiede)."""
+    if rientri_finti and rientro:
+        return True
+    if eta_minima_giorni and creato_il is not None:
+        return (adesso - creato_il).total_seconds() < eta_minima_giorni * 86400
+    return False
+
+
+def punti_totali(presenti: int, bonus: int) -> int:
+    """Gli inviti presenti più il bonus dello staff."""
+    return presenti + bonus

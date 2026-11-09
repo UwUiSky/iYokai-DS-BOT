@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:37 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:43 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 733 commands in 42 categories.**
+**Total: 735 commands in 43 categories.**
 
 ## Admin: AI
 
@@ -204,6 +204,12 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:3
 - **`/admin-giveaway start`** — Starts a giveaway.
 - **`/admin-giveaway template`** — Giveaway templates: save, list, delete, start.
 
+## Admin: invites
+
+- **`/admin-invites bonus`** — Add or remove invites for a member (staff points).
+- **`/admin-invites exclude`** — Hide members or roles from the invite leaderboard.
+- **`/admin-invites settings`** — Invite log, personal link and entries that do not count.
+
 ## Admin: levels and XP
 
 - **`/admin-levels announcement`** — Where and when to announce level-ups.
@@ -283,7 +289,6 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:3
 - **`/admin-modules counters delete`** — Stops updating a counter (the channel stays).
 - **`/admin-modules counters list`** — Shows the server's counters.
 - **`/admin-modules counting`** — Counting game: pick the channel where people count 1, 2, 3... in turn.
-- **`/admin-modules invites`** — Invite log channel and who has the personal link.
 - **`/admin-modules starboard disattiva`** — Turns the board off.
 - **`/admin-modules starboard set`** — Picks the board channel and the star threshold.
 - **`/admin-modules starboard threshold`** — Changes how many stars are needed to reach the board.

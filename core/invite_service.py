@@ -17,6 +17,7 @@ import logging
 import secrets
 import time
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 import discord
 
@@ -46,6 +47,8 @@ class Opzioni:
     canale_log_id: int | None
     ruolo_link_id: int | None
     modalita: str = logica.MODO_TUTTI
+    eta_minima_giorni: int = 0
+    rientri_finti: bool = False
 
 
 @dataclass(frozen=True)
@@ -55,6 +58,7 @@ class Ingresso:
     tipo: str
     invitante_id: int | None
     codice: str | None
+    finto: bool = False
 
 
 def url_pubblico() -> str:
@@ -76,12 +80,14 @@ async def leggi_opzioni(guild_id: int) -> Opzioni:
         canale_log_id=await db.get_guild_setting(guild_id, logica.SETTING_CANALE_LOG),
         ruolo_link_id=ruolo,
         modalita=logica.modalita_effettiva(salvata, ruolo),
+        eta_minima_giorni=int(await db.get_guild_setting(guild_id, logica.SETTING_ETA_MINIMA) or 0),
+        rientri_finti=bool(await db.get_guild_setting(guild_id, logica.SETTING_RIENTRI_FINTI)),
     )
 
 
 async def imposta_opzioni(
     guild: discord.Guild, *, canale_log=NON_CAMBIARE, ruolo_link=NON_CAMBIARE, modalita=NON_CAMBIARE,
-    changed_by: int | None,
+    eta_minima=NON_CAMBIARE, rientri_finti=NON_CAMBIARE, changed_by: int | None,
 ) -> bool:
     """
     Cambia canale del registro, ruolo del link (id oppure None per toglierlo) e/o modalità (D36:
@@ -112,6 +118,12 @@ async def imposta_opzioni(
         if ruolo_link is not None and (ruolo_link == guild.id or guild.get_role(ruolo_link) is None):
             raise ImpostazioneNonValida("Il ruolo deve essere un ruolo di questo server (non @everyone).")
         cambi.append((logica.SETTING_RUOLO_LINK, ruolo_link))
+    if eta_minima is not NON_CAMBIARE:
+        if not isinstance(eta_minima, int) or not 0 <= eta_minima <= logica.MAX_ETA_MINIMA_GIORNI:
+            raise ImpostazioneNonValida(f"L'età minima dell'account va da 0 a {logica.MAX_ETA_MINIMA_GIORNI} giorni.")
+        cambi.append((logica.SETTING_ETA_MINIMA, eta_minima))
+    if rientri_finti is not NON_CAMBIARE:
+        cambi.append((logica.SETTING_RIENTRI_FINTI, bool(rientri_finti)))
     cambiato = False
     for chiave, valore in cambi:
         if await db.get_guild_setting(guild.id, chiave) == valore:
@@ -305,7 +317,9 @@ async def elimina_link_membro(bot, guild_id: int, user_id: int) -> None:
 
 
 # --------------------------------------------------------------- storico
-async def registra_ingresso(guild: discord.Guild, membro_id: int, trovato: tuple[str, int | None] | None) -> Ingresso:
+async def registra_ingresso(
+    guild: discord.Guild, membro_id: int, trovato: tuple[str, int | None] | None, creato_il=None
+) -> Ingresso:
     """
     Dall'esito del tracker (codice, creatore) al tipo di ingresso, e lo salva. Un invito personale
     vale per il membro che ne è proprietario (l'invito Discord lo ha creato il bot).
@@ -320,5 +334,10 @@ async def registra_ingresso(guild: discord.Guild, membro_id: int, trovato: tuple
     invitante = personale.user_id if personale is not None else creatore
     if invitante == membro_id:
         invitante = None  # nessuno invita se stesso
-    await invite_stats_repo.record_join(guild.id, membro_id, invitante, codice, tipo)
-    return Ingresso(tipo, invitante, codice)
+    opzioni = await leggi_opzioni(guild.id)
+    rientro = await invite_stats_repo.e_rientro(guild.id, membro_id) if opzioni.rientri_finti else False
+    finto = logica.ingresso_finto(
+        creato_il, datetime.now(timezone.utc), opzioni.eta_minima_giorni, rientro=rientro, rientri_finti=opzioni.rientri_finti
+    )
+    await invite_stats_repo.record_join(guild.id, membro_id, invitante, codice, tipo, finto)
+    return Ingresso(tipo, invitante, codice, finto)
