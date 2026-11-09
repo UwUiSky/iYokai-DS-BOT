@@ -1,10 +1,10 @@
 # Memoria di dev-utilita
 
 ## Aggiornata
-09/11/2026 · r24util (feat/r24util, DB iyokai_wr24util, env /tmp/env_wr24util.sh) · #128 B25-B28 fatti (parte C: tag con script). Migrazioni libere 0565-0569.
+09/11/2026 · r24util (feat/r24util, DB iyokai_wr24util, env /tmp/env_wr24util.sh) · #128 B25-B28 fatti; corretti gli 8 punti del revisore + 3 bassi. Migrazioni: 0565 usata, libere 0566-0569.
 
 ## In corso
-- #128 parte C finita. Prossimo: blocchi successivi del disegno (se ce ne sono), poi smoke da fare (non lanciato) dell'orchestratore.
+- #128 parte C finita e corretta (rimandata dal revisore, 8 punti fatti). Prossimo: nuovo parere del revisore; smoke da fare (non lanciato) dell'orchestratore.
 - Aperto per altri: tests/test_command_search_bilingue.py e _bug147 falliscono anche su origin/main.
 
 ## Fatto
@@ -15,6 +15,8 @@
 - r23util B23-B24 sondaggi programmati/nativi (0560), eventi (0561). r22util B22 sondaggio a bottoni (0559). r21util B16-B21 citazioni, emoji/sticker, regex, tag opzioni/reazioni, /tag crea (0555-0557).
 - r20util B8-B15 starboard, giveaway, inviti, conteggio (0547-0553). r19util B1-B7 /utility, /web, messaggi auto, embed, programmati, compleanni, suggerimenti (0540-0545).
 - Giri vecchi (r4-r11): autorole, starboard, tag, autoresponder, greetings, role menu, embed, contatori, compleanni, inviti, moduli, /ruoli, attività (git log).
+
+- r24util correzioni: monta_per_avvio (slash_server.py) chiamato da main.setup_hook prima di ogni sync; owner riservato; _monta salta le collisioni; core/tag_eliminazione.pulisci_tag_eliminato (unica pulizia); 0565 tag_dati.autore + 200 chiavi per autore (staff no); asyncio.timeout in esegui; togli_per_ruolo; blacklist e pausa 3 s negli inneschi; regex a pezzi.
 
 ## Cose imparate
 - Menu del tasto destro nel tree: get_commands() li include; command_search li rompe (vedi Aperto). Un cog con ContextMenu: cog_load chiama super().cog_load() (CogConGruppi) e poi add_command.
@@ -51,6 +53,6 @@
 - Fuso dell'ora fissa dei programmati: ora Europe/Rome fisso (non c'è un fuso per server); potrebbe usare utente_fuso.
 - `embed modifica` su un messaggio con più embed lo riduce al primo; il menu eventi dei log (24/25) va diviso prima di nuove voci (U14).
 - Scheletri (counters, forms, starboard, birthdays, autoroles, invites, activity_stats, autoresponder, custom_commands, embed_builder): F9/F13. #66: resta 10.14 (setup.py, non mio).
-- B25-B28: creatori di tag (non staff) possono usare {dati:set|...} nei loro tag (tetto 1.000 chiavi per server, condiviso). Ora degli script e dei cron: Europe/Rome fisso.
-- B28: se il server è quello di sviluppo/owner, la sync all'avvio (core/command_sync) non conosce i comandi del server e potrebbe sovrascriverli: pubblicare in un server normale. Eliminare un tag non toglie il comando del server (risponde «non disponibile»).
+- B25-B28: {dati:set} ha anche il tetto per autore (200, righe vecchie senza autore non contano). Ora degli script e dei cron: Europe/Rome fisso.
+- B28: la sync d'avvio ora monta prima i comandi del server (da provare su Discord nel server MAIN dopo un riavvio).
 - B27: il bottone con innesco risponde in canale a tutti; l'innesco a tempo parla come il bot (`{user}` = bot). Reazione: nessun filtro sul messaggio, solo canale.

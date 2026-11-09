@@ -220,3 +220,21 @@ async def test_il_modulo_non_usa_eval_exec_ne_jinja():
     sorgente = inspect.getsource(ts)
     for vietato in (r"\beval\(", r"\bexec\(", "jinja", r"(?<!re2\.)(?<!re\.)\bcompile\(", "__import__", "format_map", r"\.format\("):
         assert not re.search(vietato, sorgente), vietato
+
+
+async def test_regex_si_ferma_prima_di_costruire_una_sostituzione_enorme(monkeypatch):
+    chiamate = []
+    vero = ts._compila
+
+    class Spia:
+        def __init__(self, p):
+            self.p = p
+
+        def sub(self, con, testo):
+            chiamate.append(con)
+            return self.p.sub(con, testo)
+
+    monkeypatch.setattr(ts, "_compila", lambda m: Spia(vero(m)))
+    r = await ts.esegui("{regex:%s|a|%s}" % ("a" * 1500, "b" * 1900), ctx())
+    assert r.errore and r.errore.chiave == "tag_script_uscita_lunga"
+    assert callable(chiamate[0])  # la sostituzione si controlla pezzo per pezzo, non a cose fatte

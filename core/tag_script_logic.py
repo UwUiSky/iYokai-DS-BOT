@@ -425,8 +425,20 @@ class _Esecuzione:
         testo, modello, con = [await self._arg(args, i, prof) for i in range(3)]
         if not 1 <= len(modello) <= MAX_REGEX:
             raise ErroreScript("tag_script_regex", "lunghezza")
+        costruito = 0
+
+        def un_pezzo(m) -> str:
+            nonlocal costruito
+            pezzo = m.expand(con)
+            costruito += len(pezzo)
+            if costruito > MAX_VALORE:  # ci si ferma qui: niente 4 MB prima del controllo
+                raise ErroreScript("tag_script_uscita_lunga")
+            return pezzo
+
         try:
-            risultato = _compila(modello).sub(con, testo)
+            risultato = _compila(modello).sub(un_pezzo, testo)
+        except ErroreScript:
+            raise
         except Exception:  # re2.error non ha una base comune
             raise ErroreScript("tag_script_regex", modello[:40]) from None
         if len(risultato) > MAX_VALORE:
