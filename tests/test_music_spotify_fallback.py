@@ -16,6 +16,15 @@ import pytest
 from cogs.music.player import MusicCog
 
 
+@pytest.fixture(autouse=True)
+def _chiavi_spotify(monkeypatch):
+    monkeypatch.setenv("SPOTIFY_CLIENT_ID", "id-finto")
+    monkeypatch.setenv("SPOTIFY_CLIENT_SECRET", "secret-finto")
+    from core import music_sources
+
+    music_sources.registro.reset()
+
+
 @pytest.fixture
 def cog():
     return MusicCog(bot=None)

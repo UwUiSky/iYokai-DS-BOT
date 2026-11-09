@@ -183,6 +183,9 @@ class Config:
     # (LAVALINK_HOST/PORT/PASSWORD, comportamento originale invariato
     # per chi preferisce comunque self-hostare un singolo nodo).
     LAVALINK_NODES: str = field(default="", repr=False)
+    # Fonti musicali accese dall'owner (elenco con virgole); vuota = quelle di base.
+    # Le chiavi (SPOTIFY_*, APPLE_*) NON stanno qui: il bot sa solo se ci sono.
+    MUSIC_SOURCES_ENABLED: str = field(default="")
     # M 8.4: radice delle tracce locali COME LA VEDE il nodo Lavalink (con
     # Docker è il punto di montaggio, es. /audio/local). Vuota = la stessa
     # cartella del bot (MAIN_RADIO_LOCAL_FOLDER).
@@ -437,6 +440,7 @@ def _load_config() -> Config:
         LAVALINK_PORT=_optional_int("LAVALINK_PORT", 2333),
         LAVALINK_PASSWORD=_optional("LAVALINK_PASSWORD", ""),
         LAVALINK_NODES=_optional("LAVALINK_NODES", ""),
+        MUSIC_SOURCES_ENABLED=_optional("MUSIC_SOURCES_ENABLED", ""),
         LAVALINK_LOCAL_ROOT=_optional("LAVALINK_LOCAL_ROOT", ""),
         TWITCH_CLIENT_ID=_optional("TWITCH_CLIENT_ID", ""),
         TWITCH_CLIENT_SECRET=_optional("TWITCH_CLIENT_SECRET", ""),

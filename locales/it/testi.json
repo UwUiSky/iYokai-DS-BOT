@@ -2855,5 +2855,7 @@
   "telefono_registro_vuoto": "Nessuna chiamata registrata (si tengono 14 giorni).",
   "telefono_rifiutata": "📵 L'altro server non ha risposto.",
   "telefono_collegati": "📞 Siete collegati. Quello che scrivi qui va all'altro server. Per chiudere: /fun telefono riaggancia.",
-  "telefono_finita": "📴 Chiamata finita."
+  "telefono_finita": "📴 Chiamata finita.",
+  "music_fonti_titolo": "Fonti musicali",
+  "music_fonti_nota": "Le chiavi non si vedono mai: solo sì o no. Per cambiare le fonti accese modifica MUSIC_SOURCES_ENABLED e riavvia."
 }

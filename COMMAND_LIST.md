@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 19:13 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 23:34 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 836 comandi in 49 categorie.**
+**Totale: 837 comandi in 49 categorie.**
 
 ## Admin: AI
 
@@ -872,6 +872,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 19:
 - **`/owner privacy rifiuta`** — Rifiuta una richiesta di cancellazione e dì all'utente perché.
 - **`/owner radio add-local`** — Aggiunge un file dalla cartella inediti alla playlist della radio.
 - **`/owner radio add-track`** — Aggiunge una traccia alla playlist della radio.
+- **`/owner radio fonti`** — Mostra lo stato delle fonti musicali (accesa, chiavi sì/no, pausa).
 - **`/owner radio list-tracks`** — Mostra la playlist della radio.
 - **`/owner radio remove-track`** — Rimuove una traccia dalla playlist della radio.
 - **`/owner radio start`** — Entra nella radio condivisa, nel punto in cui si trova ora.

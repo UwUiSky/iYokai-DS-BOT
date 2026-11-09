@@ -2855,5 +2855,7 @@
   "telefono_registro_vuoto": "No calls recorded (they are kept for 14 days).",
   "telefono_rifiutata": "📵 The other server did not answer.",
   "telefono_collegati": "📞 You are connected. What you write here goes to the other server. To end: /fun telefono riaggancia.",
-  "telefono_finita": "📴 Call ended."
+  "telefono_finita": "📴 Call ended.",
+  "music_fonti_titolo": "Music sources",
+  "music_fonti_nota": "Keys are never shown: only yes or no. To change the enabled sources edit MUSIC_SOURCES_ENABLED and restart."
 }

@@ -1183,6 +1183,19 @@ Serve: un server con almeno 2 bot musicali invitati, Lavalink acceso, un canale 
 - [ ] `parole:torneo, -replica` — una diretta senza «torneo» nel titolo non viene annunciata; con «replica» nemmeno. `gioco:Valorant` — solo quel gioco. `attesa:30` — due dirette a meno di 30 minuti: un solo avviso.
 
 
+## Musica — fonti (#126 B1, D73)
+
+Serve: Lavalink 4.2.0+ con LavaSrc, un account Spotify Premium per creare l'app (Client ID e Secret), un canale vocale.
+
+- [ ] Chiavi (da attivare dall'owner) — metti `SPOTIFY_CLIENT_ID` e `SPOTIFY_CLIENT_SECRET` nell'`.env` di Lavalink (e gli stessi nomi nel `.env` del bot, solo perché sappia che ci sono); per Apple Music `APPLE_MUSIC_TOKEN` (account Apple Developer). Poi `python3 scripts/genera_lavalink_yml.py` e riavvia Lavalink. Risultato atteso: nel file `spotify: true` e solo `${SPOTIFY_CLIENT_ID}`, mai il valore; Lavalink parte.
+- [ ] `/owner radio fonti` — risposta nascosta, una riga per fonte: Spotify «ok, chiavi sì»; senza chiavi «senza chiavi, chiavi no». Nessun valore di chiave.
+- [ ] Link Spotify — `/music play` con un brano, un album, una playlist e un artista (link `open.spotify.com`). Risultato atteso: suona da YouTube/SoundCloud (cerca per ISRC poi titolo); album e playlist entrano a pezzi fino a 750. Con l'app in Development Mode (5 utenti, Premium): se arriva un errore 403/429, la fonte va in pausa e il bot lo dice.
+- [ ] Link Apple Music — brano, album, playlist, artista di `music.apple.com`. Stesso risultato.
+- [ ] Fonte senza chiavi — togli le chiavi di Spotify e riavvia: un link Spotify risponde «Spotify non è attiva su questo bot…», senza errore tecnico.
+- [ ] Pausa — fai fallire una fonte 3 volte (ferma Lavalink o chiave sbagliata): il messaggio diventa «… non risponde», i titoli passano a SoundCloud; dopo 10 minuti una sola richiesta di prova.
+- [ ] YouTube spento — togli `youtube` da `MUSIC_SOURCES_ENABLED`, rigenera il file e riavvia: i titoli si cercano su SoundCloud, i link YouTube dicono che la fonte non è attiva.
+- [ ] Log — cerca nei log del bot e di Lavalink il valore delle chiavi: non deve comparire.
+
 ## Livelli, economia e gilde — giro r10 (#124, #125, SPEC §15)
 
 Serve: un server di prova con il modulo livelli attivo, un account A (Amministratore) e un account B (membro normale), il bot con un ruolo sopra quello di prova.
