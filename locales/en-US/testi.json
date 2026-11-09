@@ -2324,5 +2324,7 @@
   "fun_mazzo_pescate": "🃏 {carte}\n{n} cards left in the deck.",
   "fun_punteggi_domanda": "Reset the scores of: {gara}? This cannot be undone.",
   "fun_punteggi_azzerati": "Done: {righe} scores deleted.",
-  "fun_punteggi_annullato": "Cancelled: scores stay."
+  "fun_punteggi_annullato": "Cancelled: scores stay.",
+  "fun_xkcd_non_trovata": "I can't find that xkcd comic. Try another number.",
+  "fun_xkcd_credito": "xkcd.com · CC BY-NC 2.5 license (Randall Munroe)"
 }

@@ -11,6 +11,7 @@ Dipende da: PIXABAY_API_KEY (core/config.py), core/image_search_logic.py.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import random
 import time
@@ -26,6 +27,7 @@ from core.safe_image import MAX_IMAGE_BYTES
 logger = logging.getLogger("iyokai.image_search_fetcher")
 
 REQUEST_TIMEOUT_SECONDS = 10
+MAX_BYTE_TOTALI = 8 * 1024 * 1024  # più foto nello stesso messaggio: restano sotto i 10 MiB di Discord
 PIXABAY_SEARCH_URL = "https://pixabay.com/api/"
 DURATA_CACHE_SECONDI = 24 * 60 * 60
 MAX_RICERCHE_IN_CACHE = 200
@@ -137,6 +139,28 @@ class ImageSearchFetcherService:
         if scaricata is None:
             return None
         return RisultatoImmagine(dati=scaricata[0], estensione=scaricata[1], pagina=pagina)
+
+    async def fetch_immagini(
+        self, api_key: str, query: str, rng: random.Random, quante: int
+    ) -> list[RisultatoImmagine]:
+        """
+        Fino a `quante` foto diverse per `query`, scaricate insieme, in tutto sotto MAX_BYTE_TOTALI.
+        Lista vuota se la chiave manca, la rete fallisce o non c'è nulla: mai un'eccezione.
+        """
+        if not api_key:
+            return []
+        risultati = await self._cerca(api_key, query)
+        if not risultati:
+            return []
+        scelti = rng.sample(risultati, min(max(1, quante), len(risultati)))
+        scaricate = await asyncio.gather(*(self._scarica(url) for url, _ in scelti))
+        trovate, totale = [], 0
+        for (_, pagina), esito in zip(scelti, scaricate):
+            if esito is None or totale + len(esito[0]) > MAX_BYTE_TOTALI:
+                continue
+            totale += len(esito[0])
+            trovate.append(RisultatoImmagine(dati=esito[0], estensione=esito[1], pagina=pagina))
+        return trovate
 
     async def close(self) -> None:
         if self._http_session is not None:

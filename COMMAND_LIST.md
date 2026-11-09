@@ -616,7 +616,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 
 ## Immagini
 
-- **`/immagini animal`** — Mostra un'immagine casuale di un animale.
+- **`/immagini animal`** — Mostra immagini casuali di animali (fino a 5): cane, gatto, volpe, uccello, sorpresa.
+- **`/immagini foto`** — Una foto bella da vedere: cibo o buonumore.
 - **`/immagini blur`** — Applica una sfocatura a un'immagine.
 - **`/immagini effetto`** — Effetto sull'avatar: arcobaleno, R.I.P., ricercato, triggered.
 - **`/immagini grayscale`** — Trasforma un'immagine in scala di grigi.
@@ -624,6 +625,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 - **`/immagini meme`** — Genera un meme con testo sopra/sotto.
 - **`/immagini pixelate`** — Pixela un'immagine.
 - **`/immagini search-image`** — Cerca un'immagine SFW su Pixabay.
+- **`/immagini xkcd`** — Una vignetta di xkcd: l'ultima o quella col numero che scegli.
 
 ## Livelli
 

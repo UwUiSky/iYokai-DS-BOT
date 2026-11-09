@@ -2324,5 +2324,7 @@
   "fun_mazzo_pescate": "🃏 {carte}\nNel mazzo restano {n} carte.",
   "fun_punteggi_domanda": "Vuoi azzerare i punteggi di: {gara}? Non si può annullare.",
   "fun_punteggi_azzerati": "Fatto: {righe} punteggi cancellati.",
-  "fun_punteggi_annullato": "Annullato: i punteggi restano."
+  "fun_punteggi_annullato": "Annullato: i punteggi restano.",
+  "fun_xkcd_non_trovata": "Non trovo questa vignetta di xkcd. Riprova con un altro numero.",
+  "fun_xkcd_credito": "xkcd.com · licenza CC BY-NC 2.5 (Randall Munroe)"
 }

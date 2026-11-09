@@ -1480,3 +1480,8 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - `/giochi spinner` e clic su «Gira» (solo chi ha dato il comando; un altro riceve un avviso nascosto): il messaggio si aggiorna ogni 3 secondi per 1-60 secondi, poi mostra la classifica della settimana. Un secondo giro entro un'ora: «Hai già girato da poco».
 - `/giochi mazzo` (pesca 3), `azione:Carte restanti` (49), `azione:Rimescola` (52). Dopo 52 carte pescate: «Il mazzo è finito».
 - `/admin-giochi punteggi azzera gara:Dado`: messaggio nascosto con Conferma/Annulla; Conferma cancella, Annulla no; un non-admin non lo vede.
+
+## giro r21fun, B4 — foto (#131)
+- `/immagini animal specie:Cane quante:5`: un messaggio con 5 immagini (embed). `specie:Uccello quante:3`: 3 foto di uccelli allegate, con il nome Pixabay; senza `PIXABAY_API_KEY` risposta nascosta che spiega come attivarla. `specie:Sorpresa`: un mix.
+- `/immagini foto tema:Cibo` e `Buonumore`: una foto con credito Pixabay; un secondo comando entro 10 secondi: «aspetta».
+- `/immagini xkcd` (ultima) e `numero:927`: titolo `#927 · Standards`, testo alternativo in descrizione, immagine, piè di pagina con la licenza CC BY-NC 2.5; `numero:404`: «Non trovo questa vignetta».
