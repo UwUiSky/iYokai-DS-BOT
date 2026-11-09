@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:28 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:16 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 707 commands in 41 categories.**
+**Total: 727 commands in 42 categories.**
 
 ## Admin: AI
 
@@ -88,10 +88,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:2
 - **`/admin-automod odio base`** — Turns the base list of hate slurs on or off.
 - **`/admin-automod odio lockdown`** — Preventive block of hateful phrases.
 - **`/admin-automod odio nomi`** — Checks nicknames and display names on join and on change.
-- **`/admin-automod odio parola`** — Adds or removes a custom word or an allowed word.
 - **`/admin-automod odio prova`** — Tests a text against the banned words without acting.
 - **`/admin-automod odio richiami`** — How many warnings for hate words lead to a timeout.
 - **`/admin-automod odio status`** — Shows how the banned words are set up.
+- **`/admin-automod odio word`** — Adds or removes a custom word or an allowed word.
 - **`/admin-automod regole`** — Opens the AutoMod rules panel: conditions and actions.
 - **`/admin-automod reset`** — Resets an AutoMod rule counter.
 - **`/admin-automod status`** — Shows the current advanced AutoMod filter setup.
@@ -232,11 +232,15 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:2
 
 ## Admin: messages
 
+- **`/admin-messages auto`** — Automations: quotes, link fixing, announcement publishing, shortener.
+- **`/admin-messages embed buttons`** — Add or remove an embed's buttons (link or show tag).
 - **`/admin-messages embed create`** — Creates an embed and shows the preview.
 - **`/admin-messages embed delete`** — Deletes a saved embed (the published message stays).
 - **`/admin-messages embed edit`** — Edits a saved embed (and the already published message).
+- **`/admin-messages embed json`** — Import an embed from JSON or export it to a file.
 - **`/admin-messages embed list`** — Shows the saved embeds.
 - **`/admin-messages embed publish`** — Sends a saved embed to a channel.
+- **`/admin-messages pinned list`** — List the server's pinned messages.
 - **`/admin-messages pinned remove`** — Removes a channel's sticky message.
 - **`/admin-messages pinned set`** — Sets a channel's sticky message.
 - **`/admin-messages reminders`** — For staff: the reminders set in this server.
@@ -246,11 +250,13 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:2
 - **`/admin-messages scheduled cancel`** — Cancels a scheduled message.
 - **`/admin-messages scheduled create`** — Schedules a message.
 - **`/admin-messages scheduled list`** — Shows this server's scheduled messages.
+- **`/admin-messages scheduled skip`** — Skip the next round of a repeating message.
 - **`/admin-messages tag create`** — Creates a custom command.
 - **`/admin-messages tag delete`** — Deletes a custom command.
 - **`/admin-messages tag edit`** — Edits a custom command.
 - **`/admin-messages tag list`** — Shows the server's custom commands.
 - **`/admin-messages tag prefix`** — Picks the prefix to use commands by typing in the channel.
+- **`/admin-messages write`** — Make the bot write a message in a channel.
 
 ## Admin: modules
 
@@ -268,6 +274,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:2
 - **`/admin-modules applications delete`** — Deletes a form and its answers.
 - **`/admin-modules applications list`** — This server's forms.
 - **`/admin-modules birthdays channel`** — Picks the wishes channel (empty to turn them off).
+- **`/admin-modules birthdays member`** — Register a member's birthday (day and month only).
 - **`/admin-modules birthdays role`** — A role for 24 hours for whoever has a birthday (empty to remove it).
 - **`/admin-modules counters create`** — Creates a channel that shows a number.
 - **`/admin-modules counters delete`** — Stops updating a counter (the channel stays).
@@ -419,6 +426,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:2
 - **`/Moderation card`** — “Apps” menu (right click)
 - **`/Open ticket`** — “Apps” menu (right click)
 - **`/Report message`** — “Apps” menu (right click)
+- **`/Times in my time zone`** — “Apps” menu (right click)
 
 ## iYokai App (separate app, installed on the user)
 
@@ -586,6 +594,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:2
 - **`/level birthday remove`** — Deletes your birthday.
 - **`/level birthday set`** — Saves your birthday (day and month only).
 - **`/level birthday show`** — Shows the birthday you saved.
+- **`/level birthday upcoming`** — The next birthdays in the server.
 - **`/level calcola`** — How many messages or voice minutes are missing to reach a level.
 - **`/level collection buy`** — Buys a badge or background with your coins.
 - **`/level collection equip`** — Puts a badge or background on your profile (no item removes it).
@@ -801,6 +810,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:2
 - **`/utility lookup server`** — Server card: owner, date, numbers, boosts.
 - **`/utility lookup user`** — Member card: ID, dates and roles.
 - **`/utility mie-sanzioni`** — The sanctions you received in this server (only you see them).
+- **`/utility news`** — The latest news about the bot.
 - **`/utility ping`** — Checks whether iYokai Main is online and its latency.
 - **`/utility privacy cancella`** — Request the deletion of your personal data.
 - **`/utility privacy export`** — Get a copy of the data the bot keeps about you.
@@ -814,6 +824,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:2
 - **`/utility snipe edit`** — Shows the last edited message in this channel.
 - **`/utility snipe message`** — Shows the last deleted message in this channel.
 - **`/utility snipe reaction`** — Shows the last removed reaction in this channel.
+- **`/utility strumenti characters`** — Unicode name, code and category of the characters in a text.
+- **`/utility strumenti stopwatch`** — A stopwatch with Lap and Stop buttons.
 - **`/utility suggest`** — Suggest an idea for this server.
 - **`/utility tag`** — Uses a custom command of this server.
 - **`/utility verify`** — Verify yourself in this server (same as the panel button).
@@ -833,3 +845,14 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:2
 - **`/voice status`** — Writes what you are doing in the channel (empty: removes it).
 - **`/voice transfer`** — Transfers the channel's ownership.
 - **`/voice unlock`** — Unlocks the channel.
+
+## Web
+
+- **`/web dictionary`** — The meaning of a word, from Wiktionary.
+- **`/web emergency`** — Emergency numbers of a country.
+- **`/web game`** — A Steam game: price, date and genres.
+- **`/web movie`** — Information on a movie or a TV series.
+- **`/web price`** — The price of a cryptocurrency.
+- **`/web shorten`** — Shorten a link (if the server turned the command on).
+- **`/web weather`** — Weather of a city: now and the next days.
+- **`/web wiki`** — The summary of a Wikipedia entry.

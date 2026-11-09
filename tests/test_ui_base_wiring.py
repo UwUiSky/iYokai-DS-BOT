@@ -40,6 +40,7 @@ DEFINISCONO_IL_CONTROLLO = frozenset(
     {
         "core/ui_base.py::BaseView",
         "core/ui_base.py::BaseModal",
+        "core/ui_base.py::BaseLayoutView",
         "core/blacklist_tree.py::BlacklistAwareCommandTree",
     }
 )

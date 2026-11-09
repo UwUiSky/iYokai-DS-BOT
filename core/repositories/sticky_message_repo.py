@@ -92,6 +92,12 @@ class StickyMessageRepository:
         )
         return self._row_to_sticky(row) if row is not None else None
 
+    async def list_for_guild(self, guild_id: int) -> list[StickyMessage]:
+        righe = await self._pool.fetch(
+            "SELECT * FROM sticky_messages WHERE guild_id = $1 ORDER BY channel_id", guild_id
+        )
+        return [self._row_to_sticky(r) for r in righe]
+
     async def remove_sticky(self, channel_id: int) -> bool:
         result = await self._pool.execute(
             "DELETE FROM sticky_messages WHERE channel_id = $1", channel_id

@@ -1,0 +1,154 @@
+{
+ "fonte": "Numeri generali pubblicati dai governi e dall'Unione europea; controlla sempre il sito ufficiale del paese",
+ "data": "2026-11-09",
+ "paesi": {
+  "Italia": {
+   "generale": "112",
+   "polizia": "113",
+   "ambulanza": "118",
+   "pompieri": "115"
+  },
+  "Francia": {
+   "generale": "112",
+   "polizia": "17",
+   "ambulanza": "15",
+   "pompieri": "18"
+  },
+  "Germania": {
+   "generale": "112",
+   "polizia": "110",
+   "ambulanza": "112",
+   "pompieri": "112"
+  },
+  "Spagna": {
+   "generale": "112",
+   "polizia": "091",
+   "ambulanza": "112",
+   "pompieri": "080"
+  },
+  "Portogallo": {
+   "generale": "112"
+  },
+  "Regno Unito": {
+   "generale": "999 o 112"
+  },
+  "Irlanda": {
+   "generale": "112 o 999"
+  },
+  "Paesi Bassi": {
+   "generale": "112"
+  },
+  "Belgio": {
+   "generale": "112",
+   "polizia": "101",
+   "ambulanza": "112",
+   "pompieri": "112"
+  },
+  "Svizzera": {
+   "generale": "112",
+   "polizia": "117",
+   "ambulanza": "144",
+   "pompieri": "118"
+  },
+  "Austria": {
+   "generale": "112",
+   "polizia": "133",
+   "ambulanza": "144",
+   "pompieri": "122"
+  },
+  "Polonia": {
+   "generale": "112",
+   "polizia": "997",
+   "ambulanza": "999",
+   "pompieri": "998"
+  },
+  "Svezia": {
+   "generale": "112"
+  },
+  "Norvegia": {
+   "generale": "112",
+   "polizia": "112",
+   "ambulanza": "113",
+   "pompieri": "110"
+  },
+  "Danimarca": {
+   "generale": "112"
+  },
+  "Finlandia": {
+   "generale": "112"
+  },
+  "Grecia": {
+   "generale": "112"
+  },
+  "Romania": {
+   "generale": "112"
+  },
+  "Turchia": {
+   "generale": "112"
+  },
+  "Ucraina": {
+   "generale": "112",
+   "polizia": "102",
+   "ambulanza": "103",
+   "pompieri": "101"
+  },
+  "Russia": {
+   "generale": "112",
+   "polizia": "102",
+   "ambulanza": "103",
+   "pompieri": "101"
+  },
+  "Stati Uniti": {
+   "generale": "911"
+  },
+  "Canada": {
+   "generale": "911"
+  },
+  "Messico": {
+   "generale": "911"
+  },
+  "Argentina": {
+   "generale": "911",
+   "polizia": "101",
+   "ambulanza": "107",
+   "pompieri": "100"
+  },
+  "Brasile": {
+   "polizia": "190",
+   "ambulanza": "192",
+   "pompieri": "193"
+  },
+  "Australia": {
+   "generale": "000"
+  },
+  "Nuova Zelanda": {
+   "generale": "111"
+  },
+  "Giappone": {
+   "polizia": "110",
+   "ambulanza": "119",
+   "pompieri": "119"
+  },
+  "Cina": {
+   "polizia": "110",
+   "ambulanza": "120",
+   "pompieri": "119"
+  },
+  "Corea del Sud": {
+   "polizia": "112",
+   "ambulanza": "119",
+   "pompieri": "119"
+  },
+  "India": {
+   "generale": "112"
+  },
+  "Sudafrica": {
+   "generale": "112 da cellulare",
+   "polizia": "10111",
+   "ambulanza": "10177"
+  },
+  "Unione europea": {
+   "generale": "112"
+  }
+ }
+}

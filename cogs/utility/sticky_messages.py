@@ -23,6 +23,7 @@ from core.admin_mentions_logic import menzioni_ammesse, utente_puo_pingare_ruoli
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
 from core.i18n import testo_per
+from core.messaggi_auto_logic import MODELLI_FISSI, chiave_modello
 from core.premium import PremiumModule, registry
 from core.repositories.sticky_message_repo import sticky_message_repo
 from core.sticky_message_logic import should_repost_sticky
@@ -30,6 +31,10 @@ from core.sticky_message_logic import should_repost_sticky
 logger = logging.getLogger("iyokai.sticky_messages")
 
 MODULE_STICKY_MESSAGES = "sticky_messages"
+
+
+async def _completa_modello(interaction: discord.Interaction, corrente: str) -> list[app_commands.Choice[str]]:
+    return [app_commands.Choice(name=m, value=m) for m in MODELLI_FISSI if corrente.strip().casefold() in m]
 
 
 class StickyMessagesCog(CogConGruppi, commands.Cog):
@@ -119,15 +124,24 @@ class StickyMessagesCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         channel="Il canale dove impostare lo sticky",
         message="Il testo dello sticky message (massimo 2000 caratteri)",
+        modello="Oppure un testo pronto (regole, benvenuto, faq, annunci, eventi)",
     )
+    @app_commands.autocomplete(modello=_completa_modello)
     async def set_sticky(
         self,
         interaction: discord.Interaction,
         channel: discord.TextChannel,
         # Lo sticky è un messaggio normale: Discord ne accetta 2000 caratteri.
-        message: app_commands.Range[str, 1, 2000],
+        message: app_commands.Range[str, 1, 2000] | None = None,
+        modello: app_commands.Range[str, 1, 20] | None = None,
     ) -> None:
         guild = interaction.guild
+        if message is None:
+            if modello not in MODELLI_FISSI:
+                await interaction.response.send_message(await testo_per(interaction, "fissi_serve_testo_o_modello"), ephemeral=True)
+                return
+            # È un messaggio pubblico: il testo del modello segue la lingua del server.
+            message = (await testo_per(interaction, chiave_modello(modello), pubblica=True))[:2000]
         if guild is None:
             await interaction.response.send_message(
                 await testo_per(interaction, "guild_only_command"), ephemeral=True
@@ -155,6 +169,28 @@ class StickyMessagesCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "stickymessag_sticky_message_impostato_per_verra", mention=channel.mention),
             ephemeral=True,
         )
+
+    @comando_di_gruppo(
+        "admin-messaggi",
+        nome="elenco",
+        descrizione="Elenca i messaggi fissi del server.",
+        sottogruppo=SOTTOGRUPPI["admin-messaggi fissi"],
+    )
+    @app_commands.describe(pagina="Quale pagina (10 canali per pagina)")
+    async def elenco_sticky(self, interaction: discord.Interaction, pagina: app_commands.Range[int, 1, 100] = 1) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message(await testo_per(interaction, "guild_only_command"), ephemeral=True)
+            return
+        voci = await sticky_message_repo.list_for_guild(interaction.guild.id)
+        if not voci:
+            await interaction.response.send_message(await testo_per(interaction, "fissi_elenco_vuoto"), ephemeral=True)
+            return
+        pagine = max(1, -(-len(voci) // 10))
+        p = min(pagina, pagine)
+        righe = [f"<#{v.channel_id}> — {v.message_text.replace(chr(10), ' ')[:80]}" for v in voci[(p - 1) * 10 : p * 10]]
+        embed = discord.Embed(description="\n".join(righe)[:4000], color=discord.Color.blurple())
+        embed.set_footer(text=await testo_per(interaction, "fissi_elenco_pagina", p=p, n=pagine, tot=len(voci)))
+        await interaction.response.send_message(embed=embed, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
 
     @comando_di_gruppo(
         "admin-messaggi",

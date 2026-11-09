@@ -4,7 +4,7 @@ core/embed_builder_logic.py
 Controllo dei limiti e costruzione dell'embed (NF-17, SPEC §22.6). Tutti i
 limiti di Discord si controllano QUANDO l'admin salva, non quando Discord
 rifiuta il messaggio. Funzioni pure, usate anche dal pannello web (D16).
-Funzioni coperte: SPEC §22 (NF-17)
+Funzioni coperte: SPEC §22 (NF-17), catalogo #128 UTL-075, 076, 079, 081 (D69, B4)
 """
 
 from __future__ import annotations
@@ -27,6 +27,12 @@ MAX_VALORE_CAMPO = 1024
 MAX_PIEDE = 2048
 MAX_TOTALE = 6000
 MAX_URL = 2000
+MAX_JSON_BYTE = 1_048_576  # file JSON importato: 1 MiB
+MAX_JSON_FINESTRA = 4000  # JSON incollato in una finestra
+MAX_EMBED_MESSAGGIO = 10  # embed in un solo messaggio (1 + fino a 9 «altri»)
+MAX_COMPONENTI_V2 = 40
+MAX_TESTO_V2 = 4000
+MAX_TESTO_BOTTONE = 80
 
 
 @dataclass(frozen=True)
@@ -131,3 +137,103 @@ def da_json(dati: dict) -> DatiEmbed:
         footer=dati.get("footer"),
         fields=tuple((str(n), str(v), bool(i)) for n, v, i in dati.get("fields", [])),
     )
+
+
+def _colore_testo(valore) -> str | None:
+    if isinstance(valore, int) and 0 <= valore <= 0xFFFFFF:
+        return f"#{valore:06X}"
+    return valore if isinstance(valore, str) else None
+
+
+def da_json_discord(d: dict) -> DatiEmbed:
+    """L'embed nel formato dei messaggi di Discord (title, color intero, fields con name/value, image.url...)."""
+    campi = tuple(
+        (str(c.get("name", "")), str(c.get("value", "")), bool(c.get("inline", False)))
+        for c in d.get("fields", []) if isinstance(c, dict)
+    )
+    return DatiEmbed(
+        title=d.get("title"), description=d.get("description"), color=_colore_testo(d.get("color")),
+        image_url=(d.get("image") or {}).get("url") if isinstance(d.get("image"), dict) else None,
+        thumbnail_url=(d.get("thumbnail") or {}).get("url") if isinstance(d.get("thumbnail"), dict) else None,
+        footer=(d.get("footer") or {}).get("text") if isinstance(d.get("footer"), dict) else None,
+        fields=campi,
+    )
+
+
+def da_testo_json(testo: str) -> tuple[DatiEmbed | None, str | None]:
+    """(dati, errore). Accetta il formato di iYokai e quello di Discord, anche dentro «embeds»: [...]."""
+    if len(testo.encode("utf-8")) > MAX_JSON_BYTE:
+        return None, "Il file è troppo grande (massimo 1 MiB)."
+    try:
+        d = json.loads(testo)
+    except ValueError:
+        return None, "Il testo non è un JSON valido."
+    if isinstance(d, dict) and isinstance(d.get("embeds"), list) and d["embeds"]:
+        d = d["embeds"][0]
+    if not isinstance(d, dict):
+        return None, "Il JSON deve descrivere un embed (un oggetto)."
+    try:
+        if "fields" in d and d["fields"] and isinstance(d["fields"][0], (list, tuple)):
+            return da_json(d), None
+        return da_json_discord(d), None
+    except (TypeError, ValueError, AttributeError):
+        return None, "Non riesco a leggere i campi dell'embed."
+
+
+def embed_di_discord_a_dati(embed: discord.Embed) -> DatiEmbed:
+    return da_json_discord(embed.to_dict())
+
+
+def valida_gruppo(gruppo: list[DatiEmbed]) -> list[str]:
+    """Più embed in un messaggio: al massimo 10, e 6.000 caratteri IN TUTTO (non per embed)."""
+    errori: list[str] = []
+    if len(gruppo) > MAX_EMBED_MESSAGGIO:
+        errori.append(f"Un messaggio ha al massimo {MAX_EMBED_MESSAGGIO} embed.")
+    if sum(lunghezza_totale(d) for d in gruppo) > MAX_TOTALE:
+        errori.append(f"In tutto gli embed del messaggio superano {MAX_TOTALE} caratteri.")
+    return errori
+
+
+def componenti_v2(dati: DatiEmbed, bottoni: int) -> tuple[int, int]:
+    """(componenti, caratteri di testo) del messaggio V2: contenitore, testi, galleria, righe e bottoni."""
+    n = 1  # il contenitore
+    testo = 0
+    if dati.title or dati.description:
+        n += 1
+        testo += len(dati.title or "") + len(dati.description or "") + 4
+        if dati.thumbnail_url:
+            n += 2  # sezione con miniatura: il testo conta già, la miniatura è un componente a parte
+    for nome, valore, _ in dati.fields:
+        n += 1
+        testo += len(nome) + len(valore) + 6
+    if dati.image_url:
+        n += 1
+    if dati.footer:
+        n += 1
+        testo += len(dati.footer) + 4
+    if bottoni:
+        n += -(-bottoni // 5) + bottoni
+    return n, testo
+
+
+def valida_v2(dati: DatiEmbed, bottoni: int) -> list[str]:
+    n, testo = componenti_v2(dati, bottoni)
+    errori = []
+    if n > MAX_COMPONENTI_V2:
+        errori.append(f"Il formato V2 ha al massimo {MAX_COMPONENTI_V2} componenti (qui {n}): togli campi o bottoni.")
+    if testo > MAX_TESTO_V2:
+        errori.append(f"Il formato V2 ha al massimo {MAX_TESTO_V2} caratteri di testo in tutto (qui {testo}).")
+    return errori
+
+
+def errore_bottone(tipo: str, etichetta: str | None, valore: str | None) -> str | None:
+    """Il motivo per cui il bottone non va bene, oppure None."""
+    if tipo not in ("link", "tag"):
+        return "Il tipo è «link» o «tag»."
+    if not etichetta or not etichetta.strip() or len(etichetta) > MAX_TESTO_BOTTONE:
+        return f"Serve un'etichetta di al massimo {MAX_TESTO_BOTTONE} caratteri."
+    if not valore or not valore.strip():
+        return "Serve il valore: l'indirizzo per un link, il nome del tag per «tag»."
+    if tipo == "link" and (len(valore) > 512 or not _url_valido(valore)):
+        return "Il link deve cominciare con http:// o https:// ed essere lungo al massimo 512 caratteri."
+    return None

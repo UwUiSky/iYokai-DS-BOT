@@ -229,6 +229,9 @@ class Config:
     # questo bot rifiltrare i risultati.
     PIXABAY_API_KEY: str = field(default="", repr=False)
 
+    # Prezzi cripto di /web prezzo (CoinGecko, piano Demo, D69). Vuota = il comando risponde che non è attivo.
+    COINGECKO_API_KEY: str = field(default="", repr=False)
+
     # Radio condivisa del bot principale (SPEC.md §9.11) — cartella
     # locale per gli inediti dell'utente, letta SOLO dal nodo
     # Lavalink locale/self-hostato (i nodi pubblici non hanno accesso
@@ -439,6 +442,7 @@ def _load_config() -> Config:
         TWITCH_CLIENT_SECRET=_optional("TWITCH_CLIENT_SECRET", ""),
         YOUTUBE_API_KEY=_optional("YOUTUBE_API_KEY", ""),
         PIXABAY_API_KEY=_optional("PIXABAY_API_KEY", ""),
+        COINGECKO_API_KEY=_optional("COINGECKO_API_KEY", ""),
         MAIN_RADIO_LOCAL_FOLDER=_optional("MAIN_RADIO_LOCAL_FOLDER", ""),
         MEMORY_ALERT_THRESHOLD_MB=_optional_int("MEMORY_ALERT_THRESHOLD_MB", 512),
         WEB_BIND_HOST=_optional("WEB_BIND_HOST", "127.0.0.1"),
