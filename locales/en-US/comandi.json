@@ -325,7 +325,11 @@
   "espressione": "expression",
   "vai": "go",
   "globali": "global",
-  "risposte-globali": "global-replies"
+  "risposte-globali": "global-replies",
+  "creatori": "creators",
+  "sostituisci": "replace",
+  "gruppi": "groups",
+  "prendi": "take"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1225,7 +1229,16 @@
   "tag": "Tags of the server: use them and make your own",
   "admin-tag": "Tags and automatic replies (admin): create, options, groups, import, export",
   "admin-tag tag opzioni": "How a tag behaves: permission, target, where it replies.",
-  "admin-tag tag risposte": "Give a tag up to 5 replies, each with its weight."
+  "admin-tag tag risposte": "Give a tag up to 5 replies, each with its weight.",
+  "tag crea": "Create a tag of your own (needs the role the server picked).",
+  "tag modifica": "Change the text of a tag you created.",
+  "tag elimina": "Delete a tag you created.",
+  "tag prendi": "Take a tag whose author left the server.",
+  "admin-tag tag creatori": "Pick the role of who can create their own tags with /tag crea.",
+  "admin-tag tag sostituisci": "Change a text in all tags, after a preview.",
+  "admin-tag tag esporta": "Export the server's tags to a code or a file.",
+  "admin-tag tag importa": "Import tags from a code or a JSON file.",
+  "admin-tag tag gruppi": "Rules per tag group: one channel and/or a required role."
  },
  "parametri": {},
  "menu": {

@@ -22,6 +22,7 @@ from core.database import db
 from core.i18n import testo_per
 from core.nome_logic import normalizza_nome
 from core.repositories.custom_command_repo import custom_command_repo
+from core.tag_pacchetti_logic import nome_gruppo_valido
 from core.ui_base import BaseModal
 
 MODULE_CUSTOM_COMMANDS = "custom_commands"
@@ -93,6 +94,7 @@ class TagOpzioniCog(CogConGruppi, commands.Cog):
         si_cancella_dopo="La risposta sparisce dopo tanti secondi (da 5 a 3600; 0: resta)",
         cancella_messaggi="Prima di rispondere cancella gli ultimi N messaggi (0: nessuno; non oltre 14 giorni)",
         anche_modificati="Scatta anche se il messaggio viene modificato in un comando",
+        gruppo="Il gruppo del tag, con le sue regole di canale e ruolo (vuoto: nessuno)",
     )
     @app_commands.choices(permesso=_SCELTE_PERMESSO, invio=_SCELTE_INVIO)
     @app_commands.autocomplete(nome=_completa)
@@ -103,6 +105,7 @@ class TagOpzioniCog(CogConGruppi, commands.Cog):
         reazioni: app_commands.Range[str, 0, 200] | None = None,
         si_cancella_dopo: app_commands.Range[int, 0, 3600] | None = None,
         cancella_messaggi: app_commands.Range[int, 0, 100] | None = None, anche_modificati: bool | None = None,
+        gruppo: app_commands.Range[str, 0, 32] | None = None,
     ) -> None:
         if not await self._pronto(interaction):
             return
@@ -126,6 +129,14 @@ class TagOpzioniCog(CogConGruppi, commands.Cog):
                     await testo_per(interaction, "tag_cancella_dopo_minimo", minimo=MIN_CANCELLA_DOPO), ephemeral=True)
                 return
             campi["si_cancella_dopo"] = si_cancella_dopo or None
+        if gruppo is not None:
+            nome_g = nome_gruppo_valido(gruppo) if gruppo.strip() else None
+            if gruppo.strip() and nome_g is None:
+                await interaction.response.send_message(await testo_per(interaction, "tag_gruppo_nome"), ephemeral=True)
+                return
+            if nome_g and await custom_command_repo.gruppo(interaction.guild.id, nome_g) is None:
+                await custom_command_repo.imposta_gruppo(interaction.guild.id, nome_g, None, None)  # nasce senza regole
+            campi["gruppo"] = nome_g
         if cancella_messaggi is not None:
             campi["cancella_messaggi"] = cancella_messaggi or None
         for chiave, valore in (("bersaglio", bersaglio), ("cancella_innesco", cancella_innesco), ("solo_nsfw", solo_nsfw),

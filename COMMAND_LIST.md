@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:07 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:12 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 770 comandi in 47 categorie.**
+**Totale: 779 comandi in 47 categorie.**
 
 ## Admin: AI
 
@@ -380,12 +380,17 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 - **`/admin-tag risposte globali`** — Accendi o spegni le risposte automatiche dell'owner in questo server.
 - **`/admin-tag risposte svuota`** — Elimina tutte le risposte automatiche del server.
 - **`/admin-tag tag crea`** — Crea un comando personalizzato.
+- **`/admin-tag tag creatori`** — Scegli il ruolo di chi può creare tag propri con /tag crea.
 - **`/admin-tag tag elenco`** — Mostra i comandi personalizzati del server.
 - **`/admin-tag tag elimina`** — Elimina un comando personalizzato.
+- **`/admin-tag tag esporta`** — Esporta i tag del server in un codice o in un file.
+- **`/admin-tag tag gruppi`** — Regole per gruppo di tag: un solo canale e/o un ruolo richiesto.
+- **`/admin-tag tag importa`** — Importa tag da un codice o da un file JSON.
 - **`/admin-tag tag modifica`** — Cambia un comando personalizzato.
 - **`/admin-tag tag opzioni`** — Come si comporta un tag: permesso, bersaglio, dove risponde.
 - **`/admin-tag tag prefisso`** — Scegli il prefisso per usare i comandi scrivendo nel canale.
 - **`/admin-tag tag risposte`** — Dai a un tag fino a 5 risposte, ognuna con il suo peso.
+- **`/admin-tag tag sostituisci`** — Cambia un testo in tutti i tag, dopo l'anteprima.
 
 ## Admin: ticket
 
@@ -830,6 +835,10 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 
 ## Tag
 
+- **`/tag crea`** — Crea un tag tuo (serve il ruolo scelto dal server).
+- **`/tag elimina`** — Elimina un tag che hai creato tu.
+- **`/tag modifica`** — Cambia il testo di un tag che hai creato tu.
+- **`/tag prendi`** — Prendi un tag il cui autore ha lasciato il server.
 - **`/tag usa`** — Usa un comando personalizzato di questo server.
 
 ## Ticket

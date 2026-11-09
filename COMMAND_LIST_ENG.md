@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:07 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:12 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 770 commands in 47 categories.**
+**Total: 779 commands in 47 categories.**
 
 ## Admin: AI
 
@@ -380,11 +380,16 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:0
 - **`/admin-tag replies global`** — Turn the owner's shared automatic replies on or off in this server.
 - **`/admin-tag replies list`** — Shows the server's automatic replies.
 - **`/admin-tag tag create`** — Creates a custom command.
+- **`/admin-tag tag creators`** — Pick the role of who can create their own tags with /tag crea.
 - **`/admin-tag tag delete`** — Deletes a custom command.
 - **`/admin-tag tag edit`** — Edits a custom command.
+- **`/admin-tag tag export`** — Export the server's tags to a code or a file.
+- **`/admin-tag tag groups`** — Rules per tag group: one channel and/or a required role.
+- **`/admin-tag tag import`** — Import tags from a code or a JSON file.
 - **`/admin-tag tag list`** — Shows the server's custom commands.
 - **`/admin-tag tag options`** — How a tag behaves: permission, target, where it replies.
 - **`/admin-tag tag prefix`** — Picks the prefix to use commands by typing in the channel.
+- **`/admin-tag tag replace`** — Change a text in all tags, after a preview.
 - **`/admin-tag tag replies`** — Give a tag up to 5 replies, each with its weight.
 
 ## Admin: tickets
@@ -830,6 +835,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:0
 
 ## Tags
 
+- **`/tag create`** — Create a tag of your own (needs the role the server picked).
+- **`/tag delete`** — Delete a tag you created.
+- **`/tag edit`** — Change the text of a tag you created.
+- **`/tag take`** — Take a tag whose author left the server.
 - **`/tag use`** — Uses a custom command of this server.
 
 ## Tickets

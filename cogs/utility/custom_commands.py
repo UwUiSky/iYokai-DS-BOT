@@ -113,6 +113,20 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         return None
 
     @staticmethod
+    async def _rifiuto_gruppo(tag, membro: discord.Member, canale) -> str | None:
+        """Le regole del gruppo del tag: un solo canale e/o un ruolo richiesto."""
+        if not tag.gruppo:
+            return None
+        regole = await custom_command_repo.gruppo(tag.guild_id, tag.gruppo)
+        if regole is None:
+            return None
+        if regole["canale_id"] and getattr(canale, "id", None) != regole["canale_id"]:
+            return "tag_gruppo_canale"
+        if regole["ruolo_id"] and regole["ruolo_id"] not in {r.id for r in membro.roles} and not membro.guild_permissions.administrator:
+            return "tag_gruppo_ruolo"
+        return None
+
+    @staticmethod
     def _destinazione(tag, membro: discord.Member, canale):
         """(dove scrivere, se la risposta va tenuta fuori dal canale). «altro» senza canale valido torna nel canale."""
         if tag.invio == "privato":
@@ -221,7 +235,8 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         tag = await custom_command_repo.get_tag(message.guild.id, nome)
         if tag is None or (dalla_modifica and not tag.anche_modificati):
             return
-        if self._rifiuto(tag, message.author, message.channel, message.mentions[0] if message.mentions else None) is not None:
+        if self._rifiuto(tag, message.author, message.channel, message.mentions[0] if message.mentions else None) is not None \
+                or await self._rifiuto_gruppo(tag, message.author, message.channel) is not None:
             return  # col prefisso si tace: niente messaggi di servizio nel canale
         if self._pausa(tag, message.guild.id, message.author.id) > 0:
             return
@@ -294,7 +309,8 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
                 await testo_per(interaction, "customcomman_aspetta_ancora_secondi_prima_di", v1=int(residuo) + 1), ephemeral=True
             )
             return
-        rifiuto = self._rifiuto(tag, interaction.user, interaction.channel, bersaglio)
+        rifiuto = self._rifiuto(tag, interaction.user, interaction.channel, bersaglio) \
+            or await self._rifiuto_gruppo(tag, interaction.user, interaction.channel)
         if rifiuto is not None:
             await interaction.response.send_message(await testo_per(interaction, rifiuto), ephemeral=True)
             return
