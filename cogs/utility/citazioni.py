@@ -1,7 +1,7 @@
 """
 cogs/utility/citazioni.py
 =========================
-Citazioni del server (fino a 500) e registro dei comandi: `/fun citazioni caso|aggiungi|cerca|elimina`, menu del
+Citazioni del server (fino a 500) e registro dei comandi: `/fun citazioni caso|aggiungi|cerca|elimina` (con `caso fonte:famose` esce una citazione famosa, come faceva il vecchio comando), menu del
 tasto destro «Salva citazione», `/admin-moduli citazioni azione` (esporta, importa, elimina in JSON). Conta i comandi usati per
 server e giorno (metrica «comandi» di `/utility serverstats`) e scrive nel log lo staff che usa un comando di gestione.
 Funzioni coperte: catalogo #128 UTL-206, 207, 222, 229 (D69, B16)
@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import io
 import logging
+import random
 from datetime import datetime, timezone
 
 import discord
@@ -18,6 +19,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core import channel_router as router
+from core.classic_entertainment_logic import random_quote
 from core.citazioni_logic import (
     MAX_BYTE_IMPORT, MAX_PER_SERVER, MAX_TESTO, ImportCitazioniErrato, e_comando_staff, leggi_importazione, pulisci_testo,
     righe_in_json, riga_citazione,
@@ -38,6 +40,7 @@ _NESSUNA_MENZIONE = discord.AllowedMentions.none()
 _SG = ("citazioni", "Citazioni del server")
 _SG_ADMIN = ("citazioni", "Citazioni del server: esporta, importa, elimina")
 SECONDI_CONFERMA = 60
+_FONTI = [app_commands.Choice(name="del server", value="server"), app_commands.Choice(name="famose", value="famose")]
 _AZIONI = [
     app_commands.Choice(name="esporta", value="esporta"),
     app_commands.Choice(name="importa", value="importa"),
@@ -126,9 +129,14 @@ class CitazioniCog(CogConGruppi, commands.Cog):
         if await self._pronto(interaction):
             await self._salva(interaction, testo, autore.id if autore and not autore.bot else None, None)
 
-    @comando_di_gruppo("fun", nome="caso", descrizione="Mostra una citazione a caso del server.", sottogruppo=_SG)
-    async def caso(self, interaction: discord.Interaction) -> None:
+    @comando_di_gruppo("fun", nome="caso", descrizione="Mostra una citazione a caso: del server o tra quelle famose.", sottogruppo=_SG)
+    @app_commands.describe(fonte="Di quale raccolta (di base quella del server)")
+    @app_commands.choices(fonte=_FONTI)
+    async def caso(self, interaction: discord.Interaction, fonte: app_commands.Choice[str] | None = None) -> None:
         if not await self._pronto(interaction):
+            return
+        if fonte is not None and fonte.value == "famose":  # prende il posto del vecchio `/fun quote`
+            await interaction.response.send_message(f"💬 {random_quote(random)}", allowed_mentions=_NESSUNA_MENZIONE)
             return
         riga = await citazioni_repo.a_caso(interaction.guild.id)
         if riga is None:

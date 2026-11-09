@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:16 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:30 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 787 commands in 47 categories.**
+**Total: 786 commands in 47 categories.**
 
 ## Admin: AI
 
@@ -605,9 +605,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:1
 - **`/fun measure`** — Measures from 0 to 100% how much of something you choose.
 - **`/fun number`** — A random number in a range.
 - **`/fun prank`** — A harmless prank on a user.
-- **`/fun quote`** — Shows a random quote.
 - **`/fun quotes add`** — Save a quote of the server.
-- **`/fun quotes case`** — Show a random quote of the server.
+- **`/fun quotes case`** — Show a random quote: from the server or a famous one.
 - **`/fun quotes delete`** — Delete a quote you saved.
 - **`/fun quotes search`** — Search a word among the server's quotes.
 - **`/fun random`** — Would you rather, topic, advice, magic item.

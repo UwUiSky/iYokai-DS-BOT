@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:16 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:30 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 787 comandi in 47 categorie.**
+**Totale: 786 comandi in 47 categorie.**
 
 ## Admin: AI
 
@@ -599,7 +599,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 - **`/fun 8ball`** — Fai una domanda alla palla magica 8.
 - **`/fun casuale`** — Preferiresti, argomento, consiglio, oggetto magico, classe.
 - **`/fun citazioni aggiungi`** — Salva una citazione del server.
-- **`/fun citazioni caso`** — Mostra una citazione a caso del server.
+- **`/fun citazioni caso`** — Mostra una citazione a caso: del server o tra quelle famose.
 - **`/fun citazioni cerca`** — Cerca una parola tra le citazioni del server.
 - **`/fun citazioni elimina`** — Elimina una citazione che hai salvato tu.
 - **`/fun coinflip`** — Lancia una moneta: testa o croce.
@@ -608,7 +608,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 - **`/fun joke`** — Racconta una barzelletta a caso.
 - **`/fun misura`** — Misura da 0 a 100% quanto c'è di una cosa a tua scelta.
 - **`/fun numero`** — Un numero a caso in un intervallo.
-- **`/fun quote`** — Mostra una citazione a caso.
 - **`/fun rate`** — Valuta qualcosa da 0 a 10.
 - **`/fun scegli`** — Scelgo a caso tra le opzioni che scrivi.
 - **`/fun scherzo`** — Uno scherzo innocuo verso un utente.

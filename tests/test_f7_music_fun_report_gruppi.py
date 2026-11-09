@@ -78,7 +78,7 @@ async def test_fun_ha_tutti_i_comandi_nel_gruppo_condiviso():
     await ent_setup(bot)
     await ship_setup(bot)
     try:
-        assert percorsi_del_gruppo("fun") >= {"coinflip", "dice", "8ball", "joke", "quote", "fact", "ship", "rate"}
+        assert percorsi_del_gruppo("fun") >= {"coinflip", "dice", "8ball", "joke", "fact", "ship", "rate"}
         # D56: immagini e giochi contro il bot hanno i loro gruppi
         assert percorsi_del_gruppo("immagini") >= {"grayscale", "invert", "blur", "pixelate", "meme", "animal", "search-image"}
         assert "rps" in percorsi_del_gruppo("giochi")

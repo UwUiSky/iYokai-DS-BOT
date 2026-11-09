@@ -125,3 +125,15 @@ async def test_presenti_con_codice_esclude_chi_e_uscito(clean_db):
         "INSERT INTO invite_joins (guild_id, user_id, inviter_id, code, kind) VALUES (1,10,5,'abc','invite'),(1,11,5,'abc','invite'),(1,12,5,'xyz','invite')")
     await clean_db.execute("UPDATE invite_joins SET left_at = now() WHERE user_id = 11")
     assert await r.presenti_con_codice(1, "abc") == [10] and await r.presenti_con_codice(2, "abc") == []
+
+
+async def test_caso_famose_prende_il_posto_di_fun_quote():
+    from core.classic_entertainment_logic import QUOTES
+    cog = modulo.CitazioniCog(MagicMock())
+    inter = fake_interaction()
+    with patch.object(modulo.db, "is_module_active_for_guild", AsyncMock(return_value=True)), \
+            patch.object(modulo.citazioni_repo, "a_caso", AsyncMock(return_value=None)) as dal_server:
+        await modulo.CitazioniCog.caso.callback(cog, inter, SimpleNamespace(value="famose"))
+    dal_server.assert_not_awaited()
+    testo = inter.response.send_message.call_args.args[0]
+    assert testo.removeprefix("💬 ") in QUOTES
