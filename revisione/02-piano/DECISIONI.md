@@ -1038,3 +1038,14 @@ una **sanzione con durata** (es. «Spam» → timeout 1 ora). Il bot porta un el
 per tutti i server all'inizio (es. lieve: warn; media: timeout 1 h; grave: timeout 24 h o kick; gravissima: ban);
 ogni server può cambiare, togliere o aggiungere motivi. Scegliendo un motivo pronto il bot propone quella sanzione e
 quella durata, che lo staff può cambiare prima di confermare.
+
+## D69 — Blocco Utility (#128): scelte di base (09/11/2026, raccomandazioni del guardiano, da confermare all'owner)
+Disegno: scratchpad `disegno_utility.md` (28 blocchi B1–B28, migrazioni 0540–0563). Scelte: 7 gruppi nuovi
+(`/web`, `/tag`, `/eventi`, `/admin-tag`, `/admin-automazioni`, `/admin-inviti`, `/admin-giochi`; radici 47 su 60);
+cambi di percorso con migrazione della politica e annuncio; tag creati da un ruolo scelto dal server (di base solo
+staff); meteo MET Norway + Nominatim (Open-Meteo vieta l'uso commerciale); film Wikipedia + TVmaze (TMDB solo con
+chiave); prezzi cripto CoinGecko con chiave dell'owner (col Premium: piano pagato o chiave propria, D59);
+accorciatore is.gd spento di base con controllo phishing; correzione dei link spenta di base; risposte globali
+dell'owner spegnibili dal server (max 20); eventi creati da chi ha `create_events`; pesi dei sondaggi per ruolo;
+autore dei suggerimenti anonimi visibile solo agli admin, con registro; script dei tag in linguaggio nostro (italiano
++ alias inglesi, niente Jinja); il menu degli eventi dei log va diviso prima di aggiungere voci (25/25).
