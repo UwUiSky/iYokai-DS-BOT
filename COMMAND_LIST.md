@@ -573,6 +573,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 - **`/fun ship`** — Calcola la compatibilità tra due utenti.
 - **`/fun testo`** — Scrivi un testo in uno stile speciale.
 
+## GIF
+
+- **`/gif azione`** — Una GIF di azione verso un utente: abbraccio, bacio, schiaffo...
+- **`/gif privacy`** — Scegli chi può farti le azioni con le GIF.
+- **`/gif reazione`** — Una GIF di reazione: piangi, balli, ridi...
+
 ## Giochi
 
 - **`/giochi gioca`** — Gioca le tue coin: monetina, dadi o slot.

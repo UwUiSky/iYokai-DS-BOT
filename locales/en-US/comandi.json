@@ -308,7 +308,8 @@
   "json": "json",
   "bottoni": "buttons",
   "salta": "skip",
-  "prossimi": "upcoming"
+  "prossimi": "upcoming",
+  "azione": "action"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1161,7 +1162,11 @@
   "level compleanno prossimi": "The next birthdays in the server.",
   "admin-moduli compleanni membro": "Register a member's birthday (day and month only).",
   "admin-ticket-opzioni attesa": "Moves tickets waiting for the user to a category.",
-  "admin-ticket-opzioni regole": "Rules: if nobody writes for N minutes, close, delete or send a message."
+  "admin-ticket-opzioni regole": "Rules: if nobody writes for N minutes, close, delete or send a message.",
+  "gif": "Reaction and action GIFs",
+  "gif reazione": "A reaction GIF: cry, dance, laugh...",
+  "gif azione": "An action GIF aimed at a user: hug, kiss, slap...",
+  "gif privacy": "Choose who can send you GIF actions."
  },
  "parametri": {},
  "menu": {
