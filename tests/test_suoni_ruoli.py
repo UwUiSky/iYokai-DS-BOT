@@ -62,7 +62,8 @@ async def test_ruolo_cancellato_esce_da_tutti_i_suoni(repo):
     await repo.imposta(G, "s:2", 8, "vieta")
     cog = modulo.SoundboardCog(SimpleNamespace())
     await cog.on_guild_role_delete(SimpleNamespace(id=7, guild=SimpleNamespace(id=G)))
-    assert await repo.regole(G, "s:1") == [] and await repo.regole(G, "s:2") == [(8, "vieta")]
+    assert await repo.regole(G, "s:1") == [(0, "consenti")]  # era l'ultimo «consenti»: resta bloccato
+    assert await repo.regole(G, "s:2") == [(8, "vieta")]
 
 
 def _cog():
@@ -90,12 +91,14 @@ async def test_comando_admin_consenti_vieta_mostra_togli(repo):
     assert "<@&50>" in elenco and "<@&51>" in elenco
     assert it.followup.send.await_args.kwargs["allowed_mentions"].roles is False
     await cog.suono_ruoli.callback(cog, it, "d:1", scelta("togli"), _ruolo(50))
-    assert await repo.regole(G, "d:1") == [(51, "vieta")]
+    assert await repo.regole(G, "d:1") == [(0, "consenti"), (51, "vieta")]  # tolto l'ultimo «consenti»: bloccato
+    await cog.suono_ruoli.callback(cog, it, "d:1", scelta("mostra"), None)
+    assert "<@&0>" not in it.followup.send.await_args.args[0]
     # @everyone, ruolo mancante, suono sconosciuto: nessuna scrittura
     await cog.suono_ruoli.callback(cog, it, "d:1", scelta("vieta"), _ruolo(G, default=True))
     await cog.suono_ruoli.callback(cog, it, "d:1", scelta("vieta"), None)
     await cog.suono_ruoli.callback(cog, it, "boh", scelta("vieta"), _ruolo(52))
-    assert await repo.regole(G, "d:1") == [(51, "vieta")]
+    assert await repo.regole(G, "d:1") == [(0, "consenti"), (51, "vieta")]
 
 
 async def test_music_suono_blocca_chi_non_ha_il_ruolo(repo, monkeypatch):
@@ -115,3 +118,27 @@ async def test_music_suono_blocca_chi_non_ha_il_ruolo(repo, monkeypatch):
     assert player.channel.suoni == [suono_server]
     for task in list(cog._task):
         task.cancel()
+
+
+async def test_tolto_l_ultimo_consenti_il_suono_resta_bloccato(repo):
+    await repo.imposta(G, "b:1", 60, "consenti")
+    await repo.imposta(G, "b:1", 61, "vieta")
+    assert await repo.togli(G, "b:1", 60) is True
+    regole = await repo.regole(G, "b:1")
+    assert not puo_suonare(regole, {1, 2})  # non torna libero per tutti
+    assert puo_suonare(regole, {1}, amministratore=True)
+    await repo.imposta(G, "b:1", 62, "consenti")  # lo staff sceglie di nuovo
+    assert puo_suonare(await repo.regole(G, "b:1"), {62}) and not puo_suonare(await repo.regole(G, "b:1"), {1})
+
+
+async def test_ruolo_consenti_cancellato_blocca_e_il_blocco_non_conta_nel_tetto(repo):
+    await repo.imposta(G, "b:2", 70, "consenti")
+    await repo.togli_ruolo(G, 70)
+    assert not puo_suonare(await repo.regole(G, "b:2"), {1})
+    for i in range(MAX_RUOLI_PER_SUONO):
+        assert await repo.imposta(G, "b:2", 200 + i, "consenti") == "ok"
+    assert await repo.imposta(G, "b:2", 999, "consenti") == "tetto"
+    # un ruolo «vieta» tolto non blocca nulla
+    await repo.imposta(G, "b:3", 80, "vieta")
+    await repo.togli(G, "b:3", 80)
+    assert await repo.regole(G, "b:3") == []

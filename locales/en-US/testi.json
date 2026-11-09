@@ -2855,5 +2855,7 @@
   "telefono_registro_vuoto": "No calls recorded (they are kept for 14 days).",
   "telefono_rifiutata": "📵 The other server did not answer.",
   "telefono_collegati": "📞 You are connected. What you write here goes to the other server. To end: /fun telefono riaggancia.",
-  "telefono_finita": "📴 Call ended."
+  "telefono_finita": "📴 Call ended.",
+  "soundboard_ruoli_bloccato": "The sound {suono} is blocked: no role is allowed. Pick a role with \"Allow this role\" to reopen it.",
+  "soundboard_ruoli_bloccato_nota": "The sound stays blocked: no \"allow\" role is left."
 }

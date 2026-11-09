@@ -155,3 +155,16 @@ async def test_splatoon_fonte_muta_risponde_nascosto(monkeypatch):
     it = fake_interaction(guild=fake_guild(1), user=fake_member(5, "u"))
     await cog.turni.callback(cog, it, _scelta("splatoon3"))
     assert it.followup.send.await_args.kwargs["ephemeral"] is True
+
+
+async def test_splatoon3_cache_con_soli_turni_salmon_si_riusa():
+    chiamate = []
+
+    async def scarica(url):
+        chiamate.append(url)
+        return _risposta()
+
+    cache = _Cache()
+    cache.m["turni:splatoon3"] = {"modi": [], "salmon": [{"inizio": T0, "fine": T0 + 3600, "mappa": "m", "boss": "b", "armi": []}]}
+    dati = await tl.splatoon3(cache, T0 + 60, scarica)
+    assert dati["salmon"] and chiamate == []
