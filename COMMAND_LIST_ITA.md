@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:16 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:21 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 727 comandi in 42 categorie.**
+**Totale: 731 comandi in 42 categorie.**
 
 ## Admin: AI
 
@@ -615,6 +615,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 - **`/mod-ban appelli canale`** — Sceglie il canale staff per gli appelli (vuoto per spegnerli).
 - **`/mod-ban appelli elenco`** — Mostra gli ultimi appelli del server.
 - **`/mod-ban ban`** — Banna permanentemente un membro.
+- **`/mod-ban cerca`** — Cerca tra i ban del server per nome, ID o motivo.
 - **`/mod-ban kick`** — Espelle un membro dal server.
 - **`/mod-ban massa ban`** — Banna più utenti insieme, anche fuori dal server (ID o menzioni).
 - **`/mod-ban massa entrati`** — Banna o espelle chi è entrato negli ultimi minuti (dopo una conferma).
@@ -655,9 +656,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 - **`/mod-casi caso esporta`** — Manda in un file di testo i casi e le note di un membro.
 - **`/mod-casi caso motivo`** — Cambia il motivo di un caso già registrato.
 - **`/mod-casi caso nascondi`** — Nasconde un caso (non conta in classifiche e avvisi) o lo riattiva.
+- **`/mod-casi caso prova`** — Allega una prova (immagine, PDF o TXT) a un caso; senza file mostra quelle già allegate.
 - **`/mod-casi caso registra`** — Registra un caso senza eseguire l'azione (sanzione data fuori dal bot).
 - **`/mod-casi caso storico`** — Mostra lo storico casi di un membro.
 - **`/mod-casi caso vedi`** — Mostra i dettagli di un singolo caso.
+- **`/mod-casi invito`** — Mostra cosa c'è dietro un invito: server, canale, chi l'ha creato.
+- **`/mod-casi membri`** — Cerca tra i membri del server con dei filtri.
 - **`/mod-casi motivi aggiungi`** — Aggiunge un motivo pronto, da richiamare nel campo «motivo» (serve «Gestire il server»).
 - **`/mod-casi motivi elenco`** — Mostra i motivi pronti del server.
 - **`/mod-casi motivi modifica`** — Cambia testo, severità o sanzione di un motivo pronto (serve «Gestire il server»).

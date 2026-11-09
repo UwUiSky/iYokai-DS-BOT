@@ -58,6 +58,9 @@ def _riepilogo(guild: discord.Guild, o: opzioni.OpzioniModerazione) -> discord.E
     )
     embed.add_field(name="DM all'utente per", value=dm[:1024], inline=False)
     embed.add_field(name="Casi visibili a ogni utente", value="sì (/utility mie-sanzioni)" if o.utente_vede_casi else "no", inline=False)
+    embed.add_field(name="Conferma prima di sanzionare", value="sì" if o.conferma else "no", inline=False)
+    risposta = o.risposte if o.risposte != "cancella-dopo" else f"cancellata dopo {o.risposte_secondi} secondi"
+    embed.add_field(name="Risposte dopo una sanzione", value=risposta, inline=False)
     embed.add_field(name="Moderatore nei DM", value="nascosto («Staff di <server>»)" if o.anonimo else "col nome", inline=False)
     if o.dm_testi:
         embed.add_field(name="DM con testo del server", value=", ".join(_NOMI_AZIONI[a] for a in o.dm_testi)[:1024], inline=False)
@@ -139,6 +142,16 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
         motivo_obbligatorio="Il motivo delle sanzioni è obbligatorio (sì) o si può omettere (no)",
         anonimo="Nei messaggi privati delle sanzioni scrivi «Staff di <server>» invece del nome del moderatore",
         utente_vede_casi="Ogni utente vede i propri casi con /utility mie-sanzioni",
+        conferma="Prima di sanzionare chiede «Conferma» o «Annulla» (solo a chi comanda)",
+        risposte="Come risponde il bot dopo una sanzione: normale, compatta o cancellata dopo qualche secondo",
+        risposte_secondi="Se cancellata dopo: dopo quanti secondi (5-300)",
+    )
+    @app_commands.choices(
+        risposte=[
+            app_commands.Choice(name="Normale", value="normale"),
+            app_commands.Choice(name="Compatta (una riga)", value="compatta"),
+            app_commands.Choice(name="Cancella dopo qualche secondo", value="cancella-dopo"),
+        ]
     )
     async def imposta(
         self,
@@ -152,6 +165,9 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
         motivo_obbligatorio: bool | None = None,
         anonimo: bool | None = None,
         utente_vede_casi: bool | None = None,
+        conferma: bool | None = None,
+        risposte: app_commands.Choice[str] | None = None,
+        risposte_secondi: app_commands.Range[int, 5, 300] | None = None,
     ) -> None:
         if not await self._controlli(interaction):
             return
@@ -188,6 +204,11 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
             await opzioni.imposta_anonimo(guild.id, anonimo, interaction.user.id)
         if utente_vede_casi is not None:
             await opzioni.imposta_utente_vede_casi(guild.id, utente_vede_casi, interaction.user.id)
+        if conferma is not None:
+            await opzioni.imposta_conferma(guild.id, conferma, interaction.user.id)
+        if risposte is not None or risposte_secondi is not None:
+            modo = risposte.value if risposte is not None else (await opzioni.leggi(guild.id)).risposte
+            await opzioni.imposta_risposte(guild.id, modo, risposte_secondi, interaction.user.id)
         await interaction.response.send_message(
             embed=_riepilogo(guild, await opzioni.leggi(guild.id)),
             ephemeral=True,

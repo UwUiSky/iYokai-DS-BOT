@@ -28,6 +28,7 @@ SCELTE = {
     "azione_verifica": ("niente", "quarantena", "kick", "ban"),
     "azione_eta": ("attendi", "kick"),
     "azione_immagini": ("cancella", "avvisa", "timeout"),
+    "modalita_risposte_mod": ("normale", "compatta", "cancella-dopo"),
     "modalita_link_inviti": ("tutti", "crea_invito", "ruolo", "spento"),
 }
 
@@ -88,6 +89,9 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
         _c("mod_motivo_obbligatorio", "Il motivo delle sanzioni è obbligatorio (altrimenti si può omettere)", BOOL),
         _c("mod_scadenza_automod_giorni", "Giorni dopo i quali i casi AutoMod non contano più (0 = mai)", NUMERO),
         _c("mod_utente_vede_casi", "Ogni utente vede i propri casi con /utility mie-sanzioni", BOOL),
+        _c("mod_conferma", "Chiede «Conferma» o «Annulla» prima di ogni sanzione", BOOL),
+        _c("mod_risposte", "Come risponde il bot dopo una sanzione (normale, compatta, cancella-dopo)", SCELTA),
+        _c("mod_risposte_secondi", "Secondi prima di cancellare la risposta (5-300, solo cancella-dopo)", NUMERO),
         _c("mod_anonimo", "Nei DM delle sanzioni non nominare il moderatore (Staff di <server>)", BOOL),
         _c("mod_dm_testo_warn", "Testo del DM per il warn", TESTO),
         _c("mod_dm_testo_kick", "Testo del DM per il kick", TESTO),
@@ -106,6 +110,8 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
     "spam_trap": (_c("spam_trap_punizione", "Punizione", SCELTA),),
     "automod": (
         _c("automod_parole_nick", "Controlla anche i soprannomi", BOOL),
+        _c("automod_nomi_dehoist", "Toglie i simboli all'inizio dei nomi (dehoist)", BOOL),
+        _c("automod_nomi_simboli", "Ripulisce lettere decorative, testo impilato e caratteri invisibili nei nomi", BOOL),
         _c("odio_blocco_attivo", "Blocca le parole d'odio", BOOL),
         _c("odio_blocco_messaggio", "Messaggio di blocco", TESTO),
         _c("odio_richiami_soglia", "Richiami prima del timeout (1-20)", NUMERO),

@@ -13,6 +13,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.moderation_conferma import GIA_CONFERMATA
 from cogs.moderation._shared import MODULE_ACTIONS, Reason, completa_motivo, ensure_module_enabled
 from core import moderation_motivi
 from core.command_groups import CogConGruppi, comando_di_gruppo
@@ -144,7 +145,11 @@ class VistaProposta(BaseView):
         argomenti = {"member": self.membro, "reason": self.motivo}
         if self.azione == "timeout":
             argomenti["duration"] = _durata_testo(self.durata_s or 3600)
-        await comando.callback(cog, interaction, **argomenti)
+        segno = GIA_CONFERMATA.set(True)  # ha già premuto Conferma: il comando non lo chiede di nuovo
+        try:
+            await comando.callback(cog, interaction, **argomenti)
+        finally:
+            GIA_CONFERMATA.reset(segno)
         try:
             await self.origine.edit_original_response(content=await testo_per(self.origine, "motivopronto_fatto"), view=None)
         except discord.HTTPException:
