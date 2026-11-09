@@ -27,7 +27,7 @@ from pathlib import Path
 
 from core import immagini_pipeline
 from core.database import db
-from core.immagini_byte_logic import PULITA, riconosci_tipo
+from core.immagini_byte_logic import PULITA, nome_file_sicuro, riconosci_tipo
 
 logger = logging.getLogger("iyokai.allegati")
 
@@ -59,12 +59,6 @@ class Copia:
 def tipo_dai_byte(dati: bytes) -> str:
     """Il tipo vero dai primi byte, solo dall'elenco chiuso; tutto il resto e' «generico»."""
     return riconosci_tipo(dati) or GENERICO
-
-
-def nome_file_sicuro(nome: str) -> str:
-    """Solo il nome del file, corto e senza caratteri di controllo (finisce in un log o in un'intestazione)."""
-    pulito = "".join(c for c in (nome or "").replace("\\", "/").split("/")[-1] if c.isprintable() and c not in '"<>')
-    return pulito[:80] or "file"
 
 
 def cartella() -> Path:

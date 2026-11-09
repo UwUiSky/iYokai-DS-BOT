@@ -29,8 +29,7 @@ import aiohttp
 import discord
 
 from core.backup_mirror_logic import nome_sicuro_per_webhook
-from core.immagini_byte_logic import PULITA, riconosci_tipo, tipo_atteso
-from core.immagini_pipeline import analizza_immagine
+from core.immagini_pipeline import copia_ricaricabile
 
 logger = logging.getLogger("iyokai.backup_messages")
 
@@ -103,24 +102,11 @@ async def file_degli_allegati(allegati, guild_id: int = 0) -> list[discord.File]
             dati = await a.read()
         except discord.HTTPException:
             continue  # link scaduto o file sparito: resta fuori
-        vero = riconosci_tipo(dati)
-        dichiarato = tipo_atteso(a.filename, getattr(a, "content_type", None)) is not None
-        if vero is None and not dichiarato:
-            file.append(discord.File(io.BytesIO(dati), filename=a.filename))
+        copia = await copia_ricaricabile(dati, a.filename, getattr(a, "content_type", None), guild_id)
+        if copia is None:
+            logger.info("Allegato %s non copiato: immagine non pulita, non analizzata o file travestito.", a.filename)
             continue
-        if vero is None:
-            logger.info("Allegato %s non copiato: dice di essere un'immagine ma i byte no.", a.filename)
-            continue
-        try:
-            esito = await analizza_immagine(dati, a.filename, getattr(a, "content_type", None), guild_id)
-        except Exception:  # noqa: BLE001 - un allegato storto non ferma la copia
-            logger.warning("Allegato non analizzato, non copiato", exc_info=True)
-            continue
-        if esito.verdetto != PULITA or esito.non_analizzata is not None or not esito.png:
-            logger.info("Allegato %s non copiato: immagine non pulita o non analizzata.", a.filename)
-            continue
-        stem = a.filename.rsplit(".", 1)[0][:80] or "immagine"
-        file.append(discord.File(io.BytesIO(esito.png), filename=f"{stem}.png"))
+        file.append(discord.File(io.BytesIO(copia[1]), filename=copia[0]))
     return file
 
 

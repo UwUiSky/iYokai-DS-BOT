@@ -16,6 +16,7 @@ from unittest.mock import AsyncMock
 import discord
 
 from core import backup_messages_logic as bm
+from core import immagini_pipeline as pipeline
 from core.backup_clone_logic import RiepilogoCopia
 
 
@@ -154,7 +155,7 @@ async def test_copia_iniziale_allegati_come_file_e_fissati(monkeypatch):
         async def read(self):
             return b"%PDF-1.4 testo"
 
-    monkeypatch.setattr(bm, "analizza_immagine", AsyncMock())
+    monkeypatch.setattr(pipeline, "analizza_immagine", AsyncMock())
 
     piccolo, enorme = _Allegato("https://cdn/p.pdf", 10), _Allegato("https://cdn/e.zip", 11 * 1024 * 1024)
     assert bm.allegati_come_file([piccolo, enorme]) == [piccolo]

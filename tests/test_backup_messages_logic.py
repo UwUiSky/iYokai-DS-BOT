@@ -14,6 +14,7 @@ import discord
 import pytest
 
 import core.backup_messages_logic as modulo
+import core.immagini_pipeline as pipeline
 from core.backup_clone_logic import RiepilogoCopia
 from core.backup_messages_logic import MESSAGGI_PER_CANALE, copia_messaggi
 
@@ -287,7 +288,7 @@ async def test_immagine_pulita_si_ricarica_solo_ricodificata(monkeypatch):
     async def pulita(dati, nome, ct, guild_id):
         return EsitoImmagine(PULITA, "s", png=b"PNG-NUOVO")
 
-    monkeypatch.setattr(modulo, "analizza_immagine", pulita)
+    monkeypatch.setattr(pipeline, "analizza_immagine", pulita)
     file = await modulo.file_degli_allegati([_Foto("gatto.jpeg", f.jpeg(), "image/jpeg")], 5)
     assert [x.filename for x in file] == ["gatto.png"] and file[0].fp.read() == b"PNG-NUOVO"
 
@@ -301,7 +302,7 @@ async def test_immagine_sospetta_non_si_ricarica(monkeypatch, verdetto):
     async def esito(*a):
         return EsitoImmagine(verdetto, "s", ("x",))
 
-    monkeypatch.setattr(modulo, "analizza_immagine", esito)
+    monkeypatch.setattr(pipeline, "analizza_immagine", esito)
     assert await modulo.file_degli_allegati([_Foto("a.png", f.png())], 5) == []
 
 
@@ -312,7 +313,7 @@ async def test_png_con_byte_html_non_si_ricarica_e_non_si_analizza(monkeypatch):
     async def spia(*a):
         chiamate.append(a)
 
-    monkeypatch.setattr(modulo, "analizza_immagine", spia)
+    monkeypatch.setattr(pipeline, "analizza_immagine", spia)
     assert await modulo.file_degli_allegati([_Foto("foto.png", b"<html><script>x</script></html>")], 5) == []
     assert chiamate == []
 
@@ -325,5 +326,5 @@ async def test_non_analizzata_non_si_ricarica(monkeypatch):
     async def coda(*a):
         return EsitoImmagine("pulita", "s", non_analizzata="coda_piena")
 
-    monkeypatch.setattr(modulo, "analizza_immagine", coda)
+    monkeypatch.setattr(pipeline, "analizza_immagine", coda)
     assert await modulo.file_degli_allegati([_Foto("a.png", f.png())], 5) == []
