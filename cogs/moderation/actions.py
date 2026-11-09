@@ -72,6 +72,7 @@ from cogs.moderation import _tempban_modes as tempban_modes
 from cogs.moderation.ban_appeal import vista_appello
 from cogs.automod.escalation import scala_per_warn_manuale
 from core.spam_trap_logic import BAN_ACTION_TYPE as SPAM_TRAP_BAN_ACTION_TYPE
+from cogs.moderation.ricerca import completa_ban
 from core.moderation_conferma import conferma_sanzione, invia_esito
 from core.command_access import Livello
 from cogs.moderation._shared import (
@@ -883,8 +884,8 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         nome="unban",
         descrizione="Rimuove il ban da un utente.",
     )
-    @app_commands.describe(user_id="ID Discord dell'utente da sbannare", reason="Motivo dello sblocco")
-    @app_commands.autocomplete(reason=completa_motivo)
+    @app_commands.describe(user_id="ID Discord dell'utente da sbannare (scrivi il nome per cercarlo tra i ban)", reason="Motivo dello sblocco")
+    @app_commands.autocomplete(reason=completa_motivo, user_id=completa_ban)
     async def unban(
         self, interaction: discord.Interaction, user_id: app_commands.Range[str, 1, 25], reason: Reason | None = None
     ) -> None:

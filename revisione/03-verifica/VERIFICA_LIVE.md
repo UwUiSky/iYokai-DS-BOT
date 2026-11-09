@@ -1433,3 +1433,10 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - Con la conferma aperta toglimi il ruolo Mod (o alza il ruolo del bersaglio sopra al tuo) e premi «Conferma»: rifiutato, nessuna sanzione. Con `/mod-sanzioni applica` e la conferma accesa: una sola conferma, non due.
 - `/mod-sanzioni opzioni imposta risposte:Compatta`: il warn risponde con una riga («Warn · utente · #caso · motivo»). `risposte:Cancella dopo qualche secondo risposte_secondi:10`: la riga sparisce dopo 10 secondi. `risposte:Normale` rimette il riquadro di prima. Il riepilogo delle opzioni mostra conferma e risposte.
 
+## giro r19mod, M9 — ricerca ban, membri, invito, prove (#115)
+- `/mod-ban cerca testo:spam` con qualche ban di prova (uno con motivo «spam»): elenco di ID, nome e motivo, solo tuo. Una parola che non c'è: «Nessun ban». Banna un altro account e rilancia subito: non compare (cache di 5 minuti); con `aggiorna:True` compare. Con un account senza ModBan il comando non si apre.
+- `/mod-ban unban user_id:` e scrivi parte di un nome: il completamento propone fino a 25 ban; sceglierne uno e confermare toglie il ban.
+- `/mod-casi membri ruolo:@Prova` elenca i membri con quel ruolo (menzioni che non avvisano nessuno); `nome:re:^ann` filtra con un'espressione; `nome:re:(` dice che l'espressione non è valida; `entrato_dopo:2026-11-01`, `account_piu_giovane_di:7d`, `in_vocale:True`, `bot:True`. Con `esporta:True` arriva `membri.csv` (apribile in un foglio; un nome che inizia con «=» compare con un apice davanti).
+- `/mod-casi invito codice:` con un invito del server (anche come link `https://discord.gg/...`): server, canale, creatore, membri/online, scadenza. Un codice cancellato: «non esiste o è scaduto». Testo senza senso: «non sembra un invito».
+- `/mod-casi caso prova numero:1 file:` con un PNG, poi un PDF, poi un file .exe (rifiutato): le prime due si accettano. Dopo 5 prove la sesta è rifiutata. `/mod-casi caso prova numero:1` senza file le elenca e rimanda le immagini (ricodificate); il PDF non si scarica da qui. `/mod-casi nota aggiungi member: note: file:` crea la nota anche se la prova è rifiutata.
+
