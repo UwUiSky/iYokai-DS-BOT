@@ -307,7 +307,8 @@
   "bottoni": "buttons",
   "salta": "skip",
   "prossimi": "upcoming",
-  "stelle": "stars"
+  "stelle": "stars",
+  "partecipanti": "participants"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1159,7 +1160,10 @@
   "admin-ticket-opzioni regole": "Rules: if nobody writes for N minutes, close, delete or send a message.",
   "level stelle": "Board: who has the most stars and a random message",
   "level stelle classifica": "Who received the most stars on the board.",
-  "level stelle caso": "A random message from the board."
+  "level stelle caso": "A random message from the board.",
+  "admin-giveaway partecipanti": "Who takes part in a giveaway, 20 per page.",
+  "admin-giveaway opzioni": "Look, messages, log and excluded roles of giveaways.",
+  "admin-giveaway modifica": "Change duration, winners, prize or image of a giveaway."
  },
  "parametri": {},
  "menu": {
@@ -1179,6 +1183,7 @@
   "Salva come risposta pronta": "Save as saved reply",
   "Orari nel mio fuso": "Times in my time zone",
   "Scheda moderazione": "Moderation card",
-  "Segnala messaggio": "Report message"
+  "Segnala messaggio": "Report message",
+  "Riestrai giveaway": "Redraw giveaway"
  }
 }

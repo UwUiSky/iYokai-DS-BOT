@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:24 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:37 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 729 comandi in 42 categorie.**
+**Totale: 733 comandi in 42 categorie.**
 
 ## Admin: AI
 
@@ -199,6 +199,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 
 - **`/admin-giveaway avvia`** — Avvia un giveaway.
 - **`/admin-giveaway modello`** — Modelli di giveaway: salva, elenca, elimina, avvia.
+- **`/admin-giveaway modifica`** — Cambia durata, vincitori, premio o immagine di un giveaway.
+- **`/admin-giveaway opzioni`** — Aspetto, messaggi, log e ruoli esclusi dei giveaway.
+- **`/admin-giveaway partecipanti`** — Chi partecipa a un giveaway, a pagine da 20.
 - **`/admin-giveaway programmati`** — Giveaway programmati: elenca (anche quelli in errore) o annulla.
 
 ## Admin: livelli e XP
@@ -423,6 +426,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 
 - **`/Apri ticket`** — Menu «App» (tasto destro)
 - **`/Orari nel mio fuso`** — Menu «App» (tasto destro)
+- **`/Riestrai giveaway`** — Menu «App» (tasto destro)
 - **`/Scheda moderazione`** — Menu «App» (tasto destro)
 - **`/Segnala messaggio`** — Menu «App» (tasto destro)
 - **`/cerca-comando`** — Cerca un comando per descrizione.

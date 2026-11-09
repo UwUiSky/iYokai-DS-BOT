@@ -9,6 +9,7 @@ import discord
 import pytest
 
 from cogs.utility.embed_avanzati import BottoneTag
+from cogs.utility.giveaway_extra import BottoneRiepilogo
 from cogs.utility.reminders import BottoneRicordaAnche
 from cogs.utility.strumenti_rapidi import BottoneCronometro
 from cogs.utility.suggestions import BottoneChiScrisse
@@ -21,6 +22,7 @@ ELEMENTI = [
     lambda: BottoneRicordaAnche("abcdef"),
     lambda: BottoneCronometro("giro", 1),
     lambda: BottoneChiScrisse(1),
+    lambda: BottoneRiepilogo(1),
     lambda: BaseLayoutView(timeout=None),
 ]
 

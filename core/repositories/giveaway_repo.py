@@ -53,6 +53,26 @@ class Giveaway:
     started: bool = True
     duration_seconds: int | None = None
     errore: str | None = None
+    ruolo_escluso: int | None = None
+    ruolo_premio: int | None = None
+    immagine_url: str | None = None
+    colore: int | None = None
+
+
+@dataclass(frozen=True)
+class GiveawayOpzioni:
+    """Le scelte del server sui giveaway: aspetto del bottone, messaggi, log, ruoli esclusi."""
+    guild_id: int
+    colore: int | None = None
+    bottone_emoji: str | None = None
+    bottone_testo: str | None = None
+    msg_conferma: str | None = None
+    msg_dm: str | None = None
+    canale_log: int | None = None
+    ruoli_esclusi: tuple[int, ...] = ()
+
+
+_CAMPI_OPZIONI = frozenset({"colore", "bottone_emoji", "bottone_testo", "msg_conferma", "msg_dm", "canale_log", "ruoli_esclusi"})
 
 
 @dataclass(frozen=True)
@@ -68,6 +88,9 @@ class Modello:
     bypass_role_id: int | None = None
     bonus_role_id: int | None = None
     bonus_entries: int = 0
+    ruolo_escluso: int | None = None
+    ruolo_premio: int | None = None
+    immagine_url: str | None = None
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -130,6 +153,10 @@ class GiveawayRepository:
             started=row["started"],
             duration_seconds=row["duration_seconds"],
             errore=row["errore"],
+            ruolo_escluso=row["ruolo_escluso"],
+            ruolo_premio=row["ruolo_premio"],
+            immagine_url=row["immagine_url"],
+            colore=row["colore"],
         )
 
     async def create_giveaway(
@@ -149,6 +176,10 @@ class GiveawayRepository:
         bonus_entries: int = 0,
         starts_at: datetime | None = None,
         duration_seconds: int | None = None,
+        ruolo_escluso: int | None = None,
+        ruolo_premio: int | None = None,
+        immagine_url: str | None = None,
+        colore: int | None = None,
     ) -> int:
         """
         Con `starts_at` il giveaway è programmato: resta fermo (started=false)
@@ -161,14 +192,14 @@ class GiveawayRepository:
                 (guild_id, channel_id, prize, winners_count, min_level,
                  required_role_id, ends_at, created_by, min_messages,
                  bypass_role_id, bonus_role_id, bonus_entries, starts_at,
-                 started, duration_seconds)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                 started, duration_seconds, ruolo_escluso, ruolo_premio, immagine_url, colore)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
             RETURNING id
             """,
             guild_id, channel_id, prize, winners_count, min_level,
             required_role_id, ends_at, created_by, min_messages,
             bypass_role_id, bonus_role_id, bonus_entries, starts_at,
-            starts_at is None, duration_seconds,
+            starts_at is None, duration_seconds, ruolo_escluso, ruolo_premio, immagine_url, colore,
         )
         self._cache_conteggio.delete(guild_id)
         return row["id"]
@@ -365,6 +396,9 @@ class GiveawayRepository:
         bypass_role_id: int | None = None,
         bonus_role_id: int | None = None,
         bonus_entries: int = 0,
+        ruolo_escluso: int | None = None,
+        ruolo_premio: int | None = None,
+        immagine_url: str | None = None,
     ) -> None:
         """Salva o aggiorna un modello. Al massimo 25 per server (ModelloPieno)."""
         async with self._pool.acquire() as conn:
@@ -388,8 +422,9 @@ class GiveawayRepository:
                     """
                     INSERT INTO giveaway_templates
                         (guild_id, name, prize, winners_count, duration_minutes, min_level,
-                         required_role_id, min_messages, bypass_role_id, bonus_role_id, bonus_entries)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                         required_role_id, min_messages, bypass_role_id, bonus_role_id, bonus_entries,
+                         ruolo_escluso, ruolo_premio, immagine_url)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                     ON CONFLICT (guild_id, name) DO UPDATE SET
                         prize = EXCLUDED.prize, winners_count = EXCLUDED.winners_count,
                         duration_minutes = EXCLUDED.duration_minutes, min_level = EXCLUDED.min_level,
@@ -397,10 +432,14 @@ class GiveawayRepository:
                         min_messages = EXCLUDED.min_messages,
                         bypass_role_id = EXCLUDED.bypass_role_id,
                         bonus_role_id = EXCLUDED.bonus_role_id,
-                        bonus_entries = EXCLUDED.bonus_entries
+                        bonus_entries = EXCLUDED.bonus_entries,
+                        ruolo_escluso = EXCLUDED.ruolo_escluso,
+                        ruolo_premio = EXCLUDED.ruolo_premio,
+                        immagine_url = EXCLUDED.immagine_url
                     """,
                     guild_id, name, prize, winners_count, duration_minutes, min_level,
                     required_role_id, min_messages, bypass_role_id, bonus_role_id, bonus_entries,
+                    ruolo_escluso, ruolo_premio, immagine_url,
                 )
 
     async def get_template(self, guild_id: int, name: str) -> Modello | None:
@@ -420,6 +459,111 @@ class GiveawayRepository:
             "DELETE FROM giveaway_templates WHERE guild_id = $1 AND name = $2", guild_id, name
         )
         return result.endswith(" 1")
+
+    # ---------------------------------------------------------------- B9-B10 (D69)
+    async def get_by_message(self, guild_id: int, message_id: int) -> Giveaway | None:
+        row = await self._pool.fetchrow(
+            "SELECT * FROM giveaways WHERE guild_id = $1 AND message_id = $2", guild_id, message_id
+        )
+        return self._row_to_giveaway(row) if row is not None else None
+
+    async def get_del_server(self, guild_id: int, giveaway_id: int) -> Giveaway | None:
+        row = await self._pool.fetchrow(
+            "SELECT * FROM giveaways WHERE guild_id = $1 AND id = $2", guild_id, giveaway_id
+        )
+        return self._row_to_giveaway(row) if row is not None else None
+
+    async def list_modificabili(self, guild_id: int, cerca: str = "", limite: int = 25) -> list[Giveaway]:
+        """Giveaway non conclusi del server (anche i programmati) per il completamento: al massimo 25."""
+        rows = await self._pool.fetch(
+            "SELECT * FROM giveaways WHERE guild_id = $1 AND ended = false "
+            "AND ($2 = '' OR prize ILIKE '%' || $2 || '%' OR id::text = $2) ORDER BY id DESC LIMIT $3",
+            guild_id, cerca.replace("%", "").replace("_", ""), min(limite, 25),
+        )
+        return [self._row_to_giveaway(r) for r in rows]
+
+    async def list_partecipanti(self, giveaway_id: int, limite: int, scarto: int = 0) -> list[int]:
+        rows = await self._pool.fetch(
+            "SELECT user_id FROM giveaway_entries WHERE giveaway_id = $1 ORDER BY user_id LIMIT $2 OFFSET $3",
+            giveaway_id, limite, scarto,
+        )
+        return [r["user_id"] for r in rows]
+
+    async def modifica(
+        self, guild_id: int, giveaway_id: int, *, prize: str | None = None, winners_count: int | None = None,
+        ends_at: datetime | None = None, duration_seconds: int | None = None, immagine_url: str | None = None,
+    ) -> Giveaway | None:
+        """Cambia un giveaway non concluso. `ends_at` per quello in corso, `duration_seconds` per il programmato."""
+        row = await self._pool.fetchrow(
+            """
+            UPDATE giveaways SET prize = COALESCE($3, prize), winners_count = COALESCE($4, winners_count),
+                ends_at = CASE WHEN started THEN COALESCE($5, ends_at) ELSE ends_at END,
+                duration_seconds = CASE WHEN started THEN duration_seconds ELSE COALESCE($6, duration_seconds) END,
+                immagine_url = COALESCE($7, immagine_url)
+            WHERE guild_id = $1 AND id = $2 AND ended = false RETURNING *
+            """,
+            guild_id, giveaway_id, prize, winners_count, ends_at, duration_seconds, immagine_url,
+        )
+        return self._row_to_giveaway(row) if row is not None else None
+
+    async def segna_vincitori(self, giveaway_id: int, vincitori: list[int]) -> None:
+        """I vincitori attuali; quelli di prima diventano «scartati» e non si ripescano."""
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    "UPDATE giveaway_entries SET scartato = TRUE, vincitore = FALSE "
+                    "WHERE giveaway_id = $1 AND vincitore", giveaway_id,
+                )
+                await conn.execute(
+                    "UPDATE giveaway_entries SET vincitore = TRUE WHERE giveaway_id = $1 AND user_id = ANY($2::bigint[])",
+                    giveaway_id, vincitori,
+                )
+
+    async def get_vincitori(self, giveaway_id: int) -> list[int]:
+        rows = await self._pool.fetch(
+            "SELECT user_id FROM giveaway_entries WHERE giveaway_id = $1 AND vincitore ORDER BY user_id", giveaway_id
+        )
+        return [r["user_id"] for r in rows]
+
+    async def get_entries_ripescabili(self, giveaway_id: int) -> list[tuple[int, int]]:
+        """Iscritti con i biglietti, senza chi è già stato sostituito."""
+        rows = await self._pool.fetch(
+            "SELECT user_id, tickets FROM giveaway_entries WHERE giveaway_id = $1 AND NOT scartato AND NOT vincitore",
+            giveaway_id,
+        )
+        return [(r["user_id"], r["tickets"]) for r in rows]
+
+    async def get_opzioni(self, guild_id: int) -> GiveawayOpzioni:
+        r = await self._pool.fetchrow("SELECT * FROM giveaway_opzioni WHERE guild_id = $1", guild_id)
+        if r is None:
+            return GiveawayOpzioni(guild_id=guild_id)
+        d = dict(r)
+        d["ruoli_esclusi"] = tuple(d["ruoli_esclusi"] or ())
+        return GiveawayOpzioni(**d)
+
+    async def set_opzioni(self, guild_id: int, **campi) -> None:
+        """Cambia solo i campi passati (anche a None per toglierli)."""
+        sconosciuti = set(campi) - _CAMPI_OPZIONI
+        if sconosciuti:
+            raise ValueError(f"Opzioni sconosciute: {sorted(sconosciuti)}")
+        if not campi:
+            return
+        nomi = list(campi)
+        valori = [list(campi[n]) if n == "ruoli_esclusi" else campi[n] for n in nomi]
+        colonne = ", ".join(["guild_id"] + nomi)
+        segnaposto = ", ".join(f"${i}" for i in range(1, len(nomi) + 2))
+        aggiorna = ", ".join(f"{n} = EXCLUDED.{n}" for n in nomi)
+        await self._pool.execute(
+            f"INSERT INTO giveaway_opzioni ({colonne}) VALUES ({segnaposto}) "
+            f"ON CONFLICT (guild_id) DO UPDATE SET {aggiorna}",
+            guild_id, *valori,
+        )
+
+    async def togli_canale(self, guild_id: int, channel_id: int) -> None:
+        await self._pool.execute(
+            "UPDATE giveaway_opzioni SET canale_log = NULL WHERE guild_id = $1 AND canale_log = $2",
+            guild_id, channel_id,
+        )
 
     async def count_entries(self, giveaway_id: int) -> int:
         row = await self._pool.fetchrow(

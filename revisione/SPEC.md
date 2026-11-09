@@ -1487,6 +1487,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 - `[x]` 14.70 Starboard esteso (catalogo #128 B8, D69, r20util) — `/level stelle classifica` (10 per pagina) e `caso`; `starboard imposta` +`blocca` (nega `send_messages` a @everyone, il bot tiene il suo), +`canale_auto` (ogni messaggio vero del canale va in bacheca, cache 60 s), +`senza_auto`. Migrazione 0547.
 
+- `[x]` 15.40 Giveaway esteso (catalogo #128 B9-B10, D69, r20util) — `/admin-giveaway partecipanti|opzioni|modifica` e bottone «Partecipanti» (20 per pagina); bottone «Riepilogo» sul messaggio finale (dinamico); `avvia` e `modello` +`ruolo_escluso`, `ruolo_premio` (controllo gerarchia), `immagine`; `opzioni`: colore, emoji e testo del bottone, risposta a chi partecipa (500), messaggio ai vincitori (1000), canale di log, menu fino a 25 ruoli esclusi; menu «Riestrai giveaway» (ripesca senza chi è stato sostituito); `/fun casuale` +`membro` e `ruolo` (nessun ping). Migrazione 0548.
+
 ## §15 LEVELS / ECONOMY / GILDE / CLASSIFICHE
 
 - `[x]` 15.1 XP e livelli (testuale + vocale)

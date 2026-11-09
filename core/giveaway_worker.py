@@ -25,8 +25,11 @@ from discord.ext import commands, tasks
 
 from core.bot_ready import attendi_bot_pronto
 from core.channel_access import PERMESSI_DI_SCRITTURA, motivo_se_il_bot_non_puo
-from core.giveaway_logic import descrizione_giveaway, pick_winners_pesati, titolo_giveaway
+from core.giveaway_fine import concludi
+from core.giveaway_logic import embed_annuncio, pick_winners_pesati
+from core.i18n import lingua_risposta
 from core.repositories.giveaway_repo import giveaway_repo
+from core.ui_base import BaseView
 
 logger = logging.getLogger("iyokai.giveaway_worker")
 
@@ -53,6 +56,15 @@ async def _canale_del_giveaway(
     return canale if isinstance(canale, discord.abc.Messageable) else None
 
 
+def _vista_riepilogo(giveaway_id: int) -> BaseView:
+    """La vista del messaggio finale: solo il bottone «Riepilogo» (dinamico, vale anche dopo un riavvio)."""
+    from cogs.utility.giveaway_extra import BottoneRiepilogo  # qui dentro: il cog importa questo modulo
+
+    vista = BaseView(timeout=None)
+    vista.add_item(BottoneRiepilogo(giveaway_id))
+    return vista
+
+
 class GiveawayWorker:
     def __init__(self) -> None:
         self._loop_task: tasks.Loop | None = None
@@ -77,6 +89,7 @@ class GiveawayWorker:
 
             partecipanti = await giveaway_repo.get_weighted_entries(giveaway.id)
             vincitori = pick_winners_pesati(partecipanti, giveaway.winners_count, random.Random())
+            await giveaway_repo.segna_vincitori(giveaway.id, vincitori)
 
             guild = bot.get_guild(giveaway.guild_id)
             canale = await _canale_del_giveaway(guild, giveaway.channel_id)
@@ -88,28 +101,11 @@ class GiveawayWorker:
                 )
                 continue
 
-            if not vincitori:
-                testo = f"🎉 Il giveaway per **{giveaway.prize}** è terminato, ma nessuno ha partecipato."
-            else:
-                menzioni = ", ".join(f"<@{uid}>" for uid in vincitori)
-                testo = f"🎉 Congratulazioni {menzioni}! Avete vinto **{giveaway.prize}**!"
-
-            try:
-                # Si avvisano solo i vincitori: il premio è testo libero (@everyone, ruoli).
-                await canale.send(
-                    testo,
-                    allowed_mentions=discord.AllowedMentions(
-                        users=[discord.Object(id=uid) for uid in vincitori],
-                        roles=False,
-                        everyone=False,
-                    ),
-                )
-            except discord.HTTPException:
-                logger.warning(
-                    "Impossibile annunciare la fine del giveaway %s nel canale %s.",
-                    giveaway.id,
-                    giveaway.channel_id,
-                )
+            opzioni = await giveaway_repo.get_opzioni(giveaway.guild_id)
+            lingua = await lingua_risposta(giveaway.guild_id, pubblica=True)
+            await concludi(
+                canale, guild, giveaway, vincitori, opzioni, lingua, vista=_vista_riepilogo(giveaway.id)
+            )
 
     async def _avvia(self, bot: commands.Bot, giveaway_id: int, adesso: datetime) -> None:
         """
@@ -138,13 +134,13 @@ class GiveawayWorker:
         if motivo is not None:
             await self._errore_di_partenza(giveaway, motivo)
             return
-        embed = discord.Embed(
-            title=titolo_giveaway(giveaway.prize),
-            description=descrizione_giveaway(giveaway),
-            color=discord.Color.blurple(),
-        )
+        opzioni = await giveaway_repo.get_opzioni(giveaway.guild_id)
+        lingua = await lingua_risposta(giveaway.guild_id, pubblica=True)
         try:
-            messaggio = await canale.send(embed=embed, view=LevelingCog.GiveawayEnterView(giveaway.id))
+            messaggio = await canale.send(
+                embed=embed_annuncio(giveaway, opzioni, lingua),
+                view=LevelingCog.GiveawayEnterView(giveaway.id, opzioni),
+            )
         except discord.HTTPException as errore:
             await self._errore_di_partenza(giveaway, f"invio non riuscito ({errore.status})")
             return

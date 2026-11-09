@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:24 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:37 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 729 commands in 42 categories.**
+**Total: 733 commands in 42 categories.**
 
 ## Admin: AI
 
@@ -197,6 +197,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:2
 
 ## Admin: giveaways
 
+- **`/admin-giveaway edit`** — Change duration, winners, prize or image of a giveaway.
+- **`/admin-giveaway options`** — Look, messages, log and excluded roles of giveaways.
+- **`/admin-giveaway participants`** — Who takes part in a giveaway, 20 per page.
 - **`/admin-giveaway scheduled`** — Scheduled giveaways: list (including failed ones) or cancel.
 - **`/admin-giveaway start`** — Starts a giveaway.
 - **`/admin-giveaway template`** — Giveaway templates: save, list, delete, start.
@@ -425,6 +428,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:2
 - **`/-search-command`** — Searches a command by description.
 - **`/Moderation card`** — “Apps” menu (right click)
 - **`/Open ticket`** — “Apps” menu (right click)
+- **`/Redraw giveaway`** — “Apps” menu (right click)
 - **`/Report message`** — “Apps” menu (right click)
 - **`/Times in my time zone`** — “Apps” menu (right click)
 

@@ -387,6 +387,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonne_utente=("last_user_id",), colonna_server="guild_id",
        utente="anonimizza", anonimizza=(("last_user_id", "NULL"),)),
     _t("giveaway_templates", "Modelli di giveaway", colonna_server="guild_id"),
+    _t("giveaway_opzioni", "Opzioni dei giveaway del server (aspetto, messaggi, log, ruoli esclusi)", colonna_server="guild_id"),
     _t("giveaways", "Giveaway", colonne_attore=("created_by",), colonna_server="guild_id"),
     _t("guild_chest_ledger", "Movimenti della cassa del server",
        colonna_server="guild_id", scadenza=Scadenza("created_at", 365)),

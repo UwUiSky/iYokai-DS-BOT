@@ -4,9 +4,10 @@
 09/11/2026 · ramo feat/r20util (worktree /home/claude/wt/r20util, env scratchpad/env_r20util.sh, DB iyokai_w20util) · blocco Utility #128 B8-B15, D69. Migrazioni da 0547 (0546 presa da B7).
 
 ## In corso
-- r19util B1-B7 pubblicati e uniti. r20util: B8 chiuso. Prossimo: B9-B10 giveaway (0548), B11-B13 inviti, B14-B15 conteggio. Helper: scratchpad/uti20_{agg,commit.sh,guard.sh,doc,pesi}. Smoke da fare (non lanciato).
+- r19util B1-B7 pubblicati e uniti. r20util: B8, B9-B10 chiusi. Prossimo: B11-B13 inviti (0549+), B14-B15 conteggio. Helper: scratchpad/uti20_{agg,commit.sh,guard.sh,doc,pesi}. Smoke da fare (non lanciato).
 
 ## Fatto
+- r20util B9-B10 giveaway: partecipanti, riepilogo, opzioni, ruoli escluso/premio, immagine, modifica, riestrai, /fun casuale membro (0548).
 - r20util B8 starboard: classifica/caso/blocca/canale_auto (0547).
 - r19util B1 /utility caratteri|cronometro|novita + gruppo /web (wiki, dizionario, emergenza); B2 /web meteo|film|gioco|prezzo|accorcia (0540); B3 /admin-messaggi scrivi|auto, fissi elenco/modello (0541); B4 embed json|bottoni|altri|V2 (0542); B5 programmati ripeti/ora/salta (payload, niente 0543); B6 compleanni staff/prossimi, iscritti promemoria, fuso, menu Orari (0544); B7 suggerimenti opzioni (0545).
 - Giri vecchi (r4-r11): autorole, starboard, tag, autoresponder, greetings, role menu, embed, contatori, compleanni, inviti, moduli, /ruoli, /utility scheda, suggerimenti decisi, poll, promemoria ripetuti, attività, benvenuto extra, link d'invito personali (git log).
@@ -27,6 +28,8 @@
 - Migrazione già applicata in un DB di test: mai riscriverla, usare il numero dopo.
 
 ## Aperto
+- Giveaway: immagine = URL dell'allegato (i link CDN di Discord scadono): da provare dopo un giorno. Test «cricchetto» test_repository_callers: tolto count_entries.
+- Starboard: se la bacheca cambia canale con blocca acceso, il vecchio resta bloccato (non si sblocca da solo).
 - test_command_policy::top_level_ha_un_pubblico fallisce su main per il menu «Apri ticket» (AUDIENCE, ticket): non mio.
 - safe_http.USER_AGENT senza contatto: MET Norway e Wikimedia chiedono un contatto (core, non mio).
 - Alternative D18 non fatte: UTL-111 (comando programmato), azioni in borsa in /web prezzo (nessuna fonte gratis).
