@@ -1495,3 +1495,8 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - Fine partita: classifica con le menzioni senza ping. `/giochi quiz classifica vista:Di sempre`.
 - Prepara `d.csv` (`Capitale?,Roma,Milano,Napoli,Torino`) e usa `/admin-giochi quiz carica`; `elenca` mostra l'ID; `rimuovi numero:`. Un CSV con 3 risposte: errore chiaro. Un non-admin non vede i comandi.
 - `/admin-giochi quiz regole bot_gioca:sì`: il bot compare in classifica col suo nome. `/admin-giochi punteggi azzera gara:Quiz` svuota la classifica.
+
+## giro r22fun, B7 — giochi di gruppo (#131)
+- `/giochi battitura durata:30`: sala con Ci sono / Esci / Avvia; un altro utente preme «Ci sono» (l'elenco si aggiorna, nessun ping), Avvia solo per chi ha dato il comando. Arriva l'immagine del testo (leggibile su telefono). Scrivi il testo giusto: reazione ✅; sbagliato: niente. Fine: classifica con le parole al minuto. **Serve l'intent «contenuto dei messaggi»** acceso per il bot.
+- `/admin-giochi battitura aggiungi`: finestra a 1 campo; un testo di 3 parole è rifiutato; `elenca` mostra l'ID; `rimuovi`. Il testo del server può uscire in una partita.
+- `/giochi acronimi giocatori:4 turni:2` con 3 persone: lettere e bottone «Scrivi la frase»; una frase senza le iniziali giuste è rifiutata (nascosto); poi embed numerato con menu: non puoi votare te stesso, un voto solo. Fine turno: autori svelati; fine partita: classifica. Un secondo comando nello stesso canale: «c'è già una partita».

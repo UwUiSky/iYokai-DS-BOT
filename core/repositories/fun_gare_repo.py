@@ -63,6 +63,15 @@ class FunGareRepository:
             guild_id, gara, periodo, user_id, punti,
         )
 
+    async def registra_massimo(self, guild_id: int, gara: str, periodo: str, user_id: int, valore: int) -> int:
+        """Tiene il punteggio più alto del periodo (una sola istruzione). Restituisce il record."""
+        return await self._pool.fetchval(
+            "INSERT INTO fun_punteggi (guild_id, gara, periodo, user_id, valore) VALUES ($1, $2, $3, $4, $5) "
+            "ON CONFLICT (guild_id, gara, periodo, user_id) DO UPDATE SET "
+            "valore = GREATEST(fun_punteggi.valore, EXCLUDED.valore), aggiornato = now() RETURNING valore",
+            guild_id, gara, periodo, user_id, valore,
+        )
+
     async def classifica(self, guild_id: int, gara: str, periodo: str) -> list[tuple[int, int]]:
         righe = await self._pool.fetch(
             "SELECT user_id, valore FROM fun_punteggi WHERE guild_id = $1 AND gara = $2 AND periodo = $3 "

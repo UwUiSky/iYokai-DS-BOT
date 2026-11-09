@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:17 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:23 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 769 commands in 45 categories.**
+**Total: 774 commands in 45 categories.**
 
 ## Admin: AI
 
@@ -197,6 +197,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:1
 
 ## Admin: games
 
+- **`/admin-games battitura add`** — Add a typing text (window).
+- **`/admin-games battitura list`** — The server's typing texts.
+- **`/admin-games battitura remove`** — Remove a typing text.
 - **`/admin-games counting channel`** — Pick the channels where people count (up to 10) and how.
 - **`/admin-games counting import`** — Bring scores from a CSV or JSON file into a channel.
 - **`/admin-games counting milestone`** — Role or message when the count hits a number.
@@ -609,6 +612,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:1
 
 ## Games
 
+- **`/games acronimi`** — Invent phrases that follow the given letters and vote for the best.
+- **`/games battitura`** — Typing race: copy the text shown in the image.
 - **`/games counting leaderboard`** — Who counted the most correct numbers.
 - **`/games counting notifyme`** — Get pinged in the channel when the count reaches a number.
 - **`/games dice`** — One roll a day from 1 to 100 and the server board.

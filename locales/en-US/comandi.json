@@ -1219,7 +1219,13 @@
   "admin-giochi quiz carica": "Upload quiz questions from a CSV or JSON file.",
   "admin-giochi quiz elenca": "The quiz questions uploaded by the server.",
   "admin-giochi quiz rimuovi": "Remove a question uploaded by the server.",
-  "admin-giochi quiz regole": "Quiz rules: points, time, answer shown, bot plays."
+  "admin-giochi quiz regole": "Quiz rules: points, time, answer shown, bot plays.",
+  "giochi battitura": "Typing race: copy the text shown in the image.",
+  "giochi acronimi": "Invent phrases that follow the given letters and vote for the best.",
+  "admin-giochi battitura": "Typing race: the server's texts.",
+  "admin-giochi battitura aggiungi": "Add a typing text (window).",
+  "admin-giochi battitura elenca": "The server's typing texts.",
+  "admin-giochi battitura rimuovi": "Remove a typing text."
  },
  "parametri": {},
  "menu": {

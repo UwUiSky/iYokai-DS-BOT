@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:17 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:23 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 769 comandi in 45 categorie.**
+**Totale: 774 comandi in 45 categorie.**
 
 ## Admin: AI
 
@@ -197,6 +197,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 
 ## Admin: giochi
 
+- **`/admin-giochi battitura aggiungi`** — Aggiunge un testo per la battitura (finestra).
+- **`/admin-giochi battitura elenca`** — I testi di battitura del server.
+- **`/admin-giochi battitura rimuovi`** — Toglie un testo di battitura.
 - **`/admin-giochi conteggio canale`** — Scegli i canali dove si conta (fino a 10) e come.
 - **`/admin-giochi conteggio importa`** — Porta in un canale i punteggi di un file CSV o JSON.
 - **`/admin-giochi conteggio regole`** — Punizione dopo uno sbaglio e ruolo di chi ha contato per ultimo.
@@ -609,6 +612,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 
 ## Giochi
 
+- **`/giochi acronimi`** — Inventa frasi che seguono le lettere date e vota la migliore.
+- **`/giochi battitura`** — Gara di battitura: copia il testo mostrato nell'immagine.
 - **`/giochi conteggio avvisami`** — Ti avviso nel canale quando il conteggio arriva a un numero.
 - **`/giochi conteggio classifica`** — Chi ha contato più numeri giusti.
 - **`/giochi dado`** — Un tiro al giorno da 1 a 100 e la classifica del server.

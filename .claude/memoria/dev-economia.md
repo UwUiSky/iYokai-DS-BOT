@@ -4,10 +4,11 @@
 09/11/2026 · giro r21gif, ramo `feat/r21gif`, migrazione 0570 (usata). Lavoro PER FILE.
 
 ## In corso
-- r22fun (B6-B9 di #131, D70), ramo `feat/r22fun`, worktree `/home/claude/wt/r22fun`, env `scratchpad/env_r22fun_dev.sh`. Previsione: 4 commit (B6 quiz, B7 gruppo, B8 carte, B9 schede). B6 fatto. Prossimo: B7 `cogs/fun/giochi_gruppo.py`, 0574 `battitura_testi`.
+- r22fun (B6-B9 di #131, D70), ramo `feat/r22fun`, worktree `/home/claude/wt/r22fun`, env `scratchpad/env_r22fun_dev.sh`. Previsione: 4 commit (B6 quiz, B7 gruppo, B8 carte, B9 schede). B6, B7 fatti. Prossimo: B8 carte (`cogs/fun/carte.py`, `data/carte/*.json`, colonne già in 0572), poi B9 schede (0575 `cache_esterna`).
 - Smoke da fare (lo lancia l'orchestratore).
 
 ## Fatto
+- r22fun B7: `core/gruppo_logic.py`, `battitura_repo`, `cogs/fun/_lobby.py`, `giochi_gruppo.py`, 0574; tetto Premium D59 non collegato.
 - r22fun B6: quiz (`core/quiz_logic.py`, `quiz_repo`, `cogs/fun/quiz.py`, 0572/0573, `fun_gare_repo.aggiungi_punti`).
 - r21fun B5: 7 effetti immagine (062/064), 3 scherzi (063) in `fun_extra.py`.
 - r21fun B4: animal 5 specie + `quante`, `/immagini foto|xkcd`, `core/xkcd_fetcher.py`, `fetch_immagini`.
