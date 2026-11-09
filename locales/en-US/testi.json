@@ -2056,5 +2056,14 @@
   "tickets_thread_entrato": "You're in: {thread}",
   "tickets_thread_entra_fallito": "I couldn't add you to the thread.",
   "tickets_thread_non_trovato": "This ticket no longer exists.",
-  "tickets_thread_non_disponibile": "This action isn't available in thread tickets: only people inside see a private thread."
+  "tickets_thread_non_disponibile": "This action isn't available in thread tickets: only people inside see a private thread.",
+  "starboard_auto_uguale_bacheca": "The channel that sends everything to the board cannot be the board itself.",
+  "starboard_auto_attivo": "Every message in {canale} goes to the board.",
+  "starboard_blocca_manca_permesso": "To lock the board I need \"Manage Permissions\" in {mention}.",
+  "starboard_blocca_fallito": "I could not change the permissions of {mention}.",
+  "starboard_bloccata": "The board is locked: only the bot writes in it.",
+  "starboard_sbloccata": "The board is no longer locked.",
+  "starboard_bacheca_vuota": "No message has reached the board yet.",
+  "starboard_classifica_titolo": "Board: who has the most stars",
+  "starboard_classifica_piede": "Page {pagina} of {pagine}"
 }

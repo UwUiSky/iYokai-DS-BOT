@@ -22,6 +22,15 @@ class StarboardConfig:
     enabled: bool
     allow_nsfw: bool
     self_star: bool
+    blocca: bool = False
+    canale_auto: int | None = None
+
+
+@dataclass(frozen=True)
+class StarboardAutore:
+    author_id: int
+    stelle: int
+    messaggi: int
 
 
 @dataclass(frozen=True)
@@ -41,7 +50,7 @@ class StarboardRepository:
 
     async def get_config(self, guild_id: int) -> StarboardConfig | None:
         r = await self._pool.fetchrow(
-            "SELECT guild_id, channel_id, threshold, emoji, enabled, allow_nsfw, self_star "
+            "SELECT guild_id, channel_id, threshold, emoji, enabled, allow_nsfw, self_star, blocca, canale_auto "
             "FROM starboard_config WHERE guild_id = $1",
             guild_id,
         )
@@ -64,6 +73,47 @@ class StarboardRepository:
             """,
             guild_id, channel_id, threshold, emoji, allow_nsfw, self_star,
         )
+
+    async def set_opzioni(self, guild_id: int, *, blocca: bool | None = None, canale_auto: int | None = None,
+                          togli_auto: bool = False) -> bool:
+        """None = lascia com'è. `togli_auto` spegne il canale sorgente. False se la bacheca non è impostata."""
+        esito = await self._pool.execute(
+            "UPDATE starboard_config SET blocca = COALESCE($2, blocca), "
+            "canale_auto = CASE WHEN $4 THEN NULL ELSE COALESCE($3, canale_auto) END WHERE guild_id = $1",
+            guild_id, blocca, canale_auto, togli_auto,
+        )
+        return esito.endswith(" 1")
+
+    async def togli_canale(self, guild_id: int, channel_id: int) -> None:
+        """Il canale è stato cancellato: se era la sorgente automatica, la spegne."""
+        await self._pool.execute(
+            "UPDATE starboard_config SET canale_auto = NULL WHERE guild_id = $1 AND canale_auto = $2",
+            guild_id, channel_id,
+        )
+
+    async def classifica_autori(self, guild_id: int, limite: int, scarto: int = 0) -> list[StarboardAutore]:
+        """Autori con più stelle in bacheca (somma sui loro messaggi pubblicati)."""
+        righe = await self._pool.fetch(
+            "SELECT author_id, SUM(stars)::int AS stelle, COUNT(*)::int AS messaggi FROM starboard_posts "
+            "WHERE guild_id = $1 AND board_message_id IS NOT NULL GROUP BY author_id "
+            "ORDER BY stelle DESC, messaggi DESC, author_id LIMIT $2 OFFSET $3",
+            guild_id, limite, scarto,
+        )
+        return [StarboardAutore(**dict(r)) for r in righe]
+
+    async def conta_autori(self, guild_id: int) -> int:
+        return await self._pool.fetchval(
+            "SELECT COUNT(DISTINCT author_id) FROM starboard_posts WHERE guild_id = $1 AND board_message_id IS NOT NULL",
+            guild_id,
+        )
+
+    async def post_a_caso(self, guild_id: int) -> StarboardPost | None:
+        r = await self._pool.fetchrow(
+            "SELECT source_message_id, board_message_id, stars FROM starboard_posts "
+            "WHERE guild_id = $1 AND board_message_id IS NOT NULL ORDER BY random() LIMIT 1",
+            guild_id,
+        )
+        return None if r is None else StarboardPost(**dict(r))
 
     async def set_threshold(self, guild_id: int, threshold: int) -> bool:
         esito = await self._pool.execute(

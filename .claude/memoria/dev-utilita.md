@@ -1,13 +1,13 @@
 # Memoria di dev-utilita
 
 ## Aggiornata
-09/11/2026 · ramo feat/r19util (worktree /home/claude/wt/r19util, env scratchpad/env_r19util.sh, DB iyokai_w19util) · blocco Utility #128, D69, migrazioni 0540-0545 (0543 non usata)
+09/11/2026 · ramo feat/r20util (worktree /home/claude/wt/r20util, env scratchpad/env_r20util.sh, DB iyokai_w20util) · blocco Utility #128 B8-B15, D69. Migrazioni da 0547 (0546 presa da B7).
 
 ## In corso
-- r19util B1-B7 CHIUSI e pubblicati (commit 869b056, 1af9700, 26ca2ee, 09b7fb7, 52f94c1, 49eb237, aad3116). Smoke da fare (non lanciato).
-- Prossimo: B8 starboard (0546), B9-B10 giveaway (0547), B11-B13 inviti (0548-0549), B14-B16 conteggio/citazioni (0550-0553), B17 server, B18 risposte (0554), B19-B21 tag (0555-0557), B22-B24 sondaggi/eventi (0558-0560), B25-B28 script (0561-0563). Vedi scratchpad/disegno_utility.md.
+- r19util B1-B7 pubblicati e uniti. r20util: B8 chiuso. Prossimo: B9-B10 giveaway (0548), B11-B13 inviti, B14-B15 conteggio. Helper: scratchpad/uti20_{agg,commit.sh,guard.sh,doc,pesi}. Smoke da fare (non lanciato).
 
 ## Fatto
+- r20util B8 starboard: classifica/caso/blocca/canale_auto (0547).
 - r19util B1 /utility caratteri|cronometro|novita + gruppo /web (wiki, dizionario, emergenza); B2 /web meteo|film|gioco|prezzo|accorcia (0540); B3 /admin-messaggi scrivi|auto, fissi elenco/modello (0541); B4 embed json|bottoni|altri|V2 (0542); B5 programmati ripeti/ora/salta (payload, niente 0543); B6 compleanni staff/prossimi, iscritti promemoria, fuso, menu Orari (0544); B7 suggerimenti opzioni (0545).
 - Giri vecchi (r4-r11): autorole, starboard, tag, autoresponder, greetings, role menu, embed, contatori, compleanni, inviti, moduli, /ruoli, /utility scheda, suggerimenti decisi, poll, promemoria ripetuti, attività, benvenuto extra, link d'invito personali (git log).
 

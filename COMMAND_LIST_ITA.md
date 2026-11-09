@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:16 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:24 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 727 comandi in 42 categorie.**
+**Totale: 729 comandi in 42 categorie.**
 
 ## Admin: AI
 
@@ -609,6 +609,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 - **`/level profilo`** — Mostra il profilo di un membro; con «presentazione» cambi il tuo.
 - **`/level progressi`** — Missioni, serie, traguardi e pass di 90 giorni, in un menu.
 - **`/level rank`** — Mostra la rank card: livello, XP, posizione e coin.
+- **`/level stelle caso`** — Un messaggio a caso dalla bacheca.
+- **`/level stelle classifica`** — Chi ha ricevuto più stelle in bacheca.
 
 ## Mod: ban
 

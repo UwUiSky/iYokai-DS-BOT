@@ -1485,6 +1485,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 - `[x]` 14.66 Suggerimenti: opzioni (catalogo #128 B7, D69, r19util) — `/admin-bot config canale-suggerimenti` cresce di `anonimi` (l'embed dice «Anonimo»; il bottone «Chi l'ha scritto» lo vede solo il livello admin e scrive nel registro «moderazione»; resta anche a decisione presa), `soglia` + `colore` (colore dopo N voti 👍, solo in attesa), `esito` (modifica il messaggio o ne scrive uno nuovo) e `solo_da` (canale unico per `/utility suggest`; rimettendolo uguale si toglie) — UTL-139, 140, 141, 142. Migrazione 0545 (`suggestions_config`, `suggestions.anonimo`); `on_guild_channel_delete` libera il canale unico. Il pannello web non ha ancora queste voci (config_impostazioni è di dev-web).
 
+- `[x]` 14.70 Starboard esteso (catalogo #128 B8, D69, r20util) — `/level stelle classifica` (10 per pagina) e `caso`; `starboard imposta` +`blocca` (nega `send_messages` a @everyone, il bot tiene il suo), +`canale_auto` (ogni messaggio vero del canale va in bacheca, cache 60 s), +`senza_auto`. Migrazione 0547.
+
 ## §15 LEVELS / ECONOMY / GILDE / CLASSIFICHE
 
 - `[x]` 15.1 XP e livelli (testuale + vocale)

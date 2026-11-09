@@ -2056,5 +2056,14 @@
   "tickets_thread_entrato": "Sei dentro: {thread}",
   "tickets_thread_entra_fallito": "Non sono riuscito ad aggiungerti al thread.",
   "tickets_thread_non_trovato": "Questo ticket non esiste più.",
-  "tickets_thread_non_disponibile": "Nei ticket a thread questa azione non c'è: il thread privato lo vede solo chi ci è dentro."
+  "tickets_thread_non_disponibile": "Nei ticket a thread questa azione non c'è: il thread privato lo vede solo chi ci è dentro.",
+  "starboard_auto_uguale_bacheca": "Il canale che manda tutto in bacheca non può essere la bacheca stessa.",
+  "starboard_auto_attivo": "Ogni messaggio di {canale} finisce in bacheca.",
+  "starboard_blocca_manca_permesso": "Per bloccare la bacheca al bot serve «Gestire i permessi» in {mention}.",
+  "starboard_blocca_fallito": "Non sono riuscito a cambiare i permessi di {mention}.",
+  "starboard_bloccata": "La bacheca è bloccata: ci scrive solo il bot.",
+  "starboard_sbloccata": "La bacheca non è più bloccata.",
+  "starboard_bacheca_vuota": "Nessun messaggio è ancora arrivato in bacheca.",
+  "starboard_classifica_titolo": "Bacheca: chi ha più stelle",
+  "starboard_classifica_piede": "Pagina {pagina} di {pagine}"
 }

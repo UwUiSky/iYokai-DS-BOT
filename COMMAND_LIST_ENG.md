@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:16 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:24 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 727 commands in 42 categories.**
+**Total: 729 commands in 42 categories.**
 
 ## Admin: AI
 
@@ -609,6 +609,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:1
 - **`/level rank`** — Shows the rank card: level, XP, position and coins.
 - **`/level recent-levels`** — The last 25 level-ups in the server.
 - **`/level rewards`** — Shows level reward roles and active XP multipliers.
+- **`/level stars case`** — A random message from the board.
+- **`/level stars leaderboard`** — Who received the most stars on the board.
 
 ## Mod: bans
 

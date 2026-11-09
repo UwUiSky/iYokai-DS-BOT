@@ -306,7 +306,8 @@
   "json": "json",
   "bottoni": "buttons",
   "salta": "skip",
-  "prossimi": "upcoming"
+  "prossimi": "upcoming",
+  "stelle": "stars"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1155,7 +1156,10 @@
   "level compleanno prossimi": "The next birthdays in the server.",
   "admin-moduli compleanni membro": "Register a member's birthday (day and month only).",
   "admin-ticket-opzioni attesa": "Moves tickets waiting for the user to a category.",
-  "admin-ticket-opzioni regole": "Rules: if nobody writes for N minutes, close, delete or send a message."
+  "admin-ticket-opzioni regole": "Rules: if nobody writes for N minutes, close, delete or send a message.",
+  "level stelle": "Board: who has the most stars and a random message",
+  "level stelle classifica": "Who received the most stars on the board.",
+  "level stelle caso": "A random message from the board."
  },
  "parametri": {},
  "menu": {
