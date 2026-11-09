@@ -31,7 +31,8 @@ async def test_entertainment_cog_si_carica_correttamente():
     assert bot.tree.get_command("fun") is fun_group, "Il gruppo /fun non risulta registrato"
 
     sottocomandi = {c.name for c in fun_group.commands}
-    assert {"coinflip", "dice", "8ball", "joke", "quote", "fact"} <= sottocomandi
+    assert {"coinflip", "dice", "8ball", "joke", "fact"} <= sottocomandi
+    assert "quote" not in sottocomandi  # ora è `/fun citazioni caso fonte:famose` (D69)
     # D56: immagini e giochi contro il bot hanno i loro gruppi
     immagini = {c.name for c in GRUPPI["immagini"].commands}
     assert {"grayscale", "invert", "blur", "pixelate", "meme", "animal", "search-image"} <= immagini

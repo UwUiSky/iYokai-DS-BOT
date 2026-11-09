@@ -66,6 +66,7 @@ SETTINGS_SCHEMA = {
     "mod_log_channel_id": "id",
     "report_channel_id": "id",
     "custom_command_requests_channel_id": "id",
+    "tag_ruolo_creatori": "id",
     "suggestions_channel_id": "id",
     "suggestions_decided_channel_id": "id",
     "ticket_category_id": "id",

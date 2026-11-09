@@ -1,6 +1,7 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
+09/11/2026 · `feat/r21util` (D69 B16–B21, UTL-184, #128): merge main (e97e2d0), 4 fix (306f4a4, ban massa conferma, CSV/gruppo, 26a1496 quote->citazioni+0558); 4 basse aperte. APPROVATO. Smoke da fare: citazioni, risposte_regex_globali, autoresponder, custom_commands, tag_gestione, strumenti_server, moderation_canali_m7, massa, migrazione_percorsi_tag_quote, 0555–0558, tree_invariants, riferimenti, data_registry, i18n.
 09/11/2026 · `feat/r18mod` (D68, M6, M8, #115): merge main (8fd3bf8), 5 fix (8c754fc, 39652fc, poi defer segnalazioni e tetto 5/10min in ac5e503); 4 basse aperte. APPROVATO. Smoke da fare: moderation_motivi_severita, moderation_dm_m6, moderation_scheda_m8, report_limiti, remaining_moderation_smoke, automod_azioni, 0532, tree_invariants, i18n.
 08/11/2026 · `feat/r18automod` (A10 calore/soglia canale/finestra, A11 pulizia 0509, #116): main già unito, 5 fix (b06e3df, bf9a609, fcd1452, 8fd7903, 78b289c); 5 basse aperte. APPROVATO. Smoke da fare: automod_pulizia*, automod_calore*, automod_soglia_canale, automod_innesco_logic, automod_regole_pannello, automod_eventi*, 0509, tree_invariants, data_registry, i18n.
 09/11/2026 · `feat/r18ticket` (T4 #120, thread #156, 0526/0534): main già unito, 9 fix (7322d8b, 2fe4aa8, e577521, b2fc810, 4a7367b, 9875ec1, e38f54f, 9732b72, bb5bbd3) + SPEC/COMMAND_LIST; 5 basse aperte. APPROVATO. Smoke da fare: ticket*, modmail*, 0526, 0534, tree_invariants, i18n, data_registry.
@@ -23,6 +24,7 @@ Giri r6–r14: tutti APPROVATI dopo i fix (commit e basse nel quaderno).
 - Letti per intero: giro-mod, r3–r13 (commit nel quaderno).
 
 ## Cose imparate
+- Chiave di impostazione nuova: SETTINGS_SCHEMA + SCHEDE (config_impostazioni) + `imposta_impostazione`; senza schema l'export del server non si re-importa. Test del dizionario SETTINGS_VALIDE in test_config_import_validation.
 - Viste che chiamano `comando.callback(...)`: i controlli del gruppo (Livello) saltano; ricontrollare il livello di OGNI azione alla conferma e non scrivere «fatto» dopo la callback (può aver rifiutato). Modali con lavoro lento: defer prima.
 - Ticket a thread: `guild.get_channel` non vede i thread (usare `get_channel_or_thread`), la cancellazione arriva da `on_raw_thread_delete`; i finti con `get_channel` vanno allineati. Giri con tetto: cursore per id. Riserve di canali: ogni uscita dalla tabella senza uso = eliminare il canale.
 - Ticket: ogni percorso che rimette permessi ai ruoli staff (presa, rilascio, sposta, riapri) deve passare da `ruoli_con_accesso` (solo admin); i permessi personali (reperibili, titolare) vanno guardati a parte. Completamenti: stesso controllo del comando, non un Livello a caso.

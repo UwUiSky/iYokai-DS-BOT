@@ -102,7 +102,10 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
         _c("mod_dm_testo_mute", "Testo del DM per il mute", TESTO),
     ),
     "moderation_report": (_c("report_channel_id", "Canale delle segnalazioni", CANALE),),
-    "custom_commands": (_c("custom_command_requests_channel_id", "Canale delle richieste di comandi", CANALE),),
+    "custom_commands": (
+        _c("custom_command_requests_channel_id", "Canale delle richieste di comandi", CANALE),
+        _c("tag_ruolo_creatori", "Ruolo di chi può creare tag propri", RUOLO),
+    ),
     "suggestions": (
         _c("suggestions_channel_id", "Canale dei suggerimenti", CANALE),
         _c("suggestions_decided_channel_id", "Canale dei suggerimenti decisi", CANALE),

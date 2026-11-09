@@ -150,8 +150,14 @@ def scena(monkeypatch):
     db_finto = MagicMock()
     db_finto.is_module_active_for_guild = AsyncMock(return_value=True)
     monkeypatch.setattr(modulo, "db", db_finto)
+    globali = MagicMock()
+    globali.elenco = AsyncMock(return_value=[])
+    globali.spente_nel_server = AsyncMock(return_value=False)
+    monkeypatch.setattr(modulo, "autorisposte_globali_repo", globali)
     modulo._ultima_risposta.__init__(100)
     modulo._cache_regole.__init__(100)
+    modulo._cache_globali.__init__(2)
+    modulo._cache_spente.__init__(100)
     cog.repo = repo
     return cog
 
@@ -226,9 +232,9 @@ async def test_albero_dei_comandi():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await modulo.setup(bot)
     for nome in ("crea", "elimina", "elenco"):
-        assert comando_nel_gruppo("admin-messaggi", f"risposte {nome}") is not None
-    crea = {o["name"]: o for o in comando_nel_gruppo("admin-messaggi", "risposte crea").to_dict(bot.tree)["options"]}
-    assert crea["risposta"]["max_length"] == 2000 and crea["parola"]["max_length"] == 100
+        assert comando_nel_gruppo("admin-tag", f"risposte {nome}") is not None
+    crea = {o["name"]: o for o in comando_nel_gruppo("admin-tag", "risposte crea").to_dict(bot.tree)["options"]}
+    assert crea["risposta"]["max_length"] == 2000 and crea["parola"]["max_length"] == 200  # 200 vale per l'espressione regolare; le altre parole si fermano a 100 nel codice
 
 
 @pytest.mark.asyncio

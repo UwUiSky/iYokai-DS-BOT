@@ -23,6 +23,7 @@ from core.i18n import testo_per
 from core.ui_base import BaseView
 from core.premium import PremiumModule, registry
 from core.repositories.activity_stats_repo import activity_stats_repo
+from core.repositories.citazioni_repo import comandi_uso_repo
 from core.repositories.event_log_repo import event_log_repo
 from core.server_stats_image import render_bar_chart, render_growth_chart
 from core.activity_stats_logic import per_giorno_settimana
@@ -43,7 +44,7 @@ VISTE = {
     "membro": "Attività di un membro",
 }
 _NOMI_GIORNI = ("Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom")
-_UNITA = {"messages": "messaggi", "voice_minutes": "minuti in vocale"}
+_UNITA = {"messages": "messaggi", "voice_minutes": "minuti in vocale", "comandi": "usi"}
 RIGHE_CLASSIFICA = 10
 PERIODI_BOTTONI = (7, 30, 90)
 _NESSUNA_MENZIONE = discord.AllowedMentions.none()
@@ -79,6 +80,12 @@ async def costruisci_statistiche(
     embed = discord.Embed(title=titolo, color=discord.Color.blurple())
     png: bytes | None = None
     unita = _UNITA[metrica]
+
+    if metrica == "comandi":  # comandi più usati (D69 B16): la classifica vale per tutte le viste
+        top = await comandi_uso_repo.piu_usati(guild.id, dal, RIGHE_CLASSIFICA)
+        embed.description = "\n".join(f"{i}. `/{c}` — **{n}** {unita}" for i, (c, n) in enumerate(top, 1)) or "Ancora nessun dato."
+        embed.set_footer(text=f"Ultimi {giorni} giorni")
+        return embed, None
 
     if vista in ("crescita", "ingressi", "uscite"):
         if vista == "crescita":
@@ -203,6 +210,7 @@ class ServerStatsCog(CogConGruppi, commands.Cog):
         metrica=[
             app_commands.Choice(name="Messaggi", value="messages"),
             app_commands.Choice(name="Minuti in vocale", value="voice_minutes"),
+            app_commands.Choice(name="Comandi usati", value="comandi"),
         ],
     )
     async def server_stats(

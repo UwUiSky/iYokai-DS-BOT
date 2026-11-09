@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:09 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:30 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 763 commands in 45 categories.**
+**Total: 786 commands in 47 categories.**
 
 ## Admin: AI
 
@@ -269,18 +269,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:0
 - **`/admin-messages pinned remove`** — Removes a channel's sticky message.
 - **`/admin-messages pinned set`** — Sets a channel's sticky message.
 - **`/admin-messages reminders`** — For staff: the reminders set in this server.
-- **`/admin-messages replies create`** — Creates an automatic reply.
-- **`/admin-messages replies delete`** — Deletes an automatic reply.
-- **`/admin-messages replies list`** — Shows the server's automatic replies.
 - **`/admin-messages scheduled cancel`** — Cancels a scheduled message.
 - **`/admin-messages scheduled create`** — Schedules a message.
 - **`/admin-messages scheduled list`** — Shows this server's scheduled messages.
 - **`/admin-messages scheduled skip`** — Skip the next round of a repeating message.
-- **`/admin-messages tag create`** — Creates a custom command.
-- **`/admin-messages tag delete`** — Deletes a custom command.
-- **`/admin-messages tag edit`** — Edits a custom command.
-- **`/admin-messages tag list`** — Shows the server's custom commands.
-- **`/admin-messages tag prefix`** — Picks the prefix to use commands by typing in the channel.
 - **`/admin-messages write`** — Make the bot write a message in a channel.
 
 ## Admin: modules
@@ -304,6 +296,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:0
 - **`/admin-modules counters create`** — Creates a channel that shows a number.
 - **`/admin-modules counters delete`** — Stops updating a counter (the channel stays).
 - **`/admin-modules counters list`** — Shows the server's counters.
+- **`/admin-modules quotes action`** — Export, import or delete the quotes (JSON).
 - **`/admin-modules starboard disattiva`** — Turns the board off.
 - **`/admin-modules starboard set`** — Picks the board channel and the star threshold.
 - **`/admin-modules starboard threshold`** — Changes how many stars are needed to reach the board.
@@ -380,6 +373,26 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:0
 - **`/admin-security verify whitelist-add`** — Adds a user to the whitelist.
 - **`/admin-security verify whitelist-remove`** — Removes a user from the whitelist.
 
+## Admin: tags and replies
+
+- **`/admin-tag replies clear`** — Delete all the automatic replies of the server.
+- **`/admin-tag replies create`** — Creates an automatic reply.
+- **`/admin-tag replies delete`** — Deletes an automatic reply.
+- **`/admin-tag replies global`** — Turn the owner's shared automatic replies on or off in this server.
+- **`/admin-tag replies list`** — Shows the server's automatic replies.
+- **`/admin-tag tag create`** — Creates a custom command.
+- **`/admin-tag tag creators`** — Pick the role of who can create their own tags with /tag crea.
+- **`/admin-tag tag delete`** — Deletes a custom command.
+- **`/admin-tag tag edit`** — Edits a custom command.
+- **`/admin-tag tag export`** — Export the server's tags to a code or a file.
+- **`/admin-tag tag groups`** — Rules per tag group: one channel and/or a required role.
+- **`/admin-tag tag import`** — Import tags from a code or a JSON file.
+- **`/admin-tag tag list`** — Shows the server's custom commands.
+- **`/admin-tag tag options`** — How a tag behaves: permission, target, where it replies.
+- **`/admin-tag tag prefix`** — Picks the prefix to use commands by typing in the channel.
+- **`/admin-tag tag replace`** — Change a text in all tags, after a preview.
+- **`/admin-tag tag replies`** — Give a tag up to 5 replies, each with its weight.
+
 ## Admin: tickets
 
 - **`/admin-tickets auto-close`** — Closes tickets idle for N minutes (0 = off).
@@ -450,6 +463,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:0
 - **`/Open ticket`** — “Apps” menu (right click)
 - **`/Redraw giveaway`** — “Apps” menu (right click)
 - **`/Report message`** — “Apps” menu (right click)
+- **`/Save quote`** — “Apps” menu (right click)
 - **`/Times in my time zone`** — “Apps” menu (right click)
 
 ## iYokai App (separate app, installed on the user)
@@ -591,7 +605,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:0
 - **`/fun measure`** — Measures from 0 to 100% how much of something you choose.
 - **`/fun number`** — A random number in a range.
 - **`/fun prank`** — A harmless prank on a user.
-- **`/fun quote`** — Shows a random quote.
+- **`/fun quotes add`** — Save a quote of the server.
+- **`/fun quotes case`** — Show a random quote: from the server or a famous one.
+- **`/fun quotes delete`** — Delete a quote you saved.
+- **`/fun quotes search`** — Search a word among the server's quotes.
 - **`/fun random`** — Would you rather, topic, advice, magic item.
 - **`/fun rate`** — Rates something from 0 to 10.
 - **`/fun ship`** — Computes the compatibility between two users.
@@ -658,6 +675,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:0
 - **`/mod-ban ban`** — Permanently bans a member.
 - **`/mod-ban bulk ban`** — Bans several users at once, even outside the server (IDs or mentions).
 - **`/mod-ban bulk entrati`** — Bans or kicks whoever joined in the last minutes (after a confirmation).
+- **`/mod-ban bulk invite`** — Ban or kick everyone who joined with a certain invite (after a confirmation).
 - **`/mod-ban bulk kick`** — Kicks several members at once (IDs or mentions).
 - **`/mod-ban bulk unban`** — Unbans several users at once (IDs).
 - **`/mod-ban kick`** — Kicks a member from the server.
@@ -669,11 +687,13 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:0
 ## Mod: channels
 
 - **`/mod-channels clear`** — Deletes a number of messages, with optional filters.
+- **`/mod-channels expression`** — Add an emoji or a sticker to the server from a file or from an emoji.
 - **`/mod-channels lock`** — Blocks the ability to write in a channel.
 - **`/mod-channels lockdown enable`** — Lock all channels, invites and joins of the server.
 - **`/mod-channels lockdown remove`** — Reopen the server as it was before the lockdown.
 - **`/mod-channels reazioni`** — Removes reactions from the latest messages of a channel, without deleting them.
 - **`/mod-channels slowmode`** — Sets slowmode on a channel or category. With no values: lists channels with slowmode.
+- **`/mod-channels thread`** — Create, archive or delete a thread.
 - **`/mod-channels unlock`** — Unblocks the ability to write in a channel.
 - **`/mod-channels vocale disconnect`** — Disconnects a member from voice.
 - **`/mod-channels vocale dove`** — Shows which voice channel a member is in, and asks for an alert when they join.
@@ -808,6 +828,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:0
 - **`/owner radio stop`** — Leaves the radio on this server.
 - **`/owner system announce`** — Sends an announcement to all servers.
 - **`/owner system eval`** — Runs Python code (with confirmation).
+- **`/owner system global-replies`** — Automatic replies shared by all servers (up to 20).
 - **`/owner system leave-guild`** — Forces the bot to leave a specific server (without blocking it).
 - **`/owner system memory-status`** — Shows the process's current RAM use.
 - **`/owner system richieste-canale`** — Sets the requests channel (main server only).
@@ -818,6 +839,14 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:0
 ## Polls
 
 - **`/polls create`** — Creates a poll (up to 10 options).
+
+## Tags
+
+- **`/tag create`** — Create a tag of your own (needs the role the server picked).
+- **`/tag delete`** — Delete a tag you created.
+- **`/tag edit`** — Change the text of a tag you created.
+- **`/tag take`** — Take a tag whose author left the server.
+- **`/tag use`** — Uses a custom command of this server.
 
 ## Tickets
 
@@ -872,7 +901,6 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:0
 - **`/utility strumenti characters`** — Unicode name, code and category of the characters in a text.
 - **`/utility strumenti stopwatch`** — A stopwatch with Lap and Stop buttons.
 - **`/utility suggest`** — Suggest an idea for this server.
-- **`/utility tag`** — Uses a custom command of this server.
 - **`/utility verify`** — Verify yourself in this server (same as the panel button).
 
 ## Voice
@@ -880,6 +908,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:0
 - **`/voice bitrate`** — Sets the channel's audio quality (kbps).
 - **`/voice claim`** — Takes the channel if the owner is gone.
 - **`/voice deny`** — Forbids a user from joining the channel.
+- **`/voice go`** — Move to a voice channel you can join.
 - **`/voice hide`** — Hides or shows the channel to people who are not in it.
 - **`/voice invite`** — Sends a user an invite to your channel.
 - **`/voice kick`** — Kicks a user from your channel.

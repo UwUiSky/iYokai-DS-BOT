@@ -42,6 +42,7 @@ INTERRUTTORI: dict[str, tuple[str, tuple[str, ...]]] = {
         "voice_self_mute", "voice_self_unmute", "voice_self_deafen", "voice_self_undeafen",
     )),
     "voce_forzati": ("Scollegati o spostati da un moderatore", ("voice_force_disconnect", "voice_force_move")),
+    "comandi_staff": ("Comandi dello staff usati", ("staff_command",)),
 }
 
 PREDEFINITO_SPENTI: frozenset[str] = frozenset({"voce_propri"})

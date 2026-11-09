@@ -59,8 +59,11 @@ AUDIENCE: dict[str, str] = {
     "monete": PUBLIC,  # gruppo condiviso per tutti (D56)
     "sondaggi": PUBLIC,  # gruppo condiviso per tutti (D56)
     "admin-inviti": STAFF,  # gruppo condiviso per ruolo (D69)
+    "admin-tag": STAFF,  # tag e risposte automatiche (D69)
+    "tag": PUBLIC,
     "admin-giochi": STAFF,  # gruppo condiviso per ruolo (D69)
     "web": PUBLIC,  # gruppo condiviso per tutti (D69)
+    "Salva citazione": PUBLIC,  # menu del tasto destro (D69, B16)
     "Orari nel mio fuso": PUBLIC,  # menu del tasto destro (D69, B6)
     "Riestrai giveaway": STAFF,  # menu del tasto destro (D69, B10)
     "Apri ticket": PUBLIC,  # menu col tasto destro sul messaggio (TKT-009)

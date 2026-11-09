@@ -11,13 +11,17 @@ Funzioni coperte: SPEC §14.7 (NF-10)
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 from typing import Iterable
 
 MAX_RISPOSTE = 50  # per server
 MAX_TRIGGER = 100
+MAX_REGEX = 200
+MAX_RESTO = 500  # caratteri di {resto} che finiscono nella risposta
+MAX_GLOBALI = 20
 MAX_RISPOSTA = 2000
 PAUSA_CANALE_SECONDI = 10
-MODI = ("parziale", "esatta")
+MODI = ("parziale", "esatta", "inizia", "regex")
 MAX_JOLLY = 5  # asterischi per parola
 
 
@@ -26,12 +30,45 @@ def jolly_validi(trigger: str) -> bool:
     return trigger.count("*") <= MAX_JOLLY and bool(trigger.replace("*", "").strip())
 
 
+def regex_valida(modello: str) -> str | None:
+    """None se l'espressione va bene (RE2: niente backtracking, non può bloccare il bot); altrimenti il motivo."""
+    if not 1 <= len(modello) <= MAX_REGEX:
+        return "lunghezza"
+    try:
+        _compila(modello)
+    except Exception:
+        return "sintassi"
+    return None
+
+
+@lru_cache(maxsize=512)
+def _compila(modello: str):
+    import re2
+
+    opzioni = re2.Options()
+    opzioni.max_mem = 1 << 19  # mezzo MiB: un'espressione enorme viene rifiutata
+    opzioni.case_sensitive = False
+    return re2.compile(modello, opzioni)
+
+
+def resto_dopo(trigger: str, messaggio: str) -> str:
+    """Il testo che segue l'innesco nel modo «inizia con» (senza spazi attorno, tagliato)."""
+    return messaggio.strip()[len(trigger.strip()):].strip()[:MAX_RESTO]
+
+
 def trigger_corrisponde(trigger: str, modo: str, messaggio: str) -> bool:
     """Senza badare alle maiuscole. "parziale": il trigger è una parola o frase intera nel messaggio. `*` = pezzo di parola."""
+    if modo == "regex":
+        try:
+            return bool(messaggio) and _compila(trigger.strip()).search(messaggio[:2000]) is not None
+        except Exception:
+            return False
     t = trigger.strip().lower()
     m = messaggio.strip().lower()
     if not t or not m:
         return False
+    if modo == "inizia":  # all'inizio del messaggio, e l'innesco finisce a fine parola
+        return m.startswith(t) and (len(m) == len(t) or not (m[len(t) - 1].isalnum() and m[len(t)].isalnum()))
     if not jolly_validi(t):
         return False
     pezzi = t.split("*")

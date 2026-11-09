@@ -87,6 +87,13 @@ class InviteStatsRepository:
             "SELECT COALESCE((SELECT usciti FROM invite_joins WHERE guild_id = $1 AND user_id = $2), 0)", guild_id, user_id
         )
 
+    async def presenti_con_codice(self, guild_id: int, codice: str, limite: int = 200) -> list[int]:
+        """Gli ID di chi è entrato con questo codice e non è ancora uscito (i più recenti per primi)."""
+        righe = await self._pool.fetch(
+            "SELECT user_id FROM invite_joins WHERE guild_id = $1 AND code = $2 AND left_at IS NULL ORDER BY joined_at DESC LIMIT $3",
+            guild_id, codice, limite)
+        return [r["user_id"] for r in righe]
+
     async def conteggio_per_codice(self, guild_id: int) -> dict[str, int]:
         """Quanti ingressi registrati per ogni codice (per confrontarli con gli usi di Discord)."""
         righe = await self._pool.fetch(
