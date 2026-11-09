@@ -1,6 +1,7 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
+09/11/2026 · `feat/r18mod` (D68, M6, M8, #115): merge main (8fd3bf8), 5 fix (8c754fc, 39652fc, poi defer segnalazioni e tetto 5/10min in ac5e503); 4 basse aperte. APPROVATO. Smoke da fare: moderation_motivi_severita, moderation_dm_m6, moderation_scheda_m8, report_limiti, remaining_moderation_smoke, automod_azioni, 0532, tree_invariants, i18n.
 08/11/2026 · `feat/r18automod` (A10 calore/soglia canale/finestra, A11 pulizia 0509, #116): main già unito, 5 fix (b06e3df, bf9a609, fcd1452, 8fd7903, 78b289c); 5 basse aperte. APPROVATO. Smoke da fare: automod_pulizia*, automod_calore*, automod_soglia_canale, automod_innesco_logic, automod_regole_pannello, automod_eventi*, 0509, tree_invariants, data_registry, i18n.
 08/11/2026 · `feat/r17mod` (M4, M5, M7, #115, D66): merge main (1a8447d), 6 fix (68052b8, 5e63065, 82bda8f, 3c67401, 0051d75, f45b4b2); 5 basse aperte. APPROVATO. Smoke da fare: moderation_vocale_m4, opzioni_comandi_m5, canali_m7, massa, 0512–0514, tree_invariants, f7_moderazione_gruppi, data_registry, i18n, riferimenti.
 02/11/2026 · `feat/r16mod` (M1–M3, #115, D66): merge main (2d560e9), 6 fix (06021a6, 9e7dda7, d069d00, 6ac5246, 467d512, 861c0aa); 6 basse aperte. APPROVATO. Smoke da fare: clear_filtri, casi_m3, automod_azioni, escalation_*, staff_rischio, 0510, tree_invariants, f7_moderazione_gruppi, i18n, riferimenti.
@@ -21,6 +22,7 @@ Giri r6–r14: tutti APPROVATI dopo i fix (commit e basse nel quaderno).
 - Letti per intero: giro-mod, r3–r13 (commit nel quaderno).
 
 ## Cose imparate
+- Viste che chiamano `comando.callback(...)`: i controlli del gruppo (Livello) saltano; ricontrollare il livello di OGNI azione alla conferma e non scrivere «fatto» dopo la callback (può aver rifiutato). Modali con lavoro lento: defer prima.
 - Ticket: ogni percorso che rimette permessi ai ruoli staff (presa, rilascio, sposta, riapri) deve passare da `ruoli_con_accesso` (solo admin); i permessi personali (reperibili, titolare) vanno guardati a parte. Completamenti: stesso controllo del comando, non un Livello a caso.
 - Stati decisi dallo staff (attesa/rifiuto) si leggono PRIMA di ogni uscita anticipata (dato mancante = porta aperta). Soglie a conteggio: salvare poi contare. Il ramo senza issue: `Refs D<n>`, mai un numero a caso.
 - Riordino a regex: tabelle di percorsi SENZA `/` (es. COMANDI_VICINI) e sotto-comandi già vecchi sfuggono; confronto albero base/HEAD (livello, permesso, autocomplete) con uno script di dump; scansione `/percorso` contro l'albero vero.

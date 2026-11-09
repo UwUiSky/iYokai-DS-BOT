@@ -1,12 +1,13 @@
 # Memoria di guardiano-limiti
 
 ## Aggiornata
-11/10/2026 · controllo del diff su `feat/f7-decoratore` (copia `/home/claude/wt/f7d`, commit `4fe0765`)
+09/11/2026 · disegno Utility #128 (solo proposta, scratchpad `disegno_utility.md`)
 
 ## In corso
 - Niente a metà.
 
 ## Fatto
+- 09/11: disegno #128 Utility: REGGE CON MODIFICHE. Radici 40→47 (`/web`,`/tag`,`/eventi`,`/admin-tag`,`/admin-automazioni`,`/admin-inviti`,`/admin-giochi`); 28 blocchi; migrazioni 0540-0563.
 - 11/10: albero reale F7 dopo D24 misurato (script `albero2.py` nello scratchpad): REGGE. 16 globali + `/owner` (5 figli) nel server; 252 foglie contro 253 vecchie (fusione voluta `logs-setup`+`mod-log-setup`); max 4816 caratteri (`/gestione`); `/admin` 2738. Nessun limite superato.
 - 05/10: disegno albero F7 (D24) misurato sull'albero vero: `/admin` a 22 figli = 9241 caratteri (>8000). Esito: 16 gruppi. Tabella in `revisione/02-piano/MAPPA_COMANDI_F7.md`.
 - `revisione/01-analisi/LIMITI.md`: 57 limiti (LIM-1…57) e lista di
@@ -35,6 +36,9 @@
 - `/config language set` è già a 3 livelli: sotto un gruppo va appiattito.
 
 ## Aperto
+- Menu `admin-log eventi`: INTERRUTTORI 24/25; dopo UTL-229 pieno: dividere prima del 26°.
+- Open-Meteo vieta uso commerciale (Premium = commerciale): meteo con MET Norway + Nominatim (1 req/s, cache, no completamento).
+- Pubblicazione canali annunci: 10/ora per canale (manca in LIMITI.md).
 - Sync senza impronta (`main.py:304-319`): proporre l'hash dell'albero all'orchestratore (quaderno, Parte A).
 - `-cerca-comando` non è nella tabella §5 (permessi/guild_only): oggi senza permessi e usabile in DM; chiedere all'owner.
 - Descrizione di `moduli alert feed:feed_url` lunga esattamente 100: nessun margine.

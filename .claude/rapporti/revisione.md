@@ -506,3 +506,8 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 08/11 | `feat/r18automod` | `cogs/automod/pulizia.py:giro` | Canale non in cache (server non disponibile): il giro segnato si perde fino al prossimo intervallo | bassa | aperto |
 | 08/11 | `feat/r18automod` | `cogs/automod/pulizia.py` | 10 canali ogni 5 minuti per tutto il bot: con molti server le pulizie arrivano in ritardo (ordine per ultimo_giro, nessuna persa) | bassa | aperto |
 | 08/11 | `feat/r18automod` | `core/automod_innesco_logic.py` (casi) | Tipi di caso non controllati: un errore di battitura non scatta mai | bassa | aperto |
+
+| 09/11 | `feat/r18mod` | `cogs/moderation/scheda.py:ModuloAzione.on_submit` | Kick/ban rifiutati per livello: testo `scheda_serve_staff` invece di `scheda_serve_modban` | bassa | aperto |
+| 09/11 | `feat/r18mod` | `core/moderation_dm.py:durata_a_parole`, campi «Fine»/«Invito», titoli AutoMod | Testi del DM in italiano fisso, non nella lingua del server | bassa | aperto |
+| 09/11 | `feat/r18mod` | `cogs/moderation/motivo_pronto.py:VistaProposta.testo` | Severità mostrata grezza («media») anche in inglese | bassa | aperto |
+| 09/11 | `feat/r18mod` | `cogs/moderation/opzioni.py:_riepilogo` | Righe nuove in italiano fisso (come le vecchie) | bassa | aperto |
