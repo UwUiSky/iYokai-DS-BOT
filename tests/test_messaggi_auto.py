@@ -87,7 +87,7 @@ async def test_pubblica_il_messaggio_e_avvisa_una_volta(monkeypatch):
     canale = MagicMock(spec=discord.TextChannel)
     canale.id = 5
     canale.is_news.return_value = True
-    msg = MagicMock(channel=canale, guild=fake_guild(), id=9)
+    msg = MagicMock(channel=canale, guild=fake_guild(), id=9, flags=discord.MessageFlags())
     msg.publish = AsyncMock()
     avviso = AsyncMock()
     monkeypatch.setattr(c, "_avvisa_limite", avviso)
@@ -154,3 +154,17 @@ async def test_fissi_senza_testo_ne_modello_chiede_uno_dei_due():
     await c.set_sticky.callback(c, it, MagicMock(spec=discord.TextChannel), None, None)
     it.response.send_message.assert_awaited_once()
     assert "modello" in it.response.send_message.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_non_ripubblica_un_messaggio_gia_pubblicato():
+    c = cog.MessaggiAutoCog(MagicMock())
+    canale = MagicMock(spec=discord.TextChannel)
+    canale.id = 5
+    canale.is_news.return_value = True
+    msg = MagicMock(channel=canale, guild=fake_guild(), id=9, flags=discord.MessageFlags(crossposted=True))
+    msg.publish = AsyncMock()
+    for _ in range(12):
+        await c._pubblica(msg)
+    msg.publish.assert_not_awaited()
+    assert c.limite.ammessa(5, 1.0)  # il tetto orario è intatto

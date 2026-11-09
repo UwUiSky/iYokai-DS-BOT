@@ -175,6 +175,8 @@ class MessaggiAutoCog(CogConGruppi, commands.Cog):
         canale = message.channel
         if not isinstance(canale, discord.TextChannel) or not canale.is_news():
             return
+        if message.flags.crossposted:
+            return  # già pubblicato: non consuma il tetto orario e Discord lo rifiuterebbe
         adesso = time.time()
         if not self.limite.ammessa(canale.id, adesso):
             if self.limite.da_avvisare(canale.id, adesso):
