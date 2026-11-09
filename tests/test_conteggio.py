@@ -247,4 +247,125 @@ async def test_i_comandi_stanno_nell_albero():
         nomi = {c.qualified_name for c in bot.tree.walk_commands()}
     finally:
         await close_full_bot(bot)
-    assert {"admin-giochi conteggio canale", "admin-giochi conteggio regole", "giochi conteggio classifica"} <= nomi
+    assert {"admin-giochi conteggio canale", "admin-giochi conteggio regole", "admin-giochi conteggio traguardo", "admin-giochi conteggio importa", "giochi conteggio classifica", "giochi conteggio avvisami"} <= nomi
+
+
+# ------------------------------------------------------------------ B15: traguardi, avvisi, importazione
+def test_importazione_csv_e_json():
+    from core.conteggio_logic import ImportErrato, leggi_importazione
+
+    assert leggi_importazione(b"user_id,giusti,sbagliati\n5,10,2\n6,3,\n", "a.csv") == [(5, 10, 2), (6, 3, 0)]
+    assert leggi_importazione(b'{"5": 7}', "a.json") == [(5, 7, 0)]
+    assert leggi_importazione(b'[{"user_id": 5, "giusti": 1, "sbagliati": 2}]', "a.json") == [(5, 1, 2)]
+    for male in (b"niente", b"user_id,giusti\nx,1\n", b"user_id,giusti\n5,-1\n", b"user_id,giusti\n"):
+        with pytest.raises(ImportErrato):
+            leggi_importazione(male, "a.csv")
+    with pytest.raises(ImportErrato):
+        leggi_importazione(b"x" * (1024 * 1024 + 1), "a.csv")
+    righe = "user_id,giusti\n" + "".join(f"{n},1\n" for n in range(1, 5002))
+    with pytest.raises(ImportErrato):
+        leggi_importazione(righe.encode(), "a.csv")
+
+
+@pytest.mark.asyncio
+async def test_traguardi_tetto_e_pulizia(repo):
+    from core.repositories.counting_game_repo import TroppiTraguardi
+
+    await repo.aggiungi_canale(G, 5)
+    for n in range(1, 26):
+        await repo.aggiungi_traguardo(G, 5, numero=n, ogni=None, ruolo_id=None, messaggio="x")
+    with pytest.raises(TroppiTraguardi):
+        await repo.aggiungi_traguardo(G, 5, numero=99, ogni=None, ruolo_id=None, messaggio="x")
+    primo = (await repo.traguardi(G, 5))[0]
+    assert await repo.togli_traguardo(G, primo.id) and not await repo.togli_traguardo(G, primo.id)
+    await repo.togli_canale(G, 5)
+    assert await repo.traguardi(G, 5) == []
+
+
+@pytest.mark.asyncio
+async def test_avvisi_tetto_e_scatto(repo):
+    from core.repositories.counting_game_repo import TroppiAvvisi
+
+    for n in range(10, 15):
+        assert await repo.aggiungi_avviso(G, 5, 1, n) is True
+    assert await repo.aggiungi_avviso(G, 5, 1, 10) is False
+    with pytest.raises(TroppiAvvisi):
+        await repo.aggiungi_avviso(G, 5, 1, 99)
+    await repo.aggiungi_avviso(G, 5, 2, 10)
+    assert sorted(await repo.consuma_avvisi(G, 5, 10)) == [1, 2]
+    assert await repo.consuma_avvisi(G, 5, 10) == []
+    assert await repo.togli_avvisi(G, 1) == 4
+
+
+@pytest.mark.asyncio
+async def test_traguardo_ruolo_messaggio_e_avviso_nel_canale(monkeypatch, repo):
+    s = _Scena(monkeypatch, repo)
+    await repo.aggiungi_canale(G, 5)
+    ruolo = MagicMock(id=44)
+    s.guild.get_role = MagicMock(return_value=ruolo)
+    await repo.aggiungi_traguardo(G, 5, numero=None, ogni=2, ruolo_id=44, messaggio="Bravo {utente} a {numero}!")
+    await repo.aggiungi_avviso(G, 5, 77, 2)
+    primo = s.messaggio("1", 1)
+    primo.author.__class__ = discord.Member
+    primo.author.add_roles = AsyncMock()
+    await s.cog.on_message(primo)
+    primo.author.add_roles.assert_not_awaited()
+    secondo = s.messaggio("2", 2)
+    secondo.author.__class__ = discord.Member
+    secondo.author.add_roles = AsyncMock()
+    await s.cog.on_message(secondo)
+    secondo.author.add_roles.assert_awaited_once_with(ruolo, reason="Traguardo del conteggio")
+    testi = [c.args[0] for c in s.canale.send.await_args_list]
+    assert any("Bravo" in x and " 2!" in x for x in testi) and any("<@77>" in x for x in testi)
+    for c in s.canale.send.await_args_list:
+        assert c.kwargs["allowed_mentions"].everyone is False and c.kwargs["allowed_mentions"].roles is False
+    assert await repo.consuma_avvisi(G, 5, 2) == []
+
+
+@pytest.mark.asyncio
+async def test_comando_traguardo(monkeypatch, repo):
+    s = _Scena(monkeypatch, repo)
+    await repo.aggiungi_canale(G, 5)
+    sc = lambda v: SimpleNamespace(value=v)  # noqa: E731
+    i = fake_interaction(guild=s.guild)
+    await s.cog.conteggio_traguardo.callback(s.cog, i, sc("aggiungi"), s.canale, 100, 5, None, "x", None)  # numero e ogni insieme
+    assert await repo.traguardi(G, 5) == []
+    i = fake_interaction(guild=s.guild)
+    await s.cog.conteggio_traguardo.callback(s.cog, i, sc("aggiungi"), s.canale, 100, None, None, "Cento!", None)
+    [g] = await repo.traguardi(G, 5)
+    assert g.numero == 100
+    i = fake_interaction(guild=s.guild)
+    await s.cog.conteggio_traguardo.callback(s.cog, i, sc("elenco"), s.canale, None, None, None, None, None)
+    assert "100" in i.response.send_message.await_args.args[0]
+    i = fake_interaction(guild=s.guild)
+    await s.cog.conteggio_traguardo.callback(s.cog, i, sc("togli"), None, None, None, None, None, g.id)
+    assert await repo.traguardi(G, 5) == []
+
+
+@pytest.mark.asyncio
+async def test_comando_avvisami(monkeypatch, repo):
+    s = _Scena(monkeypatch, repo)
+    await repo.aggiungi_canale(G, 5)
+    i = fake_interaction(guild=s.guild)
+    await s.cog.conteggio_avvisami.callback(s.cog, i, 50, None, False)  # un solo canale: si capisce da sé
+    assert await repo.consuma_avvisi(G, 5, 50) == [i.user.id]
+    i = fake_interaction(guild=s.guild)
+    await repo.register(G, 5, 3, 1)
+    await s.cog.conteggio_avvisami.callback(s.cog, i, 1, None, False)  # già superato
+    assert await repo.consuma_avvisi(G, 5, 1) == []
+
+
+@pytest.mark.asyncio
+async def test_comando_importa(monkeypatch, repo):
+    s = _Scena(monkeypatch, repo)
+    await repo.aggiungi_canale(G, 5)
+    file = MagicMock(size=30, filename="p.csv")
+    file.read = AsyncMock(return_value=b"user_id,giusti,sbagliati\n9,4,1\n")
+    i = fake_interaction(guild=s.guild)
+    await s.cog.conteggio_importa.callback(s.cog, i, s.canale, file)
+    [p] = await repo.classifica(G, 5, 10)
+    assert (p.user_id, p.giusti, p.sbagliati) == (9, 4, 1)
+    file.read = AsyncMock(return_value=b"rotto")
+    i = fake_interaction(guild=s.guild)
+    await s.cog.conteggio_importa.callback(s.cog, i, s.canale, file)
+    assert (await repo.classifica(G, 5, 10))[0].giusti == 4

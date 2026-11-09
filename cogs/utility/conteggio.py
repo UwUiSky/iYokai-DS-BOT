@@ -1,10 +1,11 @@
 """
 cogs/utility/conteggio.py
 =========================
-Gioco del conteggio (NF-40, D69 B14): fino a 10 canali dove si conta a turno 1, 2, 3... anche in binario, in numeri
+Gioco del conteggio (NF-40, D69 B14-B15): fino a 10 canali dove si conta a turno 1, 2, 3... anche in binario, in numeri
 romani o in lettere; chi sbaglia può restare bloccato per un po'; chi ha contato per ultimo può avere un ruolo.
-Comandi: `/admin-giochi conteggio canale|regole` (staff), `/giochi conteggio classifica` (tutti).
-Funzioni coperte: SPEC §23.16 (NF-40), catalogo UTL-186, 187, 188, 189, 190, 192
+Traguardi (ruolo o messaggio) e avvisi a un numero.
+Comandi: `/admin-giochi conteggio canale|regole|traguardo|importa` (staff), `/giochi conteggio classifica|avvisami` (tutti).
+Funzioni coperte: SPEC §23.16 (NF-40), catalogo UTL-186, 187, 188, 189, 190, 191, 192, 193, 194
 """
 
 from __future__ import annotations
@@ -18,11 +19,14 @@ from discord.ext import commands
 from core.channel_access import PERMESSI_DI_REAZIONE, motivo_se_il_bot_non_puo
 from core.command_access import Livello, richiedi
 from core.command_groups import CogConGruppi, comando_di_gruppo
-from core.conteggio_logic import MAX_PUNIZIONE_MINUTI, MODI, leggi_numero, scrivi_numero
+from core.conteggio_logic import (
+    MAX_BYTE_IMPORT, MAX_MESSAGGIO_TRAGUARDO, MAX_PUNIZIONE_MINUTI, MODI, ImportErrato, leggi_importazione, leggi_numero,
+    scrivi_numero, traguardi_raggiunti,
+)
 from core.database import db
 from core.giveaway_logic import motivo_ruolo_non_assegnabile
 from core.i18n import lingua_risposta, t, testo_per
-from core.repositories.counting_game_repo import NON_CAMBIA, TroppiCanali, counting_game_repo
+from core.repositories.counting_game_repo import NON_CAMBIA, TroppiAvvisi, TroppiCanali, TroppiTraguardi, counting_game_repo
 
 logger = logging.getLogger("iyokai.conteggio")
 
@@ -92,6 +96,7 @@ class ConteggioCog(CogConGruppi, commands.Cog):
         if esito.corretto:
             await self._reagisci(message, "✅")
             await self._ruolo_ultimo(message, stato, esito)
+            await self._traguardi_e_avvisi(message, modo, esito.numero, lingua)
             return
         await self._reagisci(message, "❌")
         testo = t("conteggio_sbagliato", lingua, utente=message.author.mention, numero=scrivi_numero(esito.numero, modo),
@@ -104,6 +109,38 @@ class ConteggioCog(CogConGruppi, commands.Cog):
             pass
         if stato is not None and esito.precedente:
             await self._togli_ruolo(message.guild, stato.ruolo_ultimo, esito.precedente)
+
+    async def _traguardi_e_avvisi(self, message: discord.Message, modo: str, numero: int, lingua: str) -> None:
+        """Ruolo e messaggio dei traguardi toccati, poi gli avvisi chiesti per questo numero."""
+        guild_id, canale_id = message.guild.id, message.channel.id
+        try:
+            toccati = traguardi_raggiunti(numero, await counting_game_repo.traguardi(guild_id, canale_id))
+            da_avvisare = await counting_game_repo.consuma_avvisi(guild_id, canale_id, numero)
+        except Exception:
+            logger.warning("Conteggio: traguardi non letti nel server %s.", guild_id, exc_info=True)
+            return
+        for traguardo in toccati:
+            if traguardo.ruolo_id and isinstance(message.author, discord.Member):
+                ruolo = message.guild.get_role(traguardo.ruolo_id)
+                if ruolo is not None:
+                    try:
+                        await message.author.add_roles(ruolo, reason="Traguardo del conteggio")
+                    except discord.HTTPException:
+                        logger.info("Conteggio: ruolo %s non dato a %s", ruolo.id, message.author.id)
+            if traguardo.messaggio:
+                testo = traguardo.messaggio.replace("{utente}", message.author.mention).replace("{numero}", scrivi_numero(numero, modo))
+                await self._scrivi(message.channel, testo[:MAX_MESSAGGIO_TRAGUARDO + 100], [message.author])
+        if da_avvisare:
+            testo = t("conteggio_avviso_scattato", lingua, numero=scrivi_numero(numero, modo), utenti=" ".join(f"<@{u}>" for u in da_avvisare))
+            await self._scrivi(message.channel, testo, [discord.Object(id=u) for u in da_avvisare])
+
+    @staticmethod
+    async def _scrivi(canale, testo: str, utenti: list) -> None:
+        """Mai @everyone, @here o ruoli: solo le persone dette."""
+        try:
+            await canale.send(testo[:2000], allowed_mentions=discord.AllowedMentions(users=utenti, roles=False, everyone=False))
+        except discord.HTTPException:
+            pass
 
     async def _ruolo_ultimo(self, message: discord.Message, stato, esito) -> None:
         """Il ruolo passa a chi ha contato per ultimo (se il canale lo prevede)."""
@@ -237,6 +274,94 @@ class ConteggioCog(CogConGruppi, commands.Cog):
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
 
+    @comando_di_gruppo("admin-giochi", nome="traguardo", descrizione="Ruolo o messaggio quando il conteggio tocca un numero.", sottogruppo=_SG_ADMIN)
+    @app_commands.describe(
+        azione="Cosa fare", canale="Il canale del conteggio", numero="Un numero preciso", ogni="Oppure ogni tanti numeri",
+        ruolo="Ruolo dato a chi lo raggiunge", messaggio=f"Messaggio nel canale ({{utente}} e {{numero}}, al massimo {MAX_MESSAGGIO_TRAGUARDO} caratteri)",
+        traguardo="Il numero d'ordine, per toglierlo (lo vedi nell'elenco)",
+    )
+    @app_commands.choices(azione=[app_commands.Choice(name=n, value=v) for n, v in (("aggiungi", "aggiungi"), ("togli", "togli"), ("elenco", "elenco"))])
+    @richiedi(Livello.ADMIN)
+    async def conteggio_traguardo(
+        self, interaction: discord.Interaction, azione: app_commands.Choice[str], canale: discord.TextChannel | None = None,
+        numero: app_commands.Range[int, 1, 999_999_999] | None = None, ogni: app_commands.Range[int, 1, 999_999_999] | None = None,
+        ruolo: discord.Role | None = None, messaggio: app_commands.Range[str, 1, MAX_MESSAGGIO_TRAGUARDO] | None = None,
+        traguardo: app_commands.Range[int, 1, 2_000_000_000] | None = None,
+    ) -> None:
+        if not await self._pronto(interaction):
+            return
+        guild = interaction.guild
+        if azione.value == "elenco":
+            if canale is None:
+                await interaction.response.send_message(await testo_per(interaction, "coingames_indica_il_canale"), ephemeral=True)
+                return
+            righe = [
+                await testo_per(interaction, "conteggio_riga_traguardo", id=g.id,
+                                quando=str(g.numero) if g.numero else f"x{g.ogni}", ruolo=f"<@&{g.ruolo_id}>" if g.ruolo_id else "-",
+                                messaggio=(g.messaggio or "-")[:80])
+                for g in await counting_game_repo.traguardi(guild.id, canale.id)
+            ]
+            await interaction.response.send_message(
+                "\n".join(righe)[:1900] or await testo_per(interaction, "conteggio_nessun_traguardo"),
+                ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
+            )
+            return
+        if azione.value == "togli":
+            if traguardo is None:
+                await interaction.response.send_message(await testo_per(interaction, "conteggio_indica_traguardo"), ephemeral=True)
+                return
+            tolto = await counting_game_repo.togli_traguardo(guild.id, traguardo)
+            await interaction.response.send_message(
+                await testo_per(interaction, "conteggio_traguardo_tolto" if tolto else "conteggio_traguardo_inesistente"), ephemeral=True
+            )
+            return
+        if canale is None or (numero is None) == (ogni is None) or (ruolo is None and messaggio is None):
+            await interaction.response.send_message(await testo_per(interaction, "conteggio_traguardo_incompleto"), ephemeral=True)
+            return
+        if await counting_game_repo.get(guild.id, canale.id) is None:
+            await interaction.response.send_message(await testo_per(interaction, "conteggio_canale_non_attivo"), ephemeral=True)
+            return
+        if ruolo is not None:
+            chiave = motivo_ruolo_non_assegnabile(
+                posizione_ruolo=ruolo.position, gestito=ruolo.managed, di_base=ruolo.is_default(),
+                posizione_bot=guild.me.top_role.position, bot_puo_gestire_ruoli=guild.me.guild_permissions.manage_roles,
+            )
+            if chiave is not None:
+                await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
+                return
+        try:
+            nuovo = await counting_game_repo.aggiungi_traguardo(
+                guild.id, canale.id, numero=numero, ogni=ogni, ruolo_id=ruolo.id if ruolo else None, messaggio=messaggio
+            )
+        except TroppiTraguardi:
+            await interaction.response.send_message(await testo_per(interaction, "conteggio_troppi_traguardi"), ephemeral=True)
+            return
+        await interaction.response.send_message(await testo_per(interaction, "conteggio_traguardo_salvato", id=nuovo), ephemeral=True)
+
+    @comando_di_gruppo("admin-giochi", nome="importa", descrizione="Porta in un canale i punteggi di un file CSV o JSON.", sottogruppo=_SG_ADMIN)
+    @app_commands.describe(canale="Il canale del conteggio", file="CSV (user_id,giusti,sbagliati) o JSON, al massimo 1 MiB e 5.000 membri")
+    @richiedi(Livello.ADMIN)
+    async def conteggio_importa(self, interaction: discord.Interaction, canale: discord.TextChannel, file: discord.Attachment) -> None:
+        if not await self._pronto(interaction):
+            return
+        if file.size > MAX_BYTE_IMPORT:
+            await interaction.response.send_message(await testo_per(interaction, "conteggio_import_troppo_grande"), ephemeral=True)
+            return
+        if await counting_game_repo.get(interaction.guild.id, canale.id) is None:
+            await interaction.response.send_message(await testo_per(interaction, "conteggio_canale_non_attivo"), ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        try:
+            righe = leggi_importazione(await file.read(), file.filename or "")
+        except ImportErrato as errore:
+            await interaction.followup.send(await testo_per(interaction, str(errore)))
+            return
+        except discord.HTTPException:
+            await interaction.followup.send(await testo_per(interaction, "conteggio_import_illeggibile"))
+            return
+        fatti = await counting_game_repo.importa_punteggi(interaction.guild.id, canale.id, righe)
+        await interaction.followup.send(await testo_per(interaction, "conteggio_import_fatto", quanti=fatti, canale=canale.mention), allowed_mentions=_NESSUNA_MENZIONE)
+
     # ================================================================
     # /giochi conteggio
     # ================================================================
@@ -267,6 +392,44 @@ class ConteggioCog(CogConGruppi, commands.Cog):
         )
         embed.set_footer(text=await testo_per(interaction, "conteggio_classifica_piede", pubblica=True, pagina=pagina, pagine=pagine))
         await interaction.followup.send(embed=embed, allowed_mentions=_NESSUNA_MENZIONE)
+
+    @comando_di_gruppo("giochi", nome="avvisami", descrizione="Ti avviso nel canale quando il conteggio arriva a un numero.", sottogruppo=_SG_GIOCHI)
+    @app_commands.describe(numero="Il numero da aspettare", canale="Il canale (se il server ne ha uno solo si capisce da sé)", togli="Togli tutti i tuoi avvisi")
+    async def conteggio_avvisami(
+        self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 999_999_999] | None = None,
+        canale: discord.TextChannel | None = None, togli: bool = False,
+    ) -> None:
+        if not await self._pronto(interaction):
+            return
+        guild_id = interaction.guild.id
+        if togli:
+            quanti = await counting_game_repo.togli_avvisi(guild_id, interaction.user.id)
+            await interaction.response.send_message(await testo_per(interaction, "conteggio_avvisi_tolti", quanti=quanti), ephemeral=True)
+            return
+        stati = await counting_game_repo.elenco(guild_id)
+        if canale is None and len(stati) == 1:
+            canale_id = stati[0].channel_id
+        elif canale is not None:
+            canale_id = canale.id
+        else:
+            await interaction.response.send_message(await testo_per(interaction, "conteggio_scegli_il_canale"), ephemeral=True)
+            return
+        stato = next((x for x in stati if x.channel_id == canale_id), None)
+        if stato is None or numero is None:
+            await interaction.response.send_message(await testo_per(interaction, "conteggio_avviso_dati"), ephemeral=True)
+            return
+        if numero <= stato.current:
+            await interaction.response.send_message(await testo_per(interaction, "conteggio_avviso_gia_superato"), ephemeral=True)
+            return
+        try:
+            nuovo = await counting_game_repo.aggiungi_avviso(guild_id, canale_id, interaction.user.id, numero)
+        except TroppiAvvisi:
+            await interaction.response.send_message(await testo_per(interaction, "conteggio_troppi_avvisi"), ephemeral=True)
+            return
+        await interaction.response.send_message(
+            await testo_per(interaction, "conteggio_avviso_salvato" if nuovo else "conteggio_avviso_gia_presente", numero=scrivi_numero(numero, stato.modo)),
+            ephemeral=True,
+        )
 
 
 async def setup(bot: commands.Bot) -> None:

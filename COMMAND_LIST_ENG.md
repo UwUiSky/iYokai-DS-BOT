@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:16 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:19 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 746 commands in 44 categories.**
+**Total: 749 commands in 44 categories.**
 
 ## Admin: AI
 
@@ -198,6 +198,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:1
 ## Admin: games
 
 - **`/admin-games counting channel`** — Pick the channels where people count (up to 10) and how.
+- **`/admin-games counting import`** — Bring scores from a CSV or JSON file into a channel.
+- **`/admin-games counting milestone`** — Role or message when the count hits a number.
 - **`/admin-games counting rules`** — Punishment after a mistake and role of the last counter.
 
 ## Admin: giveaways
@@ -597,6 +599,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:1
 ## Games
 
 - **`/games counting leaderboard`** — Who counted the most correct numbers.
+- **`/games counting notifyme`** — Get pinged in the channel when the count reaches a number.
 - **`/games play`** — Play your coins: coin flip, dice or slots.
 - **`/games rps`** — Rock, paper, scissors against the bot.
 

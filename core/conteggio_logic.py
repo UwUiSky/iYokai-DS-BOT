@@ -3,12 +3,15 @@ core/conteggio_logic.py
 =======================
 Gioco del conteggio, parte pura (D69 B14-B15): leggere il numero scritto in decimale, binario, numeri romani
 o in lettere (italiano, fino a 9.999), con filtro «solo numero» o «numero e poi testo»; scrivere un numero nel modo
-del canale; trovare i traguardi raggiunti.
+del canale; trovare i traguardi raggiunti; leggere i punteggi da importare (CSV o JSON).
 Funzioni coperte: catalogo UTL-187, 189, 191, 192
 """
 
 from __future__ import annotations
 
+import csv
+import io
+import json
 import re
 from dataclasses import dataclass
 
@@ -146,3 +149,44 @@ def traguardi_raggiunti(numero: int, traguardi: list[Traguardo]) -> list[Traguar
 
 def tempo_di_blocco_valido(minuti: int) -> bool:
     return 0 <= minuti <= MAX_PUNIZIONE_MINUTI
+
+
+MAX_BYTE_IMPORT = 1024 * 1024
+MAX_RIGHE_IMPORT = 5000
+MAX_PUNTI_IMPORT = 1_000_000
+
+
+class ImportErrato(ValueError):
+    """Il file da importare non va bene; il testo è la chiave del catalogo."""
+
+
+def leggi_importazione(dati: bytes, nome_file: str) -> list[tuple[int, int, int]]:
+    """Punteggi da un file CSV (user_id,giusti,sbagliati) o JSON (lista di oggetti, o {user_id: giusti}).
+    Ritorna [(user_id, giusti, sbagliati)]. ImportErrato se il file non si legge o è troppo grande."""
+    if len(dati) > MAX_BYTE_IMPORT:
+        raise ImportErrato("conteggio_import_troppo_grande")
+    try:
+        testo = dati.decode("utf-8-sig")
+        if nome_file.lower().endswith(".json"):
+            grezzo = json.loads(testo)
+            if isinstance(grezzo, dict):
+                grezzo = [{"user_id": k, "giusti": v} for k, v in grezzo.items()]
+            righe = [(r["user_id"], r.get("giusti", 0), r.get("sbagliati", 0)) for r in grezzo]
+        else:
+            righe = [
+                (r["user_id"], r.get("giusti") or 0, r.get("sbagliati") or 0)
+                for r in csv.DictReader(io.StringIO(testo))
+            ]
+        trovati = {}
+        for utente, giusti, sbagliati in righe:
+            utente, giusti, sbagliati = int(utente), int(giusti), int(sbagliati)
+            if utente <= 0 or not (0 <= giusti <= MAX_PUNTI_IMPORT) or not (0 <= sbagliati <= MAX_PUNTI_IMPORT):
+                raise ValueError
+            trovati[utente] = (utente, giusti, sbagliati)
+    except (ValueError, KeyError, TypeError, AttributeError, csv.Error, UnicodeDecodeError):
+        raise ImportErrato("conteggio_import_illeggibile") from None
+    if not trovati:
+        raise ImportErrato("conteggio_import_vuoto")
+    if len(trovati) > MAX_RIGHE_IMPORT:
+        raise ImportErrato("conteggio_import_troppe_righe")
+    return list(trovati.values())

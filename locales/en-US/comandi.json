@@ -315,7 +315,9 @@
   "codici": "codes",
   "riallinea": "resync",
   "admin-giochi": "admin-games",
-  "regole": "rules"
+  "regole": "rules",
+  "traguardo": "milestone",
+  "avvisami": "notifyme"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1187,7 +1189,10 @@
   "admin-giochi conteggio canale": "Pick the channels where people count (up to 10) and how.",
   "admin-giochi conteggio regole": "Punishment after a mistake and role of the last counter.",
   "giochi conteggio": "Counting game: leaderboard and alerts",
-  "giochi conteggio classifica": "Who counted the most correct numbers."
+  "giochi conteggio classifica": "Who counted the most correct numbers.",
+  "admin-giochi conteggio traguardo": "Role or message when the count hits a number.",
+  "admin-giochi conteggio importa": "Bring scores from a CSV or JSON file into a channel.",
+  "giochi conteggio avvisami": "Get pinged in the channel when the count reaches a number."
  },
  "parametri": {},
  "menu": {

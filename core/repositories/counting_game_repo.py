@@ -3,7 +3,7 @@ core/repositories/counting_game_repo.py
 =======================================
 Gioco del conteggio: fino a 10 canali per server dove si conta a turno 1, 2, 3... (anche in binario, romani o lettere).
 Ogni numero è giudicato sotto il blocco della riga del canale, così due numeri arrivati insieme non passano entrambi.
-Punteggi per membro e blocchi a tempo dopo uno sbaglio. Tabelle: core/migrations/0552_conteggio_canali.sql.
+Punteggi per membro, blocchi a tempo, traguardi e avvisi. Tabelle: migrazioni 0552 e 0553.
 Funzioni coperte: SPEC §23.16 (NF-40), catalogo UTL-186, 187, 188, 189, 190, 192
 """
 
@@ -17,7 +17,7 @@ import asyncpg
 
 from core.bounded_cache import BoundedCache
 from core.coin_games_logic import valuta_conteggio
-from core.conteggio_logic import FILTRI, MAX_CANALI, MODI
+from core.conteggio_logic import FILTRI, MAX_AVVISI_PER_UTENTE, MAX_CANALI, MAX_TRAGUARDI_PER_CANALE, MODI, Traguardo
 
 # Quanto resta in memoria l'elenco dei canali: lo chiede ogni messaggio del server.
 SECONDI_DI_CACHE = 60
@@ -25,6 +25,14 @@ NON_CAMBIA = object()
 
 class TroppiCanali(Exception):
     """Il server conta già in 10 canali."""
+
+
+class TroppiTraguardi(Exception):
+    """Il canale ha già 25 traguardi."""
+
+
+class TroppiAvvisi(Exception):
+    """Il membro ha già 5 avvisi."""
 
 @dataclass(frozen=True)
 class StatoConteggio:
@@ -92,7 +100,8 @@ class CountingGameRepository:
                 esito = await conn.execute(
                     "DELETE FROM conteggio_canali WHERE guild_id = $1 AND channel_id = $2", guild_id, channel_id
                 )
-                await conn.execute("DELETE FROM conteggio_blocchi WHERE guild_id = $1 AND channel_id = $2", guild_id, channel_id)
+                for tabella in ("conteggio_blocchi", "conteggio_traguardi", "conteggio_avvisi", "conteggio_punteggi"):
+                    await conn.execute(f"DELETE FROM {tabella} WHERE guild_id = $1 AND channel_id = $2", guild_id, channel_id)
         self._cache.delete(guild_id)
         return esito.endswith(" 1")
 
@@ -204,6 +213,85 @@ class CountingGameRepository:
             "SELECT count(DISTINCT user_id) FROM conteggio_punteggi WHERE guild_id = $1 AND ($2::bigint IS NULL OR channel_id = $2)",
             guild_id, channel_id,
         )
+
+    # ------------------------------------------------------------ traguardi
+    async def aggiungi_traguardo(
+        self, guild_id: int, channel_id: int, *, numero: int | None, ogni: int | None, ruolo_id: int | None, messaggio: str | None
+    ) -> int:
+        """Salva un traguardo e ne dà il numero. TroppiTraguardi se il canale è a 25."""
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute("SELECT pg_advisory_xact_lock(hashtext('conteggio_traguardi'), $1)", guild_id % 2**31)
+                if await conn.fetchval(
+                    "SELECT count(*) FROM conteggio_traguardi WHERE guild_id = $1 AND channel_id = $2", guild_id, channel_id
+                ) >= MAX_TRAGUARDI_PER_CANALE:
+                    raise TroppiTraguardi()
+                return await conn.fetchval(
+                    "INSERT INTO conteggio_traguardi (guild_id, channel_id, numero, ogni, ruolo_id, messaggio) "
+                    "VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+                    guild_id, channel_id, numero, ogni, ruolo_id, messaggio,
+                )
+
+    async def togli_traguardo(self, guild_id: int, traguardo_id: int) -> bool:
+        esito = await self._pool.execute(
+            "DELETE FROM conteggio_traguardi WHERE guild_id = $1 AND id = $2", guild_id, traguardo_id
+        )
+        return esito.endswith(" 1")
+
+    async def traguardi(self, guild_id: int, channel_id: int) -> list[Traguardo]:
+        righe = await self._pool.fetch(
+            "SELECT id, numero, ogni, ruolo_id, messaggio FROM conteggio_traguardi "
+            "WHERE guild_id = $1 AND channel_id = $2 ORDER BY id",
+            guild_id, channel_id,
+        )
+        return [Traguardo(r["id"], r["numero"], r["ogni"], r["ruolo_id"], r["messaggio"]) for r in righe]
+
+    # ------------------------------------------------------------ avvisi
+    async def aggiungi_avviso(self, guild_id: int, channel_id: int, user_id: int, numero: int) -> bool:
+        """True se nuovo, False se c'era già. TroppiAvvisi se il membro è a 5 nel server."""
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute("SELECT pg_advisory_xact_lock(hashtext('conteggio_avvisi'), $1)", guild_id % 2**31)
+                if await conn.fetchval(
+                    "SELECT 1 FROM conteggio_avvisi WHERE guild_id = $1 AND channel_id = $2 AND user_id = $3 AND numero = $4",
+                    guild_id, channel_id, user_id, numero,
+                ):
+                    return False
+                if await conn.fetchval(
+                    "SELECT count(*) FROM conteggio_avvisi WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
+                ) >= MAX_AVVISI_PER_UTENTE:
+                    raise TroppiAvvisi()
+                await conn.execute(
+                    "INSERT INTO conteggio_avvisi (guild_id, channel_id, user_id, numero) VALUES ($1, $2, $3, $4)",
+                    guild_id, channel_id, user_id, numero,
+                )
+                return True
+
+    async def togli_avvisi(self, guild_id: int, user_id: int) -> int:
+        esito = await self._pool.execute("DELETE FROM conteggio_avvisi WHERE guild_id = $1 AND user_id = $2", guild_id, user_id)
+        return int(esito.split()[-1])
+
+    async def consuma_avvisi(self, guild_id: int, channel_id: int, numero: int) -> list[int]:
+        """Chi voleva un avviso a questo numero. Gli avvisi si cancellano: scattano una volta sola."""
+        righe = await self._pool.fetch(
+            "DELETE FROM conteggio_avvisi WHERE guild_id = $1 AND channel_id = $2 AND numero = $3 RETURNING user_id",
+            guild_id, channel_id, numero,
+        )
+        return [r["user_id"] for r in righe]
+
+    # ------------------------------------------------------------ importazione
+    async def importa_punteggi(self, guild_id: int, channel_id: int, righe: list[tuple[int, int, int]]) -> int:
+        """Imposta i punteggi dei membri nel canale (chi c'è già viene sovrascritto)."""
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.executemany(
+                    "INSERT INTO conteggio_punteggi (guild_id, channel_id, user_id, giusti, sbagliati) VALUES ($1, $2, $3, $4, $5) "
+                    "ON CONFLICT (guild_id, channel_id, user_id) DO UPDATE "
+                    "SET giusti = EXCLUDED.giusti, sbagliati = EXCLUDED.sbagliati",
+                    [(guild_id, channel_id, u, g, s) for u, g, s in righe],
+                )
+        return len(righe)
+
 
 def _get_pool():
     from core.database import db
