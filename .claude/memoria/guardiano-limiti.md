@@ -1,12 +1,13 @@
 # Memoria di guardiano-limiti
 
 ## Aggiornata
-09/11/2026 · disegno Utility #128 (solo proposta, scratchpad `disegno_utility.md`)
+09/11/2026 · disegno Divertimento #131 (solo proposta, scratchpad `disegno_fun.md`)
 
 ## In corso
 - Niente a metà.
 
 ## Fatto
+- 09/11: disegno #131 Divertimento: REGGE CON MODIFICHE. 0 radici nuove (47/60); /giochi 2→11, /immagini 8→11, /gif 4, /fun 15; migrazioni 0570-0580. Tenor chiuso 30/06/2026; nekos.best vieta uso commerciale; Foodish sospeso.
 - 09/11: disegno #128 Utility: REGGE CON MODIFICHE. Radici 40→47 (`/web`,`/tag`,`/eventi`,`/admin-tag`,`/admin-automazioni`,`/admin-inviti`,`/admin-giochi`); 28 blocchi; migrazioni 0540-0563.
 - 11/10: albero reale F7 dopo D24 misurato (script `albero2.py` nello scratchpad): REGGE. 16 globali + `/owner` (5 figli) nel server; 252 foglie contro 253 vecchie (fusione voluta `logs-setup`+`mod-log-setup`); max 4816 caratteri (`/gestione`); `/admin` 2738. Nessun limite superato.
 - 05/10: disegno albero F7 (D24) misurato sull'albero vero: `/admin` a 22 figli = 9241 caratteri (>8000). Esito: 16 gruppi. Tabella in `revisione/02-piano/MAPPA_COMANDI_F7.md`.
@@ -36,6 +37,7 @@
 - `/config language set` è già a 3 livelli: sotto un gruppo va appiattito.
 
 ## Aperto
+- #131: decisione owner sulla fonte GIF (DF1) prima di B1; quiz base FUN-001 fuori issue.
 - Menu `admin-log eventi`: INTERRUTTORI 24/25; dopo UTL-229 pieno: dividere prima del 26°.
 - Open-Meteo vieta uso commerciale (Premium = commerciale): meteo con MET Norway + Nominatim (1 req/s, cache, no completamento).
 - Pubblicazione canali annunci: 10/ora per canale (manca in LIMITI.md).
