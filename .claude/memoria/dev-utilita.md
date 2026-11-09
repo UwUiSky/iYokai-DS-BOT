@@ -13,6 +13,7 @@
 - r10inviti CHIUSO (D32, 0380): codice, test (test_invite_links_logic, test_invite_service, test_panel_inviti, test_invite_tracker_vanity, test_invite_links_registro, test_invites esteso), invarianti verdi, SPEC 23.5, VERIFICA_LIVE, REGISTRO, DECISIONI D32. Smoke da fare (regola owner: non lanciato). Peso /level 5590.
 
 ## Fatto
+- r19util B5 programmati: core/programmati_logic.py, scheduled_messages (ripeti/ora/salta_se_ultimo/ping_ruolo, salta, canale cancellato). Niente migrazione (payload JSON). Smoke da fare.
 - r19util B4 embed avanzati: cogs/utility/embed_avanzati.py (json, bottoni, V2), embed_builder (pubblica altri/formato), repo embed_bottoni, 0542, BaseLayoutView in ui_base. Smoke da fare.
 - r19util B3 messaggi staff: core/messaggi_auto_logic.py, repo, cogs/utility/messaggi_auto.py, sticky (elenco, modello), 0541. Smoke da fare.
 - r19util B2 servizi web: core/web_servizi_logic.py, core/repositories/web_repo.py, 0540, COINGECKO_API_KEY in config. Smoke da fare.

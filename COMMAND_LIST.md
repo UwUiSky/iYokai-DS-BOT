@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:46 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:49 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 715 comandi in 42 categorie.**
+**Totale: 716 comandi in 42 categorie.**
 
 ## Admin: AI
 
@@ -246,6 +246,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:
 - **`/admin-messaggi programmati annulla`** — Annulla un messaggio programmato.
 - **`/admin-messaggi programmati crea`** — Programma un messaggio.
 - **`/admin-messaggi programmati elenco`** — Mostra i messaggi programmati di questo server.
+- **`/admin-messaggi programmati salta`** — Salta il prossimo giro di un messaggio che si ripete.
 - **`/admin-messaggi promemoria`** — Per lo staff: i promemoria impostati in questo server.
 - **`/admin-messaggi risposte crea`** — Crea una risposta automatica.
 - **`/admin-messaggi risposte elenco`** — Mostra le risposte automatiche del server.

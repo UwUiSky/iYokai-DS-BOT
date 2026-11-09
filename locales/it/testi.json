@@ -1943,5 +1943,12 @@
   "bottoni_messaggio_non_aggiornato": "Il messaggio pubblicato non si è potuto aggiornare: ripubblicalo.",
   "embedbuilder_v2_un_solo_embed": "Il formato V2 pubblica un embed solo: togli «altri».",
   "embedbuilder_altri_troppi": "Puoi unire al massimo 9 altri embed (10 in tutto).",
-  "embedbuilder_altri_non_trovato": "Non c'è nessun embed salvato che si chiami «{nome}»."
+  "embedbuilder_altri_non_trovato": "Non c'è nessun embed salvato che si chiami «{nome}».",
+  "programmati_troppe_serie": "Un server può avere al massimo {massimo} messaggi che si ripetono.",
+  "programmati_ora_senza_ripeti": "L'ora fissa serve con una ripetizione.",
+  "programmati_salta_senza_ripeti": "«salta_se_ultimo» serve solo per i messaggi che si ripetono.",
+  "programmati_ping_senza_permesso": "Per avvisare un ruolo ti serve il permesso «Menziona tutti».",
+  "programmati_ping_ruolo_non_menzionabile": "Il bot non può avvisare quel ruolo: rendilo menzionabile.",
+  "programmati_non_si_ripete": "Questo messaggio non si ripete: se non lo vuoi, annullalo.",
+  "programmati_saltato": "Giro saltato. Il prossimo è `#{id}`, il messaggio parte {quando}."
 }

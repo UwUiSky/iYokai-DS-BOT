@@ -304,7 +304,8 @@
   "scrivi": "write",
   "auto": "auto",
   "json": "json",
-  "bottoni": "buttons"
+  "bottoni": "buttons",
+  "salta": "skip"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1143,7 +1144,8 @@
   "admin-messaggi auto": "Automations: quotes, link fixing, announcement publishing, shortener.",
   "admin-messaggi fissi elenco": "List the server's pinned messages.",
   "admin-messaggi embed json": "Import an embed from JSON or export it to a file.",
-  "admin-messaggi embed bottoni": "Add or remove an embed's buttons (link or show tag)."
+  "admin-messaggi embed bottoni": "Add or remove an embed's buttons (link or show tag).",
+  "admin-messaggi programmati salta": "Skip the next round of a repeating message."
  },
  "parametri": {},
  "menu": {

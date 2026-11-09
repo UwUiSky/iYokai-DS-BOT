@@ -1461,6 +1461,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 - `[x]` 14.63 Embed avanzati (catalogo #128 B4, D69, r19util) — `embed json` (importa da file ≤ 1 MiB o da finestra 4.000; accetta il formato di Discord e il nostro; esporta da un link o dal salvato), `embed pubblica altri:` (fino a 9 altri, 6.000 caratteri in tutto, 10 embed), `embed bottoni` (link e «mostra tag», massimo 25, `eb:<server>:<embed>:<n>` persistenti), `embed pubblica formato:v2` (componenti V2: 40 componenti, 4.000 caratteri; `BaseLayoutView` in core/ui_base.py) — UTL-075, 076, 079, 080, 081. Migrazione 0542 (`saved_embeds.formato`, `embed_bottoni` con chiave esterna). `embed modifica` su un messaggio con più embed lo riduce al primo.
 
+- `[x]` 14.64 Messaggi programmati che si ripetono (catalogo #128 B5, D69, r19util) — `programmati crea` con `ripeti` (da 10 minuti, 25 serie per server), `ora` (HH:MM nel fuso del server, ogni giorno; l'ora resta la stessa col cambio dell'ora legale), `salta_se_ultimo`, `ping_ruolo` (secondo messaggio che sparisce dopo 10 s, solo con «Menziona tutti»); `programmati salta id:` con completamento — UTL-105, 106, 107, 108, 109. Il prossimo giro si mette in coda PRIMA dell'invio e i giri persi non si recuperano; l'ID cambia a ogni giro (l'elenco mostra quello in coda); `on_guild_channel_delete` annulla le serie del canale. Nessuna migrazione: le chiavi stanno nel payload di `scheduled_actions` (0543 non usato). UTL-111 (comando più tardi): alternativa D18 non fatta in questo giro.
+
 ## §15 LEVELS / ECONOMY / GILDE / CLASSIFICHE
 
 - `[x]` 15.1 XP e livelli (testuale + vocale)

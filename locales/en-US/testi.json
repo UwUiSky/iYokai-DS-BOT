@@ -1943,5 +1943,12 @@
   "bottoni_messaggio_non_aggiornato": "The published message could not be updated: publish it again.",
   "embedbuilder_v2_un_solo_embed": "The V2 format publishes a single embed: remove «altri».",
   "embedbuilder_altri_troppi": "You can join 9 other embeds at most (10 in all).",
-  "embedbuilder_altri_non_trovato": "No saved embed is called «{nome}»."
+  "embedbuilder_altri_non_trovato": "No saved embed is called «{nome}».",
+  "programmati_troppe_serie": "A server can have at most {massimo} repeating messages.",
+  "programmati_ora_senza_ripeti": "A fixed time needs a repetition.",
+  "programmati_salta_senza_ripeti": "«salta_se_ultimo» is only for repeating messages.",
+  "programmati_ping_senza_permesso": "To ping a role you need the «Mention everyone» permission.",
+  "programmati_ping_ruolo_non_menzionabile": "The bot cannot ping that role: make it mentionable.",
+  "programmati_non_si_ripete": "This message does not repeat: cancel it if you do not want it.",
+  "programmati_saltato": "Round skipped. The next one is `#{id}`, the message goes out {quando}."
 }
