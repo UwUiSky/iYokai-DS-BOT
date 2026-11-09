@@ -41,7 +41,10 @@ class SmashView(BaseView):
 
     def _voto(self, scelta: str):
         async def callback(interaction: discord.Interaction) -> None:
-            guild_id = interaction.guild.id if interaction.guild else 0
+            if interaction.guild is None or not bool(getattr(interaction.channel, "is_nsfw", lambda: False)()):
+                await interaction.response.send_message(await testo_per(interaction, "smash_solo_limite_eta"), ephemeral=True)
+                return
+            guild_id = interaction.guild.id
             nuovo = await smash_repo.vota(guild_id, self._settimana, str(self._p.id), interaction.user.id, scelta)
             if not nuovo:
                 await interaction.response.send_message(await testo_per(interaction, "smash_gia_votato"), ephemeral=True)

@@ -46,9 +46,6 @@ class SegnalaView(BaseView):
         self.bottone.callback = self._premuto
         self.add_item(self.bottone)
 
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        return await super().interaction_check(interaction)
-
     async def _premuto(self, interaction: discord.Interaction) -> None:
         guild_id = interaction.guild.id if interaction.guild else 0
         totale = await immagini_segnalazioni_repo.segnala(self._post_key, interaction.user.id, guild_id)

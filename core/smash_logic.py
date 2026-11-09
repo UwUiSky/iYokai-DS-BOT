@@ -2,10 +2,11 @@
 core/smash_logic.py
 ===================
 «Smash or pass» (#131, D70, B11, FUN-021): un personaggio a caso dai più amati di AniList, sempre e solo
-maggiorenne (ogni numero scritto nell'età dev'essere almeno 18; se manca l'età il personaggio non esce), mostrato come
+maggiorenne (l'età di AniList dev'essere un solo numero, almeno 18; vuota, intervallo, «unknown» o testo = escluso;
+esclusi anche descrizione, nome e generi/tag dell'opera che parlano di minori), mostrato come
 link alla pagina di AniList (nessuna immagine ospitata da noi). Voti settimanali: uno a testa per personaggio.
 Funzioni coperte: SPEC §16 (FUN-021)
-Dipende da: core/safe_http.py, core/repositories/cache_esterna_repo.py, core/repositories/smash_repo.py
+Dipende da: core/nsfw_filter_logic.py (lista dei minori), core/safe_http.py, core/repositories/cache_esterna_repo.py, core/repositories/smash_repo.py
 """
 
 from __future__ import annotations
@@ -16,13 +17,15 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 
+from core.nsfw_filter_logic import ILLEGGIBILE, motivo_vietato, normalizza
+
 ANILIST = "https://graphql.anilist.co"
 PAGINE = 20  # i primi 1000 personaggi per preferiti
 PER_PAGINA = 50
 SECONDI_CACHE = 24 * 3600
 _QUERY = (
     "query($p:Int){Page(page:$p,perPage:" + str(PER_PAGINA) + "){characters(sort:FAVOURITES_DESC)"
-    "{id age name{full} media(perPage:1){nodes{title{romaji english}}}}}}"
+    "{id age description name{full} media(perPage:1){nodes{genres tags{name} title{romaji english}}}}}}"
 )
 
 
@@ -38,9 +41,33 @@ class Personaggio:
 
 
 def eta_adulta(eta: object) -> bool:
-    """Vero solo se nell'età ci sono numeri e sono tutti almeno 18 («17-23» e «14» non passano)."""
-    numeri = [int(n) for n in re.findall(r"\d+", eta if isinstance(eta, str) else "")]
-    return bool(numeri) and min(numeri) >= 18
+    """Vero solo se l'età è UN numero (nient'altro) ed è almeno 18. Intervalli, «unknown», note e vuoti: no."""
+    trovato = re.fullmatch(r"\s*(\d{1,4})\s*", eta) if isinstance(eta, str) else None
+    return trovato is not None and int(trovato.group(1)) >= 18
+
+
+# Parole di scuola e infanzia in più lingue che la lista del progetto non ha (cercate dentro le parole: meglio uno scarto in più).
+_PAROLE_IN_PIU = ("scuola", "ecole", "escuela", "escola", "schul", "lycee", "lyceen", "kindergarten", "elementary", "bambin", "enfant", "kinder")
+
+
+def parla_di_minori(*testi: object) -> bool:
+    """Vero se un testo (descrizione, nome, genere, tag) cade nella lista dei minori del progetto, o non si può leggere."""
+    for t in testi:
+        if not isinstance(t, str):
+            continue
+        if motivo_vietato(t) in ("minori", ILLEGGIBILE) or any(p in normalizza(t) for p in _PAROLE_IN_PIU):
+            return True
+    return False
+
+
+def _testi_di_contorno(r: dict) -> list[object]:
+    """Descrizione, nome, generi e tag della prima opera: tutto ciò che può dire «minorenne»."""
+    nome = r.get("name") if isinstance(r.get("name"), dict) else {}
+    nodi = (r.get("media") or {}).get("nodes") if isinstance(r.get("media"), dict) else None
+    opera = nodi[0] if isinstance(nodi, list) and nodi and isinstance(nodi[0], dict) else {}
+    generi = opera.get("genres") if isinstance(opera.get("genres"), list) else []
+    tag = [t.get("name") for t in opera.get("tags") or [] if isinstance(t, dict)] if isinstance(opera.get("tags"), list) else []
+    return [r.get("description"), nome.get("full"), *generi, *tag]
 
 
 def interpreta_pagina(testo: str | None) -> list[Personaggio]:
@@ -50,7 +77,7 @@ def interpreta_pagina(testo: str | None) -> list[Personaggio]:
         return []
     trovati = []
     for r in righe if isinstance(righe, list) else []:
-        if not isinstance(r, dict) or not isinstance(r.get("id"), int) or not eta_adulta(r.get("age")):
+        if not isinstance(r, dict) or not isinstance(r.get("id"), int) or not eta_adulta(r.get("age")) or parla_di_minori(*_testi_di_contorno(r)):
             continue
         nome = ((r.get("name") or {}).get("full") or "").strip() if isinstance(r.get("name"), dict) else ""
         nodi = (r.get("media") or {}).get("nodes") if isinstance(r.get("media"), dict) else None

@@ -28,7 +28,9 @@ def _r(i, eta, nome="Nome", opera="Opera"):
 
 
 @pytest.mark.parametrize("eta,ok", [("20", True), ("18", True), ("17", False), ("14", False), ("17-23", False),
-                                     ("19-23, (30's in Another)", True), (None, False), ("", False), ("sconosciuta", False), (25, False)])
+                                     ("19-23, (30's in Another)", False), (None, False), ("", False), ("sconosciuta", False), (25, False),
+                                     ("16-18", False), ("18-25", False), ("unknown", False), ("Unknown", False), ("18+", False),
+                                     ("20 (sembra 12)", False), ("diciotto", False), (" 21 ", True), ("1000", True)])
 def test_eta_adulta(eta, ok):
     assert sl.eta_adulta(eta) is ok
 
@@ -38,6 +40,34 @@ def test_pagina_tiene_solo_adulti_con_nome():
     assert [x.id for x in p] == [1] and p[0].pagina == "https://anilist.co/character/1" and p[0].opera == "Opera"
     for brutto in (None, "", "no", "{}", '{"data": null}'):
         assert sl.interpreta_pagina(brutto) == []
+
+
+def _rc(i, desc=None, nome="Nome", generi=(), tag=()):
+    r = _r(i, "25", nome)
+    r["description"] = desc
+    r["media"]["nodes"][0]["genres"] = list(generi)
+    r["media"]["nodes"][0]["tags"] = [{"name": t} for t in tag]
+    return r
+
+
+@pytest.mark.parametrize("riga", [
+    _rc(1, "A child who loves sweets"), _rc(2, "Loli vampire, 500 years old"), _rc(3, "Shota detective"),
+    _rc(4, "A high school student"), _rc(5, "Middle school girl"), _rc(6, "Una studentessa del liceo"),
+    _rc(7, "Una niña de la escuela"), _rc(8, "Une élève de l'école"), _rc(9, "Schülerin der Grundschule"),
+    _rc(10, "Ragazza di 15 anni"), _rc(11, "Ok", nome="Loli-chan"), _rc(12, "Ok", generi=["School"]),
+    _rc(13, "Ok", tag=["Primary School"]), _rc(14, "高校生の少女"), _rc(15, "Ok", tag=["Kids"]),
+])
+def test_esclusi_anche_con_eta_adulta_se_il_testo_indica_un_minore(riga):
+    assert sl.interpreta_pagina(_pagina(riga)) == []
+
+
+def test_adulto_senza_indizi_di_minorenne_passa():
+    assert [p.id for p in sl.interpreta_pagina(_pagina(_rc(1, "A swordsman who serves the king", generi=["Action"], tag=["Samurai"])))] == [1]
+
+
+def test_pagina_con_eta_ambigue_non_esce_mai():
+    righe = [_r(1, "16-18"), _r(2, "unknown"), _r(3, ""), _r(4, None), _r(5, "17"), _r(6, "12 (appare 20)")]
+    assert sl.interpreta_pagina(_pagina(*righe)) == []
 
 
 def test_settimana_iso():
@@ -149,3 +179,15 @@ async def test_fonte_muta(attivo, monkeypatch):
     await cog.smash.callback(cog, it)
     it.delete_original_response.assert_awaited()
     assert it.followup.send.await_args.kwargs["ephemeral"] is True
+
+
+async def test_voto_ricontrolla_il_canale(attivo, monkeypatch):
+    cog = mod.SmashCog(bot=None)
+    monkeypatch.setattr(mod.sl, "personaggio_a_caso", AsyncMock(return_value=sl.Personaggio(78, "Nome", "Opera")))
+    it = _it()
+    await cog.smash.callback(cog, it)
+    vista = it.followup.send.await_args.kwargs["view"]
+    click = _it(nsfw=False, u=40)
+    await vista.children[0].callback(click)
+    assert click.response.send_message.await_args.kwargs["ephemeral"] is True
+    assert await smash_repo.conteggio(ID, sl.settimana(datetime.now(timezone.utc)), "78") == (0, 0)
