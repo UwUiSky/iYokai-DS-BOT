@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:36 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:41 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 814 commands in 49 categories.**
+**Total: 818 commands in 49 categories.**
 
 ## Admin: AI
 
@@ -79,6 +79,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:3
 - **`/admin-automazioni inneschi list`** — The triggers of the server.
 - **`/admin-automazioni inneschi remove`** — Remove a trigger.
 - **`/admin-automazioni script errori`** — The latest 10 errors of a tag's script.
+- **`/admin-automazioni slash list`** — The server's commands and menu entries.
+- **`/admin-automazioni slash menu`** — Right-click menu entries (on a user or a message) that answer with a tag.
+- **`/admin-automazioni slash publish`** — Create a server command that answers with a tag.
+- **`/admin-automazioni slash remove`** — Remove a server command.
 
 ## Admin: AutoMod
 

@@ -1549,6 +1549,13 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 
 ## giro r24util, B27 — inneschi dei tag (#128)
 - `/admin-automazioni inneschi aggiungi tag:dado tipo:intervallo valore:10m canale:#prove`: dopo 10 minuti il tag scrive nel canale, poi di nuovo ogni 10 minuti. Con `valore:5m` rifiuta. `elenco` lo mostra; `togli` lo ferma (anche il giro già prenotato non scrive).
-- `tipo:orario valore:*/5 * * * *` rifiuta (troppo spesso); `valore:0 9 * * 1` accetta. `escludi:0-24` e `avvia-ora` non cambiano il fatto che `avvia-ora` scrive subito.
+- `tipo:orario valore:*/5 * * * *` rifiuta (troppo spesso); `valore:0 9 * * 1` accetta. `avvia-ora numero:...` fa scrivere il tag subito, anche in un'ora esclusa.
 - `tipo:reazione valore:👍`: mettere 👍 sotto un messaggio fa rispondere il tag nel canale; un bot che reagisce non lo fa partire. `ruolo_dato` con `ruolo:` e `canale:`: dando il ruolo a un membro il tag scrive.
 - `tipo:bottone valore:benvenuto:1` (embed con un bottone «tag»): premendo, il tag risponde nel canale per tutti. Cancellando il canale dell'innesco, sparisce dall'elenco.
+
+## giro r24util, B28 — comandi e menu del server (#128)
+- `/admin-automazioni slash pubblica nome:regole tag:regole`: dopo qualche secondo `/regole` compare nel server (non negli altri) e risponde come `/tag usa regole`. Provare con un nome che inizia per `admin`, `mod` o `founder` e con `tag`: rifiutati.
+- Un secondo `pubblica` entro 5 minuti dice «tra circa N min»: allo scadere compaiono insieme. `elenco` mostra tutto; `togli` fa sparire il comando.
+- `pubblica nome:wiki sotto:uno tag:...` e `sotto:due`: compare `/wiki uno` e `/wiki due`.
+- `menu azione:aggiungi tipo:utente nome:Dai il benvenuto tag:benvenuto`: tasto destro su un membro, App, la voce risponde col tag (con il bersaglio). Con `tipo:messaggio` la risposta riceve il testo del messaggio (`{args}`). Sei voci dello stesso tipo: la sesta è rifiutata.
+- Riavviare il bot: i comandi del server rispondono ancora, senza una nuova sync.

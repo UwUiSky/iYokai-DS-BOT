@@ -1286,7 +1286,12 @@
   "admin-automazioni inneschi aggiungi": "Make a tag run by itself: reaction, interval, schedule, button, role.",
   "admin-automazioni inneschi elenco": "The triggers of the server.",
   "admin-automazioni inneschi togli": "Remove a trigger.",
-  "admin-automazioni inneschi avvia-ora": "Run a trigger right now, to test it."
+  "admin-automazioni inneschi avvia-ora": "Run a trigger right now, to test it.",
+  "admin-automazioni slash": "Server commands and menus that answer with a tag",
+  "admin-automazioni slash pubblica": "Create a server command that answers with a tag.",
+  "admin-automazioni slash togli": "Remove a server command.",
+  "admin-automazioni slash elenco": "The server's commands and menu entries.",
+  "admin-automazioni slash menu": "Right-click menu entries (on a user or a message) that answer with a tag."
  },
  "parametri": {},
  "menu": {
