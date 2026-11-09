@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:36 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:38 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 777 comandi in 45 categorie.**
+**Totale: 786 comandi in 47 categorie.**
 
 ## Admin: AI
 
@@ -197,19 +197,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 
 ## Admin: giochi
 
-- **`/admin-giochi battitura aggiungi`** — Aggiunge un testo per la battitura (finestra).
-- **`/admin-giochi battitura elenca`** — I testi di battitura del server.
-- **`/admin-giochi battitura rimuovi`** — Toglie un testo di battitura.
-- **`/admin-giochi carte pacchetti`** — Quali pacchetti di carte sono accesi nel server.
 - **`/admin-giochi conteggio canale`** — Scegli i canali dove si conta (fino a 10) e come.
 - **`/admin-giochi conteggio importa`** — Porta in un canale i punteggi di un file CSV o JSON.
 - **`/admin-giochi conteggio regole`** — Punizione dopo uno sbaglio e ruolo di chi ha contato per ultimo.
 - **`/admin-giochi conteggio traguardo`** — Ruolo o messaggio quando il conteggio tocca un numero.
 - **`/admin-giochi punteggi azzera`** — Azzera i punteggi di una gara (con conferma).
-- **`/admin-giochi quiz carica`** — Carica domande per il quiz da un file CSV o JSON.
-- **`/admin-giochi quiz elenca`** — Le domande del quiz caricate dal server.
-- **`/admin-giochi quiz regole`** — Regole del quiz: punti, tempo, risposta mostrata, il bot gioca.
-- **`/admin-giochi quiz rimuovi`** — Toglie una domanda caricata dal server.
 
 ## Admin: giveaway
 
@@ -281,15 +273,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 - **`/admin-messaggi programmati elenco`** — Mostra i messaggi programmati di questo server.
 - **`/admin-messaggi programmati salta`** — Salta il prossimo giro di un messaggio che si ripete.
 - **`/admin-messaggi promemoria`** — Per lo staff: i promemoria impostati in questo server.
-- **`/admin-messaggi risposte crea`** — Crea una risposta automatica.
-- **`/admin-messaggi risposte elenco`** — Mostra le risposte automatiche del server.
-- **`/admin-messaggi risposte elimina`** — Elimina una risposta automatica.
 - **`/admin-messaggi scrivi`** — Fai scrivere un messaggio al bot in un canale.
-- **`/admin-messaggi tag crea`** — Crea un comando personalizzato.
-- **`/admin-messaggi tag elenco`** — Mostra i comandi personalizzati del server.
-- **`/admin-messaggi tag elimina`** — Elimina un comando personalizzato.
-- **`/admin-messaggi tag modifica`** — Cambia un comando personalizzato.
-- **`/admin-messaggi tag prefisso`** — Scegli il prefisso per usare i comandi scrivendo nel canale.
 
 ## Admin: moduli
 
@@ -306,6 +290,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 - **`/admin-moduli candidature crea`** — Crea un modulo o una candidatura.
 - **`/admin-moduli candidature elenco`** — I moduli di questo server.
 - **`/admin-moduli candidature elimina`** — Elimina un modulo e le sue risposte.
+- **`/admin-moduli citazioni azione`** — Esporta, importa o elimina le citazioni (JSON).
 - **`/admin-moduli compleanni canale`** — Scegli il canale degli auguri (vuoto per spegnerli).
 - **`/admin-moduli compleanni membro`** — Registra il compleanno di un membro (solo giorno e mese).
 - **`/admin-moduli compleanni ruolo`** — Un ruolo per 24 ore a chi compie gli anni (vuoto per toglierlo).
@@ -388,6 +373,26 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 - **`/admin-sicurezza verify whitelist-add`** — Aggiungi un utente alla whitelist.
 - **`/admin-sicurezza verify whitelist-remove`** — Rimuovi un utente dalla whitelist.
 
+## Admin: tag e risposte
+
+- **`/admin-tag risposte crea`** — Crea una risposta automatica.
+- **`/admin-tag risposte elenco`** — Mostra le risposte automatiche del server.
+- **`/admin-tag risposte elimina`** — Elimina una risposta automatica.
+- **`/admin-tag risposte globali`** — Accendi o spegni le risposte automatiche dell'owner in questo server.
+- **`/admin-tag risposte svuota`** — Elimina tutte le risposte automatiche del server.
+- **`/admin-tag tag crea`** — Crea un comando personalizzato.
+- **`/admin-tag tag creatori`** — Scegli il ruolo di chi può creare tag propri con /tag crea.
+- **`/admin-tag tag elenco`** — Mostra i comandi personalizzati del server.
+- **`/admin-tag tag elimina`** — Elimina un comando personalizzato.
+- **`/admin-tag tag esporta`** — Esporta i tag del server in un codice o in un file.
+- **`/admin-tag tag gruppi`** — Regole per gruppo di tag: un solo canale e/o un ruolo richiesto.
+- **`/admin-tag tag importa`** — Importa tag da un codice o da un file JSON.
+- **`/admin-tag tag modifica`** — Cambia un comando personalizzato.
+- **`/admin-tag tag opzioni`** — Come si comporta un tag: permesso, bersaglio, dove risponde.
+- **`/admin-tag tag prefisso`** — Scegli il prefisso per usare i comandi scrivendo nel canale.
+- **`/admin-tag tag risposte`** — Dai a un tag fino a 5 risposte, ognuna con il suo peso.
+- **`/admin-tag tag sostituisci`** — Cambia un testo in tutti i tag, dopo l'anteprima.
+
 ## Admin: ticket
 
 - **`/admin-ticket categoria aggiungi`** — Aggiungi (o aggiorna) una categoria di ticket.
@@ -455,6 +460,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 - **`/Apri ticket`** — Menu «App» (tasto destro)
 - **`/Orari nel mio fuso`** — Menu «App» (tasto destro)
 - **`/Riestrai giveaway`** — Menu «App» (tasto destro)
+- **`/Salva citazione`** — Menu «App» (tasto destro)
 - **`/Scheda moderazione`** — Menu «App» (tasto destro)
 - **`/Segnala messaggio`** — Menu «App» (tasto destro)
 - **`/cerca-comando`** — Cerca un comando per descrizione.
@@ -592,13 +598,16 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 
 - **`/fun 8ball`** — Fai una domanda alla palla magica 8.
 - **`/fun casuale`** — Preferiresti, argomento, consiglio, oggetto magico, classe.
+- **`/fun citazioni aggiungi`** — Salva una citazione del server.
+- **`/fun citazioni caso`** — Mostra una citazione a caso: del server o tra quelle famose.
+- **`/fun citazioni cerca`** — Cerca una parola tra le citazioni del server.
+- **`/fun citazioni elimina`** — Elimina una citazione che hai salvato tu.
 - **`/fun coinflip`** — Lancia una moneta: testa o croce.
 - **`/fun dice`** — Tira un dado.
 - **`/fun fact`** — Mostra una curiosità a caso.
 - **`/fun joke`** — Racconta una barzelletta a caso.
 - **`/fun misura`** — Misura da 0 a 100% quanto c'è di una cosa a tua scelta.
 - **`/fun numero`** — Un numero a caso in un intervallo.
-- **`/fun quote`** — Mostra una citazione a caso.
 - **`/fun rate`** — Valuta qualcosa da 0 a 10.
 - **`/fun scegli`** — Scelgo a caso tra le opzioni che scrivi.
 - **`/fun scherzo`** — Uno scherzo innocuo verso un utente.
@@ -613,17 +622,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 
 ## Giochi
 
-- **`/giochi acronimi`** — Inventa frasi che seguono le lettere date e vota la migliore.
-- **`/giochi battitura`** — Gara di battitura: copia il testo mostrato nell'immagine.
-- **`/giochi carte avvia`** — Gioco di carte: completa la frase con la carta più divertente.
 - **`/giochi conteggio avvisami`** — Ti avviso nel canale quando il conteggio arriva a un numero.
 - **`/giochi conteggio classifica`** — Chi ha contato più numeri giusti.
 - **`/giochi dado`** — Un tiro al giorno da 1 a 100 e la classifica del server.
 - **`/giochi gioca`** — Gioca le tue coin: monetina, dadi o slot.
 - **`/giochi mazzo`** — Un mazzo di 52 carte per il server: pesca, rimescola, controlla.
 - **`/giochi minato`** — Campo minato: tocca gli spoiler ed evita le mine.
-- **`/giochi quiz avvia`** — Avvia un quiz a domande nel canale.
-- **`/giochi quiz classifica`** — Classifica del quiz: questa settimana o di sempre.
 - **`/giochi rps`** — Carta, forbici, sasso contro il bot.
 - **`/giochi spinner`** — Fai girare lo spinner: vince chi lo fa girare più a lungo.
 
@@ -673,6 +677,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 - **`/mod-ban kick`** — Espelle un membro dal server.
 - **`/mod-ban massa ban`** — Banna più utenti insieme, anche fuori dal server (ID o menzioni).
 - **`/mod-ban massa entrati`** — Banna o espelle chi è entrato negli ultimi minuti (dopo una conferma).
+- **`/mod-ban massa invito`** — Banna o espelle chi è entrato con un certo invito (dopo una conferma).
 - **`/mod-ban massa kick`** — Espelle più membri insieme (ID o menzioni).
 - **`/mod-ban massa unban`** — Toglie il ban a più utenti insieme (ID).
 - **`/mod-ban softban`** — Banna e sbanna subito un membro, per cancellarne i messaggi recenti.
@@ -684,9 +689,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 - **`/mod-canali blocco attiva`** — Blocca tutti i canali, gli inviti e gli ingressi del server.
 - **`/mod-canali blocco togli`** — Riapre il server com'era prima del blocco.
 - **`/mod-canali clear`** — Cancella un numero di messaggi, con filtri opzionali.
+- **`/mod-canali espressione`** — Aggiungi un'emoji o uno sticker al server da un file o da un'emoji.
 - **`/mod-canali lock`** — Blocca la possibilità di scrivere in un canale.
 - **`/mod-canali reazioni`** — Toglie le reazioni dagli ultimi messaggi di un canale, senza cancellarli.
 - **`/mod-canali slowmode`** — Slowmode di un canale o di una categoria. Senza valori: mostra i canali con slowmode.
+- **`/mod-canali thread`** — Crea, archivia o elimina un thread.
 - **`/mod-canali unlock`** — Sblocca la possibilità di scrivere in un canale.
 - **`/mod-canali vocale dove`** — Mostra in quale vocale è un membro, e chiedi un avviso quando entra.
 - **`/mod-canali vocale muta`** — Silenzia o riattiva il microfono di un membro in vocale.
@@ -824,6 +831,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 - **`/owner system leave-guild`** — Forza il bot a lasciare un server specifico (senza bloccarlo).
 - **`/owner system memory-status`** — Mostra il consumo di RAM attuale del processo.
 - **`/owner system richieste-canale`** — Imposta il canale delle richieste (solo nel server principale).
+- **`/owner system risposte-globali`** — Risposte automatiche comuni a tutti i server (massimo 20).
 - **`/owner system shell`** — Esegue un comando shell (con conferma).
 - **`/owner system stats`** — Statistiche globali del bot.
 - **`/owner system storico-vpn`** — Solo proprietario: server che l'hanno lasciata passare e IP della persona (VPN/proxy).
@@ -831,6 +839,14 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 ## Sondaggi
 
 - **`/sondaggi crea`** — Crea un sondaggio (fino a 10 opzioni).
+
+## Tag
+
+- **`/tag crea`** — Crea un tag tuo (serve il ruolo scelto dal server).
+- **`/tag elimina`** — Elimina un tag che hai creato tu.
+- **`/tag modifica`** — Cambia il testo di un tag che hai creato tu.
+- **`/tag prendi`** — Prendi un tag il cui autore ha lasciato il server.
+- **`/tag usa`** — Usa un comando personalizzato di questo server.
 
 ## Ticket
 
@@ -885,7 +901,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 - **`/utility strumenti caratteri`** — Nome, codice e categoria Unicode dei caratteri di un testo.
 - **`/utility strumenti cronometro`** — Un cronometro con i bottoni Giro e Ferma.
 - **`/utility suggest`** — Proponi un'idea per questo server.
-- **`/utility tag`** — Usa un comando personalizzato di questo server.
 - **`/utility verifica`** — Verificati in questo server (come il bottone del pannello).
 
 ## Vocali
@@ -903,6 +918,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 - **`/voice stato`** — Scrivi cosa state facendo nel canale (vuoto: toglie).
 - **`/voice transfer`** — Trasferisci la proprietà del canale.
 - **`/voice unlock`** — Sblocca il canale.
+- **`/voice vai`** — Spostati in un vocale dove puoi entrare.
 
 ## Web
 
@@ -913,5 +929,4 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 - **`/web gioco`** — Un gioco di Steam: prezzo, data e generi.
 - **`/web meteo`** — Il meteo di una città: adesso e i prossimi giorni.
 - **`/web prezzo`** — Il prezzo di una criptovaluta.
-- **`/web scheda`** — La scheda di un Pokémon, anime, carta o giocatore.
 - **`/web wiki`** — Il riassunto di una voce di Wikipedia.

@@ -49,7 +49,6 @@ from core.classic_entertainment_logic import (
     JOKES_TEMATICHE,
     random_fact,
     random_joke,
-    random_quote,
 )
 from core.fun_extra_logic import tira_formula
 from core.fun_piccoli_logic import MAX_MONETE, striscia_monete, tira_monete
@@ -293,12 +292,6 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(f"😄 {self._rng.choice(JOKES_TEMATICHE[tema.value])}")
             return
         await interaction.response.send_message(f"😄 {random_joke(self._rng)}")
-
-    @comando_di_gruppo("fun", nome="quote", descrizione="Mostra una citazione a caso.")
-    async def quote(self, interaction: discord.Interaction) -> None:
-        if not await self._modulo_attivo(interaction):
-            return
-        await interaction.response.send_message(f"💬 {random_quote(self._rng)}")
 
     @comando_di_gruppo("fun", nome="fact", descrizione="Mostra una curiosità a caso.")
     @app_commands.describe(animale="Curiosità su gatti o cani (facoltativo)")

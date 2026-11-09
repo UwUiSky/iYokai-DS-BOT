@@ -521,3 +521,10 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 ## 09/11/2026 · feat/r19util (#128, D69 B1–B7)
 RIMANDATO solo per `utility` a 19 figli (test_figli_oltre_18: scende a 18 quando `tag` va in `/tag`; decidere se KNOWN_OLTRE_18 nel frattempo). Fix: 122756f User-Agent con contatto; blacklist nei 4 bottoni dinamici; Nominatim giù != città inesistente; pubblicazione salta i già pubblicati; migrazione 0546 indice suggestions(message_id); test suggerimenti_esito/i18n adeguati. Basse aperte: cronometro stoppabile da chiunque; /admin-messaggi salta: cancel+schedule non atomico; serie ripetuta continua se il canale non è più testuale; fuso predefinito fisso Europe/Rome (non per server).
 Avviso ambiente: `scratchpad/env.sh` è sovrascritto da altri agenti (database r19mod): usare un file con nome proprio.
+
+## 09/11/2026 · feat/r21util (#128, D69 B16–B21, UTL-184, 0555–0558)
+APPROVATO dopo i fix. Main unito (e97e2d0). Fix: 306f4a4 ruolo creatori tag nello schema/scheda/storico (export/import lo rifiutavano), conferma ban/kick massa ricontrolla livello e permesso, CSV membri (tab, campi vuoti) e gruppo dei pacchetti normalizzato, 26a1496 `/fun quote` -> `/fun citazioni caso fonte:famose` con 0558 e test di 0557/0558.
+| 09/11 | `feat/r21util` | `core/migrations/0083` indice `(guild_id, lower(trigger))` | Due regex che differiscono solo per maiuscole (`\S+` e `\s+`) risultano «esiste già» | bassa | aperto |
+| 09/11 | `feat/r21util` | `cogs/utility/custom_commands.py:handle_cancella_risposta` | Tag con invio privato e «sparisce dopo»: il canale DM non è in cache, il messaggio resta | bassa | aperto |
+| 09/11 | `feat/r21util` | `core/repositories/custom_command_repo.py:prendi` | Ritorna «ok» anche se l'UPDATE non cambia righe (corsa tra due `/tag prendi`) | bassa | aperto |
+| 09/11 | `feat/r21util` | `tests/test_config_import_validation.py::test_ogni_setting_usata_nel_codice_e_nello_schema` | Fallisce per `inviti_eta_minima_giorni`, `inviti_rientri_finti` (arrivano da main, non da questo ramo) | media | aperto |

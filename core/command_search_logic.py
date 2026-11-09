@@ -165,6 +165,8 @@ def raccogli_comandi(comandi: Iterable, prefisso: str = "", livelli: tuple = ())
     """Cammina l'albero (gruppi annidati compresi) e dà un `ComandoInfo` per ogni comando foglia."""
     risultati: list[ComandoInfo] = []
     for cmd in comandi:
+        if isinstance(cmd, app_commands.ContextMenu):  # i menu col tasto destro non hanno descrizione né opzioni
+            continue
         percorso = f"{prefisso} {cmd.name}".strip()
         if isinstance(cmd, app_commands.Group):
             proprio = getattr(cmd, "livello", None)

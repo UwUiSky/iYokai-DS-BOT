@@ -36,6 +36,10 @@ CHI_BOT = "bot"
 
 AZIONE_DAI = "dai"
 AZIONE_TOGLI = "togli"
+AZIONE_ESPORTA = "esporta"
+# Esportare l'elenco dei membri: formati e tetto di righe (il file resta sotto i 10 MiB).
+FORMATI_ESPORTAZIONE = ("csv", "txt", "json")
+MAX_MEMBRI_ESPORTATI = 50_000
 
 
 @dataclass(frozen=True)
@@ -163,3 +167,34 @@ def colore_ruolo(testo: str | None) -> discord.Colour | None:
     if valore is None:
         raise ValueError("Il colore va scritto come #RRGGBB, per esempio #FF8800.")
     return discord.Colour(int(valore[1:], 16))
+
+
+def membri_da_esportare(membri: Iterable, filtro: FiltroMassa, ruolo_id: int | None) -> list:
+    """I membri nel filtro; se c'è un ruolo, solo chi lo ha."""
+    return [m for m in membri if membro_nel_filtro(m, filtro) and (ruolo_id is None or any(r.id == ruolo_id for r in m.roles))]
+
+
+def scrivi_esportazione(membri: Sequence, formato: str) -> tuple[bytes, str]:
+    """(contenuto, nome del file) con id, nome utente, nome visualizzato, bot ed entrata di ogni membro."""
+    import csv
+    import io
+    import json
+
+    righe = [
+        {
+            "id": m.id, "utente": m.name, "nome": m.display_name, "bot": bool(m.bot),
+            "entrato_il": m.joined_at.isoformat() if m.joined_at else "",
+        }
+        for m in membri[:MAX_MEMBRI_ESPORTATI]
+    ]
+    if formato == "json":
+        return json.dumps(righe, ensure_ascii=False, indent=1).encode("utf-8"), "membri.json"
+    if formato == "txt":
+        return "\n".join(f"{r['id']} {r['utente']}" for r in righe).encode("utf-8"), "membri.txt"
+    fuori = io.StringIO()
+    scrittore = csv.DictWriter(fuori, fieldnames=["id", "utente", "nome", "bot", "entrato_il"])
+    scrittore.writeheader()
+    for r in righe:
+        # un nome che inizia con = + - @ (o con tab o a-capo) si aprirebbe come formula in un foglio di calcolo
+        scrittore.writerow({k: ("'" + v if isinstance(v, str) and v[:1] and v[:1] in "=+-@\t\r" else v) for k, v in r.items()})
+    return fuori.getvalue().encode("utf-8"), "membri.csv"

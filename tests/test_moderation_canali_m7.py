@@ -15,7 +15,7 @@ import pytest
 
 from cogs.moderation import channel_control as cc
 from cogs.moderation._shared import MODULE_ACTIONS, MODULE_CHANNEL_CONTROL, SETTING_MOD_LOG_CHANNEL
-from cogs.moderation.actions import ModerationActionsCog
+from cogs.moderation.actions import ConfermaEntrati, ModerationActionsCog
 from cogs.moderation.channel_control import ModerationChannelControlCog
 from cogs.moderation.nickname import ModerationNicknameCog
 from core import moderazione_canali_logic as logica
@@ -374,3 +374,45 @@ async def test_solo_chi_ha_lanciato_il_comando_puo_confermare():
     altro = fake_interaction(guild=scena.server, user=fake_member(77))
     assert await vista.interaction_check(altro) is False
     assert await vista.interaction_check(scena.interazione) is True
+
+
+# ---------------------------------------------------------------- UTL-184: ban o kick di chi è entrato con un invito
+async def test_invito_propone_solo_chi_e_ancora_nel_server_e_aspetta_la_conferma(monkeypatch):
+    import cogs.moderation.actions as modulo_azioni
+    scena = Scena()
+    membri = _entrati(scena, 3)
+    finto = SimpleNamespace(presenti_con_codice=AsyncMock(return_value=[membri[0].id, membri[1].id, 424242]))
+    monkeypatch.setattr(modulo_azioni, "invite_stats_repo", finto)
+    cog = ModerationActionsCog(bot=None)
+    await cog.invito.callback(cog, scena.interazione, "abc123", "ban", "raid in corso")
+    finto.presenti_con_codice.assert_awaited_once_with(scena.server.id, "abc123", 200)
+    kw = scena.interazione.response.send_message.call_args.kwargs
+    assert kw["view"] is not None and [m.id for m in kw["view"].membri] == [membri[0].id, membri[1].id]  # 424242 è già uscito
+    scena.server.bulk_ban.assert_not_called()
+    finto.presenti_con_codice.return_value = []
+    await cog.invito.callback(cog, scena.interazione, "abc123", "ban", "raid in corso")
+    assert scena.interazione.response.send_message.call_args.kwargs.get("view") is None
+
+
+async def test_alla_conferma_si_ricontrolla_il_permesso_e_il_livello(monkeypatch):
+    """Se tra il comando e il tasto chi comanda perde il permesso (o il livello), non si banna nessuno."""
+    import cogs.moderation.actions as modulo_azioni
+    scena = Scena()
+    _entrati(scena, 3)
+    cog = ModerationActionsCog(bot=None)
+    await cog.entrati.callback(cog, scena.interazione, 10, "ban", "raid in corso")
+    vista = scena.interazione.response.send_message.call_args.kwargs["view"]
+    conferma = fake_interaction(guild=scena.server, user=scena.moderatore)
+    conferma.user.guild_permissions = discord.Permissions.none()
+    monkeypatch.setattr(modulo_azioni, "puo_usare", AsyncMock(return_value=True))
+    await vista.esegui(conferma)
+    scena.server.bulk_ban.assert_not_called()
+    assert conferma.response.edit_message.call_args.kwargs["view"] is None
+    # livello tolto, permesso rimasto
+    vista2 = ConfermaEntrati(cog, scena.moderatore.id, [], "ban", "x", 10)
+    conferma2 = fake_interaction(guild=scena.server, user=scena.moderatore)
+    conferma2.user.guild_permissions = discord.Permissions(ban_members=True)
+    monkeypatch.setattr(modulo_azioni, "puo_usare", AsyncMock(return_value=False))
+    cog._esegui_entrati = AsyncMock()
+    await vista2.esegui(conferma2)
+    cog._esegui_entrati.assert_not_awaited()
