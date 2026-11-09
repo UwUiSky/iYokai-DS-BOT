@@ -329,7 +329,8 @@
   "creatori": "creators",
   "sostituisci": "replace",
   "gruppi": "groups",
-  "prendi": "take"
+  "prendi": "take",
+  "pesi": "weights"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1265,7 +1266,11 @@
   "giochi carte avvia": "Card game: complete the sentence with the funniest card.",
   "admin-giochi carte": "Cards: packs turned on in the server.",
   "admin-giochi carte pacchetti": "Which card packs are turned on in the server.",
-  "web scheda": "The card of a Pokémon, anime, card or player."
+  "web scheda": "The card of a Pokémon, anime, card or player.",
+  "sondaggi bottoni": "Create a button poll (up to 20 options).",
+  "sondaggi modifica": "Edit the question, options or length of an open button poll.",
+  "admin-moduli sondaggi": "Polls: vote weight per role",
+  "admin-moduli sondaggi pesi": "Give a weight to the vote of a role in polls (max 25 roles)."
  },
  "parametri": {},
  "menu": {

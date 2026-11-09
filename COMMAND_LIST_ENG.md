@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 17:46 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 17:56 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 800 commands in 47 categories.**
+**Total: 803 commands in 47 categories.**
 
 ## Admin: AI
 
@@ -304,6 +304,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 17:4
 - **`/admin-modules counters create`** — Creates a channel that shows a number.
 - **`/admin-modules counters delete`** — Stops updating a counter (the channel stays).
 - **`/admin-modules counters list`** — Shows the server's counters.
+- **`/admin-modules polls weights`** — Give a weight to the vote of a role in polls (max 25 roles).
 - **`/admin-modules quotes action`** — Export, import or delete the quotes (JSON).
 - **`/admin-modules starboard disattiva`** — Turns the board off.
 - **`/admin-modules starboard set`** — Picks the board channel and the star threshold.
@@ -851,7 +852,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 17:4
 
 ## Polls
 
+- **`/polls buttons`** — Create a button poll (up to 20 options).
 - **`/polls create`** — Creates a poll (up to 10 options).
+- **`/polls edit`** — Edit the question, options or length of an open button poll.
 
 ## Tags
 

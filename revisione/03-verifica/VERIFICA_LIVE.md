@@ -1519,3 +1519,8 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - `tipo:Magic: carta nome:lightning bolt`: immagine della carta intera, credito Scryfall. `tipo:Hearthstone: carta nome:palla di fuoco`.
 - `tipo:osu!: giocatore` e `Fortnite: giocatore` senza chiave: «scheda non attiva». Con le chiavi in `config/giochi_servizi.env` (riavvio): osu! `nome:peppy`; Fortnite con un nome a profilo pubblico (profilo privato: «non ho trovato nulla»). Controlla che nei log non compaiano chiavi né token.
 - Rifai la stessa ricerca entro pochi minuti: risposta immediata dalla cache (nessuna nuova richiesta nei log).
+## giro r22util, B22 — sondaggio a bottoni (#128)
+- `/sondaggi bottoni domanda:Pizza? opzioni:Si|No|Forse durata:5m`: embed con barre, tre bottoni in fondo; vota, cambia voto, «Togli voto», «Risultati» (con l'elenco dei votanti, se non anonimo). Riavvia il bot: i bottoni funzionano ancora.
+- `anonimo:true` e `risultati:alla fine`: nessuno vede chi ha votato né i totali; alla scadenza (5 minuti) il messaggio si chiude con i totali.
+- `/admin-moduli sondaggi pesi azione:imposta ruolo:@X peso:3` poi `pesato:true`: il voto di chi ha @X vale 3. «Gestisci» (autore o Gestisci messaggi): chiudi ora e ruoli che possono votare. `/sondaggi modifica`: togliere un'opzione votata chiede conferma.
+- Esci dal server (o fatti bannare) con un voto aperto: il voto sparisce.
