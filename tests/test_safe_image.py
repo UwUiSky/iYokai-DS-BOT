@@ -360,6 +360,16 @@ class _LavoriFermi:
 
 
 class TestCorsiaSeparataPerLoSpamTrap:
+    @pytest.fixture(autouse=True)
+    def _processo_a_parte_finto(self, monkeypatch):
+        from core.immagini_byte_logic import PULITA
+        from core.immagini_pipeline import EsitoImmagine
+
+        async def analisi(dati, nome, content_type, guild_id):
+            return EsitoImmagine(PULITA, "s", png=dati)
+
+        monkeypatch.setattr("cogs.security.spam_trap.analizza_immagine", analisi)
+
     # SEC-20: con i due posti di /fun occupati, lo spam-trap deve
     # lavorare lo stesso — altrimenti un'ondata di /fun ritarda i ban.
 

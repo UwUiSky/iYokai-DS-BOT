@@ -68,6 +68,8 @@ from cogs.security.global_ban import propagate_ban, revoca_ban_propagati
 from core.bounded_cache import BoundedCache
 from core.database import db
 from core.image_thumbnail import generate_thumbnail
+from core.immagini_byte_logic import PULITA
+from core.immagini_pipeline import analizza_immagine
 from core.image_thumbnail_logic import (
     bytes_to_data_uri,
     is_image_attachment,
@@ -895,7 +897,7 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
 
         # 2. Transcript — PRIMA di qualunque cancellazione.
         transcript_entries = await self._gather_transcript_entries(guild, user)
-        avatar_data_uri = await self._build_author_avatar(user)
+        avatar_data_uri = await self._build_author_avatar(user, guild.id)
         transcript_html = build_transcript_html(
             transcript_entries,
             title=f"Spam Trap — {user} — {guild.name}",
@@ -1076,7 +1078,7 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
         except (discord.Forbidden, discord.HTTPException):
             return False
 
-    async def _build_author_avatar(self, user: discord.abc.User) -> str | None:
+    async def _build_author_avatar(self, user: discord.abc.User, guild_id: int = 0) -> str | None:
         """
         Scarica l'avatar dell'utente bannato UNA SOLA VOLTA per
         l'intero report (non per ogni messaggio — vedi la nota in
@@ -1090,12 +1092,28 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
         except discord.HTTPException:
             return None
 
-        thumbnail_bytes = await run_spam_trap_image_task(generate_thumbnail, avatar_bytes)
+        thumbnail_bytes = await self._miniatura_sicura(avatar_bytes, "avatar.png", None, guild_id)
         if thumbnail_bytes is None:
             return None
         return bytes_to_data_uri(thumbnail_bytes)
 
-    async def _build_thumbnails(self, attachments: list[discord.Attachment]) -> list[str]:
+    @staticmethod
+    async def _miniatura_sicura(dati: bytes, nome: str, content_type: str | None, guild_id: int) -> bytes | None:
+        """
+        D61/D62: i byte di un utente non si decodificano mai nel processo del bot. Li apre il processo a parte
+        (sandbox, con limiti di memoria, tempo e pixel) che li ricodifica in PNG; qui si ridimensiona solo
+        quella copia, fatta da noi. Sospetta, non analizzata o troppo grande: nessuna miniatura.
+        """
+        try:
+            esito = await analizza_immagine(dati, nome, content_type, guild_id)
+        except Exception:  # noqa: BLE001 - il transcript esce comunque, senza miniatura
+            logger.warning("Miniatura non fatta: analisi in errore", exc_info=True)
+            return None
+        if esito.verdetto != PULITA or esito.non_analizzata is not None or not esito.png:
+            return None
+        return await run_spam_trap_image_task(generate_thumbnail, esito.png)
+
+    async def _build_thumbnails(self, attachments: list[discord.Attachment], guild_id: int = 0) -> list[str]:
         """
         Scarica e rigenera come thumbnail ogni allegato immagine,
         restituendo le data URI pronte per il transcript. Pillow è
@@ -1127,7 +1145,9 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
             except discord.HTTPException:
                 continue
 
-            thumbnail_bytes = await run_spam_trap_image_task(generate_thumbnail, image_bytes)
+            thumbnail_bytes = await self._miniatura_sicura(
+                image_bytes, attachment.filename, attachment.content_type, guild_id
+            )
             if thumbnail_bytes is not None:
                 data_uris.append(bytes_to_data_uri(thumbnail_bytes))
         return data_uris
@@ -1159,7 +1179,7 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
                 continue
             try:
                 fetched = await channel.fetch_message(record.message_id)
-                thumbnails = await self._build_thumbnails(fetched.attachments)
+                thumbnails = await self._build_thumbnails(fetched.attachments, guild.id)
                 entries.append(
                     TranscriptEntry(
                         timestamp=record.created_at,

@@ -13,7 +13,9 @@ L'apertura passa da core.safe_image.safe_open_image (SEC-11): le
 dimensioni dichiarate vengono controllate prima di decodificare i
 pixel — usato per avatar e allegati del canale trappola, esposti a
 chiunque scriva lì.
-Funzioni coperte: REVIEW.md SEC-11, SEC-20
+D61/D62: gli allegati e gli avatar non arrivano mai qui come byte dell'utente: qui entra solo la copia PNG
+ricodificata dal processo a parte (`cogs/security/spam_trap.py::_miniatura_sicura`).
+Funzioni coperte: REVIEW.md SEC-11, SEC-20, D61 (#152)
 """
 
 from __future__ import annotations
