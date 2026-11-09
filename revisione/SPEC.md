@@ -1463,6 +1463,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 - `[x]` 14.64 Messaggi programmati che si ripetono (catalogo #128 B5, D69, r19util) — `programmati crea` con `ripeti` (da 10 minuti, 25 serie per server), `ora` (HH:MM nel fuso del server, ogni giorno; l'ora resta la stessa col cambio dell'ora legale), `salta_se_ultimo`, `ping_ruolo` (secondo messaggio che sparisce dopo 10 s, solo con «Menziona tutti»); `programmati salta id:` con completamento — UTL-105, 106, 107, 108, 109. Il prossimo giro si mette in coda PRIMA dell'invio e i giri persi non si recuperano; l'ID cambia a ogni giro (l'elenco mostra quello in coda); `on_guild_channel_delete` annulla le serie del canale. Nessuna migrazione: le chiavi stanno nel payload di `scheduled_actions` (0543 non usato). UTL-111 (comando più tardi): alternativa D18 non fatta in questo giro.
 
+- `[x]` 14.65 Compleanni, promemoria e orari (catalogo #128 B6, D69, r19util) — `/admin-moduli compleanni membro` (staff registra, `birthdays.inserito_da`; il membro può cambiarlo), `/level compleanno mostra membro:` e `prossimi` (15 per pagina, riparte da gennaio), bottone «Ricordalo anche a me» sui promemoria `nel_canale` (massimo 25 iscritti, serie stabile nelle ripetizioni, solo chi è ancora nel server viene menzionato), `/utility lingua fuso:` (completamento 25) e menu del tasto destro «Orari nel mio fuso» (fuso di chi ha scritto, ripiego Europe/Rome) — UTL-158, 159, 160, 100, 104. Migrazione 0544 (`utente_fuso`, `promemoria_iscritti`, `birthdays.inserito_da`). Il promemoria `nel_canale` ora è un messaggio pubblico senza menzioni.
+
 ## §15 LEVELS / ECONOMY / GILDE / CLASSIFICHE
 
 - `[x]` 15.1 XP e livelli (testuale + vocale)

@@ -16,6 +16,8 @@ from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core import lingua_richieste as richieste
+from core.orari_logic import MAX_FUSO, cerca_fusi, fuso_esiste
+from core.repositories.utente_fuso_repo import utente_fuso_repo
 from core.i18n import imposta_lingua_utente, lingua_interazione, lingua_server, lingua_utente, t
 from core.ui_base import BaseModal, BaseView
 
@@ -67,6 +69,10 @@ class ChiediLinguaView(BaseView):
         await interaction.response.send_modal(RichiestaLinguaModal(self.bot, self.lingua))
 
 
+async def _completa_fuso(interaction: discord.Interaction, corrente: str) -> list[app_commands.Choice[str]]:
+    return [app_commands.Choice(name=n, value=n) for n in cerca_fusi(corrente)]
+
+
 class LinguaCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -76,7 +82,11 @@ class LinguaCog(CogConGruppi, commands.Cog):
         nome="lingua",
         descrizione="Mostra o cambia la tua lingua personale (italiano o inglese).",
     )
-    @app_commands.describe(lingua="Lingua per le risposte che vedi solo tu; vuoto = mostra quella attuale")
+    @app_commands.describe(
+        lingua="Lingua per le risposte che vedi solo tu; vuoto = mostra quella attuale",
+        fuso="Il tuo fuso orario (scrivi per cercare, es. Europe/Rome); «nessuno» lo toglie",
+    )
+    @app_commands.autocomplete(fuso=_completa_fuso)
     @app_commands.choices(
         lingua=[
             app_commands.Choice(name="Italiano", value="it"),
@@ -85,9 +95,15 @@ class LinguaCog(CogConGruppi, commands.Cog):
         ]
     )
     async def lingua(
-        self, interaction: discord.Interaction, lingua: app_commands.Choice[str] | None = None
+        self,
+        interaction: discord.Interaction,
+        lingua: app_commands.Choice[str] | None = None,
+        fuso: app_commands.Range[str, 1, MAX_FUSO] | None = None,
     ) -> None:
         server = await lingua_server(interaction.guild.id if interaction.guild else None)
+        if fuso is not None:
+            await self._imposta_fuso(interaction, fuso, lingua)
+            return
         if lingua is None:
             mia = await lingua_utente(interaction.user.id)
             testo = (
@@ -104,6 +120,22 @@ class LinguaCog(CogConGruppi, commands.Cog):
             )
         vista = ChiediLinguaView(self.bot, await lingua_interazione(interaction))
         await interaction.response.send_message(testo, view=vista, ephemeral=True)
+
+
+    async def _imposta_fuso(self, interaction: discord.Interaction, fuso: str, lingua) -> None:
+        """Salva (o toglie) il fuso. Se c'è anche la lingua la cambia come sempre."""
+        if lingua is not None:
+            await imposta_lingua_utente(interaction.user.id, lingua.value)
+        lg = await lingua_interazione(interaction)
+        if fuso.strip().casefold() in ("nessuno", "none"):
+            await utente_fuso_repo.remove(interaction.user.id)
+            testo = t("fuso_tolto", lg)
+        elif not fuso_esiste(fuso.strip()):
+            testo = t("fuso_sconosciuto", lg)
+        else:
+            await utente_fuso_repo.set(interaction.user.id, fuso.strip())
+            testo = t("fuso_impostato", lg, fuso=fuso.strip())
+        await interaction.response.send_message(testo, ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:

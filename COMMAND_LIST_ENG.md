@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:49 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:54 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 716 commands in 42 categories.**
+**Total: 719 commands in 42 categories.**
 
 ## Admin: AI
 
@@ -274,6 +274,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:4
 - **`/admin-modules applications delete`** — Deletes a form and its answers.
 - **`/admin-modules applications list`** — This server's forms.
 - **`/admin-modules birthdays channel`** — Picks the wishes channel (empty to turn them off).
+- **`/admin-modules birthdays member`** — Register a member's birthday (day and month only).
 - **`/admin-modules birthdays role`** — A role for 24 hours for whoever has a birthday (empty to remove it).
 - **`/admin-modules counters create`** — Creates a channel that shows a number.
 - **`/admin-modules counters delete`** — Stops updating a counter (the channel stays).
@@ -421,6 +422,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:4
 - **`/-ask`** — Ask for help: I will show you the right commands.
 - **`/-search-command`** — Searches a command by description.
 - **`/Open ticket`** — “Apps” menu (right click)
+- **`/Times in my time zone`** — “Apps” menu (right click)
 
 ## iYokai App (separate app, installed on the user)
 
@@ -588,6 +590,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:4
 - **`/level birthday remove`** — Deletes your birthday.
 - **`/level birthday set`** — Saves your birthday (day and month only).
 - **`/level birthday show`** — Shows the birthday you saved.
+- **`/level birthday upcoming`** — The next birthdays in the server.
 - **`/level calcola`** — How many messages or voice minutes are missing to reach a level.
 - **`/level collection buy`** — Buys a badge or background with your coins.
 - **`/level collection equip`** — Puts a badge or background on your profile (no item removes it).

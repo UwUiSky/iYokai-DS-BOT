@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:49 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:54 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 716 comandi in 42 categorie.**
+**Totale: 719 comandi in 42 categorie.**
 
 ## Admin: AI
 
@@ -274,6 +274,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:
 - **`/admin-moduli candidature elenco`** — I moduli di questo server.
 - **`/admin-moduli candidature elimina`** — Elimina un modulo e le sue risposte.
 - **`/admin-moduli compleanni canale`** — Scegli il canale degli auguri (vuoto per spegnerli).
+- **`/admin-moduli compleanni membro`** — Registra il compleanno di un membro (solo giorno e mese).
 - **`/admin-moduli compleanni ruolo`** — Un ruolo per 24 ore a chi compie gli anni (vuoto per toglierlo).
 - **`/admin-moduli contatori crea`** — Crea un canale che mostra un numero.
 - **`/admin-moduli contatori elenco`** — Mostra i contatori del server.
@@ -419,6 +420,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:
 ## Aiuto (primo livello)
 
 - **`/Apri ticket`** — Menu «App» (tasto destro)
+- **`/Orari nel mio fuso`** — Menu «App» (tasto destro)
 - **`/cerca-comando`** — Cerca un comando per descrizione.
 - **`/chiedi`** — Chiedi aiuto: ti mostro i comandi giusti.
 
@@ -590,7 +592,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:
 - **`/level collezione equipaggia`** — Metti un badge o uno sfondo sul tuo profilo (senza oggetto lo togli).
 - **`/level collezione negozio`** — Mostra badge e sfondi in vendita e quelli che hai.
 - **`/level compleanno imposta`** — Registra il tuo compleanno (solo giorno e mese).
-- **`/level compleanno mostra`** — Mostra il compleanno che hai registrato.
+- **`/level compleanno mostra`** — Mostra il tuo compleanno o quello di un membro.
+- **`/level compleanno prossimi`** — I prossimi compleanni del server.
 - **`/level compleanno rimuovi`** — Cancella il tuo compleanno.
 - **`/level inviti classifica`** — I 10 membri che hanno invitato più persone.
 - **`/level inviti link`** — Il tuo link d'invito personale, che passa dal sito del bot.

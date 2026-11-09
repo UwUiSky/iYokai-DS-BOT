@@ -305,7 +305,8 @@
   "auto": "auto",
   "json": "json",
   "bottoni": "buttons",
-  "salta": "skip"
+  "salta": "skip",
+  "prossimi": "upcoming"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1145,7 +1146,9 @@
   "admin-messaggi fissi elenco": "List the server's pinned messages.",
   "admin-messaggi embed json": "Import an embed from JSON or export it to a file.",
   "admin-messaggi embed bottoni": "Add or remove an embed's buttons (link or show tag).",
-  "admin-messaggi programmati salta": "Skip the next round of a repeating message."
+  "admin-messaggi programmati salta": "Skip the next round of a repeating message.",
+  "level compleanno prossimi": "The next birthdays in the server.",
+  "admin-moduli compleanni membro": "Register a member's birthday (day and month only)."
  },
  "parametri": {},
  "menu": {
@@ -1162,6 +1165,7 @@
   "Controlla i link": "Check links",
   "Segnala alla rete iYokai": "Report to iYokai network",
   "Spiega o riassumi": "Explain or summarize",
-  "Salva come risposta pronta": "Save as saved reply"
+  "Salva come risposta pronta": "Save as saved reply",
+  "Orari nel mio fuso": "Times in my time zone"
  }
 }
