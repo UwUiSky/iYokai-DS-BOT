@@ -547,3 +547,12 @@ Main unito (86b99a5; locales con entrambe le parti, COMMAND_LIST rigenerato). In
 Basse: reazione senza pausa per utente se `cooldown_seconds` = 0 (si può spammare su/giù); `handle_innesco` riprenota anche se il server non c'è più (catena fino a riga tolta); `regex` con sostituzione grande costruisce fino a 4 MB prima del controllo (breve, re2 lineare).
 Bene: interprete senza eval, graffe/barre ben abbinate, tetti con test che falliscono senza controllo; `ArchivioProva` per `/tag prova`; sync con impronta, 5 minuti e 200 al giorno sotto blocco per server; tetti con `tetto_per_server`.
 Smoke da fare: tag_script*, inneschi*, innesco_esecuzione, slash_server*, automazioni_script, 0562-0564, intent_usage, tree_invariants, data_registry, i18n, command_policy.
+| 09/11 | `feat/r1liv` | `core/repositories/leveling_copie_repo.py:_scrivi_copia` | Il lock è solo tra azzeramenti: un XP guadagnato tra copia e UPDATE (o un utente nuovo) si azzera senza copia | bassa | aperto |
+| 09/11 | `feat/r1liv` | `cogs/leveling/azzeramenti.py:ModaleAzzeraServer` | `TextInput(label=...)` è deprecato in discord.py 2.7 (usare `discord.ui.Label`); stesso avviso negli altri modali | bassa | aperto |
+| 09/11 | `feat/r1liv` | `core/repositories/leveling_copie_repo.py:ripristina` | Il ripristino non rimette gli XP di mese/settimana (`leveling_activity`) | bassa | aperto |
+
+## r24fun (telefono, #131) · 09/11/2026
+Fix fatti da me: minori mai inoltrati (anche con effetto), allegati solo verso canali con limite d'età e ricontrollo all'invio, vecchio bottone Accetta non collega un altro server, segnala con permesso, cooldown chiama 30s, consenso spento chiude la chiamata, nome «disdiscordcord». Basse aperte: domini nudi (example.com) non tolti da togli_link; ILLEGGIBILE (testo non latino) non bloccato; chiamata continua se un server esce dal bot fino al silenzio di 10 minuti; test_data_registry fallisce solo per tabelle di altri rami nel DB condiviso.
+
+## r24util secondo giro: APPROVATO
+8 punti e 3 bassi corretti. Montaggio all avvio in try/except (errore: log, /owner gia registrato prima, avvio continua). Blacklist fail-open con log: accettabile. 313 test verdi dopo merge di main.

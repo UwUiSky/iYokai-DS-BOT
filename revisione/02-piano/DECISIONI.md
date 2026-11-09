@@ -1069,3 +1069,12 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
   contenuto con minori o che li richiami (es. loli, shota, child e simili, in tutte le lingue), più gore estremo e
   non consensuale; una ricerca con un tag vietato non parte. È un obbligo di legge (in Italia anche la pornografia
   «virtuale» con minori è reato) e delle regole di Discord.
+
+## D71 — Livelli (#124): scelte aperte del catalogo (09/11/2026, opzione consigliata, da confermare dall'owner)
+
+- Voto al bot (LIV-019): codice pronto per top.gg (webhook con segreto in `.env`), spento finché iYokai non è sull'elenco.
+- Premium (D59): solo 042, 044 a ogni ora e 072 (import da altri bot). Tutto il resto gratuito; spostabile dal pannello.
+- Reputazione: spenta di base. Dare punti: tutti. Togliere punti: solo il ruolo scelto dall'admin.
+- XP testo e vocale separati: il passato resta nel totale; le due nuove classifiche partono da zero.
+- LIV-088 coperta da LIV-082: una sola classifica, nessun doppione.
+- Peso di `/admin-livelli` misurato in B1: 3.729, nessun sotto-gruppo serve.

@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:44 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 19:08 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 825 commands in 49 categories.**
+**Total: 836 commands in 49 categories.**
 
 ## Admin: AI
 
@@ -223,6 +223,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:4
 - **`/admin-games quiz remove`** — Remove a question uploaded by the server.
 - **`/admin-games quiz rules`** — Quiz rules: points, time, answer shown, bot plays.
 - **`/admin-games servizi`** — Turn the external services on or off: Lemmy images and GIF search.
+- **`/admin-games telefono block`** — Block or unblock a person or another server from the phone.
+- **`/admin-games telefono channel`** — The server's phone channel.
+- **`/admin-games telefono consenso`** — Turn the phone on or off: off by default.
+- **`/admin-games telefono log`** — The server's latest calls: only servers, time and length.
 
 ## Admin: giveaways
 
@@ -251,10 +255,14 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:4
 
 - **`/admin-levels announcement`** — Where and when to announce level-ups.
 - **`/admin-levels card`** — Shows or hides image backgrounds of cards and profiles in this server.
+- **`/admin-levels diagnosis`** — Explains why a member gets no XP in a channel.
 - **`/admin-levels exclude`** — A channel, category or role gives no XP (repeat to undo).
 - **`/admin-levels member`** — Edits a member's XP and level.
 - **`/admin-levels multiplier`** — XP multiplied in a channel or for a role (factor 1 = removes the rule).
 - **`/admin-levels progress`** — Turns missions, streaks, achievements and pass on or off; sets the server goal.
+- **`/admin-levels reset auto`** — Resets whoever leaves or is banned; locks XP and resets to the owner.
+- **`/admin-levels reset restore`** — Puts back the XP of a backup (valid 30 days).
+- **`/admin-levels reset server`** — Resets the XP of the whole server (makes a backup first).
 - **`/admin-levels rewards`** — Reward roles: keep them all or only the highest.
 - **`/admin-levels shop`** — Asks for confirmation before each shop purchase (can be turned off).
 - **`/admin-levels show`** — Shows this server's level settings.
@@ -642,6 +650,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:4
 - **`/fun random`** — Would you rather, topic, advice, magic item.
 - **`/fun rate`** — Rates something from 0 to 10.
 - **`/fun ship`** — Computes the compatibility between two users.
+- **`/fun telefono chiama`** — Call another random server (off by default).
+- **`/fun telefono report`** — Report the call, block the other server and hang up.
+- **`/fun telefono riaggancia`** — End the call in progress.
 - **`/fun text`** — Write a text in a special style.
 
 ## Gif

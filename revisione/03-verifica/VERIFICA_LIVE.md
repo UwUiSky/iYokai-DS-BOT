@@ -1570,3 +1570,21 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - `/web turni gioco:Splatoon 3`: modalità con mappe, orari nel tuo fuso e Salmon Run; confronta con l'app. `gioco:World of Warcraft`: reset US martedì 15:00 UTC ed EU mercoledì 04:00 UTC; confronta con l'orologio del gioco (se l'ora europea è diversa, correggi `RESET_WOW` in `core/turni_logic.py`).
 - `/giochi smash` in un canale normale: rifiutato. In un canale con limite d'età: link AniList con anteprima, due bottoni; il secondo clic dello stesso account è «hai già votato»; il conteggio sul messaggio sale.
 - `/immagini fusione a:pikachu b:charizard`: nome fuso e due immagini affiancate; un nome sbagliato: messaggio nascosto; due richieste entro 10 s: «aspetta». L'owner conferma di tenere il comando (marchio Pokémon).
+## giro r1liv, B1 — azzeramenti e diagnosi dei livelli (#124)
+- `/admin-livelli azzera server` con un account che ha «Gestisci server»: si apre una finestra. Scrivi un nome sbagliato: «Non ho azzerato niente». Scrivi il nome giusto (anche tutto minuscolo): XP e livelli di tutti a 0, monete e ruoli-premio restano; risposta con il numero della copia.
+- `/admin-livelli azzera ripristina`: il menu mostra la copia; conferma con il bottone: gli XP tornano (chi ne ha già di più li tiene). Un secondo clic sul bottone: «già fatto». Dopo 30 giorni la copia non c'è più.
+- `/admin-livelli azzera auto azzera_su:Uscita e ban copia:sì`: fai uscire un account di prova con XP: i suoi XP vanno a 0 e compare una copia («utente»). Con `azzera_su:Chi viene bannato` un'uscita semplice non azzera; un ban sì. Con `Chi esce o viene espulso` un ban non conta come uscita.
+- `blocca_xp:sì` e `blocca_azzeramento:sì`, poi prova con un admin che NON è il proprietario: `/admin-livelli membro` e `azzera server` rispondono «solo il proprietario»; il proprietario può. Con un blocco acceso l'admin non può spegnerlo.
+- `/admin-livelli diagnosi membro:@X canale:#Y`: prova con un canale escluso, un ruolo escluso, un membro che ha appena scritto (attesa), un membro al livello massimo, il modulo spento. Un solo messaggio nascosto con ✅/❌.
+
+
+## giro r24fun, B12 — telefono tra server (#131)
+Serve: due server di prova A e B con il bot, un canale di testo ciascuno (il bot deve poter scrivere e gestire i webhook).
+- Su A e B: `/admin-giochi telefono canale`. `/fun telefono chiama` prima del consenso: «telefono spento». `/admin-giochi telefono consenso attivo:sì` su entrambi.
+- Da A `/fun telefono chiama effetto:capovolto`: su B compare «chiamata in arrivo» con Accetta/Rifiuta. Un membro senza «Gestisci server» che preme: rifiutato in modo nascosto. Rifiuta: A vede «non ha risposto». Nessuna risposta per 60 s: bottoni tolti e A avvisato.
+- Accetta: nei due canali «siete collegati»; esiste 1 webhook «iYokai Telefono» per canale. Scrivi da A: su B arriva con nome «Nome · Server» (senza «discord»/«clyde»), avatar, nessuna menzione (prova @everyone), link e inviti diventati 🔗, allegati come indirizzo. Due messaggi in meno di 2 secondi: il secondo non passa.
+- Una parola vietata di B (AutoMod) scritta da A non arriva. Canale di A con limite d'età e B senza: niente passa.
+- `/fun telefono riaggancia` (da chi ha chiamato o con «Gestisci messaggi»): avviso in entrambi, webhook spariti. `/fun telefono segnala`: chiude e blocca l'altro server; `/admin-giochi telefono blocca` mostra il blocco, e il server bloccato non trova più A.
+- Cancella a mano il webhook durante la chiamata e scrivi: la chiamata si chiude, senza ripetere. Lascia 10 minuti di silenzio: chiamata chiusa.
+- Riavvia il bot durante una chiamata: al riavvio i webhook rimasti vengono tolti. `/admin-giochi telefono registro`: solo server, ora, durata, nessun testo.
+- Revisione r24fun: un testo su minori (es. «teen di 13 anni») non arriva, nemmeno con un effetto. Un allegato arriva come indirizzo solo se il canale di B ha il limite d'età (altrimenti il messaggio cade). Togli il limite d'età a B durante la chiamata: i messaggi di A con allegati o da canale per adulti non passano più. `/admin-giochi telefono consenso attivo:no` su uno dei due chiude la chiamata. Chi non ha «Gestisci messaggi» né ha chiamato non può usare `segnala`.

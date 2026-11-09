@@ -28,6 +28,7 @@ Members are needed to react to joins and leaves (verification, anti-raid, welcom
 | Softban and mute | `cogs/moderation/softban_mute.py` | Re-apply a mute on rejoin |
 | Tickets | `cogs/tickets/tickets.py` | Close the ticket of a member who left |
 | Modmail | `cogs/tickets/modmail.py` | Close the thread of a member who left |
+| Level resets on leave or ban (off by default) | `cogs/leveling/azzeramenti.py` | Reset the XP of a member who left, only if the server turned it on |
 | Button polls | `cogs/utility/sondaggi_bottoni.py` | Remove the vote of a member who left or was banned |
 | Tag triggers on roles | `cogs/utility/inneschi.py` | Run a tag when the server's chosen role is given or taken |
 
@@ -52,6 +53,7 @@ Message content is needed by features that read what is written: AutoMod filters
 | Custom commands | `cogs/utility/custom_commands.py` | Run commands defined by the server |
 | Sticky messages | `cogs/utility/sticky_messages.py` | Keep a message at the bottom of a channel |
 | Backup mirror | `cogs/utility/backup_mirror.py` | Copy messages to the backup server |
+| Server phone | `cogs/fun/telefono.py` | During a call the staff accepted, pass the text written in the phone channel to the other server; the text is never stored |
 | Coin games | `cogs/fun/coin_games.py` | Count messages for coin rewards |
 | Music request channel | `cogs/music/request_channel.py` | Read song requests written in a channel |
 | Support threads (iYokai App) | `cogs/user_app/supporto_staff.py` | Forward the staff's replies to the person who asked |

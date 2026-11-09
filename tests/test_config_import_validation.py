@@ -41,6 +41,7 @@ SETTINGS_VALIDE = {
     "inviti_eta_minima_giorni": 7,
     "inviti_rientri_finti": True,
     "fun_gif_cerca": False,
+    "fun_telefono": False,
     "fun_immagini_post": False,
     "suggestions_channel_id": 555555555555555555,
     "suggestions_decided_channel_id": 555555555555555556,

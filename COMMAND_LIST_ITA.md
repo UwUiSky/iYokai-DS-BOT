@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:44 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 19:08 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 825 comandi in 49 categorie.**
+**Totale: 836 comandi in 49 categorie.**
 
 ## Admin: AI
 
@@ -223,6 +223,10 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:
 - **`/admin-giochi quiz regole`** — Regole del quiz: punti, tempo, risposta mostrata, il bot gioca.
 - **`/admin-giochi quiz rimuovi`** — Toglie una domanda caricata dal server.
 - **`/admin-giochi servizi`** — Accende o spegne i servizi esterni: immagini Lemmy e ricerca di GIF.
+- **`/admin-giochi telefono blocca`** — Blocca o sblocca una persona o un altro server dal telefono.
+- **`/admin-giochi telefono canale`** — Il canale del telefono del server.
+- **`/admin-giochi telefono consenso`** — Accende o spegne il telefono: spento di base.
+- **`/admin-giochi telefono registro`** — Le ultime chiamate del server: solo server, ora e durata.
 
 ## Admin: giveaway
 
@@ -250,7 +254,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:
 ## Admin: livelli e XP
 
 - **`/admin-livelli annuncio`** — Dove e quando annunciare i level-up.
+- **`/admin-livelli azzera auto`** — Azzera chi esce o viene bannato; blocca XP e azzeramenti al proprietario.
+- **`/admin-livelli azzera ripristina`** — Rimette gli XP di una copia di sicurezza (valida 30 giorni).
+- **`/admin-livelli azzera server`** — Azzera gli XP di tutto il server (prima fa una copia di sicurezza).
 - **`/admin-livelli card`** — Mostra o nascondi in questo server gli sfondi con immagine di card e profili.
+- **`/admin-livelli diagnosi`** — Spiega perché un membro non prende XP in un canale.
 - **`/admin-livelli escludi`** — Un canale, una categoria o un ruolo non dà XP (rifallo per toglierlo).
 - **`/admin-livelli membro`** — Modifica XP e livello di un membro.
 - **`/admin-livelli moltiplicatore`** — XP moltiplicati in un canale o per un ruolo (fattore 1 = toglie la regola).
@@ -642,6 +650,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:
 - **`/fun scegli`** — Scelgo a caso tra le opzioni che scrivi.
 - **`/fun scherzo`** — Uno scherzo innocuo verso un utente.
 - **`/fun ship`** — Calcola la compatibilità tra due utenti.
+- **`/fun telefono chiama`** — Chiama un altro server a caso (spento di base).
+- **`/fun telefono riaggancia`** — Chiudi la chiamata in corso.
+- **`/fun telefono segnala`** — Segnala la chiamata, blocca l'altro server e riaggancia.
 - **`/fun testo`** — Scrivi un testo in uno stile speciale.
 
 ## Gif
