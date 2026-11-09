@@ -2,7 +2,7 @@
 tests/test_custom_commands.py
 =============================
 NF-09 (#80) e M 10.15: comandi personalizzati (tag) con testo o embed, ruolo da
-dare o togliere, pausa; uso con /utility tag e con il prefisso del server
+dare o togliere, pausa; uso con /tag usa e con il prefisso del server
 (colonna guild_config.prefix, prima morta).
 """
 
@@ -149,7 +149,9 @@ async def test_conteggio_usi(repo):
 # -------------------------------------------------------------------------- cog
 def _tag(**kw):
     base = dict(guild_id=1, name="regole", response="Ciao {user} {args}", use_embed=False, role_id=None,
-                role_action="nessuna", cooldown_seconds=0, ping_ruoli=False, uses=0)
+                role_action="nessuna", cooldown_seconds=0, ping_ruoli=False, uses=0,
+                permesso=None, bersaglio=False, cancella_innesco=False, invio="canale", canale_id=None, reazioni=[],
+                si_cancella_dopo=None, cancella_messaggi=None, solo_nsfw=False, anche_modificati=False, gruppo=None, created_by=None)
     base.update(kw)
     return SimpleNamespace(**base)
 
@@ -160,6 +162,7 @@ def scena(monkeypatch):
     repo = MagicMock()
     repo.get_tag = AsyncMock(return_value=_tag())
     repo.add_use = AsyncMock()
+    repo.get_risposte = AsyncMock(return_value=[])
     repo.get_prefix = AsyncMock(return_value="!")
     repo.create_tag = AsyncMock(return_value="ok")
     repo.update_tag = AsyncMock(return_value=True)
@@ -318,12 +321,12 @@ async def test_albero_dei_comandi():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await modulo.setup(bot)
     for nome in ("crea", "modifica", "elimina", "elenco", "prefisso"):
-        assert comando_nel_gruppo("admin-messaggi", f"tag {nome}") is not None
-    tag = comando_nel_gruppo("utility", "tag")
+        assert comando_nel_gruppo("admin-tag", f"tag {nome}") is not None
+    tag = comando_nel_gruppo("tag", "usa")
     opzioni = {o["name"]: o for o in tag.to_dict(bot.tree)["options"]}
     assert opzioni["nome"]["max_length"] == 32 and opzioni["argomenti"]["max_length"] <= 500
-    crea = {o["name"]: o for o in comando_nel_gruppo("admin-messaggi", "tag crea").to_dict(bot.tree)["options"]}
-    assert crea["testo"]["max_length"] == 2000 and crea["nome"]["max_length"] == 32
+    crea = {o["name"]: o for o in comando_nel_gruppo("admin-tag", "tag crea").to_dict(bot.tree)["options"]}
+    assert crea["testo"]["max_length"] == 4000 and crea["nome"]["max_length"] == 32
 
 
 @pytest.mark.asyncio
@@ -389,3 +392,56 @@ async def test_risposta_vuota_dopo_i_segnaposto_ha_un_testo_di_ripiego(scena):
     i2, *_ = _interazione()
     await scena.tag.callback(scena, i2, "regole", "")
     assert i2.followup.send.await_args.kwargs["embed"].description == modulo.TESTO_VUOTO
+
+
+# -------------------------------------------------------------------------- D69 B19-B20: opzioni, pesi, testo lungo
+def test_risposte_con_peso_e_testo_lungo():
+    from core.custom_command_logic import dividi_testo, ha_il_permesso, leggi_risposta, scegli_pesata
+    import discord, random
+    assert leggi_risposta("3| ciao") == (3, "ciao") and leggi_risposta("ciao") == (1, "ciao") and leggi_risposta("   ") is None
+    assert leggi_risposta("0| x") is None and leggi_risposta("100| x") is None and leggi_risposta("5|  ") is None
+    assert scegli_pesata([], random.Random(1)) is None
+    scelte = [scegli_pesata([(99, "a"), (1, "b")], random.Random(i)) for i in range(200)]
+    assert scelte.count("a") > 150
+    assert dividi_testo("breve") == ["breve"]
+    lungo = ("riga " * 300 + "\n") * 2
+    pezzi = dividi_testo(lungo)
+    assert len(pezzi) == 2 and all(len(p) <= 2000 for p in pezzi)
+    assert ha_il_permesso(discord.Permissions.none(), None) and not ha_il_permesso(discord.Permissions.none(), "ban_members")
+    assert ha_il_permesso(discord.Permissions(ban_members=True), "ban_members") and ha_il_permesso(discord.Permissions(administrator=True), "ban_members")
+    assert not ha_il_permesso(discord.Permissions(administrator=True), "permesso_inventato")
+
+
+@pytest.mark.asyncio
+async def test_repo_opzioni_risposte_e_canale_cancellato(repo):
+    await _crea(repo, 1, "regole")
+    assert await repo.update_tag(1, "regole", permesso="ban_members", invio="altro", canale_id=77, reazioni=["👍"], solo_nsfw=True) is True
+    tag = await repo.get_tag(1, "regole")
+    assert tag.permesso == "ban_members" and tag.invio == "altro" and tag.solo_nsfw and list(tag.reazioni) == ["👍"]
+    assert await repo.set_risposte(1, "regole", [(3, "uno"), (1, "due")]) is True
+    assert await repo.get_risposte(1, "regole") == [(3, "uno"), (1, "due")]
+    assert await repo.set_risposte(1, "assente", [(1, "x")]) is False
+    await repo.canale_cancellato(1, 77)
+    tag = await repo.get_tag(1, "regole")
+    assert tag.invio == "canale" and tag.canale_id is None
+    await repo.delete_tag(1, "regole")
+    assert await repo.get_risposte(1, "regole") == []  # le risposte seguono il tag
+
+
+@pytest.mark.asyncio
+async def test_tag_con_permesso_mancante_non_risponde_col_prefisso(scena):
+    scena.repo.get_tag.return_value = _tag(permesso="ban_members")
+    server = fake_guild()
+    canale = fake_text_channel()
+    canale.send = AsyncMock()
+    autore = fake_member(5)
+    autore.guild = server
+    autore.guild_permissions = discord.Permissions.none()
+    await scena.on_message(fake_message(1, author=autore, channel=canale, guild=server, content="!regole"))
+    canale.send.assert_not_awaited()
+    scena.repo.get_tag.return_value = _tag(permesso=None, cancella_innesco=True)
+    msg = fake_message(2, author=autore, channel=canale, guild=server, content="!regole")
+    msg.delete = AsyncMock()
+    await scena.on_message(msg)
+    canale.send.assert_awaited_once()
+    msg.delete.assert_awaited_once()

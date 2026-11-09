@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:55 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:04 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 768 commands in 45 categories.**
+**Total: 770 commands in 47 categories.**
 
 ## Admin: AI
 
@@ -268,20 +268,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:5
 - **`/admin-messages pinned remove`** — Removes a channel's sticky message.
 - **`/admin-messages pinned set`** — Sets a channel's sticky message.
 - **`/admin-messages reminders`** — For staff: the reminders set in this server.
-- **`/admin-messages replies clear`** — Delete all the automatic replies of the server.
-- **`/admin-messages replies create`** — Creates an automatic reply.
-- **`/admin-messages replies delete`** — Deletes an automatic reply.
-- **`/admin-messages replies global`** — Turn the owner's shared automatic replies on or off in this server.
-- **`/admin-messages replies list`** — Shows the server's automatic replies.
 - **`/admin-messages scheduled cancel`** — Cancels a scheduled message.
 - **`/admin-messages scheduled create`** — Schedules a message.
 - **`/admin-messages scheduled list`** — Shows this server's scheduled messages.
 - **`/admin-messages scheduled skip`** — Skip the next round of a repeating message.
-- **`/admin-messages tag create`** — Creates a custom command.
-- **`/admin-messages tag delete`** — Deletes a custom command.
-- **`/admin-messages tag edit`** — Edits a custom command.
-- **`/admin-messages tag list`** — Shows the server's custom commands.
-- **`/admin-messages tag prefix`** — Picks the prefix to use commands by typing in the channel.
 - **`/admin-messages write`** — Make the bot write a message in a channel.
 
 ## Admin: modules
@@ -381,6 +371,21 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:5
 - **`/admin-security verify timing`** — Reminder, time limit, action on failures, verification only for suspicious accounts.
 - **`/admin-security verify whitelist-add`** — Adds a user to the whitelist.
 - **`/admin-security verify whitelist-remove`** — Removes a user from the whitelist.
+
+## Admin: tags and replies
+
+- **`/admin-tag replies clear`** — Delete all the automatic replies of the server.
+- **`/admin-tag replies create`** — Creates an automatic reply.
+- **`/admin-tag replies delete`** — Deletes an automatic reply.
+- **`/admin-tag replies global`** — Turn the owner's shared automatic replies on or off in this server.
+- **`/admin-tag replies list`** — Shows the server's automatic replies.
+- **`/admin-tag tag create`** — Creates a custom command.
+- **`/admin-tag tag delete`** — Deletes a custom command.
+- **`/admin-tag tag edit`** — Edits a custom command.
+- **`/admin-tag tag list`** — Shows the server's custom commands.
+- **`/admin-tag tag options`** — How a tag behaves: permission, target, where it replies.
+- **`/admin-tag tag prefix`** — Picks the prefix to use commands by typing in the channel.
+- **`/admin-tag tag replies`** — Give a tag up to 5 replies, each with its weight.
 
 ## Admin: tickets
 
@@ -823,6 +828,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:5
 
 - **`/polls create`** — Creates a poll (up to 10 options).
 
+## Tags
+
+- **`/tag use`** — Uses a custom command of this server.
+
 ## Tickets
 
 - **`/ticket add`** — Adds a user or role to this ticket.
@@ -876,7 +885,6 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:5
 - **`/utility strumenti characters`** — Unicode name, code and category of the characters in a text.
 - **`/utility strumenti stopwatch`** — A stopwatch with Lap and Stop buttons.
 - **`/utility suggest`** — Suggest an idea for this server.
-- **`/utility tag`** — Uses a custom command of this server.
 - **`/utility verify`** — Verify yourself in this server (same as the panel button).
 
 ## Voice

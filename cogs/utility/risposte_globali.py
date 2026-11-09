@@ -2,7 +2,7 @@
 cogs/utility/risposte_globali.py
 ================================
 Risposte automatiche valide in ogni server, gestite dall'owner del bot (massimo 20): `/owner system risposte-globali`.
-Ogni server le può spegnere con `/admin-messaggi risposte globali`. Si innescano con la frase intera, senza badare alle maiuscole.
+Ogni server le può spegnere con `/admin-tag risposte globali`. Si innescano con la frase intera, senza badare alle maiuscole.
 Funzioni coperte: catalogo #128 UTL-055 (D69, B18)
 """
 

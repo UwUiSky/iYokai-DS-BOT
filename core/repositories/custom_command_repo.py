@@ -28,10 +28,28 @@ class CustomCommand:
     cooldown_seconds: int
     ping_ruoli: bool
     uses: int
+    permesso: str | None = None
+    bersaglio: bool = False
+    cancella_innesco: bool = False
+    invio: str = "canale"
+    canale_id: int | None = None
+    reazioni: tuple = ()
+    si_cancella_dopo: int | None = None
+    cancella_messaggi: int | None = None
+    solo_nsfw: bool = False
+    anche_modificati: bool = False
+    gruppo: str | None = None
+    created_by: int | None = None
 
 
-_COLONNE = "guild_id, name, response, use_embed, role_id, role_action, cooldown_seconds, ping_ruoli, uses"
-_MODIFICABILI = {"response", "use_embed", "role_id", "role_action", "cooldown_seconds", "ping_ruoli"}
+_COLONNE = (
+    "guild_id, name, response, use_embed, role_id, role_action, cooldown_seconds, ping_ruoli, uses, permesso, bersaglio, "
+    "cancella_innesco, invio, canale_id, reazioni, si_cancella_dopo, cancella_messaggi, solo_nsfw, anche_modificati, gruppo, created_by"
+)
+_MODIFICABILI = {
+    "response", "use_embed", "role_id", "role_action", "cooldown_seconds", "ping_ruoli", "permesso", "bersaglio", "cancella_innesco",
+    "invio", "canale_id", "reazioni", "si_cancella_dopo", "cancella_messaggi", "solo_nsfw", "anche_modificati", "gruppo", "created_by",
+}
 
 
 class CustomCommandRepository:
@@ -107,6 +125,30 @@ class CustomCommandRepository:
             guild_id, name, *campi.values(),
         )
         return esito.endswith(" 1")
+
+    async def get_risposte(self, guild_id: int, name: str) -> list[tuple[int, str]]:
+        """Le risposte con peso del tag (vuoto: vale il testo del tag)."""
+        righe = await self._pool.fetch(
+            "SELECT peso, testo FROM custom_command_risposte WHERE guild_id = $1 AND name = $2 ORDER BY pos", guild_id, name)
+        return [(r["peso"], r["testo"]) for r in righe]
+
+    async def set_risposte(self, guild_id: int, name: str, risposte: list[tuple[int, str]]) -> bool:
+        """Sostituisce le risposte (al massimo 5). False se il tag non esiste. Vuoto: le toglie."""
+        async with self._pool.acquire() as con, con.transaction():
+            if not await con.fetchval("SELECT 1 FROM custom_commands WHERE guild_id = $1 AND name = $2 FOR UPDATE", guild_id, name):
+                return False
+            await con.execute("DELETE FROM custom_command_risposte WHERE guild_id = $1 AND name = $2", guild_id, name)
+            for i, (peso, testo) in enumerate(risposte[:5], start=1):
+                await con.execute(
+                    "INSERT INTO custom_command_risposte (guild_id, name, pos, peso, testo) VALUES ($1,$2,$3,$4,$5)",
+                    guild_id, name, i, peso, testo)
+            return True
+
+    async def canale_cancellato(self, guild_id: int, channel_id: int) -> None:
+        """Un canale è stato cancellato: i tag che rispondevano lì tornano a rispondere nel canale dove si usano."""
+        await self._pool.execute(
+            "UPDATE custom_commands SET invio = 'canale', canale_id = NULL WHERE guild_id = $1 AND canale_id = $2", guild_id, channel_id)
+        await self._pool.execute("UPDATE tag_gruppi SET canale_id = NULL WHERE guild_id = $1 AND canale_id = $2", guild_id, channel_id)
 
     async def delete_tag(self, guild_id: int, name: str) -> bool:
         esito = await self._pool.execute(

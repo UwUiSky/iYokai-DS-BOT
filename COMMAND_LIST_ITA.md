@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:55 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:04 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 768 comandi in 45 categorie.**
+**Totale: 770 comandi in 47 categorie.**
 
 ## Admin: AI
 
@@ -272,17 +272,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 - **`/admin-messaggi programmati elenco`** — Mostra i messaggi programmati di questo server.
 - **`/admin-messaggi programmati salta`** — Salta il prossimo giro di un messaggio che si ripete.
 - **`/admin-messaggi promemoria`** — Per lo staff: i promemoria impostati in questo server.
-- **`/admin-messaggi risposte crea`** — Crea una risposta automatica.
-- **`/admin-messaggi risposte elenco`** — Mostra le risposte automatiche del server.
-- **`/admin-messaggi risposte elimina`** — Elimina una risposta automatica.
-- **`/admin-messaggi risposte globali`** — Accendi o spegni le risposte automatiche dell'owner in questo server.
-- **`/admin-messaggi risposte svuota`** — Elimina tutte le risposte automatiche del server.
 - **`/admin-messaggi scrivi`** — Fai scrivere un messaggio al bot in un canale.
-- **`/admin-messaggi tag crea`** — Crea un comando personalizzato.
-- **`/admin-messaggi tag elenco`** — Mostra i comandi personalizzati del server.
-- **`/admin-messaggi tag elimina`** — Elimina un comando personalizzato.
-- **`/admin-messaggi tag modifica`** — Cambia un comando personalizzato.
-- **`/admin-messaggi tag prefisso`** — Scegli il prefisso per usare i comandi scrivendo nel canale.
 
 ## Admin: moduli
 
@@ -381,6 +371,21 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 - **`/admin-sicurezza verify tentativi`** — Tentativi di verifica di un utente.
 - **`/admin-sicurezza verify whitelist-add`** — Aggiungi un utente alla whitelist.
 - **`/admin-sicurezza verify whitelist-remove`** — Rimuovi un utente dalla whitelist.
+
+## Admin: tag e risposte
+
+- **`/admin-tag risposte crea`** — Crea una risposta automatica.
+- **`/admin-tag risposte elenco`** — Mostra le risposte automatiche del server.
+- **`/admin-tag risposte elimina`** — Elimina una risposta automatica.
+- **`/admin-tag risposte globali`** — Accendi o spegni le risposte automatiche dell'owner in questo server.
+- **`/admin-tag risposte svuota`** — Elimina tutte le risposte automatiche del server.
+- **`/admin-tag tag crea`** — Crea un comando personalizzato.
+- **`/admin-tag tag elenco`** — Mostra i comandi personalizzati del server.
+- **`/admin-tag tag elimina`** — Elimina un comando personalizzato.
+- **`/admin-tag tag modifica`** — Cambia un comando personalizzato.
+- **`/admin-tag tag opzioni`** — Come si comporta un tag: permesso, bersaglio, dove risponde.
+- **`/admin-tag tag prefisso`** — Scegli il prefisso per usare i comandi scrivendo nel canale.
+- **`/admin-tag tag risposte`** — Dai a un tag fino a 5 risposte, ognuna con il suo peso.
 
 ## Admin: ticket
 
@@ -823,6 +828,10 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 
 - **`/sondaggi crea`** — Crea un sondaggio (fino a 10 opzioni).
 
+## Tag
+
+- **`/tag usa`** — Usa un comando personalizzato di questo server.
+
 ## Ticket
 
 - **`/ticket add`** — Aggiungi un utente o un ruolo a questo ticket.
@@ -876,7 +885,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 - **`/utility strumenti caratteri`** — Nome, codice e categoria Unicode dei caratteri di un testo.
 - **`/utility strumenti cronometro`** — Un cronometro con i bottoni Giro e Ferma.
 - **`/utility suggest`** — Proponi un'idea per questo server.
-- **`/utility tag`** — Usa un comando personalizzato di questo server.
 - **`/utility verifica`** — Verificati in questo server (come il bottone del pannello).
 
 ## Vocali

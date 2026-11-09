@@ -3,9 +3,9 @@ cogs/utility/custom_commands.py
 ===============================
 Comandi personalizzati del server, detti tag (NF-09, SPEC §22.5): un nome,
 un testo o un embed, un ruolo da dare o togliere, una pausa. Si usano con
-`/utility tag` e, se l'admin sceglie un prefisso, anche scrivendo
+`/tag usa` e, se l'admin sceglie un prefisso, anche scrivendo
 `<prefisso>nome` (usa guild_config.prefix, M 10.15). Si gestiscono con
-`/admin-messaggi tag crea|modifica|elimina|elenco|prefisso`.
+`/admin-tag tag crea|modifica|elimina|elenco|prefisso`.
 Funzioni coperte: SPEC §22 (NF-09)
 """
 
@@ -31,6 +31,9 @@ from core.custom_command_logic import (
     MAX_TESTO,
     azione_ruolo,
     costruisci_risposta,
+    dividi_testo,
+    ha_il_permesso,
+    scegli_pesata,
     nome_da_messaggio,
     pausa_residua,
     valida_prefisso,
@@ -79,17 +82,52 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         _cache_prefissi.set(guild_id, (prefisso, ora + _TTL_PREFISSO))
         return prefisso
 
-    async def _prepara(self, tag, membro: discord.Member, canale, argomenti: str):
-        """(testo, nota sul ruolo): applica il ruolo del tag e costruisce la risposta."""
+    async def _prepara(self, tag, membro: discord.Member, canale, argomenti: str, bersaglio: discord.abc.User | None = None):
+        """(testo, nota sul ruolo): applica il ruolo del tag e costruisce la risposta (una a caso se ce ne sono con peso)."""
         nota = await self._applica_ruolo(tag, membro)
+        base = scegli_pesata(await custom_command_repo.get_risposte(tag.guild_id, tag.name)) or tag.response
         valori = {
             "user": membro.mention,
             "username": membro.display_name,
             "server": membro.guild.name,
             "channel": getattr(canale, "mention", ""),
             "args": argomenti,
+            "bersaglio": bersaglio.mention if bersaglio is not None else "",
         }
-        return costruisci_risposta(tag.response, valori).strip() or TESTO_VUOTO, nota
+        return costruisci_risposta(base, valori).strip() or TESTO_VUOTO, nota
+
+    @staticmethod
+    def _rifiuto(tag, membro: discord.Member, canale, bersaglio) -> str | None:
+        """La chiave del testo se il tag non si può usare qui: permesso, canale NSFW, bersaglio mancante."""
+        if not ha_il_permesso(membro.guild_permissions, tag.permesso):
+            return "tag_manca_permesso"
+        if tag.solo_nsfw and not (hasattr(canale, "is_nsfw") and canale.is_nsfw()):
+            return "tag_solo_nsfw"
+        if tag.bersaglio and bersaglio is None:
+            return "tag_serve_bersaglio"
+        return None
+
+    @staticmethod
+    def _destinazione(tag, membro: discord.Member, canale):
+        """(dove scrivere, se la risposta va tenuta fuori dal canale). «altro» senza canale valido torna nel canale."""
+        if tag.invio == "privato":
+            return membro, True
+        if tag.invio == "altro" and tag.canale_id:
+            altro = membro.guild.get_channel(tag.canale_id)
+            if isinstance(altro, discord.abc.Messageable) and altro.permissions_for(membro.guild.me).send_messages:
+                return altro, True
+        return canale, False
+
+    @staticmethod
+    async def _manda(invia, tag, testo: str):
+        """Manda il testo (diviso in due se supera 2.000 caratteri; embed fino a 4.096). Ritorna l'ultimo messaggio."""
+        menzioni = menzioni_ammesse(tag.ping_ruoli)
+        if tag.use_embed:
+            return await invia(embed=discord.Embed(description=testo[:4096]), allowed_mentions=menzioni)
+        ultimo = None
+        for pezzo in dividi_testo(testo):
+            ultimo = await invia(pezzo, allowed_mentions=menzioni)
+        return ultimo
 
     async def _applica_ruolo(self, tag, membro: discord.Member) -> str | None:
         if tag.role_id is None or tag.role_action == "nessuna":
@@ -132,18 +170,23 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         tag = await custom_command_repo.get_tag(message.guild.id, nome)
         if tag is None:
             return
-        if self._pausa(tag, message.guild.id, message.author.id) > 0:
+        if self._rifiuto(tag, message.author, message.channel, message.mentions[0] if message.mentions else None) is not None:
             return  # col prefisso si tace: niente messaggi di servizio nel canale
-        testo, nota = await self._prepara(tag, message.author, message.channel, argomenti[:MAX_ARGOMENTI])
-        menzioni = menzioni_ammesse(tag.ping_ruoli)
+        if self._pausa(tag, message.guild.id, message.author.id) > 0:
+            return
+        bersaglio = message.mentions[0] if message.mentions else None
+        testo, nota = await self._prepara(tag, message.author, message.channel, argomenti[:MAX_ARGOMENTI], bersaglio)
+        dest, fuori = self._destinazione(tag, message.author, message.channel)
         try:
-            if tag.use_embed:
-                await message.channel.send(embed=discord.Embed(description=testo), allowed_mentions=menzioni)
-            else:
-                await message.channel.send(testo, allowed_mentions=menzioni)
+            await self._manda(dest.send, tag, testo)
         except discord.HTTPException:
             logger.warning("Tag %s: invio fallito nel canale %s", nome, message.channel.id)
             return
+        if tag.cancella_innesco:
+            try:
+                await message.delete()
+            except discord.HTTPException:
+                pass  # al bot può mancare «Gestire i messaggi»: il tag ha risposto lo stesso
         await custom_command_repo.add_use(message.guild.id, nome)
 
     async def _nomi_per_completamento(self, interaction: discord.Interaction, current: str):
@@ -160,17 +203,19 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         return await self._nomi_per_completamento(interaction, current)
 
     @comando_di_gruppo(
-        "utility",
-        nome="tag",
+        "tag",
+        nome="usa",
         descrizione="Usa un comando personalizzato di questo server.",
     )
-    @app_commands.describe(nome="Il comando da usare", argomenti="Testo da passare al comando (facoltativo)")
+    @app_commands.describe(nome="Il comando da usare", argomenti="Testo da passare al comando (facoltativo)",
+                           bersaglio="Il membro a cui è rivolto, se il tag lo chiede")
     @app_commands.autocomplete(nome=_completa_uso)
     async def tag(
         self,
         interaction: discord.Interaction,
         nome: app_commands.Range[str, 1, MAX_NOME],
         argomenti: app_commands.Range[str, 0, MAX_ARGOMENTI] = "",
+        bersaglio: discord.Member | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -196,15 +241,22 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
                 await testo_per(interaction, "customcomman_aspetta_ancora_secondi_prima_di", v1=int(residuo) + 1), ephemeral=True
             )
             return
+        rifiuto = self._rifiuto(tag, interaction.user, interaction.channel, bersaglio)
+        if rifiuto is not None:
+            await interaction.response.send_message(await testo_per(interaction, rifiuto), ephemeral=True)
+            return
         # Dare o togliere il ruolo sono chiamate a Discord che possono superare i 3 secondi
         # concessi per rispondere: si prenota la risposta prima.
-        await interaction.response.defer()
-        testo, nota = await self._prepara(tag, interaction.user, interaction.channel, argomenti)
-        menzioni = menzioni_ammesse(tag.ping_ruoli)
-        if tag.use_embed:
-            await interaction.followup.send(embed=discord.Embed(description=testo), allowed_mentions=menzioni)
-        else:
-            await interaction.followup.send(testo, allowed_mentions=menzioni)
+        dest, fuori = self._destinazione(tag, interaction.user, interaction.channel)
+        await interaction.response.defer(ephemeral=fuori)
+        testo, nota = await self._prepara(tag, interaction.user, interaction.channel, argomenti, bersaglio)
+        try:
+            await self._manda(dest.send if fuori else interaction.followup.send, tag, testo)
+        except discord.HTTPException:
+            await interaction.followup.send(await testo_per(interaction, "tag_invio_fallito"), ephemeral=True)
+            return
+        if fuori:
+            await interaction.followup.send(await testo_per(interaction, "tag_inviato_privato" if tag.invio == "privato" or dest is interaction.user else "tag_inviato_altro"), ephemeral=True)
         if nota:
             await interaction.followup.send(nota, ephemeral=True)
         await custom_command_repo.add_use(guild.id, tag.name)
@@ -241,7 +293,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
                 return False
         return True
 
-    @comando_di_gruppo("admin-messaggi", nome="crea", descrizione="Crea un comando personalizzato.", sottogruppo=SOTTOGRUPPI["admin-messaggi tag"])
+    @comando_di_gruppo("admin-tag", nome="crea", descrizione="Crea un comando personalizzato.", sottogruppo=SOTTOGRUPPI["admin-tag tag"])
     @app_commands.describe(
         nome=f"Il nome (lettere minuscole, cifre, - e _; massimo {MAX_NOME})",
         testo="La risposta. Segnaposto: {user} {username} {server} {channel} {args}",
@@ -283,13 +335,13 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             created_by=interaction.user.id,
         )
         messaggi = {
-            "ok": f"Comando `{normalizzato}` creato. Si usa con `/utility tag`.",
-            "esiste": f"Esiste già un comando `{normalizzato}`: usa `/admin-messaggi tag modifica`.",
+            "ok": f"Comando `{normalizzato}` creato. Si usa con `/tag usa`.",
+            "esiste": f"Esiste già un comando `{normalizzato}`: usa `/admin-tag tag modifica`.",
             "pieno": f"Questo server ha già {MAX_TAG} comandi personalizzati: eliminane uno.",
         }
         await interaction.response.send_message(messaggi[esito], ephemeral=True)
 
-    @comando_di_gruppo("admin-messaggi", nome="modifica", descrizione="Cambia un comando personalizzato.", sottogruppo=SOTTOGRUPPI["admin-messaggi tag"])
+    @comando_di_gruppo("admin-tag", nome="modifica", descrizione="Cambia un comando personalizzato.", sottogruppo=SOTTOGRUPPI["admin-tag tag"])
     @app_commands.describe(
         nome="Il comando da cambiare",
         testo="Nuova risposta",
@@ -337,7 +389,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "customcomman_comando_aggiornato") if fatto else await testo_per(interaction, "customcomman_non_esiste_un_comando_con"), ephemeral=True
         )
 
-    @comando_di_gruppo("admin-messaggi", nome="elimina", descrizione="Elimina un comando personalizzato.", sottogruppo=SOTTOGRUPPI["admin-messaggi tag"])
+    @comando_di_gruppo("admin-tag", nome="elimina", descrizione="Elimina un comando personalizzato.", sottogruppo=SOTTOGRUPPI["admin-tag tag"])
     @app_commands.describe(nome="Il comando da eliminare")
     @app_commands.autocomplete(nome=_completa_admin)
     async def elimina(self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, MAX_NOME]) -> None:
@@ -349,7 +401,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "customcomman_comando_eliminato") if fatto else await testo_per(interaction, "customcomman_non_esiste_un_comando_con"), ephemeral=True
         )
 
-    @comando_di_gruppo("admin-messaggi", nome="elenco", descrizione="Mostra i comandi personalizzati del server.", sottogruppo=SOTTOGRUPPI["admin-messaggi tag"])
+    @comando_di_gruppo("admin-tag", nome="elenco", descrizione="Mostra i comandi personalizzati del server.", sottogruppo=SOTTOGRUPPI["admin-tag tag"])
     async def elenco(self, interaction: discord.Interaction) -> None:
         if not await self._pronto(interaction):
             return
@@ -357,11 +409,11 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         prefisso = await custom_command_repo.get_prefix(interaction.guild.id)
         righe = [f"`{t.name}` — {t.uses} usi" for t in tag] or ["Nessun comando personalizzato."]
         testo, _ = righe_entro_limite(righe, 3800)
-        piede = f"\n\nPrefisso: `{prefisso}`" if prefisso else "\n\nPrefisso: nessuno (solo `/utility tag`)."
+        piede = f"\n\nPrefisso: `{prefisso}`" if prefisso else "\n\nPrefisso: nessuno (solo `/tag usa`)."
         embed = discord.Embed(title=await testo_per(interaction, "customcomman_comandi_personalizzati", v1=len(tag), v2=MAX_TAG), description=testo + piede)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @comando_di_gruppo("admin-messaggi", nome="prefisso", descrizione="Scegli il prefisso per usare i comandi scrivendo nel canale.", sottogruppo=SOTTOGRUPPI["admin-messaggi tag"])
+    @comando_di_gruppo("admin-tag", nome="prefisso", descrizione="Scegli il prefisso per usare i comandi scrivendo nel canale.", sottogruppo=SOTTOGRUPPI["admin-tag tag"])
     @app_commands.describe(simbolo="1-3 simboli, per esempio ! — lascia vuoto per spegnere il prefisso")
     async def prefisso(self, interaction: discord.Interaction, simbolo: app_commands.Range[str, 0, 3] = "") -> None:
         if not await self._pronto(interaction):
@@ -388,7 +440,7 @@ async def setup(bot: commands.Bot) -> None:
             name=MODULE_CUSTOM_COMMANDS,
             display_name="Comandi personalizzati",
             category="utility",
-            description="Comandi creati dal server: testo o embed, ruolo, pausa; uso con /utility tag o col prefisso.",
+            description="Comandi creati dal server: testo o embed, ruolo, pausa; uso con /tag usa o col prefisso.",
             premium_capable=False,
         )
     )
