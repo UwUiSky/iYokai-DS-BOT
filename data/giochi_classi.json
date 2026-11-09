@@ -1,0 +1,12 @@
+{
+ "wow": {"nome": "World of Warcraft", "classi": ["Cavaliere della Morte", "Cacciatore di Demoni", "Druido", "Evocatore", "Cacciatore", "Mago", "Monaco", "Paladino", "Sacerdote", "Ladro", "Sciamano", "Stregone", "Guerriero"]},
+ "overwatch": {"nome": "Overwatch 2", "classi": ["Tank", "Danno", "Supporto"]},
+ "valorant": {"nome": "Valorant", "classi": ["Duellante", "Iniziatore", "Sentinella", "Controllore"]},
+ "lol": {"nome": "League of Legends", "classi": ["Top", "Jungla", "Mid", "ADC", "Supporto"]},
+ "diablo4": {"nome": "Diablo IV", "classi": ["Barbaro", "Druido", "Negromante", "Ladra", "Stregone", "Spiritista"]},
+ "destiny2": {"nome": "Destiny 2", "classi": ["Cacciatore", "Titano", "Stregone"]},
+ "dota2": {"nome": "Dota 2", "classi": ["Carry", "Mid", "Offlane", "Supporto leggero", "Supporto pesante"]},
+ "apex": {"nome": "Apex Legends", "classi": ["Assaltatore", "Schermagliatore", "Supporto", "Controllore", "Ricognitore"]},
+ "dnd": {"nome": "Dungeons & Dragons", "classi": ["Barbaro", "Bardo", "Chierico", "Druido", "Guerriero", "Monaco", "Paladino", "Ranger", "Ladro", "Stregone", "Warlock", "Mago"]},
+ "poe": {"nome": "Path of Exile", "classi": ["Duellante", "Ombra", "Ranger", "Strega", "Templare", "Mercenario", "Sacerdote"]}
+}

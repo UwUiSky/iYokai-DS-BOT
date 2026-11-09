@@ -4,10 +4,11 @@
 09/11/2026 · giro r21gif, ramo `feat/r21gif`, migrazione 0570 (usata). Lavoro PER FILE.
 
 ## In corso
-- r21gif (B1 di #131, D70) finito: L1-L5 fatti. Smoke da fare (lo lancia l'orchestratore).
-- Prossimo: B2+ del disegno `disegno_fun.md` (piccoli senza stato, gare con classifica 0571); GIF: coprire le 11 voci senza fonte (Giphy o raccolta propria), adattatore Klipy dopo il permesso.
+- r21fun (B2-B5 di #131, D70), ramo `feat/r21fun`, worktree `/home/claude/wt/r21fun`, env `scratchpad/env_r21fun_dev.sh`. Previsione: 4 commit. B2 fatto; poi B3 (0571), B4, B5. `fun citazioni caso` (030) NON c'è su main: saltata.
+- Smoke da fare (lo lancia l'orchestratore).
 
 ## Fatto
+- r21fun B2: `core/fun_piccoli_logic.py`, `cogs/fun/giochi_extra.py` (`/giochi minato`), coinflip `quante`, ship `tema`, joke `chuck`, casuale `classe`.
 - r21gif: `core/gif_catalogo.py`, `core/gif_fonti.py`, `core/gif_logic.py`, `cogs/fun/gif.py`, `data/gif_catalogo.json`, 0570 (`gif_privacy`, `gif_blocchi`); `/gif reazione|azione|privacy`.
 - r11: D38 `core/moneta_server.py`, `guild_coin_images` (0410), miniatura `moneta.png` in saldo/cassa/giochi/clan info; D30 `MUSIC_TOKEN_6..20`, `MusicFleet.total_workers`, test radio solo owner.
 - r10: SPEC §15 `[~]`→`[x]` con le prove già nei test (erano marcatori vecchi del 04/10); ECO-063/065/066/067/068 shop (`shop_repo`, `togli_ruoli_shop_scaduti` nel cog, 0340); LIV-058 (`week_key` in `leveling_activity`); ECO-001/ECO-015 (0341).

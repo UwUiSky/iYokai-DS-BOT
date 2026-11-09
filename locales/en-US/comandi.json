@@ -1203,7 +1203,8 @@
   "giochi conteggio classifica": "Who counted the most correct numbers.",
   "admin-giochi conteggio traguardo": "Role or message when the count hits a number.",
   "admin-giochi conteggio importa": "Bring scores from a CSV or JSON file into a channel.",
-  "giochi conteggio avvisami": "Get pinged in the channel when the count reaches a number."
+  "giochi conteggio avvisami": "Get pinged in the channel when the count reaches a number.",
+  "giochi minato": "Minesweeper: open the spoilers and avoid the mines."
  },
  "parametri": {},
  "menu": {

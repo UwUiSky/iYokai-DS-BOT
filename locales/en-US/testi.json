@@ -2301,5 +2301,9 @@
   "gif_privacy_elenco": "Blocked users ({numero}/{massimo}). Actions from everyone: {stato}.\n{elenco}",
   "gif_stato_consentite": "allowed",
   "gif_stato_bloccate": "blocked",
-  "gif_privacy_titolo": "Privacy of action GIFs"
+  "gif_privacy_titolo": "Privacy of action GIFs",
+  "fun_monete_riepilogo": "Heads: {teste} · Tails: {croci}",
+  "fun_classe_scegli_gioco": "Pick a game from the list in the `gioco` field.",
+  "shiprate_ship_amicizia": "Friendship",
+  "fun_minato_intro": "Minesweeper: {mine} mines. Open one spoiler at a time, but not the mines! 💥"
 }

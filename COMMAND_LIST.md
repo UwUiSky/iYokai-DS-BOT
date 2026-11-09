@@ -582,8 +582,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 ## Divertimento
 
 - **`/fun 8ball`** — Fai una domanda alla palla magica 8.
-- **`/fun casuale`** — Preferiresti, argomento, consiglio, oggetto magico.
-- **`/fun coinflip`** — Lancia una moneta: testa o croce.
+- **`/fun casuale`** — Preferiresti, argomento, consiglio, oggetto magico, classe di un gioco.
+- **`/fun coinflip`** — Lancia da 1 a 10 monete: testa o croce (con più monete, una striscia in immagine).
 - **`/fun dice`** — Tira un dado.
 - **`/fun fact`** — Mostra una curiosità a caso.
 - **`/fun joke`** — Racconta una barzelletta a caso.
@@ -593,7 +593,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 - **`/fun rate`** — Valuta qualcosa da 0 a 10.
 - **`/fun scegli`** — Scelgo a caso tra le opzioni che scrivi.
 - **`/fun scherzo`** — Uno scherzo innocuo verso un utente.
-- **`/fun ship`** — Calcola la compatibilità tra due utenti.
+- **`/fun ship`** — Calcola la compatibilità tra due utenti (amore o amicizia).
 - **`/fun testo`** — Scrivi un testo in uno stile speciale.
 
 ## Gif
@@ -607,6 +607,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 - **`/giochi conteggio avvisami`** — Ti avviso nel canale quando il conteggio arriva a un numero.
 - **`/giochi conteggio classifica`** — Chi ha contato più numeri giusti.
 - **`/giochi gioca`** — Gioca le tue coin: monetina, dadi o slot.
+- **`/giochi minato`** — Campo minato con gli spoiler: facile, medio, difficile.
 - **`/giochi rps`** — Carta, forbici, sasso contro il bot.
 
 ## Immagini

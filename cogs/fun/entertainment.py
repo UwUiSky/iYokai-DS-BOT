@@ -50,6 +50,7 @@ from core.classic_entertainment_logic import (
     random_quote,
 )
 from core.fun_extra_logic import tira_formula
+from core.fun_piccoli_logic import MAX_MONETE, striscia_monete, tira_monete
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
@@ -59,6 +60,7 @@ from core.image_search_fetcher import image_search_fetcher
 from core.meme_logic import render_meme
 from core.minigames_logic import answer_8ball, flip_coin, play_rps, roll_dice
 from core.premium import PremiumModule, registry
+from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.safe_image import MAX_IMAGE_BYTES, run_image_task
 
 MODULE_FUN = "fun"
@@ -165,12 +167,26 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo("fun", nome="coinflip", descrizione="Lancia una moneta: testa o croce.")
-    async def coinflip(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(quante="Quante monete lanciare, da 1 a 10 (facoltativo)")
+    async def coinflip(
+        self, interaction: discord.Interaction, quante: app_commands.Range[int, 1, MAX_MONETE] = 1
+    ) -> None:
         if not await self._modulo_attivo(interaction):
             return
 
-        risultato = flip_coin(self._rng)
-        await interaction.response.send_message(f"🪙 **{risultato.upper()}**!")
+        esiti = tira_monete(quante, self._rng)
+        if quante == 1:
+            await interaction.response.send_message(f"🪙 **{esiti[0].upper()}**!")
+            return
+
+        await interaction.response.defer()
+        moneta = await leveling_settings_repo.get_immagine_moneta(interaction.guild.id)
+        png = await run_image_task(striscia_monete, esiti, moneta)
+        teste = esiti.count("testa")
+        riga = await testo_per(interaction, "fun_monete_riepilogo", pubblica=True, teste=teste, croci=quante - teste)
+        await interaction.followup.send(
+            f"🪙 {riga}", file=discord.File(io.BytesIO(png), filename="monete.png")
+        )
 
     @comando_di_gruppo("fun", nome="dice", descrizione="Tira un dado.")
     @app_commands.describe(

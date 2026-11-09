@@ -2301,5 +2301,9 @@
   "gif_privacy_elenco": "Utenti bloccati ({numero}/{massimo}). Azioni da tutti: {stato}.\n{elenco}",
   "gif_stato_consentite": "consentite",
   "gif_stato_bloccate": "bloccate",
-  "gif_privacy_titolo": "Privacy delle GIF di azione"
+  "gif_privacy_titolo": "Privacy delle GIF di azione",
+  "fun_monete_riepilogo": "Teste: {teste} · Croci: {croci}",
+  "fun_classe_scegli_gioco": "Scegli un gioco dall'elenco nel campo `gioco`.",
+  "shiprate_ship_amicizia": "Amicizia",
+  "fun_minato_intro": "Campo minato: {mine} mine. Tocca uno spoiler alla volta, ma non quelli con la mina! 💥"
 }

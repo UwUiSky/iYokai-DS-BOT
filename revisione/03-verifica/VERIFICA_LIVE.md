@@ -1469,3 +1469,8 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - Spegni una fonte con `GIF_NEKOSBEST_ATTIVO=no`, riavvia: le GIF arrivano dalle altre. Spegni tutte: «Per ora non trovo una GIF». Controlla che nessuna GIF sia per adulti (solo categorie SFW).
 - Da fare dall'owner: leggere i termini di nekos.best (vieta l'uso commerciale; D70), inviare la richiesta a Giphy prima di accenderla.
 - [ ] Giveaway immagine durevole, bacheca e conteggio (r20util, revisione) — `/admin-giveaway avvia` con `immagine:` un PNG: l'annuncio esce nel canale con l'immagine; aspetta più di 24 ore (o cancella il messaggio originale dell'allegato): l'immagine dell'annuncio c'è ancora, anche dopo `/admin-giveaway modifica`. Con un file non sicuro risponde che non può conservarlo. `/admin-moduli starboard imposta blocca:True` su #uno, poi di nuovo su #due: #uno torna libero a tutti e #due è bloccato. `/admin-giochi conteggio canale azione:togli`: chiede conferma e solo «Togli il canale» cancella punteggi, traguardi e avvisi.
+
+## giro r21fun, B2 — giochi piccoli (#131)
+- `/fun coinflip quante:10`: una striscia di 10 monete (testa chiara, croce scura) e la riga «Teste: n · Croci: m»; `quante:1` resta solo testo.
+- `/giochi minato difficolta:Difficile (9x9)`: il messaggio arriva intero (81 celle in spoiler, una zona già aperta). **Prova il tetto di emoji per messaggio** su Discord (desktop e telefono); se i numeri non si vedono, ridurre la griglia.
+- `/fun ship tema:Amicizia`: titolo «Amicizia», frasi da amici. `/fun joke tema:Chuck`: battuta in italiano. `/fun casuale tipo:Classe di un gioco gioco:Overwatch` (scrivi «over» e scegli dal completamento): una classe; senza gioco, messaggio nascosto.

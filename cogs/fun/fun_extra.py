@@ -17,6 +17,7 @@ from discord.ext import commands
 
 from cogs.fun.entertainment import MODULE_FUN, EntertainmentCog
 from core import fun_extra_logic as logica
+from core import fun_piccoli_logic as piccoli
 from core import image_effects_logic as effetti
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
@@ -36,6 +37,11 @@ _EFFETTI = {
     "ricercato": ("ricercato.png", effetti.effetto_ricercato, True),
     "triggered": ("triggered.gif", effetti.effetto_triggered, False),
 }
+
+
+async def _completa_gioco(interaction: discord.Interaction, digitato: str) -> list[app_commands.Choice[str]]:
+    """Solo dati locali: il completamento ha 3 secondi e non vincola il valore."""
+    return [app_commands.Choice(name=n, value=v) for n, v in piccoli.suggerisci_giochi(digitato)]
 
 
 class FunExtraCog(CogConGruppi, commands.Cog):
@@ -113,8 +119,13 @@ class FunExtraCog(CogConGruppi, commands.Cog):
             return
         await self._scrivi(interaction, logica.trasforma_testo(stile.value, testo, separatore) or "​")
 
-    @comando_di_gruppo("fun", nome="casuale", descrizione="Preferiresti, argomento, consiglio, oggetto magico.")
-    @app_commands.describe(tipo="Cosa vuoi", ruolo="Solo per «Membro a caso»: pesca tra chi ha questo ruolo")
+    @comando_di_gruppo("fun", nome="casuale", descrizione="Preferiresti, argomento, consiglio, oggetto magico, classe.")
+    @app_commands.describe(
+        tipo="Cosa vuoi",
+        ruolo="Solo per «Membro a caso»: pesca tra chi ha questo ruolo",
+        gioco="Solo per «Classe di un gioco»: quale gioco",
+    )
+    @app_commands.autocomplete(gioco=_completa_gioco)
     @app_commands.choices(
         tipo=[
             app_commands.Choice(name="Preferiresti…?", value="preferiresti"),
@@ -122,12 +133,26 @@ class FunExtraCog(CogConGruppi, commands.Cog):
             app_commands.Choice(name="Consiglio", value="consiglio"),
             app_commands.Choice(name="Oggetto magico", value="oggetto-magico"),
             app_commands.Choice(name="Membro a caso", value="membro"),
+            app_commands.Choice(name="Classe di un gioco", value="classe"),
         ]
     )
     async def casuale(
-        self, interaction: discord.Interaction, tipo: app_commands.Choice[str], ruolo: discord.Role | None = None
+        self,
+        interaction: discord.Interaction,
+        tipo: app_commands.Choice[str],
+        ruolo: discord.Role | None = None,
+        gioco: app_commands.Range[str, 1, 100] | None = None,
     ) -> None:
         if not await self._modulo_attivo(interaction):
+            return
+        if tipo.value == "classe":
+            classe = piccoli.classe_a_caso(gioco or "", self._rng)
+            if classe is None:
+                await interaction.response.send_message(
+                    await testo_per(interaction, "fun_classe_scegli_gioco"), ephemeral=True
+                )
+                return
+            await self._scrivi(interaction, f"🎮 **{piccoli.GIOCHI_CLASSI[gioco]['nome']}**: {classe}")
             return
         if tipo.value == "membro":
             # Solo membri veri (niente bot). Il nome compare come menzione ma `allowed_mentions` vuoto: nessun ping.
