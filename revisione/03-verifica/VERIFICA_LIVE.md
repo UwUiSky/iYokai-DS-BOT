@@ -1500,3 +1500,8 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - `/giochi battitura durata:30`: sala con Ci sono / Esci / Avvia; un altro utente preme «Ci sono» (l'elenco si aggiorna, nessun ping), Avvia solo per chi ha dato il comando. Arriva l'immagine del testo (leggibile su telefono). Scrivi il testo giusto: reazione ✅; sbagliato: niente. Fine: classifica con le parole al minuto. **Serve l'intent «contenuto dei messaggi»** acceso per il bot.
 - `/admin-giochi battitura aggiungi`: finestra a 1 campo; un testo di 3 parole è rifiutato; `elenca` mostra l'ID; `rimuovi`. Il testo del server può uscire in una partita.
 - `/giochi acronimi giocatori:4 turni:2` con 3 persone: lettere e bottone «Scrivi la frase»; una frase senza le iniziali giuste è rifiutata (nascosto); poi embed numerato con menu: non puoi votare te stesso, un voto solo. Fine turno: autori svelati; fine partita: classifica. Un secondo comando nello stesso canale: «c'è già una partita».
+
+## giro r22fun, B8 — carte a frasi (#131)
+- `/giochi carte avvia punti:2` con 3 account: sala (Ci sono/Avvia), poi carta nera con «Le mie carte». Ogni clic apre un messaggio nascosto con 7 carte; sceglierne una; il giudice vede un avviso nascosto se clicca. Dopo 15 minuti dall'avvio, cliccare ancora «Le mie carte»: deve funzionare (nuovo messaggio).
+- Risposte numerate in un embed + bottoni; solo il giudice sceglie, gli altri avviso nascosto. `modo:Voto di tutti`: non si vota se stessi, un voto solo. Fine: classifica.
+- `/giochi carte avvia pacchetto:Adulti` in un canale normale: rifiutato. Dopo `/admin-giochi carte pacchetti adulti:sì` funziona solo in un canale con limite d'età. `/admin-giochi carte pacchetti base:no nerd:no gamer:no` è rifiutato (ne serve uno).

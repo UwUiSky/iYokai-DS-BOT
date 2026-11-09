@@ -71,3 +71,13 @@ class VistaLobby(BaseView):
         if not self.avviata and len(self.giocatori) >= self.minimo:
             self.avviata = True
         self.pronta.set()
+
+
+async def apri_lobby(interaction: discord.Interaction, minimo: int, massimo: int, chiave_intro: str, secondi: int, **kw) -> list[int] | None:
+    """Mostra la sala d'attesa (dopo un defer) e aspetta. Restituisce i giocatori, None se la partita non parte."""
+    etichette = tuple([await testo_per(interaction, k, pubblica=True) for k in ("gioco_lobby_entra", "gioco_lobby_esci", "gioco_lobby_avvia")])
+    intro = await testo_per(interaction, chiave_intro, pubblica=True, **kw)
+    vista = VistaLobby(interaction.user.id, minimo, massimo, intro, etichette, secondi)  # type: ignore[arg-type]
+    await interaction.followup.send(await vista.testo(interaction), view=vista, allowed_mentions=NESSUNA_MENZIONE)
+    await vista.pronta.wait()
+    return list(vista.giocatori) if vista.avviata else None

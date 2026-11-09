@@ -1225,7 +1225,11 @@
   "admin-giochi battitura": "Typing race: the server's texts.",
   "admin-giochi battitura aggiungi": "Add a typing text (window).",
   "admin-giochi battitura elenca": "The server's typing texts.",
-  "admin-giochi battitura rimuovi": "Remove a typing text."
+  "admin-giochi battitura rimuovi": "Remove a typing text.",
+  "giochi carte": "Cards: fill-in-the-blank with a judge or a vote.",
+  "giochi carte avvia": "Card game: complete the sentence with the funniest card.",
+  "admin-giochi carte": "Cards: packs turned on in the server.",
+  "admin-giochi carte pacchetti": "Which card packs are turned on in the server."
  },
  "parametri": {},
  "menu": {

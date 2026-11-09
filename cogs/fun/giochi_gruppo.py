@@ -19,7 +19,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from cogs.fun._lobby import VistaLobby
+from cogs.fun._lobby import apri_lobby
 from cogs.fun.entertainment import MODULE_FUN
 from cogs.leveling._pagine import invia_lista
 from core import fun_gare_logic as gare
@@ -126,12 +126,7 @@ class GiochiGruppoCog(CogConGruppi, commands.Cog):
 
     async def _lobby(self, interaction: discord.Interaction, canale, minimo: int, massimo: int, chiave_intro: str, **kw) -> list[int] | None:
         """Mostra la sala d'attesa. Restituisce i giocatori, None se non bastano."""
-        etichette = tuple([await testo_per(interaction, k, pubblica=True) for k in ("gioco_lobby_entra", "gioco_lobby_esci", "gioco_lobby_avvia")])
-        intro = await testo_per(interaction, chiave_intro, pubblica=True, **kw)
-        vista = VistaLobby(interaction.user.id, minimo, massimo, intro, etichette, SECONDI_LOBBY)  # type: ignore[arg-type]
-        await interaction.followup.send(await vista.testo(interaction), view=vista, allowed_mentions=NESSUNA_MENZIONE)
-        await vista.pronta.wait()
-        return list(vista.giocatori) if vista.avviata else None
+        return await apri_lobby(interaction, minimo, massimo, chiave_intro, SECONDI_LOBBY, **kw)
 
     async def _canale_libero(self, interaction: discord.Interaction):
         canale = interaction.channel
