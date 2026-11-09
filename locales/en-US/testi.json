@@ -2367,5 +2367,8 @@
   "tag_opzioni_salvate": "Options of tag `{nome}` saved.",
   "tag_risposte_titolo": "Tag replies",
   "tag_risposta_etichetta": "Reply",
-  "tag_risposte_salvate": "Replies saved: {quante}. Whoever uses the tag gets one at random, in proportion to its weight."
+  "tag_risposte_salvate": "Replies saved: {quante}. Whoever uses the tag gets one at random, in proportion to its weight.",
+  "tag_serve_gestire_messaggi": "This tag deletes messages: using it needs the \"Manage Messages\" permission in this channel.",
+  "tag_reazioni_non_valide": "Write at most 5 emoji, separated by spaces (Unicode, or custom ones).",
+  "tag_cancella_dopo_minimo": "The reply can vanish after {minimo} seconds at the earliest."
 }

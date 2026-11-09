@@ -136,3 +136,31 @@ def dividi_testo(testo: str, limite: int = 2000) -> list[str]:
         taglio = limite
     primo, resto = testo[:taglio].rstrip(), testo[taglio:].lstrip("\n ")
     return [primo, resto[:limite]]
+
+
+# ---------------------------------------------------------------- reazioni, cancellazioni (D69, B20)
+MIN_CANCELLA_DOPO = 5
+MAX_REAZIONI = 5
+AZIONE_CANCELLA_RISPOSTA = "tag_cancella_risposta"
+_EMOJI_PERSONALIZZATA = re.compile(r"^<a?:[A-Za-z0-9_]{2,32}:\d{15,25}>$")
+
+
+def leggi_reazioni(testo: str) -> list[str] | None:
+    """Fino a 5 emoji separate da spazi (di Unicode o personalizzate). None se una non è un'emoji."""
+    pezzi = testo.split()
+    if len(pezzi) > MAX_REAZIONI:
+        return None
+    for pezzo in pezzi:
+        e_unicode = len(pezzo) <= 16 and not pezzo.isascii() and not any(c.isalnum() for c in pezzo)
+        if not (e_unicode or _EMOJI_PERSONALIZZATA.match(pezzo)):
+            return None
+    return list(dict.fromkeys(pezzi))
+
+
+def e_nuovo_innesco(prima: str | None, dopo: str, prefisso: str | None) -> bool:
+    """Una modifica fa scattare il tag solo se prima non era già quel comando (una correzione non lo ripete)."""
+    nuovo = nome_da_messaggio(dopo, prefisso)
+    if nuovo is None:
+        return False
+    vecchio = nome_da_messaggio(prima or "", prefisso)
+    return vecchio is None or vecchio[0] != nuovo[0]

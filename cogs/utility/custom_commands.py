@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import discord
 from discord import app_commands
@@ -29,9 +29,11 @@ from core.custom_command_logic import (
     MAX_PAUSA,
     MAX_TAG,
     MAX_TESTO,
+    AZIONE_CANCELLA_RISPOSTA,
     azione_ruolo,
     costruisci_risposta,
     dividi_testo,
+    e_nuovo_innesco,
     ha_il_permesso,
     scegli_pesata,
     nome_da_messaggio,
@@ -44,6 +46,7 @@ from core.nome_logic import normalizza_nome
 from core.lista_limiti_logic import righe_entro_limite
 from core.premium import PremiumModule, registry
 from core.repositories.custom_command_repo import custom_command_repo
+from core.scheduler import in_seconds, scheduler
 from core.role_safety import check_role_assignable, motivo_ruolo_automatico_non_assegnabile
 
 logger = logging.getLogger("iyokai.custom_commands")
@@ -105,6 +108,8 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             return "tag_solo_nsfw"
         if tag.bersaglio and bersaglio is None:
             return "tag_serve_bersaglio"
+        if tag.cancella_messaggi and not (hasattr(canale, "permissions_for") and canale.permissions_for(membro).manage_messages):
+            return "tag_serve_gestire_messaggi"  # chi pulisce il canale deve poterlo fare da solo
         return None
 
     @staticmethod
@@ -120,14 +125,48 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
 
     @staticmethod
     async def _manda(invia, tag, testo: str):
-        """Manda il testo (diviso in due se supera 2.000 caratteri; embed fino a 4.096). Ritorna l'ultimo messaggio."""
+        """Manda il testo (diviso in due se supera 2.000 caratteri; embed fino a 4.096). Mette le reazioni e prenota la
+        cancellazione se il tag la chiede. Ritorna l'ultimo messaggio."""
         menzioni = menzioni_ammesse(tag.ping_ruoli)
         if tag.use_embed:
-            return await invia(embed=discord.Embed(description=testo[:4096]), allowed_mentions=menzioni)
-        ultimo = None
-        for pezzo in dividi_testo(testo):
-            ultimo = await invia(pezzo, allowed_mentions=menzioni)
-        return ultimo
+            inviati = [await invia(embed=discord.Embed(description=testo[:4096]), allowed_mentions=menzioni)]
+        else:
+            inviati = [await invia(pezzo, allowed_mentions=menzioni) for pezzo in dividi_testo(testo)]
+        for messaggio in inviati:
+            if messaggio is None:
+                continue
+            for emoji in tag.reazioni or ():
+                try:
+                    await messaggio.add_reaction(emoji)
+                except discord.HTTPException:
+                    break  # emoji non valida o permesso tolto: il tag ha risposto lo stesso
+            if tag.si_cancella_dopo:
+                try:
+                    await scheduler.schedule(
+                        tag.guild_id, 0, AZIONE_CANCELLA_RISPOSTA, in_seconds(tag.si_cancella_dopo),
+                        {"channel_id": messaggio.channel.id, "message_id": messaggio.id})
+                except Exception:
+                    logger.warning("Cancellazione del tag %s non prenotata.", tag.name, exc_info=True)
+        return inviati[-1] if inviati else None
+
+    async def handle_cancella_risposta(self, guild_id: int, user_id: int, payload: dict) -> None:
+        """Handler dello scheduler: cancella la risposta di un tag. Se è già sparita non c'è niente da fare."""
+        canale = self.bot.get_channel(payload.get("channel_id", 0))
+        if canale is None:
+            return
+        try:
+            await canale.get_partial_message(payload["message_id"]).delete()
+        except discord.NotFound:
+            return
+
+    async def _pulisci_canale(self, tag, canale, prima_di: int) -> None:
+        """Cancella gli ultimi N messaggi del canale (non fissati, più giovani di 14 giorni) prima del comando."""
+        limite = datetime.now(timezone.utc) - timedelta(days=14, minutes=-5)
+        try:
+            await canale.purge(limit=tag.cancella_messaggi, before=discord.Object(id=prima_di), bulk=True,
+                               check=lambda m: not m.pinned and m.created_at > limite, reason=f"Tag {tag.name}")
+        except discord.HTTPException:
+            logger.warning("Tag %s: pulizia del canale %s non riuscita.", tag.name, getattr(canale, "id", None))
 
     async def _applica_ruolo(self, tag, membro: discord.Member) -> str | None:
         if tag.role_id is None or tag.role_action == "nessuna":
@@ -157,7 +196,19 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         return residuo
 
     @commands.Cog.listener()
-    async def on_message(self, message: discord.Message) -> None:
+    async def on_message_edit(self, prima: discord.Message, dopo: discord.Message) -> None:
+        """Un messaggio modificato in un comando fa scattare il tag solo se il tag lo ha chiesto (anche_modificati)."""
+        if dopo.author.bot or dopo.guild is None or not dopo.content or prima.content == dopo.content:
+            return
+        if datetime.now(timezone.utc) - dopo.created_at > timedelta(minutes=10):
+            return
+        prefisso = await self._prefisso(dopo.guild.id)
+        if not e_nuovo_innesco(prima.content, dopo.content, prefisso):
+            return
+        await self.on_message(dopo, dalla_modifica=True)
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message, dalla_modifica: bool = False) -> None:
         if message.author.bot or message.guild is None or not message.content:
             return
         if not await db.is_module_active_for_guild(message.guild.id, MODULE_CUSTOM_COMMANDS):
@@ -168,7 +219,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             return
         nome, argomenti = trovato
         tag = await custom_command_repo.get_tag(message.guild.id, nome)
-        if tag is None:
+        if tag is None or (dalla_modifica and not tag.anche_modificati):
             return
         if self._rifiuto(tag, message.author, message.channel, message.mentions[0] if message.mentions else None) is not None:
             return  # col prefisso si tace: niente messaggi di servizio nel canale
@@ -177,6 +228,8 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         bersaglio = message.mentions[0] if message.mentions else None
         testo, nota = await self._prepara(tag, message.author, message.channel, argomenti[:MAX_ARGOMENTI], bersaglio)
         dest, fuori = self._destinazione(tag, message.author, message.channel)
+        if tag.cancella_messaggi:
+            await self._pulisci_canale(tag, message.channel, message.id)
         try:
             await self._manda(dest.send, tag, testo)
         except discord.HTTPException:
@@ -249,6 +302,8 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         # concessi per rispondere: si prenota la risposta prima.
         dest, fuori = self._destinazione(tag, interaction.user, interaction.channel)
         await interaction.response.defer(ephemeral=fuori)
+        if tag.cancella_messaggi:
+            await self._pulisci_canale(tag, interaction.channel, interaction.id)
         testo, nota = await self._prepara(tag, interaction.user, interaction.channel, argomenti, bersaglio)
         try:
             await self._manda(dest.send if fuori else interaction.followup.send, tag, testo)
@@ -444,4 +499,6 @@ async def setup(bot: commands.Bot) -> None:
             premium_capable=False,
         )
     )
-    await bot.add_cog(CustomCommandsCog(bot))
+    cog = CustomCommandsCog(bot)
+    await bot.add_cog(cog)
+    scheduler.register_handler(AZIONE_CANCELLA_RISPOSTA, cog.handle_cancella_risposta)

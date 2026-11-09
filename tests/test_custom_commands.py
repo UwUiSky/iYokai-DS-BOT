@@ -445,3 +445,60 @@ async def test_tag_con_permesso_mancante_non_risponde_col_prefisso(scena):
     await scena.on_message(msg)
     canale.send.assert_awaited_once()
     msg.delete.assert_awaited_once()
+
+
+def test_reazioni_e_nuovo_innesco():
+    from core.custom_command_logic import e_nuovo_innesco, leggi_reazioni
+    assert leggi_reazioni("👍 🎉") == ["👍", "🎉"] and leggi_reazioni("") == [] and leggi_reazioni("👍 👍") == ["👍"]
+    assert leggi_reazioni("ciao") is None and leggi_reazioni("1 2 3 4 5 6") is None and leggi_reazioni("👍 x") is None
+    assert leggi_reazioni("<:ok:123456789012345678>") == ["<:ok:123456789012345678>"] and leggi_reazioni("<:ok:1>") is None
+    assert e_nuovo_innesco("ciao", "!regole", "!") and not e_nuovo_innesco("!regole", "!regole ora", "!")
+    assert e_nuovo_innesco("!regole", "!altro", "!") and not e_nuovo_innesco("ciao", "ciao a tutti", "!") and not e_nuovo_innesco(None, "x", None)
+
+
+@pytest.mark.asyncio
+async def test_risposta_con_reazioni_e_cancellazione_prenotata(scena, monkeypatch):
+    scena.repo.get_tag.return_value = _tag(reazioni=["👍"], si_cancella_dopo=30)
+    prenota = AsyncMock()
+    monkeypatch.setattr(modulo.scheduler, "schedule", prenota)
+    server = fake_guild()
+    canale = fake_text_channel()
+    inviato = MagicMock()
+    inviato.add_reaction = AsyncMock()
+    inviato.channel.id, inviato.id = 5, 99
+    canale.send = AsyncMock(return_value=inviato)
+    autore = fake_member(5)
+    autore.guild = server
+    await scena.on_message(fake_message(1, author=autore, channel=canale, guild=server, content="!regole"))
+    inviato.add_reaction.assert_awaited_once_with("👍")
+    assert prenota.await_args.args[2] == modulo.AZIONE_CANCELLA_RISPOSTA and prenota.await_args.args[4] == {"channel_id": 5, "message_id": 99}
+
+
+@pytest.mark.asyncio
+async def test_pulizia_solo_con_il_permesso_e_modifica_solo_se_richiesta(scena):
+    server = fake_guild()
+    canale = fake_text_channel()
+    canale.send = AsyncMock()
+    canale.purge = AsyncMock()
+    autore = fake_member(5)
+    autore.guild = server
+    canale.permissions_for = MagicMock(return_value=discord.Permissions.none())
+    scena.repo.get_tag.return_value = _tag(cancella_messaggi=5)
+    await scena.on_message(fake_message(1, author=autore, channel=canale, guild=server, content="!regole"))
+    canale.purge.assert_not_awaited()
+    canale.send.assert_not_awaited()  # senza «Gestire i messaggi» il tag non parte
+    canale.permissions_for = MagicMock(return_value=discord.Permissions(manage_messages=True))
+    await scena.on_message(fake_message(2, author=autore, channel=canale, guild=server, content="!regole"))
+    canale.purge.assert_awaited_once()
+    assert canale.purge.await_args.kwargs["limit"] == 5 and canale.purge.await_args.kwargs["before"].id == 2
+    # modifica: il tag senza anche_modificati non scatta
+    scena.repo.get_tag.return_value = _tag()
+    canale.send.reset_mock()
+    prima = fake_message(3, author=autore, channel=canale, guild=server, content="ciao")
+    dopo = fake_message(3, author=autore, channel=canale, guild=server, content="!regole")
+    dopo.created_at = datetime.now(timezone.utc)
+    await scena.on_message_edit(prima, dopo)
+    canale.send.assert_not_awaited()
+    scena.repo.get_tag.return_value = _tag(anche_modificati=True)
+    await scena.on_message_edit(prima, dopo)
+    canale.send.assert_awaited_once()

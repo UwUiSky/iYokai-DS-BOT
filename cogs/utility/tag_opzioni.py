@@ -15,7 +15,9 @@ from discord.ext import commands
 from core.channel_access import PERMESSI_DI_SCRITTURA, permessi_mancanti
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
-from core.custom_command_logic import INVII, MAX_NOME, MAX_RISPOSTE_TAG, MAX_TESTO, PERMESSI_TAG, leggi_risposta
+from core.custom_command_logic import (
+    INVII, MAX_NOME, MAX_RISPOSTE_TAG, MAX_TESTO, MIN_CANCELLA_DOPO, PERMESSI_TAG, leggi_reazioni, leggi_risposta,
+)
 from core.database import db
 from core.i18n import testo_per
 from core.nome_logic import normalizza_nome
@@ -87,6 +89,10 @@ class TagOpzioniCog(CogConGruppi, commands.Cog):
         nome="Il tag da cambiare", permesso="Il permesso Discord che serve per usarlo",
         bersaglio="Il tag chiede un membro (segnaposto {bersaglio})", cancella_innesco="Col prefisso, cancella il messaggio che lo ha chiamato",
         invio="Dove va la risposta", canale="Il canale, se la risposta va in un altro canale", solo_nsfw="Si usa solo nei canali per adulti",
+        reazioni="Fino a 5 emoji che il bot mette alla risposta (vuoto: nessuna)",
+        si_cancella_dopo="La risposta sparisce dopo tanti secondi (da 5 a 3600; 0: resta)",
+        cancella_messaggi="Prima di rispondere cancella gli ultimi N messaggi (0: nessuno; non oltre 14 giorni)",
+        anche_modificati="Scatta anche se il messaggio viene modificato in un comando",
     )
     @app_commands.choices(permesso=_SCELTE_PERMESSO, invio=_SCELTE_INVIO)
     @app_commands.autocomplete(nome=_completa)
@@ -94,6 +100,9 @@ class TagOpzioniCog(CogConGruppi, commands.Cog):
         self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, MAX_NOME], permesso: str | None = None,
         bersaglio: bool | None = None, cancella_innesco: bool | None = None, invio: str | None = None,
         canale: discord.TextChannel | None = None, solo_nsfw: bool | None = None,
+        reazioni: app_commands.Range[str, 0, 200] | None = None,
+        si_cancella_dopo: app_commands.Range[int, 0, 3600] | None = None,
+        cancella_messaggi: app_commands.Range[int, 0, 100] | None = None, anche_modificati: bool | None = None,
     ) -> None:
         if not await self._pronto(interaction):
             return
@@ -105,7 +114,22 @@ class TagOpzioniCog(CogConGruppi, commands.Cog):
         campi: dict = {}
         if permesso is not None:
             campi["permesso"] = None if permesso == "nessuno" else permesso
-        for chiave, valore in (("bersaglio", bersaglio), ("cancella_innesco", cancella_innesco), ("solo_nsfw", solo_nsfw)):
+        if reazioni is not None:
+            lette = leggi_reazioni(reazioni)
+            if lette is None:
+                await interaction.response.send_message(await testo_per(interaction, "tag_reazioni_non_valide"), ephemeral=True)
+                return
+            campi["reazioni"] = lette
+        if si_cancella_dopo is not None:
+            if 0 < si_cancella_dopo < MIN_CANCELLA_DOPO:
+                await interaction.response.send_message(
+                    await testo_per(interaction, "tag_cancella_dopo_minimo", minimo=MIN_CANCELLA_DOPO), ephemeral=True)
+                return
+            campi["si_cancella_dopo"] = si_cancella_dopo or None
+        if cancella_messaggi is not None:
+            campi["cancella_messaggi"] = cancella_messaggi or None
+        for chiave, valore in (("bersaglio", bersaglio), ("cancella_innesco", cancella_innesco), ("solo_nsfw", solo_nsfw),
+                               ("anche_modificati", anche_modificati)):
             if valore is not None:
                 campi[chiave] = valore
         if invio is not None:

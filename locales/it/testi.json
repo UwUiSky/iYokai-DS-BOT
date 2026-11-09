@@ -2367,5 +2367,8 @@
   "tag_opzioni_salvate": "Opzioni del tag `{nome}` salvate.",
   "tag_risposte_titolo": "Risposte del tag",
   "tag_risposta_etichetta": "Risposta",
-  "tag_risposte_salvate": "Risposte salvate: {quante}. Chi usa il tag ne riceve una a caso, in proporzione al peso."
+  "tag_risposte_salvate": "Risposte salvate: {quante}. Chi usa il tag ne riceve una a caso, in proporzione al peso.",
+  "tag_serve_gestire_messaggi": "Questo tag cancella messaggi: per usarlo serve il permesso «Gestire i messaggi» in questo canale.",
+  "tag_reazioni_non_valide": "Scrivi al massimo 5 emoji, separate da spazi (di Unicode, o personalizzate di questo server).",
+  "tag_cancella_dopo_minimo": "La risposta può sparire dopo almeno {minimo} secondi."
 }
