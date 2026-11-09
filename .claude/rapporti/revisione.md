@@ -533,3 +533,6 @@ APPROVATO dopo i fix. Main unito (e97e2d0). Fix: 306f4a4 ruolo creatori tag nell
 - Smash: età solo numero unico >=18; esclusi descrizione/nome/generi/tag con lista minori (nsfw_filter_logic) + parole in più; canale ricontrollato al voto. Test per ogni caso.
 - Basse aperte: cache turni Splatoon con soli salmon non riusata; ruolo cancellato che era l'ultimo «consenti» riapre il suono a tutti.
 - Smoke da fare: giochi_smash, immagini_comunita, immagini_fusione, gif_cerca, suoni_ruoli, web_turni, 0576-0577, tree_invariants, data_registry, i18n.
+
+## r24fun (telefono, #131) · 09/11/2026
+Fix fatti da me: minori mai inoltrati (anche con effetto), allegati solo verso canali con limite d'età e ricontrollo all'invio, vecchio bottone Accetta non collega un altro server, segnala con permesso, cooldown chiama 30s, consenso spento chiude la chiamata, nome «disdiscordcord». Basse aperte: domini nudi (example.com) non tolti da togli_link; ILLEGGIBILE (testo non latino) non bloccato; chiamata continua se un server esce dal bot fino al silenzio di 10 minuti; test_data_registry fallisce solo per tabelle di altri rami nel DB condiviso.
