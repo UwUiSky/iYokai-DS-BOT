@@ -2782,5 +2782,13 @@
   "telefono_registro_vuoto": "No calls recorded (they are kept for 14 days).",
   "telefono_rifiutata": "📵 The other server did not answer.",
   "telefono_collegati": "📞 You are connected. What you write here goes to the other server. To end: /fun telefono riaggancia.",
-  "telefono_finita": "📴 Call ended."
+  "telefono_finita": "📴 Call ended.",
+  "premi_dm": "🏅 In the server **{server}** you received: {ruoli}.",
+  "premi_livello_pieno": "This level already has {massimo} roles. Remove one with `/admin-ruoli premio togli`.",
+  "premi_piu_ruoli_livello_abbonamento": "More than one role for the same level is a {livello} feature. The first role of every level stays free.",
+  "annuncio_prova_pausa": "Wait {secondi} more seconds before another test.",
+  "annuncio_prova_spento": "The announcement is off or has no channel: choose where to announce first.",
+  "annuncio_prova_permessi": "I cannot write in {canale}: I need \"View Channel\" and \"Send Messages\".",
+  "annuncio_prova_prefisso": "🧪 Test: ",
+  "annuncio_prova_inviata": "✅ Test sent to {dove}."
 }

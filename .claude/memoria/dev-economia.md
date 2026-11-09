@@ -5,10 +5,12 @@
 09/11/2026 · giro r24fun (migrazioni 0579-0580 usate). 09/11/2026 · giro r21gif, ramo `feat/r21gif`, migrazione 0570 (usata). Lavoro PER FILE.
 
 ## In corso
+- r2liv B2 (#124) fatto (0582). Prossimo: B3 guadagno XP (006, 007, 017, 018, 021, 004; 0583) secondo `/home/claude/wt/disegno_livelli.md`, comando nuovo `/admin-livelli guadagno`. `test_add_voice_minute_rollover_giornaliero` fallisce a cavallo del cambio di data (non mio).
 - r23fun (B10-B11 di #131) finito, ramo `feat/r23fun`, worktree `/home/claude/wt/r23fun`, env `/tmp/env_w23fun.sh`. Migrazioni usate: 0576, 0577 (le 0572-0575 erano di r22fun). Prossimo: niente; resta tetto Premium battitura (con dev-core), Klipy e Splatoon 2.
 - Smoke da fare (lo lancia l'orchestratore).
 
 ## Fatto
+- r2liv B2: `sincronizza_premi`/`sincronizza_server` e `on_member_join` in `leveling.py`, `rendi_annuncio` in `leveling_logic`, `_prova_annuncio`, `level_reward_repo.add_reward` (tetto 3, blocco per server), 0582 (`leveling_copie_attivita`, `avvisa_dm`, `levelup_testo`); B1: copia+azzeramento in un solo CTE con `FOR UPDATE`.
 - r24fun B12: telefono (`cogs/fun/telefono.py`, `core/telefono_logic.py`, `telefono_repo`, 0579-0580, `fun_telefono` spento di base, `/fun telefono`, `/admin-giochi telefono`). Pesi: fun 2604 (14 figli), admin-giochi 2718, giochi 2691: nessun problema. Resta fuori: `/owner telefono` (basta blacklist del bot e `blocca server_id`).
 - r23fun B11: `suoni_ruoli` (soundboard.py, `suoni_ruoli_repo`, 0577), `/web turni` (`turni_logic`, `turni_giochi.py`), `/giochi smash` (`smash_logic`, `smash_repo`), `/immagini fusione` (`fusione_logic`, `safe_http.safe_richiesta_byte`). Peso `giochi` 6719 (avviso 6800): un altro figlio va in un sotto-gruppo.
 - r23fun B10: `core/lemmy_logic.py`, `immagini_segnalazioni_repo` (0576), `cogs/fun/immagini_comunita.py` (`/immagini post`, `/admin-giochi servizi`), `/gif cerca` in `gif.py`; interruttori `fun_immagini_post`/`fun_gif_cerca` (scheda «fun»), spenti di base. Klipy non fatto (docs illeggibili).
@@ -32,6 +34,7 @@
 - r4-r7 (vecchi): F1 unito `9db9e8a`, NF-12/NF-40 card, #65 tick vocale, NF-25/32. r7 A: #144 blocco vocale salvato nel DB (0200, `segna_bloccato`/`togli_blocco`); #127 VOC-007 invita, 008 stato, 011/012 nome da modello e numeri, 015 nascono bloccati, 018 registro (`/gestione voice opzioni`, 0201).
 
 ## Cose imparate
+- Il bot dei test (`fake_member(bot=True)`) non ha `manage_roles`: nei test dei ruoli-premio va dato `guild_permissions=Permissions(manage_roles=True)`. Un nuovo ascoltatore di eventi membri va in `core/intent_usage.py` e `docs/INTENT_PRIVILEGIATI.md` si rigenera con `genera_documento()`.
 - Azzeramenti: copia + UPDATE nella stessa transazione, `pg_advisory_xact_lock` per server (due azzeramenti insieme = una copia sola); mai copie vuote. Ripristino: `ON CONFLICT ... WHERE EXCLUDED.xp_total > t.xp_total` (non toglie mai XP, si può ripetere). `get_config(guild, fresco=True)` salta la cache di 60 s per i controlli di blocco. `on_member_remove` scatta anche col ban: «uscita» aspetta 3 s e guarda la cache dei bannati.
 - Nei test dei bottoni dopo `defer()` il finto ha `is_done()` False: impostarlo a mano se il codice poi usa il followup.
 - Prima di creare un file in `core/` o una classe cog: `ls`/grep del nome (esistono `core/schede_logic.py` e `SchedeCog` in utility). `test_riferimenti_comandi` legge i f-string con `/parola`: costruire gli URL con `"/".join`. Tetto con `COUNT` + INSERT: prima `pg_advisory_xact_lock` in transazione, poi l'INSERT (snapshot nuovo).

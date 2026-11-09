@@ -1566,3 +1566,11 @@ Serve: due server di prova A e B con il bot, un canale di testo ciascuno (il bot
 - Cancella a mano il webhook durante la chiamata e scrivi: la chiamata si chiude, senza ripetere. Lascia 10 minuti di silenzio: chiamata chiusa.
 - Riavvia il bot durante una chiamata: al riavvio i webhook rimasti vengono tolti. `/admin-giochi telefono registro`: solo server, ora, durata, nessun testo.
 - Revisione r24fun: un testo su minori (es. «teen di 13 anni») non arriva, nemmeno con un effetto. Un allegato arriva come indirizzo solo se il canale di B ha il limite d'età (altrimenti il messaggio cade). Togli il limite d'età a B durante la chiamata: i messaggi di A con allegati o da canale per adulti non passano più. `/admin-giochi telefono consenso attivo:no` su uno dei due chiude la chiamata. Chi non ha «Gestisci messaggi» né ha chiamato non può usare `segnala`.
+
+## giro r2liv, B2 — premi dei livelli (#124)
+
+- [ ] `LIV-042` — `/admin-ruoli premio aggiungi` due o tre volte con lo stesso livello: tutti i ruoli restano; il quarto è rifiutato. Salendo a quel livello i ruoli arrivano con una sola modifica.
+- [ ] `LIV-047` — premio con `avvisa_dm:sì`: al level-up arriva un DM con i nomi dei ruoli. Con i DM chiusi nessun errore.
+- [ ] `LIV-043` — togli a mano un ruolo-premio a un membro e fai `/level rank` su di lui: il ruolo torna. Dopo `/admin-livelli azzera server` i ruoli-premio spariscono a lotti; dopo `azzera ripristina` tornano. Metti il ruolo del bot sotto un ruolo-premio: nessun errore, una riga sola nel registro.
+- [ ] `LIV-034/038` — `/admin-livelli annuncio testo:"{utente} è al {livello}!{premio: Ruolo: {ruolo_premio}}" prova:sì`: arriva l'annuncio di prova, nessun ruolo viene notificato; subito dopo una seconda prova è rifiutata (5 minuti). Senza permesso di scrittura del bot nel canale: messaggio chiaro.
+- [ ] B1 — dopo `azzera ripristina` anche la classifica del mese e della settimana ritrova gli XP.

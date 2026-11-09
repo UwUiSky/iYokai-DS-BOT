@@ -2782,5 +2782,13 @@
   "telefono_registro_vuoto": "Nessuna chiamata registrata (si tengono 14 giorni).",
   "telefono_rifiutata": "📵 L'altro server non ha risposto.",
   "telefono_collegati": "📞 Siete collegati. Quello che scrivi qui va all'altro server. Per chiudere: /fun telefono riaggancia.",
-  "telefono_finita": "📴 Chiamata finita."
+  "telefono_finita": "📴 Chiamata finita.",
+  "premi_dm": "🏅 Nel server **{server}** hai ricevuto: {ruoli}.",
+  "premi_livello_pieno": "Questo livello ha già {massimo} ruoli. Togline uno con `/admin-ruoli premio togli`.",
+  "premi_piu_ruoli_livello_abbonamento": "Più ruoli per lo stesso livello sono una funzione del livello {livello}. Il primo ruolo di ogni livello resta libero.",
+  "annuncio_prova_pausa": "Aspetta ancora {secondi} secondi prima di una nuova prova.",
+  "annuncio_prova_spento": "L'annuncio è spento o senza canale: scegli prima dove annunciare.",
+  "annuncio_prova_permessi": "Non posso scrivere in {canale}: mi servono «Vedere il canale» e «Inviare messaggi».",
+  "annuncio_prova_prefisso": "🧪 Prova: ",
+  "annuncio_prova_inviata": "✅ Prova mandata in {dove}."
 }

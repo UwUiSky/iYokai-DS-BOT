@@ -87,7 +87,7 @@ def scena(monkeypatch):
 
     ruoli = {50: fake_role(role_id=50, name="vecchio", position=1),
              100: fake_role(role_id=100, name="nuovo", position=1)}
-    bot = fake_member(user_id=999, bot=True, roles=[fake_role(role_id=1, name="bot", position=50)])
+    bot = fake_member(user_id=999, guild_permissions=discord.Permissions(manage_roles=True), bot=True, roles=[fake_role(role_id=1, name="bot", position=50)])
     guild = create_autospec(discord.Guild, instance=True)
     guild.id = GUILD
     guild.me = bot

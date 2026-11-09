@@ -383,6 +383,8 @@ LIMITI_IMPOSTAZIONI = {
     "pay_min": (0, 1_000_000),  # ECO-015: minimo per trasferimento, 0 = nessuno
 }
 MAX_NOME_MONETA = 20  # ECO-001
+MAX_RUOLI_PER_LIVELLO = 3  # LIV-042
+MAX_TESTO_ANNUNCIO = 1800  # LIV-034: lascia posto ai valori sostituiti (messaggio ≤ 2000)
 FATTORE_MINIMO = 0.1
 FATTORE_MASSIMO = 10.0
 MAX_REGOLE_PER_TIPO = 25  # 25 scelte per opzione (LIMITI.md)
@@ -420,6 +422,7 @@ class LevelingSettings:
     copia_su_uscita: bool = False  # LIV-070: tiene una copia di 30 giorni di quegli XP
     blocca_xp: bool = False  # LIV-071: gli XP a mano li cambia solo il proprietario del server
     blocca_azzeramento: bool = False  # LIV-071: azzerare e ripristinare solo il proprietario
+    levelup_testo: str = ""  # LIV-034: testo dell'annuncio con segnaposto; vuoto = quello di base
 
 
 @dataclass(frozen=True)
@@ -502,6 +505,21 @@ def deve_annunciare(
     if impostazioni.levelup_only_rewards and not ha_ruolo_premio:
         return False
     return True
+
+
+_BLOCCO_PREMIO = re.compile(r"\{premio:((?:[^{}]|\{ruolo_premio\})*)\}")
+_SEGNAPOSTO = re.compile(r"\{(utente|livello|server|ruolo_premio)\}")
+
+
+def rendi_annuncio(testo: str, *, utente: str, livello: int, server: str, ruoli_premio: list[str]) -> str:
+    """
+    LIV-034: il testo dell'annuncio con i segnaposto {utente} {livello} {server} {ruolo_premio}.
+    Il blocco {premio:...} compare solo se il livello dà un ruolo. Una sola passata: un valore
+    che contiene un segnaposto (il nome del server) non viene sostituito di nuovo.
+    """
+    valori = {"utente": utente, "livello": str(livello), "server": server, "ruolo_premio": ", ".join(ruoli_premio)}
+    senza_blocchi = _BLOCCO_PREMIO.sub(lambda m: m.group(1) if ruoli_premio else "", testo)
+    return _SEGNAPOSTO.sub(lambda m: valori[m.group(1)], senza_blocchi)[:2000]
 
 
 def id_canali_per_le_regole(canale) -> list[int]:

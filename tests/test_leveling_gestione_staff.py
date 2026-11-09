@@ -131,7 +131,7 @@ def scena_ruoli(monkeypatch):
 
     ruoli = {r: fake_role(role_id=r, name=f"r{r}", position=1) for r in (50, 100)}
     bot_member = fake_member(
-        user_id=999, bot=True, roles=[fake_role(role_id=1, name="bot", position=50)]
+        user_id=999, guild_permissions=discord.Permissions(manage_roles=True), bot=True, roles=[fake_role(role_id=1, name="bot", position=50)]
     )
     guild = fake_guild(GUILD)
     guild.me = bot_member

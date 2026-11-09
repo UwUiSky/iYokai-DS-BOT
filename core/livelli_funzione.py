@@ -32,6 +32,8 @@ FUNZIONI: dict[str, tuple[str, tuple[str, ...]]] = {
     "ai_testo": ("Testo AI", ("assistente riassumi", "assistente spiega", "assistente traduci", "assistente stile")),
     "ai_personaggi": ("Personaggi AI", ("assistente crea-personaggio", "assistente personaggio", "assistente mistero")),
     "ai_voce": ("Voce AI", ("assistente parla",)),
+    # D71: il primo ruolo di un livello è libero; dal secondo il comando controlla il livello da dentro.
+    "livelli_piu_ruoli": ("Più ruoli per livello", ()),
 }
 
 _livelli: dict[str, str] = {}

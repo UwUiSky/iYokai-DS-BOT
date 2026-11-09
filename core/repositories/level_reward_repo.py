@@ -1,7 +1,8 @@
 """
 core/repositories/level_reward_repo.py
 ==========================================
-Ruoli-premio per livello raggiunto (SPEC.md §15.13). Cumulativo, non
+Ruoli-premio per livello raggiunto (SPEC.md §15.13, LIV-042, LIV-047). Fino a tre
+ruoli per livello, con avviso in DM facoltativo. Cumulativo, non
 esclusivo: un utente che sale di livello riceve OGNI ruolo-premio
 configurato fino al suo nuovo livello che non ha già — non solo
 quello più alto. Coerente con l'aspettativa comune di questo tipo di
@@ -16,6 +17,8 @@ from datetime import datetime
 
 import asyncpg
 
+from core.leveling_logic import MAX_RUOLI_PER_LIVELLO
+
 
 @dataclass(frozen=True)
 class LevelReward:
@@ -24,6 +27,7 @@ class LevelReward:
     level_threshold: int
     role_id: int
     created_at: datetime
+    avvisa_dm: bool = False
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -59,29 +63,42 @@ class LevelRewardRepository:
             level_threshold=row["level_threshold"],
             role_id=row["role_id"],
             created_at=row["created_at"],
+            avvisa_dm=row["avvisa_dm"],
         )
 
-    async def add_reward(self, guild_id: int, level_threshold: int, role_id: int) -> int:
+    async def add_reward(
+        self, guild_id: int, level_threshold: int, role_id: int, avvisa_dm: bool = False
+    ) -> int | None:
         """
-        Un solo ruolo-premio per livello per server (UNIQUE
-        guild_id+level_threshold) — se il livello era già
-        configurato, sostituisce il ruolo invece di crearne un
-        secondo, per evitare configurazioni ambigue ("livello 10 dà
-        sia il ruolo X che il ruolo Y" non ha un senso univoco).
+        Aggiunge un ruolo al livello (LIV-042: al massimo tre per livello). Se il ruolo c'è già
+        a quel livello ne cambia solo l'avviso in DM. None = il livello ha già tre ruoli.
+        Il conteggio e l'inserimento stanno nella stessa transazione, con un blocco per server:
+        due comandi insieme non superano il tetto.
         """
-        row = await self._pool.fetchrow(
-            """
-            INSERT INTO level_reward_roles (guild_id, level_threshold, role_id)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (guild_id, level_threshold) DO UPDATE
-                SET role_id = EXCLUDED.role_id
-            RETURNING id
-            """,
-            guild_id,
-            level_threshold,
-            role_id,
-        )
-        return row["id"]
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    "SELECT pg_advisory_xact_lock(hashtext('level_reward_roles'), hashtext($1::text))",
+                    str(guild_id),
+                )
+                riga = await conn.fetchrow(
+                    "UPDATE level_reward_roles SET avvisa_dm = $4 "
+                    "WHERE guild_id = $1 AND level_threshold = $2 AND role_id = $3 RETURNING id",
+                    guild_id, level_threshold, role_id, avvisa_dm,
+                )
+                if riga is not None:
+                    return riga["id"]
+                presenti = await conn.fetchval(
+                    "SELECT count(*) FROM level_reward_roles WHERE guild_id = $1 AND level_threshold = $2",
+                    guild_id, level_threshold,
+                )
+                if presenti >= MAX_RUOLI_PER_LIVELLO:
+                    return None
+                return await conn.fetchval(
+                    "INSERT INTO level_reward_roles (guild_id, level_threshold, role_id, avvisa_dm) "
+                    "VALUES ($1, $2, $3, $4) RETURNING id",
+                    guild_id, level_threshold, role_id, avvisa_dm,
+                )
 
     async def remove_reward(self, reward_id: int, guild_id: int) -> bool:
         result = await self._pool.execute(
@@ -93,7 +110,7 @@ class LevelRewardRepository:
 
     async def list_rewards(self, guild_id: int) -> list[LevelReward]:
         rows = await self._pool.fetch(
-            "SELECT * FROM level_reward_roles WHERE guild_id = $1 ORDER BY level_threshold",
+            "SELECT * FROM level_reward_roles WHERE guild_id = $1 ORDER BY level_threshold, id",
             guild_id,
         )
         return [self._row_to_reward(r) for r in rows]
@@ -105,7 +122,7 @@ class LevelRewardRepository:
             """
             SELECT * FROM level_reward_roles
             WHERE guild_id = $1 AND level_threshold <= $2
-            ORDER BY level_threshold
+            ORDER BY level_threshold, id
             """,
             guild_id,
             level,
