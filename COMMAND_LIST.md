@@ -201,6 +201,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 - **`/admin-giochi conteggio importa`** — Porta in un canale i punteggi di un file CSV o JSON.
 - **`/admin-giochi conteggio regole`** — Punizione dopo uno sbaglio e ruolo di chi ha contato per ultimo.
 - **`/admin-giochi conteggio traguardo`** — Ruolo o messaggio quando il conteggio tocca un numero.
+- **`/admin-giochi punteggi azzera`** — Azzera i punteggi di una gara (con conferma).
 
 ## Admin: giveaway
 
@@ -606,9 +607,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 
 - **`/giochi conteggio avvisami`** — Ti avviso nel canale quando il conteggio arriva a un numero.
 - **`/giochi conteggio classifica`** — Chi ha contato più numeri giusti.
+- **`/giochi dado`** — Un tiro al giorno da 1 a 100 e la classifica del server.
 - **`/giochi gioca`** — Gioca le tue coin: monetina, dadi o slot.
+- **`/giochi mazzo`** — Un mazzo di 52 carte per il server: pesca, rimescola, controlla.
 - **`/giochi minato`** — Campo minato con gli spoiler: facile, medio, difficile.
 - **`/giochi rps`** — Carta, forbici, sasso contro il bot.
+- **`/giochi spinner`** — Fai girare lo spinner: vince chi lo fa girare più a lungo.
 
 ## Immagini
 

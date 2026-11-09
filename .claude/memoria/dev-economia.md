@@ -4,10 +4,11 @@
 09/11/2026 · giro r21gif, ramo `feat/r21gif`, migrazione 0570 (usata). Lavoro PER FILE.
 
 ## In corso
-- r21fun (B2-B5 di #131, D70), ramo `feat/r21fun`, worktree `/home/claude/wt/r21fun`, env `scratchpad/env_r21fun_dev.sh`. Previsione: 4 commit. B2 fatto; poi B3 (0571), B4, B5. `fun citazioni caso` (030) NON c'è su main: saltata.
+- r21fun (B2-B5 di #131, D70), ramo `feat/r21fun`, worktree `/home/claude/wt/r21fun`, env `scratchpad/env_r21fun_dev.sh`. Previsione: 4 commit. B2, B3 fatti; poi B4, B5. `fun citazioni caso` (030) NON c'è su main: saltata.
 - Smoke da fare (lo lancia l'orchestratore).
 
 ## Fatto
+- r21fun B3: 0571 `fun_punteggi`/`fun_mazzi`, `fun_gare_repo`, `fun_gare_logic`, `/giochi dado|spinner|mazzo`, `/admin-giochi punteggi azzera`.
 - r21fun B2: `core/fun_piccoli_logic.py`, `cogs/fun/giochi_extra.py` (`/giochi minato`), coinflip `quante`, ship `tema`, joke `chuck`, casuale `classe`.
 - r21gif: `core/gif_catalogo.py`, `core/gif_fonti.py`, `core/gif_logic.py`, `cogs/fun/gif.py`, `data/gif_catalogo.json`, 0570 (`gif_privacy`, `gif_blocchi`); `/gif reazione|azione|privacy`.
 - r11: D38 `core/moneta_server.py`, `guild_coin_images` (0410), miniatura `moneta.png` in saldo/cassa/giochi/clan info; D30 `MUSIC_TOKEN_6..20`, `MusicFleet.total_workers`, test radio solo owner.
@@ -20,6 +21,7 @@
 - r4: A+B `1ecd983` (0090); giveaway `203a3af` (0091); NF-40 `0319d95` (0092/0093); shop+classifiche (0094/0095). F1 unito `9db9e8a`.
 
 ## Cose imparate
+- Cooldown + record in una sola INSERT: nel `DO UPDATE` serve `WHERE aggiornato <= now()-intervallo`, altrimenti due clic insieme passano. `testo_per` nelle risposte pubbliche (anche etichette bottone) vuole `pubblica=True`. `locales/en-US/comandi.json`: descrizioni sotto `"descrizioni"`.
 - Migrazioni: mai modificare una già applicata; una nuova per ogni aggiunta.
 - Soldi: una UPDATE condizionata; pagamento + effetto in una transazione con `FOR UPDATE`; scorte prima dei coin.
 - Giochi con le monete: `leveling_repo.gioca` (una UPDATE), mai nella classifica del mese.

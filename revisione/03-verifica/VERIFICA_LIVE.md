@@ -1474,3 +1474,9 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - `/fun coinflip quante:10`: una striscia di 10 monete (testa chiara, croce scura) e la riga «Teste: n · Croci: m»; `quante:1` resta solo testo.
 - `/giochi minato difficolta:Difficile (9x9)`: il messaggio arriva intero (81 celle in spoiler, una zona già aperta). **Prova il tetto di emoji per messaggio** su Discord (desktop e telefono); se i numeri non si vedono, ridurre la griglia.
 - `/fun ship tema:Amicizia`: titolo «Amicizia», frasi da amici. `/fun joke tema:Chuck`: battuta in italiano. `/fun casuale tipo:Classe di un gioco gioco:Overwatch` (scrivi «over» e scegli dal completamento): una classe; senza gioco, messaggio nascosto.
+
+## giro r21fun, B3 — gare con classifica (#131)
+- `/giochi dado`: messaggio con il tuo numero (1-100) e la classifica di oggi; un secondo `/giochi dado` dice che hai già tirato. `vista:Ieri` e `vista:Sempre` cambiano il titolo. Nessun ping oltre al tuo.
+- `/giochi spinner` e clic su «Gira» (solo chi ha dato il comando; un altro riceve un avviso nascosto): il messaggio si aggiorna ogni 3 secondi per 1-60 secondi, poi mostra la classifica della settimana. Un secondo giro entro un'ora: «Hai già girato da poco».
+- `/giochi mazzo` (pesca 3), `azione:Carte restanti` (49), `azione:Rimescola` (52). Dopo 52 carte pescate: «Il mazzo è finito».
+- `/admin-giochi punteggi azzera gara:Dado`: messaggio nascosto con Conferma/Annulla; Conferma cancella, Annulla no; un non-admin non lo vede.

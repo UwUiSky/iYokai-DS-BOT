@@ -1204,7 +1204,12 @@
   "admin-giochi conteggio traguardo": "Role or message when the count hits a number.",
   "admin-giochi conteggio importa": "Bring scores from a CSV or JSON file into a channel.",
   "giochi conteggio avvisami": "Get pinged in the channel when the count reaches a number.",
-  "giochi minato": "Minesweeper: open the spoilers and avoid the mines."
+  "giochi minato": "Minesweeper: open the spoilers and avoid the mines.",
+  "giochi dado": "One roll a day from 1 to 100 and the server board.",
+  "giochi spinner": "Spin the spinner: the longest spin wins.",
+  "giochi mazzo": "A 52-card deck for the server: draw, shuffle, check.",
+  "admin-giochi punteggi": "Scores of the games: reset them.",
+  "admin-giochi punteggi azzera": "Reset the scores of a game (with confirmation)."
  },
  "parametri": {},
  "menu": {
