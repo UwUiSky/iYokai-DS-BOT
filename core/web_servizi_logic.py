@@ -86,6 +86,8 @@ async def trova_luogo(repo, citta: str) -> tuple[float, float, str] | None:
         url = f"https://nominatim.openstreetmap.org/search?q={quote(chiave)}&format=jsonv2&limit=1"
         testo = await asyncio.wait_for(safe_get(url, max_bytes=100_000), TIMEOUT_SECONDI)
         _ultima_nominatim = time.monotonic()
+    if testo is None:
+        raise TimeoutError("Nominatim non risponde")  # servizio giù: non è «città non trovata»
     luogo = leggi_luogo(testo)
     if luogo:
         await repo.salva_luogo(chiave, *luogo)

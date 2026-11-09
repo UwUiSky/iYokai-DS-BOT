@@ -194,3 +194,13 @@ async def test_prezzo_manda_lo_stesso_user_agent(monkeypatch):
     monkeypatch.setattr(W.aiohttp, "ClientSession", SessioneFinta)
     assert await W.prezzo_di("chiave", "btc", "eur") is None
     assert visto["User-Agent"] == USER_AGENT
+
+
+@pytest.mark.asyncio
+async def test_geocodifica_giu_non_vuol_dire_citta_inesistente(monkeypatch):
+    repo = MagicMock(luogo=AsyncMock(return_value=None), salva_luogo=AsyncMock())
+    monkeypatch.setattr(W, "safe_get", AsyncMock(return_value=None))
+    assert await W.meteo_di(repo, "milano") is None  # «non risponde», non «luogo»
+    monkeypatch.setattr(W, "safe_get", AsyncMock(return_value="[]"))
+    assert await W.meteo_di(repo, "xyzzy") == "luogo"
+    repo.salva_luogo.assert_not_awaited()
