@@ -5,7 +5,7 @@ Il telefono tra server (#131, B12): regole di una chiamata, pulizia dei messaggi
 all'altro e il centralino in memoria (chi squilla, chi parla, durata massima e silenzio). Niente Discord qui:
 il cog legge gli eventi e chiama queste funzioni.
 Funzioni coperte: SPEC §16 (FUN-079, FUN-080)
-Dipende da: core/fun_extra_logic.py (stili di testo)
+Dipende da: core/fun_extra_logic.py (stili di testo), core/nsfw_filter_logic.py (lista dei minori)
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from core.fun_extra_logic import trasforma_testo
+from core.nsfw_filter_logic import motivo_vietato
 
 DURATA_MAX_SECONDI = 3600
 SILENZIO_MAX_SECONDI = 600
@@ -44,6 +45,7 @@ FINE_DURATA = "durata"
 FINE_SILENZIO = "silenzio"
 FINE_ERRORE = "errore"
 FINE_RIAVVIO = "riavvio"
+FINE_SPENTO = "spento"
 
 _CAPOVOLTO = dict(zip(
     "abcdefghijklmnopqrstuvwxyz",
@@ -54,7 +56,10 @@ _CAPOVOLTO.update({"?": "¿", "!": "¡", ".": "˙", ",": "'", "'": ",", "(": ")"
 
 def pulisci_nome(nome: str, ripiego: str = "Utente") -> str:
     """Nome per il webhook: senza «discord» né «clyde» (Discord li rifiuta), da 1 a 80 caratteri."""
-    pulito = _SPAZI.sub(" ", _NOMI_VIETATI.sub("", nome or "")).strip()
+    pulito = nome or ""
+    while _NOMI_VIETATI.search(pulito):  # «disdiscordcord» dopo un giro diventa «discord»
+        pulito = _NOMI_VIETATI.sub("", pulito)
+    pulito = _SPAZI.sub(" ", pulito).strip()
     return (pulito or ripiego)[:MAX_NOME].strip() or ripiego
 
 
@@ -99,6 +104,11 @@ def prepara_testo(testo: str, allegati: list[str], effetto: str = "nessuno", rng
     return completo[:MAX_TESTO]
 
 
+def testo_su_minori(*testi: str) -> bool:
+    """True se un testo parla di minori (lista fissa di core/nsfw_filter_logic.py): non passa mai, in nessun canale."""
+    return motivo_vietato(*testi) == "minori"
+
+
 def adulti_bloccato(origine_per_adulti: bool, destinazione_per_adulti: bool) -> bool:
     """Un canale con limite d'età non passa mai a un canale senza limite."""
     return origine_per_adulti and not destinazione_per_adulti
@@ -121,7 +131,7 @@ class PausaUtenti:
         return True
 
 
-Invio = Callable[[str, str, str], Awaitable[None]]  # testo, nome, indirizzo avatar
+Invio = Callable[[str, str, str, bool], Awaitable[None]]  # testo, nome, indirizzo avatar, solo per canali con limite d'età
 
 
 @dataclass
@@ -192,16 +202,22 @@ class Centralino:
             self._squilli[chiamante] = squillo
             return squillo
 
-    async def annulla_squillo(self, chiamante: int) -> Squillo | None:
+    async def annulla_squillo(self, chiamante: int, chiamato: int | None = None) -> Squillo | None:
+        """Con `chiamato`, annulla solo lo squillo verso quel server (un vecchio bottone non tocca uno squillo nuovo)."""
         async with self._lock:
-            return self._squilli.pop(chiamante, None)
-
-    async def risposto(self, chiamante: int) -> Chiamata | None:
-        """Chi è chiamato ha accettato: lo squillo diventa chiamata (non ancora «pronta»). None se non c'è più."""
-        async with self._lock:
-            squillo = self._squilli.pop(chiamante, None)
-            if squillo is None:
+            squillo = self._squilli.get(chiamante)
+            if squillo is None or (chiamato is not None and squillo.chiamato != chiamato):
                 return None
+            return self._squilli.pop(chiamante)
+
+    async def risposto(self, chiamante: int, chiamato: int) -> Chiamata | None:
+        """Il server `chiamato` ha accettato: lo squillo diventa chiamata (non ancora «pronta»).
+        None se lo squillo non c'è più o ora è verso un altro server."""
+        async with self._lock:
+            squillo = self._squilli.get(chiamante)
+            if squillo is None or squillo.chiamato != chiamato:
+                return None
+            del self._squilli[chiamante]
             adesso = self._ora()
             chiamata = Chiamata(
                 a=squillo.chiamante, b=squillo.chiamato, canali=squillo.canali,

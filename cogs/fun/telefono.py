@@ -60,14 +60,14 @@ class SquilloView(BaseView):
             return
         self.stop()
         await interaction.response.edit_message(view=None)
-        await self.cog.connetti(self.chiamante)
+        await self.cog.connetti(self.chiamante, self.chiamato)
 
     async def _rifiuta(self, interaction: discord.Interaction) -> None:
         if not await self._puo(interaction):
             return
         self.stop()
         await interaction.response.edit_message(view=None)
-        await self.cog.rifiuta(self.chiamante)
+        await self.cog.rifiuta(self.chiamante, self.chiamato)
 
     async def on_timeout(self) -> None:
         if self.messaggio is not None:
@@ -75,7 +75,7 @@ class SquilloView(BaseView):
                 await self.messaggio.edit(view=None)
             except discord.HTTPException:
                 pass
-        await self.cog.rifiuta(self.chiamante)
+        await self.cog.rifiuta(self.chiamante, self.chiamato)
 
 
 class TelefonoCog(CogConGruppi, commands.Cog):
@@ -137,6 +137,7 @@ class TelefonoCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo("fun", nome="chiama", descrizione="Chiama un altro server a caso (spento di base).", sottogruppo=("telefono", "Telefono tra server: chiama, riaggancia, segnala"))
     @app_commands.describe(effetto="Come cambiare i tuoi messaggi mentre parli")
     @app_commands.choices(effetto=SCELTE_EFFETTO)
+    @app_commands.checks.cooldown(1, 30, key=lambda i: i.guild_id)
     async def chiama(self, interaction: discord.Interaction, effetto: app_commands.Choice[str] | None = None) -> None:
         guild = interaction.guild
         if guild is None:
@@ -214,6 +215,10 @@ class TelefonoCog(CogConGruppi, commands.Cog):
         if chiamata is None:
             await interaction.response.send_message(await testo_per(interaction, "telefono_nessuna_chiamata"), ephemeral=True)
             return
+        permessi = interaction.user.guild_permissions
+        if interaction.user.id != chiamata.chi_chiama and not (permessi.manage_messages or permessi.manage_guild):
+            await interaction.response.send_message(await testo_per(interaction, "telefono_serve_gestione"), ephemeral=True)
+            return
         chiamata.segnalata = True
         await telefono_repo.blocca(gid, TIPO_SERVER, chiamata.altro(gid))
         await interaction.response.send_message(await testo_per(interaction, "telefono_segnalata"), ephemeral=True)
@@ -243,6 +248,9 @@ class TelefonoCog(CogConGruppi, commands.Cog):
             return
         await imposta_impostazione(interaction.guild, SCHEDA_FUN, SETTING_TELEFONO, "1" if attivo else "0", interaction.user.id)
         await interaction.response.send_message(await testo_per(interaction, "telefono_consenso_si" if attivo else "telefono_consenso_no"), ephemeral=True)
+        if not attivo:
+            await tl.centralino.annulla_squillo(interaction.guild.id)
+            await self.chiudi(interaction.guild.id, tl.FINE_SPENTO)
 
     @comando_di_gruppo("admin-giochi", nome="blocca", descrizione="Blocca o sblocca una persona o un altro server dal telefono.", sottogruppo=("telefono", "Telefono tra server: canale, consenso, blocchi, registro"))
     @app_commands.describe(utente="La persona da bloccare", server_id="L'ID dell'altro server da bloccare", sblocca="Sì: toglie il blocco")
@@ -288,8 +296,8 @@ class TelefonoCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(testo[:1900], ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
     # --- chiamata: collegare, inoltrare, chiudere ---
-    async def rifiuta(self, chiamante: int) -> None:
-        squillo = await tl.centralino.annulla_squillo(chiamante)
+    async def rifiuta(self, chiamante: int, chiamato: int) -> None:
+        squillo = await tl.centralino.annulla_squillo(chiamante, chiamato)
         if squillo is None:
             return
         canale = self._canale(chiamante, squillo.canali[chiamante])
@@ -299,8 +307,8 @@ class TelefonoCog(CogConGruppi, commands.Cog):
             except discord.HTTPException:
                 pass
 
-    async def connetti(self, chiamante: int) -> None:
-        chiamata = await tl.centralino.risposto(chiamante)
+    async def connetti(self, chiamante: int, chiamato: int) -> None:
+        chiamata = await tl.centralino.risposto(chiamante, chiamato)
         if chiamata is None:
             return
         try:
@@ -331,7 +339,10 @@ class TelefonoCog(CogConGruppi, commands.Cog):
         """Manda i messaggi in coda con il ritmo del webhook. Su 10015 o 403 la chiamata si chiude, senza riprovare."""
         altro = chiamata.altro(gid)
         while True:
-            testo, nome, avatar = await coda.get()
+            testo, nome, avatar, solo_adulti = await coda.get()
+            destinazione = self._canale(gid, chiamata.canali[gid])
+            if destinazione is None or tl.adulti_bloccato(solo_adulti, destinazione.is_nsfw()):
+                continue  # il canale è cambiato mentre il messaggio aspettava
             try:
                 await webhook.send(testo, username=nome, avatar_url=avatar, allowed_mentions=NESSUNA_MENZIONE)
             except (discord.NotFound, discord.Forbidden):
@@ -374,6 +385,9 @@ class TelefonoCog(CogConGruppi, commands.Cog):
     async def controllo(self) -> None:
         for chiamata, motivo in tl.centralino.scadute():
             await self.chiudi(chiamata.a, motivo)
+        for chiamata in tl.centralino.chiamate():  # il consenso può essere tolto anche da /config o dal pannello
+            if not (await acceso(chiamata.a, SETTING_TELEFONO) and await acceso(chiamata.b, SETTING_TELEFONO)):
+                await self.chiudi(chiamata.a, tl.FINE_SPENTO)
 
     @controllo.before_loop
     async def _prima(self) -> None:
@@ -401,14 +415,19 @@ class TelefonoCog(CogConGruppi, commands.Cog):
             return
         if await blacklist_repo.is_user_blacklisted(message.author.id) or await telefono_repo.bloccato(gid, TIPO_UTENTE, message.author.id):
             return
-        testo = tl.prepara_testo(message.content, [a.url for a in message.attachments], chiamata.effetti.get(gid, "nessuno"))
-        if testo is None or await trova_nel_testo(altro, testo) is not None:
+        effetto = chiamata.effetti.get(gid, "nessuno")
+        nome = tl.nome_mittente(message.author.display_name, message.guild.name)
+        # Gli allegati passano solo verso canali con limite d'età: un'immagine per adulti non si riconosce da qui.
+        indirizzi = [a.url for a in message.attachments] if destinazione.is_nsfw() else []
+        base = tl.prepara_testo(message.content, indirizzi, "nessuno")  # i filtri guardano il testo prima dell'effetto
+        if base is None or tl.testo_su_minori(nome, base) or await trova_nel_testo(altro, f"{nome}\n{base}") is not None:
             return
+        testo = tl.prepara_testo(message.content, indirizzi, effetto)
         if not self._pausa.passa(message.author.id):
             return
         tl.centralino.tocca(chiamata)
         try:
-            coda.put_nowait((testo, tl.nome_mittente(message.author.display_name, message.guild.name), message.author.display_avatar.url))
+            coda.put_nowait((testo, nome, message.author.display_avatar.url, message.channel.is_nsfw() or bool(indirizzi)))
         except asyncio.QueueFull:
             pass
 

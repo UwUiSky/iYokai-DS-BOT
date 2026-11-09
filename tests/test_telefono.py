@@ -59,8 +59,8 @@ async def test_centralino_squillo_risposta_e_scadenze():
     assert await c.suona(1, [2, 3], canali, "nessuno", 5) is None  # già in squillo
     altro = ({2, 3} - {s.chiamato}).pop()
     assert await c.suona(altro, [s.chiamato], canali, "nessuno", 6) is None  # il chiamato è occupato
-    ch = await c.risposto(1)
-    assert ch.effetti[1] == "owo" and c.chiamata_di(s.chiamato) is ch and await c.risposto(1) is None
+    ch = await c.risposto(1, s.chiamato)
+    assert ch.effetti[1] == "owo" and c.chiamata_di(s.chiamato) is ch and await c.risposto(1, s.chiamato) is None
     t[0] = tl.SILENZIO_MAX_SECONDI - 1
     assert c.scadute() == []
     c.tocca(ch)
@@ -78,7 +78,7 @@ async def test_centralino_rifiuto_e_riavvio_chiudono_pulito():
     await c.suona(1, [2], canali, "nessuno", 1)
     assert (await c.annulla_squillo(1)).chiamato == 2 and not c.occupato(2)
     await c.suona(1, [2], canali, "nessuno", 1)
-    await c.risposto(1)
+    await c.risposto(1, 2)
     await c.suona(3, [4], canali, "nessuno", 1)
     chiamate, squilli = await c.svuota()
     assert len(chiamate) == 1 and len(squilli) == 1 and not c.occupato(1) and not c.occupato(3)
@@ -141,16 +141,21 @@ def _cog(monkeypatch, parola_vietata=None, blacklist=False):
 async def test_inoltro_testo_pulito_nome_pulito(monkeypatch):
     cog, ch, msg, dest = _cog(monkeypatch)
     await cog._inoltra(msg, ch)
-    testo, nome, avatar = ch.code[2].get_nowait()
+    testo, nome, avatar, _ = ch.code[2].get_nowait()
     assert "x.it" not in testo and "discord" not in nome.lower() and len(nome) <= 80 and avatar.startswith("https://")
 
 
-@pytest.mark.parametrize("caso", ["adulti", "automod", "blacklist", "bloccato", "pausa"])
+@pytest.mark.parametrize("caso", ["adulti", "automod", "blacklist", "bloccato", "pausa", "minori", "minori_con_effetto"])
 async def test_inoltro_scartato(monkeypatch, caso):
     from cogs.fun import telefono as tel
     cog, ch, msg, dest = _cog(monkeypatch, parola_vietata="x" if caso == "automod" else None, blacklist=caso == "blacklist")
     if caso == "adulti":
         msg.channel.is_nsfw.return_value = True
+    if caso == "minori":
+        msg.content = "cerco una teen di 13 anni"
+    if caso == "minori_con_effetto":  # l'effetto non deve nascondere il testo al filtro
+        msg.content = "13 year old"
+        ch.effetti[1] = "mescolato"
     if caso == "bloccato":
         monkeypatch.setattr(tel.telefono_repo, "bloccato", AsyncMock(return_value=True))
     if caso == "pausa":
@@ -176,7 +181,54 @@ async def test_webhook_cancellato_chiude_la_chiamata_senza_riprovare(monkeypatch
     wh = MagicMock()
     wh.send = AsyncMock(side_effect=discord.NotFound(MagicMock(status=404), "x"))
     coda = asyncio.Queue()
-    await coda.put(("a", "n", "https://x"))
+    await coda.put(("a", "n", "https://x", False))
     await asyncio.wait_for(cog._lavora(ch, 2, wh, coda), 2)
     await asyncio.sleep(0)
     assert wh.send.await_count == 1 and chiusure == [(2, tl.FINE_ERRORE)]
+
+
+async def test_nsfw_cambia_mentre_il_messaggio_aspetta_non_passa(monkeypatch):
+    cog, ch, msg, dest = _cog(monkeypatch)
+    wh = MagicMock()
+    wh.send = AsyncMock()
+    coda = asyncio.Queue()
+    await coda.put(("x", "n", "https://x", True))  # veniva da un canale per adulti
+    cog._canale = lambda g, c: dest  # il destinatario ora è senza limite d'età
+    task = asyncio.create_task(cog._lavora(ch, 2, wh, coda))
+    await asyncio.sleep(0.05)
+    task.cancel()
+    assert wh.send.await_count == 0
+
+
+async def test_allegati_solo_verso_canali_con_limite_d_eta(monkeypatch):
+    cog, ch, msg, dest = _cog(monkeypatch)
+    allegato = MagicMock()
+    allegato.url = "https://cdn.discordapp.com/attachments/1/2/a.png"
+    msg.attachments, msg.content = [allegato], "ciao"
+    await cog._inoltra(msg, ch)
+    assert "cdn.discordapp" not in ch.code[2].get_nowait()[0]
+    dest.is_nsfw.return_value = True
+    cog._pausa = tl.PausaUtenti()
+    await cog._inoltra(msg, ch)
+    testo, _, _, solo_adulti = ch.code[2].get_nowait()
+    assert "cdn.discordapp" in testo and solo_adulti
+
+
+def test_nome_non_torna_discord_dopo_la_pulizia():
+    assert "discord" not in tl.pulisci_nome("disdiscordcord").lower()
+    assert "clyde" not in tl.nome_mittente("cclydelyde", "Server").lower()
+
+
+def test_testo_su_minori():
+    assert tl.testo_su_minori("cerco una teen di 13 anni")
+    assert not tl.testo_su_minori("ciao a tutti, che bella giornata")
+
+
+async def test_vecchio_squillo_non_collega_un_altro_server():
+    c = tl.Centralino(rng=random.Random(1))
+    await c.suona(1, [2], {1: 10, 2: 20, 3: 30}, "nessuno", 5)
+    await c.annulla_squillo(1)
+    await c.suona(1, [3], {1: 10, 2: 20, 3: 30}, "nessuno", 5)
+    assert await c.risposto(1, 2) is None  # il bottone vecchio del server 2
+    assert await c.annulla_squillo(1, 2) is None
+    assert (await c.risposto(1, 3)).b == 3

@@ -90,7 +90,6 @@ USI: dict[str, tuple[UsoIntent, ...]] = {
         UsoIntent("Custom commands", "cogs/utility/custom_commands.py", "Run commands defined by the server"),
         UsoIntent("Sticky messages", "cogs/utility/sticky_messages.py", "Keep a message at the bottom of a channel"),
         UsoIntent("Backup mirror", "cogs/utility/backup_mirror.py", "Copy messages to the backup server"),
-        UsoIntent("Group games (typing race, trivia)", "cogs/fun/giochi_gruppo.py", "Read the answers written in the channel of a running game"),
         UsoIntent("Server phone", "cogs/fun/telefono.py", "During a call the staff accepted, pass the text written in the phone channel to the other server; the text is never stored"),
         UsoIntent("Coin games", "cogs/fun/coin_games.py", "Count messages for coin rewards"),
         UsoIntent("Music request channel", "cogs/music/request_channel.py", "Read song requests written in a channel"),
