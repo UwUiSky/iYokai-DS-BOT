@@ -116,6 +116,7 @@ SETTINGS_SCHEMA = {
     "music_known_sites_only": "bool",
     "fun_immagini_post": "bool",
     "fun_gif_cerca": "bool",
+    "fun_telefono": "bool",
     # Politica dei comandi (core/command_policy.py)
     "policy_comandi_off": "lista_comandi",
     "policy_canali_ok": "lista_id",
