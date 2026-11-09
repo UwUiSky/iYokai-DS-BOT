@@ -1088,3 +1088,12 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
 - Banca nuova: i saldi già esistenti restano contanti.
 - Oggetti donati al fondo premi (120): convertiti in credito e tolti dall'inventario.
 - Se `/admin-economia` supera 6.800: prima il sotto-gruppo `negozio`, poi la radice `/admin-eventi`.
+
+## D73 — Musica (#126): fonti e albero (10/11/2026; Spotify chiesto dall'owner, il resto opzione consigliata, da confermare)
+
+- Spotify, Apple Music, Tidal e Deezer: solo metadati (LavaSrc); l'audio si cerca su un'altra fonte (ISRC, poi titolo). Mai la masterDecryptionKey né il cookie arl di Deezer.
+- YouTube solo tramite il plugin di Lavalink; SoundCloud, Bandcamp, Twitch, Vimeo, link diretti: diretti. Yandex: codice pronto, spento di base (richiede un account personale).
+- Mixcloud: non fattibile ora (nessun plugin verificato); si riprova quando ne esce uno.
+- Chiavi solo nell'.env di Lavalink; il bot sa solo se ci sono. App Spotify e account Apple Developer li crea l'owner.
+- `/music` resta ≤18 figli: la coda va nel sotto-gruppo `/music coda`.
+- Premium: nessuna funzione musicale per ora; spostabile dal pannello.
