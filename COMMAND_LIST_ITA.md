@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:15 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:16 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 780 comandi in 47 categorie.**
+**Totale: 787 comandi in 47 categorie.**
 
 ## Admin: AI
 
@@ -201,6 +201,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 - **`/admin-giochi conteggio importa`** — Porta in un canale i punteggi di un file CSV o JSON.
 - **`/admin-giochi conteggio regole`** — Punizione dopo uno sbaglio e ruolo di chi ha contato per ultimo.
 - **`/admin-giochi conteggio traguardo`** — Ruolo o messaggio quando il conteggio tocca un numero.
+- **`/admin-giochi punteggi azzera`** — Azzera i punteggi di una gara (con conferma).
 
 ## Admin: giveaway
 
@@ -596,7 +597,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 ## Divertimento
 
 - **`/fun 8ball`** — Fai una domanda alla palla magica 8.
-- **`/fun casuale`** — Preferiresti, argomento, consiglio, oggetto magico.
+- **`/fun casuale`** — Preferiresti, argomento, consiglio, oggetto magico, classe.
 - **`/fun citazioni aggiungi`** — Salva una citazione del server.
 - **`/fun citazioni caso`** — Mostra una citazione a caso del server.
 - **`/fun citazioni cerca`** — Cerca una parola tra le citazioni del server.
@@ -624,19 +625,25 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 
 - **`/giochi conteggio avvisami`** — Ti avviso nel canale quando il conteggio arriva a un numero.
 - **`/giochi conteggio classifica`** — Chi ha contato più numeri giusti.
+- **`/giochi dado`** — Un tiro al giorno da 1 a 100 e la classifica del server.
 - **`/giochi gioca`** — Gioca le tue coin: monetina, dadi o slot.
+- **`/giochi mazzo`** — Un mazzo di 52 carte per il server: pesca, rimescola, controlla.
+- **`/giochi minato`** — Campo minato: tocca gli spoiler ed evita le mine.
 - **`/giochi rps`** — Carta, forbici, sasso contro il bot.
+- **`/giochi spinner`** — Fai girare lo spinner: vince chi lo fa girare più a lungo.
 
 ## Immagini
 
-- **`/immagini animal`** — Mostra un'immagine casuale di un animale.
+- **`/immagini animal`** — Mostra immagini casuali di animali (fino a 5).
 - **`/immagini blur`** — Applica una sfocatura a un'immagine.
-- **`/immagini effetto`** — Effetto sull'avatar: arcobaleno, R.I.P., ricercato, triggered.
+- **`/immagini effetto`** — Effetto sull'avatar: arcobaleno, R.I.P., ricercato, pingato, sepia, neon...
+- **`/immagini foto`** — Una foto bella da vedere: cibo o buonumore.
 - **`/immagini grayscale`** — Trasforma un'immagine in scala di grigi.
 - **`/immagini invert`** — Inverte i colori di un'immagine.
 - **`/immagini meme`** — Genera un meme con testo sopra/sotto.
 - **`/immagini pixelate`** — Pixela un'immagine.
 - **`/immagini search-image`** — Cerca un'immagine SFW su Pixabay.
+- **`/immagini xkcd`** — Una vignetta di xkcd: l'ultima o quella col numero che scegli.
 
 ## Livelli
 

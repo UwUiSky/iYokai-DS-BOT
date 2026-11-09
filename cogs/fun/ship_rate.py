@@ -36,12 +36,21 @@ class ShipRateCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo("fun", nome="ship", descrizione="Calcola la compatibilità tra due utenti.")
-    @app_commands.describe(user1="Il primo utente", user2="Il secondo utente")
+    @app_commands.describe(
+        user1="Il primo utente", user2="Il secondo utente", tema="Amore (di base) o amicizia"
+    )
+    @app_commands.choices(
+        tema=[
+            app_commands.Choice(name="Amore", value="amore"),
+            app_commands.Choice(name="Amicizia", value="amicizia"),
+        ]
+    )
     async def ship(
         self,
         interaction: discord.Interaction,
         user1: discord.Member,
         user2: discord.Member,
+        tema: app_commands.Choice[str] | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -57,13 +66,16 @@ class ShipRateCog(CogConGruppi, commands.Cog):
             )
             return
 
-        percentuale = compute_ship_percentage(user1.id, user2.id)
+        valore = tema.value if tema is not None else "amore"
+        percentuale = compute_ship_percentage(user1.id, user2.id, valore)
         embed = discord.Embed(
-            title=await testo_per(interaction, "shiprate_ship", pubblica=True),
+            title=await testo_per(
+                interaction, "shiprate_ship" if valore == "amore" else "shiprate_ship_amicizia", pubblica=True
+            ),
             description=(
                 f"**{user1.display_name}** + **{user2.display_name}**\n\n"
                 f"{_barra_percentuale(percentuale)} **{percentuale}%**\n\n"
-                f"{ship_flavor_text(percentuale)}"
+                f"{ship_flavor_text(percentuale, valore)}"
             ),
             color=discord.Color.pink(),
         )

@@ -13,7 +13,9 @@ senza dipendenze esterne o chiavi API.
 
 from __future__ import annotations
 
+import json
 import random
+from pathlib import Path
 
 JOKES = (
     "Perché i programmatori confondono Halloween e Natale? Perché OCT 31 == DEC 25.",
@@ -64,6 +66,10 @@ JOKES_TEMATICHE = {
     ),
     "informatica": JOKES,
 }
+
+# Barzellette su Chuck Norris: elenco nostro in italiano (nessun servizio esterno), in data/barzellette_chuck.json.
+with open(Path(__file__).resolve().parent.parent / "data" / "barzellette_chuck.json", encoding="utf-8") as _file:
+    JOKES_TEMATICHE["chuck"] = tuple(json.load(_file))
 
 FACTS_ANIMALI = {
     "gatti": (

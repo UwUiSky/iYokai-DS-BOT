@@ -17,19 +17,29 @@ import unicodedata
 from datetime import date
 
 
-def compute_ship_percentage(user_id_a: int, user_id_b: int) -> int:
+def compute_ship_percentage(user_id_a: int, user_id_b: int, tema: str = "amore") -> int:
     """
     0-100, simmetrico: ship(a, b) == ship(b, a), perché l'ordine in
     cui i due utenti vengono menzionati nel comando non deve cambiare
     il risultato — ordiniamo gli ID prima di calcolare l'hash.
     """
     a, b = sorted((user_id_a, user_id_b))
-    chiave = f"{a}-{b}".encode("utf-8")
+    chiave = f"{a}-{b}".encode("utf-8") if tema == "amore" else f"{tema}:{a}-{b}".encode("utf-8")
     hash_bytes = hashlib.sha256(chiave).digest()
     return hash_bytes[0] % 101
 
 
-def ship_flavor_text(percentage: int) -> str:
+def ship_flavor_text(percentage: int, tema: str = "amore") -> str:
+    if tema == "amicizia":
+        if percentage >= 90:
+            return "Amici per la vita. 🤝"
+        if percentage >= 70:
+            return "Una bella amicizia! 😄"
+        if percentage >= 40:
+            return "Andate d'accordo, di solito. 🙂"
+        if percentage >= 15:
+            return "Conoscenti simpatici. 👋"
+        return "Meglio non stare nella stessa squadra. 😅"
     if percentage >= 90:
         return "Anime gemelle. 💍"
     if percentage >= 70:
