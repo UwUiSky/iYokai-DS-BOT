@@ -44,6 +44,7 @@ from core.custom_command_logic import (
 from core.database import db
 from core import tag_script_logic as tag_script
 from core.i18n import testo_guild, testo_per
+from core.repositories.tag_inneschi_repo import tag_inneschi_repo
 from core.repositories.tag_script_repo import massimo_chiavi, tag_script_repo
 from core.tag_script_logic import ha_script
 from core.nome_logic import normalizza_nome
@@ -89,9 +90,10 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         _cache_prefissi.set(guild_id, (prefisso, ora + _TTL_PREFISSO))
         return prefisso
 
-    async def _prepara(self, tag, membro: discord.Member, canale, argomenti: str, bersaglio: discord.abc.User | None = None):
-        """(testo, nota sul ruolo): applica il ruolo del tag e costruisce la risposta (una a caso se ce ne sono con peso)."""
-        nota = await self._applica_ruolo(tag, membro)
+    async def _prepara(self, tag, membro: discord.Member, canale, argomenti: str, bersaglio: discord.abc.User | None = None,
+                       ruolo: bool = True):
+        """(testo, nota sul ruolo): applica il ruolo del tag (se `ruolo`) e costruisce la risposta (una a caso se ce ne sono con peso)."""
+        nota = await self._applica_ruolo(tag, membro) if ruolo else None
         base = scegli_pesata(await custom_command_repo.get_risposte(tag.guild_id, tag.name)) or tag.response
         valori = {
             "user": membro.mention,
@@ -271,6 +273,32 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             except discord.HTTPException:
                 pass  # al bot può mancare «Gestire i messaggi»: il tag ha risposto lo stesso
         await custom_command_repo.add_use(message.guild.id, nome)
+
+    async def esegui_innesco(self, guild: discord.Guild, nome: str, canale, *, membro: discord.Member | None = None) -> str | None:
+        """Fa partire il tag `nome` per un innesco (B27). `membro` è chi l'ha fatto scattare (reazione, ruolo, bottone); a tempo
+        è None e parla il bot, senza toccare ruoli. Ritorna la chiave del motivo se il tag non può partire, altrimenti None."""
+        tag = await custom_command_repo.get_tag(guild.id, nome)
+        if tag is None:
+            return "inn_tag_manca"
+        if tag.solo_nsfw and not (hasattr(canale, "is_nsfw") and canale.is_nsfw()):
+            return "tag_solo_nsfw"
+        if membro is not None:
+            rifiuto = self._rifiuto(tag, membro, canale, None) or await self._rifiuto_gruppo(tag, membro, canale)
+            if rifiuto is not None:
+                return rifiuto
+            if self._pausa(tag, guild.id, membro.id) > 0:
+                return "inn_pausa"
+        if not canale.permissions_for(guild.me).send_messages:
+            return "inn_canale_senza_permesso"
+        testo, _ = await self._prepara(tag, membro or guild.me, canale, "", None, ruolo=membro is not None)
+        dest = self._destinazione(tag, membro, canale)[0] if membro is not None else canale
+        try:
+            await self._manda(dest.send, tag, testo)
+        except discord.HTTPException:
+            logger.warning("Innesco del tag %s: invio fallito nel canale %s", nome, getattr(canale, "id", None))
+            return "tag_invio_fallito"
+        await custom_command_repo.add_use(guild.id, nome)
+        return None
 
     async def _nomi_per_completamento(self, interaction: discord.Interaction, current: str):
         if interaction.guild is None:
@@ -486,6 +514,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         if fatto:
             try:
                 await tag_script_repo.togli_errori(interaction.guild.id, normalizzato)  # gli errori dello script vanno col tag
+                await tag_inneschi_repo.togli_per_tag(interaction.guild.id, normalizzato)  # e così gli inneschi
             except Exception:
                 logger.warning("Errori dello script del tag %s non tolti.", normalizzato, exc_info=True)
         await interaction.response.send_message(

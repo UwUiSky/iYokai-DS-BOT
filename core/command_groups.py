@@ -117,6 +117,7 @@ SOTTOGRUPPI: dict[str, tuple[str, str]] = {
     "admin-messaggi fissi": ("fissi", "Messaggi fissi in fondo al canale"),
     "admin-tag risposte": ("risposte", "Risposte automatiche a parole chiave"),
     "admin-automazioni script": ("script", "Script dei tag: errori"),
+    "admin-automazioni inneschi": ("inneschi", "Inneschi dei tag: reazione, intervallo, orario, bottone, ruolo"),
     "admin-tag tag": ("tag", "Tag: comandi personalizzati con testo"),
     "admin-messaggi embed": ("embed", "Embed personalizzati"),
     "admin-ticket categoria": ("categoria", "Categorie dei ticket"),

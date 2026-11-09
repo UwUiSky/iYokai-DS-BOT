@@ -1546,3 +1546,9 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - Tag con testo `{dati:set|giri|{calcola:{dati:get|giri|0}+1}}Giro {dati:get|giri}`: ogni `/tag usa` aumenta il numero, anche dopo un riavvio del bot.
 - `/tag prova` con lo stesso script: mostra il numero successivo ma, rifatto, il numero reale non è cambiato. Senza «Gestisci server» e senza il ruolo dei creatori: rifiuto.
 - Tag con `{ripeti:50|{ripeti:5|{var:a=1}}}`: il tag risponde «lo script si è fermato»; `/admin-automazioni script errori nome:...` mostra l'errore. Eliminato il tag, l'elenco è vuoto.
+
+## giro r24util, B27 — inneschi dei tag (#128)
+- `/admin-automazioni inneschi aggiungi tag:dado tipo:intervallo valore:10m canale:#prove`: dopo 10 minuti il tag scrive nel canale, poi di nuovo ogni 10 minuti. Con `valore:5m` rifiuta. `elenco` lo mostra; `togli` lo ferma (anche il giro già prenotato non scrive).
+- `tipo:orario valore:*/5 * * * *` rifiuta (troppo spesso); `valore:0 9 * * 1` accetta. `escludi:0-24` e `avvia-ora` non cambiano il fatto che `avvia-ora` scrive subito.
+- `tipo:reazione valore:👍`: mettere 👍 sotto un messaggio fa rispondere il tag nel canale; un bot che reagisce non lo fa partire. `ruolo_dato` con `ruolo:` e `canale:`: dando il ruolo a un membro il tag scrive.
+- `tipo:bottone valore:benvenuto:1` (embed con un bottone «tag»): premendo, il tag risponde nel canale per tutti. Cancellando il canale dell'innesco, sparisce dall'elenco.

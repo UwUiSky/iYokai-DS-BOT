@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:28 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:36 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 810 comandi in 49 categorie.**
+**Totale: 814 comandi in 49 categorie.**
 
 ## Admin: AI
 
@@ -74,6 +74,10 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:
 
 ## Admin: automazioni
 
+- **`/admin-automazioni inneschi aggiungi`** — Fa partire un tag da solo: reazione, intervallo, orario, bottone, ruolo.
+- **`/admin-automazioni inneschi avvia-ora`** — Fa partire un innesco subito, per provarlo.
+- **`/admin-automazioni inneschi elenco`** — Gli inneschi del server.
+- **`/admin-automazioni inneschi togli`** — Toglie un innesco.
 - **`/admin-automazioni script errori`** — Gli ultimi 10 errori dello script di un tag.
 
 ## Admin: AutoMod

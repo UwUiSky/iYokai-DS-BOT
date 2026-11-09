@@ -568,6 +568,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("tag_dati", "Dati per server degli script dei tag (chiave e valore, max 1.000 chiavi, 1 KB l'una)", colonna_server="guild_id",
        nota="nessun dato personale: lo scrive il testo del tag"),
     _t("tag_errori", "Ultimi 10 errori degli script, per tag (chiave dell'errore e dettaglio breve)", colonna_server="guild_id"),
+    _t("tag_inneschi", "Inneschi dei tag: reazione, intervallo, orario, bottone, ruolo (max 25 per server)", colonne_attore=("creato_da",),
+       colonna_server="guild_id", nota="nessun dato personale oltre a chi l'ha creato"),
     _t("sondaggi_pesi", "Pesi dei voti per ruolo nei sondaggi (max 25 per server)", colonna_server="guild_id"),
     _t("gif_privacy", "Chi non vuole ricevere le GIF di azione (blocca tutti)",
        colonne_utente=("user_id",), utente="cancella", esporta=True),
