@@ -1,7 +1,7 @@
 """
 cogs/utility/strumenti_rapidi.py
 ================================
-`/utility caratteri`, `/utility cronometro` (bottoni Giro e Ferma, nessun dato salvato:
+`/utility strumenti caratteri`, `/utility strumenti cronometro` (bottoni Giro e Ferma, nessun dato salvato:
 l'inizio sta nel custom_id) e `/utility novita` (file data/novita/<lingua>.json).
 Funzioni coperte: catalogo #128 UTL-203, 212, 221 (D69, B1)
 """
@@ -15,7 +15,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core import strumenti_rapidi_logic as logica
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import SOTTOGRUPPI, CogConGruppi, comando_di_gruppo
 from core.i18n import lingua_interazione, t
 from core.ui_base import BaseView, _utente_o_server_in_blacklist
 
@@ -78,7 +78,7 @@ class StrumentiRapidiCog(CogConGruppi, commands.Cog):
         self.bot.remove_dynamic_items(BottoneCronometro)
         await super().cog_unload()
 
-    @comando_di_gruppo("utility", nome="caratteri", descrizione="Nome, codice e categoria Unicode dei caratteri di un testo.")
+    @comando_di_gruppo("utility", sottogruppo=SOTTOGRUPPI["utility strumenti"], nome="caratteri", descrizione="Nome, codice e categoria Unicode dei caratteri di un testo.")
     @app_commands.describe(testo="Il testo da guardare (massimo 100 caratteri)")
     async def caratteri(
         self, interaction: discord.Interaction, testo: app_commands.Range[str, 1, logica.MAX_TESTO_CARATTERI]
@@ -95,7 +95,7 @@ class StrumentiRapidiCog(CogConGruppi, commands.Cog):
             embed.set_footer(text=t("caratteri_tagliati", lingua, n=tagliati)[:2048])
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @comando_di_gruppo("utility", nome="cronometro", descrizione="Un cronometro con i bottoni Giro e Ferma.")
+    @comando_di_gruppo("utility", sottogruppo=SOTTOGRUPPI["utility strumenti"], nome="cronometro", descrizione="Un cronometro con i bottoni Giro e Ferma.")
     async def cronometro(self, interaction: discord.Interaction) -> None:
         lingua = await lingua_interazione(interaction)
         inizio = int(time.time())

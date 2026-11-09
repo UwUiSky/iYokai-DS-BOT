@@ -105,6 +105,7 @@ SOTTOGRUPPI: dict[str, tuple[str, str]] = {
     "admin-backup ripristino": ("ripristino", "Ripristino degli utenti via OAuth2"),
     "admin-ticket pannelli": ("pannelli", "Pannelli dei ticket: crea, pubblica, modulo"),
     "utility snipe": ("snipe", "Messaggi cancellati, modificati e reazioni tolte"),
+    "utility strumenti": ("strumenti", "Strumenti rapidi: caratteri e cronometro"),
     "admin-bot politica": ("politica", "Politica dei comandi: spegni, limita, ignora, diagnosi"),
     "admin-messaggi programmati": ("programmati", "Messaggi programmati a orario"),
     "admin-messaggi fissi": ("fissi", "Messaggi fissi in fondo al canale"),

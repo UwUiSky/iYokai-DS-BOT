@@ -150,9 +150,9 @@ async def test_albero_utility_e_web():
     bot = ext.Bot(command_prefix="!", intents=discord.Intents.default())
     await cogutil.setup(bot)
     await cogweb.setup(bot)
-    for g, p in (("utility", "caratteri"), ("utility", "cronometro"), ("utility", "novita"),
+    for g, p in (("utility", "strumenti caratteri"), ("utility", "strumenti cronometro"), ("utility", "novita"),
                  ("web", "wiki"), ("web", "dizionario"), ("web", "emergenza")):
         assert comando_nel_gruppo(g, p) is not None
     d = comando_nel_gruppo("web", "wiki").to_dict(bot.tree)
     assert d["options"][0]["max_length"] == 100
-    assert comando_nel_gruppo("utility", "caratteri").to_dict(bot.tree)["options"][0]["max_length"] == 100
+    assert comando_nel_gruppo("utility", "strumenti caratteri").to_dict(bot.tree)["options"][0]["max_length"] == 100

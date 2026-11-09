@@ -1,6 +1,6 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:01 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:16 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
 **Totale: 727 comandi in 42 categorie.**
 
@@ -798,8 +798,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 
 ## Utility
 
-- **`/utility caratteri`** — Nome, codice e categoria Unicode dei caratteri di un testo.
-- **`/utility cronometro`** — Un cronometro con i bottoni Giro e Ferma.
 - **`/utility info`** — Informazioni sul bot: versione, invito e supporto.
 - **`/utility lingua`** — Mostra o cambia la tua lingua personale (italiano o inglese).
 - **`/utility mie-sanzioni`** — Le sanzioni che hai ricevuto in questo server (solo tu le vedi).
@@ -826,6 +824,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 - **`/utility snipe messaggio`** — Mostra l'ultimo messaggio cancellato in questo canale.
 - **`/utility snipe modifica`** — Mostra l'ultimo messaggio modificato in questo canale.
 - **`/utility snipe reazione`** — Mostra l'ultima reazione rimossa in questo canale.
+- **`/utility strumenti caratteri`** — Nome, codice e categoria Unicode dei caratteri di un testo.
+- **`/utility strumenti cronometro`** — Un cronometro con i bottoni Giro e Ferma.
 - **`/utility suggest`** — Proponi un'idea per questo server.
 - **`/utility tag`** — Usa un comando personalizzato di questo server.
 - **`/utility verifica`** — Verificati in questo server (come il bottone del pannello).

@@ -1,6 +1,6 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:01 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:16 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
 **Total: 727 commands in 42 categories.**
 
@@ -798,7 +798,6 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:0
 
 ## Utility
 
-- **`/utility characters`** — Unicode name, code and category of the characters in a text.
 - **`/utility form`** — Fills in a form or application of this server.
 - **`/utility info`** — Bot information: version, invite and support.
 - **`/utility language`** — Shows or changes your personal language (Italian or English).
@@ -825,7 +824,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:0
 - **`/utility snipe edit`** — Shows the last edited message in this channel.
 - **`/utility snipe message`** — Shows the last deleted message in this channel.
 - **`/utility snipe reaction`** — Shows the last removed reaction in this channel.
-- **`/utility stopwatch`** — A stopwatch with Lap and Stop buttons.
+- **`/utility strumenti characters`** — Unicode name, code and category of the characters in a text.
+- **`/utility strumenti stopwatch`** — A stopwatch with Lap and Stop buttons.
 - **`/utility suggest`** — Suggest an idea for this server.
 - **`/utility tag`** — Uses a custom command of this server.
 - **`/utility verify`** — Verify yourself in this server (same as the panel button).
