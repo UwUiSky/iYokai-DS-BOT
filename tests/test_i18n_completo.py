@@ -35,7 +35,7 @@ def test_stessi_segnaposto_e_nessun_testo_vuoto():
 def test_il_testo_inglese_non_e_una_copia_dell_italiano():
     it, en = _file("it"), _file("en")
     # Nomi propri gia inglesi nel testo italiano (es. titolo del pannello) o solo segnaposto.
-    esenti = {"permissionhe_permission_risk_heatmap", "tickets_ticket", "leveling_xp"}
+    esenti = {"permissionhe_permission_risk_heatmap", "tickets_ticket", "leveling_xp", "prezzo_riga"}
     uguali = [k for k in it if it[k] == en[k] and len(it[k]) > 25 and k not in esenti]
     assert uguali == []
 

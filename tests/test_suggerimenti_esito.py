@@ -14,6 +14,7 @@ import pytest
 
 import cogs.utility.suggestions as sg
 from cogs.utility.suggestions import MotivoModal, SuggestionsCog
+from core.repositories.suggestions_config_repo import SuggestionsConfigRepository
 from core.repositories.suggestion_repo import SuggestionRepository
 from core.suggestion_logic import APPROVED, CONSIDERING, IMPLEMENTED, REJECTED, can_decide, e_finale
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member, fake_text_channel
@@ -27,6 +28,7 @@ def _staff(user_id=10):
 def repo(clean_db, monkeypatch):
     r = SuggestionRepository(pool_provider=lambda: clean_db)
     monkeypatch.setattr(sg, "suggestion_repo", r)
+    monkeypatch.setattr(sg, "suggestions_config_repo", SuggestionsConfigRepository(pool_provider=lambda: clean_db))
     monkeypatch.setattr(sg.db, "get_guild_setting", AsyncMock(return_value=None))
     return r
 
