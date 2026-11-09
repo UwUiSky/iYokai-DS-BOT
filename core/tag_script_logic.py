@@ -11,6 +11,7 @@ Dipende da: user_app_strumenti (calcolatrice con AST sicuro), google-re2
 
 from __future__ import annotations
 
+import asyncio
 import random
 import re
 import time
@@ -480,7 +481,10 @@ async def esegui(testo: str, contesto: Contesto | None = None) -> Risultato:
     try:
         if len(testo) > MAX_SCRIPT:
             raise ErroreScript("tag_script_troppo_lungo")
-        uscita = await corsa.valuta(testo, 0, MAX_USCITA)
+        async with asyncio.timeout(contesto.tempo_max):  # anche un `await` lento (archivio dati) si ferma
+            uscita = await corsa.valuta(testo, 0, MAX_USCITA)
+    except TimeoutError:
+        return Risultato("", ErroreScript("tag_script_tempo"), corsa.operazioni, corsa.variabili)
     except ErroreScript as exc:
         return Risultato("", exc, corsa.operazioni, corsa.variabili)
     return Risultato(uscita, None, corsa.operazioni, corsa.variabili)

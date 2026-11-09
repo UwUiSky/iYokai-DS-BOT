@@ -142,3 +142,18 @@ async def test_archivio_passa_autore_e_tetto(repo):
     await a.set("x", "1")
     with pytest.raises(ts.ErroreScript):
         await a.set("y", "1")
+
+
+async def test_un_archivio_lento_viene_interrotto_dal_tempo(monkeypatch):
+    import asyncio
+    import time
+
+    class Lento(ts.ArchivioMemoria):
+        async def get(self, chiave):
+            await asyncio.sleep(5)
+
+    monkeypatch.setattr(ts, "MAX_TEMPO", 0.2)
+    inizio = time.monotonic()
+    r = await ts.esegui("{dati:get|k}", ts.Contesto(adesso=ADESSO, rng=random.Random(1), archivio=Lento(), tempo_max=0.2))
+    assert r.errore is not None and r.errore.chiave == "tag_script_tempo"
+    assert time.monotonic() - inizio < 2
