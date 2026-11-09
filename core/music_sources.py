@@ -233,7 +233,7 @@ def _fonte_dell_host(host: str) -> str | None:
 def _tipo_youtube(host: str, percorso: str, query: str) -> str | None:
     if host == "youtu.be":
         return "brano" if re.fullmatch(r"/[\w\-]{6,20}", percorso) else None
-    if percorso == "/watch" and parse_qs(query).get("v"):
+    if percorso.removeprefix("/") == "watch" and parse_qs(query).get("v"):
         return "brano"
     if percorso == "/playlist" and parse_qs(query).get("list"):
         return "playlist"
