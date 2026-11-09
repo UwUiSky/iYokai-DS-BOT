@@ -1078,3 +1078,13 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
 - XP testo e vocale separati: il passato resta nel totale; le due nuove classifiche partono da zero.
 - LIV-088 coperta da LIV-082: una sola classifica, nessun doppione.
 - Peso di `/admin-livelli` misurato in B1: 3.729, nessun sotto-gruppo serve.
+
+## D72 — Economia (#125): scelte aperte del catalogo (10/11/2026, opzione consigliata, da confermare dall'owner)
+
+- Monete solo virtuali: nessun gioco d'azzardo con denaro vero, nessun acquisto di monete con denaro, nessun cambio in denaro.
+- Voto al bot (048/049): come D71, codice pronto per top.gg, spento finché iYokai non è su un elenco.
+- Interessi del deposito e premi degli eventi: pagati dalla cassa del server, mai creati dal nulla.
+- Premium: solo 050 e 037; il resto gratuito, spostabile dal pannello.
+- Banca nuova: i saldi già esistenti restano contanti.
+- Oggetti donati al fondo premi (120): convertiti in credito e tolti dall'inventario.
+- Se `/admin-economia` supera 6.800: prima il sotto-gruppo `negozio`, poi la radice `/admin-eventi`.
