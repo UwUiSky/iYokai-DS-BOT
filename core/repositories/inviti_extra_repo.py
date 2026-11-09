@@ -10,10 +10,15 @@ from __future__ import annotations
 import asyncpg
 
 from core.invite_links_logic import MAX_BONUS, MAX_ESCLUSI
+from core.inviti_codici_logic import MAX_ETICHETTE_SERVER
 
 
 class TroppiEsclusi(Exception):
     """Il server ha già il massimo di esclusi."""
+
+
+class TroppeEtichette(Exception):
+    """Il server ha già il massimo di etichette."""
 
 
 class InvitiExtraRepository:
@@ -65,6 +70,40 @@ class InvitiExtraRepository:
         """(utenti esclusi, ruoli esclusi)."""
         righe = await self._pool.fetch("SELECT tipo, id FROM inviti_esclusi WHERE guild_id = $1", guild_id)
         return ({r["id"] for r in righe if r["tipo"] == "utente"}, {r["id"] for r in righe if r["tipo"] == "ruolo"})
+
+    # ---------------------------------------------------------------- etichette dei codici (B12)
+    async def imposta_etichetta(self, guild_id: int, codice: str, etichetta: str, ruolo_id: int | None) -> None:
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute("SELECT pg_advisory_xact_lock(hashtext('inviti_etichette'), $1)", guild_id % 2**31)
+                esiste = await conn.fetchval(
+                    "SELECT 1 FROM inviti_etichette WHERE guild_id = $1 AND codice = $2", guild_id, codice
+                )
+                if not esiste and await conn.fetchval(
+                    "SELECT count(*) FROM inviti_etichette WHERE guild_id = $1", guild_id
+                ) >= MAX_ETICHETTE_SERVER:
+                    raise TroppeEtichette()
+                await conn.execute(
+                    "INSERT INTO inviti_etichette (guild_id, codice, etichetta, ruolo_id) VALUES ($1, $2, $3, $4) "
+                    "ON CONFLICT (guild_id, codice) DO UPDATE SET etichetta = EXCLUDED.etichetta, ruolo_id = EXCLUDED.ruolo_id",
+                    guild_id, codice, etichetta, ruolo_id,
+                )
+
+    async def etichette_di(self, guild_id: int, codici: list[str]) -> dict[str, tuple[str, int | None]]:
+        """codice -> (etichetta, ruolo) per i codici dati."""
+        if not codici:
+            return {}
+        righe = await self._pool.fetch(
+            "SELECT codice, etichetta, ruolo_id FROM inviti_etichette WHERE guild_id = $1 AND codice = ANY($2::text[])",
+            guild_id, codici,
+        )
+        return {r["codice"]: (r["etichetta"], r["ruolo_id"]) for r in righe}
+
+    async def togli_etichetta(self, guild_id: int, codice: str) -> bool:
+        esito = await self._pool.execute(
+            "DELETE FROM inviti_etichette WHERE guild_id = $1 AND codice = $2", guild_id, codice
+        )
+        return esito.endswith(" 1")
 
 
 def _get_pool():

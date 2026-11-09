@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:43 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:47 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 735 commands in 43 categories.**
+**Total: 740 commands in 43 categories.**
 
 ## Admin: AI
 
@@ -207,7 +207,11 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:4
 ## Admin: invites
 
 - **`/admin-invites bonus`** — Add or remove invites for a member (staff points).
+- **`/admin-invites codes`** — Invite codes created by a member, 10 per page.
+- **`/admin-invites create`** — Create a never-expiring invite with a name and a role.
+- **`/admin-invites delete`** — Delete invites: one, the rarely used or a channel's.
 - **`/admin-invites exclude`** — Hide members or roles from the invite leaderboard.
+- **`/admin-invites label`** — Name an invite code, with a role for who joins.
 - **`/admin-invites settings`** — Invite log, personal link and entries that do not count.
 
 ## Admin: levels and XP
@@ -608,6 +612,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:4
 - **`/level collection buy`** — Buys a badge or background with your coins.
 - **`/level collection equip`** — Puts a badge or background on your profile (no item removes it).
 - **`/level collection shop`** — Shows badges and backgrounds on sale and the ones you own.
+- **`/level invites codes`** — Your invite codes, 10 per page.
 - **`/level invites history`** — Who invited a member and the last people they brought in.
 - **`/level invites leaderboard`** — The 10 members who invited the most people.
 - **`/level invites link`** — Your personal invite link, served through the bot's website.
@@ -823,7 +828,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:4
 - **`/utility mie-sanzioni`** — The sanctions you received in this server (only you see them).
 - **`/utility news`** — The latest news about the bot.
 - **`/utility ping`** — Checks whether iYokai Main is online and its latency.
-- **`/utility privacy cancella`** — Request the deletion of your personal data.
+- **`/utility privacy delete`** — Request the deletion of your personal data.
 - **`/utility privacy export`** — Get a copy of the data the bot keeps about you.
 - **`/utility reminder cancel`** — Cancel a reminder, or all of yours.
 - **`/utility reminder list`** — Shows your pending reminders.

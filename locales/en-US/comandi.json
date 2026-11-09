@@ -309,7 +309,10 @@
   "prossimi": "upcoming",
   "stelle": "stars",
   "partecipanti": "participants",
-  "admin-inviti": "admin-invites"
+  "admin-inviti": "admin-invites",
+  "cancella": "delete",
+  "etichetta": "label",
+  "codici": "codes"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1167,7 +1170,12 @@
   "admin-inviti": "Invites (admin): settings, bonus, excluded, codes, labels, cleanup, export",
   "admin-inviti impostazioni": "Invite log, personal link and entries that do not count.",
   "admin-inviti bonus": "Add or remove invites for a member (staff points).",
-  "admin-inviti escludi": "Hide members or roles from the invite leaderboard."
+  "admin-inviti escludi": "Hide members or roles from the invite leaderboard.",
+  "admin-inviti codici": "Invite codes created by a member, 10 per page.",
+  "admin-inviti etichetta": "Name an invite code, with a role for who joins.",
+  "admin-inviti crea": "Create a never-expiring invite with a name and a role.",
+  "admin-inviti cancella": "Delete invites: one, the rarely used or a channel's.",
+  "level inviti codici": "Your invite codes, 10 per page."
  },
  "parametri": {},
  "menu": {

@@ -332,8 +332,8 @@ async def registra_ingresso(
         codice, codice_vanity=vanity if isinstance(vanity, str) else None, link_personale=personale is not None
     )
     invitante = personale.user_id if personale is not None else creatore
-    if invitante == membro_id:
-        invitante = None  # nessuno invita se stesso
+    if invitante == membro_id or (invitante is not None and invitante == getattr(guild.me, "id", None)):
+        invitante = None  # nessuno invita se stesso; un invito creato dal bot (`/admin-inviti crea`) non è di nessuno
     opzioni = await leggi_opzioni(guild.id)
     rientro = await invite_stats_repo.e_rientro(guild.id, membro_id) if opzioni.rientri_finti else False
     finto = logica.ingresso_finto(

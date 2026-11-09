@@ -64,6 +64,13 @@ class InviteLinksRepository:
             "SELECT * FROM invite_personal_links WHERE guild_id = $1 AND discord_code = $2", guild_id, codice
         ))
 
+    async def codici_personali(self, guild_id: int) -> set[str]:
+        """I codici d'invito Discord dei link personali del server (non si cancellano a mano)."""
+        righe = await self._pool.fetch(
+            "SELECT discord_code FROM invite_personal_links WHERE guild_id = $1 AND discord_code IS NOT NULL", guild_id
+        )
+        return {r["discord_code"] for r in righe}
+
     async def dell_utente(self, user_id: int) -> list[LinkPersonale]:
         righe = await self._pool.fetch(
             "SELECT * FROM invite_personal_links WHERE user_id = $1 ORDER BY guild_id", user_id

@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:43 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:47 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 735 comandi in 43 categorie.**
+**Totale: 740 comandi in 43 categorie.**
 
 ## Admin: AI
 
@@ -207,7 +207,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 ## Admin: inviti
 
 - **`/admin-inviti bonus`** — Aggiungi o togli inviti a un membro (punti dello staff).
+- **`/admin-inviti cancella`** — Cancella inviti: uno, quelli poco usati o quelli di un canale.
+- **`/admin-inviti codici`** — I codici d'invito creati da un membro, a pagine da 10.
+- **`/admin-inviti crea`** — Crea un invito senza scadenza, con nome e ruolo.
 - **`/admin-inviti escludi`** — Nascondi membri o ruoli dalla classifica degli inviti.
+- **`/admin-inviti etichetta`** — Dai un nome a un codice, con un ruolo per chi entra.
 - **`/admin-inviti impostazioni`** — Registro degli inviti, link personale e ingressi non contati.
 
 ## Admin: livelli e XP
@@ -609,6 +613,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 - **`/level compleanno prossimi`** — I prossimi compleanni del server.
 - **`/level compleanno rimuovi`** — Cancella il tuo compleanno.
 - **`/level inviti classifica`** — I 10 membri che hanno invitato più persone.
+- **`/level inviti codici`** — I tuoi codici d'invito, a pagine da 10.
 - **`/level inviti link`** — Il tuo link d'invito personale, che passa dal sito del bot.
 - **`/level inviti storico`** — Chi ha invitato un membro e le ultime persone che ha portato.
 - **`/level inviti utente`** — Quante persone ha invitato un membro.

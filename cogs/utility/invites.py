@@ -91,8 +91,41 @@ class InvitesCog(CogConGruppi, commands.Cog):
             trovato = await invite_tracker.resolve_join_invite(member.guild, member.id)
             ingresso = await invite_service.registra_ingresso(member.guild, member.id, trovato, member.created_at)
             await self._scrivi_nel_registro(member, ingresso)
+            await self._ruolo_dal_codice(member, ingresso.codice)
         except Exception:
             logger.exception("Errore nel registrare l'invito di %s", member.id)
+
+    @commands.Cog.listener()
+    async def on_member_update(self, before: discord.Member, after: discord.Member) -> None:
+        """Chi passa la verifica del server riceve il ruolo del codice che ha usato."""
+        if after.bot or not (before.pending and not after.pending):
+            return
+        try:
+            if await db.is_module_active_for_guild(after.guild.id, MODULE_INVITES):
+                ingresso = await invite_stats_repo.ingresso_di(after.guild.id, after.id)
+                if ingresso is not None and ingresso.left_at is None:
+                    await self._ruolo_dal_codice(after, ingresso.code)
+        except Exception:
+            logger.exception("Errore nel dare il ruolo del codice a %s", after.id)
+
+    async def _ruolo_dal_codice(self, member: discord.Member, codice: str | None) -> None:
+        """Il ruolo legato al codice (`/admin-inviti etichetta`). Solo se il codice è stato riconosciuto (con ingressi
+        insieme il tracker non lo dà) e dopo la verifica del server; il bot deve poterlo dare."""
+        if not codice or member.pending:
+            return
+        etichette = await inviti_extra_repo.etichette_di(member.guild.id, [codice])
+        ruolo_id = etichette.get(codice, (None, None))[1]
+        ruolo = member.guild.get_role(ruolo_id) if ruolo_id else None
+        me = member.guild.me
+        if ruolo is None or ruolo.is_default() or ruolo.managed or ruolo in member.roles:
+            return
+        if not me.guild_permissions.manage_roles or ruolo.position >= me.top_role.position:
+            logger.info("Codice %s: il bot non può dare il ruolo %s nel server %s", codice, ruolo.id, member.guild.id)
+            return
+        try:
+            await member.add_roles(ruolo, reason=f"Entrato con il codice {codice}")
+        except discord.HTTPException:
+            logger.warning("Codice %s: ruolo %s non dato a %s", codice, ruolo.id, member.id)
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member) -> None:
@@ -108,6 +141,10 @@ class InvitesCog(CogConGruppi, commands.Cog):
     @commands.Cog.listener()
     async def on_invite_delete(self, invite: discord.Invite) -> None:
         invite_service.invito_cancellato(invite.code)
+        try:
+            await inviti_extra_repo.togli_etichetta(invite.guild.id, invite.code)
+        except Exception:
+            logger.exception("Etichetta del codice %s non tolta", invite.code)
 
     async def _scrivi_nel_registro(self, member: discord.Member, ingresso: invite_service.Ingresso) -> None:
         """Una riga nel canale scelto dall'admin (se c'è): chi è entrato, con quale link, chi lo ha invitato."""

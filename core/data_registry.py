@@ -498,6 +498,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("inviti_esclusi", "Membri e ruoli esclusi dalla classifica degli inviti", colonne_utente=("id",),
        colonna_server="guild_id", utente="cancella",
        nota="la colonna id contiene un utente o un ruolo: per i ruoli non c'è nulla di personale"),
+    _t("inviti_etichette", "Nome e ruolo dei codici d'invito", colonna_server="guild_id"),
     _t("invite_joins", "Chi ha invitato chi", colonne_utente=("user_id",), colonne_attore=("inviter_id",),
        colonna_server="guild_id", utente="cancella", esporta=True,
        scadenza=Scadenza("left_at", 90),
