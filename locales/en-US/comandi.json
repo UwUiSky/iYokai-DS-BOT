@@ -287,7 +287,15 @@
   "modulo-mostra": "form-show",
   "membro": "member",
   "utenti": "users",
-  "modo": "mode"
+  "modo": "mode",
+  "caratteri": "characters",
+  "cronometro": "stopwatch",
+  "novita": "news",
+  "wiki": "wiki",
+  "dizionario": "dictionary",
+  "emergenza": "emergency",
+  "web": "web",
+  "parola": "word"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1109,7 +1117,14 @@
   "founder backup": "Backup: sync and who can create or load",
   "founder moderazione": "Moderation: immune roles",
   "admin-sicurezza alt": "Duplicate accounts found by web verification.",
-  "mod-sanzioni opzioni": "Server moderation options."
+  "mod-sanzioni opzioni": "Server moderation options.",
+  "utility caratteri": "Unicode name, code and category of the characters in a text.",
+  "utility cronometro": "A stopwatch with Lap and Stop buttons.",
+  "utility novita": "The latest news about the bot.",
+  "web": "Search the web: Wikipedia, dictionary, emergencies, weather, films, games, prices",
+  "web wiki": "The summary of a Wikipedia entry.",
+  "web dizionario": "The meaning of a word, from Wiktionary.",
+  "web emergenza": "Emergency numbers of a country."
  },
  "parametri": {},
  "menu": {

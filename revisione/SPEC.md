@@ -1453,6 +1453,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   la chiamata diretta all'API (D22, issue #142, fase F12)
   → **Stato 28/10 (r12):** non è nel lotto di questo ramo: la fa l'agente `r12ai` (voce di Yokai, D22, #142).
 
+- `[x]` 14.60 Strumenti rapidi (catalogo #128 B1, D69, r19util) — `/utility caratteri|cronometro|novita` (UTL-203, 212, 221) e `/web wiki|dizionario|emergenza` (UTL-215, 214, 220). Nessun dato salvato; Wikipedia/Wikizionario con cache di 1 ora, defer() e ripiego in inglese. Il cronometro tiene l'inizio nel custom_id (DynamicItem). `data/novita/<lingua>.json` e `data/emergenze.json` li scrive l'owner.
+
 ## §15 LEVELS / ECONOMY / GILDE / CLASSIFICHE
 
 - `[x]` 15.1 XP e livelli (testuale + vocale)
