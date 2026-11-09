@@ -1229,7 +1229,8 @@
   "giochi carte": "Cards: fill-in-the-blank with a judge or a vote.",
   "giochi carte avvia": "Card game: complete the sentence with the funniest card.",
   "admin-giochi carte": "Cards: packs turned on in the server.",
-  "admin-giochi carte pacchetti": "Which card packs are turned on in the server."
+  "admin-giochi carte pacchetti": "Which card packs are turned on in the server.",
+  "web scheda": "The card of a Pokémon, anime, card or player."
  },
  "parametri": {},
  "menu": {

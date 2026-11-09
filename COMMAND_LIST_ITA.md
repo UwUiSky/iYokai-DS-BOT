@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:28 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:36 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 776 comandi in 45 categorie.**
+**Totale: 777 comandi in 45 categorie.**
 
 ## Admin: AI
 
@@ -913,4 +913,5 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 - **`/web gioco`** — Un gioco di Steam: prezzo, data e generi.
 - **`/web meteo`** — Il meteo di una città: adesso e i prossimi giorni.
 - **`/web prezzo`** — Il prezzo di una criptovaluta.
+- **`/web scheda`** — La scheda di un Pokémon, anime, carta o giocatore.
 - **`/web wiki`** — Il riassunto di una voce di Wikipedia.

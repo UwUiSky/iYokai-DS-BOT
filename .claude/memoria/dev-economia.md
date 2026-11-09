@@ -4,10 +4,11 @@
 09/11/2026 · giro r21gif, ramo `feat/r21gif`, migrazione 0570 (usata). Lavoro PER FILE.
 
 ## In corso
-- r22fun (B6-B9 di #131, D70), ramo `feat/r22fun`, worktree `/home/claude/wt/r22fun`, env `scratchpad/env_r22fun_dev.sh`. Previsione: 4 commit (B6 quiz, B7 gruppo, B8 carte, B9 schede). B6, B7, B8 fatti. Prossimo: B9 schede (0575 `cache_esterna`, `/web scheda`).
+- r22fun (B6-B9 di #131, D70), ramo `feat/r22fun`, worktree `/home/claude/wt/r22fun`, env `scratchpad/env_r22fun_dev.sh`. Previsione: 4 commit (B6 quiz, B7 gruppo, B8 carte, B9 schede). B6-B9 fatti (4 commit). Resta: tetto Premium testi battitura (D59, con dev-core); servizi giochi B10+ non richiesti.
 - Smoke da fare (lo lancia l'orchestratore).
 
 ## Fatto
+- r22fun B9: `/web scheda` in `cogs/fun/schede_giochi.py` + `core/schede_giochi_logic.py` (NON `schede_logic`/`SchedeCog`: esistono in utility), `safe_http.safe_richiesta`, 0575 `cache_esterna`.
 - r22fun B8: `core/carte_logic.py`, `fun_impostazioni_repo`, `cogs/fun/carte.py`, `data/carte/*.json` (carte originali).
 - r22fun B7: `core/gruppo_logic.py`, `battitura_repo`, `cogs/fun/_lobby.py`, `giochi_gruppo.py`, 0574; tetto Premium D59 non collegato.
 - r22fun B6: quiz (`core/quiz_logic.py`, `quiz_repo`, `cogs/fun/quiz.py`, 0572/0573, `fun_gare_repo.aggiungi_punti`).
@@ -26,6 +27,7 @@
 - r4: A+B `1ecd983` (0090); giveaway `203a3af` (0091); NF-40 `0319d95` (0092/0093); shop+classifiche (0094/0095). F1 unito `9db9e8a`.
 
 ## Cose imparate
+- Prima di creare un file in `core/` o una classe cog: `ls`/grep del nome (esistono `core/schede_logic.py` e `SchedeCog` in utility). `test_riferimenti_comandi` legge i f-string con `/parola`: costruire gli URL con `"/".join`. Tetto con `COUNT` + INSERT: prima `pg_advisory_xact_lock` in transazione, poi l'INSERT (snapshot nuovo).
 - Cooldown + record in una sola INSERT: nel `DO UPDATE` serve `WHERE aggiornato <= now()-intervallo`, altrimenti due clic insieme passano. `testo_per` nelle risposte pubbliche (anche etichette bottone) vuole `pubblica=True`. `locales/en-US/comandi.json`: descrizioni sotto `"descrizioni"`.
 - Migrazioni: mai modificare una già applicata; una nuova per ogni aggiunta.
 - Soldi: una UPDATE condizionata; pagamento + effetto in una transazione con `FOR UPDATE`; scorte prima dei coin.
