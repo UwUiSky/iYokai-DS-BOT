@@ -20,6 +20,7 @@ from core.command_access import Livello, puo_usare
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.giveaway_fine import concludi
+from core.giveaway_immagine import conserva_allegato, file_annuncio
 from core.giveaway_logic import (
     MAX_BOTTONE_TESTO,
     MAX_MSG_CONFERMA,
@@ -384,12 +385,18 @@ class GiveawayExtraCog(CogConGruppi, commands.Cog):
                 await interaction.response.send_message(await testo_per(interaction, errore), ephemeral=True)
                 return
         await interaction.response.defer(ephemeral=True)
+        immagine_id = None
+        if immagine is not None:
+            immagine_id, errore = await conserva_allegato(immagine, interaction.guild.id)
+            if errore:
+                await interaction.followup.send(await testo_per(interaction, errore))
+                return
         adesso = datetime.now(timezone.utc)
         giveaway = await giveaway_repo.modifica(
             interaction.guild.id, id, prize=premio, winners_count=vincitori,
             ends_at=adesso + timedelta(minutes=durata) if durata else None,
             duration_seconds=durata * 60 if durata else None,
-            immagine_url=immagine.url if immagine else None,
+            immagine_id=immagine_id,
         )
         if giveaway is None:
             await interaction.followup.send(await testo_per(interaction, "giveaway_modifica_non_possibile"))
@@ -410,7 +417,10 @@ class GiveawayExtraCog(CogConGruppi, commands.Cog):
         lingua = await lingua_risposta(guild.id, pubblica=True)
         try:
             messaggio = await canale.fetch_message(giveaway.message_id)
-            await messaggio.edit(embed=embed_annuncio(giveaway, opzioni, lingua))
+            file = await file_annuncio(giveaway.immagine_id)
+            await messaggio.edit(
+                embed=embed_annuncio(giveaway, opzioni, lingua), **({"attachments": [file]} if file is not None else {})
+            )
         except discord.HTTPException:
             logger.info("Giveaway %s: annuncio non aggiornato", giveaway.id)
 

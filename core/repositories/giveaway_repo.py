@@ -55,7 +55,7 @@ class Giveaway:
     errore: str | None = None
     ruolo_escluso: int | None = None
     ruolo_premio: int | None = None
-    immagine_url: str | None = None
+    immagine_id: int | None = None
     colore: int | None = None
 
 
@@ -90,7 +90,7 @@ class Modello:
     bonus_entries: int = 0
     ruolo_escluso: int | None = None
     ruolo_premio: int | None = None
-    immagine_url: str | None = None
+    immagine_id: int | None = None
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -155,7 +155,7 @@ class GiveawayRepository:
             errore=row["errore"],
             ruolo_escluso=row["ruolo_escluso"],
             ruolo_premio=row["ruolo_premio"],
-            immagine_url=row["immagine_url"],
+            immagine_id=row["immagine_id"],
             colore=row["colore"],
         )
 
@@ -178,7 +178,7 @@ class GiveawayRepository:
         duration_seconds: int | None = None,
         ruolo_escluso: int | None = None,
         ruolo_premio: int | None = None,
-        immagine_url: str | None = None,
+        immagine_id: int | None = None,
         colore: int | None = None,
     ) -> int:
         """
@@ -192,14 +192,14 @@ class GiveawayRepository:
                 (guild_id, channel_id, prize, winners_count, min_level,
                  required_role_id, ends_at, created_by, min_messages,
                  bypass_role_id, bonus_role_id, bonus_entries, starts_at,
-                 started, duration_seconds, ruolo_escluso, ruolo_premio, immagine_url, colore)
+                 started, duration_seconds, ruolo_escluso, ruolo_premio, immagine_id, colore)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
             RETURNING id
             """,
             guild_id, channel_id, prize, winners_count, min_level,
             required_role_id, ends_at, created_by, min_messages,
             bypass_role_id, bonus_role_id, bonus_entries, starts_at,
-            starts_at is None, duration_seconds, ruolo_escluso, ruolo_premio, immagine_url, colore,
+            starts_at is None, duration_seconds, ruolo_escluso, ruolo_premio, immagine_id, colore,
         )
         self._cache_conteggio.delete(guild_id)
         return row["id"]
@@ -398,7 +398,7 @@ class GiveawayRepository:
         bonus_entries: int = 0,
         ruolo_escluso: int | None = None,
         ruolo_premio: int | None = None,
-        immagine_url: str | None = None,
+        immagine_id: int | None = None,
     ) -> None:
         """Salva o aggiorna un modello. Al massimo 25 per server (ModelloPieno)."""
         async with self._pool.acquire() as conn:
@@ -423,7 +423,7 @@ class GiveawayRepository:
                     INSERT INTO giveaway_templates
                         (guild_id, name, prize, winners_count, duration_minutes, min_level,
                          required_role_id, min_messages, bypass_role_id, bonus_role_id, bonus_entries,
-                         ruolo_escluso, ruolo_premio, immagine_url)
+                         ruolo_escluso, ruolo_premio, immagine_id)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                     ON CONFLICT (guild_id, name) DO UPDATE SET
                         prize = EXCLUDED.prize, winners_count = EXCLUDED.winners_count,
@@ -435,12 +435,13 @@ class GiveawayRepository:
                         bonus_entries = EXCLUDED.bonus_entries,
                         ruolo_escluso = EXCLUDED.ruolo_escluso,
                         ruolo_premio = EXCLUDED.ruolo_premio,
-                        immagine_url = EXCLUDED.immagine_url
+                        immagine_id = EXCLUDED.immagine_id
                     """,
                     guild_id, name, prize, winners_count, duration_minutes, min_level,
                     required_role_id, min_messages, bypass_role_id, bonus_role_id, bonus_entries,
-                    ruolo_escluso, ruolo_premio, immagine_url,
+                    ruolo_escluso, ruolo_premio, immagine_id,
                 )
+        await self.pulisci_immagini(guild_id)
 
     async def get_template(self, guild_id: int, name: str) -> Modello | None:
         row = await self._pool.fetchrow(
@@ -458,6 +459,7 @@ class GiveawayRepository:
         result = await self._pool.execute(
             "DELETE FROM giveaway_templates WHERE guild_id = $1 AND name = $2", guild_id, name
         )
+        await self.pulisci_immagini(guild_id)
         return result.endswith(" 1")
 
     # ---------------------------------------------------------------- B9-B10 (D69)
@@ -491,7 +493,7 @@ class GiveawayRepository:
 
     async def modifica(
         self, guild_id: int, giveaway_id: int, *, prize: str | None = None, winners_count: int | None = None,
-        ends_at: datetime | None = None, duration_seconds: int | None = None, immagine_url: str | None = None,
+        ends_at: datetime | None = None, duration_seconds: int | None = None, immagine_id: int | None = None,
     ) -> Giveaway | None:
         """Cambia un giveaway non concluso. `ends_at` per quello in corso, `duration_seconds` per il programmato."""
         row = await self._pool.fetchrow(
@@ -499,12 +501,36 @@ class GiveawayRepository:
             UPDATE giveaways SET prize = COALESCE($3, prize), winners_count = COALESCE($4, winners_count),
                 ends_at = CASE WHEN started THEN COALESCE($5, ends_at) ELSE ends_at END,
                 duration_seconds = CASE WHEN started THEN duration_seconds ELSE COALESCE($6, duration_seconds) END,
-                immagine_url = COALESCE($7, immagine_url)
+                immagine_id = COALESCE($7, immagine_id)
             WHERE guild_id = $1 AND id = $2 AND ended = false RETURNING *
             """,
-            guild_id, giveaway_id, prize, winners_count, ends_at, duration_seconds, immagine_url,
+            guild_id, giveaway_id, prize, winners_count, ends_at, duration_seconds, immagine_id,
         )
+        if row is not None:
+            await self.pulisci_immagini(guild_id)
         return self._row_to_giveaway(row) if row is not None else None
+
+    async def salva_immagine(self, guild_id: int, sha256: str, dati: bytes) -> int:
+        """Conserva la copia ricodificata dell'immagine; la stessa immagine nello stesso server si tiene una volta."""
+        return await self._pool.fetchval(
+            "INSERT INTO giveaway_immagini (guild_id, sha256, dati) VALUES ($1, $2, $3) "
+            "ON CONFLICT (guild_id, sha256) DO UPDATE SET sha256 = EXCLUDED.sha256 RETURNING id",
+            guild_id, sha256, dati,
+        )
+
+    async def get_immagine(self, immagine_id: int | None) -> bytes | None:
+        if immagine_id is None:
+            return None
+        return await self._pool.fetchval("SELECT dati FROM giveaway_immagini WHERE id = $1", immagine_id)
+
+    async def pulisci_immagini(self, guild_id: int) -> None:
+        """Toglie le copie che nessun giveaway né modello usa più (non quelle di meno di un minuto: sono in uso)."""
+        await self._pool.execute(
+            "DELETE FROM giveaway_immagini WHERE guild_id = $1 AND created_at < NOW() - INTERVAL '1 minute' "
+            "AND id NOT IN (SELECT immagine_id FROM giveaways WHERE guild_id = $1 AND immagine_id IS NOT NULL) "
+            "AND id NOT IN (SELECT immagine_id FROM giveaway_templates WHERE guild_id = $1 AND immagine_id IS NOT NULL)",
+            guild_id,
+        )
 
     async def segna_vincitori(self, giveaway_id: int, vincitori: list[int]) -> None:
         """I vincitori attuali; quelli di prima diventano «scartati» e non si ripescano."""

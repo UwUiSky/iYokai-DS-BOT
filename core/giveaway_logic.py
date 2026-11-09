@@ -29,6 +29,7 @@ MAX_MSG_DM = 1000
 MAX_PIXEL_IMMAGINE = 16_000_000
 MAX_BYTE_IMMAGINE = 8 * 1024 * 1024
 COLORE_PREDEFINITO = 0x5865F2
+NOME_FILE_IMMAGINE = "giveaway.png"
 
 
 def pick_winners_pesati(
@@ -139,8 +140,8 @@ def embed_annuncio(giveaway, opzioni, lingua: str = "it") -> discord.Embed:
         description=descrizione_giveaway(giveaway, lingua),
         color=colore_annuncio(giveaway, opzioni),
     )
-    if getattr(giveaway, "immagine_url", None):
-        embed.set_image(url=giveaway.immagine_url)
+    if getattr(giveaway, "immagine_id", None) is not None:
+        embed.set_image(url=f"attachment://{NOME_FILE_IMMAGINE}")
     return embed
 
 

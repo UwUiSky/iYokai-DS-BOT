@@ -402,6 +402,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True),
     _t("giveaway_templates", "Modelli di giveaway", colonna_server="guild_id"),
     _t("giveaway_opzioni", "Opzioni dei giveaway del server (aspetto, messaggi, log, ruoli esclusi)", colonna_server="guild_id"),
+    _t("giveaway_immagini", "Immagini degli annunci dei giveaway (copia ricodificata)", colonna_server="guild_id",
+       escludi_dall_esportazione=("dati",), nota="L'immagine l'ha caricata l'admin: si esporta solo la data."),
     _t("giveaways", "Giveaway", colonne_attore=("created_by",), colonna_server="guild_id"),
     _t("guild_chest_ledger", "Movimenti della cassa del server",
        colonna_server="guild_id", scadenza=Scadenza("created_at", 365)),

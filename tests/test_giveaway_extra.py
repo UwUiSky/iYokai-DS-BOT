@@ -58,10 +58,10 @@ def test_embed_annuncio_con_immagine_e_righe():
     g = SimpleNamespace(
         prize="Nitro", winners_count=1, ends_at=ORA, min_level=0, required_role_id=None, min_messages=0,
         bypass_role_id=None, bonus_role_id=None, bonus_entries=0, ruolo_escluso=7, ruolo_premio=8,
-        immagine_url="https://cdn.discordapp.com/x.png", colore=None,
+        immagine_id=3, colore=None,
     )
     embed = embed_annuncio(g, GiveawayOpzioni(guild_id=1))
-    assert embed.image.url == g.immagine_url
+    assert embed.image.url == "attachment://giveaway.png"  # mai l'URL del CDN: scade
     assert "<@&7>" in embed.description and "<@&8>" in embed.description
     assert len(righe_requisiti(g)) == 2
 
@@ -91,13 +91,13 @@ def test_pagine_e_limiti():
 # ------------------------------------------------------------------ archivio
 @pytest.mark.asyncio
 async def test_campi_nuovi_del_giveaway_e_del_modello(repo):
-    gid = await _nuovo(repo, ruolo_escluso=7, ruolo_premio=8, immagine_url="https://x/y.png", colore=0xABCDEF)
+    gid = await _nuovo(repo, ruolo_escluso=7, ruolo_premio=8, immagine_id=11, colore=0xABCDEF)
     g = await repo.get_giveaway(gid)
-    assert (g.ruolo_escluso, g.ruolo_premio, g.immagine_url, g.colore) == (7, 8, "https://x/y.png", 0xABCDEF)
+    assert (g.ruolo_escluso, g.ruolo_premio, g.immagine_id, g.colore) == (7, 8, 11, 0xABCDEF)
     await repo.save_template(1, "m", prize="P", winners_count=1, duration_minutes=5, ruolo_escluso=7, ruolo_premio=8,
-                             immagine_url="https://x/z.png")
+                             immagine_id=12)
     m = await repo.get_template(1, "m")
-    assert (m.ruolo_escluso, m.ruolo_premio, m.immagine_url) == (7, 8, "https://x/z.png")
+    assert (m.ruolo_escluso, m.ruolo_premio, m.immagine_id) == (7, 8, 12)
 
 
 @pytest.mark.asyncio
@@ -397,3 +397,71 @@ async def test_riestrai_senza_permesso(monkeypatch):
     s.repo.get_by_message = AsyncMock()
     await s.cog.menu_riestrai(fake_interaction(guild=s.guild), SimpleNamespace(id=1))
     s.repo.get_by_message.assert_not_called()
+
+
+# ------------------------------------------------------------------ immagine durevole (non l'URL del CDN)
+def _allegato(dati=b"originale-non-controllato"):
+    a = MagicMock()
+    a.read = AsyncMock(return_value=dati)
+    a.filename, a.content_type = "x.png", "image/png"
+    return a
+
+
+@pytest.mark.asyncio
+async def test_si_conserva_la_copia_ricodificata_non_l_originale(repo, monkeypatch):
+    import core.giveaway_immagine as gi
+    from core.immagini_pipeline import EsitoImmagine
+
+    monkeypatch.setattr(gi, "giveaway_repo", repo)
+    monkeypatch.setattr(gi, "analizza_immagine", AsyncMock(return_value=EsitoImmagine(png=b"PNG-RICODIFICATO")))
+    immagine_id, errore = await gi.conserva_allegato(_allegato(), 1)
+    assert errore is None
+    assert await repo.get_immagine(immagine_id) == b"PNG-RICODIFICATO"
+    file = await gi.file_annuncio(immagine_id)
+    assert file.filename == "giveaway.png" and file.fp.read() == b"PNG-RICODIFICATO"
+
+
+@pytest.mark.asyncio
+async def test_immagine_malevola_o_non_analizzata_non_si_conserva(repo, monkeypatch):
+    import core.giveaway_immagine as gi
+    from core.immagini_byte_logic import MALEVOLA
+    from core.immagini_pipeline import EsitoImmagine
+
+    monkeypatch.setattr(gi, "giveaway_repo", repo)
+    for esito in (EsitoImmagine(verdetto=MALEVOLA, png=b"x"), EsitoImmagine(png=b"x", non_analizzata="coda_piena"),
+                  EsitoImmagine(png=b"")):
+        monkeypatch.setattr(gi, "analizza_immagine", AsyncMock(return_value=esito))
+        assert await gi.conserva_allegato(_allegato(), 1) == (None, "giveaway_immagine_non_valida")
+    assert await repo._pool.fetchval("SELECT count(*) FROM giveaway_immagini") == 0
+
+
+@pytest.mark.asyncio
+async def test_la_stessa_immagine_si_tiene_una_volta_e_le_orfane_si_tolgono(repo):
+    a = await repo.salva_immagine(1, "h1", b"A")
+    assert await repo.salva_immagine(1, "h1", b"A") == a
+    b = await repo.salva_immagine(1, "h2", b"B")
+    await repo._pool.execute("UPDATE giveaway_immagini SET created_at = NOW() - INTERVAL '1 hour'")
+    gid = await _nuovo(repo, immagine_id=a)
+    await repo.pulisci_immagini(1)
+    assert await repo.get_immagine(a) == b"A" and await repo.get_immagine(b) is None
+    assert await repo.get_giveaway(gid) is not None
+
+
+@pytest.mark.asyncio
+async def test_modifica_salva_la_copia_conservata_non_l_url(monkeypatch):
+    s = _Scena(monkeypatch)
+    monkeypatch.setattr(modulo, "conserva_allegato", AsyncMock(return_value=(42, None)))
+    s.repo.modifica = AsyncMock(return_value=None)
+    allegato = SimpleNamespace(content_type="image/png", width=10, height=10, size=10, url="https://cdn.discordapp.com/scade.png")
+    await s.cog.modifica.callback(s.cog, fake_interaction(guild=s.guild), 4, None, None, None, allegato)
+    assert s.repo.modifica.await_args.kwargs["immagine_id"] == 42
+    assert "immagine_url" not in s.repo.modifica.await_args.kwargs
+
+
+@pytest.mark.asyncio
+async def test_modifica_con_immagine_rifiutata_dalla_pipeline_non_cambia_nulla(monkeypatch):
+    s = _Scena(monkeypatch)
+    monkeypatch.setattr(modulo, "conserva_allegato", AsyncMock(return_value=(None, "giveaway_immagine_non_valida")))
+    allegato = SimpleNamespace(content_type="image/png", width=10, height=10, size=10, url="u")
+    await s.cog.modifica.callback(s.cog, fake_interaction(guild=s.guild), 4, None, None, None, allegato)
+    s.repo.modifica.assert_not_called()

@@ -26,6 +26,7 @@ from discord.ext import commands, tasks
 from core.bot_ready import attendi_bot_pronto
 from core.channel_access import PERMESSI_DI_SCRITTURA, motivo_se_il_bot_non_puo
 from core.giveaway_fine import concludi
+from core.giveaway_immagine import file_annuncio
 from core.giveaway_logic import embed_annuncio, pick_winners_pesati
 from core.i18n import lingua_risposta
 from core.repositories.giveaway_repo import giveaway_repo
@@ -137,9 +138,11 @@ class GiveawayWorker:
         opzioni = await giveaway_repo.get_opzioni(giveaway.guild_id)
         lingua = await lingua_risposta(giveaway.guild_id, pubblica=True)
         try:
+            file = await file_annuncio(giveaway.immagine_id)
             messaggio = await canale.send(
                 embed=embed_annuncio(giveaway, opzioni, lingua),
                 view=LevelingCog.GiveawayEnterView(giveaway.id, opzioni),
+                **({"file": file} if file is not None else {}),
             )
         except discord.HTTPException as errore:
             await self._errore_di_partenza(giveaway, f"invio non riuscito ({errore.status})")
