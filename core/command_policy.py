@@ -200,6 +200,21 @@ def _e_esente(interaction) -> bool:
     return bool(permessi is not None and permessi.manage_guild)
 
 
+async def valuta_percorso(interaction, percorso: str) -> str | None:
+    """Come `valuta_interazione` ma per un percorso dato (serve ai bottoni, che non sono un comando)."""
+    politica = await leggi_politica(interaction.guild.id)
+    if politica.vuota:
+        return None
+    return valuta(
+        politica,
+        percorso=percorso,
+        canali=_canali_dell_interazione(interaction),
+        ruoli=[r.id for r in getattr(interaction.user, "roles", ())],
+        user_id=interaction.user.id,
+        esente=_e_esente(interaction),
+    )
+
+
 async def valuta_interazione(interaction) -> str | None:
     """
     Il motivo per cui questo comando non può girare qui (chiave del catalogo), o None.
@@ -217,16 +232,6 @@ async def valuta_interazione(interaction) -> str | None:
         comando = interaction.command
         if comando is None:
             return None
-        politica = await leggi_politica(interaction.guild.id)
-        if politica.vuota:
-            return None
-        return valuta(
-            politica,
-            percorso=comando.qualified_name,
-            canali=_canali_dell_interazione(interaction),
-            ruoli=[r.id for r in getattr(interaction.user, "roles", ())],
-            user_id=interaction.user.id,
-            esente=_e_esente(interaction),
-        )
+        return await valuta_percorso(interaction, comando.qualified_name)
     except Exception:
         return None

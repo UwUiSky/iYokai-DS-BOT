@@ -67,6 +67,7 @@ AUDIENCE: dict[str, str] = {
     # Log
     # Fun
     "fun": PUBLIC,
+    "gif": PUBLIC,  # GIF di reazione e azione, gratuite per tutti (D70)
     # Livelli, economia, clan
     "level": PUBLIC,  # gruppo condiviso (core/command_groups.py)
     "clan": PUBLIC,  # gruppo condiviso

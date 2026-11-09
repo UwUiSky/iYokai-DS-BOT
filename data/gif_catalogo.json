@@ -1,0 +1,933 @@
+{
+ "voci": [
+  {
+   "id": "dab",
+   "fun": "FUN-081",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Dab",
+    "en": "Dab"
+   },
+   "sinonimi": [],
+   "ricerca": "anime dab",
+   "fonti": {}
+  },
+  {
+   "id": "imbarazzo",
+   "fun": "FUN-082",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Imbarazzo",
+    "en": "Embarrassed"
+   },
+   "sinonimi": [
+    "vergogna",
+    "timido"
+   ],
+   "ricerca": "anime embarrassed",
+   "fonti": {
+    "waifupics": "cringe",
+    "otakugifs": "shy"
+   }
+  },
+  {
+   "id": "si",
+   "fun": "FUN-083",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Sì",
+    "en": "Yes"
+   },
+   "sinonimi": [
+    "annuisci",
+    "ok"
+   ],
+   "ricerca": "anime yes",
+   "fonti": {
+    "nekosbest": "nod",
+    "otakugifs": "yes"
+   }
+  },
+  {
+   "id": "no",
+   "fun": "FUN-084",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "No",
+    "en": "No"
+   },
+   "sinonimi": [
+    "rifiuta",
+    "nope"
+   ],
+   "ricerca": "anime no",
+   "fonti": {
+    "nekosbest": "nope",
+    "otakugifs": "no"
+   }
+  },
+  {
+   "id": "piange",
+   "fun": "FUN-085",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Piange",
+    "en": "Cry"
+   },
+   "sinonimi": [
+    "lacrime",
+    "triste"
+   ],
+   "ricerca": "anime cry",
+   "fonti": {
+    "nekosbest": "cry",
+    "purrbot": "cry",
+    "waifupics": "cry",
+    "otakugifs": "cry"
+   }
+  },
+  {
+   "id": "balla",
+   "fun": "FUN-086",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Balla",
+    "en": "Dance"
+   },
+   "sinonimi": [
+    "danza"
+   ],
+   "ricerca": "anime dance",
+   "fonti": {
+    "nekosbest": "dance",
+    "purrbot": "dance",
+    "waifupics": "dance",
+    "otakugifs": "dance"
+   }
+  },
+  {
+   "id": "sorride",
+   "fun": "FUN-087",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Sorride",
+    "en": "Smile"
+   },
+   "sinonimi": [
+    "felice",
+    "sorriso"
+   ],
+   "ricerca": "anime smile",
+   "fonti": {
+    "nekosbest": "smile",
+    "purrbot": "smile",
+    "waifupics": "smile",
+    "otakugifs": "smile"
+   }
+  },
+  {
+   "id": "compiaciuto",
+   "fun": "FUN-088",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Compiaciuto",
+    "en": "Smug"
+   },
+   "sinonimi": [
+    "smug"
+   ],
+   "ricerca": "anime smug",
+   "fonti": {
+    "nekosbest": "smug",
+    "waifupics": "smug",
+    "otakugifs": "smug"
+   }
+  },
+  {
+   "id": "arrabbiato",
+   "fun": "FUN-089",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Arrabbiato",
+    "en": "Angry"
+   },
+   "sinonimi": [
+    "rabbia",
+    "furioso"
+   ],
+   "ricerca": "anime angry",
+   "fonti": {
+    "nekosbest": "angry",
+    "purrbot": "angry",
+    "otakugifs": "mad"
+   }
+  },
+  {
+   "id": "facepalm",
+   "fun": "FUN-090",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Mano in faccia",
+    "en": "Facepalm"
+   },
+   "sinonimi": [
+    "facepalm"
+   ],
+   "ricerca": "anime facepalm",
+   "fonti": {
+    "nekosbest": "facepalm",
+    "otakugifs": "facepalm"
+   }
+  },
+  {
+   "id": "scappa",
+   "fun": "FUN-091",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Scappa",
+    "en": "Run away"
+   },
+   "sinonimi": [
+    "corre",
+    "fuga"
+   ],
+   "ricerca": "anime run away",
+   "fonti": {
+    "nekosbest": "run",
+    "otakugifs": "run"
+   }
+  },
+  {
+   "id": "arrossisce",
+   "fun": "FUN-092",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Arrossisce",
+    "en": "Blush"
+   },
+   "sinonimi": [
+    "rosso"
+   ],
+   "ricerca": "anime blush",
+   "fonti": {
+    "nekosbest": "blush",
+    "purrbot": "blush",
+    "waifupics": "blush",
+    "otakugifs": "blush"
+   }
+  },
+  {
+   "id": "sbadiglia",
+   "fun": "FUN-093",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Sbadiglia",
+    "en": "Yawn"
+   },
+   "sinonimi": [
+    "stanco"
+   ],
+   "ricerca": "anime yawn",
+   "fonti": {
+    "nekosbest": "yawn",
+    "otakugifs": "tired"
+   }
+  },
+  {
+   "id": "fissa",
+   "fun": "FUN-094",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Fissa",
+    "en": "Stare"
+   },
+   "sinonimi": [
+    "guarda"
+   ],
+   "ricerca": "anime stare",
+   "fonti": {
+    "nekosbest": "stare",
+    "otakugifs": "stare"
+   }
+  },
+  {
+   "id": "dorme",
+   "fun": "FUN-095",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Dorme",
+    "en": "Sleep"
+   },
+   "sinonimi": [
+    "nanna"
+   ],
+   "ricerca": "anime sleep",
+   "fonti": {
+    "nekosbest": "sleep",
+    "otakugifs": "sleep"
+   }
+  },
+  {
+   "id": "ride",
+   "fun": "FUN-096",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Ride",
+    "en": "Laugh"
+   },
+   "sinonimi": [
+    "risata"
+   ],
+   "ricerca": "anime laugh",
+   "fonti": {
+    "nekosbest": "laugh",
+    "otakugifs": "laugh"
+   }
+  },
+  {
+   "id": "sangue-naso",
+   "fun": "FUN-097",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Sangue dal naso",
+    "en": "Nosebleed"
+   },
+   "sinonimi": [
+    "anime"
+   ],
+   "ricerca": "anime nosebleed",
+   "fonti": {
+    "otakugifs": "nosebleed"
+   }
+  },
+  {
+   "id": "spallucce",
+   "fun": "FUN-098",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Spallucce",
+    "en": "Shrug"
+   },
+   "sinonimi": [
+    "boh"
+   ],
+   "ricerca": "anime shrug",
+   "fonti": {
+    "nekosbest": "shrug",
+    "otakugifs": "shrug"
+   }
+  },
+  {
+   "id": "sorseggia",
+   "fun": "FUN-099",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Sorseggia",
+    "en": "Sip"
+   },
+   "sinonimi": [
+    "bevanda",
+    "tè"
+   ],
+   "ricerca": "anime sip",
+   "fonti": {
+    "nekosbest": "sip",
+    "otakugifs": "sip"
+   }
+  },
+  {
+   "id": "annoia",
+   "fun": "FUN-100",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Annoiato",
+    "en": "Bored"
+   },
+   "sinonimi": [
+    "noia"
+   ],
+   "ricerca": "anime bored",
+   "fonti": {
+    "nekosbest": "bored"
+   }
+  },
+  {
+   "id": "salta",
+   "fun": "FUN-101",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Salta",
+    "en": "Jump"
+   },
+   "sinonimi": [],
+   "ricerca": "anime jump",
+   "fonti": {}
+  },
+  {
+   "id": "broncio",
+   "fun": "FUN-102",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Broncio",
+    "en": "Pout"
+   },
+   "sinonimi": [
+    "offeso"
+   ],
+   "ricerca": "anime pout",
+   "fonti": {
+    "nekosbest": "pout",
+    "purrbot": "pout",
+    "otakugifs": "pout"
+   }
+  },
+  {
+   "id": "beve",
+   "fun": "FUN-103",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Beve",
+    "en": "Drink"
+   },
+   "sinonimi": [
+    "brindisi"
+   ],
+   "ricerca": "anime drink",
+   "fonti": {
+    "otakugifs": "cheers"
+   }
+  },
+  {
+   "id": "canta",
+   "fun": "FUN-104",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Canta",
+    "en": "Sing"
+   },
+   "sinonimi": [],
+   "ricerca": "anime sing",
+   "fonti": {}
+  },
+  {
+   "id": "supplica",
+   "fun": "FUN-105",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Supplica",
+    "en": "Beg"
+   },
+   "sinonimi": [
+    "prego"
+   ],
+   "ricerca": "anime beg",
+   "fonti": {}
+  },
+  {
+   "id": "nervoso",
+   "fun": "FUN-106",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Nervoso",
+    "en": "Nervous"
+   },
+   "sinonimi": [
+    "ansia"
+   ],
+   "ricerca": "anime nervous",
+   "fonti": {
+    "otakugifs": "nervous"
+   }
+  },
+  {
+   "id": "mangia",
+   "fun": "FUN-107",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Mangia",
+    "en": "Eat"
+   },
+   "sinonimi": [
+    "nom",
+    "cibo"
+   ],
+   "ricerca": "anime eat",
+   "fonti": {
+    "nekosbest": "nom",
+    "waifupics": "nom",
+    "otakugifs": "nom"
+   }
+  },
+  {
+   "id": "festeggia",
+   "fun": "FUN-108",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Festeggia",
+    "en": "Celebrate"
+   },
+   "sinonimi": [
+    "evviva",
+    "festa"
+   ],
+   "ricerca": "anime celebrate",
+   "fonti": {
+    "otakugifs": "celebrate"
+   }
+  },
+  {
+   "id": "baka",
+   "fun": "FUN-109",
+   "tipo": "reazione",
+   "nomi": {
+    "it": "Baka",
+    "en": "Baka"
+   },
+   "sinonimi": [
+    "sciocco"
+   ],
+   "ricerca": "anime baka",
+   "fonti": {
+    "nekosbest": "baka"
+   }
+  },
+  {
+   "id": "abbraccia",
+   "fun": "FUN-110",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Abbraccia",
+    "en": "Hug"
+   },
+   "sinonimi": [
+    "abbraccio",
+    "hug"
+   ],
+   "ricerca": "anime hug",
+   "fonti": {
+    "nekosbest": "hug",
+    "purrbot": "hug",
+    "waifupics": "hug",
+    "otakugifs": "hug"
+   }
+  },
+  {
+   "id": "coccola",
+   "fun": "FUN-111",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Coccola",
+    "en": "Cuddle"
+   },
+   "sinonimi": [
+    "coccole"
+   ],
+   "ricerca": "anime cuddle",
+   "fonti": {
+    "nekosbest": "cuddle",
+    "purrbot": "cuddle",
+    "waifupics": "cuddle",
+    "otakugifs": "cuddle"
+   }
+  },
+  {
+   "id": "carezza",
+   "fun": "FUN-112",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Carezza sulla testa",
+    "en": "Pat"
+   },
+   "sinonimi": [
+    "pat",
+    "accarezza"
+   ],
+   "ricerca": "anime pat",
+   "fonti": {
+    "nekosbest": "pat",
+    "purrbot": "pat",
+    "waifupics": "pat",
+    "otakugifs": "pat"
+   }
+  },
+  {
+   "id": "bacia",
+   "fun": "FUN-113",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Bacia",
+    "en": "Kiss"
+   },
+   "sinonimi": [
+    "bacio"
+   ],
+   "ricerca": "anime kiss",
+   "fonti": {
+    "nekosbest": "kiss",
+    "purrbot": "kiss",
+    "waifupics": "kiss",
+    "otakugifs": "kiss"
+   }
+  },
+  {
+   "id": "affetto",
+   "fun": "FUN-114",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Dichiara affetto",
+    "en": "Love"
+   },
+   "sinonimi": [
+    "ti voglio bene",
+    "amore"
+   ],
+   "ricerca": "anime love",
+   "fonti": {
+    "nekosbest": "blowkiss",
+    "otakugifs": "love"
+   }
+  },
+  {
+   "id": "sposa",
+   "fun": "FUN-115",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Sposa",
+    "en": "Marry"
+   },
+   "sinonimi": [
+    "matrimonio"
+   ],
+   "ricerca": "anime marry",
+   "fonti": {}
+  },
+  {
+   "id": "punzecchia",
+   "fun": "FUN-116",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Punzecchia",
+    "en": "Poke"
+   },
+   "sinonimi": [
+    "poke"
+   ],
+   "ricerca": "anime poke",
+   "fonti": {
+    "nekosbest": "poke",
+    "purrbot": "poke",
+    "waifupics": "poke",
+    "otakugifs": "poke"
+   }
+  },
+  {
+   "id": "solletico",
+   "fun": "FUN-117",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Solletico",
+    "en": "Tickle"
+   },
+   "sinonimi": [
+    "tickle"
+   ],
+   "ricerca": "anime tickle",
+   "fonti": {
+    "nekosbest": "tickle",
+    "purrbot": "tickle",
+    "otakugifs": "tickle"
+   }
+  },
+  {
+   "id": "lecca",
+   "fun": "FUN-118",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Lecca",
+    "en": "Lick"
+   },
+   "sinonimi": [],
+   "ricerca": "anime lick",
+   "fonti": {
+    "purrbot": "lick",
+    "waifupics": "lick",
+    "otakugifs": "lick"
+   }
+  },
+  {
+   "id": "morde",
+   "fun": "FUN-119",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Morde",
+    "en": "Bite"
+   },
+   "sinonimi": [
+    "morso"
+   ],
+   "ricerca": "anime bite",
+   "fonti": {
+    "nekosbest": "bite",
+    "purrbot": "bite",
+    "waifupics": "bite",
+    "otakugifs": "bite"
+   }
+  },
+  {
+   "id": "mordicchia",
+   "fun": "FUN-120",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Mordicchia",
+    "en": "Nibble"
+   },
+   "sinonimi": [
+    "nom"
+   ],
+   "ricerca": "anime nibble",
+   "fonti": {
+    "nekosbest": "nom",
+    "waifupics": "nom",
+    "otakugifs": "nom"
+   }
+  },
+  {
+   "id": "schiaffo",
+   "fun": "FUN-121",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Schiaffeggia",
+    "en": "Slap"
+   },
+   "sinonimi": [
+    "slap",
+    "schiaffo"
+   ],
+   "ricerca": "anime slap",
+   "fonti": {
+    "nekosbest": "slap",
+    "purrbot": "slap",
+    "waifupics": "slap",
+    "otakugifs": "slap"
+   }
+  },
+  {
+   "id": "pugno",
+   "fun": "FUN-122",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Pugno",
+    "en": "Punch"
+   },
+   "sinonimi": [
+    "punch"
+   ],
+   "ricerca": "anime punch",
+   "fonti": {
+    "nekosbest": "punch",
+    "otakugifs": "punch"
+   }
+  },
+  {
+   "id": "lancia",
+   "fun": "FUN-123",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Lancia qualcosa",
+    "en": "Throw"
+   },
+   "sinonimi": [
+    "spara"
+   ],
+   "ricerca": "anime throw",
+   "fonti": {
+    "nekosbest": "shoot"
+   }
+  },
+  {
+   "id": "lancia-via",
+   "fun": "FUN-124",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Lancia via",
+    "en": "Yeet"
+   },
+   "sinonimi": [
+    "yeet"
+   ],
+   "ricerca": "anime yeet",
+   "fonti": {
+    "nekosbest": "yeet",
+    "waifupics": "yeet"
+   }
+  },
+  {
+   "id": "cinque",
+   "fun": "FUN-125",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Dai il cinque",
+    "en": "High five"
+   },
+   "sinonimi": [
+    "highfive"
+   ],
+   "ricerca": "anime high five",
+   "fonti": {
+    "nekosbest": "highfive",
+    "waifupics": "highfive",
+    "otakugifs": "brofist"
+   }
+  },
+  {
+   "id": "saluta",
+   "fun": "FUN-126",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Saluta",
+    "en": "Wave"
+   },
+   "sinonimi": [
+    "ciao",
+    "wave"
+   ],
+   "ricerca": "anime wave",
+   "fonti": {
+    "nekosbest": "wave",
+    "waifupics": "wave",
+    "otakugifs": "wave"
+   }
+  },
+  {
+   "id": "fragola",
+   "fun": "FUN-127",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Fragola",
+    "en": "Strawberry"
+   },
+   "sinonimi": [
+    "premio"
+   ],
+   "ricerca": "anime strawberry",
+   "fonti": {}
+  },
+  {
+   "id": "rose",
+   "fun": "FUN-128",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Rose",
+    "en": "Roses"
+   },
+   "sinonimi": [
+    "fiori"
+   ],
+   "ricerca": "anime roses",
+   "fonti": {}
+  },
+  {
+   "id": "bonk",
+   "fun": "FUN-129",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Bonk",
+    "en": "Bonk"
+   },
+   "sinonimi": [
+    "colpetto"
+   ],
+   "ricerca": "anime bonk",
+   "fonti": {
+    "nekosbest": "bonk",
+    "waifupics": "bonk"
+   }
+  },
+  {
+   "id": "guance",
+   "fun": "FUN-130",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Strizza le guance",
+    "en": "Pinch cheeks"
+   },
+   "sinonimi": [
+    "pizzica"
+   ],
+   "ricerca": "anime pinch cheeks",
+   "fonti": {
+    "otakugifs": "pinch"
+   }
+  },
+  {
+   "id": "in-braccio",
+   "fun": "FUN-131",
+   "tipo": "azione",
+   "nomi": {
+    "it": "In braccio",
+    "en": "Lap pillow"
+   },
+   "sinonimi": [
+    "siediti"
+   ],
+   "ricerca": "anime lap pillow",
+   "fonti": {
+    "nekosbest": "lappillow"
+   }
+  },
+  {
+   "id": "arresta",
+   "fun": "FUN-132",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Arresta",
+    "en": "Arrest"
+   },
+   "sinonimi": [
+    "polizia"
+   ],
+   "ricerca": "anime arrest",
+   "fonti": {}
+  },
+  {
+   "id": "massaggio",
+   "fun": "FUN-133",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Massaggio",
+    "en": "Massage"
+   },
+   "sinonimi": [],
+   "ricerca": "anime massage",
+   "fonti": {}
+  },
+  {
+   "id": "ruba",
+   "fun": "FUN-134",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Ruba",
+    "en": "Steal"
+   },
+   "sinonimi": [
+    "furto"
+   ],
+   "ricerca": "anime steal",
+   "fonti": {}
+  },
+  {
+   "id": "rombo",
+   "fun": "FUN-135",
+   "tipo": "azione",
+   "nomi": {
+    "it": "Rombo (Merkel)",
+    "en": "Diamond sign"
+   },
+   "sinonimi": [
+    "merkel"
+   ],
+   "ricerca": "anime diamond sign",
+   "fonti": {}
+  }
+ ]
+}
