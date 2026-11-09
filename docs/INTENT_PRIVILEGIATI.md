@@ -28,6 +28,7 @@ Members are needed to react to joins and leaves (verification, anti-raid, welcom
 | Softban and mute | `cogs/moderation/softban_mute.py` | Re-apply a mute on rejoin |
 | Tickets | `cogs/tickets/tickets.py` | Close the ticket of a member who left |
 | Modmail | `cogs/tickets/modmail.py` | Close the thread of a member who left |
+| Button polls | `cogs/utility/sondaggi_bottoni.py` | Remove the vote of a member who left or was banned |
 
 ## MESSAGE_CONTENT
 
@@ -59,6 +60,10 @@ Message content is needed by features that read what is written: AutoMod filters
 | AI channel summary | `cogs/ai/riepilogo.py` | Summarise a channel the staff chose, only with the server's consent |
 | AI ticket assistant | `cogs/ai/ticket_ai.py` | Suggest a first answer inside tickets, only with the server's consent |
 | Yokai voice | `cogs/ai/voce.py` | Read or transcribe a message when someone asks, only with the server's consent |
+| Counting channel | `cogs/utility/conteggio.py` | Read the number written in the counting channel chosen by the staff |
+| Auto-publish and auto-threads | `cogs/utility/messaggi_auto.py` | Act on messages in the channels the staff chose |
+| Starboard auto channel | `cogs/utility/starboard.py` | Copy messages of the chosen channel to the board |
+| Group games (typing, acronyms) | `cogs/fun/giochi_gruppo.py` | Read answers only in the channel of a running game, only from players |
 | Long slowmode | `cogs/moderation/channel_control.py` | Enforce a slowmode longer than 6 hours chosen by the staff; only the time of the last message is kept |
 
 ## GUILD_PRESENCES
