@@ -160,3 +160,11 @@ async def test_un_errore_della_fonte_non_rompe_il_giro():
         raise RuntimeError("boom")
 
     assert await f.ServizioGif([_fonte("purrbot")], rotta).prendi(HUG) is None
+
+
+def test_l_indirizzo_della_fonte_resta_nel_suo_dominio():
+    """Il file .env non può dirottare una fonte su un altro sito (né su un'altra parte per adulti)."""
+    nomi = lambda env: [x.nome for x in f.leggi_fonti(env)]  # noqa: E731
+    assert "purrbot" not in nomi({"GIF_PURRBOT_URL": "https://altro.example/v2"})
+    assert "purrbot" not in nomi({"GIF_PURRBOT_URL": "https://purrbot.site.evil.example/v2"})
+    assert "purrbot" in nomi({"GIF_PURRBOT_URL": "https://api.purrbot.site/v2/"})

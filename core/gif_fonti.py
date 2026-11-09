@@ -120,8 +120,8 @@ def leggi_fonti(env: Mapping[str, str] | None = None) -> list[Fonte]:
             logger.warning("Fonte GIF %s accesa ma senza chiave: resta spenta.", nome)
             continue
         url = (env.get(f"GIF_{su}_URL") or base).strip().rstrip("/")
-        if not url.startswith("https://"):
-            logger.warning("Fonte GIF %s con indirizzo non https: resta spenta.", nome)
+        if not _dominio_ammesso(nome, url):
+            logger.warning("Fonte GIF %s con indirizzo non https o fuori dal suo dominio: resta spenta.", nome)
             continue
         fonti.append(Fonte(nome, url, chiave))
     return fonti
