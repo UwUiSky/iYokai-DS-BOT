@@ -1092,7 +1092,7 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
         except discord.HTTPException:
             return None
 
-        thumbnail_bytes = await self._miniatura_sicura(avatar_bytes, "avatar.png", None, guild_id)
+        thumbnail_bytes = await self._miniatura_sicura(avatar_bytes, "avatar", None, guild_id)
         if thumbnail_bytes is None:
             return None
         return bytes_to_data_uri(thumbnail_bytes)

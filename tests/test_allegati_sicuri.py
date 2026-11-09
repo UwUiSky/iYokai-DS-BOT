@@ -101,6 +101,26 @@ def test_token_firmato_scade_e_non_si_falsifica():
     assert al.leggi_token("k" * 32, "x" * 500) is None
 
 
+def test_chiave_vuota_non_firma_e_non_legge():
+    """Con la chiave vuota il token sarebbe falsificabile da chiunque: niente link e niente lettura."""
+    with pytest.raises(ValueError):
+        al.crea_token("", 5)
+    assert al.url_download("https://allegati.example", "", 5) is None
+    falso = "5.o.9999999999." + al._firma("", "allegato:5.o.9999999999")
+    assert al.leggi_token("", falso) is None
+
+
+def test_firma_non_ascii_rifiutata_senza_errore():
+    assert al.leggi_token("k" * 32, "5.o.9999999999.è" + "a" * 63) is None
+
+
+def test_avatar_webp_senza_estensione_non_e_sospetto():
+    """Gli avatar di Discord sono spesso WebP o GIF: il nome «avatar» non deve contraddire i byte."""
+    from core.immagini_byte_logic import controlla_byte
+    assert "tipo_diverso_estensione" not in [m.codice for m in controlla_byte(f.webp(), "avatar").motivi]
+    assert "tipo_diverso_estensione" in [m.codice for m in controlla_byte(f.webp(), "avatar.png").motivi]
+
+
 def test_intestazioni_di_download():
     h = al.intestazioni_download('a"b\r\n.png')
     assert h["Content-Disposition"].startswith("attachment;") and "\n" not in h["Content-Disposition"]

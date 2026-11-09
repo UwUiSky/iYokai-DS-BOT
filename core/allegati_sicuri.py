@@ -101,7 +101,7 @@ def _scrivi(dati: bytes) -> str:
 
 async def _togli(nome: str | None) -> None:
     if nome:
-        await asyncio.to_thread(_percorso(nome).unlink, True)
+        await asyncio.to_thread(lambda: _percorso(nome).unlink(True))
 
 
 async def salva(
@@ -169,7 +169,7 @@ async def leggi(copia_id: int, *, anteprima: bool = False) -> tuple[str, bytes] 
     if not nome:
         return None
     try:
-        dati = await asyncio.to_thread(_percorso(nome).read_bytes)
+        dati = await asyncio.to_thread(lambda: _percorso(nome).read_bytes())
     except OSError:
         return None
     return (f"anteprima-{r['id']}.png" if anteprima else r["nome_file"]), dati
@@ -202,6 +202,8 @@ def _firma(chiave: str, testo: str) -> str:
 
 
 def crea_token(chiave: str, copia_id: int, *, anteprima: bool = False, adesso: float | None = None) -> str:
+    if not chiave:
+        raise ValueError("chiave dei link vuota")
     scade = int((adesso if adesso is not None else time.time()) + SECONDI_LINK)
     corpo = f"{copia_id}.{'a' if anteprima else 'o'}.{scade}"
     return f"{corpo}.{_firma(chiave, 'allegato:' + corpo)}"
@@ -210,7 +212,9 @@ def crea_token(chiave: str, copia_id: int, *, anteprima: bool = False, adesso: f
 def leggi_token(chiave: str, token: str, *, adesso: float | None = None) -> tuple[int, bool] | None:
     """(id, anteprima) se la firma e' buona e il link non e' scaduto."""
     parti = token.split(".") if isinstance(token, str) and len(token) <= 120 else []
-    if len(parti) != 4 or not parti[0].isdigit() or parti[1] not in ("a", "o") or not parti[2].isdigit():
+    if not chiave or len(parti) != 4 or not parti[0].isdigit() or parti[1] not in ("a", "o") or not parti[2].isdigit():
+        return None
+    if not parti[3].isascii():
         return None
     corpo = ".".join(parti[:3])
     if not hmac.compare_digest(_firma(chiave, "allegato:" + corpo), parti[3]):
@@ -233,7 +237,7 @@ def intestazioni_download(nome_file: str) -> dict[str, str]:
 
 def url_download(base: str, chiave: str, copia_id: int, *, anteprima: bool = False) -> str | None:
     """Il link da mostrare allo staff, o None se il sotto-dominio non e' configurato."""
-    if not base:
+    if not base or not chiave:
         return None
     return f"{base.rstrip('/')}/allegato/{crea_token(chiave, copia_id, anteprima=anteprima)}"
 
