@@ -267,3 +267,63 @@ async def test_popola_copia_i_messaggi_dopo_il_mirror_e_un_errore_non_ferma_il_j
     assert mappa == {1: URL_A}
     assert ordine[-1] == ("messaggi", {1: URL_A}) and "mirror" in ordine
     assert riepilogo.messaggi_interrotti is True
+
+
+# ------------------------------------------------- immagini: copia sicura (D61, D62, #152)
+class _Foto:
+    def __init__(self, nome, dati, tipo="image/png"):
+        self.filename, self.content_type, self.size, self._dati = nome, tipo, len(dati), dati
+
+    async def read(self):
+        return self._dati
+
+
+@pytest.mark.asyncio
+async def test_immagine_pulita_si_ricarica_solo_ricodificata(monkeypatch):
+    from core.immagini_byte_logic import PULITA
+    from core.immagini_pipeline import EsitoImmagine
+    from tests.support import immagini_finte as f
+
+    async def pulita(dati, nome, ct, guild_id):
+        return EsitoImmagine(PULITA, "s", png=b"PNG-NUOVO")
+
+    monkeypatch.setattr(modulo, "analizza_immagine", pulita)
+    file = await modulo.file_degli_allegati([_Foto("gatto.jpeg", f.jpeg(), "image/jpeg")], 5)
+    assert [x.filename for x in file] == ["gatto.png"] and file[0].fp.read() == b"PNG-NUOVO"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("verdetto", ["sospetta", "malevola"])
+async def test_immagine_sospetta_non_si_ricarica(monkeypatch, verdetto):
+    from core.immagini_pipeline import EsitoImmagine
+    from tests.support import immagini_finte as f
+
+    async def esito(*a):
+        return EsitoImmagine(verdetto, "s", ("x",))
+
+    monkeypatch.setattr(modulo, "analizza_immagine", esito)
+    assert await modulo.file_degli_allegati([_Foto("a.png", f.png())], 5) == []
+
+
+@pytest.mark.asyncio
+async def test_png_con_byte_html_non_si_ricarica_e_non_si_analizza(monkeypatch):
+    chiamate = []
+
+    async def spia(*a):
+        chiamate.append(a)
+
+    monkeypatch.setattr(modulo, "analizza_immagine", spia)
+    assert await modulo.file_degli_allegati([_Foto("foto.png", b"<html><script>x</script></html>")], 5) == []
+    assert chiamate == []
+
+
+@pytest.mark.asyncio
+async def test_non_analizzata_non_si_ricarica(monkeypatch):
+    from core.immagini_pipeline import EsitoImmagine
+    from tests.support import immagini_finte as f
+
+    async def coda(*a):
+        return EsitoImmagine("pulita", "s", non_analizzata="coda_piena")
+
+    monkeypatch.setattr(modulo, "analizza_immagine", coda)
+    assert await modulo.file_degli_allegati([_Foto("a.png", f.png())], 5) == []

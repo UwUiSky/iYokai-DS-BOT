@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import discord
 
@@ -142,21 +143,26 @@ async def test_webhook_della_chat_riusato_e_tetto_di_15():
     assert nuovo.name == bm.NOME_WEBHOOK_CHAT
 
 
-async def test_copia_iniziale_allegati_come_file_e_fissati():
+async def test_copia_iniziale_allegati_come_file_e_fissati(monkeypatch):
     class _Allegato:
         def __init__(self, url, size):
-            self.url, self.size = url, size
+            self.url, self.size, self.filename, self.content_type = url, size, url.rsplit("/", 1)[-1], None
 
         async def to_file(self):
             return f"file:{self.url}"
 
-    piccolo, enorme = _Allegato("https://cdn/p.png", 10), _Allegato("https://cdn/e.zip", 11 * 1024 * 1024)
+        async def read(self):
+            return b"%PDF-1.4 testo"
+
+    monkeypatch.setattr(bm, "analizza_immagine", AsyncMock())
+
+    piccolo, enorme = _Allegato("https://cdn/p.pdf", 10), _Allegato("https://cdn/e.zip", 11 * 1024 * 1024)
     assert bm.allegati_come_file([piccolo, enorme]) == [piccolo]
     sorgente = _Canale([_msg("", pinned=True, allegati=[piccolo, enorme])])
     destinazione = _Canale()
     hook = _Hook()
     riepilogo = RiepilogoCopia()
     await bm._copia_canale(sorgente, hook, 10, riepilogo, destinazione)
-    assert hook.inviati[0]["files"] == ["file:https://cdn/p.png"]
+    assert [f.filename for f in hook.inviati[0]["files"]] == ["p.pdf"]  # non e' un'immagine: va com'e'
     assert hook.inviati[0]["content"] == "https://cdn/e.zip"
     assert destinazione.fissati == [1] and riepilogo.messaggi_copiati == 1
