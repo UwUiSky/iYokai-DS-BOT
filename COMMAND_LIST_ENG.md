@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:32 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:36 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 705 commands in 42 categories.**
+**Total: 710 commands in 42 categories.**
 
 ## Admin: AI
 
@@ -833,4 +833,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:3
 
 - **`/web dictionary`** — The meaning of a word, from Wiktionary.
 - **`/web emergency`** — Emergency numbers of a country.
+- **`/web game`** — A Steam game: price, date and genres.
+- **`/web movie`** — Information on a movie or a TV series.
+- **`/web price`** — The price of a cryptocurrency.
+- **`/web shorten`** — Shorten a link (if the server turned the command on).
+- **`/web weather`** — Weather of a city: now and the next days.
 - **`/web wiki`** — The summary of a Wikipedia entry.

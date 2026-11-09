@@ -295,7 +295,12 @@
   "dizionario": "dictionary",
   "emergenza": "emergency",
   "web": "web",
-  "parola": "word"
+  "parola": "word",
+  "meteo": "weather",
+  "film": "movie",
+  "gioco": "game",
+  "prezzo": "price",
+  "accorcia": "shorten"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1124,7 +1129,12 @@
   "web": "Search the web: Wikipedia, dictionary, emergencies, weather, films, games, prices",
   "web wiki": "The summary of a Wikipedia entry.",
   "web dizionario": "The meaning of a word, from Wiktionary.",
-  "web emergenza": "Emergency numbers of a country."
+  "web emergenza": "Emergency numbers of a country.",
+  "web meteo": "Weather of a city: now and the next days.",
+  "web film": "Information on a movie or a TV series.",
+  "web gioco": "A Steam game: price, date and genres.",
+  "web prezzo": "The price of a cryptocurrency.",
+  "web accorcia": "Shorten a link (if the server turned the command on)."
  },
  "parametri": {},
  "menu": {

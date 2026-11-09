@@ -134,7 +134,7 @@ def lingua_wiki(lingua: str | None) -> str:
     return (lingua or "it").split("-")[0].lower()[:5]
 
 
-def _tronca(testo: str, massimo: int = _ESTRATTO_MAX) -> str:
+def tronca(testo: str, massimo: int = _ESTRATTO_MAX) -> str:
     testo = testo.strip()
     return testo if len(testo) <= massimo else testo[: massimo - 1].rstrip() + "…"
 
@@ -170,7 +170,7 @@ def leggi_sommario(testo: str | None) -> dict[str, str] | None:
         estratto = d["extract"]
         return {
             "titolo": str(d["title"])[:256],
-            "testo": _tronca(str(estratto)),
+            "testo": tronca(str(estratto)),
             "link": str(d.get("content_urls", {}).get("desktop", {}).get("page", "")),
             "immagine": str(d.get("thumbnail", {}).get("source", "")),
         }
@@ -188,7 +188,7 @@ def leggi_wikizionario(testo: str | None, lingua: str) -> dict[str, str] | None:
         titolo = str(pagina["title"])
         return {
             "titolo": titolo[:256],
-            "testo": _tronca(estratto),
+            "testo": tronca(estratto),
             "link": f"https://{lingua}.wiktionary.org/wiki/{quote(titolo.replace(' ', '_'))}",
             "immagine": "",
         }

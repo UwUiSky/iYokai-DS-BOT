@@ -13,6 +13,7 @@
 - r10inviti CHIUSO (D32, 0380): codice, test (test_invite_links_logic, test_invite_service, test_panel_inviti, test_invite_tracker_vanity, test_invite_links_registro, test_invites esteso), invarianti verdi, SPEC 23.5, VERIFICA_LIVE, REGISTRO, DECISIONI D32. Smoke da fare (regola owner: non lanciato). Peso /level 5590.
 
 ## Fatto
+- r19util B2 servizi web: core/web_servizi_logic.py, core/repositories/web_repo.py, 0540, COINGECKO_API_KEY in config. Smoke da fare.
 - r19util B1 strumenti rapidi: core/strumenti_rapidi_logic.py, cogs/utility/strumenti_rapidi.py + web.py (gruppo /web nuovo), data/novita, data/emergenze.json. Smoke da fare.
 - r10 inviti: link personali dal sito + storico con tipo + opzioni (core/invite_service.py, core/web_panel_inviti.py, /level inviti link|storico|opzioni).
 - r8 G1 c265011: /ruoli (D25 quinto caso) cogs/utility/ruoli_strumenti.py + core/ruoli_strumenti_logic.py + self_role_repo (0231); /utility ruolo.

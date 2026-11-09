@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:32 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:36 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 705 comandi in 42 categorie.**
+**Totale: 710 comandi in 42 categorie.**
 
 ## Admin: AI
 
@@ -831,6 +831,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:
 
 ## Web
 
+- **`/web accorcia`** — Accorcia un link (se il server ha acceso il comando).
 - **`/web dizionario`** — Il significato di una parola, da Wikizionario.
 - **`/web emergenza`** — I numeri di emergenza di un paese.
+- **`/web film`** — Informazioni su un film o una serie TV.
+- **`/web gioco`** — Un gioco di Steam: prezzo, data e generi.
+- **`/web meteo`** — Il meteo di una città: adesso e i prossimi giorni.
+- **`/web prezzo`** — Il prezzo di una criptovaluta.
 - **`/web wiki`** — Il riassunto di una voce di Wikipedia.
