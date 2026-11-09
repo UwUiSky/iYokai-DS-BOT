@@ -119,18 +119,26 @@ class InneschiCog(CogConGruppi, commands.Cog):
         if await tag_inneschi_repo.togli_per_canale(canale.guild.id, canale.id):
             self._cache.clear()
 
+    @commands.Cog.listener()
+    async def on_guild_role_delete(self, ruolo: discord.Role) -> None:
+        """Un innesco su un ruolo cancellato non scatterà più: si toglie."""
+        if await tag_inneschi_repo.togli_per_ruolo(ruolo.guild.id, ruolo.id):
+            self._cache.clear()
+
     # ------------------------------------------------------------ scheduler
     async def handle_innesco(self, guild_id: int, user_id: int, payload: dict) -> None:
         """Giro di un innesco a tempo. Se l'innesco è stato tolto la catena finisce; il giro dopo si prenota prima di eseguire."""
         riga = await tag_inneschi_repo.prendi_per_id(payload.get("innesco_id", 0))
         if riga is None or riga["tipo"] not in L.TIPI_A_TEMPO:
             return
+        guild = self.bot.get_guild(riga["guild_id"])
+        if guild is None:
+            return  # il bot non è più nel server: la catena finisce
         adesso = datetime.now(timezone.utc)
         prossimo = L.prossimo_giro(riga["tipo"], riga["valore"], adesso)
         if prossimo is not None:
             await scheduler.schedule(riga["guild_id"], 0, L.AZIONE_INNESCO, prossimo, {"innesco_id": riga["id"]})
-        guild = self.bot.get_guild(riga["guild_id"])
-        canale = guild.get_channel(riga["canale_id"]) if guild and riga["canale_id"] else None
+        canale = guild.get_channel(riga["canale_id"]) if riga["canale_id"] else None
         if canale is None or L.escluso(riga["escludi"], adesso):
             return
         await self._fai_partire(guild, [riga], canale, None)

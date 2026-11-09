@@ -72,6 +72,7 @@ USI: dict[str, tuple[UsoIntent, ...]] = {
         UsoIntent("Tickets", "cogs/tickets/tickets.py", "Close the ticket of a member who left"),
         UsoIntent("Modmail", "cogs/tickets/modmail.py", "Close the thread of a member who left"),
         UsoIntent("Button polls", "cogs/utility/sondaggi_bottoni.py", "Remove the vote of a member who left or was banned"),
+        UsoIntent("Tag triggers on roles", "cogs/utility/inneschi.py", "Run a tag when the server's chosen role is given or taken"),
     ),
     INTENT_MESSAGE_CONTENT: (
         UsoIntent("AutoMod filters", "cogs/automod/automod.py", "Read text to apply the server rules"),

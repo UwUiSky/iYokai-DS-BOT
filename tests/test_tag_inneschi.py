@@ -119,3 +119,7 @@ async def test_cerca_per_tipo_e_togli(repo):
     assert await repo.togli_per_canale(G, 7) == 0
     await repo.aggiungi(G, "dado", "intervallo", "30m", 7, "", 5)
     assert await repo.togli_per_canale(G, 7) == 1
+    await repo.aggiungi(G, "dado", "ruolo_dato", "55", 7, "", 5)
+    await repo.aggiungi(G, "dado", "ruolo_tolto", "55", 7, "", 5)
+    await repo.aggiungi(G, "dado", "ruolo_dato", "56", 7, "", 5)
+    assert await repo.togli_per_ruolo(G, 55) == 2 and await repo.togli_per_ruolo(G, 55) == 0

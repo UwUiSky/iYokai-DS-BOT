@@ -60,6 +60,11 @@ class TagInneschiRepository:
     async def togli_per_tag(self, guild_id: int, tag: str) -> int:
         return int((await self._pool.execute("DELETE FROM tag_inneschi WHERE guild_id = $1 AND tag = $2", guild_id, tag)).split()[-1])
 
+    async def togli_per_ruolo(self, guild_id: int, ruolo_id: int) -> int:
+        return int((await self._pool.execute(
+            "DELETE FROM tag_inneschi WHERE guild_id = $1 AND tipo IN ('ruolo_dato', 'ruolo_tolto') AND valore = $2",
+            guild_id, str(ruolo_id))).split()[-1])
+
     async def togli_per_canale(self, guild_id: int, canale_id: int) -> int:
         return int((await self._pool.execute("DELETE FROM tag_inneschi WHERE guild_id = $1 AND canale_id = $2", guild_id, canale_id)).split()[-1])
 

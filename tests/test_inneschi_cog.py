@@ -26,7 +26,7 @@ def cog(monkeypatch):
     tag_cog.esegui_innesco = AsyncMock(return_value=None)
     bot.get_cog = MagicMock(return_value=tag_cog)
     repo = MagicMock()
-    for nome in ("aggiungi", "elenco", "per_tipo", "prendi", "prendi_per_id", "togli", "togli_per_canale"):
+    for nome in ("aggiungi", "elenco", "per_tipo", "prendi", "prendi_per_id", "togli", "togli_per_canale", "togli_per_ruolo"):
         setattr(repo, nome, AsyncMock())
     repo.aggiungi.return_value = ("ok", 5)
     repo.per_tipo.return_value = []
@@ -232,3 +232,17 @@ async def test_canale_cancellato_toglie_i_suoi_inneschi(cog):
     canale = fake_text_channel()
     await cog.on_guild_channel_delete(canale)
     cog.repo.togli_per_canale.assert_awaited_once_with(canale.guild.id, canale.id)
+
+
+async def test_ruolo_cancellato_toglie_i_suoi_inneschi(cog):
+    ruolo = fake_role()
+    cog.repo.togli_per_ruolo.return_value = 2
+    await cog.on_guild_role_delete(ruolo)
+    cog.repo.togli_per_ruolo.assert_awaited_once_with(ruolo.guild.id, ruolo.id)
+
+
+async def test_giro_senza_server_non_riprenota(cog):
+    cog.bot.get_guild = MagicMock(return_value=None)
+    cog.repo.prendi_per_id.return_value = riga(tipo="intervallo", valore="30m", canale_id=3)
+    await cog.handle_innesco(1, 0, {"innesco_id": 5})
+    cog.sched.schedule.assert_not_awaited()
