@@ -258,23 +258,27 @@ class ParoleOdioCog(CogConGruppi, commands.Cog):
         opz = await opzioni_parole.leggi(guild.id)
         if not (opz.dehoist or opz.simboli):
             return 0
+        me = guild.me
+        if me is None or not me.guild_permissions.manage_nicknames:
+            return 0  # senza il permesso ogni modifica sarebbe un rifiuto
         impostazioni = await automod_advanced_repo.get_settings(guild.id)
-        fatti = 0
+        fatti = tentativi = 0
         for membro in list(guild.members):
-            if fatti >= MAX_MEMBRI_GIRO:
+            if tentativi >= MAX_MEMBRI_GIRO:  # il tetto vale per le richieste a Discord, riuscite o no
                 break
             if membro.bot or membro.id == guild.owner_id or is_member_exempt(membro, impostazioni, 0):
                 continue
+            if membro.top_role >= me.top_role:
+                continue  # alla pari o sopra il bot: Discord rifiuterebbe
             nick = nome_pulito(membro, opz)
             if nick is None or nick == membro.nick:
                 continue
+            tentativi += 1
             try:
                 await membro.edit(nick=nick, reason="AutoMod: pulizia del nome")
                 fatti += 1
-            except discord.Forbidden:
-                continue  # sopra il bot: si salta
-            except discord.HTTPException:
-                continue
+            except discord.HTTPException:  # Forbidden compreso
+                pass
             await asyncio.sleep(PAUSA_GIRO)
         return fatti
 

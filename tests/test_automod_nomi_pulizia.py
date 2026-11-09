@@ -42,6 +42,7 @@ def _membro(nick=None, global_name="Pippo", bot=False):
     m = MagicMock()
     m.nick, m.global_name, m.name, m.bot, m.id = nick, global_name, "pippo", bot, 5
     m.guild = SimpleNamespace(id=1, owner_id=99)
+    m.top_role = 1
     m.edit = AsyncMock()
     return m
 
@@ -93,6 +94,43 @@ async def test_giro_ha_il_tetto_e_salta_chi_non_serve(cog_env, monkeypatch):
     membri = [_membro(global_name=f"!!n{i}") for i in range(10)] + [_membro(global_name="ok", bot=False)]
     for i, m in enumerate(membri):
         m.id = 100 + i
-    guild = SimpleNamespace(id=1, owner_id=99, members=membri)
+    guild = SimpleNamespace(id=1, owner_id=99, members=membri, me=_bot_me())
     cog = parole_odio.ParoleOdioCog(bot=MagicMock())
     assert await cog._giro_pulizia(guild) == 3
+
+
+def _bot_me(permesso=True, ruolo=10):
+    return SimpleNamespace(top_role=ruolo, guild_permissions=SimpleNamespace(manage_nicknames=permesso))
+
+
+async def test_giro_non_tocca_chi_e_sopra_il_bot_e_senza_permesso_non_parte(cog_env, monkeypatch):
+    cog_env(OpzioniParole(dehoist=True))
+    monkeypatch.setattr(parole_odio, "PAUSA_GIRO", 0)
+    monkeypatch.setattr(parole_odio.opzioni_parole, "leggi", AsyncMock(return_value=OpzioniParole(dehoist=True)))
+    alto, basso = _membro(global_name="!!alto"), _membro(global_name="!!basso")
+    alto.top_role, alto.id, basso.id = 10, 1, 2  # alla pari del bot
+    cog = parole_odio.ParoleOdioCog(bot=MagicMock())
+    guild = SimpleNamespace(id=1, owner_id=99, members=[alto, basso], me=_bot_me())
+    assert await cog._giro_pulizia(guild) == 1
+    alto.edit.assert_not_awaited()
+    guild.me = _bot_me(permesso=False)
+    basso.edit.reset_mock()
+    assert await cog._giro_pulizia(guild) == 0
+    basso.edit.assert_not_awaited()
+
+
+async def test_giro_il_tetto_conta_anche_i_rifiuti(cog_env, monkeypatch):
+    import discord
+
+    cog_env(OpzioniParole(dehoist=True))
+    monkeypatch.setattr(parole_odio, "MAX_MEMBRI_GIRO", 3)
+    monkeypatch.setattr(parole_odio, "PAUSA_GIRO", 0)
+    monkeypatch.setattr(parole_odio.opzioni_parole, "leggi", AsyncMock(return_value=OpzioniParole(dehoist=True)))
+    membri = [_membro(global_name=f"!!n{i}") for i in range(10)]
+    for i, m in enumerate(membri):
+        m.id = 100 + i
+        m.edit = AsyncMock(side_effect=discord.HTTPException(MagicMock(status=500), "x"))
+    guild = SimpleNamespace(id=1, owner_id=99, members=membri, me=_bot_me())
+    cog = parole_odio.ParoleOdioCog(bot=MagicMock())
+    assert await cog._giro_pulizia(guild) == 0
+    assert sum(m.edit.await_count for m in membri) == 3
