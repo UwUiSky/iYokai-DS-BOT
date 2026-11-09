@@ -496,3 +496,9 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 08/11 | `feat/r17automod` | `core/account_rubato.py` (`_avvisi`, `_dm_fatti`) | Avviso unico e tetto DM solo in RAM: dopo un riavvio nuovo avviso e nuovo DM | bassa | aperto |
 | 08/11 | `feat/r17automod` | `core/automod_eventi.py` (`ruolo_dato`) | Un altro bot che rimette il ruolo tolto da una regola: giro frenato a 3 regole ogni 10 s, non fermato | bassa | aperto |
 | 08/11 | `feat/r17automod` | `cogs/tickets/modmail.py` | Testi DM del ModMail ancora in italiano fisso (prima del ramo; il nuovo è nel catalogo) | bassa | aperto |
+| 09/11 | `feat/r18ticket` | 8 fix: 7322d8b giro a cursore, 2fe4aa8 riapertura, e577521 avviso chiusura (problema 3), b2fc810 riserva, 4a7367b thread cancellati, 9875ec1 utente vede il padre, e38f54f thread senza padre, 9732b72 avviso fuori dal padre, bb5bbd3 tetto ripetizioni | corretti | — | chiuso |
+| 09/11 | `feat/r18ticket` | `cogs/tickets/inattivita.py:_attesa` | Ticket a thread: niente etichetta «in attesa» (disegno T4) | bassa | aperto |
+| 09/11 | `feat/r18ticket` | `cogs/tickets/tickets.py:_nascondi_ai_non_staff` | Thread chiuso in due passi: esce solo chi ha aperto, gli aggiunti con /ticket add restano | bassa | aperto |
+| 09/11 | `feat/r18ticket` | `cogs/tickets/tickets.py:_segna_chi_scrive` | Un aggiunto non staff conta come staff (attesa e regole «staff») | bassa | aperto |
+| 09/11 | `feat/r18ticket` | `cogs/tickets/inattivita.py` | 403 su sposta/crea riserva: avviso nel log a ogni giro, senza fermo dopo 3 rifiuti | bassa | aperto |
+| 09/11 | `feat/r18ticket` | `MenuGestisci` nei thread | «Sposta» e «Solo admin» non disponibili (messaggio chiaro); TKT-067 per i thread chiedeva il cambio nel DB | bassa | aperto |

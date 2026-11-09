@@ -1,6 +1,7 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
+09/11/2026 · `feat/r18ticket` (T4 #120, thread #156, 0526/0534): main già unito, 9 fix (7322d8b, 2fe4aa8, e577521, b2fc810, 4a7367b, 9875ec1, e38f54f, 9732b72, bb5bbd3) + SPEC/COMMAND_LIST; 5 basse aperte. APPROVATO. Smoke da fare: ticket*, modmail*, 0526, 0534, tree_invariants, i18n, data_registry.
 08/11/2026 · `feat/r17mod` (M4, M5, M7, #115, D66): merge main (1a8447d), 6 fix (68052b8, 5e63065, 82bda8f, 3c67401, 0051d75, f45b4b2); 5 basse aperte. APPROVATO. Smoke da fare: moderation_vocale_m4, opzioni_comandi_m5, canali_m7, massa, 0512–0514, tree_invariants, f7_moderazione_gruppi, data_registry, i18n, riferimenti.
 02/11/2026 · `feat/r16mod` (M1–M3, #115, D66): merge main (2d560e9), 6 fix (06021a6, 9e7dda7, d069d00, 6ac5246, 467d512, 861c0aa); 6 basse aperte. APPROVATO. Smoke da fare: clear_filtri, casi_m3, automod_azioni, escalation_*, staff_rischio, 0510, tree_invariants, f7_moderazione_gruppi, i18n, riferimenti.
 08/11/2026 · `feat/r16verifica` (D67, #155): merge main (d1aebf3), 2 fix (0ddf19f, d819810), comportamento esatto delle scadenze IP scritto sotto D67; 4 basse aperte. APPROVATO. Smoke da fare: 0530, test_verify_ip, verify_vpn_soglia, verify_blocchi_discord, retention, forget, data_registry, panel_proprietario.
@@ -24,6 +25,7 @@ Giri r6–r14: tutti APPROVATI dopo i fix (commit e basse nel quaderno).
 - Letti per intero: giro-mod, r3–r13 (commit nel quaderno).
 
 ## Cose imparate
+- Ticket a thread: `guild.get_channel` non vede i thread (usare `get_channel_or_thread`), la cancellazione arriva da `on_raw_thread_delete`; i finti con `get_channel` vanno allineati. Giri con tetto: cursore per id. Riserve di canali: ogni uscita dalla tabella senza uso = eliminare il canale.
 - Ticket: ogni percorso che rimette permessi ai ruoli staff (presa, rilascio, sposta, riapri) deve passare da `ruoli_con_accesso` (solo admin); i permessi personali (reperibili, titolare) vanno guardati a parte. Completamenti: stesso controllo del comando, non un Livello a caso.
 - Stati decisi dallo staff (attesa/rifiuto) si leggono PRIMA di ogni uscita anticipata (dato mancante = porta aperta). Soglie a conteggio: salvare poi contare. Il ramo senza issue: `Refs D<n>`, mai un numero a caso.
 - Riordino a regex: tabelle di percorsi SENZA `/` (es. COMANDI_VICINI) e sotto-comandi già vecchi sfuggono; confronto albero base/HEAD (livello, permesso, autocomplete) con uno script di dump; scansione `/percorso` contro l'albero vero.
