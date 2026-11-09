@@ -1,0 +1,175 @@
+# data/nsfw/tag_vietati.txt (D70)
+# Tag vietati SEMPRE per le fonti NSFW. Regola fissa, non spegnibile da nessun interruttore.
+# Una voce per riga; le righe con # sono commenti. Confronto senza maiuscole, senza accenti,
+# con spazi e trattini uniti in «_». Un tag è vietato se uguale a una voce, o se una voce è una
+# sua parola intera (il tag diviso sui «_»: «oppai_loli» contiene la parola «loli»), o una
+# sequenza di parole intere. Le voci in giapponese, cinese e russo valgono anche come pezzo
+# di testo. Niente ricerca per pezzi di lettere nelle altre voci (così «cp» non vieta «cpu»).
+# Meglio vietare di più che di meno: i falsi positivi sono accettati.
+# Si applica a: tag cercati, tag restituiti dal sito, titolo e descrizione. Un solo tag
+# vietato in una ricerca = la ricerca NON parte. Un solo tag vietato in un risultato = il
+# risultato è scartato. Primo elenco: da ampliare, mai da accorciare senza decisione dell'owner.
+# Perché: obbligo di legge (in Italia anche la pornografia «virtuale» con minori è reato)
+# e regole di Discord.
+
+# --- Minori o che li richiamano (inglese e termini giapponesi in uso) ---
+loli
+lolicon
+lolita
+shota
+shotacon
+child
+children
+childlike
+kid
+kids
+minor
+minors
+underage
+under_age
+toddler
+toddlercon
+baby
+babycon
+infant
+newborn
+preteen
+pre_teen
+prepubescent
+pubescent
+juvenile
+jailbait
+pedo
+pedophile
+pedophilia
+paedo
+pedobait
+cp
+cub
+teen
+teens
+teenage
+teenager
+young
+younger
+youth
+little_girl
+little_boy
+schoolgirl
+schoolboy
+school_girl
+school_boy
+student_age
+age_regression
+ageplay
+flat_chest_loli
+petite_loli
+# --- Italiano ---
+bambino
+bambina
+bambini
+minorenne
+minorenni
+ragazzina
+ragazzino
+ragazzini
+bimba
+bimbo
+infanzia
+pedofilia
+pedofilo
+# --- Spagnolo e portoghese ---
+nino
+nina
+ninos
+ninas
+menor_de_edad
+menor
+crianca
+criancas
+pedofilia_infantil
+# --- Francese ---
+enfant
+enfants
+mineur
+mineure
+fillette
+garconnet
+pedophilie
+# --- Tedesco ---
+kind
+kinder
+minderjahrig
+minderjaehrig
+kinderporno
+# --- Giapponese, cinese, russo ---
+ロリ
+ロリコン
+ショタ
+ショタコン
+幼女
+幼児
+児童
+未成年
+萝莉
+萝莉控
+正太
+幼女控
+未成年人
+лоли
+лолита
+шота
+ребенок
+дети
+несовершеннолетн
+педофил
+# --- Gore estremo, morte, mutilazione ---
+gore
+guro
+snuff
+mutilation
+dismemberment
+decapitation
+beheading
+necrophilia
+cannibalism
+scat
+torture
+death
+dead
+corpse
+# --- Non consensuale e costrizione ---
+rape
+raped
+raping
+noncon
+non_con
+non_consensual
+nonconsensual
+forced
+forced_sex
+forcedsex
+dubcon
+dub_con
+dubious_consent
+sexual_assault
+molestation
+groping_unwilling
+sleep_sex
+sleep_molestation
+unconscious
+drugged
+mind_control
+hypnosis_nonconsensual
+blackmail
+coercion
+kidnapping
+abduction
+human_trafficking
+slave_trade
+revenge_porn
+deepfake
+# --- Altro vietato dalla legge italiana ---
+bestiality
+zoophilia
+zoofilia

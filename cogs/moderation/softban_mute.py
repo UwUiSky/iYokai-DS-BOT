@@ -47,6 +47,8 @@ from core.moderation_mute_logic import (
 )
 from core.scheduler import in_seconds, scheduler
 from core.repositories.moderation_repo import moderation_repo
+from core.moderation_conferma import conferma_sanzione, invia_esito
+from core.command_access import Livello
 from cogs.moderation._shared import (
     MODULE_ACTIONS,
     ensure_module_enabled,
@@ -250,6 +252,9 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
             return
         if not await check_can_moderate(interaction, member):
             return
+        interaction = await conferma_sanzione(interaction, member, "softban", reason, livello=Livello.MODBAN)
+        if interaction is None:
+            return
 
         await interaction.response.defer()
 
@@ -307,9 +312,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
             avvisi.append("Lo sblocco automatico è fallito: usa /mod-ban unban.")
         if dm_inviato is None:
             avvisi.append("Non è stato possibile notificare l'utente in DM.")
-        if avvisi:
-            embed.set_footer(text=" ".join(avvisi))
-        await interaction.followup.send(embed=embed)
+        await invia_esito(interaction, embed, seguito=True, nota=" ".join(avvisi) or None)
 
     # ================================================================
     # Fine del mute, rientro, ripristino ruoli
@@ -425,6 +428,9 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
             return
         if not await check_can_moderate(interaction, member):
             return
+        interaction = await conferma_sanzione(interaction, member, "mute", reason, livello=Livello.MOD)
+        if interaction is None:
+            return
         if not await _voce_del_mute_ok(interaction, vocale, canale_vocale):
             return
 
@@ -530,7 +536,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
             motivo=reason, caso=case_number, durata_s=secondi if fine is not None else None,
         )
         await try_dm(member, dm_embed, azione="mute", guild_id=guild.id, forza=dm)
-        await interaction.followup.send(embed=embed)
+        await invia_esito(interaction, embed, seguito=True)
         await _togli_dal_vocale(interaction, member, vocale, canale_vocale)
 
     @comando_di_gruppo(

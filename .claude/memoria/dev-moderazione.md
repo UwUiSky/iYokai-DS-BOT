@@ -1,10 +1,10 @@
 # Memoria dev-moderazione
 ## Aggiornata
-2026-11-08, giro r18mod (ramo feat/r18mod, wt /home/claude/wt/r18mod, DB iyokai_w18mod, migr. 0532 usata per D68; 0511 libera per M9 prove). Smoke da fare.
+2026-11-09, giro r19mod (ramo feat/r19mod, wt /home/claude/wt/r19mod, DB iyokai_w19mod; migr. 0511 usata per le prove). Blocco Moderazione #115 chiuso a livello di codice. Smoke da fare.
 ## In corso
-r18mod previsione 3 voci: D68, M6 (parziale), M8: fatte. Prossimo giro, in ordine: M6 resto (MOD-066 conferma con 2 tasti, MOD-067 risposte compatte/cancella-dopo, opzioni nuove in core/moderation_opzioni.py), M9 (MOD-107 /mod-ban cerca, 108 /mod-casi membri, 110 /mod-casi invito, 038 prove con migr. 0511), MOD-102 dehoist/simboli (D66, spento: sta in cogs/automod, aspetta il merge).
-Comando: DATABASE_URL=postgresql://postgres:testpass@127.0.0.1:5432/iyokai_w18mod in ogni comando (scratchpad/envw18.sh). Testi: scratchpad/addt18.py file.json (chiave -> [it, en]).
+Nessun lavoro aperto sul blocco #115. Prossimo (se serve): scarico di PDF/TXT delle prove dal pannello (dev-web), poi i controlli (cacciatore-bug, revisore-capo) e lo smoke dopo il merge. Comando: DATABASE_URL=...iyokai_w19mod (scratchpad/envw19.sh); testi: scratchpad/addt19.py file.json (chiave -> [it, en]).
 ## Fatto
+- r19 M6 resto, M9, MOD-102: core/moderation_conferma.py (conferma 2 tasti, risposte compatte/cancella-dopo, GIA_CONFERMATA per /mod-sanzioni applica), moderation_risposte.py; ricerca ban/membri/invito (cogs/moderation/ricerca.py, moderation_ricerca_logic.py); prove (0511, moderation_prove.py, prove.py); dehoist/simboli (automod_nomi_logic.py, parole_odio.py); test_moderation_risposte_m6, test_moderation_ricerca_m9, test_automod_nomi_pulizia
 - r18 D68: core/moderation_motivi.py (PREIMPOSTATI 14 motivi, Proposta, modifica, semina alla prima lettura), migr. 0532 (+ moderation_motivi_semina), repo motivi, /mod-casi motivi aggiungi/modifica con severita/azione/durata, cogs/moderation/motivo_pronto.py (/mod-sanzioni applica: menu + durata + Conferma; kick/ban solo con livello MODBAN); test_moderation_motivi_severita
 - r18 M6 (MOD-050, 059): core/moderation_dm.py unico punto del DM (comandi + core/automod_azioni.py warn/kick/ban/tempban), mod_anonimo, mod_dm_testo_<azione>, finestra ModuloTestoDm; test_moderation_dm_m6. NON fatti: MOD-066, MOD-067
 - r18 M8: core/moderation_scheda.py, cogs/moderation/scheda.py (/mod-casi scheda, menu «Scheda moderazione» con 5 tasti, «Segnala messaggio», /utility mie-sanzioni, mod_utente_vede_casi), report.invia_segnalazione; test_moderation_scheda_m8
@@ -42,6 +42,10 @@ Comando: DATABASE_URL=postgresql://postgres:testpass@127.0.0.1:5432/iyokai_w18mo
 - Test che chiamano il callback di un cog: get_member deve conoscere sia il moderatore sia il bersaglio (side_effect per id), se no «su te stesso»
 - Il DM delle sanzioni legge le opzioni dal db: i test dei cog senza db vanno patchati (core.moderation_dm.costruisci)
 ## Aperto
+- Cose imparate r19: i moduli in cogs/ senza setup() rompono test_command_tree_invariants: il codice senza cog va in core/ (conferma e` core/moderation_conferma.py)
+- re2 non ha re2.IGNORECASE: usare il prefisso (?i). Comando che deve continuare dopo una conferma: ritorna l'interazione del tasto e il comando sostituisce `interaction` (la prima e` gia` risposta)
+- Mai lanciare pytest di altri file sullo stesso DB mentre ne gira uno in background: e anche modificare cog durante la run falsa i test dell'albero comandi
+- Aperto: scarico PDF/TXT delle prove solo dal pannello (non fatto, dev-web); /mod-casi caso vedi non elenca le prove; le prove si leggono con /mod-casi caso prova numero senza file
 - MOD-066, MOD-067, MOD-102 e M9 da fare. Custom_id dei tasti della scheda non sono persistenti (vista a tempo, 10 min): scelta mia.
 - M5: _prepara_massa dà (ids, motivo); nel DM il nome locale del messaggio inviato è dm_inviato (il parametro dm del comando è un bool)
 - M5: durata nel motivo pronto: fatta in D68

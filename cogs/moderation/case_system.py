@@ -38,6 +38,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
+from cogs.moderation.prove import allega_a_nota
 from core import bot_roles, moderation_opzioni
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
@@ -427,22 +428,34 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         descrizione="Aggiunge una nota su un utente.",
         sottogruppo=("nota", "Note dello staff su un utente."),
     )
-    @app_commands.describe(member="Il membro a cui aggiungere la nota", note="Testo della nota")
+    @app_commands.describe(
+        member="Il membro a cui aggiungere la nota",
+        note="Testo della nota",
+        file="Una prova: immagine, PDF o TXT fino a 10 MiB",
+    )
     @requires_module(MODULE_CASE_SYSTEM)
     async def note_add(
         self,
         interaction: discord.Interaction,
         member: discord.Member,
         note: app_commands.Range[str, 1, MAX_NOTE_LENGTH],
+        file: discord.Attachment | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
             return
 
-        await moderation_repo.add_note(
+        if file is not None:
+            await interaction.response.defer(ephemeral=True)
+        nota_id = await moderation_repo.add_note(
             interaction.guild.id, member.id, interaction.user.id, note
         )
+        testo = await testo_per(interaction, "casesystem_nota_aggiunta_per", mention=member.mention)
+        if file is not None:  # MOD-038: la nota resta anche se la prova non va
+            testo += "\n" + await allega_a_nota(interaction, member.id, nota_id, file)
+            await interaction.followup.send(testo, ephemeral=True)
+            return
         await interaction.response.send_message(
-            await testo_per(interaction, "casesystem_nota_aggiunta_per", mention=member.mention), ephemeral=True
+            testo, ephemeral=True
         )
 
     @comando_di_gruppo(

@@ -334,7 +334,10 @@ class ModerationRepository:
     async def delete_case(self, guild_id: int, case_number: int) -> bool:
         """Elimina un caso (MOD-044). La numerazione non si riusa."""
         result = await self._pool.execute(
-            "DELETE FROM moderation_cases WHERE guild_id = $1 AND case_number = $2",
+            """
+            WITH prove AS (DELETE FROM moderation_prove WHERE guild_id = $1 AND case_number = $2)
+            DELETE FROM moderation_cases WHERE guild_id = $1 AND case_number = $2
+            """,
             guild_id, case_number,
         )
         return result.endswith(" 1")
@@ -534,6 +537,52 @@ class ModerationRepository:
         )
         return row["id"]
 
+    async def conta_prove(self, guild_id: int, *, case_number: int | None = None, nota_id: int | None = None) -> int:
+        """MOD-038: quante prove ha gia' il caso o la nota."""
+        return await self._pool.fetchval(
+            """
+            SELECT count(*) FROM moderation_prove
+            WHERE guild_id = $1 AND case_number IS NOT DISTINCT FROM $2 AND nota_id IS NOT DISTINCT FROM $3
+            """,
+            guild_id, case_number, nota_id,
+        )
+
+    async def add_prova(
+        self, guild_id: int, user_id: int, autore_id: int, *, case_number: int | None, nota_id: int | None,
+        nome_file: str, tipo: str, sha256: str, dati: bytes,
+    ) -> int:
+        row = await self._pool.fetchrow(
+            """
+            INSERT INTO moderation_prove
+                (guild_id, user_id, autore_id, case_number, nota_id, nome_file, tipo, sha256, dimensione, dati)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            RETURNING id
+            """,
+            guild_id, user_id, autore_id, case_number, nota_id, nome_file, tipo, sha256, len(dati), dati,
+        )
+        return row["id"]
+
+    async def list_prove(self, guild_id: int, *, case_number: int | None = None, nota_id: int | None = None) -> list:
+        """Le prove di un caso o di una nota, senza i byte (solo nome, tipo, dimensione)."""
+        return await self._pool.fetch(
+            """
+            SELECT id, nome_file, tipo, dimensione, created_at FROM moderation_prove
+            WHERE guild_id = $1 AND case_number IS NOT DISTINCT FROM $2 AND nota_id IS NOT DISTINCT FROM $3
+            ORDER BY id
+            """,
+            guild_id, case_number, nota_id,
+        )
+
+    async def get_immagini_prova(self, guild_id: int, case_number: int, limite: int = 3) -> list:
+        """Le copie ricodificate delle immagini di un caso (per mostrarle allo staff)."""
+        return await self._pool.fetch(
+            """
+            SELECT id, nome_file, dati FROM moderation_prove
+            WHERE guild_id = $1 AND case_number = $2 AND tipo = 'immagine' ORDER BY id LIMIT $3
+            """,
+            guild_id, case_number, limite,
+        )
+
     async def list_notes_for_user(
         self, guild_id: int, user_id: int, limit: int = 20
     ) -> list[ModerationNote]:
@@ -563,8 +612,12 @@ class ModerationRepository:
 
     async def delete_note(self, guild_id: int, note_id: int) -> bool:
         """Toglie una nota (MOD-054). Solo se è di questo server."""
-        result = await self._pool.execute(
-            "DELETE FROM moderation_notes WHERE guild_id = $1 AND id = $2", guild_id, note_id
+        result = await self._pool.execute(  # le prove di una nota non restano senza la nota (MOD-038)
+            """
+            WITH prove AS (DELETE FROM moderation_prove WHERE guild_id = $1 AND nota_id = $2)
+            DELETE FROM moderation_notes WHERE guild_id = $1 AND id = $2
+            """,
+            guild_id, note_id,
         )
         return result.endswith(" 1")
 
@@ -579,7 +632,14 @@ class ModerationRepository:
     async def delete_notes_for_user(self, guild_id: int, user_id: int) -> int:
         """Cancella tutte le note di un membro (MOD-056); quante."""
         result = await self._pool.execute(
-            "DELETE FROM moderation_notes WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
+            """
+            WITH prove AS (
+                DELETE FROM moderation_prove WHERE guild_id = $1 AND nota_id IN
+                    (SELECT id FROM moderation_notes WHERE guild_id = $1 AND user_id = $2)
+            )
+            DELETE FROM moderation_notes WHERE guild_id = $1 AND user_id = $2
+            """,
+            guild_id, user_id,
         )
         return int(result.split()[-1])
 

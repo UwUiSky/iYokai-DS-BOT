@@ -59,3 +59,6 @@ locales/RIEPILOGO.md
 data/geoip/*.mmdb
 data/vpn/tor_uscita.txt
 data/vpn/reti_*.txt
+config/gif_fornitori.env
+config/giochi_servizi.env
+config/nsfw_fornitori.env

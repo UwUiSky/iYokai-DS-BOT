@@ -13,6 +13,8 @@ Funzioni coperte: SPEC §6 (AMD-014, D35)
 
 from __future__ import annotations
 
+import asyncio
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -36,6 +38,7 @@ from core.odio_libreria_logic import (
 )
 from core.repositories.odio_libreria_repo import odio_libreria_repo
 from core.odio_libreria_service import libreria_odio
+from core.automod_nomi_logic import MAX_MEMBRI_GIRO, PAUSA_GIRO, pulisci_nome
 from core.automod_parole_logic import Filtro, normalizza, trova
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
@@ -76,6 +79,12 @@ def nuovo_nick(nick: str | None, nome_base: str, filtro: Filtro) -> tuple[bool, 
     return (True, NOME_SOSTITUTIVO) if base_vietato else (False, None)
 
 
+def nome_pulito(membro: discord.Member, opz) -> str | None:
+    """MOD-102: il nickname nuovo se il nome mostrato va ripulito (dehoist, simboli), altrimenti None."""
+    attuale = membro.nick or membro.global_name or membro.name
+    return pulisci_nome(attuale, dehoist=opz.dehoist, simboli=opz.simboli, sostitutivo=NOME_SOSTITUTIVO)
+
+
 async def controlla_nome(membro: discord.Member) -> str | None:
     """
     Ripulisce il nome del membro se contiene una parola vietata. Restituisce
@@ -87,16 +96,21 @@ async def controlla_nome(membro: discord.Member) -> str | None:
     if not await db.is_module_active_for_guild(guild.id, MODULE_AUTOMOD):
         return None
     filtro, opz = await opzioni_parole.filtro_del_server(guild.id)
-    if not opz.nick or filtro.vuoto():
+    parole = opz.nick and not filtro.vuoto()
+    if not parole and not (opz.dehoist or opz.simboli):
         return None
     impostazioni = await automod_advanced_repo.get_settings(guild.id)
     if is_member_exempt(membro, impostazioni, 0):
         return None
-    cambia, nick = nuovo_nick(membro.nick, membro.global_name or membro.name, filtro)
+    cambia, nick = nuovo_nick(membro.nick, membro.global_name or membro.name, filtro) if parole else (False, None)
+    motivo = "AutoMod: nome con parola vietata"
+    if not cambia:  # MOD-102: nessuna parola vietata, si guarda la pulizia dei nomi
+        nick = nome_pulito(membro, opz)
+        cambia, motivo = nick is not None, "AutoMod: pulizia del nome"
     if not cambia or nick == membro.nick:  # stesso nome: niente cambio, niente giro di eventi
         return None
     try:
-        await membro.edit(nick=nick, reason="AutoMod: nome con parola vietata")
+        await membro.edit(nick=nick, reason=motivo)
         esito = "nickname azzerato" if nick is None else f"nickname cambiato in «{nick}»"
     except (discord.Forbidden, discord.HTTPException):
         esito = "non riuscito (permessi o gerarchia)"
@@ -112,6 +126,7 @@ async def controlla_nome(membro: discord.Member) -> str | None:
 class ParoleOdioCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        self._giri: set[int] = set()  # server con un giro di pulizia in corso
 
     @commands.Cog.listener()
     async def on_member_join(self, membro: discord.Member) -> None:
@@ -204,14 +219,68 @@ class ParoleOdioCog(CogConGruppi, commands.Cog):
         "admin-automod", nome="nomi", descrizione="Controlla nickname e nomi visualizzati all'ingresso e al cambio.",
         sottogruppo=SOTTOGRUPPO,
     )
-    @app_commands.describe(attiva="Acceso o spento")
-    async def nomi(self, interaction: discord.Interaction, attiva: bool) -> None:
+    @app_commands.describe(
+        attiva="Controllo delle parole vietate nei nomi: acceso o spento",
+        dehoist="Toglie i simboli all'inizio dei nomi (spento di base)",
+        simboli="Ripulisce lettere decorative, testo impilato e caratteri invisibili (spento di base)",
+        applica_ora="Ripulisce ora anche i membri già nel server (al massimo 1.000 per volta)",
+    )
+    async def nomi(
+        self,
+        interaction: discord.Interaction,
+        attiva: bool,
+        dehoist: bool | None = None,
+        simboli: bool | None = None,
+        applica_ora: bool = False,
+    ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
-        await opzioni_parole.imposta_nick(interaction.guild.id, attiva, interaction.user.id)
-        await interaction.response.send_message(
-            await testo_per(interaction, "paroleodio_controllo_dei_nomi_acceso") if attiva else await testo_per(interaction, "paroleodio_controllo_dei_nomi_spento"), ephemeral=True
-        )
+        guild = interaction.guild
+        if applica_ora and guild.id in self._giri:
+            await interaction.response.send_message(await testo_per(interaction, "paroleodio_giro_in_corso"), ephemeral=True)
+            return
+        await opzioni_parole.imposta_nick(guild.id, attiva, interaction.user.id)
+        await opzioni_parole.imposta_pulizia_nomi(guild.id, dehoist, simboli, interaction.user.id)
+        messaggio = await testo_per(interaction, "paroleodio_controllo_dei_nomi_acceso") if attiva else await testo_per(interaction, "paroleodio_controllo_dei_nomi_spento")
+        if not applica_ora:
+            await interaction.response.send_message(messaggio, ephemeral=True)
+            return
+        self._giri.add(guild.id)  # segnato prima del primo await lento: due comandi insieme non fanno due giri
+        await interaction.response.defer(ephemeral=True)
+        try:
+            fatti = await self._giro_pulizia(guild)
+        finally:
+            self._giri.discard(guild.id)
+        await interaction.followup.send(f"{messaggio}\n" + await testo_per(interaction, "paroleodio_giro_fatto", n=fatti, tetto=MAX_MEMBRI_GIRO), ephemeral=True)
+
+    async def _giro_pulizia(self, guild: discord.Guild) -> int:
+        """MOD-102: ripulisce i nomi dei membri gia' dentro, con tetto e pausa tra una modifica e l'altra."""
+        opz = await opzioni_parole.leggi(guild.id)
+        if not (opz.dehoist or opz.simboli):
+            return 0
+        me = guild.me
+        if me is None or not me.guild_permissions.manage_nicknames:
+            return 0  # senza il permesso ogni modifica sarebbe un rifiuto
+        impostazioni = await automod_advanced_repo.get_settings(guild.id)
+        fatti = tentativi = 0
+        for membro in list(guild.members):
+            if tentativi >= MAX_MEMBRI_GIRO:  # il tetto vale per le richieste a Discord, riuscite o no
+                break
+            if membro.bot or membro.id == guild.owner_id or is_member_exempt(membro, impostazioni, 0):
+                continue
+            if membro.top_role >= me.top_role:
+                continue  # alla pari o sopra il bot: Discord rifiuterebbe
+            nick = nome_pulito(membro, opz)
+            if nick is None or nick == membro.nick:
+                continue
+            tentativi += 1
+            try:
+                await membro.edit(nick=nick, reason="AutoMod: pulizia del nome")
+                fatti += 1
+            except discord.HTTPException:  # Forbidden compreso
+                pass
+            await asyncio.sleep(PAUSA_GIRO)
+        return fatti
 
     @comando_di_gruppo(
         "admin-automod", nome="blocco", descrizione="Blocco preventivo delle frasi d'odio.",

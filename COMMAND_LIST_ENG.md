@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:19 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:21 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 749 commands in 44 categories.**
+**Total: 753 commands in 44 categories.**
 
 ## Admin: AI
 
@@ -88,7 +88,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:1
 - **`/admin-automod odio base`** — Turns the base list of hate slurs on or off.
 - **`/admin-automod odio lockdown`** — Preventive block of hateful phrases.
 - **`/admin-automod odio nomi`** — Checks nicknames and display names on join and on change.
-- **`/admin-automod odio prova`** — Tests a text against the banned words without acting.
+- **`/admin-automod odio proof`** — Tests a text against the banned words without acting.
 - **`/admin-automod odio richiami`** — How many warnings for hate words lead to a timeout.
 - **`/admin-automod odio status`** — Shows how the banned words are set up.
 - **`/admin-automod odio word`** — Adds or removes a custom word or an allowed word.
@@ -648,6 +648,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:1
 - **`/mod-ban bulk kick`** — Kicks several members at once (IDs or mentions).
 - **`/mod-ban bulk unban`** — Unbans several users at once (IDs).
 - **`/mod-ban kick`** — Kicks a member from the server.
+- **`/mod-ban search`** — Searches the server's bans by name, ID or reason.
 - **`/mod-ban softban`** — Bans and unbans a member right away, to delete their recent messages.
 - **`/mod-ban tempban`** — Bans a member for a set time.
 - **`/mod-ban unban`** — Removes a user's ban.
@@ -681,11 +682,14 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:1
 - **`/mod-cases case export`** — Sends a member's cases and notes in a text file.
 - **`/mod-cases case hide`** — Hides a case (it stops counting in rankings and alerts) or restores it.
 - **`/mod-cases case history`** — Shows a member's case history.
+- **`/mod-cases case proof`** — Attaches a proof (image, PDF or TXT) to a case; without a file it shows the ones already attached.
 - **`/mod-cases case reason`** — Changes the reason of an already logged case.
 - **`/mod-cases case record`** — Logs a case without taking the action (sanction given outside the bot).
 - **`/mod-cases case staff-leaderboard`** — Moderator leaderboard by number of actions, or one moderator's cases.
 - **`/mod-cases case view`** — Shows the details of a single case.
+- **`/mod-cases invite`** — Shows what is behind an invite: server, channel, who created it.
 - **`/mod-cases lookup`** — A user's card: dates, cases, notes and risk (even outside the server).
+- **`/mod-cases members`** — Searches the server's members with filters (and can export a CSV).
 - **`/mod-cases motivi add`** — Adds a saved reason, to pick in the "reason" field (needs "Manage Server").
 - **`/mod-cases motivi edit`** — Changes text, severity or sanction of a saved reason (needs "Manage Server").
 - **`/mod-cases motivi list`** — Shows the server's saved reasons.

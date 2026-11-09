@@ -129,6 +129,9 @@ SETTINGS_SCHEMA = {
     "mod_motivo_obbligatorio": "bool",
     "mod_anonimo": "bool",
     "mod_utente_vede_casi": "bool",
+    "mod_conferma": "bool",
+    "mod_risposte": "modalita_risposte_mod",
+    "mod_risposte_secondi": "int_5_300",
     "mod_dm_testo_warn": "testo_1500",
     "mod_dm_testo_kick": "testo_1500",
     "mod_dm_testo_ban": "testo_1500",
@@ -140,6 +143,8 @@ SETTINGS_SCHEMA = {
     # Parole vietate dell'AutoMod (core/automod_parole_opzioni.py)
     "automod_parole_base": "bool",
     "automod_parole_nick": "bool",
+    "automod_nomi_dehoist": "bool",
+    "automod_nomi_simboli": "bool",
     "automod_parole_proprie": "lista_parole",
     "automod_parole_lecite": "lista_parole",
     # Difesa dalle parole d'odio (core/odio_opzioni.py, D35)
@@ -238,6 +243,10 @@ CONTROLLI_PER_TIPO = {
     "int_1_1440": (_intero_tra(1, 1440), "un intero tra 1 e 1440"),
     "int_1_40320": (_intero_tra(1, 40320), "un intero tra 1 e 40320"),
     "int_0_1440": (_intero_tra(0, 1440), "un intero tra 0 e 1440"),
+    "modalita_risposte_mod": (
+        lambda valore: valore in ("normale", "compatta", "cancella-dopo"), "normale, compatta oppure cancella-dopo"
+    ),
+    "int_5_300": (_intero_tra(5, 300), "un intero tra 5 e 300"),
     "int_0_7": (_intero_tra(0, 7), "un intero tra 0 e 7"),
     "int_50_100000": (_intero_tra(50, 100_000), "un intero tra 50 e 100000"),
     "punizione_trappola": (lambda valore: valore in PUNIZIONI_TRAPPOLA, ", ".join(PUNIZIONI_TRAPPOLA)),
