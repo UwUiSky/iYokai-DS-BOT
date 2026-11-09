@@ -12,6 +12,7 @@ Funzioni coperte: SPEC §14 (catalogo #123: RUO-042, 043, 090-109, 113)
 from __future__ import annotations
 
 import asyncio
+import io
 import logging
 import time
 from dataclasses import dataclass, field
@@ -30,6 +31,7 @@ from core.repositories.self_role_repo import self_role_repo
 from core.role_safety import check_role_assignable
 from core.ruoli_strumenti_logic import (
     AZIONE_DAI,
+    AZIONE_ESPORTA,
     AZIONE_TOGLI,
     CHI_BOT,
     CHI_TUTTI,
@@ -40,14 +42,17 @@ from core.ruoli_strumenti_logic import (
     MAX_RUOLI_SERVER,
     PAUSA_MASSA_SECONDI,
     RUOLI_TEMPORANEI_ACTION_TYPE,
+    FORMATI_ESPORTAZIONE,
     FiltroMassa,
     colore_ruolo,
     diagnosi_ruolo,
     leggi_data,
+    membri_da_esportare,
     membri_da_toccare,
     ripristino,
     ruoli_da_azzerare,
     ruoli_unici,
+    scrivi_esportazione,
     stima_secondi,
     stima_in_parole,
 )
@@ -62,6 +67,7 @@ MAX_ERRORI_DI_FILA = 10
 SCELTE_AZIONE = [
     app_commands.Choice(name="dai", value=AZIONE_DAI),
     app_commands.Choice(name="togli", value=AZIONE_TOGLI),
+    app_commands.Choice(name="esporta l'elenco", value=AZIONE_ESPORTA),
 ]
 
 
@@ -371,15 +377,17 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo("admin-ruoli", nome="massa", descrizione="Dai o togli un ruolo a molti membri insieme, con filtri.")
     @app_commands.describe(
         azione="Dare o togliere",
-        ruolo="Il ruolo",
+        ruolo="Il ruolo (con «esporta l'elenco»: solo chi lo ha)",
         chi="Tutti, solo gli umani o solo i bot",
         con_ruolo="Solo chi ha questo ruolo",
         senza_ruolo="Solo chi non ha questo ruolo",
         entrati_dopo="Solo chi è entrato da questa data (AAAA-MM-GG)",
         entrati_prima="Solo chi è entrato prima di questa data (AAAA-MM-GG)",
         canale_avviso="Dove scrivere a fine lavoro (vuoto = qui)",
+        formato="Solo per «esporta l'elenco»: csv, txt o json (di base csv)",
     )
     @app_commands.choices(
+        formato=[app_commands.Choice(name=f, value=f) for f in FORMATI_ESPORTAZIONE],
         azione=SCELTE_AZIONE,
         chi=[
             app_commands.Choice(name="tutti", value=CHI_TUTTI),
@@ -398,8 +406,12 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
         entrati_dopo: app_commands.Range[str, 10, 10] | None = None,
         entrati_prima: app_commands.Range[str, 10, 10] | None = None,
         canale_avviso: discord.TextChannel | None = None,
+        formato: str = "csv",
     ) -> None:
         guild = interaction.guild
+        if azione == AZIONE_ESPORTA:
+            await self._esporta(interaction, ruolo, chi, con_ruolo, senza_ruolo, entrati_dopo, entrati_prima, formato)
+            return
         if guild.id in self.operazioni:
             await self._rifiuta(interaction, "C'è già un'operazione di massa in corso: aspetta o fermala con /admin-ruoli massa-ferma.")
             return
@@ -462,6 +474,29 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
             ephemeral=True,
             allowed_mentions=NESSUNA_MENZIONE,
         )
+
+    async def _esporta(self, interaction, ruolo, chi, con_ruolo, senza_ruolo, entrati_dopo, entrati_prima, formato) -> None:
+        """Scrive l'elenco dei membri che hanno `ruolo` e passano i filtri; non cambia nessun ruolo."""
+        try:
+            filtro = FiltroMassa(
+                chi=chi, con_ruolo=con_ruolo.id if con_ruolo else None, senza_ruolo=senza_ruolo.id if senza_ruolo else None,
+                entrati_dopo=leggi_data(entrati_dopo), entrati_prima=leggi_data(entrati_prima),
+            )
+        except ValueError as errore:
+            await self._rifiuta(interaction, str(errore))
+            return
+        await interaction.response.defer(ephemeral=True)
+        guild = interaction.guild
+        if not guild.chunked:
+            await guild.chunk()
+        membri = membri_da_esportare(guild.members, filtro, ruolo.id)
+        if not membri:
+            await interaction.followup.send(await testo_per(interaction, "ruoli_esporta_nessuno"), ephemeral=True)
+            return
+        dati, nome = await asyncio.to_thread(scrivi_esportazione, membri, formato if formato in FORMATI_ESPORTAZIONE else "csv")
+        await interaction.followup.send(
+            await testo_per(interaction, "ruoli_esporta_pronto", quanti=min(len(membri), 50_000)), ephemeral=True,
+            file=discord.File(io.BytesIO(dati), filename=nome), allowed_mentions=NESSUNA_MENZIONE)
 
     async def _esegui_massa(self, guild, ruolo, membri, operazione: OperazioneMassa, canale, motivo: str) -> None:
         errori_di_fila = 0

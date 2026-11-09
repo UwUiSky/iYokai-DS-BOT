@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:47 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:51 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 762 comandi in 45 categorie.**
+**Totale: 765 comandi in 45 categorie.**
 
 ## Admin: AI
 
@@ -670,9 +670,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 - **`/mod-canali blocco attiva`** — Blocca tutti i canali, gli inviti e gli ingressi del server.
 - **`/mod-canali blocco togli`** — Riapre il server com'era prima del blocco.
 - **`/mod-canali clear`** — Cancella un numero di messaggi, con filtri opzionali.
+- **`/mod-canali espressione`** — Aggiungi un'emoji o uno sticker al server da un file o da un'emoji.
 - **`/mod-canali lock`** — Blocca la possibilità di scrivere in un canale.
 - **`/mod-canali reazioni`** — Toglie le reazioni dagli ultimi messaggi di un canale, senza cancellarli.
 - **`/mod-canali slowmode`** — Slowmode di un canale o di una categoria. Senza valori: mostra i canali con slowmode.
+- **`/mod-canali thread`** — Crea, archivia o elimina un thread.
 - **`/mod-canali unlock`** — Sblocca la possibilità di scrivere in un canale.
 - **`/mod-canali vocale dove`** — Mostra in quale vocale è un membro, e chiedi un avviso quando entra.
 - **`/mod-canali vocale muta`** — Silenzia o riattiva il microfono di un membro in vocale.
@@ -889,6 +891,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 - **`/voice stato`** — Scrivi cosa state facendo nel canale (vuoto: toglie).
 - **`/voice transfer`** — Trasferisci la proprietà del canale.
 - **`/voice unlock`** — Sblocca il canale.
+- **`/voice vai`** — Spostati in un vocale dove puoi entrare.
 
 ## Web
 

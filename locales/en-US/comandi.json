@@ -321,7 +321,9 @@
   "regole": "rules",
   "traguardo": "milestone",
   "avvisami": "notifyme",
-  "citazioni": "quotes"
+  "citazioni": "quotes",
+  "espressione": "expression",
+  "vai": "go"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1211,7 +1213,10 @@
   "fun citazioni cerca": "Search a word among the server's quotes.",
   "fun citazioni elimina": "Delete a quote you saved.",
   "admin-moduli citazioni": "Quotes of the server: export, import, delete",
-  "admin-moduli citazioni azione": "Export, import or delete the quotes (JSON)."
+  "admin-moduli citazioni azione": "Export, import or delete the quotes (JSON).",
+  "mod-canali espressione": "Add an emoji or a sticker to the server from a file or from an emoji.",
+  "mod-canali thread": "Create, archive or delete a thread.",
+  "voice vai": "Move to a voice channel you can join."
  },
  "parametri": {},
  "menu": {

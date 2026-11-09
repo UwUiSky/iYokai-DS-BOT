@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:47 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:51 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 762 commands in 45 categories.**
+**Total: 765 commands in 45 categories.**
 
 ## Admin: AI
 
@@ -668,11 +668,13 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:4
 ## Mod: channels
 
 - **`/mod-channels clear`** — Deletes a number of messages, with optional filters.
+- **`/mod-channels expression`** — Add an emoji or a sticker to the server from a file or from an emoji.
 - **`/mod-channels lock`** — Blocks the ability to write in a channel.
 - **`/mod-channels lockdown enable`** — Lock all channels, invites and joins of the server.
 - **`/mod-channels lockdown remove`** — Reopen the server as it was before the lockdown.
 - **`/mod-channels reazioni`** — Removes reactions from the latest messages of a channel, without deleting them.
 - **`/mod-channels slowmode`** — Sets slowmode on a channel or category. With no values: lists channels with slowmode.
+- **`/mod-channels thread`** — Create, archive or delete a thread.
 - **`/mod-channels unlock`** — Unblocks the ability to write in a channel.
 - **`/mod-channels vocale disconnect`** — Disconnects a member from voice.
 - **`/mod-channels vocale dove`** — Shows which voice channel a member is in, and asks for an alert when they join.
@@ -879,6 +881,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:4
 - **`/voice bitrate`** — Sets the channel's audio quality (kbps).
 - **`/voice claim`** — Takes the channel if the owner is gone.
 - **`/voice deny`** — Forbids a user from joining the channel.
+- **`/voice go`** — Move to a voice channel you can join.
 - **`/voice hide`** — Hides or shows the channel to people who are not in it.
 - **`/voice invite`** — Sends a user an invite to your channel.
 - **`/voice kick`** — Kicks a user from your channel.
