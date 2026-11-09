@@ -47,6 +47,8 @@ FONTI: dict[str, tuple[str, bool, bool, tuple[str, ...]]] = {
     "nekoslife": ("https://nekos.life/api/v2", False, False, ("nekos.life",)),
     "giphy": ("https://api.giphy.com/v1", False, True, ("giphy.com",)),
 }
+# Fonti che cercano testo libero (`/gif cerca`): Klipy si aggiunge qui con il suo adattatore, dopo il permesso scritto (D70).
+FONTI_RICERCA = ("giphy",)
 NOMI_VISIBILI = {
     "nekosbest": "nekos.best", "purrbot": "purrbot.site", "waifupics": "waifu.pics", "otakugifs": "otakugifs",
     "nekoslife": "nekos.life", "giphy": "GIPHY",

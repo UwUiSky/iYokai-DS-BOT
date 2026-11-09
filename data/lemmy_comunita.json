@@ -1,0 +1,19 @@
+{
+  "comunita": [
+    {"id": "aww", "istanza": "https://lemmy.world", "nome": "aww", "etichetta": "Aww: animali e cose tenere"},
+    {"id": "animalsbeingbros", "istanza": "https://lemmy.world", "nome": "animalsbeingbros", "etichetta": "Animali amici"},
+    {"id": "dogs", "istanza": "https://lemmy.world", "nome": "dogs", "etichetta": "Cani"},
+    {"id": "memes", "istanza": "https://lemmy.world", "nome": "memes", "etichetta": "Meme"},
+    {"id": "programmerhumor", "istanza": "https://lemmy.world", "nome": "ProgrammerHumor", "etichetta": "Umorismo da programmatori"},
+    {"id": "linuxmemes", "istanza": "https://lemmy.world", "nome": "linuxmemes", "etichetta": "Meme su Linux"},
+    {"id": "gaming", "istanza": "https://lemmy.world", "nome": "gaming", "etichetta": "Videogiochi"},
+    {"id": "pcmasterrace", "istanza": "https://lemmy.world", "nome": "pcmasterrace", "etichetta": "PC e hardware"},
+    {"id": "anime_irl", "istanza": "https://lemmy.world", "nome": "anime_irl", "etichetta": "Anime irl"},
+    {"id": "pics", "istanza": "https://lemmy.world", "nome": "pics", "etichetta": "Foto"},
+    {"id": "art", "istanza": "https://lemmy.world", "nome": "art", "etichetta": "Arte"},
+    {"id": "mildlyinteresting", "istanza": "https://lemmy.world", "nome": "mildlyinteresting", "etichetta": "Cose curiose"},
+    {"id": "mademesmile", "istanza": "https://lemmy.world", "nome": "mademesmile", "etichetta": "Cose che fanno sorridere"},
+    {"id": "food", "istanza": "https://lemmy.world", "nome": "food", "etichetta": "Cibo"},
+    {"id": "space", "istanza": "https://lemmy.world", "nome": "space", "etichetta": "Spazio"}
+  ]
+}

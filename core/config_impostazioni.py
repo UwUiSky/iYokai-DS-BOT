@@ -75,6 +75,10 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
         _c("music_idle_minutes", "Esci dopo (minuti di silenzio, 0 = mai)", NUMERO),
         _c("music_known_sites_only", "Solo siti conosciuti", BOOL),
     ),
+    "fun": (
+        _c("fun_immagini_post", "Immagini dalle comunità Lemmy (/immagini post)", BOOL),
+        _c("fun_gif_cerca", "Ricerca libera di GIF (/gif cerca, serve una chiave del bot)", BOOL),
+    ),
     "tickets": (
         _c("ticket_support_role_id", "Ruolo del supporto", RUOLO),
         _c("ticket_max_per_utente", "Ticket aperti per persona (1-5)", NUMERO),

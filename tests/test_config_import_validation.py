@@ -40,6 +40,8 @@ SETTINGS_VALIDE = {
     "tag_ruolo_creatori": 444444444444444445,
     "inviti_eta_minima_giorni": 7,
     "inviti_rientri_finti": True,
+    "fun_gif_cerca": False,
+    "fun_immagini_post": False,
     "suggestions_channel_id": 555555555555555555,
     "suggestions_decided_channel_id": 555555555555555556,
     "ticket_category_id": 666666666666666666,

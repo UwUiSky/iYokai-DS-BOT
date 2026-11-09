@@ -1559,3 +1559,14 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - `pubblica nome:wiki sotto:uno tag:...` e `sotto:due`: compare `/wiki uno` e `/wiki due`.
 - `menu azione:aggiungi tipo:utente nome:Dai il benvenuto tag:benvenuto`: tasto destro su un membro, App, la voce risponde col tag (con il bersaglio). Con `tipo:messaggio` la risposta riceve il testo del messaggio (`{args}`). Sei voci dello stesso tipo: la sesta è rifiutata.
 - Riavviare il bot: i comandi del server rispondono ancora, senza una nuova sync.
+## giro r23fun, B10 — `/immagini post` e `/gif cerca` (#131)
+- `/immagini post comunita:aww` con il comando spento: risposta nascosta «spento». `/admin-giochi servizi immagini_post:sì`, poi di nuovo: immagine con titolo, autore, comunità, link alla fonte e bottone «Segnala». Ripeti entro 5 secondi: «aspetta».
+- Il completamento mostra le 15 comunità; una scritta a mano non in elenco è rifiutata. Nessun post nsfw esce (prova con più comunità).
+- «Segnala» da 3 account diversi sullo stesso post: ai primi due risposta nascosta, al terzo il messaggio diventa «post nascosto». Lo stesso account che preme due volte conta una volta.
+- `/gif cerca testo:gatto` senza chiave Giphy (`GIF_GIPHY_ATTIVO=si` e `GIF_GIPHY_KEY` in `config/gif_fornitori.env`): «spenta». Con la chiave ma `/admin-giochi servizi gif_cerca:no`: «spenta». Con tutto acceso: GIF con «Powered by GIPHY». Un testo per adulti è rifiutato.
+
+## giro r23fun, B11 — suoni per ruolo, turni, smash, fusione (#131)
+- `/admin-musica suono-ruoli suono:<uno> modo:Consenti ruolo:@A`, poi `/music suono` da chi non ha @A: «non disponibile per i tuoi ruoli»; da chi ha @A: parte. `modo:Vieta ruolo:@B` e chi ha @B è bloccato anche se ha @A. `Mostra` elenca; `Togli` ripristina. @everyone rifiutato; oltre 20 ruoli per un suono: rifiutato. Un amministratore passa sempre. Cancella il ruolo @A dal server: sparisce dall'elenco.
+- `/web turni gioco:Splatoon 3`: modalità con mappe, orari nel tuo fuso e Salmon Run; confronta con l'app. `gioco:World of Warcraft`: reset US martedì 15:00 UTC ed EU mercoledì 04:00 UTC; confronta con l'orologio del gioco (se l'ora europea è diversa, correggi `RESET_WOW` in `core/turni_logic.py`).
+- `/giochi smash` in un canale normale: rifiutato. In un canale con limite d'età: link AniList con anteprima, due bottoni; il secondo clic dello stesso account è «hai già votato»; il conteggio sul messaggio sale.
+- `/immagini fusione a:pikachu b:charizard`: nome fuso e due immagini affiancate; un nome sbagliato: messaggio nascosto; due richieste entro 10 s: «aspetta». L'owner conferma di tenere il comando (marchio Pokémon).

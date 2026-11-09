@@ -1,15 +1,16 @@
 """
 cogs/fun/gif.py
 ===============
-GIF di reazione e di azione (#131, D70): `/gif reazione`, `/gif azione` (con il bottone «Ricambia») e
-`/gif privacy` (chi non vuole ricevere azioni). Gratuite per tutti, solo SFW; la fonte e il credito
-sono sempre mostrati. Le azioni tra utenti si spengono con `/admin-bot politica` su `gif azione`.
+GIF di reazione e di azione (#131, D70): `/gif reazione`, `/gif azione` (con il bottone «Ricambia»),
+`/gif privacy` (chi non vuole ricevere azioni) e `/gif cerca` (ricerca libera: spenta di base e solo con una
+chiave). Gratuite per tutti, solo SFW; la fonte e il credito sono sempre mostrati. Le azioni tra utenti si spengono con `/admin-bot politica` su `gif azione`.
 Funzioni coperte: SPEC §16 (FUN-081..135, 137, 139; D70)
 Dipende da: core/gif_catalogo.py, core/gif_fonti.py, core/gif_logic.py, core/repositories/gif_privacy_repo.py
 """
 
 from __future__ import annotations
 
+import time
 from typing import Optional
 
 import discord
@@ -20,6 +21,7 @@ from cogs.fun.entertainment import MODULE_FUN
 from core import gif_catalogo as catalogo
 from core import gif_logic as logica
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core import fun_servizi_logic as servizi
 from core.database import db
 from core.gif_fonti import Gif, servizio_gif
 from core.i18n import da_locale_discord, t, testo_per
@@ -28,6 +30,8 @@ from core.ui_base import BaseView
 
 NESSUNA_MENZIONE = discord.AllowedMentions.none()
 SCADENZA_BOTTONE_SECONDI = 600
+PAUSA_RICERCA_SECONDI = 5
+MAX_UTENTI_NELLA_PAUSA = 500
 
 
 async def _completa_reazione(interaction: discord.Interaction, digitato: str) -> list[app_commands.Choice[str]]:
@@ -99,6 +103,17 @@ class RicambiaView(BaseView):
 class GifCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        self._ultima_ricerca: dict[int, float] = {}
+
+    def _pausa_ricerca(self, utente_id: int) -> int:
+        ora = time.monotonic()
+        resta = PAUSA_RICERCA_SECONDI - (ora - self._ultima_ricerca.get(utente_id, -1e9))
+        if resta > 0:
+            return int(resta) + 1
+        if len(self._ultima_ricerca) >= MAX_UTENTI_NELLA_PAUSA:
+            self._ultima_ricerca = {u: t for u, t in self._ultima_ricerca.items() if ora - t < PAUSA_RICERCA_SECONDI}
+        self._ultima_ricerca[utente_id] = ora
+        return 0
 
     async def _modulo_attivo(self, interaction: discord.Interaction) -> bool:
         if interaction.guild is None:
@@ -166,6 +181,47 @@ class GifCog(CogConGruppi, commands.Cog):
         lingua = await _lingua_pubblica(interaction)
         frase = logica.frase(voce, lingua, interaction.user.display_name, testo=testo)
         await interaction.followup.send(embed=_embed(gif, lingua, frase), allowed_mentions=NESSUNA_MENZIONE)
+
+    @comando_di_gruppo("gif", nome="cerca", descrizione="Cerca una GIF con le parole (spento di base: serve una chiave del bot).")
+    @app_commands.describe(testo="Cosa cercare (massimo 50 caratteri)", tema="Un tema da aggiungere alla ricerca")
+    @app_commands.choices(
+        tema=[
+            app_commands.Choice(name="Anime", value="anime"),
+            app_commands.Choice(name="Videogiochi", value="gaming"),
+            app_commands.Choice(name="Animali", value="animali"),
+            app_commands.Choice(name="Meme", value="meme"),
+            app_commands.Choice(name="Cibo", value="cibo"),
+        ]
+    )
+    async def cerca(
+        self, interaction: discord.Interaction, testo: app_commands.Range[str, 1, logica.MAX_RICERCA],
+        tema: Optional[app_commands.Choice[str]] = None,
+    ) -> None:
+        if not await self._modulo_attivo(interaction):
+            return
+        if not await servizi.acceso(interaction.guild.id, servizi.SETTING_GIF_CERCA) or not logica.ricerca_disponibile(
+            f.nome for f in servizio_gif.fonti()
+        ):
+            await interaction.response.send_message(await testo_per(interaction, "gif_cerca_spento"), ephemeral=True)
+            return
+        voce = logica.voce_di_ricerca(testo, tema.value if tema else None)
+        if voce is None:
+            await interaction.response.send_message(await testo_per(interaction, "gif_cerca_non_ammessa"), ephemeral=True)
+            return
+        resta = self._pausa_ricerca(interaction.user.id)
+        if resta:
+            await interaction.response.send_message(await testo_per(interaction, "immagini_post_aspetta", secondi=resta), ephemeral=True)
+            return
+        await interaction.response.defer()
+        gif = await servizio_gif.prendi(voce)
+        if gif is None:
+            await self._niente_gif(interaction, True)
+            return
+        lingua = await _lingua_pubblica(interaction)
+        await interaction.followup.send(
+            embed=_embed(gif, lingua, t("gif_cerca_frase", lingua, utente=interaction.user.display_name, testo=voce.ricerca)),
+            allowed_mentions=NESSUNA_MENZIONE,
+        )
 
     @comando_di_gruppo("gif", nome="azione", descrizione="Una GIF di azione verso un utente: abbraccio, bacio, schiaffo...")
     @app_commands.describe(nome="Quale azione", utente="Verso chi")

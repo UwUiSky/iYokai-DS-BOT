@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:41 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:44 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 818 comandi in 49 categorie.**
+**Totale: 825 comandi in 49 categorie.**
 
 ## Admin: AI
 
@@ -222,6 +222,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:
 - **`/admin-giochi quiz elenca`** — Le domande del quiz caricate dal server.
 - **`/admin-giochi quiz regole`** — Regole del quiz: punti, tempo, risposta mostrata, il bot gioca.
 - **`/admin-giochi quiz rimuovi`** — Toglie una domanda caricata dal server.
+- **`/admin-giochi servizi`** — Accende o spegne i servizi esterni: immagini Lemmy e ricerca di GIF.
 
 ## Admin: giveaway
 
@@ -332,6 +333,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:
 - **`/admin-musica canale-richieste`** — Canale dove si scrive un titolo per metterlo in coda, con il player.
 - **`/admin-musica impostazioni`** — Cambia le impostazioni musicali del server.
 - **`/admin-musica riepilogo`** — Mostra tutte le impostazioni musicali del server.
+- **`/admin-musica suono-ruoli`** — Chi può usare un suono: ruoli consentiti o vietati.
 
 ## Admin: ruoli
 
@@ -645,6 +647,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:
 ## Gif
 
 - **`/gif azione`** — Una GIF di azione verso un utente: abbraccio, bacio, schiaffo...
+- **`/gif cerca`** — Cerca una GIF con le parole (spento di base: serve una chiave del bot).
 - **`/gif privacy`** — Scegli chi può farti le azioni con le GIF.
 - **`/gif reazione`** — Una GIF di reazione: piangi, balli, ridi...
 
@@ -662,6 +665,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:
 - **`/giochi quiz avvia`** — Avvia un quiz a domande nel canale.
 - **`/giochi quiz classifica`** — Classifica del quiz: questa settimana o di sempre.
 - **`/giochi rps`** — Carta, forbici, sasso contro il bot.
+- **`/giochi smash`** — Smash or pass: un personaggio adulto di AniList (solo canali con limite d'età).
 - **`/giochi spinner`** — Fai girare lo spinner: vince chi lo fa girare più a lungo.
 
 ## Immagini
@@ -670,10 +674,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:
 - **`/immagini blur`** — Applica una sfocatura a un'immagine.
 - **`/immagini effetto`** — Effetto sull'avatar: arcobaleno, R.I.P., ricercato, pingato, sepia, neon...
 - **`/immagini foto`** — Una foto bella da vedere: cibo o buonumore.
+- **`/immagini fusione`** — Due Pokémon: il nome fuso e le loro immagini ufficiali affiancate.
 - **`/immagini grayscale`** — Trasforma un'immagine in scala di grigi.
 - **`/immagini invert`** — Inverte i colori di un'immagine.
 - **`/immagini meme`** — Genera un meme con testo sopra/sotto.
 - **`/immagini pixelate`** — Pixela un'immagine.
+- **`/immagini post`** — Un'immagine da una comunità Lemmy (spento di base: lo accende l'admin).
 - **`/immagini search-image`** — Cerca un'immagine SFW su Pixabay.
 - **`/immagini xkcd`** — Una vignetta di xkcd: l'ultima o quella col numero che scegli.
 
@@ -967,4 +973,5 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:
 - **`/web meteo`** — Il meteo di una città: adesso e i prossimi giorni.
 - **`/web prezzo`** — Il prezzo di una criptovaluta.
 - **`/web scheda`** — La scheda di un Pokémon, anime, carta o giocatore.
+- **`/web turni`** — Le rotazioni di Splatoon 3 e il reset settimanale di World of Warcraft.
 - **`/web wiki`** — Il riassunto di una voce di Wikipedia.
