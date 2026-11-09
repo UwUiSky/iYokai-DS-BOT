@@ -225,3 +225,16 @@ async def test_spegnere_le_azioni_nel_server_e_solo_la_politica_139():
     kw = dict(canali=[], ruoli=[], user_id=AUTORE, esente=False)
     assert p.valuta(politica, percorso="gif azione", **kw) == p.MOTIVO_COMANDO_OFF
     assert p.valuta(politica, percorso="gif reazione", **kw) is None
+
+
+async def test_ricambia_non_aggira_il_modulo_spento_ne_la_politica(cog):
+    from core import command_policy as p
+
+    voce = gifmod.catalogo.trova("azione", "abbraccia")
+    vista = gifmod.RicambiaView(cog, voce, AUTORE, BERS, "Ricambia")
+    assert await p.modifica_elenco(ID, p.CHIAVE_COMANDI_OFF, "gif azione", aggiungi=True, changed_by=1)
+    it = _it(user_id=BERS)
+    it.guild.get_member.return_value = fake_member(AUTORE, "autore")
+    await vista._premuto(it)
+    assert _risposta(it).kwargs["ephemeral"] is True and not vista.bottone.disabled
+    assert gifmod.servizio_gif.viste == []

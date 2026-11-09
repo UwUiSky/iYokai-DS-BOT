@@ -81,6 +81,9 @@ class RicambiaView(BaseView):
                 ephemeral=True, allowed_mentions=NESSUNA_MENZIONE,
             )
             return
+        if not await self._cog.azione_permessa(interaction):
+            await interaction.response.send_message(await testo_per(interaction, "gif_modulo_spento"), ephemeral=True)
+            return
         self.bottone.disabled = True  # un solo clic: la risposta è una sola
         await interaction.response.edit_message(view=self)
         autore = interaction.guild.get_member(self._autore_id) if interaction.guild else None
@@ -105,6 +108,14 @@ class GifCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(await testo_per(interaction, "gif_modulo_spento"), ephemeral=True)
             return False
         return True
+
+    async def azione_permessa(self, interaction: discord.Interaction) -> bool:
+        """Modulo acceso e `gif azione` non spenta dalla politica del server (il bottone non passa dai controlli del comando)."""
+        from core.command_policy import valuta_percorso
+
+        if interaction.guild is None or not await db.is_module_active_for_guild(interaction.guild.id, MODULE_FUN):
+            return False
+        return await valuta_percorso(interaction, "gif azione") is None
 
     async def controlla_azione(self, autore: discord.abc.User, bersaglio: discord.abc.User) -> str | None:
         return await logica.esito_azione(gif_privacy_repo, autore.id, bersaglio.id, bool(bersaglio.bot))
