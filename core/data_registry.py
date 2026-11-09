@@ -555,6 +555,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("gif_blocchi", "Utenti bloccati dalle GIF di azione di una persona",
        colonne_utente=("user_id", "bloccato_id"), utente="cancella",
        nota="si cancella da entrambe le parti; non si esporta (la copia mostrerebbe chi ti ha bloccato)"),
+    _t("immagini_segnalazioni", "Segnalazioni dei post di Lemmy mostrati da /immagini post (B10)",
+       colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True),
     _t("odio_parole", "Libreria mondiale delle parole d'odio e delle loro varianti (D35)",
        nota="globale: nessun dato di utenti né di server, solo parole; la scelta dello stato è del proprietario del bot"),
     _t("odio_segnalazioni", "Quali server hanno segnalato una variante (D35)", colonna_server="guild_id",

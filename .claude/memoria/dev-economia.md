@@ -4,10 +4,11 @@
 09/11/2026 · giro r21gif, ramo `feat/r21gif`, migrazione 0570 (usata). Lavoro PER FILE.
 
 ## In corso
-- r22fun (B6-B9 di #131, D70), ramo `feat/r22fun`, worktree `/home/claude/wt/r22fun`, env `scratchpad/env_r22fun_dev.sh`. Previsione: 4 commit (B6 quiz, B7 gruppo, B8 carte, B9 schede). B6-B9 fatti (4 commit). Resta: tetto Premium testi battitura (D59, con dev-core); servizi giochi B10+ non richiesti.
+- r23fun (B10-B11 di #131), ramo `feat/r23fun`, worktree `/home/claude/wt/r23fun`, env `/tmp/env_w23fun.sh`. Migrazioni: le 0572-0575 erano già di r22fun: uso 0576 (B10) e 0577 (B11). B10 fatto. Resta B11: suono-ruoli, `/web turni`, `/giochi smash`, `/immagini fusione`.
 - Smoke da fare (lo lancia l'orchestratore).
 
 ## Fatto
+- r23fun B10: `core/lemmy_logic.py`, `immagini_segnalazioni_repo` (0576), `cogs/fun/immagini_comunita.py` (`/immagini post`, `/admin-giochi servizi`), `/gif cerca` in `gif.py`; interruttori `fun_immagini_post`/`fun_gif_cerca` (scheda «fun»), spenti di base. Klipy non fatto (docs illeggibili).
 - r22fun B9: `/web scheda` in `cogs/fun/schede_giochi.py` + `core/schede_giochi_logic.py` (NON `schede_logic`/`SchedeCog`: esistono in utility), `safe_http.safe_richiesta`, 0575 `cache_esterna`.
 - r22fun B8: `core/carte_logic.py`, `fun_impostazioni_repo`, `cogs/fun/carte.py`, `data/carte/*.json` (carte originali).
 - r22fun B7: `core/gruppo_logic.py`, `battitura_repo`, `cogs/fun/_lobby.py`, `giochi_gruppo.py`, 0574; tetto Premium D59 non collegato.

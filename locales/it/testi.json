@@ -2572,5 +2572,19 @@
   "scheda_fonte_magic": "Dati e immagine: Scryfall. Magic: The Gathering è un marchio di Wizards of the Coast.",
   "scheda_fonte_hearthstone": "Dati: HearthstoneJSON. Hearthstone è un marchio di Blizzard.",
   "scheda_fonte_osu": "Dati: osu! API v2",
-  "scheda_fonte_fortnite": "Dati: fortnite-api.com (statistiche pubbliche)"
+  "scheda_fonte_fortnite": "Dati: fortnite-api.com (statistiche pubbliche)",
+  "immagini_post_nascosto": "Questo post è stato nascosto dopo diverse segnalazioni.",
+  "immagini_post_segnalato": "Grazie, ho registrato la segnalazione. Con 3 segnalazioni il post non si mostra più.",
+  "immagini_post_spento": "Questo comando è spento in questo server. Un admin lo accende con /admin-giochi servizi.",
+  "immagini_post_comunita_sconosciuta": "Questa comunità non è nell'elenco. Scegline una dal completamento.",
+  "immagini_post_aspetta": "Aspetta ancora {secondi} secondi prima di riprovare.",
+  "immagini_post_nessuno": "Non ho trovato un'immagine adatta in questa comunità. Riprova più tardi o scegli un'altra.",
+  "immagini_post_credito": "Post di {autore} nella comunità {comunita} su Lemmy · contenuto di terzi",
+  "immagini_post_segnala": "Segnala",
+  "fun_servizi_acceso": "acceso",
+  "fun_servizi_spento": "spento",
+  "fun_servizi_stato": "Servizi esterni del Divertimento:\n/immagini post: {immagini_post}\n/gif cerca: {gif_cerca}",
+  "gif_cerca_spento": "La ricerca di GIF è spenta in questo server, oppure il bot non ha una chiave per farla. Un admin la accende con /admin-giochi servizi.",
+  "gif_cerca_non_ammessa": "Non posso cercare questo testo: le GIF di questo bot sono adatte a tutti.",
+  "gif_cerca_frase": "{utente} cerca: {testo}"
 }

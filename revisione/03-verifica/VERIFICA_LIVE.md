@@ -1519,3 +1519,9 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - `tipo:Magic: carta nome:lightning bolt`: immagine della carta intera, credito Scryfall. `tipo:Hearthstone: carta nome:palla di fuoco`.
 - `tipo:osu!: giocatore` e `Fortnite: giocatore` senza chiave: «scheda non attiva». Con le chiavi in `config/giochi_servizi.env` (riavvio): osu! `nome:peppy`; Fortnite con un nome a profilo pubblico (profilo privato: «non ho trovato nulla»). Controlla che nei log non compaiano chiavi né token.
 - Rifai la stessa ricerca entro pochi minuti: risposta immediata dalla cache (nessuna nuova richiesta nei log).
+
+## giro r23fun, B10 — `/immagini post` e `/gif cerca` (#131)
+- `/immagini post comunita:aww` con il comando spento: risposta nascosta «spento». `/admin-giochi servizi immagini_post:sì`, poi di nuovo: immagine con titolo, autore, comunità, link alla fonte e bottone «Segnala». Ripeti entro 5 secondi: «aspetta».
+- Il completamento mostra le 15 comunità; una scritta a mano non in elenco è rifiutata. Nessun post nsfw esce (prova con più comunità).
+- «Segnala» da 3 account diversi sullo stesso post: ai primi due risposta nascosta, al terzo il messaggio diventa «post nascosto». Lo stesso account che preme due volte conta una volta.
+- `/gif cerca testo:gatto` senza chiave Giphy (`GIF_GIPHY_ATTIVO=si` e `GIF_GIPHY_KEY` in `config/gif_fornitori.env`): «spenta». Con la chiave ma `/admin-giochi servizi gif_cerca:no`: «spenta». Con tutto acceso: GIF con «Powered by GIPHY». Un testo per adulti è rifiutato.

@@ -60,14 +60,14 @@ def _risposta(it):
     return it.response.send_message.await_args
 
 
-async def test_albero_gif_ha_tre_comandi_e_regge_i_limiti():
+async def test_albero_gif_ha_quattro_comandi_e_regge_i_limiti():
     from core.command_groups import GRUPPI
 
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.none())
     await gifmod.setup(bot)
-    assert percorsi_del_gruppo("gif") == {"reazione", "azione", "privacy"}
+    assert percorsi_del_gruppo("gif") == {"reazione", "azione", "privacy", "cerca"}
     assert len(GRUPPI["gif"].commands) <= 25
-    for nome in ("reazione", "azione", "privacy"):
+    for nome in ("reazione", "azione", "privacy", "cerca"):
         comando_nel_gruppo("gif", nome).to_dict(bot.tree)
 
 

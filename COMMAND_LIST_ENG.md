@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 17:46 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:01 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 800 commands in 47 categories.**
+**Total: 803 commands in 47 categories.**
 
 ## Admin: AI
 
@@ -210,6 +210,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 17:4
 - **`/admin-games quiz load`** — Upload quiz questions from a CSV or JSON file.
 - **`/admin-games quiz remove`** — Remove a question uploaded by the server.
 - **`/admin-games quiz rules`** — Quiz rules: points, time, answer shown, bot plays.
+- **`/admin-games servizi`** — Turn the external services on or off: Lemmy images and GIF search.
 
 ## Admin: giveaways
 
@@ -627,6 +628,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 17:4
 - **`/gif action`** — An action GIF aimed at a user: hug, kiss, slap...
 - **`/gif privacy`** — Choose who can send you GIF actions.
 - **`/gif reaction`** — A reaction GIF: cry, dance, laugh...
+- **`/gif search`** — Search a GIF by words (off by default: needs a key set up by the bot owner).
 
 ## Games
 
@@ -654,6 +656,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 17:4
 - **`/images invert`** — Inverts an image's colors.
 - **`/images meme`** — Makes a meme with top/bottom text.
 - **`/images pixelate`** — Pixelates an image.
+- **`/images post`** — An image from a Lemmy community (off by default: an admin turns it on).
 - **`/images search-image`** — Searches a SFW image on Pixabay.
 - **`/images xkcd`** — An xkcd comic: the latest or the number you pick.
 

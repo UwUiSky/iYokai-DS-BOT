@@ -1265,7 +1265,10 @@
   "giochi carte avvia": "Card game: complete the sentence with the funniest card.",
   "admin-giochi carte": "Cards: packs turned on in the server.",
   "admin-giochi carte pacchetti": "Which card packs are turned on in the server.",
-  "web scheda": "The card of a Pokémon, anime, card or player."
+  "web scheda": "The card of a Pokémon, anime, card or player.",
+  "immagini post": "An image from a Lemmy community (off by default: an admin turns it on).",
+  "gif cerca": "Search a GIF by words (off by default: needs a key set up by the bot owner).",
+  "admin-giochi servizi": "Turn the external services on or off: Lemmy images and GIF search."
  },
  "parametri": {},
  "menu": {

@@ -2572,5 +2572,19 @@
   "scheda_fonte_magic": "Data and image: Scryfall. Magic: The Gathering is a trademark of Wizards of the Coast.",
   "scheda_fonte_hearthstone": "Data: HearthstoneJSON. Hearthstone is a trademark of Blizzard.",
   "scheda_fonte_osu": "Data: osu! API v2",
-  "scheda_fonte_fortnite": "Data: fortnite-api.com (public stats)"
+  "scheda_fonte_fortnite": "Data: fortnite-api.com (public stats)",
+  "immagini_post_nascosto": "This post was hidden after several reports.",
+  "immagini_post_segnalato": "Thanks, your report is saved. After 3 reports the post is no longer shown.",
+  "immagini_post_spento": "This command is off in this server. An admin can turn it on with /admin-giochi servizi.",
+  "immagini_post_comunita_sconosciuta": "That community is not in the list. Pick one from the suggestions.",
+  "immagini_post_aspetta": "Wait {secondi} more seconds before trying again.",
+  "immagini_post_nessuno": "I couldn't find a suitable image in this community. Try later or pick another one.",
+  "immagini_post_credito": "Post by {autore} in the {comunita} community on Lemmy · third-party content",
+  "immagini_post_segnala": "Report",
+  "fun_servizi_acceso": "on",
+  "fun_servizi_spento": "off",
+  "fun_servizi_stato": "External services of Fun:\n/immagini post: {immagini_post}\n/gif cerca: {gif_cerca}",
+  "gif_cerca_spento": "GIF search is off in this server, or the bot has no key for it. An admin can turn it on with /admin-giochi servizi.",
+  "gif_cerca_non_ammessa": "I can't search for this text: GIFs from this bot are family-friendly only.",
+  "gif_cerca_frase": "{utente} searched: {testo}"
 }
