@@ -372,3 +372,33 @@ async def safe_richiesta(
     except (aiohttp.ClientError, TimeoutError, ValueError, RuntimeError) as exc:
         logger.warning("Impossibile scaricare %s: %s", _per_log(url), type(exc).__name__)
         return None
+
+
+async def safe_richiesta_byte(url: str, *, max_bytes: int = DEFAULT_MAX_BYTES, tipo_prefisso: str = "image/") -> tuple[bytes, str] | None:
+    """
+    GET di un file binario (un'immagine) con gli stessi controlli di `safe_richiesta`: schema, porta e indirizzi,
+    nessun redirect, tetto di byte, timeout. Restituisce (byte, tipo) solo se il tipo comincia con `tipo_prefisso`.
+    """
+    destinazione = _destinazione_ammessa(url)
+    if destinazione is None:
+        logger.warning("URL rifiutato (SSRF/schema/porta non ammessi): %s", _per_log(url))
+        return None
+    try:
+        sessione = await _sessione_condivisa()
+        async with sessione.get(
+            destinazione, allow_redirects=False, timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS)
+        ) as risposta:
+            tipo = (risposta.content_type or "").lower()
+            if risposta.status != 200 or not tipo.startswith(tipo_prefisso):
+                logger.warning("%s ha risposto con status %d.", _per_log(url), risposta.status)
+                return None
+            corpo = bytearray()
+            async for blocco in risposta.content.iter_chunked(8192):
+                corpo.extend(blocco)
+                if len(corpo) > max_bytes:
+                    logger.warning("%s ha superato il limite di %d byte, scarico interrotto.", _per_log(url), max_bytes)
+                    return None
+            return bytes(corpo), tipo
+    except (aiohttp.ClientError, TimeoutError, ValueError, RuntimeError) as exc:
+        logger.warning("Impossibile scaricare %s: %s", _per_log(url), type(exc).__name__)
+        return None

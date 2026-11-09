@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:14 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:18 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 808 commands in 48 categories.**
+**Total: 815 commands in 48 categories.**
 
 ## Admin: AI
 
@@ -210,6 +210,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:1
 - **`/admin-games quiz load`** — Upload quiz questions from a CSV or JSON file.
 - **`/admin-games quiz remove`** — Remove a question uploaded by the server.
 - **`/admin-games quiz rules`** — Quiz rules: points, time, answer shown, bot plays.
+- **`/admin-games servizi`** — Turn the external services on or off: Lemmy images and GIF search.
 
 ## Admin: giveaways
 
@@ -320,6 +321,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:1
 - **`/admin-music request-channel`** — Channel where typing a title queues it, with the player.
 - **`/admin-music settings`** — Changes the server's music settings.
 - **`/admin-music summary`** — Shows all the server's music settings.
+- **`/admin-music suono-ruoli`** — Who can use a sound: allowed or banned roles.
 
 ## Admin: roles
 
@@ -635,6 +637,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:1
 - **`/gif action`** — An action GIF aimed at a user: hug, kiss, slap...
 - **`/gif privacy`** — Choose who can send you GIF actions.
 - **`/gif reaction`** — A reaction GIF: cry, dance, laugh...
+- **`/gif search`** — Search a GIF by words (off by default: needs a key set up by the bot owner).
 
 ## Games
 
@@ -650,6 +653,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:1
 - **`/games quiz leaderboard`** — Quiz ranking: this week or all-time.
 - **`/games quiz start`** — Start a quiz in the channel.
 - **`/games rps`** — Rock, paper, scissors against the bot.
+- **`/games smash`** — Smash or pass: an adult AniList character (age-restricted channels only).
 - **`/games spinner`** — Spin the spinner: the longest spin wins.
 
 ## Images
@@ -658,10 +662,12 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:1
 - **`/images blur`** — Blurs an image.
 - **`/images effect`** — Avatar effect: rainbow, R.I.P., wanted, pinged, sepia, neon...
 - **`/images foto`** — A nice photo to look at: food or good mood.
+- **`/images fusione`** — Two Pokémon: the fused name and their official images side by side.
 - **`/images grayscale`** — Turns an image to grayscale.
 - **`/images invert`** — Inverts an image's colors.
 - **`/images meme`** — Makes a meme with top/bottom text.
 - **`/images pixelate`** — Pixelates an image.
+- **`/images post`** — An image from a Lemmy community (off by default: an admin turns it on).
 - **`/images search-image`** — Searches a SFW image on Pixabay.
 - **`/images xkcd`** — An xkcd comic: the latest or the number you pick.
 
@@ -953,5 +959,6 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:1
 - **`/web movie`** — Information on a movie or a TV series.
 - **`/web price`** — The price of a cryptocurrency.
 - **`/web shorten`** — Shorten a link (if the server turned the command on).
+- **`/web turni`** — Splatoon 3 rotations and the World of Warcraft weekly reset.
 - **`/web weather`** — Weather of a city: now and the next days.
 - **`/web wiki`** — The summary of a Wikipedia entry.
