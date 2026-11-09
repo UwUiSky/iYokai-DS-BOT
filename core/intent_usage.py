@@ -71,6 +71,7 @@ USI: dict[str, tuple[UsoIntent, ...]] = {
         UsoIntent("Softban and mute", "cogs/moderation/softban_mute.py", "Re-apply a mute on rejoin"),
         UsoIntent("Tickets", "cogs/tickets/tickets.py", "Close the ticket of a member who left"),
         UsoIntent("Modmail", "cogs/tickets/modmail.py", "Close the thread of a member who left"),
+        UsoIntent("Level resets on leave or ban (off by default)", "cogs/leveling/azzeramenti.py", "Reset the XP of a member who left, only if the server turned it on"),
         UsoIntent("Button polls", "cogs/utility/sondaggi_bottoni.py", "Remove the vote of a member who left or was banned"),
     ),
     INTENT_MESSAGE_CONTENT: (
