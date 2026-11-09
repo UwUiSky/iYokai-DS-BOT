@@ -4,10 +4,11 @@
 09/11/2026 · ramo feat/r20util (worktree /home/claude/wt/r20util, env scratchpad/env_r20util.sh, DB iyokai_w20util) · blocco Utility #128 B8-B15, D69. Migrazioni da 0547 (0546 presa da B7).
 
 ## In corso
-- r22util (feat/r22util): B22 fatto (0559). Prossimo: B23 in cogs/utility/sondaggi_bottoni.py (`inizia_tra` su bottoni con stato programmato + repo.apri + azione scheduler di apertura; `/sondaggi gestisci azione:elenco|riepilogo|chiudi`; poll.py nativo: inizia_tra, chiudi_a_voti con on_raw_poll_vote_add + Poll.end, migrazione 0560 sondaggi_nativi), poi B24 /eventi (0561 eventi, eventi_iscritti; gruppo nuovo in command_groups + AUDIENCE + generate_command_list + comandi.json). Smoke da fare (non lanciato).
+- r23util (feat/r23util): B23 e B24 fatti (0560, 0561). Prossimo: blocchi successivi di #128 (vedi disegno); migrazioni libere da 0562 a 0569. Smoke da fare (non lanciato).
 - Aperto per altri: tests/test_command_search_bilingue.py e _bug147 falliscono anche su origin/main.
 
 ## Fatto
+- r23util B23: `inizia_tra` su bottoni (stato programmato, scheduler sondaggio_apri, repo.apri) e su poll nativo (tabella sondaggi_nativi 0560), chiudi_a_voti nativo (on_raw_poll_vote_add/remove, contatore, end_poll), `/sondaggi gestisci` elenco|riepilogo|chiudi, testo sb_opzione_tolta. B24 `/eventi` crea|elenco|modifica|annulla (0561, eventi_repo, cogs/utility/eventi.py, gruppo eventi in command_groups).
 - r22util B22 sondaggio a bottoni: repo con advisory lock, DynamicItem sb:<id>:<n>, pesi, modifica, chiusura (0559). Migrazioni libere da 0559 a 0569.
 - r21util B20 tag reazioni/si_cancella_dopo (scheduler)/cancella_messaggi/anche_modificati; B21 /tag crea|modifica|elimina|prendi, /admin-tag tag creatori|sostituisci|esporta|importa|gruppi (0557 ha tutte le colonne); UTL-184 /mod-ban massa invito.
 - r21util B16 citazioni+uso comandi+registro staff (0555); B17 emoji/sticker/thread/voice vai/massa esporta; B18 regex/inizia/svuota/globali (0556); B19 gruppi /tag e /admin-tag, opzioni, pesi, 4000 (0557). /fun quote NON spostato (cogs/fun e di r21fun).
@@ -39,6 +40,8 @@
 - Migrazione già applicata in un DB di test: mai riscriverla, usare il numero dopo.
 
 ## Aperto
+- Sondaggi nativi programmati: non compaiono in `/sondaggi gestisci` (solo bottoni) e non si annullano; il conteggio a N voti conta i voti (non i votanti) e perde quelli arrivati col bot spento.
+- Eventi: promemoria solo per chi ha detto «sì»; i bottoni dei messaggi finiti restano ma rispondono «chiuso».
 - UTL-184 `/mod-ban massa invito codice:` non fatto: è in cogs/moderation (r19mod). Servono: completamento sul codice + ban di massa dei membri entrati con quel codice (invite_joins.code).
 - Pannello web: editor benvenuto elenca i segnaposto (templates/editor_benvenuto.html) senza i 4 nuovi.
 - Giveaway: immagine = URL dell'allegato (i link CDN di Discord scadono): da provare dopo un giorno. Test «cricchetto» test_repository_callers: tolto count_entries.

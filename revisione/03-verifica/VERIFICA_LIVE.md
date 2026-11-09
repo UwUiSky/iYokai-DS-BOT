@@ -1524,3 +1524,15 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - `anonimo:true` e `risultati:alla fine`: nessuno vede chi ha votato né i totali; alla scadenza (5 minuti) il messaggio si chiude con i totali.
 - `/admin-moduli sondaggi pesi azione:imposta ruolo:@X peso:3` poi `pesato:true`: il voto di chi ha @X vale 3. «Gestisci» (autore o Gestisci messaggi): chiudi ora e ruoli che possono votare. `/sondaggi modifica`: togliere un'opzione votata chiede conferma.
 - Esci dal server (o fatti bannare) con un voto aperto: il voto sparisce.
+
+## giro r23util, B23 — sondaggi programmati e gestione (#128)
+- `/sondaggi bottoni ... inizia_tra:2m`: risposta «programmato»; dopo 2 minuti compare il messaggio e parte la durata. `/sondaggi gestisci elenco` lo mostra prima come «programmato»; `chiudi` prima dell'ora lo annulla (non compare).
+- `/sondaggi crea question:Pizza? inizia_tra:2m`: dopo 2 minuti il sondaggio nativo è nel canale. `chiudi_a_voti:2` (anche senza `inizia_tra`): al secondo voto il sondaggio si chiude da solo.
+- `/sondaggi gestisci riepilogo` con `risultati:alla fine`: solo il numero dei votanti; da chiuso, le barre. Estraneo senza «Gestisci messaggi»: «non puoi».
+- `/sondaggi modifica` toglie un'opzione, poi clicca il vecchio bottone prima dell'aggiornamento: messaggio «opzione tolta», non «già chiuso».
+
+## giro r23util, B24 — eventi con iscrizioni (#128)
+- Senza «Crea eventi»: `/eventi crea titolo:Serata quando:10m` rifiuta. Con il permesso: `/eventi crea titolo:Serata quando:10m posti:2 evento_discord:true`: messaggio con 4 bottoni; compare l'evento esterno di Discord (il bot deve avere «Gestisci eventi»).
+- Tre account: «Ci sono» x3 -> il terzo è in attesa; il primo preme «Esco»: il terzo entra e il bot lo menziona (il messaggio sparisce dopo un'ora). «Forse» libera il posto. «Iscritti»: elenco a pagine, solo chi l'ha aperto usa < >.
+- 15 minuti prima (prova con `quando:20m`): promemoria con menzione dei soli «sì». `/eventi modifica evento:... quando:3h` sposta: il vecchio promemoria non parte. `/eventi annulla`: bottoni spariti, evento di Discord tolto.
+- `ruolo_ping` con un utente senza «Menziona tutti»: il ruolo non viene avvisato e la risposta lo dice.

@@ -4,7 +4,7 @@ core/repositories/sondaggi_repo.py
 Archivio dei sondaggi a bottoni: sondaggi, opzioni, voti (mentre è aperto) e pesi per ruolo. Ogni voto e la chiusura
 girano sotto un blocco per sondaggio: due clic insieme non danno mai due voti né due chiusure.
 Tabelle: core/migrations/0559_sondaggi_bottoni.sql.
-Funzioni coperte: catalogo #128 UTL-088, 089, 091, 093, 094, 096 (D69, B22)
+Funzioni coperte: catalogo #128 UTL-088, 089, 091, 093, 094, 096, 090, 097 (D69, B22, B23)
 """
 
 from __future__ import annotations
@@ -69,6 +69,21 @@ class SondaggiRepository:
             sondaggio_id, pesato,
         )
         return [(r["testo"], int(r["totale"])) for r in righe]
+
+    async def apri(self, sondaggio_id: int, scade_il: datetime) -> bool:
+        """Da «programmato» ad «aperto», una volta sola, con la scadenza calcolata ora. Falso se non spetta più."""
+        async with self._pool.acquire() as conn, conn.transaction():
+            await conn.execute("SELECT pg_advisory_xact_lock(hashtext('sondaggio'), $1)", sondaggio_id % 2**31)
+            r = await conn.execute(
+                "UPDATE sondaggi SET stato = 'aperto', scade_il = $2 WHERE id = $1 AND stato = 'programmato'", sondaggio_id, scade_il)
+        return r != "UPDATE 0"
+
+    async def elenco_gestione(self, guild_id: int, autore_id: int | None = None, *, anche_chiusi: bool = False,
+                              limite: int = 25) -> list[asyncpg.Record]:
+        """Sondaggi programmati e aperti (anche i chiusi, a richiesta), i più nuovi prima."""
+        return await self._pool.fetch(
+            f"SELECT {_COLONNE} FROM sondaggi WHERE guild_id = $1 AND ($2::bigint IS NULL OR autore_id = $2) "
+            "AND ($3 OR stato <> 'chiuso') ORDER BY id DESC LIMIT $4", guild_id, autore_id, anche_chiusi, limite)
 
     async def votanti(self, sondaggio_id: int) -> int:
         return await self._pool.fetchval("SELECT count(DISTINCT user_id) FROM sondaggi_voti WHERE sondaggio_id = $1", sondaggio_id)

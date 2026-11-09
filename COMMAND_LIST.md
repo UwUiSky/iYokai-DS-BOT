@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 17:56 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:08 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 803 comandi in 47 categorie.**
+**Totale: 808 comandi in 48 categorie.**
 
 ## Admin: AI
 
@@ -597,6 +597,13 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 17:
 - **`/clan tesoreria dona`** — Dona coin personali alla tesoreria della tua gilda.
 - **`/clan tesoreria trasferisci`** — Trasferisci coin dalla tesoreria a un'altra TUA gilda (anche su un altro server).
 
+## Eventi
+
+- **`/eventi annulla`** — Annulla un evento: gli iscritti non possono più cambiare.
+- **`/eventi crea`** — Crea un evento con iscrizioni, posti e promemoria.
+- **`/eventi elenco`** — I prossimi eventi, o gli iscritti di un evento.
+- **`/eventi modifica`** — Cambia titolo, data, posti o descrizione di un evento.
+
 ## Founder (proprietario del server)
 
 - **`/founder backup permessi`** — Chi può creare e chi può caricare i backup (solo l'owner).
@@ -854,6 +861,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 17:
 
 - **`/sondaggi bottoni`** — Crea un sondaggio a bottoni (fino a 20 opzioni).
 - **`/sondaggi crea`** — Crea un sondaggio (fino a 10 opzioni).
+- **`/sondaggi gestisci`** — Elenco, riepilogo o chiusura dei sondaggi a bottoni.
 - **`/sondaggi modifica`** — Cambia domanda, opzioni o durata di un sondaggio a bottoni aperto.
 
 ## Tag
