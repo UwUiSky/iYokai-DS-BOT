@@ -645,9 +645,13 @@
   "mod-canali vocale sposta-tutti": "Moves everyone in a voice channel to another one.",
   "mod-canali vocale dove": "Shows which voice channel a member is in, and asks for an alert when they join.",
   "mod-sanzioni nick": "Changes or resets a member's nickname.",
+  "mod-sanzioni applica": "Applies the sanction of a saved reason, which you can change before confirming.",
+  "mod-casi scheda": "A user's card: dates, cases, notes and risk (even outside the server).",
+  "utility mie-sanzioni": "The sanctions you received in this server (only you see them).",
   "mod-ban massa entrati": "Bans or kicks whoever joined in the last minutes (after a confirmation).",
   "mod-casi motivi": "Saved reasons for sanctions.",
   "mod-casi motivi aggiungi": "Adds a saved reason, to pick in the \"reason\" field (needs \"Manage Server\").",
+  "mod-casi motivi modifica": "Changes text, severity or sanction of a saved reason (needs \"Manage Server\").",
   "mod-casi motivi elenco": "Shows the server's saved reasons.",
   "mod-casi motivi togli": "Removes a saved reason (needs \"Manage Server\").",
   "mod-casi caso": "History and details of moderation cases.",
@@ -922,7 +926,7 @@
   "admin-ticket-opzioni limiti": "Open-ticket cap, cooldown and exempt roles.",
   "admin-ticket-opzioni orari": "Opening hours and what happens outside them.",
   "admin-ticket-opzioni accesso": "Who can open: per-role rules, read from the top.",
-  "admin-ticket-opzioni canale": "Channel name and fallback categories.",
+  "admin-ticket-opzioni canale": "Channel name, fallback categories and tickets as private threads.",
   "admin-ticket-opzioni avvisi": "Who to ping on opening and pinned first message.",
   "admin-ticket-opzioni messaggi": "DMs to the user and claim/release texts.",
   "admin-ticket-opzioni permessi": "User permissions, observers, roles while open, staff team.",
@@ -1148,7 +1152,9 @@
   "admin-messaggi embed bottoni": "Add or remove an embed's buttons (link or show tag).",
   "admin-messaggi programmati salta": "Skip the next round of a repeating message.",
   "level compleanno prossimi": "The next birthdays in the server.",
-  "admin-moduli compleanni membro": "Register a member's birthday (day and month only)."
+  "admin-moduli compleanni membro": "Register a member's birthday (day and month only).",
+  "admin-ticket-opzioni attesa": "Moves tickets waiting for the user to a category.",
+  "admin-ticket-opzioni regole": "Rules: if nobody writes for N minutes, close, delete or send a message."
  },
  "parametri": {},
  "menu": {
@@ -1166,6 +1172,8 @@
   "Segnala alla rete iYokai": "Report to iYokai network",
   "Spiega o riassumi": "Explain or summarize",
   "Salva come risposta pronta": "Save as saved reply",
-  "Orari nel mio fuso": "Times in my time zone"
+  "Orari nel mio fuso": "Times in my time zone",
+  "Scheda moderazione": "Moderation card",
+  "Segnala messaggio": "Report message"
  }
 }

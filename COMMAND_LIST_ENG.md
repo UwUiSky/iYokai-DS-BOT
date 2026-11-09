@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:58 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:01 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 719 commands in 42 categories.**
+**Total: 727 commands in 42 categories.**
 
 ## Admin: AI
 
@@ -399,13 +399,15 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:5
 
 - **`/admin-ticket-options access`** — Who can open: per-role rules, read from the top.
 - **`/admin-ticket-options alerts`** — Who to ping on opening and pinned first message.
-- **`/admin-ticket-options channel`** — Channel name and fallback categories.
+- **`/admin-ticket-options attesa`** — Moves tickets waiting for the user to a category.
+- **`/admin-ticket-options channel`** — Channel name, fallback categories and tickets as private threads.
 - **`/admin-ticket-options claiming`** — Claiming: category, exclusivity, auto-assignment.
 - **`/admin-ticket-options closing`** — Confirmation before closing and who can close.
 - **`/admin-ticket-options hours`** — Opening hours and what happens outside them.
 - **`/admin-ticket-options limits`** — Open-ticket cap, cooldown and exempt roles.
 - **`/admin-ticket-options messages`** — DMs to the user and claim/release texts.
 - **`/admin-ticket-options permissions`** — User permissions, observers, roles while open, staff team.
+- **`/admin-ticket-options regole`** — Rules: if nobody writes for N minutes, close, delete or send a message.
 - **`/admin-ticket-options show`** — All the options of a panel.
 
 ## Admin: temporary voice
@@ -421,7 +423,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:5
 
 - **`/-ask`** — Ask for help: I will show you the right commands.
 - **`/-search-command`** — Searches a command by description.
+- **`/Moderation card`** — “Apps” menu (right click)
 - **`/Open ticket`** — “Apps” menu (right click)
+- **`/Report message`** — “Apps” menu (right click)
 - **`/Times in my time zone`** — “Apps” menu (right click)
 
 ## iYokai App (separate app, installed on the user)
@@ -653,7 +657,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:5
 - **`/mod-cases case record`** — Logs a case without taking the action (sanction given outside the bot).
 - **`/mod-cases case staff-leaderboard`** — Moderator leaderboard by number of actions, or one moderator's cases.
 - **`/mod-cases case view`** — Shows the details of a single case.
+- **`/mod-cases lookup`** — A user's card: dates, cases, notes and risk (even outside the server).
 - **`/mod-cases motivi add`** — Adds a saved reason, to pick in the "reason" field (needs "Manage Server").
+- **`/mod-cases motivi edit`** — Changes text, severity or sanction of a saved reason (needs "Manage Server").
 - **`/mod-cases motivi list`** — Shows the server's saved reasons.
 - **`/mod-cases motivi remove`** — Removes a saved reason (needs "Manage Server").
 - **`/mod-cases note add`** — Adds a note on a user.
@@ -666,6 +672,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:5
 
 ## Mod: sanctions
 
+- **`/mod-sanctions applica`** — Applies the sanction of a saved reason, which you can change before confirming.
 - **`/mod-sanctions bulk timeout`** — Times out several members at once (max 28 days).
 - **`/mod-sanctions bulk warn`** — Warns several members at once.
 - **`/mod-sanctions mute`** — Mutes a member with a dedicated role (alternative to timeout).
@@ -803,6 +810,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:5
 - **`/utility lookup seniority`** — Oldest or newest accounts, first or last to join.
 - **`/utility lookup server`** — Server card: owner, date, numbers, boosts.
 - **`/utility lookup user`** — Member card: ID, dates and roles.
+- **`/utility mie-sanzioni`** — The sanctions you received in this server (only you see them).
 - **`/utility news`** — The latest news about the bot.
 - **`/utility ping`** — Checks whether iYokai Main is online and its latency.
 - **`/utility privacy cancella`** — Request the deletion of your personal data.

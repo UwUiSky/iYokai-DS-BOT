@@ -78,6 +78,30 @@ MAX_FILE_ESPORTAZIONE = 9 * 1024 * 1024
 # MOD-012: permesso che serve per cambiare la durata di ogni tipo di caso.
 PERMESSO_DURATA = {"tempban": "ban_members", "timeout": "moderate_members", "mute_role": "manage_roles"}
 SOTTOGRUPPO_MOTIVI = ("motivi", "Motivi pronti per le sanzioni.")
+SCELTE_SEVERITA = [app_commands.Choice(name=n, value=v) for n, v in (("Lieve", "lieve"), ("Media", "media"), ("Grave", "grave"), ("Gravissima", "gravissima"))]
+SCELTE_AZIONE = [app_commands.Choice(name=n, value=v) for n, v in (("Avviso (warn)", "warn"), ("Timeout", "timeout"), ("Espulsione (kick)", "kick"), ("Ban", "ban"))]
+
+
+async def _durata_del_motivo(interaction: discord.Interaction, durata: str | None) -> int | None:
+    """I secondi della durata scritta; None se non c'è; -1 dopo aver risposto che non va."""
+    if durata is None:
+        return None
+    try:
+        return parse_duration(durata)
+    except ValueError as errore:
+        await interaction.response.send_message(str(errore), ephemeral=True)
+        return -1
+
+
+async def _motivo_non_valido(interaction: discord.Interaction, codice: str) -> None:
+    chiavi = {
+        "tetto": "casesystem_motivi_tetto",
+        "doppio": "casesystem_motivi_doppio",
+        "durata": "casesystem_motivi_durata_non_valida",
+    }
+    await interaction.response.send_message(
+        await testo_per(interaction, chiavi.get(codice, "casesystem_motivi_non_valido"), v1=moderation_motivi.MAX_MOTIVI), ephemeral=True
+    )
 # Warn del server: se ne leggono al massimo 200 (20 pagine da 10).
 MAX_WARN_ELENCO = 200
 
@@ -495,26 +519,79 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         descrizione="Aggiunge un motivo pronto, da richiamare nel campo «motivo» (serve «Gestire il server»).",
         sottogruppo=SOTTOGRUPPO_MOTIVI,
     )
-    @app_commands.describe(nome="Nome breve del motivo (fino a 32 caratteri)", testo="Il testo del motivo (da 3 a 512 caratteri)")
+    @app_commands.describe(
+        nome="Nome breve del motivo (fino a 32 caratteri)",
+        testo="Il testo del motivo (da 3 a 512 caratteri)",
+        severita="Quanto è grave (D68)",
+        azione="La sanzione che il bot propone",
+        durata="Durata del timeout proposto, es. 1h, 24h, 7d (max 28 giorni)",
+    )
+    @app_commands.choices(severita=SCELTE_SEVERITA, azione=SCELTE_AZIONE)
     async def motivo_aggiungi(
         self,
         interaction: discord.Interaction,
         nome: app_commands.Range[str, 1, moderation_motivi.MAX_NOME],
         testo: app_commands.Range[str, moderation_motivi.MIN_TESTO, moderation_motivi.MAX_TESTO],
+        severita: app_commands.Choice[str] | None = None,
+        azione: app_commands.Choice[str] | None = None,
+        durata: app_commands.Range[str, 1, 20] | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
             return
         if await _rifiuta_senza_gestione(interaction):
             return
+        secondi = await _durata_del_motivo(interaction, durata)
+        if secondi == -1:
+            return
         try:
-            await moderation_motivi.aggiungi(interaction.guild.id, nome, testo, interaction.user.id)
-        except ValueError as errore:
-            chiave = {"tetto": "casesystem_motivi_tetto", "doppio": "casesystem_motivi_doppio"}.get(str(errore), "casesystem_motivi_non_valido")
-            await interaction.response.send_message(
-                await testo_per(interaction, chiave, v1=moderation_motivi.MAX_MOTIVI), ephemeral=True
+            await moderation_motivi.aggiungi(
+                interaction.guild.id, nome, testo, interaction.user.id,
+                severita.value if severita else None, azione.value if azione else None, secondi,
             )
+        except ValueError as errore:
+            await _motivo_non_valido(interaction, str(errore))
             return
         await interaction.response.send_message(await testo_per(interaction, "casesystem_motivi_aggiunto", nome=nome), ephemeral=True)
+
+    @comando_di_gruppo(
+        "mod-casi",
+        nome="modifica",
+        descrizione="Cambia testo, severità o sanzione di un motivo pronto (serve «Gestire il server»).",
+        sottogruppo=SOTTOGRUPPO_MOTIVI,
+    )
+    @app_commands.describe(
+        nome="Il motivo da cambiare",
+        testo="Il nuovo testo (da 3 a 512 caratteri)",
+        severita="La nuova severità",
+        azione="La nuova sanzione proposta",
+        durata="Nuova durata del timeout, es. 1h, 24h, 7d (max 28 giorni)",
+    )
+    @app_commands.choices(severita=SCELTE_SEVERITA, azione=SCELTE_AZIONE)
+    async def motivo_modifica(
+        self,
+        interaction: discord.Interaction,
+        nome: app_commands.Range[str, 1, moderation_motivi.MAX_NOME],
+        testo: app_commands.Range[str, moderation_motivi.MIN_TESTO, moderation_motivi.MAX_TESTO] | None = None,
+        severita: app_commands.Choice[str] | None = None,
+        azione: app_commands.Choice[str] | None = None,
+        durata: app_commands.Range[str, 1, 20] | None = None,
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
+            return
+        if await _rifiuta_senza_gestione(interaction):
+            return
+        secondi = await _durata_del_motivo(interaction, durata)
+        if secondi == -1:
+            return
+        try:
+            trovato = await moderation_motivi.modifica(
+                interaction.guild.id, nome, testo, severita.value if severita else None, azione.value if azione else None, secondi
+            )
+        except ValueError as errore:
+            await _motivo_non_valido(interaction, str(errore))
+            return
+        chiave = "casesystem_motivi_modificato" if trovato else "casesystem_motivi_non_trovato"
+        await interaction.response.send_message(await testo_per(interaction, chiave, nome=nome), ephemeral=True)
 
     @comando_di_gruppo(
         "mod-casi",
@@ -529,7 +606,11 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         if not elenco:
             await interaction.response.send_message(await testo_per(interaction, "casesystem_motivi_nessuno"), ephemeral=True)
             return
-        righe = [f"**{m['nome']}**: {truncate_text(m['testo'], 120)}" for m in elenco]
+        righe = [
+            f"**{m['nome']}**" + (f" [{moderation_motivi.sanzione_breve(m)}]" if moderation_motivi.sanzione_breve(m) else "")
+            + f": {truncate_text(m['testo'], 90)}"
+            for m in elenco
+        ]
         embed = discord.Embed(
             title=await testo_per(interaction, "casesystem_motivi_titolo"),
             description="\n".join(righe)[:4000],

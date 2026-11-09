@@ -206,7 +206,13 @@ async def _warn(a: Azione, b: Bersaglio) -> bool:
     )
     embed = discord.Embed(title="⚠️ Warn automatico (AutoMod)", description=f"Caso #{numero} — {motivo}",
                           color=discord.Color.yellow())
-    await try_dm(b.membro, embed)
+    from core import moderation_dm
+
+    dm = await moderation_dm.costruisci(
+        b.guild, "warn", titolo="⚠️ Warn automatico (AutoMod)", colore=discord.Color.yellow(), moderatore=None,
+        motivo=motivo, caso=numero,
+    )
+    await try_dm(b.membro, dm, azione="warn", guild_id=b.guild.id)
     await post_to_mod_log(b.guild, embed)
     return True
 
@@ -235,17 +241,20 @@ async def _mute_ruolo(a: Azione, b: Bersaglio) -> bool:
     return True
 
 
-async def _dm_prima_dell_azione(b: Bersaglio, titolo: str):
+async def _dm_prima_dell_azione(b: Bersaglio, titolo: str, azione: str):
     from cogs.moderation._shared import try_dm_message
+    from core import moderation_dm
 
-    embed = discord.Embed(title=titolo, description=f"{b.guild.name}: {b.motivo}", color=discord.Color.orange())
-    return await try_dm_message(b.membro, embed, guild_id=b.guild.id)
+    embed = await moderation_dm.costruisci(
+        b.guild, azione, titolo=titolo, colore=discord.Color.orange(), moderatore=None, motivo=b.motivo
+    )
+    return await try_dm_message(b.membro, embed, azione=azione, guild_id=b.guild.id)
 
 
 async def _kick(a: Azione, b: Bersaglio) -> bool:
     from cogs.moderation._shared import delete_dm
 
-    dm = await _dm_prima_dell_azione(b, "Espulso dall'AutoMod")  # dopo, il bot non ha più un server in comune
+    dm = await _dm_prima_dell_azione(b, "Espulso dall'AutoMod", "kick")  # dopo, il bot non ha più un server in comune
     try:
         await bot_roles.espelli(b.membro, reason=b.motivo_audit)
     except discord.HTTPException:
@@ -257,7 +266,7 @@ async def _kick(a: Azione, b: Bersaglio) -> bool:
 async def _ban(a: Azione, b: Bersaglio) -> bool:
     from cogs.moderation._shared import delete_dm
 
-    dm = await _dm_prima_dell_azione(b, "Bannato dall'AutoMod")
+    dm = await _dm_prima_dell_azione(b, "Bannato dall'AutoMod", "ban")
     motivo = b.motivo_audit
     try:
         await bot_roles.banna(b.guild, b.membro, reason=motivo, delete_message_seconds=0,
@@ -274,7 +283,7 @@ async def _ban_tempo(a: Azione, b: Bersaglio) -> bool:
     from core.repositories.moderation_repo import moderation_repo
 
     secondi = a.get("giorni") * 86400
-    dm = await _dm_prima_dell_azione(b, "Bannato a tempo dall'AutoMod")
+    dm = await _dm_prima_dell_azione(b, "Bannato a tempo dall'AutoMod", "tempban")
     motivo = b.motivo_audit
     try:
         await bot_roles.banna(b.guild, b.membro, reason=motivo, delete_message_seconds=0,

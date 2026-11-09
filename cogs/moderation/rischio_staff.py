@@ -34,6 +34,22 @@ def _giorni_da(quando: datetime | None) -> int | None:
     return max(0, (datetime.now(timezone.utc) - quando).days)
 
 
+async def testo_rischio_membro(guild: discord.Guild, member: discord.Member) -> str:
+    """Il testo del punteggio di rischio di un membro (lo usano `/mod-casi rischio` e la scheda di moderazione)."""
+    warn, timeout, kick, ban, trappola = await staff_carico_repo.segnali_utente(guild.id, member.id)
+    segnali = SegnaliRischio(
+        warn_attivi=warn,
+        timeout_90_giorni=timeout,
+        kick=kick,
+        ban_o_tempban=ban,
+        spam_trap=trappola,
+        eta_account_giorni=_giorni_da(member.created_at),
+        giorni_nel_server=_giorni_da(member.joined_at),
+        doppi=tuple(await staff_carico_repo.doppi_di(guild.id, member.id)),
+    )
+    return testo_rischio(calcola_rischio(segnali))
+
+
 class RischioStaffCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -48,21 +64,9 @@ class RischioStaffCog(CogConGruppi, commands.Cog):
     async def rischio(self, interaction: discord.Interaction, member: discord.Member) -> None:
         if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
             return
-        guild = interaction.guild
-        warn, timeout, kick, ban, trappola = await staff_carico_repo.segnali_utente(guild.id, member.id)
-        segnali = SegnaliRischio(
-            warn_attivi=warn,
-            timeout_90_giorni=timeout,
-            kick=kick,
-            ban_o_tempban=ban,
-            spam_trap=trappola,
-            eta_account_giorni=_giorni_da(member.created_at),
-            giorni_nel_server=_giorni_da(member.joined_at),
-            doppi=tuple(await staff_carico_repo.doppi_di(guild.id, member.id)),
-        )
         embed = discord.Embed(
             title=f"Rischio — {member.display_name}"[:256],
-            description=testo_rischio(calcola_rischio(segnali)),
+            description=await testo_rischio_membro(interaction.guild, member),
             color=discord.Color.orange(),
         )
         await interaction.response.send_message(

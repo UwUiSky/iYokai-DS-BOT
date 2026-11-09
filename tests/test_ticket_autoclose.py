@@ -147,6 +147,7 @@ async def test_i_messaggi_del_bot_non_tengono_vivo_il_ticket(cog, canale):
 async def test_utente_che_esce_dal_server_chiude_il_suo_ticket(cog, canale, clean_db):
     await _ticket(1, autoclose=None)
     canale.guild.get_channel.return_value = canale
+    canale.guild.get_channel_or_thread.return_value = canale
     utente = fake_member(UTENTE)
     utente.guild = canale.guild
     await cog.on_member_remove(utente)

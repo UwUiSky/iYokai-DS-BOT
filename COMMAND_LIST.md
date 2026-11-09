@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:58 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:01 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 719 comandi in 42 categorie.**
+**Totale: 727 comandi in 42 categorie.**
 
 ## Admin: AI
 
@@ -398,8 +398,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:
 ## Admin: opzioni dei ticket
 
 - **`/admin-ticket-opzioni accesso`** — Chi può aprire: regole per ruolo, lette dall'alto.
+- **`/admin-ticket-opzioni attesa`** — Sposta in una categoria i ticket che aspettano l'utente.
 - **`/admin-ticket-opzioni avvisi`** — Chi avvisare all'apertura e primo messaggio fissato.
-- **`/admin-ticket-opzioni canale`** — Nome del canale e categorie di riserva.
+- **`/admin-ticket-opzioni canale`** — Nome del canale, categorie di riserva e ticket come thread privati.
 - **`/admin-ticket-opzioni chiusura`** — Conferma, chiusura in due passi, chiusi, nomi.
 - **`/admin-ticket-opzioni limiti`** — Tetto di ticket aperti, pausa e ruoli esenti.
 - **`/admin-ticket-opzioni messaggi`** — DM all'utente e testi di presa e rilascio.
@@ -407,6 +408,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:
 - **`/admin-ticket-opzioni orari`** — Orari di apertura e cosa succede fuori orario.
 - **`/admin-ticket-opzioni permessi`** — Permessi dell'utente, osservatori, ruoli durante, squadra.
 - **`/admin-ticket-opzioni presa`** — Presa in carico: categoria, esclusiva, assegnazione automatica.
+- **`/admin-ticket-opzioni regole`** — Regole: se nessuno scrive da N minuti, chiudi, elimina o scrivi.
 
 ## Admin: vocali temporanei
 
@@ -421,6 +423,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:
 
 - **`/Apri ticket`** — Menu «App» (tasto destro)
 - **`/Orari nel mio fuso`** — Menu «App» (tasto destro)
+- **`/Scheda moderazione`** — Menu «App» (tasto destro)
+- **`/Segnala messaggio`** — Menu «App» (tasto destro)
 - **`/cerca-comando`** — Cerca un comando per descrizione.
 - **`/chiedi`** — Chiedi aiuto: ti mostro i comandi giusti.
 
@@ -656,6 +660,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:
 - **`/mod-casi caso vedi`** — Mostra i dettagli di un singolo caso.
 - **`/mod-casi motivi aggiungi`** — Aggiunge un motivo pronto, da richiamare nel campo «motivo» (serve «Gestire il server»).
 - **`/mod-casi motivi elenco`** — Mostra i motivi pronti del server.
+- **`/mod-casi motivi modifica`** — Cambia testo, severità o sanzione di un motivo pronto (serve «Gestire il server»).
 - **`/mod-casi motivi togli`** — Toglie un motivo pronto (serve «Gestire il server»).
 - **`/mod-casi nota aggiungi`** — Aggiunge una nota su un utente.
 - **`/mod-casi nota elenca`** — Elenca le note su un utente.
@@ -663,9 +668,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:
 - **`/mod-casi nota rimuovi`** — Toglie una nota (il numero è nell'elenco delle note).
 - **`/mod-casi nota svuota`** — Cancella tutte le note di un membro (serve «Gestire il server»).
 - **`/mod-casi rischio`** — Punteggio di rischio di un membro, con i motivi. Solo un aiuto per decidere.
+- **`/mod-casi scheda`** — La scheda di un utente: date, casi, note e rischio (anche fuori dal server).
 
 ## Mod: sanzioni
 
+- **`/mod-sanzioni applica`** — Dà la sanzione di un motivo pronto, che puoi cambiare prima di confermare.
 - **`/mod-sanzioni massa timeout`** — Mette in timeout più membri insieme (max 28 giorni).
 - **`/mod-sanzioni massa warn`** — Assegna un warn a più membri insieme.
 - **`/mod-sanzioni mute`** — Silenzia un membro con un ruolo dedicato (alternativa al timeout).
@@ -795,6 +802,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:
 - **`/utility cronometro`** — Un cronometro con i bottoni Giro e Ferma.
 - **`/utility info`** — Informazioni sul bot: versione, invito e supporto.
 - **`/utility lingua`** — Mostra o cambia la tua lingua personale (italiano o inglese).
+- **`/utility mie-sanzioni`** — Le sanzioni che hai ricevuto in questo server (solo tu le vedi).
 - **`/utility modulo`** — Compila un modulo o una candidatura di questo server.
 - **`/utility novita`** — Le ultime novità del bot.
 - **`/utility ping`** — Controlla se iYokai Main è online e la sua latenza.

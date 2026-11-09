@@ -24,10 +24,18 @@ SETTING_AVVISO_WARN = "mod_avviso_warn_soglia"
 SETTING_AVVISO_RIENTRO = "mod_avviso_rientro"
 SETTING_SCADENZA_AUTOMOD = "mod_scadenza_automod_giorni"
 SETTING_MOTIVO_OBBLIGATORIO = "mod_motivo_obbligatorio"
+SETTING_ANONIMO = "mod_anonimo"
+SETTING_UTENTE_VEDE_CASI = "mod_utente_vede_casi"
+MAX_TESTO_DM = 1500
 MAX_SCADENZA_AUTOMOD = 200
 
 # Azioni che mandano un DM all'utente; per ognuna il server può spegnerlo.
 AZIONI_CON_DM = ("warn", "kick", "ban", "tempban", "softban", "timeout", "mute")
+
+
+def setting_testo_dm(azione: str) -> str:
+    """La chiave dell'impostazione col testo del DM per `azione` (MOD-059)."""
+    return f"mod_dm_testo_{azione}"
 
 MAX_RUOLI_IMMUNI = 25
 MAX_SOGLIA_WARN = 200
@@ -47,6 +55,9 @@ class OpzioniModerazione:
     avviso_rientro: bool = False
     scadenza_automod: int = 0  # giorni; 0 = i casi AutoMod non scadono
     motivo_obbligatorio: bool = True  # MOD-065: base sì, come prima
+    anonimo: bool = False  # MOD-050: il DM dice «Staff di <server>» invece del nome del moderatore
+    dm_testi: dict[str, str] = field(default_factory=dict)  # MOD-059: testo del server per ogni azione
+    utente_vede_casi: bool = True  # MOD-114: /utility mie-sanzioni (base sì)
 
 
 async def leggi(guild_id: int) -> OpzioniModerazione:
@@ -59,6 +70,13 @@ async def leggi(guild_id: int) -> OpzioniModerazione:
     rientro = await db.get_guild_setting(guild_id, SETTING_AVVISO_RIENTRO, False)
     scadenza = await db.get_guild_setting(guild_id, SETTING_SCADENZA_AUTOMOD, 0)
     obbligatorio = await db.get_guild_setting(guild_id, SETTING_MOTIVO_OBBLIGATORIO, True)
+    anonimo = await db.get_guild_setting(guild_id, SETTING_ANONIMO, False)
+    vede = await db.get_guild_setting(guild_id, SETTING_UTENTE_VEDE_CASI, True)
+    testi = {}
+    for azione in AZIONI_CON_DM:
+        testo = await db.get_guild_setting(guild_id, setting_testo_dm(azione))
+        if isinstance(testo, str) and testo.strip():
+            testi[azione] = testo[:MAX_TESTO_DM]
     return OpzioniModerazione(
         giorni_ban=int(giorni) if isinstance(giorni, int) and 0 <= giorni <= 7 else 0,
         durata_timeout=durata if isinstance(durata, int) and MIN_TIMEOUT <= durata <= MAX_TIMEOUT else None,
@@ -69,6 +87,9 @@ async def leggi(guild_id: int) -> OpzioniModerazione:
         avviso_rientro=rientro is True,
         scadenza_automod=giorni_scadenza_validi(scadenza),
         motivo_obbligatorio=obbligatorio is not False,
+        anonimo=anonimo is True,
+        dm_testi=testi,
+        utente_vede_casi=vede is not False,
     )
 
 
@@ -130,6 +151,26 @@ async def imposta_scadenza_automod(guild_id: int, giorni: int, autore_id: int) -
 async def imposta_motivo_obbligatorio(guild_id: int, obbligatorio: bool, autore_id: int) -> None:
     """MOD-065: il motivo dei comandi di sanzione è obbligatorio (base) o facoltativo."""
     await db.set_guild_setting(guild_id, SETTING_MOTIVO_OBBLIGATORIO, obbligatorio, changed_by=autore_id)
+
+
+async def imposta_anonimo(guild_id: int, attivo: bool, autore_id: int) -> None:
+    """MOD-050: nei DM delle sanzioni il moderatore non si nomina. Log e casi tengono il nome."""
+    await db.set_guild_setting(guild_id, SETTING_ANONIMO, attivo, changed_by=autore_id)
+
+
+async def imposta_utente_vede_casi(guild_id: int, attivo: bool, autore_id: int) -> None:
+    """MOD-114: ogni utente vede i propri casi con `/utility mie-sanzioni` (base sì)."""
+    await db.set_guild_setting(guild_id, SETTING_UTENTE_VEDE_CASI, attivo, changed_by=autore_id)
+
+
+async def imposta_dm_testo(guild_id: int, azione: str, testo: str | None, autore_id: int) -> None:
+    """MOD-059: il testo del DM per `azione`; vuoto o None torna al messaggio di base."""
+    if azione not in AZIONI_CON_DM:
+        raise ValueError(f"Azione sconosciuta: {azione}")
+    testo = (testo or "").strip()
+    if len(testo) > MAX_TESTO_DM:
+        raise ValueError(f"Il testo va fino a {MAX_TESTO_DM} caratteri.")
+    await db.set_guild_setting(guild_id, setting_testo_dm(azione), testo or None, changed_by=autore_id)
 
 
 def avviso_warn_scatta(warn_attivi: int, soglia: int) -> bool:

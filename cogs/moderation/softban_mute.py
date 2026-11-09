@@ -37,6 +37,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core.database import db
 from core.i18n import testo_per
+from core import moderation_dm
 from core.moderazione_vocale_logic import scelta_mute_valida
 from core.moderation_mute_logic import (
     MAX_MUTE_SECONDI,
@@ -256,8 +257,9 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         # log partono solo se l'azione è riuscita (LIM-8).
         dm_inviato = await try_dm_message(
             member,
-            _case_embed(
-                "🧹 Softban", discord.Color.dark_orange(), member, interaction.user, reason, None
+            await moderation_dm.costruisci(
+                interaction.guild, "softban", titolo="🧹 Softban", colore=discord.Color.dark_orange(),
+                moderatore=interaction.user, motivo=reason,
             ),
             azione="softban", guild_id=interaction.guild.id, forza=dm,
         )
@@ -523,7 +525,11 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         if hardmute:
             embed.add_field(name=await testo_per(interaction, "softbanmute_ruoli_tolti", pubblica=True), value=str(len(ruoli_ora)), inline=True)
         await post_to_mod_log(guild, embed)
-        await try_dm(member, embed, azione="mute", guild_id=guild.id, forza=dm)
+        dm_embed = await moderation_dm.costruisci(
+            guild, "mute", titolo=titolo, colore=discord.Color.dark_grey(), moderatore=interaction.user,
+            motivo=reason, caso=case_number, durata_s=secondi if fine is not None else None,
+        )
+        await try_dm(member, dm_embed, azione="mute", guild_id=guild.id, forza=dm)
         await interaction.followup.send(embed=embed)
         await _togli_dal_vocale(interaction, member, vocale, canale_vocale)
 

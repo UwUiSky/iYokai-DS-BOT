@@ -78,6 +78,12 @@ class Opzioni:
     solo_admin: bool = False
     transcript_formato: str = "testo"
     allegati_zip: bool = False
+    attesa_categoria_id: int | None = None
+    attesa_minuti: int = 0
+    riserva_canali: int = 0
+    tipo: str = "canale"
+    canale_padre_id: int | None = None
+    canale_avvisi_id: int | None = None
 
 
 # ----------------------------------------------------------------------
@@ -420,11 +426,15 @@ def riassunto(o: Opzioni) -> list[tuple[str, str]]:
     pausa = durata_leggibile(o.pausa_secondi) if o.pausa_secondi else "nessuna"
     righe = [
         ("Limiti", f"Aperti nel pannello: {o.max_aperti or 'senza tetto'} · pausa: {pausa}\n"
-                   f"Esenti: {_ruoli(o.ruoli_esenti)}"),
+                   f"Esenti: {_ruoli(o.ruoli_esenti)}\n"
+                   f"Riserva di canali pronti: {o.riserva_canali or 'nessuna'}"),
         ("Orari", f"{orari_come_testo(o.orari, o.fuso)} · fuori orario: "
                   f"{'si apre con avviso' if o.fuori_orario_apri else 'non si apre'}"),
         ("Canale", f"Nome: {o.nome_modello or 'ticket-{numero}'} · riserva: "
-                   + (" ".join(f"<#{c}>" for c in o.categorie_riserva) or "nessuna")),
+                   + (" ".join(f"<#{c}>" for c in o.categorie_riserva) or "nessuna")
+                   + (f"\nTicket come thread privati in <#{o.canale_padre_id}>"
+                      + (f" · avvisi in <#{o.canale_avvisi_id}>" if o.canale_avvisi_id else "")
+                      if o.tipo == "thread" and o.canale_padre_id else "\nTicket come canali")),
         ("Avvisi", f"Ping: {_ruoli(o.ping_ruoli)}{' + @here' if o.ping_here else ''} · cancellato: "
                    f"{_si(o.ping_cancella)} · primo messaggio fissato: {_si(o.fissa_primo)}"),
         ("Messaggi", f"DM apertura: {_si(bool(o.dm_apertura))} · DM chiusura: {_si(bool(o.dm_chiusura))} · "
@@ -440,6 +450,8 @@ def riassunto(o: Opzioni) -> list[tuple[str, str]]:
                      f"{f'{o.elimina_dopo_ore} ore' if o.elimina_dopo_ore else 'mai'} · categoria dei chiusi: "
                      f"{f'<#{o.categoria_chiusi}>' if o.categoria_chiusi else 'nessuna'}\n"
                      f"Nome da chiuso: {o.prefisso_chiuso or 'invariato'} · da preso: {o.prefisso_preso or 'invariato'}\n"
-                     f"Transcript: {o.transcript_formato} · ZIP delle immagini: {_si(o.allegati_zip)}"),
+                     f"Transcript: {o.transcript_formato} · ZIP delle immagini: {_si(o.allegati_zip)}\n"
+                     f"In attesa dell'utente: "
+                     + (f"dopo {o.attesa_minuti} min in <#{o.attesa_categoria_id}>" if o.attesa_minuti and o.attesa_categoria_id else "spento")),
     ]
     return [(nome, valore[:1024]) for nome, valore in righe]

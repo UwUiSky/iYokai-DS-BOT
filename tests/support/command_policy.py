@@ -60,6 +60,9 @@ AUDIENCE: dict[str, str] = {
     "sondaggi": PUBLIC,  # gruppo condiviso per tutti (D56)
     "web": PUBLIC,  # gruppo condiviso per tutti (D69)
     "Orari nel mio fuso": PUBLIC,  # menu del tasto destro (D69, B6)
+    "Apri ticket": PUBLIC,  # menu col tasto destro sul messaggio (TKT-009)
+    "Segnala messaggio": PUBLIC,  # menu col tasto destro sul messaggio (MOD-105)
+    "Scheda moderazione": STAFF,  # menu col tasto destro sull'utente (MOD-106)
     # Moderazione
     # Log
     # Fun
@@ -81,7 +84,9 @@ AUDIENCE: dict[str, str] = {
 }
 
 # I gruppi condivisi di F7 hanno già permessi e guild_only: fuori dai cricchetti.
-_GRUPPI_YOKAI = frozenset(nomi_gruppi())
+# I menu col tasto destro già solo-server (e con permessi, se staff) contano come i gruppi.
+_MENU_CON_PERMESSI = frozenset({"Scheda moderazione", "Apri ticket", "Segnala messaggio"})
+_GRUPPI_YOKAI = frozenset(nomi_gruppi()) | _MENU_CON_PERMESSI
 
 # Comandi staff/owner che oggi NON hanno default_permissions (tutti,
 # REVIEW.md §6 / SEC-1). Ogni fix toglie il nome da qui.
