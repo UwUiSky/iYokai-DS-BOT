@@ -300,7 +300,9 @@
   "film": "movie",
   "gioco": "game",
   "prezzo": "price",
-  "accorcia": "shorten"
+  "accorcia": "shorten",
+  "scrivi": "write",
+  "auto": "auto"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1134,7 +1136,10 @@
   "web film": "Information on a movie or a TV series.",
   "web gioco": "A Steam game: price, date and genres.",
   "web prezzo": "The price of a cryptocurrency.",
-  "web accorcia": "Shorten a link (if the server turned the command on)."
+  "web accorcia": "Shorten a link (if the server turned the command on).",
+  "admin-messaggi scrivi": "Make the bot write a message in a channel.",
+  "admin-messaggi auto": "Automations: quotes, link fixing, announcement publishing, shortener.",
+  "admin-messaggi fissi elenco": "List the server's pinned messages."
  },
  "parametri": {},
  "menu": {

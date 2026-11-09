@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:36 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:41 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 710 commands in 42 categories.**
+**Total: 713 commands in 42 categories.**
 
 ## Admin: AI
 
@@ -232,11 +232,13 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:3
 
 ## Admin: messages
 
+- **`/admin-messages auto`** — Automations: quotes, link fixing, announcement publishing, shortener.
 - **`/admin-messages embed create`** — Creates an embed and shows the preview.
 - **`/admin-messages embed delete`** — Deletes a saved embed (the published message stays).
 - **`/admin-messages embed edit`** — Edits a saved embed (and the already published message).
 - **`/admin-messages embed list`** — Shows the saved embeds.
 - **`/admin-messages embed publish`** — Sends a saved embed to a channel.
+- **`/admin-messages pinned list`** — List the server's pinned messages.
 - **`/admin-messages pinned remove`** — Removes a channel's sticky message.
 - **`/admin-messages pinned set`** — Sets a channel's sticky message.
 - **`/admin-messages reminders`** — For staff: the reminders set in this server.
@@ -251,6 +253,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:3
 - **`/admin-messages tag edit`** — Edits a custom command.
 - **`/admin-messages tag list`** — Shows the server's custom commands.
 - **`/admin-messages tag prefix`** — Picks the prefix to use commands by typing in the channel.
+- **`/admin-messages write`** — Make the bot write a message in a channel.
 
 ## Admin: modules
 

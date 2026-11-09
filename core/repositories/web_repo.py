@@ -40,6 +40,13 @@ class WebRepository:
         riga = await self._pool.fetchval("SELECT accorcia_attivo FROM web_impostazioni WHERE guild_id = $1", guild_id)
         return bool(riga)
 
+    async def imposta_accorcia(self, guild_id: int, attivo: bool) -> None:
+        await self._pool.execute(
+            "INSERT INTO web_impostazioni (guild_id, accorcia_attivo) VALUES ($1, $2) "
+            "ON CONFLICT (guild_id) DO UPDATE SET accorcia_attivo = $2",
+            guild_id, attivo,
+        )
+
 
 def _get_pool():
     from core.database import db

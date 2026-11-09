@@ -1457,6 +1457,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 - `[x]` 14.61 Servizi web (catalogo #128 B2, D69, r19util) — `/web meteo` (MET Norway + Nominatim con cache su DB, una richiesta al secondo, niente completamento), `/web film` (serie TVmaze, film sommario Wikipedia), `/web gioco` (Steam, cache 24 h), `/web prezzo` (CoinGecko Demo, chiave `COINGECKO_API_KEY` dell'owner, nell'intestazione e mai in un indirizzo; senza chiave il comando dice che non è attivo), `/web accorcia` (is.gd, spento di base per server, controllo phishing e `url_e_sicuro` prima) — UTL-213, 217, 218, 219, 208. Migrazione 0540. Azioni in borsa: nessuna fonte gratis (D18: il comando lo dice).
 
+- `[x]` 14.62 Messaggi dello staff (catalogo #128 B3, D69, r19util) — `/admin-messaggi scrivi` (finestra 2.000, risposta a un link, menzioni D12), `/admin-messaggi auto` (citazioni dei link ai messaggi: solo se chi scrive vede l'origine, mai da NSFW a non NSFW, max 3; correzione link da un elenco proposto, spenta di base; pubblicazione degli annunci con tetto 10 all'ora per canale e un solo avviso nel log «server»; accorciatore di `/web`), `/admin-messaggi fissi elenco` (pagine da 10) e `modello:` su `fissi imposta` (cinque testi nella lingua del server) — UTL-083, 071, 072, 112, 154, 155. Migrazione 0541, `on_guild_channel_delete` toglie i canali da pubblicare.
+
 ## §15 LEVELS / ECONOMY / GILDE / CLASSIFICHE
 
 - `[x]` 15.1 XP e livelli (testuale + vocale)

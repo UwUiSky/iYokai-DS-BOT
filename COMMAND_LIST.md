@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:36 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:41 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 710 comandi in 42 categorie.**
+**Totale: 713 comandi in 42 categorie.**
 
 ## Admin: AI
 
@@ -232,11 +232,13 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:
 
 ## Admin: messaggi
 
+- **`/admin-messaggi auto`** — Automatismi: citazioni, correzione link, pubblicazione annunci, accorciatore.
 - **`/admin-messaggi embed crea`** — Crea un embed e guarda l'anteprima.
 - **`/admin-messaggi embed elenco`** — Mostra gli embed salvati.
 - **`/admin-messaggi embed elimina`** — Elimina un embed salvato (il messaggio pubblicato resta).
 - **`/admin-messaggi embed modifica`** — Cambia un embed salvato (e il messaggio già pubblicato).
 - **`/admin-messaggi embed pubblica`** — Manda un embed salvato in un canale.
+- **`/admin-messaggi fissi elenco`** — Elenca i messaggi fissi del server.
 - **`/admin-messaggi fissi imposta`** — Imposta lo sticky message di un canale.
 - **`/admin-messaggi fissi togli`** — Rimuove lo sticky message di un canale.
 - **`/admin-messaggi programmati annulla`** — Annulla un messaggio programmato.
@@ -246,6 +248,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:
 - **`/admin-messaggi risposte crea`** — Crea una risposta automatica.
 - **`/admin-messaggi risposte elenco`** — Mostra le risposte automatiche del server.
 - **`/admin-messaggi risposte elimina`** — Elimina una risposta automatica.
+- **`/admin-messaggi scrivi`** — Fai scrivere un messaggio al bot in un canale.
 - **`/admin-messaggi tag crea`** — Crea un comando personalizzato.
 - **`/admin-messaggi tag elenco`** — Mostra i comandi personalizzati del server.
 - **`/admin-messaggi tag elimina`** — Elimina un comando personalizzato.
