@@ -1,6 +1,7 @@
 # Memoria di dev-utilita
 
 ## Aggiornata
+09/11/2026 · r24util (feat/r24util, DB iyokai_wr24util, env /tmp/env_wr24util.sh) · B25 fatto. Migrazioni libere 0562-0569.
 09/11/2026 · ramo feat/r20util (worktree /home/claude/wt/r20util, env scratchpad/env_r20util.sh, DB iyokai_w20util) · blocco Utility #128 B8-B15, D69. Migrazioni da 0547 (0546 presa da B7).
 
 ## In corso
@@ -8,6 +9,7 @@
 - Aperto per altri: tests/test_command_search_bilingue.py e _bug147 falliscono anche su origin/main.
 
 ## Fatto
+- r24util B25 motore script: core/tag_script_logic.py (async, interprete proprio, tetti 200 op/prof 10/uscita 4000/valore 2000/tempo 1s, re2), integrato in CustomCommandsCog._prepara solo se ha_script(); testo tag_script_fermato. Prossimo: B26 (tag_dati, tag_errori 0562, {dati:}, /admin-automazioni script errori, /tag prova).
 - r23util B23: `inizia_tra` su bottoni (stato programmato, scheduler sondaggio_apri, repo.apri) e su poll nativo (tabella sondaggi_nativi 0560), chiudi_a_voti nativo (on_raw_poll_vote_add/remove, contatore, end_poll), `/sondaggi gestisci` elenco|riepilogo|chiudi, testo sb_opzione_tolta. B24 `/eventi` crea|elenco|modifica|annulla (0561, eventi_repo, cogs/utility/eventi.py, gruppo eventi in command_groups).
 - r22util B22 sondaggio a bottoni: repo con advisory lock, DynamicItem sb:<id>:<n>, pesi, modifica, chiusura (0559). Migrazioni libere da 0559 a 0569.
 - r21util B20 tag reazioni/si_cancella_dopo (scheduler)/cancella_messaggi/anche_modificati; B21 /tag crea|modifica|elimina|prendi, /admin-tag tag creatori|sostituisci|esporta|importa|gruppi (0557 ha tutte le colonne); UTL-184 /mod-ban massa invito.

@@ -1536,3 +1536,8 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - Tre account: «Ci sono» x3 -> il terzo è in attesa; il primo preme «Esco»: il terzo entra e il bot lo menziona (il messaggio sparisce dopo un'ora). «Forse» libera il posto. «Iscritti»: elenco a pagine, solo chi l'ha aperto usa < >.
 - 15 minuti prima (prova con `quando:20m`): promemoria con menzione dei soli «sì». `/eventi modifica evento:... quando:3h` sposta: il vecchio promemoria non parte. `/eventi annulla`: bottoni spariti, evento di Discord tolto.
 - `ruolo_ping` con un utente senza «Menziona tutti»: il ruolo non viene avvisato e la risposta lo dice.
+
+## giro r24util, B25 — script nei tag (#128)
+- `/admin-tag tag crea nome:dado testo:{se:{args}==|Tira: {caso:1-6}|Hai scritto {maiuscolo:{args}}}`: `/tag usa dado` risponde con un numero da 1 a 6; `/tag usa dado argomenti:ciao` risponde «Hai scritto CIAO».
+- Lo stesso con il prefisso (`!dado`). Con `argomenti:@everyone` nessuno viene avvisato.
+- `{ripeti:50|{ripeti:50|x}}`: risposta «lo script si è fermato», nessun blocco del bot.

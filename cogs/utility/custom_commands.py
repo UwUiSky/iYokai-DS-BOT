@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import time
+from zoneinfo import ZoneInfo
 from datetime import datetime, timedelta, timezone
 
 import discord
@@ -41,7 +42,9 @@ from core.custom_command_logic import (
     valida_prefisso,
 )
 from core.database import db
-from core.i18n import testo_per
+from core import tag_script_logic as tag_script
+from core.i18n import testo_guild, testo_per
+from core.tag_script_logic import ha_script
 from core.nome_logic import normalizza_nome
 from core.lista_limiti_logic import righe_entro_limite
 from core.premium import PremiumModule, registry
@@ -97,6 +100,12 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             "args": argomenti,
             "bersaglio": bersaglio.mention if bersaglio is not None else "",
         }
+        if ha_script(base):
+            esito = await tag_script.esegui(base, tag_script.Contesto(valori=valori, adesso=datetime.now(ZoneInfo("Europe/Rome"))))
+            if esito.errore is not None:
+                logger.info("Tag %s: script fermato (%s).", tag.name, esito.errore.chiave)
+                return await testo_guild(membro.guild, "tag_script_fermato", nome=tag.name), nota
+            base = esito.testo
         return costruisci_risposta(base, valori).strip() or TESTO_VUOTO, nota
 
     @staticmethod

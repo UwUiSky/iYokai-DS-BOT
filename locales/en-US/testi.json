@@ -2675,5 +2675,6 @@
   "ev_non_si_puo": "You can only change your own events, or you need «Manage Events».",
   "ev_niente_da_cambiare": "Tell me at least one thing to change.",
   "ev_modificato": "Event updated.",
-  "ev_annullato": "Event cancelled."
+  "ev_annullato": "Event cancelled.",
+  "tag_script_fermato": "The script of the command \"{nome}\" stopped: tell the staff."
 }

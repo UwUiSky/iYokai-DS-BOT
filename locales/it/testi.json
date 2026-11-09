@@ -2675,5 +2675,6 @@
   "ev_non_si_puo": "Puoi cambiare solo i tuoi eventi, o servono «Gestisci eventi».",
   "ev_niente_da_cambiare": "Dimmi almeno una cosa da cambiare.",
   "ev_modificato": "Evento aggiornato.",
-  "ev_annullato": "Evento annullato."
+  "ev_annullato": "Evento annullato.",
+  "tag_script_fermato": "Lo script del comando «{nome}» si è fermato: avvisa lo staff."
 }
