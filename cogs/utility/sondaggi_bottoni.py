@@ -273,11 +273,24 @@ class SondaggiBottoniCog(CogConGruppi, commands.Cog):
         return (await embed_sondaggio(s, opzioni, risultati, votanti, lingua, chiuso=chiuso),
                 vista_sondaggio(s["id"], opzioni, chiuso=chiuso, lingua=lingua))
 
+    async def _canale(self, guild_id: int, channel_id: int):
+        """Canale o thread: prima dalla cache del server, poi da Discord."""
+        guild = self.bot.get_guild(guild_id)
+        canale = guild.get_channel_or_thread(channel_id) if guild is not None else None
+        if canale is None:
+            canale = self.bot.get_channel(channel_id)
+        if canale is None:
+            try:
+                canale = await self.bot.fetch_channel(channel_id)
+            except discord.HTTPException:
+                return None
+        return canale
+
     async def aggiorna_messaggio(self, sondaggio_id: int) -> None:
         s = await sondaggi_repo.prendi(sondaggio_id)
         if s is None or not s["message_id"]:
             return
-        canale = self.bot.get_channel(s["channel_id"])
+        canale = await self._canale(s["guild_id"], s["channel_id"])
         if canale is None:
             return
         embed, vista = await self._disegna(s)
@@ -306,7 +319,7 @@ class SondaggiBottoniCog(CogConGruppi, commands.Cog):
         s = await sondaggi_repo.prendi(int(payload["id"]))
         if s is None or s["stato"] != "programmato":
             return
-        canale = self.bot.get_channel(s["channel_id"])
+        canale = await self._canale(s["guild_id"], s["channel_id"])
         if canale is None:
             await sondaggi_repo.chiudi(s["id"])
             return

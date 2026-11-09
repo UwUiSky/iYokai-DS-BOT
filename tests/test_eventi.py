@@ -202,3 +202,27 @@ async def test_promemoria_solo_se_data_invariata_e_chi_ha_detto_si(repo, cog):
     canale.send.reset_mock()
     await cog.promemoria(G, 99, {"id": e, "quando": int(quando.timestamp())})
     canale.send.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_modifica_aggiorna_anche_l_evento_nativo(repo, cog, monkeypatch):
+    from unittest.mock import AsyncMock, MagicMock
+
+    from cogs.utility import eventi as M
+
+    monkeypatch.setattr(M.utente_fuso_repo, "get", AsyncMock(return_value=None))
+
+    e = await repo.crea(G, 5, 99, "Serata", "", datetime.now(timezone.utc) + timedelta(days=1), None, None)
+    await repo.imposta_evento_discord(e, 777)
+    nativo = MagicMock(edit=AsyncMock())
+    guild = MagicMock()
+    guild.me.guild_permissions.manage_events = True
+    guild.get_scheduled_event.return_value = nativo
+    cog.bot.get_guild.return_value = guild
+    cog._evento_gestibile = AsyncMock(return_value=await repo.prendi(e))
+    i = _clic(99)
+    await cog.modifica.callback(cog, i, str(e), titolo="Nuovo titolo", quando="5d")
+    nativo.edit.assert_awaited_once()
+    k = nativo.edit.await_args.kwargs
+    assert k["name"] == "Nuovo titolo" and k["start_time"] > datetime.now(timezone.utc) + timedelta(days=4)
+    assert k["end_time"] == k["start_time"] + timedelta(hours=3)

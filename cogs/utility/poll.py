@@ -34,6 +34,9 @@ from core.scheduler import scheduler
 logger = logging.getLogger("iyokai.poll")
 AZIONE_APRI_NATIVO = "sondaggio_nativo_apri"
 AZIONE_FINE_NATIVO = "sondaggio_nativo_fine"
+AZIONE_RIPROVA_CHIUSURA = "sondaggio_nativo_riprova"
+PAUSA_RIPROVA_S = 300
+MAX_TENTATIVI_CHIUSURA = 24
 
 MODULE_POLL = "poll"
 
@@ -191,6 +194,7 @@ class PollCog(CogConGruppi, commands.Cog):
         await super().cog_load()
         scheduler.register_handler(AZIONE_APRI_NATIVO, self.alla_apertura)
         scheduler.register_handler(AZIONE_FINE_NATIVO, self.alla_fine)
+        scheduler.register_handler(AZIONE_RIPROVA_CHIUSURA, self.riprova_chiusura)
 
     async def alla_apertura(self, guild_id: int, user_id: int, payload: dict) -> None:
         """Scheduler: pubblica il sondaggio programmato (una volta sola)."""
@@ -250,8 +254,41 @@ class PollCog(CogConGruppi, commands.Cog):
                 return
         if not await sondaggi_nativi_repo.chiudi(nativo_id):
             return
-        await canale.get_partial_message(message_id).end_poll()
+        await self._termina(r["guild_id"], r["autore_id"], nativo_id, canale, message_id, 0)
+
+    async def _termina(self, guild_id: int, user_id: int, nativo_id: int, canale, message_id: int, tentativo: int) -> None:
+        """Chiude il poll su Discord. Se non riesce, riprova più tardi (scheduler) finché serve."""
+        try:
+            await canale.get_partial_message(message_id).end_poll()
+        except discord.NotFound:
+            pass
+        except discord.HTTPException:
+            logger.warning("Sondaggio nativo %s: end_poll fallito (tentativo %s)", nativo_id, tentativo, exc_info=True)
+            if tentativo < MAX_TENTATIVI_CHIUSURA:
+                quando = datetime.now(timezone.utc) + timedelta(seconds=PAUSA_RIPROVA_S)
+                await scheduler.schedule(guild_id, user_id, AZIONE_RIPROVA_CHIUSURA, quando, {
+                    "id": nativo_id, "channel_id": canale.id, "message_id": message_id, "tentativo": tentativo + 1})
+                return
         await sondaggi_nativi_repo.elimina(nativo_id)
+
+    async def riprova_chiusura(self, guild_id: int, user_id: int, payload: dict) -> None:
+        """Scheduler: nuovo tentativo di chiudere il poll. Il messaggio sparito o il poll già chiuso chiudono la pratica."""
+        nativo_id, message_id = int(payload["id"]), int(payload["message_id"])
+        canale = self.bot.get_channel(int(payload["channel_id"]))
+        if canale is None:
+            await sondaggi_nativi_repo.elimina(nativo_id)
+            return
+        try:
+            messaggio = await canale.fetch_message(message_id)
+        except discord.NotFound:
+            await sondaggi_nativi_repo.elimina(nativo_id)
+            return
+        except discord.HTTPException:
+            messaggio = None
+        if messaggio is not None and (messaggio.poll is None or messaggio.poll.is_finalised()):
+            await sondaggi_nativi_repo.elimina(nativo_id)
+            return
+        await self._termina(guild_id, user_id, nativo_id, canale, message_id, int(payload.get("tentativo", 1)))
 
     @staticmethod
     async def _votanti(sondaggio: discord.Poll | None, fino_a: int) -> int:
