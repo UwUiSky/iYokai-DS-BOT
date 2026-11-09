@@ -91,6 +91,11 @@ def copie(clean_db):
     return LevelingCopieRepository(pool_provider=lambda: clean_db)
 
 
+async def _prepara_periodi(pool, guild):
+    """100 XP in ogni riga di mese e settimana (le righe le ha già create `add_coins` in `_prepara`)."""
+    await pool.execute("UPDATE leveling_activity SET xp = 100 WHERE guild_id = $1", guild)
+
+
 async def _prepara(xp, guild=GUILD, utenti=((1, 500), (2, 120), (3, 0))):
     for user, punti in utenti:
         if punti:
@@ -98,16 +103,28 @@ async def _prepara(xp, guild=GUILD, utenti=((1, 500), (2, 120), (3, 0))):
         await xp.add_coins(guild, user, 40)
 
 
+async def _xp_periodo(pool, guild):
+    r = await pool.fetchrow(
+        "SELECT COALESCE(sum(xp), 0) AS xp, COALESCE(sum(coins), 0) AS coins FROM leveling_activity WHERE guild_id = $1",
+        guild,
+    )
+    return int(r["xp"]), int(r["coins"])
+
+
 @pytest.mark.asyncio
-async def test_azzera_server_copia_prima_e_non_tocca_monete_ne_altri_server(xp, copie):
+async def test_azzera_server_copia_prima_e_non_tocca_monete_ne_altri_server(xp, copie, clean_db):
     await _prepara(xp)
     await _prepara(xp, ALTRO)
+    await _prepara_periodi(clean_db, GUILD)
+    await _prepara_periodi(clean_db, ALTRO)
     esito = await copie.azzera_server(GUILD, autore_id=7, motivo="nuova stagione")
     assert esito.utenti == 2  # chi ha 0 XP non entra nella copia
     for user in (1, 2, 3):
         t = await xp.get_totals(GUILD, user)
         assert (t.xp_total, t.level, t.coins_total) == (0, 0, 40)
     assert (await xp.get_totals(ALTRO, 1)).xp_total == 500  # altro server intatto
+    assert await _xp_periodo(clean_db, GUILD) == (0, 240)  # classifiche mese/settimana: XP a 0, monete no
+    assert await _xp_periodo(clean_db, ALTRO) == (600, 240)
     copia = await copie.get(GUILD, esito.copia_id)
     assert (copia.tipo, copia.righe, copia.autore_id, copia.motivo) == ("server", 2, 7, "nuova stagione")
     assert copia.scade_il - copia.creata_il == timedelta(days=logica.GIORNI_COPIA)
@@ -180,11 +197,14 @@ async def test_il_motivo_lungo_viene_tagliato_a_512(xp, copie):
 
 
 @pytest.mark.asyncio
-async def test_azzera_utente_con_e_senza_copia(xp, copie):
+async def test_azzera_utente_con_e_senza_copia(xp, copie, clean_db):
     await _prepara(xp)
+    await _prepara_periodi(clean_db, GUILD)
+    assert await copie.azzera_utente(GUILD, 3, con_copia=False, motivo="uscita") is False
     assert await copie.azzera_utente(GUILD, 1, con_copia=False, motivo="uscita") is True
     assert (await xp.get_totals(GUILD, 1)).xp_total == 0
     assert (await xp.get_totals(GUILD, 1)).coins_total == 40
+    assert await _xp_periodo(clean_db, GUILD) == (200, 240)  # mese e settimana di 1 e 3 a 0; quelli di 2 no
     assert await copie.elenco(GUILD) == []
     assert await copie.azzera_utente(GUILD, 1, con_copia=False, motivo="uscita") is False  # già a zero
     assert await copie.azzera_utente(GUILD, 2, con_copia=True, motivo="ban") is True

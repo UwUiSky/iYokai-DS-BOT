@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from datetime import datetime, timezone
 
 import discord
@@ -42,6 +43,8 @@ from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.ui_base import BaseModal, BaseView
 
 logger = logging.getLogger("iyokai.leveling.azzeramenti")
+
+SECONDI_VALIDITA_BAN = 60  # un ban conta come ban per l'uscita che arriva subito prima o dopo, non per sempre
 
 _SG = SOTTOGRUPPI["admin-livelli azzera"]
 _SCELTE_AZZERA_SU = [
@@ -184,7 +187,7 @@ class AzzeramentiCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         # Chi è stato bannato da poco: «uscita» non deve contare anche i ban.
-        self._bannati: BoundedCache[tuple[int, int], bool] = BoundedCache(max_size=500)
+        self._bannati: BoundedCache[tuple[int, int], float] = BoundedCache(max_size=500)
 
     def cog_unload(self) -> None:
         togli_comandi_del_cog(self)
@@ -304,6 +307,7 @@ class AzzeramentiCog(CogConGruppi, commands.Cog):
         )
 
     async def _azzera_chi_se_ne_va(self, guild: discord.Guild, utente, evento: str) -> None:
+        """Se il bot si riavvia durante l'attesa di «uscita» (3 s), quell'azzeramento si perde: è accettato."""
         if getattr(utente, "bot", False):
             return
         try:
@@ -313,7 +317,8 @@ class AzzeramentiCog(CogConGruppi, commands.Cog):
             if evento == "uscita" and i.azzera_su == "uscita":
                 # Un ban manda prima o dopo anche l'uscita: si aspetta e si guarda se è un ban.
                 await asyncio.sleep(SECONDI_ATTESA_BAN)
-                if (guild.id, utente.id) in self._bannati:
+                quando = self._bannati.get((guild.id, utente.id))
+                if quando is not None and time.monotonic() - quando <= SECONDI_VALIDITA_BAN:
                     return
             if not await db.is_module_active_for_guild(guild.id, MODULE_LEVELING):
                 return
@@ -328,7 +333,7 @@ class AzzeramentiCog(CogConGruppi, commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_ban(self, guild: discord.Guild, user: discord.abc.User) -> None:
-        self._bannati.set((guild.id, user.id), True)
+        self._bannati.set((guild.id, user.id), time.monotonic())
         await self._azzera_chi_se_ne_va(guild, user, "ban")
 
     # ---------------------------------------------------------------- LIV-075

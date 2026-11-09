@@ -528,3 +528,6 @@ APPROVATO dopo i fix. Main unito (e97e2d0). Fix: 306f4a4 ruolo creatori tag nell
 | 09/11 | `feat/r21util` | `cogs/utility/custom_commands.py:handle_cancella_risposta` | Tag con invio privato e «sparisce dopo»: il canale DM non è in cache, il messaggio resta | bassa | aperto |
 | 09/11 | `feat/r21util` | `core/repositories/custom_command_repo.py:prendi` | Ritorna «ok» anche se l'UPDATE non cambia righe (corsa tra due `/tag prendi`) | bassa | aperto |
 | 09/11 | `feat/r21util` | `tests/test_config_import_validation.py::test_ogni_setting_usata_nel_codice_e_nello_schema` | Fallisce per `inviti_eta_minima_giorni`, `inviti_rientri_finti` (arrivano da main, non da questo ramo) | media | aperto |
+| 09/11 | `feat/r1liv` | `core/repositories/leveling_copie_repo.py:_scrivi_copia` | Il lock è solo tra azzeramenti: un XP guadagnato tra copia e UPDATE (o un utente nuovo) si azzera senza copia | bassa | aperto |
+| 09/11 | `feat/r1liv` | `cogs/leveling/azzeramenti.py:ModaleAzzeraServer` | `TextInput(label=...)` è deprecato in discord.py 2.7 (usare `discord.ui.Label`); stesso avviso negli altri modali | bassa | aperto |
+| 09/11 | `feat/r1liv` | `core/repositories/leveling_copie_repo.py:ripristina` | Il ripristino non rimette gli XP di mese/settimana (`leveling_activity`) | bassa | aperto |

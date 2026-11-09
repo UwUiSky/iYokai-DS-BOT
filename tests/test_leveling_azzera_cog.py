@@ -316,6 +316,20 @@ async def test_con_uscita_un_ban_conta_come_ban_non_come_uscita(cog, monkeypatch
 
 
 @pytest.mark.asyncio
+async def test_un_ban_vecchio_non_nasconde_l_uscita_di_dopo(cog, monkeypatch):
+    monkeypatch.setattr(modulo, "SECONDI_ATTESA_BAN", 0)
+    guild = fake_guild(GUILD)
+    await leveling_settings_repo.set_options(GUILD, azzera_su="uscita")
+    await cog.on_member_ban(guild, fake_member(1))
+    monkeypatch.setattr(modulo.time, "monotonic", lambda: 10**9)  # molto tempo dopo: tolto il ban, rientrato, uscito
+    await _xp(1, 300)
+    membro = fake_member(1)
+    membro.guild = guild
+    await cog.on_member_remove(membro)
+    assert (await leveling_repo.get_totals(GUILD, 1)).xp_total == 0
+
+
+@pytest.mark.asyncio
 async def test_bot_modulo_spento_e_errori_non_azzerano_ne_rompono(cog, monkeypatch, clean_db):
     guild = fake_guild(GUILD)
     await leveling_settings_repo.set_options(GUILD, azzera_su="entrambi")

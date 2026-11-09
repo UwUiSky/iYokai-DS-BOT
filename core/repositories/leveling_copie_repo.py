@@ -88,7 +88,17 @@ class LevelingCopieRepository:
             f"WHERE guild_id = $1 {filtro_utente} AND (xp_total > 0 OR level > 0)",
             *argomenti,
         )
+        await self._azzera_attivita(conn, *argomenti)
         return copia_id, presenti
+
+    @staticmethod
+    async def _azzera_attivita(conn, guild_id: int, user_id: int | None = None) -> None:
+        """Azzera gli XP di mese e settimana (classifiche a periodo); le monete restano."""
+        filtro = "" if user_id is None else "AND user_id = $2"
+        argomenti = (guild_id,) if user_id is None else (guild_id, user_id)
+        await conn.execute(
+            f"UPDATE leveling_activity SET xp = 0 WHERE guild_id = $1 {filtro} AND xp > 0", *argomenti
+        )
 
     async def azzera_server(self, guild_id: int, autore_id: int, motivo: str) -> EsitoAzzeramento | None:
         """
@@ -122,6 +132,7 @@ class LevelingCopieRepository:
                     "WHERE guild_id = $1 AND user_id = $2 AND (xp_total > 0 OR level > 0)",
                     guild_id, user_id,
                 )
+                await self._azzera_attivita(conn, guild_id, user_id)
                 return esito != "UPDATE 0"
 
     async def elenco(self, guild_id: int) -> list[Copia]:
