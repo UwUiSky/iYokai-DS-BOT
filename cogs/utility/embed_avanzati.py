@@ -28,7 +28,7 @@ from core.repositories.custom_command_repo import custom_command_repo
 from core.repositories.embed_bottoni_repo import MAX_BOTTONI, embed_bottoni_repo
 from core.repositories.saved_embed_repo import saved_embed_repo
 from core.safe_http import url_e_sicuro
-from core.ui_base import BaseLayoutView, BaseModal, BaseView
+from core.ui_base import BaseLayoutView, BaseModal, BaseView, _utente_o_server_in_blacklist
 
 logger = logging.getLogger("iyokai.embed_avanzati")
 _NESSUNA = discord.AllowedMentions.none()
@@ -50,6 +50,12 @@ class BottoneTag(
     @classmethod
     async def from_custom_id(cls, interaction, item, match):
         return cls(int(match["g"]), match["e"], int(match["n"]))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
+        # SEC-10: un bottone dinamico non ha una BaseView sopra di sé, il controllo blacklist si fa qui.
+        return not await _utente_o_server_in_blacklist(interaction)
 
     async def callback(self, interaction: discord.Interaction) -> None:
         lingua = await lingua_interazione(interaction)

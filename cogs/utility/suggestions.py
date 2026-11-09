@@ -44,7 +44,7 @@ from core.suggestion_logic import (
     can_decide,
     e_finale,
 )
-from core.ui_base import BaseModal, BaseView
+from core.ui_base import BaseModal, BaseView, _utente_o_server_in_blacklist
 
 logger = logging.getLogger("iyokai.suggestions")
 
@@ -113,6 +113,12 @@ class BottoneChiScrisse(
     @classmethod
     async def from_custom_id(cls, interaction, item, match):
         return cls(int(match["id"]))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
+        # SEC-10: un bottone dinamico non ha una BaseView sopra di sé, il controllo blacklist si fa qui.
+        return not await _utente_o_server_in_blacklist(interaction)
 
     async def callback(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None or not await puo_usare(interaction, Livello.ADMIN):

@@ -33,7 +33,7 @@ from core.lista_limiti_logic import righe_entro_limite
 from core.premium import PremiumModule, registry
 from core.repositories.promemoria_iscritti_repo import MAX_ISCRITTI, promemoria_iscritti_repo
 from core.scheduler import scheduler
-from core.ui_base import BaseView
+from core.ui_base import BaseView, _utente_o_server_in_blacklist
 
 logger = logging.getLogger("iyokai.reminders")
 
@@ -64,6 +64,12 @@ class BottoneRicordaAnche(
     @classmethod
     async def from_custom_id(cls, interaction, item, match):
         return cls(match["s"])
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
+        # SEC-10: un bottone dinamico non ha una BaseView sopra di sé, il controllo blacklist si fa qui.
+        return not await _utente_o_server_in_blacklist(interaction)
 
     async def callback(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:

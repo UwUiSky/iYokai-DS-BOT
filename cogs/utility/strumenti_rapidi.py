@@ -17,7 +17,7 @@ from discord.ext import commands
 from core import strumenti_rapidi_logic as logica
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.i18n import lingua_interazione, t
-from core.ui_base import BaseView
+from core.ui_base import BaseView, _utente_o_server_in_blacklist
 
 
 class BottoneCronometro(
@@ -37,6 +37,12 @@ class BottoneCronometro(
     @classmethod
     async def from_custom_id(cls, interaction, item, match):
         return cls(match["a"], int(match["i"]), await lingua_interazione(interaction))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
+        # SEC-10: un bottone dinamico non ha una BaseView sopra di sé, il controllo blacklist si fa qui.
+        return not await _utente_o_server_in_blacklist(interaction)
 
     async def callback(self, interaction: discord.Interaction) -> None:
         contenuto = interaction.message.content if interaction.message else ""
