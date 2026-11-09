@@ -191,3 +191,35 @@ async def test_caso_manda_il_link_al_post(monkeypatch):
     interazione = fake_interaction(guild=s.guild)
     await s.cog.stelle_caso.callback(s.cog, interazione)
     assert interazione.response.send_message.await_args.args[0].endswith("/50/999")
+
+
+def _canale_con_permessi(cid, nome):
+    canale = fake_text_channel(cid, nome)
+    canale.permissions_for = MagicMock(return_value=discord.Permissions(send_messages=True, embed_links=True, manage_roles=True))
+    canale.set_permissions = AsyncMock()
+    return canale
+
+
+@pytest.mark.asyncio
+async def test_cambio_canale_sblocca_il_vecchio_e_blocca_il_nuovo(monkeypatch):
+    s = _Scena(monkeypatch)
+    s.config.blocca, s.config.channel_id = True, 40
+    s.repo.set_config = AsyncMock()
+    s.repo.set_opzioni = AsyncMock()
+    vecchio, nuovo = _canale_con_permessi(40, "vecchia"), _canale_con_permessi(50, "nuova")
+    s.guild.get_channel = lambda cid: {40: vecchio, 50: nuovo}.get(cid)
+    await s.cog.imposta.callback(s.cog, fake_interaction(guild=s.guild), nuovo, 3, "⭐", None, None, None)
+    assert vecchio.set_permissions.await_args.args[0] is s.guild.default_role
+    assert vecchio.set_permissions.await_args.kwargs["send_messages"] is None  # tornato libero
+    assert nuovo.set_permissions.await_args_list[-1].kwargs["send_messages"] is False  # il blocco passa al nuovo
+
+
+@pytest.mark.asyncio
+async def test_stesso_canale_senza_blocca_non_tocca_i_permessi(monkeypatch):
+    s = _Scena(monkeypatch)
+    s.config.blocca = True
+    s.repo.set_config = AsyncMock()
+    s.repo.set_opzioni = AsyncMock()
+    canale = _canale_con_permessi(50, "bacheca")
+    await s.cog.imposta.callback(s.cog, fake_interaction(guild=s.guild), canale, 3, "⭐", None, None, None)
+    canale.set_permissions.assert_not_awaited()

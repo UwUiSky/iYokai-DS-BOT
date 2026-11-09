@@ -284,6 +284,7 @@ class StarboardCog(CogConGruppi, commands.Cog):
             )
             return
         await interaction.response.defer(ephemeral=True)
+        prima = await starboard_repo.get_config(interaction.guild.id)
         await starboard_repo.set_config(
             interaction.guild.id, canale.id, soglia, emoji, allow_nsfw=nsfw, self_star=voto_autore
         )
@@ -297,8 +298,15 @@ class StarboardCog(CogConGruppi, commands.Cog):
             f"Bacheca attiva in {canale.mention}: servono {soglia} {emoji}. "
             + ("I canali vietati ai minori sono inclusi." if salvata.allow_nsfw else "I canali vietati ai minori sono esclusi.")
         ]
-        if blocca is not None:
-            righe.append(await self._applica_blocco(interaction, canale, blocca))
+        # Cambio canale: il vecchio, se era bloccato, torna libero; il nuovo eredita il blocco se non si dice altro.
+        era_bloccata = prima is not None and prima.blocca
+        if era_bloccata and prima.channel_id != canale.id:
+            vecchio = interaction.guild.get_channel(prima.channel_id)
+            if isinstance(vecchio, discord.TextChannel):
+                righe.append(await self._applica_blocco(interaction, vecchio, False))
+        voluto = blocca if blocca is not None else (era_bloccata and prima.channel_id != canale.id)
+        if blocca is not None or voluto:
+            righe.append(await self._applica_blocco(interaction, canale, bool(voluto)))
         if salvata.canale_auto:
             righe.append(await testo_per(interaction, "starboard_auto_attivo", canale=f"<#{salvata.canale_auto}>"))
         await interaction.followup.send("\n".join(righe), ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE)
