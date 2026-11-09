@@ -201,6 +201,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 - **`/admin-giochi conteggio importa`** — Porta in un canale i punteggi di un file CSV o JSON.
 - **`/admin-giochi conteggio regole`** — Punizione dopo uno sbaglio e ruolo di chi ha contato per ultimo.
 - **`/admin-giochi conteggio traguardo`** — Ruolo o messaggio quando il conteggio tocca un numero.
+- **`/admin-giochi punteggi azzera`** — Azzera i punteggi di una gara (con conferma).
 
 ## Admin: giveaway
 
@@ -582,8 +583,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 ## Divertimento
 
 - **`/fun 8ball`** — Fai una domanda alla palla magica 8.
-- **`/fun casuale`** — Preferiresti, argomento, consiglio, oggetto magico.
-- **`/fun coinflip`** — Lancia una moneta: testa o croce.
+- **`/fun casuale`** — Preferiresti, argomento, consiglio, oggetto magico, classe di un gioco.
+- **`/fun coinflip`** — Lancia da 1 a 10 monete: testa o croce (con più monete, una striscia in immagine).
 - **`/fun dice`** — Tira un dado.
 - **`/fun fact`** — Mostra una curiosità a caso.
 - **`/fun joke`** — Racconta una barzelletta a caso.
@@ -592,8 +593,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 - **`/fun quote`** — Mostra una citazione a caso.
 - **`/fun rate`** — Valuta qualcosa da 0 a 10.
 - **`/fun scegli`** — Scelgo a caso tra le opzioni che scrivi.
-- **`/fun scherzo`** — Uno scherzo innocuo verso un utente.
-- **`/fun ship`** — Calcola la compatibilità tra due utenti.
+- **`/fun scherzo`** — Uno scherzo innocuo verso un utente: lancia, presa in giro, Google, spoiler, caricamento, brindisi.
+- **`/fun ship`** — Calcola la compatibilità tra due utenti (amore o amicizia).
 - **`/fun testo`** — Scrivi un testo in uno stile speciale.
 
 ## Gif
@@ -606,19 +607,25 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 
 - **`/giochi conteggio avvisami`** — Ti avviso nel canale quando il conteggio arriva a un numero.
 - **`/giochi conteggio classifica`** — Chi ha contato più numeri giusti.
+- **`/giochi dado`** — Un tiro al giorno da 1 a 100 e la classifica del server.
 - **`/giochi gioca`** — Gioca le tue coin: monetina, dadi o slot.
+- **`/giochi mazzo`** — Un mazzo di 52 carte per il server: pesca, rimescola, controlla.
+- **`/giochi minato`** — Campo minato con gli spoiler: facile, medio, difficile.
 - **`/giochi rps`** — Carta, forbici, sasso contro il bot.
+- **`/giochi spinner`** — Fai girare lo spinner: vince chi lo fa girare più a lungo.
 
 ## Immagini
 
-- **`/immagini animal`** — Mostra un'immagine casuale di un animale.
+- **`/immagini animal`** — Mostra immagini casuali di animali (fino a 5): cane, gatto, volpe, uccello, sorpresa.
+- **`/immagini foto`** — Una foto bella da vedere: cibo o buonumore.
 - **`/immagini blur`** — Applica una sfocatura a un'immagine.
-- **`/immagini effetto`** — Effetto sull'avatar: arcobaleno, R.I.P., ricercato, triggered.
+- **`/immagini effetto`** — Effetto sull'avatar: arcobaleno, R.I.P., ricercato, pingato, sepia, neon...
 - **`/immagini grayscale`** — Trasforma un'immagine in scala di grigi.
 - **`/immagini invert`** — Inverte i colori di un'immagine.
 - **`/immagini meme`** — Genera un meme con testo sopra/sotto.
 - **`/immagini pixelate`** — Pixela un'immagine.
 - **`/immagini search-image`** — Cerca un'immagine SFW su Pixabay.
+- **`/immagini xkcd`** — Una vignetta di xkcd: l'ultima o quella col numero che scegli.
 
 ## Livelli
 

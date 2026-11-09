@@ -124,6 +124,7 @@ SOTTOGRUPPI: dict[str, tuple[str, str]] = {
     "admin-ruoli menu": ("menu", "Menu per scegliere i ruoli"),
     "monete shop": ("shop", "Negozio del server"),
     "admin-economia annunci": ("annunci", "Annunci di fine mese: vincitori e clan"),
+    "admin-giochi punteggi": ("punteggi", "Punteggi delle gare: azzerali"),
     "owner ai": ("ai", "AI globale: manutenzione, modelli, rete del boss"),
 }
 

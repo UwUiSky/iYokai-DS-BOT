@@ -1469,3 +1469,23 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - Spegni una fonte con `GIF_NEKOSBEST_ATTIVO=no`, riavvia: le GIF arrivano dalle altre. Spegni tutte: «Per ora non trovo una GIF». Controlla che nessuna GIF sia per adulti (solo categorie SFW).
 - Da fare dall'owner: leggere i termini di nekos.best (vieta l'uso commerciale; D70), inviare la richiesta a Giphy prima di accenderla.
 - [ ] Giveaway immagine durevole, bacheca e conteggio (r20util, revisione) — `/admin-giveaway avvia` con `immagine:` un PNG: l'annuncio esce nel canale con l'immagine; aspetta più di 24 ore (o cancella il messaggio originale dell'allegato): l'immagine dell'annuncio c'è ancora, anche dopo `/admin-giveaway modifica`. Con un file non sicuro risponde che non può conservarlo. `/admin-moduli starboard imposta blocca:True` su #uno, poi di nuovo su #due: #uno torna libero a tutti e #due è bloccato. `/admin-giochi conteggio canale azione:togli`: chiede conferma e solo «Togli il canale» cancella punteggi, traguardi e avvisi.
+
+## giro r21fun, B2 — giochi piccoli (#131)
+- `/fun coinflip quante:10`: una striscia di 10 monete (testa chiara, croce scura) e la riga «Teste: n · Croci: m»; `quante:1` resta solo testo.
+- `/giochi minato difficolta:Difficile (9x9)`: il messaggio arriva intero (81 celle in spoiler, una zona già aperta). **Prova il tetto di emoji per messaggio** su Discord (desktop e telefono); se i numeri non si vedono, ridurre la griglia.
+- `/fun ship tema:Amicizia`: titolo «Amicizia», frasi da amici. `/fun joke tema:Chuck`: battuta in italiano. `/fun casuale tipo:Classe di un gioco gioco:Overwatch` (scrivi «over» e scegli dal completamento): una classe; senza gioco, messaggio nascosto.
+
+## giro r21fun, B3 — gare con classifica (#131)
+- `/giochi dado`: messaggio con il tuo numero (1-100) e la classifica di oggi; un secondo `/giochi dado` dice che hai già tirato. `vista:Ieri` e `vista:Sempre` cambiano il titolo. Nessun ping oltre al tuo.
+- `/giochi spinner` e clic su «Gira» (solo chi ha dato il comando; un altro riceve un avviso nascosto): il messaggio si aggiorna ogni 3 secondi per 1-60 secondi, poi mostra la classifica della settimana. Un secondo giro entro un'ora: «Hai già girato da poco».
+- `/giochi mazzo` (pesca 3), `azione:Carte restanti` (49), `azione:Rimescola` (52). Dopo 52 carte pescate: «Il mazzo è finito».
+- `/admin-giochi punteggi azzera gara:Dado`: messaggio nascosto con Conferma/Annulla; Conferma cancella, Annulla no; un non-admin non lo vede.
+
+## giro r21fun, B4 — foto (#131)
+- `/immagini animal specie:Cane quante:5`: un messaggio con 5 immagini (embed). `specie:Uccello quante:3`: 3 foto di uccelli allegate, con il nome Pixabay; senza `PIXABAY_API_KEY` risposta nascosta che spiega come attivarla. `specie:Sorpresa`: un mix.
+- `/immagini foto tema:Cibo` e `Buonumore`: una foto con credito Pixabay; un secondo comando entro 10 secondi: «aspetta».
+- `/immagini xkcd` (ultima) e `numero:927`: titolo `#927 · Standards`, testo alternativo in descrizione, immagine, piè di pagina con la licenza CC BY-NC 2.5; `numero:404`: «Non trovo questa vignetta».
+
+## giro r21fun, B5 — effetti e scherzi (#131)
+- `/immagini effetto tipo:Pingato tutti nome:Luca`: avatar con il riquadro blu «@Luca ha pingato tutti» (nessun ping vero). Poi `Specchio`, `Seppia`, `Pixel art`, `Cornice`, `Vignetta`, `Neon`: ognuno un PNG quadrato col nome del file dell'effetto; un allegato non immagine è rifiutato come prima.
+- `/fun scherzo tipo:Tutto in spoiler utente:@Prova testo:ciao a tutti`: ogni parola in spoiler, nessun ping (anche con «@everyone» nel testo). Senza `testo`: messaggio nascosto. `Barra di caricamento` (sempre 99%) e `Brindisi` (frase a caso).

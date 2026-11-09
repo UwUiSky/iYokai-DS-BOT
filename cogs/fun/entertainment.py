@@ -12,13 +12,14 @@ anche senza dover allegare un'immagine ogni volta. I comandi immagine
 passano tutti da `_rispondi_con_immagine` (SEC-20): allegato
 controllato prima di scaricarlo, `defer()`, risposta con followup.
 
-Funzioni coperte: SPEC §16.1-16.4, §16.8-16.9; M 15.1, M 15.2.
+Funzioni coperte: SPEC §16.1-16.4, §16.8-16.9; M 15.1, M 15.2; FUN-035, 049-052, 054 (#131).
 Tutti i comandi stanno nel gruppo condiviso `/fun` (core/command_groups.py);
 `/fun ship` e `/fun rate` sono in cogs/fun/ship_rate.py.
 
 Terzo lotto (§16.4 Comandi animal, §16.9 Ricerca immagini SFW):
-`/immagini animal` usa tre API pubbliche gratuite senza chiave
-(dog.ceo, thecatapi.com, randomfox.ca — core/animal_fetcher.py);
+`/immagini animal` (fino a 5 immagini) usa tre API pubbliche gratuite senza chiave
+(dog.ceo, thecatapi.com, randomfox.ca — core/animal_fetcher.py) e Pixabay per l'uccello;
+`/immagini foto` (cibo, buonumore) usa Pixabay; `/immagini xkcd` core/xkcd_fetcher.py;
 `/immagini search-image` usa Pixabay, che invece richiede una chiave
 gratuita (PIXABAY_API_KEY in core/config.py, stesso principio di
 sblocco opzionale già usato per Twitch/YouTube) — a differenza delle
@@ -33,6 +34,7 @@ core/twitch_watcher.py/core/youtube_watcher.py.
 
 from __future__ import annotations
 
+import asyncio
 import io
 import random
 import time
@@ -50,6 +52,7 @@ from core.classic_entertainment_logic import (
     random_quote,
 )
 from core.fun_extra_logic import tira_formula
+from core.fun_piccoli_logic import MAX_MONETE, striscia_monete, tira_monete
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
@@ -59,11 +62,20 @@ from core.image_search_fetcher import image_search_fetcher
 from core.meme_logic import render_meme
 from core.minigames_logic import answer_8ball, flip_coin, play_rps, roll_dice
 from core.premium import PremiumModule, registry
+from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.safe_image import MAX_IMAGE_BYTES, run_image_task
+from core.xkcd_fetcher import xkcd_service
 
 MODULE_FUN = "fun"
 PAUSA_RICERCA_IMMAGINI_SECONDI = 10
 MAX_UTENTI_NELLA_PAUSA = 1000
+MAX_ANIMALI = 5
+SPECIE_SORPRESA = ("dog", "cat", "fox", "bird")
+# Ricerche curate per /immagini foto: sempre con safesearch (lo imposta image_search_fetcher).
+QUERY_FOTO = {
+    "cibo": ("food", "pizza", "pasta", "dessert", "fruit", "salad", "bread", "sushi"),
+    "buonumore": ("happy", "smile", "sunshine", "rainbow", "puppy", "flowers", "kitten", "friends laughing"),
+}
 
 _RPS_CHOICE_DISPLAY = {"sasso": "🪨 Sasso", "carta": "📄 Carta", "forbici": "✂️ Forbici"}
 
@@ -165,12 +177,26 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo("fun", nome="coinflip", descrizione="Lancia una moneta: testa o croce.")
-    async def coinflip(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(quante="Quante monete lanciare, da 1 a 10 (facoltativo)")
+    async def coinflip(
+        self, interaction: discord.Interaction, quante: app_commands.Range[int, 1, MAX_MONETE] = 1
+    ) -> None:
         if not await self._modulo_attivo(interaction):
             return
 
-        risultato = flip_coin(self._rng)
-        await interaction.response.send_message(f"🪙 **{risultato.upper()}**!")
+        esiti = tira_monete(quante, self._rng)
+        if quante == 1:
+            await interaction.response.send_message(f"🪙 **{esiti[0].upper()}**!")
+            return
+
+        await interaction.response.defer()
+        moneta = await leveling_settings_repo.get_immagine_moneta(interaction.guild.id)
+        png = await run_image_task(striscia_monete, esiti, moneta)
+        teste = esiti.count("testa")
+        riga = await testo_per(interaction, "fun_monete_riepilogo", pubblica=True, teste=teste, croci=quante - teste)
+        await interaction.followup.send(
+            f"🪙 {riga}", file=discord.File(io.BytesIO(png), filename="monete.png")
+        )
 
     @comando_di_gruppo("fun", nome="dice", descrizione="Tira un dado.")
     @app_commands.describe(
@@ -393,31 +419,113 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
             interaction, image, utente, "meme.png", render_meme, top_text, bottom_text
         )
 
-    @comando_di_gruppo("immagini", nome="animal", descrizione="Mostra un'immagine casuale di un animale.")
-    @app_commands.describe(specie="Che animale vuoi vedere?")
+    @comando_di_gruppo("immagini", nome="animal", descrizione="Mostra immagini casuali di animali (fino a 5).")
+    @app_commands.describe(specie="Che animale vuoi vedere?", quante="Quante immagini, da 1 a 5 (facoltativo)")
     @app_commands.choices(
         specie=[
             app_commands.Choice(name="Cane", value="dog"),
             app_commands.Choice(name="Gatto", value="cat"),
             app_commands.Choice(name="Volpe", value="fox"),
+            app_commands.Choice(name="Uccello", value="bird"),
+            app_commands.Choice(name="Sorpresa", value="surprise"),
         ]
     )
-    async def animal(self, interaction: discord.Interaction, specie: app_commands.Choice[str]) -> None:
+    async def animal(
+        self,
+        interaction: discord.Interaction,
+        specie: app_commands.Choice[str],
+        quante: app_commands.Range[int, 1, MAX_ANIMALI] = 1,
+    ) -> None:
         if not await self._modulo_attivo(interaction):
             return
 
+        scelte = [
+            self._rng.choice(SPECIE_SORPRESA) if specie.value == "surprise" else specie.value for _ in range(quante)
+        ]
+        servono_uccelli = scelte.count("bird")
+        if servono_uccelli and not config.PIXABAY_API_KEY:
+            await interaction.response.send_message(
+                await testo_per(interaction, "entertainmen_la_ricerca_immagini_non_configurata"), ephemeral=True
+            )
+            return
+        if servono_uccelli:
+            attesa = self._secondi_di_pausa(interaction.user.id)
+            if attesa:
+                await interaction.response.send_message(
+                    await testo_per(interaction, "entertainmen_aspetta_secondi_prima_di_una", attesa=attesa),
+                    ephemeral=True,
+                )
+                return
+            self._segna_ricerca(interaction.user.id)
+
         await interaction.response.defer()
 
-        url = await animal_fetcher.fetch_image_url(specie.value)
-        if url is None:
+        indirizzi = await asyncio.gather(*(animal_fetcher.fetch_image_url(c) for c in scelte if c != "bird"))
+        uccelli = (
+            await image_search_fetcher.fetch_immagini(config.PIXABAY_API_KEY, "bird", self._rng, servono_uccelli)
+            if servono_uccelli
+            else []
+        )
+        embeds, file = [], []
+        titolo = f"{specie.name} casuale"
+        for url in indirizzi:
+            if url is not None:
+                embed = discord.Embed(title=titolo if not embeds else None, color=discord.Color.orange())
+                embed.set_image(url=url)
+                embeds.append(embed)
+        for i, foto in enumerate(uccelli):
+            nome_file = f"uccello{i}.{foto.estensione}"
+            embed = discord.Embed(title=titolo if not embeds else None, url=foto.pagina, color=discord.Color.orange())
+            embed.set_image(url=f"attachment://{nome_file}")
+            embed.set_footer(text="Pixabay")
+            embeds.append(embed)
+            file.append(discord.File(io.BytesIO(foto.dati), filename=nome_file))
+        if not embeds:
             await interaction.followup.send(
                 await testo_per(interaction, "entertainmen_non_sono_riuscito_recuperare_un"),
                 ephemeral=True,
             )
             return
+        invio: dict = {"embed": embeds[0]} if len(embeds) == 1 else {"embeds": embeds}
+        if len(file) == 1:
+            invio["file"] = file[0]
+        elif file:
+            invio["files"] = file
+        await interaction.followup.send(**invio)
 
-        embed = discord.Embed(title=f"{specie.name} casuale", color=discord.Color.orange())
-        embed.set_image(url=url)
+    @comando_di_gruppo("immagini", nome="foto", descrizione="Una foto bella da vedere: cibo o buonumore.")
+    @app_commands.describe(tema="Di cosa vuoi una foto")
+    @app_commands.choices(
+        tema=[
+            app_commands.Choice(name="Cibo", value="cibo"),
+            app_commands.Choice(name="Buonumore", value="buonumore"),
+        ]
+    )
+    async def foto(self, interaction: discord.Interaction, tema: app_commands.Choice[str]) -> None:
+        if not await self._modulo_attivo(interaction):
+            return
+        await self._foto_pixabay(interaction, self._rng.choice(QUERY_FOTO[tema.value]))
+
+    @comando_di_gruppo("immagini", nome="xkcd", descrizione="Una vignetta di xkcd: l'ultima o quella col numero che scegli.")
+    @app_commands.describe(numero="Il numero della vignetta (facoltativo: senza, l'ultima)")
+    async def xkcd(
+        self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 100000] | None = None
+    ) -> None:
+        if not await self._modulo_attivo(interaction):
+            return
+        await interaction.response.defer()
+        vignetta = await xkcd_service.vignetta(numero)
+        if vignetta is None:
+            await interaction.followup.send(await testo_per(interaction, "fun_xkcd_non_trovata"), ephemeral=True)
+            return
+        embed = discord.Embed(
+            title=f"#{vignetta.numero} · {vignetta.titolo}"[:256],
+            url=vignetta.pagina,
+            description=vignetta.alt[:4096] or None,
+            color=discord.Color.light_grey(),
+        )
+        embed.set_image(url=vignetta.immagine)
+        embed.set_footer(text=await testo_per(interaction, "fun_xkcd_credito", pubblica=True))
         await interaction.followup.send(embed=embed)
 
     def _secondi_di_pausa(self, utente_id: int) -> int:
@@ -446,13 +554,16 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
         if not await self._modulo_attivo(interaction):
             return
 
+        await self._foto_pixabay(interaction, query)
+
+    async def _foto_pixabay(self, interaction: discord.Interaction, query: str) -> None:
+        """Chiave, pausa per utente, defer, ricerca su Pixabay (safesearch), foto allegata con il credito."""
         if not config.PIXABAY_API_KEY:
             await interaction.response.send_message(
                 await testo_per(interaction, "entertainmen_la_ricerca_immagini_non_configurata"),
                 ephemeral=True,
             )
             return
-
         attesa = self._secondi_di_pausa(interaction.user.id)
         if attesa:
             await interaction.response.send_message(
