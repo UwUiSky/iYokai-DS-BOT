@@ -7,9 +7,11 @@ del router (canale di testo o forum) e, per ogni evento, una riga nel log
 eventi senza il testo. Serve il Message Content Intent; un messaggio
 uscito dalla memoria di discord.py si segnala senza contenuto. I messaggi
 cancellati restano in memoria un'ora per l'archivio di un canale, solo se
-l'evento «messaggi cancellati» è acceso. Fa parte
+l'evento «messaggi cancellati» è acceso. Le immagini dei messaggi si copiano
+senza aprirle (`core/allegati_sicuri.py`, D61): nel log del cancellato vanno i link di
+download firmati e al massimo 3 anteprime PNG ricodificate, mai l'originale. Fa parte
 del Logging Avanzato. Ogni evento si può spegnere (LOG-017).
-Funzioni coperte: SPEC §8.16 (NF-02), §8.18 (LOG-005, LOG-027)
+Funzioni coperte: SPEC §8.16 (NF-02), §8.18 (LOG-005, LOG-027), D61 (#152)
 Dipende da: core/channel_router.py, core/repositories/log_ignora_repo.py,
 core/repositories/log_eventi_repo.py
 """
@@ -20,12 +22,15 @@ import io
 import logging
 
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 from cogs.logging.advanced_logs import logging_avanzato_attivo
+from core import allegati_sicuri
 from core import channel_router as router
+from core.config import config
 from core.channel_router import SETTING_LOG_CHANNEL, TIPO_MESSAGGI
 from core.database import db
+from core.immagini_byte_logic import tipo_atteso
 from core.message_log_logic import (
     cancellati_recenti,
     MessaggioArchiviato,
@@ -69,9 +74,84 @@ def _scartato(ignorati, canale, message: discord.Message | None, channel_id: int
     )
 
 
+MAX_ANTEPRIME_LOG = 3
+MAX_BYTE_ANTEPRIME_LOG = 8 * 1024 * 1024  # LIM-55: un invio non supera i 10 MiB
+
+
+def e_immagine_dichiarata(a: discord.Attachment) -> bool:
+    """Solo gli allegati che dicono di essere immagini si copiano; il tipo vero lo decidono i byte."""
+    return tipo_atteso(a.filename, getattr(a, "content_type", None)) is not None
+
+
+async def copie_per_il_log(guild_id: int, message_id: int) -> tuple[str, list[discord.File]]:
+    """
+    D61/D62: le copie salvate di un messaggio per il log: elenco con link firmati (se il sotto-dominio e'
+    configurato) e al massimo 3 anteprime PNG ricodificate. Mai l'originale nel canale. Non solleva.
+    """
+    try:
+        copie = await allegati_sicuri.del_messaggio(guild_id, message_id)
+    except Exception:  # noqa: BLE001 - il log del messaggio esce comunque
+        logger.warning("Copie degli allegati non lette", exc_info=True)
+        return "", []
+    righe, file, peso = [], [], 0
+    for c in copie:
+        nome = senza_accento_grave(c.nome_file)
+        if c.stato == allegati_sicuri.STATO_BLOCCATA:
+            righe.append(f"`{nome}`: immagine con contenuto sospetto, non conservata")
+            continue
+        link = allegati_sicuri.url_download(config.WEB_ALLEGATI_PUBLIC_URL, config.WEB_PANEL_SECRET_KEY, c.id)
+        righe.append(f"`{nome}` ({c.dimensione // 1024} KiB)" + (f" [scarica]({link})" if link else ""))
+        if c.anteprima and len(file) < MAX_ANTEPRIME_LOG:
+            letta = await allegati_sicuri.leggi(c.id, anteprima=True)
+            if letta is not None and peso + len(letta[1]) <= MAX_BYTE_ANTEPRIME_LOG:
+                peso += len(letta[1])
+                file.append(discord.File(io.BytesIO(letta[1]), filename=f"anteprima-{c.id}.png"))
+    return "\n".join(righe), file
+
+
 class MessageLogsCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        self._pulizia = tasks.loop(hours=1)(self._giro_pulizia)
+
+    async def cog_load(self) -> None:
+        self._pulizia.start()
+
+    async def cog_unload(self) -> None:
+        self._pulizia.cancel()
+
+    async def _giro_pulizia(self) -> None:
+        try:
+            tolti = await allegati_sicuri.pulisci()
+            if tolti:
+                logger.info("Copie degli allegati: %d file tolti", tolti)
+        except Exception:  # noqa: BLE001
+            logger.warning("Pulizia delle copie degli allegati non riuscita", exc_info=True)
+
+    @commands.Cog.listener("on_message")
+    async def copia_allegati(self, message: discord.Message) -> None:
+        """D61: le immagini dei messaggi si copiano (byte intatti) per il log del messaggio cancellato."""
+        guild = message.guild
+        if guild is None or message.author.bot or not message.attachments:
+            return
+        scelti = [a for a in message.attachments if e_immagine_dichiarata(a) and a.size <= allegati_sicuri.MAX_BYTE]
+        if not scelti:
+            return
+        try:
+            if not await logging_avanzato_attivo(guild.id, self.bot):
+                return
+            if not await log_eventi_repo.evento_acceso(guild.id, "message_delete"):
+                return
+            ignorati = await log_ignora_repo.carica(guild.id)
+            if _scartato(ignorati, message.channel, message, message.channel.id):
+                return
+            for a in scelti[: allegati_sicuri.MAX_PER_MESSAGGIO]:
+                await allegati_sicuri.salva(
+                    guild.id, message.channel.id, message.id, message.author.id, "log_messaggi", a.filename,
+                    await a.read(), content_type=a.content_type,
+                )
+        except Exception:  # noqa: BLE001 - il log delle copie non deve mai rompere altro
+            logger.warning("Copia degli allegati non riuscita", exc_info=True)
 
     async def _scrivi(self, guild: discord.Guild, evento: str, **contenuto) -> None:
         if not await log_eventi_repo.evento_acceso(guild.id, evento):
@@ -128,7 +208,14 @@ class MessageLogsCog(commands.Cog):
             allegati = testo_allegati([a.filename for a in messaggio.attachments])
             if allegati:
                 embed.add_field(name="Allegati", value=allegati, inline=False)
-        await self._scrivi(guild, "message_delete", embed=embed)
+        testo_copie, anteprime = await copie_per_il_log(guild.id, payload.message_id)
+        contenuto: dict = {"embed": embed}
+        if testo_copie:
+            embed.add_field(name="Copie salvate", value=tronca(testo_copie, CAMPO_MAX), inline=False)
+        if anteprime:
+            embed.set_image(url=f"attachment://{anteprime[0].filename}")
+            contenuto["files"] = anteprime
+        await self._scrivi(guild, "message_delete", **contenuto)
 
     @commands.Cog.listener()
     async def on_raw_bulk_message_delete(self, payload: discord.RawBulkMessageDeleteEvent) -> None:

@@ -5,6 +5,7 @@ Log dei messaggi (NF-02): cancellato, modificato, cancellato in blocco.
 Tagli ai limiti di Discord, cose ignorate, file sotto i 10 MiB.
 """
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, create_autospec
 
 import discord
@@ -84,6 +85,7 @@ def ambiente(monkeypatch):
     eventi = create_autospec(EventLogRepository, instance=True)
     monkeypatch.setattr(modulo, "event_log_repo", eventi)
     monkeypatch.setattr(modulo.router, "destinazione", AsyncMock(return_value=canale_log))
+    monkeypatch.setattr(modulo.allegati_sicuri, "del_messaggio", AsyncMock(return_value=[]))
     cog = modulo.MessageLogsCog(bot)
     return cog, canale_log, ignora, eventi, server
 
@@ -340,3 +342,59 @@ async def test_richiesta_privacy_svuota_i_cancellati_dell_utente(ambiente, clean
     await forget_user_service.dimentica_utente(clean_db, 42)
     assert modulo.cancellati_recenti.di(CANALE) == [altro]
     modulo.cancellati_recenti.dimentica_autore(43)
+
+
+# ------------------------------------------------- copie sicure degli allegati (D61, #152)
+def _allegato(nome="a.png", tipo="image/png", peso=100, dati=b"BYTE"):
+    a = MagicMock(filename=nome, content_type=tipo, size=peso)
+    a.read = AsyncMock(return_value=dati)
+    return a
+
+
+@pytest.fixture
+def copia(ambiente, monkeypatch):
+    cog, *_ = ambiente
+    monkeypatch.setattr(modulo.log_eventi_repo, "evento_acceso", AsyncMock(return_value=True))
+    salva = AsyncMock()
+    monkeypatch.setattr(modulo.allegati_sicuri, "salva", salva)
+    return cog, salva
+
+
+async def test_copia_solo_le_immagini_dichiarate_con_i_byte_intatti(ambiente, copia):
+    cog, salva = copia
+    m = _messaggio()
+    m.guild = ambiente[4]
+    m.channel = fake_text_channel(channel_id=CANALE)
+    m.attachments = [_allegato("a.png", dati=b"<html>"), _allegato("note.txt", "text/plain"), _allegato("g.bin", "image/gif")]
+    await cog.copia_allegati(m)
+    assert salva.await_count == 2
+    assert salva.await_args_list[0].args[6] == b"<html>"  # nessuna modifica ai byte
+
+
+async def test_non_copia_se_l_evento_e_spento_o_l_allegato_e_enorme(ambiente, copia, monkeypatch):
+    cog, salva = copia
+    m = _messaggio()
+    m.guild = ambiente[4]
+    m.channel = fake_text_channel(channel_id=CANALE)
+    m.attachments = [_allegato(peso=modulo.allegati_sicuri.MAX_BYTE + 1)]
+    await cog.copia_allegati(m)
+    m.attachments = [_allegato()]
+    monkeypatch.setattr(modulo.log_eventi_repo, "evento_acceso", AsyncMock(return_value=False))
+    await cog.copia_allegati(m)
+    salva.assert_not_awaited()
+
+
+async def test_log_del_cancellato_ha_link_e_anteprima_ricodificata_mai_l_originale(ambiente, monkeypatch):
+    cog, canale_log, *_ = ambiente
+    c = modulo.allegati_sicuri.Copia(7, "a.png", "png", 2048, "salvata", "ab" * 16, True)
+    b = modulo.allegati_sicuri.Copia(8, "x.png", "png", 10, "bloccata", None, False)
+    monkeypatch.setattr(modulo.allegati_sicuri, "del_messaggio", AsyncMock(return_value=[c, b]))
+    monkeypatch.setattr(modulo.allegati_sicuri, "leggi", AsyncMock(return_value=("anteprima-7.png", b"PNGNUOVO")))
+    finta = SimpleNamespace(WEB_ALLEGATI_PUBLIC_URL="https://allegati.example.invalid", WEB_PANEL_SECRET_KEY="k" * 32)
+    monkeypatch.setattr(modulo, "config", finta)
+    await cog.on_raw_message_delete(_payload_delete(_messaggio()))
+    kw = canale_log.send.call_args.kwargs
+    campo = {f.name: f.value for f in kw["embed"].fields}["Copie salvate"]
+    assert "https://allegati.example.invalid/allegato/7.o." in campo and "non conservata" in campo
+    assert len(kw["files"]) == 1 and kw["files"][0].fp.read() == b"PNGNUOVO"
+    assert len(kw["embed"]) <= 6000
