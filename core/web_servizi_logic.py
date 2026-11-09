@@ -22,7 +22,7 @@ import aiohttp
 from core import strumenti_rapidi_logic as rapidi
 from core.bounded_cache import BoundedCache
 from core.phishing_logic import ACCORCIATORI, carica_lista_locale, e_phishing
-from core.safe_http import safe_get, url_e_sicuro
+from core.safe_http import USER_AGENT, safe_get, url_e_sicuro
 
 TIMEOUT_SECONDI = 8
 MAX_CITTA = 100
@@ -282,7 +282,7 @@ async def prezzo_di(chiave_api: str, simbolo: str, valuta: str) -> tuple[float, 
            "&include_24hr_change=true")
     try:
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=TIMEOUT_SECONDI),
-                                         headers={"x-cg-demo-api-key": chiave_api, "User-Agent": "iYokai-Bot/1.0"}) as s:
+                                         headers={"x-cg-demo-api-key": chiave_api, "User-Agent": USER_AGENT}) as s:
             async with s.get(url) as r:
                 if r.status != 200:
                     return None

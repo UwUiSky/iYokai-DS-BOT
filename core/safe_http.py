@@ -32,8 +32,9 @@ MAX_REDIRECTS = 3
 REQUEST_TIMEOUT_SECONDS = 15
 _REDIRECT_STATUS = {301, 302, 303, 307, 308}
 
-# M 11.9 (LIM-51): i siti dei feed chiedono di sapere chi li scarica.
-USER_AGENT = "iYokai-Bot/1.0 (Discord bot; lettore di feed RSS)"
+# M 11.9 (LIM-51): i servizi esterni (feed, MET Norway, Wikimedia) chiedono di sapere chi li scarica,
+# con un contatto. Nessuna e-mail personale: l'indirizzo del progetto.
+USER_AGENT = "iYokai-bot/1.0 (+https://github.com/UwUiSky/iYokai-DS-BOT)"
 
 # <?xml version="1.0" encoding="ISO-8859-1"?> in testa a un feed.
 _ENCODING_PROLOGO_XML = re.compile(rb"""\s*<\?xml[^>]*encoding=["']([A-Za-z0-9._-]+)["']""")

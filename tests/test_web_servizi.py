@@ -163,3 +163,34 @@ async def test_limiti_dei_comandi_e_nominatim_senza_completamento():
     assert not meteo.get("autocomplete")  # Nominatim vieta il completamento
     prezzo = comando_nel_gruppo("web", "prezzo").to_dict(bot.tree)["options"]
     assert prezzo[0]["autocomplete"] and prezzo[0]["required"] and not prezzo[1]["required"]
+
+
+def test_user_agent_identifica_il_bot_con_un_contatto():
+    """MET Norway e Wikimedia chiedono nome, versione e un contatto; nessuna e-mail personale."""
+    from core.safe_http import USER_AGENT
+
+    assert USER_AGENT == "iYokai-bot/1.0 (+https://github.com/UwUiSky/iYokai-DS-BOT)"
+    assert "@" not in USER_AGENT
+
+
+async def test_prezzo_manda_lo_stesso_user_agent(monkeypatch):
+    from core.safe_http import USER_AGENT
+
+    visto = {}
+
+    class SessioneFinta:
+        def __init__(self, **kwargs):
+            visto.update(kwargs.get("headers", {}))
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        def get(self, url):
+            raise W.aiohttp.ClientError("fermati qui")
+
+    monkeypatch.setattr(W.aiohttp, "ClientSession", SessioneFinta)
+    assert await W.prezzo_di("chiave", "btc", "eur") is None
+    assert visto["User-Agent"] == USER_AGENT
