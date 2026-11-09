@@ -4,9 +4,10 @@
 09/11/2026 · ramo feat/r20util (worktree /home/claude/wt/r20util, env scratchpad/env_r20util.sh, DB iyokai_w20util) · blocco Utility #128 B8-B15, D69. Migrazioni da 0547 (0546 presa da B7).
 
 ## In corso
-- r19util B1-B7 pubblicati e uniti. r20util: B8, B9-B10 chiusi. B11 chiuso. B13 chiuso (184 resta a dev-moderazione). B14 (0552) e B15 (0553) chiusi. Blocchi B8-B15 finiti: manca solo il rapporto finale. Smoke da fare. Helper: scratchpad/uti20_{agg,commit.sh,guard.sh,doc,pesi}. Smoke da fare (non lanciato).
+- r21util (ramo feat/r21util, env scratchpad/env_r21util_w.sh, DB iyokai_w21util; helper scratchpad/uti21_{commit.sh,guard.sh,doc.py}). B16, B17, B18, B19 fatti. Prossimo: B20 = tag reazioni (022), si_cancella_dopo (023, via scheduler), cancella_messaggi (025), anche_modificati (053): colonne gia in 0557, mancano i parametri in `/admin-tag tag opzioni` (cogs/utility/tag_opzioni.py) e il comportamento in custom_commands.py (_manda/on_message, on_message_edit). Poi B21 = `/tag modifica|elimina|prendi` (034, 035), `/admin-tag tag sostituisci|esporta|importa|gruppi` (039-042; tabelle tag_gruppi e tag_pacchetti gia create). UTL-184 (mod-ban massa invito) non fatto. Smoke da fare.
 
 ## Fatto
+- r21util B16 citazioni+uso comandi+registro staff (0555); B17 emoji/sticker/thread/voice vai/massa esporta; B18 regex/inizia/svuota/globali (0556); B19 gruppi /tag e /admin-tag, opzioni, pesi, 4000 (0557). /fun quote NON spostato (cogs/fun e di r21fun).
 - r20util B15 conteggio: traguardo, importa, avvisami (0553). togli_canale cancella anche punteggi, traguardi e avvisi del canale.
 - r20util B14 conteggio: cog nuovo cogs/utility/conteggio.py, /admin-giochi conteggio canale|regole, /giochi conteggio classifica (0552); tolto da coin_games.
 - r20util B13 inviti: riallinea/azzera/esporta/statistiche + segnaposto benvenuto (0551). UTL-184 non fatto (cogs/moderation, non mio).
