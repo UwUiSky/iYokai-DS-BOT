@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:51 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:55 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 765 comandi in 45 categorie.**
+**Totale: 768 comandi in 45 categorie.**
 
 ## Admin: AI
 
@@ -275,6 +275,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 - **`/admin-messaggi risposte crea`** — Crea una risposta automatica.
 - **`/admin-messaggi risposte elenco`** — Mostra le risposte automatiche del server.
 - **`/admin-messaggi risposte elimina`** — Elimina una risposta automatica.
+- **`/admin-messaggi risposte globali`** — Accendi o spegni le risposte automatiche dell'owner in questo server.
+- **`/admin-messaggi risposte svuota`** — Elimina tutte le risposte automatiche del server.
 - **`/admin-messaggi scrivi`** — Fai scrivere un messaggio al bot in un canale.
 - **`/admin-messaggi tag crea`** — Crea un comando personalizzato.
 - **`/admin-messaggi tag elenco`** — Mostra i comandi personalizzati del server.
@@ -812,6 +814,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 - **`/owner system leave-guild`** — Forza il bot a lasciare un server specifico (senza bloccarlo).
 - **`/owner system memory-status`** — Mostra il consumo di RAM attuale del processo.
 - **`/owner system richieste-canale`** — Imposta il canale delle richieste (solo nel server principale).
+- **`/owner system risposte-globali`** — Risposte automatiche comuni a tutti i server (massimo 20).
 - **`/owner system shell`** — Esegue un comando shell (con conferma).
 - **`/owner system stats`** — Statistiche globali del bot.
 - **`/owner system storico-vpn`** — Solo proprietario: server che l'hanno lasciata passare e IP della persona (VPN/proxy).

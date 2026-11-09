@@ -19,21 +19,28 @@ from discord.ext import commands
 
 from core.admin_mentions_logic import menzioni_ammesse, utente_puo_pingare_ruoli
 from core.autoresponder_logic import (
+    regex_valida,
+    resto_dopo,
+    trigger_corrisponde,
     MAX_JOLLY,
     MAX_RISPOSTA,
     MAX_RISPOSTE,
+    MAX_REGEX,
     MAX_TRIGGER,
     PAUSA_CANALE_SECONDI,
     jolly_validi,
     scegli_risposta,
 )
 from core.bounded_cache import BoundedCache
+from core.command_access import Livello, puo_usare
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
 from core.i18n import testo_per
 from core.lista_limiti_logic import righe_entro_limite
 from core.premium import PremiumModule, registry
 from core.repositories.autoresponder_repo import autoresponder_repo
+from core.repositories.autorisposte_globali_repo import autorisposte_globali_repo
+from core.ui_base import BaseView
 from core.template_renderer import render_template
 
 logger = logging.getLogger("iyokai.autoresponder")
@@ -45,12 +52,49 @@ _TTL_REGOLE = 30  # secondi
 
 # server -> (regole, scadenza); (regola, canale) -> istante dell'ultima risposta
 _cache_regole: BoundedCache[int, tuple[list, float]] = BoundedCache(max_size=5_000)
+_cache_globali: BoundedCache[int, tuple[list, float]] = BoundedCache(max_size=2)
+_cache_spente: BoundedCache[int, tuple[bool, float]] = BoundedCache(max_size=5_000)
 _ultima_risposta: BoundedCache[tuple[int, int], float] = BoundedCache(max_size=20_000)
 
 _SCELTE_MODO = [
     app_commands.Choice(name="parola o frase intera nel messaggio", value="parziale"),
     app_commands.Choice(name="tutto il messaggio uguale", value="esatta"),
+    app_commands.Choice(name="il messaggio inizia così (il resto è {resto})", value="inizia"),
+    app_commands.Choice(name="espressione regolare (RE2)", value="regex"),
 ]
+SECONDI_CONFERMA = 60
+
+
+class ConfermaSvuota(BaseView):
+    """Svuotare cancella tutte le risposte del server: conferma di chi ha dato il comando, livello ricontrollato al tasto."""
+
+    def __init__(self, proprietario: int, guild_id: int, etichette: tuple[str, str]) -> None:
+        super().__init__(timeout=SECONDI_CONFERMA)
+        self.proprietario, self.guild_id = proprietario, guild_id
+        self.conferma.label, self.annulla.label = etichette[0][:80], etichette[1][:80]
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
+        if interaction.user.id != self.proprietario:
+            await interaction.response.send_message(await testo_per(interaction, "conteggio_non_e_tuo"), ephemeral=True)
+            return False
+        return True
+
+    @discord.ui.button(label="Conferma", style=discord.ButtonStyle.danger)
+    async def conferma(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.stop()  # anti-doppio-clic prima di ogni await
+        if not await puo_usare(interaction, Livello.ADMIN):
+            await interaction.response.edit_message(content=await testo_per(interaction, "conteggio_non_e_tuo"), view=None)
+            return
+        quante = await autoresponder_repo.svuota(self.guild_id)
+        _cache_regole.delete(self.guild_id)
+        await interaction.response.edit_message(content=await testo_per(interaction, "risposte_svuotate", quante=quante), view=None)
+
+    @discord.ui.button(label="Annulla", style=discord.ButtonStyle.secondary)
+    async def annulla(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.stop()
+        await interaction.response.edit_message(content=await testo_per(interaction, "conteggio_togli_annullato"), view=None)
 
 
 class AutoresponderCog(CogConGruppi, commands.Cog):
@@ -66,6 +110,21 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
         _cache_regole.set(guild_id, (regole, ora + _TTL_REGOLE))
         return regole
 
+    async def _globale(self, guild_id: int, testo: str):
+        voce = _cache_globali.get(0)
+        ora = time.monotonic()
+        if voce is None or voce[1] <= ora:
+            voce = (await autorisposte_globali_repo.elenco(), ora + _TTL_REGOLE)
+            _cache_globali.set(0, voce)
+        trovate = [g for g in voce[0] if trigger_corrisponde(g.innesco, "parziale", testo)]
+        if not trovate:
+            return None
+        spente = _cache_spente.get(guild_id)
+        if spente is None or spente[1] <= ora:
+            spente = (await autorisposte_globali_repo.spente_nel_server(guild_id), ora + _TTL_REGOLE)
+            _cache_spente.set(guild_id, spente)
+        return None if spente[0] else sorted(trovate, key=lambda g: (-len(g.innesco), g.id))[0]
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
         if message.author.bot or message.guild is None or not message.content:
@@ -78,17 +137,27 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
             message.channel.id,
             {r.id for r in getattr(message.author, "roles", [])},
         )
-        if regola is None:
-            return
-        chiave = (regola.id, message.channel.id)
+        resto = ""
+        if regola is not None and regola.match_mode == "inizia":
+            resto = resto_dopo(regola.trigger, message.content)
+        risposta = regola.response if regola else None
+        ping_ruoli = regola.ping_ruoli if regola else False
+        if regola is None:  # nessuna risposta del server: provano quelle globali dell'owner (se il server non le ha spente)
+            globale = await self._globale(message.guild.id, message.content)
+            if globale is None:
+                return
+            regola = globale
+            risposta, ping_ruoli = globale.risposta, False
+        chiave = (regola.id if hasattr(regola, "trigger") else -regola.id, message.channel.id)
         ora = time.monotonic()
         ultima = _ultima_risposta.get(chiave)
         if ultima is not None and ora - ultima < PAUSA_CANALE_SECONDI:
             return
         _ultima_risposta.set(chiave, ora)
         testo = render_template(
-            regola.response,
+            risposta,
             {
+                "resto": discord.utils.escape_mentions(resto),
                 "user": message.author.mention,
                 "username": discord.utils.escape_mentions(message.author.display_name),
                 "server": message.guild.name,
@@ -100,7 +169,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
                 testo,
                 reference=message,
                 mention_author=False,
-                allowed_mentions=menzioni_ammesse(regola.ping_ruoli),
+                allowed_mentions=menzioni_ammesse(ping_ruoli),
             )
         except discord.HTTPException:
             logger.warning("Risposta automatica %s: invio fallito nel canale %s", regola.id, message.channel.id)
@@ -125,7 +194,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo("admin-messaggi", nome="crea", descrizione="Crea una risposta automatica.", sottogruppo=SOTTOGRUPPI["admin-messaggi risposte"])
     @app_commands.describe(
         parola="La parola o frase che fa scattare la risposta (* = pezzo di parola)",
-        risposta="Cosa risponde il bot. Segnaposto: {user} {username} {server} {channel}",
+        risposta="Cosa risponde il bot. Segnaposto: {user} {username} {server} {channel} {resto}",
         modalita="Come cercare la parola nel messaggio",
         canale="Solo in questo canale (vuoto = ovunque)",
         ruolo="Solo per chi ha questo ruolo (vuoto = tutti)",
@@ -134,7 +203,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
     async def risposta_crea(
         self,
         interaction: discord.Interaction,
-        parola: app_commands.Range[str, 1, MAX_TRIGGER],
+        parola: app_commands.Range[str, 1, MAX_REGEX],
         risposta: app_commands.Range[str, 1, MAX_RISPOSTA],
         modalita: str = "parziale",
         canale: discord.TextChannel | None = None,
@@ -148,7 +217,18 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
                 await testo_per(interaction, "autoresponde_la_parola_la_risposta_non"), ephemeral=True
             )
             return
-        if not jolly_validi(parola):
+        if modalita == "regex":
+            if (problema := regex_valida(parola)) is not None:
+                await interaction.response.send_message(
+                    await testo_per(interaction, f"risposte_regex_{problema}", massimo=MAX_REGEX), ephemeral=True)
+                return
+        elif len(parola) > MAX_TRIGGER:
+            await interaction.response.send_message(await testo_per(interaction, "risposte_parola_lunga", massimo=MAX_TRIGGER), ephemeral=True)
+            return
+        if "{resto}" in risposta and modalita != "inizia":
+            await interaction.response.send_message(await testo_per(interaction, "risposte_resto_solo_inizia"), ephemeral=True)
+            return
+        if modalita != "regex" and not jolly_validi(parola):
             await interaction.response.send_message(
                 await testo_per(interaction, "autoresponde_con_il_jolly_servono_lettere", v1=MAX_JOLLY), ephemeral=True
             )
@@ -188,7 +268,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
             return
         regole = await autoresponder_repo.list(interaction.guild.id)
         righe = [
-            f"**{r.id}** · `{r.trigger[:60]}` ({'esatta' if r.match_mode == 'esatta' else 'parziale'})"
+            f"**{r.id}** · `{r.trigger[:60]}` ({r.match_mode})"
             + (f" · <#{r.channel_id}>" if r.channel_id else "")
             + (f" · <@&{r.role_id}>" if r.role_id else "")
             for r in regole
@@ -199,6 +279,25 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
             ephemeral=True,
             allowed_mentions=discord.AllowedMentions.none(),
         )
+
+    @comando_di_gruppo("admin-messaggi", nome="svuota", descrizione="Elimina tutte le risposte automatiche del server.", sottogruppo=SOTTOGRUPPI["admin-messaggi risposte"])
+    async def risposte_svuota(self, interaction: discord.Interaction) -> None:
+        if not await self._pronto(interaction):
+            return
+        etichette = (await testo_per(interaction, "conteggio_togli_bottone"), await testo_per(interaction, "conteggio_togli_annulla"))
+        await interaction.response.send_message(
+            await testo_per(interaction, "risposte_svuota_chiedi", quante=await autoresponder_repo.conta(interaction.guild.id)),
+            ephemeral=True, view=ConfermaSvuota(interaction.user.id, interaction.guild.id, etichette))
+
+    @comando_di_gruppo("admin-messaggi", nome="globali", descrizione="Accendi o spegni le risposte automatiche dell'owner in questo server.", sottogruppo=SOTTOGRUPPI["admin-messaggi risposte"])
+    @app_commands.describe(accese="Sì: il bot usa anche le risposte comuni a tutti i server. No: solo le tue")
+    async def risposte_globali(self, interaction: discord.Interaction, accese: bool) -> None:
+        if not await self._pronto(interaction):
+            return
+        await autorisposte_globali_repo.imposta_spente(interaction.guild.id, not accese)
+        _cache_spente.delete(interaction.guild.id)
+        await interaction.response.send_message(
+            await testo_per(interaction, "risposte_globali_accese" if accese else "risposte_globali_spente"), ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:

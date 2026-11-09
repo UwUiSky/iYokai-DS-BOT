@@ -2338,5 +2338,20 @@
   "strumenti_vai_pieno": "Quel canale è pieno.",
   "strumenti_vai_fatto": "Ti ho spostato in {canale}.",
   "ruoli_esporta_nessuno": "Nessun membro corrisponde ai filtri.",
-  "ruoli_esporta_pronto": "Elenco pronto: {quanti} membri."
+  "ruoli_esporta_pronto": "Elenco pronto: {quanti} membri.",
+  "risposte_regex_lunghezza": "L'espressione deve essere lunga da 1 a {massimo} caratteri.",
+  "risposte_regex_sintassi": "Espressione non valida (RE2): niente lookahead né riferimenti all'indietro.",
+  "risposte_parola_lunga": "La parola può essere lunga al massimo {massimo} caratteri (solo l'espressione regolare arriva a 200).",
+  "risposte_resto_solo_inizia": "Il segnaposto {resto} funziona solo con «il messaggio inizia così».",
+  "risposte_svuota_chiedi": "Eliminare tutte le {quante} risposte automatiche del server? Non si può annullare.",
+  "risposte_svuotate": "Risposte eliminate: {quante}.",
+  "risposte_globali_accese": "Le risposte comuni a tutti i server sono accese.",
+  "risposte_globali_spente": "Le risposte comuni a tutti i server sono spente qui.",
+  "risposte_globali_nessuna": "Nessuna risposta globale.",
+  "risposte_globali_tolta": "Risposta globale tolta.",
+  "risposte_globali_non_trovata": "Non c'è una risposta globale con quel numero.",
+  "risposte_globali_servono": "Servono un innesco (senza *) e una risposta.",
+  "risposte_globali_aggiunta": "Risposta globale aggiunta.",
+  "risposte_globali_esiste": "Esiste già una risposta globale con quell'innesco.",
+  "risposte_globali_piene": "Ci sono già {massimo} risposte globali: toglierne una."
 }

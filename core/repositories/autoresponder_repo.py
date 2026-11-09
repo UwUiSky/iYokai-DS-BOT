@@ -85,6 +85,14 @@ class AutoresponderRepository:
         return esito.endswith(" 1")
 
 
+    async def svuota(self, guild_id: int) -> int:
+        """Cancella tutte le risposte del server. Ritorna quante erano."""
+        return int((await self._pool.execute("DELETE FROM autoresponders WHERE guild_id = $1", guild_id)).split()[-1])
+
+    async def conta(self, guild_id: int) -> int:
+        return await self._pool.fetchval("SELECT count(*) FROM autoresponders WHERE guild_id = $1", guild_id)
+
+
 def _get_pool():
     from core.database import db
     return db.pool

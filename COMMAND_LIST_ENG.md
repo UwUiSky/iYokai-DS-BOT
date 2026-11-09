@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:51 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:55 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 765 commands in 45 categories.**
+**Total: 768 commands in 45 categories.**
 
 ## Admin: AI
 
@@ -268,8 +268,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:5
 - **`/admin-messages pinned remove`** — Removes a channel's sticky message.
 - **`/admin-messages pinned set`** — Sets a channel's sticky message.
 - **`/admin-messages reminders`** — For staff: the reminders set in this server.
+- **`/admin-messages replies clear`** — Delete all the automatic replies of the server.
 - **`/admin-messages replies create`** — Creates an automatic reply.
 - **`/admin-messages replies delete`** — Deletes an automatic reply.
+- **`/admin-messages replies global`** — Turn the owner's shared automatic replies on or off in this server.
 - **`/admin-messages replies list`** — Shows the server's automatic replies.
 - **`/admin-messages scheduled cancel`** — Cancels a scheduled message.
 - **`/admin-messages scheduled create`** — Schedules a message.
@@ -809,6 +811,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:5
 - **`/owner radio stop`** — Leaves the radio on this server.
 - **`/owner system announce`** — Sends an announcement to all servers.
 - **`/owner system eval`** — Runs Python code (with confirmation).
+- **`/owner system global-replies`** — Automatic replies shared by all servers (up to 20).
 - **`/owner system leave-guild`** — Forces the bot to leave a specific server (without blocking it).
 - **`/owner system memory-status`** — Shows the process's current RAM use.
 - **`/owner system richieste-canale`** — Sets the requests channel (main server only).

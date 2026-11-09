@@ -2338,5 +2338,20 @@
   "strumenti_vai_pieno": "That channel is full.",
   "strumenti_vai_fatto": "I moved you to {canale}.",
   "ruoli_esporta_nessuno": "No member matches the filters.",
-  "ruoli_esporta_pronto": "List ready: {quanti} members."
+  "ruoli_esporta_pronto": "List ready: {quanti} members.",
+  "risposte_regex_lunghezza": "The expression must be 1 to {massimo} characters long.",
+  "risposte_regex_sintassi": "Invalid expression (RE2): no lookahead or backreferences.",
+  "risposte_parola_lunga": "The word can be {massimo} characters long at most (only regular expressions reach 200).",
+  "risposte_resto_solo_inizia": "The {resto} placeholder only works with \"the message starts like this\".",
+  "risposte_svuota_chiedi": "Delete all {quante} automatic replies of the server? This can't be undone.",
+  "risposte_svuotate": "Replies deleted: {quante}.",
+  "risposte_globali_accese": "Replies shared by all servers are on.",
+  "risposte_globali_spente": "Replies shared by all servers are off here.",
+  "risposte_globali_nessuna": "No global replies.",
+  "risposte_globali_tolta": "Global reply removed.",
+  "risposte_globali_non_trovata": "There is no global reply with that number.",
+  "risposte_globali_servono": "A trigger (without *) and a reply are needed.",
+  "risposte_globali_aggiunta": "Global reply added.",
+  "risposte_globali_esiste": "A global reply with that trigger already exists.",
+  "risposte_globali_piene": "There are already {massimo} global replies: remove one."
 }
