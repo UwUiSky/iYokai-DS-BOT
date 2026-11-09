@@ -347,5 +347,6 @@ async def test_il_warn_dell_automod_crea_un_caso_con_origine_automod(monkeypatch
     monkeypatch.setattr(moderation_repo, "create_case", crea)
     monkeypatch.setattr(condiviso, "try_dm", AsyncMock())
     monkeypatch.setattr(condiviso, "post_to_mod_log", AsyncMock())
+    monkeypatch.setattr("core.moderation_dm.costruisci", AsyncMock(return_value=discord.Embed(title="dm")))  # il DM legge le opzioni dal database
     assert await M.esegui_azioni(A({"t": "warn"}), b) == ("warn",)
     assert crea.await_args.kwargs["origine"] == "automod"

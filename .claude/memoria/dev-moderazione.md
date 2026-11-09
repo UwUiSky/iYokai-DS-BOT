@@ -1,20 +1,15 @@
 # Memoria dev-moderazione
 ## Aggiornata
-2026-11-08, giro r18automod (ramo feat/r18automod, wt /home/claude/wt/r18automod, DB iyokai_w18am, migr. 0509 e da 0533). Smoke da fare.
+2026-11-08, giro r18mod (ramo feat/r18mod, wt /home/claude/wt/r18mod, DB iyokai_w18mod, migr. 0532 usata per D68; 0511 libera per M9 prove). Smoke da fare.
 ## In corso
-r18automod chiuso: A10 (calore, AMD-068/069/072), A11 (pulizia, 0509, AMD-073/074), AMD-008 (soglia_canale), finestra Innesco con ruoli/casi. Blocco AutoMod #116 finito. Prossimo: merge e prova live; poi F7 (/mod, /modban). r17mod: MOD-102 (cogs/automod) ora sbloccato dopo il merge di r17automod. main.py deve usare core.automod_eventi.chiede_intent_presenze() (non mio).
-Comando: DATABASE_URL=postgresql://postgres:testpass@127.0.0.1:5432/iyokai_w18am in ogni comando (mai iyokai_test). Testi: scratchpad/r18am_addt.py file.json (dict chiave -> [it, en]).
+r18mod previsione 3 voci: D68, M6 (parziale), M8: fatte. Prossimo giro, in ordine: M6 resto (MOD-066 conferma con 2 tasti, MOD-067 risposte compatte/cancella-dopo, opzioni nuove in core/moderation_opzioni.py), M9 (MOD-107 /mod-ban cerca, 108 /mod-casi membri, 110 /mod-casi invito, 038 prove con migr. 0511), MOD-102 dehoist/simboli (D66, spento: sta in cogs/automod, aspetta il merge).
+Comando: DATABASE_URL=postgresql://postgres:testpass@127.0.0.1:5432/iyokai_w18mod in ogni comando (scratchpad/envw18.sh). Testi: scratchpad/addt18.py file.json (chiave -> [it, en]).
 ## Fatto
-- r18 A10/AMD-008/finestra: core/automod_calore_logic.py (Termometro, CanaliFermi, punti, azioni_calore), CaloreConfig in AutomodAdvancedConfig (JSON), core/automod_calore_opzioni.py, /admin-automod calore, AutomodCog._scalda e _innesco_messaggio (soglia_canale); core/automod_innesco_logic.py (filtro ruoli/casi, soglia); finestra Innesco con 5o campo. test_automod_calore(_logic), _soglia_canale, _innesco_logic, _regole_pannello. Smoke da fare
-- r18 A11: migr. 0509 automod_pulizie, repo, core/automod_pulizia_logic.py, automod_pulizia.py (un giro), automod_pulizia_service.py, cogs/automod/pulizia.py (ciclo 5 min, /admin-automod pulizia, on_guild_channel_delete), data_registry. test_automod_pulizia(_logic/_servizio/_cog). Smoke da fare
-- r17 A9 eventi non-messaggio (core/automod_eventi*.py, caso_eventi.py, cogs/automod/eventi.py) e D67 account rubato (core/account_rubato*.py). r17 M4/M5/M7 moderazione (vocale, motivi, canali). Smoke da fare
-- r15-r16: A1-A8 AutoMod (regole, azioni, contatori, pannello, liste, decisioni; migr. 0500-0503), verifica D64/D65/D67 (VPN, blocchi, IP; 0507/0508/0530/0531), R14 paese 0490.
-- Giri G1-G7, R5-R11 (git log e REGISTRO_RISOLTE): tempban, appelli, verify, lockdown, phishing, captcha, anti-raid, odio D35 e altro.
+- r18 D68: core/moderation_motivi.py (PREIMPOSTATI 14 motivi, Proposta, modifica, semina alla prima lettura), migr. 0532 (+ moderation_motivi_semina), repo motivi, /mod-casi motivi aggiungi/modifica con severita/azione/durata, cogs/moderation/motivo_pronto.py (/mod-sanzioni applica: menu + durata + Conferma; kick/ban solo con livello MODBAN); test_moderation_motivi_severita
+- r18 M6 (MOD-050, 059): core/moderation_dm.py unico punto del DM (comandi + core/automod_azioni.py warn/kick/ban/tempban), mod_anonimo, mod_dm_testo_<azione>, finestra ModuloTestoDm; test_moderation_dm_m6. NON fatti: MOD-066, MOD-067
+- r18 M8: core/moderation_scheda.py, cogs/moderation/scheda.py (/mod-casi scheda, menu «Scheda moderazione» con 5 tasti, «Segnala messaggio», /utility mie-sanzioni, mod_utente_vede_casi), report.invia_segnalazione; test_moderation_scheda_m8
+- r17 M4 voce, M5 opzioni e motivi pronti (0512), M7 canali/nick/entrati (0513, 0514); r17 A9 eventi e D67 account rubato; r15-r16 A1-A8 AutoMod, verifica VPN/IP, giri G1-G7 e R5-R14 (git log, REGISTRO_RISOLTE)
 ## Cose imparate
-- Test con tanti messaggi finti: MagicMock(spec=discord.Message), non fake_message (autospec: centinaia di istanze = minuti)
-- Pulizia canali: giro segnato su DB PRIMA di cancellare (riserva_dovute); 3x 403 spengono la riga; blocco solo < 13,9 giorni, singoli <= 100
-- Calore: stato in memoria (BoundedCache), calo calcolato in lettura; regola con calore 0 non scalda; solo messaggi
-- Modale Innesco: ricostruisce l'innesco dai campi, quindi conserva a mano numero/secondi/limite
 - Anti-giri-a-vuoto (A9): esegui_azioni segna in automod_eventi_logic.effetti ruolo/nome/uscita PRIMA di agire; casi con origine automod ignorati; thread creati dal bot ignorati (e_un_nostro_bot sull'autore)
 - Testi: locales/it e en-US testi.json, riga in coda (no json.dump); un test che mette un'opzione nuova letta da db va patchato (db non connesso nei test di cog)
 - Scadenze IP (verify_ip): il ban vince sempre (on_member_remove arriva anche dopo il ban); kick riconosciuto dal registro audit, senza permesso = uscita volontaria; log IP: mai exc_info, solo type(errore)
@@ -41,20 +36,12 @@ Comando: DATABASE_URL=postgresql://postgres:testpass@127.0.0.1:5432/iyokai_w18am
 - normalizza() del filtro legge "!" come i: per le chiavi di cache usare parole+casefold, non normalizza
 - Test del cog automod: db finto passato come `archivio` alle funzioni (mai db._pool); libreria_odio va finta (AsyncMock) senza pool
 - Str.replace sostituisce TUTTE le occorrenze; con piu' decorator uguali cercare l'indice dopo il nome del comando
+- Migrazioni: girano in ordine di numero: un ALTER su una tabella creata da 0512 deve avere numero maggiore (0532, non 0511)
+- Sostituire un blocco con slice: ancorare sul sottogruppo (SOTTOGRUPPO_MOTIVI), mai sul solo nome=«aggiungi» (ce ne sono due): ho cancellato 3 comandi e l'ha visto test_f7
+- Un comando che esegue un altro comando (applica, tasti scheda) deve ricontrollare il livello: /mod-sanzioni e /mod-ban hanno livelli diversi (D2)
+- Test che chiamano il callback di un cog: get_member deve conoscere sia il moderatore sia il bersaglio (side_effect per id), se no «su te stesso»
+- Il DM delle sanzioni legge le opzioni dal db: i test dei cog senza db vanno patchati (core.moderation_dm.costruisci)
 ## Aperto
-- M5: _prepara_massa ora dà (ids, motivo); nel DM il nome locale del messaggio inviato e' dm_inviato (il parametro dm del comando e' un bool)
-- M5: durata nel motivo pronto non fatta (decidere)
-- Cog nuovo in cogs/moderation: aggiungerlo a MODULI di tests/test_f7_moderazione_gruppi.py oltre ad ATTESI, e il testo en dei comandi in locales/en-US/comandi.json
-- D67: verify_blocchi ha UNA riga per persona (PK user_id): con account limitato in piu' server il ticket si apre solo nell'ultimo; per tutti serve cambiare PK (migr. 0531) e cogs/tickets/modmail.py (non mio, in revisione r16ticket)
-- Codice con View/Modal senza cog va in core/ (ogni file in cogs/ vuole setup())
-- AMD-018 (stato/attivita) non fatto: serve intent Presenze, decide l'owner
-- decide_staff (A8, 0503) non ancora: l'azione e' nel JSON ma il motore la ignora
-- Test con _FakeMessage senza webhook_id: nel cog usare sempre getattr per gli attributi nuovi
-- D67: chiave VERIFY_IP_ENCRYPTION_KEY da mettere nel .env di produzione (senza, nessun IP salvato); i listener di scadenza IP girano anche a modulo Verify spento
-- D64: Tor/reti da aggiornare a mano con scripts/aggiorna_vpn.py (nessun job); licenza elenco Tor da confermare
-- MOD-065 (motivo facoltativo): cambia la firma di tutti i comandi
-- #119 LOG-029; #113 log via webhook; OAuth rientro oltre 7 giorni; alt_detection (#92)
-- Eccezioni allow_list anti-invito: tetto 25 voci = 8 inviti
-- SIC-045, AMD-067, SIC-016/021
-- data_registry (dev-core): scheduled_actions con channel_unlock usa user_id = ID del canale
-- D35: pagina /proprietario per la libreria (dev-web); le candidate valgono solo nei server che le hanno segnalate
+- MOD-066, MOD-067, MOD-102 e M9 da fare. Custom_id dei tasti della scheda non sono persistenti (vista a tempo, 10 min): scelta mia.
+- M5: _prepara_massa dà (ids, motivo); nel DM il nome locale del messaggio inviato è dm_inviato (il parametro dm del comando è un bool)
+- M5: durata nel motivo pronto: fatta in D68

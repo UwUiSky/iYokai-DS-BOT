@@ -626,9 +626,13 @@
   "mod-canali vocale sposta-tutti": "Moves everyone in a voice channel to another one.",
   "mod-canali vocale dove": "Shows which voice channel a member is in, and asks for an alert when they join.",
   "mod-sanzioni nick": "Changes or resets a member's nickname.",
+  "mod-sanzioni applica": "Applies the sanction of a saved reason, which you can change before confirming.",
+  "mod-casi scheda": "A user's card: dates, cases, notes and risk (even outside the server).",
+  "utility mie-sanzioni": "The sanctions you received in this server (only you see them).",
   "mod-ban massa entrati": "Bans or kicks whoever joined in the last minutes (after a confirmation).",
   "mod-casi motivi": "Saved reasons for sanctions.",
   "mod-casi motivi aggiungi": "Adds a saved reason, to pick in the \"reason\" field (needs \"Manage Server\").",
+  "mod-casi motivi modifica": "Changes text, severity or sanction of a saved reason (needs \"Manage Server\").",
   "mod-casi motivi elenco": "Shows the server's saved reasons.",
   "mod-casi motivi togli": "Removes a saved reason (needs \"Manage Server\").",
   "mod-casi caso": "History and details of moderation cases.",
@@ -1126,6 +1130,8 @@
   "Controlla i link": "Check links",
   "Segnala alla rete iYokai": "Report to iYokai network",
   "Spiega o riassumi": "Explain or summarize",
-  "Salva come risposta pronta": "Save as saved reply"
+  "Salva come risposta pronta": "Save as saved reply",
+  "Scheda moderazione": "Moderation card",
+  "Segnala messaggio": "Report message"
  }
 }
