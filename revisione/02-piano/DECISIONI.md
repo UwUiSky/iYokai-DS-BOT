@@ -1049,3 +1049,17 @@ accorciatore is.gd spento di base con controllo phishing; correzione dei link sp
 dell'owner spegnibili dal server (max 20); eventi creati da chi ha `create_events`; pesi dei sondaggi per ruolo;
 autore dei suggerimenti anonimi visibile solo agli admin, con registro; script dei tag in linguaggio nostro (italiano
 + alias inglesi, niente Jinja); il menu degli eventi dei log va diviso prima di aggiungere voci (25/25).
+
+## D70 — Divertimento (#131): fonti delle GIF e servizi dei giochi (09/11/2026, scelta dell'owner)
+- Le GIF di reazione e azione restano **gratuite per tutti** (mai nel Premium). Si predispongono **tutte** le fonti:
+  nekos.best, waifu.pics, otakugifs, Giphy, Klipy e le altre gratuite trovate, ognuna con un interruttore dell'owner;
+  poi si tiene chi funziona meglio. Nota di chi sviluppa: alcuni termini (es. nekos.best) vietano l'«uso commerciale»
+  e un bot con abbonamenti potrebbe contare come commerciale anche se le GIF sono gratis: il rischio lo valuta l'owner,
+  per questo ogni fonte si spegne con un interruttore senza toccare il codice. Giphy e Klipy: serve il loro permesso
+  scritto per un bot; la richiesta la manda l'owner (testo pronto in docs).
+- **Giochi:** si predispongono i servizi utili ai giochi più diffusi e ai tripla A 2020–2027 (statistiche, profili,
+  stato dei server, notizie e patch, giochi gratis della settimana), in un file dedicato con le chiavi da incollare
+  (come D54). Ogni servizio si accende solo con la sua chiave; chi richiede un'approvazione (es. Riot) resta spento
+  finché l'owner non l'ottiene. Filtro NSFW sempre attivo fuori dai canali NSFW.
+- Altre scelte del disegno (DF2–DF10) come raccomandato: telefono per ultimo e spento di base, pacchetto carte
+  «adulti» spento, chiavi osu!/Fortnite dell'owner.
