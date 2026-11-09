@@ -1489,3 +1489,9 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 ## giro r21fun, B5 — effetti e scherzi (#131)
 - `/immagini effetto tipo:Pingato tutti nome:Luca`: avatar con il riquadro blu «@Luca ha pingato tutti» (nessun ping vero). Poi `Specchio`, `Seppia`, `Pixel art`, `Cornice`, `Vignetta`, `Neon`: ognuno un PNG quadrato col nome del file dell'effetto; un allegato non immagine è rifiutato come prima.
 - `/fun scherzo tipo:Tutto in spoiler utente:@Prova testo:ciao a tutti`: ogni parola in spoiler, nessun ping (anche con «@everyone» nel testo). Senza `testo`: messaggio nascosto. `Barra di caricamento` (sempre 99%) e `Brindisi` (frase a caso).
+
+## giro r22fun, B6 — quiz (#131)
+- `/giochi quiz avvia domande:3 tema:Scienza secondi:10`: arriva una domanda con A-D; un clic dà «Risposta registrata» nascosta, il secondo «Hai già risposto»; a fine tempo i bottoni si spengono e compare la risposta giusta. Un secondo `avvia` nello stesso canale: «c'è già un quiz». In un altro canale parte.
+- Fine partita: classifica con le menzioni senza ping. `/giochi quiz classifica vista:Di sempre`.
+- Prepara `d.csv` (`Capitale?,Roma,Milano,Napoli,Torino`) e usa `/admin-giochi quiz carica`; `elenca` mostra l'ID; `rimuovi numero:`. Un CSV con 3 risposte: errore chiaro. Un non-admin non vede i comandi.
+- `/admin-giochi quiz regole bot_gioca:sì`: il bot compare in classifica col suo nome. `/admin-giochi punteggi azzera gara:Quiz` svuota la classifica.

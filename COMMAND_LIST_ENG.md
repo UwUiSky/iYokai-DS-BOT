@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:09 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:17 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 763 commands in 45 categories.**
+**Total: 769 commands in 45 categories.**
 
 ## Admin: AI
 
@@ -202,6 +202,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:0
 - **`/admin-games counting milestone`** — Role or message when the count hits a number.
 - **`/admin-games counting rules`** — Punishment after a mistake and role of the last counter.
 - **`/admin-games punteggi reset`** — Reset the scores of a game (with confirmation).
+- **`/admin-games quiz list`** — The quiz questions uploaded by the server.
+- **`/admin-games quiz load`** — Upload quiz questions from a CSV or JSON file.
+- **`/admin-games quiz remove`** — Remove a question uploaded by the server.
+- **`/admin-games quiz rules`** — Quiz rules: points, time, answer shown, bot plays.
 
 ## Admin: giveaways
 
@@ -611,6 +615,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:0
 - **`/games mazzo`** — A 52-card deck for the server: draw, shuffle, check.
 - **`/games minato`** — Minesweeper: open the spoilers and avoid the mines.
 - **`/games play`** — Play your coins: coin flip, dice or slots.
+- **`/games quiz leaderboard`** — Quiz ranking: this week or all-time.
+- **`/games quiz start`** — Start a quiz in the channel.
 - **`/games rps`** — Rock, paper, scissors against the bot.
 - **`/games spinner`** — Spin the spinner: the longest spin wins.
 

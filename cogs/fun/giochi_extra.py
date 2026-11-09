@@ -243,7 +243,7 @@ class GiochiExtraCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo("admin-giochi", nome="azzera", descrizione="Azzera i punteggi di una gara (con conferma).", sottogruppo=SOTTOGRUPPI["admin-giochi punteggi"])
     @app_commands.describe(gara="Quale gara azzerare")
     @app_commands.choices(
-        gara=[app_commands.Choice(name="Dado", value="dado"), app_commands.Choice(name="Spinner", value="spinner"), app_commands.Choice(name="Tutte", value="tutte")]
+        gara=[app_commands.Choice(name="Dado", value="dado"), app_commands.Choice(name="Spinner", value="spinner"), app_commands.Choice(name="Quiz", value="quiz"), app_commands.Choice(name="Battitura", value="battitura"), app_commands.Choice(name="Acronimi", value="acronimi"), app_commands.Choice(name="Carte", value="carte"), app_commands.Choice(name="Tutte", value="tutte")]
     )
     @richiedi(Livello.ADMIN)
     async def punteggi_azzera(self, interaction: discord.Interaction, gara: app_commands.Choice[str]) -> None:

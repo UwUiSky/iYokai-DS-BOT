@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:09 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:17 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 763 comandi in 45 categorie.**
+**Totale: 769 comandi in 45 categorie.**
 
 ## Admin: AI
 
@@ -202,6 +202,10 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 - **`/admin-giochi conteggio regole`** — Punizione dopo uno sbaglio e ruolo di chi ha contato per ultimo.
 - **`/admin-giochi conteggio traguardo`** — Ruolo o messaggio quando il conteggio tocca un numero.
 - **`/admin-giochi punteggi azzera`** — Azzera i punteggi di una gara (con conferma).
+- **`/admin-giochi quiz carica`** — Carica domande per il quiz da un file CSV o JSON.
+- **`/admin-giochi quiz elenca`** — Le domande del quiz caricate dal server.
+- **`/admin-giochi quiz regole`** — Regole del quiz: punti, tempo, risposta mostrata, il bot gioca.
+- **`/admin-giochi quiz rimuovi`** — Toglie una domanda caricata dal server.
 
 ## Admin: giveaway
 
@@ -611,6 +615,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 - **`/giochi gioca`** — Gioca le tue coin: monetina, dadi o slot.
 - **`/giochi mazzo`** — Un mazzo di 52 carte per il server: pesca, rimescola, controlla.
 - **`/giochi minato`** — Campo minato: tocca gli spoiler ed evita le mine.
+- **`/giochi quiz avvia`** — Avvia un quiz a domande nel canale.
+- **`/giochi quiz classifica`** — Classifica del quiz: questa settimana o di sempre.
 - **`/giochi rps`** — Carta, forbici, sasso contro il bot.
 - **`/giochi spinner`** — Fai girare lo spinner: vince chi lo fa girare più a lungo.
 

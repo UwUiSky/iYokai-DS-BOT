@@ -11,7 +11,7 @@ from __future__ import annotations
 import random
 from datetime import datetime, timedelta, timezone
 
-GARE = ("dado", "spinner")
+GARE = ("dado", "spinner", "quiz", "battitura", "acronimi", "carte")
 MAX_RIGA = 100
 TOP = 10
 MAX_PESCA = 10
