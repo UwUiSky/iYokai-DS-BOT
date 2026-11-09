@@ -39,6 +39,22 @@ def contenuto_bacheca(emoji: str, stelle: int, canale_id: int) -> str:
     return f"{emoji} **{stelle}** | <#{canale_id}>"
 
 
+POSTI_PER_PAGINA = 10
+
+
+def riga_classifica(posizione: int, author_id: int, stelle: int, messaggi: int, emoji: str) -> str:
+    return f"**{posizione}.** <@{author_id}> · {emoji} {stelle} ({messaggi})"
+
+
+def link_bacheca(guild_id: int, canale_id: int, messaggio_id: int) -> str:
+    return f"https://discord.com/channels/{guild_id}/{canale_id}/{messaggio_id}"
+
+
+def messaggio_valido_per_auto(*, bot: bool, tipo_sistema: bool) -> bool:
+    """Dal canale sorgente passano solo i messaggi veri: niente bot, niente messaggi di sistema."""
+    return not bot and not tipo_sistema
+
+
 def _taglia(testo: str, massimo: int) -> str:
     return testo if len(testo) <= massimo else testo[: massimo - 1] + "…"
 

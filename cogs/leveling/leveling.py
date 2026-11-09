@@ -29,7 +29,7 @@ from discord.ext import commands, tasks
 
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo, togli_comandi_del_cog
 from core.database import db
-from core.i18n import testo_per
+from core.i18n import lingua_risposta, testo_per
 from core.role_safety import check_role_assignable
 from core.lore_nomi_logic import titolo_livello
 from core.repositories.ai_repo import ai_repo
@@ -71,14 +71,18 @@ from core.moneta_server import MonetaNonValida, aggiungi_moneta, prepara_moneta
 from core.safe_image import MAX_IMAGE_BYTES, run_image_task
 from core.drop_logic import DEFAULT_MAX_COINS, DEFAULT_MIN_COINS, should_trigger_drop
 from core.channel_access import PERMESSI_DI_SCRITTURA, motivo_se_il_bot_non_puo
+from core.giveaway_immagine import conserva_allegato, file_annuncio
 from core.giveaway_logic import (
     MAX_INGRESSI_EXTRA,
     MAX_MESSAGGI_RICHIESTI,
     MAX_PREMIO_GIVEAWAY,
     biglietti_di,
-    descrizione_giveaway,
+    embed_annuncio,
+    motivo_immagine_non_valida,
+    motivo_ruolo_non_assegnabile,
+    riempi,
+    ruoli_esclusi_di,
     requisiti_mancanti,
-    titolo_giveaway,
 )
 from core.repositories.giveaway_repo import ModelloPieno, giveaway_repo
 from core.premium_pricing_logic import TIER_MONTHS_REQUIRED
@@ -594,6 +598,14 @@ async def _leggi_righe_shop(allegato: discord.Attachment) -> tuple[list[str], st
     except (UnicodeDecodeError, discord.HTTPException):
         return [], "Non riesco a leggere il file: serve un testo semplice (.txt)."
     return contenuto.splitlines(), None
+
+
+async def _rispondi(interaction: discord.Interaction, testo: str) -> None:
+    """Risposta effimera: dopo un defer() va nel followup, se no nella risposta."""
+    if interaction.response.is_done():
+        await interaction.followup.send(testo, ephemeral=True)
+    else:
+        await interaction.response.send_message(testo, ephemeral=True)
 
 
 async def _rispondi_shop(
@@ -3266,10 +3278,16 @@ class LevelingCog(CogConGruppi, commands.Cog):
         messaggi già inviati smetterebbero di rispondere.
         """
 
-        def __init__(self, giveaway_id: int) -> None:
+        def __init__(self, giveaway_id: int, opzioni=None) -> None:
             super().__init__(timeout=None)
             self._entra.custom_id = f"giveaway_enter:{giveaway_id}"
+            self._partecipanti.custom_id = f"giveaway_part:{giveaway_id}"
             self.giveaway_id = giveaway_id
+            if opzioni is not None:  # aspetto scelto dal server (UTL-130)
+                if opzioni.bottone_testo:
+                    self._entra.label = opzioni.bottone_testo[:80]
+                if opzioni.bottone_emoji:
+                    self._entra.emoji = opzioni.bottone_emoji
 
         @discord.ui.button(label="Partecipa", emoji="🎉", style=discord.ButtonStyle.primary)
         async def _entra(
@@ -3289,6 +3307,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
             totali = await leveling_repo.get_totals(giveaway.guild_id, interaction.user.id)
             ruoli_utente = {r.id for r in interaction.user.roles}
+            opzioni = await giveaway_repo.get_opzioni(giveaway.guild_id)
+            if ruoli_utente & ruoli_esclusi_di(giveaway, opzioni):  # l'esclusione vince anche sul ruolo che salta i requisiti
+                await interaction.response.send_message(
+                    await testo_per(interaction, "giveaway_ruolo_escluso"), ephemeral=True
+                )
+                return
             messaggi = (
                 await giveaway_repo.message_count(self.giveaway_id, interaction.user.id)
                 if giveaway.min_messages > 0
@@ -3310,13 +3334,26 @@ class LevelingCog(CogConGruppi, commands.Cog):
             nuova = await giveaway_repo.add_entry(self.giveaway_id, interaction.user.id, biglietti)
             if nuova:
                 extra = f" Hai {biglietti} ingressi." if biglietti > 1 else ""
-                await interaction.response.send_message(
-                    f"✅ Partecipazione registrata, in bocca al lupo!{extra}", ephemeral=True
-                )
+                if opzioni.msg_conferma:  # testo scelto dal server (UTL-132)
+                    conferma = riempi(
+                        opzioni.msg_conferma, utente=interaction.user.display_name,
+                        premio=giveaway.prize, ingressi=biglietti,
+                    )[:2000]
+                else:
+                    conferma = f"✅ Partecipazione registrata, in bocca al lupo!{extra}"
+                await interaction.response.send_message(conferma, ephemeral=True)
             else:
                 await interaction.response.send_message(
                     await testo_per(interaction, "leveling_avevi_gia_partecipato_questo_giveaway"), ephemeral=True
                 )
+
+        @discord.ui.button(label="Partecipanti", emoji="👥", style=discord.ButtonStyle.secondary)
+        async def _partecipanti(
+            self, interaction: discord.Interaction, button: discord.ui.Button
+        ) -> None:
+            from cogs.utility.giveaway_extra import mostra_partecipanti
+
+            await mostra_partecipanti(interaction, self.giveaway_id)
 
     # ================================================================
     # Impostazioni dei livelli (NF-15, #86) — /admin-livelli
@@ -3675,9 +3712,22 @@ class LevelingCog(CogConGruppi, commands.Cog):
         bonus_role_id: int | None,
         ingressi_extra: int,
         inizia_tra: int | None,
+        ruolo_escluso_id: int | None = None,
+        ruolo_premio: discord.Role | None = None,
+        immagine: discord.Attachment | None = None,
+        immagine_id: int | None = None,
     ) -> None:
         """Crea il giveaway (subito o programmato) e risponde. Condiviso dal comando giveaway e dai modelli."""
         guild = interaction.guild
+        if ruolo_premio is not None:
+            chiave = motivo_ruolo_non_assegnabile(
+                posizione_ruolo=ruolo_premio.position, gestito=ruolo_premio.managed,
+                di_base=ruolo_premio.is_default(), posizione_bot=guild.me.top_role.position,
+                bot_puo_gestire_ruoli=guild.me.guild_permissions.manage_roles,
+            )
+            if chiave is not None:
+                await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
+                return
         if ingressi_extra > 0 and bonus_role_id is None:
             await interaction.response.send_message(
                 await testo_per(interaction, "leveling_gli_ingressi_extra_servono_un"), ephemeral=True
@@ -3693,6 +3743,17 @@ class LevelingCog(CogConGruppi, commands.Cog):
                     f"Non posso far partire qui il giveaway: {motivo}.", ephemeral=True
                 )
                 return
+        if immagine is not None:  # lavoro lento: prima si risponde «un momento», poi si annuncia nel canale
+            await interaction.response.defer(ephemeral=True)
+            immagine_id, errore = await conserva_allegato(immagine, guild.id)
+            if errore:
+                await interaction.followup.send(await testo_per(interaction, errore), ephemeral=True)
+                return
+            if not programmato:
+                motivo = motivo_se_il_bot_non_puo(interaction.channel, guild.me, PERMESSI_DI_SCRITTURA)
+                if motivo is not None:
+                    await interaction.followup.send(f"Non posso far partire qui il giveaway: {motivo}.", ephemeral=True)
+                    return
         adesso = datetime.now(timezone.utc)
         inizio = adesso + timedelta(minutes=inizia_tra) if programmato else adesso
         scadenza = inizio + timedelta(minutes=durata_minuti)
@@ -3704,20 +3765,32 @@ class LevelingCog(CogConGruppi, commands.Cog):
             bonus_role_id=bonus_role_id, bonus_entries=ingressi_extra,
             starts_at=inizio if programmato else None,
             duration_seconds=durata_minuti * 60 if programmato else None,
+            ruolo_escluso=ruolo_escluso_id, ruolo_premio=ruolo_premio.id if ruolo_premio else None,
+            immagine_id=immagine_id,
         )
         if programmato:
-            await interaction.response.send_message(
+            await _rispondi(
+                interaction,
                 await testo_per(interaction, "leveling_giveaway_programmato_parte_in_questo", v1=int(inizio.timestamp()), durata_minuti=durata_minuti),
-                ephemeral=True,
             )
             return
 
-        embed = discord.Embed(
-            title=titolo_giveaway(prize),
-            description=descrizione_giveaway(await giveaway_repo.get_giveaway(giveaway_id)),
-            color=discord.Color.blurple(),
-        )
-        view = self.GiveawayEnterView(giveaway_id)
+        opzioni = await giveaway_repo.get_opzioni(guild.id)
+        lingua = await lingua_risposta(guild.id, pubblica=True)
+        embed = embed_annuncio(await giveaway_repo.get_giveaway(giveaway_id), opzioni, lingua)
+        view = self.GiveawayEnterView(giveaway_id, opzioni)
+        if immagine_id is not None:  # la risposta è già data (effimera): l'annuncio va nel canale, con l'immagine allegata
+            try:
+                messaggio = await interaction.channel.send(
+                    embed=embed, view=view, file=await file_annuncio(immagine_id)
+                )
+            except discord.HTTPException:
+                await giveaway_repo.mark_ended(giveaway_id)  # senza annuncio nessuno può partecipare
+                await interaction.followup.send(await testo_per(interaction, "giveaway_annuncio_non_inviato"), ephemeral=True)
+                return
+            await giveaway_repo.set_message_id(giveaway_id, messaggio.id)
+            await interaction.followup.send(await testo_per(interaction, "giveaway_annuncio_inviato"), ephemeral=True)
+            return
         await interaction.response.send_message(embed=embed, view=view)
         messaggio = await interaction.original_response()
         await giveaway_repo.set_message_id(giveaway_id, messaggio.id)
@@ -3738,6 +3811,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         ruolo_extra="Ruolo con più ingressi",
         ingressi_extra="Ingressi in più per il ruolo extra",
         inizia_tra="Parte tra tanti minuti (facoltativo)",
+        ruolo_escluso="Chi ha questo ruolo non può partecipare",
+        ruolo_premio="Ruolo dato ai vincitori",
+        immagine="Immagine dell'annuncio (facoltativa)",
     )
     async def giveaway(
         self,
@@ -3752,6 +3828,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         ruolo_extra: discord.Role | None = None,
         ingressi_extra: app_commands.Range[int, 0, MAX_INGRESSI_EXTRA] = 0,
         inizia_tra: app_commands.Range[int, 1, 43200] | None = None,
+        ruolo_escluso: discord.Role | None = None,
+        ruolo_premio: discord.Role | None = None,
+        immagine: discord.Attachment | None = None,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -3760,12 +3839,19 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
             return
+        if immagine is not None:
+            errore = motivo_immagine_non_valida(immagine.content_type, immagine.width, immagine.height, immagine.size)
+            if errore:
+                await interaction.response.send_message(await testo_per(interaction, errore), ephemeral=True)
+                return
         await self._avvia_giveaway(
             interaction, prize=prize, durata_minuti=duration_minutes, winners=winners,
             min_level=min_level, required_role_id=required_role.id if required_role else None,
             min_messaggi=min_messaggi, bypass_role_id=ruolo_bypass.id if ruolo_bypass else None,
             bonus_role_id=ruolo_extra.id if ruolo_extra else None,
             ingressi_extra=ingressi_extra, inizia_tra=inizia_tra,
+            ruolo_escluso_id=ruolo_escluso.id if ruolo_escluso else None, ruolo_premio=ruolo_premio,
+            immagine=immagine,
         )
 
     @comando_di_gruppo(
@@ -3786,6 +3872,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         ruolo_extra="Ruolo con più ingressi",
         ingressi_extra="Ingressi in più per il ruolo extra",
         inizia_tra="Parte tra tanti minuti (solo avvia)",
+        ruolo_escluso="Chi ha questo ruolo non può partecipare",
+        ruolo_premio="Ruolo dato ai vincitori",
+        immagine="Immagine dell'annuncio (facoltativa)",
     )
     @app_commands.choices(azione=_SCELTE_AZIONE_MODELLO)
     async def giveaway_modello(
@@ -3803,6 +3892,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         ruolo_extra: discord.Role | None = None,
         ingressi_extra: app_commands.Range[int, 0, MAX_INGRESSI_EXTRA] | None = None,
         inizia_tra: app_commands.Range[int, 1, 43200] | None = None,
+        ruolo_escluso: discord.Role | None = None,
+        ruolo_premio: discord.Role | None = None,
+        immagine: discord.Attachment | None = None,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -3848,6 +3940,27 @@ class LevelingCog(CogConGruppi, commands.Cog):
                     await testo_per(interaction, "leveling_gli_ingressi_extra_servono_un"), ephemeral=True
                 )
                 return
+            if immagine is not None:
+                errore = motivo_immagine_non_valida(immagine.content_type, immagine.width, immagine.height, immagine.size)
+                if errore:
+                    await interaction.response.send_message(await testo_per(interaction, errore), ephemeral=True)
+                    return
+            if ruolo_premio is not None:
+                chiave = motivo_ruolo_non_assegnabile(
+                    posizione_ruolo=ruolo_premio.position, gestito=ruolo_premio.managed,
+                    di_base=ruolo_premio.is_default(), posizione_bot=interaction.guild.me.top_role.position,
+                    bot_puo_gestire_ruoli=interaction.guild.me.guild_permissions.manage_roles,
+                )
+                if chiave is not None:
+                    await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
+                    return
+            immagine_id = None
+            if immagine is not None:
+                await interaction.response.defer(ephemeral=True)
+                immagine_id, errore = await conserva_allegato(immagine, guild_id)
+                if errore:
+                    await _rispondi(interaction, await testo_per(interaction, errore))
+                    return
             try:
                 await giveaway_repo.save_template(
                     guild_id, nome, prize=premio, winners_count=vincitori or 1,
@@ -3857,13 +3970,14 @@ class LevelingCog(CogConGruppi, commands.Cog):
                     bypass_role_id=ruolo_bypass.id if ruolo_bypass else None,
                     bonus_role_id=ruolo_extra.id if ruolo_extra else None,
                     bonus_entries=ingressi_extra or 0,
+                    ruolo_escluso=ruolo_escluso.id if ruolo_escluso else None,
+                    ruolo_premio=ruolo_premio.id if ruolo_premio else None,
+                    immagine_id=immagine_id,
                 )
             except ModelloPieno:
-                await interaction.response.send_message(
-                    await testo_per(interaction, "leveling_ci_sono_gia_modelli_eliminane"), ephemeral=True
-                )
+                await _rispondi(interaction, await testo_per(interaction, "leveling_ci_sono_gia_modelli_eliminane"))
                 return
-            await interaction.response.send_message(await testo_per(interaction, "leveling_modello_salvato", nome=nome), ephemeral=True)
+            await _rispondi(interaction, await testo_per(interaction, "leveling_modello_salvato", nome=nome))
             return
 
         modello = await giveaway_repo.get_template(guild_id, nome)  # cosa == "avvia"
@@ -3876,6 +3990,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
             required_role_id=modello.required_role_id, min_messaggi=modello.min_messages,
             bypass_role_id=modello.bypass_role_id, bonus_role_id=modello.bonus_role_id,
             ingressi_extra=modello.bonus_entries, inizia_tra=inizia_tra,
+            ruolo_escluso_id=modello.ruolo_escluso,
+            ruolo_premio=interaction.guild.get_role(modello.ruolo_premio) if modello.ruolo_premio else None,
+            immagine_id=modello.immagine_id,
         )
 
     @comando_di_gruppo(

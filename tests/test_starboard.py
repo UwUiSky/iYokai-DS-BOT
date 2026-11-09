@@ -130,7 +130,7 @@ class _Scena:
         self.bot.get_guild = lambda gid: self.guild
         self.config = SimpleNamespace(
             guild_id=self.guild.id, channel_id=50, threshold=soglia, emoji="⭐", enabled=True, allow_nsfw=False,
-            self_star=False,
+            self_star=False, blocca=False, canale_auto=None,
         )
         self.repo = MagicMock()
         self.repo.get_config = AsyncMock(return_value=self.config)
@@ -364,6 +364,7 @@ async def test_il_voto_dell_autore_conta_solo_se_acceso(monkeypatch):
 async def test_comando_imposta_passa_nsfw_e_voto_autore(monkeypatch):
     s = _Scena(monkeypatch)
     s.repo.set_config = AsyncMock()
+    s.repo.set_opzioni = AsyncMock()
     canale = fake_text_channel(50, "bacheca")
     canale.permissions_for = MagicMock(return_value=discord.Permissions(send_messages=True, embed_links=True))
     interazione = fake_interaction(guild=s.guild)

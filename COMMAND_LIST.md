@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:23 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:38 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 731 comandi in 42 categorie.**
+**Totale: 756 comandi in 45 categorie.**
 
 ## Admin: AI
 
@@ -195,11 +195,35 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 - **`/admin-filtri messaggi`** — Ripetuti, troppo corti, link e menzioni contati nel tempo (0 = spento).
 - **`/admin-filtri phishing`** — Attiva o disattiva il blocco dei link di phishing (finti regali, finti login).
 
+## Admin: giochi
+
+- **`/admin-giochi conteggio canale`** — Scegli i canali dove si conta (fino a 10) e come.
+- **`/admin-giochi conteggio importa`** — Porta in un canale i punteggi di un file CSV o JSON.
+- **`/admin-giochi conteggio regole`** — Punizione dopo uno sbaglio e ruolo di chi ha contato per ultimo.
+- **`/admin-giochi conteggio traguardo`** — Ruolo o messaggio quando il conteggio tocca un numero.
+
 ## Admin: giveaway
 
 - **`/admin-giveaway avvia`** — Avvia un giveaway.
 - **`/admin-giveaway modello`** — Modelli di giveaway: salva, elenca, elimina, avvia.
+- **`/admin-giveaway modifica`** — Cambia durata, vincitori, premio o immagine di un giveaway.
+- **`/admin-giveaway opzioni`** — Aspetto, messaggi, log e ruoli esclusi dei giveaway.
+- **`/admin-giveaway partecipanti`** — Chi partecipa a un giveaway, a pagine da 20.
 - **`/admin-giveaway programmati`** — Giveaway programmati: elenca (anche quelli in errore) o annulla.
+
+## Admin: inviti
+
+- **`/admin-inviti azzera`** — Cancella lo storico degli inviti e i bonus del server.
+- **`/admin-inviti bonus`** — Aggiungi o togli inviti a un membro (punti dello staff).
+- **`/admin-inviti cancella`** — Cancella inviti: uno, quelli poco usati o quelli di un canale.
+- **`/admin-inviti codici`** — I codici d'invito creati da un membro, a pagine da 10.
+- **`/admin-inviti crea`** — Crea un invito senza scadenza, con nome e ruolo.
+- **`/admin-inviti escludi`** — Nascondi membri o ruoli dalla classifica degli inviti.
+- **`/admin-inviti esporta`** — Esporta ingressi, classifica o codici in un file.
+- **`/admin-inviti etichetta`** — Dai un nome a un codice, con un ruolo per chi entra.
+- **`/admin-inviti impostazioni`** — Registro degli inviti, link personale e ingressi non contati.
+- **`/admin-inviti riallinea`** — Rileggi gli inviti da Discord e confrontali con gli ingressi salvati.
+- **`/admin-inviti statistiche`** — Quanti membri portati dagli inviti restano e sono attivi.
 
 ## Admin: livelli e XP
 
@@ -279,8 +303,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 - **`/admin-moduli contatori crea`** — Crea un canale che mostra un numero.
 - **`/admin-moduli contatori elenco`** — Mostra i contatori del server.
 - **`/admin-moduli contatori elimina`** — Smetti di aggiornare un contatore (il canale resta).
-- **`/admin-moduli conteggio`** — Gioco del conteggio: scegli il canale dove contare a turno 1, 2, 3...
-- **`/admin-moduli inviti`** — Registro degli inviti e chi ha il link personale.
 - **`/admin-moduli starboard disattiva`** — Spegni la bacheca.
 - **`/admin-moduli starboard imposta`** — Scegli il canale della bacheca e la soglia di stelle.
 - **`/admin-moduli starboard soglia`** — Cambia quante stelle servono per finire in bacheca.
@@ -423,6 +445,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 
 - **`/Apri ticket`** — Menu «App» (tasto destro)
 - **`/Orari nel mio fuso`** — Menu «App» (tasto destro)
+- **`/Riestrai giveaway`** — Menu «App» (tasto destro)
 - **`/Scheda moderazione`** — Menu «App» (tasto destro)
 - **`/Segnala messaggio`** — Menu «App» (tasto destro)
 - **`/cerca-comando`** — Cerca un comando per descrizione.
@@ -573,7 +596,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 - **`/fun ship`** — Calcola la compatibilità tra due utenti.
 - **`/fun testo`** — Scrivi un testo in uno stile speciale.
 
-## GIF
+## Gif
 
 - **`/gif azione`** — Una GIF di azione verso un utente: abbraccio, bacio, schiaffo...
 - **`/gif privacy`** — Scegli chi può farti le azioni con le GIF.
@@ -581,6 +604,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 
 ## Giochi
 
+- **`/giochi conteggio avvisami`** — Ti avviso nel canale quando il conteggio arriva a un numero.
+- **`/giochi conteggio classifica`** — Chi ha contato più numeri giusti.
 - **`/giochi gioca`** — Gioca le tue coin: monetina, dadi o slot.
 - **`/giochi rps`** — Carta, forbici, sasso contro il bot.
 
@@ -606,6 +631,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 - **`/level compleanno prossimi`** — I prossimi compleanni del server.
 - **`/level compleanno rimuovi`** — Cancella il tuo compleanno.
 - **`/level inviti classifica`** — I 10 membri che hanno invitato più persone.
+- **`/level inviti codici`** — I tuoi codici d'invito, a pagine da 10.
 - **`/level inviti link`** — Il tuo link d'invito personale, che passa dal sito del bot.
 - **`/level inviti storico`** — Chi ha invitato un membro e le ultime persone che ha portato.
 - **`/level inviti utente`** — Quante persone ha invitato un membro.
@@ -615,6 +641,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 - **`/level profilo`** — Mostra il profilo di un membro; con «presentazione» cambi il tuo.
 - **`/level progressi`** — Missioni, serie, traguardi e pass di 90 giorni, in un menu.
 - **`/level rank`** — Mostra la rank card: livello, XP, posizione e coin.
+- **`/level stelle caso`** — Un messaggio a caso dalla bacheca.
+- **`/level stelle classifica`** — Chi ha ricevuto più stelle in bacheca.
 
 ## Mod: ban
 

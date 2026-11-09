@@ -117,7 +117,8 @@ def errore_benvenuto(guild, testo: str) -> str | None:
 
 
 def anteprima_benvenuto(guild, testo: str) -> str:
-    return render_template(testo, "@Nuovo", "nuovo", guild.name, guild.member_count or 0, user_id=1, display_name="Nuovo", server_id=guild.id)
+    return render_template(testo, "@Nuovo", "nuovo", guild.name, guild.member_count or 0, user_id=1, display_name="Nuovo", server_id=guild.id,
+                           invitante="@Amico", inviti_invitante=12, rientri=0, creato_il=1735689600)
 
 
 async def stato_benvenuto(guild) -> dict:

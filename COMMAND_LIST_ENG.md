@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:23 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:38 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 731 commands in 42 categories.**
+**Total: 756 commands in 45 categories.**
 
 ## Admin: AI
 
@@ -92,8 +92,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:2
 - **`/admin-automod odio richiami`** — How many warnings for hate words lead to a timeout.
 - **`/admin-automod odio status`** — Shows how the banned words are set up.
 - **`/admin-automod odio word`** — Adds or removes a custom word or an allowed word.
-- **`/admin-automod regole`** — Opens the AutoMod rules panel: conditions and actions.
 - **`/admin-automod reset`** — Resets an AutoMod rule counter.
+- **`/admin-automod rules`** — Opens the AutoMod rules panel: conditions and actions.
 - **`/admin-automod status`** — Shows the current advanced AutoMod filter setup.
 - **`/admin-automod summary`** — AutoMod violations summary for the server, in pages.
 - **`/admin-automod sync`** — Forces a manual sync of the AutoMod rules.
@@ -195,11 +195,35 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:2
 - **`/admin-filters phishing`** — Turn the phishing link block on or off (fake gifts, fake logins).
 - **`/admin-filters text-shape`** — Limits on message shape: line breaks, length, spoilers (0 = off).
 
+## Admin: games
+
+- **`/admin-games counting channel`** — Pick the channels where people count (up to 10) and how.
+- **`/admin-games counting import`** — Bring scores from a CSV or JSON file into a channel.
+- **`/admin-games counting milestone`** — Role or message when the count hits a number.
+- **`/admin-games counting rules`** — Punishment after a mistake and role of the last counter.
+
 ## Admin: giveaways
 
+- **`/admin-giveaway edit`** — Change duration, winners, prize or image of a giveaway.
+- **`/admin-giveaway options`** — Look, messages, log and excluded roles of giveaways.
+- **`/admin-giveaway participants`** — Who takes part in a giveaway, 20 per page.
 - **`/admin-giveaway scheduled`** — Scheduled giveaways: list (including failed ones) or cancel.
 - **`/admin-giveaway start`** — Starts a giveaway.
 - **`/admin-giveaway template`** — Giveaway templates: save, list, delete, start.
+
+## Admin: invites
+
+- **`/admin-invites bonus`** — Add or remove invites for a member (staff points).
+- **`/admin-invites codes`** — Invite codes created by a member, 10 per page.
+- **`/admin-invites create`** — Create a never-expiring invite with a name and a role.
+- **`/admin-invites delete`** — Delete invites: one, the rarely used or a channel's.
+- **`/admin-invites exclude`** — Hide members or roles from the invite leaderboard.
+- **`/admin-invites export`** — Export joins, leaderboard or codes to a file.
+- **`/admin-invites label`** — Name an invite code, with a role for who joins.
+- **`/admin-invites reset`** — Delete the invite history and the server's bonuses.
+- **`/admin-invites resync`** — Reread invites from Discord and compare them with saved joins.
+- **`/admin-invites settings`** — Invite log, personal link and entries that do not count.
+- **`/admin-invites statistics`** — How many invited members stay and are active.
 
 ## Admin: levels and XP
 
@@ -279,8 +303,6 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:2
 - **`/admin-modules counters create`** — Creates a channel that shows a number.
 - **`/admin-modules counters delete`** — Stops updating a counter (the channel stays).
 - **`/admin-modules counters list`** — Shows the server's counters.
-- **`/admin-modules counting`** — Counting game: pick the channel where people count 1, 2, 3... in turn.
-- **`/admin-modules invites`** — Invite log channel and who has the personal link.
 - **`/admin-modules starboard disattiva`** — Turns the board off.
 - **`/admin-modules starboard set`** — Picks the board channel and the star threshold.
 - **`/admin-modules starboard threshold`** — Changes how many stars are needed to reach the board.
@@ -407,7 +429,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:2
 - **`/admin-ticket-options limits`** — Open-ticket cap, cooldown and exempt roles.
 - **`/admin-ticket-options messages`** — DMs to the user and claim/release texts.
 - **`/admin-ticket-options permissions`** — User permissions, observers, roles while open, staff team.
-- **`/admin-ticket-options regole`** — Rules: if nobody writes for N minutes, close, delete or send a message.
+- **`/admin-ticket-options rules`** — Rules: if nobody writes for N minutes, close, delete or send a message.
 - **`/admin-ticket-options show`** — All the options of a panel.
 
 ## Admin: temporary voice
@@ -425,6 +447,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:2
 - **`/-search-command`** — Searches a command by description.
 - **`/Moderation card`** — “Apps” menu (right click)
 - **`/Open ticket`** — “Apps” menu (right click)
+- **`/Redraw giveaway`** — “Apps” menu (right click)
 - **`/Report message`** — “Apps” menu (right click)
 - **`/Times in my time zone`** — “Apps” menu (right click)
 
@@ -573,8 +596,16 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:2
 - **`/fun ship`** — Computes the compatibility between two users.
 - **`/fun text`** — Write a text in a special style.
 
+## Gif
+
+- **`/gif action`** — An action GIF aimed at a user: hug, kiss, slap...
+- **`/gif privacy`** — Choose who can send you GIF actions.
+- **`/gif reaction`** — A reaction GIF: cry, dance, laugh...
+
 ## Games
 
+- **`/games counting leaderboard`** — Who counted the most correct numbers.
+- **`/games counting notifyme`** — Get pinged in the channel when the count reaches a number.
 - **`/games play`** — Play your coins: coin flip, dice or slots.
 - **`/games rps`** — Rock, paper, scissors against the bot.
 
@@ -599,6 +630,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:2
 - **`/level collection buy`** — Buys a badge or background with your coins.
 - **`/level collection equip`** — Puts a badge or background on your profile (no item removes it).
 - **`/level collection shop`** — Shows badges and backgrounds on sale and the ones you own.
+- **`/level invites codes`** — Your invite codes, 10 per page.
 - **`/level invites history`** — Who invited a member and the last people they brought in.
 - **`/level invites leaderboard`** — The 10 members who invited the most people.
 - **`/level invites link`** — Your personal invite link, served through the bot's website.
@@ -609,6 +641,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:2
 - **`/level rank`** — Shows the rank card: level, XP, position and coins.
 - **`/level recent-levels`** — The last 25 level-ups in the server.
 - **`/level rewards`** — Shows level reward roles and active XP multipliers.
+- **`/level stars case`** — A random message from the board.
+- **`/level stars leaderboard`** — Who received the most stars on the board.
 
 ## Mod: bans
 
@@ -816,7 +850,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:2
 - **`/utility mie-sanzioni`** — The sanctions you received in this server (only you see them).
 - **`/utility news`** — The latest news about the bot.
 - **`/utility ping`** — Checks whether iYokai Main is online and its latency.
-- **`/utility privacy cancella`** — Request the deletion of your personal data.
+- **`/utility privacy delete`** — Request the deletion of your personal data.
 - **`/utility privacy export`** — Get a copy of the data the bot keeps about you.
 - **`/utility reminder cancel`** — Cancel a reminder, or all of yours.
 - **`/utility reminder list`** — Shows your pending reminders.

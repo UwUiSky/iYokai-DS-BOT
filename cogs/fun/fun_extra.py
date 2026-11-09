@@ -114,17 +114,30 @@ class FunExtraCog(CogConGruppi, commands.Cog):
         await self._scrivi(interaction, logica.trasforma_testo(stile.value, testo, separatore) or "​")
 
     @comando_di_gruppo("fun", nome="casuale", descrizione="Preferiresti, argomento, consiglio, oggetto magico.")
-    @app_commands.describe(tipo="Cosa vuoi")
+    @app_commands.describe(tipo="Cosa vuoi", ruolo="Solo per «Membro a caso»: pesca tra chi ha questo ruolo")
     @app_commands.choices(
         tipo=[
             app_commands.Choice(name="Preferiresti…?", value="preferiresti"),
             app_commands.Choice(name="Argomento di conversazione", value="argomento"),
             app_commands.Choice(name="Consiglio", value="consiglio"),
             app_commands.Choice(name="Oggetto magico", value="oggetto-magico"),
+            app_commands.Choice(name="Membro a caso", value="membro"),
         ]
     )
-    async def casuale(self, interaction: discord.Interaction, tipo: app_commands.Choice[str]) -> None:
+    async def casuale(
+        self, interaction: discord.Interaction, tipo: app_commands.Choice[str], ruolo: discord.Role | None = None
+    ) -> None:
         if not await self._modulo_attivo(interaction):
+            return
+        if tipo.value == "membro":
+            # Solo membri veri (niente bot). Il nome compare come menzione ma `allowed_mentions` vuoto: nessun ping.
+            candidati = [m for m in (ruolo.members if ruolo else interaction.guild.members) if not m.bot]
+            if not candidati:
+                await interaction.response.send_message(
+                    await testo_per(interaction, "fun_membro_nessuno"), ephemeral=True
+                )
+                return
+            await self._scrivi(interaction, f"🎲 <@{self._rng.choice(candidati).id}>")
             return
         emoji, genera = _CASUALI[tipo.value]
         await self._scrivi(interaction, f"{emoji} {genera(self._rng)}")

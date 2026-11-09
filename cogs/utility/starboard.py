@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 import weakref
 
 import discord
@@ -28,8 +29,12 @@ from core.starboard_logic import (
     SOGLIA_MIN,
     SOGLIA_PREDEFINITA,
     conta_stelle,
+    POSTI_PER_PAGINA,
     contenuto_bacheca,
     costruisci_embed,
+    link_bacheca,
+    messaggio_valido_per_auto,
+    riga_classifica,
 )
 
 logger = logging.getLogger("iyokai.starboard")
@@ -37,6 +42,8 @@ logger = logging.getLogger("iyokai.starboard")
 MODULE_STARBOARD = "starboard"
 
 _SG_STARBOARD = ("starboard", "Bacheca dei messaggi più votati")
+_SG_STELLE = ("stelle", "Bacheca: chi ha più stelle e un messaggio a caso")
+_DURATA_CACHE = 60.0  # secondi: la sorgente automatica si controlla a ogni messaggio, la config no
 _NESSUNA_MENZIONE = discord.AllowedMentions.none()
 
 
@@ -45,6 +52,8 @@ class StarboardCog(CogConGruppi, commands.Cog):
         self.bot = bot
         # Un blocco per messaggio: due reazioni insieme non pubblicano due volte.
         self._blocchi: "weakref.WeakValueDictionary[int, asyncio.Lock]" = weakref.WeakValueDictionary()
+        # server -> (scadenza, canale sorgente o None): si riempie solo dopo una lettura riuscita
+        self._cache_auto: dict[int, tuple[float, int | None]] = {}
 
     def _blocco(self, message_id: int) -> asyncio.Lock:
         blocco = self._blocchi.get(message_id)
@@ -86,13 +95,8 @@ class StarboardCog(CogConGruppi, commands.Cog):
         bacheca = guild.get_channel(config.channel_id)
         if canale is None or not isinstance(bacheca, discord.TextChannel):
             return
-        if isinstance(canale, discord.Thread) and (canale.is_private() or canale.parent is None):
-            return  # i thread privati ereditano i permessi del padre: non si sa chi li vede
-        if canale.is_nsfw() and not config.allow_nsfw:
+        if not self._canale_ammesso(guild, canale, config):
             return
-        pubblico = canale.permissions_for(guild.default_role)
-        if not (pubblico.view_channel and pubblico.read_message_history):
-            return  # la bacheca è pubblica: i canali che @everyone non vede non ci finiscono
 
         async with self._blocco(message_id):
             try:
@@ -111,22 +115,71 @@ class StarboardCog(CogConGruppi, commands.Cog):
                 return
             if stelle < config.threshold:
                 return
-            if not await starboard_repo.claim_post(guild_id, channel_id, message_id, messaggio.author.id):
-                return
-            try:
-                inviato = await bacheca.send(
-                    contenuto_bacheca(config.emoji, stelle, channel_id),
-                    embed=self._embed(messaggio),
-                    allowed_mentions=_NESSUNA_MENZIONE,
-                )
-            except discord.HTTPException as errore:
-                logger.warning("Bacheca %s: invio fallito: %s", config.channel_id, errore)
-                await starboard_repo.release_post(guild_id, message_id)
-                return
-            except BaseException:
-                await starboard_repo.release_post(guild_id, message_id)  # errore imprevisto: il posto non resta bloccato
-                raise
-            await starboard_repo.set_board_message(guild_id, message_id, inviato.id, stelle)
+            await self._pubblica(guild_id, bacheca, config, messaggio, stelle, channel_id)
+
+    async def _pubblica(self, guild_id, bacheca, config, messaggio, stelle, channel_id, *, con_stelle: bool = True) -> None:
+        """Prenota il posto e manda il messaggio in bacheca. L'invio fallito libera il posto."""
+        message_id = messaggio.id
+        if not await starboard_repo.claim_post(guild_id, channel_id, message_id, messaggio.author.id):
+            return
+        testo = contenuto_bacheca(config.emoji, stelle, channel_id) if con_stelle else f"<#{channel_id}>"
+        try:
+            inviato = await bacheca.send(testo, embed=self._embed(messaggio), allowed_mentions=_NESSUNA_MENZIONE)
+        except discord.HTTPException as errore:
+            logger.warning("Bacheca %s: invio fallito: %s", config.channel_id, errore)
+            await starboard_repo.release_post(guild_id, message_id)
+            return
+        except BaseException:
+            await starboard_repo.release_post(guild_id, message_id)  # errore imprevisto: il posto non resta bloccato
+            raise
+        await starboard_repo.set_board_message(guild_id, message_id, inviato.id, stelle)
+
+    @staticmethod
+    def _canale_ammesso(guild, canale, config) -> bool:
+        if isinstance(canale, discord.Thread) and (canale.is_private() or canale.parent is None):
+            return False  # i thread privati ereditano i permessi del padre: non si sa chi li vede
+        if canale.is_nsfw() and not config.allow_nsfw:
+            return False
+        pubblico = canale.permissions_for(guild.default_role)
+        return bool(pubblico.view_channel and pubblico.read_message_history)  # la bacheca è pubblica
+
+    async def _canale_auto(self, guild_id: int) -> int | None:
+        scadenza, valore = self._cache_auto.get(guild_id, (0.0, None))
+        adesso = time.monotonic()
+        if scadenza > adesso:
+            return valore
+        config = await starboard_repo.get_config(guild_id)  # se fallisce, la cache non si riempie
+        valore = config.canale_auto if config is not None and config.enabled else None
+        self._cache_auto[guild_id] = (adesso + _DURATA_CACHE, valore)
+        return valore
+
+    @commands.Cog.listener()
+    async def on_message(self, messaggio: discord.Message) -> None:
+        """Canale sorgente: ogni messaggio vero finisce in bacheca, senza contare le stelle."""
+        if messaggio.guild is None or not messaggio_valido_per_auto(
+            bot=messaggio.author.bot, tipo_sistema=messaggio.type not in (discord.MessageType.default, discord.MessageType.reply)
+        ):
+            return
+        if await self._canale_auto(messaggio.guild.id) != messaggio.channel.id:
+            return
+        if not await db.is_module_active_for_guild(messaggio.guild.id, MODULE_STARBOARD):
+            return
+        config = await starboard_repo.get_config(messaggio.guild.id)
+        bacheca = messaggio.guild.get_channel(config.channel_id) if config else None
+        if config is None or not config.enabled or not isinstance(bacheca, discord.TextChannel):
+            return
+        if not self._canale_ammesso(messaggio.guild, messaggio.channel, config):
+            return
+        async with self._blocco(messaggio.id):
+            await self._pubblica(messaggio.guild.id, bacheca, config, messaggio, 0, messaggio.channel.id, con_stelle=False)
+
+    @commands.Cog.listener()
+    async def on_guild_channel_delete(self, canale: discord.abc.GuildChannel) -> None:
+        self._cache_auto.pop(canale.guild.id, None)
+        try:
+            await starboard_repo.togli_canale(canale.guild.id, canale.id)
+        except Exception:
+            logger.exception("Bacheca: pulizia del canale %s fallita", canale.id)
 
     async def _conta(self, messaggio: discord.Message, config) -> int:
         for reazione in messaggio.reactions:
@@ -194,6 +247,9 @@ class StarboardCog(CogConGruppi, commands.Cog):
         emoji="L'emoji da contare (predefinita ⭐)",
         nsfw="Includere anche i canali vietati ai minori? (non cambia se vuoto)",
         voto_autore="Conta anche la stella dell'autore? (non cambia se vuoto)",
+        blocca="Solo il bot scrive nella bacheca? (non cambia se vuoto)",
+        canale_auto="Ogni messaggio di questo canale va in bacheca, senza stelle",
+        senza_auto="Spegni il canale che manda tutto in bacheca",
     )
     async def imposta(
         self,
@@ -203,6 +259,9 @@ class StarboardCog(CogConGruppi, commands.Cog):
         emoji: app_commands.Range[str, 1, 64] = EMOJI_PREDEFINITA,
         nsfw: bool | None = None,
         voto_autore: bool | None = None,
+        blocca: bool | None = None,
+        canale_auto: discord.TextChannel | None = None,
+        senza_auto: bool = False,
     ) -> None:
         if not await self._modulo_attivo(interaction):
             return
@@ -219,16 +278,59 @@ class StarboardCog(CogConGruppi, commands.Cog):
                 allowed_mentions=_NESSUNA_MENZIONE,
             )
             return
+        if canale_auto is not None and canale_auto.id == canale.id:
+            await interaction.response.send_message(
+                await testo_per(interaction, "starboard_auto_uguale_bacheca"), ephemeral=True
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        prima = await starboard_repo.get_config(interaction.guild.id)
         await starboard_repo.set_config(
             interaction.guild.id, canale.id, soglia, emoji, allow_nsfw=nsfw, self_star=voto_autore
         )
-        salvata = await starboard_repo.get_config(interaction.guild.id)
-        await interaction.response.send_message(
-            f"Bacheca attiva in {canale.mention}: servono {soglia} {emoji}. "
-            + ("I canali vietati ai minori sono inclusi." if salvata.allow_nsfw else "I canali vietati ai minori sono esclusi."),
-            ephemeral=True,
-            allowed_mentions=_NESSUNA_MENZIONE,
+        await starboard_repo.set_opzioni(
+            interaction.guild.id, blocca=blocca,
+            canale_auto=canale_auto.id if canale_auto else None, togli_auto=senza_auto and canale_auto is None,
         )
+        self._cache_auto.pop(interaction.guild.id, None)
+        salvata = await starboard_repo.get_config(interaction.guild.id)
+        righe = [
+            f"Bacheca attiva in {canale.mention}: servono {soglia} {emoji}. "
+            + ("I canali vietati ai minori sono inclusi." if salvata.allow_nsfw else "I canali vietati ai minori sono esclusi.")
+        ]
+        # Cambio canale: il vecchio, se era bloccato, torna libero; il nuovo eredita il blocco se non si dice altro.
+        era_bloccata = prima is not None and prima.blocca
+        if era_bloccata and prima.channel_id != canale.id:
+            vecchio = interaction.guild.get_channel(prima.channel_id)
+            if isinstance(vecchio, discord.TextChannel):
+                righe.append(await self._applica_blocco(interaction, vecchio, False))
+        voluto = blocca if blocca is not None else (era_bloccata and prima.channel_id != canale.id)
+        if blocca is not None or voluto:
+            righe.append(await self._applica_blocco(interaction, canale, bool(voluto)))
+        if salvata.canale_auto:
+            righe.append(await testo_per(interaction, "starboard_auto_attivo", canale=f"<#{salvata.canale_auto}>"))
+        await interaction.followup.send("\n".join(righe), ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE)
+
+    async def _applica_blocco(self, interaction: discord.Interaction, canale: discord.TextChannel, blocca: bool) -> str:
+        """Nega (o ridà) `send_messages` a @everyone nella bacheca; il bot si tiene il suo permesso."""
+        guild = interaction.guild
+        if not canale.permissions_for(guild.me).manage_roles:
+            return await testo_per(interaction, "starboard_blocca_manca_permesso", mention=canale.mention)
+        try:
+            if blocca:
+                await canale.set_permissions(guild.me, send_messages=True, embed_links=True, reason="Bacheca bloccata")
+                await canale.set_permissions(
+                    guild.default_role, send_messages=False, send_messages_in_threads=False,
+                    create_public_threads=False, reason="Bacheca bloccata",
+                )
+            else:
+                await canale.set_permissions(
+                    guild.default_role, send_messages=None, send_messages_in_threads=None,
+                    create_public_threads=None, reason="Bacheca sbloccata",
+                )
+        except discord.HTTPException:
+            return await testo_per(interaction, "starboard_blocca_fallito", mention=canale.mention)
+        return await testo_per(interaction, "starboard_bloccata" if blocca else "starboard_sbloccata")
 
     @comando_di_gruppo(
         "admin-moduli",
@@ -260,6 +362,60 @@ class StarboardCog(CogConGruppi, commands.Cog):
         spenta = await starboard_repo.disable(interaction.guild.id)
         await interaction.response.send_message(
             await testo_per(interaction, "starboard_bacheca_spenta") if spenta else await testo_per(interaction, "starboard_la_bacheca_non_era_impostata"), ephemeral=True
+        )
+
+    # ================================================================
+    # /level stelle
+    # ================================================================
+    @comando_di_gruppo(
+        "level",
+        nome="classifica",
+        descrizione="Chi ha ricevuto più stelle in bacheca.",
+        sottogruppo=_SG_STELLE,
+    )
+    @app_commands.describe(pagina="Pagina della classifica (10 membri per pagina)")
+    async def stelle_classifica(
+        self, interaction: discord.Interaction, pagina: app_commands.Range[int, 1, 100] = 1
+    ) -> None:
+        if not await self._modulo_attivo(interaction):
+            return
+        await interaction.response.defer()
+        guild_id = interaction.guild.id
+        totale = await starboard_repo.conta_autori(guild_id)
+        if totale == 0:
+            await interaction.followup.send(await testo_per(interaction, "starboard_bacheca_vuota", pubblica=True))
+            return
+        pagine = (totale + POSTI_PER_PAGINA - 1) // POSTI_PER_PAGINA
+        pagina = min(pagina, pagine)
+        scarto = (pagina - 1) * POSTI_PER_PAGINA
+        config = await starboard_repo.get_config(guild_id)
+        emoji = config.emoji if config else EMOJI_PREDEFINITA
+        autori = await starboard_repo.classifica_autori(guild_id, POSTI_PER_PAGINA, scarto)
+        righe = [riga_classifica(scarto + i, a.author_id, a.stelle, a.messaggi, emoji) for i, a in enumerate(autori, 1)]
+        embed = discord.Embed(
+            title=await testo_per(interaction, "starboard_classifica_titolo", pubblica=True),
+            description="\n".join(righe), color=0xFFAC33,
+        )
+        embed.set_footer(text=await testo_per(interaction, "starboard_classifica_piede", pubblica=True, pagina=pagina, pagine=pagine))
+        await interaction.followup.send(embed=embed, allowed_mentions=_NESSUNA_MENZIONE)
+
+    @comando_di_gruppo(
+        "level",
+        nome="caso",
+        descrizione="Un messaggio a caso dalla bacheca.",
+        sottogruppo=_SG_STELLE,
+    )
+    async def stelle_caso(self, interaction: discord.Interaction) -> None:
+        if not await self._modulo_attivo(interaction):
+            return
+        config = await starboard_repo.get_config(interaction.guild.id)
+        post = await starboard_repo.post_a_caso(interaction.guild.id) if config else None
+        if post is None:
+            await interaction.response.send_message(await testo_per(interaction, "starboard_bacheca_vuota", pubblica=True))
+            return
+        await interaction.response.send_message(
+            link_bacheca(interaction.guild.id, config.channel_id, post.board_message_id),
+            allowed_mentions=_NESSUNA_MENZIONE,
         )
 
 

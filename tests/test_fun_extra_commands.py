@@ -159,3 +159,37 @@ async def test_dice_con_formula_e_tema_barzelletta():
     await cog.fact.callback(cog, it, _C("gatti"))
     from core.classic_entertainment_logic import FACTS_ANIMALI
     assert any(f in _msg(it).args[0] for f in FACTS_ANIMALI["gatti"])
+
+
+# ---- D69 B10 (UTL-134): membro a caso, anche tra chi ha un ruolo, senza ping
+async def test_casuale_membro_sceglie_tra_gli_umani_senza_ping(cog):
+    it = _it()
+    umani = [fake_member(user_id=5), fake_member(user_id=6)]
+    bot_ = fake_member(user_id=9)
+    bot_.bot = True
+    for m in umani:
+        m.bot = False
+    it.guild.members = [*umani, bot_]
+    await cog.casuale.callback(cog, it, _C("membro"), None)
+    testo = _msg(it).args[0]
+    assert any(f"<@{m.id}>" in testo for m in umani) and "<@9>" not in testo
+    assert _msg(it).kwargs["allowed_mentions"].users is False
+
+
+async def test_casuale_membro_con_ruolo_pesca_solo_da_quel_ruolo(cog):
+    it = _it()
+    solo = fake_member(user_id=5)
+    solo.bot = False
+    ruolo = create_autospec(discord.Role, instance=True)
+    ruolo.members = [solo]
+    it.guild.members = [fake_member(user_id=6)]
+    await cog.casuale.callback(cog, it, _C("membro"), ruolo)
+    assert "<@5>" in _msg(it).args[0]
+
+
+async def test_casuale_membro_senza_nessuno_e_fuori_dai_server(cog):
+    it = _it()
+    ruolo = create_autospec(discord.Role, instance=True)
+    ruolo.members = []
+    await cog.casuale.callback(cog, it, _C("membro"), ruolo)
+    assert _msg(it).kwargs["ephemeral"] is True

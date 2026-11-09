@@ -1,11 +1,10 @@
 """
 cogs/fun/coin_games.py
 ======================
-Giochi con le monete (/giochi gioca), misuratore a tema libero (/fun misura) e
-gioco del conteggio in un canale (/admin-moduli conteggio). Le monete del bot non si
-comprano con soldi veri.
+Giochi con le monete (/giochi gioca) e misuratore a tema libero (/fun misura). Le monete del bot
+non si comprano con soldi veri. Il gioco del conteggio è in cogs/utility/conteggio.py.
 Funzioni coperte: SPEC §23.16 (NF-40)
-Dipende da: core/coin_games_logic.py, core/repositories/counting_game_repo.py
+Dipende da: core/coin_games_logic.py
 """
 
 from __future__ import annotations
@@ -26,15 +25,11 @@ from core.coin_games_logic import (
     gioca_dadi,
     gioca_monetina,
     gioca_slot,
-    numero_del_messaggio,
 )
-from core.channel_access import PERMESSI_DI_REAZIONE, motivo_se_il_bot_non_puo
-from core.command_access import Livello, richiedi
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.fun_logic import MAX_TEMA_MISURA, compute_misura, tema_ammesso
 from core.i18n import testo_per
-from core.repositories.counting_game_repo import counting_game_repo
 from core.moneta_server import aggiungi_moneta
 from core.repositories.leveling_repo import leveling_repo
 from core.repositories.leveling_settings_repo import leveling_settings_repo
@@ -52,11 +47,6 @@ _SCELTE_GIOCO = [
 _SCELTE_LATO = [
     app_commands.Choice(name="Testa", value="testa"),
     app_commands.Choice(name="Croce", value="croce"),
-]
-_SCELTE_CONTEGGIO = [
-    app_commands.Choice(name="Scegli il canale", value="imposta"),
-    app_commands.Choice(name="Spegni", value="spegni"),
-    app_commands.Choice(name="Stato", value="stato"),
 ]
 
 _AVVISO = "Le coin del bot non si comprano con soldi veri."
@@ -207,92 +197,6 @@ class CoinGamesCog(CogConGruppi, commands.Cog):
             color=discord.Color.blurple(),
         )
         await interaction.response.send_message(embed=embed)
-
-    # ================================================================
-    # /admin-moduli conteggio e il gioco in sé
-    # ================================================================
-    @comando_di_gruppo(
-        "admin-moduli",
-        nome="conteggio",
-        descrizione="Gioco del conteggio: scegli il canale dove contare a turno 1, 2, 3...",
-    )
-    @app_commands.describe(azione="Cosa fare", canale="Il canale (solo per «Scegli il canale»)")
-    @app_commands.choices(azione=_SCELTE_CONTEGGIO)
-    @richiedi(Livello.ADMIN)
-    async def conteggio(
-        self,
-        interaction: discord.Interaction,
-        azione: app_commands.Choice[str],
-        canale: discord.TextChannel | None = None,
-    ) -> None:
-        if await self._modulo_spento(interaction):
-            return
-        guild_id = interaction.guild.id
-        if azione.value == "imposta":
-            if canale is None:
-                await interaction.response.send_message(await testo_per(interaction, "coingames_indica_il_canale"), ephemeral=True)
-                return
-            motivo = motivo_se_il_bot_non_puo(
-                canale, interaction.guild.me, PERMESSI_DI_REAZIONE
-            )
-            if motivo is not None:
-                await interaction.response.send_message(
-                    f"Non posso far giocare in {canale.mention}: {motivo}.", ephemeral=True
-                )
-                return
-            await counting_game_repo.set_channel(guild_id, canale.id)
-            await interaction.response.send_message(
-                await testo_per(interaction, "coingames_si_conta_in_scrivete_poi", mention=canale.mention),
-                ephemeral=True,
-            )
-        elif azione.value == "spegni":
-            spento = await counting_game_repo.disable(guild_id)
-            await interaction.response.send_message(
-                await testo_per(interaction, "coingames_gioco_del_conteggio_spento") if spento else await testo_per(interaction, "coingames_il_gioco_non_era_attivo"),
-                ephemeral=True,
-            )
-        else:
-            stato = await counting_game_repo.get(guild_id)
-            if stato is None:
-                await interaction.response.send_message(await testo_per(interaction, "coingames_il_gioco_non_attivo"), ephemeral=True)
-                return
-            await interaction.response.send_message(
-                await testo_per(interaction, "coingames_canale_ultimo_numero_record", channel_id=stato.channel_id, current=stato.current, best=stato.best),
-                ephemeral=True,
-            )
-
-    @commands.Cog.listener()
-    async def on_message(self, message: discord.Message) -> None:
-        if message.author.bot or message.guild is None:
-            return
-        numero = numero_del_messaggio(message.content or "")
-        if numero is None:
-            return
-        try:
-            if await counting_game_repo.channel_id(message.guild.id) != message.channel.id:
-                return
-            if not await db.is_module_active_for_guild(message.guild.id, MODULE_FUN):
-                return
-            esito = await counting_game_repo.register(
-                message.guild.id, message.channel.id, message.author.id, numero
-            )
-        except Exception:
-            logger.warning("Conteggio non registrato nel server %s.", message.guild.id)
-            return
-        if esito is None:
-            return
-        try:
-            if esito.corretto:
-                await message.add_reaction("✅")
-            else:
-                await message.add_reaction("❌")
-                await message.channel.send(
-                    f"{message.author.mention} ha rovinato tutto a **{esito.numero}**! "
-                    f"Si riparte da **1**. Record: **{esito.record}**.",
-                    allowed_mentions=discord.AllowedMentions(users=[message.author]),
-                )
-        except discord.HTTPException:
-            pass
 
 
 async def setup(bot: commands.Bot) -> None:
