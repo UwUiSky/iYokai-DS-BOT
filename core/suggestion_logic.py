@@ -35,3 +35,20 @@ def can_decide(current_status: str) -> bool:
 def e_finale(status: str) -> bool:
     """Approvato, rifiutato o realizzato: i bottoni si tolgono."""
     return status not in APERTI
+
+
+# --- opzioni del server (D69, B7) ---
+ESITI = ("modifica", "nuovo")
+EMOJI_VOTO_SU = "👍"
+
+
+def colore_attuale(stato: str, voti_su: int, soglia: int, colore_soglia: str | None, colore_stato: int) -> int:
+    """Il colore dell'embed: quello della soglia se i voti sono arrivati, solo finché è in attesa."""
+    if stato in APERTI and soglia > 0 and colore_soglia and voti_su >= soglia:
+        return int(colore_soglia[1:], 16)
+    return colore_stato
+
+
+def fuori_dal_canale_unico(canale_id: int, solo_canale_id: int | None) -> bool:
+    """True se il server ha scelto un solo canale e questo non è quello."""
+    return solo_canale_id is not None and canale_id != solo_canale_id

@@ -1968,5 +1968,11 @@
   "fuso_sconosciuto": "I do not know that time zone: type to search, for example Europe/Rome.",
   "fuso_impostato": "Your time zone is {fuso}. The «Times in my time zone» menu uses it on your messages; remove it with «nessuno».",
   "orari_nessuno": "I find no times in this message (they need a colon, like 18:30, or am/pm).",
-  "orari_titolo": "Times in the message (author's time zone: {fuso}), in your time zone:"
+  "orari_titolo": "Times in the message (author's time zone: {fuso}), in your time zone:",
+  "suggestions_chi_solo_admin": "Only admin level can see who wrote an anonymous suggestion.",
+  "suggestions_chi_risposta": "Suggestion #{id} was written by {utente}. The request was written in the log.",
+  "suggestions_chi_registro": "{staff} asked who wrote anonymous suggestion #{id}.",
+  "suggestions_colore_non_valido": "The color must be written as #RRGGBB, for example #FFD700.",
+  "suggestions_opzioni_stato": "Anonymous: {anonimi} · Vote threshold: {soglia} · Color: {colore} · Outcome: {esito} · Only from: {solo}",
+  "suggestions_solo_da_canale": "In this server suggestions can only be written in {canale}."
 }

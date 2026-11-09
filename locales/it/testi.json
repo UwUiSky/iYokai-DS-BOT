@@ -1968,5 +1968,11 @@
   "fuso_sconosciuto": "Non conosco quel fuso: scrivi per cercare, per esempio Europe/Rome.",
   "fuso_impostato": "Il tuo fuso è {fuso}. Lo usa il menu «Orari nel mio fuso» sui tuoi messaggi; si toglie con «nessuno».",
   "orari_nessuno": "Non trovo orari in questo messaggio (servono i due punti, per esempio 18:30, oppure am/pm).",
-  "orari_titolo": "Orari del messaggio (fuso di chi l'ha scritto: {fuso}), nel tuo fuso:"
+  "orari_titolo": "Orari del messaggio (fuso di chi l'ha scritto: {fuso}), nel tuo fuso:",
+  "suggestions_chi_solo_admin": "Solo chi ha il livello admin può vedere chi ha scritto un suggerimento anonimo.",
+  "suggestions_chi_risposta": "Il suggerimento #{id} l'ha scritto {utente}. La richiesta è stata scritta nel registro.",
+  "suggestions_chi_registro": "{staff} ha chiesto chi ha scritto il suggerimento anonimo #{id}.",
+  "suggestions_colore_non_valido": "Il colore va scritto come #RRGGBB, per esempio #FFD700.",
+  "suggestions_opzioni_stato": "Anonimi: {anonimi} · Soglia voti: {soglia} · Colore: {colore} · Esito: {esito} · Solo da: {solo}",
+  "suggestions_solo_da_canale": "In questo server i suggerimenti si scrivono solo in {canale}."
 }
