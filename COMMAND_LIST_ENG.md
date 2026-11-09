@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:12 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:15 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 779 commands in 47 categories.**
+**Total: 780 commands in 47 categories.**
 
 ## Admin: AI
 
@@ -669,6 +669,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:1
 - **`/mod-ban ban`** — Permanently bans a member.
 - **`/mod-ban bulk ban`** — Bans several users at once, even outside the server (IDs or mentions).
 - **`/mod-ban bulk entrati`** — Bans or kicks whoever joined in the last minutes (after a confirmation).
+- **`/mod-ban bulk invite`** — Ban or kick everyone who joined with a certain invite (after a confirmation).
 - **`/mod-ban bulk kick`** — Kicks several members at once (IDs or mentions).
 - **`/mod-ban bulk unban`** — Unbans several users at once (IDs).
 - **`/mod-ban kick`** — Kicks a member from the server.

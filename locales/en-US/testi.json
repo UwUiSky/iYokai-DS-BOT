@@ -2403,5 +2403,7 @@
   "tag_gruppo_nome": "The group name has 1 to 32 letters, digits, - or _.",
   "tag_gruppo_tolto": "Group removed: its tags are left without a group.",
   "tag_gruppo_inesistente": "There is no group with that name.",
-  "tag_gruppo_salvato": "Group `{gruppo}` saved."
+  "tag_gruppo_salvato": "Group `{gruppo}` saved.",
+  "actions_invito_nessuno": "No member still here joined with invite `{codice}` (or they are all protected).",
+  "actions_invito_conferma": "Found {quanti} members who joined with invite `{codice}`. Action: {azione}. Confirm?"
 }

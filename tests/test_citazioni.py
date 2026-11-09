@@ -115,3 +115,13 @@ async def test_registro_staff_scrive_solo_se_il_comando_e_dello_staff_e_l_evento
         comando.qualified_name = "mod-ban utente"
         await cog.on_app_command_completion(inter, comando)
         assert invia.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_presenti_con_codice_esclude_chi_e_uscito(clean_db):
+    from core.repositories.invite_stats_repo import InviteStatsRepository
+    r = InviteStatsRepository(pool_provider=lambda: clean_db)
+    await clean_db.execute(
+        "INSERT INTO invite_joins (guild_id, user_id, inviter_id, code, kind) VALUES (1,10,5,'abc','invite'),(1,11,5,'abc','invite'),(1,12,5,'xyz','invite')")
+    await clean_db.execute("UPDATE invite_joins SET left_at = now() WHERE user_id = 11")
+    assert await r.presenti_con_codice(1, "abc") == [10] and await r.presenti_con_codice(2, "abc") == []

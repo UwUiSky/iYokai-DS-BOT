@@ -374,3 +374,21 @@ async def test_solo_chi_ha_lanciato_il_comando_puo_confermare():
     altro = fake_interaction(guild=scena.server, user=fake_member(77))
     assert await vista.interaction_check(altro) is False
     assert await vista.interaction_check(scena.interazione) is True
+
+
+# ---------------------------------------------------------------- UTL-184: ban o kick di chi è entrato con un invito
+async def test_invito_propone_solo_chi_e_ancora_nel_server_e_aspetta_la_conferma(monkeypatch):
+    import cogs.moderation.actions as modulo_azioni
+    scena = Scena()
+    membri = _entrati(scena, 3)
+    finto = SimpleNamespace(presenti_con_codice=AsyncMock(return_value=[membri[0].id, membri[1].id, 424242]))
+    monkeypatch.setattr(modulo_azioni, "invite_stats_repo", finto)
+    cog = ModerationActionsCog(bot=None)
+    await cog.invito.callback(cog, scena.interazione, "abc123", "ban", "raid in corso")
+    finto.presenti_con_codice.assert_awaited_once_with(scena.server.id, "abc123", 200)
+    kw = scena.interazione.response.send_message.call_args.kwargs
+    assert kw["view"] is not None and [m.id for m in kw["view"].membri] == [membri[0].id, membri[1].id]  # 424242 è già uscito
+    scena.server.bulk_ban.assert_not_called()
+    finto.presenti_con_codice.return_value = []
+    await cog.invito.callback(cog, scena.interazione, "abc123", "ban", "raid in corso")
+    assert scena.interazione.response.send_message.call_args.kwargs.get("view") is None

@@ -1238,7 +1238,8 @@
   "admin-tag tag sostituisci": "Change a text in all tags, after a preview.",
   "admin-tag tag esporta": "Export the server's tags to a code or a file.",
   "admin-tag tag importa": "Import tags from a code or a JSON file.",
-  "admin-tag tag gruppi": "Rules per tag group: one channel and/or a required role."
+  "admin-tag tag gruppi": "Rules per tag group: one channel and/or a required role.",
+  "mod-ban massa invito": "Ban or kick everyone who joined with a certain invite (after a confirmation)."
  },
  "parametri": {},
  "menu": {

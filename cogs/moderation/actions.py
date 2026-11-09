@@ -74,7 +74,8 @@ from cogs.automod.escalation import scala_per_warn_manuale
 from core.spam_trap_logic import BAN_ACTION_TYPE as SPAM_TRAP_BAN_ACTION_TYPE
 from cogs.moderation.ricerca import completa_ban
 from core.moderation_conferma import conferma_sanzione, invia_esito
-from core.command_access import Livello
+from core.command_access import Livello, autocomplete_protetto
+from core.repositories.invite_stats_repo import invite_stats_repo
 from cogs.moderation._shared import (
     MODULE_ACTIONS,
     ensure_module_enabled,
@@ -1321,6 +1322,51 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(
             await testo_per(interaction, "actions_entrati_conferma", v1=len(candidati), v2=minuti, azione=azione, resto=resto),
             view=vista, ephemeral=True,
+        )
+
+    @autocomplete_protetto(Livello.MODBAN)
+    async def _completa_codice_invito(self, interaction: discord.Interaction, current: str):
+        if interaction.guild is None:
+            return []
+        codici = await invite_stats_repo.conteggio_per_codice(interaction.guild.id)
+        ordinati = sorted((c for c in codici if current.lower() in c.lower()), key=lambda c: -codici[c])[:25]
+        return [app_commands.Choice(name=f"{c} ({codici[c]})"[:100], value=c) for c in ordinati]
+
+    @comando_di_gruppo(
+        "mod-ban",
+        nome="invito",
+        descrizione="Banna o espelle chi è entrato con un certo invito (dopo una conferma).",
+        sottogruppo=("massa", "Azioni su più utenti insieme."),
+    )
+    @app_commands.describe(codice="Il codice dell'invito", azione="Cosa fare a chi è entrato", reason="Motivo (anche un motivo pronto)")
+    @app_commands.choices(azione=[app_commands.Choice(name="Espelli", value="kick"), app_commands.Choice(name="Banna", value="ban")])
+    @app_commands.autocomplete(codice=_completa_codice_invito, reason=completa_motivo)
+    async def invito(
+        self, interaction: discord.Interaction, codice: app_commands.Range[str, 2, 40], azione: str, reason: Reason | None = None,
+    ) -> None:
+        """UTL-184: stessa strada di `entrati` (conferma, tetto, pause, stop ai 403); cambia solo come si scelgono i membri."""
+        if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
+            return
+        azione = getattr(azione, "value", azione)
+        permesso = AZIONI_ENTRATI[azione]
+        if not getattr(interaction.user.guild_permissions, permesso, False) or not getattr(interaction.guild.me.guild_permissions, permesso, False):
+            await interaction.response.send_message(await testo_per(interaction, "actions_entrati_permesso", permesso=permesso), ephemeral=True)
+            return
+        reason = await risolvi_motivo(interaction, reason)
+        if reason is None:
+            return
+        candidati = []
+        for uid in await invite_stats_repo.presenti_con_codice(interaction.guild.id, codice.strip(), 200):
+            membro = interaction.guild.get_member(uid)
+            if membro is not None and await self._non_moderabile(interaction, uid, membro) is None:
+                candidati.append(membro)
+        if not candidati:
+            await interaction.response.send_message(await testo_per(interaction, "actions_invito_nessuno", codice=codice[:40]), ephemeral=True)
+            return
+        vista = ConfermaEntrati(self, interaction.user.id, candidati, azione, reason, 0)
+        await interaction.response.send_message(
+            await testo_per(interaction, "actions_invito_conferma", quanti=len(candidati), codice=codice[:40], azione=azione),
+            view=vista, ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
         )
 
     async def _esegui_entrati(self, interaction: discord.Interaction, membri: list, azione: str, reason: str) -> None:

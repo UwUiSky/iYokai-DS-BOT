@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:12 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:15 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 779 comandi in 47 categorie.**
+**Totale: 780 comandi in 47 categorie.**
 
 ## Admin: AI
 
@@ -671,6 +671,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 - **`/mod-ban kick`** — Espelle un membro dal server.
 - **`/mod-ban massa ban`** — Banna più utenti insieme, anche fuori dal server (ID o menzioni).
 - **`/mod-ban massa entrati`** — Banna o espelle chi è entrato negli ultimi minuti (dopo una conferma).
+- **`/mod-ban massa invito`** — Banna o espelle chi è entrato con un certo invito (dopo una conferma).
 - **`/mod-ban massa kick`** — Espelle più membri insieme (ID o menzioni).
 - **`/mod-ban massa unban`** — Toglie il ban a più utenti insieme (ID).
 - **`/mod-ban softban`** — Banna e sbanna subito un membro, per cancellarne i messaggi recenti.

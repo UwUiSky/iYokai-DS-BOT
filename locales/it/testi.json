@@ -2403,5 +2403,7 @@
   "tag_gruppo_nome": "Il nome del gruppo ha da 1 a 32 lettere, cifre, - o _.",
   "tag_gruppo_tolto": "Gruppo tolto: i suoi tag restano senza gruppo.",
   "tag_gruppo_inesistente": "Non c'è un gruppo con quel nome.",
-  "tag_gruppo_salvato": "Gruppo `{gruppo}` salvato."
+  "tag_gruppo_salvato": "Gruppo `{gruppo}` salvato.",
+  "actions_invito_nessuno": "Nessun membro presente è entrato con l'invito `{codice}` (o sono tutti protetti).",
+  "actions_invito_conferma": "Trovati {quanti} membri entrati con l'invito `{codice}`. Azione: {azione}. Confermi?"
 }
