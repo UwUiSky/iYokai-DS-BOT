@@ -44,6 +44,9 @@ class BottoneRisposta(discord.ui.Button):
 
     async def callback(self, interaction: discord.Interaction) -> None:
         vista: VistaDomanda = self.view  # type: ignore[assignment]
+        if vista.partita.indice != vista.indice:  # clic arrivato (dopo il controllo blacklist) a domanda già chiusa
+            await interaction.response.send_message(await testo_per(interaction, "quiz_risposta_tardi"), ephemeral=True)
+            return
         nuova = vista.partita.rispondi(interaction.user.id, self.indice)  # sincrona: niente doppio conteggio
         chiave = "quiz_risposta_registrata" if nuova else "quiz_risposta_gia"
         await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
@@ -52,7 +55,7 @@ class BottoneRisposta(discord.ui.Button):
 class VistaDomanda(BaseView):
     def __init__(self, partita: q.PartitaQuiz) -> None:
         super().__init__(timeout=partita.regole.secondi + 15)
-        self.partita = partita
+        self.partita, self.indice = partita, partita.indice
         for i in range(q.N_RISPOSTE):
             self.add_item(BottoneRisposta(i))
 

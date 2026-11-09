@@ -233,3 +233,16 @@ async def test_albero_quiz():
     await cq.setup(bot)
     assert {"quiz avvia", "quiz classifica"} <= percorsi_del_gruppo("giochi")
     assert {"quiz carica", "quiz elenca", "quiz rimuovi", "quiz regole"} <= percorsi_del_gruppo("admin-giochi")
+
+
+async def test_clic_a_domanda_chiusa_non_conta_sulla_successiva():
+    """Un clic che arriva dopo la chiusura della domanda non finisce tra le risposte della successiva."""
+    partita = q.PartitaQuiz([q.mescola(_dom(), random.Random(1)), q.mescola(_dom(), random.Random(2))], q.RegoleQuiz(punti=10, secondi=10))
+    vecchia = cq.VistaDomanda(partita)
+    partita.chiudi_domanda()
+    it = _it(5)
+    await vecchia.children[0].callback(it)
+    assert partita.risposte == {} and it.response.send_message.await_args.kwargs["ephemeral"]
+    nuova = cq.VistaDomanda(partita)
+    await nuova.children[0].callback(_it(5))
+    assert partita.risposte == {5: 0}

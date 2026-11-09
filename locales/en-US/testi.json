@@ -2436,6 +2436,7 @@
   "fun_scherzo_brindisi": "🥂 {autore} toasts with {utente}: {frase}",
   "quiz_risposta_registrata": "Answer saved. Wait for the time to run out!",
   "quiz_risposta_gia": "You already answered this question.",
+  "quiz_risposta_tardi": "Too late: this question is already closed.",
   "quiz_domanda_titolo": "Question {n} of {tot}",
   "quiz_domanda_tempo": "You have {secondi} seconds. One answer each.",
   "quiz_risposta_giusta": "✅ Right answer: **{lettera}. {testo}**",

@@ -2436,6 +2436,7 @@
   "fun_scherzo_brindisi": "🥂 {autore} brinda con {utente}: {frase}",
   "quiz_risposta_registrata": "Risposta registrata. Aspetta la fine del tempo!",
   "quiz_risposta_gia": "Hai già risposto a questa domanda.",
+  "quiz_risposta_tardi": "Troppo tardi: la domanda è già chiusa.",
   "quiz_domanda_titolo": "Domanda {n} di {tot}",
   "quiz_domanda_tempo": "Hai {secondi} secondi. Una sola risposta a testa.",
   "quiz_risposta_giusta": "✅ Risposta giusta: **{lettera}. {testo}**",
