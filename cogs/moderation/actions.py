@@ -72,6 +72,8 @@ from cogs.moderation import _tempban_modes as tempban_modes
 from cogs.moderation.ban_appeal import vista_appello
 from cogs.automod.escalation import scala_per_warn_manuale
 from core.spam_trap_logic import BAN_ACTION_TYPE as SPAM_TRAP_BAN_ACTION_TYPE
+from core.moderation_conferma import conferma_sanzione, invia_esito
+from core.command_access import Livello
 from cogs.moderation._shared import (
     MODULE_ACTIONS,
     ensure_module_enabled,
@@ -164,9 +166,8 @@ async def _log_e_risposta(
     lo diciamo al moderatore.
     """
     await post_to_mod_log(interaction.guild, embed)
-    if not dm_inviato:
-        embed.set_footer(text=await testo_per(interaction, "actions_non_stato_possibile_notificare_utente", pubblica=True))
-    await interaction.followup.send(embed=embed)
+    nota = None if dm_inviato else await testo_per(interaction, "actions_non_stato_possibile_notificare_utente", pubblica=True)
+    await invia_esito(interaction, embed, seguito=True, nota=nota)
 
 
 PAUSA_ENTRATI = 0.3  # secondi fra due espulsioni (limite di frequenza di Discord)
@@ -327,6 +328,9 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             return
         if not await check_can_moderate(interaction, member):
             return
+        interaction = await conferma_sanzione(interaction, member, "warn", reason, livello=Livello.MOD)
+        if interaction is None:
+            return
 
         case_number = await moderation_repo.create_case(
             guild_id=interaction.guild.id,
@@ -339,7 +343,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         embed = _case_embed(
             "⚠️ Warn", discord.Color.yellow(), member, interaction.user, reason, case_number
         )
-        await interaction.response.send_message(embed=embed)
+        await invia_esito(interaction, embed, seguito=False)
         dm_embed = await moderation_dm.costruisci(
             interaction.guild, "warn", titolo="⚠️ Warn", colore=discord.Color.yellow(), moderatore=interaction.user,
             motivo=reason, caso=case_number,
@@ -381,6 +385,9 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         if reason is None:
             return
         if not await check_can_moderate(interaction, member):
+            return
+        interaction = await conferma_sanzione(interaction, member, "kick", reason, livello=Livello.MODBAN)
+        if interaction is None:
             return
         if cancella_messaggi and not await _puo_cancellare_qui(interaction):
             return
@@ -453,6 +460,9 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         if reason is None:
             return
         if not await check_can_moderate(interaction, member):
+            return
+        interaction = await conferma_sanzione(interaction, member, "ban", reason, livello=Livello.MODBAN)
+        if interaction is None:
             return
 
         await interaction.response.defer()
@@ -530,6 +540,9 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         if reason is None:
             return
         if not await check_can_moderate(interaction, member):
+            return
+        interaction = await conferma_sanzione(interaction, member, "tempban", reason, livello=Livello.MODBAN)
+        if interaction is None:
             return
 
         try:
@@ -981,6 +994,9 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             return
         if not await check_can_moderate(interaction, member):
             return
+        interaction = await conferma_sanzione(interaction, member, "timeout", reason, livello=Livello.MOD)
+        if interaction is None:
+            return
 
         if duration is None:
             # MOD-017: durata predefinita del server.
@@ -1035,7 +1051,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             case_number,
             extra_field=("Durata", format_duration(duration_seconds)),
         )
-        await interaction.response.send_message(embed=embed)
+        await invia_esito(interaction, embed, seguito=False)
         dm_embed = await moderation_dm.costruisci(
             interaction.guild, "timeout", titolo="🔇 Timeout", colore=discord.Color.dark_orange(), moderatore=interaction.user,
             motivo=reason, caso=case_number, durata_s=duration_seconds,

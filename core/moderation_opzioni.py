@@ -6,7 +6,7 @@ messaggi cancellati al ban, durata predefinita del timeout, DM per tipo
 di azione, ruoli immuni alla moderazione manuale e casi per le azioni fatte
 fuori da iYokai, avvisi allo staff (troppi warn, rientro di chi ha casi).
 Funzioni coperte: SPEC §5.13 (MOD-010, MOD-017, MOD-057, MOD-068), §5.2 (MOD-047),
-§5.3 (MOD-036, MOD-064)
+§5.3 (MOD-036, MOD-064), §5.13 (MOD-066, MOD-067)
 """
 
 from __future__ import annotations
@@ -15,6 +15,8 @@ from dataclasses import dataclass, field
 
 from core.database import db
 from core.moderation_casi_esterni_logic import SETTING_CASI_ESTERNI
+from core.moderation_risposte import MODI as MODI_RISPOSTE
+from core.moderation_risposte import MODO_NORMALE, SECONDI_BASE, SECONDI_MAX, SECONDI_MIN, modo_valido, secondi_validi
 
 SETTING_GIORNI_BAN = "mod_ban_giorni_messaggi"
 SETTING_DURATA_TIMEOUT = "mod_timeout_predefinito"
@@ -26,6 +28,9 @@ SETTING_SCADENZA_AUTOMOD = "mod_scadenza_automod_giorni"
 SETTING_MOTIVO_OBBLIGATORIO = "mod_motivo_obbligatorio"
 SETTING_ANONIMO = "mod_anonimo"
 SETTING_UTENTE_VEDE_CASI = "mod_utente_vede_casi"
+SETTING_CONFERMA = "mod_conferma"
+SETTING_RISPOSTE = "mod_risposte"
+SETTING_RISPOSTE_SECONDI = "mod_risposte_secondi"
 MAX_TESTO_DM = 1500
 MAX_SCADENZA_AUTOMOD = 200
 
@@ -58,6 +63,9 @@ class OpzioniModerazione:
     anonimo: bool = False  # MOD-050: il DM dice «Staff di <server>» invece del nome del moderatore
     dm_testi: dict[str, str] = field(default_factory=dict)  # MOD-059: testo del server per ogni azione
     utente_vede_casi: bool = True  # MOD-114: /utility mie-sanzioni (base sì)
+    conferma: bool = False  # MOD-066: prima di sanzionare, due tasti Conferma/Annulla (base no)
+    risposte: str = MODO_NORMALE  # MOD-067: normale, compatta o cancella-dopo
+    risposte_secondi: int = SECONDI_BASE  # MOD-067: attesa di cancella-dopo (5-300)
 
 
 async def leggi(guild_id: int) -> OpzioniModerazione:
@@ -72,6 +80,9 @@ async def leggi(guild_id: int) -> OpzioniModerazione:
     obbligatorio = await db.get_guild_setting(guild_id, SETTING_MOTIVO_OBBLIGATORIO, True)
     anonimo = await db.get_guild_setting(guild_id, SETTING_ANONIMO, False)
     vede = await db.get_guild_setting(guild_id, SETTING_UTENTE_VEDE_CASI, True)
+    conferma = await db.get_guild_setting(guild_id, SETTING_CONFERMA, False)
+    risposte = await db.get_guild_setting(guild_id, SETTING_RISPOSTE, MODO_NORMALE)
+    risposte_s = await db.get_guild_setting(guild_id, SETTING_RISPOSTE_SECONDI, SECONDI_BASE)
     testi = {}
     for azione in AZIONI_CON_DM:
         testo = await db.get_guild_setting(guild_id, setting_testo_dm(azione))
@@ -90,6 +101,9 @@ async def leggi(guild_id: int) -> OpzioniModerazione:
         anonimo=anonimo is True,
         dm_testi=testi,
         utente_vede_casi=vede is not False,
+        conferma=conferma is True,
+        risposte=modo_valido(risposte),
+        risposte_secondi=secondi_validi(risposte_s),
     )
 
 
@@ -161,6 +175,22 @@ async def imposta_anonimo(guild_id: int, attivo: bool, autore_id: int) -> None:
 async def imposta_utente_vede_casi(guild_id: int, attivo: bool, autore_id: int) -> None:
     """MOD-114: ogni utente vede i propri casi con `/utility mie-sanzioni` (base sì)."""
     await db.set_guild_setting(guild_id, SETTING_UTENTE_VEDE_CASI, attivo, changed_by=autore_id)
+
+
+async def imposta_conferma(guild_id: int, attivo: bool, autore_id: int) -> None:
+    """MOD-066: warn, timeout, kick, ban e simili chiedono prima «Conferma» o «Annulla» (base no)."""
+    await db.set_guild_setting(guild_id, SETTING_CONFERMA, attivo, changed_by=autore_id)
+
+
+async def imposta_risposte(guild_id: int, modo: str, secondi: int | None, autore_id: int) -> None:
+    """MOD-067: come risponde il bot dopo una sanzione; `secondi` (5-300) conta solo per cancella-dopo."""
+    if modo not in MODI_RISPOSTE:
+        raise ValueError("Modo sconosciuto: " + ", ".join(MODI_RISPOSTE) + ".")
+    if secondi is not None and not SECONDI_MIN <= secondi <= SECONDI_MAX:
+        raise ValueError(f"I secondi vanno da {SECONDI_MIN} a {SECONDI_MAX}.")
+    await db.set_guild_setting(guild_id, SETTING_RISPOSTE, modo, changed_by=autore_id)
+    if secondi is not None:
+        await db.set_guild_setting(guild_id, SETTING_RISPOSTE_SECONDI, secondi, changed_by=autore_id)
 
 
 async def imposta_dm_testo(guild_id: int, azione: str, testo: str | None, autore_id: int) -> None:
