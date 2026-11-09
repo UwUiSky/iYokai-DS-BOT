@@ -202,3 +202,20 @@ async def test_immagine_sospetta_o_non_analizzata_non_si_conserva(amb, monkeypat
         monkeypatch.setattr(prove.immagini_pipeline, "analizza_immagine", AsyncMock(return_value=esito))
         assert (await _agg("a.png", dati=b"zz", case_number=8)).errore == "prove_immagine"
     assert await moderation_repo.list_prove(G, case_number=8) == []
+
+
+async def test_togliere_caso_o_nota_toglie_anche_le_prove(amb):
+    numero = await moderation_repo.create_case(G, 5, 9, "warn", "r")
+    await _agg(case_number=numero)
+    nota = await moderation_repo.add_note(G, 5, 9, "n")
+    altra = await moderation_repo.add_note(G, 5, 9, "m")
+    await _agg(nota_id=nota)
+    await _agg(nota_id=altra)
+    await moderation_repo.delete_note(G, nota)
+    assert await moderation_repo.list_prove(G, nota_id=nota) == []
+    assert len(await moderation_repo.list_prove(G, nota_id=altra)) == 1
+    assert await moderation_repo.delete_notes_for_user(G, 5) == 1
+    assert await moderation_repo.list_prove(G, nota_id=altra) == []
+    assert len(await moderation_repo.list_prove(G, case_number=numero)) == 1  # il caso c'e' ancora
+    assert await moderation_repo.delete_case(G, numero)
+    assert await moderation_repo.list_prove(G, case_number=numero) == []

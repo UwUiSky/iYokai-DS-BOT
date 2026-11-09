@@ -334,7 +334,10 @@ class ModerationRepository:
     async def delete_case(self, guild_id: int, case_number: int) -> bool:
         """Elimina un caso (MOD-044). La numerazione non si riusa."""
         result = await self._pool.execute(
-            "DELETE FROM moderation_cases WHERE guild_id = $1 AND case_number = $2",
+            """
+            WITH prove AS (DELETE FROM moderation_prove WHERE guild_id = $1 AND case_number = $2)
+            DELETE FROM moderation_cases WHERE guild_id = $1 AND case_number = $2
+            """,
             guild_id, case_number,
         )
         return result.endswith(" 1")
@@ -609,8 +612,12 @@ class ModerationRepository:
 
     async def delete_note(self, guild_id: int, note_id: int) -> bool:
         """Toglie una nota (MOD-054). Solo se è di questo server."""
-        result = await self._pool.execute(
-            "DELETE FROM moderation_notes WHERE guild_id = $1 AND id = $2", guild_id, note_id
+        result = await self._pool.execute(  # le prove di una nota non restano senza la nota (MOD-038)
+            """
+            WITH prove AS (DELETE FROM moderation_prove WHERE guild_id = $1 AND nota_id = $2)
+            DELETE FROM moderation_notes WHERE guild_id = $1 AND id = $2
+            """,
+            guild_id, note_id,
         )
         return result.endswith(" 1")
 
@@ -625,7 +632,14 @@ class ModerationRepository:
     async def delete_notes_for_user(self, guild_id: int, user_id: int) -> int:
         """Cancella tutte le note di un membro (MOD-056); quante."""
         result = await self._pool.execute(
-            "DELETE FROM moderation_notes WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
+            """
+            WITH prove AS (
+                DELETE FROM moderation_prove WHERE guild_id = $1 AND nota_id IN
+                    (SELECT id FROM moderation_notes WHERE guild_id = $1 AND user_id = $2)
+            )
+            DELETE FROM moderation_notes WHERE guild_id = $1 AND user_id = $2
+            """,
+            guild_id, user_id,
         )
         return int(result.split()[-1])
 
