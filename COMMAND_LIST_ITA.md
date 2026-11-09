@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 19:03 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 19:08 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 826 comandi in 48 categorie.**
+**Totale: 836 comandi in 49 categorie.**
 
 ## Admin: AI
 
@@ -71,6 +71,18 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 19:
 - **`/admin-antiraid segnali`** — Segnali di raid sugli ultimi ingressi e azione su chi è entrato prima.
 - **`/admin-antiraid status`** — Mostra la configurazione attuale dell'Anti-Raid.
 - **`/admin-antiraid username-check`** — Attiva/disattiva il rilevamento pattern username sospetti.
+
+## Admin: automazioni
+
+- **`/admin-automazioni inneschi aggiungi`** — Fa partire un tag da solo: reazione, intervallo, orario, bottone, ruolo.
+- **`/admin-automazioni inneschi avvia-ora`** — Fa partire un innesco subito, per provarlo.
+- **`/admin-automazioni inneschi elenco`** — Gli inneschi del server.
+- **`/admin-automazioni inneschi togli`** — Toglie un innesco.
+- **`/admin-automazioni script errori`** — Gli ultimi 10 errori dello script di un tag.
+- **`/admin-automazioni slash elenco`** — I comandi e i menu del server.
+- **`/admin-automazioni slash menu`** — Voci del menu col tasto destro (su un utente o un messaggio) che rispondono con un tag.
+- **`/admin-automazioni slash pubblica`** — Crea un comando del server che risponde con un tag.
+- **`/admin-automazioni slash togli`** — Toglie un comando del server.
 
 ## Admin: AutoMod
 
@@ -887,6 +899,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 19:
 - **`/tag elimina`** — Elimina un tag che hai creato tu.
 - **`/tag modifica`** — Cambia il testo di un tag che hai creato tu.
 - **`/tag prendi`** — Prendi un tag il cui autore ha lasciato il server.
+- **`/tag prova`** — Prova uno script di tag: non salva niente e non scrive i dati veri.
 - **`/tag usa`** — Usa un comando personalizzato di questo server.
 
 ## Ticket

@@ -27,6 +27,7 @@ from core.phishing_logic import carica_lista_locale, e_phishing
 from core.repositories.custom_command_repo import custom_command_repo
 from core.repositories.embed_bottoni_repo import MAX_BOTTONI, embed_bottoni_repo
 from core.repositories.saved_embed_repo import saved_embed_repo
+from core.repositories.tag_inneschi_repo import tag_inneschi_repo
 from core.safe_http import url_e_sicuro
 from core.ui_base import BaseLayoutView, BaseModal, BaseView, _utente_o_server_in_blacklist
 
@@ -61,13 +62,20 @@ class BottoneTag(
         lingua = await lingua_interazione(interaction)
         if interaction.guild is None or interaction.guild.id != self.guild_id:
             return
+        innesco = await tag_inneschi_repo.bottone(self.guild_id, self.embed, self.posizione)
+        cog = interaction.client.get_cog("CustomCommandsCog")
+        if innesco is not None and cog is not None and isinstance(interaction.user, discord.Member):
+            # innesco «bottone» (B27): il tag risponde nel canale, davanti a tutti; a chi preme resta un avviso privato
+            await interaction.response.defer(ephemeral=True)
+            motivo = await cog.esegui_innesco(interaction.guild, innesco["tag"], interaction.channel, membro=interaction.user)
+            await interaction.followup.send(t(motivo or "inn_bottone_fatto", lingua), ephemeral=True)
+            return
         b = await embed_bottoni_repo.prendi(self.guild_id, self.embed, self.posizione)
         tag = await custom_command_repo.get_tag(self.guild_id, b.valore) if b and b.tipo == "tag" else None
         if tag is None:
             await interaction.response.send_message(t("bottoni_tag_sparito", lingua), ephemeral=True)
             return
         testo = tag.response
-        cog = interaction.client.get_cog("CustomCommandsCog")
         if cog is not None and isinstance(interaction.user, discord.Member):
             await interaction.response.defer(ephemeral=True)
             testo, _ = await cog._prepara(tag, interaction.user, interaction.channel, "")

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import time
+from zoneinfo import ZoneInfo
 from datetime import datetime, timedelta, timezone
 
 import discord
@@ -41,7 +42,13 @@ from core.custom_command_logic import (
     valida_prefisso,
 )
 from core.database import db
-from core.i18n import testo_per
+from core.repositories.blacklist_repo import blacklist_repo
+from core import tag_script_logic as tag_script
+from core.i18n import testo_guild, testo_per
+from core.repositories.tag_inneschi_repo import tag_inneschi_repo
+from core.repositories.tag_script_repo import massimo_chiavi, tag_script_repo
+from core.tag_script_logic import ha_script
+from core.tag_eliminazione import pulisci_tag_eliminato
 from core.nome_logic import normalizza_nome
 from core.lista_limiti_logic import righe_entro_limite
 from core.premium import PremiumModule, registry
@@ -49,6 +56,7 @@ from core.repositories.custom_command_repo import custom_command_repo
 from core.scheduler import in_seconds, scheduler
 from core.role_safety import check_role_assignable, motivo_ruolo_automatico_non_assegnabile
 
+PAUSA_MINIMA_INNESCO = 3  # secondi tra due richieste dello stesso utente, anche con cooldown 0
 logger = logging.getLogger("iyokai.custom_commands")
 
 MODULE_CUSTOM_COMMANDS = "custom_commands"
@@ -85,9 +93,10 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         _cache_prefissi.set(guild_id, (prefisso, ora + _TTL_PREFISSO))
         return prefisso
 
-    async def _prepara(self, tag, membro: discord.Member, canale, argomenti: str, bersaglio: discord.abc.User | None = None):
-        """(testo, nota sul ruolo): applica il ruolo del tag e costruisce la risposta (una a caso se ce ne sono con peso)."""
-        nota = await self._applica_ruolo(tag, membro)
+    async def _prepara(self, tag, membro: discord.Member, canale, argomenti: str, bersaglio: discord.abc.User | None = None,
+                       ruolo: bool = True):
+        """(testo, nota sul ruolo): applica il ruolo del tag (se `ruolo`) e costruisce la risposta (una a caso se ce ne sono con peso)."""
+        nota = await self._applica_ruolo(tag, membro) if ruolo else None
         base = scegli_pesata(await custom_command_repo.get_risposte(tag.guild_id, tag.name)) or tag.response
         valori = {
             "user": membro.mention,
@@ -97,6 +106,21 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             "args": argomenti,
             "bersaglio": bersaglio.mention if bersaglio is not None else "",
         }
+        if ha_script(base):
+            autore = getattr(tag, "created_by", None)
+            creatore = membro.guild.get_member(autore) if autore else None
+            staff = creatore is not None and creatore.guild_permissions.manage_guild
+            archivio = tag_script_repo.archivio(tag.guild_id, lambda: massimo_chiavi(tag.guild_id, self.bot), autore=autore,
+                                                massimo_autore=None if staff else tag_script.MAX_CHIAVI_AUTORE)
+            esito = await tag_script.esegui(base, tag_script.Contesto(valori=valori, adesso=datetime.now(ZoneInfo("Europe/Rome")), archivio=archivio))
+            if esito.errore is not None:
+                logger.info("Tag %s: script fermato (%s).", tag.name, esito.errore.chiave)
+                try:
+                    await tag_script_repo.registra_errore(tag.guild_id, tag.name, esito.errore.chiave, esito.errore.dettaglio)
+                except Exception:
+                    logger.warning("Errore dello script del tag %s non registrato.", tag.name, exc_info=True)
+                return await testo_guild(membro.guild, "tag_script_fermato", nome=tag.name), nota
+            base = esito.testo
         return costruisci_risposta(base, valori).strip() or TESTO_VUOTO, nota
 
     @staticmethod
@@ -201,11 +225,12 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         return None
 
     @staticmethod
-    def _pausa(tag, guild_id: int, user_id: int) -> float:
+    def _pausa(tag, guild_id: int, user_id: int, minimo: int = 0) -> float:
         chiave = (guild_id, tag.name, user_id)
         ora = datetime.now(timezone.utc)
-        residuo = pausa_residua(_ultimo_uso.get(chiave), ora, tag.cooldown_seconds)
-        if residuo == 0 and tag.cooldown_seconds > 0:
+        attesa = max(tag.cooldown_seconds, minimo)
+        residuo = pausa_residua(_ultimo_uso.get(chiave), ora, attesa)
+        if residuo == 0 and attesa > 0:
             _ultimo_uso.set(chiave, ora)
         return residuo
 
@@ -256,6 +281,43 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             except discord.HTTPException:
                 pass  # al bot può mancare «Gestire i messaggi»: il tag ha risposto lo stesso
         await custom_command_repo.add_use(message.guild.id, nome)
+
+    @staticmethod
+    async def _bloccato(guild_id: int, user_id: int) -> bool:
+        """Utente o server in blacklist (come i componenti di core/ui_base, ma senza interazione a cui rispondere)."""
+        try:
+            return await blacklist_repo.is_user_blacklisted(user_id) or await blacklist_repo.is_guild_blacklisted(guild_id)
+        except Exception:
+            logger.warning("Blacklist non letta per l'innesco (utente %s).", user_id, exc_info=True)
+            return False
+
+    async def esegui_innesco(self, guild: discord.Guild, nome: str, canale, *, membro: discord.Member | None = None) -> str | None:
+        """Fa partire il tag `nome` per un innesco (B27). `membro` è chi l'ha fatto scattare (reazione, ruolo, bottone); a tempo
+        è None e parla il bot, senza toccare ruoli. Ritorna la chiave del motivo se il tag non può partire, altrimenti None."""
+        tag = await custom_command_repo.get_tag(guild.id, nome)
+        if tag is None:
+            return "inn_tag_manca"
+        if tag.solo_nsfw and not (hasattr(canale, "is_nsfw") and canale.is_nsfw()):
+            return "tag_solo_nsfw"
+        if membro is not None:
+            if await self._bloccato(guild.id, membro.id):
+                return "inn_bloccato"
+            rifiuto = self._rifiuto(tag, membro, canale, None) or await self._rifiuto_gruppo(tag, membro, canale)
+            if rifiuto is not None:
+                return rifiuto
+            if self._pausa(tag, guild.id, membro.id, minimo=PAUSA_MINIMA_INNESCO) > 0:
+                return "inn_pausa"
+        if not canale.permissions_for(guild.me).send_messages:
+            return "inn_canale_senza_permesso"
+        testo, _ = await self._prepara(tag, membro or guild.me, canale, "", None, ruolo=membro is not None)
+        dest = self._destinazione(tag, membro, canale)[0] if membro is not None else canale
+        try:
+            await self._manda(dest.send, tag, testo)
+        except discord.HTTPException:
+            logger.warning("Innesco del tag %s: invio fallito nel canale %s", nome, getattr(canale, "id", None))
+            return "tag_invio_fallito"
+        await custom_command_repo.add_use(guild.id, nome)
+        return None
 
     async def _nomi_per_completamento(self, interaction: discord.Interaction, current: str):
         if interaction.guild is None:
@@ -468,6 +530,8 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             return
         normalizzato = normalizza_nome(nome)
         fatto = normalizzato is not None and await custom_command_repo.delete_tag(interaction.guild.id, normalizzato)
+        if fatto:
+            await pulisci_tag_eliminato(self.bot, interaction.guild.id, normalizzato)
         await interaction.response.send_message(
             await testo_per(interaction, "customcomman_comando_eliminato") if fatto else await testo_per(interaction, "customcomman_non_esiste_un_comando_con"), ephemeral=True
         )
