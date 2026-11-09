@@ -2068,6 +2068,8 @@
   "starboard_classifica_piede": "Page {pagina} of {pagine}",
   "giveaway_riga_escluso": "Cannot take part: {ruolo}",
   "giveaway_riga_ruolo_premio": "Extra prize: the role {ruolo}",
+  "giveaway_fine_nessuno": "🎉 The giveaway for **{premio}** has ended, but nobody took part.",
+  "giveaway_fine_vincitori": "🎉 Congratulations {menzioni}! You won **{premio}**!",
   "giveaway_riestratto": "🎉 New draw! Congratulations {menzioni}: you won **{premio}**!",
   "giveaway_log_vincitori": "Winners: {vincitori}",
   "giveaway_log_ruolo": "Prize role: given to {riusciti}, failed for {falliti}",

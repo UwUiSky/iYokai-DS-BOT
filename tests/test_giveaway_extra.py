@@ -210,6 +210,8 @@ def test_testo_annuncio():
     g = SimpleNamespace(prize="Nitro")
     assert "nessuno ha partecipato" in _annuncio(g, [], "it")
     assert "Nuova estrazione" in _annuncio(g, [5], "it", riestrazione=True)
+    assert "Congratulazioni" in _annuncio(g, [5], "it") and "Congratulations" in _annuncio(g, [5], "en-US")  # lingua del server
+    assert "nobody took part" in _annuncio(g, [], "en-US")
 
 
 # ------------------------------------------------------------------ comandi e bottoni

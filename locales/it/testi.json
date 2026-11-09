@@ -2068,6 +2068,8 @@
   "starboard_classifica_piede": "Pagina {pagina} di {pagine}",
   "giveaway_riga_escluso": "Non possono partecipare: {ruolo}",
   "giveaway_riga_ruolo_premio": "Premio extra: il ruolo {ruolo}",
+  "giveaway_fine_nessuno": "🎉 Il giveaway per **{premio}** è terminato, ma nessuno ha partecipato.",
+  "giveaway_fine_vincitori": "🎉 Congratulazioni {menzioni}! Avete vinto **{premio}**!",
   "giveaway_riestratto": "🎉 Nuova estrazione! Congratulazioni {menzioni}: avete vinto **{premio}**!",
   "giveaway_log_vincitori": "Vincitori: {vincitori}",
   "giveaway_log_ruolo": "Ruolo premio: dato a {riusciti}, non riuscito per {falliti}",

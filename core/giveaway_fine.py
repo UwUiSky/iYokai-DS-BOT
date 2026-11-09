@@ -24,11 +24,11 @@ PAUSA_TRA_MESSAGGI_PRIVATI = 0.5  # secondi: i vincitori sono al massimo 50
 def testo_annuncio(giveaway, vincitori: list[int], lingua: str, *, riestrazione: bool = False) -> str:
     """Il messaggio finale. Il premio è testo libero: i ping li decide `allowed_mentions` (solo i vincitori)."""
     if not vincitori:
-        return f"🎉 Il giveaway per **{giveaway.prize}** è terminato, ma nessuno ha partecipato."
+        return t("giveaway_fine_nessuno", lingua, premio=giveaway.prize)
     menzioni = ", ".join(f"<@{uid}>" for uid in vincitori)
     if riestrazione:
         return t("giveaway_riestratto", lingua, menzioni=menzioni, premio=giveaway.prize)
-    return f"🎉 Congratulazioni {menzioni}! Avete vinto **{giveaway.prize}**!"
+    return t("giveaway_fine_vincitori", lingua, menzioni=menzioni, premio=giveaway.prize)
 
 
 async def _membro(guild, user_id: int):
