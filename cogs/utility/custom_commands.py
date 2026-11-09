@@ -47,6 +47,7 @@ from core.i18n import testo_guild, testo_per
 from core.repositories.tag_inneschi_repo import tag_inneschi_repo
 from core.repositories.tag_script_repo import massimo_chiavi, tag_script_repo
 from core.tag_script_logic import ha_script
+from core.tag_eliminazione import pulisci_tag_eliminato
 from core.nome_logic import normalizza_nome
 from core.lista_limiti_logic import righe_entro_limite
 from core.premium import PremiumModule, registry
@@ -512,11 +513,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         normalizzato = normalizza_nome(nome)
         fatto = normalizzato is not None and await custom_command_repo.delete_tag(interaction.guild.id, normalizzato)
         if fatto:
-            try:
-                await tag_script_repo.togli_errori(interaction.guild.id, normalizzato)  # gli errori dello script vanno col tag
-                await tag_inneschi_repo.togli_per_tag(interaction.guild.id, normalizzato)  # e così gli inneschi
-            except Exception:
-                logger.warning("Errori dello script del tag %s non tolti.", normalizzato, exc_info=True)
+            await pulisci_tag_eliminato(self.bot, interaction.guild.id, normalizzato)
         await interaction.response.send_message(
             await testo_per(interaction, "customcomman_comando_eliminato") if fatto else await testo_per(interaction, "customcomman_non_esiste_un_comando_con"), ephemeral=True
         )

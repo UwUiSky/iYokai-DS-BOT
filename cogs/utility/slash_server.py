@@ -20,6 +20,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core import slash_server_logic as L
+from core.config import config
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.custom_command_logic import MAX_ARGOMENTI
@@ -38,6 +39,13 @@ _TIPI_MENU = [app_commands.Choice(name=n, value=v) for n, v in (("su un utente",
 _TIPO_DISCORD = {"utente": discord.AppCommandType.user, "messaggio": discord.AppCommandType.message}
 
 
+async def monta_per_avvio(bot: commands.Bot) -> None:
+    """Unico punto d'avvio: i comandi dei server entrano nell'albero PRIMA della sync (sennò Discord li perde)."""
+    cog = bot.get_cog("SlashServerCog")
+    if cog is not None:
+        await cog.monta_tutti()
+
+
 def adesso() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -47,7 +55,6 @@ class SlashServerCog(CogConGruppi, commands.Cog):
         self.bot = bot
         self._montati: dict[int, list[tuple[str, discord.AppCommandType]]] = {}
         self._blocchi: dict[int, asyncio.Lock] = {}
-        self._avviato = False
 
     async def cog_load(self) -> None:
         await super().cog_load()
@@ -63,6 +70,15 @@ class SlashServerCog(CogConGruppi, commands.Cog):
         for nome, tipo in self._montati.pop(guild_id, []):
             self.bot.tree.remove_command(nome, guild=discord.Object(id=guild_id), type=tipo)
 
+    def _aggiungi(self, voce, guild: discord.Object, nome: str) -> bool:
+        """Aggiunge una voce all'albero del server; una collisione si salta e si scrive nel log."""
+        try:
+            self.bot.tree.add_command(voce, guild=guild)
+        except (app_commands.CommandAlreadyRegistered, ValueError, TypeError):
+            logger.warning("Comando del server %s «%s» non montato: nome già usato.", guild.id, nome, exc_info=True)
+            return False
+        return True
+
     async def _monta(self, guild_id: int) -> None:
         """Mette nell'albero del server i comandi e i menu del database (e toglie quelli di prima). Non parla con Discord."""
         self._smonta(guild_id)
@@ -73,17 +89,26 @@ class SlashServerCog(CogConGruppi, commands.Cog):
             if r["sotto"]:
                 gruppo = gruppi.get(r["nome"])
                 if gruppo is None:
-                    gruppo = gruppi[r["nome"]] = app_commands.Group(name=r["nome"], description="Comandi di questo server", guild_only=True)
-                    self.bot.tree.add_command(gruppo, guild=guild)
+                    nuovo = app_commands.Group(name=r["nome"], description="Comandi di questo server", guild_only=True)
+                    if not self._aggiungi(nuovo, guild, r["nome"]):
+                        continue
+                    gruppo = gruppi[r["nome"]] = nuovo
                     montati.append((r["nome"], discord.AppCommandType.chat_input))
                 gruppo.add_command(comando)
-            else:
-                self.bot.tree.add_command(comando, guild=guild)
+            elif self._aggiungi(comando, guild, r["nome"]):
                 montati.append((r["nome"], discord.AppCommandType.chat_input))
         for r in await slash_server_repo.menu(guild_id):
-            self.bot.tree.add_command(self._menu(r["nome"], r["tipo"], guild_id), guild=guild)
-            montati.append((r["nome"], _TIPO_DISCORD[r["tipo"]]))
+            if self._aggiungi(self._menu(r["nome"], r["tipo"], guild_id), guild, r["nome"]):
+                montati.append((r["nome"], _TIPO_DISCORD[r["tipo"]]))
         self._montati[guild_id] = montati
+
+    async def monta_tutti(self) -> None:
+        """Rimette nell'albero i comandi di tutti i server (senza sync). Da chiamare prima di ogni `tree.sync(guild=...)`."""
+        for guild_id in await slash_server_repo.server_con_voci():
+            try:
+                await self._monta(guild_id)
+            except Exception:
+                logger.warning("Comandi del server %s non montati.", guild_id, exc_info=True)
 
     def _comando(self, nome: str, sotto: str, descrizione: str, guild_id: int) -> app_commands.Command:
         async def callback(interaction: discord.Interaction, argomenti: app_commands.Range[str, 0, MAX_ARGOMENTI] = "") -> None:
@@ -154,6 +179,11 @@ class SlashServerCog(CogConGruppi, commands.Cog):
             await slash_server_repo.salva_sync(guild_id, ora, impronta, nomi, ora.date(), usate + nuove)
             return "fatto", 0
 
+    async def dopo_tag_eliminato(self, guild_id: int) -> None:
+        """Il tag non c'è più: l'albero si rimonta senza i suoi comandi e la sync segue la regola dei 5 minuti."""
+        await self._monta(guild_id)
+        await self.sincronizza(guild_id)
+
     async def _metti_in_coda(self, guild_id: int, stato, quando: datetime) -> None:
         """Una sola sync in coda per server: i cambi in più finiscono tutti nella stessa."""
         if stato is not None and stato["in_coda"]:
@@ -167,18 +197,6 @@ class SlashServerCog(CogConGruppi, commands.Cog):
         await self._monta(guild_id)
         await self.sincronizza(guild_id)
 
-    @commands.Cog.listener()
-    async def on_ready(self) -> None:
-        """All'avvio i comandi dei server si rimettono nell'albero (senza sync: Discord li ha già) così rispondono."""
-        if self._avviato:
-            return
-        self._avviato = True
-        for guild_id in await slash_server_repo.server_con_voci():
-            try:
-                await self._monta(guild_id)
-            except Exception:
-                logger.warning("Comandi del server %s non montati.", guild_id, exc_info=True)
-
     # ------------------------------------------------------------ comandi
     async def _pronto(self, interaction: discord.Interaction) -> bool:
         if interaction.guild is None:
@@ -190,7 +208,13 @@ class SlashServerCog(CogConGruppi, commands.Cog):
         return True
 
     def _globali(self) -> set[str]:
-        return {c.name for c in self.bot.tree.get_commands()}
+        """Nomi che il server non può usare: globali, /owner e ogni comando di server che non è nostro."""
+        nomi = {c.name for c in self.bot.tree.get_commands()} | set(L.NOMI_RISERVATI)
+        main = getattr(config, "MAIN_GUILD_ID", None)
+        if main:
+            nostri = {n for n, _ in self._montati.get(main, [])}
+            nomi |= {c.name for c in self.bot.tree.get_commands(guild=discord.Object(id=main)) if c.name not in nostri}
+        return nomi
 
     async def _dire(self, interaction: discord.Interaction, chiave: str, **valori) -> None:
         await interaction.response.send_message(await testo_per(interaction, chiave, **valori), ephemeral=True, allowed_mentions=_NESSUNA)

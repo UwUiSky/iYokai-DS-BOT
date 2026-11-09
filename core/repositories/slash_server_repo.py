@@ -54,6 +54,13 @@ class SlashServerRepository:
         return await self._pool.fetchrow(
             "SELECT nome, sotto, tag, descrizione FROM comandi_server WHERE guild_id = $1 AND nome = $2 AND sotto = $3", guild_id, nome, sotto)
 
+    async def togli_per_tag(self, guild_id: int, tag: str) -> int:
+        """Toglie comandi e menu che rispondono con quel tag; dice quante voci."""
+        n = 0
+        for tabella in ("comandi_server", "menu_server"):
+            n += int((await self._pool.execute(f"DELETE FROM {tabella} WHERE guild_id = $1 AND tag = $2", guild_id, tag)).split()[-1])
+        return n
+
     # ------------------------------------------------------------ menu
     async def aggiungi_menu(self, guild_id: int, nome: str, tipo: str, tag: str, creato_da: int) -> str:
         """"ok" (nuovo o aggiornato) o "pieno" (5 per tipo)."""

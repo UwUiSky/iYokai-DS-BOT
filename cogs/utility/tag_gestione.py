@@ -24,7 +24,7 @@ from core.database import db
 from core.i18n import testo_per
 from core.nome_logic import normalizza_nome
 from core.repositories.custom_command_repo import custom_command_repo
-from core.repositories.tag_inneschi_repo import tag_inneschi_repo
+from core.tag_eliminazione import pulisci_tag_eliminato
 from core.tag_pacchetti_logic import (
     MAX_BYTE_PACCHETTO, PacchettoErrato, leggi_pacchetto, nome_gruppo_valido, nuovo_codice, pacchetto_da_tag, pacchetto_in_file,
 )
@@ -151,7 +151,7 @@ class TagGestioneCog(CogConGruppi, commands.Cog):
         normalizzato = normalizza_nome(nome)
         fatta = bool(normalizzato) and await custom_command_repo.delete_tag_di(interaction.guild.id, normalizzato, interaction.user.id)
         if fatta:
-            await tag_inneschi_repo.togli_per_tag(interaction.guild.id, normalizzato)
+            await pulisci_tag_eliminato(self.bot, interaction.guild.id, normalizzato)
         await self._dire(interaction, "tag_eliminato" if fatta else "tag_non_tuo")
 
     @comando_di_gruppo("tag", nome="prendi", descrizione="Prendi un tag il cui autore ha lasciato il server.")

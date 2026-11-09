@@ -239,10 +239,10 @@ async def test_togli_smonta_e_sincronizza(cog, monkeypatch):
 async def test_all_avvio_si_rimonta_senza_sincronizzare(cog):
     await cog.repo.pubblica(G, "regole", "", "regole", "d", 1)
     await cog.repo.aggiungi_menu(G, "Menu", "utente", "regole", 1)
-    await cog.on_ready()
+    await cog.monta_tutti()
     assert cog.bot_tree.get_command("regole", guild=discord.Object(id=G)) is not None
     cog.bot_tree.sync.assert_not_awaited()
-    await cog.on_ready()  # una volta sola
+    await cog.monta_tutti()  # idempotente
     assert len(cog._montati[G]) == 2
 
 

@@ -339,6 +339,14 @@ class iYokaiBot(commands.AutoShardedBot):
         owner_nel_server = bool(config.MAIN_GUILD_ID) and registra_owner(
             self.tree, config.MAIN_GUILD_ID
         )
+        # I comandi dei server (tag pubblicati) entrano nell'albero PRIMA di
+        # ogni sync: la sync è una sovrascrittura in blocco.
+        try:
+            from cogs.utility.slash_server import monta_per_avvio
+
+            await monta_per_avvio(self)
+        except Exception:
+            logger.warning("Comandi dei server non montati prima della sync.", exc_info=True)
         # Si sincronizza solo se l'albero è cambiato (impronta salvata nel
         # database): la sync è una sovrascrittura in blocco e ha un tetto
         # giornaliero (mappa F7 §6). Un errore non ferma l'avvio: si riprova

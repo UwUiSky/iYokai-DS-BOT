@@ -22,7 +22,8 @@ INTERVALLO_SYNC = 300     # secondi tra due sync dello stesso server
 MAX_CREAZIONI_GIORNO = 200  # LIMITI tab. 85
 AZIONE_SYNC = "slash_server_sync"
 TIPI_MENU = ("utente", "messaggio")
-PREFISSI_RISERVATI = ("admin", "mod", "founder")  # D60
+PREFISSI_RISERVATI = ("admin", "mod", "founder", "owner")  # D60
+NOMI_RISERVATI = ("owner",)
 
 _NOME_COMANDO = re.compile(r"^[a-z0-9_-]{1,32}$")
 _NOME_MENU = re.compile(r"^[^\W_][\w \-]{0,31}$", re.UNICODE)
