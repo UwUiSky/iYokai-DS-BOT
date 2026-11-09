@@ -1588,3 +1588,14 @@ Serve: due server di prova A e B con il bot, un canale di testo ciascuno (il bot
 - Cancella a mano il webhook durante la chiamata e scrivi: la chiamata si chiude, senza ripetere. Lascia 10 minuti di silenzio: chiamata chiusa.
 - Riavvia il bot durante una chiamata: al riavvio i webhook rimasti vengono tolti. `/admin-giochi telefono registro`: solo server, ora, durata, nessun testo.
 - Revisione r24fun: un testo su minori (es. «teen di 13 anni») non arriva, nemmeno con un effetto. Un allegato arriva come indirizzo solo se il canale di B ha il limite d'età (altrimenti il messaggio cade). Togli il limite d'età a B durante la chiamata: i messaggi di A con allegati o da canale per adulti non passano più. `/admin-giochi telefono consenso attivo:no` su uno dei due chiude la chiamata. Chi non ha «Gestisci messaggi» né ha chiamato non può usare `segnala`.
+
+## giro r152img — copia sicura delle immagini (D61, #152)
+Serve: log avanzato acceso, evento «messaggi cancellati» acceso, `WEB_ALLEGATI_PUBLIC_URL` = sotto-dominio separato (es. `https://allegati.example.invalid`) che il proxy manda alla porta del pannello; `IYOKAI_ALLEGATI_DIR` fuori dalla cartella del sito; un server di backup con mirror.
+- Scrivi un messaggio con una foto (JPG o PNG) e cancellalo: nel log compare «Copie salvate» con il link «scarica» e una anteprima PNG; il file nel canale dei log NON è l'originale. Il file in `IYOKAI_ALLEGATI_DIR` ha nome casuale di 32 cifre e permessi 0640.
+- Apri il link «scarica» dal browser: parte il download (mai l'apertura in linea). Negli strumenti del browser: `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: sandbox`, nessun `Set-Cookie`. Con le stesse parti del link sul dominio del pannello: «Non trovato». Cambia una cifra del link: «Non trovato». Dopo 7 giorni il link non vale più.
+- Rinomina un file HTML in `foto.png` e invialo, poi cancellalo: nel log solo il nome, nessuna anteprima; il download (se c'è) è un file generico mai aperto dal browser.
+- Una foto trappola nota (o sospetta) cancellata: nel log «immagine con contenuto sospetto, non conservata», nessun file.
+- Backup: scrivi una foto nel server principale: nel mirror arriva un PNG ricodificato (nome `.png`); una sospetta o un `.png` finto non arriva. Un PDF arriva come prima.
+- Ticket: proponi una risposta standard da un messaggio staff con foto e PDF: nel canale dei log la foto è un PNG nuovo, il PDF uguale.
+- Spam trap con ban: il transcript ha le miniature; con una foto gigantesca (oltre 16 milioni di pixel) niente miniatura e il bot non rallenta.
+- `/privacy` (richiesta di cancellazione di un utente che aveva foto copiate): le righe di `allegati_copie` spariscono e i file orfani sono tolti entro un'ora. Dopo 30 giorni le copie spariscono da sole.
