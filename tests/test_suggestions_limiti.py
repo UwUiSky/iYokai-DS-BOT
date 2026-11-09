@@ -34,6 +34,9 @@ def _staff(user_id):
 def repo(clean_db, monkeypatch):
     r = SuggestionRepository(pool_provider=lambda: clean_db)
     monkeypatch.setattr(sg, "suggestion_repo", r)
+    from core.repositories.suggestions_config_repo import SuggestionsConfigRepository
+
+    monkeypatch.setattr(sg, "suggestions_config_repo", SuggestionsConfigRepository(pool_provider=lambda: clean_db))
     monkeypatch.setattr(sg.db, "is_module_active_for_guild", AsyncMock(return_value=True))
     monkeypatch.setattr(sg.db, "get_guild_setting", AsyncMock(return_value=None))
     return r

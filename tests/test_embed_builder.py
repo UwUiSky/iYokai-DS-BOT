@@ -136,12 +136,13 @@ def scena(monkeypatch):
     cog = EmbedBuilderCog(MagicMock())
     repo = MagicMock()
     repo.create = AsyncMock(return_value="ok")
-    repo.get = AsyncMock(return_value=SimpleNamespace(name="a", data=json.loads(a_json(_e())), channel_id=None, message_id=None))
+    repo.get = AsyncMock(return_value=SimpleNamespace(name="a", data=json.loads(a_json(_e())), channel_id=None, message_id=None, formato="classico"))
     repo.update_data = AsyncMock(return_value=True)
     repo.set_published = AsyncMock()
     repo.list = AsyncMock(return_value=[])
     repo.delete = AsyncMock(return_value=True)
     monkeypatch.setattr(modulo, "saved_embed_repo", repo)
+    monkeypatch.setattr(modulo.embed_bottoni_repo, "elenco", AsyncMock(return_value=[]))  # B4: nessun bottone
     monkeypatch.setattr(modulo, "url_e_sicuro", AsyncMock(return_value=True))
     db_finto = MagicMock()
     db_finto.is_module_active_for_guild = AsyncMock(return_value=True)
@@ -192,7 +193,7 @@ async def test_pubblica_manda_l_embed_e_ricorda_il_messaggio(scena):
     await scena.pubblica.callback(scena, i, "a", canale)
     assert isinstance(canale.send.await_args.kwargs["embed"], discord.Embed)
     assert canale.send.await_args.kwargs["allowed_mentions"].everyone is False
-    scena.repo.set_published.assert_awaited_once_with(i.guild.id, "a", 900, 1234)
+    scena.repo.set_published.assert_awaited_once_with(i.guild.id, "a", 900, 1234, "classico")
 
 
 @pytest.mark.asyncio
@@ -208,7 +209,7 @@ async def test_pubblica_senza_permessi_non_invia(scena):
 @pytest.mark.asyncio
 async def test_modifica_aggiorna_il_messaggio_gia_pubblicato_prima_di_salvare(scena):
     scena.repo.get.return_value = SimpleNamespace(
-        name="a", data=json.loads(a_json(_e())), channel_id=900, message_id=1234
+        name="a", data=json.loads(a_json(_e())), channel_id=900, message_id=1234, formato="classico"
     )
     messaggio = SimpleNamespace(edit=AsyncMock())
     canale = fake_text_channel(900)
@@ -218,14 +219,14 @@ async def test_modifica_aggiorna_il_messaggio_gia_pubblicato_prima_di_salvare(sc
     i = fake_interaction(guild=server)
     await scena.modifica.callback(scena, i, "a", titolo="Nuovo")
     messaggio.edit.assert_awaited_once()
-    assert messaggio.edit.await_args.kwargs["embed"].title == "Nuovo"
+    assert messaggio.edit.await_args.kwargs["embeds"][0].title == "Nuovo"
     scena.repo.update_data.assert_awaited_once()
 
 
 @pytest.mark.asyncio
 async def test_modifica_con_discord_che_rifiuta_non_salva(scena):
     scena.repo.get.return_value = SimpleNamespace(
-        name="a", data=json.loads(a_json(_e())), channel_id=900, message_id=1234
+        name="a", data=json.loads(a_json(_e())), channel_id=900, message_id=1234, formato="classico"
     )
     messaggio = SimpleNamespace(edit=AsyncMock(side_effect=discord.HTTPException(MagicMock(status=400, reason="x"), "no")))
     canale = fake_text_channel(900)
@@ -243,7 +244,7 @@ async def test_modifica_campi_aggiunge_e_toglie(scena):
     await scena.modifica.callback(scena, i, "a", campo_nome="N", campo_valore="V", campo_inline=True)
     dati = da_json(json.loads(scena.repo.update_data.await_args.args[2]))
     assert dati.fields == (("N", "V", True),)
-    scena.repo.get.return_value = SimpleNamespace(name="a", data=json.loads(a_json(dati)), channel_id=None, message_id=None)
+    scena.repo.get.return_value = SimpleNamespace(name="a", data=json.loads(a_json(dati)), channel_id=None, message_id=None, formato="classico")
     await scena.modifica.callback(scena, i, "a", togli_campo=1)
     assert da_json(json.loads(scena.repo.update_data.await_args.args[2])).fields == ()
 
@@ -266,7 +267,7 @@ async def test_due_campi_aggiunti_insieme_restano_entrambi(scena):
 
     async def leggi(guild_id, nome):
         await asyncio.sleep(0.005)
-        return SimpleNamespace(name="a", data=json.loads(json.dumps(stato["data"])), channel_id=None, message_id=None)
+        return SimpleNamespace(name="a", data=json.loads(json.dumps(stato["data"])), channel_id=None, message_id=None, formato="classico")
 
     async def scrivi(guild_id, nome, data_json):
         await asyncio.sleep(0.005)

@@ -17,6 +17,7 @@ e annulla quelli del server (UTL-103, `/admin-messaggi promemoria`: è per lo st
 from __future__ import annotations
 
 import logging
+import secrets
 from datetime import datetime, timedelta, timezone
 
 import discord
@@ -30,7 +31,9 @@ from core.duration_logic import format_duration, parse_duration
 from core.i18n import testo_per
 from core.lista_limiti_logic import righe_entro_limite
 from core.premium import PremiumModule, registry
+from core.repositories.promemoria_iscritti_repo import MAX_ISCRITTI, promemoria_iscritti_repo
 from core.scheduler import scheduler
+from core.ui_base import BaseView, _utente_o_server_in_blacklist
 
 logger = logging.getLogger("iyokai.reminders")
 
@@ -45,6 +48,38 @@ MIN_RIPETIZIONE_SECONDI = 30 * 60
 # Promemoria in sospeso per persona: senza tetto i ripetuti nel canale diventano spam.
 MAX_PROMEMORIA_PER_UTENTE = 25
 SOTTOGRUPPO = ("reminder", "Promemoria personali")
+
+
+class BottoneRicordaAnche(
+    discord.ui.DynamicItem[discord.ui.Button], template=r"rem:iscr:(?P<s>[a-f0-9]{6,32})"
+):
+    """«Ricordalo anche a me» sotto un promemoria pubblico. Funziona anche dopo il riavvio."""
+
+    def __init__(self, serie: str, etichetta: str = "Ricordalo anche a me") -> None:
+        super().__init__(
+            discord.ui.Button(label=etichetta[:80], style=discord.ButtonStyle.secondary, custom_id=f"rem:iscr:{serie}")
+        )
+        self.serie = serie
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match):
+        return cls(match["s"])
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
+        # SEC-10: un bottone dinamico non ha una BaseView sopra di sé, il controllo blacklist si fa qui.
+        return not await _utente_o_server_in_blacklist(interaction)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        if interaction.guild is None:
+            return
+        if not await promemoria_iscritti_repo.serie_attiva(self.serie, REMINDER_ACTION_TYPE):
+            await interaction.response.send_message(await testo_per(interaction, "reminders_iscrizione_scaduto"), ephemeral=True)
+            return
+        esito = await promemoria_iscritti_repo.iscrivi(self.serie, interaction.guild.id, interaction.user.id)
+        chiave = {"ok": "reminders_iscritto", "gia": "reminders_gia_iscritto", "pieno": "reminders_iscrizioni_piene"}[esito]
+        await interaction.response.send_message(await testo_per(interaction, chiave, massimo=MAX_ISCRITTI), ephemeral=True)
 
 
 class RemindersCog(CogConGruppi, commands.Cog):
@@ -92,14 +127,21 @@ class RemindersCog(CogConGruppi, commands.Cog):
             channel = guild.get_channel(channel_id) if guild else None
             if isinstance(channel, discord.TextChannel):
                 try:
-                    # Il testo l'ha scritto l'utente: può pingare solo se stesso,
-                    # mai @everyone né ruoli.
+                    # Il testo l'ha scritto l'utente: può pingare solo sé stesso e chi si è iscritto
+                    # (ancora nel server), mai @everyone né ruoli.
+                    destinatari = [user_id]
+                    serie = payload.get("serie")
+                    if serie:
+                        destinatari += [u for u in await promemoria_iscritti_repo.iscritti(serie)
+                                        if u != user_id and guild.get_member(u) is not None]
                     await channel.send(
-                        f"<@{user_id}> {testo}",
+                        " ".join(f"<@{u}>" for u in destinatari) + f" {testo}",
                         allowed_mentions=discord.AllowedMentions(
-                            everyone=False, roles=False, users=[discord.Object(id=user_id)]
+                            everyone=False, roles=False, users=[discord.Object(id=u) for u in destinatari]
                         ),
                     )
+                    if serie and not ripeti:
+                        await promemoria_iscritti_repo.cancella_serie(serie)
                     return
                 except discord.HTTPException:
                     pass
@@ -180,6 +222,7 @@ class RemindersCog(CogConGruppi, commands.Cog):
             payload["ripeti"] = ripeti_secondi
         if nel_canale:
             payload["nel_canale"] = True
+            payload["serie"] = secrets.token_hex(6)  # lo stesso per tutte le ripetizioni: ci si iscrive a quello
         execute_at = datetime.now(timezone.utc) + timedelta(seconds=duration_seconds)
         action_id = await scheduler.schedule(
             guild_id=guild.id,
@@ -193,6 +236,16 @@ class RemindersCog(CogConGruppi, commands.Cog):
         if ripeti_secondi is not None:
             testo += f", poi ogni **{format_duration(ripeti_secondi)}**"
         testo += f" (ID `{action_id}`, usa `/utility reminder cancel` per annullarlo)."
+        if nel_canale:
+            # Pubblico, con il bottone per ricordarlo anche agli altri. Il testo l'ha scritto l'utente: nessuna menzione.
+            vista = BaseView(timeout=None)
+            vista.add_item(BottoneRicordaAnche(payload["serie"], await testo_per(interaction, "reminders_bottone_ricorda", pubblica=True)))
+            pubblico = await testo_per(
+                interaction, "reminders_pubblico", pubblica=True, mention=interaction.user.mention,
+                durata=format_duration(duration_seconds), testo=message[:300], massimo=MAX_ISCRITTI,
+            )
+            await interaction.response.send_message(pubblico[:2000], view=vista, allowed_mentions=discord.AllowedMentions.none())
+            return
         await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(
@@ -242,6 +295,8 @@ class RemindersCog(CogConGruppi, commands.Cog):
             azioni = await scheduler.list_pending_for_user(interaction.user.id, REMINDER_ACTION_TYPE, 100)
             for azione in azioni:
                 await scheduler.cancel(azione["id"])
+                if azione["payload"].get("serie"):
+                    await promemoria_iscritti_repo.cancella_serie(azione["payload"]["serie"])
             await interaction.response.send_message(await testo_per(interaction, "reminders_annullati_promemoria", v1=len(azioni)), ephemeral=True)
             return
         if reminder_id is None:
@@ -268,6 +323,8 @@ class RemindersCog(CogConGruppi, commands.Cog):
             return
 
         await scheduler.cancel(reminder_id)
+        if azione["payload"].get("serie"):
+            await promemoria_iscritti_repo.cancella_serie(azione["payload"]["serie"])
         await interaction.response.send_message(await testo_per(interaction, "reminders_promemoria_annullato"), ephemeral=True)
 
     @staticmethod
@@ -313,4 +370,5 @@ async def setup(bot: commands.Bot) -> None:
     )
     cog = RemindersCog(bot)
     await bot.add_cog(cog)
+    bot.add_dynamic_items(BottoneRicordaAnche)
     scheduler.register_handler(REMINDER_ACTION_TYPE, cog.handle_reminder_fire)

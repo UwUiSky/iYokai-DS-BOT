@@ -517,3 +517,7 @@ Note: sopravvissute 10, 16, 23, 24, 29, 33, 34, 36, 37, 40, 41. Nessun `KNOWN_*`
 | 09/11 | `feat/r18ticket` | `cogs/tickets/tickets.py:_segna_chi_scrive` | Un aggiunto non staff conta come staff (attesa e regole «staff») | bassa | aperto |
 | 09/11 | `feat/r18ticket` | `cogs/tickets/inattivita.py` | 403 su sposta/crea riserva: avviso nel log a ogni giro, senza fermo dopo 3 rifiuti | bassa | aperto |
 | 09/11 | `feat/r18ticket` | `MenuGestisci` nei thread | «Sposta» e «Solo admin» non disponibili (messaggio chiaro); TKT-067 per i thread chiedeva il cambio nel DB | bassa | aperto |
+
+## 09/11/2026 · feat/r19util (#128, D69 B1–B7)
+RIMANDATO solo per `utility` a 19 figli (test_figli_oltre_18: scende a 18 quando `tag` va in `/tag`; decidere se KNOWN_OLTRE_18 nel frattempo). Fix: 122756f User-Agent con contatto; blacklist nei 4 bottoni dinamici; Nominatim giù != città inesistente; pubblicazione salta i già pubblicati; migrazione 0546 indice suggestions(message_id); test suggerimenti_esito/i18n adeguati. Basse aperte: cronometro stoppabile da chiunque; /admin-messaggi salta: cancel+schedule non atomico; serie ripetuta continua se il canale non è più testuale; fuso predefinito fisso Europe/Rome (non per server).
+Avviso ambiente: `scratchpad/env.sh` è sovrascritto da altri agenti (database r19mod): usare un file con nome proprio.

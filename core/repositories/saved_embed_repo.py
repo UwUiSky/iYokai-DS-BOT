@@ -25,6 +25,7 @@ class SavedEmbed:
     data: dict
     channel_id: int | None
     message_id: int | None
+    formato: str = "classico"
 
 
 def _riga(r) -> SavedEmbed:
@@ -35,10 +36,11 @@ def _riga(r) -> SavedEmbed:
         data=json.loads(dati) if isinstance(dati, str) else dati,
         channel_id=r["channel_id"],
         message_id=r["message_id"],
+        formato=r["formato"],
     )
 
 
-_COLONNE = "guild_id, name, data, channel_id, message_id"
+_COLONNE = "guild_id, name, data, channel_id, message_id, formato"
 
 
 class SavedEmbedRepository:
@@ -89,10 +91,14 @@ class SavedEmbedRepository:
         )
         return esito.endswith(" 1")
 
-    async def set_published(self, guild_id: int, name: str, channel_id: int | None, message_id: int | None) -> None:
+    async def set_published(
+        self, guild_id: int, name: str, channel_id: int | None, message_id: int | None, formato: str | None = None
+    ) -> None:
+        """`formato` ("classico" o "v2") si cambia solo quando lo si passa."""
         await self._pool.execute(
-            "UPDATE saved_embeds SET channel_id = $3, message_id = $4 WHERE guild_id = $1 AND name = $2",
-            guild_id, name.lower(), channel_id, message_id,
+            "UPDATE saved_embeds SET channel_id = $3, message_id = $4, formato = COALESCE($5, formato) "
+            "WHERE guild_id = $1 AND name = $2",
+            guild_id, name.lower(), channel_id, message_id, formato,
         )
 
     async def delete(self, guild_id: int, name: str) -> bool:

@@ -34,16 +34,19 @@ class BirthdayRepository:
     def _pool(self) -> asyncpg.Pool:
         return self._pool_provider()
 
-    async def set_birthday(self, guild_id: int, user_id: int, day: int, month: int) -> None:
+    async def set_birthday(
+        self, guild_id: int, user_id: int, day: int, month: int, inserito_da: int | None = None
+    ) -> None:
+        """`inserito_da`: chi lo ha registrato al posto del membro (staff); None se l'ha fatto il membro."""
         await self._pool.execute(
             """
-            INSERT INTO birthdays (guild_id, user_id, day, month) VALUES ($1, $2, $3, $4)
+            INSERT INTO birthdays (guild_id, user_id, day, month, inserito_da) VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (guild_id, user_id) DO UPDATE
-                SET day = EXCLUDED.day, month = EXCLUDED.month,
+                SET day = EXCLUDED.day, month = EXCLUDED.month, inserito_da = EXCLUDED.inserito_da,
                     last_announced_year = CASE WHEN birthdays.day = EXCLUDED.day AND birthdays.month = EXCLUDED.month
                                                THEN birthdays.last_announced_year END
             """,
-            guild_id, user_id, day, month,
+            guild_id, user_id, day, month, inserito_da,
         )
 
     async def get_birthday(self, guild_id: int, user_id: int) -> tuple[int, int] | None:
@@ -51,6 +54,18 @@ class BirthdayRepository:
             "SELECT day, month FROM birthdays WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
         )
         return None if r is None else (r["day"], r["month"])
+
+    async def prossimi(self, guild_id: int, oggi: date, limite: int, salto: int = 0) -> list[tuple[int, int, int]]:
+        """(utente, giorno, mese) dei prossimi compleanni a partire da oggi, poi si riparte da gennaio."""
+        righe = await self._pool.fetch(
+            "SELECT user_id, day, month FROM birthdays WHERE guild_id = $1 "
+            "ORDER BY ((month, day) < ($2::int, $3::int)), month, day, user_id LIMIT $4 OFFSET $5",
+            guild_id, oggi.month, oggi.day, limite, salto,
+        )
+        return [(r["user_id"], r["day"], r["month"]) for r in righe]
+
+    async def conta(self, guild_id: int) -> int:
+        return await self._pool.fetchval("SELECT count(*) FROM birthdays WHERE guild_id = $1", guild_id)
 
     async def remove_birthday(self, guild_id: int, user_id: int) -> bool:
         esito = await self._pool.execute(

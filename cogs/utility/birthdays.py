@@ -11,6 +11,7 @@ Funzioni coperte: SPEC §23 (NF-26)
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 
 import discord
 from discord import app_commands
@@ -32,6 +33,7 @@ logger = logging.getLogger("iyokai.birthdays")
 _SG_COMPLEANNO = ("compleanno", "Il tuo compleanno")
 _SG_COMPLEANNI = ("compleanni", "Auguri di compleanno del server")
 _NESSUNA_MENZIONE = discord.AllowedMentions.none()
+PER_PAGINA = 15
 _MESI = ("gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto",
          "settembre", "ottobre", "novembre", "dicembre")
 
@@ -128,9 +130,18 @@ class BirthdaysCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "birthdays_compleanno_cancellato") if fatto else await testo_per(interaction, "birthdays_non_avevi_un_compleanno_registrato"), ephemeral=True
         )
 
-    @comando_di_gruppo("level", nome="mostra", descrizione="Mostra il compleanno che hai registrato.", sottogruppo=_SG_COMPLEANNO)
-    async def mostra(self, interaction: discord.Interaction) -> None:
+    @comando_di_gruppo("level", nome="mostra", descrizione="Mostra il tuo compleanno o quello di un membro.", sottogruppo=_SG_COMPLEANNO)
+    @app_commands.describe(membro="Di chi (vuoto = il tuo)")
+    async def mostra(self, interaction: discord.Interaction, membro: discord.Member | None = None) -> None:
         if not await self._pronto(interaction):
+            return
+        if membro is not None and membro.id != interaction.user.id:
+            data = await birthday_repo.get_birthday(interaction.guild.id, membro.id)
+            testo = (
+                await testo_per(interaction, "birthdays_di_membro", mention=membro.mention, giorno=data[0], mese=_MESI[data[1] - 1])
+                if data else await testo_per(interaction, "birthdays_membro_senza", mention=membro.mention)
+            )
+            await interaction.response.send_message(testo, ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE)
             return
         data = await birthday_repo.get_birthday(interaction.guild.id, interaction.user.id)
         await interaction.response.send_message(
@@ -138,7 +149,50 @@ class BirthdaysCog(CogConGruppi, commands.Cog):
             ephemeral=True,
         )
 
+    @comando_di_gruppo("level", nome="prossimi", descrizione="I prossimi compleanni del server.", sottogruppo=_SG_COMPLEANNO)
+    @app_commands.describe(pagina="Quale pagina (15 compleanni per pagina)")
+    async def prossimi(self, interaction: discord.Interaction, pagina: app_commands.Range[int, 1, 100] = 1) -> None:
+        if not await self._pronto(interaction):
+            return
+        guild = interaction.guild
+        totale = await birthday_repo.conta(guild.id)
+        if not totale:
+            await interaction.response.send_message(await testo_per(interaction, "birthdays_nessuno_registrato"), ephemeral=True)
+            return
+        pagine = -(-totale // PER_PAGINA)
+        p = min(pagina, pagine)
+        voci = await birthday_repo.prossimi(guild.id, datetime.now(timezone.utc).date(), PER_PAGINA, (p - 1) * PER_PAGINA)
+        righe = [f"**{g} {_MESI[m - 1]}** — <@{u}>" for u, g, m in voci]
+        embed = discord.Embed(
+            title=await testo_per(interaction, "birthdays_prossimi_titolo"), description="\n".join(righe)[:4000], color=discord.Color.blurple()
+        )
+        embed.set_footer(text=await testo_per(interaction, "birthdays_prossimi_pagina", p=p, n=pagine, tot=totale))
+        await interaction.response.send_message(embed=embed, ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE)
+
     # ---- admin
+    @comando_di_gruppo("admin-moduli", nome="membro", descrizione="Registra il compleanno di un membro (solo giorno e mese).", sottogruppo=_SG_COMPLEANNI)
+    @app_commands.describe(membro="Di chi", giorno="Il giorno", mese="Il mese (1-12)")
+    async def membro(
+        self,
+        interaction: discord.Interaction,
+        membro: discord.Member,
+        giorno: app_commands.Range[int, 1, 31],
+        mese: app_commands.Range[int, 1, 12],
+    ) -> None:
+        if not await self._pronto(interaction):
+            return
+        if membro.bot:
+            await interaction.response.send_message(await testo_per(interaction, "birthdays_non_per_bot"), ephemeral=True)
+            return
+        if not data_valida(giorno, mese):
+            await interaction.response.send_message(f"Il {giorno} {_MESI[mese - 1]} non esiste.", ephemeral=True)
+            return
+        await birthday_repo.set_birthday(interaction.guild.id, membro.id, giorno, mese, inserito_da=interaction.user.id)
+        await interaction.response.send_message(
+            await testo_per(interaction, "birthdays_registrato_da_staff", mention=membro.mention, giorno=giorno, mese=_MESI[mese - 1]),
+            ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
+        )
+
     @comando_di_gruppo("admin-moduli", nome="canale", descrizione="Scegli il canale degli auguri (vuoto per spegnerli).", sottogruppo=_SG_COMPLEANNI)
     @app_commands.describe(
         canale="Dove fare gli auguri",

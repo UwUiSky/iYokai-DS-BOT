@@ -28,6 +28,7 @@ class Suggestion:
     decided_at: datetime | None
     created_at: datetime
     decision_reason: str | None = None
+    anonimo: bool = False
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -73,15 +74,16 @@ class SuggestionRepository:
             decided_at=row["decided_at"],
             created_at=row["created_at"],
             decision_reason=row["decision_reason"],
+            anonimo=row["anonimo"],
         )
 
     async def create_suggestion(
-        self, guild_id: int, channel_id: int, user_id: int, suggestion_text: str
+        self, guild_id: int, channel_id: int, user_id: int, suggestion_text: str, anonimo: bool = False
     ) -> int:
         row = await self._pool.fetchrow(
             """
-            INSERT INTO suggestions (guild_id, channel_id, user_id, suggestion_text, status)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO suggestions (guild_id, channel_id, user_id, suggestion_text, status, anonimo)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING id
             """,
             guild_id,
@@ -89,6 +91,7 @@ class SuggestionRepository:
             user_id,
             suggestion_text,
             PENDING,
+            anonimo,
         )
         return row["id"]
 
@@ -134,6 +137,11 @@ class SuggestionRepository:
             motivo,
         )
         return riga is not None
+
+    async def per_messaggio(self, message_id: int) -> Suggestion | None:
+        """Il suggerimento che vive in quel messaggio (per i voti)."""
+        row = await self._pool.fetchrow("SELECT * FROM suggestions WHERE message_id = $1", message_id)
+        return self._row_to_suggestion(row) if row is not None else None
 
     async def delete_suggestion(self, suggestion_id: int) -> None:
         """Toglie un suggerimento mai pubblicato (invio fallito)."""

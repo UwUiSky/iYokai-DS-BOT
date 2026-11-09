@@ -71,6 +71,21 @@ class BaseView(discord.ui.View):
         await _rispondi_con_errore(interaction)
 
 
+class BaseLayoutView(discord.ui.LayoutView):
+    """Come BaseView, per i messaggi con i componenti V2 (D69, B4)."""
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return not await _utente_o_server_in_blacklist(interaction)
+
+    async def on_error(
+        self, interaction: discord.Interaction, error: Exception, item
+    ) -> None:
+        logger.exception(
+            "Errore in un componente UI (%s): %s", type(item).__name__ if item else "?", error
+        )
+        await _rispondi_con_errore(interaction)
+
+
 class BaseModal(discord.ui.Modal):
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         return not await _utente_o_server_in_blacklist(interaction)

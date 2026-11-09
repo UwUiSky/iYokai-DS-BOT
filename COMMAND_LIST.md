@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:03 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:21 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 711 comandi in 41 categorie.**
+**Totale: 731 comandi in 42 categorie.**
 
 ## Admin: AI
 
@@ -232,20 +232,26 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 
 ## Admin: messaggi
 
+- **`/admin-messaggi auto`** — Automatismi: citazioni, correzione link, pubblicazione annunci, accorciatore.
+- **`/admin-messaggi embed bottoni`** — Aggiungi o togli i bottoni di un embed (link o mostra tag).
 - **`/admin-messaggi embed crea`** — Crea un embed e guarda l'anteprima.
 - **`/admin-messaggi embed elenco`** — Mostra gli embed salvati.
 - **`/admin-messaggi embed elimina`** — Elimina un embed salvato (il messaggio pubblicato resta).
+- **`/admin-messaggi embed json`** — Importa un embed da un JSON o esportalo in un file.
 - **`/admin-messaggi embed modifica`** — Cambia un embed salvato (e il messaggio già pubblicato).
 - **`/admin-messaggi embed pubblica`** — Manda un embed salvato in un canale.
+- **`/admin-messaggi fissi elenco`** — Elenca i messaggi fissi del server.
 - **`/admin-messaggi fissi imposta`** — Imposta lo sticky message di un canale.
 - **`/admin-messaggi fissi togli`** — Rimuove lo sticky message di un canale.
 - **`/admin-messaggi programmati annulla`** — Annulla un messaggio programmato.
 - **`/admin-messaggi programmati crea`** — Programma un messaggio.
 - **`/admin-messaggi programmati elenco`** — Mostra i messaggi programmati di questo server.
+- **`/admin-messaggi programmati salta`** — Salta il prossimo giro di un messaggio che si ripete.
 - **`/admin-messaggi promemoria`** — Per lo staff: i promemoria impostati in questo server.
 - **`/admin-messaggi risposte crea`** — Crea una risposta automatica.
 - **`/admin-messaggi risposte elenco`** — Mostra le risposte automatiche del server.
 - **`/admin-messaggi risposte elimina`** — Elimina una risposta automatica.
+- **`/admin-messaggi scrivi`** — Fai scrivere un messaggio al bot in un canale.
 - **`/admin-messaggi tag crea`** — Crea un comando personalizzato.
 - **`/admin-messaggi tag elenco`** — Mostra i comandi personalizzati del server.
 - **`/admin-messaggi tag elimina`** — Elimina un comando personalizzato.
@@ -268,6 +274,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 - **`/admin-moduli candidature elenco`** — I moduli di questo server.
 - **`/admin-moduli candidature elimina`** — Elimina un modulo e le sue risposte.
 - **`/admin-moduli compleanni canale`** — Scegli il canale degli auguri (vuoto per spegnerli).
+- **`/admin-moduli compleanni membro`** — Registra il compleanno di un membro (solo giorno e mese).
 - **`/admin-moduli compleanni ruolo`** — Un ruolo per 24 ore a chi compie gli anni (vuoto per toglierlo).
 - **`/admin-moduli contatori crea`** — Crea un canale che mostra un numero.
 - **`/admin-moduli contatori elenco`** — Mostra i contatori del server.
@@ -415,6 +422,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 ## Aiuto (primo livello)
 
 - **`/Apri ticket`** — Menu «App» (tasto destro)
+- **`/Orari nel mio fuso`** — Menu «App» (tasto destro)
 - **`/Scheda moderazione`** — Menu «App» (tasto destro)
 - **`/Segnala messaggio`** — Menu «App» (tasto destro)
 - **`/cerca-comando`** — Cerca un comando per descrizione.
@@ -588,7 +596,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 - **`/level collezione equipaggia`** — Metti un badge o uno sfondo sul tuo profilo (senza oggetto lo togli).
 - **`/level collezione negozio`** — Mostra badge e sfondi in vendita e quelli che hai.
 - **`/level compleanno imposta`** — Registra il tuo compleanno (solo giorno e mese).
-- **`/level compleanno mostra`** — Mostra il compleanno che hai registrato.
+- **`/level compleanno mostra`** — Mostra il tuo compleanno o quello di un membro.
+- **`/level compleanno prossimi`** — I prossimi compleanni del server.
 - **`/level compleanno rimuovi`** — Cancella il tuo compleanno.
 - **`/level inviti classifica`** — I 10 membri che hanno invitato più persone.
 - **`/level inviti link`** — Il tuo link d'invito personale, che passa dal sito del bot.
@@ -797,6 +806,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 - **`/utility lingua`** — Mostra o cambia la tua lingua personale (italiano o inglese).
 - **`/utility mie-sanzioni`** — Le sanzioni che hai ricevuto in questo server (solo tu le vedi).
 - **`/utility modulo`** — Compila un modulo o una candidatura di questo server.
+- **`/utility novita`** — Le ultime novità del bot.
 - **`/utility ping`** — Controlla se iYokai Main è online e la sua latenza.
 - **`/utility privacy cancella`** — Chiedi la cancellazione dei tuoi dati personali.
 - **`/utility privacy esporta`** — Ricevi una copia dei dati che il bot conserva su di te.
@@ -818,6 +828,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 - **`/utility snipe messaggio`** — Mostra l'ultimo messaggio cancellato in questo canale.
 - **`/utility snipe modifica`** — Mostra l'ultimo messaggio modificato in questo canale.
 - **`/utility snipe reazione`** — Mostra l'ultima reazione rimossa in questo canale.
+- **`/utility strumenti caratteri`** — Nome, codice e categoria Unicode dei caratteri di un testo.
+- **`/utility strumenti cronometro`** — Un cronometro con i bottoni Giro e Ferma.
 - **`/utility suggest`** — Proponi un'idea per questo server.
 - **`/utility tag`** — Usa un comando personalizzato di questo server.
 - **`/utility verifica`** — Verificati in questo server (come il bottone del pannello).
@@ -837,3 +849,14 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 - **`/voice stato`** — Scrivi cosa state facendo nel canale (vuoto: toglie).
 - **`/voice transfer`** — Trasferisci la proprietà del canale.
 - **`/voice unlock`** — Sblocca il canale.
+
+## Web
+
+- **`/web accorcia`** — Accorcia un link (se il server ha acceso il comando).
+- **`/web dizionario`** — Il significato di una parola, da Wikizionario.
+- **`/web emergenza`** — I numeri di emergenza di un paese.
+- **`/web film`** — Informazioni su un film o una serie TV.
+- **`/web gioco`** — Un gioco di Steam: prezzo, data e generi.
+- **`/web meteo`** — Il meteo di una città: adesso e i prossimi giorni.
+- **`/web prezzo`** — Il prezzo di una criptovaluta.
+- **`/web wiki`** — Il riassunto di una voce di Wikipedia.
