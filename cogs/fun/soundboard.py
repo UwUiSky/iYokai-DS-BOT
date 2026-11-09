@@ -29,7 +29,7 @@ from core.i18n import testo_per
 from core.music_settings_logic import channel_not_allowed, load_music_settings
 from core.music_sound_logic import ATTESA_USCITA, PausaUtente, Suono, scelte, trova
 from core.repositories.suoni_ruoli_repo import suoni_ruoli_repo
-from core.suoni_ruoli_logic import MAX_RUOLI_PER_SUONO, MODI, puo_suonare
+from core.suoni_ruoli_logic import MAX_RUOLI_PER_SUONO, MODI, RUOLO_BLOCCO, puo_suonare
 
 logger = logging.getLogger("iyokai.music.suoni")
 
@@ -210,13 +210,19 @@ class SoundboardCog(CogConGruppi, commands.Cog):
             testo = await testo_per(interaction, chiave, suono=trovato.nome, ruolo=ruolo.mention)
         else:
             regole = await suoni_ruoli_repo.regole(guild.id, trovato.valore)
-            if not regole:
+            bloccato = any(r == RUOLO_BLOCCO for r, _ in regole)
+            regole = [(r, m) for r, m in regole if r != RUOLO_BLOCCO]
+            if not regole and not bloccato:
                 testo = await testo_per(interaction, "soundboard_ruoli_vuoto", suono=trovato.nome)
+            elif not regole:
+                testo = await testo_per(interaction, "soundboard_ruoli_bloccato", suono=trovato.nome)
             else:
                 si = await testo_per(interaction, "soundboard_elenco_consentiti")
                 no = await testo_per(interaction, "soundboard_elenco_vietati")
                 righe = [f"{si if m == 'consenti' else no}: <@&{r}>" for r, m in regole]
                 testo = await testo_per(interaction, "soundboard_ruoli_elenco", suono=trovato.nome, elenco="\n".join(righe))
+                if bloccato:
+                    testo += "\n" + await testo_per(interaction, "soundboard_ruoli_bloccato_nota")
         await interaction.followup.send(testo[:2000], ephemeral=True, allowed_mentions=nessuna_menzione)
 
     @commands.Cog.listener()

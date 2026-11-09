@@ -111,13 +111,91 @@ async def test_cog_titolo_passa_dal_circuito_e_prova_soundcloud():
     assert [c.args[0] for c in f.call_args_list] == ["ytmsearch:una canzone", "scsearch:una canzone"]
 
 
+
+# --- prova di una fonte mai appesa -------------------------------------------
+def _dopo_pausa(nome):
+    for i in range(3):
+        ms.registro.errore(nome, "x", adesso=0.0)
+    return ms.PAUSA_SECONDI + 1.0
+
+
 @pytest.mark.asyncio
-async def test_cog_link_spotify_senza_chiavi_non_chiama_lavalink():
+async def test_prova_annullata_non_blocca_la_fonte(monkeypatch):
+    fine = _dopo_pausa("soundcloud")
+    monkeypatch.setattr(ms.time, "monotonic", lambda: fine)
+
+    async def annullata():
+        raise asyncio.CancelledError
+
+    assert ms.registro.puo_provare("soundcloud", fine)
+    with pytest.raises(asyncio.CancelledError):
+        await ms.cerca_link("soundcloud", annullata)
+    assert ms.registro.puo_provare("soundcloud", fine + 1)
+
+
+@pytest.mark.asyncio
+async def test_prova_con_brano_non_trovato_non_blocca_la_fonte(monkeypatch):
+    fine = _dopo_pausa("soundcloud")
+
+    class _Comune(Exception):
+        severity = "common"
+
+    async def tolto():
+        raise _Comune("tolto")
+
+    assert ms.registro.puo_provare("soundcloud", fine)
+    assert await ms.cerca_link("soundcloud", tolto) == []
+    assert ms.registro.puo_provare("soundcloud", fine + 1)
+
+
+@pytest.mark.asyncio
+async def test_url_non_pubblico_non_lascia_la_prova_appesa(monkeypatch):
+    fine = _dopo_pausa("http")
+    monkeypatch.setattr(ms.time, "monotonic", lambda: fine)
     cog = MusicCog(bot=None)
-    assert ms.messaggio_indisponibile("https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC")
-    with patch("wavelink.Pool.fetch_tracks", new=AsyncMock()) as f, patch(
-        "wavelink.Playable.search", new=AsyncMock()
-    ) as s, pytest.raises(ms.FonteNonRisponde):
+    with patch("cogs.music.player.url_e_sicuro", new=AsyncMock(return_value=False)):
+        risultato, _ = await cog._cerca("https://example.com/a.mp3", object())
+        assert risultato is None
+    assert ms.registro.puo_provare("http", fine)
+
+
+@pytest.mark.asyncio
+async def test_titolo_a_pausa_finita_prova_una_sola_richiesta(monkeypatch):
+    fine = _dopo_pausa("youtube")
+    monkeypatch.setattr(ms.time, "monotonic", lambda: fine)
+    chiamate = []
+    via = asyncio.Event()
+
+    async def esegui(query):
+        chiamate.append(query)
+        if query.startswith("ytmsearch:"):
+            await via.wait()
+        return ["ok"]
+
+    primo = asyncio.create_task(ms.cerca_testo("brano", esegui))
+    await asyncio.sleep(0)
+    secondo = await ms.cerca_testo("brano", esegui)  # YouTube è in prova: va su SoundCloud
+    via.set()
+    await primo
+    assert secondo == ["ok"]
+    assert chiamate.count("ytmsearch:brano") == 1
+
+
+@pytest.mark.asyncio
+async def test_link_spotify_senza_chiavi_nel_bot_arriva_a_lavalink():
+    cog = MusicCog(bot=None)
+    with patch("cogs.music.player.url_e_sicuro", new=AsyncMock(return_value=True)), patch(
+        "wavelink.Playable.search", new=AsyncMock(return_value=["ok"])
+    ) as s:
+        risultato, _ = await cog._cerca("https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC", object())
+    assert risultato == ["ok"]
+    s.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_link_spotify_con_lavalink_in_errore_da_fonte_non_risponde():
+    cog = MusicCog(bot=None)
+    with patch("cogs.music.player.url_e_sicuro", new=AsyncMock(return_value=True)), patch(
+        "wavelink.Playable.search", new=AsyncMock(side_effect=RuntimeError("HTTP 500"))
+    ), pytest.raises(ms.FonteNonRisponde):
         await cog._cerca("https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC", object())
-    f.assert_not_called()
-    s.assert_not_called()

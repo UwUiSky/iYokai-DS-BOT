@@ -1191,7 +1191,7 @@ Serve: Lavalink 4.2.0+ con LavaSrc, un account Spotify Premium per creare l'app 
 - [ ] `/owner radio fonti` — risposta nascosta, una riga per fonte: Spotify «ok, chiavi sì»; senza chiavi «senza chiavi, chiavi no». Nessun valore di chiave.
 - [ ] Link Spotify — `/music play` con un brano, un album, una playlist e un artista (link `open.spotify.com`). Risultato atteso: suona da YouTube/SoundCloud (cerca per ISRC poi titolo); album e playlist entrano a pezzi fino a 750. Con l'app in Development Mode (5 utenti, Premium): se arriva un errore 403/429, la fonte va in pausa e il bot lo dice.
 - [ ] Link Apple Music — brano, album, playlist, artista di `music.apple.com`. Stesso risultato.
-- [ ] Fonte senza chiavi — togli le chiavi di Spotify e riavvia: un link Spotify risponde «Spotify non è attiva su questo bot…», senza errore tecnico.
+- [ ] Fonte senza chiavi — togli le chiavi di Spotify e riavvia: togli anche `spotify` da `MUSIC_SOURCES_ENABLED`: un link Spotify risponde «Spotify non è attiva su questo bot…», senza errore tecnico; con la fonte accesa ma senza chiavi nel `.env` del bot, il bot prova lo stesso e risponde Lavalink. Con lingua inglese i messaggi sono in inglese.
 - [ ] Pausa — fai fallire una fonte 3 volte (ferma Lavalink o chiave sbagliata): il messaggio diventa «… non risponde», i titoli passano a SoundCloud; dopo 10 minuti una sola richiesta di prova.
 - [ ] YouTube spento — togli `youtube` da `MUSIC_SOURCES_ENABLED`, rigenera il file e riavvia: i titoli si cercano su SoundCloud, i link YouTube dicono che la fonte non è attiva.
 - [ ] Log — cerca nei log del bot e di Lavalink il valore delle chiavi: non deve comparire.

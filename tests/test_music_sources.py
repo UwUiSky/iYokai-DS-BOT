@@ -62,6 +62,12 @@ def test_classifica_i_link_delle_fonti(url, atteso):
         "http://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC",  # solo https per i servizi noti
         "https://open.spotify.com/show/abc",  # podcast: non supportato
         "https://open.spotify.com/track/",  # senza id
+        "https://utente@open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC",  # userinfo
+        "https://open.spotify.com:8443/track/4uLU6hMCjMI75M1A2tKUQC",  # porta
+        "https://evil.example\\@open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC",  # barra rovesciata
+        "https://open.spotify.com./track/4uLU6hMCjMI75M1A2tKUQC",  # punto finale
+        "https://xn--pen-spotify-x1b.com/track/4uLU6hMCjMI75M1A2tKUQC",  # punycode
+        "https://open.spotify.com@evil.example/track/4uLU6hMCjMI75M1A2tKUQC",
         "spotify:show:abc",
         "una canzone qualsiasi",
         "",
@@ -197,24 +203,47 @@ def test_il_codice_si_legge_dal_testo_dell_errore():
 
 
 # --- messaggi all'utente ---------------------------------------------------
-def test_link_di_fonte_senza_chiavi_da_un_messaggio_chiaro():
-    msg = ms.messaggio_indisponibile("https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC")
-    assert msg is not None and "Spotify" in msg and "non è attiva" in msg
+def test_fonte_spenta_dall_owner_non_e_usabile(monkeypatch):
+    monkeypatch.setenv("MUSIC_SOURCES_ENABLED", "youtube")
+    assert ms.fonte_usabile("spotify") is False
 
 
-def test_link_di_fonte_in_pausa_da_un_messaggio_chiaro(monkeypatch):
-    monkeypatch.setenv("SPOTIFY_CLIENT_ID", "a")
-    monkeypatch.setenv("SPOTIFY_CLIENT_SECRET", "b")
+def test_spotify_senza_chiavi_nel_bot_si_prova_lo_stesso():
+    # Le chiavi possono stare solo nell'.env di Lavalink: decide la risposta di Lavalink.
+    assert ms.fonte_usabile("spotify") is True
+    assert ms.fonte_usabile("applemusic") is True
+
+
+def test_yandex_senza_chiavi_non_si_prova(monkeypatch):
+    monkeypatch.setenv("MUSIC_SOURCES_ENABLED", "yandex")
+    assert ms.fonte_usabile("yandex") is False
+
+
+@pytest.mark.asyncio
+async def test_messaggio_fonte_spenta_in_italiano_e_in_inglese(monkeypatch):
+    monkeypatch.setenv("MUSIC_SOURCES_ENABLED", "youtube")
+    monkeypatch.setattr("core.i18n.lingua_risposta", _lingua("it"))
+    assert "non è attiva" in await ms.messaggio_per_fonte("spotify")
+    monkeypatch.setattr("core.i18n.lingua_risposta", _lingua("en-US"))
+    assert "is not enabled" in await ms.messaggio_per_fonte("spotify")
+
+
+@pytest.mark.asyncio
+async def test_messaggio_fonte_in_pausa_nella_lingua_dell_utente(monkeypatch):
     for i in range(3):
         ms.registro.errore("spotify", "x")
-    msg = ms.messaggio_indisponibile("https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC")
-    assert msg is not None and "Spotify non risponde" in msg
+    monkeypatch.setattr("core.i18n.lingua_risposta", _lingua("en-US"))
+    assert "is not responding" in await ms.messaggio_per_fonte("spotify")
+    monkeypatch.setattr("core.i18n.lingua_risposta", _lingua("it"))
+    assert "non risponde" in await ms.messaggio_per_fonte("spotify")
+    assert "Riprova" in await ms.messaggio_per_fonte("sconosciuta")
 
 
-def test_link_di_fonte_attiva_o_ricerca_per_titolo_non_ha_messaggio():
-    assert ms.messaggio_indisponibile("https://soundcloud.com/a/b") is None
-    assert ms.messaggio_indisponibile("una canzone") is None
-    assert ms.messaggio_indisponibile("https://example.com/a.mp3") is None
+def _lingua(codice):
+    async def _l(*a, **k):
+        return codice
+
+    return _l
 
 
 def test_riga_di_stato_non_mostra_mai_i_valori(monkeypatch):

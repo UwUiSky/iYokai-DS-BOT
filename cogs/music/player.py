@@ -409,17 +409,19 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
         link = fonti_musicali.classifica_link(testo)
         fonte = "spotify" if tipo == QUERY_SPOTIFY else (link.fonte if link else "http")
+        if tipo != QUERY_SPOTIFY:
+            # Lavalink (sources.http) scaricherebbe da dentro la rete del
+            # server: niente 127.0.0.1, 10.x, metadati cloud (SSRF).
+            # Prima di fonte_usabile: la prova di una fonte non resta appesa.
+            if not await url_e_sicuro(testo):
+                logger.info("URL musicale rifiutato (non pubblico): %s", testo[:80])
+                return None
         if not fonti_musicali.fonte_usabile(fonte):
             raise fonti_musicali.FonteNonRisponde(fonte)
         if tipo == QUERY_SPOTIFY:
             return await fonti_musicali.cerca_link(
                 fonte, lambda: wavelink.Pool.fetch_tracks(testo, node=nodo)
             )
-        # Lavalink (sources.http) scaricherebbe da dentro la rete del
-        # server: niente 127.0.0.1, 10.x, metadati cloud (SSRF).
-        if not await url_e_sicuro(testo):
-            logger.info("URL musicale rifiutato (non pubblico): %s", testo[:80])
-            return None
         return await fonti_musicali.cerca_link(
             fonte, lambda: wavelink.Playable.search(testo, node=nodo)
         )
@@ -582,7 +584,7 @@ class MusicCog(CogConGruppi, commands.Cog):
                 risultati, nodo = await self._cerca(query, nodo, nodo_locale)
         except fonti_musicali.FonteNonRisponde as exc:
             await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
-            await rispondi(fonti_musicali.messaggio_per_fonte(exc.fonte))
+            await rispondi(await fonti_musicali.messaggio_per_fonte(exc.fonte, guild_id, utente_id))
             return False
         except wavelink.exceptions.WavelinkException:
             logger.warning("Ricerca musicale fallita sul nodo %s.", nodo.identifier, exc_info=True)

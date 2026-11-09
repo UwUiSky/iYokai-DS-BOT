@@ -4,6 +4,8 @@ core/music_sources.py
 Registro delle fonti musicali: quali sono, come si riconosce un link, quali
 chiavi servono (solo presenti sì/no, mai il valore), stato di ogni fonte e
 circuito di pausa (8 s di attesa, 2 ripieghi, 3 errori = pausa di 10 minuti).
+Spotify e Apple Music: le chiavi stanno su Lavalink; se il bot non le vede si prova
+lo stesso e Lavalink decide (vedi FONTI_CHIAVI_SU_LAVALINK).
 Funzioni coperte: SPEC §9.5, issue #126 (B1), D73
 Dipende da: variabili d'ambiente MUSIC_SOURCES_ENABLED e chiavi delle fonti
 """
@@ -29,6 +31,10 @@ STATO_OK = "ok"
 STATO_SPENTA = "spenta"
 STATO_SENZA_CHIAVI = "senza_chiavi"
 STATO_IN_PAUSA = "in_pausa"
+
+# Fonti con le chiavi lette da Lavalink (LavaSrc): se manca la chiave nell'.env del bot
+# non le rifiutiamo, proviamo e vale la risposta di Lavalink.
+FONTI_CHIAVI_SU_LAVALINK = ("spotify", "applemusic")
 
 # Fonti accese se MUSIC_SOURCES_ENABLED non è impostata. Yandex, Tidal e Deezer: spente di base.
 FONTI_DI_BASE = (
@@ -150,6 +156,10 @@ class RegistroFonti:
         stato = self._stato(nome)
         return stato.fino > 0 and adesso < stato.fino
 
+    def rilascia_prova(self, nome: str) -> None:
+        """La richiesta di prova è finita senza esito (annullata, brano non trovato)."""
+        self._stato(nome).prova_in_corso = False
+
     def puo_provare(self, nome: str, adesso: float | None = None) -> bool:
         """Fuori pausa sì; a pausa finita passa UNA sola richiesta di prova."""
         adesso = time.monotonic() if adesso is None else adesso
@@ -236,7 +246,7 @@ def classifica_link(testo: str) -> LinkFonte | None:
     """
     Il link di una fonte nota: (fonte, tipo). None per tutto il resto (titoli, siti non
     noti = link diretti, http su un servizio noto, host solo simili, tipi non supportati).
-    Solo https e host esatto; massimo 300 caratteri.
+    Solo https, host esatto, niente userinfo né porta; massimo 300 caratteri.
     """
     t = (testo or "").strip()
     if not t or len(t) > MAX_LUNGHEZZA_LINK:
@@ -249,6 +259,8 @@ def classifica_link(testo: str) -> LinkFonte | None:
         return None
     if url.scheme != "https" or not url.hostname:
         return None
+    if "\\" in t or "@" in url.netloc or ":" in url.netloc:
+        return None  # userinfo, porta o barra rovesciata: mai un link di fonte
     host, percorso = url.hostname.lower(), url.path or "/"
     nome = _fonte_dell_host(host)
     if nome is None:
@@ -288,9 +300,6 @@ def _tipo_del_percorso(nome: str, host: str, percorso: str, query: str) -> str |
 
 
 # --- messaggi e ricerca ---------------------------------------------------
-MSG_NESSUN_RISULTATO_ORA = "Non trovo questo brano ora. Riprova tra poco."
-
-
 class FonteNonRisponde(Exception):
     """Nessuna fonte ha risposto in tempo (timeout o errori). Mai mostrare il testo tecnico."""
 
@@ -299,41 +308,37 @@ class FonteNonRisponde(Exception):
         self.fonte = fonte
 
 
-def messaggio_non_risponde(fonte: str) -> str:
-    if fonte in FONTI:
-        return f"{FONTI[fonte].etichetta} non risponde. Riprova tra qualche minuto o scrivi il titolo."
-    return MSG_NESSUN_RISULTATO_ORA
+async def messaggio_per_fonte(fonte: str, guild_id: int | None = None, utente_id: int | None = None) -> str:
+    """Il messaggio per l'utente (nella sua lingua) quando una fonte non si può usare."""
+    from core.i18n import lingua_risposta, t
 
-
-def messaggio_per_fonte(fonte: str) -> str:
-    """Il messaggio per l'utente quando una fonte non si può usare (mai l'errore tecnico)."""
+    lingua = await lingua_risposta(guild_id, utente_id)
     if fonte not in FONTI:
-        return MSG_NESSUN_RISULTATO_ORA
-    if stato_fonte(fonte) in (STATO_SPENTA, STATO_SENZA_CHIAVI):
-        return f"{FONTI[fonte].etichetta} non è attiva su questo bot. Prova un altro link o scrivi il titolo."
-    return messaggio_non_risponde(fonte)
+        return t("music_nessun_risultato_ora", lingua)
+    chiave = "music_fonte_non_risponde" if _si_puo_provare(fonte) else "music_fonte_non_attiva"
+    return t(chiave, lingua, fonte=FONTI[fonte].etichetta)
+
+
+def _si_puo_provare(fonte: str) -> bool:
+    """Accesa e con le chiavi (o chiavi lette da Lavalink). La pausa si guarda a parte."""
+    stato = stato_fonte(fonte)
+    return stato != STATO_SPENTA and (stato != STATO_SENZA_CHIAVI or fonte in FONTI_CHIAVI_SU_LAVALINK)
 
 
 def fonte_usabile(fonte: str) -> bool:
     """Vero se la fonte è accesa, ha le chiavi e non è in pausa (a pausa finita passa una prova)."""
-    if stato_fonte(fonte) in (STATO_SPENTA, STATO_SENZA_CHIAVI):
-        return False
-    return registro.puo_provare(fonte)
-
-
-def messaggio_indisponibile(query: str) -> str | None:
-    """Il messaggio per l'utente se il link è di una fonte spenta, senza chiavi o in pausa."""
-    link = classifica_link(query)
-    if link is None or fonte_usabile(link.fonte):
-        return None
-    return messaggio_per_fonte(link.fonte)
+    return _si_puo_provare(fonte) and registro.puo_provare(fonte)
 
 
 async def _con_circuito(fonte: str, esegui):
     try:
         risultato = await asyncio.wait_for(esegui(), TIMEOUT_SECONDI)
+    except asyncio.CancelledError:
+        registro.rilascia_prova(fonte)  # niente prova rimasta appesa
+        raise
     except Exception as exc:
         if getattr(exc, "severity", "") == "common":
+            registro.rilascia_prova(fonte)
             return []  # brano tolto o non trovato: non è un guasto della fonte
         testo = str(exc) or type(exc).__name__
         registro.errore(fonte, testo, codice=codice_da_errore(testo))
@@ -355,6 +360,8 @@ async def cerca_testo(testo: str, esegui_con_prefisso):
     prefissi = prefissi_ricerca_testo()[: MAX_RIPIEGHI + 1]
     nomi = {"ytmsearch:": "youtube", "scsearch:": "soundcloud"}
     for prefisso in prefissi:
+        if not registro.puo_provare(nomi[prefisso]):
+            continue  # pausa appena finita: la prova è già in corso
         try:
             return await _con_circuito(nomi[prefisso], lambda p=prefisso: esegui_con_prefisso(p + testo))
         except FonteNonRisponde:

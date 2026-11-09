@@ -44,7 +44,7 @@ async def test_un_errore_che_contiene_la_chiave_viene_ripulito(caplog):
     _niente_chiavi(ms.registro.ultimo_errore("spotify"))
     _niente_chiavi(caplog.text)
     _niente_chiavi("\n".join(ms.righe_stato()))
-    _niente_chiavi(ms.messaggio_per_fonte("spotify"))
+    _niente_chiavi(await ms.messaggio_per_fonte("spotify"))
 
 
 def test_ripulisci_toglie_ogni_valore():
