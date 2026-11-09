@@ -126,3 +126,19 @@ async def test_repo_errori_ultimi_dieci(repo):
     assert len(await repo.ultimi_errori(G, "altro")) == 1
     await repo.togli_errori(G, "dado")
     assert await repo.ultimi_errori(G, "dado") == []
+
+
+async def test_tetto_per_autore_a_pieno_b_scrive_ancora(repo):
+    for i in range(2):
+        assert await repo.imposta_dato(G, f"a{i}", "1", massimo=100, autore=1, massimo_autore=2) == "ok"
+    assert await repo.imposta_dato(G, "a2", "1", massimo=100, autore=1, massimo_autore=2) == "pieno"
+    assert await repo.imposta_dato(G, "a0", "9", massimo=100, autore=1, massimo_autore=2) == "ok"  # riscrivere non conta
+    assert await repo.imposta_dato(G, "b0", "1", massimo=100, autore=2, massimo_autore=2) == "ok"
+    assert await repo.imposta_dato(G, "s0", "1", massimo=100, autore=3, massimo_autore=None) == "ok"  # staff: nessun tetto per autore
+
+
+async def test_archivio_passa_autore_e_tetto(repo):
+    a = repo.archivio(G, massimo=100, autore=5, massimo_autore=1)
+    await a.set("x", "1")
+    with pytest.raises(ts.ErroreScript):
+        await a.set("y", "1")

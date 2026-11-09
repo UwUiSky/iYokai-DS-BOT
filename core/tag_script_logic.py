@@ -37,6 +37,7 @@ MAX_INTERVALLO = 10**9
 MAX_VALORE_DATO = 1024  # byte, per chiave
 MAX_CHIAVI = 1000       # per server (Premium: MAX_CHIAVI_PREMIUM)
 MAX_CHIAVI_PREMIUM = 5000
+MAX_CHIAVI_AUTORE = 200  # per chi ha creato il tag (lo staff non ha questo tetto)
 CHIAVE_DATI = re.compile(r"^[a-z0-9_.-]{1,64}$")
 AZIONI_DATI = {"get": "get", "leggi": "get", "set": "set", "scrivi": "set", "imposta": "set", "del": "del", "togli": "del",
                "elimina": "del", "cancella": "del"}

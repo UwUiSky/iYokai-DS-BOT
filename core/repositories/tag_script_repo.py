@@ -34,8 +34,10 @@ async def massimo_chiavi(guild_id: int, bot=None) -> int:
 class _ArchivioServer:
     """L'interfaccia che il motore si aspetta (get, set, delete), legata a un server."""
 
-    def __init__(self, repo: "TagScriptRepository", guild_id: int, massimo) -> None:
+    def __init__(self, repo: "TagScriptRepository", guild_id: int, massimo, autore: int | None = None,
+                 massimo_autore: int | None = None) -> None:
         self._repo, self._guild_id, self._massimo = repo, guild_id, massimo
+        self._autore, self._massimo_autore = autore, massimo_autore
 
     async def get(self, chiave: str) -> str | None:
         return await self._repo.leggi_dato(self._guild_id, chiave)
@@ -44,7 +46,8 @@ class _ArchivioServer:
         from core.tag_script_logic import ErroreScript
 
         massimo = self._massimo if isinstance(self._massimo, int) else await self._massimo()
-        if await self._repo.imposta_dato(self._guild_id, chiave, valore, massimo=massimo) == "pieno":
+        if await self._repo.imposta_dato(
+                self._guild_id, chiave, valore, massimo=massimo, autore=self._autore, massimo_autore=self._massimo_autore) == "pieno":
             raise ErroreScript("tag_script_dati_pieni")
 
     async def delete(self, chiave: str) -> None:
@@ -59,22 +62,26 @@ class TagScriptRepository:
     def _pool(self) -> asyncpg.Pool:
         return self._pool_provider()
 
-    def archivio(self, guild_id: int, massimo) -> _ArchivioServer:
-        return _ArchivioServer(self, guild_id, massimo)
+    def archivio(self, guild_id: int, massimo, autore: int | None = None, massimo_autore: int | None = None) -> _ArchivioServer:
+        return _ArchivioServer(self, guild_id, massimo, autore, massimo_autore)
 
     async def leggi_dato(self, guild_id: int, chiave: str) -> str | None:
         return await self._pool.fetchval("SELECT valore FROM tag_dati WHERE guild_id = $1 AND chiave = $2", guild_id, chiave)
 
-    async def imposta_dato(self, guild_id: int, chiave: str, valore: str, *, massimo: int) -> str:
-        """"ok" o "pieno" (chiavi nuove oltre il tetto). Riscrivere una chiave che c'è non conta."""
+    async def imposta_dato(self, guild_id: int, chiave: str, valore: str, *, massimo: int, autore: int | None = None,
+                           massimo_autore: int | None = None) -> str:
+        """"ok" o "pieno" (chiavi nuove oltre il tetto del server o di chi scrive). Riscrivere una chiave che c'è non conta."""
         async with tetto_per_server(self._pool, "tag_dati", guild_id) as conn:
             esiste = await conn.fetchval("SELECT 1 FROM tag_dati WHERE guild_id = $1 AND chiave = $2", guild_id, chiave)
             if not esiste and await conn.fetchval("SELECT count(*) FROM tag_dati WHERE guild_id = $1", guild_id) >= massimo:
                 return "pieno"
+            if (not esiste and autore is not None and massimo_autore is not None
+                    and await conn.fetchval("SELECT count(*) FROM tag_dati WHERE guild_id = $1 AND autore = $2", guild_id, autore) >= massimo_autore):
+                return "pieno"
             await conn.execute(
-                "INSERT INTO tag_dati (guild_id, chiave, valore) VALUES ($1, $2, $3) "
+                "INSERT INTO tag_dati (guild_id, chiave, valore, autore) VALUES ($1, $2, $3, $4) "
                 "ON CONFLICT (guild_id, chiave) DO UPDATE SET valore = EXCLUDED.valore, aggiornato = NOW()",
-                guild_id, chiave, valore)
+                guild_id, chiave, valore, autore)
         return "ok"
 
     async def togli_dato(self, guild_id: int, chiave: str) -> None:

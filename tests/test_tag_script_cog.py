@@ -12,6 +12,10 @@ def archivio_finto(monkeypatch):
     repo = MagicMock()
     repo.registra_errore = AsyncMock()
     monkeypatch.setattr(modulo, "tag_script_repo", repo)
+    import core.tag_eliminazione as pulizia
+    monkeypatch.setattr(pulizia, "tag_script_repo", repo)
+    for nome in ("tag_inneschi_repo", "slash_server_repo"):
+        monkeypatch.setattr(pulizia, nome, MagicMock(togli_per_tag=AsyncMock(return_value=0)))
     return repo
 
 

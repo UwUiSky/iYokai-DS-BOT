@@ -105,7 +105,11 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             "bersaglio": bersaglio.mention if bersaglio is not None else "",
         }
         if ha_script(base):
-            archivio = tag_script_repo.archivio(tag.guild_id, lambda: massimo_chiavi(tag.guild_id, self.bot))
+            autore = getattr(tag, "created_by", None)
+            creatore = membro.guild.get_member(autore) if autore else None
+            staff = creatore is not None and creatore.guild_permissions.manage_guild
+            archivio = tag_script_repo.archivio(tag.guild_id, lambda: massimo_chiavi(tag.guild_id, self.bot), autore=autore,
+                                                massimo_autore=None if staff else tag_script.MAX_CHIAVI_AUTORE)
             esito = await tag_script.esegui(base, tag_script.Contesto(valori=valori, adesso=datetime.now(ZoneInfo("Europe/Rome")), archivio=archivio))
             if esito.errore is not None:
                 logger.info("Tag %s: script fermato (%s).", tag.name, esito.errore.chiave)
