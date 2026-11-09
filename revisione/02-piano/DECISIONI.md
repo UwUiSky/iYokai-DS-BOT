@@ -1063,3 +1063,9 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
   finché l'owner non l'ottiene. Filtro NSFW sempre attivo fuori dai canali NSFW.
 - Altre scelte del disegno (DF2–DF10) come raccomandato: telefono per ultimo e spento di base, pacchetto carte
   «adulti» spento, chiavi osu!/Fortnite dell'owner.
+- Precisazione dell'owner (09/11): le fonti **NSFW** (GIF e immagini per adulti, es. Rule34, endpoint NSFW di
+  waifu.im/nekos e simili) stanno in un elenco **separato**, usato solo dal bot NSFW e solo nei canali con limite
+  d'età. Regola fissa di chi sviluppa, non spegnibile: elenco di tag vietati che esclude **sempre** qualsiasi
+  contenuto con minori o che li richiami (es. loli, shota, child e simili, in tutte le lingue), più gore estremo e
+  non consensuale; una ricerca con un tag vietato non parte. È un obbligo di legge (in Italia anche la pornografia
+  «virtuale» con minori è reato) e delle regole di Discord.
