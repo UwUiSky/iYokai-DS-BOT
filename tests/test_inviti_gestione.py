@@ -47,6 +47,7 @@ def test_usa_segnaposto_e_lunghezza_peggiore():
 # ------------------------------------------------------------------ esportazione
 def test_celle_neutralizzate_e_formati():
     assert neutralizza_cella("=CMD()") == "'=CMD()" and neutralizza_cella(5) == "5" and neutralizza_cella(None) == ""
+    assert neutralizza_cella(-3) == "-3" and neutralizza_cella("-3") == "'-3"  # numeri veri intatti, testi neutralizzati
     dati, n = costruisci([{"a": 1, "b": "=x"}], ["a", "b"], "csv")
     assert dati.decode().splitlines() == ["a,b", "1,'=x"] and n == 1
     j, _ = costruisci([{"a": datetime(2026, 1, 1)}], ["a"], "json")

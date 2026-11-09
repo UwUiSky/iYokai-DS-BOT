@@ -25,6 +25,8 @@ def _valore(v):
 
 def neutralizza_cella(v) -> str:
     testo = "" if v is None else str(_valore(v))
+    if isinstance(v, (int, float)) and not isinstance(v, bool):
+        return testo  # un numero negativo (bonus -3) resta un numero: non è una formula
     return "'" + testo if testo[:1] in ("=", "+", "-", "@", "\t", "\r") else testo
 
 
