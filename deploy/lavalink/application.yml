@@ -1,10 +1,14 @@
-# Configurazione Lavalink 4 per iYokai (issue #47, #48).
-# NESSUN SEGRETO QUI: i valori in MAIUSCOLO sono segnaposto.
-#   - la password vera arriva da LAVALINK_PASSWORD (docker-compose.yml)
-#   - le chiavi di Spotify arrivano da SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET
-# Versioni dei plugin: controlla le ultime su
-#   https://github.com/lavalink-devs/youtube-source/releases
-#   https://github.com/topi314/LavaSrc/releases
+# Configurazione Lavalink 4 per iYokai (issue #47, #48, #126).
+# FILE GENERATO da scripts/genera_lavalink_yml.py dalle fonti accese: non modificarlo a mano.
+# NESSUN SEGRETO QUI: i valori ${...} arrivano dall'ambiente (docker-compose.yml).
+#   - password: LAVALINK_PASSWORD
+#   - Spotify: SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET (solo metadati; l'audio arriva da un'altra fonte)
+#   - Apple Music: APPLE_MUSIC_TOKEN (solo metadati)
+# Una fonte senza chiavi resta spenta: con chiavi vuote LavaSrc puo' non avviarsi.
+# Deezer non si usa con la chiave di decifrazione (D73).
+# Versioni dei plugin: https://github.com/lavalink-devs/youtube-source/releases
+#                      https://github.com/topi314/LavaSrc/releases
+
 server:
   port: 2333
   address: 0.0.0.0   # dentro il container; fuori e' legato a 127.0.0.1 dal compose
@@ -21,10 +25,12 @@ lavalink:
       youtube: false      # lo fa il plugin, non il modulo integrato
       soundcloud: true
       bandcamp: true
+      twitch: true
+      vimeo: true
       # http serve per i link diretti a un file audio (SPEC 9.5 "URL"). Il bot
       # rifiuta prima gli indirizzi interni (core/safe_http.url_e_sicuro), ma non
       # vede i redirect: sull'host di Lavalink blocca comunque in uscita le reti
-      # private e 169.254.169.254 (vedi README, "Rete"). Metti false se non servono.
+      # private e 169.254.169.254 (vedi README, "Rete").
       http: true
       local: true         # serve per gli inediti della radio (/audio/local)
     bufferDurationMs: 400
@@ -43,13 +49,15 @@ plugins:
       - "ytsearch:%QUERY%"
       - "scsearch:%QUERY%"
     sources:
-      spotify: false      # metti true SOLO con clientId e clientSecret veri (sotto):
-                          # con chiavi vuote LavaSrc puo' non avviarsi
+      spotify: false
       applemusic: false
-      deezer: false       # richiede chiavi extra
+      deezer: false       # mai con la chiave di decifrazione (D73)
     spotify:
       clientId: "${SPOTIFY_CLIENT_ID}"
       clientSecret: "${SPOTIFY_CLIENT_SECRET}"
+      countryCode: "IT"
+    applemusic:
+      mediaAPIToken: "${APPLE_MUSIC_TOKEN}"
       countryCode: "IT"
 
 logging:

@@ -836,6 +836,7 @@
   "owner radio": "Shared 24/7 radio of the main bot, personal playlist",
   "owner radio add-local": "Adds a file from the unreleased folder to the radio playlist.",
   "owner radio add-track": "Adds a track to the radio playlist.",
+  "owner radio fonti": "Shows the state of the music sources (on, keys yes/no, paused).",
   "owner radio list-tracks": "Shows the radio playlist.",
   "owner radio remove-track": "Removes a track from the radio playlist.",
   "owner radio start": "Joins the shared radio at the point where it is now.",

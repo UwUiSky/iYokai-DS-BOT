@@ -927,6 +927,7 @@ sessione perché non richiesto esplicitamente.
   (Lavalink >= 4.2.0, `LAVALINK_LOCAL_ROOT`); i nodi pubblici non
   hanno accesso al filesystem della macchina
   → **Stato 27/10:** la ricerca gira sul nodo del bot che suona (LIM-42); `local:` rifiutato per gli utenti e testo sempre `ytmsearch:` (LIM-43, BUG-10). Opzioni r10: `solo-siti-conosciuti` (MUS-064) e `parole-vietate` (MUS-062) in `/admin-musica impostazioni`.
+  → **Stato 10/11 (#126 B1, D73):** registro delle fonti in `core/music_sources.py` (classificatore dei link brano/album/playlist/artista, stato accesa/chiavi/pausa, circuito: 8 s, al massimo 2 ripieghi, 3 errori di fila o 2 errori 401/403/429 in 60 s = pausa di 10 minuti con una sola prova). Spotify e Apple Music: solo metadati (LavaSrc), audio da un'altra fonte; se il bot non vede le chiavi nel suo .env prova lo stesso e decide Lavalink (errore = circuito); Yandex/Tidal senza chiavi restano spente. I messaggi «fonte non disponibile» sono in it/en-US (lingua dell'utente). `application.yml` di Lavalink generato da `scripts/genera_lavalink_yml.py` (solo segnaposto `${VAR}`). `/owner radio fonti` mostra lo stato (chiavi solo sì/no). Da fare in B2: fonte per server, Yandex/Tidal/Deezer-metadati, Twitch/Vimeo da provare.
 - `[✗]` 9.6 Filtri audio (bassboost, nightcore, vaporwave, 8D) —
   scartato su richiesta esplicita dell'utente, non un limite tecnico
 - `[✗]` 9.7 DJ role — scartato, stesso motivo di 9.6

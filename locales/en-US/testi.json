@@ -2856,6 +2856,11 @@
   "telefono_rifiutata": "📵 The other server did not answer.",
   "telefono_collegati": "📞 You are connected. What you write here goes to the other server. To end: /fun telefono riaggancia.",
   "telefono_finita": "📴 Call ended.",
+  "music_fonti_titolo": "Music sources",
+  "music_fonti_nota": "Keys are never shown: only yes or no. To change the enabled sources edit MUSIC_SOURCES_ENABLED and restart.",
   "soundboard_ruoli_bloccato": "The sound {suono} is blocked: no role is allowed. Pick a role with \"Allow this role\" to reopen it.",
-  "soundboard_ruoli_bloccato_nota": "The sound stays blocked: no \"allow\" role is left."
+  "soundboard_ruoli_bloccato_nota": "The sound stays blocked: no \"allow\" role is left.",
+  "music_fonte_non_attiva": "{fonte} is not enabled on this bot. Try another link or type the title.",
+  "music_fonte_non_risponde": "{fonte} is not responding. Try again in a few minutes or type the title.",
+  "music_nessun_risultato_ora": "I can't find this track right now. Try again shortly."
 }

@@ -28,6 +28,7 @@ MAX_PAROLE_VIETATE = 300  # caratteri
 SITI_CONOSCIUTI = (
     "youtube.com", "youtu.be", "soundcloud.com", "spotify.com", "bandcamp.com", "twitch.tv",
     "vimeo.com", "mixcloud.com", "deezer.com", "tidal.com", "music.apple.com",
+    "music.yandex.ru", "music.yandex.com", "music.yandex.by", "music.yandex.kz", "music.yandex.uz",
     # MUS-009: i file allegati a /music play arrivano da Discord.
     "cdn.discordapp.com", "media.discordapp.net",
 )

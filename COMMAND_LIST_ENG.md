@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 23:25 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 23:40 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 836 commands in 49 categories.**
+**Total: 837 commands in 49 categories.**
 
 ## Admin: AI
 
@@ -872,6 +872,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 23:2
 - **`/owner privacy rifiuta`** — Rejects a deletion request and tells the user why.
 - **`/owner radio add-local`** — Adds a file from the unreleased folder to the radio playlist.
 - **`/owner radio add-track`** — Adds a track to the radio playlist.
+- **`/owner radio fonti`** — Shows the state of the music sources (on, keys yes/no, paused).
 - **`/owner radio list-tracks`** — Shows the radio playlist.
 - **`/owner radio remove-track`** — Removes a track from the radio playlist.
 - **`/owner radio start`** — Joins the shared radio at the point where it is now.

@@ -57,11 +57,16 @@ import wavelink
 from discord import app_commands
 from discord.ext import commands
 
+from core import music_sources as fonti_musicali
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
 from core.i18n import testo_per
-from core.main_radio_logic import RadioTrackInfo, compute_current_position, next_track_index
+from core.main_radio_logic import (
+    RadioTrackInfo,
+    compute_current_position,
+    next_track_index,
+)
 from core.music_fleet import MusicFleet, handle_worker_voice_update
 from core.music_logic import (
     EMBED_DESCRIPTION_LIMIT,
@@ -70,11 +75,11 @@ from core.music_logic import (
     MSG_TEMPO_SCADUTO,
     QUERY_RIFIUTATA,
     QUERY_SPOTIFY,
-    QUERY_URL,
+    QUERY_TESTO,
     LavalinkNodeConfig,
-    classify_query,
     build_progress_bar,
     build_queue_display,
+    classify_query,
     format_duration,
     is_safe_local_filename,
     is_spotify_query,
@@ -397,16 +402,29 @@ class MusicCog(CogConGruppi, commands.Cog):
         tipo = classify_query(query)
         if tipo == QUERY_RIFIUTATA:
             return None
-        if tipo == QUERY_SPOTIFY:
-            return await wavelink.Pool.fetch_tracks(query.strip(), node=nodo)
-        if tipo == QUERY_URL:
+        testo = query.strip()
+        if tipo == QUERY_TESTO:
+            return await fonti_musicali.cerca_testo(
+                testo, lambda completa: wavelink.Pool.fetch_tracks(completa, node=nodo)
+            )
+        link = fonti_musicali.classifica_link(testo)
+        fonte = "spotify" if tipo == QUERY_SPOTIFY else (link.fonte if link else "http")
+        if tipo != QUERY_SPOTIFY:
             # Lavalink (sources.http) scaricherebbe da dentro la rete del
             # server: niente 127.0.0.1, 10.x, metadati cloud (SSRF).
-            if not await url_e_sicuro(query.strip()):
-                logger.info("URL musicale rifiutato (non pubblico): %s", query.strip()[:80])
+            # Prima di fonte_usabile: la prova di una fonte non resta appesa.
+            if not await url_e_sicuro(testo):
+                logger.info("URL musicale rifiutato (non pubblico): %s", testo[:80])
                 return None
-            return await wavelink.Playable.search(query.strip(), node=nodo)
-        return await wavelink.Pool.fetch_tracks(f"ytmsearch:{query.strip()}", node=nodo)
+        if not fonti_musicali.fonte_usabile(fonte):
+            raise fonti_musicali.FonteNonRisponde(fonte)
+        if tipo == QUERY_SPOTIFY:
+            return await fonti_musicali.cerca_link(
+                fonte, lambda: wavelink.Pool.fetch_tracks(testo, node=nodo)
+            )
+        return await fonti_musicali.cerca_link(
+            fonte, lambda: wavelink.Playable.search(testo, node=nodo)
+        )
 
     async def _entra_in_canale(
         self, canale, nodo: wavelink.Node, volume: int | None = None, sordo: bool = True
@@ -564,6 +582,10 @@ class MusicCog(CogConGruppi, commands.Cog):
                 risultati, nodo = await cerca(nodo, nodo_locale)
             else:
                 risultati, nodo = await self._cerca(query, nodo, nodo_locale)
+        except fonti_musicali.FonteNonRisponde as exc:
+            await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
+            await rispondi(await fonti_musicali.messaggio_per_fonte(exc.fonte, guild_id, utente_id))
+            return False
         except wavelink.exceptions.WavelinkException:
             logger.warning("Ricerca musicale fallita sul nodo %s.", nodo.identifier, exc_info=True)
             risultati = None
@@ -1518,6 +1540,21 @@ class MusicCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(
             embed=pagina_embed(pagine, 0), ephemeral=True, **kwargs
         )
+
+    @comando_di_gruppo(
+        "owner",
+        nome="fonti",
+        descrizione="Mostra lo stato delle fonti musicali (accesa, chiavi sì/no, pausa).",
+        sottogruppo=RADIO,
+    )
+    async def nonstop_main_fonti(self, interaction: discord.Interaction) -> None:
+        """B1 #126: una riga per fonte. Le chiavi non si mostrano mai: solo sì o no."""
+        embed = discord.Embed(
+            title=truncate_title(await testo_per(interaction, "music_fonti_titolo")),
+            description=truncate_title("\n".join(fonti_musicali.righe_stato()), EMBED_DESCRIPTION_LIMIT),
+        )
+        embed.set_footer(text=truncate_title(await testo_per(interaction, "music_fonti_nota"), 2048))
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @comando_di_gruppo(
         "owner",

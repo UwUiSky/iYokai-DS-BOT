@@ -17,9 +17,13 @@ services:
       - _JAVA_OPTIONS=-Xmx512M
       # La password dell'ambiente vince su quella (segnaposto) di application.yml.
       - LAVALINK_SERVER_PASSWORD=${LAVALINK_PASSWORD:?imposta LAVALINK_PASSWORD}
-      # Solo per Spotify (LavaSrc); lasciali vuoti se non li usi.
+      # Chiavi delle fonti (LavaSrc, solo metadati); lasciale vuote se non le usi.
+      # Una fonte senza chiavi resta spenta (scripts/genera_lavalink_yml.py).
       - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID:-}
       - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET:-}
+      - APPLE_MUSIC_TOKEN=${APPLE_MUSIC_TOKEN:-}
+      - YANDEX_MUSIC_TOKEN=${YANDEX_MUSIC_TOKEN:-}
+      - TIDAL_TOKEN=${TIDAL_TOKEN:-}
     volumes:
       - ./application.yml:/opt/Lavalink/application.yml:ro
       # I plugin scaricati restano tra un riavvio e l'altro.

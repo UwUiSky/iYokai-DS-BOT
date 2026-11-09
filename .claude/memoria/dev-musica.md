@@ -1,9 +1,12 @@
 # Memoria di dev-musica
 
 ## Aggiornata
-27/10/2026 · ramo `feat/r10musa` (/home/claude/wt/r10musa) · migrazioni 0170–0171, 0310 (r10)
+10/11/2026 · ramo `feat/r1mus` (/home/claude/wt/r1mus) · nessuna migrazione (B1 senza tabelle)
 
 ## In corso
+- #126 B1 FATTO (fonti Spotify/Apple, registro, circuito, `/owner radio fonti`, generatore yml). Prossimo: B2 in `core/music_sources.py`:
+  opzione `fonte` in `/music play`, impostazioni `music_default_search`/`music_sources_off`/`music_country` (D16: SETTINGS_SCHEMA + SCHEDE),
+  Deezer come metadati (API pubblica), Yandex/Tidal sezioni yml, avviso scadenza token Apple a 14 giorni. Poi B3 (migr. 0620).
 - Giro r10 (musica + alert, agente r10musa): SPEC 9.x e 10.x tutte `[x]`; fatti nonstop 24/7, ALR-030/031/032/033/036, MUS-054/062/064.
   Prossimo: ALR-037/038/040 (sposta, ferma tutti, controllo a mano) servono sotto-comandi in /moduli alert (chiedere guardiano-limiti); MUS-061 stato del bot, MUS-053.
 - Giro r6 CHIUSO (8.16 defer, MUS-056 sordo, MUS-009 allegato, NF-19 canale richieste + playlist, NF-35 suoni).
@@ -21,6 +24,11 @@
   canale e spostata da un nuovo suono `3d93028`.
 
 ## Cose imparate
+- Fonti (D73): tutto passa da `core/music_sources.py`; chiavi solo presenti sì/no (`chiavi_presenti`), `ripulisci()` per ogni testo d'errore; mai valori in log/messaggi.
+- Un errore wavelink con `severity == "common"` (video tolto) NON è un guasto della fonte: non conta per la pausa. Risultato vuoto neppure.
+- Il gate `fonte_usabile` consuma la «prova» dopo la pausa: chiamarlo una volta sola per ricerca (sta in `_cerca_su`).
+- `deploy/lavalink/application.yml` è generato (`scripts/genera_lavalink_yml.py`); un test lo confronta col generato senza chiavi: rigenerare dopo ogni modifica.
+- Il bot legge le chiavi dall'env solo per sapere se ci sono: senza `SPOTIFY_*` nell'.env del bot i link Spotify sono rifiutati anche se i nodi pubblici hanno LavaSrc.
 - Le note «Stato 04/10» della SPEC erano superate: prima di toccare una voce `[~]` controllare codice e REGISTRO.
 - Pausa/filtri degli avvisi: `motivo_silenzio` in `alert_options_logic`; se zittito lo stato NON avanza (riprova al giro dopo), tranne i feed RSS che avanzano in silenzio.
 - Player 24/7: `is_nonstop`/`is_radio` + `inactive_channel_tokens=None`; il default wavelink e' 3 (`CANALE_VUOTO_BRANI_DEFAULT`).

@@ -2856,6 +2856,11 @@
   "telefono_rifiutata": "📵 L'altro server non ha risposto.",
   "telefono_collegati": "📞 Siete collegati. Quello che scrivi qui va all'altro server. Per chiudere: /fun telefono riaggancia.",
   "telefono_finita": "📴 Chiamata finita.",
+  "music_fonti_titolo": "Fonti musicali",
+  "music_fonti_nota": "Le chiavi non si vedono mai: solo sì o no. Per cambiare le fonti accese modifica MUSIC_SOURCES_ENABLED e riavvia.",
   "soundboard_ruoli_bloccato": "Il suono {suono} è bloccato: nessun ruolo consentito. Scegli un ruolo con «Consenti a questo ruolo» per riaprirlo.",
-  "soundboard_ruoli_bloccato_nota": "Il suono resta bloccato: manca un ruolo «consenti»."
+  "soundboard_ruoli_bloccato_nota": "Il suono resta bloccato: manca un ruolo «consenti».",
+  "music_fonte_non_attiva": "{fonte} non è attiva su questo bot. Prova un altro link o scrivi il titolo.",
+  "music_fonte_non_risponde": "{fonte} non risponde. Riprova tra qualche minuto o scrivi il titolo.",
+  "music_nessun_risultato_ora": "Non trovo questo brano ora. Riprova tra poco."
 }
