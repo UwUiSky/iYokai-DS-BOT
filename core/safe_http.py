@@ -25,6 +25,11 @@ from yarl import URL
 
 logger = logging.getLogger("iyokai.safe_http")
 
+
+def _per_log(url: str) -> str:
+    """L'URL senza query né frammento: nei log non finiscono mai chiavi o token passati come parametri."""
+    return str(url).split("?", 1)[0].split("#", 1)[0]
+
 ALLOWED_SCHEMES = {"http", "https"}
 ALLOWED_PORTS = {80, 443}
 DEFAULT_MAX_BYTES = 2_000_000
@@ -281,7 +286,7 @@ async def _scarica(
     for _ in range(MAX_REDIRECTS + 1):
         destinazione = _destinazione_ammessa(url_corrente)
         if destinazione is None:
-            logger.warning("URL rifiutato (SSRF/schema/porta non ammessi): %s", url_corrente)
+            logger.warning("URL rifiutato (SSRF/schema/porta non ammessi): %s", _per_log(url_corrente))
             return None
 
         try:
@@ -302,7 +307,7 @@ async def _scarica(
                     return Scaricamento(testo=None, etag=etag, non_modificato=True)
 
                 if risposta.status != 200:
-                    logger.warning("%s ha risposto con status %d.", url_corrente, risposta.status)
+                    logger.warning("%s ha risposto con status %d.", _per_log(url_corrente), risposta.status)
                     return None
 
                 corpo = bytearray()
@@ -311,7 +316,7 @@ async def _scarica(
                     if len(corpo) > max_bytes:
                         logger.warning(
                             "%s ha superato il limite di %d byte, scarico interrotto.",
-                            url_corrente,
+                            _per_log(url_corrente),
                             max_bytes,
                         )
                         return None
@@ -323,8 +328,8 @@ async def _scarica(
             # ClientError copre anche il rifiuto di _ResolverSicuro
             # (nessun IP pubblico). ValueError (BUG-20): un Location
             # malformato fa sollevare urljoin.
-            logger.warning("Impossibile scaricare %s: %s", url_corrente, exc)
+            logger.warning("Impossibile scaricare %s: %s", _per_log(url_corrente), type(exc).__name__)
             return None
 
-    logger.warning("Troppi redirect (oltre %d) per %s.", MAX_REDIRECTS, url)
+    logger.warning("Troppi redirect (oltre %d) per %s.", MAX_REDIRECTS, _per_log(url))
     return None

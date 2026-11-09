@@ -481,3 +481,10 @@ async def test_charset_sconosciuto_ripiega_su_utf8_senza_sollevare(monkeypatch):
     )
 
     assert TITOLO_CON_ACCENTI in testo
+
+
+def test_i_log_non_mostrano_la_query_con_le_chiavi():
+    from core.safe_http import _per_log
+
+    assert _per_log("https://api.giphy.com/v1/gifs/search?api_key=SEGRETO&q=ciao") == "https://api.giphy.com/v1/gifs/search"
+    assert "SEGRETO" not in _per_log("https://x.example/p#token=SEGRETO")
