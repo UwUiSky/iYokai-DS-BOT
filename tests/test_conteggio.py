@@ -220,6 +220,11 @@ async def test_comando_canale_aggiunge_elenca_e_toglie(monkeypatch, repo):
     assert "<#5>" in i.response.send_message.await_args.args[0]
     i = fake_interaction(guild=s.guild)
     await s.cog.conteggio_canale.callback(s.cog, i, sc("togli"), s.canale, None, None)
+    assert await repo.get(G, 5) is not None  # prima la conferma: niente si cancella
+    vista = i.response.send_message.await_args.kwargs["view"]
+    i2 = fake_interaction(guild=s.guild, user=fake_member(vista.proprietario))
+    monkeypatch.setattr(modulo, "puo_usare", AsyncMock(return_value=True))
+    await vista.conferma.callback(i2)
     assert await repo.get(G, 5) is None
 
 
@@ -369,3 +374,19 @@ async def test_comando_importa(monkeypatch, repo):
     i = fake_interaction(guild=s.guild)
     await s.cog.conteggio_importa.callback(s.cog, i, s.canale, file)
     assert (await repo.classifica(G, 5, 10))[0].giusti == 4
+
+
+@pytest.mark.asyncio
+async def test_togli_canale_annulla_e_altri_non_confermano_e_senza_livello_non_cancella(monkeypatch, repo):
+    s = _Scena(monkeypatch, repo)
+    await repo.aggiungi_canale(G, 5)
+    await repo.register(G, 5, 1, 1)
+    monkeypatch.setattr("core.ui_base._utente_o_server_in_blacklist", AsyncMock(return_value=False))
+    vista = modulo.ConfermaTogliCanale(77, G, 5, ("Si", "No"))
+    altro = fake_interaction(guild=s.guild, user=fake_member(78))
+    assert await vista.interaction_check(altro) is False
+    monkeypatch.setattr(modulo, "puo_usare", AsyncMock(return_value=False))
+    await vista.conferma.callback(fake_interaction(guild=s.guild, user=fake_member(77)))
+    assert await repo.get(G, 5) is not None and await repo.conta_giocatori(G, 5) == 1  # livello perso: nulla
+    await vista.annulla.callback(fake_interaction(guild=s.guild, user=fake_member(77)))
+    assert await repo.get(G, 5) is not None

@@ -17,7 +17,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.channel_access import PERMESSI_DI_REAZIONE, motivo_se_il_bot_non_puo
-from core.command_access import Livello, richiedi
+from core.command_access import Livello, puo_usare, richiedi
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.conteggio_logic import (
     MAX_BYTE_IMPORT, MAX_MESSAGGIO_TRAGUARDO, MAX_PUNIZIONE_MINUTI, MODI, ImportErrato, leggi_importazione, leggi_numero,
@@ -26,6 +26,7 @@ from core.conteggio_logic import (
 from core.database import db
 from core.giveaway_logic import motivo_ruolo_non_assegnabile
 from core.i18n import lingua_risposta, t, testo_per
+from core.ui_base import BaseView
 from core.repositories.counting_game_repo import NON_CAMBIA, TroppiAvvisi, TroppiCanali, TroppiTraguardi, counting_game_repo
 
 logger = logging.getLogger("iyokai.conteggio")
@@ -35,11 +36,47 @@ _SG_ADMIN = ("conteggio", "Gioco del conteggio: canali, regole, traguardi")
 _SG_GIOCHI = ("conteggio", "Gioco del conteggio: classifica e avvisi")
 _NESSUNA_MENZIONE = discord.AllowedMentions.none()
 RIGHE_CLASSIFICA = 10
+SECONDI_CONFERMA = 60
 _SCELTE_AZIONE = [
     app_commands.Choice(name="aggiungi o cambia", value="aggiungi"),
     app_commands.Choice(name="togli", value="togli"),
     app_commands.Choice(name="elenco", value="elenco"),
 ]
+
+
+class ConfermaTogliCanale(BaseView):
+    """Togliere un canale cancella anche punteggi, traguardi, avvisi e blocchi: serve una conferma di chi ha dato il comando."""
+
+    def __init__(self, proprietario: int, guild_id: int, channel_id: int, etichette: tuple[str, str]) -> None:
+        super().__init__(timeout=SECONDI_CONFERMA)
+        self.proprietario = proprietario
+        self.guild_id = guild_id
+        self.channel_id = channel_id
+        self.conferma.label, self.annulla.label = etichette[0][:80], etichette[1][:80]
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):
+            return False
+        if interaction.user.id != self.proprietario:
+            await interaction.response.send_message(await testo_per(interaction, "conteggio_non_e_tuo"), ephemeral=True)
+            return False
+        return True
+
+    @discord.ui.button(label="Conferma", style=discord.ButtonStyle.danger)
+    async def conferma(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.stop()
+        if not await puo_usare(interaction, Livello.ADMIN):  # il livello si ricontrolla: il tasto non è il comando
+            await interaction.response.edit_message(content=await testo_per(interaction, "conteggio_non_e_tuo"), view=None)
+            return
+        tolto = await counting_game_repo.togli_canale(self.guild_id, self.channel_id)
+        await interaction.response.edit_message(
+            content=await testo_per(interaction, "conteggio_canale_tolto" if tolto else "conteggio_canale_non_attivo"), view=None
+        )
+
+    @discord.ui.button(label="Annulla", style=discord.ButtonStyle.secondary)
+    async def annulla(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.stop()
+        await interaction.response.edit_message(content=await testo_per(interaction, "conteggio_togli_annullato"), view=None)
 
 
 class ConteggioCog(CogConGruppi, commands.Cog):
@@ -214,9 +251,13 @@ class ConteggioCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(await testo_per(interaction, "coingames_indica_il_canale"), ephemeral=True)
             return
         if azione.value == "togli":
-            tolto = await counting_game_repo.togli_canale(guild_id, canale.id)
+            if await counting_game_repo.get(guild_id, canale.id) is None:
+                await interaction.response.send_message(await testo_per(interaction, "conteggio_canale_non_attivo"), ephemeral=True)
+                return
+            etichette = (await testo_per(interaction, "conteggio_togli_bottone"), await testo_per(interaction, "conteggio_togli_annulla"))
             await interaction.response.send_message(
-                await testo_per(interaction, "conteggio_canale_tolto" if tolto else "conteggio_canale_non_attivo"), ephemeral=True
+                await testo_per(interaction, "conteggio_togli_chiedi", canale=canale.mention), ephemeral=True,
+                allowed_mentions=_NESSUNA_MENZIONE, view=ConfermaTogliCanale(interaction.user.id, guild_id, canale.id, etichette),
             )
             return
         motivo = motivo_se_il_bot_non_puo(canale, interaction.guild.me, PERMESSI_DI_REAZIONE)
