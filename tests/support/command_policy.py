@@ -62,6 +62,7 @@ AUDIENCE: dict[str, str] = {
     "admin-tag": STAFF,  # tag e risposte automatiche (D69)
     "tag": PUBLIC,
     "admin-giochi": STAFF,  # gruppo condiviso per ruolo (D69)
+    "eventi": PUBLIC,  # gruppo per tutti (D69)
     "web": PUBLIC,  # gruppo condiviso per tutti (D69)
     "Salva citazione": PUBLIC,  # menu del tasto destro (D69, B16)
     "Orari nel mio fuso": PUBLIC,  # menu del tasto destro (D69, B6)

@@ -1530,3 +1530,9 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - `/sondaggi crea question:Pizza? inizia_tra:2m`: dopo 2 minuti il sondaggio nativo è nel canale. `chiudi_a_voti:2` (anche senza `inizia_tra`): al secondo voto il sondaggio si chiude da solo.
 - `/sondaggi gestisci riepilogo` con `risultati:alla fine`: solo il numero dei votanti; da chiuso, le barre. Estraneo senza «Gestisci messaggi»: «non puoi».
 - `/sondaggi modifica` toglie un'opzione, poi clicca il vecchio bottone prima dell'aggiornamento: messaggio «opzione tolta», non «già chiuso».
+
+## giro r23util, B24 — eventi con iscrizioni (#128)
+- Senza «Crea eventi`: `/eventi crea titolo:Serata quando:10m` rifiuta. Con il permesso: `/eventi crea titolo:Serata quando:10m posti:2 evento_discord:true`: messaggio con 4 bottoni; compare l'evento esterno di Discord (il bot deve avere «Gestisci eventi»).
+- Tre account: «Ci sono» x3 -> il terzo è in attesa; il primo preme «Esco»: il terzo entra e il bot lo menziona (il messaggio sparisce dopo un'ora). «Forse» libera il posto. «Iscritti»: elenco a pagine, solo chi l'ha aperto usa < >.
+- 15 minuti prima (prova con `quando:20m`): promemoria con menzione dei soli «sì». `/eventi modifica evento:... quando:3h` sposta: il vecchio promemoria non parte. `/eventi annulla`: bottoni spariti, evento di Discord tolto.
+- `ruolo_ping` con un utente senza «Menziona tutti»: il ruolo non viene avvisato e la risposta lo dice.

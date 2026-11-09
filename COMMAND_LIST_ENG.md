@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:03 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:08 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 804 commands in 47 categories.**
+**Total: 808 commands in 48 categories.**
 
 ## Admin: AI
 
@@ -596,6 +596,13 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:0
 - **`/clan promote`** — Changes the role of a member of your guild.
 - **`/clan treasury donate`** — Donates personal coins to your guild's treasury.
 - **`/clan treasury transfer`** — Moves coins from the treasury to another guild of YOURS (even on another server).
+
+## Events
+
+- **`/events cancel`** — Cancel an event: sign-ups can no longer change.
+- **`/events create`** — Create an event with sign-ups, seats and a reminder.
+- **`/events edit`** — Change the title, date, seats or description of an event.
+- **`/events list`** — Upcoming events, or the attendees of one event.
 
 ## Founder (server owner)
 
