@@ -1290,7 +1290,16 @@
   "admin-livelli azzera server": "Resets the XP of the whole server (makes a backup first).",
   "admin-livelli azzera ripristina": "Puts back the XP of a backup (valid 30 days).",
   "admin-livelli azzera auto": "Resets whoever leaves or is banned; locks XP and resets to the owner.",
-  "admin-livelli diagnosi": "Explains why a member gets no XP in a channel."
+  "admin-livelli diagnosi": "Explains why a member gets no XP in a channel.",
+  "fun telefono": "Phone between servers: call, hang up, report.",
+  "fun telefono chiama": "Call another random server (off by default).",
+  "fun telefono riaggancia": "End the call in progress.",
+  "fun telefono segnala": "Report the call, block the other server and hang up.",
+  "admin-giochi telefono": "Phone between servers: channel, consent, blocks, log.",
+  "admin-giochi telefono canale": "The server's phone channel.",
+  "admin-giochi telefono consenso": "Turn the phone on or off: off by default.",
+  "admin-giochi telefono blocca": "Block or unblock a person or another server from the phone.",
+  "admin-giochi telefono registro": "The server's latest calls: only servers, time and length."
  },
  "parametri": {},
  "menu": {

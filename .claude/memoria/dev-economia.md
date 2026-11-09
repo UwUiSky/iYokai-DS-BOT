@@ -2,12 +2,14 @@
 
 ## Aggiornata
 09/11/2026 · giro r1liv (#124 Livelli), ramo `feat/r1liv`, migrazioni 0581-0589 (0581 usata). Lavoro PER FILE.
+09/11/2026 · giro r24fun (migrazioni 0579-0580 usate). 09/11/2026 · giro r21gif, ramo `feat/r21gif`, migrazione 0570 (usata). Lavoro PER FILE.
 
 ## In corso
 - r23fun (B10-B11 di #131) finito, ramo `feat/r23fun`, worktree `/home/claude/wt/r23fun`, env `/tmp/env_w23fun.sh`. Migrazioni usate: 0576, 0577 (le 0572-0575 erano di r22fun). Prossimo: niente; resta tetto Premium battitura (con dev-core), Klipy e Splatoon 2.
 - Smoke da fare (lo lancia l'orchestratore).
 
 ## Fatto
+- r24fun B12: telefono (`cogs/fun/telefono.py`, `core/telefono_logic.py`, `telefono_repo`, 0579-0580, `fun_telefono` spento di base, `/fun telefono`, `/admin-giochi telefono`). Pesi: fun 2604 (14 figli), admin-giochi 2718, giochi 2691: nessun problema. Resta fuori: `/owner telefono` (basta blacklist del bot e `blocca server_id`).
 - r23fun B11: `suoni_ruoli` (soundboard.py, `suoni_ruoli_repo`, 0577), `/web turni` (`turni_logic`, `turni_giochi.py`), `/giochi smash` (`smash_logic`, `smash_repo`), `/immagini fusione` (`fusione_logic`, `safe_http.safe_richiesta_byte`). Peso `giochi` 6719 (avviso 6800): un altro figlio va in un sotto-gruppo.
 - r23fun B10: `core/lemmy_logic.py`, `immagini_segnalazioni_repo` (0576), `cogs/fun/immagini_comunita.py` (`/immagini post`, `/admin-giochi servizi`), `/gif cerca` in `gif.py`; interruttori `fun_immagini_post`/`fun_gif_cerca` (scheda «fun»), spenti di base. Klipy non fatto (docs illeggibili).
 - r1liv #124: B1 fatto (commit unico). Prossimo: B2 premi (042, 043, 047, 034, 038; 0582) secondo `/home/claude/wt/disegno_livelli.md`. `/admin-livelli` pesa 2952 (misura r1liv), ampio margine.
@@ -60,6 +62,7 @@
 - r1liv B1: dopo azzera/ripristina i ruoli-premio non si toccano (arriva con `sincronizza_premi` di B2). `leveling_activity` (classifica mese/settimana) non si azzera con `azzera server`.
 - GIF: voci senza fonte (dab, salta, canta, supplica, sposa, fragola, rose, arresta, massaggio, ruba, rombo); Klipy/waifu.im senza adattatore; FUN-136 (azioni del server) non fatta.
 - Migrazioni r11: 0410. Embed economia non ancora con miniatura: shop, classifiche, daily/work (testo semplice).
+- `test_intent_usage` rosso per file di altri (sondaggi_bottoni, conteggio, messaggi_auto, starboard): non miei.
 - Migrazioni mie: 0090-0095, 0097-0099, 0120-0121, 0200-0203, 0340-0341. NON usare 0096.
 - #127 restano VOC-006, 010, 013, 014, 016, 017, 021.
 - Colonne `boost_expires_at`/`guild_boost_expires_at` nel database, non usate.

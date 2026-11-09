@@ -52,6 +52,7 @@ Message content is needed by features that read what is written: AutoMod filters
 | Custom commands | `cogs/utility/custom_commands.py` | Run commands defined by the server |
 | Sticky messages | `cogs/utility/sticky_messages.py` | Keep a message at the bottom of a channel |
 | Backup mirror | `cogs/utility/backup_mirror.py` | Copy messages to the backup server |
+| Server phone | `cogs/fun/telefono.py` | During a call the staff accepted, pass the text written in the phone channel to the other server; the text is never stored |
 | Coin games | `cogs/fun/coin_games.py` | Count messages for coin rewards |
 | Music request channel | `cogs/music/request_channel.py` | Read song requests written in a channel |
 | Support threads (iYokai App) | `cogs/user_app/supporto_staff.py` | Forward the staff's replies to the person who asked |

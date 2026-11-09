@@ -536,3 +536,6 @@ APPROVATO dopo i fix. Main unito (e97e2d0). Fix: 306f4a4 ruolo creatori tag nell
 | 09/11 | `feat/r1liv` | `core/repositories/leveling_copie_repo.py:_scrivi_copia` | Il lock è solo tra azzeramenti: un XP guadagnato tra copia e UPDATE (o un utente nuovo) si azzera senza copia | bassa | aperto |
 | 09/11 | `feat/r1liv` | `cogs/leveling/azzeramenti.py:ModaleAzzeraServer` | `TextInput(label=...)` è deprecato in discord.py 2.7 (usare `discord.ui.Label`); stesso avviso negli altri modali | bassa | aperto |
 | 09/11 | `feat/r1liv` | `core/repositories/leveling_copie_repo.py:ripristina` | Il ripristino non rimette gli XP di mese/settimana (`leveling_activity`) | bassa | aperto |
+
+## r24fun (telefono, #131) · 09/11/2026
+Fix fatti da me: minori mai inoltrati (anche con effetto), allegati solo verso canali con limite d'età e ricontrollo all'invio, vecchio bottone Accetta non collega un altro server, segnala con permesso, cooldown chiama 30s, consenso spento chiude la chiamata, nome «disdiscordcord». Basse aperte: domini nudi (example.com) non tolti da togli_link; ILLEGGIBILE (testo non latino) non bloccato; chiamata continua se un server esce dal bot fino al silenzio di 10 minuti; test_data_registry fallisce solo per tabelle di altri rami nel DB condiviso.
