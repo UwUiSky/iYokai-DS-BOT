@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 17:56 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:03 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 803 commands in 47 categories.**
+**Total: 804 commands in 47 categories.**
 
 ## Admin: AI
 
@@ -855,6 +855,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 17:5
 - **`/polls buttons`** — Create a button poll (up to 20 options).
 - **`/polls create`** — Creates a poll (up to 10 options).
 - **`/polls edit`** — Edit the question, options or length of an open button poll.
+- **`/polls manage`** — List, summarize or close button polls.
 
 ## Tags
 

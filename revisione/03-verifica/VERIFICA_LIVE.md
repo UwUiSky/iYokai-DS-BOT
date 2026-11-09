@@ -1524,3 +1524,9 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - `anonimo:true` e `risultati:alla fine`: nessuno vede chi ha votato né i totali; alla scadenza (5 minuti) il messaggio si chiude con i totali.
 - `/admin-moduli sondaggi pesi azione:imposta ruolo:@X peso:3` poi `pesato:true`: il voto di chi ha @X vale 3. «Gestisci» (autore o Gestisci messaggi): chiudi ora e ruoli che possono votare. `/sondaggi modifica`: togliere un'opzione votata chiede conferma.
 - Esci dal server (o fatti bannare) con un voto aperto: il voto sparisce.
+
+## giro r23util, B23 — sondaggi programmati e gestione (#128)
+- `/sondaggi bottoni ... inizia_tra:2m`: risposta «programmato»; dopo 2 minuti compare il messaggio e parte la durata. `/sondaggi gestisci elenco` lo mostra prima come «programmato»; `chiudi` prima dell'ora lo annulla (non compare).
+- `/sondaggi crea question:Pizza? inizia_tra:2m`: dopo 2 minuti il sondaggio nativo è nel canale. `chiudi_a_voti:2` (anche senza `inizia_tra`): al secondo voto il sondaggio si chiude da solo.
+- `/sondaggi gestisci riepilogo` con `risultati:alla fine`: solo il numero dei votanti; da chiuso, le barre. Estraneo senza «Gestisci messaggi»: «non puoi».
+- `/sondaggi modifica` toglie un'opzione, poi clicca il vecchio bottone prima dell'aggiornamento: messaggio «opzione tolta», non «già chiuso».

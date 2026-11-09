@@ -8,21 +8,32 @@ sono TUTTI gestiti da Discord — questo cog è solo un'interfaccia
 comando sopra discord.Poll, niente storage, niente stato nostro.
 Senza opzioni diventa un sì/no rapido; a richiesta apre un thread di
 discussione sul sondaggio.
-Funzioni coperte: SPEC §14.15; catalogo UTL-087, UTL-095.
+Il bot segue solo i sondaggi programmati (`inizia_tra`) e quelli con chiusura a N voti (`chiudi_a_voti`, conta i voti
+con gli eventi dei voti e chiude con la fine del sondaggio).
+Funzioni coperte: SPEC §14.15; catalogo UTL-087, UTL-095, UTL-090, UTL-092 (D69, B23).
 """
 
 from __future__ import annotations
 
-from datetime import timedelta
+import logging
+from datetime import datetime, timedelta, timezone
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core import sondaggi_logic
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.duration_logic import parse_duration
 from core.i18n import testo_per
 from core.premium import PremiumModule, registry
+from core.repositories.sondaggi_nativi_repo import sondaggi_nativi_repo
+from core.scheduler import scheduler
+
+logger = logging.getLogger("iyokai.poll")
+AZIONE_APRI_NATIVO = "sondaggio_nativo_apri"
+AZIONE_FINE_NATIVO = "sondaggio_nativo_fine"
 
 MODULE_POLL = "poll"
 
@@ -57,6 +68,8 @@ class PollCog(CogConGruppi, commands.Cog):
         duration_hours="Durata in ore (default 24, massimo 768 = 32 giorni)",
         multiple="Permetti di votare più di un'opzione",
         discussione="Apri un thread per discutere il sondaggio",
+        inizia_tra="Si pubblica più tardi: 30m, 12h, 7d (da 1 minuto a 30 giorni)",
+        chiudi_a_voti="Si chiude da solo dopo tanti voti (massimo 100000)",
     )
     async def poll(
         self,
@@ -75,6 +88,8 @@ class PollCog(CogConGruppi, commands.Cog):
         duration_hours: app_commands.Range[int, 1, 768] = 24,
         multiple: bool = False,
         discussione: bool = False,
+        inizia_tra: app_commands.Range[str, 2, 6] | None = None,
+        chiudi_a_voti: app_commands.Range[int, 1, sondaggi_logic.MAX_VOTANTI_CHIUSURA] | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -106,6 +121,10 @@ class PollCog(CogConGruppi, commands.Cog):
             )
             return
 
+        if inizia_tra:
+            await self._programma(interaction, question, opzioni, duration_hours, multiple, discussione, inizia_tra, chiudi_a_voti)
+            return
+
         sondaggio = discord.Poll(
             question=question,
             duration=timedelta(hours=duration_hours),
@@ -115,6 +134,8 @@ class PollCog(CogConGruppi, commands.Cog):
             sondaggio.add_answer(text=opzione)
 
         await interaction.response.send_message(poll=sondaggio)
+        if chiudi_a_voti:
+            await self._segui(interaction, question, opzioni, duration_hours, multiple, discussione, chiudi_a_voti)
         if discussione and not interaction.channel.permissions_for(interaction.user).create_public_threads:
             # Il thread lo apre il bot: non lo fa per chi nel canale non potrebbe aprirlo da solo.
             await interaction.followup.send(
@@ -129,6 +150,104 @@ class PollCog(CogConGruppi, commands.Cog):
                 await interaction.followup.send(
                     await testo_per(interaction, "poll_sondaggio_pubblicato_ma_non_ho"), ephemeral=True
                 )
+
+    async def _segui(self, interaction, question, opzioni, ore, multipla, discussione, chiudi_a_voti) -> None:
+        """Salva il sondaggio appena pubblicato per contare i voti, e prepara la pulizia alla scadenza."""
+        try:
+            messaggio = await interaction.original_response()
+            nid = await sondaggi_nativi_repo.crea(
+                interaction.guild.id, interaction.channel.id, interaction.user.id, question, opzioni, multipla=multipla,
+                durata_ore=ore, discussione=discussione, chiudi_a_voti=chiudi_a_voti, stato="aperto")
+            await sondaggi_nativi_repo.imposta_messaggio(nid, messaggio.id)
+            fine = datetime.now(timezone.utc) + timedelta(hours=ore, minutes=1)
+            await scheduler.schedule(interaction.guild.id, interaction.user.id, AZIONE_FINE_NATIVO, fine, {"id": nid})
+        except discord.HTTPException:
+            logger.warning("Sondaggio nativo: chiusura a voti non attivata", exc_info=True)
+
+    async def _programma(self, interaction, question, opzioni, ore, multipla, discussione, inizia_tra, chiudi_a_voti) -> None:
+        try:
+            attesa = parse_duration(inizia_tra)
+        except ValueError as exc:
+            await interaction.response.send_message(str(exc), ephemeral=True)
+            return
+        if not sondaggi_logic.inizio_valido(attesa):
+            await interaction.response.send_message(await testo_per(interaction, "sb_inizio_fuori"), ephemeral=True)
+            return
+        canale = interaction.channel
+        mio = canale.permissions_for(interaction.guild.me)
+        suo = canale.permissions_for(interaction.user)
+        if not (mio.view_channel and mio.send_messages and suo.send_messages):
+            await interaction.response.send_message(await testo_per(interaction, "sb_canale_non_ammesso"), ephemeral=True)
+            return
+        inizio = datetime.now(timezone.utc) + timedelta(seconds=attesa)
+        nid = await sondaggi_nativi_repo.crea(
+            interaction.guild.id, canale.id, interaction.user.id, question, opzioni, multipla=multipla, durata_ore=ore,
+            discussione=discussione, chiudi_a_voti=chiudi_a_voti, inizia_il=inizio)
+        await scheduler.schedule(interaction.guild.id, interaction.user.id, AZIONE_APRI_NATIVO, inizio, {"id": nid})
+        await interaction.response.send_message(
+            await testo_per(interaction, "sb_programmato_nativo", quando=discord.utils.format_dt(inizio, "R")), ephemeral=True)
+
+    async def cog_load(self) -> None:
+        await super().cog_load()
+        scheduler.register_handler(AZIONE_APRI_NATIVO, self.alla_apertura)
+        scheduler.register_handler(AZIONE_FINE_NATIVO, self.alla_fine)
+
+    async def alla_apertura(self, guild_id: int, user_id: int, payload: dict) -> None:
+        """Scheduler: pubblica il sondaggio programmato (una volta sola)."""
+        r = await sondaggi_nativi_repo.apri(int(payload["id"]))
+        if r is None:
+            return
+        canale = self.bot.get_channel(r["channel_id"])
+        if canale is None:
+            await sondaggi_nativi_repo.elimina(r["id"])
+            return
+        sondaggio = discord.Poll(question=r["domanda"], duration=timedelta(hours=r["durata_ore"]), multiple=r["multipla"])
+        for opzione in r["opzioni"]:
+            sondaggio.add_answer(text=opzione)
+        messaggio = None
+        try:
+            messaggio = await canale.send(poll=sondaggio)
+            if r["discussione"]:
+                await messaggio.create_thread(name=r["domanda"][:100], auto_archive_duration=1440)
+        except discord.HTTPException:
+            logger.warning("Sondaggio nativo %s: pubblicazione o thread non riusciti", r["id"], exc_info=True)
+            if messaggio is None:
+                await sondaggi_nativi_repo.elimina(r["id"])
+            return
+        await sondaggi_nativi_repo.imposta_messaggio(r["id"], messaggio.id)
+        fine = datetime.now(timezone.utc) + timedelta(hours=r["durata_ore"], minutes=1)
+        await scheduler.schedule(guild_id, user_id, AZIONE_FINE_NATIVO, fine, {"id": r["id"]})
+
+    async def alla_fine(self, guild_id: int, user_id: int, payload: dict) -> None:
+        """Scheduler: il sondaggio è scaduto da solo, la riga non serve più."""
+        await sondaggi_nativi_repo.elimina(int(payload["id"]))
+
+    @commands.Cog.listener()
+    async def on_raw_poll_vote_add(self, payload: discord.RawPollVoteActionEvent) -> None:
+        await self._voto(payload, 1)
+
+    @commands.Cog.listener()
+    async def on_raw_poll_vote_remove(self, payload: discord.RawPollVoteActionEvent) -> None:
+        await self._voto(payload, -1)
+
+    async def _voto(self, payload: discord.RawPollVoteActionEvent, delta: int) -> None:
+        try:
+            esito = await sondaggi_nativi_repo.conta_voto(payload.message_id, delta)
+            if esito is None or not esito[1]:
+                return
+            canale = self.bot.get_channel(payload.channel_id)
+            if canale is not None:
+                await canale.get_partial_message(payload.message_id).end_poll()
+            await sondaggi_nativi_repo.elimina(esito[0])
+        except Exception:
+            logger.exception("Sondaggio nativo: chiusura a voti fallita (messaggio %s)", payload.message_id)
+
+    @commands.Cog.listener()
+    async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel) -> None:
+        try:
+            await sondaggi_nativi_repo.elimina_del_canale(channel.guild.id, channel.id)
+        except Exception:
+            logger.exception("Sondaggi nativi: pulizia del canale %s fallita", channel.id)
 
 
 async def setup(bot: commands.Bot) -> None:

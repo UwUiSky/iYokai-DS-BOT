@@ -330,7 +330,8 @@
   "sostituisci": "replace",
   "gruppi": "groups",
   "prendi": "take",
-  "pesi": "weights"
+  "pesi": "weights",
+  "gestisci": "manage"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1270,7 +1271,8 @@
   "sondaggi bottoni": "Create a button poll (up to 20 options).",
   "sondaggi modifica": "Edit the question, options or length of an open button poll.",
   "admin-moduli sondaggi": "Polls: vote weight per role",
-  "admin-moduli sondaggi pesi": "Give a weight to the vote of a role in polls (max 25 roles)."
+  "admin-moduli sondaggi pesi": "Give a weight to the vote of a role in polls (max 25 roles).",
+  "sondaggi gestisci": "List, summarize or close button polls."
  },
  "parametri": {},
  "menu": {

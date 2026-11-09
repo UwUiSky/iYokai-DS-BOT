@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 17:56 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:03 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 803 comandi in 47 categorie.**
+**Totale: 804 comandi in 47 categorie.**
 
 ## Admin: AI
 
@@ -854,6 +854,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 17:
 
 - **`/sondaggi bottoni`** — Crea un sondaggio a bottoni (fino a 20 opzioni).
 - **`/sondaggi crea`** — Crea un sondaggio (fino a 10 opzioni).
+- **`/sondaggi gestisci`** — Elenco, riepilogo o chiusura dei sondaggi a bottoni.
 - **`/sondaggi modifica`** — Cambia domanda, opzioni o durata di un sondaggio a bottoni aperto.
 
 ## Tag

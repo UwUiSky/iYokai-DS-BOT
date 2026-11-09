@@ -2,7 +2,7 @@
 core/sondaggi_logic.py
 ======================
 Regole del sondaggio a bottoni, senza Discord: opzioni, righe di bottoni, pesi dei ruoli, barre dei risultati.
-Funzioni coperte: catalogo #128 UTL-088, 089, 091, 093, 094, 096 (D69, B22)
+Funzioni coperte: catalogo #128 UTL-088, 089, 091, 093, 094, 096 (D69, B22, B23)
 """
 
 from __future__ import annotations
@@ -16,6 +16,8 @@ PER_RIGA = 5
 ETICHETTA_BOTTONE = 45
 MAX_COMPONENTI = 25
 MAX_VOTANTI_CHIUSURA = 100_000
+INIZIO_MINIMO = 60
+INIZIO_MASSIMO = 30 * 86400
 
 CONTROLLI = {"r": "risultati", "t": "togli", "g": "gestisci"}
 
@@ -81,3 +83,8 @@ def righe_risultati(opzioni: list[tuple[str, int]]) -> list[str]:
 
 def conta_componenti(quante_opzioni: int) -> int:
     return sum(len(r) for r in righe_bottoni(quante_opzioni))
+
+
+def inizio_valido(secondi: int) -> bool:
+    """«inizia_tra»: da 1 minuto a 30 giorni."""
+    return INIZIO_MINIMO <= secondi <= INIZIO_MASSIMO

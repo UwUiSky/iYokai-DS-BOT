@@ -2622,5 +2622,15 @@
   "sb_peso_tolto": "Weight removed.",
   "sb_peso_assente": "That role has no weight.",
   "sb_peso_impostato": "The vote of {ruolo} now counts {peso}.",
-  "sb_pesi_pieno": "At most {massimo} roles can have a weight."
+  "sb_pesi_pieno": "At most {massimo} roles can have a weight.",
+  "sb_opzione_tolta": "This option was removed from the poll. The message will refresh shortly: pick another option.",
+  "sb_inizio_fuori": "The poll can start between 1 minute and 30 days from now.",
+  "sb_programmato": "Poll #{id} scheduled: it goes up {quando}. Find it in /sondaggi gestisci.",
+  "sb_programmato_nativo": "Poll scheduled: it goes up {quando}.",
+  "sb_stato_programmato": "scheduled",
+  "sb_stato_aperto": "open",
+  "sb_stato_chiuso": "closed",
+  "sb_elenco_vuoto": "No polls to show.",
+  "sb_inizia": "Goes up {quando}.",
+  "sb_votanti": "Voters: {votanti}"
 }

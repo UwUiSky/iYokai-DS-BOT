@@ -2622,5 +2622,15 @@
   "sb_peso_tolto": "Peso tolto.",
   "sb_peso_assente": "Quel ruolo non ha un peso.",
   "sb_peso_impostato": "Il voto di {ruolo} ora vale {peso}.",
-  "sb_pesi_pieno": "Si possono dare pesi a {massimo} ruoli al massimo."
+  "sb_pesi_pieno": "Si possono dare pesi a {massimo} ruoli al massimo.",
+  "sb_opzione_tolta": "Questa opzione è stata tolta dal sondaggio. Il messaggio si aggiorna a breve: scegli un'altra opzione.",
+  "sb_inizio_fuori": "Il sondaggio può iniziare tra 1 minuto e 30 giorni.",
+  "sb_programmato": "Sondaggio #{id} programmato: si pubblica {quando}. Lo trovi in /sondaggi gestisci.",
+  "sb_programmato_nativo": "Sondaggio programmato: si pubblica {quando}.",
+  "sb_stato_programmato": "programmato",
+  "sb_stato_aperto": "aperto",
+  "sb_stato_chiuso": "chiuso",
+  "sb_elenco_vuoto": "Nessun sondaggio da mostrare.",
+  "sb_inizia": "Si pubblica {quando}.",
+  "sb_votanti": "Votanti: {votanti}"
 }

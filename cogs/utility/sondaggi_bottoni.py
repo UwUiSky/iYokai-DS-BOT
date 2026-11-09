@@ -2,9 +2,9 @@
 cogs/utility/sondaggi_bottoni.py
 ================================
 Sondaggio a bottoni del bot: `/sondaggi bottoni` (fino a 20 opzioni, anonimo, risultati alla fine, più scelte, ruolo riservato,
-voti pesati per ruolo, chiusura a N votanti), `/sondaggi modifica` (finestra) e `/admin-moduli sondaggi` (pesi per ruolo).
+voti pesati per ruolo, chiusura a N votanti), `/sondaggi modifica` (finestra), `/sondaggi gestisci` (elenco, riepilogo, chiudi), inizio programmato (`inizia_tra`) e `/admin-moduli sondaggi` (pesi per ruolo).
 I bottoni sono DynamicItem: funzionano dopo il riavvio. La scadenza passa dallo scheduler. Chi esce o è bannato perde il voto.
-Funzioni coperte: catalogo #128 UTL-088, 089, 091, 093, 094, 096 (D69, B22)
+Funzioni coperte: catalogo #128 UTL-088, 089, 091, 093, 094, 096, 090, 097 (D69, B22, B23)
 """
 
 from __future__ import annotations
@@ -29,6 +29,7 @@ logger = logging.getLogger("iyokai.sondaggi")
 
 MODULE_POLL = "poll"
 AZIONE_CHIUDI = "sondaggio_chiudi"
+AZIONE_APRI = "sondaggio_apri"
 MAX_APERTI_PER_AUTORE = 5
 DURATA_MASSIMA = 30 * 86400
 DURATA_MINIMA = 60
@@ -228,6 +229,22 @@ async def _completa_sondaggi(interaction: discord.Interaction, attuale: str) -> 
     return [app_commands.Choice(name=f"#{r['id']} {r['domanda']}"[:100], value=str(r["id"])) for r in trovati if r["stato"] != "chiuso"][:25]
 
 
+_AZIONI_GESTIONE = [
+    app_commands.Choice(name="elenco", value="elenco"),
+    app_commands.Choice(name="riepilogo", value="riepilogo"),
+    app_commands.Choice(name="chiudi", value="chiudi"),
+]
+
+
+async def _completa_gestione(interaction: discord.Interaction, attuale: str) -> list[app_commands.Choice[str]]:
+    """Programmati, aperti e chiusi dell'utente (tutti, per chi ha «Gestisci messaggi»), al massimo 25."""
+    if interaction.guild is None:
+        return []
+    staff = interaction.permissions.manage_messages
+    trovati = await sondaggi_repo.cerca_domanda(interaction.guild.id, attuale, None if staff else interaction.user.id)
+    return [app_commands.Choice(name=f"#{r['id']} {r['domanda']}"[:100], value=str(r["id"])) for r in trovati][:25]
+
+
 class SondaggiBottoniCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -236,6 +253,7 @@ class SondaggiBottoniCog(CogConGruppi, commands.Cog):
         await super().cog_load()
         self.bot.add_dynamic_items(BottoneSondaggio)
         scheduler.register_handler(AZIONE_CHIUDI, self.alla_scadenza)
+        scheduler.register_handler(AZIONE_APRI, self.alla_apertura)
 
     async def cog_unload(self) -> None:
         self.bot.remove_dynamic_items(BottoneSondaggio)
@@ -279,6 +297,29 @@ class SondaggiBottoniCog(CogConGruppi, commands.Cog):
             return
         await self.chiudi_e_aggiorna(s["id"])
 
+    async def alla_apertura(self, guild_id: int, user_id: int, payload: dict) -> None:
+        """Scheduler: pubblica un sondaggio programmato. Se è stato annullato o già aperto non fa nulla."""
+        s = await sondaggi_repo.prendi(int(payload["id"]))
+        if s is None or s["stato"] != "programmato":
+            return
+        canale = self.bot.get_channel(s["channel_id"])
+        if canale is None:
+            await sondaggi_repo.chiudi(s["id"])
+            return
+        scade = datetime.now(timezone.utc) + timedelta(seconds=s["durata_s"] or 86400)
+        if not await sondaggi_repo.apri(s["id"], scade):
+            return
+        s = await sondaggi_repo.prendi(s["id"])
+        embed, vista = await self._disegna(s)
+        try:
+            messaggio = await canale.send(embed=embed, view=vista, allowed_mentions=_NESSUNA_MENZIONE)
+        except discord.HTTPException as exc:
+            logger.warning("Sondaggio %s: non pubblicato (%s)", s["id"], exc)
+            await sondaggi_repo.elimina(s["id"])
+            return
+        await sondaggi_repo.imposta_messaggio(s["id"], messaggio.id)
+        await scheduler.schedule(s["guild_id"], s["autore_id"], AZIONE_CHIUDI, scade, {"id": s["id"]})
+
     # --- bottoni -----------------------------------------------------------------------------------------------------
     async def voto(self, interaction: discord.Interaction, sondaggio_id: int, scelta: int) -> None:
         await interaction.response.defer(ephemeral=True)
@@ -294,7 +335,8 @@ class SondaggiBottoniCog(CogConGruppi, commands.Cog):
         peso = L.peso_votante(ruoli, await sondaggi_repo.pesi(s["guild_id"])) if s["pesato"] else 1
         esito, scelte, votanti = await sondaggi_repo.vota(sondaggio_id, interaction.user.id, scelta, peso, datetime.now(timezone.utc))
         if esito in ("chiuso", "senza_opzione"):
-            await interaction.followup.send(t("sb_gia_chiuso", lingua), ephemeral=True)
+            await interaction.followup.send(t("sb_opzione_tolta" if esito == "senza_opzione" else "sb_gia_chiuso", lingua),
+                                            ephemeral=True)
             return
         if esito == "uguale":
             await interaction.followup.send(t("sb_gia_votato", lingua), ephemeral=True)
@@ -364,6 +406,7 @@ class SondaggiBottoniCog(CogConGruppi, commands.Cog):
         pesato="Il voto vale il peso del ruolo (lo decide lo staff)",
         chiudi_a_voti="Si chiude da solo quando hanno votato tante persone",
         canale="Dove pubblicarlo (di base questo canale)",
+        inizia_tra="Si pubblica più tardi: 30m, 12h, 7d (da 1 minuto a 30 giorni)",
     )
     @app_commands.choices(risultati=_RISULTATI)
     async def bottoni(
@@ -371,7 +414,7 @@ class SondaggiBottoniCog(CogConGruppi, commands.Cog):
         opzioni: app_commands.Range[str, 3, 1700], durata: app_commands.Range[str, 2, 6] = "24h", anonimo: bool = False,
         risultati: str = "subito", multipla: bool = False, ruolo: discord.Role | None = None, pesato: bool = False,
         chiudi_a_voti: app_commands.Range[int, 1, L.MAX_VOTANTI_CHIUSURA] | None = None,
-        canale: discord.TextChannel | None = None,
+        canale: discord.TextChannel | None = None, inizia_tra: app_commands.Range[str, 2, 6] | None = None,
     ) -> None:
         guild = interaction.guild
         lingua = await lingua_interazione(interaction)
@@ -393,6 +436,16 @@ class SondaggiBottoniCog(CogConGruppi, commands.Cog):
         if not DURATA_MINIMA <= secondi <= DURATA_MASSIMA:
             await interaction.response.send_message(t("sb_durata_fuori", lingua), ephemeral=True)
             return
+        attesa = 0
+        if inizia_tra:
+            try:
+                attesa = parse_duration(inizia_tra)
+            except ValueError as exc:
+                await interaction.response.send_message(str(exc), ephemeral=True)
+                return
+            if not L.inizio_valido(attesa):
+                await interaction.response.send_message(t("sb_inizio_fuori", lingua), ephemeral=True)
+                return
         dove = canale or interaction.channel
         mio = dove.permissions_for(guild.me)
         suo = dove.permissions_for(interaction.user)
@@ -403,6 +456,17 @@ class SondaggiBottoniCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(t("sb_troppi_aperti", lingua, massimo=MAX_APERTI_PER_AUTORE), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
+        if attesa:
+            inizio = datetime.now(timezone.utc) + timedelta(seconds=attesa)
+            sid = await sondaggi_repo.crea(
+                guild.id, dove.id, interaction.user.id, domanda, lette, anonimo=anonimo, risultati=risultati, multipla=multipla,
+                pesato=pesato, ruoli=[ruolo.id] if ruolo else [], chiudi_a_voti=chiudi_a_voti, inizia_il=inizio, durata_s=secondi,
+                stato="programmato",
+            )
+            await scheduler.schedule(guild.id, interaction.user.id, AZIONE_APRI, inizio, {"id": sid})
+            await interaction.followup.send(
+                t("sb_programmato", lingua, quando=discord.utils.format_dt(inizio, "R"), id=sid), ephemeral=True)
+            return
         scade = datetime.now(timezone.utc) + timedelta(seconds=secondi)
         sid = await sondaggi_repo.crea(
             guild.id, dove.id, interaction.user.id, domanda, lette, anonimo=anonimo, risultati=risultati, multipla=multipla,
@@ -479,6 +543,52 @@ class SondaggiBottoniCog(CogConGruppi, commands.Cog):
             await scheduler.schedule(s["guild_id"], s["autore_id"], AZIONE_CHIUDI, scade, {"id": sid})
         await self.aggiorna_messaggio(sid)
         return "sb_modificato"
+
+    # --- /sondaggi gestisci ------------------------------------------------------------------------------------------
+    @comando_di_gruppo("sondaggi", nome="gestisci", descrizione="Elenco, riepilogo o chiusura dei sondaggi a bottoni.")
+    @app_commands.describe(azione="Cosa fare", sondaggio="Il sondaggio (serve per riepilogo e chiudi)")
+    @app_commands.choices(azione=_AZIONI_GESTIONE)
+    @app_commands.autocomplete(sondaggio=_completa_gestione)
+    async def gestisci(self, interaction: discord.Interaction, azione: str,
+                       sondaggio: app_commands.Range[str, 1, 20] | None = None) -> None:
+        lingua = await lingua_interazione(interaction)
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(t("guild_only_command", lingua), ephemeral=True)
+            return
+        if azione == "elenco":
+            staff = interaction.permissions.manage_messages
+            righe = await sondaggi_repo.elenco_gestione(guild.id, None if staff else interaction.user.id)
+            corpo = "\n".join(f"#{r['id']} · {t('sb_stato_' + r['stato'], lingua)} · {r['domanda'][:80]}" for r in righe)
+            await interaction.response.send_message(corpo[:1900] or t("sb_elenco_vuoto", lingua), ephemeral=True,
+                                                    allowed_mentions=_NESSUNA_MENZIONE)
+            return
+        s = await sondaggi_repo.prendi(int(sondaggio)) if sondaggio and sondaggio.isdigit() else None
+        if s is None or s["guild_id"] != guild.id:
+            await interaction.response.send_message(t("sb_non_trovato", lingua), ephemeral=True)
+            return
+        if not puo_gestire(interaction, s["autore_id"]):
+            await interaction.response.send_message(t("sb_non_si_puo", lingua), ephemeral=True)
+            return
+        if azione == "chiudi":
+            await interaction.response.defer(ephemeral=True)
+            ok = await self.chiudi_e_aggiorna(s["id"])
+            await interaction.followup.send(t("sb_chiuso_ora" if ok else "sb_gia_chiuso", lingua), ephemeral=True)
+            return
+        await interaction.response.send_message(await self._riepilogo(s, lingua), ephemeral=True,
+                                                allowed_mentions=_NESSUNA_MENZIONE)
+
+    async def _riepilogo(self, s, lingua: str) -> str:
+        chiuso = s["stato"] == "chiuso"
+        intestazione = f"**#{s['id']}** {s['domanda'][:200]}\n{t('sb_stato_' + s['stato'], lingua)}"
+        if s["stato"] == "programmato":
+            return intestazione + "\n" + t("sb_inizia", lingua, quando=discord.utils.format_dt(_aware(s["inizia_il"]), "R"))
+        risultati = await sondaggi_repo.risultati(s["id"], s["pesato"])
+        votanti = sum(v for _, v in risultati) if chiuso else await sondaggi_repo.votanti(s["id"])
+        corpo = intestazione + "\n" + t("sb_votanti", lingua, votanti=votanti)
+        if chiuso or s["risultati"] == "subito":
+            corpo += "\n\n" + "\n\n".join(L.righe_risultati(risultati))
+        return corpo[:1900]
 
     # --- /admin-moduli sondaggi --------------------------------------------------------------------------------------
     @comando_di_gruppo("admin-moduli", nome="pesi", descrizione="Dai un peso al voto di un ruolo nei sondaggi (max 25 ruoli).", sottogruppo=_SG_ADMIN)
