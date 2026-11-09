@@ -330,7 +330,8 @@
   "sostituisci": "replace",
   "gruppi": "groups",
   "prendi": "take",
-  "pesi": "weights"
+  "pesi": "weights",
+  "ripristina": "restore"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1270,7 +1271,12 @@
   "sondaggi bottoni": "Create a button poll (up to 20 options).",
   "sondaggi modifica": "Edit the question, options or length of an open button poll.",
   "admin-moduli sondaggi": "Polls: vote weight per role",
-  "admin-moduli sondaggi pesi": "Give a weight to the vote of a role in polls (max 25 roles)."
+  "admin-moduli sondaggi pesi": "Give a weight to the vote of a role in polls (max 25 roles).",
+  "admin-livelli azzera": "Reset XP: whole server, backups and restore, automatic",
+  "admin-livelli azzera server": "Resets the XP of the whole server (makes a backup first).",
+  "admin-livelli azzera ripristina": "Puts back the XP of a backup (valid 30 days).",
+  "admin-livelli azzera auto": "Resets whoever leaves or is banned; locks XP and resets to the owner.",
+  "admin-livelli diagnosi": "Explains why a member gets no XP in a channel."
  },
  "parametri": {},
  "menu": {

@@ -362,6 +362,7 @@ def seconds_until_next_claim(
 # ======================================================================
 MODI_ANNUNCIO = ("spento", "canale_corrente", "dm", "canale_scelto")
 MODI_PREMI = ("accumula", "sostituisci")
+MODI_AZZERA_SU = ("nessuno", "uscita", "ban", "entrambi")  # LIV-070
 MODI_MOLTIPLICATORI = ("somma", "massimo")
 
 # Minimo e massimo di ogni numero configurabile. Un solo posto: lo usano
@@ -415,6 +416,10 @@ class LevelingSettings:
     pay_tax_pct: int = 0  # ECO-015
     pay_max: int = 0  # ECO-015
     pay_min: int = 0  # ECO-015
+    azzera_su: str = "nessuno"  # LIV-070: azzera gli XP di chi esce o viene bannato
+    copia_su_uscita: bool = False  # LIV-070: tiene una copia di 30 giorni di quegli XP
+    blocca_xp: bool = False  # LIV-071: gli XP a mano li cambia solo il proprietario del server
+    blocca_azzeramento: bool = False  # LIV-071: azzerare e ripristinare solo il proprietario
 
 
 @dataclass(frozen=True)

@@ -22,6 +22,7 @@ from core.leveling_logic import (
     LIMITI_IMPOSTAZIONI,
     MAX_REGOLE_PER_TIPO,
     MODI_ANNUNCIO,
+    MODI_AZZERA_SU,
     MODI_MOLTIPLICATORI,
     MODI_PREMI,
     TIPI_REGOLA,
@@ -39,6 +40,7 @@ _CAMPI_NOTI = {f.name for f in fields(LevelingSettings)}
 _MODI = {
     "levelup_mode": MODI_ANNUNCIO,
     "reward_mode": MODI_PREMI,
+    "azzera_su": MODI_AZZERA_SU,
     "multiplier_mode": MODI_MOLTIPLICATORI,
 }
 
@@ -59,8 +61,9 @@ class LevelingSettingsRepository:
     def _pool(self) -> asyncpg.Pool:
         return self._pool_provider()
 
-    async def get_config(self, guild_id: int) -> ConfigLivelli:
-        voce = self._cache.get(guild_id)
+    async def get_config(self, guild_id: int, fresco: bool = False) -> ConfigLivelli:
+        """`fresco`: salta la cache (per i controlli che non devono vedere un valore vecchio)."""
+        voce = None if fresco else self._cache.get(guild_id)
         if voce is not None and time.monotonic() - voce[0] < SECONDI_DI_CACHE:
             return voce[1]
 

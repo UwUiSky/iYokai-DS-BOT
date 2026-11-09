@@ -1524,3 +1524,11 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - `anonimo:true` e `risultati:alla fine`: nessuno vede chi ha votato né i totali; alla scadenza (5 minuti) il messaggio si chiude con i totali.
 - `/admin-moduli sondaggi pesi azione:imposta ruolo:@X peso:3` poi `pesato:true`: il voto di chi ha @X vale 3. «Gestisci» (autore o Gestisci messaggi): chiudi ora e ruoli che possono votare. `/sondaggi modifica`: togliere un'opzione votata chiede conferma.
 - Esci dal server (o fatti bannare) con un voto aperto: il voto sparisce.
+
+## giro r1liv, B1 — azzeramenti e diagnosi dei livelli (#124)
+- `/admin-livelli azzera server` con un account che ha «Gestisci server»: si apre una finestra. Scrivi un nome sbagliato: «Non ho azzerato niente». Scrivi il nome giusto (anche tutto minuscolo): XP e livelli di tutti a 0, monete e ruoli-premio restano; risposta con il numero della copia.
+- `/admin-livelli azzera ripristina`: il menu mostra la copia; conferma con il bottone: gli XP tornano (chi ne ha già di più li tiene). Un secondo clic sul bottone: «già fatto». Dopo 30 giorni la copia non c'è più.
+- `/admin-livelli azzera auto azzera_su:Uscita e ban copia:sì`: fai uscire un account di prova con XP: i suoi XP vanno a 0 e compare una copia («utente»). Con `azzera_su:Chi viene bannato` un'uscita semplice non azzera; un ban sì. Con `Chi esce o viene espulso` un ban non conta come uscita.
+- `blocca_xp:sì` e `blocca_azzeramento:sì`, poi prova con un admin che NON è il proprietario: `/admin-livelli membro` e `azzera server` rispondono «solo il proprietario»; il proprietario può. Con un blocco acceso l'admin non può spegnerlo.
+- `/admin-livelli diagnosi membro:@X canale:#Y`: prova con un canale escluso, un ruolo escluso, un membro che ha appena scritto (attesa), un membro al livello massimo, il modulo spento. Un solo messaggio nascosto con ✅/❌.
+
