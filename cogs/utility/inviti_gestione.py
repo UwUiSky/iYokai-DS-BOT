@@ -8,6 +8,7 @@ Funzioni coperte: catalogo UTL-178, 179, 182, 183
 
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 
@@ -155,7 +156,7 @@ class InvitiGestioneCog(CogConGruppi, commands.Cog):
         if not righe:
             await interaction.followup.send(await testo_per(interaction, "invites_niente_da_esportare"))
             return
-        dati, messe = costruisci(righe, COLONNE[cosa.value], tipo)
+        dati, messe = await asyncio.to_thread(costruisci, righe, COLONNE[cosa.value], tipo)  # fino a 200.000 righe: non ferma il bot
         nota = "" if messe == len(righe) else " " + await testo_per(interaction, "invites_export_tagliato", messe=messe, totale=len(righe))
         await interaction.followup.send(
             await testo_per(interaction, "invites_export_pronto", n=messe) + nota,

@@ -231,3 +231,21 @@ async def test_albero_dei_comandi_gestione():
     await modulo.setup(bot)
     for nome in ("riallinea", "azzera", "esporta", "statistiche"):
         assert comando_nel_gruppo("admin-inviti", nome)
+
+
+@pytest.mark.asyncio
+async def test_esporta_costruisce_il_file_fuori_dal_ciclo_degli_eventi(monkeypatch):
+    s = _Scena(monkeypatch)
+    s.stats.righe_per_esportare = AsyncMock(return_value=[
+        {"user_id": 1, "inviter_id": 5, "code": "a", "kind": "normale", "finto": False, "usciti": 0,
+         "joined_at": datetime(2026, 1, 1), "left_at": None}])
+    chiamate = []
+    originale = modulo.asyncio.to_thread
+
+    async def spia(funzione, *a, **k):
+        chiamate.append(funzione.__name__)
+        return await originale(funzione, *a, **k)
+
+    monkeypatch.setattr(modulo.asyncio, "to_thread", spia)
+    await s.cog.esporta.callback(s.cog, s.i, SimpleNamespace(value="ingressi"), None)
+    assert chiamate == ["costruisci"]
