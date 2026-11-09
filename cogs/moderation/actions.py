@@ -74,7 +74,7 @@ from cogs.automod.escalation import scala_per_warn_manuale
 from core.spam_trap_logic import BAN_ACTION_TYPE as SPAM_TRAP_BAN_ACTION_TYPE
 from cogs.moderation.ricerca import completa_ban
 from core.moderation_conferma import conferma_sanzione, invia_esito
-from core.command_access import Livello, autocomplete_protetto
+from core.command_access import Livello, autocomplete_protetto, puo_usare
 from core.repositories.invite_stats_repo import invite_stats_repo
 from cogs.moderation._shared import (
     MODULE_ACTIONS,
@@ -216,6 +216,12 @@ class ConfermaEntrati(BaseView):
             return
         self._partita = True
         self.stop()
+        # tra il comando e il tasto il ruolo o il permesso possono essere stati tolti: si ricontrollano entrambi
+        permesso = AZIONI_ENTRATI[self.azione]
+        if not await puo_usare(interaction, Livello.MODBAN) or not getattr(interaction.user.guild_permissions, permesso, False):
+            await interaction.response.edit_message(
+                content=await testo_per(interaction, "actions_entrati_permesso", permesso=permesso), view=None)
+            return
         await interaction.response.edit_message(content="...", view=None)
         await self.cog._esegui_entrati(interaction, self.membri, self.azione, self.reason)
 
