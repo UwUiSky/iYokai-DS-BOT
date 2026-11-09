@@ -71,6 +71,7 @@ USI: dict[str, tuple[UsoIntent, ...]] = {
         UsoIntent("Softban and mute", "cogs/moderation/softban_mute.py", "Re-apply a mute on rejoin"),
         UsoIntent("Tickets", "cogs/tickets/tickets.py", "Close the ticket of a member who left"),
         UsoIntent("Modmail", "cogs/tickets/modmail.py", "Close the thread of a member who left"),
+        UsoIntent("Button polls", "cogs/utility/sondaggi_bottoni.py", "Remove the vote of a member who left or was banned"),
     ),
     INTENT_MESSAGE_CONTENT: (
         UsoIntent("AutoMod filters", "cogs/automod/automod.py", "Read text to apply the server rules"),
@@ -100,6 +101,10 @@ USI: dict[str, tuple[UsoIntent, ...]] = {
         UsoIntent("AI channel summary", "cogs/ai/riepilogo.py", "Summarise a channel the staff chose, only with the server's consent"),
         UsoIntent("AI ticket assistant", "cogs/ai/ticket_ai.py", "Suggest a first answer inside tickets, only with the server's consent"),
         UsoIntent("Yokai voice", "cogs/ai/voce.py", "Read or transcribe a message when someone asks, only with the server's consent"),
+        UsoIntent("Counting channel", "cogs/utility/conteggio.py", "Read the number written in the counting channel chosen by the staff"),
+        UsoIntent("Auto-publish and auto-threads", "cogs/utility/messaggi_auto.py", "Act on messages in the channels the staff chose"),
+        UsoIntent("Starboard auto channel", "cogs/utility/starboard.py", "Copy messages of the chosen channel to the board"),
+        UsoIntent("Group games (typing, acronyms)", "cogs/fun/giochi_gruppo.py", "Read answers only in the channel of a running game, only from players"),
         UsoIntent("Long slowmode", "cogs/moderation/channel_control.py", "Enforce a slowmode longer than 6 hours chosen by the staff; only the time of the last message is kept"),
     ),
     INTENT_PRESENCES: (
