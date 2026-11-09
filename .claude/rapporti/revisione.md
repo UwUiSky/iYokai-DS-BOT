@@ -533,3 +533,6 @@ APPROVATO dopo i fix. Main unito (e97e2d0). Fix: 306f4a4 ruolo creatori tag nell
 - Smash: età solo numero unico >=18; esclusi descrizione/nome/generi/tag con lista minori (nsfw_filter_logic) + parole in più; canale ricontrollato al voto. Test per ogni caso.
 - Basse aperte: cache turni Splatoon con soli salmon non riusata; ruolo cancellato che era l'ultimo «consenti» riapre il suono a tutti.
 - Smoke da fare: giochi_smash, immagini_comunita, immagini_fusione, gif_cerca, suoni_ruoli, web_turni, 0576-0577, tree_invariants, data_registry, i18n.
+| 09/11 | `feat/r1liv` | `core/repositories/leveling_copie_repo.py:_scrivi_copia` | Il lock è solo tra azzeramenti: un XP guadagnato tra copia e UPDATE (o un utente nuovo) si azzera senza copia | bassa | aperto |
+| 09/11 | `feat/r1liv` | `cogs/leveling/azzeramenti.py:ModaleAzzeraServer` | `TextInput(label=...)` è deprecato in discord.py 2.7 (usare `discord.ui.Label`); stesso avviso negli altri modali | bassa | aperto |
+| 09/11 | `feat/r1liv` | `core/repositories/leveling_copie_repo.py:ripristina` | Il ripristino non rimette gli XP di mese/settimana (`leveling_activity`) | bassa | aperto |

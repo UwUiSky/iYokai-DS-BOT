@@ -301,6 +301,13 @@ class LevelingRepository:
             last_work_at=row["last_work_at"],
         )
 
+    async def ultimo_xp_testo(self, guild_id: int, user_id: int) -> datetime | None:
+        """Quando ha preso l'ultimo XP da messaggio (per la diagnosi dell'attesa); None se mai."""
+        return await self._pool.fetchval(
+            "SELECT last_text_xp_at FROM leveling_totals WHERE guild_id = $1 AND user_id = $2",
+            guild_id, user_id,
+        )
+
     async def _add_period_activity(
         self, conn: asyncpg.Connection, guild_id: int, user_id: int, xp: int, coins: int
     ) -> None:

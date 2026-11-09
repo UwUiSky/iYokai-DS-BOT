@@ -1,6 +1,7 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
+09/11/2026 · `feat/r1liv` (#124 B1, 0581): 2 fix (azzera server/utente azzera anche `leveling_activity`; ban vecchio non nasconde più l'uscita, finestra 60 s); 3 basse aperte. APPROVATO. Smoke da fare: test_leveling_azzera*, test_leveling*, 0581, data_registry, i18n, ui_base_wiring, tree_invariants, command_policy.
 09/11/2026 · `feat/r21util` (D69 B16–B21, UTL-184, #128): merge main (e97e2d0), 4 fix (306f4a4, ban massa conferma, CSV/gruppo, 26a1496 quote->citazioni+0558); 4 basse aperte. APPROVATO. Smoke da fare: citazioni, risposte_regex_globali, autoresponder, custom_commands, tag_gestione, strumenti_server, moderation_canali_m7, massa, migrazione_percorsi_tag_quote, 0555–0558, tree_invariants, riferimenti, data_registry, i18n.
 09/11/2026 · `feat/r18mod` (D68, M6, M8, #115): merge main (8fd3bf8), 5 fix (8c754fc, 39652fc, poi defer segnalazioni e tetto 5/10min in ac5e503); 4 basse aperte. APPROVATO. Smoke da fare: moderation_motivi_severita, moderation_dm_m6, moderation_scheda_m8, report_limiti, remaining_moderation_smoke, automod_azioni, 0532, tree_invariants, i18n.
 08/11/2026 · `feat/r18automod` (A10 calore/soglia canale/finestra, A11 pulizia 0509, #116): main già unito, 5 fix (b06e3df, bf9a609, fcd1452, 8fd7903, 78b289c); 5 basse aperte. APPROVATO. Smoke da fare: automod_pulizia*, automod_calore*, automod_soglia_canale, automod_innesco_logic, automod_regole_pannello, automod_eventi*, 0509, tree_invariants, data_registry, i18n.
@@ -13,7 +14,6 @@ Giri r6–r14lingue: tutti APPROVATI dopo i fix (commit e basse nel quaderno). `
 08/11/2026 · `feat/r16ticket` (D66, #120, 0520–0525): merge main (fdb43c8), 5 fix (28a555d, b0d7f16, 382a541, 4de6d9e, 82ae567); 8 basse aperte. APPROVATO. Smoke da fare: ticket*, modmail*, 0520–0525, i18n, tree_invariants.
 Giri r6–r14 e r15vpn/r15immagini precedenti: tutti APPROVATI dopo i fix; basse aperte nel quaderno.
 08/11/2026 · `feat/r17automod` (D67 account rubato #153, A9 eventi #116, 0531): merge main (01a2b07), 6 fix (f98a408, 0586e74, c7743cf, cb3a839, ebe5050, 202e3f7) + voci chieste (7438842 minuti timeout, 7a8647b blocco per server e ticket); 4 basse aperte. APPROVATO. Smoke da fare: test_automod_account_rubato*, automod_eventi*, automod_regole_comandi, immagini_cog, verify_vpn_flusso, verify_blocchi_discord, modmail*, moderation_casi*, 0531, main_bot, intent_usage, config_import_validation, i18n.
-08/11/2026 · `feat/r16verifica` (D67, #155): 2 fix (0ddf19f, d819810). APPROVATO. · `feat/r16ticket` (D66, #120): 5 fix. APPROVATO.
 02/11/2026 · `feat/r16mod` (#115): 6 fix. · `feat/r15automod` (#116): 10 fix. · `feat/r15immagini` (#153): 10 fix. · `feat/r15vpn` (#155): 6 fix. Tutti APPROVATI.
 Giri r6–r14: tutti APPROVATI dopo i fix (commit e basse nel quaderno).
 

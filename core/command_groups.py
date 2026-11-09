@@ -122,6 +122,7 @@ SOTTOGRUPPI: dict[str, tuple[str, str]] = {
     "admin-ticket etichette": ("etichette", "Etichette colorate per i ticket"),
     "admin-ticket modmail": ("modmail", "ModMail: ticket dai messaggi privati"),
     "admin-ticket risposte": ("risposte", "Risposte standard dei ticket"),
+    "admin-livelli azzera": ("azzera", "Azzera gli XP: tutto il server, copie e ripristino, automatico"),
     "admin-ruoli premio": ("premio", "Ruoli premio per livello"),
     "admin-ruoli auto": ("auto", "Ruoli automatici all'ingresso"),
     "admin-ruoli menu": ("menu", "Menu per scegliere i ruoli"),

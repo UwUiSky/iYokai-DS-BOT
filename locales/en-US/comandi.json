@@ -331,7 +331,8 @@
   "gruppi": "groups",
   "prendi": "take",
   "pesi": "weights",
-  "gestisci": "manage"
+  "gestisci": "manage",
+  "ripristina": "restore"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1284,7 +1285,12 @@
   "admin-musica suono-ruoli": "Who can use a sound: allowed or banned roles.",
   "web turni": "Splatoon 3 rotations and the World of Warcraft weekly reset.",
   "giochi smash": "Smash or pass: an adult AniList character (age-restricted channels only).",
-  "immagini fusione": "Two Pokémon: the fused name and their official images side by side."
+  "immagini fusione": "Two Pokémon: the fused name and their official images side by side.",
+  "admin-livelli azzera": "Reset XP: whole server, backups and restore, automatic",
+  "admin-livelli azzera server": "Resets the XP of the whole server (makes a backup first).",
+  "admin-livelli azzera ripristina": "Puts back the XP of a backup (valid 30 days).",
+  "admin-livelli azzera auto": "Resets whoever leaves or is banned; locks XP and resets to the owner.",
+  "admin-livelli diagnosi": "Explains why a member gets no XP in a channel."
  },
  "parametri": {},
  "menu": {

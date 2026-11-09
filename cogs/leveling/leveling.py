@@ -131,6 +131,7 @@ from core.guild_clan_boost_logic import (
     benefici_attivi,
     tipi_acquistabili,
 )
+from core.leveling_azzera_logic import rifiutato_dal_blocco
 from core.leveling_logic import (
     ConfigLivelli,
     DAILY_COOLDOWN_SECONDS,
@@ -475,6 +476,11 @@ _NOMI_PREMI = {c.value: c.name for c in _SCELTE_PREMI}
 _NOMI_MOLTIPLICATORI = {c.value: c.name for c in _SCELTE_MOLTIPLICATORI}
 
 
+_NOMI_AZZERA_SU = {
+    "nessuno": "nessuno", "uscita": "esce o viene espulso", "ban": "viene bannato", "entrambi": "esce o viene bannato",
+}
+
+
 def _embed_impostazioni(config: ConfigLivelli) -> discord.Embed:
     """Riepilogo delle impostazioni dei livelli (entra nei limiti degli embed)."""
     i = config.impostazioni
@@ -500,7 +506,11 @@ def _embed_impostazioni(config: ConfigLivelli) -> discord.Embed:
             f"minimo **{i.pay_min or 'nessuno'}**, massimo **{i.pay_max or 'nessun tetto'}**\n"
             f"Livello massimo: **{i.max_level or 'nessun tetto'}**\n"
             f"Conferma negli acquisti: **{'sì' if i.shop_confirm else 'no'}**\n"
-            f"Sfondi con immagine su card e profili: **{'sì' if i.card_images else 'no'}**"
+            f"Sfondi con immagine su card e profili: **{'sì' if i.card_images else 'no'}**\n"
+            f"Azzera gli XP di chi: **{_NOMI_AZZERA_SU[i.azzera_su]}**"
+            f"{' (con copia di 30 giorni)' if i.copia_su_uscita else ''}\n"
+            f"Solo il proprietario: XP a mano **{'sì' if i.blocca_xp else 'no'}**, "
+            f"azzeramenti **{'sì' if i.blocca_azzeramento else 'no'}**"
         ),
         inline=False,
     )
@@ -2240,6 +2250,13 @@ class LevelingCog(CogConGruppi, commands.Cog):
         valore: app_commands.Range[int, 0, 10_000_000] = 0,
     ) -> None:
         if await _comando_rifiutato(interaction):
+            return
+        # LIV-071: con il blocco acceso gli XP a mano li cambia solo il proprietario del server.
+        blocchi = (await leveling_settings_repo.get_config(interaction.guild.id, fresco=True)).impostazioni
+        if rifiutato_dal_blocco(blocchi.blocca_xp, interaction.user.id, interaction.guild.owner_id):
+            await interaction.response.send_message(
+                await testo_per(interaction, "azz_solo_proprietario"), ephemeral=True
+            )
             return
         if membro.bot:
             await interaction.response.send_message(
