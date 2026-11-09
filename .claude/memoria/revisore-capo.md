@@ -1,6 +1,7 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
+09/11/2026 · `feat/r24util` (B25-B28, #128): merge main (86b99a5), DA SISTEMARE: sync avvio cancella comandi server in MAIN, nome «owner», tag eliminato lascia comandi_server, tetto dati per autore, timeout su await, intent_usage, ruolo cancellato, blacklist inneschi. Al riconsegna: ricontrollare questi 8 punti.
 09/11/2026 · `feat/r21util` (D69 B16–B21, UTL-184, #128): merge main (e97e2d0), 4 fix (306f4a4, ban massa conferma, CSV/gruppo, 26a1496 quote->citazioni+0558); 4 basse aperte. APPROVATO. Smoke da fare: citazioni, risposte_regex_globali, autoresponder, custom_commands, tag_gestione, strumenti_server, moderation_canali_m7, massa, migrazione_percorsi_tag_quote, 0555–0558, tree_invariants, riferimenti, data_registry, i18n.
 09/11/2026 · `feat/r18mod` (D68, M6, M8, #115): merge main (8fd3bf8), 5 fix (8c754fc, 39652fc, poi defer segnalazioni e tetto 5/10min in ac5e503); 4 basse aperte. APPROVATO. Smoke da fare: moderation_motivi_severita, moderation_dm_m6, moderation_scheda_m8, report_limiti, remaining_moderation_smoke, automod_azioni, 0532, tree_invariants, i18n.
 08/11/2026 · `feat/r18automod` (A10 calore/soglia canale/finestra, A11 pulizia 0509, #116): main già unito, 5 fix (b06e3df, bf9a609, fcd1452, 8fd7903, 78b289c); 5 basse aperte. APPROVATO. Smoke da fare: automod_pulizia*, automod_calore*, automod_soglia_canale, automod_innesco_logic, automod_regole_pannello, automod_eventi*, 0509, tree_invariants, data_registry, i18n.
@@ -58,3 +59,5 @@ Giri r6–r14: tutti APPROVATI dopo i fix (commit e basse nel quaderno).
 ## Aperto
 - Domande all'owner: SPEC 23.16, D18 limite ticket per utente, primo DM ModMail, D27, IPv4 = basso (NF-21), D29, SIC-045.
 - r13: due sistemi premium (core/premium.py e livelli_funzione), da decidere (D16).
+- Sync per server (`tree.sync(guild=X)` sovrascrive): ogni sync deve partire con l'albero completo di quel server; verificare l'ordine setup_hook (sync d'avvio) vs on_ready (montaggio) e i nomi che collidono con comandi di guild (/owner).
+- Interpreti con tetto di tempo: il controllo a passi non ferma un `await` lento; serve `asyncio.timeout` intorno.
