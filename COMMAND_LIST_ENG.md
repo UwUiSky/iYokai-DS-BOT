@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:38 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 17:46 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 786 commands in 47 categories.**
+**Total: 800 commands in 47 categories.**
 
 ## Admin: AI
 
@@ -197,11 +197,19 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:3
 
 ## Admin: games
 
+- **`/admin-games battitura add`** — Add a typing text (window).
+- **`/admin-games battitura list`** — The server's typing texts.
+- **`/admin-games battitura remove`** — Remove a typing text.
+- **`/admin-games carte pacchetti`** — Which card packs are turned on in the server.
 - **`/admin-games counting channel`** — Pick the channels where people count (up to 10) and how.
 - **`/admin-games counting import`** — Bring scores from a CSV or JSON file into a channel.
 - **`/admin-games counting milestone`** — Role or message when the count hits a number.
 - **`/admin-games counting rules`** — Punishment after a mistake and role of the last counter.
 - **`/admin-games punteggi reset`** — Reset the scores of a game (with confirmation).
+- **`/admin-games quiz list`** — The quiz questions uploaded by the server.
+- **`/admin-games quiz load`** — Upload quiz questions from a CSV or JSON file.
+- **`/admin-games quiz remove`** — Remove a question uploaded by the server.
+- **`/admin-games quiz rules`** — Quiz rules: points, time, answer shown, bot plays.
 
 ## Admin: giveaways
 
@@ -622,12 +630,17 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:3
 
 ## Games
 
+- **`/games acronimi`** — Invent phrases that follow the given letters and vote for the best.
+- **`/games battitura`** — Typing race: copy the text shown in the image.
+- **`/games carte start`** — Card game: complete the sentence with the funniest card.
 - **`/games counting leaderboard`** — Who counted the most correct numbers.
 - **`/games counting notifyme`** — Get pinged in the channel when the count reaches a number.
 - **`/games dice`** — One roll a day from 1 to 100 and the server board.
 - **`/games mazzo`** — A 52-card deck for the server: draw, shuffle, check.
 - **`/games minato`** — Minesweeper: open the spoilers and avoid the mines.
 - **`/games play`** — Play your coins: coin flip, dice or slots.
+- **`/games quiz leaderboard`** — Quiz ranking: this week or all-time.
+- **`/games quiz start`** — Start a quiz in the channel.
 - **`/games rps`** — Rock, paper, scissors against the bot.
 - **`/games spinner`** — Spin the spinner: the longest spin wins.
 
@@ -925,6 +938,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 13:3
 - **`/web dictionary`** — The meaning of a word, from Wiktionary.
 - **`/web emergency`** — Emergency numbers of a country.
 - **`/web game`** — A Steam game: price, date and genres.
+- **`/web lookup`** — The card of a Pokémon, anime, card or player.
 - **`/web movie`** — Information on a movie or a TV series.
 - **`/web price`** — The price of a cryptocurrency.
 - **`/web shorten`** — Shorten a link (if the server turned the command on).

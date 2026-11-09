@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:38 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 17:46 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 786 comandi in 47 categorie.**
+**Totale: 800 comandi in 47 categorie.**
 
 ## Admin: AI
 
@@ -197,11 +197,19 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 
 ## Admin: giochi
 
+- **`/admin-giochi battitura aggiungi`** — Aggiunge un testo per la battitura (finestra).
+- **`/admin-giochi battitura elenca`** — I testi di battitura del server.
+- **`/admin-giochi battitura rimuovi`** — Toglie un testo di battitura.
+- **`/admin-giochi carte pacchetti`** — Quali pacchetti di carte sono accesi nel server.
 - **`/admin-giochi conteggio canale`** — Scegli i canali dove si conta (fino a 10) e come.
 - **`/admin-giochi conteggio importa`** — Porta in un canale i punteggi di un file CSV o JSON.
 - **`/admin-giochi conteggio regole`** — Punizione dopo uno sbaglio e ruolo di chi ha contato per ultimo.
 - **`/admin-giochi conteggio traguardo`** — Ruolo o messaggio quando il conteggio tocca un numero.
 - **`/admin-giochi punteggi azzera`** — Azzera i punteggi di una gara (con conferma).
+- **`/admin-giochi quiz carica`** — Carica domande per il quiz da un file CSV o JSON.
+- **`/admin-giochi quiz elenca`** — Le domande del quiz caricate dal server.
+- **`/admin-giochi quiz regole`** — Regole del quiz: punti, tempo, risposta mostrata, il bot gioca.
+- **`/admin-giochi quiz rimuovi`** — Toglie una domanda caricata dal server.
 
 ## Admin: giveaway
 
@@ -622,12 +630,17 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 
 ## Giochi
 
+- **`/giochi acronimi`** — Inventa frasi che seguono le lettere date e vota la migliore.
+- **`/giochi battitura`** — Gara di battitura: copia il testo mostrato nell'immagine.
+- **`/giochi carte avvia`** — Gioco di carte: completa la frase con la carta più divertente.
 - **`/giochi conteggio avvisami`** — Ti avviso nel canale quando il conteggio arriva a un numero.
 - **`/giochi conteggio classifica`** — Chi ha contato più numeri giusti.
 - **`/giochi dado`** — Un tiro al giorno da 1 a 100 e la classifica del server.
 - **`/giochi gioca`** — Gioca le tue coin: monetina, dadi o slot.
 - **`/giochi mazzo`** — Un mazzo di 52 carte per il server: pesca, rimescola, controlla.
 - **`/giochi minato`** — Campo minato: tocca gli spoiler ed evita le mine.
+- **`/giochi quiz avvia`** — Avvia un quiz a domande nel canale.
+- **`/giochi quiz classifica`** — Classifica del quiz: questa settimana o di sempre.
 - **`/giochi rps`** — Carta, forbici, sasso contro il bot.
 - **`/giochi spinner`** — Fai girare lo spinner: vince chi lo fa girare più a lungo.
 
@@ -929,4 +942,5 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 - **`/web gioco`** — Un gioco di Steam: prezzo, data e generi.
 - **`/web meteo`** — Il meteo di una città: adesso e i prossimi giorni.
 - **`/web prezzo`** — Il prezzo di una criptovaluta.
+- **`/web scheda`** — La scheda di un Pokémon, anime, carta o giocatore.
 - **`/web wiki`** — Il riassunto di una voce di Wikipedia.
