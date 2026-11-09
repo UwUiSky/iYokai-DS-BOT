@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 19:35 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:32 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 699 commands in 41 categories.**
+**Total: 705 commands in 42 categories.**
 
 ## Admin: AI
 
@@ -88,10 +88,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 19:3
 - **`/admin-automod odio base`** — Turns the base list of hate slurs on or off.
 - **`/admin-automod odio lockdown`** — Preventive block of hateful phrases.
 - **`/admin-automod odio nomi`** — Checks nicknames and display names on join and on change.
-- **`/admin-automod odio parola`** — Adds or removes a custom word or an allowed word.
 - **`/admin-automod odio prova`** — Tests a text against the banned words without acting.
 - **`/admin-automod odio richiami`** — How many warnings for hate words lead to a timeout.
 - **`/admin-automod odio status`** — Shows how the banned words are set up.
+- **`/admin-automod odio word`** — Adds or removes a custom word or an allowed word.
 - **`/admin-automod regole`** — Opens the AutoMod rules panel: conditions and actions.
 - **`/admin-automod reset`** — Resets an AutoMod rule counter.
 - **`/admin-automod status`** — Shows the current advanced AutoMod filter setup.
@@ -782,6 +782,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 19:3
 
 ## Utility
 
+- **`/utility characters`** — Unicode name, code and category of the characters in a text.
 - **`/utility form`** — Fills in a form or application of this server.
 - **`/utility info`** — Bot information: version, invite and support.
 - **`/utility language`** — Shows or changes your personal language (Italian or English).
@@ -793,6 +794,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 19:3
 - **`/utility lookup seniority`** — Oldest or newest accounts, first or last to join.
 - **`/utility lookup server`** — Server card: owner, date, numbers, boosts.
 - **`/utility lookup user`** — Member card: ID, dates and roles.
+- **`/utility news`** — The latest news about the bot.
 - **`/utility ping`** — Checks whether iYokai Main is online and its latency.
 - **`/utility privacy cancella`** — Request the deletion of your personal data.
 - **`/utility privacy export`** — Get a copy of the data the bot keeps about you.
@@ -806,6 +808,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 19:3
 - **`/utility snipe edit`** — Shows the last edited message in this channel.
 - **`/utility snipe message`** — Shows the last deleted message in this channel.
 - **`/utility snipe reaction`** — Shows the last removed reaction in this channel.
+- **`/utility stopwatch`** — A stopwatch with Lap and Stop buttons.
 - **`/utility suggest`** — Suggest an idea for this server.
 - **`/utility tag`** — Uses a custom command of this server.
 - **`/utility verify`** — Verify yourself in this server (same as the panel button).
@@ -825,3 +828,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-08 19:3
 - **`/voice status`** — Writes what you are doing in the channel (empty: removes it).
 - **`/voice transfer`** — Transfers the channel's ownership.
 - **`/voice unlock`** — Unlocks the channel.
+
+## Web
+
+- **`/web dictionary`** — The meaning of a word, from Wiktionary.
+- **`/web emergency`** — Emergency numbers of a country.
+- **`/web wiki`** — The summary of a Wikipedia entry.

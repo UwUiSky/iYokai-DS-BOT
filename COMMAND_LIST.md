@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 19:35 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 02:32 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 699 comandi in 41 categorie.**
+**Totale: 705 comandi in 42 categorie.**
 
 ## Admin: AI
 
@@ -782,9 +782,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 19:
 
 ## Utility
 
+- **`/utility caratteri`** — Nome, codice e categoria Unicode dei caratteri di un testo.
+- **`/utility cronometro`** — Un cronometro con i bottoni Giro e Ferma.
 - **`/utility info`** — Informazioni sul bot: versione, invito e supporto.
 - **`/utility lingua`** — Mostra o cambia la tua lingua personale (italiano o inglese).
 - **`/utility modulo`** — Compila un modulo o una candidatura di questo server.
+- **`/utility novita`** — Le ultime novità del bot.
 - **`/utility ping`** — Controlla se iYokai Main è online e la sua latenza.
 - **`/utility privacy cancella`** — Chiedi la cancellazione dei tuoi dati personali.
 - **`/utility privacy esporta`** — Ricevi una copia dei dati che il bot conserva su di te.
@@ -825,3 +828,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-08 19:
 - **`/voice stato`** — Scrivi cosa state facendo nel canale (vuoto: toglie).
 - **`/voice transfer`** — Trasferisci la proprietà del canale.
 - **`/voice unlock`** — Sblocca il canale.
+
+## Web
+
+- **`/web dizionario`** — Il significato di una parola, da Wikizionario.
+- **`/web emergenza`** — I numeri di emergenza di un paese.
+- **`/web wiki`** — Il riassunto di una voce di Wikipedia.
