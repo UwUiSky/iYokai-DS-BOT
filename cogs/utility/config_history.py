@@ -143,6 +143,8 @@ SETTINGS_SCHEMA = {
     # Parole vietate dell'AutoMod (core/automod_parole_opzioni.py)
     "automod_parole_base": "bool",
     "automod_parole_nick": "bool",
+    "automod_nomi_dehoist": "bool",
+    "automod_nomi_simboli": "bool",
     "automod_parole_proprie": "lista_parole",
     "automod_parole_lecite": "lista_parole",
     # Difesa dalle parole d'odio (core/odio_opzioni.py, D35)

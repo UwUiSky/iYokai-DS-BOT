@@ -110,6 +110,8 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
     "spam_trap": (_c("spam_trap_punizione", "Punizione", SCELTA),),
     "automod": (
         _c("automod_parole_nick", "Controlla anche i soprannomi", BOOL),
+        _c("automod_nomi_dehoist", "Toglie i simboli all'inizio dei nomi (dehoist)", BOOL),
+        _c("automod_nomi_simboli", "Ripulisce lettere decorative, testo impilato e caratteri invisibili nei nomi", BOOL),
         _c("odio_blocco_attivo", "Blocca le parole d'odio", BOOL),
         _c("odio_blocco_messaggio", "Messaggio di blocco", TESTO),
         _c("odio_richiami_soglia", "Richiami prima del timeout (1-20)", NUMERO),

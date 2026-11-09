@@ -1440,3 +1440,8 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - `/mod-casi invito codice:` con un invito del server (anche come link `https://discord.gg/...`): server, canale, creatore, membri/online, scadenza. Un codice cancellato: «non esiste o è scaduto». Testo senza senso: «non sembra un invito».
 - `/mod-casi caso prova numero:1 file:` con un PNG, poi un PDF, poi un file .exe (rifiutato): le prime due si accettano. Dopo 5 prove la sesta è rifiutata. `/mod-casi caso prova numero:1` senza file le elenca e rimanda le immagini (ricodificate); il PDF non si scarica da qui. `/mod-casi nota aggiungi member: note: file:` crea la nota anche se la prova è rifiutata.
 
+## giro r19mod, MOD-102 — dehoist e simboli nei nomi (#115)
+- Di base nessun cambio: un account di prova con nome «!!Prova» entra e resta com'è. `/admin-automod odio nomi attiva:True dehoist:True`: un nuovo account «!!Prova» (o che cambia nome così) riceve il nickname «Prova»; il log AutoMod lo dice. Un nome con le sole punte («!!!») diventa «Nome rimosso».
+- `simboli:True`: un nome come «𝓟𝓻𝓸𝓿𝓪» diventa «Prova»; un nome con lettere accentate («Zoë») non cambia; testo impilato («P̴̢r̷o̵v̶a̷» con molti segni) perde i segni di troppo. Il bot non entra in un giro: dopo il cambio non ci sono altre modifiche.
+- `applica_ora:True` con una decina di membri col nome da ripulire: risponde con quanti ha cambiato (bot, proprietario ed esenti restano); lanciato due volte insieme, il secondo dice che il giro è già in corso. Con più di 1.000 da cambiare ne fa 1.000 e dice di rilanciare.
+

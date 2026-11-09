@@ -30,6 +30,8 @@ SETTING_BASE = "automod_parole_base"
 SETTING_PROPRIE = "automod_parole_proprie"
 SETTING_LECITE = "automod_parole_lecite"
 SETTING_NICK = "automod_parole_nick"
+SETTING_DEHOIST = "automod_nomi_dehoist"
+SETTING_SIMBOLI = "automod_nomi_simboli"
 
 MAX_VOCI = 100
 MAX_LUNGHEZZA_VOCE = 60
@@ -45,6 +47,8 @@ class OpzioniParole:
     proprie: tuple[str, ...] = ()
     lecite: tuple[str, ...] = ()
     nick: bool = True
+    dehoist: bool = False  # MOD-102: via i simboli all'inizio del nome (spento di base, D66)
+    simboli: bool = False  # MOD-102: lettere decorative, testo impilato, invisibili (spento di base)
 
 
 def _voci(valore) -> tuple[str, ...]:
@@ -63,6 +67,8 @@ async def leggi(guild_id: int, archivio=None) -> OpzioniParole:
         proprie=_voci(await db.get_guild_setting(guild_id, SETTING_PROPRIE, [])),
         lecite=_voci(await db.get_guild_setting(guild_id, SETTING_LECITE, [])),
         nick=nick if isinstance(nick, bool) else True,
+        dehoist=await db.get_guild_setting(guild_id, SETTING_DEHOIST, False) is True,
+        simboli=await db.get_guild_setting(guild_id, SETTING_SIMBOLI, False) is True,
     )
 
 
@@ -89,6 +95,14 @@ async def imposta_base(guild_id: int, attiva: bool, conferma: bool, autore_id: i
 
 async def imposta_nick(guild_id: int, attivo: bool, autore_id: int) -> None:
     await _db.set_guild_setting(guild_id, SETTING_NICK, attivo, changed_by=autore_id)
+
+
+async def imposta_pulizia_nomi(guild_id: int, dehoist: bool | None, simboli: bool | None, autore_id: int) -> None:
+    """MOD-102: `None` lascia com'e'."""
+    if dehoist is not None:
+        await _db.set_guild_setting(guild_id, SETTING_DEHOIST, dehoist, changed_by=autore_id)
+    if simboli is not None:
+        await _db.set_guild_setting(guild_id, SETTING_SIMBOLI, simboli, changed_by=autore_id)
 
 
 async def aggiungi_voce(guild_id: int, lista: str, voce: str, autore_id: int) -> bool:

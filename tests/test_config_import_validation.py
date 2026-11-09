@@ -47,6 +47,8 @@ SETTINGS_VALIDE = {
     "spam_trap_canali_extra": [111111111111111112],
     "automod_parole_base": True,
     "automod_parole_nick": False,
+    "automod_nomi_dehoist": True,
+    "automod_nomi_simboli": True,
     "automod_parole_proprie": ["scemo"],
     "automod_parole_lecite": [],
     "odio_blocco_attivo": True,
