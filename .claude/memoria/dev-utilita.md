@@ -4,9 +4,10 @@
 09/11/2026 · ramo feat/r20util (worktree /home/claude/wt/r20util, env scratchpad/env_r20util.sh, DB iyokai_w20util) · blocco Utility #128 B8-B15, D69. Migrazioni da 0547 (0546 presa da B7).
 
 ## In corso
-- r19util B1-B7 pubblicati e uniti. r20util: B8, B9-B10 chiusi. B11 chiuso. B12 chiuso. Prossimo: B13 riallinea/azzera/esporta/statistiche/segnaposto/ban massa invito (0551), B14-B15 conteggio (0552+). Helper: scratchpad/uti20_{agg,commit.sh,guard.sh,doc,pesi}. Smoke da fare (non lanciato).
+- r19util B1-B7 pubblicati e uniti. r20util: B8, B9-B10 chiusi. B11 chiuso. B13 chiuso (184 resta a dev-moderazione). Prossimo: B14-B15 conteggio (0552+). Helper: scratchpad/uti20_{agg,commit.sh,guard.sh,doc,pesi}. Smoke da fare (non lanciato).
 
 ## Fatto
+- r20util B13 inviti: riallinea/azzera/esporta/statistiche + segnaposto benvenuto (0551). UTL-184 non fatto (cogs/moderation, non mio).
 - r20util B12 inviti: codici, etichetta+ruolo, crea, cancella (0550). Ruolo solo se codice riconosciuto, non pending, gerarchia di bot e staff.
 - r20util B11 inviti: /admin-inviti impostazioni|bonus|escludi, ingressi finti (0549). Rientro rilevato solo entro 90 giorni (le righe degli usciti scadono).
 - r20util B9-B10 giveaway: partecipanti, riepilogo, opzioni, ruoli escluso/premio, immagine, modifica, riestrai, /fun casuale membro (0548).
@@ -30,6 +31,8 @@
 - Migrazione già applicata in un DB di test: mai riscriverla, usare il numero dopo.
 
 ## Aperto
+- UTL-184 `/mod-ban massa invito codice:` non fatto: è in cogs/moderation (r19mod). Servono: completamento sul codice + ban di massa dei membri entrati con quel codice (invite_joins.code).
+- Pannello web: editor benvenuto elenca i segnaposto (templates/editor_benvenuto.html) senza i 4 nuovi.
 - Giveaway: immagine = URL dell'allegato (i link CDN di Discord scadono): da provare dopo un giorno. Test «cricchetto» test_repository_callers: tolto count_entries.
 - Starboard: se la bacheca cambia canale con blocca acceso, il vecchio resta bloccato (non si sblocca da solo).
 - test_command_policy::top_level_ha_un_pubblico fallisce su main per il menu «Apri ticket» (AUDIENCE, ticket): non mio.

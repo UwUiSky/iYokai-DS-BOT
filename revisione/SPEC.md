@@ -1493,6 +1493,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 - `[x]` 23.31 Inviti: codici, nomi, creazione, cancellazione (catalogo #128 B12, D69, r20util) — `/admin-inviti codici|etichetta|crea|cancella` e `/level inviti codici`: elenco a pagine da 10; nome e ruolo per un codice (il ruolo si dà solo se il codice è riconosciuto, dopo la verifica del server, e non più alto di chi configura né del bot); invito senza scadenza (tetto 1000 di Discord); cancellazione per codice, usi o canale con conferma, un invito al secondo, 200 per volta, ci si ferma al primo rifiuto, i link personali restano. Un invito creato dal bot non conta come invitante. Migrazione 0550.
 
+- `[x]` 23.32 Inviti: gestione e benvenuto (catalogo #128 B13, D69, r20util) — `/admin-inviti riallinea` (rilegge da Discord, elenca i codici con ingressi mancanti), `azzera` (conferma), `esporta ingressi|classifica|codici` in CSV o JSON (celle neutralizzate, tetto 8 MiB), `statistiche` (ingressi contati, ancora presenti, attivi dopo 7 giorni da `activity_member_daily`); segnaposto del benvenuto `{invitante}`, `{inviti_invitante}`, `{rientri}`, `{creato_il}`. UTL-184 (`/mod-ban massa invito`) resta a cogs/moderation. Migrazione 0551.
+
 ## §15 LEVELS / ECONOMY / GILDE / CLASSIFICHE
 
 - `[x]` 15.1 XP e livelli (testuale + vocale)

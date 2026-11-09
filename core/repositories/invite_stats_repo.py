@@ -77,9 +77,54 @@ class InviteStatsRepository:
 
     async def mark_left(self, guild_id: int, user_id: int) -> None:
         await self._pool.execute(
-            "UPDATE invite_joins SET left_at = now() WHERE guild_id = $1 AND user_id = $2 AND left_at IS NULL",
+            "UPDATE invite_joins SET left_at = now(), usciti = usciti + 1 WHERE guild_id = $1 AND user_id = $2 AND left_at IS NULL",
             guild_id, user_id,
         )
+
+    async def usciti_di(self, guild_id: int, user_id: int) -> int:
+        """Quante volte il membro è uscito dal server (e quindi è rientrato)."""
+        return await self._pool.fetchval(
+            "SELECT COALESCE((SELECT usciti FROM invite_joins WHERE guild_id = $1 AND user_id = $2), 0)", guild_id, user_id
+        )
+
+    async def conteggio_per_codice(self, guild_id: int) -> dict[str, int]:
+        """Quanti ingressi registrati per ogni codice (per confrontarli con gli usi di Discord)."""
+        righe = await self._pool.fetch(
+            "SELECT code, count(*) AS n FROM invite_joins WHERE guild_id = $1 AND code IS NOT NULL GROUP BY code", guild_id
+        )
+        return {r["code"]: r["n"] for r in righe}
+
+    async def azzera(self, guild_id: int) -> tuple[int, int]:
+        """Cancella lo storico degli ingressi e i bonus del server. Ritorna (ingressi, bonus) cancellati."""
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                ingressi = int((await conn.execute("DELETE FROM invite_joins WHERE guild_id = $1", guild_id)).split()[-1])
+                bonus = int((await conn.execute("DELETE FROM inviti_bonus WHERE guild_id = $1", guild_id)).split()[-1])
+        return ingressi, bonus
+
+    async def righe_per_esportare(self, guild_id: int, limite: int = 200_000) -> list[dict]:
+        righe = await self._pool.fetch(
+            "SELECT user_id, inviter_id, code, kind, finto, usciti, joined_at, left_at FROM invite_joins "
+            "WHERE guild_id = $1 ORDER BY joined_at LIMIT $2",
+            guild_id, limite,
+        )
+        return [dict(r) for r in righe]
+
+    async def statistiche_server(self, guild_id: int, giorni: int = 7) -> dict[str, int]:
+        """Ingressi contati, ancora nel server e «attivi»: con almeno un giorno di attività da `giorni` giorni dopo l'ingresso."""
+        r = await self._pool.fetchrow(
+            """
+            SELECT count(*) FILTER (WHERE NOT j.finto) AS ingressi,
+                   count(*) FILTER (WHERE NOT j.finto AND j.left_at IS NULL) AS presenti,
+                   count(*) FILTER (WHERE NOT j.finto AND j.left_at IS NULL AND EXISTS (
+                       SELECT 1 FROM activity_member_daily a WHERE a.guild_id = j.guild_id AND a.user_id = j.user_id
+                       AND a.day >= (j.joined_at AT TIME ZONE 'UTC')::date + $2::int AND (a.messages > 0 OR a.voice_seconds > 0)
+                   )) AS attivi
+            FROM invite_joins j WHERE j.guild_id = $1
+            """,
+            guild_id, giorni,
+        )
+        return dict(r)
 
     async def stats_for(self, guild_id: int, inviter_id: int) -> InviteStats:
         r = await self._pool.fetchrow(

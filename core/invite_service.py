@@ -341,3 +341,30 @@ async def registra_ingresso(
     )
     await invite_stats_repo.record_join(guild.id, membro_id, invitante, codice, tipo, finto)
     return Ingresso(tipo, invitante, codice, finto)
+
+
+async def dati_per_benvenuto(guild: discord.Guild, membro: discord.Member) -> dict:
+    """I dati per i segnaposto del benvenuto: chi ha invitato, quanti inviti ha, quante volte il membro è rientrato.
+    L'invito si cerca dal tracker (lo stesso risultato per tutti i moduli); se non si riconosce, `invitante` è «?»."""
+    try:
+        trovato = await invite_tracker.resolve_join_invite(guild, membro.id)
+    except Exception:
+        logger.exception("Benvenuto: invito non letto per %s", membro.id)
+        trovato = None
+    codice, creatore = trovato if trovato else (None, None)
+    personale = await invite_links_repo.da_codice(guild.id, codice) if codice else None
+    invitante = personale.user_id if personale is not None else creatore
+    if invitante == membro.id or (invitante is not None and invitante == getattr(guild.me, "id", None)):
+        invitante = None
+    punti = 0
+    if invitante is not None:
+        punti = (await invite_stats_repo.stats_for(guild.id, invitante)).punti
+        riga = await invite_stats_repo.ingresso_di(guild.id, membro.id)
+        if not (riga is not None and riga.left_at is None and riga.inviter_id == invitante):
+            punti += 1  # questo ingresso non è ancora nel conteggio
+    return {
+        "invitante": f"<@{invitante}>" if invitante else "?",
+        "inviti_invitante": punti,
+        "rientri": await invite_stats_repo.usciti_di(guild.id, membro.id),
+        "creato_il": int(membro.created_at.timestamp()),
+    }

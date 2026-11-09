@@ -49,9 +49,14 @@ def render_template(
     user_id: int | None = None,
     display_name: str | None = None,
     server_id: int | None = None,
+    invitante: str | None = None,
+    inviti_invitante: int | None = None,
+    rientri: int | None = None,
+    creato_il: int | None = None,
 ) -> str:
     """
-    Sostituisce i segnaposto. `{userid}`, `{displayname}` e `{serverid}` (RUO-019..021)
+    Sostituisce i segnaposto. `{invitante}`, `{inviti_invitante}`, `{rientri}` e `{creato_il}` (D69 B13) si
+    sostituiscono solo se chi chiama dà il dato. `{userid}`, `{displayname}` e `{serverid}` (RUO-019..021)
     restano scritti se chi chiama non dà il dato; `{ordinal}` (RUO-018) usa il numero dei membri.
     """
     testo = (
@@ -68,7 +73,23 @@ def render_template(
         testo = testo.replace("{displayname}", display_name)
     if server_id is not None:
         testo = testo.replace("{serverid}", str(server_id))
+    if invitante is not None:
+        testo = testo.replace("{invitante}", invitante)
+    if inviti_invitante is not None:
+        testo = testo.replace("{inviti_invitante}", str(inviti_invitante))
+    if rientri is not None:
+        testo = testo.replace("{rientri}", str(rientri))
+    if creato_il is not None:
+        testo = testo.replace("{creato_il}", f"<t:{creato_il}:D>")
     return testo
+
+
+SEGNAPOSTO_INVITI = ("{invitante}", "{inviti_invitante}", "{rientri}")
+
+
+def usa_segnaposto_inviti(*testi: str | None) -> bool:
+    """Vero se un testo vuole dati sull'invito: solo allora si va a cercarli."""
+    return any(seg in (t or "") for t in testi for seg in SEGNAPOSTO_INVITI)
 
 
 # LIM-10 (M 10.2): il messaggio finale è un messaggio normale (2000). La
@@ -93,6 +114,10 @@ def lunghezza_dopo_segnaposto(template: str, server_name: str, member_count: int
             user_id=10**_LUNGHEZZA_ID - 1,
             display_name="d" * _LUNGHEZZA_NOME_UTENTE,
             server_id=10**_LUNGHEZZA_ID - 1,
+            invitante="m" * _LUNGHEZZA_MENZIONE_UTENTE,
+            inviti_invitante=10**6 - 1,
+            rientri=10**4 - 1,
+            creato_il=10**11,
         )
     )
 

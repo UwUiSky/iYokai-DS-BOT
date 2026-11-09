@@ -2138,5 +2138,13 @@
   "invites_creato": "Invito creato: {indirizzo}",
   "invites_un_solo_criterio": "Scegli una sola cosa: un codice, gli usi sotto un numero oppure un canale.",
   "invites_nessuno_da_cancellare": "Nessun invito da cancellare (i link personali dei membri non si cancellano a mano).",
-  "invites_conferma_cancella": "Trovati {n} inviti. Ne cancello {giro} adesso, uno al secondo. Confermi?"
+  "invites_conferma_cancella": "Trovati {n} inviti. Ne cancello {giro} adesso, uno al secondo. Confermi?",
+  "invites_azzerati": "Storico azzerato: {ingressi} ingressi e {bonus} bonus cancellati.",
+  "invites_riallineato": "Riletti {inviti} inviti da Discord. Codici con più usi che ingressi salvati: {diversi}.",
+  "invites_riallineato_dettaglio": "Ingressi mancanti per codice (primi 10):",
+  "invites_conferma_azzera": "Cancello tutto lo storico degli inviti e i bonus di questo server. Non si torna indietro. Confermi?",
+  "invites_niente_da_esportare": "Non c'è niente da esportare.",
+  "invites_export_pronto": "Esportate {n} righe.",
+  "invites_export_tagliato": "Il file era troppo grande: ho tenuto le prime {messe} righe su {totale}.",
+  "invites_statistiche": "Ingressi contati: {ingressi}. Ancora nel server: {presenti}. Attivi dopo {giorni} giorni: {attivi}."
 }

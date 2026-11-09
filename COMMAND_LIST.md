@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:47 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:51 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 740 comandi in 43 categorie.**
+**Totale: 744 comandi in 43 categorie.**
 
 ## Admin: AI
 
@@ -206,13 +206,17 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 
 ## Admin: inviti
 
+- **`/admin-inviti azzera`** — Cancella lo storico degli inviti e i bonus del server.
 - **`/admin-inviti bonus`** — Aggiungi o togli inviti a un membro (punti dello staff).
 - **`/admin-inviti cancella`** — Cancella inviti: uno, quelli poco usati o quelli di un canale.
 - **`/admin-inviti codici`** — I codici d'invito creati da un membro, a pagine da 10.
 - **`/admin-inviti crea`** — Crea un invito senza scadenza, con nome e ruolo.
 - **`/admin-inviti escludi`** — Nascondi membri o ruoli dalla classifica degli inviti.
+- **`/admin-inviti esporta`** — Esporta ingressi, classifica o codici in un file.
 - **`/admin-inviti etichetta`** — Dai un nome a un codice, con un ruolo per chi entra.
 - **`/admin-inviti impostazioni`** — Registro degli inviti, link personale e ingressi non contati.
+- **`/admin-inviti riallinea`** — Rileggi gli inviti da Discord e confrontali con gli ingressi salvati.
+- **`/admin-inviti statistiche`** — Quanti membri portati dagli inviti restano e sono attivi.
 
 ## Admin: livelli e XP
 

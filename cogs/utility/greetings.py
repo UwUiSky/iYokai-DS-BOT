@@ -34,10 +34,12 @@ from core.greetings_logic import (
     analizza_reazioni,
     analizza_varianti,
     lunghezza_dopo_segnaposto,
+    usa_segnaposto_inviti,
     render_template,
     scegli_testo,
 )
 from core import greetings_uscite_logic as uscite
+from core import invite_service
 from core.i18n import lingua_risposta, t, testo_per
 from core.ui_base import BaseModal, BaseView
 from core.premium import PremiumModule, registry
@@ -59,7 +61,7 @@ logger = logging.getLogger("iyokai.greetings")
 MODULE_GREETINGS = "greetings"
 
 
-def _render_for_member(template: str, member: discord.Member) -> str:
+def _render_for_member(template: str, member: discord.Member, inviti: dict | None = None) -> str:
     return render_template(
         template,
         user_mention=member.mention,
@@ -69,6 +71,8 @@ def _render_for_member(template: str, member: discord.Member) -> str:
         user_id=member.id,
         display_name=discord.utils.escape_mentions(member.display_name),
         server_id=member.guild.id,
+        creato_il=int(member.created_at.timestamp()),
+        **(inviti or {}),
     )
 
 
@@ -337,11 +341,13 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         if not config.welcome_enabled:
             return
 
-        testo = taglia_messaggio(
-            _render_for_member(scegli_testo(await _modello(config.welcome_message, DEFAULT_WELCOME_TEMPLATE, "greet_base_welcome", member.guild.id), config.welcome_variants), member)
-        )
+        modello = scegli_testo(await _modello(config.welcome_message, DEFAULT_WELCOME_TEMPLATE, "greet_base_welcome", member.guild.id), config.welcome_variants)
+        inviti = None
+        if usa_segnaposto_inviti(modello, config.welcome_dm_message):
+            inviti = await invite_service.dati_per_benvenuto(member.guild, member)
+        testo = taglia_messaggio(_render_for_member(modello, member, inviti))
         testo_dm = (
-            taglia_messaggio(_render_for_member(config.welcome_dm_message, member))
+            taglia_messaggio(_render_for_member(config.welcome_dm_message, member, inviti))
             if config.welcome_dm_message
             else testo
         )

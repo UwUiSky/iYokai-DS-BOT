@@ -2138,5 +2138,13 @@
   "invites_creato": "Invite created: {indirizzo}",
   "invites_un_solo_criterio": "Pick only one: a code, uses below a number or a channel.",
   "invites_nessuno_da_cancellare": "No invite to delete (members' personal links cannot be deleted by hand).",
-  "invites_conferma_cancella": "Found {n} invites. I delete {giro} now, one per second. Confirm?"
+  "invites_conferma_cancella": "Found {n} invites. I delete {giro} now, one per second. Confirm?",
+  "invites_azzerati": "History reset: {ingressi} joins and {bonus} bonuses deleted.",
+  "invites_riallineato": "Read {inviti} invites from Discord. Codes with more uses than saved joins: {diversi}.",
+  "invites_riallineato_dettaglio": "Missing joins per code (first 10):",
+  "invites_conferma_azzera": "I delete the whole invite history and the bonuses of this server. There is no undo. Confirm?",
+  "invites_niente_da_esportare": "There is nothing to export.",
+  "invites_export_pronto": "Exported {n} rows.",
+  "invites_export_tagliato": "The file was too big: I kept the first {messe} rows of {totale}.",
+  "invites_statistiche": "Counted joins: {ingressi}. Still in the server: {presenti}. Active after {giorni} days: {attivi}."
 }

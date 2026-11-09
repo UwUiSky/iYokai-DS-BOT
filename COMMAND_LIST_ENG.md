@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:47 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:51 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 740 commands in 43 categories.**
+**Total: 744 commands in 43 categories.**
 
 ## Admin: AI
 
@@ -211,8 +211,12 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:4
 - **`/admin-invites create`** — Create a never-expiring invite with a name and a role.
 - **`/admin-invites delete`** — Delete invites: one, the rarely used or a channel's.
 - **`/admin-invites exclude`** — Hide members or roles from the invite leaderboard.
+- **`/admin-invites export`** — Export joins, leaderboard or codes to a file.
 - **`/admin-invites label`** — Name an invite code, with a role for who joins.
+- **`/admin-invites reset`** — Delete the invite history and the server's bonuses.
+- **`/admin-invites resync`** — Reread invites from Discord and compare them with saved joins.
 - **`/admin-invites settings`** — Invite log, personal link and entries that do not count.
+- **`/admin-invites statistics`** — How many invited members stay and are active.
 
 ## Admin: levels and XP
 

@@ -312,7 +312,8 @@
   "admin-inviti": "admin-invites",
   "cancella": "delete",
   "etichetta": "label",
-  "codici": "codes"
+  "codici": "codes",
+  "riallinea": "resync"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1175,7 +1176,11 @@
   "admin-inviti etichetta": "Name an invite code, with a role for who joins.",
   "admin-inviti crea": "Create a never-expiring invite with a name and a role.",
   "admin-inviti cancella": "Delete invites: one, the rarely used or a channel's.",
-  "level inviti codici": "Your invite codes, 10 per page."
+  "level inviti codici": "Your invite codes, 10 per page.",
+  "admin-inviti riallinea": "Reread invites from Discord and compare them with saved joins.",
+  "admin-inviti azzera": "Delete the invite history and the server's bonuses.",
+  "admin-inviti esporta": "Export joins, leaderboard or codes to a file.",
+  "admin-inviti statistiche": "How many invited members stay and are active."
  },
  "parametri": {},
  "menu": {
