@@ -329,7 +329,8 @@
   "creatori": "creators",
   "sostituisci": "replace",
   "gruppi": "groups",
-  "prendi": "take"
+  "prendi": "take",
+  "pesi": "weights"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1246,7 +1247,11 @@
   "admin-giochi punteggi": "Scores of the games: reset them.",
   "admin-giochi punteggi azzera": "Reset the scores of a game (with confirmation).",
   "immagini foto": "A nice photo to look at: food or good mood.",
-  "immagini xkcd": "An xkcd comic: the latest or the number you pick."
+  "immagini xkcd": "An xkcd comic: the latest or the number you pick.",
+  "sondaggi bottoni": "Create a button poll (up to 20 options).",
+  "sondaggi modifica": "Edit the question, options or length of an open button poll.",
+  "admin-moduli sondaggi": "Polls: vote weight per role",
+  "admin-moduli sondaggi pesi": "Give a weight to the vote of a role in polls (max 25 roles)."
  },
  "parametri": {},
  "menu": {

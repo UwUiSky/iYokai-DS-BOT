@@ -1496,3 +1496,9 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 ## giro r21fun, B5 — effetti e scherzi (#131)
 - `/immagini effetto tipo:Pingato tutti nome:Luca`: avatar con il riquadro blu «@Luca ha pingato tutti» (nessun ping vero). Poi `Specchio`, `Seppia`, `Pixel art`, `Cornice`, `Vignetta`, `Neon`: ognuno un PNG quadrato col nome del file dell'effetto; un allegato non immagine è rifiutato come prima.
 - `/fun scherzo tipo:Tutto in spoiler utente:@Prova testo:ciao a tutti`: ogni parola in spoiler, nessun ping (anche con «@everyone» nel testo). Senza `testo`: messaggio nascosto. `Barra di caricamento` (sempre 99%) e `Brindisi` (frase a caso).
+
+## giro r22util, B22 — sondaggio a bottoni (#128)
+- `/sondaggi bottoni domanda:Pizza? opzioni:Si|No|Forse durata:5m`: embed con barre, tre bottoni in fondo; vota, cambia voto, «Togli voto», «Risultati» (con l'elenco dei votanti, se non anonimo). Riavvia il bot: i bottoni funzionano ancora.
+- `anonimo:true` e `risultati:alla fine`: nessuno vede chi ha votato né i totali; alla scadenza (5 minuti) il messaggio si chiude con i totali.
+- `/admin-moduli sondaggi pesi azione:imposta ruolo:@X peso:3` poi `pesato:true`: il voto di chi ha @X vale 3. «Gestisci» (autore o Gestisci messaggi): chiudi ora e ruoli che possono votare. `/sondaggi modifica`: togliere un'opzione votata chiede conferma.
+- Esci dal server (o fatti bannare) con un voto aperto: il voto sparisce.

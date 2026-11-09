@@ -4,10 +4,11 @@
 09/11/2026 · ramo feat/r20util (worktree /home/claude/wt/r20util, env scratchpad/env_r20util.sh, DB iyokai_w20util) · blocco Utility #128 B8-B15, D69. Migrazioni da 0547 (0546 presa da B7).
 
 ## In corso
-- r21util (ramo feat/r21util) CHIUSO: B16-B21 + UTL-184 fatti e pubblicati. Smoke da fare (non lanciato). Resta fuori: `/fun quote` -> `/fun citazioni caso` (cogs/fun di r21fun: il vecchio comando resta); nessun test nuovo per i tre tasti di conferma (testati solo come logica).
-- Aperto per altri: tests/test_command_search_bilingue.py e _bug147 falliscono anche su origin/main (raccogli_comandi legge `.description` di un ContextMenu: servono ContextMenu saltati in core/command_search_logic.py, non mio).
+- r22util (feat/r22util): B22 fatto (0559). Prossimo: B23 in cogs/utility/sondaggi_bottoni.py (`inizia_tra` su bottoni con stato programmato + repo.apri + azione scheduler di apertura; `/sondaggi gestisci azione:elenco|riepilogo|chiudi`; poll.py nativo: inizia_tra, chiudi_a_voti con on_raw_poll_vote_add + Poll.end, migrazione 0560 sondaggi_nativi), poi B24 /eventi (0561 eventi, eventi_iscritti; gruppo nuovo in command_groups + AUDIENCE + generate_command_list + comandi.json). Smoke da fare (non lanciato).
+- Aperto per altri: tests/test_command_search_bilingue.py e _bug147 falliscono anche su origin/main.
 
 ## Fatto
+- r22util B22 sondaggio a bottoni: repo con advisory lock, DynamicItem sb:<id>:<n>, pesi, modifica, chiusura (0559). Migrazioni libere da 0559 a 0569.
 - r21util B20 tag reazioni/si_cancella_dopo (scheduler)/cancella_messaggi/anche_modificati; B21 /tag crea|modifica|elimina|prendi, /admin-tag tag creatori|sostituisci|esporta|importa|gruppi (0557 ha tutte le colonne); UTL-184 /mod-ban massa invito.
 - r21util B16 citazioni+uso comandi+registro staff (0555); B17 emoji/sticker/thread/voice vai/massa esporta; B18 regex/inizia/svuota/globali (0556); B19 gruppi /tag e /admin-tag, opzioni, pesi, 4000 (0557). /fun quote NON spostato (cogs/fun e di r21fun).
 - r20util B15 conteggio: traguardo, importa, avvisami (0553). togli_canale cancella anche punteggi, traguardi e avvisi del canale.

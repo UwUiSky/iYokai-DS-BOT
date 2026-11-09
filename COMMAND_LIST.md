@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:38 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 17:47 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 786 comandi in 47 categorie.**
+**Totale: 789 comandi in 47 categorie.**
 
 ## Admin: AI
 
@@ -297,6 +297,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 - **`/admin-moduli contatori crea`** — Crea un canale che mostra un numero.
 - **`/admin-moduli contatori elenco`** — Mostra i contatori del server.
 - **`/admin-moduli contatori elimina`** — Smetti di aggiornare un contatore (il canale resta).
+- **`/admin-moduli sondaggi pesi`** — Dai un peso al voto di un ruolo nei sondaggi (max 25 ruoli).
 - **`/admin-moduli starboard disattiva`** — Spegni la bacheca.
 - **`/admin-moduli starboard imposta`** — Scegli il canale della bacheca e la soglia di stelle.
 - **`/admin-moduli starboard soglia`** — Cambia quante stelle servono per finire in bacheca.
@@ -838,7 +839,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 13:
 
 ## Sondaggi
 
+- **`/sondaggi bottoni`** — Crea un sondaggio a bottoni (fino a 20 opzioni).
 - **`/sondaggi crea`** — Crea un sondaggio (fino a 10 opzioni).
+- **`/sondaggi modifica`** — Cambia domanda, opzioni o durata di un sondaggio a bottoni aperto.
 
 ## Tag
 
