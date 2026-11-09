@@ -313,7 +313,9 @@
   "cancella": "delete",
   "etichetta": "label",
   "codici": "codes",
-  "riallinea": "resync"
+  "riallinea": "resync",
+  "admin-giochi": "admin-games",
+  "regole": "rules"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -524,7 +526,6 @@
   "immagini blur": "Blurs an image.",
   "fun casuale": "Would you rather, topic, advice, magic item.",
   "fun coinflip": "Flips a coin: heads or tails.",
-  "admin-moduli conteggio": "Counting game: pick the channel where people count 1, 2, 3... in turn.",
   "fun dice": "Rolls a die.",
   "immagini effetto": "Avatar effect: rainbow, R.I.P., wanted, triggered.",
   "fun fact": "Shows a random fun fact.",
@@ -1180,7 +1181,13 @@
   "admin-inviti riallinea": "Reread invites from Discord and compare them with saved joins.",
   "admin-inviti azzera": "Delete the invite history and the server's bonuses.",
   "admin-inviti esporta": "Export joins, leaderboard or codes to a file.",
-  "admin-inviti statistiche": "How many invited members stay and are active."
+  "admin-inviti statistiche": "How many invited members stay and are active.",
+  "admin-giochi": "Server games (admin): counting, channels, rules, milestones",
+  "admin-giochi conteggio": "Counting game: channels, rules, milestones",
+  "admin-giochi conteggio canale": "Pick the channels where people count (up to 10) and how.",
+  "admin-giochi conteggio regole": "Punishment after a mistake and role of the last counter.",
+  "giochi conteggio": "Counting game: leaderboard and alerts",
+  "giochi conteggio classifica": "Who counted the most correct numbers."
  },
  "parametri": {},
  "menu": {

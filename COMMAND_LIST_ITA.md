@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:51 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:16 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 744 comandi in 43 categorie.**
+**Totale: 746 comandi in 44 categorie.**
 
 ## Admin: AI
 
@@ -195,6 +195,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 - **`/admin-filtri messaggi`** — Ripetuti, troppo corti, link e menzioni contati nel tempo (0 = spento).
 - **`/admin-filtri phishing`** — Attiva o disattiva il blocco dei link di phishing (finti regali, finti login).
 
+## Admin: giochi
+
+- **`/admin-giochi conteggio canale`** — Scegli i canali dove si conta (fino a 10) e come.
+- **`/admin-giochi conteggio regole`** — Punizione dopo uno sbaglio e ruolo di chi ha contato per ultimo.
+
 ## Admin: giveaway
 
 - **`/admin-giveaway avvia`** — Avvia un giveaway.
@@ -296,7 +301,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 - **`/admin-moduli contatori crea`** — Crea un canale che mostra un numero.
 - **`/admin-moduli contatori elenco`** — Mostra i contatori del server.
 - **`/admin-moduli contatori elimina`** — Smetti di aggiornare un contatore (il canale resta).
-- **`/admin-moduli conteggio`** — Gioco del conteggio: scegli il canale dove contare a turno 1, 2, 3...
 - **`/admin-moduli starboard disattiva`** — Spegni la bacheca.
 - **`/admin-moduli starboard imposta`** — Scegli il canale della bacheca e la soglia di stelle.
 - **`/admin-moduli starboard soglia`** — Cambia quante stelle servono per finire in bacheca.
@@ -592,6 +596,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 03:
 
 ## Giochi
 
+- **`/giochi conteggio classifica`** — Chi ha contato più numeri giusti.
 - **`/giochi gioca`** — Gioca le tue coin: monetina, dadi o slot.
 - **`/giochi rps`** — Carta, forbici, sasso contro il bot.
 

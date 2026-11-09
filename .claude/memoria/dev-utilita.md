@@ -4,9 +4,10 @@
 09/11/2026 · ramo feat/r20util (worktree /home/claude/wt/r20util, env scratchpad/env_r20util.sh, DB iyokai_w20util) · blocco Utility #128 B8-B15, D69. Migrazioni da 0547 (0546 presa da B7).
 
 ## In corso
-- r19util B1-B7 pubblicati e uniti. r20util: B8, B9-B10 chiusi. B11 chiuso. B13 chiuso (184 resta a dev-moderazione). Prossimo: B14-B15 conteggio (0552+). Helper: scratchpad/uti20_{agg,commit.sh,guard.sh,doc,pesi}. Smoke da fare (non lanciato).
+- r19util B1-B7 pubblicati e uniti. r20util: B8, B9-B10 chiusi. B11 chiuso. B13 chiuso (184 resta a dev-moderazione). B14 chiuso (0552). Prossimo: B15 traguardi/avvisi/importa (0553). Helper: scratchpad/uti20_{agg,commit.sh,guard.sh,doc,pesi}. Smoke da fare (non lanciato).
 
 ## Fatto
+- r20util B14 conteggio: cog nuovo cogs/utility/conteggio.py, /admin-giochi conteggio canale|regole, /giochi conteggio classifica (0552); tolto da coin_games.
 - r20util B13 inviti: riallinea/azzera/esporta/statistiche + segnaposto benvenuto (0551). UTL-184 non fatto (cogs/moderation, non mio).
 - r20util B12 inviti: codici, etichetta+ruolo, crea, cancella (0550). Ruolo solo se codice riconosciuto, non pending, gerarchia di bot e staff.
 - r20util B11 inviti: /admin-inviti impostazioni|bonus|escludi, ingressi finti (0549). Rientro rilevato solo entro 90 giorni (le righe degli usciti scadono).

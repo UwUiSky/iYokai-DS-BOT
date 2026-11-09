@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:51 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 12:16 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 744 commands in 43 categories.**
+**Total: 746 commands in 44 categories.**
 
 ## Admin: AI
 
@@ -92,8 +92,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:5
 - **`/admin-automod odio richiami`** — How many warnings for hate words lead to a timeout.
 - **`/admin-automod odio status`** — Shows how the banned words are set up.
 - **`/admin-automod odio word`** — Adds or removes a custom word or an allowed word.
-- **`/admin-automod regole`** — Opens the AutoMod rules panel: conditions and actions.
 - **`/admin-automod reset`** — Resets an AutoMod rule counter.
+- **`/admin-automod rules`** — Opens the AutoMod rules panel: conditions and actions.
 - **`/admin-automod status`** — Shows the current advanced AutoMod filter setup.
 - **`/admin-automod summary`** — AutoMod violations summary for the server, in pages.
 - **`/admin-automod sync`** — Forces a manual sync of the AutoMod rules.
@@ -194,6 +194,11 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:5
 - **`/admin-filters messages`** — Repeated, too short, links and mentions counted over time (0 = off).
 - **`/admin-filters phishing`** — Turn the phishing link block on or off (fake gifts, fake logins).
 - **`/admin-filters text-shape`** — Limits on message shape: line breaks, length, spoilers (0 = off).
+
+## Admin: games
+
+- **`/admin-games counting channel`** — Pick the channels where people count (up to 10) and how.
+- **`/admin-games counting rules`** — Punishment after a mistake and role of the last counter.
 
 ## Admin: giveaways
 
@@ -296,7 +301,6 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:5
 - **`/admin-modules counters create`** — Creates a channel that shows a number.
 - **`/admin-modules counters delete`** — Stops updating a counter (the channel stays).
 - **`/admin-modules counters list`** — Shows the server's counters.
-- **`/admin-modules counting`** — Counting game: pick the channel where people count 1, 2, 3... in turn.
 - **`/admin-modules starboard disattiva`** — Turns the board off.
 - **`/admin-modules starboard set`** — Picks the board channel and the star threshold.
 - **`/admin-modules starboard threshold`** — Changes how many stars are needed to reach the board.
@@ -423,7 +427,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:5
 - **`/admin-ticket-options limits`** — Open-ticket cap, cooldown and exempt roles.
 - **`/admin-ticket-options messages`** — DMs to the user and claim/release texts.
 - **`/admin-ticket-options permissions`** — User permissions, observers, roles while open, staff team.
-- **`/admin-ticket-options regole`** — Rules: if nobody writes for N minutes, close, delete or send a message.
+- **`/admin-ticket-options rules`** — Rules: if nobody writes for N minutes, close, delete or send a message.
 - **`/admin-ticket-options show`** — All the options of a panel.
 
 ## Admin: temporary voice
@@ -592,6 +596,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 03:5
 
 ## Games
 
+- **`/games counting leaderboard`** — Who counted the most correct numbers.
 - **`/games play`** — Play your coins: coin flip, dice or slots.
 - **`/games rps`** — Rock, paper, scissors against the bot.
 

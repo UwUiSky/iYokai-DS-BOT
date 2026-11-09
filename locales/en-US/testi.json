@@ -2146,5 +2146,16 @@
   "invites_niente_da_esportare": "There is nothing to export.",
   "invites_export_pronto": "Exported {n} rows.",
   "invites_export_tagliato": "The file was too big: I kept the first {messe} rows of {totale}.",
-  "invites_statistiche": "Counted joins: {ingressi}. Still in the server: {presenti}. Active after {giorni} days: {attivi}."
+  "invites_statistiche": "Counted joins: {ingressi}. Still in the server: {presenti}. Active after {giorni} days: {attivi}.",
+  "conteggio_sbagliato": "{utente} ruined everything at **{numero}**! Starting again from **{inizio}**. Record: **{record}**.",
+  "conteggio_bloccato": "They cannot count until <t:{quando}:R>.",
+  "conteggio_riga_canale": "{canale} · mode {modo} · filter {filtro} · now {numero} · record {record} · punishment {punizione} min · last-counter role {ruolo}",
+  "conteggio_canale_tolto": "Channel removed from the counting game.",
+  "conteggio_canale_non_attivo": "This channel is not a counting channel.",
+  "conteggio_bot_non_puo": "I cannot run the game in {canale}: {motivo}.",
+  "conteggio_troppi_canali": "The server already counts in 10 channels: remove one first.",
+  "conteggio_regole_salvate": "Rules of {canale}: punishment {punizione} minutes · last-counter role {ruolo}.",
+  "conteggio_classifica_vuota": "Nobody has counted yet.",
+  "conteggio_classifica_titolo": "Counting: who counted the most",
+  "conteggio_classifica_piede": "Page {pagina} of {pagine}"
 }

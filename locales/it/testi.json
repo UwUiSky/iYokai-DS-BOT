@@ -2146,5 +2146,16 @@
   "invites_niente_da_esportare": "Non c'è niente da esportare.",
   "invites_export_pronto": "Esportate {n} righe.",
   "invites_export_tagliato": "Il file era troppo grande: ho tenuto le prime {messe} righe su {totale}.",
-  "invites_statistiche": "Ingressi contati: {ingressi}. Ancora nel server: {presenti}. Attivi dopo {giorni} giorni: {attivi}."
+  "invites_statistiche": "Ingressi contati: {ingressi}. Ancora nel server: {presenti}. Attivi dopo {giorni} giorni: {attivi}.",
+  "conteggio_sbagliato": "{utente} ha rovinato tutto a **{numero}**! Si riparte da **{inizio}**. Record: **{record}**.",
+  "conteggio_bloccato": "Non potrà contare fino a <t:{quando}:R>.",
+  "conteggio_riga_canale": "{canale} · modo {modo} · filtro {filtro} · ora {numero} · record {record} · punizione {punizione} min · ruolo dell'ultimo {ruolo}",
+  "conteggio_canale_tolto": "Canale tolto dal conteggio.",
+  "conteggio_canale_non_attivo": "Questo canale non è un canale del conteggio.",
+  "conteggio_bot_non_puo": "Non posso far giocare in {canale}: {motivo}.",
+  "conteggio_troppi_canali": "Il server conta già in 10 canali: toglierne uno prima.",
+  "conteggio_regole_salvate": "Regole di {canale}: punizione {punizione} minuti · ruolo dell'ultimo {ruolo}.",
+  "conteggio_classifica_vuota": "Nessuno ha ancora contato.",
+  "conteggio_classifica_titolo": "Conteggio: chi ha contato di più",
+  "conteggio_classifica_piede": "Pagina {pagina} di {pagine}"
 }
