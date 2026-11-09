@@ -189,3 +189,9 @@ async def test_albero_canale_suggerimenti_opzioni(monkeypatch):
     obbl = [x.get("required", False) for x in o]
     assert obbl == sorted(obbl, reverse=True)
     assert next(x for x in o if x["name"] == "colore")["max_length"] == 7
+
+
+@pytest.mark.asyncio
+async def test_indice_sul_messaggio_dei_suggerimenti(clean_db):
+    riga = await clean_db.fetchval("SELECT 1 FROM pg_indexes WHERE indexname = 'idx_suggestions_message'")
+    assert riga == 1
