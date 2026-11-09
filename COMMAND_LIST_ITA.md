@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:01 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:10 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 803 comandi in 47 categorie.**
+**Totale: 807 comandi in 47 categorie.**
 
 ## Admin: AI
 
@@ -320,6 +320,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:
 - **`/admin-musica canale-richieste`** — Canale dove si scrive un titolo per metterlo in coda, con il player.
 - **`/admin-musica impostazioni`** — Cambia le impostazioni musicali del server.
 - **`/admin-musica riepilogo`** — Mostra tutte le impostazioni musicali del server.
+- **`/admin-musica suono-ruoli`** — Chi può usare un suono: ruoli consentiti o vietati.
 
 ## Admin: ruoli
 
@@ -644,6 +645,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:
 - **`/giochi quiz avvia`** — Avvia un quiz a domande nel canale.
 - **`/giochi quiz classifica`** — Classifica del quiz: questa settimana o di sempre.
 - **`/giochi rps`** — Carta, forbici, sasso contro il bot.
+- **`/giochi smash`** — Smash or pass: un personaggio adulto di AniList (solo canali con limite d'età).
 - **`/giochi spinner`** — Fai girare lo spinner: vince chi lo fa girare più a lungo.
 
 ## Immagini
@@ -652,6 +654,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:
 - **`/immagini blur`** — Applica una sfocatura a un'immagine.
 - **`/immagini effetto`** — Effetto sull'avatar: arcobaleno, R.I.P., ricercato, pingato, sepia, neon...
 - **`/immagini foto`** — Una foto bella da vedere: cibo o buonumore.
+- **`/immagini fusione`** — Due Pokémon: il nome fuso e le loro immagini ufficiali affiancate.
 - **`/immagini grayscale`** — Trasforma un'immagine in scala di grigi.
 - **`/immagini invert`** — Inverte i colori di un'immagine.
 - **`/immagini meme`** — Genera un meme con testo sopra/sotto.
@@ -946,4 +949,5 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:
 - **`/web meteo`** — Il meteo di una città: adesso e i prossimi giorni.
 - **`/web prezzo`** — Il prezzo di una criptovaluta.
 - **`/web scheda`** — La scheda di un Pokémon, anime, carta o giocatore.
+- **`/web turni`** — Le rotazioni di Splatoon 3 e il reset settimanale di World of Warcraft.
 - **`/web wiki`** — Il riassunto di una voce di Wikipedia.

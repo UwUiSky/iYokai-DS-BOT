@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:01 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:10 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 803 commands in 47 categories.**
+**Total: 807 commands in 47 categories.**
 
 ## Admin: AI
 
@@ -320,6 +320,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:0
 - **`/admin-music request-channel`** — Channel where typing a title queues it, with the player.
 - **`/admin-music settings`** — Changes the server's music settings.
 - **`/admin-music summary`** — Shows all the server's music settings.
+- **`/admin-music suono-ruoli`** — Who can use a sound: allowed or banned roles.
 
 ## Admin: roles
 
@@ -644,6 +645,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:0
 - **`/games quiz leaderboard`** — Quiz ranking: this week or all-time.
 - **`/games quiz start`** — Start a quiz in the channel.
 - **`/games rps`** — Rock, paper, scissors against the bot.
+- **`/games smash`** — Smash or pass: an adult AniList character (age-restricted channels only).
 - **`/games spinner`** — Spin the spinner: the longest spin wins.
 
 ## Images
@@ -652,6 +654,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:0
 - **`/images blur`** — Blurs an image.
 - **`/images effect`** — Avatar effect: rainbow, R.I.P., wanted, pinged, sepia, neon...
 - **`/images foto`** — A nice photo to look at: food or good mood.
+- **`/images fusione`** — Two Pokémon: the fused name and their official images side by side.
 - **`/images grayscale`** — Turns an image to grayscale.
 - **`/images invert`** — Inverts an image's colors.
 - **`/images meme`** — Makes a meme with top/bottom text.
@@ -945,5 +948,6 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:0
 - **`/web movie`** — Information on a movie or a TV series.
 - **`/web price`** — The price of a cryptocurrency.
 - **`/web shorten`** — Shorten a link (if the server turned the command on).
+- **`/web turni`** — Splatoon 3 rotations and the World of Warcraft weekly reset.
 - **`/web weather`** — Weather of a city: now and the next days.
 - **`/web wiki`** — The summary of a Wikipedia entry.

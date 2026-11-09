@@ -5,10 +5,11 @@ Effetti sonori in vocale: un suono della soundboard (del server o
 predefinito di Discord) suonato da un bot musicale nel canale di chi lo
 chiede. Se il canale ha già un bot musicale si usa quello (la musica non
 si ferma); se no entra il primo libero, suona e poi esce. Pausa per utente.
-Il comando sta nel gruppo music (il gruppo fun ha già 25 figli).
-Funzioni coperte: SPEC §23 (NF-35)
+Il comando sta nel gruppo music (il gruppo fun ha già 25 figli). Un admin può
+limitare ogni suono a certi ruoli o vietarlo ad altri con `/admin-musica suono-ruoli` (massimo 20 ruoli per suono).
+Funzioni coperte: SPEC §23 (NF-35, FUN-076)
 Dipende da: cogs/music/player.py (worker, nodo, ingresso nel canale),
-core/music_sound_logic.py.
+core/music_sound_logic.py, core/suoni_ruoli_logic.py.
 """
 
 from __future__ import annotations
@@ -21,11 +22,14 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.command_access import Livello, autocomplete_protetto, richiedi
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.i18n import testo_per
 from core.music_settings_logic import channel_not_allowed, load_music_settings
 from core.music_sound_logic import ATTESA_USCITA, PausaUtente, Suono, scelte, trova
+from core.repositories.suoni_ruoli_repo import suoni_ruoli_repo
+from core.suoni_ruoli_logic import MAX_RUOLI_PER_SUONO, MODI, puo_suonare
 
 logger = logging.getLogger("iyokai.music.suoni")
 
@@ -143,10 +147,82 @@ class SoundboardCog(CogConGruppi, commands.Cog):
         if trovato is None:
             await interaction.followup.send(await testo_per(interaction, "soundboard_suono_non_trovato_sceglilo_dall"), ephemeral=True)
             return
+        regole = await suoni_ruoli_repo.regole(guild.id, trovato.valore)
+        utente = interaction.user
+        ruoli = {r.id for r in getattr(utente, "roles", ())}
+        admin = bool(getattr(getattr(utente, "guild_permissions", None), "administrator", False))
+        if not puo_suonare(regole, ruoli, admin):
+            await interaction.followup.send(await testo_per(interaction, "soundboard_ruolo_non_ammesso"), ephemeral=True)
+            return
         oggetto = disponibili[trovato.valore][1]
         self.pausa.segna(guild.id, interaction.user.id)
         testo = await self.suona(musica, interaction, canale_id, oggetto)
         await interaction.followup.send(testo.replace("{nome}", trovato.nome), ephemeral=True)
+
+    @autocomplete_protetto(Livello.ADMIN)
+    async def _nomi_admin(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+        return await self._nomi(interaction, current)
+
+    @comando_di_gruppo("admin-musica", nome="suono-ruoli", descrizione="Chi può usare un suono: ruoli consentiti o vietati.")
+    @app_commands.describe(
+        suono="Il suono", modo="Cosa fare", ruolo="Il ruolo (non serve per «Mostra»)",
+    )
+    @app_commands.autocomplete(suono=_nomi_admin)
+    @app_commands.choices(
+        modo=[
+            app_commands.Choice(name="Consenti a questo ruolo", value="consenti"),
+            app_commands.Choice(name="Vieta a questo ruolo", value="vieta"),
+            app_commands.Choice(name="Togli il ruolo dall'elenco", value="togli"),
+            app_commands.Choice(name="Mostra l'elenco", value="mostra"),
+        ]
+    )
+    @richiedi(Livello.ADMIN)
+    async def suono_ruoli(
+        self, interaction: discord.Interaction, suono: app_commands.Range[str, 1, 100],
+        modo: app_commands.Choice[str], ruolo: discord.Role | None = None,
+    ) -> None:
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(await testo_per(interaction, "guild_only_command"), ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        trovato = trova([s for s, _ in (await self._suoni(guild)).values()], suono)
+        if trovato is None:
+            await interaction.followup.send(await testo_per(interaction, "soundboard_suono_non_trovato_sceglilo_dall"), ephemeral=True)
+            return
+        scelta = modo.value
+        if scelta != "mostra" and ruolo is None:
+            await interaction.followup.send(await testo_per(interaction, "soundboard_serve_un_ruolo"), ephemeral=True)
+            return
+        if scelta in MODI and ruolo.is_default():
+            await interaction.followup.send(await testo_per(interaction, "soundboard_non_everyone"), ephemeral=True)
+            return
+        nessuna_menzione = discord.AllowedMentions.none()
+        if scelta in MODI:
+            if await suoni_ruoli_repo.imposta(guild.id, trovato.valore, ruolo.id, scelta) == "tetto":
+                await interaction.followup.send(await testo_per(interaction, "soundboard_ruoli_tetto", massimo=MAX_RUOLI_PER_SUONO), ephemeral=True)
+                return
+            chiave = "soundboard_ruolo_consentito" if scelta == "consenti" else "soundboard_ruolo_vietato"
+            testo = await testo_per(interaction, chiave, suono=trovato.nome, ruolo=ruolo.mention)
+        elif scelta == "togli":
+            tolto = await suoni_ruoli_repo.togli(guild.id, trovato.valore, ruolo.id)
+            chiave = "soundboard_ruolo_tolto" if tolto else "soundboard_ruolo_non_in_elenco"
+            testo = await testo_per(interaction, chiave, suono=trovato.nome, ruolo=ruolo.mention)
+        else:
+            regole = await suoni_ruoli_repo.regole(guild.id, trovato.valore)
+            if not regole:
+                testo = await testo_per(interaction, "soundboard_ruoli_vuoto", suono=trovato.nome)
+            else:
+                si = await testo_per(interaction, "soundboard_elenco_consentiti")
+                no = await testo_per(interaction, "soundboard_elenco_vietati")
+                righe = [f"{si if m == 'consenti' else no}: <@&{r}>" for r, m in regole]
+                testo = await testo_per(interaction, "soundboard_ruoli_elenco", suono=trovato.nome, elenco="\n".join(righe))
+        await interaction.followup.send(testo[:2000], ephemeral=True, allowed_mentions=nessuna_menzione)
+
+    @commands.Cog.listener()
+    async def on_guild_role_delete(self, role: discord.Role) -> None:
+        """Un ruolo cancellato esce da tutte le regole dei suoni."""
+        await suoni_ruoli_repo.togli_ruolo(role.guild.id, role.id)
 
     async def suona(self, musica, interaction: discord.Interaction, canale_id: int, oggetto) -> str:
         """Manda il suono dal bot musicale del canale (o dal primo libero). Restituisce il testo."""

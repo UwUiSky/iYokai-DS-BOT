@@ -103,6 +103,11 @@ def _cog(musica, monkeypatch):
     monkeypatch.setattr(modulo, "load_music_settings", _impostazioni)
     monkeypatch.setattr(modulo, "channel_not_allowed", lambda cid, imp: None)
     monkeypatch.setattr(modulo, "_nodo_del_bot", lambda bot, w: "nodo")
+
+    async def _nessuna_regola(g, s):
+        return []
+
+    monkeypatch.setattr(modulo, "suoni_ruoli_repo", SimpleNamespace(regole=_nessuna_regola))
     flotta = SimpleNamespace(release_session=_nulla)
     bot = SimpleNamespace(get_cog=lambda n: musica, music_fleet=flotta)
     cog = SoundboardCog(bot)
