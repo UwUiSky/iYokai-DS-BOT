@@ -1485,3 +1485,7 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - `/immagini animal specie:Cane quante:5`: un messaggio con 5 immagini (embed). `specie:Uccello quante:3`: 3 foto di uccelli allegate, con il nome Pixabay; senza `PIXABAY_API_KEY` risposta nascosta che spiega come attivarla. `specie:Sorpresa`: un mix.
 - `/immagini foto tema:Cibo` e `Buonumore`: una foto con credito Pixabay; un secondo comando entro 10 secondi: «aspetta».
 - `/immagini xkcd` (ultima) e `numero:927`: titolo `#927 · Standards`, testo alternativo in descrizione, immagine, piè di pagina con la licenza CC BY-NC 2.5; `numero:404`: «Non trovo questa vignetta».
+
+## giro r21fun, B5 — effetti e scherzi (#131)
+- `/immagini effetto tipo:Pingato tutti nome:Luca`: avatar con il riquadro blu «@Luca ha pingato tutti» (nessun ping vero). Poi `Specchio`, `Seppia`, `Pixel art`, `Cornice`, `Vignetta`, `Neon`: ognuno un PNG quadrato col nome del file dell'effetto; un allegato non immagine è rifiutato come prima.
+- `/fun scherzo tipo:Tutto in spoiler utente:@Prova testo:ciao a tutti`: ogni parola in spoiler, nessun ping (anche con «@everyone» nel testo). Senza `testo`: messaggio nascosto. `Barra di caricamento` (sempre 99%) e `Brindisi` (frase a caso).

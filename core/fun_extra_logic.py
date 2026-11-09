@@ -245,3 +245,22 @@ def presa_in_giro(rng: random.Random, nome: str = "{t}") -> str:
 
 def google_link(testo: str) -> str:
     return "https://www.google.com/search?q=" + quote_plus(testo.strip())
+
+
+_BRINDISI = ("Cin cin!", "Alla salute!", "Che sia una bella serata!", "Alla nostra!", "Salute e buon umore!")
+
+
+def brindisi(rng: random.Random) -> str:
+    return rng.choice(_BRINDISI)
+
+
+def barra_caricamento(lunghezza: int = 10) -> str:
+    """Una barra quasi piena: lo scherzo è che non arriva mai al 100%."""
+    piene = lunghezza - 1
+    return "▓" * piene + "░" * (lunghezza - piene)
+
+
+def tutto_in_spoiler(testo: str) -> str:
+    """Ogni parola nel suo spoiler (le barre verticali del testo sono tolte: non rompono gli spoiler)."""
+    parole = [p for p in testo.replace("|", " ").split() if p]
+    return " ".join(f"||{p}||" for p in parole)

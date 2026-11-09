@@ -593,7 +593,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 - **`/fun quote`** — Mostra una citazione a caso.
 - **`/fun rate`** — Valuta qualcosa da 0 a 10.
 - **`/fun scegli`** — Scelgo a caso tra le opzioni che scrivi.
-- **`/fun scherzo`** — Uno scherzo innocuo verso un utente.
+- **`/fun scherzo`** — Uno scherzo innocuo verso un utente: lancia, presa in giro, Google, spoiler, caricamento, brindisi.
 - **`/fun ship`** — Calcola la compatibilità tra due utenti (amore o amicizia).
 - **`/fun testo`** — Scrivi un testo in uno stile speciale.
 
@@ -619,7 +619,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 - **`/immagini animal`** — Mostra immagini casuali di animali (fino a 5): cane, gatto, volpe, uccello, sorpresa.
 - **`/immagini foto`** — Una foto bella da vedere: cibo o buonumore.
 - **`/immagini blur`** — Applica una sfocatura a un'immagine.
-- **`/immagini effetto`** — Effetto sull'avatar: arcobaleno, R.I.P., ricercato, triggered.
+- **`/immagini effetto`** — Effetto sull'avatar: arcobaleno, R.I.P., ricercato, pingato, sepia, neon...
 - **`/immagini grayscale`** — Trasforma un'immagine in scala di grigi.
 - **`/immagini invert`** — Inverte i colori di un'immagine.
 - **`/immagini meme`** — Genera un meme con testo sopra/sotto.

@@ -2326,5 +2326,8 @@
   "fun_punteggi_azzerati": "Fatto: {righe} punteggi cancellati.",
   "fun_punteggi_annullato": "Annullato: i punteggi restano.",
   "fun_xkcd_non_trovata": "Non trovo questa vignetta di xkcd. Riprova con un altro numero.",
-  "fun_xkcd_credito": "xkcd.com · licenza CC BY-NC 2.5 (Randall Munroe)"
+  "fun_xkcd_credito": "xkcd.com · licenza CC BY-NC 2.5 (Randall Munroe)",
+  "fun_scherzo_serve_testo": "Scrivi il testo nel campo `testo`.",
+  "fun_scherzo_caricamento": "⏳ {utente}: caricamento della simpatia... {barra} 99%... e si è bloccato.",
+  "fun_scherzo_brindisi": "🥂 {autore} brinda con {utente}: {frase}"
 }

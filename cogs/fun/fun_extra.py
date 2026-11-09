@@ -1,7 +1,7 @@
 """
 cogs/fun/fun_extra.py
 =====================
-Voci piccole di /fun (#131, FUN-023..048, 058..061): scegli, numero, testo
+Voci piccole di /fun (#131, FUN-023..048, 058..064): scegli, numero, testo
 in stili, contenuti a caso, scherzi verso un utente, effetti sull'avatar.
 Tutto SFW, nessuna rete. Sotto il gruppo esistente /fun (6 figli nuovi).
 Funzioni coperte: SPEC §16 (16.1, 16.2, 16.8).
@@ -36,6 +36,13 @@ _EFFETTI = {
     "rip": ("rip.png", effetti.effetto_rip, True),
     "ricercato": ("ricercato.png", effetti.effetto_ricercato, True),
     "triggered": ("triggered.gif", effetti.effetto_triggered, False),
+    "pingato": ("pingato.png", effetti.effetto_pingato, True),
+    "specchio": ("specchio.png", effetti.effetto_specchio, False),
+    "seppia": ("seppia.png", effetti.effetto_seppia, False),
+    "pixel": ("pixel.png", effetti.effetto_pixel, False),
+    "cornice": ("cornice.png", effetti.effetto_cornice, False),
+    "vignetta": ("vignetta.png", effetti.effetto_vignetta, False),
+    "neon": ("neon.png", effetti.effetto_neon, False),
 }
 
 
@@ -170,13 +177,16 @@ class FunExtraCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo("fun", nome="scherzo", descrizione="Uno scherzo innocuo verso un utente.")
     @app_commands.describe(
         tipo="Che scherzo", utente="Chi riceve lo scherzo",
-        testo="Solo per Google: cosa cercare (massimo 100 caratteri)",
+        testo="Per Google e Tutto in spoiler: il testo (massimo 100 caratteri)",
     )
     @app_commands.choices(
         tipo=[
             app_commands.Choice(name="Lancia un oggetto", value="lancia"),
             app_commands.Choice(name="Presa in giro", value="presa-in-giro"),
             app_commands.Choice(name="Cercalo su Google", value="google"),
+            app_commands.Choice(name="Tutto in spoiler", value="spoiler"),
+            app_commands.Choice(name="Barra di caricamento", value="caricamento"),
+            app_commands.Choice(name="Brindisi", value="brindisi"),
         ]
     )
     async def scherzo(
@@ -188,7 +198,21 @@ class FunExtraCog(CogConGruppi, commands.Cog):
     ) -> None:
         if not await self._modulo_attivo(interaction):
             return
-        if tipo.value == "google":
+        if tipo.value == "spoiler":
+            if not testo:
+                await self._scrivi(interaction, await testo_per(interaction, "fun_scherzo_serve_testo"), ephemeral=True)
+                return
+            frase = f"🤫 {utente.mention} {logica.tutto_in_spoiler(testo)}"
+        elif tipo.value == "caricamento":
+            frase = await testo_per(
+                interaction, "fun_scherzo_caricamento", pubblica=True, utente=utente.mention, barra=logica.barra_caricamento()
+            )
+        elif tipo.value == "brindisi":
+            frase = await testo_per(
+                interaction, "fun_scherzo_brindisi", pubblica=True, autore=interaction.user.mention, utente=utente.mention,
+                frase=logica.brindisi(self._rng),
+            )
+        elif tipo.value == "google":
             if not testo:
                 await self._scrivi(interaction, "Scrivi cosa cercare nel campo `testo`.", ephemeral=True)
                 return
@@ -199,7 +223,7 @@ class FunExtraCog(CogConGruppi, commands.Cog):
             frase = f"😏 {logica.presa_in_giro(self._rng, utente.mention)}"
         await self._scrivi(interaction, frase)
 
-    @comando_di_gruppo("immagini", nome="effetto", descrizione="Effetto sull'avatar: arcobaleno, R.I.P., ricercato, triggered.")
+    @comando_di_gruppo("immagini", nome="effetto", descrizione="Effetto sull'avatar: arcobaleno, R.I.P., ricercato, pingato, sepia, neon...")
     @app_commands.describe(
         tipo="Che effetto", image="Immagine (facoltativa: senza, usa l'avatar)",
         utente="Usa l'avatar di questo utente", nome="Nome sul manifesto o sulla lapide (massimo 40)",
@@ -210,6 +234,13 @@ class FunExtraCog(CogConGruppi, commands.Cog):
             app_commands.Choice(name="Lapide R.I.P.", value="rip"),
             app_commands.Choice(name="Ricercato", value="ricercato"),
             app_commands.Choice(name="Triggered (GIF)", value="triggered"),
+            app_commands.Choice(name="Pingato tutti", value="pingato"),
+            app_commands.Choice(name="Specchio", value="specchio"),
+            app_commands.Choice(name="Seppia", value="seppia"),
+            app_commands.Choice(name="Pixel art", value="pixel"),
+            app_commands.Choice(name="Cornice", value="cornice"),
+            app_commands.Choice(name="Vignetta", value="vignetta"),
+            app_commands.Choice(name="Neon", value="neon"),
         ]
     )
     async def effetto(

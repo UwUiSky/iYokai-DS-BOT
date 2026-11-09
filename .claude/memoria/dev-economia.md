@@ -4,10 +4,11 @@
 09/11/2026 · giro r21gif, ramo `feat/r21gif`, migrazione 0570 (usata). Lavoro PER FILE.
 
 ## In corso
-- r21fun (B2-B5 di #131, D70), ramo `feat/r21fun`, worktree `/home/claude/wt/r21fun`, env `scratchpad/env_r21fun_dev.sh`. Previsione: 4 commit. B2, B3, B4 fatti; poi B5. `fun citazioni caso` (030) NON c'è su main: saltata.
+- r21fun (B2-B5 di #131, D70), ramo `feat/r21fun`, worktree `/home/claude/wt/r21fun`, env `scratchpad/env_r21fun_dev.sh`. Previsione: 4 commit. B2-B5 fatti (B5 senza 030). Resta: 030 `fun citazioni caso immagine:sì` quando D69 porta il comando. `fun citazioni caso` (030) NON c'è su main: saltata.
 - Smoke da fare (lo lancia l'orchestratore).
 
 ## Fatto
+- r21fun B5: 7 effetti immagine (062/064), 3 scherzi (063) in `fun_extra.py`.
 - r21fun B4: animal 5 specie + `quante`, `/immagini foto|xkcd`, `core/xkcd_fetcher.py`, `fetch_immagini`.
 - r21fun B3: 0571 `fun_punteggi`/`fun_mazzi`, `fun_gare_repo`, `fun_gare_logic`, `/giochi dado|spinner|mazzo`, `/admin-giochi punteggi azzera`.
 - r21fun B2: `core/fun_piccoli_logic.py`, `cogs/fun/giochi_extra.py` (`/giochi minato`), coinflip `quante`, ship `tema`, joke `chuck`, casuale `classe`.

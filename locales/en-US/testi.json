@@ -2326,5 +2326,8 @@
   "fun_punteggi_azzerati": "Done: {righe} scores deleted.",
   "fun_punteggi_annullato": "Cancelled: scores stay.",
   "fun_xkcd_non_trovata": "I can't find that xkcd comic. Try another number.",
-  "fun_xkcd_credito": "xkcd.com · CC BY-NC 2.5 license (Randall Munroe)"
+  "fun_xkcd_credito": "xkcd.com · CC BY-NC 2.5 license (Randall Munroe)",
+  "fun_scherzo_serve_testo": "Write the text in the `testo` field.",
+  "fun_scherzo_caricamento": "⏳ {utente}: loading charm... {barra} 99%... and it got stuck.",
+  "fun_scherzo_brindisi": "🥂 {autore} toasts with {utente}: {frase}"
 }
