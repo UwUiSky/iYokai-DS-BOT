@@ -105,3 +105,45 @@ async def test_modifica_tiene_i_voti_delle_opzioni_rimaste(repo):
     assert await repo.risultati(s, False) == [("z", 0), ("b", 1), ("c2", 0)]
     await repo.chiudi(s)
     assert await repo.modifica(s, "x", ["a", "b"], None) is None
+
+
+@pytest.mark.asyncio
+async def test_canale_cancellato_toglie_sondaggi_con_voti(repo):
+    s = await _nuovo(repo)
+    await repo.vota(s, 1, 0, 1, ADESSO)
+    assert await repo.elimina_del_canale(G + 1, 5) == 0
+    assert await repo.elimina_del_canale(G, 5) == 1
+    assert await repo.prendi(s) is None and await repo.votanti(s) == 0
+
+
+@pytest.mark.asyncio
+async def test_conferma_modifica_ricontrolla_il_permesso(repo, monkeypatch):
+    """Alla conferma chi non è l'autore e non ha «Gestisci messaggi» non scrive nulla; l'autore sì."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    import discord
+
+    from cogs.utility import sondaggi_bottoni as M
+    from tests.support.discord_fakes import fake_interaction, fake_member
+
+    monkeypatch.setattr(M, "sondaggi_repo", repo)
+    monkeypatch.setattr(M, "lingua_interazione", AsyncMock(return_value="it"))
+    s = await _nuovo(repo)
+    cog = MagicMock()
+    cog.scrivi_modifica = AsyncMock(return_value="sb_modificato")
+
+    async def clic(autore: bool, permessi: discord.Permissions):
+        vista = M.ConfermaModifica(cog, 99, s, "nuova?", ["a", "b"], None, ("Si", "No"))
+        i = fake_interaction(user=fake_member(user_id=99 if autore else 5), permissions=permessi)
+        await vista.conferma.callback(i)
+        return vista, i
+
+    vista, i = await clic(False, discord.Permissions.none())
+    cog.scrivi_modifica.assert_not_awaited()
+    assert vista.is_finished()
+    _, i = await clic(True, discord.Permissions.none())
+    cog.scrivi_modifica.assert_awaited_once_with(s, "nuova?", ["a", "b"], None)
+    await repo.chiudi(s)
+    cog.scrivi_modifica.reset_mock()
+    await clic(False, discord.Permissions(manage_messages=True))
+    cog.scrivi_modifica.assert_awaited_once()

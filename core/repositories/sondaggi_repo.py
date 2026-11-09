@@ -138,6 +138,11 @@ class SondaggiRepository:
     async def elimina(self, sondaggio_id: int) -> None:
         await self._pool.execute("DELETE FROM sondaggi WHERE id = $1", sondaggio_id)
 
+    async def elimina_del_canale(self, guild_id: int, channel_id: int) -> int:
+        """Toglie i sondaggi di un canale cancellato. Torna quanti."""
+        r = await self._pool.execute("DELETE FROM sondaggi WHERE guild_id = $1 AND channel_id = $2", guild_id, channel_id)
+        return int(r.split()[-1])
+
     async def modifica(self, sondaggio_id: int, domanda: str, opzioni: list[str], scade_il: datetime | None) -> int | None:
         """Cambia domanda, opzioni e scadenza di un sondaggio aperto. Le opzioni con lo stesso testo tengono i voti, le
         tolte li perdono. Torna quanti voti sono stati persi, o None se il sondaggio non è più aperto."""

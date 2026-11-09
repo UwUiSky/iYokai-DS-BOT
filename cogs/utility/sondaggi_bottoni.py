@@ -510,6 +510,14 @@ class SondaggiBottoniCog(CogConGruppi, commands.Cog):
             t("sb_peso_impostato" if esito == "ok" else "sb_pesi_pieno", lingua, ruolo=ruolo.name, peso=peso, massimo=L.MAX_PESI),
             ephemeral=True)
 
+    @commands.Cog.listener()
+    async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel) -> None:
+        """Un canale cancellato porta via i suoi sondaggi (opzioni e voti a cascata)."""
+        try:
+            await sondaggi_repo.elimina_del_canale(channel.guild.id, channel.id)
+        except Exception:
+            logger.exception("Sondaggi: pulizia del canale %s fallita", channel.id)
+
     # --- chi esce perde il voto -------------------------------------------------------------------------------------
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member) -> None:
