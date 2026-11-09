@@ -102,3 +102,20 @@ async def test_vai_rifiuta_chi_non_e_in_vocale_e_chi_non_puo_entrare():
     inter.response.send_message.reset_mock()
     await cog.vai.callback(cog, inter, canale)
     inter.user.move_to.assert_not_awaited()
+
+
+def test_csv_neutralizza_anche_tab_e_non_sporca_i_campi_vuoti():
+    sporco = _membro(1, "\t=cmd", [10])
+    senza_data = _membro(2, "due", [10])
+    senza_data.joined_at = None
+    dati, _ = scrivi_esportazione([sporco, senza_data], "csv")
+    righe = list(csv.DictReader(io.StringIO(dati.decode())))
+    assert righe[0]["utente"] == "'\t=cmd" and righe[1]["entrato_il"] == ""
+
+
+def test_pacchetto_normalizza_il_nome_del_gruppo():
+    from core.tag_pacchetti_logic import leggi_pacchetto
+    [v] = leggi_pacchetto({"tag": [{"nome": "ok", "testo": "x", "gruppo": " Staff_1 "}]})
+    assert v["gruppo"] == "staff_1"
+    [v] = leggi_pacchetto({"tag": [{"nome": "ok", "testo": "x", "gruppo": "a b!"}]})
+    assert v["gruppo"] is None

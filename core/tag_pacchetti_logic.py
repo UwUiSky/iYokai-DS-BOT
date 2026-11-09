@@ -78,7 +78,7 @@ def leggi_pacchetto(grezzo: bytes | str | dict) -> list[dict]:
             "permesso": v["permesso"] if v.get("permesso") in PERMESSI_TAG else None,
             "invio": v["invio"] if v.get("invio") in INVII and v["invio"] != "altro" else "canale",
             "reazioni": reazioni or [], "si_cancella_dopo": intero("si_cancella_dopo", 5, 3600), "cancella_messaggi": intero("cancella_messaggi", 1, 100),
-            "gruppo": v["gruppo"][:32] if isinstance(v.get("gruppo"), str) and v["gruppo"].strip() else None, "risposte": risposte,
+            "gruppo": nome_gruppo_valido(v["gruppo"]) if isinstance(v.get("gruppo"), str) else None, "risposte": risposte,
             **{c: v.get(c) is True for c in _CAMPI_SEMPLICI},
         })
     if not pulite:

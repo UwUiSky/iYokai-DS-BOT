@@ -195,6 +195,6 @@ def scrivi_esportazione(membri: Sequence, formato: str) -> tuple[bytes, str]:
     scrittore = csv.DictWriter(fuori, fieldnames=["id", "utente", "nome", "bot", "entrato_il"])
     scrittore.writeheader()
     for r in righe:
-        # un nome che inizia con = + - @ si aprirebbe come formula in un foglio di calcolo
-        scrittore.writerow({k: ("'" + v if isinstance(v, str) and v[:1] in "=+-@" else v) for k, v in r.items()})
+        # un nome che inizia con = + - @ (o con tab o a-capo) si aprirebbe come formula in un foglio di calcolo
+        scrittore.writerow({k: ("'" + v if isinstance(v, str) and v[:1] and v[:1] in "=+-@\t\r" else v) for k, v in r.items()})
     return fuori.getvalue().encode("utf-8"), "membri.csv"
