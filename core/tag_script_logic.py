@@ -34,6 +34,12 @@ MAX_REGEX = 100
 MAX_TEMPO = 1.0         # secondi
 MAX_SCRITTURE = 10      # {dati:set|del} per esecuzione
 MAX_INTERVALLO = 10**9
+MAX_VALORE_DATO = 1024  # byte, per chiave
+MAX_CHIAVI = 1000       # per server (Premium: MAX_CHIAVI_PREMIUM)
+MAX_CHIAVI_PREMIUM = 5000
+CHIAVE_DATI = re.compile(r"^[a-z0-9_.-]{1,64}$")
+AZIONI_DATI = {"get": "get", "leggi": "get", "set": "set", "scrivi": "set", "imposta": "set", "del": "del", "togli": "del",
+               "elimina": "del", "cancella": "del"}
 MAX_TRA = 365 * 86400
 
 DA_UTENTI = frozenset({"args", "username"})  # testo scritto da chi usa il tag: le menzioni restano inerti
@@ -87,6 +93,44 @@ class Risultato:
     errore: ErroreScript | None = None
     operazioni: int = 0
     variabili: dict[str, str] = field(default_factory=dict)
+
+
+class ArchivioMemoria:
+    """Dati in memoria (per i test e come base della prova). Stessa interfaccia dell'archivio su database."""
+
+    def __init__(self, dati: dict[str, str] | None = None, massimo: int = MAX_CHIAVI) -> None:
+        self.dati = dict(dati or {})
+        self.massimo = massimo
+
+    async def get(self, chiave: str) -> str | None:
+        return self.dati.get(chiave)
+
+    async def set(self, chiave: str, valore: str) -> None:
+        if chiave not in self.dati and len(self.dati) >= self.massimo:
+            raise ErroreScript("tag_script_dati_pieni")
+        self.dati[chiave] = valore
+
+    async def delete(self, chiave: str) -> None:
+        self.dati.pop(chiave, None)
+
+
+class ArchivioProva:
+    """Legge i dati veri, scrive solo in memoria: la prova (`/tag prova`) non salva niente."""
+
+    def __init__(self, base) -> None:
+        self.base = base
+        self.scritti: dict[str, str | None] = {}
+
+    async def get(self, chiave: str) -> str | None:
+        if chiave in self.scritti:
+            return self.scritti[chiave]
+        return await self.base.get(chiave)
+
+    async def set(self, chiave: str, valore: str) -> None:
+        self.scritti[chiave] = valore
+
+    async def delete(self, chiave: str) -> None:
+        self.scritti[chiave] = None
 
 
 def ha_script(testo: str) -> bool:
@@ -396,8 +440,36 @@ class _Esecuzione:
         secondi = _durata(await self.valuta(resto, prof + 1, MAX_VALORE))
         return f"<t:{int((self.c.adesso + timedelta(seconds=secondi)).timestamp())}:R>"
 
+    # ---------------------------------------------------------------- dati del server
     async def _f_dati(self, resto: str, prof: int) -> str:
-        raise ErroreScript("tag_script_dati_non_disponibili")
+        args = _dividi(resto)
+        azione = AZIONI_DATI.get((await self._arg(args, 0, prof)).strip().lower())
+        if azione is None:
+            raise ErroreScript("tag_script_dati_azione", args[0][:20])
+        if self.c.archivio is None:
+            raise ErroreScript("tag_script_dati_non_disponibili")
+        chiave = (await self._arg(args, 1, prof)).strip().lower()
+        if not CHIAVE_DATI.match(chiave):
+            raise ErroreScript("tag_script_dati_chiave", chiave[:30])
+        try:
+            if azione == "get":
+                valore = await self.c.archivio.get(chiave)
+                return valore if valore is not None else await self._arg(args, 2, prof)
+            self.scritture += 1
+            if self.scritture > MAX_SCRITTURE:
+                raise ErroreScript("tag_script_troppe_scritture")
+            if azione == "del":
+                await self.c.archivio.delete(chiave)
+                return ""
+            valore = await self._arg(args, 2, prof)
+            if len(valore.encode()) > MAX_VALORE_DATO:
+                raise ErroreScript("tag_script_dati_valore", chiave)
+            await self.c.archivio.set(chiave, valore)
+            return ""
+        except ErroreScript:
+            raise
+        except Exception:
+            raise ErroreScript("tag_script_dati_errore", chiave) from None
 
 
 async def esegui(testo: str, contesto: Contesto | None = None) -> Risultato:

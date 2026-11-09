@@ -1277,7 +1277,11 @@
   "eventi crea": "Create an event with sign-ups, seats and a reminder.",
   "eventi elenco": "Upcoming events, or the attendees of one event.",
   "eventi modifica": "Change the title, date, seats or description of an event.",
-  "eventi annulla": "Cancel an event: sign-ups can no longer change."
+  "eventi annulla": "Cancel an event: sign-ups can no longer change.",
+  "admin-automazioni": "Server automations (admin): tag scripts, triggers, server commands and menus",
+  "admin-automazioni script": "Tag scripts: errors",
+  "admin-automazioni script errori": "The latest 10 errors of a tag's script.",
+  "tag prova": "Test a tag script: saves nothing and does not write the real data."
  },
  "parametri": {},
  "menu": {

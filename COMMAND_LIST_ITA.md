@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:14 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:28 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 808 comandi in 48 categorie.**
+**Totale: 810 comandi in 49 categorie.**
 
 ## Admin: AI
 
@@ -71,6 +71,10 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:
 - **`/admin-antiraid segnali`** — Segnali di raid sugli ultimi ingressi e azione su chi è entrato prima.
 - **`/admin-antiraid status`** — Mostra la configurazione attuale dell'Anti-Raid.
 - **`/admin-antiraid username-check`** — Attiva/disattiva il rilevamento pattern username sospetti.
+
+## Admin: automazioni
+
+- **`/admin-automazioni script errori`** — Gli ultimi 10 errori dello script di un tag.
 
 ## Admin: AutoMod
 
@@ -870,6 +874,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 18:
 - **`/tag elimina`** — Elimina un tag che hai creato tu.
 - **`/tag modifica`** — Cambia il testo di un tag che hai creato tu.
 - **`/tag prendi`** — Prendi un tag il cui autore ha lasciato il server.
+- **`/tag prova`** — Prova uno script di tag: non salva niente e non scrive i dati veri.
 - **`/tag usa`** — Usa un comando personalizzato di questo server.
 
 ## Ticket

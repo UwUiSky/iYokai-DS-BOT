@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:14 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:28 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 808 commands in 48 categories.**
+**Total: 810 commands in 49 categories.**
 
 ## Admin: AI
 
@@ -71,6 +71,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:1
 - **`/admin-antiraid signals`** — Raid signals on the latest joins and action on earlier joiners.
 - **`/admin-antiraid status`** — Shows the current Anti-Raid setup.
 - **`/admin-antiraid username-check`** — Turns suspicious username pattern detection on or off.
+
+## Admin: automations
+
+- **`/admin-automazioni script errori`** — The latest 10 errors of a tag's script.
 
 ## Admin: AutoMod
 
@@ -869,6 +873,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 18:1
 - **`/tag create`** — Create a tag of your own (needs the role the server picked).
 - **`/tag delete`** — Delete a tag you created.
 - **`/tag edit`** — Change the text of a tag you created.
+- **`/tag proof`** — Test a tag script: saves nothing and does not write the real data.
 - **`/tag take`** — Take a tag whose author left the server.
 - **`/tag use`** — Uses a custom command of this server.
 

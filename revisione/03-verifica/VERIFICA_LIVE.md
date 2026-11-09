@@ -1541,3 +1541,8 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 - `/admin-tag tag crea nome:dado testo:{se:{args}==|Tira: {caso:1-6}|Hai scritto {maiuscolo:{args}}}`: `/tag usa dado` risponde con un numero da 1 a 6; `/tag usa dado argomenti:ciao` risponde «Hai scritto CIAO».
 - Lo stesso con il prefisso (`!dado`). Con `argomenti:@everyone` nessuno viene avvisato.
 - `{ripeti:50|{ripeti:50|x}}`: risposta «lo script si è fermato», nessun blocco del bot.
+
+## giro r24util, B26 — dati, errori e prova degli script (#128)
+- Tag con testo `{dati:set|giri|{calcola:{dati:get|giri|0}+1}}Giro {dati:get|giri}`: ogni `/tag usa` aumenta il numero, anche dopo un riavvio del bot.
+- `/tag prova` con lo stesso script: mostra il numero successivo ma, rifatto, il numero reale non è cambiato. Senza «Gestisci server» e senza il ruolo dei creatori: rifiuto.
+- Tag con `{ripeti:50|{ripeti:5|{var:a=1}}}`: il tag risponde «lo script si è fermato»; `/admin-automazioni script errori nome:...` mostra l'errore. Eliminato il tag, l'elenco è vuoto.

@@ -44,6 +44,7 @@ from core.custom_command_logic import (
 from core.database import db
 from core import tag_script_logic as tag_script
 from core.i18n import testo_guild, testo_per
+from core.repositories.tag_script_repo import massimo_chiavi, tag_script_repo
 from core.tag_script_logic import ha_script
 from core.nome_logic import normalizza_nome
 from core.lista_limiti_logic import righe_entro_limite
@@ -101,9 +102,14 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             "bersaglio": bersaglio.mention if bersaglio is not None else "",
         }
         if ha_script(base):
-            esito = await tag_script.esegui(base, tag_script.Contesto(valori=valori, adesso=datetime.now(ZoneInfo("Europe/Rome"))))
+            archivio = tag_script_repo.archivio(tag.guild_id, lambda: massimo_chiavi(tag.guild_id, self.bot))
+            esito = await tag_script.esegui(base, tag_script.Contesto(valori=valori, adesso=datetime.now(ZoneInfo("Europe/Rome")), archivio=archivio))
             if esito.errore is not None:
                 logger.info("Tag %s: script fermato (%s).", tag.name, esito.errore.chiave)
+                try:
+                    await tag_script_repo.registra_errore(tag.guild_id, tag.name, esito.errore.chiave, esito.errore.dettaglio)
+                except Exception:
+                    logger.warning("Errore dello script del tag %s non registrato.", tag.name, exc_info=True)
                 return await testo_guild(membro.guild, "tag_script_fermato", nome=tag.name), nota
             base = esito.testo
         return costruisci_risposta(base, valori).strip() or TESTO_VUOTO, nota
@@ -477,6 +483,11 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             return
         normalizzato = normalizza_nome(nome)
         fatto = normalizzato is not None and await custom_command_repo.delete_tag(interaction.guild.id, normalizzato)
+        if fatto:
+            try:
+                await tag_script_repo.togli_errori(interaction.guild.id, normalizzato)  # gli errori dello script vanno col tag
+            except Exception:
+                logger.warning("Errori dello script del tag %s non tolti.", normalizzato, exc_info=True)
         await interaction.response.send_message(
             await testo_per(interaction, "customcomman_comando_eliminato") if fatto else await testo_per(interaction, "customcomman_non_esiste_un_comando_con"), ephemeral=True
         )
