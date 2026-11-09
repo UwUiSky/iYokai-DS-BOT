@@ -2627,6 +2627,7 @@
   "sb_inizio_fuori": "Il sondaggio può iniziare tra 1 minuto e 30 giorni.",
   "sb_programmato": "Sondaggio #{id} programmato: si pubblica {quando}. Lo trovi in /sondaggi gestisci.",
   "sb_programmato_nativo": "Sondaggio programmato: si pubblica {quando}.",
+  "sb_nativo_annullato": "Sondaggio programmato annullato: non verrà pubblicato.",
   "sb_stato_programmato": "programmato",
   "sb_stato_aperto": "aperto",
   "sb_stato_chiuso": "chiuso",

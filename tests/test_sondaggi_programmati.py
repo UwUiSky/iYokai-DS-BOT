@@ -84,14 +84,32 @@ async def test_nativo_programmato_si_apre_una_volta_e_porta_i_dati(nativi):
 
 
 @pytest.mark.asyncio
-async def test_nativo_chiude_a_voti_una_sola_volta(nativi):
+async def test_nativo_soglia_e_chiusura_una_sola_volta(nativi):
     nid = await nativi.crea(G, 5, 99, "q", ["a", "b"], durata_ore=24, chiudi_a_voti=2, stato="aperto")
     await nativi.imposta_messaggio(nid, 777)
     assert await nativi.conta_voto(777, 1) == (nid, False)
-    esiti = await asyncio.gather(nativi.conta_voto(777, 1), nativi.conta_voto(777, 1), nativi.conta_voto(777, 1))
-    assert sum(1 for e in esiti if e == (nid, True)) == 1
+    assert await nativi.conta_voto(777, 1) == (nid, True)  # soglia: conta_voto non chiude da solo
+    assert (await nativi.prendi(nid))["stato"] == "aperto"
+    esiti = await asyncio.gather(nativi.chiudi(nid), nativi.chiudi(nid), nativi.chiudi(nid))
+    assert sorted(esiti) == [False, False, True]
     assert await nativi.conta_voto(777, 1) is None  # già chiuso: niente più conteggio
     assert await nativi.conta_voto(999, 1) is None  # messaggio senza soglia
+
+
+@pytest.mark.asyncio
+async def test_nativo_riallinea_e_programmati_annullabili(nativi):
+    nid = await nativi.crea(G, 5, 99, "q", ["a", "b"], durata_ore=24, chiudi_a_voti=5, stato="aperto")
+    await nativi.imposta_messaggio(nid, 780)
+    assert [r["id"] for r in await nativi.aperti_con_soglia()] == [nid]
+    assert await nativi.riallinea(nid, 4) is False and (await nativi.prendi(nid))["voti"] == 4
+    assert await nativi.riallinea(nid, 6) is True
+    p = await nativi.crea(G, 5, 99, "Pizza stasera", ["a", "b"], durata_ore=24, inizia_il=ADESSO + timedelta(hours=1))
+    assert [r["id"] for r in await nativi.programmati(G, 99, "pizza")] == [p]
+    assert await nativi.programmati(G, 98) == []
+    assert await nativi.annulla_programmato(p) is True and await nativi.annulla_programmato(p) is False
+    assert await nativi.apri(p) is None  # la partenza non lo trova più
+    a = await nativi.crea(G, 5, 99, "q", ["a", "b"], durata_ore=24, stato="aperto")
+    assert await nativi.annulla_programmato(a) is False  # già partito
 
 
 @pytest.mark.asyncio
@@ -138,10 +156,11 @@ async def test_voto_su_opzione_tolta_ha_un_testo_suo(repo, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_gestisci_riepilogo_elenco_e_chiudi(repo, monkeypatch):
+async def test_gestisci_riepilogo_elenco_e_chiudi(repo, nativi, monkeypatch):
     from cogs.utility import sondaggi_bottoni as M
 
     monkeypatch.setattr(M, "sondaggi_repo", repo)
+    monkeypatch.setattr(M, "sondaggi_nativi_repo", nativi)
     monkeypatch.setattr(M, "lingua_interazione", AsyncMock(return_value="it"))
     cog = M.SondaggiBottoniCog(MagicMock())
     cog.aggiorna_messaggio = AsyncMock()
@@ -209,3 +228,91 @@ async def test_nativo_programma_e_chiude_a_voti(nativi, monkeypatch):
     msg.end_poll.assert_awaited_once()
     await cog._voto(p, 1)
     msg.end_poll.assert_awaited_once()
+
+
+def _cog_poll(monkeypatch, nativi, votanti_per_risposta):
+    from cogs.utility import poll as P
+
+    monkeypatch.setattr(P, "sondaggi_nativi_repo", nativi)
+    msg = MagicMock()
+    msg.end_poll = AsyncMock()
+
+    def risposta(ids):
+        async def voters():
+            for u in ids:
+                yield MagicMock(id=u)
+        return MagicMock(vote_count=len(ids), voters=voters)
+
+    sondaggio = MagicMock(total_votes=sum(len(v) for v in votanti_per_risposta))
+    sondaggio.answers = [risposta(v) for v in votanti_per_risposta]
+    sondaggio.is_finalised.return_value = False
+    canale = MagicMock()
+    canale.get_partial_message.return_value = msg
+    canale.fetch_message = AsyncMock(return_value=MagicMock(poll=sondaggio))
+    bot = MagicMock()
+    bot.get_channel.return_value = canale
+    return P.PollCog(bot), canale, msg
+
+
+@pytest.mark.asyncio
+async def test_nativo_multiplo_conta_i_votanti_non_i_voti(nativi, monkeypatch):
+    nid = await nativi.crea(G, 5, 99, "q", ["a", "b"], multipla=True, durata_ore=24, chiudi_a_voti=2, stato="aperto")
+    await nativi.imposta_messaggio(nid, 790)
+    # una sola persona vota due opzioni: 2 voti ma 1 votante
+    cog, canale, msg = _cog_poll(monkeypatch, nativi, [[1], [1]])
+    p = MagicMock(message_id=790, channel_id=5)
+    await cog._voto(p, 1)
+    await cog._voto(p, 1)
+    msg.end_poll.assert_not_awaited()
+    assert (await nativi.prendi(nid))["stato"] == "aperto"
+    # arriva una seconda persona: ora i votanti sono 2
+    cog, canale, msg = _cog_poll(monkeypatch, nativi, [[1], [1, 2]])
+    await cog._voto(p, 1)
+    msg.end_poll.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_nativo_dopo_riavvio_ricalcola_dal_sondaggio(nativi, monkeypatch):
+    nid = await nativi.crea(G, 5, 99, "q", ["a", "b"], durata_ore=24, chiudi_a_voti=3, stato="aperto")
+    await nativi.imposta_messaggio(nid, 791)
+    # 3 voti arrivati a bot spento: il conto salvato è 0
+    cog, canale, msg = _cog_poll(monkeypatch, nativi, [[1, 2], [3]])
+    await cog.on_ready()
+    msg.end_poll.assert_awaited_once()
+    assert await nativi.prendi(nid) is None
+    # sondaggio già finito su Discord: la riga si toglie senza chiudere nulla
+    n2 = await nativi.crea(G, 5, 99, "q", ["a", "b"], durata_ore=24, chiudi_a_voti=3, stato="aperto")
+    await nativi.imposta_messaggio(n2, 792)
+    cog, canale, msg = _cog_poll(monkeypatch, nativi, [[1]])
+    canale.fetch_message.return_value.poll.is_finalised.return_value = True
+    await cog.on_ready()
+    msg.end_poll.assert_not_awaited()
+    assert await nativi.prendi(n2) is None
+
+
+@pytest.mark.asyncio
+async def test_gestisci_annulla_nativo_programmato(nativi, repo, monkeypatch):
+    from cogs.utility import sondaggi_bottoni as M
+
+    monkeypatch.setattr(M, "sondaggi_repo", repo)
+    monkeypatch.setattr(M, "sondaggi_nativi_repo", nativi)
+    monkeypatch.setattr(M, "lingua_interazione", AsyncMock(return_value="it"))
+    cog = M.SondaggiBottoniCog(MagicMock())
+    n = await nativi.crea(G, 5, 99, "Film venerdi?", ["a", "b"], durata_ore=24, inizia_il=ADESSO + timedelta(hours=1))
+
+    def chiama(user_id, azione, sondaggio=None, perm=None):
+        i = fake_interaction(user=fake_member(user_id=user_id), permissions=perm or discord.Permissions.none())
+        i.guild.id = G
+        return i, cog.gestisci.callback(cog, i, azione, sondaggio)
+
+    i, c = chiama(99, "elenco")
+    await c
+    assert f"#n{n}" in str(i.response.send_message.await_args) and "Film venerdi?" in str(i.response.send_message.await_args)
+    i, c = chiama(5, "chiudi", f"n{n}")
+    await c
+    assert i.response.send_message.await_args.args[0] == M.t("sb_non_si_puo", "it")
+    assert await nativi.prendi(n) is not None
+    i, c = chiama(99, "chiudi", f"n{n}")
+    await c
+    assert i.response.send_message.await_args.args[0] == M.t("sb_nativo_annullato", "it")
+    assert await nativi.prendi(n) is None

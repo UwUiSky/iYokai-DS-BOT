@@ -2627,6 +2627,7 @@
   "sb_inizio_fuori": "The poll can start between 1 minute and 30 days from now.",
   "sb_programmato": "Poll #{id} scheduled: it goes up {quando}. Find it in /sondaggi gestisci.",
   "sb_programmato_nativo": "Poll scheduled: it goes up {quando}.",
+  "sb_nativo_annullato": "Scheduled poll cancelled: it will not be posted.",
   "sb_stato_programmato": "scheduled",
   "sb_stato_aperto": "open",
   "sb_stato_chiuso": "closed",

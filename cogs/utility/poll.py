@@ -233,14 +233,72 @@ class PollCog(CogConGruppi, commands.Cog):
     async def _voto(self, payload: discord.RawPollVoteActionEvent, delta: int) -> None:
         try:
             esito = await sondaggi_nativi_repo.conta_voto(payload.message_id, delta)
-            if esito is None or not esito[1]:
-                return
-            canale = self.bot.get_channel(payload.channel_id)
-            if canale is not None:
-                await canale.get_partial_message(payload.message_id).end_poll()
-            await sondaggi_nativi_repo.elimina(esito[0])
+            if esito is not None and esito[1]:
+                await self._chiudi_se_votanti(esito[0], payload.channel_id, payload.message_id)
         except Exception:
             logger.exception("Sondaggio nativo: chiusura a voti fallita (messaggio %s)", payload.message_id)
+
+    async def _chiudi_se_votanti(self, nativo_id: int, channel_id: int, message_id: int) -> None:
+        """Chiude il sondaggio se i VOTANTI (non i voti) hanno raggiunto la soglia. Chiude una volta sola."""
+        r = await sondaggi_nativi_repo.prendi(nativo_id)
+        canale = self.bot.get_channel(channel_id)
+        if r is None or r["stato"] != "aperto" or canale is None:
+            return
+        if r["multipla"]:
+            messaggio = await canale.fetch_message(message_id)
+            if await self._votanti(messaggio.poll, r["chiudi_a_voti"]) < r["chiudi_a_voti"]:
+                return
+        if not await sondaggi_nativi_repo.chiudi(nativo_id):
+            return
+        await canale.get_partial_message(message_id).end_poll()
+        await sondaggi_nativi_repo.elimina(nativo_id)
+
+    @staticmethod
+    async def _votanti(sondaggio: discord.Poll | None, fino_a: int) -> int:
+        """Persone diverse che hanno votato (si ferma a `fino_a`). Con più scelte una persona dà più voti."""
+        if sondaggio is None:
+            return 0
+        persone: set[int] = set()
+        for risposta in sondaggio.answers:
+            if risposta.vote_count == 0:
+                continue
+            async for utente in risposta.voters():
+                persone.add(utente.id)
+                if len(persone) >= fino_a:
+                    return len(persone)
+        return len(persone)
+
+    @commands.Cog.listener()
+    async def on_ready(self) -> None:
+        """Dopo un riavvio i voti arrivati a bot spento si rileggono dal sondaggio."""
+        try:
+            for r in await sondaggi_nativi_repo.aperti_con_soglia():
+                await self._riallinea(r)
+        except Exception:
+            logger.exception("Sondaggi nativi: riallineamento dei voti fallito")
+
+    async def _riallinea(self, r) -> None:
+        canale = self.bot.get_channel(r["channel_id"])
+        if canale is None:
+            return
+        try:
+            messaggio = await canale.fetch_message(r["message_id"])
+        except discord.NotFound:
+            await sondaggi_nativi_repo.elimina(r["id"])
+            return
+        except discord.HTTPException:
+            logger.warning("Sondaggio nativo %s: messaggio non letto", r["id"], exc_info=True)
+            return
+        sondaggio = messaggio.poll
+        if sondaggio is None or sondaggio.is_finalised():
+            await sondaggi_nativi_repo.elimina(r["id"])
+            return
+        # Voti letti da Discord; con più scelte la soglia si verifica sui votanti veri in _chiudi_se_votanti.
+        if await sondaggi_nativi_repo.riallinea(r["id"], sondaggio.total_votes):
+            try:
+                await self._chiudi_se_votanti(r["id"], r["channel_id"], r["message_id"])
+            except discord.HTTPException:
+                logger.warning("Sondaggio nativo %s: chiusura non riuscita", r["id"], exc_info=True)
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel) -> None:

@@ -48,8 +48,9 @@ class SondaggiNativiRepository:
         await self._pool.execute("UPDATE sondaggi_nativi SET message_id = $2 WHERE id = $1", nativo_id, message_id)
 
     async def conta_voto(self, message_id: int, delta: int) -> tuple[int, bool] | None:
-        """Somma +1 o -1 ai voti del messaggio. Torna (id, da_chiudere): da_chiudere è vero per un solo chiamante, quando
-        si arriva alla soglia. None se il messaggio non ha soglia o è già chiuso."""
+        """Somma +1 o -1 ai voti del messaggio. Torna (id, soglia_raggiunta): è vero quando un voto in più porta alla soglia.
+        Non chiude: chi riceve «vero» controlla i votanti (con più scelte i voti sono più dei votanti) e poi chiama `chiudi`.
+        None se il messaggio non ha soglia o è già chiuso."""
         async with self._pool.acquire() as conn, conn.transaction():
             nid = await conn.fetchval(
                 "SELECT id FROM sondaggi_nativi WHERE message_id = $1 AND stato = 'aperto' AND chiudi_a_voti IS NOT NULL", message_id)
@@ -61,10 +62,38 @@ class SondaggiNativiRepository:
                 "RETURNING voti, chiudi_a_voti", nid, delta)
             if r is None:
                 return None
-            if delta > 0 and r["voti"] >= r["chiudi_a_voti"]:
-                await conn.execute("UPDATE sondaggi_nativi SET stato = 'chiuso' WHERE id = $1", nid)
-                return nid, True
-        return nid, False
+        return nid, delta > 0 and r["voti"] >= r["chiudi_a_voti"]
+
+    async def chiudi(self, nativo_id: int) -> bool:
+        """Da «aperto» a «chiuso», una volta sola: vero per un solo chiamante."""
+        r = await self._pool.execute("UPDATE sondaggi_nativi SET stato = 'chiuso' WHERE id = $1 AND stato = 'aperto'", nativo_id)
+        return r != "UPDATE 0"
+
+    async def riallinea(self, nativo_id: int, voti: int) -> bool:
+        """Dopo un riavvio: mette il conteggio letto da Discord. Vero se la soglia è raggiunta (e il sondaggio è aperto)."""
+        r = await self._pool.fetchrow(
+            "UPDATE sondaggi_nativi SET voti = $2 WHERE id = $1 AND stato = 'aperto' RETURNING voti, chiudi_a_voti", nativo_id, voti)
+        return r is not None and r["chiudi_a_voti"] is not None and r["voti"] >= r["chiudi_a_voti"]
+
+    async def aperti_con_soglia(self, limite: int = 500) -> list[asyncpg.Record]:
+        return await self._pool.fetch(
+            f"SELECT {_COLONNE} FROM sondaggi_nativi WHERE stato = 'aperto' AND chiudi_a_voti IS NOT NULL "
+            "AND message_id IS NOT NULL ORDER BY id LIMIT $1", limite)
+
+    async def programmati(self, guild_id: int, autore_id: int | None = None, testo: str = "", limite: int = 25) -> list[asyncpg.Record]:
+        """Sondaggi nativi non ancora partiti (annullabili), i più nuovi prima."""
+        pulito = testo.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        return await self._pool.fetch(
+            f"SELECT {_COLONNE} FROM sondaggi_nativi WHERE guild_id = $1 AND stato = 'programmato' "
+            "AND ($2::bigint IS NULL OR autore_id = $2) AND domanda ILIKE $3 ORDER BY id DESC LIMIT $4",
+            guild_id, autore_id, f"%{pulito}%", limite)
+
+    async def annulla_programmato(self, nativo_id: int) -> bool:
+        """Toglie un sondaggio non ancora partito. Falso se è già partito o non c'è: la partenza non lo trova più."""
+        async with self._pool.acquire() as conn, conn.transaction():
+            await conn.execute("SELECT pg_advisory_xact_lock(hashtext('sondaggio_nativo'), $1)", nativo_id % 2**31)
+            r = await conn.execute("DELETE FROM sondaggi_nativi WHERE id = $1 AND stato = 'programmato'", nativo_id)
+        return r != "DELETE 0"
 
     async def elimina(self, nativo_id: int) -> None:
         await self._pool.execute("DELETE FROM sondaggi_nativi WHERE id = $1", nativo_id)

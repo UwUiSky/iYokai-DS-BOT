@@ -21,6 +21,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.duration_logic import parse_duration
 from core.i18n import lingua_interazione, lingua_risposta, t
+from core.repositories.sondaggi_nativi_repo import sondaggi_nativi_repo
 from core.repositories.sondaggi_repo import sondaggi_repo
 from core.scheduler import scheduler
 from core.ui_base import BaseModal, BaseView, _utente_o_server_in_blacklist
@@ -242,7 +243,10 @@ async def _completa_gestione(interaction: discord.Interaction, attuale: str) -> 
         return []
     staff = interaction.permissions.manage_messages
     trovati = await sondaggi_repo.cerca_domanda(interaction.guild.id, attuale, None if staff else interaction.user.id)
-    return [app_commands.Choice(name=f"#{r['id']} {r['domanda']}"[:100], value=str(r["id"])) for r in trovati][:25]
+    scelte = [app_commands.Choice(name=f"#{r['id']} {r['domanda']}"[:100], value=str(r["id"])) for r in trovati]
+    nativi = await sondaggi_nativi_repo.programmati(interaction.guild.id, None if staff else interaction.user.id, attuale)
+    scelte += [app_commands.Choice(name=f"#n{r['id']} {r['domanda']}"[:100], value=f"n{r['id']}") for r in nativi]
+    return scelte[:25]
 
 
 class SondaggiBottoniCog(CogConGruppi, commands.Cog):
@@ -558,10 +562,17 @@ class SondaggiBottoniCog(CogConGruppi, commands.Cog):
             return
         if azione == "elenco":
             staff = interaction.permissions.manage_messages
-            righe = await sondaggi_repo.elenco_gestione(guild.id, None if staff else interaction.user.id)
-            corpo = "\n".join(f"#{r['id']} · {t('sb_stato_' + r['stato'], lingua)} · {r['domanda'][:80]}" for r in righe)
+            autore = None if staff else interaction.user.id
+            righe = await sondaggi_repo.elenco_gestione(guild.id, autore)
+            nativi = await sondaggi_nativi_repo.programmati(guild.id, autore)
+            corpo = "\n".join(
+                [f"#{r['id']} · {t('sb_stato_' + r['stato'], lingua)} · {r['domanda'][:80]}" for r in righe]
+                + [f"#n{r['id']} · {t('sb_stato_programmato', lingua)} · {r['domanda'][:80]}" for r in nativi])
             await interaction.response.send_message(corpo[:1900] or t("sb_elenco_vuoto", lingua), ephemeral=True,
                                                     allowed_mentions=_NESSUNA_MENZIONE)
+            return
+        if sondaggio and sondaggio[0] in "nN":
+            await self._gestisci_nativo(interaction, azione, sondaggio[1:], lingua)
             return
         s = await sondaggi_repo.prendi(int(sondaggio)) if sondaggio and sondaggio.isdigit() else None
         if s is None or s["guild_id"] != guild.id:
@@ -577,6 +588,23 @@ class SondaggiBottoniCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.send_message(await self._riepilogo(s, lingua), ephemeral=True,
                                                 allowed_mentions=_NESSUNA_MENZIONE)
+
+    async def _gestisci_nativo(self, interaction: discord.Interaction, azione: str, chiave: str, lingua: str) -> None:
+        """Sondaggio nativo programmato («n12»): si vede e si annulla finché non è partito."""
+        r = await sondaggi_nativi_repo.prendi(int(chiave)) if chiave.isdigit() else None
+        if r is None or r["guild_id"] != interaction.guild.id or r["stato"] != "programmato":
+            await interaction.response.send_message(t("sb_non_trovato", lingua), ephemeral=True)
+            return
+        if not puo_gestire(interaction, r["autore_id"]):
+            await interaction.response.send_message(t("sb_non_si_puo", lingua), ephemeral=True)
+            return
+        if azione == "chiudi":
+            ok = await sondaggi_nativi_repo.annulla_programmato(r["id"])
+            await interaction.response.send_message(t("sb_nativo_annullato" if ok else "sb_non_trovato", lingua), ephemeral=True)
+            return
+        corpo = (f"**#n{r['id']}** {r['domanda'][:200]}\n{t('sb_stato_programmato', lingua)}\n"
+                 + t("sb_inizia", lingua, quando=discord.utils.format_dt(_aware(r["inizia_il"]), "R")))
+        await interaction.response.send_message(corpo[:1900], ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE)
 
     async def _riepilogo(self, s, lingua: str) -> str:
         chiuso = s["stato"] == "chiuso"
