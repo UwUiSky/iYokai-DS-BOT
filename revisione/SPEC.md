@@ -2214,6 +2214,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   lettere staccate.
   → **Stato 27/10 (r10):** profilo come immagine e sfondo con immagine fatti il 15/10; le vincite dei giochi con le monete restano fuori dalla classifica del mese per scelta (niente premi per il gioco d'azzardo).
 - `[x]` 23.17 Idee rimandate di `BACKLOG.md`: missioni, traguardi,
+- `[x]` 23.35 Citazioni, uso dei comandi, registro dello staff (catalogo #128 B16, D69, r21util) — `/fun citazioni aggiungi|caso|cerca|elimina` (testo ≤1000, max 500 per server, elimina solo quelle salvate da te), menu «Salva citazione», `/admin-moduli citazioni azione` (esporta/importa JSON 1 MiB, elimina tutte con conferma); `metrica:Comandi usati` in `/utility serverstats` (conteggio per server e giorno, 90 giorni); evento di log «Comandi dello staff usati» (25° interruttore, menu dei log pieno). `/fun quote` resta in cogs/fun (non toccato). Migrazione 0555.
   serie, battle pass, profilo globale positivo, punteggio di rischio,
   carico dello staff (NF-41, fase F14)
   → **Stato 1/11 (r12, D49, D50, D51):** fatto tutto. `/level progressi` apre una finestra con menu: missioni del giorno, della

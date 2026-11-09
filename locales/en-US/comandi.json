@@ -320,7 +320,8 @@
   "admin-giochi": "admin-games",
   "regole": "rules",
   "traguardo": "milestone",
-  "avvisami": "notifyme"
+  "avvisami": "notifyme",
+  "citazioni": "quotes"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1203,7 +1204,14 @@
   "giochi conteggio classifica": "Who counted the most correct numbers.",
   "admin-giochi conteggio traguardo": "Role or message when the count hits a number.",
   "admin-giochi conteggio importa": "Bring scores from a CSV or JSON file into a channel.",
-  "giochi conteggio avvisami": "Get pinged in the channel when the count reaches a number."
+  "giochi conteggio avvisami": "Get pinged in the channel when the count reaches a number.",
+  "fun citazioni": "Quotes of the server",
+  "fun citazioni aggiungi": "Save a quote of the server.",
+  "fun citazioni caso": "Show a random quote of the server.",
+  "fun citazioni cerca": "Search a word among the server's quotes.",
+  "fun citazioni elimina": "Delete a quote you saved.",
+  "admin-moduli citazioni": "Quotes of the server: export, import, delete",
+  "admin-moduli citazioni azione": "Export, import or delete the quotes (JSON)."
  },
  "parametri": {},
  "menu": {
@@ -1224,6 +1232,7 @@
   "Orari nel mio fuso": "Times in my time zone",
   "Scheda moderazione": "Moderation card",
   "Segnala messaggio": "Report message",
-  "Riestrai giveaway": "Redraw giveaway"
+  "Riestrai giveaway": "Redraw giveaway",
+  "Salva citazione": "Save quote"
  }
 }

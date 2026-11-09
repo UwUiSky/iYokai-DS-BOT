@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:38 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:47 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 756 comandi in 45 categorie.**
+**Totale: 762 comandi in 45 categorie.**
 
 ## Admin: AI
 
@@ -297,6 +297,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 - **`/admin-moduli candidature crea`** — Crea un modulo o una candidatura.
 - **`/admin-moduli candidature elenco`** — I moduli di questo server.
 - **`/admin-moduli candidature elimina`** — Elimina un modulo e le sue risposte.
+- **`/admin-moduli citazioni azione`** — Esporta, importa o elimina le citazioni (JSON).
 - **`/admin-moduli compleanni canale`** — Scegli il canale degli auguri (vuoto per spegnerli).
 - **`/admin-moduli compleanni membro`** — Registra il compleanno di un membro (solo giorno e mese).
 - **`/admin-moduli compleanni ruolo`** — Un ruolo per 24 ore a chi compie gli anni (vuoto per toglierlo).
@@ -446,6 +447,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 - **`/Apri ticket`** — Menu «App» (tasto destro)
 - **`/Orari nel mio fuso`** — Menu «App» (tasto destro)
 - **`/Riestrai giveaway`** — Menu «App» (tasto destro)
+- **`/Salva citazione`** — Menu «App» (tasto destro)
 - **`/Scheda moderazione`** — Menu «App» (tasto destro)
 - **`/Segnala messaggio`** — Menu «App» (tasto destro)
 - **`/cerca-comando`** — Cerca un comando per descrizione.
@@ -583,6 +585,10 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-09 12:
 
 - **`/fun 8ball`** — Fai una domanda alla palla magica 8.
 - **`/fun casuale`** — Preferiresti, argomento, consiglio, oggetto magico.
+- **`/fun citazioni aggiungi`** — Salva una citazione del server.
+- **`/fun citazioni caso`** — Mostra una citazione a caso del server.
+- **`/fun citazioni cerca`** — Cerca una parola tra le citazioni del server.
+- **`/fun citazioni elimina`** — Elimina una citazione che hai salvato tu.
 - **`/fun coinflip`** — Lancia una moneta: testa o croce.
 - **`/fun dice`** — Tira un dado.
 - **`/fun fact`** — Mostra una curiosità a caso.

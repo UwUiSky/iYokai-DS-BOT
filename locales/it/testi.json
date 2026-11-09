@@ -2301,5 +2301,20 @@
   "gif_privacy_elenco": "Utenti bloccati ({numero}/{massimo}). Azioni da tutti: {stato}.\n{elenco}",
   "gif_stato_consentite": "consentite",
   "gif_stato_bloccate": "bloccate",
-  "gif_privacy_titolo": "Privacy delle GIF di azione"
+  "gif_privacy_titolo": "Privacy delle GIF di azione",
+  "citazioni_vuota": "Il messaggio non ha testo da salvare.",
+  "citazioni_troppe": "Questo server ha già {massimo} citazioni: eliminarne qualcuna prima.",
+  "citazioni_salvata": "Citazione salvata (#{numero}).",
+  "citazioni_nessuna": "Nessuna citazione trovata.",
+  "citazioni_tolta": "Citazione eliminata.",
+  "citazioni_non_tua": "Non c'è una citazione con quel numero salvata da te.",
+  "citazioni_esportate": "Ecco le citazioni del server.",
+  "citazioni_serve_file": "Allega un file JSON esportato da questo comando (massimo 1 MiB).",
+  "citazioni_file_grande": "Il file è troppo grande (massimo 1 MiB).",
+  "citazioni_file_illeggibile": "Non riesco a leggere il file: serve un JSON esportato da questo comando.",
+  "citazioni_importate": "Citazioni importate: {quante}.",
+  "citazioni_elimina_chiedi": "Eliminare tutte le {quante} citazioni del server? Non si può annullare.",
+  "citazioni_eliminate": "Citazioni eliminate: {quante}.",
+  "citazioni_log_titolo": "Comando dello staff usato",
+  "citazioni_log_riga": "{utente} ha usato `/{comando}` in {canale}."
 }

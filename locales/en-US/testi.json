@@ -2301,5 +2301,20 @@
   "gif_privacy_elenco": "Blocked users ({numero}/{massimo}). Actions from everyone: {stato}.\n{elenco}",
   "gif_stato_consentite": "allowed",
   "gif_stato_bloccate": "blocked",
-  "gif_privacy_titolo": "Privacy of action GIFs"
+  "gif_privacy_titolo": "Privacy of action GIFs",
+  "citazioni_vuota": "That message has no text to save.",
+  "citazioni_troppe": "This server already has {massimo} quotes: delete some first.",
+  "citazioni_salvata": "Quote saved (#{numero}).",
+  "citazioni_nessuna": "No quotes found.",
+  "citazioni_tolta": "Quote deleted.",
+  "citazioni_non_tua": "There is no quote with that number saved by you.",
+  "citazioni_esportate": "Here are the server's quotes.",
+  "citazioni_serve_file": "Attach a JSON file exported by this command (1 MiB at most).",
+  "citazioni_file_grande": "The file is too large (1 MiB at most).",
+  "citazioni_file_illeggibile": "I can't read the file: it must be a JSON exported by this command.",
+  "citazioni_importate": "Quotes imported: {quante}.",
+  "citazioni_elimina_chiedi": "Delete all {quante} quotes of the server? This can't be undone.",
+  "citazioni_eliminate": "Quotes deleted: {quante}.",
+  "citazioni_log_titolo": "Staff command used",
+  "citazioni_log_riga": "{utente} used `/{comando}` in {canale}."
 }
