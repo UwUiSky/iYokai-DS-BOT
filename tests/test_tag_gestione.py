@@ -110,3 +110,29 @@ async def test_gruppo_regole_di_canale_e_ruolo(repo):
     await repo.imposta_gruppo(1, "g2", 77, None)
     await repo.canale_cancellato(1, 77)
     assert (await repo.gruppo(1, "g2"))["canale_id"] is None
+
+
+def test_ruolo_creatori_e_nello_schema_e_nella_scheda():
+    """D16: la chiave è nello schema (export/import la accettano) e nella scheda del modulo (la usa anche il pannello)."""
+    from cogs.utility.config_history import SETTINGS_SCHEMA
+    from core.config_impostazioni import campi_modulo
+    assert SETTINGS_SCHEMA["tag_ruolo_creatori"] == "id"
+    assert "tag_ruolo_creatori" in {c.chiave for c in campi_modulo("custom_commands")}
+
+
+@pytest.mark.asyncio
+async def test_creatori_scrive_dal_punto_unico():
+    from unittest.mock import patch
+    import cogs.utility.tag_gestione as gestione
+    from tests.support.discord_fakes import fake_interaction, fake_role
+    cog = gestione.TagGestioneCog(MagicMock())
+    inter = fake_interaction()
+    ruolo = fake_role(555)
+    ruolo.permissions = discord.Permissions.none()
+    with patch.object(gestione.db, "is_module_active_for_guild", AsyncMock(return_value=True)), \
+            patch.object(gestione, "imposta_impostazione", AsyncMock(return_value=True)) as imposta, \
+            patch.object(gestione.db, "set_guild_setting", AsyncMock()) as diretto:
+        await gestione.TagGestioneCog.creatori.callback(cog, inter, ruolo)
+        await gestione.TagGestioneCog.creatori.callback(cog, inter, None)
+    assert [c.args[2:] for c in imposta.await_args_list] == [("tag_ruolo_creatori", "555", inter.user.id), ("tag_ruolo_creatori", "", inter.user.id)]
+    diretto.assert_not_awaited()

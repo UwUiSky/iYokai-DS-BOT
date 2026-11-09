@@ -18,6 +18,7 @@ from discord.ext import commands
 
 from core.command_access import Livello, autocomplete_protetto, puo_usare
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
+from core.config_impostazioni import imposta_impostazione
 from core.custom_command_logic import MAX_NOME, MAX_TAG
 from core.database import db
 from core.i18n import testo_per
@@ -172,7 +173,8 @@ class TagGestioneCog(CogConGruppi, commands.Cog):
         if ruolo is not None and (ruolo.is_default() or ruolo.permissions.administrator or ruolo.managed):
             await self._dire(interaction, "tag_ruolo_non_adatto")
             return
-        await db.set_guild_setting(interaction.guild.id, SETTING_RUOLO_CREATORI, ruolo.id if ruolo else None, interaction.user.id)
+        # punto unico (D16): stessi controlli dello schema e stesso storico del pannello web
+        await imposta_impostazione(interaction.guild, MODULE_CUSTOM_COMMANDS, SETTING_RUOLO_CREATORI, str(ruolo.id) if ruolo else "", interaction.user.id)
         await self._dire(interaction, "tag_creatori_impostato" if ruolo else "tag_creatori_tolto")
 
     @comando_di_gruppo("admin-tag", nome="sostituisci", descrizione="Cambia un testo in tutti i tag, dopo l'anteprima.", sottogruppo=SOTTOGRUPPI["admin-tag tag"])

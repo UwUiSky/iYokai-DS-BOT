@@ -37,6 +37,7 @@ SETTINGS_VALIDE = {
     "mod_log_channel_id": 222222222222222222,
     "report_channel_id": 333333333333333333,
     "custom_command_requests_channel_id": 444444444444444444,
+    "tag_ruolo_creatori": 444444444444444445,
     "suggestions_channel_id": 555555555555555555,
     "suggestions_decided_channel_id": 555555555555555556,
     "ticket_category_id": 666666666666666666,
