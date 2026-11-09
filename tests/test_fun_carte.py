@@ -233,3 +233,32 @@ async def test_albero_carte():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.none())
     await cc.setup(bot)
     assert "carte avvia" in percorsi_del_gruppo("giochi") and "carte pacchetti" in percorsi_del_gruppo("admin-giochi")
+
+
+async def test_adulti_tolti_se_il_canale_perde_il_limite_nella_sala(monkeypatch):
+    """Il pacchetto adulti non parte se, durante la sala d'attesa, il canale perde il limite d'età."""
+    visti = []
+    monkeypatch.setattr(cl, "mazzi", lambda nomi, rng: (visti.append(list(nomi)) or (["N ____."] * 3, ["b"] * 40)))
+    await imp.imposta_carte(ID, None, True)
+    cog = cc.CarteCog(bot=None)
+    it = _it(nsfw=True)
+
+    async def lobby(*a, **kw):
+        it.channel.is_nsfw.return_value = False
+        return [1, 2, 3]
+
+    cog._lobby = lobby
+    await cog.carte_avvia.callback(cog, it, _C("adulti"), 5, None)
+    await asyncio.gather(*cog._compiti)
+    assert not visti  # solo adulti scelto e canale senza limite: la partita non parte
+    it = _it(nsfw=True)
+
+    async def lobby2(*a, **kw):
+        it.channel.is_nsfw.return_value = False
+        return [1, 2, 3]
+
+    cog._lobby = lobby2
+    it.channel.send = AsyncMock(side_effect=discord.HTTPException(MagicMock(status=500), "x"))
+    await cog.carte_avvia.callback(cog, it, None, 2, None)
+    await asyncio.gather(*cog._compiti)
+    assert visti and "adulti" not in visti[0]

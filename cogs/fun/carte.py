@@ -201,6 +201,13 @@ class CarteCog(CogConGruppi, commands.Cog):
             if not giocatori:
                 await canale.send(await testo_per(interaction, "gruppo_annullato", pubblica=True))
                 return
+            if cl.PACCHETTO_ADULTI in pacchetti:  # la sala d'attesa dura un minuto: il canale o il server possono essere cambiati
+                _, adulti_ok = await fun_impostazioni_repo.carte(guild_id)
+                if not (adulti_ok and bool(getattr(canale, "is_nsfw", lambda: False)())):
+                    pacchetti = [p for p in pacchetti if p != cl.PACCHETTO_ADULTI]
+                    if not pacchetti:
+                        await canale.send(await testo_per(interaction, "carte_adulti_no", pubblica=True))
+                        return
             nere, bianche = cl.mazzi(pacchetti, self._rng)
             if len(bianche) < cl.bianche_necessarie(len(giocatori)):
                 await canale.send(await testo_per(interaction, "carte_poche", pubblica=True, n=len(giocatori)))
