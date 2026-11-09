@@ -528,3 +528,8 @@ APPROVATO dopo i fix. Main unito (e97e2d0). Fix: 306f4a4 ruolo creatori tag nell
 | 09/11 | `feat/r21util` | `cogs/utility/custom_commands.py:handle_cancella_risposta` | Tag con invio privato e «sparisce dopo»: il canale DM non è in cache, il messaggio resta | bassa | aperto |
 | 09/11 | `feat/r21util` | `core/repositories/custom_command_repo.py:prendi` | Ritorna «ok» anche se l'UPDATE non cambia righe (corsa tra due `/tag prendi`) | bassa | aperto |
 | 09/11 | `feat/r21util` | `tests/test_config_import_validation.py::test_ogni_setting_usata_nel_codice_e_nello_schema` | Fallisce per `inviti_eta_minima_giorni`, `inviti_rientri_finti` (arrivano da main, non da questo ramo) | media | aperto |
+
+## 09/11/2026 feat/r23fun (B10 B11, #131) - APPROVATO dopo fix
+- Smash: età solo numero unico >=18; esclusi descrizione/nome/generi/tag con lista minori (nsfw_filter_logic) + parole in più; canale ricontrollato al voto. Test per ogni caso.
+- Basse aperte: cache turni Splatoon con soli salmon non riusata; ruolo cancellato che era l'ultimo «consenti» riapre il suono a tutti.
+- Smoke da fare: giochi_smash, immagini_comunita, immagini_fusione, gif_cerca, suoni_ruoli, web_turni, 0576-0577, tree_invariants, data_registry, i18n.
