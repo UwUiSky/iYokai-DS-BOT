@@ -2725,6 +2725,7 @@
   "inn_non_trovato": "Non c'è un innesco con quel numero.",
   "inn_avviato": "Fatto: il tag è partito.",
   "inn_avvio_fallito": "Non trovo il canale dove scrivere.",
+  "inn_bloccato": "Non puoi usare questo comando.",
   "inn_pausa": "Aspetta ancora un po' prima di riusarlo.",
   "inn_bottone_fatto": "Fatto.",
   "slash_nome_non_valido": "Nome non valido: da 1 a 32 caratteri, minuscole, cifre, - e _.",

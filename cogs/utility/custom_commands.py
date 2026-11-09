@@ -42,6 +42,7 @@ from core.custom_command_logic import (
     valida_prefisso,
 )
 from core.database import db
+from core.repositories.blacklist_repo import blacklist_repo
 from core import tag_script_logic as tag_script
 from core.i18n import testo_guild, testo_per
 from core.repositories.tag_inneschi_repo import tag_inneschi_repo
@@ -55,6 +56,7 @@ from core.repositories.custom_command_repo import custom_command_repo
 from core.scheduler import in_seconds, scheduler
 from core.role_safety import check_role_assignable, motivo_ruolo_automatico_non_assegnabile
 
+PAUSA_MINIMA_INNESCO = 3  # secondi tra due richieste dello stesso utente, anche con cooldown 0
 logger = logging.getLogger("iyokai.custom_commands")
 
 MODULE_CUSTOM_COMMANDS = "custom_commands"
@@ -223,11 +225,12 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         return None
 
     @staticmethod
-    def _pausa(tag, guild_id: int, user_id: int) -> float:
+    def _pausa(tag, guild_id: int, user_id: int, minimo: int = 0) -> float:
         chiave = (guild_id, tag.name, user_id)
         ora = datetime.now(timezone.utc)
-        residuo = pausa_residua(_ultimo_uso.get(chiave), ora, tag.cooldown_seconds)
-        if residuo == 0 and tag.cooldown_seconds > 0:
+        attesa = max(tag.cooldown_seconds, minimo)
+        residuo = pausa_residua(_ultimo_uso.get(chiave), ora, attesa)
+        if residuo == 0 and attesa > 0:
             _ultimo_uso.set(chiave, ora)
         return residuo
 
@@ -279,6 +282,15 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
                 pass  # al bot può mancare «Gestire i messaggi»: il tag ha risposto lo stesso
         await custom_command_repo.add_use(message.guild.id, nome)
 
+    @staticmethod
+    async def _bloccato(guild_id: int, user_id: int) -> bool:
+        """Utente o server in blacklist (come i componenti di core/ui_base, ma senza interazione a cui rispondere)."""
+        try:
+            return await blacklist_repo.is_user_blacklisted(user_id) or await blacklist_repo.is_guild_blacklisted(guild_id)
+        except Exception:
+            logger.warning("Blacklist non letta per l'innesco (utente %s).", user_id, exc_info=True)
+            return False
+
     async def esegui_innesco(self, guild: discord.Guild, nome: str, canale, *, membro: discord.Member | None = None) -> str | None:
         """Fa partire il tag `nome` per un innesco (B27). `membro` è chi l'ha fatto scattare (reazione, ruolo, bottone); a tempo
         è None e parla il bot, senza toccare ruoli. Ritorna la chiave del motivo se il tag non può partire, altrimenti None."""
@@ -288,10 +300,12 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         if tag.solo_nsfw and not (hasattr(canale, "is_nsfw") and canale.is_nsfw()):
             return "tag_solo_nsfw"
         if membro is not None:
+            if await self._bloccato(guild.id, membro.id):
+                return "inn_bloccato"
             rifiuto = self._rifiuto(tag, membro, canale, None) or await self._rifiuto_gruppo(tag, membro, canale)
             if rifiuto is not None:
                 return rifiuto
-            if self._pausa(tag, guild.id, membro.id) > 0:
+            if self._pausa(tag, guild.id, membro.id, minimo=PAUSA_MINIMA_INNESCO) > 0:
                 return "inn_pausa"
         if not canale.permissions_for(guild.me).send_messages:
             return "inn_canale_senza_permesso"

@@ -2725,6 +2725,7 @@
   "inn_non_trovato": "There is no trigger with that number.",
   "inn_avviato": "Done: the tag ran.",
   "inn_avvio_fallito": "I cannot find the channel to write in.",
+  "inn_bloccato": "You can't use this command.",
   "inn_pausa": "Wait a little before using it again.",
   "inn_bottone_fatto": "Done.",
   "slash_nome_non_valido": "Invalid name: 1 to 32 characters, lowercase letters, digits, - and _.",

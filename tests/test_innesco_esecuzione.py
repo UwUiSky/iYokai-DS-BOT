@@ -16,6 +16,13 @@ def senza_db(monkeypatch):
     monkeypatch.setattr(modulo, "tag_script_repo", MagicMock(registra_errore=AsyncMock()))
 
 
+@pytest.fixture(autouse=True)
+def blacklist_vuota(monkeypatch):
+    repo = MagicMock(is_user_blacklisted=AsyncMock(return_value=False), is_guild_blacklisted=AsyncMock(return_value=False))
+    monkeypatch.setattr(modulo, "blacklist_repo", repo)
+    return repo
+
+
 def _canale(puo=True):
     c = fake_text_channel()
     c.send = AsyncMock()
@@ -82,3 +89,25 @@ async def test_bottone_con_innesco_risponde_nel_canale(monkeypatch):
     await b.callback(i)
     tag_cog.esegui_innesco.assert_awaited_once_with(server, "regole", canale, membro=utente)
     i.followup.send.assert_awaited_once()
+
+
+async def test_utente_o_server_in_blacklist_non_fa_partire_il_tag(scena, blacklist_vuota):
+    server, canale = _server(), _canale()
+    membro = fake_member(7)
+    membro.guild, membro.display_name = server, "Luca"
+    scena.repo.get_tag.return_value = _tag()
+    blacklist_vuota.is_user_blacklisted.return_value = True
+    assert await scena.esegui_innesco(server, "regole", canale, membro=membro) == "inn_bloccato"
+    blacklist_vuota.is_user_blacklisted.return_value = False
+    blacklist_vuota.is_guild_blacklisted.return_value = True
+    assert await scena.esegui_innesco(server, "regole", canale, membro=membro) == "inn_bloccato"
+    canale.send.assert_not_awaited()
+
+
+async def test_pausa_minima_per_utente_anche_con_cooldown_zero(scena):
+    server, canale = _server(), _canale()
+    membro = fake_member(8)
+    membro.guild, membro.display_name = server, "Anna"
+    scena.repo.get_tag.return_value = _tag(cooldown_seconds=0)
+    assert await scena.esegui_innesco(server, "regole", canale, membro=membro) is None
+    assert await scena.esegui_innesco(server, "regole", canale, membro=membro) == "inn_pausa"
