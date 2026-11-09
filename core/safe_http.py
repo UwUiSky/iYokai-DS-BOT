@@ -333,3 +333,42 @@ async def _scarica(
 
     logger.warning("Troppi redirect (oltre %d) per %s.", MAX_REDIRECTS, _per_log(url))
     return None
+
+
+async def safe_richiesta(
+    url: str,
+    *,
+    metodo: str = "GET",
+    headers: dict[str, str] | None = None,
+    json_corpo: dict | None = None,
+    max_bytes: int = DEFAULT_MAX_BYTES,
+) -> str | None:
+    """
+    GET o POST (corpo JSON) verso un servizio con chiave o intestazioni proprie (osu!, Fortnite, AniList,
+    Scryfall). Stessi controlli di `safe_get` su schema, porta e indirizzi; nessun redirect, così le credenziali
+    non seguono un altro indirizzo; tetto di byte e timeout. Nel log finiscono solo l'indirizzo senza query,
+    lo stato e il tipo dell'errore, mai il testo dell'eccezione. None per qualunque rifiuto o errore.
+    """
+    destinazione = _destinazione_ammessa(url)
+    if destinazione is None:
+        logger.warning("URL rifiutato (SSRF/schema/porta non ammessi): %s", _per_log(url))
+        return None
+    try:
+        sessione = await _sessione_condivisa()
+        async with sessione.request(
+            metodo, destinazione, allow_redirects=False, headers=headers, json=json_corpo,
+            timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS),
+        ) as risposta:
+            if risposta.status != 200:
+                logger.warning("%s ha risposto con status %d.", _per_log(url), risposta.status)
+                return None
+            corpo = bytearray()
+            async for blocco in risposta.content.iter_chunked(8192):
+                corpo.extend(blocco)
+                if len(corpo) > max_bytes:
+                    logger.warning("%s ha superato il limite di %d byte, scarico interrotto.", _per_log(url), max_bytes)
+                    return None
+            return _decodifica(bytes(corpo), risposta.charset)
+    except (aiohttp.ClientError, TimeoutError, ValueError, RuntimeError) as exc:
+        logger.warning("Impossibile scaricare %s: %s", _per_log(url), type(exc).__name__)
+        return None

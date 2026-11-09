@@ -1,0 +1,278 @@
+{
+ "videogiochi": [
+  {
+   "domanda": "Come si chiama l'idraulico protagonista della serie Super Mario?",
+   "risposte": [
+    "Mario",
+    "Luigi",
+    "Wario",
+    "Toad"
+   ]
+  },
+  {
+   "domanda": "In quale gioco si costruisce con blocchi in un mondo a cubi?",
+   "risposte": [
+    "Minecraft",
+    "Fortnite",
+    "Roblox",
+    "Terraria"
+   ]
+  },
+  {
+   "domanda": "Come si chiama la principessa che Link salva di solito?",
+   "risposte": [
+    "Zelda",
+    "Peach",
+    "Samus",
+    "Daisy"
+   ]
+  },
+  {
+   "domanda": "Quale azienda ha creato Pokémon?",
+   "risposte": [
+    "Game Freak",
+    "Capcom",
+    "Sega",
+    "Konami"
+   ]
+  },
+  {
+   "domanda": "Qual è il colore del Sonic più famoso?",
+   "risposte": [
+    "Blu",
+    "Rosso",
+    "Verde",
+    "Giallo"
+   ]
+  },
+  {
+   "domanda": "Quale gioco ha come protagonista Master Chief?",
+   "risposte": [
+    "Halo",
+    "Gears of War",
+    "Doom",
+    "Destiny"
+   ]
+  },
+  {
+   "domanda": "Quale console ha lanciato Nintendo nel 2017?",
+   "risposte": [
+    "Switch",
+    "Wii U",
+    "Game Boy",
+    "Stadia"
+   ]
+  },
+  {
+   "domanda": "In Among Us come si chiamano i traditori?",
+   "risposte": [
+    "Impostori",
+    "Spie",
+    "Lupi",
+    "Ombre"
+   ]
+  },
+  {
+   "domanda": "Quale studio ha creato The Witcher 3?",
+   "risposte": [
+    "CD Projekt Red",
+    "Bethesda",
+    "BioWare",
+    "Ubisoft"
+   ]
+  },
+  {
+   "domanda": "In Tetris come si chiamano i pezzi?",
+   "risposte": [
+    "Tetramini",
+    "Pentamini",
+    "Esagoni",
+    "Cubetti"
+   ]
+  }
+ ],
+ "cultura": [
+  {
+   "domanda": "Qual è la capitale d'Italia?",
+   "risposte": [
+    "Roma",
+    "Milano",
+    "Napoli",
+    "Torino"
+   ]
+  },
+  {
+   "domanda": "Chi dipinse la Gioconda?",
+   "risposte": [
+    "Leonardo da Vinci",
+    "Michelangelo",
+    "Raffaello",
+    "Caravaggio"
+   ]
+  },
+  {
+   "domanda": "Quale paese ha la forma di uno stivale?",
+   "risposte": [
+    "Italia",
+    "Spagna",
+    "Grecia",
+    "Portogallo"
+   ]
+  },
+  {
+   "domanda": "Chi scrisse la Divina Commedia?",
+   "risposte": [
+    "Dante Alighieri",
+    "Petrarca",
+    "Boccaccio",
+    "Manzoni"
+   ]
+  },
+  {
+   "domanda": "In quale città si trova la Torre di Pisa?",
+   "risposte": [
+    "Pisa",
+    "Firenze",
+    "Siena",
+    "Lucca"
+   ]
+  },
+  {
+   "domanda": "Quale fiume attraversa Roma?",
+   "risposte": [
+    "Tevere",
+    "Arno",
+    "Po",
+    "Adige"
+   ]
+  },
+  {
+   "domanda": "In che anno è caduto il Muro di Berlino?",
+   "risposte": [
+    "1989",
+    "1979",
+    "1991",
+    "1985"
+   ]
+  },
+  {
+   "domanda": "Qual è l'oceano più grande?",
+   "risposte": [
+    "Pacifico",
+    "Atlantico",
+    "Indiano",
+    "Artico"
+   ]
+  },
+  {
+   "domanda": "Quante note ha la scala musicale di base?",
+   "risposte": [
+    "Sette",
+    "Cinque",
+    "Otto",
+    "Dodici"
+   ]
+  },
+  {
+   "domanda": "Chi era il primo imperatore di Roma?",
+   "risposte": [
+    "Augusto",
+    "Giulio Cesare",
+    "Nerone",
+    "Traiano"
+   ]
+  }
+ ],
+ "scienza": [
+  {
+   "domanda": "Qual è il pianeta più vicino al Sole?",
+   "risposte": [
+    "Mercurio",
+    "Venere",
+    "Marte",
+    "Terra"
+   ]
+  },
+  {
+   "domanda": "Qual è il simbolo chimico dell'acqua?",
+   "risposte": [
+    "H2O",
+    "CO2",
+    "O2",
+    "NaCl"
+   ]
+  },
+  {
+   "domanda": "Quante zampe ha un ragno?",
+   "risposte": [
+    "Otto",
+    "Sei",
+    "Dieci",
+    "Quattro"
+   ]
+  },
+  {
+   "domanda": "Qual è il gas più abbondante nell'aria?",
+   "risposte": [
+    "Azoto",
+    "Ossigeno",
+    "Anidride carbonica",
+    "Idrogeno"
+   ]
+  },
+  {
+   "domanda": "A quanti gradi Celsius bolle l'acqua al livello del mare?",
+   "risposte": [
+    "100",
+    "90",
+    "110",
+    "120"
+   ]
+  },
+  {
+   "domanda": "Qual è l'organo che pompa il sangue?",
+   "risposte": [
+    "Cuore",
+    "Fegato",
+    "Polmone",
+    "Rene"
+   ]
+  },
+  {
+   "domanda": "Come si chiama la nostra galassia?",
+   "risposte": [
+    "Via Lattea",
+    "Andromeda",
+    "Triangolo",
+    "Sombrero"
+   ]
+  },
+  {
+   "domanda": "Quale pianeta è chiamato il pianeta rosso?",
+   "risposte": [
+    "Marte",
+    "Giove",
+    "Saturno",
+    "Mercurio"
+   ]
+  },
+  {
+   "domanda": "Quante ossa ha di solito un adulto?",
+   "risposte": [
+    "206",
+    "106",
+    "306",
+    "412"
+   ]
+  },
+  {
+   "domanda": "Quale animale è il più veloce sulla terraferma?",
+   "risposte": [
+    "Ghepardo",
+    "Leone",
+    "Cavallo",
+    "Lepre"
+   ]
+  }
+ ]
+}

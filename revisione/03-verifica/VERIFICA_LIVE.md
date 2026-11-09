@@ -1496,3 +1496,26 @@ Serve: server di prova con AutoMod e AI accesi (`/admin-ai attiva`), account A s
 ## giro r21fun, B5 — effetti e scherzi (#131)
 - `/immagini effetto tipo:Pingato tutti nome:Luca`: avatar con il riquadro blu «@Luca ha pingato tutti» (nessun ping vero). Poi `Specchio`, `Seppia`, `Pixel art`, `Cornice`, `Vignetta`, `Neon`: ognuno un PNG quadrato col nome del file dell'effetto; un allegato non immagine è rifiutato come prima.
 - `/fun scherzo tipo:Tutto in spoiler utente:@Prova testo:ciao a tutti`: ogni parola in spoiler, nessun ping (anche con «@everyone» nel testo). Senza `testo`: messaggio nascosto. `Barra di caricamento` (sempre 99%) e `Brindisi` (frase a caso).
+
+## giro r22fun, B6 — quiz (#131)
+- `/giochi quiz avvia domande:3 tema:Scienza secondi:10`: arriva una domanda con A-D; un clic dà «Risposta registrata» nascosta, il secondo «Hai già risposto»; a fine tempo i bottoni si spengono e compare la risposta giusta. Un secondo `avvia` nello stesso canale: «c'è già un quiz». In un altro canale parte.
+- Fine partita: classifica con le menzioni senza ping. `/giochi quiz classifica vista:Di sempre`.
+- Prepara `d.csv` (`Capitale?,Roma,Milano,Napoli,Torino`) e usa `/admin-giochi quiz carica`; `elenca` mostra l'ID; `rimuovi numero:`. Un CSV con 3 risposte: errore chiaro. Un non-admin non vede i comandi.
+- `/admin-giochi quiz regole bot_gioca:sì`: il bot compare in classifica col suo nome. `/admin-giochi punteggi azzera gara:Quiz` svuota la classifica.
+
+## giro r22fun, B7 — giochi di gruppo (#131)
+- `/giochi battitura durata:30`: sala con Ci sono / Esci / Avvia; un altro utente preme «Ci sono» (l'elenco si aggiorna, nessun ping), Avvia solo per chi ha dato il comando. Arriva l'immagine del testo (leggibile su telefono). Scrivi il testo giusto: reazione ✅; sbagliato: niente. Fine: classifica con le parole al minuto. **Serve l'intent «contenuto dei messaggi»** acceso per il bot.
+- `/admin-giochi battitura aggiungi`: finestra a 1 campo; un testo di 3 parole è rifiutato; `elenca` mostra l'ID; `rimuovi`. Il testo del server può uscire in una partita.
+- `/giochi acronimi giocatori:4 turni:2` con 3 persone: lettere e bottone «Scrivi la frase»; una frase senza le iniziali giuste è rifiutata (nascosto); poi embed numerato con menu: non puoi votare te stesso, un voto solo. Fine turno: autori svelati; fine partita: classifica. Un secondo comando nello stesso canale: «c'è già una partita».
+
+## giro r22fun, B8 — carte a frasi (#131)
+- `/giochi carte avvia punti:2` con 3 account: sala (Ci sono/Avvia), poi carta nera con «Le mie carte». Ogni clic apre un messaggio nascosto con 7 carte; sceglierne una; il giudice vede un avviso nascosto se clicca. Dopo 15 minuti dall'avvio, cliccare ancora «Le mie carte»: deve funzionare (nuovo messaggio).
+- Risposte numerate in un embed + bottoni; solo il giudice sceglie, gli altri avviso nascosto. `modo:Voto di tutti`: non si vota se stessi, un voto solo. Fine: classifica.
+- `/giochi carte avvia pacchetto:Adulti` in un canale normale: rifiutato. Dopo `/admin-giochi carte pacchetti adulti:sì` funziona solo in un canale con limite d'età. `/admin-giochi carte pacchetti base:no nerd:no gamer:no` è rifiutato (ne serve uno).
+
+## giro r22fun, B9 — `/web scheda` (#131)
+- `/web scheda tipo:Pokémon nome:charizard` (e `pikachu`, e un nome sbagliato come `charzard`): scheda nascosta con immagine, tipi, statistiche; bottone «Debolezze»: roccia ×4, acqua ×2... Un altro utente che clicca riceve un avviso.
+- `tipo:Anime nome:frieren`, `tipo:Manga nome:berserk`: descrizione ≤1000, copertina. Un titolo per adulti in un canale normale: rifiutato; nel canale con limite d'età: scheda.
+- `tipo:Magic: carta nome:lightning bolt`: immagine della carta intera, credito Scryfall. `tipo:Hearthstone: carta nome:palla di fuoco`.
+- `tipo:osu!: giocatore` e `Fortnite: giocatore` senza chiave: «scheda non attiva». Con le chiavi in `config/giochi_servizi.env` (riavvio): osu! `nome:peppy`; Fortnite con un nome a profilo pubblico (profilo privato: «non ho trovato nulla»). Controlla che nei log non compaiano chiavi né token.
+- Rifai la stessa ricerca entro pochi minuti: risposta immediata dalla cache (nessuna nuova richiesta nei log).
