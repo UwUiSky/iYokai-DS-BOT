@@ -494,6 +494,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("web_impostazioni", "Impostazioni di /web per server (accorciatore di link)", colonna_server="guild_id"),
     _t("messaggi_auto", "Automatismi sui messaggi del server: citazioni, correzione link, pubblicazione annunci (D69)",
        colonna_server="guild_id"),
+    _t("embed_bottoni", "Bottoni (link o mostra tag) degli embed salvati (D69)", colonna_server="guild_id"),
     _t("odio_parole", "Libreria mondiale delle parole d'odio e delle loro varianti (D35)",
        nota="globale: nessun dato di utenti né di server, solo parole; la scelta dello stato è del proprietario del bot"),
     _t("odio_segnalazioni", "Quali server hanno segnalato una variante (D35)", colonna_server="guild_id",

@@ -302,7 +302,9 @@
   "prezzo": "price",
   "accorcia": "shorten",
   "scrivi": "write",
-  "auto": "auto"
+  "auto": "auto",
+  "json": "json",
+  "bottoni": "buttons"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1139,7 +1141,9 @@
   "web accorcia": "Shorten a link (if the server turned the command on).",
   "admin-messaggi scrivi": "Make the bot write a message in a channel.",
   "admin-messaggi auto": "Automations: quotes, link fixing, announcement publishing, shortener.",
-  "admin-messaggi fissi elenco": "List the server's pinned messages."
+  "admin-messaggi fissi elenco": "List the server's pinned messages.",
+  "admin-messaggi embed json": "Import an embed from JSON or export it to a file.",
+  "admin-messaggi embed bottoni": "Add or remove an embed's buttons (link or show tag)."
  },
  "parametri": {},
  "menu": {

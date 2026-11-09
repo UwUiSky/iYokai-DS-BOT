@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:41 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:46 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 713 commands in 42 categories.**
+**Total: 715 commands in 42 categories.**
 
 ## Admin: AI
 
@@ -233,9 +233,11 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-09 02:4
 ## Admin: messages
 
 - **`/admin-messages auto`** — Automations: quotes, link fixing, announcement publishing, shortener.
+- **`/admin-messages embed buttons`** — Add or remove an embed's buttons (link or show tag).
 - **`/admin-messages embed create`** — Creates an embed and shows the preview.
 - **`/admin-messages embed delete`** — Deletes a saved embed (the published message stays).
 - **`/admin-messages embed edit`** — Edits a saved embed (and the already published message).
+- **`/admin-messages embed json`** — Import an embed from JSON or export it to a file.
 - **`/admin-messages embed list`** — Shows the saved embeds.
 - **`/admin-messages embed publish`** — Sends a saved embed to a channel.
 - **`/admin-messages pinned list`** — List the server's pinned messages.

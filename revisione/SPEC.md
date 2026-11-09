@@ -1459,6 +1459,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
 
 - `[x]` 14.62 Messaggi dello staff (catalogo #128 B3, D69, r19util) — `/admin-messaggi scrivi` (finestra 2.000, risposta a un link, menzioni D12), `/admin-messaggi auto` (citazioni dei link ai messaggi: solo se chi scrive vede l'origine, mai da NSFW a non NSFW, max 3; correzione link da un elenco proposto, spenta di base; pubblicazione degli annunci con tetto 10 all'ora per canale e un solo avviso nel log «server»; accorciatore di `/web`), `/admin-messaggi fissi elenco` (pagine da 10) e `modello:` su `fissi imposta` (cinque testi nella lingua del server) — UTL-083, 071, 072, 112, 154, 155. Migrazione 0541, `on_guild_channel_delete` toglie i canali da pubblicare.
 
+- `[x]` 14.63 Embed avanzati (catalogo #128 B4, D69, r19util) — `embed json` (importa da file ≤ 1 MiB o da finestra 4.000; accetta il formato di Discord e il nostro; esporta da un link o dal salvato), `embed pubblica altri:` (fino a 9 altri, 6.000 caratteri in tutto, 10 embed), `embed bottoni` (link e «mostra tag», massimo 25, `eb:<server>:<embed>:<n>` persistenti), `embed pubblica formato:v2` (componenti V2: 40 componenti, 4.000 caratteri; `BaseLayoutView` in core/ui_base.py) — UTL-075, 076, 079, 080, 081. Migrazione 0542 (`saved_embeds.formato`, `embed_bottoni` con chiave esterna). `embed modifica` su un messaggio con più embed lo riduce al primo.
+
 ## §15 LEVELS / ECONOMY / GILDE / CLASSIFICHE
 
 - `[x]` 15.1 XP e livelli (testuale + vocale)

@@ -35,7 +35,11 @@ from core.embed_builder_logic import (
     costruisci,
     da_json,
     valida,
+    valida_gruppo,
+    valida_v2,
 )
+from cogs.utility.embed_avanzati import contenuto_messaggio
+from core.repositories.embed_bottoni_repo import embed_bottoni_repo
 from core.i18n import testo_per
 from core.lista_limiti_logic import righe_entro_limite
 from core.nome_logic import normalizza_nome
@@ -192,6 +196,14 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
                 campo_nome, campo_valore, campo_inline, togli_campo,
             )
 
+    @staticmethod
+    async def _argomenti_modifica(guild_id: int, salvato, dati: DatiEmbed) -> dict:
+        """Il messaggio già pubblicato resta del suo formato (V2 o classico) e tiene i suoi bottoni."""
+        contenuto = await contenuto_messaggio(guild_id, salvato.name, dati, salvato.formato)
+        if "embed" in contenuto:
+            contenuto["embeds"] = [contenuto.pop("embed")]
+        return contenuto
+
     async def _applica_modifica(
         self, interaction, nome, titolo, descrizione, colore, immagine, miniatura, piede,
         campo_nome, campo_valore, campo_inline, togli_campo,
@@ -245,7 +257,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
             if canale is not None:
                 try:
                     messaggio = await canale.fetch_message(salvato.message_id)
-                    await messaggio.edit(embed=embed, allowed_mentions=_NESSUNA_MENZIONE)
+                    await messaggio.edit(allowed_mentions=_NESSUNA_MENZIONE, **await self._argomenti_modifica(interaction.guild.id, salvato, dati))
                     aggiornato = True
                 except discord.NotFound:
                     pass  # messaggio cancellato a mano
@@ -268,12 +280,20 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
     # Pubblica, elenco, elimina
     # ================================================================
     @comando_di_gruppo("admin-messaggi", nome="pubblica", descrizione="Manda un embed salvato in un canale.", sottogruppo=SOTTOGRUPPI["admin-messaggi embed"])
-    @app_commands.describe(nome="L'embed da mandare", canale="Il canale (di norma quello dove sei)")
+    @app_commands.describe(
+        nome="L'embed da mandare",
+        canale="Il canale (di norma quello dove sei)",
+        altri="Altri embed nello stesso messaggio: nomi separati da virgola (fino a 9)",
+        formato="classico (embed) o v2 (componenti V2: un solo embed, niente testo a parte)",
+    )
+    @app_commands.choices(formato=[app_commands.Choice(name="classico", value="classico"), app_commands.Choice(name="v2", value="v2")])
     async def pubblica(
         self,
         interaction: discord.Interaction,
         nome: app_commands.Range[str, 1, MAX_NOME],
         canale: discord.TextChannel | None = None,
+        altri: app_commands.Range[str, 1, 400] | None = None,
+        formato: str = "classico",
     ) -> None:
         if not await self._pronto(interaction):
             return
@@ -292,15 +312,39 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
                 ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
             )
             return
-        try:
-            inviato = await destinazione.send(
-                embed=costruisci(da_json(salvato.data)), allowed_mentions=_NESSUNA_MENZIONE
-            )
-        except discord.HTTPException:
-            await interaction.response.send_message(await testo_per(interaction, "embedbuilder_discord_non_ha_accettato_il"), ephemeral=True)
+        dati = da_json(salvato.data)
+        nomi_altri = list(dict.fromkeys(n.strip().lower() for n in (altri or "").split(",") if n.strip() and n.strip().lower() != salvato.name))
+        if formato == "v2" and nomi_altri:
+            await interaction.response.send_message(await testo_per(interaction, "embedbuilder_v2_un_solo_embed"), ephemeral=True)
             return
-        await saved_embed_repo.set_published(interaction.guild.id, nome, destinazione.id, inviato.id)
-        await interaction.response.send_message(
+        if len(nomi_altri) > 9:
+            await interaction.response.send_message(await testo_per(interaction, "embedbuilder_altri_troppi"), ephemeral=True)
+            return
+        gruppo = [dati]
+        for altro in nomi_altri:
+            trovato = await saved_embed_repo.get(interaction.guild.id, altro)
+            if trovato is None:
+                await interaction.response.send_message(await testo_per(interaction, "embedbuilder_altri_non_trovato", nome=altro[:40]), ephemeral=True)
+                return
+            gruppo.append(da_json(trovato.data))
+        errori = valida_gruppo(gruppo)
+        if formato == "v2":
+            errori += valida_v2(dati, len(await embed_bottoni_repo.elenco(interaction.guild.id, salvato.name)))
+        if errori:
+            await interaction.response.send_message(self._errori_testo(errori), ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        contenuto = await contenuto_messaggio(interaction.guild.id, salvato.name, dati, formato)
+        if nomi_altri:
+            contenuto["embeds"] = [costruisci(d) for d in gruppo]
+            contenuto.pop("embed")
+        try:
+            inviato = await destinazione.send(allowed_mentions=_NESSUNA_MENZIONE, **contenuto)
+        except discord.HTTPException:
+            await interaction.followup.send(await testo_per(interaction, "embedbuilder_discord_non_ha_accettato_il"), ephemeral=True)
+            return
+        await saved_embed_repo.set_published(interaction.guild.id, nome, destinazione.id, inviato.id, formato)
+        await interaction.followup.send(
             await testo_per(interaction, "embedbuilder_embed_pubblicato_in_se_lo", mention=destinazione.mention),
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
