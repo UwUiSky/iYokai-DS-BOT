@@ -1,6 +1,7 @@
 # Memoria di revisore-capo
 
 ## Aggiornata
+10/11/2026 · `feat/r2mus` (#126 B1+B2): merge main (ef12447), DA SISTEMARE: Deezer senza safe_http/tetto byte, finto `_cerca` test_music_f2, doppioni docker-compose, commento Deezer. Riconsegna: ricontrollare 4 punti.
 09/11/2026 · `feat/r24util` (B25-B28, #128): merge main (86b99a5), DA SISTEMARE: sync avvio cancella comandi server in MAIN, nome «owner», tag eliminato lascia comandi_server, tetto dati per autore, timeout su await, intent_usage, ruolo cancellato, blacklist inneschi. Al riconsegna: ricontrollare questi 8 punti.
 09/11/2026 · `feat/r1liv` (#124 B1, 0581): 2 fix (azzera server/utente azzera anche `leveling_activity`; ban vecchio non nasconde più l'uscita, finestra 60 s); 3 basse aperte. APPROVATO. Smoke da fare: test_leveling_azzera*, test_leveling*, 0581, data_registry, i18n, ui_base_wiring, tree_invariants, command_policy.
 09/11/2026 · `feat/r24fun` (telefono B12, #131): merge main, fix minori/allegati/squillo/segnala/cooldown/consenso; APPROVATO. Smoke da fare: telefono, intent_usage, 0579-0580, data_registry, tree_invariants, i18n.
