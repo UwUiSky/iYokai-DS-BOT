@@ -126,6 +126,7 @@ Segnalazioni del revisore automatico iYokai Advisor Bot, con come sono state sis
 | #46 | Retention 90 giorni, modulo di cancellazione, ban e kick di sicurezza conservati | D6 con `retain_for_security` (0050, 0260), cancellazione per utente, restore OAuth | 767be92 (giro r10) | 28/10 |
 | #75 | NF-04 privacy: cancellazione, esportazione, conservazione | Come #19, #37, #46; pagine privacy e termini pubbliche generate dal registro dei dati | 767be92 (giro r10) | 28/10 |
 | #109 | NF-38 bot con marchio proprio | Collegamento, stato e aspetto da comando e pannello; nel giro r10 il bot marchio registra i comandi nel suo server e li esegue il principale (solo interazioni del suo server) | 767be92 (giro r10) | 28/10 |
+| #152 | Immagini nei log, backup e ticket: copia sicura (D61) | byte salvati senza decodifica, tipo dai magic byte, anteprime solo dalla sandbox, download firmato da sotto-dominio senza cookie con attachment/nosniff/CSP, 30 giorni e /privacy | c36f215 | 10/11 |
 | #158 | Rifiniture sondaggi ed eventi | evento nativo aggiornato da /eventi modifica, nuovo tentativo di end_poll, thread trovati dai sondaggi programmati | e6947b2 | 10/11 |
 | #159 | Suoni senza ruoli e cache turni | ultimo ruolo «consenti» tolto: il suono resta bloccato; cache dei soli turni salmon riusata | e6947b2 | 10/11 |
 | #128 | Catalogo Utility completo | 28 blocchi: strumenti, sondaggi a bottoni e programmati, eventi con posti e lista d'attesa, tag con script (interprete chiuso, tetti), inneschi, comandi slash del server | 3a861ca | 09/11 |
