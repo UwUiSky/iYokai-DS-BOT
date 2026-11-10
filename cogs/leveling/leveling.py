@@ -3628,7 +3628,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
         else:
             corpo = f"🎉 {interaction.user.mention} è salito al livello **{livello}**!"
-        prefisso = await testo_per(interaction, "annuncio_prova_prefisso")
+        prefisso = await testo_guild(guild, "annuncio_prova_prefisso")
         try:
             await destinazione.send(
                 (prefisso + corpo)[:2000],
