@@ -369,15 +369,24 @@ async def cerca_testo(testo: str, esegui_con_prefisso):
     raise FonteNonRisponde("")
 
 
-def righe_stato() -> list[str]:
-    """Una riga per fonte per /owner radio fonti. Chiavi solo sì/no, errori ripuliti."""
+def righe_stato(lingua: str | None = None) -> list[str]:
+    """Una riga per fonte per /owner radio fonti, nella lingua di chi legge. Chiavi solo sì/no."""
+    from core.i18n import t
+
     righe = []
     for nome, fonte in FONTI.items():
         stato = stato_fonte(nome)
-        chiavi = "non servono" if not fonte.chiavi else ("sì" if chiavi_presenti(nome) else "no")
-        riga = f"**{fonte.etichetta}** — {stato.replace('_', ' ')}, chiavi {chiavi}"
+        if stato == STATO_SENZA_CHIAVI and nome in FONTI_CHIAVI_SU_LAVALINK:
+            # Le chiavi stanno su Lavalink: il bot non le vede, ma la fonte si prova lo stesso.
+            righe.append(t("music_stato_chiavi_su_lavalink", lingua, fonte=fonte.etichetta))
+            continue
+        if not fonte.chiavi:
+            chiavi = t("music_chiavi_non_servono", lingua)
+        else:
+            chiavi = t("music_chiavi_si" if chiavi_presenti(nome) else "music_chiavi_no", lingua)
+        riga = t("music_stato_riga", lingua, fonte=fonte.etichetta, stato=t(f"music_stato_{stato}", lingua), chiavi=chiavi)
         errore = registro.ultimo_errore(nome)
         if errore and stato == STATO_IN_PAUSA:
-            riga += f" (ultimo errore: {errore})"
+            riga += " " + t("music_stato_ultimo_errore", lingua, errore=errore)
         righe.append(riga)
     return righe

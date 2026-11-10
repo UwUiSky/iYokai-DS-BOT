@@ -2862,5 +2862,17 @@
   "soundboard_ruoli_bloccato_nota": "Il suono resta bloccato: manca un ruolo «consenti».",
   "music_fonte_non_attiva": "{fonte} non è attiva su questo bot. Prova un altro link o scrivi il titolo.",
   "music_fonte_non_risponde": "{fonte} non risponde. Riprova tra qualche minuto o scrivi il titolo.",
-  "music_nessun_risultato_ora": "Non trovo questo brano ora. Riprova tra poco."
+  "music_nessun_risultato_ora": "Non trovo questo brano ora. Riprova tra poco.",
+  "music_stato_riga": "**{fonte}** — {stato}, chiavi {chiavi}",
+  "music_stato_ok": "ok",
+  "music_stato_spenta": "spenta",
+  "music_stato_senza_chiavi": "senza chiavi",
+  "music_stato_in_pausa": "in pausa",
+  "music_chiavi_non_servono": "non servono",
+  "music_chiavi_si": "sì",
+  "music_chiavi_no": "no",
+  "music_stato_ultimo_errore": "(ultimo errore: {errore})",
+  "music_stato_chiavi_su_lavalink": "**{fonte}** — le chiavi stanno su Lavalink (il bot non le vede), si prova lo stesso",
+  "music_nessun_nodo": "Nessun nodo Lavalink è collegato in questo momento per questo music bot. Riprova tra poco; se continua, avvisa lo staff del bot.",
+  "music_nessun_risultato": "Nessun risultato trovato per questa ricerca."
 }

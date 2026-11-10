@@ -2862,5 +2862,17 @@
   "soundboard_ruoli_bloccato_nota": "The sound stays blocked: no \"allow\" role is left.",
   "music_fonte_non_attiva": "{fonte} is not enabled on this bot. Try another link or type the title.",
   "music_fonte_non_risponde": "{fonte} is not responding. Try again in a few minutes or type the title.",
-  "music_nessun_risultato_ora": "I can't find this track right now. Try again shortly."
+  "music_nessun_risultato_ora": "I can't find this track right now. Try again shortly.",
+  "music_stato_riga": "**{fonte}** — {stato}, keys {chiavi}",
+  "music_stato_ok": "ok",
+  "music_stato_spenta": "off",
+  "music_stato_senza_chiavi": "no keys",
+  "music_stato_in_pausa": "paused",
+  "music_chiavi_non_servono": "not needed",
+  "music_chiavi_si": "yes",
+  "music_chiavi_no": "no",
+  "music_stato_ultimo_errore": "(last error: {errore})",
+  "music_stato_chiavi_su_lavalink": "**{fonte}** — the keys are on Lavalink (the bot cannot see them), it is tried anyway",
+  "music_nessun_nodo": "No Lavalink node is connected right now for this music bot. Try again soon; if it keeps happening, tell the bot staff.",
+  "music_nessun_risultato": "No results found for this search."
 }

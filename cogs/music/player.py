@@ -61,7 +61,7 @@ from core import music_sources as fonti_musicali
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
-from core.i18n import testo_per
+from core.i18n import lingua_interazione, lingua_risposta, t as testo_tradotto, testo_per
 from core.main_radio_logic import (
     RadioTrackInfo,
     compute_current_position,
@@ -573,7 +573,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         nodo = player.node if player is not None else (gestore.node_for(chiave) if gestore else None)
         if nodo is None:
             await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
-            await rispondi(MSG_NESSUN_NODO)
+            await rispondi(testo_tradotto("music_nessun_nodo", await lingua_risposta(guild_id, utente_id)))
             return False
 
         nodo_locale = gestore.locale_di(chiave) if (gestore and nuova_sessione) else None
@@ -591,7 +591,7 @@ class MusicCog(CogConGruppi, commands.Cog):
             risultati = None
         if not risultati:
             await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
-            await rispondi("Nessun risultato trovato per questa ricerca.")
+            await rispondi(testo_tradotto("music_nessun_risultato", await lingua_risposta(guild_id, utente_id)))
             return False
 
         # MUS-044: i brani oltre la durata massima non entrano in coda.
@@ -1178,7 +1178,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         nodo = gestore.node_for(chiave_del_bot(worker_bot)) if gestore else None
         if nodo is None:
             await self.bot.music_fleet.release_session(interaction.guild.id, canale_id)
-            await interaction.followup.send(MSG_NESSUN_NODO)
+            await interaction.followup.send(await testo_per(interaction, "music_nessun_nodo", pubblica=True))
             return
         canale_worker = worker_guild.get_channel(canale_id)
         if canale_worker is None:
@@ -1551,7 +1551,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         """B1 #126: una riga per fonte. Le chiavi non si mostrano mai: solo sì o no."""
         embed = discord.Embed(
             title=truncate_title(await testo_per(interaction, "music_fonti_titolo")),
-            description=truncate_title("\n".join(fonti_musicali.righe_stato()), EMBED_DESCRIPTION_LIMIT),
+            description=truncate_title(
+                "\n".join(fonti_musicali.righe_stato(await lingua_interazione(interaction))), EMBED_DESCRIPTION_LIMIT
+            ),
         )
         embed.set_footer(text=truncate_title(await testo_per(interaction, "music_fonti_nota"), 2048))
         await interaction.response.send_message(embed=embed, ephemeral=True)
