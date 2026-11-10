@@ -472,7 +472,7 @@ async def _prima_risposta_ai(client, channel, user_id: int, guild_id: int, panel
 async def _saluto_vocale(client, channel, utente, guild_id: int) -> None:
     """Saluto vocale di Yokai all'apertura (§14.19), se la voce è accesa nel server. Compito a parte: l'apertura non aspetta."""
     cog = client.get_cog("AiVoceCog")
-    if cog is None:
+    if not isinstance(cog, commands.Cog):
         return
     compito = asyncio.create_task(cog.saluto_ticket(channel, guild_id, utente))
     _COMPITI_AI.add(compito)
