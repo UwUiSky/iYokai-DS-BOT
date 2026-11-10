@@ -3,9 +3,9 @@ cogs/ai/voce.py
 ===============
 La voce di Yokai: veri messaggi vocali di Discord scritti dal bot, con sotto «Trascrivi» e «Nella mia lingua»
 (vedono la risposta solo chi preme, nella lingua del loro client); `/admin-ai voce imposta|parla`, `/assistente parla`,
-saluti a voce nei canali scelti. Il menu «Trascrivi vocale» sui vocali delle persone sta nell'app (cogs/user_app/voce_app.py). Senza motore vocale il bot manda
+saluti a voce nei canali scelti, saluto vocale all'apertura di un ticket. Il menu «Trascrivi vocale» sui vocali delle persone sta nell'app (cogs/user_app/voce_app.py). Senza motore vocale il bot manda
 solo il testo. Il motore si accende da `.env` (VOCE_MODELLO_DIR).
-Funzioni coperte: SPEC §14.19, §25.102, §25.103, §25.104, §25.105 (AI-R-109..112, D22)
+Funzioni coperte: SPEC §14.19, §25.102, §25.103, §25.104, §25.105, ticket (AI-R-109..112, D22)
 """
 
 from __future__ import annotations
@@ -32,6 +32,7 @@ from core.repositories.ai_voce_repo import ai_voce_repo
 from core.trascrizione import trascrittore, vocale_accettabile
 from core.voice_client import servizio_voce
 from core.voice_profile import TONI, profilo, tono_consentito
+from core.voice_ticket_logic import TONO_TICKET, frase_apertura
 from core.ui_base import BaseView
 
 logger = logging.getLogger("iyokai.ai_voce")
@@ -51,11 +52,11 @@ def lingua_del_client(interaction: discord.Interaction) -> str:
 
 async def parla(
     bot: commands.Bot, canale: discord.abc.Messageable, testo: str, contesto: str, *, guild_id: int | None, chi: discord.abc.User | None = None,
-    nomi: dict[int, str] | None = None, fisso: bool = False, risposta_a: int | None = None,
+    nomi: dict[int, str] | None = None, fisso: bool = False, risposta_a: int | None = None, tono: str | None = None,
 ) -> bool:
     """Manda un vocale nel canale (con i bottoni sotto); se la voce non c'è manda il solo testo. True se è partito un vocale."""
     cfg = await ai_voce_repo.config(guild_id) if guild_id else None
-    tono = cfg.tono if cfg else "scherzosa"
+    tono = tono or (cfg.tono if cfg else "scherzosa")
     nsfw = bool(getattr(canale, "is_nsfw", lambda: False)())
     voce = await servizio_voce().genera(testo, profilo(contesto, tono, nsfw), nomi=nomi, fisso=fisso)
     if voce is None:
@@ -227,6 +228,19 @@ class AiVoceCog(CogConGruppi, commands.Cog):
         await interaction.response.defer(ephemeral=True)
         partito = await parla(self.bot, interaction.channel, testo, "PUBLIC", guild_id=interaction.guild_id, chi=interaction.user)
         await interaction.followup.send("Fatto." if partito else SPENTA, ephemeral=True)
+
+    # ---------------------------------------------------------------- saluto nei ticket
+    async def saluto_ticket(self, canale: discord.abc.Messageable, guild_id: int, utente: discord.abc.User) -> bool:
+        """Vocale di benvenuto all'apertura di un ticket: solo con la voce accesa nel server e il motore attivo
+        (senza motore non si aggiunge niente al ticket). Tono scherzoso; il testo sta sotto, nei bottoni."""
+        try:
+            if not servizio_voce().attivo or not (await ai_voce_repo.config(guild_id)).attiva:
+                return False
+            frase, fissa = frase_apertura(getattr(utente, "display_name", None))
+            return await parla(self.bot, canale, frase, "WELCOME", guild_id=guild_id, fisso=fissa, tono=TONO_TICKET)
+        except Exception:  # noqa: BLE001 - un saluto non ferma mai un ticket
+            logger.warning("Saluto vocale del ticket non inviato.", exc_info=True)
+            return False
 
     # ---------------------------------------------------------------- saluti a voce
     @commands.Cog.listener()

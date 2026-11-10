@@ -1475,6 +1475,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   resto dell'elenco della issue. discord.py 2.7.1 non li invia: serve
   la chiamata diretta all'API (D22, issue #142, fase F12)
   → **Stato 28/10 (r12):** non è nel lotto di questo ramo: la fa l'agente `r12ai` (voce di Yokai, D22, #142).
+  → **Stato 10/11 (r142voce):** saluto vocale all'apertura di un ticket (cogs/ai/voce.py `saluto_ticket`, core/voice_ticket_logic.py, aggancio in cogs/tickets/tickets.py), con la voce accesa e il motore attivo, tono scherzoso. Test: tests/test_ai_voce_ticket.py. Restano nell'issue: sollecito (#139), risposte standard, benvenuto dopo la verifica, annunci, compleanni, livelli, giveaway, promemoria, buongiorno programmato, dungeon/boss, riepilogo, `/chiedi` a voce, «Leggi ad alta voce», canali vocali.
 
 - `[x]` 14.60 Strumenti rapidi (catalogo #128 B1, D69, r19util) — `/utility strumenti caratteri|cronometro|novita` (UTL-203, 212, 221) e `/web wiki|dizionario|emergenza` (UTL-215, 214, 220). Nessun dato salvato; Wikipedia/Wikizionario con cache di 1 ora, defer() e ripiego in inglese. Il cronometro tiene l'inizio nel custom_id (DynamicItem). `data/novita/<lingua>.json` e `data/emergenze.json` li scrive l'owner.
 

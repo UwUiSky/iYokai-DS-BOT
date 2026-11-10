@@ -8,6 +8,7 @@
   e suite completa dell'orchestratore (migrazioni 0420-0429, main.py e user_app_bot toccati).
 
 ## Fatto
+- r142voce: saluto vocale all'apertura del ticket (`AiVoceCog.saluto_ticket`, `core/voice_ticket_logic.py`, aggancio `_saluto_vocale` in tickets.py). Resto di #142 nell'issue.
 - r12: assistente, boss, dungeon, misteri, spirito, tema/nomi a tema, segnalazioni, `/ai staff`, ricerca web, riepilogo
   a orario e avvisi, ticket AI (bottone, prima risposta, risposte standard durevoli), voce (`cogs/ai/voce.py`,
   `core/voice_*`, vocale raw in `core/discord_raw.py`), trascrizione (`core/trascrizione.py`), traduzione unita 25.77,

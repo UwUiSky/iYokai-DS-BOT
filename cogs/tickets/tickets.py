@@ -469,6 +469,16 @@ async def _prima_risposta_ai(client, channel, user_id: int, guild_id: int, panel
     compito.add_done_callback(_COMPITI_AI.discard)
 
 
+async def _saluto_vocale(client, channel, utente, guild_id: int) -> None:
+    """Saluto vocale di Yokai all'apertura (§14.19), se la voce è accesa nel server. Compito a parte: l'apertura non aspetta."""
+    cog = client.get_cog("AiVoceCog")
+    if cog is None:
+        return
+    compito = asyncio.create_task(cog.saluto_ticket(channel, guild_id, utente))
+    _COMPITI_AI.add(compito)
+    compito.add_done_callback(_COMPITI_AI.discard)
+
+
 def _dati_errore_thread(guild, opzioni) -> dict:
     padre = guild.get_channel(opzioni.canale_padre_id) if opzioni.canale_padre_id else None
     mancanti = thread_logic.permessi_mancanti(padre.permissions_for(guild.me)) if isinstance(padre, discord.TextChannel) else []
@@ -757,6 +767,7 @@ async def _crea_ticket(
     await _avvisi_di_apertura(channel, guild, utente, opzioni, reperibili, ticket_number)
     if come_thread:
         await _avviso_thread_allo_staff(guild, channel, opzioni, utente, ticket_number)
+    await _saluto_vocale(interaction.client, channel, utente, guild.id)
     await _prima_risposta_ai(interaction.client, channel, utente.id, guild.id, panel_id, motivo, campi)
     try:
         await suggerisci_articolo(channel, guild.id, motivo, campi)
