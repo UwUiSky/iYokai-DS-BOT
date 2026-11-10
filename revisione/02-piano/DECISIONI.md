@@ -1097,3 +1097,11 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
 - Chiavi solo nell'.env di Lavalink; il bot sa solo se ci sono. App Spotify e account Apple Developer li crea l'owner.
 - `/music` resta ≤18 figli: la coda va nel sotto-gruppo `/music coda`.
 - Premium: nessuna funzione musicale per ora; spostabile dal pannello.
+
+## D74 — Ogni allegato degli utenti passa dalla sandbox e si ricodifica; log con il webhook dell'utente (10/11/2026, scelta dell'owner)
+
+- Vale per ogni file che arriva da un utente e che il bot prende in mano (log, backup, ticket, ModMail, transcript, pannello): immagini, PDF, audio, video, documenti, archivi. I file creati dal bot stesso sono esclusi.
+- Il processo del bot non apre mai un file utente: lo apre solo il processo a parte (sandbox D62, con limiti di memoria, tempo e dimensione) e ne fa una copia ricodificata. L'originale non si conserva e non si rimanda.
+- PDF: ricostruito da zero, senza JavaScript, azioni, allegati interni, moduli e metadati; se la ricostruzione fallisce, pagine rese come immagini. Audio: ricodificato in Opus. Video: ricodificato (H.264/AAC) con tetto di durata e dimensione. Documenti Office e archivi: non si ricodificano in modo sicuro, quindi si tengono solo nome pulito, tipo, dimensione e impronta (nessun file).
+- Tipo sempre dai primi byte, mai dal nome; un file travestito o che la sandbox non riesce a ricodificare non si conserva e lascia una riga di avviso nel log.
+- Log a nome dell'utente (spento di base, interruttore per server): il messaggio di log esce dal webhook del canale con nome e avatar dell'utente, impostati a ogni invio (nessuna modifica del webhook). Un webhook per canale, nome 1–80 caratteri senza «discord»/«clyde», menzioni sempre spente, tetto di invio per non superare i limiti; il messaggio dice chiaramente che è un log, perché non sembri scritto dall'utente.
