@@ -293,10 +293,13 @@ async def test_gli_allegati_vanno_come_file_entro_10_mib(monkeypatch):
 
     class _Allegato:
         def __init__(self, nome, size):
-            self.filename, self.size, self.url = nome, size, f"https://cdn.discordapp.com/{nome}"
+            self.filename, self.size, self.url, self.content_type = nome, size, f"https://cdn.discordapp.com/{nome}", None
 
-        async def to_file(self):
-            return discord.File(__import__("io").BytesIO(b"x"), filename=self.filename)
+        async def to_file(self):  # solo perche' allegati_come_file lo cerca: il codice non lo chiama piu'
+            raise AssertionError("l'allegato si legge con read(), non si riscarica con to_file()")
+
+        async def read(self):
+            return b"PK\x03\x04 zip"
 
     inviati = []
 
@@ -307,7 +310,7 @@ async def test_gli_allegati_vanno_come_file_entro_10_mib(monkeypatch):
     monkeypatch.setattr(modulo.discord.Webhook, "from_url", staticmethod(lambda url, session: _Hook()))
     messaggio = _FakeMessage(channel_id=10, content="guarda")
     messaggio.author.display_avatar = type("_A", (), {"url": "https://cdn.discordapp.com/a.png"})()
-    messaggio.attachments = [_Allegato("piccolo.png", 1000), _Allegato("enorme.zip", 11 * 1024 * 1024)]
+    messaggio.attachments = [_Allegato("piccolo.zip", 1000), _Allegato("enorme.zip", 11 * 1024 * 1024)]
     dispatcher = BackupMirrorDispatcher(mirror_repo=_FakeMirrorRepo({10: "https://x/y"}))
     try:
         await dispatcher.handle_message(messaggio)
@@ -316,5 +319,5 @@ async def test_gli_allegati_vanno_come_file_entro_10_mib(monkeypatch):
         await dispatcher.close()
 
     assert inviati[0]["wait"] is True
-    assert [f.filename for f in inviati[0]["files"]] == ["piccolo.png"]
+    assert [f.filename for f in inviati[0]["files"]] == ["piccolo.zip"]
     assert "enorme.zip" in inviati[0]["content"]  # il troppo grande resta come link

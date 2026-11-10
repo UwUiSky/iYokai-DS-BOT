@@ -1,9 +1,11 @@
 # Memoria di dev-log-ticket
 
 ## Aggiornata
+10/11/2026 · ramo `feat/r152img` (copia /home/claude/wt/r152img, DB iyokai_wr152) · usata migrazione 0304 (#152, D61). Sotto: giri precedenti.
 27/10/2026 · ramo `feat/r10logt` (copia /home/claude/wt/r10logt, DB iyokai_wr10logt) · migrazioni 0300-0309 (usate 0300, 0301, 0302)
 
 ## In corso
+- r152img: fatto tutto #152 (allegati_sicuri, log, backup, ticket, spam trap, download). Resta: prova live (VERIFICA_LIVE «giro r152img»), smoke dall'orchestratore, nginx per il sotto-dominio allegati.
 - r18ticket (feat/r18ticket, DB iyokai_w18tk): T4 (0534) e #156 thread privati (0526) fatti, in un commit. Resta: prova live (VERIFICA_LIVE) e smoke dall'orchestratore.
 - Smoke da fare dall'orchestratore.
 
@@ -12,6 +14,8 @@
 - r10: c210f52 /log cerca ruolo+giorni · f364d84 diff permessi canale · poi ignora esteso, VOC-010/013/016, TKT-051/063/027/026.
 
 ## Cose imparate
+- D61: tipo sempre da `immagini_byte_logic.riconosci_tipo`; `immagini_pipeline.copia_ricaricabile` e' l'unico punto per ricaricare un allegato (backup, ticket). Il bot non decodifica mai byte utente: miniature solo dalla PNG della sandbox.
+- Download allegati: `/allegato/<token firmato>` solo su `WEB_ALLEGATI_PUBLIC_URL`; il middleware `sicurezza` sovrascrive le intestazioni: le proprie passano da `CHIAVE_DOWNLOAD`. `config` e' frozen: nei test si sostituisce `modulo.config`.
 - Thread ticket: `guild.get_channel` NON vede i thread (usa `get_channel_or_thread`); in un DynamicItem l'etichetta sta in `.item`; con il thread niente overwrites/categorie (guardie `isinstance(..., discord.Thread)` in tickets.py).
 - T4: logica pura in core/ticket_autoclose_worker.py, giro ogni 2 min in cogs/tickets/inattivita.py (stato nel DB); la riserva si usa in `_canale_dalla_riserva` (tickets.py). `create_ticket` restituisce il NUMERO, non l'id: nei test `get_ticket_by_channel(...).id`.
 - Ogni chiamata Bash e nuova: `. scratchpad/env18.sh` (DATABASE_URL w18tk) in OGNI comando pytest, se no conftest usa iyokai_test.

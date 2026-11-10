@@ -182,13 +182,13 @@ async def test_proposta_con_allegati_ricaricati_nel_canale_dei_log(cog, monkeypa
     await _ticket(p)
     await ticket_repo.record_first_response(CANALE, datetime.now(timezone.utc))
     t = await ticket_repo.get_ticket_by_channel(CANALE)
-    ricaricato = SimpleNamespace(filename="grafiche.zip", url="https://cdn.example/log/grafiche.zip")
+    ricaricato = SimpleNamespace(filename="grafiche.zip", url="https://cdn.discordapp.com/log/grafiche.zip")
     log = _log(monkeypatch, allegati=[ricaricato])
     originale = SimpleNamespace(filename="grafiche.zip", size=1000, read=AsyncMock(return_value=b"zip"))
     canale = _canale_con_storia([_msg(UTENTE, RICHIESTA), _msg(STAFF, "ecco il pacchetto", [originale])])
     await cog.proponi_da_ticket(fake_guild(GUILD), canale, t)
     (proposta,) = await ticket_standard_repo.elenca(GUILD)
-    assert proposta.attachments == [{"filename": "grafiche.zip", "url": "https://cdn.example/log/grafiche.zip"}]
+    assert proposta.attachments == [{"filename": "grafiche.zip", "url": "https://cdn.discordapp.com/log/grafiche.zip"}]
     assert len(log.send.await_args.kwargs["files"]) == 1
 
 

@@ -271,6 +271,7 @@ class Config:
     # Indirizzo pubblico del pannello (https, dietro un reverse proxy), senza barra
     # finale. Il redirect OAuth2 del pannello è questo + "/callback".
     WEB_PANEL_PUBLIC_URL: str = field(default="")
+    WEB_ALLEGATI_PUBLIC_URL: str = field(default="")
     # Porta locale del pannello (indirizzo: WEB_BIND_HOST).
     WEB_PANEL_PORT: int = field(default=8422)
     # IP dei reverse proxy fidati, separati da virgola: solo da questi si legge
@@ -455,6 +456,7 @@ def _load_config() -> Config:
         OAUTH2_REDIRECT_URI=_optional("OAUTH2_REDIRECT_URI"),
         WEB_PANEL_SECRET_KEY=_optional("WEB_PANEL_SECRET_KEY"),
         WEB_PANEL_PUBLIC_URL=_optional("WEB_PANEL_PUBLIC_URL", ""),
+        WEB_ALLEGATI_PUBLIC_URL=_optional("WEB_ALLEGATI_PUBLIC_URL", ""),
         WEB_PANEL_PORT=_optional_int("WEB_PANEL_PORT", 8422),
         WEB_PANEL_TRUSTED_PROXY=_optional("WEB_PANEL_TRUSTED_PROXY", ""),
         OAUTH_ENCRYPTION_KEY=_optional("OAUTH_ENCRYPTION_KEY", ""),

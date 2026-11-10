@@ -20,7 +20,7 @@ from core import immagini_qr_logic as qr_logic
 from core import immagini_quarantena as quarantena
 from core import immagini_sandbox as sandbox
 from core.bounded_cache import BoundedCache
-from core.immagini_byte_logic import MALEVOLA, PULITA, SOSPETTA, controlla_byte
+from core.immagini_byte_logic import MALEVOLA, PULITA, SOSPETTA, controlla_byte, nome_file_sicuro, riconosci_tipo, tipo_atteso
 from core.immagini_coda import CodaPiena, coda_immagini
 from core.immagini_trappola_logic import verdetto_di
 from core.immagini_trappola_service import libreria_immagini
@@ -110,6 +110,28 @@ async def analizza_immagine(dati: bytes, nome_file: str, content_type: str | Non
         await _conserva(dati, guild_id, byte.sha256)
         return _ricorda(guild_id, EsitoImmagine(byte.verdetto, byte.sha256, motivi, note=byte.note))
     return await _con_sandbox(dati, byte, guild_id)
+
+
+async def copia_ricaricabile(dati: bytes, nome_file: str, content_type: str | None, guild_id: int) -> tuple[str, bytes] | None:
+    """
+    Cosa si puo' ricaricare di un allegato in un backup o in un archivio (D61, D62). Il tipo lo dicono i byte:
+    un'immagine vera pulita diventa la copia PNG ricodificata; un file che dice di essere un'immagine ma non
+    lo e', un'immagine sospetta o non analizzata, danno None; ogni altro file va com'e'. Non solleva.
+    """
+    vero = riconosci_tipo(dati)
+    if vero is None:
+        if tipo_atteso(nome_file, content_type) is not None:
+            return None
+        return nome_file_sicuro(nome_file), dati
+    try:
+        esito = await analizza_immagine(dati, nome_file, content_type, guild_id)
+    except Exception:  # noqa: BLE001 - un allegato storto non ferma la copia
+        logger.warning("Allegato non analizzato, non copiato", exc_info=True)
+        return None
+    if esito.verdetto != PULITA or esito.non_analizzata is not None or not esito.png:
+        return None
+    stem = nome_file_sicuro(nome_file).rsplit(".", 1)[0] or "immagine"
+    return f"{stem}.png", esito.png
 
 
 async def _conserva(dati: bytes, guild_id: int, sha: str) -> None:

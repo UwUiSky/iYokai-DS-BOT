@@ -5,7 +5,7 @@ Messaggi via webhook, impersonando l'autore: la copia degli ultimi N messaggi
 di ogni canale nel server di backup (D8, M 12.17) e le chat salvate di un
 canale (fino a 1000 messaggi) da ricaricare dopo, anche in un altro canale.
 Gli allegati si ricaricano come file finché il link vale (≤ 10 MiB per
-messaggio), poi come link; i messaggi fissati si rifissano.
+messaggio), poi come link; le immagini solo come copia PNG ricodificata (D61); i messaggi fissati si rifissano.
 
 Regole di sicurezza:
 - un invio alla volta, ognuno atteso (``wait=True``): l'ordine resta
@@ -15,7 +15,7 @@ Regole di sicurezza:
 - un canale di backup che ha già messaggi non si ricopia (rilanci senza
   doppioni) e, se non si riesce a controllarlo, non si scrive;
 - un errore su un canale o su un messaggio non ferma la copia.
-Funzioni coperte: SPEC §11.15, M 12.17, BKP-013, BKP-016, BKP-026, BKP-027
+Funzioni coperte: SPEC §11.15, M 12.17, BKP-013, BKP-016, BKP-026, BKP-027, D61 (#152)
 """
 
 from __future__ import annotations
@@ -29,6 +29,7 @@ import aiohttp
 import discord
 
 from core.backup_mirror_logic import nome_sicuro_per_webhook
+from core.immagini_pipeline import copia_ricaricabile
 
 logger = logging.getLogger("iyokai.backup_messages")
 
@@ -89,13 +90,23 @@ async def _destinazione_vuota(canale) -> bool:
     return True
 
 
-async def file_degli_allegati(allegati) -> list[discord.File]:
+async def file_degli_allegati(allegati, guild_id: int = 0) -> list[discord.File]:
+    """
+    Gli allegati da ricaricare. D61/D62: il tipo lo dicono i byte, non il nome. Un'immagine vera passa dal
+    percorso unico e si ricarica solo la copia PNG ricodificata (se sospetta o non analizzata, resta fuori);
+    un file che dice di essere un'immagine ma non lo e' resta fuori; gli altri file vanno cosi' come sono.
+    """
     file = []
     for a in allegati:
         try:
-            file.append(await a.to_file())
+            dati = await a.read()
         except discord.HTTPException:
             continue  # link scaduto o file sparito: resta fuori
+        copia = await copia_ricaricabile(dati, a.filename, getattr(a, "content_type", None), guild_id)
+        if copia is None:
+            logger.info("Allegato %s non copiato: immagine non pulita, non analizzata o file travestito.", a.filename)
+            continue
+        file.append(discord.File(io.BytesIO(copia[1]), filename=copia[0]))
     return file
 
 
@@ -110,7 +121,7 @@ async def _copia_canale(sorgente, webhook, limite: int, riepilogo, destinazione=
             riepilogo.messaggi_saltati += 1
             continue
         come_file = allegati_come_file(message.attachments)
-        file = await file_degli_allegati(come_file)
+        file = await file_degli_allegati(come_file, getattr(getattr(sorgente, "guild", None), "id", 0))
         contenuto = contenuto_da_copiare(message, come_file)
         if contenuto is None and not file:
             riepilogo.messaggi_saltati += 1

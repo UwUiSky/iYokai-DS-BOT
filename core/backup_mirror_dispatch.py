@@ -8,7 +8,7 @@ Ogni canale ha una sua coda: i messaggi partono nell'ordine in cui sono
 arrivati, uno alla volta (ognuno atteso), al massimo 5 ogni 5 secondi;
 sui picchi si aspetta (oltre 200 in attesa i nuovi si scartano). L'URL si
 rilegge a ogni invio: se il mirror del canale viene tolto la coda si ferma.
-Gli allegati vanno come file fino a 10 MiB; i messaggi di sistema non si copiano.
+Gli allegati vanno come file fino a 10 MiB (le immagini solo ricodificate, D61); i messaggi di sistema non si copiano.
 
 Separato da un semplice listener nel Cog per essere testabile senza
 una vera connessione a Discord: BackupMirrorDispatcher.handle_message
@@ -144,7 +144,7 @@ class BackupMirrorDispatcher:
     async def _send(self, webhook_url: str, message: discord.Message) -> None:
         come_file = allegati_come_file(message.attachments)
         contenuto = contenuto_da_copiare(message, come_file) or ""
-        file = await file_degli_allegati(come_file) if come_file else []
+        file = await file_degli_allegati(come_file, message.guild.id if message.guild else 0) if come_file else []
         if not contenuto and not file:
             contenuto = ZERO_WIDTH_SPACE
         contenuto = contenuto[:MAX_CONTENT_LENGTH]

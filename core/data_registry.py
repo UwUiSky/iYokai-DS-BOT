@@ -208,6 +208,11 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonne_utente=("user_id",), colonne_attore=("autore_id",), colonna_server="guild_id",
        utente="cancella", scadenza=Scadenza("created_at", 180, solo_se="tipo = 'file'"),
        nota="immagini solo ricodificate; PDF e TXT grezzi, mai aperti, tolti dopo 180 giorni; non si esportano (file di terzi)"),
+    _t("allegati_copie", "Copie degli allegati dei messaggi cancellati o modificati (log, D61)",
+       colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella",
+       scadenza=Scadenza("created_at", 30),
+       nota="byte in una cartella fuori dal sito, mai aperti; solo immagini pulite, con anteprima ricodificata; "
+            "30 giorni; i file senza riga si tolgono entro un'ora; non si esportano (file di terzi)"),
     _t("moderation_motivi", "Motivi pronti di moderazione del server", colonne_attore=("autore_id",),
        colonna_server="guild_id", nota="testi scelti dallo staff, senza dati degli utenti"),
     _t("moderation_motivi_semina", "Server a cui è già stato dato l'elenco di base dei motivi pronti (D68)",

@@ -47,6 +47,7 @@ from core.channel_router import TIPO_EVENTI
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
+from core.immagini_pipeline import copia_ricaricabile
 from core.i18n import testo_per
 from core.repositories.ai_ticket_repo import ai_ticket_repo
 from core.repositories.ticket_form_repo import PannelloTicket, ticket_form_repo
@@ -378,7 +379,10 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
 
     @staticmethod
     async def _copie_allegati(messaggio: discord.Message) -> list[discord.File]:
-        """Ricarica gli allegati nel canale dei log: i link del ticket spariscono con il canale."""
+        """
+        Ricarica gli allegati nel canale dei log: i link del ticket spariscono con il canale. D61/D62: le immagini
+        solo ricodificate; sospette, non analizzate e file travestiti restano fuori.
+        """
         allegati = list(messaggio.attachments)
         file: list[discord.File] = []
         for i in logica.allegati_da_scaricare([a.size for a in allegati]):
@@ -386,7 +390,12 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
                 contenuto = await allegati[i].read()
             except discord.HTTPException:
                 continue
-            file.append(discord.File(io.BytesIO(contenuto), filename=allegati[i].filename))
+            copia = await copia_ricaricabile(
+                contenuto, allegati[i].filename, getattr(allegati[i], "content_type", None),
+                messaggio.guild.id if getattr(messaggio, "guild", None) else 0,
+            )
+            if copia is not None:
+                file.append(discord.File(io.BytesIO(copia[1]), filename=copia[0]))
         return file
 
     # ---------------------------------------------------------------- uso nei ticket
