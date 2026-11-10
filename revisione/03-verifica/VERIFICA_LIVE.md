@@ -1196,6 +1196,15 @@ Serve: Lavalink 4.2.0+ con LavaSrc, un account Spotify Premium per creare l'app 
 - [ ] YouTube spento — togli `youtube` da `MUSIC_SOURCES_ENABLED`, rigenera il file e riavvia: i titoli si cercano su SoundCloud, i link YouTube dicono che la fonte non è attiva.
 - [ ] Log — cerca nei log del bot e di Lavalink il valore delle chiavi: non deve comparire.
 
+## Musica — altre fonti e fonte per server (#126 B2, D73)
+
+- [ ] `/owner radio fonti` — Spotify e Apple Music senza chiavi nel `.env` del bot dicono «le chiavi stanno su Lavalink», non «senza chiavi». Con lingua inglese la riga è in inglese.
+- [ ] `/music play fonte:SoundCloud` con un titolo — il brano arriva da SoundCloud. Con `fonte:Spotify` (chiavi su Lavalink) il titolo si cerca con Spotify e suona da YouTube/SoundCloud. Con un link SoundCloud e `fonte:Spotify`: vince il link.
+- [ ] Fonte spenta — `fonte:Tidal` senza `TIDAL_TOKEN` e senza `tidal` in `MUSIC_SOURCES_ENABLED`: messaggio nascosto «Tidal non è attiva…», niente defer.
+- [ ] Fonte del server — `/admin-musica impostazioni ricerca-predefinita:SoundCloud`, poi `/music play` di un titolo senza `fonte`: cerca su SoundCloud; `fonte:YouTube` nel comando vince; `ricerca-predefinita:Automatica` torna YouTube e poi SoundCloud. `/admin-musica riepilogo` mostra la riga.
+- [ ] Deezer — link `deezer.com` a brano (suona dall'ISRC, se no per titolo e artista), album e playlist (fino a 10 brani, come playlist), artista (i 10 più ascoltati). Con `fonte:Deezer` e un titolo: legge Deezer e suona da un'altra fonte. Se l'API di Deezer non risponde: ripiego sul titolo. Nei log e in Lavalink non compaiono cookie né chiavi di Deezer.
+- [ ] Tidal e Yandex — con `TIDAL_TOKEN` (e `tidal` in `MUSIC_SOURCES_ENABLED`) rigenera il file e riavvia Lavalink: nel file `tidal: true` e solo `${TIDAL_TOKEN}`; un link `tidal.com` suona da un'altra fonte. Yandex resta `false` finché non la accendi con `YANDEX_MUSIC_TOKEN` e `yandex` in `MUSIC_SOURCES_ENABLED` (funziona solo da certe regioni).
+
 ## Livelli, economia e gilde — giro r10 (#124, #125, SPEC §15)
 
 Serve: un server di prova con il modulo livelli attivo, un account A (Amministratore) e un account B (membro normale), il bot con un ruolo sopra quello di prova.

@@ -1,12 +1,13 @@
 # Memoria di dev-musica
 
 ## Aggiornata
-10/11/2026 · ramo `feat/r1mus` (/home/claude/wt/r1mus) · nessuna migrazione (B1 senza tabelle)
+10/11/2026 · ramo `feat/r2mus` (/home/claude/wt/r2mus) · nessuna migrazione (B1 e B2 senza tabelle; B3 parte da 0620)
 
 ## In corso
-- #126 B1 FATTO (fonti Spotify/Apple, registro, circuito, `/owner radio fonti`, generatore yml). Prossimo: B2 in `core/music_sources.py`:
-  opzione `fonte` in `/music play`, impostazioni `music_default_search`/`music_sources_off`/`music_country` (D16: SETTINGS_SCHEMA + SCHEDE),
-  Deezer come metadati (API pubblica), Yandex/Tidal sezioni yml, avviso scadenza token Apple a 14 giorni. Poi B3 (migr. 0620).
+- #126 B1 e B2 FATTI (B2: opzione `fonte`, `music_default_search` in SETTINGS_SCHEMA+SCHEDE+`/admin-musica impostazioni ricerca-predefinita`,
+  Deezer solo metadati ISRC poi titolo, yml con tidal/yandexmusic, residui B1 in locales). Prossimo: B3 coda (migr. 0620) nel sotto-gruppo
+  `/music coda` (`/music` <=18 figli, peso <6.800): MUS-030, 035, 027, 037, 038. Aperte B2: `music_sources_off`, `music_country`, solo-audio (016),
+  avviso scadenza token Apple a 14 giorni, scelte di `fonte` fisse (6) non filtrate per owner.
 - Giro r10 (musica + alert, agente r10musa): SPEC 9.x e 10.x tutte `[x]`; fatti nonstop 24/7, ALR-030/031/032/033/036, MUS-054/062/064.
   Prossimo: ALR-037/038/040 (sposta, ferma tutti, controllo a mano) servono sotto-comandi in /moduli alert (chiedere guardiano-limiti); MUS-061 stato del bot, MUS-053.
 - Giro r6 CHIUSO (8.16 defer, MUS-056 sordo, MUS-009 allegato, NF-19 canale richieste + playlist, NF-35 suoni).
@@ -24,6 +25,8 @@
   canale e spostata da un nuovo suono `3d93028`.
 
 ## Cose imparate
+- Opzioni dei comandi di gruppo: i test leggono `callback.__discord_app_commands_param_choices__` (il Command vero nasce dopo).
+- Link Deezer: mai a Lavalink (niente `url_e_sicuro`): metadati da API, poi `cerca_testo` su altre fonti; un album diventa `wavelink.Playlist` da `raw_data`.
 - Fonti (D73): tutto passa da `core/music_sources.py`; chiavi solo presenti sì/no (`chiavi_presenti`), `ripulisci()` per ogni testo d'errore; mai valori in log/messaggi.
 - Un errore wavelink con `severity == "common"` (video tolto) NON è un guasto della fonte: non conta per la pausa. Risultato vuoto neppure.
 - Il gate `fonte_usabile` consuma la «prova» dopo la pausa: chiamarlo una volta sola per ricerca (sta in `_cerca_su`).
@@ -51,6 +54,7 @@
 - Pause "una ogni N secondi": segnare prima del primo await, se no due chiamate insieme passano.
 
 ## Aperto
+- B2: l'API pubblica Deezer non e' stata letta nelle condizioni d'uso (dubbio D2 dell'owner); `_scarica_json` e' l'unico punto di rete.
 - `_torna_sordo`: due suoni entro 6 s, il primo riassorda il bot durante il secondo (bassa).
 - URL pubblici verificati da noi, risolti di nuovo da Lavalink: DNS rebinding resta possibile.
 - Prove live in VERIFICA_LIVE.md (Musica F2 e r6) da eseguire.

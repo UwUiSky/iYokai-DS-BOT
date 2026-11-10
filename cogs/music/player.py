@@ -61,7 +61,7 @@ from core import music_sources as fonti_musicali
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.database import db
-from core.i18n import testo_per
+from core.i18n import lingua_interazione, lingua_risposta, t as testo_tradotto, testo_per
 from core.main_radio_logic import (
     RadioTrackInfo,
     compute_current_position,
@@ -130,6 +130,12 @@ CANALE_VUOTO_BRANI_DEFAULT = 3
 SG_NONSTOP = ("nonstop", "Riproduzione continua in loop sulla sessione musicale attiva.")
 RADIO = ("radio", "Radio 24/7 condivisa del bot principale, playlist personale")
 
+
+# Scelte fisse di /music play (6, il tetto è 25): le fonti spente rispondono con un messaggio.
+SCELTE_FONTE = [
+    app_commands.Choice(name=fonti_musicali.FONTI[nome].etichetta, value=nome)
+    for nome in fonti_musicali.FONTI_DI_RICERCA
+]
 
 MSG_ALTRO_CANALE = (
     "Il music bot è in un altro canale vocale: devi essere nel suo stesso canale "
@@ -372,7 +378,8 @@ class MusicCog(CogConGruppi, commands.Cog):
         )
 
     async def _cerca(
-        self, query: str, nodo: wavelink.Node, nodo_locale: wavelink.Node | None = None
+        self, query: str, nodo: wavelink.Node, nodo_locale: wavelink.Node | None = None,
+        fonte: str | None = None,
     ) -> tuple[wavelink.Search | None, wavelink.Node]:
         """
         LIM-42/43: la ricerca gira su un nodo SCELTO (quello del bot che
@@ -383,7 +390,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         Restituisce anche il nodo che ha risposto: il player deve nascere
         lì, perché le tracce dei plugin si suonano solo dove il plugin c'è.
         """
-        risultati = await self._cerca_su(query, nodo)
+        risultati = await self._cerca_su(query, nodo, fonte)
         if risultati or not is_spotify_query(query):
             return risultati, nodo
         if nodo_locale is None or nodo_locale is nodo:
@@ -391,7 +398,18 @@ class MusicCog(CogConGruppi, commands.Cog):
         return await self._cerca_su(query, nodo_locale), nodo_locale
 
     @staticmethod
-    async def _cerca_su(query: str, nodo: wavelink.Node) -> wavelink.Search | None:
+    def _come_playlist(nome: str, tracce: list) -> wavelink.Search:
+        """Più brani trovati da un link Deezer: una playlist. Un solo brano resta una lista."""
+        if len(tracce) < 2:
+            return tracce
+        return wavelink.Playlist({
+            "info": {"name": nome, "selectedTrack": -1},
+            "tracks": [t.raw_data for t in tracce],
+            "pluginInfo": {"type": "deezer"},
+        })
+
+    @staticmethod
+    async def _cerca_su(query: str, nodo: wavelink.Node, fonte: str | None = None) -> wavelink.Search | None:
         """
         Mai una query grezza scritta da un utente: URL http(s) e URI Spotify
         validi vanno cosi' come sono; qualunque altro testo diventa SEMPRE
@@ -403,11 +421,27 @@ class MusicCog(CogConGruppi, commands.Cog):
         if tipo == QUERY_RIFIUTATA:
             return None
         testo = query.strip()
+
+        def cerca_con_prefisso(completa: str):
+            return wavelink.Pool.fetch_tracks(completa, node=nodo)
+
         if tipo == QUERY_TESTO:
-            return await fonti_musicali.cerca_testo(
-                testo, lambda completa: wavelink.Pool.fetch_tracks(completa, node=nodo)
-            )
+            if fonte == "deezer" and fonti_musicali.fonte_usabile("deezer"):
+                try:  # Deezer dà solo i metadati: i brani si cercano altrove
+                    trovati = await fonti_musicali.risolvi_titolo_deezer(testo, cerca_con_prefisso)
+                    if trovati:
+                        return trovati[:1]
+                except fonti_musicali.FonteNonRisponde:
+                    pass  # ripiego sul predefinito
+            return await fonti_musicali.cerca_testo(testo, cerca_con_prefisso, fonte)
         link = fonti_musicali.classifica_link(testo)
+        if link is not None and link.fonte == "deezer":
+            # Il link non va a Lavalink: leggiamo noi i metadati, quindi niente controllo sull'indirizzo.
+            id_ = fonti_musicali.id_deezer(testo)
+            if id_ is None or not fonti_musicali.fonte_usabile("deezer"):
+                raise fonti_musicali.FonteNonRisponde("deezer")
+            tracce = await fonti_musicali.risolvi_deezer(link.tipo, id_, cerca_con_prefisso)
+            return MusicCog._come_playlist("Deezer", tracce)
         fonte = "spotify" if tipo == QUERY_SPOTIFY else (link.fonte if link else "http")
         if tipo != QUERY_SPOTIFY:
             # Lavalink (sources.http) scaricherebbe da dentro la rete del
@@ -472,14 +506,17 @@ class MusicCog(CogConGruppi, commands.Cog):
         query="Nome della canzone, URL, o termine di ricerca",
         in_cima="Metti il brano in cima alla coda, subito dopo quello in corso",
         allegato="Un file audio o video da suonare al posto della ricerca",
+        fonte="Dove cercare un titolo senza link (un link vince sempre)",
     )
     @app_commands.rename(in_cima="in-cima")
+    @app_commands.choices(fonte=SCELTE_FONTE)
     async def play(
         self,
         interaction: discord.Interaction,
         query: app_commands.Range[str, 1, 300] | None = None,
         in_cima: bool = False,
         allegato: discord.Attachment | None = None,
+        fonte: str | None = None,
     ) -> None:
         if not await self._controlli_base(interaction):
             return
@@ -496,10 +533,17 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
             return
 
+        if fonte is not None and not fonti_musicali.fonte_di_ricerca_disponibile(fonte):
+            await interaction.response.send_message(
+                await fonti_musicali.messaggio_per_fonte(fonte, interaction.guild_id, interaction.user.id),
+                ephemeral=True,
+            )
+            return
+
         await interaction.response.defer()
         await self.accoda(
             interaction.guild, interaction.user, query, interaction.followup.send,
-            in_cima=in_cima, interaction=interaction,
+            in_cima=in_cima, interaction=interaction, fonte=fonte,
         )
 
     async def accoda(
@@ -512,6 +556,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         in_cima: bool = False,
         interaction: discord.Interaction | None = None,
         cerca=None,
+        fonte: str | None = None,
     ) -> int | None:
         """
         Mette in coda `query` nel canale vocale di `membro` (worker assegnato o
@@ -548,7 +593,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         async with self._lock_canale(guild.id, canale_id):
             esito = await self._play_nel_canale(
                 guild.id, membro.id, query, in_cima, impostazioni, worker_bot, worker_guild,
-                canale_id, rispondi, cerca,
+                canale_id, rispondi, cerca, fonte,
             )
         return canale_id if esito else None
 
@@ -562,7 +607,7 @@ class MusicCog(CogConGruppi, commands.Cog):
 
     async def _play_nel_canale(
         self, guild_id, utente_id, query, in_cima, impostazioni, worker_bot, worker_guild,
-        canale_id, rispondi, cerca=None,
+        canale_id, rispondi, cerca=None, fonte=None,
     ) -> bool:
         player: wavelink.Player | None = worker_guild.voice_client  # type: ignore[assignment]
         nuova_sessione = player is None
@@ -573,7 +618,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         nodo = player.node if player is not None else (gestore.node_for(chiave) if gestore else None)
         if nodo is None:
             await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
-            await rispondi(MSG_NESSUN_NODO)
+            await rispondi(testo_tradotto("music_nessun_nodo", await lingua_risposta(guild_id, utente_id)))
             return False
 
         nodo_locale = gestore.locale_di(chiave) if (gestore and nuova_sessione) else None
@@ -581,7 +626,10 @@ class MusicCog(CogConGruppi, commands.Cog):
             if cerca is not None:
                 risultati, nodo = await cerca(nodo, nodo_locale)
             else:
-                risultati, nodo = await self._cerca(query, nodo, nodo_locale)
+                # La fonte scelta nel comando vince su quella preferita dal server.
+                risultati, nodo = await self._cerca(
+                    query, nodo, nodo_locale, fonte or impostazioni.default_search or None
+                )
         except fonti_musicali.FonteNonRisponde as exc:
             await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
             await rispondi(await fonti_musicali.messaggio_per_fonte(exc.fonte, guild_id, utente_id))
@@ -591,7 +639,7 @@ class MusicCog(CogConGruppi, commands.Cog):
             risultati = None
         if not risultati:
             await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
-            await rispondi("Nessun risultato trovato per questa ricerca.")
+            await rispondi(testo_tradotto("music_nessun_risultato", await lingua_risposta(guild_id, utente_id)))
             return False
 
         # MUS-044: i brani oltre la durata massima non entrano in coda.
@@ -1178,7 +1226,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         nodo = gestore.node_for(chiave_del_bot(worker_bot)) if gestore else None
         if nodo is None:
             await self.bot.music_fleet.release_session(interaction.guild.id, canale_id)
-            await interaction.followup.send(MSG_NESSUN_NODO)
+            await interaction.followup.send(await testo_per(interaction, "music_nessun_nodo", pubblica=True))
             return
         canale_worker = worker_guild.get_channel(canale_id)
         if canale_worker is None:
@@ -1551,7 +1599,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         """B1 #126: una riga per fonte. Le chiavi non si mostrano mai: solo sì o no."""
         embed = discord.Embed(
             title=truncate_title(await testo_per(interaction, "music_fonti_titolo")),
-            description=truncate_title("\n".join(fonti_musicali.righe_stato()), EMBED_DESCRIPTION_LIMIT),
+            description=truncate_title(
+                "\n".join(fonti_musicali.righe_stato(await lingua_interazione(interaction))), EMBED_DESCRIPTION_LIMIT
+            ),
         )
         embed.set_footer(text=truncate_title(await testo_per(interaction, "music_fonti_nota"), 2048))
         await interaction.response.send_message(embed=embed, ephemeral=True)

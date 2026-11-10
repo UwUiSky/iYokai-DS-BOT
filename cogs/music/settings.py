@@ -17,11 +17,13 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.i18n import testo_per
+from core.music_sources import FONTI, FONTI_DI_RICERCA
 from core.music_settings_logic import (
     MAX_IDLE_MINUTES,
     MAX_PAROLE_VIETATE,
     SETTING_ALLOWED_CHANNEL,
     SETTING_BANNED_WORDS,
+    SETTING_DEFAULT_SEARCH,
     SETTING_IDLE_MINUTES,
     SETTING_KNOWN_SITES_ONLY,
     SETTING_MAX_TRACK_MINUTES,
@@ -34,6 +36,9 @@ from core.music_settings_logic import (
     summary_lines,
 )
 
+SCELTE_RICERCA = [app_commands.Choice(name="Automatica (YouTube, poi SoundCloud)", value="automatica")] + [
+    app_commands.Choice(name=FONTI[nome].etichetta, value=nome) for nome in FONTI_DI_RICERCA
+]
 SG_MUSICA = ("musica", "Musica: impostazioni del server")
 
 
@@ -61,6 +66,7 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         attesa_uscita="Minuti di attesa prima di uscire a coda finita (0 = predefinita)",
         parole_vietate="Parole non ammesse nei titoli, separate da virgola; «-» toglie l'elenco",
         solo_siti_conosciuti="Accetta solo link di siti conosciuti",
+        ricerca_predefinita="Dove cercare un titolo scritto senza link (i link vincono sempre)",
     )
     @app_commands.rename(
         volume_massimo="volume-massimo",
@@ -71,7 +77,9 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         attesa_uscita="attesa-uscita",
         parole_vietate="parole-vietate",
         solo_siti_conosciuti="solo-siti-conosciuti",
+        ricerca_predefinita="ricerca-predefinita",
     )
+    @app_commands.choices(ricerca_predefinita=SCELTE_RICERCA)
     async def impostazioni(
         self,
         interaction: discord.Interaction,
@@ -83,6 +91,7 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         attesa_uscita: app_commands.Range[int, 0, MAX_IDLE_MINUTES] | None = None,
         parole_vietate: app_commands.Range[str, 0, MAX_PAROLE_VIETATE] | None = None,
         solo_siti_conosciuti: bool | None = None,
+        ricerca_predefinita: str | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -104,6 +113,8 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
             SETTING_KNOWN_SITES_ONLY: solo_siti_conosciuti,
         }
         cambi = {k: v for k, v in cambi.items() if v is not None}
+        if ricerca_predefinita is not None:  # «automatica» toglie la scelta (torna YouTube, poi SoundCloud)
+            cambi[SETTING_DEFAULT_SEARCH] = None if ricerca_predefinita == "automatica" else ricerca_predefinita
         if canale_vocale is not None:
             cambi[SETTING_ALLOWED_CHANNEL] = canale_vocale.id
         if not cambi and not tutti_i_canali:

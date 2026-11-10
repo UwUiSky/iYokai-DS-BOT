@@ -4,6 +4,7 @@
 #   - password: LAVALINK_PASSWORD
 #   - Spotify: SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET (solo metadati; l'audio arriva da un'altra fonte)
 #   - Apple Music: APPLE_MUSIC_TOKEN (solo metadati)
+#   - Tidal: TIDAL_TOKEN (solo metadati); Yandex Music: YANDEX_MUSIC_TOKEN (spenta di base)
 # Una fonte senza chiavi resta spenta: con chiavi vuote LavaSrc puo' non avviarsi.
 # Deezer non si usa con la chiave di decifrazione (D73).
 # Versioni dei plugin: https://github.com/lavalink-devs/youtube-source/releases
@@ -52,6 +53,8 @@ plugins:
       spotify: false
       applemusic: false
       deezer: false       # mai con la chiave di decifrazione (D73)
+      tidal: false
+      yandexmusic: false
     spotify:
       clientId: "${SPOTIFY_CLIENT_ID}"
       clientSecret: "${SPOTIFY_CLIENT_SECRET}"
@@ -59,6 +62,15 @@ plugins:
     applemusic:
       mediaAPIToken: "${APPLE_MUSIC_TOKEN}"
       countryCode: "IT"
+    tidal:
+      token: "${TIDAL_TOKEN}"
+      countryCode: "IT"
+      searchLimit: 6
+    yandexmusic:
+      accessToken: "${YANDEX_MUSIC_TOKEN}"
+      playlistLoadLimit: 1
+      albumLoadLimit: 1
+      artistLoadLimit: 1
 
 logging:
   level:

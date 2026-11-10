@@ -18,6 +18,7 @@ import discord
 
 from core.config_schema import ImpostazioneNonValida
 from core.database import db
+from core.music_sources import FONTI_DI_RICERCA
 from core.role_safety import check_role_assignable
 
 BOOL, NUMERO, TESTO, SCELTA, CANALE, CANALE_VOCE, RUOLO = "bool", "numero", "testo", "scelta", "canale", "canale_voce", "ruolo"
@@ -29,6 +30,7 @@ SCELTE = {
     "azione_eta": ("attendi", "kick"),
     "azione_immagini": ("cancella", "avvisa", "timeout"),
     "modalita_risposte_mod": ("normale", "compatta", "cancella-dopo"),
+    "fonte_ricerca": FONTI_DI_RICERCA,
     "modalita_link_inviti": ("tutti", "crea_invito", "ruolo", "spento"),
 }
 
@@ -74,6 +76,7 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
         _c("music_banned_words", "Parole vietate nei titoli", TESTO),
         _c("music_idle_minutes", "Esci dopo (minuti di silenzio, 0 = mai)", NUMERO),
         _c("music_known_sites_only", "Solo siti conosciuti", BOOL),
+        _c("music_default_search", "Dove cercare un titolo senza link (youtube, soundcloud, spotify, applemusic, deezer, tidal)", SCELTA),
     ),
     "fun": (
         _c("fun_immagini_post", "Immagini dalle comunità Lemmy (/immagini post)", BOOL),

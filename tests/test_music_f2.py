@@ -1022,7 +1022,7 @@ async def test_due_play_insieme_nello_stesso_canale_un_solo_connect_e_nessun_ril
     cog = MusicCog(bot=SimpleNamespace(music_fleet=flotta, music_nodes=gestore))
     tracce = [SimpleNamespace(title=f"T{n}", length=1000, extras=None) for n in range(2)]
 
-    async def _cerca(query, nodo, locale=None):
+    async def _cerca(query, nodo, locale=None, fonte=None):
         return [tracce[int(query)]], nodo
 
     with patch.object(cog, "_cerca", new=_cerca):

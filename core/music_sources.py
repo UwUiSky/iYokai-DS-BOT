@@ -6,7 +6,9 @@ chiavi servono (solo presenti sì/no, mai il valore), stato di ogni fonte e
 circuito di pausa (8 s di attesa, 2 ripieghi, 3 errori = pausa di 10 minuti).
 Spotify e Apple Music: le chiavi stanno su Lavalink; se il bot non le vede si prova
 lo stesso e Lavalink decide (vedi FONTI_CHIAVI_SU_LAVALINK).
-Funzioni coperte: SPEC §9.5, issue #126 (B1), D73
+Fonte di ricerca per un titolo (opzione `fonte`, preferita del server) e Deezer come
+soli metadati (API pubblica: ISRC, poi titolo; mai chiave di decifrazione né cookie).
+Funzioni coperte: SPEC §9.5, issue #126 (B1, B2), D73
 Dipende da: variabili d'ambiente MUSIC_SOURCES_ENABLED e chiavi delle fonti
 """
 
@@ -36,10 +38,21 @@ STATO_IN_PAUSA = "in_pausa"
 # non le rifiutiamo, proviamo e vale la risposta di Lavalink.
 FONTI_CHIAVI_SU_LAVALINK = ("spotify", "applemusic")
 
-# Fonti accese se MUSIC_SOURCES_ENABLED non è impostata. Yandex, Tidal e Deezer: spente di base.
+# Fonti accese se MUSIC_SOURCES_ENABLED non è impostata. Yandex e Tidal: spente di base (Deezer è accesa).
+# Tetto di byte per le risposte JSON dell'API pubblica di Deezer.
+MAX_BYTE_RISPOSTA_JSON = 256 * 1024
 FONTI_DI_BASE = (
-    "youtube", "soundcloud", "bandcamp", "http", "twitch", "vimeo", "spotify", "applemusic",
+    "youtube", "soundcloud", "bandcamp", "http", "twitch", "vimeo", "spotify", "applemusic", "deezer",
 )
+
+# Fonti dove si può cercare un titolo (opzione `fonte`, impostazione del server).
+FONTI_DI_RICERCA = ("youtube", "soundcloud", "spotify", "applemusic", "deezer", "tidal")
+# Prefisso di ricerca di Lavalink. Deezer non ne ha: legge i metadati e cerca altrove.
+PREFISSI_RICERCA = {
+    "youtube": "ytmsearch:", "soundcloud": "scsearch:", "spotify": "spsearch:",
+    "applemusic": "amsearch:", "tidal": "tdsearch:",
+}
+_FONTE_DEL_PREFISSO = {p: n for n, p in PREFISSI_RICERCA.items()}
 
 
 @dataclass(frozen=True)
@@ -188,14 +201,27 @@ def stato_fonte(nome: str, adesso: float | None = None) -> str:
     return STATO_OK
 
 
-def prefissi_ricerca_testo() -> list[str]:
-    """Dove cercare un titolo senza link: YouTube Music, poi SoundCloud (se usabili)."""
-    prefissi = []
-    if stato_fonte("youtube") == STATO_OK:
-        prefissi.append("ytmsearch:")
-    if stato_fonte("soundcloud") == STATO_OK:
-        prefissi.append("scsearch:")
-    return prefissi
+def _provabile(nome: str) -> bool:
+    """Accesa, con le chiavi (o chiavi su Lavalink) e fuori pausa. Non consuma la prova."""
+    return _si_puo_provare(nome) and not registro.in_pausa(nome)
+
+
+def fonte_di_ricerca_disponibile(nome: str | None) -> bool:
+    """Vero se `nome` è una fonte dove cercare un titolo e oggi si può usare."""
+    return nome in FONTI_DI_RICERCA and _si_puo_provare(nome)
+
+
+def prefissi_ricerca_testo(preferita: str | None = None) -> list[str]:
+    """
+    Dove cercare un titolo senza link: la fonte preferita (se ha un prefisso ed è usabile),
+    poi YouTube Music e SoundCloud (se usabili).
+    """
+    ordine = [n for n in (preferita, "youtube", "soundcloud") if n in PREFISSI_RICERCA]
+    visti: list[str] = []
+    for nome in ordine:
+        if nome not in visti and _provabile(nome):
+            visti.append(nome)
+    return [PREFISSI_RICERCA[n] for n in visti]
 
 
 # --- classificatore dei link ----------------------------------------------
@@ -352,32 +378,174 @@ async def cerca_link(fonte: str, esegui):
     return await _con_circuito(fonte, esegui)
 
 
-async def cerca_testo(testo: str, esegui_con_prefisso):
+async def cerca_testo(testo: str, esegui_con_prefisso, preferita: str | None = None):
     """
-    Cerca un titolo: YouTube Music, poi SoundCloud (al massimo 2 ripieghi, un solo giro).
-    Un risultato vuoto NON è un errore. `esegui_con_prefisso(query)` è una coroutine.
+    Cerca un titolo: prima la fonte preferita, poi YouTube Music e SoundCloud (al massimo 2
+    ripieghi, un solo giro). Un risultato vuoto NON è un errore. `esegui_con_prefisso(query)`
+    è una coroutine.
     """
-    prefissi = prefissi_ricerca_testo()[: MAX_RIPIEGHI + 1]
-    nomi = {"ytmsearch:": "youtube", "scsearch:": "soundcloud"}
+    prefissi = prefissi_ricerca_testo(preferita)[: MAX_RIPIEGHI + 1]
     for prefisso in prefissi:
-        if not registro.puo_provare(nomi[prefisso]):
+        nome = _FONTE_DEL_PREFISSO[prefisso]
+        if not registro.puo_provare(nome):
             continue  # pausa appena finita: la prova è già in corso
         try:
-            return await _con_circuito(nomi[prefisso], lambda p=prefisso: esegui_con_prefisso(p + testo))
+            return await _con_circuito(nome, lambda p=prefisso: esegui_con_prefisso(p + testo))
         except FonteNonRisponde:
             continue
     raise FonteNonRisponde("")
 
 
-def righe_stato() -> list[str]:
-    """Una riga per fonte per /owner radio fonti. Chiavi solo sì/no, errori ripuliti."""
+# --- Deezer: solo metadati ---------------------------------------------------
+# Si legge l'API pubblica (nessun account, nessun cookie, nessuna chiave) e si cerca il brano
+# su un'altra fonte: prima per ISRC, poi per titolo e artista. L'audio non passa da Deezer (D73).
+MAX_BRANI_DEEZER = 10
+MAX_TESTO_METADATO = 150
+_ISRC = re.compile(r"^[A-Z]{2}[A-Z0-9]{3}\d{7}$")
+_P_ID_DEEZER = re.compile(r"^/(?:[a-z]{2}/)?(track|album|playlist|artist)/(\d{1,15})/?$")
+_PERCORSO_DEEZER = {
+    "brano": "track/{id}",
+    "album": "album/{id}/tracks?limit=%d" % MAX_BRANI_DEEZER,
+    "playlist": "playlist/{id}/tracks?limit=%d" % MAX_BRANI_DEEZER,
+    "artista": "artist/{id}/top?limit=%d" % MAX_BRANI_DEEZER,
+}
+
+
+@dataclass(frozen=True)
+class Metadato:
+    titolo: str
+    artista: str
+    isrc: str = ""
+
+
+def id_deezer(testo: str) -> str | None:
+    """L'identificativo numerico di un link Deezer a brano, album, playlist o artista."""
+    try:
+        url = urlparse((testo or "").strip())
+    except ValueError:
+        return None
+    if url.scheme != "https" or (url.hostname or "").lower() not in FONTI["deezer"].domini:
+        return None
+    trovato = _P_ID_DEEZER.match(url.path or "/")
+    return trovato.group(2) if trovato else None
+
+
+def _un_metadato(dati) -> Metadato | None:
+    if not isinstance(dati, dict) or dati.get("error"):
+        return None
+    titolo = str(dati.get("title") or "").strip()[:MAX_TESTO_METADATO]
+    artista = dati.get("artist")
+    artista = str((artista or {}).get("name") or "").strip()[:MAX_TESTO_METADATO] if isinstance(artista, dict) else ""
+    if not titolo:
+        return None
+    isrc = str(dati.get("isrc") or "").strip().upper()
+    return Metadato(titolo, artista, isrc if _ISRC.match(isrc) else "")
+
+
+def interpreta_deezer(tipo: str, dati) -> list[Metadato]:
+    """Dalla risposta dell'API ai metadati: un brano, o fino a 10 brani di album/playlist/artista."""
+    if tipo == "brano":
+        uno = _un_metadato(dati)
+        return [uno] if uno else []
+    elenco = dati.get("data") if isinstance(dati, dict) and not dati.get("error") else None
+    if not isinstance(elenco, list):
+        return []
+    trovati = (_un_metadato(d) for d in elenco[:MAX_BRANI_DEEZER])
+    return [m for m in trovati if m]
+
+
+async def _scarica_json(url: str):
+    """GET di un indirizzo dell'API pubblica di Deezer, con i controlli di `safe_http`.
+
+    Niente cookie né intestazioni di accesso, niente redirect, tetto di byte e timeout.
+    Se la risposta manca o è troppo grande solleva un errore, così il circuito la conta come guasto.
+    """
+    import json
+
+    from core.safe_http import safe_richiesta
+
+    testo = await safe_richiesta(url, max_bytes=MAX_BYTE_RISPOSTA_JSON)
+    if testo is None:
+        raise RuntimeError("Deezer: risposta assente o troppo grande")
+    try:
+        return json.loads(testo)
+    except ValueError as exc:
+        raise RuntimeError("Deezer: risposta non valida") from exc
+
+
+async def metadati_deezer(tipo: str, id_: str) -> list[Metadato]:
+    return interpreta_deezer(tipo, await _scarica_json("https://api.deezer.com/" + _PERCORSO_DEEZER[tipo].format(id=id_)))
+
+
+async def metadati_deezer_ricerca(testo: str) -> list[Metadato]:
+    """Il primo risultato dell'API di ricerca per un titolo scritto da un utente."""
+    from urllib.parse import quote
+
+    dati = await _scarica_json(f"https://api.deezer.com/search?q={quote(testo[:MAX_LUNGHEZZA_LINK])}&limit=1")
+    return interpreta_deezer("album", dati)[:1]
+
+
+def ricerche_da_metadato(m: Metadato) -> list[str]:
+    """Prima l'ISRC (preciso), poi artista e titolo."""
+    ricerche = [f'"{m.isrc}"'] if m.isrc else []
+    ricerche.append(f"{m.artista} {m.titolo}".strip())
+    return ricerche
+
+
+async def risolvi_metadato(m: Metadato, esegui_con_prefisso):
+    """Il primo brano trovato su un'altra fonte per questi metadati, o None."""
+    for ricerca in ricerche_da_metadato(m):
+        trovati = await cerca_testo(ricerca, esegui_con_prefisso)
+        if trovati:
+            return trovati[0]
+    return None
+
+
+async def _risolvi_elenco(metadati: list[Metadato], esegui_con_prefisso) -> list:
+    """Cerca i brani in parallelo (al massimo 3 alla volta). Qualcuno può mancare."""
+    semaforo = asyncio.Semaphore(3)
+
+    async def uno(m: Metadato):
+        async with semaforo:
+            return await risolvi_metadato(m, esegui_con_prefisso)
+
+    esiti = await asyncio.gather(*(uno(m) for m in metadati), return_exceptions=True)
+    tracce = [e for e in esiti if e is not None and not isinstance(e, BaseException)]
+    if not tracce and any(isinstance(e, FonteNonRisponde) for e in esiti):
+        raise FonteNonRisponde("")
+    return tracce
+
+
+async def risolvi_deezer(tipo: str, id_: str, esegui_con_prefisso) -> list:
+    """Un link Deezer: i metadati dall'API pubblica, poi i brani da un'altra fonte. Lista di tracce."""
+    metadati = await cerca_link("deezer", lambda: metadati_deezer(tipo, id_))
+    return await _risolvi_elenco(metadati, esegui_con_prefisso) if metadati else []
+
+
+async def risolvi_titolo_deezer(testo: str, esegui_con_prefisso) -> list:
+    """Un titolo cercato «su Deezer»: il primo risultato dell'API, poi il brano da un'altra fonte."""
+    metadati = await cerca_link("deezer", lambda: metadati_deezer_ricerca(testo))
+    return await _risolvi_elenco(metadati, esegui_con_prefisso) if metadati else []
+
+
+def righe_stato(lingua: str | None = None) -> list[str]:
+    """Una riga per fonte per /owner radio fonti, nella lingua di chi legge. Chiavi solo sì/no."""
+    from core.i18n import t
+
     righe = []
     for nome, fonte in FONTI.items():
         stato = stato_fonte(nome)
-        chiavi = "non servono" if not fonte.chiavi else ("sì" if chiavi_presenti(nome) else "no")
-        riga = f"**{fonte.etichetta}** — {stato.replace('_', ' ')}, chiavi {chiavi}"
+        if stato == STATO_SENZA_CHIAVI and nome in FONTI_CHIAVI_SU_LAVALINK:
+            # Le chiavi stanno su Lavalink: il bot non le vede, ma la fonte si prova lo stesso.
+            righe.append(t("music_stato_chiavi_su_lavalink", lingua, fonte=fonte.etichetta))
+            continue
+        if not fonte.chiavi:
+            chiavi = t("music_chiavi_non_servono", lingua)
+        else:
+            chiavi = t("music_chiavi_si" if chiavi_presenti(nome) else "music_chiavi_no", lingua)
+        riga = t("music_stato_riga", lingua, fonte=fonte.etichetta, stato=t(f"music_stato_{stato}", lingua), chiavi=chiavi)
         errore = registro.ultimo_errore(nome)
         if errore and stato == STATO_IN_PAUSA:
-            riga += f" (ultimo errore: {errore})"
+            riga += " " + t("music_stato_ultimo_errore", lingua, errore=errore)
         righe.append(riga)
     return righe

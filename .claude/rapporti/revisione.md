@@ -557,3 +557,9 @@ Fix fatti da me: minori mai inoltrati (anche con effetto), allegati solo verso c
 ## r24util secondo giro: APPROVATO
 8 punti e 3 bassi corretti. Montaggio all avvio in try/except (errore: log, /owner gia registrato prima, avvio continua). Blacklist fail-open con log: accettabile. 313 test verdi dopo merge di main.
 10/11/2026 · feat/r152img (#152, 7e55abe) · DA SISTEMARE: cogs/security/spam_trap.py:~1095 avatar passato come "avatar.png": WebP/GIF veri (default di Discord) -> tipo_diverso_estensione -> sospetta -> niente avatar nel transcript (usare nome senza estensione) + test con avatar WebP · core/allegati_sicuri.py url_download/leggi_token: chiave vuota accettata (rifiutare), compare_digest su str non ASCII solleva TypeError (isascii) · core/web_panel_server.py: sul sotto-dominio allegati restano raggiungibili anche le altre rotte (basso) · allegati_sicuri._togli/leggi: _percorso() (mkdir/resolve) valutato nel ciclo eventi (basso)
+
+## 10/11/2026 · `feat/r2mus` (#126 B1+B2) · DA SISTEMARE
+- core/music_sources.py `_scarica_json`: aiohttp grezzo, senza tetto di byte, redirect seguiti. Usare `core/safe_http.safe_richiesta` (o `safe_get`) con `max_bytes` piccolo (es. 200_000); `None` = errore, da sollevare perché il circuito lo conti.
+- tests/test_music_f2.py:1030 `_cerca` finto a 3 argomenti: ora `play` ne passa 4 (fonte). Allineare il finto (test rosso).
+- deploy/lavalink/docker-compose.yml: YANDEX_MUSIC_TOKEN e TIDAL_TOKEN ora doppi (righe 25-28). Togliere i doppioni.
+- core/music_sources.py:41 commento «Yandex, Tidal e Deezer: spente di base» ma Deezer è ora nelle FONTI_DI_BASE.

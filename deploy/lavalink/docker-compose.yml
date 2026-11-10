@@ -22,8 +22,8 @@ services:
       - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID:-}
       - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET:-}
       - APPLE_MUSIC_TOKEN=${APPLE_MUSIC_TOKEN:-}
-      - YANDEX_MUSIC_TOKEN=${YANDEX_MUSIC_TOKEN:-}
       - TIDAL_TOKEN=${TIDAL_TOKEN:-}
+      - YANDEX_MUSIC_TOKEN=${YANDEX_MUSIC_TOKEN:-}
     volumes:
       - ./application.yml:/opt/Lavalink/application.yml:ro
       # I plugin scaricati restano tra un riavvio e l'altro.

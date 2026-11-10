@@ -19,6 +19,7 @@ INTESTAZIONE = """\
 #   - password: LAVALINK_PASSWORD
 #   - Spotify: SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET (solo metadati; l'audio arriva da un'altra fonte)
 #   - Apple Music: APPLE_MUSIC_TOKEN (solo metadati)
+#   - Tidal: TIDAL_TOKEN (solo metadati); Yandex Music: YANDEX_MUSIC_TOKEN (spenta di base)
 # Una fonte senza chiavi resta spenta: con chiavi vuote LavaSrc puo' non avviarsi.
 # Deezer non si usa con la chiave di decifrazione (D73).
 # Versioni dei plugin: https://github.com/lavalink-devs/youtube-source/releases
@@ -40,6 +41,8 @@ def genera_application_yml() -> str:
     soundcloud = _vero("soundcloud", accese)
     spotify = _vero("spotify", accese)
     apple = _vero("applemusic", accese)
+    tidal = _vero("tidal", accese)
+    yandex = _vero("yandex", accese)
 
     providers = []
     if youtube:
@@ -92,6 +95,8 @@ def genera_application_yml() -> str:
         f"      spotify: {_booleano(spotify)}",
         f"      applemusic: {_booleano(apple)}",
         "      deezer: false       # mai con la chiave di decifrazione (D73)",
+        f"      tidal: {_booleano(tidal)}",
+        f"      yandexmusic: {_booleano(yandex)}",
     ]
     # Le sezioni ci sono sempre (solo segnaposto): è il flag `sources` che accende la fonte.
     righe += [
@@ -102,6 +107,15 @@ def genera_application_yml() -> str:
         "    applemusic:",
         '      mediaAPIToken: "${APPLE_MUSIC_TOKEN}"',
         '      countryCode: "IT"',
+        "    tidal:",
+        '      token: "${TIDAL_TOKEN}"',
+        '      countryCode: "IT"',
+        "      searchLimit: 6",
+        "    yandexmusic:",
+        '      accessToken: "${YANDEX_MUSIC_TOKEN}"',
+        "      playlistLoadLimit: 1",
+        "      albumLoadLimit: 1",
+        "      artistLoadLimit: 1",
     ]
     righe += ["", "logging:", "  level:", "    root: INFO", "    lavalink: INFO", ""]
     return "\n".join(righe)

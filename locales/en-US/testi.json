@@ -2872,6 +2872,18 @@
   "annuncio_prova_prefisso": "🧪 Test: ",
   "annuncio_prova_inviata": "✅ Test sent to {dove}.",
   "soundboard_ruoli_bloccato": "The sound {suono} is blocked: no role is allowed. Pick a role with \"Allow this role\" to reopen it.",
-  "soundboard_ruoli_bloccato_nota": "The sound stays blocked: no \"allow\" role is left."
+  "soundboard_ruoli_bloccato_nota": "The sound stays blocked: no \"allow\" role is left.",
 
+  "music_stato_riga": "**{fonte}** — {stato}, keys {chiavi}",
+  "music_stato_ok": "ok",
+  "music_stato_spenta": "off",
+  "music_stato_senza_chiavi": "no keys",
+  "music_stato_in_pausa": "paused",
+  "music_chiavi_non_servono": "not needed",
+  "music_chiavi_si": "yes",
+  "music_chiavi_no": "no",
+  "music_stato_ultimo_errore": "(last error: {errore})",
+  "music_stato_chiavi_su_lavalink": "**{fonte}** — the keys are on Lavalink (the bot cannot see them), it is tried anyway",
+  "music_nessun_nodo": "No Lavalink node is connected right now for this music bot. Try again soon; if it keeps happening, tell the bot staff.",
+  "music_nessun_risultato": "No results found for this search."
 }
