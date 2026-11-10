@@ -315,3 +315,19 @@ async def test_la_fonte_di_default_del_server_vale_se_non_si_sceglie():
     cog._cerca.reset_mock()
     await cog._play_nel_canale(1, 2, "x", False, imp, MagicMock(), worker_guild, 3, AsyncMock(), None, "spotify")
     assert cog._cerca.call_args.args[3] == "spotify"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("esito", [None, "{non json"])
+async def test_scarica_json_risposta_assente_o_rotta_e_un_guasto(esito):
+    """Risposta troppo grande/rifiutata (None) o non JSON: solleva, il circuito la conta."""
+    with patch("core.safe_http.safe_richiesta", new=AsyncMock(return_value=esito)) as r:
+        with pytest.raises(RuntimeError):
+            await ms._scarica_json("https://api.deezer.com/track/1")
+    assert r.call_args.kwargs["max_bytes"] == ms.MAX_BYTE_RISPOSTA_JSON <= 256 * 1024
+
+
+@pytest.mark.asyncio
+async def test_scarica_json_legge_il_json_valido():
+    with patch("core.safe_http.safe_richiesta", new=AsyncMock(return_value='{"id": 1}')):
+        assert await ms._scarica_json("https://api.deezer.com/track/1") == {"id": 1}

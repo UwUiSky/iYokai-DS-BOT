@@ -38,7 +38,9 @@ STATO_IN_PAUSA = "in_pausa"
 # non le rifiutiamo, proviamo e vale la risposta di Lavalink.
 FONTI_CHIAVI_SU_LAVALINK = ("spotify", "applemusic")
 
-# Fonti accese se MUSIC_SOURCES_ENABLED non è impostata. Yandex, Tidal e Deezer: spente di base.
+# Fonti accese se MUSIC_SOURCES_ENABLED non è impostata. Yandex e Tidal: spente di base (Deezer è accesa).
+# Tetto di byte per le risposte JSON dell'API pubblica di Deezer.
+MAX_BYTE_RISPOSTA_JSON = 256 * 1024
 FONTI_DI_BASE = (
     "youtube", "soundcloud", "bandcamp", "http", "twitch", "vimeo", "spotify", "applemusic", "deezer",
 )
@@ -453,16 +455,22 @@ def interpreta_deezer(tipo: str, dati) -> list[Metadato]:
 
 
 async def _scarica_json(url: str):
-    """GET di un indirizzo dell'API pubblica di Deezer: nessun cookie, nessuna intestazione di accesso."""
-    import aiohttp
+    """GET di un indirizzo dell'API pubblica di Deezer, con i controlli di `safe_http`.
 
-    async with aiohttp.ClientSession(
-        timeout=aiohttp.ClientTimeout(total=TIMEOUT_SECONDI - 1), cookie_jar=aiohttp.DummyCookieJar()
-    ) as sessione:
-        async with sessione.get(url) as risposta:
-            if risposta.status >= 400:
-                raise RuntimeError(f"Deezer HTTP {risposta.status}")
-            return await risposta.json(content_type=None)
+    Niente cookie né intestazioni di accesso, niente redirect, tetto di byte e timeout.
+    Se la risposta manca o è troppo grande solleva un errore, così il circuito la conta come guasto.
+    """
+    import json
+
+    from core.safe_http import safe_richiesta
+
+    testo = await safe_richiesta(url, max_bytes=MAX_BYTE_RISPOSTA_JSON)
+    if testo is None:
+        raise RuntimeError("Deezer: risposta assente o troppo grande")
+    try:
+        return json.loads(testo)
+    except ValueError as exc:
+        raise RuntimeError("Deezer: risposta non valida") from exc
 
 
 async def metadati_deezer(tipo: str, id_: str) -> list[Metadato]:

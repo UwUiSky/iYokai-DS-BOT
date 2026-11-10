@@ -24,8 +24,6 @@ services:
       - APPLE_MUSIC_TOKEN=${APPLE_MUSIC_TOKEN:-}
       - TIDAL_TOKEN=${TIDAL_TOKEN:-}
       - YANDEX_MUSIC_TOKEN=${YANDEX_MUSIC_TOKEN:-}
-      - YANDEX_MUSIC_TOKEN=${YANDEX_MUSIC_TOKEN:-}
-      - TIDAL_TOKEN=${TIDAL_TOKEN:-}
     volumes:
       - ./application.yml:/opt/Lavalink/application.yml:ro
       # I plugin scaricati restano tra un riavvio e l'altro.
