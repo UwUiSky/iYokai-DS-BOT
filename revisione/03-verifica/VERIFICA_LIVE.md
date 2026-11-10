@@ -1612,3 +1612,8 @@ Serve: log avanzato acceso, evento «messaggi cancellati» acceso, `WEB_ALLEGATI
 - Ticket: proponi una risposta standard da un messaggio staff con foto e PDF: nel canale dei log la foto è un PNG nuovo, il PDF uguale.
 - Spam trap con ban: il transcript ha le miniature; con una foto gigantesca (oltre 16 milioni di pixel) niente miniatura e il bot non rallenta.
 - `/privacy` (richiesta di cancellazione di un utente che aveva foto copiate): le righe di `allegati_copie` spariscono e i file orfani sono tolti entro un'ora. Dopo 30 giorni le copie spariscono da sole.
+
+## Voce di Yokai nei ticket (#142, passo 2)
+- Con motore vocale installato e `/admin-ai voce imposta attiva:sì`: apri un ticket da un pannello. Sotto il benvenuto arriva un vero vocale (forma d'onda) con il tuo nome, tono scherzoso anche se il server ha `piccante`, e sotto i bottoni «Trascrivi» e «Nella mia lingua».
+- Ticket di un nome strano (`x_y_z`): il vocale non dice il nome. Voce spenta o motore assente: nel ticket non arriva nessun vocale né testo in più.
+
