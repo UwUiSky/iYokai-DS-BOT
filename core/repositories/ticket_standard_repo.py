@@ -3,7 +3,8 @@ core/repositories/ticket_standard_repo.py
 =========================================
 Risposte standard dei ticket: proposte dal bot, approvate dallo staff, usate nei
 ticket successivi. Restano nel server dove sono nate (D19).
-Funzioni coperte: SPEC §25.97
+Gli allegati salvati sono solo nome pulito e link del CDN di Discord (D61).
+Funzioni coperte: SPEC §25.97, D61 (#152)
 Tabella: migrazione 0102 (`ticket_standard_replies`).
 """
 
@@ -12,8 +13,11 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import datetime
+from urllib.parse import urlsplit
 
 import asyncpg
+
+from core.immagini_byte_logic import nome_file_sicuro
 
 
 @dataclass(frozen=True)
@@ -34,13 +38,34 @@ class RispostaStandard:
     user_id: int | None = None
 
 
+HOST_CDN = ("cdn.discordapp.com", "media.discordapp.net")
+MAX_ALLEGATI = 10
+
+
+def allegati_validi(allegati) -> list[dict]:
+    """
+    D61: nel database restano solo nome pulito e link https del CDN di Discord (mai un altro sito,
+    ne' un link dentro un nome): chi legge la risposta non puo' essere portato altrove.
+    """
+    puliti = []
+    for a in list(allegati or [])[:MAX_ALLEGATI]:
+        if not isinstance(a, dict):
+            continue
+        url = str(a.get("url", ""))
+        parti = urlsplit(url)
+        if parti.scheme != "https" or (parti.hostname or "").lower() not in HOST_CDN:
+            continue
+        puliti.append({"filename": nome_file_sicuro(str(a.get("filename", ""))), "url": url})
+    return puliti
+
+
 def _risposta(r) -> RispostaStandard:
     allegati = r["attachments"]
     if isinstance(allegati, str):
         allegati = json.loads(allegati)
     return RispostaStandard(
         id=r["id"], guild_id=r["guild_id"], panel_id=r["panel_id"], title=r["title"],
-        keywords=r["keywords"], body=r["body"], attachments=list(allegati or []),
+        keywords=r["keywords"], body=r["body"], attachments=allegati_validi(allegati),
         status=r["status"], source_ticket_number=r["source_ticket_number"],
         approved_by=r["approved_by"], proposal_message_id=r["proposal_message_id"],
         use_count=r["use_count"], created_at=r["created_at"], user_id=r["user_id"],
@@ -77,7 +102,7 @@ class TicketStandardRepository:
     async def imposta_messaggio(self, reply_id: int, message_id: int, allegati: list[dict]) -> None:
         await self._pool.execute(
             "UPDATE ticket_standard_replies SET proposal_message_id = $2, attachments = $3::jsonb WHERE id = $1",
-            reply_id, message_id, json.dumps(allegati),
+            reply_id, message_id, json.dumps(allegati_validi(allegati)),
         )
 
     async def per_id(self, reply_id: int) -> RispostaStandard | None:

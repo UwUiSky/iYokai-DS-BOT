@@ -556,3 +556,4 @@ Fix fatti da me: minori mai inoltrati (anche con effetto), allegati solo verso c
 
 ## r24util secondo giro: APPROVATO
 8 punti e 3 bassi corretti. Montaggio all avvio in try/except (errore: log, /owner gia registrato prima, avvio continua). Blacklist fail-open con log: accettabile. 313 test verdi dopo merge di main.
+10/11/2026 · feat/r152img (#152, 7e55abe) · DA SISTEMARE: cogs/security/spam_trap.py:~1095 avatar passato come "avatar.png": WebP/GIF veri (default di Discord) -> tipo_diverso_estensione -> sospetta -> niente avatar nel transcript (usare nome senza estensione) + test con avatar WebP · core/allegati_sicuri.py url_download/leggi_token: chiave vuota accettata (rifiutare), compare_digest su str non ASCII solleva TypeError (isascii) · core/web_panel_server.py: sul sotto-dominio allegati restano raggiungibili anche le altre rotte (basso) · allegati_sicuri._togli/leggi: _percorso() (mkdir/resolve) valutato nel ciclo eventi (basso)

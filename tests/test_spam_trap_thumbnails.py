@@ -40,6 +40,23 @@ class _FakeAttachment:
         return self._content
 
 
+@pytest.fixture(autouse=True)
+def _processo_a_parte(monkeypatch):
+    """Il processo a parte (sandbox) e' finto: giudica con i controlli veri sui byte e rende i byte come PNG."""
+    from core.immagini_byte_logic import PULITA, controlla_byte
+    from core.immagini_pipeline import EsitoImmagine
+
+    async def analisi(dati, nome, content_type, guild_id):
+        byte = controlla_byte(dati, nome, content_type)
+        if byte.troppo_grande:
+            return EsitoImmagine(PULITA, byte.sha256, non_analizzata="troppo_grande")
+        if byte.tipo is None or byte.verdetto != PULITA:
+            return EsitoImmagine("sospetta", byte.sha256, tuple(m.codice for m in byte.motivi) or ("tipo",))
+        return EsitoImmagine(PULITA, byte.sha256, png=dati)
+
+    monkeypatch.setattr("cogs.security.spam_trap.analizza_immagine", analisi)
+
+
 @pytest.fixture
 def cog():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
@@ -173,3 +190,37 @@ async def test_build_author_avatar_contenuto_corrotto_restituisce_none(cog):
     risultato = await cog._build_author_avatar(utente)
 
     assert risultato is None
+
+
+@pytest.mark.asyncio
+async def test_immagine_enorme_non_si_decodifica_nel_processo_del_bot(cog, monkeypatch):
+    from tests.support import immagini_finte as f
+
+    def mai(*a, **k):
+        raise AssertionError("il bot non deve decodificare i byte dell'utente")
+
+    monkeypatch.setattr("cogs.security.spam_trap.generate_thumbnail", mai)
+    bomba = f.png_dichiarato(30000, 30000)
+    allegato = _FakeAttachment("bomba.png", "image/png", len(bomba), bomba)
+    assert await cog._build_thumbnails([allegato]) == []
+
+
+@pytest.mark.asyncio
+async def test_la_miniatura_parte_dalla_copia_ricodificata_non_dall_originale(cog, monkeypatch):
+    visti = []
+
+    def spia(dati, *a, **k):
+        visti.append(dati)
+        return b"WEBP"
+
+    async def analisi(dati, nome, ct, guild_id):
+        from core.immagini_byte_logic import PULITA
+        from core.immagini_pipeline import EsitoImmagine
+
+        return EsitoImmagine(PULITA, "s", png=b"COPIA-PNG")
+
+    monkeypatch.setattr("cogs.security.spam_trap.generate_thumbnail", spia)
+    monkeypatch.setattr("cogs.security.spam_trap.analizza_immagine", analisi)
+    contenuto = _real_image_bytes()
+    await cog._build_thumbnails([_FakeAttachment("a.png", "image/png", len(contenuto), contenuto)])
+    assert visti == [b"COPIA-PNG"]

@@ -27,11 +27,12 @@ import logging
 import pathlib
 from datetime import datetime, timedelta, timezone
 from itertools import groupby
+from urllib.parse import urlsplit
 
 import jinja2
 from aiohttp import BodyPartReader, MultipartReader, web
 
-from core import alt_detection_logic as verifica, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_editor, web_panel_inviti, web_panel_logic as regole, verify_vpn_logic as vpn_logica
+from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_editor, web_panel_inviti, web_panel_logic as regole, verify_vpn_logic as vpn_logica
 from core.bot_aspetto import MAX_IMMAGINE
 from core.command_access import RuoloAdminNegato
 from core.command_search_logic import cerca
@@ -51,6 +52,7 @@ DIMENSIONE_MASSIMA_CARICAMENTO = MAX_IMMAGINE + 64 * 1024
 MAX_RISULTATI_WIKI = 50
 CHIAVE_UTENTE = web.RequestKey("utente_id", int)
 CHIAVE_TOKEN = web.RequestKey("token", str)
+CHIAVE_DOWNLOAD = web.RequestKey("intestazioni_download", dict)
 LINGUE = (("it", "Italiano"), ("en", "English"))
 ETICHETTE_CATEGORIE = {
     "moderation": "Moderazione", "security": "Sicurezza", "automod": "AutoMod", "logging": "Log",
@@ -106,6 +108,7 @@ def build_app(
     proxy_fidati: frozenset[str] = frozenset(),
     ponte=panel_bridge,
     radio_flusso: str = "",
+    allegati_url: str = "",
 ) -> web.Application:
     """
     `sessioni`: `WebPanelSessionRepository`. `oauth`: oggetto con
@@ -223,12 +226,16 @@ def build_app(
         if in_discord:  # solo qui la pagina può stare in un riquadro di Discord
             risposta.headers.pop("X-Frame-Options", None)
         risposta.headers.update(intestazioni_radio if in_discord else intestazioni)
+        if request.get(CHIAVE_DOWNLOAD):  # il download tiene le sue intestazioni (attachment, sandbox)
+            risposta.headers.update(request[CHIAVE_DOWNLOAD])
         if request.path.startswith("/verifica/"):  # D64: solo qui, lo script che manda il fuso orario
             risposta.headers["Content-Security-Policy"] = regole.CSP_VERIFICA
         return risposta
 
     @web.middleware
     async def sessione(request: web.Request, handler):
+        if request.path.startswith("/allegato/"):  # D61: il download non guarda mai i cookie
+            return await handler(request)
         token = request.cookies.get(cookie_sessione)
         if token and len(token) <= 128:
             utente_id = await sessioni.utente_della_sessione(regole.impronta(token))
@@ -236,6 +243,22 @@ def build_app(
                 request[CHIAVE_UTENTE] = utente_id
                 request[CHIAVE_TOKEN] = token
         return await handler(request)
+
+    # ------------------------------------------- download allegati (D61)
+    host_allegati = urlsplit(allegati_url).netloc.lower() if allegati_url else ""
+
+    async def scarica_allegato(request: web.Request) -> web.StreamResponse:
+        """Solo dal sotto-dominio degli allegati (senza cookie), con link firmato; mai in linea."""
+        if not host_allegati or request.host.lower() != host_allegati:
+            return web.Response(text="Non trovato.", status=404)
+        letto = allegati_sicuri.leggi_token(chiave, request.match_info["token"])
+        copia = await allegati_sicuri.leggi(letto[0], anteprima=letto[1]) if letto else None
+        if copia is None:
+            return web.Response(text="Non trovato.", status=404)
+        nome, dati = copia
+        proprie = allegati_sicuri.intestazioni_download(nome)
+        request[CHIAVE_DOWNLOAD] = proprie
+        return web.Response(body=dati, content_type="application/octet-stream", headers=proprie)
 
     # ---------------------------------------------------------- accesso
     async def stile(request: web.Request) -> web.Response:
@@ -693,6 +716,7 @@ def build_app(
     pagina_radio = web_panel_attivita.registra_rotte(
         app, ambiente=ambiente, client_id=client_id, flusso=radio_flusso, testo_spenta="La radio è spenta."
     )
+    app.router.add_get(r"/allegato/{token:[0-9a-z.]{1,120}}", scarica_allegato)
     app.router.add_get("/", home)
     app.router.add_get("/accedi", accedi)
     app.router.add_get("/callback", callback)

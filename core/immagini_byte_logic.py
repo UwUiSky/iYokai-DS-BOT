@@ -114,6 +114,12 @@ def riconosci_tipo(dati: bytes) -> str | None:
     return None
 
 
+def nome_file_sicuro(nome: str) -> str:
+    """Solo il nome del file, corto e senza caratteri di controllo ne' virgolette (finisce in log e intestazioni)."""
+    pulito = "".join(c for c in (nome or "").replace("\\", "/").split("/")[-1] if c.isprintable() and c not in '"<>')
+    return pulito[:80] or "file"
+
+
 def estensione_di(nome: str) -> str:
     nome = (nome or "").rsplit("/", 1)[-1]
     return nome.rsplit(".", 1)[-1].lower() if "." in nome else ""
