@@ -4,7 +4,7 @@ core/music_settings_logic.py
 Impostazioni musicali per server (issue #126: MUS-047 volume massimo,
 MUS-044 durata massima, MUS-055 restare a coda finita, MUS-059 canale
 vocale permesso, MUS-066 riepilogo, MUS-054 attesa prima di uscire,
-MUS-062 parole vietate nei titoli, MUS-064 solo siti conosciuti). Stanno nella colonna `settings` di
+MUS-062 parole vietate nei titoli, MUS-064 solo siti conosciuti, MUS-012 fonte di ricerca). Stanno nella colonna `settings` di
 guild_config (come le altre impostazioni dei cog: cronologia delle
 modifiche e cancellazione del server gia' coperte). Un solo punto di
 lettura e di scrittura (`load_music_settings`, `save_music_setting`),
@@ -18,6 +18,7 @@ from urllib.parse import urlparse
 
 from core.fun_logic import normalizza_per_filtro
 from core.music_logic import format_duration, truncate_title
+from core.music_sources import FONTI, FONTI_DI_RICERCA
 
 MAX_VOLUME = 200
 MAX_TRACK_MINUTES = 1440  # un giorno: oltre non ha senso un tetto
@@ -41,6 +42,7 @@ SETTING_ALLOWED_CHANNEL = "music_allowed_voice_channel_id"
 SETTING_BANNED_WORDS = "music_banned_words"
 SETTING_IDLE_MINUTES = "music_idle_minutes"
 SETTING_KNOWN_SITES_ONLY = "music_known_sites_only"
+SETTING_DEFAULT_SEARCH = "music_default_search"
 
 
 @dataclass(frozen=True)
@@ -53,6 +55,7 @@ class MusicSettings:
     banned_words: str = ""  # separate da virgola
     idle_minutes: int = 0  # 0 = predefinito (5 minuti)
     known_sites_only: bool = False
+    default_search: str = ""  # fonte dove cercare un titolo; "" = automatica (YouTube, poi SoundCloud)
 
 
 def title_blocked(titolo: str, settings: MusicSettings) -> bool:
@@ -126,8 +129,14 @@ def summary_lines(settings: MusicSettings) -> list[str]:
         f"🎙️ Canale vocale permesso: **{canale}**",
         f"⏳ Attesa prima di uscire: **{f'{settings.idle_minutes} minuti' if settings.idle_minutes else 'predefinita (5 minuti)'}**",
         f"🚫 Parole vietate nei titoli: **{settings.banned_words or 'nessuna'}**",
+        f"🔎 Ricerca di un titolo: **{FONTI[settings.default_search].etichetta if settings.default_search in FONTI else 'automatica (YouTube, poi SoundCloud)'}**",
         f"🌐 Link ammessi: **{'solo siti conosciuti' if settings.known_sites_only else 'tutti i siti sicuri'}**",
     ]
+
+
+def _fonte_valida(valore) -> str:
+    """Una fonte di ricerca nota, altrimenti «automatica» (stringa vuota)."""
+    return valore if isinstance(valore, str) and valore in FONTI_DI_RICERCA else ""
 
 
 async def load_music_settings(database, guild_id: int) -> MusicSettings:
@@ -144,6 +153,7 @@ async def load_music_settings(database, guild_id: int) -> MusicSettings:
         banned_words=str(await get(guild_id, SETTING_BANNED_WORDS, "") or "")[:MAX_PAROLE_VIETATE],
         idle_minutes=max(0, min(MAX_IDLE_MINUTES, int(await get(guild_id, SETTING_IDLE_MINUTES, 0)))),
         known_sites_only=bool(await get(guild_id, SETTING_KNOWN_SITES_ONLY, False)),
+        default_search=_fonte_valida(await get(guild_id, SETTING_DEFAULT_SEARCH, "")),
     )
 
 
