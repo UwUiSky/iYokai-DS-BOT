@@ -1617,3 +1617,10 @@ Serve: log avanzato acceso, evento «messaggi cancellati» acceso, `WEB_ALLEGATI
 - Con motore vocale installato e `/admin-ai voce imposta attiva:sì`: apri un ticket da un pannello. Sotto il benvenuto arriva un vero vocale (forma d'onda) con il tuo nome, tono scherzoso anche se il server ha `piccante`, e sotto i bottoni «Trascrivi» e «Nella mia lingua».
 - Ticket di un nome strano (`x_y_z`): il vocale non dice il nome. Voce spenta o motore assente: nel ticket non arriva nessun vocale né testo in più.
 
+## giro r2liv, B2 — premi dei livelli (#124)
+
+- [ ] `LIV-042` — `/admin-ruoli premio aggiungi` due o tre volte con lo stesso livello: tutti i ruoli restano; il quarto è rifiutato. Salendo a quel livello i ruoli arrivano con una sola modifica.
+- [ ] `LIV-047` — premio con `avvisa_dm:sì`: al level-up arriva un DM con i nomi dei ruoli. Con i DM chiusi nessun errore.
+- [ ] `LIV-043` — togli a mano un ruolo-premio a un membro e fai `/level rank` su di lui: il ruolo torna. Dopo `/admin-livelli azzera server` i ruoli-premio spariscono a lotti; dopo `azzera ripristina` tornano. Metti il ruolo del bot sotto un ruolo-premio: nessun errore, una riga sola nel registro.
+- [ ] `LIV-034/038` — `/admin-livelli annuncio testo:"{utente} è al {livello}!{premio: Ruolo: {ruolo_premio}}" prova:sì`: arriva l'annuncio di prova, nessun ruolo viene notificato; subito dopo una seconda prova è rifiutata (5 minuti). Senza permesso di scrittura del bot nel canale: messaggio chiaro.
+- [ ] B1 — dopo `azzera ripristina` anche la classifica del mese e della settimana ritrova gli XP.

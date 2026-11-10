@@ -86,21 +86,31 @@ def _data(momento: datetime) -> str:
     return f"<t:{int(momento.timestamp())}:d>"
 
 
+_LAVORI: set[asyncio.Task] = set()
+
+
+def _avvia_sincronia(bot, guild: discord.Guild, user_ids) -> None:
+    """Ricontrolla i ruoli-premio dopo un azzeramento o un ripristino, senza far aspettare il comando."""
+    livelli = bot.get_cog("LevelingCog") if bot is not None else None
+    if livelli is None:
+        return
+    lavoro = asyncio.create_task(livelli.sincronizza_server(guild, user_ids))
+    _LAVORI.add(lavoro)
+    lavoro.add_done_callback(_LAVORI.discard)
+
+
 class ModaleAzzeraServer(BaseModal):
     """Il nome del server scritto a mano: nessun clic distratto azzera tutto."""
 
     def __init__(self, titolo: str, etichetta_nome: str, etichetta_motivo: str) -> None:
         super().__init__(title=titolo[:45], timeout=600)
         self._usato = False
-        self.nome = discord.ui.TextInput(
-            label=etichetta_nome[:45], max_length=MAX_NOME_SERVER, min_length=1, required=True
-        )
+        self.nome = discord.ui.TextInput(max_length=MAX_NOME_SERVER, min_length=1, required=True)
         self.motivo = discord.ui.TextInput(
-            label=etichetta_motivo[:45], style=discord.TextStyle.paragraph,
-            max_length=MAX_MOTIVO, required=False,
+            style=discord.TextStyle.paragraph, max_length=MAX_MOTIVO, required=False,
         )
-        self.add_item(self.nome)
-        self.add_item(self.motivo)
+        self.add_item(discord.ui.Label(text=etichetta_nome[:45], component=self.nome))
+        self.add_item(discord.ui.Label(text=etichetta_motivo[:45], component=self.motivo))
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         if self._usato:  # nessun await prima del segno: due invii non passano insieme
@@ -128,6 +138,8 @@ class ModaleAzzeraServer(BaseModal):
             await testo_per(interaction, "azz_server_azzerato", utenti=esito.utenti, copia=esito.copia_id),
             ephemeral=True,
         )
+        # LIV-043: i ruoli-premio seguono i nuovi livelli (a lotti, in sottofondo).
+        _avvia_sincronia(interaction.client, guild, await leveling_copie_repo.ids_copia(guild.id, esito.copia_id))
 
 
 class ConfermaRipristinoView(BaseView):
@@ -171,6 +183,7 @@ class ConfermaRipristinoView(BaseView):
         await interaction.followup.send(
             await testo_per(interaction, "azz_ripristinato", utenti=persone, copia=self.copia_id), ephemeral=True
         )
+        _avvia_sincronia(interaction.client, guild, await leveling_copie_repo.ids_copia(guild.id, self.copia_id))
         try:
             await interaction.edit_original_response(view=None)
         except discord.HTTPException:

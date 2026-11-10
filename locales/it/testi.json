@@ -2862,5 +2862,16 @@
   "soundboard_ruoli_bloccato_nota": "Il suono resta bloccato: manca un ruolo «consenti».",
   "music_fonte_non_attiva": "{fonte} non è attiva su questo bot. Prova un altro link o scrivi il titolo.",
   "music_fonte_non_risponde": "{fonte} non risponde. Riprova tra qualche minuto o scrivi il titolo.",
-  "music_nessun_risultato_ora": "Non trovo questo brano ora. Riprova tra poco."
+  "music_nessun_risultato_ora": "Non trovo questo brano ora. Riprova tra poco.",
+  "premi_dm": "🏅 Nel server **{server}** hai ricevuto: {ruoli}.",
+  "premi_livello_pieno": "Questo livello ha già {massimo} ruoli. Togline uno con `/admin-ruoli premio togli`.",
+  "premi_piu_ruoli_livello_abbonamento": "Più ruoli per lo stesso livello sono una funzione del livello {livello}. Il primo ruolo di ogni livello resta libero.",
+  "annuncio_prova_pausa": "Aspetta ancora {secondi} secondi prima di una nuova prova.",
+  "annuncio_prova_spento": "L'annuncio è spento o senza canale: scegli prima dove annunciare.",
+  "annuncio_prova_permessi": "Non posso scrivere in {canale}: mi servono «Vedere il canale» e «Inviare messaggi».",
+  "annuncio_prova_prefisso": "🧪 Prova: ",
+  "annuncio_prova_inviata": "✅ Prova mandata in {dove}.",
+  "soundboard_ruoli_bloccato": "Il suono {suono} è bloccato: nessun ruolo consentito. Scegli un ruolo con «Consenti a questo ruolo» per riaprirlo.",
+  "soundboard_ruoli_bloccato_nota": "Il suono resta bloccato: manca un ruolo «consenti»."
+
 }

@@ -2125,6 +2125,8 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 09/11 (#124 B1):** `/admin-livelli azzera server` (finestra con il nome del server, copia di sicurezza di 30 giorni, LIV-068/069),
   `azzera ripristina` (conferma; non toglie mai XP, LIV-069), `azzera auto` (azzera chi esce o viene bannato, copia facoltativa; blocco al proprietario di XP a mano e azzeramenti, LIV-070/071),
   `/admin-livelli diagnosi` (perché un membro non prende XP, LIV-075). Migrazione 0581, `core/leveling_azzera_logic.py`, `core/repositories/leveling_copie_repo.py`, `cogs/leveling/azzeramenti.py`; prove in `tests/test_leveling_azzera*.py`.
+  → **Stato 10/11 (#124 B2):** fino a 3 ruoli per livello (LIV-042, Premium solo dal secondo ruolo, di base gratuito: funzione `livelli_piu_ruoli`), ricontrollo dei premi con `sincronizza_premi` da `/level rank`, ingresso e dopo azzera/ripristina (LIV-043, pausa 10 minuti, lotti da 50),
+  DM al premio con `avvisa_dm` (LIV-047), testo dell'annuncio con `{utente} {livello} {server} {ruolo_premio} {premio:...}` (LIV-034), prova con `prova:sì` in `/admin-livelli annuncio` (LIV-038, una ogni 5 minuti). Il ripristino rimette anche gli XP di mese e settimana; copia e azzeramento in una sola istruzione. Migrazione 0582; prove in `tests/test_leveling_premi_b2.py`.
   → **Stato 15/10 (catalogo #124/#125):** `/level premi` elenco pubblico di ruoli-premio e moltiplicatori (LIV-048, LIV-027);
   `/monete attese` con le pause di daily e work (ECO-020); `/level livelli-recenti` con gli ultimi 25 level-up (LIV-039, 0203, anche ad annuncio spento).
   → **Stato 11/10:** `/admin-livelli` (mostra, annuncio, premi, xp,

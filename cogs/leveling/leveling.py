@@ -17,9 +17,11 @@ la permanenza in vocale, non solo quando si entra o si esce.
 
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 import random
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 
@@ -29,7 +31,9 @@ from discord.ext import commands, tasks
 
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo, togli_comandi_del_cog
 from core.database import db
-from core.i18n import lingua_risposta, testo_per
+from core import livelli_funzione
+from core.bounded_cache import BoundedCache
+from core.i18n import lingua_risposta, testo_guild, testo_per
 from core.role_safety import check_role_assignable
 from core.lore_nomi_logic import titolo_livello
 from core.repositories.ai_repo import ai_repo
@@ -142,6 +146,9 @@ from core.leveling_logic import (
     LevelingSettings,
     MAX_NOME_MONETA,
     MAX_REGOLE_PER_TIPO,
+    MAX_RUOLI_PER_LIVELLO,
+    MAX_TESTO_ANNUNCIO,
+    rendi_annuncio,
     colore_valido,
     id_canali_per_le_regole,
     deve_annunciare,
@@ -161,6 +168,13 @@ from core.premium import PremiumModule, registry
 logger = logging.getLogger("iyokai.leveling")
 
 MODULE_LEVELING = "leveling"
+
+# LIV-043: un membro si ricontrolla al massimo ogni 10 minuti; i lavori su molti membri vanno a lotti.
+SECONDI_PAUSA_SINCRONIA = 600
+LOTTO_SINCRONIA = 50
+SECONDI_TRA_LOTTI = 2
+# LIV-038: una prova dell'annuncio ogni 5 minuti per server.
+SECONDI_PAUSA_PROVA = 300
 
 # Solo questi tipi di messaggio danno XP: quelli scritti da una persona.
 TIPI_DI_MESSAGGIO_CON_XP = (discord.MessageType.default, discord.MessageType.reply)
@@ -697,15 +711,24 @@ class LevelingCog(CogConGruppi, commands.Cog):
         except Exception:
             logger.warning("Level-up di %s non registrato nel server %s.", member.id, guild.id)
         ha_premio = False
-        if impostazioni.levelup_only_rewards:
+        ruoli_premio: list[str] = []
+        if impostazioni.levelup_only_rewards or impostazioni.levelup_testo:
             premi = await level_reward_repo.get_rewards_up_to_level(guild.id, new_level)
             # Con un salto di più livelli conta il premio di qualunque livello saltato.
             prima = new_level - 1 if livello_precedente is None else min(livello_precedente, new_level - 1)
-            ha_premio = any(prima < r.level_threshold <= new_level for r in premi)
+            dati = [r for r in premi if prima < r.level_threshold <= new_level]
+            ha_premio = bool(dati)
+            ruoli_premio = [f"<@&{r.role_id}>" for r in dati]
         if not deve_annunciare(new_level, impostazioni, ha_premio, livello_precedente):
             return
 
-        testo = f"🎉 {member.mention} è salito al livello **{new_level}**!"
+        if impostazioni.levelup_testo:  # LIV-034
+            testo = rendi_annuncio(
+                impostazioni.levelup_testo, utente=member.mention, livello=new_level,
+                server=guild.name, ruoli_premio=ruoli_premio,
+            )
+        else:
+            testo = f"🎉 {member.mention} è salito al livello **{new_level}**!"
         if impostazioni.levelup_mode == "dm":
             destinazione = member
         elif impostazioni.levelup_mode == "canale_scelto":
@@ -715,7 +738,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
         if destinazione is None:
             return
         try:
-            await destinazione.send(testo)
+            # Si menziona solo chi è salito di livello: mai ruoli, mai @everyone.
+            await destinazione.send(
+                testo, allowed_mentions=discord.AllowedMentions(users=[member], roles=False, everyone=False)
+            )
         except discord.HTTPException:
             pass
 
@@ -727,6 +753,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         modo: str = "accumula",
         togli_superiori: bool = False,
         esecutore: discord.Member | None = None,
+        avvisa: bool = False,
     ) -> bool:
         """
         Vero se i ruoli sono a posto, falso se Discord ha rifiutato la modifica.
@@ -748,6 +775,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
         `esecutore` (modifica a mano dello staff): chi ha lanciato il comando
         non può far dare o togliere ruoli più in alto del suo (a meno che
         non sia il proprietario del server): vale per assegnare e togliere.
+
+        `avvisa` (LIV-047): manda il DM ai ruoli dati che lo chiedono; si usa quando si sale di
+        livello, non nel ricontrollo. Un DM chiuso si ignora. Senza il permesso «Gestisci ruoli»
+        il bot salta tutto e lo scrive nel registro una volta sola per server.
         """
         def fuori_gerarchia(ruolo: discord.Role) -> bool:
             return (
@@ -777,6 +808,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             if ruolo is None:
                 continue
             if check_role_assignable(guild, ruolo, guild.me, self_service=True) is not None:
+                self._avvisa_una_volta(guild.id, ruolo.id, "Ruolo-premio %s non assegnabile (gerarchia o permessi).")
                 continue
             if fuori_gerarchia(ruolo):
                 continue
@@ -803,6 +835,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 continue
             da_togliere_sempre.append(ruolo)
 
+        if (da_assegnare or da_togliere or da_togliere_sempre) and not guild.me.guild_permissions.manage_roles:
+            self._avvisa_una_volta(guild.id, 0, "Al bot manca «Gestisci ruoli»: ruoli-premio %s saltati.")
+            return False
+
         # "Sostituisci": i vecchi ruoli si tolgono SOLO se il nuovo è arrivato
         # (o c'era già). Un ruolo nuovo non assegnabile non lascia il membro
         # senza nessun ruolo-premio.
@@ -828,7 +864,85 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 "Impossibile aggiornare i ruoli-premio di %s nel server %s.", member.id, guild.id
             )
             return False
+        if avvisa and da_assegnare:
+            await self._avvisa_in_dm(member, guild, da_assegnare, ricompense)
         return True
+
+    def _avvisa_una_volta(self, guild_id: int, ruolo_id: int, messaggio: str) -> None:
+        """Un problema di ruoli (gerarchia, permesso) si scrive nel registro una volta sola per server e ruolo."""
+        visti = self.__dict__.setdefault("_problemi_ruoli", BoundedCache(max_size=5_000))
+        if (guild_id, ruolo_id) in visti:
+            return
+        visti.set((guild_id, ruolo_id), True)
+        logger.warning(messaggio + " Server %s.", ruolo_id or guild_id, guild_id)
+
+    async def _avvisa_in_dm(self, member, guild, dati: list, ricompense: list) -> None:
+        """LIV-047: DM per i ruoli appena dati che lo chiedono. DM chiusi: si ignora, mai un secondo tentativo."""
+        vogliono = {r.role_id for r in ricompense if r.avvisa_dm}
+        nomi = [ruolo.name for ruolo in dati if ruolo.id in vogliono]
+        if not nomi:
+            return
+        testo = await testo_guild(guild, "premi_dm", server=taglia(guild.name, 100), ruoli=", ".join(nomi))
+        try:
+            await member.send(testo[:2000])
+        except discord.HTTPException:
+            logger.info("Avviso del ruolo-premio non mandato a %s: DM chiusi.", member.id)
+
+    async def sincronizza_premi(self, guild, member, forza: bool = False):
+        """
+        LIV-043: rimette a posto i ruoli-premio di un membro in base al suo livello (dà quelli
+        raggiunti, toglie gli altri). Al massimo una volta ogni 10 minuti per membro, salvo `forza`.
+        None = in pausa o bot; altrimenti l'esito di `_grant_level_rewards`.
+        """
+        if getattr(member, "bot", False):
+            return None
+        visti = self.__dict__.setdefault("_sincronia", BoundedCache(max_size=20_000))
+        chiave = (guild.id, member.id)
+        adesso = time.monotonic()
+        ultima = visti.get(chiave)
+        if not forza and ultima is not None and adesso - ultima < SECONDI_PAUSA_SINCRONIA:
+            return None
+        visti.set(chiave, adesso)
+        impostazioni = (await self._config(guild.id)).impostazioni
+        livello = (await leveling_repo.get_totals(guild.id, member.id)).level
+        return await self._grant_level_rewards(
+            member, guild, livello, impostazioni.reward_mode, togli_superiori=True
+        )
+
+    async def sincronizza_server(self, guild, user_ids=()) -> int:
+        """
+        LIV-043: ricontrolla i premi di chi tiene un ruolo-premio e delle persone indicate (dopo un
+        azzeramento o un ripristino). A lotti di 50 con pausa: niente raffiche verso Discord.
+        Restituisce quanti membri ha controllato.
+        """
+        membri: dict[int, discord.Member] = {}
+        for premio in await level_reward_repo.list_rewards(guild.id):
+            ruolo = guild.get_role(premio.role_id)
+            for m in getattr(ruolo, "members", []) or []:
+                membri[m.id] = m
+        for uid in user_ids:
+            if uid not in membri and (m := guild.get_member(uid)) is not None:
+                membri[uid] = m
+        elenco = list(membri.values())
+        for inizio in range(0, len(elenco), LOTTO_SINCRONIA):
+            for m in elenco[inizio:inizio + LOTTO_SINCRONIA]:
+                try:
+                    await self.sincronizza_premi(guild, m, forza=True)
+                except Exception:
+                    logger.warning("Premi di %s non ricontrollati nel server %s.", m.id, guild.id, exc_info=True)
+            if inizio + LOTTO_SINCRONIA < len(elenco):
+                await asyncio.sleep(SECONDI_TRA_LOTTI)
+        return len(elenco)
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member) -> None:
+        """LIV-043: chi rientra riprende i suoi ruoli-premio (se il modulo è acceso)."""
+        try:
+            if member.bot or not await db.is_module_active_for_guild(member.guild.id, MODULE_LEVELING):
+                return
+            await self.sincronizza_premi(member.guild, member)
+        except Exception:
+            logger.warning("Premi di %s non ricontrollati all'ingresso.", member.id, exc_info=True)
 
     class DropClaimView(BaseView):
         """
@@ -894,7 +1008,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 impostazioni, risultato.previous_level,
             )
             await self._grant_level_rewards(
-                message.author, message.guild, risultato.new_level, impostazioni.reward_mode
+                message.author, message.guild, risultato.new_level, impostazioni.reward_mode, avvisa=True
             )
 
     @commands.Cog.listener()
@@ -1064,7 +1178,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 grant.previous_level,
             )
             await self._grant_level_rewards(
-                member, guild, grant.new_level, config.impostazioni.reward_mode
+                member, guild, grant.new_level, config.impostazioni.reward_mode, avvisa=True
             )
 
     # ================================================================
@@ -1125,6 +1239,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 await leveling_repo.set_rank_card_prefs(
                     target.id, colore=esadecimale, tema=tema.value if tema else None
                 )
+
+        if isinstance(target, discord.Member):  # LIV-043: chi guarda la card ricontrolla i suoi premi
+            try:
+                await self.sincronizza_premi(interaction.guild, target)
+            except Exception:
+                logger.warning("Premi di %s non ricontrollati da /level rank.", target.id, exc_info=True)
 
         totali = await leveling_repo.get_totals(interaction.guild.id, target.id)
         posizione = await leveling_repo.get_xp_position(interaction.guild.id, target.id)
@@ -1529,10 +1649,16 @@ class LevelingCog(CogConGruppi, commands.Cog):
         sottogruppo=SOTTOGRUPPI["admin-ruoli premio"],
     )
     @app_commands.describe(
-        level="Livello richiesto", role="Ruolo da assegnare al raggiungimento"
+        level="Livello richiesto",
+        role="Ruolo da assegnare al raggiungimento (fino a 3 per livello)",
+        avvisa_dm="Manda un messaggio privato a chi riceve il ruolo",
     )
     async def level_roles_add(
-        self, interaction: discord.Interaction, level: app_commands.Range[int, 1, 1000], role: discord.Role
+        self,
+        interaction: discord.Interaction,
+        level: app_commands.Range[int, 1, 1000],
+        role: discord.Role,
+        avvisa_dm: bool = False,
     ) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
@@ -1546,7 +1672,23 @@ class LevelingCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(motivo_rifiuto, ephemeral=True)
             return
 
-        await level_reward_repo.add_reward(guild.id, level_threshold=level, role_id=role.id)
+        # LIV-042: il primo ruolo di un livello è libero; dal secondo vale il livello di abbonamento.
+        gia = [r for r in await level_reward_repo.list_rewards(guild.id) if r.level_threshold == level]
+        if gia and role.id not in {r.role_id for r in gia}:
+            livello_abb = livelli_funzione.livello_di("livelli_piu_ruoli")
+            if not await livelli_funzione.ha_livello(interaction, livello_abb, "livelli_piu_ruoli"):
+                await interaction.response.send_message(
+                    await testo_per(interaction, "premi_piu_ruoli_livello_abbonamento",
+                                    livello=livelli_funzione.ETICHETTE[livello_abb]),
+                    ephemeral=True,
+                )
+                return
+        esito = await level_reward_repo.add_reward(guild.id, level_threshold=level, role_id=role.id, avvisa_dm=avvisa_dm)
+        if esito is None:
+            await interaction.response.send_message(
+                await testo_per(interaction, "premi_livello_pieno", massimo=MAX_RUOLI_PER_LIVELLO), ephemeral=True
+            )
+            return
         await interaction.response.send_message(
             await testo_per(interaction, "leveling_chi_raggiunge_il_livello_ricevera", level=level, mention=role.mention),
             ephemeral=True,
@@ -3399,6 +3541,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         livello_minimo="Non annunciare sotto questo livello",
         ogni="Annuncia solo ogni N livelli (5 = ai livelli 5, 10, 15...)",
         solo_premi="Annuncia solo i livelli che danno un ruolo-premio",
+        testo="Il tuo testo: {utente} {livello} {server} {ruolo_premio} {premio:testo solo se c'è un ruolo}",
+        testo_base="Sì = torna al testo di iYokai",
+        prova="Sì = manda subito un annuncio di prova (una prova ogni 5 minuti)",
     )
     @app_commands.choices(modo=_SCELTE_ANNUNCIO)
     async def impostazioni_annuncio(
@@ -3409,10 +3554,17 @@ class LevelingCog(CogConGruppi, commands.Cog):
         livello_minimo: app_commands.Range[int, 0, 1000] | None = None,
         ogni: app_commands.Range[int, 1, 100] | None = None,
         solo_premi: bool | None = None,
+        testo: app_commands.Range[str, 1, MAX_TESTO_ANNUNCIO] | None = None,
+        testo_base: bool | None = None,
+        prova: bool | None = None,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
         campi = {}
+        if testo is not None:
+            campi["levelup_testo"] = testo
+        elif testo_base:
+            campi["levelup_testo"] = ""
         if modo is not None:
             campi["levelup_mode"] = modo.value
         if canale is not None:
@@ -3423,7 +3575,75 @@ class LevelingCog(CogConGruppi, commands.Cog):
             campi["levelup_every"] = ogni
         if solo_premi is not None:
             campi["levelup_only_rewards"] = solo_premi
+        if prova:
+            await self._prova_annuncio(interaction, campi)
+            return
         await self._salva_impostazioni(interaction, campi)
+
+    async def _prova_annuncio(self, interaction: discord.Interaction, campi: dict) -> None:
+        """LIV-038: salva le novità (se ci sono) e manda un annuncio finto dove andrebbe quello vero."""
+        guild = interaction.guild
+        prove = self.__dict__.setdefault("_prove", BoundedCache(max_size=5_000))
+        ultima = prove.get(guild.id)
+        if ultima is not None and time.monotonic() - ultima < SECONDI_PAUSA_PROVA:
+            resto = int(SECONDI_PAUSA_PROVA - (time.monotonic() - ultima))
+            await interaction.response.send_message(
+                await testo_per(interaction, "annuncio_prova_pausa", secondi=resto), ephemeral=True
+            )
+            return
+        if campi:
+            try:
+                await leveling_settings_repo.set_options(guild.id, **campi)
+            except ValueError as errore:
+                await interaction.response.send_message(f"❌ {errore}", ephemeral=True)
+                return
+        i = (await leveling_settings_repo.get_config(guild.id, fresco=True)).impostazioni
+        if i.levelup_mode == "spento":
+            await interaction.response.send_message(await testo_per(interaction, "annuncio_prova_spento"), ephemeral=True)
+            return
+        if i.levelup_mode == "dm":
+            destinazione = interaction.user
+        elif i.levelup_mode == "canale_scelto":
+            destinazione = guild.get_channel(i.levelup_channel_id or 0)
+        else:
+            destinazione = interaction.channel
+        if destinazione is None:
+            await interaction.response.send_message(await testo_per(interaction, "annuncio_prova_spento"), ephemeral=True)
+            return
+        if not isinstance(destinazione, discord.abc.User):
+            permessi = destinazione.permissions_for(guild.me)
+            if not (permessi.view_channel and permessi.send_messages):
+                await interaction.response.send_message(
+                    await testo_per(interaction, "annuncio_prova_permessi", canale=destinazione.mention), ephemeral=True
+                )
+                return
+        prove.set(guild.id, time.monotonic())
+        livello = max(1, i.levelup_min_level)
+        premi = [p for p in await level_reward_repo.list_rewards(guild.id) if p.level_threshold <= livello]
+        ruoli = [f"<@&{premi[0].role_id}>"] if premi else ["`ruolo di esempio`"]
+        if i.levelup_testo:
+            corpo = rendi_annuncio(
+                i.levelup_testo, utente=interaction.user.mention, livello=livello,
+                server=guild.name, ruoli_premio=ruoli,
+            )
+        else:
+            corpo = f"🎉 {interaction.user.mention} è salito al livello **{livello}**!"
+        prefisso = await testo_guild(guild, "annuncio_prova_prefisso")
+        try:
+            await destinazione.send(
+                (prefisso + corpo)[:2000],
+                allowed_mentions=discord.AllowedMentions(users=[interaction.user], roles=False, everyone=False),
+            )
+        except discord.HTTPException:
+            await interaction.response.send_message(
+                await testo_per(interaction, "annuncio_prova_permessi", canale=getattr(destinazione, "mention", "DM")),
+                ephemeral=True,
+            )
+            return
+        await interaction.response.send_message(
+            await testo_per(interaction, "annuncio_prova_inviata", dove=getattr(destinazione, "mention", "DM")),
+            ephemeral=True,
+        )
 
     @comando_di_gruppo(
         "admin-livelli",

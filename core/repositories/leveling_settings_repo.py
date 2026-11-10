@@ -21,6 +21,7 @@ from core.leveling_logic import (
     FATTORE_MINIMO,
     LIMITI_IMPOSTAZIONI,
     MAX_REGOLE_PER_TIPO,
+    MAX_TESTO_ANNUNCIO,
     MODI_ANNUNCIO,
     MODI_AZZERA_SU,
     MODI_MOLTIPLICATORI,
@@ -126,6 +127,8 @@ class LevelingSettingsRepository:
                     raise ValueError(f"{nome} deve stare tra {minimo} e {massimo}.")
             if nome in _MODI and valore not in _MODI[nome]:
                 raise ValueError(f"Valore non valido per {nome}: {valore}")
+            if nome == "levelup_testo" and (not isinstance(valore, str) or len(valore) > MAX_TESTO_ANNUNCIO):
+                raise ValueError(f"Il testo dell'annuncio può avere al massimo {MAX_TESTO_ANNUNCIO} caratteri.")
             if nome == "currency_name":
                 campi[nome] = nome_moneta_valido(valore)
 

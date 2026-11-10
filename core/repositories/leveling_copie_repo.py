@@ -61,39 +61,55 @@ class LevelingCopieRepository:
         )
 
     async def _scrivi_copia(self, conn, guild_id, tipo, autore_id, motivo, utente_id=None) -> tuple[int, int]:
-        """Copia le righe con XP e azzera, nella transazione di chi chiama. (id copia, utenti) o (0, 0)."""
+        """
+        Copia le righe con XP e le azzera nella stessa istruzione, nella transazione di chi chiama:
+        le righe sono bloccate (`FOR UPDATE`), quindi nessun XP guadagnato nel frattempo va perso.
+        (id copia, utenti) o (0, 0).
+        """
         filtro_utente = "" if utente_id is None else "AND user_id = $2"
         argomenti = (guild_id,) if utente_id is None else (guild_id, utente_id)
+        copia_id = await conn.fetchval(
+            "INSERT INTO leveling_copie (guild_id, tipo, scade_il, autore_id, motivo, righe) "
+            "VALUES ($1, $2, now() + make_interval(days => $3), $4, $5, 0) RETURNING id",
+            guild_id, tipo, GIORNI_COPIA, autore_id, motivo[:MAX_MOTIVO],
+        )
+        # Nessun parametro per riga: con 100.000 membri una sola istruzione.
         presenti = await conn.fetchval(
-            f"SELECT count(*) FROM leveling_totals WHERE guild_id = $1 {filtro_utente} "
-            "AND (xp_total > 0 OR level > 0)",
+            "WITH vecchi AS (SELECT user_id, xp_total, level FROM leveling_totals "
+            f"WHERE guild_id = $1 {filtro_utente} AND (xp_total > 0 OR level > 0) ORDER BY user_id FOR UPDATE), "
+            "az AS (UPDATE leveling_totals t SET xp_total = 0, level = 0 FROM vecchi v "
+            "WHERE t.guild_id = $1 AND t.user_id = v.user_id RETURNING v.user_id, v.xp_total, v.level), "
+            "ins AS (INSERT INTO leveling_copie_righe (copia_id, user_id, xp_total, level) "
+            f"SELECT {int(copia_id)}, user_id, xp_total, level FROM az RETURNING 1) "
+            "SELECT count(*) FROM ins",
             *argomenti,
         )
         if not presenti:
+            await conn.execute("DELETE FROM leveling_copie WHERE id = $1", copia_id)
             return 0, 0
-        copia_id = await conn.fetchval(
-            "INSERT INTO leveling_copie (guild_id, tipo, scade_il, autore_id, motivo, righe) "
-            "VALUES ($1, $2, now() + make_interval(days => $3), $4, $5, $6) RETURNING id",
-            guild_id, tipo, GIORNI_COPIA, autore_id, motivo[:MAX_MOTIVO], presenti,
-        )
-        # Nessun parametro per riga: con 100.000 membri una sola istruzione.
-        await conn.execute(
-            "INSERT INTO leveling_copie_righe (copia_id, user_id, xp_total, level) "
-            f"SELECT {int(copia_id)}, user_id, xp_total, level FROM leveling_totals "
-            f"WHERE guild_id = $1 {filtro_utente} AND (xp_total > 0 OR level > 0)",
-            *argomenti,
-        )
-        await conn.execute(
-            "UPDATE leveling_totals SET xp_total = 0, level = 0 "
-            f"WHERE guild_id = $1 {filtro_utente} AND (xp_total > 0 OR level > 0)",
-            *argomenti,
-        )
-        await self._azzera_attivita(conn, *argomenti)
+        await conn.execute("UPDATE leveling_copie SET righe = $2 WHERE id = $1", copia_id, presenti)
+        await self._copia_e_azzera_attivita(conn, copia_id, *argomenti)
         return copia_id, presenti
 
     @staticmethod
+    async def _copia_e_azzera_attivita(conn, copia_id: int, guild_id: int, user_id: int | None = None) -> None:
+        """Copia e azzera gli XP di mese e settimana (classifiche a periodo); le monete restano."""
+        filtro = "" if user_id is None else "AND user_id = $2"
+        argomenti = (guild_id,) if user_id is None else (guild_id, user_id)
+        await conn.execute(
+            "WITH vecchi AS (SELECT user_id, period_key, xp FROM leveling_activity "
+            f"WHERE guild_id = $1 {filtro} AND xp > 0 ORDER BY user_id, period_key FOR UPDATE), "
+            "az AS (UPDATE leveling_activity a SET xp = 0 FROM vecchi v WHERE a.guild_id = $1 "
+            "AND a.user_id = v.user_id AND a.period_key = v.period_key "
+            "RETURNING v.user_id, v.period_key, v.xp) "
+            "INSERT INTO leveling_copie_attivita (copia_id, user_id, period_key, xp) "
+            f"SELECT {int(copia_id)}, user_id, period_key, xp FROM az",
+            *argomenti,
+        )
+
+    @staticmethod
     async def _azzera_attivita(conn, guild_id: int, user_id: int | None = None) -> None:
-        """Azzera gli XP di mese e settimana (classifiche a periodo); le monete restano."""
+        """Azzera gli XP di mese e settimana senza copia (azzeramento di chi se ne va, senza copia)."""
         filtro = "" if user_id is None else "AND user_id = $2"
         argomenti = (guild_id,) if user_id is None else (guild_id, user_id)
         await conn.execute(
@@ -174,7 +190,24 @@ class LevelingCopieRepository:
                     "WHERE EXCLUDED.xp_total > t.xp_total",
                     guild_id, copia_id,
                 )
+                # Anche gli XP di mese e settimana: stessa regola, non toglie mai.
+                await conn.execute(
+                    "INSERT INTO leveling_activity AS a (guild_id, user_id, period_key, xp) "
+                    "SELECT $1, user_id, period_key, xp FROM leveling_copie_attivita WHERE copia_id = $2 "
+                    "ON CONFLICT (guild_id, user_id, period_key) DO UPDATE SET xp = EXCLUDED.xp "
+                    "WHERE EXCLUDED.xp > a.xp",
+                    guild_id, copia_id,
+                )
         return righe
+
+    async def ids_copia(self, guild_id: int, copia_id: int) -> list[int]:
+        """Le persone della copia (al massimo 100.000), per rimettere a posto i loro ruoli-premio."""
+        righe = await self._pool.fetch(
+            "SELECT r.user_id FROM leveling_copie_righe r JOIN leveling_copie c ON c.id = r.copia_id "
+            "WHERE r.copia_id = $1 AND c.guild_id = $2 LIMIT 100000",
+            copia_id, guild_id,
+        )
+        return [r["user_id"] for r in righe]
 
 
 def _get_pool():

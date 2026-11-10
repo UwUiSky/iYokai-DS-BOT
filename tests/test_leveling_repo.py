@@ -129,7 +129,7 @@ async def test_add_voice_minute_rollover_giornaliero(repo, clean_db):
         INSERT INTO leveling_totals (guild_id, user_id, voice_minutes_today, voice_activity_date)
         VALUES (100, 1, 300, $1)
         """,
-        date.today() - timedelta(days=1),
+        datetime.now(timezone.utc).date() - timedelta(days=1),  # giorno in UTC, come la produzione
     )
     await _minuto(repo, 1, 5000, True)
     row = await clean_db.fetchrow(

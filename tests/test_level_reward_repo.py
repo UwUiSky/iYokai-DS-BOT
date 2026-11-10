@@ -25,13 +25,12 @@ async def test_add_reward_e_list_rewards(repo):
 
 
 @pytest.mark.asyncio
-async def test_add_reward_stesso_livello_due_volte_sostituisce_il_ruolo(repo):
+async def test_add_reward_stesso_livello_due_ruoli_li_tiene_entrambi(repo):
     await repo.add_reward(100, level_threshold=5, role_id=111)
-    await repo.add_reward(100, level_threshold=5, role_id=222)  # stesso livello, ruolo diverso
+    await repo.add_reward(100, level_threshold=5, role_id=222)  # LIV-042: stesso livello, ruolo diverso
 
     ricompense = await repo.list_rewards(100)
-    assert len(ricompense) == 1  # non due righe per lo stesso livello
-    assert ricompense[0].role_id == 222
+    assert [r.role_id for r in ricompense] == [111, 222]
 
 
 @pytest.mark.asyncio

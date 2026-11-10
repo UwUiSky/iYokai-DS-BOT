@@ -49,10 +49,12 @@ def _comando(cog, nome):
 
 
 def _inter(utente=STAFF, permessi=GESTORE, canale=None, nome="Casa Yokai"):
-    return fake_interaction(
+    inter = fake_interaction(
         guild=fake_guild(GUILD, nome, owner_id=OWNER), user=fake_member(utente),
         permissions=permessi, channel=canale,
     )
+    inter.client = None  # nessun bot: la sincronia dei ruoli-premio non parte
+    return inter
 
 
 async def _xp(utente, punti):
@@ -102,7 +104,7 @@ async def test_la_finestra_si_apre_e_chiede_il_nome(cog):
     modale = inter.response.send_modal.await_args.args[0]
     assert modale.nome.max_length == 100 and modale.nome.required
     assert modale.motivo.max_length == 512 and not modale.motivo.required
-    assert len(modale.title) <= 45 and len(modale.nome.label) <= 45
+    assert len(modale.title) <= 45 and all(len(c.text) <= 45 for c in modale.children)
 
 
 @pytest.mark.asyncio
@@ -390,3 +392,63 @@ async def test_diagnosi_blacklist(cog, monkeypatch):
     inter = _inter()
     await _comando(cog, "admin-livelli diagnosi").callback(cog, inter, membro, None)
     assert "bloccati" in inter.followup.send.await_args.kwargs["embed"].description
+
+
+# ---------------------------------------------------------------- B2: ruoli-premio dopo azzera e ripristina
+def _con_leveling():
+    """Il bot finto con un cog dei livelli che registra le chiamate di sincronia."""
+    sincronia = AsyncMock()
+    livelli = MagicMock()
+    livelli.sincronizza_server = sincronia
+    bot = MagicMock()
+    bot.get_cog = lambda nome: livelli if nome == "LevelingCog" else None
+    return bot, sincronia
+
+
+async def _lascia_girare():
+    for _ in range(5):
+        await asyncio.sleep(0)
+
+
+@pytest.mark.asyncio
+async def test_dopo_l_azzeramento_i_premi_si_ricontrollano_per_chi_era_nella_copia(cog):
+    await _xp(1, 300)
+    await _xp(2, 50)
+    bot, sincronia = _con_leveling()
+    inter = _inter()
+    inter.client = bot
+    await _modale("Casa Yokai").on_submit(inter)
+    await _lascia_girare()
+    sincronia.assert_awaited_once()
+    assert sincronia.await_args.args[0] is inter.guild
+    assert sorted(sincronia.await_args.args[1]) == [1, 2]
+
+
+@pytest.mark.asyncio
+async def test_dopo_il_ripristino_i_premi_si_ricontrollano(cog):
+    await _xp(1, 300)
+    esito = await leveling_copie_repo.azzera_server(GUILD, STAFF, "")
+    bot, sincronia = _con_leveling()
+    clic = _inter()
+    clic.client = bot
+    clic.response.defer.side_effect = lambda **k: setattr(clic.response.is_done, "return_value", True)
+    await ConfermaRipristinoView(STAFF, esito.copia_id).conferma.callback(clic)
+    await _lascia_girare()
+    assert sincronia.await_args.args[1] == [1]
+
+
+@pytest.mark.asyncio
+async def test_senza_azzeramento_nessuna_sincronia(cog):
+    bot, sincronia = _con_leveling()
+    inter = _inter()
+    inter.client = bot
+    await _modale("Casa Yokai").on_submit(inter)  # niente XP: niente da azzerare
+    await _lascia_girare()
+    sincronia.assert_not_awaited()
+
+
+def test_il_modale_usa_le_etichette_nuove_e_non_quelle_deprecate():
+    m = ModaleAzzeraServer("t", "nome", "motivo")
+    etichette = [c for c in m.children if isinstance(c, discord.ui.Label)]
+    assert [e.text for e in etichette] == ["nome", "motivo"]
+    assert not any(isinstance(c, discord.ui.TextInput) and c.label for c in m.children)

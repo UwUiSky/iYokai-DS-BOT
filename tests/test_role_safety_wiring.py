@@ -55,7 +55,7 @@ def _interazione_admin_con_ruolo_pericoloso():
     pericoloso (self_service=True) — esattamente il caso che
     SEC-4/SEC-17 vuole coprire nei comandi di configurazione.
     """
-    bot_member = fake_member(user_id=999, name="Yokai Bot", bot=True)
+    bot_member = fake_member(user_id=999, name="Yokai Bot", guild_permissions=discord.Permissions(manage_roles=True), bot=True)
     ruolo_bot = fake_role(role_id=100, name="Yokai Bot", position=50)
     bot_member.top_role = ruolo_bot
 
@@ -210,7 +210,7 @@ class _Scena:
     """
 
     def __init__(self) -> None:
-        bot_member = fake_member(user_id=999, name="Yokai Bot", bot=True)
+        bot_member = fake_member(user_id=999, name="Yokai Bot", guild_permissions=discord.Permissions(manage_roles=True), bot=True)
         bot_member.top_role = fake_role(role_id=100, name="Yokai Bot", position=50)
         self.server = fake_guild(guild_id=ID_SERVER, owner_id=1, me=bot_member)
 
