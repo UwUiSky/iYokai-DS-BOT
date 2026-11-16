@@ -246,3 +246,14 @@ async def test_nuovo_brano_con_mescola_fisso_entra_a_caso():
         await cog._aggiungi_in_fondo(p, [_t("z")], MusicSettings())
         posti.add([t.title for t in p.queue].index("z"))
     assert len(posti) > 1
+
+
+@pytest.mark.asyncio
+async def test_coda_pulisci_senza_elenco_dei_presenti_non_tocca_la_coda(monkeypatch):
+    """Canale non leggibile (o elenco vuoto): senza sapere chi c'è non si toglie niente."""
+    for player in (_player([_t("a", 1), _t("b", 2)]), _con_canale(_player([_t("a", 1), _t("b", 2)]), [])):
+        cog = _cog_con(player, monkeypatch)
+        i = _admin(_Interazione())
+        await cog.coda_pulisci.callback(cog, i)
+        assert [t.title for t in player.queue] == ["a", "b"]
+        assert "non ho tolto niente" in i.response.inviati[0]

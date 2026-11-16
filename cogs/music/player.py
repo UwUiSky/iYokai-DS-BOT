@@ -1088,6 +1088,11 @@ class MusicCog(CogConGruppi, commands.Cog):
             return
         canale = getattr(player, "channel", None)
         presenti = {m.id for m in getattr(canale, "members", [])}
+        if not presenti:  # canale non leggibile: senza l'elenco di chi c'è si svuoterebbe tutta la coda
+            await interaction.response.send_message(
+                await testo_per(interaction, "player_coda_presenti_non_leggibili"), ephemeral=True
+            )
+            return
         indici = indici_di_assenti([requester_of(t) for t in player.queue], presenti)
         if indici:
             self._togli_dalla_coda(player, indici)

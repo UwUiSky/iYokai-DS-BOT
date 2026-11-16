@@ -2894,5 +2894,6 @@
   "player_coda_cerca_titolo": "Tracks found in the queue",
   "player_coda_serve_gestisci_server": "This command needs the \"Manage Server\" permission.",
   "player_coda_salta_serve_un_opzione": "Give at least one option: da, a or utente.",
-  "player_coda_tolti": "Removed from the queue: {quanti}."
+  "player_coda_tolti": "Removed from the queue: {quanti}.",
+  "player_coda_presenti_non_leggibili": "I can't read who is in the voice channel: nothing was removed from the queue. Try again shortly."
 }
