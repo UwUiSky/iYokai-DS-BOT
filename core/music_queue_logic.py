@@ -13,9 +13,9 @@ id utente. Chi ha richiesto un brano sta in `track.extras.requester_id`
 from __future__ import annotations
 
 import random
+import unicodedata
 from collections import Counter
 
-from core.fun_logic import normalizza_per_filtro
 from core.music_logic import truncate_title
 
 MAX_SHARE_LINES = 5
@@ -102,12 +102,19 @@ def fair_order(richiedenti: list[int | None]) -> list[int]:
     return ordine
 
 
+def _per_ricerca(testo: str) -> str:
+    """Minuscole, senza accenti, spazi singoli. Tiene ogni alfabeto (giapponese, cirillico, coreano)."""
+    scomposto = unicodedata.normalize("NFKD", testo or "")
+    senza_accenti = "".join(c for c in scomposto if not unicodedata.combining(c))
+    return " ".join(unicodedata.normalize("NFC", senza_accenti).casefold().split())
+
+
 def find_in_queue(titoli: list[str], testo: str, limite: int = MAX_RISULTATI_CERCA) -> list[tuple[int, str]]:
     """(posizione da 1, titolo) dei brani il cui titolo contiene il testo, senza maiuscole e accenti."""
-    cercato = normalizza_per_filtro(testo)
+    cercato = _per_ricerca(testo)
     if not cercato:
         return []
-    trovati = [(n, t) for n, t in enumerate(titoli, start=1) if cercato in normalizza_per_filtro(t)]
+    trovati = [(n, t) for n, t in enumerate(titoli, start=1) if cercato in _per_ricerca(t)]
     return trovati[:limite]
 
 

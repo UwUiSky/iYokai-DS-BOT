@@ -257,3 +257,106 @@ async def test_coda_pulisci_senza_elenco_dei_presenti_non_tocca_la_coda(monkeypa
         await cog.coda_pulisci.callback(cog, i)
         assert [t.title for t in player.queue] == ["a", "b"]
         assert "non ho tolto niente" in i.response.inviati[0]
+
+
+# ----------------------------- dopo la caccia -----------------------------
+def _vera(titolo, chi):
+    """Un brano vero di wavelink: serve dove un finto nasconderebbe lo storico della coda."""
+    import wavelink
+
+    t = wavelink.Playable(data={"encoded": titolo, "info": {
+        "identifier": titolo, "isSeekable": True, "author": "x", "length": 1000, "isStream": False,
+        "position": 0, "title": titolo, "uri": None, "artworkUrl": None, "isrc": None, "sourceName": "yt"},
+        "pluginInfo": {}, "userData": {}})
+    t.extras = {"requester_id": chi}
+    return t
+
+
+def test_cerca_in_coda_titoli_non_latini_e_parole_staccate():
+    titoli = ["YOASOBI「夜に駆ける」", "Кино - Группа крови", "아이유 - 밤편지", "A B C D"]
+    assert find_in_queue(titoli, "夜に駆ける") == [(1, titoli[0])]
+    assert find_in_queue(titoli, "группа") == [(2, titoli[1])]
+    assert find_in_queue(titoli, "밤편지") == [(3, titoli[2])]
+    assert find_in_queue(titoli, "b  c") == [(4, titoli[3])]
+    assert find_in_queue(titoli, "   ") == []
+
+
+@pytest.mark.asyncio
+async def test_shuffle_solo_miei_e_resta_non_accende_se_fallisce(monkeypatch):
+    player = _player([_t("a", 99), _t("b", 99), _t("c", 99)])  # nessun brano è di chi lancia
+    cog = _cog_con(player, monkeypatch)
+    await cog.shuffle.callback(cog, _Interazione(), solo_miei=True, resta=True)
+    assert getattr(player, "mescola_fisso", False) is False
+
+
+@pytest.mark.asyncio
+async def test_shuffle_solo_miei_e_resta_lo_dice_quando_riesce(monkeypatch):
+    player = _player([_t(str(n), 1) for n in range(12)])
+    cog = _cog_con(player, monkeypatch)
+    i = _Interazione()  # l'utente finto ha id 1
+    await cog.shuffle.callback(cog, i, solo_miei=True, resta=True)
+    assert player.mescola_fisso is True
+    assert "Resta mescolata" in i.response.inviati[0]
+
+
+@pytest.mark.asyncio
+async def test_stop_spegne_il_mescola_fisso(monkeypatch):
+    import asyncio
+
+    player = _player([_t("a"), _t("b"), _t("c")])
+    player.stop = lambda: asyncio.sleep(0)
+    cog = _cog_con(player, monkeypatch)
+    await cog.shuffle.callback(cog, _Interazione(), resta=True)
+    await cog.stop.callback(cog, _Interazione())
+    assert player.mescola_fisso is False
+
+
+def test_togliere_per_utente_con_il_loop_della_coda_toglie_anche_i_brani_gia_suonati():
+    import wavelink
+
+    q = wavelink.Queue()
+    q.mode = wavelink.QueueMode.loop_all
+    a1, b1, a2 = _vera("A1", 1), _vera("B1", 2), _vera("A2", 1)
+    q.put([a1, b1, a2])
+    for _ in range(2):  # A1 suonato, B1 in corso: il player li mette nello storico
+        q.history.put(q.get())
+    player = SimpleNamespace(queue=q, current=b1)
+    tolti = player_module.MusicCog._togli_dalla_coda(player, [0], lambda chi: chi == 1)
+    assert tolti == 2  # A2 dalla coda, A1 dallo storico
+    assert [t.title for t in q.history] == ["B1"]  # il brano in corso resta
+
+
+def test_togliere_per_posizione_non_tocca_lo_storico():
+    import wavelink
+
+    q = wavelink.Queue()
+    q.mode = wavelink.QueueMode.loop_all
+    q.put([_vera("A1", 1), _vera("B1", 2), _vera("A2", 1)])
+    q.history.put(q.get())
+    player = SimpleNamespace(queue=q, current=None)
+    assert player_module.MusicCog._togli_dalla_coda(player, [1]) == 1
+    assert [t.title for t in q] == ["B1"] and [t.title for t in q.history] == ["A1"]
+
+
+@pytest.mark.asyncio
+async def test_aggiungi_in_fondo_con_coda_equa_riordina(monkeypatch):
+    player = _player([_t("a", 1), _t("b", 1)])
+    cog = _cog_con(player, monkeypatch, modo="equa")
+
+    async def _put_wait(tracce):
+        player.queue.tracce.extend(tracce if isinstance(tracce, list) else [tracce])
+
+    player.queue.put_wait = _put_wait
+    await cog._aggiungi_in_fondo(player, [_t("c", 2)], MusicSettings(queue_mode="equa"))
+    assert [t.title for t in player.queue] == ["a", "c", "b"]
+    await cog._aggiungi_in_fondo(player, [_t("d", 2)], MusicSettings(queue_mode="normale"))
+    assert [t.title for t in player.queue] == ["a", "c", "b", "d"]
+
+
+def test_i_comandi_della_coda_hanno_la_descrizione_inglese():
+    import json
+    from pathlib import Path
+
+    inglese = json.loads((Path(__file__).resolve().parents[1] / "locales" / "en-US" / "comandi.json").read_text())["descrizioni"]
+    for chiave in ("music coda", "music coda cerca", "music coda salta", "music coda pulisci"):
+        assert inglese.get(chiave), chiave

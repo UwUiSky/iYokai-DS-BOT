@@ -812,6 +812,7 @@ class MusicCog(CogConGruppi, commands.Cog):
 
         await interaction.response.defer()  # M 8.16
         player.queue.clear()
+        player.mescola_fisso = False  # MUS-038: una sessione nuova riparte con l'ordine normale
         await player.stop()
         await interaction.followup.send(await testo_per(interaction, "player_riproduzione_fermata_coda_svuotata", pubblica=True))
 
@@ -970,9 +971,6 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
             return
 
-        if resta:
-            player.mescola_fisso = True
-
         if solo_miei:  # MUS-039
             tracce = list(player.queue)
             ordine = own_shuffle_order([requester_of(t) for t in tracce], interaction.user.id)
@@ -984,10 +982,15 @@ class MusicCog(CogConGruppi, commands.Cog):
             # senza nessun await in mezzo: nessun altro comando vede la coda vuota
             player.queue.clear()
             player.queue.put([tracce[i] for i in ordine])
-            await interaction.response.send_message(await testo_per(interaction, "player_ho_mescolato_tuoi_brani_in", pubblica=True))
+            if resta:  # si accende solo a mescola riuscito, e lo si dice
+                player.mescola_fisso = True
+            chiave = "player_coda_mescolata_resta" if resta else "player_ho_mescolato_tuoi_brani_in"
+            await interaction.response.send_message(await testo_per(interaction, chiave, pubblica=True))
             return
 
         player.queue.shuffle()
+        if resta:
+            player.mescola_fisso = True
         chiave = "player_coda_mescolata_resta" if resta else "player_coda_mescolata"
         await interaction.response.send_message(await testo_per(interaction, chiave, pubblica=True))
 
@@ -1022,12 +1025,29 @@ class MusicCog(CogConGruppi, commands.Cog):
         return bool(permessi and permessi.manage_guild)
 
     @staticmethod
-    def _togli_dalla_coda(player, indici: list[int]) -> None:
-        """Toglie gli indici senza nessun await in mezzo: nessun altro comando vede la coda vuota."""
+    def _togli_dalla_coda(player, indici: list[int], di_chi=None) -> int:
+        """
+        Toglie gli indici senza nessun await in mezzo: nessun altro comando vede la coda vuota.
+        `di_chi(richiedente)`: quando si toglie per persona. Con il loop della coda i brani già
+        suonati tornerebbero al giro dopo: si tolgono anche dallo storico (mai quello in corso).
+        Restituisce quanti brani ha tolto.
+        """
         tracce = list(player.queue)
         togliere = set(indici)
-        player.queue.clear()
-        player.queue.put([t for i, t in enumerate(tracce) if i not in togliere])
+        if togliere:
+            player.queue.clear()
+            player.queue.put([t for i, t in enumerate(tracce) if i not in togliere])
+        tolti = len(togliere)
+        storico = getattr(player.queue, "history", None)
+        if di_chi is None or storico is None or getattr(player.queue, "mode", None) != wavelink.QueueMode.loop_all:
+            return tolti
+        in_corso = getattr(player, "current", None)
+        for posizione in range(len(storico) - 1, -1, -1):
+            brano = storico[posizione]
+            if brano is not in_corso and di_chi(requester_of(brano)):
+                storico.delete(posizione)
+                tolti += 1
+        return tolti
 
     @comando_di_gruppo(
         "music",
@@ -1064,10 +1084,11 @@ class MusicCog(CogConGruppi, commands.Cog):
         indici = indici_da_saltare(
             [requester_of(t) for t in player.queue], da, a, utente.id if utente is not None else None
         )
-        if indici:
-            self._togli_dalla_coda(player, indici)
+        # solo «utente» (senza posizioni): vale anche per i brani già suonati che il loop riporterebbe
+        solo_utente = utente is not None and da is None and a is None
+        tolti = self._togli_dalla_coda(player, indici, (lambda chi: chi == utente.id) if solo_utente else None)
         await interaction.response.send_message(
-            await testo_per(interaction, "player_coda_tolti", pubblica=True, quanti=len(indici))
+            await testo_per(interaction, "player_coda_tolti", pubblica=True, quanti=tolti)
         )
 
     @comando_di_gruppo(
@@ -1094,10 +1115,9 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
             return
         indici = indici_di_assenti([requester_of(t) for t in player.queue], presenti)
-        if indici:
-            self._togli_dalla_coda(player, indici)
+        tolti = self._togli_dalla_coda(player, indici, lambda chi: chi is not None and chi not in presenti)
         await interaction.response.send_message(
-            await testo_per(interaction, "player_coda_tolti", pubblica=True, quanti=len(indici))
+            await testo_per(interaction, "player_coda_tolti", pubblica=True, quanti=tolti)
         )
 
     @comando_di_gruppo(
