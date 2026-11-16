@@ -157,3 +157,16 @@ def test_riga_scheda_e_avviso():
     assert "relazione.docx" in riga and "office" in riga and d.sha256[:12] in riga
     r = t.decidi(PE, "foto.png")
     assert "foto.png" in t.riga_avviso(r) and "tipo_non_coincide" in t.riga_avviso(r)
+
+
+def test_modmail_elenco_allegati_senza_link_pericolosi_e_senza_inversioni():
+    from core.modmail_logic import elenco_allegati
+
+    righe = elenco_allegati([
+        ("foto.png", "https://cdn.discordapp.com/a"), ("setup.exe", "https://cdn.discordapp.com/b"),
+        ("a‮gpj.png", "https://cdn.discordapp.com/c"), ("foto.png.scr", "https://cdn.discordapp.com/d"),
+    ]).split("\n")
+    assert righe[0] == "[foto.png](https://cdn.discordapp.com/a)"
+    assert "cdn.discordapp.com/b" not in righe[1] and "setup.exe" in righe[1]
+    assert righe[2] == "`agpj.png` (⚠️)"  # inversione di testo: nome pulito e niente link
+    assert "cdn.discordapp.com/d" not in righe[3]
