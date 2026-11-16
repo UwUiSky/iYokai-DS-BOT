@@ -182,14 +182,22 @@ async def test_proposta_con_allegati_ricaricati_nel_canale_dei_log(cog, monkeypa
     await _ticket(p)
     await ticket_repo.record_first_response(CANALE, datetime.now(timezone.utc))
     t = await ticket_repo.get_ticket_by_channel(CANALE)
-    ricaricato = SimpleNamespace(filename="grafiche.zip", url="https://cdn.discordapp.com/log/grafiche.zip")
+    from core import immagini_pipeline
+    from core.immagini_byte_logic import PULITA
+    from core.immagini_pipeline import EsitoImmagine
+    from tests.support import immagini_finte as f
+
+    monkeypatch.setattr(immagini_pipeline, "analizza_immagine", AsyncMock(return_value=EsitoImmagine(PULITA, "s", png=b"PNG-NUOVO")))
+    ricaricato = SimpleNamespace(filename="grafiche.png", url="https://cdn.discordapp.com/log/grafiche.png")
     log = _log(monkeypatch, allegati=[ricaricato])
-    originale = SimpleNamespace(filename="grafiche.zip", size=1000, read=AsyncMock(return_value=b"zip"))
-    canale = _canale_con_storia([_msg(UTENTE, RICHIESTA), _msg(STAFF, "ecco il pacchetto", [originale])])
+    originale = SimpleNamespace(filename="grafiche.png", size=1000, read=AsyncMock(return_value=f.png()))
+    archivio = SimpleNamespace(filename="grafiche.zip", size=1000, read=AsyncMock(return_value=b"PK\x03\x04" + b"\0" * 40))
+    canale = _canale_con_storia([_msg(UTENTE, RICHIESTA), _msg(STAFF, "ecco il pacchetto", [originale, archivio])])
     await cog.proponi_da_ticket(fake_guild(GUILD), canale, t)
     (proposta,) = await ticket_standard_repo.elenca(GUILD)
-    assert proposta.attachments == [{"filename": "grafiche.zip", "url": "https://cdn.discordapp.com/log/grafiche.zip"}]
-    assert len(log.send.await_args.kwargs["files"]) == 1
+    assert proposta.attachments == [{"filename": "grafiche.png", "url": "https://cdn.discordapp.com/log/grafiche.png"}]
+    (file,) = log.send.await_args.kwargs["files"]  # D74: l'archivio non si rimanda, solo l'immagine ricodificata
+    assert file.filename == "grafiche.png" and file.fp.read() == b"PNG-NUOVO"
 
 
 @pytest.mark.parametrize("caso", ["spento", "nessuna_risposta_staff", "nessun_log", "gia_coperta", "gia_risposto_dal_bot", "tetto"])

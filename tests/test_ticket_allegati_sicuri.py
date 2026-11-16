@@ -61,7 +61,7 @@ async def test_copie_per_la_risposta_standard_solo_ricodificate(monkeypatch):
         _Allegato("finta.png", b"<html><script>1</script></html>", "image/png"),
         _Allegato("guida.pdf", b"%PDF-1.4 x"),
     ))
-    assert [x.filename for x in file] == ["foto.png", "guida.pdf"]
+    assert [x.filename for x in file] == ["foto.png"]  # D74: il PDF non si rimanda
     assert file[0].fp.read() == b"PNG-NUOVO"
 
 

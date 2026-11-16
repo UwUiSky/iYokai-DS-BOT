@@ -360,14 +360,14 @@ def copia(ambiente, monkeypatch):
     return cog, salva
 
 
-async def test_copia_solo_le_immagini_dichiarate_con_i_byte_intatti(ambiente, copia):
+async def test_ogni_allegato_passa_dalla_decisione_con_i_byte_intatti(ambiente, copia):
     cog, salva = copia
     m = _messaggio()
     m.guild = ambiente[4]
     m.channel = fake_text_channel(channel_id=CANALE)
     m.attachments = [_allegato("a.png", dati=b"<html>"), _allegato("note.txt", "text/plain"), _allegato("g.bin", "image/gif")]
     await cog.copia_allegati(m)
-    assert salva.await_count == 2
+    assert salva.await_count == 3  # D74: tutti i tipi arrivano alla decisione unica, che tiene solo le immagini vere
     assert salva.await_args_list[0].args[6] == b"<html>"  # nessuna modifica ai byte
 
 
@@ -377,7 +377,11 @@ async def test_non_copia_se_l_evento_e_spento_o_l_allegato_e_enorme(ambiente, co
     m.guild = ambiente[4]
     m.channel = fake_text_channel(channel_id=CANALE)
     m.attachments = [_allegato(peso=modulo.allegati_sicuri.MAX_BYTE + 1)]
+    senza_byte = AsyncMock()
+    monkeypatch.setattr(modulo.allegati_sicuri, "salva_senza_byte", senza_byte)
     await cog.copia_allegati(m)
+    senza_byte.assert_awaited_once()  # troppo grande: solo scheda dal nome, mai scaricato
+    m.attachments[0].read.assert_not_awaited()
     m.attachments = [_allegato()]
     monkeypatch.setattr(modulo.log_eventi_repo, "evento_acceso", AsyncMock(return_value=False))
     await cog.copia_allegati(m)
@@ -398,3 +402,18 @@ async def test_log_del_cancellato_ha_link_e_anteprima_ricodificata_mai_l_origina
     assert "https://allegati.example.invalid/allegato/7.o." in campo and "non conservata" in campo
     assert len(kw["files"]) == 1 and kw["files"][0].fp.read() == b"PNGNUOVO"
     assert len(kw["embed"]) <= 6000
+
+
+async def test_log_del_cancellato_mostra_scheda_e_avviso_senza_link(ambiente, monkeypatch):
+    cog, canale_log, *_ = ambiente
+    scheda = modulo.allegati_sicuri.Copia(9, "rel.pdf", "pdf", 4096, "scheda", None, False, "ab" * 32)
+    avviso = modulo.allegati_sicuri.Copia(10, "foto.png", "eseguibile", 90, "rifiutata", None, False, "cd" * 32)
+    monkeypatch.setattr(modulo.allegati_sicuri, "del_messaggio", AsyncMock(return_value=[scheda, avviso]))
+    finta = SimpleNamespace(WEB_ALLEGATI_PUBLIC_URL="https://allegati.example.invalid", WEB_PANEL_SECRET_KEY="k" * 32)
+    monkeypatch.setattr(modulo, "config", finta)
+    await cog.on_raw_message_delete(_payload_delete(_messaggio()))
+    kw = canale_log.send.call_args.kwargs
+    campo = {f.name: f.value for f in kw["embed"].fields}["Copie salvate"]
+    assert "`rel.pdf` (pdf, 4 KiB, SHA-256 " + "ab" * 6 in campo
+    assert "`foto.png`" in campo and "eseguibile" in campo
+    assert "allegati.example.invalid" not in campo and "files" not in kw

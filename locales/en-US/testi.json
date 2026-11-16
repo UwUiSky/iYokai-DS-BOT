@@ -2885,5 +2885,8 @@
   "music_stato_ultimo_errore": "(last error: {errore})",
   "music_stato_chiavi_su_lavalink": "**{fonte}** — the keys are on Lavalink (the bot cannot see them), it is tried anyway",
   "music_nessun_nodo": "No Lavalink node is connected right now for this music bot. Try again soon; if it keeps happening, tell the bot staff.",
-  "music_nessun_risultato": "No results found for this search."
+  "music_nessun_risultato": "No results found for this search.",
+  "allegato_riga_scheda": "`{nome}` ({tipo}, {kib} KiB, SHA-256 {sha}): file not kept",
+  "allegato_riga_avviso": "`{nome}`: file not kept, disguised, unsafe or of unknown type (real type: {motivi})",
+  "allegato_riga_bloccata": "`{nome}`: image with suspicious content, not kept"
 }

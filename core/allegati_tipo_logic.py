@@ -25,6 +25,7 @@ RIFIUTA = "rifiuta"
 MAX_NOME = 80
 MAX_BYTE_ESAME = 64 * 1024 * 1024  # oltre, il chiamante non scarica: vedi `decidi_senza_byte`
 
+# Modelli di riserva: i testi veri stanno in locales (allegato_riga_scheda, allegato_riga_avviso).
 MODELLO_SCHEDA = "`{nome}` ({tipo}, {kib} KiB, SHA-256 {sha}): file non conservato"
 MODELLO_AVVISO = "`{nome}`: file non conservato ({motivi})"
 
@@ -250,7 +251,7 @@ def decidi(dati: bytes, nome: str | None, content_type: str | None = None) -> De
 def decidi_senza_byte(nome: str | None, content_type: str | None, dimensione: int) -> Decisione:
     """File troppo grande da scaricare: solo scheda, senza tipo verificato ne' impronta; i nomi pericolosi si rifiutano."""
     motivi: list[str] = []
-    vero = TipoVero("sconosciuto", "non_verificato")
+    vero = TipoVero("non_verificato", "non_verificato")
     _giudica(vero, nome, content_type, motivi)
     motivi = [m for m in motivi if m != "tipo_non_coincide"]
     travestito = bool(motivi)

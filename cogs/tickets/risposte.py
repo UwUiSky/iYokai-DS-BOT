@@ -47,7 +47,8 @@ from core.channel_router import TIPO_EVENTI
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
-from core.immagini_pipeline import copia_ricaricabile
+from core import allegati_tipo_logic
+from core.immagini_pipeline import esamina_allegato
 from core.i18n import testo_per
 from core.repositories.ai_ticket_repo import ai_ticket_repo
 from core.repositories.ticket_form_repo import PannelloTicket, ticket_form_repo
@@ -381,7 +382,7 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
     async def _copie_allegati(messaggio: discord.Message) -> list[discord.File]:
         """
         Ricarica gli allegati nel canale dei log: i link del ticket spariscono con il canale. D61/D62: le immagini
-        solo ricodificate; sospette, non analizzate e file travestiti restano fuori.
+        solo ricodificate; sospette, non analizzate, travestiti, PDF, audio, video, Office e archivi restano fuori (D74).
         """
         allegati = list(messaggio.attachments)
         file: list[discord.File] = []
@@ -390,12 +391,15 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
                 contenuto = await allegati[i].read()
             except discord.HTTPException:
                 continue
-            copia = await copia_ricaricabile(
+            copia, d = await esamina_allegato(
                 contenuto, allegati[i].filename, getattr(allegati[i], "content_type", None),
                 messaggio.guild.id if getattr(messaggio, "guild", None) else 0,
             )
             if copia is not None:
                 file.append(discord.File(io.BytesIO(copia[1]), filename=copia[0]))
+            else:  # D74: solo le immagini ricodificate; il resto non si rimanda, resta la riga nel registro tecnico
+                logger.info("Allegato della risposta non ricaricato: %s", allegati_tipo_logic.riga_scheda(d)
+                            if d.azione == allegati_tipo_logic.SCHEDA else allegati_tipo_logic.riga_avviso(d))
         return file
 
     # ---------------------------------------------------------------- uso nei ticket

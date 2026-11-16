@@ -79,6 +79,7 @@ from core.channel_rename import (
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
+from core.allegati_tipo_logic import nome_pulito
 from core.i18n import testo_guild, testo_per
 from core.repositories.ticket_form_repo import (
     DomandaModulo,
@@ -3114,7 +3115,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
                         png = esito.png
                 except Exception:  # noqa: BLE001 - un allegato che non si legge non ferma il transcript
                     logger.warning("Allegato del transcript non analizzato nel ticket %s.", messaggio.channel.id, exc_info=True)
-            risultato.append(AllegatoT(allegato.filename, allegato.size or 0, sha, png))
+            risultato.append(AllegatoT(nome_pulito(allegato.filename), allegato.size or 0, sha, png))
         return tuple(risultato)
 
     async def _file_transcript(self, guild: discord.Guild, channel, ticket) -> list[tuple[str, bytes]]:

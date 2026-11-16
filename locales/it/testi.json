@@ -2885,5 +2885,8 @@
   "music_stato_ultimo_errore": "(ultimo errore: {errore})",
   "music_stato_chiavi_su_lavalink": "**{fonte}** — le chiavi stanno su Lavalink (il bot non le vede), si prova lo stesso",
   "music_nessun_nodo": "Nessun nodo Lavalink è collegato in questo momento per questo music bot. Riprova tra poco; se continua, avvisa lo staff del bot.",
-  "music_nessun_risultato": "Nessun risultato trovato per questa ricerca."
+  "music_nessun_risultato": "Nessun risultato trovato per questa ricerca.",
+  "allegato_riga_scheda": "`{nome}` ({tipo}, {kib} KiB, SHA-256 {sha}): file non conservato",
+  "allegato_riga_avviso": "`{nome}`: file non conservato, travestito, pericoloso o di tipo sconosciuto (tipo vero: {motivi})",
+  "allegato_riga_bloccata": "`{nome}`: immagine con contenuto sospetto, non conservata"
 }
