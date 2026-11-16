@@ -7,6 +7,7 @@ in core/music_queue_logic.py; i comandi con un player finto.
 """
 
 import inspect
+import random
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
@@ -135,6 +136,9 @@ class _Coda:
 
     def clear(self):
         self.tracce.clear()
+
+    def shuffle(self):
+        random.shuffle(self.tracce)
 
     async def put_wait(self, t):
         self.tracce.extend(t if isinstance(t, list) else [t])

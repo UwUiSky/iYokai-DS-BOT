@@ -37,6 +37,9 @@ client Discord concorrenti (servono 6 token veri). I test coprono
 quello che è verificabile senza — i controlli di guardia, il
 routing verso il worker giusto (con bot finti), la logica pura. Il
 resto va verificato una volta distribuito, con le credenziali vere.
+
+Funzioni coperte: SPEC §9 (catalogo MUS, #126), tra cui la coda: /music coda
+(cerca, salta, pulisci), coda equa (impostazione) e mescola fisso.
 """
 
 # M 8.1-8.8, 8.11, 8.14-8.17 fatti qui. Canale richieste e playlist (NF-19)
@@ -48,6 +51,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import logging
+import random
 from collections.abc import Coroutine
 from datetime import datetime, timezone
 from pathlib import Path
@@ -97,6 +101,10 @@ from core.music_queue_logic import (
     MAX_HISTORY_SHOWN,
     format_share,
     own_shuffle_order,
+    fair_order,
+    find_in_queue,
+    indici_da_saltare,
+    indici_di_assenti,
     previous_track_position,
     requester_of,
     share_by_user,
@@ -127,6 +135,7 @@ SG_VOLUME = ("volume", "Controlla il volume della riproduzione (0-200, come Disc
 # Brani suonati in un canale vuoto prima di uscire (valore predefinito di wavelink).
 CANALE_VUOTO_BRANI_DEFAULT = 3
 
+SG_CODA = ("coda", "Cerca e ripulisce la coda.")
 SG_NONSTOP = ("nonstop", "Riproduzione continua in loop sulla sessione musicale attiva.")
 RADIO = ("radio", "Radio 24/7 condivisa del bot principale, playlist personale")
 
@@ -597,6 +606,28 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
         return canale_id if esito else None
 
+    @staticmethod
+    def _applica_modo_coda(player, impostazioni) -> None:
+        """MUS-037: con la coda «equa» (e senza mescola fisso) i brani vanno a giro tra gli utenti."""
+        if impostazioni.queue_mode != "equa" or getattr(player, "mescola_fisso", False):
+            return
+        tracce = list(player.queue)
+        ordine = fair_order([requester_of(t) for t in tracce])
+        if ordine == list(range(len(tracce))):
+            return
+        # senza nessun await in mezzo: nessun altro comando vede la coda vuota
+        player.queue.clear()
+        player.queue.put([tracce[i] for i in ordine])
+
+    async def _aggiungi_in_fondo(self, player, tracce, impostazioni) -> None:
+        """Aggiunge in fondo alla coda; con il mescola fisso (MUS-038) ogni brano entra a caso."""
+        if getattr(player, "mescola_fisso", False):
+            for t in tracce:
+                player.queue.put_at(random.randint(0, len(player.queue)), t)
+            return
+        await player.queue.put_wait(tracce if len(tracce) != 1 else tracce[0])
+        self._applica_modo_coda(player, impostazioni)
+
     def _lock_canale(self, guild_id: int, canale_id: int) -> asyncio.Lock:
         return self._lock_canali.setdefault((guild_id, canale_id), asyncio.Lock())
 
@@ -702,7 +733,7 @@ class MusicCog(CogConGruppi, commands.Cog):
                 for t in reversed(tracce_da_aggiungere):
                     player.queue.put_at(0, t)
             else:
-                await player.queue.put_wait(tracce_da_aggiungere)
+                await self._aggiungi_in_fondo(player, tracce_da_aggiungere, impostazioni)
             if tracce_totali > MAX_PLAYLIST_TRACKS:
                 await rispondi(
                     f"📃 Aggiunta la playlist **{truncate_title(risultati.name, 200)}** — "
@@ -726,7 +757,7 @@ class MusicCog(CogConGruppi, commands.Cog):
             if in_cima:
                 player.queue.put_at(0, traccia)
             else:
-                await player.queue.put_wait(traccia)
+                await self._aggiungi_in_fondo(player, [traccia], impostazioni)
             await rispondi(
                 f"➕ Aggiunta **{truncate_title(traccia.title, 200)}** "
                 f"({format_duration(traccia.length)}) alla coda."
@@ -857,6 +888,8 @@ class MusicCog(CogConGruppi, commands.Cog):
             quote = share_by_user([requester_of(t) for t in player.queue])
             if quote:
                 embed.add_field(name=await testo_per(interaction, "player_chi_ha_messo_cosa", pubblica=True), value=format_share(quote), inline=False)
+        if player and getattr(player, "mescola_fisso", False):  # MUS-038
+            embed.set_footer(text=await testo_per(interaction, "player_mescola_fisso_acceso_riga", pubblica=True))
         await interaction.response.send_message(embed=embed)
 
     @comando_di_gruppo("music", nome="clear-queue", descrizione="Svuota la coda, senza toccare la traccia in riproduzione.")
@@ -897,9 +930,14 @@ class MusicCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo("music", nome="shuffle", descrizione="Mescola l'ordine delle tracce in coda.")
-    @app_commands.describe(solo_miei="Mescola soltanto i brani che hai messo tu")
+    @app_commands.describe(
+        solo_miei="Mescola soltanto i brani che hai messo tu",
+        resta="Sì: ogni brano nuovo entra in un posto a caso; no: torna l'ordine normale",
+    )
     @app_commands.rename(solo_miei="solo-miei")
-    async def shuffle(self, interaction: discord.Interaction, solo_miei: bool = False) -> None:
+    async def shuffle(
+        self, interaction: discord.Interaction, solo_miei: bool = False, resta: bool | None = None
+    ) -> None:
         if not await self._controlli_base(interaction):
             return
 
@@ -917,11 +955,23 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
             return
 
+        if resta is False:  # MUS-038: spegne e basta
+            player.mescola_fisso = False
+            await interaction.response.send_message(await testo_per(interaction, "player_mescola_fisso_spento", pubblica=True))
+            return
+
         if len(player.queue) < 2:
+            if resta:  # con 0-1 brani si accende lo stesso: vale per quelli che arrivano
+                player.mescola_fisso = True
+                await interaction.response.send_message(await testo_per(interaction, "player_mescola_fisso_acceso", pubblica=True))
+                return
             await interaction.response.send_message(
                 await testo_per(interaction, "player_non_abbastanza_in_coda_da"), ephemeral=True
             )
             return
+
+        if resta:
+            player.mescola_fisso = True
 
         if solo_miei:  # MUS-039
             tracce = list(player.queue)
@@ -938,7 +988,112 @@ class MusicCog(CogConGruppi, commands.Cog):
             return
 
         player.queue.shuffle()
-        await interaction.response.send_message(await testo_per(interaction, "player_coda_mescolata", pubblica=True))
+        chiave = "player_coda_mescolata_resta" if resta else "player_coda_mescolata"
+        await interaction.response.send_message(await testo_per(interaction, chiave, pubblica=True))
+
+    @comando_di_gruppo(
+        "music", nome="cerca", descrizione="Cerca un brano nella coda per titolo.", sottogruppo=SG_CODA
+    )
+    @app_commands.describe(testo="Parte del titolo da cercare")
+    async def coda_cerca(
+        self, interaction: discord.Interaction, testo: app_commands.Range[str, 1, 100]
+    ) -> None:
+        # MUS-035: solo lettura, risposta visibile solo a chi chiede
+        player = await self._giocatore_attivo(interaction)
+        if player is None:
+            return
+        trovati = find_in_queue([t.title for t in player.queue], testo)
+        if not trovati:
+            await interaction.response.send_message(
+                await testo_per(interaction, "player_coda_cerca_nessun_risultato"), ephemeral=True
+            )
+            return
+        righe = [f"**{n}.** {truncate_title(titolo, 150)}" for n, titolo in trovati]
+        embed = discord.Embed(
+            title=await testo_per(interaction, "player_coda_cerca_titolo"),
+            description="\n".join(righe)[:EMBED_DESCRIPTION_LIMIT],
+            color=discord.Color.blurple(),
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @staticmethod
+    def _puo_gestire_coda(interaction: discord.Interaction) -> bool:
+        permessi = getattr(interaction.user, "guild_permissions", None)
+        return bool(permessi and permessi.manage_guild)
+
+    @staticmethod
+    def _togli_dalla_coda(player, indici: list[int]) -> None:
+        """Toglie gli indici senza nessun await in mezzo: nessun altro comando vede la coda vuota."""
+        tracce = list(player.queue)
+        togliere = set(indici)
+        player.queue.clear()
+        player.queue.put([t for i, t in enumerate(tracce) if i not in togliere])
+
+    @comando_di_gruppo(
+        "music",
+        nome="salta",
+        descrizione="Toglie dalla coda un intervallo di posizioni e/o i brani di un utente.",
+        sottogruppo=SG_CODA,
+    )
+    @app_commands.describe(
+        da="Prima posizione da togliere (da 1)",
+        a="Ultima posizione da togliere (compresa)",
+        utente="Togli solo i brani messi da questo utente",
+    )
+    async def coda_salta(
+        self,
+        interaction: discord.Interaction,
+        da: app_commands.Range[int, 1, 10000] | None = None,
+        a: app_commands.Range[int, 1, 10000] | None = None,
+        utente: discord.Member | None = None,
+    ) -> None:
+        # MUS-030: serve «Gestisci server»
+        if not self._puo_gestire_coda(interaction):
+            await interaction.response.send_message(
+                await testo_per(interaction, "player_coda_serve_gestisci_server"), ephemeral=True
+            )
+            return
+        if da is None and a is None and utente is None:
+            await interaction.response.send_message(
+                await testo_per(interaction, "player_coda_salta_serve_un_opzione"), ephemeral=True
+            )
+            return
+        player = await self._giocatore_attivo(interaction)
+        if player is None:
+            return
+        indici = indici_da_saltare(
+            [requester_of(t) for t in player.queue], da, a, utente.id if utente is not None else None
+        )
+        if indici:
+            self._togli_dalla_coda(player, indici)
+        await interaction.response.send_message(
+            await testo_per(interaction, "player_coda_tolti", pubblica=True, quanti=len(indici))
+        )
+
+    @comando_di_gruppo(
+        "music",
+        nome="pulisci",
+        descrizione="Toglie dalla coda i brani di chi non e' piu' nel canale vocale.",
+        sottogruppo=SG_CODA,
+    )
+    async def coda_pulisci(self, interaction: discord.Interaction) -> None:
+        # MUS-027: serve «Gestisci server»; la pulizia automatica all'uscita non c'e' (domanda all'owner)
+        if not self._puo_gestire_coda(interaction):
+            await interaction.response.send_message(
+                await testo_per(interaction, "player_coda_serve_gestisci_server"), ephemeral=True
+            )
+            return
+        player = await self._giocatore_attivo(interaction)
+        if player is None:
+            return
+        canale = getattr(player, "channel", None)
+        presenti = {m.id for m in getattr(canale, "members", [])}
+        indici = indici_di_assenti([requester_of(t) for t in player.queue], presenti)
+        if indici:
+            self._togli_dalla_coda(player, indici)
+        await interaction.response.send_message(
+            await testo_per(interaction, "player_coda_tolti", pubblica=True, quanti=len(indici))
+        )
 
     @comando_di_gruppo(
         "music",

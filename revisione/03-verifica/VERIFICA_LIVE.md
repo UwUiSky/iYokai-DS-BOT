@@ -1633,3 +1633,12 @@ Serve: log avanzato acceso, evento «messaggi cancellati» acceso, `WEB_ALLEGATI
 - [ ] `LIV-043` — togli a mano un ruolo-premio a un membro e fai `/level rank` su di lui: il ruolo torna. Dopo `/admin-livelli azzera server` i ruoli-premio spariscono a lotti; dopo `azzera ripristina` tornano. Metti il ruolo del bot sotto un ruolo-premio: nessun errore, una riga sola nel registro.
 - [ ] `LIV-034/038` — `/admin-livelli annuncio testo:"{utente} è al {livello}!{premio: Ruolo: {ruolo_premio}}" prova:sì`: arriva l'annuncio di prova, nessun ruolo viene notificato; subito dopo una seconda prova è rifiutata (5 minuti). Senza permesso di scrittura del bot nel canale: messaggio chiaro.
 - [ ] B1 — dopo `azzera ripristina` anche la classifica del mese e della settimana ritrova gli XP.
+
+## Musica — coda (#126 B3, MUS-027/030/035/037/038)
+
+- [ ] `MUS-035` — con 12 brani in coda `/music coda cerca testo:` (parte di un titolo, anche senza accenti): risposta visibile solo a te, al massimo 10 righe con la posizione. Testo senza risultati: messaggio nascosto.
+- [ ] `MUS-030` — `/music coda salta da:2 a:4` toglie le posizioni 2-4 e dice quanti; `utente:@x` toglie solo i brani di x; senza opzioni o senza «Gestisci server» risposta nascosta di rifiuto.
+- [ ] `MUS-027` — due utenti mettono brani, uno esce dal canale vocale: `/music coda pulisci` toglie i brani di chi e' uscito e lascia gli altri; senza «Gestisci server» e' rifiutato.
+- [ ] `MUS-037` — `/admin-musica impostazioni coda:equa` e il riepilogo la mostra; A mette 3 brani, B ne mette 2: `/music queue` li mostra a giro (A, B, A, B, A). Con `coda:normale` tornano in ordine di arrivo.
+- [ ] `MUS-038` — `/music shuffle resta:sì` mescola e dice che resta acceso; un brano aggiunto dopo non va sempre in fondo; `/music queue` mostra «Mescola fisso acceso»; `resta:no` lo spegne. Con la coda vuota `resta:sì` si accende comunque.
+

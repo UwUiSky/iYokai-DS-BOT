@@ -2,7 +2,7 @@
 cogs/music/settings.py
 ==========================
 Impostazioni musicali del server (issue #126: MUS-047, MUS-044, MUS-055,
-MUS-059, MUS-066, MUS-054, MUS-062, MUS-064): /admin-musica impostazioni e /admin-musica riepilogo.
+MUS-059, MUS-066, MUS-054, MUS-062, MUS-064, MUS-037): /admin-musica impostazioni e /admin-musica riepilogo.
 Solo admin (lo dà il gruppo /admin-musica). La logica sta in
 core/music_settings_logic.py; i controlli che le usano sono in
 cogs/music/player.py e core/music_fleet.py.
@@ -25,6 +25,7 @@ from core.music_settings_logic import (
     SETTING_BANNED_WORDS,
     SETTING_DEFAULT_SEARCH,
     SETTING_IDLE_MINUTES,
+    SETTING_QUEUE_MODE,
     SETTING_KNOWN_SITES_ONLY,
     SETTING_MAX_TRACK_MINUTES,
     SETTING_MAX_VOLUME,
@@ -38,6 +39,10 @@ from core.music_settings_logic import (
 
 SCELTE_RICERCA = [app_commands.Choice(name="Automatica (YouTube, poi SoundCloud)", value="automatica")] + [
     app_commands.Choice(name=FONTI[nome].etichetta, value=nome) for nome in FONTI_DI_RICERCA
+]
+SCELTE_CODA = [
+    app_commands.Choice(name="Normale (come arrivano)", value="normale"),
+    app_commands.Choice(name="Equa (a giro tra gli utenti)", value="equa"),
 ]
 SG_MUSICA = ("musica", "Musica: impostazioni del server")
 
@@ -67,6 +72,7 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         parole_vietate="Parole non ammesse nei titoli, separate da virgola; «-» toglie l'elenco",
         solo_siti_conosciuti="Accetta solo link di siti conosciuti",
         ricerca_predefinita="Dove cercare un titolo scritto senza link (i link vincono sempre)",
+        coda="Ordine dei brani: normale (come arrivano) o equa (a giro tra gli utenti)",
     )
     @app_commands.rename(
         volume_massimo="volume-massimo",
@@ -79,7 +85,7 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         solo_siti_conosciuti="solo-siti-conosciuti",
         ricerca_predefinita="ricerca-predefinita",
     )
-    @app_commands.choices(ricerca_predefinita=SCELTE_RICERCA)
+    @app_commands.choices(ricerca_predefinita=SCELTE_RICERCA, coda=SCELTE_CODA)
     async def impostazioni(
         self,
         interaction: discord.Interaction,
@@ -92,6 +98,7 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         parole_vietate: app_commands.Range[str, 0, MAX_PAROLE_VIETATE] | None = None,
         solo_siti_conosciuti: bool | None = None,
         ricerca_predefinita: str | None = None,
+        coda: str | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -115,6 +122,8 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         cambi = {k: v for k, v in cambi.items() if v is not None}
         if ricerca_predefinita is not None:  # «automatica» toglie la scelta (torna YouTube, poi SoundCloud)
             cambi[SETTING_DEFAULT_SEARCH] = None if ricerca_predefinita == "automatica" else ricerca_predefinita
+        if coda is not None:  # MUS-037
+            cambi[SETTING_QUEUE_MODE] = coda
         if canale_vocale is not None:
             cambi[SETTING_ALLOWED_CHANNEL] = canale_vocale.id
         if not cambi and not tutti_i_canali:
