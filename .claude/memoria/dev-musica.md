@@ -18,11 +18,7 @@
 - r6: `2d0b176` defer prima di Lavalink, bot sordo, allegato a play; `7ee6e39` canale richieste
   (`request_channel.py`, view persistente, aggiornamento max 1 ogni 5 s), playlist salva/carica/elenco/
   elimina/esporta/importa (tetti 25 x 200, file 256 KB), `/music suono` (soundboard; bot libero entra ed esce).
-- Migrazioni: 0170 `music_request_channels`, 0171 `music_playlists`.
-- Cacciatore r6 (15/10): tracce decodificate filtrate (no `local`, URL solo pubblici, `riferimenti_traccia`)
-  `6b8faaf`; import robusto (annidato, Infinity, durata limitata); pausa segnata prima dell'await nel
-  player; pausa 3 s per utente nel canale richieste `b4a5cd1`; uscita del bot dei suoni col lock del
-  canale e spostata da un nuovo suono `3d93028`.
+- Migrazioni: 0170 `music_request_channels`, 0171 `music_playlists`. Cacciatore r6: tracce decodificate filtrate, import robusto, pausa 3 s per utente, uscita del bot dei suoni col lock (`6b8faaf`, `b4a5cd1`, `3d93028`).
 
 ## Cose imparate
 - B3: i comandi che tolgono brani usano `_togli_dalla_coda` (clear + put senza await); l'ordine equo/mescola fisso passa da `_aggiungi_in_fondo`.
