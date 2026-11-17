@@ -2961,5 +2961,19 @@
   "gm_avviso": "Le monete del bot non si comprano con soldi veri.",
   "gm_serve_numero": "Per puntare su un numero scrivilo nell'opzione `numero` (da 0 a 36).",
   "gm_scelta_non_valida": "Scelta non valida. Puoi scrivere: {ammessi}.",
-  "gm_nessuna_partita": "Nessuna partita registrata."
+  "gm_nessuna_partita": "Nessuna partita registrata.",
+  "inv_vuoto": "Il tuo inventario è vuoto. Compra qualcosa con `/monete shop buy`.",
+  "inv_titolo": "Il tuo inventario",
+  "inv_non_lo_hai": "Non hai questo oggetto.",
+  "inv_usato": "Hai usato **{nome}**.",
+  "inv_non_regalabile": "Questo oggetto non si può regalare.",
+  "inv_regalato": "{da} ha regalato l'oggetto `{id}` a {a}.",
+  "inv_niente_da_pagare": "Questo oggetto non vale abbastanza per essere rivenduto.",
+  "inv_venduto": "Hai rivenduto l'oggetto per **{monete}** {moneta}. Saldo: **{saldo}**.",
+  "inv_oggetto_inesistente": "Questo oggetto non esiste.",
+  "inv_prezzo": "Prezzo",
+  "inv_rivendita": "Rivendita",
+  "inv_scorte": "Scorte",
+  "inv_regalabile": "Regalabile",
+  "inv_azzerati": "Inventari svuotati: {righe} righe tolte."
 }

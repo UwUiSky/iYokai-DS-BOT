@@ -351,7 +351,13 @@
   "settimanale": "weekly",
   "mensile": "monthly",
   "carta": "card",
-  "scala": "ladder"
+  "scala": "ladder",
+  "inventario": "inventory",
+  "regala": "gift",
+  "vendi": "sell",
+  "oggetto": "item",
+  "regalabile": "giftable",
+  "azzera-inventari": "reset-inventories"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1372,7 +1378,14 @@
   "giochi carta": "Guess the drawn card: colour, suit or value.",
   "giochi scala": "Lucky ladder: the higher you climb, the more it pays.",
   "giochi statistiche": "Your games, wins and losses per game.",
-  "giochi record": "The 10 biggest wins on the server."
+  "giochi record": "The 10 biggest wins on the server.",
+  "monete inventario": "The items you bought.",
+  "monete usa": "Use an item from your inventory.",
+  "monete regala": "Gift an item from your inventory to another member.",
+  "monete vendi": "Resell an item for half its price.",
+  "monete oggetto": "The card of a shop item.",
+  "admin-economia regalabile": "Decide whether a shop item can be gifted.",
+  "admin-economia azzera-inventari": "Clear every inventory on the server (type the server name)."
  },
  "parametri": {},
  "menu": {

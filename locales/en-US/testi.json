@@ -2961,5 +2961,19 @@
   "gm_avviso": "Bot coins can never be bought with real money.",
   "gm_serve_numero": "To bet on a number, write it in the `numero` option (0 to 36).",
   "gm_scelta_non_valida": "Invalid choice. You can write: {ammessi}.",
-  "gm_nessuna_partita": "No games recorded."
+  "gm_nessuna_partita": "No games recorded.",
+  "inv_vuoto": "Your inventory is empty. Buy something with `/monete shop buy`.",
+  "inv_titolo": "Your inventory",
+  "inv_non_lo_hai": "You do not have this item.",
+  "inv_usato": "You used **{nome}**.",
+  "inv_non_regalabile": "This item cannot be gifted.",
+  "inv_regalato": "{da} gifted item `{id}` to {a}.",
+  "inv_niente_da_pagare": "This item is not worth enough to be resold.",
+  "inv_venduto": "You resold the item for **{monete}** {moneta}. Balance: **{saldo}**.",
+  "inv_oggetto_inesistente": "This item does not exist.",
+  "inv_prezzo": "Price",
+  "inv_rivendita": "Resale",
+  "inv_scorte": "Stock",
+  "inv_regalabile": "Giftable",
+  "inv_azzerati": "Inventories cleared: {righe} rows removed."
 }

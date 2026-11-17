@@ -797,3 +797,10 @@ def controlla_puntata(puntata: int, impostazioni: "LevelingSettings") -> str | N
 
 
 ATTESA_PERIODICI = {"settimanale": 7 * 24 * 3600, "mensile": 30 * 24 * 3600}  # ECO-026
+
+PERCENTUALE_RIVENDITA = 50  # ECO-072: rivendendo un oggetto si riceve metà del prezzo di oggi
+
+
+def prezzo_rivendita(prezzo: int) -> int:
+    """ECO-072: monete per la rivendita, sempre meno del prezzo (arrotondato per difetto)."""
+    return max(0, prezzo) * PERCENTUALE_RIVENDITA // 100
