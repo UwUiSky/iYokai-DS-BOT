@@ -134,6 +134,7 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
         _c("immagini_azione", "Azione sulle immagini sospette", SCELTA),
         _c("immagini_timeout_minuti", "Timeout per le immagini sospette (minuti, 1-40320)", NUMERO),
         _c("immagini_canale_log_id", "Canale del registro delle immagini sospette", CANALE),
+        _c("sandbox_secondi_giorno", "Tempo al giorno per convertire PDF, audio, video e testo (secondi, 0-3600, 0 = mai)", NUMERO),
         _c("account_rubato_attivo", "Difesa dagli account rubati", BOOL),
         _c("account_rubato_minuti_uguali", "Account rubato: timeout per i messaggi uguali (minuti, 1-40320)", NUMERO),
         _c("account_rubato_minuti_malevole", "Account rubato: timeout per le immagini malevole (minuti, 1-40320)", NUMERO),

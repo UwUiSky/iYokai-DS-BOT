@@ -167,6 +167,8 @@ SETTINGS_SCHEMA = {
     "immagini_azione": "azione_immagini",
     "immagini_timeout_minuti": "int_1_40320",
     "immagini_canale_log_id": "id",
+    # Tempo giornaliero della sandbox per le conversioni degli allegati (core/allegati_copia.py, D74)
+    "sandbox_secondi_giorno": "int_0_3600",
     # Difesa dagli account rubati (core/account_rubato_opzioni.py, D67)
     "account_rubato_attivo": "bool",
     "account_rubato_minuti_uguali": "int_1_40320",
@@ -244,6 +246,7 @@ CONTROLLI_PER_TIPO = {
     "data_iso": (_e_una_data_iso, "una data in formato ISO"),
     "int_0_200": (_intero_tra(0, 200), "un intero tra 0 e 200"),
     "int_0_365": (_intero_tra(0, 365), "un intero tra 0 e 365"),
+    "int_0_3600": (_intero_tra(0, 3600), "un intero tra 0 e 3600"),
     "int_1_5": (_intero_tra(1, 5), "un intero tra 1 e 5"),
     "int_0_60": (_intero_tra(0, 60), "un intero tra 0 e 60"),
     "testo_300": (lambda valore: isinstance(valore, str) and len(valore) <= 300, "un testo fino a 300 caratteri"),

@@ -151,3 +151,38 @@ async def test_sandbox_ferma_o_che_cade_non_da_copia_e_non_lascia_file(attivo, m
 async def test_pdf_storto_non_da_copia(attivo):
     copia, d = await pl.esamina_allegato(b"%PDF-1.4\n" + bytes(range(256)) * 8, "x.pdf", "application/pdf", GUILD)
     assert copia is None and d.tipo.categoria == "pdf"
+
+
+# ------------------------------------------------------------------ log dei messaggi (allegati_sicuri)
+@pytest.fixture
+def cartella_log(attivo, tmp_path, monkeypatch):
+    from core import allegati_sicuri as al
+
+    monkeypatch.setenv(al.VARIABILE_CARTELLA, str(tmp_path / "all"))
+    return al
+
+
+async def test_log_conserva_la_copia_di_pdf_audio_e_testo_ma_non_del_video(cartella_log, tmp_path):
+    al = cartella_log
+    pdf = await al.salva(GUILD, 1, 2, 3, "log", "rel.pdf", c.pdf_pericoloso(), content_type="application/pdf")
+    assert pdf.stato == al.STATO_SALVATA and pdf.con_file and pdf.tipo == "pdf" and pdf.anteprima is None
+    nome, dati = await al.leggi(pdf.id)
+    assert nome == "rel.pdf" and not PROIBITE.search(dati) and b"segreto" not in dati
+
+    audio = await al.salva(GUILD, 1, 2, 3, "log", "voce.wav", c.audio(tmp_path), content_type="audio/wav")
+    assert audio.stato == al.STATO_SALVATA and (await al.leggi(audio.id))[0] == "voce.ogg"
+
+    testo = await al.salva(GUILD, 1, 2, 3, "log", "n.txt", b"ciao\r\nmondo\n", content_type="text/plain")
+    assert testo.stato == al.STATO_SALVATA and await al.leggi(testo.id) == ("n.txt", b"ciao\nmondo\n")
+
+    video = await al.salva(GUILD, 1, 2, 3, "log", "v.mp4", c.video(tmp_path, larghezza=160, altezza=90), content_type="video/mp4")
+    assert video.stato == al.STATO_SCHEDA and not video.con_file and video.tipo == "video"
+    # sul disco ci sono solo le tre copie convertite: mai un originale
+    contenuti = [p.read_bytes() for p in (tmp_path / "all").iterdir()]
+    assert len(contenuti) == 3 and not any(b"app.alert" in x or b"nascosto.txt" in x for x in contenuti)
+
+
+async def test_log_senza_sandbox_resta_la_scheda(cartella_log, monkeypatch, tmp_path):
+    monkeypatch.setenv(sb.VARIABILE_SOCKET, str(tmp_path / "non-c-e.sock"))
+    copia = await cartella_log.salva(GUILD, 1, 2, 3, "log", "rel.pdf", c.pdf_semplice())
+    assert copia.stato == cartella_log.STATO_SCHEDA and not copia.con_file
