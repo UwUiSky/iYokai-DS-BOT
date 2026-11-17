@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-16 03:54 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-17 14:38 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 840 commands in 49 categories.**
+**Total: 848 commands in 49 categories.**
 
 ## Admin: AI
 
@@ -257,6 +257,14 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-16 03:5
 - **`/admin-levels card`** — Shows or hides image backgrounds of cards and profiles in this server.
 - **`/admin-levels diagnosis`** — Explains why a member gets no XP in a channel.
 - **`/admin-levels exclude`** — A channel, category or role gives no XP (repeat to undo).
+- **`/admin-levels gain channels`** — XP everywhere except excluded channels, or only in the channels of the list.
+- **`/admin-levels gain commands`** — Turns XP for using slash commands on or off (off by default).
+- **`/admin-levels gain contexts`** — Whether threads, forum posts and voice channel chat give XP.
+- **`/admin-levels gain formula`** — Picks the level curve and recalculates everyone's levels.
+- **`/admin-levels gain messages`** — XP per message: fixed or per word, plus a bonus for long messages or images.
+- **`/admin-levels gain prefixes`** — Other bots' prefixes: messages starting with them give no XP.
+- **`/admin-levels gain reactions`** — XP for reactions added and received (off by default).
+- **`/admin-levels gain voice`** — Voice XP: minimum people in the channel and anti-farm check.
 - **`/admin-levels member`** — Edits a member's XP and level.
 - **`/admin-levels multiplier`** — XP multiplied in a channel or for a role (factor 1 = removes the rule).
 - **`/admin-levels progress`** — Turns missions, streaks, achievements and pass on or off; sets the server goal.
@@ -741,16 +749,16 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-16 03:5
 - **`/mod-channels lock`** — Blocks the ability to write in a channel.
 - **`/mod-channels lockdown enable`** — Lock all channels, invites and joins of the server.
 - **`/mod-channels lockdown remove`** — Reopen the server as it was before the lockdown.
-- **`/mod-channels reazioni`** — Removes reactions from the latest messages of a channel, without deleting them.
+- **`/mod-channels reactions`** — Removes reactions from the latest messages of a channel, without deleting them.
 - **`/mod-channels slowmode`** — Sets slowmode on a channel or category. With no values: lists channels with slowmode.
 - **`/mod-channels thread`** — Create, archive or delete a thread.
 - **`/mod-channels unlock`** — Unblocks the ability to write in a channel.
-- **`/mod-channels vocale disconnect`** — Disconnects a member from voice.
-- **`/mod-channels vocale dove`** — Shows which voice channel a member is in, and asks for an alert when they join.
-- **`/mod-channels vocale muta`** — Mutes or unmutes a member's microphone in voice.
-- **`/mod-channels vocale sordina`** — Deafens or undeafens a member in voice.
-- **`/mod-channels vocale sposta`** — Moves a member to another voice channel.
-- **`/mod-channels vocale sposta-tutti`** — Moves everyone in a voice channel to another one.
+- **`/mod-channels voice disconnect`** — Disconnects a member from voice.
+- **`/mod-channels voice dove`** — Shows which voice channel a member is in, and asks for an alert when they join.
+- **`/mod-channels voice muta`** — Mutes or unmutes a member's microphone in voice.
+- **`/mod-channels voice sordina`** — Deafens or undeafens a member in voice.
+- **`/mod-channels voice sposta`** — Moves a member to another voice channel.
+- **`/mod-channels voice sposta-tutti`** — Moves everyone in a voice channel to another one.
 
 ## Mod: cases and notes
 
@@ -813,9 +821,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-16 03:5
 ## Music
 
 - **`/music clear-queue`** — Clears the queue without touching the track that is playing.
-- **`/music coda pulisci`** — Toglie dalla coda i brani di chi non e' piu' nel canale vocale.
-- **`/music coda search`** — Cerca un brano nella coda per titolo.
-- **`/music coda skip`** — Toglie dalla coda un intervallo di posizioni e/o i brani di un utente.
+- **`/music coda pulisci`** — Removes from the queue the tracks of people who left the voice channel.
+- **`/music coda search`** — Searches the queue for a track by title.
+- **`/music coda skip`** — Removes a range of positions and/or one user's tracks from the queue.
 - **`/music disconnect`** — Disconnects the music bot from the voice channel.
 - **`/music history`** — Shows the latest tracks already played.
 - **`/music join`** — Makes the music bot join your channel without playing.

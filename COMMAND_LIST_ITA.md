@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-16 03:54 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-17 14:38 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 840 comandi in 49 categorie.**
+**Totale: 848 comandi in 49 categorie.**
 
 ## Admin: AI
 
@@ -260,6 +260,14 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-16 03:
 - **`/admin-livelli card`** — Mostra o nascondi in questo server gli sfondi con immagine di card e profili.
 - **`/admin-livelli diagnosi`** — Spiega perché un membro non prende XP in un canale.
 - **`/admin-livelli escludi`** — Un canale, una categoria o un ruolo non dà XP (rifallo per toglierlo).
+- **`/admin-livelli guadagno canali`** — Dà XP in tutti i canali tranne gli esclusi, oppure solo in quelli dell'elenco.
+- **`/admin-livelli guadagno comandi`** — Accende o spegne l'XP per l'uso dei comandi slash (di base spento).
+- **`/admin-livelli guadagno contesti`** — Se thread, post dei forum e chat dei canali vocali danno XP.
+- **`/admin-livelli guadagno formula`** — Sceglie la curva dei livelli e ricalcola i livelli di tutti.
+- **`/admin-livelli guadagno messaggi`** — XP per messaggio: fisso o a parola, più il bonus per messaggi lunghi o con immagini.
+- **`/admin-livelli guadagno prefissi`** — Prefissi di altri bot: i messaggi che iniziano così non danno XP.
+- **`/admin-livelli guadagno reazioni`** — XP per le reazioni messe e ricevute (di base spento).
+- **`/admin-livelli guadagno vocale`** — XP in vocale: persone minime nel canale e controllo anti-farm.
 - **`/admin-livelli membro`** — Modifica XP e livello di un membro.
 - **`/admin-livelli moltiplicatore`** — XP moltiplicati in un canale o per un ruolo (fattore 1 = toglie la regola).
 - **`/admin-livelli mostra`** — Mostra le impostazioni dei livelli di questo server.

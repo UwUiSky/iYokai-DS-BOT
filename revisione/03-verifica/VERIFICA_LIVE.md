@@ -1672,3 +1672,18 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `MUS-037` — `/admin-musica impostazioni coda:equa` e il riepilogo la mostra; A mette 3 brani, B ne mette 2: `/music queue` li mostra a giro (A, B, A, B, A). Con `coda:normale` tornano in ordine di arrivo.
 - [ ] `MUS-038` — `/music shuffle resta:sì` mescola e dice che resta acceso; un brano aggiunto dopo non va sempre in fondo; `/music queue` mostra «Mescola fisso acceso»; `resta:no` lo spegne. Con la coda vuota `resta:sì` si accende comunque.
 
+
+## Livelli — guadagno di XP e card (#124 r3liv: LIV-004, 006-009, 011, 012, 014-018, 021, 031, 051, 054-056, 059, 060)
+
+- [ ] `LIV-004` — con qualche membro già con XP, `/admin-livelli guadagno formula formula:costante`: il messaggio dice quante persone sono cambiate; `/level rank` mostra il livello nuovo (XP/200). Tornare a «classica» rimette i livelli di prima. Con `/admin-livelli azzera auto blocca_azzeramento:sì` un amministratore non proprietario viene rifiutato.
+- [ ] `LIV-006` — `/admin-livelli guadagno messaggi modo:a parola xp_parola:2`: un messaggio di 5 parole dà ~10 XP, «ok» non dà nulla. `LIV-007` — `bonus:5 caratteri:100`: un messaggio lungo o con un'immagine dà 5 XP in più (una volta sola).
+- [ ] `LIV-017` — `/admin-livelli guadagno comandi attivo:sì`: usare `/level rank` dà XP, ma non due volte nella stessa attesa dei messaggi; spento (di base) non dà nulla.
+- [ ] `LIV-018` — `/admin-livelli guadagno prefissi azione:aggiungi prefisso:!`: un messaggio «!play x» non dà XP, «ciao !» sì; 11° prefisso rifiutato; l'elenco si vede con `azione:elenco`.
+- [ ] `LIV-021` — escludi un canale con `/admin-livelli escludi`, poi `/admin-livelli guadagno canali modo:solo i canali dell'elenco`: l'XP arriva solo lì (anche in vocale). Con elenco vuoto il bot avvisa e l'XP resta ovunque. `/admin-livelli diagnosi` lo tiene in conto.
+- [ ] `LIV-014/015/016` — `/admin-livelli guadagno contesti thread:no forum:no chat_vocale:no`: messaggi in un thread, in un post di forum e nella chat di un canale vocale non danno XP; il riepilogo (`/admin-livelli mostra`) li elenca.
+- [ ] `LIV-011/012` — `/admin-livelli guadagno vocale persone:3`: in due in vocale nessun XP, in tre sì; `anti_farm:no`: chi è assordato prende XP, il canale AFK mai.
+- [ ] `LIV-008/009/060` — `/admin-livelli guadagno reazioni messa:3 ricevuta:2 attesa:60`: A reagisce al messaggio di B: A +3 e B +2; di nuovo entro 60 s: niente; reazione al proprio messaggio, a un bot o da un bot: niente. `/level leaderboard metric:Reazioni messe` mostra la classifica.
+- [ ] `LIV-059` — dopo qualche minuto in vocale in due, `/level leaderboard metric:Minuti in vocale` li elenca.
+- [ ] `LIV-051/054` — `/level rank colore_testo:#FF0000 velo:20` con uno sfondo proprio: nome e anello rossi, sfondo più visibile; `reimposta:sì` toglie tutto.
+- [ ] `LIV-055/056` — `/admin-livelli card colore:auto` (il server ha un'icona): le card di chi non ha un colore usano il colore dell'icona; `sfondo:` allegato = sfondo per chi non ne ha uno suo; `senza_sfondo:sì` e `senza_colore:sì` tolgono.
+- [ ] `LIV-031` — `/admin-livelli annuncio testo:{utente} a {xp} XP` con `prova:sì` mostra gli XP veri.
