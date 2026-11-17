@@ -14,6 +14,9 @@ Pillow>=13.0.0
 # Copia sicura dei PDF (D74): ricostruzione in un documento nuovo, solo dentro la sandbox. Versione fissa, BSD, puro Python
 pypdf==7.1.0
 
+# HEIC/HEIF (D74): si importa solo nel processo a parte della sandbox (core/immagini_worker.py). Versione fissa, BSD-3 (libheif LGPL nella ruota)
+pillow-heif==1.8.1
+
 # Lettura dei QR nelle immagini (filtro immagini sospette, D62): versione fissa, Apache-2.0, senza dipendenze
 zxing-cpp==3.1.1
 

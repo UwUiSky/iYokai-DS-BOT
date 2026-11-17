@@ -9,7 +9,7 @@ Quattro limiti, tutti qui (SEC-11, SEC-20):
 - byte: un allegato oltre MAX_IMAGE_BYTES non va nemmeno scaricato
   (il controllo lo fa il chiamante su `attachment.size`);
 - formato: solo quelli in FORMATI_AMMESSI (la sandbox degli allegati, D74,
-  aggiunge TIFF, ICO e AVIF con FORMATI_SANDBOX), di cui è nota la memoria
+  aggiunge TIFF, ICO, AVIF e HEIC (HEIF) con FORMATI_SANDBOX), di cui è nota la memoria
   usata dal decoder;
 - pixel dichiarati: oltre MAX_PIXELS l'immagine viene rifiutata PRIMA
   di decodificarla (Image.open() legge solo l'header);
@@ -41,7 +41,7 @@ MAX_PIXELS = 16_000_000
 FORMATI_AMMESSI = ("PNG", "JPEG", "GIF", "WEBP", "BMP")
 
 # Solo la sandbox degli allegati (D74) apre anche questi: vengono sempre ricodificati in PNG e mai conservati.
-FORMATI_SANDBOX = FORMATI_AMMESSI + ("TIFF", "ICO", "AVIF")
+FORMATI_SANDBOX = FORMATI_AMMESSI + ("TIFF", "ICO", "AVIF", "HEIF")
 
 # WebP e JPEG progressivi, per essere decodificati, usano da 3 a 4
 # volte la memoria degli altri formati (12-16 byte per pixel invece di
@@ -79,7 +79,7 @@ class ImmagineTroppoGrande(Exception):
 
 
 def _limite_pixel(img: Image.Image, max_pixels: int) -> int:
-    decodifica_pesante = img.format in ("WEBP", "AVIF") or bool(img.info.get("progressive"))
+    decodifica_pesante = img.format in ("WEBP", "AVIF", "HEIF") or bool(img.info.get("progressive"))
     if decodifica_pesante:
         return max_pixels // DIVISORE_PIXEL_DECODIFICA_PESANTE
     return max_pixels

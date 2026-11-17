@@ -3,10 +3,10 @@ core/immagini_byte_logic.py
 ===========================
 Controlli sui byte di un allegato immagine, senza mai decodificarlo (D61, D62): tipo vero dai
 primi byte contro estensione e content-type, dimensioni dichiarate nell'intestazione, struttura
-(blocchi PNG e CRC, segmenti JPEG, blocchi GIF, misura RIFF di WEBP, pagine TIFF, voci ICO, intestazione BMP, scatola `ispe` di AVIF) e dati in coda dopo la fine
+(blocchi PNG e CRC, segmenti JPEG, blocchi GIF, misura RIFF di WEBP, pagine TIFF, voci ICO, intestazione BMP, scatola `ispe` di AVIF e HEIC) e dati in coda dopo la fine
 dell'immagine (file «poliglotti»). Logica pura: niente Discord, niente Pillow, niente database.
 Le «foto in movimento» (JPEG + video MP4 in coda) non sono un falso positivo.
-Funzioni coperte: SPEC §6 (D62), §8.16 (D74: BMP, TIFF, ICO, AVIF)
+Funzioni coperte: SPEC §6 (D62), §8.16 (D74: BMP, TIFF, ICO, AVIF, HEIC)
 """
 
 from __future__ import annotations
@@ -24,20 +24,22 @@ SOSPETTA = "sospetta"
 MALEVOLA = "malevola"
 _GRAVITA = {PULITA: 0, SOSPETTA: 1, MALEVOLA: 2}
 
-TIPI = ("png", "jpeg", "gif", "webp", "bmp", "tiff", "ico", "avif")
+TIPI = ("png", "jpeg", "gif", "webp", "bmp", "tiff", "ico", "avif", "heic")
 _ESTENSIONI = {
     "png": "png", "jpg": "jpeg", "jpeg": "jpeg", "jfif": "jpeg", "gif": "gif", "webp": "webp",
-    "bmp": "bmp", "tif": "tiff", "tiff": "tiff", "ico": "ico", "avif": "avif",
+    "bmp": "bmp", "tif": "tiff", "tiff": "tiff", "ico": "ico", "avif": "avif", "heic": "heic", "heif": "heic",
 }
 _CONTENT_TYPE = {
     "image/png": "png", "image/jpeg": "jpeg", "image/jpg": "jpeg", "image/gif": "gif", "image/webp": "webp",
     "image/bmp": "bmp", "image/x-ms-bmp": "bmp", "image/x-bmp": "bmp", "image/tiff": "tiff",
     "image/x-icon": "ico", "image/vnd.microsoft.icon": "ico", "image/avif": "avif",
+    "image/heic": "heic", "image/heif": "heic", "image/heic-sequence": "heic", "image/heif-sequence": "heic",
 }
 MAX_PAGINE_TIFF = 200
 MAX_IMMAGINI_ICO = 64
 _DIB_BMP = (12, 40, 52, 56, 64, 108, 124)
 _MARCHE_AVIF = (b"avif", b"avis")
+_MARCHE_HEIC = (b"heic", b"heix", b"hevc", b"hevx", b"heim", b"heis", b"hevm", b"hevs", b"mif1", b"msf1")
 
 MAX_TESTO_PNG = 1024 * 1024
 MAX_EXIF = 256 * 1024
@@ -130,6 +132,8 @@ def riconosci_tipo(dati: bytes) -> str | None:
         return "ico"
     if _e_avif(dati):
         return "avif"
+    if _e_heic(dati):
+        return "heic"
     return None
 
 
@@ -158,6 +162,15 @@ def _e_avif(dati: bytes) -> bool:
     misura = min(struct.unpack(">I", dati[:4])[0], len(dati), 256)
     marche = [dati[8:12], *(dati[i:i + 4] for i in range(16, misura - 3, 4))]
     return any(m in _MARCHE_AVIF for m in marche)
+
+
+def _e_heic(dati: bytes) -> bool:
+    """HEIC/HEIF: scatola `ftyp` con una marca HEVC o generica e nessuna marca AVIF (gia' riconosciuta sopra)."""
+    if len(dati) < 16 or dati[4:8] != b"ftyp":
+        return False
+    misura = min(struct.unpack(">I", dati[:4])[0], len(dati), 256)
+    marche = [dati[8:12], *(dati[i:i + 4] for i in range(16, misura - 3, 4))]
+    return any(m in _MARCHE_HEIC for m in marche)
 
 
 def nome_file_sicuro(nome: str) -> str:
@@ -408,7 +421,7 @@ def _leggi_avif(dati: bytes, r: _Raccolta) -> None:
 
 _LETTORI = {
     "png": _leggi_png, "jpeg": _leggi_jpeg, "gif": _leggi_gif, "webp": _leggi_webp,
-    "bmp": _leggi_bmp, "tiff": _leggi_tiff, "ico": _leggi_ico, "avif": _leggi_avif,
+    "bmp": _leggi_bmp, "tiff": _leggi_tiff, "ico": _leggi_ico, "avif": _leggi_avif, "heic": _leggi_avif,
 }
 
 

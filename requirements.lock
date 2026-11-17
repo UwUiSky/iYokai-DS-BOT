@@ -45,6 +45,10 @@ multidict==6.9.1
     #   aiohttp
     #   yarl
 pillow==13.0.0
+    # via
+    #   -r requirements.txt
+    #   pillow-heif
+pillow-heif==1.8.1
     # via -r requirements.txt
 propcache==0.5.4
     # via

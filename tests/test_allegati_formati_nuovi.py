@@ -111,3 +111,44 @@ async def test_ico_con_troppe_immagini_nessuna_copia(ambiente):  # noqa: F811
     troppe = voce[:4] + struct.pack("<H", 300) + voce[6:]
     copia, _ = await pl.esamina_allegato(troppe, "x.ico", "image/x-icon", GUILD)
     assert copia is None
+
+
+# ------------------------------------------------------------------ HEIC/HEIF (D74, parte 2b)
+def test_heic_riconosciuto_dai_byte_con_le_dimensioni():
+    dati = f.heic(48, 36)
+    assert riconosci_tipo(dati) == "heic"
+    e = controlla_byte(dati, "foto.heic", "image/heic")
+    # La scatola `ispe` da' la misura codificata (a blocchi), mai meno di quella vera: il tetto di pixel resta prudente.
+    assert e.verdetto == PULITA and 48 <= e.larghezza <= 64 and 36 <= e.altezza <= 64, e.motivi
+    d = at.decidi(dati, "IMG_1.HEIC", "image/heic")
+    assert d.azione == at.IMMAGINE and d.tipo.formato == "heic" and not d.travestito
+
+
+def test_avif_resta_avif_e_non_diventa_heic():
+    assert riconosci_tipo(f.avif()) == "avif"
+
+
+@pytest.mark.asyncio
+async def test_heic_passa_dalla_sandbox_e_torna_png(ambiente):  # noqa: F811
+    copia, d = await pl.esamina_allegato(f.heic(), "foto.heic", "image/heic", GUILD)
+    assert d.azione == at.IMMAGINE and copia is not None and copia[0] == "foto.png"
+    assert copia[1].startswith(b"\x89PNG\r\n\x1a\n")
+    from PIL import Image
+    import io
+
+    assert Image.open(io.BytesIO(copia[1])).size == (40, 30)
+
+
+@pytest.mark.parametrize("storto", [f.heic()[:60], f.heic()[:200], b"\x00\x00\x00\x18ftypheic" + b"\xff" * 40])
+@pytest.mark.asyncio
+async def test_heic_storto_non_fa_cadere_nulla_e_non_da_copia(ambiente, storto):  # noqa: F811
+    copia, _ = await pl.esamina_allegato(storto, "x.heic", "image/heic", GUILD)
+    assert copia is None
+
+
+def test_il_bot_non_importa_pillow_heif_fuori_dal_worker():
+    import pathlib
+
+    radice = pathlib.Path(__file__).resolve().parent.parent
+    dentro = [p for p in list(radice.glob("core/*.py")) + list(radice.glob("cogs/**/*.py")) if "pillow_heif" in p.read_text()]
+    assert [p.name for p in dentro] == ["immagini_worker.py"]

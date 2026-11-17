@@ -2,9 +2,10 @@
 core/allegati_tipo_logic.py
 ===========================
 Tipo vero di un allegato dai primi byte (mai dal nome o dal content-type) e decisione unica su cosa fare:
-`immagine` (strada D62: png, jpeg, gif, webp, bmp, tiff, ico, avif; HEIC resta scheda), `scheda` (si tiene solo nome pulito, tipo, dimensione, impronta SHA-256) o `rifiuta`
+`immagine` (strada D62: png, jpeg, gif, webp, bmp, tiff, ico, avif, heic), `scheda` (si tiene solo nome pulito, tipo, dimensione, impronta SHA-256) o `rifiuta`
 (travestito, eseguibile, pagina attiva o sconosciuto: nessun file, solo un avviso). Logica pura: nessun file
-aperto, nessuna decodifica, nessuna dipendenza nuova.
+aperto, nessuna decodifica, nessuna dipendenza nuova. Per PDF, audio, video e testo la copia convertita sta in
+`core/allegati_copia.py`.
 Funzioni coperte: SPEC §8.16 (D74, #160)
 Dipende da: core/immagini_byte_logic.py (riconoscimento delle immagini)
 """

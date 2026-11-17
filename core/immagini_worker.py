@@ -6,7 +6,7 @@ stdout (lunghezza + JSON, poi lunghezza + PNG ricodificato). Parte con `python3 
 limiti di memoria, tempo e file messi da `core/immagini_sandbox.py`. Non parla con Discord né col
 database. Qualunque errore del decoder finisce in un esito «errore»: chi legge lo tratta da sospetto.
 Senza Pillow l'esito e' «non_disponibile» (manca la sandbox, non e' colpa dell'immagine).
-Apre PNG, JPEG, GIF, WEBP, BMP, TIFF, ICO e AVIF (D74): sempre un solo fotogramma o pagina, uscita PNG dai soli pixel.
+Apre PNG, JPEG, GIF, WEBP, BMP, TIFF, ICO, AVIF e HEIC (D74, HEIC con pillow-heif solo qui): sempre un solo fotogramma o pagina, uscita PNG dai soli pixel.
 Funzioni coperte: SPEC §6 (D62), §8.16 (D74)
 """
 
@@ -24,6 +24,13 @@ try:
     from PIL import Image
 except ImportError:  # interprete senza le librerie del bot: la sandbox non c'e', l'immagine non e' colpevole
     Image = None
+
+try:  # HEIC/HEIF (D74): il lettore si registra solo qui, nel processo a parte; senza la libreria il formato non si apre
+    from pillow_heif import register_heif_opener
+
+    register_heif_opener()
+except ImportError:
+    pass
 
 RADICE = str(Path(__file__).resolve().parent.parent)
 if RADICE not in sys.path:  # con -I la cartella non c'e' di suo
