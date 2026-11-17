@@ -52,6 +52,31 @@ def pdf_semplice(pagine: int = 3) -> bytes:
     return buf.getvalue()
 
 
+def pdf_con_testo(testo: str = "Ciao yokai") -> bytes:
+    """PDF a mano con una pagina di testo vero (carattere Helvetica) e un'annotazione di evidenziazione senza azioni."""
+    from pypdf import PdfWriter
+    from pypdf.generic import ArrayObject, DecodedStreamObject, DictionaryObject, FloatObject, NameObject, NumberObject
+
+    w = PdfWriter()
+    pagina = w.add_blank_page(200, 200)
+    flusso = DecodedStreamObject()
+    flusso.set_data(f"BT /F1 18 Tf 20 100 Td ({testo}) Tj ET".encode())
+    font = DictionaryObject({NameObject("/Type"): NameObject("/Font"), NameObject("/Subtype"): NameObject("/Type1"),
+                             NameObject("/BaseFont"): NameObject("/Helvetica")})
+    pagina[NameObject("/Contents")] = w._add_object(flusso)
+    pagina[NameObject("/Resources")] = DictionaryObject({NameObject("/Font"): DictionaryObject({NameObject("/F1"): w._add_object(font)})})
+    evidenzia = DictionaryObject({
+        NameObject("/Type"): NameObject("/Annot"), NameObject("/Subtype"): NameObject("/Highlight"),
+        NameObject("/Rect"): ArrayObject([FloatObject(20), FloatObject(95), FloatObject(120), FloatObject(115)]),
+        NameObject("/QuadPoints"): ArrayObject([FloatObject(v) for v in (20, 115, 120, 115, 20, 95, 120, 95)]),
+        NameObject("/F"): NumberObject(4),
+    })
+    pagina[NameObject("/Annots")] = ArrayObject([w._add_object(evidenzia)])
+    buf = io.BytesIO()
+    w.write(buf)
+    return buf.getvalue()
+
+
 def pdf_cifrato() -> bytes:
     from pypdf import PdfWriter
 

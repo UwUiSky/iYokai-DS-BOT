@@ -81,6 +81,17 @@ async def test_pdf_rifatto_senza_javascript_azioni_e_allegati(cartella):
     assert b"segreto" not in r.png
 
 
+async def test_pdf_pulito_conserva_il_testo_cercabile_e_le_evidenziazioni(cartella):
+    from io import BytesIO
+    from pypdf import PdfReader
+
+    r = await _converti(cartella, "pdf", c.pdf_con_testo("Ciao yokai"))
+    assert r.riuscita, r.info
+    pagina = PdfReader(BytesIO(r.png)).pages[0]
+    assert "Ciao yokai" in pagina.extract_text()
+    assert [a.get_object()["/Subtype"] for a in pagina["/Annots"]] == ["/Highlight"]
+
+
 @pytest.mark.parametrize("dati", [b"%PDF-1.4\nnon un pdf vero\n%%EOF", b"%PDF-" + bytes(range(256)) * 20, c.pdf_cifrato()])
 async def test_pdf_storto_o_cifrato_non_da_copia(cartella, dati):
     r = await _converti(cartella, "pdf", dati)
