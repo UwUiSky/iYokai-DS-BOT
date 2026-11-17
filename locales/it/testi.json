@@ -2943,5 +2943,17 @@
   "alertgest_eventi_solo_twitch": "Gli eventi dal calendario valgono solo per gli avvisi Twitch (TW-n).",
   "alertgest_manca_gestisci_eventi": "Al bot serve il permesso «Gestisci eventi» per creare gli eventi.",
   "alertgest_eventi_accesi": "{v1}: creerò gli eventi dal calendario Twitch (controllo ogni 30 minuti).",
-  "alertgest_eventi_spenti": "{v1}: niente più eventi dal calendario. Quelli già creati restano."
+  "alertgest_eventi_spenti": "{v1}: niente più eventi dal calendario. Quelli già creati restano.",
+  "alertlive_ruolo_non_valido": "Questo ruolo non si può usare: @everyone e i ruoli dei bot non vanno bene.",
+  "alertlive_ruolo_sopra_il_bot": "Non posso dare questo ruolo: è sopra il mio ruolo più alto, oppure mi manca «Gestisci ruoli».",
+  "alertlive_regola_non_trovata": "Non trovo quella regola in questo server.",
+  "alertlive_tetto": "Hai già {v1} regole, il massimo. Toglierne una con /admin-alert ruolo-live rimuovi.",
+  "alertlive_senza_presenze": "Attenzione: l'intent delle presenze non è acceso sul bot, quindi la regola non scatta finché il proprietario del bot non lo accende.",
+  "alertlive_creata": "Regola {v1} creata: chi va in diretta riceve **{v2}** e lo perde alla fine.",
+  "alertlive_nessuna": "Nessuna regola. Creane una con /admin-alert ruolo-live aggiungi.",
+  "alertlive_rimossa": "Regola rimossa.",
+  "alertlive_filtri_ok": "Filtri della regola {v1} aggiornati.",
+  "alertlive_voce_ok": "Fatto.",
+  "alertlive_voci_piene": "Ci sono già {v1} voci di questo tipo: toglierne qualcuna prima.",
+  "alertlive_annuncio_ok": "Annuncio della regola {v1} aggiornato."
 }

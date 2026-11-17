@@ -647,6 +647,10 @@ REGISTRO: tuple[TabellaDati, ...] = (
        anonimizza=(("live_member_id", "NULL"),)),
     _t("twitch_eventi_creati", "Eventi creati dal calendario Twitch", colonna_server="guild_id"),
     _t("voice_roles", "Ruoli dati a chi è in un canale vocale", colonne_attore=("created_by",), colonna_server="guild_id"),
+    _t("live_role_voci", "Esclusi ed eccezioni del ruolo «in diretta»",
+       colonne_utente=("target_id",), colonna_server="guild_id", utente="cancella",
+       nota="i ruoli esclusi hanno un id di ruolo, che non coincide mai con quello di un utente"),
+    _t("live_role_regole", "Regole del ruolo «in diretta»", colonne_attore=("created_by",), colonna_server="guild_id"),
     _t("live_role_settings", "Ruolo «in diretta»", colonna_server="guild_id"),
     _t("custom_webhooks", "Webhook personalizzati", colonne_attore=("created_by",), colonna_server="guild_id"),
     # ---------------------------------------------------------------- backup e ripristino

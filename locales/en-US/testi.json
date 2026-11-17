@@ -2943,5 +2943,17 @@
   "alertgest_eventi_solo_twitch": "Events from the schedule only work for Twitch alerts (TW-n).",
   "alertgest_manca_gestisci_eventi": "The bot needs the \"Manage Events\" permission to create events.",
   "alertgest_eventi_accesi": "{v1}: I will create events from the Twitch schedule (checked every 30 minutes).",
-  "alertgest_eventi_spenti": "{v1}: no more events from the schedule. Existing events stay."
+  "alertgest_eventi_spenti": "{v1}: no more events from the schedule. Existing events stay.",
+  "alertlive_ruolo_non_valido": "This role cannot be used: @everyone and bot roles are not allowed.",
+  "alertlive_ruolo_sopra_il_bot": "I cannot give this role: it is above my highest role, or I lack \"Manage Roles\".",
+  "alertlive_regola_non_trovata": "I cannot find that rule in this server.",
+  "alertlive_tetto": "You already have {v1} rules, the maximum. Remove one with /admin-alert ruolo-live rimuovi.",
+  "alertlive_senza_presenze": "Careful: the presences intent is off for the bot, so the rule will not fire until the bot owner turns it on.",
+  "alertlive_creata": "Rule {v1} created: whoever goes live gets **{v2}** and loses it at the end.",
+  "alertlive_nessuna": "No rules. Create one with /admin-alert ruolo-live aggiungi.",
+  "alertlive_rimossa": "Rule removed.",
+  "alertlive_filtri_ok": "Filters of rule {v1} updated.",
+  "alertlive_voce_ok": "Done.",
+  "alertlive_voci_piene": "There are already {v1} entries of this kind: remove some first.",
+  "alertlive_annuncio_ok": "Announcement of rule {v1} updated."
 }

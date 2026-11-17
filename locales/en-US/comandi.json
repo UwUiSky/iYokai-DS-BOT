@@ -346,7 +346,10 @@
   "ferma-tutti": "stop-all",
   "diretta": "live",
   "feed-noto": "known-feed",
-  "eventi-twitch": "twitch-events"
+  "eventi-twitch": "twitch-events",
+  "filtri": "filters",
+  "esclusi": "excluded",
+  "eccezioni": "exceptions"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1357,7 +1360,15 @@
   "admin-alert subreddit": "Alert for new posts of a subreddit, as text or embed.",
   "admin-alert feed-noto": "News about anime and manga or free games, from ready-made feeds.",
   "admin-alert picarto": "Alert when a Picarto channel goes live.",
-  "admin-alert eventi-twitch": "Create Discord events from a Twitch channel's schedule."
+  "admin-alert eventi-twitch": "Create Discord events from a Twitch channel's schedule.",
+  "admin-alert ruolo-live": "Live role: rules, filters, excluded, exceptions, announcement",
+  "admin-alert ruolo-live aggiungi": "New rule: gives a role to whoever goes live.",
+  "admin-alert ruolo-live elenco": "The live role rules of the server.",
+  "admin-alert ruolo-live rimuovi": "Removes a live role rule.",
+  "admin-alert ruolo-live filtri": "Title words, games and required role of a rule.",
+  "admin-alert ruolo-live esclusi": "Members or roles that never get the role of a rule.",
+  "admin-alert ruolo-live eccezioni": "Members who get the role even without the words or the game.",
+  "admin-alert ruolo-live annuncio": "Announce in a channel who goes live."
  },
  "parametri": {},
  "menu": {
