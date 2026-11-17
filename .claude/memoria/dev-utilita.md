@@ -1,24 +1,23 @@
 # Memoria di dev-utilita
 
 ## Aggiornata
-09/11/2026 · r24util (feat/r24util, DB iyokai_wr24util, env /tmp/env_wr24util.sh) · #128 B25-B28 fatti; corretti gli 8 punti del revisore + 3 bassi. Migrazioni: 0565 usata, libere 0566-0569.
+17/11/2026 · r1ben (feat/r1ben, DB iyokai_w123) · #123: 65 voci nuove o provate; restano RUO-005, 012, 045, 046, 047, 053, 069, 083. Migrazioni usate 0640-0650 (libere 0651-0659).
 
 ## In corso
-- #128 parte C finita e corretta (rimandata dal revisore, 8 punti fatti). Prossimo: nuovo parere del revisore; smoke da fare (non lanciato) dell'orchestratore.
-- Aperto per altri: tests/test_command_search_bilingue.py e _bug147 falliscono anche su origin/main.
+- Giro r1ben chiuso (non unito, niente push). Smoke da fare dell'orchestratore. Prossimo: le 8 voci rimaste (vedi Aperto) e il nuovo parere del revisore.
 
 ## Fatto
-- r24util B25: core/tag_script_logic.py (async, interprete proprio, tetti 200 op/prof 10/uscita 4000/valore 2000/tempo 1s, regex re2), solo se ha_script() in CustomCommandsCog._prepara.
-- r24util B26: 0562 tag_dati/tag_errori, tag_script_repo, {dati:} (ArchivioMemoria/ArchivioProva), cogs/utility/automazioni.py (/tag prova, /admin-automazioni script errori).
-- r24util B27: 0563 tag_inneschi, tag_inneschi_logic (cron proprio), inneschi.py (reazione/ruolo/intervallo/orario/bottone), CustomCommandsCog.esegui_innesco, hook in BottoneTag.
-- r24util B28: 0564 comandi_server/menu_server/slash_server_stato, slash_server_logic + repo, cogs/utility/slash_server.py (albero per server, sync 1 ogni 5 min, 200/giorno, scheduler slash_server_sync).
-- r23util B23-B24 sondaggi programmati/nativi (0560), eventi (0561). r22util B22 sondaggio a bottoni (0559). r21util B16-B21 citazioni, emoji/sticker, regex, tag opzioni/reazioni, /tag crea (0555-0557).
-- r20util B8-B15 starboard, giveaway, inviti, conteggio (0547-0553). r19util B1-B7 /utility, /web, messaggi auto, embed, programmati, compleanni, suggerimenti (0540-0545).
-- Giri vecchi (r4-r11): autorole, starboard, tag, autoresponder, greetings, role menu, embed, contatori, compleanni, inviti, moduli, /ruoli, attività (git log).
-
+- r1ben #123: benvenuto ({math:}, {se_nuovo:}/{se_ruolo:}, immagine opacità/testo/ordine/allineamento, embed salvato per benvenuto/DM/addio, reazione al primo messaggio, avviso topic), ruoli (ricordati ammessi/esclusi 0640, vocali 0647), menu (limiti 0641, azzera 0642, immagine extra 0643, embed 0644, primo msg 0645, topic 0646, esterno 0648, scadenza 0649, contatori 0650), gruppo /admin-menu-ruoli (D75). Codici provati: tests/test_catalogo_ruoli_gia_fatti.py + test_role_menu_limiti_ruoli.py.
+- r24util B25-B28: script dei tag, dati e errori (0562), inneschi (0563), comandi del server (0564, 0565); dettagli in git log e nel codice.
+- Giri r19-r23 (B1-B24): /utility, /web, messaggi auto, embed, programmati, compleanni, suggerimenti, starboard, giveaway, inviti, conteggio, citazioni, emoji, regex, tag, sondaggi, eventi (0540-0561). Giri r4-r11: autorole, tag, autoresponder, greetings, role menu, moduli (git log).
 - r24util correzioni: monta_per_avvio (slash_server.py) chiamato da main.setup_hook prima di ogni sync; owner riservato; _monta salta le collisioni; core/tag_eliminazione.pulisci_tag_eliminato (unica pulizia); 0565 tag_dati.autore + 200 chiavi per autore (staff no); asyncio.timeout in esegui; togli_per_ruolo; blacklist e pausa 3 s negli inneschi; regex a pezzi.
 
 ## Cose imparate
+- Il catalogo vede i codici SOLO con il trattino (RUO-021) in codice o test: `RUO_021` nel nome non basta, `RUO-018..021` non è un intervallo. Ogni test ha un commento `# RUO-xxx`.
+- Peso dei gruppi: /admin-ruoli era a 8.162: le funzioni nuove dei menu stanno in /admin-menu-ruoli (gruppo nuovo = command_groups + command_policy + generate_command_list + comandi.json nomi e descrizioni). test_command_groups.py ha 2 test già rotti su main (elenco gruppi vecchio).
+- Funzioni importate che iniziano per «test» le raccoglie pytest: non chiamarle testo_*.
+- comandi.json: sezioni `nomi` (nome comando -> inglese, un nome per tutti) e `descrizioni`; mai riscrivere un nome già presente (es. «svuota» = clear). Script: scratchpad/en_agg.py.
+- Generare COMMAND_LIST serve variabili finte per token e ID (da .env.example, mai quelle vere).
 - Menu del tasto destro nel tree: get_commands() li include; command_search li rompe (vedi Aperto). Un cog con ContextMenu: cog_load chiama super().cog_load() (CogConGruppi) e poi add_command.
 - Tag: opzioni in colonne di custom_commands (0557), risposte con peso in custom_command_risposte; chi usa un tag passa da _rifiuto (sync) e _rifiuto_gruppo (async). Cancellazioni future via scheduler (AZIONE_CANCELLA_RISPOSTA).
 - Un gruppo nuovo: _DEFINIZIONI in core/command_groups.py + AUDIENCE in tests/support/command_policy.py + nome in scripts/generate_command_list.py + descrizione in locales/en-US/comandi.json.
@@ -40,6 +39,8 @@
 - Range[int,...] ≤ 2**31 (test limiti a 53 bit). Un test che passa dal cog con un repo nuovo deve patcharlo (tag_script_repo, tag_inneschi_repo).
 
 ## Aperto
+- #123 restano: RUO-005 (dimensioni libere), 012 (immagini a caso), 045/046 (ruolo personale e colore: /utility è pieno, serve un sotto-gruppo), 047 (creazione guidata), 053 (immagine nel menu), 069 (menu collegati), 083 (più ruoli per opzione).
+- Menu: il messaggio esterno non ha contatori né bottoni; cambio tipo vale solo per menu del bot. Reazione negata da un limite: nessun avviso (le reazioni non hanno risposta).
 - Sondaggi nativi programmati: non compaiono in `/sondaggi gestisci` (solo bottoni) e non si annullano; il conteggio a N voti conta i voti (non i votanti) e perde quelli arrivati col bot spento.
 - Eventi: promemoria solo per chi ha detto «sì»; i bottoni dei messaggi finiti restano ma rispondono «chiuso».
 - UTL-184 `/mod-ban massa invito codice:` non fatto: è in cogs/moderation (r19mod). Servono: completamento sul codice + ban di massa dei membri entrati con quel codice (invite_joins.code).

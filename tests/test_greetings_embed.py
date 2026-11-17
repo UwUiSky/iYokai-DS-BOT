@@ -24,12 +24,18 @@ DATI = {
 
 
 def test_RUO_001_segnaposto_in_titolo_testo_piede_e_campi():
+
+
+    # RUO-001
     e = embed_con_segnaposto(DATI, lambda t: t.replace("{username}", "mario").replace("{server}", "S").replace("{membercount}", "7").replace("{user}", "<@5>"))
     assert e.title == "Benvenuto mario" and e.description == "Sei il 7º su S" and e.footer.text == "S"
     assert e.fields[0].value == "Leggile <@5>"
 
 
 def test_RUO_001_testi_tagliati_e_embed_non_valido_diventa_none():
+
+
+    # RUO-001
     lungo = dict(DATI, description="x", title="t", fields=[], footer=None)
     assert len(embed_con_segnaposto(lungo, lambda t: t * 5000).description) == 4096
     assert embed_con_segnaposto({"title": None, "description": None, "fields": []}, lambda t: t) is None
@@ -43,6 +49,7 @@ def repo(clean_db):
 
 @pytest.mark.asyncio
 async def test_RUO_001_RUO_014_RUO_015_nomi_degli_embed_salvati_e_riletti(repo):
+    # RUO-001, RUO-014, RUO-015
     await repo.set_embed(1, "benvenuto", "bene")
     await repo.set_embed(1, "dm", "privato")
     await repo.set_embed(1, "addio", "ciao")
@@ -87,6 +94,7 @@ class _Scena:
 
 @pytest.mark.asyncio
 async def test_RUO_001_benvenuto_con_embed_salvato(monkeypatch):
+    # RUO-001
     s = _Scena(monkeypatch, welcome_embed="bene")
     await s.cog.on_member_join(s.membro)
     embed = s.canale.send.await_args.kwargs["embed"]
@@ -96,6 +104,7 @@ async def test_RUO_001_benvenuto_con_embed_salvato(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_RUO_001_embed_cancellato_il_testo_parte_lo_stesso(monkeypatch):
+    # RUO-001
     s = _Scena(monkeypatch, welcome_embed="sparito")
     s.salvati.get.return_value = None
     await s.cog.on_member_join(s.membro)
@@ -104,6 +113,7 @@ async def test_RUO_001_embed_cancellato_il_testo_parte_lo_stesso(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_RUO_014_dm_con_embed(monkeypatch):
+    # RUO-014
     s = _Scena(monkeypatch, dm_embed="privato")
     await s.cog.on_member_join(s.membro)
     assert s.membro.send.await_args.kwargs["embed"].title == "Benvenuto mario"
@@ -112,6 +122,7 @@ async def test_RUO_014_dm_con_embed(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_RUO_015_addio_con_embed(monkeypatch):
+    # RUO-015
     s = _Scena(monkeypatch, goodbye_embed="ciao")
     await s.cog.on_member_remove(s.membro)
     assert s.canale.send.await_args.kwargs["embed"].footer.text == s.server.name
@@ -119,6 +130,7 @@ async def test_RUO_015_addio_con_embed(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_RUO_001_il_comando_embed_salva_o_toglie_e_controlla_il_nome(monkeypatch):
+    # RUO-001
     s = _Scena(monkeypatch)
     i = fake_interaction(guild=s.server, user=s.membro)
     await s.cog.embed_cmd.callback(s.cog, i, "benvenuto", "bene")

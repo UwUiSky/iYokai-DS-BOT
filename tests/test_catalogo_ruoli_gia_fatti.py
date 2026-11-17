@@ -37,30 +37,48 @@ def _png(w, h):
 
 
 def test_RUO_002_immagine_di_benvenuto_con_avatar_e_nome():
+
+
+    # RUO-002
     png = render_welcome_image(DatiBenvenuto(nome="Mario", numero=12), _png(64, 64), None)
     assert Image.open(io.BytesIO(png)).size == (LARGHEZZA, ALTEZZA)
 
 
 def test_RUO_003_sfondo_caricato_portato_alla_misura():
+
+
+    # RUO-003
     assert Image.open(io.BytesIO(prepara_sfondo(_png(1500, 900)))).size == (LARGHEZZA, ALTEZZA)
 
 
 def test_RUO_006_avatar_tondo_o_quadrato():
+
+
+    # RUO-006
     assert set(FORME) == {"tondo", "quadrato"}
 
 
 def test_RUO_009_titolo_del_banner_cambia_l_immagine():
+
+
+    # RUO-009
     uno = render_welcome_image(DatiBenvenuto(nome="A", numero=1, titolo="Ciao"), None, None)
     due = render_welcome_image(DatiBenvenuto(nome="A", numero=1, titolo="Benvenuta"), None, None)
     assert uno != due
 
 
 def test_RUO_011_togli_sfondo_e_il_modello_pronto():
+
+
+    # RUO-011
     # senza sfondo l'immagine torna al modello (comando `immagine togli_sfondo`)
     assert render_welcome_image(DatiBenvenuto(nome="A", numero=1), None, None)
 
 
 def test_RUO_020_RUO_021_nome_visualizzato_e_id_del_server():
+
+
+    # RUO-020, RUO-021
     testo = render_template(
         "{displayname}|{serverid}", "@u", "u", "S", 3, display_name="Nome", server_id=77
     )
@@ -68,12 +86,18 @@ def test_RUO_020_RUO_021_nome_visualizzato_e_id_del_server():
 
 
 def test_RUO_028_ruolo_dato_a_chi_entra_ma_non_ai_bot():
+
+
+    # RUO-028
     regole = [RegolaAutoruolo(1)]
     assert piano_ingresso(regole, is_bot=False, ruoli_posseduti=set()) == ([1], [])
     assert piano_ingresso(regole, is_bot=True, ruoli_posseduti=set()) == ([], [])
 
 
 def test_RUO_029_RUO_030_RUO_032_comandi_auto_aggiungi_togli_elenco():
+
+
+    # RUO-029, RUO-030, RUO-032
     import asyncio
     import discord
     from discord.ext import commands
@@ -90,11 +114,17 @@ def test_RUO_029_RUO_030_RUO_032_comandi_auto_aggiungi_togli_elenco():
 
 
 def test_RUO_031_ruolo_con_ritardo_va_nello_scheduler():
+
+
+    # RUO-031
     subito, dopo = piano_ingresso([RegolaAutoruolo(5, 600)], is_bot=False, ruoli_posseduti=set())
     assert subito == [] and dopo == [(5, 600)]
 
 
 def test_RUO_033_regola_tolta_non_vale_piu_allo_scatto():
+
+
+    # RUO-033
     # lo scatto controlla che la regola esista ancora (handle_autorole_give): regola assente = niente ruolo
     import inspect
 
@@ -104,11 +134,17 @@ def test_RUO_033_regola_tolta_non_vale_piu_allo_scatto():
 
 
 def test_RUO_037_membro_in_attesa_di_accettare_le_regole():
+
+
+    # RUO-037
     assert membro_in_attesa(True, False, False) is True
     assert membro_in_attesa(False, False, False) is False
 
 
 def test_RUO_039_ruoli_ridati_a_chi_rientra_entro_i_giorni():
+
+
+    # RUO-039
     from datetime import datetime, timedelta, timezone
 
     ora = datetime(2026, 10, 1, tzinfo=timezone.utc)
@@ -118,10 +154,14 @@ def test_RUO_039_ruoli_ridati_a_chi_rientra_entro_i_giorni():
 
 @pytest.mark.parametrize("modo", ["unique", "verify", "drop", "reversed", "binding", "temp", "lock", "normal"])
 def test_RUO_054_061_ogni_comportamento_del_menu_esiste(modo):
+    # RUO-054, RUO-055, RUO-056, RUO-057, RUO-058, RUO-059, RUO-060, RUO-061
     assert modo in COMPORTAMENTI
 
 
 def test_RUO_054_RUO_064_unique_toglie_il_ruolo_precedente():
+
+
+    # RUO-054, RUO-064
     d = decidi_azione(
         "unique", attiva=True, via_reazione=False, ruolo_id=2, ruoli_menu={1, 2}, ruoli_membro={1}
     )
@@ -129,6 +169,9 @@ def test_RUO_054_RUO_064_unique_toglie_il_ruolo_precedente():
 
 
 def test_RUO_055_RUO_056_verify_non_toglie_e_drop_toglie_soltanto():
+
+
+    # RUO-055, RUO-056
     v = decidi_azione("verify", attiva=True, via_reazione=False, ruolo_id=1, ruoli_menu={1}, ruoli_membro={1})
     assert v.rifiuto and not v.togli
     d = decidi_azione("drop", attiva=True, via_reazione=False, ruolo_id=1, ruoli_menu={1}, ruoli_membro={1})
@@ -136,6 +179,9 @@ def test_RUO_055_RUO_056_verify_non_toglie_e_drop_toglie_soltanto():
 
 
 def test_RUO_057_RUO_058_RUO_059_reversed_binding_lock():
+
+
+    # RUO-057, RUO-058, RUO-059
     r = decidi_azione("reversed", attiva=True, via_reazione=True, ruolo_id=1, ruoli_menu={1}, ruoli_membro={1})
     assert r.togli == (1,)
     b = decidi_azione("binding", attiva=True, via_reazione=False, ruolo_id=2, ruoli_menu={1, 2}, ruoli_membro={1})
@@ -145,6 +191,9 @@ def test_RUO_057_RUO_058_RUO_059_reversed_binding_lock():
 
 
 def test_RUO_060_RUO_061_temp_ha_scadenza_e_normal_e_il_ritorno():
+
+
+    # RUO-060, RUO-061
     t = decidi_azione(
         "temp", attiva=True, via_reazione=False, ruolo_id=1, ruoli_menu={1}, ruoli_membro=set(), temp_secondi=60
     )
@@ -154,6 +203,9 @@ def test_RUO_060_RUO_061_temp_ha_scadenza_e_normal_e_il_ritorno():
 
 
 def test_RUO_066_RUO_067_ruoli_ammessi_ed_esclusi_l_esclusione_vince():
+
+
+    # RUO-066, RUO-067
     assert membro_ammesso([5], [], {5}) is None
     assert membro_ammesso([5], [], {9}) is not None
     assert membro_ammesso([5], [6], {5, 6}) is not None
@@ -161,6 +213,9 @@ def test_RUO_066_RUO_067_ruoli_ammessi_ed_esclusi_l_esclusione_vince():
 
 
 def test_RUO_078_il_menu_si_pubblica_prima_e_si_salva_dopo():
+
+
+    # RUO-078
     import inspect
 
     import cogs.utility.role_menus as modulo
@@ -170,6 +225,9 @@ def test_RUO_078_il_menu_si_pubblica_prima_e_si_salva_dopo():
 
 
 def test_RUO_051_modifica_titolo_e_descrizione_di_un_menu_pubblicato():
+
+
+    # RUO-051
     import inspect
 
     import cogs.utility.role_menus as modulo

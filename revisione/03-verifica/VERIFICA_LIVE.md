@@ -1672,3 +1672,19 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `MUS-037` — `/admin-musica impostazioni coda:equa` e il riepilogo la mostra; A mette 3 brani, B ne mette 2: `/music queue` li mostra a giro (A, B, A, B, A). Con `coda:normale` tornano in ordine di arrivo.
 - [ ] `MUS-038` — `/music shuffle resta:sì` mescola e dice che resta acceso; un brano aggiunto dopo non va sempre in fondo; `/music queue` mostra «Mescola fisso acceso»; `resta:no` lo spegne. Con la coda vuota `resta:sì` si accende comunque.
 
+
+## Benvenuto e ruoli — catalogo #123 (giro r1ben)
+
+- [ ] `RUO-022/026` — `/admin-benvenuto messaggio message:"Sei il {math: {membercount} + 1}º{se_nuovo:7| (account nuovo!)}"` e `anteprima`: il numero è giusto, la parte tra graffe esce solo se l'account ha meno di 7 giorni. `{math: 2 * 3}` resta scritto.
+- [ ] `RUO-004/007/008/010` — `/admin-benvenuto immagine attiva:sì opacita:30 testo:"Leggi {server}" ordine:immagine prima allineamento:centro colore_nome:#FFD700`: entra un account di prova; escono due messaggi (immagine, poi testo). Con `solo immagine` esce solo l'immagine.
+- [ ] `RUO-001/014/015` — salva un embed con `/admin-messaggi embed crea` (titolo con `{username}`), poi `/admin-benvenuto embed dove:benvenuto nome:…` e lo stesso per `dm` e `addio`: l'embed esce con i segnaposto. `nome:togli` lo toglie.
+- [ ] `RUO-024` — `/admin-benvenuto extra` > Testi e reazioni, campo «Emoji sul primo messaggio»: entra un account di prova e scrive: il bot reagisce solo al primo messaggio.
+- [ ] `RUO-027` — `/admin-benvenuto avviso-topic canale:#annunci`; cambia l'argomento di un canale pubblico: un solo avviso (due cambi in un minuto = un avviso), nessuna menzione. Su un canale privato: nessun avviso.
+- [ ] `RUO-040/041` — `/admin-ruoli auto ricorda-ruoli elenco:esclusi azione:aggiungi ruolo:@X`; un membro con @X esce e rientra: @X non torna. Il ruolo di mute non si può escludere.
+- [ ] `RUO-044` — `/admin-ruoli vocale azione:aggiungi canale:🔊 ruolo:@InVocale`: entra e esci dal canale, il ruolo va e viene. Riavvia il bot con qualcuno dentro: il ruolo resta a posto.
+- [ ] `RUO-062/063/065/068` — `/admin-ruoli menu modifica massimo:2 minimo:1` su un menu a bottoni: il terzo ruolo è rifiutato, l'ultimo non si toglie. `aggiungi max_membri:1`: il secondo membro riceve «posti finiti». `accesso azione:svuota` svuota l'elenco.
+- [ ] `RUO-052/081/082/085/086/087/084` — `menu modifica colore:#C24A3A risposta:"Hai preso {ruolo}!" avvisa:no voce_azzera:sì contatori:sì`; `aggiungi colore:verde descrizione:"…"`: colori, testi e numeri si vedono; con `avvisa:no` il clic non mostra nulla ma il ruolo arriva.
+- [ ] `RUO-070/088` — `menu modifica scade_tra_ore:1`: dopo un'ora il menu sparisce con il messaggio. `menu modifica tipo:bottoni` su un menu a reazioni: nasce un messaggio nuovo con le stesse opzioni e il vecchio sparisce.
+- [ ] `RUO-048/049/076/077/080` — `/admin-menu-ruoli aggiungi-molti coppie:"🎮 @Gamer; 🎨 @Artista"`, `opzione ruolo:@Gamer posto:1 emoji:🔥`, `svuota` (prima senza `conferma`, poi con).
+- [ ] `RUO-071/089` — `/admin-menu-ruoli canale` crea un canale dove tutti leggono e non scrivono; `modello modello:verifica ruoli:@Membro` crea il bottone verde che dà il ruolo e non lo toglie.
+- [ ] `RUO-072/073/074/075/079` — `/admin-menu-ruoli sposta` su un messaggio scritto da una persona: le reazioni arrivano, il messaggio non cambia; cancella il menu: il messaggio resta. `ripara` rimette le reazioni tolte. `aggiungi emoji_esterna:sì` con un'emoji di un altro server: la reazione la metti tu. `elimina tieni_messaggio:sì` lascia il messaggio senza più bottoni.

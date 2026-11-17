@@ -14,6 +14,7 @@ from tests.test_role_menu_modalita import _Scena, _ruoli_di
 
 @pytest.mark.asyncio
 async def test_RUO_062_bottoni_rispettano_il_tetto_di_ruoli(clean_db, monkeypatch):
+    # RUO-062
     s = _Scena(clean_db, monkeypatch)
     await s.menu()
     await s.repo.update_menu(s.menu_id, max_selectable=2)
@@ -29,6 +30,7 @@ async def test_RUO_062_bottoni_rispettano_il_tetto_di_ruoli(clean_db, monkeypatc
 
 @pytest.mark.asyncio
 async def test_RUO_063_il_minimo_non_lascia_togliere_l_ultimo(clean_db, monkeypatch):
+    # RUO-063
     s = _Scena(clean_db, monkeypatch)
     await s.menu()
     await s.repo.update_menu(s.menu_id, min_roles=1)
@@ -44,6 +46,7 @@ async def test_RUO_063_il_minimo_non_lascia_togliere_l_ultimo(clean_db, monkeypa
 
 @pytest.mark.asyncio
 async def test_RUO_065_posti_finiti_per_un_ruolo(clean_db, monkeypatch):
+    # RUO-065
     s = _Scena(clean_db, monkeypatch)
     await s.menu(opzioni=())
     await s.repo.add_option(s.menu_id, 1000, "🎮", "A", max_members=1)
@@ -60,6 +63,7 @@ async def test_RUO_065_posti_finiti_per_un_ruolo(clean_db, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_RUO_062_RUO_063_il_comando_modifica_salva_e_controlla(clean_db, monkeypatch):
+    # RUO-062, RUO-063
     s = _Scena(clean_db, monkeypatch)
     await s.menu()
     i = s.interazione(s.utente())
@@ -75,6 +79,7 @@ async def test_RUO_062_RUO_063_il_comando_modifica_salva_e_controlla(clean_db, m
 
 @pytest.mark.asyncio
 async def test_RUO_068_svuota_gli_elenchi_di_accesso(clean_db, monkeypatch):
+    # RUO-068
     s = _Scena(clean_db, monkeypatch)
     await s.menu()
     await s.repo.set_access_lists(s.menu_id, [1005, 1006], [1007])
@@ -88,6 +93,7 @@ async def test_RUO_068_svuota_gli_elenchi_di_accesso(clean_db, monkeypatch):
 
 # ------------------------------------------------- aspetto e risposte (RUO-052, 081, 082, 085, 086)
 def test_RUO_082_risposta_con_il_ruolo_e_tagliata():
+    # RUO-082
     from core.role_menu_logic import MAX_RISPOSTA, risposta_personale
 
     assert risposta_personale("Ecco {ruolo}!", "<@&5>") == "Ecco <@&5>!"
@@ -96,6 +102,7 @@ def test_RUO_082_risposta_con_il_ruolo_e_tagliata():
 
 @pytest.mark.asyncio
 async def test_RUO_052_colore_del_messaggio_e_ritorno_al_predefinito(clean_db, monkeypatch):
+    # RUO-052
     from cogs.utility.role_menus import _build_embed
 
     s = _Scena(clean_db, monkeypatch)
@@ -112,6 +119,7 @@ async def test_RUO_052_colore_del_messaggio_e_ritorno_al_predefinito(clean_db, m
 
 @pytest.mark.asyncio
 async def test_RUO_085_colore_del_bottone(clean_db, monkeypatch):
+    # RUO-085
     import discord
 
     s = _Scena(clean_db, monkeypatch)
@@ -124,6 +132,7 @@ async def test_RUO_085_colore_del_bottone(clean_db, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_RUO_086_tendina_con_testo_guida_e_descrizione(clean_db, monkeypatch):
+    # RUO-086
     s = _Scena(clean_db, monkeypatch, mode="select")
     await s.menu(opzioni=())
     await s.repo.add_option(s.menu_id, 1000, None, "A", description="La prima")
@@ -134,6 +143,7 @@ async def test_RUO_086_tendina_con_testo_guida_e_descrizione(clean_db, monkeypat
 
 @pytest.mark.asyncio
 async def test_RUO_081_RUO_082_avviso_spento_e_risposta_propria(clean_db, monkeypatch):
+    # RUO-081, RUO-082
     s = _Scena(clean_db, monkeypatch)
     await s.menu()
     i0 = s.interazione(s.utente())
@@ -153,6 +163,7 @@ async def test_RUO_081_RUO_082_avviso_spento_e_risposta_propria(clean_db, monkey
 
 # ------------------------------------------------- gestione dei menu (RUO-076, 077, 079, 080, 087)
 def test_RUO_077_sposta_ruolo_al_posto_scelto():
+    # RUO-077
     from core.role_menu_logic import sposta_ruolo
 
     assert sposta_ruolo([1, 2, 3, 4], 4, 1) == [4, 1, 2, 3]
@@ -162,6 +173,7 @@ def test_RUO_077_sposta_ruolo_al_posto_scelto():
 
 @pytest.mark.asyncio
 async def test_RUO_076_RUO_077_opzione_cambia_emoji_e_posto(clean_db, monkeypatch):
+    # RUO-076, RUO-077
     s = _Scena(clean_db, monkeypatch)
     await s.menu()
     i = s.interazione(s.utente())
@@ -175,6 +187,7 @@ async def test_RUO_076_RUO_077_opzione_cambia_emoji_e_posto(clean_db, monkeypatc
 
 @pytest.mark.asyncio
 async def test_RUO_076_ruolo_non_del_menu_e_emoji_falsa_rifiutati(clean_db, monkeypatch):
+    # RUO-076
     s = _Scena(clean_db, monkeypatch)
     await s.menu()
     i = s.interazione(s.utente())
@@ -186,6 +199,7 @@ async def test_RUO_076_ruolo_non_del_menu_e_emoji_falsa_rifiutati(clean_db, monk
 
 @pytest.mark.asyncio
 async def test_RUO_079_elimina_tenendo_il_messaggio(clean_db, monkeypatch):
+    # RUO-079
     s = _Scena(clean_db, monkeypatch)
     await s.menu()
     await s.repo.set_menu_message(s.menu_id, 555)
@@ -198,6 +212,7 @@ async def test_RUO_079_elimina_tenendo_il_messaggio(clean_db, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_RUO_080_svuota_chiede_conferma_e_poi_elimina_tutto(clean_db, monkeypatch):
+    # RUO-080
     import cogs.utility.role_menus as rm
 
     monkeypatch.setattr(rm, "PAUSA_SVUOTA_SECONDI", 0)
@@ -214,6 +229,7 @@ async def test_RUO_080_svuota_chiede_conferma_e_poi_elimina_tutto(clean_db, monk
 
 @pytest.mark.asyncio
 async def test_RUO_087_voce_togli_tutti_i_ruoli_nella_tendina(clean_db, monkeypatch):
+    # RUO-087
     from core.role_menu_logic import VALORE_AZZERA
 
     s = _Scena(clean_db, monkeypatch, mode="select")
@@ -234,6 +250,7 @@ async def test_RUO_087_voce_togli_tutti_i_ruoli_nella_tendina(clean_db, monkeypa
 # ------------------------------------------------- coppie in un colpo (RUO-048, 049)
 @pytest.mark.asyncio
 async def test_RUO_049_aggiungi_molti_su_un_menu_esistente(clean_db, monkeypatch):
+    # RUO-049
     s = _Scena(clean_db, monkeypatch)
     await s.menu(opzioni=())
     s.guild.roles = list(s.ruoli.values())
@@ -246,6 +263,7 @@ async def test_RUO_049_aggiungi_molti_su_un_menu_esistente(clean_db, monkeypatch
 
 @pytest.mark.asyncio
 async def test_RUO_049_se_una_coppia_non_va_non_si_aggiunge_niente(clean_db, monkeypatch):
+    # RUO-049
     s = _Scena(clean_db, monkeypatch)
     await s.menu(opzioni=())
     s.guild.roles = list(s.ruoli.values())
@@ -260,6 +278,7 @@ async def test_RUO_049_se_una_coppia_non_va_non_si_aggiunge_niente(clean_db, mon
 
 @pytest.mark.asyncio
 async def test_RUO_048_crea_con_le_coppie_pubblica_subito(clean_db, monkeypatch):
+    # RUO-048
     import discord
 
     s = _Scena(clean_db, monkeypatch)
@@ -283,6 +302,7 @@ def fake_role_alto():
 # ------------------------------------------------- RUO-072..075: messaggi e reazioni
 @pytest.mark.asyncio
 async def test_RUO_072_RUO_073_il_menu_si_aggancia_a_un_messaggio_di_altri(clean_db, monkeypatch):
+    # RUO-072, RUO-073
     import discord
 
     import cogs.utility.role_menus as rm
@@ -304,6 +324,7 @@ async def test_RUO_072_RUO_073_il_menu_si_aggancia_a_un_messaggio_di_altri(clean
 
 @pytest.mark.asyncio
 async def test_RUO_072_eliminare_un_menu_esterno_non_cancella_il_messaggio(clean_db, monkeypatch):
+    # RUO-072
     import discord
 
     s = _Scena(clean_db, monkeypatch, mode="reaction")
@@ -318,6 +339,7 @@ async def test_RUO_072_eliminare_un_menu_esterno_non_cancella_il_messaggio(clean
 
 @pytest.mark.asyncio
 async def test_RUO_074_ripara_rimette_le_reazioni_mancanti(clean_db, monkeypatch):
+    # RUO-074
     import discord
 
     import cogs.utility.role_menus as rm
@@ -335,6 +357,7 @@ async def test_RUO_074_ripara_rimette_le_reazioni_mancanti(clean_db, monkeypatch
 
 @pytest.mark.asyncio
 async def test_RUO_075_emoji_di_un_altro_server_si_accetta_e_la_mette_l_admin(clean_db, monkeypatch):
+    # RUO-075
     import discord
 
     s = _Scena(clean_db, monkeypatch, mode="reaction")
@@ -361,6 +384,7 @@ class MagicMockId:
 # ------------------------------------------------- RUO-070, 071, 088, 089
 @pytest.mark.asyncio
 async def test_RUO_070_scadenza_pianificata_e_menu_cancellato_allo_scatto(clean_db, monkeypatch):
+    # RUO-070
     import discord
     from datetime import datetime, timedelta, timezone
 
@@ -385,6 +409,7 @@ async def test_RUO_070_scadenza_pianificata_e_menu_cancellato_allo_scatto(clean_
 
 @pytest.mark.asyncio
 async def test_RUO_070_scadenza_tolta_con_zero(clean_db, monkeypatch):
+    # RUO-070
     s = _Scena(clean_db, monkeypatch)
     await s.menu()
     i = s.interazione(s.utente())
@@ -395,6 +420,7 @@ async def test_RUO_070_scadenza_tolta_con_zero(clean_db, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_RUO_088_cambia_il_tipo_del_menu_e_tiene_le_opzioni(clean_db, monkeypatch):
+    # RUO-088
     import discord
 
     s = _Scena(clean_db, monkeypatch, mode="reaction")
@@ -413,6 +439,7 @@ async def test_RUO_088_cambia_il_tipo_del_menu_e_tiene_le_opzioni(clean_db, monk
 
 @pytest.mark.asyncio
 async def test_RUO_088_senza_emoji_non_si_passa_alle_reazioni(clean_db, monkeypatch):
+    # RUO-088
     import discord
 
     s = _Scena(clean_db, monkeypatch, mode="select")
@@ -427,6 +454,7 @@ async def test_RUO_088_senza_emoji_non_si_passa_alle_reazioni(clean_db, monkeypa
 
 @pytest.mark.asyncio
 async def test_RUO_089_modello_verifica_crea_un_menu_con_un_bottone_verde(clean_db, monkeypatch):
+    # RUO-089
     import discord
 
     s = _Scena(clean_db, monkeypatch)
@@ -449,6 +477,7 @@ async def test_RUO_089_modello_verifica_crea_un_menu_con_un_bottone_verde(clean_
 
 @pytest.mark.asyncio
 async def test_RUO_071_canale_dei_ruoli_si_legge_ma_non_si_scrive(clean_db, monkeypatch):
+    # RUO-071
     import discord
     from unittest.mock import AsyncMock
 
@@ -490,6 +519,7 @@ class MagicMockMsg:
 # ------------------------------------------------- RUO-084: numeri nelle etichette
 @pytest.mark.asyncio
 async def test_RUO_084_i_numeri_si_vedono_in_embed_bottoni_e_tendina(clean_db, monkeypatch):
+    # RUO-084
     from cogs.utility.role_menus import _build_embed
 
     s = _Scena(clean_db, monkeypatch)
@@ -504,6 +534,7 @@ async def test_RUO_084_i_numeri_si_vedono_in_embed_bottoni_e_tendina(clean_db, m
 
 @pytest.mark.asyncio
 async def test_RUO_084_il_messaggio_si_aggiorna_dopo_un_uso_ma_non_piu_di_una_volta_ogni_5_minuti(clean_db, monkeypatch):
+    # RUO-084
     import asyncio
     import discord
 

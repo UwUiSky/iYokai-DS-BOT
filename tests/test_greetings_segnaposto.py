@@ -49,6 +49,9 @@ def test_nome_visualizzato_con_menzioni_viene_neutralizzato():
 
 
 def test_RUO_022_calcoli_solo_somma_e_sottrazione_di_interi():
+
+
+    # RUO-022
     from core.greetings_logic import render_template
 
     def r(t):
@@ -62,6 +65,9 @@ def test_RUO_022_calcoli_solo_somma_e_sottrazione_di_interi():
 
 
 def test_RUO_026_condizioni_semplici_nel_messaggio():
+
+
+    # RUO-026
     from core.greetings_logic import lunghezza_dopo_segnaposto, render_template
 
     def r(t, **k):

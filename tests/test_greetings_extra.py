@@ -239,6 +239,7 @@ async def test_finestra_salva_i_quattro_campi(monkeypatch):
 
 # ------------------------------------------------- RUO-024: reazione sul primo messaggio
 def test_RUO_024_il_segno_vale_una_volta_e_scade():
+    # RUO-024
     from core.greetings_logic import PrimiMessaggi
 
     p = PrimiMessaggi()
@@ -251,6 +252,9 @@ def test_RUO_024_il_segno_vale_una_volta_e_scade():
 
 
 def test_RUO_024_la_memoria_ha_un_tetto():
+
+
+    # RUO-024
     from core.greetings_logic import PrimiMessaggi
 
     p = PrimiMessaggi()
@@ -261,6 +265,7 @@ def test_RUO_024_la_memoria_ha_un_tetto():
 
 @pytest.mark.asyncio
 async def test_RUO_024_il_bot_reagisce_al_primo_messaggio_del_nuovo_membro(monkeypatch):
+    # RUO-024
     import cogs.utility.greetings as modulo
     from cogs.utility.greetings import GreetingsCog
     from core.repositories.greetings_repo import GreetingsConfig

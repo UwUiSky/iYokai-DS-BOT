@@ -315,12 +315,18 @@ def _png_sfondo():
 
 
 def test_RUO_004_opacita_dello_sfondo_cambia_la_luminosita():
+
+
+    # RUO-004
     scuro = Image.open(io.BytesIO(_con(opacita=10))).convert("L").resize((1, 1)).getpixel((0, 0))
     chiaro = Image.open(io.BytesIO(_con(opacita=100))).convert("L").resize((1, 1)).getpixel((0, 0))
     assert chiaro > scuro
 
 
 def test_RUO_007_allineamento_e_colore_del_nome():
+
+
+    # RUO-007
     assert _con(allineamento="sinistra") != _con(allineamento="centro")
     assert _con(allineamento="centro") != _con(allineamento="destra")
     assert _con(colore_nome="#FF0000") != _con(colore_nome="#00FF00")
@@ -328,11 +334,17 @@ def test_RUO_007_allineamento_e_colore_del_nome():
 
 
 def test_RUO_008_testo_libero_sull_immagine():
+
+
+    # RUO-008
     assert _con(testo="Leggi le regole") != _con(testo="")
     assert _con(testo="x" * 500)  # troppo lungo: si taglia, non si rompe
 
 
 def test_RUO_010_ordine_tra_immagine_e_testo():
+
+
+    # RUO-010
     from core.welcome_image import ORDINI
 
     assert ORDINI == ("insieme", "immagine_prima", "solo_immagine")
@@ -340,6 +352,7 @@ def test_RUO_010_ordine_tra_immagine_e_testo():
 
 @pytest.mark.asyncio
 async def test_RUO_004_007_008_010_impostazioni_in_piu_salvate_e_riletta(repo):
+    # RUO-004, RUO-007, RUO-008, RUO-010
     config = await repo.get_config(1)
     assert (config.welcome_image_opacity, config.welcome_image_order, config.welcome_image_align) == (65, "insieme", "sinistra")
     await repo.set_welcome_image_extra(1, 20, "Leggi {server}", "solo_immagine", "centro", "#FFD700")
@@ -350,6 +363,7 @@ async def test_RUO_004_007_008_010_impostazioni_in_piu_salvate_e_riletta(repo):
 
 @pytest.mark.asyncio
 async def test_RUO_010_immagine_prima_del_testo_sono_due_messaggi(monkeypatch):
+    # RUO-010
     import dataclasses
 
     s = _Scena(monkeypatch)
@@ -362,6 +376,7 @@ async def test_RUO_010_immagine_prima_del_testo_sono_due_messaggi(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_RUO_010_solo_immagine_non_manda_il_testo(monkeypatch):
+    # RUO-010
     import dataclasses
 
     s = _Scena(monkeypatch)
@@ -373,6 +388,7 @@ async def test_RUO_010_solo_immagine_non_manda_il_testo(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_RUO_008_il_testo_libero_usa_i_segnaposto_senza_menzioni(monkeypatch):
+    # RUO-008
     import dataclasses
 
     s = _Scena(monkeypatch)
@@ -392,6 +408,7 @@ async def test_RUO_008_il_testo_libero_usa_i_segnaposto_senza_menzioni(monkeypat
 
 @pytest.mark.asyncio
 async def test_RUO_004_007_008_010_il_comando_salva_solo_cio_che_si_indica(monkeypatch):
+    # RUO-004, RUO-007, RUO-008, RUO-010
     s = _Scena(monkeypatch)
     i = fake_interaction(guild=s.server, user=s.membro)
     await s.cog.immagine.callback(

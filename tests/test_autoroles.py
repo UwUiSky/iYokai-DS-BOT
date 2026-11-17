@@ -614,6 +614,7 @@ async def test_auto_sincronizza_un_task_per_server_fermato_allo_scarico(cog, mon
 
 # ------------------------------------------------- RUO-040, RUO-041: filtri della memoria
 def test_RUO_040_RUO_041_filtra_ricordati_ammessi_esclusi_e_mute_sempre():
+    # RUO-040, RUO-041
     from core.autorole_logic import filtra_ricordati
 
     assert filtra_ricordati([1, 2, 3], [], []) == [1, 2, 3]
@@ -625,6 +626,7 @@ def test_RUO_040_RUO_041_filtra_ricordati_ammessi_esclusi_e_mute_sempre():
 
 @pytest.mark.asyncio
 async def test_RUO_040_RUO_041_filtri_salvati_e_riletti(repo):
+    # RUO-040, RUO-041
     await repo.set_remember_filters(7, [1, 2], [3])
     config = await repo.get_config(7)
     assert config.remember_allowed == (1, 2) and config.remember_excluded == (3,)
@@ -634,6 +636,7 @@ async def test_RUO_040_RUO_041_filtri_salvati_e_riletti(repo):
 
 @pytest.mark.asyncio
 async def test_RUO_041_uscita_non_salva_i_ruoli_esclusi(cog):
+    # RUO-041
     cog.repo.get_config.return_value = MagicMock(
         remember_enabled=True, remember_days=30, remember_allowed=(), remember_excluded=(5,)
     )
@@ -646,6 +649,7 @@ async def test_RUO_041_uscita_non_salva_i_ruoli_esclusi(cog):
 
 @pytest.mark.asyncio
 async def test_RUO_041_il_ruolo_di_mute_non_si_esclude(cog, monkeypatch):
+    # RUO-041
     modulo.db.get_guild_setting.return_value = 5
     cog.repo.get_config.return_value = MagicMock(
         remember_enabled=True, remember_days=30, remember_allowed=(), remember_excluded=()

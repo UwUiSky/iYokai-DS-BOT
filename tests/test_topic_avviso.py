@@ -18,6 +18,9 @@ from tests.support.discord_fakes import fake_guild, fake_interaction, fake_text_
 
 
 def test_RUO_027_l_argomento_si_pulisce():
+
+
+    # RUO-027
     sporco = "@everyone **ciao** [clic](https://x.it)\n\n`codice` <@123456789012345678>"
     pulito = pulisci_argomento(sporco)
     assert "@everyone" not in pulito and "\n" not in pulito  # tra @ e everyone c'è un carattere invisibile
@@ -26,6 +29,9 @@ def test_RUO_027_l_argomento_si_pulisce():
 
 
 def test_RUO_027_testo_con_prima_e_ora_e_nessuno_se_vuoto():
+
+
+    # RUO-027
     assert "Prima: nessuno" in messaggio_avviso("<#5>", None, "nuovo")
     assert "Ora: nessuno" in messaggio_avviso("<#5>", "vecchio", "")
     assert va_annunciato(None, "") is False and va_annunciato("a", "b") is True
@@ -33,6 +39,7 @@ def test_RUO_027_testo_con_prima_e_ora_e_nessuno_se_vuoto():
 
 @pytest.mark.asyncio
 async def test_RUO_027_repo_salva_il_canale_dell_avviso(clean_db):
+    # RUO-027
     repo = GreetingsRepository(pool_provider=lambda: clean_db)
     assert (await repo.get_config(1)).topic_notice_channel_id is None
     await repo.set_topic_notice(1, 77)
@@ -70,6 +77,7 @@ class _Scena:
 
 @pytest.mark.asyncio
 async def test_RUO_027_avviso_inviato_senza_menzioni(monkeypatch):
+    # RUO-027
     s = _Scena(monkeypatch)
     await s.cog.on_guild_channel_update(s.prima, s.dopo)
     testo = s.avvisi.send.await_args.args[0]
@@ -79,6 +87,7 @@ async def test_RUO_027_avviso_inviato_senza_menzioni(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_RUO_027_niente_avviso_se_spento_privato_o_uguale(monkeypatch):
+    # RUO-027
     s = _Scena(monkeypatch, canale_avvisi=None)
     await s.cog.on_guild_channel_update(s.prima, s.dopo)
     s.avvisi.send.assert_not_awaited()
@@ -93,6 +102,7 @@ async def test_RUO_027_niente_avviso_se_spento_privato_o_uguale(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_RUO_027_pausa_per_canale(monkeypatch):
+    # RUO-027
     s = _Scena(monkeypatch)
     await s.cog.on_guild_channel_update(s.prima, s.dopo)
     await s.cog.on_guild_channel_update(s.prima, s.dopo)
@@ -101,6 +111,7 @@ async def test_RUO_027_pausa_per_canale(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_RUO_027_il_comando_salva_e_spegne(monkeypatch):
+    # RUO-027
     s = _Scena(monkeypatch)
     i = fake_interaction(guild=s.server)
     await s.cog.avviso_topic.callback(s.cog, i, s.avvisi)

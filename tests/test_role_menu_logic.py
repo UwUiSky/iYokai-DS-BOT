@@ -105,6 +105,7 @@ class TestComputeSelectSync:
 
 # ------------------------------------------------- RUO-062, RUO-063, RUO-065: limiti del menu
 def test_RUO_062_tetto_di_ruoli_anche_per_bottoni_e_reazioni():
+    # RUO-062
     from core.role_menu_logic import Decisione, controlla_limiti
 
     d = Decisione(aggiungi=(3,))
@@ -117,6 +118,9 @@ def test_RUO_062_tetto_di_ruoli_anche_per_bottoni_e_reazioni():
 
 
 def test_RUO_063_almeno_un_ruolo_resta():
+
+
+    # RUO-063
     from core.role_menu_logic import Decisione, controlla_limiti
 
     d = Decisione(togli=(1,))
@@ -127,6 +131,9 @@ def test_RUO_063_almeno_un_ruolo_resta():
 
 
 def test_RUO_065_posti_limitati_per_opzione():
+
+
+    # RUO-065
     from core.role_menu_logic import posti_finiti
 
     assert posti_finiti(membri_con_ruolo=5, max_membri=5) is True
@@ -136,6 +143,7 @@ def test_RUO_065_posti_limitati_per_opzione():
 
 # ------------------------------------------------- RUO-048, RUO-049: coppie emoji-ruolo
 def test_RUO_048_049_coppie_con_menzioni_id_e_nomi():
+    # RUO-048, RUO-049
     from core.role_menu_logic import analizza_coppie
 
     nomi = {"Gamer": 1111111111111111111}.get
@@ -145,6 +153,9 @@ def test_RUO_048_049_coppie_con_menzioni_id_e_nomi():
 
 
 def test_RUO_048_049_coppie_storte_danno_un_errore():
+
+
+    # RUO-048, RUO-049
     from core.role_menu_logic import MAX_COPPIE, analizza_coppie
 
     nessuno = lambda nome: None  # noqa: E731
@@ -158,6 +169,7 @@ def test_RUO_048_049_coppie_storte_danno_un_errore():
 
 # ------------------------------------------------- RUO-088, RUO-089: tipo e modelli
 def test_RUO_088_conversione_delle_opzioni_tra_i_tipi():
+    # RUO-088
     from core.role_menu_logic import converti_opzioni
 
     nome = {1: "Gamer"}.get
@@ -172,6 +184,9 @@ def test_RUO_088_conversione_delle_opzioni_tra_i_tipi():
 
 
 def test_RUO_089_i_modelli_sono_coerenti_con_i_comportamenti():
+
+
+    # RUO-089
     from core.role_menu_logic import MODELLI_MENU, comportamento_ammesso
 
     assert set(MODELLI_MENU) == {"verifica", "notifiche", "colori", "interessi"}
