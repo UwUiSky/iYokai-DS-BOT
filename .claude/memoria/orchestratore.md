@@ -114,3 +114,11 @@
   forum (un post per tipo, o per membro e per canale); funzioni del
   programma per PC solo per i premium; le 65 voci di `VOCI_OMESSE.md`
   nella SPEC.
+
+## 17/11 sera
+- Uniti in main: feat/r3liv (#124, merge e8eed9c0 + fix prova annuncio 70a99c93) e feat/r4mus (#126, merge 37d5cba8). Fix 6e6518e9: data_registry (leveling_reazioni, leveling_ruoli_classifica, guild_card_sfondi, voice_roles), test musica allineati. Main pubblicato 6e6518e9.
+- Restano livelli: LIV-013, 046, 019, 032, 033, 053, 061, 062, 072, 089, 090, 091 (blocco consigliato 061+053+032). Musica: MUS-010, 014, 019, 065.
+- In corso: feat/r1alert (wt-129, #129+#127), feat/r5eco (wt-125, #125, migrazioni 0670-0699, D86), feat/r1sta (wt-130, #130, migrazioni 0700+, D87).
+- Generare COMMAND_LIST: servono variabili finte (YOKAI_BOT_TOKEN, OWNER_ID, MAIN_GUILD_ID, MUSIC_TOKEN_1..5, YOKAI_CREATOR/MOD/APP_TOKEN, NSFW_TOKEN, DATABASE_URL) e .venv/bin/python.
+- Conflitti di merge ricorrenti (locales, DECISIONI, VERIFICA_LIVE): unione delle due parti; COMMAND_LIST e STATO si rigenerano.
+- Stato catalogo: 316 da fare nelle aree aperte.
