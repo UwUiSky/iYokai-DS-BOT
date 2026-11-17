@@ -697,6 +697,50 @@ class LevelingRepository:
         )
         return [(r["user_id"], r["livello"], r["created_at"]) for r in righe]
 
+    async def get_card_extra(self, user_id: int) -> tuple[str | None, int | None]:
+        """LIV-051/054: (colore del testo e dei bordi, velo 0-100) scelti per la propria card; None se non scelti."""
+        riga = await self._pool.fetchrow(
+            "SELECT colore_testo, velo FROM rank_card_prefs WHERE user_id = $1", user_id
+        )
+        return (riga["colore_testo"], riga["velo"]) if riga else (None, None)
+
+    async def set_card_extra(
+        self, user_id: int, colore_testo: str | None = None, velo: int | None = None
+    ) -> None:
+        """Cambia solo ciò che viene dato (colore '#RRGGBB' maiuscolo; velo da 0 a 100)."""
+        if colore_testo is not None and colore_valido(colore_testo) != colore_testo:
+            raise ValueError("Il colore deve essere nel formato #RRGGBB.")
+        if velo is not None and not 0 <= velo <= 100:
+            raise ValueError("Il velo va da 0 a 100.")
+        await self._pool.execute(
+            """
+            INSERT INTO rank_card_prefs (user_id, colore_testo, velo) VALUES ($1, $2, $3)
+            ON CONFLICT (user_id) DO UPDATE
+                SET colore_testo = COALESCE($2, rank_card_prefs.colore_testo),
+                    velo = COALESCE($3, rank_card_prefs.velo)
+            """,
+            user_id, colore_testo, velo,
+        )
+
+    async def get_sfondo_server(self, guild_id: int) -> bytes | None:
+        """LIV-055: lo sfondo predefinito del server (JPEG già pronto), se c'è."""
+        return await self._pool.fetchval(
+            "SELECT immagine FROM guild_card_sfondi WHERE guild_id = $1", guild_id
+        )
+
+    async def set_sfondo_server(self, guild_id: int, immagine: bytes | None) -> None:
+        """Salva lo sfondo preparato da prepara_sfondo; None lo toglie."""
+        if immagine is None:
+            await self._pool.execute("DELETE FROM guild_card_sfondi WHERE guild_id = $1", guild_id)
+            return
+        await self._pool.execute(
+            """
+            INSERT INTO guild_card_sfondi (guild_id, immagine) VALUES ($1, $2)
+            ON CONFLICT (guild_id) DO UPDATE SET immagine = $2, aggiornato_at = now()
+            """,
+            guild_id, immagine,
+        )
+
     async def get_sfondo_card(self, user_id: int) -> bytes | None:
         """L'immagine di sfondo (JPEG già pronto) di rank card e profilo, se c'è."""
         return await self._pool.fetchval(

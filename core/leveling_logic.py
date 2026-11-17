@@ -478,6 +478,7 @@ class LevelingSettings:
     work_max: int = WORK_REWARD_MAX
     max_level: int = 0
     shop_confirm: bool = False  # ECO-069: chiede conferma prima di comprare
+    card_colore: str = ""  # LIV-056: colore predefinito delle card: "#RRGGBB", "auto" (icona) o vuoto
     card_images: bool = True  # NF-12: sfondi con immagine propria su card e profilo
     currency_name: str = "coin"  # ECO-001: come il server chiama la moneta
     pay_tax_pct: int = 0  # ECO-015
@@ -638,16 +639,18 @@ def deve_annunciare(
 
 
 _BLOCCO_PREMIO = re.compile(r"\{premio:((?:[^{}]|\{ruolo_premio\})*)\}")
-_SEGNAPOSTO = re.compile(r"\{(utente|livello|server|ruolo_premio)\}")
+_SEGNAPOSTO = re.compile(r"\{(utente|livello|xp|server|ruolo_premio)\}")
 
 
-def rendi_annuncio(testo: str, *, utente: str, livello: int, server: str, ruoli_premio: list[str]) -> str:
+def rendi_annuncio(
+    testo: str, *, utente: str, livello: int, server: str, ruoli_premio: list[str], xp: int = 0
+) -> str:
     """
-    LIV-034: il testo dell'annuncio con i segnaposto {utente} {livello} {server} {ruolo_premio}.
+    LIV-034, LIV-031: il testo dell'annuncio con i segnaposto {utente} {livello} {xp} {server} {ruolo_premio}.
     Il blocco {premio:...} compare solo se il livello dà un ruolo. Una sola passata: un valore
     che contiene un segnaposto (il nome del server) non viene sostituito di nuovo.
     """
-    valori = {"utente": utente, "livello": str(livello), "server": server, "ruolo_premio": ", ".join(ruoli_premio)}
+    valori = {"utente": utente, "livello": str(livello), "xp": str(xp), "server": server, "ruolo_premio": ", ".join(ruoli_premio)}
     senza_blocchi = _BLOCCO_PREMIO.sub(lambda m: m.group(1) if ruoli_premio else "", testo)
     return _SEGNAPOSTO.sub(lambda m: valori[m.group(1)], senza_blocchi)[:2000]
 

@@ -67,6 +67,18 @@ class DatiRankCard:
     coin: int
     colore: str = COLORE_DI_BASE
     tema: str = TEMA_DI_BASE
+    colore_testo: str | None = None  # LIV-051: colore del nome e dell'anello dell'avatar
+    velo: int | None = None  # LIV-054: 0-100, quanto copre il pannello sopra lo sfondo; None = di base
+
+
+def colore_medio(image_bytes: bytes) -> str | None:
+    """LIV-056: il colore medio di un'immagine (l'icona del server) come #RRGGBB, o None se non si apre."""
+    try:
+        piccola = safe_open_image(image_bytes).convert("RGB").resize((1, 1), Image.LANCZOS)
+        r, g, b = piccola.getpixel((0, 0))
+    except Exception:
+        return None
+    return f"#{r:02X}{g:02X}{b:02X}"
 
 
 def _rgb(colore: str) -> tuple[int, int, int]:
@@ -163,7 +175,9 @@ def prepara_sfondo(image_bytes: bytes) -> bytes:
     raise SfondoNonValido("Immagine troppo pesante anche dopo la compressione.")
 
 
-def _tela(larghezza: int, altezza: int, tema: Tema, sfondo_bytes: bytes | None) -> Image.Image:
+def _tela(
+    larghezza: int, altezza: int, tema: Tema, sfondo_bytes: bytes | None, opacita: int = OPACITA_PANNELLO
+) -> Image.Image:
     """Fondo della card: il colore del tema, o l'immagine propria con il pannello velato sopra."""
     immagine = None
     if sfondo_bytes:
@@ -181,7 +195,7 @@ def _tela(larghezza: int, altezza: int, tema: Tema, sfondo_bytes: bytes | None) 
         return immagine
     velo = Image.new("RGBA", (larghezza, altezza), (0, 0, 0, 0))
     ImageDraw.Draw(velo).rounded_rectangle(
-        (16, 16, larghezza - 17, altezza - 17), radius=24, fill=(*tema.pannello, OPACITA_PANNELLO)
+        (16, 16, larghezza - 17, altezza - 17), radius=24, fill=(*tema.pannello, opacita)
     )
     return Image.alpha_composite(immagine.convert("RGBA"), velo).convert("RGB")
 
@@ -193,6 +207,10 @@ def _metti_avatar(immagine: Image.Image, avatar_bytes: bytes | None, tema: Tema,
     draw.ellipse((36, y - 4, 40 + LATO_AVATAR + 3, y + LATO_AVATAR + 3), outline=accento, width=4)
 
 
+def colore_testo_valido(colore: str | None) -> bool:
+    return bool(colore) and colore_valido(colore) == colore
+
+
 def render_rank_card(
     dati: DatiRankCard, avatar_bytes: bytes | None, sfondo_bytes: bytes | None = None
 ) -> bytes:
@@ -200,9 +218,11 @@ def render_rank_card(
     tema = TEMI.get(dati.tema, TEMI[TEMA_DI_BASE])
     accento = _rgb(dati.colore)
 
-    immagine = _tela(LARGHEZZA, ALTEZZA, tema, sfondo_bytes)
+    velo = OPACITA_PANNELLO if dati.velo is None else round(max(0, min(100, dati.velo)) * 255 / 100)
+    immagine = _tela(LARGHEZZA, ALTEZZA, tema, sfondo_bytes, velo)
     draw = ImageDraw.Draw(immagine)
-    _metti_avatar(immagine, avatar_bytes, tema, accento, (ALTEZZA - LATO_AVATAR) // 2)
+    colore_nome = _rgb(dati.colore_testo) if colore_testo_valido(dati.colore_testo) else None
+    _metti_avatar(immagine, avatar_bytes, tema, colore_nome or accento, (ALTEZZA - LATO_AVATAR) // 2)
 
     x_testo = 40 + LATO_AVATAR + 40
     x_fine = LARGHEZZA - 44
@@ -222,7 +242,7 @@ def render_rank_card(
 
     # Nome a sinistra, nello spazio che resta.
     nome = taglia_al_largo(draw, senza_quadrati(dati.nome[:MAX_CARATTERI_NOME], f_grande), f_grande, int(x_fine - x_testo - larghezza_livello - 24))
-    draw.text((x_testo, 44), nome, font=f_grande, fill=tema.testo)
+    draw.text((x_testo, 44), nome, font=f_grande, fill=colore_nome or tema.testo)
 
     # Barra dell'XP.
     x0, y0, y1 = x_testo, 168, 198

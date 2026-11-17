@@ -68,6 +68,7 @@ from core.rank_card_image import (
     TEMA_DI_BASE,
     DatiRankCard,
     SfondoNonValido,
+    colore_medio,
     prepara_sfondo,
     render_rank_card,
 )
@@ -201,24 +202,30 @@ RUOLI_PREMIO_PER_PAGINA = 20
 MEMBRI_PER_PAGINA = 20
 
 
-async def _salva_sfondo(user_id: int, allegato: discord.Attachment) -> str | None:
+async def _sfondo_pronto(allegato: discord.Attachment) -> tuple[bytes | None, str | None]:
     """
-    NF-12: prepara e salva lo sfondo con immagine propria. Restituisce il
-    messaggio d'errore per l'utente, oppure None se è andato bene.
+    NF-12: prepara lo sfondo con immagine (sempre nella sandbox di Pillow, fuori dal ciclo principale).
+    Restituisce (immagine pronta, None) oppure (None, messaggio d'errore per l'utente).
     """
     if allegato.size > MAX_IMAGE_BYTES:
-        return "L'immagine è troppo grande: al massimo 8 MB."
+        return None, "L'immagine è troppo grande: al massimo 8 MB."
     if not (allegato.content_type or "").startswith("image/"):
-        return "Lo sfondo deve essere un'immagine (PNG, JPEG, WEBP)."
+        return None, "Lo sfondo deve essere un'immagine (PNG, JPEG, WEBP)."
     try:
         originale = await allegato.read()
-        pronto = await run_image_task(prepara_sfondo, originale)
+        return await run_image_task(prepara_sfondo, originale), None
     except SfondoNonValido:
-        return "Non riesco ad aprire questa immagine: prova con un PNG o un JPEG più piccolo."
+        return None, "Non riesco ad aprire questa immagine: prova con un PNG o un JPEG più piccolo."
     except discord.HTTPException:
-        return "Non sono riuscito a scaricare l'immagine: riprova."
-    await leveling_repo.set_sfondo_card(user_id, pronto)
-    return None
+        return None, "Non sono riuscito a scaricare l'immagine: riprova."
+
+
+async def _salva_sfondo(user_id: int, allegato: discord.Attachment) -> str | None:
+    """NF-12: salva lo sfondo personale. Restituisce il messaggio d'errore per l'utente, o None se è andato bene."""
+    pronto, errore = await _sfondo_pronto(allegato)
+    if pronto is not None:
+        await leveling_repo.set_sfondo_card(user_id, pronto)
+    return errore
 
 
 def tipo_di_canale(canale) -> str:
@@ -690,6 +697,7 @@ async def _codice_in_privato(
 class LevelingCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        self._colori_icona: BoundedCache[tuple, str] = BoundedCache(max_size=500)
         self._voice_xp_tick.start()
         self._scadenza_ruoli_shop.start()
 
@@ -725,6 +733,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
         """ECO-001: come questo server chiama la moneta (di base «coin»)."""
         return (await self._config(guild_id)).impostazioni.currency_name
 
+    @staticmethod
+    async def _xp_totale(guild_id: int, user_id: int) -> int:
+        """LIV-031: gli XP totali per il segnaposto {xp} dell'annuncio."""
+        return (await leveling_repo.get_totals(guild_id, user_id)).xp_total
+
     async def _annuncia_level_up(
         self,
         member: discord.Member,
@@ -759,6 +772,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             testo = rendi_annuncio(
                 impostazioni.levelup_testo, utente=member.mention, livello=new_level,
                 server=guild.name, ruoli_premio=ruoli_premio,
+                xp=await self._xp_totale(guild.id, member.id) if "{xp}" in impostazioni.levelup_testo else 0,
             )
         else:
             testo = f"🎉 {member.mention} è salito al livello **{new_level}**!"
@@ -1009,6 +1023,24 @@ class LevelingCog(CogConGruppi, commands.Cog):
             button.disabled = True
             button.label = f"Raccolto da {interaction.user.display_name}"
             await interaction.response.edit_message(view=self)
+
+    async def _colore_server(self, guild: discord.Guild, impostazioni: LevelingSettings) -> str | None:
+        """LIV-056: il colore predefinito delle card del server; «auto» è il colore medio dell'icona."""
+        scelto = impostazioni.card_colore
+        if scelto.startswith("#"):
+            return scelto
+        if scelto != "auto" or guild.icon is None:
+            return None
+        chiave = (guild.id, guild.icon.key)
+        noto = self._colori_icona.get(chiave)
+        if noto is not None:
+            return noto or None  # "" = icona già provata e non leggibile
+        try:
+            colore = await run_image_task(colore_medio, await guild.icon.read())
+        except Exception:
+            colore = None
+        self._colori_icona.set(chiave, colore or "")
+        return colore
 
     async def _xp_testuale(
         self, message: discord.Message, config: ConfigLivelli, id_ruoli: list[int], id_canale: list[int]
@@ -1328,6 +1360,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
         tema="Lo sfondo della tua card (resta salvato)",
         reimposta="Torna al colore, al tema e allo sfondo di base",
         sfondo="Un'immagine tua come sfondo di card e profilo (PNG, JPEG, WEBP; max 8 MB)",
+        colore_testo="Colore del nome e dell'anello dell'avatar, es. #FFFFFF (resta salvato)",
+        velo="Quanto il pannello copre lo sfondo, da 0 (si vede tutto) a 100 (resta salvato)",
     )
     @app_commands.choices(tema=_SCELTE_TEMA)
     async def rank(
@@ -1338,6 +1372,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
         tema: app_commands.Choice[str] | None = None,
         reimposta: bool | None = None,
         sfondo: discord.Attachment | None = None,
+        colore_testo: app_commands.Range[str, 1, 7] | None = None,
+        velo: app_commands.Range[int, 0, 100] | None = None,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -1347,7 +1383,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         target = member or interaction.user
         nota = None
-        vuole_cambiare = colore is not None or tema is not None or reimposta or sfondo is not None
+        vuole_cambiare = (
+            colore is not None or tema is not None or reimposta or sfondo is not None
+            or colore_testo is not None or velo is not None
+        )
         if vuole_cambiare:
             if target.id != interaction.user.id:
                 nota = "Puoi cambiare solo la tua card: le preferenze di questo membro non sono cambiate."
@@ -1372,6 +1411,14 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 await leveling_repo.set_rank_card_prefs(
                     target.id, colore=esadecimale, tema=tema.value if tema else None
                 )
+                if colore_testo is not None or velo is not None:  # LIV-051, LIV-054
+                    esa_testo = colore_valido(colore_testo) if colore_testo is not None else None
+                    if colore_testo is not None and esa_testo is None:
+                        await interaction.followup.send(
+                            await testo_per(interaction, "leveling_il_colore_deve_essere_nel"), ephemeral=True
+                        )
+                        return
+                    await leveling_repo.set_card_extra(target.id, colore_testo=esa_testo, velo=velo)
 
         if isinstance(target, discord.Member):  # LIV-043: chi guarda la card ricontrolla i suoi premi
             try:
@@ -1382,6 +1429,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         totali = await leveling_repo.get_totals(interaction.guild.id, target.id)
         posizione = await leveling_repo.get_xp_position(interaction.guild.id, target.id)
         colore_salvato, tema_salvato = await leveling_repo.get_rank_card_prefs(target.id)
+        colore_testo_salvato, velo_salvato = await leveling_repo.get_card_extra(target.id)
 
         formula = (await self._config(interaction.guild.id)).impostazioni.formula
         xp_livello_attuale = xp_for_level(totali.level, formula)
@@ -1405,10 +1453,16 @@ class LevelingCog(CogConGruppi, commands.Cog):
             xp_totale=totali.xp_total,
             posizione=posizione,
             coin=totali.coins_total,
-            colore=colore_salvato or COLORE_DI_BASE,
+            colore=colore_salvato or await self._colore_server(interaction.guild, impostazioni) or COLORE_DI_BASE,
             tema=tema_salvato or TEMA_DI_BASE,
+            colore_testo=colore_testo_salvato,
+            velo=velo_salvato,
         )
-        immagine_sfondo = await leveling_repo.get_sfondo_card(target.id) if impostazioni.card_images else None
+        immagine_sfondo = None
+        if impostazioni.card_images:  # LIV-055: senza sfondo suo, vale quello del server
+            immagine_sfondo = await leveling_repo.get_sfondo_card(target.id) or await leveling_repo.get_sfondo_server(
+                interaction.guild.id
+            )
         try:
             png = await run_image_task(render_rank_card, dati, avatar, immagine_sfondo)
         except Exception:
@@ -3687,7 +3741,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         livello_minimo="Non annunciare sotto questo livello",
         ogni="Annuncia solo ogni N livelli (5 = ai livelli 5, 10, 15...)",
         solo_premi="Annuncia solo i livelli che danno un ruolo-premio",
-        testo="Il tuo testo: {utente} {livello} {server} {ruolo_premio} {premio:testo solo se c'è un ruolo}",
+        testo="Il tuo testo: {utente} {livello} {xp} {server} {ruolo_premio} {premio:testo se c'è un ruolo}",
         testo_base="Sì = torna al testo di iYokai",
         prova="Sì = manda subito un annuncio di prova (una prova ogni 5 minuti)",
     )
@@ -3971,12 +4025,76 @@ class LevelingCog(CogConGruppi, commands.Cog):
         nome="card",
         descrizione="Mostra o nascondi in questo server gli sfondi con immagine di card e profili.",
     )
-    @app_commands.describe(sfondi="Sì = ognuno vede la sua immagine; No = solo colori e temi")
-    async def impostazioni_card(self, interaction: discord.Interaction, sfondi: bool) -> None:
-        """NF-12, LIV-057: lo staff spegne gli sfondi con immagine se qualcuno ne usa di non adatti."""
+    @app_commands.describe(
+        sfondi="Sì = ognuno vede la sua immagine; No = solo colori e temi",
+        sfondo="Sfondo di tutte le card del server per chi non ne ha uno suo (PNG, JPEG, WEBP; max 8 MB)",
+        senza_sfondo="Sì = togli lo sfondo del server",
+        colore="Colore di tutte le card per chi non ne ha scelto uno: #RRGGBB oppure auto (dall'icona)",
+        senza_colore="Sì = togli il colore del server",
+    )
+    async def impostazioni_card(
+        self,
+        interaction: discord.Interaction,
+        sfondi: bool | None = None,
+        sfondo: discord.Attachment | None = None,
+        senza_sfondo: bool | None = None,
+        colore: app_commands.Range[str, 1, 7] | None = None,
+        senza_colore: bool | None = None,
+    ) -> None:
+        """NF-12, LIV-057: lo staff spegne gli sfondi con immagine. LIV-055, LIV-056: sfondo e colore del server."""
         if await _comando_rifiutato(interaction):
             return
-        await self._salva_impostazioni(interaction, {"card_images": sfondi})
+        if not interaction.permissions.manage_guild:
+            await interaction.response.send_message(
+                await testo_per(interaction, "azz_serve_gestire_server"), ephemeral=True
+            )
+            return
+        if (sfondo is not None and senza_sfondo) or (colore is not None and senza_colore):
+            await interaction.response.send_message(
+                await testo_per(interaction, "leveling_scegli_carichi_un_immagine_la"), ephemeral=True
+            )
+            return
+        campi = {}
+        if sfondi is not None:
+            campi["card_images"] = sfondi
+        if colore is not None:
+            scelto = "auto" if colore.strip().lower() == "auto" else colore_valido(colore)
+            if scelto is None:
+                await interaction.response.send_message(
+                    await testo_per(interaction, "leveling_il_colore_deve_essere_nel"), ephemeral=True
+                )
+                return
+            campi["card_colore"] = scelto
+        if senza_colore:
+            campi["card_colore"] = ""
+        if sfondo is not None:
+            await interaction.response.defer(ephemeral=True)
+            pronto, errore = await _sfondo_pronto(sfondo)
+            if errore:
+                await interaction.followup.send(errore, ephemeral=True)
+                return
+            await leveling_repo.set_sfondo_server(interaction.guild.id, pronto)
+        elif senza_sfondo:
+            await leveling_repo.set_sfondo_server(interaction.guild.id, None)
+        if not campi and sfondo is None and not senza_sfondo:
+            await interaction.response.send_message(
+                await testo_per(interaction, "leveling_scegli_almeno_un_valore_da"), ephemeral=True
+            )
+            return
+        if campi:
+            try:
+                await leveling_settings_repo.set_options(interaction.guild.id, **campi)
+            except ValueError as errore:
+                await self._rispondi_card(interaction, f"❌ {errore}")
+                return
+        await self._rispondi_card(interaction, await testo_per(interaction, "leveling_impostazioni_salvate"))
+
+    @staticmethod
+    async def _rispondi_card(interaction: discord.Interaction, testo: str) -> None:
+        if interaction.response.is_done():
+            await interaction.followup.send(testo, ephemeral=True)
+        else:
+            await interaction.response.send_message(testo, ephemeral=True)
 
     async def _salva_impostazioni(self, interaction: discord.Interaction, campi: dict) -> None:
         if not campi:

@@ -27,6 +27,7 @@ from core.leveling_logic import (
     MODI_ANNUNCIO,
     MODI_CANALI,
     MODI_XP_MESSAGGIO,
+    colore_valido,
     level_for_xp,
     prefisso_valido,
     MODI_AZZERA_SU,
@@ -142,6 +143,8 @@ class LevelingSettingsRepository:
                 raise ValueError(f"Valore non valido per {nome}: {valore}")
             if nome == "levelup_testo" and (not isinstance(valore, str) or len(valore) > MAX_TESTO_ANNUNCIO):
                 raise ValueError(f"Il testo dell'annuncio può avere al massimo {MAX_TESTO_ANNUNCIO} caratteri.")
+            if nome == "card_colore" and valore not in ("", "auto") and colore_valido(valore) != valore:
+                raise ValueError("Il colore deve essere #RRGGBB oppure «auto».")
             if nome == "prefissi_ignorati":
                 raise ValueError("I prefissi si cambiano con aggiungi_prefisso e togli_prefisso.")
             if nome == "currency_name":
