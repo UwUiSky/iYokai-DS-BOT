@@ -46,6 +46,7 @@ from core import greetings_uscite_logic as uscite
 from core import invite_service
 from core.i18n import lingua_risposta, t, testo_per
 from core.greetings_embed_logic import DOVE, TOGLI, embed_con_segnaposto
+from core.topic_avviso_logic import PAUSA_PER_CANALE_SECONDI, messaggio_avviso, va_annunciato
 from core.ui_base import BaseModal, BaseView
 from core.premium import PremiumModule, registry
 from core.repositories.greetings_repo import greetings_repo
@@ -390,6 +391,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._primi = PrimiMessaggi()  # RUO-024
+        self._ultimi_topic: dict[int, float] = {}  # RUO-027: canale -> ultimo avviso
 
     # ================================================================
     # Eventi
@@ -479,6 +481,36 @@ class GreetingsCog(CogConGruppi, commands.Cog):
                 )
             except discord.HTTPException:
                 pass  # DM chiusi: non è un errore da segnalare, è normale
+
+    @commands.Cog.listener()
+    async def on_guild_channel_update(self, prima: discord.abc.GuildChannel, dopo: discord.abc.GuildChannel) -> None:
+        """RUO-027: avviso quando cambia l'argomento di un canale di testo che tutti possono vedere."""
+        if not isinstance(dopo, discord.TextChannel) or not va_annunciato(getattr(prima, "topic", None), dopo.topic):
+            return
+        guild = dopo.guild
+        if not await db.is_module_active_for_guild(guild.id, MODULE_GREETINGS):
+            return
+        config = await greetings_repo.get_config(guild.id)
+        if config.topic_notice_channel_id is None or config.topic_notice_channel_id == dopo.id:
+            return
+        if not dopo.permissions_for(guild.default_role).view_channel:
+            return  # un canale privato non rivela il suo argomento in uno pubblico
+        ora = time.monotonic()
+        if ora - self._ultimi_topic.get(dopo.id, -1e9) < PAUSA_PER_CANALE_SECONDI:
+            return
+        canale = guild.get_channel(config.topic_notice_channel_id)
+        if not isinstance(canale, discord.TextChannel):
+            return
+        if len(self._ultimi_topic) > 2000:
+            self._ultimi_topic.clear()
+        self._ultimi_topic[dopo.id] = ora
+        try:
+            await canale.send(
+                messaggio_avviso(dopo.mention, getattr(prima, "topic", None), dopo.topic),
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+        except discord.HTTPException:
+            logger.info("Avviso sull'argomento non inviato nel server %s.", guild.id)
 
     @commands.Cog.listener()
     async def on_message(self, messaggio: discord.Message) -> None:
@@ -933,6 +965,26 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         await greetings_repo.set_embed(guild.id, dove, nome)
         avviso = " Il DM esce solo se è acceso con `/admin-benvenuto messaggio`." if dove == "dm" else ""
         await interaction.response.send_message(f"Fatto: l'embed «{nome}» sarà usato.{avviso}", ephemeral=True)
+
+    @comando_di_gruppo(
+        "admin-benvenuto",
+        nome="avviso-topic",
+        descrizione="Avvisa in un canale quando cambia l'argomento di un canale.",
+    )
+    @app_commands.describe(canale="Dove mandare l'avviso (se non lo indichi, gli avvisi si spengono)")
+    async def avviso_topic(
+        self, interaction: discord.Interaction, canale: discord.TextChannel | None = None
+    ) -> None:
+        """RUO-027: gli avvisi escono solo per i canali che @everyone vede, senza menzioni, uno al minuto per canale."""
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(await testo_per(interaction, "guild_only_command"), ephemeral=True)
+            return
+        await greetings_repo.set_topic_notice(guild.id, canale.id if canale else None)
+        await interaction.response.send_message(
+            f"Avvisi sull'argomento: {canale.mention}." if canale else "Avvisi sull'argomento spenti.",
+            ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
+        )
 
     @comando_di_gruppo(
         "admin-benvenuto",

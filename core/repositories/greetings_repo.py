@@ -55,6 +55,8 @@ class GreetingsConfig:
     welcome_embed: str = ""
     dm_embed: str = ""
     goodbye_embed: str = ""
+    # RUO-027 (migrazione 0646): canale degli avvisi «argomento cambiato» (None = spenti)
+    topic_notice_channel_id: int | None = None
     # RUO-024 (migrazione 0645): emoji sul primo messaggio di un nuovo membro ('' = spenta)
     first_message_reaction: str = ""
     # RUO-013, 017, 023, 025 (migrazione 0330).
@@ -134,6 +136,7 @@ class GreetingsRepository:
             welcome_image_title=row["welcome_image_title"],
             welcome_image_has_background=row["welcome_image_has_background"],
             first_message_reaction=row["first_message_reaction"],
+            topic_notice_channel_id=row["topic_notice_channel_id"],
             welcome_embed=row["welcome_embed"],
             dm_embed=row["dm_embed"],
             goodbye_embed=row["goodbye_embed"],
@@ -233,6 +236,16 @@ class GreetingsRepository:
                     welcome_image_name_color = EXCLUDED.welcome_image_name_color
             """,
             guild_id, opacity, text, order, align, name_color,
+        )
+
+    async def set_topic_notice(self, guild_id: int, channel_id: int | None) -> None:
+        """RUO-027: il canale degli avvisi sull'argomento dei canali (None li spegne)."""
+        await self._pool.execute(
+            """
+            INSERT INTO greetings_config (guild_id, topic_notice_channel_id) VALUES ($1, $2)
+            ON CONFLICT (guild_id) DO UPDATE SET topic_notice_channel_id = EXCLUDED.topic_notice_channel_id
+            """,
+            guild_id, channel_id,
         )
 
     async def set_first_reaction(self, guild_id: int, emoji: str) -> None:
