@@ -186,3 +186,31 @@ async def test_log_senza_sandbox_resta_la_scheda(cartella_log, monkeypatch, tmp_
     monkeypatch.setenv(sb.VARIABILE_SOCKET, str(tmp_path / "non-c-e.sock"))
     copia = await cartella_log.salva(GUILD, 1, 2, 3, "log", "rel.pdf", c.pdf_semplice())
     assert copia.stato == cartella_log.STATO_SCHEDA and not copia.con_file
+
+
+# ------------------------------------------------------------------ ticket e backup (anche il video)
+class _Allegato:
+    def __init__(self, nome, dati, tipo=None):
+        self.filename, self.content_type, self.size, self._dati = nome, tipo, len(dati), dati
+
+    async def read(self):
+        return self._dati
+
+
+async def test_ticket_e_backup_ricaricano_pdf_audio_e_video_convertiti(attivo, tmp_path):
+    from types import SimpleNamespace
+
+    from cogs.tickets.risposte import RisposteStandardCog
+    from core.backup_messages_logic import preparare_allegati
+
+    voci = lambda: [  # noqa: E731 - allegati nuovi a ogni giro (i dati si leggono da capo)
+        _Allegato("a.pdf", c.pdf_pericoloso(), "application/pdf"),
+        _Allegato("v.mp4", c.video(tmp_path, larghezza=160, altezza=90), "video/mp4"),
+        _Allegato("evil.mp3", b"#EXTM3U\nfile:///etc/passwd\n", "audio/mpeg"),
+    ]
+    messaggio = SimpleNamespace(attachments=voci(), guild=SimpleNamespace(id=GUILD))
+    file = await RisposteStandardCog._copie_allegati(messaggio)
+    assert [x.filename for x in file] == ["a.pdf", "v.mp4"]
+    assert not PROIBITE.search(file[0].fp.read())
+    file, righe = await preparare_allegati(voci(), GUILD)
+    assert [x.filename for x in file] == ["a.pdf", "v.mp4"] and len(righe) == 1 and "evil.mp3" in righe[0]
