@@ -3,12 +3,13 @@ cogs/utility/starboard.py
 =========================
 Starboard (NF-08, SPEC §22.4): un messaggio che riceve abbastanza stelle
 viene copiato nel canale "bacheca". Comandi in `/admin-moduli starboard`.
-Funzioni coperte: SPEC §22 (NF-08)
+Funzioni coperte: SPEC §22 (NF-08), §8.16 (D74: allegati senza link all'originale)
 """
 
 from __future__ import annotations
 
 import asyncio
+import io
 import logging
 import time
 import weakref
@@ -17,6 +18,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core import allegati_mostra
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.i18n import testo_per
@@ -124,7 +126,8 @@ class StarboardCog(CogConGruppi, commands.Cog):
             return
         testo = contenuto_bacheca(config.emoji, stelle, channel_id) if con_stelle else f"<#{channel_id}>"
         try:
-            inviato = await bacheca.send(testo, embed=self._embed(messaggio), allowed_mentions=_NESSUNA_MENZIONE)
+            embed, files = await self._embed(messaggio)
+            inviato = await bacheca.send(testo, embed=embed, files=files, allowed_mentions=_NESSUNA_MENZIONE)
         except discord.HTTPException as errore:
             logger.warning("Bacheca %s: invio fallito: %s", config.channel_id, errore)
             await starboard_repo.release_post(guild_id, message_id)
@@ -200,23 +203,20 @@ class StarboardCog(CogConGruppi, commands.Cog):
         await starboard_repo.set_board_message(guild_id, message_id, board_id, stelle)
 
     @staticmethod
-    def _embed(messaggio: discord.Message) -> discord.Embed:
-        immagine = None
-        altri: list[str] = []
-        for allegato in messaggio.attachments:
-            tipo = getattr(allegato, "content_type", None) or ""
-            if immagine is None and tipo.startswith("image/"):
-                immagine = allegato.url
-            else:
-                altri.append(allegato.url)
-        return costruisci_embed(
+    async def _embed(messaggio: discord.Message) -> tuple[discord.Embed, list[discord.File]]:
+        """D74: mai il link all'originale. La prima immagine vera torna come copia rifatta, il resto come riga di scheda."""
+        copie, righe = await allegati_mostra.prepara(messaggio.attachments, messaggio.guild.id if messaggio.guild else 0)
+        files = [discord.File(io.BytesIO(dati), filename=f"allegato{i}.png") for i, (_, dati) in enumerate(copie[:1])]
+        righe = [f"`{nome}` (immagine rifatta, non mostrata)" for nome, _ in copie[1:]] + righe
+        embed = costruisci_embed(
             testo=messaggio.content or "",
             nome_autore=messaggio.author.display_name,
             avatar_url=messaggio.author.display_avatar.url,
             link=messaggio.jump_url,
-            immagine_url=immagine,
-            allegati=altri,
+            immagine_url="attachment://allegato0.png" if files else None,
+            allegati=righe,
         )
+        return embed, files
 
     # ================================================================
     # Comandi
