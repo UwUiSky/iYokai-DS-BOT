@@ -5,6 +5,9 @@ PostgreSQL/asyncpg, wavelink/Lavalink). Owner: iYokai.
 
 ## Da dove si parte
 
+0. `.claude/ISTRUZIONI_OPERATIVE.md` — **come si lavora, passo per passo**, chi fa cosa
+   (Sonnet scrive, Opus rivede), quando una voce è finita, cosa manca.
+   `.claude/regole/SICUREZZA.md` — regole di sicurezza **vincolanti** per ogni riga di codice.
 1. `.claude/memoria/orchestratore.md` — **la memoria del lavoro**: cosa
    è fatto, cosa è in corso, cosa viene dopo. Si legge per primo.
    La mappa di agenti, memorie e quaderni è in `.claude/README.md`.
