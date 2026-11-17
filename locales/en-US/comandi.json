@@ -341,7 +341,11 @@
   "server-carica": "server-load",
   "server-elenco": "server-list",
   "server-elimina": "server-delete",
-  "collabora": "collaborate"
+  "collabora": "collaborate",
+  "nodi": "nodes",
+  "riconnetti": "reconnect",
+  "sorgente": "source",
+  "blocca-parola": "ban-word"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1339,7 +1343,14 @@
   "music playlist server-carica": "Queues a server playlist.",
   "music playlist server-elenco": "The server's playlists.",
   "music playlist server-elimina": "Deletes a server playlist.",
-  "music playlist collabora": "Who can edit one of your playlists."
+  "music playlist collabora": "Who can edit one of your playlists.",
+  "owner radio nodi": "Shows each music bot's Lavalink nodes (no passwords).",
+  "owner radio stato": "How many music players are playing now.",
+  "owner radio riconnetti": "Retries at once to connect the Lavalink nodes that are down.",
+  "owner radio log": "Downloads the tail of the local Lavalink log (keys removed).",
+  "owner radio sorgente": "Turns a music source on or off while the bot runs.",
+  "owner radio blocca-parola": "Words banned in track titles across the whole bot.",
+  "music coda ripristina": "Puts the saved tracks of your voice channel back in the queue (after a restart)."
  },
  "parametri": {},
  "menu": {

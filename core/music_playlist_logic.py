@@ -25,6 +25,7 @@ DURATA_MAX_MS = 24 * 3600 * 1000  # una durata letta da un file non supera un gi
 
 MAX_PLAYLIST_PER_SERVER = 25  # MUS-081
 MAX_COLLABORATORI = 5  # MUS-086
+NOME_PLAYLIST_DEL_GIORNO = "Oggi"  # MUS-045: la playlist automatica dei brani suonati oggi
 NOME_PREFERITI = "Preferiti"  # MUS-085: la playlist dove finisce il cuore
 LINK_ORIGINE_MAX = 300  # MUS-072/083
 ALFABETO_CODICE = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # senza 0/O e 1/I: si legge e si copia senza errori

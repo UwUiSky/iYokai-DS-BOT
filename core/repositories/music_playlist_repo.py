@@ -5,7 +5,8 @@ Tabella music_playlists: le playlist salvate di ogni utente (al massimo
 25, ognuna con al massimo 200 brani), valide in ogni server.
 Funzioni coperte: SPEC §23 (NF-19), catalogo MUS-082, MUS-073 crea, MUS-074 aggiungi/MUS-075 togli
 (`aggiorna_brani`), MUS-076 senza doppioni, MUS-077 rinomina, MUS-072/083 link di origine,
-MUS-084 codice di condivisione, MUS-081 playlist del server, MUS-086 playlist a più mani
+MUS-084 codice di condivisione, MUS-081 playlist del server, MUS-086 playlist a più mani,
+MUS-045 playlist «Oggi» del server, MUS-042 coda salvata (`MusicSavedQueueRepository`)
 """
 
 from __future__ import annotations
@@ -18,7 +19,9 @@ from core.music_playlist_logic import (
     MAX_COLLABORATORI,
     MAX_PLAYLIST_PER_SERVER,
     MAX_PLAYLIST_PER_UTENTE,
+    NOME_PLAYLIST_DEL_GIORNO,
     BranoSalvato,
+    aggiungi_senza_doppioni,
     brani_a_json,
     brani_da_json,
     nuovo_codice,
@@ -293,6 +296,42 @@ class MusicGuildPlaylistRepository:
                 )
                 return not esiste
 
+    async def aggiungi_del_giorno(self, guild_id: int, brano: BranoSalvato) -> bool:
+        """
+        MUS-045: aggiunge un brano alla playlist automatica «Oggi» del server (ricomincia da vuota a ogni
+        nuovo giorno UTC). False se non c'è posto (tetto di playlist del server) o è un doppione.
+        """
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute("SELECT pg_advisory_xact_lock(7170002, $1::int)", guild_id % 2**31)
+                riga = await conn.fetchrow(
+                    """
+                    SELECT tracks, (created_at AT TIME ZONE 'UTC')::date = (now() AT TIME ZONE 'UTC')::date AS oggi
+                      FROM music_guild_playlists WHERE guild_id = $1 AND name = $2 FOR UPDATE
+                    """,
+                    guild_id, NOME_PLAYLIST_DEL_GIORNO,
+                )
+                if riga is None:
+                    quante = await conn.fetchval(
+                        "SELECT count(*) FROM music_guild_playlists WHERE guild_id = $1", guild_id
+                    )
+                    if quante >= MAX_PLAYLIST_PER_SERVER:
+                        return False
+                    esistenti: list[BranoSalvato] = []
+                else:
+                    esistenti = brani_da_json(riga["tracks"]) if riga["oggi"] else []
+                elenco, aggiunti, _doppioni, _fuori = aggiungi_senza_doppioni(esistenti, [brano])
+                await conn.execute(
+                    """
+                    INSERT INTO music_guild_playlists (guild_id, name, tracks, created_by)
+                    VALUES ($1, $2, $3::jsonb, 0)
+                    ON CONFLICT (guild_id, name) DO UPDATE SET tracks = $3::jsonb, updated_at = now(),
+                        created_at = CASE WHEN $4 THEN music_guild_playlists.created_at ELSE now() END
+                    """,
+                    guild_id, NOME_PLAYLIST_DEL_GIORNO, brani_a_json(elenco), riga is not None and riga["oggi"],
+                )
+                return aggiunti > 0
+
     async def get(self, guild_id: int, nome: str) -> list[BranoSalvato] | None:
         valore = await self._pool.fetchval(
             "SELECT tracks FROM music_guild_playlists WHERE guild_id = $1 AND name = $2", guild_id, nome
@@ -318,6 +357,43 @@ class MusicGuildPlaylistRepository:
         return esito.endswith(" 1")
 
 
+class MusicSavedQueueRepository:
+    """MUS-042: la coda di ogni canale vocale, per ritrovarla dopo un riavvio."""
+
+    def __init__(self, pool_provider) -> None:
+        self._pool_provider = pool_provider
+
+    @property
+    def _pool(self) -> asyncpg.Pool:
+        return self._pool_provider()
+
+    async def salva(self, guild_id: int, channel_id: int, brani: list[BranoSalvato]) -> None:
+        """Scrive la coda; una coda vuota cancella la riga."""
+        if not brani:
+            await self._pool.execute(
+                "DELETE FROM music_saved_queues WHERE guild_id = $1 AND channel_id = $2", guild_id, channel_id
+            )
+            return
+        await self._pool.execute(
+            """
+            INSERT INTO music_saved_queues (guild_id, channel_id, tracks) VALUES ($1, $2, $3::jsonb)
+            ON CONFLICT (guild_id, channel_id) DO UPDATE SET tracks = $3::jsonb, saved_at = now()
+            """,
+            guild_id, channel_id, brani_a_json(brani),
+        )
+
+    async def leggi(self, guild_id: int, channel_id: int) -> list[BranoSalvato]:
+        valore = await self._pool.fetchval(
+            "SELECT tracks FROM music_saved_queues WHERE guild_id = $1 AND channel_id = $2", guild_id, channel_id
+        )
+        return [] if valore is None else brani_da_json(valore)
+
+    async def cancella(self, guild_id: int, channel_id: int) -> None:
+        await self._pool.execute(
+            "DELETE FROM music_saved_queues WHERE guild_id = $1 AND channel_id = $2", guild_id, channel_id
+        )
+
+
 def _get_pool():
     from core.database import db
     return db.pool
@@ -325,3 +401,4 @@ def _get_pool():
 
 music_playlist_repo = MusicPlaylistRepository(pool_provider=_get_pool)
 music_guild_playlist_repo = MusicGuildPlaylistRepository(pool_provider=_get_pool)
+music_saved_queue_repo = MusicSavedQueueRepository(pool_provider=_get_pool)

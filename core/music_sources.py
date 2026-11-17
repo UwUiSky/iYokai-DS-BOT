@@ -103,11 +103,27 @@ def chiavi_presenti(nome: str) -> bool:
     return any(all(os.environ.get(v, "").strip() for v in g) for g in gruppi)
 
 
+# MUS-011: fonti accese o spente dall'owner a bot acceso (vincono sull'ambiente).
+_override: dict[str, bool] = {}
+
+
+def imposta_override(valori: dict[str, bool]) -> None:
+    """Sostituisce gli interruttori dell'owner (letti dal database all'avvio e a ogni cambio)."""
+    _override.clear()
+    _override.update({k: bool(v) for k, v in valori.items() if k in FONTI})
+
+
+def override_attuali() -> dict[str, bool]:
+    return dict(_override)
+
+
 def fonti_accese_dall_owner() -> set[str]:
     grezzo = os.environ.get("MUSIC_SOURCES_ENABLED", "").strip()
     if not grezzo:
-        return set(FONTI_DI_BASE)
-    return {p.strip().lower() for p in grezzo.split(",") if p.strip().lower() in FONTI}
+        accese = set(FONTI_DI_BASE)
+    else:
+        accese = {p.strip().lower() for p in grezzo.split(",") if p.strip().lower() in FONTI}
+    return {n for n in set(FONTI) if (_override[n] if n in _override else n in accese)}
 
 
 def ripulisci(testo: str) -> str:

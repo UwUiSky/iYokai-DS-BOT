@@ -1678,3 +1678,22 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `MUS-037` — `/admin-musica impostazioni coda:equa` e il riepilogo la mostra; A mette 3 brani, B ne mette 2: `/music queue` li mostra a giro (A, B, A, B, A). Con `coda:normale` tornano in ordine di arrivo.
 - [ ] `MUS-038` — `/music shuffle resta:sì` mescola e dice che resta acceso; un brano aggiunto dopo non va sempre in fondo; `/music queue` mostra «Mescola fisso acceso»; `resta:no` lo spegne. Con la coda vuota `resta:sì` si accende comunque.
 
+
+## Musica — giro r4mus (#126, MUS-040/041/042/045/057/058/060/063/067/068/069/070/072-087/011)
+
+- [ ] `MUS-057/058` — `/admin-musica impostazioni annunci:sì canale-annunci:#musica`: a ogni brano nuovo parte un embed «ora in riproduzione» nel canale (con copertina, MUS-060), senza menzioni; un loop non lo ripete; in un canale dove il bot non scrive il comando rifiuta.
+- [ ] `MUS-060` — `/music nowplaying` mostra la copertina del brano (miniatura).
+- [ ] `MUS-038` — `/music shuffle resta:sì`, lasciar finire la coda col bot che resta in canale (`resta-a-coda-finita:sì`): il mescola fisso si spegne da solo.
+- [ ] `MUS-073/074/075/077/079` — `/music playlist crea`, `aggiungi nome brano:<titolo o link>` (pausa di 3 s tra due ricerche), `elenco nome:` (a pagine di 15), `togli posizione:`, `rinomina`.
+- [ ] `MUS-076` — salvare due volte lo stesso brano: nella playlist ne resta uno solo.
+- [ ] `MUS-072/083` — `/music playlist salva nome link:https://…` (playlist SoundCloud o Bandcamp); poi `aggiorna nome` rilegge il link. Un link `http://` o un percorso e' rifiutato.
+- [ ] `MUS-084` — `condividi nome` da un account, `ricevi codice` da un altro: arriva una copia (nome «x (2)» se esiste); `condividi nome nuovo:sì` rende inutile il vecchio codice; `revoca:sì` lo spegne; un codice sbagliato ripetuto subito viene frenato (5 s).
+- [ ] `MUS-081` — con «Gestisci server»: `server-salva`, poi da un utente normale `server-elenco` e `server-carica`; `server-elimina` solo per chi gestisce.
+- [ ] `MUS-086` — `/music playlist collabora nome utente:@x` (massimo 5); x usa `aggiungi/togli/carica/elenco … di:@proprietario`; un terzo no; `togli:sì` toglie il permesso.
+- [ ] `MUS-085` — nel canale richieste il bottone ❤ Preferito mette il brano in ascolto in «Preferiti» (nessun doppione).
+- [ ] `MUS-041/040` — `/admin-musica impostazioni playlist-di-riserva:<playlist del server>`: a coda finita, con qualcuno in canale, parte la playlist (a caso, 50 brani); canale vuoto: non parte.
+- [ ] `MUS-045` — `playlist-del-giorno:sì`: dopo qualche brano `server-elenco` mostra «Oggi»; il giorno dopo riparte vuota.
+- [ ] `MUS-042` — `coda-salvata:sì`, mettere 5 brani, riavviare il bot, entrare nel canale: `/music coda ripristina` rimette i brani.
+- [ ] `MUS-070/067/068/069` — `/owner radio nodi` (senza password), `stato` (player attivi), `riconnetti` (una volta al minuto), `log` (file `lavalink.log` senza chiavi; serve `LAVALINK_LOG_FILE`).
+- [ ] `MUS-011` — `/owner radio sorgente fonte:YouTube stato:Spenta`: una ricerca YouTube dice «fonte non disponibile»; `Come da ambiente` la riaccende.
+- [ ] `MUS-063` — `/owner radio blocca-parola aggiungi parola:x`: un brano con x nel titolo e' rifiutato in ogni server.

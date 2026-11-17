@@ -1117,3 +1117,12 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
 - MUS-057/058: gli annunci «ora in riproduzione» sono **spenti di base** (nessun messaggio non chiesto); si accendono con `/admin-musica impostazioni annunci:` e `canale-annunci:` (il bot deve poter scrivere nel canale). Il messaggio parte dal bot principale, senza menzioni, al massimo uno ogni 3 secondi per server; un brano ripetuto (loop) non si annuncia di nuovo.
 - MUS-060: la copertina del brano è mostrata solo se l'indirizzo è https, corto e senza spazi; non la scarichiamo noi.
 - Il mescola fisso si spegne quando la coda finisce, anche se il bot resta connesso (MUS-038).
+- MUS-007 (Mixcloud): resta non fatta (D73, nessun plugin verificato). MUS-017 (dividere un video lungo): non si fa, dipende da YouTube (regola CONFRONTO_BOT §7.3).
+- MUS-040/041: «brani simili» no (dipendono da YouTube); a coda finita parte una playlist del server scelta (`playlist-di-riserva`), solo se in canale c'è qualcuno, a caso, al massimo 50 brani, una volta ogni 20 secondi per server.
+- MUS-045: playlist del server «Oggi», spenta di base, riparte vuota a ogni giorno UTC, senza chi ha chiesto il brano.
+- MUS-042: coda salvata nel database, spenta di base; dopo un riavvio si rimette con `/music coda ripristina` (il bot non rientra da solo in vocale: serve una persona nel canale).
+- MUS-084: codice di 8 caratteri (≈40 bit); chi lo usa riceve una copia; tentativi frenati a uno ogni 5 secondi per utente.
+- MUS-086: al massimo 5 collaboratori per playlist; solo il proprietario rinomina, cancella, condivide, aggiorna.
+- MUS-081: playlist del server (25 al massimo): salvano e cancellano chi ha «Gestisci server», le caricano tutti.
+- MUS-069: il log si manda come file ephemeral (non in DM), solo la coda da 256 KB, ripulito dalle chiavi.
+- MUS-067: il conteggio dei player sta in `/owner radio stato` (non in `/owner system`, file di un'altra area).
