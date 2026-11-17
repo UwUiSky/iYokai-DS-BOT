@@ -663,14 +663,29 @@ class ModMailCog(CogConGruppi, commands.Cog):
         firma = logica.etichetta_firma(anonimo, interaction.user.display_name, guild.name)
         embed = discord.Embed(description=testo, color=COLORE_STAFF, timestamp=datetime.now(timezone.utc))
         embed.set_author(name=firma)
+        files: list[discord.File] = []
         if allegato is not None:
-            if (allegato.content_type or "").startswith("image/"):
-                embed.set_image(url=allegato.url)
+            # D74: all'utente arriva solo la copia rifatta dalla sandbox, mai il link all'originale.
+            copie, righe = await allegati_mostra.prepara([allegato], guild.id, con_video=True)
+            if not copie:
+                motivo = righe[0] if righe else logica.taglia(allegato.filename, 60)
+                await interaction.followup.send(
+                    (await testo_per(interaction, "modmail_file_non_inviabile")).format(motivo=logica.taglia(motivo, 300)),
+                    ephemeral=True,
+                    allowed_mentions=SENZA_MENZIONI,
+                )
+                return
+            files, primo_png = allegati_mostra.file_da(copie)
+            if primo_png:
+                embed.set_image(url=f"attachment://{primo_png}")
             else:
-                embed.add_field(name=await testo_per(interaction, "modmail_allegato", pubblica=True), value=f"[{logica.taglia(allegato.filename, 60)}]({allegato.url})")
+                embed.add_field(
+                    name=await testo_per(interaction, "modmail_allegato", pubblica=True),
+                    value=f"`{logica.taglia(copie[0][0], 60)}` (copia rifatta)",
+                )
         try:
             utente = guild.get_member(thread.user_id) or await self.bot.fetch_user(thread.user_id)
-            await utente.send(embed=embed)
+            await utente.send(embed=embed, files=files)
         except discord.NotFound:
             await interaction.followup.send(await testo_per(interaction, "modmail_questo_utente_non_esiste_piu"), ephemeral=True)
             return

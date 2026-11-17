@@ -1652,6 +1652,9 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - Servizio fermo (`systemctl stop iyokai-sandbox`): PDF, audio, video e testo restano scheda e il bot non da' errori.
 - HEIC: una foto `.heic` di un iPhone in un canale con il log: PNG rifatto.
 
+## giro r160 parte 3 — ultime voci D74 (#160)
+- ModMail `/ticket rispondi allegato:` con una foto vera: l'utente riceve nel DM una copia PNG rifatta (nessun link `cdn.discordapp.com`). Con un `.exe`: lo staff legge «File non inviabile: …», l'utente non riceve nulla.
+
 ## Voce di Yokai nei ticket (#142, passo 2)
 - Con motore vocale installato e `/admin-ai voce imposta attiva:sì`: apri un ticket da un pannello. Sotto il benvenuto arriva un vero vocale (forma d'onda) con il tuo nome, tono scherzoso anche se il server ha `piccante`, e sotto i bottoni «Trascrivi» e «Nella mia lingua».
 - Ticket di un nome strano (`x_y_z`): il vocale non dice il nome. Voce spenta o motore assente: nel ticket non arriva nessun vocale né testo in più.

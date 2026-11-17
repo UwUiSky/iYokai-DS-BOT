@@ -8,6 +8,7 @@
 27/10/2026 · ramo `feat/r10logt` (copia /home/claude/wt/r10logt, DB iyokai_wr10logt) · migrazioni 0300-0309 (usate 0300, 0301, 0302)
 
 ## In corso
+- r160 parte 3 (ramo feat/r160-allegati-3, wt-160b): voce 1 FATTA (rispondi allegato = copia sicura). Prossime: 2 log a nome utente, 3 copie 30 giorni, 4 menu «Richiedi copia sicura».
 - r160 parte 2b FATTA, smoke da fare (non unito, non pubblicato): `conversioni_worker` + `immagini_sandbox.converti` + `allegati_copia.copia_sicura` collegati a `esamina_allegato`, log (PDF, audio, testo), `allegati_mostra.prepara`, ticket, ModMail, backup (video solo li); HEIC con pillow-heif nel worker. Resta: PDF come pagine-immagine se la ricostruzione fallisce, copie ticket/ModMail 30 giorni, log a nome utente (`/admin-log webhook`), staff->utente di /modmail rispondi (domanda), telefono con copie rifatte (proposta), tempo giornaliero salvato in DB (ora in memoria), prova live (VERIFICA_LIVE «parte 2b»).
 - r152img: fatto tutto #152 (allegati_sicuri, log, backup, ticket, spam trap, download). Resta: prova live (VERIFICA_LIVE «giro r152img»), smoke dall'orchestratore, nginx per il sotto-dominio allegati.
 - r18ticket (feat/r18ticket, DB iyokai_w18tk): T4 (0534) e #156 thread privati (0526) fatti, in un commit. Resta: prova live (VERIFICA_LIVE) e smoke dall'orchestratore.

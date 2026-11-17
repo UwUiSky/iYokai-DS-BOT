@@ -669,6 +669,7 @@
   "modmail_non_era_bloccato": "{mention} non era bloccato.",
   "modmail_solo_lo_staff_permesso_manage": "Solo lo staff (permesso Manage Server o un ruolo di supporto) può usare questo comando.",
   "modmail_questo_comando_funziona_solo_dentro": "Questo comando funziona solo dentro un canale ModMail aperto.",
+  "modmail_file_non_inviabile": "File non inviabile: {motivo}\nL'utente non ha ricevuto nulla.",
   "modmail_allegato": "Allegato",
   "modmail_questo_utente_non_esiste_piu": "Questo utente non esiste più.",
   "modmail_non_riesco_scrivere_all_utente": "Non riesco a scrivere all'utente: ha i messaggi privati chiusi o ha bloccato il bot.",

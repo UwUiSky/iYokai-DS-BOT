@@ -669,6 +669,7 @@
   "modmail_non_era_bloccato": "{mention} was not blocked.",
   "modmail_solo_lo_staff_permesso_manage": "Only staff (the Manage Server permission or a support role) can use this command.",
   "modmail_questo_comando_funziona_solo_dentro": "This command only works inside an open ModMail channel.",
+  "modmail_file_non_inviabile": "File cannot be sent: {motivo}\nThe user received nothing.",
   "modmail_allegato": "Attachment",
   "modmail_questo_utente_non_esiste_piu": "This user no longer exists.",
   "modmail_non_riesco_scrivere_all_utente": "I can't write to the user: they have DMs closed or have blocked the bot.",
