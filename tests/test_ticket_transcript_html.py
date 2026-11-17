@@ -119,6 +119,32 @@ def _scena(allegati):
     return cog, fake_guild(100), canale, ticket
 
 
+def _finto_allegati_sicuri(monkeypatch, esiti):
+    """`conserva` e `leggi` finti: l'analisi vera e il disco li prova test_allegati_sicuri."""
+    from core import allegati_sicuri as sic
+
+    copie = {}
+
+    async def conserva(allegato, guild_id, channel_id, message_id, user_id, origine, **kw):
+        esito = esiti.get(allegato.filename)
+        if esito is None:
+            return sic.Copia(900, allegato.filename, "pdf", allegato.size, sic.STATO_SCHEDA, None, False, "ee" * 32)
+        pulita = esito.verdetto == PULITA
+        copie[len(copie) + 1] = esito.png
+        conserva.chiamate.append((origine, user_id))
+        return sic.Copia(len(copie), allegato.filename, "png", allegato.size,
+                         sic.STATO_SALVATA if pulita else sic.STATO_BLOCCATA, None, pulita, esito.sha256)
+
+    conserva.chiamate = []
+
+    async def leggi(copia_id, **kw):
+        return ("x.png", copie[copia_id])
+
+    monkeypatch.setattr(sic, "conserva", conserva)
+    monkeypatch.setattr(sic, "leggi", leggi)
+    return conserva
+
+
 async def test_opzioni_di_base_danno_il_solo_testo(monkeypatch):
     monkeypatch.setattr(modulo, "_opzioni_pannello", AsyncMock(return_value=Opzioni()))
     cog, guild, canale, ticket = _scena([])
@@ -129,7 +155,7 @@ async def test_html_entrambi_e_zip_usano_solo_la_copia_ricodificata(monkeypatch)
     monkeypatch.setattr(modulo, "_opzioni_pannello", AsyncMock(return_value=Opzioni(transcript_formato="entrambi", allegati_zip=True)))
     esiti = {"buona.png": EsitoImmagine(PULITA, "ab" * 32, png=b"RICODIFICATO"),
              "trappola.png": EsitoImmagine(MALEVOLA, "cd" * 32)}
-    monkeypatch.setattr(modulo, "analizza_immagine", AsyncMock(side_effect=lambda dati, nome, tipo, g: esiti[nome]))
+    _finto_allegati_sicuri(monkeypatch, esiti)
     cog, guild, canale, ticket = _scena([_allegato("buona.png"), _allegato("trappola.png"), _allegato("note.pdf", tipo="application/pdf")])
     file = dict(await cog._file_transcript(guild, canale, ticket))
     assert sorted(file) == ["ticket-0001-allegati.zip", "ticket-0001-transcript.html", "ticket-0001-transcript.txt"]
@@ -148,3 +174,28 @@ async def test_un_allegato_che_non_si_legge_non_ferma_il_transcript(monkeypatch)
     cog, guild, canale, ticket = _scena([rotto])
     file = dict(await cog._file_transcript(guild, canale, ticket))
     assert "rotta.png" in file["ticket-0001-transcript.html"].decode()
+
+
+async def test_ogni_allegato_del_transcript_passa_da_allegati_sicuri_con_origine_ticket(monkeypatch):
+    monkeypatch.setattr(modulo, "_opzioni_pannello", AsyncMock(return_value=Opzioni(transcript_formato="html")))
+    conserva = _finto_allegati_sicuri(monkeypatch, {"buona.png": EsitoImmagine(PULITA, "ab" * 32, png=b"PNG")})
+    cog, guild, canale, ticket = _scena([_allegato("buona.png"), _allegato("note.pdf", tipo="application/pdf")])
+    await cog._file_transcript(guild, canale, ticket)
+    assert [o for o, _ in conserva.chiamate] == ["ticket"]  # il pdf e' una scheda (finta): non registra png
+
+
+async def test_anche_il_transcript_solo_testo_conserva_le_copie(monkeypatch):
+    monkeypatch.setattr(modulo, "_opzioni_pannello", AsyncMock(return_value=Opzioni()))
+    conserva = _finto_allegati_sicuri(monkeypatch, {"buona.png": EsitoImmagine(PULITA, "ab" * 32, png=b"PNG")})
+    cog, guild, canale, ticket = _scena([_allegato("buona.png")])
+    assert [n for n, _ in await cog._file_transcript(guild, canale, ticket)] == ["ticket-0001-transcript.txt"]
+    assert [o for o, _ in conserva.chiamate] == ["ticket"]
+
+
+async def test_il_transcript_non_conserva_oltre_il_tetto(monkeypatch):
+    monkeypatch.setattr(modulo, "_opzioni_pannello", AsyncMock(return_value=Opzioni(transcript_formato="html")))
+    monkeypatch.setattr(modulo, "MAX_COPIE_TRANSCRIPT", 2)
+    conserva = _finto_allegati_sicuri(monkeypatch, {f"{i}.png": EsitoImmagine(PULITA, "ab" * 32, png=b"P") for i in range(5)})
+    cog, guild, canale, ticket = _scena([_allegato(f"{i}.png") for i in range(5)])
+    await cog._file_transcript(guild, canale, ticket)
+    assert len(conserva.chiamate) == 2

@@ -68,6 +68,7 @@ AUDIENCE: dict[str, str] = {
     "Salva citazione": PUBLIC,  # menu del tasto destro (D69, B16)
     "Orari nel mio fuso": PUBLIC,  # menu del tasto destro (D69, B6)
     "Riestrai giveaway": STAFF,  # menu del tasto destro (D69, B10)
+    "Richiedi copia sicura": STAFF,  # menu del tasto destro, solo «Gestisci messaggi» (D74, #160)
     "Apri ticket": PUBLIC,  # menu col tasto destro sul messaggio (TKT-009)
     "Segnala messaggio": PUBLIC,  # menu col tasto destro sul messaggio (MOD-105)
     "Scheda moderazione": STAFF,  # menu col tasto destro sull'utente (MOD-106)

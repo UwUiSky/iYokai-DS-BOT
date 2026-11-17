@@ -127,8 +127,7 @@ from core.repositories.ticket_gestione_repo import (
     TroppeEtichette,
     ticket_gestione_repo,
 )
-from core.immagini_pipeline import analizza_immagine
-from core.immagini_byte_logic import PULITA
+from core import allegati_sicuri
 from core.ticket_transcript_logic import AllegatoT
 from core.premium import PremiumModule, registry
 from core.role_safety import motivo_ruolo_automatico_non_assegnabile
@@ -188,7 +187,7 @@ _ATTIVITA_OGNI_SECONDI = 60
 # Un file allegato deve restare sotto i 10 MiB (LIM-55). Ci fermiamo a
 # 8 per lasciare margine al resto della richiesta.
 MAX_TRANSCRIPT_FILE_BYTES = 8 * 1024 * 1024
-MAX_BYTE_IMMAGINE_TRANSCRIPT = 8 * 1024 * 1024  # un'immagine più grande resta solo nome e peso
+MAX_COPIE_TRANSCRIPT = 30  # allegati conservati 30 giorni per ogni transcript (D74); gli altri restano nome e peso
 
 # Chi sta aprendo un ticket in questo momento: (id server, id utente).
 # Ferma il doppio clic prima che nasca un secondo canale. La garanzia
@@ -3096,27 +3095,49 @@ class TicketsCog(CogConGruppi, commands.Cog):
 
     async def _allegati_trascritti(self, guild: discord.Guild, messaggio, conteggio: list[int]) -> tuple[AllegatoT, ...]:
         """
-        TKT-070/074: nome, peso e impronta di ogni allegato. Le immagini passano dalla pipeline (D62):
-        si tiene solo la copia ricodificata di quelle pulite, mai l'originale.
+        TKT-070/074: nome, peso e impronta di ogni allegato. Ogni allegato passa da `core/allegati_sicuri` (D74):
+        la copia sicura resta 30 giorni come quelle dei log (stessa scadenza, stessa cancellazione `/privacy`) e
+        nello ZIP va solo la copia ricodificata delle immagini pulite, mai l'originale.
         """
         risultato = []
-        for allegato in messaggio.attachments:
+        for indice, allegato in enumerate(messaggio.attachments):
             png, sha = b"", ""
             tipo = (getattr(allegato, "content_type", None) or "").lower()
             e_immagine = tipo.startswith("image/") or allegato.filename.lower().endswith(
-                (".png", ".jpg", ".jpeg", ".gif", ".webp")
+                (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff", ".ico", ".avif", ".heic", ".heif")
             )
-            if e_immagine and conteggio[0] < tr_logic.MAX_IMMAGINI and (allegato.size or 0) <= MAX_BYTE_IMMAGINE_TRANSCRIPT:
-                conteggio[0] += 1
-                try:
-                    esito = await analizza_immagine(await allegato.read(), allegato.filename, tipo or None, guild.id)
-                    sha = esito.sha256
-                    if esito.verdetto == PULITA and esito.non_analizzata is None and esito.png:
-                        png = esito.png
-                except Exception:  # noqa: BLE001 - un allegato che non si legge non ferma il transcript
-                    logger.warning("Allegato del transcript non analizzato nel ticket %s.", messaggio.channel.id, exc_info=True)
+            if len(conteggio) < 2:
+                conteggio.append(0)
+            if indice < allegati_sicuri.MAX_PER_MESSAGGIO and conteggio[1] < MAX_COPIE_TRANSCRIPT:
+                conteggio[1] += 1
+                copia = await allegati_sicuri.conserva(
+                    allegato, guild.id, messaggio.channel.id, messaggio.id, getattr(messaggio.author, "id", 0),
+                    allegati_sicuri.ORIGINE_TICKET,
+                )
+                if copia is not None:
+                    sha = copia.sha256
+                    if e_immagine and copia.con_file and conteggio[0] < tr_logic.MAX_IMMAGINI:
+                        conteggio[0] += 1
+                        letta = await allegati_sicuri.leggi(copia.id)
+                        if letta is not None:
+                            png = letta[1]
             risultato.append(AllegatoT(nome_pulito(allegato.filename), allegato.size or 0, sha, png))
         return tuple(risultato)
+
+    async def _conserva_copie_canale(self, guild: discord.Guild, channel) -> None:
+        """Transcript solo testo: gli allegati si conservano comunque 30 giorni (D74). Non ferma mai la chiusura."""
+        fatte = 0
+        try:
+            async for m in channel.history(limit=None, oldest_first=True):
+                for indice, allegato in enumerate(m.attachments):
+                    if indice >= allegati_sicuri.MAX_PER_MESSAGGIO or fatte >= MAX_COPIE_TRANSCRIPT:
+                        break
+                    fatte += 1
+                    await allegati_sicuri.conserva(
+                        allegato, guild.id, channel.id, m.id, getattr(m.author, "id", 0), allegati_sicuri.ORIGINE_TICKET
+                    )
+        except Exception:  # noqa: BLE001
+            logger.warning("Copie degli allegati del ticket %s non conservate.", channel.id, exc_info=True)
 
     async def _file_transcript(self, guild: discord.Guild, channel, ticket) -> list[tuple[str, bytes]]:
         """
@@ -3126,6 +3147,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         opzioni = await _opzioni_pannello(ticket.panel_id)
         formato = tr_logic.formato_valido(opzioni.transcript_formato)
         if formato == "testo" and not opzioni.allegati_zip:
+            await self._conserva_copie_canale(guild, channel)
             return self._transcript_files(await self._build_transcript_text(channel, ticket), ticket.ticket_number)
         messaggi = [m async for m in channel.history(limit=None, oldest_first=True)]
         base = f"ticket-{ticket.ticket_number:04d}"

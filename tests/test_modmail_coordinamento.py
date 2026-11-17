@@ -213,6 +213,34 @@ async def test_il_transcript_distingue_utente_e_staff(scena):
     assert "Mario Rossi" in testo and "Giulia" in testo and "Yokai Bot" not in testo
 
 
+async def test_il_transcript_conserva_le_copie_degli_allegati_a_nome_dell_utente(scena, monkeypatch):
+    from core import allegati_sicuri
+
+    await scena.configura()
+    scena.bot.get_guild = lambda gid: None
+    await scena.cog.on_message(scena.dm("ciao"))
+    canale = scena.canali[0]
+    chiamate = []
+
+    async def conserva(allegato, guild_id, channel_id, message_id, user_id, origine, **kw):
+        chiamate.append((allegato.filename, user_id, origine))
+
+    monkeypatch.setattr(allegati_sicuri, "conserva", conserva)
+    bot = SimpleNamespace(bot=True, __str__=lambda s: "Yokai Bot#0001")
+    m = SimpleNamespace(
+        id=5, created_at=datetime.now(timezone.utc), author=bot, content="", embeds=[],
+        attachments=[SimpleNamespace(filename="a.png"), SimpleNamespace(filename="b.pdf")],
+    )
+
+    async def h(**kw):
+        yield m
+
+    canale.history = h
+    thread = await modmail_repo.aperta_del_canale(canale.id)
+    assert await scena.cog._transcript_al_log(scena.guild, canale, thread) is True
+    assert chiamate == [("a.png", thread.user_id, "modmail"), ("b.pdf", thread.user_id, "modmail")]
+
+
 async def test_senza_canale_log_il_comando_lo_dice(scena):
     from cogs.tickets import modmail as modulo
 

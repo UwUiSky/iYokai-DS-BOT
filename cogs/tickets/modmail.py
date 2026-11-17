@@ -45,7 +45,7 @@ from cogs.tickets.tickets import (
     _is_ticket_staff,
     _support_role_ids,
 )
-from core import allegati_mostra
+from core import allegati_mostra, allegati_sicuri
 from core import channel_router as router
 from core import modmail_logic as logica
 from core.channel_router import TIPO_EVENTI
@@ -68,6 +68,7 @@ logger = logging.getLogger("iyokai.modmail")
 MODMAIL_DELETE_ACTION_TYPE = "modmail_delete_channel"
 
 SENZA_MENZIONI = discord.AllowedMentions.none()
+MAX_COPIE_TRANSCRIPT = 30  # allegati conservati 30 giorni per ogni conversazione (D74)
 COLORE_UTENTE = discord.Color.green()
 COLORE_STAFF = discord.Color.blurple()
 
@@ -469,7 +470,16 @@ class ModMailCog(CogConGruppi, commands.Cog):
         """Solo nel canale dei log: contiene anche le note interne dello staff."""
         try:
             righe = []
+            conservate = 0
             async for m in canale.history(limit=None, oldest_first=True):
+                # D74: le copie sicure degli allegati restano 30 giorni come quelle dei log (`/privacy` le toglie).
+                for indice, a in enumerate(m.attachments):
+                    if indice >= allegati_sicuri.MAX_PER_MESSAGGIO or conservate >= MAX_COPIE_TRANSCRIPT:
+                        break
+                    conservate += 1
+                    await allegati_sicuri.conserva(
+                        a, guild.id, canale.id, m.id, thread.user_id, allegati_sicuri.ORIGINE_MODMAIL
+                    )
                 righe.append(
                     format_transcript_line(
                         m.created_at.strftime("%Y-%m-%d %H:%M"),
@@ -663,14 +673,29 @@ class ModMailCog(CogConGruppi, commands.Cog):
         firma = logica.etichetta_firma(anonimo, interaction.user.display_name, guild.name)
         embed = discord.Embed(description=testo, color=COLORE_STAFF, timestamp=datetime.now(timezone.utc))
         embed.set_author(name=firma)
+        files: list[discord.File] = []
         if allegato is not None:
-            if (allegato.content_type or "").startswith("image/"):
-                embed.set_image(url=allegato.url)
+            # D74: all'utente arriva solo la copia rifatta dalla sandbox, mai il link all'originale.
+            copie, righe = await allegati_mostra.prepara([allegato], guild.id, con_video=True)
+            if not copie:
+                motivo = righe[0] if righe else logica.taglia(allegato.filename, 60)
+                await interaction.followup.send(
+                    (await testo_per(interaction, "modmail_file_non_inviabile")).format(motivo=logica.taglia(motivo, 300)),
+                    ephemeral=True,
+                    allowed_mentions=SENZA_MENZIONI,
+                )
+                return
+            files, primo_png = allegati_mostra.file_da(copie)
+            if primo_png:
+                embed.set_image(url=f"attachment://{primo_png}")
             else:
-                embed.add_field(name=await testo_per(interaction, "modmail_allegato", pubblica=True), value=f"[{logica.taglia(allegato.filename, 60)}]({allegato.url})")
+                embed.add_field(
+                    name=await testo_per(interaction, "modmail_allegato", pubblica=True),
+                    value=f"`{logica.taglia(copie[0][0], 60)}` (copia rifatta)",
+                )
         try:
             utente = guild.get_member(thread.user_id) or await self.bot.fetch_user(thread.user_id)
-            await utente.send(embed=embed)
+            await utente.send(embed=embed, files=files)
         except discord.NotFound:
             await interaction.followup.send(await testo_per(interaction, "modmail_questo_utente_non_esiste_piu"), ephemeral=True)
             return

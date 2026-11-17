@@ -255,6 +255,43 @@ async def test_immagine_dell_utente_arriva_come_copia_rifatta(scena):
     assert kw["files"][0].fp.read(8) == b"\x89PNG\r\n\x1a\n" and "cdn.example" not in kw["embed"].fields[0].value
 
 
+async def test_risposta_con_immagine_arriva_come_copia_rifatta(scena):
+    from core import immagini_pipeline
+    from tests.support import immagini_finte as f
+
+    immagini_pipeline.svuota_cache()  # la cache dei verdetti non tiene il PNG
+    canale = await _con_conversazione(scena)
+    scena.utente.send.reset_mock()
+    bmp = f.bmp()
+
+    async def leggi():
+        return bmp
+
+    a = SimpleNamespace(filename="foto.bmp", url="https://cdn.example/foto.bmp", content_type="image/bmp", size=len(bmp), read=leggi)
+    i = scena.staff(canale)
+    await scena.cog.rispondi.callback(scena.cog, i, "ecco", False, a)
+    kw = scena.utente.send.await_args.kwargs
+    assert len(kw["files"]) == 1 and kw["embed"].image.url == "attachment://allegato0.png"
+    assert "cdn.example" not in str(kw["embed"].to_dict())
+
+
+async def test_risposta_con_file_non_inviabile_non_manda_nulla_e_lo_staff_lo_sa(scena):
+    canale = await _con_conversazione(scena)
+    scena.utente.send.reset_mock()
+    exe = b"MZ" + b"\0" * 200
+
+    async def leggi():
+        return exe
+
+    a = SimpleNamespace(filename="virus.exe", url="https://cdn.example/virus.exe", content_type=None, size=len(exe), read=leggi)
+    i = scena.staff(canale)
+    await scena.cog.rispondi.callback(scena.cog, i, "ecco", False, a)
+    scena.utente.send.assert_not_awaited()
+    testo = i.followup.send.await_args.args[0]
+    assert "non inviabile" in testo and "virus.exe" in testo and "cdn.example" not in testo
+    assert i.followup.send.await_args.kwargs["ephemeral"] is True
+
+
 @pytest.mark.parametrize("caso", ["spento", "non_membro", "bloccato", "modulo_spento", "vuoto"])
 async def test_nessuna_conversazione_se_non_ci_sono_le_condizioni(scena, caso):
     await scena.configura()
