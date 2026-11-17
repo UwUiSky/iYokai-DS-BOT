@@ -419,12 +419,12 @@ class ModMailCog(CogConGruppi, commands.Cog):
         embed.set_author(name=str(message.author)[:256], icon_url=message.author.display_avatar.url)
         files: list[discord.File] = []
         if message.attachments:
-            # D74: mai il link all'originale. Immagini vere: copia rifatta dalla sandbox; il resto: riga di scheda o di avviso.
-            copie, righe = await allegati_mostra.prepara(message.attachments, thread.guild_id)
-            files = [discord.File(io.BytesIO(dati), filename=f"allegato{i}.png") for i, (_, dati) in enumerate(copie)]
-            if files:
-                embed.set_image(url="attachment://allegato0.png")
-            righe = [f"`{nome}` (immagine rifatta)" for nome, _ in copie] + righe
+            # D74: mai il link all'originale. Immagini, PDF, audio, video e testo: copia rifatta dalla sandbox; il resto: riga di scheda o di avviso.
+            copie, righe = await allegati_mostra.prepara(message.attachments, thread.guild_id, con_video=True)
+            files, primo_png = allegati_mostra.file_da(copie)
+            if primo_png:
+                embed.set_image(url=f"attachment://{primo_png}")
+            righe = [f"`{nome}` (copia rifatta)" for nome, _ in copie] + righe
             embed.add_field(name="Allegati", value=logica.elenco_righe_allegati(righe), inline=False)
         try:
             await canale.send(embed=embed, files=files, allowed_mentions=SENZA_MENZIONI)

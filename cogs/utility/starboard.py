@@ -9,7 +9,6 @@ Funzioni coperte: SPEC §22 (NF-08), §8.16 (D74: allegati senza link all'origin
 from __future__ import annotations
 
 import asyncio
-import io
 import logging
 import time
 import weakref
@@ -206,14 +205,14 @@ class StarboardCog(CogConGruppi, commands.Cog):
     async def _embed(messaggio: discord.Message) -> tuple[discord.Embed, list[discord.File]]:
         """D74: mai il link all'originale. La prima immagine vera torna come copia rifatta, il resto come riga di scheda."""
         copie, righe = await allegati_mostra.prepara(messaggio.attachments, messaggio.guild.id if messaggio.guild else 0)
-        files = [discord.File(io.BytesIO(dati), filename=f"allegato{i}.png") for i, (_, dati) in enumerate(copie[:1])]
-        righe = [f"`{nome}` (immagine rifatta, non mostrata)" for nome, _ in copie[1:]] + righe
+        files, primo_png = allegati_mostra.file_da(copie)
+        righe = [f"`{nome}` (copia rifatta, in allegato)" for nome, _ in copie if not nome.endswith(".png")] + righe
         embed = costruisci_embed(
             testo=messaggio.content or "",
             nome_autore=messaggio.author.display_name,
             avatar_url=messaggio.author.display_avatar.url,
             link=messaggio.jump_url,
-            immagine_url="attachment://allegato0.png" if files else None,
+            immagine_url=f"attachment://{primo_png}" if primo_png else None,
             allegati=righe,
         )
         return embed, files
