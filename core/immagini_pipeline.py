@@ -7,7 +7,8 @@ copia ricodificata. Il verdetto di una stessa immagine si ricorda per SHA-256 (2
 si analizza una volta sola. La libreria per SHA-256 si guarda sempre prima, e un cambio della libreria
 (owner, nuova condivisa) rende vecchia la cache. Coda piena o sandbox ferma: i controlli sui byte e la libreria girano
 comunque, il resto e' «non analizzata». Niente Discord qui: lo fa il cog.
-Per ogni altro allegato `esamina_allegato` applica la decisione unica di `allegati_tipo_logic` (D74): mai una copia.
+Per ogni altro allegato `esamina_allegato` applica la decisione unica di `allegati_tipo_logic` (D74): mai l'originale;
+PDF, audio, video e testo tornano solo come copia convertita nel processo a parte (`core/allegati_copia.py`).
 Funzioni coperte: SPEC §6 (D61, D62, D74)
 """
 
@@ -17,7 +18,7 @@ import logging
 import time
 from dataclasses import dataclass, field, replace
 
-from core import allegati_tipo_logic
+from core import allegati_copia, allegati_tipo_logic
 from core import immagini_qr_logic as qr_logic
 from core import immagini_quarantena as quarantena
 from core import immagini_sandbox as sandbox
@@ -115,13 +116,16 @@ async def analizza_immagine(dati: bytes, nome_file: str, content_type: str | Non
 
 
 async def esamina_allegato(
-    dati: bytes, nome_file: str, content_type: str | None, guild_id: int,
+    dati: bytes, nome_file: str, content_type: str | None, guild_id: int, *, con_video: bool = False,
 ) -> tuple[tuple[str, bytes] | None, allegati_tipo_logic.Decisione]:
     """
-    La decisione unica su un allegato (D74) e, solo per un'immagine vera e pulita, la copia PNG ricodificata da
-    ricaricare. Ogni altro file (scheda o rifiuto) non da' mai una copia: l'originale non si rimanda. Non solleva.
+    La decisione unica su un allegato (D74) e la copia da ricaricare, mai l'originale: per un'immagine vera e pulita
+    la copia PNG ricodificata; per PDF, audio, testo (e video se `con_video`) la copia convertita nel processo a parte.
+    Ogni altro file (scheda senza conversione o rifiuto) non da' copia. Non solleva.
     """
     d = allegati_tipo_logic.decidi(dati, nome_file, content_type)
+    if d.azione == allegati_tipo_logic.SCHEDA:
+        return await allegati_copia.copia_sicura(dati, d, guild_id, con_video=con_video), d
     if d.azione != allegati_tipo_logic.IMMAGINE:
         return None, d
     try:
@@ -135,13 +139,15 @@ async def esamina_allegato(
     return (f"{stem}.png", esito.png), d
 
 
-async def copia_ricaricabile(dati: bytes, nome_file: str, content_type: str | None, guild_id: int) -> tuple[str, bytes] | None:
+async def copia_ricaricabile(
+    dati: bytes, nome_file: str, content_type: str | None, guild_id: int, *, con_video: bool = False,
+) -> tuple[str, bytes] | None:
     """
     Cosa si puo' ricaricare di un allegato in un backup o in un archivio (D61, D62, D74). Il tipo lo dicono i
-    byte: solo un'immagine vera pulita, ricodificata in PNG. Tutto il resto (sospetta, non analizzata, travestito,
-    eseguibile, PDF, audio, video, Office, archivi) da' None: al suo posto c'e' solo la scheda o l'avviso.
+    byte: un'immagine vera pulita ricodificata in PNG, oppure la copia convertita di PDF, audio, testo (e video).
+    Sospetta, non analizzata, travestito, eseguibile, Office e archivi danno None: resta la scheda o l'avviso.
     """
-    return (await esamina_allegato(dati, nome_file, content_type, guild_id))[0]
+    return (await esamina_allegato(dati, nome_file, content_type, guild_id, con_video=con_video))[0]
 
 
 async def _conserva(dati: bytes, guild_id: int, sha: str) -> None:
