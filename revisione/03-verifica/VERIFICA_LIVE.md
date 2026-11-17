@@ -1711,3 +1711,13 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `LIV-031` — `/admin-livelli annuncio testo:{utente} a {xp} XP` con `prova:sì` mostra gli XP veri.
 - [ ] `LIV-001/002/003` — `/admin-livelli xp testo:10 testo_max:30 velocita:200`: gli XP dei messaggi variano tra 20 e 60; `attesa:3600` accettata; `testo_max` sotto `testo` rifiutato.
 - [ ] `LIV-044/045` — `/admin-livelli classifica-ruoli fascia:Primo ruolo:@Re` e `fascia:Primi 10 ruolo:@Top`: entro un'ora (o riavviando il bot) il primo della classifica XP ha @Re, gli altri nove @Top; chi scende perde il ruolo; ruolo più alto del bot o di te rifiutato; senza ruolo toglie la fascia (chi lo ha lo tiene).
+
+## Economia e giochi (#125, r5eco)
+
+- [ ] `ECO-002/014` — `/admin-economia limiti saldo_iniziale:100`: un account nuovo che entra riceve 100 una volta sola (esce e rientra: niente di nuovo). `saldo_uscita:Cancella il saldo`: chi esce perde il saldo.
+- [ ] `ECO-003` — `/admin-economia limiti tetto_saldo:500`: daily, lavoro, vincite ed `/monete pay` non portano oltre 500; il pay verso chi arriverebbe oltre dice che non si può.
+- [ ] `ECO-024/025/026/028/019` — `/admin-economia premi daily_ore:12 bonus_serie:10 settimanale:300 mensile:1000 lavoro_attesa:5`: `/monete daily` ogni 12 h con bonus dal 2° giorno di fila (se i progressi sono accesi); `/monete settimanale` e `mensile` una volta per periodo; `/monete attese` mostra le attese nuove.
+- [ ] `ECO-021/022` — `/admin-economia limiti puntata_min:10 puntata_max:100 attesa_gioco:30`: monetina, dadi, slot, roulette, carta e scala rifiutano puntate fuori misura e partite troppo ravvicinate.
+- [ ] `ECO-090/099/100/115/116` — `/giochi roulette`, `/giochi carta`, `/giochi scala` (una puntata alla volta): saldo giusto dopo ogni partita; `/giochi statistiche` e `/giochi record` mostrano i conteggi.
+- [ ] `ECO-023/008/010/012` — `/admin-economia stato` e `statistiche`; `ruolo` aggiunge/toglie a tutti i membri di un ruolo (mai sotto zero, bot esclusi); `azzera` col nome del server sbagliato non fa nulla, con quello giusto rimette i saldi a zero.
+- [ ] `ECO-058/059/070/071/072/073/086` — compra un oggetto senza ruolo: compare in `/monete inventario`; `usa` lo consuma (mostra il testo di risposta); `regala` a un amico (non a te né a un bot); `/admin-economia regalabile` lo blocca; `vendi` rende metà prezzo; `oggetto` mostra la scheda; `azzera-inventari` col nome del server.

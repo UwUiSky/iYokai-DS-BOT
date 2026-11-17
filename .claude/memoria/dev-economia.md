@@ -1,23 +1,18 @@
 # Memoria di dev-economia
 
 ## Aggiornata
-09/11/2026 · giro r1liv (#124 Livelli), ramo `feat/r1liv`, migrazioni 0581-0589 (0581 usata). Lavoro PER FILE.
-09/11/2026 · giro r24fun (migrazioni 0579-0580 usate). 09/11/2026 · giro r21gif, ramo `feat/r21gif`, migrazione 0570 (usata). Lavoro PER FILE.
+17/11/2026 · giro r5eco (#125 Economia e giochi), ramo `feat/r5eco`, wt `/home/user/wt-125`, db `iyokai_w125`, migrazioni 0670-0679 (0670-0672 usate).
 
 ## In corso
-- r3liv (#124, ramo `feat/r3liv`, wt `/home/user/wt-124`, migrazioni 0660-0679): B3-B8 fatti (0660-0665). Restano LIV-013/046 (XP testo e vocale separati), 019 (voto bot, serve elenco bot), 032/033 (annuncio con embed/immagine), 053 (sfondi pronti), 061 (top 10 settimana), 062 (pagina web), 072 (import), 089/090/091 (profilo globale). Prossimo: B9 = 061 + 053 + 032, poi 013/046. Migrazione libera: 0666. `loc.py` in scratchpad.
-- Smoke da fare (lo lancia l'orchestratore).
+- r5eco: fatti 3 blocchi (B1 regole, B2 giochi, B3 inventario). Prossimo: B4 drop (ECO-052 `/monete lascia`, 053 impostazioni drop, 055/057 staff) poi B5 negozio (061 requisiti, 075-076), B6 giochi a più passi (088 blackjack, 094, 098: serve tabella `economia_partite_aperte` con rimborso all'avvio), B7 clan/tesoreria, B8 animali/pesca. Migrazione libera: 0673.
+- Smoke da fare (lo lancia l'orchestratore). Test già rossi su main, non miei: `test_data_registry` (guild_card_sfondi, leveling_reazioni, leveling_ruoli_classifica, voice_roles), `test_intent_usage::..._messaggi` (greetings).
 
 ## Fatto
-- r3liv B7-B8: 0664 (`text_xp_max`, `xp_percentuale`, pausa 3600), 0665 (`leveling_ruoli_classifica`), `cogs/leveling/ruoli_classifica.py` (lavoro orario, classifica vuota = non toglie niente).
-- r3liv B6: 0663 (`colore_testo`, `velo`, `card_colore`, `guild_card_sfondi`), `colore_medio`, `/level rank colore_testo|velo`, `/admin-livelli card sfondo|colore`, `{xp}` nell'annuncio.
-- r3liv B5: 0662 (`leveling_reazioni`, `voice_minutes_total`, 3 colonne impostazioni), `add_reaction_xp` (attesa + tetto 50/giorno in una scrittura), `on_raw_reaction_add`, `/admin-livelli guadagno reazioni`, classifica `/level leaderboard` con vocale e reazioni (sempre «di sempre»). `azzera server` non azzera minuti/reazioni.
-- r3liv B4: 0661 (`voce_min_persone`, `anti_farm`, `xp_thread/forum/chat_vocale`), `/admin-livelli guadagno vocale|contesti`, `tipo_di_canale`, campo «Come si guadagna XP» in `mostra`; codici già in codice provati in `tests/test_leveling_guadagno_b4.py` (022-025, 028-030, 040, 049, 050, 052, 073, 010).
-- r3liv B3: formule (`FORMULE`, `xp_for_level/level_for_xp(…, formula)`), `xp_messaggio`, `ha_prefisso_ignorato`, `e_escluso` con `canali_modo`, `cambia_formula`/`aggiungi_prefisso` nel repo impostazioni, `on_app_command_completion`, `/admin-livelli guadagno formula|messaggi|comandi|prefissi|canali`, 0660.
-- r2liv B2: `sincronizza_premi`/`sincronizza_server` e `on_member_join` in `leveling.py`, `rendi_annuncio` in `leveling_logic`, `_prova_annuncio`, `level_reward_repo.add_reward` (tetto 3, blocco per server), 0582 (`leveling_copie_attivita`, `avvisa_dm`, `levelup_testo`); B1: copia+azzeramento in un solo CTE con `FOR UPDATE`.
-- r24fun B12: telefono (`cogs/fun/telefono.py`, `core/telefono_logic.py`, `telefono_repo`, 0579-0580, `fun_telefono` spento di base, `/fun telefono`, `/admin-giochi telefono`). Pesi: fun 2604 (14 figli), admin-giochi 2718, giochi 2691: nessun problema. Resta fuori: `/owner telefono` (basta blacklist del bot e `blocca server_id`).
-- r23fun B11: `suoni_ruoli` (soundboard.py, `suoni_ruoli_repo`, 0577), `/web turni` (`turni_logic`, `turni_giochi.py`), `/giochi smash` (`smash_logic`, `smash_repo`), `/immagini fusione` (`fusione_logic`, `safe_http.safe_richiesta_byte`). Peso `giochi` 6719 (avviso 6800): un altro figlio va in un sotto-gruppo.
-- Giri più vecchi (r1liv, r21-r24, r10-r11, r4-r7): 18 righe compresse; il dettaglio è nella storia di git.
+- r5eco B3 (1128615e): 0672 `economia_inventario`+`shop_items.regalabile`, `inventario_repo`, `cogs/leveling/inventario.py` (ECO-058/059/070-073/086).
+- r5eco B2 (a88b13cd): 0671 `economia_giochi_stat`, roulette/carta/scala in `coin_games_logic`, `cogs/fun/giochi_monete.py` (`esegui_partita`), puntate e pausa del server anche in `/giochi gioca` (ECO-021/022/090/099/100/115/116).
+- r5eco B1 (696c9de4): 0670 (colonne in `leveling_settings` + `economia_accrediti_iniziali`, `economia_premi_periodici`), `economia_repo`, `cogs/leveling/economia.py`, tetto al saldo in `add_coins_in`/`_riscuoti_premio`/`gioca`/`transfer_coins` (ECO-002/003/008/010/012/014/019/023-026/028).
+- r3liv B3-B8: formule, XP reazioni/vocale/contesti, card, ruoli di classifica (0660-0665).
+- Giri più vecchi (r1liv-r2liv, r21-r24, r10-r11, r4-r7): nella storia di git.
 
 ## Cose imparate
 - Il bot dei test (`fake_member(bot=True)`) non ha `manage_roles`: nei test dei ruoli-premio va dato `guild_permissions=Permissions(manage_roles=True)`. Un nuovo ascoltatore di eventi membri va in `core/intent_usage.py` e `docs/INTENT_PRIVILEGIATI.md` si rigenera con `genera_documento()`.
@@ -45,6 +40,9 @@
 - Righe di `leveling_activity`: mese `2026-10` e settimana `2026-W43`; chi cerca «la riga del mese» filtri per `period_key`.
 - GIF: nuove fonti si aggiungono in `FONTI` (gif_fonti.py) con adattatore in `_richiesta` e `leggi_risposta`; categorie sempre in `voce.fonti`, mai da testo libero; test `test_gif_fonti` verifica SFW.
 - `testi.json` si riscrive con `json.dumps(indent=2, ensure_ascii=False)+"\n"`; `comandi.json` en-US con `indent=1`. Un nuovo gruppo top-level va in `AUDIENCE` di `tests/support/command_policy.py`. Un testo in `core/` che contiene `/parola` tra apici è letto come comando citato.
+
+- Tetto al saldo: usare `somma_con_tetto_sql`/`valore_nuovo_con_tetto_sql` (leveling_repo) in ogni nuova scrittura che accredita; `refund_coins_in` e lo staff restano senza tetto. `add_item` restituisce l'id (non l'oggetto). CHECK su quantità: `>= 0` se si decrementa prima di pulire.
+- Un cog nuovo per ogni blocco (leveling.py ha 4600 righe). Testi: `loc.py` in scratchpad (it, en, nomi, desc). Nuovi `on_member_*` in `core/intent_usage.py` e rigenerare `docs/INTENT_PRIVILEGIATI.md`.
 
 ## Aperto
 - `test_leveling_premi_b2::test_prova_senza_permesso_di_scrittura_non_scrive` fallisce già su main 6d19555d (non mio).
