@@ -277,3 +277,13 @@ STILI_BOTTONE = ("blu", "grigio", "verde", "rosso")
 def risposta_personale(modello: str, menzione_ruolo: str) -> str:
     """RUO-082: il testo di conferma scelto dall'admin, con `{ruolo}` al posto del ruolo (mai oltre 200 caratteri scritti)."""
     return modello[:MAX_RISPOSTA].replace("{ruolo}", menzione_ruolo)[:2000]
+
+
+VALORE_AZZERA = "__azzera__"  # RUO-087: il valore della voce «togli tutti i ruoli» nella tendina
+
+
+def sposta_ruolo(ruoli: list[int], ruolo: int, posizione: int) -> list[int]:
+    """RUO-077: `ruolo` va al posto `posizione` (da 1; oltre la fine = ultimo). Gli altri scalano."""
+    altri = [r for r in ruoli if r != ruolo]
+    posto = max(0, min(posizione - 1, len(altri)))
+    return altri[:posto] + [ruolo] + altri[posto:]

@@ -62,6 +62,8 @@ from core.role_menu_logic import (
     risposta_personale,
     MAX_RISPOSTA,
     STILI_BOTTONE,
+    VALORE_AZZERA,
+    sposta_ruolo,
     decidi_selezione,
     id_emoji_personalizzata,
     membro_ammesso,
@@ -130,6 +132,7 @@ class MenuNonPubblicabile(Exception):
     """Il messaggio del menu non si può pubblicare o aggiornare; il testo è per l'admin."""
 
 
+PAUSA_SVUOTA_SECONDI = 0.5
 _SG_RUOLI = ("ruoli", "Ruoli: ruoli-premio per livello e menu di ruoli")
 
 
@@ -138,6 +141,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         self.bot = bot
         # Un blocco per menu: due /menu-aggiungi insieme si mettono in fila
         # (altrimenti una delle due opzioni sparisce o escono due messaggi).
+        self._svuotamenti: set[int] = set()  # RUO-080: un'eliminazione in blocco alla volta per server
         self._blocchi_menu: "weakref.WeakValueDictionary[int, asyncio.Lock]" = (
             weakref.WeakValueDictionary()
         )
@@ -186,7 +190,8 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         return view
 
     def _build_select_view(
-        self, menu_id: int, options: list[RoleMenuOption], max_selectable: int | None, placeholder: str = ""
+        self, menu_id: int, options: list[RoleMenuOption], max_selectable: int | None, placeholder: str = "",
+        con_azzera: bool = False,
     ) -> discord.ui.View:
         view = BaseView(timeout=None)
         select_options = [
@@ -198,6 +203,8 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         ]
         limite = max_selectable if max_selectable else len(select_options)
         limite = max(1, min(limite, len(select_options)))
+        if con_azzera:  # RUO-087: in fondo, dentro le 25 voci
+            select_options.append(discord.SelectOption(label="Togli tutti i ruoli", value=VALORE_AZZERA, emoji="🧹"))
 
         select: discord.ui.Select = discord.ui.Select(
             custom_id=f"{SELECT_CUSTOM_ID_PREFIX}:{menu_id}",
@@ -232,7 +239,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         if menu.mode == "button":
             return self._build_button_view(menu.id, options)
         if menu.mode == "select":
-            return self._build_select_view(menu.id, options, menu.max_selectable, menu.placeholder)
+            return self._build_select_view(menu.id, options, menu.max_selectable, menu.placeholder, menu.reset_option)
         return None
 
     async def _pubblica_menu(
@@ -523,7 +530,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                 menu.behavior,
                 ruoli_menu={opt.role_id for opt in options},
                 ruoli_membro=ruoli_membro,
-                scelti={int(v) for v in select.values},
+                scelti=set() if VALORE_AZZERA in select.values else {int(v) for v in select.values},
                 temp_secondi=menu.temp_seconds,
             )
             if decisione.rifiuto is None:
@@ -779,7 +786,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             return
 
         conteggio = await role_menu_repo.count_options(menu_id)
-        if not can_add_option(conteggio, menu.mode):
+        if not can_add_option(conteggio + int(menu.reset_option), menu.mode):
             await interaction.response.send_message(
                 await testo_per(interaction, "rolemenus_limite_di_opzioni_raggiunto_per", mode=menu.mode),
                 ephemeral=True,
@@ -821,7 +828,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             esistenti = [
                 o for o in await role_menu_repo.get_options(menu_id) if o.role_id != role.id
             ]
-            if not can_add_option(len(esistenti), menu.mode):
+            if not can_add_option(len(esistenti) + int(menu.reset_option), menu.mode):
                 await interaction.followup.send(
                     await testo_per(interaction, "rolemenus_limite_di_opzioni_raggiunto_per", mode=menu.mode),
                     ephemeral=True,
@@ -975,6 +982,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         testo_guida="Testo-guida della tendina (vuoto = quello di base)",
         risposta="Risposta a chi prende un ruolo; {ruolo} diventa il ruolo (vuoto = quella di base)",
         avvisa="Conferma in privato a chi usa il menu (bottoni e tendina)",
+        voce_azzera="Tendina: aggiungi in fondo la voce «Togli tutti i ruoli»",
     )
     @app_commands.choices(comportamento=_SCELTE_COMPORTAMENTO)
     async def edit_cmd(
@@ -991,6 +999,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         testo_guida: app_commands.Range[str, 0, 150] | None = None,
         risposta: app_commands.Range[str, 0, MAX_RISPOSTA] | None = None,
         avvisa: bool | None = None,
+        voce_azzera: bool | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -1019,6 +1028,16 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             campi["reply_text"] = risposta
         if avvisa is not None:  # RUO-081
             campi["notify"] = avvisa
+        if voce_azzera is not None:  # RUO-087
+            if voce_azzera and menu.mode != "select":
+                await interaction.response.send_message("La voce serve solo alle tendine.", ephemeral=True)
+                return
+            if voce_azzera and await role_menu_repo.count_options(menu_id) >= 25:
+                await interaction.response.send_message(
+                    "La tendina ha già 25 opzioni: toglierne una per fare posto.", ephemeral=True
+                )
+                return
+            campi["reset_option"] = voce_azzera
         if massimo is not None:  # RUO-062
             campi["max_selectable"] = massimo or None
         if minimo is not None:  # RUO-063
@@ -1125,14 +1144,156 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "rolemenus_ruoli_ammessi_esclusi", v1=len(ammessi), v2=len(esclusi)), ephemeral=True
         )
 
+    async def _stacca_messaggio(self, guild: discord.Guild, menu: RoleMenu) -> None:
+        """RUO-079: toglie bottoni, tendina e reazioni del bot dal messaggio, che resta (best effort)."""
+        channel = guild.get_channel(menu.channel_id)
+        if menu.message_id is None or not isinstance(channel, discord.TextChannel):
+            return
+        try:
+            message = await channel.fetch_message(menu.message_id)
+            await message.edit(view=None)
+            if menu.mode == "reaction":
+                await message.clear_reactions()
+        except discord.HTTPException:
+            logger.info("Menu %s: messaggio non staccato del tutto nel server %s.", menu.id, guild.id)
+
+    @comando_di_gruppo(
+        "admin-ruoli",
+        nome="opzione",
+        descrizione="Cambia emoji, etichetta, descrizione, colore o posto di un'opzione di un menu.",
+        sottogruppo=SOTTOGRUPPI["admin-ruoli menu"],
+    )
+    @app_commands.describe(
+        menu_id="ID del menu",
+        ruolo="Il ruolo dell'opzione da cambiare",
+        emoji="Nuova emoji",
+        etichetta="Nuova etichetta (massimo 80 caratteri)",
+        descrizione="Nuova riga sotto l'opzione nella tendina (massimo 100 caratteri)",
+        colore="Nuovo colore del bottone",
+        posto="Nuovo posto nel menu (1 = primo)",
+    )
+    @app_commands.choices(colore=[app_commands.Choice(name=n, value=n) for n in STILI_BOTTONE])
+    async def option_edit_cmd(
+        self,
+        interaction: discord.Interaction,
+        menu_id: int,
+        ruolo: discord.Role,
+        emoji: app_commands.Range[str, 1, 60] | None = None,
+        etichetta: app_commands.Range[str, 1, 80] | None = None,
+        descrizione: app_commands.Range[str, 0, 100] | None = None,
+        colore: str | None = None,
+        posto: app_commands.Range[int, 1, 25] | None = None,
+    ) -> None:
+        """RUO-076 (emoji, etichetta, ...) e RUO-077 (posto): il messaggio si aggiorna prima, il database dopo."""
+        guild = interaction.guild
+        if guild is None:
+            return
+        menu = await role_menu_repo.get_menu(menu_id)
+        if menu is None or menu.guild_id != guild.id:
+            await interaction.response.send_message(
+                await testo_per(interaction, "rolemenus_nessun_role_menu_trovato_con"), ephemeral=True
+            )
+            return
+        campi: dict = {}
+        if emoji is not None:
+            if not valida_emoji(emoji):
+                await interaction.response.send_message(
+                    await testo_per(interaction, "rolemenus_quella_non_un_emoji_valida"), ephemeral=True
+                )
+                return
+            personalizzata = id_emoji_personalizzata(emoji)
+            if personalizzata is not None and self.bot.get_emoji(personalizzata) is None:
+                await interaction.response.send_message(
+                    await testo_per(interaction, "rolemenus_non_vedo_quell_emoji_personalizzata"), ephemeral=True
+                )
+                return
+            campi["emoji"] = emoji
+        if etichetta is not None:
+            campi["label"] = etichetta
+        if descrizione is not None:
+            campi["description"] = descrizione
+        if colore is not None:
+            campi["button_style"] = _STILE_DA_SCELTA[colore]
+        if not campi and posto is None:
+            await interaction.response.send_message(await testo_per(interaction, "customcomman_non_hai_indicato_nulla_da"), ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        async with self._blocco_menu(menu_id):
+            opzioni = await role_menu_repo.get_options(menu_id)
+            if ruolo.id not in {o.role_id for o in opzioni}:
+                await interaction.followup.send("Quel ruolo non è in questo menu.", ephemeral=True)
+                return
+            nuove = [dataclasses.replace(o, **campi) if o.role_id == ruolo.id else o for o in opzioni]
+            if posto is not None:
+                ordine = sposta_ruolo([o.role_id for o in nuove], ruolo.id, posto)
+                nuove = sorted(nuove, key=lambda o: ordine.index(o.role_id))
+            try:
+                await self._pubblica_menu(guild, menu, nuove)
+            except MenuNonPubblicabile as errore:
+                await interaction.followup.send(f"Il menu non è stato modificato. {errore}", ephemeral=True)
+                return
+            if campi:
+                await role_menu_repo.update_option(menu_id, ruolo.id, **campi)
+            if posto is not None:
+                await role_menu_repo.set_positions(menu_id, [o.role_id for o in nuove])
+        await interaction.followup.send(await testo_per(interaction, "rolemenus_menu_aggiornato"), ephemeral=True)
+
+    @comando_di_gruppo(
+        "admin-ruoli",
+        nome="svuota",
+        descrizione="Elimina tutti i menu di ruoli del server, o di un canale.",
+        sottogruppo=SOTTOGRUPPI["admin-ruoli menu"],
+    )
+    @app_commands.describe(
+        canale="Solo i menu di questo canale (se vuoto: tutto il server)",
+        conferma="Scrivi sì per eliminare davvero; senza, vedi solo quanti sono",
+    )
+    async def purge_cmd(
+        self, interaction: discord.Interaction, canale: discord.TextChannel | None = None, conferma: bool = False
+    ) -> None:
+        """RUO-080: elimina i menu in blocco, con conferma, una sola operazione per server e una pausa tra un menu e l'altro."""
+        guild = interaction.guild
+        if guild is None:
+            return
+        menu = [m for m in await role_menu_repo.list_menus_for_guild(guild.id) if canale is None or m.channel_id == canale.id]
+        if not conferma or not menu:
+            await interaction.response.send_message(
+                f"Menu da eliminare: {len(menu)}. Per farlo davvero ripeti il comando con `conferma: sì`.", ephemeral=True
+            )
+            return
+        if guild.id in self._svuotamenti:
+            await interaction.response.send_message("Un'eliminazione è già in corso.", ephemeral=True)
+            return
+        self._svuotamenti.add(guild.id)
+        await interaction.response.defer(ephemeral=True)
+        eliminati = rimasti = 0
+        try:
+            for m in menu:
+                async with self._blocco_menu(m.id):
+                    if await self._elimina_menu(guild, m):
+                        eliminati += 1
+                    else:
+                        rimasti += 1  # il menu non c'è più, il messaggio non si è lasciato cancellare
+                await asyncio.sleep(PAUSA_SVUOTA_SECONDI)
+        finally:
+            self._svuotamenti.discard(guild.id)
+        await interaction.followup.send(
+            f"Menu eliminati: {eliminati + rimasti}. Messaggi non cancellati: {rimasti}.", ephemeral=True
+        )
+
     @comando_di_gruppo(
         "admin-ruoli",
         nome="elimina",
         descrizione="Elimina un role menu.",
         sottogruppo=SOTTOGRUPPI["admin-ruoli menu"],
     )
-    @app_commands.describe(menu_id="ID del menu da eliminare")
-    async def delete_cmd(self, interaction: discord.Interaction, menu_id: int) -> None:
+    @app_commands.describe(
+        menu_id="ID del menu da eliminare",
+        tieni_messaggio="Stacca il menu ma lascia il messaggio, senza più bottoni né reazioni che funzionano",
+    )
+    async def delete_cmd(
+        self, interaction: discord.Interaction, menu_id: int, tieni_messaggio: bool = False
+    ) -> None:
         guild = interaction.guild
         if guild is None:
             return
@@ -1145,6 +1306,12 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             )
             return
 
+        if tieni_messaggio:  # RUO-079
+            await interaction.response.defer(ephemeral=True)
+            await self._stacca_messaggio(guild, menu)
+            await role_menu_repo.delete_menu(menu.id)
+            await interaction.followup.send("Menu staccato: il messaggio è rimasto, ma non dà più ruoli.", ephemeral=True)
+            return
         cancellato = await self._elimina_menu(guild, menu)
         if not cancellato:
             await interaction.response.send_message(

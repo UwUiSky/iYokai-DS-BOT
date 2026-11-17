@@ -147,3 +147,83 @@ async def test_RUO_081_RUO_082_avviso_spento_e_risposta_propria(clean_db, monkey
     u2.add_roles.assert_awaited_once()  # il ruolo si dà lo stesso
     i2.followup.send.assert_not_awaited()
     i2.delete_original_response.assert_awaited_once()
+
+
+# ------------------------------------------------- gestione dei menu (RUO-076, 077, 079, 080, 087)
+def test_RUO_077_sposta_ruolo_al_posto_scelto():
+    from core.role_menu_logic import sposta_ruolo
+
+    assert sposta_ruolo([1, 2, 3, 4], 4, 1) == [4, 1, 2, 3]
+    assert sposta_ruolo([1, 2, 3, 4], 1, 3) == [2, 3, 1, 4]
+    assert sposta_ruolo([1, 2, 3], 1, 25) == [2, 3, 1]
+
+
+@pytest.mark.asyncio
+async def test_RUO_076_RUO_077_opzione_cambia_emoji_e_posto(clean_db, monkeypatch):
+    s = _Scena(clean_db, monkeypatch)
+    await s.menu()
+    i = s.interazione(s.utente())
+    await s.cog.option_edit_cmd.callback(
+        s.cog, i, menu_id=s.menu_id, ruolo=s.ruoli[1002], emoji="🔥", etichetta="Nuova", posto=1
+    )
+    opzioni = await s.repo.get_options(s.menu_id)
+    assert [o.role_id for o in opzioni] == [1002, 1000, 1001]
+    assert (opzioni[0].emoji, opzioni[0].label) == ("🔥", "Nuova")
+
+
+@pytest.mark.asyncio
+async def test_RUO_076_ruolo_non_del_menu_e_emoji_falsa_rifiutati(clean_db, monkeypatch):
+    s = _Scena(clean_db, monkeypatch)
+    await s.menu()
+    i = s.interazione(s.utente())
+    await s.cog.option_edit_cmd.callback(s.cog, i, menu_id=s.menu_id, ruolo=s.ruoli[1008], etichetta="X")
+    assert "non è in questo menu" in i.followup.send.await_args.args[0]
+    await s.cog.option_edit_cmd.callback(s.cog, i, menu_id=s.menu_id, ruolo=s.ruoli[1000], emoji="non-emoji")
+    assert [o.emoji for o in await s.repo.get_options(s.menu_id)] == ["🎮"] * 3
+
+
+@pytest.mark.asyncio
+async def test_RUO_079_elimina_tenendo_il_messaggio(clean_db, monkeypatch):
+    s = _Scena(clean_db, monkeypatch)
+    await s.menu()
+    await s.repo.set_menu_message(s.menu_id, 555)
+    i = s.interazione(s.utente())
+    await s.cog.delete_cmd.callback(s.cog, i, menu_id=s.menu_id, tieni_messaggio=True)
+    assert await s.repo.get_menu(s.menu_id) is None
+    s.messaggio.edit.assert_awaited_once_with(view=None)
+    s.messaggio.delete.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_RUO_080_svuota_chiede_conferma_e_poi_elimina_tutto(clean_db, monkeypatch):
+    import cogs.utility.role_menus as rm
+
+    monkeypatch.setattr(rm, "PAUSA_SVUOTA_SECONDI", 0)
+    s = _Scena(clean_db, monkeypatch)
+    await s.menu()
+    await s.menu()
+    i = s.interazione(s.utente())
+    await s.cog.purge_cmd.callback(s.cog, i)
+    assert len(await s.repo.list_menus_for_guild(1)) == 2  # senza conferma non si tocca nulla
+    assert "2" in i.response.send_message.await_args.args[0]
+    await s.cog.purge_cmd.callback(s.cog, i, conferma=True)
+    assert await s.repo.list_menus_for_guild(1) == []
+
+
+@pytest.mark.asyncio
+async def test_RUO_087_voce_togli_tutti_i_ruoli_nella_tendina(clean_db, monkeypatch):
+    from core.role_menu_logic import VALORE_AZZERA
+
+    s = _Scena(clean_db, monkeypatch, mode="select")
+    await s.menu()
+    i0 = s.interazione(s.utente())
+    await s.cog.edit_cmd.callback(s.cog, i0, menu_id=s.menu_id, voce_azzera=True)
+    menu = await s.repo.get_menu(s.menu_id)
+    vista = s.cog._build_select_view(menu.id, await s.repo.get_options(menu.id), None, "", menu.reset_option)
+    assert vista.children[0].options[-1].value == VALORE_AZZERA
+    u = s.utente(1000, 1001)
+    i = s.interazione(u)
+    tendina = vista.children[0]
+    tendina._values = [VALORE_AZZERA]
+    await s.cog._handle_select(i, s.menu_id, tendina)
+    assert _ruoli_di(u.remove_roles.await_args) == {1000, 1001}

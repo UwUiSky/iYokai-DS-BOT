@@ -35,6 +35,7 @@ class RoleMenu:
     notify: bool = True
     reply_text: str = ""
     placeholder: str = ""
+    reset_option: bool = False
 
 
 @dataclass(frozen=True)
@@ -122,6 +123,7 @@ class RoleMenuRepository:
             notify=row["notify"],
             reply_text=row["reply_text"],
             placeholder=row["placeholder"],
+            reset_option=row["reset_option"],
         )
 
     async def list_menus_for_guild(self, guild_id: int) -> list[RoleMenu]:
@@ -131,7 +133,7 @@ class RoleMenuRepository:
     async def update_menu(self, menu_id: int, **campi) -> bool:
         """Cambia titolo, descrizione, comportamento o durata (campi da un elenco fisso)."""
         ammessi = {"title", "description", "behavior", "temp_seconds", "toggle", "max_selectable",
-                  "min_roles", "color", "notify", "reply_text", "placeholder"}
+                  "min_roles", "color", "notify", "reply_text", "placeholder", "reset_option"}
         if not campi or not set(campi) <= ammessi:
             raise ValueError(f"Campi non modificabili: {sorted(set(campi) - ammessi)}")
         impostazioni = ", ".join(f"{col} = ${i}" for i, col in enumerate(campi, start=2))
@@ -236,6 +238,27 @@ class RoleMenuRepository:
             description,
         )
         return row["id"]
+
+    async def update_option(self, menu_id: int, role_id: int, **campi) -> bool:
+        """RUO-076: cambia emoji, etichetta, descrizione, colore o tetto di un'opzione (campi da un elenco fisso)."""
+        ammessi = {"emoji", "label", "description", "button_style", "max_members"}
+        if not campi or not set(campi) <= ammessi:
+            raise ValueError(f"Campi non modificabili: {sorted(set(campi) - ammessi)}")
+        impostazioni = ", ".join(f"{col} = ${i}" for i, col in enumerate(campi, start=3))
+        esito = await self._pool.execute(
+            f"UPDATE role_menu_options SET {impostazioni} WHERE menu_id = $1 AND role_id = $2",
+            menu_id, role_id, *campi.values(),
+        )
+        return esito.endswith(" 1")
+
+    async def set_positions(self, menu_id: int, role_ids: list[int]) -> None:
+        """RUO-077: la posizione di ogni opzione è il suo posto nell'elenco dato."""
+        async with self._pool.acquire() as conn, conn.transaction():
+            for posto, role_id in enumerate(role_ids):
+                await conn.execute(
+                    "UPDATE role_menu_options SET position = $3 WHERE menu_id = $1 AND role_id = $2",
+                    menu_id, role_id, posto,
+                )
 
     async def remove_option(self, menu_id: int, role_id: int) -> bool:
         result = await self._pool.execute(

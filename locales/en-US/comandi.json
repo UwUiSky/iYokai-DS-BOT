@@ -333,7 +333,8 @@
   "pesi": "weights",
   "gestisci": "manage",
   "ripristina": "restore",
-  "ricorda-ruoli": "remember-roles"
+  "ricorda-ruoli": "remember-roles",
+  "opzione": "option"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1320,7 +1321,9 @@
   "admin-giochi telefono consenso": "Turn the phone on or off: off by default.",
   "admin-giochi telefono blocca": "Block or unblock a person or another server from the phone.",
   "admin-giochi telefono registro": "The server's latest calls: only servers, time and length.",
-  "admin-ruoli auto ricorda-ruoli": "Choose which roles are given back to returning members and which never are."
+  "admin-ruoli auto ricorda-ruoli": "Choose which roles are given back to returning members and which never are.",
+  "admin-ruoli menu opzione": "Change an option's emoji, label, description, colour or position in a menu.",
+  "admin-ruoli menu svuota": "Delete all role menus in the server or in one channel."
  },
  "parametri": {},
  "menu": {
