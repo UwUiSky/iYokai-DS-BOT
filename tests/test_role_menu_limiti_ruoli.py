@@ -82,3 +82,68 @@ async def test_RUO_068_svuota_gli_elenchi_di_accesso(clean_db, monkeypatch):
     assert menu.allowed_role_ids == () and menu.excluded_role_ids == (1007,)
     await s.cog.access_cmd.callback(s.cog, i, menu_id=s.menu_id, elenco="escluso", azione="svuota")
     assert (await s.repo.get_menu(s.menu_id)).excluded_role_ids == ()
+
+
+# ------------------------------------------------- aspetto e risposte (RUO-052, 081, 082, 085, 086)
+def test_RUO_082_risposta_con_il_ruolo_e_tagliata():
+    from core.role_menu_logic import MAX_RISPOSTA, risposta_personale
+
+    assert risposta_personale("Ecco {ruolo}!", "<@&5>") == "Ecco <@&5>!"
+    assert len(risposta_personale("x" * 500, "<@&5>")) == MAX_RISPOSTA
+
+
+@pytest.mark.asyncio
+async def test_RUO_052_colore_del_messaggio_e_ritorno_al_predefinito(clean_db, monkeypatch):
+    from cogs.utility.role_menus import _build_embed
+
+    s = _Scena(clean_db, monkeypatch)
+    await s.menu()
+    i = s.interazione(s.utente())
+    await s.cog.edit_cmd.callback(s.cog, i, menu_id=s.menu_id, colore="#C24A3A")
+    menu = await s.repo.get_menu(s.menu_id)
+    assert menu.color == 0xC24A3A and _build_embed(menu, []).color.value == 0xC24A3A
+    await s.cog.edit_cmd.callback(s.cog, i, menu_id=s.menu_id, colore="rosso-forte")
+    assert (await s.repo.get_menu(s.menu_id)).color == 0xC24A3A  # non valido: resta com'era
+    await s.cog.edit_cmd.callback(s.cog, i, menu_id=s.menu_id, colore="predefinito")
+    assert (await s.repo.get_menu(s.menu_id)).color is None
+
+
+@pytest.mark.asyncio
+async def test_RUO_085_colore_del_bottone(clean_db, monkeypatch):
+    import discord
+
+    s = _Scena(clean_db, monkeypatch)
+    await s.menu(opzioni=())
+    await s.repo.add_option(s.menu_id, 1000, "🎮", "A", button_style="danger")
+    await s.repo.add_option(s.menu_id, 1001, "🎮", "B")
+    vista = s.cog._build_button_view(s.menu_id, await s.repo.get_options(s.menu_id))
+    assert [b.style for b in vista.children] == [discord.ButtonStyle.danger, discord.ButtonStyle.secondary]
+
+
+@pytest.mark.asyncio
+async def test_RUO_086_tendina_con_testo_guida_e_descrizione(clean_db, monkeypatch):
+    s = _Scena(clean_db, monkeypatch, mode="select")
+    await s.menu(opzioni=())
+    await s.repo.add_option(s.menu_id, 1000, None, "A", description="La prima")
+    vista = s.cog._build_select_view(s.menu_id, await s.repo.get_options(s.menu_id), None, "Scegli il gioco")
+    tendina = vista.children[0]
+    assert tendina.placeholder == "Scegli il gioco" and tendina.options[0].description == "La prima"
+
+
+@pytest.mark.asyncio
+async def test_RUO_081_RUO_082_avviso_spento_e_risposta_propria(clean_db, monkeypatch):
+    s = _Scena(clean_db, monkeypatch)
+    await s.menu()
+    i0 = s.interazione(s.utente())
+    await s.cog.edit_cmd.callback(s.cog, i0, menu_id=s.menu_id, risposta="Hai preso {ruolo}!")
+    u = s.utente()
+    i = s.interazione(u)
+    await s.cog._handle_button_click(i, s.menu_id, 1000)
+    assert i.followup.send.await_args.args[0] == f"Hai preso {s.ruoli[1000].mention}!"
+    await s.cog.edit_cmd.callback(s.cog, i0, menu_id=s.menu_id, avvisa=False)
+    u2 = s.utente()
+    i2 = s.interazione(u2)
+    await s.cog._handle_button_click(i2, s.menu_id, 1001)
+    u2.add_roles.assert_awaited_once()  # il ruolo si dà lo stesso
+    i2.followup.send.assert_not_awaited()
+    i2.delete_original_response.assert_awaited_once()

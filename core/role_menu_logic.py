@@ -268,3 +268,12 @@ def controlla_limiti(
 def posti_finiti(*, membri_con_ruolo: int, max_membri: int | None) -> bool:
     """RUO-065: l'opzione ha un tetto di membri e l'ha raggiunto."""
     return max_membri is not None and membri_con_ruolo >= max_membri
+
+
+MAX_RISPOSTA = 200
+STILI_BOTTONE = ("blu", "grigio", "verde", "rosso")
+
+
+def risposta_personale(modello: str, menzione_ruolo: str) -> str:
+    """RUO-082: il testo di conferma scelto dall'admin, con `{ruolo}` al posto del ruolo (mai oltre 200 caratteri scritti)."""
+    return modello[:MAX_RISPOSTA].replace("{ruolo}", menzione_ruolo)[:2000]

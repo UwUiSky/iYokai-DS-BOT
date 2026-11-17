@@ -47,6 +47,7 @@ from core.premium import PremiumModule, registry
 from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.role_menu_repo import RoleMenu, RoleMenuOption, role_menu_repo
 from core.lista_limiti_logic import dividi_in_blocchi, righe_entro_limite
+from core.leveling_logic import colore_valido
 from core.role_menu_logic import (
     COMPORTAMENTI,
     COMPORTAMENTO_DI_BASE,
@@ -58,6 +59,9 @@ from core.role_menu_logic import (
     controlla_limiti,
     decidi_azione,
     posti_finiti,
+    risposta_personale,
+    MAX_RISPOSTA,
+    STILI_BOTTONE,
     decidi_selezione,
     id_emoji_personalizzata,
     membro_ammesso,
@@ -80,7 +84,7 @@ def _build_embed(menu: RoleMenu, options: list[RoleMenuOption]) -> discord.Embed
     embed = discord.Embed(
         title=menu.title[:256],
         description=(menu.description or None) and menu.description[:2000],
-        color=discord.Color.blurple(),
+        color=discord.Color(menu.color) if menu.color is not None else discord.Color.blurple(),  # RUO-052
     )
     if menu.behavior != COMPORTAMENTO_DI_BASE:
         embed.set_footer(text=COMPORTAMENTI.get(menu.behavior, menu.behavior)[:2048])
@@ -99,6 +103,15 @@ def _build_embed(menu: RoleMenu, options: list[RoleMenuOption]) -> discord.Embed
         embed.add_field(name=titolo if numero == 0 else "\u200b", value=blocco, inline=False)
     return embed
 
+
+# RUO-085: i colori dei bottoni (nel database: il nome di discord.py)
+_STILI = {
+    "primary": discord.ButtonStyle.primary,
+    "secondary": discord.ButtonStyle.secondary,
+    "success": discord.ButtonStyle.success,
+    "danger": discord.ButtonStyle.danger,
+}
+_STILE_DA_SCELTA = {"blu": "primary", "grigio": "secondary", "verde": "success", "rosso": "danger"}
 
 _SCELTE_COMPORTAMENTO = [app_commands.Choice(name=nome, value=nome) for nome in COMPORTAMENTI]
 
@@ -165,7 +178,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             button: discord.ui.Button = discord.ui.Button(
                 label=(opt.label or "Role")[:80],
                 emoji=opt.emoji,
-                style=discord.ButtonStyle.secondary,
+                style=_STILI.get(opt.button_style, discord.ButtonStyle.secondary),  # RUO-085
                 custom_id=f"{BUTTON_CUSTOM_ID_PREFIX}:{menu_id}:{opt.role_id}",
             )
             button.callback = self._make_button_callback(menu_id, opt.role_id)
@@ -173,12 +186,13 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         return view
 
     def _build_select_view(
-        self, menu_id: int, options: list[RoleMenuOption], max_selectable: int | None
+        self, menu_id: int, options: list[RoleMenuOption], max_selectable: int | None, placeholder: str = ""
     ) -> discord.ui.View:
         view = BaseView(timeout=None)
         select_options = [
             discord.SelectOption(
-                label=(opt.label or "Role")[:100], value=str(opt.role_id), emoji=opt.emoji
+                label=(opt.label or "Role")[:100], value=str(opt.role_id), emoji=opt.emoji,
+                description=opt.description[:100] or None,  # RUO-086
             )
             for opt in options
         ]
@@ -187,7 +201,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
 
         select: discord.ui.Select = discord.ui.Select(
             custom_id=f"{SELECT_CUSTOM_ID_PREFIX}:{menu_id}",
-            placeholder="Choose your roles...",
+            placeholder=placeholder[:150] or "Choose your roles...",  # RUO-086
             min_values=0,
             max_values=limite,
             options=select_options,
@@ -218,7 +232,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         if menu.mode == "button":
             return self._build_button_view(menu.id, options)
         if menu.mode == "select":
-            return self._build_select_view(menu.id, options, menu.max_selectable)
+            return self._build_select_view(menu.id, options, menu.max_selectable, menu.placeholder)
         return None
 
     async def _pubblica_menu(
@@ -386,7 +400,15 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             if errore is not None:
                 await interaction.followup.send(errore, ephemeral=True)
                 return
-        if decisione.aggiungi:
+        if not menu.notify:  # RUO-081: niente conferma in privato
+            try:
+                await interaction.delete_original_response()
+            except discord.HTTPException:
+                pass
+            return
+        if decisione.aggiungi and menu.reply_text:  # RUO-082
+            testo = risposta_personale(menu.reply_text, role.mention)
+        elif decisione.aggiungi:
             testo = f"Role {role.mention} added."
             if decisione.temporaneo_secondi:
                 testo += f" Lo perderai tra {max(decisione.temporaneo_secondi // 60, 1)} minuti."
@@ -394,7 +416,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             testo = f"Role {role.mention} removed."
         else:
             testo = "Nessun cambiamento."
-        await interaction.followup.send(testo, ephemeral=True)
+        await interaction.followup.send(testo, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
 
     @staticmethod
     def _rifiuto_limiti(
@@ -515,6 +537,20 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                 await interaction.followup.send(errore, ephemeral=True)
                 return
 
+        if not menu.notify:  # RUO-081
+            try:
+                await interaction.delete_original_response()
+            except discord.HTTPException:
+                pass
+            return
+        if menu.reply_text and decisione.aggiungi:  # RUO-082
+            ruolo = guild.get_role(decisione.aggiungi[0])
+            if ruolo is not None:
+                await interaction.followup.send(
+                    risposta_personale(menu.reply_text, ruolo.mention),
+                    ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
+                )
+                return
         await interaction.followup.send(await testo_per(interaction, "rm_ruoli_aggiornati"), ephemeral=True)
 
     # ================================================================
@@ -704,7 +740,10 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         emoji="Emoji (obbligatoria per reaction/button)",
         label="Etichetta del bottone/opzione (obbligatoria per button/select)",
         max_membri="Posti limitati: quanti membri al massimo possono avere il ruolo da questo menu",
+        colore="Colore del bottone",
+        descrizione="Riga sotto l'opzione nella tendina (massimo 100 caratteri)",
     )
+    @app_commands.choices(colore=[app_commands.Choice(name=n, value=n) for n in STILI_BOTTONE])
     async def add_option_cmd(
         self,
         interaction: discord.Interaction,
@@ -713,6 +752,8 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         emoji: app_commands.Range[str, 1, 60] | None = None,
         label: app_commands.Range[str, 1, 80] | None = None,
         max_membri: app_commands.Range[int, 1, 1_000_000] | None = None,
+        colore: str | None = None,
+        descrizione: app_commands.Range[str, 0, 100] = "",
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -768,6 +809,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                 )
                 return
 
+        stile = _STILE_DA_SCELTA.get(colore or "", "secondary")  # RUO-085
         await interaction.response.defer(ephemeral=True)
         async with self._blocco_menu(menu_id):
             # Dentro il blocco si rilegge tutto: un altro comando potrebbe aver
@@ -788,6 +830,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             nuova = RoleMenuOption(
                 id=0, menu_id=menu_id, role_id=role.id, emoji=emoji, label=label,
                 position=len(esistenti), max_members=max_membri,
+                button_style=stile, description=descrizione,
             )
             # Prima si pubblica il messaggio con la nuova opzione, poi la si salva:
             # se Discord rifiuta (campo troppo lungo, permessi, emoji) nel
@@ -799,7 +842,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                     f"L'opzione {role.mention} non è stata aggiunta. {errore}", ephemeral=True
                 )
                 return
-            await role_menu_repo.add_option(menu_id, role.id, emoji, label, max_membri)
+            await role_menu_repo.add_option(menu_id, role.id, emoji, label, max_membri, stile, descrizione)
 
         await interaction.followup.send(
             await testo_per(interaction, "rolemenus_opzione_aggiunta", mention=role.mention), ephemeral=True
@@ -928,6 +971,10 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         durata_minuti="Durata del ruolo (comportamento temp)",
         massimo="Quanti ruoli del menu si possono avere insieme (0 = nessun tetto)",
         minimo="Quanti ruoli del menu restano sempre (0 = nessun minimo)",
+        colore="Colore del messaggio, per esempio #C24A3A (oppure «predefinito»)",
+        testo_guida="Testo-guida della tendina (vuoto = quello di base)",
+        risposta="Risposta a chi prende un ruolo; {ruolo} diventa il ruolo (vuoto = quella di base)",
+        avvisa="Conferma in privato a chi usa il menu (bottoni e tendina)",
     )
     @app_commands.choices(comportamento=_SCELTE_COMPORTAMENTO)
     async def edit_cmd(
@@ -940,6 +987,10 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         durata_minuti: app_commands.Range[int, 1, MAX_TEMP_SECONDI // 60] | None = None,
         massimo: app_commands.Range[int, 0, 25] | None = None,
         minimo: app_commands.Range[int, 0, 25] | None = None,
+        colore: app_commands.Range[str, 4, 11] | None = None,
+        testo_guida: app_commands.Range[str, 0, 150] | None = None,
+        risposta: app_commands.Range[str, 0, MAX_RISPOSTA] | None = None,
+        avvisa: bool | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -951,6 +1002,23 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             )
             return
         campi: dict = {}
+        if colore is not None:  # RUO-052
+            if colore.lower() == "predefinito":
+                campi["color"] = None
+            else:
+                esadecimale = colore_valido(colore)
+                if esadecimale is None:
+                    await interaction.response.send_message(
+                        "Il colore va scritto come #RRGGBB, oppure «predefinito».", ephemeral=True
+                    )
+                    return
+                campi["color"] = int(esadecimale[1:], 16)
+        if testo_guida is not None:  # RUO-086
+            campi["placeholder"] = testo_guida
+        if risposta is not None:  # RUO-082
+            campi["reply_text"] = risposta
+        if avvisa is not None:  # RUO-081
+            campi["notify"] = avvisa
         if massimo is not None:  # RUO-062
             campi["max_selectable"] = massimo or None
         if minimo is not None:  # RUO-063
