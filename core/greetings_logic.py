@@ -182,3 +182,34 @@ def scegli_testo(principale: str, varianti: list[str], rng: random.Random | None
     if not varianti:
         return principale
     return (rng or random).choice([principale, *varianti])
+
+
+class PrimiMessaggi:
+    """
+    RUO-024: chi è appena entrato e non ha ancora scritto. Solo in memoria e per poco tempo: dopo
+    `DURATA_SECONDI` o al primo messaggio il segno sparisce (nessun dato personale su disco).
+    Un tetto fisso tiene a bada la memoria anche durante un raid.
+    """
+
+    DURATA_SECONDI = 24 * 3600
+    MASSIMO = 5000
+
+    def __init__(self) -> None:
+        self._scadenze: dict[tuple[int, int], float] = {}
+
+    def registra(self, guild_id: int, user_id: int, ora: float) -> None:
+        if len(self._scadenze) >= self.MASSIMO:
+            self._scadenze = {k: v for k, v in self._scadenze.items() if v > ora}
+        if len(self._scadenze) < self.MASSIMO:
+            self._scadenze[(guild_id, user_id)] = ora + self.DURATA_SECONDI
+
+    def consuma(self, guild_id: int, user_id: int, ora: float) -> bool:
+        """Vero una sola volta: se il membro era nuovo e il segno non è scaduto."""
+        scadenza = self._scadenze.pop((guild_id, user_id), None)
+        return scadenza is not None and scadenza > ora
+
+    def dimentica(self, guild_id: int, user_id: int) -> None:
+        self._scadenze.pop((guild_id, user_id), None)
+
+    def __len__(self) -> int:
+        return len(self._scadenze)

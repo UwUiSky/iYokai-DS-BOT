@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import io
 import logging
+import time
 
 import discord
 from discord import app_commands
@@ -27,7 +28,9 @@ from core.admin_mentions_logic import (
     utente_puo_pingare_ruoli,
 )
 from core.leveling_logic import colore_valido
+from core.role_menu_logic import valida_emoji
 from core.greetings_logic import (
+    PrimiMessaggi,
     DEFAULT_BOOST_TEMPLATE,
     DEFAULT_GOODBYE_TEMPLATE,
     DEFAULT_WELCOME_TEMPLATE,
@@ -127,6 +130,11 @@ class ExtraBenvenutoModal(BaseModal, title="Benvenuto: DM, varianti, reazioni"):
         required=False,
         max_length=MAX_MESSAGE_LENGTH,
     )
+    primo = discord.ui.TextInput(
+        label="Emoji sul primo messaggio (vuoto = no)",
+        required=False,
+        max_length=60,
+    )
 
     def __init__(self, config) -> None:
         super().__init__()
@@ -134,6 +142,7 @@ class ExtraBenvenutoModal(BaseModal, title="Benvenuto: DM, varianti, reazioni"):
         self.varianti.default = "\n".join(config.welcome_variants)[:4000] or None
         self.reazioni.default = " ".join(config.welcome_reactions) or None
         self.ban.default = config.ban_message or None
+        self.primo.default = config.first_message_reaction or None
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
@@ -145,6 +154,9 @@ class ExtraBenvenutoModal(BaseModal, title="Benvenuto: DM, varianti, reazioni"):
         if errore is None:
             reazioni, errore = analizza_reazioni(self.reazioni.value or "")
         ban = (self.ban.value or "").strip()
+        primo = (self.primo.value or "").strip()
+        if errore is None and primo and not valida_emoji(primo):  # RUO-024
+            errore = f"«{primo[:30]}» non è un'emoji."
         for testo in ([dm] if dm else []) + varianti + ([ban] if ban else []):
             if errore is None and "<@&" in testo and not utente_puo_pingare_ruoli(interaction.user):
                 errore = "Per citare un ruolo serve il permesso «Menziona tutti»."
@@ -154,6 +166,7 @@ class ExtraBenvenutoModal(BaseModal, title="Benvenuto: DM, varianti, reazioni"):
             await interaction.response.send_message(errore, ephemeral=True)
             return
         await greetings_repo.set_welcome_extra(guild.id, dm, varianti, reazioni, ban)
+        await greetings_repo.set_first_reaction(guild.id, primo)
         await interaction.response.send_message(
             await testo_per(interaction, "greetings_salvato_dm_varianti_reazioni_ban", v1=(await testo_per(interaction, "greetings_con_testo_suo")) if dm else (await testo_per(interaction, "greetings_come_il_canale")), v2=len(varianti), v3=len(reazioni), v4=(await testo_per(interaction, "greetings_con_testo_suo")) if ban else (await testo_per(interaction, "greetings_con_il_testo_di_base"))),
             ephemeral=True,
@@ -376,6 +389,7 @@ async def _completa_embed(interaction: discord.Interaction, current: str):
 class GreetingsCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        self._primi = PrimiMessaggi()  # RUO-024
 
     # ================================================================
     # Eventi
@@ -403,6 +417,8 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             if config.welcome_dm_message
             else testo
         )
+        if config.first_message_reaction:  # RUO-024
+            self._primi.registra(member.guild.id, member.id, time.monotonic())
         menzioni = menzioni_ammesse(config.welcome_ping_ruoli)
         embed = await _embed_salvato(member, config.welcome_embed, inviti)
         extra = {"embed": embed} if embed is not None else {}  # RUO-001
@@ -463,6 +479,23 @@ class GreetingsCog(CogConGruppi, commands.Cog):
                 )
             except discord.HTTPException:
                 pass  # DM chiusi: non è un errore da segnalare, è normale
+
+    @commands.Cog.listener()
+    async def on_message(self, messaggio: discord.Message) -> None:
+        """RUO-024: l'emoji sul primo messaggio di chi è appena entrato. Non si legge il testo, solo chi scrive."""
+        if messaggio.guild is None or messaggio.author.bot or len(self._primi) == 0:
+            return
+        if messaggio.type not in (discord.MessageType.default, discord.MessageType.reply):
+            return
+        if not self._primi.consuma(messaggio.guild.id, messaggio.author.id, time.monotonic()):
+            return
+        config = await greetings_repo.get_config(messaggio.guild.id)
+        if not config.first_message_reaction:
+            return
+        try:
+            await messaggio.add_reaction(config.first_message_reaction)
+        except discord.HTTPException:
+            logger.info("Reazione sul primo messaggio non messa nel server %s.", messaggio.guild.id)
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member) -> None:

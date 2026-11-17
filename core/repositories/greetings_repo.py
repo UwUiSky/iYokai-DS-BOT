@@ -55,6 +55,8 @@ class GreetingsConfig:
     welcome_embed: str = ""
     dm_embed: str = ""
     goodbye_embed: str = ""
+    # RUO-024 (migrazione 0645): emoji sul primo messaggio di un nuovo membro ('' = spenta)
+    first_message_reaction: str = ""
     # RUO-013, 017, 023, 025 (migrazione 0330).
     welcome_dm_message: str = ""
     welcome_variants: list[str] = field(default_factory=list)
@@ -131,6 +133,7 @@ class GreetingsRepository:
             welcome_image_color=row["welcome_image_color"],
             welcome_image_title=row["welcome_image_title"],
             welcome_image_has_background=row["welcome_image_has_background"],
+            first_message_reaction=row["first_message_reaction"],
             welcome_embed=row["welcome_embed"],
             dm_embed=row["dm_embed"],
             goodbye_embed=row["goodbye_embed"],
@@ -230,6 +233,16 @@ class GreetingsRepository:
                     welcome_image_name_color = EXCLUDED.welcome_image_name_color
             """,
             guild_id, opacity, text, order, align, name_color,
+        )
+
+    async def set_first_reaction(self, guild_id: int, emoji: str) -> None:
+        """RUO-024: l'emoji per il primo messaggio dei nuovi membri ('' la spegne)."""
+        await self._pool.execute(
+            """
+            INSERT INTO greetings_config (guild_id, first_message_reaction) VALUES ($1, $2)
+            ON CONFLICT (guild_id) DO UPDATE SET first_message_reaction = EXCLUDED.first_message_reaction
+            """,
+            guild_id, emoji,
         )
 
     async def set_embed(self, guild_id: int, dove: str, nome: str) -> None:
