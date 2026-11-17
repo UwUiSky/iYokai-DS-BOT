@@ -28,6 +28,8 @@ services:
       - ./application.yml:/opt/Lavalink/application.yml:ro
       # I plugin scaricati restano tra un riavvio e l'altro.
       - ./plugins:/opt/Lavalink/plugins
+      # I log di Lavalink: il bot ne legge la coda con `/owner radio log` (LAVALINK_LOG_FILE).
+      - ./logs:/opt/Lavalink/logs
       # La cartella degli inediti, in sola lettura. Nel bot:
       #   MAIN_RADIO_LOCAL_FOLDER = la cartella sul tuo PC / server
       #   LAVALINK_LOCAL_ROOT     = /audio/local   (come la vede Lavalink)

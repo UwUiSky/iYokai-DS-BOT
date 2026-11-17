@@ -13,6 +13,7 @@ per ogni server Lavalink, con identificatore proprio
   morto non blocca gli altri né l'avvio del cog.
 - Dopo il collegamento si legge `/v4/info`: sotto Lavalink 4.2.0 il nodo
   viene scartato con un avviso (DAVE).
+- `riconnetti()` (MUS-068) e `descrivi_nodi()` (MUS-070) per i comandi dell'owner.
 - `close()` ferma i task e chiude i nodi (`Pool.close()` allo spegnimento).
 - La scelta del nodo è esplicita (`node_for`): pubblici prima, locale per
   ultimo, solo tra i nodi del bot che parla.
@@ -81,6 +82,7 @@ class MusicNodeManager:
         self._nodi: dict[str, list[wavelink.Node]] = {}
         self._client_di_nodo: dict[str, object] = {}
         self.tasks: set[asyncio.Task] = set()
+        self._task_di_nodo: dict[str, asyncio.Task] = {}
 
     # ---- costruzione ----
     def costruisci_nodi(self, client, chiave: str) -> list[wavelink.Node]:
@@ -115,11 +117,44 @@ class MusicNodeManager:
         task = []
         for nodo in self.costruisci_nodi(client, chiave):
             self._client_di_nodo[nodo.identifier] = client
-            t = asyncio.create_task(self._collega_uno(client, nodo))
-            self.tasks.add(t)
-            t.add_done_callback(self.tasks.discard)
-            task.append(t)
+            task.append(self._lancia(client, nodo))
         return task
+
+    def _lancia(self, client, nodo: wavelink.Node) -> asyncio.Task:
+        t = asyncio.create_task(self._collega_uno(client, nodo))
+        self.tasks.add(t)
+        self._task_di_nodo[nodo.identifier] = t
+        t.add_done_callback(self.tasks.discard)
+        return t
+
+    async def riconnetti(self) -> int:
+        """
+        MUS-068: ferma i tentativi in pausa dei nodi non collegati e ne riparte subito uno nuovo.
+        I nodi già collegati non si toccano. Restituisce quanti nodi sono ripartiti.
+        """
+        ripartiti = 0
+        for chiave, nodi in self._nodi.items():
+            for nodo in nodi:
+                if nodo.status is wavelink.NodeStatus.CONNECTED:
+                    continue
+                vecchio = self._task_di_nodo.get(nodo.identifier)
+                if vecchio is not None and not vecchio.done():
+                    vecchio.cancel()
+                client = self._client_di_nodo.get(nodo.identifier)
+                if client is None:
+                    continue
+                self._lancia(client, nodo)
+                ripartiti += 1
+        return ripartiti
+
+    def descrivi_nodi(self) -> list[tuple[str, str, str, str, int]]:
+        """MUS-070: (chiave del bot, identificatore, indirizzo, stato, player) per ogni nodo. Mai la password."""
+        righe = []
+        for chiave, nodi in self._nodi.items():
+            for nodo in nodi:
+                righe.append((chiave, nodo.identifier, str(getattr(nodo, "uri", "")),
+                              str(getattr(nodo.status, "name", nodo.status)).lower(), len(getattr(nodo, "players", {}) or {})))
+        return righe
 
     async def _collega_uno(self, client, nodo: wavelink.Node) -> None:
         """Collega il nodo; se non riesce (o e' troppo vecchio) riprova con pause crescenti."""

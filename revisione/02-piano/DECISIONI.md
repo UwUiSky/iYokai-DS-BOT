@@ -1134,3 +1134,21 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
 - Reazioni (LIV-008/009): spente di base; attesa per persona e per verso (60-3600 s, di base 300) e tetto di 50 al giorno per verso, nella stessa scrittura del database; mai sul proprio messaggio, mai da o verso un bot; l'autore deve essere noto. La classifica per reazioni conta solo quelle che hanno dato XP.
 - Classifiche vocale e reazioni (LIV-059/060): solo «di sempre». `azzera server` azzera XP e livelli, non minuti e reazioni.
 - Card (LIV-051/054/055/056): colore del testo/anello e velo (0-100) sono per utente; sfondo e colore del server valgono per chi non ha il suo; «auto» = colore medio dell'icona (letto nel processo delle immagini, in memoria per icona).
+
+## D85 — Musica (#126), giro r4mus: scelte prudenti (17/11/2026, orchestratore su delega, da confermare dall'owner)
+
+- MUS-048 (qualità audio per server): non si fa. Con Lavalink la qualità è del nodo, non del server; un'impostazione per server non avrebbe effetto.
+- MUS-057/058: gli annunci «ora in riproduzione» sono **spenti di base** (nessun messaggio non chiesto); si accendono con `/admin-musica impostazioni annunci:` e `canale-annunci:` (il bot deve poter scrivere nel canale). Il messaggio parte dal bot principale, senza menzioni, al massimo uno ogni 3 secondi per server; un brano ripetuto (loop) non si annuncia di nuovo.
+- MUS-060: la copertina del brano è mostrata solo se l'indirizzo è https, corto e senza spazi; non la scarichiamo noi.
+- Il mescola fisso si spegne quando la coda finisce, anche se il bot resta connesso (MUS-038).
+- MUS-007 (Mixcloud): resta non fatta (D73, nessun plugin verificato). MUS-017 (dividere un video lungo): non si fa, dipende da YouTube (regola CONFRONTO_BOT §7.3).
+- MUS-040/041: «brani simili» no (dipendono da YouTube); a coda finita parte una playlist del server scelta (`playlist-di-riserva`), solo se in canale c'è qualcuno, a caso, al massimo 50 brani, una volta ogni 20 secondi per server.
+- MUS-045: playlist del server «Oggi», spenta di base, riparte vuota a ogni giorno UTC, senza chi ha chiesto il brano.
+- MUS-042: coda salvata nel database, spenta di base; dopo un riavvio si rimette con `/music coda ripristina` (il bot non rientra da solo in vocale: serve una persona nel canale).
+- MUS-084: codice di 8 caratteri (≈40 bit); chi lo usa riceve una copia; tentativi frenati a uno ogni 5 secondi per utente.
+- MUS-086: al massimo 5 collaboratori per playlist; solo il proprietario rinomina, cancella, condivide, aggiorna.
+- MUS-081: playlist del server (25 al massimo): salvano e cancellano chi ha «Gestisci server», le caricano tutti.
+- MUS-069: il log si manda come file ephemeral (non in DM), solo la coda da 256 KB, ripulito dalle chiavi.
+- MUS-067: il conteggio dei player sta in `/owner radio stato` (non in `/owner system`, file di un'altra area).
+- Non fatte in r4mus, scelta prudente (da confermare): MUS-018 (cartelle di file locali: un utente non sceglie mai una sorgente `local`, D73/sicurezza); MUS-015 (il paese delle ricerche Spotify e' una scelta del nodo LavaSrc, non del server); MUS-090 (bot musicali di colore diverso: nome e avatar dei worker sono dell'owner nel portale Discord, nessun codice); MUS-017 (vedi sopra).
+- Restano da fare: MUS-010 (radio dal mondo, serve un elenco pubblico da scegliere), MUS-014 (menu per genere, playlist scelte dall'owner), MUS-019 (gioco «indovina la canzone»), MUS-065 (jukebox a monete, serve l'API dell'economia).

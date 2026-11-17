@@ -190,6 +190,8 @@ class Config:
     # Docker è il punto di montaggio, es. /audio/local). Vuota = la stessa
     # cartella del bot (MAIN_RADIO_LOCAL_FOLDER).
     LAVALINK_LOCAL_ROOT: str = field(default="")
+    # MUS-069: file di log del Lavalink locale (es. deploy/lavalink/logs/spring.log), letto da `/owner radio log`.
+    LAVALINK_LOG_FILE: str = field(default="")
 
     # Token dell'istanza NSFW (NF-23, core/nsfw_bot.py): facoltativo.
     # Vuoto = l'istanza non parte. Ha un default, quindi sta dopo i
@@ -443,6 +445,7 @@ def _load_config() -> Config:
         LAVALINK_NODES=_optional("LAVALINK_NODES", ""),
         MUSIC_SOURCES_ENABLED=_optional("MUSIC_SOURCES_ENABLED", ""),
         LAVALINK_LOCAL_ROOT=_optional("LAVALINK_LOCAL_ROOT", ""),
+        LAVALINK_LOG_FILE=_optional("LAVALINK_LOG_FILE", ""),
         TWITCH_CLIENT_ID=_optional("TWITCH_CLIENT_ID", ""),
         TWITCH_CLIENT_SECRET=_optional("TWITCH_CLIENT_SECRET", ""),
         YOUTUBE_API_KEY=_optional("YOUTUBE_API_KEY", ""),
