@@ -62,6 +62,7 @@ MAX_IMPORT_BYTES = 256 * 1024
 SETTINGS_SCHEMA = {
     "log_channel_id": "id",
     "log_webhook": "bool",
+    "log_webhook_utente": "bool",
     "progressi_attivi": "bool",
     "progressi_obiettivo_server": "int_50_100000",
     "mod_log_channel_id": "id",

@@ -29,6 +29,7 @@ from discord.ext import commands, tasks
 from cogs.logging.advanced_logs import logging_avanzato_attivo
 from core import allegati_sicuri
 from core import channel_router as router
+from core import log_webhook
 from core.config import config
 from core.channel_router import SETTING_LOG_CHANNEL, TIPO_MESSAGGI
 from core.database import db
@@ -162,13 +163,17 @@ class MessageLogsCog(commands.Cog):
         except Exception:  # noqa: BLE001 - il log delle copie non deve mai rompere altro
             logger.warning("Copia degli allegati non riuscita", exc_info=True)
 
-    async def _scrivi(self, guild: discord.Guild, evento: str, **contenuto) -> None:
+    async def _scrivi(self, guild: discord.Guild, evento: str, autore=None, **contenuto) -> None:
         if not await log_eventi_repo.evento_acceso(guild.id, evento):
             return
         predefinito = await db.get_guild_setting(guild.id, SETTING_LOG_CHANNEL)
         dest = await router.destinazione(guild, TIPO_MESSAGGI, predefinito)
-        if dest is not None:
-            await router.invia_a(dest, guild, TIPO_MESSAGGI, **contenuto)
+        if dest is None:
+            return
+        # D74: modificato e cancellato escono col nome dell'utente (se acceso); con file o bottoni, come sempre.
+        if autore is not None and set(contenuto) == {"embed"} and await log_webhook.invia_a_nome_utente(dest, contenuto["embed"], autore):
+            return
+        await router.invia_a(dest, guild, TIPO_MESSAGGI, **contenuto)
 
     @commands.Cog.listener()
     async def on_raw_message_delete(self, payload: discord.RawMessageDeleteEvent) -> None:
@@ -224,7 +229,7 @@ class MessageLogsCog(commands.Cog):
         if anteprime:
             embed.set_image(url=f"attachment://{anteprime[0].filename}")
             contenuto["files"] = anteprime
-        await self._scrivi(guild, "message_delete", **contenuto)
+        await self._scrivi(guild, "message_delete", autore=messaggio.author if messaggio is not None else None, **contenuto)
 
     @commands.Cog.listener()
     async def on_raw_bulk_message_delete(self, payload: discord.RawBulkMessageDeleteEvent) -> None:
@@ -299,7 +304,7 @@ class MessageLogsCog(commands.Cog):
         embed.add_field(
             name="Dopo", value=tronca(senza_accento_grave(after.content), CAMPO_MAX) or "*(vuoto)*", inline=False
         )
-        await self._scrivi(after.guild, "message_edit", embed=embed)
+        await self._scrivi(after.guild, "message_edit", autore=after.author, embed=embed)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:

@@ -278,3 +278,136 @@ async def test_comando_spegne_e_cancella_i_webhook():
         await cog.webhook.callback(cog, i, False)
     scrive.assert_awaited_once_with(10, "log_webhook", False, 1)
     assert "Webhook cancellati: 2" in i.followup.send.await_args.args[0]
+
+
+# ---------------------------------------------------------------- log a nome utente (D74, #160)
+@pytest.mark.parametrize("nome,atteso", [
+    ("Giulia", "Giulia · log"),
+    ("Discord Staff", "Staff · log"),
+    ("xCLYDEx", "xx · log"),
+    ("dis​cord", "· log".strip()),  # il carattere invisibile non nasconde la parola
+    ("", "utente · log"),
+    ("\x00\x1b\n", "utente · log"),
+    ("ＤＩＳＣＯＲＤ", "utente · log"),
+])
+def test_nome_pulito(nome, atteso):
+    assert lw.nome_a_nome_utente(nome).endswith(" · log")
+    if nome != "dis​cord":
+        assert lw.nome_a_nome_utente(nome) == atteso
+
+
+def test_nome_mai_oltre_80_e_mai_vuoto_e_senza_parole_vietate():
+    lungo = lw.nome_a_nome_utente("a" * 500)
+    assert len(lungo) == 80 and lungo.endswith(" · log")
+    for brutto in ("dis​cord", "dDiIsScCoOrRdD", "clyde\x07", "disdiscordcord"):
+        pulito = lw.nome_a_nome_utente(brutto)
+        assert 1 <= len(pulito) <= 80
+        assert "discord" not in pulito.lower() and "clyde" not in pulito.lower()
+        assert not any(ord(c) < 32 for c in pulito)
+
+
+def _autore(nome="Giulia"):
+    a = MagicMock()
+    a.display_name = nome
+    a.display_avatar.url = "https://cdn.example/a.png"
+    return a
+
+
+async def test_a_nome_utente_ogni_invio_ha_nome_avatar_e_nessuna_menzione(monkeypatch):
+    monkeypatch.setattr(lw, "PAUSA_TRA_NOMI", 0.01)
+    monkeypatch.setattr(lw, "a_nome_utente_acceso", AsyncMock(return_value=True))
+    web = _webhook()
+    dest = lw.CanaleWebhook(_canale(), web)
+    assert await lw.invia_a_nome_utente(dest, _embed("1"), _autore("Giulia")) is True
+    assert await lw.invia_a_nome_utente(dest, _embed("2"), _autore("Marco")) is True
+    await asyncio.sleep(0.15)
+    assert web.send.await_count == 2
+    primo, secondo = (c.kwargs for c in web.send.await_args_list)
+    assert primo["username"] == "Giulia · log" and secondo["username"] == "Marco · log"
+    assert primo["avatar_url"] == "https://cdn.example/a.png"
+    assert primo["allowed_mentions"].everyone is False and primo["allowed_mentions"].users is False
+
+
+async def test_a_nome_utente_spento_o_canale_normale_non_lo_prende(monkeypatch):
+    web = _webhook()
+    dest = lw.CanaleWebhook(_canale(), web)
+    monkeypatch.setattr(lw, "a_nome_utente_acceso", AsyncMock(return_value=False))
+    assert await lw.invia_a_nome_utente(dest, _embed(), _autore()) is False
+    monkeypatch.setattr(lw, "a_nome_utente_acceso", AsyncMock(return_value=True))
+    assert await lw.invia_a_nome_utente(_canale(), _embed(), _autore()) is False  # non e' un webhook
+    assert await lw.invia_a_nome_utente(dest, _embed(), None) is False
+    web.send.assert_not_awaited()
+
+
+async def test_a_nome_utente_ha_un_tetto_oltre_il_quale_esce_raggruppato(monkeypatch):
+    monkeypatch.setattr(lw, "PAUSA_TRA_NOMI", 5)
+    monkeypatch.setattr(lw, "a_nome_utente_acceso", AsyncMock(return_value=True))
+    web = _webhook()
+    dest = lw.CanaleWebhook(_canale(), web)
+    for i in range(lw.MAX_NOMI_IN_CODA + 3):
+        await lw.invia_a_nome_utente(dest, _embed(str(i)), _autore())
+    await asyncio.sleep(0.05)
+    chiamate = [c.kwargs for c in web.send.await_args_list]
+    assert sum("username" in k for k in chiamate) == 1  # il primo parte, gli altri aspettano la pausa
+    assert len(dest._coda_nomi) == lw.MAX_NOMI_IN_CODA - 1
+    raggruppate = [k for k in chiamate if "embeds" in k]  # i tre in piu': un solo messaggio, senza nome
+    assert len(raggruppate) == 1 and len(raggruppate[0]["embeds"]) == 3 and "username" not in raggruppate[0]
+    dest._task_nomi.cancel()
+    await dest.svuota_finale()
+
+
+async def test_a_nome_utente_webhook_cancellato_torna_al_canale(monkeypatch):
+    monkeypatch.setattr(lw, "a_nome_utente_acceso", AsyncMock(return_value=True))
+    web = _webhook()
+    web.send.side_effect = discord.NotFound(MagicMock(status=404), "x")
+    canale = _canale()
+    canale.send = AsyncMock()
+    dest = lw.CanaleWebhook(canale, web)
+    await lw.invia_a_nome_utente(dest, _embed("x"), _autore())
+    await asyncio.sleep(0.05)
+    canale.send.assert_awaited_once()
+    assert canale.send.await_args.kwargs["allowed_mentions"].users is False
+
+
+async def test_comando_a_nome_utente_base_spento_e_serve_il_webhook():
+    import cogs.utility.log_webhook as modulo
+
+    cog = await _cog()
+    i = fake_interaction(guild=fake_guild(10), user=fake_member(user_id=1))
+    await cog.webhook.callback(cog, i, None, None)
+    assert "almeno" in i.response.send_message.await_args.args[0]
+
+    i = fake_interaction(guild=fake_guild(10), user=fake_member(user_id=1))
+    with patch.object(modulo, "acceso", AsyncMock(return_value=False)), \
+            patch.object(modulo.db, "set_guild_setting", AsyncMock()) as scrive:
+        await cog.webhook.callback(cog, i, None, True)
+    scrive.assert_not_awaited()
+    assert "Prima accendi" in i.response.send_message.await_args.args[0]
+
+    i = fake_interaction(guild=fake_guild(10), user=fake_member(user_id=1))
+    with patch.object(modulo, "acceso", AsyncMock(return_value=True)), \
+            patch.object(modulo.db, "set_guild_setting", AsyncMock()) as scrive:
+        await cog.webhook.callback(cog, i, None, True)
+    scrive.assert_awaited_once_with(10, "log_webhook_utente", True, 1)
+
+
+async def test_il_log_dei_messaggi_passa_l_autore_solo_senza_file(monkeypatch):
+    from cogs.logging.message_logs import MessageLogsCog
+
+    cog = MessageLogsCog(MagicMock())
+    dest = lw.CanaleWebhook(_canale(), _webhook())
+    import cogs.logging.message_logs as ml
+
+    monkeypatch.setattr(ml.log_eventi_repo, "evento_acceso", AsyncMock(return_value=True))
+    monkeypatch.setattr(ml.db, "get_guild_setting", AsyncMock(return_value=None))
+    monkeypatch.setattr(ml.router, "destinazione", AsyncMock(return_value=dest))
+    nome = AsyncMock(return_value=True)
+    monkeypatch.setattr(ml.log_webhook, "invia_a_nome_utente", nome)
+    invia = AsyncMock()
+    monkeypatch.setattr(ml.router, "invia_a", invia)
+    server = fake_guild(10)
+    await cog._scrivi(server, "message_edit", autore=_autore(), embed=_embed())
+    nome.assert_awaited_once()
+    invia.assert_not_awaited()
+    await cog._scrivi(server, "message_delete", autore=_autore(), embed=_embed(), files=[object()])
+    assert nome.await_count == 1 and invia.await_count == 1  # con file: come sempre

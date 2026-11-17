@@ -2711,7 +2711,7 @@ musicali, più NSFW quando verrà fatto.
   scrive i log (router, mod-log, AutoMod, allarmi) ed esegue AutoMod, escalation, anti-raid,
   anti-nuke, spam-trap e fine dei tempban. Mod assente, scollegato, senza permesso, sotto il
   bersaglio o in rate limit lungo (oltre 30 s) → fa il principale, una volta sola. Invito in
-  `/utility info` e `/admin-bot setup attiva`. Log via webhook (D33): `/admin-log webhook attivo`, `core/log_webhook.py`,
+  `/utility info` e `/admin-bot setup attiva`. Log via webhook (D33): `/admin-log webhook attivo` (e `a_nome_utente`, D74: nome e avatar dell'utente nei log dei messaggi, base spento, `log_webhook_utente`), `core/log_webhook.py`,
   migrazione 0361, `tests/test_log_webhook.py`.
 - `[~]` iYokai Creator (backup) — resta; non crea più server, porta e
   tiene aggiornato il server di backup (D8, §11)

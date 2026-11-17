@@ -136,6 +136,7 @@ SETTINGS_VALIDE = {
     "mod_dm_testo_mute": "Mute",
     "spam_trap_punizione": "staff",
     "log_webhook": True,
+    "log_webhook_utente": False,
     "progressi_attivi": False,
     "progressi_obiettivo_server": 800,
 }
