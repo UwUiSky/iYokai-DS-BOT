@@ -7,6 +7,8 @@ liste di accesso svuotabili (RUO-068). Archivio su PostgreSQL vero, cog con fint
 
 import pytest
 
+from tests.support.discord_fakes import fake_role
+
 from tests.test_role_menu_modalita import _Scena, _ruoli_di
 
 
@@ -354,3 +356,132 @@ async def test_RUO_075_emoji_di_un_altro_server_si_accetta_e_la_mette_l_admin(cl
 class MagicMockId:
     def __init__(self, id_):
         self.id = id_
+
+
+# ------------------------------------------------- RUO-070, 071, 088, 089
+@pytest.mark.asyncio
+async def test_RUO_070_scadenza_pianificata_e_menu_cancellato_allo_scatto(clean_db, monkeypatch):
+    import discord
+    from datetime import datetime, timedelta, timezone
+
+    s = _Scena(clean_db, monkeypatch)
+    await s.menu()
+    await s.repo.set_menu_message(s.menu_id, 555)
+    s.canale.__class__ = discord.TextChannel
+    s.bot.get_guild.return_value = s.guild
+    i = s.interazione(s.utente())
+    await s.cog.edit_cmd.callback(s.cog, i, menu_id=s.menu_id, scade_tra_ore=2)
+    azione = s.scheduler.schedule.await_args
+    assert azione.args[2] == "rolemenu_expire" and azione.args[4] == {"menu_id": s.menu_id}
+    menu = await s.repo.get_menu(s.menu_id)
+    assert menu.expires_at - datetime.now(timezone.utc) > timedelta(hours=1, minutes=55)
+    await s.cog.handle_rolemenu_scade(1, 0, {"menu_id": s.menu_id})  # troppo presto: la scadenza non è arrivata
+    assert await s.repo.get_menu(s.menu_id) is not None
+    await s.repo.update_menu(s.menu_id, expires_at=datetime.now(timezone.utc) - timedelta(seconds=1))
+    await s.cog.handle_rolemenu_scade(1, 0, {"menu_id": s.menu_id})
+    assert await s.repo.get_menu(s.menu_id) is None
+    s.messaggio.delete.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_RUO_070_scadenza_tolta_con_zero(clean_db, monkeypatch):
+    s = _Scena(clean_db, monkeypatch)
+    await s.menu()
+    i = s.interazione(s.utente())
+    await s.cog.edit_cmd.callback(s.cog, i, menu_id=s.menu_id, scade_tra_ore=5)
+    await s.cog.edit_cmd.callback(s.cog, i, menu_id=s.menu_id, scade_tra_ore=0)
+    assert (await s.repo.get_menu(s.menu_id)).expires_at is None
+
+
+@pytest.mark.asyncio
+async def test_RUO_088_cambia_il_tipo_del_menu_e_tiene_le_opzioni(clean_db, monkeypatch):
+    import discord
+
+    s = _Scena(clean_db, monkeypatch, mode="reaction")
+    await s.menu()
+    await s.repo.set_menu_message(s.menu_id, 555)
+    s.canale.__class__ = discord.TextChannel
+    nuovo_msg = MagicMockMsg(999)
+    s.canale.send.return_value = nuovo_msg
+    i = s.interazione(s.utente())
+    await s.cog.edit_cmd.callback(s.cog, i, menu_id=s.menu_id, tipo="button")
+    menu = await s.repo.get_menu(s.menu_id)
+    assert (menu.mode, menu.message_id) == ("button", 999)
+    assert [o.label for o in await s.repo.get_options(s.menu_id)] == ["L1000", "L1001", "L1002"]
+    s.messaggio.delete.assert_awaited()  # il vecchio messaggio è sparito
+
+
+@pytest.mark.asyncio
+async def test_RUO_088_senza_emoji_non_si_passa_alle_reazioni(clean_db, monkeypatch):
+    import discord
+
+    s = _Scena(clean_db, monkeypatch, mode="select")
+    await s.menu(opzioni=())
+    await s.repo.add_option(s.menu_id, 1000, None, "Solo etichetta")
+    s.canale.__class__ = discord.TextChannel
+    i = s.interazione(s.utente())
+    await s.cog.edit_cmd.callback(s.cog, i, menu_id=s.menu_id, tipo="reaction")
+    assert (await s.repo.get_menu(s.menu_id)).mode == "select"
+    assert "manca l'emoji" in i.followup.send.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_RUO_089_modello_verifica_crea_un_menu_con_un_bottone_verde(clean_db, monkeypatch):
+    import discord
+
+    s = _Scena(clean_db, monkeypatch)
+    s.guild.roles = list(s.ruoli.values())
+    s.canale.__class__ = discord.TextChannel
+    admin = s.utente()
+    admin.top_role = fake_role_alto()
+    i = s.interazione(admin)
+    i.channel = s.canale
+    await s.cog.template_cmd.callback(s.cog, i, "verifica", "<@&1000>")
+    menu = (await s.repo.list_menus_for_guild(1))[0]
+    assert (menu.mode, menu.behavior, menu.title) == ("button", "verify", "Verifica")
+    opzione = (await s.repo.get_options(menu.id))[0]
+    assert opzione.button_style == "success" and opzione.emoji  # emoji data dal modello
+    i2 = s.interazione(admin)
+    i2.channel = s.canale
+    await s.cog.template_cmd.callback(s.cog, i2, "verifica", "<@&1000>; <@&1001>")  # il modello vuole un ruolo solo
+    assert len(await s.repo.list_menus_for_guild(1)) == 1
+
+
+@pytest.mark.asyncio
+async def test_RUO_071_canale_dei_ruoli_si_legge_ma_non_si_scrive(clean_db, monkeypatch):
+    import discord
+    from unittest.mock import AsyncMock
+
+    s = _Scena(clean_db, monkeypatch)
+    s.guild.me.guild_permissions = discord.Permissions(manage_channels=True)
+    s.guild.channels = []
+    s.guild.default_role = fake_role(role_id=1, name="@everyone", position=0)
+    s.guild.create_text_channel = AsyncMock(return_value=MagicMockMsg(77, mention="<#77>", name="ruoli"))
+    staff = s.utente()
+    staff.guild_permissions = discord.Permissions(manage_channels=True)
+    i = s.interazione(staff)
+    await s.cog.channel_cmd.callback(s.cog, i)
+    sovr = s.guild.create_text_channel.await_args.kwargs["overwrites"]
+    tutti = sovr[s.guild.default_role]
+    assert tutti.view_channel is True and tutti.send_messages is False and tutti.add_reactions is False
+    # chi non può gestire i canali non lo fa creare tramite il bot
+    s.guild.create_text_channel.reset_mock()
+    semplice = s.utente()
+    semplice.guild_permissions = discord.Permissions()
+    await s.cog.channel_cmd.callback(s.cog, s.interazione(semplice))
+    s.guild.create_text_channel.assert_not_awaited()
+
+
+class MagicMockMsg:
+    def __init__(self, id_, **altro):
+        from unittest.mock import AsyncMock, MagicMock
+
+        self.id = id_
+        self.reactions = []
+        self.edit = AsyncMock()
+        self.delete = AsyncMock()
+        self.add_reaction = AsyncMock()
+        self.clear_reaction = AsyncMock()
+        self.author = MagicMock(id=999)
+        for k, v in altro.items():
+            setattr(self, k, v)

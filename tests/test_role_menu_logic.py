@@ -154,3 +154,26 @@ def test_RUO_048_049_coppie_storte_danno_un_errore():
     troppe = ";".join(f"<@&{10**17 + n}>" for n in range(MAX_COPPIE + 1))
     assert "Al massimo" in analizza_coppie(troppe, nessuno)[1]
     assert "troppo lungo" in analizza_coppie("x" * 2000, nessuno)[1]
+
+
+# ------------------------------------------------- RUO-088, RUO-089: tipo e modelli
+def test_RUO_088_conversione_delle_opzioni_tra_i_tipi():
+    from core.role_menu_logic import converti_opzioni
+
+    nome = {1: "Gamer"}.get
+    # reazioni -> bottoni: manca l'etichetta, si usa il nome del ruolo
+    assert converti_opzioni([(1, "🎮", None)], "button", nome) == ([("🎮", "Gamer")], None)
+    # tendina -> reazioni: senza emoji non si può
+    assert "manca l'emoji" in converti_opzioni([(1, None, "Gamer")], "reaction", nome)[1]
+    # tendina con emoji -> bottoni va bene
+    assert converti_opzioni([(1, "🎮", "G")], "button", nome)[1] is None
+    # troppe opzioni per le reazioni (tetto 20)
+    assert "al massimo 20" in converti_opzioni([(i, "🎮", "x") for i in range(21)], "reaction", nome)[1]
+
+
+def test_RUO_089_i_modelli_sono_coerenti_con_i_comportamenti():
+    from core.role_menu_logic import MODELLI_MENU, comportamento_ammesso
+
+    assert set(MODELLI_MENU) == {"verifica", "notifiche", "colori", "interessi"}
+    for modo, comportamento, titolo, _desc, _max, quante in MODELLI_MENU.values():
+        assert comportamento_ammesso(modo, comportamento) and titolo and 1 <= quante <= 25

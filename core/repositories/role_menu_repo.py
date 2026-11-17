@@ -9,6 +9,7 @@ emoji, etichetta).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 import asyncpg
 
@@ -37,6 +38,7 @@ class RoleMenu:
     placeholder: str = ""
     reset_option: bool = False
     external: bool = False  # RUO-072, 073: il messaggio è di altri
+    expires_at: datetime | None = None  # RUO-070
 
 
 @dataclass(frozen=True)
@@ -126,6 +128,7 @@ class RoleMenuRepository:
             placeholder=row["placeholder"],
             reset_option=row["reset_option"],
             external=row["external"],
+            expires_at=row["expires_at"],
         )
 
     async def list_menus_for_guild(self, guild_id: int) -> list[RoleMenu]:
@@ -136,7 +139,7 @@ class RoleMenuRepository:
         """Cambia titolo, descrizione, comportamento o durata (campi da un elenco fisso)."""
         ammessi = {"title", "description", "behavior", "temp_seconds", "toggle", "max_selectable",
                   "min_roles", "color", "notify", "reply_text", "placeholder", "reset_option",
-                  "channel_id", "message_id", "external"}
+                  "channel_id", "message_id", "external", "expires_at", "mode"}
         if not campi or not set(campi) <= ammessi:
             raise ValueError(f"Campi non modificabili: {sorted(set(campi) - ammessi)}")
         impostazioni = ", ".join(f"{col} = ${i}" for i, col in enumerate(campi, start=2))

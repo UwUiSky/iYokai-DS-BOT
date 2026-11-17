@@ -331,3 +331,34 @@ def analizza_coppie(testo: str, trova_per_nome) -> tuple[list[tuple[str | None, 
     if len(coppie) > MAX_COPPIE:
         return [], f"Al massimo {MAX_COPPIE} coppie."
     return coppie, None
+
+
+# RUO-089: modelli pronti. nome -> (modalità, comportamento, titolo, descrizione, massimo di ruoli o None, quante opzioni al massimo)
+MODELLI_MENU: dict[str, tuple[str, str, str, str, int | None, int]] = {
+    "verifica": ("button", "verify", "Verifica", "Premi il bottone per accedere al server.", None, 1),
+    "notifiche": ("button", "normal", "Notifiche", "Scegli di quali novità vuoi essere avvisato.", None, 10),
+    "colori": ("select", "unique", "Il tuo colore", "Scegli il colore del tuo nome.", 1, 25),
+    "interessi": ("select", "normal", "I tuoi interessi", "Scegli i tuoi interessi: puoi cambiarli quando vuoi.", None, 25),
+}
+EMOJI_PREDEFINITE = ("🔔", "📣", "🎉", "🎮", "📰", "⭐", "🎨", "🎵", "📚", "🍀")
+
+
+def converti_opzioni(
+    opzioni: list[tuple[int, str | None, str | None]], nuova_modalita: str, nome_ruolo
+) -> tuple[list[tuple[str | None, str | None]], str | None]:
+    """
+    RUO-088: (emoji, etichetta) di ogni opzione per il nuovo tipo di menu, nello stesso ordine, o l'errore.
+    Bottoni e tendina vogliono un'etichetta (se manca si usa il nome del ruolo); reazioni e bottoni
+    vogliono un'emoji (non si inventa: se manca, errore).
+    """
+    if len(opzioni) > MODE_MAX_OPTIONS.get(nuova_modalita, 25):
+        return [], f"Il nuovo tipo regge al massimo {MODE_MAX_OPTIONS[nuova_modalita]} opzioni: ne togli prima qualcuna."
+    convertite: list[tuple[str | None, str | None]] = []
+    for ruolo_id, emoji, etichetta in opzioni:
+        if nuova_modalita in ("reaction", "button") and not emoji:
+            return [], f"All'opzione «{(etichetta or nome_ruolo(ruolo_id) or '?')[:40]}» manca l'emoji."
+        nuova_etichetta = etichetta
+        if nuova_modalita in ("button", "select") and not etichetta:
+            nuova_etichetta = (nome_ruolo(ruolo_id) or "Ruolo")[:80]
+        convertite.append((emoji, nuova_etichetta))
+    return convertite, None
