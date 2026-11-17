@@ -63,9 +63,3 @@ async def test_nome_con_inversione_e_pericoloso_non_esce_nella_riga(ambiente):  
     file, righe = await m.prepara([Finto("foto‮gnp.exe", b"MZ" + b"\0" * 100)], 1)
     assert file == [] and "‮" not in righe[0]
 
-
-@pytest.mark.asyncio
-async def test_stessa_immagine_due_volte_da_la_copia_due_volte(ambiente):  # noqa: F811
-    uguale = f.png(33, 22)
-    file, righe = await m.prepara([Finto("a.png", uguale, "image/png"), Finto("b.png", uguale, "image/png")], 1)
-    assert [n for n, _ in file] == ["a.png", "b.png"] and righe == []

@@ -98,7 +98,7 @@ async def test_lettura_dal_piu_vecchio_senza_messaggi_di_sistema_e_tetto_1000():
     assert righe[1]["fissato"] is True
 
 
-async def test_ricarica_in_ordine_con_file_link_e_fissati(monkeypatch):
+async def test_ricarica_in_ordine_con_file_scheda_e_fissati(monkeypatch):
     scaricati = []
 
     async def scarica(url, massimo):
@@ -120,13 +120,14 @@ async def test_ricarica_in_ordine_con_file_link_e_fissati(monkeypatch):
     hook, canale = _Hook(), _Canale()
     r = await bm.ricarica_chat(messaggi, hook, canale, _mai, scarica)
 
-    assert [i["content"] for i in hook.inviati] == ["uno\nhttps://cdn.discordapp.com/morto.png", "tre"]
+    assert [i["content"].split("\n")[0] for i in hook.inviati] == ["uno", "tre"]
+    assert "morto.png" in hook.inviati[0]["content"] and "cdn.discordapp.com" not in hook.inviati[0]["content"]  # D74
     assert hook.inviati[0]["username"] == "disc0rd Fan"  # LIM-27
     assert [x.filename for x in hook.inviati[0]["files"]] == ["vivo.png"] and "files" not in hook.inviati[1]
     assert hook.inviati[0]["files"][0].fp.read() == b"PNG-NUOVO"  # solo la copia ricodificata
     assert all(i["wait"] is True for i in hook.inviati)
     assert canale.fissati == [2]
-    assert (r.copiati, r.saltati, r.allegati_come_link) == (2, 1, 1)
+    assert (r.copiati, r.saltati, r.allegati_come_scheda) == (2, 1, 1)
 
 
 async def test_annullo_e_webhook_sparito_si_fermano():

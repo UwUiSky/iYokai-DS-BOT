@@ -202,7 +202,10 @@ MAX_WEBHOOK_PER_CANALE = 15
 
 
 async def leggi_chat(canale, quanti: int) -> list[dict]:
-    """Gli ultimi `quanti` messaggi (≤ 1000), dal più vecchio, come dati."""
+    """
+    Gli ultimi `quanti` messaggi (≤ 1000), dal più vecchio, come dati. L'indirizzo dell'allegato resta nel JSON interno
+    solo per riscaricarlo alla ricarica (dove passa dalla sandbox): non viene mai mostrato a nessuno (D74).
+    """
     righe = []
     async for m in canale.history(limit=max(1, min(quanti, MAX_CHAT))):
         if m.type not in TIPI_COPIABILI:
@@ -238,7 +241,7 @@ class RiepilogoChat:
     copiati: int = 0
     saltati: int = 0
     falliti: int = 0
-    allegati_come_link: int = 0
+    allegati_come_scheda: int = 0
     annullato: bool = False
 
     def testo(self) -> str:
@@ -249,17 +252,18 @@ class RiepilogoChat:
             righe.append(f"⏭️ Vuoti, saltati: {self.saltati}")
         if self.falliti:
             righe.append(f"⚠️ Non inviati: {self.falliti}")
-        if self.allegati_come_link:
-            righe.append(f"🔗 Allegati scaduti o troppo grandi, rimessi come link: {self.allegati_come_link}")
+        if self.allegati_come_scheda:
+            righe.append(f"📎 Allegati scaduti o troppo grandi, rimasti solo come scheda: {self.allegati_come_scheda}")
         return "\n".join(righe)
 
 
-async def _allegati_salvati(allegati: list[dict], scarica, guild_id: int = 0) -> tuple[list[discord.File], list[str], list[str]]:
+async def _allegati_salvati(allegati: list[dict], scarica, guild_id: int = 0) -> tuple[list[discord.File], list[str], int]:
     """
-    BKP-013, D74: (file, link, righe). Si ricarica solo un'immagine vera e pulita, ricodificata; ogni altro file
-    ha una riga di scheda o di avviso. Il link resta solo per un allegato scaduto con un nome non pericoloso.
+    BKP-013, D74: (file, righe, quante schede per un file non scaricato). Si ricarica solo un'immagine vera e pulita,
+    ricodificata; ogni altro file ha una riga di scheda o di avviso. Mai il link all'originale, nemmeno se il file
+    e' scaduto: resta la scheda dal nome.
     """
-    file, link, righe, totale = [], [], [], 0
+    file, righe, non_scaricati, totale = [], [], 0, 0
     for a in allegati:
         nome = a.get("nome") or "file"
         dati = None
@@ -267,12 +271,9 @@ async def _allegati_salvati(allegati: list[dict], scarica, guild_id: int = 0) ->
             dati = await scarica(a["url"], MAX_ALLEGATI_BYTE - totale)
         if dati is None:
             d = allegati_tipo_logic.decidi_senza_byte(nome, None, a.get("size") or 0)
-            if d.azione == allegati_tipo_logic.RIFIUTA:
-                righe.append(allegati_tipo_logic.riga_avviso(d))
-            elif (a.get("size") or 0) + totale > MAX_ALLEGATI_BYTE:
-                righe.append(allegati_tipo_logic.riga_scheda(d))
-            else:
-                link.append(a["url"])
+            righe.append(allegati_tipo_logic.riga_avviso(d) if d.azione == allegati_tipo_logic.RIFIUTA
+                         else allegati_tipo_logic.riga_scheda(d))
+            non_scaricati += d.azione != allegati_tipo_logic.RIFIUTA
             continue
         copia, d = await esamina_allegato(dati, nome, None, guild_id)
         if copia is None:
@@ -281,7 +282,7 @@ async def _allegati_salvati(allegati: list[dict], scarica, guild_id: int = 0) ->
             continue
         totale += len(copia[1])
         file.append(discord.File(io.BytesIO(copia[1]), filename=copia[0]))
-    return file, link, righe
+    return file, righe, non_scaricati
 
 
 async def ricarica_chat(
@@ -297,11 +298,11 @@ async def ricarica_chat(
         if await avanza("messaggi", indice, len(messaggi)):
             r.annullato = True
             break
-        file, link, righe = await _allegati_salvati(
+        file, righe, non_scaricati = await _allegati_salvati(
             m.get("allegati", []), scarica, getattr(getattr(destinazione, "guild", None), "id", 0) or 0
         )
-        r.allegati_come_link += len(link)
-        contenuto = "\n".join(x for x in [m.get("contenuto") or "", *righe, *link] if x)[:MAX_CONTENUTO]
+        r.allegati_come_scheda += non_scaricati
+        contenuto = "\n".join(x for x in [m.get("contenuto") or "", *righe] if x)[:MAX_CONTENUTO]
         if not contenuto and not file:
             r.saltati += 1
             continue

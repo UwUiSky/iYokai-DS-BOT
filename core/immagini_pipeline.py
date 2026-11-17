@@ -95,21 +95,16 @@ async def _libreria_per_sha(sha: str, guild_id: int) -> EsitoImmagine | None:
     return EsitoImmagine(verdetto, sha, (f"libreria_{voce.stato}",), voce.dhash, da_libreria=True)
 
 
-async def analizza_immagine(
-    dati: bytes, nome_file: str, content_type: str | None, guild_id: int, *, con_png: bool = False,
-) -> EsitoImmagine:
-    """
-    Giudica un allegato. Non solleva mai: ogni imprevisto e' «non analizzata» o «sospetta».
-    Con `con_png` un verdetto «pulita» noto (cache, libreria) non basta: serve la copia rifatta, quindi passa dalla sandbox.
-    """
+async def analizza_immagine(dati: bytes, nome_file: str, content_type: str | None, guild_id: int) -> EsitoImmagine:
+    """Giudica un allegato. Non solleva mai: ogni imprevisto e' «non analizzata» o «sospetta»."""
     byte = controlla_byte(dati, nome_file, content_type)
     if byte.troppo_grande:
         return EsitoImmagine(PULITA, byte.sha256, non_analizzata=NON_ANALIZZATA_GRANDE)
     trovata = await _libreria_per_sha(byte.sha256, guild_id)
-    if trovata is not None and not (con_png and trovata.verdetto == PULITA):
+    if trovata is not None:
         return trovata
     nota = _dalla_cache(guild_id, byte.sha256)
-    if nota is not None and not (con_png and nota.verdetto == PULITA):
+    if nota is not None:
         return nota
     motivi = tuple(m.codice for m in byte.motivi)
     if byte.verdetto != PULITA:
@@ -130,7 +125,7 @@ async def esamina_allegato(
     if d.azione != allegati_tipo_logic.IMMAGINE:
         return None, d
     try:
-        esito = await analizza_immagine(dati, nome_file, content_type, guild_id, con_png=True)
+        esito = await analizza_immagine(dati, nome_file, content_type, guild_id)
     except Exception:  # noqa: BLE001 - un allegato storto non ferma la copia
         logger.warning("Allegato non analizzato, non copiato", exc_info=True)
         return None, d

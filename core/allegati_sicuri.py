@@ -150,7 +150,7 @@ async def salva(
         stato = STATO_SCHEDA if d.azione == allegati_tipo_logic.SCHEDA else STATO_RIFIUTATA
         return await _registra(guild_id, channel_id, message_id, user_id, origine, d, stato, None, None)
     try:
-        esito = await immagini_pipeline.analizza_immagine(dati, nome_file, content_type, guild_id, con_png=True)
+        esito = await immagini_pipeline.analizza_immagine(dati, nome_file, content_type, guild_id)
     except Exception:  # noqa: BLE001 - un'analisi che cade non ferma il log
         logger.warning("Allegato non analizzato", exc_info=True)
         esito = None
