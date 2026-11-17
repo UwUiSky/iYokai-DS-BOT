@@ -485,3 +485,40 @@ class MagicMockMsg:
         self.author = MagicMock(id=999)
         for k, v in altro.items():
             setattr(self, k, v)
+
+
+# ------------------------------------------------- RUO-084: numeri nelle etichette
+@pytest.mark.asyncio
+async def test_RUO_084_i_numeri_si_vedono_in_embed_bottoni_e_tendina(clean_db, monkeypatch):
+    from cogs.utility.role_menus import _build_embed
+
+    s = _Scena(clean_db, monkeypatch)
+    await s.menu(opzioni=(1000,))
+    opzioni = await s.repo.get_options(s.menu_id)
+    menu = await s.repo.get_menu(s.menu_id)
+    assert "(7)" in _build_embed(menu, opzioni, {1000: 7}).fields[0].value
+    assert "(" not in _build_embed(menu, opzioni).fields[0].value  # spenti: niente numeri
+    assert s.cog._build_button_view(s.menu_id, opzioni, {1000: 7}).children[0].label == "L1000 (7)"
+    assert "(7)" in s.cog._build_select_view(s.menu_id, opzioni, None, "", False, {1000: 7}).children[0].options[0].label
+
+
+@pytest.mark.asyncio
+async def test_RUO_084_il_messaggio_si_aggiorna_dopo_un_uso_ma_non_piu_di_una_volta_ogni_5_minuti(clean_db, monkeypatch):
+    import asyncio
+    import discord
+
+    s = _Scena(clean_db, monkeypatch)
+    await s.menu()
+    await s.repo.set_menu_message(s.menu_id, 555)
+    await s.repo.update_menu(s.menu_id, show_counts=True)
+    s.canale.__class__ = discord.TextChannel
+    s.ruoli[1000].members = [object(), object()]
+    u = s.utente()
+    await s.cog._handle_button_click(s.interazione(u), s.menu_id, 1000)
+    await asyncio.gather(*list(s.cog._compiti))
+    assert s.messaggio.edit.await_count == 1
+    assert "(2)" in s.messaggio.edit.await_args.kwargs["embed"].fields[0].value
+    u2 = s.utente()
+    await s.cog._handle_button_click(s.interazione(u2), s.menu_id, 1001)
+    await asyncio.gather(*list(s.cog._compiti))
+    assert s.messaggio.edit.await_count == 1  # troppo presto: nessun secondo aggiornamento

@@ -39,6 +39,7 @@ class RoleMenu:
     reset_option: bool = False
     external: bool = False  # RUO-072, 073: il messaggio è di altri
     expires_at: datetime | None = None  # RUO-070
+    show_counts: bool = False  # RUO-084
 
 
 @dataclass(frozen=True)
@@ -129,6 +130,7 @@ class RoleMenuRepository:
             reset_option=row["reset_option"],
             external=row["external"],
             expires_at=row["expires_at"],
+            show_counts=row["show_counts"],
         )
 
     async def list_menus_for_guild(self, guild_id: int) -> list[RoleMenu]:
@@ -139,7 +141,7 @@ class RoleMenuRepository:
         """Cambia titolo, descrizione, comportamento o durata (campi da un elenco fisso)."""
         ammessi = {"title", "description", "behavior", "temp_seconds", "toggle", "max_selectable",
                   "min_roles", "color", "notify", "reply_text", "placeholder", "reset_option",
-                  "channel_id", "message_id", "external", "expires_at", "mode"}
+                  "channel_id", "message_id", "external", "expires_at", "mode", "show_counts"}
         if not campi or not set(campi) <= ammessi:
             raise ValueError(f"Campi non modificabili: {sorted(set(campi) - ammessi)}")
         impostazioni = ", ".join(f"{col} = ${i}" for i, col in enumerate(campi, start=2))

@@ -35,6 +35,7 @@ import asyncio
 import dataclasses
 from datetime import datetime, timedelta, timezone
 import logging
+import time
 import weakref
 
 import discord
@@ -89,7 +90,14 @@ ROLEMENU_TEMP_ACTION_TYPE = "rolemenu_temp_remove"
 ROLEMENU_EXPIRE_ACTION_TYPE = "rolemenu_expire"  # RUO-070
 
 
-def _build_embed(menu: RoleMenu, options: list[RoleMenuOption]) -> discord.Embed:
+def _conto(conteggi: dict[int, int] | None, role_id: int) -> str:
+    """RUO-084: « (12)» dopo il ruolo, se il menu mostra i numeri."""
+    return f" ({conteggi[role_id]})" if conteggi is not None and role_id in conteggi else ""
+
+
+def _build_embed(
+    menu: RoleMenu, options: list[RoleMenuOption], conteggi: dict[int, int] | None = None
+) -> discord.Embed:
     embed = discord.Embed(
         title=menu.title[:256],
         description=(menu.description or None) and menu.description[:2000],
@@ -102,10 +110,10 @@ def _build_embed(menu: RoleMenu, options: list[RoleMenuOption]) -> discord.Embed
         return embed
     if menu.mode == "reaction":
         titolo = "React to get a role"
-        righe = [f"{opt.emoji or '❓'} — <@&{opt.role_id}>" for opt in options]
+        righe = [f"{opt.emoji or '❓'} — <@&{opt.role_id}>{_conto(conteggi, opt.role_id)}" for opt in options]
     else:
         titolo = "Available roles"
-        righe = [f"• {opt.label or '(no label)'} — <@&{opt.role_id}>" for opt in options]
+        righe = [f"• {opt.label or '(no label)'} — <@&{opt.role_id}>{_conto(conteggi, opt.role_id)}" for opt in options]
     # LIM-17: un campo tiene 1024 caratteri; con 25 etichette lunghe l'elenco
     # va su più campi (mai oltre 25 campi e 6000 caratteri in tutto).
     for numero, blocco in enumerate(dividi_in_blocchi(righe, 1024)):
@@ -140,6 +148,7 @@ class MenuNonPubblicabile(Exception):
 
 
 PAUSA_SVUOTA_SECONDI = 0.5
+PAUSA_CONTATORI_SECONDI = 300
 PAUSA_REAZIONI_SECONDI = 0.25  # RUO-074: una richiesta per reazione, con una pausa
 _SG_RUOLI = ("ruoli", "Ruoli: ruoli-premio per livello e menu di ruoli")
 
@@ -149,6 +158,8 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         self.bot = bot
         # Un blocco per menu: due /menu-aggiungi insieme si mettono in fila
         # (altrimenti una delle due opzioni sparisce o escono due messaggi).
+        self._ultimo_conteggio: dict[int, float] = {}  # RUO-084: menu -> ultimo aggiornamento
+        self._compiti: set[asyncio.Task] = set()
         self._svuotamenti: set[int] = set()  # RUO-080: un'eliminazione in blocco alla volta per server
         self._blocchi_menu: "weakref.WeakValueDictionary[int, asyncio.Lock]" = (
             weakref.WeakValueDictionary()
@@ -184,11 +195,13 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
     # ================================================================
     # Costruzione delle view dinamiche
     # ================================================================
-    def _build_button_view(self, menu_id: int, options: list[RoleMenuOption]) -> discord.ui.View:
+    def _build_button_view(
+        self, menu_id: int, options: list[RoleMenuOption], conteggi: dict[int, int] | None = None
+    ) -> discord.ui.View:
         view = BaseView(timeout=None)
         for opt in options:
             button: discord.ui.Button = discord.ui.Button(
-                label=(opt.label or "Role")[:80],
+                label=((opt.label or "Role")[:70] + _conto(conteggi, opt.role_id))[:80],
                 emoji=opt.emoji,
                 style=_STILI.get(opt.button_style, discord.ButtonStyle.secondary),  # RUO-085
                 custom_id=f"{BUTTON_CUSTOM_ID_PREFIX}:{menu_id}:{opt.role_id}",
@@ -199,12 +212,12 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
 
     def _build_select_view(
         self, menu_id: int, options: list[RoleMenuOption], max_selectable: int | None, placeholder: str = "",
-        con_azzera: bool = False,
+        con_azzera: bool = False, conteggi: dict[int, int] | None = None,
     ) -> discord.ui.View:
         view = BaseView(timeout=None)
         select_options = [
             discord.SelectOption(
-                label=(opt.label or "Role")[:100], value=str(opt.role_id), emoji=opt.emoji,
+                label=((opt.label or "Role")[:90] + _conto(conteggi, opt.role_id))[:100], value=str(opt.role_id), emoji=opt.emoji,
                 description=opt.description[:100] or None,  # RUO-086
             )
             for opt in options
@@ -238,16 +251,18 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         return callback
 
     async def _build_view_for_menu(
-        self, menu: RoleMenu, options: list[RoleMenuOption]
+        self, menu: RoleMenu, options: list[RoleMenuOption], conteggi: dict[int, int] | None = None
     ) -> discord.ui.View | None:
         """Un solo punto che decide quale view costruire per modalità
         — usato sia dal refresh dopo una modifica sia dalla
         ricostruzione all'avvio del bot, per non duplicare la
         diramazione button/select in due posti diversi."""
         if menu.mode == "button":
-            return self._build_button_view(menu.id, options)
+            return self._build_button_view(menu.id, options, conteggi)
         if menu.mode == "select":
-            return self._build_select_view(menu.id, options, menu.max_selectable, menu.placeholder, menu.reset_option)
+            return self._build_select_view(
+                menu.id, options, menu.max_selectable, menu.placeholder, menu.reset_option, conteggi
+            )
         return None
 
     async def _pubblica_menu(
@@ -264,13 +279,17 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         if not isinstance(channel, discord.TextChannel):
             raise MenuNonPubblicabile("Il canale del menu non esiste più o non lo vedo.")
 
-        embed = _build_embed(menu, options)
+        conteggi = (  # RUO-084: i membri di ogni ruolo, dalla memoria (nessuna richiesta a Discord)
+            {o.role_id: len(r.members) for o in options if (r := guild.get_role(o.role_id)) is not None}
+            if menu.show_counts else None
+        )
+        embed = _build_embed(menu, options, conteggi)
         if len(embed) > 6000:
             raise MenuNonPubblicabile(
                 "Il menu supera i 6000 caratteri consentiti da Discord: accorcia titolo, "
                 "descrizione o etichette."
             )
-        view = await self._build_view_for_menu(menu, options)
+        view = await self._build_view_for_menu(menu, options, conteggi)
 
         message = None
         if menu.message_id is not None:
@@ -423,6 +442,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             if errore is not None:
                 await interaction.followup.send(errore, ephemeral=True)
                 return
+        self._aggiorna_contatori_presto(guild, menu)
         if not menu.notify:  # RUO-081: niente conferma in privato
             try:
                 await interaction.delete_original_response()
@@ -440,6 +460,29 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         else:
             testo = "Nessun cambiamento."
         await interaction.followup.send(testo, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+
+    def _aggiorna_contatori_presto(self, guild: discord.Guild, menu: RoleMenu) -> None:
+        """RUO-084: dopo un cambio di ruoli il messaggio si ripubblica con i numeri nuovi, al massimo ogni 5 minuti per menu."""
+        if not menu.show_counts or menu.external:
+            return
+        ora = time.monotonic()
+        if ora - self._ultimo_conteggio.get(menu.id, -1e9) < PAUSA_CONTATORI_SECONDI:
+            return
+        self._ultimo_conteggio[menu.id] = ora
+        compito = asyncio.create_task(self._ripubblica(guild, menu.id))
+        self._compiti.add(compito)
+        compito.add_done_callback(self._compiti.discard)
+
+    async def _ripubblica(self, guild: discord.Guild, menu_id: int) -> None:
+        try:
+            async with self._blocco_menu(menu_id):
+                menu = await role_menu_repo.get_menu(menu_id)
+                if menu is not None:
+                    await self._pubblica_menu(guild, menu, await role_menu_repo.get_options(menu_id))
+        except MenuNonPubblicabile:
+            logger.info("Contatori del menu %s non aggiornati nel server %s.", menu_id, guild.id)
+        except Exception:
+            logger.exception("Aggiornamento dei contatori del menu %s non riuscito.", menu_id)
 
     @staticmethod
     def _rifiuto_limiti(
@@ -560,6 +603,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                 await interaction.followup.send(errore, ephemeral=True)
                 return
 
+        self._aggiorna_contatori_presto(guild, menu)
         if not menu.notify:  # RUO-081
             try:
                 await interaction.delete_original_response()
@@ -634,6 +678,8 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             errore = await self._applica(guild, member, decisione, motivo)
             if errore is not None:
                 logger.warning("Reazione sul menu %s nel server %s: %s", menu.id, guild.id, errore)
+            else:
+                self._aggiorna_contatori_presto(guild, menu)
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent) -> None:
@@ -1093,6 +1139,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         voce_azzera="Tendina: aggiungi in fondo la voce «Togli tutti i ruoli»",
         tipo="Cambia il tipo del menu (da solo, senza altre modifiche): il messaggio si ripubblica",
         scade_tra_ore="Il menu si cancella da solo dopo questo tempo (0 = mai)",
+        contatori="Mostra quanti membri ha ogni ruolo (si aggiorna al massimo ogni 5 minuti)",
     )
     @app_commands.choices(tipo=[
         app_commands.Choice(name="reazioni", value="reaction"),
@@ -1117,6 +1164,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         voce_azzera: bool | None = None,
         tipo: str | None = None,
         scade_tra_ore: app_commands.Range[int, 0, 24 * 365] | None = None,
+        contatori: bool | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -1131,6 +1179,8 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             await self._cambia_tipo(interaction, guild, menu, tipo)
             return
         campi: dict = {}
+        if contatori is not None:  # RUO-084
+            campi["show_counts"] = contatori
         if scade_tra_ore is not None:  # RUO-070
             campi["expires_at"] = (
                 datetime.now(timezone.utc) + timedelta(hours=scade_tra_ore) if scade_tra_ore else None
