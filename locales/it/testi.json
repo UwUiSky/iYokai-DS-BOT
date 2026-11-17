@@ -2907,5 +2907,6 @@
   "player_coda_serve_gestisci_server": "Questo comando richiede il permesso «Gestisci server».",
   "player_coda_salta_serve_un_opzione": "Indica almeno un'opzione: da, a oppure utente.",
   "player_coda_tolti": "Tolti dalla coda: {quanti}.",
-  "player_coda_presenti_non_leggibili": "Non riesco a leggere chi è nel canale vocale: non ho tolto niente dalla coda. Riprova tra poco."
+  "player_coda_presenti_non_leggibili": "Non riesco a leggere chi è nel canale vocale: non ho tolto niente dalla coda. Riprova tra poco.",
+  "music_annunci_canale_senza_permessi": "Non posso scrivere in quel canale: servono «Vedi canale», «Invia messaggi» e «Incorpora link»."
 }

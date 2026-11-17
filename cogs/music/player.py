@@ -71,6 +71,7 @@ from core.main_radio_logic import (
     compute_current_position,
     next_track_index,
 )
+from core.music_announce_logic import copertina_sicura
 from core.music_fleet import MusicFleet, handle_worker_voice_update
 from core.music_logic import (
     EMBED_DESCRIPTION_LIMIT,
@@ -1225,6 +1226,9 @@ class MusicCog(CogConGruppi, commands.Cog):
             description="\n".join(righe),
             color=discord.Color.blurple(),
         )
+        copertina = copertina_sicura(getattr(traccia, "artwork", None))  # MUS-060
+        if copertina:
+            embed.set_thumbnail(url=copertina)
         await interaction.response.send_message(embed=embed)
 
     @comando_di_gruppo(

@@ -8,7 +8,9 @@ Spotify e Apple Music: le chiavi stanno su Lavalink; se il bot non le vede si pr
 lo stesso e Lavalink decide (vedi FONTI_CHIAVI_SU_LAVALINK).
 Fonte di ricerca per un titolo (opzione `fonte`, preferita del server) e Deezer come
 soli metadati (API pubblica: ISRC, poi titolo; mai chiave di decifrazione né cookie).
-Funzioni coperte: SPEC §9.5, issue #126 (B1, B2), D73
+Funzioni coperte: SPEC §9.5, issue #126 (B1, B2), D73. Catalogo: MUS-001 Deezer, MUS-002 Tidal,
+MUS-003 Apple Music, MUS-004 Spotify, MUS-005 Bandcamp, MUS-006 Vimeo, MUS-008 Twitch, MUS-011 fonti accese
+(MUSIC_SOURCES_ENABLED). MUS-007 Mixcloud: non fattibile ora, vedi D73.
 Dipende da: variabili d'ambiente MUSIC_SOURCES_ENABLED e chiavi delle fonti
 """
 

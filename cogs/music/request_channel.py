@@ -6,7 +6,7 @@ file audio nel canale lo mette in coda; un messaggio "player" sempre
 aggiornato ha i bottoni pausa, salta, stop, mescola, ripeti. Nessun ruolo
 DJ e nessun voto (scelta dell'owner): vale la regola di tutti i comandi
 musicali, cioè essere nel canale vocale del player.
-Funzioni coperte: SPEC §23 (NF-19), M 8.19, catalogo MUS-009
+Funzioni coperte: SPEC §23 (NF-19), M 8.19, catalogo MUS-009, MUS-089 (canale richieste con messaggio player)
 Dipende da: cogs/music/player.py (MusicCog.accoda, ricerca del worker),
 core/music_request_logic.py, core/repositories/music_request_repo.py.
 """

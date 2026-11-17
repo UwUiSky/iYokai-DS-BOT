@@ -4,7 +4,9 @@ core/music_settings_logic.py
 Impostazioni musicali per server (issue #126: MUS-047 volume massimo,
 MUS-044 durata massima, MUS-055 restare a coda finita, MUS-059 canale
 vocale permesso, MUS-066 riepilogo, MUS-054 attesa prima di uscire,
-MUS-062 parole vietate nei titoli, MUS-064 solo siti conosciuti, MUS-012 fonte di ricerca, MUS-037 coda equa). Stanno nella colonna `settings` di
+MUS-062 parole vietate nei titoli, MUS-064 solo siti conosciuti, MUS-012 fonte di ricerca, MUS-037 coda equa,
+MUS-057 annunci «ora in riproduzione» accesi/spenti, MUS-058 canale degli annunci).
+MUS-048 qualità audio per server: non fatta, la qualità si regola sul nodo Lavalink (D85). Stanno nella colonna `settings` di
 guild_config (come le altre impostazioni dei cog: cronologia delle
 modifiche e cancellazione del server gia' coperte). Un solo punto di
 lettura e di scrittura (`load_music_settings`, `save_music_setting`),
@@ -44,6 +46,8 @@ SETTING_IDLE_MINUTES = "music_idle_minutes"
 SETTING_KNOWN_SITES_ONLY = "music_known_sites_only"
 SETTING_DEFAULT_SEARCH = "music_default_search"
 SETTING_QUEUE_MODE = "music_queue_mode"
+SETTING_ANNOUNCE = "music_announce"  # MUS-057
+SETTING_ANNOUNCE_CHANNEL = "music_announce_channel_id"  # MUS-058
 QUEUE_MODES = ("normale", "equa")
 
 
@@ -58,6 +62,8 @@ class MusicSettings:
     idle_minutes: int = 0  # 0 = predefinito (5 minuti)
     known_sites_only: bool = False
     queue_mode: str = "normale"  # «equa»: i brani si alternano tra chi li ha messi
+    announce: bool = False  # MUS-057: spento di base (D85), niente messaggi non chiesti
+    announce_channel_id: int | None = None  # MUS-058
     default_search: str = ""  # fonte dove cercare un titolo; "" = automatica (YouTube, poi SoundCloud)
 
 
@@ -134,6 +140,7 @@ def summary_lines(settings: MusicSettings) -> list[str]:
         f"🚫 Parole vietate nei titoli: **{settings.banned_words or 'nessuna'}**",
         f"🔎 Ricerca di un titolo: **{FONTI[settings.default_search].etichetta if settings.default_search in FONTI else 'automatica (YouTube, poi SoundCloud)'}**",
         f"⚖️ Ordine della coda: **{'equa (a giro tra gli utenti)' if settings.queue_mode == 'equa' else 'normale (come arrivano)'}**",
+        f"📢 Annunci «ora in riproduzione»: **{(f'nel canale <#{settings.announce_channel_id}>' if settings.announce_channel_id else 'accesi, ma serve un canale') if settings.announce else 'spenti'}**",
         f"🌐 Link ammessi: **{'solo siti conosciuti' if settings.known_sites_only else 'tutti i siti sicuri'}**",
     ]
 
@@ -146,6 +153,11 @@ def _fonte_valida(valore) -> str:
 def _modo_coda_valido(valore) -> str:
     """Un modo coda noto, altrimenti «normale»."""
     return valore if isinstance(valore, str) and valore in QUEUE_MODES else "normale"
+
+
+def _id_valido(valore) -> int | None:
+    """Un id di canale (intero positivo) oppure None."""
+    return valore if isinstance(valore, int) and not isinstance(valore, bool) and valore > 0 else None
 
 
 async def load_music_settings(database, guild_id: int) -> MusicSettings:
@@ -164,6 +176,8 @@ async def load_music_settings(database, guild_id: int) -> MusicSettings:
         known_sites_only=bool(await get(guild_id, SETTING_KNOWN_SITES_ONLY, False)),
         default_search=_fonte_valida(await get(guild_id, SETTING_DEFAULT_SEARCH, "")),
         queue_mode=_modo_coda_valido(await get(guild_id, SETTING_QUEUE_MODE, "normale")),
+        announce=bool(await get(guild_id, SETTING_ANNOUNCE, False)),
+        announce_channel_id=_id_valido(await get(guild_id, SETTING_ANNOUNCE_CHANNEL, None)),
     )
 
 

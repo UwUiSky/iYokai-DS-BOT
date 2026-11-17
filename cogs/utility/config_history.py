@@ -118,6 +118,8 @@ SETTINGS_SCHEMA = {
     "music_known_sites_only": "bool",
     "music_default_search": "fonte_ricerca",
     "music_queue_mode": "modo_coda",
+    "music_announce": "bool",
+    "music_announce_channel_id": "id",
     "fun_immagini_post": "bool",
     "fun_gif_cerca": "bool",
     "fun_telefono": "bool",

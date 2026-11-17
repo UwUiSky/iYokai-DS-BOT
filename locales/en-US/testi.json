@@ -2907,5 +2907,6 @@
   "player_coda_serve_gestisci_server": "This command needs the \"Manage Server\" permission.",
   "player_coda_salta_serve_un_opzione": "Give at least one option: da, a or utente.",
   "player_coda_tolti": "Removed from the queue: {quanti}.",
-  "player_coda_presenti_non_leggibili": "I can't read who is in the voice channel: nothing was removed from the queue. Try again shortly."
+  "player_coda_presenti_non_leggibili": "I can't read who is in the voice channel: nothing was removed from the queue. Try again shortly.",
+  "music_annunci_canale_senza_permessi": "I cannot write in that channel: I need View Channel, Send Messages and Embed Links."
 }

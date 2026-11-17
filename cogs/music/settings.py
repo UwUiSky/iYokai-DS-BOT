@@ -25,6 +25,8 @@ from core.music_settings_logic import (
     SETTING_BANNED_WORDS,
     SETTING_DEFAULT_SEARCH,
     SETTING_IDLE_MINUTES,
+    SETTING_ANNOUNCE,
+    SETTING_ANNOUNCE_CHANNEL,
     SETTING_QUEUE_MODE,
     SETTING_KNOWN_SITES_ONLY,
     SETTING_MAX_TRACK_MINUTES,
@@ -73,6 +75,8 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         solo_siti_conosciuti="Accetta solo link di siti conosciuti",
         ricerca_predefinita="Dove cercare un titolo scritto senza link (i link vincono sempre)",
         coda="Ordine dei brani: normale (come arrivano) o equa (a giro tra gli utenti)",
+        annunci="Annuncia nel canale scelto il brano che parte (spenti di base)",
+        canale_annunci="Canale dove mandare gli annunci «ora in riproduzione»",
     )
     @app_commands.rename(
         volume_massimo="volume-massimo",
@@ -84,6 +88,7 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         parole_vietate="parole-vietate",
         solo_siti_conosciuti="solo-siti-conosciuti",
         ricerca_predefinita="ricerca-predefinita",
+        canale_annunci="canale-annunci",
     )
     @app_commands.choices(ricerca_predefinita=SCELTE_RICERCA, coda=SCELTE_CODA)
     async def impostazioni(
@@ -99,6 +104,8 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         solo_siti_conosciuti: bool | None = None,
         ricerca_predefinita: str | None = None,
         coda: str | None = None,
+        annunci: bool | None = None,
+        canale_annunci: discord.TextChannel | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -111,6 +118,13 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
                 await testo_per(interaction, "settings_scegli_canale_vocale_oppure_tutti"), ephemeral=True
             )
             return
+        if canale_annunci is not None:  # MUS-058: il bot deve poterci scrivere
+            permessi = canale_annunci.permissions_for(guild.me)
+            if not (permessi.view_channel and permessi.send_messages and permessi.embed_links):
+                await interaction.response.send_message(
+                    await testo_per(interaction, "music_annunci_canale_senza_permessi"), ephemeral=True
+                )
+                return
         cambi = {
             SETTING_MAX_VOLUME: volume_massimo,
             SETTING_MAX_TRACK_MINUTES: durata_massima,
@@ -124,6 +138,10 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
             cambi[SETTING_DEFAULT_SEARCH] = None if ricerca_predefinita == "automatica" else ricerca_predefinita
         if coda is not None:  # MUS-037
             cambi[SETTING_QUEUE_MODE] = coda
+        if annunci is not None:  # MUS-057
+            cambi[SETTING_ANNOUNCE] = annunci
+        if canale_annunci is not None:  # MUS-058
+            cambi[SETTING_ANNOUNCE_CHANNEL] = canale_annunci.id
         if canale_vocale is not None:
             cambi[SETTING_ALLOWED_CHANNEL] = canale_vocale.id
         if not cambi and not tutti_i_canali:

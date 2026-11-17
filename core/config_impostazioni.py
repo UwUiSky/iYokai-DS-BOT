@@ -78,6 +78,8 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
         _c("music_idle_minutes", "Esci dopo (minuti di silenzio, 0 = mai)", NUMERO),
         _c("music_known_sites_only", "Solo siti conosciuti", BOOL),
         _c("music_queue_mode", "Ordine della coda (normale = come arrivano, equa = a giro tra gli utenti)", SCELTA),
+        _c("music_announce", "Annuncia il brano in riproduzione (serve il canale degli annunci)", BOOL),
+        _c("music_announce_channel_id", "Canale degli annunci «ora in riproduzione»", CANALE),
         _c("music_default_search", "Dove cercare un titolo senza link (youtube, soundcloud, spotify, applemusic, deezer, tidal)", SCELTA),
     ),
     "fun": (

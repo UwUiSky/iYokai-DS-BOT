@@ -3,7 +3,8 @@ core/music_playlist_logic.py
 ============================
 Playlist salvate degli utenti: tetti, controllo del nome, brani da e
 verso il formato salvato, file di esportazione e di importazione.
-Funzioni coperte: SPEC §23 (NF-19), catalogo MUS-082
+Funzioni coperte: SPEC §23 (NF-19), catalogo MUS-082; MUS-071 salva la coda, MUS-078 carica,
+MUS-079 elenco, MUS-080 elimina (comandi in cogs/music/playlist.py)
 Dipende da: niente di Discord o Lavalink (logica pura).
 """
 

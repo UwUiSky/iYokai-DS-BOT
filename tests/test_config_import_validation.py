@@ -108,6 +108,8 @@ SETTINGS_VALIDE = {
     "music_known_sites_only": False,
     "music_default_search": "soundcloud",
     "music_queue_mode": "equa",
+    "music_announce": True,
+    "music_announce_channel_id": 212121212121212121,
     "policy_comandi_off": ["immagini meme"],
     "policy_canali_ok": [171717171717171717],
     "policy_canali_no": [181818181818181818],
