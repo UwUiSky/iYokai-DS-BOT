@@ -32,6 +32,7 @@ MODO_RIDOTTA = "ridotta"
 SOCKET_SERVIZIO = "/run/iyokai-sbx/sock"
 VARIABILE_SOCKET = "IYOKAI_SANDBOX_SOCKET"
 MAX_USCITA = 6 * 1024 * 1024
+ATTESA_CHIUSURA = 5.0  # secondi concessi al figlio ucciso per sparire davvero
 NOME = re.compile(r"^[0-9a-f]{32}$")
 WORKER = Path(__file__).resolve().with_name("immagini_worker.py")
 
@@ -153,15 +154,28 @@ async def esegui_locale(
         grezzo = await leggi()
         return grezzo, (await proc.wait() if grezzo is not None else None)
 
+    async def uccidi_e_chiudi() -> None:
+        # Dopo il SIGKILL il tubo va svuotato: con dati non letti asyncio non vede la fine del figlio e
+        # `wait()` resterebbe appeso per sempre, tenendo occupato un posto della coda.
+        uccidi()
+
+        async def svuota() -> None:
+            while await proc.stdout.read(65536):
+                pass
+            await proc.wait()
+
+        try:
+            await asyncio.wait_for(svuota(), ATTESA_CHIUSURA)
+        except asyncio.TimeoutError:
+            logger.error("Sandbox: il figlio %s non si chiude dopo il SIGKILL", proc.pid)
+
     try:
         grezzo, codice = await asyncio.wait_for(leggi_e_attendi(), limiti.reale)
     except asyncio.TimeoutError:
-        uccidi()
-        await proc.wait()
+        await uccidi_e_chiudi()
         return RisultatoSandbox("ucciso_tempo")
     if grezzo is None:
-        uccidi()
-        await proc.wait()
+        await uccidi_e_chiudi()
         return RisultatoSandbox("uscita_enorme")
     if codice != 0 or not grezzo:
         return RisultatoSandbox("ucciso")
