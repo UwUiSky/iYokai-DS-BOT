@@ -71,6 +71,9 @@ def segreti_noti() -> list[str]:
     """Valori da non far uscire mai: chiavi delle fonti e password di Lavalink."""
     valori = [os.environ.get(v, "") for f in fonti_musicali.FONTI.values() for g in f.chiavi for v in g]
     valori += [config.LAVALINK_PASSWORD, os.environ.get("LAVALINK_NODES", "")]
+    # Difesa in più: anche token dei bot e indirizzo del database, se mai finissero nel log.
+    valori += [valore for nome, valore in os.environ.items()
+               if nome.endswith("_TOKEN") or "TOKEN_" in nome or nome in ("DATABASE_URL", "WEB_PANEL_SECRET_KEY")]
     return [v.strip() for v in valori if v and v.strip()]
 
 
