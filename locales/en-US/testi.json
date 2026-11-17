@@ -2955,5 +2955,12 @@
   "alertlive_filtri_ok": "Filters of rule {v1} updated.",
   "alertlive_voce_ok": "Done.",
   "alertlive_voci_piene": "There are already {v1} entries of this kind: remove some first.",
-  "alertlive_annuncio_ok": "Announcement of rule {v1} updated."
+  "alertlive_annuncio_ok": "Announcement of rule {v1} updated.",
+  "voicetemp_ruolo_everyone": "@everyone cannot be used here: use /voice unlock to open the channel to everyone.",
+  "voicetemp_ruolo_non_vietabile": "This role cannot be excluded: it belongs to the staff, or it is higher than yours.",
+  "voicepanel_non_disponibile": "The panel is not available now. Try again soon.",
+  "voicepanel_numero_non_valido": "Write a number from 0 to 99.",
+  "voicepanel_utente_non_nel_server": "That user is not in the server.",
+  "voicepanel_scegli": "Choose the user:",
+  "voicetemp_crea_manca_permesso": "The bot needs the \"Manage Channels\" permission to create the category and the channel."
 }

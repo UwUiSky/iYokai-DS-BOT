@@ -2955,5 +2955,12 @@
   "alertlive_filtri_ok": "Filtri della regola {v1} aggiornati.",
   "alertlive_voce_ok": "Fatto.",
   "alertlive_voci_piene": "Ci sono già {v1} voci di questo tipo: toglierne qualcuna prima.",
-  "alertlive_annuncio_ok": "Annuncio della regola {v1} aggiornato."
+  "alertlive_annuncio_ok": "Annuncio della regola {v1} aggiornato.",
+  "voicetemp_ruolo_everyone": "@everyone non si usa qui: per aprire il canale a tutti c'è /voice unlock.",
+  "voicetemp_ruolo_non_vietabile": "Questo ruolo non si può escludere: è del team, oppure è più alto del tuo.",
+  "voicepanel_non_disponibile": "Il pannello non è disponibile ora. Riprova tra poco.",
+  "voicepanel_numero_non_valido": "Scrivi un numero da 0 a 99.",
+  "voicepanel_utente_non_nel_server": "Quell'utente non è nel server.",
+  "voicepanel_scegli": "Scegli l'utente:",
+  "voicetemp_crea_manca_permesso": "Al bot serve il permesso «Gestisci canali» per creare la categoria e il canale."
 }

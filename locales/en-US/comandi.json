@@ -1368,7 +1368,8 @@
   "admin-alert ruolo-live filtri": "Title words, games and required role of a rule.",
   "admin-alert ruolo-live esclusi": "Members or roles that never get the role of a rule.",
   "admin-alert ruolo-live eccezioni": "Members who get the role even without the words or the game.",
-  "admin-alert ruolo-live annuncio": "Announce in a channel who goes live."
+  "admin-alert ruolo-live annuncio": "Announce in a channel who goes live.",
+  "admin-vocali crea": "Creates the category and the generator channel and sets everything up."
  },
  "parametri": {},
  "menu": {

@@ -119,7 +119,8 @@ class TestCreateTempChannelInviaLaNotifica:
 
         channel = await _create_temp_channel(guild, owner, categoria, config)
 
-        assert len(channel.sent) == 1
+        assert len(channel.sent) == 2  # notifica + pannello (VOC-009)
+        assert "view" in channel.sent[1] and "embed" not in channel.sent[1]
         assert "embed" in channel.sent[0]
         assert "view" not in channel.sent[0]
 
@@ -132,7 +133,7 @@ class TestCreateTempChannelInviaLaNotifica:
 
         channel = await _create_temp_channel(guild, owner, categoria, config)
 
-        assert len(channel.sent) == 1
+        assert len(channel.sent) == 2  # notifica con i bottoni piattaforma + pannello (VOC-009)
         assert "view" in channel.sent[0]
 
 
