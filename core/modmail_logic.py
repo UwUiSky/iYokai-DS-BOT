@@ -4,7 +4,7 @@ core/modmail_logic.py
 Regole pure del ModMail (ticket via messaggio privato): a quale server
 appartiene un DM, nome del canale, testo da inoltrare, limite di messaggi.
 Nessun accesso a Discord né al database.
-Funzioni coperte: SPEC §23 (NF-33), D74 (#160: nomi degli allegati puliti, niente link a file pericolosi)
+Funzioni coperte: SPEC §23 (NF-33), D74 (#160: gli allegati dell'utente non escono mai come link all'originale)
 """
 
 from __future__ import annotations
@@ -15,7 +15,6 @@ from collections import deque
 from dataclasses import dataclass
 from enum import Enum
 
-from core import allegati_tipo_logic
 
 MAX_DESCRIZIONE_EMBED = 4096
 MAX_VALORE_CAMPO = 1024
@@ -79,16 +78,13 @@ def testo_inoltrato(contenuto: str) -> str:
     return taglia(contenuto, MAX_DESCRIZIONE_EMBED)
 
 
-def elenco_allegati(nomi_e_url: list[tuple[str, str]]) -> str:
-    """Link agli allegati (solo nome pulito; mai il link di un file eseguibile o travestito), uno per riga, entro 1024 caratteri."""
+def elenco_righe_allegati(righe_in: list[str]) -> str:
+    """Le righe sugli allegati dell'utente (copie rifatte, schede, avvisi), una per riga, entro 1024 caratteri. Mai link all'originale (D74)."""
     righe: list[str] = []
     totale = 0
-    for nome, url in nomi_e_url:
-        pericoloso = allegati_tipo_logic.decidi_senza_byte(nome, None, 0).azione == allegati_tipo_logic.RIFIUTA
-        pulito = taglia(allegati_tipo_logic.nome_pulito(nome), 60)
-        # D74: nome pulito (niente inversioni di testo); un nome eseguibile o travestito resta senza link
-        riga = f"`{pulito.replace('`', chr(39))}` (⚠️)" if pericoloso else f"[{pulito}]({url})"
-        if totale + len(riga) + 1 > MAX_VALORE_CAMPO:
+    for riga in righe_in:
+        riga = taglia(riga, 200)
+        if totale + len(riga) + 1 > MAX_VALORE_CAMPO - 2:
             righe.append("…")
             break
         righe.append(riga)

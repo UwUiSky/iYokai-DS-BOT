@@ -56,8 +56,8 @@ def test_nome_del_canale_sempre_valido():
 
 
 def test_allegati_e_testo_entro_i_limiti():
-    allegati = [(f"file{i}.png", "https://cdn.example/" + "x" * 80) for i in range(30)]
-    assert len(logica.elenco_allegati(allegati)) <= 1024
+    righe = [f"`file{i}.png` (png, 12 KiB, SHA-256 abcdef): file non conservato" + "x" * 80 for i in range(30)]
+    assert len(logica.elenco_righe_allegati(righe)) <= 1024
     assert len(logica.testo_inoltrato("a" * 9000)) <= 4096
 
 
@@ -222,12 +222,37 @@ async def test_il_secondo_dm_va_nello_stesso_canale(scena):
     assert scena.canali[0].send.await_args.kwargs["embed"].description == "due"
 
 
-async def test_allegati_inoltrati_come_link(scena):
+async def test_allegati_inoltrati_senza_link_all_originale(scena):
     await scena.configura()
-    allegato = SimpleNamespace(filename="prova.png", url="https://cdn.example/prova.png")
+    pdf = b"%PDF-1.4\n" + b"x" * 200
+
+    async def leggi():
+        return pdf
+
+    allegato = SimpleNamespace(filename="prova.pdf", url="https://cdn.example/prova.pdf", content_type="application/pdf",
+                               size=len(pdf), read=leggi)
     await scena.cog.on_message(scena.dm("", [allegato]))
     embed = scena.canali[0].send.await_args.kwargs["embed"]
-    assert "prova.png" in embed.fields[0].value
+    assert "prova.pdf" in embed.fields[0].value and "pdf" in embed.fields[0].value
+    assert "cdn.example" not in embed.fields[0].value and not scena.canali[0].send.await_args.kwargs.get("files")
+
+
+async def test_immagine_dell_utente_arriva_come_copia_rifatta(scena):
+    from tests.support import immagini_finte as f
+
+    await scena.configura()
+    bmp = f.bmp()
+
+    async def leggi():
+        return bmp
+
+    allegato = SimpleNamespace(filename="foto.bmp", url="https://cdn.example/foto.bmp", content_type="image/bmp",
+                               size=len(bmp), read=leggi)
+    await scena.cog.on_message(scena.dm("", [allegato]))
+    kw = scena.canali[0].send.await_args.kwargs
+    assert len(kw["files"]) == 1 and kw["embed"].image.url == "attachment://allegato0.png"
+    kw["files"][0].fp.seek(0)
+    assert kw["files"][0].fp.read(8) == b"\x89PNG\r\n\x1a\n" and "cdn.example" not in kw["embed"].fields[0].value
 
 
 @pytest.mark.parametrize("caso", ["spento", "non_membro", "bloccato", "modulo_spento", "vuoto"])

@@ -45,6 +45,7 @@ from cogs.tickets.tickets import (
     _is_ticket_staff,
     _support_role_ids,
 )
+from core import allegati_mostra
 from core import channel_router as router
 from core import modmail_logic as logica
 from core.channel_router import TIPO_EVENTI
@@ -416,14 +417,17 @@ class ModMailCog(CogConGruppi, commands.Cog):
             timestamp=datetime.now(timezone.utc),
         )
         embed.set_author(name=str(message.author)[:256], icon_url=message.author.display_avatar.url)
+        files: list[discord.File] = []
         if message.attachments:
-            embed.add_field(
-                name="Allegati",
-                value=logica.elenco_allegati([(a.filename, a.url) for a in message.attachments]),
-                inline=False,
-            )
+            # D74: mai il link all'originale. Immagini vere: copia rifatta dalla sandbox; il resto: riga di scheda o di avviso.
+            copie, righe = await allegati_mostra.prepara(message.attachments, thread.guild_id)
+            files = [discord.File(io.BytesIO(dati), filename=f"allegato{i}.png") for i, (_, dati) in enumerate(copie)]
+            if files:
+                embed.set_image(url="attachment://allegato0.png")
+            righe = [f"`{nome}` (immagine rifatta)" for nome, _ in copie] + righe
+            embed.add_field(name="Allegati", value=logica.elenco_righe_allegati(righe), inline=False)
         try:
-            await canale.send(embed=embed, allowed_mentions=SENZA_MENZIONI)
+            await canale.send(embed=embed, files=files, allowed_mentions=SENZA_MENZIONI)
         except discord.NotFound:
             await self._canale_sparito(thread)
             return False
