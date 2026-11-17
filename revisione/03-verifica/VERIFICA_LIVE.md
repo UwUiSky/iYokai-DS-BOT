@@ -1655,6 +1655,7 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 ## giro r160 parte 3 — ultime voci D74 (#160)
 - ModMail `/ticket rispondi allegato:` con una foto vera: l'utente riceve nel DM una copia PNG rifatta (nessun link `cdn.discordapp.com`). Con un `.exe`: lo staff legge «File non inviabile: …», l'utente non riceve nulla.
 - Log a nome utente: `/admin-log webhook attivo:sì a_nome_utente:sì`; modifica e cancella un messaggio di prova: nel canale dei log il messaggio ha nome «<tuo nome> · log» e il tuo avatar, nessuno viene avvisato. Con nome che contiene «discord» o «clyde»: il log esce senza quella parola. `a_nome_utente:no`: tornano nome e avatar del webhook. Cancella un messaggio con un'immagine: il log esce come prima (nome del webhook).
+- Copie 30 giorni: chiudi un ticket con una foto e un PDF (transcript solo testo e poi con ZIP): in `allegati_copie` ci sono righe con origine `ticket` e scadenza a 30 giorni; lo stesso per una conversazione ModMail (origine `modmail`). `/privacy` dell'utente toglie le righe e, entro un'ora, i file dalla cartella.
 
 ## Voce di Yokai nei ticket (#142, passo 2)
 - Con motore vocale installato e `/admin-ai voce imposta attiva:sì`: apri un ticket da un pannello. Sotto il benvenuto arriva un vero vocale (forma d'onda) con il tuo nome, tono scherzoso anche se il server ha `piccante`, e sotto i bottoni «Trascrivi» e «Nella mia lingua».

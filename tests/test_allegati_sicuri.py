@@ -196,6 +196,41 @@ async def test_scadenza_e_orfani_si_tolgono_privacy_toglie_la_riga(ambiente):
     assert await al.pulisci() == 1 and list(ambiente.iterdir()) == []
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("origine", [al.ORIGINE_TICKET, al.ORIGINE_MODMAIL])
+async def test_copie_di_ticket_e_modmail_durano_30_giorni_come_i_log_e_privacy_le_toglie(ambiente, origine):
+    from core.database import db
+
+    async def leggi():
+        return f.png()
+
+    allegato = SimpleNamespace(filename="foto.png", content_type="image/png", size=len(f.png()), read=leggi)
+    copia = await al.conserva(allegato, G, C, M, U, origine)
+    assert copia is not None and copia.stato == al.STATO_SALVATA
+    riga = await db.pool.fetchrow(
+        "SELECT origine, (scade_il - created_at) AS durata FROM allegati_copie WHERE id = $1", copia.id
+    )
+    assert riga["origine"] == origine and abs(riga["durata"].days - al.GIORNI_CONSERVAZIONE) <= 1
+    assert (await al.leggi(copia.id))[1].startswith(b"\x89PNG")
+    await db.pool.execute("DELETE FROM allegati_copie WHERE user_id = $1", U)  # come /privacy
+    for p in ambiente.iterdir():
+        os.utime(p, (1, 1))
+    await al.pulisci()
+    assert list(ambiente.iterdir()) == []
+
+
+@pytest.mark.asyncio
+async def test_conserva_non_solleva_e_i_file_grandi_sono_solo_scheda(ambiente):
+    async def rotto():
+        raise OSError("link scaduto")
+
+    a = SimpleNamespace(filename="foto.png", content_type="image/png", size=10, read=rotto)
+    assert await al.conserva(a, G, C, M, U, al.ORIGINE_TICKET) is None
+    grande = SimpleNamespace(filename="film.mp4", content_type="video/mp4", size=al.MAX_BYTE + 1, read=rotto)
+    c = await al.conserva(grande, G, C, M + 1, U, al.ORIGINE_TICKET)
+    assert c.stato == al.STATO_SCHEDA and not c.con_file
+
+
 def test_registro_dati_conosce_la_tabella():
     voce = next(t for t in data_registry.REGISTRO if t.nome == "allegati_copie")
     assert voce.colonne_utente == ("user_id",) and voce.utente == "cancella"

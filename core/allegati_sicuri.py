@@ -1,9 +1,9 @@
 """
 core/allegati_sicuri.py
 =======================
-Copia sicura degli allegati nei log dei messaggi (D61, D62, D74, #152, #160). Il tipo si decide dai primi byte
+Copia sicura degli allegati nei log dei messaggi e nei transcript di ticket e ModMail (D61, D62, D74, #152, #160). Il tipo si decide dai primi byte
 (`allegati_tipo_logic`). Mai l'originale: delle immagini vere si salva la copia PNG rifatta dalla sandbox, di PDF, audio
-e testo la copia convertita nel processo a parte (`allegati_copia`; il video no, nei log di massa); nome casuale,
+e testo la copia convertita nel processo a parte (`allegati_copia`; il video solo con `con_video`: ticket e ModMail, non i log di massa); nome casuale,
 SHA-256 dell'originale, tetto di peso. Ogni altro file resta una scheda (nome pulito, tipo, peso, impronta) o un avviso
 se e' travestito, eseguibile o sconosciuto. Cartella fuori dalla radice del sito. L'anteprima e' solo la copia PNG
 ricodificata (`immagini_pipeline`); un'immagine sospetta non si conserva (resta in quarantena). Conservazione a tempo,
@@ -38,6 +38,8 @@ logger = logging.getLogger("iyokai.allegati")
 VARIABILE_CARTELLA = "IYOKAI_ALLEGATI_DIR"
 CARTELLA_PREDEFINITA = "/var/lib/iyokai/allegati"
 GIORNI_CONSERVAZIONE = 30
+ORIGINE_TICKET = "ticket"  # D74: le copie dei transcript restano 30 giorni come quelle dei log, stessa cancellazione `/privacy`
+ORIGINE_MODMAIL = "modmail"
 MAX_BYTE = 8 * 1024 * 1024
 MAX_PER_MESSAGGIO = 5
 SECONDI_LINK = 7 * 24 * 3600
@@ -135,7 +137,7 @@ async def _registra(
 
 async def salva(
     guild_id: int, channel_id: int, message_id: int, user_id: int, origine: str, nome_file: str, dati: bytes,
-    *, content_type: str | None = None,
+    *, content_type: str | None = None, con_video: bool = False,
 ) -> Copia | None:
     """
     Registra un allegato dopo la decisione unica (D74). Torna None se e' troppo grande. Immagine vera: percorso
@@ -150,7 +152,7 @@ async def salva(
     if d.azione != allegati_tipo_logic.IMMAGINE:
         if d.azione == allegati_tipo_logic.SCHEDA:
             # D74: PDF, audio e testo conservano la copia convertita nel processo a parte; il video no (log di massa).
-            convertita = await allegati_copia.copia_sicura(dati, d, guild_id, con_video=False)
+            convertita = await allegati_copia.copia_sicura(dati, d, guild_id, con_video=con_video)
             if convertita is not None:
                 nome = await asyncio.to_thread(_scrivi, convertita[1])
                 return await _registra(guild_id, channel_id, message_id, user_id, origine, d, STATO_SALVATA, nome, None)
@@ -169,6 +171,27 @@ async def salva(
     # D74: l'originale non tocca mai il disco. L'unico file è il PNG rifatto dalla sandbox.
     nome = await asyncio.to_thread(_scrivi, png)
     return await _registra(guild_id, channel_id, message_id, user_id, origine, d, STATO_SALVATA, nome, nome)
+
+
+async def conserva(
+    allegato, guild_id: int, channel_id: int, message_id: int, user_id: int, origine: str, *, con_video: bool = True,
+) -> Copia | None:
+    """
+    Conserva per 30 giorni la copia sicura di un allegato Discord di un ticket o di ModMail (come i log, D74).
+    Troppo grande da scaricare: solo scheda. Non solleva mai: un allegato che non si legge non ferma il transcript.
+    """
+    try:
+        if (allegato.size or 0) > MAX_BYTE:
+            return await salva_senza_byte(
+                guild_id, channel_id, message_id, user_id, origine, allegato.filename, allegato.content_type, allegato.size
+            )
+        return await salva(
+            guild_id, channel_id, message_id, user_id, origine, allegato.filename, await allegato.read(),
+            content_type=allegato.content_type, con_video=con_video,
+        )
+    except Exception:  # noqa: BLE001
+        logger.warning("Copia dell'allegato di %s non conservata", origine, exc_info=True)
+        return None
 
 
 async def salva_senza_byte(
