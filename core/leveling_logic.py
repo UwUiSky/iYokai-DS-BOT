@@ -118,6 +118,8 @@ def is_eligible_for_voice_xp(
     is_self_deaf: bool,
     is_afk_channel: bool,
     other_members_not_self_muted: int,
+    min_persone: int = 2,
+    anti_farm: bool = True,
 ) -> bool:
     """
     Le condizioni anti-farm decise in fase di progettazione, tutte
@@ -127,10 +129,20 @@ def is_eligible_for_voice_xp(
     - c'è almeno un'ALTRA persona nel canale che non è self_mute
       (un canale con solo bot silenziati o solo l'utente stesso non
       conta come attività reale)
+    LIV-011: `min_persone` è la soglia di persone nel canale (lui compreso), da 1 a 10.
+    LIV-012: con `anti_farm` spento non conta l'essere assordati (e il chiamante conta
+    anche chi è muto); il canale AFK resta escluso, e i tetti di minuti restano.
     """
-    if is_self_deaf or is_afk_channel:
+    if is_afk_channel or (anti_farm and is_self_deaf):
         return False
-    return other_members_not_self_muted >= 1
+    return other_members_not_self_muted >= max(0, min_persone - 1)
+
+
+def contesto_con_xp(i: "LevelingSettings", tipo: str) -> bool:
+    """LIV-014/015/016: se i messaggi di questo tipo di canale danno XP (thread, forum, chat vocale)."""
+    return {
+        "thread": i.xp_thread, "forum": i.xp_forum, "chat_vocale": i.xp_chat_vocale,
+    }.get(tipo, True)
 
 
 @dataclass(frozen=True)
@@ -424,6 +436,7 @@ LIMITI_IMPOSTAZIONI = {
     "max_level": (0, 1000),  # 0 = nessun tetto
     "xp_per_parola": (1, 10),  # LIV-006
     "parole_max": (1, 100),  # LIV-006: parole contate per messaggio
+    "voce_min_persone": (1, 10),  # LIV-011
     "bonus_impegno": (0, 50),  # LIV-007: 0 = spento
     "impegno_caratteri": (20, 2000),  # LIV-007
     "pay_tax_pct": (0, 50),  # ECO-015: percentuale che va alla cassa del server
@@ -476,6 +489,11 @@ class LevelingSettings:
     parole_max: int = 30  # LIV-006
     bonus_impegno: int = 0  # LIV-007: 0 = spento
     impegno_caratteri: int = 200  # LIV-007
+    voce_min_persone: int = 2  # LIV-011: persone nel canale vocale (lui compreso)
+    anti_farm: bool = True  # LIV-012
+    xp_thread: bool = True  # LIV-014
+    xp_forum: bool = True  # LIV-015
+    xp_chat_vocale: bool = True  # LIV-016
     xp_comandi: bool = False  # LIV-017: XP per i comandi slash
     prefissi_ignorati: tuple = ()  # LIV-018
     canali_modo: str = "tutti"  # LIV-021: "solo_questi" = l'elenco dei canali è una lista bianca

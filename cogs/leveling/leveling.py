@@ -155,6 +155,7 @@ from core.leveling_logic import (
     scegli_premi,
     tassa_su_pagamento,
     week_key,
+    contesto_con_xp,
     ha_prefisso_ignorato,
     xp_con_moltiplicatore,
     xp_messaggio,
@@ -217,6 +218,15 @@ async def _salva_sfondo(user_id: int, allegato: discord.Attachment) -> str | Non
         return "Non sono riuscito a scaricare l'immagine: riprova."
     await leveling_repo.set_sfondo_card(user_id, pronto)
     return None
+
+
+def tipo_di_canale(canale) -> str:
+    """LIV-014/015/016: "forum" (post), "thread", "chat_vocale" (canali vocali e stage) o "testo"."""
+    if isinstance(canale, discord.Thread):
+        return "forum" if isinstance(getattr(canale, "parent", None), discord.ForumChannel) else "thread"
+    if isinstance(canale, (discord.VoiceChannel, discord.StageChannel)):
+        return "chat_vocale"
+    return "testo"
 
 
 async def _comando_rifiutato(interaction: discord.Interaction) -> bool:
@@ -527,6 +537,26 @@ def _embed_impostazioni(config: ConfigLivelli) -> discord.Embed:
             f"{' (con copia di 30 giorni)' if i.copia_su_uscita else ''}\n"
             f"Solo il proprietario: XP a mano **{'sì' if i.blocca_xp else 'no'}**, "
             f"azzeramenti **{'sì' if i.blocca_azzeramento else 'no'}**"
+        ),
+        inline=False,
+    )
+    # LIV-073: il riepilogo comprende anche come si guadagna XP (/admin-livelli guadagno).
+    sn = lambda v: "sì" if v else "no"  # noqa: E731
+    canali_modo = "solo quelli dell'elenco" if i.canali_modo == "solo_questi" else "tutti tranne gli esclusi"
+    prefissi = " ".join("`" + p.replace("`", "") + "`" for p in i.prefissi_ignorati)
+    embed.add_field(
+        name="Come si guadagna XP",
+        value=(
+            f"Formula dei livelli: **{i.formula}**\n"
+            + (f"Messaggi: **a parola** ({i.xp_per_parola} XP per parola, al massimo {i.parole_max})\n"
+               if i.xp_modo == "parola" else "Messaggi: **fisso**\n")
+            + (f"Bonus impegno: **{i.bonus_impegno}** XP (da {i.impegno_caratteri} caratteri o con immagine)\n"
+               if i.bonus_impegno else "Bonus impegno: **spento**\n")
+            + f"Comandi slash: **{sn(i.xp_comandi)}** · Thread: **{sn(i.xp_thread)}** · "
+            f"Forum: **{sn(i.xp_forum)}** · Chat vocale: **{sn(i.xp_chat_vocale)}**\n"
+            f"Vocale: almeno **{i.voce_min_persone}** persone, anti-farm **{sn(i.anti_farm)}**\n"
+            f"Canali: **{canali_modo}**"
+            + (f"\nPrefissi ignorati: {prefissi}" if prefissi else "")
         ),
         inline=False,
     )
@@ -1076,7 +1106,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         # NF-15: canali e ruoli senza XP. Il drop sotto resta indipendente.
         # Un thread o un post di forum vale come il suo canale di origine.
         id_canale = id_canali_per_le_regole(message.channel)
-        if not config.e_escluso(id_canale, id_ruoli):
+        if not config.e_escluso(id_canale, id_ruoli) and contesto_con_xp(
+            config.impostazioni, tipo_di_canale(message.channel)
+        ):
             # NF-28: i messaggi contano per i giveaway che chiedono un minimo,
             # con le stesse esclusioni e la stessa attesa dell'XP testuale.
             try:
@@ -1175,15 +1207,18 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
             is_afk = channel.id == afk_channel_id
             for member in members:
+                imp = config.impostazioni
                 others_not_muted = sum(
                     1
                     for other in members
-                    if other.id != member.id and not other.voice.self_mute
+                    if other.id != member.id and (not imp.anti_farm or not other.voice.self_mute)
                 )
                 eligible = is_eligible_for_voice_xp(
                     is_self_deaf=member.voice.self_deaf,
                     is_afk_channel=is_afk,
                     other_members_not_self_muted=others_not_muted,
+                    min_persone=imp.voce_min_persone,  # LIV-011
+                    anti_farm=imp.anti_farm,  # LIV-012
                 )
                 id_ruoli = [r.id for r in getattr(member, "roles", [])]
                 # NF-15: canali e ruoli senza XP valgono come non idonei.
@@ -3711,7 +3746,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         testo="XP per ogni messaggio che conta (1-100)",
         attesa="Secondi tra due messaggi che danno XP (10-600)",
-        voce_xp="XP per ogni minuto in vocale (0-50)",
+        voce_xp="XP per ogni minuto in vocale (0-50; 0 = niente XP in vocale)",  # LIV-010
         voce_coin="Coin per ogni minuto in vocale (0-50)",
         moltiplicatori="Più moltiplicatori insieme: si sommano oppure vale solo il più alto",
         daily="Coin di /monete daily (0-10000)",

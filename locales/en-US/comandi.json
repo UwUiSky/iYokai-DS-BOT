@@ -336,7 +336,9 @@
   "guadagno": "gain",
   "formula": "formula",
   "comandi": "commands",
-  "prefissi": "prefixes"
+  "prefissi": "prefixes",
+  "contesti": "contexts",
+  "vocale": "voice"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1328,7 +1330,9 @@
   "admin-livelli guadagno messaggi": "XP per message: fixed or per word, plus a bonus for long messages or images.",
   "admin-livelli guadagno comandi": "Turns XP for using slash commands on or off (off by default).",
   "admin-livelli guadagno prefissi": "Other bots' prefixes: messages starting with them give no XP.",
-  "admin-livelli guadagno canali": "XP everywhere except excluded channels, or only in the channels of the list."
+  "admin-livelli guadagno canali": "XP everywhere except excluded channels, or only in the channels of the list.",
+  "admin-livelli guadagno contesti": "Whether threads, forum posts and voice channel chat give XP.",
+  "admin-livelli guadagno vocale": "Voice XP: minimum people in the channel and anti-farm check."
  },
  "parametri": {},
  "menu": {

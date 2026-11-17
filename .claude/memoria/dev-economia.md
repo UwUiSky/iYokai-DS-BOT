@@ -5,10 +5,11 @@
 09/11/2026 · giro r24fun (migrazioni 0579-0580 usate). 09/11/2026 · giro r21gif, ramo `feat/r21gif`, migrazione 0570 (usata). Lavoro PER FILE.
 
 ## In corso
-- r3liv (#124, ramo `feat/r3liv`, wt `/home/user/wt-124`, migrazioni 0660-0679): B3 fatto (0660; LIV-004, 006, 007, 017, 018, 021; `cogs/leveling/guadagno.py`). Prossimo: B4 dalle righe `10-livelli-e-rank.md` ancora in `STATO.md` (LIV-008..016 reazioni e simili). Script locale: scratchpad `loc.py` (aggiunge testi it/en e descrizioni en-US).
+- r3liv (#124, ramo `feat/r3liv`, wt `/home/user/wt-124`, migrazioni 0660-0679): B3 e B4 fatti (0660, 0661). Prossimo: B5 reazioni (LIV-008, 009, 060), poi classifiche (013, 059), card (051, 054, 055, 056). Script locale: scratchpad `loc.py` (aggiunge testi it/en e descrizioni en-US).
 - Smoke da fare (lo lancia l'orchestratore).
 
 ## Fatto
+- r3liv B4: 0661 (`voce_min_persone`, `anti_farm`, `xp_thread/forum/chat_vocale`), `/admin-livelli guadagno vocale|contesti`, `tipo_di_canale`, campo «Come si guadagna XP» in `mostra`; codici già in codice provati in `tests/test_leveling_guadagno_b4.py` (022-025, 028-030, 040, 049, 050, 052, 073, 010).
 - r3liv B3: formule (`FORMULE`, `xp_for_level/level_for_xp(…, formula)`), `xp_messaggio`, `ha_prefisso_ignorato`, `e_escluso` con `canali_modo`, `cambia_formula`/`aggiungi_prefisso` nel repo impostazioni, `on_app_command_completion`, `/admin-livelli guadagno formula|messaggi|comandi|prefissi|canali`, 0660.
 - r2liv B2: `sincronizza_premi`/`sincronizza_server` e `on_member_join` in `leveling.py`, `rendi_annuncio` in `leveling_logic`, `_prova_annuncio`, `level_reward_repo.add_reward` (tetto 3, blocco per server), 0582 (`leveling_copie_attivita`, `avvisa_dm`, `levelup_testo`); B1: copia+azzeramento in un solo CTE con `FOR UPDATE`.
 - r24fun B12: telefono (`cogs/fun/telefono.py`, `core/telefono_logic.py`, `telefono_repo`, 0579-0580, `fun_telefono` spento di base, `/fun telefono`, `/admin-giochi telefono`). Pesi: fun 2604 (14 figli), admin-giochi 2718, giochi 2691: nessun problema. Resta fuori: `/owner telefono` (basta blacklist del bot e `blocca server_id`).

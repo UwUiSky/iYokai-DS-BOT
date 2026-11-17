@@ -216,6 +216,75 @@ class GuadagnoCog(CogConGruppi, commands.Cog):
         else:
             await _rispondi(interaction, f"gua_canali_{modo.value}", n=len(config.canali_esclusi))
 
+    # ---------------------------------------------------------------- LIV-014, 015, 016
+    @comando_di_gruppo(
+        "admin-livelli",
+        nome="contesti",
+        descrizione="Se thread, post dei forum e chat dei canali vocali danno XP.",
+        sottogruppo=_SG,
+    )
+    @app_commands.describe(
+        thread="Sì = i messaggi nei thread danno XP (valgono le regole del canale padre)",
+        forum="Sì = i messaggi nei post dei forum danno XP",
+        chat_vocale="Sì = i messaggi scritti nella chat dei canali vocali danno XP",
+    )
+    async def guadagno_contesti(
+        self,
+        interaction: discord.Interaction,
+        thread: bool | None = None,
+        forum: bool | None = None,
+        chat_vocale: bool | None = None,
+    ) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        if not await _puo_gestire(interaction):
+            return
+        campi = {
+            n: v for n, v in (("xp_thread", thread), ("xp_forum", forum), ("xp_chat_vocale", chat_vocale))
+            if v is not None
+        }
+        if campi:
+            await leveling_settings_repo.set_options(interaction.guild.id, **campi)
+        i = (await leveling_settings_repo.get_config(interaction.guild.id, fresco=True)).impostazioni
+        si, no = await testo_per(interaction, "azz_si"), await testo_per(interaction, "azz_no")
+        await _rispondi(
+            interaction, "gua_contesti_ok",
+            thread=si if i.xp_thread else no, forum=si if i.xp_forum else no,
+            chat=si if i.xp_chat_vocale else no,
+        )
+
+    # ---------------------------------------------------------------- LIV-011, 012
+    @comando_di_gruppo(
+        "admin-livelli",
+        nome="vocale",
+        descrizione="XP in vocale: persone minime nel canale e controllo anti-farm.",
+        sottogruppo=_SG,
+    )
+    @app_commands.describe(
+        persone="Persone nel canale (te compreso) perché si prenda XP: da 1 a 10",
+        anti_farm="Sì = niente XP a chi è assordato e conta solo chi non è muto (di base sì)",
+    )
+    async def guadagno_vocale(
+        self,
+        interaction: discord.Interaction,
+        persone: app_commands.Range[int, 1, 10] | None = None,
+        anti_farm: bool | None = None,
+    ) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        if not await _puo_gestire(interaction):
+            return
+        campi = {n: v for n, v in (("voce_min_persone", persone), ("anti_farm", anti_farm)) if v is not None}
+        if campi:
+            await leveling_settings_repo.set_options(interaction.guild.id, **campi)
+            logger.info("XP vocale cambiato: server %s, staff %s, %s.", interaction.guild.id, interaction.user.id, campi)
+        i = (await leveling_settings_repo.get_config(interaction.guild.id, fresco=True)).impostazioni
+        si, no = await testo_per(interaction, "azz_si"), await testo_per(interaction, "azz_no")
+        await _rispondi(
+            interaction, "gua_vocale_ok", persone=i.voce_min_persone, anti=si if i.anti_farm else no,
+            xp=i.voice_xp_per_minute, monete=i.voice_coins_per_minute,
+        )
+
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(GuadagnoCog(bot))

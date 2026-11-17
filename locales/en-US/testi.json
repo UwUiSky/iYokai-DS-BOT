@@ -2911,5 +2911,7 @@
   "gua_prefissi_elenco": "Ignored prefixes ({n}): {elenco}",
   "gua_canali_tutti": "✅ XP in every channel, except the **{n}** in the excluded list.",
   "gua_canali_solo_questi": "✅ XP only in the **{n}** channels of the list (change it with /admin-livelli escludi). People with an excluded role still get no XP.",
-  "gua_canali_solo_vuoto": "⚠️ Set to \"only the channels in the list\", but the list is empty: until you add channels with /admin-livelli escludi, XP is given everywhere."
+  "gua_canali_solo_vuoto": "⚠️ Set to \"only the channels in the list\", but the list is empty: until you add channels with /admin-livelli escludi, XP is given everywhere.",
+  "gua_contesti_ok": "✅ XP in threads: **{thread}** · in forum posts: **{forum}** · in voice channel chat: **{chat}**.",
+  "gua_vocale_ok": "✅ Voice XP: at least **{persone}** people in the channel (you included) · anti-farm: **{anti}** · XP per minute: **{xp}**, coins per minute: **{monete}** (change them with /admin-livelli xp). The AFK channel never gives XP."
 }
