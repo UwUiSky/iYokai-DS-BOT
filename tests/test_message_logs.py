@@ -256,7 +256,7 @@ async def test_modifica_di_un_bot_non_si_registra_e_non_interroga_gli_ignorati(a
 
 
 def test_nomi_degli_allegati_con_accento_grave_e_righe_con_a_capo():
-    assert "`a'b.png`" in logica.testo_allegati(["a`b.png"])
+    assert "`ab.png`" in logica.testo_allegati(["a`b.png"])  # l'accento grave si toglie: non esce dal blocco
     riga = riga_blocco(MessaggioArchiviato(1, 2, "Mario", "uno\ndue", "2026-10-11 10:00:00"))
     assert "uno ⏎ due" in riga and "\n" not in riga
 

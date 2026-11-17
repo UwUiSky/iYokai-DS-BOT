@@ -2,8 +2,8 @@
 core/allegati_sicuri.py
 =======================
 Copia sicura degli allegati nei log dei messaggi (D61, D62, D74, #152, #160). Il tipo si decide dai primi byte
-(`allegati_tipo_logic`): solo le immagini vere (PNG, JPEG, GIF, WEBP) si salvano, cosi' come arrivano, senza
-aprirle (nome casuale, SHA-256, tetto di peso); ogni altro file resta una scheda (nome pulito, tipo, peso,
+(`allegati_tipo_logic`): delle immagini vere (PNG, JPEG, GIF, WEBP) si salva solo la copia PNG rifatta dalla sandbox,
+mai l'originale (nome casuale, SHA-256 dell'originale, tetto di peso); ogni altro file resta una scheda (nome pulito, tipo, peso,
 impronta) o un avviso se e' travestito, eseguibile o sconosciuto: mai un file. Cartella fuori dalla radice del sito. L'anteprima
 e' solo la copia PNG ricodificata nel processo a parte (`immagini_pipeline`); un'immagine sospetta non si
 conserva (resta in quarantena). Conservazione a tempo, `/privacy` dal registro dei dati, link di download
@@ -25,6 +25,8 @@ import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
+
+from urllib.parse import quote
 
 from core import allegati_tipo_logic, immagini_pipeline
 from core.database import db
@@ -136,7 +138,8 @@ async def salva(
 ) -> Copia | None:
     """
     Registra un allegato dopo la decisione unica (D74). Torna None se e' troppo grande. Immagine vera: percorso
-    D62 (pulita -> originale + anteprima PNG ricodificata; sospetta -> solo il registro). Ogni altro file:
+    D62 (pulita -> solo la copia PNG rifatta dalla sandbox, mai l'originale; sospetta o non analizzata -> solo il
+    registro). Ogni altro file:
     mai conservato; `scheda` (nome, tipo vero, peso, SHA-256) o `rifiutata` (travestito, eseguibile, sconosciuto).
     Non solleva per colpa del file.
     """
@@ -146,22 +149,19 @@ async def salva(
     if d.azione != allegati_tipo_logic.IMMAGINE:
         stato = STATO_SCHEDA if d.azione == allegati_tipo_logic.SCHEDA else STATO_RIFIUTATA
         return await _registra(guild_id, channel_id, message_id, user_id, origine, d, stato, None, None)
-    stato, png = STATO_SALVATA, b""
     try:
         esito = await immagini_pipeline.analizza_immagine(dati, nome_file, content_type, guild_id)
     except Exception:  # noqa: BLE001 - un'analisi che cade non ferma il log
         logger.warning("Allegato non analizzato", exc_info=True)
         esito = None
     if esito is not None and esito.verdetto != PULITA:
-        stato = STATO_BLOCCATA
-    elif esito is not None and esito.non_analizzata is None:
-        png = esito.png
-    nome = anteprima = None
-    if stato == STATO_SALVATA:
-        nome = await asyncio.to_thread(_scrivi, dati)
-        if png:
-            anteprima = await asyncio.to_thread(_scrivi, png)
-    return await _registra(guild_id, channel_id, message_id, user_id, origine, d, stato, nome, anteprima)
+        return await _registra(guild_id, channel_id, message_id, user_id, origine, d, STATO_BLOCCATA, None, None)
+    png = esito.png if esito is not None and esito.non_analizzata is None else b""
+    if not png:  # sandbox caduta o immagine non analizzata: senza la copia rifatta non si conserva niente
+        return await _registra(guild_id, channel_id, message_id, user_id, origine, d, STATO_SCHEDA, None, None)
+    # D74: l'originale non tocca mai il disco. L'unico file è il PNG rifatto dalla sandbox.
+    nome = await asyncio.to_thread(_scrivi, png)
+    return await _registra(guild_id, channel_id, message_id, user_id, origine, d, STATO_SALVATA, nome, nome)
 
 
 async def salva_senza_byte(
@@ -195,7 +195,9 @@ async def leggi(copia_id: int, *, anteprima: bool = False) -> tuple[str, bytes] 
         dati = await asyncio.to_thread(lambda: _percorso(nome).read_bytes())
     except OSError:
         return None
-    return (f"anteprima-{r['id']}.png" if anteprima else r["nome_file"]), dati
+    # Il file conservato è sempre un PNG rifatto: il nome scaricato lo dice, qualunque fosse l'estensione di partenza.
+    radice = (r["nome_file"] or "immagine").rsplit(".", 1)[0] or "immagine"
+    return (f"anteprima-{r['id']}.png" if anteprima else f"{radice}.png"), dati
 
 
 async def pulisci() -> int:
@@ -203,10 +205,9 @@ async def pulisci() -> int:
     righe = await db.pool.fetch("DELETE FROM allegati_copie WHERE scade_il < now() RETURNING nome, anteprima")
     tolti = 0
     for r in righe:
-        for n in (r["nome"], r["anteprima"]):
-            if n:
-                await _togli(n)
-                tolti += 1
+        for n in {r["nome"], r["anteprima"]} - {None}:  # di solito lo stesso file: si conta una volta
+            await _togli(n)
+            tolti += 1
     noti = set()
     for r in await db.pool.fetch("SELECT nome, anteprima FROM allegati_copie"):
         noti.update(x for x in (r["nome"], r["anteprima"]) if x)
@@ -247,10 +248,16 @@ def leggi_token(chiave: str, token: str, *, adesso: float | None = None) -> tupl
     return int(parti[0]), parti[1] == "a"
 
 
+def _disposizione(nome: str) -> str:
+    """Un'intestazione HTTP porta solo ASCII: nome di riserva in ASCII, nome vero in `filename*` (RFC 5987)."""
+    ascii_ = "".join(c if c.isascii() and c.isalnum() or c in "._- " else "_" for c in nome) or "file"
+    return f"attachment; filename=\"{ascii_}\"; filename*=UTF-8''{quote(nome, safe='')}"
+
+
 def intestazioni_download(nome_file: str) -> dict[str, str]:
     """Mai in linea: scarica, non indovinare il tipo, niente script (D61)."""
     return {
-        "Content-Disposition": f'attachment; filename="{allegati_tipo_logic.nome_pulito(nome_file)}"',
+        "Content-Disposition": _disposizione(allegati_tipo_logic.nome_pulito(nome_file)),
         "X-Content-Type-Options": "nosniff",
         "Content-Security-Policy": "sandbox",
         "Cache-Control": "no-store",

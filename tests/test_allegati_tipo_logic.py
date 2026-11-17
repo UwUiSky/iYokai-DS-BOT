@@ -170,3 +170,21 @@ def test_modmail_elenco_allegati_senza_link_pericolosi_e_senza_inversioni():
     assert "cdn.discordapp.com/b" not in righe[1] and "setup.exe" in righe[1]
     assert righe[2] == "`agpj.png` (⚠️)"  # inversione di testo: nome pulito e niente link
     assert "cdn.discordapp.com/d" not in righe[3]
+
+
+# ----------------------------- dopo la revisione -----------------------------
+def test_nome_pulito_senza_accenti_gravi_e_markdown():
+    """Il nome finisce tra `accenti gravi` nei log: non deve poter uscire e scrivere un link o una menzione."""
+    nome = t.nome_pulito("a` [premi qui](https://esempio.test) @everyone `.txt")
+    assert "`" not in nome and "](" not in nome and "@everyone" not in nome
+
+
+def test_estensione_nascosta_da_caratteri_invisibili_o_larghi():
+    for nome in ("fattura.e\u200bxe", "fattura.ｅｘｅ", "fattura.EXE ", "fattura.exe."):
+        assert t.decidi(b"ciao", nome).azione == t.RIFIUTA, nome
+
+
+@pytest.mark.parametrize("nome", ["aiuto.chm", "x.scf", "a.jnlp", "a.vhd", "a.img", "a.settingcontent-ms", "a.desktop", "a.webloc"])
+def test_altre_estensioni_pericolose(nome):
+    assert t.decidi(b"ciao", nome).azione == t.RIFIUTA
+    assert t.decidi_senza_byte(nome, None, 10).azione == t.RIFIUTA

@@ -31,7 +31,9 @@ MODELLO_AVVISO = "`{nome}`: file non conservato ({motivi})"
 
 # Bidi, isolamenti e caratteri invisibili che nascondono l'estensione vera.
 _INVERSIONI = frozenset("؜‎‏‪‫‬‭‮⁦⁧⁨⁩")
-_NON_AMMESSI = '"<>|*?:'
+# Tolti anche gli accenti gravi e le parentesi: il nome finisce tra `accenti gravi` nei log e non deve
+# poter uscire dal blocco, scrivere un link mascherato o una menzione.
+_NON_AMMESSI = '"<>|*?:`[]()@'
 
 _ESTENSIONI = {
     "immagine": "png jpg jpeg jfif gif webp bmp tif tiff ico avif heic heif",
@@ -44,7 +46,9 @@ _ESTENSIONI = {
     "web": "html htm xhtml svg svgz",
     "eseguibile": (
         "exe dll scr com pif msi msp mst bat cmd ps1 psm1 vbs vbe js jse wsf wsh hta sh bash py pyw jar apk "
-        "appx msix lnk reg url cpl gadget app command elf deb rpm dmg pkg"
+        "appx msix lnk reg url cpl gadget app command elf deb rpm dmg pkg "
+        "chm hlp scf inf sct wsc msc jnlp vb vbscript ps1xml psd1 diagcab settingcontent-ms appref-ms library-ms "
+        "website webloc desktop action workflow terminal scpt img vhd vhdx"
     ),
 }
 _PER_ESTENSIONE = {e: c for c, elenco in _ESTENSIONI.items() for e in elenco.split()}
@@ -110,8 +114,10 @@ def nome_pulito(nome: str | None) -> str:
 
 def _estensioni(nome: str | None) -> list[str]:
     """Le estensioni del nome, dalla prima all'ultima (`a.png.exe` -> ['png', 'exe'])."""
-    base = (nome or "").replace("\\", "/").split("/")[-1].strip(" .")
-    parti = base.lower().split(".")
+    # Stessa pulizia di ciò che vedrà la persona: lettere larghe (ｅｘｅ) e caratteri invisibili non nascondono l'estensione.
+    base = unicodedata.normalize("NFKC", (nome or "").replace("\\", "/").split("/")[-1])
+    base = "".join(c for c in base if c.isprintable() and unicodedata.category(c) != "Cf").strip(" .")
+    parti = base.casefold().split(".")
     return [p.strip() for p in parti[1:] if p.strip()]
 
 
