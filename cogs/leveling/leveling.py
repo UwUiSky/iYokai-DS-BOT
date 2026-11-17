@@ -155,6 +155,7 @@ from core.leveling_logic import (
     scegli_premi,
     tassa_su_pagamento,
     week_key,
+    MAX_REAZIONI_AL_GIORNO,
     contesto_con_xp,
     ha_prefisso_ignorato,
     xp_con_moltiplicatore,
@@ -1058,6 +1059,60 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
 
     @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent) -> None:
+        """
+        LIV-008/009: XP a chi mette una reazione e a chi la riceve (spento di base). Mai su se stessi,
+        mai da o verso un bot; stesse esclusioni dell'XP dei messaggi; attesa e tetto al giorno nel database.
+        """
+        membro = payload.member
+        if payload.guild_id is None or membro is None or membro.bot:
+            return
+        guild = membro.guild
+        try:
+            if not await db.is_module_active_for_guild(guild.id, MODULE_LEVELING):
+                return
+            config = await self._config(guild.id)
+            imp = config.impostazioni
+            if not (imp.xp_reazione_messa or imp.xp_reazione_ricevuta):
+                return
+            canale = guild.get_channel_or_thread(payload.channel_id)
+            id_canale = id_canali_per_le_regole(canale) if canale is not None else [payload.channel_id]
+            if not contesto_con_xp(imp, tipo_di_canale(canale)):
+                return
+            autore_id = payload.message_author_id
+            if autore_id is None or autore_id == membro.id:
+                return  # autore ignoto o reazione al proprio messaggio
+            autore = guild.get_member(autore_id)
+            if autore is not None and autore.bot:
+                return
+            if imp.xp_reazione_messa:
+                await self._xp_reazione(membro, canale, id_canale, config, "messa", imp.xp_reazione_messa)
+            if imp.xp_reazione_ricevuta and autore is not None:
+                await self._xp_reazione(autore, canale, id_canale, config, "ricevuta", imp.xp_reazione_ricevuta)
+        except Exception:
+            logger.warning("XP della reazione non assegnati (server %s).", guild.id, exc_info=True)
+
+    async def _xp_reazione(
+        self, utente, canale, id_canale: list[int], config: ConfigLivelli, direzione: str, base: int
+    ) -> None:
+        imp = config.impostazioni
+        id_ruoli = [r.id for r in getattr(utente, "roles", [])]
+        if config.e_escluso(id_canale, id_ruoli) or await blacklist_repo.is_user_blacklisted(utente.id):
+            return
+        importo = xp_con_moltiplicatore(base, config.moltiplicatore(id_canale, id_ruoli))
+        risultato = await leveling_repo.add_reaction_xp(
+            utente.guild.id, utente.id, importo, direzione, imp.reazioni_attesa,
+            max_level=imp.max_level, formula=imp.formula, tetto_giorno=MAX_REAZIONI_AL_GIORNO,
+        )
+        if risultato.granted and risultato.leveled_up:
+            await self._annuncia_level_up(
+                utente, utente.guild, canale, risultato.new_level, imp, risultato.previous_level
+            )
+            await self._grant_level_rewards(
+                utente, utente.guild, risultato.new_level, imp.reward_mode, avvisa=True
+            )
+
+    @commands.Cog.listener()
     async def on_app_command_completion(self, interaction: discord.Interaction, command) -> None:
         """LIV-017: un comando slash riuscito dà XP, se il server lo ha acceso (di base no)."""
         utente, guild = interaction.user, interaction.guild
@@ -1605,7 +1660,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         descrizione="Mostra la classifica del server.",
     )
     @app_commands.describe(
-        metric="XP o coin",
+        metric="XP, coin, minuti in vocale o reazioni (questi ultimi sono sempre di sempre)",
         period="Questa settimana, questo mese o di sempre",
         posizioni="Quante posizioni mostrare, da 10 a 100 (a pagine)",
     )
@@ -1613,6 +1668,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         metric=[
             app_commands.Choice(name="XP", value="xp"),
             app_commands.Choice(name="Coin", value="coins"),
+            app_commands.Choice(name="Minuti in vocale", value="voce"),  # LIV-059
+            app_commands.Choice(name="Reazioni messe", value="reazioni"),  # LIV-060
+            app_commands.Choice(name="Reazioni ricevute", value="reazioni_ricevute"),  # LIV-060
         ],
         period=[
             app_commands.Choice(name="Questa settimana", value="week"),
@@ -1630,7 +1688,13 @@ class LevelingCog(CogConGruppi, commands.Cog):
         if await _comando_rifiutato(interaction):
             return
 
-        if metric.value == "xp" and period.value == "alltime":
+        if metric.value == "voce":
+            voci = await leveling_repo.top_minuti_vocale(interaction.guild.id, posizioni)
+        elif metric.value in ("reazioni", "reazioni_ricevute"):
+            voci = await leveling_repo.top_reazioni(
+                interaction.guild.id, metric.value == "reazioni_ricevute", posizioni
+            )
+        elif metric.value == "xp" and period.value == "alltime":
             voci = await leveling_repo.top_xp_alltime(interaction.guild.id, posizioni)
         elif metric.value == "xp":
             voci = await leveling_repo.top_xp_period(
@@ -1653,10 +1717,13 @@ class LevelingCog(CogConGruppi, commands.Cog):
         righe = []
         for posizione, voce in enumerate(voci, start=1):
             prefisso = MEDALS[posizione - 1] if posizione <= len(MEDALS) else f"{posizione}."
-            unita = "XP" if metric.value == "xp" else moneta
+            unita = {"xp": "XP", "voce": "min", "reazioni": "reazioni", "reazioni_ricevute": "reazioni"}.get(
+                metric.value, moneta
+            )
             righe.append(f"{prefisso} <@{voce.user_id}> — **{voce.amount}** {unita}")
 
-        titolo = f"Classifica {metric.name} — {period.name}"
+        solo_sempre = metric.value in ("voce", "reazioni", "reazioni_ricevute")
+        titolo = f"Classifica {metric.name} — {'Di sempre' if solo_sempre else period.name}"
         if posizioni > 10:
             await invia_lista(
                 interaction, titolo, righe, discord.Color.gold(), per_pagina=10

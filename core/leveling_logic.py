@@ -419,6 +419,7 @@ MODI_XP_MESSAGGIO = ("fisso", "parola")  # LIV-006
 MODI_CANALI = ("tutti", "solo_questi")  # LIV-021
 MAX_PREFISSI = 10  # LIV-018
 MAX_LUNGHEZZA_PREFISSO = 8
+MAX_REAZIONI_AL_GIORNO = 50  # LIV-008/009: reazioni che danno XP in un giorno, per persona e per verso
 TETTO_XP_MESSAGGIO = 150  # LIV-006/007: mai di più per un solo messaggio
 
 # Minimo e massimo di ogni numero configurabile. Un solo posto: lo usano
@@ -437,6 +438,9 @@ LIMITI_IMPOSTAZIONI = {
     "xp_per_parola": (1, 10),  # LIV-006
     "parole_max": (1, 100),  # LIV-006: parole contate per messaggio
     "voce_min_persone": (1, 10),  # LIV-011
+    "xp_reazione_messa": (0, 20),  # LIV-008: 0 = spento
+    "xp_reazione_ricevuta": (0, 20),  # LIV-009: 0 = spento
+    "reazioni_attesa": (60, 3600),  # LIV-008/009
     "bonus_impegno": (0, 50),  # LIV-007: 0 = spento
     "impegno_caratteri": (20, 2000),  # LIV-007
     "pay_tax_pct": (0, 50),  # ECO-015: percentuale che va alla cassa del server
@@ -494,6 +498,9 @@ class LevelingSettings:
     xp_thread: bool = True  # LIV-014
     xp_forum: bool = True  # LIV-015
     xp_chat_vocale: bool = True  # LIV-016
+    xp_reazione_messa: int = 0  # LIV-008
+    xp_reazione_ricevuta: int = 0  # LIV-009
+    reazioni_attesa: int = 300  # LIV-008/009: secondi tra due reazioni che danno XP, per persona
     xp_comandi: bool = False  # LIV-017: XP per i comandi slash
     prefissi_ignorati: tuple = ()  # LIV-018
     canali_modo: str = "tutti"  # LIV-021: "solo_questi" = l'elenco dei canali è una lista bianca

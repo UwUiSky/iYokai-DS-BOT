@@ -2913,5 +2913,6 @@
   "gua_canali_solo_questi": "✅ XP only in the **{n}** channels of the list (change it with /admin-livelli escludi). People with an excluded role still get no XP.",
   "gua_canali_solo_vuoto": "⚠️ Set to \"only the channels in the list\", but the list is empty: until you add channels with /admin-livelli escludi, XP is given everywhere.",
   "gua_contesti_ok": "✅ XP in threads: **{thread}** · in forum posts: **{forum}** · in voice channel chat: **{chat}**.",
-  "gua_vocale_ok": "✅ Voice XP: at least **{persone}** people in the channel (you included) · anti-farm: **{anti}** · XP per minute: **{xp}**, coins per minute: **{monete}** (change them with /admin-livelli xp). The AFK channel never gives XP."
+  "gua_vocale_ok": "✅ Voice XP: at least **{persone}** people in the channel (you included) · anti-farm: **{anti}** · XP per minute: **{xp}**, coins per minute: **{monete}** (change them with /admin-livelli xp). The AFK channel never gives XP.",
+  "gua_reazioni_ok": "✅ XP for a reaction added: **{messa}** · for a reaction received: **{ricevuta}** (0 = off) · cooldown per person: **{attesa}** s · at most **{tetto}** a day per direction. Reactions to your own messages and reactions from or to bots do not count."
 }

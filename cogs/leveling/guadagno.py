@@ -20,7 +20,7 @@ from cogs.leveling.azzeramenti import _bloccato, _puo_gestire
 from cogs.leveling.leveling import _comando_rifiutato
 from core.command_groups import SOTTOGRUPPI, CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
 from core.i18n import testo_per
-from core.leveling_logic import MAX_LUNGHEZZA_PREFISSO, MAX_PREFISSI
+from core.leveling_logic import MAX_LUNGHEZZA_PREFISSO, MAX_PREFISSI, MAX_REAZIONI_AL_GIORNO
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 
 logger = logging.getLogger("iyokai.leveling.guadagno")
@@ -283,6 +283,43 @@ class GuadagnoCog(CogConGruppi, commands.Cog):
         await _rispondi(
             interaction, "gua_vocale_ok", persone=i.voce_min_persone, anti=si if i.anti_farm else no,
             xp=i.voice_xp_per_minute, monete=i.voice_coins_per_minute,
+        )
+
+    # ---------------------------------------------------------------- LIV-008, 009
+    @comando_di_gruppo(
+        "admin-livelli",
+        nome="reazioni",
+        descrizione="XP per le reazioni messe e ricevute (di base spento).",
+        sottogruppo=_SG,
+    )
+    @app_commands.describe(
+        messa="XP a chi mette una reazione (0-20, 0 = spento)",
+        ricevuta="XP a chi riceve una reazione sul suo messaggio (0-20, 0 = spento)",
+        attesa="Secondi tra due reazioni che danno XP, per persona (60-3600)",
+    )
+    async def guadagno_reazioni(
+        self,
+        interaction: discord.Interaction,
+        messa: app_commands.Range[int, 0, 20] | None = None,
+        ricevuta: app_commands.Range[int, 0, 20] | None = None,
+        attesa: app_commands.Range[int, 60, 3600] | None = None,
+    ) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        if not await _puo_gestire(interaction):
+            return
+        campi = {
+            n: v for n, v in (
+                ("xp_reazione_messa", messa), ("xp_reazione_ricevuta", ricevuta), ("reazioni_attesa", attesa),
+            ) if v is not None
+        }
+        if campi:
+            await leveling_settings_repo.set_options(interaction.guild.id, **campi)
+            logger.info("XP delle reazioni cambiato: server %s, staff %s, %s.", interaction.guild.id, interaction.user.id, campi)
+        i = (await leveling_settings_repo.get_config(interaction.guild.id, fresco=True)).impostazioni
+        await _rispondi(
+            interaction, "gua_reazioni_ok", messa=i.xp_reazione_messa, ricevuta=i.xp_reazione_ricevuta,
+            attesa=i.reazioni_attesa, tetto=MAX_REAZIONI_AL_GIORNO,
         )
 
 

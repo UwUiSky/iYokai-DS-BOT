@@ -5,10 +5,11 @@
 09/11/2026 · giro r24fun (migrazioni 0579-0580 usate). 09/11/2026 · giro r21gif, ramo `feat/r21gif`, migrazione 0570 (usata). Lavoro PER FILE.
 
 ## In corso
-- r3liv (#124, ramo `feat/r3liv`, wt `/home/user/wt-124`, migrazioni 0660-0679): B3 e B4 fatti (0660, 0661). Prossimo: B5 reazioni (LIV-008, 009, 060), poi classifiche (013, 059), card (051, 054, 055, 056). Script locale: scratchpad `loc.py` (aggiunge testi it/en e descrizioni en-US).
+- r3liv (#124, ramo `feat/r3liv`, wt `/home/user/wt-124`, migrazioni 0660-0679): B3-B5 fatti (0660-0662). Prossimo: B6 (LIV-013 XP testo/vocale separati, 019 no, 051, 054, 055, 056 card; 044, 045, 046 ruoli classifica; 061 top settimana; 031 {xp}; 032, 033 annuncio con embed/immagine). Script locale: scratchpad `loc.py` (aggiunge testi it/en e descrizioni en-US).
 - Smoke da fare (lo lancia l'orchestratore).
 
 ## Fatto
+- r3liv B5: 0662 (`leveling_reazioni`, `voice_minutes_total`, 3 colonne impostazioni), `add_reaction_xp` (attesa + tetto 50/giorno in una scrittura), `on_raw_reaction_add`, `/admin-livelli guadagno reazioni`, classifica `/level leaderboard` con vocale e reazioni (sempre «di sempre»). `azzera server` non azzera minuti/reazioni.
 - r3liv B4: 0661 (`voce_min_persone`, `anti_farm`, `xp_thread/forum/chat_vocale`), `/admin-livelli guadagno vocale|contesti`, `tipo_di_canale`, campo «Come si guadagna XP» in `mostra`; codici già in codice provati in `tests/test_leveling_guadagno_b4.py` (022-025, 028-030, 040, 049, 050, 052, 073, 010).
 - r3liv B3: formule (`FORMULE`, `xp_for_level/level_for_xp(…, formula)`), `xp_messaggio`, `ha_prefisso_ignorato`, `e_escluso` con `canali_modo`, `cambia_formula`/`aggiungi_prefisso` nel repo impostazioni, `on_app_command_completion`, `/admin-livelli guadagno formula|messaggi|comandi|prefissi|canali`, 0660.
 - r2liv B2: `sincronizza_premi`/`sincronizza_server` e `on_member_join` in `leveling.py`, `rendi_annuncio` in `leveling_logic`, `_prova_annuncio`, `level_reward_repo.add_reward` (tetto 3, blocco per server), 0582 (`leveling_copie_attivita`, `avvisa_dm`, `levelup_testo`); B1: copia+azzeramento in un solo CTE con `FOR UPDATE`.

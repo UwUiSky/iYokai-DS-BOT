@@ -338,7 +338,8 @@
   "comandi": "commands",
   "prefissi": "prefixes",
   "contesti": "contexts",
-  "vocale": "voice"
+  "vocale": "voice",
+  "reazioni": "reactions"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1332,7 +1333,8 @@
   "admin-livelli guadagno prefissi": "Other bots' prefixes: messages starting with them give no XP.",
   "admin-livelli guadagno canali": "XP everywhere except excluded channels, or only in the channels of the list.",
   "admin-livelli guadagno contesti": "Whether threads, forum posts and voice channel chat give XP.",
-  "admin-livelli guadagno vocale": "Voice XP: minimum people in the channel and anti-farm check."
+  "admin-livelli guadagno vocale": "Voice XP: minimum people in the channel and anti-farm check.",
+  "admin-livelli guadagno reazioni": "XP for reactions added and received (off by default)."
  },
  "parametri": {},
  "menu": {
