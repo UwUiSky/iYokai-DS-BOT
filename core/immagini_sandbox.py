@@ -7,7 +7,9 @@ scrivibili e al massimo 6 MiB di uscita. Modo A: servizio di sistema `iyokai-san
 Unix (utente senza permessi, niente rete). Modo B (ripiego, «sandbox ridotta»): stesso processo
 figlio avviato dal bot, con `unshare -rn` se il sistema lo permette. Ucciso, scaduto o illeggibile
 = sospetta: lo decide chi chiama.
-Funzioni coperte: SPEC §6 (D62)
+Con `converti` (D74) lo stesso schema vale per PDF, audio, video e testo (`core/conversioni_worker.py`): solo
+servizio di sistema, tetti propri per tipo (`LIMITI_CONVERSIONE`), scrittura solo in una cartella temporanea privata.
+Funzioni coperte: SPEC §6 (D62), §8.16 (D74)
 """
 
 from __future__ import annotations
@@ -22,6 +24,7 @@ import shutil
 import signal
 import struct
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -34,6 +37,8 @@ VARIABILE_SOCKET = "IYOKAI_SANDBOX_SOCKET"
 MAX_USCITA = 6 * 1024 * 1024
 NOME = re.compile(r"^[0-9a-f]{32}$")
 WORKER = Path(__file__).resolve().with_name("immagini_worker.py")
+WORKER_CONVERSIONI = Path(__file__).resolve().with_name("conversioni_worker.py")
+MAX_USCITA_CONVERSIONE = 10 * 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -42,6 +47,17 @@ class Limiti:
     cpu: int = 4
     reale: float = 8.0
     file_aperti: int = 32
+    scrittura: int = 0  # byte che un file puo' avere: zero per le immagini, un tetto per le conversioni (file temporanei)
+    uscita: int = MAX_USCITA
+
+
+# Conversioni (D74): stessi criteri delle immagini, con piu' tempo e memoria per ffmpeg. Il tempo vero e' il tetto che conta.
+LIMITI_CONVERSIONE = {
+    "testo": Limiti(memoria=256 * 1024 * 1024, cpu=5, reale=5.0, scrittura=0, uscita=MAX_USCITA_CONVERSIONE),
+    "pdf": Limiti(memoria=768 * 1024 * 1024, cpu=20, reale=25.0, scrittura=0, uscita=MAX_USCITA_CONVERSIONE),
+    "audio": Limiti(memoria=1024 * 1024 * 1024, cpu=60, reale=45.0, file_aperti=64, scrittura=12 * 1024 * 1024, uscita=MAX_USCITA_CONVERSIONE),
+    "video": Limiti(memoria=1536 * 1024 * 1024, cpu=240, reale=120.0, file_aperti=64, scrittura=12 * 1024 * 1024, uscita=MAX_USCITA_CONVERSIONE),
+}
 
 
 @dataclass
@@ -63,7 +79,7 @@ def _imposta_limiti(limiti: Limiti):
         signal.signal(signal.SIGXFSZ, signal.SIG_IGN)
         resource.setrlimit(resource.RLIMIT_AS, (limiti.memoria, limiti.memoria))
         resource.setrlimit(resource.RLIMIT_CPU, (limiti.cpu, limiti.cpu + 1))
-        resource.setrlimit(resource.RLIMIT_FSIZE, (0, 0))
+        resource.setrlimit(resource.RLIMIT_FSIZE, (limiti.scrittura, limiti.scrittura))
         resource.setrlimit(resource.RLIMIT_NOFILE, (limiti.file_aperti, limiti.file_aperti))
         resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
         os.setsid()
@@ -94,6 +110,10 @@ def comando_worker(nome: str) -> list[str]:
     return [sys.executable, "-I", "-B", str(WORKER), nome]
 
 
+def comando_conversione(tipo: str, nome: str) -> list[str]:
+    return [sys.executable, "-I", "-B", str(WORKER_CONVERSIONI), tipo, nome]
+
+
 def leggi_uscita(grezzo: bytes) -> tuple[dict, bytes]:
     """Scompone `lunghezza + JSON + lunghezza + PNG`. ValueError se non torna."""
     try:
@@ -109,15 +129,35 @@ def leggi_uscita(grezzo: bytes) -> tuple[dict, bytes]:
 
 
 async def esegui_locale(
-    nome: str, limiti: Limiti | None = None, comando: list[str] | None = None, isola_rete: bool = True
+    nome: str, limiti: Limiti | None = None, comando: list[str] | None = None, isola_rete: bool = True,
+    tipo: str | None = None,
 ) -> RisultatoSandbox:
-    """Avvia il figlio con i limiti e ne legge l'esito. `comando` serve solo ai test."""
-    limiti = limiti or Limiti()
+    """
+    Avvia il figlio con i limiti e ne legge l'esito. `comando` serve solo ai test. Con `tipo` (pdf, audio, video,
+    testo) parte il processo delle conversioni, con una cartella temporanea privata che il padre toglie sempre.
+    """
+    if tipo is not None and tipo not in LIMITI_CONVERSIONE:
+        raise ValueError("tipo di conversione non valido")
+    limiti = limiti or (LIMITI_CONVERSIONE[tipo] if tipo else Limiti())
     if not NOME.fullmatch(nome):
         raise ValueError("nome di quarantena non valido")
-    argv = comando or comando_worker(nome)
+    argv = comando or (comando_conversione(tipo, nome) if tipo else comando_worker(nome))
     if isola_rete and comando is None and await _unshare_funziona():
         argv = ["unshare", "-rn", *argv]
+    ambiente = {"PATH": os.environ.get("PATH", ""), "IYOKAI_QUARANTENA_DIR": os.environ.get("IYOKAI_QUARANTENA_DIR", "")}
+    temporanea = tempfile.mkdtemp(prefix="iyokai-conv-") if tipo else None
+    if temporanea:
+        os.chmod(temporanea, 0o700)
+        ambiente["IYOKAI_CONV_TMP"] = temporanea
+        ambiente["IYOKAI_CONV_SECONDI"] = str(max(1.0, limiti.reale - 3))
+    try:
+        return await _avvia_e_leggi(argv, limiti, ambiente)
+    finally:
+        if temporanea:
+            shutil.rmtree(temporanea, ignore_errors=True)
+
+
+async def _avvia_e_leggi(argv: list[str], limiti: Limiti, ambiente: dict) -> RisultatoSandbox:
     try:
         proc = await asyncio.create_subprocess_exec(
             *argv,
@@ -125,7 +165,7 @@ async def esegui_locale(
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.DEVNULL,
             preexec_fn=_imposta_limiti(limiti),
-            env={"PATH": os.environ.get("PATH", ""), "IYOKAI_QUARANTENA_DIR": os.environ.get("IYOKAI_QUARANTENA_DIR", "")},
+            env=ambiente,
         )
     except OSError:
         logger.exception("Sandbox: processo non avviabile")
@@ -138,7 +178,7 @@ async def esegui_locale(
             if not blocco:
                 return b"".join(pezzi)
             totale += len(blocco)
-            if totale > MAX_USCITA:
+            if totale > limiti.uscita:
                 return None
             pezzi.append(blocco)
 
@@ -179,7 +219,7 @@ def socket_servizio() -> str:
     return os.environ.get(VARIABILE_SOCKET) or SOCKET_SERVIZIO
 
 
-async def _chiedi_al_servizio(nome: str, limiti: Limiti) -> RisultatoSandbox | None:
+async def _chiedi_al_servizio(nome: str, limiti: Limiti, tipo: str | None = None) -> RisultatoSandbox | None:
     """Modo A: il servizio di sistema. None solo se non c'e' o non accetta il lavoro (si passa al modo B)."""
     percorso = socket_servizio()
     if not os.path.exists(percorso):
@@ -189,7 +229,8 @@ async def _chiedi_al_servizio(nome: str, limiti: Limiti) -> RisultatoSandbox | N
     except (OSError, asyncio.TimeoutError):
         return None
     try:
-        scrittore.write(nome.encode("ascii") + b"\n")
+        richiesta = f"conv {tipo} {nome}" if tipo else nome
+        scrittore.write(richiesta.encode("ascii") + b"\n")
         await scrittore.drain()
     except OSError:
         scrittore.close()
@@ -197,14 +238,14 @@ async def _chiedi_al_servizio(nome: str, limiti: Limiti) -> RisultatoSandbox | N
     # Da qui il servizio ha il lavoro: se tace o risponde male l'esito e' sospetto. Rifare la stessa immagine
     # nella sandbox ridotta darebbe all'attacco un secondo tentativo con meno isolamento.
     try:
-        grezzo = await asyncio.wait_for(lettore.read(MAX_USCITA + 65536), limiti.reale + 5.0)
+        grezzo = await asyncio.wait_for(lettore.read(limiti.uscita + 65536), limiti.reale + 5.0)
         # lettore.read puo' dare meno del totale: si legge fino alla chiusura
         while True:
-            altro = await asyncio.wait_for(lettore.read(MAX_USCITA + 65536), 2.0)
+            altro = await asyncio.wait_for(lettore.read(limiti.uscita + 65536), 2.0)
             if not altro:
                 break
             grezzo += altro
-            if len(grezzo) > MAX_USCITA + 65536:
+            if len(grezzo) > limiti.uscita + 65536:
                 return RisultatoSandbox("uscita_enorme", modo=MODO_SERVIZIO)
         info, png = leggi_uscita(grezzo)
         return RisultatoSandbox(str(info.get("stato", "errore")), info.get("info") or {}, png, MODO_SERVIZIO)
@@ -229,3 +270,16 @@ async def analizza(nome: str, limiti: Limiti | None = None) -> RisultatoSandbox:
     risultato = await esegui_locale(nome, limiti)
     risultato.modo = MODO_RIDOTTA
     return risultato
+
+
+async def converti(tipo: str, nome: str, limiti: Limiti | None = None) -> RisultatoSandbox:
+    """
+    Conversione sicura di un file in quarantena (D74). Solo il servizio di sistema: senza servizio non c'e' una
+    «sandbox ridotta» per i parser di PDF e video, e il risultato e' `non_disponibile` (resta la scheda).
+    """
+    if tipo not in LIMITI_CONVERSIONE:
+        raise ValueError("tipo di conversione non valido")
+    if not NOME.fullmatch(nome):
+        raise ValueError("nome di quarantena non valido")
+    risultato = await _chiedi_al_servizio(nome, limiti or LIMITI_CONVERSIONE[tipo], tipo)
+    return risultato if risultato is not None else RisultatoSandbox("non_disponibile")
