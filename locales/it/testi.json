@@ -2885,5 +2885,15 @@
   "music_stato_ultimo_errore": "(ultimo errore: {errore})",
   "music_stato_chiavi_su_lavalink": "**{fonte}** — le chiavi stanno su Lavalink (il bot non le vede), si prova lo stesso",
   "music_nessun_nodo": "Nessun nodo Lavalink è collegato in questo momento per questo music bot. Riprova tra poco; se continua, avvisa lo staff del bot.",
-  "music_nessun_risultato": "Nessun risultato trovato per questa ricerca."
+  "music_nessun_risultato": "Nessun risultato trovato per questa ricerca.",
+  "player_mescola_fisso_acceso": "Mescola fisso acceso: ogni brano nuovo entra in un posto a caso.",
+  "player_mescola_fisso_spento": "Mescola fisso spento: i brani nuovi tornano in fondo alla coda.",
+  "player_mescola_fisso_acceso_riga": "Mescola fisso acceso: i brani nuovi entrano a caso.",
+  "player_coda_mescolata_resta": "Coda mescolata. Resta mescolata: ogni brano nuovo entra a caso.",
+  "player_coda_cerca_nessun_risultato": "Nessun brano in coda contiene questo testo.",
+  "player_coda_cerca_titolo": "Brani trovati in coda",
+  "player_coda_serve_gestisci_server": "Questo comando richiede il permesso «Gestisci server».",
+  "player_coda_salta_serve_un_opzione": "Indica almeno un'opzione: da, a oppure utente.",
+  "player_coda_tolti": "Tolti dalla coda: {quanti}.",
+  "player_coda_presenti_non_leggibili": "Non riesco a leggere chi è nel canale vocale: non ho tolto niente dalla coda. Riprova tra poco."
 }
