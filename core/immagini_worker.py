@@ -6,7 +6,8 @@ stdout (lunghezza + JSON, poi lunghezza + PNG ricodificato). Parte con `python3 
 limiti di memoria, tempo e file messi da `core/immagini_sandbox.py`. Non parla con Discord né col
 database. Qualunque errore del decoder finisce in un esito «errore»: chi legge lo tratta da sospetto.
 Senza Pillow l'esito e' «non_disponibile» (manca la sandbox, non e' colpa dell'immagine).
-Funzioni coperte: SPEC §6 (D62)
+Apre PNG, JPEG, GIF, WEBP, BMP, TIFF, ICO e AVIF (D74): sempre un solo fotogramma o pagina, uscita PNG dai soli pixel.
+Funzioni coperte: SPEC §6 (D62), §8.16 (D74)
 """
 
 from __future__ import annotations

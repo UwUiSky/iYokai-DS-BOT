@@ -3,10 +3,10 @@ core/immagini_byte_logic.py
 ===========================
 Controlli sui byte di un allegato immagine, senza mai decodificarlo (D61, D62): tipo vero dai
 primi byte contro estensione e content-type, dimensioni dichiarate nell'intestazione, struttura
-(blocchi PNG e CRC, segmenti JPEG, blocchi GIF, misura RIFF di WEBP) e dati in coda dopo la fine
+(blocchi PNG e CRC, segmenti JPEG, blocchi GIF, misura RIFF di WEBP, pagine TIFF, voci ICO, intestazione BMP, scatola `ispe` di AVIF) e dati in coda dopo la fine
 dell'immagine (file «poliglotti»). Logica pura: niente Discord, niente Pillow, niente database.
 Le «foto in movimento» (JPEG + video MP4 in coda) non sono un falso positivo.
-Funzioni coperte: SPEC §6 (D62)
+Funzioni coperte: SPEC §6 (D62), §8.16 (D74: BMP, TIFF, ICO, AVIF)
 """
 
 from __future__ import annotations

@@ -1630,7 +1630,16 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - Invia un video o un archivio oltre 8 MiB e cancellalo: scheda senza impronta (non si scarica). Un archivio con nome `.exe` oltre 8 MiB: avviso.
 - Backup mirror e copia chat: una foto vera arriva come PNG ricodificato; un PDF, uno ZIP o un `.exe` NON arrivano come file: nel testo c'è la scheda o l'avviso, nessun link al file originale. Dopo «ricarica chat» lo stesso.
 - Ticket: risposta staff con foto e PDF proposta alla chiusura: nel canale dei log la foto è un PNG nuovo, il PDF non c'è.
-- ModMail: un utente scrive in DM con un `.exe` allegato: nell'inoltro staff il nome compare con «⚠️» e senza link; una foto vera ha il link come prima.
+- ModMail: un utente scrive in DM con un `.exe` allegato: nell'inoltro staff il nome compare con «⚠️» e senza link; una foto vera arriva come PNG rifatto (dalla parte 2a, senza link).
+
+## giro r160 parte 2a — formati in più e link all'originale tolti (D74, #160)
+- Invia una foto `.bmp`, una `.tiff`, una `.ico` e una `.avif` vere in un canale con il log dei messaggi acceso e cancellale: nel log ci sono PNG rifatti (nome `.png`), mai l'originale. Un `.heic` vero: solo scheda.
+- Una `.tiff` con centinaia di pagine e un `.ico` rotto: nessun errore del bot, nessuna copia (scheda o avviso).
+- ModMail: scrivi in DM con una foto e un PDF: nell'inoltro staff la foto è un PNG nuovo (immagine dell'embed), il PDF è una riga di scheda, nessun link `cdn.discordapp.com`.
+- Starboard: un messaggio con foto e PDF che raggiunge la soglia: in bacheca la foto è un PNG nuovo, il PDF una riga di scheda.
+- Cita un messaggio con foto incollando il suo link: nella risposta l'immagine è la copia rifatta.
+- Telefono (canali per adulti): un allegato esce come riga «📎 nome (tipo, peso)», mai come link.
+- Ricarica una chat salvata dopo che i link sono scaduti: gli allegati compaiono come schede, nessun link.
 
 ## Voce di Yokai nei ticket (#142, passo 2)
 - Con motore vocale installato e `/admin-ai voce imposta attiva:sì`: apri un ticket da un pannello. Sotto il benvenuto arriva un vero vocale (forma d'onda) con il tuo nome, tono scherzoso anche se il server ha `piccante`, e sotto i bottoni «Trascrivi» e «Nella mia lingua».
