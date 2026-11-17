@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-17 14:46 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-17 19:30 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 851 comandi in 50 categorie.**
+**Totale: 861 comandi in 50 categorie.**
 
 ## Admin: AI
 
@@ -260,8 +260,17 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-17 14:
 - **`/admin-livelli azzera ripristina`** — Rimette gli XP di una copia di sicurezza (valida 30 giorni).
 - **`/admin-livelli azzera server`** — Azzera gli XP di tutto il server (prima fa una copia di sicurezza).
 - **`/admin-livelli card`** — Mostra o nascondi in questo server gli sfondi con immagine di card e profili.
+- **`/admin-livelli classifica-ruoli`** — Un ruolo al primo della classifica XP, ai primi 3 o ai primi 10 (aggiornato ogni ora).
 - **`/admin-livelli diagnosi`** — Spiega perché un membro non prende XP in un canale.
 - **`/admin-livelli escludi`** — Un canale, una categoria o un ruolo non dà XP (rifallo per toglierlo).
+- **`/admin-livelli guadagno canali`** — Dà XP in tutti i canali tranne gli esclusi, oppure solo in quelli dell'elenco.
+- **`/admin-livelli guadagno comandi`** — Accende o spegne l'XP per l'uso dei comandi slash (di base spento).
+- **`/admin-livelli guadagno contesti`** — Se thread, post dei forum e chat dei canali vocali danno XP.
+- **`/admin-livelli guadagno formula`** — Sceglie la curva dei livelli e ricalcola i livelli di tutti.
+- **`/admin-livelli guadagno messaggi`** — XP per messaggio: fisso o a parola, più il bonus per messaggi lunghi o con immagini.
+- **`/admin-livelli guadagno prefissi`** — Prefissi di altri bot: i messaggi che iniziano così non danno XP.
+- **`/admin-livelli guadagno reazioni`** — XP per le reazioni messe e ricevute (di base spento).
+- **`/admin-livelli guadagno vocale`** — XP in vocale: persone minime nel canale e controllo anti-farm.
 - **`/admin-livelli membro`** — Modifica XP e livello di un membro.
 - **`/admin-livelli moltiplicatore`** — XP moltiplicati in un canale o per un ruolo (fattore 1 = toglie la regola).
 - **`/admin-livelli mostra`** — Mostra le impostazioni dei livelli di questo server.
@@ -504,6 +513,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-17 14:
 
 - **`/Apri ticket`** — Menu «App» (tasto destro)
 - **`/Orari nel mio fuso`** — Menu «App» (tasto destro)
+- **`/Richiedi copia sicura`** — Menu «App» (tasto destro)
 - **`/Riestrai giveaway`** — Menu «App» (tasto destro)
 - **`/Salva citazione`** — Menu «App» (tasto destro)
 - **`/Scheda moderazione`** — Menu «App» (tasto destro)

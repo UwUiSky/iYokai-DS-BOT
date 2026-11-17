@@ -1121,4 +1121,16 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
 - **Ruoli ricordati (RUO-040, 041):** elenco ammessi (se c'è, solo questi) e esclusi (mai questi), 20 per elenco; il ruolo di mute si ridà sempre e non si può escludere.
 - **Ruoli vocali (RUO-044):** 10 per server (nel catalogo 1 gratis e 10 premium: qui un tetto unico). Dopo un riavvio il bot rimette a posto al massimo 200 ruoli, 0,6 secondi tra uno e l'altro.
 - **Menu temporaneo (RUO-070):** la scadenza sta nel menu e nello scheduler; se la scadenza viene spostata, l'azione vecchia si ignora.
-- **Calcoli (RUO-022):** solo somme e sottrazioni di interi fino a 12 cifre, al massimo 10 operazioni, mai `eval`.
+- **Calcoli (RUO-022):** solo somme e sottrazioni di interi fino a 12 cifre, al massimo 10 operazioni, mai `eval`.,
+
+## D80 — Livelli (#124) giro r3liv: guadagno di XP, reazioni, card (17/11/2026, opzione prudente, da confermare dall'owner)
+
+- Formule dei livelli (LIV-004): «classica» (quella di sempre, di base), «lineare» 25L²+75L, «esponenziale» 500·(1,2^L−1), «costante» 200 XP a livello. Il cambio ricalcola il livello salvato di tutti dall'XP totale, con lo stesso blocco degli azzeramenti (`blocca_azzeramento`).
+- XP a parola (LIV-006): parole da 3 lettere in su, tetto 100 XP per messaggio (come il massimo di «testo»); bonus impegno (LIV-007) fisso, una volta sola; mai oltre 150 XP per messaggio. L'attesa tra due guadagni resta quella del server.
+- XP dei comandi slash (LIV-017): spento di base; usa la STESSA attesa e lo stesso contatore dei messaggi (un comando e un messaggio insieme pagano una volta sola).
+- Prefissi di altri bot (LIV-018): al massimo 10, lunghi al massimo 8, niente spazi né caratteri invisibili; una parola di una lettera sola o fatta di cifre è rifiutata (bloccherebbe quasi tutto).
+- Elenco bianco (LIV-021): usa lo stesso elenco dei canali esclusi con `canali_modo=solo_questi`; elenco vuoto = nessun blocco (prudente: non spegne l'XP del server per errore). Un ruolo escluso vale sempre.
+- Anti-farm spento (LIV-012): salta solo «assordato» e il conteggio dei muti; il canale AFK resta escluso e restano i tetti di minuti di sempre. Soglia di persone (LIV-011) da 1 a 10, di base 2.
+- Reazioni (LIV-008/009): spente di base; attesa per persona e per verso (60-3600 s, di base 300) e tetto di 50 al giorno per verso, nella stessa scrittura del database; mai sul proprio messaggio, mai da o verso un bot; l'autore deve essere noto. La classifica per reazioni conta solo quelle che hanno dato XP.
+- Classifiche vocale e reazioni (LIV-059/060): solo «di sempre». `azzera server` azzera XP e livelli, non minuti e reazioni.
+- Card (LIV-051/054/055/056): colore del testo/anello e velo (0-100) sono per utente; sfondo e colore del server valgono per chi non ha il suo; «auto» = colore medio dell'icona (letto nel processo delle immagini, in memoria per icona).

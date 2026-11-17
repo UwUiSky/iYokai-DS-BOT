@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-17 14:46 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-17 19:30 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 851 commands in 50 categories.**
+**Total: 861 commands in 50 categories.**
 
 ## Admin: AI
 
@@ -259,9 +259,18 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-17 14:4
 - **`/admin-levels card`** — Shows or hides image backgrounds of cards and profiles in this server.
 - **`/admin-levels diagnosis`** — Explains why a member gets no XP in a channel.
 - **`/admin-levels exclude`** — A channel, category or role gives no XP (repeat to undo).
+- **`/admin-levels gain channels`** — XP everywhere except excluded channels, or only in the channels of the list.
+- **`/admin-levels gain commands`** — Turns XP for using slash commands on or off (off by default).
+- **`/admin-levels gain contexts`** — Whether threads, forum posts and voice channel chat give XP.
+- **`/admin-levels gain formula`** — Picks the level curve and recalculates everyone's levels.
+- **`/admin-levels gain messages`** — XP per message: fixed or per word, plus a bonus for long messages or images.
+- **`/admin-levels gain prefixes`** — Other bots' prefixes: messages starting with them give no XP.
+- **`/admin-levels gain reactions`** — XP for reactions added and received (off by default).
+- **`/admin-levels gain voice`** — Voice XP: minimum people in the channel and anti-farm check.
 - **`/admin-levels member`** — Edits a member's XP and level.
 - **`/admin-levels multiplier`** — XP multiplied in a channel or for a role (factor 1 = removes the rule).
 - **`/admin-levels progress`** — Turns missions, streaks, achievements and pass on or off; sets the server goal.
+- **`/admin-levels ranking-roles`** — A role for the XP leaderboard's first place, top 3 or top 10 (updated hourly).
 - **`/admin-levels reset auto`** — Resets whoever leaves or is banned; locks XP and resets to the owner.
 - **`/admin-levels reset restore`** — Puts back the XP of a backup (valid 30 days).
 - **`/admin-levels reset server`** — Resets the XP of the whole server (makes a backup first).
@@ -508,6 +517,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-17 14:4
 - **`/Open ticket`** — “Apps” menu (right click)
 - **`/Redraw giveaway`** — “Apps” menu (right click)
 - **`/Report message`** — “Apps” menu (right click)
+- **`/Request safe copy`** — “Apps” menu (right click)
 - **`/Save quote`** — “Apps” menu (right click)
 - **`/Times in my time zone`** — “Apps” menu (right click)
 
@@ -755,7 +765,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-17 14:4
 - **`/mod-channels lock`** — Blocks the ability to write in a channel.
 - **`/mod-channels lockdown enable`** — Lock all channels, invites and joins of the server.
 - **`/mod-channels lockdown remove`** — Reopen the server as it was before the lockdown.
-- **`/mod-channels reazioni`** — Removes reactions from the latest messages of a channel, without deleting them.
+- **`/mod-channels reactions`** — Removes reactions from the latest messages of a channel, without deleting them.
 - **`/mod-channels slowmode`** — Sets slowmode on a channel or category. With no values: lists channels with slowmode.
 - **`/mod-channels thread`** — Create, archive or delete a thread.
 - **`/mod-channels unlock`** — Unblocks the ability to write in a channel.

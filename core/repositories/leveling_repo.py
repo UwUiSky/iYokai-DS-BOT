@@ -335,6 +335,7 @@ class LevelingRepository:
         amount: int = TEXT_XP_AMOUNT,
         cooldown_seconds: int = TEXT_XP_COOLDOWN_SECONDS,
         max_level: int = 0,
+        formula: str = "classica",
     ) -> TextXpResult:
         """
         Assegna `amount` XP testuale se l'attesa (`cooldown_seconds`, per
@@ -369,11 +370,11 @@ class LevelingRepository:
                 if amount <= 0 or not can_earn_text_xp(last_xp_at, now, cooldown_seconds):
                     return TextXpResult(
                         granted=False, new_xp_total=xp_before, leveled_up=False,
-                        new_level=level_for_xp(xp_before, max_level),
+                        new_level=level_for_xp(xp_before, max_level, formula),
                     )
 
                 xp_after = xp_before + amount
-                leveled_up, new_level = did_level_up(xp_before, xp_after, max_level)
+                leveled_up, new_level = did_level_up(xp_before, xp_after, max_level, formula)
 
                 await conn.execute(
                     """
@@ -392,7 +393,7 @@ class LevelingRepository:
 
                 esito = TextXpResult(
                     granted=True, new_xp_total=xp_after, leveled_up=leveled_up,
-                    new_level=new_level, previous_level=level_for_xp(xp_before, max_level),
+                    new_level=new_level, previous_level=level_for_xp(xp_before, max_level, formula),
                 )
         # §23.17: un messaggio che ha dato XP conta per le missioni (se il server le ha accese).
         from core import progressi_service
@@ -424,6 +425,7 @@ class LevelingRepository:
         impostazioni = impostazioni or LevelingSettings()
         moltiplicatori = moltiplicatori or {}
         tetto = impostazioni.max_level
+        formula = impostazioni.formula
         if not presenze:
             return {}
         # Giorno in UTC, non nell'ora locale della macchina: il tetto
@@ -471,8 +473,8 @@ class LevelingRepository:
                     if not idoneo:
                         risultati[user_id] = None
                         scritture.append(
-                            (guild_id, user_id, xp_before, level_for_xp(xp_before, tetto), 0,
-                             canale, stored_consecutive, minutes_today)
+                            (guild_id, user_id, xp_before, level_for_xp(xp_before, tetto, formula), 0,
+                             canale, stored_consecutive, minutes_today, 0)
                         )
                         continue
 
@@ -487,17 +489,18 @@ class LevelingRepository:
                             coins_granted=impostazioni.voice_coins_per_minute,
                         )
                     xp_after = xp_before + result.xp_granted
-                    leveled_up, new_level = did_level_up(xp_before, xp_after, tetto)
+                    leveled_up, new_level = did_level_up(xp_before, xp_after, tetto, formula)
                     scritture.append(
                         (guild_id, user_id, xp_after, new_level, result.coins_granted,
-                         canale, result.new_consecutive_minutes, result.new_minutes_today)
+                         canale, result.new_consecutive_minutes, result.new_minutes_today,
+                         1 if result.xp_granted > 0 else 0)  # LIV-059: minuti che contano
                     )
                     risultati[user_id] = VoiceMinuteGrant(
                         xp_granted=result.xp_granted,
                         coins_granted=result.coins_granted,
                         leveled_up=leveled_up,
                         new_level=new_level,
-                        previous_level=level_for_xp(xp_before, tetto),
+                        previous_level=level_for_xp(xp_before, tetto, formula),
                     )
 
                 await conn.executemany(
@@ -505,8 +508,8 @@ class LevelingRepository:
                     INSERT INTO leveling_totals
                         (guild_id, user_id, xp_total, level, coins_total,
                          voice_channel_id, voice_consecutive_minutes,
-                         voice_minutes_today, voice_activity_date)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::date)
+                         voice_minutes_today, voice_minutes_total, voice_activity_date)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::date)
                     ON CONFLICT (guild_id, user_id) DO UPDATE
                         SET xp_total = EXCLUDED.xp_total,
                             level = EXCLUDED.level,
@@ -514,6 +517,8 @@ class LevelingRepository:
                             voice_channel_id = EXCLUDED.voice_channel_id,
                             voice_consecutive_minutes = EXCLUDED.voice_consecutive_minutes,
                             voice_minutes_today = EXCLUDED.voice_minutes_today,
+                            voice_minutes_total = leveling_totals.voice_minutes_total
+                                + EXCLUDED.voice_minutes_total,
                             voice_activity_date = EXCLUDED.voice_activity_date
                     """,
                     [riga + (today,) for riga in scritture],
@@ -546,7 +551,8 @@ class LevelingRepository:
         return valore
 
     async def modifica_xp(
-        self, guild_id: int, user_id: int, azione: str, valore: int, max_level: int = 0
+        self, guild_id: int, user_id: int, azione: str, valore: int, max_level: int = 0,
+        formula: str | None = None,
     ) -> ModificaXp:
         """
         Modifica fatta dallo staff (LIV-064..067): una lettura bloccante e una
@@ -554,9 +560,13 @@ class LevelingRepository:
         """
         async with self._pool.acquire() as conn:
             async with conn.transaction():
+                if formula is None:  # LIV-004: chi non la passa (es. i giochi con AI) usa quella del server
+                    formula = await conn.fetchval(
+                        "SELECT formula FROM leveling_settings WHERE guild_id = $1", guild_id
+                    ) or "classica"
                 xp_prima = await self._riga_bloccata(conn, guild_id, user_id, "xp_total")
-                xp_dopo = xp_dopo_modifica(xp_prima, azione, valore, max_level)
-                livello_dopo = level_for_xp(xp_dopo, max_level)
+                xp_dopo = xp_dopo_modifica(xp_prima, azione, valore, max_level, formula)
+                livello_dopo = level_for_xp(xp_dopo, max_level, formula)
                 await conn.execute(
                     "UPDATE leveling_totals SET xp_total = $3, level = $4 "
                     "WHERE guild_id = $1 AND user_id = $2",
@@ -565,7 +575,7 @@ class LevelingRepository:
                     xp_dopo,
                     livello_dopo,
                 )
-        return ModificaXp(xp_prima, level_for_xp(xp_prima, max_level), xp_dopo, livello_dopo)
+        return ModificaXp(xp_prima, level_for_xp(xp_prima, max_level, formula), xp_dopo, livello_dopo)
 
     async def modifica_monete(
         self, guild_id: int, user_id: int, azione: str, valore: int
@@ -686,6 +696,50 @@ class LevelingRepository:
             MAX_LEVEL_UP_REGISTRATI,
         )
         return [(r["user_id"], r["livello"], r["created_at"]) for r in righe]
+
+    async def get_card_extra(self, user_id: int) -> tuple[str | None, int | None]:
+        """LIV-051/054: (colore del testo e dei bordi, velo 0-100) scelti per la propria card; None se non scelti."""
+        riga = await self._pool.fetchrow(
+            "SELECT colore_testo, velo FROM rank_card_prefs WHERE user_id = $1", user_id
+        )
+        return (riga["colore_testo"], riga["velo"]) if riga else (None, None)
+
+    async def set_card_extra(
+        self, user_id: int, colore_testo: str | None = None, velo: int | None = None
+    ) -> None:
+        """Cambia solo ciò che viene dato (colore '#RRGGBB' maiuscolo; velo da 0 a 100)."""
+        if colore_testo is not None and colore_valido(colore_testo) != colore_testo:
+            raise ValueError("Il colore deve essere nel formato #RRGGBB.")
+        if velo is not None and not 0 <= velo <= 100:
+            raise ValueError("Il velo va da 0 a 100.")
+        await self._pool.execute(
+            """
+            INSERT INTO rank_card_prefs (user_id, colore_testo, velo) VALUES ($1, $2, $3)
+            ON CONFLICT (user_id) DO UPDATE
+                SET colore_testo = COALESCE($2, rank_card_prefs.colore_testo),
+                    velo = COALESCE($3, rank_card_prefs.velo)
+            """,
+            user_id, colore_testo, velo,
+        )
+
+    async def get_sfondo_server(self, guild_id: int) -> bytes | None:
+        """LIV-055: lo sfondo predefinito del server (JPEG già pronto), se c'è."""
+        return await self._pool.fetchval(
+            "SELECT immagine FROM guild_card_sfondi WHERE guild_id = $1", guild_id
+        )
+
+    async def set_sfondo_server(self, guild_id: int, immagine: bytes | None) -> None:
+        """Salva lo sfondo preparato da prepara_sfondo; None lo toglie."""
+        if immagine is None:
+            await self._pool.execute("DELETE FROM guild_card_sfondi WHERE guild_id = $1", guild_id)
+            return
+        await self._pool.execute(
+            """
+            INSERT INTO guild_card_sfondi (guild_id, immagine) VALUES ($1, $2)
+            ON CONFLICT (guild_id) DO UPDATE SET immagine = $2, aggiornato_at = now()
+            """,
+            guild_id, immagine,
+        )
 
     async def get_sfondo_card(self, user_id: int) -> bytes | None:
         """L'immagine di sfondo (JPEG già pronto) di rank card e profilo, se c'è."""
@@ -948,6 +1002,88 @@ class LevelingRepository:
 
         await progressi_service.dopo_riscossione(guild_id, user_id, colonna)
         return True
+
+    # LIV-008/009: colonne fisse per verso (mai testo dell'utente nell'SQL).
+    _COLONNE_REAZIONI = {
+        "messa": ("messe", "ultima_messa", "messe_oggi", "giorno_messa"),
+        "ricevuta": ("ricevute", "ultima_ricevuta", "ricevute_oggi", "giorno_ricevuta"),
+    }
+
+    async def add_reaction_xp(
+        self,
+        guild_id: int,
+        user_id: int,
+        amount: int,
+        direzione: str,
+        attesa_secondi: int,
+        max_level: int = 0,
+        formula: str = "classica",
+        tetto_giorno: int = 50,
+    ) -> TextXpResult:
+        """
+        LIV-008/009: XP per una reazione messa ("messa") o ricevuta ("ricevuta"). Attesa per persona e
+        per verso e tetto al giorno stanno nella stessa scrittura condizionata (due reazioni insieme
+        pagano una volta); riga dei totali bloccata come per l'XP dei messaggi.
+        """
+        conteggio, ultima, oggi_n, giorno = self._COLONNE_REAZIONI[direzione]
+        oggi = datetime.now(timezone.utc).date()
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                xp_before = await self._riga_bloccata(conn, guild_id, user_id, "xp_total")
+                concesso = await conn.fetchval(
+                    f"""
+                    INSERT INTO leveling_reazioni (guild_id, user_id, {conteggio}, {ultima}, {oggi_n}, {giorno})
+                    VALUES ($1, $2, 1, now(), 1, $3)
+                    ON CONFLICT (guild_id, user_id) DO UPDATE SET
+                        {conteggio} = leveling_reazioni.{conteggio} + 1,
+                        {ultima} = now(),
+                        {oggi_n} = CASE WHEN leveling_reazioni.{giorno} = $3
+                                        THEN leveling_reazioni.{oggi_n} + 1 ELSE 1 END,
+                        {giorno} = $3
+                    WHERE (leveling_reazioni.{ultima} IS NULL
+                           OR leveling_reazioni.{ultima} <= now() - make_interval(secs => $4))
+                      AND (leveling_reazioni.{giorno} IS DISTINCT FROM $3
+                           OR leveling_reazioni.{oggi_n} < $5)
+                    RETURNING 1
+                    """,
+                    guild_id, user_id, oggi, float(attesa_secondi), tetto_giorno,
+                )
+                if concesso is None or amount <= 0:
+                    return TextXpResult(
+                        granted=False, new_xp_total=xp_before, leveled_up=False,
+                        new_level=level_for_xp(xp_before, max_level, formula),
+                    )
+                xp_after = xp_before + amount
+                leveled_up, new_level = did_level_up(xp_before, xp_after, max_level, formula)
+                await conn.execute(
+                    "UPDATE leveling_totals SET xp_total = $3, level = $4 WHERE guild_id = $1 AND user_id = $2",
+                    guild_id, user_id, xp_after, new_level,
+                )
+                await self._add_period_activity(conn, guild_id, user_id, amount, 0)
+                return TextXpResult(
+                    granted=True, new_xp_total=xp_after, leveled_up=leveled_up, new_level=new_level,
+                    previous_level=level_for_xp(xp_before, max_level, formula),
+                )
+
+    async def top_reazioni(self, guild_id: int, ricevute: bool, limit: int = 10) -> list[LeaderboardEntry]:
+        """LIV-060: classifica per reazioni messe o ricevute (solo quelle che hanno dato XP)."""
+        colonna = "ricevute" if ricevute else "messe"
+        rows = await self._pool.fetch(
+            f"SELECT user_id, {colonna} AS amount FROM leveling_reazioni "
+            f"WHERE guild_id = $1 AND {colonna} > 0 ORDER BY {colonna} DESC, user_id LIMIT $2",
+            guild_id, limit,
+        )
+        return [LeaderboardEntry(r["user_id"], r["amount"]) for r in rows]
+
+    async def top_minuti_vocale(self, guild_id: int, limit: int = 10) -> list[LeaderboardEntry]:
+        """LIV-059: classifica per minuti in vocale che hanno dato XP."""
+        rows = await self._pool.fetch(
+            "SELECT user_id, voice_minutes_total AS amount FROM leveling_totals "
+            "WHERE guild_id = $1 AND voice_minutes_total > 0 "
+            "ORDER BY voice_minutes_total DESC, user_id LIMIT $2",
+            guild_id, limit,
+        )
+        return [LeaderboardEntry(r["user_id"], r["amount"]) for r in rows]
 
     async def top_xp_alltime(self, guild_id: int, limit: int = 10) -> list[LeaderboardEntry]:
         rows = await self._pool.fetch(

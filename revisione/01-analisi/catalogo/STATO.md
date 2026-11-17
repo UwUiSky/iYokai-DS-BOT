@@ -17,8 +17,8 @@ Generato da `scripts/stato_catalogo.py` il 2026-11-17. Non modificare a mano: ri
 | 06-ticket-e-modmail | #120 chiusa | 88 | 52 | 3 | 33 | 0 |
 | 07-backup-e-restore | #121 chiusa | 41 | 18 | 0 | 23 | 0 |
 | 08-configurazione-pannello-premium | #122 aperta | 46 | 12 | 1 | 33 | 0 |
-| 09-benvenuto-e-ruoli | #123 aperta | 113 | 104 | 1 | 8 | 0 |
-| 10-livelli-e-rank | #124 aperta | 91 | 20 | 21 | 50 | 0 |
+| 09-benvenuto-e-ruoli | #123 aperta | 113 | 104 | 9 | 0 | 0 |
+| 10-livelli-e-rank | #124 aperta | 91 | 58 | 22 | 11 | 0 |
 | 11-economia-e-giochi | #125 aperta | 161 | 15 | 1 | 145 | 0 |
 | 12-musica | #126 aperta | 90 | 24 | 4 | 48 | 14 |
 | 13-vocali-temporanei | #127 aperta | 21 | 10 | 4 | 7 | 0 |
@@ -27,9 +27,9 @@ Generato da `scripts/stato_catalogo.py` il 2026-11-17. Non modificare a mano: ri
 | 16-statistiche | #130 aperta | 61 | 3 | 0 | 58 | 0 |
 | 17-divertimento-e-immagini | #131 chiusa | 139 | 41 | 7 | 91 | 0 |
 | 18-ai | #132 chiusa | 25 | 15 | 5 | 5 | 0 |
-| **Totale** | | **1452** | **680** | **62** | **696** | **14** |
+| **Totale** | | **1452** | **718** | **71** | **649** | **14** |
 
-Nelle sole aree con l'issue aperta: 708 voci, 253 fatte, 37 solo nei registri, **404 da fare**, 14 scartate.
+Nelle sole aree con l'issue aperta: 708 voci, 291 fatte, 46 solo nei registri, **357 da fare**, 14 scartate.
 
 ## Voci non trovate, per area
 
@@ -41,8 +41,7 @@ Nelle sole aree con l'issue aperta: 708 voci, 253 fatte, 37 solo nei registri, *
 - **06-ticket-e-modmail** (#120, chiusa: controllare a mano), 33: TKT-001, TKT-002, TKT-003, TKT-004, TKT-005, TKT-010, TKT-011, TKT-012, TKT-013, TKT-014, TKT-015, TKT-016, TKT-036, TKT-049, TKT-059, TKT-060, TKT-061, TKT-062, TKT-065, TKT-066, TKT-069, TKT-072, TKT-076, TKT-077, TKT-078, TKT-080, TKT-081, TKT-082, TKT-083, TKT-084, TKT-085, TKT-086, TKT-087
 - **07-backup-e-restore** (#121, chiusa: controllare a mano), 23: BKP-001, BKP-002, BKP-003, BKP-004, BKP-005, BKP-006, BKP-007, BKP-008, BKP-011, BKP-012, BKP-017, BKP-020, BKP-021, BKP-022, BKP-023, BKP-028, BKP-029, BKP-030, BKP-031, BKP-038, BKP-039, BKP-040, BKP-041
 - **08-configurazione-pannello-premium** (#122, aperta), 33: CFG-001, CFG-002, CFG-003, CFG-006, CFG-007, CFG-012, CFG-013, CFG-014, CFG-015, CFG-016, CFG-017, CFG-022, CFG-023, CFG-024, CFG-025, CFG-026, CFG-027, CFG-028, CFG-029, CFG-031, CFG-032, CFG-033, CFG-034, CFG-035, CFG-036, CFG-037, CFG-039, CFG-040, CFG-041, CFG-042, CFG-043, CFG-044, CFG-045
-- **09-benvenuto-e-ruoli** (#123, aperta), 8: RUO-005, RUO-012, RUO-045, RUO-046, RUO-047, RUO-053, RUO-069, RUO-083
-- **10-livelli-e-rank** (#124, aperta), 50: LIV-001, LIV-002, LIV-003, LIV-004, LIV-006, LIV-007, LIV-008, LIV-009, LIV-010, LIV-011, LIV-012, LIV-013, LIV-014, LIV-015, LIV-016, LIV-017, LIV-018, LIV-019, LIV-021, LIV-022, LIV-023, LIV-024, LIV-025, LIV-028, LIV-029, LIV-030, LIV-031, LIV-032, LIV-033, LIV-040, LIV-044, LIV-045, LIV-046, LIV-049, LIV-050, LIV-051, LIV-052, LIV-053, LIV-054, LIV-055, LIV-056, LIV-059, LIV-060, LIV-061, LIV-062, LIV-072, LIV-073, LIV-089, LIV-090, LIV-091
+- **10-livelli-e-rank** (#124, aperta), 11: LIV-019, LIV-032, LIV-033, LIV-046, LIV-053, LIV-061, LIV-062, LIV-072, LIV-089, LIV-090, LIV-091
 - **11-economia-e-giochi** (#125, aperta), 145: ECO-002, ECO-003, ECO-004, ECO-005, ECO-006, ECO-007, ECO-008, ECO-010, ECO-012, ECO-013, ECO-014, ECO-017, ECO-018, ECO-019, ECO-021, ECO-022, ECO-023, ECO-024, ECO-025, ECO-026, ECO-027, ECO-028, ECO-029, ECO-030, ECO-031, ECO-032, ECO-033, ECO-035, ECO-036, ECO-037, ECO-038, ECO-039, ECO-040, ECO-041, ECO-042, ECO-043, ECO-044, ECO-045, ECO-046, ECO-047, ECO-048, ECO-049, ECO-050, ECO-051, ECO-052, ECO-053, ECO-054, ECO-055, ECO-056, ECO-057, ECO-058, ECO-059, ECO-060, ECO-070, ECO-071, ECO-072, ECO-073, ECO-074, ECO-075, ECO-076, ECO-077, ECO-078, ECO-079, ECO-080, ECO-081, ECO-082, ECO-083, ECO-084, ECO-085, ECO-086, ECO-087, ECO-088, ECO-089, ECO-090, ECO-091, ECO-092, ECO-093, ECO-094, ECO-095, ECO-096, ECO-097, ECO-098, ECO-099, ECO-100, ECO-101, ECO-102, ECO-103, ECO-104, ECO-105, ECO-106, ECO-107, ECO-108, ECO-109, ECO-110, ECO-111, ECO-112, ECO-113, ECO-114, ECO-115, ECO-116, ECO-117, ECO-118, ECO-119, ECO-120, ECO-121, ECO-122, ECO-123, ECO-124, ECO-125, ECO-126, ECO-127, ECO-128, ECO-129, ECO-130, ECO-131, ECO-132, ECO-133, ECO-134, ECO-135, ECO-136, ECO-137, ECO-138, ECO-139, ECO-140, ECO-141, ECO-142, ECO-143, ECO-144, ECO-145, ECO-146, ECO-147, ECO-148, ECO-149, ECO-150, ECO-151, ECO-152, ECO-153, ECO-154, ECO-155, ECO-156, ECO-157, ECO-158, ECO-159, ECO-160, ECO-161
 - **12-musica** (#126, aperta), 48: MUS-001, MUS-002, MUS-003, MUS-004, MUS-005, MUS-006, MUS-007, MUS-008, MUS-010, MUS-011, MUS-014, MUS-015, MUS-017, MUS-018, MUS-019, MUS-040, MUS-041, MUS-042, MUS-045, MUS-048, MUS-057, MUS-058, MUS-060, MUS-063, MUS-065, MUS-067, MUS-068, MUS-069, MUS-070, MUS-071, MUS-072, MUS-073, MUS-074, MUS-075, MUS-076, MUS-077, MUS-078, MUS-079, MUS-080, MUS-081, MUS-083, MUS-084, MUS-085, MUS-086, MUS-087, MUS-088, MUS-089, MUS-090
 - **13-vocali-temporanei** (#127, aperta), 7: VOC-002, VOC-003, VOC-004, VOC-005, VOC-009, VOC-019, VOC-020

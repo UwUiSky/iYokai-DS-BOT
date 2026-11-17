@@ -379,7 +379,7 @@ class AzzeramentiCog(CogConGruppi, commands.Cog):
             modulo_attivo=await db.is_module_active_for_guild(guild.id, MODULE_LEVELING),
             in_blacklist=await blacklist_repo.is_user_blacklisted(membro.id),
             e_bot=membro.bot,
-            canale_escluso=bool(canale and any(c in config.canali_esclusi for c in id_canali_per_le_regole(canale))),
+            canale_escluso=bool(canale and config.e_escluso(id_canali_per_le_regole(canale), [])),  # LIV-021: tiene conto dell'elenco bianco
             ruolo_escluso=bool(ruoli & config.ruoli_esclusi),
             attesa_secondi=attesa,
             livello=totali.level,

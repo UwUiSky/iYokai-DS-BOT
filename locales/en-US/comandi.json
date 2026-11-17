@@ -340,7 +340,14 @@
   "sposta": "move",
   "ripara": "repair",
   "aggiungi-molti": "add-many",
-  "admin-menu-ruoli": "admin-role-menus"
+  "admin-menu-ruoli": "admin-role-menus",
+  "guadagno": "gain",
+  "formula": "formula",
+  "comandi": "commands",
+  "prefissi": "prefixes",
+  "contesti": "contexts",
+  "reazioni": "reactions",
+  "classifica-ruoli": "ranking-roles"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1338,7 +1345,17 @@
   "admin-menu-ruoli ripara": "Put the bot's reactions back on a reaction menu if someone removed them.",
   "admin-menu-ruoli modello": "Create a menu from a ready-made template: verify, notifications, colours, interests.",
   "admin-menu-ruoli canale": "Create a channel for role menus: everyone reads, only the bot writes.",
-  "admin-menu-ruoli": "Role menus (admin): templates, bulk, moving, repair"
+  "admin-menu-ruoli": "Role menus (admin): templates, bulk, moving, repair",
+  "admin-livelli guadagno": "How XP is earned: formula, words, commands, prefixes, channels",
+  "admin-livelli guadagno formula": "Picks the level curve and recalculates everyone's levels.",
+  "admin-livelli guadagno messaggi": "XP per message: fixed or per word, plus a bonus for long messages or images.",
+  "admin-livelli guadagno comandi": "Turns XP for using slash commands on or off (off by default).",
+  "admin-livelli guadagno prefissi": "Other bots' prefixes: messages starting with them give no XP.",
+  "admin-livelli guadagno canali": "XP everywhere except excluded channels, or only in the channels of the list.",
+  "admin-livelli guadagno contesti": "Whether threads, forum posts and voice channel chat give XP.",
+  "admin-livelli guadagno vocale": "Voice XP: minimum people in the channel and anti-farm check.",
+  "admin-livelli guadagno reazioni": "XP for reactions added and received (off by default).",
+  "admin-livelli classifica-ruoli": "A role for the XP leaderboard's first place, top 3 or top 10 (updated hourly)."
  },
  "parametri": {},
  "menu": {

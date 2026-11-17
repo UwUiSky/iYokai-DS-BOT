@@ -68,6 +68,7 @@ from core.rank_card_image import (
     TEMA_DI_BASE,
     DatiRankCard,
     SfondoNonValido,
+    colore_medio,
     prepara_sfondo,
     render_rank_card,
 )
@@ -155,7 +156,11 @@ from core.leveling_logic import (
     scegli_premi,
     tassa_su_pagamento,
     week_key,
+    MAX_REAZIONI_AL_GIORNO,
+    contesto_con_xp,
+    ha_prefisso_ignorato,
     xp_con_moltiplicatore,
+    xp_messaggio,
     WORK_COOLDOWN_SECONDS,
     is_eligible_for_voice_xp,
     period_key,
@@ -197,24 +202,39 @@ RUOLI_PREMIO_PER_PAGINA = 20
 MEMBRI_PER_PAGINA = 20
 
 
-async def _salva_sfondo(user_id: int, allegato: discord.Attachment) -> str | None:
+async def _sfondo_pronto(allegato: discord.Attachment) -> tuple[bytes | None, str | None]:
     """
-    NF-12: prepara e salva lo sfondo con immagine propria. Restituisce il
-    messaggio d'errore per l'utente, oppure None se è andato bene.
+    NF-12: prepara lo sfondo con immagine (sempre nella sandbox di Pillow, fuori dal ciclo principale).
+    Restituisce (immagine pronta, None) oppure (None, messaggio d'errore per l'utente).
     """
     if allegato.size > MAX_IMAGE_BYTES:
-        return "L'immagine è troppo grande: al massimo 8 MB."
+        return None, "L'immagine è troppo grande: al massimo 8 MB."
     if not (allegato.content_type or "").startswith("image/"):
-        return "Lo sfondo deve essere un'immagine (PNG, JPEG, WEBP)."
+        return None, "Lo sfondo deve essere un'immagine (PNG, JPEG, WEBP)."
     try:
         originale = await allegato.read()
-        pronto = await run_image_task(prepara_sfondo, originale)
+        return await run_image_task(prepara_sfondo, originale), None
     except SfondoNonValido:
-        return "Non riesco ad aprire questa immagine: prova con un PNG o un JPEG più piccolo."
+        return None, "Non riesco ad aprire questa immagine: prova con un PNG o un JPEG più piccolo."
     except discord.HTTPException:
-        return "Non sono riuscito a scaricare l'immagine: riprova."
-    await leveling_repo.set_sfondo_card(user_id, pronto)
-    return None
+        return None, "Non sono riuscito a scaricare l'immagine: riprova."
+
+
+async def _salva_sfondo(user_id: int, allegato: discord.Attachment) -> str | None:
+    """NF-12: salva lo sfondo personale. Restituisce il messaggio d'errore per l'utente, o None se è andato bene."""
+    pronto, errore = await _sfondo_pronto(allegato)
+    if pronto is not None:
+        await leveling_repo.set_sfondo_card(user_id, pronto)
+    return errore
+
+
+def tipo_di_canale(canale) -> str:
+    """LIV-014/015/016: "forum" (post), "thread", "chat_vocale" (canali vocali e stage) o "testo"."""
+    if isinstance(canale, discord.Thread):
+        return "forum" if isinstance(getattr(canale, "parent", None), discord.ForumChannel) else "thread"
+    if isinstance(canale, (discord.VoiceChannel, discord.StageChannel)):
+        return "chat_vocale"
+    return "testo"
 
 
 async def _comando_rifiutato(interaction: discord.Interaction) -> bool:
@@ -512,7 +532,8 @@ def _embed_impostazioni(config: ConfigLivelli) -> discord.Embed:
     embed.add_field(
         name="XP e coin",
         value=(
-            f"Messaggio: **{i.text_xp}** XP, ogni **{i.text_cooldown_seconds}** s\n"
+            f"Messaggio: **{i.text_xp}{'-' + str(i.text_xp_max) if i.text_xp_max > i.text_xp else ''}** XP, "
+            f"ogni **{i.text_cooldown_seconds}** s · velocità **{i.xp_percentuale}%**\n"
             f"Vocale: **{i.voice_xp_per_minute}** XP e **{i.voice_coins_per_minute}** coin al minuto\n"
             f"Daily: **{i.daily_coins}** coin · Work: **{i.work_min}-{i.work_max}** coin\n"
             f"Nome della moneta: **{i.currency_name}**\n"
@@ -525,6 +546,26 @@ def _embed_impostazioni(config: ConfigLivelli) -> discord.Embed:
             f"{' (con copia di 30 giorni)' if i.copia_su_uscita else ''}\n"
             f"Solo il proprietario: XP a mano **{'sì' if i.blocca_xp else 'no'}**, "
             f"azzeramenti **{'sì' if i.blocca_azzeramento else 'no'}**"
+        ),
+        inline=False,
+    )
+    # LIV-073: il riepilogo comprende anche come si guadagna XP (/admin-livelli guadagno).
+    sn = lambda v: "sì" if v else "no"  # noqa: E731
+    canali_modo = "solo quelli dell'elenco" if i.canali_modo == "solo_questi" else "tutti tranne gli esclusi"
+    prefissi = " ".join("`" + p.replace("`", "") + "`" for p in i.prefissi_ignorati)
+    embed.add_field(
+        name="Come si guadagna XP",
+        value=(
+            f"Formula dei livelli: **{i.formula}**\n"
+            + (f"Messaggi: **a parola** ({i.xp_per_parola} XP per parola, al massimo {i.parole_max})\n"
+               if i.xp_modo == "parola" else "Messaggi: **fisso**\n")
+            + (f"Bonus impegno: **{i.bonus_impegno}** XP (da {i.impegno_caratteri} caratteri o con immagine)\n"
+               if i.bonus_impegno else "Bonus impegno: **spento**\n")
+            + f"Comandi slash: **{sn(i.xp_comandi)}** · Thread: **{sn(i.xp_thread)}** · "
+            f"Forum: **{sn(i.xp_forum)}** · Chat vocale: **{sn(i.xp_chat_vocale)}**\n"
+            f"Vocale: almeno **{i.voce_min_persone}** persone, anti-farm **{sn(i.anti_farm)}**\n"
+            f"Canali: **{canali_modo}**"
+            + (f"\nPrefissi ignorati: {prefissi}" if prefissi else "")
         ),
         inline=False,
     )
@@ -657,6 +698,7 @@ async def _codice_in_privato(
 class LevelingCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        self._colori_icona: BoundedCache[tuple, str] = BoundedCache(max_size=500)
         self._voice_xp_tick.start()
         self._scadenza_ruoli_shop.start()
 
@@ -692,6 +734,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
         """ECO-001: come questo server chiama la moneta (di base «coin»)."""
         return (await self._config(guild_id)).impostazioni.currency_name
 
+    @staticmethod
+    async def _xp_totale(guild_id: int, user_id: int) -> int:
+        """LIV-031: gli XP totali per il segnaposto {xp} dell'annuncio."""
+        return (await leveling_repo.get_totals(guild_id, user_id)).xp_total
+
     async def _annuncia_level_up(
         self,
         member: discord.Member,
@@ -726,6 +773,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             testo = rendi_annuncio(
                 impostazioni.levelup_testo, utente=member.mention, livello=new_level,
                 server=guild.name, ruoli_premio=ruoli_premio,
+                xp=await self._xp_totale(guild.id, member.id) if "{xp}" in impostazioni.levelup_testo else 0,
             )
         else:
             testo = f"🎉 {member.mention} è salito al livello **{new_level}**!"
@@ -977,12 +1025,33 @@ class LevelingCog(CogConGruppi, commands.Cog):
             button.label = f"Raccolto da {interaction.user.display_name}"
             await interaction.response.edit_message(view=self)
 
+    async def _colore_server(self, guild: discord.Guild, impostazioni: LevelingSettings) -> str | None:
+        """LIV-056: il colore predefinito delle card del server; «auto» è il colore medio dell'icona."""
+        scelto = impostazioni.card_colore
+        if scelto.startswith("#"):
+            return scelto
+        if scelto != "auto" or guild.icon is None:
+            return None
+        chiave = (guild.id, guild.icon.key)
+        noto = self._colori_icona.get(chiave)
+        if noto is not None:
+            return noto or None  # "" = icona già provata e non leggibile
+        try:
+            colore = await run_image_task(colore_medio, await guild.icon.read())
+        except Exception:
+            colore = None
+        self._colori_icona.set(chiave, colore or "")
+        return colore
+
     async def _xp_testuale(
         self, message: discord.Message, config: ConfigLivelli, id_ruoli: list[int], id_canale: list[int]
     ) -> None:
         # Chi è escluso (canale, categoria o ruolo) non dà XP nemmeno alla
         # gilda: questo metodo non viene chiamato (vedi on_message).
         impostazioni = config.impostazioni
+        # LIV-018: i comandi di altri bot (prefisso) non danno XP.
+        if ha_prefisso_ignorato(message.content, impostazioni.prefissi_ignorati):
+            return
         clan = await guild_clan_repo.get_member_clan_in_guild(message.guild.id, message.author.id)
         if clan is not None and clan.officialized:
             # Lato TESTUALE del guadagno ×2 di gilda (SPEC.md
@@ -992,24 +1061,116 @@ class LevelingCog(CogConGruppi, commands.Cog):
             # deve mai impedire l'XP personale.
             await guild_clan_repo.apply_text_tick(clan.id, message.author.id)
 
-        importo = xp_con_moltiplicatore(
-            impostazioni.text_xp, config.moltiplicatore(id_canale, id_ruoli)
+        await self._assegna_xp_testo(
+            message.author, message.guild, message.channel, config, id_ruoli, id_canale,
+            xp_messaggio(
+                impostazioni, message.content,
+                any((a.content_type or "").startswith("image/") for a in message.attachments),
+            ),
         )
+
+    async def _assegna_xp_testo(
+        self, utente, guild, canale, config: ConfigLivelli, id_ruoli: list[int], id_canale: list[int], base: int
+    ) -> None:
+        """Dà l'XP testuale (stessa attesa per messaggi e comandi) e annuncia il level-up."""
+        impostazioni = config.impostazioni
+        importo = xp_con_moltiplicatore(base, config.moltiplicatore(id_canale, id_ruoli))
         risultato = await leveling_repo.add_text_xp(
-            message.guild.id,
-            message.author.id,
+            guild.id,
+            utente.id,
             amount=importo,
             cooldown_seconds=impostazioni.text_cooldown_seconds,
             max_level=impostazioni.max_level,
+            formula=impostazioni.formula,
         )
         if risultato.granted and risultato.leveled_up:
             await self._annuncia_level_up(
-                message.author, message.guild, message.channel, risultato.new_level,
-                impostazioni, risultato.previous_level,
+                utente, guild, canale, risultato.new_level, impostazioni, risultato.previous_level,
             )
             await self._grant_level_rewards(
-                message.author, message.guild, risultato.new_level, impostazioni.reward_mode, avvisa=True
+                utente, guild, risultato.new_level, impostazioni.reward_mode, avvisa=True
             )
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent) -> None:
+        """
+        LIV-008/009: XP a chi mette una reazione e a chi la riceve (spento di base). Mai su se stessi,
+        mai da o verso un bot; stesse esclusioni dell'XP dei messaggi; attesa e tetto al giorno nel database.
+        """
+        membro = payload.member
+        if payload.guild_id is None or membro is None or membro.bot:
+            return
+        guild = membro.guild
+        try:
+            if not await db.is_module_active_for_guild(guild.id, MODULE_LEVELING):
+                return
+            config = await self._config(guild.id)
+            imp = config.impostazioni
+            if not (imp.xp_reazione_messa or imp.xp_reazione_ricevuta):
+                return
+            canale = guild.get_channel_or_thread(payload.channel_id)
+            id_canale = id_canali_per_le_regole(canale) if canale is not None else [payload.channel_id]
+            if not contesto_con_xp(imp, tipo_di_canale(canale)):
+                return
+            autore_id = payload.message_author_id
+            if autore_id is None or autore_id == membro.id:
+                return  # autore ignoto o reazione al proprio messaggio
+            autore = guild.get_member(autore_id)
+            if autore is not None and autore.bot:
+                return
+            if imp.xp_reazione_messa:
+                await self._xp_reazione(membro, canale, id_canale, config, "messa", imp.xp_reazione_messa)
+            if imp.xp_reazione_ricevuta and autore is not None:
+                await self._xp_reazione(autore, canale, id_canale, config, "ricevuta", imp.xp_reazione_ricevuta)
+        except Exception:
+            logger.warning("XP della reazione non assegnati (server %s).", guild.id, exc_info=True)
+
+    async def _xp_reazione(
+        self, utente, canale, id_canale: list[int], config: ConfigLivelli, direzione: str, base: int
+    ) -> None:
+        imp = config.impostazioni
+        id_ruoli = [r.id for r in getattr(utente, "roles", [])]
+        if config.e_escluso(id_canale, id_ruoli) or await blacklist_repo.is_user_blacklisted(utente.id):
+            return
+        importo = xp_con_moltiplicatore(base, config.moltiplicatore(id_canale, id_ruoli))
+        risultato = await leveling_repo.add_reaction_xp(
+            utente.guild.id, utente.id, importo, direzione, imp.reazioni_attesa,
+            max_level=imp.max_level, formula=imp.formula, tetto_giorno=MAX_REAZIONI_AL_GIORNO,
+        )
+        if risultato.granted and risultato.leveled_up:
+            await self._annuncia_level_up(
+                utente, utente.guild, canale, risultato.new_level, imp, risultato.previous_level
+            )
+            await self._grant_level_rewards(
+                utente, utente.guild, risultato.new_level, imp.reward_mode, avvisa=True
+            )
+
+    @commands.Cog.listener()
+    async def on_app_command_completion(self, interaction: discord.Interaction, command) -> None:
+        """LIV-017: un comando slash riuscito dà XP, se il server lo ha acceso (di base no)."""
+        utente, guild = interaction.user, interaction.guild
+        if guild is None or utente is None or getattr(utente, "bot", False):
+            return
+        if interaction.type is not discord.InteractionType.application_command:
+            return
+        try:
+            if not await db.is_module_active_for_guild(guild.id, MODULE_LEVELING):
+                return
+            config = await self._config(guild.id)
+            if not config.impostazioni.xp_comandi:
+                return
+            if await blacklist_repo.is_user_blacklisted(utente.id):
+                return
+            id_ruoli = [r.id for r in getattr(utente, "roles", [])]
+            id_canale = id_canali_per_le_regole(interaction.channel) if interaction.channel else []
+            if config.e_escluso(id_canale, id_ruoli):
+                return
+            # Importo fisso (non conta parole): stessa attesa dell'XP dei messaggi, così non si somma.
+            await self._assegna_xp_testo(
+                utente, guild, interaction.channel, config, id_ruoli, id_canale, config.impostazioni.text_xp
+            )
+        except Exception:
+            logger.warning("XP del comando non assegnati (server %s).", guild.id, exc_info=True)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
@@ -1033,7 +1194,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         # NF-15: canali e ruoli senza XP. Il drop sotto resta indipendente.
         # Un thread o un post di forum vale come il suo canale di origine.
         id_canale = id_canali_per_le_regole(message.channel)
-        if not config.e_escluso(id_canale, id_ruoli):
+        if not config.e_escluso(id_canale, id_ruoli) and contesto_con_xp(
+            config.impostazioni, tipo_di_canale(message.channel)
+        ):
             # NF-28: i messaggi contano per i giveaway che chiedono un minimo,
             # con le stesse esclusioni e la stessa attesa dell'XP testuale.
             try:
@@ -1132,15 +1295,18 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
             is_afk = channel.id == afk_channel_id
             for member in members:
+                imp = config.impostazioni
                 others_not_muted = sum(
                     1
                     for other in members
-                    if other.id != member.id and not other.voice.self_mute
+                    if other.id != member.id and (not imp.anti_farm or not other.voice.self_mute)
                 )
                 eligible = is_eligible_for_voice_xp(
                     is_self_deaf=member.voice.self_deaf,
                     is_afk_channel=is_afk,
                     other_members_not_self_muted=others_not_muted,
+                    min_persone=imp.voce_min_persone,  # LIV-011
+                    anti_farm=imp.anti_farm,  # LIV-012
                 )
                 id_ruoli = [r.id for r in getattr(member, "roles", [])]
                 # NF-15: canali e ruoli senza XP valgono come non idonei.
@@ -1195,6 +1361,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
         tema="Lo sfondo della tua card (resta salvato)",
         reimposta="Torna al colore, al tema e allo sfondo di base",
         sfondo="Un'immagine tua come sfondo di card e profilo (PNG, JPEG, WEBP; max 8 MB)",
+        colore_testo="Colore del nome e dell'anello dell'avatar, es. #FFFFFF (resta salvato)",
+        velo="Quanto il pannello copre lo sfondo, da 0 (si vede tutto) a 100 (resta salvato)",
     )
     @app_commands.choices(tema=_SCELTE_TEMA)
     async def rank(
@@ -1205,6 +1373,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
         tema: app_commands.Choice[str] | None = None,
         reimposta: bool | None = None,
         sfondo: discord.Attachment | None = None,
+        colore_testo: app_commands.Range[str, 1, 7] | None = None,
+        velo: app_commands.Range[int, 0, 100] | None = None,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -1214,7 +1384,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         target = member or interaction.user
         nota = None
-        vuole_cambiare = colore is not None or tema is not None or reimposta or sfondo is not None
+        vuole_cambiare = (
+            colore is not None or tema is not None or reimposta or sfondo is not None
+            or colore_testo is not None or velo is not None
+        )
         if vuole_cambiare:
             if target.id != interaction.user.id:
                 nota = "Puoi cambiare solo la tua card: le preferenze di questo membro non sono cambiate."
@@ -1239,6 +1412,14 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 await leveling_repo.set_rank_card_prefs(
                     target.id, colore=esadecimale, tema=tema.value if tema else None
                 )
+                if colore_testo is not None or velo is not None:  # LIV-051, LIV-054
+                    esa_testo = colore_valido(colore_testo) if colore_testo is not None else None
+                    if colore_testo is not None and esa_testo is None:
+                        await interaction.followup.send(
+                            await testo_per(interaction, "leveling_il_colore_deve_essere_nel"), ephemeral=True
+                        )
+                        return
+                    await leveling_repo.set_card_extra(target.id, colore_testo=esa_testo, velo=velo)
 
         if isinstance(target, discord.Member):  # LIV-043: chi guarda la card ricontrolla i suoi premi
             try:
@@ -1249,9 +1430,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
         totali = await leveling_repo.get_totals(interaction.guild.id, target.id)
         posizione = await leveling_repo.get_xp_position(interaction.guild.id, target.id)
         colore_salvato, tema_salvato = await leveling_repo.get_rank_card_prefs(target.id)
+        colore_testo_salvato, velo_salvato = await leveling_repo.get_card_extra(target.id)
 
-        xp_livello_attuale = xp_for_level(totali.level)
-        xp_prossimo_livello = xp_for_level(totali.level + 1)
+        formula = (await self._config(interaction.guild.id)).impostazioni.formula
+        xp_livello_attuale = xp_for_level(totali.level, formula)
+        xp_prossimo_livello = xp_for_level(totali.level + 1, formula)
         progresso = totali.xp_total - xp_livello_attuale
         richiesti = xp_prossimo_livello - xp_livello_attuale
         impostazioni = (await self._config(interaction.guild.id)).impostazioni
@@ -1271,10 +1454,16 @@ class LevelingCog(CogConGruppi, commands.Cog):
             xp_totale=totali.xp_total,
             posizione=posizione,
             coin=totali.coins_total,
-            colore=colore_salvato or COLORE_DI_BASE,
+            colore=colore_salvato or await self._colore_server(interaction.guild, impostazioni) or COLORE_DI_BASE,
             tema=tema_salvato or TEMA_DI_BASE,
+            colore_testo=colore_testo_salvato,
+            velo=velo_salvato,
         )
-        immagine_sfondo = await leveling_repo.get_sfondo_card(target.id) if impostazioni.card_images else None
+        immagine_sfondo = None
+        if impostazioni.card_images:  # LIV-055: senza sfondo suo, vale quello del server
+            immagine_sfondo = await leveling_repo.get_sfondo_card(target.id) or await leveling_repo.get_sfondo_server(
+                interaction.guild.id
+            )
         try:
             png = await run_image_task(render_rank_card, dati, avatar, immagine_sfondo)
         except Exception:
@@ -1526,7 +1715,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         descrizione="Mostra la classifica del server.",
     )
     @app_commands.describe(
-        metric="XP o coin",
+        metric="XP, coin, minuti in vocale o reazioni (questi ultimi sono sempre di sempre)",
         period="Questa settimana, questo mese o di sempre",
         posizioni="Quante posizioni mostrare, da 10 a 100 (a pagine)",
     )
@@ -1534,6 +1723,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         metric=[
             app_commands.Choice(name="XP", value="xp"),
             app_commands.Choice(name="Coin", value="coins"),
+            app_commands.Choice(name="Minuti in vocale", value="voce"),  # LIV-059
+            app_commands.Choice(name="Reazioni messe", value="reazioni"),  # LIV-060
+            app_commands.Choice(name="Reazioni ricevute", value="reazioni_ricevute"),  # LIV-060
         ],
         period=[
             app_commands.Choice(name="Questa settimana", value="week"),
@@ -1551,7 +1743,13 @@ class LevelingCog(CogConGruppi, commands.Cog):
         if await _comando_rifiutato(interaction):
             return
 
-        if metric.value == "xp" and period.value == "alltime":
+        if metric.value == "voce":
+            voci = await leveling_repo.top_minuti_vocale(interaction.guild.id, posizioni)
+        elif metric.value in ("reazioni", "reazioni_ricevute"):
+            voci = await leveling_repo.top_reazioni(
+                interaction.guild.id, metric.value == "reazioni_ricevute", posizioni
+            )
+        elif metric.value == "xp" and period.value == "alltime":
             voci = await leveling_repo.top_xp_alltime(interaction.guild.id, posizioni)
         elif metric.value == "xp":
             voci = await leveling_repo.top_xp_period(
@@ -1574,10 +1772,13 @@ class LevelingCog(CogConGruppi, commands.Cog):
         righe = []
         for posizione, voce in enumerate(voci, start=1):
             prefisso = MEDALS[posizione - 1] if posizione <= len(MEDALS) else f"{posizione}."
-            unita = "XP" if metric.value == "xp" else moneta
+            unita = {"xp": "XP", "voce": "min", "reazioni": "reazioni", "reazioni_ricevute": "reazioni"}.get(
+                metric.value, moneta
+            )
             righe.append(f"{prefisso} <@{voce.user_id}> — **{voce.amount}** {unita}")
 
-        titolo = f"Classifica {metric.name} — {period.name}"
+        solo_sempre = metric.value in ("voce", "reazioni", "reazioni_ricevute")
+        titolo = f"Classifica {metric.name} — {'Di sempre' if solo_sempre else period.name}"
         if posizioni > 10:
             await invia_lista(
                 interaction, titolo, righe, discord.Color.gold(), per_pagina=10
@@ -1616,7 +1817,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         totali = await leveling_repo.get_totals(interaction.guild.id, target.id)
         stima = stima_per_livello(
             totali.xp_total, livello, impostazioni.text_xp, impostazioni.text_cooldown_seconds,
-            impostazioni.voice_xp_per_minute,
+            impostazioni.voice_xp_per_minute, impostazioni.formula,
         )
         if stima.xp_mancanti == 0:
             testo = f"{target.mention} ha già gli XP del livello **{livello}**."
@@ -3541,7 +3742,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         livello_minimo="Non annunciare sotto questo livello",
         ogni="Annuncia solo ogni N livelli (5 = ai livelli 5, 10, 15...)",
         solo_premi="Annuncia solo i livelli che danno un ruolo-premio",
-        testo="Il tuo testo: {utente} {livello} {server} {ruolo_premio} {premio:testo solo se c'è un ruolo}",
+        testo="Il tuo testo: {utente} {livello} {xp} {server} {ruolo_premio} {premio:testo se c'è un ruolo}",
         testo_base="Sì = torna al testo di iYokai",
         prova="Sì = manda subito un annuncio di prova (una prova ogni 5 minuti)",
     )
@@ -3665,9 +3866,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
         descrizione="Quanti XP e coin si guadagnano, e come si sommano i moltiplicatori.",
     )
     @app_commands.describe(
-        testo="XP per ogni messaggio che conta (1-100)",
-        attesa="Secondi tra due messaggi che danno XP (10-600)",
-        voce_xp="XP per ogni minuto in vocale (0-50)",
+        testo="XP per ogni messaggio che conta (1-100); è il minimo se c'è anche un massimo",
+        attesa="Secondi tra due messaggi che danno XP (10-3600)",
+        testo_max="XP massimo per messaggio: l'XP è a sorte tra testo e questo (0 = fisso)",
+        velocita="Velocità dei livelli in % su ogni guadagno (25-500; 100 = normale)",
+        voce_xp="XP per ogni minuto in vocale (0-50; 0 = niente XP in vocale)",  # LIV-010
         voce_coin="Coin per ogni minuto in vocale (0-50)",
         moltiplicatori="Più moltiplicatori insieme: si sommano oppure vale solo il più alto",
         daily="Coin di /monete daily (0-10000)",
@@ -3686,7 +3889,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         self,
         interaction: discord.Interaction,
         testo: app_commands.Range[int, 1, 100] | None = None,
-        attesa: app_commands.Range[int, 10, 600] | None = None,
+        attesa: app_commands.Range[int, 10, 3600] | None = None,
         voce_xp: app_commands.Range[int, 0, 50] | None = None,
         voce_coin: app_commands.Range[int, 0, 50] | None = None,
         moltiplicatori: app_commands.Choice[str] | None = None,
@@ -3700,10 +3903,16 @@ class LevelingCog(CogConGruppi, commands.Cog):
         minimo_pay: app_commands.Range[int, 0, 1_000_000] | None = None,
         immagine_moneta: discord.Attachment | None = None,
         senza_immagine: bool | None = None,
+        testo_max: app_commands.Range[int, 0, 100] | None = None,
+        velocita: app_commands.Range[int, 25, 500] | None = None,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
         campi = {}
+        if testo_max is not None:  # LIV-001
+            campi["text_xp_max"] = testo_max
+        if velocita is not None:  # LIV-003
+            campi["xp_percentuale"] = velocita
         if nome_moneta is not None:
             campi["currency_name"] = nome_moneta
         if tassa_pay is not None:
@@ -3825,12 +4034,76 @@ class LevelingCog(CogConGruppi, commands.Cog):
         nome="card",
         descrizione="Mostra o nascondi in questo server gli sfondi con immagine di card e profili.",
     )
-    @app_commands.describe(sfondi="Sì = ognuno vede la sua immagine; No = solo colori e temi")
-    async def impostazioni_card(self, interaction: discord.Interaction, sfondi: bool) -> None:
-        """NF-12, LIV-057: lo staff spegne gli sfondi con immagine se qualcuno ne usa di non adatti."""
+    @app_commands.describe(
+        sfondi="Sì = ognuno vede la sua immagine; No = solo colori e temi",
+        sfondo="Sfondo di tutte le card del server per chi non ne ha uno suo (PNG, JPEG, WEBP; max 8 MB)",
+        senza_sfondo="Sì = togli lo sfondo del server",
+        colore="Colore di tutte le card per chi non ne ha scelto uno: #RRGGBB oppure auto (dall'icona)",
+        senza_colore="Sì = togli il colore del server",
+    )
+    async def impostazioni_card(
+        self,
+        interaction: discord.Interaction,
+        sfondi: bool | None = None,
+        sfondo: discord.Attachment | None = None,
+        senza_sfondo: bool | None = None,
+        colore: app_commands.Range[str, 1, 7] | None = None,
+        senza_colore: bool | None = None,
+    ) -> None:
+        """NF-12, LIV-057: lo staff spegne gli sfondi con immagine. LIV-055, LIV-056: sfondo e colore del server."""
         if await _comando_rifiutato(interaction):
             return
-        await self._salva_impostazioni(interaction, {"card_images": sfondi})
+        if not interaction.permissions.manage_guild:
+            await interaction.response.send_message(
+                await testo_per(interaction, "azz_serve_gestire_server"), ephemeral=True
+            )
+            return
+        if (sfondo is not None and senza_sfondo) or (colore is not None and senza_colore):
+            await interaction.response.send_message(
+                await testo_per(interaction, "leveling_scegli_carichi_un_immagine_la"), ephemeral=True
+            )
+            return
+        campi = {}
+        if sfondi is not None:
+            campi["card_images"] = sfondi
+        if colore is not None:
+            scelto = "auto" if colore.strip().lower() == "auto" else colore_valido(colore)
+            if scelto is None:
+                await interaction.response.send_message(
+                    await testo_per(interaction, "leveling_il_colore_deve_essere_nel"), ephemeral=True
+                )
+                return
+            campi["card_colore"] = scelto
+        if senza_colore:
+            campi["card_colore"] = ""
+        if sfondo is not None:
+            await interaction.response.defer(ephemeral=True)
+            pronto, errore = await _sfondo_pronto(sfondo)
+            if errore:
+                await interaction.followup.send(errore, ephemeral=True)
+                return
+            await leveling_repo.set_sfondo_server(interaction.guild.id, pronto)
+        elif senza_sfondo:
+            await leveling_repo.set_sfondo_server(interaction.guild.id, None)
+        if not campi and sfondo is None and not senza_sfondo:
+            await interaction.response.send_message(
+                await testo_per(interaction, "leveling_scegli_almeno_un_valore_da"), ephemeral=True
+            )
+            return
+        if campi:
+            try:
+                await leveling_settings_repo.set_options(interaction.guild.id, **campi)
+            except ValueError as errore:
+                await self._rispondi_card(interaction, f"❌ {errore}")
+                return
+        await self._rispondi_card(interaction, await testo_per(interaction, "leveling_impostazioni_salvate"))
+
+    @staticmethod
+    async def _rispondi_card(interaction: discord.Interaction, testo: str) -> None:
+        if interaction.response.is_done():
+            await interaction.followup.send(testo, ephemeral=True)
+        else:
+            await interaction.response.send_message(testo, ephemeral=True)
 
     async def _salva_impostazioni(self, interaction: discord.Interaction, campi: dict) -> None:
         if not campi:
