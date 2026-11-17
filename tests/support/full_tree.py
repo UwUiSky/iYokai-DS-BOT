@@ -12,6 +12,7 @@ import importlib
 import discord
 from discord.ext import commands
 
+from core.blacklist_tree import BlacklistAwareCommandTree
 from core.cog_manager import discover_cog_modules
 from core.database import db
 
@@ -26,7 +27,7 @@ async def build_full_bot() -> tuple[commands.Bot, list[tuple[str, str]]]:
     load_extension ri-esegue ogni modulo e sostituirebbe le classi e
     i singleton già importati dagli altri test.
     """
-    bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
+    bot = commands.Bot(command_prefix="!", intents=discord.Intents.default(), tree_cls=BlacklistAwareCommandTree)
     falliti: list[tuple[str, str]] = []
     for modulo_path in sorted(discover_cog_modules()):
         try:

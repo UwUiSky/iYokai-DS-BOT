@@ -34,7 +34,27 @@ logger = logging.getLogger("iyokai.blacklist_tree")
 from core.livelli_funzione import motivo_negato as motivo_negato_livello  # noqa: E402
 
 
+# Discord accetta 15 menu del tasto destro per tipo (dal 03/03/2026, LIMITI.md §1.3); discord.py 2.7.1 ne conta ancora 5.
+LIMITE_MENU_PER_TIPO = 15
+
+
 class BlacklistAwareCommandTree(discord.app_commands.CommandTree):
+    def add_command(self, command, /, *, guild=discord.utils.MISSING, guilds=discord.utils.MISSING, override=False):
+        """Come quello di discord.py, ma i menu globali del tasto destro arrivano a 15 per tipo."""
+        app_commands = discord.app_commands
+        globale = guild is discord.utils.MISSING and guilds is discord.utils.MISSING
+        if not (isinstance(command, app_commands.ContextMenu) and globale):
+            return super().add_command(command, guild=guild, guilds=guilds, override=override)
+        tipo = command.type.value
+        chiave = (command.name, None, tipo)
+        presente = chiave in self._context_menus
+        if presente and not override:
+            raise app_commands.CommandAlreadyRegistered(command.name, None)
+        totale = sum(1 for _nome, g, t in self._context_menus if g is None and t == tipo)
+        if totale + (0 if presente else 1) > LIMITE_MENU_PER_TIPO:
+            raise app_commands.CommandLimitReached(guild_id=None, limit=LIMITE_MENU_PER_TIPO, type=command.type)
+        self._context_menus[chiave] = command
+
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if await blacklist_repo.is_user_blacklisted(interaction.user.id):
             try:
