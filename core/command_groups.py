@@ -96,6 +96,7 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "tag": ("Tag del server: usali e crea i tuoi", None, None),
     "admin-automazioni": ("Automazioni del server (admin): script dei tag, inneschi, comandi e menu del server", "manage_guild", Livello.ADMIN),
     "admin-tag": ("Tag e risposte automatiche (admin): crea, opzioni, gruppi, importa, esporta", "manage_guild", Livello.ADMIN),
+    "admin-alert": ("Avvisi social (admin): messaggi, embed, sposta, ferma, controllo, piattaforme", "manage_guild", Livello.ADMIN),
     "eventi": ("Eventi del server: crea, iscriviti, elenco, modifica, annulla", None, None),
     "web": ("Cerca sul web: Wikipedia, dizionario, emergenze, meteo, film, giochi, prezzi", None, None),
     "utility": ("Strumenti utili: segnalazioni, suggerimenti, promemoria, schede, snipe", None, None),

@@ -26,6 +26,7 @@ from core.config import config
 from core.feed_alert_gate import AvvisoUnaVolta, filtra_attive
 from core.alert_options_logic import AlertOptions
 from core.live_alert_flow import carica_contesto, pubblica_cambio_live
+from core.alert_messaggio_logic import pulisci_esterno
 from core.template_renderer import render_template
 from core.twitch_api_logic import parse_app_access_token_response, parse_get_streams_response
 from core.repositories.twitch_subscription_repo import twitch_subscription_repo
@@ -188,16 +189,17 @@ class TwitchWatcherService:
             if not (appena_andato_live or appena_andato_offline):
                 continue
 
+            valori = None
             if appena_andato_live:
-                messaggio = render_template(
-                    sottoscrizione.live_message_template,
-                    {
-                        "label": sottoscrizione.label,
-                        "title": stato.title or "",
-                        "login": sottoscrizione.twitch_login,
-                        "game": stato.game_name or "",
-                    },
-                )
+                valori = {
+                    "label": sottoscrizione.label,
+                    "title": pulisci_esterno(stato.title),
+                    "login": sottoscrizione.twitch_login,
+                    "game": pulisci_esterno(stato.game_name, 100),
+                    "gioco": pulisci_esterno(stato.game_name, 100),  # ALR-022
+                }
+                valori["descrizione"] = f"🎮 {valori['game']}" if valori["game"] else ""
+                messaggio = render_template(sottoscrizione.live_message_template, valori)
             else:
                 messaggio = render_template(
                     sottoscrizione.offline_message_template,
@@ -212,7 +214,7 @@ class TwitchWatcherService:
                 ruolo_live_id=ruoli.get(sottoscrizione.guild_id),
                 repo_stato=twitch_subscription_repo,
                 avvisi=self._avvisi, nome="Twitch",
-                titolo=stato.title or "", gioco=stato.game_name or "",
+                titolo=stato.title or "", gioco=stato.game_name or "", valori=valori,
             )
 
     async def close(self) -> None:

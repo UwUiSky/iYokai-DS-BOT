@@ -15,7 +15,7 @@ from core.alert_options_logic import AlertOptions
 
 _CAMPI = ("mention_role_id", "ping_allowed", "notify_end", "delete_on_end", "watch_button",
           "crosspost", "live_member_id", "last_message_id", "paused", "title_words", "game_filter",
-          "min_gap_minutes", "last_published_at")
+          "min_gap_minutes", "last_published_at", "shorts", "formato", "embed_nome")
 
 
 class AlertOptionsRepository:

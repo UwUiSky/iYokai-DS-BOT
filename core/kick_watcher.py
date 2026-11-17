@@ -27,6 +27,7 @@ from core.kick_api_logic import (
 )
 from core.live_alert_flow import carica_contesto, pubblica_cambio_live
 from core.repositories.kick_subscription_repo import kick_subscription_repo
+from core.alert_messaggio_logic import pulisci_esterno
 from core.template_renderer import render_template
 
 logger = logging.getLogger("iyokai.kick_watcher")
@@ -129,12 +130,12 @@ class KickWatcherService:
             stato = stati.get(sub.kick_slug.lower())
             if stato is None or stato.is_live == sub.last_known_live:
                 continue
+            valori = None
             if stato.is_live:
-                testo = render_template(
-                    sub.live_message_template,
-                    {"label": sub.label, "title": stato.title or "", "login": sub.kick_slug,
-                     "game": stato.category or ""},
-                )
+                valori = {"label": sub.label, "title": pulisci_esterno(stato.title), "login": sub.kick_slug,
+                          "game": pulisci_esterno(stato.category, 100), "gioco": pulisci_esterno(stato.category, 100)}  # ALR-022
+                valori["descrizione"] = f"🎮 {valori['game']}" if valori["game"] else ""
+                testo = render_template(sub.live_message_template, valori)
             else:
                 testo = render_template(sub.offline_message_template, {"label": sub.label, "login": sub.kick_slug})
             await pubblica_cambio_live(
@@ -142,7 +143,7 @@ class KickWatcherService:
                 url=f"https://kick.com/{sub.kick_slug}", opz=opzioni.get(sub.id, AlertOptions()),
                 ruolo_live_id=ruoli.get(sub.guild_id), repo_stato=kick_subscription_repo,
                 avvisi=self._avvisi, nome="Kick",
-                titolo=stato.title or "", gioco=stato.category or "",
+                titolo=stato.title or "", gioco=stato.category or "", valori=valori,
             )
 
     async def close(self) -> None:

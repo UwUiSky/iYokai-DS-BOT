@@ -23,7 +23,9 @@ from dataclasses import replace
 import discord
 from discord.ext import commands, tasks
 
+from core.alert_messaggio_logic import valori_voce
 from core.alert_options_logic import invia_alert
+from core.template_renderer import render_template
 from core.bot_ready import attendi_bot_pronto
 from core.feed_alert_gate import AvvisoUnaVolta, filtra_attive
 from core.feed_parsing_logic import (
@@ -170,14 +172,18 @@ class FeedWatcherService:
                     sottoscrizione.id, voce.entry_id, voce.published
                 )
                 continue
-            messaggio = render_alert_message(
-                sottoscrizione.message_template,
-                label=sottoscrizione.label,
-                title=voce.title,
-                link=voce.link,
-            )
+            # ALR-009: Short di YouTube (dal link) da includere, escludere o solo loro.
+            e_short = "/shorts/" in voce.link
+            if (opz.shorts == "no" and e_short) or (opz.shorts == "solo" and not e_short):
+                await feed_subscription_repo.update_last_seen(sottoscrizione.id, voce.entry_id, voce.published)
+                continue
+            durata = ""
+            if "{durata}" in sottoscrizione.message_template:
+                durata = await self._durata(voce)
+            valori = valori_voce(sottoscrizione.label, voce, durata)
+            messaggio = render_template(sottoscrizione.message_template, valori)
             try:
-                await invia_alert(canale, messaggio, opz)
+                await invia_alert(canale, messaggio, opz, voce.link, valori)
             except discord.HTTPException:
                 # P3: invio fallito = niente avanzamento; la voce (e le
                 # successive, per mantenere l'ordine) si ritenta al giro dopo.
@@ -193,6 +199,14 @@ class FeedWatcherService:
                 sottoscrizione.id, voce.entry_id, voce.published
             )
         return True
+
+    @staticmethod
+    async def _durata(voce) -> str:
+        """`{durata}` (ALR-023): solo per i video di YouTube, con la chiave API; altrimenti vuota."""
+        from core.youtube_api_logic import video_id_da_voce
+        from core.youtube_watcher import youtube_watcher
+
+        return await youtube_watcher.durata(video_id_da_voce(voce.entry_id, voce.link) or "")
 
     async def close(self) -> None:
         # La sessione HTTP e' quella condivisa di core/safe_http.py.

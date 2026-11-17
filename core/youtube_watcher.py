@@ -29,6 +29,7 @@ from core.repositories.youtube_subscription_repo import youtube_subscription_rep
 from core.safe_http import chiudi_sessione_condivisa, safe_get
 from core.alert_options_logic import AlertOptions
 from core.live_alert_flow import carica_contesto, pubblica_cambio_live
+from core.alert_messaggio_logic import durata_leggibile, pulisci_esterno
 from core.template_renderer import render_template
 from core.youtube_api_logic import (
     VIDEO_PER_CANALE,
@@ -55,6 +56,7 @@ class YoutubeWatcherService:
     ) -> None:
         self._loop_task: tasks.Loop | None = None
         self._avvisi = AvvisoUnaVolta()
+        self._durate: dict[str, str] = {}
         self._http_session: aiohttp.ClientSession | None = None
         self._videos_url = videos_url
         self._rss_url_template = rss_url_template
@@ -75,7 +77,23 @@ class YoutubeWatcherService:
         ids = [video_id_da_voce(v.entry_id, v.link) for v in voci]
         return [i for i in ids if i]
 
-    async def _fetch_videos(self, video_ids: list[str]) -> dict | None:
+    async def durata(self, video_id: str) -> str:
+        """Durata leggibile di un video già uscito (ALR-023): una `videos.list` da 1 unità, ricordata. Vuota se non si sa."""
+        if not config.YOUTUBE_API_KEY or not video_id:
+            return ""
+        if video_id in self._durate:
+            return self._durate[video_id]
+        payload = await self._fetch_videos([video_id], parti="contentDetails")
+        voci = (payload or {}).get("items") or []
+        iso = ((voci[0] if voci else {}).get("contentDetails") or {}).get("duration")
+        testo = durata_leggibile(iso)
+        if payload is not None:
+            if len(self._durate) >= 500:
+                self._durate.pop(next(iter(self._durate)))
+            self._durate[video_id] = testo
+        return testo
+
+    async def _fetch_videos(self, video_ids: list[str], parti: str = "snippet") -> dict | None:
         """UNA chiamata videos.list per un gruppo di al massimo 50 ID."""
         sessione = self._get_session()
         try:
@@ -84,7 +102,7 @@ class YoutubeWatcherService:
                 params={
                     "key": config.YOUTUBE_API_KEY,
                     "id": ",".join(video_ids),
-                    "part": "snippet",
+                    "part": parti,
                 },
                 timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS),
             ) as risposta:
@@ -150,15 +168,15 @@ class YoutubeWatcherService:
             if not (appena_andato_live or appena_andato_offline):
                 continue
 
+            valori = None
             if appena_andato_live:
-                messaggio = render_template(
-                    sottoscrizione.live_message_template,
-                    {
-                        "label": sottoscrizione.label,
-                        "title": stato.title or "",
-                        "video_id": stato.video_id or "",
-                    },
-                )
+                valori = {
+                    "label": sottoscrizione.label,
+                    "title": pulisci_esterno(stato.title),
+                    "video_id": stato.video_id or "",
+                    "descrizione": "",
+                }
+                messaggio = render_template(sottoscrizione.live_message_template, valori)
             else:
                 messaggio = render_template(
                     sottoscrizione.offline_message_template,
@@ -173,7 +191,7 @@ class YoutubeWatcherService:
                 ruolo_live_id=ruoli.get(sottoscrizione.guild_id),
                 repo_stato=youtube_subscription_repo,
                 avvisi=self._avvisi, nome="YouTube",
-                titolo=stato.title or "",
+                titolo=stato.title or "", valori=valori,
             )
 
     async def close(self) -> None:

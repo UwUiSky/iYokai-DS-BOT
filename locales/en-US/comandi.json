@@ -340,7 +340,11 @@
   "sposta": "move",
   "ripara": "repair",
   "aggiungi-molti": "add-many",
-  "admin-menu-ruoli": "admin-role-menus"
+  "admin-menu-ruoli": "admin-role-menus",
+  "admin-alert": "admin-alerts",
+  "formato": "format",
+  "ferma-tutti": "stop-all",
+  "diretta": "live"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1338,7 +1342,13 @@
   "admin-menu-ruoli ripara": "Put the bot's reactions back on a reaction menu if someone removed them.",
   "admin-menu-ruoli modello": "Create a menu from a ready-made template: verify, notifications, colours, interests.",
   "admin-menu-ruoli canale": "Create a channel for role menus: everyone reads, only the bot writes.",
-  "admin-menu-ruoli": "Role menus (admin): templates, bulk, moving, repair"
+  "admin-menu-ruoli": "Role menus (admin): templates, bulk, moving, repair",
+  "admin-alert": "Social alerts (admin): messages, embeds, move, stop, live check, platforms",
+  "admin-alert messaggio": "Change the text of an alert, also for Twitch, YouTube and Kick.",
+  "admin-alert formato": "Text or embed, a saved embed as template, YouTube Shorts.",
+  "admin-alert sposta": "Move an alert to another channel.",
+  "admin-alert ferma-tutti": "Delete all alerts of the server or of a channel (with confirmation).",
+  "admin-alert diretta": "Check right now whether a Twitch, Kick or YouTube channel is live."
  },
  "parametri": {},
  "menu": {

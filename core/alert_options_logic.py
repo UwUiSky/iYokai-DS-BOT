@@ -6,7 +6,7 @@ bottone «Guarda», pubblicazione nei canali annunci, fine diretta (messaggio
 sì/no, avviso cancellato). Un solo punto per tutti i watcher, così le
 menzioni sono sempre esplicite (D12): `@everyone` e `@here` mai, un ruolo solo
 se chi ha configurato l'avviso poteva pingare i ruoli.
-Funzioni coperte: SPEC §10.9, §10.13 (#129 ALR-025, 026, 027, 028, 030, 031, 032, 033, 036; #103 NF-32)
+Funzioni coperte: SPEC §10.9, §10.13 (#129 ALR-014, 021, 024, 025, 026, 027, 028, 030, 031, 032, 033, 036; #103 NF-32)
 """
 
 from __future__ import annotations
@@ -18,6 +18,8 @@ from urllib.parse import urlsplit
 
 import discord
 
+from core.alert_messaggio_logic import embed_da_modello, embed_predefinito
+from core.embed_builder_logic import da_json
 from core.ui_base import BaseView
 
 logger = logging.getLogger("iyokai.alert_options")
@@ -72,6 +74,9 @@ class AlertOptions:
     game_filter: str = ""
     min_gap_minutes: int = 0
     last_published_at: datetime | None = None
+    shorts: str = "tutti"  # ALR-009: tutti, no (niente Short), solo (solo Short)
+    formato: str = "testo"  # ALR-014: testo oppure embed
+    embed_nome: str = ""  # ALR-024: nome di un embed salvato da usare come modello
 
 
 MAX_FILTRO = 200
@@ -117,6 +122,9 @@ def menzioni_avviso(opz: AlertOptions) -> discord.AllowedMentions:
 
 
 def testo_con_menzione(testo: str, opz: AlertOptions) -> str:
+    """Il ruolo va dove c'è `{ruolo}` (ALR-021); senza il segnaposto, davanti al testo. Senza ruolo il segnaposto sparisce."""
+    if "{ruolo}" in testo:
+        return testo.replace("{ruolo}", f"<@&{opz.mention_role_id}>" if opz.mention_role_id else "").strip()[:MAX_MESSAGGIO]
     if opz.mention_role_id:
         testo = f"<@&{opz.mention_role_id}> {testo}"
     return testo[:MAX_MESSAGGIO]
@@ -130,13 +138,33 @@ def vista_guarda(url: str | None, opz: AlertOptions) -> discord.ui.View | None:
     return vista
 
 
-async def invia_alert(canale, testo: str, opz: AlertOptions, url: str | None = None):
-    """Invia l'avviso (con ruolo, bottone, pubblicazione). Solleva discord.HTTPException se l'invio fallisce."""
+async def embed_avviso(guild_id: int, opz: AlertOptions, valori: dict[str, str], url: str | None):
+    """L'embed dell'avviso (ALR-014, 024): quello salvato con `embed_nome`, altrimenti quello semplice."""
+    from core.repositories.saved_embed_repo import saved_embed_repo
+
+    if opz.embed_nome:
+        salvato = await saved_embed_repo.get(guild_id, opz.embed_nome)
+        if salvato is not None:
+            embed = embed_da_modello(da_json(salvato.data), valori)
+            if embed is not None:
+                return embed
+    return embed_predefinito(valori, url)
+
+
+async def invia_alert(canale, testo: str, opz: AlertOptions, url: str | None = None, valori: dict[str, str] | None = None):
+    """Invia l'avviso (con ruolo, bottone, pubblicazione). Solleva discord.HTTPException se l'invio fallisce.
+
+    Con `valori` e formato «embed» (o un embed salvato) il testo diventa un embed: nel messaggio resta solo il ruolo.
+    """
     kwargs = {"allowed_mentions": menzioni_avviso(opz)}
     vista = vista_guarda(url, opz)
     if vista is not None:
         kwargs["view"] = vista
-    messaggio = await canale.send(testo_con_menzione(testo, opz), **kwargs)
+    contenuto = testo_con_menzione(testo, opz)
+    if valori is not None and (opz.formato == "embed" or opz.embed_nome):
+        kwargs["embed"] = await embed_avviso(canale.guild.id, opz, valori, url)
+        contenuto = testo_con_menzione("{ruolo}", opz)
+    messaggio = await canale.send(contenuto or None, **kwargs)
     if opz.crosspost and canale.is_news():
         try:
             await messaggio.publish()
@@ -145,9 +173,11 @@ async def invia_alert(canale, testo: str, opz: AlertOptions, url: str | None = N
     return messaggio
 
 
-async def avviso_live(canale, testo: str, opz: AlertOptions, url: str | None = None) -> int | None:
+async def avviso_live(
+    canale, testo: str, opz: AlertOptions, url: str | None = None, valori: dict[str, str] | None = None
+) -> int | None:
     """Messaggio «in diretta»: restituisce l'id da ricordare per cancellarlo a fine diretta."""
-    messaggio = await invia_alert(canale, testo, opz, url)
+    messaggio = await invia_alert(canale, testo, opz, url, valori)
     return getattr(messaggio, "id", None)
 
 

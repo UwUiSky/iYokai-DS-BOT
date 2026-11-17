@@ -696,10 +696,12 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         ]
         righe += [
             f"`TW-{s.id}` **{s.label}** (Twitch: {s.twitch_login}) → <#{s.channel_id}>"
+            f"{' 🔴 in diretta' if s.last_known_live else ''}"  # ALR-039
             for s in twitch_subs
         ]
         righe += [
             f"`YT-{s.id}` **{s.label}** (YouTube live: {s.youtube_channel_id}) → <#{s.channel_id}>"
+            f"{' 🔴 in diretta' if s.last_known_live else ''}"  # ALR-039
             for s in youtube_subs
         ]
         righe += [
