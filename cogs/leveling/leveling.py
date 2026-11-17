@@ -3811,7 +3811,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         if destinazione is None:
             await interaction.response.send_message(await testo_per(interaction, "annuncio_prova_spento"), ephemeral=True)
             return
-        if not isinstance(destinazione, discord.abc.User):
+        if not isinstance(destinazione, (discord.User, discord.Member)):
             permessi = destinazione.permissions_for(guild.me)
             if not (permessi.view_channel and permessi.send_messages):
                 await interaction.response.send_message(
