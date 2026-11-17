@@ -91,7 +91,7 @@ async def test_il_bot_principale_accetta_il_sesto_menu_su_messaggio():
 
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.none(), tree_cls=BlacklistAwareCommandTree)
 
-    async def cb(i, m):
+    async def cb(i: discord.Interaction, m: discord.Message):
         pass
 
     for n in range(6):
