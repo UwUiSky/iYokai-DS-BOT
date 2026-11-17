@@ -1,7 +1,7 @@
 """
 tests/test_command_groups.py
 ============================
-I 16 gruppi di primo livello della mappa F7 (D24): nomi, descrizioni,
+I gruppi di primo livello (mappa F7, D24, più quelli nati dal catalogo): nomi, descrizioni,
 permessi predefiniti, livello di accesso, aggiunta di comandi.
 Funzioni coperte: NF-05 (issue #76)
 """
@@ -20,24 +20,29 @@ from core.command_access import Livello
 
 ADMIN_ATTESI = [
     "admin-bot", "admin-musica", "admin-ai", "admin-automod", "admin-filtri", "admin-sicurezza", "admin-antinuke", "admin-antiraid",
-    "admin-moduli", "admin-economia", "admin-livelli", "admin-ruoli", "admin-log", "admin-messaggi", "admin-giveaway", "admin-ticket",
-    "admin-ticket-opzioni", "admin-backup", "admin-benvenuto", "admin-vocali",
+    "admin-moduli", "admin-economia", "admin-livelli", "admin-ruoli", "admin-menu-ruoli", "admin-log", "admin-messaggi", "admin-giveaway",
+    "admin-ticket", "admin-ticket-opzioni", "admin-backup", "admin-benvenuto", "admin-vocali",
 ]
+# Gruppi admin nati dopo la mappa F7 (catalogo #123, #128, #131): stanno dopo i gruppi per tutti.
+ADMIN_AGGIUNTI = ["admin-inviti", "admin-giochi", "admin-automazioni", "admin-tag"]
 MOD_ATTESI = ["mod-sanzioni", "mod-casi", "mod-canali", "mod-ban"]
 ATTESI = [
     "owner", *ADMIN_ATTESI, *MOD_ATTESI, "founder",
-    "ticket", "voice", "music", "level", "monete", "clan", "fun", "immagini", "giochi", "sondaggi", "assistente", "gif", "utility",
+    "ticket", "voice", "music", "level", "monete", "clan", "fun", "immagini", "giochi", "sondaggi", "assistente", "gif",
+    "admin-inviti", "admin-giochi", "tag", "admin-automazioni", "admin-tag", "eventi", "web", "utility",
 ]
+# D56: massimo 60 gruppi di primo livello (Discord ne accetta 100).
+MAX_GRUPPI = 60
 # Eccezioni al permesso `manage_guild` dei gruppi admin (D60): sicurezza e backup chiedono administrator. I ruoli seguono la regola: manage_guild (scelta dell'owner 01/11).
 PERMESSI = {
-    **{n: "manage_guild" for n in ADMIN_ATTESI},
+    **{n: "manage_guild" for n in ADMIN_ATTESI + ADMIN_AGGIUNTI},
     "admin-backup": "administrator", "admin-sicurezza": "administrator",
     "admin-antinuke": "administrator", "admin-antiraid": "administrator",
     "owner": "administrator", "founder": "administrator",
     "mod-sanzioni": "moderate_members", "mod-casi": "moderate_members", "mod-canali": "moderate_members", "mod-ban": "ban_members",
 }
 LIVELLI = {
-    **{n: Livello.ADMIN for n in ADMIN_ATTESI},
+    **{n: Livello.ADMIN for n in ADMIN_ATTESI + ADMIN_AGGIUNTI},
     "admin-sicurezza": Livello.SECURITY, "admin-antinuke": Livello.SECURITY, "admin-antiraid": Livello.SECURITY, "admin-log": Livello.LOG,
     "owner": Livello.OWNER, "founder": Livello.FOUNDER,
     "mod-sanzioni": Livello.MOD, "mod-casi": Livello.MOD, "mod-canali": Livello.MOD, "mod-ban": Livello.MODBAN,
@@ -213,9 +218,11 @@ def test_nessun_gruppo_per_tutti_inizia_con_admin_mod_o_founder():
     assert not sbagliati, f"Gruppi per tutti con il nome di un ruolo: {sbagliati} (cambia nome)"
 
 
-def test_i_gruppi_staff_sono_venticinque_e_i_vecchi_non_ci_sono_piu():
+def test_i_gruppi_staff_hanno_un_livello_e_i_vecchi_non_ci_sono_piu():
+    """Ogni gruppo da staff (admin-, mod-, founder) ha un livello di accesso; al massimo 60 gruppi in tutto (D56)."""
+    assert len(list(cg.nomi_gruppi())) <= MAX_GRUPPI
     staff = [n for n in cg.nomi_gruppi() if n.startswith(("admin-", "mod-")) or n == "founder"]
-    assert len(staff) == 25
+    assert staff and all(getattr(cg.ottieni_gruppo(n), "livello", None) is not None for n in staff)
     vecchi = {"admin", "backup", "gestione", "economia", "moduli", "ruoli", "messaggi", "giveaway", "ticket-gestione", "ticket-pannelli",
               "filtri", "security", "antinuke", "ai", "antiraid", "automod", "mod", "modban", "log"}
     assert not vecchi & set(cg.nomi_gruppi())
