@@ -9,6 +9,7 @@ Funzioni coperte: catalogo #128 UTL-083, 071, 072, 112, 208 (D69, B3)
 
 from __future__ import annotations
 
+import io
 import logging
 import re
 import time
@@ -17,6 +18,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core import allegati_mostra
 from core import channel_router as router
 from core import messaggi_auto_logic as logica
 from core.admin_mentions_logic import menzioni_ammesse, utente_puo_pingare_ruoli
@@ -202,6 +204,7 @@ class MessaggiAutoCog(CogConGruppi, commands.Cog):
     async def _cita(self, message: discord.Message) -> None:
         guild = message.guild
         embed_da_inviare: list[discord.Embed] = []
+        file_da_inviare: list[discord.File] = []
         for canale_id, messaggio_id in logica.link_ai_messaggi(message.content, guild.id):
             origine = guild.get_channel_or_thread(canale_id)
             if origine is None or not hasattr(origine, "fetch_message"):
@@ -220,13 +223,22 @@ class MessaggiAutoCog(CogConGruppi, commands.Cog):
             embed = discord.Embed(description=(citato.content or "")[:4096], timestamp=citato.created_at, color=discord.Color.light_grey())
             embed.set_author(name=citato.author.display_name[:256], icon_url=citato.author.display_avatar.url)
             embed.add_field(name="#" + getattr(origine, "name", "?")[:100], value=f"[→]({citato.jump_url})")
-            immagine = next((a.url for a in citato.attachments if (a.content_type or "").startswith("image/")), None)
-            if immagine:
-                embed.set_image(url=immagine)
+            prima = next((a for a in citato.attachments if (a.content_type or "").startswith("image/")), None)
+            if prima is not None:  # D74: mai il link all'originale, solo la copia rifatta (o una riga di scheda)
+                copie, righe = await allegati_mostra.prepara([prima], guild.id)
+                if copie:
+                    nome = f"citazione{len(file_da_inviare)}.png"
+                    file_da_inviare.append(discord.File(io.BytesIO(copie[0][1]), filename=nome))
+                    embed.set_image(url=f"attachment://{nome}")
+                elif righe:
+                    embed.add_field(name="Allegato", value=righe[0][:1024], inline=False)
             embed_da_inviare.append(embed)
         if embed_da_inviare:
             try:
-                await message.reply(embeds=embed_da_inviare, mention_author=False, allowed_mentions=discord.AllowedMentions.none())
+                await message.reply(
+                    embeds=embed_da_inviare, files=file_da_inviare, mention_author=False,
+                    allowed_mentions=discord.AllowedMentions.none(),
+                )
             except discord.HTTPException:
                 pass
 
