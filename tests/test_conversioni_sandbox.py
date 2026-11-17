@@ -226,3 +226,13 @@ async def test_il_servizio_rifiuta_richieste_storte(cartella, monkeypatch):
     finally:
         server.close()
         await server.wait_closed()
+
+
+def test_controllo_finale_del_pdf_vede_le_azioni_ma_non_le_chiavi_innocue():
+    """La rete di sicurezza sui byte in uscita: `/A` (azione) fa scartare la copia; `/AP`, `/Annots`, `/ArtBox` no."""
+    from core.conversioni_worker import _PROIBITE
+
+    for pericoloso in (b"<< /A 5 0 R >>", b"<</A<</S/URI>>>>", b"/AA 3 0 R", b"/OpenAction[1 0 R]", b"/JS(app.alert(1))"):
+        assert _PROIBITE.search(pericoloso), pericoloso
+    for innocuo in (b"/AP << /N 4 0 R >>", b"/Annots [3 0 R]", b"/ArtBox [0 0 1 1]", b"/ASCIIHexDecode", b"/Author"):
+        assert not _PROIBITE.search(innocuo), innocuo

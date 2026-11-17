@@ -44,7 +44,7 @@ SECONDI_SONDA = 15
 
 # Parole che in un PDF rifatto non devono comparire: se restano, nessuna copia.
 _PROIBITE = re.compile(
-    rb"/(?:JavaScript|JS|OpenAction|AA|Launch|URI|EmbeddedFiles?|EmbeddedFile|AcroForm|XFA|RichMedia|SubmitForm|"
+    rb"/(?:JavaScript|JS|OpenAction|AA|A|Launch|URI|EmbeddedFiles?|EmbeddedFile|AcroForm|XFA|RichMedia|SubmitForm|"
     rb"ImportData|GoToR|GoToE|Metadata|Names|FileAttachment|Encrypt)(?![A-Za-z0-9_])"
 )
 _PAGINA_TENUTE = (
