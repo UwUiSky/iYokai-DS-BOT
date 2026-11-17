@@ -1,7 +1,7 @@
 # Memoria dell'orchestratore
 
 ## Aggiornata
-17/11/2026 · `main` b017e72d · uniti sicurezza rapida (#162) e musica B3 (#163); allegati D74 in corso (#164)
+17/11/2026 · uniti sicurezza rapida (#162), musica B3 (#163) e allegati D74 parti 1 e 2a (#164)
 
 ## Dove siamo
 - Il bot è in **zero server**. Nessuna prova live fatta: tutte le voci
@@ -60,7 +60,7 @@
 - 29/10 PAUSA (limite settimanale): r12 in corso. Su main già unito feat/r12resto (approvato). Rami pubblicati con WIP: feat/r12ai (≈30/55 voci §25 fatte; restano 25.41–43, 25.92, ticket 25.65/66/97, voce #142 25.102–105, 25.100, 25.77, owner 25.82/84/94/21, app/pannello 25.85–93/104), feat/r12piatt (piattaforme e desktop, 34 voci, WIP non verificato), feat/r12resto (dopo il merge: 23.17 completa, /mod carico solo ADMIN, vista forum con post bloccati: in corso). Poi: controlli su r12ai e r12piatt, merge, UNA suite completa (migrazioni 0420–0424, 0450+, 0480+), push, chiusura issue.
 
 - 16–17/11: ripresa dopo la pausa del 10/11. Uniti in main: `fix/sicurezza-rapida` (aiohttp 3.14.4, `.env.example` in production, test `test_sicurezza_modello_env.py`, Refs #143 #150) e `feat/r3mus-coda` (#126 B3: `/music coda cerca|salta|pulisci`, `music_queue_mode`, `/music shuffle resta:`; cacciatore passato, 5 difetti corretti in f07b2a05; revisore-capo NON passato, diff letto dall'orchestratore). Smoke dopo il merge: 681 verdi (musica, i18n, albero, traduttore, pannello, safe_http).
-- In corso: `feat/r160-allegati` (PR #164, D74). Parte 1 fatta e rivista (tipo dai byte, decisione unica, mai l'originale su disco). Parte 2a in corso: BMP/TIFF/ICO/AVIF nella sandbox, via i link al CDN. Poi parte 2b: PDF, audio, video, log a nome utente via webhook.
+- 17/11: unito in main `feat/r160-allegati` (PR #164, D74 parti 1 e 2a: tipo dai byte, decisione unica, mai l'originale su disco, BMP/TIFF/ICO/AVIF nella sandbox, via i link al CDN da ModMail, starboard, citazioni, telefono, ricarica chat). Rivisto dall'orchestratore (5 difetti corretti in 5764c917); cacciatore e revisore NON passati. Smoke dopo il merge: 491 verdi. Resta la parte 2b (#160 aperta): PDF, audio, video, log a nome utente via webhook, HEIC (serve `pillow-heif`: decide l'owner), `/modmail rispondi allegato:` dello staff, copia rifatta sul telefono, azione «Richiedi copia» (proposta, da passare al guardiano). Da aprire come issue: la cache dei verdetti non tiene il PNG (stessa immagine due volte = scheda); `test_uscita_enorme_viene_fermata` si blocca già su main.
 - Regola dell'owner (16/11): il codice lo scrivono agenti su Sonnet; l'orchestratore rivede alla fine (funzionamento, bug, sicurezza, injection). Pochi agenti, schede brevi.
 - Aperti di #126 B3: coda equa che sparge una playlist messa «in cima» (decide l'owner); mescola fisso che resta acceso a coda finita col bot connesso; test che passi da `_play_nel_canale`. Domande all'owner: pulizia automatica all'uscita dal canale; mescola fisso perso al riavvio.
 - Revisione di sicurezza dell'orchestratore (15/11, consegnata all'owner fuori dal repository): voci B-1…B-13 del bot; fatte B-2 e B-3.
