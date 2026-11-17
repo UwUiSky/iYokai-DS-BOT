@@ -24,11 +24,12 @@ wavelink>=3.5.1
 # — core/restore_web_server.py, core/custom_webhook_server.py). Arriva
 # già di rimbalzo da discord.py, ma va dichiarato esplicitamente qui:
 # senza una voce propria, il limite di versione che consente arrivava
-# da discord.py, non da una scelta nostra (SEC-15) — >=3.13.3 perché
-# le versioni precedenti hanno CVE-2025-53643 (request smuggling),
-# CVE-2025-69224 (request smuggling, parser Python puro) e
-# CVE-2025-69226 (path traversal nei file statici) già risolte.
-aiohttp>=3.13.3
+# da discord.py, non da una scelta nostra (SEC-15) — >=3.14.4 perché
+# la 3.14.3 ha otto vulnerabilità note (CVE-2026-111063…111066,
+# CVE-2026-111748…111750, CVE-2026-123817) e le versioni più vecchie
+# hanno CVE-2025-53643, CVE-2025-69224 (request smuggling) e
+# CVE-2025-69226 (path traversal nei file statici).
+aiohttp>=3.14.4
 
 # Pagine del pannello web (core/web_panel_server.py): template con escape automatico
 # dell'HTML. >=3.1.6 per le correzioni di sicurezza della sandbox (CVE-2025-27516).
