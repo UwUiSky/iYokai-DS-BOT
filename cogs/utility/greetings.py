@@ -47,6 +47,8 @@ from core.repositories.greetings_repo import greetings_repo
 from core.safe_image import ImmagineTroppoGrande, run_image_task
 from core.security_raid_state import raid_in_corso
 from core.welcome_image import (
+    ALLINEAMENTI,
+    MAX_TESTO,
     FORME,
     MAX_SFONDO_BYTE,
     MAX_TITOLO,
@@ -264,6 +266,22 @@ class ExtraBenvenutoView(BaseView):
         await interaction.response.send_modal(UsciteModal(self._config))
 
 
+def _testo_sull_immagine(modello: str, member: discord.Member) -> str:
+    """RUO-008: il testo libero con i segnaposto; sull'immagine `{user}` è il nome, non una menzione."""
+    if not modello:
+        return ""
+    return render_template(
+        modello,
+        user_mention=member.display_name,
+        username=member.name,
+        server_name=member.guild.name,
+        member_count=member.guild.member_count or 0,
+        user_id=member.id,
+        display_name=member.display_name,
+        server_id=member.guild.id,
+    )
+
+
 async def _file_benvenuto(config, member: discord.Member) -> discord.File | None:
     """NF-11: l'immagine di benvenuto, o None se spenta o non disegnabile (il testo parte lo stesso)."""
     if not config.welcome_image_enabled:
@@ -285,6 +303,10 @@ async def _file_benvenuto(config, member: discord.Member) -> discord.File | None
             modello=config.welcome_image_template,
             forma=config.welcome_image_shape,
             colore_testo=config.welcome_image_color,
+            opacita=config.welcome_image_opacity,
+            testo=_testo_sull_immagine(config.welcome_image_text, member),
+            allineamento=config.welcome_image_align,
+            colore_nome=config.welcome_image_name_color,
         )
         png = await run_image_task(render_welcome_image, dati, avatar, sfondo)
     except Exception:
@@ -374,7 +396,13 @@ class GreetingsCog(CogConGruppi, commands.Cog):
                 )
                 try:
                     try:
-                        if allegato is not None:
+                        if allegato is not None and config.welcome_image_order == "solo_immagine":
+                            inviato = await channel.send(file=allegato, allowed_mentions=menzioni)  # RUO-010
+                        elif allegato is not None and config.welcome_image_order == "immagine_prima":
+                            await channel.send(file=allegato, allowed_mentions=menzioni)
+                            allegato = None  # già uscita: se il testo fallisce non si rimanda
+                            inviato = await channel.send(testo, allowed_mentions=menzioni)
+                        elif allegato is not None:
                             inviato = await channel.send(testo, file=allegato, allowed_mentions=menzioni)
                         else:
                             inviato = await channel.send(testo, allowed_mentions=menzioni)
@@ -690,10 +718,21 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         colore_testo="Colore del testo, per esempio #FFFFFF",
         titolo="La scritta in alto (massimo 40 caratteri)",
         togli_sfondo="Torna al modello pronto cancellando lo sfondo caricato",
+        opacita="Quanto si vede lo sfondo caricato, da 0 a 100 (di base 65)",
+        testo="Riga di testo sull'immagine, con i segnaposto (massimo 100; «togli» la toglie)",
+        ordine="Se l'immagine va con il testo, prima del testo o da sola",
+        allineamento="Dove stanno i testi accanto all'avatar",
+        colore_nome="Colore del nome, per esempio #FFD700 (oppure «predefinito»)",
     )
     @app_commands.choices(
         modello=[app_commands.Choice(name=nome, value=nome) for nome in MODELLI],
         forma_avatar=[app_commands.Choice(name=forma, value=forma) for forma in FORME],
+        ordine=[
+            app_commands.Choice(name="insieme al testo", value="insieme"),
+            app_commands.Choice(name="immagine prima del testo", value="immagine_prima"),
+            app_commands.Choice(name="solo immagine", value="solo_immagine"),
+        ],
+        allineamento=[app_commands.Choice(name=a, value=a) for a in ALLINEAMENTI],
     )
     async def immagine(
         self,
@@ -705,6 +744,11 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         colore_testo: app_commands.Range[str, 4, 7] | None = None,
         titolo: app_commands.Range[str, 1, MAX_TITOLO] | None = None,
         togli_sfondo: bool = False,
+        opacita: app_commands.Range[int, 0, 100] | None = None,
+        testo: app_commands.Range[str, 1, MAX_TESTO] | None = None,
+        ordine: str | None = None,
+        allineamento: str | None = None,
+        colore_nome: app_commands.Range[str, 4, 11] | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -716,6 +760,14 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         if colore_testo is not None:
             colore = colore_valido(colore_testo)
             if colore is None:
+                await interaction.response.send_message(
+                    await testo_per(interaction, "greetings_il_colore_va_scritto_come"), ephemeral=True
+                )
+                return
+        nome_colore = None
+        if colore_nome is not None and colore_nome.lower() != "predefinito":
+            nome_colore = colore_valido(colore_nome)
+            if nome_colore is None:
                 await interaction.response.send_message(
                     await testo_per(interaction, "greetings_il_colore_va_scritto_come"), ephemeral=True
                 )
@@ -754,6 +806,16 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             color=colore or attuale.welcome_image_color,
             title=titolo or attuale.welcome_image_title,
         )
+        if any(v is not None for v in (opacita, testo, ordine, allineamento, colore_nome)):
+            # RUO-004, 007, 008, 010: ciò che non si indica resta com'è
+            await greetings_repo.set_welcome_image_extra(
+                guild.id,
+                attuale.welcome_image_opacity if opacita is None else opacita,
+                attuale.welcome_image_text if testo is None else ("" if testo.lower() == "togli" else testo),
+                ordine or attuale.welcome_image_order,
+                allineamento or attuale.welcome_image_align,
+                attuale.welcome_image_name_color if colore_nome is None else (nome_colore or ""),
+            )
         if pronto is not None:
             await greetings_repo.set_welcome_background(guild.id, pronto)
         elif togli_sfondo:

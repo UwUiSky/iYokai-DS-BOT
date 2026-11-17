@@ -45,6 +45,12 @@ class GreetingsConfig:
     welcome_image_color: str = "#FFFFFF"
     welcome_image_title: str = "Benvenuto"
     welcome_image_has_background: bool = False
+    # RUO-004, 007, 008, 010 (migrazione 0643)
+    welcome_image_opacity: int = 65
+    welcome_image_text: str = ""
+    welcome_image_order: str = "insieme"
+    welcome_image_align: str = "sinistra"
+    welcome_image_name_color: str = ""
     # RUO-013, 017, 023, 025 (migrazione 0330).
     welcome_dm_message: str = ""
     welcome_variants: list[str] = field(default_factory=list)
@@ -121,6 +127,11 @@ class GreetingsRepository:
             welcome_image_color=row["welcome_image_color"],
             welcome_image_title=row["welcome_image_title"],
             welcome_image_has_background=row["welcome_image_has_background"],
+            welcome_image_opacity=row["welcome_image_opacity"],
+            welcome_image_text=row["welcome_image_text"],
+            welcome_image_order=row["welcome_image_order"],
+            welcome_image_align=row["welcome_image_align"],
+            welcome_image_name_color=row["welcome_image_name_color"],
             welcome_dm_message=row["welcome_dm_message"],
             welcome_variants=list(row["welcome_variants"]),
             welcome_reactions=list(row["welcome_reactions"]),
@@ -192,6 +203,26 @@ class GreetingsRepository:
                     welcome_image_title = EXCLUDED.welcome_image_title
             """,
             guild_id, enabled, template, shape, color, title,
+        )
+
+    async def set_welcome_image_extra(
+        self, guild_id: int, opacity: int, text: str, order: str, align: str, name_color: str
+    ) -> None:
+        """RUO-004, 007, 008, 010: impostazioni in più dell'immagine di benvenuto."""
+        await self._pool.execute(
+            """
+            INSERT INTO greetings_config
+                (guild_id, welcome_image_opacity, welcome_image_text, welcome_image_order,
+                 welcome_image_align, welcome_image_name_color)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (guild_id) DO UPDATE
+                SET welcome_image_opacity = EXCLUDED.welcome_image_opacity,
+                    welcome_image_text = EXCLUDED.welcome_image_text,
+                    welcome_image_order = EXCLUDED.welcome_image_order,
+                    welcome_image_align = EXCLUDED.welcome_image_align,
+                    welcome_image_name_color = EXCLUDED.welcome_image_name_color
+            """,
+            guild_id, opacity, text, order, align, name_color,
         )
 
     async def get_welcome_background(self, guild_id: int) -> bytes | None:

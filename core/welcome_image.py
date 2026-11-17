@@ -26,6 +26,10 @@ MAX_SFONDO_BYTE = 3 * 1024 * 1024  # come ProBot: sfondo sotto 3 MB
 MAX_TITOLO = 40
 MAX_NOME = 32
 FORME = ("tondo", "quadrato")
+MAX_TESTO = 100  # RUO-008
+ORDINI = ("insieme", "immagine_prima", "solo_immagine")  # RUO-010
+ALLINEAMENTI = ("sinistra", "centro", "destra")  # RUO-007
+OPACITA_DI_BASE = 65  # RUO-004: quanto si vede lo sfondo caricato (di base come il velo di prima: 35%)
 COLORE_TESTO_DI_BASE = "#FFFFFF"
 
 # modello: (colore in alto a sinistra, colore in basso a destra)
@@ -46,6 +50,10 @@ class DatiBenvenuto:
     modello: str = MODELLO_DI_BASE
     forma: str = "tondo"
     colore_testo: str = COLORE_TESTO_DI_BASE
+    opacita: int = OPACITA_DI_BASE
+    testo: str = ""
+    allineamento: str = "sinistra"
+    colore_nome: str = ""
 
 
 def prepara_sfondo(image_bytes: bytes) -> bytes:
@@ -76,13 +84,13 @@ def _sfumatura(modello: str) -> Image.Image:
     return piccolo.resize((LARGHEZZA, ALTEZZA), Image.BILINEAR)
 
 
-def _sfondo(modello: str, sfondo_bytes: bytes | None) -> Image.Image:
+def _sfondo(modello: str, sfondo_bytes: bytes | None, opacita: int = OPACITA_DI_BASE) -> Image.Image:
     if sfondo_bytes:
         try:
             img = ImageOps.fit(safe_open_image(sfondo_bytes).convert("RGB"), (LARGHEZZA, ALTEZZA), method=Image.LANCZOS)
             # Un velo scuro: il testo si legge su qualunque sfondo.
             velo = Image.new("RGB", img.size, (0, 0, 0))
-            return Image.blend(img, velo, 0.35)
+            return Image.blend(img, velo, 1 - max(0, min(opacita, 100)) / 100)
         except Exception:  # sfondo rotto: si usa il modello
             pass
     return _sfumatura(modello)
@@ -113,7 +121,9 @@ def render_welcome_image(dati: DatiBenvenuto, avatar_bytes: bytes | None, sfondo
     """L'immagine di benvenuto come PNG di LARGHEZZA x ALTEZZA. Non solleva per avatar, sfondo o testi strani."""
     colore = colore_valido(dati.colore_testo) or COLORE_TESTO_DI_BASE
     rgb = tuple(int(colore[i : i + 2], 16) for i in (1, 3, 5))
-    immagine = _sfondo(dati.modello, sfondo_bytes)
+    colore_nome = colore_valido(dati.colore_nome) if dati.colore_nome else None
+    rgb_nome = tuple(int(colore_nome[i : i + 2], 16) for i in (1, 3, 5)) if colore_nome else rgb
+    immagine = _sfondo(dati.modello, sfondo_bytes, dati.opacita)
     draw = ImageDraw.Draw(immagine)
 
     avatar = _avatar(avatar_bytes, dati.forma)
@@ -131,9 +141,20 @@ def render_welcome_image(dati: DatiBenvenuto, avatar_bytes: bytes | None, sfondo
     titolo = taglia_al_largo(draw, senza_quadrati(dati.titolo[:MAX_TITOLO], f_titolo), f_titolo, larghezza)
     nome = taglia_al_largo(draw, senza_quadrati(dati.nome[:MAX_NOME], f_nome), f_nome, larghezza)
     numero = f"Membro n. {dati.numero:,}".replace(",", ".")
-    draw.text((x, 100), titolo, font=f_titolo, fill=rgb)
-    draw.text((x, 170), nome, font=f_nome, fill=rgb)
-    draw.text((x, 260), numero, font=f_numero, fill=rgb)
+
+    def scrivi(y: int, testo: str, font, colore) -> None:
+        """RUO-007: il testo a sinistra, al centro o a destra della colonna accanto all'avatar."""
+        spazio = larghezza - draw.textlength(testo, font=font)
+        spostamento = {"centro": spazio / 2, "destra": spazio}.get(dati.allineamento, 0)
+        draw.text((x + max(0, spostamento), y), testo, font=font, fill=colore)
+
+    scrivi(100, titolo, f_titolo, rgb)
+    scrivi(170, nome, f_nome, rgb_nome)
+    scrivi(260, numero, f_numero, rgb)
+    if dati.testo:  # RUO-008
+        f_testo = carica_font(26)
+        libero = taglia_al_largo(draw, senza_quadrati(dati.testo[:MAX_TESTO], f_testo), f_testo, larghezza)
+        scrivi(315, libero, f_testo, rgb)
 
     buffer = io.BytesIO()
     immagine.save(buffer, format="PNG")
