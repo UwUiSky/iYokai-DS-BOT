@@ -2,14 +2,15 @@
 core/allegati_sicuri.py
 =======================
 Copia sicura degli allegati nei log dei messaggi (D61, D62, D74, #152, #160). Il tipo si decide dai primi byte
-(`allegati_tipo_logic`): delle immagini vere (PNG, JPEG, GIF, WEBP) si salva solo la copia PNG rifatta dalla sandbox,
-mai l'originale (nome casuale, SHA-256 dell'originale, tetto di peso); ogni altro file resta una scheda (nome pulito, tipo, peso,
-impronta) o un avviso se e' travestito, eseguibile o sconosciuto: mai un file. Cartella fuori dalla radice del sito. L'anteprima
-e' solo la copia PNG ricodificata nel processo a parte (`immagini_pipeline`); un'immagine sospetta non si
-conserva (resta in quarantena). Conservazione a tempo, `/privacy` dal registro dei dati, link di download
-firmati e a scadenza (serviti dal pannello con `attachment`, `nosniff`, CSP `sandbox`).
+(`allegati_tipo_logic`). Mai l'originale: delle immagini vere si salva la copia PNG rifatta dalla sandbox, di PDF, audio
+e testo la copia convertita nel processo a parte (`allegati_copia`; il video no, nei log di massa); nome casuale,
+SHA-256 dell'originale, tetto di peso. Ogni altro file resta una scheda (nome pulito, tipo, peso, impronta) o un avviso
+se e' travestito, eseguibile o sconosciuto. Cartella fuori dalla radice del sito. L'anteprima e' solo la copia PNG
+ricodificata (`immagini_pipeline`); un'immagine sospetta non si conserva (resta in quarantena). Conservazione a tempo,
+`/privacy` dal registro dei dati, link di download firmati e a scadenza (serviti dal pannello con `attachment`,
+`nosniff`, CSP `sandbox`).
 Funzioni coperte: SPEC §8.16 (D61, D74, #152, #160)
-Dipende da: core/allegati_tipo_logic.py, core/immagini_pipeline.py, core/immagini_byte_logic.py, core/migrations/0304_allegati_copie.sql
+Dipende da: core/allegati_tipo_logic.py, core/allegati_copia.py, core/immagini_pipeline.py, core/immagini_byte_logic.py, core/migrations/0304_allegati_copie.sql
 """
 
 from __future__ import annotations
@@ -28,7 +29,7 @@ from pathlib import Path
 
 from urllib.parse import quote
 
-from core import allegati_tipo_logic, immagini_pipeline
+from core import allegati_copia, allegati_tipo_logic, immagini_pipeline
 from core.database import db
 from core.immagini_byte_logic import PULITA, riconosci_tipo
 
@@ -147,6 +148,12 @@ async def salva(
         return None
     d = allegati_tipo_logic.decidi(dati, nome_file, content_type)
     if d.azione != allegati_tipo_logic.IMMAGINE:
+        if d.azione == allegati_tipo_logic.SCHEDA:
+            # D74: PDF, audio e testo conservano la copia convertita nel processo a parte; il video no (log di massa).
+            convertita = await allegati_copia.copia_sicura(dati, d, guild_id, con_video=False)
+            if convertita is not None:
+                nome = await asyncio.to_thread(_scrivi, convertita[1])
+                return await _registra(guild_id, channel_id, message_id, user_id, origine, d, STATO_SALVATA, nome, None)
         stato = STATO_SCHEDA if d.azione == allegati_tipo_logic.SCHEDA else STATO_RIFIUTATA
         return await _registra(guild_id, channel_id, message_id, user_id, origine, d, stato, None, None)
     try:
@@ -195,9 +202,11 @@ async def leggi(copia_id: int, *, anteprima: bool = False) -> tuple[str, bytes] 
         dati = await asyncio.to_thread(lambda: _percorso(nome).read_bytes())
     except OSError:
         return None
-    # Il file conservato è sempre un PNG rifatto: il nome scaricato lo dice, qualunque fosse l'estensione di partenza.
+    # Il file conservato è sempre una copia rifatta (PNG, PDF, Ogg o testo): il nome scaricato lo dice, qualunque
+    # fosse l'estensione di partenza.
     radice = (r["nome_file"] or "immagine").rsplit(".", 1)[0] or "immagine"
-    return (f"anteprima-{r['id']}.png" if anteprima else f"{radice}.png"), dati
+    estensione = allegati_copia.ESTENSIONE.get(r["tipo"], "png")
+    return (f"anteprima-{r['id']}.png" if anteprima else f"{radice}.{estensione}"), dati
 
 
 async def pulisci() -> int:

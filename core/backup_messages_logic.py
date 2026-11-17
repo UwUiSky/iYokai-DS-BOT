@@ -4,8 +4,9 @@ core/backup_messages_logic.py
 Messaggi via webhook, impersonando l'autore: la copia degli ultimi N messaggi
 di ogni canale nel server di backup (D8, M 12.17) e le chat salvate di un
 canale (fino a 1000 messaggi) da ricaricare dopo, anche in un altro canale.
-Si ricarica come file solo un'immagine vera e pulita, come copia PNG ricodificata (D61, D74); ogni altro allegato
-resta una riga di scheda (nome, tipo, peso, impronta) o di avviso, mai il file; i messaggi fissati si rifissano.
+Si ricarica come file solo la copia rifatta (D61, D74): PNG per un'immagine vera e pulita; PDF, audio, video e
+testo convertiti nel processo a parte (`core/allegati_copia.py`); ogni altro allegato resta una riga di scheda
+(nome, tipo, peso, impronta) o di avviso, mai il file; i messaggi fissati si rifissano.
 
 Regole di sicurezza:
 - un invio alla volta, ognuno atteso (``wait=True``): l'ordine resta
@@ -30,6 +31,7 @@ import discord
 
 from core.backup_mirror_logic import nome_sicuro_per_webhook
 from core import allegati_tipo_logic
+from core.allegati_mostra import MAX_TOTALE_COPIE
 from core.immagini_pipeline import esamina_allegato
 
 logger = logging.getLogger("iyokai.backup_messages")
@@ -99,18 +101,19 @@ async def _destinazione_vuota(canale) -> bool:
 
 async def preparare_allegati(allegati, guild_id: int = 0) -> tuple[list[discord.File], list[str]]:
     """
-    Gli allegati da ricaricare e le righe per il resto. D61/D62/D74: il tipo lo dicono i byte, non il nome. Solo
-    un'immagine vera e pulita si ricarica, come copia PNG ricodificata; ogni altro file non si rimanda mai:
+    Gli allegati da ricaricare e le righe per il resto. D61/D62/D74: il tipo lo dicono i byte, non il nome. Si
+    ricarica solo la copia rifatta (PNG per le immagini; PDF, audio, video e testo convertiti); l'originale non si rimanda mai:
     esce una riga di scheda (nome, tipo, peso, impronta) o di avviso (travestito, eseguibile, sconosciuto).
     """
-    file, righe = [], []
+    file, righe, totale = [], [], 0
     for a in allegati:
         try:
             dati = await a.read()
         except discord.HTTPException:
             continue  # link scaduto o file sparito: resta fuori
-        copia, d = await esamina_allegato(dati, a.filename, getattr(a, "content_type", None), guild_id)
-        if copia is not None:
+        copia, d = await esamina_allegato(dati, a.filename, getattr(a, "content_type", None), guild_id, con_video=True)
+        if copia is not None and totale + len(copia[1]) <= MAX_TOTALE_COPIE:
+            totale += len(copia[1])
             file.append(discord.File(io.BytesIO(copia[1]), filename=copia[0]))
         elif d.azione == allegati_tipo_logic.SCHEDA:
             righe.append(allegati_tipo_logic.riga_scheda(d))
@@ -275,7 +278,9 @@ async def _allegati_salvati(allegati: list[dict], scarica, guild_id: int = 0) ->
                          else allegati_tipo_logic.riga_scheda(d))
             non_scaricati += d.azione != allegati_tipo_logic.RIFIUTA
             continue
-        copia, d = await esamina_allegato(dati, nome, None, guild_id)
+        copia, d = await esamina_allegato(dati, nome, None, guild_id, con_video=True)
+        if copia is not None and totale + len(copia[1]) > MAX_TOTALE_COPIE:
+            copia = None  # il messaggio non regge altro peso: resta la scheda
         if copia is None:
             righe.append(allegati_tipo_logic.riga_scheda(d) if d.azione == allegati_tipo_logic.SCHEDA
                          else allegati_tipo_logic.riga_avviso(d))

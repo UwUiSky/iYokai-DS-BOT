@@ -226,7 +226,7 @@ class MessaggiAutoCog(CogConGruppi, commands.Cog):
             prima = next((a for a in citato.attachments if (a.content_type or "").startswith("image/")), None)
             if prima is not None:  # D74: mai il link all'originale, solo la copia rifatta (o una riga di scheda)
                 copie, righe = await allegati_mostra.prepara([prima], guild.id)
-                if copie:
+                if copie and copie[0][0].endswith(".png"):
                     nome = f"citazione{len(file_da_inviare)}.png"
                     file_da_inviare.append(discord.File(io.BytesIO(copie[0][1]), filename=nome))
                     embed.set_image(url=f"attachment://{nome}")

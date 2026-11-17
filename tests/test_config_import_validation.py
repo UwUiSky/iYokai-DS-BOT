@@ -66,6 +66,7 @@ SETTINGS_VALIDE = {
     "immagini_azione": "timeout",
     "immagini_timeout_minuti": 10,
     "immagini_canale_log_id": 161616161616161616,
+    "sandbox_secondi_giorno": 600,
     "account_rubato_attivo": False,
     "account_rubato_minuti_uguali": 30,
     "account_rubato_minuti_malevole": 600,

@@ -45,6 +45,10 @@ multidict==6.9.1
     #   aiohttp
     #   yarl
 pillow==13.0.0
+    # via
+    #   -r requirements.txt
+    #   pillow-heif
+pillow-heif==1.8.1
     # via -r requirements.txt
 propcache==0.5.4
     # via
@@ -54,6 +58,8 @@ psutil==7.2.2
     # via -r requirements.txt
 pycparser==3.0
     # via cffi
+pypdf==7.1.0
+    # via -r requirements.txt
 python-dotenv==1.2.3
     # via -r requirements.txt
 typing-extensions==4.16.0

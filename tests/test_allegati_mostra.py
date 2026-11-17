@@ -63,3 +63,42 @@ async def test_nome_con_inversione_e_pericoloso_non_esce_nella_riga(ambiente):  
     file, righe = await m.prepara([Finto("foto‮gnp.exe", b"MZ" + b"\0" * 100)], 1)
     assert file == [] and "‮" not in righe[0]
 
+
+
+# ------------------------------------------------------------------ copie convertite (D74, parte 2b)
+@pytest.fixture
+async def servizio_attivo(ambiente, tmp_path, monkeypatch):  # noqa: F811
+    from core import allegati_copia, immagini_servizio, immagini_sandbox
+
+    percorso = str(tmp_path / "sbx.sock")
+    monkeypatch.setenv(immagini_sandbox.VARIABILE_SOCKET, percorso)
+    server = await immagini_servizio.serve(percorso)
+    allegati_copia.azzera_tempo()
+    yield
+    server.close()
+    await server.wait_closed()
+    allegati_copia.azzera_tempo()
+
+
+async def test_pdf_e_testo_tornano_come_copia_convertita_e_il_video_solo_se_chiesto(servizio_attivo, tmp_path):
+    from tests.support import conversioni_finte as c
+
+    pdf, testo = Finto("a.pdf", c.pdf_pericoloso()), Finto("n.txt", b"ciao\r\nmondo\n")
+    video = Finto("v.mp4", c.video(tmp_path, larghezza=160, altezza=90))
+    copie, righe = await m.prepara([pdf, testo, video], 1)
+    assert [n for n, _ in copie] == ["a.pdf", "n.txt"] and len(righe) == 1 and "v.mp4" in righe[0]
+    assert b"/JavaScript" not in copie[0][1] and copie[1][1] == b"ciao\nmondo\n"
+    copie, righe = await m.prepara([video], 1, con_video=True)
+    assert [n for n, _ in copie] == ["v.mp4"] and righe == []
+
+
+async def test_le_copie_di_un_messaggio_non_superano_il_tetto_di_peso(servizio_attivo, monkeypatch):
+    monkeypatch.setattr(m, "MAX_TOTALE_COPIE", 15)
+    copie, righe = await m.prepara([Finto("a.txt", b"0123456789\n"), Finto("b.txt", b"0123456789\n")], 1)
+    assert [n for n, _ in copie] == ["a.txt"] and len(righe) == 1 and "b.txt" in righe[0]
+
+
+def test_file_da_chiama_png_gli_embed_e_lascia_il_nome_agli_altri():
+    file, primo = m.file_da([("foto.png", b"\x89PNG"), ("a.pdf", b"%PDF-"), ("b.png", b"\x89PNG")])
+    assert [x.filename for x in file] == ["allegato0.png", "a.pdf", "allegato2.png"] and primo == "allegato0.png"
+    assert m.file_da([("a.pdf", b"%PDF-")])[1] is None

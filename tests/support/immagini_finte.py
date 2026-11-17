@@ -128,5 +128,13 @@ def ico(w: int = 32, h: int = 32) -> bytes:
     return _salva(Image.new("RGBA", (w, h), (200, 100, 20, 255)), "ICO", sizes=[(w, h)])
 
 
+def heic(w: int = 40, h: int = 30) -> bytes:
+    """HEIC vero, scritto con pillow-heif (solo nei test: il bot non lo usa mai fuori dalla sandbox)."""
+    from pillow_heif import register_heif_opener
+
+    register_heif_opener()
+    return _salva(Image.new("RGB", (w, h), (160, 20, 220)), "HEIF")
+
+
 def avif(w: int = 40, h: int = 30) -> bytes:
     return _salva(Image.new("RGB", (w, h), (20, 160, 220)), "AVIF")

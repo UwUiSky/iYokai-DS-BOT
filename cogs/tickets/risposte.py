@@ -48,6 +48,7 @@ from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
 from core import allegati_tipo_logic
+from core.allegati_mostra import MAX_TOTALE_COPIE
 from core.immagini_pipeline import esamina_allegato
 from core.i18n import testo_per
 from core.repositories.ai_ticket_repo import ai_ticket_repo
@@ -382,10 +383,12 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
     async def _copie_allegati(messaggio: discord.Message) -> list[discord.File]:
         """
         Ricarica gli allegati nel canale dei log: i link del ticket spariscono con il canale. D61/D62: le immagini
-        solo ricodificate; sospette, non analizzate, travestiti, PDF, audio, video, Office e archivi restano fuori (D74).
+        solo ricodificate; PDF, audio, video e testo come copie convertite nel processo a parte; sospette, non
+        analizzate, travestiti, Office e archivi restano fuori (D74). Al massimo 9,5 MiB di copie per messaggio.
         """
         allegati = list(messaggio.attachments)
         file: list[discord.File] = []
+        totale = 0
         for i in logica.allegati_da_scaricare([a.size for a in allegati]):
             try:
                 contenuto = await allegati[i].read()
@@ -393,11 +396,12 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
                 continue
             copia, d = await esamina_allegato(
                 contenuto, allegati[i].filename, getattr(allegati[i], "content_type", None),
-                messaggio.guild.id if getattr(messaggio, "guild", None) else 0,
+                messaggio.guild.id if getattr(messaggio, "guild", None) else 0, con_video=True,
             )
-            if copia is not None:
+            if copia is not None and totale + len(copia[1]) <= MAX_TOTALE_COPIE:
+                totale += len(copia[1])
                 file.append(discord.File(io.BytesIO(copia[1]), filename=copia[0]))
-            else:  # D74: solo le immagini ricodificate; il resto non si rimanda, resta la riga nel registro tecnico
+            else:  # D74: solo le copie rifatte; il resto non si rimanda, resta la riga nel registro tecnico
                 logger.info("Allegato della risposta non ricaricato: %s", allegati_tipo_logic.riga_scheda(d)
                             if d.azione == allegati_tipo_logic.SCHEDA else allegati_tipo_logic.riga_avviso(d))
         return file

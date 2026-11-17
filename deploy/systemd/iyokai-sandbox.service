@@ -1,4 +1,5 @@
-# Servizio di sistema della sandbox delle immagini (D62, modo A).
+# Servizio di sistema della sandbox delle immagini (D62, modo A) e delle conversioni di allegati (D74: PDF, audio, video, testo).
+# Servono `ffmpeg` e `ffprobe` di sistema (pacchetto `ffmpeg`) e gli stessi pacchetti Python del bot (pypdf, pillow-heif).
 # Esempio: adatta i percorsi, poi vedi docs/immagini-sandbox.md per l'installazione.
 [Unit]
 Description=iYokai sandbox delle immagini
@@ -42,11 +43,13 @@ RestrictRealtime=yes
 LockPersonality=yes
 SystemCallFilter=@system-service
 SystemCallArchitectures=native
-# Un processo figlio per immagine: tetti dell'insieme (il figlio ha anche i suoi, 512 MiB e 4 s di CPU).
-MemoryMax=768M
+# Un processo figlio per lavoro: tetti dell'insieme (il figlio ha anche i suoi: immagini 512 MiB e 4 s di CPU;
+# conversioni D74 fino a 1,5 GiB di spazio virtuale per il video). ffmpeg gira come figlio del figlio, con pochi thread.
+# Scrive solo nella cartella temporanea privata del lavoro (PrivateTmp), con tetto di 12 MiB per file.
+MemoryMax=1536M
 MemorySwapMax=0
 CPUQuota=100%
-TasksMax=16
+TasksMax=32
 LimitCORE=0
 
 [Install]

@@ -2,11 +2,11 @@
 core/immagini_servizio.py
 =========================
 Servizio di sistema `iyokai-sandbox` (D62, modo A): ascolta su un socket Unix, riceve il nome di un
-file di quarantena (una riga) e risponde con l'esito dell'analisi, avviando per ogni lavoro un
+file di quarantena (una riga, oppure `conv <tipo> <nome>` per le conversioni di D74) e risponde con l'esito, avviando per ogni lavoro un
 processo figlio nuovo con i limiti di core/immagini_sandbox.py. Gira con un utente senza permessi,
 senza rete e con la quarantena in sola lettura (deploy/systemd/iyokai-sandbox.service).
 Si avvia con `python3 -I core/immagini_servizio.py`. Il bot parla con lui da `sandbox.analizza`.
-Funzioni coperte: SPEC §6 (D62)
+Funzioni coperte: SPEC §6 (D62), §8.16 (D74)
 """
 
 from __future__ import annotations
@@ -38,7 +38,11 @@ async def gestisci(lettore: asyncio.StreamReader, scrittore: asyncio.StreamWrite
     try:
         riga = await asyncio.wait_for(lettore.readline(), ATTESA_RIGA)
         nome = riga.decode("ascii", "ignore").strip()
-        if not sb.NOME.fullmatch(nome):
+        parti = nome.split(" ")
+        if len(parti) == 3 and parti[0] == "conv" and parti[1] in sb.LIMITI_CONVERSIONE and sb.NOME.fullmatch(parti[2]):
+            # D74: conversione di PDF, audio, video o testo (processo nuovo, cartella temporanea privata).
+            risposta = impacchetta(await sb.esegui_locale(parti[2], isola_rete=False, tipo=parti[1]))
+        elif not sb.NOME.fullmatch(nome):
             risposta = impacchetta(sb.RisultatoSandbox("errore", {"motivo": "nome"}))
         else:
             # Il servizio ha gia' PrivateNetwork: niente `unshare` qui.
