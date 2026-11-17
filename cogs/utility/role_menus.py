@@ -55,7 +55,9 @@ from core.role_menu_logic import (
     Decisione,
     can_add_option,
     comportamento_ammesso,
+    controlla_limiti,
     decidi_azione,
+    posti_finiti,
     decidi_selezione,
     id_emoji_personalizzata,
     membro_ammesso,
@@ -373,6 +375,9 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                 toggle=menu.toggle,
                 temp_secondi=menu.temp_seconds,
             )
+            if decisione.rifiuto is None:
+                limite = self._rifiuto_limiti(guild, menu, opzioni, decisione, ruoli_membro)
+                decisione = dataclasses.replace(decisione, rifiuto=limite) if limite else decisione
             if decisione.rifiuto is not None:
                 await interaction.followup.send(decisione.rifiuto, ephemeral=True)
                 return
@@ -390,6 +395,29 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         else:
             testo = "Nessun cambiamento."
         await interaction.followup.send(testo, ephemeral=True)
+
+    @staticmethod
+    def _rifiuto_limiti(
+        guild: discord.Guild, menu: RoleMenu, opzioni: list, decisione: Decisione, ruoli_membro: set[int]
+    ) -> str | None:
+        """RUO-062, 063, 065: tetto e minimo di ruoli del menu, posti limitati per opzione."""
+        motivo = controlla_limiti(
+            decisione,
+            ruoli_menu={o.role_id for o in opzioni},
+            ruoli_membro=ruoli_membro,
+            massimo=menu.max_selectable,
+            minimo=menu.min_roles,
+        )
+        if motivo is not None:
+            return motivo
+        tetti = {o.role_id: o.max_members for o in opzioni if o.max_members is not None}
+        for rid in decisione.aggiungi:
+            ruolo = guild.get_role(rid)
+            if rid in tetti and ruolo is not None and posti_finiti(
+                membri_con_ruolo=len(ruolo.members), max_membri=tetti[rid]
+            ):
+                return "I posti per questo ruolo sono finiti."
+        return None
 
     async def _applica(
         self, guild: discord.Guild, member: discord.Member, decisione: Decisione, motivo: str
@@ -476,6 +504,9 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                 scelti={int(v) for v in select.values},
                 temp_secondi=menu.temp_seconds,
             )
+            if decisione.rifiuto is None:
+                limite = self._rifiuto_limiti(guild, menu, options, decisione, ruoli_membro)
+                decisione = dataclasses.replace(decisione, rifiuto=limite) if limite else decisione
             if decisione.rifiuto is not None:
                 await interaction.followup.send(decisione.rifiuto, ephemeral=True)
                 return
@@ -535,6 +566,10 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                 toggle=menu.toggle,
                 temp_secondi=menu.temp_seconds,
             )
+            if decisione.rifiuto is None:
+                decisione = dataclasses.replace(
+                    decisione, rifiuto=self._rifiuto_limiti(guild, menu, opzioni, decisione, ruoli_membro)
+                )
             if decisione.rifiuto is not None:
                 return
             errore = await self._applica(guild, member, decisione, motivo)
@@ -588,7 +623,8 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         description="Descrizione facoltativa",
         channel="Canale dove pubblicare il menu (default: questo canale)",
         toggle="Ri-cliccare/reagire toglie il ruolo? (solo bottone/reazione)",
-        max_selectable="Quante opzioni si possono scegliere insieme (solo select)",
+        max_selectable="Quanti ruoli del menu si possono avere insieme",
+        min_ruoli="Quanti ruoli del menu restano sempre (almeno questi)",
         comportamento="Come si comporta il menu (unique, verify, drop, reversed, binding, temp, lock)",
         durata_minuti="Quanto dura il ruolo (solo comportamento temp)",
     )
@@ -611,12 +647,16 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         max_selectable: app_commands.Range[int, 1, 25] | None = None,
         comportamento: str = COMPORTAMENTO_DI_BASE,
         durata_minuti: app_commands.Range[int, 1, MAX_TEMP_SECONDI // 60] | None = None,
+        min_ruoli: app_commands.Range[int, 1, 25] | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
                 await testo_per(interaction, "guild_only_command"), ephemeral=True
             )
+            return
+        if min_ruoli and max_selectable and min_ruoli > max_selectable:  # RUO-063
+            await interaction.response.send_message("Il minimo non può superare il massimo.", ephemeral=True)
             return
 
         errore = _errore_comportamento(mode.value, comportamento, durata_minuti)
@@ -644,6 +684,8 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             behavior=comportamento,
             temp_seconds=durata_minuti * 60 if durata_minuti else None,
         )
+        if min_ruoli:
+            await role_menu_repo.update_menu(menu_id, min_roles=min_ruoli)
 
         await interaction.response.send_message(
             await testo_per(interaction, "rolemenus_role_menu_creato_id_modalita", menu_id=menu_id, name=mode.name),
@@ -661,6 +703,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         role="Il ruolo da assegnare",
         emoji="Emoji (obbligatoria per reaction/button)",
         label="Etichetta del bottone/opzione (obbligatoria per button/select)",
+        max_membri="Posti limitati: quanti membri al massimo possono avere il ruolo da questo menu",
     )
     async def add_option_cmd(
         self,
@@ -669,6 +712,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         role: discord.Role,
         emoji: app_commands.Range[str, 1, 60] | None = None,
         label: app_commands.Range[str, 1, 80] | None = None,
+        max_membri: app_commands.Range[int, 1, 1_000_000] | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -743,7 +787,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                 return
             nuova = RoleMenuOption(
                 id=0, menu_id=menu_id, role_id=role.id, emoji=emoji, label=label,
-                position=len(esistenti),
+                position=len(esistenti), max_members=max_membri,
             )
             # Prima si pubblica il messaggio con la nuova opzione, poi la si salva:
             # se Discord rifiuta (campo troppo lungo, permessi, emoji) nel
@@ -755,7 +799,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                     f"L'opzione {role.mention} non è stata aggiunta. {errore}", ephemeral=True
                 )
                 return
-            await role_menu_repo.add_option(menu_id, role.id, emoji, label)
+            await role_menu_repo.add_option(menu_id, role.id, emoji, label, max_membri)
 
         await interaction.followup.send(
             await testo_per(interaction, "rolemenus_opzione_aggiunta", mention=role.mention), ephemeral=True
@@ -882,6 +926,8 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         descrizione="Nuova descrizione",
         comportamento="Nuovo comportamento",
         durata_minuti="Durata del ruolo (comportamento temp)",
+        massimo="Quanti ruoli del menu si possono avere insieme (0 = nessun tetto)",
+        minimo="Quanti ruoli del menu restano sempre (0 = nessun minimo)",
     )
     @app_commands.choices(comportamento=_SCELTE_COMPORTAMENTO)
     async def edit_cmd(
@@ -892,6 +938,8 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         descrizione: app_commands.Range[str, 0, 2000] | None = None,
         comportamento: str | None = None,
         durata_minuti: app_commands.Range[int, 1, MAX_TEMP_SECONDI // 60] | None = None,
+        massimo: app_commands.Range[int, 0, 25] | None = None,
+        minimo: app_commands.Range[int, 0, 25] | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -903,6 +951,15 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             )
             return
         campi: dict = {}
+        if massimo is not None:  # RUO-062
+            campi["max_selectable"] = massimo or None
+        if minimo is not None:  # RUO-063
+            campi["min_roles"] = minimo or None
+        nuovo_max = campi.get("max_selectable", menu.max_selectable)
+        nuovo_min = campi.get("min_roles", menu.min_roles)
+        if nuovo_max and nuovo_min and nuovo_min > nuovo_max:
+            await interaction.response.send_message("Il minimo non può superare il massimo.", ephemeral=True)
+            return
         if titolo is not None:
             campi["title"] = titolo
         if descrizione is not None:
@@ -953,20 +1010,20 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(
         menu_id="ID del menu",
-        ruolo="Il ruolo da aggiungere o togliere dall'elenco",
+        ruolo="Il ruolo da aggiungere o togliere (non serve per svuotare)",
         elenco="Ammessi: solo chi ha uno di questi ruoli. Esclusi: chi ne ha uno non può usare il menu",
         azione="Aggiungere o togliere il ruolo dall'elenco",
     )
     @app_commands.choices(
         elenco=[app_commands.Choice(name="ammesso", value="ammesso"), app_commands.Choice(name="escluso", value="escluso")],
-        azione=[app_commands.Choice(name="aggiungi", value="aggiungi"), app_commands.Choice(name="togli", value="togli")],
+        azione=[app_commands.Choice(name=n, value=n) for n in ("aggiungi", "togli", "svuota")],
     )
     async def access_cmd(
         self,
         interaction: discord.Interaction,
         menu_id: int,
-        ruolo: discord.Role,
         elenco: str,
+        ruolo: discord.Role | None = None,
         azione: str = "aggiungi",
     ) -> None:
         guild = interaction.guild
@@ -980,7 +1037,12 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             return
         ammessi, esclusi = list(menu.allowed_role_ids), list(menu.excluded_role_ids)
         lista = ammessi if elenco == "ammesso" else esclusi
-        if azione == "aggiungi":
+        if azione == "svuota":  # RUO-068
+            lista.clear()
+        elif ruolo is None:
+            await interaction.response.send_message("Scegli un ruolo.", ephemeral=True)
+            return
+        elif azione == "aggiungi":
             if ruolo.id not in lista:
                 if len(lista) >= MAX_RUOLI_ACCESSO:
                     await interaction.response.send_message(

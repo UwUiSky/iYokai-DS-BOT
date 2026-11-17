@@ -1,0 +1,9 @@
+-- Catalogo #123 (RUO-052, 063, 065, 081, 082, 085, 086): impostazioni in più dei menu di ruoli.
+ALTER TABLE role_menus ADD COLUMN IF NOT EXISTS min_roles INTEGER;
+ALTER TABLE role_menus ADD COLUMN IF NOT EXISTS color INTEGER;
+ALTER TABLE role_menus ADD COLUMN IF NOT EXISTS notify BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE role_menus ADD COLUMN IF NOT EXISTS reply_text TEXT NOT NULL DEFAULT '';
+ALTER TABLE role_menus ADD COLUMN IF NOT EXISTS placeholder TEXT NOT NULL DEFAULT '';
+ALTER TABLE role_menu_options ADD COLUMN IF NOT EXISTS max_members INTEGER;
+ALTER TABLE role_menu_options ADD COLUMN IF NOT EXISTS button_style TEXT NOT NULL DEFAULT 'secondary';
+ALTER TABLE role_menu_options ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';

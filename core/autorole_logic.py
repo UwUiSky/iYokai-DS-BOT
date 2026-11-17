@@ -103,6 +103,23 @@ def ruoli_da_ricordare(ruoli_membro: Iterable) -> list[int]:
     return [r.id for r in ruoli_membro if not r.is_default() and not r.managed]
 
 
+MAX_RUOLI_FILTRO = 20  # per elenco (ammessi o esclusi)
+
+
+def filtra_ricordati(
+    ruoli: Iterable[int], ammessi: Iterable[int], esclusi: Iterable[int], sempre: Iterable[int] = ()
+) -> list[int]:
+    """
+    RUO-040, RUO-041: dai ruoli di chi esce tiene quelli ammessi (se l'elenco c'è) e mai gli esclusi.
+    I ruoli in `sempre` (il ruolo di mute) si ricordano comunque: chi esce per scappare a un mute non lo perde.
+    """
+    ammessi, esclusi, sempre = set(ammessi), set(esclusi), set(sempre)
+    return [
+        r for r in ruoli
+        if r in sempre or ((not ammessi or r in ammessi) and r not in esclusi)
+    ]
+
+
 def ruoli_da_ridare(
     ruoli_ricordati: list[int], uscito_il: datetime, ora: datetime, giorni: int
 ) -> list[int]:

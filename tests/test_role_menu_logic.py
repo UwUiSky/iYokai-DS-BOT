@@ -101,3 +101,34 @@ class TestComputeSelectSync:
         )
         assert aggiungere == set()
         assert rimuovere == set()
+
+
+# ------------------------------------------------- RUO-062, RUO-063, RUO-065: limiti del menu
+def test_RUO_062_tetto_di_ruoli_anche_per_bottoni_e_reazioni():
+    from core.role_menu_logic import Decisione, controlla_limiti
+
+    d = Decisione(aggiungi=(3,))
+    assert controlla_limiti(d, ruoli_menu={1, 2, 3}, ruoli_membro={1, 2}, massimo=2, minimo=None)
+    assert controlla_limiti(d, ruoli_menu={1, 2, 3}, ruoli_membro={1}, massimo=2, minimo=None) is None
+    assert controlla_limiti(d, ruoli_menu={1, 2, 3}, ruoli_membro={1, 2}, massimo=None, minimo=None) is None
+    # con unique il ruolo vecchio esce: il tetto non scatta
+    u = Decisione(aggiungi=(3,), togli=(1,))
+    assert controlla_limiti(u, ruoli_menu={1, 3}, ruoli_membro={1}, massimo=1, minimo=None) is None
+
+
+def test_RUO_063_almeno_un_ruolo_resta():
+    from core.role_menu_logic import Decisione, controlla_limiti
+
+    d = Decisione(togli=(1,))
+    assert controlla_limiti(d, ruoli_menu={1, 2}, ruoli_membro={1}, massimo=None, minimo=1)
+    assert controlla_limiti(d, ruoli_menu={1, 2}, ruoli_membro={1, 2}, massimo=None, minimo=1) is None
+    # un rifiuto già deciso non si tocca; nessun cambio = nessun controllo
+    assert controlla_limiti(Decisione(), ruoli_menu={1}, ruoli_membro={1}, massimo=None, minimo=1) is None
+
+
+def test_RUO_065_posti_limitati_per_opzione():
+    from core.role_menu_logic import posti_finiti
+
+    assert posti_finiti(membri_con_ruolo=5, max_membri=5) is True
+    assert posti_finiti(membri_con_ruolo=4, max_membri=5) is False
+    assert posti_finiti(membri_con_ruolo=99, max_membri=None) is False

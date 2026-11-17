@@ -21,6 +21,8 @@ con un test dedicato invece di assumerlo.
 
 from __future__ import annotations
 
+import re
+
 import random
 
 from core.role_menu_logic import valida_emoji
@@ -37,6 +39,29 @@ DEFAULT_BOOST_TEMPLATE = (
 def _ordinale(numero: int) -> str:
     """1234 -> "1.234º" (il numero del membro, RUO-018)."""
     return f"{numero:,}".replace(",", ".") + "º"
+
+
+_MATH = re.compile(r"\{math:((?:[^{}]|\{(?:membercount|userid|serverid)\})*)\}")
+_MATH_VALIDO = re.compile(r"^\s*\d{1,12}(?:\s*[+-]\s*\d{1,12}){0,10}\s*$")
+
+
+def _calcola(template: str, member_count: int, user_id: int | None, server_id: int | None) -> str:
+    """RUO-022: `{math: 3 + {membercount}}`. Solo somme e sottrazioni di interi, mai eval."""
+
+    def _uno(m: re.Match) -> str:
+        espressione = m.group(1).replace("{membercount}", str(member_count))
+        if user_id is not None:
+            espressione = espressione.replace("{userid}", str(user_id))
+        if server_id is not None:
+            espressione = espressione.replace("{serverid}", str(server_id))
+        if not _MATH_VALIDO.match(espressione):
+            return m.group(0)
+        totale = 0
+        for segno, numero in re.findall(r"([+-]?)\s*(\d+)", espressione):
+            totale += -int(numero) if segno == "-" else int(numero)
+        return str(totale)
+
+    return _MATH.sub(_uno, template)
 
 
 def render_template(
@@ -59,6 +84,7 @@ def render_template(
     sostituiscono solo se chi chiama dà il dato. `{userid}`, `{displayname}` e `{serverid}` (RUO-019..021)
     restano scritti se chi chiama non dà il dato; `{ordinal}` (RUO-018) usa il numero dei membri.
     """
+    template = _calcola(template, member_count, user_id, server_id)
     testo = (
         template.replace("{user}", user_mention)
         .replace("{username}", username)

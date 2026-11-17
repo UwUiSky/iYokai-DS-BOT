@@ -28,6 +28,9 @@ class AutoroleConfig:
     guild_id: int
     remember_enabled: bool
     remember_days: int
+    # RUO-040, 041 (migrazione 0640)
+    remember_allowed: tuple[int, ...] = ()
+    remember_excluded: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -102,11 +105,27 @@ class AutoroleRepository:
 
     async def get_config(self, guild_id: int) -> AutoroleConfig:
         riga = await self._pool.fetchrow(
-            "SELECT remember_enabled, remember_days FROM autorole_config WHERE guild_id = $1", guild_id
+            "SELECT remember_enabled, remember_days, remember_allowed, remember_excluded "
+            "FROM autorole_config WHERE guild_id = $1",
+            guild_id,
         )
         if riga is None:
             return AutoroleConfig(guild_id, False, GIORNI_MEMORIA_PREDEFINITI)
-        return AutoroleConfig(guild_id, riga["remember_enabled"], riga["remember_days"])
+        return AutoroleConfig(
+            guild_id, riga["remember_enabled"], riga["remember_days"],
+            tuple(riga["remember_allowed"]), tuple(riga["remember_excluded"]),
+        )
+
+    async def set_remember_filters(self, guild_id: int, allowed: list[int], excluded: list[int]) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO autorole_config (guild_id, remember_allowed, remember_excluded)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (guild_id) DO UPDATE
+                SET remember_allowed = EXCLUDED.remember_allowed, remember_excluded = EXCLUDED.remember_excluded
+            """,
+            guild_id, allowed, excluded,
+        )
 
     async def set_remember(self, guild_id: int, enabled: bool, days: int) -> None:
         await self._pool.execute(
