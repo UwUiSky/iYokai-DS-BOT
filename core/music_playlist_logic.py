@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import re
+import secrets
 from dataclasses import dataclass
 
 MAX_PLAYLIST_PER_UTENTE = 25  # un elenco e un autocompletamento senza pagine
@@ -21,6 +22,13 @@ NOME_MAX = 50
 FILE_MAX_BYTE = 256 * 1024  # file di importazione (LIM: 10 MiB, qui molto meno)
 FORMATO_FILE = "iyokai-playlist-1"
 DURATA_MAX_MS = 24 * 3600 * 1000  # una durata letta da un file non supera un giorno
+
+MAX_PLAYLIST_PER_SERVER = 25  # MUS-081
+MAX_COLLABORATORI = 5  # MUS-086
+NOME_PREFERITI = "Preferiti"  # MUS-085: la playlist dove finisce il cuore
+LINK_ORIGINE_MAX = 300  # MUS-072/083
+ALFABETO_CODICE = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # senza 0/O e 1/I: si legge e si copia senza errori
+CODICE_LUNGHEZZA = 8
 
 _NOME_VALIDO = re.compile(r"^[\w .,'!?()&+-]{1,50}$")
 
@@ -162,6 +170,41 @@ def dati_playlist_wavelink(nome: str, tracce: list) -> dict:
     return {"info": {"name": nome, "selectedTrack": -1}, "pluginInfo": {}, "tracks": list(tracce)}
 
 
+def nuovo_codice() -> str:
+    """MUS-084: un codice breve casuale per condividere una playlist (8 caratteri, ~40 bit)."""
+    return "".join(secrets.choice(ALFABETO_CODICE) for _ in range(CODICE_LUNGHEZZA))
+
+
+def codice_valido(testo: str) -> str | None:
+    """MUS-084: il codice scritto da un utente, in maiuscole, oppure None se non ha la forma giusta."""
+    codice = (testo or "").strip().upper().replace("-", "").replace(" ", "")
+    if len(codice) != CODICE_LUNGHEZZA or any(c not in ALFABETO_CODICE for c in codice):
+        return None
+    return codice
+
+
+def link_origine_valido(testo) -> str | None:
+    """MUS-072/083: il link da ricordare come origine di una playlist: https, corto, senza spazi."""
+    if not isinstance(testo, str):
+        return None
+    link = testo.strip()
+    if not link.lower().startswith("https://") or len(link) > LINK_ORIGINE_MAX:
+        return None
+    return None if any(c.isspace() or ord(c) < 32 for c in link) else link
+
+
+def nome_per_copia(nome: str, esistenti: set[str]) -> str:
+    """MUS-084: il nome della copia ricevuta: quello originale, o «nome (2)», «nome (3)»… se è già preso."""
+    if nome not in esistenti:
+        return nome
+    for n in range(2, 100):
+        suffisso = f" ({n})"
+        candidato = nome[: NOME_MAX - len(suffisso)].rstrip() + suffisso
+        if candidato not in esistenti:
+            return candidato
+    return nome[: NOME_MAX - 5] + " (99)"
+
+
 def chiave_brano(brano: BranoSalvato) -> str:
     """Cosa rende «lo stesso brano»: l'indirizzo se c'è, altrimenti il codice di Lavalink."""
     return (brano.uri or brano.encoded).strip().lower()
@@ -201,6 +244,12 @@ def aggiungi_senza_doppioni(
             elenco.append(brano)
             aggiunti += 1
     return elenco, aggiunti, doppioni, fuori
+
+
+def unisci_brani(esistenti: list[BranoSalvato], nuovi: list[BranoSalvato]):
+    """Per `aggiorna_brani`: aggiunge senza doppioni; il risultato sono i conteggi (aggiunti, doppioni, fuori)."""
+    elenco, aggiunti, doppioni, fuori = aggiungi_senza_doppioni(esistenti, nuovi)
+    return elenco, (aggiunti, doppioni, fuori)
 
 
 def togli_posizione(

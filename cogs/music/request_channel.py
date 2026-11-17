@@ -6,7 +6,7 @@ file audio nel canale lo mette in coda; un messaggio "player" sempre
 aggiornato ha i bottoni pausa, salta, stop, mescola, ripeti. Nessun ruolo
 DJ e nessun voto (scelta dell'owner): vale la regola di tutti i comandi
 musicali, cioè essere nel canale vocale del player.
-Funzioni coperte: SPEC §23 (NF-19), M 8.19, catalogo MUS-009, MUS-089 (canale richieste con messaggio player)
+Funzioni coperte: SPEC §23 (NF-19), M 8.19, catalogo MUS-009, MUS-089 (canale richieste con messaggio player), MUS-085 (bottone preferito)
 Dipende da: cogs/music/player.py (MusicCog.accoda, ricerca del worker),
 core/music_request_logic.py, core/repositories/music_request_repo.py.
 """
@@ -35,7 +35,16 @@ from core.music_request_logic import (
     query_da_messaggio,
     stato_da_player,
 )
+from core.music_logic import truncate_title
+from core.music_playlist_logic import (
+    MAX_BRANI_PER_PLAYLIST,
+    MAX_PLAYLIST_PER_UTENTE,
+    NOME_PREFERITI,
+    brano_da_traccia,
+    unisci_brani,
+)
 from core.music_sound_logic import PausaUtente
+from core.repositories.music_playlist_repo import LimitePlaylistRaggiunto, music_playlist_repo
 from core.repositories.music_request_repo import music_request_repo
 from core.ui_base import BaseView
 
@@ -102,6 +111,11 @@ class PlayerRichiesteView(BaseView):
     async def ripeti(self, interaction: discord.Interaction, _b: discord.ui.Button) -> None:
         await self._premi(interaction, "ripeti")
 
+    @discord.ui.button(emoji="❤️", label="Preferito", style=discord.ButtonStyle.secondary,
+                       custom_id="iyokai_musreq_preferito", row=1)
+    async def preferito(self, interaction: discord.Interaction, _b: discord.ui.Button) -> None:
+        await self._premi(interaction, "preferito")  # MUS-085
+
 
 class MusicRequestCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
@@ -109,6 +123,7 @@ class MusicRequestCog(CogConGruppi, commands.Cog):
         self.canali: dict[int, int] = {}  # server -> canale delle richieste
         self.pausa = PausaAggiornamenti()
         self.pausa_utenti = PausaUtente(pausa=PAUSA_RICHIESTE)
+        self.pausa_preferiti = PausaUtente(pausa=3.0)  # MUS-085: un cuore ogni 3 secondi per utente
         self._in_attesa: dict[int, asyncio.Task] = {}
         self._task: set[asyncio.Task] = set()
         self._ascoltatori: list[tuple[commands.Bot, object]] = []
@@ -290,6 +305,9 @@ class MusicRequestCog(CogConGruppi, commands.Cog):
         if player is None:
             return
         await interaction.response.defer(ephemeral=True)
+        if azione == "preferito":  # MUS-085: tocca la playlist di chi preme, non il player
+            await interaction.followup.send(await self.salva_preferito(interaction, player), ephemeral=True)
+            return
         testo = await esegui_azione(player, azione)
         await interaction.followup.send(testo, ephemeral=True)
         canale_vocale = getattr(getattr(player, "channel", None), "id", None)
@@ -349,6 +367,31 @@ class MusicRequestCog(CogConGruppi, commands.Cog):
             await music_request_repo.set_message(guild_id, nuovo.id)
         except discord.HTTPException:
             logger.warning("Nuovo messaggio player nel server %s non riuscito.", guild_id)
+
+    async def salva_preferito(self, interaction: discord.Interaction, player) -> str:
+        """MUS-085: il brano in ascolto va nella playlist «Preferiti» di chi ha premuto il cuore."""
+        if self.pausa_preferiti.resta(interaction.guild_id or 0, interaction.user.id) > 0:
+            return await testo_per(interaction, "playlist_piano_un_attimo")
+        self.pausa_preferiti.segna(interaction.guild_id or 0, interaction.user.id)
+        brano = brano_da_traccia(getattr(player, "current", None))
+        if brano is None:
+            return await testo_per(interaction, "music_preferito_niente_in_ascolto")
+        utente = interaction.user.id
+        try:
+            await music_playlist_repo.crea_vuota(utente, NOME_PREFERITI)
+        except LimitePlaylistRaggiunto:
+            if NOME_PREFERITI not in await music_playlist_repo.nomi(utente):
+                return await testo_per(interaction, "music_preferito_playlist_piene", v1=MAX_PLAYLIST_PER_UTENTE)
+        esito = await music_playlist_repo.aggiorna_brani(
+            utente, NOME_PREFERITI, lambda esistenti: unisci_brani(esistenti, [brano])
+        )
+        if esito is None:
+            return await testo_per(interaction, "music_preferito_niente_in_ascolto")
+        aggiunti, doppioni, fuori = esito
+        chiave = "music_preferito_salvato" if aggiunti else (
+            "music_preferito_gia" if doppioni else "music_preferito_playlist_piena"
+        )
+        return await testo_per(interaction, chiave, titolo=truncate_title(brano.titolo, 100), v1=MAX_BRANI_PER_PLAYLIST)
 
     async def _player(self, guild_id: int, canale_vocale: int | None):
         flotta = getattr(self.bot, "music_fleet", None)
