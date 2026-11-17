@@ -28,6 +28,8 @@ from core.autorole_logic import (
     piano_ingresso,
     regola_vale_per,
     ruoli_da_ricordare,
+    filtra_ricordati,
+    MAX_RUOLI_FILTRO,
     ruoli_da_ridare,
     ruoli_da_ridare_se_tolti,
     ruoli_da_sincronizzare,
@@ -248,7 +250,11 @@ class AutorolesCog(CogConGruppi, commands.Cog):
             if a["guild_id"] == member.guild.id
             for role_id in _ruoli_a_tempo(a)
         }
-        ruoli = [r for r in ruoli_da_ricordare(member.roles) if r not in a_tempo]
+        mute = await db.get_guild_setting(member.guild.id, "mute_role_id")
+        ruoli = filtra_ricordati(  # RUO-040, 041: ammessi, esclusi, e il ruolo di mute sempre
+            [r for r in ruoli_da_ricordare(member.roles) if r not in a_tempo],
+            config.remember_allowed, config.remember_excluded, [mute] if isinstance(mute, int) else [],
+        )
         if not ruoli:
             return
         await autorole_repo.save_memory(member.guild.id, member.id, ruoli, datetime.now(timezone.utc))
@@ -450,6 +456,63 @@ class AutorolesCog(CogConGruppi, commands.Cog):
             else "Ruoli di chi esce non più ricordati; quelli già salvati sono stati cancellati."
         )
         await interaction.response.send_message(testo, ephemeral=True)
+
+    @comando_di_gruppo(
+        "admin-ruoli",
+        nome="ricorda-ruoli",
+        descrizione="Scegli quali ruoli si ridanno a chi rientra e quali mai.",
+        sottogruppo=SOTTOGRUPPI["admin-ruoli auto"],
+    )
+    @app_commands.describe(
+        elenco="Ammessi: si ricordano solo questi. Esclusi: questi non si ridanno mai",
+        azione="Aggiungere, togliere o svuotare l'elenco",
+        ruolo="Il ruolo (non serve per svuotare)",
+    )
+    @app_commands.choices(
+        elenco=[app_commands.Choice(name="ammessi", value="ammessi"), app_commands.Choice(name="esclusi", value="esclusi")],
+        azione=[app_commands.Choice(name=n, value=n) for n in ("aggiungi", "togli", "svuota")],
+    )
+    async def auto_ricorda_ruoli(
+        self,
+        interaction: discord.Interaction,
+        elenco: str,
+        azione: str,
+        ruolo: discord.Role | None = None,
+    ) -> None:
+        """RUO-040, RUO-041: elenchi di ruoli ammessi o esclusi dalla memoria dei ruoli."""
+        if not await self._modulo_attivo(interaction):
+            return
+        guild = interaction.guild
+        config = await autorole_repo.get_config(guild.id)
+        ammessi, esclusi = list(config.remember_allowed), list(config.remember_excluded)
+        lista = ammessi if elenco == "ammessi" else esclusi
+        if azione == "svuota":
+            lista.clear()
+        elif ruolo is None:
+            await interaction.response.send_message("Scegli un ruolo.", ephemeral=True)
+            return
+        elif azione == "aggiungi":
+            if ruolo.is_default() or ruolo.managed:
+                await interaction.response.send_message("Questo ruolo non si può ricordare.", ephemeral=True)
+                return
+            if elenco == "esclusi" and ruolo.id == await db.get_guild_setting(guild.id, "mute_role_id"):
+                await interaction.response.send_message(
+                    "Il ruolo di mute si ridà sempre: non si può escludere.", ephemeral=True
+                )
+                return
+            if ruolo.id not in lista:
+                if len(lista) >= MAX_RUOLI_FILTRO:
+                    await interaction.response.send_message(
+                        f"L'elenco ha già {MAX_RUOLI_FILTRO} ruoli: togline uno.", ephemeral=True
+                    )
+                    return
+                lista.append(ruolo.id)
+        elif ruolo.id in lista:
+            lista.remove(ruolo.id)
+        await autorole_repo.set_remember_filters(guild.id, ammessi, esclusi)
+        await interaction.response.send_message(
+            f"Ruoli ammessi: {len(ammessi)}. Ruoli esclusi: {len(esclusi)}.", ephemeral=True
+        )
 
     @comando_di_gruppo(
         "admin-ruoli",

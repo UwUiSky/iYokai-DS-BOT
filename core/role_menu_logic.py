@@ -239,3 +239,126 @@ def decidi_selezione(
             aggiungi=tuple(sorted(da_aggiungere)), togli=tuple(sorted(da_togliere)), temporaneo_secondi=temp_secondi
         )
     return Decisione(aggiungi=tuple(sorted(da_aggiungere)), togli=tuple(sorted(da_togliere)))
+
+
+def controlla_limiti(
+    decisione: Decisione,
+    *,
+    ruoli_menu: set[int],
+    ruoli_membro: set[int],
+    massimo: int | None,
+    minimo: int | None,
+) -> str | None:
+    """
+    RUO-062, RUO-063: dopo la decisione il membro ha tra i ruoli del menu un numero entro
+    [minimo, massimo]? Altrimenti il testo di rifiuto. Il controllo scatta solo se la decisione cambia i ruoli;
+    il minimo vale solo quando si toglie (chi non ne ha ancora nessuno può sempre sceglierne uno).
+    """
+    if decisione.rifiuto is not None or not (decisione.aggiungi or decisione.togli):
+        return None
+    dopo = (ruoli_membro | set(decisione.aggiungi)) - set(decisione.togli)
+    n = len(dopo & ruoli_menu)
+    if massimo and decisione.aggiungi and n > massimo:
+        return f"Da questo menu puoi avere al massimo {massimo} ruoli: togline uno prima."
+    if minimo and decisione.togli and n < minimo:
+        return f"Da questo menu devi tenere almeno {minimo} ruoli."
+    return None
+
+
+def posti_finiti(*, membri_con_ruolo: int, max_membri: int | None) -> bool:
+    """RUO-065: l'opzione ha un tetto di membri e l'ha raggiunto."""
+    return max_membri is not None and membri_con_ruolo >= max_membri
+
+
+MAX_RISPOSTA = 200
+STILI_BOTTONE = ("blu", "grigio", "verde", "rosso")
+
+
+def risposta_personale(modello: str, menzione_ruolo: str) -> str:
+    """RUO-082: il testo di conferma scelto dall'admin, con `{ruolo}` al posto del ruolo (mai oltre 200 caratteri scritti)."""
+    return modello[:MAX_RISPOSTA].replace("{ruolo}", menzione_ruolo)[:2000]
+
+
+VALORE_AZZERA = "__azzera__"  # RUO-087: il valore della voce «togli tutti i ruoli» nella tendina
+
+
+def sposta_ruolo(ruoli: list[int], ruolo: int, posizione: int) -> list[int]:
+    """RUO-077: `ruolo` va al posto `posizione` (da 1; oltre la fine = ultimo). Gli altri scalano."""
+    altri = [r for r in ruoli if r != ruolo]
+    posto = max(0, min(posizione - 1, len(altri)))
+    return altri[:posto] + [ruolo] + altri[posto:]
+
+
+MAX_COPPIE = 25
+MAX_TESTO_COPPIE = 1500
+_RUOLO_MENZIONE = re.compile(r"^<@&(\d{1,22})>$")
+
+
+def analizza_coppie(testo: str, trova_per_nome) -> tuple[list[tuple[str | None, int]], str | None]:
+    """
+    RUO-048, RUO-049: «🎮 @Gamer; 🎨 @Artista» -> [(emoji, id del ruolo), ...] e l'eventuale errore (in italiano).
+    Le coppie sono separate da `;` o da un a-capo; in ognuna c'è un'emoji (facoltativa per le tendine)
+    e il ruolo: una menzione, un ID o il nome esatto (`trova_per_nome(nome) -> id | None`).
+    """
+    if len(testo) > MAX_TESTO_COPPIE:
+        return [], "Il testo delle coppie è troppo lungo."
+    coppie: list[tuple[str | None, int]] = []
+    viste: set[int] = set()
+    for pezzo in re.split(r"[;\n]", testo):
+        pezzo = pezzo.strip()
+        if not pezzo:
+            continue
+        parole = pezzo.split()
+        emoji = None
+        if len(parole) > 1 and valida_emoji(parole[0]):
+            emoji, parole = parole[0], parole[1:]
+        riferimento = " ".join(parole)
+        menzione = _RUOLO_MENZIONE.match(riferimento)
+        if menzione:
+            ruolo_id = int(menzione.group(1))
+        elif riferimento.isdigit() and 15 <= len(riferimento) <= 22:
+            ruolo_id = int(riferimento)
+        else:
+            ruolo_id = trova_per_nome(riferimento.lstrip("@"))
+        if ruolo_id is None:
+            return [], f"Non trovo il ruolo «{riferimento[:40]}»."
+        if ruolo_id in viste:
+            return [], f"Il ruolo «{riferimento[:40]}» è scritto due volte."
+        viste.add(ruolo_id)
+        coppie.append((emoji, ruolo_id))
+    if not coppie:
+        return [], "Scrivi almeno una coppia, per esempio «🎮 @Gamer; 🎨 @Artista»."
+    if len(coppie) > MAX_COPPIE:
+        return [], f"Al massimo {MAX_COPPIE} coppie."
+    return coppie, None
+
+
+# RUO-089: modelli pronti. nome -> (modalità, comportamento, titolo, descrizione, massimo di ruoli o None, quante opzioni al massimo)
+MODELLI_MENU: dict[str, tuple[str, str, str, str, int | None, int]] = {
+    "verifica": ("button", "verify", "Verifica", "Premi il bottone per accedere al server.", None, 1),
+    "notifiche": ("button", "normal", "Notifiche", "Scegli di quali novità vuoi essere avvisato.", None, 10),
+    "colori": ("select", "unique", "Il tuo colore", "Scegli il colore del tuo nome.", 1, 25),
+    "interessi": ("select", "normal", "I tuoi interessi", "Scegli i tuoi interessi: puoi cambiarli quando vuoi.", None, 25),
+}
+EMOJI_PREDEFINITE = ("🔔", "📣", "🎉", "🎮", "📰", "⭐", "🎨", "🎵", "📚", "🍀")
+
+
+def converti_opzioni(
+    opzioni: list[tuple[int, str | None, str | None]], nuova_modalita: str, nome_ruolo
+) -> tuple[list[tuple[str | None, str | None]], str | None]:
+    """
+    RUO-088: (emoji, etichetta) di ogni opzione per il nuovo tipo di menu, nello stesso ordine, o l'errore.
+    Bottoni e tendina vogliono un'etichetta (se manca si usa il nome del ruolo); reazioni e bottoni
+    vogliono un'emoji (non si inventa: se manca, errore).
+    """
+    if len(opzioni) > MODE_MAX_OPTIONS.get(nuova_modalita, 25):
+        return [], f"Il nuovo tipo regge al massimo {MODE_MAX_OPTIONS[nuova_modalita]} opzioni: ne togli prima qualcuna."
+    convertite: list[tuple[str | None, str | None]] = []
+    for ruolo_id, emoji, etichetta in opzioni:
+        if nuova_modalita in ("reaction", "button") and not emoji:
+            return [], f"All'opzione «{(etichetta or nome_ruolo(ruolo_id) or '?')[:40]}» manca l'emoji."
+        nuova_etichetta = etichetta
+        if nuova_modalita in ("button", "select") and not etichetta:
+            nuova_etichetta = (nome_ruolo(ruolo_id) or "Ruolo")[:80]
+        convertite.append((emoji, nuova_etichetta))
+    return convertite, None

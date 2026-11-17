@@ -9,6 +9,7 @@ emoji, etichetta).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 import asyncpg
 
@@ -29,6 +30,16 @@ class RoleMenu:
     temp_seconds: int | None = None
     allowed_role_ids: tuple[int, ...] = ()
     excluded_role_ids: tuple[int, ...] = ()
+    # #123 (migrazione 0641): minimo di ruoli, colore, avviso in privato, risposta, testo-guida della tendina
+    min_roles: int | None = None
+    color: int | None = None
+    notify: bool = True
+    reply_text: str = ""
+    placeholder: str = ""
+    reset_option: bool = False
+    external: bool = False  # RUO-072, 073: il messaggio è di altri
+    expires_at: datetime | None = None  # RUO-070
+    show_counts: bool = False  # RUO-084
 
 
 @dataclass(frozen=True)
@@ -39,6 +50,9 @@ class RoleMenuOption:
     emoji: str | None
     label: str | None
     position: int
+    max_members: int | None = None
+    button_style: str = "secondary"
+    description: str = ""
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -77,6 +91,14 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
     )
 
 
+def _riga_opzione(r) -> RoleMenuOption:
+    return RoleMenuOption(
+        id=r["id"], menu_id=r["menu_id"], role_id=r["role_id"], emoji=r["emoji"], label=r["label"],
+        position=r["position"], max_members=r["max_members"], button_style=r["button_style"],
+        description=r["description"],
+    )
+
+
 class RoleMenuRepository:
     def __init__(self, pool_provider) -> None:
         self._pool_provider = pool_provider
@@ -100,6 +122,15 @@ class RoleMenuRepository:
             temp_seconds=row["temp_seconds"],
             allowed_role_ids=tuple(row["allowed_role_ids"]),
             excluded_role_ids=tuple(row["excluded_role_ids"]),
+            min_roles=row["min_roles"],
+            color=row["color"],
+            notify=row["notify"],
+            reply_text=row["reply_text"],
+            placeholder=row["placeholder"],
+            reset_option=row["reset_option"],
+            external=row["external"],
+            expires_at=row["expires_at"],
+            show_counts=row["show_counts"],
         )
 
     async def list_menus_for_guild(self, guild_id: int) -> list[RoleMenu]:
@@ -108,7 +139,9 @@ class RoleMenuRepository:
 
     async def update_menu(self, menu_id: int, **campi) -> bool:
         """Cambia titolo, descrizione, comportamento o durata (campi da un elenco fisso)."""
-        ammessi = {"title", "description", "behavior", "temp_seconds", "toggle", "max_selectable"}
+        ammessi = {"title", "description", "behavior", "temp_seconds", "toggle", "max_selectable",
+                  "min_roles", "color", "notify", "reply_text", "placeholder", "reset_option",
+                  "channel_id", "message_id", "external", "expires_at", "mode", "show_counts"}
         if not campi or not set(campi) <= ammessi:
             raise ValueError(f"Campi non modificabili: {sorted(set(campi) - ammessi)}")
         impostazioni = ", ".join(f"{col} = ${i}" for i, col in enumerate(campi, start=2))
@@ -187,7 +220,8 @@ class RoleMenuRepository:
         await self._pool.execute("DELETE FROM role_menus WHERE id = $1", menu_id)
 
     async def add_option(
-        self, menu_id: int, role_id: int, emoji: str | None, label: str | None
+        self, menu_id: int, role_id: int, emoji: str | None, label: str | None,
+        max_members: int | None = None, button_style: str = "secondary", description: str = "",
     ) -> int:
         posizione = await self._pool.fetchval(
             "SELECT COALESCE(MAX(position), -1) + 1 FROM role_menu_options WHERE menu_id = $1",
@@ -195,10 +229,11 @@ class RoleMenuRepository:
         )
         row = await self._pool.fetchrow(
             """
-            INSERT INTO role_menu_options (menu_id, role_id, emoji, label, position)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO role_menu_options (menu_id, role_id, emoji, label, position, max_members, button_style, description)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             ON CONFLICT (menu_id, role_id) DO UPDATE
-                SET emoji = EXCLUDED.emoji, label = EXCLUDED.label
+                SET emoji = EXCLUDED.emoji, label = EXCLUDED.label, max_members = EXCLUDED.max_members,
+                    button_style = EXCLUDED.button_style, description = EXCLUDED.description
             RETURNING id
             """,
             menu_id,
@@ -206,8 +241,32 @@ class RoleMenuRepository:
             emoji,
             label,
             posizione,
+            max_members,
+            button_style,
+            description,
         )
         return row["id"]
+
+    async def update_option(self, menu_id: int, role_id: int, **campi) -> bool:
+        """RUO-076: cambia emoji, etichetta, descrizione, colore o tetto di un'opzione (campi da un elenco fisso)."""
+        ammessi = {"emoji", "label", "description", "button_style", "max_members"}
+        if not campi or not set(campi) <= ammessi:
+            raise ValueError(f"Campi non modificabili: {sorted(set(campi) - ammessi)}")
+        impostazioni = ", ".join(f"{col} = ${i}" for i, col in enumerate(campi, start=3))
+        esito = await self._pool.execute(
+            f"UPDATE role_menu_options SET {impostazioni} WHERE menu_id = $1 AND role_id = $2",
+            menu_id, role_id, *campi.values(),
+        )
+        return esito.endswith(" 1")
+
+    async def set_positions(self, menu_id: int, role_ids: list[int]) -> None:
+        """RUO-077: la posizione di ogni opzione è il suo posto nell'elenco dato."""
+        async with self._pool.acquire() as conn, conn.transaction():
+            for posto, role_id in enumerate(role_ids):
+                await conn.execute(
+                    "UPDATE role_menu_options SET position = $3 WHERE menu_id = $1 AND role_id = $2",
+                    menu_id, role_id, posto,
+                )
 
     async def remove_option(self, menu_id: int, role_id: int) -> bool:
         result = await self._pool.execute(
@@ -223,14 +282,7 @@ class RoleMenuRepository:
             menu_id,
         )
         return [
-            RoleMenuOption(
-                id=r["id"],
-                menu_id=r["menu_id"],
-                role_id=r["role_id"],
-                emoji=r["emoji"],
-                label=r["label"],
-                position=r["position"],
-            )
+            _riga_opzione(r)
             for r in rows
         ]
 
@@ -247,14 +299,7 @@ class RoleMenuRepository:
         )
         if row is None:
             return None
-        return RoleMenuOption(
-            id=row["id"],
-            menu_id=row["menu_id"],
-            role_id=row["role_id"],
-            emoji=row["emoji"],
-            label=row["label"],
-            position=row["position"],
-        )
+        return _riga_opzione(row)
 
 
 def _get_pool():

@@ -12,12 +12,15 @@ from __future__ import annotations
 
 import io
 import logging
+from datetime import datetime
+import time
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
 from core import channel_router as router
+from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.admin_mentions_logic import (
@@ -26,7 +29,9 @@ from core.admin_mentions_logic import (
     utente_puo_pingare_ruoli,
 )
 from core.leveling_logic import colore_valido
+from core.role_menu_logic import valida_emoji
 from core.greetings_logic import (
+    PrimiMessaggi,
     DEFAULT_BOOST_TEMPLATE,
     DEFAULT_GOODBYE_TEMPLATE,
     DEFAULT_WELCOME_TEMPLATE,
@@ -41,12 +46,18 @@ from core.greetings_logic import (
 from core import greetings_uscite_logic as uscite
 from core import invite_service
 from core.i18n import lingua_risposta, t, testo_per
+from core.greetings_embed_logic import DOVE, TOGLI, embed_con_segnaposto
+from core.topic_avviso_logic import PAUSA_PER_CANALE_SECONDI, messaggio_avviso, va_annunciato
 from core.ui_base import BaseModal, BaseView
 from core.premium import PremiumModule, registry
 from core.repositories.greetings_repo import greetings_repo
+from core.repositories.saved_embed_repo import saved_embed_repo
+from core.embed_builder_logic import MAX_NOME as MAX_NOME_EMBED
 from core.safe_image import ImmagineTroppoGrande, run_image_task
 from core.security_raid_state import raid_in_corso
 from core.welcome_image import (
+    ALLINEAMENTI,
+    MAX_TESTO,
     FORME,
     MAX_SFONDO_BYTE,
     MAX_TITOLO,
@@ -72,8 +83,23 @@ def _render_for_member(template: str, member: discord.Member, inviti: dict | Non
         display_name=discord.utils.escape_mentions(member.display_name),
         server_id=member.guild.id,
         creato_il=int(member.created_at.timestamp()),
+        eta_giorni=(
+            max((discord.utils.utcnow() - member.created_at).days, 0)
+            if isinstance(member.created_at, datetime) else None
+        ),
+        ruoli_ids=frozenset(r.id for r in member.roles),
         **(inviti or {}),
     )
+
+
+async def _embed_salvato(member: discord.Member, nome: str, inviti: dict | None = None) -> discord.Embed | None:
+    """RUO-001, 014, 015: l'embed salvato con i segnaposto del membro; None se non c'è o non è valido."""
+    if not nome:
+        return None
+    salvato = await saved_embed_repo.get(member.guild.id, nome)
+    if salvato is None:
+        return None
+    return embed_con_segnaposto(salvato.data, lambda testo: _render_for_member(testo, member, inviti))
 
 
 async def _metti_reazioni(messaggio: discord.Message, reazioni: list[str]) -> None:
@@ -111,6 +137,11 @@ class ExtraBenvenutoModal(BaseModal, title="Benvenuto: DM, varianti, reazioni"):
         required=False,
         max_length=MAX_MESSAGE_LENGTH,
     )
+    primo = discord.ui.TextInput(
+        label="Emoji sul primo messaggio (vuoto = no)",
+        required=False,
+        max_length=60,
+    )
 
     def __init__(self, config) -> None:
         super().__init__()
@@ -118,6 +149,7 @@ class ExtraBenvenutoModal(BaseModal, title="Benvenuto: DM, varianti, reazioni"):
         self.varianti.default = "\n".join(config.welcome_variants)[:4000] or None
         self.reazioni.default = " ".join(config.welcome_reactions) or None
         self.ban.default = config.ban_message or None
+        self.primo.default = config.first_message_reaction or None
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
@@ -129,6 +161,9 @@ class ExtraBenvenutoModal(BaseModal, title="Benvenuto: DM, varianti, reazioni"):
         if errore is None:
             reazioni, errore = analizza_reazioni(self.reazioni.value or "")
         ban = (self.ban.value or "").strip()
+        primo = (self.primo.value or "").strip()
+        if errore is None and primo and not valida_emoji(primo):  # RUO-024
+            errore = f"«{primo[:30]}» non è un'emoji."
         for testo in ([dm] if dm else []) + varianti + ([ban] if ban else []):
             if errore is None and "<@&" in testo and not utente_puo_pingare_ruoli(interaction.user):
                 errore = "Per citare un ruolo serve il permesso «Menziona tutti»."
@@ -138,6 +173,7 @@ class ExtraBenvenutoModal(BaseModal, title="Benvenuto: DM, varianti, reazioni"):
             await interaction.response.send_message(errore, ephemeral=True)
             return
         await greetings_repo.set_welcome_extra(guild.id, dm, varianti, reazioni, ban)
+        await greetings_repo.set_first_reaction(guild.id, primo)
         await interaction.response.send_message(
             await testo_per(interaction, "greetings_salvato_dm_varianti_reazioni_ban", v1=(await testo_per(interaction, "greetings_con_testo_suo")) if dm else (await testo_per(interaction, "greetings_come_il_canale")), v2=len(varianti), v3=len(reazioni), v4=(await testo_per(interaction, "greetings_con_testo_suo")) if ban else (await testo_per(interaction, "greetings_con_il_testo_di_base"))),
             ephemeral=True,
@@ -149,20 +185,26 @@ async def _modello(salvato: str, predefinito: str, chiave: str, guild_id: int) -
     return t(chiave, await lingua_risposta(guild_id, None, pubblica=True)) if salvato == predefinito else salvato
 
 
-async def _invia_con_grafica(channel, testo, grafica, menzioni, guild_id: int, nome: str) -> None:
-    """D37: testo più grafica (link https o file). Se la grafica non passa, il testo parte lo stesso."""
+async def _invia_con_grafica(
+    channel, testo, grafica, menzioni, guild_id: int, nome: str, embed_salvato: discord.Embed | None = None
+) -> None:
+    """D37: testo più grafica (link https o file), con l'embed salvato se c'è (RUO-015). Se la grafica non passa, il testo parte lo stesso."""
     url, immagine, nome_file = grafica if grafica else (None, None, None)
+    extra = {"embed": embed_salvato} if embed_salvato is not None else {}
     try:
         try:
             if url:
                 embed = discord.Embed()
                 embed.set_image(url=url)
-                await channel.send(testo, embed=embed, allowed_mentions=menzioni)
+                if embed_salvato is None:
+                    await channel.send(testo, embed=embed, allowed_mentions=menzioni)
+                else:
+                    await channel.send(testo, embeds=[embed, embed_salvato], allowed_mentions=menzioni)
             elif immagine:
                 file = discord.File(io.BytesIO(immagine), filename=nome_file or "grafica.png")
-                await channel.send(testo, file=file, allowed_mentions=menzioni)
+                await channel.send(testo, file=file, allowed_mentions=menzioni, **extra)
             else:
-                await channel.send(testo, allowed_mentions=menzioni)
+                await channel.send(testo, allowed_mentions=menzioni, **extra)
         except discord.HTTPException:
             if not url and not immagine:
                 raise
@@ -264,6 +306,22 @@ class ExtraBenvenutoView(BaseView):
         await interaction.response.send_modal(UsciteModal(self._config))
 
 
+def _testo_sull_immagine(modello: str, member: discord.Member) -> str:
+    """RUO-008: il testo libero con i segnaposto; sull'immagine `{user}` è il nome, non una menzione."""
+    if not modello:
+        return ""
+    return render_template(
+        modello,
+        user_mention=member.display_name,
+        username=member.name,
+        server_name=member.guild.name,
+        member_count=member.guild.member_count or 0,
+        user_id=member.id,
+        display_name=member.display_name,
+        server_id=member.guild.id,
+    )
+
+
 async def _file_benvenuto(config, member: discord.Member) -> discord.File | None:
     """NF-11: l'immagine di benvenuto, o None se spenta o non disegnabile (il testo parte lo stesso)."""
     if not config.welcome_image_enabled:
@@ -285,6 +343,10 @@ async def _file_benvenuto(config, member: discord.Member) -> discord.File | None
             modello=config.welcome_image_template,
             forma=config.welcome_image_shape,
             colore_testo=config.welcome_image_color,
+            opacita=config.welcome_image_opacity,
+            testo=_testo_sull_immagine(config.welcome_image_text, member),
+            allineamento=config.welcome_image_align,
+            colore_nome=config.welcome_image_name_color,
         )
         png = await run_image_task(render_welcome_image, dati, avatar, sfondo)
     except Exception:
@@ -321,9 +383,21 @@ def _ping_ruoli(interaction: discord.Interaction, message: str | None, precedent
 _SG_BENVENUTO = ("benvenuto", "Messaggi di benvenuto, addio e boost")
 
 
+@autocomplete_protetto(Livello.ADMIN)
+async def _completa_embed(interaction: discord.Interaction, current: str):
+    """Fino a 25 nomi di embed salvati che iniziano o contengono il testo scritto."""
+    if interaction.guild is None:
+        return []
+    parola = current.lower().strip()
+    nomi = [e.name for e in await saved_embed_repo.list(interaction.guild.id) if parola in e.name]
+    return [app_commands.Choice(name=n, value=n) for n in nomi[:25]]
+
+
 class GreetingsCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        self._primi = PrimiMessaggi()  # RUO-024
+        self._ultimi_topic: dict[int, float] = {}  # RUO-027: canale -> ultimo avviso
 
     # ================================================================
     # Eventi
@@ -351,7 +425,11 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             if config.welcome_dm_message
             else testo
         )
+        if config.first_message_reaction:  # RUO-024
+            self._primi.registra(member.guild.id, member.id, time.monotonic())
         menzioni = menzioni_ammesse(config.welcome_ping_ruoli)
+        embed = await _embed_salvato(member, config.welcome_embed, inviti)
+        extra = {"embed": embed} if embed is not None else {}  # RUO-001
 
         if config.welcome_channel_id is not None:
             channel = member.guild.get_channel(config.welcome_channel_id)
@@ -374,14 +452,22 @@ class GreetingsCog(CogConGruppi, commands.Cog):
                 )
                 try:
                     try:
-                        if allegato is not None:
-                            inviato = await channel.send(testo, file=allegato, allowed_mentions=menzioni)
+                        if allegato is not None and config.welcome_image_order == "solo_immagine":
+                            inviato = await channel.send(file=allegato, allowed_mentions=menzioni)  # RUO-010
+                        elif allegato is not None and config.welcome_image_order == "immagine_prima":
+                            await channel.send(file=allegato, allowed_mentions=menzioni)
+                            allegato = None  # già uscita: se il testo fallisce non si rimanda
+                            inviato = await channel.send(testo, allowed_mentions=menzioni, **extra)
+                        elif allegato is not None:
+                            inviato = await channel.send(testo, file=allegato, allowed_mentions=menzioni, **extra)
                         else:
-                            inviato = await channel.send(testo, allowed_mentions=menzioni)
+                            inviato = await channel.send(testo, allowed_mentions=menzioni, **extra)
                     except discord.HTTPException:
-                        if allegato is None:
+                        if allegato is None and not extra:
                             raise
-                        # L'immagine non è passata (permessi cambiati, file rifiutato): il testo parte lo stesso.
+                        # Immagine o embed non passati (permessi cambiati, rifiuto): il testo parte lo stesso.
+                        allegato = None
+                        extra = {}
                         inviato = await channel.send(testo, allowed_mentions=menzioni)
                     if not raid_in_corso(member.guild.id):  # durante un raid: niente chiamate in più
                         await _metti_reazioni(inviato, config.welcome_reactions)
@@ -395,9 +481,59 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         # account entrati nel raid).
         if config.welcome_dm and not raid_in_corso(member.guild.id):
             try:
-                await member.send(testo_dm, allowed_mentions=menzioni_ammesse(False))
+                embed_dm = await _embed_salvato(member, config.dm_embed, inviti)  # RUO-014
+                await member.send(
+                    testo_dm, allowed_mentions=menzioni_ammesse(False), **({"embed": embed_dm} if embed_dm else {})
+                )
             except discord.HTTPException:
                 pass  # DM chiusi: non è un errore da segnalare, è normale
+
+    @commands.Cog.listener()
+    async def on_guild_channel_update(self, prima: discord.abc.GuildChannel, dopo: discord.abc.GuildChannel) -> None:
+        """RUO-027: avviso quando cambia l'argomento di un canale di testo che tutti possono vedere."""
+        if not isinstance(dopo, discord.TextChannel) or not va_annunciato(getattr(prima, "topic", None), dopo.topic):
+            return
+        guild = dopo.guild
+        if not await db.is_module_active_for_guild(guild.id, MODULE_GREETINGS):
+            return
+        config = await greetings_repo.get_config(guild.id)
+        if config.topic_notice_channel_id is None or config.topic_notice_channel_id == dopo.id:
+            return
+        if not dopo.permissions_for(guild.default_role).view_channel:
+            return  # un canale privato non rivela il suo argomento in uno pubblico
+        ora = time.monotonic()
+        if ora - self._ultimi_topic.get(dopo.id, -1e9) < PAUSA_PER_CANALE_SECONDI:
+            return
+        canale = guild.get_channel(config.topic_notice_channel_id)
+        if not isinstance(canale, discord.TextChannel):
+            return
+        if len(self._ultimi_topic) > 2000:
+            self._ultimi_topic.clear()
+        self._ultimi_topic[dopo.id] = ora
+        try:
+            await canale.send(
+                messaggio_avviso(dopo.mention, getattr(prima, "topic", None), dopo.topic),
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+        except discord.HTTPException:
+            logger.info("Avviso sull'argomento non inviato nel server %s.", guild.id)
+
+    @commands.Cog.listener()
+    async def on_message(self, messaggio: discord.Message) -> None:
+        """RUO-024: l'emoji sul primo messaggio di chi è appena entrato. Non si legge il testo, solo chi scrive."""
+        if messaggio.guild is None or messaggio.author.bot or len(self._primi) == 0:
+            return
+        if messaggio.type not in (discord.MessageType.default, discord.MessageType.reply):
+            return
+        if not self._primi.consuma(messaggio.guild.id, messaggio.author.id, time.monotonic()):
+            return
+        config = await greetings_repo.get_config(messaggio.guild.id)
+        if not config.first_message_reaction:
+            return
+        try:
+            await messaggio.add_reaction(config.first_message_reaction)
+        except discord.HTTPException:
+            logger.info("Reazione sul primo messaggio non messa nel server %s.", messaggio.guild.id)
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member) -> None:
@@ -420,6 +556,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         await _invia_con_grafica(
             channel, testo, await greetings_repo.get_grafica(member.guild.id, uscite.TIPO_ADDIO),
             menzioni_ammesse(config.goodbye_ping_ruoli), member.guild.id, "goodbye",
+            await _embed_salvato(member, config.goodbye_embed),
         )
 
     @commands.Cog.listener()
@@ -690,10 +827,21 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         colore_testo="Colore del testo, per esempio #FFFFFF",
         titolo="La scritta in alto (massimo 40 caratteri)",
         togli_sfondo="Torna al modello pronto cancellando lo sfondo caricato",
+        opacita="Quanto si vede lo sfondo caricato, da 0 a 100 (di base 65)",
+        testo="Riga di testo sull'immagine, con i segnaposto (massimo 100; «togli» la toglie)",
+        ordine="Se l'immagine va con il testo, prima del testo o da sola",
+        allineamento="Dove stanno i testi accanto all'avatar",
+        colore_nome="Colore del nome, per esempio #FFD700 (oppure «predefinito»)",
     )
     @app_commands.choices(
         modello=[app_commands.Choice(name=nome, value=nome) for nome in MODELLI],
         forma_avatar=[app_commands.Choice(name=forma, value=forma) for forma in FORME],
+        ordine=[
+            app_commands.Choice(name="insieme al testo", value="insieme"),
+            app_commands.Choice(name="immagine prima del testo", value="immagine_prima"),
+            app_commands.Choice(name="solo immagine", value="solo_immagine"),
+        ],
+        allineamento=[app_commands.Choice(name=a, value=a) for a in ALLINEAMENTI],
     )
     async def immagine(
         self,
@@ -705,6 +853,11 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         colore_testo: app_commands.Range[str, 4, 7] | None = None,
         titolo: app_commands.Range[str, 1, MAX_TITOLO] | None = None,
         togli_sfondo: bool = False,
+        opacita: app_commands.Range[int, 0, 100] | None = None,
+        testo: app_commands.Range[str, 1, MAX_TESTO] | None = None,
+        ordine: str | None = None,
+        allineamento: str | None = None,
+        colore_nome: app_commands.Range[str, 4, 11] | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -716,6 +869,14 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         if colore_testo is not None:
             colore = colore_valido(colore_testo)
             if colore is None:
+                await interaction.response.send_message(
+                    await testo_per(interaction, "greetings_il_colore_va_scritto_come"), ephemeral=True
+                )
+                return
+        nome_colore = None
+        if colore_nome is not None and colore_nome.lower() != "predefinito":
+            nome_colore = colore_valido(colore_nome)
+            if nome_colore is None:
                 await interaction.response.send_message(
                     await testo_per(interaction, "greetings_il_colore_va_scritto_come"), ephemeral=True
                 )
@@ -754,6 +915,16 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             color=colore or attuale.welcome_image_color,
             title=titolo or attuale.welcome_image_title,
         )
+        if any(v is not None for v in (opacita, testo, ordine, allineamento, colore_nome)):
+            # RUO-004, 007, 008, 010: ciò che non si indica resta com'è
+            await greetings_repo.set_welcome_image_extra(
+                guild.id,
+                attuale.welcome_image_opacity if opacita is None else opacita,
+                attuale.welcome_image_text if testo is None else ("" if testo.lower() == "togli" else testo),
+                ordine or attuale.welcome_image_order,
+                allineamento or attuale.welcome_image_align,
+                attuale.welcome_image_name_color if colore_nome is None else (nome_colore or ""),
+            )
         if pronto is not None:
             await greetings_repo.set_welcome_background(guild.id, pronto)
         elif togli_sfondo:
@@ -763,6 +934,62 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             avviso = " Il benvenuto però è spento: attivalo con `/admin-benvenuto messaggio`."
         await interaction.followup.send(
             f"Immagine di benvenuto {'attivata' if attiva else 'disattivata'}.{avviso}", ephemeral=True
+        )
+
+    @comando_di_gruppo(
+        "admin-benvenuto",
+        nome="embed",
+        descrizione="Usa un embed salvato per il benvenuto, il DM o l'addio.",
+    )
+    @app_commands.describe(
+        dove="Quale messaggio esce con l'embed",
+        nome="Il nome dell'embed salvato (o «togli» per non usarne più)",
+    )
+    @app_commands.choices(dove=[app_commands.Choice(name=d, value=d) for d in DOVE])
+    @app_commands.autocomplete(nome=_completa_embed)
+    async def embed_cmd(
+        self, interaction: discord.Interaction, dove: str, nome: app_commands.Range[str, 1, MAX_NOME_EMBED]
+    ) -> None:
+        """RUO-001, 014, 015: i segnaposto dell'embed si sostituiscono a ogni invio; un embed non più valido si salta."""
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(await testo_per(interaction, "guild_only_command"), ephemeral=True)
+            return
+        if dove not in DOVE:
+            await interaction.response.send_message(await testo_per(interaction, "modmail_scelta_non_valida"), ephemeral=True)
+            return
+        nome = nome.strip().lower()
+        if nome == TOGLI:
+            await greetings_repo.set_embed(guild.id, dove, "")
+            await interaction.response.send_message("Fatto: da ora quel messaggio esce senza embed.", ephemeral=True)
+            return
+        if await saved_embed_repo.get(guild.id, nome) is None:
+            await interaction.response.send_message(
+                "Non trovo un embed salvato con quel nome: crealo con `/admin-messaggi embed`.", ephemeral=True
+            )
+            return
+        await greetings_repo.set_embed(guild.id, dove, nome)
+        avviso = " Il DM esce solo se è acceso con `/admin-benvenuto messaggio`." if dove == "dm" else ""
+        await interaction.response.send_message(f"Fatto: l'embed «{nome}» sarà usato.{avviso}", ephemeral=True)
+
+    @comando_di_gruppo(
+        "admin-benvenuto",
+        nome="avviso-topic",
+        descrizione="Avvisa in un canale quando cambia l'argomento di un canale.",
+    )
+    @app_commands.describe(canale="Dove mandare l'avviso (se non lo indichi, gli avvisi si spengono)")
+    async def avviso_topic(
+        self, interaction: discord.Interaction, canale: discord.TextChannel | None = None
+    ) -> None:
+        """RUO-027: gli avvisi escono solo per i canali che @everyone vede, senza menzioni, uno al minuto per canale."""
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(await testo_per(interaction, "guild_only_command"), ephemeral=True)
+            return
+        await greetings_repo.set_topic_notice(guild.id, canale.id if canale else None)
+        await interaction.response.send_message(
+            f"Avvisi sull'argomento: {canale.mention}." if canale else "Avvisi sull'argomento spenti.",
+            ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
         )
 
     @comando_di_gruppo(

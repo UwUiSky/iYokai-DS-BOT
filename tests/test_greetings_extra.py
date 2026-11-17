@@ -235,3 +235,66 @@ async def test_finestra_salva_i_quattro_campi(monkeypatch):
     )
     repo.set_welcome_extra.assert_awaited_once()
     assert repo.set_welcome_extra.await_args.args[1:] == ("DM", ["a", "b"], ["🎉"], "Ban {username}")
+
+
+# ------------------------------------------------- RUO-024: reazione sul primo messaggio
+def test_RUO_024_il_segno_vale_una_volta_e_scade():
+    # RUO-024
+    from core.greetings_logic import PrimiMessaggi
+
+    p = PrimiMessaggi()
+    p.registra(1, 5, ora=100.0)
+    assert p.consuma(1, 5, ora=200.0) is True
+    assert p.consuma(1, 5, ora=201.0) is False  # solo il primo messaggio
+    p.registra(1, 6, ora=100.0)
+    assert p.consuma(1, 6, ora=100.0 + PrimiMessaggi.DURATA_SECONDI + 1) is False
+    assert p.consuma(2, 5, ora=0) is False  # un altro server non c'entra
+
+
+def test_RUO_024_la_memoria_ha_un_tetto():
+
+
+    # RUO-024
+    from core.greetings_logic import PrimiMessaggi
+
+    p = PrimiMessaggi()
+    for n in range(PrimiMessaggi.MASSIMO + 50):
+        p.registra(1, n, ora=1.0)
+    assert len(p) <= PrimiMessaggi.MASSIMO
+
+
+@pytest.mark.asyncio
+async def test_RUO_024_il_bot_reagisce_al_primo_messaggio_del_nuovo_membro(monkeypatch):
+    # RUO-024
+    import cogs.utility.greetings as modulo
+    from cogs.utility.greetings import GreetingsCog
+    from core.repositories.greetings_repo import GreetingsConfig
+    from tests.support.discord_fakes import fake_guild, fake_member, fake_message, fake_text_channel
+
+    cog = GreetingsCog(MagicMock())
+    canale = fake_text_channel(55)
+    canale.send = AsyncMock()
+    server = fake_guild()
+    server.get_channel = lambda cid: canale
+    config = GreetingsConfig(
+        guild_id=666, welcome_enabled=True, welcome_channel_id=55, welcome_message="Ciao", welcome_dm=False,
+        goodbye_enabled=False, goodbye_channel_id=None, goodbye_message="", boost_enabled=False,
+        boost_channel_id=None, boost_message="", first_message_reaction="👋",
+    )
+    repo = MagicMock(get_config=AsyncMock(return_value=config))
+    monkeypatch.setattr(modulo, "greetings_repo", repo)
+    monkeypatch.setattr(modulo, "db", MagicMock(is_module_active_for_guild=AsyncMock(return_value=True)))
+    monkeypatch.setattr(modulo, "raid_in_corso", lambda gid: False)
+    membro = fake_member(5, "mario")
+    membro.guild = server
+    await cog.on_member_join(membro)
+    messaggio = fake_message(message_id=9, author=membro, guild=server)
+    messaggio.add_reaction = AsyncMock()
+    messaggio.type = discord.MessageType.default
+    await cog.on_message(messaggio)
+    messaggio.add_reaction.assert_awaited_once_with("👋")
+    secondo = fake_message(message_id=10, author=membro, guild=server)
+    secondo.add_reaction = AsyncMock()
+    secondo.type = discord.MessageType.default
+    await cog.on_message(secondo)
+    secondo.add_reaction.assert_not_awaited()

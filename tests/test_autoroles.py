@@ -143,14 +143,16 @@ def cog(monkeypatch):
     c = AutorolesCog(bot)
     db_finto = MagicMock()
     db_finto.is_module_active_for_guild = AsyncMock(return_value=True)
+    db_finto.get_guild_setting = AsyncMock(return_value=None)
     monkeypatch.setattr(modulo, "db", db_finto)
     repo_finto = MagicMock()
     repo_finto.list_rules = AsyncMock(return_value=[])
     repo_finto.get_config = AsyncMock(
-        return_value=MagicMock(remember_enabled=False, remember_days=30)
+        return_value=MagicMock(remember_enabled=False, remember_days=30, remember_allowed=(), remember_excluded=())
     )
     repo_finto.add_rule = AsyncMock(return_value=True)
     repo_finto.save_memory = AsyncMock()
+    repo_finto.set_remember_filters = AsyncMock()
     repo_finto.pop_memory = AsyncMock(return_value=None)
     monkeypatch.setattr(modulo, "autorole_repo", repo_finto)
     monkeypatch.setattr(modulo, "scheduler", MagicMock(schedule=AsyncMock(return_value=1), list_pending_for_user=AsyncMock(return_value=[])))
@@ -237,7 +239,7 @@ async def test_membro_in_attesa_non_riceve_i_ruoli_all_ingresso(cog):
 
 @pytest.mark.asyncio
 async def test_uscita_salva_i_ruoli_se_attivo(cog):
-    cog.repo.get_config.return_value = MagicMock(remember_enabled=True, remember_days=30)
+    cog.repo.get_config.return_value = MagicMock(remember_enabled=True, remember_days=30, remember_allowed=(), remember_excluded=())
     server, _ = _server_con_ruoli()
     membro = fake_member(50, roles=[fake_role(0, "@everyone"), fake_role(5, "G")])
     membro.guild = server
@@ -258,7 +260,7 @@ async def test_uscita_non_salva_se_spento(cog):
 @pytest.mark.asyncio
 async def test_rientro_riprende_i_ruoli_ricordati(cog):
     server, ruoli = _server_con_ruoli(5, 6)
-    cog.repo.get_config.return_value = MagicMock(remember_enabled=True, remember_days=30)
+    cog.repo.get_config.return_value = MagicMock(remember_enabled=True, remember_days=30, remember_allowed=(), remember_excluded=())
     cog.repo.pop_memory.return_value = MagicMock(
         role_ids=[5, 6], left_at=datetime.now(timezone.utc) - timedelta(days=3)
     )
@@ -356,7 +358,7 @@ async def test_il_ruolo_ritardato_non_si_da_se_la_regola_e_stata_tolta(cog):
 
 
 def _ricordati(cog, ruoli_ids):
-    cog.repo.get_config.return_value = MagicMock(remember_enabled=True, remember_days=30)
+    cog.repo.get_config.return_value = MagicMock(remember_enabled=True, remember_days=30, remember_allowed=(), remember_excluded=())
     cog.repo.pop_memory.return_value = MagicMock(
         role_ids=ruoli_ids, left_at=datetime.now(timezone.utc) - timedelta(days=1)
     )
@@ -424,7 +426,7 @@ async def test_ruolo_ritardato_non_scatta_durante_un_raid_o_con_membro_in_attesa
 
 @pytest.mark.asyncio
 async def test_uscita_non_ricorda_i_ruoli_a_tempo(cog):
-    cog.repo.get_config.return_value = MagicMock(remember_enabled=True, remember_days=30)
+    cog.repo.get_config.return_value = MagicMock(remember_enabled=True, remember_days=30, remember_allowed=(), remember_excluded=())
     server, _ = _server_con_ruoli()
     membro = fake_member(50, roles=[fake_role(5, "G"), fake_role(6, "Temporaneo")])
     membro.guild = server
@@ -519,7 +521,7 @@ async def test_sincronizza_i_membri_presenti(cog, monkeypatch):
 @pytest.mark.asyncio
 async def test_i_ruoli_dati_a_tempo_non_si_ricordano(cog):
     server, ruoli = _server_con_ruoli(5, 6)
-    cog.repo.get_config.return_value = MagicMock(remember_enabled=True, remember_days=30)
+    cog.repo.get_config.return_value = MagicMock(remember_enabled=True, remember_days=30, remember_allowed=(), remember_excluded=())
     modulo.scheduler.list_pending_for_user = AsyncMock(
         side_effect=lambda uid, tipo, n: [{"guild_id": server.id, "payload": {"dati": [6], "tolti": []}}]
         if tipo == modulo.RUOLI_TEMPORANEI_ACTION_TYPE else []
@@ -608,3 +610,52 @@ async def test_auto_sincronizza_un_task_per_server_fermato_allo_scarico(cog, mon
     assert cog.sincronie == {}
     await asyncio.wait({task}, timeout=2)  # senza cancel il task resterebbe fermo per sempre
     assert task.cancelled()
+
+
+# ------------------------------------------------- RUO-040, RUO-041: filtri della memoria
+def test_RUO_040_RUO_041_filtra_ricordati_ammessi_esclusi_e_mute_sempre():
+    # RUO-040, RUO-041
+    from core.autorole_logic import filtra_ricordati
+
+    assert filtra_ricordati([1, 2, 3], [], []) == [1, 2, 3]
+    assert filtra_ricordati([1, 2, 3], [1, 3], []) == [1, 3]
+    assert filtra_ricordati([1, 2, 3], [], [2]) == [1, 3]
+    assert filtra_ricordati([1, 2, 3], [1], [1]) == []  # l'esclusione vince
+    assert filtra_ricordati([1, 9], [1], [9], sempre=[9]) == [1, 9]  # il mute torna sempre
+
+
+@pytest.mark.asyncio
+async def test_RUO_040_RUO_041_filtri_salvati_e_riletti(repo):
+    # RUO-040, RUO-041
+    await repo.set_remember_filters(7, [1, 2], [3])
+    config = await repo.get_config(7)
+    assert config.remember_allowed == (1, 2) and config.remember_excluded == (3,)
+    await repo.set_remember(7, True, 10)  # accendere la memoria non cancella i filtri
+    assert (await repo.get_config(7)).remember_allowed == (1, 2)
+
+
+@pytest.mark.asyncio
+async def test_RUO_041_uscita_non_salva_i_ruoli_esclusi(cog):
+    # RUO-041
+    cog.repo.get_config.return_value = MagicMock(
+        remember_enabled=True, remember_days=30, remember_allowed=(), remember_excluded=(5,)
+    )
+    server, _ = _server_con_ruoli()
+    membro = fake_member(50, roles=[fake_role(5, "G"), fake_role(6, "H")])
+    membro.guild = server
+    await cog.on_member_remove(membro)
+    assert cog.repo.save_memory.await_args.args[2] == [6]
+
+
+@pytest.mark.asyncio
+async def test_RUO_041_il_ruolo_di_mute_non_si_esclude(cog, monkeypatch):
+    # RUO-041
+    modulo.db.get_guild_setting.return_value = 5
+    cog.repo.get_config.return_value = MagicMock(
+        remember_enabled=True, remember_days=30, remember_allowed=(), remember_excluded=()
+    )
+    inter = fake_interaction(guild=_server_con_ruoli()[0])
+    comando = comando_nel_gruppo("admin-ruoli", "auto ricorda-ruoli")
+    assert comando is not None
+    await cog.auto_ricorda_ruoli.callback(cog, inter, "esclusi", "aggiungi", fake_role(5, "Muted"))
+    cog.repo.set_remember_filters.assert_not_awaited()

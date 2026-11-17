@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-16 03:54 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-17 14:46 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 840 comandi in 49 categorie.**
+**Totale: 851 comandi in 50 categorie.**
 
 ## Admin: AI
 
@@ -142,7 +142,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-16 03:
 
 - **`/admin-benvenuto addio`** — Configura il messaggio di addio.
 - **`/admin-benvenuto anteprima`** — Mostra un'anteprima di come apparirebbe un messaggio.
+- **`/admin-benvenuto avviso-topic`** — Avvisa in un canale quando cambia l'argomento di un canale.
 - **`/admin-benvenuto boost`** — Configura il messaggio di boost.
+- **`/admin-benvenuto embed`** — Usa un embed salvato per il benvenuto, il DM o l'addio.
 - **`/admin-benvenuto extra`** — Benvenuto: DM, varianti, reazioni; messaggi di ban e addio.
 - **`/admin-benvenuto immagine`** — Aggiungi al benvenuto un'immagine con avatar, nome e numero del membro.
 - **`/admin-benvenuto messaggio`** — Configura il messaggio di benvenuto.
@@ -284,6 +286,16 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-16 03:
 - **`/admin-log vista-forum`** — Un forum con un post per canale o per caso. Senza forum, la vista si spegne.
 - **`/admin-log webhook`** — Manda i log da un webhook del canale, raggruppati, con limiti suoi.
 
+## Admin: menu dei ruoli
+
+- **`/admin-menu-ruoli aggiungi-molti`** — Aggiungi a un menu più coppie emoji-ruolo in un colpo solo.
+- **`/admin-menu-ruoli canale`** — Crea un canale per i menu dei ruoli: tutti leggono, scrive solo il bot.
+- **`/admin-menu-ruoli modello`** — Crea un menu da un modello pronto: verifica, notifiche, colori, interessi.
+- **`/admin-menu-ruoli opzione`** — Cambia emoji, etichetta, descrizione, colore o posto di un'opzione di un menu.
+- **`/admin-menu-ruoli ripara`** — Rimetti le reazioni del bot su un menu a reazioni se qualcuno le ha tolte.
+- **`/admin-menu-ruoli sposta`** — Aggancia o sposta un menu a reazioni su un messaggio già scritto.
+- **`/admin-menu-ruoli svuota`** — Elimina tutti i menu di ruoli del server, o di un canale.
+
 ## Admin: messaggi
 
 - **`/admin-messaggi auto`** — Automatismi: citazioni, correzione link, pubblicazione annunci, accorciatore.
@@ -348,6 +360,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-16 03:
 - **`/admin-ruoli auto aggiungi`** — Aggiungi un ruolo dato in automatico a chi entra.
 - **`/admin-ruoli auto elenco`** — Mostra i ruoli automatici del server.
 - **`/admin-ruoli auto ricorda`** — Ridai i ruoli a chi esce e rientra entro un certo tempo.
+- **`/admin-ruoli auto ricorda-ruoli`** — Scegli quali ruoli si ridanno a chi rientra e quali mai.
 - **`/admin-ruoli auto sincronizza`** — Dai i ruoli automatici anche ai membri già nel server.
 - **`/admin-ruoli auto togli`** — Togli un ruolo dato in automatico a chi entra.
 - **`/admin-ruoli azzera`** — Togli tutti i ruoli a un membro, con conferma.
@@ -369,6 +382,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-16 03:
 - **`/admin-ruoli premio togli`** — Rimuove un ruolo-premio configurato.
 - **`/admin-ruoli scelta`** — Ruoli che i membri si prendono da soli con /utility ruolo.
 - **`/admin-ruoli togli`** — Togli uno o più ruoli a un membro, anche per un tempo.
+- **`/admin-ruoli vocale`** — Un ruolo per chi è in un canale vocale.
 
 ## Admin: sicurezza
 

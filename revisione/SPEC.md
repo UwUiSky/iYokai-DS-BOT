@@ -1470,6 +1470,17 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   scheduler), azzera, operazioni di massa (una per server, stima, stop, arresto dopo 10 errori di fila), crea, modifica,
   diagnosi, ruoli a scelta (tetto 25, migrazione 0231) presi dai membri con `/utility ruolo` (RUO-042, 043, 090–109, 113;
   giro r8, 21/10)
+- `[x]` 14.22 Benvenuto e ruoli, catalogo #123 (giro r1ben, 17/11) — benvenuto: `{math:}` (RUO-022), `{se_nuovo:}` e
+  `{se_ruolo:}` (RUO-026), immagine con opacità, allineamento, colore del nome, testo libero e ordine (RUO-004, 007, 008,
+  010), embed salvato per benvenuto, DM e addio (RUO-001, 014, 015, `/admin-benvenuto embed`), reazione sul primo messaggio
+  (RUO-024), avviso sull'argomento dei canali (RUO-027, `/admin-benvenuto avviso-topic`); ruoli: ruoli ricordati ammessi o
+  esclusi (RUO-040, 041, `auto ricorda-ruoli`), ruoli vocali (RUO-044, `/admin-ruoli vocale`, 0647); menu: tetto e minimo
+  (RUO-062, 063), posti limitati (RUO-065), liste svuotabili (RUO-068), colore, conferma e risposta (RUO-052, 081, 082,
+  085, 086), scadenza (RUO-070), contatori (RUO-084), voce «togli tutti» (RUO-087); gruppo `/admin-menu-ruoli` (D75):
+  modelli (RUO-089), canale dei ruoli (RUO-071), coppie in un colpo (RUO-048, 049), modifica opzione e posto (RUO-076,
+  077), sposta e aggancia (RUO-072, 073), ripara (RUO-074), emoji di altri server (RUO-075), svuota (RUO-080); cambio di tipo
+  (RUO-088) e `elimina tieni_messaggio` (RUO-079). Già presenti e ora provate: RUO-002, 003, 006, 009, 011, 020, 021,
+  028-033, 037, 039, 051, 054-061, 064, 066, 067, 078. Migrazioni 0640-0650.
 - `[x]` 14.19 **Voce di Yokai: messaggi vocali** — il bot manda veri
   messaggi vocali di Discord da un testo, nella lingua del testo. Sotto
   ogni vocale un messaggio con due bottoni: "Trascrivi" e "Nella mia

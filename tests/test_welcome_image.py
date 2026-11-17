@@ -168,6 +168,7 @@ class _Scena:
         self.repo.get_config = AsyncMock(return_value=config)
         self.repo.get_welcome_background = AsyncMock(return_value=None)
         self.repo.set_welcome_image = AsyncMock()
+        self.repo.set_welcome_image_extra = AsyncMock()
         self.repo.set_welcome_background = AsyncMock()
         self.repo.clear_welcome_background = AsyncMock()
         monkeypatch.setattr(modulo, "greetings_repo", self.repo)
@@ -299,3 +300,126 @@ async def test_il_comando_sta_sotto_gestione_benvenuto():
     opzioni = {o["name"]: o for o in cmd.to_dict(bot.tree)["options"]}
     assert len(opzioni["modello"]["choices"]) == len(MODELLI)
     assert opzioni["titolo"]["max_length"] <= 100
+
+
+# ------------------------------------------------- RUO-004, RUO-007, RUO-008, RUO-010 (#123)
+def _con(**campi):
+    base = dict(nome="Mario", numero=5)
+    return render_welcome_image(DatiBenvenuto(**base, **campi), None, _png_sfondo())
+
+
+def _png_sfondo():
+    buf = io.BytesIO()
+    Image.new("RGB", (800, 300), (230, 230, 40)).save(buf, "PNG")
+    return buf.getvalue()
+
+
+def test_RUO_004_opacita_dello_sfondo_cambia_la_luminosita():
+
+
+    # RUO-004
+    scuro = Image.open(io.BytesIO(_con(opacita=10))).convert("L").resize((1, 1)).getpixel((0, 0))
+    chiaro = Image.open(io.BytesIO(_con(opacita=100))).convert("L").resize((1, 1)).getpixel((0, 0))
+    assert chiaro > scuro
+
+
+def test_RUO_007_allineamento_e_colore_del_nome():
+
+
+    # RUO-007
+    assert _con(allineamento="sinistra") != _con(allineamento="centro")
+    assert _con(allineamento="centro") != _con(allineamento="destra")
+    assert _con(colore_nome="#FF0000") != _con(colore_nome="#00FF00")
+    assert _con(allineamento="inventato")  # un valore strano non rompe il disegno
+
+
+def test_RUO_008_testo_libero_sull_immagine():
+
+
+    # RUO-008
+    assert _con(testo="Leggi le regole") != _con(testo="")
+    assert _con(testo="x" * 500)  # troppo lungo: si taglia, non si rompe
+
+
+def test_RUO_010_ordine_tra_immagine_e_testo():
+
+
+    # RUO-010
+    from core.welcome_image import ORDINI
+
+    assert ORDINI == ("insieme", "immagine_prima", "solo_immagine")
+
+
+@pytest.mark.asyncio
+async def test_RUO_004_007_008_010_impostazioni_in_piu_salvate_e_riletta(repo):
+    # RUO-004, RUO-007, RUO-008, RUO-010
+    config = await repo.get_config(1)
+    assert (config.welcome_image_opacity, config.welcome_image_order, config.welcome_image_align) == (65, "insieme", "sinistra")
+    await repo.set_welcome_image_extra(1, 20, "Leggi {server}", "solo_immagine", "centro", "#FFD700")
+    config = await repo.get_config(1)
+    assert (config.welcome_image_opacity, config.welcome_image_text, config.welcome_image_order,
+            config.welcome_image_align, config.welcome_image_name_color) == (20, "Leggi {server}", "solo_immagine", "centro", "#FFD700")
+
+
+@pytest.mark.asyncio
+async def test_RUO_010_immagine_prima_del_testo_sono_due_messaggi(monkeypatch):
+    # RUO-010
+    import dataclasses
+
+    s = _Scena(monkeypatch)
+    s.repo.get_config.return_value = dataclasses.replace(s.repo.get_config.return_value, welcome_image_order="immagine_prima")
+    await s.cog.on_member_join(s.membro)
+    prima, seconda = s.canale.send.await_args_list
+    assert isinstance(prima.kwargs["file"], discord.File) and not prima.args
+    assert seconda.args and "file" not in seconda.kwargs
+
+
+@pytest.mark.asyncio
+async def test_RUO_010_solo_immagine_non_manda_il_testo(monkeypatch):
+    # RUO-010
+    import dataclasses
+
+    s = _Scena(monkeypatch)
+    s.repo.get_config.return_value = dataclasses.replace(s.repo.get_config.return_value, welcome_image_order="solo_immagine")
+    await s.cog.on_member_join(s.membro)
+    s.canale.send.assert_awaited_once()
+    assert not s.canale.send.await_args.args and isinstance(s.canale.send.await_args.kwargs["file"], discord.File)
+
+
+@pytest.mark.asyncio
+async def test_RUO_008_il_testo_libero_usa_i_segnaposto_senza_menzioni(monkeypatch):
+    # RUO-008
+    import dataclasses
+
+    s = _Scena(monkeypatch)
+    s.repo.get_config.return_value = dataclasses.replace(
+        s.repo.get_config.return_value, welcome_image_text="Ciao {user} su {server}"
+    )
+    visto = {}
+
+    def finto(dati, avatar, sfondo):
+        visto["testo"] = dati.testo
+        return b"x"
+
+    monkeypatch.setattr(modulo, "render_welcome_image", finto)
+    await s.cog.on_member_join(s.membro)
+    assert visto["testo"].startswith("Ciao Mario su ") and "<@" not in visto["testo"]
+
+
+@pytest.mark.asyncio
+async def test_RUO_004_007_008_010_il_comando_salva_solo_cio_che_si_indica(monkeypatch):
+    # RUO-004, RUO-007, RUO-008, RUO-010
+    s = _Scena(monkeypatch)
+    i = fake_interaction(guild=s.server, user=s.membro)
+    await s.cog.immagine.callback(
+        s.cog, i, True, opacita=30, testo="Leggi le regole", ordine="solo_immagine", allineamento="centro",
+        colore_nome="#FFD700",
+    )
+    s.repo.set_welcome_image_extra.assert_awaited_once_with(
+        s.server.id, 30, "Leggi le regole", "solo_immagine", "centro", "#FFD700"
+    )
+    s.repo.set_welcome_image_extra.reset_mock()
+    await s.cog.immagine.callback(s.cog, i, True, colore_nome="rosso")  # colore non valido
+    s.repo.set_welcome_image_extra.assert_not_awaited()
+    await s.cog.immagine.callback(s.cog, i, True, testo="togli", colore_nome="predefinito")
+    assert s.repo.set_welcome_image_extra.await_args.args[2] == "" and s.repo.set_welcome_image_extra.await_args.args[5] == ""

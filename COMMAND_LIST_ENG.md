@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-16 03:54 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-17 14:46 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 840 commands in 49 categories.**
+**Total: 851 commands in 50 categories.**
 
 ## Admin: AI
 
@@ -141,11 +141,13 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-16 03:5
 ## Admin: welcome
 
 - **`/admin-welcome boost`** — Sets up the boost message.
+- **`/admin-welcome embed`** — Use a saved embed for the welcome, the DM or the goodbye message.
 - **`/admin-welcome extra`** — Welcome: DM text, variants, reactions; ban and goodbye messages.
 - **`/admin-welcome goodbye`** — Sets up the goodbye message.
 - **`/admin-welcome image`** — Adds to the welcome an image with the member's avatar, name and number.
 - **`/admin-welcome message`** — Sets up the welcome message.
 - **`/admin-welcome preview`** — Shows a preview of how a message would look.
+- **`/admin-welcome topic-notice`** — Announce in a channel when a channel's topic changes.
 
 ## Admin: bot setup
 
@@ -284,6 +286,16 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-16 03:5
 - **`/admin-log status`** — Shows where the server logs go.
 - **`/admin-log webhook`** — Sends logs through a channel webhook, grouped, with its own rate limits.
 
+## Admin: role menus
+
+- **`/admin-role-menus add-many`** — Add several emoji-role pairs to a menu in one go.
+- **`/admin-role-menus channel`** — Create a channel for role menus: everyone reads, only the bot writes.
+- **`/admin-role-menus clear`** — Delete all role menus in the server or in one channel.
+- **`/admin-role-menus move`** — Attach or move a reaction menu to an existing message.
+- **`/admin-role-menus option`** — Change an option's emoji, label, description, colour or position in a menu.
+- **`/admin-role-menus repair`** — Put the bot's reactions back on a reaction menu if someone removed them.
+- **`/admin-role-menus template`** — Create a menu from a ready-made template: verify, notifications, colours, interests.
+
 ## Admin: messages
 
 - **`/admin-messages auto`** — Automations: quotes, link fixing, announcement publishing, shortener.
@@ -347,6 +359,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-16 03:5
 
 - **`/admin-roles auto add`** — Adds a role given automatically to new members.
 - **`/admin-roles auto list`** — Shows the server's automatic roles.
+- **`/admin-roles auto remember-roles`** — Choose which roles are given back to returning members and which never are.
 - **`/admin-roles auto remove`** — Removes a role given automatically to new members.
 - **`/admin-roles auto ricorda`** — Gives roles back to people who leave and rejoin within a set time.
 - **`/admin-roles auto sync`** — Give the automatic roles to members already in the server too.
@@ -369,6 +382,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-16 03:5
 - **`/admin-roles reward list`** — Shows the reward roles configured on this server.
 - **`/admin-roles reward remove`** — Removes a configured reward role.
 - **`/admin-roles self-roles`** — Roles members take by themselves with /utility role.
+- **`/admin-roles voice`** — Give a role to people in a voice channel and take it away when they leave.
 
 ## Admin: security
 
@@ -745,12 +759,12 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-16 03:5
 - **`/mod-channels slowmode`** — Sets slowmode on a channel or category. With no values: lists channels with slowmode.
 - **`/mod-channels thread`** — Create, archive or delete a thread.
 - **`/mod-channels unlock`** — Unblocks the ability to write in a channel.
-- **`/mod-channels vocale disconnect`** — Disconnects a member from voice.
-- **`/mod-channels vocale dove`** — Shows which voice channel a member is in, and asks for an alert when they join.
-- **`/mod-channels vocale muta`** — Mutes or unmutes a member's microphone in voice.
-- **`/mod-channels vocale sordina`** — Deafens or undeafens a member in voice.
-- **`/mod-channels vocale sposta`** — Moves a member to another voice channel.
-- **`/mod-channels vocale sposta-tutti`** — Moves everyone in a voice channel to another one.
+- **`/mod-channels voice disconnect`** — Disconnects a member from voice.
+- **`/mod-channels voice dove`** — Shows which voice channel a member is in, and asks for an alert when they join.
+- **`/mod-channels voice move`** — Moves a member to another voice channel.
+- **`/mod-channels voice muta`** — Mutes or unmutes a member's microphone in voice.
+- **`/mod-channels voice sordina`** — Deafens or undeafens a member in voice.
+- **`/mod-channels voice sposta-tutti`** — Moves everyone in a voice channel to another one.
 
 ## Mod: cases and notes
 
@@ -813,9 +827,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-16 03:5
 ## Music
 
 - **`/music clear-queue`** — Clears the queue without touching the track that is playing.
-- **`/music coda pulisci`** — Toglie dalla coda i brani di chi non e' piu' nel canale vocale.
-- **`/music coda search`** — Cerca un brano nella coda per titolo.
-- **`/music coda skip`** — Toglie dalla coda un intervallo di posizioni e/o i brani di un utente.
+- **`/music coda pulisci`** — Removes from the queue the tracks of people who left the voice channel.
+- **`/music coda search`** — Searches the queue for a track by title.
+- **`/music coda skip`** — Removes a range of positions and/or one user's tracks from the queue.
 - **`/music disconnect`** — Disconnects the music bot from the voice channel.
 - **`/music history`** — Shows the latest tracks already played.
 - **`/music join`** — Makes the music bot join your channel without playing.

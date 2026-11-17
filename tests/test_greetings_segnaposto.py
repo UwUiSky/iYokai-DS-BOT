@@ -46,3 +46,37 @@ def test_nome_visualizzato_con_menzioni_viene_neutralizzato():
     testo = _render_for_member("{displayname} / {server}", m)
     assert "@everyone" not in testo.replace("@​everyone", "") and "@here" not in testo.replace("@​here", "")
     assert "<@&" not in testo
+
+
+def test_RUO_022_calcoli_solo_somma_e_sottrazione_di_interi():
+
+
+    # RUO-022
+    from core.greetings_logic import render_template
+
+    def r(t):
+        return render_template(t, "@u", "u", "S", 100)
+
+    assert r("{math: 3 + 4 - 2}") == "5"
+    assert r("tra {math: {membercount} + 1}!") == "tra 101!"
+    assert r("{math: 2 * 3}") == "{math: 2 * 3}"  # niente altro che + e -
+    assert r("{math: __import__('os')}") == "{math: __import__('os')}"
+    assert r("{math: " + "9" * 40 + " + 1}").startswith("{math:")  # numeri troppo grandi: resta scritto
+
+
+def test_RUO_026_condizioni_semplici_nel_messaggio():
+
+
+    # RUO-026
+    from core.greetings_logic import lunghezza_dopo_segnaposto, render_template
+
+    def r(t, **k):
+        return render_template(t, "@u", "u", "S", 10, **k)
+
+    modello = "Ciao{se_nuovo:7| (account nuovo!)}{se_ruolo:55|, benvenuto socio}"
+    assert r(modello, eta_giorni=3, ruoli_ids=frozenset({55})) == "Ciao (account nuovo!), benvenuto socio"
+    assert r(modello, eta_giorni=400, ruoli_ids=frozenset()) == "Ciao"
+    assert r(modello) == modello  # senza i dati (anteprima senza membro) resta scritto
+    assert r("{se_nuovo:7|{user}}", eta_giorni=1).startswith("{se_nuovo:7|")  # niente annidamenti: la condizione non scatta
+    # la lunghezza si misura con le condizioni vere
+    assert lunghezza_dopo_segnaposto(modello, "S", 10) >= len("Ciao (account nuovo!), benvenuto socio")

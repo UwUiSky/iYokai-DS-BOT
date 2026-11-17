@@ -332,7 +332,15 @@
   "prendi": "take",
   "pesi": "weights",
   "gestisci": "manage",
-  "ripristina": "restore"
+  "ripristina": "restore",
+  "ricorda-ruoli": "remember-roles",
+  "opzione": "option",
+  "avviso-topic": "topic-notice",
+  "vocale": "voice",
+  "sposta": "move",
+  "ripara": "repair",
+  "aggiungi-molti": "add-many",
+  "admin-menu-ruoli": "admin-role-menus"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1318,7 +1326,19 @@
   "admin-giochi telefono canale": "The server's phone channel.",
   "admin-giochi telefono consenso": "Turn the phone on or off: off by default.",
   "admin-giochi telefono blocca": "Block or unblock a person or another server from the phone.",
-  "admin-giochi telefono registro": "The server's latest calls: only servers, time and length."
+  "admin-giochi telefono registro": "The server's latest calls: only servers, time and length.",
+  "admin-ruoli auto ricorda-ruoli": "Choose which roles are given back to returning members and which never are.",
+  "admin-benvenuto embed": "Use a saved embed for the welcome, the DM or the goodbye message.",
+  "admin-benvenuto avviso-topic": "Announce in a channel when a channel's topic changes.",
+  "admin-ruoli vocale": "Give a role to people in a voice channel and take it away when they leave.",
+  "admin-menu-ruoli aggiungi-molti": "Add several emoji-role pairs to a menu in one go.",
+  "admin-menu-ruoli opzione": "Change an option's emoji, label, description, colour or position in a menu.",
+  "admin-menu-ruoli svuota": "Delete all role menus in the server or in one channel.",
+  "admin-menu-ruoli sposta": "Attach or move a reaction menu to an existing message.",
+  "admin-menu-ruoli ripara": "Put the bot's reactions back on a reaction menu if someone removed them.",
+  "admin-menu-ruoli modello": "Create a menu from a ready-made template: verify, notifications, colours, interests.",
+  "admin-menu-ruoli canale": "Create a channel for role menus: everyone reads, only the bot writes.",
+  "admin-menu-ruoli": "Role menus (admin): templates, bulk, moving, repair"
  },
  "parametri": {},
  "menu": {

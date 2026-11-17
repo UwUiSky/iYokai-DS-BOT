@@ -45,6 +45,20 @@ class GreetingsConfig:
     welcome_image_color: str = "#FFFFFF"
     welcome_image_title: str = "Benvenuto"
     welcome_image_has_background: bool = False
+    # RUO-004, 007, 008, 010 (migrazione 0643)
+    welcome_image_opacity: int = 65
+    welcome_image_text: str = ""
+    welcome_image_order: str = "insieme"
+    welcome_image_align: str = "sinistra"
+    welcome_image_name_color: str = ""
+    # RUO-001, 014, 015 (migrazione 0644): nome dell'embed salvato ('' = nessuno)
+    welcome_embed: str = ""
+    dm_embed: str = ""
+    goodbye_embed: str = ""
+    # RUO-027 (migrazione 0646): canale degli avvisi «argomento cambiato» (None = spenti)
+    topic_notice_channel_id: int | None = None
+    # RUO-024 (migrazione 0645): emoji sul primo messaggio di un nuovo membro ('' = spenta)
+    first_message_reaction: str = ""
     # RUO-013, 017, 023, 025 (migrazione 0330).
     welcome_dm_message: str = ""
     welcome_variants: list[str] = field(default_factory=list)
@@ -121,6 +135,16 @@ class GreetingsRepository:
             welcome_image_color=row["welcome_image_color"],
             welcome_image_title=row["welcome_image_title"],
             welcome_image_has_background=row["welcome_image_has_background"],
+            first_message_reaction=row["first_message_reaction"],
+            topic_notice_channel_id=row["topic_notice_channel_id"],
+            welcome_embed=row["welcome_embed"],
+            dm_embed=row["dm_embed"],
+            goodbye_embed=row["goodbye_embed"],
+            welcome_image_opacity=row["welcome_image_opacity"],
+            welcome_image_text=row["welcome_image_text"],
+            welcome_image_order=row["welcome_image_order"],
+            welcome_image_align=row["welcome_image_align"],
+            welcome_image_name_color=row["welcome_image_name_color"],
             welcome_dm_message=row["welcome_dm_message"],
             welcome_variants=list(row["welcome_variants"]),
             welcome_reactions=list(row["welcome_reactions"]),
@@ -192,6 +216,59 @@ class GreetingsRepository:
                     welcome_image_title = EXCLUDED.welcome_image_title
             """,
             guild_id, enabled, template, shape, color, title,
+        )
+
+    async def set_welcome_image_extra(
+        self, guild_id: int, opacity: int, text: str, order: str, align: str, name_color: str
+    ) -> None:
+        """RUO-004, 007, 008, 010: impostazioni in più dell'immagine di benvenuto."""
+        await self._pool.execute(
+            """
+            INSERT INTO greetings_config
+                (guild_id, welcome_image_opacity, welcome_image_text, welcome_image_order,
+                 welcome_image_align, welcome_image_name_color)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (guild_id) DO UPDATE
+                SET welcome_image_opacity = EXCLUDED.welcome_image_opacity,
+                    welcome_image_text = EXCLUDED.welcome_image_text,
+                    welcome_image_order = EXCLUDED.welcome_image_order,
+                    welcome_image_align = EXCLUDED.welcome_image_align,
+                    welcome_image_name_color = EXCLUDED.welcome_image_name_color
+            """,
+            guild_id, opacity, text, order, align, name_color,
+        )
+
+    async def set_topic_notice(self, guild_id: int, channel_id: int | None) -> None:
+        """RUO-027: il canale degli avvisi sull'argomento dei canali (None li spegne)."""
+        await self._pool.execute(
+            """
+            INSERT INTO greetings_config (guild_id, topic_notice_channel_id) VALUES ($1, $2)
+            ON CONFLICT (guild_id) DO UPDATE SET topic_notice_channel_id = EXCLUDED.topic_notice_channel_id
+            """,
+            guild_id, channel_id,
+        )
+
+    async def set_first_reaction(self, guild_id: int, emoji: str) -> None:
+        """RUO-024: l'emoji per il primo messaggio dei nuovi membri ('' la spegne)."""
+        await self._pool.execute(
+            """
+            INSERT INTO greetings_config (guild_id, first_message_reaction) VALUES ($1, $2)
+            ON CONFLICT (guild_id) DO UPDATE SET first_message_reaction = EXCLUDED.first_message_reaction
+            """,
+            guild_id, emoji,
+        )
+
+    async def set_embed(self, guild_id: int, dove: str, nome: str) -> None:
+        """RUO-001, 014, 015: l'embed salvato da usare nel benvenuto, nel DM o nell'addio ('' lo toglie)."""
+        colonna = {"benvenuto": "welcome_embed", "dm": "dm_embed", "addio": "goodbye_embed"}.get(dove)
+        if colonna is None:
+            raise ValueError(f"Posto sconosciuto: {dove}")
+        await self._pool.execute(
+            f"""
+            INSERT INTO greetings_config (guild_id, {colonna}) VALUES ($1, $2)
+            ON CONFLICT (guild_id) DO UPDATE SET {colonna} = EXCLUDED.{colonna}
+            """,
+            guild_id, nome,
         )
 
     async def get_welcome_background(self, guild_id: int) -> bytes | None:
