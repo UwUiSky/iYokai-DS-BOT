@@ -101,11 +101,11 @@ def _contenuto(img) -> tuple[dict, bytes]:
 
 
 def analizza(percorso: Path) -> tuple[dict, bytes]:
-    from core.safe_image import FORMATI_AMMESSI, ImmagineTroppoGrande, safe_open_image
+    from core.safe_image import FORMATI_SANDBOX, ImmagineTroppoGrande, safe_open_image
 
     try:
         dati = percorso.read_bytes()
-        anteprima = Image.open(io.BytesIO(dati), formats=FORMATI_AMMESSI)
+        anteprima = Image.open(io.BytesIO(dati), formats=FORMATI_SANDBOX)
         formato = anteprima.format
         larghezza, altezza = anteprima.size
         motivi = _metadati(anteprima)
@@ -113,7 +113,7 @@ def analizza(percorso: Path) -> tuple[dict, bytes]:
         anteprima.close()
         if fotogrammi > MAX_FOTOGRAMMI:
             motivi.append("troppi_fotogrammi")
-        img = safe_open_image(dati, max_side=LATO_ANALISI)
+        img = safe_open_image(dati, max_side=LATO_ANALISI, formati=FORMATI_SANDBOX)
     except (ImmagineTroppoGrande, Image.DecompressionBombError):
         return {"esito": "errore", "motivo": "troppo_grande"}, b""
     except Exception as errore:  # decoder: qualunque cosa e' sospetta

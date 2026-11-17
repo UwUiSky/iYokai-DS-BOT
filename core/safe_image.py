@@ -39,6 +39,9 @@ MAX_PIXELS = 16_000_000
 # e anteprime, e di ognuno è stato misurato quanto costa decodificarlo.
 FORMATI_AMMESSI = ("PNG", "JPEG", "GIF", "WEBP", "BMP")
 
+# Solo la sandbox degli allegati (D74) apre anche questi: vengono sempre ricodificati in PNG e mai conservati.
+FORMATI_SANDBOX = FORMATI_AMMESSI + ("TIFF", "ICO", "AVIF")
+
 # WebP e JPEG progressivi, per essere decodificati, usano da 3 a 4
 # volte la memoria degli altri formati (12-16 byte per pixel invece di
 # 4, misurato con Pillow 12): il loro limite di pixel è un quarto,
@@ -75,24 +78,24 @@ class ImmagineTroppoGrande(Exception):
 
 
 def _limite_pixel(img: Image.Image, max_pixels: int) -> int:
-    decodifica_pesante = img.format == "WEBP" or bool(img.info.get("progressive"))
+    decodifica_pesante = img.format in ("WEBP", "AVIF") or bool(img.info.get("progressive"))
     if decodifica_pesante:
         return max_pixels // DIVISORE_PIXEL_DECODIFICA_PESANTE
     return max_pixels
 
 
 def safe_open_image(
-    image_bytes: bytes, max_pixels: int = MAX_PIXELS, max_side: int = MAX_SIDE
+    image_bytes: bytes, max_pixels: int = MAX_PIXELS, max_side: int = MAX_SIDE, formati: tuple[str, ...] = FORMATI_AMMESSI,
 ) -> Image.Image:
     """
     Apre l'immagine controllando larghezza × altezza PRIMA di
     decodificare i pixel: se superano il limite solleva
     ImmagineTroppoGrande senza allocare nulla. Altrimenti restituisce
     l'immagine caricata, con il lato più lungo ridotto a max_side.
-    Un formato fuori da FORMATI_AMMESSI solleva UnidentifiedImageError.
+    Un formato fuori da `formati` (di norma FORMATI_AMMESSI) solleva UnidentifiedImageError.
     """
     try:
-        img = Image.open(io.BytesIO(image_bytes), formats=FORMATI_AMMESSI)
+        img = Image.open(io.BytesIO(image_bytes), formats=formati)
     except Image.DecompressionBombError as errore:
         # Oltre il doppio di Image.MAX_IMAGE_PIXELS è Pillow stesso a
         # rifiutare, già in apertura.

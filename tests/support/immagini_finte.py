@@ -109,3 +109,24 @@ def foto_con_qr(testo: str, lato: int = 480) -> bytes:
     codice = qr(testo, lato // 2)
     sfondo.paste(codice, (lato // 4, lato // 4))
     return _salva(sfondo, "PNG")
+
+
+def bmp(w: int = 30, h: int = 20) -> bytes:
+    return _salva(Image.new("RGB", (w, h), (10, 200, 90)), "BMP")
+
+
+def tiff(w: int = 30, h: int = 20) -> bytes:
+    return _salva(Image.new("RGB", (w, h), (90, 20, 200)), "TIFF")
+
+
+def tiff_pagine(n: int) -> bytes:
+    base = Image.new("RGB", (2, 2), (1, 2, 3))
+    return _salva(base, "TIFF", save_all=True, append_images=[Image.new("RGB", (2, 2), (i, 5, 9)) for i in range(n - 1)])
+
+
+def ico(w: int = 32, h: int = 32) -> bytes:
+    return _salva(Image.new("RGBA", (w, h), (200, 100, 20, 255)), "ICO", sizes=[(w, h)])
+
+
+def avif(w: int = 40, h: int = 30) -> bytes:
+    return _salva(Image.new("RGB", (w, h), (20, 160, 220)), "AVIF")

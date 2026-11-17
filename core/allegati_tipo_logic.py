@@ -2,7 +2,7 @@
 core/allegati_tipo_logic.py
 ===========================
 Tipo vero di un allegato dai primi byte (mai dal nome o dal content-type) e decisione unica su cosa fare:
-`immagine` (strada D62), `scheda` (si tiene solo nome pulito, tipo, dimensione, impronta SHA-256) o `rifiuta`
+`immagine` (strada D62: png, jpeg, gif, webp, bmp, tiff, ico, avif; HEIC resta scheda), `scheda` (si tiene solo nome pulito, tipo, dimensione, impronta SHA-256) o `rifiuta`
 (travestito, eseguibile, pagina attiva o sconosciuto: nessun file, solo un avviso). Logica pura: nessun file
 aperto, nessuna decodifica, nessuna dipendenza nuova.
 Funzioni coperte: SPEC §8.16 (D74, #160)
@@ -13,10 +13,11 @@ from __future__ import annotations
 
 import hashlib
 import re
+import struct
 import unicodedata
 from dataclasses import dataclass
 
-from core.immagini_byte_logic import riconosci_tipo
+from core.immagini_byte_logic import TIPI, riconosci_tipo
 
 IMMAGINE = "immagine"
 SCHEDA = "scheda"
@@ -239,7 +240,7 @@ def _azione(vero: TipoVero, nome: str | None, motivi: list[str], travestito: boo
     if vero.categoria == "sconosciuto":
         motivi.append("sconosciuto")
         return RIFIUTA
-    if vero.categoria == "immagine" and vero.formato in ("png", "jpeg", "gif", "webp"):
+    if vero.categoria == "immagine" and vero.formato in TIPI:
         return IMMAGINE
     return SCHEDA
 
@@ -248,6 +249,8 @@ def decidi(dati: bytes, nome: str | None, content_type: str | None = None) -> De
     """L'unica decisione per ogni allegato di un utente (D74). `dati` e' il file intero."""
     dati = dati or b""
     vero = riconosci(dati)
+    if vero.formato == "tiff" and struct.unpack("<I" if dati[:2] == b"II" else ">I", dati[4:8])[0] + 2 > len(dati):
+        vero = TipoVero("immagine", "altra")  # indirizzo della prima pagina fuori dal file: non e' un TIFF intero
     motivi: list[str] = []
     travestito = _giudica(vero, nome, content_type, motivi)
     azione = _azione(vero, nome, motivi, travestito)
