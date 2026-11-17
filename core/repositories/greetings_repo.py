@@ -51,6 +51,10 @@ class GreetingsConfig:
     welcome_image_order: str = "insieme"
     welcome_image_align: str = "sinistra"
     welcome_image_name_color: str = ""
+    # RUO-001, 014, 015 (migrazione 0644): nome dell'embed salvato ('' = nessuno)
+    welcome_embed: str = ""
+    dm_embed: str = ""
+    goodbye_embed: str = ""
     # RUO-013, 017, 023, 025 (migrazione 0330).
     welcome_dm_message: str = ""
     welcome_variants: list[str] = field(default_factory=list)
@@ -127,6 +131,9 @@ class GreetingsRepository:
             welcome_image_color=row["welcome_image_color"],
             welcome_image_title=row["welcome_image_title"],
             welcome_image_has_background=row["welcome_image_has_background"],
+            welcome_embed=row["welcome_embed"],
+            dm_embed=row["dm_embed"],
+            goodbye_embed=row["goodbye_embed"],
             welcome_image_opacity=row["welcome_image_opacity"],
             welcome_image_text=row["welcome_image_text"],
             welcome_image_order=row["welcome_image_order"],
@@ -223,6 +230,19 @@ class GreetingsRepository:
                     welcome_image_name_color = EXCLUDED.welcome_image_name_color
             """,
             guild_id, opacity, text, order, align, name_color,
+        )
+
+    async def set_embed(self, guild_id: int, dove: str, nome: str) -> None:
+        """RUO-001, 014, 015: l'embed salvato da usare nel benvenuto, nel DM o nell'addio ('' lo toglie)."""
+        colonna = {"benvenuto": "welcome_embed", "dm": "dm_embed", "addio": "goodbye_embed"}.get(dove)
+        if colonna is None:
+            raise ValueError(f"Posto sconosciuto: {dove}")
+        await self._pool.execute(
+            f"""
+            INSERT INTO greetings_config (guild_id, {colonna}) VALUES ($1, $2)
+            ON CONFLICT (guild_id) DO UPDATE SET {colonna} = EXCLUDED.{colonna}
+            """,
+            guild_id, nome,
         )
 
     async def get_welcome_background(self, guild_id: int) -> bytes | None:

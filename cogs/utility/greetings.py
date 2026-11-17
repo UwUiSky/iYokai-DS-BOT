@@ -18,6 +18,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core import channel_router as router
+from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.admin_mentions_logic import (
@@ -41,9 +42,12 @@ from core.greetings_logic import (
 from core import greetings_uscite_logic as uscite
 from core import invite_service
 from core.i18n import lingua_risposta, t, testo_per
+from core.greetings_embed_logic import DOVE, TOGLI, embed_con_segnaposto
 from core.ui_base import BaseModal, BaseView
 from core.premium import PremiumModule, registry
 from core.repositories.greetings_repo import greetings_repo
+from core.repositories.saved_embed_repo import saved_embed_repo
+from core.embed_builder_logic import MAX_NOME as MAX_NOME_EMBED
 from core.safe_image import ImmagineTroppoGrande, run_image_task
 from core.security_raid_state import raid_in_corso
 from core.welcome_image import (
@@ -76,6 +80,16 @@ def _render_for_member(template: str, member: discord.Member, inviti: dict | Non
         creato_il=int(member.created_at.timestamp()),
         **(inviti or {}),
     )
+
+
+async def _embed_salvato(member: discord.Member, nome: str, inviti: dict | None = None) -> discord.Embed | None:
+    """RUO-001, 014, 015: l'embed salvato con i segnaposto del membro; None se non c'è o non è valido."""
+    if not nome:
+        return None
+    salvato = await saved_embed_repo.get(member.guild.id, nome)
+    if salvato is None:
+        return None
+    return embed_con_segnaposto(salvato.data, lambda testo: _render_for_member(testo, member, inviti))
 
 
 async def _metti_reazioni(messaggio: discord.Message, reazioni: list[str]) -> None:
@@ -151,20 +165,26 @@ async def _modello(salvato: str, predefinito: str, chiave: str, guild_id: int) -
     return t(chiave, await lingua_risposta(guild_id, None, pubblica=True)) if salvato == predefinito else salvato
 
 
-async def _invia_con_grafica(channel, testo, grafica, menzioni, guild_id: int, nome: str) -> None:
-    """D37: testo più grafica (link https o file). Se la grafica non passa, il testo parte lo stesso."""
+async def _invia_con_grafica(
+    channel, testo, grafica, menzioni, guild_id: int, nome: str, embed_salvato: discord.Embed | None = None
+) -> None:
+    """D37: testo più grafica (link https o file), con l'embed salvato se c'è (RUO-015). Se la grafica non passa, il testo parte lo stesso."""
     url, immagine, nome_file = grafica if grafica else (None, None, None)
+    extra = {"embed": embed_salvato} if embed_salvato is not None else {}
     try:
         try:
             if url:
                 embed = discord.Embed()
                 embed.set_image(url=url)
-                await channel.send(testo, embed=embed, allowed_mentions=menzioni)
+                if embed_salvato is None:
+                    await channel.send(testo, embed=embed, allowed_mentions=menzioni)
+                else:
+                    await channel.send(testo, embeds=[embed, embed_salvato], allowed_mentions=menzioni)
             elif immagine:
                 file = discord.File(io.BytesIO(immagine), filename=nome_file or "grafica.png")
-                await channel.send(testo, file=file, allowed_mentions=menzioni)
+                await channel.send(testo, file=file, allowed_mentions=menzioni, **extra)
             else:
-                await channel.send(testo, allowed_mentions=menzioni)
+                await channel.send(testo, allowed_mentions=menzioni, **extra)
         except discord.HTTPException:
             if not url and not immagine:
                 raise
@@ -343,6 +363,16 @@ def _ping_ruoli(interaction: discord.Interaction, message: str | None, precedent
 _SG_BENVENUTO = ("benvenuto", "Messaggi di benvenuto, addio e boost")
 
 
+@autocomplete_protetto(Livello.ADMIN)
+async def _completa_embed(interaction: discord.Interaction, current: str):
+    """Fino a 25 nomi di embed salvati che iniziano o contengono il testo scritto."""
+    if interaction.guild is None:
+        return []
+    parola = current.lower().strip()
+    nomi = [e.name for e in await saved_embed_repo.list(interaction.guild.id) if parola in e.name]
+    return [app_commands.Choice(name=n, value=n) for n in nomi[:25]]
+
+
 class GreetingsCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -374,6 +404,8 @@ class GreetingsCog(CogConGruppi, commands.Cog):
             else testo
         )
         menzioni = menzioni_ammesse(config.welcome_ping_ruoli)
+        embed = await _embed_salvato(member, config.welcome_embed, inviti)
+        extra = {"embed": embed} if embed is not None else {}  # RUO-001
 
         if config.welcome_channel_id is not None:
             channel = member.guild.get_channel(config.welcome_channel_id)
@@ -401,15 +433,17 @@ class GreetingsCog(CogConGruppi, commands.Cog):
                         elif allegato is not None and config.welcome_image_order == "immagine_prima":
                             await channel.send(file=allegato, allowed_mentions=menzioni)
                             allegato = None  # già uscita: se il testo fallisce non si rimanda
-                            inviato = await channel.send(testo, allowed_mentions=menzioni)
+                            inviato = await channel.send(testo, allowed_mentions=menzioni, **extra)
                         elif allegato is not None:
-                            inviato = await channel.send(testo, file=allegato, allowed_mentions=menzioni)
+                            inviato = await channel.send(testo, file=allegato, allowed_mentions=menzioni, **extra)
                         else:
-                            inviato = await channel.send(testo, allowed_mentions=menzioni)
+                            inviato = await channel.send(testo, allowed_mentions=menzioni, **extra)
                     except discord.HTTPException:
-                        if allegato is None:
+                        if allegato is None and not extra:
                             raise
-                        # L'immagine non è passata (permessi cambiati, file rifiutato): il testo parte lo stesso.
+                        # Immagine o embed non passati (permessi cambiati, rifiuto): il testo parte lo stesso.
+                        allegato = None
+                        extra = {}
                         inviato = await channel.send(testo, allowed_mentions=menzioni)
                     if not raid_in_corso(member.guild.id):  # durante un raid: niente chiamate in più
                         await _metti_reazioni(inviato, config.welcome_reactions)
@@ -423,7 +457,10 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         # account entrati nel raid).
         if config.welcome_dm and not raid_in_corso(member.guild.id):
             try:
-                await member.send(testo_dm, allowed_mentions=menzioni_ammesse(False))
+                embed_dm = await _embed_salvato(member, config.dm_embed, inviti)  # RUO-014
+                await member.send(
+                    testo_dm, allowed_mentions=menzioni_ammesse(False), **({"embed": embed_dm} if embed_dm else {})
+                )
             except discord.HTTPException:
                 pass  # DM chiusi: non è un errore da segnalare, è normale
 
@@ -448,6 +485,7 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         await _invia_con_grafica(
             channel, testo, await greetings_repo.get_grafica(member.guild.id, uscite.TIPO_ADDIO),
             menzioni_ammesse(config.goodbye_ping_ruoli), member.guild.id, "goodbye",
+            await _embed_salvato(member, config.goodbye_embed),
         )
 
     @commands.Cog.listener()
@@ -826,6 +864,42 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(
             f"Immagine di benvenuto {'attivata' if attiva else 'disattivata'}.{avviso}", ephemeral=True
         )
+
+    @comando_di_gruppo(
+        "admin-benvenuto",
+        nome="embed",
+        descrizione="Usa un embed salvato per il benvenuto, il DM o l'addio.",
+    )
+    @app_commands.describe(
+        dove="Quale messaggio esce con l'embed",
+        nome="Il nome dell'embed salvato (o «togli» per non usarne più)",
+    )
+    @app_commands.choices(dove=[app_commands.Choice(name=d, value=d) for d in DOVE])
+    @app_commands.autocomplete(nome=_completa_embed)
+    async def embed_cmd(
+        self, interaction: discord.Interaction, dove: str, nome: app_commands.Range[str, 1, MAX_NOME_EMBED]
+    ) -> None:
+        """RUO-001, 014, 015: i segnaposto dell'embed si sostituiscono a ogni invio; un embed non più valido si salta."""
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(await testo_per(interaction, "guild_only_command"), ephemeral=True)
+            return
+        if dove not in DOVE:
+            await interaction.response.send_message(await testo_per(interaction, "modmail_scelta_non_valida"), ephemeral=True)
+            return
+        nome = nome.strip().lower()
+        if nome == TOGLI:
+            await greetings_repo.set_embed(guild.id, dove, "")
+            await interaction.response.send_message("Fatto: da ora quel messaggio esce senza embed.", ephemeral=True)
+            return
+        if await saved_embed_repo.get(guild.id, nome) is None:
+            await interaction.response.send_message(
+                "Non trovo un embed salvato con quel nome: crealo con `/admin-messaggi embed`.", ephemeral=True
+            )
+            return
+        await greetings_repo.set_embed(guild.id, dove, nome)
+        avviso = " Il DM esce solo se è acceso con `/admin-benvenuto messaggio`." if dove == "dm" else ""
+        await interaction.response.send_message(f"Fatto: l'embed «{nome}» sarà usato.{avviso}", ephemeral=True)
 
     @comando_di_gruppo(
         "admin-benvenuto",

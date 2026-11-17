@@ -1323,7 +1323,8 @@
   "admin-giochi telefono registro": "The server's latest calls: only servers, time and length.",
   "admin-ruoli auto ricorda-ruoli": "Choose which roles are given back to returning members and which never are.",
   "admin-ruoli menu opzione": "Change an option's emoji, label, description, colour or position in a menu.",
-  "admin-ruoli menu svuota": "Delete all role menus in the server or in one channel."
+  "admin-ruoli menu svuota": "Delete all role menus in the server or in one channel.",
+  "admin-benvenuto embed": "Use a saved embed for the welcome, the DM or the goodbye message."
  },
  "parametri": {},
  "menu": {
