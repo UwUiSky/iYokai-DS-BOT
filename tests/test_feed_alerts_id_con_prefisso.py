@@ -33,6 +33,11 @@ def repo(monkeypatch):
 
     monkeypatch.setattr(modulo, "url_e_sicuro", url_sempre_sicuro)
 
+    async def tetti_di_base(guild_id, bot=None):
+        return 25, False  # ALR-041: il totale ha i suoi test in test_alert_catalogo_r1b.py
+
+    monkeypatch.setattr(modulo, "tetto_e_pieno", tetti_di_base)
+
     finti = {}
     for nome, classe in (
         ("feed_subscription_repo", FeedSubscriptionRepository),

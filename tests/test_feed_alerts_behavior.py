@@ -33,6 +33,11 @@ def dns_finto(monkeypatch):
 
     monkeypatch.setattr(socket, "getaddrinfo", finto)
 
+    async def tetti_di_base(guild_id, bot=None):
+        return 25, False  # ALR-041: il totale ha i suoi test in test_alert_catalogo_r1b.py
+
+    monkeypatch.setattr("cogs.utility.feed_alerts.tetto_e_pieno", tetti_di_base)
+
 
 class _FakeResponse:
     def __init__(self) -> None:

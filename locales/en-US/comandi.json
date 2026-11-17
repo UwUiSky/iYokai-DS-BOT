@@ -344,7 +344,8 @@
   "admin-alert": "admin-alerts",
   "formato": "format",
   "ferma-tutti": "stop-all",
-  "diretta": "live"
+  "diretta": "live",
+  "feed-noto": "known-feed"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1348,7 +1349,13 @@
   "admin-alert formato": "Text or embed, a saved embed as template, YouTube Shorts.",
   "admin-alert sposta": "Move an alert to another channel.",
   "admin-alert ferma-tutti": "Delete all alerts of the server or of a channel (with confirmation).",
-  "admin-alert diretta": "Check right now whether a Twitch, Kick or YouTube channel is live."
+  "admin-alert diretta": "Check right now whether a Twitch, Kick or YouTube channel is live.",
+  "admin-alert bluesky": "Alert for new posts of a Bluesky profile.",
+  "admin-alert podcast": "Search a podcast by name and get alerts for new episodes.",
+  "admin-alert youtube": "Add a YouTube channel from any link: video, Short, @name, playlist.",
+  "admin-alert subreddit": "Alert for new posts of a subreddit, as text or embed.",
+  "admin-alert feed-noto": "News about anime and manga or free games, from ready-made feeds.",
+  "admin-alert picarto": "Alert when a Picarto channel goes live."
  },
  "parametri": {},
  "menu": {

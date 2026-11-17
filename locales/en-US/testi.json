@@ -1359,7 +1359,7 @@
   "clear_canale": "Channel",
   "clear_cancellati": "Deleted",
   "clear_filtri": "Filters",
-  "feedalerts_quella_la_pagina_di_un": "That is a profile page (TikTok, Instagram or X), not a feed: I can't read it. You need the address of an RSS \"bridge\" feed from an external service, or a webhook. See `/admin-moduli alert guida-social`.",
+  "feedalerts_quella_la_pagina_di_un": "That is a profile page (TikTok, Instagram, X or Facebook), not a feed: I can't read it. You need the address of an RSS \"bridge\" feed from an external service, or a webhook. See `/admin-moduli alert guida-social`.",
   "feedalerts_questo_server_ha_gia_feed": "This server already has {v1} feeds, the maximum allowed. Remove one with /admin-moduli alert rimuovi before adding another.",
   "feedalerts_sottoscrizione_creata_id_rss_notifichero": "✅ Subscription created (ID `RSS-{subscription_id}`): I'll notify {mention} of new content from **{label}**. The first check (within 5 minutes) only stores the current state, it doesn't post the existing history.",
   "feedalerts_formato_id_non_valido_usa": "Invalid ID format. Use the format shown by /admin-moduli alert elenco, e.g. RSS-3, TW-2 or WH-1.",
@@ -2927,5 +2927,17 @@
   "alertgest_aspetta": "Wait {v1} more seconds before another check.",
   "alertgest_servizio_non_risponde": "{v1} is not answering now, or the bot has no keys. Try again soon.",
   "alertgest_in_diretta": "🔴 **{v1}** is live.\nTitle: {v2}\nGame: {v3}",
-  "alertgest_non_in_diretta": "⚫ **{v1}** is not live."
+  "alertgest_non_in_diretta": "⚫ **{v1}** is not live.",
+  "alertlim_totale_pieno": "This server already has the maximum number of alerts overall. Remove some with /admin-moduli alert rimuovi.",
+  "alertplat_indirizzo_non_valido": "Invalid or unreachable address: it must be public and use the standard port.",
+  "alertplat_creato": "Alert RSS-{v1} created: **{v3}** in {v2}. Checked every 5 minutes.",
+  "alertplat_profilo_non_valido": "Not a valid Bluesky profile. Write for example name.bsky.social.",
+  "alertplat_podcast_non_trovato": "No podcast found with that name.",
+  "alertplat_podcast_scegli": "Here is what I found. Choose the podcast to follow:",
+  "alertplat_youtube_non_trovato": "I cannot find the channel from that link. Try the channel link or the ID starting with UC.",
+  "alertplat_live_creato": "Live alert YT-{v1} created.",
+  "alertplat_subreddit_non_valido": "Invalid subreddit name: letters, numbers and underscore, 3 to 21 characters.",
+  "alertplat_subreddit_non_ammesso": "For images only these subreddits: {v1}.",
+  "alertplat_picarto_non_valido": "Invalid Picarto name: letters, numbers and underscore.",
+  "alertplat_picarto_creato": "Alert PC-{v1} created: **{v3}** in {v2}."
 }

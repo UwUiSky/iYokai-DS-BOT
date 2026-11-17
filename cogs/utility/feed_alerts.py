@@ -17,6 +17,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.alert_limiti_logic import tetto_e_pieno
 from core.alert_options_logic import (
     MAX_ATTESA_MINUTI,
     MAX_FILTRO,
@@ -52,9 +53,9 @@ MAX_CARATTERI_ELENCO = 3900
 MAX_CARATTERI_RIGA = 300
 
 
-async def _tetto_raggiunto(interaction: discord.Interaction, servizio: str) -> None:
+async def _tetto_raggiunto(interaction: discord.Interaction, servizio: str, tetto: int = MAX_LIVE_PER_SERVER) -> None:
     await interaction.response.send_message(
-        f"Questo server ha già {MAX_LIVE_PER_SERVER} avvisi {servizio}, il massimo consentito. "
+        f"Questo server ha già {tetto} avvisi {servizio} (o il massimo in tutto), il massimo consentito. "
         "Rimuovine uno con /admin-moduli alert rimuovi prima di aggiungerne un altro.",
         ephemeral=True,
     )
@@ -140,6 +141,10 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
             )
             return
 
+        tetto, pieno = await tetto_e_pieno(guild.id, getattr(interaction, "client", None))
+        if pieno:
+            await interaction.followup.send(await testo_per(interaction, "alertlim_totale_pieno"), ephemeral=True)
+            return
         subscription_id = await feed_subscription_repo.add_subscription(
             guild_id=guild.id,
             channel_id=channel.id,
@@ -147,11 +152,11 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
             label=label,
             created_by=interaction.user.id,
             message_template=message_template,
-            max_per_guild=MAX_FEED_PER_SERVER,  # controllo e scrittura atomici
+            max_per_guild=tetto,  # controllo e scrittura atomici (ALR-041: più alto con il premium)
         )
         if subscription_id is None:
             await interaction.followup.send(
-                await testo_per(interaction, "feedalerts_questo_server_ha_gia_feed", v1=MAX_FEED_PER_SERVER),
+                await testo_per(interaction, "feedalerts_questo_server_ha_gia_feed", v1=tetto),
                 ephemeral=True,
             )
             return
@@ -320,13 +325,18 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
             )
             return
 
+        tetto, pieno = await tetto_e_pieno(guild.id, getattr(interaction, "client", None))
+        if pieno:
+            await _tetto_raggiunto(interaction, "Twitch", tetto)
+            return
+
         subscription_id = await twitch_subscription_repo.add_subscription(
             guild_id=guild.id,
             channel_id=channel.id,
             twitch_login=twitch_login,
             label=label,
             created_by=interaction.user.id,
-            max_per_guild=MAX_LIVE_PER_SERVER,
+            max_per_guild=tetto,
         )
         if subscription_id is None:
             await _tetto_raggiunto(interaction, "Twitch")
@@ -369,13 +379,18 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
             )
             return
 
+        tetto, pieno = await tetto_e_pieno(guild.id, getattr(interaction, "client", None))
+        if pieno:
+            await _tetto_raggiunto(interaction, "Youtube", tetto)
+            return
+
         subscription_id = await youtube_subscription_repo.add_subscription(
             guild_id=guild.id,
             channel_id=channel.id,
             youtube_channel_id=youtube_channel_id,
             label=label,
             created_by=interaction.user.id,
-            max_per_guild=MAX_LIVE_PER_SERVER,
+            max_per_guild=tetto,
         )
         if subscription_id is None:
             await _tetto_raggiunto(interaction, "YouTube")
@@ -435,13 +450,18 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
             )
             return
 
+        tetto, pieno = await tetto_e_pieno(guild.id, getattr(interaction, "client", None))
+        if pieno:
+            await _tetto_raggiunto(interaction, "Kick", tetto)
+            return
+
         subscription_id = await kick_subscription_repo.add_subscription(
             guild_id=guild.id,
             channel_id=channel.id,
             kick_slug=slug,
             label=label,
             created_by=interaction.user.id,
-            max_per_guild=MAX_LIVE_PER_SERVER,
+            max_per_guild=tetto,
         )
         if subscription_id is None:
             await _tetto_raggiunto(interaction, "Kick")

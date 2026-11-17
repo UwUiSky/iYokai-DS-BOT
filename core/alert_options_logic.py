@@ -28,7 +28,7 @@ SIGLE_CON_OPZIONI = {"RSS": "feed", "TW": "Twitch", "YT": "YouTube", "KK": "Kick
 SIGLE_DIRETTA = ("TW", "YT", "KK")
 
 GUIDA_SOCIAL = (
-    "**TikTok, Instagram e X** non hanno interfacce gratuite per gli avvisi, "
+    "**TikTok, Instagram, X e Facebook** non hanno interfacce gratuite per gli avvisi, "
     "quindi ci si arriva con due strade già presenti nel bot.\n\n"
     "**1. Feed «ponte» (consigliato)**\n"
     "Un servizio esterno trasforma il profilo in un feed RSS (per esempio un'istanza di RSSHub, "
@@ -42,10 +42,12 @@ GUIDA_SOCIAL = (
     "Chi vuole il collegamento diretto può farlo con il servizio a pagamento di un fornitore terzo: "
     "il bot non la richiede e non la conserva.\n\n"
     "**Kick** invece ha un'interfaccia gratuita: `/admin-moduli alert kick`. "
-    "Il proprietario del bot imposta `KICK_CLIENT_ID` e `KICK_CLIENT_SECRET`."
+    "Il proprietario del bot imposta `KICK_CLIENT_ID` e `KICK_CLIENT_SECRET`.\n\n"
+    "**Scorciatoie già pronte** (`/admin-alert`): `bluesky`, `podcast`, `youtube` (da qualsiasi link), "
+    "`subreddit`, `picarto` e `feed-noto` (anime, manga, giochi gratis)."
 )
 
-SITI_SOCIAL_SENZA_FEED = ("tiktok.com", "instagram.com", "x.com", "twitter.com")
+SITI_SOCIAL_SENZA_FEED = ("tiktok.com", "instagram.com", "x.com", "twitter.com", "facebook.com", "fb.com", "fb.watch")
 
 
 def profilo_social_senza_feed(url: str) -> bool:
