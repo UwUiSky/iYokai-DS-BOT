@@ -24,8 +24,8 @@ from core.ui_base import BaseView
 
 logger = logging.getLogger("iyokai.alert_options")
 
-SIGLE_CON_OPZIONI = {"RSS": "feed", "TW": "Twitch", "YT": "YouTube", "KK": "Kick"}
-SIGLE_DIRETTA = ("TW", "YT", "KK")
+SIGLE_CON_OPZIONI = {"RSS": "feed", "TW": "Twitch", "YT": "YouTube", "KK": "Kick", "PC": "Picarto"}
+SIGLE_DIRETTA = ("TW", "YT", "KK", "PC")
 
 GUIDA_SOCIAL = (
     "**TikTok, Instagram, X e Facebook** non hanno interfacce gratuite per gli avvisi, "
@@ -79,6 +79,7 @@ class AlertOptions:
     shorts: str = "tutti"  # ALR-009: tutti, no (niente Short), solo (solo Short)
     formato: str = "testo"  # ALR-014: testo oppure embed
     embed_nome: str = ""  # ALR-024: nome di un embed salvato da usare come modello
+    schedule_events: bool = False  # ALR-013: eventi Discord dal calendario Twitch
 
 
 MAX_FILTRO = 200

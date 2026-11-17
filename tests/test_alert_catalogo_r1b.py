@@ -159,6 +159,7 @@ async def ambiente(monkeypatch):
     for nome, classe in (
         ("feed_subscription_repo", FeedSubscriptionRepository), ("twitch_subscription_repo", TwitchSubscriptionRepository),
         ("youtube_subscription_repo", YoutubeSubscriptionRepository), ("kick_subscription_repo", KickSubscriptionRepository),
+        ("picarto_subscription_repo", PicartoSubscriptionRepository),
         ("alert_options_repo", AlertOptionsRepository), ("custom_webhook_repo", CustomWebhookRepository),
     ):
         monkeypatch.setattr(modulo, nome, classe(pool_provider=pool))

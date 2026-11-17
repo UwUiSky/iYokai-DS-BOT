@@ -4,7 +4,7 @@ cogs/utility/alert_gestione.py
 Gestione degli avvisi social (feed, Twitch, YouTube, Kick, Picarto) con /admin-alert: messaggio per ogni
 tipo, formato ed embed, sposta, ferma tutti, controllo a mano di una diretta. Le opzioni già esistenti
 restano in /admin-moduli alert; qui stanno le funzioni nate dal catalogo (#129).
-Funzioni coperte: SPEC §10.9, §10.13 (#129 ALR-009, 014, 020, 021, 024, 029, 037, 038, 040)
+Funzioni coperte: SPEC §10.9, §10.13 (#129 ALR-009, 013, 014, 020, 021, 024, 029, 037, 038, 040)
 """
 
 from __future__ import annotations
@@ -220,6 +220,23 @@ class AlertGestioneCog(CogConGruppi, commands.Cog):
             return
         tolti = await alert_gestione_repo.rimuovi_tutti(guild.id, canale.id if canale else None)
         await interaction.edit_original_response(content=await testo_per(interaction, "alertgest_fermati", v1=tolti), view=None)
+
+    # ------------------------------------------------------------ eventi dal calendario Twitch (ALR-013)
+    @comando_di_gruppo(GRUPPO, nome="eventi-twitch", descrizione="Crea eventi Discord dal calendario di un canale Twitch.")
+    @app_commands.describe(id_avviso="ID dell'avviso Twitch, es. TW-2", attivo="Accendi o spegni gli eventi dal calendario")
+    async def eventi_twitch(self, interaction: discord.Interaction, id_avviso: app_commands.Range[str, 1, 20], attivo: bool) -> None:
+        letto = await self._avviso(interaction, id_avviso)
+        if letto is None:
+            return
+        if letto[0] != "TW":
+            await interaction.response.send_message(await testo_per(interaction, "alertgest_eventi_solo_twitch"), ephemeral=True)
+            return
+        if attivo and not interaction.guild.me.guild_permissions.manage_events:
+            await interaction.response.send_message(await testo_per(interaction, "alertgest_manca_gestisci_eventi"), ephemeral=True)
+            return
+        await alert_options_repo.set_fields("TW", letto[1], interaction.guild.id, schedule_events=attivo)
+        chiave = "alertgest_eventi_accesi" if attivo else "alertgest_eventi_spenti"
+        await interaction.response.send_message(await testo_per(interaction, chiave, v1=id_avviso[:20]), ephemeral=True)
 
     # ------------------------------------------------------------ controllo a mano (ALR-040)
     @comando_di_gruppo(GRUPPO, nome="diretta", descrizione="Controlla ora se un canale Twitch, Kick o YouTube è in diretta.")

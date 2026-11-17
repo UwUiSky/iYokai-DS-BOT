@@ -345,7 +345,8 @@
   "formato": "format",
   "ferma-tutti": "stop-all",
   "diretta": "live",
-  "feed-noto": "known-feed"
+  "feed-noto": "known-feed",
+  "eventi-twitch": "twitch-events"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1355,7 +1356,8 @@
   "admin-alert youtube": "Add a YouTube channel from any link: video, Short, @name, playlist.",
   "admin-alert subreddit": "Alert for new posts of a subreddit, as text or embed.",
   "admin-alert feed-noto": "News about anime and manga or free games, from ready-made feeds.",
-  "admin-alert picarto": "Alert when a Picarto channel goes live."
+  "admin-alert picarto": "Alert when a Picarto channel goes live.",
+  "admin-alert eventi-twitch": "Create Discord events from a Twitch channel's schedule."
  },
  "parametri": {},
  "menu": {

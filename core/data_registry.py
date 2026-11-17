@@ -645,6 +645,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("alert_options", "Opzioni degli avvisi (ruolo da avvisare, fine diretta, bottone)",
        colonne_utente=("live_member_id",), colonna_server="guild_id", utente="anonimizza",
        anonimizza=(("live_member_id", "NULL"),)),
+    _t("twitch_eventi_creati", "Eventi creati dal calendario Twitch", colonna_server="guild_id"),
+    _t("voice_roles", "Ruoli dati a chi è in un canale vocale", colonne_attore=("created_by",), colonna_server="guild_id"),
     _t("live_role_settings", "Ruolo «in diretta»", colonna_server="guild_id"),
     _t("custom_webhooks", "Webhook personalizzati", colonne_attore=("created_by",), colonna_server="guild_id"),
     # ---------------------------------------------------------------- backup e ripristino

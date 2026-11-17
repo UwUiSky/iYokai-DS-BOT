@@ -26,6 +26,7 @@ from discord.ext import commands, tasks
 from core.alert_messaggio_logic import valori_voce
 from core.alert_options_logic import invia_alert
 from core.template_renderer import render_template
+from core.alert_frequenze_logic import intervallo
 from core.bot_ready import attendi_bot_pronto
 from core.feed_alert_gate import AvvisoUnaVolta, filtra_attive
 from core.feed_parsing_logic import (
@@ -216,7 +217,7 @@ class FeedWatcherService:
         if self._loop_task is not None:
             return
 
-        @tasks.loop(seconds=TICK_SECONDS)
+        @tasks.loop(seconds=intervallo("feed"))  # ALR-034: da .env, con minimo
         async def _loop():
             try:
                 await self.tick(bot)
@@ -229,7 +230,7 @@ class FeedWatcherService:
 
         self._loop_task = _loop
         _loop.start()
-        logger.info("Feed watcher avviato (controllo ogni %ds).", TICK_SECONDS)
+        logger.info("Feed watcher avviato (controllo ogni %ds).", intervallo("feed"))
 
 
 # Istanza unica, condivisa da tutto il progetto — coerente con

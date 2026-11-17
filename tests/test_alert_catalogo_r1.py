@@ -38,6 +38,7 @@ from core.repositories.alert_options_repo import AlertOptionsRepository
 from core.repositories.custom_webhook_repo import CustomWebhookRepository
 from core.repositories.feed_subscription_repo import FeedSubscriptionRepository
 from core.repositories.kick_subscription_repo import KickSubscriptionRepository
+from core.repositories.picarto_subscription_repo import PicartoSubscriptionRepository
 from core.repositories.saved_embed_repo import SavedEmbedRepository
 from core.repositories.twitch_subscription_repo import TwitchSubscriptionRepository
 from core.repositories.youtube_subscription_repo import YoutubeSubscriptionRepository
@@ -206,6 +207,7 @@ async def ambiente(monkeypatch):
     for nome, classe in (
         ("feed_subscription_repo", FeedSubscriptionRepository), ("twitch_subscription_repo", TwitchSubscriptionRepository),
         ("youtube_subscription_repo", YoutubeSubscriptionRepository), ("kick_subscription_repo", KickSubscriptionRepository),
+        ("picarto_subscription_repo", PicartoSubscriptionRepository),
         ("alert_options_repo", AlertOptionsRepository), ("custom_webhook_repo", CustomWebhookRepository),
     ):
         monkeypatch.setattr(modulo, nome, classe(pool_provider=pool))

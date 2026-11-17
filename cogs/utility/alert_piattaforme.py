@@ -4,7 +4,7 @@ cogs/utility/alert_piattaforme.py
 Avvisi per piattaforme senza interfaccia dedicata, con /admin-alert: Bluesky, podcast, canale YouTube da
 qualsiasi link, subreddit, feed noti di anime, manga e giochi gratis, Picarto. Tutti usano il motore dei feed
 (controllo ogni 5 minuti, indirizzi sempre da `core/safe_http.py`) o il watcher delle dirette.
-Funzioni coperte: SPEC §10.8, §10.13 (#129 ALR-006, 007, 008, 011, 014, 015, 016, 017)
+Funzioni coperte: SPEC §10.8, §10.13 (#129 ALR-006, 007, 008, 011, 012, 013, 014, 015, 016, 017)
 """
 
 from __future__ import annotations
@@ -19,12 +19,14 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.feed_alert_gate import MODULE_FEED_ALERTS
 from core.i18n import testo_per
+from core.picarto_watcher import picarto_watcher
 from core.podcast_logic import Podcast, cerca_podcast
 from core.repositories.alert_options_repo import alert_options_repo
 from core.repositories.feed_subscription_repo import feed_subscription_repo
 from core.repositories.picarto_subscription_repo import picarto_subscription_repo
 from core.repositories.youtube_subscription_repo import youtube_subscription_repo
 from core.safe_http import url_e_sicuro
+from core.twitch_eventi import twitch_eventi
 from core.ui_base import BaseView
 from core.youtube_link_logic import risolvi_canale
 
@@ -108,6 +110,16 @@ class _ScegliPodcast(BaseView):
 class AlertPiattaformeCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+
+    async def cog_load(self) -> None:
+        await super().cog_load()
+        picarto_watcher.start(self.bot)  # ALR-008
+        twitch_eventi.start(self.bot)  # ALR-013
+
+    async def cog_unload(self) -> None:
+        picarto_watcher.stop()
+        twitch_eventi.stop()
+        await super().cog_unload()
 
     @comando_di_gruppo(GRUPPO, nome="bluesky", descrizione="Avvisa dei nuovi post di un profilo Bluesky.")
     @app_commands.describe(profilo="Il nome del profilo, es. nome.bsky.social", canale="Dove pubblicare", etichetta="Nome usato nel messaggio")

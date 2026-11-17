@@ -37,6 +37,7 @@ from core.repositories.alert_options_repo import alert_options_repo
 from core.repositories.custom_webhook_repo import custom_webhook_repo
 from core.repositories.feed_subscription_repo import feed_subscription_repo
 from core.repositories.kick_subscription_repo import kick_subscription_repo
+from core.repositories.picarto_subscription_repo import picarto_subscription_repo
 from core.repositories.twitch_subscription_repo import twitch_subscription_repo
 from core.repositories.youtube_subscription_repo import youtube_subscription_repo
 from core.premium import PremiumModule, registry
@@ -274,6 +275,8 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
             rimossa = await youtube_subscription_repo.remove_subscription(numero, guild.id)
         elif prefisso == "KK":
             rimossa = await kick_subscription_repo.remove_subscription(numero, guild.id)
+        elif prefisso == "PC":
+            rimossa = await picarto_subscription_repo.remove_subscription(numero, guild.id)
         elif prefisso == "WH":
             rimossa = await custom_webhook_repo.remove_webhook(numero, guild.id)
         else:
@@ -702,9 +705,10 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         twitch_subs = await twitch_subscription_repo.list_subscriptions(guild.id)
         youtube_subs = await youtube_subscription_repo.list_subscriptions(guild.id)
         kick_subs = await kick_subscription_repo.list_subscriptions(guild.id)
+        picarto_subs = await picarto_subscription_repo.list_subscriptions(guild.id)
         webhooks = await custom_webhook_repo.list_webhooks(guild.id)
 
-        if not (feed_subs or twitch_subs or youtube_subs or kick_subs or webhooks):
+        if not (feed_subs or twitch_subs or youtube_subs or kick_subs or picarto_subs or webhooks):
             await interaction.response.send_message(
                 await testo_per(interaction, "feedalerts_nessuna_sottoscrizione_attiva_su_questo"), ephemeral=True
             )
@@ -728,6 +732,11 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
             f"`KK-{s.id}` **{s.label}** (Kick: {s.kick_slug}) → <#{s.channel_id}>"
             f"{' 🔴 in diretta' if s.last_known_live else ''}"
             for s in kick_subs
+        ]
+        righe += [
+            f"`PC-{s.id}` **{s.label}** (Picarto: {s.picarto_name}) → <#{s.channel_id}>"
+            f"{' 🔴 in diretta' if s.last_known_live else ''}"
+            for s in picarto_subs
         ]
         righe += [
             # MAI il token qui: è il segreto che autentica chi può

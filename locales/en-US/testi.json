@@ -2939,5 +2939,9 @@
   "alertplat_subreddit_non_valido": "Invalid subreddit name: letters, numbers and underscore, 3 to 21 characters.",
   "alertplat_subreddit_non_ammesso": "For images only these subreddits: {v1}.",
   "alertplat_picarto_non_valido": "Invalid Picarto name: letters, numbers and underscore.",
-  "alertplat_picarto_creato": "Alert PC-{v1} created: **{v3}** in {v2}."
+  "alertplat_picarto_creato": "Alert PC-{v1} created: **{v3}** in {v2}.",
+  "alertgest_eventi_solo_twitch": "Events from the schedule only work for Twitch alerts (TW-n).",
+  "alertgest_manca_gestisci_eventi": "The bot needs the \"Manage Events\" permission to create events.",
+  "alertgest_eventi_accesi": "{v1}: I will create events from the Twitch schedule (checked every 30 minutes).",
+  "alertgest_eventi_spenti": "{v1}: no more events from the schedule. Existing events stay."
 }

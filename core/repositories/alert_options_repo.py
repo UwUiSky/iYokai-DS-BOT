@@ -15,7 +15,7 @@ from core.alert_options_logic import AlertOptions
 
 _CAMPI = ("mention_role_id", "ping_allowed", "notify_end", "delete_on_end", "watch_button",
           "crosspost", "live_member_id", "last_message_id", "paused", "title_words", "game_filter",
-          "min_gap_minutes", "last_published_at", "shorts", "formato", "embed_nome")
+          "min_gap_minutes", "last_published_at", "shorts", "formato", "embed_nome", "schedule_events")
 
 
 class AlertOptionsRepository:
@@ -85,6 +85,7 @@ class AlertOptionsRepository:
                         WHEN 'TW' THEN EXISTS (SELECT 1 FROM twitch_subscriptions s WHERE s.id = o.sub_id AND s.last_known_live)
                         WHEN 'YT' THEN EXISTS (SELECT 1 FROM youtube_subscriptions s WHERE s.id = o.sub_id AND s.last_known_live)
                         WHEN 'KK' THEN EXISTS (SELECT 1 FROM kick_subscriptions s WHERE s.id = o.sub_id AND s.last_known_live)
+                        WHEN 'PC' THEN EXISTS (SELECT 1 FROM picarto_subscriptions s WHERE s.id = o.sub_id AND s.last_known_live)
                         ELSE false END
                 )
                 """,

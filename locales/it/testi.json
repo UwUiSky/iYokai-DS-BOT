@@ -2939,5 +2939,9 @@
   "alertplat_subreddit_non_valido": "Nome di subreddit non valido: lettere, numeri e trattino basso, da 3 a 21 caratteri.",
   "alertplat_subreddit_non_ammesso": "Per le immagini solo questi subreddit: {v1}.",
   "alertplat_picarto_non_valido": "Nome Picarto non valido: lettere, numeri e trattino basso.",
-  "alertplat_picarto_creato": "Avviso PC-{v1} creato: **{v3}** in {v2}."
+  "alertplat_picarto_creato": "Avviso PC-{v1} creato: **{v3}** in {v2}.",
+  "alertgest_eventi_solo_twitch": "Gli eventi dal calendario valgono solo per gli avvisi Twitch (TW-n).",
+  "alertgest_manca_gestisci_eventi": "Al bot serve il permesso «Gestisci eventi» per creare gli eventi.",
+  "alertgest_eventi_accesi": "{v1}: creerò gli eventi dal calendario Twitch (controllo ogni 30 minuti).",
+  "alertgest_eventi_spenti": "{v1}: niente più eventi dal calendario. Quelli già creati restano."
 }

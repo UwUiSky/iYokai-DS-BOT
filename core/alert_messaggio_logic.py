@@ -24,9 +24,10 @@ MAX_TITOLO_ESTERNO = 256
 # scrive; `{gioco}` (ALR-022) è lo stesso valore di `{game}`; miniatura, descrizione e durata (ALR-023).
 SEGNAPOSTO: dict[str, tuple[str, ...]] = {
     "RSS": ("label", "title", "link", "thumbnail", "descrizione", "durata", "ruolo"),
-    "TW": ("label", "title", "login", "game", "gioco", "ruolo"),
+    "TW": ("label", "title", "login", "game", "gioco", "ruolo", "vod"),
     "YT": ("label", "title", "video_id", "ruolo"),
     "KK": ("label", "title", "login", "game", "gioco", "ruolo"),
+    "PC": ("label", "title", "login", "game", "gioco", "ruolo"),
 }
 _SEGNAPOSTO_RE = re.compile(r"\{([a-z_]+)\}")
 _MENZIONE = re.compile(r"<(@[!&]?|#)(?=\d)")

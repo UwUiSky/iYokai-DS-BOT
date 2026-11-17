@@ -21,6 +21,7 @@ import logging
 import aiohttp
 from discord.ext import commands, tasks
 
+from core.alert_frequenze_logic import intervallo
 from core.bot_ready import attendi_bot_pronto
 from core.config import config
 from core.feed_alert_gate import AvvisoUnaVolta, filtra_attive
@@ -211,7 +212,7 @@ class YoutubeWatcherService:
             )
             return
 
-        @tasks.loop(seconds=TICK_SECONDS)
+        @tasks.loop(seconds=intervallo("youtube"))  # ALR-034: da .env, con minimo
         async def _loop():
             try:
                 await self.tick(bot)
@@ -224,7 +225,7 @@ class YoutubeWatcherService:
 
         self._loop_task = _loop
         _loop.start()
-        logger.info("YouTube watcher avviato (controllo ogni %ds).", TICK_SECONDS)
+        logger.info("YouTube watcher avviato (controllo ogni %ds).", intervallo("youtube"))
 
 
 youtube_watcher = YoutubeWatcherService()

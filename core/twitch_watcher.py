@@ -21,6 +21,7 @@ import time
 import aiohttp
 from discord.ext import commands, tasks
 
+from core.alert_frequenze_logic import intervallo
 from core.bot_ready import attendi_bot_pronto
 from core.config import config
 from core.feed_alert_gate import AvvisoUnaVolta, filtra_attive
@@ -28,7 +29,13 @@ from core.alert_options_logic import AlertOptions
 from core.live_alert_flow import carica_contesto, pubblica_cambio_live
 from core.alert_messaggio_logic import pulisci_esterno
 from core.template_renderer import render_template
-from core.twitch_api_logic import parse_app_access_token_response, parse_get_streams_response
+from core.twitch_api_logic import (
+    parse_app_access_token_response,
+    parse_get_streams_response,
+    parse_schedule_response,
+    parse_users_response,
+    parse_videos_response,
+)
 from core.repositories.twitch_subscription_repo import twitch_subscription_repo
 
 logger = logging.getLogger("iyokai.twitch_watcher")
@@ -61,6 +68,7 @@ class TwitchWatcherService:
         self._streams_url = streams_url
         self._access_token: str | None = None
         self._token_expires_at: float | None = None  # time.monotonic()
+        self._ids: dict[str, str] = {}
 
     def _get_session(self) -> aiohttp.ClientSession:
         if self._http_session is None:
@@ -158,6 +166,56 @@ class TwitchWatcherService:
             )
             return None
 
+    async def _helix(self, percorso: str, parametri: list[tuple[str, str]]) -> dict | None:
+        """Una richiesta GET a un altro punto dell'API (utenti, registrazioni, calendario). None se non risponde."""
+        token = await self._ensure_access_token()
+        if token is None:
+            return None
+        try:
+            async with self._get_session().get(
+                f"{self._streams_url.rsplit('/', 1)[0]}/{percorso}",
+                params=parametri,
+                headers={"Authorization": f"Bearer {token}", "Client-Id": config.TWITCH_CLIENT_ID},
+                timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS),
+            ) as risposta:
+                if risposta.status == 401:
+                    self._access_token = None
+                    self._token_expires_at = None
+                    return None
+                if risposta.status != 200:
+                    return None
+                return await risposta.json()
+        except (aiohttp.ClientError, TimeoutError) as exc:
+            logger.warning("API Twitch (%s) non raggiungibile: %s", percorso, exc)
+            return None
+
+    async def utente_id(self, login: str) -> str | None:
+        """ID numerico di un canale (ricordato: un utente Twitch non cambia ID)."""
+        login = login.lower()
+        if login in self._ids:
+            return self._ids[login]
+        id_utente = parse_users_response(await self._helix("users", [("login", login)]))
+        if id_utente is not None:
+            if len(self._ids) >= 500:
+                self._ids.pop(next(iter(self._ids)))
+            self._ids[login] = id_utente
+        return id_utente
+
+    async def ultimo_vod(self, login: str) -> str:
+        """ALR-012: indirizzo dell'ultima registrazione del canale (due richieste, solo a fine diretta); vuoto se non c'è."""
+        id_utente = await self.utente_id(login)
+        if id_utente is None:
+            return ""
+        payload = await self._helix("videos", [("user_id", id_utente), ("type", "archive"), ("first", "1")])
+        return parse_videos_response(payload) or ""
+
+    async def calendario(self, login: str) -> list:
+        """ALR-013: i prossimi segmenti del calendario (una richiesta, più l'ID se non lo conosciamo)."""
+        id_utente = await self.utente_id(login)
+        if id_utente is None:
+            return []
+        return parse_schedule_response(await self._helix("schedule", [("broadcaster_id", id_utente), ("first", "10")]))
+
     async def tick(self, bot: commands.Bot) -> None:
         sottoscrizioni = await twitch_subscription_repo.get_all_subscriptions()
         # LC-7: server con il modulo spento = nessuna richiesta, nessun messaggio.
@@ -201,10 +259,10 @@ class TwitchWatcherService:
                 valori["descrizione"] = f"🎮 {valori['game']}" if valori["game"] else ""
                 messaggio = render_template(sottoscrizione.live_message_template, valori)
             else:
-                messaggio = render_template(
-                    sottoscrizione.offline_message_template,
-                    {"label": sottoscrizione.label, "login": sottoscrizione.twitch_login},
-                )
+                valori_fine = {"label": sottoscrizione.label, "login": sottoscrizione.twitch_login, "vod": ""}
+                if "{vod}" in sottoscrizione.offline_message_template:  # ALR-012: la registrazione, solo se richiesta
+                    valori_fine["vod"] = await self.ultimo_vod(sottoscrizione.twitch_login)
+                messaggio = render_template(sottoscrizione.offline_message_template, valori_fine)
 
             await pubblica_cambio_live(
                 bot, sottoscrizione, "TW",
@@ -233,7 +291,7 @@ class TwitchWatcherService:
             )
             return
 
-        @tasks.loop(seconds=TICK_SECONDS)
+        @tasks.loop(seconds=intervallo("twitch"))  # ALR-034: da .env, con minimo
         async def _loop():
             try:
                 await self.tick(bot)
@@ -246,7 +304,7 @@ class TwitchWatcherService:
 
         self._loop_task = _loop
         _loop.start()
-        logger.info("Twitch watcher avviato (controllo ogni %ds).", TICK_SECONDS)
+        logger.info("Twitch watcher avviato (controllo ogni %ds).", intervallo("twitch"))
 
 
 twitch_watcher = TwitchWatcherService()
