@@ -66,6 +66,9 @@
 - Revisione di sicurezza dell'orchestratore (15/11, consegnata all'owner fuori dal repository): voci B-1…B-13 del bot; fatte B-2 e B-3.
 - Ambiente di questa macchina: repo in `/home/user/iyokai-ds-bot`, copie in `/home/user/wt-*`, venv `.venv` (Python 3.11), PostgreSQL 16 (`pg_ctlcluster 16 main start` dopo un riavvio), database `iyokai_w*`.
 
+- 17/11 (sera): uniti in main `fix/sandbox-uscita-enorme` (#166 chiusa: dopo il SIGKILL il tubo si svuota, la sandbox non resta appesa) e `feat/r160-allegati-2` (D74 parte 2b: `core/conversioni_worker.py`, `core/allegati_copia.py`; PDF rifatto con pypdf, audio Opus ≤10 min, video H.264 ≤2 min/720p solo ticket-ModMail-backup, testo `.txt`, HEIC con pillow-heif solo nel worker, tetto `sandbox_secondi_giorno`). Rivisto dall'orchestratore (aggiunta `/A` alla rete finale del PDF). Smoke dopo il merge: 148 verdi. Sul server servono `apt install ffmpeg`, `pip install -r requirements.lock`, riavvio di `iyokai-sandbox` e del bot; l'unità systemd nuova (MemoryMax 1536M, TasksMax 32) NON è provata.
+- Aperti di #160: PDF come pagine-immagine se la ricostruzione fallisce; copie di ticket e ModMail a 30 giorni; log a nome utente via webhook (`/admin-log webhook`); `/modmail rispondi allegato:` staff→utente; azione «Richiedi copia» (passare dal guardiano-limiti); tempo-sandbox giornaliero in tabella (ora in memoria); licenza LGPL di libheif da far approvare all'owner. Aperta #165 (cache dei verdetti senza PNG).
+
 ## Coda (in ordine)
 1. Fatti e chiusi: #137, #133, #135, #136, #134, #146, #144.
 2. **#66 (utilità), #148, SPEC/VERIFICA_LIVE di F7**, poi (utilità), #71, #69/#70.
