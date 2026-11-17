@@ -5,10 +5,11 @@
 09/11/2026 · giro r24fun (migrazioni 0579-0580 usate). 09/11/2026 · giro r21gif, ramo `feat/r21gif`, migrazione 0570 (usata). Lavoro PER FILE.
 
 ## In corso
-- r3liv (#124, ramo `feat/r3liv`, wt `/home/user/wt-124`, migrazioni 0660-0679): B3-B6 fatti (0660-0663). Prossimo: B7 (044, 045 ruoli di classifica con lavoro orario; 061 top 10 settimana; 013/046 XP testo e vocale separati; 032, 033 annuncio con embed/immagine). Script locale: scratchpad `loc.py` (aggiunge testi it/en e descrizioni en-US).
+- r3liv (#124, ramo `feat/r3liv`, wt `/home/user/wt-124`, migrazioni 0660-0679): B3-B8 fatti (0660-0665). Restano LIV-013/046 (XP testo e vocale separati), 019 (voto bot, serve elenco bot), 032/033 (annuncio con embed/immagine), 053 (sfondi pronti), 061 (top 10 settimana), 062 (pagina web), 072 (import), 089/090/091 (profilo globale). Prossimo: B9 = 061 + 053 + 032, poi 013/046. Migrazione libera: 0666. `loc.py` in scratchpad.
 - Smoke da fare (lo lancia l'orchestratore).
 
 ## Fatto
+- r3liv B7-B8: 0664 (`text_xp_max`, `xp_percentuale`, pausa 3600), 0665 (`leveling_ruoli_classifica`), `cogs/leveling/ruoli_classifica.py` (lavoro orario, classifica vuota = non toglie niente).
 - r3liv B6: 0663 (`colore_testo`, `velo`, `card_colore`, `guild_card_sfondi`), `colore_medio`, `/level rank colore_testo|velo`, `/admin-livelli card sfondo|colore`, `{xp}` nell'annuncio.
 - r3liv B5: 0662 (`leveling_reazioni`, `voice_minutes_total`, 3 colonne impostazioni), `add_reaction_xp` (attesa + tetto 50/giorno in una scrittura), `on_raw_reaction_add`, `/admin-livelli guadagno reazioni`, classifica `/level leaderboard` con vocale e reazioni (sempre «di sempre»). `azzera server` non azzera minuti/reazioni.
 - r3liv B4: 0661 (`voce_min_persone`, `anti_farm`, `xp_thread/forum/chat_vocale`), `/admin-livelli guadagno vocale|contesti`, `tipo_di_canale`, campo «Come si guadagna XP» in `mostra`; codici già in codice provati in `tests/test_leveling_guadagno_b4.py` (022-025, 028-030, 040, 049, 050, 052, 073, 010).

@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-17 14:38 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-17 14:50 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 848 comandi in 49 categorie.**
+**Totale: 849 comandi in 49 categorie.**
 
 ## Admin: AI
 
@@ -258,6 +258,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-17 14:
 - **`/admin-livelli azzera ripristina`** — Rimette gli XP di una copia di sicurezza (valida 30 giorni).
 - **`/admin-livelli azzera server`** — Azzera gli XP di tutto il server (prima fa una copia di sicurezza).
 - **`/admin-livelli card`** — Mostra o nascondi in questo server gli sfondi con immagine di card e profili.
+- **`/admin-livelli classifica-ruoli`** — Un ruolo al primo della classifica XP, ai primi 3 o ai primi 10 (aggiornato ogni ora).
 - **`/admin-livelli diagnosi`** — Spiega perché un membro non prende XP in un canale.
 - **`/admin-livelli escludi`** — Un canale, una categoria o un ruolo non dà XP (rifallo per toglierlo).
 - **`/admin-livelli guadagno canali`** — Dà XP in tutti i canali tranne gli esclusi, oppure solo in quelli dell'elenco.

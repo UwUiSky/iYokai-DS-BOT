@@ -1687,3 +1687,5 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `LIV-051/054` — `/level rank colore_testo:#FF0000 velo:20` con uno sfondo proprio: nome e anello rossi, sfondo più visibile; `reimposta:sì` toglie tutto.
 - [ ] `LIV-055/056` — `/admin-livelli card colore:auto` (il server ha un'icona): le card di chi non ha un colore usano il colore dell'icona; `sfondo:` allegato = sfondo per chi non ne ha uno suo; `senza_sfondo:sì` e `senza_colore:sì` tolgono.
 - [ ] `LIV-031` — `/admin-livelli annuncio testo:{utente} a {xp} XP` con `prova:sì` mostra gli XP veri.
+- [ ] `LIV-001/002/003` — `/admin-livelli xp testo:10 testo_max:30 velocita:200`: gli XP dei messaggi variano tra 20 e 60; `attesa:3600` accettata; `testo_max` sotto `testo` rifiutato.
+- [ ] `LIV-044/045` — `/admin-livelli classifica-ruoli fascia:Primo ruolo:@Re` e `fascia:Primi 10 ruolo:@Top`: entro un'ora (o riavviando il bot) il primo della classifica XP ha @Re, gli altri nove @Top; chi scende perde il ruolo; ruolo più alto del bot o di te rifiutato; senza ruolo toglie la fascia (chi lo ha lo tiene).

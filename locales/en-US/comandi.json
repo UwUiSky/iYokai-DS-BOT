@@ -339,7 +339,8 @@
   "prefissi": "prefixes",
   "contesti": "contexts",
   "vocale": "voice",
-  "reazioni": "reactions"
+  "reazioni": "reactions",
+  "classifica-ruoli": "ranking-roles"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1334,7 +1335,8 @@
   "admin-livelli guadagno canali": "XP everywhere except excluded channels, or only in the channels of the list.",
   "admin-livelli guadagno contesti": "Whether threads, forum posts and voice channel chat give XP.",
   "admin-livelli guadagno vocale": "Voice XP: minimum people in the channel and anti-farm check.",
-  "admin-livelli guadagno reazioni": "XP for reactions added and received (off by default)."
+  "admin-livelli guadagno reazioni": "XP for reactions added and received (off by default).",
+  "admin-livelli classifica-ruoli": "A role for the XP leaderboard's first place, top 3 or top 10 (updated hourly)."
  },
  "parametri": {},
  "menu": {

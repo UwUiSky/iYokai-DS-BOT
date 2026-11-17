@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-17 14:38 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-17 14:50 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 848 commands in 49 categories.**
+**Total: 849 commands in 49 categories.**
 
 ## Admin: AI
 
@@ -268,6 +268,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-17 14:3
 - **`/admin-levels member`** — Edits a member's XP and level.
 - **`/admin-levels multiplier`** — XP multiplied in a channel or for a role (factor 1 = removes the rule).
 - **`/admin-levels progress`** — Turns missions, streaks, achievements and pass on or off; sets the server goal.
+- **`/admin-levels ranking-roles`** — A role for the XP leaderboard's first place, top 3 or top 10 (updated hourly).
 - **`/admin-levels reset auto`** — Resets whoever leaves or is banned; locks XP and resets to the owner.
 - **`/admin-levels reset restore`** — Puts back the XP of a backup (valid 30 days).
 - **`/admin-levels reset server`** — Resets the XP of the whole server (makes a backup first).

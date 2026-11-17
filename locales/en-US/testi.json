@@ -2914,5 +2914,10 @@
   "gua_canali_solo_vuoto": "⚠️ Set to \"only the channels in the list\", but the list is empty: until you add channels with /admin-livelli escludi, XP is given everywhere.",
   "gua_contesti_ok": "✅ XP in threads: **{thread}** · in forum posts: **{forum}** · in voice channel chat: **{chat}**.",
   "gua_vocale_ok": "✅ Voice XP: at least **{persone}** people in the channel (you included) · anti-farm: **{anti}** · XP per minute: **{xp}**, coins per minute: **{monete}** (change them with /admin-livelli xp). The AFK channel never gives XP.",
-  "gua_reazioni_ok": "✅ XP for a reaction added: **{messa}** · for a reaction received: **{ricevuta}** (0 = off) · cooldown per person: **{attesa}** s · at most **{tetto}** a day per direction. Reactions to your own messages and reactions from or to bots do not count."
+  "gua_reazioni_ok": "✅ XP for a reaction added: **{messa}** · for a reaction received: **{ricevuta}** (0 = off) · cooldown per person: **{attesa}** s · at most **{tetto}** a day per direction. Reactions to your own messages and reactions from or to bots do not count.",
+  "rcl_tolto": "✅ Ranking role removed. Whoever has it keeps it until you remove it by hand.",
+  "rcl_niente_da_togliere": "This tier has no role.",
+  "rcl_sopra_di_te": "You cannot pick a role as high as yours or higher.",
+  "rcl_non_assegnabile": "The bot cannot give this role: {motivo}",
+  "rcl_impostato": "✅ {fascia}: role {ruolo}. It updates every hour from all-time XP; whoever drops loses the role."
 }

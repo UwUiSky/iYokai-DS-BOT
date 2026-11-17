@@ -2914,5 +2914,10 @@
   "gua_canali_solo_vuoto": "⚠️ Impostato «solo i canali dell'elenco», ma l'elenco è vuoto: finché non aggiungi canali con /admin-livelli escludi, l'XP si dà ovunque.",
   "gua_contesti_ok": "✅ XP nei thread: **{thread}** · nei post dei forum: **{forum}** · nella chat dei canali vocali: **{chat}**.",
   "gua_vocale_ok": "✅ XP in vocale: servono almeno **{persone}** persone nel canale (te compreso) · anti-farm: **{anti}** · XP al minuto: **{xp}**, coin al minuto: **{monete}** (si cambiano con /admin-livelli xp). Il canale AFK non dà mai XP.",
-  "gua_reazioni_ok": "✅ XP per una reazione messa: **{messa}** · per una reazione ricevuta: **{ricevuta}** (0 = spento) · attesa per persona: **{attesa}** s · al massimo **{tetto}** al giorno per verso. Non valgono le reazioni ai propri messaggi né quelle da o verso i bot."
+  "gua_reazioni_ok": "✅ XP per una reazione messa: **{messa}** · per una reazione ricevuta: **{ricevuta}** (0 = spento) · attesa per persona: **{attesa}** s · al massimo **{tetto}** al giorno per verso. Non valgono le reazioni ai propri messaggi né quelle da o verso i bot.",
+  "rcl_tolto": "✅ Ruolo di classifica tolto. Chi lo ha lo tiene finché lo togli a mano.",
+  "rcl_niente_da_togliere": "Questa fascia non ha un ruolo.",
+  "rcl_sopra_di_te": "Non puoi scegliere un ruolo alto quanto il tuo o più.",
+  "rcl_non_assegnabile": "Il bot non può dare questo ruolo: {motivo}",
+  "rcl_impostato": "✅ {fascia}: ruolo {ruolo}. Si aggiorna ogni ora in base agli XP di sempre; chi scende perde il ruolo."
 }
