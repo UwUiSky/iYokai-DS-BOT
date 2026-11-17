@@ -26,6 +26,7 @@ from core.leveling_logic import (
     MAX_PREFISSI,
     MODI_ANNUNCIO,
     MODI_CANALI,
+    MODI_SALDO_USCITA,
     MODI_XP_MESSAGGIO,
     colore_valido,
     level_for_xp,
@@ -53,6 +54,7 @@ _MODI = {
     "formula": FORMULE,
     "xp_modo": MODI_XP_MESSAGGIO,
     "canali_modo": MODI_CANALI,
+    "saldo_uscita": MODI_SALDO_USCITA,
 }
 
 
@@ -171,6 +173,11 @@ class LevelingSettingsRepository:
             if minimo and massimo and minimo > massimo:
                 raise ValueError("Il minimo di /monete pay non può superare il massimo.")
 
+        if "puntata_min" in campi or "puntata_max" in campi:
+            attuale = (await self.get_config(guild_id, fresco=True)).impostazioni
+            if campi.get("puntata_min", attuale.puntata_min) > campi.get("puntata_max", attuale.puntata_max):
+                raise ValueError("La puntata minima non può superare la massima.")
+
         if campi.get("levelup_mode") == "canale_scelto" and not campi.get("levelup_channel_id"):
             attuale = (await self.get_config(guild_id)).impostazioni.levelup_channel_id
             if attuale is None:
@@ -193,6 +200,8 @@ class LevelingSettingsRepository:
                 # Ultima parola al database: due modifiche insieme non rompono min <= max.
                 if "work_ordine" in str(errore):
                     raise ValueError("Il minimo del lavoro non può superare il massimo.") from errore
+                if "puntata_ordine" in str(errore):
+                    raise ValueError("La puntata minima non può superare la massima.") from errore
                 raise
             self._invalida(guild_id)
         return (await self.get_config(guild_id)).impostazioni

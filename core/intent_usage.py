@@ -72,6 +72,7 @@ USI: dict[str, tuple[UsoIntent, ...]] = {
         UsoIntent("Tickets", "cogs/tickets/tickets.py", "Close the ticket of a member who left"),
         UsoIntent("Modmail", "cogs/tickets/modmail.py", "Close the thread of a member who left"),
         UsoIntent("Level resets on leave or ban (off by default)", "cogs/leveling/azzeramenti.py", "Reset the XP of a member who left, only if the server turned it on"),
+        UsoIntent("Economy starting balance and balance of who leaves", "cogs/leveling/economia.py", "Give the starting coins to a new member; clear the balance of one who left if the server chose so"),
         UsoIntent("Level reward roles on rejoin", "cogs/leveling/leveling.py", "Give a returning member the reward roles of their level"),
         UsoIntent("Button polls", "cogs/utility/sondaggi_bottoni.py", "Remove the vote of a member who left or was banned"),
         UsoIntent("Tag triggers on roles", "cogs/utility/inneschi.py", "Run a tag when the server's chosen role is given or taken"),

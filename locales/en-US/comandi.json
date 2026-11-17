@@ -347,7 +347,9 @@
   "prefissi": "prefixes",
   "contesti": "contexts",
   "reazioni": "reactions",
-  "classifica-ruoli": "ranking-roles"
+  "classifica-ruoli": "ranking-roles",
+  "settimanale": "weekly",
+  "mensile": "monthly"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1355,7 +1357,15 @@
   "admin-livelli guadagno contesti": "Whether threads, forum posts and voice channel chat give XP.",
   "admin-livelli guadagno vocale": "Voice XP: minimum people in the channel and anti-farm check.",
   "admin-livelli guadagno reazioni": "XP for reactions added and received (off by default).",
-  "admin-livelli classifica-ruoli": "A role for the XP leaderboard's first place, top 3 or top 10 (updated hourly)."
+  "admin-livelli classifica-ruoli": "A role for the XP leaderboard's first place, top 3 or top 10 (updated hourly).",
+  "monete settimanale": "Claim the weekly reward.",
+  "monete mensile": "Claim the monthly reward.",
+  "admin-economia premi": "Daily, streak, weekly, monthly rewards and work.",
+  "admin-economia limiti": "Starting balance, balance cap, game bets and balance of who leaves.",
+  "admin-economia stato": "All economy rules at a glance.",
+  "admin-economia statistiche": "Coins in circulation and how they are spread.",
+  "admin-economia ruolo": "Add or remove coins for every member of a role.",
+  "admin-economia azzera": "Reset every balance on the server (type the server name)."
  },
  "parametri": {},
  "menu": {

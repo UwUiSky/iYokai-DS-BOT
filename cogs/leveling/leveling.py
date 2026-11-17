@@ -38,7 +38,7 @@ from core.role_safety import check_role_assignable
 from core.lore_nomi_logic import titolo_livello
 from core.repositories.ai_repo import ai_repo
 from core.repositories.blacklist_repo import blacklist_repo
-from core.repositories.leveling_repo import leveling_repo
+from core.repositories.leveling_repo import TettoSaldoRaggiunto, leveling_repo
 from core.repositories.level_reward_repo import level_reward_repo
 from core.repositories.leveling_settings_repo import (
     RegolaPiena,
@@ -138,6 +138,9 @@ from core.guild_clan_boost_logic import (
 )
 from core.leveling_azzera_logic import rifiutato_dal_blocco
 from core.leveling_logic import (
+    attesa_daily_secondi,
+    attesa_work_secondi,
+    bonus_serie,
     ConfigLivelli,
     DAILY_COOLDOWN_SECONDS,
     LIVELLO_MASSIMO,
@@ -1529,11 +1532,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
         if await _comando_rifiutato(interaction):
             return
         totali = await leveling_repo.get_totals(interaction.guild.id, interaction.user.id)
+        impostazioni = (await self._config(interaction.guild.id)).impostazioni
         adesso = datetime.now(timezone.utc)
         righe = []
         for nome, ultima, pausa in (
-            ("Daily", totali.last_daily_at, DAILY_COOLDOWN_SECONDS),
-            ("Work", totali.last_work_at, WORK_COOLDOWN_SECONDS),
+            ("Daily", totali.last_daily_at, attesa_daily_secondi(impostazioni)),
+            ("Work", totali.last_work_at, attesa_work_secondi(impostazioni)),
         ):
             attesa = seconds_until_next_claim(ultima, pausa, adesso)
             if attesa <= 0:
@@ -1603,24 +1607,49 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
 
         adesso = datetime.now(timezone.utc)
-        importo = (await self._config(interaction.guild.id)).impostazioni.daily_coins
+        impostazioni = (await self._config(interaction.guild.id)).impostazioni
+        attesa_totale = attesa_daily_secondi(impostazioni)  # ECO-024
+        extra = await self._bonus_serie_daily(interaction, impostazioni, adesso)  # ECO-025
+        importo = impostazioni.daily_coins + extra
         riscosso = await leveling_repo.claim_daily(
             interaction.guild.id, interaction.user.id,
-            importo, DAILY_COOLDOWN_SECONDS, adesso,
+            importo, attesa_totale, adesso,
         )
         if not riscosso:
             totali = await leveling_repo.get_totals(interaction.guild.id, interaction.user.id)
-            attesa = seconds_until_next_claim(totali.last_daily_at, DAILY_COOLDOWN_SECONDS)
+            attesa = seconds_until_next_claim(totali.last_daily_at, attesa_totale)
             await interaction.response.send_message(
                 f"Hai già riscosso la ricompensa di oggi. Riprova tra {_format_seconds(attesa)}.",
                 ephemeral=True,
             )
             return
 
-        await interaction.response.send_message(
-            f"Hai riscosso **{importo}** {await self._moneta(interaction.guild.id)}! "
-            "Torna domani per altri."
-        )
+        testo = f"Hai riscosso **{importo}** {await self._moneta(interaction.guild.id)}!"
+        if extra:
+            testo += f" (di cui **{extra}** per la serie di giorni)"
+        await interaction.response.send_message(testo + " Torna domani per altri.")
+
+    async def _bonus_serie_daily(self, interaction, impostazioni, adesso: datetime) -> int:
+        """ECO-025: monete in più per i giorni di fila, se il server le ha scelte e la serie è attiva."""
+        if impostazioni.daily_bonus_serie <= 0:
+            return 0
+        from core import progressi_service
+        from core.progressi_logic import aggiorna_serie
+        from core.repositories.progressi_repo import progressi_repo
+
+        try:
+            if not await progressi_service.attivo(interaction.guild.id):
+                return 0
+            serie, record, ultima, scudi, _ = await progressi_repo.serie_di(
+                interaction.guild.id, interaction.user.id
+            )
+            esito = aggiorna_serie(serie, record, ultima, scudi, adesso)
+        except Exception:
+            logger.warning("Bonus della serie non calcolato (server %s)", interaction.guild.id, exc_info=True)
+            return 0
+        if not esito.contata:
+            return 0
+        return bonus_serie(esito.serie, impostazioni.daily_bonus_serie, impostazioni.daily_serie_max)
 
     @comando_di_gruppo(
         "monete",
@@ -1636,11 +1665,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
         guadagno = random.randint(impostazioni.work_min, impostazioni.work_max)
         riscosso = await leveling_repo.claim_work(
             interaction.guild.id, interaction.user.id,
-            guadagno, WORK_COOLDOWN_SECONDS, adesso,
+            guadagno, attesa_work_secondi(impostazioni), adesso,  # ECO-019, ECO-028
         )
         if not riscosso:
             totali = await leveling_repo.get_totals(interaction.guild.id, interaction.user.id)
-            attesa = seconds_until_next_claim(totali.last_work_at, WORK_COOLDOWN_SECONDS)
+            attesa = seconds_until_next_claim(totali.last_work_at, attesa_work_secondi(impostazioni))
             await interaction.response.send_message(
                 f"Sei stanco, riposati un po'. Riprova tra {_format_seconds(attesa)}.",
                 ephemeral=True,
@@ -1692,9 +1721,15 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 ephemeral=True,
             )
             return
-        riuscito = await leveling_repo.transfer_coins(
-            interaction.guild.id, interaction.user.id, member.id, amount, tassa=tassa
-        )
+        try:
+            riuscito = await leveling_repo.transfer_coins(
+                interaction.guild.id, interaction.user.id, member.id, amount, tassa=tassa
+            )
+        except TettoSaldoRaggiunto:  # ECO-003
+            await interaction.response.send_message(
+                await testo_per(interaction, "eco_tetto_destinatario", moneta=moneta), ephemeral=True
+            )
+            return
         if not riuscito:
             await interaction.response.send_message(
                 await testo_per(interaction, "leveling_non_hai_abbastanza_per_questo", moneta=moneta), ephemeral=True
@@ -3932,7 +3967,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         if moltiplicatori is not None:
             campi["multiplier_mode"] = moltiplicatori.value
         for nome, valore in (
-            ("daily_coins", daily), ("work_min", lavoro_min),
+            ("daily_coins", daily), ("work_min", lavoro_min),  # ECO-024, ECO-028
             ("work_max", lavoro_max), ("max_level", livello_massimo),
         ):
             if valore is not None:
