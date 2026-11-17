@@ -2957,5 +2957,9 @@
   "eco_ruolo_vuoto": "Nessun membro (non bot) ha questo ruolo.",
   "eco_ruolo_fatto": "Fatto: {azione} {importo} monete a {persone} persone.",
   "eco_azzera_nome_sbagliato": "Il nome scritto non è quello del server: non ho azzerato niente.",
-  "eco_azzera_fatto": "Economia azzerata: {saldi} saldi rimessi a zero. XP e livelli non sono cambiati."
+  "eco_azzera_fatto": "Economia azzerata: {saldi} saldi rimessi a zero. XP e livelli non sono cambiati.",
+  "gm_avviso": "Le monete del bot non si comprano con soldi veri.",
+  "gm_serve_numero": "Per puntare su un numero scrivilo nell'opzione `numero` (da 0 a 36).",
+  "gm_scelta_non_valida": "Scelta non valida. Puoi scrivere: {ammessi}.",
+  "gm_nessuna_partita": "Nessuna partita registrata."
 }

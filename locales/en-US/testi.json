@@ -2957,5 +2957,9 @@
   "eco_ruolo_vuoto": "No member (non-bot) has this role.",
   "eco_ruolo_fatto": "Done: {azione} {importo} coins to {persone} people.",
   "eco_azzera_nome_sbagliato": "The name you typed is not the server name: nothing was reset.",
-  "eco_azzera_fatto": "Economy reset: {saldi} balances set to zero. XP and levels unchanged."
+  "eco_azzera_fatto": "Economy reset: {saldi} balances set to zero. XP and levels unchanged.",
+  "gm_avviso": "Bot coins can never be bought with real money.",
+  "gm_serve_numero": "To bet on a number, write it in the `numero` option (0 to 36).",
+  "gm_scelta_non_valida": "Invalid choice. You can write: {ammessi}.",
+  "gm_nessuna_partita": "No games recorded."
 }

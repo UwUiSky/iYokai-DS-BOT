@@ -349,7 +349,9 @@
   "reazioni": "reactions",
   "classifica-ruoli": "ranking-roles",
   "settimanale": "weekly",
-  "mensile": "monthly"
+  "mensile": "monthly",
+  "carta": "card",
+  "scala": "ladder"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1365,7 +1367,12 @@
   "admin-economia stato": "All economy rules at a glance.",
   "admin-economia statistiche": "Coins in circulation and how they are spread.",
   "admin-economia ruolo": "Add or remove coins for every member of a role.",
-  "admin-economia azzera": "Reset every balance on the server (type the server name)."
+  "admin-economia azzera": "Reset every balance on the server (type the server name).",
+  "giochi roulette": "Roulette: colour, even/odd, dozen, column or number.",
+  "giochi carta": "Guess the drawn card: colour, suit or value.",
+  "giochi scala": "Lucky ladder: the higher you climb, the more it pays.",
+  "giochi statistiche": "Your games, wins and losses per game.",
+  "giochi record": "The 10 biggest wins on the server."
  },
  "parametri": {},
  "menu": {

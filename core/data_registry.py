@@ -329,6 +329,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("guild_coin_images", "Immagine della moneta del server", colonna_server="guild_id"),
     _t("economia_accrediti_iniziali", "Saldo di partenza già dato (ECO-002)",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True),
+    _t("economia_giochi_stat", "Partite, vincite e perdite nei giochi con le monete (ECO-115)",
+       colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True),
     _t("economia_premi_periodici", "Ultima riscossione dei premi settimanale e mensile (ECO-026)",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True),
     _t("leveling_xp_rules", "Regole dei moltiplicatori XP", colonna_server="guild_id"),

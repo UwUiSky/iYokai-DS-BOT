@@ -205,6 +205,43 @@ class EconomiaRepository:
         )
 
 
+    async def registra_partita(self, guild_id: int, user_id: int, gioco: str, puntata: int, restituzione: int) -> None:
+        """ECO-115/116: aggiorna i conteggi del gioco con una sola scrittura. Solo statistiche: non muove monete."""
+        netto = restituzione - puntata
+        await self._pool.execute(
+            """
+            INSERT INTO economia_giochi_stat (guild_id, user_id, gioco, partite, vinte, perse, pari, puntato, netto, max_vincita)
+            VALUES ($1, $2, $3, 1, ($5::bigint > 0)::int, ($5::bigint < 0)::int, ($5::bigint = 0)::int, $4, $5::bigint, GREATEST($5::bigint, 0))
+            ON CONFLICT (guild_id, user_id, gioco) DO UPDATE SET
+                partite = economia_giochi_stat.partite + 1,
+                vinte = economia_giochi_stat.vinte + ($5::bigint > 0)::int,
+                perse = economia_giochi_stat.perse + ($5::bigint < 0)::int,
+                pari = economia_giochi_stat.pari + ($5::bigint = 0)::int,
+                puntato = economia_giochi_stat.puntato + $4,
+                netto = economia_giochi_stat.netto + $5::bigint,
+                max_vincita = GREATEST(economia_giochi_stat.max_vincita, $5::bigint)
+            """,
+            guild_id, user_id, gioco, puntata, netto,
+        )
+
+    async def statistiche_giocatore(self, guild_id: int, user_id: int) -> list[asyncpg.Record]:
+        """ECO-115: una riga per gioco (al massimo qualche decina)."""
+        return await self._pool.fetch(
+            "SELECT gioco, partite, vinte, perse, pari, puntato, netto, max_vincita FROM economia_giochi_stat "
+            "WHERE guild_id = $1 AND user_id = $2 ORDER BY partite DESC LIMIT 25",
+            guild_id, user_id,
+        )
+
+    async def vincite_piu_grosse(self, guild_id: int, limite: int = 10) -> list[asyncpg.Record]:
+        """ECO-116: le migliori vincite singole del server, una per persona."""
+        return await self._pool.fetch(
+            "SELECT user_id, MAX(max_vincita) AS vincita, (array_agg(gioco ORDER BY max_vincita DESC))[1] AS gioco "
+            "FROM economia_giochi_stat WHERE guild_id = $1 AND max_vincita > 0 "
+            "GROUP BY user_id ORDER BY vincita DESC LIMIT $2",
+            guild_id, min(max(1, limite), 10),
+        )
+
+
 def _get_pool():
     from core.database import db
 
