@@ -2908,5 +2908,14 @@
   "player_coda_salta_serve_un_opzione": "Indica almeno un'opzione: da, a oppure utente.",
   "player_coda_tolti": "Tolti dalla coda: {quanti}.",
   "player_coda_presenti_non_leggibili": "Non riesco a leggere chi è nel canale vocale: non ho tolto niente dalla coda. Riprova tra poco.",
-  "music_annunci_canale_senza_permessi": "Non posso scrivere in quel canale: servono «Vedi canale», «Invia messaggi» e «Incorpora link»."
+  "music_annunci_canale_senza_permessi": "Non posso scrivere in quel canale: servono «Vedi canale», «Invia messaggi» e «Incorpora link».",
+  "playlist_vuota": "La playlist è vuota.",
+  "playlist_pagina_di": "Pagina {v1} di {v2}",
+  "playlist_creata": "🆕 Playlist **{nome}** creata (vuota).",
+  "playlist_esiste_gia": "Hai già una playlist con questo nome: **{nome}**.",
+  "playlist_piano_un_attimo": "Piano: aspetta qualche secondo prima di cercare un altro brano.",
+  "playlist_aggiunti": "➕ Playlist **{nome}**: {v1} brani aggiunti ({v2} doppioni saltati, {v3} oltre il massimo).",
+  "playlist_nessun_brano_in_posizione": "Non c'è nessun brano alla posizione {v1}.",
+  "playlist_brano_tolto": "➖ Tolto **{titolo}** dalla playlist **{nome}**.",
+  "playlist_rinominata": "✏️ Playlist rinominata in **{nome}**."
 }

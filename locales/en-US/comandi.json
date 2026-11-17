@@ -332,7 +332,8 @@
   "prendi": "take",
   "pesi": "weights",
   "gestisci": "manage",
-  "ripristina": "restore"
+  "ripristina": "restore",
+  "rinomina": "rename"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -793,7 +794,7 @@
   "music play": "Plays a song or playlist.",
   "music playlist": "Your saved playlists: they work in every server.",
   "music playlist carica": "Queues one of your saved playlists.",
-  "music playlist elenco": "Your saved playlists.",
+  "music playlist elenco": "Your saved playlists, or the tracks of one.",
   "music playlist elimina": "Deletes one of your saved playlists.",
   "music playlist esporta": "Downloads one of your playlists as a file.",
   "music playlist importa": "Saves a playlist from an exported file.",
@@ -1318,7 +1319,11 @@
   "admin-giochi telefono canale": "The server's phone channel.",
   "admin-giochi telefono consenso": "Turn the phone on or off: off by default.",
   "admin-giochi telefono blocca": "Block or unblock a person or another server from the phone.",
-  "admin-giochi telefono registro": "The server's latest calls: only servers, time and length."
+  "admin-giochi telefono registro": "The server's latest calls: only servers, time and length.",
+  "music playlist crea": "Creates an empty playlist.",
+  "music playlist aggiungi": "Adds a track (or a link) to one of your playlists.",
+  "music playlist togli": "Removes a track from one of your playlists.",
+  "music playlist rinomina": "Renames one of your playlists."
  },
  "parametri": {},
  "menu": {

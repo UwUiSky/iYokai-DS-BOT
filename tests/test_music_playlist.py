@@ -291,7 +291,7 @@ def test_durata_enorme_viene_limitata():
 
 @pytest.mark.asyncio
 async def test_durata_enorme_non_rompe_l_elenco(repo):
-    dati = {"formato": FORMATO_FILE, "brani": [{"encoded": "x", "length": 10**30}] * 200}
+    dati = {"formato": FORMATO_FILE, "brani": [{"encoded": f"x{i}", "length": 10**30} for i in range(200)]}  # MUS-076: senza doppioni
     brani, _ = leggi_file_importazione(json.dumps(dati).encode())
     await repo.save(1, "Lunga", brani)
     [riassunto] = await repo.list_for_user(1)

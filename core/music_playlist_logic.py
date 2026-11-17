@@ -4,7 +4,8 @@ core/music_playlist_logic.py
 Playlist salvate degli utenti: tetti, controllo del nome, brani da e
 verso il formato salvato, file di esportazione e di importazione.
 Funzioni coperte: SPEC §23 (NF-19), catalogo MUS-082; MUS-071 salva la coda, MUS-078 carica,
-MUS-079 elenco, MUS-080 elimina (comandi in cogs/music/playlist.py)
+MUS-079 elenco e dettaglio, MUS-080 elimina (comandi in cogs/music/playlist.py),
+MUS-074 aggiungi, MUS-075 togli, MUS-076 senza doppioni, MUS-073 crea, MUS-077 rinomina
 Dipende da: niente di Discord o Lavalink (logica pura).
 """
 
@@ -159,6 +160,72 @@ def riferimenti_traccia(info) -> list[str] | None:
 def dati_playlist_wavelink(nome: str, tracce: list) -> dict:
     """Il payload di una playlist Lavalink, dai brani decodificati (per wavelink.Playlist)."""
     return {"info": {"name": nome, "selectedTrack": -1}, "pluginInfo": {}, "tracks": list(tracce)}
+
+
+def chiave_brano(brano: BranoSalvato) -> str:
+    """Cosa rende «lo stesso brano»: l'indirizzo se c'è, altrimenti il codice di Lavalink."""
+    return (brano.uri or brano.encoded).strip().lower()
+
+
+def togli_doppioni(brani: list[BranoSalvato]) -> tuple[list[BranoSalvato], int]:
+    """MUS-076: i brani senza doppioni (resta la prima comparsa) e quanti ne sono stati tolti."""
+    visti: set[str] = set()
+    unici: list[BranoSalvato] = []
+    for brano in brani:
+        chiave = chiave_brano(brano)
+        if chiave in visti:
+            continue
+        visti.add(chiave)
+        unici.append(brano)
+    return unici, len(brani) - len(unici)
+
+
+def aggiungi_senza_doppioni(
+    esistenti: list[BranoSalvato], nuovi: list[BranoSalvato]
+) -> tuple[list[BranoSalvato], int, int, int]:
+    """
+    MUS-074: aggiunge in fondo i brani nuovi. Restituisce (elenco, aggiunti, doppioni, fuori):
+    i doppioni non entrano, quelli oltre MAX_BRANI_PER_PLAYLIST restano fuori.
+    """
+    elenco = list(esistenti)
+    presenti = {chiave_brano(b) for b in elenco}
+    aggiunti = doppioni = fuori = 0
+    for brano in nuovi:
+        chiave = chiave_brano(brano)
+        if chiave in presenti:
+            doppioni += 1
+        elif len(elenco) >= MAX_BRANI_PER_PLAYLIST:
+            fuori += 1
+        else:
+            presenti.add(chiave)
+            elenco.append(brano)
+            aggiunti += 1
+    return elenco, aggiunti, doppioni, fuori
+
+
+def togli_posizione(
+    brani: list[BranoSalvato], posizione: int
+) -> tuple[list[BranoSalvato], BranoSalvato | None]:
+    """MUS-075: toglie il brano alla posizione (da 1). (elenco, tolto) oppure (elenco, None) se non c'è."""
+    if posizione < 1 or posizione > len(brani):
+        return list(brani), None
+    elenco = list(brani)
+    return elenco, elenco.pop(posizione - 1)
+
+
+BRANI_PER_PAGINA = 15
+
+
+def pagina_brani(brani: list[BranoSalvato], pagina: int) -> tuple[list[str], int]:
+    """MUS-079: le righe di una pagina del dettaglio (da 1) e il numero di pagine."""
+    pagine = max(1, -(-len(brani) // BRANI_PER_PAGINA))
+    pagina = min(max(1, pagina), pagine)
+    inizio = (pagina - 1) * BRANI_PER_PAGINA
+    righe = [
+        f"`{inizio + i + 1}.` {b.titolo[:80]} ({max(0, b.durata_ms) // 60000}:{max(0, b.durata_ms) // 1000 % 60:02d})"
+        for i, b in enumerate(brani[inizio:inizio + BRANI_PER_PAGINA])
+    ]
+    return righe, pagine
 
 
 def riga_elenco(nome: str, numero_brani: int, durata_ms: int) -> str:

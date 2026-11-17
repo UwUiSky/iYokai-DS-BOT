@@ -2908,5 +2908,14 @@
   "player_coda_salta_serve_un_opzione": "Give at least one option: da, a or utente.",
   "player_coda_tolti": "Removed from the queue: {quanti}.",
   "player_coda_presenti_non_leggibili": "I can't read who is in the voice channel: nothing was removed from the queue. Try again shortly.",
-  "music_annunci_canale_senza_permessi": "I cannot write in that channel: I need View Channel, Send Messages and Embed Links."
+  "music_annunci_canale_senza_permessi": "I cannot write in that channel: I need View Channel, Send Messages and Embed Links.",
+  "playlist_vuota": "The playlist is empty.",
+  "playlist_pagina_di": "Page {v1} of {v2}",
+  "playlist_creata": "🆕 Playlist **{nome}** created (empty).",
+  "playlist_esiste_gia": "You already have a playlist with this name: **{nome}**.",
+  "playlist_piano_un_attimo": "Easy: wait a few seconds before searching for another track.",
+  "playlist_aggiunti": "➕ Playlist **{nome}**: {v1} tracks added ({v2} duplicates skipped, {v3} over the limit).",
+  "playlist_nessun_brano_in_posizione": "There is no track at position {v1}.",
+  "playlist_brano_tolto": "➖ Removed **{titolo}** from playlist **{nome}**.",
+  "playlist_rinominata": "✏️ Playlist renamed to **{nome}**."
 }
