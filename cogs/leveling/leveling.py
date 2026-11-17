@@ -532,7 +532,8 @@ def _embed_impostazioni(config: ConfigLivelli) -> discord.Embed:
     embed.add_field(
         name="XP e coin",
         value=(
-            f"Messaggio: **{i.text_xp}** XP, ogni **{i.text_cooldown_seconds}** s\n"
+            f"Messaggio: **{i.text_xp}{'-' + str(i.text_xp_max) if i.text_xp_max > i.text_xp else ''}** XP, "
+            f"ogni **{i.text_cooldown_seconds}** s · velocità **{i.xp_percentuale}%**\n"
             f"Vocale: **{i.voice_xp_per_minute}** XP e **{i.voice_coins_per_minute}** coin al minuto\n"
             f"Daily: **{i.daily_coins}** coin · Work: **{i.work_min}-{i.work_max}** coin\n"
             f"Nome della moneta: **{i.currency_name}**\n"
@@ -3865,8 +3866,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
         descrizione="Quanti XP e coin si guadagnano, e come si sommano i moltiplicatori.",
     )
     @app_commands.describe(
-        testo="XP per ogni messaggio che conta (1-100)",
-        attesa="Secondi tra due messaggi che danno XP (10-600)",
+        testo="XP per ogni messaggio che conta (1-100); è il minimo se c'è anche un massimo",
+        attesa="Secondi tra due messaggi che danno XP (10-3600)",
+        testo_max="XP massimo per messaggio: l'XP è a sorte tra testo e questo (0 = fisso)",
+        velocita="Velocità dei livelli in % su ogni guadagno (25-500; 100 = normale)",
         voce_xp="XP per ogni minuto in vocale (0-50; 0 = niente XP in vocale)",  # LIV-010
         voce_coin="Coin per ogni minuto in vocale (0-50)",
         moltiplicatori="Più moltiplicatori insieme: si sommano oppure vale solo il più alto",
@@ -3886,7 +3889,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         self,
         interaction: discord.Interaction,
         testo: app_commands.Range[int, 1, 100] | None = None,
-        attesa: app_commands.Range[int, 10, 600] | None = None,
+        attesa: app_commands.Range[int, 10, 3600] | None = None,
         voce_xp: app_commands.Range[int, 0, 50] | None = None,
         voce_coin: app_commands.Range[int, 0, 50] | None = None,
         moltiplicatori: app_commands.Choice[str] | None = None,
@@ -3900,10 +3903,16 @@ class LevelingCog(CogConGruppi, commands.Cog):
         minimo_pay: app_commands.Range[int, 0, 1_000_000] | None = None,
         immagine_moneta: discord.Attachment | None = None,
         senza_immagine: bool | None = None,
+        testo_max: app_commands.Range[int, 0, 100] | None = None,
+        velocita: app_commands.Range[int, 25, 500] | None = None,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
         campi = {}
+        if testo_max is not None:  # LIV-001
+            campi["text_xp_max"] = testo_max
+        if velocita is not None:  # LIV-003
+            campi["xp_percentuale"] = velocita
         if nome_moneta is not None:
             campi["currency_name"] = nome_moneta
         if tassa_pay is not None:

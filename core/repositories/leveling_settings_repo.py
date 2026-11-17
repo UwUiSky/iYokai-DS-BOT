@@ -157,6 +157,13 @@ class LevelingSettingsRepository:
             if minimo > massimo:
                 raise ValueError("Il minimo del lavoro non può superare il massimo.")
 
+        if "text_xp_max" in campi or "text_xp" in campi:
+            attuale = (await self.get_config(guild_id, fresco=True)).impostazioni
+            minimo = campi.get("text_xp", attuale.text_xp)
+            massimo = campi.get("text_xp_max", attuale.text_xp_max)
+            if massimo and massimo < minimo:
+                raise ValueError("Il massimo di XP per messaggio non può essere sotto il minimo.")
+
         if "pay_min" in campi or "pay_max" in campi:
             attuale = (await self.get_config(guild_id)).impostazioni
             minimo = campi.get("pay_min", attuale.pay_min)

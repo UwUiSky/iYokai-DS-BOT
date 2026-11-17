@@ -24,6 +24,7 @@ un nuovo period_key senza righe, non uno stato da azzerare.
 from __future__ import annotations
 
 import math
+import random
 import re
 import unicodedata
 from dataclasses import dataclass, field
@@ -426,7 +427,9 @@ TETTO_XP_MESSAGGIO = 150  # LIV-006/007: mai di più per un solo messaggio
 # i comandi, l'archivio e (D16) il futuro pannello web.
 LIMITI_IMPOSTAZIONI = {
     "text_xp": (1, 100),
-    "text_cooldown_seconds": (10, 600),
+    "text_xp_max": (0, 100),  # LIV-001: 0 = importo fisso
+    "xp_percentuale": (25, 500),  # LIV-003: velocità generale, in percentuale
+    "text_cooldown_seconds": (10, 3600),  # LIV-002
     "voice_xp_per_minute": (0, 50),
     "voice_coins_per_minute": (0, 50),
     "levelup_min_level": (0, 1000),
@@ -464,6 +467,8 @@ class LevelingSettings:
 
     text_xp: int = TEXT_XP_AMOUNT
     text_cooldown_seconds: int = TEXT_XP_COOLDOWN_SECONDS
+    text_xp_max: int = 0  # LIV-001: se più del minimo, l'XP è a sorte tra i due
+    xp_percentuale: int = 100  # LIV-003
     voice_xp_per_minute: int = VOICE_XP_PER_MINUTE
     voice_coins_per_minute: int = VOICE_COINS_PER_MINUTE
     levelup_mode: str = "canale_corrente"
@@ -535,9 +540,10 @@ class ConfigLivelli:
         return fattori
 
     def moltiplicatore(self, channel_ids, role_ids) -> float:
-        return moltiplicatore_xp(
+        base = moltiplicatore_xp(
             self.impostazioni.multiplier_mode, self.fattori_attivi(channel_ids, role_ids)
         )
+        return round(base * self.impostazioni.xp_percentuale / 100, 4)  # LIV-003
 
     def e_escluso(self, channel_ids, role_ids) -> bool:
         """
@@ -558,7 +564,7 @@ class ConfigLivelli:
 _PAROLA = re.compile(r"[^\W_]{3,}")
 
 
-def xp_messaggio(i: LevelingSettings, testo: str, ha_immagine: bool) -> int:
+def xp_messaggio(i: LevelingSettings, testo: str, ha_immagine: bool, scelta=random.randint) -> int:
     """
     XP di base di un messaggio, prima del moltiplicatore. LIV-006: in modo "parola"
     contano le parole da 3 lettere in su (al massimo `parole_max`). LIV-007: bonus
@@ -570,7 +576,8 @@ def xp_messaggio(i: LevelingSettings, testo: str, ha_immagine: bool) -> int:
         parole = min(len(_PAROLA.findall(testo)), i.parole_max)
         base = min(parole * i.xp_per_parola, LIMITI_IMPOSTAZIONI["text_xp"][1])
     else:
-        base = i.text_xp
+        # LIV-001: con un massimo più alto del minimo l'XP è a sorte tra i due.
+        base = scelta(i.text_xp, i.text_xp_max) if i.text_xp_max > i.text_xp else i.text_xp
     if i.bonus_impegno and (ha_immagine or len(testo) >= i.impegno_caratteri):
         base += i.bonus_impegno
     return min(base, TETTO_XP_MESSAGGIO)
