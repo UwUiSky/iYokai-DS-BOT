@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import io
 import logging
+from datetime import datetime
 import time
 
 import discord
@@ -82,6 +83,11 @@ def _render_for_member(template: str, member: discord.Member, inviti: dict | Non
         display_name=discord.utils.escape_mentions(member.display_name),
         server_id=member.guild.id,
         creato_il=int(member.created_at.timestamp()),
+        eta_giorni=(
+            max((discord.utils.utcnow() - member.created_at).days, 0)
+            if isinstance(member.created_at, datetime) else None
+        ),
+        ruoli_ids=frozenset(r.id for r in member.roles),
         **(inviti or {}),
     )
 

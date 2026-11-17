@@ -64,6 +64,32 @@ def _calcola(template: str, member_count: int, user_id: int | None, server_id: i
     return _MATH.sub(_uno, template)
 
 
+_SE_NUOVO = re.compile(r"\{se_nuovo:(\d{1,4})\|([^{}]{0,300})\}")
+_SE_RUOLO = re.compile(r"\{se_ruolo:(\d{1,22})\|([^{}]{0,300})\}")
+
+
+def _condizioni(
+    template: str, eta_giorni: int | None, ruoli_ids: frozenset[int] | None, tutte_vere: bool
+) -> str:
+    """
+    RUO-026: condizioni semplici, niente linguaggio di script. `{se_nuovo:7|testo}`: il testo esce se
+    l'account ha al massimo 7 giorni. `{se_ruolo:ID|testo}`: esce se il membro ha il ruolo. Senza il dato
+    (anteprima senza membro) la condizione resta scritta; con `tutte_vere` (misura della lunghezza) vale sempre.
+    """
+
+    def nuovo(m: re.Match) -> str:
+        if tutte_vere or (eta_giorni is not None and eta_giorni <= int(m.group(1))):
+            return m.group(2)
+        return m.group(0) if eta_giorni is None else ""
+
+    def ruolo(m: re.Match) -> str:
+        if tutte_vere or (ruoli_ids is not None and int(m.group(1)) in ruoli_ids):
+            return m.group(2)
+        return m.group(0) if ruoli_ids is None else ""
+
+    return _SE_RUOLO.sub(ruolo, _SE_NUOVO.sub(nuovo, template))
+
+
 def render_template(
     template: str,
     user_mention: str,
@@ -78,12 +104,16 @@ def render_template(
     inviti_invitante: int | None = None,
     rientri: int | None = None,
     creato_il: int | None = None,
+    eta_giorni: int | None = None,
+    ruoli_ids: frozenset[int] | None = None,
+    condizioni_vere: bool = False,
 ) -> str:
     """
     Sostituisce i segnaposto. `{invitante}`, `{inviti_invitante}`, `{rientri}` e `{creato_il}` (D69 B13) si
     sostituiscono solo se chi chiama dà il dato. `{userid}`, `{displayname}` e `{serverid}` (RUO-019..021)
     restano scritti se chi chiama non dà il dato; `{ordinal}` (RUO-018) usa il numero dei membri.
     """
+    template = _condizioni(template, eta_giorni, ruoli_ids, condizioni_vere)
     template = _calcola(template, member_count, user_id, server_id)
     testo = (
         template.replace("{user}", user_mention)
@@ -144,6 +174,7 @@ def lunghezza_dopo_segnaposto(template: str, server_name: str, member_count: int
             inviti_invitante=10**6 - 1,
             rientri=10**4 - 1,
             creato_il=10**11,
+            condizioni_vere=True,
         )
     )
 
