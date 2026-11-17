@@ -187,45 +187,81 @@ def compute_voice_minute(
 # senza diventare proibitiva nei primi livelli).
 
 
-def xp_for_level(level: int) -> int:
-    """XP cumulativo necessario per RAGGIUNGERE questo livello."""
+FORMULE = ("classica", "lineare", "esponenziale", "costante")  # LIV-004
+COSTO_COSTANTE = 200  # LIV-004: XP di ogni livello con la formula "costante"
+LIVELLO_TETTO_ESPONENZIALE = 3000  # oltre, la potenza non entra più in un numero decimale
+
+
+def xp_for_level(level: int, formula: str = "classica") -> int:
+    """
+    XP cumulativo necessario per RAGGIUNGERE questo livello (LIV-004: `formula`
+    sceglie la curva; una formula sconosciuta vale come "classica").
+    classica 5L^2+50L, lineare 25L^2+75L, costante 200L, esponenziale 500(1,2^L-1).
+    """
     if level <= 0:
         return 0
+    if formula == "lineare":
+        return 25 * level * level + 75 * level
+    if formula == "costante":
+        return COSTO_COSTANTE * level
+    if formula == "esponenziale":
+        return int(500 * (1.2 ** min(level, LIVELLO_TETTO_ESPONENZIALE) - 1))
     return 5 * level * level + 50 * level
 
 
 LIVELLO_MASSIMO = 1000  # tetto assoluto dei livelli impostabili a mano
 
 
-def level_for_xp(total_xp: int, max_level: int = 0) -> int:
+def _livello_da_xp_senza_tetto(total_xp: int, formula: str) -> int:
+    if formula == "costante":
+        return total_xp // COSTO_COSTANTE
+    if formula == "lineare":
+        level = max(0, (math.isqrt(5625 + 100 * total_xp) - 75) // 50)
+    elif formula == "esponenziale":
+        # Ricerca binaria: la curva cresce a ogni passo.
+        basso, alto = 0, LIVELLO_TETTO_ESPONENZIALE
+        while basso < alto:
+            medio = (basso + alto + 1) // 2
+            if xp_for_level(medio, formula) <= total_xp:
+                basso = medio
+            else:
+                alto = medio - 1
+        return basso
+    else:
+        level = max(0, (math.isqrt(2500 + 20 * total_xp) - 50) // 10)
+    while level > 0 and xp_for_level(level, formula) > total_xp:
+        level -= 1
+    while xp_for_level(level + 1, formula) <= total_xp:
+        level += 1
+    return level
+
+
+def level_for_xp(total_xp: int, max_level: int = 0, formula: str = "classica") -> int:
     """
     Livello corrispondente a un totale di XP (`max_level` > 0 è il tetto
-    del server, LIV-005; 0 = nessun tetto). Formula chiusa: dalla
-    5L^2 + 50L <= xp si ricava L con la radice intera, poi si corregge di
-    un passo per sicurezza. Nessun ciclo sul numero di livelli, quindi
-    costa lo stesso con 1.000 XP o con 10^15.
+    del server, LIV-005; 0 = nessun tetto; `formula`: LIV-004). Formule
+    chiuse con radice intera e correzione di un passo: nessun ciclo sul
+    numero di livelli, costa lo stesso con 1.000 XP o con 10^15.
     """
     if total_xp <= 0:
         return 0
-    level = max(0, (math.isqrt(2500 + 20 * total_xp) - 50) // 10)
-    while level > 0 and xp_for_level(level) > total_xp:
-        level -= 1
-    while xp_for_level(level + 1) <= total_xp:
-        level += 1
+    level = _livello_da_xp_senza_tetto(total_xp, formula)
     if max_level:
         level = min(level, max_level)
     return level
 
 
-def did_level_up(xp_before: int, xp_after: int, max_level: int = 0) -> tuple[bool, int]:
+def did_level_up(
+    xp_before: int, xp_after: int, max_level: int = 0, formula: str = "classica"
+) -> tuple[bool, int]:
     """
     Restituisce (è salito di livello, nuovo livello). Un singolo
     guadagno di XP potrebbe in teoria far salire più di un livello
     in un colpo solo (raro con gli importi in gioco, ma possibile con
     bonus grandi) — level_for_xp gestisce comunque il caso corretto.
     """
-    level_before = level_for_xp(xp_before, max_level)
-    level_after = level_for_xp(xp_after, max_level)
+    level_before = level_for_xp(xp_before, max_level, formula)
+    level_after = level_for_xp(xp_after, max_level, formula)
     return (level_after > level_before), level_after
 
 
@@ -243,15 +279,18 @@ def stima_per_livello(
     xp_per_messaggio: int,
     attesa_secondi: int,
     xp_voce_minuto: int,
+    formula: str = "classica",
 ) -> StimaLivello:
     """Quanto manca a un livello (LIV-074): XP, messaggi e minuti in vocale, senza moltiplicatori."""
-    mancanti = max(0, xp_for_level(livello_obiettivo) - xp_attuale)
+    mancanti = max(0, xp_for_level(livello_obiettivo, formula) - xp_attuale)
     messaggi = -(-mancanti // xp_per_messaggio) if xp_per_messaggio > 0 else 0
     minuti = -(-mancanti // xp_voce_minuto) if xp_voce_minuto > 0 else None
     return StimaLivello(mancanti, messaggi, minuti, messaggi * attesa_secondi)
 
 
-def xp_dopo_modifica(xp_attuale: int, azione: str, valore: int, max_level: int = 0) -> int:
+def xp_dopo_modifica(
+    xp_attuale: int, azione: str, valore: int, max_level: int = 0, formula: str = "classica"
+) -> int:
     """
     Gli XP totali dopo una modifica dello staff (LIV-064..067). Mai sotto
     zero. "livello" porta all'inizio del livello (con il tetto del server);
@@ -263,11 +302,11 @@ def xp_dopo_modifica(xp_attuale: int, azione: str, valore: int, max_level: int =
         return max(0, xp_attuale - valore)
     if azione == "livello":
         tetto = min(valore, LIVELLO_MASSIMO)
-        return xp_for_level(min(tetto, max_level) if max_level else tetto)
+        return xp_for_level(min(tetto, max_level) if max_level else tetto, formula)
     if azione == "xp_nel_livello":
-        livello = level_for_xp(xp_attuale, max_level)
-        base = xp_for_level(livello)
-        ampiezza = xp_for_level(livello + 1) - base
+        livello = level_for_xp(xp_attuale, max_level, formula)
+        base = xp_for_level(livello, formula)
+        ampiezza = xp_for_level(livello + 1, formula) - base
         return base + min(valore, ampiezza - 1)
     if azione == "azzera":
         return 0
@@ -364,6 +403,11 @@ MODI_ANNUNCIO = ("spento", "canale_corrente", "dm", "canale_scelto")
 MODI_PREMI = ("accumula", "sostituisci")
 MODI_AZZERA_SU = ("nessuno", "uscita", "ban", "entrambi")  # LIV-070
 MODI_MOLTIPLICATORI = ("somma", "massimo")
+MODI_XP_MESSAGGIO = ("fisso", "parola")  # LIV-006
+MODI_CANALI = ("tutti", "solo_questi")  # LIV-021
+MAX_PREFISSI = 10  # LIV-018
+MAX_LUNGHEZZA_PREFISSO = 8
+TETTO_XP_MESSAGGIO = 150  # LIV-006/007: mai di più per un solo messaggio
 
 # Minimo e massimo di ogni numero configurabile. Un solo posto: lo usano
 # i comandi, l'archivio e (D16) il futuro pannello web.
@@ -378,6 +422,10 @@ LIMITI_IMPOSTAZIONI = {
     "work_min": (0, 10_000),
     "work_max": (0, 10_000),
     "max_level": (0, 1000),  # 0 = nessun tetto
+    "xp_per_parola": (1, 10),  # LIV-006
+    "parole_max": (1, 100),  # LIV-006: parole contate per messaggio
+    "bonus_impegno": (0, 50),  # LIV-007: 0 = spento
+    "impegno_caratteri": (20, 2000),  # LIV-007
     "pay_tax_pct": (0, 50),  # ECO-015: percentuale che va alla cassa del server
     "pay_max": (0, 1_000_000),  # ECO-015: tetto per trasferimento, 0 = nessuno
     "pay_min": (0, 1_000_000),  # ECO-015: minimo per trasferimento, 0 = nessuno
@@ -422,6 +470,15 @@ class LevelingSettings:
     copia_su_uscita: bool = False  # LIV-070: tiene una copia di 30 giorni di quegli XP
     blocca_xp: bool = False  # LIV-071: gli XP a mano li cambia solo il proprietario del server
     blocca_azzeramento: bool = False  # LIV-071: azzerare e ripristinare solo il proprietario
+    formula: str = "classica"  # LIV-004
+    xp_modo: str = "fisso"  # LIV-006: "parola" = XP a parola
+    xp_per_parola: int = 1  # LIV-006
+    parole_max: int = 30  # LIV-006
+    bonus_impegno: int = 0  # LIV-007: 0 = spento
+    impegno_caratteri: int = 200  # LIV-007
+    xp_comandi: bool = False  # LIV-017: XP per i comandi slash
+    prefissi_ignorati: tuple = ()  # LIV-018
+    canali_modo: str = "tutti"  # LIV-021: "solo_questi" = l'elenco dei canali è una lista bianca
     levelup_testo: str = ""  # LIV-034: testo dell'annuncio con segnaposto; vuoto = quello di base
 
 
@@ -457,12 +514,60 @@ class ConfigLivelli:
         )
 
     def e_escluso(self, channel_ids, role_ids) -> bool:
-        """Escluso se lo è il canale (o il suo canale di origine o la sua categoria) o un ruolo."""
+        """
+        Escluso se lo è il canale (o il suo canale di origine o la sua categoria) o un ruolo.
+        LIV-021: con `canali_modo` "solo_questi" l'elenco dei canali vale al contrario
+        (solo quelli danno XP); un elenco vuoto non blocca nessuno.
+        """
         if isinstance(channel_ids, int):
             channel_ids = [channel_ids]
-        return any(c in self.canali_esclusi for c in channel_ids) or any(
-            r in self.ruoli_esclusi for r in role_ids
-        )
+        if any(r in self.ruoli_esclusi for r in role_ids):
+            return True
+        nell_elenco = any(c in self.canali_esclusi for c in channel_ids)
+        if self.impostazioni.canali_modo == "solo_questi" and self.canali_esclusi:
+            return not nell_elenco
+        return nell_elenco
+
+
+_PAROLA = re.compile(r"[^\W_]{3,}")
+
+
+def xp_messaggio(i: LevelingSettings, testo: str, ha_immagine: bool) -> int:
+    """
+    XP di base di un messaggio, prima del moltiplicatore. LIV-006: in modo "parola"
+    contano le parole da 3 lettere in su (al massimo `parole_max`). LIV-007: bonus
+    fisso, una volta sola, se il messaggio è lungo o ha un'immagine. Mai oltre
+    TETTO_XP_MESSAGGIO.
+    """
+    testo = (testo or "")[:4000]
+    if i.xp_modo == "parola":
+        parole = min(len(_PAROLA.findall(testo)), i.parole_max)
+        base = min(parole * i.xp_per_parola, LIMITI_IMPOSTAZIONI["text_xp"][1])
+    else:
+        base = i.text_xp
+    if i.bonus_impegno and (ha_immagine or len(testo) >= i.impegno_caratteri):
+        base += i.bonus_impegno
+    return min(base, TETTO_XP_MESSAGGIO)
+
+
+def ha_prefisso_ignorato(testo: str, prefissi) -> bool:
+    """LIV-018: il messaggio inizia con il prefisso di un altro bot."""
+    inizio = (testo or "").lstrip()
+    return any(p and inizio.startswith(p) for p in prefissi)
+
+
+def prefisso_valido(testo: str) -> str | None:
+    """LIV-018: il prefisso pulito, o None. Niente spazi dentro né caratteri invisibili; solo lettere/cifre: almeno 2."""
+    p = (testo or "").strip()
+    if not p or len(p) > MAX_LUNGHEZZA_PREFISSO:
+        return None
+    if any(c.isspace() or unicodedata.category(c)[0] in "CZ" for c in p):
+        return None
+    if p.isalnum() and len(p) < 2:
+        return None
+    if p.isalnum() and p.isdigit():
+        return None
+    return p
 
 
 def moltiplicatore_xp(modo: str, fattori: list[float]) -> float:

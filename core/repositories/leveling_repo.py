@@ -335,6 +335,7 @@ class LevelingRepository:
         amount: int = TEXT_XP_AMOUNT,
         cooldown_seconds: int = TEXT_XP_COOLDOWN_SECONDS,
         max_level: int = 0,
+        formula: str = "classica",
     ) -> TextXpResult:
         """
         Assegna `amount` XP testuale se l'attesa (`cooldown_seconds`, per
@@ -369,11 +370,11 @@ class LevelingRepository:
                 if amount <= 0 or not can_earn_text_xp(last_xp_at, now, cooldown_seconds):
                     return TextXpResult(
                         granted=False, new_xp_total=xp_before, leveled_up=False,
-                        new_level=level_for_xp(xp_before, max_level),
+                        new_level=level_for_xp(xp_before, max_level, formula),
                     )
 
                 xp_after = xp_before + amount
-                leveled_up, new_level = did_level_up(xp_before, xp_after, max_level)
+                leveled_up, new_level = did_level_up(xp_before, xp_after, max_level, formula)
 
                 await conn.execute(
                     """
@@ -392,7 +393,7 @@ class LevelingRepository:
 
                 esito = TextXpResult(
                     granted=True, new_xp_total=xp_after, leveled_up=leveled_up,
-                    new_level=new_level, previous_level=level_for_xp(xp_before, max_level),
+                    new_level=new_level, previous_level=level_for_xp(xp_before, max_level, formula),
                 )
         # §23.17: un messaggio che ha dato XP conta per le missioni (se il server le ha accese).
         from core import progressi_service
@@ -424,6 +425,7 @@ class LevelingRepository:
         impostazioni = impostazioni or LevelingSettings()
         moltiplicatori = moltiplicatori or {}
         tetto = impostazioni.max_level
+        formula = impostazioni.formula
         if not presenze:
             return {}
         # Giorno in UTC, non nell'ora locale della macchina: il tetto
@@ -471,7 +473,7 @@ class LevelingRepository:
                     if not idoneo:
                         risultati[user_id] = None
                         scritture.append(
-                            (guild_id, user_id, xp_before, level_for_xp(xp_before, tetto), 0,
+                            (guild_id, user_id, xp_before, level_for_xp(xp_before, tetto, formula), 0,
                              canale, stored_consecutive, minutes_today)
                         )
                         continue
@@ -487,7 +489,7 @@ class LevelingRepository:
                             coins_granted=impostazioni.voice_coins_per_minute,
                         )
                     xp_after = xp_before + result.xp_granted
-                    leveled_up, new_level = did_level_up(xp_before, xp_after, tetto)
+                    leveled_up, new_level = did_level_up(xp_before, xp_after, tetto, formula)
                     scritture.append(
                         (guild_id, user_id, xp_after, new_level, result.coins_granted,
                          canale, result.new_consecutive_minutes, result.new_minutes_today)
@@ -497,7 +499,7 @@ class LevelingRepository:
                         coins_granted=result.coins_granted,
                         leveled_up=leveled_up,
                         new_level=new_level,
-                        previous_level=level_for_xp(xp_before, tetto),
+                        previous_level=level_for_xp(xp_before, tetto, formula),
                     )
 
                 await conn.executemany(
@@ -546,7 +548,8 @@ class LevelingRepository:
         return valore
 
     async def modifica_xp(
-        self, guild_id: int, user_id: int, azione: str, valore: int, max_level: int = 0
+        self, guild_id: int, user_id: int, azione: str, valore: int, max_level: int = 0,
+        formula: str | None = None,
     ) -> ModificaXp:
         """
         Modifica fatta dallo staff (LIV-064..067): una lettura bloccante e una
@@ -554,9 +557,13 @@ class LevelingRepository:
         """
         async with self._pool.acquire() as conn:
             async with conn.transaction():
+                if formula is None:  # LIV-004: chi non la passa (es. i giochi con AI) usa quella del server
+                    formula = await conn.fetchval(
+                        "SELECT formula FROM leveling_settings WHERE guild_id = $1", guild_id
+                    ) or "classica"
                 xp_prima = await self._riga_bloccata(conn, guild_id, user_id, "xp_total")
-                xp_dopo = xp_dopo_modifica(xp_prima, azione, valore, max_level)
-                livello_dopo = level_for_xp(xp_dopo, max_level)
+                xp_dopo = xp_dopo_modifica(xp_prima, azione, valore, max_level, formula)
+                livello_dopo = level_for_xp(xp_dopo, max_level, formula)
                 await conn.execute(
                     "UPDATE leveling_totals SET xp_total = $3, level = $4 "
                     "WHERE guild_id = $1 AND user_id = $2",
@@ -565,7 +572,7 @@ class LevelingRepository:
                     xp_dopo,
                     livello_dopo,
                 )
-        return ModificaXp(xp_prima, level_for_xp(xp_prima, max_level), xp_dopo, livello_dopo)
+        return ModificaXp(xp_prima, level_for_xp(xp_prima, max_level, formula), xp_dopo, livello_dopo)
 
     async def modifica_monete(
         self, guild_id: int, user_id: int, azione: str, valore: int

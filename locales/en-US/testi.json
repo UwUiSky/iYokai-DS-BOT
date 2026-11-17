@@ -2871,9 +2871,6 @@
   "annuncio_prova_permessi": "I cannot write in {canale}: I need \"View Channel\" and \"Send Messages\".",
   "annuncio_prova_prefisso": "🧪 Test: ",
   "annuncio_prova_inviata": "✅ Test sent to {dove}.",
-  "soundboard_ruoli_bloccato": "The sound {suono} is blocked: no role is allowed. Pick a role with \"Allow this role\" to reopen it.",
-  "soundboard_ruoli_bloccato_nota": "The sound stays blocked: no \"allow\" role is left.",
-
   "music_stato_riga": "**{fonte}** — {stato}, keys {chiavi}",
   "music_stato_ok": "ok",
   "music_stato_spenta": "off",
@@ -2898,5 +2895,21 @@
   "player_coda_serve_gestisci_server": "This command needs the \"Manage Server\" permission.",
   "player_coda_salta_serve_un_opzione": "Give at least one option: da, a or utente.",
   "player_coda_tolti": "Removed from the queue: {quanti}.",
-  "player_coda_presenti_non_leggibili": "I can't read who is in the voice channel: nothing was removed from the queue. Try again shortly."
+  "player_coda_presenti_non_leggibili": "I can't read who is in the voice channel: nothing was removed from the queue. Try again shortly.",
+  "gua_formula_ok": "✅ Level formula: **{formula}**. Levels recalculated from total XP: changed for **{n}** people. Reward roles are rechecked when a person writes or looks at their card.",
+  "gua_messaggi_ok": "✅ Message XP: **{modo}** · fixed: **{testo}** · per word: **{parola}** XP per word, up to **{massimo}** words · effort bonus: **{bonus}** XP (from **{caratteri}** characters or with an image; 0 = off).",
+  "gua_modo_fisso": "fixed per message",
+  "gua_modo_parola": "per word",
+  "gua_comandi_acceso": "✅ A successful slash command now gives XP, with the same cooldown as messages.",
+  "gua_comandi_spento": "✅ Slash commands no longer give XP.",
+  "gua_serve_prefisso": "Write the prefix.",
+  "gua_prefisso_aggiunto": "✅ Prefix added: messages starting with it give no XP.",
+  "gua_prefisso_presente": "This prefix is already in the list.",
+  "gua_prefisso_pieno": "The list is full: at most {max} prefixes. Remove one.",
+  "gua_prefisso_non_valido": "Invalid prefix: no spaces or invisible characters, at most 8 characters; if it is made of letters it needs at least 2.",
+  "gua_prefissi_nessuno": "No prefix to ignore.",
+  "gua_prefissi_elenco": "Ignored prefixes ({n}): {elenco}",
+  "gua_canali_tutti": "✅ XP in every channel, except the **{n}** in the excluded list.",
+  "gua_canali_solo_questi": "✅ XP only in the **{n}** channels of the list (change it with /admin-livelli escludi). People with an excluded role still get no XP.",
+  "gua_canali_solo_vuoto": "⚠️ Set to \"only the channels in the list\", but the list is empty: until you add channels with /admin-livelli escludi, XP is given everywhere."
 }

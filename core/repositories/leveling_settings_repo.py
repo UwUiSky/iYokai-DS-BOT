@@ -22,7 +22,13 @@ from core.leveling_logic import (
     LIMITI_IMPOSTAZIONI,
     MAX_REGOLE_PER_TIPO,
     MAX_TESTO_ANNUNCIO,
+    FORMULE,
+    MAX_PREFISSI,
     MODI_ANNUNCIO,
+    MODI_CANALI,
+    MODI_XP_MESSAGGIO,
+    level_for_xp,
+    prefisso_valido,
     MODI_AZZERA_SU,
     MODI_MOLTIPLICATORI,
     MODI_PREMI,
@@ -43,7 +49,16 @@ _MODI = {
     "reward_mode": MODI_PREMI,
     "azzera_su": MODI_AZZERA_SU,
     "multiplier_mode": MODI_MOLTIPLICATORI,
+    "formula": FORMULE,
+    "xp_modo": MODI_XP_MESSAGGIO,
+    "canali_modo": MODI_CANALI,
 }
+
+
+def _campi_da_riga(riga) -> dict:
+    campi = {k: riga[k] for k in _CAMPI_NOTI}
+    campi["prefissi_ignorati"] = tuple(campi["prefissi_ignorati"] or ())
+    return campi
 
 
 class RegolaPiena(Exception):
@@ -75,9 +90,7 @@ class LevelingSettingsRepository:
         regole = await self._pool.fetch(
             "SELECT kind, target_id, factor FROM leveling_xp_rules WHERE guild_id = $1", guild_id
         )
-        impostazioni = (
-            LevelingSettings(**{k: riga[k] for k in _CAMPI_NOTI}) if riga else LevelingSettings()
-        )
+        impostazioni = LevelingSettings(**_campi_da_riga(riga)) if riga else LevelingSettings()
         config = ConfigLivelli(
             impostazioni=impostazioni,
             canali_esclusi=frozenset(r["target_id"] for r in regole if r["kind"] == "canale_escluso"),
@@ -129,6 +142,8 @@ class LevelingSettingsRepository:
                 raise ValueError(f"Valore non valido per {nome}: {valore}")
             if nome == "levelup_testo" and (not isinstance(valore, str) or len(valore) > MAX_TESTO_ANNUNCIO):
                 raise ValueError(f"Il testo dell'annuncio può avere al massimo {MAX_TESTO_ANNUNCIO} caratteri.")
+            if nome == "prefissi_ignorati":
+                raise ValueError("I prefissi si cambiano con aggiungi_prefisso e togli_prefisso.")
             if nome == "currency_name":
                 campi[nome] = nome_moneta_valido(valore)
 
@@ -171,6 +186,91 @@ class LevelingSettingsRepository:
                 raise
             self._invalida(guild_id)
         return (await self.get_config(guild_id)).impostazioni
+
+    async def aggiungi_prefisso(self, guild_id: int, prefisso: str) -> str:
+        """
+        LIV-018: aggiunge un prefisso in una sola scrittura (al massimo 10).
+        Restituisce "aggiunto", "presente", "pieno" o "non_valido".
+        """
+        pulito = prefisso_valido(prefisso)
+        if pulito is None:
+            return "non_valido"
+        riga = await self._pool.fetchrow(
+            """
+            INSERT INTO leveling_settings (guild_id, prefissi_ignorati) VALUES ($1, ARRAY[$2]::text[])
+            ON CONFLICT (guild_id) DO UPDATE
+                SET prefissi_ignorati = array_append(leveling_settings.prefissi_ignorati, $2)
+                WHERE NOT ($2 = ANY(leveling_settings.prefissi_ignorati))
+                  AND cardinality(leveling_settings.prefissi_ignorati) < $3
+            RETURNING 1
+            """,
+            guild_id, pulito, MAX_PREFISSI,
+        )
+        self._invalida(guild_id)
+        if riga is not None:
+            return "aggiunto"
+        presenti = await self._pool.fetchval(
+            "SELECT prefissi_ignorati FROM leveling_settings WHERE guild_id = $1", guild_id
+        )
+        return "presente" if pulito in (presenti or []) else "pieno"
+
+    async def togli_prefisso(self, guild_id: int, prefisso: str | None) -> int:
+        """LIV-018: toglie un prefisso (o tutti, con None). Restituisce quanti ne restano."""
+        if prefisso is None:
+            nuovi = await self._pool.fetchval(
+                "UPDATE leveling_settings SET prefissi_ignorati = '{}' WHERE guild_id = $1 "
+                "RETURNING cardinality(prefissi_ignorati)", guild_id,
+            )
+        else:
+            nuovi = await self._pool.fetchval(
+                "UPDATE leveling_settings SET prefissi_ignorati = array_remove(prefissi_ignorati, $2) "
+                "WHERE guild_id = $1 RETURNING cardinality(prefissi_ignorati)", guild_id, prefisso.strip(),
+            )
+        self._invalida(guild_id)
+        return nuovi or 0
+
+    async def cambia_formula(self, guild_id: int, formula: str) -> int:
+        """
+        LIV-004: cambia la formula e ricalcola il livello di tutti dall'XP totale, in una
+        transazione (due cambi insieme si mettono in fila). Restituisce quante righe sono cambiate.
+        """
+        if formula not in FORMULE:
+            raise ValueError(f"Formula sconosciuta: {formula}")
+        cambiate = 0
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute("SELECT pg_advisory_xact_lock($1, hashtext('formula'))", guild_id % 2**31)
+                await conn.execute(
+                    "INSERT INTO leveling_settings (guild_id, formula) VALUES ($1, $2) "
+                    "ON CONFLICT (guild_id) DO UPDATE SET formula = EXCLUDED.formula",
+                    guild_id, formula,
+                )
+                tetto = await conn.fetchval("SELECT max_level FROM leveling_settings WHERE guild_id = $1", guild_id)
+                ultimo = 0
+                while True:
+                    righe = await conn.fetch(
+                        "SELECT user_id, xp_total, level FROM leveling_totals "
+                        "WHERE guild_id = $1 AND user_id > $2 ORDER BY user_id LIMIT 2000 FOR UPDATE",
+                        guild_id, ultimo,
+                    )
+                    if not righe:
+                        break
+                    nuovi = [
+                        (r["user_id"], level_for_xp(r["xp_total"], tetto or 0, formula))
+                        for r in righe
+                    ]
+                    da_scrivere = [
+                        (u, lv) for (u, lv), r in zip(nuovi, righe) if lv != r["level"]
+                    ]
+                    if da_scrivere:
+                        await conn.executemany(
+                            "UPDATE leveling_totals SET level = $2 WHERE user_id = $1 AND guild_id = $3",
+                            [(u, lv, guild_id) for u, lv in da_scrivere],
+                        )
+                        cambiate += len(da_scrivere)
+                    ultimo = righe[-1]["user_id"]
+        self._invalida(guild_id)
+        return cambiate
 
     async def set_rule(
         self, guild_id: int, kind: str, target_id: int, factor: float | None = None

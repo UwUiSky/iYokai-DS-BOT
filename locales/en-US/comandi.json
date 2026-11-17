@@ -332,7 +332,11 @@
   "prendi": "take",
   "pesi": "weights",
   "gestisci": "manage",
-  "ripristina": "restore"
+  "ripristina": "restore",
+  "guadagno": "gain",
+  "formula": "formula",
+  "comandi": "commands",
+  "prefissi": "prefixes"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1318,7 +1322,13 @@
   "admin-giochi telefono canale": "The server's phone channel.",
   "admin-giochi telefono consenso": "Turn the phone on or off: off by default.",
   "admin-giochi telefono blocca": "Block or unblock a person or another server from the phone.",
-  "admin-giochi telefono registro": "The server's latest calls: only servers, time and length."
+  "admin-giochi telefono registro": "The server's latest calls: only servers, time and length.",
+  "admin-livelli guadagno": "How XP is earned: formula, words, commands, prefixes, channels",
+  "admin-livelli guadagno formula": "Picks the level curve and recalculates everyone's levels.",
+  "admin-livelli guadagno messaggi": "XP per message: fixed or per word, plus a bonus for long messages or images.",
+  "admin-livelli guadagno comandi": "Turns XP for using slash commands on or off (off by default).",
+  "admin-livelli guadagno prefissi": "Other bots' prefixes: messages starting with them give no XP.",
+  "admin-livelli guadagno canali": "XP everywhere except excluded channels, or only in the channels of the list."
  },
  "parametri": {},
  "menu": {

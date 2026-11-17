@@ -155,7 +155,9 @@ from core.leveling_logic import (
     scegli_premi,
     tassa_su_pagamento,
     week_key,
+    ha_prefisso_ignorato,
     xp_con_moltiplicatore,
+    xp_messaggio,
     WORK_COOLDOWN_SECONDS,
     is_eligible_for_voice_xp,
     period_key,
@@ -983,6 +985,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         # Chi è escluso (canale, categoria o ruolo) non dà XP nemmeno alla
         # gilda: questo metodo non viene chiamato (vedi on_message).
         impostazioni = config.impostazioni
+        # LIV-018: i comandi di altri bot (prefisso) non danno XP.
+        if ha_prefisso_ignorato(message.content, impostazioni.prefissi_ignorati):
+            return
         clan = await guild_clan_repo.get_member_clan_in_guild(message.guild.id, message.author.id)
         if clan is not None and clan.officialized:
             # Lato TESTUALE del guadagno ×2 di gilda (SPEC.md
@@ -992,24 +997,62 @@ class LevelingCog(CogConGruppi, commands.Cog):
             # deve mai impedire l'XP personale.
             await guild_clan_repo.apply_text_tick(clan.id, message.author.id)
 
-        importo = xp_con_moltiplicatore(
-            impostazioni.text_xp, config.moltiplicatore(id_canale, id_ruoli)
+        await self._assegna_xp_testo(
+            message.author, message.guild, message.channel, config, id_ruoli, id_canale,
+            xp_messaggio(
+                impostazioni, message.content,
+                any((a.content_type or "").startswith("image/") for a in message.attachments),
+            ),
         )
+
+    async def _assegna_xp_testo(
+        self, utente, guild, canale, config: ConfigLivelli, id_ruoli: list[int], id_canale: list[int], base: int
+    ) -> None:
+        """Dà l'XP testuale (stessa attesa per messaggi e comandi) e annuncia il level-up."""
+        impostazioni = config.impostazioni
+        importo = xp_con_moltiplicatore(base, config.moltiplicatore(id_canale, id_ruoli))
         risultato = await leveling_repo.add_text_xp(
-            message.guild.id,
-            message.author.id,
+            guild.id,
+            utente.id,
             amount=importo,
             cooldown_seconds=impostazioni.text_cooldown_seconds,
             max_level=impostazioni.max_level,
+            formula=impostazioni.formula,
         )
         if risultato.granted and risultato.leveled_up:
             await self._annuncia_level_up(
-                message.author, message.guild, message.channel, risultato.new_level,
-                impostazioni, risultato.previous_level,
+                utente, guild, canale, risultato.new_level, impostazioni, risultato.previous_level,
             )
             await self._grant_level_rewards(
-                message.author, message.guild, risultato.new_level, impostazioni.reward_mode, avvisa=True
+                utente, guild, risultato.new_level, impostazioni.reward_mode, avvisa=True
             )
+
+    @commands.Cog.listener()
+    async def on_app_command_completion(self, interaction: discord.Interaction, command) -> None:
+        """LIV-017: un comando slash riuscito dà XP, se il server lo ha acceso (di base no)."""
+        utente, guild = interaction.user, interaction.guild
+        if guild is None or utente is None or getattr(utente, "bot", False):
+            return
+        if interaction.type is not discord.InteractionType.application_command:
+            return
+        try:
+            if not await db.is_module_active_for_guild(guild.id, MODULE_LEVELING):
+                return
+            config = await self._config(guild.id)
+            if not config.impostazioni.xp_comandi:
+                return
+            if await blacklist_repo.is_user_blacklisted(utente.id):
+                return
+            id_ruoli = [r.id for r in getattr(utente, "roles", [])]
+            id_canale = id_canali_per_le_regole(interaction.channel) if interaction.channel else []
+            if config.e_escluso(id_canale, id_ruoli):
+                return
+            # Importo fisso (non conta parole): stessa attesa dell'XP dei messaggi, così non si somma.
+            await self._assegna_xp_testo(
+                utente, guild, interaction.channel, config, id_ruoli, id_canale, config.impostazioni.text_xp
+            )
+        except Exception:
+            logger.warning("XP del comando non assegnati (server %s).", guild.id, exc_info=True)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
@@ -1250,8 +1293,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         posizione = await leveling_repo.get_xp_position(interaction.guild.id, target.id)
         colore_salvato, tema_salvato = await leveling_repo.get_rank_card_prefs(target.id)
 
-        xp_livello_attuale = xp_for_level(totali.level)
-        xp_prossimo_livello = xp_for_level(totali.level + 1)
+        formula = (await self._config(interaction.guild.id)).impostazioni.formula
+        xp_livello_attuale = xp_for_level(totali.level, formula)
+        xp_prossimo_livello = xp_for_level(totali.level + 1, formula)
         progresso = totali.xp_total - xp_livello_attuale
         richiesti = xp_prossimo_livello - xp_livello_attuale
         impostazioni = (await self._config(interaction.guild.id)).impostazioni
@@ -1616,7 +1660,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         totali = await leveling_repo.get_totals(interaction.guild.id, target.id)
         stima = stima_per_livello(
             totali.xp_total, livello, impostazioni.text_xp, impostazioni.text_cooldown_seconds,
-            impostazioni.voice_xp_per_minute,
+            impostazioni.voice_xp_per_minute, impostazioni.formula,
         )
         if stima.xp_mancanti == 0:
             testo = f"{target.mention} ha già gli XP del livello **{livello}**."
