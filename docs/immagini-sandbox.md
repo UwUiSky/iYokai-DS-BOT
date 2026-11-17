@@ -1,4 +1,4 @@
-# Sandbox delle immagini (D61, D62)
+# Sandbox delle immagini e delle conversioni (D61, D62, D74)
 
 Il filtro immagini sospette non apre mai un allegato nel processo del bot. I byte vanno in una
 cartella di quarantena e un processo separato, nuovo per ogni immagine, li analizza con limiti di
@@ -36,6 +36,25 @@ Python senza Pillow il servizio risponde «sandbox non disponibile» e le immagi
 L'unità non usa `MemoryDenyWriteExecute`: provalo sul server e accendilo se Pillow e zxing-cpp
 continuano a funzionare.
 
+## Conversioni di PDF, audio, video e testo (D74)
+
+Lo stesso servizio converte anche gli altri allegati, sempre in un processo nuovo per file
+(`core/conversioni_worker.py`), senza rete, con tetti di memoria, CPU e tempo vero, uscita al massimo di 10 MiB e
+scrittura solo in una cartella temporanea privata che il servizio toglie a ogni lavoro. **Solo il modo A**: senza
+servizio non c'è «sandbox ridotta» per questi parser e l'allegato resta una scheda.
+
+- **Serve `ffmpeg`** (con `ffprobe`, `libx264`, `libopus`, `aac`): `apt install ffmpeg`. Il servizio non ha rete:
+  ffmpeg parte con `-protocol_whitelist file,pipe` e con il formato in entrata scelto dai byte.
+- PDF: ricostruito con `pypdf` (20 MiB in entrata, 200 pagine). Audio: Opus in Ogg, al massimo 10 minuti.
+  Video: H.264 + AAC in MP4, al massimo 2 minuti e 720p, solo per ticket, ModMail e backup. Testo: UTF-8 in `.txt`,
+  256 KiB. Tempi veri massimi: testo 5 s, PDF 25 s, audio 45 s, video 120 s. File in uscita sotto 9,5 MiB.
+- Per ogni server c'è un tetto di tempo-sandbox al giorno (impostazione `sandbox_secondi_giorno`, di base 600
+  secondi, 0 = nessuna conversione): oltre, resta la scheda.
+- Il video da 2 minuti a 720p può richiedere fino a 2 minuti di una CPU: se i video vengono scartati per il
+  tempo, il servizio ha troppo poca CPU (`CPUQuota` nell'unità).
+- Dopo l'aggiornamento: `systemctl daemon-reload && systemctl restart iyokai-sandbox`, poi guarda
+  `journalctl -u iyokai-sandbox` (un filtro di chiamate di sistema troppo stretto per ffmpeg si vede lì).
+
 ## Cosa resta sul disco
 
 Un'immagine pulita si cancella subito dopo l'analisi. Un'immagine sospetta o malevola resta 72 ore,
@@ -51,4 +70,5 @@ L'owner riceve al massimo un avviso ogni 10 minuti.
 
 ## Aggiornamenti
 
-Pillow e zxing-cpp (versione fissa in `requirements.txt`) si aggiornano subito alle patch di sicurezza.
+Pillow, pillow-heif, pypdf, zxing-cpp (versioni fisse in `requirements.txt`) e `ffmpeg` di sistema si aggiornano subito alle
+patch di sicurezza.

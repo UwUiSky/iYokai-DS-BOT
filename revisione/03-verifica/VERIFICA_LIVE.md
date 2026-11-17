@@ -1633,13 +1633,24 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - ModMail: un utente scrive in DM con un `.exe` allegato: nell'inoltro staff il nome compare con «⚠️» e senza link; una foto vera arriva come PNG rifatto (dalla parte 2a, senza link).
 
 ## giro r160 parte 2a — formati in più e link all'originale tolti (D74, #160)
-- Invia una foto `.bmp`, una `.tiff`, una `.ico` e una `.avif` vere in un canale con il log dei messaggi acceso e cancellale: nel log ci sono PNG rifatti (nome `.png`), mai l'originale. Un `.heic` vero: solo scheda.
+- Invia una foto `.bmp`, una `.tiff`, una `.ico` e una `.avif` vere in un canale con il log dei messaggi acceso e cancellale: nel log ci sono PNG rifatti (nome `.png`), mai l'originale. Un `.heic` vero: dalla parte 2b e' un PNG rifatto come gli altri.
 - Una `.tiff` con centinaia di pagine e un `.ico` rotto: nessun errore del bot, nessuna copia (scheda o avviso).
 - ModMail: scrivi in DM con una foto e un PDF: nell'inoltro staff la foto è un PNG nuovo (immagine dell'embed), il PDF è una riga di scheda, nessun link `cdn.discordapp.com`.
 - Starboard: un messaggio con foto e PDF che raggiunge la soglia: in bacheca la foto è un PNG nuovo, il PDF una riga di scheda.
 - Cita un messaggio con foto incollando il suo link: nella risposta l'immagine è la copia rifatta.
 - Telefono (canali per adulti): un allegato esce come riga «📎 nome (tipo, peso)», mai come link.
 - Ricarica una chat salvata dopo che i link sono scaduti: gli allegati compaiono come schede, nessun link.
+
+## giro r160 parte 2b — conversioni di PDF, audio, video e testo (D74, #160)
+- **Prima sul server:** `apt install ffmpeg`, aggiorna `pip install -r requirements.txt` (pypdf, pillow-heif), copia l'unita' aggiornata (`deploy/systemd/iyokai-sandbox.service`), `systemctl daemon-reload && systemctl restart iyokai-sandbox`, poi riavvia il bot. Guarda `journalctl -u iyokai-sandbox -f` durante le prove: un `SIGSYS` o «Operation not permitted» di ffmpeg vuol dire che il filtro di chiamate (`SystemCallFilter`) e' troppo stretto.
+- PDF: un PDF con JavaScript e un file incorporato (es. fatto con LibreOffice) in un ticket: nel canale dei log arriva un PDF nuovo che si apre, senza script, senza allegato interno; il PDF cifrato o rotto: solo la riga di scheda. Un PDF oltre 200 pagine: solo scheda.
+- Audio: un `.mp3`/`.wav` in un ticket e in ModMail: arriva un `.ogg` che si ascolta (Opus). Un audio di oltre 10 minuti: `.ogg` di 10 minuti con `-tagliato` nel nome. Nei metadati del file nuovo niente titolo/artista (`ffprobe`).
+- Video: un `.mp4` da 1080p in un ticket, in ModMail e in un backup: arriva un `.mp4` a 720p al massimo, con audio, che si guarda. Un video di oltre 2 minuti: solo i primi 2 con `-tagliato`. Misura quanto ci mette un video da 2 minuti (se viene scartato, `journalctl` dice «ucciso_tempo»: serve piu' CPU nell'unita'). Un video nel log dei messaggi cancellati: solo la scheda, mai il file.
+- Playlist travestita: un file di testo `#EXTM3U` rinominato `.mp4` o `.mp3`: avviso di file travestito, nessuna copia, nessun errore.
+- Log dei messaggi: cancella un messaggio con un PDF, un `.wav` e un `.txt`: nel log ci sono i tre link (se il sotto-dominio e' attivo) e il download da' PDF pulito, `.ogg` e `.txt`; i file sul disco sono solo le copie.
+- Tempo al giorno: `sandbox_secondi_giorno` (pannello, scheda Filtri) a 1: dopo la prima conversione i file successivi restano scheda. A 0: nessuna conversione.
+- Servizio fermo (`systemctl stop iyokai-sandbox`): PDF, audio, video e testo restano scheda e il bot non da' errori.
+- HEIC: una foto `.heic` di un iPhone in un canale con il log: PNG rifatto.
 
 ## Voce di Yokai nei ticket (#142, passo 2)
 - Con motore vocale installato e `/admin-ai voce imposta attiva:sì`: apri un ticket da un pannello. Sotto il benvenuto arriva un vero vocale (forma d'onda) con il tuo nome, tono scherzoso anche se il server ha `piccante`, e sotto i bottoni «Trascrivi» e «Nella mia lingua».
