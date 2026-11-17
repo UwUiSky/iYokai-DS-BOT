@@ -227,3 +227,130 @@ async def test_RUO_087_voce_togli_tutti_i_ruoli_nella_tendina(clean_db, monkeypa
     tendina._values = [VALORE_AZZERA]
     await s.cog._handle_select(i, s.menu_id, tendina)
     assert _ruoli_di(u.remove_roles.await_args) == {1000, 1001}
+
+
+# ------------------------------------------------- coppie in un colpo (RUO-048, 049)
+@pytest.mark.asyncio
+async def test_RUO_049_aggiungi_molti_su_un_menu_esistente(clean_db, monkeypatch):
+    s = _Scena(clean_db, monkeypatch)
+    await s.menu(opzioni=())
+    s.guild.roles = list(s.ruoli.values())
+    i = s.interazione(s.utente())
+    i.user.top_role = fake_role_alto()
+    await s.cog.add_many_cmd.callback(s.cog, i, s.menu_id, f"🎮 <@&1000>; 🎨 R1001")
+    assert [o.role_id for o in await s.repo.get_options(s.menu_id)] == [1000, 1001]
+    assert "Aggiunte 2" in i.followup.send.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_RUO_049_se_una_coppia_non_va_non_si_aggiunge_niente(clean_db, monkeypatch):
+    s = _Scena(clean_db, monkeypatch)
+    await s.menu(opzioni=())
+    s.guild.roles = list(s.ruoli.values())
+    i = s.interazione(s.utente())
+    i.user.top_role = fake_role_alto()
+    await s.cog.add_many_cmd.callback(s.cog, i, s.menu_id, "🎮 <@&1000>; 🎨 Inventato")
+    assert await s.repo.get_options(s.menu_id) == []
+    assert "Non trovo" in i.followup.send.await_args.args[0]
+    await s.cog.add_many_cmd.callback(s.cog, i, s.menu_id, "<@&1000>")  # bottoni: serve l'emoji
+    assert await s.repo.get_options(s.menu_id) == [] and "emoji" in i.followup.send.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_RUO_048_crea_con_le_coppie_pubblica_subito(clean_db, monkeypatch):
+    import discord
+
+    s = _Scena(clean_db, monkeypatch)
+    s.guild.roles = list(s.ruoli.values())
+    i = s.interazione(s.utente())
+    i.user.top_role = fake_role_alto()
+    modo = discord.app_commands.Choice(name="Button", value="button")
+    s.canale.__class__ = discord.TextChannel  # il comando vuole un canale di testo vero
+    await s.cog.create_cmd.callback(s.cog, i, "Titolo", modo, channel=s.canale, coppie="🎮 <@&1000>; 🎨 <@&1001>")
+    menu = (await s.repo.list_menus_for_guild(1))[0]
+    assert len(await s.repo.get_options(menu.id)) == 2
+    s.canale.send.assert_awaited()  # il messaggio è uscito
+
+
+def fake_role_alto():
+    from tests.support.discord_fakes import fake_role
+
+    return fake_role(role_id=5000, name="Admin", position=45)
+
+
+# ------------------------------------------------- RUO-072..075: messaggi e reazioni
+@pytest.mark.asyncio
+async def test_RUO_072_RUO_073_il_menu_si_aggancia_a_un_messaggio_di_altri(clean_db, monkeypatch):
+    import discord
+
+    import cogs.utility.role_menus as rm
+
+    monkeypatch.setattr(rm, "PAUSA_REAZIONI_SECONDI", 0)
+    s = _Scena(clean_db, monkeypatch, mode="reaction")
+    await s.menu()
+    s.canale.__class__ = discord.TextChannel
+    altrui = s.messaggio
+    altrui.id = 4242
+    altrui.author = MagicMockId(1)  # non è il bot (999)
+    i = s.interazione(s.utente())
+    await s.cog.move_cmd.callback(s.cog, i, s.menu_id, "4242", s.canale)
+    menu = await s.repo.get_menu(s.menu_id)
+    assert (menu.message_id, menu.external) == (4242, True)
+    altrui.edit.assert_not_awaited()  # il messaggio di altri non si tocca
+    assert altrui.add_reaction.await_count == 3
+
+
+@pytest.mark.asyncio
+async def test_RUO_072_eliminare_un_menu_esterno_non_cancella_il_messaggio(clean_db, monkeypatch):
+    import discord
+
+    s = _Scena(clean_db, monkeypatch, mode="reaction")
+    await s.menu()
+    await s.repo.update_menu(s.menu_id, message_id=4242, external=True)
+    s.canale.__class__ = discord.TextChannel
+    i = s.interazione(s.utente())
+    await s.cog.delete_cmd.callback(s.cog, i, menu_id=s.menu_id)
+    s.messaggio.delete.assert_not_awaited()
+    assert await s.repo.get_menu(s.menu_id) is None
+
+
+@pytest.mark.asyncio
+async def test_RUO_074_ripara_rimette_le_reazioni_mancanti(clean_db, monkeypatch):
+    import discord
+
+    import cogs.utility.role_menus as rm
+
+    monkeypatch.setattr(rm, "PAUSA_REAZIONI_SECONDI", 0)
+    s = _Scena(clean_db, monkeypatch, mode="reaction")
+    await s.menu()
+    await s.repo.set_menu_message(s.menu_id, 555)
+    s.canale.__class__ = discord.TextChannel
+    i = s.interazione(s.utente())
+    await s.cog.repair_cmd.callback(s.cog, i, s.menu_id)
+    assert s.messaggio.add_reaction.await_count >= 1
+    assert "a posto" in i.followup.send.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_RUO_075_emoji_di_un_altro_server_si_accetta_e_la_mette_l_admin(clean_db, monkeypatch):
+    import discord
+
+    s = _Scena(clean_db, monkeypatch, mode="reaction")
+    await s.menu(opzioni=())
+    s.canale.__class__ = discord.TextChannel
+    s.guild.me.guild_permissions = discord.Permissions.all()
+    ammin = s.utente()
+    ammin.top_role = fake_role_alto()
+    i = s.interazione(ammin)
+    estranea = "<:altro:123456789012345678>"
+    await s.cog.add_option_cmd.callback(s.cog, i, s.menu_id, s.ruoli[1000], estranea)
+    assert await s.repo.get_options(s.menu_id) == []  # senza il permesso esplicito si rifiuta
+    await s.cog.add_option_cmd.callback(s.cog, i, s.menu_id, s.ruoli[1000], estranea, emoji_esterna=True)
+    assert [o.emoji for o in await s.repo.get_options(s.menu_id)] == [estranea]
+    s.messaggio.add_reaction.assert_not_awaited()  # il bot non la può mettere
+    assert "metti tu la reazione" in i.followup.send.await_args.args[0]
+
+
+class MagicMockId:
+    def __init__(self, id_):
+        self.id = id_

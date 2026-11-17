@@ -62,6 +62,8 @@ from core.role_menu_logic import (
     risposta_personale,
     MAX_RISPOSTA,
     STILI_BOTTONE,
+    analizza_coppie,
+    MAX_TESTO_COPPIE,
     VALORE_AZZERA,
     sposta_ruolo,
     decidi_selezione,
@@ -133,6 +135,7 @@ class MenuNonPubblicabile(Exception):
 
 
 PAUSA_SVUOTA_SECONDI = 0.5
+PAUSA_REAZIONI_SECONDI = 0.25  # RUO-074: una richiesta per reazione, con una pausa
 _SG_RUOLI = ("ruoli", "Ruoli: ruoli-premio per livello e menu di ruoli")
 
 
@@ -279,6 +282,8 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                     "Non riesco a leggere il messaggio del menu (permessi mancanti)."
                 ) from errore
         nuovo = message is None
+        if nuovo and menu.external:  # RUO-072: un messaggio di altri non si ripubblica
+            raise MenuNonPubblicabile("Il messaggio a cui è agganciato il menu non esiste più.")
         if nuovo:
             try:
                 message = await channel.send(embed=embed, view=view)
@@ -300,15 +305,19 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                 esistenti = {str(r.emoji) for r in message.reactions}
                 for opt in options:
                     if opt.emoji and opt.emoji not in esistenti:
+                        idp = id_emoji_personalizzata(opt.emoji)
+                        if idp is not None and self.bot.get_emoji(idp) is None:
+                            continue  # RUO-075: emoji di un server dove il bot non c'è, la mette l'admin a mano
                         await message.add_reaction(opt.emoji)
                         reazioni_aggiunte.append(opt.emoji)
+                        await asyncio.sleep(PAUSA_REAZIONI_SECONDI)
             except discord.HTTPException as errore:
                 await self._annulla_pubblicazione(message, nuovo, reazioni_aggiunte)
                 raise MenuNonPubblicabile(
                     "Discord non accetta una delle emoji del menu come reazione."
                 ) from errore
 
-        if not nuovo:
+        if not nuovo and not menu.external:
             try:
                 await message.edit(embed=embed, view=view)
             except discord.HTTPException as errore:
@@ -328,6 +337,8 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             # Le reazioni dei ruoli tolti dal menu non servono più.
             tenute = {opt.emoji for opt in options if opt.emoji}
             for reazione in list(message.reactions):
+                if menu.external and not reazione.me:
+                    continue  # su un messaggio di altri si tolgono solo le reazioni messe dal bot
                 if str(reazione.emoji) not in tenute:
                     try:
                         await message.clear_reaction(reazione.emoji)
@@ -691,6 +702,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         comportamento: str = COMPORTAMENTO_DI_BASE,
         durata_minuti: app_commands.Range[int, 1, MAX_TEMP_SECONDI // 60] | None = None,
         min_ruoli: app_commands.Range[int, 1, 25] | None = None,
+        coppie: app_commands.Range[str, 1, MAX_TESTO_COPPIE] | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -729,6 +741,13 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         )
         if min_ruoli:
             await role_menu_repo.update_menu(menu_id, min_roles=min_ruoli)
+        if coppie is not None and isinstance(interaction.user, discord.Member):  # RUO-048
+            await interaction.response.defer(ephemeral=True)
+            esito = await self._aggiungi_coppie(guild, interaction.user, menu_id, coppie)
+            await interaction.followup.send(
+                f"Menu creato (ID {menu_id}). {esito}", ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
+            )
+            return
 
         await interaction.response.send_message(
             await testo_per(interaction, "rolemenus_role_menu_creato_id_modalita", menu_id=menu_id, name=mode.name),
@@ -749,6 +768,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         max_membri="Posti limitati: quanti membri al massimo possono avere il ruolo da questo menu",
         colore="Colore del bottone",
         descrizione="Riga sotto l'opzione nella tendina (massimo 100 caratteri)",
+        emoji_esterna="Emoji di un server dove il bot non c'è (menu a reazioni): la reazione la metti tu",
     )
     @app_commands.choices(colore=[app_commands.Choice(name=n, value=n) for n in STILI_BOTTONE])
     async def add_option_cmd(
@@ -761,6 +781,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         max_membri: app_commands.Range[int, 1, 1_000_000] | None = None,
         colore: str | None = None,
         descrizione: app_commands.Range[str, 0, 100] = "",
+        emoji_esterna: bool = False,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -809,7 +830,8 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                 )
                 return
             id_personalizzata = id_emoji_personalizzata(emoji)
-            if id_personalizzata is not None and self.bot.get_emoji(id_personalizzata) is None:
+            esterna_ok = emoji_esterna and menu.mode == "reaction"  # RUO-075: la reazione la mette l'admin
+            if id_personalizzata is not None and self.bot.get_emoji(id_personalizzata) is None and not esterna_ok:
                 await interaction.response.send_message(
                     await testo_per(interaction, "rolemenus_non_vedo_quell_emoji_personalizzata"),
                     ephemeral=True,
@@ -851,8 +873,83 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                 return
             await role_menu_repo.add_option(menu_id, role.id, emoji, label, max_membri, stile, descrizione)
 
+        testo_finale = await testo_per(interaction, "rolemenus_opzione_aggiunta", mention=role.mention)
+        if emoji_esterna and menu.mode == "reaction" and emoji and id_emoji_personalizzata(emoji) is not None \
+                and self.bot.get_emoji(id_emoji_personalizzata(emoji)) is None:
+            testo_finale += " Il bot non vede quell'emoji: metti tu la reazione sul messaggio del menu."
+        await interaction.followup.send(testo_finale, ephemeral=True)
+
+    async def _aggiungi_coppie(
+        self, guild: discord.Guild, attore: discord.Member, menu_id: int, testo: str
+    ) -> str:
+        """
+        RUO-048, RUO-049: aggiunge a un menu tutte le coppie «emoji ruolo» in un colpo. Si controlla tutto prima
+        (ruoli, emoji, posti), si pubblica una volta sola e solo dopo si salva: o passano tutte o nessuna.
+        Torna il testo da mostrare a chi ha lanciato il comando.
+        """
+        coppie, errore = analizza_coppie(
+            testo, lambda nome: next((r.id for r in guild.roles if r.name.lower() == nome.lower()), None)
+        )
+        if errore is not None:
+            return errore
+        async with self._blocco_menu(menu_id):
+            menu = await role_menu_repo.get_menu(menu_id)
+            if menu is None or menu.guild_id != guild.id:
+                return "Nessun menu con quell'ID."
+            esistenti = await role_menu_repo.get_options(menu_id)
+            nuovi_ruoli = {rid for _, rid in coppie}
+            tenuti = [o for o in esistenti if o.role_id not in nuovi_ruoli]
+            if not can_add_option(len(tenuti) + len(coppie) - 1 + int(menu.reset_option), menu.mode):
+                return f"Il menu non ha posto per {len(coppie)} opzioni in più."
+            nuove = []
+            for posto, (emoji, rid) in enumerate(coppie, start=len(tenuti)):
+                ruolo = guild.get_role(rid)
+                if ruolo is None:
+                    return "Uno dei ruoli non esiste più."
+                rifiuto = check_role_assignable(guild, ruolo, attore, self_service=True)
+                if rifiuto is not None:
+                    return f"{ruolo.name[:40]}: {rifiuto}"
+                if menu.mode in ("reaction", "button") and emoji is None:
+                    return f"Per «{ruolo.name[:40]}» serve un'emoji."
+                if emoji is not None:
+                    personalizzata = id_emoji_personalizzata(emoji)
+                    if personalizzata is not None and self.bot.get_emoji(personalizzata) is None:
+                        return f"Non vedo l'emoji personalizzata di «{ruolo.name[:40]}»: il bot deve essere nel suo server."
+                nuove.append(
+                    RoleMenuOption(
+                        id=0, menu_id=menu_id, role_id=rid, emoji=emoji, label=ruolo.name[:80],
+                        position=posto, button_style="secondary", description="",
+                    )
+                )
+            try:
+                await self._pubblica_menu(guild, menu, tenuti + nuove)
+            except MenuNonPubblicabile as errore_pubblicazione:
+                return f"Nessuna opzione aggiunta. {errore_pubblicazione}"
+            for o in nuove:
+                await role_menu_repo.add_option(menu_id, o.role_id, o.emoji, o.label)
+        return f"Aggiunte {len(nuove)} opzioni."
+
+    @comando_di_gruppo(
+        "admin-ruoli",
+        nome="aggiungi-molti",
+        descrizione="Aggiungi a un menu più coppie emoji-ruolo in un colpo solo.",
+        sottogruppo=SOTTOGRUPPI["admin-ruoli menu"],
+    )
+    @app_commands.describe(
+        menu_id="ID del menu",
+        coppie="Coppie «emoji ruolo» separate da punto e virgola, per esempio: 🎮 @Gamer; 🎨 @Artista",
+    )
+    async def add_many_cmd(
+        self, interaction: discord.Interaction, menu_id: int, coppie: app_commands.Range[str, 1, MAX_TESTO_COPPIE]
+    ) -> None:
+        """RUO-049: tutte le coppie in un comando su un menu che c'è già."""
+        guild = interaction.guild
+        if guild is None or not isinstance(interaction.user, discord.Member):
+            return
+        await interaction.response.defer(ephemeral=True)
         await interaction.followup.send(
-            await testo_per(interaction, "rolemenus_opzione_aggiunta", mention=role.mention), ephemeral=True
+            await self._aggiungi_coppie(guild, interaction.user, menu_id, coppie), ephemeral=True,
+            allowed_mentions=discord.AllowedMentions.none(),
         )
 
     @comando_di_gruppo(
@@ -927,6 +1024,10 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         pubblicato); False se Discord non ha permesso di cancellarlo.
         """
         messaggio_sparito = True
+        if menu.external and menu.message_id is not None:  # RUO-072: il messaggio non è del bot, non si cancella
+            await self._stacca_messaggio(guild, menu)
+            await role_menu_repo.delete_menu(menu.id)
+            return True
         if menu.message_id is not None:
             channel = guild.get_channel(menu.channel_id)
             if isinstance(channel, discord.TextChannel):
@@ -1151,6 +1252,11 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             return
         try:
             message = await channel.fetch_message(menu.message_id)
+            if menu.external:  # messaggio di altri: si tolgono solo le reazioni del bot
+                for reazione in list(message.reactions):
+                    if reazione.me:
+                        await message.remove_reaction(reazione.emoji, guild.me)
+                return
             await message.edit(view=None)
             if menu.mode == "reaction":
                 await message.clear_reactions()
@@ -1280,6 +1386,120 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(
             f"Menu eliminati: {eliminati + rimasti}. Messaggi non cancellati: {rimasti}.", ephemeral=True
         )
+
+    @comando_di_gruppo(
+        "admin-ruoli",
+        nome="sposta",
+        descrizione="Aggancia o sposta un menu a reazioni su un messaggio già scritto.",
+        sottogruppo=SOTTOGRUPPI["admin-ruoli menu"],
+    )
+    @app_commands.describe(
+        menu_id="ID del menu a reazioni",
+        messaggio_id="ID del messaggio (tasto destro > Copia ID messaggio)",
+        canale="Il canale del messaggio (se non lo indichi, quello del menu)",
+    )
+    async def move_cmd(
+        self,
+        interaction: discord.Interaction,
+        menu_id: int,
+        messaggio_id: app_commands.Range[str, 15, 22],
+        canale: discord.TextChannel | None = None,
+    ) -> None:
+        """RUO-072, RUO-073: il menu a reazioni passa a un altro messaggio; se è di altri il bot non lo modifica."""
+        guild = interaction.guild
+        if guild is None or not messaggio_id.isdigit():
+            if guild is not None:
+                await interaction.response.send_message("L'ID del messaggio sono solo cifre.", ephemeral=True)
+            return
+        menu = await role_menu_repo.get_menu(menu_id)
+        if menu is None or menu.guild_id != guild.id:
+            await interaction.response.send_message(
+                await testo_per(interaction, "rolemenus_nessun_role_menu_trovato_con"), ephemeral=True
+            )
+            return
+        if menu.mode != "reaction":
+            await interaction.response.send_message(
+                "Bottoni e tendina vivono solo sui messaggi del bot: si agganciano solo i menu a reazioni.", ephemeral=True
+            )
+            return
+        destinazione = canale or guild.get_channel(menu.channel_id)
+        if not isinstance(destinazione, discord.TextChannel):
+            await interaction.response.send_message(
+                await testo_per(interaction, "rolemenus_scegli_un_canale_di_testo"), ephemeral=True
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        async with self._blocco_menu(menu_id):
+            menu = await role_menu_repo.get_menu(menu_id)
+            if menu is None:
+                await interaction.followup.send(await testo_per(interaction, "rolemenus_questo_menu_non_esiste_piu"), ephemeral=True)
+                return
+            try:
+                nuovo = await destinazione.fetch_message(int(messaggio_id))
+            except discord.HTTPException:
+                await interaction.followup.send("Non trovo quel messaggio in quel canale.", ephemeral=True)
+                return
+            if await role_menu_repo.get_menu_by_message(guild.id, nuovo.id) is not None:
+                await interaction.followup.send("Quel messaggio ha già un menu.", ephemeral=True)
+                return
+            opzioni = await role_menu_repo.get_options(menu_id)
+            vecchio = menu
+            esterno = nuovo.author.id != guild.me.id
+            spostato = dataclasses.replace(
+                menu, channel_id=destinazione.id, message_id=nuovo.id, external=esterno
+            )
+            try:
+                await self._pubblica_menu(guild, spostato, opzioni)
+            except MenuNonPubblicabile as errore:
+                await interaction.followup.send(f"Il menu non è stato spostato. {errore}", ephemeral=True)
+                return
+            await role_menu_repo.update_menu(menu_id, channel_id=destinazione.id, message_id=nuovo.id, external=esterno)
+            if vecchio.message_id != nuovo.id:  # il vecchio messaggio perde le reazioni del bot (o si cancella se era suo)
+                await self._stacca_o_cancella(guild, vecchio)
+        await interaction.followup.send("Menu spostato.", ephemeral=True)
+
+    async def _stacca_o_cancella(self, guild: discord.Guild, menu: RoleMenu) -> None:
+        """Il messaggio vecchio di un menu spostato: se era del bot si cancella, se di altri si tolgono solo le reazioni del bot."""
+        channel = guild.get_channel(menu.channel_id)
+        if menu.message_id is None or not isinstance(channel, discord.TextChannel):
+            return
+        if menu.external:
+            await self._stacca_messaggio(guild, menu)
+            return
+        try:
+            await (await channel.fetch_message(menu.message_id)).delete()
+        except discord.HTTPException:
+            logger.info("Vecchio messaggio del menu %s non cancellato nel server %s.", menu.id, guild.id)
+
+    @comando_di_gruppo(
+        "admin-ruoli",
+        nome="ripara",
+        descrizione="Rimetti le reazioni del bot su un menu a reazioni se qualcuno le ha tolte.",
+        sottogruppo=SOTTOGRUPPI["admin-ruoli menu"],
+    )
+    @app_commands.describe(menu_id="ID del menu a reazioni")
+    async def repair_cmd(self, interaction: discord.Interaction, menu_id: int) -> None:
+        """RUO-074: una richiesta per reazione, con una pausa; una sola riparazione alla volta per menu."""
+        guild = interaction.guild
+        if guild is None:
+            return
+        menu = await role_menu_repo.get_menu(menu_id)
+        if menu is None or menu.guild_id != guild.id:
+            await interaction.response.send_message(
+                await testo_per(interaction, "rolemenus_nessun_role_menu_trovato_con"), ephemeral=True
+            )
+            return
+        if menu.mode != "reaction":
+            await interaction.response.send_message("Serve solo ai menu a reazioni.", ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        async with self._blocco_menu(menu_id):
+            try:
+                await self._pubblica_menu(guild, menu, await role_menu_repo.get_options(menu_id))
+            except MenuNonPubblicabile as errore:
+                await interaction.followup.send(f"Non riesco a ripararlo. {errore}", ephemeral=True)
+                return
+        await interaction.followup.send("Reazioni rimesse a posto.", ephemeral=True)
 
     @comando_di_gruppo(
         "admin-ruoli",

@@ -132,3 +132,25 @@ def test_RUO_065_posti_limitati_per_opzione():
     assert posti_finiti(membri_con_ruolo=5, max_membri=5) is True
     assert posti_finiti(membri_con_ruolo=4, max_membri=5) is False
     assert posti_finiti(membri_con_ruolo=99, max_membri=None) is False
+
+
+# ------------------------------------------------- RUO-048, RUO-049: coppie emoji-ruolo
+def test_RUO_048_049_coppie_con_menzioni_id_e_nomi():
+    from core.role_menu_logic import analizza_coppie
+
+    nomi = {"Gamer": 1111111111111111111}.get
+    coppie, errore = analizza_coppie("🎮 <@&2222222222222222222>; 🎨 Gamer\n3333333333333333333", nomi)
+    assert errore is None
+    assert coppie == [("🎮", 2222222222222222222), ("🎨", 1111111111111111111), (None, 3333333333333333333)]
+
+
+def test_RUO_048_049_coppie_storte_danno_un_errore():
+    from core.role_menu_logic import MAX_COPPIE, analizza_coppie
+
+    nessuno = lambda nome: None  # noqa: E731
+    assert analizza_coppie("", nessuno)[1]
+    assert "Non trovo" in analizza_coppie("🎮 Inventato", nessuno)[1]
+    assert "due volte" in analizza_coppie("<@&2222222222222222222>; 🎮 <@&2222222222222222222>", nessuno)[1]
+    troppe = ";".join(f"<@&{10**17 + n}>" for n in range(MAX_COPPIE + 1))
+    assert "Al massimo" in analizza_coppie(troppe, nessuno)[1]
+    assert "troppo lungo" in analizza_coppie("x" * 2000, nessuno)[1]

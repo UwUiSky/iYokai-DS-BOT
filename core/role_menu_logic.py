@@ -287,3 +287,47 @@ def sposta_ruolo(ruoli: list[int], ruolo: int, posizione: int) -> list[int]:
     altri = [r for r in ruoli if r != ruolo]
     posto = max(0, min(posizione - 1, len(altri)))
     return altri[:posto] + [ruolo] + altri[posto:]
+
+
+MAX_COPPIE = 25
+MAX_TESTO_COPPIE = 1500
+_RUOLO_MENZIONE = re.compile(r"^<@&(\d{1,22})>$")
+
+
+def analizza_coppie(testo: str, trova_per_nome) -> tuple[list[tuple[str | None, int]], str | None]:
+    """
+    RUO-048, RUO-049: «🎮 @Gamer; 🎨 @Artista» -> [(emoji, id del ruolo), ...] e l'eventuale errore (in italiano).
+    Le coppie sono separate da `;` o da un a-capo; in ognuna c'è un'emoji (facoltativa per le tendine)
+    e il ruolo: una menzione, un ID o il nome esatto (`trova_per_nome(nome) -> id | None`).
+    """
+    if len(testo) > MAX_TESTO_COPPIE:
+        return [], "Il testo delle coppie è troppo lungo."
+    coppie: list[tuple[str | None, int]] = []
+    viste: set[int] = set()
+    for pezzo in re.split(r"[;\n]", testo):
+        pezzo = pezzo.strip()
+        if not pezzo:
+            continue
+        parole = pezzo.split()
+        emoji = None
+        if len(parole) > 1 and valida_emoji(parole[0]):
+            emoji, parole = parole[0], parole[1:]
+        riferimento = " ".join(parole)
+        menzione = _RUOLO_MENZIONE.match(riferimento)
+        if menzione:
+            ruolo_id = int(menzione.group(1))
+        elif riferimento.isdigit() and 15 <= len(riferimento) <= 22:
+            ruolo_id = int(riferimento)
+        else:
+            ruolo_id = trova_per_nome(riferimento.lstrip("@"))
+        if ruolo_id is None:
+            return [], f"Non trovo il ruolo «{riferimento[:40]}»."
+        if ruolo_id in viste:
+            return [], f"Il ruolo «{riferimento[:40]}» è scritto due volte."
+        viste.add(ruolo_id)
+        coppie.append((emoji, ruolo_id))
+    if not coppie:
+        return [], "Scrivi almeno una coppia, per esempio «🎮 @Gamer; 🎨 @Artista»."
+    if len(coppie) > MAX_COPPIE:
+        return [], f"Al massimo {MAX_COPPIE} coppie."
+    return coppie, None

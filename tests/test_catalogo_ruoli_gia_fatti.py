@@ -167,3 +167,12 @@ def test_RUO_078_il_menu_si_pubblica_prima_e_si_salva_dopo():
 
     sorgente = inspect.getsource(modulo.RoleMenuCog.add_option_cmd.callback)
     assert sorgente.index("_pubblica_menu") < sorgente.index("role_menu_repo.add_option")
+
+
+def test_RUO_051_modifica_titolo_e_descrizione_di_un_menu_pubblicato():
+    import inspect
+
+    import cogs.utility.role_menus as modulo
+
+    parametri = inspect.signature(modulo.RoleMenuCog.edit_cmd.callback).parameters
+    assert "titolo" in parametri and "descrizione" in parametri
