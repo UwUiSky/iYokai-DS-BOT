@@ -1356,7 +1356,10 @@
   "admin-livelli guadagno vocale": "Voice XP: minimum people in the channel and anti-farm check.",
   "admin-livelli guadagno reazioni": "XP for reactions added and received (off by default).",
   "admin-livelli classifica-ruoli": "A role for the XP leaderboard's first place, top 3 or top 10 (updated hourly).",
-  "utility privacy statistiche": "Show your name in the statistics leaderboards, or stay anonymous."
+  "utility privacy statistiche": "Show your name in the statistics leaderboards, or stay anonymous.",
+  "admin-moduli contatori modifica": "Changes a counter's label or goal.",
+  "admin-moduli contatori azzera": "Stops updating all counters (the channels stay).",
+  "admin-moduli contatori categoria": "Creates a category with the most used counters."
  },
  "parametri": {},
  "menu": {
