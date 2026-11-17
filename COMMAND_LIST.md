@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-16 03:54 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-17 19:29 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 840 comandi in 49 categorie.**
+**Totale: 860 comandi in 49 categorie.**
 
 ## Admin: AI
 
@@ -490,6 +490,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-16 03:
 
 - **`/Apri ticket`** — Menu «App» (tasto destro)
 - **`/Orari nel mio fuso`** — Menu «App» (tasto destro)
+- **`/Richiedi copia sicura`** — Menu «App» (tasto destro)
 - **`/Riestrai giveaway`** — Menu «App» (tasto destro)
 - **`/Salva citazione`** — Menu «App» (tasto destro)
 - **`/Scheda moderazione`** — Menu «App» (tasto destro)
@@ -815,6 +816,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-16 03:
 - **`/music clear-queue`** — Svuota la coda, senza toccare la traccia in riproduzione.
 - **`/music coda cerca`** — Cerca un brano nella coda per titolo.
 - **`/music coda pulisci`** — Toglie dalla coda i brani di chi non e' piu' nel canale vocale.
+- **`/music coda ripristina`** — Rimette in coda i brani salvati del tuo canale vocale (dopo un riavvio).
 - **`/music coda salta`** — Toglie dalla coda un intervallo di posizioni e/o i brani di un utente.
 - **`/music disconnect`** — Disconnette il music bot dal canale vocale.
 - **`/music history`** — Mostra gli ultimi brani già suonati.
@@ -826,12 +828,24 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-16 03:
 - **`/music nowplaying`** — Mostra la traccia in riproduzione con una barra di avanzamento.
 - **`/music pause`** — Mette in pausa la riproduzione.
 - **`/music play`** — Riproduce una canzone o playlist.
+- **`/music playlist aggiorna`** — Rilegge il link da cui hai salvato una playlist.
+- **`/music playlist aggiungi`** — Aggiunge un brano (o un link) a una tua playlist.
 - **`/music playlist carica`** — Mette in coda una tua playlist salvata.
-- **`/music playlist elenco`** — Le tue playlist salvate.
+- **`/music playlist collabora`** — Chi può modificare una tua playlist.
+- **`/music playlist condividi`** — Crea un codice per condividere una tua playlist.
+- **`/music playlist crea`** — Crea una playlist vuota.
+- **`/music playlist elenco`** — Le tue playlist salvate, o i brani di una.
 - **`/music playlist elimina`** — Cancella una tua playlist salvata.
 - **`/music playlist esporta`** — Scarica una tua playlist come file.
 - **`/music playlist importa`** — Salva una playlist da un file esportato.
+- **`/music playlist ricevi`** — Salva una copia di una playlist condivisa con un codice.
+- **`/music playlist rinomina`** — Cambia il nome di una tua playlist.
 - **`/music playlist salva`** — Salva la coda del tuo canale come playlist.
+- **`/music playlist server-carica`** — Mette in coda una playlist del server.
+- **`/music playlist server-elenco`** — Le playlist del server.
+- **`/music playlist server-elimina`** — Cancella una playlist del server.
+- **`/music playlist server-salva`** — Salva la coda come playlist del server.
+- **`/music playlist togli`** — Toglie un brano da una tua playlist.
 - **`/music previous`** — Torna al brano precedente.
 - **`/music queue`** — Mostra la coda di riproduzione.
 - **`/music resume`** — Riprende la riproduzione in pausa.
@@ -875,10 +889,16 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-16 03:
 - **`/owner privacy rifiuta`** — Rifiuta una richiesta di cancellazione e dì all'utente perché.
 - **`/owner radio add-local`** — Aggiunge un file dalla cartella inediti alla playlist della radio.
 - **`/owner radio add-track`** — Aggiunge una traccia alla playlist della radio.
+- **`/owner radio blocca-parola`** — Parole vietate nei titoli in tutto il bot.
 - **`/owner radio fonti`** — Mostra lo stato delle fonti musicali (accesa, chiavi sì/no, pausa).
 - **`/owner radio list-tracks`** — Mostra la playlist della radio.
+- **`/owner radio log`** — Scarica la coda del log del Lavalink locale (ripulita dalle chiavi).
+- **`/owner radio nodi`** — Mostra i nodi Lavalink di ogni bot musicale (senza password).
 - **`/owner radio remove-track`** — Rimuove una traccia dalla playlist della radio.
+- **`/owner radio riconnetti`** — Riprova subito a collegare i nodi Lavalink non collegati.
+- **`/owner radio sorgente`** — Accende o spegne una fonte musicale a bot acceso.
 - **`/owner radio start`** — Entra nella radio condivisa, nel punto in cui si trova ora.
+- **`/owner radio stato`** — Quanti player musicali stanno suonando ora.
 - **`/owner radio stop`** — Esce dalla radio su questo server.
 - **`/owner system announce`** — Manda un annuncio a tutti i server.
 - **`/owner system eval`** — Esegue codice Python (con conferma).

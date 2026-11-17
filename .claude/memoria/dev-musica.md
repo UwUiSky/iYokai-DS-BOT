@@ -1,19 +1,18 @@
 # Memoria di dev-musica
 
 ## Aggiornata
-16/11/2026 · ramo `feat/r3mus-coda` · nessuna migrazione (B1, B2, B3 senza tabelle)
+17/11/2026 · ramo `feat/r4mus` · migrazioni 0620, 0621, 0622
 
 ## In corso
+- Giro r4mus FATTO (non unito): annunci/copertina, playlist (crea/aggiungi/togli/rinomina/da link/aggiorna/codice/server/collabora/preferiti), owner (`/owner radio nodi|stato|riconnetti|log|sorgente|blocca-parola`), riserva, «Oggi», coda salvata.
+  Prossimo: MUS-010, 014, 019, 065 (vedi D85 «Restano»); eventi in `cogs/music/eventi.py`, owner in `cogs/music/owner.py`.
 - #126 B1, B2, B3 FATTI (B3 «coda»: `/music coda cerca|salta|pulisci`, impostazione `music_queue_mode` normale/equa con
   `/admin-musica impostazioni coda:`, `/music shuffle resta:` con `player.mescola_fisso` in memoria). Aperte B2: `music_sources_off`,
   `music_country`, solo-audio (016), avviso scadenza token Apple a 14 giorni, scelte di `fonte` fisse (6) non filtrate per owner.
   Prossimo: prove live (VERIFICA_LIVE «Musica — coda»); resto del catalogo #126 non ancora fatto (guardare SPEC 9.x `[ ]`).
-- Giro r10 (musica + alert, agente r10musa): SPEC 9.x e 10.x tutte `[x]`; fatti nonstop 24/7, ALR-030/031/032/033/036, MUS-054/062/064.
-  Prossimo: ALR-037/038/040 (sposta, ferma tutti, controllo a mano) servono sotto-comandi in /moduli alert (chiedere guardiano-limiti); MUS-061 stato del bot, MUS-053.
-- Giro r6 CHIUSO (8.16 defer, MUS-056 sordo, MUS-009 allegato, NF-19 canale richieste + playlist, NF-35 suoni).
-  Prossimo: prove live in VERIFICA_LIVE.md; nessuna voce aperta in codice.
 
 ## Fatto
+- r6/r10: 8.16 defer, sordo, allegato, canale richieste, playlist, suoni, nonstop, ALR-030..036, MUS-054/062/064.
 - F2 (#64, #47+#48, #45, #126 parti 1-2), F7 3b (#76): nodi per bot, radio, deploy Lavalink, catalogo MUS, impostazioni.
 - r6: `2d0b176` defer prima di Lavalink, bot sordo, allegato a play; `7ee6e39` canale richieste
   (`request_channel.py`, view persistente, aggiornamento max 1 ogni 5 s), playlist salva/carica/elenco/
@@ -52,6 +51,7 @@
 - Pause "una ogni N secondi": segnare prima del primo await, se no due chiamate insieme passano.
 
 ## Aperto
+- r4mus: log Lavalink (`LAVALINK_LOG_FILE`) e annunci da provare live; la riserva parte da `track_end` (ordine con `_auto_play_event` non verificabile qui, attesa 0,5 s).
 - Domanda all'owner (MUS-027): pulizia AUTOMATICA all'uscita di un utente dal canale? Ora c'e' solo `/music coda pulisci` a mano.
 - `mescola_fisso` si perde a un riavvio (solo in memoria, come da disegno).
 - B2: l'API pubblica Deezer non e' stata letta nelle condizioni d'uso (dubbio D2 dell'owner); `_scarica_json` e' l'unico punto di rete.

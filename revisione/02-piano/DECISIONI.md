@@ -1126,3 +1126,5 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
 - MUS-081: playlist del server (25 al massimo): salvano e cancellano chi ha «Gestisci server», le caricano tutti.
 - MUS-069: il log si manda come file ephemeral (non in DM), solo la coda da 256 KB, ripulito dalle chiavi.
 - MUS-067: il conteggio dei player sta in `/owner radio stato` (non in `/owner system`, file di un'altra area).
+- Non fatte in r4mus, scelta prudente (da confermare): MUS-018 (cartelle di file locali: un utente non sceglie mai una sorgente `local`, D73/sicurezza); MUS-015 (il paese delle ricerche Spotify e' una scelta del nodo LavaSrc, non del server); MUS-090 (bot musicali di colore diverso: nome e avatar dei worker sono dell'owner nel portale Discord, nessun codice); MUS-017 (vedi sopra).
+- Restano da fare: MUS-010 (radio dal mondo, serve un elenco pubblico da scegliere), MUS-014 (menu per genere, playlist scelte dall'owner), MUS-019 (gioco «indovina la canzone»), MUS-065 (jukebox a monete, serve l'API dell'economia).
