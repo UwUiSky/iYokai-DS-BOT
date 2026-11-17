@@ -2888,5 +2888,15 @@
   "music_nessun_risultato": "Nessun risultato trovato per questa ricerca.",
   "allegato_riga_scheda": "`{nome}` ({tipo}, {kib} KiB, SHA-256 {sha}): file non conservato",
   "allegato_riga_avviso": "`{nome}`: file non conservato, travestito, pericoloso o di tipo sconosciuto (tipo vero: {motivi})",
-  "allegato_riga_bloccata": "`{nome}`: immagine con contenuto sospetto, non conservata"
+  "allegato_riga_bloccata": "`{nome}`: immagine con contenuto sospetto, non conservata",
+  "player_mescola_fisso_acceso": "Mescola fisso acceso: ogni brano nuovo entra in un posto a caso.",
+  "player_mescola_fisso_spento": "Mescola fisso spento: i brani nuovi tornano in fondo alla coda.",
+  "player_mescola_fisso_acceso_riga": "Mescola fisso acceso: i brani nuovi entrano a caso.",
+  "player_coda_mescolata_resta": "Coda mescolata. Resta mescolata: ogni brano nuovo entra a caso.",
+  "player_coda_cerca_nessun_risultato": "Nessun brano in coda contiene questo testo.",
+  "player_coda_cerca_titolo": "Brani trovati in coda",
+  "player_coda_serve_gestisci_server": "Questo comando richiede il permesso «Gestisci server».",
+  "player_coda_salta_serve_un_opzione": "Indica almeno un'opzione: da, a oppure utente.",
+  "player_coda_tolti": "Tolti dalla coda: {quanti}.",
+  "player_coda_presenti_non_leggibili": "Non riesco a leggere chi è nel canale vocale: non ho tolto niente dalla coda. Riprova tra poco."
 }

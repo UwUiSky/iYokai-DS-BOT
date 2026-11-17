@@ -116,6 +116,7 @@ SETTINGS_SCHEMA = {
     "music_idle_minutes": "int_0_60",
     "music_known_sites_only": "bool",
     "music_default_search": "fonte_ricerca",
+    "music_queue_mode": "modo_coda",
     "fun_immagini_post": "bool",
     "fun_gif_cerca": "bool",
     "fun_telefono": "bool",
@@ -255,6 +256,7 @@ CONTROLLI_PER_TIPO = {
     "modalita_risposte_mod": (
         lambda valore: valore in ("normale", "compatta", "cancella-dopo"), "normale, compatta oppure cancella-dopo"
     ),
+    "modo_coda": (lambda valore: valore in ("normale", "equa"), "normale oppure equa"),
     "fonte_ricerca": (lambda valore: valore in FONTI_DI_RICERCA, ", ".join(FONTI_DI_RICERCA)),
     "int_5_300": (_intero_tra(5, 300), "un intero tra 5 e 300"),
     "int_0_7": (_intero_tra(0, 7), "un intero tra 0 e 7"),

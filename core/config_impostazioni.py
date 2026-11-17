@@ -31,6 +31,7 @@ SCELTE = {
     "azione_immagini": ("cancella", "avvisa", "timeout"),
     "modalita_risposte_mod": ("normale", "compatta", "cancella-dopo"),
     "fonte_ricerca": FONTI_DI_RICERCA,
+    "modo_coda": ("normale", "equa"),
     "modalita_link_inviti": ("tutti", "crea_invito", "ruolo", "spento"),
 }
 
@@ -76,6 +77,7 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
         _c("music_banned_words", "Parole vietate nei titoli", TESTO),
         _c("music_idle_minutes", "Esci dopo (minuti di silenzio, 0 = mai)", NUMERO),
         _c("music_known_sites_only", "Solo siti conosciuti", BOOL),
+        _c("music_queue_mode", "Ordine della coda (normale = come arrivano, equa = a giro tra gli utenti)", SCELTA),
         _c("music_default_search", "Dove cercare un titolo senza link (youtube, soundcloud, spotify, applemusic, deezer, tidal)", SCELTA),
     ),
     "fun": (

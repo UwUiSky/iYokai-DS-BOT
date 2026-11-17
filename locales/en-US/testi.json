@@ -2888,5 +2888,15 @@
   "music_nessun_risultato": "No results found for this search.",
   "allegato_riga_scheda": "`{nome}` ({tipo}, {kib} KiB, SHA-256 {sha}): file not kept",
   "allegato_riga_avviso": "`{nome}`: file not kept, disguised, unsafe or of unknown type (real type: {motivi})",
-  "allegato_riga_bloccata": "`{nome}`: image with suspicious content, not kept"
+  "allegato_riga_bloccata": "`{nome}`: image with suspicious content, not kept",
+  "player_mescola_fisso_acceso": "Sticky shuffle on: every new track goes in at a random spot.",
+  "player_mescola_fisso_spento": "Sticky shuffle off: new tracks go back to the end of the queue.",
+  "player_mescola_fisso_acceso_riga": "Sticky shuffle on: new tracks go in at random.",
+  "player_coda_mescolata_resta": "Queue shuffled. It stays shuffled: every new track goes in at random.",
+  "player_coda_cerca_nessun_risultato": "No track in the queue contains this text.",
+  "player_coda_cerca_titolo": "Tracks found in the queue",
+  "player_coda_serve_gestisci_server": "This command needs the \"Manage Server\" permission.",
+  "player_coda_salta_serve_un_opzione": "Give at least one option: da, a or utente.",
+  "player_coda_tolti": "Removed from the queue: {quanti}.",
+  "player_coda_presenti_non_leggibili": "I can't read who is in the voice channel: nothing was removed from the queue. Try again shortly."
 }

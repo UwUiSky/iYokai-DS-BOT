@@ -1,13 +1,13 @@
 # Memoria di dev-musica
 
 ## Aggiornata
-10/11/2026 · ramo `feat/r2mus` (/home/claude/wt/r2mus) · nessuna migrazione (B1 e B2 senza tabelle; B3 parte da 0620)
+16/11/2026 · ramo `feat/r3mus-coda` · nessuna migrazione (B1, B2, B3 senza tabelle)
 
 ## In corso
-- #126 B1 e B2 FATTI (B2: opzione `fonte`, `music_default_search` in SETTINGS_SCHEMA+SCHEDE+`/admin-musica impostazioni ricerca-predefinita`,
-  Deezer solo metadati ISRC poi titolo, yml con tidal/yandexmusic, residui B1 in locales). Prossimo: B3 coda (migr. 0620) nel sotto-gruppo
-  `/music coda` (`/music` <=18 figli, peso <6.800): MUS-030, 035, 027, 037, 038. Aperte B2: `music_sources_off`, `music_country`, solo-audio (016),
-  avviso scadenza token Apple a 14 giorni, scelte di `fonte` fisse (6) non filtrate per owner.
+- #126 B1, B2, B3 FATTI (B3 «coda»: `/music coda cerca|salta|pulisci`, impostazione `music_queue_mode` normale/equa con
+  `/admin-musica impostazioni coda:`, `/music shuffle resta:` con `player.mescola_fisso` in memoria). Aperte B2: `music_sources_off`,
+  `music_country`, solo-audio (016), avviso scadenza token Apple a 14 giorni, scelte di `fonte` fisse (6) non filtrate per owner.
+  Prossimo: prove live (VERIFICA_LIVE «Musica — coda»); resto del catalogo #126 non ancora fatto (guardare SPEC 9.x `[ ]`).
 - Giro r10 (musica + alert, agente r10musa): SPEC 9.x e 10.x tutte `[x]`; fatti nonstop 24/7, ALR-030/031/032/033/036, MUS-054/062/064.
   Prossimo: ALR-037/038/040 (sposta, ferma tutti, controllo a mano) servono sotto-comandi in /moduli alert (chiedere guardiano-limiti); MUS-061 stato del bot, MUS-053.
 - Giro r6 CHIUSO (8.16 defer, MUS-056 sordo, MUS-009 allegato, NF-19 canale richieste + playlist, NF-35 suoni).
@@ -18,13 +18,11 @@
 - r6: `2d0b176` defer prima di Lavalink, bot sordo, allegato a play; `7ee6e39` canale richieste
   (`request_channel.py`, view persistente, aggiornamento max 1 ogni 5 s), playlist salva/carica/elenco/
   elimina/esporta/importa (tetti 25 x 200, file 256 KB), `/music suono` (soundboard; bot libero entra ed esce).
-- Migrazioni: 0170 `music_request_channels`, 0171 `music_playlists`.
-- Cacciatore r6 (15/10): tracce decodificate filtrate (no `local`, URL solo pubblici, `riferimenti_traccia`)
-  `6b8faaf`; import robusto (annidato, Infinity, durata limitata); pausa segnata prima dell'await nel
-  player; pausa 3 s per utente nel canale richieste `b4a5cd1`; uscita del bot dei suoni col lock del
-  canale e spostata da un nuovo suono `3d93028`.
+- Migrazioni: 0170 `music_request_channels`, 0171 `music_playlists`. Cacciatore r6: tracce decodificate filtrate, import robusto, pausa 3 s per utente, uscita del bot dei suoni col lock (`6b8faaf`, `b4a5cd1`, `3d93028`).
 
 ## Cose imparate
+- B3: i comandi che tolgono brani usano `_togli_dalla_coda` (clear + put senza await); l'ordine equo/mescola fisso passa da `_aggiungi_in_fondo`.
+- Nei test dei comandi con permessi l'utente deve essere un `discord.Member` (`_controlli_base`): sottoclasse con `guild_permissions`.
 - Opzioni dei comandi di gruppo: i test leggono `callback.__discord_app_commands_param_choices__` (il Command vero nasce dopo).
 - Link Deezer: mai a Lavalink (niente `url_e_sicuro`): metadati da API, poi `cerca_testo` su altre fonti; un album diventa `wavelink.Playlist` da `raw_data`.
 - Fonti (D73): tutto passa da `core/music_sources.py`; chiavi solo presenti sì/no (`chiavi_presenti`), `ripulisci()` per ogni testo d'errore; mai valori in log/messaggi.
@@ -54,6 +52,8 @@
 - Pause "una ogni N secondi": segnare prima del primo await, se no due chiamate insieme passano.
 
 ## Aperto
+- Domanda all'owner (MUS-027): pulizia AUTOMATICA all'uscita di un utente dal canale? Ora c'e' solo `/music coda pulisci` a mano.
+- `mescola_fisso` si perde a un riavvio (solo in memoria, come da disegno).
 - B2: l'API pubblica Deezer non e' stata letta nelle condizioni d'uso (dubbio D2 dell'owner); `_scarica_json` e' l'unico punto di rete.
 - `_torna_sordo`: due suoni entro 6 s, il primo riassorda il bot durante il secondo (bassa).
 - URL pubblici verificati da noi, risolti di nuovo da Lavalink: DNS rebinding resta possibile.

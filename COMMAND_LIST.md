@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-10 00:31 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-16 03:54 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 837 comandi in 49 categorie.**
+**Totale: 840 comandi in 49 categorie.**
 
 ## Admin: AI
 
@@ -813,6 +813,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-10 00:
 ## Musica
 
 - **`/music clear-queue`** — Svuota la coda, senza toccare la traccia in riproduzione.
+- **`/music coda cerca`** — Cerca un brano nella coda per titolo.
+- **`/music coda pulisci`** — Toglie dalla coda i brani di chi non e' piu' nel canale vocale.
+- **`/music coda salta`** — Toglie dalla coda un intervallo di posizioni e/o i brani di un utente.
 - **`/music disconnect`** — Disconnette il music bot dal canale vocale.
 - **`/music history`** — Mostra gli ultimi brani già suonati.
 - **`/music join`** — Fa entrare il music bot nel tuo canale, senza suonare.

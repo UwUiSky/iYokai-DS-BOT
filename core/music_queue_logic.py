@@ -2,7 +2,9 @@
 core/music_queue_logic.py
 =============================
 Logica pura della coda musicale (catalogo MUS, issue #126): chi ha messo
-cosa, brano precedente, mescola solo i propri.
+cosa, brano precedente, mescola solo i propri, ordine equo (MUS-037),
+cerca (MUS-035), salta per intervallo o utente (MUS-030), pulisci chi
+e' uscito (MUS-027).
 Nessuna dipendenza da discord.py o wavelink: lavora su liste di titoli e di
 id utente. Chi ha richiesto un brano sta in `track.extras.requester_id`
 (vedi `requester_of`).
@@ -11,12 +13,14 @@ id utente. Chi ha richiesto un brano sta in `track.extras.requester_id`
 from __future__ import annotations
 
 import random
+import unicodedata
 from collections import Counter
 
 from core.music_logic import truncate_title
 
 MAX_SHARE_LINES = 5
 MAX_HISTORY_SHOWN = 10
+MAX_RISULTATI_CERCA = 10
 
 
 def requester_of(track) -> int | None:
@@ -79,3 +83,60 @@ def own_shuffle_order(
     for posto, scelto in zip(suoi, mescolati):
         ordine[posto] = scelto
     return ordine
+
+
+def fair_order(richiedenti: list[int | None]) -> list[int]:
+    """
+    Ordine «equo» (indici della coda attuale): a giro tra gli utenti, un
+    brano a testa. Dentro ogni utente l'ordine dei brani resta; gli utenti
+    vanno nell'ordine della loro prima comparsa. I brani senza richiedente
+    (None) contano come un utente a parte.
+    """
+    per_utente: dict[int | None, list[int]] = {}
+    for indice, richiedente in enumerate(richiedenti):
+        per_utente.setdefault(richiedente, []).append(indice)
+    code = list(per_utente.values())
+    ordine: list[int] = []
+    for giro in range(max((len(c) for c in code), default=0)):
+        ordine.extend(c[giro] for c in code if giro < len(c))
+    return ordine
+
+
+def _per_ricerca(testo: str) -> str:
+    """Minuscole, senza accenti, spazi singoli. Tiene ogni alfabeto (giapponese, cirillico, coreano)."""
+    scomposto = unicodedata.normalize("NFKD", testo or "")
+    senza_accenti = "".join(c for c in scomposto if not unicodedata.combining(c))
+    return " ".join(unicodedata.normalize("NFC", senza_accenti).casefold().split())
+
+
+def find_in_queue(titoli: list[str], testo: str, limite: int = MAX_RISULTATI_CERCA) -> list[tuple[int, str]]:
+    """(posizione da 1, titolo) dei brani il cui titolo contiene il testo, senza maiuscole e accenti."""
+    cercato = _per_ricerca(testo)
+    if not cercato:
+        return []
+    trovati = [(n, t) for n, t in enumerate(titoli, start=1) if cercato in _per_ricerca(t)]
+    return trovati[:limite]
+
+
+def indici_da_saltare(
+    richiedenti: list[int | None], da: int | None = None, a: int | None = None, utente_id: int | None = None
+) -> list[int]:
+    """
+    Indici da togliere dalla coda: posizioni da 1, estremi inclusi, tagliati alla
+    lunghezza; e/o i brani di `utente_id`. Con tutti e due i criteri servono entrambi.
+    Senza nessun criterio non si toglie niente.
+    """
+    if da is None and a is None and utente_id is None:
+        return []
+    primo = 1 if da is None else max(1, da)
+    ultimo = len(richiedenti) if a is None else min(a, len(richiedenti))
+    return [
+        i
+        for i, r in enumerate(richiedenti)
+        if primo <= i + 1 <= ultimo and (utente_id is None or r == utente_id)
+    ]
+
+
+def indici_di_assenti(richiedenti: list[int | None], presenti: set[int]) -> list[int]:
+    """I brani di chi non e' tra i presenti. Quelli senza richiedente non si toccano."""
+    return [i for i, r in enumerate(richiedenti) if r is not None and r not in presenti]

@@ -4,7 +4,7 @@ core/music_settings_logic.py
 Impostazioni musicali per server (issue #126: MUS-047 volume massimo,
 MUS-044 durata massima, MUS-055 restare a coda finita, MUS-059 canale
 vocale permesso, MUS-066 riepilogo, MUS-054 attesa prima di uscire,
-MUS-062 parole vietate nei titoli, MUS-064 solo siti conosciuti, MUS-012 fonte di ricerca). Stanno nella colonna `settings` di
+MUS-062 parole vietate nei titoli, MUS-064 solo siti conosciuti, MUS-012 fonte di ricerca, MUS-037 coda equa). Stanno nella colonna `settings` di
 guild_config (come le altre impostazioni dei cog: cronologia delle
 modifiche e cancellazione del server gia' coperte). Un solo punto di
 lettura e di scrittura (`load_music_settings`, `save_music_setting`),
@@ -43,6 +43,8 @@ SETTING_BANNED_WORDS = "music_banned_words"
 SETTING_IDLE_MINUTES = "music_idle_minutes"
 SETTING_KNOWN_SITES_ONLY = "music_known_sites_only"
 SETTING_DEFAULT_SEARCH = "music_default_search"
+SETTING_QUEUE_MODE = "music_queue_mode"
+QUEUE_MODES = ("normale", "equa")
 
 
 @dataclass(frozen=True)
@@ -55,6 +57,7 @@ class MusicSettings:
     banned_words: str = ""  # separate da virgola
     idle_minutes: int = 0  # 0 = predefinito (5 minuti)
     known_sites_only: bool = False
+    queue_mode: str = "normale"  # «equa»: i brani si alternano tra chi li ha messi
     default_search: str = ""  # fonte dove cercare un titolo; "" = automatica (YouTube, poi SoundCloud)
 
 
@@ -130,6 +133,7 @@ def summary_lines(settings: MusicSettings) -> list[str]:
         f"⏳ Attesa prima di uscire: **{f'{settings.idle_minutes} minuti' if settings.idle_minutes else 'predefinita (5 minuti)'}**",
         f"🚫 Parole vietate nei titoli: **{settings.banned_words or 'nessuna'}**",
         f"🔎 Ricerca di un titolo: **{FONTI[settings.default_search].etichetta if settings.default_search in FONTI else 'automatica (YouTube, poi SoundCloud)'}**",
+        f"⚖️ Ordine della coda: **{'equa (a giro tra gli utenti)' if settings.queue_mode == 'equa' else 'normale (come arrivano)'}**",
         f"🌐 Link ammessi: **{'solo siti conosciuti' if settings.known_sites_only else 'tutti i siti sicuri'}**",
     ]
 
@@ -137,6 +141,11 @@ def summary_lines(settings: MusicSettings) -> list[str]:
 def _fonte_valida(valore) -> str:
     """Una fonte di ricerca nota, altrimenti «automatica» (stringa vuota)."""
     return valore if isinstance(valore, str) and valore in FONTI_DI_RICERCA else ""
+
+
+def _modo_coda_valido(valore) -> str:
+    """Un modo coda noto, altrimenti «normale»."""
+    return valore if isinstance(valore, str) and valore in QUEUE_MODES else "normale"
 
 
 async def load_music_settings(database, guild_id: int) -> MusicSettings:
@@ -154,6 +163,7 @@ async def load_music_settings(database, guild_id: int) -> MusicSettings:
         idle_minutes=max(0, min(MAX_IDLE_MINUTES, int(await get(guild_id, SETTING_IDLE_MINUTES, 0)))),
         known_sites_only=bool(await get(guild_id, SETTING_KNOWN_SITES_ONLY, False)),
         default_search=_fonte_valida(await get(guild_id, SETTING_DEFAULT_SEARCH, "")),
+        queue_mode=_modo_coda_valido(await get(guild_id, SETTING_QUEUE_MODE, "normale")),
     )
 
 

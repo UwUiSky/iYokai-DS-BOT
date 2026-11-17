@@ -1,6 +1,7 @@
 # Memoria di cacciatore-bug
 
 ## Aggiornata
+16/11/2026 · `feat/r3mus-coda` (#126 B3 coda): 6 confermati (1 test rosso per le descrizioni inglesi), nessun fix (solo rilievi); righe in `rapporti/bug.md`.
 01/11/2026 · `feat/r12resto` (D51, fatto dal revisore-capo): 2 confermati corretti in a0d6ab3, 1 plausibile (defer in /level progressi).
 01/11/2026 · `feat/r12ai` (giro fatto dal revisore): 7 difetti corretti, 3 basse aperte; righe in `rapporti/bug.md`.
 28/10/2026 · `feat/r10inviti` (giro fatto dal revisore): 5 fix in 8b9426b, righe in `rapporti/bug.md`.
@@ -18,6 +19,7 @@
 ## Fatto
 - Giri 28/09–16/10 (BUG-19…34, SEC-18…22, F1, giro-core, r3, r4-*, r6*, r7*): dettagli in `rapporti/bug.md`.
 - 21–22/10: r8tkt, r8web, r8uti, r9nsfw, r9mod (fix elencati in `rapporti/bug.md`).
+- 16/11 r3mus-coda: descrizioni en-US mancanti, mescola fisso acceso di nascosto, cerca solo ASCII, loop_all che rimette i brani tolti, in cima sparso dalla coda equa, stop che non spegne il mescola.
 - 28/10 r10logt: aggiunti che leggono il ticket chiuso, Elimina su riaperto, eliminazione vecchia dopo riapertura, log ignora che nasconde ruoli/timeout/permessi, generatore privato copiato reso pubblico.
 
 ## Cose imparate
@@ -38,7 +40,11 @@
 - Web: `no-referrer` → `Origin: null`; `del_cookie` senza `secure=` non cancella `__Host-`; aiohttp ≥3.12 multipart limita ogni parte; `isdigit()` accetta «²»; dietro proxy tutti hanno lo stesso IP.
 - Filtri di parole: NFKD non basta; App utente fuori server = DM. Ambiente: DB condiviso tra worktree; permessi veri con `discord.Guild/Member(data=..., state=ConnectionState(...))`.
 
+- Musica: wavelink `loop_all` ricarica la coda dallo STORICO (lo riempie `Player.play`, non `queue.get`): chi toglie brani deve guardare anche lì. Stato sul player: cambiarlo DOPO i controlli. `normalizza_per_filtro` è solo ASCII: non usarlo per cercare.
+- Comandi nuovi: lanciare `tests/test_command_translator.py` (descrizioni en-US). Prove fuori da `tests/`: `PYTHONPATH=. pytest -p tests.conftest -c pytest.ini <file>`.
+
 ## Aperto
+- r3mus-coda: i 6 rilievi del 16/11 aspettano il fix di dev-musica.
 - r10logt: `/log cerca ruolo` non trova ruoli dati/tolti (solo nei details); riapertura con tetto letto-poi-scritto (bassa).
 - r4-tkt: rilievi senza fix in `rapporti/bug.md` (13/10). Giro mod: stato salvato PRIMA dell'azione irreversibile.
 - r8tkt plausibile: prompt injection su `_ruolo_secondo_ai`. r8web plausibili: limite_accesso condiviso, CGNAT, `token_di_sistema` senza Mod, revoca OAuth solo locale.
