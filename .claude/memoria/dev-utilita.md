@@ -1,12 +1,13 @@
 # Memoria di dev-utilita
 
 ## Aggiornata
-17/11/2026 · r1ben (feat/r1ben, DB iyokai_w123) · #123: 65 voci nuove o provate; restano RUO-005, 012, 045, 046, 047, 053, 069, 083. Migrazioni usate 0640-0650 (libere 0651-0659).
+17/11/2026 · r1sta (feat/r1sta, DB iyokai_w130) · #130 statistiche. Migrazioni usate 0700-0702 (libere 0703-0709, poi 0710+). Giro r1ben (#123) chiuso prima.
 
 ## In corso
-- Giro r1ben chiuso (non unito, niente push). Smoke da fare dell'orchestratore. Prossimo: le 8 voci rimaste (vedi Aperto) e il nuovo parere del revisore.
+- r1sta blocco 3: contatori estesi (STA-034..052; migrazione 0701 già scritta, non committata) in core/counter_logic.py, counter_worker.py, counter_repo.py, cogs/utility/counters.py; poi blocco 4 (esportazioni STA-057/058, schede invito/emoji/id STA-059/060, STA-012/061 solo nota), poi tag dei test sulle voci già fatte e documenti (D87, SPEC, VERIFICA_LIVE).
 
 ## Fatto
+- r1sta B1+B2 #130: raccolta (stato voce 0700, filtri canali/categorie/membri/ruoli, anonimato, accesso per ruolo, due condizioni, campioni online) e viste di serverstats (panoramica, messaggi, vocale, canale, membro, totale membri, ingressi/uscite, ritenzione, fonti, inviti, online, giochi, CSV, due menu). Test: test_statistiche_raccolta_filtri.py, test_statistiche_viste.py.
 - r1ben #123: benvenuto ({math:}, {se_nuovo:}/{se_ruolo:}, immagine opacità/testo/ordine/allineamento, embed salvato per benvenuto/DM/addio, reazione al primo messaggio, avviso topic), ruoli (ricordati ammessi/esclusi 0640, vocali 0647), menu (limiti 0641, azzera 0642, immagine extra 0643, embed 0644, primo msg 0645, topic 0646, esterno 0648, scadenza 0649, contatori 0650), gruppo /admin-menu-ruoli (D75). Codici provati: tests/test_catalogo_ruoli_gia_fatti.py + test_role_menu_limiti_ruoli.py.
 - r24util B25-B28: script dei tag, dati e errori (0562), inneschi (0563), comandi del server (0564, 0565); dettagli in git log e nel codice.
 - Giri r19-r23 (B1-B24): /utility, /web, messaggi auto, embed, programmati, compleanni, suggerimenti, starboard, giveaway, inviti, conteggio, citazioni, emoji, regex, tag, sondaggi, eventi (0540-0561). Giri r4-r11: autorole, tag, autoresponder, greetings, role menu, moduli (git log).

@@ -104,7 +104,10 @@ async def test_vocale_accredita_alla_uscita_e_salta_afk(cog):
     await cog.scrivi_lotto()
     assert await cog._repo.member_total(GID, 6, datetime(2020, 1, 1).date(), "voice_minutes") == 1440  # tetto 1 giorno
     await cog.on_voice_state_update(m, MagicMock(channel=None), MagicMock(channel=afk))
-    assert len(cog._voce) == 0
+    assert len(cog._voce) == 1  # STA-006: l'AFK si segue, ma non conta come tempo in vocale (vedi test_stati_della_voce)
+    cog._voce._sessioni[(GID, 6)][1] = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    await cog.scrivi_lotto()
+    assert await cog._repo.member_total(GID, 6, datetime(2020, 1, 1).date(), "voice_minutes") == 1440  # invariato
 
 
 async def test_ruoli_per_attivita_danno_e_tolgono(cog, monkeypatch):

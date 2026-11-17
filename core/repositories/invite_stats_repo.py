@@ -165,6 +165,29 @@ class InviteStatsRepository:
         )
         return [(r["uid"], InviteStats(r["totale"], r["presenti"], r["finti"], r["bonus"])) for r in righe]
 
+    async def per_fonte_dal(self, guild_id: int, since: datetime) -> dict[str, int]:
+        """STA-054: gli ingressi del periodo divisi per fonte (normale, vanity, personale, sconosciuto...)."""
+        righe = await self._pool.fetch(
+            "SELECT kind, count(*) AS n FROM invite_joins WHERE guild_id = $1 AND NOT finto AND joined_at >= $2 GROUP BY kind",
+            guild_id, since,
+        )
+        return {r["kind"]: r["n"] for r in righe}
+
+    async def top_nel_periodo(self, guild_id: int, since: datetime, limite: int = RIGHE_CLASSIFICA) -> tuple[list[tuple[int, int]], list[tuple[str, int]]]:
+        """STA-055: gli invitanti e i codici più efficaci del periodo, come (id, ingressi)."""
+        limite = min(limite, 25)
+        invitanti = await self._pool.fetch(
+            "SELECT inviter_id, count(*) AS n FROM invite_joins WHERE guild_id = $1 AND NOT finto AND joined_at >= $2 "
+            "AND inviter_id > 0 GROUP BY inviter_id ORDER BY n DESC, inviter_id LIMIT $3",
+            guild_id, since, limite,
+        )
+        codici = await self._pool.fetch(
+            "SELECT code, count(*) AS n FROM invite_joins WHERE guild_id = $1 AND NOT finto AND joined_at >= $2 "
+            "AND code IS NOT NULL GROUP BY code ORDER BY n DESC, code LIMIT $3",
+            guild_id, since, limite,
+        )
+        return [(r["inviter_id"], r["n"]) for r in invitanti], [(r["code"], r["n"]) for r in codici]
+
     async def ingresso_di(self, guild_id: int, user_id: int) -> IngressoDi | None:
         """Da chi (e con quale tipo di link) è stato invitato un membro."""
         r = await self._pool.fetchrow(

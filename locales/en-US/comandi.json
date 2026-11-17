@@ -785,7 +785,7 @@
   "admin-moduli statistiche": "Activity statistics and roles by activity",
   "admin-moduli statistiche diagnosi": "Why are the statistics not counting?",
   "admin-moduli statistiche elenco": "Show the statistics rules and exclusions.",
-  "admin-moduli statistiche impostazioni": "Exclude channels or roles from the statistics.",
+  "admin-moduli statistiche impostazioni": "Statistics filters: channels, members, roles, who can view them.",
   "admin-moduli statistiche ruolo-aggiungi": "Give a role to active members and remove it when they stop.",
   "admin-moduli statistiche ruolo-elimina": "Delete an activity role rule.",
   "music": "Music in voice channels",
@@ -1355,7 +1355,8 @@
   "admin-livelli guadagno contesti": "Whether threads, forum posts and voice channel chat give XP.",
   "admin-livelli guadagno vocale": "Voice XP: minimum people in the channel and anti-farm check.",
   "admin-livelli guadagno reazioni": "XP for reactions added and received (off by default).",
-  "admin-livelli classifica-ruoli": "A role for the XP leaderboard's first place, top 3 or top 10 (updated hourly)."
+  "admin-livelli classifica-ruoli": "A role for the XP leaderboard's first place, top 3 or top 10 (updated hourly).",
+  "utility privacy statistiche": "Show your name in the statistics leaderboards, or stay anonymous."
  },
  "parametri": {},
  "menu": {
@@ -1378,6 +1379,8 @@
   "Scheda moderazione": "Moderation card",
   "Segnala messaggio": "Report message",
   "Riestrai giveaway": "Redraw giveaway",
-  "Salva citazione": "Save quote"
+  "Salva citazione": "Save quote",
+  "Statistiche del membro": "Member statistics",
+  "Statistiche del canale": "Channel statistics"
  }
 }

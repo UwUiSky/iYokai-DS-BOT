@@ -67,6 +67,8 @@ AUDIENCE: dict[str, str] = {
     "eventi": PUBLIC,  # gruppo per tutti (D69)
     "web": PUBLIC,  # gruppo condiviso per tutti (D69)
     "Salva citazione": PUBLIC,  # menu del tasto destro (D69, B16)
+    "Statistiche del membro": PUBLIC,  # menu del tasto destro, solo server (STA-011); il filtro per ruolo è nel codice (STA-013)
+    "Statistiche del canale": PUBLIC,  # menu del tasto destro sul messaggio (STA-011)
     "Orari nel mio fuso": PUBLIC,  # menu del tasto destro (D69, B6)
     "Riestrai giveaway": STAFF,  # menu del tasto destro (D69, B10)
     "Richiedi copia sicura": STAFF,  # menu del tasto destro, solo «Gestisci messaggi» (D74, #160)
