@@ -18,10 +18,10 @@ def test_nome_senza_discord_clyde_e_entro_80():
     assert len(tl.nome_mittente("a" * 100, "b" * 100)) <= 80
 
 
-def test_link_e_inviti_tolti_allegati_solo_indirizzi_e_tetto():
-    t = tl.prepara_testo("guarda https://x.it/a discord.gg/abc www.foo.it ok", ["https://cdn.discordapp.com/a.png", "http://no"])
+def test_link_e_inviti_tolti_allegati_solo_righe_di_scheda_e_tetto():
+    t = tl.prepara_testo("guarda https://x.it/a discord.gg/abc www.foo.it ok", ["`a.png` (immagine, 2 KiB): file non inoltrato", " "])
     assert "x.it" not in t and "discord.gg" not in t and "foo.it" not in t
-    assert "📎 https://cdn.discordapp.com/a.png" in t and "http://no" not in t
+    assert "📎 `a.png` (immagine, 2 KiB): file non inoltrato" in t and t.count("📎") == 1
     assert tl.prepara_testo("   ", []) is None
     assert len(tl.prepara_testo("a" * 5000, [])) == 1900
 
@@ -204,6 +204,7 @@ async def test_allegati_solo_verso_canali_con_limite_d_eta(monkeypatch):
     cog, ch, msg, dest = _cog(monkeypatch)
     allegato = MagicMock()
     allegato.url = "https://cdn.discordapp.com/attachments/1/2/a.png"
+    allegato.filename, allegato.content_type, allegato.size = "a.png", "image/png", 2048
     msg.attachments, msg.content = [allegato], "ciao"
     await cog._inoltra(msg, ch)
     assert "cdn.discordapp" not in ch.code[2].get_nowait()[0]
@@ -211,7 +212,8 @@ async def test_allegati_solo_verso_canali_con_limite_d_eta(monkeypatch):
     cog._pausa = tl.PausaUtenti()
     await cog._inoltra(msg, ch)
     testo, _, _, solo_adulti = ch.code[2].get_nowait()
-    assert "cdn.discordapp" in testo and solo_adulti
+    assert "cdn.discordapp" not in testo and "https://" not in testo  # D74: mai il link all'originale
+    assert "`a.png`" in testo and "2 KiB" in testo and solo_adulti
 
 
 def test_nome_non_torna_discord_dopo_la_pulizia():

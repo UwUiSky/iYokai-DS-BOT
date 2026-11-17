@@ -18,6 +18,9 @@ import discord
 from core import backup_messages_logic as bm
 from core import immagini_pipeline as pipeline
 from core.backup_clone_logic import RiepilogoCopia
+from core.immagini_byte_logic import PULITA
+from core.immagini_pipeline import EsitoImmagine
+from tests.support import immagini_finte as f
 
 
 class _Resp:
@@ -95,12 +98,17 @@ async def test_lettura_dal_piu_vecchio_senza_messaggi_di_sistema_e_tetto_1000():
     assert righe[1]["fissato"] is True
 
 
-async def test_ricarica_in_ordine_con_file_link_e_fissati():
+async def test_ricarica_in_ordine_con_file_scheda_e_fissati(monkeypatch):
     scaricati = []
 
     async def scarica(url, massimo):
         scaricati.append((url, massimo))
-        return b"x" if url.endswith("vivo.png") else None  # l'altro link è scaduto
+        return f.png() if url.endswith("vivo.png") else None  # l'altro link è scaduto
+
+    async def pulita(dati, nome, ct, guild_id):
+        return EsitoImmagine(PULITA, "s", png=b"PNG-NUOVO")
+
+    monkeypatch.setattr(pipeline, "analizza_immagine", pulita)
 
     messaggi = [
         {"autore": "Discord Fan", "contenuto": "uno", "allegati": [
@@ -112,12 +120,14 @@ async def test_ricarica_in_ordine_con_file_link_e_fissati():
     hook, canale = _Hook(), _Canale()
     r = await bm.ricarica_chat(messaggi, hook, canale, _mai, scarica)
 
-    assert [i["content"] for i in hook.inviati] == ["uno\nhttps://cdn.discordapp.com/morto.png", "tre"]
+    assert [i["content"].split("\n")[0] for i in hook.inviati] == ["uno", "tre"]
+    assert "morto.png" in hook.inviati[0]["content"] and "cdn.discordapp.com" not in hook.inviati[0]["content"]  # D74
     assert hook.inviati[0]["username"] == "disc0rd Fan"  # LIM-27
-    assert len(hook.inviati[0]["files"]) == 1 and "files" not in hook.inviati[1]
+    assert [x.filename for x in hook.inviati[0]["files"]] == ["vivo.png"] and "files" not in hook.inviati[1]
+    assert hook.inviati[0]["files"][0].fp.read() == b"PNG-NUOVO"  # solo la copia ricodificata
     assert all(i["wait"] is True for i in hook.inviati)
     assert canale.fissati == [2]
-    assert (r.copiati, r.saltati, r.allegati_come_link) == (2, 1, 1)
+    assert (r.copiati, r.saltati, r.allegati_come_scheda) == (2, 1, 1)
 
 
 async def test_annullo_e_webhook_sparito_si_fermano():
@@ -164,6 +174,25 @@ async def test_copia_iniziale_allegati_come_file_e_fissati(monkeypatch):
     hook = _Hook()
     riepilogo = RiepilogoCopia()
     await bm._copia_canale(sorgente, hook, 10, riepilogo, destinazione)
-    assert [f.filename for f in hook.inviati[0]["files"]] == ["p.pdf"]  # non e' un'immagine: va com'e'
-    assert hook.inviati[0]["content"] == "https://cdn/e.zip"
+    assert "files" not in hook.inviati[0]  # un PDF non si rimanda mai (D74): solo la scheda
+    contenuto = hook.inviati[0]["content"]
+    assert "`p.pdf` (pdf, 0 KiB" in contenuto and "`e.zip`" in contenuto and "https://cdn" not in contenuto
     assert destinazione.fissati == [1] and riepilogo.messaggi_copiati == 1
+
+
+async def test_ricarica_non_rimanda_mai_un_file_che_non_e_un_immagine():
+    """D74: un eseguibile con nome da immagine e un PDF tornano come avviso e scheda, mai come file."""
+    byte = {"https://cdn/finta.png": b"MZ\x90\x00" + b"\0" * 80, "https://cdn/guida.pdf": b"%PDF-1.7\n" + b"x" * 3000}
+
+    async def scarica(url, massimo):
+        return byte[url]
+
+    messaggi = [{"autore": "A", "contenuto": "ecco", "allegati": [
+        {"nome": "finta.png", "url": "https://cdn/finta.png", "size": 84},
+        {"nome": "guida.pdf", "url": "https://cdn/guida.pdf", "size": 3009}]}]
+    hook = _Hook()
+    r = await bm.ricarica_chat(messaggi, hook, _Canale(), _mai, scarica)
+    assert r.copiati == 1 and "files" not in hook.inviati[0]
+    contenuto = hook.inviati[0]["content"]
+    assert "`finta.png`" in contenuto and "tipo_non_coincide" in contenuto
+    assert "`guida.pdf` (pdf, 2 KiB" in contenuto and "https://cdn" not in contenuto

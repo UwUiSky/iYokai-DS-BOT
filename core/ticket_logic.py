@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import re
 
-from core.immagini_byte_logic import nome_file_sicuro
+from core.allegati_tipo_logic import nome_pulito
 
 # Limiti di un menu a tendina di Discord (LIM-6): 25 opzioni, etichetta
 # di 100 caratteri. Una voce fuori limite blocca il menu per tutti.
@@ -76,7 +76,7 @@ def format_transcript_line(
     testo = content if content else "*(nessun testo — solo allegati/embed)*"
     riga = f"[{timestamp_str}] {author_display}: {testo}"
     if attachment_names:
-        riga += f" [allegati: {', '.join(nome_file_sicuro(n) for n in attachment_names)}]"
+        riga += f" [allegati: {', '.join(nome_pulito(n) for n in attachment_names)}]"
     return riga
 
 

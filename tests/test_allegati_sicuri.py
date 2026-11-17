@@ -42,7 +42,7 @@ def test_tipo_solo_dai_primi_byte_mai_dal_nome():
 
 
 @pytest.mark.asyncio
-async def test_file_png_con_byte_html_si_salva_generico_senza_anteprima_e_senza_analisi(ambiente, monkeypatch):
+async def test_file_png_con_byte_html_si_rifiuta_senza_file_e_senza_analisi(ambiente, monkeypatch):
     chiamate = []
 
     async def spia(*a):
@@ -50,20 +50,71 @@ async def test_file_png_con_byte_html_si_salva_generico_senza_anteprima_e_senza_
 
     monkeypatch.setattr(al.immagini_pipeline, "analizza_immagine", spia)
     copia = await al.salva(G, C, M, U, "log", "foto.png", HTML, content_type="image/png")
-    assert copia.tipo == al.GENERICO and copia.anteprima is None
+    assert copia.stato == al.STATO_RIFIUTATA and copia.tipo == "web" and not copia.con_file
     assert chiamate == []  # nessun decoder per cio' che non e' un'immagine vera
-    assert [p.read_bytes() for p in ambiente.iterdir()] == [HTML]  # byte intatti
+    assert list(ambiente.iterdir()) == []  # nessun file conservato (D74)
 
 
 @pytest.mark.asyncio
-async def test_immagine_pulita_ha_originale_e_anteprima_con_nomi_casuali(ambiente):
-    dati = f.png()
+async def test_file_non_immagine_resta_scheda_senza_file(ambiente):
+    copia = await al.salva(G, C, M, U, "log", "rel.pdf", b"%PDF-1.7\n" + b"x" * 2048)
+    assert copia.stato == al.STATO_SCHEDA and copia.tipo == "pdf" and not copia.con_file
+    assert copia.nome_file == "rel.pdf" and len(copia.sha256) == 64
+    assert list(ambiente.iterdir()) == [] and await al.leggi(copia.id) is None
+
+
+@pytest.mark.asyncio
+async def test_eseguibile_travestito_da_immagine_e_rifiutato(ambiente):
+    copia = await al.salva(G, C, M, U, "log", "foto.png", b"MZ\x90\x00" + b"\0" * 100, content_type="image/png")
+    assert copia.stato == al.STATO_RIFIUTATA and copia.tipo == "eseguibile" and list(ambiente.iterdir()) == []
+
+
+@pytest.mark.asyncio
+async def test_file_grande_senza_byte_e_solo_scheda(ambiente):
+    copia = await al.salva_senza_byte(G, C, M, U, "log", "film.mkv", None, 90_000_000)
+    assert copia.stato == al.STATO_SCHEDA and copia.sha256 == "" and list(ambiente.iterdir()) == []
+    brutta = await al.salva_senza_byte(G, C, M, U, "log", "foto.png.exe", None, 90_000_000)
+    assert brutta.stato == al.STATO_RIFIUTATA
+
+
+@pytest.mark.asyncio
+async def test_immagine_pulita_si_conserva_solo_ricodificata_mai_l_originale(ambiente):
+    """D74: l'originale (metadati, byte in coda) non tocca mai il disco; resta solo il PNG rifatto dalla sandbox."""
+    dati = f.png() + b"CARICO-NASCOSTO-IN-CODA"
     copia = await al.salva(G, C, M, U, "log", "../../etc/passwd.png", dati)
-    assert copia.nome_file == "passwd.png"
-    nomi = {p.name for p in ambiente.iterdir()}
-    assert len(nomi) == 2 and all(re.fullmatch(r"[0-9a-f]{32}", n) for n in nomi)
-    assert (await al.leggi(copia.id))[1] == dati
+    assert copia.nome_file == "passwd.png" and copia.con_file
+    file = list(ambiente.iterdir())
+    assert len(file) == 1 and re.fullmatch(r"[0-9a-f]{32}", file[0].name)
+    assert file[0].read_bytes() == b"\x89PNG-ricodificato"
+    assert all(b"CARICO-NASCOSTO" not in p.read_bytes() for p in file)
+    nome, scaricato = await al.leggi(copia.id)
+    assert scaricato == b"\x89PNG-ricodificato" and nome == "passwd.png"
     assert (await al.leggi(copia.id, anteprima=True))[1] == b"\x89PNG-ricodificato"
+
+
+@pytest.mark.asyncio
+async def test_immagine_non_analizzata_non_si_conserva(ambiente, monkeypatch):
+    """Se la sandbox cade o non risponde, niente file: solo la scheda."""
+    async def cade(*a):
+        raise RuntimeError("sandbox giù")
+
+    monkeypatch.setattr(al.immagini_pipeline, "analizza_immagine", cade)
+    copia = await al.salva(G, C, M, U, "log", "a.png", f.png())
+    assert copia.stato == al.STATO_SCHEDA and not copia.con_file
+    assert list(ambiente.iterdir()) == []
+    assert await al.leggi(copia.id) is None
+
+
+@pytest.mark.asyncio
+async def test_immagine_jpeg_scaricata_ha_il_nome_png(ambiente, monkeypatch):
+    from core.allegati_tipo_logic import IMMAGINE, Decisione, TipoVero
+
+    monkeypatch.setattr(
+        al.allegati_tipo_logic, "decidi",
+        lambda dati, nome, ct=None: Decisione(IMMAGINE, TipoVero("immagine", "jpeg"), "foto.jpg", len(dati), "0" * 64, False, ()),
+    )
+    copia = await al.salva(G, C, M, U, "log", "foto.jpg", f.png())
+    assert (await al.leggi(copia.id))[0] == "foto.png"
 
 
 @pytest.mark.asyncio
@@ -124,18 +175,21 @@ def test_avatar_webp_senza_estensione_non_e_sospetto():
 def test_intestazioni_di_download():
     h = al.intestazioni_download('a"b\r\n.png')
     assert h["Content-Disposition"].startswith("attachment;") and "\n" not in h["Content-Disposition"]
+    giapponese = al.intestazioni_download("写真 夜.png")["Content-Disposition"]
+    giapponese.encode("latin-1")  # un'intestazione HTTP: solo ASCII, il nome vero va in filename*
+    assert "filename*=UTF-8''" in giapponese and "%E5%86%99" in giapponese
     assert h["X-Content-Type-Options"] == "nosniff" and h["Content-Security-Policy"] == "sandbox"
 
 
 @pytest.mark.asyncio
 async def test_scadenza_e_orfani_si_tolgono_privacy_toglie_la_riga(ambiente):
     a = await al.salva(G, C, M, U, "log", "a.png", f.png())
-    b = await al.salva(G, C, M + 1, U + 1, "log", "b.txt", b"ciao")
+    b = await al.salva(G, C, M + 1, U + 1, "log", "b.png", f.png())
     from core.database import db
 
     await db.pool.execute("UPDATE allegati_copie SET scade_il = now() - interval '1 day' WHERE id = $1", a.id)
-    assert await al.pulisci() == 2  # originale e anteprima di a
-    assert {p.name for p in ambiente.iterdir()} and len(list(ambiente.iterdir())) == 1
+    assert await al.pulisci() == 1  # l'unica copia rifatta di a
+    assert len(list(ambiente.iterdir())) == 1  # resta il file di b (una sola copia rifatta per immagine)
     await db.pool.execute("DELETE FROM allegati_copie WHERE id = $1", b.id)  # come /privacy
     for p in ambiente.iterdir():
         os.utime(p, (1, 1))
@@ -168,12 +222,12 @@ async def _app_download(clean_db, allegati_url="https://allegati.example.invalid
 
 @pytest.mark.asyncio
 async def test_download_ha_le_intestazioni_di_sicurezza_e_nessun_cookie(ambiente, clean_db):
-    copia = await al.salva(G, C, M, U, "log", "foto<1>.png", HTML)
+    copia = await al.salva(G, C, M, U, "log", "foto<1>.png", f.png())
     client, chiave = await _app_download(clean_db)
     try:
         url = "/allegato/" + al.crea_token(chiave, copia.id)
         r = await client.get(url, headers={"Host": "allegati.example.invalid"})
-        assert r.status == 200 and await r.read() == HTML
+        assert r.status == 200 and await r.read() == b"\x89PNG-ricodificato"  # mai l'originale (D74)
         assert r.headers["Content-Disposition"].startswith("attachment;")
         assert r.headers["X-Content-Type-Options"] == "nosniff"
         assert r.headers["Content-Security-Policy"] == "sandbox"
@@ -185,7 +239,7 @@ async def test_download_ha_le_intestazioni_di_sicurezza_e_nessun_cookie(ambiente
 
 @pytest.mark.asyncio
 async def test_download_solo_dal_sottodominio_con_link_buono(ambiente, clean_db):
-    copia = await al.salva(G, C, M, U, "log", "a.txt", b"ciao")
+    copia = await al.salva(G, C, M, U, "log", "a.png", f.png())
     client, chiave = await _app_download(clean_db)
     try:
         url = "/allegato/" + al.crea_token(chiave, copia.id)

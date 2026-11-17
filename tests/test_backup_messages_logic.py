@@ -35,7 +35,7 @@ def _msg(testo, nome="Mario", allegati=(), tipo=discord.MessageType.default):
     return SimpleNamespace(
         content=testo,
         type=tipo,
-        attachments=[SimpleNamespace(url=u) for u in allegati],
+        attachments=[SimpleNamespace(url=u, filename=u.rsplit("/", 1)[-1], size=10, content_type=None) for u in allegati],
         author=SimpleNamespace(
             display_name=nome, display_avatar=SimpleNamespace(url=f"https://cdn/{nome}.png")
         ),
@@ -165,7 +165,7 @@ async def test_invio_con_autore_senza_menzioni_e_con_allegati(hooks):
 
     primo, secondo = hooks["inviati"]  # cronologico: prima il lungo
     assert primo["content"].startswith("x" * 1990) and len(primo["content"]) <= 2000
-    assert secondo["content"] == "ciao @everyone\nhttps://cdn/f.png"
+    assert secondo["content"].startswith("ciao @everyone\n`f.png`") and "https://cdn" not in secondo["content"]  # D74
     assert secondo["username"] == "disc0rd Bot cl1de"
     assert secondo["avatar_url"].endswith("Discord Bot Clyde.png")
     assert secondo["allowed_mentions"].everyone is False and secondo["allowed_mentions"].users is False

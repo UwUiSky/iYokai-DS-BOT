@@ -1,10 +1,13 @@
 # Memoria di dev-log-ticket
 
 ## Aggiornata
+17/11/2026 · ramo `feat/r160-allegati` (copia /home/user/wt-160, DB iyokai_w160) · #160 D74 parte 2a (formati in piu', link tolti), nessuna migrazione.
+16/11/2026 · stesso ramo · #160 prima parte.
 10/11/2026 · ramo `feat/r152img` (copia /home/claude/wt/r152img, DB iyokai_wr152) · usata migrazione 0304 (#152, D61). Sotto: giri precedenti.
 27/10/2026 · ramo `feat/r10logt` (copia /home/claude/wt/r10logt, DB iyokai_wr10logt) · migrazioni 0300-0309 (usate 0300, 0301, 0302)
 
 ## In corso
+- r160 parte 2a FATTA (BMP/TIFF/ICO/AVIF nella sandbox; `core/allegati_mostra.prepara` per ModMail, starboard, citazioni, telefono; ricarica chat senza link). Resta: HEIC (serve pillow-heif, domanda), staff->utente di /modmail rispondi (domanda), telefono con copie rifatte (proposta). r160 prima parte FATTA (allegati_tipo_logic, decisione unica in log/backup/ricarica chat/risposte ticket/ModMail nomi). Prossimo passo, PARTE 2: scegliere strumenti per PDF (ricostruzione), audio (Opus), video (H.264/AAC, 10 min/2 min) nella sandbox `immagini_sandbox` e farli uscire da `allegati_tipo_logic.SCHEDA` (nuova azione); copie ticket/ModMail 30 giorni; log a nome utente via webhook (`/admin-log webhook`). Smoke da fare dall'orchestratore.
 - r152img: fatto tutto #152 (allegati_sicuri, log, backup, ticket, spam trap, download). Resta: prova live (VERIFICA_LIVE «giro r152img»), smoke dall'orchestratore, nginx per il sotto-dominio allegati.
 - r18ticket (feat/r18ticket, DB iyokai_w18tk): T4 (0534) e #156 thread privati (0526) fatti, in un commit. Resta: prova live (VERIFICA_LIVE) e smoke dall'orchestratore.
 - Smoke da fare dall'orchestratore.
@@ -14,6 +17,8 @@
 - r10: c210f52 /log cerca ruolo+giorni · f364d84 diff permessi canale · poi ignora esteso, VOC-010/013/016, TKT-051/063/027/026.
 
 ## Cose imparate
+- D74 parte 2a: ogni allegato utente mostrato dal bot passa da `allegati_mostra.prepara` (copia PNG o riga di scheda, mai l'URL). Formati nuovi: lettori dei byte in `immagini_byte_logic`, apertura in sandbox con `safe_image.FORMATI_SANDBOX` (FORMATI_AMMESSI resta per avatar e benvenuti). La cache dei verdetti non tiene il PNG: la stessa immagine entro la durata della cache da' solo scheda (da sistemare, i fake di `analizza_immagine` nei test hanno firma fissa).
+- D74: decisione unica = `allegati_tipo_logic.decidi` (immagine/scheda/rifiuta); `immagini_pipeline.esamina_allegato` la applica e da' la copia PNG solo alle immagini vere; mai piu' file non immagine rimandati. Nomi: `nome_pulito` (toglie U+202E ecc.), mai `nome_file_sicuro` nuovo.
 - D61: tipo sempre da `immagini_byte_logic.riconosci_tipo`; `immagini_pipeline.copia_ricaricabile` e' l'unico punto per ricaricare un allegato (backup, ticket). Il bot non decodifica mai byte utente: miniature solo dalla PNG della sandbox.
 - Download allegati: `/allegato/<token firmato>` solo su `WEB_ALLEGATI_PUBLIC_URL`; il middleware `sicurezza` sovrascrive le intestazioni: le proprie passano da `CHIAVE_DOWNLOAD`. `config` e' frozen: nei test si sostituisce `modulo.config`.
 - Thread ticket: `guild.get_channel` NON vede i thread (usa `get_channel_or_thread`); in un DynamicItem l'etichetta sta in `.item`; con il thread niente overwrites/categorie (guardie `isinstance(..., discord.Thread)` in tickets.py).

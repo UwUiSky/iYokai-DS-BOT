@@ -4,7 +4,7 @@ cogs/fun/telefono.py
 Il telefono tra server: `/fun telefono chiama|riaggancia|segnala` e `/admin-giochi telefono canale|consenso|blocca|registro`.
 Spento di base, consenso doppio (l'admin lo accende, il server chiamato accetta con i bottoni). I messaggi del canale
 passano all'altro server con un webhook, senza menzioni e con gli allegati come soli indirizzi.
-Funzioni coperte: SPEC §16 (FUN-079, FUN-080; B12 di #131)
+Funzioni coperte: SPEC §16 (FUN-079, FUN-080; B12 di #131), §8.16 (D74: allegati senza link all'originale)
 Dipende da: core/telefono_logic.py, core/repositories/telefono_repo.py
 """
 
@@ -18,6 +18,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from cogs.fun.entertainment import MODULE_FUN
+from core import allegati_mostra, allegati_tipo_logic
 from core import telefono_logic as tl
 from core.automod_parole_opzioni import trova_nel_testo
 from core.command_access import Livello, richiedi
@@ -418,7 +419,12 @@ class TelefonoCog(CogConGruppi, commands.Cog):
         effetto = chiamata.effetti.get(gid, "nessuno")
         nome = tl.nome_mittente(message.author.display_name, message.guild.name)
         # Gli allegati passano solo verso canali con limite d'età: un'immagine per adulti non si riconosce da qui.
-        indirizzi = [a.url for a in message.attachments] if destinazione.is_nsfw() else []
+        # D74: mai il link all'originale. Solo una riga di scheda dal nome e dal peso (il file non si scarica qui).
+        indirizzi = (
+            [allegati_mostra.riga_per(allegati_tipo_logic.decidi_senza_byte(a.filename, a.content_type, a.size))
+             for a in message.attachments[: allegati_mostra.MAX_MOSTRATI]]
+            if destinazione.is_nsfw() else []
+        )
         base = tl.prepara_testo(message.content, indirizzi, "nessuno")  # i filtri guardano il testo prima dell'effetto
         if base is None or tl.testo_su_minori(nome, base) or await trova_nel_testo(altro, f"{nome}\n{base}") is not None:
             return

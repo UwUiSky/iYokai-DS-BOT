@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 import discord
 from discord.ext import commands
 
+from core.allegati_tipo_logic import nome_pulito
 from core import channel_router as router
 from core.bounded_cache import BoundedCache
 from core.channel_router import SETTING_LOG_CHANNEL, TIPO_MESSAGGI
@@ -342,7 +343,7 @@ class SnipeCog(CogConGruppi, commands.Cog):
                     author_id=messaggio.author.id,
                     author_nome=messaggio.author.display_name,
                     content=messaggio.content,
-                    allegati=tuple(a.filename for a in messaggio.attachments),
+                    allegati=tuple(nome_pulito(a.filename) for a in messaggio.attachments),
                     quando=datetime.now(timezone.utc),
                     guild_id=payload.guild_id,
                 ),

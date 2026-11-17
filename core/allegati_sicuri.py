@@ -1,14 +1,15 @@
 """
 core/allegati_sicuri.py
 =======================
-Copia sicura degli allegati nei log dei messaggi (D61, D62, #152). I byte si salvano cosi' come arrivano,
-senza aprirli: nome casuale, SHA-256, tetto di peso, tipo dai primi byte (elenco chiuso PNG, JPEG, GIF, WEBP;
-il resto e' «generico», mai dal nome o dal content-type). Cartella fuori dalla radice del sito. L'anteprima
+Copia sicura degli allegati nei log dei messaggi (D61, D62, D74, #152, #160). Il tipo si decide dai primi byte
+(`allegati_tipo_logic`): delle immagini vere (PNG, JPEG, GIF, WEBP) si salva solo la copia PNG rifatta dalla sandbox,
+mai l'originale (nome casuale, SHA-256 dell'originale, tetto di peso); ogni altro file resta una scheda (nome pulito, tipo, peso,
+impronta) o un avviso se e' travestito, eseguibile o sconosciuto: mai un file. Cartella fuori dalla radice del sito. L'anteprima
 e' solo la copia PNG ricodificata nel processo a parte (`immagini_pipeline`); un'immagine sospetta non si
 conserva (resta in quarantena). Conservazione a tempo, `/privacy` dal registro dei dati, link di download
 firmati e a scadenza (serviti dal pannello con `attachment`, `nosniff`, CSP `sandbox`).
-Funzioni coperte: SPEC §8.16 (D61, #152)
-Dipende da: core/immagini_pipeline.py, core/immagini_byte_logic.py, core/migrations/0304_allegati_copie.sql
+Funzioni coperte: SPEC §8.16 (D61, D74, #152, #160)
+Dipende da: core/allegati_tipo_logic.py, core/immagini_pipeline.py, core/immagini_byte_logic.py, core/migrations/0304_allegati_copie.sql
 """
 
 from __future__ import annotations
@@ -25,9 +26,11 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from core import immagini_pipeline
+from urllib.parse import quote
+
+from core import allegati_tipo_logic, immagini_pipeline
 from core.database import db
-from core.immagini_byte_logic import PULITA, nome_file_sicuro, riconosci_tipo
+from core.immagini_byte_logic import PULITA, riconosci_tipo
 
 logger = logging.getLogger("iyokai.allegati")
 
@@ -42,6 +45,8 @@ GENERICO = "generico"
 TIPI_MIME = {"png": "image/png", "jpeg": "image/jpeg", "gif": "image/gif", "webp": "image/webp"}
 STATO_SALVATA = "salvata"
 STATO_BLOCCATA = "bloccata"  # immagine sospetta o malevola: nessun file, solo il registro
+STATO_SCHEDA = "scheda"  # file non immagine (D74): solo nome, tipo, peso e impronta
+STATO_RIFIUTATA = "rifiutata"  # travestito, eseguibile o sconosciuto (D74): solo l'avviso
 _TENTATIVI = 8
 
 
@@ -54,6 +59,7 @@ class Copia:
     stato: str
     anteprima: str | None
     con_file: bool
+    sha256: str = ""
 
 
 def tipo_dai_byte(dati: bytes) -> str:
@@ -104,36 +110,11 @@ async def _togli(nome: str | None) -> None:
         await asyncio.to_thread(lambda: _percorso(nome).unlink(True))
 
 
-async def salva(
-    guild_id: int, channel_id: int, message_id: int, user_id: int, origine: str, nome_file: str, dati: bytes,
-    *, content_type: str | None = None,
-) -> Copia | None:
-    """
-    Salva un allegato. Torna None se e' troppo grande. Un'immagine passa dal percorso unico: pulita ->
-    originale + anteprima PNG ricodificata; sospetta o malevola -> solo il registro (nessun file).
-    Non solleva per colpa del file: il peggio e' un file generico senza anteprima.
-    """
-    if len(dati) > MAX_BYTE:
-        return None
-    tipo = tipo_dai_byte(dati)
-    nome_sicuro = nome_file_sicuro(nome_file)
-    sha = hashlib.sha256(dati).hexdigest()
-    stato, png = STATO_SALVATA, b""
-    if tipo != GENERICO:
-        try:
-            esito = await immagini_pipeline.analizza_immagine(dati, nome_file, content_type, guild_id)
-        except Exception:  # noqa: BLE001 - un'analisi che cade non ferma il log
-            logger.warning("Allegato non analizzato", exc_info=True)
-            esito = None
-        if esito is not None and esito.verdetto != PULITA:
-            stato = STATO_BLOCCATA
-        elif esito is not None and esito.non_analizzata is None:
-            png = esito.png
-    nome = anteprima = None
-    if stato == STATO_SALVATA:
-        nome = await asyncio.to_thread(_scrivi, dati)
-        if png:
-            anteprima = await asyncio.to_thread(_scrivi, png)
+async def _registra(
+    guild_id: int, channel_id: int, message_id: int, user_id: int, origine: str, d: allegati_tipo_logic.Decisione,
+    stato: str, nome: str | None, anteprima: str | None,
+) -> Copia:
+    tipo = d.tipo.formato if d.azione == allegati_tipo_logic.IMMAGINE else d.tipo.categoria
     try:
         riga = await db.pool.fetchrow(
             """
@@ -141,14 +122,56 @@ async def salva(
                 dimensione, nome, anteprima, stato, scade_il)
             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, now() + make_interval(days => $13)) RETURNING id
             """,
-            guild_id, channel_id, message_id, user_id, origine, nome_sicuro, tipo, sha, len(dati), nome, anteprima,
+            guild_id, channel_id, message_id, user_id, origine, d.nome, tipo, d.sha256, d.dimensione, nome, anteprima,
             stato, GIORNI_CONSERVAZIONE,
         )
     except Exception:
         await _togli(nome)
         await _togli(anteprima)
         raise
-    return Copia(riga["id"], nome_sicuro, tipo, len(dati), stato, anteprima, nome is not None)
+    return Copia(riga["id"], d.nome, tipo, d.dimensione, stato, anteprima, nome is not None, d.sha256)
+
+
+async def salva(
+    guild_id: int, channel_id: int, message_id: int, user_id: int, origine: str, nome_file: str, dati: bytes,
+    *, content_type: str | None = None,
+) -> Copia | None:
+    """
+    Registra un allegato dopo la decisione unica (D74). Torna None se e' troppo grande. Immagine vera: percorso
+    D62 (pulita -> solo la copia PNG rifatta dalla sandbox, mai l'originale; sospetta o non analizzata -> solo il
+    registro). Ogni altro file:
+    mai conservato; `scheda` (nome, tipo vero, peso, SHA-256) o `rifiutata` (travestito, eseguibile, sconosciuto).
+    Non solleva per colpa del file.
+    """
+    if len(dati) > MAX_BYTE:
+        return None
+    d = allegati_tipo_logic.decidi(dati, nome_file, content_type)
+    if d.azione != allegati_tipo_logic.IMMAGINE:
+        stato = STATO_SCHEDA if d.azione == allegati_tipo_logic.SCHEDA else STATO_RIFIUTATA
+        return await _registra(guild_id, channel_id, message_id, user_id, origine, d, stato, None, None)
+    try:
+        esito = await immagini_pipeline.analizza_immagine(dati, nome_file, content_type, guild_id)
+    except Exception:  # noqa: BLE001 - un'analisi che cade non ferma il log
+        logger.warning("Allegato non analizzato", exc_info=True)
+        esito = None
+    if esito is not None and esito.verdetto != PULITA:
+        return await _registra(guild_id, channel_id, message_id, user_id, origine, d, STATO_BLOCCATA, None, None)
+    png = esito.png if esito is not None and esito.non_analizzata is None else b""
+    if not png:  # sandbox caduta o immagine non analizzata: senza la copia rifatta non si conserva niente
+        return await _registra(guild_id, channel_id, message_id, user_id, origine, d, STATO_SCHEDA, None, None)
+    # D74: l'originale non tocca mai il disco. L'unico file è il PNG rifatto dalla sandbox.
+    nome = await asyncio.to_thread(_scrivi, png)
+    return await _registra(guild_id, channel_id, message_id, user_id, origine, d, STATO_SALVATA, nome, nome)
+
+
+async def salva_senza_byte(
+    guild_id: int, channel_id: int, message_id: int, user_id: int, origine: str, nome_file: str,
+    content_type: str | None, dimensione: int,
+) -> Copia:
+    """File troppo grande da scaricare (D74): solo scheda senza impronta, o rifiuto se il nome e' pericoloso."""
+    d = allegati_tipo_logic.decidi_senza_byte(nome_file, content_type, dimensione)
+    stato = STATO_SCHEDA if d.azione == allegati_tipo_logic.SCHEDA else STATO_RIFIUTATA
+    return await _registra(guild_id, channel_id, message_id, user_id, origine, d, stato, None, None)
 
 
 async def del_messaggio(guild_id: int, message_id: int) -> list[Copia]:
@@ -156,8 +179,8 @@ async def del_messaggio(guild_id: int, message_id: int) -> list[Copia]:
         "SELECT * FROM allegati_copie WHERE guild_id = $1 AND message_id = $2 AND scade_il > now() ORDER BY id",
         guild_id, message_id,
     )
-    return [Copia(r["id"], r["nome_file"], r["tipo"], r["dimensione"], r["stato"], r["anteprima"], r["nome"] is not None)
-            for r in righe]
+    return [Copia(r["id"], r["nome_file"], r["tipo"], r["dimensione"], r["stato"], r["anteprima"], r["nome"] is not None,
+                  r["sha256"]) for r in righe]
 
 
 async def leggi(copia_id: int, *, anteprima: bool = False) -> tuple[str, bytes] | None:
@@ -172,7 +195,9 @@ async def leggi(copia_id: int, *, anteprima: bool = False) -> tuple[str, bytes] 
         dati = await asyncio.to_thread(lambda: _percorso(nome).read_bytes())
     except OSError:
         return None
-    return (f"anteprima-{r['id']}.png" if anteprima else r["nome_file"]), dati
+    # Il file conservato è sempre un PNG rifatto: il nome scaricato lo dice, qualunque fosse l'estensione di partenza.
+    radice = (r["nome_file"] or "immagine").rsplit(".", 1)[0] or "immagine"
+    return (f"anteprima-{r['id']}.png" if anteprima else f"{radice}.png"), dati
 
 
 async def pulisci() -> int:
@@ -180,10 +205,9 @@ async def pulisci() -> int:
     righe = await db.pool.fetch("DELETE FROM allegati_copie WHERE scade_il < now() RETURNING nome, anteprima")
     tolti = 0
     for r in righe:
-        for n in (r["nome"], r["anteprima"]):
-            if n:
-                await _togli(n)
-                tolti += 1
+        for n in {r["nome"], r["anteprima"]} - {None}:  # di solito lo stesso file: si conta una volta
+            await _togli(n)
+            tolti += 1
     noti = set()
     for r in await db.pool.fetch("SELECT nome, anteprima FROM allegati_copie"):
         noti.update(x for x in (r["nome"], r["anteprima"]) if x)
@@ -224,10 +248,16 @@ def leggi_token(chiave: str, token: str, *, adesso: float | None = None) -> tupl
     return int(parti[0]), parti[1] == "a"
 
 
+def _disposizione(nome: str) -> str:
+    """Un'intestazione HTTP porta solo ASCII: nome di riserva in ASCII, nome vero in `filename*` (RFC 5987)."""
+    ascii_ = "".join(c if c.isascii() and c.isalnum() or c in "._- " else "_" for c in nome) or "file"
+    return f"attachment; filename=\"{ascii_}\"; filename*=UTF-8''{quote(nome, safe='')}"
+
+
 def intestazioni_download(nome_file: str) -> dict[str, str]:
     """Mai in linea: scarica, non indovinare il tipo, niente script (D61)."""
     return {
-        "Content-Disposition": f'attachment; filename="{nome_file_sicuro(nome_file)}"',
+        "Content-Disposition": _disposizione(allegati_tipo_logic.nome_pulito(nome_file)),
         "X-Content-Type-Options": "nosniff",
         "Content-Security-Policy": "sandbox",
         "Cache-Control": "no-store",

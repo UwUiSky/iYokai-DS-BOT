@@ -31,7 +31,7 @@ from core.backup_messages_logic import (
     TIPI_COPIABILI,
     allegati_come_file,
     contenuto_da_copiare,
-    file_degli_allegati,
+    preparare_allegati,
 )
 from core.backup_mirror_logic import MirrorRateLimiter, nome_sicuro_per_webhook
 
@@ -143,8 +143,8 @@ class BackupMirrorDispatcher:
 
     async def _send(self, webhook_url: str, message: discord.Message) -> None:
         come_file = allegati_come_file(message.attachments)
-        contenuto = contenuto_da_copiare(message, come_file) or ""
-        file = await file_degli_allegati(come_file, message.guild.id if message.guild else 0) if come_file else []
+        file, righe = await preparare_allegati(come_file, message.guild.id if message.guild else 0) if come_file else ([], [])
+        contenuto = contenuto_da_copiare(message, come_file, righe) or ""
         if not contenuto and not file:
             contenuto = ZERO_WIDTH_SPACE
         contenuto = contenuto[:MAX_CONTENT_LENGTH]

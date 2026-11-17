@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 
 import re2
 
+from core.allegati_tipo_logic import nome_pulito
 from core.testo_limiti import CAMPO_MAX, tronca
 
 # LIM-55: un allegato deve restare sotto i 10 MiB. Si lascia margine.
@@ -142,7 +143,7 @@ def testo_allegati(nomi: list[str]) -> str:
     """Elenco dei nomi dei file allegati, entro un campo di embed."""
     if not nomi:
         return ""
-    nomi_puliti = [n.replace("`", "'") for n in nomi]
+    nomi_puliti = [nome_pulito(n).replace("`", "'") for n in nomi]  # D74: niente inversioni di testo
     return tronca(", ".join(f"`{n}`" for n in nomi_puliti), CAMPO_MAX)
 
 

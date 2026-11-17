@@ -60,6 +60,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from cogs.moderation.ban_appeal import offri_appello_in_dm
+from core.allegati_tipo_logic import nome_pulito
 from core import bot_roles
 from core.i18n import lingua_risposta, t, testo_per
 from core.command_groups import CogConGruppi, comando_di_gruppo
@@ -1186,7 +1187,7 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
                         author_display_name=fetched.author.display_name,
                         author_tag=str(fetched.author),
                         content=fetched.content or "",
-                        attachment_filenames=[a.filename for a in fetched.attachments],
+                        attachment_filenames=[nome_pulito(a.filename) for a in fetched.attachments],
                         attachment_thumbnail_data_uris=thumbnails,
                         is_deleted_source=False,
                     )

@@ -288,7 +288,7 @@ async def test_il_mirror_copia_il_messaggio_di_un_utente_con_discord_nel_nome(mo
 
 
 @pytest.mark.asyncio
-async def test_gli_allegati_vanno_come_file_entro_10_mib(monkeypatch):
+async def test_gli_allegati_non_immagine_diventano_scheda_senza_file(monkeypatch):
     import core.backup_mirror_dispatch as modulo
 
     class _Allegato:
@@ -319,5 +319,6 @@ async def test_gli_allegati_vanno_come_file_entro_10_mib(monkeypatch):
         await dispatcher.close()
 
     assert inviati[0]["wait"] is True
-    assert [f.filename for f in inviati[0]["files"]] == ["piccolo.zip"]
-    assert "enorme.zip" in inviati[0]["content"]  # il troppo grande resta come link
+    assert "files" not in inviati[0]  # D74: un archivio non si rimanda, resta solo la scheda
+    contenuto = inviati[0]["content"]
+    assert "`piccolo.zip` (archivio" in contenuto and "`enorme.zip`" in contenuto and "https://cdn" not in contenuto

@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import discord
 import pytest
+from tests.test_immagini_pipeline import ambiente  # noqa: F401 - DB vero e quarantena di prova
 from discord.ext import commands
 
 import cogs.utility.starboard as modulo
@@ -392,3 +393,25 @@ async def test_post_e_aggiornamenti_sono_per_server(repo):
     assert (await repo.get_post(1, 100)).board_message_id is None
     await repo.release_post(2, 100)
     assert await repo.get_post(1, 100) is not None
+
+
+@pytest.mark.asyncio
+async def test_bacheca_allegati_copia_rifatta_e_scheda_mai_il_link(monkeypatch, ambiente):
+    from tests.support import immagini_finte as f
+
+    s = _Scena(monkeypatch, stelle=3, soglia=3)
+    bmp, pdf = f.bmp(), b"%PDF-1.4\n" + b"x" * 300
+
+    def finto(nome, dati, ct):
+        async def leggi():
+            return dati
+
+        return SimpleNamespace(filename=nome, url="https://cdn.discordapp.com/attachments/1/2/" + nome,
+                               content_type=ct, size=len(dati), read=leggi)
+
+    s.messaggio.attachments = [finto("foto.bmp", bmp, "image/bmp"), finto("doc.pdf", pdf, "application/pdf")]
+    await s.cog.aggiorna(s.guild.id, 10, 100)
+    kw = s.bacheca.send.await_args.kwargs
+    assert len(kw["files"]) == 1 and kw["embed"].image.url == "attachment://allegato0.png"
+    testo = " ".join(c.value for c in kw["embed"].fields) + (kw["embed"].description or "")
+    assert "doc.pdf" in testo and "cdn.discordapp.com" not in testo

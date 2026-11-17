@@ -16,6 +16,7 @@ import cogs.utility.sticky_messages as sticky
 from core import messaggi_auto_logic as L
 from core.repositories.messaggi_auto_repo import MessaggiAutoRepository
 from tests.support.discord_fakes import fake_guild, fake_interaction
+from tests.test_immagini_pipeline import ambiente  # noqa: F401 - DB vero e quarantena di prova
 from tests.support.percorsi import comando_nel_gruppo
 
 G = 111111111111111111
@@ -168,3 +169,38 @@ async def test_non_ripubblica_un_messaggio_gia_pubblicato():
         await c._pubblica(msg)
     msg.publish.assert_not_awaited()
     assert c.limite.ammessa(5, 1.0)  # il tetto orario è intatto
+
+
+@pytest.mark.asyncio
+async def test_citazione_con_immagine_usa_la_copia_rifatta_non_il_link(ambiente):
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+
+    from tests.support import immagini_finte as f
+
+    guild = fake_guild(G)
+    bmp = f.bmp()
+
+    async def leggi():
+        return bmp
+
+    allegato = SimpleNamespace(filename="foto.bmp", url="https://cdn.discordapp.com/a/foto.bmp", content_type="image/bmp",
+                               size=len(bmp), read=leggi)
+    citato = SimpleNamespace(
+        content="ciao", created_at=datetime.now(timezone.utc), jump_url="https://discord.com/channels/1/2/3",
+        author=SimpleNamespace(display_name="Mario", display_avatar=SimpleNamespace(url="https://a/x.png")),
+        attachments=[allegato],
+    )
+    origine = MagicMock()
+    origine.name = "chat"
+    origine.is_nsfw.return_value = False
+    origine.permissions_for.return_value = discord.Permissions(view_channel=True, read_message_history=True)
+    origine.fetch_message = AsyncMock(return_value=citato)
+    guild.get_channel_or_thread = lambda _id: origine
+    canale = MagicMock()
+    canale.is_nsfw.return_value = False
+    message = MagicMock(content=f"https://discord.com/channels/{G}/222222222222222220/333333333333333330", guild=guild, channel=canale)
+    message.reply = AsyncMock()
+    await cog.MessaggiAutoCog(MagicMock())._cita(message)
+    kw = message.reply.await_args.kwargs
+    assert len(kw["files"]) == 1 and kw["embeds"][0].image.url == "attachment://citazione0.png"

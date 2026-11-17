@@ -7,11 +7,13 @@ del router (canale di testo o forum) e, per ogni evento, una riga nel log
 eventi senza il testo. Serve il Message Content Intent; un messaggio
 uscito dalla memoria di discord.py si segnala senza contenuto. I messaggi
 cancellati restano in memoria un'ora per l'archivio di un canale, solo se
-l'evento «messaggi cancellati» è acceso. Le immagini dei messaggi si copiano
+l'evento «messaggi cancellati» è acceso. Le immagini vere dei messaggi si copiano
 senza aprirle (`core/allegati_sicuri.py`, D61): nel log del cancellato vanno i link di
-download firmati e al massimo 3 anteprime PNG ricodificate, mai l'originale. Fa parte
+download firmati e al massimo 3 anteprime PNG ricodificate, mai l'originale. Ogni altro
+file (PDF, audio, video, Office, archivi) resta una scheda con nome, tipo, peso e impronta;
+travestito, eseguibile o sconosciuto lascia solo un avviso (D74). Fa parte
 del Logging Avanzato. Ogni evento si può spegnere (LOG-017).
-Funzioni coperte: SPEC §8.16 (NF-02), §8.18 (LOG-005, LOG-027), D61 (#152)
+Funzioni coperte: SPEC §8.16 (NF-02), §8.18 (LOG-005, LOG-027), D61, D74 (#152, #160)
 Dipende da: core/channel_router.py, core/repositories/log_ignora_repo.py,
 core/repositories/log_eventi_repo.py
 """
@@ -30,7 +32,7 @@ from core import channel_router as router
 from core.config import config
 from core.channel_router import SETTING_LOG_CHANNEL, TIPO_MESSAGGI
 from core.database import db
-from core.immagini_byte_logic import tipo_atteso
+from core.i18n import testo_guild
 from core.message_log_logic import (
     cancellati_recenti,
     MessaggioArchiviato,
@@ -78,11 +80,6 @@ MAX_ANTEPRIME_LOG = 3
 MAX_BYTE_ANTEPRIME_LOG = 8 * 1024 * 1024  # LIM-55: un invio non supera i 10 MiB
 
 
-def e_immagine_dichiarata(a: discord.Attachment) -> bool:
-    """Solo gli allegati che dicono di essere immagini si copiano; il tipo vero lo decidono i byte."""
-    return tipo_atteso(a.filename, getattr(a, "content_type", None)) is not None
-
-
 async def copie_per_il_log(guild_id: int, message_id: int) -> tuple[str, list[discord.File]]:
     """
     D61/D62: le copie salvate di un messaggio per il log: elenco con link firmati (se il sotto-dominio e'
@@ -97,7 +94,15 @@ async def copie_per_il_log(guild_id: int, message_id: int) -> tuple[str, list[di
     for c in copie:
         nome = senza_accento_grave(c.nome_file)
         if c.stato == allegati_sicuri.STATO_BLOCCATA:
-            righe.append(f"`{nome}`: immagine con contenuto sospetto, non conservata")
+            righe.append(await testo_guild(guild_id, "allegato_riga_bloccata", nome=nome))
+            continue
+        if c.stato == allegati_sicuri.STATO_RIFIUTATA:  # D74: travestito, eseguibile o sconosciuto
+            righe.append(await testo_guild(guild_id, "allegato_riga_avviso", nome=nome, motivi=c.tipo))
+            continue
+        if c.stato == allegati_sicuri.STATO_SCHEDA:  # D74: nessun file, solo la scheda
+            righe.append(await testo_guild(
+                guild_id, "allegato_riga_scheda", nome=nome, tipo=c.tipo, kib=c.dimensione // 1024, sha=c.sha256[:12] or "n/d",
+            ))
             continue
         link = allegati_sicuri.url_download(config.WEB_ALLEGATI_PUBLIC_URL, config.WEB_PANEL_SECRET_KEY, c.id)
         righe.append(f"`{nome}` ({c.dimensione // 1024} KiB)" + (f" [scarica]({link})" if link else ""))
@@ -130,13 +135,11 @@ class MessageLogsCog(commands.Cog):
 
     @commands.Cog.listener("on_message")
     async def copia_allegati(self, message: discord.Message) -> None:
-        """D61: le immagini dei messaggi si copiano (byte intatti) per il log del messaggio cancellato."""
+        """D61, D74: ogni allegato passa dalla decisione unica; solo le immagini vere si copiano, il resto e' una scheda."""
         guild = message.guild
         if guild is None or message.author.bot or not message.attachments:
             return
-        scelti = [a for a in message.attachments if e_immagine_dichiarata(a) and a.size <= allegati_sicuri.MAX_BYTE]
-        if not scelti:
-            return
+        scelti = message.attachments[: allegati_sicuri.MAX_PER_MESSAGGIO]
         try:
             if not await logging_avanzato_attivo(guild.id, self.bot):
                 return
@@ -145,7 +148,13 @@ class MessageLogsCog(commands.Cog):
             ignorati = await log_ignora_repo.carica(guild.id)
             if _scartato(ignorati, message.channel, message, message.channel.id):
                 return
-            for a in scelti[: allegati_sicuri.MAX_PER_MESSAGGIO]:
+            for a in scelti:
+                if a.size > allegati_sicuri.MAX_BYTE:  # troppo grande da scaricare: solo scheda dal nome
+                    await allegati_sicuri.salva_senza_byte(
+                        guild.id, message.channel.id, message.id, message.author.id, "log_messaggi", a.filename,
+                        a.content_type, a.size,
+                    )
+                    continue
                 await allegati_sicuri.salva(
                     guild.id, message.channel.id, message.id, message.author.id, "log_messaggi", a.filename,
                     await a.read(), content_type=a.content_type,

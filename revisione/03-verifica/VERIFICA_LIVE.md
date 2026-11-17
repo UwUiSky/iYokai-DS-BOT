@@ -1617,10 +1617,29 @@ Serve: log avanzato acceso, evento «messaggi cancellati» acceso, `WEB_ALLEGATI
 - Apri il link «scarica» dal browser: parte il download (mai l'apertura in linea). Negli strumenti del browser: `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: sandbox`, nessun `Set-Cookie`. Con le stesse parti del link sul dominio del pannello: «Non trovato». Cambia una cifra del link: «Non trovato». Dopo 7 giorni il link non vale più.
 - Rinomina un file HTML in `foto.png` e invialo, poi cancellalo: nel log solo il nome, nessuna anteprima; il download (se c'è) è un file generico mai aperto dal browser.
 - Una foto trappola nota (o sospetta) cancellata: nel log «immagine con contenuto sospetto, non conservata», nessun file.
-- Backup: scrivi una foto nel server principale: nel mirror arriva un PNG ricodificato (nome `.png`); una sospetta o un `.png` finto non arriva. Un PDF arriva come prima.
-- Ticket: proponi una risposta standard da un messaggio staff con foto e PDF: nel canale dei log la foto è un PNG nuovo, il PDF uguale.
+- Backup: scrivi una foto nel server principale: nel mirror arriva un PNG ricodificato (nome `.png`); una sospetta o un `.png` finto non arriva. Un PDF non arriva più come file (D74): nel testo del messaggio c'è la scheda (nome, tipo, peso, impronta).
+- Ticket: proponi una risposta standard da un messaggio staff con foto e PDF: nel canale dei log la foto è un PNG nuovo, il PDF non c'è (D74).
 - Spam trap con ban: il transcript ha le miniature; con una foto gigantesca (oltre 16 milioni di pixel) niente miniatura e il bot non rallenta.
 - `/privacy` (richiesta di cancellazione di un utente che aveva foto copiate): le righe di `allegati_copie` spariscono e i file orfani sono tolti entro un'ora. Dopo 30 giorni le copie spariscono da sole.
+
+## giro r160 — nessun file utente conservato o rimandato così com'è (D74, #160, prima parte)
+Serve: log avanzato acceso con l'evento «messaggi cancellati».
+- Scrivi un messaggio con un PDF, uno ZIP e un DOCX veri e cancellalo: nel log «Copie salvate» ci sono tre righe di scheda (nome, tipo, KiB, impronta), nessun link «scarica», nessun file in `IYOKAI_ALLEGATI_DIR`.
+- Rinomina un `.exe` in `foto.png` e invialo, poi cancellalo: riga di avviso «file non conservato, travestito…», nessun file e nessuna anteprima.
+- Invia un file chiamato `foto.png.exe` e uno con il carattere U+202E nel nome (es. `fotogpj.exe`): avviso nel log; il nome non compare mai con le lettere rovesciate (log, transcript, ModMail, snipe).
+- Invia un video o un archivio oltre 8 MiB e cancellalo: scheda senza impronta (non si scarica). Un archivio con nome `.exe` oltre 8 MiB: avviso.
+- Backup mirror e copia chat: una foto vera arriva come PNG ricodificato; un PDF, uno ZIP o un `.exe` NON arrivano come file: nel testo c'è la scheda o l'avviso, nessun link al file originale. Dopo «ricarica chat» lo stesso.
+- Ticket: risposta staff con foto e PDF proposta alla chiusura: nel canale dei log la foto è un PNG nuovo, il PDF non c'è.
+- ModMail: un utente scrive in DM con un `.exe` allegato: nell'inoltro staff il nome compare con «⚠️» e senza link; una foto vera arriva come PNG rifatto (dalla parte 2a, senza link).
+
+## giro r160 parte 2a — formati in più e link all'originale tolti (D74, #160)
+- Invia una foto `.bmp`, una `.tiff`, una `.ico` e una `.avif` vere in un canale con il log dei messaggi acceso e cancellale: nel log ci sono PNG rifatti (nome `.png`), mai l'originale. Un `.heic` vero: solo scheda.
+- Una `.tiff` con centinaia di pagine e un `.ico` rotto: nessun errore del bot, nessuna copia (scheda o avviso).
+- ModMail: scrivi in DM con una foto e un PDF: nell'inoltro staff la foto è un PNG nuovo (immagine dell'embed), il PDF è una riga di scheda, nessun link `cdn.discordapp.com`.
+- Starboard: un messaggio con foto e PDF che raggiunge la soglia: in bacheca la foto è un PNG nuovo, il PDF una riga di scheda.
+- Cita un messaggio con foto incollando il suo link: nella risposta l'immagine è la copia rifatta.
+- Telefono (canali per adulti): un allegato esce come riga «📎 nome (tipo, peso)», mai come link.
+- Ricarica una chat salvata dopo che i link sono scaduti: gli allegati compaiono come schede, nessun link.
 
 ## Voce di Yokai nei ticket (#142, passo 2)
 - Con motore vocale installato e `/admin-ai voce imposta attiva:sì`: apri un ticket da un pannello. Sotto il benvenuto arriva un vero vocale (forma d'onda) con il tuo nome, tono scherzoso anche se il server ha `piccante`, e sotto i bottoni «Trascrivi» e «Nella mia lingua».

@@ -6,7 +6,8 @@ stdout (lunghezza + JSON, poi lunghezza + PNG ricodificato). Parte con `python3 
 limiti di memoria, tempo e file messi da `core/immagini_sandbox.py`. Non parla con Discord né col
 database. Qualunque errore del decoder finisce in un esito «errore»: chi legge lo tratta da sospetto.
 Senza Pillow l'esito e' «non_disponibile» (manca la sandbox, non e' colpa dell'immagine).
-Funzioni coperte: SPEC §6 (D62)
+Apre PNG, JPEG, GIF, WEBP, BMP, TIFF, ICO e AVIF (D74): sempre un solo fotogramma o pagina, uscita PNG dai soli pixel.
+Funzioni coperte: SPEC §6 (D62), §8.16 (D74)
 """
 
 from __future__ import annotations
@@ -101,11 +102,11 @@ def _contenuto(img) -> tuple[dict, bytes]:
 
 
 def analizza(percorso: Path) -> tuple[dict, bytes]:
-    from core.safe_image import FORMATI_AMMESSI, ImmagineTroppoGrande, safe_open_image
+    from core.safe_image import FORMATI_SANDBOX, ImmagineTroppoGrande, safe_open_image
 
     try:
         dati = percorso.read_bytes()
-        anteprima = Image.open(io.BytesIO(dati), formats=FORMATI_AMMESSI)
+        anteprima = Image.open(io.BytesIO(dati), formats=FORMATI_SANDBOX)
         formato = anteprima.format
         larghezza, altezza = anteprima.size
         motivi = _metadati(anteprima)
@@ -113,7 +114,7 @@ def analizza(percorso: Path) -> tuple[dict, bytes]:
         anteprima.close()
         if fotogrammi > MAX_FOTOGRAMMI:
             motivi.append("troppi_fotogrammi")
-        img = safe_open_image(dati, max_side=LATO_ANALISI)
+        img = safe_open_image(dati, max_side=LATO_ANALISI, formati=FORMATI_SANDBOX)
     except (ImmagineTroppoGrande, Image.DecompressionBombError):
         return {"esito": "errore", "motivo": "troppo_grande"}, b""
     except Exception as errore:  # decoder: qualunque cosa e' sospetta

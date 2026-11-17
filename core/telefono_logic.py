@@ -4,7 +4,7 @@ core/telefono_logic.py
 Il telefono tra server (#131, B12): regole di una chiamata, pulizia dei messaggi che passano da un server
 all'altro e il centralino in memoria (chi squilla, chi parla, durata massima e silenzio). Niente Discord qui:
 il cog legge gli eventi e chiama queste funzioni.
-Funzioni coperte: SPEC §16 (FUN-079, FUN-080)
+Funzioni coperte: SPEC §16 (FUN-079, FUN-080), §8.16 (D74: allegati come scheda)
 Dipende da: core/fun_extra_logic.py (stili di testo), core/nsfw_filter_logic.py (lista dei minori)
 """
 
@@ -93,11 +93,12 @@ def applica_effetto(effetto: str, testo: str, rng: random.Random | None = None) 
 
 def prepara_testo(testo: str, allegati: list[str], effetto: str = "nessuno", rng: random.Random | None = None) -> str | None:
     """Il testo da mandare all'altro server, o None se non c'è niente da dire.
-    Link e inviti tolti, effetto applicato, allegati come soli indirizzi, al massimo 1900 caratteri."""
+    Link e inviti tolti, effetto applicato, allegati come righe di scheda (mai il link all'originale, D74),
+    al massimo 1900 caratteri."""
     corpo = _SPAZI.sub(" ", togli_link(testo or "")).strip()
     if corpo:
         corpo = applica_effetto(effetto, corpo, rng)
-    righe = [f"📎 {url}" for url in allegati if url.startswith("https://")]
+    righe = [f"📎 {riga}" for riga in allegati if riga.strip()]
     completo = "\n".join(([corpo] if corpo else []) + righe)
     if not completo.strip():
         return None

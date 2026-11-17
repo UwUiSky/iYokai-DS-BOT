@@ -4,8 +4,8 @@ core/backup_messages_logic.py
 Messaggi via webhook, impersonando l'autore: la copia degli ultimi N messaggi
 di ogni canale nel server di backup (D8, M 12.17) e le chat salvate di un
 canale (fino a 1000 messaggi) da ricaricare dopo, anche in un altro canale.
-Gli allegati si ricaricano come file finché il link vale (≤ 10 MiB per
-messaggio), poi come link; le immagini solo come copia PNG ricodificata (D61); i messaggi fissati si rifissano.
+Si ricarica come file solo un'immagine vera e pulita, come copia PNG ricodificata (D61, D74); ogni altro allegato
+resta una riga di scheda (nome, tipo, peso, impronta) o di avviso, mai il file; i messaggi fissati si rifissano.
 
 Regole di sicurezza:
 - un invio alla volta, ognuno atteso (``wait=True``): l'ordine resta
@@ -15,7 +15,7 @@ Regole di sicurezza:
 - un canale di backup che ha già messaggi non si ricopia (rilanci senza
   doppioni) e, se non si riesce a controllarlo, non si scrive;
 - un errore su un canale o su un messaggio non ferma la copia.
-Funzioni coperte: SPEC §11.15, M 12.17, BKP-013, BKP-016, BKP-026, BKP-027, D61 (#152)
+Funzioni coperte: SPEC §11.15, M 12.17, BKP-013, BKP-016, BKP-026, BKP-027, D61, D74 (#152, #160)
 """
 
 from __future__ import annotations
@@ -29,7 +29,8 @@ import aiohttp
 import discord
 
 from core.backup_mirror_logic import nome_sicuro_per_webhook
-from core.immagini_pipeline import copia_ricaricabile
+from core import allegati_tipo_logic
+from core.immagini_pipeline import esamina_allegato
 
 logger = logging.getLogger("iyokai.backup_messages")
 
@@ -53,15 +54,21 @@ def allegati_come_file(allegati) -> list:
     return scelti
 
 
-def contenuto_da_copiare(message, come_file=()) -> str | None:
-    """Testo + link degli allegati che non vanno come file, entro 2000 caratteri.
-    None se non c'è nulla da copiare (messaggi di sistema, solo embed)."""
+def contenuto_da_copiare(message, come_file=(), righe_schede=()) -> str | None:
+    """Testo + righe di scheda/avviso degli allegati, entro 2000 caratteri (D74: mai il link dell'originale).
+    Gli allegati non scaricati (troppo grandi) hanno una scheda dal nome. None se non c'è nulla da copiare."""
     if message.type not in TIPI_COPIABILI:
         return None
     contenuto = message.content or ""
-    link = "\n".join(a.url for a in message.attachments if a not in come_file)
-    if link:
-        contenuto = f"{contenuto}\n{link}" if contenuto else link
+    righe = list(righe_schede)
+    for a in message.attachments:
+        if a not in come_file:
+            d = allegati_tipo_logic.decidi_senza_byte(a.filename, getattr(a, "content_type", None), a.size or 0)
+            righe.append(allegati_tipo_logic.riga_scheda(d) if d.azione == allegati_tipo_logic.SCHEDA
+                         else allegati_tipo_logic.riga_avviso(d))
+    extra = "\n".join(righe)
+    if extra:
+        contenuto = f"{contenuto}\n{extra}" if contenuto else extra
     contenuto = contenuto[:MAX_CONTENUTO]
     return contenuto or None
 
@@ -90,24 +97,32 @@ async def _destinazione_vuota(canale) -> bool:
     return True
 
 
-async def file_degli_allegati(allegati, guild_id: int = 0) -> list[discord.File]:
+async def preparare_allegati(allegati, guild_id: int = 0) -> tuple[list[discord.File], list[str]]:
     """
-    Gli allegati da ricaricare. D61/D62: il tipo lo dicono i byte, non il nome. Un'immagine vera passa dal
-    percorso unico e si ricarica solo la copia PNG ricodificata (se sospetta o non analizzata, resta fuori);
-    un file che dice di essere un'immagine ma non lo e' resta fuori; gli altri file vanno cosi' come sono.
+    Gli allegati da ricaricare e le righe per il resto. D61/D62/D74: il tipo lo dicono i byte, non il nome. Solo
+    un'immagine vera e pulita si ricarica, come copia PNG ricodificata; ogni altro file non si rimanda mai:
+    esce una riga di scheda (nome, tipo, peso, impronta) o di avviso (travestito, eseguibile, sconosciuto).
     """
-    file = []
+    file, righe = [], []
     for a in allegati:
         try:
             dati = await a.read()
         except discord.HTTPException:
             continue  # link scaduto o file sparito: resta fuori
-        copia = await copia_ricaricabile(dati, a.filename, getattr(a, "content_type", None), guild_id)
-        if copia is None:
-            logger.info("Allegato %s non copiato: immagine non pulita, non analizzata o file travestito.", a.filename)
-            continue
-        file.append(discord.File(io.BytesIO(copia[1]), filename=copia[0]))
-    return file
+        copia, d = await esamina_allegato(dati, a.filename, getattr(a, "content_type", None), guild_id)
+        if copia is not None:
+            file.append(discord.File(io.BytesIO(copia[1]), filename=copia[0]))
+        elif d.azione == allegati_tipo_logic.SCHEDA:
+            righe.append(allegati_tipo_logic.riga_scheda(d))
+        else:
+            righe.append(allegati_tipo_logic.riga_avviso(d))
+            logger.info("Allegato %s non copiato: %s.", d.nome, ", ".join(d.motivi) or d.tipo.categoria)
+    return file, righe
+
+
+async def file_degli_allegati(allegati, guild_id: int = 0) -> list[discord.File]:
+    """Solo i file da ricaricare di `preparare_allegati` (le immagini ricodificate)."""
+    return (await preparare_allegati(allegati, guild_id))[0]
 
 
 async def _copia_canale(sorgente, webhook, limite: int, riepilogo, destinazione=None) -> None:
@@ -121,8 +136,8 @@ async def _copia_canale(sorgente, webhook, limite: int, riepilogo, destinazione=
             riepilogo.messaggi_saltati += 1
             continue
         come_file = allegati_come_file(message.attachments)
-        file = await file_degli_allegati(come_file, getattr(getattr(sorgente, "guild", None), "id", 0))
-        contenuto = contenuto_da_copiare(message, come_file)
+        file, righe = await preparare_allegati(come_file, getattr(getattr(sorgente, "guild", None), "id", 0))
+        contenuto = contenuto_da_copiare(message, come_file, righe)
         if contenuto is None and not file:
             riepilogo.messaggi_saltati += 1
             continue
@@ -187,7 +202,10 @@ MAX_WEBHOOK_PER_CANALE = 15
 
 
 async def leggi_chat(canale, quanti: int) -> list[dict]:
-    """Gli ultimi `quanti` messaggi (≤ 1000), dal più vecchio, come dati."""
+    """
+    Gli ultimi `quanti` messaggi (≤ 1000), dal più vecchio, come dati. L'indirizzo dell'allegato resta nel JSON interno
+    solo per riscaricarlo alla ricarica (dove passa dalla sandbox): non viene mai mostrato a nessuno (D74).
+    """
     righe = []
     async for m in canale.history(limit=max(1, min(quanti, MAX_CHAT))):
         if m.type not in TIPI_COPIABILI:
@@ -197,7 +215,7 @@ async def leggi_chat(canale, quanti: int) -> list[dict]:
             "avatar": str(m.author.display_avatar.url),
             "contenuto": (m.content or "")[:MAX_CONTENUTO],
             "allegati": [
-                {"nome": a.filename[:100], "url": a.url, "size": a.size}
+                {"nome": allegati_tipo_logic.nome_pulito(a.filename), "url": a.url, "size": a.size}
                 for a in m.attachments[:MAX_ALLEGATI_PER_MESSAGGIO]
             ],
             "fissato": bool(getattr(m, "pinned", False)),
@@ -223,7 +241,7 @@ class RiepilogoChat:
     copiati: int = 0
     saltati: int = 0
     falliti: int = 0
-    allegati_come_link: int = 0
+    allegati_come_scheda: int = 0
     annullato: bool = False
 
     def testo(self) -> str:
@@ -234,24 +252,37 @@ class RiepilogoChat:
             righe.append(f"⏭️ Vuoti, saltati: {self.saltati}")
         if self.falliti:
             righe.append(f"⚠️ Non inviati: {self.falliti}")
-        if self.allegati_come_link:
-            righe.append(f"🔗 Allegati scaduti o troppo grandi, rimessi come link: {self.allegati_come_link}")
+        if self.allegati_come_scheda:
+            righe.append(f"📎 Allegati scaduti o troppo grandi, rimasti solo come scheda: {self.allegati_come_scheda}")
         return "\n".join(righe)
 
 
-async def _allegati_salvati(allegati: list[dict], scarica) -> tuple[list[discord.File], list[str]]:
-    """BKP-013: file finché il link vale e il totale resta ≤ 10 MiB; il resto come link."""
-    file, link, totale = [], [], 0
+async def _allegati_salvati(allegati: list[dict], scarica, guild_id: int = 0) -> tuple[list[discord.File], list[str], int]:
+    """
+    BKP-013, D74: (file, righe, quante schede per un file non scaricato). Si ricarica solo un'immagine vera e pulita,
+    ricodificata; ogni altro file ha una riga di scheda o di avviso. Mai il link all'originale, nemmeno se il file
+    e' scaduto: resta la scheda dal nome.
+    """
+    file, righe, non_scaricati, totale = [], [], 0, 0
     for a in allegati:
+        nome = a.get("nome") or "file"
         dati = None
         if (a.get("size") or 0) + totale <= MAX_ALLEGATI_BYTE:
             dati = await scarica(a["url"], MAX_ALLEGATI_BYTE - totale)
         if dati is None:
-            link.append(a["url"])
+            d = allegati_tipo_logic.decidi_senza_byte(nome, None, a.get("size") or 0)
+            righe.append(allegati_tipo_logic.riga_avviso(d) if d.azione == allegati_tipo_logic.RIFIUTA
+                         else allegati_tipo_logic.riga_scheda(d))
+            non_scaricati += d.azione != allegati_tipo_logic.RIFIUTA
             continue
-        totale += len(dati)
-        file.append(discord.File(io.BytesIO(dati), filename=a.get("nome") or "file"))
-    return file, link
+        copia, d = await esamina_allegato(dati, nome, None, guild_id)
+        if copia is None:
+            righe.append(allegati_tipo_logic.riga_scheda(d) if d.azione == allegati_tipo_logic.SCHEDA
+                         else allegati_tipo_logic.riga_avviso(d))
+            continue
+        totale += len(copia[1])
+        file.append(discord.File(io.BytesIO(copia[1]), filename=copia[0]))
+    return file, righe, non_scaricati
 
 
 async def ricarica_chat(
@@ -267,9 +298,11 @@ async def ricarica_chat(
         if await avanza("messaggi", indice, len(messaggi)):
             r.annullato = True
             break
-        file, link = await _allegati_salvati(m.get("allegati", []), scarica)
-        r.allegati_come_link += len(link)
-        contenuto = "\n".join(x for x in [m.get("contenuto") or "", *link] if x)[:MAX_CONTENUTO]
+        file, righe, non_scaricati = await _allegati_salvati(
+            m.get("allegati", []), scarica, getattr(getattr(destinazione, "guild", None), "id", 0) or 0
+        )
+        r.allegati_come_scheda += non_scaricati
+        contenuto = "\n".join(x for x in [m.get("contenuto") or "", *righe] if x)[:MAX_CONTENUTO]
         if not contenuto and not file:
             r.saltati += 1
             continue

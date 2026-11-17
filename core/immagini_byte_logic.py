@@ -3,10 +3,10 @@ core/immagini_byte_logic.py
 ===========================
 Controlli sui byte di un allegato immagine, senza mai decodificarlo (D61, D62): tipo vero dai
 primi byte contro estensione e content-type, dimensioni dichiarate nell'intestazione, struttura
-(blocchi PNG e CRC, segmenti JPEG, blocchi GIF, misura RIFF di WEBP) e dati in coda dopo la fine
+(blocchi PNG e CRC, segmenti JPEG, blocchi GIF, misura RIFF di WEBP, pagine TIFF, voci ICO, intestazione BMP, scatola `ispe` di AVIF) e dati in coda dopo la fine
 dell'immagine (file «poliglotti»). Logica pura: niente Discord, niente Pillow, niente database.
 Le «foto in movimento» (JPEG + video MP4 in coda) non sono un falso positivo.
-Funzioni coperte: SPEC §6 (D62)
+Funzioni coperte: SPEC §6 (D62), §8.16 (D74: BMP, TIFF, ICO, AVIF)
 """
 
 from __future__ import annotations
@@ -24,9 +24,20 @@ SOSPETTA = "sospetta"
 MALEVOLA = "malevola"
 _GRAVITA = {PULITA: 0, SOSPETTA: 1, MALEVOLA: 2}
 
-TIPI = ("png", "jpeg", "gif", "webp")
-_ESTENSIONI = {"png": "png", "jpg": "jpeg", "jpeg": "jpeg", "jfif": "jpeg", "gif": "gif", "webp": "webp"}
-_CONTENT_TYPE = {"image/png": "png", "image/jpeg": "jpeg", "image/jpg": "jpeg", "image/gif": "gif", "image/webp": "webp"}
+TIPI = ("png", "jpeg", "gif", "webp", "bmp", "tiff", "ico", "avif")
+_ESTENSIONI = {
+    "png": "png", "jpg": "jpeg", "jpeg": "jpeg", "jfif": "jpeg", "gif": "gif", "webp": "webp",
+    "bmp": "bmp", "tif": "tiff", "tiff": "tiff", "ico": "ico", "avif": "avif",
+}
+_CONTENT_TYPE = {
+    "image/png": "png", "image/jpeg": "jpeg", "image/jpg": "jpeg", "image/gif": "gif", "image/webp": "webp",
+    "image/bmp": "bmp", "image/x-ms-bmp": "bmp", "image/x-bmp": "bmp", "image/tiff": "tiff",
+    "image/x-icon": "ico", "image/vnd.microsoft.icon": "ico", "image/avif": "avif",
+}
+MAX_PAGINE_TIFF = 200
+MAX_IMMAGINI_ICO = 64
+_DIB_BMP = (12, 40, 52, 56, 64, 108, 124)
+_MARCHE_AVIF = (b"avif", b"avis")
 
 MAX_TESTO_PNG = 1024 * 1024
 MAX_EXIF = 256 * 1024
@@ -111,7 +122,42 @@ def riconosci_tipo(dati: bytes) -> str | None:
         return "gif"
     if dati[:4] == b"RIFF" and dati[8:12] == b"WEBP":
         return "webp"
+    if _e_bmp(dati):
+        return "bmp"
+    if _e_tiff(dati):
+        return "tiff"
+    if _e_ico(dati):
+        return "ico"
+    if _e_avif(dati):
+        return "avif"
     return None
+
+
+def _e_bmp(dati: bytes) -> bool:
+    return len(dati) >= 26 and dati[:2] == b"BM" and struct.unpack("<I", dati[14:18])[0] in _DIB_BMP
+
+
+def _e_tiff(dati: bytes) -> bool:
+    if len(dati) < 8 or dati[:4] not in (b"II*\x00", b"MM\x00*"):
+        return False
+    return struct.unpack("<I" if dati[:2] == b"II" else ">I", dati[4:8])[0] >= 8
+
+
+def _e_ico(dati: bytes) -> bool:
+    # Tipo 1 (icona), almeno una voce, byte riservato della prima voce a zero, dimensioni e posizione sensate.
+    if len(dati) < 22 or dati[:4] != b"\x00\x00\x01\x00":
+        return False
+    voci = struct.unpack("<H", dati[4:6])[0]
+    misura, posizione = struct.unpack("<II", dati[14:22])
+    return voci >= 1 and dati[9] == 0 and misura > 0 and posizione >= 6 + 16 * voci
+
+
+def _e_avif(dati: bytes) -> bool:
+    if len(dati) < 16 or dati[4:8] != b"ftyp":
+        return False
+    misura = min(struct.unpack(">I", dati[:4])[0], len(dati), 256)
+    marche = [dati[8:12], *(dati[i:i + 4] for i in range(16, misura - 3, 4))]
+    return any(m in _MARCHE_AVIF for m in marche)
 
 
 def nome_file_sicuro(nome: str) -> str:
@@ -282,7 +328,88 @@ def _leggi_webp(dati: bytes, r: _Raccolta) -> None:
         r.motivo("webp_troppi_blocchi")
 
 
-_LETTORI = {"png": _leggi_png, "jpeg": _leggi_jpeg, "gif": _leggi_gif, "webp": _leggi_webp}
+def _leggi_bmp(dati: bytes, r: _Raccolta) -> None:
+    dib = struct.unpack("<I", dati[14:18])[0]
+    if dib == 12:
+        r.larghezza, r.altezza = struct.unpack("<HH", dati[18:22])
+    else:
+        larghezza, altezza = struct.unpack("<ii", dati[18:26])
+        r.larghezza, r.altezza = abs(larghezza), abs(altezza)
+    totale = struct.unpack("<I", dati[2:6])[0]
+    if totale > len(dati):
+        r.motivo("bmp_troncato")
+    elif totale >= 26:
+        r.fine = totale
+
+
+def _leggi_tiff(dati: bytes, r: _Raccolta) -> None:
+    f = "<" if dati[:2] == b"II" else ">"
+    posizione = struct.unpack(f + "I", dati[4:8])[0]
+    visti: set[int] = set()
+    pagine = 0
+    while posizione:
+        if posizione in visti:
+            r.motivo("tiff_catena_pagine")
+            return
+        visti.add(posizione)
+        if posizione + 2 > len(dati):
+            r.motivo("tiff_troncato")
+            return
+        voci = struct.unpack(f + "H", dati[posizione:posizione + 2])[0]
+        fine_voci = posizione + 2 + voci * 12
+        if voci > 4096 or fine_voci + 4 > len(dati):
+            r.motivo("tiff_troncato")
+            return
+        if pagine == 0:
+            _dimensioni_tiff(dati, f, posizione + 2, voci, r)
+        pagine += 1
+        if pagine > MAX_PAGINE_TIFF:
+            r.motivo("troppe_pagine")
+            return
+        posizione = struct.unpack(f + "I", dati[fine_voci:fine_voci + 4])[0]
+
+
+def _dimensioni_tiff(dati: bytes, f: str, inizio: int, voci: int, r: _Raccolta) -> None:
+    for i in range(voci):
+        voce = dati[inizio + i * 12: inizio + i * 12 + 12]
+        etichetta, tipo, quanti = struct.unpack(f + "HHI", voce[:8])
+        if etichetta not in (256, 257) or quanti != 1:
+            continue
+        valore = struct.unpack(f + "H", voce[8:10])[0] if tipo == 3 else struct.unpack(f + "I", voce[8:12])[0] if tipo == 4 else None
+        if valore is not None:
+            if etichetta == 256:
+                r.larghezza = valore
+            else:
+                r.altezza = valore
+
+
+def _leggi_ico(dati: bytes, r: _Raccolta) -> None:
+    voci = struct.unpack("<H", dati[4:6])[0]
+    if voci > MAX_IMMAGINI_ICO:
+        r.motivo("troppe_pagine")
+    if 6 + voci * 16 > len(dati):
+        r.motivo("ico_troncato")
+        return
+    lati = [(dati[6 + i * 16] or 256, dati[7 + i * 16] or 256) for i in range(min(voci, MAX_IMMAGINI_ICO))]
+    r.larghezza, r.altezza = max(w for w, _ in lati), max(h for _, h in lati)
+
+
+def _leggi_avif(dati: bytes, r: _Raccolta) -> None:
+    # Le dimensioni stanno nelle scatole `ispe` (versione e flag, poi larghezza e altezza): si prende la piu' grande.
+    testa = dati[:65536]
+    posto = testa.find(b"ispe")
+    while posto != -1:
+        if posto + 16 <= len(testa):
+            larghezza, altezza = struct.unpack(">II", testa[posto + 8: posto + 16])
+            r.larghezza = max(r.larghezza or 0, larghezza)
+            r.altezza = max(r.altezza or 0, altezza)
+        posto = testa.find(b"ispe", posto + 4)
+
+
+_LETTORI = {
+    "png": _leggi_png, "jpeg": _leggi_jpeg, "gif": _leggi_gif, "webp": _leggi_webp,
+    "bmp": _leggi_bmp, "tiff": _leggi_tiff, "ico": _leggi_ico, "avif": _leggi_avif,
+}
 
 
 # ----------------------------------------------------------------------------- coda

@@ -22,7 +22,7 @@ from tests.support import immagini_finte as f
 def test_il_transcript_non_porta_caratteri_di_controllo_ne_percorsi_nei_nomi():
     riga = format_transcript_line("12:00", "Mario", "x", ["../../a\r\n[fake].png", 'b"<i>.png'])
     assert "\n" not in riga and "\r" not in riga and "../" not in riga and '"' not in riga and "<" not in riga
-    assert "[allegati: a[fake].png, bi.png]" in riga
+    assert "[allegati: afake.png, bi.png]" in riga  # niente parentesi: nessun link mascherato
 
 
 def test_risposte_standard_tengono_solo_link_del_cdn_di_discord():
@@ -61,7 +61,7 @@ async def test_copie_per_la_risposta_standard_solo_ricodificate(monkeypatch):
         _Allegato("finta.png", b"<html><script>1</script></html>", "image/png"),
         _Allegato("guida.pdf", b"%PDF-1.4 x"),
     ))
-    assert [x.filename for x in file] == ["foto.png", "guida.pdf"]
+    assert [x.filename for x in file] == ["foto.png"]  # D74: il PDF non si rimanda
     assert file[0].fp.read() == b"PNG-NUOVO"
 
 

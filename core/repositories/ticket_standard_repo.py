@@ -17,7 +17,7 @@ from urllib.parse import urlsplit
 
 import asyncpg
 
-from core.immagini_byte_logic import nome_file_sicuro
+from core.allegati_tipo_logic import nome_pulito
 
 
 @dataclass(frozen=True)
@@ -55,7 +55,7 @@ def allegati_validi(allegati) -> list[dict]:
         parti = urlsplit(url)
         if parti.scheme != "https" or (parti.hostname or "").lower() not in HOST_CDN:
             continue
-        puliti.append({"filename": nome_file_sicuro(str(a.get("filename", ""))), "url": url})
+        puliti.append({"filename": nome_pulito(str(a.get("filename", ""))), "url": url})
     return puliti
 
 
