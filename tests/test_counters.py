@@ -122,6 +122,7 @@ class _Scena:
 
 
 @pytest.mark.asyncio
+# STA-033: canale che mostra il numero dei membri, rinominato solo se il numero cambia
 async def test_cambia_nome_se_il_numero_e_cambiato(monkeypatch):
     s = _Scena(monkeypatch, valore=100, ultimo=99)
     await s.worker.tick(s.bot)

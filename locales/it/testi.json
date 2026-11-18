@@ -3010,5 +3010,14 @@
   "counters_categoria_creata": "Categoria {mention} creata con {n} contatori: i nomi si aggiornano ogni 10 minuti.",
   "counters_non_e_tuo": "Questi bottoni sono di chi ha lanciato il comando.",
   "counters_azzerati": "Fatto: {n} contatori tolti. I canali sono rimasti.",
-  "counters_annullato": "Annullato: non ho toccato nulla."
+  "counters_annullato": "Annullato: non ho toccato nulla.",
+  "schede_file_serve_gestire_server": "Il file con tutti i membri lo può chiedere solo chi ha il permesso «Gestisci server».",
+  "schede_scegli_ruolo_o_file": "Scegli un ruolo, oppure metti `file` su sì per tutti i membri.",
+  "schede_invito_non_valido": "Questo non sembra un codice d'invito.",
+  "schede_invito_non_trovato": "Invito non trovato o scaduto.",
+  "schede_invito_errore": "Discord non risponde: riprova tra poco.",
+  "schede_titolo_invito": "Scheda dell'invito",
+  "schede_emoji_non_valida": "Scrivi un'emoji, per esempio 😀 o <:nome:123456789012345678>, oppure il suo ID.",
+  "schede_titolo_emoji": "Scheda dell'emoji",
+  "statistiche_esporta_troppo_grande": "Il file è troppo grande per Discord: riprova con meno giorni di dati (si tengono 90 giorni) o scrivi al supporto."
 }

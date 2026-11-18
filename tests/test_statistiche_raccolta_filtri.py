@@ -305,3 +305,19 @@ async def test_sta_008_il_giro_orario_salva_solo_i_server_che_lo_vogliono(cog, r
     assert [n for _, n in campioni] == [17]
     cog.bot.fetch_guild = AsyncMock(side_effect=discord.HTTPException(MagicMock(status=500), "x"))
     await cog.campiona_online()  # un errore di Discord non ferma il giro
+
+
+# STA-057
+async def test_sta_057_esporta_zip_solo_del_proprio_server(cog, repo):
+    import io, zipfile
+    oggi = datetime.now(timezone.utc).date()
+    await repo.flush({(GID, oggi, 40): [3, 0], (GID + 1, oggi, 99): [7, 0]}, {(GID, oggi, 5): [3, 0]}, {})
+    await repo.add_rule(GID, 300, "messages", 5, 7, True)
+    it = fake_interaction(guild=fake_guild(GID))
+    await cog.esporta.callback(cog, it)
+    f = it.followup.send.await_args.kwargs["file"]
+    z = zipfile.ZipFile(io.BytesIO(f.fp.read()))
+    assert {"activity_channel_daily.csv", "regole.csv", "contatori.csv", "impostazioni.csv"} <= set(z.namelist())
+    canali = z.read("activity_channel_daily.csv").decode("utf-8-sig")
+    assert ";40;" in canali and ";99;" not in canali  # mai dati di un altro server
+    assert "messages" in z.read("regole.csv").decode("utf-8-sig")

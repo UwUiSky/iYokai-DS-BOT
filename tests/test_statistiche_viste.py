@@ -331,17 +331,33 @@ async def test_sta_011_il_menu_rispetta_il_filtro_per_ruolo(repo):
     it.response.defer.assert_not_awaited()
 
 
-# STA-010
-async def test_sta_010_i_bottoni_ricordano_canale_e_lingua(repo):
+# STA-010: bottoni persistenti
+async def test_sta_010_i_bottoni_sopravvivono_al_riavvio_e_restano_del_server(repo, monkeypatch):
     await _dati(repo)
     canale = fake_text_channel(40)
     canale.permissions_for = MagicMock(return_value=discord.Permissions(view_channel=True))
-    view = ss._PeriodoView(5, _guild(), "canale", 14, "messages", None, None, fake_member(5), canale, False, "en-US")
-    it = fake_interaction(guild=_guild(), user=fake_member(5))
-    await view.children[1].callback(it)
-    embed = it.edit_original_response.await_args.kwargs["embed"]
-    assert "Total in the period" in embed.description  # la lingua si conserva dopo il clic
-    assert it.edit_original_response.await_args.kwargs["view"].children[1].style == discord.ButtonStyle.primary
+    g = _guild()
+    g.get_channel = MagicMock(return_value=canale)
+    view = ss._PeriodoView(5, g, "canale", 14, "messages", None, None, fake_member(5), canale)
+    assert view.timeout is None and len(view.children) == 4
+    ids = [b.item.custom_id for b in view.children]
+    assert all(len(i) <= 100 for i in ids)
+    # dopo un riavvio il bot ricostruisce il bottone dal solo custom_id
+    m = ss._BottoneStat.__discord_ui_compiled_template__.fullmatch(ids[1])
+    nuovo = await ss._BottoneStat.from_custom_id(MagicMock(), None, m)
+    assert nuovo.dati["v"] == "canale" and nuovo.dati["c"] == 40 and nuovo.dati["a"] == 5 and nuovo.azione == "30"
+    estraneo = fake_interaction(guild=g, user=fake_member(77))
+    await nuovo.callback(estraneo)
+    assert estraneo.response.send_message.await_args.kwargs["ephemeral"] is True
+    it = fake_interaction(guild=g, user=fake_member(5))
+    await nuovo.callback(it)
+    assert "33" in it.edit_original_response.await_args.kwargs["embed"].description
+    assert it.edit_original_response.await_args.kwargs["view"].children[1].item.style == discord.ButtonStyle.primary
+    # un id inventato con una vista che non esiste non fa nulla
+    falso = ss._BottoneStat({**nuovo.dati, "v": "inventata"}, "r")
+    it = fake_interaction(guild=g, user=fake_member(5))
+    await falso.callback(it)
+    it.edit_original_response.assert_not_awaited()
 
 
 # --- STA-007, 008: giochi e online ------------------------------------------------------

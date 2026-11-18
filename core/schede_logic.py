@@ -4,11 +4,13 @@ core/schede_logic.py
 Schede informative di utente, server, canale e ruolo, elenco dei ruoli,
 classifiche di anzianità e permessi in un canale: i testi già pronti per
 un embed (campi entro 1024, al massimo 25). Funzioni pure.
-Funzioni coperte: SPEC §14 (catalogo #128: UTL-195, 197-200, 202; #123: RUO-110-112)
+Funzioni coperte: SPEC §14 (catalogo #128: UTL-195, 197-200, 202; #123: RUO-110-112); STA-058 (membri in file), STA-059 (invito, emoji)
 """
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from datetime import datetime
 from typing import Iterable
 
@@ -156,3 +158,84 @@ def righe_permessi(permessi: discord.Permissions) -> tuple[str, str]:
     si = [nome for nome in PERMESSI_CHIAVE if getattr(permessi, nome)]
     no = [nome for nome in PERMESSI_CHIAVE if not getattr(permessi, nome)]
     return taglia(", ".join(si) or "nessuno"), taglia(", ".join(no) or "nessuno")
+
+
+MAX_RIGHE_MEMBRI_FILE = 100_000  # STA-058: tetto alle righe del file
+
+_RE_EMOJI = re.compile(r"<(a?):([A-Za-z0-9_]{2,32}):(\d{15,21})>")
+
+
+def leggi_emoji(testo: str) -> tuple[str, str | None, int | None, bool]:
+    """STA-059: (tipo, nome, id, animata). Tipo «custom» per `<:nome:id>` o un ID numerico, «unicode» per un carattere, «niente» altrimenti."""
+    testo = testo.strip()
+    trovata = _RE_EMOJI.fullmatch(testo)
+    if trovata:
+        return "custom", trovata.group(2), int(trovata.group(3)), trovata.group(1) == "a"
+    if testo.isdigit() and 15 <= len(testo) <= 21:
+        return "custom", None, int(testo), False
+    if 0 < len(testo) <= 16 and not testo.isascii():
+        return "unicode", testo, None, False
+    return "niente", None, None, False
+
+
+def campi_emoji(testo: str, trovata=None, server_corrente_id: int | None = None) -> list[tuple[str, str]]:
+    """STA-059: la scheda di un'emoji. `trovata` è l'emoji che il bot conosce (server dove sta il bot).
+
+    Il nome di un altro server non si mostra: l'emoji può stare in un server dove chi chiede non è.
+    """
+    tipo, nome, emoji_id, animata = leggi_emoji(testo)
+    if tipo == "unicode":
+        punti = " ".join(f"U+{ord(c):04X}" for c in nome)
+        nomi = ", ".join(unicodedata.name(c, "?").title() for c in nome[:4])
+        return [("Tipo", "Emoji standard"), ("Carattere", nome), ("Punti Unicode", punti), ("Nome", nomi)]
+    if tipo == "niente":
+        return []
+    campi = [("Tipo", "Emoji personalizzata"), ("ID", f"`{emoji_id}`"),
+             ("Creata", data_discord(discord.utils.snowflake_time(emoji_id)))]
+    nome = getattr(trovata, "name", None) or nome
+    if nome:
+        campi.append(("Nome", f"`{nome}`"))
+    animata = bool(getattr(trovata, "animated", animata))
+    campi.append(("Animata", "sì" if animata else "no"))
+    if trovata is not None and getattr(trovata, "guild_id", None) == server_corrente_id and server_corrente_id is not None:
+        campi.append(("Server", "questo"))
+    campi.append(("Immagine", f"https://cdn.discordapp.com/emojis/{emoji_id}.{'gif' if animata else 'png'}"))
+    return campi
+
+
+def campi_invito(invito) -> list[tuple[str, str]]:
+    """STA-059: la scheda di un invito (le informazioni che Discord dà a chiunque abbia il codice)."""
+    server = getattr(invito, "guild", None)
+    campi = [("Codice", f"`{invito.code}`")]
+    if server is not None:
+        campi.append(("Server", taglia(str(server.name), 200)))
+    canale = getattr(invito, "channel", None)
+    if canale is not None and getattr(canale, "name", None):
+        campi.append(("Canale", taglia(f"#{canale.name}", 200)))
+    chi = getattr(invito, "inviter", None)
+    if chi is not None:
+        campi.append(("Creato da", f"{taglia(chi.name, 100)} (`{chi.id}`)"))
+    if getattr(invito, "approximate_member_count", None) is not None:
+        campi.append(("Membri", str(invito.approximate_member_count)))
+    if getattr(invito, "approximate_presence_count", None) is not None:
+        campi.append(("Online", str(invito.approximate_presence_count)))
+    scade = getattr(invito, "expires_at", None)
+    campi.append(("Scade", data_discord(scade) if scade else "mai"))
+    usi = getattr(invito, "uses", None)
+    if usi is not None:
+        massimo = getattr(invito, "max_uses", 0)
+        campi.append(("Usi", f"{usi}/{massimo}" if massimo else str(usi)))
+    return campi
+
+
+def righe_membri_csv(membri: Iterable) -> list[list]:
+    """STA-058: id, nome da mostrare, bot, entrato il, account creato il. Solo dati che un amministratore già vede."""
+    righe = []
+    for m in membri:
+        if len(righe) >= MAX_RIGHE_MEMBRI_FILE:
+            break
+        righe.append([
+            m.id, m.display_name[:80], "sì" if m.bot else "no",
+            m.joined_at.isoformat() if m.joined_at else "", m.created_at.isoformat() if m.created_at else "",
+        ])
+    return righe

@@ -1134,3 +1134,18 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
 - Reazioni (LIV-008/009): spente di base; attesa per persona e per verso (60-3600 s, di base 300) e tetto di 50 al giorno per verso, nella stessa scrittura del database; mai sul proprio messaggio, mai da o verso un bot; l'autore deve essere noto. La classifica per reazioni conta solo quelle che hanno dato XP.
 - Classifiche vocale e reazioni (LIV-059/060): solo «di sempre». `azzera server` azzera XP e livelli, non minuti e reazioni.
 - Card (LIV-051/054/055/056): colore del testo/anello e velo (0-100) sono per utente; sfondo e colore del server valgono per chi non ha il suo; «auto» = colore medio dell'icona (letto nel processo delle immagini, in memoria per icona).
+
+## D87 — Statistiche (#130) giro r1sta: scelte del catalogo (17/11/2026, opzione prudente, da confermare dall'owner)
+
+- Dove stanno i comandi: nessun gruppo nuovo. Filtri, accesso, campioni online, regole ed esportazione in `/admin-moduli statistiche`; contatori in `/admin-moduli contatori` (peso del gruppo 6.6k: non aggiungere altro lì, il prossimo va in un gruppo nuovo). Anonimato in `/utility privacy statistiche`. Viste in `/utility serverstats` (opzioni, non comandi).
+- Contatori: tetto 20 per server (erano 5; una categoria ne usa fino a 7). La migrazione 0701 toglie il vincolo sui tipi della 0087, che in produzione bloccava ticket, ruoli, canali ed emoji. Il nome si rifà solo se è cambiato e al massimo ogni 10 minuti (orologio a scatti di 10).
+- Twitch (STA-045): il token dell'app non dà i follower (serve il permesso del canale): il contatore mostra gli spettatori in diretta. YouTube: iscritti con una chiamata `channels.list` ogni 50 canali, chiave nell'intestazione.
+- Gioco (STA-046): alternativa vicina, Minecraft dal servizio pubblico mcsrvstat.us (l'indirizzo è un pezzo di percorso, validato e codificato), al massimo 30 indirizzi per giro.
+- Ultimo arrivato (STA-052): il nome da mostrare di un membro finisce nel nome del canale, che lo vede chi vede il canale. Chi non vuole spegne il tipo.
+- Menu col tasto destro (STA-011): Discord non ha menu sui canali; «Statistiche del canale» si apre su un messaggio e mostra il canale che lo contiene.
+- Presenze (STA-007): senza l'intent delle presenze la vista «giochi» dice perché non c'è; con l'intent mostra una fotografia di adesso, senza salvare nulla. STA-008: campione orario di `approximate_presence_count`, solo dove l'admin lo accende, 90 giorni.
+- Anonimato (STA-028): vale per tutti i server e per il passato perché la maschera si applica quando si mostra; i numeri restano nei totali, il nome no (nemmeno nel CSV).
+- Accesso (STA-013): chi gestisce il server vede sempre; se l'admin sceglie dei ruoli, solo loro (comando, menu e bottoni).
+- Filtri (STA-025..027): modo «solo» con elenco vuoto non limita nulla (non spegne le statistiche per errore); una categoria nell'elenco vale per i suoi canali.
+- Esportazione (STA-057): ZIP con le tabelle delle statistiche del server, regole, contatori e impostazioni (solo numeri e ID). Il resto resta nei suoi comandi (`/admin-bot config export`, `/logs export`, `/admin-inviti esporta`). Elenco membri in file (STA-058): solo con «Gestisci server».
+- Non fatte qui: STA-012 (pagina web pubblica) e STA-061 (API) dipendono dal pannello web (dev-web); restano all'issue del pannello. STA-060: gli ID sono già nelle schede.

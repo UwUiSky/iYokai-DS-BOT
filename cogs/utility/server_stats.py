@@ -365,46 +365,80 @@ async def costruisci_statistiche(
     return v.embed, (discord.File(io.BytesIO(v.png), filename="statistiche.png") if v.png else None)
 
 
+def _b36(n: int | None) -> str:
+    n = n or 0
+    cifre = "0123456789abcdefghijklmnopqrstuvwxyz"
+    out = ""
+    while n:
+        n, r = divmod(n, 36)
+        out = cifre[r] + out
+    return out or "0"
+
+
+_SIGLA_METRICA = {"messages": "m", "voice_minutes": "v", "comandi": "c"}
+_DA_SIGLA = {v: k for k, v in _SIGLA_METRICA.items()}
+
+
+class _BottoneStat(discord.ui.DynamicItem[discord.ui.Button], template=(
+    r"stv:(?P<v>[a-z\-]{3,20}):(?P<g>\d{1,2}):(?P<m>[mvc]):(?P<r>[0-9a-z]{1,13}):(?P<u>[0-9a-z]{1,13}):"
+    r"(?P<c>[0-9a-z]{1,13}):(?P<a>[0-9a-z]{1,13}):(?P<x>[0-9a-z]{1,2})"
+)):
+    """STA-010: bottone che sopravvive al riavvio del bot. Tutto lo stato sta nel custom_id (≤ 100 caratteri);
+    gli oggetti (ruolo, membro, canale) si ritrovano nel server dell'interazione, mai in un altro."""
+
+    def __init__(self, dati: dict, azione: str, acceso: bool = False) -> None:
+        self.dati, self.azione = dati, azione
+        etichetta = "🔄 Aggiorna" if azione == "r" else f"{azione} giorni"
+        codice = ":".join(["stv", dati["v"], str(dati["g"]), _SIGLA_METRICA.get(dati["m"], "m"), _b36(dati["r"]),
+                           _b36(dati["u"]), _b36(dati["c"]), _b36(dati["a"]), azione])
+        super().__init__(discord.ui.Button(
+            label=etichetta, custom_id=codice,
+            style=discord.ButtonStyle.primary if acceso else discord.ButtonStyle.secondary,
+        ))
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match):
+        n = lambda k: int(match[k], 36) or None  # noqa: E731
+        dati = {"v": match["v"], "g": int(match["g"]), "m": _DA_SIGLA[match["m"]], "r": n("r"), "u": n("u"), "c": n("c"), "a": n("a")}
+        return cls(dati, match["x"])
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        d = self.dati
+        if interaction.user.id != d["a"]:
+            await interaction.response.send_message(await testo_per(interaction, "serverstats_questi_bottoni_sono_di_chi"), ephemeral=True)
+            return
+        guild = interaction.guild
+        if guild is None or d["v"] not in VISTE or not await _consenti(interaction, rispondi_ok=False):
+            return
+        await interaction.response.defer()
+        giorni = d["g"] if self.azione == "r" else int(self.azione)
+        ruolo = guild.get_role(d["r"]) if d["r"] else None
+        utente = guild.get_member(d["u"]) if d["u"] else None
+        canale = guild.get_channel(d["c"]) if d["c"] else None
+        lingua = await lingua_interazione(interaction)
+        presenze = bool(getattr(getattr(interaction.client, "intents", None), "presences", False))
+        embed, file = await costruisci_statistiche(guild, d["v"], giorni, d["m"], ruolo, utente, interaction.user, canale, presenze, lingua)
+        nuova = _PeriodoView(d["a"], guild, d["v"], giorni, d["m"], ruolo, utente, interaction.user, canale)
+        await interaction.edit_original_response(
+            embed=embed, attachments=[file] if file else [], view=nuova, allowed_mentions=_NESSUNA_MENZIONE
+        )
+
+
 class _PeriodoView(BaseView):
-    """Bottoni sotto la risposta: cambia periodo o aggiorna. Li usa solo chi ha lanciato il comando."""
+    """Bottoni sotto la risposta: periodo (7, 30, 90) e aggiorna. Persistenti (STA-010); li usa solo chi ha lanciato il comando."""
 
     def __init__(self, autore_id: int, guild, vista, giorni, metrica, ruolo, utente, visti_da=None,
                  canale=None, presenze: bool = False, lingua: str = "it") -> None:
-        super().__init__(timeout=300)
-        self._autore_id = autore_id
-        self._visti_da = visti_da
-        self._args = [guild, vista, metrica, ruolo, utente]
-        self._extra = {"canale": canale, "presenze": presenze, "lingua": lingua}
+        super().__init__(timeout=None)
+        dati = {"v": vista, "g": giorni, "m": metrica if metrica in _SIGLA_METRICA else "messages",
+                "r": getattr(ruolo, "id", None), "u": getattr(utente, "id", None), "c": getattr(canale, "id", None), "a": autore_id}
         self.giorni = giorni
         for periodo in PERIODI_BOTTONI:
-            b = discord.ui.Button(
-                label=f"{periodo} giorni",
-                style=discord.ButtonStyle.primary if periodo == giorni else discord.ButtonStyle.secondary,
-            )
-            b.callback = self._cambia(periodo)
-            self.add_item(b)
-        agg = discord.ui.Button(label="Aggiorna", emoji="🔄", style=discord.ButtonStyle.secondary)
-        agg.callback = self._cambia(None)
-        self.add_item(agg)
-
-    def _cambia(self, periodo):
-        async def _callback(interaction: discord.Interaction) -> None:
-            if interaction.user.id != self._autore_id:
-                await interaction.response.send_message(await testo_per(interaction, "serverstats_questi_bottoni_sono_di_chi"), ephemeral=True)
-                return
-            await interaction.response.defer()
-            giorni = periodo or self.giorni
-            guild, vista, metrica, ruolo, utente = self._args
-            embed, file = await costruisci_statistiche(guild, vista, giorni, metrica, ruolo, utente, self._visti_da, **self._extra)
-            nuova = _PeriodoView(self._autore_id, guild, vista, giorni, metrica, ruolo, utente, self._visti_da, **self._extra)
-            await interaction.edit_original_response(
-                embed=embed, attachments=[file] if file else [], view=nuova, allowed_mentions=_NESSUNA_MENZIONE
-            )
-
-        return _callback
+            self.add_item(_BottoneStat(dati, str(periodo), periodo == giorni))
+        self.add_item(_BottoneStat(dati, "r"))
 
 
-async def _consenti(interaction: discord.Interaction) -> bool:
+async def _consenti(interaction: discord.Interaction, rispondi_ok: bool = True) -> bool:
     """Modulo acceso e, se l'admin ha scelto dei ruoli, solo per loro (STA-013). Risponde da sé se rifiuta."""
     guild = interaction.guild
     if guild is None:
@@ -441,10 +475,12 @@ class ServerStatsCog(CogConGruppi, commands.Cog):
 
     async def cog_load(self) -> None:
         await super().cog_load()
+        self.bot.add_dynamic_items(_BottoneStat)
         self.bot.tree.add_command(self._menu_membro)
         self.bot.tree.add_command(self._menu_canale)
 
     async def cog_unload(self) -> None:
+        self.bot.remove_dynamic_items(_BottoneStat)
         self.bot.tree.remove_command(NOME_MENU_MEMBRO, type=discord.AppCommandType.user)
         self.bot.tree.remove_command(NOME_MENU_CANALE, type=discord.AppCommandType.message)
         await super().cog_unload()

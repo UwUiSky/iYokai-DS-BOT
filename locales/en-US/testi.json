@@ -3010,5 +3010,14 @@
   "counters_categoria_creata": "Category {mention} created with {n} counters: names refresh every 10 minutes.",
   "counters_non_e_tuo": "These buttons belong to the person who ran the command.",
   "counters_azzerati": "Done: {n} counters removed. The channels are still there.",
-  "counters_annullato": "Cancelled: nothing was touched."
+  "counters_annullato": "Cancelled: nothing was touched.",
+  "schede_file_serve_gestire_server": "Only people with the «Manage Server» permission can ask for the file with all members.",
+  "schede_scegli_ruolo_o_file": "Pick a role, or set `file` to yes for all members.",
+  "schede_invito_non_valido": "This doesn't look like an invite code.",
+  "schede_invito_non_trovato": "Invite not found or expired.",
+  "schede_invito_errore": "Discord is not answering: try again shortly.",
+  "schede_titolo_invito": "Invite card",
+  "schede_emoji_non_valida": "Write an emoji, for example 😀 or <:name:123456789012345678>, or its ID.",
+  "schede_titolo_emoji": "Emoji card",
+  "statistiche_esporta_troppo_grande": "The file is too large for Discord: try again later or contact support."
 }

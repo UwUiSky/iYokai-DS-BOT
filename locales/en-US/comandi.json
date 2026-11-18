@@ -1003,7 +1003,7 @@
   "utility scheda canale": "Channel card.",
   "utility scheda ruolo": "Role card: members, color, date, permissions.",
   "utility scheda ruoli": "All roles with ID, members and color.",
-  "utility scheda membri": "Members who have a role.",
+  "utility scheda membri": "Members with a role, or everyone in a file.",
   "utility scheda anzianita": "Oldest or newest accounts, first or last to join.",
   "utility scheda permessi": "Permissions of a member or the bot in a channel.",
   "admin-ruoli auto sincronizza": "Give the automatic roles to members already in the server too.",
@@ -1359,7 +1359,10 @@
   "utility privacy statistiche": "Show your name in the statistics leaderboards, or stay anonymous.",
   "admin-moduli contatori modifica": "Changes a counter's label or goal.",
   "admin-moduli contatori azzera": "Stops updating all counters (the channels stay).",
-  "admin-moduli contatori categoria": "Creates a category with the most used counters."
+  "admin-moduli contatori categoria": "Creates a category with the most used counters.",
+  "utility scheda invito": "Invite card: server, channel, members, expiry.",
+  "utility scheda emoji": "Emoji card: ID, date, animated, image.",
+  "admin-moduli statistiche esporta": "Exports statistics, counters and rules to a ZIP file."
  },
  "parametri": {},
  "menu": {

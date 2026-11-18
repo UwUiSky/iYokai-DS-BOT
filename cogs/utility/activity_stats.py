@@ -5,14 +5,16 @@ Statistiche di attività (NF-25, #96): conta messaggi e minuti in vocale per
 canale e per membro (solo somme per giorno, scritte a lotti ogni minuto),
 dà e toglie i ruoli per attività. Comandi: /admin-moduli statistiche …; la lettura
 dei numeri sta in /utility serverstats (cogs/utility/server_stats.py).
-Funzioni coperte: SPEC §23 (NF-25); STA-006, 008, 013, 025..027, 029, 030..032
+Funzioni coperte: SPEC §23 (NF-25); STA-006, 008, 013, 025..027, 029, 030..032, 057
 """
 
 from __future__ import annotations
 
 import asyncio
+import io
 import logging
 import time
+import zipfile
 from datetime import datetime, timedelta, timezone
 
 import discord
@@ -31,6 +33,9 @@ from core.activity_stats_logic import (
 )
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
+from core.invio_file import FileTroppoGrande, invia_file
+from core.repositories.counter_repo import counter_repo
+from core.server_stats_logic import tabella_in_csv
 from core.i18n import testo_per
 from core.repositories.activity_stats_repo import ActivitySettings, activity_stats_repo
 
@@ -46,6 +51,16 @@ _SCELTE_METRICA = [
     app_commands.Choice(name="Messaggi", value="messages"),
     app_commands.Choice(name="Minuti in vocale", value="voice_minutes"),
 ]
+
+
+def _zip_di_tabelle(tabelle: dict[str, list[dict]]) -> bytes:
+    """Uno ZIP con un CSV per tabella (STA-057). Le colonne sono quelle della prima riga."""
+    uscita = io.BytesIO()
+    with zipfile.ZipFile(uscita, "w", zipfile.ZIP_DEFLATED) as z:
+        for nome, righe in tabelle.items():
+            intestazione = list(righe[0]) if righe else ["(vuota)"]
+            z.writestr(f"{nome}.csv", tabella_in_csv(intestazione, [[r.get(c, "") for c in intestazione] for r in righe]))
+    return uscita.getvalue()
 
 
 def _seconda(r) -> str:
@@ -445,6 +460,27 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
         await self._repo.set_anonymous(interaction.user.id, anonimo)
         chiave = "statistiche_anonimo_si" if anonimo else "statistiche_anonimo_no"
         await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
+
+    @comando_di_gruppo("admin-moduli", nome="esporta", descrizione="Esporta in un file ZIP le statistiche, i contatori e le regole del server.", sottogruppo=_SG)
+    @app_commands.checks.cooldown(1, 300.0, key=lambda i: i.guild_id)
+    async def esporta(self, interaction: discord.Interaction) -> None:
+        # STA-057: tutti i dati statistici del server in un file (solo numeri e ID, mai il testo dei messaggi).
+        # Il resto resta nei suoi comandi: /admin-bot config export, /logs export, /admin-inviti esporta.
+        if not await self._pronto(interaction):
+            return
+        await interaction.response.defer(ephemeral=True)
+        gid = interaction.guild.id
+        da = datetime.now(timezone.utc).date() - timedelta(days=GIORNI_CONSERVAZIONE)
+        tabelle = await self._repo.righe_per_esportare(gid, da)
+        tabelle["regole"] = [vars(r) for r in await self._repo.list_rules(gid)]
+        tabelle["contatori"] = [vars(c) for c in await counter_repo.list_for_guild(gid)]
+        imp = await self._repo.get_settings(gid)
+        tabelle["impostazioni"] = [{k: ",".join(map(str, v)) if isinstance(v, list) else v for k, v in vars(imp).items()}]
+        dati = await asyncio.to_thread(_zip_di_tabelle, tabelle)
+        try:
+            await invia_file(interaction.followup.send, dati, f"statistiche-{gid}.zip", dividi=False, ephemeral=True)
+        except FileTroppoGrande:
+            await interaction.followup.send(await testo_per(interaction, "statistiche_esporta_troppo_grande"), ephemeral=True)
 
     @comando_di_gruppo("admin-moduli", nome="diagnosi", descrizione="Perché le statistiche non si contano?", sottogruppo=_SG)
     async def diagnosi(self, interaction: discord.Interaction) -> None:
