@@ -65,6 +65,7 @@ def _server():
     return server
 
 
+# LOG-015: /admin-log crea-canali
 async def test_crea_canali_un_canale_per_tipo_e_il_router_li_conosce(ambiente):
     repo, db = ambiente
     cog = modulo.LogConfigCog(bot=None)
@@ -133,6 +134,7 @@ async def test_crea_forum_senza_community_risponde_chiaro(ambiente):
     assert "Community" in ix.followup.send.call_args.args[0]
 
 
+# LOG-018, LOG-019, LOG-020: /admin-log ignora canale, utente, prefisso
 async def test_ignora_aggiungi_elenco_e_togli(ambiente):
     cog = modulo.LogConfigCog(bot=None)
     ix = fake_interaction(guild=fake_guild(guild_id=600))
@@ -163,6 +165,7 @@ async def test_ignora_ha_un_tetto_per_server(ambiente):
     assert await repo.aggiungi(600, "canale", "3", IGNORATI_MAX_PER_SERVER)  # già presente
 
 
+# LOG-014: un canale per ogni gruppo di eventi (/admin-log canale tipo:)
 async def test_log_canale_con_un_forum_lo_imposta_per_il_tipo(ambiente):
     repo, db = ambiente
     cog = BasicLogsCog(bot=None)

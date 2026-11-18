@@ -188,7 +188,7 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
             app_commands.Choice(name="Sanzioni di moderazione", value=TIPO_LOG_SANZIONI),
         ]
     )
-    async def logs_setup(
+    async def logs_setup(  # LOG-014: un canale per ogni gruppo di eventi (messaggi, membri, voce, server)
         self,
         interaction: discord.Interaction,
         channel: discord.TextChannel | discord.ForumChannel,

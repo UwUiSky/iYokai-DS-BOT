@@ -5,9 +5,11 @@
 17/11/2026 · ramo `feat/r160-allegati` (copia /home/user/wt-160, DB iyokai_w160) · #160 D74 parte 2a (formati in piu', link tolti), nessuna migrazione.
 16/11/2026 · stesso ramo · #160 prima parte.
 10/11/2026 · ramo `feat/r152img` (copia /home/claude/wt/r152img, DB iyokai_wr152) · usata migrazione 0304 (#152, D61). Sotto: giri precedenti.
+18/11/2026 · ramo `feat/r2log` (copia /home/user/wt-119, DB iyokai_w119) · #119 catalogo log, migrazioni 0710-0719.
 27/10/2026 · ramo `feat/r10logt` (copia /home/claude/wt/r10logt, DB iyokai_wr10logt) · migrazioni 0300-0309 (usate 0300, 0301, 0302)
 
 ## In corso
+- r2log (ramo feat/r2log, wt-119, DB iyokai_w119, migrazioni 0710-0719) #119: blocco 1 FATTO (LOG-001..004, 010, 011, 014, 015, 018..020, 025 erano gia' nel codice senza il codice: ora citati; LOG-004 embed nuovo). Restano: LOG-016 rotte, LOG-026 formati (blocco 2), LOG-028 istantanee online (blocco 3).
 - r160 parte 3 (ramo feat/r160-allegati-3, wt-160b): voce 1 FATTA (rispondi allegato = copia sicura). Voce 2 FATTA (log_webhook_utente). Voce 4 FATTA (cogs/utility/copia_sicura.py): limite menu 15 in BlacklistAwareCommandTree. Voce 3 FATTA (conserva() in allegati_sicuri; ticket e modmail). Giro finito: restano solo smoke e prova live.
 - r160 parte 2b FATTA, smoke da fare (non unito, non pubblicato): `conversioni_worker` + `immagini_sandbox.converti` + `allegati_copia.copia_sicura` collegati a `esamina_allegato`, log (PDF, audio, testo), `allegati_mostra.prepara`, ticket, ModMail, backup (video solo li); HEIC con pillow-heif nel worker. Resta: PDF come pagine-immagine se la ricostruzione fallisce, copie ticket/ModMail 30 giorni, log a nome utente (`/admin-log webhook`), staff->utente di /modmail rispondi (domanda), telefono con copie rifatte (proposta), tempo giornaliero salvato in DB (ora in memoria), prova live (VERIFICA_LIVE «parte 2b»).
 - r152img: fatto tutto #152 (allegati_sicuri, log, backup, ticket, spam trap, download). Resta: prova live (VERIFICA_LIVE «giro r152img»), smoke dall'orchestratore, nginx per il sotto-dominio allegati.

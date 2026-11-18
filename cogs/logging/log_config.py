@@ -8,7 +8,8 @@ un post per tipo), /admin-log ignora (cosa il log dei messaggi non registra) e
 post per canale o per caso). I canali creati sono
 visibili anche a iYokai Mod, se è nel server.
 /admin-log canale e /admin-log stato stanno in basic_logs.py.
-Funzioni coperte: SPEC §18 (NF-01), §8.16 (NF-02), §8.17, §8.19 (LOG-017), parte E (D15)
+Funzioni coperte: SPEC §18 (NF-01: LOG-015 crea-canali, LOG-018, LOG-019, LOG-020 ignora), §8.16 (NF-02), §8.17,
+§8.19 (LOG-017), parte E (D15)
 Dipende da: core/channel_router.py, core/repositories/log_ignora_repo.py,
 core/repositories/log_eventi_repo.py
 """

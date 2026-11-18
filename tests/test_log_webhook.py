@@ -43,6 +43,7 @@ def _embed(testo="x"):
     return discord.Embed(description=testo)
 
 
+# LOG-025: righe vicine raggruppate in un solo messaggio
 async def test_piu_righe_ravvicinate_escono_in_un_solo_messaggio():
     web = _webhook()
     dest = lw.CanaleWebhook(_canale(), web)
@@ -64,6 +65,7 @@ async def test_a_dieci_embed_parte_subito_e_non_oltre_dieci():
     assert len(web.send.await_args_list[-1].kwargs["embeds"]) == 5
 
 
+# LOG-025: raggruppamento entro 10 embed e 6000 caratteri
 async def test_il_messaggio_non_supera_i_caratteri_di_discord():
     web = _webhook()
     dest = lw.CanaleWebhook(_canale(), web)
