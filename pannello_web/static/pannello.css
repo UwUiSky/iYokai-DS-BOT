@@ -22,3 +22,5 @@ td,th{text-align:left;padding:.4rem;border-bottom:1px solid var(--bordo);vertica
 code{font-size:.9em}
 .etichetta{font-size:.75rem;border:1px solid var(--bordo);border-radius:999px;padding:0 .5rem}
 footer{max-width:960px;margin:2rem auto 1rem;padding:0 1rem;font-size:.85rem;color:var(--tenue,#888)}
+.msg{white-space:pre-wrap;overflow-wrap:anywhere}
+.cancellato{color:var(--errore)}

@@ -790,6 +790,19 @@ Totale voci: **514**.
 - `[x]` 8.19 Ogni evento acceso o spento (LOG-017): `/admin-log eventi`, un menu con 24 interruttori
   e le scelte rapide «Tutto», «Niente», «Predefinito» (tutto tranne microfono e audio spenti da
   soli); senza scelte tutto acceso come prima. Migrazione 0180 (`log_eventi_spenti`)
+- `[x]` 8.20 Rotte e testi dei log (LOG-016, LOG-026, D95): `/admin-log rotta evento: canale:` manda un solo
+  evento in un canale di testo suo (torna al gruppo se il canale sparisce); `/admin-log formato evento: testo:
+  data:` sostituisce le righe dell'evento con un testo del server (300 caratteri, segnaposto chiusi, mai
+  `str.format`). Un solo punto: `core/log_personalizza.py`, chiamato da `basic_logs`, `advanced_logs`,
+  `message_logs`. Migrazione 0710 (`log_rotte`, `log_formati`). In `/admin-log stato` si vedono rotte e testi.
+  Già fatti e ora citati: LOG-001, 002, 003 (messaggi cancellati, modificati, in blocco: `message_logs.py`),
+  LOG-004 (nomi dei file e testo degli embed nel cancellato), LOG-014 (`/admin-log canale tipo:`), LOG-015
+  (`crea-canali`), LOG-018, 019, 020 (`/admin-log ignora`), LOG-025 (righe vicine in un messaggio, webhook,
+  `core/log_webhook.py`), LOG-010 e LOG-011 (log di moderazione, M 1.8).
+- `[x]` 8.21 Istantanee online (LOG-028, D95): `/admin-log istantanea azione:crea|elenco|revoca`; pagina
+  `/istantanea/<segreto>` del pannello (`core/web_panel_istantanee.py`), solo con l'accesso con Discord e con
+  il controllo di chi può vedere a ogni apertura; segreto non salvato (impronta), 5 attive per server, fino a
+  7 giorni. Migrazione 0711 (`log_istantanee`, `log_istantanee_righe`).
 - `[x]` 8.17 Log eventi unificato multi-indice (BACKLOG.md §3) — ogni
   evento (8.1-8.5, 8.6-8.15 ora costruiti) salvato UNA VOLTA nel DB,
   consultabile da più angolazioni (membro, canale, ruolo, tempo).
