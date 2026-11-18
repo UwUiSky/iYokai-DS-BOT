@@ -39,6 +39,7 @@ Message content is needed by features that read what is written: AutoMod filters
 
 | Feature | File | Why |
 |---|---|---|
+| Reaction on a new member's first message | `cogs/utility/greetings.py` | Only who wrote is checked, the text is never read |
 | AutoMod filters | `cogs/automod/automod.py` | Read text to apply the server rules |
 | Compromised account defence | `cogs/automod/account_rubato.py` | Spot the same scam message sent in many channels and stop it |
 | Trap image filter | `cogs/automod/immagini.py` | Check images in a sandbox before members open them |
