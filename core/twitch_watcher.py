@@ -216,7 +216,6 @@ class TwitchWatcherService:
             return []
         return parse_schedule_response(await self._helix("schedule", [("broadcaster_id", id_utente), ("first", "10")]))
 
-
     async def spettatori(self, logins: list[str]) -> dict[str, int] | None:
         """STA-045: gli spettatori ora in diretta per login (0 se non è in onda). None se Twitch non risponde.
 
