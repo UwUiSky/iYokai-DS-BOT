@@ -1419,7 +1419,9 @@
   "admin-alert ruolo-live eccezioni": "Members who get the role even without the words or the game.",
   "admin-alert ruolo-live annuncio": "Announce in a channel who goes live.",
   "admin-vocali crea": "Creates the category and the generator channel and sets everything up.",
-  "admin-bot config risposte": "Bot replies: private, deleted after a while, colours."
+  "admin-bot config risposte": "Bot replies: private, deleted after a while, colours.",
+  "admin-bot config staff": "Bot admin, mod and ban roles: list and choice.",
+  "admin-bot config permessi": "Shows a member's permission level and why."
  },
  "parametri": {},
  "menu": {
