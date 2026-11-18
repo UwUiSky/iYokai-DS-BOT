@@ -26,6 +26,7 @@ REASON_EVENT_LOBBY_PRIZE = "event_lobby_prize"
 REASON_EVENT_WINNER_PRIZE = "event_winner_prize"
 REASON_PAY_TAX = "pay_tax"  # ECO-015: tassa sui trasferimenti tra utenti
 REASON_STIPENDIO_TASSA = "stipendio_tassa"  # ECO-036
+REASON_POTENZIAMENTO = "potenziamento"  # ECO-081
 REASON_RISCHIO_MULTA = "rischio_multa"  # ECO-030: multa di un colpo fallito
 
 

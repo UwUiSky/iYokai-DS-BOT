@@ -3259,5 +3259,16 @@
   "stp_pausa": "Hai già riscosso: riprova tra {tempo}.",
   "stp_fatto": "💼 Stipendio: **{contanti}** {moneta} in contanti, **{banca}** in banca. Tasse: **{tassa}**.",
   "stp_valore": "Valore o ruolo non valido.",
-  "stp_pieno": "Troppe voci: togline una prima (massimo 10 ruoli, 25 canali)."
+  "stp_pieno": "Troppe voci: togline una prima (massimo 10 ruoli, 25 canali).",
+  "pot_massimo": "Hai già il livello massimo.",
+  "pot_poche": "Servono {costo} {moneta} per il prossimo livello.",
+  "pot_riga": "**{tipo}**: livello {livello}/{massimo} (+{bonus}%) · prossimo: {costo} {moneta}",
+  "pot_scrigno_no": "Servono {prezzo} monete e un po' di pazienza tra uno scrigno e l'altro.",
+  "pot_scrigno_ok": "🎁 Lo scrigno contiene **{premio}** {moneta}! Saldo: {saldo}.",
+  "pot_scrigno_vuoto": "🎁 Lo scrigno è vuoto. Saldo: {saldo}.",
+  "tav_non_puo": "{chi} non può giocare adesso (pausa, partita già aperta): sfida annullata, nessuna moneta tolta.",
+  "tav_poche": "{chi} non ha abbastanza {moneta}: sfida annullata, nessuna moneta tolta.",
+  "tav_non_tuo_turno": "Non è il tuo turno.",
+  "tav_mossa_no": "Mossa non valida.",
+  "tav_sfida": "🎮 {sfidante} sfida {sfidato} a **{gioco}** (posta: {posta} {moneta}, 0 = per divertimento). {sfidato}, accetti?"
 }

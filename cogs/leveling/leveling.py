@@ -40,6 +40,7 @@ from core.repositories.ai_repo import ai_repo
 from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.leveling_repo import TettoSaldoRaggiunto, leveling_repo
 from core.repositories.rischio_repo import rischio_repo
+from core.repositories.potenziamenti_repo import potenziamenti_repo
 from core.rischio_logic import lavoro_per_turni, paga_con_lavoro
 from core.repositories.level_reward_repo import level_reward_repo
 from core.repositories.leveling_settings_repo import (
@@ -143,6 +144,7 @@ from core.leveling_logic import (
     attesa_daily_secondi,
     attesa_work_secondi,
     bonus_serie,
+    con_potenziamento,
     ConfigLivelli,
     DAILY_COOLDOWN_SECONDS,
     LIVELLO_MASSIMO,
@@ -1627,7 +1629,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
         impostazioni = (await self._config(interaction.guild.id)).impostazioni
         attesa_totale = attesa_daily_secondi(impostazioni)  # ECO-024
         extra = await self._bonus_serie_daily(interaction, impostazioni, adesso)  # ECO-025
-        importo = impostazioni.daily_coins + extra
+        livelli_pot = await potenziamenti_repo.livelli(interaction.guild.id, interaction.user.id)  # ECO-081
+        importo = con_potenziamento(impostazioni.daily_coins, livelli_pot["premio"]) + extra
         riscosso = await leveling_repo.claim_daily(
             interaction.guild.id, interaction.user.id,
             importo, attesa_totale, adesso,
@@ -1683,6 +1686,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         # ECO-029: la paga sale con i turni fatti (scala dei lavori)
         turni_fatti = await rischio_repo.turni(interaction.guild.id, interaction.user.id)
         guadagno = max(guadagno if guadagno == 0 else 1, paga_con_lavoro(guadagno, lavoro_per_turni(turni_fatti)[2]))
+        guadagno = con_potenziamento(guadagno, (await potenziamenti_repo.livelli(interaction.guild.id, interaction.user.id))["lavoro"])  # ECO-081
         riscosso = await leveling_repo.claim_work(
             interaction.guild.id, interaction.user.id,
             guadagno, attesa_work_secondi(impostazioni), adesso,  # ECO-019, ECO-028

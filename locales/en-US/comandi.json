@@ -401,7 +401,12 @@
   "torre": "tower",
   "stipendi": "salaries",
   "riscuoti": "collect",
-  "toglie": "remove"
+  "toglie": "remove",
+  "potenzia": "upgrade",
+  "scrigno": "chest-box",
+  "guadagni": "earnings",
+  "tris": "tictactoe",
+  "forza4": "connect4"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1508,7 +1513,12 @@
   "admin-giochi stipendi imposta": "Salary (positive) or tax (negative) for a role.",
   "admin-giochi stipendi toglie": "Remove the salary or tax of a role.",
   "admin-giochi stipendi elenco": "Salaries and taxes per role, and the message rules.",
-  "admin-giochi stipendi auto": "Pay salaries automatically at an hour (UTC) and choose coins per message."
+  "admin-giochi stipendi auto": "Pay salaries automatically at an hour (UTC) and choose coins per message.",
+  "monete conto potenzia": "Upgrade your job or periodic reward: more levels, more coins.",
+  "monete rischio scrigno": "Open a surprise chest for 100 coins.",
+  "monete conto guadagni": "How to earn coins on this server.",
+  "giochi sfide tris": "Tic-tac-toe against a member, with an optional stake.",
+  "giochi sfide forza4": "Connect four against a member, with an optional stake."
  },
  "parametri": {},
  "menu": {
