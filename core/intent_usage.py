@@ -78,6 +78,7 @@ USI: dict[str, tuple[UsoIntent, ...]] = {
         UsoIntent("Tag triggers on roles", "cogs/utility/inneschi.py", "Run a tag when the server's chosen role is given or taken"),
     ),
     INTENT_MESSAGE_CONTENT: (
+        UsoIntent("Coin event in a channel", "cogs/leveling/evento_monete.py", "Give coins for a message in the channel the staff chose (the text is not read)"),
         UsoIntent("AutoMod filters", "cogs/automod/automod.py", "Read text to apply the server rules"),
         UsoIntent("Compromised account defence", "cogs/automod/account_rubato.py",
                   "Spot the same scam message sent in many channels and stop it"),

@@ -4,10 +4,12 @@
 17/11/2026 · giro r5eco (#125 Economia e giochi), ramo `feat/r5eco`, wt `/home/user/wt-125`, db `iyokai_w125`, migrazioni 0670-0679 (0670-0672 usate).
 
 ## In corso
-- r5eco: fatti 4 blocchi (B1 regole, B2 giochi, B3 inventario, B4 drop). Prossimo: ECO-057 evento di monete, poi B5 negozio (061 requisiti, 075-076), B6 giochi a più passi (088 blackjack, 094, 098: serve tabella `economia_partite_aperte` con rimborso all'avvio), B7 clan/tesoreria, B8 animali/pesca. Migrazione libera: 0674 (SOLO 0670-0689 per l'economia).
+- r5eco: fatti 6 blocchi (B1-B6: regole, giochi, inventario, drop, evento, banca/rischio). Prossimo: negozio (061, 075-078), poi giochi a più passi (088 blackjack, 094, 098: tabella `economia_partite_aperte` con rimborso all'avvio), duelli 104-108, clan/tesoreria, animali/pesca, profilo/missioni. Nuovi comandi admin vanno in `admin-giochi` (admin-economia è a 18 figli: tetto) negozio (061 requisiti, 075-076), B6 giochi a più passi (088 blackjack, 094, 098: serve tabella `economia_partite_aperte` con rimborso all'avvio), B7 clan/tesoreria, B8 animali/pesca. Migrazione libera: 0676 (SOLO 0670-0689 per l'economia).
 - Smoke da fare (lo lancia l'orchestratore). Test già rossi su main, non miei: `test_data_registry` (guild_card_sfondi, leveling_reazioni, leveling_ruoli_classifica, voice_roles), `test_intent_usage::..._messaggi` (greetings).
 
 ## Fatto
+- r5eco B6: 0675 (`banca_total`, `furto_*`/`colpo_successo`, `economia_pause`, `economia_lavoro`), `rischio_logic`, `rischio_repo`, `cogs/leveling/rischio.py` (`/monete conto banca|lavoro|dimettiti`, `/monete rischio colpo|avventura|furto|elemosina|cerca`), paga del `/monete work` per turni (ECO-004/029/030/031/032/040/041/156 parziale).
+- r5eco B5: 0674 `economia_eventi`, `cogs/leveling/evento_monete.py` (`/admin-giochi evento avvia|chiudi`, ECO-057). Merge di main fatto (f083dfce).
 - r5eco B4: 0673 (`drop_*` in leveling_settings, `economia_lasciti`), `lasciti_repo`, `cogs/leveling/drop.py`, `_drop_casuale` in leveling.py (ECO-052/053/055). Test `test_drop_behavior` rimessi in piedi (fake con content/attachments).
 - r5eco B3 (1128615e): 0672 `economia_inventario`+`shop_items.regalabile`, `inventario_repo`, `cogs/leveling/inventario.py` (ECO-058/059/070-073/086).
 - r5eco B2 (a88b13cd): 0671 `economia_giochi_stat`, roulette/carta/scala in `coin_games_logic`, `cogs/fun/giochi_monete.py` (`esegui_partita`), puntate e pausa del server anche in `/giochi gioca` (ECO-021/022/090/099/100/115/116).

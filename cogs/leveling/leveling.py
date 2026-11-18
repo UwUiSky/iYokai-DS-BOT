@@ -39,6 +39,8 @@ from core.lore_nomi_logic import titolo_livello
 from core.repositories.ai_repo import ai_repo
 from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.leveling_repo import TettoSaldoRaggiunto, leveling_repo
+from core.repositories.rischio_repo import rischio_repo
+from core.rischio_logic import lavoro_per_turni, paga_con_lavoro
 from core.repositories.level_reward_repo import level_reward_repo
 from core.repositories.leveling_settings_repo import (
     RegolaPiena,
@@ -1678,6 +1680,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         adesso = datetime.now(timezone.utc)
         impostazioni = (await self._config(interaction.guild.id)).impostazioni
         guadagno = random.randint(impostazioni.work_min, impostazioni.work_max)
+        # ECO-029: la paga sale con i turni fatti (scala dei lavori)
+        turni_fatti = await rischio_repo.turni(interaction.guild.id, interaction.user.id)
+        guadagno = max(guadagno if guadagno == 0 else 1, paga_con_lavoro(guadagno, lavoro_per_turni(turni_fatti)[2]))
         riscosso = await leveling_repo.claim_work(
             interaction.guild.id, interaction.user.id,
             guadagno, attesa_work_secondi(impostazioni), adesso,  # ECO-019, ECO-028
@@ -1691,6 +1696,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
             return
 
+        await rischio_repo.segna_turno(interaction.guild.id, interaction.user.id)
         moneta = await self._moneta(interaction.guild.id)
         await interaction.response.send_message(await testo_per(interaction, "leveling_hai_lavorato_guadagnato", pubblica=True, guadagno=guadagno, moneta=moneta))
 

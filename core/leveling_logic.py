@@ -464,6 +464,9 @@ LIMITI_IMPOSTAZIONI = {
     "drop_min": (1, 100_000),  # ECO-053
     "drop_max": (1, 100_000),  # ECO-053
     "drop_pausa": (0, 3600),  # ECO-053: secondi minimi tra due drop nello stesso server
+    "furto_percentuale": (1, 50),  # ECO-031: quota dei contanti della vittima che si può rubare
+    "furto_successo": (1, 90),  # ECO-031: probabilità (%) che il furto riesca
+    "colpo_successo": (1, 90),  # ECO-030: probabilità (%) che il colpo riesca
 }
 MODI_SALDO_USCITA = ("tieni", "cancella")  # ECO-014
 MAX_NOME_MONETA = 20  # ECO-001
@@ -544,6 +547,10 @@ class LevelingSettings:
     drop_max: int = 50  # ECO-053
     drop_pausa: int = 0  # ECO-053
     drop_canale_id: int | None = None  # ECO-053: solo in questo canale (None = ovunque)
+    furto_attivo: bool = False  # ECO-031: spento di base
+    furto_percentuale: int = 10  # ECO-031
+    furto_successo: int = 40  # ECO-031
+    colpo_successo: int = 40  # ECO-030
 
 
 @dataclass(frozen=True)

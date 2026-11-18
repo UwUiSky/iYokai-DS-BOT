@@ -380,7 +380,17 @@
   "oggetto": "item",
   "regalabile": "giftable",
   "azzera-inventari": "reset-inventories",
-  "forziere": "chest"
+  "forziere": "chest",
+  "evento": "event",
+  "chiudi": "close",
+  "conto": "account",
+  "banca": "bank",
+  "lavoro": "job",
+  "dimettiti": "resign",
+  "colpo": "heist",
+  "avventura": "adventure",
+  "furto": "theft",
+  "elemosina": "beg"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1452,7 +1462,20 @@
   "admin-economia azzera-inventari": "Clear every inventory on the server (type the server name).",
   "monete lascia": "Leave coins in this channel: the first to arrive takes them.",
   "admin-economia drop": "Random drops: chance, amounts, pause and channel.",
-  "admin-economia forziere": "Make coin chests appear in a channel."
+  "admin-economia forziere": "Make coin chests appear in a channel.",
+  "admin-giochi evento": "Coin event in a channel",
+  "admin-giochi evento avvia": "Start the event: whoever writes in the channel gets coins.",
+  "admin-giochi evento chiudi": "Close the running coin event.",
+  "monete rischio": "Heists, thefts and small earnings",
+  "monete conto": "Bank and job",
+  "monete conto banca": "Your bank: view, deposit or withdraw (thefts only hit cash).",
+  "monete conto lavoro": "Your current job and how far the promotion is.",
+  "monete conto dimettiti": "Quit the job and restart as an intern.",
+  "monete rischio colpo": "A risky heist: big pay if it works, a fine if it fails.",
+  "monete rischio avventura": "A safer risky outing: pays less, works more often.",
+  "monete rischio furto": "Try to steal cash from a member (only if the server allows it).",
+  "monete rischio elemosina": "Beg: a small amount, sometimes nothing.",
+  "monete rischio cerca": "Search for coins in a place of your choice."
  },
  "parametri": {},
  "menu": {

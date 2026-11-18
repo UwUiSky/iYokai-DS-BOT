@@ -56,6 +56,7 @@ def righe_stato(i: LevelingSettings) -> list[tuple[str, str]]:
         ("eco_stato_uscita", i.saldo_uscita),
         ("eco_stato_pay", f"{zero(i.pay_min, '-')} / {zero(i.pay_max, '-')} / {i.pay_tax_pct}%"),
         ("eco_stato_puntate", f"{i.puntata_min}-{i.puntata_max} / {i.attesa_gioco} s"),
+        ("eco_stato_rischio", f"furto {'sì' if i.furto_attivo else 'no'} {i.furto_percentuale}%/{i.furto_successo}% · colpo {i.colpo_successo}%"),
     ]
 
 
@@ -189,6 +190,10 @@ class EconomiaCog(CogConGruppi, commands.Cog):
         puntata_max="Puntata massima dei giochi",
         attesa_gioco="Secondi tra una partita e l'altra (0-3600)",
         saldo_uscita="Cosa fare del saldo di chi esce dal server",
+        furto="Sì = si possono rubare i contanti agli altri (spento di base)",
+        furto_quota="Quota dei contanti della vittima che si può rubare, in % (1-50)",
+        furto_successo="Probabilità che un furto riesca, in % (1-90)",
+        colpo_successo="Probabilità che un colpo riesca, in % (1-90)",
     )
     @app_commands.choices(saldo_uscita=_SCELTE_USCITA)
     async def limiti(
@@ -200,6 +205,10 @@ class EconomiaCog(CogConGruppi, commands.Cog):
         puntata_max: app_commands.Range[int, 1, 1_000_000] | None = None,
         attesa_gioco: app_commands.Range[int, 0, 3600] | None = None,
         saldo_uscita: app_commands.Choice[str] | None = None,
+        furto: bool | None = None,
+        furto_quota: app_commands.Range[int, 1, 50] | None = None,
+        furto_successo: app_commands.Range[int, 1, 90] | None = None,
+        colpo_successo: app_commands.Range[int, 1, 90] | None = None,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -207,6 +216,8 @@ class EconomiaCog(CogConGruppi, commands.Cog):
             "saldo_iniziale": saldo_iniziale, "tetto_saldo": tetto_saldo, "puntata_min": puntata_min,
             "puntata_max": puntata_max, "attesa_gioco": attesa_gioco,
             "saldo_uscita": saldo_uscita.value if saldo_uscita else None,
+            "furto_attivo": furto, "furto_percentuale": furto_quota, "furto_successo": furto_successo,
+            "colpo_successo": colpo_successo,  # ECO-030, ECO-031
         }
         await self._salva(interaction, {k: v for k, v in scelti.items() if v is not None})
 

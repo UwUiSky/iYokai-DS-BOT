@@ -1758,3 +1758,8 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `VOC-002/003` — in un tuo vocale: `/voice permit` e `/voice deny` con un ruolo. Un ruolo dello staff o più alto del tuo è rifiutato; chi è dentro viene scollegato.
 - [ ] `VOC-009` — creando un vocale arriva il pannello con otto bottoni (Rinomina, Limite, Blocca, Sblocca, Nascondi, Mostra, Espelli, Cedi); funzionano dopo un riavvio; un altro utente non può usarli.
 - [ ] `VOC-019` — `/admin-vocali crea`: nascono categoria e canale generatore e il bot è configurato; senza «Gestisci canali» lo dice.
+- [ ] `ECO-057` — `/admin-giochi evento avvia canale:#chat monete:5 tetto:20`: chi scrive in #chat riceve 5 (una volta ogni 30 s, i bot no); dopo 4 messaggi validi l'evento si chiude da solo; `/admin-giochi evento chiudi` lo chiude prima; un secondo `avvia` con uno attivo è rifiutato.
+- [ ] `ECO-004` — `/monete conto banca azione:Deposita importo:50`, `Preleva`, `Vedi`: contanti e banca cambiano insieme; prelievo oltre il tetto del saldo rifiutato.
+- [ ] `ECO-029` — `/monete work` dieci volte: da «commesso» la paga è al 130%; `/monete conto lavoro` mostra turni e promozione; `/monete conto dimettiti` riparte da stagista.
+- [ ] `ECO-030/032/040/041` — `/monete rischio colpo` (pausa 2 h, multa alla cassa, saldo mai sotto zero), `avventura` (pausa 1 h), `elemosina` (10 min, a volte niente), `cerca luogo:Divano` (30 min).
+- [ ] `ECO-031/156` — `/admin-economia limiti furto:sì`: `/monete rischio furto membro:@x` ruba una quota dei soli contanti (non della banca); la vittima riceve un DM e per un'ora non si può derubare di nuovo; contro bot e te stesso rifiutato; spento di base.

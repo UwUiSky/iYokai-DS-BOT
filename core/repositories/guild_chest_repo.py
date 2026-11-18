@@ -25,6 +25,7 @@ REASON_PREMIUM_MODULE = "premium_module"
 REASON_EVENT_LOBBY_PRIZE = "event_lobby_prize"
 REASON_EVENT_WINNER_PRIZE = "event_winner_prize"
 REASON_PAY_TAX = "pay_tax"  # ECO-015: tassa sui trasferimenti tra utenti
+REASON_RISCHIO_MULTA = "rischio_multa"  # ECO-030: multa di un colpo fallito
 
 
 @dataclass(frozen=True)

@@ -35,7 +35,7 @@ def _i(user_id=1, name="Server di test"):
 
 def test_stato_elenca_tutte_le_regole():
     chiavi = [k for k, _ in righe_stato(LevelingSettings())]
-    assert len(chiavi) == len(set(chiavi)) == 10
+    assert len(chiavi) == len(set(chiavi)) == 11
 
 
 @pytest.mark.asyncio

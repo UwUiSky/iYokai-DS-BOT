@@ -242,6 +242,53 @@ class EconomiaRepository:
         )
 
 
+    # ---------------------------------------------------------------- ECO-057: evento di monete
+    async def avvia_evento(
+        self, guild_id: int, channel_id: int, per_messaggio: int, tetto: int, staff_id: int
+    ) -> int | None:
+        """Avvia l'evento. None se ce n'è già uno attivo (lo decide l'indice unico, non una lettura)."""
+        if per_messaggio <= 0 or tetto < per_messaggio:
+            raise ValueError("Importi non validi.")
+        return await self._pool.fetchval(
+            "INSERT INTO economia_eventi (guild_id, channel_id, per_messaggio, tetto, avviato_da) "
+            "VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING RETURNING id",
+            guild_id, channel_id, per_messaggio, tetto, staff_id,
+        )
+
+    async def chiudi_evento(self, guild_id: int) -> tuple[int, int] | None:
+        """Chiude l'evento attivo. Restituisce (distribuito, tetto) o None se non ce n'era."""
+        riga = await self._pool.fetchrow(
+            "UPDATE economia_eventi SET attivo = FALSE WHERE guild_id = $1 AND attivo RETURNING distribuito, tetto",
+            guild_id,
+        )
+        return (riga["distribuito"], riga["tetto"]) if riga else None
+
+    async def evento_attivo(self, guild_id: int) -> asyncpg.Record | None:
+        return await self._pool.fetchrow(
+            "SELECT id, channel_id, per_messaggio, tetto, distribuito FROM economia_eventi WHERE guild_id = $1 AND attivo",
+            guild_id,
+        )
+
+    async def premia_messaggio(self, guild_id: int, channel_id: int, user_id: int) -> int:
+        """
+        Dà le monete di un messaggio nel canale dell'evento. Il tetto sta nella stessa UPDATE che
+        conta il distribuito (mai oltre); quando è raggiunto l'evento si chiude. 0 se non c'è niente da dare.
+        """
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                riga = await conn.fetchrow(
+                    "UPDATE economia_eventi SET distribuito = distribuito + per_messaggio, "
+                    "attivo = (distribuito + per_messaggio < tetto) "
+                    "WHERE guild_id = $1 AND channel_id = $2 AND attivo AND distribuito + per_messaggio <= tetto "
+                    "RETURNING per_messaggio",
+                    guild_id, channel_id,
+                )
+                if riga is None:
+                    return 0
+                await add_coins_in(conn, guild_id, user_id, riga["per_messaggio"], classifica=False)
+                return riga["per_messaggio"]
+
+
 def _get_pool():
     from core.database import db
 

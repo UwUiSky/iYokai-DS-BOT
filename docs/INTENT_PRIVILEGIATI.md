@@ -40,6 +40,7 @@ Message content is needed by features that read what is written: AutoMod filters
 
 | Feature | File | Why |
 |---|---|---|
+| Coin event in a channel | `cogs/leveling/evento_monete.py` | Give coins for a message in the channel the staff chose (the text is not read) |
 | AutoMod filters | `cogs/automod/automod.py` | Read text to apply the server rules |
 | Compromised account defence | `cogs/automod/account_rubato.py` | Spot the same scam message sent in many channels and stop it |
 | Trap image filter | `cogs/automod/immagini.py` | Check images in a sandbox before members open them |
