@@ -2975,5 +2975,11 @@
   "inv_rivendita": "Resale",
   "inv_scorte": "Stock",
   "inv_regalabile": "Giftable",
-  "inv_azzerati": "Inventories cleared: {righe} rows removed."
+  "inv_azzerati": "Inventories cleared: {righe} rows removed.",
+  "drop_gia_preso": "Someone was faster.",
+  "drop_non_puoi": "You cannot take them: already taken, expired, or you left them.",
+  "drop_preso": "💰 Taken: **{importo}** {moneta}.",
+  "drop_canale_no": "I cannot write in this channel.",
+  "drop_lasciato": "💰 {chi} left **{importo}** {moneta}. The first to click takes them (5 minutes, then they go back to whoever left them).",
+  "drop_forzieri": "Chests spawned: {n}."
 }

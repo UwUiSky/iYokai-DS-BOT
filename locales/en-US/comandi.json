@@ -357,7 +357,8 @@
   "vendi": "sell",
   "oggetto": "item",
   "regalabile": "giftable",
-  "azzera-inventari": "reset-inventories"
+  "azzera-inventari": "reset-inventories",
+  "forziere": "chest"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1385,7 +1386,10 @@
   "monete vendi": "Resell an item for half its price.",
   "monete oggetto": "The card of a shop item.",
   "admin-economia regalabile": "Decide whether a shop item can be gifted.",
-  "admin-economia azzera-inventari": "Clear every inventory on the server (type the server name)."
+  "admin-economia azzera-inventari": "Clear every inventory on the server (type the server name).",
+  "monete lascia": "Leave coins in this channel: the first to arrive takes them.",
+  "admin-economia drop": "Random drops: chance, amounts, pause and channel.",
+  "admin-economia forziere": "Make coin chests appear in a channel."
  },
  "parametri": {},
  "menu": {

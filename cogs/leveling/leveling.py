@@ -702,6 +702,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._colori_icona: BoundedCache[tuple, str] = BoundedCache(max_size=500)
+        self._ultimo_drop: dict[int, float] = {}  # ECO-053: pausa tra due drop, per server
         self._voice_xp_tick.start()
         self._scadenza_ruoli_shop.start()
 
@@ -1211,16 +1212,30 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 logger.warning("Messaggi dei giveaway non contati nel server %s.", message.guild.id)
             await self._xp_testuale(message, config, id_ruoli, id_canale)
 
-        if should_trigger_drop(random.random()):
-            importo = random.randint(DEFAULT_MIN_COINS, DEFAULT_MAX_COINS)
-            view = self.DropClaimView(message.guild.id, importo)
-            try:
-                await message.channel.send(
-                    f"💰 È apparso un drop di **{importo}** coin! Clicca per raccoglierlo.",
-                    view=view,
-                )
-            except discord.HTTPException:
-                pass
+        await self._drop_casuale(message, config.impostazioni)
+
+    async def _drop_casuale(self, message: discord.Message, impostazioni: LevelingSettings) -> None:
+        """ECO-053: con la probabilità scelta dal server compare un drop (primo che clicca vince)."""
+        if impostazioni.drop_per_mille <= 0:
+            return
+        if impostazioni.drop_canale_id and impostazioni.drop_canale_id not in id_canali_per_le_regole(message.channel):
+            return
+        if not should_trigger_drop(random.random(), impostazioni.drop_per_mille / 1000):
+            return
+        adesso = time.monotonic()
+        if adesso - self._ultimo_drop.get(message.guild.id, -1e9) < impostazioni.drop_pausa:
+            return
+        self._ultimo_drop[message.guild.id] = adesso
+        importo = random.randint(impostazioni.drop_min, max(impostazioni.drop_min, impostazioni.drop_max))
+        view = self.DropClaimView(message.guild.id, importo)
+        try:
+            await message.channel.send(
+                f"💰 È apparso un drop di **{importo}** {impostazioni.currency_name}! Clicca per raccoglierlo.",
+                view=view,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+        except discord.HTTPException:
+            pass
 
     # ================================================================
     # XP vocale — task periodico

@@ -173,6 +173,11 @@ class LevelingSettingsRepository:
             if minimo and massimo and minimo > massimo:
                 raise ValueError("Il minimo di /monete pay non può superare il massimo.")
 
+        if "drop_min" in campi or "drop_max" in campi:
+            attuale = (await self.get_config(guild_id, fresco=True)).impostazioni
+            if campi.get("drop_min", attuale.drop_min) > campi.get("drop_max", attuale.drop_max):
+                raise ValueError("L'importo minimo del drop non può superare il massimo.")
+
         if "puntata_min" in campi or "puntata_max" in campi:
             attuale = (await self.get_config(guild_id, fresco=True)).impostazioni
             if campi.get("puntata_min", attuale.puntata_min) > campi.get("puntata_max", attuale.puntata_max):

@@ -460,6 +460,10 @@ LIMITI_IMPOSTAZIONI = {
     "daily_serie_max": (1, 365),  # ECO-025: giorni di serie che contano
     "settimanale_coins": (0, 100_000),  # ECO-026: 0 = spento
     "mensile_coins": (0, 1_000_000),  # ECO-026: 0 = spento
+    "drop_per_mille": (0, 100),  # ECO-053: probabilità per messaggio, in millesimi (5 = 0,5%); 0 = spento
+    "drop_min": (1, 100_000),  # ECO-053
+    "drop_max": (1, 100_000),  # ECO-053
+    "drop_pausa": (0, 3600),  # ECO-053: secondi minimi tra due drop nello stesso server
 }
 MODI_SALDO_USCITA = ("tieni", "cancella")  # ECO-014
 MAX_NOME_MONETA = 20  # ECO-001
@@ -535,6 +539,11 @@ class LevelingSettings:
     settimanale_coins: int = 0  # ECO-026
     mensile_coins: int = 0  # ECO-026
     saldo_uscita: str = "tieni"  # ECO-014: cosa fare del saldo di chi esce
+    drop_per_mille: int = 5  # ECO-053
+    drop_min: int = 10  # ECO-053
+    drop_max: int = 50  # ECO-053
+    drop_pausa: int = 0  # ECO-053
+    drop_canale_id: int | None = None  # ECO-053: solo in questo canale (None = ovunque)
 
 
 @dataclass(frozen=True)

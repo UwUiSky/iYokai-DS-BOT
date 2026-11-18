@@ -2975,5 +2975,11 @@
   "inv_rivendita": "Rivendita",
   "inv_scorte": "Scorte",
   "inv_regalabile": "Regalabile",
-  "inv_azzerati": "Inventari svuotati: {righe} righe tolte."
+  "inv_azzerati": "Inventari svuotati: {righe} righe tolte.",
+  "drop_gia_preso": "Qualcuno è stato più veloce.",
+  "drop_non_puoi": "Non puoi prenderle: sono già state prese, sono scadute o le hai lasciate tu.",
+  "drop_preso": "💰 Prese: **{importo}** {moneta}.",
+  "drop_canale_no": "Non posso scrivere in questo canale.",
+  "drop_lasciato": "💰 {chi} ha lasciato **{importo}** {moneta}. Le prende chi clicca per primo (5 minuti, poi tornano a chi le ha lasciate).",
+  "drop_forzieri": "Forzieri comparsi: {n}."
 }
