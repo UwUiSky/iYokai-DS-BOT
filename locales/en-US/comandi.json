@@ -390,7 +390,11 @@
   "colpo": "heist",
   "avventura": "adventure",
   "furto": "theft",
-  "elemosina": "beg"
+  "elemosina": "beg",
+  "sfide": "challenges",
+  "duello": "duel",
+  "duelli": "duels",
+  "blackjack": "blackjack"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1482,7 +1486,11 @@
   "monete rischio avventura": "A safer risky outing: pays less, works more often.",
   "monete rischio furto": "Try to steal cash from a member (only if the server allows it).",
   "monete rischio elemosina": "Beg: a small amount, sometimes nothing.",
-  "monete rischio cerca": "Search for coins in a place of your choice."
+  "monete rischio cerca": "Search for coins in a place of your choice.",
+  "giochi sfide": "Duels and multi-step games with coins",
+  "giochi sfide duello": "Challenge a member to a duel: the winner takes the stake.",
+  "giochi sfide duelli": "Duel leaderboard and your latest duels.",
+  "giochi sfide blackjack": "Blackjack against the dealer: hit, stand, double down, surrender."
  },
  "parametri": {},
  "menu": {
