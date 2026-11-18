@@ -17,7 +17,7 @@ from discord.ext import commands
 
 from cogs.leveling.leveling import IdOggetto, _comando_rifiutato
 from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
-from core.i18n import testo_per
+from core.i18n import testo_guild, testo_per
 from core.leveling_azzera_logic import nome_confermato
 from core.leveling_logic import prezzo_rivendita
 from core.repositories.inventario_repo import Esito, inventario_repo
@@ -59,7 +59,7 @@ class InventarioCog(CogConGruppi, commands.Cog):
         if item is None or not await inventario_repo.usa(guild.id, interaction.user.id, item_id):
             await interaction.response.send_message(await testo_per(interaction, "inv_non_lo_hai"), ephemeral=True)
             return
-        testo = item.reply_text or await testo_per(interaction, "inv_usato", nome=item.name)
+        testo = item.reply_text or await testo_guild(guild, "inv_usato", nome=item.name)
         await interaction.response.send_message(testo[:1900], allowed_mentions=NESSUNA_MENZIONE)
 
     @comando_di_gruppo("monete", nome="regala", descrizione="Regala un oggetto del tuo inventario a un altro membro.")
