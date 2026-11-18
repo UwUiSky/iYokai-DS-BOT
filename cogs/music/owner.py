@@ -3,7 +3,7 @@ cogs/music/owner.py
 ===================
 Comandi musicali riservati al proprietario del bot, in `/owner radio`: nodi Lavalink, stato dei
 player, riconnessione, log del Lavalink locale, fonti accese o spente, parole vietate in tutto il bot.
-Funzioni coperte: SPEC §9 (catalogo MUS-011, MUS-063, MUS-067, MUS-068, MUS-069, MUS-070)
+Funzioni coperte: SPEC §9 (catalogo MUS-011, MUS-014, MUS-063, MUS-067, MUS-068, MUS-069, MUS-070)
 Dipende da: core/music_owner_logic.py, core/repositories/music_owner_repo.py, core/music_nodes.py
 """
 
@@ -24,6 +24,7 @@ from core import music_sources as fonti_musicali
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.i18n import testo_per
+from core.music_generi_logic import GENERE_MAX, LINK_MAX, TITOLO_MAX, genere_valido, link_valido, titolo_valido
 from core.music_logic import EMBED_DESCRIPTION_LIMIT, truncate_title
 from core.music_owner_logic import (
     LOG_MAX_BYTE,
@@ -35,7 +36,9 @@ from core.music_owner_logic import (
     ripulisci_log,
 )
 from core.music_settings_logic import imposta_parole_globali
+from core.repositories.music_generi_repo import music_generi_repo
 from core.repositories.music_owner_repo import music_owner_repo
+from core.safe_http import url_e_sicuro
 
 logger = logging.getLogger("iyokai.music.owner")
 
@@ -206,6 +209,52 @@ class MusicOwnerCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(
             await testo_per(interaction, f"music_owner_parola_{esito}", parola=pulita, v1=MAX_PAROLE_GLOBALI),
             ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
+        )
+
+    @comando_di_gruppo("owner", nome="genere", descrizione="Playlist del menu /music genere.", sottogruppo=RADIO)
+    @app_commands.describe(azione="Aggiungi, togli o elenco", genere="Il genere", titolo="Nome della playlist", link="Link https")
+    @app_commands.choices(azione=SCELTE_AZIONE)
+    async def genere(
+        self, interaction: discord.Interaction, azione: str,
+        genere: app_commands.Range[str, 0, GENERE_MAX] = "",
+        titolo: app_commands.Range[str, 0, TITOLO_MAX] = "",
+        link: app_commands.Range[str, 0, LINK_MAX] = "",
+    ) -> None:
+        if not await self._solo_owner(interaction):  # MUS-014
+            return
+        nessuna_menzione = discord.AllowedMentions.none()
+        if azione == "elenco":
+            voci = await music_generi_repo.elenco()
+            testo = "\n".join(f"{v.genere} / {v.titolo}" for v in voci) or await testo_per(interaction, "music_owner_genere_vuoto")
+            await interaction.response.send_message(
+                truncate_title(testo, EMBED_DESCRIPTION_LIMIT), ephemeral=True, allowed_mentions=nessuna_menzione
+            )
+            return
+        pulito = genere_valido(genere)
+        if pulito is None:
+            await interaction.response.send_message(await testo_per(interaction, "music_owner_genere_non_valido"), ephemeral=True)
+            return
+        if azione == "togli":
+            titolo_pulito = titolo_valido(titolo) if titolo else None
+            if titolo and titolo_pulito is None:
+                await interaction.response.send_message(await testo_per(interaction, "music_owner_genere_non_valido"), ephemeral=True)
+                return
+            quante = await music_generi_repo.togli(pulito, titolo_pulito)
+            chiave = "music_owner_genere_tolto" if quante else "music_owner_genere_manca"
+            await interaction.response.send_message(await testo_per(interaction, chiave, v1=quante), ephemeral=True)
+            return
+        titolo_pulito, link_pulito = titolo_valido(titolo), link_valido(link)
+        if titolo_pulito is None or link_pulito is None:
+            await interaction.response.send_message(await testo_per(interaction, "music_owner_genere_dati"), ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        if not await url_e_sicuro(link_pulito):
+            await interaction.followup.send(await testo_per(interaction, "music_owner_genere_dati"), ephemeral=True)
+            return
+        esito = await music_generi_repo.aggiungi(pulito, titolo_pulito, link_pulito, interaction.user.id)
+        await interaction.followup.send(
+            await testo_per(interaction, f"music_owner_genere_{esito}", genere=pulito),
+            ephemeral=True, allowed_mentions=nessuna_menzione,
         )
 
 

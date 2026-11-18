@@ -3245,5 +3245,21 @@
   "mondo_radio_placeholder": "Pick a station",
   "mondo_radio_precedente": "Previous",
   "mondo_radio_successiva": "Next",
-  "mondo_radio_di_altri": "This list belongs to whoever used the command."
+  "mondo_radio_di_altri": "This list belongs to whoever used the command.",
+  "mondo_genere_nessuno": "The owner has not picked any genre playlists yet.",
+  "mondo_genere_scegli": "🎼 Pick a genre from the menu.",
+  "mondo_genere_playlist_di": "🎼 Genre «{genere}»: pick a playlist.",
+  "mondo_genere_quante": "{n} playlists",
+  "mondo_genere_placeholder_genere": "Pick a genre",
+  "mondo_genere_placeholder_playlist": "Pick a playlist",
+  "music_owner_genere_vuoto": "No genre playlists.",
+  "music_owner_genere_non_valido": "Invalid genre or title: 2-30 and 1-80 characters, letters, digits and simple punctuation.",
+  "music_owner_genere_dati": "A title and an https link to a playlist or album from a known (and reachable) source are required.",
+  "music_owner_genere_ok": "Playlist added to genre «{genere}».",
+  "music_owner_genere_gia": "Genre «{genere}» already has a playlist with this title or link.",
+  "music_owner_genere_pieno_generi": "There are already 25 genres: remove one first.",
+  "music_owner_genere_pieno_genere": "Genre «{genere}» already has 25 playlists.",
+  "music_owner_genere_pieno_totale": "There are already 200 playlists in total: remove some first.",
+  "music_owner_genere_tolto": "Removed {v1} entries.",
+  "music_owner_genere_manca": "Nothing to remove for this genre and title."
 }

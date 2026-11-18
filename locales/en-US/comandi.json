@@ -392,7 +392,8 @@
   "furto": "theft",
   "elemosina": "beg",
   "rotta": "route",
-  "istantanea": "snapshot"
+  "istantanea": "snapshot",
+  "genere": "genre"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1488,7 +1489,9 @@
   "monete rischio furto": "Try to steal cash from a member (only if the server allows it).",
   "monete rischio elemosina": "Beg: a small amount, sometimes nothing.",
   "monete rischio cerca": "Search for coins in a place of your choice.",
-  "music radio": "Searches a radio from all over the world and queues it."
+  "music radio": "Searches a radio from all over the world and queues it.",
+  "music genere": "Pick a playlist by genre from the menu.",
+  "owner radio genere": "Genre playlists for the /music genere menu."
  },
  "parametri": {},
  "menu": {

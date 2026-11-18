@@ -3245,5 +3245,21 @@
   "mondo_radio_placeholder": "Scegli una stazione",
   "mondo_radio_precedente": "Precedente",
   "mondo_radio_successiva": "Successiva",
-  "mondo_radio_di_altri": "Questo elenco è di chi ha usato il comando."
+  "mondo_radio_di_altri": "Questo elenco è di chi ha usato il comando.",
+  "mondo_genere_nessuno": "L'owner non ha ancora scelto nessuna playlist per genere.",
+  "mondo_genere_scegli": "🎼 Scegli un genere dal menu.",
+  "mondo_genere_playlist_di": "🎼 Genere «{genere}»: scegli una playlist.",
+  "mondo_genere_quante": "{n} playlist",
+  "mondo_genere_placeholder_genere": "Scegli un genere",
+  "mondo_genere_placeholder_playlist": "Scegli una playlist",
+  "music_owner_genere_vuoto": "Nessuna playlist per genere.",
+  "music_owner_genere_non_valido": "Genere o titolo non validi: 2-30 e 1-80 caratteri, lettere, numeri e punteggiatura semplice.",
+  "music_owner_genere_dati": "Servono un titolo e un link https di una playlist o di un album di una fonte nota (e raggiungibile).",
+  "music_owner_genere_ok": "Playlist aggiunta al genere «{genere}».",
+  "music_owner_genere_gia": "Nel genere «{genere}» c'è già una playlist con questo titolo o questo link.",
+  "music_owner_genere_pieno_generi": "Ci sono già 25 generi: toglierne uno prima.",
+  "music_owner_genere_pieno_genere": "Il genere «{genere}» ha già 25 playlist.",
+  "music_owner_genere_pieno_totale": "Ci sono già 200 playlist in tutto: toglierne qualcuna prima.",
+  "music_owner_genere_tolto": "Tolte {v1} voci.",
+  "music_owner_genere_manca": "Non c'è niente da togliere con questo genere e titolo."
 }

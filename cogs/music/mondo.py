@@ -1,8 +1,9 @@
 """
 cogs/music/mondo.py
 ===================
-Scoprire musica: `/music radio` cerca stazioni di tutto il mondo (MUS-010).
-Funzioni coperte: SPEC §9 (catalogo MUS-010)
+Scoprire musica: `/music radio` cerca stazioni di tutto il mondo (MUS-010), `/music genere` apre il menu delle
+playlist per genere scelte dall'owner (MUS-014).
+Funzioni coperte: SPEC §9 (catalogo MUS-010, MUS-014)
 Dipende da: cogs/music/player.py (MusicCog.accoda e controlli comuni), core/music_radio_mondo.py
 """
 
@@ -16,9 +17,11 @@ from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.i18n import lingua_interazione, t, testo_per
-from core.music_mondo_view import RadioMondoView, intestazione_pagina
+from core.music_generi_logic import raggruppa
+from core.music_mondo_view import GenereView, RadioMondoView, intestazione_pagina
 from core.music_radio_mondo import NOME_MAX, cerca_stazioni, nome_ricerca_valido
 from core.music_sound_logic import PausaUtente
+from core.repositories.music_generi_repo import music_generi_repo
 
 logger = logging.getLogger("iyokai.music.mondo")
 
@@ -77,6 +80,27 @@ class MusicMondoCog(CogConGruppi, commands.Cog):
 
         vista = RadioMondoView(interaction.user.id, pulito, 0, dati, lingua, cerca, avvia)
         await interaction.followup.send(intestazione_pagina(pulito, 0, dati, lingua), view=vista, ephemeral=True)
+
+    @comando_di_gruppo("music", nome="genere", descrizione="Scegli una playlist per genere dal menu.")
+    async def genere(self, interaction: discord.Interaction) -> None:
+        musica = self._musica()
+        if musica is None or not await musica._controlli_base(interaction):
+            return
+        await interaction.response.defer(ephemeral=True)
+        lingua = await lingua_interazione(interaction)
+        gruppi = raggruppa(await music_generi_repo.elenco())
+        if not gruppi:
+            await interaction.followup.send(t("mondo_genere_nessuno", lingua), ephemeral=True)
+            return
+
+        async def avvia(inter: discord.Interaction, voce) -> None:
+            if not await musica._controlli_base(inter):
+                return
+            await inter.response.defer(ephemeral=True)
+            await musica.accoda(inter.guild, inter.user, voce.link, inter.followup.send, interaction=inter)
+
+        vista = GenereView(interaction.user.id, gruppi, lingua, avvia)
+        await interaction.followup.send(vista.intestazione(), view=vista, ephemeral=True)
 
 
 async def _solo_memoria(url: str, *, max_bytes: int):

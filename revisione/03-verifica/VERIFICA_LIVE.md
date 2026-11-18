@@ -1789,3 +1789,4 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 ## Musica — giro r5mus (#126, MUS-010/014/019/065)
 
 - [ ] `MUS-010` — in un canale vocale `/music radio nome:jazz`: arriva un menu (massimo 10 stazioni) e i bottoni Precedente/Successiva; scegli una stazione: il bot entra e si sente la radio. Un'altra persona che tocca il menu e' respinta. Due ricerche entro 3 s: la seconda dice di aspettare. I server `*.api.radio-browser.info` rispondono davvero? (de1, de2, fi1).
+- [ ] `MUS-014` — da owner: `/owner radio genere azione:aggiungi genere:Rock titolo:Classici link:<playlist Spotify o YouTube>`, `elenco`, `togli`. Da un utente in vocale `/music genere`: scegli il genere, poi la playlist: il bot la mette in coda. Un link `http` o di un brano e' rifiutato.
