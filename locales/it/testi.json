@@ -3236,5 +3236,14 @@
   "logist_in_corso": "Sto già preparando un'istantanea per questo server: riprova tra poco.",
   "logist_lettura_fallita": "Non sono riuscito a leggere il canale. Non ho creato niente.",
   "logist_tetto": "Questo server ha già {massimo} istantanee attive: toglierne una con «Togli» o aspetta che scadano.",
-  "logist_creata": "Istantanea n. {id} pronta ({quanti} messaggi, aperta {giorni} giorni). La vede: {accesso}. Serve l'accesso con Discord.\n{link}\nQuesto link non si mostra più: copialo adesso. Chi ha il link e il permesso legge i messaggi del canale; i file non ci sono, solo i nomi."
+  "logist_creata": "Istantanea n. {id} pronta ({quanti} messaggi, aperta {giorni} giorni). La vede: {accesso}. Serve l'accesso con Discord.\n{link}\nQuesto link non si mostra più: copialo adesso. Chi ha il link e il permesso legge i messaggi del canale; i file non ci sono, solo i nomi.",
+  "mondo_radio_nome_non_valido": "Scrivi da 2 a 60 caratteri, su una riga sola.",
+  "mondo_radio_riprova": "Aspetta {secondi} secondi prima di cercare un'altra radio.",
+  "mondo_radio_errore": "L'elenco delle radio non risponde adesso. Riprova tra poco.",
+  "mondo_radio_nessuna": "Nessuna radio trovata per «{nome}».",
+  "mondo_radio_intestazione": "📻 Radio dal mondo: «{nome}» (pagina {pagina}). Scegli una stazione dal menu.",
+  "mondo_radio_placeholder": "Scegli una stazione",
+  "mondo_radio_precedente": "Precedente",
+  "mondo_radio_successiva": "Successiva",
+  "mondo_radio_di_altri": "Questo elenco è di chi ha usato il comando."
 }

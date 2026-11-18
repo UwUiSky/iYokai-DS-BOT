@@ -1487,7 +1487,8 @@
   "monete rischio avventura": "A safer risky outing: pays less, works more often.",
   "monete rischio furto": "Try to steal cash from a member (only if the server allows it).",
   "monete rischio elemosina": "Beg: a small amount, sometimes nothing.",
-  "monete rischio cerca": "Search for coins in a place of your choice."
+  "monete rischio cerca": "Search for coins in a place of your choice.",
+  "music radio": "Searches a radio from all over the world and queues it."
  },
  "parametri": {},
  "menu": {

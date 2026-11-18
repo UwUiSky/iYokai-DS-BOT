@@ -3236,5 +3236,14 @@
   "logist_in_corso": "I am already preparing a snapshot for this server: try again soon.",
   "logist_lettura_fallita": "I could not read the channel. I created nothing.",
   "logist_tetto": "This server already has {massimo} active snapshots: remove one with \"Remove\" or wait for them to expire.",
-  "logist_creata": "Snapshot no. {id} is ready ({quanti} messages, open for {giorni} days). Who can see it: {accesso}. Discord login is required.\n{link}\nThis link will not be shown again: copy it now. Anyone with the link and the permission reads the channel messages; files are not there, only their names."
+  "logist_creata": "Snapshot no. {id} is ready ({quanti} messages, open for {giorni} days). Who can see it: {accesso}. Discord login is required.\n{link}\nThis link will not be shown again: copy it now. Anyone with the link and the permission reads the channel messages; files are not there, only their names.",
+  "mondo_radio_nome_non_valido": "Write 2 to 60 characters, on a single line.",
+  "mondo_radio_riprova": "Wait {secondi} seconds before searching for another radio.",
+  "mondo_radio_errore": "The radio directory is not answering right now. Try again in a moment.",
+  "mondo_radio_nessuna": "No radio found for «{nome}».",
+  "mondo_radio_intestazione": "📻 Radio from around the world: «{nome}» (page {pagina}). Pick a station from the menu.",
+  "mondo_radio_placeholder": "Pick a station",
+  "mondo_radio_precedente": "Previous",
+  "mondo_radio_successiva": "Next",
+  "mondo_radio_di_altri": "This list belongs to whoever used the command."
 }

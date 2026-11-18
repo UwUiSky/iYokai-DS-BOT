@@ -901,6 +901,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:
 
 ## Musica
 
+- **`/music radio`** — Cerca una radio da tutto il mondo e la mette in coda.
 - **`/music clear-queue`** — Svuota la coda, senza toccare la traccia in riproduzione.
 - **`/music coda cerca`** — Cerca un brano nella coda per titolo.
 - **`/music coda pulisci`** — Toglie dalla coda i brani di chi non e' piu' nel canale vocale.
