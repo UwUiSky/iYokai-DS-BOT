@@ -139,6 +139,55 @@ def test_ruolo_assegnabile_controlla_gerarchia_e_ruoli_dei_bot():
     assert ruolo_assegnabile(ok, guild) == "alertlive_ruolo_sopra_il_bot"
 
 
+def _ruolo_sotto_il_bot(**permessi):
+    ruolo = MagicMock(spec=discord.Role)
+    ruolo.is_default.return_value = False
+    ruolo.managed = False
+    ruolo.name = "Streamer"
+    ruolo.permissions = discord.Permissions(**permessi)
+    ruolo.__ge__ = lambda s, a: False
+    return ruolo
+
+
+def _server_con(ruolo, membro):
+    guild = MagicMock()
+    guild.id = GUILD
+    guild.owner_id = 1
+    guild.me.guild_permissions = discord.Permissions(manage_roles=True)
+    guild.get_role = lambda rid: ruolo
+    guild.get_member = lambda mid: membro
+    return guild
+
+
+@pytest.mark.asyncio
+async def test_ruolo_live_con_permessi_pericolosi_non_viene_mai_dato():
+    """Un ruolo che ha preso Amministratore dopo la regola non arriva a chi va in diretta."""
+    membro = MagicMock(); membro.bot = False; membro.roles = []; membro.add_roles = AsyncMock()
+    ruolo = _ruolo_sotto_il_bot(administrator=True)
+    assert await lr.aggiorna_ruolo_live(_server_con(ruolo, membro), 5, 300, True) is False
+    membro.add_roles.assert_not_awaited()
+    sicuro = _ruolo_sotto_il_bot(send_messages=True)
+    assert await lr.aggiorna_ruolo_live(_server_con(sicuro, membro), 5, 300, True) is True
+    membro.add_roles.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_regola_con_ruolo_pericoloso_rifiutata(monkeypatch):
+    """Lo staff non può creare una regola con un ruolo che ha permessi pericolosi."""
+    aggiungi = AsyncMock(return_value=1)
+    monkeypatch.setattr(cog_mod.live_role_repo, "aggiungi", aggiungi)
+    ruolo = _ruolo_sotto_il_bot(ban_members=True)
+    inter = MagicMock()
+    inter.guild = _server_con(ruolo, None)
+    inter.user.id = 2
+    inter.user.top_role = MagicMock()
+    inter.response.send_message = AsyncMock()
+    cog = AlertRuoloLiveCog(MagicMock())
+    await AlertRuoloLiveCog.aggiungi.callback(cog, inter, ruolo)
+    aggiungi.assert_not_awaited()
+    assert "ban_members" in inter.response.send_message.await_args.args[0]
+
+
 # ------------------------------------------------------------------ database e comandi
 @pytest_asyncio.fixture
 async def ambiente(monkeypatch):
@@ -172,6 +221,7 @@ async def test_alr048_repo_tetti_e_voci(ambiente):
 def _ruolo_ok(rid):
     r = MagicMock(spec=discord.Role); r.id = rid; r.name = f"Ruolo{rid}"
     r.is_default.return_value = False; r.managed = False
+    r.permissions = discord.Permissions.none()
     r.__ge__ = lambda s, a: False
     return r
 

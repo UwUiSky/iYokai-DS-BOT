@@ -17,6 +17,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
+from core.role_safety import check_role_assignable
 from core.alert_options_logic import MAX_FILTRO
 from core.automod_eventi import chiede_intent_presenze
 from core.command_groups import CogConGruppi, comando_di_gruppo
@@ -124,6 +125,11 @@ class AlertRuoloLiveCog(CogConGruppi, commands.Cog):
         errore = ruolo_assegnabile(ruolo, guild)
         if errore:
             await interaction.response.send_message(await testo_per(interaction, errore), ephemeral=True)
+            return
+        # Il ruolo arriva da solo a chi va in diretta: niente permessi pericolosi, e mai sopra chi lo imposta.
+        motivo = check_role_assignable(guild, ruolo, interaction.user, self_service=True)
+        if motivo is not None:
+            await interaction.response.send_message(f"❌ {motivo}", ephemeral=True, allowed_mentions=_NESSUNA)
             return
         numero = await live_role_repo.aggiungi(guild.id, ruolo.id, interaction.user.id, solo_ruolo.id if solo_ruolo else None)
         if numero is None:

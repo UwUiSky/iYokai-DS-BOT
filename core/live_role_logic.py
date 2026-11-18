@@ -17,6 +17,7 @@ from urllib.parse import urlsplit
 
 import discord
 
+from core.role_safety import check_role_assignable
 from core.alert_messaggio_logic import pulisci_esterno
 from core.alert_options_logic import parse_parole
 from core.template_renderer import render_template
@@ -34,6 +35,9 @@ async def aggiorna_ruolo_live(guild, member_id: int | None, role_id: int | None,
     if membro is None or ruolo is None or me is None or membro.bot:
         return False
     if not me.guild_permissions.manage_roles or ruolo >= me.top_role or ruolo.managed:
+        return False
+    # Ricontrollo a ogni giro: i permessi del ruolo possono essere cambiati dopo la regola.
+    if in_diretta and check_role_assignable(guild, ruolo, me, self_service=True) is not None:
         return False
     ce_l_ha = ruolo in membro.roles
     try:
