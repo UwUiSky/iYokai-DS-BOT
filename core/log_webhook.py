@@ -8,7 +8,7 @@ del bot. Messaggi con bottoni o file e ogni errore del webhook (cancellato, perm
 Log a nome dell'utente (D74, #160): spento di base; se acceso (`log_webhook_utente`) i log dei messaggi modificati e
 cancellati escono dal webhook con il nome e l'avatar di chi ha scritto (nome pulito, suffisso « · log», nessuna menzione),
 un messaggio al secondo per canale e al massimo 20 in attesa (oltre, la riga esce raggruppata e senza identità).
-Funzioni coperte: SPEC §E (iYokai Mod), #113, #160
+Funzioni coperte: SPEC §E (iYokai Mod), #113, #160, LOG-025 (righe vicine in un solo messaggio)
 Dipende da: core/repositories/log_webhook_repo.py, core/migrations/0361_log_webhooks.sql
 """
 

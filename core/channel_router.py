@@ -7,7 +7,7 @@ Se il canale sparisce o il bot perde il permesso, il proprietario del
 server riceve un solo avviso (si riarma al primo invio riuscito).
 Scrive il bot scelto da core/bot_roles.py (iYokai Mod o il principale);
 un messaggio con bottoni parte sempre dal principale, che li gestisce.
-Funzioni coperte: SPEC §18 (NF-01), §8.17, parte E (D15)
+Funzioni coperte: SPEC §18 (NF-01), §8.17, §8.20 (LOG-016), parte E (D15)
 Dipende da: core/repositories/output_channel_repo.py, core/bot_roles.py
 """
 
@@ -219,6 +219,17 @@ async def destinazione(guild: discord.Guild, tipo: str, predefinito_id: int | No
     if isinstance(canale, discord.TextChannel):
         return await log_webhook.avvolgi(bot_roles.canale(canale), await log_webhook.acceso(guild.id))
     return None
+
+
+async def destinazione_rotta(guild: discord.Guild, channel_id: int):
+    """
+    LOG-016: il canale scelto per un singolo evento. Solo un canale di testo di QUESTO server (`guild.get_channel`
+    non vede gli altri), mai un forum né un canale nascosto. None: si scrive dove scrive il gruppo.
+    """
+    canale = guild.get_channel(channel_id)
+    if not isinstance(canale, discord.TextChannel) or canale_nascosto(canale):
+        return None
+    return await log_webhook.avvolgi(bot_roles.canale(canale), await log_webhook.acceso(guild.id))
 
 
 def _sul_principale(dest, guild: discord.Guild):

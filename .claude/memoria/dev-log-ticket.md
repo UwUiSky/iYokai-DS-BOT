@@ -1,24 +1,22 @@
 # Memoria di dev-log-ticket
 
 ## Aggiornata
-17/11/2026 · ramo `feat/r160-allegati-2` (copia /home/user/wt-160b, DB iyokai_w160b) · #160 D74 parte 2b (conversioni PDF, audio, video, testo; HEIC), nessuna migrazione.
-17/11/2026 · ramo `feat/r160-allegati` (copia /home/user/wt-160, DB iyokai_w160) · #160 D74 parte 2a (formati in piu', link tolti), nessuna migrazione.
-16/11/2026 · stesso ramo · #160 prima parte.
-10/11/2026 · ramo `feat/r152img` (copia /home/claude/wt/r152img, DB iyokai_wr152) · usata migrazione 0304 (#152, D61). Sotto: giri precedenti.
-27/10/2026 · ramo `feat/r10logt` (copia /home/claude/wt/r10logt, DB iyokai_wr10logt) · migrazioni 0300-0309 (usate 0300, 0301, 0302)
+18/11/2026 · ramo `feat/r2log` (copia /home/user/wt-119, DB iyokai_w119) · #119 catalogo log, migrazioni 0710-0719.
+10-17/11/2026 · giri r152img (0304), r160 (D74 parti 1-3), r18ticket (0526, 0534), r10logt (0300-0302): vedi sotto e git log.
 
 ## In corso
-- r160 parte 3 (ramo feat/r160-allegati-3, wt-160b): voce 1 FATTA (rispondi allegato = copia sicura). Voce 2 FATTA (log_webhook_utente). Voce 4 FATTA (cogs/utility/copia_sicura.py): limite menu 15 in BlacklistAwareCommandTree. Voce 3 FATTA (conserva() in allegati_sicuri; ticket e modmail). Giro finito: restano solo smoke e prova live.
-- r160 parte 2b FATTA, smoke da fare (non unito, non pubblicato): `conversioni_worker` + `immagini_sandbox.converti` + `allegati_copia.copia_sicura` collegati a `esamina_allegato`, log (PDF, audio, testo), `allegati_mostra.prepara`, ticket, ModMail, backup (video solo li); HEIC con pillow-heif nel worker. Resta: PDF come pagine-immagine se la ricostruzione fallisce, copie ticket/ModMail 30 giorni, log a nome utente (`/admin-log webhook`), staff->utente di /modmail rispondi (domanda), telefono con copie rifatte (proposta), tempo giornaliero salvato in DB (ora in memoria), prova live (VERIFICA_LIVE «parte 2b»).
-- r152img: fatto tutto #152 (allegati_sicuri, log, backup, ticket, spam trap, download). Resta: prova live (VERIFICA_LIVE «giro r152img»), smoke dall'orchestratore, nginx per il sotto-dominio allegati.
-- r18ticket (feat/r18ticket, DB iyokai_w18tk): T4 (0534) e #156 thread privati (0526) fatti, in un commit. Resta: prova live (VERIFICA_LIVE) e smoke dall'orchestratore.
-- Smoke da fare dall'orchestratore.
+- r2log (ramo feat/r2log, wt-119, DB iyokai_w119, migrazioni 0710-0719, usate 0710 e 0711) #119: FATTO (4 blocchi, vedi git log): LOG-001..004, 010, 011, 014, 015, 016, 018..020, 025, 026, 028. Resta solo: smoke dall'orchestratore, prova live (VERIFICA_LIVE «giro r2log»), COMMAND_LIST rigenerata. Aperto: timeout di Discord che scade da solo non lascia riga (serve un timer nella moderazione); il benvenuto non passa dal router.
+- Precedenti, smoke da fare e prove live in VERIFICA_LIVE: r160 parti 2b-3 (allegati sicuri D74, conversioni, `/admin-log webhook` a nome utente), r152img (D61, download allegati), r18ticket (T4 autochiusura, thread privati).
 
 ## Fatto
 - Giri F1-r8: vedi git log (router, snipe, M 5-7, NF-01/02/03/13/33, #119/#120/#127/#139 in parte).
 - r10: c210f52 /log cerca ruolo+giorni · f364d84 diff permessi canale · poi ignora esteso, VOC-010/013/016, TKT-051/063/027/026.
 
 ## Cose imparate
+- Rotte e formati dei log: un solo punto `core/log_personalizza.personalizza(guild, tipo, evento, dest, embed)`, chiamato da `_send_log` (basic), `send_event_embed` (advanced), `_scrivi` (messaggi). Un log nuovo che non passa da li' non ha ne' rotta ne' formato. Rotta = solo TextChannel (un forum riscriverebbe `output_channels` del tipo); il tipo `rotta_<interruttore>` serve solo per l'avviso al proprietario.
+- Istantanee (LOG-028): segreto mai salvato (impronta SHA-256), stessa risposta per link sbagliato/scaduto/negato; tetto 5 per server con `pg_advisory_xact_lock`. Un test che usa `test_web_panel_server`-style costruisce una mini `web.Application` e passa `pagina`/`errore` finti.
+- Test dei log con `clean_db`: se un comando legge `log_personalizza_repo`, il test deve sostituire il repo con uno sul pool del test (`monkeypatch.setattr(modulo, 'log_personalizza_repo', ...)`).
+- Comandi.json en-US: sezioni a 1 spazio (`"nomi": {`), voci a 2; il test `test_nessuna_voce_inglese_resta_senza_comando` boccia un nome tradotto senza comando: aggiungerlo insieme al comando.
 - Menu del tasto destro: Discord ne ammette 15 per tipo, discord.py 5: il tetto 15 sta in BlacklistAwareCommandTree (anche i test full_tree). Conteggio con tests.support.full_tree (`bot.tree._context_menus`, tipo 3 = messaggio).
 - Cache dei verdetti immagine: nei test che ripetono la stessa immagine `immagini_pipeline.svuota_cache()`.
 - D74 parte 2b: le conversioni passano SOLO dal servizio (`sb.converti`, nessun modo B); nei test si avvia `immagini_servizio.serve(socket)` nello stesso processo (fixture `attivo` in test_allegati_copia). ffmpeg: `-safe 1` non esiste fuori da concat (errore), si usa formato esplicito + `-protocol_whitelist file,pipe`. pypdf 7: niente `add_js`; si ripulisce la pagina del lettore prima di `add_page`. Un test di testo con NUL/ESC deve avere un primo blocco di testo vero (il rilevatore e' sui primi 4096 byte).

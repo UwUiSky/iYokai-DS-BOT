@@ -15,6 +15,7 @@ import core.channel_router as router
 from cogs.logging.basic_logs import BasicLogsCog
 from core.message_log_logic import Ignorati, IGNORATI_MAX_PER_SERVER, scegli_bersaglio
 from core.repositories.log_ignora_repo import LogIgnoraRepository
+from core.repositories.log_personalizza_repo import LogPersonalizzaRepository
 from core.repositories.output_channel_repo import OutputChannelRepository
 from tests.support.discord_fakes import (
     fake_forum_channel,
@@ -46,6 +47,7 @@ def ambiente(clean_db, monkeypatch):
     import cogs.logging.basic_logs as basic
 
     monkeypatch.setattr(basic, "db", finto)
+    monkeypatch.setattr(basic, "log_personalizza_repo", LogPersonalizzaRepository(pool_provider=lambda: clean_db))
     return repo, finto
 
 
@@ -65,6 +67,7 @@ def _server():
     return server
 
 
+# LOG-015: /admin-log crea-canali
 async def test_crea_canali_un_canale_per_tipo_e_il_router_li_conosce(ambiente):
     repo, db = ambiente
     cog = modulo.LogConfigCog(bot=None)
@@ -133,6 +136,7 @@ async def test_crea_forum_senza_community_risponde_chiaro(ambiente):
     assert "Community" in ix.followup.send.call_args.args[0]
 
 
+# LOG-018, LOG-019, LOG-020: /admin-log ignora canale, utente, prefisso
 async def test_ignora_aggiungi_elenco_e_togli(ambiente):
     cog = modulo.LogConfigCog(bot=None)
     ix = fake_interaction(guild=fake_guild(guild_id=600))
@@ -163,6 +167,7 @@ async def test_ignora_ha_un_tetto_per_server(ambiente):
     assert await repo.aggiungi(600, "canale", "3", IGNORATI_MAX_PER_SERVER)  # già presente
 
 
+# LOG-014: un canale per ogni gruppo di eventi (/admin-log canale tipo:)
 async def test_log_canale_con_un_forum_lo_imposta_per_il_tipo(ambiente):
     repo, db = ambiente
     cog = BasicLogsCog(bot=None)

@@ -39,6 +39,7 @@ import discord
 from discord.ext import commands
 
 from core import channel_router as router
+from core import log_personalizza
 from core.channel_router import SETTING_LOG_CHANNEL, TIPO_MESSAGGI, TIPO_SERVER, TIPO_VOCE
 from core.bounded_cache import BoundedCache
 from core.database import db
@@ -286,6 +287,7 @@ async def send_event_embed(
         color=color,
         timestamp=discord.utils.utcnow(),
     )
+    channel, tipo = await log_personalizza.personalizza(guild, tipo, event_type, channel, embed)  # LOG-016, LOG-026
     await router.invia_a(channel, guild, tipo, embed=embed)
 
 

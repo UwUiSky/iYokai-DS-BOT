@@ -37,6 +37,7 @@ def test_tronca_rispetta_il_limite_e_lo_dice():
     assert len(t) == 1024 and t.endswith("…")
 
 
+# LOG-018, LOG-019, LOG-020: canale, utente e prefisso ignorati
 def test_ignorati_canale_categoria_thread_utente_prefisso():
     ig = Ignorati(canali=frozenset({1, 2, 3}), utenti=frozenset({9}), prefissi=("!", "?"))
     base = dict(channel_id=50, author_id=8, testo="ciao")
@@ -109,6 +110,7 @@ def _payload_delete(messaggio):
     return p
 
 
+# LOG-001: messaggio cancellato con autore, canale e testo
 async def test_cancellato_in_cache_mostra_autore_testo_e_allegati(ambiente):
     cog, canale_log, _, eventi, _ = ambiente
     await cog.on_raw_message_delete(_payload_delete(_messaggio("addio", allegati=["a.png"])))
@@ -155,6 +157,7 @@ async def test_senza_logging_avanzato_non_scrive(ambiente, monkeypatch):
     canale_log.send.assert_not_awaited()
 
 
+# LOG-002: messaggio modificato, prima e dopo
 async def test_modifica_mostra_prima_e_dopo_tagliati_a_1024(ambiente):
     cog, canale_log, *_ = ambiente
     prima, dopo = _messaggio("a" * 3000), _messaggio("b" * 3000)
@@ -174,6 +177,7 @@ async def test_modifica_senza_cambio_di_testo_e_ignorata(ambiente):
     canale_log.send.assert_not_awaited()
 
 
+# LOG-003: cancellazione in blocco, un riepilogo e un file
 async def test_blocco_un_solo_riepilogo_con_un_file(ambiente):
     cog, canale_log, *_ = ambiente
     cache = []
@@ -417,3 +421,78 @@ async def test_log_del_cancellato_mostra_scheda_e_avviso_senza_link(ambiente, mo
     assert "`rel.pdf` (pdf, 4 KiB, SHA-256 " + "ab" * 6 in campo
     assert "`foto.png`" in campo and "eseguibile" in campo
     assert "allegati.example.invalid" not in campo and "files" not in kw
+
+
+# ------------------------------------------------------------------- LOG-004: embed nel log del cancellato
+def _con_embed(*coppie):
+    m = _messaggio("guarda")
+    m.embeds = [SimpleNamespace(title=t, description=d) for t, d in coppie]
+    return m
+
+
+async def test_log004_il_cancellato_mostra_titolo_e_descrizione_degli_embed(ambiente):
+    cog, canale_log, *_ = ambiente
+    await cog.on_raw_message_delete(_payload_delete(_con_embed(("Titolo", "Descrizione dell'anteprima"))))
+    campi = {f.name: f.value for f in canale_log.send.call_args.kwargs["embed"].fields}
+    assert "Titolo" in campi["Embed"] and "Descrizione dell'anteprima" in campi["Embed"]
+
+
+async def test_log004_embed_con_link_mascherato_e_accenti_non_scrivono_link_ne_chiudono_il_blocco(ambiente):
+    cog, canale_log, *_ = ambiente
+    cattivo = "[clicca](https://truffa.example) ``` @everyone"
+    await cog.on_raw_message_delete(_payload_delete(_con_embed((cattivo, cattivo))))
+    kw = canale_log.send.call_args.kwargs
+    valore = {f.name: f.value for f in kw["embed"].fields}["Embed"]
+    assert "](https" not in valore and "```" not in valore
+    assert kw.get("allowed_mentions") is None or kw["allowed_mentions"].everyone is False
+
+
+async def test_log004_gli_embed_si_tagliano_e_l_embed_di_log_resta_sotto_6000(ambiente):
+    cog, canale_log, *_ = ambiente
+    enormi = [("t" * 900, "d" * 5000)] * 10
+    m = _con_embed(*enormi)
+    m.content = "x" * 4000
+    await cog.on_raw_message_delete(_payload_delete(m))
+    embed = canale_log.send.call_args.kwargs["embed"]
+    campo = {f.name: f.value for f in embed.fields}["Embed"]
+    assert len(campo) <= 1024 and len(embed) <= 6000
+
+
+async def test_log004_senza_embed_non_c_e_il_campo(ambiente):
+    cog, canale_log, *_ = ambiente
+    m = _messaggio("ciao")
+    m.embeds = []
+    await cog.on_raw_message_delete(_payload_delete(m))
+    assert "Embed" not in {f.name for f in canale_log.send.call_args.kwargs["embed"].fields}
+
+
+# ------------------------------------------------------------------- LOG-016 e LOG-026 nel log dei messaggi
+async def test_log016_log026_il_cancellato_esce_dal_canale_scelto_con_il_testo_del_server(ambiente, monkeypatch):
+    from core import log_personalizza
+    from core.repositories.log_personalizza_repo import Personalizzazioni
+
+    cog, canale_log, *_ = ambiente
+    scelto = fake_text_channel(77)
+    scelto.send = AsyncMock()
+    scelte = Personalizzazioni(
+        rotte={"messaggi_cancellati": 77}, formati={"messaggi_cancellati": ("{autore} ha perso: {descrizione}", "f")}
+    )
+    monkeypatch.setattr(log_personalizza, "log_personalizza_repo", SimpleNamespace(carica=AsyncMock(return_value=scelte)))
+    monkeypatch.setattr(modulo.router, "destinazione_rotta", AsyncMock(return_value=scelto))
+    await cog.on_raw_message_delete(_payload_delete(_messaggio("addio")))
+    canale_log.send.assert_not_awaited()
+    embed = scelto.send.call_args.kwargs["embed"]
+    assert embed.description == "<@42> (42) ha perso: addio" and not embed.fields
+
+
+async def test_log016_senza_rotta_ne_formato_il_cancellato_esce_come_prima(ambiente, monkeypatch):
+    from core import log_personalizza
+    from core.repositories.log_personalizza_repo import Personalizzazioni
+
+    cog, canale_log, *_ = ambiente
+    monkeypatch.setattr(
+        log_personalizza, "log_personalizza_repo",
+        SimpleNamespace(carica=AsyncMock(return_value=Personalizzazioni(rotte={}, formati={}))),
+    )
+    await cog.on_raw_message_delete(_payload_delete(_messaggio("addio")))
+    assert canale_log.send.call_args.kwargs["embed"].description == "addio"

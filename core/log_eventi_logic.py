@@ -6,6 +6,9 @@ raccoglie uno o più eventi. Senza scelte del server sono tutti accesi.
 Le scelte rapide sono «tutto», «niente» e «predefinito» (tutto tranne
 microfono e audio spenti da soli, gli eventi più rumorosi).
 Funzioni coperte: SPEC §8.19 (LOG-017)
+Già coperte da altro codice: LOG-014 (`/admin-log canale tipo:` in basic_logs.py, un canale per gruppo);
+LOG-010 e LOG-011 (scadenza di mute e tempban, lock, slowmode, clear: righe del log di moderazione scritte
+dai comandi e dallo scheduler, M 1.8; i timeout di Discord scadono senza evento e non lasciano riga).
 """
 
 from __future__ import annotations

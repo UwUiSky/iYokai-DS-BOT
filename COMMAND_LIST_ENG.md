@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:37 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:50 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 942 commands in 51 categories.**
+**Total: 945 commands in 51 categories.**
 
 ## Admin: AI
 
@@ -321,11 +321,14 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:3
 - **`/admin-log create-forum`** — Creates a private forum for logs: one post for each type.
 - **`/admin-log events`** — Turn each single log event on or off.
 - **`/admin-log export`** — Exports the full server event history as a JSON file.
+- **`/admin-log format`** — Write the text of a log event yourself, with placeholders. Without text, it goes back to normal.
 - **`/admin-log forum-view`** — A forum with one post for each channel or case. Without a forum, the view turns off.
 - **`/admin-log ignore`** — What the logs do not record (channels, users, roles; texts only for messages).
+- **`/admin-log route`** — Sends one kind of event to a channel of its own. Without a channel, it goes back to its group.
 - **`/admin-log search channel`** — Shows a channel's event history.
 - **`/admin-log search role`** — Shows a role's event history.
 - **`/admin-log search user`** — Shows a user's event history.
+- **`/admin-log snapshot`** — A channel in a private web page that expires. Create, list or remove.
 - **`/admin-log status`** — Shows where the server logs go.
 - **`/admin-log webhook`** — Sends logs through a channel webhook, grouped, with its own rate limits.
 

@@ -13,7 +13,8 @@ download firmati e al massimo 3 anteprime PNG ricodificate, mai l'originale. Ogn
 file (PDF, audio, video, Office, archivi) resta una scheda con nome, tipo, peso e impronta;
 travestito, eseguibile o sconosciuto lascia solo un avviso (D74). Fa parte
 del Logging Avanzato. Ogni evento si può spegnere (LOG-017).
-Funzioni coperte: SPEC §8.16 (NF-02), §8.18 (LOG-005, LOG-027), D61, D74 (#152, #160)
+Funzioni coperte: SPEC §8.16 (NF-02: LOG-001 cancellati, LOG-002 modificati, LOG-003 in blocco, LOG-004 allegati
+ed embed), §8.18 (LOG-005, LOG-027), D61, D74 (#152, #160)
 Dipende da: core/channel_router.py, core/repositories/log_ignora_repo.py,
 core/repositories/log_eventi_repo.py
 """
@@ -29,6 +30,7 @@ from discord.ext import commands, tasks
 from cogs.logging.advanced_logs import logging_avanzato_attivo
 from core import allegati_sicuri
 from core import channel_router as router
+from core import log_personalizza
 from core import log_webhook
 from core.config import config
 from core.channel_router import SETTING_LOG_CHANNEL, TIPO_MESSAGGI
@@ -42,6 +44,7 @@ from core.message_log_logic import (
     riepilogo_blocco,
     senza_accento_grave,
     testo_allegati,
+    testo_embed,
 )
 from core.repositories.event_log_repo import event_log_repo
 from core.phishing_logic import codici_invito
@@ -77,6 +80,7 @@ def _scartato(ignorati, canale, message: discord.Message | None, channel_id: int
     )
 
 
+EMBED_TOTALE_SICURO = 5900
 MAX_ANTEPRIME_LOG = 3
 MAX_BYTE_ANTEPRIME_LOG = 8 * 1024 * 1024  # LIM-55: un invio non supera i 10 MiB
 
@@ -170,10 +174,11 @@ class MessageLogsCog(commands.Cog):
         dest = await router.destinazione(guild, TIPO_MESSAGGI, predefinito)
         if dest is None:
             return
+        dest, tipo_invio = await log_personalizza.personalizza(guild, TIPO_MESSAGGI, evento, dest, contenuto.get("embed"))  # LOG-016, LOG-026
         # D74: modificato e cancellato escono col nome dell'utente (se acceso); con file o bottoni, come sempre.
         if autore is not None and set(contenuto) == {"embed"} and await log_webhook.invia_a_nome_utente(dest, contenuto["embed"], autore):
             return
-        await router.invia_a(dest, guild, TIPO_MESSAGGI, **contenuto)
+        await router.invia_a(dest, guild, tipo_invio, **contenuto)
 
     @commands.Cog.listener()
     async def on_raw_message_delete(self, payload: discord.RawMessageDeleteEvent) -> None:
@@ -222,6 +227,9 @@ class MessageLogsCog(commands.Cog):
             allegati = testo_allegati([a.filename for a in messaggio.attachments])
             if allegati:
                 embed.add_field(name="Allegati", value=allegati, inline=False)
+            testo_degli_embed = testo_embed((e.title, e.description) for e in messaggio.embeds)  # LOG-004
+            if testo_degli_embed:
+                embed.add_field(name="Embed", value=testo_degli_embed, inline=False)
         testo_copie, anteprime = await copie_per_il_log(guild.id, payload.message_id)
         contenuto: dict = {"embed": embed}
         if testo_copie:
@@ -229,6 +237,9 @@ class MessageLogsCog(commands.Cog):
         if anteprime:
             embed.set_image(url=f"attachment://{anteprime[0].filename}")
             contenuto["files"] = anteprime
+        eccesso = len(embed) - EMBED_TOTALE_SICURO  # un embed di Discord non supera 6000 caratteri in tutto
+        if eccesso > 0 and embed.description:
+            embed.description = tronca(embed.description, max(len(embed.description) - eccesso, 1))
         await self._scrivi(guild, "message_delete", autore=messaggio.author if messaggio is not None else None, **contenuto)
 
     @commands.Cog.listener()

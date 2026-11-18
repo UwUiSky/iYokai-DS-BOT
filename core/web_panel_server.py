@@ -7,7 +7,7 @@ a ogni richiesta, configurazione dei moduli, dei ruoli del bot, dei gruppi di co
 per ruolo (#148), del bot con marchio proprio (NF-38), dell'aspetto del bot (CFG-030) e della
 lingua dai punti unici dei comandi (D16), storico, premium e wiki dei comandi, «I miei dati»
 (copia e richiesta di cancellazione, #46), verifica dei membri dalla pagina web (link firmato,
-impronte senza IP), l'interfaccia di iYokai Desktop (`core/desktop_api.py`), link d'invito personali e inviti (`core/web_panel_inviti.py`),
+impronte senza IP), istantanee dei log (`core/web_panel_istantanee.py`), l'interfaccia di iYokai Desktop (`core/desktop_api.py`), link d'invito personali e inviti (`core/web_panel_inviti.py`),
 informativa privacy e termini (pubbliche) e pagina del proprietario del bot
 (moduli premium, server, AI in manutenzione).
 Pagine HTML semplici (Jinja2 con escape automatico, nessuno script). Unica eccezione: la pagina «radio iYokai»
@@ -32,7 +32,7 @@ from urllib.parse import urlsplit
 import jinja2
 from aiohttp import BodyPartReader, MultipartReader, web
 
-from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_editor, web_panel_inviti, web_panel_logic as regole, verify_vpn_logic as vpn_logica
+from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_editor, web_panel_inviti, web_panel_istantanee, web_panel_logic as regole, verify_vpn_logic as vpn_logica
 from core.bot_aspetto import MAX_IMMAGINE
 from core.command_access import RuoloAdminNegato
 from core.command_search_logic import cerca
@@ -758,6 +758,7 @@ def build_app(
     web_panel_ai.registra_rotte(
         app, bot=bot, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE,
     )
+    web_panel_istantanee.registra_rotte(app, bot=bot, ponte=ponte, pagina=_pagina, errore=_errore, chiave_utente=CHIAVE_UTENTE)
     return app
 
 

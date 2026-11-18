@@ -13,7 +13,7 @@ Generato da `scripts/stato_catalogo.py` il 2026-11-18. Non modificare a mano: ri
 | 02-automod | #116 chiusa | 75 | 71 | 0 | 4 | 0 |
 | 03-sicurezza-antiraid-antinuke | #117 aperta | 46 | 42 | 4 | 0 | 0 |
 | 04-verifica | #118 chiusa | 31 | 15 | 0 | 16 | 0 |
-| 05-log | #119 aperta | 30 | 14 | 1 | 15 | 0 |
+| 05-log | #119 aperta | 30 | 29 | 1 | 0 | 0 |
 | 06-ticket-e-modmail | #120 chiusa | 88 | 52 | 3 | 33 | 0 |
 | 07-backup-e-restore | #121 chiusa | 41 | 18 | 0 | 23 | 0 |
 | 08-configurazione-pannello-premium | #122 aperta | 46 | 12 | 1 | 33 | 0 |
@@ -27,16 +27,15 @@ Generato da `scripts/stato_catalogo.py` il 2026-11-18. Non modificare a mano: ri
 | 16-statistiche | #130 aperta | 61 | 59 | 2 | 0 | 0 |
 | 17-divertimento-e-immagini | #131 chiusa | 139 | 41 | 7 | 91 | 0 |
 | 18-ai | #132 chiusa | 25 | 15 | 5 | 5 | 0 |
-| **Totale** | | **1452** | **898** | **87** | **453** | **14** |
+| **Totale** | | **1452** | **913** | **87** | **438** | **14** |
 
-Nelle sole aree con l'issue aperta: 708 voci, 471 fatte, 62 solo nei registri, **161 da fare**, 14 scartate.
+Nelle sole aree con l'issue aperta: 708 voci, 486 fatte, 62 solo nei registri, **146 da fare**, 14 scartate.
 
 ## Voci non trovate, per area
 
 - **01-moderazione** (#115, chiusa: controllare a mano), 28: MOD-008, MOD-016, MOD-018, MOD-019, MOD-020, MOD-032, MOD-033, MOD-034, MOD-035, MOD-040, MOD-051, MOD-052, MOD-053, MOD-060, MOD-061, MOD-062, MOD-063, MOD-091, MOD-092, MOD-093, MOD-094, MOD-095, MOD-096, MOD-097, MOD-103, MOD-104, MOD-109, MOD-111
 - **02-automod** (#116, chiusa: controllare a mano), 4: AMD-030, AMD-031, AMD-057, AMD-071
 - **04-verifica** (#118, chiusa: controllare a mano), 16: VER-001, VER-002, VER-003, VER-004, VER-005, VER-006, VER-007, VER-018, VER-021, VER-022, VER-023, VER-024, VER-025, VER-026, VER-027, VER-028
-- **05-log** (#119, aperta), 15: LOG-001, LOG-002, LOG-003, LOG-004, LOG-010, LOG-011, LOG-014, LOG-015, LOG-016, LOG-018, LOG-019, LOG-020, LOG-025, LOG-026, LOG-028
 - **06-ticket-e-modmail** (#120, chiusa: controllare a mano), 33: TKT-001, TKT-002, TKT-003, TKT-004, TKT-005, TKT-010, TKT-011, TKT-012, TKT-013, TKT-014, TKT-015, TKT-016, TKT-036, TKT-049, TKT-059, TKT-060, TKT-061, TKT-062, TKT-065, TKT-066, TKT-069, TKT-072, TKT-076, TKT-077, TKT-078, TKT-080, TKT-081, TKT-082, TKT-083, TKT-084, TKT-085, TKT-086, TKT-087
 - **07-backup-e-restore** (#121, chiusa: controllare a mano), 23: BKP-001, BKP-002, BKP-003, BKP-004, BKP-005, BKP-006, BKP-007, BKP-008, BKP-011, BKP-012, BKP-017, BKP-020, BKP-021, BKP-022, BKP-023, BKP-028, BKP-029, BKP-030, BKP-031, BKP-038, BKP-039, BKP-040, BKP-041
 - **08-configurazione-pannello-premium** (#122, aperta), 33: CFG-001, CFG-002, CFG-003, CFG-006, CFG-007, CFG-012, CFG-013, CFG-014, CFG-015, CFG-016, CFG-017, CFG-022, CFG-023, CFG-024, CFG-025, CFG-026, CFG-027, CFG-028, CFG-029, CFG-031, CFG-032, CFG-033, CFG-034, CFG-035, CFG-036, CFG-037, CFG-039, CFG-040, CFG-041, CFG-042, CFG-043, CFG-044, CFG-045

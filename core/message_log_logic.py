@@ -6,7 +6,7 @@ regole su cosa ignorare, riepilogo di una cancellazione in blocco,
 archivio di un canale in file sotto i 10 MiB con i messaggi cancellati
 di recente (tenuti solo in memoria, svuotati per autore dalla richiesta
 privacy NF-04). Solo stringhe e numeri, niente discord.py.
-Funzioni coperte: SPEC §8.16 (NF-02), §8.18 (LOG-027, LOG-030), §18.6
+Funzioni coperte: SPEC §8.16 (NF-02), §8.18 (LOG-004, LOG-027, LOG-030), §18.6
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ import time
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
+import discord.utils
 import re2
 
 from core.allegati_tipo_logic import nome_pulito
@@ -145,6 +146,26 @@ def testo_allegati(nomi: list[str]) -> str:
         return ""
     nomi_puliti = [nome_pulito(n).replace("`", "'") for n in nomi]  # D74: niente inversioni di testo
     return tronca(", ".join(f"`{n}`" for n in nomi_puliti), CAMPO_MAX)
+
+
+EMBED_MAX_LOG = 5  # LOG-004: al massimo 5 embed di un messaggio nel log
+EMBED_RIGA_MAX = 200
+
+
+def testo_embed(embeds: Iterable[tuple[str | None, str | None]]) -> str:
+    """
+    LOG-004: titolo e descrizione degli embed di un messaggio cancellato, per un campo di embed.
+    Solo testo: niente link, immagini o miniature; markdown e menzioni neutralizzati, ogni riga tagliata.
+    """
+    righe = []
+    for titolo, descrizione in list(embeds)[:EMBED_MAX_LOG]:
+        parti = [p for p in (titolo, descrizione) if p]
+        if not parti:
+            continue
+        testo = " — ".join(senza_accento_grave(" ".join(p.split())).replace("](", "] (") for p in parti)
+        testo = discord.utils.escape_markdown(discord.utils.escape_mentions(tronca(testo, EMBED_RIGA_MAX)))
+        righe.append(f"• {testo}")
+    return tronca("\n".join(righe), CAMPO_MAX)
 
 
 @dataclass(frozen=True)

@@ -390,7 +390,9 @@
   "colpo": "heist",
   "avventura": "adventure",
   "furto": "theft",
-  "elemosina": "beg"
+  "elemosina": "beg",
+  "rotta": "route",
+  "istantanea": "snapshot"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -708,6 +710,9 @@
   "admin-log eventi": "Turn each single log event on or off.",
   "admin-log ignora": "What the logs do not record (channels, users, roles; texts only for messages).",
   "admin-log stato": "Shows where the server logs go.",
+  "admin-log istantanea": "A channel in a private web page that expires. Create, list or remove.",
+  "admin-log rotta": "Sends one kind of event to a channel of its own. Without a channel, it goes back to its group.",
+  "admin-log formato": "Write the text of a log event yourself, with placeholders. Without text, it goes back to normal.",
   "admin-log vista-forum": "A forum with one post for each channel or case. Without a forum, the view turns off.",
   "mod-casi avvisi": "Warnings: remove, reset, leaderboard.",
   "mod-casi avvisi azzera": "Removes all of a member's active warnings (needs \"Manage Server\").",

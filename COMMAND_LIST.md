@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:37 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:50 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 942 comandi in 51 categorie.**
+**Totale: 945 comandi in 51 categorie.**
 
 ## Admin: AI
 
@@ -324,7 +324,10 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:
 - **`/admin-log crea-forum`** — Crea un forum privato per i log: un post per ogni tipo.
 - **`/admin-log esporta`** — Esporta lo storico eventi completo del server come file JSON.
 - **`/admin-log eventi`** — Accendi o spegni ogni singolo evento dei log.
+- **`/admin-log formato`** — Scrivi tu il testo di un evento di log, con i segnaposto. Senza testo, torna al testo di prima.
 - **`/admin-log ignora`** — Cosa i log non registrano (canali, utenti, ruoli; testi solo per i messaggi).
+- **`/admin-log istantanea`** — Un canale in una pagina web privata che scade. Crea, elenca o togli.
+- **`/admin-log rotta`** — Manda un solo tipo di evento in un canale tutto suo. Senza canale, torna al canale del gruppo.
 - **`/admin-log stato`** — Mostra dove vanno i log del server.
 - **`/admin-log vista-forum`** — Un forum con un post per canale o per caso. Senza forum, la vista si spegne.
 - **`/admin-log webhook`** — Manda i log da un webhook del canale, raggruppati, con limiti suoi.
