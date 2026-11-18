@@ -146,6 +146,7 @@ def _risposta(slug, live):
     return {"data": [{"slug": slug, "stream_title": "T", "category": {"name": "G"}, "stream": {"is_live": live}}]}
 
 
+# ALR-001 (#129): dirette su Kick (watcher, API a gruppi di 50, avviso e chiusura)
 async def test_tick_live_pubblica_e_aggiorna_lo_stato(mondo):
     bot, canale, repo, aggiornati, _ = mondo
     repo.get_all_subscriptions.return_value = [_Sub()]

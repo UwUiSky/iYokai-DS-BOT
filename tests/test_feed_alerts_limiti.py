@@ -16,6 +16,7 @@ from core.repositories.custom_webhook_repo import CustomWebhookRepository
 from core.repositories.feed_subscription_repo import FeedSubscriptionRepository
 from core.repositories.alert_options_repo import AlertOptionsRepository
 from core.repositories.kick_subscription_repo import KickSubscriptionRepository
+from core.repositories.picarto_subscription_repo import PicartoSubscriptionRepository
 from core.repositories.twitch_subscription_repo import TwitchSubscriptionRepository
 from core.repositories.youtube_subscription_repo import YoutubeSubscriptionRepository
 from tests.support.discord_fakes import fake_interaction, fake_text_channel
@@ -31,12 +32,18 @@ def repo(monkeypatch):
         return True
 
     monkeypatch.setattr(modulo, "url_e_sicuro", url_sempre_sicuro)
+
+    async def tetti_di_base(guild_id, bot=None):
+        return 25, False  # ALR-041: qui conta il tetto per tipo; il totale ha i suoi test
+
+    monkeypatch.setattr(modulo, "tetto_e_pieno", tetti_di_base)
     finti = {}
     for nome, classe in (
         ("feed_subscription_repo", FeedSubscriptionRepository),
         ("twitch_subscription_repo", TwitchSubscriptionRepository),
         ("youtube_subscription_repo", YoutubeSubscriptionRepository),
         ("kick_subscription_repo", KickSubscriptionRepository),
+        ("picarto_subscription_repo", PicartoSubscriptionRepository),
         ("alert_options_repo", AlertOptionsRepository),
         ("custom_webhook_repo", CustomWebhookRepository),
     ):
@@ -93,7 +100,7 @@ async def test_elenco_lungo_resta_sotto_i_4096_caratteri(repo):
         _feed(i, url_lungo=True) for i in range(25)
     ]
     repo["twitch_subscription_repo"].list_subscriptions.return_value = [
-        SimpleNamespace(id=i, label=f"T{i}", twitch_login="a" * 25, channel_id=111)
+        SimpleNamespace(id=i, label=f"T{i}", twitch_login="a" * 25, channel_id=111, last_known_live=False)
         for i in range(40)
     ]
     cog = modulo.FeedAlertsCog(bot=None)

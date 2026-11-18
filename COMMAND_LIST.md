@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-17 19:44 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:23 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 880 comandi in 50 categorie.**
+**Totale: 900 comandi in 51 categorie.**
 
 ## Admin: AI
 
@@ -36,6 +36,28 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-17 19:
 - **`/admin-ai vietate`** — Parole o argomenti che l'AI deve rifiutare.
 - **`/admin-ai voce imposta`** — Voce di Yokai: accesa o spenta, tono e canali dei saluti.
 - **`/admin-ai voce parla`** — Yokai dice un annuncio a voce in un canale.
+
+## Admin: avvisi social
+
+- **`/admin-alert bluesky`** — Avvisa dei nuovi post di un profilo Bluesky.
+- **`/admin-alert diretta`** — Controlla ora se un canale Twitch, Kick o YouTube è in diretta.
+- **`/admin-alert eventi-twitch`** — Crea eventi Discord dal calendario di un canale Twitch.
+- **`/admin-alert feed-noto`** — Notizie di anime e manga o giochi gratis, da feed già scelti.
+- **`/admin-alert ferma-tutti`** — Cancella tutti gli avvisi del server o di un canale (con conferma).
+- **`/admin-alert formato`** — Testo o embed, embed salvato come modello, Short di YouTube.
+- **`/admin-alert messaggio`** — Cambia il testo di un avviso (anche Twitch, YouTube, Kick).
+- **`/admin-alert picarto`** — Avvisa quando un canale Picarto va in diretta.
+- **`/admin-alert podcast`** — Cerca un podcast per nome e avvisa dei nuovi episodi.
+- **`/admin-alert ruolo-live aggiungi`** — Nuova regola: dà un ruolo a chi va in diretta.
+- **`/admin-alert ruolo-live annuncio`** — Annuncia in un canale chi va in diretta.
+- **`/admin-alert ruolo-live eccezioni`** — Membri che ricevono il ruolo anche senza le parole o il gioco.
+- **`/admin-alert ruolo-live elenco`** — Le regole del ruolo «in diretta» del server.
+- **`/admin-alert ruolo-live esclusi`** — Membri o ruoli che non ricevono mai il ruolo di una regola.
+- **`/admin-alert ruolo-live filtri`** — Parole del titolo, giochi e ruolo richiesto di una regola.
+- **`/admin-alert ruolo-live rimuovi`** — Toglie una regola del ruolo «in diretta».
+- **`/admin-alert sposta`** — Sposta un avviso in un altro canale.
+- **`/admin-alert subreddit`** — Avvisa dei nuovi post di un subreddit, come testo o embed.
+- **`/admin-alert youtube`** — Aggiungi un canale YouTube da qualsiasi link: video, Short, @nome, playlist.
 
 ## Admin: anti-nuke
 
@@ -503,6 +525,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-17 19:
 ## Admin: vocali temporanei
 
 - **`/admin-vocali cap`** — Imposta il numero massimo di vocali temporanei per categoria.
+- **`/admin-vocali crea`** — Crea la categoria e il canale generatore e configura tutto in un colpo.
 - **`/admin-vocali generatore`** — Altri canali generatori con regole proprie.
 - **`/admin-vocali opzioni`** — Nome dei nuovi canali, blocco, registro, copia, pannello.
 - **`/admin-vocali panel`** — Pubblica il pannello per la creazione manuale di un vocale.
@@ -1008,13 +1031,13 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-17 19:
 
 - **`/voice bitrate`** — Imposta la qualità audio del canale (kbps).
 - **`/voice claim`** — Prendi il canale se il proprietario non c'è più.
-- **`/voice deny`** — Vieta a un utente di entrare nel canale.
+- **`/voice deny`** — Vieta a un utente o a un ruolo di entrare nel canale.
 - **`/voice invita`** — Manda a un utente un invito al tuo canale.
 - **`/voice kick`** — Espelli un utente dal tuo canale.
 - **`/voice limit`** — Imposta il limite di utenti del canale.
 - **`/voice lock`** — Blocca il canale (nessun nuovo ingresso).
 - **`/voice nascondi`** — Nascondi o mostra il canale a chi non è dentro.
-- **`/voice permit`** — Permetti a un utente di entrare anche se il canale è bloccato.
+- **`/voice permit`** — Permetti a un utente o a un ruolo di entrare anche se il canale è bloccato.
 - **`/voice rename`** — Rinomina il tuo canale vocale.
 - **`/voice stato`** — Scrivi cosa state facendo nel canale (vuoto: toglie).
 - **`/voice transfer`** — Trasferisci la proprietà del canale.

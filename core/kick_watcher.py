@@ -18,6 +18,7 @@ import aiohttp
 from discord.ext import commands, tasks
 
 from core.alert_options_logic import AlertOptions
+from core.alert_frequenze_logic import intervallo
 from core.bot_ready import attendi_bot_pronto
 from core.feed_alert_gate import AvvisoUnaVolta, filtra_attive
 from core.kick_api_logic import (
@@ -27,6 +28,7 @@ from core.kick_api_logic import (
 )
 from core.live_alert_flow import carica_contesto, pubblica_cambio_live
 from core.repositories.kick_subscription_repo import kick_subscription_repo
+from core.alert_messaggio_logic import pulisci_esterno
 from core.template_renderer import render_template
 
 logger = logging.getLogger("iyokai.kick_watcher")
@@ -129,12 +131,12 @@ class KickWatcherService:
             stato = stati.get(sub.kick_slug.lower())
             if stato is None or stato.is_live == sub.last_known_live:
                 continue
+            valori = None
             if stato.is_live:
-                testo = render_template(
-                    sub.live_message_template,
-                    {"label": sub.label, "title": stato.title or "", "login": sub.kick_slug,
-                     "game": stato.category or ""},
-                )
+                valori = {"label": sub.label, "title": pulisci_esterno(stato.title), "login": sub.kick_slug,
+                          "game": pulisci_esterno(stato.category, 100), "gioco": pulisci_esterno(stato.category, 100)}  # ALR-022
+                valori["descrizione"] = f"🎮 {valori['game']}" if valori["game"] else ""
+                testo = render_template(sub.live_message_template, valori)
             else:
                 testo = render_template(sub.offline_message_template, {"label": sub.label, "login": sub.kick_slug})
             await pubblica_cambio_live(
@@ -142,7 +144,7 @@ class KickWatcherService:
                 url=f"https://kick.com/{sub.kick_slug}", opz=opzioni.get(sub.id, AlertOptions()),
                 ruolo_live_id=ruoli.get(sub.guild_id), repo_stato=kick_subscription_repo,
                 avvisi=self._avvisi, nome="Kick",
-                titolo=stato.title or "", gioco=stato.category or "",
+                titolo=stato.title or "", gioco=stato.category or "", valori=valori,
             )
 
     async def close(self) -> None:
@@ -161,7 +163,7 @@ class KickWatcherService:
             logger.info("KICK_CLIENT_ID/KICK_CLIENT_SECRET non configurati: il watcher Kick resta inattivo.")
             return
 
-        @tasks.loop(seconds=TICK_SECONDS)
+        @tasks.loop(seconds=intervallo("kick"))  # ALR-034: da .env, con minimo
         async def _loop():
             try:
                 await self.tick(bot)
@@ -174,7 +176,7 @@ class KickWatcherService:
 
         self._loop_task = _loop
         _loop.start()
-        logger.info("Kick watcher avviato (controllo ogni %ds).", TICK_SECONDS)
+        logger.info("Kick watcher avviato (controllo ogni %ds).", intervallo("kick"))
 
 
 kick_watcher = KickWatcherService()

@@ -33,6 +33,11 @@ def dns_finto(monkeypatch):
 
     monkeypatch.setattr(socket, "getaddrinfo", finto)
 
+    async def tetti_di_base(guild_id, bot=None):
+        return 25, False  # ALR-041: il totale ha i suoi test in test_alert_catalogo_r1b.py
+
+    monkeypatch.setattr("cogs.utility.feed_alerts.tetto_e_pieno", tetti_di_base)
+
 
 class _FakeResponse:
     def __init__(self) -> None:
@@ -140,6 +145,10 @@ async def test_add_list_remove_ciclo_completo(monkeypatch):
         from core.repositories.kick_subscription_repo import KickSubscriptionRepository
         monkeypatch.setattr(
             feed_alerts_module, "kick_subscription_repo", KickSubscriptionRepository(pool_provider=lambda: database.pool)
+        )
+        from core.repositories.picarto_subscription_repo import PicartoSubscriptionRepository
+        monkeypatch.setattr(
+            feed_alerts_module, "picarto_subscription_repo", PicartoSubscriptionRepository(pool_provider=lambda: database.pool)
         )
         monkeypatch.setattr(
             feed_alerts_module, "alert_options_repo", AlertOptionsRepository(pool_provider=lambda: database.pool)
@@ -257,6 +266,10 @@ async def test_add_twitch_e_list_mostra_entrambi_i_tipi_con_prefissi(monkeypatch
         from core.repositories.kick_subscription_repo import KickSubscriptionRepository
         monkeypatch.setattr(
             feed_alerts_module, "kick_subscription_repo", KickSubscriptionRepository(pool_provider=lambda: database.pool)
+        )
+        from core.repositories.picarto_subscription_repo import PicartoSubscriptionRepository
+        monkeypatch.setattr(
+            feed_alerts_module, "picarto_subscription_repo", PicartoSubscriptionRepository(pool_provider=lambda: database.pool)
         )
         monkeypatch.setattr(
             feed_alerts_module, "alert_options_repo", AlertOptionsRepository(pool_provider=lambda: database.pool)
@@ -417,6 +430,11 @@ async def test_add_youtube_live_list_e_remove_ciclo_completo(monkeypatch):
         )
         monkeypatch.setattr(
             feed_alerts_module, "alert_options_repo", AlertOptionsRepository(pool_provider=lambda: database.pool)
+        )
+        from core.repositories.picarto_subscription_repo import PicartoSubscriptionRepository
+
+        monkeypatch.setattr(
+            feed_alerts_module, "picarto_subscription_repo", PicartoSubscriptionRepository(pool_provider=lambda: database.pool)
         )
         monkeypatch.setattr(feed_alerts_module, "db", database)
         youtube_repo = YoutubeSubscriptionRepository(pool_provider=lambda: database.pool)
@@ -620,6 +638,10 @@ async def test_webhook_create_list_remove_ciclo_completo(monkeypatch):
         from core.repositories.kick_subscription_repo import KickSubscriptionRepository
         monkeypatch.setattr(
             feed_alerts_module, "kick_subscription_repo", KickSubscriptionRepository(pool_provider=lambda: database.pool)
+        )
+        from core.repositories.picarto_subscription_repo import PicartoSubscriptionRepository
+        monkeypatch.setattr(
+            feed_alerts_module, "picarto_subscription_repo", PicartoSubscriptionRepository(pool_provider=lambda: database.pool)
         )
         monkeypatch.setattr(
             feed_alerts_module, "alert_options_repo", AlertOptionsRepository(pool_provider=lambda: database.pool)

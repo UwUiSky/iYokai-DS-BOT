@@ -79,6 +79,7 @@ from core.voice_temp_logic import (
 )
 from core.premium import PremiumModule, registry
 from core.ui_base import BaseView
+from cogs.voice_temp._pannello import PannelloVocaleView
 
 logger = logging.getLogger("iyokai.voice_temp")
 
@@ -316,6 +317,9 @@ async def _create_temp_channel(
             await channel.send(embed=embed, view=view)
         else:
             await channel.send(embed=embed)
+        pannello = PannelloVocaleView()
+        await channel.send("🎛️ **Pannello del canale** · lo usa solo il proprietario.", view=pannello)  # VOC-009
+        pannello.stop()  # i clic li riceve la vista registrata all'avvio
     except discord.HTTPException:
         logger.warning("Impossibile inviare la notifica di creazione nel canale %s", channel.id)
     # I clic li riceve la view registrata all'avvio (stessi custom_id):
@@ -419,6 +423,40 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         await voice_temp_repo.set_config(interaction.guild.id, generator.id, category.id)
         await interaction.response.send_message(
             await testo_per(interaction, "voicetemp_configurato_entrando_in_verra_creato", mention=generator.mention, name=category.name),
+            ephemeral=True,
+        )
+
+    @comando_di_gruppo(
+        "admin-vocali",
+        nome="crea",
+        descrizione="Crea la categoria e il canale generatore e configura tutto in un colpo.",
+    )
+    @app_commands.describe(nome_categoria="Nome della categoria nuova", nome_generatore="Nome del canale generatore nuovo")
+    async def voicetemp_crea(
+        self,
+        interaction: discord.Interaction,
+        nome_categoria: app_commands.Range[str, 1, 100] = "Vocali temporanei",
+        nome_generatore: app_commands.Range[str, 1, 100] = "➕ Crea il tuo vocale",
+    ) -> None:
+        """VOC-019: come /admin-vocali setup, ma i canali li crea il bot (serve «Gestisci canali»)."""
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(await testo_per(interaction, "guild_only_command"), ephemeral=True)
+            return
+        me = guild.me
+        if me is None or not me.guild_permissions.manage_channels:
+            await interaction.response.send_message(await testo_per(interaction, "voicetemp_crea_manca_permesso"), ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        try:
+            categoria = await guild.create_category(nome_categoria, reason=f"Vocali temporanei: avvio guidato di {interaction.user}")
+            generatore = await categoria.create_voice_channel(nome_generatore, reason="Vocali temporanei: canale generatore")
+        except discord.HTTPException:
+            await interaction.followup.send(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
+            return
+        await voice_temp_repo.set_config(guild.id, generatore.id, categoria.id)
+        await interaction.followup.send(
+            await testo_per(interaction, "voicetemp_configurato_entrando_in_verra_creato", mention=generatore.mention, name=categoria.name),
             ephemeral=True,
         )
 
@@ -953,11 +991,15 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         )
         await _registra(interaction.guild, f"👑 {interaction.user.mention} ha preso {channel.mention}.")
 
-    @comando_di_gruppo("voice", nome="permit", descrizione="Permetti a un utente di entrare anche se il canale è bloccato.")
-    @app_commands.describe(member="L'utente da ammettere")
-    async def permit(self, interaction: discord.Interaction, member: discord.Member) -> None:
+    @comando_di_gruppo("voice", nome="permit", descrizione="Permetti a un utente o a un ruolo di entrare anche se il canale è bloccato.")
+    @app_commands.describe(member="L'utente o il ruolo da ammettere")
+    async def permit(self, interaction: discord.Interaction, member: discord.Member | discord.Role) -> None:
+        # VOC-002: anche un ruolo intero (mai @everyone: per aprire a tutti c'è /voice unlock).
         channel = await self._get_managed_channel_or_reply(interaction)
         if channel is None:
+            return
+        if isinstance(member, discord.Role) and member.is_default():
+            await interaction.response.send_message(await testo_per(interaction, "voicetemp_ruolo_everyone"), ephemeral=True)
             return
         try:
             overwrite = channel.overwrites_for(member)
@@ -970,27 +1012,44 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "voicetemp_puo_entrare_nel_canale", pubblica=True, mention=member.mention), allowed_mentions=discord.AllowedMentions.none()
         )
 
-    @comando_di_gruppo("voice", nome="deny", descrizione="Vieta a un utente di entrare nel canale.")
-    @app_commands.describe(member="L'utente da escludere")
-    async def deny(self, interaction: discord.Interaction, member: discord.Member) -> None:
+    @staticmethod
+    def _ruolo_vietabile(interaction: discord.Interaction, ruolo: discord.Role) -> bool:
+        """VOC-003: un ruolo dello staff o più alto di quello di chi lo vieta non si può escludere (gerarchia)."""
+        autore = interaction.user
+        perm = ruolo.permissions
+        if ruolo.is_default() or perm.administrator or perm.manage_channels or perm.move_members:
+            return False
+        return autore.id == interaction.guild.owner_id or ruolo < autore.top_role
+
+    @comando_di_gruppo("voice", nome="deny", descrizione="Vieta a un utente o a un ruolo di entrare nel canale.")
+    @app_commands.describe(member="L'utente o il ruolo da escludere")
+    async def deny(self, interaction: discord.Interaction, member: discord.Member | discord.Role) -> None:
+        # VOC-003: nega «Connetti» (e scollega chi è dentro): chi è escluso non può rientrare.
         channel = await self._get_managed_channel_or_reply(interaction)
         if channel is None:
             return
-        if member.id == interaction.user.id or member.id == await voice_temp_repo.get_owner(channel.id):
+        if isinstance(member, discord.Role):
+            if not self._ruolo_vietabile(interaction, member):
+                await interaction.response.send_message(await testo_per(interaction, "voicetemp_ruolo_non_vietabile"), ephemeral=True)
+                return
+        elif member.id == interaction.user.id or member.id == await voice_temp_repo.get_owner(channel.id):
             await interaction.response.send_message(
                 await testo_per(interaction, "voicetemp_non_puoi_vietare_accesso_al"), ephemeral=True
             )
             return
-        permesso, motivo = self._puo_espellere(interaction, member)
-        if not permesso:
-            await interaction.response.send_message(motivo, ephemeral=True)
-            return
+        else:
+            permesso, motivo = self._puo_espellere(interaction, member)
+            if not permesso:
+                await interaction.response.send_message(motivo, ephemeral=True)
+                return
         try:
             overwrite = channel.overwrites_for(member)
             overwrite.update(connect=False)
             await channel.set_permissions(member, overwrite=overwrite, reason="Escluso dal proprietario del vocale")
-            if member.voice is not None and member.voice.channel is not None and member.voice.channel.id == channel.id:
-                await member.move_to(None, reason="Escluso dal proprietario del canale")
+            dentro = member.members if isinstance(member, discord.Role) else [member]
+            for m in dentro:
+                if m.voice is not None and m.voice.channel is not None and m.voice.channel.id == channel.id and m.id != interaction.user.id:
+                    await m.move_to(None, reason="Escluso dal proprietario del canale")
         except discord.HTTPException:
             await interaction.response.send_message(MESSAGGIO_ERRORE_DISCORD, ephemeral=True)
             return
@@ -1289,3 +1348,4 @@ async def setup(bot: commands.Bot) -> None:
     # Senza configurazione: tutte e tre le piattaforme, per ricevere i
     # clic sui bottoni dei messaggi già mandati (vedi PlatformRoleView).
     bot.add_view(PlatformRoleView())
+    bot.add_view(PannelloVocaleView())  # VOC-009

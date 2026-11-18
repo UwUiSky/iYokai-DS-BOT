@@ -65,6 +65,7 @@ async def pubblica_cambio_live(
     nome: str,
     titolo: str = "",
     gioco: str | None = None,
+    valori: dict[str, str] | None = None,
 ) -> None:
     if _in_attesa((kind, sub.id)):
         return
@@ -90,7 +91,7 @@ async def pubblica_cambio_live(
 
     try:
         if in_diretta:
-            id_messaggio = await avviso_live(canale, testo, opz, url)
+            id_messaggio = await avviso_live(canale, testo, opz, url, valori)
         else:
             await avviso_fine(canale, testo, opz)
             id_messaggio = None

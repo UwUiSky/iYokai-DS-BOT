@@ -1152,3 +1152,38 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
 - MUS-067: il conteggio dei player sta in `/owner radio stato` (non in `/owner system`, file di un'altra area).
 - Non fatte in r4mus, scelta prudente (da confermare): MUS-018 (cartelle di file locali: un utente non sceglie mai una sorgente `local`, D73/sicurezza); MUS-015 (il paese delle ricerche Spotify e' una scelta del nodo LavaSrc, non del server); MUS-090 (bot musicali di colore diverso: nome e avatar dei worker sono dell'owner nel portale Discord, nessun codice); MUS-017 (vedi sopra).
 - Restano da fare: MUS-010 (radio dal mondo, serve un elenco pubblico da scegliere), MUS-014 (menu per genere, playlist scelte dall'owner), MUS-019 (gioco «indovina la canzone»), MUS-065 (jukebox a monete, serve l'API dell'economia).
+
+- **Calcoli (RUO-022):** solo somme e sottrazioni di interi fino a 12 cifre, al massimo 10 operazioni, mai `eval`.
+
+## D90 — Alert social (#129): avvisi quasi immediati (ALR-035), 17/11/2026, opzione prudente, da confermare dall'owner
+
+- La spinta (EventSub di Twitch, WebSub di YouTube) vuole un indirizzo HTTPS pubblico che risponda a Twitch e Google, con firma da controllare e iscrizioni da rinnovare. Il bot non ha oggi un ingresso web per questo: aprirlo è un cambio di infrastruttura (dominio, certificato, porta) da decidere con l'owner.
+- **Alternativa più vicina (D18), fatta:** i controlli sono più frequenti a scelta dell'owner, con variabili d'ambiente (`ALERT_TWITCH_SECONDI` minimo 30, `ALERT_KICK_SECONDI` 60, `ALERT_PICARTO_SECONDI` 60, `ALERT_YOUTUBE_SECONDI` e `ALERT_FEED_SECONDI` 120, `ALERT_EVENTI_TWITCH_SECONDI` 600). Mai sotto il minimo: protegge le quote (LIM-16, LIM-46).
+
+## D91 — Vocali temporanei (#127): pagina web (VOC-020), 17/11/2026
+
+- La pagina sta in `pannello_web` (area di dev-web, NF-20), non in questo giro. Tutte le impostazioni dei vocali passano già da `voice_temp_repo` (D16), usato dai comandi `/admin-vocali`: la pagina userà gli stessi metodi. Alternativa regolare oggi: `/admin-vocali crea` (categoria e generatore in un colpo) e `/admin-vocali opzioni`.
+
+## D92 — Alert social (#129): scelte aperte del catalogo, 17/11/2026, opzione prudente
+
+- **Gruppo `/admin-alert`:** `/admin-moduli alert` ha già 10 comandi e pesa quasi 5.000 caratteri; le funzioni nuove stanno in un gruppo nuovo (messaggio, formato, sposta, ferma-tutti, diretta, eventi-twitch, bluesky, podcast, youtube, subreddit, feed-noto, picarto, e il sotto-gruppo `ruolo-live`). I comandi già in uso non si spostano.
+- **Tetti (ALR-041):** 25 avvisi per tipo e 50 in tutto; con il premium del server 100 e 200. Il controllo del premium che si rompe vale il piano gratuito.
+- **@everyone e @here (ALR-019):** mai, nemmeno con «Menziona tutti» (D12). Si usa un ruolo, scelto da chi ha il permesso di pingarlo. I testi presi da fuori (titoli, descrizioni, giochi) hanno le menzioni neutralizzate: non possono far partire il ruolo dell'avviso.
+- **Controllo a mano (ALR-040):** `/admin-alert diretta`, non `/utility diretta`: `/utility` è pieno e un comando per tutti spenderebbe la quota di Twitch/YouTube. Solo staff, memoria di 60 secondi per canale, una richiesta ogni 10 secondi per server. YouTube vuole l'ID del canale (UC…); da un link si ricava con `/admin-alert youtube`.
+- **Comando di ricerca periodico (ALR-016):** solo subreddit di immagini e meme da un elenco fisso (8), ogni post come embed. Mai testo libero verso altri siti.
+- **Feed noti (ALR-015, 017):** sei feed pubblici scelti dall'owner (anime, manga, giochi gratis). Da provare su Discord: i siti possono cambiare indirizzo.
+- **Testo fisso (ALR-029):** coperto dal modello di messaggio (500 caratteri) con `{ruolo}`.
+- **Facebook (ALR-005):** come TikTok, Instagram e X: nessuna interfaccia gratuita, guida al feed «ponte» e al webhook.
+- **Linked Roles (ALR-049):** richiede il collegamento OAuth dell'utente a Twitch e pagine web che il bot non ha. Alternativa da fare con `dev-web` (E3 in `APP_UTENTE_E_DESKTOP.md`); non in questo giro.
+
+## D93 — Ruolo «in diretta» automatico (#129, ALR-042..048), 17/11/2026
+
+- Si basa sullo stato «in diretta» di Discord (attività Streaming): serve l'intent delle presenze, che si accende con lo stesso interruttore dell'automod (`AUTOMOD_STATO_ATTIVO`). Senza, i comandi avvisano e le regole non scattano.
+- Fino a 5 regole per server; 25 esclusi e 25 eccezioni per regola. Gli esclusi vincono su tutto; le eccezioni saltano solo parole e gioco, non il ruolo richiesto.
+- Le regole stanno in memoria 60 secondi; i cambi di presenza senza una diretta (la grande maggioranza) finiscono prima di ogni lettura. Ogni 15 minuti il bot rimette a posto chi ha il ruolo senza essere più in diretta. L'annuncio ha una pausa per membro e per regola (predefinita 6 ore) e mai menzioni.
+- Il ruolo scelto non può essere @everyone, gestito da un'app, o sopra il ruolo più alto del bot.
+
+## D94 — Picarto e calendario Twitch (#129, ALR-008, 013), 17/11/2026
+
+- **Picarto:** nessuna chiave né richieste a gruppi: una richiesta per canale (la stessa per più server), al massimo 40 per giro a rotazione, 4 insieme, ogni 3 minuti.
+- **Eventi dal calendario Twitch:** sono eventi esterni del server (con il link del canale), al massimo 5 nuove puntate per avviso a ogni giro (ogni 30 minuti), solo entro 14 giorni, mai oltre i 100 eventi del server di Discord. Serve «Gestisci eventi» per il bot. Una richiesta per canale, anche se più server lo seguono.

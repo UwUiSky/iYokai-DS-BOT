@@ -48,6 +48,7 @@ AUDIENCE: dict[str, str] = {
     "admin-sicurezza": STAFF,  # gruppo condiviso per ruolo (D60)
     "admin-ticket": STAFF,  # gruppo condiviso per ruolo (D60)
     "admin-ticket-opzioni": STAFF,  # gruppo condiviso per ruolo (D60)
+    "admin-alert": STAFF,  # gruppo condiviso per ruolo (D60)
     "admin-vocali": STAFF,  # gruppo condiviso per ruolo (D60)
     "mod-ban": STAFF,  # gruppo condiviso per ruolo (D60)
     "mod-canali": STAFF,  # gruppo condiviso per ruolo (D60)

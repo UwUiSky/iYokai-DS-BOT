@@ -1481,6 +1481,19 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   077), sposta e aggancia (RUO-072, 073), ripara (RUO-074), emoji di altri server (RUO-075), svuota (RUO-080); cambio di tipo
   (RUO-088) e `elimina tieni_messaggio` (RUO-079). Già presenti e ora provate: RUO-002, 003, 006, 009, 011, 020, 021,
   028-033, 037, 039, 051, 054-061, 064, 066, 067, 078. Migrazioni 0640-0650.
+- `[x]` 14.23 Alert social, catalogo #129 (giro r1alert, 17/11) — gruppo `/admin-alert` (D92): messaggio per ogni tipo con
+  `{ruolo}`, `{gioco}`, `{vod}`, `{thumbnail}`, `{descrizione}`, `{durata}` (ALR-020, 021, 022, 023, 029, 012), formato testo o embed
+  e embed salvato (ALR-014, 024), Short di YouTube (ALR-009), sposta (ALR-037), ferma-tutti con conferma (ALR-038), elenco con
+  «in diretta» (ALR-039), controllo a mano (ALR-040, `diretta`), tetti 25/50 e premium 100/200 (ALR-041), Bluesky (ALR-006),
+  podcast (ALR-007), canale YouTube da un link (ALR-011), subreddit e immagini (ALR-014, 016), feed noti di anime, manga e giochi
+  gratis (ALR-015, 017), Picarto (ALR-008, 0691), eventi dal calendario Twitch (ALR-013, 0692), frequenza dei controlli da `.env`
+  (ALR-034; ALR-035 con alternativa D90), ruolo «in diretta» automatico con regole, esclusi, parole, giochi, eccezioni e annuncio
+  (ALR-042..048, `/admin-alert ruolo-live`, D93, 0693). Già presenti e ora provate: ALR-001, 002, 003, 004, 005, 010, 018, 019.
+  Migrazioni 0690-0693. Non fatto: ALR-049 (D92). Test: `tests/test_alert_catalogo_r1*.py`.
+- `[x]` 14.24 Vocali temporanei, catalogo #127 (giro r1alert, 17/11) — `/voice permit` e `/voice deny` anche per i ruoli, con
+  gerarchia (VOC-002, 003); già presenti e provati: nascondi, qualità audio (VOC-004, 005); pannello persistente con otto azioni
+  (VOC-009, `cogs/voice_temp/_pannello.py`); `/admin-vocali crea` (VOC-019). Non fatto: VOC-020, pagina del pannello (D91).
+  Test: `tests/test_voice_catalogo_r1.py`.
 - `[x]` 14.19 **Voce di Yokai: messaggi vocali** — il bot manda veri
   messaggi vocali di Discord da un testo, nella lingua del testo. Sotto
   ogni vocale un messaggio con due bottoni: "Trascrivi" e "Nella mia

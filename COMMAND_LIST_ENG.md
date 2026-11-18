@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-17 19:44 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:23 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 880 commands in 50 categories.**
+**Total: 900 commands in 51 categories.**
 
 ## Admin: AI
 
@@ -36,6 +36,28 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-17 19:4
 - **`/admin-ai translation`** — Automatically translates every message of a channel.
 - **`/admin-ai voice set`** — Voice: on or off, tone and greeting channels.
 - **`/admin-ai voice speak`** — Yokai says an announcement out loud in a channel.
+
+## Admin: social alerts
+
+- **`/admin-alerts bluesky`** — Alert for new posts of a Bluesky profile.
+- **`/admin-alerts format`** — Text or embed, a saved embed as template, YouTube Shorts.
+- **`/admin-alerts known-feed`** — News about anime and manga or free games, from ready-made feeds.
+- **`/admin-alerts live`** — Check right now whether a Twitch, Kick or YouTube channel is live.
+- **`/admin-alerts live-role add`** — New rule: gives a role to whoever goes live.
+- **`/admin-alerts live-role announcement`** — Announce in a channel who goes live.
+- **`/admin-alerts live-role exceptions`** — Members who get the role even without the words or the game.
+- **`/admin-alerts live-role excluded`** — Members or roles that never get the role of a rule.
+- **`/admin-alerts live-role filters`** — Title words, games and required role of a rule.
+- **`/admin-alerts live-role list`** — The live role rules of the server.
+- **`/admin-alerts live-role remove`** — Removes a live role rule.
+- **`/admin-alerts message`** — Change the text of an alert, also for Twitch, YouTube and Kick.
+- **`/admin-alerts move`** — Move an alert to another channel.
+- **`/admin-alerts picarto`** — Alert when a Picarto channel goes live.
+- **`/admin-alerts podcast`** — Search a podcast by name and get alerts for new episodes.
+- **`/admin-alerts stop-all`** — Delete all alerts of the server or of a channel (with confirmation).
+- **`/admin-alerts subreddit`** — Alert for new posts of a subreddit, as text or embed.
+- **`/admin-alerts twitch-events`** — Create Discord events from a Twitch channel's schedule.
+- **`/admin-alerts youtube`** — Add a YouTube channel from any link: video, Short, @name, playlist.
 
 ## Admin: anti-nuke
 
@@ -503,6 +525,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-17 19:4
 ## Admin: temporary voice
 
 - **`/admin-voice cap`** — Sets the maximum number of temporary voice channels per category.
+- **`/admin-voice create`** — Creates the category and the generator channel and sets everything up.
 - **`/admin-voice generator`** — Extra generator channels with their own rules.
 - **`/admin-voice options`** — Name of new channels, lock, log, copy, panel.
 - **`/admin-voice panel`** — Publishes the panel to create a voice channel by hand.

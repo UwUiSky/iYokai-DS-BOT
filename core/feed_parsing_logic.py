@@ -29,6 +29,8 @@ Dipende da: core/template_renderer.py (SEC-6)
 
 from __future__ import annotations
 
+import html
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
@@ -37,6 +39,24 @@ from xml.etree import ElementTree as ET
 from core.template_renderer import render_template
 
 ATOM_NS = {"atom": "http://www.w3.org/2005/Atom"}
+MEDIA_NS = "{http://search.yahoo.com/mrss/}"
+MAX_DESCRIZIONE_VOCE = 300
+MAX_URL_MINIATURA = 300
+_TAG_HTML = re.compile(r"<[^>]*>")
+
+
+def pulisci_descrizione(testo: str, massimo: int = MAX_DESCRIZIONE_VOCE) -> str:
+    """Testo di un feed senza tag HTML, a una riga, tagliato (ALR-023). Il testo viene da fuori: mai fidarsi."""
+    senza_tag = _TAG_HTML.sub(" ", html.unescape(testo or ""))
+    pulito = " ".join(senza_tag.split())
+    return pulito if len(pulito) <= massimo else pulito[: massimo - 1] + "…"
+
+
+def _miniatura_valida(url: str) -> str:
+    url = (url or "").strip()
+    if len(url) > MAX_URL_MINIATURA or not url.startswith(("https://", "http://")) or any(c.isspace() for c in url):
+        return ""
+    return url
 
 
 @dataclass(frozen=True)
@@ -45,6 +65,8 @@ class FeedEntry:
     title: str
     link: str
     published: datetime | None = None  # M 11.5: sempre con fuso, oppure None
+    thumbnail: str = ""  # ALR-023: miniatura (solo http/https, già tagliata)
+    description: str = ""  # ALR-023: descrizione già ripulita da tag e tagliata
 
 
 def _data_o_none(testo: str) -> datetime | None:
@@ -92,6 +114,21 @@ def _testo_o_default(elemento, default: str = "") -> str:
     return elemento.text.strip()
 
 
+def _miniatura_rss(item: ET.Element) -> str:
+    for tag in (f"{MEDIA_NS}thumbnail", f"{MEDIA_NS}content", "enclosure"):
+        el = item.find(tag)
+        if el is not None and _miniatura_valida(el.get("url", "")):
+            tipo = el.get("type", "")
+            if tag != "enclosure" or tipo.startswith("image/"):
+                return el.get("url", "").strip()
+    return ""
+
+
+def _miniatura_atom(entry: ET.Element) -> str:
+    el = entry.find(f"{MEDIA_NS}group/{MEDIA_NS}thumbnail")
+    return _miniatura_valida(el.get("url", "")) if el is not None else ""
+
+
 def _parse_rss(root: ET.Element) -> list[FeedEntry]:
     canale = root.find("channel")
     if canale is None:
@@ -109,6 +146,8 @@ def _parse_rss(root: ET.Element) -> list[FeedEntry]:
                 title=_testo_o_default(item.find("title"), "(senza titolo)"),
                 link=link,
                 published=_data_o_none(_testo_o_default(item.find("pubDate"))),
+                thumbnail=_miniatura_rss(item),
+                description=pulisci_descrizione(_testo_o_default(item.find("description"))),
             )
         )
     return voci
@@ -130,6 +169,11 @@ def _parse_atom(root: ET.Element) -> list[FeedEntry]:
                 published=_data_o_none(
                     _testo_o_default(entry.find("atom:published", ATOM_NS))
                     or _testo_o_default(entry.find("atom:updated", ATOM_NS))
+                ),
+                thumbnail=_miniatura_atom(entry),
+                description=pulisci_descrizione(
+                    _testo_o_default(entry.find(f"{MEDIA_NS}group/{MEDIA_NS}description"))
+                    or _testo_o_default(entry.find("atom:summary", ATOM_NS))
                 ),
             )
         )
@@ -181,7 +225,7 @@ def find_new_entries(
     return nuove
 
 
-def render_alert_message(template: str, label: str, title: str, link: str) -> str:
+def render_alert_message(template: str, label: str, title: str, link: str, extra: dict[str, str] | None = None) -> str:
     """
     Sostituisce {label}/{title}/{link} nel template personalizzabile
     (SPEC.md §10.9). Usa render_template (SEC-6), non str.format: un
@@ -193,4 +237,5 @@ def render_alert_message(template: str, label: str, title: str, link: str) -> st
     così com'è (il typo resta visibile, l'utente lo nota e lo
     corregge) che nessun messaggio.
     """
-    return render_template(template, {"label": label, "title": title, "link": link})
+    valori = {"label": label, "title": title, "link": link, **(extra or {})}
+    return render_template(template, valori)
