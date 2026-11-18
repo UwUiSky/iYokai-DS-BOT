@@ -197,6 +197,28 @@ QUERY_DECADIMENTO_DEL_SERVER = (
 
 
 
+# ECO-003: il tetto al saldo sta DENTRO le scritture che accreditano. `$g` e `$a` sono i
+# numeri dei parametri del server e dell'importo. Chi è già sopra il tetto (tetto abbassato
+# dopo) non perde monete, ma non ne riceve altre.
+def _tetto_sql(g: int) -> str:
+    return f"(SELECT NULLIF(tetto_saldo, 0) FROM leveling_settings WHERE guild_id = ${g})"
+
+
+def somma_con_tetto_sql(colonna: str, g: int, a: int) -> str:
+    """Espressione SQL: `colonna + importo`, ma non oltre il tetto del server (se c'è)."""
+    t = _tetto_sql(g)
+    return (
+        f"CASE WHEN ${a}::bigint > 0 AND {t} IS NOT NULL "
+        f"THEN GREATEST({colonna}, LEAST({colonna} + ${a}::bigint, {t})) "
+        f"ELSE {colonna} + ${a}::bigint END"
+    )
+
+
+def valore_nuovo_con_tetto_sql(g: int, a: int) -> str:
+    """Espressione SQL per la riga che nasce con `importo`: non oltre il tetto."""
+    return f"CASE WHEN ${a}::bigint > 0 THEN LEAST(${a}::bigint, COALESCE({_tetto_sql(g)}, ${a}::bigint)) ELSE ${a}::bigint END"
+
+
 # ----------------------------------------------------------------------
 # Movimenti di coin su una connessione già aperta. Servono a chi deve
 # mettere più scritture nella stessa transazione (acquisto dello shop,
@@ -222,21 +244,26 @@ async def spend_coins_in(
 
 
 async def add_coins_in(
-    conn: asyncpg.Connection, guild_id: int, user_id: int, amount: int
+    conn: asyncpg.Connection, guild_id: int, user_id: int, amount: int, classifica: bool = True
 ) -> int:
-    """Aggiunge coin (saldo e classifica del mese). Restituisce il nuovo saldo."""
+    """
+    Aggiunge coin (saldo e, se `classifica`, classifica del mese). Rispetta il tetto
+    al saldo del server (ECO-003). Restituisce il nuovo saldo.
+    """
     saldo = await conn.fetchval(
-        """
+        f"""
         INSERT INTO leveling_totals (guild_id, user_id, coins_total)
-        VALUES ($1, $2, $3)
+        VALUES ($1, $2, {valore_nuovo_con_tetto_sql(1, 3)})
         ON CONFLICT (guild_id, user_id) DO UPDATE
-            SET coins_total = leveling_totals.coins_total + $3
+            SET coins_total = {somma_con_tetto_sql("leveling_totals.coins_total", 1, 3)}
         RETURNING coins_total
         """,
         guild_id,
         user_id,
         amount,
     )
+    if not classifica:
+        return saldo
     await conn.execute(
         """
         INSERT INTO leveling_activity (guild_id, user_id, period_key, coins)
@@ -270,6 +297,10 @@ async def refund_coins_in(
         user_id,
         amount,
     )
+
+
+class TettoSaldoRaggiunto(Exception):
+    """ECO-003: chi riceve supererebbe il tetto al saldo del server."""
 
 
 class LevelingRepository:
@@ -783,9 +814,11 @@ class LevelingRepository:
         if puntata <= 0 or restituzione < 0 or attesa_secondi < 0:
             raise ValueError("Puntata, restituzione o attesa non valide.")
         return await self._pool.fetchval(
-            """
+            f"""
             UPDATE leveling_totals
-            SET coins_total = coins_total - $3 + $4, ultima_partita_at = NOW()
+            SET coins_total = CASE WHEN {_tetto_sql(1)} IS NULL THEN coins_total - $3 + $4
+                                   ELSE GREATEST(coins_total - $3, LEAST(coins_total - $3 + $4, {_tetto_sql(1)})) END,
+                ultima_partita_at = NOW()
             WHERE guild_id = $1 AND user_id = $2 AND coins_total >= $3
               AND (ultima_partita_at IS NULL
                    OR ultima_partita_at <= NOW() - make_interval(secs => $5))
@@ -826,6 +859,8 @@ class LevelingRepository:
         """
         if amount <= 0:
             raise ValueError("L'importo da trasferire deve essere positivo.")
+        if from_user_id == to_user_id:
+            raise ValueError("Non si trasferiscono monete a se stessi.")
         if not 0 <= tassa < amount:
             raise ValueError("La tassa deve stare tra 0 e l'importo (escluso).")
 
@@ -851,6 +886,16 @@ class LevelingRepository:
 
                 if saldo < amount:
                     return False
+                # ECO-003: il destinatario non supera il tetto (il controllo sta sotto blocco).
+                tetto = await conn.fetchval(
+                    "SELECT NULLIF(tetto_saldo, 0) FROM leveling_settings WHERE guild_id = $1", guild_id
+                )
+                if tetto is not None:
+                    saldo_dest = next(
+                        (r["coins_total"] for r in saldi if r["user_id"] == to_user_id), 0
+                    )
+                    if saldo_dest + amount - tassa > tetto:
+                        raise TettoSaldoRaggiunto()
 
                 await conn.execute(
                     """
@@ -981,9 +1026,9 @@ class LevelingRepository:
                 riga = await conn.fetchrow(
                     f"""
                     INSERT INTO leveling_totals (guild_id, user_id, coins_total, {colonna})
-                    VALUES ($1, $2, $3, $4)
+                    VALUES ($1, $2, {valore_nuovo_con_tetto_sql(1, 3)}, $4)
                     ON CONFLICT (guild_id, user_id) DO UPDATE
-                        SET coins_total = leveling_totals.coins_total + $3, {colonna} = $4
+                        SET coins_total = {somma_con_tetto_sql("leveling_totals.coins_total", 1, 3)}, {colonna} = $4
                         WHERE leveling_totals.{colonna} IS NULL
                            OR leveling_totals.{colonna} <= $5
                     RETURNING coins_total

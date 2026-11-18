@@ -449,7 +449,26 @@ LIMITI_IMPOSTAZIONI = {
     "pay_tax_pct": (0, 50),  # ECO-015: percentuale che va alla cassa del server
     "pay_max": (0, 1_000_000),  # ECO-015: tetto per trasferimento, 0 = nessuno
     "pay_min": (0, 1_000_000),  # ECO-015: minimo per trasferimento, 0 = nessuno
+    "saldo_iniziale": (0, 1_000_000),  # ECO-002: monete date a chi entra, 0 = niente
+    "tetto_saldo": (0, 1_000_000_000),  # ECO-003: saldo massimo, 0 = nessun tetto
+    "puntata_min": (1, 1_000_000),  # ECO-021
+    "puntata_max": (1, 1_000_000),  # ECO-021
+    "attesa_gioco": (0, 3600),  # ECO-022: secondi tra due partite
+    "daily_ore": (1, 720),  # ECO-024: ogni quante ore si riscuote il premio periodico
+    "work_attesa_min": (1, 1440),  # ECO-019/028: minuti tra due lavori
+    "daily_bonus_serie": (0, 1000),  # ECO-025: monete in più per ogni giorno di serie
+    "daily_serie_max": (1, 365),  # ECO-025: giorni di serie che contano
+    "settimanale_coins": (0, 100_000),  # ECO-026: 0 = spento
+    "mensile_coins": (0, 1_000_000),  # ECO-026: 0 = spento
+    "drop_per_mille": (0, 100),  # ECO-053: probabilità per messaggio, in millesimi (5 = 0,5%); 0 = spento
+    "drop_min": (1, 100_000),  # ECO-053
+    "drop_max": (1, 100_000),  # ECO-053
+    "drop_pausa": (0, 3600),  # ECO-053: secondi minimi tra due drop nello stesso server
+    "furto_percentuale": (1, 50),  # ECO-031: quota dei contanti della vittima che si può rubare
+    "furto_successo": (1, 90),  # ECO-031: probabilità (%) che il furto riesca
+    "colpo_successo": (1, 90),  # ECO-030: probabilità (%) che il colpo riesca
 }
+MODI_SALDO_USCITA = ("tieni", "cancella")  # ECO-014
 MAX_NOME_MONETA = 20  # ECO-001
 MAX_RUOLI_PER_LIVELLO = 3  # LIV-042
 MAX_TESTO_ANNUNCIO = 1800  # LIV-034: lascia posto ai valori sostituiti (messaggio ≤ 2000)
@@ -511,6 +530,27 @@ class LevelingSettings:
     prefissi_ignorati: tuple = ()  # LIV-018
     canali_modo: str = "tutti"  # LIV-021: "solo_questi" = l'elenco dei canali è una lista bianca
     levelup_testo: str = ""  # LIV-034: testo dell'annuncio con segnaposto; vuoto = quello di base
+    saldo_iniziale: int = 0  # ECO-002
+    tetto_saldo: int = 0  # ECO-003
+    puntata_min: int = 1  # ECO-021
+    puntata_max: int = 10_000  # ECO-021
+    attesa_gioco: int = 5  # ECO-022
+    daily_ore: int = 24  # ECO-024
+    work_attesa_min: int = 60  # ECO-019/028
+    daily_bonus_serie: int = 0  # ECO-025
+    daily_serie_max: int = 30  # ECO-025
+    settimanale_coins: int = 0  # ECO-026
+    mensile_coins: int = 0  # ECO-026
+    saldo_uscita: str = "tieni"  # ECO-014: cosa fare del saldo di chi esce
+    drop_per_mille: int = 5  # ECO-053
+    drop_min: int = 10  # ECO-053
+    drop_max: int = 50  # ECO-053
+    drop_pausa: int = 0  # ECO-053
+    drop_canale_id: int | None = None  # ECO-053: solo in questo canale (None = ovunque)
+    furto_attivo: bool = False  # ECO-031: spento di base
+    furto_percentuale: int = 10  # ECO-031
+    furto_successo: int = 40  # ECO-031
+    colpo_successo: int = 40  # ECO-030
 
 
 @dataclass(frozen=True)
@@ -737,3 +777,46 @@ def nome_moneta_valido(nome: str) -> str:
     if contiene_emoji(pulito):
         raise ValueError("Il nome della moneta è solo testo: niente emoji. L'immagine si carica a parte.")
     return pulito
+
+
+# ======================================================================
+# Economia — regole scelte dal server (#125)
+# ======================================================================
+def attesa_daily_secondi(impostazioni: "LevelingSettings") -> int:
+    """ECO-024: l'attesa tra due premi periodici, scelta dal server."""
+    return impostazioni.daily_ore * 3600
+
+
+def attesa_work_secondi(impostazioni: "LevelingSettings") -> int:
+    """ECO-019/028: l'attesa tra due lavori, scelta dal server."""
+    return impostazioni.work_attesa_min * 60
+
+
+def bonus_serie(serie_dopo: int, per_giorno: int, massimo_giorni: int) -> int:
+    """
+    ECO-025: monete in più per una serie di giorni di fila. Il primo giorno non dà
+    bonus; contano al massimo `massimo_giorni` giorni oltre il primo.
+    """
+    if per_giorno <= 0 or serie_dopo <= 1:
+        return 0
+    return per_giorno * min(serie_dopo - 1, max(0, massimo_giorni))
+
+
+def controlla_puntata(puntata: int, impostazioni: "LevelingSettings") -> str | None:
+    """ECO-021: None se la puntata va bene, altrimenti il motivo (testo breve)."""
+    minimo, massimo = impostazioni.puntata_min, impostazioni.puntata_max
+    if puntata < max(1, minimo):
+        return f"La puntata minima è {max(1, minimo)}."
+    if puntata > massimo:
+        return f"La puntata massima è {massimo}."
+    return None
+
+
+ATTESA_PERIODICI = {"settimanale": 7 * 24 * 3600, "mensile": 30 * 24 * 3600}  # ECO-026
+
+PERCENTUALE_RIVENDITA = 50  # ECO-072: rivendendo un oggetto si riceve metà del prezzo di oggi
+
+
+def prezzo_rivendita(prezzo: int) -> int:
+    """ECO-072: monete per la rivendita, sempre meno del prezzo (arrotondato per difetto)."""
+    return max(0, prezzo) * PERCENTUALE_RIVENDITA // 100

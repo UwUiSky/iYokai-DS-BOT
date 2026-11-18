@@ -106,3 +106,94 @@ def numero_del_messaggio(testo: str) -> int | None:
 def valuta_conteggio(corrente: int, ultimo_utente: int | None, utente: int, numero: int) -> bool:
     """Giusto se è il numero dopo l'ultimo e non lo scrive chi ha contato per ultimo."""
     return numero == corrente + 1 and utente != ultimo_utente
+
+
+# ----------------------------------------------------------------------
+# Roulette, carta, scala (#125 B2). Il banco ha sempre un piccolo vantaggio.
+# ----------------------------------------------------------------------
+ROSSI = frozenset({1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36})
+# scelta -> (quanti numeri la vincono, moltiplicatore pagato)
+SCOMMESSE_ROULETTE = {
+    "rosso": 2, "nero": 2, "pari": 2, "dispari": 2, "basso": 2, "alto": 2,
+    "dozzina1": 3, "dozzina2": 3, "dozzina3": 3, "colonna1": 3, "colonna2": 3, "colonna3": 3,
+    "numero": 36,
+}
+
+
+def numero_vince(scelta: str, uscito: int, numero: int | None = None) -> bool:
+    """ECO-090: vero se `uscito` (0-36) vince la scommessa. Lo zero perde tutto tranne il numero secco."""
+    if scelta == "numero":
+        return numero is not None and uscito == numero
+    if uscito == 0:
+        return False
+    controlli = {
+        "rosso": uscito in ROSSI, "nero": uscito not in ROSSI,
+        "pari": uscito % 2 == 0, "dispari": uscito % 2 == 1,
+        "basso": uscito <= 18, "alto": uscito >= 19,
+        "dozzina1": uscito <= 12, "dozzina2": 13 <= uscito <= 24, "dozzina3": uscito >= 25,
+        "colonna1": uscito % 3 == 1, "colonna2": uscito % 3 == 2, "colonna3": uscito % 3 == 0,
+    }
+    return controlli[scelta]
+
+
+def gioca_roulette(scelta: str, puntata: int, rng: random.Random, numero: int | None = None) -> Esito:
+    """ECO-090: roulette europea (0-36). `numero` serve solo per la scommessa «numero» (0-36)."""
+    if scelta not in SCOMMESSE_ROULETTE:
+        raise ValueError(f"Scommessa sconosciuta: {scelta}")
+    if scelta == "numero" and (numero is None or not 0 <= numero <= 36):
+        raise ValueError("Il numero deve stare tra 0 e 36.")
+    uscito = rng.randint(0, 36)
+    colore = "verde" if uscito == 0 else ("rosso" if uscito in ROSSI else "nero")
+    vinto = numero_vince(scelta, uscito, numero)
+    return Esito(
+        descrizione=f"🎡 È uscito il **{uscito}** ({colore}).",
+        restituzione=puntata * SCOMMESSE_ROULETTE[scelta] if vinto else 0,
+        puntata=puntata,
+    )
+
+
+SEMI = ("cuori", "quadri", "fiori", "picche")
+VALORI = ("A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K")
+# ECO-100: colore paga 1,9x, seme 3,8x, valore 12x (in decimi)
+PAGAMENTI_CARTA = {"colore": 19, "seme": 38, "valore": 120}
+
+
+def gioca_carta(tipo: str, scelta: str, puntata: int, rng: random.Random) -> Esito:
+    """ECO-100: si estrae una carta da un mazzo da 52; si indovina colore (rosso/nero), seme o valore."""
+    if tipo not in PAGAMENTI_CARTA:
+        raise ValueError(f"Tipo di scommessa sconosciuto: {tipo}")
+    ammessi = {"colore": ("rosso", "nero"), "seme": SEMI, "valore": VALORI}[tipo]
+    if scelta not in ammessi:
+        raise ValueError(f"Scelta non valida per {tipo}: {scelta}")
+    seme, valore = rng.choice(SEMI), rng.choice(VALORI)
+    colore = "rosso" if seme in ("cuori", "quadri") else "nero"
+    uscito = {"colore": colore, "seme": seme, "valore": valore}[tipo]
+    return Esito(
+        descrizione=f"🃏 È uscito **{valore} di {seme}** ({colore}).",
+        restituzione=puntata * PAGAMENTI_CARTA[tipo] // 10 if uscito == scelta else 0,
+        puntata=puntata,
+    )
+
+
+# ECO-099: gradini della scala, (decimi della puntata che tornano, peso su 100). Resa media 0,96.
+GRADINI_SCALA = ((0, 52), (5, 20), (15, 16), (30, 8), (60, 3), (200, 1))
+
+
+def gioca_scala(puntata: int, rng: random.Random) -> Esito:
+    """ECO-099: si estrae un gradino; più è in alto più rende. I primi gradini perdono tutto o parte."""
+    punto = rng.randint(1, 100)
+    totale = 0
+    for indice, (decimi, peso) in enumerate(GRADINI_SCALA):
+        totale += peso
+        if punto <= totale:
+            return Esito(
+                descrizione=f"🪜 Gradino **{indice + 1}** su {len(GRADINI_SCALA)}.",
+                restituzione=puntata * decimi // 10,
+                puntata=puntata,
+            )
+    raise AssertionError("pesi della scala sbagliati")
+
+
+def resa_media_scala() -> float:
+    """Quante monete tornano in media per ogni moneta puntata alla scala."""
+    return sum(decimi * peso for decimi, peso in GRADINI_SCALA) / 1000

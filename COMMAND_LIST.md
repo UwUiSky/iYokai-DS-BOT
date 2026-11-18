@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:29 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:37 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 909 comandi in 51 categorie.**
+**Totale: 942 comandi in 51 categorie.**
 
 ## Admin: AI
 
@@ -206,11 +206,21 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:
 - **`/admin-economia annunci vincitori-set`** — Imposta il canale dove annunciare i vincitori del mese.
 - **`/admin-economia assegna-lobby`** — Premio partecipazione: assegna coin a chi è in vocale ORA, dalla cassa del server.
 - **`/admin-economia assegna-winner`** — Premio vincitore: assegna coin a un membro, dalla cassa del server.
+- **`/admin-economia azzera`** — Azzera i saldi di tutto il server (scrivi il nome del server).
+- **`/admin-economia azzera-inventari`** — Svuota gli inventari di tutto il server (scrivi il nome del server).
 - **`/admin-economia cassa-premium`** — Sblocca un mese di bot premium spendendo dalla cassa.
+- **`/admin-economia drop`** — Drop casuali: probabilità, importi, pausa e canale.
+- **`/admin-economia forziere`** — Fai comparire dei forzieri di monete in un canale.
+- **`/admin-economia limiti`** — Saldo di partenza, tetto al saldo, puntate dei giochi e saldo di chi esce.
 - **`/admin-economia monete`** — Modifica il saldo di un membro.
+- **`/admin-economia premi`** — Premio giornaliero, serie di giorni, settimanale, mensile e lavoro.
+- **`/admin-economia regalabile`** — Decidi se un oggetto del negozio si può regalare.
+- **`/admin-economia ruolo`** — Aggiungi o togli monete a tutti i membri di un ruolo.
 - **`/admin-economia shop-add`** — Aggiunge un oggetto allo shop.
 - **`/admin-economia shop-edit`** — Cambia un oggetto dello shop (prezzo, scorte, ruolo richiesto...).
 - **`/admin-economia shop-remove`** — Rimuove un oggetto dallo shop.
+- **`/admin-economia statistiche`** — Monete in giro nel server e come sono distribuite.
+- **`/admin-economia stato`** — Tutte le regole dell'economia in un colpo.
 
 ## Admin: filtri
 
@@ -241,6 +251,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:
 - **`/admin-giochi conteggio importa`** — Porta in un canale i punteggi di un file CSV o JSON.
 - **`/admin-giochi conteggio regole`** — Punizione dopo uno sbaglio e ruolo di chi ha contato per ultimo.
 - **`/admin-giochi conteggio traguardo`** — Ruolo o messaggio quando il conteggio tocca un numero.
+- **`/admin-giochi evento avvia`** — Avvia l'evento: chi scrive nel canale riceve monete.
+- **`/admin-giochi evento chiudi`** — Chiudi l'evento di monete in corso.
 - **`/admin-giochi punteggi azzera`** — Azzera i punteggi di una gara (con conferma).
 - **`/admin-giochi quiz carica`** — Carica domande per il quiz da un file CSV o JSON.
 - **`/admin-giochi quiz elenca`** — Le domande del quiz caricate dal server.
@@ -719,6 +731,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:
 
 - **`/giochi acronimi`** — Inventa frasi che seguono le lettere date e vota la migliore.
 - **`/giochi battitura`** — Gara di battitura: copia il testo mostrato nell'immagine.
+- **`/giochi carta`** — Indovina la carta estratta: colore, seme o valore.
 - **`/giochi carte avvia`** — Gioco di carte: completa la frase con la carta più divertente.
 - **`/giochi conteggio avvisami`** — Ti avviso nel canale quando il conteggio arriva a un numero.
 - **`/giochi conteggio classifica`** — Chi ha contato più numeri giusti.
@@ -728,9 +741,13 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:
 - **`/giochi minato`** — Campo minato: tocca gli spoiler ed evita le mine.
 - **`/giochi quiz avvia`** — Avvia un quiz a domande nel canale.
 - **`/giochi quiz classifica`** — Classifica del quiz: questa settimana o di sempre.
+- **`/giochi record`** — Le 10 vincite più grosse del server.
+- **`/giochi roulette`** — Roulette: colore, pari, dozzina, colonna o numero.
 - **`/giochi rps`** — Carta, forbici, sasso contro il bot.
+- **`/giochi scala`** — Scala fortunata: più sali, più rende.
 - **`/giochi smash`** — Smash or pass: un personaggio adulto di AniList (solo canali con limite d'età).
 - **`/giochi spinner`** — Fai girare lo spinner: vince chi lo fa girare più a lungo.
+- **`/giochi statistiche`** — Le tue partite, vincite e perdite per gioco.
 
 ## Immagini
 
@@ -857,10 +874,26 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:
 - **`/monete attese`** — Quando potrai di nuovo usare daily e work.
 - **`/monete balance`** — Mostra i tuoi coin.
 - **`/monete cassa`** — Mostra il saldo della cassa del server.
+- **`/monete conto banca`** — La tua banca: vedi, deposita o preleva (i furti toccano solo i contanti).
+- **`/monete conto dimettiti`** — Lascia il lavoro e ricomincia da stagista.
+- **`/monete conto lavoro`** — Il tuo lavoro attuale e quanto manca alla promozione.
 - **`/monete daily`** — Riscuoti la ricompensa giornaliera.
+- **`/monete inventario`** — Gli oggetti che hai comprato.
+- **`/monete lascia`** — Lascia delle monete in questo canale: le prende chi arriva prima.
+- **`/monete mensile`** — Riscuoti il premio del mese.
+- **`/monete oggetto`** — La scheda di un oggetto del negozio.
 - **`/monete pay`** — Trasferisci coin a un altro utente.
+- **`/monete regala`** — Regala un oggetto del tuo inventario a un altro membro.
+- **`/monete rischio avventura`** — Un'uscita a rischio più prudente: paga meno, riesce più spesso.
+- **`/monete rischio cerca`** — Cerca monete in un luogo a scelta.
+- **`/monete rischio colpo`** — Un colpo rischioso: paga alta se va bene, multa se va male.
+- **`/monete rischio elemosina`** — Chiedi l'elemosina: una piccola cifra, a volte niente.
+- **`/monete rischio furto`** — Prova a rubare dei contanti a un membro (solo se il server lo permette).
+- **`/monete settimanale`** — Riscuoti il premio della settimana.
 - **`/monete shop buy`** — Acquista un oggetto dello shop.
 - **`/monete shop list`** — Mostra gli oggetti disponibili nello shop.
+- **`/monete usa`** — Usa un oggetto del tuo inventario.
+- **`/monete vendi`** — Rivendi un oggetto per metà del suo prezzo.
 - **`/monete work`** — Lavora per guadagnare qualche coin.
 
 ## Musica

@@ -38,6 +38,7 @@ class ShopItem:
     role_duration_hours: int | None = None  # ECO-063: il ruolo comprato scade dopo tante ore
     list_item: bool = False  # ECO-067: ogni acquisto consegna una riga
     lines_left: int | None = None  # righe ancora da consegnare (solo oggetti a elenco)
+    regalabile: bool = True  # ECO-071: chi lo compra lo può regalare
 
 
 @dataclass(frozen=True)
@@ -79,7 +80,7 @@ class _PrezzoCambiato(Exception):
 
 _CAMPI_MODIFICABILI = (
     "name", "price", "description", "stock", "required_role_id",
-    "sort_order", "category", "reply_text", "role_duration_hours",
+    "sort_order", "category", "reply_text", "role_duration_hours", "regalabile",
 )
 MAX_NOME = 80
 MAX_CATEGORIA = 30
@@ -144,6 +145,7 @@ class ShopRepository:
             role_duration_hours=row["role_duration_hours"],
             list_item=row["list_item"],
             lines_left=row["lines_left"] if "lines_left" in row else None,
+            regalabile=row["regalabile"] if "regalabile" in row else True,
         )
 
     async def add_item(
@@ -240,6 +242,9 @@ class ShopRepository:
                 await conn.execute(
                     "DELETE FROM shop_item_lines WHERE item_id = $1 AND guild_id = $2",
                     item_id, guild_id,
+                )
+                await conn.execute(
+                    "DELETE FROM economia_inventario WHERE item_id = $1 AND guild_id = $2", item_id, guild_id
                 )
                 return True
 
@@ -372,6 +377,14 @@ class ShopRepository:
                             "now() + make_interval(hours => $2) WHERE id = $1 "
                             "RETURNING role_expires_at",
                             purchase_id, riga_oggetto["role_duration_hours"],
+                        )
+                    # ECO-058: l'oggetto senza ruolo né riga resta all'utente, nella stessa transazione.
+                    if item.role_id is None and not riga_oggetto["list_item"]:
+                        await conn.execute(
+                            "INSERT INTO economia_inventario (guild_id, user_id, item_id, quantita) "
+                            "VALUES ($1, $2, $3, 1) ON CONFLICT (guild_id, user_id, item_id) "
+                            "DO UPDATE SET quantita = economia_inventario.quantita + 1",
+                            guild_id, user_id, item.id,
                         )
                     return Acquisto(EsitoAcquisto.RIUSCITO, purchase_id, riga, scade)
         except _Esaurito:

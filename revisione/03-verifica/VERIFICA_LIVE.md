@@ -1712,6 +1712,18 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `LIV-001/002/003` — `/admin-livelli xp testo:10 testo_max:30 velocita:200`: gli XP dei messaggi variano tra 20 e 60; `attesa:3600` accettata; `testo_max` sotto `testo` rifiutato.
 - [ ] `LIV-044/045` — `/admin-livelli classifica-ruoli fascia:Primo ruolo:@Re` e `fascia:Primi 10 ruolo:@Top`: entro un'ora (o riavviando il bot) il primo della classifica XP ha @Re, gli altri nove @Top; chi scende perde il ruolo; ruolo più alto del bot o di te rifiutato; senza ruolo toglie la fascia (chi lo ha lo tiene).
 
+## Economia e giochi (#125, r5eco)
+
+- [ ] `ECO-002/014` — `/admin-economia limiti saldo_iniziale:100`: un account nuovo che entra riceve 100 una volta sola (esce e rientra: niente di nuovo). `saldo_uscita:Cancella il saldo`: chi esce perde il saldo.
+- [ ] `ECO-003` — `/admin-economia limiti tetto_saldo:500`: daily, lavoro, vincite ed `/monete pay` non portano oltre 500; il pay verso chi arriverebbe oltre dice che non si può.
+- [ ] `ECO-024/025/026/028/019` — `/admin-economia premi daily_ore:12 bonus_serie:10 settimanale:300 mensile:1000 lavoro_attesa:5`: `/monete daily` ogni 12 h con bonus dal 2° giorno di fila (se i progressi sono accesi); `/monete settimanale` e `mensile` una volta per periodo; `/monete attese` mostra le attese nuove.
+- [ ] `ECO-021/022` — `/admin-economia limiti puntata_min:10 puntata_max:100 attesa_gioco:30`: monetina, dadi, slot, roulette, carta e scala rifiutano puntate fuori misura e partite troppo ravvicinate.
+- [ ] `ECO-090/099/100/115/116` — `/giochi roulette`, `/giochi carta`, `/giochi scala` (una puntata alla volta): saldo giusto dopo ogni partita; `/giochi statistiche` e `/giochi record` mostrano i conteggi.
+- [ ] `ECO-023/008/010/012` — `/admin-economia stato` e `statistiche`; `ruolo` aggiunge/toglie a tutti i membri di un ruolo (mai sotto zero, bot esclusi); `azzera` col nome del server sbagliato non fa nulla, con quello giusto rimette i saldi a zero.
+- [ ] `ECO-058/059/070/071/072/073/086` — compra un oggetto senza ruolo: compare in `/monete inventario`; `usa` lo consuma (mostra il testo di risposta); `regala` a un amico (non a te né a un bot); `/admin-economia regalabile` lo blocca; `vendi` rende metà prezzo; `oggetto` mostra la scheda; `azzera-inventari` col nome del server.
+- [ ] `ECO-052` — `/monete lascia importo:20` in un canale: il saldo scende subito; il primo che clicca «Prendi» (non chi le ha lasciate) le riceve; se nessuno clicca entro 5 minuti (o dopo un riavvio del bot) tornano a chi le ha lasciate, una volta sola.
+- [ ] `ECO-053/055` — `/admin-economia drop per_mille:50 minimo:5 massimo:9 pausa:60 canale:#chat`: i drop compaiono solo lì, con importi 5-9 e almeno 60 s tra uno e l'altro; `per_mille:0` li spegne; `/admin-economia forziere quanti:3 canale:#chat` ne fa comparire 3.
+
 ## Musica — giro r4mus (#126, MUS-040/041/042/045/057/058/060/063/067/068/069/070/072-087/011)
 
 - [ ] `MUS-057/058` — `/admin-musica impostazioni annunci:sì canale-annunci:#musica`: a ogni brano nuovo parte un embed «ora in riproduzione» nel canale (con copertina, MUS-060), senza menzioni; un loop non lo ripete; in un canale dove il bot non scrive il comando rifiuta.
@@ -1759,3 +1771,9 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `STA-053..055` — `vista:Chi resta dopo l'ingresso`, `Da dove arrivano i nuovi membri`, `Inviti e invitanti migliori`.
 - [ ] `STA-057/058` — `/admin-moduli statistiche esporta` manda un ZIP; `/utility scheda membri file:sì` manda il CSV (rifiutato senza «Gestisci server»).
 - [ ] `STA-059` — `/utility scheda invito codice:<link>` e `/utility scheda emoji emoji:<:nome:id>`.
+
+- [ ] `ECO-057` — `/admin-giochi evento avvia canale:#chat monete:5 tetto:20`: chi scrive in #chat riceve 5 (una volta ogni 30 s, i bot no); dopo 4 messaggi validi l'evento si chiude da solo; `/admin-giochi evento chiudi` lo chiude prima; un secondo `avvia` con uno attivo è rifiutato.
+- [ ] `ECO-004` — `/monete conto banca azione:Deposita importo:50`, `Preleva`, `Vedi`: contanti e banca cambiano insieme; prelievo oltre il tetto del saldo rifiutato.
+- [ ] `ECO-029` — `/monete work` dieci volte: da «commesso» la paga è al 130%; `/monete conto lavoro` mostra turni e promozione; `/monete conto dimettiti` riparte da stagista.
+- [ ] `ECO-030/032/040/041` — `/monete rischio colpo` (pausa 2 h, multa alla cassa, saldo mai sotto zero), `avventura` (pausa 1 h), `elemosina` (10 min, a volte niente), `cerca luogo:Divano` (30 min).
+- [ ] `ECO-031/156` — `/admin-economia limiti furto:sì`: `/monete rischio furto membro:@x` ruba una quota dei soli contanti (non della banca); la vittima riceve un DM e per un'ora non si può derubare di nuovo; contro bot e te stesso rifiutato; spento di base.

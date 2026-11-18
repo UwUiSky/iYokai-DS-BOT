@@ -37,7 +37,7 @@ class _FakeChannel:
         self.sent_views: list = []
         self.sent_contents: list[str] = []
 
-    async def send(self, content: str = None, view=None) -> None:
+    async def send(self, content: str = None, view=None, allowed_mentions=None) -> None:
         self.sent_contents.append(content)
         self.sent_views.append(view)
 
@@ -48,6 +48,10 @@ class _FakeMessage:
         self.guild = guild
         self.channel = channel
         self.type = discord.MessageType.default  # un messaggio normale
+        self.content = "ciao a tutti"
+        self.attachments = []
+        self.stickers = []
+        self.embeds = []
 
 
 class _FakeInteractionResponse:

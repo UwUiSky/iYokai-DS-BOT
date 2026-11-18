@@ -1135,6 +1135,18 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
 - Classifiche vocale e reazioni (LIV-059/060): solo «di sempre». `azzera server` azzera XP e livelli, non minuti e reazioni.
 - Card (LIV-051/054/055/056): colore del testo/anello e velo (0-100) sono per utente; sfondo e colore del server valgono per chi non ha il suo; «auto» = colore medio dell'icona (letto nel processo delle immagini, in memoria per icona).
 
+## D86 — Economia e giochi (#125) giro r5eco: regole del server, giochi, inventario (17/11/2026, opzione prudente, da confermare dall'owner)
+
+- Tetto al saldo (ECO-003): sta DENTRO ogni scrittura che accredita (`somma_con_tetto_sql`): chi è già sopra il tetto non perde monete ma non ne riceve altre. Un `/monete pay` verso chi arriverebbe oltre il tetto è rifiutato (non brucia monete). Le modifiche dello staff non hanno tetto.
+- Saldo di partenza (ECO-002): una volta per persona e per server, a chi entra dopo l'attivazione (i membri già presenti non lo ricevono); non conta nella classifica del mese. I bot non hanno monete.
+- Saldo di chi esce (ECO-014): «tieni» di base; «cancella» azzera il saldo all'uscita (anche col ban). Le monete cancellate spariscono: non vanno alla cassa.
+- Serie di giorni (ECO-025): riusa la serie e gli scudi già esistenti (`progress_serie`); il bonus è `bonus_serie × giorni di fila` fino a `serie_max`, solo se i progressi del server sono accesi. ECO-027 (vacanza) non fatta: gli scudi fanno già la stessa cosa.
+- Premi settimanale e mensile (ECO-026): attese fisse di 7 e 30 giorni; spenti (0) di base.
+- Puntate e pausa (ECO-021/022): 1-10.000 e 5 s di base (come prima), il server può portarle fino a 1.000.000 e 0-3600 s. La puntata si controlla nel comando, il saldo e la pausa nella stessa UPDATE. Casualità dei giochi: `random.SystemRandom`.
+- Giochi nuovi (ECO-090/099/100): roulette europea (colore/pari/metà/dozzine/colonne ×2-×3, numero ×36), carta (colore ×1,9, seme ×3,8, valore ×12), scala (resa media 0,96). Tutti con vantaggio del banco, provato nei test. Restano fuori i giochi a più passi (blackjack, torre, più alto o più basso): servono partite aperte salvate nel database.
+- Inventario (ECO-058): entrano solo gli oggetti senza ruolo e senza riga da consegnare, nella stessa transazione dell'acquisto. Rivendita (ECO-072): sempre il 50% del prezzo di oggi (arrotondato per difetto), una sola scrittura per pezzo. Regalo (ECO-070): mai a se stessi né ai bot, righe bloccate in ordine di ID; un oggetto si può dichiarare non regalabile (ECO-071). Togliere un oggetto dal negozio svuota gli inventari di quell'oggetto.
+- Azzeramenti (ECO-012, ECO-086): servono il permesso «Gestisci server» riletto al momento e il nome del server scritto a mano. L'azzeramento delle monete non tocca XP e livelli.
+
 ## D85 — Musica (#126), giro r4mus: scelte prudenti (17/11/2026, orchestratore su delega, da confermare dall'owner)
 
 - MUS-048 (qualità audio per server): non si fa. Con Lavalink la qualità è del nodo, non del server; un'impostazione per server non avrebbe effetto.

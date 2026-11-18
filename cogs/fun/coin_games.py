@@ -30,6 +30,8 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.fun_logic import MAX_TEMA_MISURA, compute_misura, tema_ammesso
 from core.i18n import testo_per
+from core.leveling_logic import controlla_puntata
+from core.repositories.economia_repo import economia_repo
 from core.moneta_server import aggiungi_moneta
 from core.repositories.leveling_repo import leveling_repo
 from core.repositories.leveling_settings_repo import leveling_settings_repo
@@ -60,7 +62,7 @@ def _barra(percentuale: int, lunghezza: int = 10) -> str:
 class CoinGamesCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
-        self._rng = random.Random()
+        self._rng = random.SystemRandom()  # casualità non prevedibile
 
     async def _modulo_spento(self, interaction: discord.Interaction) -> bool:
         """Vero (dopo aver risposto) se il comando non può girare: fuori da un server o modulo spento."""
@@ -87,7 +89,7 @@ class CoinGamesCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(
         gioco="A cosa giocare",
-        puntata=f"Quante coin puntare ({PUNTATA_MINIMA}-{PUNTATA_MASSIMA})",
+        puntata=f"Quante coin puntare (il server può limitare minimo e massimo)",
         scelta="Solo per la monetina: testa o croce",
     )
     @app_commands.choices(gioco=_SCELTE_GIOCO, scelta=_SCELTE_LATO)
@@ -95,7 +97,7 @@ class CoinGamesCog(CogConGruppi, commands.Cog):
         self,
         interaction: discord.Interaction,
         gioco: app_commands.Choice[str],
-        puntata: app_commands.Range[int, PUNTATA_MINIMA, PUNTATA_MASSIMA],
+        puntata: app_commands.Range[int, PUNTATA_MINIMA, 1_000_000],
         scelta: app_commands.Choice[str] | None = None,
     ) -> None:
         if await self._modulo_spento(interaction):
@@ -112,6 +114,13 @@ class CoinGamesCog(CogConGruppi, commands.Cog):
             )
             return
 
+        impostazioni = (await leveling_settings_repo.get_config(interaction.guild.id)).impostazioni
+        motivo = controlla_puntata(puntata, impostazioni)  # ECO-021: puntate scelte dal server
+        if motivo is not None:
+            await interaction.response.send_message(f"❌ {motivo}", ephemeral=True)
+            return
+        attesa_gioco = impostazioni.attesa_gioco  # ECO-022
+
         if gioco.value == "monetina":
             esito = gioca_monetina(scelta.value, puntata, self._rng)
         elif gioco.value == "dadi":
@@ -125,11 +134,11 @@ class CoinGamesCog(CogConGruppi, commands.Cog):
             interaction.user.id,
             puntata,
             esito.restituzione,
-            ATTESA_TRA_PARTITE_SECONDI,
+            attesa_gioco,
         )
         if saldo is None:
             resto = await leveling_repo.attesa_partita_rimasta(
-                interaction.guild.id, interaction.user.id, ATTESA_TRA_PARTITE_SECONDI
+                interaction.guild.id, interaction.user.id, attesa_gioco
             )
             if resto > 0:
                 await interaction.response.send_message(
@@ -143,6 +152,12 @@ class CoinGamesCog(CogConGruppi, commands.Cog):
                 ephemeral=True,
             )
             return
+        try:
+            await economia_repo.registra_partita(
+                interaction.guild.id, interaction.user.id, gioco.value, puntata, esito.restituzione
+            )
+        except Exception:
+            logger.warning("Statistiche della partita non scritte", exc_info=True)
         if esito.vinto:
             verdetto, colore = f"🎉 Hai vinto **{esito.guadagno}** coin!", discord.Color.green()
         elif esito.pari:

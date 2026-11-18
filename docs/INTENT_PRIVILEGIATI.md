@@ -29,6 +29,7 @@ Members are needed to react to joins and leaves (verification, anti-raid, welcom
 | Tickets | `cogs/tickets/tickets.py` | Close the ticket of a member who left |
 | Modmail | `cogs/tickets/modmail.py` | Close the thread of a member who left |
 | Level resets on leave or ban (off by default) | `cogs/leveling/azzeramenti.py` | Reset the XP of a member who left, only if the server turned it on |
+| Economy starting balance and balance of who leaves | `cogs/leveling/economia.py` | Give the starting coins to a new member; clear the balance of one who left if the server chose so |
 | Level reward roles on rejoin | `cogs/leveling/leveling.py` | Give a returning member the reward roles of their level |
 | Button polls | `cogs/utility/sondaggi_bottoni.py` | Remove the vote of a member who left or was banned |
 | Tag triggers on roles | `cogs/utility/inneschi.py` | Run a tag when the server's chosen role is given or taken |
@@ -40,6 +41,7 @@ Message content is needed by features that read what is written: AutoMod filters
 | Feature | File | Why |
 |---|---|---|
 | Reaction on a new member's first message | `cogs/utility/greetings.py` | Only who wrote is checked, the text is never read |
+| Coin event in a channel | `cogs/leveling/evento_monete.py` | Give coins for a message in the channel the staff chose (the text is not read) |
 | AutoMod filters | `cogs/automod/automod.py` | Read text to apply the server rules |
 | Compromised account defence | `cogs/automod/account_rubato.py` | Spot the same scam message sent in many channels and stop it |
 | Trap image filter | `cogs/automod/immagini.py` | Check images in a sandbox before members open them |

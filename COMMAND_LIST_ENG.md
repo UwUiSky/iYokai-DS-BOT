@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:29 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:37 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 909 commands in 51 categories.**
+**Total: 942 commands in 51 categories.**
 
 ## Admin: AI
 
@@ -206,11 +206,21 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:2
 - **`/admin-economy announcements winners-set`** — Sets the channel for the monthly winners announcement.
 - **`/admin-economy award-lobby`** — Participation prize: gives coins to those in voice NOW, from the server treasury.
 - **`/admin-economy award-winner`** — Winner prize: gives coins to a member, from the server treasury.
+- **`/admin-economy chest`** — Make coin chests appear in a channel.
 - **`/admin-economy coins`** — Edits a member's balance.
+- **`/admin-economy drop`** — Random drops: chance, amounts, pause and channel.
+- **`/admin-economy giftable`** — Decide whether a shop item can be gifted.
+- **`/admin-economy limits`** — Starting balance, balance cap, game bets and balance of who leaves.
 - **`/admin-economy premium-cashbox`** — Unlocks one month of premium bot by spending from the treasury.
+- **`/admin-economy reset`** — Reset every balance on the server (type the server name).
+- **`/admin-economy reset-inventories`** — Clear every inventory on the server (type the server name).
+- **`/admin-economy rewards`** — Daily, streak, weekly, monthly rewards and work.
+- **`/admin-economy role`** — Add or remove coins for every member of a role.
 - **`/admin-economy shop-add`** — Adds an item to the shop.
 - **`/admin-economy shop-edit`** — Edits a shop item (price, stock, required role...).
 - **`/admin-economy shop-remove`** — Removes an item from the shop.
+- **`/admin-economy statistics`** — Coins in circulation and how they are spread.
+- **`/admin-economy status`** — All economy rules at a glance.
 
 ## Admin: filters
 
@@ -241,6 +251,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:2
 - **`/admin-games counting import`** — Bring scores from a CSV or JSON file into a channel.
 - **`/admin-games counting milestone`** — Role or message when the count hits a number.
 - **`/admin-games counting rules`** — Punishment after a mistake and role of the last counter.
+- **`/admin-games event close`** — Close the running coin event.
+- **`/admin-games event start`** — Start the event: whoever writes in the channel gets coins.
 - **`/admin-games punteggi reset`** — Reset the scores of a game (with confirmation).
 - **`/admin-games quiz list`** — The quiz questions uploaded by the server.
 - **`/admin-games quiz load`** — Upload quiz questions from a CSV or JSON file.
@@ -719,18 +731,23 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:2
 
 - **`/games acronimi`** — Invent phrases that follow the given letters and vote for the best.
 - **`/games battitura`** — Typing race: copy the text shown in the image.
+- **`/games card`** — Guess the drawn card: colour, suit or value.
 - **`/games carte start`** — Card game: complete the sentence with the funniest card.
 - **`/games counting leaderboard`** — Who counted the most correct numbers.
 - **`/games counting notifyme`** — Get pinged in the channel when the count reaches a number.
 - **`/games dice`** — One roll a day from 1 to 100 and the server board.
+- **`/games ladder`** — Lucky ladder: the higher you climb, the more it pays.
 - **`/games mazzo`** — A 52-card deck for the server: draw, shuffle, check.
 - **`/games minato`** — Minesweeper: open the spoilers and avoid the mines.
 - **`/games play`** — Play your coins: coin flip, dice or slots.
 - **`/games quiz leaderboard`** — Quiz ranking: this week or all-time.
 - **`/games quiz start`** — Start a quiz in the channel.
+- **`/games record`** — The 10 biggest wins on the server.
+- **`/games roulette`** — Roulette: colour, even/odd, dozen, column or number.
 - **`/games rps`** — Rock, paper, scissors against the bot.
 - **`/games smash`** — Smash or pass: an adult AniList character (age-restricted channels only).
 - **`/games spinner`** — Spin the spinner: the longest spin wins.
+- **`/games statistics`** — Your games, wins and losses per game.
 
 ## Images
 
@@ -854,13 +871,29 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:2
 
 ## Coins
 
+- **`/coins account bank`** — Your bank: view, deposit or withdraw (thefts only hit cash).
+- **`/coins account job`** — Your current job and how far the promotion is.
+- **`/coins account resign`** — Quit the job and restart as an intern.
 - **`/coins balance`** — Shows your coins.
 - **`/coins cashbox`** — Shows the server treasury balance.
 - **`/coins cooldowns`** — When you can use daily and work again.
 - **`/coins daily`** — Claims the daily reward.
+- **`/coins gift`** — Gift an item from your inventory to another member.
+- **`/coins inventory`** — The items you bought.
+- **`/coins item`** — The card of a shop item.
+- **`/coins leave`** — Leave coins in this channel: the first to arrive takes them.
+- **`/coins monthly`** — Claim the monthly reward.
 - **`/coins pay`** — Transfers coins to another user.
+- **`/coins risk adventure`** — A safer risky outing: pays less, works more often.
+- **`/coins risk beg`** — Beg: a small amount, sometimes nothing.
+- **`/coins risk heist`** — A risky heist: big pay if it works, a fine if it fails.
+- **`/coins risk search`** — Search for coins in a place of your choice.
+- **`/coins risk theft`** — Try to steal cash from a member (only if the server allows it).
+- **`/coins sell`** — Resell an item for half its price.
 - **`/coins shop buy`** — Buys a shop item.
 - **`/coins shop list`** — Shows the items available in the shop.
+- **`/coins use`** — Use an item from your inventory.
+- **`/coins weekly`** — Claim the weekly reward.
 - **`/coins work`** — Work to earn some coins.
 
 ## Music
