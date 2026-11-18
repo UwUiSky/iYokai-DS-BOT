@@ -122,3 +122,11 @@
 - Generare COMMAND_LIST: servono variabili finte (YOKAI_BOT_TOKEN, OWNER_ID, MAIN_GUILD_ID, MUSIC_TOKEN_1..5, YOKAI_CREATOR/MOD/APP_TOKEN, NSFW_TOKEN, DATABASE_URL) e .venv/bin/python.
 - Conflitti di merge ricorrenti (locales, DECISIONI, VERIFICA_LIVE): unione delle due parti; COMMAND_LIST e STATO si rigenerano.
 - Stato catalogo: 316 da fare nelle aree aperte.
+
+## 18/11 notte
+- Uniti e pubblicati: feat/r1alert (#129+#127, merge d32a8c8b, fix ruolo live con permessi pericolosi 43861497, intent greetings 405b38ff) e feat/r1sta (#130, merge cd5f5715). Main 6a87a9b6. 909 comandi, 209 voci da fare nelle aree aperte.
+- Rimaste per dev-web: ALR-049 (Linked Roles), VOC-020, STA-012, STA-061, LIV-062. Musica: MUS-010, 014, 019, 065. Livelli: 12 (vedi sopra). Benvenuto: RUO-012, 045, 046, 047, 053, 069, 083. SIC-041.
+- In corso: feat/r5eco (wt-125, #125, ripreso, migrazioni 0674-0689), feat/r2log (wt-119, #119, 0710-0719, D95), feat/r1cfg (wt-122, #122, 0720-0729, D96).
+- Numeri D: alert ha usato D90-D94, eco D86, sta D87, mus D85, liv D80.
+- Script conflitti: scratchpad risolvi_merge.py (unione con virgole per JSON); attenzione a voci doppie in core/data_registry.py dopo l'unione (auto-merge silenzioso).
+- /admin-moduli pesa 6596: niente altro lì.
