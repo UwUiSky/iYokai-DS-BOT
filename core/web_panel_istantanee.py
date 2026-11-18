@@ -41,7 +41,15 @@ async def puo_aprire(bot, ponte, riga, utente_id: int) -> discord.Guild | None:
     ammesso = logica.puo_vedere(
         riga.accesso, riga.role_id, e_gestore=e_gestore, e_membro=membro is not None, ruoli_membro=ruoli
     )
-    return guild if ammesso else None
+    if not ammesso:
+        return None
+    if not e_gestore:
+        # Chi non gestisce il server vede l'istantanea solo se può leggere il canale da cui viene:
+        # un link non deve aprire a un membro i messaggi di un canale privato (es. dello staff).
+        canale = guild.get_channel(riga.channel_id)
+        if canale is None or membro is None or not canale.permissions_for(membro).view_channel:
+            return None
+    return guild
 
 
 def registra_rotte(app: web.Application, *, bot, ponte, pagina, errore, chiave_utente) -> None:

@@ -157,6 +157,9 @@ def _app(repo, monkeypatch, utente, gestibile=True, membro=None, fetch=None, gui
     monkeypatch.setattr(web_istantanee, "log_istantanee_repo", repo)
     guild = fake_guild(guild_id=SERVER, name="Server <b>X</b>")
     guild.get_member = MagicMock(return_value=membro)
+    canale = MagicMock()  # di base il canale dell'istantanea si può leggere
+    canale.permissions_for.return_value = discord.Permissions(view_channel=True)
+    guild.get_channel = MagicMock(return_value=canale)
     guild.fetch_member = AsyncMock(side_effect=fetch if fetch is not None else discord.NotFound(MagicMock(status=404, reason="x"), "x"))
     bot = SimpleNamespace(get_guild=lambda gid: guild if guild_presente and gid == SERVER else None)
     ponte = SimpleNamespace(server_gestibile=AsyncMock(return_value=guild if gestibile else None))
@@ -345,3 +348,20 @@ async def test_log028_lettura_fallita_non_crea_niente(ambiente, repo):
 def test_log028_i_limiti_dei_comandi_stanno_in_discord():
     assert logica.MESSAGGI_MAX <= 200 and logica.GIORNI_MAX == 7 and logica.ATTIVE_MAX_PER_SERVER == 5
     assert len(modulo.AZIONI) <= 25 and len(modulo.ACCESSI) <= 25
+
+
+async def test_log028_chi_non_legge_il_canale_non_apre_l_istantanea_anche_con_il_link(repo, monkeypatch):
+    """Accesso «membri» o «ruolo»: serve anche poter leggere il canale da cui viene l'istantanea."""
+    _, segreto = await _crea(repo, accesso="membri")
+    app, guild = _app(repo, monkeypatch, utente=7, gestibile=False, membro=fake_member(user_id=7))
+    canale = MagicMock()
+    canale.permissions_for.return_value = discord.Permissions(view_channel=False)
+    guild.get_channel = MagicMock(return_value=canale)
+    async with TestClient(TestServer(app)) as client:
+        assert (await client.get(f"/istantanea/{segreto}")).status == 404
+    canale.permissions_for.return_value = discord.Permissions(view_channel=True)
+    async with TestClient(TestServer(app)) as client:
+        assert (await client.get(f"/istantanea/{segreto}")).status == 200
+    guild.get_channel = MagicMock(return_value=None)  # canale cancellato: resta chiusa per i membri
+    async with TestClient(TestServer(app)) as client:
+        assert (await client.get(f"/istantanea/{segreto}")).status == 404
