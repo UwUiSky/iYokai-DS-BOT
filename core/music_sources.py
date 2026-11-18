@@ -8,7 +8,9 @@ Spotify e Apple Music: le chiavi stanno su Lavalink; se il bot non le vede si pr
 lo stesso e Lavalink decide (vedi FONTI_CHIAVI_SU_LAVALINK).
 Fonte di ricerca per un titolo (opzione `fonte`, preferita del server) e Deezer come
 soli metadati (API pubblica: ISRC, poi titolo; mai chiave di decifrazione né cookie).
-Funzioni coperte: SPEC §9.5, issue #126 (B1, B2), D73
+Funzioni coperte: SPEC §9.5, issue #126 (B1, B2), D73. Catalogo: MUS-001 Deezer, MUS-002 Tidal,
+MUS-003 Apple Music, MUS-004 Spotify, MUS-005 Bandcamp, MUS-006 Vimeo, MUS-008 Twitch, MUS-011 fonti accese
+(MUSIC_SOURCES_ENABLED). MUS-007 Mixcloud: non fattibile ora, vedi D73.
 Dipende da: variabili d'ambiente MUSIC_SOURCES_ENABLED e chiavi delle fonti
 """
 
@@ -101,11 +103,27 @@ def chiavi_presenti(nome: str) -> bool:
     return any(all(os.environ.get(v, "").strip() for v in g) for g in gruppi)
 
 
+# MUS-011: fonti accese o spente dall'owner a bot acceso (vincono sull'ambiente).
+_override: dict[str, bool] = {}
+
+
+def imposta_override(valori: dict[str, bool]) -> None:
+    """Sostituisce gli interruttori dell'owner (letti dal database all'avvio e a ogni cambio)."""
+    _override.clear()
+    _override.update({k: bool(v) for k, v in valori.items() if k in FONTI})
+
+
+def override_attuali() -> dict[str, bool]:
+    return dict(_override)
+
+
 def fonti_accese_dall_owner() -> set[str]:
     grezzo = os.environ.get("MUSIC_SOURCES_ENABLED", "").strip()
     if not grezzo:
-        return set(FONTI_DI_BASE)
-    return {p.strip().lower() for p in grezzo.split(",") if p.strip().lower() in FONTI}
+        accese = set(FONTI_DI_BASE)
+    else:
+        accese = {p.strip().lower() for p in grezzo.split(",") if p.strip().lower() in FONTI}
+    return {n for n in set(FONTI) if (_override[n] if n in _override else n in accese)}
 
 
 def ripulisci(testo: str) -> str:

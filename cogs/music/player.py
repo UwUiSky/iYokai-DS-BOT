@@ -71,6 +71,8 @@ from core.main_radio_logic import (
     compute_current_position,
     next_track_index,
 )
+from core.music_announce_logic import copertina_sicura
+from core.repositories.music_playlist_repo import music_saved_queue_repo
 from core.music_fleet import MusicFleet, handle_worker_voice_update
 from core.music_logic import (
     EMBED_DESCRIPTION_LIMIT,
@@ -1093,6 +1095,36 @@ class MusicCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo(
         "music",
+        nome="ripristina",
+        descrizione="Rimette in coda i brani salvati del tuo canale vocale (dopo un riavvio).",
+        sottogruppo=SG_CODA,
+    )
+    async def coda_ripristina(self, interaction: discord.Interaction) -> None:
+        # MUS-042: la coda salvata e' quella del canale vocale in cui sei; solo se il server l'ha accesa
+        if not await self._controlli_base(interaction):
+            return
+        canale_id = getattr(getattr(interaction.user.voice, "channel", None), "id", 0)
+        impostazioni = await load_music_settings(db, interaction.guild.id)
+        if not impostazioni.persist_queue:
+            await interaction.response.send_message(await testo_per(interaction, "player_coda_salvata_spenta"), ephemeral=True)
+            return
+        brani = await music_saved_queue_repo.leggi(interaction.guild.id, canale_id)
+        if not brani:
+            await interaction.response.send_message(await testo_per(interaction, "player_coda_salvata_nessuna"), ephemeral=True)
+            return
+        await interaction.response.defer()
+        from cogs.music.playlist import decodifica_brani
+
+        async def cerca(nodo, _nodo_locale):
+            return await decodifica_brani(nodo, "Coda salvata", brani), nodo
+
+        await self.accoda(
+            interaction.guild, interaction.user, "Coda salvata", interaction.followup.send,
+            interaction=interaction, cerca=cerca,
+        )
+
+    @comando_di_gruppo(
+        "music",
         nome="pulisci",
         descrizione="Toglie dalla coda i brani di chi non e' piu' nel canale vocale.",
         sottogruppo=SG_CODA,
@@ -1225,6 +1257,9 @@ class MusicCog(CogConGruppi, commands.Cog):
             description="\n".join(righe),
             color=discord.Color.blurple(),
         )
+        copertina = copertina_sicura(getattr(traccia, "artwork", None))  # MUS-060
+        if copertina:
+            embed.set_thumbnail(url=copertina)
         await interaction.response.send_message(embed=embed)
 
     @comando_di_gruppo(

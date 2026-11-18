@@ -1723,3 +1723,38 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `ECO-058/059/070/071/072/073/086` — compra un oggetto senza ruolo: compare in `/monete inventario`; `usa` lo consuma (mostra il testo di risposta); `regala` a un amico (non a te né a un bot); `/admin-economia regalabile` lo blocca; `vendi` rende metà prezzo; `oggetto` mostra la scheda; `azzera-inventari` col nome del server.
 - [ ] `ECO-052` — `/monete lascia importo:20` in un canale: il saldo scende subito; il primo che clicca «Prendi» (non chi le ha lasciate) le riceve; se nessuno clicca entro 5 minuti (o dopo un riavvio del bot) tornano a chi le ha lasciate, una volta sola.
 - [ ] `ECO-053/055` — `/admin-economia drop per_mille:50 minimo:5 massimo:9 pausa:60 canale:#chat`: i drop compaiono solo lì, con importi 5-9 e almeno 60 s tra uno e l'altro; `per_mille:0` li spegne; `/admin-economia forziere quanti:3 canale:#chat` ne fa comparire 3.
+
+## Musica — giro r4mus (#126, MUS-040/041/042/045/057/058/060/063/067/068/069/070/072-087/011)
+
+- [ ] `MUS-057/058` — `/admin-musica impostazioni annunci:sì canale-annunci:#musica`: a ogni brano nuovo parte un embed «ora in riproduzione» nel canale (con copertina, MUS-060), senza menzioni; un loop non lo ripete; in un canale dove il bot non scrive il comando rifiuta.
+- [ ] `MUS-060` — `/music nowplaying` mostra la copertina del brano (miniatura).
+- [ ] `MUS-038` — `/music shuffle resta:sì`, lasciar finire la coda col bot che resta in canale (`resta-a-coda-finita:sì`): il mescola fisso si spegne da solo.
+- [ ] `MUS-073/074/075/077/079` — `/music playlist crea`, `aggiungi nome brano:<titolo o link>` (pausa di 3 s tra due ricerche), `elenco nome:` (a pagine di 15), `togli posizione:`, `rinomina`.
+- [ ] `MUS-076` — salvare due volte lo stesso brano: nella playlist ne resta uno solo.
+- [ ] `MUS-072/083` — `/music playlist salva nome link:https://…` (playlist SoundCloud o Bandcamp); poi `aggiorna nome` rilegge il link. Un link `http://` o un percorso e' rifiutato.
+- [ ] `MUS-084` — `condividi nome` da un account, `ricevi codice` da un altro: arriva una copia (nome «x (2)» se esiste); `condividi nome nuovo:sì` rende inutile il vecchio codice; `revoca:sì` lo spegne; un codice sbagliato ripetuto subito viene frenato (5 s).
+- [ ] `MUS-081` — con «Gestisci server»: `server-salva`, poi da un utente normale `server-elenco` e `server-carica`; `server-elimina` solo per chi gestisce.
+- [ ] `MUS-086` — `/music playlist collabora nome utente:@x` (massimo 5); x usa `aggiungi/togli/carica/elenco … di:@proprietario`; un terzo no; `togli:sì` toglie il permesso.
+- [ ] `MUS-085` — nel canale richieste il bottone ❤ Preferito mette il brano in ascolto in «Preferiti» (nessun doppione).
+- [ ] `MUS-041/040` — `/admin-musica impostazioni playlist-di-riserva:<playlist del server>`: a coda finita, con qualcuno in canale, parte la playlist (a caso, 50 brani); canale vuoto: non parte.
+- [ ] `MUS-045` — `playlist-del-giorno:sì`: dopo qualche brano `server-elenco` mostra «Oggi»; il giorno dopo riparte vuota.
+- [ ] `MUS-042` — `coda-salvata:sì`, mettere 5 brani, riavviare il bot, entrare nel canale: `/music coda ripristina` rimette i brani.
+- [ ] `MUS-070/067/068/069` — `/owner radio nodi` (senza password), `stato` (player attivi), `riconnetti` (una volta al minuto), `log` (file `lavalink.log` senza chiavi; serve `LAVALINK_LOG_FILE`).
+- [ ] `MUS-011` — `/owner radio sorgente fonte:YouTube stato:Spenta`: una ricerca YouTube dice «fonte non disponibile»; `Come da ambiente` la riaccende.
+- [ ] `MUS-063` — `/owner radio blocca-parola aggiungi parola:x`: un brano con x nel titolo e' rifiutato in ogni server.
+
+- [ ] `RUO-072/073/074/075/079` — `/admin-menu-ruoli sposta` su un messaggio scritto da una persona: le reazioni arrivano, il messaggio non cambia; cancella il menu: il messaggio resta. `ripara` rimette le reazioni tolte. `aggiungi emoji_esterna:sì` con un'emoji di un altro server: la reazione la metti tu. `elimina tieni_messaggio:sì` lascia il messaggio senza più bottoni.
+- [ ] `ALR-020/021/022/029` — `/admin-alert messaggio id_avviso:TW-1 testo:"{ruolo} {label} gioca a {gioco}: {title}"`; scegli il ruolo con `/admin-moduli alert opzioni`; alla prossima diretta il ruolo è nominato dove hai messo `{ruolo}`. `quale:fine` cambia il testo di fine. Un titolo con `@everyone` non fa partire nessun ping.
+- [ ] `ALR-012` — con `quale:fine testo:"Finita. Rivedi: {vod}"` e un avviso Twitch: a fine diretta arriva il link della registrazione (a volte serve qualche minuto).
+- [ ] `ALR-023/014/024/009` — su un feed YouTube: `{thumbnail}`, `{descrizione}`, `{durata}` (con la chiave) nel testo; `/admin-alert formato id_avviso:RSS-1 formato:embed` e `embed:<nome salvato>`; `shorts:senza Short` salta gli Short.
+- [ ] `ALR-037/038/039/040` — `sposta`, `ferma-tutti` (con e senza canale, prima «Annulla» poi «Conferma»), `/admin-moduli alert elenco` mostra il pallino rosso su chi è in diretta, `/admin-alert diretta servizio:Twitch nome:…` risponde e la seconda richiesta subito dopo dice di aspettare.
+- [ ] `ALR-006/007/011/014/016` — `bluesky nome.bsky.social`, `podcast nome:…` (menu di scelta), `youtube link:<un video, uno Short, @nome>` (con `anche_live:sì` e la chiave), `subreddit nome:… formato:embed` e `immagini:sì`.
+- [ ] `ALR-015/017` — `feed-noto` per ogni voce dell'elenco: i feed rispondono ancora? (alcuni siti cambiano indirizzo).
+- [ ] `ALR-008` — `/admin-alert picarto` con un canale in diretta: avviso e fine; `PC-n` si rimuove con `/admin-moduli alert rimuovi`.
+- [ ] `ALR-013` — `/admin-alert eventi-twitch id_avviso:TW-1 attivo:sì` su un canale con un calendario: nascono gli eventi (entro 30 minuti), senza doppioni; senza «Gestisci eventi» il comando lo dice.
+- [ ] `ALR-041` — con 25 avvisi dello stesso tipo il 26° è rifiutato; con il premium del server si arriva a 100.
+- [ ] `ALR-034` — `ALERT_TWITCH_SECONDI=45` nel `.env` e riavvio: nel log «controllo ogni 45s»; un valore sotto il minimo viene alzato.
+- [ ] `ALR-042..048` — con l'intent delle presenze acceso (`AUTOMOD_STATO_ATTIVO=1`): `/admin-alert ruolo-live aggiungi ruolo:@InDiretta`, poi `filtri`, `esclusi`, `eccezioni`, `annuncio`. Un membro con lo stato «Streaming» riceve il ruolo; a fine diretta lo perde; un escluso no; un riavvio durante la diretta si sistema entro 15 minuti.
+- [ ] `VOC-002/003` — in un tuo vocale: `/voice permit` e `/voice deny` con un ruolo. Un ruolo dello staff o più alto del tuo è rifiutato; chi è dentro viene scollegato.
+- [ ] `VOC-009` — creando un vocale arriva il pannello con otto bottoni (Rinomina, Limite, Blocca, Sblocca, Nascondi, Mostra, Espelli, Cedi); funzionano dopo un riavvio; un altro utente non può usarli.
+- [ ] `VOC-019` — `/admin-vocali crea`: nascono categoria e canale generatore e il bot è configurato; senza «Gestisci canali» lo dice.

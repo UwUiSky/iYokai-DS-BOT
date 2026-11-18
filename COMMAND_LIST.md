@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-17 19:30 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:23 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 861 comandi in 50 categorie.**
+**Totale: 900 comandi in 51 categorie.**
 
 ## Admin: AI
 
@@ -36,6 +36,28 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-17 19:
 - **`/admin-ai vietate`** — Parole o argomenti che l'AI deve rifiutare.
 - **`/admin-ai voce imposta`** — Voce di Yokai: accesa o spenta, tono e canali dei saluti.
 - **`/admin-ai voce parla`** — Yokai dice un annuncio a voce in un canale.
+
+## Admin: avvisi social
+
+- **`/admin-alert bluesky`** — Avvisa dei nuovi post di un profilo Bluesky.
+- **`/admin-alert diretta`** — Controlla ora se un canale Twitch, Kick o YouTube è in diretta.
+- **`/admin-alert eventi-twitch`** — Crea eventi Discord dal calendario di un canale Twitch.
+- **`/admin-alert feed-noto`** — Notizie di anime e manga o giochi gratis, da feed già scelti.
+- **`/admin-alert ferma-tutti`** — Cancella tutti gli avvisi del server o di un canale (con conferma).
+- **`/admin-alert formato`** — Testo o embed, embed salvato come modello, Short di YouTube.
+- **`/admin-alert messaggio`** — Cambia il testo di un avviso (anche Twitch, YouTube, Kick).
+- **`/admin-alert picarto`** — Avvisa quando un canale Picarto va in diretta.
+- **`/admin-alert podcast`** — Cerca un podcast per nome e avvisa dei nuovi episodi.
+- **`/admin-alert ruolo-live aggiungi`** — Nuova regola: dà un ruolo a chi va in diretta.
+- **`/admin-alert ruolo-live annuncio`** — Annuncia in un canale chi va in diretta.
+- **`/admin-alert ruolo-live eccezioni`** — Membri che ricevono il ruolo anche senza le parole o il gioco.
+- **`/admin-alert ruolo-live elenco`** — Le regole del ruolo «in diretta» del server.
+- **`/admin-alert ruolo-live esclusi`** — Membri o ruoli che non ricevono mai il ruolo di una regola.
+- **`/admin-alert ruolo-live filtri`** — Parole del titolo, giochi e ruolo richiesto di una regola.
+- **`/admin-alert ruolo-live rimuovi`** — Toglie una regola del ruolo «in diretta».
+- **`/admin-alert sposta`** — Sposta un avviso in un altro canale.
+- **`/admin-alert subreddit`** — Avvisa dei nuovi post di un subreddit, come testo o embed.
+- **`/admin-alert youtube`** — Aggiungi un canale YouTube da qualsiasi link: video, Short, @nome, playlist.
 
 ## Admin: anti-nuke
 
@@ -503,6 +525,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-17 19:
 ## Admin: vocali temporanei
 
 - **`/admin-vocali cap`** — Imposta il numero massimo di vocali temporanei per categoria.
+- **`/admin-vocali crea`** — Crea la categoria e il canale generatore e configura tutto in un colpo.
 - **`/admin-vocali generatore`** — Altri canali generatori con regole proprie.
 - **`/admin-vocali opzioni`** — Nome dei nuovi canali, blocco, registro, copia, pannello.
 - **`/admin-vocali panel`** — Pubblica il pannello per la creazione manuale di un vocale.
@@ -839,6 +862,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-17 19:
 - **`/music clear-queue`** — Svuota la coda, senza toccare la traccia in riproduzione.
 - **`/music coda cerca`** — Cerca un brano nella coda per titolo.
 - **`/music coda pulisci`** — Toglie dalla coda i brani di chi non e' piu' nel canale vocale.
+- **`/music coda ripristina`** — Rimette in coda i brani salvati del tuo canale vocale (dopo un riavvio).
 - **`/music coda salta`** — Toglie dalla coda un intervallo di posizioni e/o i brani di un utente.
 - **`/music disconnect`** — Disconnette il music bot dal canale vocale.
 - **`/music history`** — Mostra gli ultimi brani già suonati.
@@ -850,12 +874,24 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-17 19:
 - **`/music nowplaying`** — Mostra la traccia in riproduzione con una barra di avanzamento.
 - **`/music pause`** — Mette in pausa la riproduzione.
 - **`/music play`** — Riproduce una canzone o playlist.
+- **`/music playlist aggiorna`** — Rilegge il link da cui hai salvato una playlist.
+- **`/music playlist aggiungi`** — Aggiunge un brano (o un link) a una tua playlist.
 - **`/music playlist carica`** — Mette in coda una tua playlist salvata.
-- **`/music playlist elenco`** — Le tue playlist salvate.
+- **`/music playlist collabora`** — Chi può modificare una tua playlist.
+- **`/music playlist condividi`** — Crea un codice per condividere una tua playlist.
+- **`/music playlist crea`** — Crea una playlist vuota.
+- **`/music playlist elenco`** — Le tue playlist salvate, o i brani di una.
 - **`/music playlist elimina`** — Cancella una tua playlist salvata.
 - **`/music playlist esporta`** — Scarica una tua playlist come file.
 - **`/music playlist importa`** — Salva una playlist da un file esportato.
+- **`/music playlist ricevi`** — Salva una copia di una playlist condivisa con un codice.
+- **`/music playlist rinomina`** — Cambia il nome di una tua playlist.
 - **`/music playlist salva`** — Salva la coda del tuo canale come playlist.
+- **`/music playlist server-carica`** — Mette in coda una playlist del server.
+- **`/music playlist server-elenco`** — Le playlist del server.
+- **`/music playlist server-elimina`** — Cancella una playlist del server.
+- **`/music playlist server-salva`** — Salva la coda come playlist del server.
+- **`/music playlist togli`** — Toglie un brano da una tua playlist.
 - **`/music previous`** — Torna al brano precedente.
 - **`/music queue`** — Mostra la coda di riproduzione.
 - **`/music resume`** — Riprende la riproduzione in pausa.
@@ -899,10 +935,16 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-17 19:
 - **`/owner privacy rifiuta`** — Rifiuta una richiesta di cancellazione e dì all'utente perché.
 - **`/owner radio add-local`** — Aggiunge un file dalla cartella inediti alla playlist della radio.
 - **`/owner radio add-track`** — Aggiunge una traccia alla playlist della radio.
+- **`/owner radio blocca-parola`** — Parole vietate nei titoli in tutto il bot.
 - **`/owner radio fonti`** — Mostra lo stato delle fonti musicali (accesa, chiavi sì/no, pausa).
 - **`/owner radio list-tracks`** — Mostra la playlist della radio.
+- **`/owner radio log`** — Scarica la coda del log del Lavalink locale (ripulita dalle chiavi).
+- **`/owner radio nodi`** — Mostra i nodi Lavalink di ogni bot musicale (senza password).
 - **`/owner radio remove-track`** — Rimuove una traccia dalla playlist della radio.
+- **`/owner radio riconnetti`** — Riprova subito a collegare i nodi Lavalink non collegati.
+- **`/owner radio sorgente`** — Accende o spegne una fonte musicale a bot acceso.
 - **`/owner radio start`** — Entra nella radio condivisa, nel punto in cui si trova ora.
+- **`/owner radio stato`** — Quanti player musicali stanno suonando ora.
 - **`/owner radio stop`** — Esce dalla radio su questo server.
 - **`/owner system announce`** — Manda un annuncio a tutti i server.
 - **`/owner system eval`** — Esegue codice Python (con conferma).
@@ -989,13 +1031,13 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-17 19:
 
 - **`/voice bitrate`** — Imposta la qualità audio del canale (kbps).
 - **`/voice claim`** — Prendi il canale se il proprietario non c'è più.
-- **`/voice deny`** — Vieta a un utente di entrare nel canale.
+- **`/voice deny`** — Vieta a un utente o a un ruolo di entrare nel canale.
 - **`/voice invita`** — Manda a un utente un invito al tuo canale.
 - **`/voice kick`** — Espelli un utente dal tuo canale.
 - **`/voice limit`** — Imposta il limite di utenti del canale.
 - **`/voice lock`** — Blocca il canale (nessun nuovo ingresso).
 - **`/voice nascondi`** — Nascondi o mostra il canale a chi non è dentro.
-- **`/voice permit`** — Permetti a un utente di entrare anche se il canale è bloccato.
+- **`/voice permit`** — Permetti a un utente o a un ruolo di entrare anche se il canale è bloccato.
 - **`/voice rename`** — Rinomina il tuo canale vocale.
 - **`/voice stato`** — Scrivi cosa state facendo nel canale (vuoto: toglie).
 - **`/voice transfer`** — Trasferisci la proprietà del canale.

@@ -70,3 +70,54 @@ def parse_app_access_token_response(payload: dict) -> tuple[str, int] | None:
     if not token or not isinstance(scadenza, int):
         return None
     return token, scadenza
+
+
+@dataclass(frozen=True)
+class SegmentoCalendario:
+    """Una puntata del calendario di un canale (ALR-013)."""
+
+    id: str
+    inizio: str  # ISO 8601
+    fine: str | None
+    titolo: str
+    categoria: str
+    cancellata: bool
+
+
+def parse_users_response(payload) -> str | None:
+    """L'ID numerico di un utente dalla risposta di `Get Users`; None se non c'è."""
+    dati = payload.get("data") if isinstance(payload, dict) else None
+    if isinstance(dati, list) and dati and isinstance(dati[0], dict):
+        id_utente = dati[0].get("id")
+        if isinstance(id_utente, str) and id_utente.isdigit():
+            return id_utente
+    return None
+
+
+def parse_videos_response(payload) -> str | None:
+    """L'indirizzo dell'ultima registrazione (ALR-012); solo se è una pagina video di Twitch."""
+    dati = payload.get("data") if isinstance(payload, dict) else None
+    if isinstance(dati, list) and dati and isinstance(dati[0], dict):
+        url = dati[0].get("url")
+        if isinstance(url, str) and url.startswith("https://www.twitch.tv/videos/") and len(url) < 200:
+            return url
+    return None
+
+
+def parse_schedule_response(payload) -> list[SegmentoCalendario]:
+    """I segmenti del calendario (`Get Channel Stream Schedule`); un canale senza calendario dà una lista vuota."""
+    dati = payload.get("data") if isinstance(payload, dict) else None
+    segmenti = dati.get("segments") if isinstance(dati, dict) else None
+    risultato: list[SegmentoCalendario] = []
+    for v in segmenti if isinstance(segmenti, list) else []:
+        if not isinstance(v, dict) or not isinstance(v.get("id"), str) or not isinstance(v.get("start_time"), str):
+            continue
+        categoria = v.get("category") if isinstance(v.get("category"), dict) else {}
+        risultato.append(SegmentoCalendario(
+            id=v["id"][:200], inizio=v["start_time"],
+            fine=v.get("end_time") if isinstance(v.get("end_time"), str) else None,
+            titolo=v.get("title") if isinstance(v.get("title"), str) else "",
+            categoria=categoria.get("name") if isinstance(categoria.get("name"), str) else "",
+            cancellata=bool(v.get("canceled_until")),
+        ))
+    return risultato

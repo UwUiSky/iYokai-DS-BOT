@@ -20,6 +20,7 @@ from core.repositories.alert_options_repo import AlertOptionsRepository
 from core.repositories.custom_webhook_repo import CustomWebhookRepository
 from core.repositories.feed_subscription_repo import FeedSubscriptionRepository
 from core.repositories.kick_subscription_repo import KickSubscriptionRepository
+from core.repositories.picarto_subscription_repo import PicartoSubscriptionRepository
 from core.repositories.twitch_subscription_repo import TwitchSubscriptionRepository
 from core.repositories.youtube_subscription_repo import YoutubeSubscriptionRepository
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member, fake_text_channel
@@ -35,11 +36,17 @@ async def ambiente(monkeypatch):
     await database.set_module_active_for_guild(GUILD, MODULE_FEED_ALERTS, True)
     pool = lambda: database.pool  # noqa: E731
     monkeypatch.setattr(modulo, "db", database)
+
+    async def tetti_di_base(guild_id, bot=None):
+        return 25, False  # ALR-041: il totale ha i suoi test in test_alert_catalogo_r1b.py
+
+    monkeypatch.setattr(modulo, "tetto_e_pieno", tetti_di_base)
     for nome, classe in (
         ("feed_subscription_repo", FeedSubscriptionRepository),
         ("twitch_subscription_repo", TwitchSubscriptionRepository),
         ("youtube_subscription_repo", YoutubeSubscriptionRepository),
         ("kick_subscription_repo", KickSubscriptionRepository),
+        ("picarto_subscription_repo", PicartoSubscriptionRepository),
         ("alert_options_repo", AlertOptionsRepository),
         ("custom_webhook_repo", CustomWebhookRepository),
     ):
@@ -75,6 +82,7 @@ def test_slug_e_id():
 
 
 @pytest.mark.asyncio
+# ALR-001 (comando Kick), ALR-018 (ruolo da avvisare con ping solo se permesso), ALR-041 (elenco e tetti)
 async def test_kick_opzioni_elenco_rimuovi(ambiente):
     cog = FeedAlertsCog(bot=None)
     canale = fake_text_channel()

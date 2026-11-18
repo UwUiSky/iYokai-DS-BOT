@@ -2,6 +2,7 @@
 core/music_fleet_logic.py
 =============================
 Logica pura di instradamento multi-istanza Music (SPEC.md §9.1/9.2).
+Catalogo MUS-088: un bot musicale per ogni canale vocale dello stesso server (D10).
 Architettura chiarita dall'utente: UN SOLO punto di ingresso comandi
 (il bot principale), ma l'esecuzione vera (join vocale, riproduzione)
 avviene su una delle 5 istanze separate (MUSIC_TOKENS, già dichiarati

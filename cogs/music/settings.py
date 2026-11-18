@@ -17,6 +17,8 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.i18n import testo_per
+from core.music_playlist_logic import NOME_MAX
+from core.repositories.music_playlist_repo import music_guild_playlist_repo
 from core.music_sources import FONTI, FONTI_DI_RICERCA
 from core.music_settings_logic import (
     MAX_IDLE_MINUTES,
@@ -25,6 +27,11 @@ from core.music_settings_logic import (
     SETTING_BANNED_WORDS,
     SETTING_DEFAULT_SEARCH,
     SETTING_IDLE_MINUTES,
+    SETTING_ANNOUNCE,
+    SETTING_DAILY_PLAYLIST,
+    SETTING_FALLBACK_PLAYLIST,
+    SETTING_PERSIST_QUEUE,
+    SETTING_ANNOUNCE_CHANNEL,
     SETTING_QUEUE_MODE,
     SETTING_KNOWN_SITES_ONLY,
     SETTING_MAX_TRACK_MINUTES,
@@ -73,6 +80,11 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         solo_siti_conosciuti="Accetta solo link di siti conosciuti",
         ricerca_predefinita="Dove cercare un titolo scritto senza link (i link vincono sempre)",
         coda="Ordine dei brani: normale (come arrivano) o equa (a giro tra gli utenti)",
+        annunci="Annuncia nel canale scelto il brano che parte (spenti di base)",
+        canale_annunci="Canale dove mandare gli annunci «ora in riproduzione»",
+        playlist_di_riserva="Playlist del server che parte quando la coda finisce («-» la toglie)",
+        playlist_del_giorno="Tiene la playlist «Oggi» con i brani suonati nel giorno",
+        coda_salvata="Salva la coda per ritrovarla dopo un riavvio (/music coda ripristina)",
     )
     @app_commands.rename(
         volume_massimo="volume-massimo",
@@ -84,6 +96,10 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         parole_vietate="parole-vietate",
         solo_siti_conosciuti="solo-siti-conosciuti",
         ricerca_predefinita="ricerca-predefinita",
+        canale_annunci="canale-annunci",
+        playlist_di_riserva="playlist-di-riserva",
+        playlist_del_giorno="playlist-del-giorno",
+        coda_salvata="coda-salvata",
     )
     @app_commands.choices(ricerca_predefinita=SCELTE_RICERCA, coda=SCELTE_CODA)
     async def impostazioni(
@@ -99,6 +115,11 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         solo_siti_conosciuti: bool | None = None,
         ricerca_predefinita: str | None = None,
         coda: str | None = None,
+        annunci: bool | None = None,
+        canale_annunci: discord.TextChannel | None = None,
+        playlist_di_riserva: app_commands.Range[str, 1, NOME_MAX] | None = None,
+        playlist_del_giorno: bool | None = None,
+        coda_salvata: bool | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -111,6 +132,21 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
                 await testo_per(interaction, "settings_scegli_canale_vocale_oppure_tutti"), ephemeral=True
             )
             return
+        if canale_annunci is not None:  # MUS-058: il bot deve poterci scrivere
+            permessi = canale_annunci.permissions_for(guild.me)
+            if not (permessi.view_channel and permessi.send_messages and permessi.embed_links):
+                await interaction.response.send_message(
+                    await testo_per(interaction, "music_annunci_canale_senza_permessi"), ephemeral=True
+                )
+                return
+        riserva = None
+        if playlist_di_riserva is not None:  # MUS-041: deve essere una playlist del server
+            riserva = _testo_o_vuoto(playlist_di_riserva)
+            if riserva and await music_guild_playlist_repo.get(guild.id, riserva) is None:
+                await interaction.response.send_message(
+                    await testo_per(interaction, "playlist_server_non_trovata"), ephemeral=True
+                )
+                return
         cambi = {
             SETTING_MAX_VOLUME: volume_massimo,
             SETTING_MAX_TRACK_MINUTES: durata_massima,
@@ -124,6 +160,16 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
             cambi[SETTING_DEFAULT_SEARCH] = None if ricerca_predefinita == "automatica" else ricerca_predefinita
         if coda is not None:  # MUS-037
             cambi[SETTING_QUEUE_MODE] = coda
+        if riserva is not None:  # MUS-041: «-» la toglie
+            cambi[SETTING_FALLBACK_PLAYLIST] = riserva
+        if playlist_del_giorno is not None:  # MUS-045
+            cambi[SETTING_DAILY_PLAYLIST] = playlist_del_giorno
+        if coda_salvata is not None:  # MUS-042
+            cambi[SETTING_PERSIST_QUEUE] = coda_salvata
+        if annunci is not None:  # MUS-057
+            cambi[SETTING_ANNOUNCE] = annunci
+        if canale_annunci is not None:  # MUS-058
+            cambi[SETTING_ANNOUNCE_CHANNEL] = canale_annunci.id
         if canale_vocale is not None:
             cambi[SETTING_ALLOWED_CHANNEL] = canale_vocale.id
         if not cambi and not tutti_i_canali:

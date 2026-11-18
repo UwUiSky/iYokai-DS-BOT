@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-17 19:30 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:23 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 861 commands in 50 categories.**
+**Total: 900 commands in 51 categories.**
 
 ## Admin: AI
 
@@ -36,6 +36,28 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-17 19:3
 - **`/admin-ai translation`** — Automatically translates every message of a channel.
 - **`/admin-ai voice set`** — Voice: on or off, tone and greeting channels.
 - **`/admin-ai voice speak`** — Yokai says an announcement out loud in a channel.
+
+## Admin: social alerts
+
+- **`/admin-alerts bluesky`** — Alert for new posts of a Bluesky profile.
+- **`/admin-alerts format`** — Text or embed, a saved embed as template, YouTube Shorts.
+- **`/admin-alerts known-feed`** — News about anime and manga or free games, from ready-made feeds.
+- **`/admin-alerts live`** — Check right now whether a Twitch, Kick or YouTube channel is live.
+- **`/admin-alerts live-role add`** — New rule: gives a role to whoever goes live.
+- **`/admin-alerts live-role announcement`** — Announce in a channel who goes live.
+- **`/admin-alerts live-role exceptions`** — Members who get the role even without the words or the game.
+- **`/admin-alerts live-role excluded`** — Members or roles that never get the role of a rule.
+- **`/admin-alerts live-role filters`** — Title words, games and required role of a rule.
+- **`/admin-alerts live-role list`** — The live role rules of the server.
+- **`/admin-alerts live-role remove`** — Removes a live role rule.
+- **`/admin-alerts message`** — Change the text of an alert, also for Twitch, YouTube and Kick.
+- **`/admin-alerts move`** — Move an alert to another channel.
+- **`/admin-alerts picarto`** — Alert when a Picarto channel goes live.
+- **`/admin-alerts podcast`** — Search a podcast by name and get alerts for new episodes.
+- **`/admin-alerts stop-all`** — Delete all alerts of the server or of a channel (with confirmation).
+- **`/admin-alerts subreddit`** — Alert for new posts of a subreddit, as text or embed.
+- **`/admin-alerts twitch-events`** — Create Discord events from a Twitch channel's schedule.
+- **`/admin-alerts youtube`** — Add a YouTube channel from any link: video, Short, @name, playlist.
 
 ## Admin: anti-nuke
 
@@ -503,6 +525,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-17 19:3
 ## Admin: temporary voice
 
 - **`/admin-voice cap`** — Sets the maximum number of temporary voice channels per category.
+- **`/admin-voice create`** — Creates the category and the generator channel and sets everything up.
 - **`/admin-voice generator`** — Extra generator channels with their own rules.
 - **`/admin-voice options`** — Name of new channels, lock, log, copy, panel.
 - **`/admin-voice panel`** — Publishes the panel to create a voice channel by hand.
@@ -838,6 +861,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-17 19:3
 
 - **`/music clear-queue`** — Clears the queue without touching the track that is playing.
 - **`/music coda pulisci`** — Removes from the queue the tracks of people who left the voice channel.
+- **`/music coda restore`** — Puts the saved tracks of your voice channel back in the queue (after a restart).
 - **`/music coda search`** — Searches the queue for a track by title.
 - **`/music coda skip`** — Removes a range of positions and/or one user's tracks from the queue.
 - **`/music disconnect`** — Disconnects the music bot from the voice channel.
@@ -850,12 +874,24 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-17 19:3
 - **`/music nowplaying`** — Shows the playing track with a progress bar.
 - **`/music pause`** — Pauses playback.
 - **`/music play`** — Plays a song or playlist.
+- **`/music playlist add`** — Adds a track (or a link) to one of your playlists.
+- **`/music playlist collaborate`** — Who can edit one of your playlists.
+- **`/music playlist create`** — Creates an empty playlist.
 - **`/music playlist delete`** — Deletes one of your saved playlists.
 - **`/music playlist export`** — Downloads one of your playlists as a file.
 - **`/music playlist import`** — Saves a playlist from an exported file.
-- **`/music playlist list`** — Your saved playlists.
+- **`/music playlist list`** — Your saved playlists, or the tracks of one.
 - **`/music playlist load`** — Queues one of your saved playlists.
-- **`/music playlist save`** — Saves your channel's queue as a playlist.
+- **`/music playlist receive`** — Saves a copy of a playlist shared with a code.
+- **`/music playlist refresh`** — Reloads the link a playlist was saved from.
+- **`/music playlist remove`** — Removes a track from one of your playlists.
+- **`/music playlist rename`** — Renames one of your playlists.
+- **`/music playlist save`** — Saves your channel's queue (or a link) as a playlist.
+- **`/music playlist server-delete`** — Deletes a server playlist.
+- **`/music playlist server-list`** — The server's playlists.
+- **`/music playlist server-load`** — Queues a server playlist.
+- **`/music playlist server-save`** — Saves the queue as a server playlist.
+- **`/music playlist share`** — Creates a code to share one of your playlists.
 - **`/music previous`** — Goes back to the previous track.
 - **`/music queue`** — Shows the playback queue.
 - **`/music resume`** — Resumes paused playback.
@@ -899,10 +935,16 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-17 19:3
 - **`/owner privacy rifiuta`** — Rejects a deletion request and tells the user why.
 - **`/owner radio add-local`** — Adds a file from the unreleased folder to the radio playlist.
 - **`/owner radio add-track`** — Adds a track to the radio playlist.
+- **`/owner radio ban-word`** — Words banned in track titles across the whole bot.
 - **`/owner radio fonti`** — Shows the state of the music sources (on, keys yes/no, paused).
 - **`/owner radio list-tracks`** — Shows the radio playlist.
+- **`/owner radio log`** — Downloads the tail of the local Lavalink log (keys removed).
+- **`/owner radio nodes`** — Shows each music bot's Lavalink nodes (no passwords).
+- **`/owner radio reconnect`** — Retries at once to connect the Lavalink nodes that are down.
 - **`/owner radio remove-track`** — Removes a track from the radio playlist.
+- **`/owner radio source`** — Turns a music source on or off while the bot runs.
 - **`/owner radio start`** — Joins the shared radio at the point where it is now.
+- **`/owner radio status`** — How many music players are playing now.
 - **`/owner radio stop`** — Leaves the radio on this server.
 - **`/owner system announce`** — Sends an announcement to all servers.
 - **`/owner system eval`** — Runs Python code (with confirmation).

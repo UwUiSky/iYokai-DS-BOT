@@ -3,7 +3,9 @@ core/music_playlist_logic.py
 ============================
 Playlist salvate degli utenti: tetti, controllo del nome, brani da e
 verso il formato salvato, file di esportazione e di importazione.
-Funzioni coperte: SPEC §23 (NF-19), catalogo MUS-082
+Funzioni coperte: SPEC §23 (NF-19), catalogo MUS-082; MUS-071 salva la coda, MUS-078 carica,
+MUS-079 elenco e dettaglio, MUS-080 elimina (comandi in cogs/music/playlist.py),
+MUS-074 aggiungi, MUS-075 togli, MUS-076 senza doppioni, MUS-073 crea, MUS-077 rinomina
 Dipende da: niente di Discord o Lavalink (logica pura).
 """
 
@@ -11,6 +13,7 @@ from __future__ import annotations
 
 import json
 import re
+import secrets
 from dataclasses import dataclass
 
 MAX_PLAYLIST_PER_UTENTE = 25  # un elenco e un autocompletamento senza pagine
@@ -19,6 +22,14 @@ NOME_MAX = 50
 FILE_MAX_BYTE = 256 * 1024  # file di importazione (LIM: 10 MiB, qui molto meno)
 FORMATO_FILE = "iyokai-playlist-1"
 DURATA_MAX_MS = 24 * 3600 * 1000  # una durata letta da un file non supera un giorno
+
+MAX_PLAYLIST_PER_SERVER = 25  # MUS-081
+MAX_COLLABORATORI = 5  # MUS-086
+NOME_PLAYLIST_DEL_GIORNO = "Oggi"  # MUS-045: la playlist automatica dei brani suonati oggi
+NOME_PREFERITI = "Preferiti"  # MUS-085: la playlist dove finisce il cuore
+LINK_ORIGINE_MAX = 300  # MUS-072/083
+ALFABETO_CODICE = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # senza 0/O e 1/I: si legge e si copia senza errori
+CODICE_LUNGHEZZA = 8
 
 _NOME_VALIDO = re.compile(r"^[\w .,'!?()&+-]{1,50}$")
 
@@ -158,6 +169,113 @@ def riferimenti_traccia(info) -> list[str] | None:
 def dati_playlist_wavelink(nome: str, tracce: list) -> dict:
     """Il payload di una playlist Lavalink, dai brani decodificati (per wavelink.Playlist)."""
     return {"info": {"name": nome, "selectedTrack": -1}, "pluginInfo": {}, "tracks": list(tracce)}
+
+
+def nuovo_codice() -> str:
+    """MUS-084: un codice breve casuale per condividere una playlist (8 caratteri, ~40 bit)."""
+    return "".join(secrets.choice(ALFABETO_CODICE) for _ in range(CODICE_LUNGHEZZA))
+
+
+def codice_valido(testo: str) -> str | None:
+    """MUS-084: il codice scritto da un utente, in maiuscole, oppure None se non ha la forma giusta."""
+    codice = (testo or "").strip().upper().replace("-", "").replace(" ", "")
+    if len(codice) != CODICE_LUNGHEZZA or any(c not in ALFABETO_CODICE for c in codice):
+        return None
+    return codice
+
+
+def link_origine_valido(testo) -> str | None:
+    """MUS-072/083: il link da ricordare come origine di una playlist: https, corto, senza spazi."""
+    if not isinstance(testo, str):
+        return None
+    link = testo.strip()
+    if not link.lower().startswith("https://") or len(link) > LINK_ORIGINE_MAX:
+        return None
+    return None if any(c.isspace() or ord(c) < 32 for c in link) else link
+
+
+def nome_per_copia(nome: str, esistenti: set[str]) -> str:
+    """MUS-084: il nome della copia ricevuta: quello originale, o «nome (2)», «nome (3)»… se è già preso."""
+    if nome not in esistenti:
+        return nome
+    for n in range(2, 100):
+        suffisso = f" ({n})"
+        candidato = nome[: NOME_MAX - len(suffisso)].rstrip() + suffisso
+        if candidato not in esistenti:
+            return candidato
+    return nome[: NOME_MAX - 5] + " (99)"
+
+
+def chiave_brano(brano: BranoSalvato) -> str:
+    """Cosa rende «lo stesso brano»: l'indirizzo se c'è, altrimenti il codice di Lavalink."""
+    return (brano.uri or brano.encoded).strip().lower()
+
+
+def togli_doppioni(brani: list[BranoSalvato]) -> tuple[list[BranoSalvato], int]:
+    """MUS-076: i brani senza doppioni (resta la prima comparsa) e quanti ne sono stati tolti."""
+    visti: set[str] = set()
+    unici: list[BranoSalvato] = []
+    for brano in brani:
+        chiave = chiave_brano(brano)
+        if chiave in visti:
+            continue
+        visti.add(chiave)
+        unici.append(brano)
+    return unici, len(brani) - len(unici)
+
+
+def aggiungi_senza_doppioni(
+    esistenti: list[BranoSalvato], nuovi: list[BranoSalvato]
+) -> tuple[list[BranoSalvato], int, int, int]:
+    """
+    MUS-074: aggiunge in fondo i brani nuovi. Restituisce (elenco, aggiunti, doppioni, fuori):
+    i doppioni non entrano, quelli oltre MAX_BRANI_PER_PLAYLIST restano fuori.
+    """
+    elenco = list(esistenti)
+    presenti = {chiave_brano(b) for b in elenco}
+    aggiunti = doppioni = fuori = 0
+    for brano in nuovi:
+        chiave = chiave_brano(brano)
+        if chiave in presenti:
+            doppioni += 1
+        elif len(elenco) >= MAX_BRANI_PER_PLAYLIST:
+            fuori += 1
+        else:
+            presenti.add(chiave)
+            elenco.append(brano)
+            aggiunti += 1
+    return elenco, aggiunti, doppioni, fuori
+
+
+def unisci_brani(esistenti: list[BranoSalvato], nuovi: list[BranoSalvato]):
+    """Per `aggiorna_brani`: aggiunge senza doppioni; il risultato sono i conteggi (aggiunti, doppioni, fuori)."""
+    elenco, aggiunti, doppioni, fuori = aggiungi_senza_doppioni(esistenti, nuovi)
+    return elenco, (aggiunti, doppioni, fuori)
+
+
+def togli_posizione(
+    brani: list[BranoSalvato], posizione: int
+) -> tuple[list[BranoSalvato], BranoSalvato | None]:
+    """MUS-075: toglie il brano alla posizione (da 1). (elenco, tolto) oppure (elenco, None) se non c'è."""
+    if posizione < 1 or posizione > len(brani):
+        return list(brani), None
+    elenco = list(brani)
+    return elenco, elenco.pop(posizione - 1)
+
+
+BRANI_PER_PAGINA = 15
+
+
+def pagina_brani(brani: list[BranoSalvato], pagina: int) -> tuple[list[str], int]:
+    """MUS-079: le righe di una pagina del dettaglio (da 1) e il numero di pagine."""
+    pagine = max(1, -(-len(brani) // BRANI_PER_PAGINA))
+    pagina = min(max(1, pagina), pagine)
+    inizio = (pagina - 1) * BRANI_PER_PAGINA
+    righe = [
+        f"`{inizio + i + 1}.` {b.titolo[:80]} ({max(0, b.durata_ms) // 60000}:{max(0, b.durata_ms) // 1000 % 60:02d})"
+        for i, b in enumerate(brani[inizio:inizio + BRANI_PER_PAGINA])
+    ]
+    return righe, pagine
 
 
 def riga_elenco(nome: str, numero_brani: int, durata_ms: int) -> str:

@@ -131,6 +131,7 @@ def ambiente(clean_db, server, monkeypatch):
 
 
 @pytest.mark.asyncio
+# ALR-010 (#129): dirette e première da feed + videos.list a gruppi di 50, una chiamata per giro
 async def test_dieci_canali_una_sola_chiamata_videos_list(ambiente):
     servizio, repo, stato, canale, bot, _ = ambiente
     for i in range(10):

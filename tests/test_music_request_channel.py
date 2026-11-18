@@ -89,13 +89,14 @@ def test_pausa_tra_aggiornamenti():
 
 
 # ----------------------------------------------------------------- view
-def test_view_persistente_con_cinque_bottoni_su_una_riga():
+def test_view_persistente_cinque_comandi_e_il_cuore_sotto():
     view = PlayerRichiesteView()
     assert isinstance(view, BaseView)
     assert view.timeout is None and view.is_persistent()
     bottoni = [c for c in view.children if isinstance(c, discord.ui.Button)]
-    assert len(bottoni) == 5
-    assert {b.row for b in bottoni} == {0}
+    assert len(bottoni) == 6
+    assert [b.row for b in bottoni].count(0) == 5  # i comandi del player su una riga
+    assert [b.label for b in bottoni if b.row == 1] == ["Preferito"]  # MUS-077: il cuore sotto
     assert all(b.custom_id.startswith("iyokai_musreq_") for b in bottoni)
 
 

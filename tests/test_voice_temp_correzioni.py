@@ -517,7 +517,7 @@ async def test_il_messaggio_del_canale_ha_bottoni_che_non_scadono():
 
     canale = await scena.crea_canale_di(scena.membro(ID_PROPRIETARIO))
 
-    vista = canale.send.call_args.kwargs["view"]
+    vista = canale.send.call_args_list[0].kwargs["view"]
     assert vista.timeout is None
     assert vista.is_persistent()
     # Solo le piattaforme configurate.
@@ -539,7 +539,7 @@ async def test_la_view_del_messaggio_non_resta_in_memoria_e_il_clic_arriva_lo_st
     try:
         registro = bot._connection._view_store
         canale = await scena.crea_canale_di(scena.membro(ID_PROPRIETARIO))
-        vista = canale.send.call_args.kwargs["view"]
+        vista = canale.send.call_args_list[0].kwargs["view"]
         id_messaggio = 123456
         registro.add_view(vista, id_messaggio)  # ciò che fa channel.send dopo l'invio
         vista.stop()  # già chiamato dal codice: qui vale per il registro vero
