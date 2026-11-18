@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:23 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:29 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 900 comandi in 51 categorie.**
+**Totale: 909 comandi in 51 categorie.**
 
 ## Admin: AI
 
@@ -366,16 +366,20 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:
 - **`/admin-moduli compleanni canale`** — Scegli il canale degli auguri (vuoto per spegnerli).
 - **`/admin-moduli compleanni membro`** — Registra il compleanno di un membro (solo giorno e mese).
 - **`/admin-moduli compleanni ruolo`** — Un ruolo per 24 ore a chi compie gli anni (vuoto per toglierlo).
+- **`/admin-moduli contatori azzera`** — Smetti di aggiornare tutti i contatori (i canali restano).
+- **`/admin-moduli contatori categoria`** — Crea una categoria con i contatori più usati.
 - **`/admin-moduli contatori crea`** — Crea un canale che mostra un numero.
 - **`/admin-moduli contatori elenco`** — Mostra i contatori del server.
 - **`/admin-moduli contatori elimina`** — Smetti di aggiornare un contatore (il canale resta).
+- **`/admin-moduli contatori modifica`** — Cambia l'etichetta o l'obiettivo di un contatore.
 - **`/admin-moduli sondaggi pesi`** — Dai un peso al voto di un ruolo nei sondaggi (max 25 ruoli).
 - **`/admin-moduli starboard disattiva`** — Spegni la bacheca.
 - **`/admin-moduli starboard imposta`** — Scegli il canale della bacheca e la soglia di stelle.
 - **`/admin-moduli starboard soglia`** — Cambia quante stelle servono per finire in bacheca.
 - **`/admin-moduli statistiche diagnosi`** — Perché le statistiche non si contano?
 - **`/admin-moduli statistiche elenco`** — Mostra regole ed esclusioni delle statistiche.
-- **`/admin-moduli statistiche impostazioni`** — Escludi canali o ruoli dalle statistiche.
+- **`/admin-moduli statistiche esporta`** — Esporta in un file ZIP le statistiche, i contatori e le regole del server.
+- **`/admin-moduli statistiche impostazioni`** — Filtri delle statistiche: canali, membri, ruoli, chi le vede.
 - **`/admin-moduli statistiche ruolo-aggiungi`** — Dai un ruolo a chi è attivo e toglilo a chi smette.
 - **`/admin-moduli statistiche ruolo-elimina`** — Elimina una regola dei ruoli per attività.
 
@@ -541,6 +545,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:
 - **`/Salva citazione`** — Menu «App» (tasto destro)
 - **`/Scheda moderazione`** — Menu «App» (tasto destro)
 - **`/Segnala messaggio`** — Menu «App» (tasto destro)
+- **`/Statistiche del canale`** — Menu «App» (tasto destro)
+- **`/Statistiche del membro`** — Menu «App» (tasto destro)
 - **`/cerca-comando`** — Cerca un comando per descrizione.
 - **`/chiedi`** — Chiedi aiuto: ti mostro i comandi giusti.
 
@@ -1004,6 +1010,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:
 - **`/utility ping`** — Controlla se iYokai Main è online e la sua latenza.
 - **`/utility privacy cancella`** — Chiedi la cancellazione dei tuoi dati personali.
 - **`/utility privacy esporta`** — Ricevi una copia dei dati che il bot conserva su di te.
+- **`/utility privacy statistiche`** — Mostra il tuo nome nelle classifiche delle statistiche, o resta anonimo.
 - **`/utility reminder cancel`** — Annulla un promemoria, o tutti i tuoi.
 - **`/utility reminder list`** — Mostra i tuoi promemoria in sospeso.
 - **`/utility reminder set`** — Imposta un promemoria.
@@ -1012,7 +1019,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:
 - **`/utility ruolo`** — Prendi o lascia i ruoli a scelta del server.
 - **`/utility scheda anzianita`** — Account più vecchi o nuovi, primi o ultimi entrati.
 - **`/utility scheda canale`** — Scheda di un canale.
-- **`/utility scheda membri`** — I membri che hanno un ruolo.
+- **`/utility scheda emoji`** — Scheda di un'emoji: ID, data, animata, immagine.
+- **`/utility scheda invito`** — Scheda di un invito: server, canale, membri, scadenza.
+- **`/utility scheda membri`** — I membri che hanno un ruolo, o tutti in un file.
 - **`/utility scheda permessi`** — Permessi di un membro o del bot in un canale.
 - **`/utility scheda ruoli`** — Tutti i ruoli con ID, membri e colore.
 - **`/utility scheda ruolo`** — Scheda di un ruolo: membri, colore, data, permessi.

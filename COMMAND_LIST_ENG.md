@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:23 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:29 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 900 commands in 51 categories.**
+**Total: 909 commands in 51 categories.**
 
 ## Admin: AI
 
@@ -365,19 +365,23 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:2
 - **`/admin-modules birthdays channel`** — Picks the wishes channel (empty to turn them off).
 - **`/admin-modules birthdays member`** — Register a member's birthday (day and month only).
 - **`/admin-modules birthdays role`** — A role for 24 hours for whoever has a birthday (empty to remove it).
+- **`/admin-modules counters category`** — Creates a category with the most used counters.
 - **`/admin-modules counters create`** — Creates a channel that shows a number.
 - **`/admin-modules counters delete`** — Stops updating a counter (the channel stays).
+- **`/admin-modules counters edit`** — Changes a counter's label or goal.
 - **`/admin-modules counters list`** — Shows the server's counters.
+- **`/admin-modules counters reset`** — Stops updating all counters (the channels stay).
 - **`/admin-modules polls weights`** — Give a weight to the vote of a role in polls (max 25 roles).
 - **`/admin-modules quotes action`** — Export, import or delete the quotes (JSON).
 - **`/admin-modules starboard disattiva`** — Turns the board off.
 - **`/admin-modules starboard set`** — Picks the board channel and the star threshold.
 - **`/admin-modules starboard threshold`** — Changes how many stars are needed to reach the board.
 - **`/admin-modules statistics diagnosis`** — Why are the statistics not counting?
+- **`/admin-modules statistics export`** — Exports statistics, counters and rules to a ZIP file.
 - **`/admin-modules statistics list`** — Show the statistics rules and exclusions.
 - **`/admin-modules statistics ruolo-aggiungi`** — Give a role to active members and remove it when they stop.
 - **`/admin-modules statistics ruolo-elimina`** — Delete an activity role rule.
-- **`/admin-modules statistics settings`** — Exclude channels or roles from the statistics.
+- **`/admin-modules statistics settings`** — Statistics filters: channels, members, roles, who can view them.
 
 ## Admin: music
 
@@ -536,6 +540,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:2
 
 - **`/-ask`** — Ask for help: I will show you the right commands.
 - **`/-search-command`** — Searches a command by description.
+- **`/Channel statistics`** — “Apps” menu (right click)
+- **`/Member statistics`** — “Apps” menu (right click)
 - **`/Moderation card`** — “Apps” menu (right click)
 - **`/Open ticket`** — “Apps” menu (right click)
 - **`/Redraw giveaway`** — “Apps” menu (right click)
@@ -1000,7 +1006,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:2
 - **`/utility info`** — Bot information: version, invite and support.
 - **`/utility language`** — Shows or changes your personal language (Italian or English).
 - **`/utility lookup channel`** — Channel card.
-- **`/utility lookup members`** — Members who have a role.
+- **`/utility lookup emoji`** — Emoji card: ID, date, animated, image.
+- **`/utility lookup invite`** — Invite card: server, channel, members, expiry.
+- **`/utility lookup members`** — Members with a role, or everyone in a file.
 - **`/utility lookup permissions`** — Permissions of a member or the bot in a channel.
 - **`/utility lookup role`** — Role card: members, color, date, permissions.
 - **`/utility lookup roles`** — All roles with ID, members and color.
@@ -1012,6 +1020,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:2
 - **`/utility ping`** — Checks whether iYokai Main is online and its latency.
 - **`/utility privacy delete`** — Request the deletion of your personal data.
 - **`/utility privacy export`** — Get a copy of the data the bot keeps about you.
+- **`/utility privacy statistics`** — Show your name in the statistics leaderboards, or stay anonymous.
 - **`/utility reminder cancel`** — Cancel a reminder, or all of yours.
 - **`/utility reminder list`** — Shows your pending reminders.
 - **`/utility reminder set`** — Sets a reminder.

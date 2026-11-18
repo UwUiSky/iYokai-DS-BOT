@@ -1187,3 +1187,18 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
 
 - **Picarto:** nessuna chiave né richieste a gruppi: una richiesta per canale (la stessa per più server), al massimo 40 per giro a rotazione, 4 insieme, ogni 3 minuti.
 - **Eventi dal calendario Twitch:** sono eventi esterni del server (con il link del canale), al massimo 5 nuove puntate per avviso a ogni giro (ogni 30 minuti), solo entro 14 giorni, mai oltre i 100 eventi del server di Discord. Serve «Gestisci eventi» per il bot. Una richiesta per canale, anche se più server lo seguono.
+
+## D87 — Statistiche (#130) giro r1sta: scelte del catalogo (17/11/2026, opzione prudente, da confermare dall'owner)
+
+- Dove stanno i comandi: nessun gruppo nuovo. Filtri, accesso, campioni online, regole ed esportazione in `/admin-moduli statistiche`; contatori in `/admin-moduli contatori` (peso del gruppo 6.6k: non aggiungere altro lì, il prossimo va in un gruppo nuovo). Anonimato in `/utility privacy statistiche`. Viste in `/utility serverstats` (opzioni, non comandi).
+- Contatori: tetto 20 per server (erano 5; una categoria ne usa fino a 7). La migrazione 0701 toglie il vincolo sui tipi della 0087, che in produzione bloccava ticket, ruoli, canali ed emoji. Il nome si rifà solo se è cambiato e al massimo ogni 10 minuti (orologio a scatti di 10).
+- Twitch (STA-045): il token dell'app non dà i follower (serve il permesso del canale): il contatore mostra gli spettatori in diretta. YouTube: iscritti con una chiamata `channels.list` ogni 50 canali, chiave nell'intestazione.
+- Gioco (STA-046): alternativa vicina, Minecraft dal servizio pubblico mcsrvstat.us (l'indirizzo è un pezzo di percorso, validato e codificato), al massimo 30 indirizzi per giro.
+- Ultimo arrivato (STA-052): il nome da mostrare di un membro finisce nel nome del canale, che lo vede chi vede il canale. Chi non vuole spegne il tipo.
+- Menu col tasto destro (STA-011): Discord non ha menu sui canali; «Statistiche del canale» si apre su un messaggio e mostra il canale che lo contiene.
+- Presenze (STA-007): senza l'intent delle presenze la vista «giochi» dice perché non c'è; con l'intent mostra una fotografia di adesso, senza salvare nulla. STA-008: campione orario di `approximate_presence_count`, solo dove l'admin lo accende, 90 giorni.
+- Anonimato (STA-028): vale per tutti i server e per il passato perché la maschera si applica quando si mostra; i numeri restano nei totali, il nome no (nemmeno nel CSV).
+- Accesso (STA-013): chi gestisce il server vede sempre; se l'admin sceglie dei ruoli, solo loro (comando, menu e bottoni).
+- Filtri (STA-025..027): modo «solo» con elenco vuoto non limita nulla (non spegne le statistiche per errore); una categoria nell'elenco vale per i suoi canali.
+- Esportazione (STA-057): ZIP con le tabelle delle statistiche del server, regole, contatori e impostazioni (solo numeri e ID). Il resto resta nei suoi comandi (`/admin-bot config export`, `/logs export`, `/admin-inviti esporta`). Elenco membri in file (STA-058): solo con «Gestisci server».
+- Non fatte qui: STA-012 (pagina web pubblica) e STA-061 (API) dipendono dal pannello web (dev-web); restano all'issue del pannello. STA-060: gli ID sono già nelle schede.

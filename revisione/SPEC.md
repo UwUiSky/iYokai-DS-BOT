@@ -2189,6 +2189,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   → **Stato 14/10:** `/admin-musica canale-richieste` (0170): chi scrive un titolo, un link o allega un file nel canale lo mette in coda; messaggio player con 5 bottoni persistenti, aggiornato al massimo ogni 5 secondi. `/music playlist salva|carica|elenco|elimina|esporta|importa` (0171): 25 playlist per utente, 200 brani, file JSON (MUS-082). Da verificare live.
 - `[x]` 23.2 Canali contatore (NF-16)
   → **Stato 13/10:** `/admin-moduli contatori crea|elimina|elenco` (0087), aggiornamento ogni 10 minuti, massimo 5 per server.
+- `[x]` 23.2b Catalogo statistiche (#130, 17-18/11/2026, r1sta): contatori con 22 tipi, traguardi, orologio, YouTube, Twitch, Minecraft, categoria, modifica, azzera (0701, massimo 20 per server); filtri per canale, categoria, membro e ruolo («escludi» o «solo»), anonimato, ruoli che vedono le statistiche, stato della voce, regole a due condizioni (0700); viste di `/utility serverstats` (panoramica, messaggi, vocale, canale, membro, membri nel tempo, ingressi e uscite, ritenzione, fonti, inviti, online, giochi), CSV, bottoni persistenti, due menu col tasto destro; `/admin-moduli statistiche esporta`; `/utility scheda invito|emoji|membri file` (STA-001..061, vedi D87).
 - `[x]` 23.3 Statistiche di attività per canale e per membro, ruoli per
   attività (NF-25)
   → **Stato 14/10 (r5):** messaggi e minuti in vocale come somme per giorno

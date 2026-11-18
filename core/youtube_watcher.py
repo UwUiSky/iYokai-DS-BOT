@@ -46,6 +46,7 @@ TICK_SECONDS = 300
 
 REQUEST_TIMEOUT_SECONDS = 15
 YOUTUBE_VIDEOS_URL = "https://www.googleapis.com/youtube/v3/videos"
+YOUTUBE_CHANNELS_URL = "https://www.googleapis.com/youtube/v3/channels"
 YOUTUBE_RSS_URL = "https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
 
 
@@ -54,7 +55,9 @@ class YoutubeWatcherService:
         self,
         videos_url: str = YOUTUBE_VIDEOS_URL,
         rss_url_template: str = YOUTUBE_RSS_URL,
+        channels_url: str = YOUTUBE_CHANNELS_URL,
     ) -> None:
+        self._channels_url = channels_url
         self._loop_task: tasks.Loop | None = None
         self._avvisi = AvvisoUnaVolta()
         self._durate: dict[str, str] = {}
@@ -66,6 +69,41 @@ class YoutubeWatcherService:
         if self._http_session is None:
             self._http_session = aiohttp.ClientSession()
         return self._http_session
+
+    async def iscritti(self, channel_ids: list[str]) -> dict[str, int | None] | None:
+        """STA-045: gli iscritti di più canali, una chiamata `channels.list` (1 unità) ogni 50 canali.
+
+        La chiave va nell'intestazione, mai nell'indirizzo (gli indirizzi finiscono nei log).
+        Un canale che nasconde gli iscritti vale None. None se manca la chiave o YouTube non risponde.
+        """
+        if not config.YOUTUBE_API_KEY:
+            return None
+        unici = sorted(set(channel_ids))
+        risultato: dict[str, int | None] = {}
+        for i in range(0, len(unici), VIDEOS_LIST_MAX_ID):
+            gruppo = unici[i : i + VIDEOS_LIST_MAX_ID]
+            try:
+                async with self._get_session().get(
+                    self._channels_url,
+                    params={"part": "statistics", "id": ",".join(gruppo), "maxResults": str(len(gruppo))},
+                    headers={"x-goog-api-key": config.YOUTUBE_API_KEY},
+                    timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS),
+                ) as risposta:
+                    if risposta.status != 200:
+                        logger.warning("YouTube channels.list fallita con status %d.", risposta.status)
+                        return None
+                    payload = await risposta.json()
+            except (aiohttp.ClientError, TimeoutError) as exc:
+                logger.warning("Impossibile contattare la YouTube Data API per gli iscritti: %s", exc)
+                return None
+            trovati = {}
+            for voce in payload.get("items", []):
+                stat = voce.get("statistics", {}) if isinstance(voce, dict) else {}
+                nascosti = stat.get("hiddenSubscriberCount")
+                numero = stat.get("subscriberCount")
+                trovati[voce.get("id")] = None if nascosti or numero is None else int(numero)
+            risultato.update({c: trovati.get(c) for c in gruppo})
+        return risultato
 
     async def _video_recenti(self, youtube_channel_id: str) -> list[str] | None:
         """ID dei video piu' recenti dal feed RSS del canale; None se il feed non si legge."""

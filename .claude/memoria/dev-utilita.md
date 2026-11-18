@@ -8,6 +8,16 @@
 
 ## Fatto
 - r1alert #129/#127: gruppo /admin-alert (messaggio, formato, sposta, ferma-tutti, diretta, eventi-twitch, bluesky, podcast, youtube, subreddit, feed-noto, picarto, sottogruppo ruolo-live), core/alert_messaggio_logic, alert_limiti_logic, alert_frequenze_logic, picarto_watcher, twitch_eventi, live_role_logic (regole), voice_temp/_pannello. Decisioni D90-D94. Test: tests/test_alert_catalogo_r1*.py, test_voice_catalogo_r1.py.
+
+17/11/2026 · r1sta (feat/r1sta, DB iyokai_w130) · #130 statistiche. Migrazioni usate 0700-0702 (libere 0703-0709, poi 0710+). Giro r1ben (#123) chiuso prima.
+
+## In corso
+- r1sta chiuso (non unito, niente push). Smoke da fare dell'orchestratore. Restano solo le voci che dipendono dal pannello web (pagina pubblica e accesso da altri programmi: vedi D87). Prossimo: revisione di sicurezza del diff.
+
+## Fatto
+- r1sta B4 #130: schede invito/emoji, membri in file, esportazione ZIP, bottoni persistenti, D87, SPEC, VERIFICA_LIVE, COMMAND_LIST. Test: test_statistiche_schede.py e aggiunte ai file di B1-B3.
+- r1sta B3 #130: contatori (0701): 22 tipi (utenti, bot, boost livello, offline, con/senza ruolo, ultimo arrivato, testo fisso, orologio, conto alla rovescia, YouTube, Twitch spettatori, Minecraft, più numeri), traguardi, crea con ricerca, modifica, azzera con conferma, categoria. Test: test_statistiche_contatori.py. admin-moduli pesa 6596 (non aggiungere: avviso a 6800).
+- r1sta B1+B2 #130: raccolta (stato voce 0700, filtri canali/categorie/membri/ruoli, anonimato, accesso per ruolo, due condizioni, campioni online) e viste di serverstats (panoramica, messaggi, vocale, canale, membro, totale membri, ingressi/uscite, ritenzione, fonti, inviti, online, giochi, CSV, due menu). Test: test_statistiche_raccolta_filtri.py, test_statistiche_viste.py.
 - r1ben #123: benvenuto ({math:}, {se_nuovo:}/{se_ruolo:}, immagine opacità/testo/ordine/allineamento, embed salvato per benvenuto/DM/addio, reazione al primo messaggio, avviso topic), ruoli (ricordati ammessi/esclusi 0640, vocali 0647), menu (limiti 0641, azzera 0642, immagine extra 0643, embed 0644, primo msg 0645, topic 0646, esterno 0648, scadenza 0649, contatori 0650), gruppo /admin-menu-ruoli (D75). Codici provati: tests/test_catalogo_ruoli_gia_fatti.py + test_role_menu_limiti_ruoli.py.
 - r24util B25-B28: script dei tag, dati e errori (0562), inneschi (0563), comandi del server (0564, 0565); dettagli in git log e nel codice.
 - Giri r19-r23 (B1-B24): /utility, /web, messaggi auto, embed, programmati, compleanni, suggerimenti, starboard, giveaway, inviti, conteggio, citazioni, emoji, regex, tag, sondaggi, eventi (0540-0561). Giri r4-r11: autorole, tag, autoresponder, greetings, role menu, moduli (git log).
@@ -36,10 +46,14 @@
 - Servizi esterni: chiave nell'intestazione (aiohttp diretto, host fisso), mai nell'URL: safe_get logga gli URL. User-Agent di safe_http è «lettore di feed».
 - Log al server: core.channel_router (destinazione + invia_a, TIPO_SERVER/MODERAZIONE). Pubblicazione annunci: 10 all'ora per canale, un solo avviso.
 - clean_db + Repo(pool_provider=lambda: clean_db) per i test su DB; i test di cog che toccano un repo nuovo devono patcharlo (suggestions_limiti, embed_builder).
+
+- Migrazione già applicata in un DB di test: mai riscriverla, usare il numero dopo.
+- Script dei tag: core/tag_script_logic (async). {nome} sconosciuto resta testo (poi render_template). args/username sono dati: escape_mentions. Output tag 4000, ogni valore 2000. Mai eval/exec: c'è un test che lo vieta nel sorgente.
 - Gruppo /admin-automazioni: sottogruppi script/inneschi/slash in SOTTOGRUPPI. Nuovo repo con metodo mai chiamato = fallisce test_repository_callers: non aggiungere metodi non usati.
 - Comandi del server (B28): l'albero mirror del DB (_monta, solo i nostri nomi), sync = tree.sync(guild) con impronta delle definizioni, non dell'albero. Rows asyncpg jsonb tornano come stringa.
 
 ## Aperto
+- #130: test_data_registry fallisce su main per 4 tabelle non mie (guild_card_sfondi, leveling_reazioni, leveling_ruoli_classifica, voice_roles). Pannello web: serve la pagina pubblica delle statistiche e l'accesso per ruoli; le API restano dopo il pannello.
 - #123 restano: RUO-005 (dimensioni libere), 012 (immagini a caso), 045/046 (ruolo personale e colore: /utility è pieno, serve un sotto-gruppo), 047 (creazione guidata), 053 (immagine nel menu), 069 (menu collegati), 083 (più ruoli per opzione).
 - Menu: il messaggio esterno non ha contatori né bottoni; cambio tipo vale solo per menu del bot. Reazione negata da un limite: nessun avviso (le reazioni non hanno risposta).
 - Sondaggi nativi programmati: non compaiono in `/sondaggi gestisci` (solo bottoni) e non si annullano; il conteggio a N voti conta i voti (non i votanti) e perde quelli arrivati col bot spento.

@@ -5,10 +5,13 @@ cogs/utility/schede.py
 ruolo; elenco dei ruoli; membri con un ruolo; classifiche di anzianità;
 permessi di un membro o del bot in un canale. I testi sono in
 core/schede_logic.py; gli elenchi lunghi vanno a pagine.
-Funzioni coperte: SPEC §14 (catalogo #128: UTL-195, 197-200, 202; #123: RUO-110-112)
+Funzioni coperte: SPEC §14 (catalogo #128: UTL-195, 197-200, 202; #123: RUO-110-112); STA-058, 059, 060
 """
 
 from __future__ import annotations
+
+import asyncio
+import re
 
 import discord
 from discord import app_commands
@@ -16,9 +19,16 @@ from discord.ext import commands
 
 from cogs.utility._owner_pagine import invia_a_pagine
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.i18n import testo_per
+from core.invio_file import invia_file
+from core.server_stats_logic import tabella_in_csv
 from core.schede_logic import (
     ANZIANITA,
     campi_canale,
+    campi_emoji,
+    campi_invito,
+    leggi_emoji,
+    righe_membri_csv,
     campi_ruolo,
     campi_server,
     campi_utente,
@@ -82,13 +92,68 @@ class SchedeCog(CogConGruppi, commands.Cog):
         righe = righe_ruoli(interaction.guild.roles) or ["Nessun ruolo."]
         await invia_a_pagine(interaction, f"Ruoli ({len(righe)})", righe, dopo_defer=True)
 
-    @comando_di_gruppo("utility", nome="membri", descrizione="I membri che hanno un ruolo.", sottogruppo=SOTTOGRUPPO)
-    @app_commands.describe(ruolo="Quale ruolo")
-    async def membri(self, interaction: discord.Interaction, ruolo: discord.Role) -> None:
+    @comando_di_gruppo("utility", nome="membri", descrizione="I membri che hanno un ruolo, o tutti in un file.", sottogruppo=SOTTOGRUPPO)
+    @app_commands.describe(ruolo="Quale ruolo (vuoto: tutti, solo con il file)", file="Mandalo come file CSV (serve «Gestisci server»)")
+    async def membri(self, interaction: discord.Interaction, ruolo: discord.Role | None = None, file: bool = False) -> None:
+        # STA-058: l'elenco in un file, solo per chi gestisce il server (ci sono ID e date di ingresso di tutti)
+        if file and not interaction.user.guild_permissions.manage_guild:
+            await interaction.response.send_message(await testo_per(interaction, "schede_file_serve_gestire_server"), ephemeral=True)
+            return
+        if ruolo is None and not file:
+            await interaction.response.send_message(await testo_per(interaction, "schede_scegli_ruolo_o_file"), ephemeral=True)
+            return
         await interaction.response.defer(ephemeral=True)
         await self._membri_pronti(interaction.guild)
-        righe = [f"{m.mention} — `{m.id}`" for m in sorted(ruolo.members, key=lambda m: m.display_name.lower())]
+        elenco = ruolo.members if ruolo is not None else interaction.guild.members
+        if file:
+            ordinati = sorted(elenco, key=lambda m: m.id)
+            dati = await asyncio.to_thread(
+                lambda: tabella_in_csv(["id", "nome", "bot", "entrato_il", "account_creato_il"], righe_membri_csv(ordinati), massimo=100_000)
+            )
+            await invia_file(interaction.followup.send, dati, "membri.csv", ephemeral=True, dividi=True)
+            return
+        righe = [f"{m.mention} — `{m.id}`" for m in sorted(elenco, key=lambda m: m.display_name.lower())]
         await invia_a_pagine(interaction, f"@{ruolo.name}: {len(righe)} membri", righe or ["Nessuno."], dopo_defer=True)
+
+    @comando_di_gruppo("utility", nome="invito", descrizione="Scheda di un invito: server, canale, membri, scadenza.", sottogruppo=SOTTOGRUPPO)
+    @app_commands.describe(codice="Il codice o il link dell'invito")
+    @app_commands.checks.cooldown(1, 10.0, key=lambda i: i.user.id)
+    async def invito(self, interaction: discord.Interaction, codice: app_commands.Range[str, 2, 100]) -> None:
+        # STA-059: solo ciò che Discord dà a chiunque abbia il codice; il codice si ripulisce prima di chiederlo
+        try:
+            pulito = discord.utils.resolve_invite(codice.strip()).code
+        except ValueError:
+            pulito = ""
+        if not re.fullmatch(r"[A-Za-z0-9-]{2,32}", pulito):
+            await interaction.response.send_message(await testo_per(interaction, "schede_invito_non_valido"), ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        try:
+            invito = await self.bot.fetch_invite(pulito, with_counts=True, with_expiration=True)
+        except discord.NotFound:
+            await interaction.followup.send(await testo_per(interaction, "schede_invito_non_trovato"), ephemeral=True)
+            return
+        except discord.HTTPException:
+            await interaction.followup.send(await testo_per(interaction, "schede_invito_errore"), ephemeral=True)
+            return
+        await interaction.followup.send(
+            embed=embed_da_campi(await testo_per(interaction, "schede_titolo_invito"), campi_invito(invito)),
+            ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
+        )
+
+    @comando_di_gruppo("utility", nome="emoji", descrizione="Scheda di un'emoji: ID, data, animata, immagine.", sottogruppo=SOTTOGRUPPO)
+    @app_commands.describe(emoji="L'emoji (anche personalizzata) o il suo ID")
+    async def emoji(self, interaction: discord.Interaction, emoji: app_commands.Range[str, 1, 100]) -> None:
+        # STA-059
+        tipo, _nome, emoji_id, _animata = leggi_emoji(emoji)
+        if tipo == "niente":
+            await interaction.response.send_message(await testo_per(interaction, "schede_emoji_non_valida"), ephemeral=True)
+            return
+        trovata = self.bot.get_emoji(emoji_id) if emoji_id else None
+        await interaction.response.send_message(
+            embed=embed_da_campi(await testo_per(interaction, "schede_titolo_emoji"), campi_emoji(emoji, trovata, interaction.guild.id if interaction.guild else None)),
+            ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
+        )
 
     @comando_di_gruppo("utility", nome="anzianita", descrizione="Account più vecchi o nuovi, primi o ultimi entrati.", sottogruppo=SOTTOGRUPPO)
     @app_commands.describe(tipo="Quale classifica")

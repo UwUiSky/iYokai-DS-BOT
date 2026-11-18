@@ -1746,3 +1746,16 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `VOC-002/003` — in un tuo vocale: `/voice permit` e `/voice deny` con un ruolo. Un ruolo dello staff o più alto del tuo è rifiutato; chi è dentro viene scollegato.
 - [ ] `VOC-009` — creando un vocale arriva il pannello con otto bottoni (Rinomina, Limite, Blocca, Sblocca, Nascondi, Mostra, Espelli, Cedi); funzionano dopo un riavvio; un altro utente non può usarli.
 - [ ] `VOC-019` — `/admin-vocali crea`: nascono categoria e canale generatore e il bot è configurato; senza «Gestisci canali» lo dice.
+
+- [ ] `STA-001..024` — `/utility serverstats vista:Panoramica`, poi messaggi, vocale, canale (con `canale:`), membro (vuoto = tu), membri nel tempo, ingressi e uscite: i grafici compaiono, i bottoni 7/30/90 e Aggiorna funzionano, anche dopo un riavvio del bot (STA-010). Un canale che non puoi vedere non compare.
+- [ ] `STA-056` — `/utility serverstats vista:Messaggi formato:File CSV`: si apre in un foglio di calcolo senza formule strane.
+- [ ] `STA-011/013` — tasto destro su un membro: «Statistiche del membro»; su un messaggio: «Statistiche del canale». Con `ruolo_vista:@Staff` in `/admin-moduli statistiche impostazioni` un membro senza quel ruolo riceve il rifiuto (anche dai menu e dai bottoni).
+- [ ] `STA-025..027` — `impostazioni canale:<categoria>`: i messaggi nei canali della categoria non contano; `modo_canali:Conta solo questi` conta solo l'elenco; `membro:@x` lo esclude.
+- [ ] `STA-028` — `/utility privacy statistiche anonimo:sì`: nelle classifiche compari come «utente anonimo», anche per i giorni passati.
+- [ ] `STA-006` — due minuti in vocale col microfono spento, poi `vista:Minuti in vocale`: compare «Muto». Nel canale AFK compare «AFK».
+- [ ] `STA-008` — `impostazioni online:sì`; dopo qualche ora `vista:Membri online nel tempo` ha un grafico.
+- [ ] `STA-030..032` — `/admin-moduli statistiche ruolo-aggiungi metrica:Messaggi soglia:5 metrica2:Minuti in vocale soglia2:10 unione:Tutte e due`: entro 30 minuti il ruolo va solo a chi le soddisfa.
+- [ ] `STA-033..052` — `/admin-moduli contatori categoria modello:Base`: la categoria con 4 canali chiusi compare e i nomi si aggiornano entro 10 minuti; `crea tipo:orologio etichetta:Ore {ora}`; `crea tipo:goal traguardi:100,200`; `crea tipo:youtube parametro:<ID canale>` (serve YOUTUBE_API_KEY); `modifica`, `azzera` (con conferma).
+- [ ] `STA-053..055` — `vista:Chi resta dopo l'ingresso`, `Da dove arrivano i nuovi membri`, `Inviti e invitanti migliori`.
+- [ ] `STA-057/058` — `/admin-moduli statistiche esporta` manda un ZIP; `/utility scheda membri file:sì` manda il CSV (rifiutato senza «Gestisci server»).
+- [ ] `STA-059` — `/utility scheda invito codice:<link>` e `/utility scheda emoji emoji:<:nome:id>`.

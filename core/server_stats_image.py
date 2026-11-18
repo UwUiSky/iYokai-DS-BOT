@@ -98,9 +98,9 @@ def render_growth_chart(daily_counts: dict[date, int], title: str = "Crescita me
 
 
 def render_bar_chart(etichette: list[str], valori: list[int], title: str = "") -> bytes:
-    """Barre verticali (ore del giorno, giorni della settimana). PNG."""
+    """Barre verticali (ore del giorno, giorni della settimana, messaggi per giorno). PNG, al massimo 2400 px di larghezza."""
     n = max(1, len(valori))
-    larghezza = max(400, MARGIN * 2 + 30 * n)
+    larghezza = min(2400, max(400, MARGIN * 2 + 30 * n))
     img = Image.new("RGB", (larghezza, CHART_HEIGHT), COLOR_BACKGROUND)
     draw = ImageDraw.Draw(img)
     font = ImageFont.load_default()
@@ -108,13 +108,60 @@ def render_bar_chart(etichette: list[str], valori: list[int], title: str = "") -
     massimo = max(valori, default=0) or 1
     base = CHART_HEIGHT - MARGIN
     altezza_utile = CHART_HEIGHT - 2 * MARGIN - 10
+    passo = min(30.0, (larghezza - 2 * MARGIN) / n)
     for i, (etichetta, valore) in enumerate(zip(etichette, valori)):
-        x = MARGIN + 30 * i
+        x = MARGIN + passo * i
         top = base - altezza_utile * valore / massimo
-        draw.rectangle([x + 3, top, x + 24, base], fill=COLOR_POSITIVE if valore else COLOR_ZERO)
-        draw.text((x + 3, base + 6), str(etichetta)[:4], fill=COLOR_TEXT, font=font)
-        if valore:
-            draw.text((x + 3, top - 12), str(valore), fill=COLOR_TEXT, font=font)
+        draw.rectangle([x + 3, top, x + max(4.0, passo - 6), base], fill=COLOR_POSITIVE if valore else COLOR_ZERO)
+        if passo >= 24:  # con tante barre le etichette si sovrapporrebbero
+            draw.text((x + 3, base + 6), str(etichetta)[:4], fill=COLOR_TEXT, font=font)
+            if valore:
+                draw.text((x + 3, top - 12), str(valore), fill=COLOR_TEXT, font=font)
+    if passo < 24 and etichette:  # con tante barre solo il primo e l'ultimo giorno
+        draw.text((MARGIN, base + 6), str(etichette[0])[:10], fill=COLOR_TEXT, font=font)
+        ultima = str(etichette[-1])[:10]
+        draw.text((larghezza - MARGIN - len(ultima) * 6, base + 6), ultima, fill=COLOR_TEXT, font=font)
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+MAX_LARGHEZZA_LINEE = 1400
+COLORI_SERIE = ((67, 181, 129), (240, 71, 71), (88, 101, 242), (250, 166, 26))
+
+
+def render_line_chart(etichette: list[str], serie: list[tuple[str, list[int]]], title: str = "") -> bytes:
+    """Una o più linee (al massimo 4) su un asse comune; larghezza e punti con un tetto. PNG.
+
+    Usata per il totale dei membri, ingressi e uscite insieme, membri online (STA-018, 019, 008).
+    """
+    serie = serie[:4]
+    n = max([len(v) for _, v in serie] + [1])
+    larghezza = min(MAX_LARGHEZZA_LINEE, max(400, MARGIN * 2 + 14 * n))
+    img = Image.new("RGB", (larghezza, CHART_HEIGHT), COLOR_BACKGROUND)
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.load_default()
+    draw.text((MARGIN, 10), title[:120], fill=COLOR_TEXT, font=font)
+    massimo = max([max(v, default=0) for _, v in serie] + [1])
+    minimo = min([min(v, default=0) for _, v in serie] + [0])
+    intervallo = (massimo - minimo) or 1
+    base = CHART_HEIGHT - MARGIN
+    alto = CHART_HEIGHT - 2 * MARGIN - 10
+    passo = (larghezza - 2 * MARGIN) / max(1, n - 1)
+    draw.line([(MARGIN, base), (larghezza - MARGIN, base)], fill=COLOR_ZERO, width=1)
+    for indice, (nome, valori) in enumerate(serie):
+        colore = COLORI_SERIE[indice % len(COLORI_SERIE)]
+        punti = [(MARGIN + passo * i, base - alto * (v - minimo) / intervallo) for i, v in enumerate(valori)]
+        if len(punti) > 1:
+            draw.line(punti, fill=colore, width=2)
+        elif punti:
+            draw.ellipse([punti[0][0] - 3, punti[0][1] - 3, punti[0][0] + 3, punti[0][1] + 3], fill=colore)
+        draw.text((MARGIN + 140 * indice, 24), f"{nome[:18]}: {valori[-1] if valori else 0}", fill=colore, font=font)
+    if etichette:
+        draw.text((MARGIN, CHART_HEIGHT - 20), str(etichette[0])[:12], fill=COLOR_TEXT, font=font)
+        if len(etichette) > 1:
+            ultima = str(etichette[-1])[:12]
+            draw.text((larghezza - MARGIN - len(ultima) * 6, CHART_HEIGHT - 20), ultima, fill=COLOR_TEXT, font=font)
     buffer = io.BytesIO()
     img.save(buffer, format="PNG")
     return buffer.getvalue()

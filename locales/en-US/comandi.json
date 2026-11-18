@@ -807,7 +807,7 @@
   "admin-moduli statistiche": "Activity statistics and roles by activity",
   "admin-moduli statistiche diagnosi": "Why are the statistics not counting?",
   "admin-moduli statistiche elenco": "Show the statistics rules and exclusions.",
-  "admin-moduli statistiche impostazioni": "Exclude channels or roles from the statistics.",
+  "admin-moduli statistiche impostazioni": "Statistics filters: channels, members, roles, who can view them.",
   "admin-moduli statistiche ruolo-aggiungi": "Give a role to active members and remove it when they stop.",
   "admin-moduli statistiche ruolo-elimina": "Delete an activity role rule.",
   "music": "Music in voice channels",
@@ -1025,7 +1025,7 @@
   "utility scheda canale": "Channel card.",
   "utility scheda ruolo": "Role card: members, color, date, permissions.",
   "utility scheda ruoli": "All roles with ID, members and color.",
-  "utility scheda membri": "Members who have a role.",
+  "utility scheda membri": "Members with a role, or everyone in a file.",
   "utility scheda anzianita": "Oldest or newest accounts, first or last to join.",
   "utility scheda permessi": "Permissions of a member or the bot in a channel.",
   "admin-ruoli auto sincronizza": "Give the automatic roles to members already in the server too.",
@@ -1418,7 +1418,14 @@
   "admin-alert ruolo-live esclusi": "Members or roles that never get the role of a rule.",
   "admin-alert ruolo-live eccezioni": "Members who get the role even without the words or the game.",
   "admin-alert ruolo-live annuncio": "Announce in a channel who goes live.",
-  "admin-vocali crea": "Creates the category and the generator channel and sets everything up."
+  "admin-vocali crea": "Creates the category and the generator channel and sets everything up.",
+  "utility privacy statistiche": "Show your name in the statistics leaderboards, or stay anonymous.",
+  "admin-moduli contatori modifica": "Changes a counter's label or goal.",
+  "admin-moduli contatori azzera": "Stops updating all counters (the channels stay).",
+  "admin-moduli contatori categoria": "Creates a category with the most used counters.",
+  "utility scheda invito": "Invite card: server, channel, members, expiry.",
+  "utility scheda emoji": "Emoji card: ID, date, animated, image.",
+  "admin-moduli statistiche esporta": "Exports statistics, counters and rules to a ZIP file."
  },
  "parametri": {},
  "menu": {
@@ -1441,6 +1448,8 @@
   "Scheda moderazione": "Moderation card",
   "Segnala messaggio": "Report message",
   "Riestrai giveaway": "Redraw giveaway",
-  "Salva citazione": "Save quote"
+  "Salva citazione": "Save quote",
+  "Statistiche del membro": "Member statistics",
+  "Statistiche del canale": "Channel statistics"
  }
 }

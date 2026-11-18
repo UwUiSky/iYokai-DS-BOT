@@ -122,6 +122,7 @@ class _Scena:
 
 
 @pytest.mark.asyncio
+# STA-033: canale che mostra il numero dei membri, rinominato solo se il numero cambia
 async def test_cambia_nome_se_il_numero_e_cambiato(monkeypatch):
     s = _Scena(monkeypatch, valore=100, ultimo=99)
     await s.worker.tick(s.bot)
@@ -265,10 +266,10 @@ async def test_crea_etichetta_senza_numero_rifiutata(scena_cog):
 async def test_albero_dei_comandi():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await modulo.setup(bot)
-    for nome in ("crea", "elimina", "elenco"):
+    for nome in ("crea", "elimina", "elenco", "modifica", "azzera", "categoria"):
         assert comando_nel_gruppo("admin-moduli", f"contatori {nome}") is not None
     crea = {o["name"]: o for o in comando_nel_gruppo("admin-moduli", "contatori crea").to_dict(bot.tree)["options"]}
-    assert len(crea["tipo"]["choices"]) == len(TIPI)
+    assert crea["tipo"].get("autocomplete") is True and "choices" not in crea["tipo"]  # 22 tipi: cercati, non elencati
     assert crea["etichetta"]["max_length"] <= 85
 
 

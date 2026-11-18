@@ -216,6 +216,28 @@ class TwitchWatcherService:
             return []
         return parse_schedule_response(await self._helix("schedule", [("broadcaster_id", id_utente), ("first", "10")]))
 
+
+    async def spettatori(self, logins: list[str]) -> dict[str, int] | None:
+        """STA-045: gli spettatori ora in diretta per login (0 se non è in onda). None se Twitch non risponde.
+
+        Con il token dell'app Twitch non dà il numero dei follower (serve il permesso del canale): si mostra
+        il pubblico della diretta. Una richiesta ogni 100 canali.
+        """
+        risultato: dict[str, int] = {}
+        unici = sorted({l.lower() for l in logins})
+        for i in range(0, len(unici), MAX_LOGIN_PER_RICHIESTA):
+            gruppo = unici[i : i + MAX_LOGIN_PER_RICHIESTA]
+            payload = await self._fetch_streams(gruppo)
+            if payload is None:
+                return None
+            visti = {
+                str(v.get("user_login", "")).lower(): int(v.get("viewer_count") or 0)
+                for v in payload.get("data", [])
+                if isinstance(v, dict)
+            }
+            risultato.update({login: visti.get(login, 0) for login in gruppo})
+        return risultato
+
     async def tick(self, bot: commands.Bot) -> None:
         sottoscrizioni = await twitch_subscription_repo.get_all_subscriptions()
         # LC-7: server con il modulo spento = nessuna richiesta, nessun messaggio.
