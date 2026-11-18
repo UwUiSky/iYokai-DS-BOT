@@ -3041,5 +3041,15 @@
   "voicepanel_numero_non_valido": "Write a number from 0 to 99.",
   "voicepanel_utente_non_nel_server": "That user is not in the server.",
   "voicepanel_scegli": "Choose the user:",
-  "voicetemp_crea_manca_permesso": "The bot needs the \"Manage Channels\" permission to create the category and the channel."
+  "voicetemp_crea_manca_permesso": "The bot needs the \"Manage Channels\" permission to create the category and the channel.",
+  "logpers_evento_sconosciuto": "This event does not exist.",
+  "logpers_rotta_tolta": "Done: \"{evento}\" goes back to the channel of its group.",
+  "logpers_rotta_non_c_era": "There was no choice to remove for \"{evento}\".",
+  "logpers_rotta_canale_no": "This channel will not do: pick a text channel of this server.",
+  "logpers_rotta_permessi": "I am missing permissions in {mention}: {permessi}.",
+  "logpers_rotta_serve_canale_log": "First pick a log channel with /admin-log channel: the per-event choice works together with it.",
+  "logpers_rotta_impostata": "Done: \"{evento}\" now goes to {mention}. If that channel cannot be reached, the event goes back to the channel of its group.",
+  "logpers_formato_tolto": "Done: \"{evento}\" goes back to the previous text.",
+  "logpers_formato_non_c_era": "There was no text to remove for \"{evento}\".",
+  "logpers_formato_impostato": "Done: \"{evento}\" now uses your text. Placeholders: {segnaposto} A placeholder that does not exist stays as written."
 }

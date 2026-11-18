@@ -296,6 +296,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
        esporta=True, gestita_da="core/event_log_retention.py (30 giorni, 180 con il premium)"),
     _t("log_ignora", "Canali, utenti e prefissi ignorati dai log", colonna_server="guild_id"),
     _t("log_eventi_spenti", "Eventi di log spenti dal server", colonna_server="guild_id"),
+    _t("log_rotte", "Canale scelto per un singolo evento di log (LOG-016)", colonna_server="guild_id"),
+    _t("log_formati", "Testo scritto dal server per un evento di log (LOG-026)", colonna_server="guild_id"),
     _t("output_channels", "Canali di destinazione dei log e degli avvisi", colonna_server="guild_id"),
     _t("progress_missioni", "Avanzamento delle missioni del giorno", colonne_utente=("user_id",),
        colonna_server="guild_id", utente="cancella", esporta=True, scadenza=Scadenza("giorno", 30)),

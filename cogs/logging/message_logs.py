@@ -30,6 +30,7 @@ from discord.ext import commands, tasks
 from cogs.logging.advanced_logs import logging_avanzato_attivo
 from core import allegati_sicuri
 from core import channel_router as router
+from core import log_personalizza
 from core import log_webhook
 from core.config import config
 from core.channel_router import SETTING_LOG_CHANNEL, TIPO_MESSAGGI
@@ -173,10 +174,11 @@ class MessageLogsCog(commands.Cog):
         dest = await router.destinazione(guild, TIPO_MESSAGGI, predefinito)
         if dest is None:
             return
+        dest, tipo_invio = await log_personalizza.personalizza(guild, TIPO_MESSAGGI, evento, dest, contenuto.get("embed"))  # LOG-016, LOG-026
         # D74: modificato e cancellato escono col nome dell'utente (se acceso); con file o bottoni, come sempre.
         if autore is not None and set(contenuto) == {"embed"} and await log_webhook.invia_a_nome_utente(dest, contenuto["embed"], autore):
             return
-        await router.invia_a(dest, guild, TIPO_MESSAGGI, **contenuto)
+        await router.invia_a(dest, guild, tipo_invio, **contenuto)
 
     @commands.Cog.listener()
     async def on_raw_message_delete(self, payload: discord.RawMessageDeleteEvent) -> None:

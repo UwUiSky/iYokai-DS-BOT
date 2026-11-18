@@ -15,6 +15,7 @@ import core.channel_router as router
 from cogs.logging.basic_logs import BasicLogsCog
 from core.message_log_logic import Ignorati, IGNORATI_MAX_PER_SERVER, scegli_bersaglio
 from core.repositories.log_ignora_repo import LogIgnoraRepository
+from core.repositories.log_personalizza_repo import LogPersonalizzaRepository
 from core.repositories.output_channel_repo import OutputChannelRepository
 from tests.support.discord_fakes import (
     fake_forum_channel,
@@ -46,6 +47,7 @@ def ambiente(clean_db, monkeypatch):
     import cogs.logging.basic_logs as basic
 
     monkeypatch.setattr(basic, "db", finto)
+    monkeypatch.setattr(basic, "log_personalizza_repo", LogPersonalizzaRepository(pool_provider=lambda: clean_db))
     return repo, finto
 
 

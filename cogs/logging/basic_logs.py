@@ -38,6 +38,7 @@ from discord.ext import commands
 
 from cogs.moderation._shared import MODULE_ACTIONS, SETTING_MOD_LOG_CHANNEL, ensure_module_enabled
 from core import channel_router as router
+from core import log_personalizza
 from core.channel_router import (
     DESCRIZIONE_TIPO,
     SETTING_LOG_CHANNEL,
@@ -48,7 +49,9 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.i18n import testo_per
 from core.log_ignora_filtro import evento_da_ignorare
+from core.log_eventi_logic import INTERRUTTORI
 from core.repositories.log_eventi_repo import log_eventi_repo
+from core.repositories.log_personalizza_repo import log_personalizza_repo
 from core.repositories.event_log_repo import event_log_repo
 
 logger = logging.getLogger("iyokai.logging.basic")
@@ -149,6 +152,7 @@ async def _send_log(channel, embed: discord.Embed, evento: str, tipo: str = TIPO
     """
     if not await log_eventi_repo.evento_acceso(channel.guild.id, evento):
         return
+    channel, tipo = await log_personalizza.personalizza(channel.guild, tipo, evento, channel, embed)  # LOG-016, LOG-026
     await router.invia_a(channel, channel.guild, tipo, embed=embed)
 
 
@@ -277,7 +281,14 @@ class BasicLogsCog(CogConGruppi, commands.Cog):
             if riga is not None and riga.avvisato:
                 extra = " (non riesco a scrivere: controlla i permessi)"
             righe.append(f"**{DESCRIZIONE_TIPO[tipo]}**: {testo}{extra}")
-        await interaction.response.send_message("\n".join(righe), ephemeral=True)
+        scelte_evento = await log_personalizza_repo.carica(guild.id)  # LOG-016, LOG-026
+        for chiave, canale_id in sorted(scelte_evento.rotte.items()):
+            nome_evento = INTERRUTTORI[chiave][0]
+            canale = guild.get_channel(canale_id)
+            righe.append(f"**{nome_evento}**: {canale.mention if canale is not None else f'canale eliminato (ID {canale_id})'}")
+        if scelte_evento.formati:
+            righe.append("Testo scritto da te: " + ", ".join(INTERRUTTORI[c][0] for c in sorted(scelte_evento.formati)))
+        await interaction.response.send_message("\n".join(righe)[:2000], ephemeral=True)
 
     # ================================================================
     # Membri

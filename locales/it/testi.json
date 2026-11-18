@@ -3041,5 +3041,15 @@
   "voicepanel_numero_non_valido": "Scrivi un numero da 0 a 99.",
   "voicepanel_utente_non_nel_server": "Quell'utente non è nel server.",
   "voicepanel_scegli": "Scegli l'utente:",
-  "voicetemp_crea_manca_permesso": "Al bot serve il permesso «Gestisci canali» per creare la categoria e il canale."
+  "voicetemp_crea_manca_permesso": "Al bot serve il permesso «Gestisci canali» per creare la categoria e il canale.",
+  "logpers_evento_sconosciuto": "Questo evento non esiste.",
+  "logpers_rotta_tolta": "Fatto: «{evento}» torna nel canale del suo gruppo.",
+  "logpers_rotta_non_c_era": "Per «{evento}» non c'era una scelta da togliere.",
+  "logpers_rotta_canale_no": "Questo canale non va bene: scegli un canale di testo di questo server.",
+  "logpers_rotta_permessi": "In {mention} mi mancano dei permessi: {permessi}.",
+  "logpers_rotta_serve_canale_log": "Prima scegli un canale dei log con /admin-log canale: la scelta per evento lavora insieme a quello.",
+  "logpers_rotta_impostata": "Fatto: «{evento}» ora va in {mention}. Se quel canale non è raggiungibile, l'evento torna nel canale del suo gruppo.",
+  "logpers_formato_tolto": "Fatto: «{evento}» torna al testo di prima.",
+  "logpers_formato_non_c_era": "Per «{evento}» non c'era un testo da togliere.",
+  "logpers_formato_impostato": "Fatto: «{evento}» ora esce con il tuo testo. Segnaposto: {segnaposto} Un segnaposto che non esiste resta scritto com'è."
 }

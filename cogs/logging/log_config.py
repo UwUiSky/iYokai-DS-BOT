@@ -4,12 +4,13 @@ cogs/logging/log_config.py
 Comandi di /admin-log per scegliere o creare i canali dei log: /admin-log crea-canali
 (una categoria privata con un canale per tipo), /admin-log crea-forum (un forum,
 un post per tipo), /admin-log ignora (cosa il log dei messaggi non registra) e
-/admin-log eventi (accendere o spegnere ogni evento), /admin-log vista-forum (un forum con un
+/admin-log eventi (accendere o spegnere ogni evento), /admin-log rotta (un canale per un solo evento),
+/admin-log formato (il testo di un evento scritto dal server), /admin-log vista-forum (un forum con un
 post per canale o per caso). I canali creati sono
 visibili anche a iYokai Mod, se è nel server.
 /admin-log canale e /admin-log stato stanno in basic_logs.py.
 Funzioni coperte: SPEC §18 (NF-01: LOG-015 crea-canali, LOG-018, LOG-019, LOG-020 ignora), §8.16 (NF-02), §8.17,
-§8.19 (LOG-017), parte E (D15)
+§8.19 (LOG-017), §8.20 (LOG-016 rotta, LOG-026 formato), parte E (D15)
 Dipende da: core/channel_router.py, core/repositories/log_ignora_repo.py,
 core/repositories/log_eventi_repo.py
 """
@@ -40,7 +41,9 @@ from core.message_log_logic import (
 from core import log_forum_service
 from core.log_forum_logic import DIM_CANALI, DIM_CASI, MAX_POST_PER_DIMENSIONE
 from core.log_eventi_logic import INTERRUTTORI, spenti_da_scelta
+from core.log_personalizza_logic import FORMATI_DATA, FORMATO_DATA_BASE, FORMATO_MAX, testo_segnaposto
 from core.repositories.log_eventi_repo import log_eventi_repo
+from core.repositories.log_personalizza_repo import log_personalizza_repo
 from core.repositories.log_ignora_repo import log_ignora_repo
 from core.ui_base import BaseView
 
@@ -118,6 +121,11 @@ def testo_eventi(spenti: frozenset[str]) -> str:
     nomi = ", ".join(INTERRUTTORI[c][0] for c in INTERRUTTORI if c in spenti)
     return f"Eventi spenti ({len(spenti)}): {nomi}."[:2000]
 
+
+# Un'opzione di comando ammette al massimo 25 scelte: INTERRUTTORI ne ha al massimo 25 (log_eventi_logic).
+SCELTE_EVENTO = [app_commands.Choice(name=etichetta[:100], value=chiave) for chiave, (etichetta, _) in INTERRUTTORI.items()]
+SCELTE_DATA = [app_commands.Choice(name=etichetta, value=chiave) for chiave, etichetta in FORMATI_DATA.items()]
+PERMESSI_ROTTA = ("view_channel", "send_messages", "embed_links")
 
 PERMESSI_CANALI = ("manage_channels", "view_channel", "send_messages", "embed_links",
                    "attach_files", "read_message_history")
@@ -343,6 +351,92 @@ class LogConfigCog(CogConGruppi, commands.Cog):
             )
         await interaction.response.send_message(testo, ephemeral=True)
 
+    @comando_di_gruppo(
+        "admin-log", nome="rotta",
+        descrizione="Manda un solo tipo di evento in un canale tutto suo. Senza canale, torna al canale del gruppo.",
+    )
+    @app_commands.describe(
+        evento="L'evento di log da spostare",
+        canale="Il canale di testo dove scriverlo (vuoto: toglie la scelta)",
+    )
+    @app_commands.choices(evento=SCELTE_EVENTO)
+    async def rotta(
+        self, interaction: discord.Interaction, evento: str, canale: discord.TextChannel | None = None
+    ) -> None:
+        """LOG-016: un canale per un singolo evento, al posto di quello del suo gruppo."""
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(await testo_per(interaction, "ruolistrumen_questo_comando_funziona_solo_in"), ephemeral=True)
+            return
+        if evento not in INTERRUTTORI:
+            await interaction.response.send_message(await testo_per(interaction, "logpers_evento_sconosciuto"), ephemeral=True)
+            return
+        etichetta = INTERRUTTORI[evento][0]
+        if canale is None:
+            tolta = await log_personalizza_repo.togli_rotta(guild.id, evento)
+            await interaction.response.send_message(
+                await testo_per(interaction, "logpers_rotta_tolta" if tolta else "logpers_rotta_non_c_era", evento=etichetta),
+                ephemeral=True,
+            )
+            return
+        if canale.guild.id != guild.id or router.canale_nascosto(canale):
+            await interaction.response.send_message(await testo_per(interaction, "logpers_rotta_canale_no"), ephemeral=True)
+            return
+        mancano = permessi_mancanti(canale.permissions_for(guild.me), PERMESSI_ROTTA)
+        if mancano:
+            await interaction.response.send_message(
+                await testo_per(interaction, "logpers_rotta_permessi", mention=canale.mention, permessi=", ".join(mancano)),
+                ephemeral=True,
+            )
+            return
+        # La rotta cambia dove va un evento già acceso: senza un canale dei log il modulo non scrive nulla.
+        generale = await db.get_guild_setting(guild.id, SETTING_LOG_CHANNEL)
+        if generale is None and not any(r.esplicito for r in await router.output_channel_repo.elenco(guild.id)):
+            await interaction.response.send_message(await testo_per(interaction, "logpers_rotta_serve_canale_log"), ephemeral=True)
+            return
+        await log_personalizza_repo.imposta_rotta(guild.id, evento, canale.id)
+        await interaction.response.send_message(
+            await testo_per(interaction, "logpers_rotta_impostata", evento=etichetta, mention=canale.mention), ephemeral=True
+        )
+
+    @comando_di_gruppo(
+        "admin-log", nome="formato",
+        descrizione="Scrivi tu il testo di un evento di log, con i segnaposto. Senza testo, torna al testo di prima.",
+    )
+    @app_commands.describe(
+        evento="L'evento di log da riscrivere",
+        testo=f"Il testo (fino a {FORMATO_MAX} caratteri) con segnaposto come {{utente}} o {{canale}}",
+        data="Come mostrare {data} (default: data e ora breve)",
+    )
+    @app_commands.choices(evento=SCELTE_EVENTO, data=SCELTE_DATA)
+    async def formato(
+        self,
+        interaction: discord.Interaction,
+        evento: str,
+        testo: app_commands.Range[str, 1, FORMATO_MAX] | None = None,
+        data: str = FORMATO_DATA_BASE,
+    ) -> None:
+        """LOG-026: il testo di un evento di log scritto dal server, con segnaposto di un elenco chiuso."""
+        guild = interaction.guild
+        if guild is None:
+            await interaction.response.send_message(await testo_per(interaction, "ruolistrumen_questo_comando_funziona_solo_in"), ephemeral=True)
+            return
+        if evento not in INTERRUTTORI or data not in FORMATI_DATA:
+            await interaction.response.send_message(await testo_per(interaction, "logpers_evento_sconosciuto"), ephemeral=True)
+            return
+        etichetta = INTERRUTTORI[evento][0]
+        if testo is None:
+            tolto = await log_personalizza_repo.togli_formato(guild.id, evento)
+            await interaction.response.send_message(
+                await testo_per(interaction, "logpers_formato_tolto" if tolto else "logpers_formato_non_c_era", evento=etichetta),
+                ephemeral=True,
+            )
+            return
+        await log_personalizza_repo.imposta_formato(guild.id, evento, testo, data)
+        await interaction.response.send_message(
+            await testo_per(interaction, "logpers_formato_impostato", evento=etichetta, segnaposto=testo_segnaposto()),
+            ephemeral=True,
+        )
 
     @comando_di_gruppo(
         "admin-log", nome="eventi",

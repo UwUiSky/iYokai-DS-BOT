@@ -464,3 +464,35 @@ async def test_log004_senza_embed_non_c_e_il_campo(ambiente):
     m.embeds = []
     await cog.on_raw_message_delete(_payload_delete(m))
     assert "Embed" not in {f.name for f in canale_log.send.call_args.kwargs["embed"].fields}
+
+
+# ------------------------------------------------------------------- LOG-016 e LOG-026 nel log dei messaggi
+async def test_log016_log026_il_cancellato_esce_dal_canale_scelto_con_il_testo_del_server(ambiente, monkeypatch):
+    from core import log_personalizza
+    from core.repositories.log_personalizza_repo import Personalizzazioni
+
+    cog, canale_log, *_ = ambiente
+    scelto = fake_text_channel(77)
+    scelto.send = AsyncMock()
+    scelte = Personalizzazioni(
+        rotte={"messaggi_cancellati": 77}, formati={"messaggi_cancellati": ("{autore} ha perso: {descrizione}", "f")}
+    )
+    monkeypatch.setattr(log_personalizza, "log_personalizza_repo", SimpleNamespace(carica=AsyncMock(return_value=scelte)))
+    monkeypatch.setattr(modulo.router, "destinazione_rotta", AsyncMock(return_value=scelto))
+    await cog.on_raw_message_delete(_payload_delete(_messaggio("addio")))
+    canale_log.send.assert_not_awaited()
+    embed = scelto.send.call_args.kwargs["embed"]
+    assert embed.description == "<@42> (42) ha perso: addio" and not embed.fields
+
+
+async def test_log016_senza_rotta_ne_formato_il_cancellato_esce_come_prima(ambiente, monkeypatch):
+    from core import log_personalizza
+    from core.repositories.log_personalizza_repo import Personalizzazioni
+
+    cog, canale_log, *_ = ambiente
+    monkeypatch.setattr(
+        log_personalizza, "log_personalizza_repo",
+        SimpleNamespace(carica=AsyncMock(return_value=Personalizzazioni(rotte={}, formati={}))),
+    )
+    await cog.on_raw_message_delete(_payload_delete(_messaggio("addio")))
+    assert canale_log.send.call_args.kwargs["embed"].description == "addio"
