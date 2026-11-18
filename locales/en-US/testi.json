@@ -3228,5 +3228,10 @@
   "bj_resa": "🏳️ You surrendered: you lose **{importo}** {moneta}. Balance: {saldo}.",
   "bj_no_raddoppio": "You do not have enough to double down.",
   "bj_gia_aperta": "You already have an open game: finish it first.",
-  "bj_poche": "You do not have enough coins for this bet."
+  "bj_poche": "You do not have enough coins for this bet.",
+  "stp_nessuno": "None of your roles has a salary.",
+  "stp_pausa": "You already collected: try again in {tempo}.",
+  "stp_fatto": "💼 Salary: **{contanti}** {moneta} cash, **{banca}** in the bank. Taxes: **{tassa}**.",
+  "stp_valore": "Invalid value or role.",
+  "stp_pieno": "Too many entries: remove one first (max 10 roles, 25 channels)."
 }

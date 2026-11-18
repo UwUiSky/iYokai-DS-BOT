@@ -3228,5 +3228,10 @@
   "bj_resa": "🏳️ Ti sei arreso: perdi **{importo}** {moneta}. Saldo: {saldo}.",
   "bj_no_raddoppio": "Non hai abbastanza per raddoppiare.",
   "bj_gia_aperta": "Hai già una partita aperta: finiscila prima.",
-  "bj_poche": "Non hai abbastanza monete per questa puntata."
+  "bj_poche": "Non hai abbastanza monete per questa puntata.",
+  "stp_nessuno": "Nessuno dei tuoi ruoli ha uno stipendio.",
+  "stp_pausa": "Hai già riscosso: riprova tra {tempo}.",
+  "stp_fatto": "💼 Stipendio: **{contanti}** {moneta} in contanti, **{banca}** in banca. Tasse: **{tassa}**.",
+  "stp_valore": "Valore o ruolo non valido.",
+  "stp_pieno": "Troppe voci: togline una prima (massimo 10 ruoli, 25 canali)."
 }

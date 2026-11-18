@@ -467,6 +467,10 @@ LIMITI_IMPOSTAZIONI = {
     "furto_percentuale": (1, 50),  # ECO-031: quota dei contanti della vittima che si può rubare
     "furto_successo": (1, 90),  # ECO-031: probabilità (%) che il furto riesca
     "colpo_successo": (1, 90),  # ECO-030: probabilità (%) che il colpo riesca
+    "msg_coins": (0, 100),  # ECO-033: monete per messaggio nei canali scelti, 0 = spento
+    "msg_coins_pausa": (10, 3600),  # ECO-033: secondi tra due messaggi che pagano, per persona
+    "msg_coins_tetto": (1, 10_000),  # ECO-033: monete al giorno per persona
+    "stipendio_ora": (0, 23),  # ECO-037: ora (UTC) del pagamento automatico
 }
 MODI_SALDO_USCITA = ("tieni", "cancella")  # ECO-014
 MAX_NOME_MONETA = 20  # ECO-001
@@ -551,6 +555,11 @@ class LevelingSettings:
     furto_percentuale: int = 10  # ECO-031
     furto_successo: int = 40  # ECO-031
     colpo_successo: int = 40  # ECO-030
+    msg_coins: int = 0  # ECO-033
+    msg_coins_pausa: int = 60  # ECO-033
+    msg_coins_tetto: int = 200  # ECO-033
+    stipendio_auto: bool = False  # ECO-035
+    stipendio_ora: int = 12  # ECO-037
 
 
 @dataclass(frozen=True)
