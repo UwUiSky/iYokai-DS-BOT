@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:50 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:57 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 945 commands in 51 categories.**
+**Total: 955 commands in 51 categories.**
 
 ## Admin: AI
 
@@ -258,6 +258,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:5
 - **`/admin-games quiz load`** — Upload quiz questions from a CSV or JSON file.
 - **`/admin-games quiz remove`** — Remove a question uploaded by the server.
 - **`/admin-games quiz rules`** — Quiz rules: points, time, answer shown, bot plays.
+- **`/admin-games salaries auto`** — Pay salaries automatically at an hour (UTC) and choose coins per message.
+- **`/admin-games salaries list`** — Salaries and taxes per role, and the message rules.
+- **`/admin-games salaries remove`** — Remove the salary or tax of a role.
+- **`/admin-games salaries set`** — Salary (positive) or tax (negative) for a role.
 - **`/admin-games servizi`** — Turn the external services on or off: Lemmy images and GIF search.
 - **`/admin-games telefono block`** — Block or unblock a person or another server from the phone.
 - **`/admin-games telefono channel`** — The server's phone channel.
@@ -736,6 +740,11 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:5
 - **`/games battitura`** — Typing race: copy the text shown in the image.
 - **`/games card`** — Guess the drawn card: colour, suit or value.
 - **`/games carte start`** — Card game: complete the sentence with the funniest card.
+- **`/games challenges blackjack`** — Blackjack against the dealer: hit, stand, double down, surrender.
+- **`/games challenges duel`** — Challenge a member to a duel: the winner takes the stake.
+- **`/games challenges duels`** — Duel leaderboard and your latest duels.
+- **`/games challenges high-low`** — Higher or lower? The prize grows with every right answer.
+- **`/games challenges tower`** — Climb the tower: each floor pays more, but it can collapse.
 - **`/games counting leaderboard`** — Who counted the most correct numbers.
 - **`/games counting notifyme`** — Get pinged in the channel when the count reaches a number.
 - **`/games dice`** — One roll a day from 1 to 100 and the server board.
@@ -879,6 +888,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:5
 - **`/coins account resign`** — Quit the job and restart as an intern.
 - **`/coins balance`** — Shows your coins.
 - **`/coins cashbox`** — Shows the server treasury balance.
+- **`/coins collect`** — Collect the salary of your roles (and pay the taxes).
 - **`/coins cooldowns`** — When you can use daily and work again.
 - **`/coins daily`** — Claims the daily reward.
 - **`/coins gift`** — Gift an item from your inventory to another member.

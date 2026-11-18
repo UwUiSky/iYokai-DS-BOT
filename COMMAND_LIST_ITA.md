@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:50 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:57 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 945 comandi in 51 categorie.**
+**Totale: 955 comandi in 51 categorie.**
 
 ## Admin: AI
 
@@ -259,6 +259,10 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:
 - **`/admin-giochi quiz regole`** — Regole del quiz: punti, tempo, risposta mostrata, il bot gioca.
 - **`/admin-giochi quiz rimuovi`** — Toglie una domanda caricata dal server.
 - **`/admin-giochi servizi`** — Accende o spegne i servizi esterni: immagini Lemmy e ricerca di GIF.
+- **`/admin-giochi stipendi auto`** — Paga gli stipendi da solo a un'ora (UTC) e scegli le monete per messaggio.
+- **`/admin-giochi stipendi elenco`** — Gli stipendi e le tasse per ruolo, e le regole dei messaggi.
+- **`/admin-giochi stipendi imposta`** — Stipendio (positivo) o tassa (negativo) per un ruolo.
+- **`/admin-giochi stipendi toglie`** — Toglie lo stipendio o la tassa di un ruolo.
 - **`/admin-giochi telefono blocca`** — Blocca o sblocca una persona o un altro server dal telefono.
 - **`/admin-giochi telefono canale`** — Il canale del telefono del server.
 - **`/admin-giochi telefono consenso`** — Accende o spegne il telefono: spento di base.
@@ -748,6 +752,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:
 - **`/giochi roulette`** — Roulette: colore, pari, dozzina, colonna o numero.
 - **`/giochi rps`** — Carta, forbici, sasso contro il bot.
 - **`/giochi scala`** — Scala fortunata: più sali, più rende.
+- **`/giochi sfide alto-basso`** — Più alta o più bassa? Il premio cresce a ogni risposta giusta.
+- **`/giochi sfide blackjack`** — Blackjack contro il banco: carta, stai, raddoppia, arrenditi.
+- **`/giochi sfide duelli`** — Classifica dei duelli e i tuoi ultimi.
+- **`/giochi sfide duello`** — Sfida un membro a duello: chi vince prende la posta.
+- **`/giochi sfide torre`** — Sali la torre: ogni piano rende di più, ma può crollare.
 - **`/giochi smash`** — Smash or pass: un personaggio adulto di AniList (solo canali con limite d'età).
 - **`/giochi spinner`** — Fai girare lo spinner: vince chi lo fa girare più a lungo.
 - **`/giochi statistiche`** — Le tue partite, vincite e perdite per gioco.
@@ -892,6 +901,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:
 - **`/monete rischio colpo`** — Un colpo rischioso: paga alta se va bene, multa se va male.
 - **`/monete rischio elemosina`** — Chiedi l'elemosina: una piccola cifra, a volte niente.
 - **`/monete rischio furto`** — Prova a rubare dei contanti a un membro (solo se il server lo permette).
+- **`/monete riscuoti`** — Riscuoti lo stipendio dei tuoi ruoli (e paga le tasse).
 - **`/monete settimanale`** — Riscuoti il premio della settimana.
 - **`/monete shop buy`** — Acquista un oggetto dello shop.
 - **`/monete shop list`** — Mostra gli oggetti disponibili nello shop.

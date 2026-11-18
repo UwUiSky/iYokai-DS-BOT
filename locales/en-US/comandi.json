@@ -392,7 +392,16 @@
   "furto": "theft",
   "elemosina": "beg",
   "rotta": "route",
-  "istantanea": "snapshot"
+  "istantanea": "snapshot",
+  "sfide": "challenges",
+  "duello": "duel",
+  "duelli": "duels",
+  "blackjack": "blackjack",
+  "alto-basso": "high-low",
+  "torre": "tower",
+  "stipendi": "salaries",
+  "riscuoti": "collect",
+  "toglie": "remove"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1487,7 +1496,19 @@
   "monete rischio avventura": "A safer risky outing: pays less, works more often.",
   "monete rischio furto": "Try to steal cash from a member (only if the server allows it).",
   "monete rischio elemosina": "Beg: a small amount, sometimes nothing.",
-  "monete rischio cerca": "Search for coins in a place of your choice."
+  "monete rischio cerca": "Search for coins in a place of your choice.",
+  "giochi sfide": "Duels and multi-step games with coins",
+  "giochi sfide duello": "Challenge a member to a duel: the winner takes the stake.",
+  "giochi sfide duelli": "Duel leaderboard and your latest duels.",
+  "giochi sfide blackjack": "Blackjack against the dealer: hit, stand, double down, surrender.",
+  "giochi sfide alto-basso": "Higher or lower? The prize grows with every right answer.",
+  "giochi sfide torre": "Climb the tower: each floor pays more, but it can collapse.",
+  "monete riscuoti": "Collect the salary of your roles (and pay the taxes).",
+  "admin-giochi stipendi": "Salaries per role and coins per message",
+  "admin-giochi stipendi imposta": "Salary (positive) or tax (negative) for a role.",
+  "admin-giochi stipendi toglie": "Remove the salary or tax of a role.",
+  "admin-giochi stipendi elenco": "Salaries and taxes per role, and the message rules.",
+  "admin-giochi stipendi auto": "Pay salaries automatically at an hour (UTC) and choose coins per message."
  },
  "parametri": {},
  "menu": {

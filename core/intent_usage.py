@@ -82,6 +82,7 @@ USI: dict[str, tuple[UsoIntent, ...]] = {
                   "Only who wrote is checked, the text is never read"),
 
         UsoIntent("Coin event in a channel", "cogs/leveling/evento_monete.py", "Give coins for a message in the channel the staff chose (the text is not read)"),
+        UsoIntent("Coins per message", "cogs/leveling/stipendi.py", "Give coins for a message in the channels the staff chose (the text is not read)"),
         UsoIntent("AutoMod filters", "cogs/automod/automod.py", "Read text to apply the server rules"),
         UsoIntent("Compromised account defence", "cogs/automod/account_rubato.py",
                   "Spot the same scam message sent in many channels and stop it"),
