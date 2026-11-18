@@ -3041,5 +3041,14 @@
   "voicepanel_numero_non_valido": "Scrivi un numero da 0 a 99.",
   "voicepanel_utente_non_nel_server": "Quell'utente non è nel server.",
   "voicepanel_scegli": "Scegli l'utente:",
-  "voicetemp_crea_manca_permesso": "Al bot serve il permesso «Gestisci canali» per creare la categoria e il canale."
+  "voicetemp_crea_manca_permesso": "Al bot serve il permesso «Gestisci canali» per creare la categoria e il canale.",
+  "risp_si": "sì",
+  "risp_no": "no",
+  "risp_stato": "Risposte del bot in questo server:\n- Sempre private: **{private}**\n- Cancellazione automatica: **{secondi}** secondi (0 = mai)\n- Colore successo: **{ok}** · colore errore: **{err}**",
+  "risp_ok": "Fatto. Le nuove regole valgono dal prossimo comando.",
+  "risp_niente": "Non è cambiato niente: erano già così.",
+  "risp_colori_premium": "I colori degli embed sono per i server premium. Puoi togliere un colore già scelto con «base».",
+  "risp_colore_non_valido": "Il colore deve essere scritto come #RRGGBB (sei cifre esadecimali), oppure «base».",
+  "risp_cancella_non_valido": "I secondi devono essere un numero da 0 a 600.",
+  "risp_effimere_non_valido": "Scegli Sì oppure No."
 }

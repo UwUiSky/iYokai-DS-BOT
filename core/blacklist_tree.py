@@ -26,6 +26,7 @@ import discord
 from core.bot_stats import command_counter
 from core.command_policy import valuta_interazione
 from core.i18n import testo_per
+from core.risposte_server import applica_regole as applica_regole_risposte
 from core.repositories.blacklist_repo import blacklist_repo
 
 logger = logging.getLogger("iyokai.blacklist_tree")
@@ -94,6 +95,9 @@ class BlacklistAwareCommandTree(discord.app_commands.CommandTree):
             except discord.HTTPException:
                 pass
             return False
+
+        # CFG-013/014/033: risposte private, cancellate dopo N secondi, colori del server (core/risposte_server.py).
+        await applica_regole_risposte(interaction)
 
         # Contato qui, non con un hook "on_completion" dedicato: 
         # questa versione di discord.py non ne espone uno su

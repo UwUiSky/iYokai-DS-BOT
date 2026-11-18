@@ -132,6 +132,11 @@ SETTINGS_SCHEMA = {
     "policy_canali_no": "lista_id",
     "policy_ignora_ruoli": "lista_id",
     "policy_ignora_utenti": "lista_id",
+    # Risposte del server (core/risposte_server.py, CFG-013, CFG-014, CFG-033)
+    "risposte_effimere": "bool",
+    "risposte_cancella_secondi": "int_0_600",
+    "colore_successo": "colore",
+    "colore_errore": "colore",
     # Opzioni di moderazione (core/moderation_opzioni.py)
     "mod_ban_giorni_messaggi": "int_0_7",
     "mod_timeout_predefinito": "durata_timeout",
@@ -253,6 +258,8 @@ CONTROLLI_PER_TIPO = {
     "int_0_200": (_intero_tra(0, 200), "un intero tra 0 e 200"),
     "int_0_365": (_intero_tra(0, 365), "un intero tra 0 e 365"),
     "int_0_3600": (_intero_tra(0, 3600), "un intero tra 0 e 3600"),
+    "int_0_600": (_intero_tra(0, 600), "un intero tra 0 e 600"),
+    "colore": (_intero_tra(0, 0xFFFFFF), "un colore come numero tra 0 e 16777215"),
     "int_1_5": (_intero_tra(1, 5), "un intero tra 1 e 5"),
     "int_0_60": (_intero_tra(0, 60), "un intero tra 0 e 60"),
     "testo_300": (lambda valore: isinstance(valore, str) and len(valore) <= 300, "un testo fino a 300 caratteri"),

@@ -3041,5 +3041,14 @@
   "voicepanel_numero_non_valido": "Write a number from 0 to 99.",
   "voicepanel_utente_non_nel_server": "That user is not in the server.",
   "voicepanel_scegli": "Choose the user:",
-  "voicetemp_crea_manca_permesso": "The bot needs the \"Manage Channels\" permission to create the category and the channel."
+  "voicetemp_crea_manca_permesso": "The bot needs the \"Manage Channels\" permission to create the category and the channel.",
+  "risp_si": "yes",
+  "risp_no": "no",
+  "risp_stato": "Bot replies in this server:\n- Always private: **{private}**\n- Automatic deletion: **{secondi}** seconds (0 = never)\n- Success colour: **{ok}** · error colour: **{err}**",
+  "risp_ok": "Done. The new rules apply from the next command.",
+  "risp_niente": "Nothing changed: it was already like this.",
+  "risp_colori_premium": "Embed colours are for premium servers. You can remove a colour you already chose with «base».",
+  "risp_colore_non_valido": "The colour must be written as #RRGGBB (six hexadecimal digits), or «base».",
+  "risp_cancella_non_valido": "The seconds must be a number from 0 to 600.",
+  "risp_effimere_non_valido": "Choose Yes or No."
 }
