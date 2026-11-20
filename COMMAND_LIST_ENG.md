@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:24 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:49 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 959 commands in 51 categories.**
+**Total: 968 commands in 51 categories.**
 
 ## Admin: AI
 
@@ -114,7 +114,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:2
 - **`/admin-automod exemptions channel-remove`** — Removes a channel's exemption.
 - **`/admin-automod exemptions role-add`** — Exempts a role from all advanced AutoMod filters.
 - **`/admin-automod exemptions role-remove`** — Removes a role's exemption.
-- **`/admin-automod gruppo`** — Turns all rules of a group on or off.
+- **`/admin-automod group`** — Turns all rules of a group on or off.
 - **`/admin-automod images`** — Settings for the suspicious image filter.
 - **`/admin-automod liste`** — Opens the AutoMod named lists panel: words and domains.
 - **`/admin-automod log-channel`** — Sets the channel for the advanced AutoMod action log.
@@ -167,6 +167,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:2
 - **`/admin-welcome extra`** — Welcome: DM text, variants, reactions; ban and goodbye messages.
 - **`/admin-welcome goodbye`** — Sets up the goodbye message.
 - **`/admin-welcome image`** — Adds to the welcome an image with the member's avatar, name and number.
+- **`/admin-welcome images`** — Own welcome images (10 at most): one is picked at random on every join.
 - **`/admin-welcome message`** — Sets up the welcome message.
 - **`/admin-welcome preview`** — Shows a preview of how a message would look.
 - **`/admin-welcome topic-notice`** — Announce in a channel when a channel's topic changes.
@@ -341,8 +342,14 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:2
 - **`/admin-role-menus add-many`** — Add several emoji-role pairs to a menu in one go.
 - **`/admin-role-menus channel`** — Create a channel for role menus: everyone reads, only the bot writes.
 - **`/admin-role-menus clear`** — Delete all role menus in the server or in one channel.
+- **`/admin-role-menus colors`** — Use the roles of a unique menu as the name colour palette.
+- **`/admin-role-menus extra-roles`** — An option of a menu also gives other roles (5 at most in total).
+- **`/admin-role-menus group`** — Link menus: only one role is kept across all of them. Empty name: unlink.
+- **`/admin-role-menus guided`** — Create a role menu step by step: type, text, channel, roles and emoji.
+- **`/admin-role-menus image`** — Put an image inside the menu message (attachment or link).
 - **`/admin-role-menus move`** — Attach or move a reaction menu to an existing message.
 - **`/admin-role-menus option`** — Change an option's emoji, label, description, colour or position in a menu.
+- **`/admin-role-menus personal`** — Grant or remove a member's personal role (name and colour chosen by them).
 - **`/admin-role-menus repair`** — Put the bot's reactions back on a reaction menu if someone removed them.
 - **`/admin-role-menus template`** — Create a menu from a ready-made template: verify, notifications, colours, interests.
 
@@ -637,7 +644,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:2
 - **`/settings replies`** — Command replies are seen only by you, or by everyone.
 - **`/settings show`** — Your current settings.
 - **`/strumenti calcola`** — Calculates an expression, e.g. (2+3)*4 or sqrt(16).
-- **`/strumenti colore`** — Shows a colour in HEX, RGB and HSL.
+- **`/strumenti color`** — Shows a colour in HEX, RGB and HSL.
 - **`/strumenti converti`** — Converts lengths, weights, volumes, speeds, data and temperatures.
 - **`/strumenti fuso`** — What time it is in another time zone.
 - **`/strumenti qr`** — Makes a QR code from a text or link.
@@ -1053,6 +1060,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:2
 ## Utility
 
 - **`/utility form`** — Fills in a form or application of this server.
+- **`/utility identity color`** — Pick the colour of your name from the server palette.
+- **`/utility identity my-role`** — Change the name and colour of your personal role (if staff granted it).
 - **`/utility info`** — Bot information: version, invite and support.
 - **`/utility language`** — Shows or changes your personal language (Italian or English).
 - **`/utility lookup channel`** — Channel card.

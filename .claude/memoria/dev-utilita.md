@@ -1,27 +1,15 @@
 # Memoria di dev-utilita
 
 ## Aggiornata
-17/11/2026 · r1alert (feat/r1alert, DB iyokai_w129) · #129: 38 voci su 39 (manca ALR-049); #127: VOC-002, 003, 004, 005, 009, 019 (manca VOC-020). Migrazioni usate 0690-0693 (libere 0694-0709).
+20/11/2026 · r2ben (feat/r2ben, DB iyokai_w123) · #123: RUO-012, 045, 046, 047, 053, 069, 083; #117: SIC-041. Migrazioni usate 0740-0742 (libere 0743-0749).
 
 ## In corso
-- Giro r1alert chiuso (non unito, niente push). Smoke da fare dell'orchestratore. Prossimo: ALR-049 (Linked Roles, serve OAuth: con dev-web) e VOC-020 (pagina in pannello_web, D91); le 8 voci di #123 rimaste (vedi Aperto).
+- Giro r2ben chiuso (non unito, niente push). Smoke da fare dell'orchestratore. Prossimo: RUO-005; ALR-049 (con dev-web) e VOC-020; revisione di sicurezza del diff (ruolo personale, immagini, gruppo).
 
 ## Fatto
-- r1alert #129/#127: gruppo /admin-alert (messaggio, formato, sposta, ferma-tutti, diretta, eventi-twitch, bluesky, podcast, youtube, subreddit, feed-noto, picarto, sottogruppo ruolo-live), core/alert_messaggio_logic, alert_limiti_logic, alert_frequenze_logic, picarto_watcher, twitch_eventi, live_role_logic (regole), voice_temp/_pannello. Decisioni D90-D94. Test: tests/test_alert_catalogo_r1*.py, test_voice_catalogo_r1.py.
-
-17/11/2026 · r1sta (feat/r1sta, DB iyokai_w130) · #130 statistiche. Migrazioni usate 0700-0702 (libere 0703-0709, poi 0710+). Giro r1ben (#123) chiuso prima.
-
-## In corso
-- r1sta chiuso (non unito, niente push). Smoke da fare dell'orchestratore. Restano solo le voci che dipendono dal pannello web (pagina pubblica e accesso da altri programmi: vedi D87). Prossimo: revisione di sicurezza del diff.
-
-## Fatto
-- r1sta B4 #130: schede invito/emoji, membri in file, esportazione ZIP, bottoni persistenti, D87, SPEC, VERIFICA_LIVE, COMMAND_LIST. Test: test_statistiche_schede.py e aggiunte ai file di B1-B3.
-- r1sta B3 #130: contatori (0701): 22 tipi (utenti, bot, boost livello, offline, con/senza ruolo, ultimo arrivato, testo fisso, orologio, conto alla rovescia, YouTube, Twitch spettatori, Minecraft, più numeri), traguardi, crea con ricerca, modifica, azzera con conferma, categoria. Test: test_statistiche_contatori.py. admin-moduli pesa 6596 (non aggiungere: avviso a 6800).
-- r1sta B1+B2 #130: raccolta (stato voce 0700, filtri canali/categorie/membri/ruoli, anonimato, accesso per ruolo, due condizioni, campioni online) e viste di serverstats (panoramica, messaggi, vocale, canale, membro, totale membri, ingressi/uscite, ritenzione, fonti, inviti, online, giochi, CSV, due menu). Test: test_statistiche_raccolta_filtri.py, test_statistiche_viste.py.
-- r1ben #123: benvenuto ({math:}, {se_nuovo:}/{se_ruolo:}, immagine opacità/testo/ordine/allineamento, embed salvato per benvenuto/DM/addio, reazione al primo messaggio, avviso topic), ruoli (ricordati ammessi/esclusi 0640, vocali 0647), menu (limiti 0641, azzera 0642, immagine extra 0643, embed 0644, primo msg 0645, topic 0646, esterno 0648, scadenza 0649, contatori 0650), gruppo /admin-menu-ruoli (D75). Codici provati: tests/test_catalogo_ruoli_gia_fatti.py + test_role_menu_limiti_ruoli.py.
-- r24util B25-B28: script dei tag, dati e errori (0562), inneschi (0563), comandi del server (0564, 0565); dettagli in git log e nel codice.
-- Giri r19-r23 (B1-B24): /utility, /web, messaggi auto, embed, programmati, compleanni, suggerimenti, starboard, giveaway, inviti, conteggio, citazioni, emoji, regex, tag, sondaggi, eventi (0540-0561). Giri r4-r11: autorole, tag, autoresponder, greetings, role menu, moduli (git log).
-- r24util correzioni: monta_per_avvio (slash_server.py) chiamato da main.setup_hook prima di ogni sync; owner riservato; _monta salta le collisioni; core/tag_eliminazione.pulisci_tag_eliminato (unica pulizia); 0565 tag_dati.autore + 200 chiavi per autore (staff no); asyncio.timeout in esegui; togli_per_ruolo; blacklist e pausa 3 s negli inneschi; regex a pezzi.
+- r2ben #123/#117: core/ruoli_extra_logic, ruoli_guidata_logic, ruoli_immagini, phishing_azione_logic; repositories/ruoli_extra_repo; cogs/utility/ruoli_extra.py (admin-menu-ruoli: ruoli-extra, gruppo, immagine, colori, guidata, personale; utility: colore, ruolo-mio; admin-benvenuto: immagini); ganci in role_menus.py (_blocchi_per, _estendi, _applica atomico, immagine nel messaggio) e greetings.py (_immagine_a_caso). Decisione D98. Test: test_ruoli_extra_cog.py, test_ruoli_extra_logica.py, test_ruoli_guidata_logica.py, test_ruoli_immagini.py, test_phishing_azione_extra.py.
+- r1alert #129/#127 (0690-0693, D90-D94) e r1sta #130 (0700-0702, D87): vedi git log (gruppo /admin-alert, contatori, schede statistiche).
+- r1ben #123 (0640-0650), r24util B25-B28, giri r19-r23 e r4-r11: vedi git log.
 
 ## Cose imparate
 - Un cog nuovo che avvia un loop (watcher) lo fa in cog_load (super().cog_load() prima): così main.py non cambia. Picarto e eventi Twitch partono da cogs/utility/alert_piattaforme.py.
@@ -52,22 +40,20 @@
 - Gruppo /admin-automazioni: sottogruppi script/inneschi/slash in SOTTOGRUPPI. Nuovo repo con metodo mai chiamato = fallisce test_repository_callers: non aggiungere metodi non usati.
 - Comandi del server (B28): l'albero mirror del DB (_monta, solo i nostri nomi), sync = tree.sync(guild) con impronta delle definizioni, non dell'albero. Rows asyncpg jsonb tornano come stringa.
 
+- Un repo nuovo che lavora sulle tabelle di un repo esistente si costruisce con `RuoliExtraRepository(role_menu_repo.pool_provider)`: i test che patchano il repo vecchio portano con sé il pool (niente patch in più).
+- Cambio di ruoli + togliere un altro in un colpo: `member.edit(roles=...)` (escludere `is_default()`), non add_roles+remove_roles.
+- Funzioni importate che iniziano per «test» (testo_*) le raccoglie pytest: nominarle `coppie_in_testo`, ecc.
+- Timestamp in SQL con parametri: `$3::timestamptz - make_interval(secs => $4::double precision)`.
+
 ## Aperto
 - #130: test_data_registry fallisce su main per 4 tabelle non mie (guild_card_sfondi, leveling_reazioni, leveling_ruoli_classifica, voice_roles). Pannello web: serve la pagina pubblica delle statistiche e l'accesso per ruoli; le API restano dopo il pannello.
-- #123 restano: RUO-005 (dimensioni libere), 012 (immagini a caso), 045/046 (ruolo personale e colore: /utility è pieno, serve un sotto-gruppo), 047 (creazione guidata), 053 (immagine nel menu), 069 (menu collegati), 083 (più ruoli per opzione).
+- #123 resta solo RUO-005 (dimensioni libere dell'immagine). r2ben: le immagini del menu sono allegate (`menu.png`) e si rimandano a ogni modifica; il gruppo di menu usa `member.edit(roles=)` (un solo colpo); il ruolo personale non ha un tetto per chi lascia il server se il bot era spento (resta il ruolo: ripulire a mano).
 - Menu: il messaggio esterno non ha contatori né bottoni; cambio tipo vale solo per menu del bot. Reazione negata da un limite: nessun avviso (le reazioni non hanno risposta).
 - Sondaggi nativi programmati: non compaiono in `/sondaggi gestisci` (solo bottoni) e non si annullano; il conteggio a N voti conta i voti (non i votanti) e perde quelli arrivati col bot spento.
-- Eventi: promemoria solo per chi ha detto «sì»; i bottoni dei messaggi finiti restano ma rispondono «chiuso».
 - UTL-184 `/mod-ban massa invito codice:` non fatto: è in cogs/moderation (r19mod). Servono: completamento sul codice + ban di massa dei membri entrati con quel codice (invite_joins.code).
 - Pannello web: editor benvenuto elenca i segnaposto (templates/editor_benvenuto.html) senza i 4 nuovi.
-- Giveaway: immagine = URL dell'allegato (i link CDN di Discord scadono): da provare dopo un giorno. Test «cricchetto» test_repository_callers: tolto count_entries.
-- Starboard: se la bacheca cambia canale con blocca acceso, il vecchio resta bloccato (non si sblocca da solo).
 - test_command_policy::top_level_ha_un_pubblico fallisce su main per il menu «Apri ticket» (AUDIENCE, ticket): non mio.
 - safe_http.USER_AGENT senza contatto: MET Norway e Wikimedia chiedono un contatto (core, non mio).
 - #129 non fatto: ALR-049 (Linked Roles: OAuth e pagine web, D92). ALR-035: alternativa D90 (frequenze da .env). #127 non fatto: VOC-020 (D91).
 - Feed noti (FEED_NOTI in alert_piattaforme_logic) e Bluesky: indirizzi da provare su Discord. YouTube live da link dipende da YOUTUBE_API_KEY.
 - Alternative D18 non fatte: UTL-111 (comando programmato), azioni in borsa in /web prezzo (nessuna fonte gratis).
-- Pannello web: nessuna voce per le nuove impostazioni (messaggi_auto, suggestions_config, web_impostazioni).
-- Fuso dell'ora fissa dei programmati: ora Europe/Rome fisso (non c'è un fuso per server); potrebbe usare utente_fuso.
-- `embed modifica` su un messaggio con più embed lo riduce al primo; il menu eventi dei log (24/25) va diviso prima di nuove voci (U14).
-- B28: la sync d'avvio ora monta prima i comandi del server (da provare su Discord nel server MAIN dopo un riavvio).
