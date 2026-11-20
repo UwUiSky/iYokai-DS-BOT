@@ -44,6 +44,7 @@ def _pool(monkeypatch, clean_db):
 
 def _guild():
     g = fake_guild(guild_id=GUILD)
+    g.roles = [fake_role(role_id=GUILD, name="@everyone")]  # CFG-043: l'import controlla cosa esiste nel server
     g.get_role.side_effect = lambda rid: fake_role(role_id=rid) if rid == RUOLO else None
     return g
 

@@ -183,3 +183,17 @@ async def test_il_comando_risposte_cambia_e_mostra(db_pronto, monkeypatch):
     assert "#RRGGBB" in i.response.send_message.await_args.args[0]
     await callback(cog, i)
     assert "20" in i.response.send_message.await_args.args[0]
+
+
+async def test_i_messaggi_successivi_seguono_le_regole_del_server(monkeypatch):
+    invio = AsyncMock()
+    monkeypatch.setattr(discord.Webhook, "send", invio)
+    interazione = MagicMock()
+    interazione.application_id, interazione.token = 123, "token-finto"
+    assert rs.applica_a_interazione(interazione, rs.Risposte(effimere=True, colore_errore=0x010203)) is True
+    seguito = interazione._cs_followup
+    assert isinstance(seguito, rs.FollowupServer)
+    embed = discord.Embed(color=discord.Color.red())
+    await seguito.send("ciao", ephemeral=False, embed=embed)
+    assert invio.await_args.kwargs["ephemeral"] is True
+    assert embed.colour.value == 0x010203

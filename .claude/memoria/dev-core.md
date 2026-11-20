@@ -1,9 +1,10 @@
 # Memoria di dev-core
 
 ## Aggiornata
-02/11/2026 · ramo `feat/r15immagini` · #153 filone B (D62) fatto B1-B6; B7 è la #152.
+18/11/2026 · ramo `feat/r1cfg` · #122 catalogo configurazione (D96): fatte 013, 014, 033, 012, 022, 023, 025, 026, 029, 034, 035, 043 (+ provate 007, 028, 031, 037, 042, 045).
 
 ## In corso
+- r1cfg pubblicato (Refs #122). Tocca `main.py` (on_guild_join), `core/database.py` (ensure_guild_exists con lingua), `core/blacklist_tree.py`, `core/premium.py`, import/export: serve la suite completa dell'orchestratore. Smoke da fare dopo l'unione (risposte, politica, permessi_vista, premium_posti, config_trasloco, import, migrazione 0720, data_registry, tree_invariants, i18n). Restano per #122: CFG-024 (con dev-moderazione), 015/016/017/044 (altre aree), 036/039/040/041 (scelte dell'owner), 001/002/003/006/027 (dev-web), 032 (marchio: resincronizza e registro errori).
 - r15immagini pubblicato. Smoke da fare dopo l'unione (test_immagini_*, tree_invariants, data_registry, migrazioni 0504-0506, i18n, config_import). Da fare dopo il merge col filone A: `/admin-automod immagini` e aggancio a `core/automod_azioni.py` (oggi `cogs/automod/immagini.py::_applica` usa bot_roles/try_dm/post_to_mod_log).
 - r14lingue (D58) pubblicato. Smoke da fare dopo l'unione (i18n, translator, command_sync, tree_invariants, riferimenti, cog utility/lingua).
 - r14lunghezze pubblicato. Smoke da fare dopo l'unione (tree_invariants, cog feed_alerts, fun, mod-ban, messaggi programmati, radio).
@@ -12,6 +13,7 @@
 - Rimandato: persistenza/pannello dei livelli (D57), permessi per ruolo dal pannello (OAuth), nascondere `/founder` agli admin.
 
 ## Fatto
+- r1cfg (D96, #122): `core/risposte_server.py` (+ `config_risposte.py`), `policy_ruoli_richiesti` in `command_policy.py` (+ `politica ruolo-richiesto`), `core/permessi_vista.py` (+ `config_permessi.py`), `lingua_iniziale_del_server`, `core/premium_posti_service.py` (0720, `/owner premium grant utente: posti:`, `premium assegna|togli-posto`), `core/config_trasloco.py` (import senza ID stranieri).
 - r15immagini (D62, #153): `core/immagini_*` (byte, quarantena, sandbox un processo per immagine, coda 100/20, dHash, QR zxing-cpp 3.1.1, libreria trappola D39, pipeline, opzioni D16, azioni), cog `cogs/automod/immagini.py`, `/owner immagini-trappola`, 0504-0506, `deploy/systemd/iyokai-sandbox.service`, `docs/immagini-sandbox.md`, testi `amimg_*`.
 - r14lingue (D58, #77): `locales/<lingua>/testi.json`+`comandi.json` (10 lingue Discord, 8 vuote), ripiego lingua->en-US->it, `core/lingue_controllo.py` + 2 script, bottone «Chiedi una lingua» in `/utility lingua` (`core/lingua_richieste.py`), `aiuto` in comandi.json letto da cerca-comando, peso 8000 su tutte le lingue.
 - r13ruoli (D60): 25 gruppi staff (`admin-*` 20, `mod-*` 4, `founder`), 377 percorsi spostati; `Livello.FOUNDER`;
@@ -20,6 +22,10 @@
 - Giri precedenti (r12, r10, r9, r5, F5/F7, R1-bis): vedi `git log`.
 
 ## Cose imparate
+- `interaction.response` e `followup` sono `cached_slot_property`: si sostituiscono con `interaction._cs_response` / `_cs_followup` (sottoclassi di `InteractionResponse` e `Webhook`); le `__slots__` vietano altri attributi.
+- `SETTINGS_SCHEMA` nuovo = anche `SETTINGS_VALIDE` in `tests/test_config_import_validation.py`. L'import ora scarta gli ID che non esistono nel server (guild finto: `roles` e `get_channel`).
+- In sviluppo `PREMIUM_ALPHA_UNLOCK_ALL` è vero: i test del premium sostituiscono `core.premium.config` (vedi `test_premium_posti.py`).
+- La macchina è condivisa con altri agenti: le prove di `tree_invariants` e i18n possono durare 3-4 minuti. `test_riferimenti_comandi` fallisce per `/rss` in `core/alert_piattaforme_logic.py` (non è di quest'area).
 - Sandbox: con `-I` la cartella dello script non è in sys.path (il worker la aggiunge); RLIMIT_FSIZE=0 manda SIGXFSZ (ignorato + `-B`); `unshare -rn` provato una volta. Un test non usa `tests/test_data_registry` su DB sporco: tabelle di altri rami (`verify_*`) lo fanno fallire.
 - Lingue: codice salvato nel DB `it`/`en` (CHECK 0130); `en`/`en-GB` sono alias di `en-US`; testo vuoto = da tradurre (ignorato). `lingua_valida` = solo lingue con testi.
 - Riordino per script: regex dei riferimenti con `(?![\w/])` dopo il nome (altrimenti riscrive gli URL `/ai/altro`);

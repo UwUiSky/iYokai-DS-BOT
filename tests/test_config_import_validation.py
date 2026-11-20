@@ -21,7 +21,9 @@ from cogs.utility.config_history import (
 )
 from core.database import db
 from core.premium import PremiumModule
-from tests.support.discord_fakes import fake_guild, fake_interaction, fake_role
+import discord
+
+from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member, fake_role, fake_text_channel
 from tests.support.full_tree import build_full_bot, close_full_bot
 
 GUILD = 777000602
@@ -118,6 +120,11 @@ SETTINGS_VALIDE = {
     "policy_canali_no": [181818181818181818],
     "policy_ignora_ruoli": [191919191919191919],
     "policy_ignora_utenti": [202020202020202020],
+    "policy_ruoli_richiesti": {"fun dado": [202020202020202020]},
+    "risposte_effimere": True,
+    "risposte_cancella_secondi": 30,
+    "colore_successo": 0x2ECC71,
+    "colore_errore": 0xE74C3C,
     "mod_ban_giorni_messaggi": 1,
     "mod_timeout_predefinito": 600,
     "mod_dm_spenti": ["warn", "ban"],
@@ -284,12 +291,17 @@ def _pool(monkeypatch, clean_db):
     return clean_db
 
 
-async def _importa(contenuto: bytes, size=None):
+async def _importa(contenuto: bytes, size=None, ruoli_tutti=False):
     cog = ConfigHistoryCog(bot=None)
     server = fake_guild(guild_id=GUILD)
     # i ruoli del bot (admin/mod/modban) devono esistere nel server
     ruoli_esistenti = {SETTINGS_VALIDE[k] for k in ("admin_role_id", "mod_role_id", "modban_role_id")}
     server.get_role.side_effect = lambda rid: fake_role(role_id=rid) if rid in ruoli_esistenti else None
+    # CFG-043: l'import scrive solo ID che esistono nel server; qui esistono tutti i canali e i ruoli del file.
+    server.roles = [fake_role(role_id=GUILD, name="@everyone")]
+    server.get_channel.side_effect = lambda cid: fake_text_channel(cid)
+    if ruoli_tutti:
+        server.get_role.side_effect = lambda rid: fake_role(role_id=rid) if rid != GUILD else None
     interazione = fake_interaction(guild=server)
     await cog.import_config.callback(cog, interazione, _FakeFile(contenuto, size))
     return interazione.response.send_message.call_args.args[0]
@@ -466,7 +478,7 @@ async def test_export_poi_import_con_il_registry_vero_riproduce_la_configurazion
         esportato = interazione.response.send_message.call_args.kwargs["file"].fp.read()
 
         await db.reset_guild_config(GUILD)
-        messaggio = await _importa(esportato)
+        messaggio = await _importa(esportato, ruoli_tutti=True)
 
         assert "✅" in messaggio
         assert await db.get_full_config(GUILD) == originale
@@ -489,7 +501,7 @@ async def test_export_non_scrive_le_voci_vuote_e_il_file_si_reimporta(clean_db):
     esportato = interazione.response.send_message.call_args.kwargs["file"].fp.read()
 
     assert json.loads(esportato)["settings"] == {"report_channel_id": 5}
-    assert "✅" in await _importa(esportato)
+    assert "✅" in await _importa(esportato, ruoli_tutti=True)
     assert (await db.get_full_config(GUILD))["settings"] == {"report_channel_id": 5}
 
 
@@ -507,4 +519,46 @@ async def test_export_toglie_null_nelle_liste_e_chiavi_fuori_schema(clean_db):
     esportato = interazione.response.send_message.call_args.kwargs["file"].fp.read()
 
     assert json.loads(esportato)["settings"] == {"ticket_support_role_ids": [5, 6], "mute_role_id": 7}
-    assert "✅" in await _importa(esportato)
+    assert "✅" in await _importa(esportato, ruoli_tutti=True)
+
+
+@pytest.mark.usefixtures("modulo_tickets")
+async def test_cfg043_l_import_non_scrive_id_di_un_altro_server():
+    """CFG-043: un file con canali e ruoli che qui non esistono non lascia ID stranieri nelle impostazioni."""
+    payload = {**VALIDO, "settings": {"report_channel_id": 5, "ticket_support_role_ids": [7], "progressi_attivi": True}}
+    cog = ConfigHistoryCog(bot=None)
+    server = fake_guild(guild_id=GUILD)
+    server.roles = [fake_role(role_id=GUILD, name="@everyone")]
+    server.get_channel.side_effect = lambda cid: None  # nessun canale esiste qui
+    server.get_role.side_effect = lambda rid: None
+    interazione = fake_interaction(guild=server)
+    await cog.import_config.callback(cog, interazione, _FakeFile(json.dumps(payload).encode(), None))
+    messaggio = interazione.response.send_message.call_args.args[0]
+    assert "✅" in messaggio and "tolte" in messaggio
+    assert (await db.get_full_config(GUILD))["settings"] == {"progressi_attivi": True}
+
+
+@pytest.mark.usefixtures("modulo_tickets")
+async def test_cfg043_il_ruolo_admin_si_rimappa_per_nome_ma_non_senza_amministratore():
+    """Il controllo D28 vale sul valore rimappato: un nome uguale non dà il ruolo admin a chi non può sceglierlo."""
+    payload = {
+        **VALIDO,
+        "settings": {"admin_role_id": 50},
+        "riferimenti": {"50": {"tipo": "ruolo", "nome": "Capi"}},
+    }
+    cog = ConfigHistoryCog(bot=None)
+    server = fake_guild(guild_id=GUILD, owner_id=1)
+    capi = fake_role(role_id=900, name="Capi")
+    server.roles = [fake_role(role_id=GUILD, name="@everyone"), capi]
+    server.get_role.side_effect = lambda rid: capi if rid == 900 else None
+    interazione = fake_interaction(guild=server, user=fake_member(5, guild_permissions=discord.Permissions(manage_guild=True)))
+    interazione.user.__class__ = discord.Member  # chi importa non ha «Amministratore» e non è il proprietario
+    await cog.import_config.callback(cog, interazione, _FakeFile(json.dumps(payload).encode(), None))
+    assert "✅" not in interazione.response.send_message.call_args.args[0]
+    assert await db.get_full_config(GUILD) == VUOTA
+
+
+async def test_cfg043_il_campo_riferimenti_non_valido_fa_rifiutare_il_file():
+    payload = {**VALIDO, "riferimenti": {"abc": {"tipo": "ruolo", "nome": "x"}}}
+    messaggio = await _importa(json.dumps(payload).encode())
+    assert "✅" not in messaggio and "riferimenti" in messaggio

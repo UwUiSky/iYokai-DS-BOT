@@ -369,7 +369,10 @@
   "eventi-twitch": "twitch-events",
   "filtri": "filters",
   "esclusi": "excluded",
-  "eccezioni": "exceptions"
+  "eccezioni": "exceptions",
+  "ruolo-richiesto": "required-role",
+  "assegna": "assign",
+  "togli-posto": "remove-seat"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1421,7 +1424,10 @@
   "admin-vocali crea": "Creates the category and the generator channel and sets everything up.",
   "admin-bot config risposte": "Bot replies: private, deleted after a while, colours.",
   "admin-bot config staff": "Bot admin, mod and ban roles: list and choice.",
-  "admin-bot config permessi": "Shows a member's permission level and why."
+  "admin-bot config permessi": "Shows a member's permission level and why.",
+  "admin-bot politica ruolo-richiesto": "Whoever uses a command must have a certain role.",
+  "admin-bot premium assegna": "Puts one of your premium seats on this server.",
+  "admin-bot premium togli-posto": "Removes your premium seat from this server."
  },
  "parametri": {},
  "menu": {
