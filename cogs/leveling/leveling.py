@@ -41,6 +41,7 @@ from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.leveling_repo import TettoSaldoRaggiunto, leveling_repo
 from core.repositories.rischio_repo import rischio_repo
 from core.repositories.potenziamenti_repo import potenziamenti_repo
+from core.repositories.animali_repo import animali_repo
 from core.rischio_logic import lavoro_per_turni, paga_con_lavoro
 from core.repositories.level_reward_repo import level_reward_repo
 from core.repositories.leveling_settings_repo import (
@@ -1631,6 +1632,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         extra = await self._bonus_serie_daily(interaction, impostazioni, adesso)  # ECO-025
         livelli_pot = await potenziamenti_repo.livelli(interaction.guild.id, interaction.user.id)  # ECO-081
         importo = con_potenziamento(impostazioni.daily_coins, livelli_pot["premio"]) + extra
+        importo += importo * await animali_repo.bonus(interaction.guild.id, interaction.user.id, "premio") // 100  # ECO-131
         riscosso = await leveling_repo.claim_daily(
             interaction.guild.id, interaction.user.id,
             importo, attesa_totale, adesso,
@@ -1687,6 +1689,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         turni_fatti = await rischio_repo.turni(interaction.guild.id, interaction.user.id)
         guadagno = max(guadagno if guadagno == 0 else 1, paga_con_lavoro(guadagno, lavoro_per_turni(turni_fatti)[2]))
         guadagno = con_potenziamento(guadagno, (await potenziamenti_repo.livelli(interaction.guild.id, interaction.user.id))["lavoro"])  # ECO-081
+        guadagno += guadagno * await animali_repo.bonus(interaction.guild.id, interaction.user.id, "lavoro") // 100  # ECO-131
         riscosso = await leveling_repo.claim_work(
             interaction.guild.id, interaction.user.id,
             guadagno, attesa_work_secondi(impostazioni), adesso,  # ECO-019, ECO-028

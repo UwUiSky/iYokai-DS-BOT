@@ -418,7 +418,14 @@
   "scava": "dig",
   "coccole": "pet",
   "gratta": "scratch",
-  "bersaglio": "target"
+  "bersaglio": "target",
+  "animali": "pets",
+  "pesca": "fishing",
+  "cura": "care",
+  "posto": "slot",
+  "attivita": "activity",
+  "lancia": "cast",
+  "guida": "guide"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1549,7 +1556,18 @@
   "monete rischio meme": "Post a meme: the type you pick changes risk and prize.",
   "monete rischio coccole": "Pet the bot: it leaves you a few coins.",
   "monete rischio gratta": "Scratch card: a 20-coin ticket, pick a square.",
-  "monete rischio bersaglio": "A target appears in a few seconds: click in time."
+  "monete rischio bersaglio": "A target appears in a few seconds: click in time.",
+  "fun animali": "Pets to take care of",
+  "fun pesca": "Fishing: cast, sell and complete the guide",
+  "fun animali compra": "Buy a pet to take care of.",
+  "fun animali lista": "Your pets: hunger, cleanliness, play and level.",
+  "fun animali cura": "Feed, clean or play with a pet (once an hour per kind).",
+  "fun animali posto": "Buy one more slot for another pet (max 2 extra).",
+  "fun animali attivita": "An activity with a healthy pet: it brings a few coins (every 2 hours).",
+  "fun pesca lancia": "Cast the line in a place (every 15 minutes).",
+  "fun pesca vendi": "Sell every fish in the storage.",
+  "fun pesca guida": "Your fish storage and the species you have found.",
+  "fun pesca classifica": "Today's best fishers."
  },
  "parametri": {},
  "menu": {
