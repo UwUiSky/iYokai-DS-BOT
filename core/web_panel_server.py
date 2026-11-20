@@ -32,7 +32,7 @@ from urllib.parse import urlsplit
 import jinja2
 from aiohttp import BodyPartReader, MultipartReader, web
 
-from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_editor, web_panel_inviti, web_panel_istantanee, web_panel_logic as regole, verify_vpn_logic as vpn_logica
+from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_editor, web_panel_inviti, web_panel_istantanee, web_panel_pagine, web_panel_accesso as regole_accesso, web_panel_panoramica as panoramica, web_panel_logic as regole, verify_vpn_logic as vpn_logica
 from core.bot_aspetto import MAX_IMMAGINE
 from core.command_access import RuoloAdminNegato
 from core.command_search_logic import cerca
@@ -53,6 +53,7 @@ MAX_RISULTATI_WIKI = 50
 CHIAVE_UTENTE = web.RequestKey("utente_id", int)
 CHIAVE_TOKEN = web.RequestKey("token", str)
 CHIAVE_DOWNLOAD = web.RequestKey("intestazioni_download", dict)
+CHIAVE_LIVELLO = web.RequestKey("livello_pannello", str)
 LINGUE = (("it", "Italiano"), ("en", "English"))
 ETICHETTE_CATEGORIE = {
     "moderation": "Moderazione", "security": "Sicurezza", "automod": "AutoMod", "logging": "Log",
@@ -159,6 +160,7 @@ def build_app(
         contesto = {
             "utente_id": request.get(CHIAVE_UTENTE),
             "proprietario": ponte.e_proprietario(request.get(CHIAVE_UTENTE)),
+            "sola_lettura": request.get(CHIAVE_LIVELLO) == regole_accesso.LETTURA,
             "csrf": regole.csrf_per(chiave, request[CHIAVE_TOKEN]) if request.get(CHIAVE_TOKEN) else "",
             "messaggio": esito[0] if esito else None,
             "errore": esito[1] if esito else False,
@@ -173,8 +175,12 @@ def build_app(
     def _ip(request: web.Request) -> str:
         return regole.ip_cliente(request.remote, request.headers.get("X-Forwarded-For"), proxy_fidati)
 
-    async def _server(request: web.Request):
-        """Il server della richiesta, se l'utente lo può gestire ADESSO. Altrimenti una risposta d'errore."""
+    async def _server(request: web.Request, *, solo_admin: bool = False):
+        """
+        Il server della richiesta, se l'utente ha ADESSO il livello giusto (CFG-002): lettura per le pagine,
+        scrittura per i POST, admin per le pagine `solo_admin`. La politica dei comandi vale per le scritture
+        (CFG-027). «Non esiste» e «non puoi» hanno la stessa risposta.
+        """
         utente_id = request.get(CHIAVE_UTENTE)
         if utente_id is None:
             return None, _vai("/accedi")
@@ -182,13 +188,19 @@ def build_app(
             guild_id = int(request.match_info["guild_id"])
         except ValueError:
             return None, _errore(request, 404, "Server non trovato", "Indirizzo non valido.")
-        guild = await ponte.server_gestibile(bot, guild_id, utente_id)
+        scrive = request.method not in ("GET", "HEAD")
+        richiesto = regole_accesso.ADMIN if solo_admin else (regole_accesso.SCRITTURA if scrive else regole_accesso.LETTURA)
+        guild = await ponte.server_gestibile(
+            bot, guild_id, utente_id, richiesto=richiesto, percorso=request.path if scrive else None
+        )
         if guild is None:
             return None, _errore(
                 request, 403, "Accesso negato",
-                "Non puoi gestire questo server: servono il permesso «Gestisci server» o il ruolo admin del bot, "
-                "e il bot deve essere nel server.",
+                "Non puoi gestire questo server: servono il permesso «Gestisci server» o il ruolo admin del bot "
+                "(o un ruolo del pannello con il livello giusto), e il bot deve essere nel server.",
             )
+        if not scrive:
+            request[CHIAVE_LIVELLO] = await ponte.livello_accesso(guild, utente_id) or ""
         return guild, None
 
     async def _modulo_scrittura(request: web.Request):
@@ -271,7 +283,7 @@ def build_app(
     async def home(request: web.Request) -> web.Response:
         if web_panel_attivita.e_apertura_attivita(request.path, request.query):
             return pagina_radio()
-        server = await ponte.server_gestibili(bot, request[CHIAVE_UTENTE]) if request.get(CHIAVE_UTENTE) else []
+        server = await ponte.server_gestibili(bot, request[CHIAVE_UTENTE], minimo=regole_accesso.LETTURA) if request.get(CHIAVE_UTENTE) else []
         return _pagina(request, "home.html", server=server)
 
     async def accedi(request: web.Request) -> web.StreamResponse:
@@ -428,6 +440,52 @@ def build_app(
         if not limite_sincronia.consenti(f"g:{guild.id}"):
             return _torna(guild.id, "permessi_attendi")
         return _torna(guild.id, await ponte.risincronizza_permessi(bot, guild))
+
+    async def pagina_panoramica(request: web.Request) -> web.StreamResponse:
+        """CFG-003: stato dei sistemi, problemi trovati e azioni rapide."""
+        guild, rifiuto = await _server(request)
+        if rifiuto is not None:
+            return rifiuto
+        riepilogo = panoramica.riassumi_moduli((await ponte.stato_server(guild))["moduli"])
+        punteggio, consigli = await panoramica.problemi_trovati(guild)
+        return _pagina(
+            request, "panoramica.html", guild=guild, riepilogo=riepilogo, punteggio=punteggio, consigli=consigli,
+            azioni=panoramica.AZIONI_RAPIDE, ultime=(await ponte.storico(guild.id))[:5],
+        )
+
+    async def pagina_accesso(request: web.Request) -> web.StreamResponse:
+        """CFG-002: chi può leggere e chi può scrivere nel pannello. Solo gli admin (non chi ha solo la scrittura)."""
+        guild, rifiuto = await _server(request, solo_admin=True)
+        if rifiuto is not None:
+            return rifiuto
+        scelti = await regole_accesso.leggi_ruoli(guild.id)
+        ruoli = [
+            {"id": r.id, "nome": r.name} for r in sorted(guild.roles, key=lambda r: -r.position)
+            if r.id != guild.id and not r.managed
+        ][:ponte.MAX_RUOLI_MOSTRATI]
+        return _pagina(
+            request, "accesso.html", guild=guild, ruoli=ruoli, scelti=scelti, massimo=regole_accesso.MAX_RUOLI_PER_LIVELLO,
+            livelli=((regole_accesso.LETTURA, "Sola lettura"), (regole_accesso.SCRITTURA, "Lettura e scrittura")),
+        )
+
+    async def salva_accesso(request: web.Request) -> web.StreamResponse:
+        guild, rifiuto = await _server(request, solo_admin=True)
+        if rifiuto is not None:
+            return rifiuto
+        form, rifiuto = await _modulo_scrittura(request)
+        if rifiuto is not None:
+            return rifiuto
+        indietro = f"/server/{guild.id}/accesso?esito="
+        grezzi = form.getall("ruolo", [])[: regole_accesso.MAX_RUOLI_PER_LIVELLO + 1]
+        if any(not isinstance(v, str) or not v.isascii() or not v.isdigit() or len(v) > 20 for v in grezzi):
+            return _vai(indietro + "non_valido")
+        try:
+            cambiato = await regole_accesso.imposta_ruoli(
+                guild, str(form.get("livello", "")), [int(v) for v in grezzi], request[CHIAVE_UTENTE]
+            )
+        except ImpostazioneNonValida:
+            return _vai(indietro + "non_valido")
+        return _vai(indietro + ("salvato" if cambiato else "invariato"))
 
     async def pagina_storico(request: web.Request) -> web.StreamResponse:
         guild, rifiuto = await _server(request)
@@ -728,6 +786,9 @@ def build_app(
     app.router.add_post(r"/server/{guild_id:\d{1,20}}/ruolo", salva_ruolo)
     app.router.add_post(r"/server/{guild_id:\d{1,20}}/lingua", salva_lingua)
     app.router.add_post(r"/server/{guild_id:\d{1,20}}/permessi", salva_permessi)
+    app.router.add_get(r"/server/{guild_id:\d{1,20}}/panoramica", pagina_panoramica)
+    app.router.add_get(r"/server/{guild_id:\d{1,20}}/accesso", pagina_accesso)
+    app.router.add_post(r"/server/{guild_id:\d{1,20}}/accesso", salva_accesso)
     app.router.add_get(r"/server/{guild_id:\d{1,20}}/storico", pagina_storico)
     app.router.add_get(r"/server/{guild_id:\d{1,20}}/premium", pagina_premium)
     app.router.add_get(r"/server/{guild_id:\d{1,20}}/marchio", pagina_marchio)
@@ -757,6 +818,9 @@ def build_app(
     )
     web_panel_ai.registra_rotte(
         app, bot=bot, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE,
+    )
+    web_panel_pagine.registra_rotte(
+        app, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE,
     )
     web_panel_istantanee.registra_rotte(app, bot=bot, ponte=ponte, pagina=_pagina, errore=_errore, chiave_utente=CHIAVE_UTENTE)
     return app

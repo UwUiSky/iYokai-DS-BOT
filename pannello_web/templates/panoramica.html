@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block titolo %}Panoramica · {{ guild.name }} · iYokai Panel{% endblock %}
+{% block corpo %}
+<h1>{{ guild.name }}</h1>
+<p><a href="/server/{{ guild.id }}">Tutte le impostazioni</a></p>
+
+<h2>Stato dei sistemi</h2>
+<div class="carta">
+<p><strong>{{ riepilogo.accesi }}</strong> moduli accesi su {{ riepilogo.totale }}.</p>
+{% if riepilogo.spenti %}
+<p class="tenue">Spenti: {{ riepilogo.spenti|join(', ') }}{% if riepilogo.altri_spenti %} e altri {{ riepilogo.altri_spenti }}{% endif %}.</p>
+{% endif %}
+</div>
+
+<h2>Problemi trovati</h2>
+<div class="carta">
+{% if punteggio is none %}
+<p class="tenue">Il punteggio di sicurezza non è disponibile adesso: riprova tra poco.</p>
+{% else %}
+<p>Punteggio di sicurezza: <strong>{{ punteggio }}/100</strong></p>
+{% if consigli %}<ul>{% for c in consigli %}<li>{{ c }}</li>{% endfor %}</ul>
+{% else %}<p class="tenue">Nessun problema: la configurazione è solida.</p>{% endif %}
+{% endif %}
+</div>
+
+<h2>Azioni rapide</h2>
+<div class="griglia">
+{% for titolo, percorso, _ in azioni %}<a class="carta" href="/server/{{ guild.id }}{{ percorso }}">{{ titolo }}</a>{% endfor %}
+</div>
+
+<h2>Ultime modifiche</h2>
+{% if ultime %}
+<ul>{% for v in ultime %}<li>{{ v.created_at.strftime('%Y-%m-%d %H:%M') }} · <code>{{ v.key_name }}</code></li>{% endfor %}</ul>
+{% else %}<p class="tenue">Ancora nessuna modifica.</p>{% endif %}
+{% endblock %}

@@ -877,6 +877,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("web_panel_sessions", "Sessioni di accesso al pannello web (solo l'impronta del cookie)",
        colonne_utente=("user_id",), utente="cancella", server="conserva", scadenza=Scadenza("expires_at", 0),
        nota="nessun token di Discord"),
+    _t("web_panel_ruoli", "Ruoli che possono leggere o scrivere nel pannello web del server (catalogo CFG-002)",
+       colonne_attore=("impostato_da",), colonna_server="guild_id"),
     _t("verify_impronte", "Impronte della verifica web (HMAC con sale, mai l'IP in chiaro)",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True,
        escludi_dall_esportazione=("impronta",), scadenza=Scadenza("creato_il", 30),

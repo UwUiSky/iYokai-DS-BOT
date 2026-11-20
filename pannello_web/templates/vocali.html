@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block titolo %}Vocali temporanei · {{ guild.name }} · iYokai Panel{% endblock %}
+{% block corpo %}
+<h1>Vocali temporanei</h1>
+<p><a href="/server/{{ guild.id }}">&larr; {{ guild.name }}</a></p>
+{% if not v.configurato %}
+<p class="avviso errore">Il generatore non è ancora impostato: scegli generatore e categoria con il comando di impianto dei vocali, poi torna qui.</p>
+{% else %}
+<p class="tenue">Generatore e categoria si cambiano con il comando di impianto ({{ v.extra }} generatori in più). Qui il resto.</p>
+<form class="carta" method="post" action="/server/{{ guild.id }}/vocali">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <label>Nome dei nuovi canali (usa {utente} e {numero})
+    <input type="text" name="nome" maxlength="90" value="{{ v.nome_modello }}" placeholder="Canale di {utente}"></label>
+  <label>I nuovi canali nascono bloccati
+    <select name="bloccati"><option value="1" {{ 'selected' if v.nasce_bloccato }}>Sì</option><option value="0" {{ 'selected' if not v.nasce_bloccato }}>No</option></select></label>
+  <label>Copiano permessi, limite e qualità del generatore
+    <select name="clona"><option value="1" {{ 'selected' if v.clona }}>Sì</option><option value="0" {{ 'selected' if not v.clona }}>No</option></select></label>
+  <label>Registro delle azioni
+    <select name="registro"><option value="">— nessuno —</option>{% for c in canali %}<option value="{{ c.id }}" {{ 'selected' if c.id == v.registro }}>{{ c.name }}</option>{% endfor %}</select></label>
+  <label>Canali massimi nella categoria (1-50, vuoto = nessun tetto)
+    <input type="number" name="cap" min="1" max="50" value="{{ v.cap if v.cap is not none }}"></label>
+  <h2>Pannello</h2>
+  <label>Titolo <input type="text" name="titolo" maxlength="256" value="{{ v.titolo }}"></label>
+  <label>Testo <textarea name="testo" maxlength="1000" rows="4">{{ v.testo }}</textarea></label>
+  <label>Colore (esadecimale, es. 5865F2) <input type="text" name="colore" maxlength="7" value="{{ v.colore }}"></label>
+  <button type="submit">Salva</button>
+</form>
+{% endif %}
+{% endblock %}
