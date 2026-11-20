@@ -1796,3 +1796,5 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `ECO-081` — `/monete conto potenzia` mostra i livelli; `potenzia tipo:Lavoro` costa 500, poi 1000... fino al livello 5; ogni livello dà +10% a `/monete work` (o a `/monete daily`).
 - [ ] `ECO-077` — `/monete rischio scrigno` costa 100 e dà 0, 50, 150, 300 o 800; di nuovo entro 30 secondi è rifiutato.
 - [ ] `ECO-079/082` — `/monete conto guadagni` elenca come si guadagna e la rivendita di oggi; `/monete vendi` rende il tasso del giorno (40-60% del prezzo, uguale per tutto il giorno).
+- [ ] `ECO-118/121` — `/admin-giochi stipendi lotteria prezzo:10`: `/monete conto lotteria quanti:3` compra (massimo 10 al giorno, saldo controllato), senza numero mostra lo stato e le ultime estrazioni; dopo mezzanotte UTC (entro 10 minuti) il vincitore, scelto a sorte in proporzione ai biglietti, prende il 90% di quanto speso (DM), il 10% va alla cassa.
+- [ ] `ECO-117` — `/admin-giochi stipendi lotteria rimborso:10`: dopo qualche perdita ai giochi `/monete conto rimborso` dà il 10% della perdita netta; subito di nuovo: niente; dopo vincite che compensano le perdite: niente.

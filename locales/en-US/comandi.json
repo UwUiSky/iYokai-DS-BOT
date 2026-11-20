@@ -406,7 +406,9 @@
   "scrigno": "chest-box",
   "guadagni": "earnings",
   "tris": "tictactoe",
-  "forza4": "connect4"
+  "forza4": "connect4",
+  "lotteria": "lottery",
+  "rimborso": "refund"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1518,7 +1520,10 @@
   "monete rischio scrigno": "Open a surprise chest for 100 coins.",
   "monete conto guadagni": "How to earn coins on this server.",
   "giochi sfide tris": "Tic-tac-toe against a member, with an optional stake.",
-  "giochi sfide forza4": "Connect four against a member, with an optional stake."
+  "giochi sfide forza4": "Connect four against a member, with an optional stake.",
+  "monete conto lotteria": "Buy tickets for today's lottery or see the latest draws.",
+  "monete conto rimborso": "Collect part of your game losses, if the server refunds them.",
+  "admin-giochi stipendi lotteria": "Lottery ticket price and refunded share of losses."
  },
  "parametri": {},
  "menu": {

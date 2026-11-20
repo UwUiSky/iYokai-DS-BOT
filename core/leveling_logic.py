@@ -471,6 +471,8 @@ LIMITI_IMPOSTAZIONI = {
     "msg_coins_pausa": (10, 3600),  # ECO-033: secondi tra due messaggi che pagano, per persona
     "msg_coins_tetto": (1, 10_000),  # ECO-033: monete al giorno per persona
     "stipendio_ora": (0, 23),  # ECO-037: ora (UTC) del pagamento automatico
+    "lotteria_prezzo": (0, 10_000),  # ECO-118: prezzo di un biglietto, 0 = lotteria spenta
+    "rimborso_pct": (0, 20),  # ECO-117: quota delle perdite nette che torna indietro
 }
 MODI_SALDO_USCITA = ("tieni", "cancella")  # ECO-014
 MAX_NOME_MONETA = 20  # ECO-001
@@ -560,6 +562,8 @@ class LevelingSettings:
     msg_coins_tetto: int = 200  # ECO-033
     stipendio_auto: bool = False  # ECO-035
     stipendio_ora: int = 12  # ECO-037
+    lotteria_prezzo: int = 0  # ECO-118
+    rimborso_pct: int = 0  # ECO-117
 
 
 @dataclass(frozen=True)

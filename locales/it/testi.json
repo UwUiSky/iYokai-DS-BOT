@@ -3270,5 +3270,11 @@
   "tav_poche": "{chi} non ha abbastanza {moneta}: sfida annullata, nessuna moneta tolta.",
   "tav_non_tuo_turno": "Non è il tuo turno.",
   "tav_mossa_no": "Mossa non valida.",
-  "tav_sfida": "🎮 {sfidante} sfida {sfidato} a **{gioco}** (posta: {posta} {moneta}, 0 = per divertimento). {sfidato}, accetti?"
+  "tav_sfida": "🎮 {sfidante} sfida {sfidato} a **{gioco}** (posta: {posta} {moneta}, 0 = per divertimento). {sfidato}, accetti?",
+  "lot_spenta": "La lotteria non è attiva in questo server.",
+  "lot_no": "Non puoi: servono le monete e al massimo {massimo} biglietti al giorno ({prezzo} {moneta} l'uno).",
+  "lot_stato": "🎟️ Hai {miei} biglietti su {tutti} di oggi ({prezzo} {moneta} l'uno). Estrazione a mezzanotte UTC: il vincitore prende il 90% di quanto speso. Ultime estrazioni:",
+  "lot_rimborso_spento": "Il rimborso delle perdite non è attivo in questo server.",
+  "lot_rimborso_niente": "Non c'è niente da rimborsare: conta la perdita netta dall'ultimo rimborso.",
+  "lot_rimborso_ok": "💸 Rimborso del {pct}% delle perdite: **{dato}** {moneta}."
 }
