@@ -51,6 +51,8 @@ from core.topic_avviso_logic import PAUSA_PER_CANALE_SECONDI, messaggio_avviso, 
 from core.ui_base import BaseModal, BaseView
 from core.premium import PremiumModule, registry
 from core.repositories.greetings_repo import greetings_repo
+from core.repositories.ruoli_extra_repo import RuoliExtraRepository
+from core.ruoli_extra_logic import scegli_immagine
 from core.repositories.saved_embed_repo import saved_embed_repo
 from core.embed_builder_logic import MAX_NOME as MAX_NOME_EMBED
 from core.safe_image import ImmagineTroppoGrande, run_image_task
@@ -322,16 +324,32 @@ def _testo_sull_immagine(modello: str, member: discord.Member) -> str:
     )
 
 
-async def _file_benvenuto(config, member: discord.Member) -> discord.File | None:
-    """NF-11: l'immagine di benvenuto, o None se spenta o non disegnabile (il testo parte lo stesso)."""
-    if not config.welcome_image_enabled:
+async def _immagine_a_caso(guild_id: int) -> bytes | None:
+    """RUO-012: una delle immagini proprie del server, a caso; None se non ce ne sono. Un errore non ferma il benvenuto."""
+    try:
+        repo = RuoliExtraRepository(greetings_repo.pool_provider())
+        scelta = scegli_immagine(await repo.id_immagini_benvenuto(guild_id))
+        return await repo.immagine_benvenuto(guild_id, scelta) if scelta is not None else None
+    except Exception:
+        logger.exception("Immagini proprie del benvenuto non lette nel server %s.", guild_id)
         return None
+
+
+async def _file_benvenuto(config, member: discord.Member) -> discord.File | None:
+    """
+    NF-11: l'immagine di benvenuto, o None se spenta o non disegnabile (il testo parte lo stesso).
+    RUO-012: se il server ha immagini proprie, una a caso fa da sfondo del biglietto; con il biglietto spento
+    viene allegata così com'è (già ricodificata al salvataggio).
+    """
+    propria = await _immagine_a_caso(member.guild.id)
+    if not config.welcome_image_enabled:
+        return discord.File(io.BytesIO(propria), filename="benvenuto.jpg") if propria is not None else None
     try:
         try:
             avatar = await member.display_avatar.replace(size=256, format="png").read()
         except (discord.HTTPException, AttributeError):
             avatar = None
-        sfondo = (
+        sfondo = propria if propria is not None else (
             await greetings_repo.get_welcome_background(member.guild.id)
             if config.welcome_image_has_background
             else None

@@ -40,6 +40,8 @@ class RoleMenu:
     external: bool = False  # RUO-072, 073: il messaggio è di altri
     expires_at: datetime | None = None  # RUO-070
     show_counts: bool = False  # RUO-084
+    gruppo: str | None = None  # RUO-069: nome del gruppo di menu collegati
+    colori: bool = False  # RUO-046: i ruoli del menu sono la tavolozza dei colori
 
 
 @dataclass(frozen=True)
@@ -107,6 +109,10 @@ class RoleMenuRepository:
     def _pool(self) -> asyncpg.Pool:
         return self._pool_provider()
 
+    def pool_provider(self):
+        """Per gli archivi che lavorano sulle stesse tabelle (ruoli_extra_repo)."""
+        return self._pool_provider
+
     def _row_to_menu(self, row) -> RoleMenu:
         return RoleMenu(
             id=row["id"],
@@ -131,6 +137,8 @@ class RoleMenuRepository:
             external=row["external"],
             expires_at=row["expires_at"],
             show_counts=row["show_counts"],
+            gruppo=row["gruppo"] if "gruppo" in row.keys() else None,
+            colori=row["colori"] if "colori" in row.keys() else False,
         )
 
     async def list_menus_for_guild(self, guild_id: int) -> list[RoleMenu]:
@@ -273,6 +281,9 @@ class RoleMenuRepository:
             "DELETE FROM role_menu_options WHERE menu_id = $1 AND role_id = $2",
             menu_id,
             role_id,
+        )
+        await self._pool.execute(  # RUO-083: i ruoli in più seguono la loro opzione
+            "DELETE FROM role_menu_option_roles WHERE menu_id = $1 AND role_id = $2", menu_id, role_id
         )
         return result.endswith(" 1")
 

@@ -96,6 +96,10 @@ class GreetingsRepository:
     def _pool(self) -> asyncpg.Pool:
         return self._pool_provider()
 
+    def pool_provider(self):
+        """Per gli archivi che lavorano sulle stesse tabelle (ruoli_extra_repo)."""
+        return self._pool_provider
+
     async def get_config(self, guild_id: int) -> GreetingsConfig:
         row = await self._pool.fetchrow(
             "SELECT * FROM greetings_config WHERE guild_id = $1", guild_id
