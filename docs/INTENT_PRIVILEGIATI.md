@@ -40,6 +40,7 @@ Message content is needed by features that read what is written: AutoMod filters
 
 | Feature | File | Why |
 |---|---|---|
+| Guess the song game | `cogs/music/indovina.py` | Compare answers in the game channel with the song title, only during a game |
 | Reaction on a new member's first message | `cogs/utility/greetings.py` | Only who wrote is checked, the text is never read |
 | Coin event in a channel | `cogs/leveling/evento_monete.py` | Give coins for a message in the channel the staff chose (the text is not read) |
 | Coins per message | `cogs/leveling/stipendi.py` | Give coins for a message in the channels the staff chose (the text is not read) |

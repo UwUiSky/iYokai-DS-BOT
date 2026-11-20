@@ -792,6 +792,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonne_attore=("changed_by",), server="conserva", nota="impostazione globale del bot, non di un server"),
     _t("music_global_banned_words", "Parole vietate nei titoli in tutto il bot (catalogo MUS-063)",
        colonne_attore=("added_by",), server="conserva", nota="impostazione globale del bot, non di un server"),
+    _t("music_genere_playlist", "Playlist per genere scelte dall'owner (catalogo MUS-014)",
+       colonne_attore=("aggiunta_da",), server="conserva", nota="impostazione globale del bot, non di un server"),
     _t("livelli_funzione", "Livello di abbonamento di ogni funzione (D57)", server="conserva",
        nota="impostazione globale del bot, non di un server"),
     _t("command_sync_state", "Impronta dell'ultima sincronizzazione dei comandi", server="conserva"),

@@ -78,6 +78,8 @@ USI: dict[str, tuple[UsoIntent, ...]] = {
         UsoIntent("Tag triggers on roles", "cogs/utility/inneschi.py", "Run a tag when the server's chosen role is given or taken"),
     ),
     INTENT_MESSAGE_CONTENT: (
+        UsoIntent("Guess the song game", "cogs/music/indovina.py",
+                  "Compare answers in the game channel with the song title, only during a game"),
         UsoIntent("Reaction on a new member's first message", "cogs/utility/greetings.py",
                   "Only who wrote is checked, the text is never read"),
 
