@@ -8,11 +8,11 @@ per ruolo (#148), del bot con marchio proprio (NF-38), dell'aspetto del bot (CFG
 lingua dai punti unici dei comandi (D16), storico, premium e wiki dei comandi, «I miei dati»
 (copia e richiesta di cancellazione, #46), verifica dei membri dalla pagina web (link firmato,
 impronte senza IP), istantanee dei log (`core/web_panel_istantanee.py`), l'interfaccia di iYokai Desktop (`core/desktop_api.py`), link d'invito personali e inviti (`core/web_panel_inviti.py`),
-informativa privacy e termini (pubbliche) e pagina del proprietario del bot
+ruoli del pannello in lettura e scrittura e panoramica del server (`core/web_panel_accesso.py`, `core/web_panel_panoramica.py`), pagine per area e pagine pubbliche (`core/web_panel_pagine.py`), informativa privacy e termini (pubbliche) e pagina del proprietario del bot
 (moduli premium, server, AI in manutenzione).
 Pagine HTML semplici (Jinja2 con escape automatico, nessuno script). Unica eccezione: la pagina «radio iYokai»
 dentro Discord (`core/web_panel_attivita.py`, B.8), con script propri e il suo riquadro ammesso solo a Discord.
-Funzioni coperte: SPEC §24.1–24.4, §24.6, §24.7, C.1–C.5, §4.2–4.3, §23.15, B.8 (NF-20, issue #91; NF-22, #93; NF-21, #92; NF-38, #109; CFG-030, #122; #46; NF-27 r10)
+Funzioni coperte: SPEC §24.1–24.4, §24.6, §24.7, C.1–C.5, §4.2–4.3, §23.15, B.8 (CFG-001, CFG-002, CFG-003, CFG-027, #122; NF-20, issue #91; NF-22, #93; NF-21, #92; NF-38, #109; CFG-030, #122; #46; NF-27 r10)
 Dipende da: core/panel_bridge.py, core/web_panel_logic.py,
 core/redacted_access_log.py (la query del callback non va nei log)
 
@@ -175,10 +175,11 @@ def build_app(
     def _ip(request: web.Request) -> str:
         return regole.ip_cliente(request.remote, request.headers.get("X-Forwarded-For"), proxy_fidati)
 
-    async def _server(request: web.Request, *, solo_admin: bool = False):
+    async def _server(request: web.Request, *, solo_admin: bool = False, personale: bool = False):
         """
         Il server della richiesta, se l'utente ha ADESSO il livello giusto (CFG-002): lettura per le pagine,
-        scrittura per i POST, admin per le pagine `solo_admin`. La politica dei comandi vale per le scritture
+        scrittura per i POST, admin per le pagine `solo_admin`; `personale` (le preferenze di chi guarda, non del
+        server) chiede solo la lettura anche nei POST. La politica dei comandi vale per le scritture
         (CFG-027). «Non esiste» e «non puoi» hanno la stessa risposta.
         """
         utente_id = request.get(CHIAVE_UTENTE)
@@ -188,7 +189,7 @@ def build_app(
             guild_id = int(request.match_info["guild_id"])
         except ValueError:
             return None, _errore(request, 404, "Server non trovato", "Indirizzo non valido.")
-        scrive = request.method not in ("GET", "HEAD")
+        scrive = request.method not in ("GET", "HEAD") and not personale
         richiesto = regole_accesso.ADMIN if solo_admin else (regole_accesso.SCRITTURA if scrive else regole_accesso.LETTURA)
         guild = await ponte.server_gestibile(
             bot, guild_id, utente_id, richiesto=richiesto, percorso=request.path if scrive else None

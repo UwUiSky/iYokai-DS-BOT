@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block titolo %}Avvisi del pannello · {{ guild.name }} · iYokai Panel{% endblock %}
+{% block corpo %}
+<h1>Avvisi del pannello</h1>
+<p><a href="/server/{{ guild.id }}">&larr; {{ guild.name }}</a></p>
+<p class="tenue">Scegli, per ogni categoria, dove ricevere gli avvisi di questo server: nel sito (qui sotto) o in DM (al massimo 3 all'ora).
+Di base non ricevi niente. Servono ancora i tuoi permessi sul pannello: se li perdi, gli avvisi si fermano.</p>
+{% if not email %}<p class="avviso">Gli avvisi per email non ci sono: iYokai non ha un servizio di posta configurato.</p>{% endif %}
+<form class="carta" method="post" action="/server/{{ guild.id }}/avvisi">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {% for chiave, etichetta in categorie %}
+  <label>{{ etichetta }}
+    <select name="canale_{{ chiave }}">{% for valore, nome in canali %}<option value="{{ valore }}" {{ 'selected' if (scelte.get(chiave) or 'spento') == valore }}>{{ nome }}</option>{% endfor %}</select></label>
+  {% endfor %}
+  <button type="submit">Salva</button>
+</form>
+<h2>Gli ultimi avvisi</h2>
+{% if elenco %}
+<ul>{% for a in elenco %}<li>{{ a.creato_il.strftime('%Y-%m-%d %H:%M') }} · {{ a.testo }}{% if not a.letto %} <span class="etichetta">nuovo</span>{% endif %}</li>{% endfor %}</ul>
+<form method="post" action="/server/{{ guild.id }}/avvisi"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="azione" value="letti"><button class="secondario" type="submit">Segna come letti</button></form>
+{% else %}<p class="tenue">Nessun avviso.</p>{% endif %}
+{% endblock %}

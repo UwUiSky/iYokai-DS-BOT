@@ -1509,7 +1509,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   Migrazioni 0690-0693. Non fatto: ALR-049 (D92). Test: `tests/test_alert_catalogo_r1*.py`.
 - `[x]` 14.24 Vocali temporanei, catalogo #127 (giro r1alert, 17/11) — `/voice permit` e `/voice deny` anche per i ruoli, con
   gerarchia (VOC-002, 003); già presenti e provati: nascondi, qualità audio (VOC-004, 005); pannello persistente con otto azioni
-  (VOC-009, `cogs/voice_temp/_pannello.py`); `/admin-vocali crea` (VOC-019). Non fatto: VOC-020, pagina del pannello (D91).
+  (VOC-009, `cogs/voice_temp/_pannello.py`); `/admin-vocali crea` (VOC-019). VOC-020 fatto dal pannello (§24.8).
   Test: `tests/test_voice_catalogo_r1.py`.
 - `[x]` 14.19 **Voce di Yokai: messaggi vocali** — il bot manda veri
   messaggi vocali di Discord da un testo, nella lingua del testo. Sotto
@@ -2338,6 +2338,8 @@ Completa la parte C più sotto (pagine di verifica e dell'owner).
 - `[x]` 24.7 Pagamento del premium: abbonamento dentro Discord e
   pagamento esterno registrato dall'owner (NF-22)
   → **Stato 14/10:** fatti abbonamento Discord (`premium_entitlements`, 0131), `/admin-bot premium stato` e codici (`/admin-bot premium riscatta`, 0132); pagamento esterno = `/owner premium grant`. Pagina del pannello `/server/<id>/premium` fatta (stesse righe di `/admin-bot premium stato` e link al negozio). Da provare live (serve l'app verificata): `VERIFICA_LIVE.md`.
+- `[x]` 24.8 Ruoli del pannello, panoramica, pagine per area e pagine pubbliche (CFG-001, CFG-002, CFG-003, CFG-006, CFG-027, VOC-020, STA-012, LIV-062, STA-061; r1web)
+  → **Stato 20/11 (r1web):** `core/web_panel_accesso.py` (livelli admin, scrittura, lettura da `web_panel_ruoli`, 0750; politica dei comandi valida nelle scritture), `core/web_panel_panoramica.py` (pagina iniziale), `core/web_panel_vocali.py`, `core/web_panel_pubblico.py` (statistiche pubbliche, indirizzo breve della classifica, chiave API; 0751), `core/web_panel_avvisi.py` (avvisi nel sito o in DM, niente email; 0752), rotte in `core/web_panel_pagine.py`. Test: `tests/test_panel_accesso.py`, `test_panel_vocali.py`, `test_panel_pubblico.py`, `test_panel_avvisi.py`. Non fatto: ALR-049 (D99, manca l'OAuth di Twitch).
 
 ## §25 MOTORE AI — in corso (fase F12, issue #95, #50, #132)
 
