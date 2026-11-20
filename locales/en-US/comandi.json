@@ -413,7 +413,12 @@
   "rimborso": "refund",
   "ruolo-richiesto": "required-role",
   "assegna": "assign",
-  "togli-posto": "remove-seat"
+  "togli-posto": "remove-seat",
+  "oggetto-azione": "item-action",
+  "scava": "dig",
+  "coccole": "pet",
+  "gratta": "scratch",
+  "bersaglio": "target"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1538,7 +1543,13 @@
   "admin-bot config permessi": "Shows a member's permission level and why.",
   "admin-bot politica ruolo-richiesto": "Whoever uses a command must have a certain role.",
   "admin-bot premium assegna": "Puts one of your premium seats on this server.",
-  "admin-bot premium togli-posto": "Removes your premium seat from this server."
+  "admin-bot premium togli-posto": "Removes your premium seat from this server.",
+  "admin-giochi oggetto-azione": "What a shop item does when used: coins or a role.",
+  "monete rischio scava": "Dig for coins (sometimes a treasure).",
+  "monete rischio meme": "Post a meme: the type you pick changes risk and prize.",
+  "monete rischio coccole": "Pet the bot: it leaves you a few coins.",
+  "monete rischio gratta": "Scratch card: a 20-coin ticket, pick a square.",
+  "monete rischio bersaglio": "A target appears in a few seconds: click in time."
  },
  "parametri": {},
  "menu": {

@@ -3363,5 +3363,21 @@
   "posti_non_suo": "Questo server non ha un tuo posto premium.",
   "posti_tolto": "Fatto: il posto è libero e puoi metterlo su un altro server (dopo un'ora dall'ultimo cambio).",
   "posti_stato_server": "Posto premium messo da {utente}: tutti i moduli sono sbloccati.",
-  "posti_stato_tuoi": "I tuoi posti premium: {usati} usati su {posti}."
+  "posti_stato_tuoi": "I tuoi posti premium: {usati} usati su {posti}.",
+  "inv_azione_monete": "Ricevi **{monete}** monete. Saldo: {saldo}.",
+  "inv_azione_fallita": "Non sono riuscito a cambiare il ruolo: l'oggetto ti è stato restituito.",
+  "inv_azione_ruolo": "Il ruolo **{ruolo}** è cambiato.",
+  "mg_scava_ok": "⛏️ Scavando trovi **{importo}** {moneta}!",
+  "mg_scava_no": "⛏️ Scavi, scavi... solo terra.",
+  "mg_meme_ok": "😂 Il meme piace: **{importo}** {moneta}.",
+  "mg_meme_no": "😶 Il meme non piace a nessuno.",
+  "mg_coccole_ok": "🐾 Il bot fa le fusa e ti lascia **{importo}** {moneta}.",
+  "mg_gratta": "🎟️ Scegli una casella: il biglietto costa {prezzo} {moneta}.",
+  "mg_gratta_no": "Servono {prezzo} {moneta} (e un minuto tra un biglietto e l'altro).",
+  "mg_gratta_ok": "🎉 Hai vinto **{premio}** {moneta}! Saldo: {saldo}.",
+  "mg_gratta_vuoto": "Niente da fare. Saldo: {saldo}.",
+  "mg_bersaglio_attesa": "🎯 Preparati...",
+  "mg_bersaglio_ora": "🎯 ORA! Clicca!",
+  "mg_bersaglio_perso": "Troppo tardi.",
+  "mg_bersaglio_ok": "🎯 Colpito! Saldo: {saldo} {moneta}."
 }

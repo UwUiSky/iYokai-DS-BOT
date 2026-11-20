@@ -3363,5 +3363,21 @@
   "posti_non_suo": "This server has no premium seat of yours.",
   "posti_tolto": "Done: the seat is free and you can put it on another server (one hour after the last change).",
   "posti_stato_server": "Premium seat placed by {utente}: all modules are unlocked.",
-  "posti_stato_tuoi": "Your premium seats: {usati} used out of {posti}."
+  "posti_stato_tuoi": "Your premium seats: {usati} used out of {posti}.",
+  "inv_azione_monete": "You receive **{monete}** coins. Balance: {saldo}.",
+  "inv_azione_fallita": "I could not change the role: the item was given back.",
+  "inv_azione_ruolo": "The role **{ruolo}** has changed.",
+  "mg_scava_ok": "⛏️ Digging you find **{importo}** {moneta}!",
+  "mg_scava_no": "⛏️ You dig and dig... just dirt.",
+  "mg_meme_ok": "😂 The meme is a hit: **{importo}** {moneta}.",
+  "mg_meme_no": "😶 Nobody likes the meme.",
+  "mg_coccole_ok": "🐾 The bot purrs and leaves you **{importo}** {moneta}.",
+  "mg_gratta": "🎟️ Pick a square: the ticket costs {prezzo} {moneta}.",
+  "mg_gratta_no": "You need {prezzo} {moneta} (and a minute between tickets).",
+  "mg_gratta_ok": "🎉 You won **{premio}** {moneta}! Balance: {saldo}.",
+  "mg_gratta_vuoto": "No luck. Balance: {saldo}.",
+  "mg_bersaglio_attesa": "🎯 Get ready...",
+  "mg_bersaglio_ora": "🎯 NOW! Click!",
+  "mg_bersaglio_perso": "Too late.",
+  "mg_bersaglio_ok": "🎯 Hit! Balance: {saldo} {moneta}."
 }

@@ -118,3 +118,57 @@ def premio_scrigno(rng: random.Random) -> int:
 
 def resa_scrigno() -> float:
     return sum(p * v for p, v in PREMI_SCRIGNO) / 100 / PREZZO_SCRIGNO
+
+
+# ----------------------------------------------------------------------
+# Piccoli guadagni con pausa (ECO-042, 043, 044, 046, 047)
+# ----------------------------------------------------------------------
+PAUSA_SCAVA = 3600
+PAUSA_MEME = 1800
+PAUSA_COCCOLE = 900
+PAUSA_BERSAGLIO = 1200
+TEMPO_BERSAGLIO = 5.0  # secondi per cliccare
+# tipo di meme -> (probabilità %, minimo, massimo)
+MEME = {"classico": (70, 5, 20), "azzardato": (35, 20, 70), "di nicchia": (90, 2, 8)}
+PREZZO_GRATTA = 20
+PREMI_GRATTA = ((60, 0), (25, 20), (10, 50), (4, 100), (1, 300))  # resa media 0,85
+
+
+def scava(rng: random.Random) -> int:
+    """ECO-042: 5% un tesoro da 200, altrimenti 60% di trovare da 15 a 60 monete."""
+    if rng.randint(1, 100) <= 5:
+        return 200
+    return rng.randint(15, 60) if rng.randint(1, 100) <= 60 else 0
+
+
+def pubblica_meme(rng: random.Random, tipo: str) -> int:
+    """ECO-044: monete per un meme del tipo scelto (0 se non piace a nessuno)."""
+    if tipo not in MEME:
+        raise ValueError(f"Tipo di meme sconosciuto: {tipo}")
+    probabilita, minimo, massimo = MEME[tipo]
+    return rng.randint(minimo, massimo) if rng.randint(1, 100) <= probabilita else 0
+
+
+def coccole(rng: random.Random) -> int:
+    """ECO-046: da 1 a 5 monete."""
+    return rng.randint(1, 5)
+
+
+def premio_gratta(rng: random.Random) -> int:
+    """ECO-043: premio del biglietto gratta e vinci."""
+    punto = rng.randint(1, 100)
+    totale = 0
+    for peso, premio in PREMI_GRATTA:
+        totale += peso
+        if punto <= totale:
+            return premio
+    raise AssertionError("pesi del gratta e vinci sbagliati")
+
+
+def resa_gratta() -> float:
+    return sum(p * v for p, v in PREMI_GRATTA) / 100 / PREZZO_GRATTA
+
+
+def premio_bersaglio(rng: random.Random) -> int:
+    """ECO-047: da 5 a 15 monete per chi clicca in tempo."""
+    return rng.randint(5, 15)
