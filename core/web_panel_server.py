@@ -820,7 +820,8 @@ def build_app(
         app, bot=bot, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE,
     )
     web_panel_pagine.registra_rotte(
-        app, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE,
+        app, bot=bot, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura,
+        chiave_utente=CHIAVE_UTENTE, ip=_ip,
     )
     web_panel_istantanee.registra_rotte(app, bot=bot, ponte=ponte, pagina=_pagina, errore=_errore, chiave_utente=CHIAVE_UTENTE)
     return app

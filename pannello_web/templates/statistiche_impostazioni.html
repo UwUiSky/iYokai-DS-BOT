@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block titolo %}Statistiche pubbliche · {{ guild.name }} · iYokai Panel{% endblock %}
+{% block corpo %}
+<h1>Statistiche pubbliche</h1>
+<p><a href="/server/{{ guild.id }}">&larr; {{ guild.name }}</a></p>
+<p class="tenue">Una pagina che chiunque può aprire, senza accedere. Mostra i messaggi degli ultimi 30 giorni e i canali che @everyone può vedere.
+La lista dei membri più attivi è un interruttore a parte: chi ha scelto di essere anonimo compare come «utente anonimo». Serve il modulo «server_stats» acceso.</p>
+<form class="carta" method="post" action="/server/{{ guild.id }}/statistiche">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <label>Pagina pubblica
+    <select name="pubbliche"><option value="1" {{ 'selected' if p.stat_pubbliche }}>Accesa</option><option value="0" {{ 'selected' if not p.stat_pubbliche }}>Spenta</option></select></label>
+  <label>Mostra i membri più attivi (nome del server, mai l'ID)
+    <select name="membri"><option value="1" {{ 'selected' if p.stat_membri }}>Sì</option><option value="0" {{ 'selected' if not p.stat_membri }}>No</option></select></label>
+  <button type="submit">Salva</button>
+</form>
+{% if p.stat_pubbliche %}<p>Indirizzo: <a href="/stats/{{ guild.id }}">/stats/{{ guild.id }}</a></p>{% endif %}
+{% endblock %}

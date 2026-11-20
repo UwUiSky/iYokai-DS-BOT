@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block titolo %}Chiave API · {{ guild.name }} · iYokai Panel{% endblock %}
+{% block corpo %}
+<h1>Chiave API</h1>
+<p><a href="/server/{{ guild.id }}">&larr; {{ guild.name }}</a></p>
+<p class="tenue">Per altri programmi: legge le statistiche di questo server (sola lettura) da <code>/api/v1/stats</code>, con l'intestazione
+<code>Authorization: Bearer &lt;chiave&gt;</code>. Una chiave sola per server, al massimo 30 richieste al minuto. Chi è anonimo non ha mai l'ID.
+Creare una chiave nuova ferma la vecchia.</p>
+{% if nuova %}
+<div class="carta">
+  <p class="avviso ok">Copia la chiave adesso: non si potrà più vedere.</p>
+  <p><code>{{ nuova }}</code></p>
+</div>
+{% endif %}
+<div class="carta">
+{% if p.api_prefisso %}<p>Chiave attiva: <code>{{ p.api_prefisso }}…</code>, creata il {{ p.api_creata_il.strftime('%Y-%m-%d') }}.</p>{% else %}<p>Nessuna chiave attiva.</p>{% endif %}
+<div class="riga">
+<form method="post" action="/server/{{ guild.id }}/api"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="azione" value="crea"><button type="submit">{{ 'Crea una chiave nuova' if p.api_prefisso else 'Crea la chiave' }}</button></form>
+{% if p.api_prefisso %}<form method="post" action="/server/{{ guild.id }}/api"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="azione" value="revoca"><button class="secondario" type="submit">Revoca</button></form>{% endif %}
+</div>
+</div>
+{% endblock %}

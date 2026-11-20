@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titolo %}Statistiche · {{ d.server }}{% endblock %}
+{% block corpo %}
+<h1>{{ d.server }}</h1>
+<p class="tenue">{{ d.membri }} membri · ultimi {{ d.giorni }} giorni</p>
+<h2>Messaggi al giorno</h2>
+<table>
+{% for g in d.messaggi_per_giorno %}<tr><td>{{ g.giorno }}</td><td><progress value="{{ g.messaggi }}" max="{{ massimo }}"></progress></td><td>{{ g.messaggi }}</td></tr>{% else %}<tr><td class="tenue">Ancora nessun dato.</td></tr>{% endfor %}
+</table>
+<h2>Canali più attivi</h2>
+<table>{% for c in d.canali %}<tr><td>#{{ c.nome }}</td><td>{{ c.messaggi }}</td></tr>{% else %}<tr><td class="tenue">Ancora nessun dato.</td></tr>{% endfor %}</table>
+{% if d.membri_piu_attivi %}
+<h2>Membri più attivi</h2>
+<table>{% for m in d.membri_piu_attivi %}<tr><td>{{ loop.index }}</td><td>{{ m.nome }}</td><td>{{ m.messaggi }}</td></tr>{% endfor %}</table>
+{% endif %}
+{% endblock %}

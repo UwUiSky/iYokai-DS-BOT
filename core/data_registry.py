@@ -879,6 +879,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
        nota="nessun token di Discord"),
     _t("web_panel_ruoli", "Ruoli che possono leggere o scrivere nel pannello web del server (catalogo CFG-002)",
        colonne_attore=("impostato_da",), colonna_server="guild_id"),
+    _t("web_panel_pubblico", "Cosa il server rende pubblico dal pannello: statistiche, indirizzo della classifica, impronta della chiave API (catalogo STA-012, LIV-062, STA-061)",
+       colonne_attore=("api_creata_da",), colonna_server="guild_id", nota="della chiave si salva solo l'impronta"),
     _t("verify_impronte", "Impronte della verifica web (HMAC con sale, mai l'IP in chiaro)",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True,
        escludi_dall_esportazione=("impronta",), scadenza=Scadenza("creato_il", 30),
