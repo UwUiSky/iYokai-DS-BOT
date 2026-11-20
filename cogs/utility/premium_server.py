@@ -27,6 +27,7 @@ from core.premium_pricing_logic import COSTO_MODULO_IN_COIN, GIORNI_MODULO_IN_CO
 from core.ui_base import BaseView
 from core.premium_code_service import TroppiTentativi, riscatta_codice
 from core.premium_entitlement_service import allinea_con_discord, registra_evento
+from core.premium_posti_service import Esito, assegna, posto_del_server, stato_utente, togli
 from core.premium_status_logic import righe_stato_server
 from core.repositories.module_subscription_repo import module_subscription_repo
 
@@ -138,6 +139,12 @@ class PremiumServerCog(CogConGruppi, commands.Cog):
             for s in await module_subscription_repo.list_for_guild(guild.id)
         ]
         righe = righe_stato_server(dettaglio, scadenze)
+        proprietario_posto = await posto_del_server(guild.id)
+        if proprietario_posto is not None:  # CFG-034/035: il posto di una persona su questo server
+            righe.append(await testo_per(interaction, "posti_stato_server", utente=f"<@{proprietario_posto}>"))
+        suoi = await stato_utente(interaction.user.id)
+        if suoi is not None:
+            righe.append(await testo_per(interaction, "posti_stato_tuoi", usati=suoi.usati, posti=suoi.posti))
         if config.PREMIUM_ALPHA_UNLOCK_ALL:
             righe.append(await testo_per(interaction, "prem_stato_alpha"))
         corpo = "\n".join(f"- {r}" for r in righe) or await testo_per(interaction, "prem_stato_nessuno")
@@ -151,6 +158,27 @@ class PremiumServerCog(CogConGruppi, commands.Cog):
             title=await testo_per(interaction, "prem_stato_titolo"), description=corpo[:3900], color=discord.Color.gold()
         )
         await interaction.followup.send(embed=embed, ephemeral=True)
+
+    @comando_di_gruppo(
+        "admin-bot", nome="assegna", descrizione="Metti uno dei tuoi posti premium su questo server.",
+        sottogruppo=SOTTOGRUPPO_PREMIUM,
+    )
+    async def assegna_posto(self, interaction: discord.Interaction) -> None:
+        esito = await assegna(interaction.user.id, interaction.guild.id)
+        await interaction.response.send_message(
+            await testo_per(interaction, f"posti_{esito.value}"), ephemeral=True,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+
+    @comando_di_gruppo(
+        "admin-bot", nome="togli-posto", descrizione="Togli il tuo posto premium da questo server.",
+        sottogruppo=SOTTOGRUPPO_PREMIUM,
+    )
+    async def togli_posto(self, interaction: discord.Interaction) -> None:
+        esito = await togli(interaction.user.id, interaction.guild.id)
+        await interaction.response.send_message(
+            await testo_per(interaction, "posti_tolto" if esito is Esito.FATTO else "posti_non_suo"), ephemeral=True
+        )
 
     @comando_di_gruppo(
         "admin-bot", nome="riscatta", descrizione="Riscatta un codice premium per questo server.",

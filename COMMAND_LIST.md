@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-20 19:24 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-20 19:30 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 959 comandi in 51 categorie.**
+**Totale: 973 comandi in 51 categorie.**
 
 ## Admin: AI
 
@@ -179,10 +179,13 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-20 19:
 - **`/admin-bot config history`** — Mostra le ultime modifiche alla configurazione.
 - **`/admin-bot config import`** — Importa una configurazione da un file esportato con /admin-bot config export.
 - **`/admin-bot config nickname-bot`** — Cambia il nome del bot in questo server.
+- **`/admin-bot config permessi`** — Mostra il livello di permesso di un membro e perché.
 - **`/admin-bot config pulizia`** — Toglie dalla configurazione canali e ruoli che non esistono più.
 - **`/admin-bot config reset`** — Azzera la configurazione di questo server.
+- **`/admin-bot config risposte`** — Risposte del bot: private, cancellate dopo un po', colori.
 - **`/admin-bot config rollback`** — Ripristina il valore precedente di una modifica.
 - **`/admin-bot config sincronizza`** — Riscrive i permessi dei comandi di questo server.
+- **`/admin-bot config staff`** — Ruoli admin, mod e ban del bot: elenco e scelta.
 - **`/admin-bot lingua set`** — Imposta la lingua di questo server.
 - **`/admin-bot lingua show`** — Mostra la lingua impostata per questo server.
 - **`/admin-bot politica canali`** — Dove il bot risponde ai comandi.
@@ -190,11 +193,14 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-20 19:
 - **`/admin-bot politica diagnosi`** — Scopre perché un comando non funziona qui.
 - **`/admin-bot politica elenco`** — Mostra la politica dei comandi e, se vuoi, azzera un elenco.
 - **`/admin-bot politica ignora`** — Il bot ignora un ruolo o un utente.
+- **`/admin-bot politica ruolo-richiesto`** — Chi usa un comando deve avere un certo ruolo.
 - **`/admin-bot premium aspetto`** — Avatar, banner e descrizione del bot in questo server (premium).
+- **`/admin-bot premium assegna`** — Metti uno dei tuoi posti premium su questo server.
 - **`/admin-bot premium marchio`** — Usa un bot con il tuo nome e il tuo avatar (premium).
 - **`/admin-bot premium riscatta`** — Riscatta un codice premium per questo server.
 - **`/admin-bot premium sblocca`** — Sblocca un modulo premium per 30 giorni con le monete della cassa del server.
 - **`/admin-bot premium stato`** — Mostra come è sbloccato il premium in questo server.
+- **`/admin-bot premium togli-posto`** — Togli il tuo posto premium da questo server.
 - **`/admin-bot setup attiva`** — Attiva o disattiva i moduli del bot, per categoria.
 - **`/admin-bot setup wizard`** — Configura passo-passo ruoli e moduli del bot, una categoria alla volta.
 
@@ -262,6 +268,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-20 19:
 - **`/admin-giochi stipendi auto`** — Paga gli stipendi da solo a un'ora (UTC) e scegli le monete per messaggio.
 - **`/admin-giochi stipendi elenco`** — Gli stipendi e le tasse per ruolo, e le regole dei messaggi.
 - **`/admin-giochi stipendi imposta`** — Stipendio (positivo) o tassa (negativo) per un ruolo.
+- **`/admin-giochi stipendi lotteria`** — Prezzo della lotteria e quota di perdite rimborsata.
 - **`/admin-giochi stipendi toglie`** — Toglie lo stipendio o la tassa di un ruolo.
 - **`/admin-giochi telefono blocca`** — Blocca o sblocca una persona o un altro server dal telefono.
 - **`/admin-giochi telefono canale`** — Il canale del telefono del server.
@@ -757,7 +764,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-20 19:
 - **`/giochi sfide blackjack`** — Blackjack contro il banco: carta, stai, raddoppia, arrenditi.
 - **`/giochi sfide duelli`** — Classifica dei duelli e i tuoi ultimi.
 - **`/giochi sfide duello`** — Sfida un membro a duello: chi vince prende la posta.
+- **`/giochi sfide forza4`** — Forza 4 contro un membro, anche con una puntata.
 - **`/giochi sfide torre`** — Sali la torre: ogni piano rende di più, ma può crollare.
+- **`/giochi sfide tris`** — Tris contro un membro, anche con una puntata.
 - **`/giochi smash`** — Smash or pass: un personaggio adulto di AniList (solo canali con limite d'età).
 - **`/giochi spinner`** — Fai girare lo spinner: vince chi lo fa girare più a lungo.
 - **`/giochi statistiche`** — Le tue partite, vincite e perdite per gioco.
@@ -889,7 +898,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-20 19:
 - **`/monete cassa`** — Mostra il saldo della cassa del server.
 - **`/monete conto banca`** — La tua banca: vedi, deposita o preleva (i furti toccano solo i contanti).
 - **`/monete conto dimettiti`** — Lascia il lavoro e ricomincia da stagista.
+- **`/monete conto guadagni`** — Come si guadagnano monete in questo server.
 - **`/monete conto lavoro`** — Il tuo lavoro attuale e quanto manca alla promozione.
+- **`/monete conto lotteria`** — Compra biglietti della lotteria di oggi o guarda le ultime estrazioni.
+- **`/monete conto potenzia`** — Potenzia il lavoro o il premio periodico: più livelli, più monete.
+- **`/monete conto rimborso`** — Riscuoti una parte delle tue perdite nei giochi, se il server la rimborsa.
 - **`/monete daily`** — Riscuoti la ricompensa giornaliera.
 - **`/monete inventario`** — Gli oggetti che hai comprato.
 - **`/monete lascia`** — Lascia delle monete in questo canale: le prende chi arriva prima.
@@ -902,6 +915,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-20 19:
 - **`/monete rischio colpo`** — Un colpo rischioso: paga alta se va bene, multa se va male.
 - **`/monete rischio elemosina`** — Chiedi l'elemosina: una piccola cifra, a volte niente.
 - **`/monete rischio furto`** — Prova a rubare dei contanti a un membro (solo se il server lo permette).
+- **`/monete rischio scrigno`** — Apri uno scrigno a sorpresa per 100 monete.
 - **`/monete riscuoti`** — Riscuoti lo stipendio dei tuoi ruoli (e paga le tasse).
 - **`/monete settimanale`** — Riscuoti il premio della settimana.
 - **`/monete shop buy`** — Acquista un oggetto dello shop.

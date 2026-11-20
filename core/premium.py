@@ -302,6 +302,9 @@ async def guild_has_premium_access(
     - abbonamento Discord (app premium, NF-22,
       `core/premium_entitlement_service.py`) — sblocca TUTTI i moduli
       finché dura
+    - posto premium di una persona (CFG-034,
+      `core/premium_posti_service.py`) — sblocca TUTTI i moduli finché
+      l'abbonamento della persona non scade
     """
     if config.PREMIUM_ALPHA_UNLOCK_ALL:
         return True
@@ -327,7 +330,13 @@ async def guild_has_premium_access(
 
     from core.premium_entitlement_service import server_ha_abbonamento
 
-    return await server_ha_abbonamento(guild_id)
+    if await server_ha_abbonamento(guild_id):
+        return True
+
+    # CFG-034: il posto premium che una persona ha assegnato a questo server (lo decide solo il database).
+    from core.premium_posti_service import posto_attivo
+
+    return await posto_attivo(guild_id)
 
 
 async def get_guild_premium_breakdown(guild_id: int, bot=None) -> dict:

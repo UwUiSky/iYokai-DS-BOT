@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:24 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:30 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 959 commands in 51 categories.**
+**Total: 973 commands in 51 categories.**
 
 ## Admin: AI
 
@@ -178,9 +178,12 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:2
 - **`/admin-bot config export`** — Exports this server's configuration to a file.
 - **`/admin-bot config history`** — Shows the latest configuration changes.
 - **`/admin-bot config import`** — Imports a configuration from a file exported with /admin-bot config export.
+- **`/admin-bot config permissions`** — Shows a member's permission level and why.
+- **`/admin-bot config replies`** — Bot replies: private, deleted after a while, colours.
 - **`/admin-bot config report-channel`** — Sets the reports channel.
 - **`/admin-bot config reset`** — Resets this server's configuration.
 - **`/admin-bot config rollback`** — Restores the previous value of a change.
+- **`/admin-bot config staff`** — Bot admin, mod and ban roles: list and choice.
 - **`/admin-bot config suggestions-channel`** — Sets the suggestions channel.
 - **`/admin-bot config sync`** — Rewrites this server's command permissions.
 - **`/admin-bot language set`** — Sets this server's language.
@@ -190,9 +193,12 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:2
 - **`/admin-bot policy diagnosis`** — Finds out why a command does not work here.
 - **`/admin-bot policy ignore`** — The bot ignores a role or a user.
 - **`/admin-bot policy list`** — Shows the command policy and, if you want, clears a list.
+- **`/admin-bot policy required-role`** — Whoever uses a command must have a certain role.
 - **`/admin-bot premium appearance`** — The bot's avatar, banner and description in this server (premium).
+- **`/admin-bot premium assign`** — Puts one of your premium seats on this server.
 - **`/admin-bot premium branding`** — Use a bot with your own name and avatar (premium).
 - **`/admin-bot premium redeem`** — Redeems a premium code for this server.
+- **`/admin-bot premium remove-seat`** — Removes your premium seat from this server.
 - **`/admin-bot premium sblocca`** — Unlocks a premium module for 30 days with coins from the server treasury.
 - **`/admin-bot premium status`** — Shows how premium is unlocked in this server.
 - **`/admin-bot setup enable`** — Turns the bot's modules on or off, by category.
@@ -260,6 +266,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:2
 - **`/admin-games quiz rules`** — Quiz rules: points, time, answer shown, bot plays.
 - **`/admin-games salaries auto`** — Pay salaries automatically at an hour (UTC) and choose coins per message.
 - **`/admin-games salaries list`** — Salaries and taxes per role, and the message rules.
+- **`/admin-games salaries lottery`** — Lottery ticket price and refunded share of losses.
 - **`/admin-games salaries remove`** — Remove the salary or tax of a role.
 - **`/admin-games salaries set`** — Salary (positive) or tax (negative) for a role.
 - **`/admin-games servizi`** — Turn the external services on or off: Lemmy images and GIF search.
@@ -742,9 +749,11 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:2
 - **`/games card`** — Guess the drawn card: colour, suit or value.
 - **`/games carte start`** — Card game: complete the sentence with the funniest card.
 - **`/games challenges blackjack`** — Blackjack against the dealer: hit, stand, double down, surrender.
+- **`/games challenges connect4`** — Connect four against a member, with an optional stake.
 - **`/games challenges duel`** — Challenge a member to a duel: the winner takes the stake.
 - **`/games challenges duels`** — Duel leaderboard and your latest duels.
 - **`/games challenges high-low`** — Higher or lower? The prize grows with every right answer.
+- **`/games challenges tictactoe`** — Tic-tac-toe against a member, with an optional stake.
 - **`/games challenges tower`** — Climb the tower: each floor pays more, but it can collapse.
 - **`/games counting leaderboard`** — Who counted the most correct numbers.
 - **`/games counting notifyme`** — Get pinged in the channel when the count reaches a number.
@@ -885,8 +894,12 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:2
 ## Coins
 
 - **`/coins account bank`** — Your bank: view, deposit or withdraw (thefts only hit cash).
+- **`/coins account earnings`** — How to earn coins on this server.
 - **`/coins account job`** — Your current job and how far the promotion is.
+- **`/coins account lottery`** — Buy tickets for today's lottery or see the latest draws.
+- **`/coins account refund`** — Collect part of your game losses, if the server refunds them.
 - **`/coins account resign`** — Quit the job and restart as an intern.
+- **`/coins account upgrade`** — Upgrade your job or periodic reward: more levels, more coins.
 - **`/coins balance`** — Shows your coins.
 - **`/coins cashbox`** — Shows the server treasury balance.
 - **`/coins collect`** — Collect the salary of your roles (and pay the taxes).
@@ -900,6 +913,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:2
 - **`/coins pay`** — Transfers coins to another user.
 - **`/coins risk adventure`** — A safer risky outing: pays less, works more often.
 - **`/coins risk beg`** — Beg: a small amount, sometimes nothing.
+- **`/coins risk chest-box`** — Open a surprise chest for 100 coins.
 - **`/coins risk heist`** — A risky heist: big pay if it works, a fine if it fails.
 - **`/coins risk search`** — Search for coins in a place of your choice.
 - **`/coins risk theft`** — Try to steal cash from a member (only if the server allows it).

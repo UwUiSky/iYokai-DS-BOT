@@ -2076,6 +2076,15 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   377 comandi cambiano percorso (migrazione 0488). Il prefisso dice il ruolo e non si traduce; nessun gruppo per tutti
   inizia con `admin`, `mod` o `founder`. `/founder` passa solo a `guild.owner_id` (`Livello.FOUNDER`). Nella politica dei
   comandi resta sempre acceso solo `admin-bot` (`PREFISSI_SEMPRE_APERTI`).
+- `[x]` 20.10 Configurazione, permessi e premium, catalogo #122 (giro r1cfg, 18/11, D96) — risposte del server
+  `/admin-bot config risposte`: sempre private, cancellazione dopo N secondi, colori premium (CFG-013, 014, 033,
+  `core/risposte_server.py`); ruoli richiesti per comando o gruppo (CFG-012, `policy_ruoli_richiesti`); `/admin-bot config staff`
+  e `permessi` (CFG-022, 023, 025, 026, `core/permessi_vista.py`); lingua di partenza dal locale di Discord (CFG-029);
+  posti premium di una persona (CFG-034, 035, migrazione 0720, `core/premium_posti_service.py`); esportazione con nomi e
+  importazione senza ID di altri server (CFG-043, `core/config_trasloco.py`). Già presenti e ora provate: CFG-007 (parte),
+  028, 031, 035, 037, 042, 045. Non fatte: CFG-024, 036, 039, 040, 041 (D96); CFG-015, 016, 017, 044 (altre aree);
+  CFG-001, 002, 003, 006, 027 (pannello web). Test: `tests/test_risposte_server.py`, `test_permessi_vista.py`,
+  `test_premium_posti.py`, `test_config_trasloco.py`, `test_lingua_iniziale.py`, `test_cfg_gia_coperte.py`.
 
 ## §21 LINGUE E RICERCA DEI COMANDI — da fare (fase F8)
 

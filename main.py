@@ -41,6 +41,7 @@ from core.command_groups import registra_owner
 from core.command_translator import TraduttoreYokai
 from core.command_sync import StatoSyncDatabase, sincronizza_all_avvio
 from core.config import config
+from core.i18n import lingua_iniziale_del_server
 from core.repositories.music_session_repo import music_session_repo
 from core.bot_supervisor import (
     VoceBot,
@@ -431,7 +432,7 @@ class iYokaiBot(commands.AutoShardedBot):
             await esci_da_server_in_blacklist(self, guild.id, guild)
             return
 
-        await db.ensure_guild_exists(guild.id)
+        await db.ensure_guild_exists(guild.id, language=lingua_iniziale_del_server(guild))  # CFG-029
         await guild_presence_repo.segna_entrato(guild.id)  # NF-04: un rientro azzera i 90 giorni
         if self.backup_creator_client is not None and await finalize_backup_job(
             guild, self.backup_creator_client, backup_repo

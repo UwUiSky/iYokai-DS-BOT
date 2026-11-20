@@ -30,6 +30,9 @@ from core.command_access import (
 )
 from core.database import db
 from core.config_schema import imposta_lingua_server
+from core.config_trasloco import (
+    ServerNonPronto, errore_riferimenti, raccogli_riferimenti, rimappa_impostazioni,
+)
 from core.config_history_logic import (
     MAX_RIGHE_CSV,
     TIPI_MODIFICA,
@@ -132,6 +135,12 @@ SETTINGS_SCHEMA = {
     "policy_canali_no": "lista_id",
     "policy_ignora_ruoli": "lista_id",
     "policy_ignora_utenti": "lista_id",
+    "policy_ruoli_richiesti": "mappa_ruoli",
+    # Risposte del server (core/risposte_server.py, CFG-013, CFG-014, CFG-033)
+    "risposte_effimere": "bool",
+    "risposte_cancella_secondi": "int_0_600",
+    "colore_successo": "colore",
+    "colore_errore": "colore",
     # Opzioni di moderazione (core/moderation_opzioni.py)
     "mod_ban_giorni_messaggi": "int_0_7",
     "mod_timeout_predefinito": "durata_timeout",
@@ -231,6 +240,15 @@ CONTROLLI_PER_TIPO = {
         and all(isinstance(v, str) and 0 < len(v) <= 100 for v in valore),
         "un elenco di percorsi di comandi",
     ),
+    "mappa_ruoli": (
+        lambda valore: isinstance(valore, dict)
+        and len(valore) <= 100
+        and all(
+            isinstance(k, str) and 0 < len(k) <= 100 and _e_una_lista_di_id(v) and 0 < len(v) <= 10
+            for k, v in valore.items()
+        ),
+        "un elenco comando → al massimo 10 ID di ruolo (fino a 100 comandi)",
+    ),
     "bool": (lambda valore: isinstance(valore, bool), "true oppure false"),
     "modalita_link_inviti": (
         lambda valore: valore in ("tutti", "crea_invito", "ruolo", "spento"),
@@ -253,6 +271,8 @@ CONTROLLI_PER_TIPO = {
     "int_0_200": (_intero_tra(0, 200), "un intero tra 0 e 200"),
     "int_0_365": (_intero_tra(0, 365), "un intero tra 0 e 365"),
     "int_0_3600": (_intero_tra(0, 3600), "un intero tra 0 e 3600"),
+    "int_0_600": (_intero_tra(0, 600), "un intero tra 0 e 600"),
+    "colore": (_intero_tra(0, 0xFFFFFF), "un colore come numero tra 0 e 16777215"),
     "int_1_5": (_intero_tra(1, 5), "un intero tra 1 e 5"),
     "int_0_60": (_intero_tra(0, 60), "un intero tra 0 e 60"),
     "testo_300": (lambda valore: isinstance(valore, str) and len(valore) <= 300, "un testo fino a 300 caratteri"),
@@ -775,6 +795,8 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
             for chiave, valore in config["settings"].items()
             if valore is not None and chiave in SETTINGS_SCHEMA
         }
+        # CFG-043: il nome di ogni canale e ruolo citato, per ritrovarli sul server di arrivo.
+        config["riferimenti"] = raccogli_riferimenti(config["settings"], guild)
         contenuto = json.dumps(config, indent=2, ensure_ascii=False)
         try:
             # Un export che non sta in un file non si divide: l'import vuole un file solo.
@@ -829,10 +851,27 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
             )
             return
 
-        errore = errore_schema_import(dati)
+        errore = errore_schema_import(dati) or errore_riferimenti(dati.get("riferimenti"))
         if errore is not None:
             await interaction.response.send_message(f"❌ {errore}", ephemeral=True)
             return
+
+        # CFG-043: mai ID che qui non esistono. Si controlla DOPO la rimappa: i ruoli del bot e i permessi
+        # si valutano sui valori che verrebbero scritti davvero.
+        try:
+            rimappa = rimappa_impostazioni(guild, dati["settings"], dati.get("riferimenti"))
+        except ServerNonPronto:
+            await interaction.response.send_message(await testo_per(interaction, "cfg_pulizia_non_pronto"), ephemeral=True)
+            return
+        # Un ruolo del bot che non si ritrova resta com'era nel file, così il controllo lo rifiuta (come prima).
+        da_controllare = {
+            k: rimappa.settings.get(k, v) for k, v in dati["settings"].items() if k in CHIAVI_RUOLI
+        }
+        errore = errore_ruoli_del_bot(guild, da_controllare)
+        if errore is not None:
+            await interaction.response.send_message(f"❌ {errore}", ephemeral=True)
+            return
+        dati["settings"] = rimappa.settings
 
         errore = (
             errore_ruoli_del_bot(guild, dati["settings"])
@@ -859,6 +898,11 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
             await testo_per(
                 interaction, "cfg_import_fatto",
                 moduli=len(dati["modules"]), impostazioni=len(dati["settings"]), lingua=dati["language"],
+            )
+            + (
+                await testo_per(interaction, "cfg_import_rimappa", rimappati=rimappa.rimappati, tolti=rimappa.tolti)
+                if rimappa.rimappati or rimappa.tolti
+                else ""
             ),
             ephemeral=True,
         )

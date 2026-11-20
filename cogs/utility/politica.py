@@ -31,6 +31,7 @@ _ELENCHI = {
     "mai_canali": (pol.CHIAVE_CANALI_NO, "pol_riga_canali_no"),
     "ruoli": (pol.CHIAVE_RUOLI_IGNORATI, "pol_riga_ruoli"),
     "utenti": (pol.CHIAVE_UTENTI_IGNORATI, "pol_riga_utenti"),
+    "richiesti": (pol.CHIAVE_RUOLI_RICHIESTI, "pol_riga_richiesti"),
 }
 
 
@@ -52,10 +53,21 @@ def righe_politica(politica: pol.Politica, testi: dict[str, str], nessuno: str) 
         pol.CHIAVE_CANALI_NO: sorted(politica.canali_no),
         pol.CHIAVE_RUOLI_IGNORATI: sorted(politica.ruoli_ignorati),
         pol.CHIAVE_UTENTI_IGNORATI: sorted(politica.utenti_ignorati),
+        # CFG-012: una voce per comando, con i suoi ruoli
+        pol.CHIAVE_RUOLI_RICHIESTI: [
+            f"`/{percorso}` → " + " ".join(f"<@&{r}>" for r in sorted(ruoli))
+            for percorso, ruoli in sorted(politica.ruoli_richiesti.items())
+        ],
     }
     righe = []
     for chiave, titolo in ((c, t) for c, t in _ELENCHI.values()):
         voci = valori[chiave]
+        if chiave == pol.CHIAVE_RUOLI_RICHIESTI:
+            mostrate = "; ".join(voci[:MAX_RIGHE_ELENCO]) or nessuno
+            if len(voci) > MAX_RIGHE_ELENCO:
+                mostrate += f" (+{len(voci) - MAX_RIGHE_ELENCO})"
+            righe.append(f"**{testi[titolo]}**: {mostrate}")
+            continue
         mostrate = ", ".join(_menzione(chiave, v) for v in voci[:MAX_RIGHE_ELENCO]) or nessuno
         if len(voci) > MAX_RIGHE_ELENCO:
             mostrate += f" (+{len(voci) - MAX_RIGHE_ELENCO})"
@@ -142,6 +154,46 @@ class PoliticaCog(CogConGruppi, commands.Cog):
         else:
             await self._modifica_id(interaction, pol.CHIAVE_UTENTI_IGNORATI, utente.id, aggiungi=not togli)
 
+    @comando_di_gruppo(
+        "admin-bot", nome="ruolo-richiesto", descrizione="Chi usa un comando deve avere un certo ruolo.",
+        sottogruppo=SOTTOGRUPPI["admin-bot politica"],
+    )
+    @richiedi(Livello.ADMIN)
+    @app_commands.describe(
+        comando="Il comando o il gruppo, es. «fun» o «immagini meme»",
+        ruolo="Chi ha questo ruolo può usarlo (con più ruoli, basta averne uno)",
+        togli="Sì = togli il ruolo dai richiesti",
+    )
+    @app_commands.autocomplete(comando=_suggerisci)
+    async def ruolo_richiesto(
+        self,
+        interaction: discord.Interaction,
+        comando: app_commands.Range[str, 1, 100],
+        ruolo: discord.Role,
+        togli: bool = False,
+    ) -> None:
+        percorso = comando.strip().lstrip("/")
+        if pol.sempre_aperto(percorso):
+            await interaction.response.send_message(await testo_per(interaction, "pol_sempre_aperto"), ephemeral=True)
+            return
+        esiste = any(p == percorso or p.startswith(percorso + " ") for p in self._percorsi())
+        if not esiste or ruolo.id == interaction.guild.id:
+            await interaction.response.send_message(
+                await testo_per(interaction, "pol_non_trovato", comando=percorso[:100]), ephemeral=True
+            )
+            return
+        try:
+            cambiato = await pol.modifica_ruolo_richiesto(
+                interaction.guild.id, percorso, ruolo.id, aggiungi=not togli, changed_by=interaction.user.id
+            )
+        except pol.ElencoPieno:
+            await interaction.response.send_message(
+                await testo_per(interaction, "pol_elenco_pieno", massimo=pol.MAX_RUOLI_PER_COMANDO), ephemeral=True
+            )
+            return
+        testo = "pol_gia" if not cambiato else ("pol_aggiunto" if not togli else "pol_tolto")
+        await interaction.response.send_message(await testo_per(interaction, testo), ephemeral=True)
+
     async def _modifica_id(self, interaction: discord.Interaction, chiave: str, valore: int, *, aggiungi: bool) -> None:
         try:
             cambiato = await pol.modifica_elenco(
@@ -166,6 +218,7 @@ class PoliticaCog(CogConGruppi, commands.Cog):
             app_commands.Choice(name="mai canali", value="mai_canali"),
             app_commands.Choice(name="ruoli ignorati", value="ruoli"),
             app_commands.Choice(name="utenti ignorati", value="utenti"),
+            app_commands.Choice(name="ruoli richiesti", value="richiesti"),
         ]
     )
     async def elenco(self, interaction: discord.Interaction, azzera: app_commands.Choice[str] | None = None) -> None:

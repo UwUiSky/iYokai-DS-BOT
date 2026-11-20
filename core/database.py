@@ -159,20 +159,32 @@ class Database:
     # ================================================================
     # Guild config — metodi di base
     # ================================================================
-    async def ensure_guild_exists(self, guild_id: int) -> None:
+    async def ensure_guild_exists(self, guild_id: int, language: str | None = None) -> None:
         """
         Crea la riga di configurazione per un server se non esiste
         già. Chiamato da on_guild_join. ON CONFLICT DO NOTHING evita
         una race condition se per qualche motivo viene chiamato due
-        volte in rapida successione.
+        volte in rapida successione. `language` (CFG-029) vale solo per
+        la riga nuova: un server che c'è già non cambia lingua.
         """
+        if language is None:
+            await self.pool.execute(
+                """
+                INSERT INTO guild_config (guild_id)
+                VALUES ($1)
+                ON CONFLICT (guild_id) DO NOTHING
+                """,
+                guild_id,
+            )
+            return
         await self.pool.execute(
             """
-            INSERT INTO guild_config (guild_id)
-            VALUES ($1)
+            INSERT INTO guild_config (guild_id, language)
+            VALUES ($1, $2)
             ON CONFLICT (guild_id) DO NOTHING
             """,
             guild_id,
+            language,
         )
 
     async def get_guild_joined_at(self, guild_id: int) -> datetime | None:

@@ -28,6 +28,7 @@ from cogs.utility._owner_pagine import invia_a_pagine
 from core import bot_info, hot_patch
 from core.blacklist_exit import esci_dettaglio
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.premium_posti_service import MAX_POSTI, concedi_posti
 from core.config import config
 from core.database import db
 from core.eval_shell_logic import truncate_output
@@ -503,6 +504,8 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         module_name="Nome tecnico del modulo (vedi /owner premium list) o «tutti»",
         duration="Mensile (30 giorni), annuale (365 giorni) o permanente",
         guild_id="ID del server; vuoto = crea un codice che il server riscatta con /admin-bot premium riscatta",
+        utente="CFG-034: dà dei posti premium a una persona (il modulo e il server si ignorano)",
+        posti="Con «utente»: quanti posti (1-10); 0 = toglie tutti i suoi posti",
     )
     @app_commands.choices(
         duration=[
@@ -517,7 +520,28 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         module_name: app_commands.Range[str, 1, 100],
         duration: app_commands.Choice[str],
         guild_id: app_commands.Range[str, 1, 25] | None = None,
+        utente: discord.User | None = None,
+        posti: app_commands.Range[int, 0, MAX_POSTI] | None = None,
     ) -> None:
+        if utente is not None or posti is not None:  # CFG-034: posti legati a una persona
+            if not _is_owner(interaction):
+                await interaction.response.send_message("Solo il proprietario del bot.", ephemeral=True)
+                return
+            if utente is None or posti is None or utente.bot:
+                await interaction.response.send_message(
+                    "Per i posti servono `utente` (una persona, non un bot) e `posti`.", ephemeral=True
+                )
+                return
+            giorni_posti = None if duration.value == "permanent" else SUBSCRIPTION_DURATION_DAYS[duration.value]
+            scadenza_posti = await concedi_posti(utente.id, posti, giorni_posti, interaction.user.id)
+            testo = (
+                f"Posti di {utente.mention} tolti."
+                if posti == 0
+                else f"✅ {posti} posti premium a {utente.mention} ({duration.name})"
+                + (f", fino al `{scadenza_posti.date().isoformat()}`." if scadenza_posti else ", senza scadenza.")
+            )
+            await interaction.response.send_message(testo, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+            return
         gid = None
         if guild_id is not None:
             try:

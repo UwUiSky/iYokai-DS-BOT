@@ -410,7 +410,10 @@
   "tris": "tictactoe",
   "forza4": "connect4",
   "lotteria": "lottery",
-  "rimborso": "refund"
+  "rimborso": "refund",
+  "ruolo-richiesto": "required-role",
+  "assegna": "assign",
+  "togli-posto": "remove-seat"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1529,7 +1532,13 @@
   "giochi sfide forza4": "Connect four against a member, with an optional stake.",
   "monete conto lotteria": "Buy tickets for today's lottery or see the latest draws.",
   "monete conto rimborso": "Collect part of your game losses, if the server refunds them.",
-  "admin-giochi stipendi lotteria": "Lottery ticket price and refunded share of losses."
+  "admin-giochi stipendi lotteria": "Lottery ticket price and refunded share of losses.",
+  "admin-bot config risposte": "Bot replies: private, deleted after a while, colours.",
+  "admin-bot config staff": "Bot admin, mod and ban roles: list and choice.",
+  "admin-bot config permessi": "Shows a member's permission level and why.",
+  "admin-bot politica ruolo-richiesto": "Whoever uses a command must have a certain role.",
+  "admin-bot premium assegna": "Puts one of your premium seats on this server.",
+  "admin-bot premium togli-posto": "Removes your premium seat from this server."
  },
  "parametri": {},
  "menu": {
