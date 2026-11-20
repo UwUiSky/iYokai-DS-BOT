@@ -197,3 +197,28 @@ async def test_i_messaggi_successivi_seguono_le_regole_del_server(monkeypatch):
     await seguito.send("ciao", ephemeral=False, embed=embed)
     assert invio.await_args.kwargs["ephemeral"] is True
     assert embed.colour.value == 0x010203
+
+
+async def test_pannelli_permanenti_e_sondaggi_restano_pubblici_e_non_si_cancellano(monkeypatch):
+    """Menu dei ruoli, ticket, giveaway (bottoni senza scadenza) e sondaggi non diventano privati né spariscono."""
+    invio = AsyncMock()
+    monkeypatch.setattr(InteractionResponse, "send_message", invio)
+    monkeypatch.setattr(rs, "_attendi", AsyncMock())
+    regole = rs.Risposte(effimere=True, cancella_secondi=5)
+    pannello = discord.ui.View(timeout=None)
+    interazione = MagicMock()
+    interazione.delete_original_response = AsyncMock()
+    await rs.RispostaServer(interazione, regole).send_message("menu", view=pannello)
+    await asyncio.gather(*list(rs._attivi))
+    assert invio.await_args.kwargs.get("ephemeral") is not True
+    interazione.delete_original_response.assert_not_awaited()
+
+    invio.reset_mock()
+    await rs.RispostaServer(interazione, regole).send_message(poll=MagicMock())
+    await asyncio.gather(*list(rs._attivi))
+    assert invio.await_args.kwargs.get("ephemeral") is not True
+    interazione.delete_original_response.assert_not_awaited()
+
+    invio.reset_mock()
+    await rs.RispostaServer(interazione, regole).send_message("pagine", view=discord.ui.View(timeout=60))
+    assert invio.await_args.kwargs.get("ephemeral") is True  # una vista che scade segue la regola

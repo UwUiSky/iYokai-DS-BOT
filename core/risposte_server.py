@@ -180,6 +180,12 @@ async def _cancella_dopo(interazione, secondi: int) -> None:
         pass  # già cancellata a mano, o l'interazione è scaduta
 
 
+def _messaggio_permanente(kw: dict) -> bool:
+    """Pannelli con bottoni senza scadenza (menu dei ruoli, ticket, giveaway…) e sondaggi: restano pubblici e non si cancellano."""
+    vista = kw.get("view")
+    return kw.get("poll") is not None or (vista is not None and getattr(vista, "timeout", 0) is None)
+
+
 class RispostaServer(InteractionResponse):
     """La risposta di un'interazione, con le regole del server (CFG-013, CFG-014, CFG-033)."""
 
@@ -205,12 +211,13 @@ class RispostaServer(InteractionResponse):
         return esito
 
     async def send_message(self, *args, **kw):
-        if self._regole.effimere:
+        permanente = _messaggio_permanente(kw)
+        if self._regole.effimere and not permanente:
             kw["ephemeral"] = True
         ricolora(_embed_del_messaggio(kw), self._regole.colore_successo, self._regole.colore_errore)
         esito = await super().send_message(*args, **kw)
-        # Chi chiede già una sua cancellazione (`delete_after`) la tiene.
-        self._programma_cancellazione(bool(kw.get("ephemeral")) or kw.get("delete_after") is not None)
+        # Chi chiede già una sua cancellazione (`delete_after`) la tiene; un pannello permanente non si cancella mai.
+        self._programma_cancellazione(bool(kw.get("ephemeral")) or kw.get("delete_after") is not None or permanente)
         return esito
 
 
@@ -221,7 +228,7 @@ class FollowupServer(discord.Webhook):
 
     async def send(self, *args, **kw):
         regole: Risposte = getattr(self, "_regole", Risposte())
-        if regole.effimere:
+        if regole.effimere and not _messaggio_permanente(kw):
             kw["ephemeral"] = True
         ricolora(_embed_del_messaggio(kw), regole.colore_successo, regole.colore_errore)
         return await super().send(*args, **kw)
