@@ -124,6 +124,16 @@ def da_locale_discord(locale: Any) -> str | None:
     return normalizza_lingua(testo)
 
 
+def lingua_iniziale_del_server(guild: Any) -> str:
+    """
+    CFG-029: la lingua di partenza di un server nuovo, dalla lingua scelta su Discord (`preferred_locale`).
+    Italiano resta italiano; inglese (anche en-GB) diventa `en`; ogni altra lingua, che non ha ancora testi
+    suoi, parte dall'inglese. Il codice è quello che si salva nel database (`it` o `en`).
+    """
+    lingua = da_locale_discord(getattr(guild, "preferred_locale", None))
+    return "it" if lingua == DEFAULT_LANGUAGE or lingua is None else "en"
+
+
 async def lingua_utente(user_id: int | None) -> str | None:
     """La lingua personale scelta dall'utente, o None."""
     if not user_id:
