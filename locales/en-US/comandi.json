@@ -401,7 +401,9 @@
   "torre": "tower",
   "stipendi": "salaries",
   "riscuoti": "collect",
-  "toglie": "remove"
+  "toglie": "remove",
+  "genere": "genre",
+  "indovina-canzone": "guess-the-song"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1508,7 +1510,11 @@
   "admin-giochi stipendi imposta": "Salary (positive) or tax (negative) for a role.",
   "admin-giochi stipendi toglie": "Remove the salary or tax of a role.",
   "admin-giochi stipendi elenco": "Salaries and taxes per role, and the message rules.",
-  "admin-giochi stipendi auto": "Pay salaries automatically at an hour (UTC) and choose coins per message."
+  "admin-giochi stipendi auto": "Pay salaries automatically at an hour (UTC) and choose coins per message.",
+  "music radio": "Searches a radio from all over the world and queues it.",
+  "music genere": "Pick a playlist by genre from the menu.",
+  "owner radio genere": "Genre playlists for the /music genere menu.",
+  "fun indovina-canzone": "Guess the song from a short excerpt, in voice."
  },
  "parametri": {},
  "menu": {

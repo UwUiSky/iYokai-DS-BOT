@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:57 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:24 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 955 commands in 51 categories.**
+**Total: 959 commands in 51 categories.**
 
 ## Admin: AI
 
@@ -711,6 +711,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:5
 - **`/fun coinflip`** — Flips a coin: heads or tails.
 - **`/fun dice`** — Rolls a die.
 - **`/fun fact`** — Shows a random fun fact.
+- **`/fun guess-the-song`** — Guess the song from a short excerpt, in voice.
 - **`/fun joke`** — Tells a random joke.
 - **`/fun measure`** — Measures from 0 to 100% how much of something you choose.
 - **`/fun number`** — A random number in a range.
@@ -917,6 +918,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:5
 - **`/music coda search`** — Searches the queue for a track by title.
 - **`/music coda skip`** — Removes a range of positions and/or one user's tracks from the queue.
 - **`/music disconnect`** — Disconnects the music bot from the voice channel.
+- **`/music genre`** — Pick a playlist by genre from the menu.
 - **`/music history`** — Shows the latest tracks already played.
 - **`/music join`** — Makes the music bot join your channel without playing.
 - **`/music loop queue`** — Turns repeat of the whole queue on or off.
@@ -946,6 +948,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:5
 - **`/music playlist share`** — Creates a code to share one of your playlists.
 - **`/music previous`** — Goes back to the previous track.
 - **`/music queue`** — Shows the playback queue.
+- **`/music radio`** — Searches a radio from all over the world and queues it.
 - **`/music resume`** — Resumes paused playback.
 - **`/music shuffle`** — Shuffles the order of the queued tracks.
 - **`/music skip`** — Skips the track that is playing.
@@ -989,6 +992,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-18 00:5
 - **`/owner radio add-track`** — Adds a track to the radio playlist.
 - **`/owner radio ban-word`** — Words banned in track titles across the whole bot.
 - **`/owner radio fonti`** — Shows the state of the music sources (on, keys yes/no, paused).
+- **`/owner radio genre`** — Genre playlists for the /music genere menu.
 - **`/owner radio list-tracks`** — Shows the radio playlist.
 - **`/owner radio log`** — Downloads the tail of the local Lavalink log (keys removed).
 - **`/owner radio nodes`** — Shows each music bot's Lavalink nodes (no passwords).

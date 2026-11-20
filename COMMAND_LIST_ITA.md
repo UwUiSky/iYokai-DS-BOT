@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:57 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-20 19:24 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 955 comandi in 51 categorie.**
+**Totale: 959 comandi in 51 categorie.**
 
 ## Admin: AI
 
@@ -715,6 +715,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:
 - **`/fun coinflip`** — Lancia una moneta: testa o croce.
 - **`/fun dice`** — Tira un dado.
 - **`/fun fact`** — Mostra una curiosità a caso.
+- **`/fun indovina-canzone`** — Indovina la canzone da un breve estratto, in vocale.
 - **`/fun joke`** — Racconta una barzelletta a caso.
 - **`/fun misura`** — Misura da 0 a 100% quanto c'è di una cosa a tua scelta.
 - **`/fun numero`** — Un numero a caso in un intervallo.
@@ -917,6 +918,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:
 - **`/music coda ripristina`** — Rimette in coda i brani salvati del tuo canale vocale (dopo un riavvio).
 - **`/music coda salta`** — Toglie dalla coda un intervallo di posizioni e/o i brani di un utente.
 - **`/music disconnect`** — Disconnette il music bot dal canale vocale.
+- **`/music genere`** — Scegli una playlist per genere dal menu.
 - **`/music history`** — Mostra gli ultimi brani già suonati.
 - **`/music join`** — Fa entrare il music bot nel tuo canale, senza suonare.
 - **`/music loop queue`** — Attiva/disattiva la ripetizione dell'intera coda.
@@ -946,6 +948,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:
 - **`/music playlist togli`** — Toglie un brano da una tua playlist.
 - **`/music previous`** — Torna al brano precedente.
 - **`/music queue`** — Mostra la coda di riproduzione.
+- **`/music radio`** — Cerca una radio da tutto il mondo e la mette in coda.
 - **`/music resume`** — Riprende la riproduzione in pausa.
 - **`/music shuffle`** — Mescola l'ordine delle tracce in coda.
 - **`/music skip`** — Salta la traccia in riproduzione.
@@ -989,6 +992,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:
 - **`/owner radio add-track`** — Aggiunge una traccia alla playlist della radio.
 - **`/owner radio blocca-parola`** — Parole vietate nei titoli in tutto il bot.
 - **`/owner radio fonti`** — Mostra lo stato delle fonti musicali (accesa, chiavi sì/no, pausa).
+- **`/owner radio genere`** — Playlist del menu /music genere.
 - **`/owner radio list-tracks`** — Mostra la playlist della radio.
 - **`/owner radio log`** — Scarica la coda del log del Lavalink locale (ripulita dalle chiavi).
 - **`/owner radio nodi`** — Mostra i nodi Lavalink di ogni bot musicale (senza password).
