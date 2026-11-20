@@ -21,6 +21,7 @@ from discord.ext import commands
 
 from core.database import db
 from core.music_announce_logic import PausaAnnunci, embed_brano
+from core.music_indovina_logic import in_gioco
 from core.music_playlist_logic import brani_da_coda, brano_da_traccia
 from core.music_settings_logic import load_music_settings, title_blocked, track_too_long
 from core.repositories.music_playlist_repo import music_guild_playlist_repo, music_saved_queue_repo
@@ -74,6 +75,8 @@ class MusicEventiCog(commands.Cog):
             player.mescola_fisso = False
         if player is None or getattr(player, "is_radio", False) or getattr(player, "is_nonstop", False):
             return
+        if in_gioco(getattr(getattr(player, "guild", None), "id", 0)):
+            return  # MUS-019: durante «indovina la canzone» nessuna riserva e nessun salvataggio
         if getattr(payload, "reason", "") != "replaced":
             if coda_finita(player):
                 self._in_background(self.riserva(player))  # MUS-040/041
@@ -142,6 +145,8 @@ class MusicEventiCog(commands.Cog):
         guild = getattr(player, "guild", None)
         if guild is None or getattr(player, "is_radio", False) or getattr(player, "is_nonstop", False):
             return
+        if in_gioco(guild.id):
+            return  # MUS-019: l'annuncio rivelerebbe il titolo
         try:
             impostazioni = await load_music_settings(db, guild.id)
             if impostazioni.daily_playlist:  # MUS-045

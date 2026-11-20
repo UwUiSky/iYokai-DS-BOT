@@ -6,7 +6,7 @@ MUS-044 durata massima, MUS-055 restare a coda finita, MUS-059 canale
 vocale permesso, MUS-066 riepilogo, MUS-054 attesa prima di uscire,
 MUS-062 parole vietate nei titoli, MUS-064 solo siti conosciuti, MUS-012 fonte di ricerca, MUS-037 coda equa,
 MUS-041 playlist di riserva (e MUS-040: continuare da soli dalla playlist scelta), MUS-045 playlist «Oggi»,
-MUS-042 coda salvata, MUS-057 annunci «ora in riproduzione» accesi/spenti, MUS-058 canale degli annunci).
+MUS-042 coda salvata, MUS-065 jukebox (prezzo in monete), MUS-057 annunci «ora in riproduzione» accesi/spenti, MUS-058 canale degli annunci).
 MUS-063 parole vietate in tutto il bot (elenco dell'owner, `imposta_parole_globali`).
 MUS-048 qualità audio per server: non fatta, la qualità si regola sul nodo Lavalink (D85). Stanno nella colonna `settings` di
 guild_config (come le altre impostazioni dei cog: cronologia delle
@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from urllib.parse import urlparse
 
 from core.fun_logic import normalizza_per_filtro
+from core.music_jukebox_logic import prezzo_valido
 from core.music_logic import format_duration, truncate_title
 from core.music_sources import FONTI, FONTI_DI_RICERCA
 
@@ -53,6 +54,7 @@ SETTING_FALLBACK_PLAYLIST = "music_fallback_playlist"  # MUS-041/040
 SETTING_DAILY_PLAYLIST = "music_daily_playlist"  # MUS-045
 SETTING_PERSIST_QUEUE = "music_persist_queue"  # MUS-042
 SETTING_ANNOUNCE_CHANNEL = "music_announce_channel_id"  # MUS-058
+SETTING_JUKEBOX_PRICE = "music_jukebox_price"  # MUS-065
 QUEUE_MODES = ("normale", "equa")
 
 
@@ -72,6 +74,7 @@ class MusicSettings:
     persist_queue: bool = False  # MUS-042: spenta di base (D85)
     announce: bool = False  # MUS-057: spento di base (D85), niente messaggi non chiesti
     announce_channel_id: int | None = None  # MUS-058
+    jukebox_price: int = 0  # MUS-065: monete per mettere un brano in coda; 0 = spento (D97)
     default_search: str = ""  # fonte dove cercare un titolo; "" = automatica (YouTube, poi SoundCloud)
 
 
@@ -166,6 +169,7 @@ def summary_lines(settings: MusicSettings) -> list[str]:
         f"📻 Playlist di riserva a coda finita: **{settings.fallback_playlist or 'nessuna'}**",
         f"📅 Playlist «Oggi» automatica: **{'accesa' if settings.daily_playlist else 'spenta'}**",
         f"💾 Coda salvata per i riavvii: **{'accesa' if settings.persist_queue else 'spenta'}**",
+        f"🪙 Jukebox: **{f'{settings.jukebox_price} monete per richiesta' if settings.jukebox_price else 'spento'}**",
         f"🌐 Link ammessi: **{'solo siti conosciuti' if settings.known_sites_only else 'tutti i siti sicuri'}**",
     ]
 
@@ -206,6 +210,7 @@ async def load_music_settings(database, guild_id: int) -> MusicSettings:
         daily_playlist=bool(await get(guild_id, SETTING_DAILY_PLAYLIST, False)),
         persist_queue=bool(await get(guild_id, SETTING_PERSIST_QUEUE, False)),
         announce_channel_id=_id_valido(await get(guild_id, SETTING_ANNOUNCE_CHANNEL, None)),
+        jukebox_price=prezzo_valido(await get(guild_id, SETTING_JUKEBOX_PRICE, 0)),
     )
 
 

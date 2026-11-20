@@ -393,7 +393,8 @@
   "elemosina": "beg",
   "rotta": "route",
   "istantanea": "snapshot",
-  "genere": "genre"
+  "genere": "genre",
+  "indovina-canzone": "guess-the-song"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1491,7 +1492,8 @@
   "monete rischio cerca": "Search for coins in a place of your choice.",
   "music radio": "Searches a radio from all over the world and queues it.",
   "music genere": "Pick a playlist by genre from the menu.",
-  "owner radio genere": "Genre playlists for the /music genere menu."
+  "owner radio genere": "Genre playlists for the /music genere menu.",
+  "fun indovina-canzone": "Guess the song from a short excerpt, in voice."
  },
  "parametri": {},
  "menu": {

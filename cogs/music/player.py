@@ -124,7 +124,10 @@ from core.music_settings_logic import (
     track_too_long,
 )
 from core.premium import PremiumModule, guild_has_premium_access, registry
+from core.music_indovina_logic import in_gioco
+from core.music_jukebox_logic import Esito, esegui_con_addebito
 from core.repositories.main_radio_repo import main_radio_repo
+from core.repositories.music_jukebox_repo import music_jukebox_repo
 from core.safe_http import url_e_sicuro
 
 logger = logging.getLogger("iyokai.music")
@@ -568,13 +571,15 @@ class MusicCog(CogConGruppi, commands.Cog):
         interaction: discord.Interaction | None = None,
         cerca=None,
         fonte: str | None = None,
+        gratis: bool = False,
     ) -> int | None:
         """
         Mette in coda `query` nel canale vocale di `membro` (worker assegnato o
         il primo libero). Usato da /music play, dal canale richieste (NF-19) e
         dal caricamento di una playlist salvata. `rispondi(testo)` manda la
         risposta; `cerca(nodo, nodo_locale)` sostituisce la ricerca (playlist
-        salvate). Restituisce il canale vocale se il brano è in coda, se no None.
+        salvate); `gratis` salta il prezzo del jukebox (il gioco «indovina la canzone»).
+        Restituisce il canale vocale se il brano è in coda, se no None.
         """
         impostazioni = await load_music_settings(db, guild.id)
         canale_id = getattr(getattr(membro.voice, "channel", None), "id", 0)
@@ -602,11 +607,38 @@ class MusicCog(CogConGruppi, commands.Cog):
         # seconda trova il player gia' creato dalla prima (niente doppio connect, niente
         # slot rilasciato sotto un bot che suona).
         async with self._lock_canale(guild.id, canale_id):
-            esito = await self._play_nel_canale(
-                guild.id, membro.id, query, in_cima, impostazioni, worker_bot, worker_guild,
-                canale_id, rispondi, cerca, fonte,
+            esito = await self._con_jukebox(
+                guild.id, membro.id, 0 if gratis else impostazioni.jukebox_price, rispondi,
+                lambda: self._rilascia_se_libero(worker_guild, guild.id, canale_id),
+                lambda: self._play_nel_canale(
+                    guild.id, membro.id, query, in_cima, impostazioni, worker_bot, worker_guild,
+                    canale_id, rispondi, cerca, fonte,
+                ),
             )
         return canale_id if esito else None
+
+    @staticmethod
+    async def _con_jukebox(guild_id: int, utente_id: int, prezzo: int, rispondi, rilascia, azione) -> bool:
+        """
+        MUS-065: con il jukebox acceso la richiesta costa `prezzo` monete (alla cassa del server). Il pagamento
+        e' una scrittura condizionata; se il brano non entra in coda le monete tornano indietro.
+        """
+        esito, in_coda = await esegui_con_addebito(
+            prezzo,
+            lambda: music_jukebox_repo.addebita(guild_id, utente_id, prezzo),
+            lambda: music_jukebox_repo.rimborsa(guild_id, utente_id, prezzo),
+            azione,
+        )
+        chiave = {
+            Esito.SENZA_MONETE: "music_jukebox_senza_monete",
+            Esito.NON_IN_CODA: "music_jukebox_rimborsato",
+            Esito.PAGATO: "music_jukebox_pagato",
+        }.get(esito)
+        if esito == Esito.SENZA_MONETE:
+            await rilascia()  # lo slot assegnato per questa richiesta non resta occupato
+        if chiave is not None:
+            await rispondi(testo_tradotto(chiave, await lingua_risposta(guild_id, utente_id), prezzo=prezzo))
+        return in_coda
 
     @staticmethod
     def _applica_modo_coda(player, impostazioni) -> None:
@@ -867,6 +899,9 @@ class MusicCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo("music", nome="queue", descrizione="Mostra la coda di riproduzione.")
     async def queue_command(self, interaction: discord.Interaction) -> None:
         if not await self._controlli_base(interaction):
+            return
+        if in_gioco(interaction.guild.id):  # MUS-019: niente titoli durante «indovina la canzone»
+            await interaction.response.send_message(await testo_per(interaction, "indovina_in_corso_no_titoli"), ephemeral=True)
             return
 
         worker_guild, errore = await self._get_worker_guild(
@@ -1222,6 +1257,9 @@ class MusicCog(CogConGruppi, commands.Cog):
     async def nowplaying(self, interaction: discord.Interaction) -> None:
         if not await self._controlli_base(interaction):
             return
+        if in_gioco(interaction.guild.id):  # MUS-019: niente titoli durante «indovina la canzone»
+            await interaction.response.send_message(await testo_per(interaction, "indovina_in_corso_no_titoli"), ephemeral=True)
+            return
 
         worker_guild, errore = await self._get_worker_guild(
             interaction.guild.id, auto_assign=False, interaction=interaction
@@ -1514,6 +1552,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         # MUS-032
         player = await self._giocatore_attivo(interaction)
         if player is None:
+            return
+        if in_gioco(interaction.guild.id):  # MUS-019: niente titoli durante «indovina la canzone»
+            await interaction.response.send_message(await testo_per(interaction, "indovina_in_corso_no_titoli"), ephemeral=True)
             return
         storico = list(player.queue.history or [])
         if player.current is not None and storico:

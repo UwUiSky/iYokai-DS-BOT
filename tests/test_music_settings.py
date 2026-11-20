@@ -56,7 +56,7 @@ def test_canale_permesso():
 
 def test_riepilogo_ha_una_riga_per_impostazione():
     righe = summary_lines(MusicSettings(max_volume=50, max_track_minutes=7, allowed_voice_channel_id=3))
-    assert len(righe) == 13  # 9 di base + annunci, riserva, playlist del giorno, coda salvata (r4mus)
+    assert len(righe) == 14  # 9 di base + annunci, riserva, playlist del giorno, coda salvata (r4mus) + jukebox (r5mus)
     testo = "\n".join(righe)
     assert "50" in testo and "7 minuti" in testo and "<#3>" in testo
     assert "nessun limite" in "\n".join(summary_lines(MusicSettings()))

@@ -2,7 +2,7 @@
 cogs/music/settings.py
 ==========================
 Impostazioni musicali del server (issue #126: MUS-047, MUS-044, MUS-055,
-MUS-059, MUS-066, MUS-054, MUS-062, MUS-064, MUS-037): /admin-musica impostazioni e /admin-musica riepilogo.
+MUS-059, MUS-066, MUS-054, MUS-062, MUS-064, MUS-037, MUS-065): /admin-musica impostazioni e /admin-musica riepilogo.
 Solo admin (lo dà il gruppo /admin-musica). La logica sta in
 core/music_settings_logic.py; i controlli che le usano sono in
 cogs/music/player.py e core/music_fleet.py.
@@ -20,6 +20,7 @@ from core.i18n import testo_per
 from core.music_playlist_logic import NOME_MAX
 from core.repositories.music_playlist_repo import music_guild_playlist_repo
 from core.music_sources import FONTI, FONTI_DI_RICERCA
+from core.music_jukebox_logic import PREZZO_MAX
 from core.music_settings_logic import (
     MAX_IDLE_MINUTES,
     MAX_PAROLE_VIETATE,
@@ -33,6 +34,7 @@ from core.music_settings_logic import (
     SETTING_PERSIST_QUEUE,
     SETTING_ANNOUNCE_CHANNEL,
     SETTING_QUEUE_MODE,
+    SETTING_JUKEBOX_PRICE,
     SETTING_KNOWN_SITES_ONLY,
     SETTING_MAX_TRACK_MINUTES,
     SETTING_MAX_VOLUME,
@@ -85,6 +87,7 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         playlist_di_riserva="Playlist del server che parte quando la coda finisce («-» la toglie)",
         playlist_del_giorno="Tiene la playlist «Oggi» con i brani suonati nel giorno",
         coda_salvata="Salva la coda per ritrovarla dopo un riavvio (/music coda ripristina)",
+        prezzo_jukebox="Monete per mettere un brano in coda, alla cassa del server (0 = spento)",
     )
     @app_commands.rename(
         volume_massimo="volume-massimo",
@@ -100,6 +103,7 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         playlist_di_riserva="playlist-di-riserva",
         playlist_del_giorno="playlist-del-giorno",
         coda_salvata="coda-salvata",
+        prezzo_jukebox="prezzo-jukebox",
     )
     @app_commands.choices(ricerca_predefinita=SCELTE_RICERCA, coda=SCELTE_CODA)
     async def impostazioni(
@@ -120,6 +124,7 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         playlist_di_riserva: app_commands.Range[str, 1, NOME_MAX] | None = None,
         playlist_del_giorno: bool | None = None,
         coda_salvata: bool | None = None,
+        prezzo_jukebox: app_commands.Range[int, 0, PREZZO_MAX] | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -166,6 +171,8 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
             cambi[SETTING_DAILY_PLAYLIST] = playlist_del_giorno
         if coda_salvata is not None:  # MUS-042
             cambi[SETTING_PERSIST_QUEUE] = coda_salvata
+        if prezzo_jukebox is not None:  # MUS-065: 0 lo spegne
+            cambi[SETTING_JUKEBOX_PRICE] = prezzo_jukebox
         if annunci is not None:  # MUS-057
             cambi[SETTING_ANNOUNCE] = annunci
         if canale_annunci is not None:  # MUS-058

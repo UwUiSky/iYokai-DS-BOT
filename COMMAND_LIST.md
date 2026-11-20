@@ -702,6 +702,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-18 00:
 
 ## Divertimento
 
+- **`/fun indovina-canzone`** — Indovina la canzone da un breve estratto, in vocale.
 - **`/fun 8ball`** — Fai una domanda alla palla magica 8.
 - **`/fun casuale`** — Preferiresti, argomento, consiglio, oggetto magico, classe.
 - **`/fun citazioni aggiungi`** — Salva una citazione del server.

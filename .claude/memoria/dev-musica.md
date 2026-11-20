@@ -4,7 +4,7 @@
 18/11/2026 · ramo `feat/r5mus` · migrazioni 0730-0739 (giro r5mus)
 
 ## In corso
-- Giro r5mus (#126): MUS-010 FATTO (`core/music_radio_mondo.py`, `/music radio`), MUS-014 FATTO (0730, `/music genere`, `/owner radio genere`); poi 019, 065. `/owner` pesa 6715 (avviso a 6800): niente altri comandi owner. D97 in DECISIONI.
+- Giro r5mus (#126): MUS-010 FATTO (`core/music_radio_mondo.py`, `/music radio`), MUS-014 FATTO (0730, `/music genere`, `/owner radio genere`); MUS-065 FATTO (jukebox in `accoda`/`_con_jukebox`), MUS-019 FATTO (`cogs/music/indovina.py`, registro `in_gioco` per non rivelare titoli). Giro r5mus CHIUSO: restano le prove live (VERIFICA_LIVE r5mus). `/owner` pesa 6715 (avviso a 6800): niente altri comandi owner. D97 in DECISIONI.
 - Giro r4mus FATTO (non unito): annunci/copertina, playlist (crea/aggiungi/togli/rinomina/da link/aggiorna/codice/server/collabora/preferiti), owner (`/owner radio nodi|stato|riconnetti|log|sorgente|blocca-parola`), riserva, «Oggi», coda salvata.
   Prossimo: MUS-010, 014, 019, 065 (vedi D85 «Restano»); eventi in `cogs/music/eventi.py`, owner in `cogs/music/owner.py`.
 - #126 B1, B2, B3 FATTI (B3 «coda»: `/music coda cerca|salta|pulisci`, impostazione `music_queue_mode` normale/equa con
@@ -52,6 +52,7 @@
 - Pause "una ogni N secondi": segnare prima del primo await, se no due chiamate insieme passano.
 
 ## Aperto
+- r5mus: il messaggio player del canale richieste non e' zittito durante «indovina la canzone» (provare live); i brani locali dell'owner sono esclusi dal gioco.
 - r5mus: server radio-browser (de1/de2/fi1) e condizioni d'uso da verificare live (LIM-59).
 - r4mus: log Lavalink (`LAVALINK_LOG_FILE`) e annunci da provare live; la riserva parte da `track_end` (ordine con `_auto_play_event` non verificabile qui, attesa 0,5 s).
 - Domanda all'owner (MUS-027): pulizia AUTOMATICA all'uscita di un utente dal canale? Ora c'e' solo `/music coda pulisci` a mano.
