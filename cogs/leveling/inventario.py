@@ -19,7 +19,9 @@ from cogs.leveling.leveling import IdOggetto, _comando_rifiutato
 from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
 from core.i18n import testo_guild, testo_per
 from core.leveling_azzera_logic import nome_confermato
-from core.leveling_logic import prezzo_rivendita
+from datetime import datetime, timezone
+
+from core.leveling_logic import prezzo_rivendita, tasso_del_giorno
 from core.repositories.inventario_repo import Esito, inventario_repo
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.repositories.shop_repo import shop_repo
@@ -111,7 +113,7 @@ class InventarioCog(CogConGruppi, commands.Cog):
             return
         embed = discord.Embed(title=item.name[:250], description=(item.description or "")[:2000], color=discord.Color.gold())
         for chiave, valore in (
-            ("inv_prezzo", item.price), ("inv_rivendita", prezzo_rivendita(item.price)),
+            ("inv_prezzo", item.price), ("inv_rivendita", prezzo_rivendita(item.price, tasso_del_giorno(interaction.guild.id, datetime.now(timezone.utc).date()))),
             ("inv_scorte", item.stock if item.stock is not None else "∞"),
             ("inv_regalabile", "✅" if item.regalabile else "❌"),
         ):

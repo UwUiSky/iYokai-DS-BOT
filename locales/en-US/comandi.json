@@ -403,7 +403,14 @@
   "riscuoti": "collect",
   "toglie": "remove",
   "genere": "genre",
-  "indovina-canzone": "guess-the-song"
+  "indovina-canzone": "guess-the-song",
+  "potenzia": "upgrade",
+  "scrigno": "chest-box",
+  "guadagni": "earnings",
+  "tris": "tictactoe",
+  "forza4": "connect4",
+  "lotteria": "lottery",
+  "rimborso": "refund"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1514,7 +1521,15 @@
   "music radio": "Searches a radio from all over the world and queues it.",
   "music genere": "Pick a playlist by genre from the menu.",
   "owner radio genere": "Genre playlists for the /music genere menu.",
-  "fun indovina-canzone": "Guess the song from a short excerpt, in voice."
+  "fun indovina-canzone": "Guess the song from a short excerpt, in voice.",
+  "monete conto potenzia": "Upgrade your job or periodic reward: more levels, more coins.",
+  "monete rischio scrigno": "Open a surprise chest for 100 coins.",
+  "monete conto guadagni": "How to earn coins on this server.",
+  "giochi sfide tris": "Tic-tac-toe against a member, with an optional stake.",
+  "giochi sfide forza4": "Connect four against a member, with an optional stake.",
+  "monete conto lotteria": "Buy tickets for today's lottery or see the latest draws.",
+  "monete conto rimborso": "Collect part of your game losses, if the server refunds them.",
+  "admin-giochi stipendi lotteria": "Lottery ticket price and refunded share of losses."
  },
  "parametri": {},
  "menu": {

@@ -104,7 +104,9 @@ async def test_rivendita_metà_prezzo_una_volta_per_pezzo(r):
     await apri_connessioni(r.pool, 4)
     esiti = await asyncio.gather(*[r.inv.vendi(G, 1, item.id) for _ in range(4)])
     assert [e.esito for e in esiti].count(Esito.FATTO) == 1
-    assert (await r.lev.get_totals(G, 1)).coins_total == saldo0 + 50
+    from datetime import datetime, timezone
+    from core.leveling_logic import tasso_del_giorno
+    assert (await r.lev.get_totals(G, 1)).coins_total == saldo0 + tasso_del_giorno(G, datetime.now(timezone.utc).date())  # 100 * tasso%
     gratis = await _nuovo(r, "Sassolino", 1, None, None)
     await r.lev.add_coins(G, 1, 5)
     await r.shop.buy_item(G, 1, gratis)

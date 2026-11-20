@@ -3304,5 +3304,22 @@
   "indovina_interrotta": "The game stopped: I cannot play any more.",
   "indovina_fine_nessuno": "🏁 Game over: nobody scored.",
   "indovina_fine": "🏁 Game over!\n{classifica}",
-  "indovina_in_corso_no_titoli": "A «guess the song» game is running: titles stay secret until the end."
+  "indovina_in_corso_no_titoli": "A «guess the song» game is running: titles stay secret until the end.",
+  "pot_massimo": "You are already at the top level.",
+  "pot_poche": "You need {costo} {moneta} for the next level.",
+  "pot_riga": "**{tipo}**: level {livello}/{massimo} (+{bonus}%) · next: {costo} {moneta}",
+  "pot_scrigno_no": "You need {prezzo} coins and a little patience between chests.",
+  "pot_scrigno_ok": "🎁 The chest holds **{premio}** {moneta}! Balance: {saldo}.",
+  "pot_scrigno_vuoto": "🎁 The chest is empty. Balance: {saldo}.",
+  "tav_non_puo": "{chi} cannot play right now (pause, game already open): challenge cancelled, no coins taken.",
+  "tav_poche": "{chi} does not have enough {moneta}: challenge cancelled, no coins taken.",
+  "tav_non_tuo_turno": "It is not your turn.",
+  "tav_mossa_no": "Invalid move.",
+  "tav_sfida": "🎮 {sfidante} challenges {sfidato} to **{gioco}** (stake: {posta} {moneta}, 0 = just for fun). {sfidato}, do you accept?",
+  "lot_spenta": "The lottery is not active on this server.",
+  "lot_no": "You cannot: you need the coins and at most {massimo} tickets a day ({prezzo} {moneta} each).",
+  "lot_stato": "🎟️ You have {miei} of today's {tutti} tickets ({prezzo} {moneta} each). Draw at midnight UTC: the winner takes 90% of what was spent. Latest draws:",
+  "lot_rimborso_spento": "Loss refunds are not active on this server.",
+  "lot_rimborso_niente": "Nothing to refund: the net loss since the last refund counts.",
+  "lot_rimborso_ok": "💸 Refund of {pct}% of your losses: **{dato}** {moneta}."
 }

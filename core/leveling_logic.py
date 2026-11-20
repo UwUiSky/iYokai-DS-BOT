@@ -471,6 +471,8 @@ LIMITI_IMPOSTAZIONI = {
     "msg_coins_pausa": (10, 3600),  # ECO-033: secondi tra due messaggi che pagano, per persona
     "msg_coins_tetto": (1, 10_000),  # ECO-033: monete al giorno per persona
     "stipendio_ora": (0, 23),  # ECO-037: ora (UTC) del pagamento automatico
+    "lotteria_prezzo": (0, 10_000),  # ECO-118: prezzo di un biglietto, 0 = lotteria spenta
+    "rimborso_pct": (0, 20),  # ECO-117: quota delle perdite nette che torna indietro
 }
 MODI_SALDO_USCITA = ("tieni", "cancella")  # ECO-014
 MAX_NOME_MONETA = 20  # ECO-001
@@ -560,6 +562,8 @@ class LevelingSettings:
     msg_coins_tetto: int = 200  # ECO-033
     stipendio_auto: bool = False  # ECO-035
     stipendio_ora: int = 12  # ECO-037
+    lotteria_prezzo: int = 0  # ECO-118
+    rimborso_pct: int = 0  # ECO-117
 
 
 @dataclass(frozen=True)
@@ -826,6 +830,35 @@ ATTESA_PERIODICI = {"settimanale": 7 * 24 * 3600, "mensile": 30 * 24 * 3600}  # 
 PERCENTUALE_RIVENDITA = 50  # ECO-072: rivendendo un oggetto si riceve metà del prezzo di oggi
 
 
-def prezzo_rivendita(prezzo: int) -> int:
+def prezzo_rivendita(prezzo: int, percentuale: int = PERCENTUALE_RIVENDITA) -> int:
     """ECO-072: monete per la rivendita, sempre meno del prezzo (arrotondato per difetto)."""
-    return max(0, prezzo) * PERCENTUALE_RIVENDITA // 100
+    return max(0, prezzo) * min(max(0, percentuale), 99) // 100
+
+
+def tasso_del_giorno(guild_id: int, giorno) -> int:
+    """
+    ECO-082: la percentuale di rivendita di oggi, tra 40 e 60, uguale per tutto il server e per tutto il giorno
+    (calcolata dalla data: nessuno stato da salvare, nessuno la può prevedere dal cliente).
+    """
+    import hashlib
+
+    h = hashlib.sha256(f"cambio:{guild_id}:{giorno.isoformat()}".encode()).digest()
+    return 40 + int.from_bytes(h[:4], "big") % 21
+
+
+# ECO-081: potenziamenti a livelli. Il livello L dà +10% a ogni livello; il costo cresce a ogni livello.
+LIVELLI_POTENZIAMENTO = 5
+TIPI_POTENZIAMENTO = ("lavoro", "premio")
+BONUS_PER_LIVELLO = 10
+
+
+def costo_potenziamento(livello_attuale: int) -> int | None:
+    """Costo per passare al livello dopo; None se si è già al massimo."""
+    if not 0 <= livello_attuale < LIVELLI_POTENZIAMENTO:
+        return None
+    return 500 * 2**livello_attuale
+
+
+def con_potenziamento(importo: int, livello: int) -> int:
+    """L'importo con il bonus del livello (mai meno dell'importo)."""
+    return max(0, importo) * (100 + BONUS_PER_LIVELLO * min(max(0, livello), LIVELLI_POTENZIAMENTO)) // 100

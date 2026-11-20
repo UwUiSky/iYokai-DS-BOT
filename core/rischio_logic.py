@@ -99,3 +99,22 @@ def cerca(rng: random.Random, luogo: str) -> int:
         raise ValueError(f"Luogo sconosciuto: {luogo}")
     probabilita, minimo, massimo = LUOGHI[luogo]
     return rng.randint(minimo, massimo) if rng.randint(1, 100) <= probabilita else 0
+
+
+# ECO-077: premi dello scrigno (peso su 100, monete). Prezzo 100: resa media 0,92.
+PREZZO_SCRIGNO = 100
+PREMI_SCRIGNO = ((45, 0), (30, 50), (15, 150), (8, 300), (2, 800))
+
+
+def premio_scrigno(rng: random.Random) -> int:
+    punto = rng.randint(1, 100)
+    totale = 0
+    for peso, premio in PREMI_SCRIGNO:
+        totale += peso
+        if punto <= totale:
+            return premio
+    raise AssertionError("pesi dello scrigno sbagliati")
+
+
+def resa_scrigno() -> float:
+    return sum(p * v for p, v in PREMI_SCRIGNO) / 100 / PREZZO_SCRIGNO

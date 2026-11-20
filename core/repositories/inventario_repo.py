@@ -14,7 +14,9 @@ from enum import Enum
 
 import asyncpg
 
-from core.leveling_logic import prezzo_rivendita
+from datetime import datetime, timezone
+
+from core.leveling_logic import prezzo_rivendita, tasso_del_giorno
 from core.repositories.leveling_repo import add_coins_in
 
 
@@ -118,7 +120,7 @@ class InventarioRepository:
                 )
                 if prezzo is None:
                     return Rivendita(Esito.NON_HAI)
-                monete = prezzo_rivendita(prezzo)
+                monete = prezzo_rivendita(prezzo, tasso_del_giorno(guild_id, datetime.now(timezone.utc).date()))  # ECO-082
                 if monete <= 0:
                     return Rivendita(Esito.NIENTE_DA_PAGARE)
                 if await conn.fetchval(_TOGLI_UNO, guild_id, user_id, item_id) is None:
