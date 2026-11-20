@@ -197,3 +197,20 @@ def gioca_scala(puntata: int, rng: random.Random) -> Esito:
 def resa_media_scala() -> float:
     """Quante monete tornano in media per ogni moneta puntata alla scala."""
     return sum(decimi * peso for decimi, peso in GRADINI_SCALA) / 1000
+
+
+BATTE = {"sasso": "forbici", "carta": "sasso", "forbici": "carta"}
+
+
+def gioca_rps(scelta: str, puntata: int, rng: random.Random) -> Esito:
+    """ECO-097: sasso-carta-forbici con puntata. Vittoria 1,9 volte, pareggio restituisce, sconfitta perde (resa media 0,97)."""
+    if scelta not in BATTE:
+        raise ValueError(f"Scelta sconosciuta: {scelta}")
+    bot = rng.choice(tuple(BATTE))
+    if bot == scelta:
+        restituzione, testo = puntata, "pareggio"
+    elif BATTE[scelta] == bot:
+        restituzione, testo = puntata * 19 // 10, "vittoria"
+    else:
+        restituzione, testo = 0, "sconfitta"
+    return Esito(descrizione=f"✊ Tu **{scelta}**, il bot **{bot}**: {testo}.", restituzione=restituzione, puntata=puntata)

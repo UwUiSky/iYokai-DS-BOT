@@ -425,7 +425,9 @@
   "posto": "slot",
   "attivita": "activity",
   "lancia": "cast",
-  "guida": "guide"
+  "guida": "guide",
+  "deposito": "deposit",
+  "riffa": "raffle"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1567,7 +1569,9 @@
   "fun pesca lancia": "Cast the line in a place (every 15 minutes).",
   "fun pesca vendi": "Sell every fish in the storage.",
   "fun pesca guida": "Your fish storage and the species you have found.",
-  "fun pesca classifica": "Today's best fishers."
+  "fun pesca classifica": "Today's best fishers.",
+  "monete conto deposito": "Lock bank coins for 7 days and get 10% more (ECO-005).",
+  "admin-giochi evento riffa": "A raffle paid by the server chest: whoever clicks can win the prize."
  },
  "parametri": {},
  "menu": {

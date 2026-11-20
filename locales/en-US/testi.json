@@ -3399,5 +3399,19 @@
   "pes_vuoto": "The storage is empty.",
   "pes_venduti": "You sold {n} fish for **{monete}** {moneta}.",
   "pes_guida": "Species found: {visti}/{tutti}. Storage value: {valore}.",
-  "pes_nessuno": "Nobody has fished today yet."
+  "pes_nessuno": "Nobody has fished today yet.",
+  "rsk_dep_ok": "🔒 You locked **{importo}** {moneta} for 7 days: then collect 10% more with `/monete conto deposito`.",
+  "rsk_dep_gia": "You already have a deposit: collect it first.",
+  "rsk_dep_ritirato": "🔓 Deposit collected: **{totale}** {moneta} are back in your bank.",
+  "rsk_dep_presto": "The deposit of {importo} {moneta} unlocks in {tempo}.",
+  "rsk_dep_niente": "You have no deposit.",
+  "rif_gia": "You are already in.",
+  "rif_piena": "The raffle is full.",
+  "rif_dentro": "🎟️ You are in! Participants: {n}.",
+  "rif_aperta": "A raffle is already running on this server.",
+  "rif_cassa_poca": "The server chest does not hold {premio} coins.",
+  "rif_avvio": "🎟️ **Raffle!** Prize: **{premio}** {moneta} from the server chest. Click «Partecipa»: the draw is in {minuti} minutes.",
+  "rif_vinta": "🎉 {vincitore} wins **{premio}** {moneta}!",
+  "rif_nessuno": "Nobody joined: raffle closed.",
+  "rif_cassa": "The chest no longer holds enough coins: raffle cancelled, nobody was paid."
 }

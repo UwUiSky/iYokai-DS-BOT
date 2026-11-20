@@ -3399,5 +3399,19 @@
   "pes_vuoto": "Il deposito è vuoto.",
   "pes_venduti": "Hai venduto {n} pesci per **{monete}** {moneta}.",
   "pes_guida": "Specie trovate: {visti}/{tutti}. Valore del deposito: {valore}.",
-  "pes_nessuno": "Oggi nessuno ha ancora pescato."
+  "pes_nessuno": "Oggi nessuno ha ancora pescato.",
+  "rsk_dep_ok": "🔒 Hai bloccato **{importo}** {moneta} per 7 giorni: poi ritiri il 10% in più con `/monete conto deposito`.",
+  "rsk_dep_gia": "Hai già un deposito: ritiralo prima.",
+  "rsk_dep_ritirato": "🔓 Deposito ritirato: **{totale}** {moneta} sono tornati nella tua banca.",
+  "rsk_dep_presto": "Il deposito di {importo} {moneta} si sblocca tra {tempo}.",
+  "rsk_dep_niente": "Non hai nessun deposito.",
+  "rif_gia": "Sei già dentro.",
+  "rif_piena": "La riffa è piena.",
+  "rif_dentro": "🎟️ Sei dentro! Partecipanti: {n}.",
+  "rif_aperta": "C'è già una riffa in corso in questo server.",
+  "rif_cassa_poca": "La cassa del server non ha {premio} monete.",
+  "rif_avvio": "🎟️ **Riffa!** Premio: **{premio}** {moneta} dalla cassa del server. Clicca «Partecipa»: si estrae tra {minuti} minuti.",
+  "rif_vinta": "🎉 Vince {vincitore}: **{premio}** {moneta}!",
+  "rif_nessuno": "Nessuno ha partecipato: riffa chiusa.",
+  "rif_cassa": "La cassa non ha più abbastanza monete: riffa annullata, nessuno è stato pagato."
 }

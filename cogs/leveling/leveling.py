@@ -1781,6 +1781,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         metric="XP, coin, minuti in vocale o reazioni (questi ultimi sono sempre di sempre)",
         period="Questa settimana, questo mese o di sempre",
         posizioni="Quante posizioni mostrare, da 10 a 100 (a pagine)",
+        solo_presenti="Sì = niente chi ha lasciato il server",
     )
     @app_commands.choices(
         metric=[
@@ -1802,28 +1803,32 @@ class LevelingCog(CogConGruppi, commands.Cog):
         metric: app_commands.Choice[str],
         period: app_commands.Choice[str],
         posizioni: app_commands.Range[int, 10, 100] = 10,
+        solo_presenti: bool = False,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
 
+        richieste = min(300, posizioni * 3) if solo_presenti else posizioni  # ECO-013: se ne chiedono di più, poi si tolgono gli usciti
         if metric.value == "voce":
-            voci = await leveling_repo.top_minuti_vocale(interaction.guild.id, posizioni)
+            voci = await leveling_repo.top_minuti_vocale(interaction.guild.id, richieste)
         elif metric.value in ("reazioni", "reazioni_ricevute"):
             voci = await leveling_repo.top_reazioni(
-                interaction.guild.id, metric.value == "reazioni_ricevute", posizioni
+                interaction.guild.id, metric.value == "reazioni_ricevute", richieste
             )
         elif metric.value == "xp" and period.value == "alltime":
-            voci = await leveling_repo.top_xp_alltime(interaction.guild.id, posizioni)
+            voci = await leveling_repo.top_xp_alltime(interaction.guild.id, richieste)
         elif metric.value == "xp":
             voci = await leveling_repo.top_xp_period(
-                interaction.guild.id, posizioni, week_key() if period.value == "week" else None
+                interaction.guild.id, richieste, week_key() if period.value == "week" else None
             )
         elif metric.value == "coins" and period.value == "alltime":
-            voci = await leveling_repo.top_coins_alltime(interaction.guild.id, posizioni)
+            voci = await leveling_repo.top_coins_alltime(interaction.guild.id, richieste)
         else:
             voci = await leveling_repo.top_coins_period(
-                interaction.guild.id, posizioni, week_key() if period.value == "week" else None
+                interaction.guild.id, richieste, week_key() if period.value == "week" else None
             )
+        if solo_presenti:  # ECO-013
+            voci = [v for v in voci if interaction.guild.get_member(v.user_id) is not None][:posizioni]
 
         if not voci:
             await interaction.response.send_message(
