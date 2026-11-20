@@ -24,17 +24,20 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 CHIAVE_COMANDI_OFF = "policy_comandi_off"
 CHIAVE_CANALI_OK = "policy_canali_ok"
 CHIAVE_CANALI_NO = "policy_canali_no"
 CHIAVE_RUOLI_IGNORATI = "policy_ignora_ruoli"
 CHIAVE_UTENTI_IGNORATI = "policy_ignora_utenti"
+CHIAVE_RUOLI_RICHIESTI = "policy_ruoli_richiesti"  # CFG-012: {percorso: [id ruolo, ...]}
 CHIAVI_ID = (CHIAVE_CANALI_OK, CHIAVE_CANALI_NO, CHIAVE_RUOLI_IGNORATI, CHIAVE_UTENTI_IGNORATI)
-TUTTE_LE_CHIAVI = (CHIAVE_COMANDI_OFF, *CHIAVI_ID)
+TUTTE_LE_CHIAVI = (CHIAVE_COMANDI_OFF, *CHIAVI_ID, CHIAVE_RUOLI_RICHIESTI)
 
 MAX_VOCI = 250
+MAX_COMANDI_CON_RUOLI = 100
+MAX_RUOLI_PER_COMANDO = 10
 MAX_LUNGHEZZA_PERCORSO = 100
 # Mai spenti: servono a rimettere a posto la politica.
 PREFISSI_SEMPRE_APERTI = ("admin-bot", "owner")
@@ -51,6 +54,7 @@ MOTIVO_COMANDO_OFF = "pol_comando_spento"
 MOTIVO_UTENTE_IGNORATO = "pol_ignorato"
 MOTIVO_CANALE_VIETATO = "pol_canale_vietato"
 MOTIVO_CANALE_NON_PERMESSO = "pol_canale_non_permesso"
+MOTIVO_RUOLO_RICHIESTO = "pol_ruolo_richiesto"
 
 
 @dataclass(frozen=True)
@@ -60,14 +64,28 @@ class Politica:
     canali_no: frozenset[int] = frozenset()
     ruoli_ignorati: frozenset[int] = frozenset()
     utenti_ignorati: frozenset[int] = frozenset()
+    # CFG-012: per ogni comando (o gruppo) i ruoli di cui serve averne almeno uno.
+    ruoli_richiesti: dict[str, frozenset[int]] = field(default_factory=dict)
 
     @property
     def vuota(self) -> bool:
-        return not (self.comandi_off or self.canali_ok or self.canali_no or self.ruoli_ignorati or self.utenti_ignorati)
+        return not (
+            self.comandi_off or self.canali_ok or self.canali_no or self.ruoli_ignorati or self.utenti_ignorati
+            or self.ruoli_richiesti
+        )
 
 
 def sempre_aperto(percorso: str) -> bool:
     return any(percorso == p or percorso.startswith(p + " ") for p in PREFISSI_SEMPRE_APERTI)
+
+
+def ruolo_richiesto_mancante(politica: Politica, percorso: str, ruoli: Iterable[int]) -> bool:
+    """CFG-012: True se per questo comando (o per un suo gruppo) serve un ruolo che chi chiama non ha."""
+    mie = set(ruoli)
+    return any(
+        (percorso == chiave or percorso.startswith(chiave + " ")) and not (mie & richiesti)
+        for chiave, richiesti in politica.ruoli_richiesti.items()
+    )
 
 
 def valuta(
@@ -88,6 +106,9 @@ def valuta(
         return None
     if user_id in politica.utenti_ignorati or any(r in politica.ruoli_ignorati for r in ruoli):
         return MOTIVO_UTENTE_IGNORATO
+    mancanti = ruolo_richiesto_mancante(politica, percorso, ruoli)
+    if mancanti:
+        return MOTIVO_RUOLO_RICHIESTO
     dove = set(canali)
     if dove & politica.canali_no:
         return MOTIVO_CANALE_VIETATO
@@ -103,7 +124,16 @@ async def leggi_politica(guild_id: int) -> Politica:
         valore = await db.get_guild_setting(guild_id, chiave, [])
         return frozenset(v for v in valore if isinstance(v, tipo) and not isinstance(v, bool)) if isinstance(valore, list) else frozenset()
 
+    grezzo = await db.get_guild_setting(guild_id, CHIAVE_RUOLI_RICHIESTI, {})
+    richiesti: dict[str, frozenset[int]] = {}
+    if isinstance(grezzo, dict):
+        for chiave, ids in grezzo.items():
+            validi = frozenset(i for i in ids if isinstance(i, int) and not isinstance(i, bool)) if isinstance(ids, list) else frozenset()
+            if isinstance(chiave, str) and validi:
+                richiesti[chiave] = validi
+
     return Politica(
+        ruoli_richiesti=richiesti,
         comandi_off=await lista(CHIAVE_COMANDI_OFF, str),
         canali_ok=await lista(CHIAVE_CANALI_OK, int),
         canali_no=await lista(CHIAVE_CANALI_NO, int),
@@ -127,7 +157,7 @@ async def modifica_elenco(guild_id: int, chiave: str, valore, *, aggiungi: bool,
     """
     from core.database import db
 
-    if chiave not in TUTTE_LE_CHIAVI:
+    if chiave not in TUTTE_LE_CHIAVI or chiave == CHIAVE_RUOLI_RICHIESTI:  # i ruoli richiesti hanno la loro funzione
         raise KeyError(chiave)
     if chiave == CHIAVE_COMANDI_OFF:
         if not isinstance(valore, str) or not valore or len(valore) > MAX_LUNGHEZZA_PERCORSO or sempre_aperto(valore):
@@ -151,6 +181,44 @@ async def modifica_elenco(guild_id: int, chiave: str, valore, *, aggiungi: bool,
             await db.set_guild_setting(guild_id, chiave, attuale, changed_by=changed_by)
         else:
             await db.remove_guild_setting(guild_id, chiave, changed_by=changed_by)
+        return True
+
+
+async def modifica_ruolo_richiesto(
+    guild_id: int, percorso: str, ruolo_id: int, *, aggiungi: bool, changed_by: int | None
+) -> bool:
+    """
+    CFG-012: aggiunge o toglie un ruolo tra quelli richiesti per un comando o un gruppo (basta averne uno).
+    Un solo punto per comando e pannello. True se qualcosa è cambiato. Mai sui gruppi sempre aperti.
+    """
+    from core.database import db
+
+    if not isinstance(percorso, str) or not percorso or len(percorso) > MAX_LUNGHEZZA_PERCORSO or sempre_aperto(percorso):
+        raise VoceNonValida(str(percorso)[:MAX_LUNGHEZZA_PERCORSO])
+    if not isinstance(ruolo_id, int) or isinstance(ruolo_id, bool) or ruolo_id <= 0 or ruolo_id == guild_id:
+        raise VoceNonValida(str(ruolo_id))  # @everyone ha l'id del server: non è un ruolo da richiedere
+    async with _blocco_elenco(guild_id):
+        mappa = await db.get_guild_setting(guild_id, CHIAVE_RUOLI_RICHIESTI, {})
+        mappa = {k: list(v) for k, v in mappa.items() if isinstance(v, list)} if isinstance(mappa, dict) else {}
+        ruoli = mappa.get(percorso, [])
+        if aggiungi:
+            if ruolo_id in ruoli:
+                return False
+            if len(ruoli) >= MAX_RUOLI_PER_COMANDO or (percorso not in mappa and len(mappa) >= MAX_COMANDI_CON_RUOLI):
+                raise ElencoPieno(CHIAVE_RUOLI_RICHIESTI)
+            mappa[percorso] = [*ruoli, ruolo_id]
+        else:
+            if ruolo_id not in ruoli:
+                return False
+            ruoli.remove(ruolo_id)
+            if ruoli:
+                mappa[percorso] = ruoli
+            else:
+                del mappa[percorso]
+        if mappa:
+            await db.set_guild_setting(guild_id, CHIAVE_RUOLI_RICHIESTI, mappa, changed_by=changed_by)
+        else:
+            await db.remove_guild_setting(guild_id, CHIAVE_RUOLI_RICHIESTI, changed_by=changed_by)
         return True
 
 

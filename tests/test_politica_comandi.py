@@ -238,3 +238,66 @@ async def test_modifica_elenco_insieme_non_perde_voci(db_pronto):
         *(pol.modifica_elenco(700, pol.CHIAVE_CANALI_NO, 1000 + n, aggiungi=True, changed_by=1) for n in range(20))
     )
     assert len((await pol.leggi_politica(700)).canali_no) == 20
+
+
+# ----------------------------------------------------------------------
+# CFG-012: ruoli richiesti per un comando o un gruppo
+# ----------------------------------------------------------------------
+def test_cfg012_serve_uno_dei_ruoli_richiesti_per_il_comando_e_il_suo_gruppo():
+    p = pol.Politica(ruoli_richiesti={"immagini": frozenset({5, 6}), "fun dado": frozenset({7})})
+    assert not p.vuota
+    assert _valuta(p, percorso="immagini meme", ruoli=[9]) == pol.MOTIVO_RUOLO_RICHIESTO  # vale per il gruppo
+    assert _valuta(p, percorso="immagini meme", ruoli=[6]) is None  # basta uno dei due
+    assert _valuta(p, percorso="immaginifico x", ruoli=[]) is None  # un gruppo con nome simile non c'entra
+    assert _valuta(p, percorso="fun dado", ruoli=[5]) == pol.MOTIVO_RUOLO_RICHIESTO
+    assert _valuta(p, percorso="fun carte", ruoli=[]) is None
+    assert _valuta(p, percorso="immagini meme", ruoli=[9], esente=True) is None  # lo staff non si chiude fuori
+    assert _valuta(p, percorso="admin-bot politica elenco", ruoli=[]) is None
+
+
+async def test_cfg012_scrittura_dal_punto_unico_con_tetti_e_storico(db_pronto):
+    db = db_pronto
+    assert await pol.modifica_ruolo_richiesto(700, "fun", 55, aggiungi=True, changed_by=3)
+    assert not await pol.modifica_ruolo_richiesto(700, "fun", 55, aggiungi=True, changed_by=3)
+    assert (await pol.leggi_politica(700)).ruoli_richiesti == {"fun": frozenset({55})}
+    righe = await db.pool.fetch("SELECT changed_by FROM guild_config_history WHERE guild_id = 700")
+    assert [r["changed_by"] for r in righe] == [3]
+    for brutto in ("admin-bot setup", "owner system", "", "x" * 101):
+        with pytest.raises(pol.VoceNonValida):
+            await pol.modifica_ruolo_richiesto(700, brutto, 55, aggiungi=True, changed_by=3)
+    for brutto in (700, 0, -1, True):  # 700 = @everyone, l'id del server
+        with pytest.raises(pol.VoceNonValida):
+            await pol.modifica_ruolo_richiesto(700, "fun", brutto, aggiungi=True, changed_by=3)
+    with pytest.raises(KeyError):  # il vecchio punto per gli elenchi non tocca la mappa
+        await pol.modifica_elenco(700, pol.CHIAVE_RUOLI_RICHIESTI, 5, aggiungi=True, changed_by=3)
+    for n in range(100, 100 + pol.MAX_RUOLI_PER_COMANDO - 1):
+        await pol.modifica_ruolo_richiesto(700, "fun", n, aggiungi=True, changed_by=3)
+    with pytest.raises(pol.ElencoPieno):
+        await pol.modifica_ruolo_richiesto(700, "fun", 999, aggiungi=True, changed_by=3)
+    assert await pol.modifica_ruolo_richiesto(700, "fun", 55, aggiungi=False, changed_by=3)
+    assert await pol.azzera_elenco(700, pol.CHIAVE_RUOLI_RICHIESTI, changed_by=3)
+    assert (await pol.leggi_politica(700)).ruoli_richiesti == {}
+    assert await db.get_guild_setting(700, pol.CHIAVE_RUOLI_RICHIESTI) is None
+
+
+async def test_cfg012_un_valore_rovinato_nel_database_non_rompe_la_lettura(db_pronto):
+    await db_pronto.set_guild_setting(700, pol.CHIAVE_RUOLI_RICHIESTI, {"fun": "no", "a": [True, 3]}, changed_by=1)
+    assert (await pol.leggi_politica(700)).ruoli_richiesti == {"a": frozenset({3})}
+
+
+async def test_cfg012_il_ruolo_cancellato_dal_server_chiude_il_comando_ai_non_admin(db_pronto):
+    """Scelta prudente (D96): se il ruolo richiesto non esiste più il comando resta chiuso per chi non è staff."""
+    await pol.modifica_ruolo_richiesto(700, "fun dado", 55, aggiungi=True, changed_by=3)
+    i = _interazione("fun dado", ruoli=[fake_role(9)])
+    assert await pol.valuta_interazione(i) == pol.MOTIVO_RUOLO_RICHIESTO
+    con_ruolo = _interazione("fun dado", ruoli=[fake_role(55)])
+    assert await pol.valuta_interazione(con_ruolo) is None
+
+
+def test_cfg012_la_mappa_e_validata_in_import_campo_per_campo():
+    from cogs.utility.config_history import _errore_settings
+
+    assert _errore_settings({"policy_ruoli_richiesti": {"fun": [1, 2]}}) is None
+    for brutto in ({"fun": []}, {"fun": ["a"]}, {"": [1]}, {"fun": list(range(1, 12))}, [1], {"f": [True]}, {"x" * 101: [1]}):
+        assert _errore_settings({"policy_ruoli_richiesti": brutto}) is not None
+    assert _errore_settings({"policy_ruoli_richiesti": {str(n): [1] for n in range(101)}}) is not None
