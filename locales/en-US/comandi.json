@@ -1613,7 +1613,11 @@
   "utility identita ruolo-mio": "Change the name and colour of your personal role (if staff granted it).",
   "admin-tag tag info": "Card of a tag: author, uses, alternative names and raw text.",
   "admin-tag tag alias": "Alternative names of a tag (up to 3).",
-  "admin-tag tag divieti": "Block a tag for a role, a channel or a user (up to 10 per list)."
+  "admin-tag tag divieti": "Block a tag for a role, a channel or a user (up to 10 per list).",
+  "admin-tag risposte modifica": "Change the reply, mode or limits of an automatic reply.",
+  "admin-tag risposte mostra": "Detail of an automatic reply, with the raw text.",
+  "admin-tag risposte escludi": "Users, channels and roles that do not trigger a reply (10 per list).",
+  "admin-messaggi embed colore": "The default color of your embeds (empty to remove it)."
  },
  "parametri": {},
  "menu": {

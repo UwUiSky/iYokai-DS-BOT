@@ -3512,5 +3512,15 @@
   "tag_vietato_canale": "Questo comando è vietato in questo canale.",
   "tag_coda_o_testo": "Scegli: o il testo nuovo o il testo da aggiungere in coda, non tutti e due.",
   "tag_coda_non_riuscita": "Non ho aggiunto il testo: il comando non esiste o la risposta supererebbe {massimo} caratteri.",
-  "tag_embed_non_trovato": "Non c'è un embed salvato con quel nome."
+  "tag_embed_non_trovato": "Non c'è un embed salvato con quel nome.",
+  "risposte_modo_non_adatto": "Quel modo non va con la parola di questa risposta: eliminala e creala di nuovo.",
+  "risposte_modificata": "Risposta automatica {numero} modificata.",
+  "risposte_dettaglio": "Modo: {modo} - Maiuscole: {maiuscole} - Canale: {canale} - Ruolo: {ruolo}",
+  "risposte_dettaglio_esclusi": "Esclusi - ruoli: {ruoli}, canali: {canali}, utenti: {utenti}",
+  "risposte_escludi_scegli": "Scegli un ruolo, un canale o un utente.",
+  "risposte_escludi_piena": "Un elenco ha già {massimo} voci: non ho aggiunto nulla.",
+  "risposte_escludi_salvata": "Esclusioni aggiornate.",
+  "embedbuilder_pausa_pubblica": "Un embed al minuto: riprova tra {secondi} secondi.",
+  "embedbuilder_colore_non_valido": "Il colore va scritto come #RRGGBB, per esempio #FF8800.",
+  "embedbuilder_colore_salvato": "Colore predefinito degli embed aggiornato."
 }

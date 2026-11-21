@@ -5,7 +5,7 @@ Quando un messaggio fa scattare una risposta automatica (NF-10, SPEC §14.7):
 corrispondenza esatta o parziale (parola intera, senza espressioni
 regolari), jolly `*` dentro la parola, canale e ruolo come condizioni.
 Funzioni pure.
-Funzioni coperte: SPEC §14.7 (NF-10)
+Funzioni coperte: SPEC §14.7 (NF-10), catalogo #128 UTL-060, 062, 064, 065, 066, 067 (r2utl)
 """
 
 from __future__ import annotations
@@ -21,7 +21,8 @@ MAX_RESTO = 500  # caratteri di {resto} che finiscono nella risposta
 MAX_GLOBALI = 20
 MAX_RISPOSTA = 2000
 PAUSA_CANALE_SECONDI = 10
-MODI = ("parziale", "esatta", "inizia", "regex")
+MODI = ("parziale", "esatta", "inizia", "finisce", "regex")
+MAX_ESCLUSI = 10  # per elenco (ruoli, canali, utenti) di una risposta
 MAX_JOLLY = 5  # asterischi per parola
 
 
@@ -42,12 +43,12 @@ def regex_valida(modello: str) -> str | None:
 
 
 @lru_cache(maxsize=512)
-def _compila(modello: str):
+def _compila(modello: str, maiuscole: bool = False):
     import re2
 
     opzioni = re2.Options()
     opzioni.max_mem = 1 << 19  # mezzo MiB: un'espressione enorme viene rifiutata
-    opzioni.case_sensitive = False
+    opzioni.case_sensitive = maiuscole
     return re2.compile(modello, opzioni)
 
 
@@ -56,17 +57,19 @@ def resto_dopo(trigger: str, messaggio: str) -> str:
     return messaggio.strip()[len(trigger.strip()):].strip()[:MAX_RESTO]
 
 
-def trigger_corrisponde(trigger: str, modo: str, messaggio: str) -> bool:
-    """Senza badare alle maiuscole. "parziale": il trigger è una parola o frase intera nel messaggio. `*` = pezzo di parola."""
+def trigger_corrisponde(trigger: str, modo: str, messaggio: str, maiuscole: bool = False) -> bool:
+    """Senza badare alle maiuscole (salvo `maiuscole`, UTL-062). "parziale": il trigger è una parola o frase intera nel messaggio. `*` = pezzo di parola."""
     if modo == "regex":
         try:
-            return bool(messaggio) and _compila(trigger.strip()).search(messaggio[:2000]) is not None
+            return bool(messaggio) and _compila(trigger.strip(), maiuscole).search(messaggio[:2000]) is not None
         except Exception:
             return False
-    t = trigger.strip().lower()
-    m = messaggio.strip().lower()
+    t = trigger.strip() if maiuscole else trigger.strip().lower()
+    m = messaggio.strip() if maiuscole else messaggio.strip().lower()
     if not t or not m:
         return False
+    if modo == "finisce":  # UTL-060: alla fine del messaggio, e l'innesco comincia a inizio parola
+        return m.endswith(t) and (len(m) == len(t) or not (m[-len(t)].isalnum() and m[-len(t) - 1].isalnum()))
     if modo == "inizia":  # all'inizio del messaggio, e l'innesco finisce a fine parola
         return m.startswith(t) and (len(m) == len(t) or not (m[len(t) - 1].isalnum() and m[len(t)].isalnum()))
     if not jolly_validi(t):
@@ -115,7 +118,7 @@ def _da_qui(pezzi: list[str], m: str, inizio: int, esatta: bool) -> bool:
     return trovato is not None and trovato.start() <= limite
 
 
-def scegli_risposta(regole: Iterable, messaggio: str, canale_id: int, ruoli_autore: set[int]):
+def scegli_risposta(regole: Iterable, messaggio: str, canale_id: int, ruoli_autore: set[int], utente_id: int = 0):
     """
     La regola che scatta (una sola per messaggio): la più specifica, cioè col trigger
     più lungo; a parità la più vecchia. None se nessuna.
@@ -126,7 +129,10 @@ def scegli_risposta(regole: Iterable, messaggio: str, canale_id: int, ruoli_auto
             continue
         if r.role_id is not None and r.role_id not in ruoli_autore:
             continue
-        if trigger_corrisponde(r.trigger, r.match_mode, messaggio):
+        if utente_id in getattr(r, "utenti_esclusi", ()) or canale_id in getattr(r, "canali_esclusi", ()) \
+                or ruoli_autore & set(getattr(r, "ruoli_esclusi", ())):
+            continue  # UTL-064, UTL-065: utenti, canali e ruoli che non fanno scattare la risposta
+        if trigger_corrisponde(r.trigger, r.match_mode, messaggio, getattr(r, "maiuscole", False)):
             candidate.append(r)
     if not candidate:
         return None

@@ -48,6 +48,7 @@ from tests.support.percorsi import comando_nel_gruppo
         ("a*b*c*d*e*f*g", "parziale", "axbxcxdxexfxg", False),  # troppi jolly
     ],
 )
+# UTL-057: risposta solo se il messaggio è uguale; UTL-058: parole intere in sequenza
 def test_trigger_corrisponde(trigger, modo, messaggio, atteso):
     assert trigger_corrisponde(trigger, modo, messaggio) is atteso
 
@@ -87,6 +88,7 @@ def _r(i, trigger, modo="parziale", canale=None, ruolo=None):
                            response="r", ping_ruoli=False)
 
 
+# UTL-063: risposta attiva solo in certi canali; ruolo richiesto
 def test_scegli_risposta_rispetta_canale_e_ruolo():
     regole = [_r(1, "ciao", canale=5), _r(2, "ciao", ruolo=9), _r(3, "ciao")]
     assert scegli_risposta(regole, "ciao", canale_id=6, ruoli_autore={1}).id == 3
@@ -172,6 +174,7 @@ def _messaggio(contenuto="ciao a tutti", bot=False, canale_id=111):
     return fake_message(1, author=autore, channel=canale, guild=server, content=contenuto), canale
 
 
+# UTL-056: risposta quando il messaggio contiene una parola (senza ping, mai ai bot)
 @pytest.mark.asyncio
 async def test_risponde_una_volta_senza_ping(scena):
     msg, canale = _messaggio()

@@ -4,7 +4,7 @@ core/tag_inneschi_logic.py
 Inneschi dei tag (B27): quando un tag parte da solo. Reazione, intervallo (minimo 10 minuti), orario (cron a 5 campi,
 minimo 10 minuti tra due giri), bottone di un embed, ruolo dato o tolto. Leggere e controllare i valori, calcolare il giro
 dopo, ore e giorni da saltare. Funzioni semplici, senza Discord e senza database.
-Funzioni coperte: catalogo #128 UTL-047..050, 052, 054 (D69, B27)
+Funzioni coperte: catalogo #128 UTL-047, 048, 049, 050, 052, 054; UTL-070 (r2utl: canale scorciatoia) (D69, B27)
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from zoneinfo import ZoneInfo
 
 from core.custom_command_logic import leggi_reazioni
 
-TIPI = ("reazione", "intervallo", "orario", "bottone", "ruolo_dato", "ruolo_tolto")
+TIPI = ("reazione", "intervallo", "orario", "bottone", "ruolo_dato", "ruolo_tolto", "canale_testo")
 TIPI_A_TEMPO = ("intervallo", "orario")
 MAX_INNESCHI = 25
 MIN_SECONDI = 600
@@ -80,6 +80,27 @@ def leggi_cron(testo: str) -> str | None:
     """Il cron a 5 campi (minuto ora giorno mese giorno-settimana) con gli spazi a posto, o None."""
     letto = _campi_cron(testo)
     return " ".join(letto[0]) if letto else None
+
+
+_GUIDATO = re.compile(
+    r"(?:ogni giorno|tutti i giorni|(?P<giorni>(?:lun|mar|mer|gio|ven|sab|dom)(?:[ ,]+(?:lun|mar|mer|gio|ven|sab|dom))*))"
+    r"\s+(?:alle\s+)?(?P<ore>\d{1,2})[:.](?P<minuti>\d{2})")
+
+
+def orario_guidato(testo: str) -> str | None:
+    """UTL-049: «ogni giorno 09:30» o «lun, gio 18:00» diventano il cron a 5 campi; niente cron scritto a mano. None se non è
+    una forma guidata (allora si prova il cron)."""
+    trovato = _GUIDATO.fullmatch((testo or "").strip().lower())
+    if trovato is None:
+        return None
+    ore, minuti = int(trovato["ore"]), int(trovato["minuti"])
+    if ore > 23 or minuti > 59:
+        return None
+    giorni = "*"
+    if trovato["giorni"]:
+        numeri = {"dom": 0, "lun": 1, "mar": 2, "mer": 3, "gio": 4, "ven": 5, "sab": 6}
+        giorni = ",".join(str(n) for n in sorted({numeri[g] for g in re.split(r"[ ,]+", trovato["giorni"])}))
+    return f"{minuti} {ore} * * {giorni}"
 
 
 def prossimo_cron(cron: str, dopo: datetime) -> datetime | None:
@@ -169,13 +190,13 @@ def valida(tipo: str, valore: str) -> tuple[str | None, str | None]:
     if tipo == "intervallo":
         return (valore.casefold().replace(" ", ""), None) if leggi_intervallo(valore) else (None, "inn_intervallo_non_valido")
     if tipo == "orario":
-        cron = leggi_cron(valore)
+        cron = orario_guidato(valore) or leggi_cron(valore)
         if cron is None or prossimo_cron(cron, datetime.now(timezone.utc)) is None:
             return None, "inn_orario_non_valido"
         return (None, "inn_orario_troppo_fitto") if cron_troppo_fitto(cron) else (cron, None)
     if tipo == "bottone":
         return (valore.casefold(), None) if re.fullmatch(r"[a-z0-9_-]{1,32}:\d{1,2}", valore.casefold()) else (None, "inn_bottone_non_valido")
-    if tipo in ("ruolo_dato", "ruolo_tolto"):
+    if tipo in ("ruolo_dato", "ruolo_tolto", "canale_testo"):
         return (valore, None) if re.fullmatch(r"\d{15,20}", valore) else (None, "inn_ruolo_mancante")
     return None, "inn_tipo_non_valido"
 

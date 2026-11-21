@@ -308,7 +308,8 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             logger.warning("Blacklist non letta per l'innesco (utente %s).", user_id, exc_info=True)
             return False
 
-    async def esegui_innesco(self, guild: discord.Guild, nome: str, canale, *, membro: discord.Member | None = None) -> str | None:
+    async def esegui_innesco(self, guild: discord.Guild, nome: str, canale, *, membro: discord.Member | None = None,
+                             argomenti: str = "") -> str | None:
         """Fa partire il tag `nome` per un innesco (B27). `membro` è chi l'ha fatto scattare (reazione, ruolo, bottone); a tempo
         è None e parla il bot, senza toccare ruoli. Ritorna la chiave del motivo se il tag non può partire, altrimenti None."""
         tag = await custom_command_repo.get_tag(guild.id, nome)
@@ -326,7 +327,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
                 return "inn_pausa"
         if not canale.permissions_for(guild.me).send_messages:
             return "inn_canale_senza_permesso"
-        testo, _ = await self._prepara(tag, membro or guild.me, canale, "", None, ruolo=membro is not None)
+        testo, _ = await self._prepara(tag, membro or guild.me, canale, argomenti, None, ruolo=membro is not None)
         dest = self._destinazione(tag, membro, canale)[0] if membro is not None else canale
         try:
             await self._manda(dest.send, tag, testo, membro)

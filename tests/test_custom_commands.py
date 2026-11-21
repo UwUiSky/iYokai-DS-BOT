@@ -458,6 +458,7 @@ async def test_tag_con_permesso_mancante_non_risponde_col_prefisso(scena):
     msg.delete.assert_awaited_once()
 
 
+# UTL-053: comando che parte anche sui messaggi modificati
 def test_reazioni_e_nuovo_innesco():
     from core.custom_command_logic import e_nuovo_innesco, leggi_reazioni
     assert leggi_reazioni("👍 🎉") == ["👍", "🎉"] and leggi_reazioni("") == [] and leggi_reazioni("👍 👍") == ["👍"]

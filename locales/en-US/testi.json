@@ -3512,5 +3512,15 @@
   "tag_vietato_canale": "This command is blocked in this channel.",
   "tag_coda_o_testo": "Choose: either the new text or the text to add at the end, not both.",
   "tag_coda_non_riuscita": "The text was not added: the command does not exist or the reply would go over {massimo} characters.",
-  "tag_embed_non_trovato": "There is no saved embed with that name."
+  "tag_embed_non_trovato": "There is no saved embed with that name.",
+  "risposte_modo_non_adatto": "That mode does not fit this reply's word: delete it and create it again.",
+  "risposte_modificata": "Automatic reply {numero} updated.",
+  "risposte_dettaglio": "Mode: {modo} - Case: {maiuscole} - Channel: {canale} - Role: {ruolo}",
+  "risposte_dettaglio_esclusi": "Excluded - roles: {ruoli}, channels: {canali}, users: {utenti}",
+  "risposte_escludi_scegli": "Pick a role, a channel or a user.",
+  "risposte_escludi_piena": "A list already has {massimo} entries: nothing was added.",
+  "risposte_escludi_salvata": "Exclusions updated.",
+  "embedbuilder_pausa_pubblica": "One embed per minute: try again in {secondi} seconds.",
+  "embedbuilder_colore_non_valido": "Write the color as #RRGGBB, for example #FF8800.",
+  "embedbuilder_colore_salvato": "Default embed color updated."
 }

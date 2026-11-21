@@ -5,22 +5,27 @@ Costruttore di embed (NF-17, SPEC §22.6): l'admin compone un embed con titolo,
 testo, colore, immagini e campi, lo vede in anteprima, lo pubblica e lo modifica
 anche dopo. Comandi in `/admin-messaggi embed *`. Tutti i limiti si controllano
 al salvataggio (core/embed_builder_logic.py).
-Funzioni coperte: SPEC §22 (NF-17)
+Funzioni coperte: SPEC §22 (NF-17), catalogo #128 UTL-073, 074, 077, 078, 082, 084, 085 (r2utl)
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+import time
+from dataclasses import replace
 import weakref
 
 import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.bounded_cache import BoundedCache
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
+from core.leveling_logic import colore_valido
 from core.embed_builder_logic import (
+    MAX_AUTORE,
     MAX_CAMPI,
     MAX_DESCRIZIONE,
     MAX_EMBED,
@@ -54,6 +59,8 @@ MODULE_EMBED_BUILDER = "embed_builder"
 _SG_MESSAGGI = ("embed", "Costruttore di embed")
 _NESSUNA_MENZIONE = discord.AllowedMentions.none()
 _CANCELLA = "-"  # in modifica, "-" toglie il valore
+PAUSA_PUBBLICA = 60  # secondi tra due invii dello stesso server (UTL-085)
+_ultima_pubblicazione: BoundedCache[int, float] = BoundedCache(max_size=10_000)
 
 
 class EmbedBuilderCog(CogConGruppi, commands.Cog):
@@ -107,6 +114,9 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
         immagine="Indirizzo (https) di un'immagine grande",
         miniatura="Indirizzo (https) di una miniatura",
         piede="Il testo in fondo",
+        autore="Il nome in cima, sopra il titolo",
+        link="Indirizzo (https) che si apre dal titolo",
+        data="Mostra la data e l'ora dell'invio",
     )
     async def crea(
         self,
@@ -118,6 +128,9 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
         immagine: app_commands.Range[str, 1, MAX_URL] | None = None,
         miniatura: app_commands.Range[str, 1, MAX_URL] | None = None,
         piede: app_commands.Range[str, 1, MAX_PIEDE] | None = None,
+        autore: app_commands.Range[str, 1, MAX_AUTORE] | None = None,
+        link: app_commands.Range[str, 1, MAX_URL] | None = None,
+        data: bool = False,
     ) -> None:
         if not await self._pronto(interaction):
             return
@@ -129,8 +142,8 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.defer(ephemeral=True)
         dati = DatiEmbed(
-            title=titolo, description=descrizione, color=colore, image_url=immagine,
-            thumbnail_url=miniatura, footer=piede,
+            title=titolo, description=descrizione, color=colore or await saved_embed_repo.colore_predefinito(interaction.guild.id), image_url=immagine,
+            thumbnail_url=miniatura, footer=piede, author=autore, url=link, timestamp=data,
         )
         errori = valida(dati)
         if errori:
@@ -169,6 +182,9 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
         campo_valore="Aggiungi un campo: il suo testo",
         campo_inline="Il campo sta in riga con gli altri?",
         togli_campo=f"Il numero (1-{MAX_CAMPI}) di un campo da togliere",
+        autore=f"Nuovo autore (\"{_CANCELLA}\" lo toglie)",
+        link=f"Nuovo link del titolo (\"{_CANCELLA}\" lo toglie)",
+        data="Mostra o nascondi la data e l'ora dell'invio",
     )
     async def modifica(
         self,
@@ -184,6 +200,9 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
         campo_valore: app_commands.Range[str, 1, MAX_VALORE_CAMPO] | None = None,
         campo_inline: bool = False,
         togli_campo: app_commands.Range[int, 1, MAX_CAMPI] | None = None,
+        autore: app_commands.Range[str, 1, MAX_AUTORE] | None = None,
+        link: app_commands.Range[str, 1, MAX_URL] | None = None,
+        data: bool | None = None,
     ) -> None:
         if not await self._pronto(interaction):
             return
@@ -193,7 +212,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
         async with self._blocco(interaction.guild.id, nome):
             await self._applica_modifica(
                 interaction, nome, titolo, descrizione, colore, immagine, miniatura, piede,
-                campo_nome, campo_valore, campo_inline, togli_campo,
+                campo_nome, campo_valore, campo_inline, togli_campo, autore, link, data,
             )
 
     @staticmethod
@@ -206,7 +225,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
 
     async def _applica_modifica(
         self, interaction, nome, titolo, descrizione, colore, immagine, miniatura, piede,
-        campo_nome, campo_valore, campo_inline, togli_campo,
+        campo_nome, campo_valore, campo_inline, togli_campo, autore=None, link=None, data=None,
     ) -> None:
         salvato = await saved_embed_repo.get(interaction.guild.id, nome)
         if salvato is None:
@@ -238,6 +257,9 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
             thumbnail_url=cambia(miniatura, attuale.thumbnail_url),
             footer=cambia(piede, attuale.footer),
             fields=tuple(campi),
+            author=cambia(autore, attuale.author),
+            url=cambia(link, attuale.url),
+            timestamp=attuale.timestamp if data is None else data,
         )
         errori = valida(dati)
         if errori:
@@ -312,7 +334,14 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
                 ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
             )
             return
+        ultima = _ultima_pubblicazione.get(interaction.guild.id)
+        if ultima is not None and time.monotonic() - ultima < PAUSA_PUBBLICA:  # UTL-085: un invio al minuto per server
+            await interaction.response.send_message(
+                await testo_per(interaction, "embedbuilder_pausa_pubblica", secondi=int(PAUSA_PUBBLICA - (time.monotonic() - ultima)) + 1), ephemeral=True)
+            return
         dati = da_json(salvato.data)
+        if not dati.color and (predefinito := await saved_embed_repo.colore_predefinito(interaction.guild.id)):
+            dati = replace(dati, color=predefinito)
         nomi_altri = list(dict.fromkeys(n.strip().lower() for n in (altri or "").split(",") if n.strip() and n.strip().lower() != salvato.name))
         if formato == "v2" and nomi_altri:
             await interaction.response.send_message(await testo_per(interaction, "embedbuilder_v2_un_solo_embed"), ephemeral=True)
@@ -334,6 +363,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(self._errori_testo(errori), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
+        _ultima_pubblicazione.set(interaction.guild.id, time.monotonic())
         contenuto = await contenuto_messaggio(interaction.guild.id, salvato.name, dati, formato)
         if nomi_altri:
             contenuto["embeds"] = [costruisci(d) for d in gruppo]
@@ -341,6 +371,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
         try:
             inviato = await destinazione.send(allowed_mentions=_NESSUNA_MENZIONE, **contenuto)
         except discord.HTTPException:
+            _ultima_pubblicazione.delete(interaction.guild.id)  # niente è partito: non si paga la pausa
             await interaction.followup.send(await testo_per(interaction, "embedbuilder_discord_non_ha_accettato_il"), ephemeral=True)
             return
         await saved_embed_repo.set_published(interaction.guild.id, nome, destinazione.id, inviato.id, formato)
@@ -348,6 +379,18 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "embedbuilder_embed_pubblicato_in_se_lo", mention=destinazione.mention),
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
+
+    @comando_di_gruppo("admin-messaggi", nome="colore", descrizione="Il colore predefinito dei tuoi embed (vuoto per toglierlo).", sottogruppo=SOTTOGRUPPI["admin-messaggi embed"])
+    @app_commands.describe(colore="Colore #RRGGBB; vuoto: torna al colore di Discord")
+    async def colore_predefinito(self, interaction: discord.Interaction, colore: app_commands.Range[str, 4, 7] | None = None) -> None:
+        if not await self._pronto(interaction):
+            return
+        scelto = colore_valido(colore) if colore else None
+        if colore and scelto is None:
+            await interaction.response.send_message(await testo_per(interaction, "embedbuilder_colore_non_valido"), ephemeral=True)
+            return
+        await saved_embed_repo.imposta_colore(interaction.guild.id, scelto)
+        await interaction.response.send_message(await testo_per(interaction, "embedbuilder_colore_salvato"), ephemeral=True)
 
     @comando_di_gruppo("admin-messaggi", nome="elenco", descrizione="Mostra gli embed salvati.", sottogruppo=SOTTOGRUPPI["admin-messaggi embed"])
     async def elenco(self, interaction: discord.Interaction) -> None:

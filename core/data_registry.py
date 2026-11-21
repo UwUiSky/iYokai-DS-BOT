@@ -618,6 +618,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonne_attore=("creata_da",), server="conserva"),
     _t("autorisposte_server", "Se il server ha spento le risposte globali dell'owner", colonna_server="guild_id"),
     _t("saved_embeds", "Embed salvati dal costruttore", colonne_attore=("created_by",), colonna_server="guild_id"),
+    _t("embed_colori", "Colore predefinito degli embed del costruttore (nessun dato personale)", colonna_server="guild_id"),
     _t("counters", "Canali contatore", colonne_attore=("created_by",), colonna_server="guild_id"),
     _t("utente_fuso", "Fuso orario personale (menu «Orari nel mio fuso»)", colonne_utente=("user_id",), utente="cancella",
        esporta=True),

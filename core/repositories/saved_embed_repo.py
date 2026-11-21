@@ -101,6 +101,18 @@ class SavedEmbedRepository:
             guild_id, name.lower(), channel_id, message_id, formato,
         )
 
+    async def colore_predefinito(self, guild_id: int) -> str | None:
+        """Il colore scelto dal server per i suoi embed (UTL-084), o None."""
+        return await self._pool.fetchval("SELECT colore FROM embed_colori WHERE guild_id = $1", guild_id)
+
+    async def imposta_colore(self, guild_id: int, colore: str | None) -> None:
+        if colore is None:
+            await self._pool.execute("DELETE FROM embed_colori WHERE guild_id = $1", guild_id)
+        else:
+            await self._pool.execute(
+                "INSERT INTO embed_colori (guild_id, colore) VALUES ($1, $2) "
+                "ON CONFLICT (guild_id) DO UPDATE SET colore = EXCLUDED.colore", guild_id, colore)
+
     async def delete(self, guild_id: int, name: str) -> bool:
         esito = await self._pool.execute(
             "DELETE FROM saved_embeds WHERE guild_id = $1 AND name = $2", guild_id, name.lower()
