@@ -3537,5 +3537,12 @@
   "mov_nessuno": "Nessun movimento negli ultimi 30 giorni.",
   "aut_sfida": "🤖 Controllo veloce: quanto fa **{domanda}**? Poi ripeti il comando.",
   "aut_ok": "✅ Verificato per 10 minuti: ripeti il comando.",
-  "aut_no": "❌ Risposta sbagliata: ripeti il comando per un nuovo controllo."
+  "aut_no": "❌ Risposta sbagliata: ripeti il comando per un nuovo controllo.",
+  "opzioni_muto_una_scelta": "Scegli un ruolo che c'è già oppure un nome per crearne uno nuovo, non tutti e due.",
+  "opzioni_muto_bot_senza_ruoli": "Mi manca il permesso «Gestire i ruoli».",
+  "opzioni_muto_bot_senza_canali": "Mi manca il permesso «Gestire i canali».",
+  "opzioni_muto_creazione_fallita": "Non sono riuscito a creare il ruolo: controlla i miei permessi e il numero di ruoli.",
+  "opzioni_muto_nessun_ruolo": "Nessun ruolo mute scelto. Il primo mute ne crea uno, oppure indicane uno qui.",
+  "opzioni_muto_ruolo": "Ruolo del mute: {ruolo}.",
+  "opzioni_muto_canali": "Canali sistemati: {fatti}. Falliti: {falliti}."
 }

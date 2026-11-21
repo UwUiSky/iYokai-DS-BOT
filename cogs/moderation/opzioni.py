@@ -6,7 +6,7 @@ cancellati al ban, durata predefinita del timeout, DM per tipo di azione,
 ruoli immuni alla moderazione manuale, casi per le azioni fatte fuori da
 iYokai, avvisi allo staff. La logica e il salvataggio sono in
 core/moderation_opzioni.py (un solo punto, anche per il pannello web).
-Funzioni coperte: SPEC §5.13 (MOD-010, MOD-017, MOD-057, MOD-068), §5.2 (MOD-047), §5.3 (MOD-036, MOD-064)
+Funzioni coperte: SPEC §5.13 (MOD-010, MOD-017, MOD-018, MOD-019, MOD-057, MOD-068), §5.2 (MOD-047), §5.3 (MOD-036, MOD-064)
 """
 
 from __future__ import annotations
@@ -15,11 +15,14 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from cogs.moderation._shared import MODULE_ACTIONS, ensure_module_enabled, format_duration, parse_duration
+from cogs.moderation._shared import MODULE_ACTIONS, audit_reason, ensure_module_enabled, format_duration, parse_duration
+from cogs.moderation.softban_mute import SETTING_MUTE_ROLE_ID, aggiorna_ruolo_muto
 from core import moderation_dm
 from core import moderation_opzioni as opzioni
 from core.command_groups import SOTTOGRUPPI, CogConGruppi, comando_di_gruppo
+from core.database import db
 from core.i18n import testo_per
+from core.role_safety import check_role_assignable
 from core.ui_base import BaseModal
 
 SOTTOGRUPPO = ("opzioni", "Opzioni di moderazione del server.")
@@ -244,6 +247,65 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(
             await testo_per(interaction, "opzioni_dm_per", name=azione.name, v2=(await testo_per(interaction, "opzioni_acceso")) if attivo else (await testo_per(interaction, "opzioni_spento"))), ephemeral=True
         )
+
+    @comando_di_gruppo(
+        "mod-sanzioni",
+        nome="muto",
+        descrizione="Sceglie o crea il ruolo del mute e rimette il blocco su tutti i canali.",
+        sottogruppo=SOTTOGRUPPO,
+    )
+    @app_commands.describe(
+        ruolo="Un ruolo che c'è già, da usare per il mute",
+        nome_nuovo="Oppure crea un ruolo nuovo con questo nome",
+        aggiorna="Rimette il blocco del mute sui canali che non l'hanno (fino a 500)",
+    )
+    async def muto(
+        self,
+        interaction: discord.Interaction,
+        ruolo: discord.Role | None = None,
+        nome_nuovo: app_commands.Range[str, 1, 100] | None = None,
+        aggiorna: bool = False,
+    ) -> None:
+        """MOD-018: ruolo del mute scelto o creato dal server. MOD-019: aggiorna i canali."""
+        if not await self._controlli(interaction):
+            return
+        guild = interaction.guild
+        if ruolo is not None and nome_nuovo is not None:
+            await interaction.response.send_message(await testo_per(interaction, "opzioni_muto_una_scelta"), ephemeral=True)
+            return
+        permessi_bot = guild.me.guild_permissions
+        if (ruolo is not None or nome_nuovo is not None or aggiorna) and not permessi_bot.manage_roles:
+            await interaction.response.send_message(await testo_per(interaction, "opzioni_muto_bot_senza_ruoli"), ephemeral=True)
+            return
+        if aggiorna and not permessi_bot.manage_channels:
+            await interaction.response.send_message(await testo_per(interaction, "opzioni_muto_bot_senza_canali"), ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        cambiato = ruolo is not None or nome_nuovo is not None
+        if ruolo is not None:
+            rifiuto = check_role_assignable(guild, ruolo, interaction.user, self_service=True)
+            if rifiuto is not None:
+                await interaction.followup.send(rifiuto[:2000], ephemeral=True)
+                return
+        elif nome_nuovo is not None:
+            try:
+                ruolo = await guild.create_role(name=nome_nuovo.strip(), reason=audit_reason(f"Ruolo mute creato da {interaction.user}"))
+            except discord.HTTPException:
+                await interaction.followup.send(await testo_per(interaction, "opzioni_muto_creazione_fallita"), ephemeral=True)
+                return
+        if ruolo is not None:
+            await db.set_guild_setting(guild.id, SETTING_MUTE_ROLE_ID, ruolo.id, changed_by=interaction.user.id)
+        else:
+            id_salvato = await db.get_guild_setting(guild.id, SETTING_MUTE_ROLE_ID)
+            ruolo = guild.get_role(id_salvato) if id_salvato else None
+            if ruolo is None:
+                await interaction.followup.send(await testo_per(interaction, "opzioni_muto_nessun_ruolo"), ephemeral=True)
+                return
+        righe = [await testo_per(interaction, "opzioni_muto_ruolo", ruolo=ruolo.mention)]
+        if aggiorna or cambiato:
+            fatti, falliti = await aggiorna_ruolo_muto(guild, ruolo)
+            righe.append(await testo_per(interaction, "opzioni_muto_canali", fatti=fatti, falliti=falliti))
+        await interaction.followup.send("\n".join(righe)[:2000], ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
 
     @comando_di_gruppo(
         "founder",

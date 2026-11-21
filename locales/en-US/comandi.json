@@ -449,7 +449,8 @@
   "divieti": "blocks",
   "avatar": "avatar",
   "movimenti": "movements",
-  "portafoglio": "wallet"
+  "portafoglio": "wallet",
+  "muto": "mute-role"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1629,7 +1630,8 @@
   "admin-moduli compleanni stato": "How the birthday wishes are set up.",
   "utility strumenti avatar": "A member's avatar in large size, of the server or global.",
   "level movimenti": "The latest movements of your coins (kept for 30 days).",
-  "monete conto portafoglio": "Your balance as an image."
+  "monete conto portafoglio": "Your balance as an image.",
+  "mod-sanzioni opzioni muto": "Pick or create the mute role and put the block back on every channel."
  },
  "parametri": {},
  "menu": {

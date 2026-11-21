@@ -20,11 +20,12 @@ su ogni canale di ogni tipo. I canali creati dopo ricevono lo stesso
 blocco da on_guild_channel_create. Il mute può avere una fine (lo toglie lo
 scheduler, anche dopo un riavvio), può essere un hardmute (toglie anche gli
 altri ruoli e li ridà alla fine) e resta se l'utente esce e rientra.
-Funzioni coperte: SPEC §5.1, §5.10 (MOD-014, 015, 021, 026)
+Funzioni coperte: SPEC §5.1, §5.10 (MOD-014, 015, 018, 019, 020, 021, 026)
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Literal
 from datetime import datetime, timezone
@@ -91,7 +92,7 @@ MUTE_OVERWRITE = {
 }
 
 
-async def _apply_mute_overwrite(channel: discord.abc.GuildChannel, role: discord.Role) -> None:
+async def _apply_mute_overwrite(channel: discord.abc.GuildChannel, role: discord.Role) -> bool:
     """
     Mette il blocco del ruolo Muted su un canale. Completa solo i
     permessi non ancora impostati: quelli che un admin ha scelto a mano
@@ -112,6 +113,32 @@ async def _apply_mute_overwrite(channel: discord.abc.GuildChannel, role: discord
             channel.id,
             channel.guild.id,
         )
+        return False
+    return True
+
+
+# MOD-019: tetto di canali per comando e pausa ogni gruppo (limiti di Discord sui permessi dei canali).
+MAX_CANALI_AGGIORNA = 500
+GRUPPO_AGGIORNA = 8
+PAUSA_AGGIORNA = 0.4
+
+
+async def aggiorna_ruolo_muto(guild: discord.Guild, role: discord.Role) -> tuple[int, int]:
+    """
+    MOD-019: rimette il blocco del ruolo mute sui canali che non l'hanno (creati dopo, o con
+    un permesso lasciato vuoto). Al massimo 500 canali, a gruppi con una pausa; un canale che
+    rifiuta non ferma gli altri. Restituisce (canali sistemati, canali falliti).
+    """
+    da_fare = [c for c in guild.channels if not _has_mute_overwrite(c, role)][:MAX_CANALI_AGGIORNA]
+    fatti = falliti = 0
+    for inizio in range(0, len(da_fare), GRUPPO_AGGIORNA):
+        gruppo = da_fare[inizio : inizio + GRUPPO_AGGIORNA]
+        esiti = await asyncio.gather(*(_apply_mute_overwrite(c, role) for c in gruppo))
+        fatti += sum(esiti)
+        falliti += len(esiti) - sum(esiti)
+        if inizio + GRUPPO_AGGIORNA < len(da_fare):
+            await asyncio.sleep(PAUSA_AGGIORNA)
+    return fatti, falliti
 
 
 def _case_embed(

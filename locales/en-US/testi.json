@@ -3537,5 +3537,12 @@
   "mov_nessuno": "No movements in the last 30 days.",
   "aut_sfida": "🤖 Quick check: what is **{domanda}**? Then repeat the command.",
   "aut_ok": "✅ Verified for 10 minutes: repeat the command.",
-  "aut_no": "❌ Wrong answer: repeat the command for a new check."
+  "aut_no": "❌ Wrong answer: repeat the command for a new check.",
+  "opzioni_muto_una_scelta": "Pick an existing role or a name for a new one, not both.",
+  "opzioni_muto_bot_senza_ruoli": "I am missing the \"Manage Roles\" permission.",
+  "opzioni_muto_bot_senza_canali": "I am missing the \"Manage Channels\" permission.",
+  "opzioni_muto_creazione_fallita": "I could not create the role: check my permissions and the number of roles.",
+  "opzioni_muto_nessun_ruolo": "No mute role chosen. The first mute creates one, or pick one here.",
+  "opzioni_muto_ruolo": "Mute role: {ruolo}.",
+  "opzioni_muto_canali": "Channels fixed: {fatti}. Failed: {falliti}."
 }

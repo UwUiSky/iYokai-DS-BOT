@@ -50,7 +50,7 @@ MODULI = (
 ATTESI: dict[tuple[str, str | None], set[str]] = {
     ("mod-sanzioni", None): {"warn", "timeout", "untimeout", "mute", "unmute", "nick", "applica"},
     ("mod-sanzioni", "massa"): {"timeout", "warn"},
-    ("mod-sanzioni", "opzioni"): {"imposta", "dm"},
+    ("mod-sanzioni", "opzioni"): {"imposta", "dm", "muto"},
     ("mod-casi", "caso"): {"storico", "vedi", "motivo", "elimina", "classifica-staff", "attive", "registra", "durata", "nascondi", "esporta", "prova"},
     ("mod-casi", "nota"): {"aggiungi", "elenca", "rimuovi", "modifica", "svuota"},
     ("mod-casi", "avvisi"): {"togli", "azzera", "classifica", "elenco", "azzera-tutti"},
@@ -61,7 +61,7 @@ ATTESI: dict[tuple[str, str | None], set[str]] = {
     ("founder", "moderazione"): {"immuni"},
     ("mod-ban", None): {"ban", "tempban", "softban", "kick", "unban", "cerca"},
     ("mod-ban", "appelli"): {"canale", "elenco"},
-    ("mod-ban", "massa"): {"ban", "unban", "kick", "entrati"},
+    ("mod-ban", "massa"): {"ban", "unban", "kick", "entrati", "invito"},
     ("admin-sicurezza", None): {"heatmap", "score", "spamtrap"},
     ("admin-sicurezza", "escalation"): {"enable", "disable", "set-reset-days", "set-step", "remove-step", "reset", "status"},
     ("admin-antinuke", None): {
