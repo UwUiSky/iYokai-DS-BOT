@@ -363,6 +363,7 @@ async def test_modifica_rifiuta_allegato_non_immagine(monkeypatch):
     s.repo.modifica.assert_not_awaited()
 
 
+# UTL-115: estrarre un nuovo vincitore (menu «Riestrai giveaway» sul messaggio)
 @pytest.mark.asyncio
 async def test_riestrai_solo_su_annuncio_finito_e_ripesca(monkeypatch):
     s = _Scena(monkeypatch)
@@ -467,3 +468,37 @@ async def test_modifica_con_immagine_rifiutata_dalla_pipeline_non_cambia_nulla(m
     allegato = SimpleNamespace(content_type="image/png", width=10, height=10, size=10, url="u")
     await s.cog.modifica.callback(s.cog, fake_interaction(guild=s.guild), 4, None, None, None, allegato)
     s.repo.modifica.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_utl_114_117_118_chiudi_annulla_ed_elenco_solo_del_proprio_server(repo):
+    """UTL-114: chiudere porta la scadenza a ora (il worker estrae); UTL-117: annullare chiude senza vincitori;
+    UTL-118: l'elenco mostra i giveaway in corso, non quelli finiti né di altri server."""
+    a = await _nuovo(repo)
+    b = await _nuovo(repo)
+    altro = await repo.create_giveaway(2, 600, "Altro", 1, 0, None, ORA + timedelta(hours=1), 9)
+    assert [g.id for g in await repo.list_in_corso(1)] == [a, b]
+    assert await repo.chiudi_subito(2, a) is False  # un altro server
+    assert await repo.chiudi_subito(1, a) is True
+    assert (await repo.get_giveaway(a)).ends_at <= datetime.now(timezone.utc)
+    assert (await repo.annulla_in_corso(2, b)) is None
+    annullato = await repo.annulla_in_corso(1, b)
+    assert annullato.id == b and (await repo.get_giveaway(b)).ended is True
+    assert await repo.annulla_in_corso(1, b) is None and await repo.chiudi_subito(1, b) is False
+    assert [g.id for g in await repo.list_in_corso(1)] == [a] and [g.id for g in await repo.list_in_corso(2)] == [altro]
+
+
+@pytest.mark.asyncio
+async def test_utl_114_117_118_comandi(monkeypatch):
+    s = _Scena(monkeypatch)
+    s.repo.chiudi_subito = AsyncMock(return_value=False)
+    i = fake_interaction(guild=s.guild)
+    await s.cog.chiudi.callback(s.cog, i, 4)
+    s.repo.chiudi_subito.assert_awaited_once_with(s.guild.id, 4)
+    s.repo.annulla_in_corso = AsyncMock(return_value=None)
+    await s.cog.annulla.callback(s.cog, i, 4)
+    s.repo.list_in_corso = AsyncMock(return_value=[SimpleNamespace(id=4, prize="@everyone Nitro", channel_id=5, ends_at=ORA)])
+    i2 = fake_interaction(guild=s.guild)
+    await s.cog.elenco.callback(s.cog, i2)
+    assert i2.response.send_message.await_args.kwargs["allowed_mentions"].everyone is False
+    assert "#4" in i2.response.send_message.await_args.args[0]

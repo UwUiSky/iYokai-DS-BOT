@@ -3522,5 +3522,16 @@
   "risposte_escludi_salvata": "Exclusions updated.",
   "embedbuilder_pausa_pubblica": "One embed per minute: try again in {secondi} seconds.",
   "embedbuilder_colore_non_valido": "Write the color as #RRGGBB, for example #FF8800.",
-  "embedbuilder_colore_salvato": "Default embed color updated."
+  "embedbuilder_colore_salvato": "Default embed color updated.",
+  "reminders_pubblico_ripete": "Repeats every **{ogni}**.",
+  "giveaway_chiuso_ok": "Giveaway closed: the winners come out within a few seconds.",
+  "giveaway_non_in_corso": "There is no running giveaway with that number.",
+  "giveaway_annullato_ok": "Giveaway {id} cancelled, with no winners.",
+  "giveaway_annullato_annuncio": "Giveaway {id} was cancelled.",
+  "giveaway_elenco_vuoto": "No giveaway running.",
+  "starboard_esclusi_salvato": "Excluded channels updated.",
+  "starboard_esclusi_pieno": "There are already {massimo} excluded channels: nothing was added.",
+  "starboard_stato": "Board: {canale}\nStars: {soglia} {emoji} - On: {acceso}\nAge-restricted channels included: {nsfw} - Author's own vote: {autore}\nAutomatic channel: {auto}\nExcluded channels: {esclusi}",
+  "birthdays_stato": "Birthday wishes\nChannel: {canale}\nRole: {ruolo}\nBirthdays saved: {registrati}\nMessage: {messaggio}",
+  "avatar_titolo": "{nome}'s avatar"
 }

@@ -38,17 +38,20 @@ def _ok(*args, **kw):
 # ----------------------------------------------------------------------
 # Logica pura
 # ----------------------------------------------------------------------
+# UTL-127: più ingressi per certi ruoli
 def test_biglietti_extra_solo_con_il_ruolo():
     assert biglietti_di({1, 2}, bonus_role_id=2, bonus_entries=3) == 4
     assert biglietti_di({1}, bonus_role_id=2, bonus_entries=3) == 1
     assert biglietti_di({1}, bonus_role_id=None, bonus_entries=3) == 1
 
 
+# UTL-125: ruoli che saltano i requisiti
 def test_il_ruolo_bypass_salta_tutti_i_requisiti():
     assert not _ok(0, set(), 10, 5, messages=0, min_messages=50)
     assert _ok(0, {9}, 10, 5, messages=0, min_messages=50, bypass_role_ids={9})
 
 
+# UTL-124: requisito «numero di messaggi»
 def test_requisito_sui_messaggi():
     assert not _ok(0, set(), 0, None, messages=4, min_messages=5)
     assert _ok(0, set(), 0, None, messages=5, min_messages=5)
@@ -158,6 +161,7 @@ async def test_avvio_una_volta_sola_e_scadenza_dall_avvio(repo):
     assert await repo.claim_start(gid, adesso) is None  # il secondo non parte
 
 
+# UTL-122: modelli riusabili di giveaway
 @pytest.mark.asyncio
 async def test_modelli_salva_aggiorna_elenca_elimina(repo):
     await repo.save_template(GUILD, "classico", prize="Nitro", winners_count=2, duration_minutes=60)
@@ -430,6 +434,7 @@ async def test_giveaway_con_opzioni_avanzate(cog_comandi):
     assert (g.min_messages, g.bypass_role_id, g.bonus_role_id, g.bonus_entries) == (20, 8, 9, 3)
 
 
+# UTL-123: giveaway programmato (scheduler)
 @pytest.mark.asyncio
 async def test_giveaway_programmato_non_posta_subito(cog_comandi):
     cog, comandi, giveaway = cog_comandi

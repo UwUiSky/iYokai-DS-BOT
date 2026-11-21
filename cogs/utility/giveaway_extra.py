@@ -3,7 +3,7 @@ cogs/utility/giveaway_extra.py
 ==============================
 Giveaway, parte 2 (catalogo #128, D69 B9-B10): elenco dei partecipanti, bottone «Riepilogo», opzioni del
 server (aspetto, messaggi, log, ruoli esclusi), modifica di un giveaway e menu «Riestrai giveaway».
-Funzioni coperte: SPEC §15.5 (NF-28), UTL-116, 119, 120, 126, 128, 129, 130, 132, 133
+Funzioni coperte: SPEC §15.5 (NF-28), UTL-116, 119, 120, 126, 128, 129, 130, 132, 133; UTL-114, 115, 117, 118 (r2utl)
 """
 
 from __future__ import annotations
@@ -423,6 +423,50 @@ class GiveawayExtraCog(CogConGruppi, commands.Cog):
             )
         except discord.HTTPException:
             logger.info("Giveaway %s: annuncio non aggiornato", giveaway.id)
+
+    # ---------------------------------------------------------------- chiudi, annulla, elenco (UTL-114, 117, 118)
+    @comando_di_gruppo("admin-giveaway", nome="chiudi", descrizione="Chiude un giveaway prima del tempo ed estrae i vincitori.")
+    @app_commands.describe(id="Il giveaway da chiudere")
+    @app_commands.autocomplete(id=_completa_giveaway)
+    async def chiudi(self, interaction: discord.Interaction, id: app_commands.Range[int, 1, 2_147_483_647]) -> None:
+        if not await _server_pronto(interaction):
+            return
+        fatto = await giveaway_repo.chiudi_subito(interaction.guild.id, id)
+        await interaction.response.send_message(
+            await testo_per(interaction, "giveaway_chiuso_ok" if fatto else "giveaway_non_in_corso"), ephemeral=True)
+
+    @comando_di_gruppo("admin-giveaway", nome="annulla", descrizione="Annulla un giveaway in corso, senza vincitori.")
+    @app_commands.describe(id="Il giveaway da annullare")
+    @app_commands.autocomplete(id=_completa_giveaway)
+    async def annulla(self, interaction: discord.Interaction, id: app_commands.Range[int, 1, 2_147_483_647]) -> None:
+        if not await _server_pronto(interaction):
+            return
+        giveaway = await giveaway_repo.annulla_in_corso(interaction.guild.id, id)
+        if giveaway is None:
+            await interaction.response.send_message(await testo_per(interaction, "giveaway_non_in_corso"), ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        if giveaway.message_id:  # l'annuncio dice che è annullato e perde il bottone; se non si riesce, l'annullo vale lo stesso
+            try:
+                from core.giveaway_worker import _canale_del_giveaway
+
+                canale = await _canale_del_giveaway(interaction.guild, giveaway.channel_id)
+                if canale is not None:
+                    messaggio = await canale.fetch_message(giveaway.message_id)
+                    await messaggio.edit(content=await testo_per(interaction, "giveaway_annullato_annuncio", id=giveaway.id),
+                                         embed=None, view=None, allowed_mentions=_NESSUNA_MENZIONE)
+            except discord.HTTPException:
+                logger.info("Giveaway %s: annuncio non aggiornato dopo l'annullo", giveaway.id)
+        await interaction.followup.send(await testo_per(interaction, "giveaway_annullato_ok", id=giveaway.id), ephemeral=True)
+
+    @comando_di_gruppo("admin-giveaway", nome="elenco", descrizione="I giveaway in corso nel server.")
+    async def elenco(self, interaction: discord.Interaction) -> None:
+        if not await _server_pronto(interaction):
+            return
+        in_corso = await giveaway_repo.list_in_corso(interaction.guild.id)
+        righe = [f"`#{g.id}` {g.prize[:60]} - <#{g.channel_id}> - {discord.utils.format_dt(g.ends_at, style='R')}" for g in in_corso]
+        corpo = "\n".join(righe) or await testo_per(interaction, "giveaway_elenco_vuoto")
+        await interaction.response.send_message(corpo[:2000], ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE)
 
     # ---------------------------------------------------------------- riestrai
     async def menu_riestrai(self, interaction: discord.Interaction, messaggio: discord.Message) -> None:

@@ -3522,5 +3522,16 @@
   "risposte_escludi_salvata": "Esclusioni aggiornate.",
   "embedbuilder_pausa_pubblica": "Un embed al minuto: riprova tra {secondi} secondi.",
   "embedbuilder_colore_non_valido": "Il colore va scritto come #RRGGBB, per esempio #FF8800.",
-  "embedbuilder_colore_salvato": "Colore predefinito degli embed aggiornato."
+  "embedbuilder_colore_salvato": "Colore predefinito degli embed aggiornato.",
+  "reminders_pubblico_ripete": "Si ripete ogni **{ogni}**.",
+  "giveaway_chiuso_ok": "Giveaway chiuso: i vincitori escono entro pochi secondi.",
+  "giveaway_non_in_corso": "Non c'è un giveaway in corso con quel numero.",
+  "giveaway_annullato_ok": "Giveaway {id} annullato, senza vincitori.",
+  "giveaway_annullato_annuncio": "Il giveaway {id} è stato annullato.",
+  "giveaway_elenco_vuoto": "Nessun giveaway in corso.",
+  "starboard_esclusi_salvato": "Canali esclusi aggiornati.",
+  "starboard_esclusi_pieno": "Ci sono già {massimo} canali esclusi: non ho aggiunto nulla.",
+  "starboard_stato": "Bacheca: {canale}\nStelle: {soglia} {emoji} - Accesa: {acceso}\nCanali vietati ai minori inclusi: {nsfw} - Voto dell'autore: {autore}\nCanale automatico: {auto}\nCanali esclusi: {esclusi}",
+  "birthdays_stato": "Auguri di compleanno\nCanale: {canale}\nRuolo: {ruolo}\nCompleanni registrati: {registrati}\nMessaggio: {messaggio}",
+  "avatar_titolo": "Avatar di {nome}"
 }

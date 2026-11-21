@@ -184,6 +184,7 @@ async def test_classifica_vuota_e_con_dati(monkeypatch):
     assert "<@5>" in embed.description and "3 di 3" in embed.footer.text
 
 
+# UTL-150: mostrare un messaggio stellato a caso, col link per saltarci
 @pytest.mark.asyncio
 async def test_caso_manda_il_link_al_post(monkeypatch):
     s = _Scena(monkeypatch)

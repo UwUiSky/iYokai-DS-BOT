@@ -24,6 +24,10 @@ class StarboardConfig:
     self_star: bool
     blocca: bool = False
     canale_auto: int | None = None
+    canali_esclusi: tuple = ()
+
+
+MAX_ESCLUSI = 25
 
 
 @dataclass(frozen=True)
@@ -50,7 +54,7 @@ class StarboardRepository:
 
     async def get_config(self, guild_id: int) -> StarboardConfig | None:
         r = await self._pool.fetchrow(
-            "SELECT guild_id, channel_id, threshold, emoji, enabled, allow_nsfw, self_star, blocca, canale_auto "
+            "SELECT guild_id, channel_id, threshold, emoji, enabled, allow_nsfw, self_star, blocca, canale_auto, canali_esclusi "
             "FROM starboard_config WHERE guild_id = $1",
             guild_id,
         )
@@ -84,10 +88,23 @@ class StarboardRepository:
         )
         return esito.endswith(" 1")
 
+    async def cambia_escluso(self, guild_id: int, channel_id: int, aggiungi: bool) -> list[int] | None:
+        """UTL-146: mette o toglie un canale dagli esclusi (al massimo MAX_ESCLUSI). Ritorna l'elenco nuovo; None se la bacheca
+        non è impostata."""
+        if aggiungi:
+            sql = ("UPDATE starboard_config SET canali_esclusi = CASE WHEN $2 = ANY(canali_esclusi) OR cardinality(canali_esclusi) >= $3 "
+                   "THEN canali_esclusi ELSE array_append(canali_esclusi, $2) END WHERE guild_id = $1 RETURNING canali_esclusi")
+        else:
+            sql = ("UPDATE starboard_config SET canali_esclusi = array_remove(canali_esclusi, $2) "
+                   "WHERE guild_id = $1 AND $3::int > 0 RETURNING canali_esclusi")
+        riga = await self._pool.fetchrow(sql, guild_id, channel_id, MAX_ESCLUSI)
+        return None if riga is None else list(riga["canali_esclusi"])
+
     async def togli_canale(self, guild_id: int, channel_id: int) -> None:
         """Il canale è stato cancellato: se era la sorgente automatica, la spegne."""
         await self._pool.execute(
-            "UPDATE starboard_config SET canale_auto = NULL WHERE guild_id = $1 AND canale_auto = $2",
+            "UPDATE starboard_config SET canale_auto = CASE WHEN canale_auto = $2 THEN NULL ELSE canale_auto END, "
+            "canali_esclusi = array_remove(canali_esclusi, $2) WHERE guild_id = $1",
             guild_id, channel_id,
         )
 
