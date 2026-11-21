@@ -20,7 +20,7 @@ from discord.ext import commands
 from cogs.leveling.leveling import _comando_rifiutato, _format_seconds
 from cogs.leveling.rischio import _SG_RISCHIO
 from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
-from core.i18n import testo_per
+from core.i18n import testo_guild, testo_per
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.repositories.potenziamenti_repo import potenziamenti_repo
 from core.repositories.rischio_repo import rischio_repo
@@ -137,7 +137,7 @@ class MiniGuadagniCog(CogConGruppi, commands.Cog):
             return
         moneta = (await leveling_settings_repo.get_config(interaction.guild.id)).impostazioni.currency_name
         view = GrattaView(interaction.user.id, interaction.guild.id, moneta)
-        await interaction.response.send_message(await testo_per(interaction, "mg_gratta", prezzo=PREZZO_GRATTA, moneta=moneta), view=view)
+        await interaction.response.send_message(await testo_guild(interaction.guild, "mg_gratta", prezzo=PREZZO_GRATTA, moneta=moneta), view=view)
 
     @comando_di_gruppo("monete", nome="bersaglio", descrizione="Un bersaglio compare dopo qualche secondo: clicca in tempo.", sottogruppo=_SG_RISCHIO)
     async def bersaglio(self, interaction: discord.Interaction) -> None:
@@ -149,7 +149,7 @@ class MiniGuadagniCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(await testo_per(interaction, "rsk_pausa", tempo=_format_seconds(resto)), ephemeral=True)
             return
         moneta = (await leveling_settings_repo.get_config(g)).impostazioni.currency_name
-        await interaction.response.send_message(await testo_per(interaction, "mg_bersaglio_attesa"))
+        await interaction.response.send_message(await testo_guild(interaction.guild, "mg_bersaglio_attesa"))
         await asyncio.sleep(RNG.uniform(2, 5))
         view = BersaglioView(u, g, moneta)
         try:

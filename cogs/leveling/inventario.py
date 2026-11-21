@@ -69,7 +69,7 @@ class InventarioCog(CogConGruppi, commands.Cog):
             if saldo is None:
                 await interaction.response.send_message(await testo_per(interaction, "inv_non_lo_hai"), ephemeral=True)
                 return
-            extra = await testo_per(interaction, "inv_azione_monete", monete=item.azione_valore, saldo=saldo)
+            extra = await testo_guild(guild, "inv_azione_monete", monete=item.azione_valore, saldo=saldo)
         elif item.azione in ("ruolo_dai", "ruolo_togli"):
             ruolo = guild.get_role(item.azione_valore)
             motivo = "ruolo non trovato" if ruolo is None else check_role_assignable(guild, ruolo, interaction.user, self_service=True)
@@ -88,7 +88,7 @@ class InventarioCog(CogConGruppi, commands.Cog):
                 await inventario_repo.restituisci(guild.id, interaction.user.id, item_id)
                 await interaction.response.send_message(await testo_per(interaction, "inv_azione_fallita"), ephemeral=True)
                 return
-            extra = await testo_per(interaction, "inv_azione_ruolo", ruolo=ruolo.name[:60])
+            extra = await testo_guild(guild, "inv_azione_ruolo", ruolo=ruolo.name[:60])
         elif not await inventario_repo.usa(guild.id, interaction.user.id, item_id):
             await interaction.response.send_message(await testo_per(interaction, "inv_non_lo_hai"), ephemeral=True)
             return

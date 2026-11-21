@@ -61,6 +61,7 @@ USI: dict[str, tuple[UsoIntent, ...]] = {
                   "Apply the server's own AutoMod rules to member events"),
         UsoIntent("Autoroles and sticky roles", "cogs/utility/autoroles.py", "Give roles on join, restore on return"),
         UsoIntent("Welcome and goodbye messages", "cogs/utility/greetings.py", "Greet members"),
+        UsoIntent("Personal roles", "cogs/utility/ruoli_extra.py", "Delete a member's personal role when they leave"),
         UsoIntent("Invite tracking", "cogs/utility/invites.py", "Credit the inviter"),
         UsoIntent("Restore after a server backup", "cogs/utility/restore.py", "Return members to their roles"),
         UsoIntent("Backup of member roles", "cogs/utility/backup.py", "Keep the role snapshot up to date"),
