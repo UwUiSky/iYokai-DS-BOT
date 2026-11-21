@@ -1856,3 +1856,12 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `ECO-017` — `/monete conto portafoglio`: immagine con nome, contanti, banca, posizione e (se il server l'ha caricata) l'immagine della moneta.
 - [ ] `ECO-161` — `/admin-livelli guadagno vocale max_minuti:60`: dopo 60 minuti in vocale in un giorno non arrivano più XP né monete (di base 360).
 - [ ] `ECO-158` — `/admin-economia limiti controllo:500`: `/monete work`, `/monete daily` e i piccoli guadagni, una volta su due, si fermano con una domanda «quanto fa a + b?» con tre bottoni (solo per te, un tentativo); risposta giusta = verificato 10 minuti, poi ripeti il comando; con `controllo:0` mai.
+
+## Giro r2tkt (#120, ticket e ModMail)
+
+- Pannello: `pannelli pubblica` con colore, miniatura, immagine, `per_riga`; `pannelli aspetto` (colore bottone, testo menu, embed di apertura con {utente} {nome} {server} {numero} {pannello}); `pannelli modello`.
+- Finestra del modulo con menu a scelta e selezione di utente/ruolo/canale dentro la finestra (da provare su Discord vero), minimo e massimo di caratteri.
+- `voto` con questionario: dopo le stelle si apre la finestra con la domanda.
+- `admin-ticket log` (azioni accese una a una, canale scelto), `stats dettagli`, `/ticket tieni-aperto`, `/ticket pronta`.
+- ModMail: `modmail opzioni` (anonimo predefinito, inoltra tutto con `//` come nota, conferma disattivabile).
+- Riassunto AI alla chiusura: `/admin-ai staff riassunto-ticket` (serve l'AI accesa).

@@ -1303,3 +1303,17 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
 - **Colore e pausa degli embed (UTL-084, 085):** un colore per server (`/admin-messaggi embed colore`), usato solo se l'embed non ne ha uno; un invio al minuto per server con `pubblica`.
 - **Fuori dal mio perimetro, da fare dagli agenti che li hanno:** UTL-204 (`/mod esporta-chat`, moderazione), UTL-205 (opzione `utente` in `/utility messaggio`, file `snipe.py`), UTL-226 e UTL-228 (`/admin-bot config pulisci` e «anche i dati» in `reset`, file `config_history.py`).
 - Migrazioni: 0760 (tag), 0761 (risposte automatiche), 0762 (colore embed), 0763 (innesco canale), 0764 (bacheca).
+
+## D101 — Controllo dell'area ticket e ModMail (#120, giro r2tkt), 21/11/2026, opzione prudente, da confermare dall'owner
+
+- **TKT-072 (transcript online con ricerca) e TKT-085 (rispondere dal pannello web): non fatte.** Il bot non conserva il testo dei messaggi (SPEC §23, D74): una pagina con ricerca per utente, voto e motivo obbliga a salvare in database il testo dei ticket (dati personali, con scadenza e consenso) o a rileggerlo da Discord a ogni richiesta; rispondere dal web richiede scrittura a nome dello staff con sessione, CSRF e tempo reale. Sono del pannello web (NF-20, `dev-web`). Oggi: transcript su richiesta (`/ticket transcript`, TKT-069) e nel canale dei log. Da fare solo con il pannello e una scelta dell'owner sulla conservazione.
+- **TKT-077:** «chiusi con una sola risposta» non si può contare (i messaggi non si salvano). Al suo posto «chiusi senza risposta dello staff». Le ore di punta sono in UTC.
+- **TKT-014:** un modulo non è una tabella a parte: `modulo-copia` copia le domande da un pannello a un altro (poi sono indipendenti). Più semplice e senza modifiche a cascata.
+- **TKT-015:** il limite per utente resta di tutto il server (`/admin-ticket limite`, vincolo nel database); il tetto di un pannello è TKT-017.
+- **TKT-076:** tutti gli interruttori del log partono spenti (finora nel log andava solo il transcript). Canale: tipo «ticket» del router, o il canale dei log del server.
+- **TKT-086:** riassunto AI alla chiusura solo se il pannello lo accende (`/admin-ai staff riassunto-ticket`), spento di base: il testo del ticket va al fornitore AI. Passa dalla porta unica dell'AI (tetti e regole del server); uscita pulita da menzioni di massa e inviti.
+- **TKT-087:** già fatta come `/ticket assistente` (bozza solo per lo staff, mai inviata); non si crea `/ticket suggerisci`.
+- **TKT-083:** con «inoltra tutto» acceso un messaggio che comincia con `//` resta nota interna; il canale si riconosce dal nome o dall'argomento.
+- **TKT-012:** i menu dentro le finestre funzionano in discord.py 2.7.1 (verificato); un campo a scelta ha 2-25 voci, utente/ruolo/canale si scrivono come nomi puliti, mai menzioni.
+- **Difetto corretto:** `AllowedMentions(users=[...])` lascia `everyone` e `roles` accesi: sollecito (testo che può venire dall'AI), regole di inattività, benvenuto e richiesta di chiusura ora li spengono.
+- Migrazioni usate: 0770 (opzioni ModMail), 0771 (aspetto pannelli, campi del modulo), 0772 (tieni aperto, questionario, log azioni), 0773 (riassunto AI).

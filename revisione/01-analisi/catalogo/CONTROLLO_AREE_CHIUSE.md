@@ -101,3 +101,43 @@ Giro r2utl (issue #128). «Corretta» = fa ciò che dice il catalogo e rispetta 
 | UTL-226 | no | - | non è mio: `config_history.py` (nota in D100) | - |
 | UTL-227 | sì (`ruolo-richiesto`) | sì | nessuna | test_cfg012_serve_uno_dei_ruoli_richiesti_per_il_comando_e_il_suo_gruppo |
 | UTL-228 | in parte | - | non è mio: `config_history.py` (nota in D100) | - |
+
+## 06-ticket-e-modmail
+
+Giro r2tkt (issue #120). «Corretta» = fa ciò che dice il catalogo e rispetta SICUREZZA.md. Difetto trovato e corretto in voci esistenti: `AllowedMentions(users=[...])` lasciava `everyone` e `roles` accesi (sollecito con testo che può venire dall'AI, regole di inattività, benvenuto, richiesta di chiusura); test in tests/test_ticket_standard.py e tests/test_ticket_catalogo_r2tkt_b.py. Un'eccezione nel log di chiusura poteva rompere la chiusura: ora è isolata.
+
+| codice | esiste | corretta | azione | file e test |
+|---|---|---|---|---|
+| TKT-001 | sì | sì | nessuna (codice nel test) | cogs/tickets/tickets.py `vista_pannelli`, `pannello_pubblica`; tests/test_ticket_form.py::test_pubblica_due_pannelli_in_un_solo_messaggio |
+| TKT-002 | no | - | realizzata | `pubblica per_riga`, `form.righe_di_bottoni`; tests/test_ticket_catalogo_r2tkt.py::test_tkt_002_* |
+| TKT-003 | in parte (titolo e testo) | no: niente colore, miniatura, immagine | realizzata | `pubblica` con colore, miniatura, immagine o embed salvato (controllo `embed_builder.valida`); tests/test_ticket_catalogo_r2tkt.py::test_tkt_003_* |
+| TKT-004 | in parte (testo, emoji) | no: niente colore | realizzata | `pannelli aspetto`, migrazione 0771; tests/test_ticket_catalogo_r2tkt.py::test_tkt_004_* |
+| TKT-005 | in parte (nome, emoji) | no: niente descrizione né segnaposto | realizzata | descrizione di motivi e categorie, segnaposto del menu; tests/test_ticket_catalogo_r2tkt.py::test_tkt_005_* |
+| TKT-010 | sì | sì | nessuna (codice nel test) | tests/test_ticket_form.py::test_la_sesta_domanda_e_rifiutata_e_le_posizioni_scorrono, test_invio_del_modulo_crea_il_ticket_con_le_risposte |
+| TKT-011 | in parte (obbligatoria, riga, segnaposto) | no: niente minimo e massimo | realizzata | colonne `min_length`/`max_length` (0771), `modulo-aggiungi`; tests/test_ticket_catalogo_r2tkt.py::test_tkt_011_* |
+| TKT-012 | no | - | realizzata (menu nelle finestre verificati in discord.py 2.7.1) | `_componente_domanda`, `modulo-aggiungi tipo`; tests/test_ticket_catalogo_r2tkt.py::test_tkt_012_* |
+| TKT-013 | sì | sì | nessuna (codice nel test) | tests/test_ticket_catalogo.py::test_il_benvenuto_con_cinque_risposte_lunghe_resta_sotto_6000_e_il_ticket_nasce |
+| TKT-014 | no | - | realizzata come copia, D101 | `modulo-copia`; tests/test_ticket_catalogo_r2tkt.py::test_tkt_014_* |
+| TKT-015 | sì (limite del server, vincolo nel database) | sì; il tetto di pannello è TKT-017 | nessuna (codice nel test) | tests/test_tickets_correzioni.py::test_il_limite_regge_con_aperture_in_parallelo |
+| TKT-016 | sì | sì | nessuna (codice nel test) | tests/test_tickets_correzioni.py::test_con_limite_due_il_cog_lascia_aprire_il_secondo_ticket |
+| TKT-036 | in parte (solo {utente}) | no: segnaposto e embed salvato mancavano | realizzata | `form.testo_benvenuto` (un'unica passata, elenco chiuso, nomi puliti), `embed_apertura`; tests/test_ticket_catalogo_r2tkt.py::test_tkt_036_* |
+| TKT-049 | sì | sì | nessuna (codice nel test) | tests/test_ticket_catalogo.py::test_passa_solo_a_un_membro_dello_staff |
+| TKT-059 | sì | sì | nessuna (codice nel test) | tests/test_ticket_autoclose.py::test_ticket_fermo_da_piu_di_n_minuti_si_chiude_e_il_canale_va_allo_scheduler |
+| TKT-060 | sì (regola «utente»: senza messaggi vale l'apertura) | sì | nessuna (codice nel test) | tests/test_ticket_r18.py::test_regola_utente_conta_dall_ultimo_messaggio_dell_utente |
+| TKT-061 | sì | sì | nessuna (codice nel test) | tests/test_ticket_autoclose.py::test_utente_che_esce_dal_server_chiude_il_suo_ticket |
+| TKT-062 | no | - | realizzata | `/ticket tieni-aperto`, colonna `tieni_aperto` (0772); tests/test_ticket_catalogo_r2tkt_b.py::test_tkt_062_* |
+| TKT-065 | sì | sì | nessuna (codice nel test) | tests/test_ticket_form.py::test_il_clic_sul_voto_registra_le_stelle_una_volta_sola |
+| TKT-066 | no | - | realizzata | `voto questionario`, `ModuloQuestionario`, tabella `ticket_questionario_risposte` (0772); tests/test_ticket_catalogo_r2tkt_b.py::test_tkt_066_* |
+| TKT-069 | sì | sì | nessuna (codice nel test) | tests/test_ticket_catalogo.py::test_transcript_solo_staff_e_il_ticket_resta_aperto |
+| TKT-072 | no | - | non fattibile D101 | il bot non salva il testo dei messaggi; è del pannello web (NF-20) |
+| TKT-076 | in parte (solo transcript) | no: nessuna azione registrata | realizzata | `registra_azione`, `/admin-ticket log`, tipo «ticket» del router; tests/test_ticket_catalogo_r2tkt_b.py::test_tkt_076_* |
+| TKT-077 | in parte (3 numeri) | no: mancavano i numeri avanzati | realizzata, con una variante (D101) | `stats dettagli`, `ticket_repo.get_statistiche_avanzate`; tests/test_ticket_catalogo_r2tkt_b.py::test_tkt_077_* |
+| TKT-078 | in parte (articoli solo nel ModMail) | no: nei ticket non si potevano usare | realizzata | cogs/tickets/risposte.py `/ticket pronta`; tests/test_ticket_catalogo_r2tkt_b.py::test_tkt_078_* |
+| TKT-080 | no | - | realizzata (4 modelli, it ed en) | core/ticket_modelli_logic.py, `pannelli modello`; tests/test_ticket_catalogo_r2tkt_c.py::test_tkt_080_* |
+| TKT-081 | sì | sì | nessuna (codice nel test) | tests/test_modmail.py::test_il_dm_apre_un_canale_privato_per_lo_staff_e_inoltra_il_messaggio |
+| TKT-082 | in parte (anonimo solo per risposta) | sì; la chiusura non mostra mai il nome | aggiornata (anonimo predefinito del server) | `modmail opzioni`, 0770; tests/test_modmail.py::test_senza_scelta_la_risposta_segue_il_predefinito_del_server |
+| TKT-083 | no (solo con il comando) | - | realizzata | `inoltra_tutto`, `//` = nota interna; tests/test_modmail.py::test_inoltra_tutto_manda_il_testo_dello_staff_e_rispetta_le_note_interne |
+| TKT-084 | in parte (conferma sempre accesa) | sì | aggiornata (conferma disattivabile) | tests/test_modmail.py::test_senza_conferma_il_primo_dm_apre_subito_il_canale |
+| TKT-085 | no | - | non fattibile D101 | scrittura dal web a nome dello staff: pannello web |
+| TKT-086 | no | - | realizzata (spento di base, D101) | cogs/ai/ticket_ai.py `riassunto_alla_chiusura`, 0773; tests/test_ticket_catalogo_r2tkt_c.py::test_tkt_086_* |
+| TKT-087 | sì (`/ticket assistente`, bozza per lo staff) | sì: ephemeral, mai inviata | nessuna (test aggiunto) | cogs/ai/ticket_ai.py; tests/test_ticket_catalogo_r2tkt_b.py::test_tkt_087_* |
