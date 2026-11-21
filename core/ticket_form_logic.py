@@ -4,7 +4,8 @@ core/ticket_form_logic.py
 Regole pure dei pannelli di ticket: domande del modulo, controllo delle
 risposte, nomi dei pannelli di un messaggio, chiusura per inattività, voto.
 Nessun accesso a Discord né al database: si prova senza server.
-Funzioni coperte: SPEC §22 (NF-13)
+Funzioni coperte: SPEC §22 (NF-13), TKT-002 (bottoni per riga), TKT-004 (colore del bottone),
+TKT-011 (minimo e massimo), TKT-012 (campi a scelta), TKT-036 (segnaposto del benvenuto)
 
 Limiti rispettati (LIMITI.md §1.1 e §1.2): modulo con al massimo 5 campi,
 etichetta del campo 45, segnaposto 100, risposta fino a 1000 caratteri (così
@@ -14,6 +15,8 @@ per messaggio (5 per riga, 5 righe); custom_id fino a 100.
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -143,16 +146,126 @@ def nomi_da_elenco(testo: str) -> list[str]:
     return list(visti.values())
 
 
-def righe_di_bottoni(quanti: int) -> list[int]:
-    """Quanti bottoni per riga (5 al massimo). Oltre 25 solleva ErroreConfigurazione."""
+def righe_di_bottoni(quanti: int, per_riga: int = 5) -> list[int]:
+    """
+    Quanti bottoni in ogni riga (TKT-002: `per_riga` da 1 a 5). Oltre 25 bottoni, o oltre 5 righe,
+    solleva ErroreConfigurazione.
+    """
+    if not 1 <= per_riga <= 5:
+        raise ErroreConfigurazione("I bottoni per riga vanno da 1 a 5.")
     if quanti > MAX_BOTTONI_PER_MESSAGGIO:
         raise ErroreConfigurazione(
             f"Un messaggio può avere al massimo {MAX_BOTTONI_PER_MESSAGGIO} pannelli."
         )
-    righe = [5] * (quanti // 5)
-    if quanti % 5:
-        righe.append(quanti % 5)
+    righe = [per_riga] * (quanti // per_riga)
+    if quanti % per_riga:
+        righe.append(quanti % per_riga)
+    if len(righe) > 5:
+        raise ErroreConfigurazione(
+            f"Con {per_riga} bottoni per riga stanno al massimo {per_riga * 5} pannelli in un messaggio (5 righe)."
+        )
     return righe
+
+
+# ---------------------------------------------------------------- TKT-004: colore del bottone
+STILI_BOTTONE = {"blu": "primary", "grigio": "secondary", "verde": "success", "rosso": "danger"}
+
+
+def stile_bottone(nome: str) -> str:
+    """Il colore scelto (blu, grigio, verde, rosso) come nome di Discord; uno sconosciuto è un errore."""
+    try:
+        return STILI_BOTTONE[(nome or "").strip().lower()]
+    except KeyError:
+        raise ErroreConfigurazione("Il colore del bottone è blu, grigio, verde o rosso.") from None
+
+
+# ---------------------------------------------------------------- TKT-011, TKT-012: campi del modulo
+TIPI_CAMPO = ("testo", "scelta", "utente", "ruolo", "canale")
+MAX_RISPOSTA_CAMPO = 4000  # limite di Discord per un campo di testo
+MAX_OPZIONI_SCELTA = 25
+MAX_OPZIONE = 100
+
+
+def limiti_testo(minimo: int | None, massimo: int | None) -> tuple[int | None, int | None]:
+    """Minimo e massimo di caratteri di una risposta (0-4000); il minimo non supera il massimo."""
+    if minimo is not None and not 0 <= minimo <= MAX_RISPOSTA_CAMPO:
+        raise ErroreConfigurazione(f"Il minimo va da 0 a {MAX_RISPOSTA_CAMPO} caratteri.")
+    if massimo is not None and not 1 <= massimo <= MAX_RISPOSTA_CAMPO:
+        raise ErroreConfigurazione(f"Il massimo va da 1 a {MAX_RISPOSTA_CAMPO} caratteri.")
+    if minimo is not None and massimo is not None and minimo > massimo:
+        raise ErroreConfigurazione("Il minimo non può superare il massimo.")
+    return (minimo or None), massimo
+
+
+def opzioni_scelta(testo: str | None) -> tuple[str, ...]:
+    """Le voci di un campo a scelta, separate da punto e virgola: da 2 a 25, ognuna fino a 100 caratteri, senza doppioni."""
+    viste: dict[str, str] = {}
+    for pezzo in (testo or "").split(";"):
+        voce = " ".join(pezzo.split())
+        if voce:
+            viste.setdefault(voce.casefold(), voce)
+    voci = tuple(viste.values())
+    if len(voci) < 2:
+        raise ErroreConfigurazione("Un campo a scelta ha almeno 2 voci, separate da punto e virgola.")
+    if len(voci) > MAX_OPZIONI_SCELTA:
+        raise ErroreConfigurazione(f"Un campo a scelta ha al massimo {MAX_OPZIONI_SCELTA} voci.")
+    if any(len(v) > MAX_OPZIONE for v in voci):
+        raise ErroreConfigurazione(f"Ogni voce ha al massimo {MAX_OPZIONE} caratteri.")
+    return voci
+
+
+def lunghezza_minima_massima(domanda) -> tuple[int, int]:
+    """(minimo, massimo) effettivi di un campo di testo: senza scelta valgono 0 e il tetto di prima (200 o 1000)."""
+    minimo = getattr(domanda, "min_length", None) or 0
+    tetto = getattr(domanda, "max_length", None) or lunghezza_massima_risposta(domanda.long_answer)
+    return minimo, max(tetto, minimo)  # un minimo sopra il tetto di prima alza il tetto: Discord rifiuta una finestra incoerente
+
+
+def risposte_fuori_misura(domande, risposte: list[str]) -> list[str]:
+    """Etichette delle domande di testo la cui risposta (se c'è) è sotto il minimo o sopra il massimo."""
+    fuori = []
+    for d, r in zip(domande, risposte):
+        r = (r or "").strip()
+        if getattr(d, "tipo", "testo") != "testo" or not r:
+            continue
+        minimo, massimo = lunghezza_minima_massima(d)
+        if not minimo <= len(r) <= massimo:
+            fuori.append(d.label)
+    return fuori
+
+
+def scelte_non_ammesse(domande, risposte_grezze: list[list[str] | None]) -> list[str]:
+    """Etichette dei campi a scelta con un valore che non è fra le voci del campo (un invio manipolato)."""
+    return [
+        d.label
+        for d, valori in zip(domande, risposte_grezze)
+        if getattr(d, "tipo", "testo") == "scelta" and valori and any(v not in d.opzioni for v in valori)
+    ]
+
+
+# ---------------------------------------------------------------- TKT-036: segnaposto del benvenuto
+SEGNAPOSTI_BENVENUTO = ("utente", "nome", "server", "numero", "pannello", "staff")
+_SEGNAPOSTO = re.compile(r"\{(" + "|".join(SEGNAPOSTI_BENVENUTO) + r")\}")
+_VIETATI_NEI_NOMI = set("`[]()<>*_~|\\@#")
+
+
+def nome_sicuro(nome: str, massimo: int = 32) -> str:
+    """Un nome scelto da un utente (o un titolo di pannello) reso innocuo dentro un testo: niente caratteri di
+    controllo o invisibili, niente segni che aprono link mascherati, blocchi di codice, menzioni o formattazione."""
+    pulito = "".join(
+        c for c in nome
+        if c.isprintable() and unicodedata.category(c) not in ("Cf", "Cc", "Zl", "Zp") and c not in _VIETATI_NEI_NOMI
+    )
+    return " ".join(pulito.split())[:massimo]
+
+
+def testo_benvenuto(modello: str, valori: dict[str, str], massimo: int = 4000) -> str:
+    """
+    Il benvenuto con i segnaposto {utente} (menzione), {nome}, {server}, {numero}, {pannello}, {staff} (solo risposte pronte). Solo questi
+    sono sostituiti, con un'unica passata (mai str.format): un valore che contiene a sua volta «{utente}» non
+    viene sostituito di nuovo. Gli altri segnaposto restano scritti come sono.
+    """
+    return _SEGNAPOSTO.sub(lambda m: valori.get(m.group(1), m.group(0)), modello)[:massimo]
 
 
 # ---------------------------------------------------------------- chiusura automatica
@@ -222,8 +335,14 @@ def motivo_valido(etichetta: str, testo: str | None) -> tuple[str, str | None]:
     return etichetta, testo
 
 
-def opzioni_motivi(motivi, altro: str = "Altro") -> list[tuple[str, str, str | None]]:
-    """(valore, etichetta, emoji) delle voci del menu: i motivi (valore = id) e in fondo «Altro» (testo del catalogo)."""
-    voci = [(str(m.id), m.etichetta[:MAX_ETICHETTA_MOTIVO], m.emoji) for m in list(motivi)[:MAX_MOTIVI]]
-    voci.append((VALORE_ALTRO, altro[:MAX_ETICHETTA_MOTIVO], None))
+MAX_DESCRIZIONE_VOCE = 100  # TKT-005: la riga grigia di una voce di menu (limite di Discord)
+
+
+def opzioni_motivi(motivi, altro: str = "Altro") -> list[tuple[str, str, str | None, str | None]]:
+    """(valore, etichetta, emoji, descrizione) delle voci del menu: i motivi (valore = id) e in fondo «Altro» (testo del catalogo)."""
+    voci = [
+        (str(m.id), m.etichetta[:MAX_ETICHETTA_MOTIVO], m.emoji, (getattr(m, "descrizione", None) or "").strip()[:MAX_DESCRIZIONE_VOCE] or None)
+        for m in list(motivi)[:MAX_MOTIVI]
+    ]
+    voci.append((VALORE_ALTRO, altro[:MAX_ETICHETTA_MOTIVO], None, None))
     return voci

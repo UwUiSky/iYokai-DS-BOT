@@ -28,7 +28,11 @@ from cogs.ai.helpdesk import conoscenza_del_server
 from cogs.ai.staff import SOTTO_STAFF
 from cogs.tickets.risposte import completa_pannelli
 from core.ai_servizio import RichiestaAI
+from cogs.logging.basic_logs import SETTING_LOG_CHANNEL
+from core import channel_router as router
+from core.ai_guardrail_logic import pulisci_uscita
 from core.ai_testi_logic import ISTRUZIONI, estrai_json, riconosci_lingua
+from core.database import db
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.premium import requires_module
 from core.repositories.ai_ticket_repo import ai_ticket_repo
@@ -39,6 +43,8 @@ from core.ui_base import BaseView
 logger = logging.getLogger("iyokai.ai_ticket")
 
 MESSAGGI_LETTI = 30
+MESSAGGI_RIASSUNTO = 80  # TKT-086: gli ultimi messaggi letti per il riassunto
+CARATTERI_RIASSUNTO = 8000  # tetto di testo mandato all'AI (e quindi di costo)
 
 
 def testo_smistamento(dati: dict | None) -> str:
@@ -142,6 +148,45 @@ class AiTicketCog(CogConGruppi, commands.Cog):
         ticket = await ticket_repo.get_ticket_by_channel(channel.id)
         if ticket is not None and contenuto.strip():
             await self.prima_risposta(channel, ticket, contenuto)
+
+    # ---------------------------------------------------------------- riassunto nel log (TKT-086)
+    async def riassunto_alla_chiusura(self, guild: discord.Guild, channel, ticket) -> None:
+        """
+        Chiamato da TicketsCog mentre il canale esiste ancora. Solo se il pannello lo ha acceso: il testo del ticket va al
+        fornitore AI, con i tetti e le regole dell'AI del server. Il riassunto va nel canale dei log, pulito da menzioni di
+        massa e inviti. Mai solleva verso chi chiude: senza AI il ticket si chiude lo stesso.
+        """
+        if ticket.panel_id is None or not await ai_ticket_repo.riassunto_attivo(ticket.guild_id, ticket.panel_id):
+            return
+        conversazione = await testo_canale(channel, MESSAGGI_RIASSUNTO, max_caratteri=CARATTERI_RIASSUNTO)
+        if not conversazione:
+            return
+        risposta, _ = await chiedi(RichiestaAI(
+            user_id=ticket.user_id, funzione="ticket_riassunto", tipo="testo", testo=conversazione, guild_id=ticket.guild_id,
+            channel_id=channel.id, fascia="bassa", istruzioni=ISTRUZIONI["ticket_riassunto"], messaggi_utenti=True,
+            lingua=riconosci_lingua(conversazione), riusa=False, conta_utente=False,
+        ))
+        if risposta is None or not risposta.testo.strip():
+            return
+        predefinito = await db.get_guild_setting(guild.id, SETTING_LOG_CHANNEL)
+        destinazione = await router.destinazione(guild, router.TIPO_EVENTI, predefinito)
+        if destinazione is None:
+            return
+        embed = embed_risposta(f"Riassunto del ticket #{(ticket.ticket_number or 0):04d}", pulisci_uscita(risposta.testo, 3500))
+        await router.invia_a(destinazione, guild, router.TIPO_EVENTI, embed=embed, allowed_mentions=NESSUNA_MENZIONE)
+
+    @comando_di_gruppo("admin-ai", nome="riassunto-ticket", descrizione="Accende o spegne il riassunto AI nel log alla chiusura di un ticket.", sottogruppo=SOTTO_STAFF)
+    @app_commands.describe(pannello="Il pannello dei ticket", attiva="Sì: alla chiusura il riassunto va nel canale dei log (il testo va all'AI)")
+    @app_commands.autocomplete(pannello=completa_pannelli)
+    async def riassunto_cmd(self, interaction: discord.Interaction, pannello: app_commands.Range[str, 1, 50], attiva: bool) -> None:
+        panel = await ticket_form_repo.pannello_per_nome(interaction.guild_id, pannello.strip())
+        if panel is None:
+            await interaction.response.send_message(f"Nessun pannello chiamato **{pannello.strip()[:100]}**.", ephemeral=True)
+            return
+        await ai_ticket_repo.imposta_riassunto(interaction.guild_id, panel.id, attiva)
+        await interaction.response.send_message(
+            f"Riassunto AI alla chiusura {'acceso' if attiva else 'spento'} per **{panel.name[:100]}**. Serve l'AI accesa nel server.", ephemeral=True,
+        )
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:

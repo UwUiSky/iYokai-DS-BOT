@@ -30,6 +30,19 @@ class AiTicketRepository:
             guild_id, panel_id, attiva,
         )
 
+    async def riassunto_attivo(self, guild_id: int, panel_id: int) -> bool:
+        """TKT-086: il pannello vuole il riassunto AI nel log quando un ticket si chiude."""
+        return bool(await self._pool.fetchval(
+            "SELECT riassunto_chiusura FROM ai_ticket_pannelli WHERE guild_id = $1 AND panel_id = $2", guild_id, panel_id
+        ))
+
+    async def imposta_riassunto(self, guild_id: int, panel_id: int, attivo: bool) -> None:
+        await self._pool.execute(
+            "INSERT INTO ai_ticket_pannelli (guild_id, panel_id, riassunto_chiusura) VALUES ($1, $2, $3) "
+            "ON CONFLICT (guild_id, panel_id) DO UPDATE SET riassunto_chiusura = EXCLUDED.riassunto_chiusura",
+            guild_id, panel_id, attivo,
+        )
+
     async def prenota_risposta(self, channel_id: int, guild_id: int) -> bool:
         """True solo la prima volta per canale: un solo messaggio automatico per ticket."""
         esito = await self._pool.execute(

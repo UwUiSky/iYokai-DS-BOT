@@ -64,6 +64,7 @@ import asyncio
 import io
 import logging
 import time
+from dataclasses import replace
 from datetime import datetime, timezone
 
 import discord
@@ -80,7 +81,7 @@ from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
 from core.allegati_tipo_logic import nome_pulito
-from core.i18n import testo_guild, testo_per
+from core.i18n import lingua_interazione, testo_guild, testo_per
 from core.repositories.ticket_form_repo import (
     DomandaModulo,
     PannelloGiaEsistente,
@@ -90,9 +91,15 @@ from core.repositories.ticket_form_repo import (
     TroppiPannelli,
     ticket_form_repo,
 )
+from core import embed_builder_logic as embed_builder
 from core import ticket_form_logic as form
+from core.repositories.saved_embed_repo import saved_embed_repo
 from core import ticket_opzioni_logic as opz_logic
 from core.repositories.ticket_automazioni_repo import ticket_automazioni_repo
+from core.repositories.ticket_log_repo import ticket_log_repo
+from core import ticket_log_logic
+from core import ticket_modelli_logic as modelli_logic
+from core import ticket_statistiche_logic as stat_logic
 from core.repositories.ticket_opzioni_repo import ticket_opzioni_repo
 from core.ticket_opzioni_logic import Opzioni
 from core.repositories.ticket_repo import (
@@ -125,6 +132,7 @@ from core import ticket_transcript_logic as tr_logic
 from core.repositories.ticket_gestione_repo import (
     EtichettaGiaEsistente,
     TroppeEtichette,
+    TroppiArticoli,
     ticket_gestione_repo,
 )
 from core import allegati_sicuri
@@ -294,6 +302,59 @@ async def esito_apertura(guild: discord.Guild, member, panel_id: int | None) -> 
     return opz_logic.decidi_apertura(
         opz_logic.Richiedente(member.id, frozenset(ruoli), staff), situazione, datetime.now(timezone.utc)
     )
+
+
+async def registra_azione(guild, azione: str, ticket, *, staff_id: int | None = None, dettaglio: str | None = None) -> None:
+    """
+    TKT-076: scrive nel log dei ticket (tipo «ticket» del router) l'azione, se l'interruttore è acceso (predefinito:
+    spenti). Mai un'eccezione verso chi chiama: un log che non parte non ferma un ticket. Le menzioni sono spente.
+    """
+    try:
+        if guild is None or azione not in await ticket_log_repo.accese(guild.id):
+            return
+        predefinito = await db.get_guild_setting(guild.id, SETTING_LOG_CHANNEL)
+        destinazione = await router.destinazione(guild, router.TIPO_TICKET, predefinito)
+        if destinazione is None:
+            return
+        embed = discord.Embed(title=await testo_guild(guild, f"tickets_log_{azione}"), color=discord.Color.blurple())
+        embed.add_field(name=await testo_guild(guild, "tickets_log_campo_ticket"), value=f"#{(ticket.ticket_number or 0):04d}")
+        embed.add_field(name=await testo_guild(guild, "tickets_log_campo_utente"), value=f"<@{ticket.user_id}>")
+        if staff_id:
+            embed.add_field(name=await testo_guild(guild, "tickets_log_campo_staff"), value=f"<@{staff_id}>")
+        pulito = ticket_log_logic.dettaglio_sicuro(dettaglio)
+        if pulito:
+            embed.add_field(name=await testo_guild(guild, "tickets_log_campo_dettaglio"), value=pulito, inline=False)
+        await router.invia_a(destinazione, guild, router.TIPO_TICKET, embed=embed, allowed_mentions=discord.AllowedMentions.none())
+    except Exception:  # noqa: BLE001
+        logger.warning("Log dell'azione «%s» sul ticket non scritto.", azione, exc_info=True)
+
+
+async def _embed_apertura_salvato(guild_id: int, nome: str, valori: dict[str, str]) -> discord.Embed | None:
+    """
+    TKT-036: l'embed salvato col costruttore, con i segnaposto sostituiti in titolo, testo, campi e piede.
+    None se non c'è più o non è valido (si usa allora il benvenuto normale: il ticket nasce comunque).
+    """
+    salvato = await saved_embed_repo.get(guild_id, nome)
+    if salvato is None:
+        return None
+    try:
+        dati = embed_builder.da_json(salvato.data)
+        sostituisci = lambda testo, massimo: form.testo_benvenuto(testo, valori, massimo) if testo else testo  # noqa: E731
+        dati = replace(
+            dati,
+            title=sostituisci(dati.title, embed_builder.MAX_TITOLO),
+            description=sostituisci(dati.description, embed_builder.MAX_DESCRIZIONE),
+            footer=sostituisci(dati.footer, embed_builder.MAX_PIEDE),
+            fields=tuple(
+                (sostituisci(n, embed_builder.MAX_NOME_CAMPO), sostituisci(v, embed_builder.MAX_VALORE_CAMPO), i)
+                for n, v, i in dati.fields
+            ),
+        )
+        if embed_builder.valida(dati):
+            return None
+        return embed_builder.costruisci(dati)
+    except (ValueError, TypeError, KeyError):
+        return None
 
 
 async def _open_ticket_channel(
@@ -709,19 +770,28 @@ async def _crea_ticket(
     elif opzioni.solo_admin:
         await ticket_repo.set_solo_admin(channel.id, True)
 
-    if panel is not None and panel.welcome_text:
-        descrizione = panel.welcome_text.replace("{utente}", utente.mention)[:4000]
-    else:
-        descrizione = (
-            f"Ciao {utente.mention}, grazie per averci "
-            f"contattato. Descrivi il tuo problema e lo staff ti "
-            f"risponderà a breve."
+    # TKT-036: segnaposto {utente} {nome} {server} {numero} {pannello}; un embed salvato dal costruttore, se il pannello lo ha.
+    valori = {
+        "utente": utente.mention, "nome": form.nome_sicuro(utente.display_name),
+        "server": form.nome_sicuro(guild.name, 100), "numero": f"{ticket_number:04d}",
+        "pannello": form.nome_sicuro(panel.name, 50) if panel is not None else "",
+    }
+    embed = await _embed_apertura_salvato(guild.id, panel.embed_apertura, valori) if panel is not None and panel.embed_apertura else None
+    if embed is None:
+        if panel is not None and panel.welcome_text:
+            descrizione = form.testo_benvenuto(panel.welcome_text, valori)
+        else:
+            descrizione = (
+                f"Ciao {utente.mention}, grazie per averci "
+                f"contattato. Descrivi il tuo problema e lo staff ti "
+                f"risponderà a breve."
+            )
+        embed = discord.Embed(
+            title=await testo_per(interaction, "tickets_ticket", ticket_number=ticket_number, pubblica=True),
+            description=descrizione,
+            color=discord.Color.blurple(),
         )
-    embed = discord.Embed(
-        title=await testo_per(interaction, "tickets_ticket", ticket_number=ticket_number, pubblica=True),
-        description=descrizione,
-        color=discord.Color.blurple(),
-    )
+    descrizione = embed.description or ""
     if category_label is not None:
         embed.add_field(name=await testo_per(interaction, "antinuke_categoria", pubblica=True), value=truncate_label(category_label))
     if per_conto:
@@ -756,7 +826,7 @@ async def _crea_ticket(
         chiamati = [r for r in ruoli_nel_canale if come_thread and r != guild.id and guild.get_role(r) is not None]
         primo = await channel.send(
             content=" ".join([utente.mention, *(f"<@&{r}>" for r in chiamati)])[:2000], embed=embed,
-            allowed_mentions=discord.AllowedMentions(users=[utente], roles=[discord.Object(id=r) for r in chiamati]),
+            allowed_mentions=discord.AllowedMentions(everyone=False, users=[utente], roles=[discord.Object(id=r) for r in chiamati]),
             **({"view": vista} if vista else {}),
         )
         if opzioni.fissa_primo:
@@ -801,6 +871,7 @@ async def _crea_ticket(
     await interaction.followup.send(
         await testo_per(interaction, "tickets_ticket_creato", mention=channel.mention), ephemeral=True
     )
+    await registra_azione(guild, "creato", await ticket_repo.get_ticket_by_channel(channel.id), staff_id=interaction.user.id if per_conto else None)
     return channel
 
 
@@ -821,7 +892,8 @@ def _category_options(categorie, with_emoji: bool = True) -> list[discord.Select
             emoji = categoria.emoji
         opzioni.append(
             discord.SelectOption(
-                label=truncate_label(categoria.label), value=str(categoria.id), emoji=emoji
+                label=truncate_label(categoria.label), value=str(categoria.id), emoji=emoji,
+                description=(getattr(categoria, "descrizione", None) or "").strip()[: form.MAX_DESCRIZIONE_VOCE] or None,
             )
         )
     return opzioni[:MAX_TICKET_CATEGORIES]
@@ -953,6 +1025,56 @@ class TicketPanelView(BaseView):
 # ====================================================================
 # NF-13 — pannelli con modulo, bottoni persistenti
 # ====================================================================
+def _componente_domanda(domanda: DomandaModulo) -> discord.ui.Item:
+    """
+    Il campo della finestra per una domanda. TKT-011: testo con minimo e massimo; TKT-012: menu a scelta o
+    selezione di utente, ruolo o canale (dentro un'etichetta, come vuole Discord per i menu nelle finestre).
+    """
+    etichetta = domanda.label[: form.MAX_ETICHETTA_DOMANDA]
+    identificatore = f"d{domanda.position}"
+    if domanda.tipo == "testo":
+        minimo, massimo = form.lunghezza_minima_massima(domanda)
+        return discord.ui.TextInput(
+            label=etichetta,
+            placeholder=domanda.placeholder,
+            required=domanda.required,
+            style=discord.TextStyle.paragraph if domanda.long_answer else discord.TextStyle.short,
+            min_length=minimo or None,
+            max_length=massimo,
+            custom_id=identificatore,
+        )
+    comune = dict(
+        custom_id=identificatore, required=domanda.required,
+        min_values=1 if domanda.required else 0, max_values=max(1, domanda.max_valori),
+    )
+    if domanda.tipo == "scelta":
+        menu: discord.ui.Item = discord.ui.Select(
+            options=[discord.SelectOption(label=voce[: form.MAX_OPZIONE], value=voce[: form.MAX_OPZIONE]) for voce in domanda.opzioni[: form.MAX_OPZIONI_SCELTA]],
+            **comune,
+        )
+    elif domanda.tipo == "utente":
+        menu = discord.ui.UserSelect(**comune)
+    elif domanda.tipo == "ruolo":
+        menu = discord.ui.RoleSelect(**comune)
+    else:
+        menu = discord.ui.ChannelSelect(**comune)
+    return discord.ui.Label(text=etichetta, description=domanda.placeholder, component=menu)
+
+
+def _valori_campo(item) -> list[str]:
+    """Le risposte di un campo della finestra come testi: i nomi (puliti) di utenti, ruoli e canali, mai menzioni."""
+    componente = item.component if isinstance(item, discord.ui.Label) else item
+    if isinstance(componente, discord.ui.TextInput):
+        return [componente.value or ""] if (componente.value or "").strip() else []
+    risultati = []
+    for valore in componente.values:
+        if isinstance(valore, str):
+            risultati.append(valore)
+        else:
+            risultati.append(form.nome_sicuro(getattr(valore, "display_name", None) or getattr(valore, "name", "") or str(valore.id), 80))
+    return risultati
+
+
 class ModuloTicket(BaseModal):
     """Finestra con le domande del pannello (al massimo 5, limite di Discord)."""
 
@@ -965,26 +1087,25 @@ class ModuloTicket(BaseModal):
         # TKT-007/009: da /ticket apri arrivano anche motivo e link del messaggio.
         self._comando = comando or {}
         for domanda in domande[: form.MAX_DOMANDE]:
-            self.add_item(
-                discord.ui.TextInput(
-                    label=domanda.label[: form.MAX_ETICHETTA_DOMANDA],
-                    placeholder=domanda.placeholder,
-                    required=domanda.required,
-                    style=discord.TextStyle.paragraph if domanda.long_answer else discord.TextStyle.short,
-                    max_length=form.lunghezza_massima_risposta(domanda.long_answer),
-                    custom_id=f"d{domanda.position}",
-                )
-            )
+            self.add_item(_componente_domanda(domanda))
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
         if guild is None:
             return
-        risposte = [item.value for item in self.children]
+        grezze = [_valori_campo(item) for item in self.children]
+        risposte = [", ".join(v) for v in grezze]
         mancanti = form.risposte_mancanti(self._domande, risposte)
         if mancanti:
             await interaction.response.send_message(
                 "Rispondi a tutte le domande obbligatorie: " + ", ".join(mancanti), ephemeral=True
+            )
+            return
+        # TKT-011, TKT-012: Discord controlla già misura e voci, ma un invio manipolato non deve passare.
+        sbagliate = form.risposte_fuori_misura(self._domande, risposte) + form.scelte_non_ammesse(self._domande, grezze)
+        if sbagliate:
+            await interaction.response.send_message(
+                await testo_per(interaction, "tickets_risposte_non_valide", v1=", ".join(sbagliate)[:1500]), ephemeral=True
             )
             return
         # Il pannello può essere cambiato mentre l'utente scriveva: si rilegge.
@@ -1094,13 +1215,14 @@ class VistaMotivi(BaseView):
         self._panel = panel
         self._motivi = {str(m.id): m for m in motivi}
         select = discord.ui.Select(
-            placeholder=testi[0][:150],
+            placeholder=(panel.menu_segnaposto or testi[0])[:150],  # TKT-005: il testo scelto dal pannello
             options=[
                 discord.SelectOption(
                     label=etichetta, value=valore,
                     emoji=emoji if emoji and looks_like_emoji(emoji) else None,
+                    description=descrizione,
                 )
-                for valore, etichetta, emoji in form.opzioni_motivi(motivi, testi[1])
+                for valore, etichetta, emoji, descrizione in form.opzioni_motivi(motivi, testi[1])
             ],
         )
         select.callback = self._on_select
@@ -1220,12 +1342,14 @@ class BottonePannello(
 ):
     """Bottone di un pannello: l'id del pannello sta nel custom_id, nessuna view da registrare per messaggio."""
 
-    def __init__(self, panel_id: int, etichetta: str = "Apri ticket", emoji: str | None = None) -> None:
+    def __init__(
+        self, panel_id: int, etichetta: str = "Apri ticket", emoji: str | None = None, stile: str = "primary"
+    ) -> None:
         super().__init__(
             discord.ui.Button(
                 label=form.etichetta_bottone(etichetta),
                 emoji=emoji if emoji and looks_like_emoji(emoji) else None,
-                style=discord.ButtonStyle.primary,
+                style=getattr(discord.ButtonStyle, stile if stile in form.STILI_BOTTONE.values() else "primary"),
                 custom_id=form.custom_id_pannello(panel_id),
             )
         )
@@ -1282,6 +1406,17 @@ class BottoneVoto(
 
     async def callback(self, interaction: discord.Interaction) -> None:
         registrato = await ticket_repo.set_rating(self.ticket_id, interaction.user.id, self.stelle)
+        # TKT-066: dopo il voto, la domanda del pannello (anche a chi ha già votato ma non ha ancora risposto).
+        domanda = await ticket_form_repo.questionario_in_attesa(self.ticket_id, interaction.user.id)
+        if registrato:
+            ticket = await ticket_repo.get_ticket_by_id(self.ticket_id)
+            if ticket is not None:
+                await registra_azione(
+                    interaction.client.get_guild(ticket.guild_id), "voto", ticket, dettaglio=form.testo_stelle(self.stelle)
+                )
+        if domanda:
+            await interaction.response.send_modal(ModuloQuestionario(self.ticket_id, domanda))
+            return
         if not registrato:
             await interaction.response.send_message(
                 await testo_per(interaction, "tickets_hai_gia_votato_questo_ticket"), ephemeral=True
@@ -1292,12 +1427,39 @@ class BottoneVoto(
         )
 
 
-def vista_pannelli(pannelli: list[PannelloTicket]) -> discord.ui.View:
-    """Un messaggio con i bottoni di più pannelli (al massimo 25: 5 righe da 5)."""
-    form.righe_di_bottoni(len(pannelli))  # solleva oltre il limite
+class ModuloQuestionario(BaseModal):
+    """TKT-066: la domanda del pannello dopo il voto. Una sola risposta per ticket, solo di chi lo ha aperto."""
+
+    def __init__(self, ticket_id: int, domanda: str) -> None:
+        super().__init__(title=form.titolo_modulo(domanda), timeout=600)
+        self._ticket_id = ticket_id
+        self.add_item(discord.ui.TextInput(
+            label=domanda[: form.MAX_ETICHETTA_DOMANDA], style=discord.TextStyle.paragraph, required=True,
+            max_length=form.MAX_RISPOSTA_LUNGA, custom_id="risposta",
+        ))
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        risposta = (self.children[0].value or "").strip()
+        if not risposta or not await ticket_form_repo.salva_risposta_questionario(self._ticket_id, interaction.user.id, risposta):
+            await interaction.response.send_message(await testo_per(interaction, "tickets_questionario_non_salvato"), ephemeral=True)
+            return
+        ticket = await ticket_repo.get_ticket_by_id(self._ticket_id)
+        if ticket is not None:
+            await registra_azione(interaction.client.get_guild(ticket.guild_id), "voto", ticket, dettaglio=risposta)
+        await interaction.response.edit_message(content=await testo_per(interaction, "tickets_questionario_grazie"), view=None)
+
+
+def vista_pannelli(pannelli: list[PannelloTicket], per_riga: int = 5) -> discord.ui.View:
+    """
+    Un messaggio con i bottoni di più pannelli (al massimo 25: 5 righe da 5). TKT-002: `per_riga` (1-5) sceglie
+    quanti bottoni per riga; TKT-004: ogni bottone ha il colore del suo pannello.
+    """
+    form.righe_di_bottoni(len(pannelli), per_riga)  # solleva oltre il limite
     vista = BaseView(timeout=None)
-    for p in pannelli:
-        vista.add_item(BottonePannello(p.id, p.button_label, p.button_emoji))
+    for posto, p in enumerate(pannelli):
+        bottone = BottonePannello(p.id, p.button_label, p.button_emoji, getattr(p, "button_style", "primary"))
+        bottone.item.row = posto // per_riga
+        vista.add_item(bottone)
     return vista
 
 
@@ -2021,6 +2183,11 @@ class TicketsCog(CogConGruppi, commands.Cog):
         pannelli="Nomi separati da virgola",
         titolo="Titolo del messaggio",
         testo="Testo del messaggio",
+        per_riga="Bottoni per riga (da 1 a 5)",
+        colore="Colore dell'embed, come #RRGGBB",
+        miniatura="Indirizzo (https) della miniatura",
+        immagine="Indirizzo (https) dell'immagine grande",
+        embed="Un embed salvato col costruttore, al posto di titolo e testo",
     )
     @app_commands.autocomplete(pannelli=_completa_pannelli)
     async def pannello_pubblica(
@@ -2029,6 +2196,11 @@ class TicketsCog(CogConGruppi, commands.Cog):
         pannelli: app_commands.Range[str, 1, 500],
         titolo: app_commands.Range[str, 1, 256] = "🎫 Supporto",
         testo: app_commands.Range[str, 1, 2000] = "Premi un bottone per aprire un ticket privato con lo staff.",
+        per_riga: app_commands.Range[int, 1, 5] = 5,
+        colore: app_commands.Range[str, 1, 7] | None = None,
+        miniatura: app_commands.Range[str, 1, 2000] | None = None,
+        immagine: app_commands.Range[str, 1, 2000] | None = None,
+        embed: app_commands.Range[str, 1, 32] | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_TICKETS):
             return
@@ -2043,12 +2215,23 @@ class TicketsCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(await testo_per(interaction, "tickets_indica_almeno_un_pannello"), ephemeral=True)
             return
         try:
-            vista = vista_pannelli(trovati)
+            vista = vista_pannelli(trovati, per_riga)
         except form.ErroreConfigurazione as errore:
             await interaction.response.send_message(str(errore), ephemeral=True)
             return
-        embed = discord.Embed(title=titolo, description=testo, color=discord.Color.blurple())
-        await interaction.response.send_message(embed=embed, view=vista)
+        # TKT-003: titolo, testo, colore, miniatura, immagine, oppure un embed salvato; tutto controllato prima dell'invio.
+        dati = embed_builder.DatiEmbed(title=titolo, description=testo, color=colore, thumbnail_url=miniatura, image_url=immagine)
+        if embed is not None:
+            salvato = await saved_embed_repo.get(interaction.guild.id, embed.strip().lower())
+            if salvato is None:
+                await interaction.response.send_message(await testo_per(interaction, "tickets_embed_non_trovato", v1=embed[:32]), ephemeral=True)
+                return
+            dati = embed_builder.da_json(salvato.data)
+        errori = embed_builder.valida(dati)
+        if errori:
+            await interaction.response.send_message("\n".join(errori)[:2000], ephemeral=True)
+            return
+        await interaction.response.send_message(embed=embed_builder.costruisci(dati), view=vista)
 
     @comando_di_gruppo(
         "admin-ticket",
@@ -2062,7 +2245,13 @@ class TicketsCog(CogConGruppi, commands.Cog):
         suggerimento="Testo grigio nel campo",
         obbligatoria="Risposta obbligatoria",
         lunga="Risposta su più righe",
+        minimo="Caratteri minimi della risposta (0-4000)",
+        massimo="Caratteri massimi della risposta (1-4000)",
+        tipo="Testo libero (predefinito), menu a scelta, utente, ruolo o canale",
+        voci="Per il menu a scelta: le voci separate da punto e virgola (da 2 a 25)",
+        scelte_max="Per i campi a scelta: quante voci si possono scegliere (1-25)",
     )
+    @app_commands.choices(tipo=[app_commands.Choice(name=n, value=n) for n in form.TIPI_CAMPO])
     @app_commands.autocomplete(pannello=_completa_pannelli)
     async def modulo_aggiungi(
         self,
@@ -2072,17 +2261,30 @@ class TicketsCog(CogConGruppi, commands.Cog):
         suggerimento: app_commands.Range[str, 1, form.MAX_SEGNAPOSTO] | None = None,
         obbligatoria: bool = True,
         lunga: bool = False,
+        minimo: app_commands.Range[int, 0, form.MAX_RISPOSTA_CAMPO] | None = None,
+        massimo: app_commands.Range[int, 1, form.MAX_RISPOSTA_CAMPO] | None = None,
+        tipo: app_commands.Choice[str] | None = None,
+        voci: app_commands.Range[str, 1, 2600] | None = None,
+        scelte_max: app_commands.Range[int, 1, form.MAX_OPZIONI_SCELTA] = 1,
     ) -> None:
         panel = await self._pannello_o_risposta(interaction, pannello)
         if panel is None:
             return
+        genere = tipo.value if tipo is not None else "testo"
         try:
             etichetta, segnaposto = form.domanda_valida(domanda, suggerimento)
+            minimo_ok, massimo_ok = form.limiti_testo(minimo, massimo) if genere == "testo" else (None, None)
+            opzioni = form.opzioni_scelta(voci) if genere == "scelta" else ()
+            if genere == "scelta" and scelte_max > len(opzioni):
+                raise form.ErroreConfigurazione("Non si possono scegliere più voci di quelle che ci sono.")
         except form.ErroreConfigurazione as errore:
             await interaction.response.send_message(str(errore), ephemeral=True)
             return
         try:
-            nuova = await ticket_form_repo.aggiungi_domanda(panel.id, etichetta, segnaposto, obbligatoria, lunga)
+            nuova = await ticket_form_repo.aggiungi_domanda(
+                panel.id, etichetta, segnaposto, obbligatoria, lunga, min_length=minimo_ok, max_length=massimo_ok,
+                tipo=genere, opzioni=opzioni, max_valori=scelte_max if genere != "testo" else 1,
+            )
         except TroppeDomande:
             await interaction.response.send_message(
                 await testo_per(interaction, "tickets_il_modulo_ha_gia_domande", v1=form.MAX_DOMANDE),
@@ -2091,6 +2293,157 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.send_message(
             await testo_per(interaction, "tickets_domanda_aggiunta_al_pannello", position=nuova.position, name=panel.name), ephemeral=True
+        )
+
+    @comando_di_gruppo(
+        "admin-ticket",
+        nome="modulo-copia",
+        descrizione="Copia il modulo di un pannello su un altro (sostituisce le sue domande).",
+        sottogruppo=SOTTOGRUPPI["admin-ticket pannelli"],
+    )
+    @app_commands.describe(da="Il pannello da cui copiare le domande", a="Il pannello che le riceve")
+    @app_commands.autocomplete(da=_completa_pannelli, a=_completa_pannelli)
+    async def modulo_copia(
+        self,
+        interaction: discord.Interaction,
+        da: app_commands.Range[str, 1, form.MAX_NOME_PANNELLO],
+        a: app_commands.Range[str, 1, form.MAX_NOME_PANNELLO],
+    ) -> None:
+        """TKT-014: un modulo usato su più pannelli. Il modulo di destinazione diventa una copia; poi sono indipendenti."""
+        origine = await self._pannello_o_risposta(interaction, da)
+        if origine is None:
+            return
+        destinazione = await self._pannello_o_risposta(interaction, a)
+        if destinazione is None:
+            return
+        if origine.id == destinazione.id:
+            await interaction.response.send_message(await testo_per(interaction, "tickets_modulo_copia_stesso"), ephemeral=True)
+            return
+        quante = await ticket_form_repo.copia_modulo(origine.id, destinazione.id)
+        await interaction.response.send_message(
+            await testo_per(interaction, "tickets_modulo_copiato", n=quante, da=origine.name, a=destinazione.name),
+            ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
+        )
+
+    @comando_di_gruppo(
+        "admin-ticket",
+        nome="modello",
+        descrizione="Importa un modello pronto di pannello (modulo, motivi, risposte).",
+        sottogruppo=SOTTOGRUPPI["admin-ticket pannelli"],
+    )
+    @app_commands.describe(
+        modello="Il modello da importare (vuoto: l'elenco dei modelli)",
+        categoria="Categoria Discord dove nascono i ticket",
+        nome="Nome del pannello (predefinito: quello del modello)",
+    )
+    @app_commands.choices(modello=[app_commands.Choice(name=n, value=n) for n in modelli_logic.IDENTIFICATORI])
+    async def pannello_modello(
+        self,
+        interaction: discord.Interaction,
+        modello: app_commands.Choice[str] | None = None,
+        categoria: discord.CategoryChannel | None = None,
+        nome: app_commands.Range[str, 1, form.MAX_NOME_PANNELLO] | None = None,
+    ) -> None:
+        """TKT-080: tre o quattro modelli nel bot, nella lingua del server; crea il pannello, il modulo, i motivi e le risposte."""
+        if interaction.guild is None:
+            return
+        lingua = await lingua_interazione(interaction, pubblica=True)
+        if modello is None:
+            elenco = "\n".join(f"**{m.id}** · {m.descrizione}" for m in modelli_logic.modelli(lingua))
+            await interaction.response.send_message(elenco, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+            return
+        scelto = modelli_logic.modello(modello.value, lingua)
+        if scelto is None or categoria is None:
+            await interaction.response.send_message(await testo_per(interaction, "tickets_modello_serve_categoria"), ephemeral=True)
+            return
+        try:
+            nome_pulito = form.nome_pannello_valido(nome or scelto.nome)
+            panel = await ticket_form_repo.crea_pannello(
+                interaction.guild.id, nome_pulito, categoria.id, form.etichetta_bottone(scelto.nome), None, scelto.benvenuto
+            )
+        except form.ErroreConfigurazione as errore:
+            await interaction.response.send_message(str(errore), ephemeral=True)
+            return
+        except PannelloGiaEsistente:
+            await interaction.response.send_message(
+                await testo_per(interaction, "tickets_esiste_gia_un_pannello_chiamato", nome_pulito=nome_pulito), ephemeral=True
+            )
+            return
+        except TroppiPannelli:
+            await interaction.response.send_message(
+                await testo_per(interaction, "tickets_un_server_puo_avere_al", v1=form.MAX_PANNELLI_PER_SERVER), ephemeral=True
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        for d in scelto.domande:
+            await ticket_form_repo.aggiungi_domanda(
+                panel.id, d.etichetta, d.segnaposto, d.obbligatoria, d.lunga,
+                min_length=d.minimo, tipo=d.tipo, opzioni=d.voci,
+            )
+        for etichetta, descrizione in scelto.motivi:
+            await ticket_form_repo.aggiungi_motivo(panel.id, etichetta, None, None, descrizione)
+        importati = 0
+        for titolo, testo in scelto.articoli:
+            try:
+                if await ticket_gestione_repo.salva_articolo(
+                    interaction.guild.id, titolo, testo, gestione.parole_articolo(titolo, testo), interaction.user.id
+                ):
+                    importati += 1
+            except TroppiArticoli:
+                break  # il server è al tetto: le risposte restano quelle che ci sono
+        if scelto.voto:
+            await ticket_form_repo.imposta_voto(panel.id, True)
+        await interaction.followup.send(
+            await testo_per(
+                interaction, "tickets_modello_importato", name=panel.name, domande=len(scelto.domande),
+                motivi=len(scelto.motivi), articoli=importati,
+            ),
+            ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
+        )
+
+    @comando_di_gruppo(
+        "admin-ticket",
+        nome="aspetto",
+        descrizione="Colore del bottone, testo del menu e messaggio di apertura di un pannello.",
+        sottogruppo=SOTTOGRUPPI["admin-ticket pannelli"],
+    )
+    @app_commands.describe(
+        pannello="Il pannello",
+        colore_bottone="Colore del bottone: blu, grigio, verde o rosso",
+        segnaposto_menu="Testo del menu dei motivi prima della scelta (max 150)",
+        embed_apertura="Nome di un embed salvato da usare come messaggio di apertura («nessuno» lo toglie)",
+    )
+    @app_commands.choices(colore_bottone=[app_commands.Choice(name=n, value=n) for n in form.STILI_BOTTONE])
+    @app_commands.autocomplete(pannello=_completa_pannelli)
+    async def pannello_aspetto(
+        self,
+        interaction: discord.Interaction,
+        pannello: app_commands.Range[str, 1, form.MAX_NOME_PANNELLO],
+        colore_bottone: app_commands.Choice[str] | None = None,
+        segnaposto_menu: app_commands.Range[str, 1, 150] | None = None,
+        embed_apertura: app_commands.Range[str, 1, 32] | None = None,
+    ) -> None:
+        """TKT-004, TKT-005, TKT-036: solo i valori dati cambiano. Il benvenuto accetta {utente} {nome} {server} {numero} {pannello}."""
+        panel = await self._pannello_o_risposta(interaction, pannello)
+        if panel is None:
+            return
+        togli_embed = embed_apertura is not None and embed_apertura.strip().lower() == "nessuno"
+        nome_embed = None if embed_apertura is None or togli_embed else embed_apertura.strip().lower()
+        if nome_embed is not None and await saved_embed_repo.get(interaction.guild.id, nome_embed) is None:
+            await interaction.response.send_message(await testo_per(interaction, "tickets_embed_non_trovato", v1=nome_embed[:32]), ephemeral=True)
+            return
+        try:
+            stile = form.stile_bottone(colore_bottone.value) if colore_bottone is not None else None
+        except form.ErroreConfigurazione as errore:
+            await interaction.response.send_message(str(errore), ephemeral=True)
+            return
+        await ticket_form_repo.imposta_aspetto(
+            panel.id, button_style=stile, menu_segnaposto=(segnaposto_menu or "").strip() or None,
+            embed_apertura=nome_embed, azzera_embed=togli_embed,
+        )
+        await interaction.response.send_message(
+            await testo_per(interaction, "tickets_aspetto_salvato", name=panel.name), ephemeral=True,
+            allowed_mentions=discord.AllowedMentions.none(),
         )
 
     @comando_di_gruppo(
@@ -2153,6 +2506,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         etichetta="Nome del motivo nel menu (max 80 caratteri)",
         testo="Testo scritto nel ticket (se vuoto: l'etichetta)",
         emoji="Emoji accanto al nome",
+        descrizione="Riga grigia sotto il nome, nel menu (max 100 caratteri)",
     )
     @app_commands.autocomplete(pannello=_completa_pannelli)
     async def motivo_aggiungi(
@@ -2162,6 +2516,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         etichetta: app_commands.Range[str, 1, form.MAX_ETICHETTA_MOTIVO],
         testo: app_commands.Range[str, 1, form.MAX_TESTO_MOTIVO] | None = None,
         emoji: app_commands.Range[str, 1, MAX_EMOJI_LENGTH] | None = None,
+        descrizione: app_commands.Range[str, 1, form.MAX_DESCRIZIONE_VOCE] | None = None,
     ) -> None:
         panel = await self._pannello_o_risposta(interaction, pannello)
         if panel is None:
@@ -2174,7 +2529,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         if emoji is not None and not looks_like_emoji(emoji):
             emoji = None
         try:
-            nuovo = await ticket_form_repo.aggiungi_motivo(panel.id, etichetta, emoji, testo)
+            nuovo = await ticket_form_repo.aggiungi_motivo(panel.id, etichetta, emoji, testo, (descrizione or '').strip() or None)
         except TroppiMotivi:
             await interaction.response.send_message(
                 await testo_per(interaction, "tickets_troppi_motivi", massimo=form.MAX_MOTIVI), ephemeral=True
@@ -2327,18 +2682,25 @@ class TicketsCog(CogConGruppi, commands.Cog):
         nome="voto",
         descrizione="Voto a stelle in DM alla chiusura.",
     )
-    @app_commands.describe(pannello="Il pannello", attivo="Chiedi il voto")
+    @app_commands.describe(
+        pannello="Il pannello", attivo="Chiedi il voto",
+        questionario="Domanda dopo il voto (max 45 caratteri; «nessuno» la toglie)",
+    )
     @app_commands.autocomplete(pannello=_completa_pannelli)
     async def voto(
         self,
         interaction: discord.Interaction,
         pannello: app_commands.Range[str, 1, form.MAX_NOME_PANNELLO],
         attivo: bool,
+        questionario: app_commands.Range[str, 1, form.MAX_ETICHETTA_DOMANDA] | None = None,
     ) -> None:
         panel = await self._pannello_o_risposta(interaction, pannello)
         if panel is None:
             return
         await ticket_form_repo.imposta_voto(panel.id, attivo)
+        if questionario is not None:  # TKT-066
+            pulita = " ".join(questionario.split())
+            await ticket_form_repo.imposta_questionario(panel.id, None if pulita.lower() == "nessuno" else pulita or None)
         await interaction.response.send_message(
             await testo_per(interaction, "tickets_voto_per", v1=(await testo_per(interaction, "opzioni_acceso")) if attivo else (await testo_per(interaction, "opzioni_spento")), name=panel.name), ephemeral=True
         )
@@ -2356,6 +2718,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         label="Nome mostrato nel select menu (es. 'Supporto tecnico')",
         category="La categoria Discord dove creare i canali di questa categoria",
         emoji="Emoji da mostrare accanto al nome (facoltativo)",
+        descrizione="Riga grigia sotto il nome, nel menu (max 100 caratteri)",
     )
     async def ticket_category_add(
         self,
@@ -2363,6 +2726,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         label: app_commands.Range[str, 1, MAX_CATEGORY_LABEL_LENGTH],
         category: discord.CategoryChannel,
         emoji: app_commands.Range[str, 1, MAX_EMOJI_LENGTH] | None = None,
+        descrizione: app_commands.Range[str, 1, form.MAX_DESCRIZIONE_VOCE] | None = None,
     ) -> None:
         if interaction.guild is None:
             return
@@ -2391,7 +2755,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
 
         emoji = emoji.strip() if emoji is not None else None
-        await ticket_repo.add_category(interaction.guild.id, label, category.id, emoji)
+        await ticket_repo.add_category(interaction.guild.id, label, category.id, emoji, (descrizione or '').strip() or None)
         await interaction.response.send_message(
             await testo_per(interaction, "tickets_categoria_impostata_su", label=label, name=category.name), ephemeral=True
         )
@@ -2555,11 +2919,17 @@ class TicketsCog(CogConGruppi, commands.Cog):
         nome="stats",
         descrizione="Statistiche del sistema di ticket.",
     )
-    @app_commands.describe(operator="Mostra le statistiche di questo operatore invece di quelle del server")
+    @app_commands.describe(
+        operator="Mostra le statistiche di questo operatore invece di quelle del server",
+        dettagli="Aggiungi giorni, arretrato, ore di punta, tempo di soluzione, motivi e voti per operatore",
+    )
     async def ticket_stats(
-        self, interaction: discord.Interaction, operator: discord.Member | None = None
+        self, interaction: discord.Interaction, operator: discord.Member | None = None, dettagli: bool = False
     ) -> None:
         if interaction.guild is None:
+            return
+        if dettagli and operator is None:
+            await self._statistiche_avanzate(interaction)
             return
 
         if operator is not None:
@@ -2588,6 +2958,28 @@ class TicketsCog(CogConGruppi, commands.Cog):
             embed.add_field(name=await testo_per(interaction, "tickets_voto_medio"), value=form.Media(media, voti).testo())
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    async def _statistiche_avanzate(self, interaction: discord.Interaction) -> None:
+        """TKT-077: i numeri in più. «Chiusi con una sola risposta» non si può contare (i messaggi non si salvano): si
+        mostrano i chiusi senza nessuna risposta dello staff, che è il caso più utile."""
+        dati = await ticket_repo.get_statistiche_avanzate(interaction.guild.id)
+        embed = discord.Embed(title=await testo_per(interaction, "tickets_stat_titolo"), color=discord.Color.blurple())
+        antico = dati["piu_vecchio"]
+        arretrato = str(dati["aperti"]) + (
+            f" · {await testo_per(interaction, 'tickets_stat_piu_vecchio')}: {discord.utils.format_dt(antico, 'R')}" if antico else ""
+        )
+        campi = (
+            ("tickets_stat_arretrato", arretrato),
+            ("tickets_stat_soluzione", format_duration_seconds(dati["soluzione_s"])),
+            ("tickets_stat_senza_risposta", f"{dati['senza_risposta']} / {dati['chiusi']}"),
+            ("tickets_stat_giorni", stat_logic.riga_giorni(dati["giorni"])),
+            ("tickets_stat_ore", stat_logic.riga_ore(dati["ore"])),
+            ("tickets_stat_motivi", stat_logic.riga_motivi(dati["motivi"])),
+            ("tickets_stat_operatori", stat_logic.riga_operatori(dati["operatori"])),
+        )
+        for chiave, valore in campi:
+            embed.add_field(name=await testo_per(interaction, chiave), value=valore[:1024], inline=False)
+        await interaction.response.send_message(embed=embed, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
 
     async def _get_ticket_or_reply(self, interaction: discord.Interaction):
         ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id)
@@ -2633,6 +3025,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         testo = await self._dopo_presa(
             interaction.guild, interaction.channel, ticket, interaction.user, precedente=ticket.claimed_by
         )
+        await registra_azione(interaction.guild, "preso", ticket, staff_id=interaction.user.id)
         await interaction.followup.send(testo, view=vista_inizio(interaction.channel))
 
     async def _dopo_presa(self, guild: discord.Guild, channel, ticket, staff, *, precedente: int | None = None) -> str:
@@ -2862,6 +3255,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         testo = await self._dopo_presa(
             interaction.guild, interaction.channel, ticket, collega, precedente=ticket.claimed_by
         )
+        await registra_azione(
+            interaction.guild, "passato", ticket, staff_id=interaction.user.id, dettaglio=f"{collega.display_name} ({collega.id})"
+        )
         await interaction.followup.send(f"Ticket passato a {collega.mention}.\n{testo}"[:2000])
 
     @comando_di_gruppo("ticket", nome="note", descrizione="Thread privato dello staff per parlare del ticket.")
@@ -2940,7 +3336,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(
             await testo_per(interaction, "tickets_chiede_se_il_tuo_problema", pubblica=True, user_id=ticket.user_id, mention=interaction.user.mention, ore=ore),
             view=vista_inizio(interaction.channel, vista),
-            allowed_mentions=discord.AllowedMentions(users=[discord.Object(id=ticket.user_id)]),
+            allowed_mentions=discord.AllowedMentions(everyone=False, roles=False, users=[discord.Object(id=ticket.user_id)]),
         )
 
     async def handle_richiesta_chiusura(self, guild_id: int, user_id: int, payload: dict) -> None:
@@ -3021,6 +3417,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             )
             return
 
+        await registra_azione(interaction.guild, "rinominato", ticket, staff_id=interaction.user.id, dettaglio=name)
         await interaction.followup.send(
             await testo_per(interaction, "tickets_ticket_rinominato_in", pubblica=True, name=name),
             allowed_mentions=discord.AllowedMentions.none(),
@@ -3039,9 +3436,59 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
 
         await ticket_repo.set_priority(interaction.channel.id, level.value)
+        await registra_azione(interaction.guild, "priorita", ticket, staff_id=interaction.user.id, dettaglio=level.value)
         emoji = PRIORITY_EMOJI.get(level.value, "")
         await interaction.response.send_message(
             f"Priorità impostata su {emoji} **{level.value}**."
+        )
+
+    @comando_di_gruppo("ticket", nome="tieni-aperto", descrizione="Escludi questo ticket dalla chiusura automatica (o rimettilo).")
+    @app_commands.describe(attivo="Sì: il ticket non si chiude da solo; no: torna come gli altri")
+    async def tieni_aperto(self, interaction: discord.Interaction, attivo: bool = True) -> None:
+        """TKT-062: come `/autoclose exclude`. Vale per la chiusura del pannello e per le regole che chiudono o eliminano."""
+        ticket = await self._get_ticket_for_staff_or_reply(interaction)
+        if ticket is None:
+            return
+        if ticket.status != "open" or not await ticket_repo.set_tieni_aperto(interaction.channel.id, attivo):
+            await interaction.response.send_message(await testo_per(interaction, "tickets_tieni_aperto_solo_aperti"), ephemeral=True)
+            return
+        await interaction.response.send_message(
+            await testo_per(interaction, "tickets_tieni_aperto_si" if attivo else "tickets_tieni_aperto_no", pubblica=True),
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+
+    @comando_di_gruppo(
+        "admin-ticket",
+        nome="log",
+        descrizione="Quali azioni sui ticket finiscono nel log, e in quale canale.",
+    )
+    @app_commands.describe(
+        azione="Quale azione (o tutte)", acceso="Sì: scrivila nel log; no: non scriverla",
+        canale="Canale di testo dei log dei ticket (predefinito: il canale dei log del server)",
+    )
+    @app_commands.choices(azione=[app_commands.Choice(name=n, value=n) for n in (*ticket_log_logic.AZIONI, ticket_log_logic.TUTTE)])
+    async def ticket_log(
+        self,
+        interaction: discord.Interaction,
+        azione: app_commands.Choice[str] | None = None,
+        acceso: bool = True,
+        canale: discord.TextChannel | None = None,
+    ) -> None:
+        """TKT-076: un interruttore per azione (tutti spenti finché non li accendi). Senza azione mostra lo stato."""
+        if interaction.guild is None:
+            return
+        if canale is not None:
+            permessi = canale.permissions_for(interaction.guild.me)
+            if not (permessi.view_channel and permessi.send_messages and permessi.embed_links):
+                await interaction.response.send_message(await testo_per(interaction, "tickets_log_canale_senza_permessi"), ephemeral=True)
+                return
+            await router.output_channel_repo.imposta(interaction.guild.id, router.TIPO_TICKET, canale.id)
+        if azione is not None:
+            await ticket_log_repo.imposta(interaction.guild.id, ticket_log_logic.azioni_scelte(azione.value), acceso)
+        accese = await ticket_log_repo.accese(interaction.guild.id)
+        elenco = ", ".join(n for n in ticket_log_logic.AZIONI if n in accese) or await testo_per(interaction, "tickets_log_nessuna")
+        await interaction.response.send_message(
+            await testo_per(interaction, "tickets_log_stato", v1=elenco), ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
         )
 
     async def _build_transcript_text(self, channel: discord.TextChannel, ticket) -> str:
@@ -3245,6 +3692,13 @@ class TicketsCog(CogConGruppi, commands.Cog):
                 await risposte.proponi_da_ticket(guild, channel, ticket)
         except Exception:
             logger.exception("Proposta di risposta standard del ticket %s non riuscita", channel.id)
+        try:
+            # TKT-086: se il pannello lo vuole, il riassunto AI della conversazione va nel log.
+            assistente = self.bot.get_cog("AiTicketCog")
+            if assistente is not None:
+                await assistente.riassunto_alla_chiusura(guild, channel, ticket)
+        except Exception:
+            logger.exception("Riassunto AI del ticket %s non riuscito", channel.id)
         finally:
             self._transcript_in_corso.discard(channel.id)
 
@@ -3277,6 +3731,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         try:
             channel = self.bot.get_channel(channel_id) or await self.bot.fetch_channel(channel_id)
             await channel.delete(reason=motivo)
+            await registra_azione(
+                getattr(channel, "guild", None), "eliminato", await ticket_repo.get_ticket_by_channel(channel_id), dettaglio=motivo
+            )
         except discord.NotFound:
             return
         except discord.Forbidden:
@@ -3336,6 +3793,10 @@ class TicketsCog(CogConGruppi, commands.Cog):
         if panel is None or not panel.autoclose_minutes:
             return
         ultima = ticket.last_activity_at or ticket.created_at
+        if ticket.tieni_aperto:
+            # TKT-062: escluso dalla chiusura. Si ricontrolla tra un intervallo: se lo staff lo rimette come gli altri, riparte.
+            await scheduler.schedule(guild_id, user_id, TICKET_AUTOCLOSE_ACTION_TYPE, in_seconds(panel.autoclose_minutes * 60), payload)
+            return
         prossimo = form.prossimo_controllo(ultima, datetime.now(timezone.utc), panel.autoclose_minutes)
         if prossimo is not None:
             await scheduler.schedule(guild_id, user_id, TICKET_AUTOCLOSE_ACTION_TYPE, prossimo, payload)
@@ -3382,6 +3843,14 @@ class TicketsCog(CogConGruppi, commands.Cog):
         except Exception:
             await ticket_repo.riapri_dopo_errore(channel_id)
             raise
+        if prima is not None:
+            try:  # il log non deve mai impedire una chiusura già fatta
+                sistema = chiuso_da == getattr(getattr(self.bot, "user", None), "id", None)
+                await registra_azione(
+                    self.bot.get_guild(guild_id), "chiuso", prima, staff_id=None if sistema else chiuso_da, dettaglio=ragione
+                )
+            except Exception:  # noqa: BLE001
+                logger.warning("Log di chiusura del ticket %s non scritto.", channel_id, exc_info=True)
         return True
 
     async def _chiudi_da_sistema(
@@ -3615,6 +4084,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             await channel.send(f"Ticket riaperto da {da.mention}. <@{ticket.user_id}>, puoi scrivere di nuovo.")
         except discord.HTTPException:
             logger.warning("Avviso di riapertura non inviato nel ticket %s.", channel.id)
+        await registra_azione(guild, "riaperto", ticket, staff_id=getattr(da, "id", None))
         return "Ticket riaperto."
 
     async def azione_ticket_chiuso(self, interaction: discord.Interaction, ticket, azione: str) -> None:
@@ -3790,6 +4260,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             allowed_mentions=discord.AllowedMentions.none(),
         )
         if appena_chiuso:
+            await registra_azione(interaction.guild, "chiuso", ticket, staff_id=interaction.user.id, dettaglio=motivo)
             # Su un ticket già chiuso (BUG-30) transcript e voto li ha già fatti chi lo ha chiuso.
             await self._transcript_senza_bloccare(interaction.guild, interaction.channel, ticket)
             await self._richiedi_voto(interaction.guild, ticket)

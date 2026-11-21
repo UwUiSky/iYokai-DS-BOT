@@ -31,6 +31,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from cogs.logging.basic_logs import SETTING_LOG_CHANNEL
+from cogs.tickets.modmail import completa_articoli_modmail, testo_da_articolo
 from cogs.tickets.tickets import (
     ADMIN_TICKET,
     TICKET_SOLLECITO_ACTION_TYPE,
@@ -55,6 +56,7 @@ from core.repositories.ai_ticket_repo import ai_ticket_repo
 from core.repositories.ticket_form_repo import PannelloTicket, ticket_form_repo
 from core.repositories.ticket_repo import ticket_repo
 from core.repositories.ticket_standard_repo import RispostaStandard, ticket_standard_repo
+from core import ticket_form_logic as form
 from core import ticket_gestione_logic as gestione
 from core.repositories.ticket_gestione_repo import TroppiArticoli, ticket_gestione_repo
 from core.scheduler import scheduler
@@ -304,6 +306,44 @@ class ModuloArticolo(BaseModal):
 class RisposteStandardCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+
+    # ---------------------------------------------------------------- TKT-078: risposte pronte per lo staff
+    @comando_di_gruppo("ticket", nome="pronta", descrizione="Scrivi nel ticket una risposta pronta (articolo approvato).")
+    @app_commands.autocomplete(articolo=completa_articoli_modmail)
+    @app_commands.describe(articolo="La risposta pronta (articolo approvato della base di conoscenza)")
+    async def risposta_pronta(self, interaction: discord.Interaction, articolo: app_commands.Range[str, 1, 100]) -> None:
+        """
+        Lo staff sceglie un articolo approvato e il bot lo scrive nel ticket al posto suo. Segnaposto ammessi (elenco
+        chiuso): {utente} {nome} {server} {numero} {pannello} {staff}. Solo staff, solo dentro un ticket aperto.
+        """
+        if interaction.guild is None:
+            return
+        ticket = await ticket_repo.get_ticket_by_channel(interaction.channel.id)
+        if ticket is None or ticket.status != "open":
+            await interaction.response.send_message(await testo_per(interaction, "tickets_questo_comando_funziona_solo_in"), ephemeral=True)
+            return
+        if not await _is_ticket_staff(interaction, ticket):
+            await interaction.response.send_message(await testo_per(interaction, "tickets_solo_lo_staff_dei_ticket_2"), ephemeral=True)
+            return
+        testo = await testo_da_articolo(interaction.guild.id, articolo)  # conta anche l'uso dell'articolo
+        if testo is None or testo == articolo:
+            await interaction.response.send_message(await testo_per(interaction, "tickets_articolo_non_trovato"), ephemeral=True)
+            return
+        panel = await ticket_form_repo.pannello_per_id(ticket.panel_id) if ticket.panel_id else None
+        proprietario = interaction.guild.get_member(ticket.user_id)
+        valori = {
+            "utente": f"<@{ticket.user_id}>",
+            "nome": form.nome_sicuro(getattr(proprietario, "display_name", "") or ""),
+            "server": form.nome_sicuro(interaction.guild.name, 100),
+            "numero": f"{ticket.ticket_number or 0:04d}",
+            "pannello": form.nome_sicuro(panel.name, 50) if panel is not None else "",
+            "staff": form.nome_sicuro(interaction.user.display_name),
+        }
+        embed = discord.Embed(description=form.testo_benvenuto(testo, valori, 4000), color=discord.Color.blurple())
+        # Solo chi ha aperto il ticket viene avvisato; nessun ruolo, nessun @everyone scritto nell'articolo.
+        await interaction.response.send_message(
+            content=f"<@{ticket.user_id}>", embed=embed, allowed_mentions=discord.AllowedMentions(everyone=False, roles=False, users=[discord.Object(ticket.user_id)])
+        )
 
     # ---------------------------------------------------------------- proposta alla chiusura
     async def proponi_da_ticket(self, guild: discord.Guild, channel, ticket) -> None:
@@ -592,7 +632,7 @@ class RisposteStandardCog(CogConGruppi, commands.Cog):
         try:
             await channel.send(
                 await self._testo_sollecito(channel, ticket),
-                allowed_mentions=discord.AllowedMentions(users=[discord.Object(id=ticket.user_id)]),
+                allowed_mentions=discord.AllowedMentions(everyone=False, roles=False, users=[discord.Object(id=ticket.user_id)]),
             )
         except discord.HTTPException:
             logger.warning("Sollecito non inviato nel ticket %s", channel_id)

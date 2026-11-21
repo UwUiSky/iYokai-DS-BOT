@@ -88,6 +88,8 @@ ISTRUZIONI: dict[str, str] = {
     "conoscenza se pertinente. Lo staff la rivedrà prima di inviarla.",
     "ticket_utente": "Rispondi alla domanda dell'utente nel ticket usando solo la base di conoscenza. Se non sai, "
     "dì che lo staff risponderà a breve.",
+    "ticket_riassunto": "Riassumi la conversazione del ticket per lo staff in al massimo 6 righe: il problema, cosa è "
+    "stato fatto, com'è finita. Non inventare nulla e non ripetere dati personali.",
     "ticket_smista": "Classifica il ticket. Rispondi SOLO con JSON: {\"categoria\": \"...\", \"urgenza\": 1-5, "
     "\"ruolo\": \"moderatore\"|\"amministratore\"}.",
     "costruisci": "Proponi la struttura di un server Discord. Rispondi SOLO con JSON: {\"ruoli\": [\"nome\"], "
