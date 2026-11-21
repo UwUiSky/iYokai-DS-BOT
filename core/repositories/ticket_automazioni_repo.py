@@ -87,7 +87,7 @@ class TicketAutomazioniRepository:
         righe = await self._pool.fetch(
             """
             SELECT t.id, t.guild_id, t.user_id, t.channel_id, t.panel_id, t.created_at, t.last_activity_at,
-                   t.ultimo_utente_at, t.ultimo_staff_at, t.in_attesa_da, t.categoria_prima_attesa, t.spostato_at,
+                   t.ultimo_utente_at, t.ultimo_staff_at, t.in_attesa_da, t.categoria_prima_attesa, t.spostato_at, t.tieni_aperto,
                    COALESCE(o.attesa_minuti, 0) AS attesa_minuti, o.attesa_categoria_id
             FROM tickets t
             LEFT JOIN ticket_panel_opzioni o ON o.panel_id = t.panel_id

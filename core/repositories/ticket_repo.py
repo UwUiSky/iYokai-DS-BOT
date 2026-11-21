@@ -48,6 +48,7 @@ class Ticket:
     note_thread_id: int | None = None
     solo_admin: bool = False
     e_thread: bool = False
+    tieni_aperto: bool = False  # TKT-062: fuori dalla chiusura automatica
 
 
 @dataclass(frozen=True)
@@ -57,6 +58,7 @@ class TicketCategory:
     label: str
     category_id: int
     emoji: str | None
+    descrizione: str | None = None  # TKT-005
 
 
 @dataclass(frozen=True)
@@ -258,6 +260,17 @@ class TicketRepository:
             "SELECT * FROM tickets WHERE channel_id = $1", channel_id
         )
         return _row_to_ticket(row) if row else None
+
+    async def get_ticket_by_id(self, ticket_id: int) -> Ticket | None:
+        row = await self._pool.fetchrow("SELECT * FROM tickets WHERE id = $1", ticket_id)
+        return _row_to_ticket(row) if row else None
+
+    async def set_tieni_aperto(self, channel_id: int, valore: bool) -> bool:
+        """TKT-062: un ticket aperto resta fuori dalla chiusura automatica (e dalle regole che chiudono o eliminano)."""
+        esito = await self._pool.execute(
+            "UPDATE tickets SET tieni_aperto = $2 WHERE channel_id = $1 AND status = 'open'", channel_id, valore
+        )
+        return esito.endswith(" 1")
 
     async def set_panel(self, channel_id: int, panel_id: int) -> bool:
         """TKT-067: il ticket passa a un altro pannello."""
@@ -538,19 +551,20 @@ class TicketRepository:
     # Categorie ticket (SPEC.md §13.2)
     # ================================================================
     async def add_category(
-        self, guild_id: int, label: str, category_id: int, emoji: str | None = None
+        self, guild_id: int, label: str, category_id: int, emoji: str | None = None, descrizione: str | None = None
     ) -> None:
         await self._pool.execute(
             """
-            INSERT INTO ticket_categories (guild_id, label, category_id, emoji)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO ticket_categories (guild_id, label, category_id, emoji, descrizione)
+            VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (guild_id, label) DO UPDATE
-                SET category_id = EXCLUDED.category_id, emoji = EXCLUDED.emoji
+                SET category_id = EXCLUDED.category_id, emoji = EXCLUDED.emoji, descrizione = EXCLUDED.descrizione
             """,
             guild_id,
             label,
             category_id,
             emoji,
+            descrizione,
         )
 
     async def remove_category(self, guild_id: int, label: str) -> bool:
@@ -573,6 +587,7 @@ class TicketRepository:
                 label=row["label"],
                 category_id=row["category_id"],
                 emoji=row["emoji"],
+                descrizione=row["descrizione"],
             )
             for row in rows
         ]
@@ -629,6 +644,65 @@ class TicketRepository:
             avg_response_seconds=float(row["avg_seconds"]) if row["avg_seconds"] is not None else None,
         )
 
+    async def get_statistiche_avanzate(self, guild_id: int) -> dict:
+        """
+        TKT-077: volume per giorno (ultimi 14), arretrato, ore di punta (UTC), tempo medio di soluzione, chiusi senza
+        risposta dello staff, motivi di chiusura più frequenti e voti per operatore. Solo conteggi: niente testo di utenti
+        oltre al motivo di chiusura, che chi mostra deve pulire.
+        """
+        async with self._pool.acquire() as conn:
+            giorni = await conn.fetch(
+                """
+                SELECT (created_at AT TIME ZONE 'UTC')::date AS giorno, count(*) AS n FROM tickets
+                WHERE guild_id = $1 AND created_at >= now() - interval '14 days' GROUP BY 1 ORDER BY 1
+                """,
+                guild_id,
+            )
+            arretrato = await conn.fetchrow(
+                "SELECT count(*) AS aperti, min(created_at) AS piu_vecchio FROM tickets WHERE guild_id = $1 AND status = 'open'",
+                guild_id,
+            )
+            ore = await conn.fetch(
+                """
+                SELECT extract(hour FROM created_at AT TIME ZONE 'UTC')::int AS ora, count(*) AS n FROM tickets
+                WHERE guild_id = $1 GROUP BY 1 ORDER BY n DESC, ora LIMIT 3
+                """,
+                guild_id,
+            )
+            chiusi = await conn.fetchrow(
+                """
+                SELECT extract(epoch FROM avg(closed_at - created_at)) AS soluzione_s,
+                       count(*) FILTER (WHERE first_response_at IS NULL) AS senza_risposta, count(*) AS chiusi
+                FROM tickets WHERE guild_id = $1 AND status = 'closed' AND closed_at IS NOT NULL
+                """,
+                guild_id,
+            )
+            motivi = await conn.fetch(
+                """
+                SELECT left(close_reason, 100) AS motivo, count(*) AS n FROM tickets
+                WHERE guild_id = $1 AND close_reason IS NOT NULL AND close_reason <> ''
+                GROUP BY 1 ORDER BY n DESC, motivo LIMIT 5
+                """,
+                guild_id,
+            )
+            operatori = await conn.fetch(
+                """
+                SELECT claimed_by, avg(rating)::float AS media, count(rating) AS voti FROM tickets
+                WHERE guild_id = $1 AND rating IS NOT NULL AND claimed_by IS NOT NULL
+                GROUP BY claimed_by ORDER BY media DESC, voti DESC LIMIT 10
+                """,
+                guild_id,
+            )
+        return {
+            "giorni": [(r["giorno"], r["n"]) for r in giorni],
+            "aperti": arretrato["aperti"], "piu_vecchio": arretrato["piu_vecchio"],
+            "ore": [(r["ora"], r["n"]) for r in ore],
+            "soluzione_s": float(chiusi["soluzione_s"]) if chiusi["soluzione_s"] is not None else None,
+            "senza_risposta": chiusi["senza_risposta"], "chiusi": chiusi["chiusi"],
+            "motivi": [(r["motivo"], r["n"]) for r in motivi],
+            "operatori": [(r["claimed_by"], r["media"], r["voti"]) for r in operatori],
+        }
+
 
 def _row_to_ticket(row) -> Ticket:
     return Ticket(
@@ -660,6 +734,7 @@ def _row_to_ticket(row) -> Ticket:
         note_thread_id=row["note_thread_id"],
         solo_admin=row["solo_admin"],
         e_thread=row["e_thread"],
+        tieni_aperto=row["tieni_aperto"],
     )
 
 

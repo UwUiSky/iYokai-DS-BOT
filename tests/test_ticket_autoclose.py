@@ -75,6 +75,7 @@ async def _azioni(pool, tipo):
     return await pool.fetch("SELECT * FROM scheduled_actions WHERE action_type = $1", tipo)
 
 
+# TKT-059: chiusura automatica per inattività.
 async def test_ticket_fermo_da_piu_di_n_minuti_si_chiude_e_il_canale_va_allo_scheduler(cog, canale, clean_db):
     await _ticket(45, autoclose=30)
     await cog.handle_ticket_autoclose(GUILD_ID, UTENTE, {"channel_id": CANALE})
@@ -144,6 +145,7 @@ async def test_i_messaggi_del_bot_non_tengono_vivo_il_ticket(cog, canale):
     assert datetime.now(timezone.utc) - t.last_activity_at > timedelta(minutes=40)
 
 
+# TKT-061: chiusura se l'utente esce dal server.
 async def test_utente_che_esce_dal_server_chiude_il_suo_ticket(cog, canale, clean_db):
     await _ticket(1, autoclose=None)
     canale.guild.get_channel.return_value = canale

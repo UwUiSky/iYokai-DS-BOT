@@ -18,9 +18,12 @@ passano da `/ticket rispondi` restano interni: l'utente non li vede mai.
 Configurazione per server: tabella `modmail_config` (categoria dove nascono i
 canali; non in `guild_config.settings` per non toccare lo schema di /admin-bot
 config, che sta in cogs/utility). Il modulo `tickets` deve essere acceso.
-Comandi: `/admin-ticket modmail attiva`, `/admin-ticket modmail blocca`, `/ticket rispondi`,
-`/ticket dm-chiudi`.
-Funzioni coperte: SPEC §23 (NF-33), §4.2 (D65), §6.20 (D67)
+Opzioni per server (`/admin-ticket modmail opzioni`): risposte anonime come predefinito (TKT-082), ogni
+messaggio dello staff nel canale inoltrato all'utente, `//` all'inizio = nota interna (TKT-083), conferma
+prima dell'invio quando c'è un solo server (TKT-084).
+Comandi: `/admin-ticket modmail attiva`, `/admin-ticket modmail blocca`, `/admin-ticket modmail opzioni`,
+`/ticket rispondi`, `/ticket dm-chiudi`.
+Funzioni coperte: SPEC §23 (NF-33), §4.2 (D65), §6.20 (D67), TKT-082, TKT-083, TKT-084
 """
 
 from __future__ import annotations
@@ -43,6 +46,7 @@ from cogs.tickets.tickets import (
     MODULE_TICKETS,
     RITARDO_ELIMINAZIONE_SECONDI,
     _is_ticket_staff,
+    _membro_staff,
     _support_role_ids,
 )
 from core import allegati_mostra, allegati_sicuri
@@ -53,7 +57,7 @@ from core import ticket_gestione_logic as gestione
 from core.repositories.ticket_gestione_repo import ticket_gestione_repo
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
-from core.i18n import lingua_risposta, t, testo_per
+from core.i18n import lingua_risposta, t, testo_guild, testo_per
 from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.moderation_repo import moderation_repo
 from core.spam_trap_logic import BAN_ACTION_TYPE
@@ -200,7 +204,10 @@ class ModMailCog(CogConGruppi, commands.Cog):
     # ================================================================
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
-        if message.guild is not None or message.author.bot:
+        if message.author.bot:
+            return
+        if message.guild is not None:
+            await self._dallo_staff(message)
             return
         if logica.messaggio_vuoto(message.content, len(message.attachments)):
             return
@@ -216,6 +223,58 @@ class ModMailCog(CogConGruppi, commands.Cog):
             if await blacklist_repo.is_user_blacklisted(message.author.id):
                 return
             await self._dm_in_arrivo(message)
+
+    async def _dallo_staff(self, message: discord.Message) -> None:
+        """TKT-083: con «inoltra tutto» acceso, il messaggio dello staff nel canale ModMail arriva all'utente."""
+        canale = message.channel
+        # Filtro a costo zero prima del database: i canali ModMail nascono con questo nome e questo argomento.
+        if not (str(getattr(canale, "name", "")).startswith(logica.PREFISSO_CANALE)
+                or str(getattr(canale, "topic", None) or "").startswith("ModMail ·")):
+            return
+        if message.type not in (discord.MessageType.default, discord.MessageType.reply):
+            return
+        if message.content.lstrip().startswith(logica.PREFISSO_NOTA) or logica.messaggio_vuoto(message.content, len(message.attachments)):
+            return
+        thread = await modmail_repo.aperta_del_canale(canale.id)
+        if thread is None or thread.guild_id != message.guild.id:
+            return
+        opzioni = await modmail_repo.opzioni(message.guild.id)
+        if not opzioni.inoltra_tutto:
+            return
+        # Chi scrive deve essere staff ADESSO: un utente aggiunto al canale a mano non parla a nome dello staff.
+        if not isinstance(message.author, discord.Member) or not await _membro_staff(message.author, message.guild.id, None):
+            return
+        esito = await self._manda_all_utente(message, thread, opzioni.anonimo_predefinito)
+        try:
+            await message.add_reaction("✅" if esito else "❌")
+        except discord.HTTPException:
+            pass
+
+    async def _manda_all_utente(self, message: discord.Message, thread: ModmailThread, anonimo: bool) -> bool:
+        """Inoltra un messaggio dello staff come `/ticket rispondi`: testo troncato, allegati rifatti, mai menzioni."""
+        guild = message.guild
+        firma = logica.etichetta_firma(anonimo, message.author.display_name, guild.name)
+        embed = discord.Embed(
+            description=logica.testo_inoltrato(message.content)[: logica.MAX_RISPOSTA] or None,
+            color=COLORE_STAFF, timestamp=datetime.now(timezone.utc),
+        )
+        embed.set_author(name=firma)
+        files: list[discord.File] = []
+        if message.attachments:
+            copie, righe = await allegati_mostra.prepara(message.attachments, guild.id, con_video=True)
+            files, primo_png = allegati_mostra.file_da(copie)
+            if primo_png:
+                embed.set_image(url=f"attachment://{primo_png}")
+            righe = [f"`{nome}` (copia rifatta)" for nome, _ in copie] + righe
+            embed.add_field(name=await testo_guild(guild, "modmail_allegato"), value=logica.elenco_righe_allegati(righe), inline=False)
+            if not copie and not message.content.strip():
+                return False  # niente di inviabile: lo staff vede la ❌
+        try:
+            utente = guild.get_member(thread.user_id) or await self.bot.fetch_user(thread.user_id)
+            await utente.send(embed=embed, files=files)
+        except discord.HTTPException:
+            return False
+        return True
 
     async def _ha_appello_aperto(self, user_id: int) -> bool:
         casi = await moderation_repo.get_active_cases_for_user_across_guilds(user_id, BAN_ACTION_TYPE)
@@ -256,6 +315,10 @@ class ModMailCog(CogConGruppi, commands.Cog):
         if decisione.esito is logica.Esito.UN_SERVER:
             # Il primo messaggio va a persone vere solo se l'utente lo vuole: chi scrive al bot può non saperlo.
             guild = candidati[0]
+            if not (await modmail_repo.opzioni(guild.id)).conferma_invio:
+                # TKT-084: il server ha tolto la conferma. Siamo già sotto la serratura dell'utente: si apre qui.
+                await self._apri_se_ancora_possibile(guild, utente, message)
+                return
             try:
                 await message.channel.send(
                     f"Vuoi inviare questo messaggio allo staff di **{guild.name}**? "
@@ -373,12 +436,12 @@ class ModMailCog(CogConGruppi, commands.Cog):
                 await self._inoltra_allo_staff(esistente, primo)
             return
 
+        opzioni = await modmail_repo.opzioni(guild.id)
         intestazione = discord.Embed(
             title="Nuova conversazione ModMail",
             description=(
                 f"{utente.mention} (`{utente.id}`) ha scritto in privato.\n"
-                "Rispondi con `/ticket rispondi` (anche anonimo). I messaggi scritti qui restano interni. "
-                "Chiudi con `/ticket dm-chiudi`."
+                + await testo_guild(guild, "modmail_intestazione_inoltra" if opzioni.inoltra_tutto else "modmail_intestazione")
             ),
             color=COLORE_STAFF,
         )
@@ -598,6 +661,43 @@ class ModMailCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo(
         "admin-ticket",
+        nome="opzioni",
+        descrizione="Opzioni del ModMail: risposte anonime, inoltro, conferma.",
+        sottogruppo=SOTTOGRUPPI["admin-ticket modmail"],
+    )
+    @app_commands.describe(
+        anonimo="Sì: le risposte dello staff non mostrano il nome (predefinito)",
+        inoltra_tutto="Sì: ogni messaggio dello staff nel canale arriva all'utente (// = nota interna)",
+        conferma="Sì: con un solo server l'utente conferma prima dell'invio",
+    )
+    async def dm_opzioni(
+        self, interaction: discord.Interaction, anonimo: bool | None = None,
+        inoltra_tutto: bool | None = None, conferma: bool | None = None,
+    ) -> None:
+        """TKT-082, TKT-083, TKT-084: opzioni del ModMail per server. Senza valori mostra quelle attuali."""
+        if interaction.guild is None:
+            return
+        if not await ensure_module_enabled(interaction, MODULE_TICKETS):
+            return
+        scelte = {"anonimo_predefinito": anonimo, "inoltra_tutto": inoltra_tutto, "conferma_invio": conferma}
+        valori = {k: v for k, v in scelte.items() if v is not None}
+        if valori and not await modmail_repo.imposta_opzioni(interaction.guild.id, interaction.user.id, **valori):
+            await interaction.response.send_message(await testo_per(interaction, "modmail_opzioni_spento"), ephemeral=True)
+            return
+        attuali = await modmail_repo.opzioni(interaction.guild.id)
+        si, no = await testo_per(interaction, "opzioni_acceso"), await testo_per(interaction, "opzioni_spento")
+        await interaction.response.send_message(
+            await testo_per(
+                interaction, "modmail_opzioni_attuali",
+                anonimo=si if attuali.anonimo_predefinito else no,
+                inoltra=si if attuali.inoltra_tutto else no,
+                conferma=si if attuali.conferma_invio else no,
+            ),
+            ephemeral=True,
+        )
+
+    @comando_di_gruppo(
+        "admin-ticket",
         nome="blocca",
         descrizione="Blocca o sblocca un utente dal ModMail.",
         sottogruppo=SOTTOGRUPPI["admin-ticket modmail"],
@@ -650,20 +750,22 @@ class ModMailCog(CogConGruppi, commands.Cog):
     @app_commands.autocomplete(testo=completa_articoli_modmail)
     @app_commands.describe(
         testo="La risposta (l'utente la riceve in privato), o scegli un articolo",
-        anonimo="Sì per non mostrare il tuo nome all'utente",
+        anonimo="Sì per non mostrare il tuo nome all'utente (vuoto: come impostato nel server)",
         allegato="Un file da inviare (facoltativo)",
     )
     async def rispondi(
         self,
         interaction: discord.Interaction,
         testo: app_commands.Range[str, 1, logica.MAX_RISPOSTA],
-        anonimo: bool = False,
+        anonimo: bool | None = None,
         allegato: discord.Attachment | None = None,
     ) -> None:
         thread = await self._thread_per_staff(interaction)
         if thread is None:
             return
         guild = interaction.guild
+        if anonimo is None:  # TKT-082: senza scelta vale il predefinito del server
+            anonimo = (await modmail_repo.opzioni(guild.id)).anonimo_predefinito
         testo = await testo_da_articolo(guild.id, testo)
         if testo is None:
             await interaction.response.send_message(await testo_per(interaction, "tickets_articolo_non_trovato"), ephemeral=True)

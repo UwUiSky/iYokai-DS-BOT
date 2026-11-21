@@ -2,8 +2,8 @@
 core/repositories/modmail_repo.py
 =================================
 Conversazioni ModMail (un canale dello staff per utente) e utenti bloccati.
-Funzioni coperte: SPEC §23 (NF-33)
-Tabelle: migrazione 0101 (`modmail_threads`, `modmail_blocks`).
+Funzioni coperte: SPEC §23 (NF-33), TKT-082, TKT-083, TKT-084 (opzioni del server)
+Tabelle: migrazione 0101 (`modmail_threads`, `modmail_blocks`), 0770 (opzioni in `modmail_config`).
 """
 
 from __future__ import annotations
@@ -14,6 +14,15 @@ from datetime import datetime
 import asyncpg
 
 ONE_OPEN_INDEX = "uq_modmail_un_aperto_per_utente"
+# Colonne di `modmail_config` che l'admin può cambiare: l'elenco è chiuso (mai un nome scelto da fuori nel SQL).
+OPZIONI = ("anonimo_predefinito", "inoltra_tutto", "conferma_invio")
+
+
+@dataclass(frozen=True)
+class OpzioniModmail:
+    anonimo_predefinito: bool = False
+    inoltra_tutto: bool = False
+    conferma_invio: bool = True
 
 
 class ConversazioneGiaAperta(Exception):
@@ -124,6 +133,29 @@ class ModmailRepository:
             """,
             guild_id, category_id, by,
         )
+
+    async def opzioni(self, guild_id: int) -> OpzioniModmail:
+        """Le opzioni del server; senza riga (ModMail spento) valgono i predefiniti."""
+        riga = await self._pool.fetchrow(
+            "SELECT anonimo_predefinito, inoltra_tutto, conferma_invio FROM modmail_config WHERE guild_id = $1", guild_id
+        )
+        if riga is None:
+            return OpzioniModmail()
+        return OpzioniModmail(riga["anonimo_predefinito"], riga["inoltra_tutto"], riga["conferma_invio"])
+
+    async def imposta_opzioni(self, guild_id: int, by: int | None = None, **valori: bool) -> bool:
+        """Cambia le opzioni date (quelle non date restano). False se il ModMail è spento (nessuna riga)."""
+        for nome in valori:
+            if nome not in OPZIONI:
+                raise ValueError(f"Opzione ModMail sconosciuta: {nome}")
+        if not valori:
+            return await self._pool.fetchval("SELECT TRUE FROM modmail_config WHERE guild_id = $1", guild_id) is True
+        assegna = ", ".join(f"{nome} = ${i}" for i, nome in enumerate(valori, start=3))
+        esito = await self._pool.execute(
+            f"UPDATE modmail_config SET {assegna}, updated_by = $2, updated_at = now() WHERE guild_id = $1",
+            guild_id, by, *valori.values(),
+        )
+        return esito.endswith(" 1")
 
     async def blocca(self, guild_id: int, user_id: int, by: int) -> None:
         await self._pool.execute(

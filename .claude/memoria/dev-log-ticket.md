@@ -1,6 +1,7 @@
 # Memoria di dev-log-ticket
 
 ## Aggiornata
+21/11/2026 · ramo `feat/r2tkt` (wt-120, DB iyokai_w120) · #120 controllo voce per voce, migrazioni 0770-0773: FATTO (vedi CONTROLLO_AREE_CHIUSE.md, D101). Resta: smoke dall'orchestratore e prova live.
 18/11/2026 · ramo `feat/r2log` (copia /home/user/wt-119, DB iyokai_w119) · #119 catalogo log, migrazioni 0710-0719.
 10-17/11/2026 · giri r152img (0304), r160 (D74 parti 1-3), r18ticket (0526, 0534), r10logt (0300-0302): vedi sotto e git log.
 
@@ -13,6 +14,9 @@
 - r10: c210f52 /log cerca ruolo+giorni · f364d84 diff permessi canale · poi ignora esteso, VOC-010/013/016, TKT-051/063/027/026.
 
 ## Cose imparate
+- `discord.AllowedMentions(users=[...])` lascia everyone e roles accesi: sempre `everyone=False, roles=False` espliciti. Un log di azione non deve mai far fallire una chiusura (try/except dentro l'hook).
+- Menu nelle finestre: `discord.ui.Label(text, component=Select/UserSelect/...)`; i valori si leggono da `label.component.values`; nei test `component._values = [...]`.
+- Log azioni ticket: `tickets.registra_azione(guild, azione, ticket, ...)` (interruttori in `ticket_log_azioni`, tutti spenti di base, tipo router `ticket`). Benvenuto e risposte pronte: `form.testo_benvenuto` (elenco chiuso) e `form.nome_sicuro`.
 - Rotte e formati dei log: un solo punto `core/log_personalizza.personalizza(guild, tipo, evento, dest, embed)`, chiamato da `_send_log` (basic), `send_event_embed` (advanced), `_scrivi` (messaggi). Un log nuovo che non passa da li' non ha ne' rotta ne' formato. Rotta = solo TextChannel (un forum riscriverebbe `output_channels` del tipo); il tipo `rotta_<interruttore>` serve solo per l'avviso al proprietario.
 - Istantanee (LOG-028): segreto mai salvato (impronta SHA-256), stessa risposta per link sbagliato/scaduto/negato; tetto 5 per server con `pg_advisory_xact_lock`. Un test che usa `test_web_panel_server`-style costruisce una mini `web.Application` e passa `pagina`/`errore` finti.
 - Test dei log con `clean_db`: se un comando legge `log_personalizza_repo`, il test deve sostituire il repo con uno sul pool del test (`monkeypatch.setattr(modulo, 'log_personalizza_repo', ...)`).

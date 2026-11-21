@@ -1869,3 +1869,12 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `MUS-053` — con `pausa-canale-vuoto` acceso (di base): esci dal canale lasciando il bot con un brano: va in pausa; rientra: riprende. Se avevi messo la pausa a mano, al rientro NON riprende. Non vale per la radio 24/7.
 - [ ] `MUS-061` — `/admin-musica impostazioni stato-bot:sì`: lo stato del music bot mostra «Ascolta <titolo>»; cambia con i brani, non più di una volta ogni 15 s; sparisce a coda finita e quando il bot esce. Il bot principale NON cambia stato. Durante «indovina la canzone» non compare il titolo.
 
+
+## Giro r2tkt (#120, ticket e ModMail)
+
+- Pannello: `pannelli pubblica` con colore, miniatura, immagine, `per_riga`; `pannelli aspetto` (colore bottone, testo menu, embed di apertura con {utente} {nome} {server} {numero} {pannello}); `pannelli modello`.
+- Finestra del modulo con menu a scelta e selezione di utente/ruolo/canale dentro la finestra (da provare su Discord vero), minimo e massimo di caratteri.
+- `voto` con questionario: dopo le stelle si apre la finestra con la domanda.
+- `admin-ticket log` (azioni accese una a una, canale scelto), `stats dettagli`, `/ticket tieni-aperto`, `/ticket pronta`.
+- ModMail: `modmail opzioni` (anonimo predefinito, inoltra tutto con `//` come nota, conferma disattivabile).
+- Riassunto AI alla chiusura: `/admin-ai staff riassunto-ticket` (serve l'AI accesa).

@@ -532,6 +532,9 @@ REGISTRO: tuple[TabellaDati, ...] = (
        nota="il titolare passa al co-titolare o al membro più anziano, da solo scioglie il clan "
             "(forget_user_service._clan_del_titolare); il co-titolare esce con NULL"),
     # ---------------------------------------------------------------- ticket, suggerimenti, moduli
+    _t("ticket_questionario_risposte", "Risposte al questionario dopo il voto di un ticket (TKT-066)",
+       colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True),
+    _t("ticket_log_azioni", "Interruttori del log delle azioni sui ticket (TKT-076)", colonna_server="guild_id"),
     _t("tickets", "Ticket", colonne_utente=("user_id",), colonne_attore=("claimed_by", "closed_by"),
        colonna_server="guild_id", utente="anonimizza", anonimizza=(("user_id", str(UTENTE_CANCELLATO)),),
        esporta=True, escludi_dall_esportazione=("close_reason",)),
