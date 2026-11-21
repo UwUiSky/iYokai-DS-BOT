@@ -3493,5 +3493,9 @@
   "ruoli_extra_bv_non_trovata": "Non trovo quell'immagine.",
   "ruoli_extra_bv_serve_allegato": "Allega l'immagine da aggiungere.",
   "ruoli_extra_bv_piene": "Ci sono già {max} immagini: togline una prima.",
-  "ruoli_extra_bv_salvata": "Immagine {id} salvata. A ogni ingresso se ne sceglie una a caso."
+  "ruoli_extra_bv_salvata": "Immagine {id} salvata. A ogni ingresso se ne sceglie una a caso.",
+  "mov_nessuno": "Nessun movimento negli ultimi 30 giorni.",
+  "aut_sfida": "🤖 Controllo veloce: quanto fa **{domanda}**? Poi ripeti il comando.",
+  "aut_ok": "✅ Verificato per 10 minuti: ripeti il comando.",
+  "aut_no": "❌ Risposta sbagliata: ripeti il comando per un nuovo controllo."
 }

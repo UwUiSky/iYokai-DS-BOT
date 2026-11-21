@@ -20,6 +20,7 @@ from discord.ext import commands
 from cogs.leveling.leveling import _comando_rifiutato, _format_seconds
 from cogs.leveling.rischio import _SG_RISCHIO
 from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
+from core.anti_automazione import serve_controllo
 from core.i18n import testo_per
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.repositories.potenziamenti_repo import potenziamenti_repo
@@ -108,6 +109,8 @@ class MiniGuadagniCog(CogConGruppi, commands.Cog):
 
     async def _semplice(self, interaction: discord.Interaction, chiave: str, pausa_s: int, dato: int, ok: str, no: str) -> None:
         if await _comando_rifiutato(interaction):
+            return
+        if await serve_controllo(interaction, (await leveling_settings_repo.get_config(interaction.guild.id)).impostazioni.controllo_per_mille):  # ECO-158
             return
         saldo = await rischio_repo.guadagna(interaction.guild.id, interaction.user.id, chiave, pausa_s, dato)
         if saldo is None:

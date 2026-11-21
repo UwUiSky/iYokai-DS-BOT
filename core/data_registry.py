@@ -395,6 +395,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonne_utente=("a", "b"), colonna_server="guild_id", utente="cancella", esporta=True),
     _t("economia_prestigio", "Livello di prestigio (ECO-148)",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True),
+    _t("economia_movimenti", "Storico personale dei movimenti di monete (ECO-007)",
+       colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True, scadenza=Scadenza("at", 30)),
     _t("economia_premi_periodici", "Ultima riscossione dei premi settimanale e mensile (ECO-026)",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True),
     _t("leveling_xp_rules", "Regole dei moltiplicatori XP", colonna_server="guild_id"),

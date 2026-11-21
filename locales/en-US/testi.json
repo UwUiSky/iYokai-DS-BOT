@@ -3493,5 +3493,9 @@
   "ruoli_extra_bv_non_trovata": "I cannot find that image.",
   "ruoli_extra_bv_serve_allegato": "Attach the image to add.",
   "ruoli_extra_bv_piene": "There are already {max} images: remove one first.",
-  "ruoli_extra_bv_salvata": "Image {id} saved. One is picked at random on every join."
+  "ruoli_extra_bv_salvata": "Image {id} saved. One is picked at random on every join.",
+  "mov_nessuno": "No movements in the last 30 days.",
+  "aut_sfida": "🤖 Quick check: what is **{domanda}**? Then repeat the command.",
+  "aut_ok": "✅ Verified for 10 minutes: repeat the command.",
+  "aut_no": "❌ Wrong answer: repeat the command for a new check."
 }
