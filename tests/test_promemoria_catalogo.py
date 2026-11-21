@@ -1,7 +1,7 @@
 """
 tests/test_promemoria_catalogo.py
 =================================
-Catalogo #128: promemoria che si ripete (UTL-098), nel canale (UTL-099),
+Catalogo #128: promemoria che si ripete (UTL-098), dettaglio con data esatta (UTL-101), nel canale (UTL-099),
 annullare tutti i propri (UTL-102), lo staff vede e annulla quelli del
 server (UTL-103). Scheduler finto: si prova solo il cog.
 """
@@ -68,19 +68,22 @@ async def test_allo_scatto_si_riprogramma_e_scrive_nel_canale(sched):
 
 
 @pytest.mark.asyncio
-async def test_annulla_tutti_i_propri(sched):
-    sched.list_pending_for_user.return_value = [{"id": 1}, {"id": 2}]
+async def test_annulla_tutti_i_propri(sched, monkeypatch):
+    cancella = AsyncMock()
+    monkeypatch.setattr(modulo.promemoria_iscritti_repo, "cancella_serie", cancella)
+    sched.list_pending_for_user.return_value = [{"id": 1, "payload": {}}, {"id": 2, "payload": {"serie": "abc"}}]
     cog = RemindersCog(MagicMock())
     it = fake_interaction()
     await cog.cancel_reminder.callback(cog, it, None, True)
     assert [c.args[0] for c in sched.cancel.await_args_list] == [1, 2]
+    cancella.assert_awaited_once_with("abc")  # chi si era iscritto alla serie non riceve più nulla
 
 
 @pytest.mark.asyncio
 async def test_lo_staff_annulla_un_promemoria_del_server(sched, monkeypatch):
     server = fake_guild(guild_id=100)
     sched.get_pending_action.return_value = {
-        "action_type": REMINDER_ACTION_TYPE, "executed": False, "user_id": 9, "guild_id": 100,
+        "action_type": REMINDER_ACTION_TYPE, "executed": False, "user_id": 9, "guild_id": 100, "payload": {},
     }
     monkeypatch.setattr(modulo, "puo_usare", AsyncMock(return_value=True))
     cog = RemindersCog(MagicMock())
@@ -160,3 +163,17 @@ async def test_ripetuto_si_ferma_se_la_persona_e_uscita(sched):
     await cog.handle_reminder_fire(100, 7, payload)
     sched.schedule.assert_not_awaited()
     canale.send.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_utl_101_elenco_mostra_giorno_e_ora_esatti_e_il_tempo_che_manca(sched):
+    """UTL-101: ogni riga ha la data in formato Discord (<t:..:f>) e quella relativa (<t:..:R>)."""
+    from datetime import datetime, timezone
+    quando = datetime(2026, 12, 1, 9, 30, tzinfo=timezone.utc)
+    sched.list_pending_for_user.return_value = [{"id": 7, "execute_at": quando, "payload": {"message": "pane"}}]
+    cog = RemindersCog(MagicMock())
+    i = fake_interaction(user=fake_member(5))
+    await cog.list_reminders.callback(cog, i)
+    corpo = i.response.send_message.await_args.kwargs["embed"].description
+    stamp = int(quando.timestamp())
+    assert f"<t:{stamp}:f>" in corpo and f"<t:{stamp}:R>" in corpo and "pane" in corpo

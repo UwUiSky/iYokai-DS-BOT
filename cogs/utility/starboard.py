@@ -3,7 +3,7 @@ cogs/utility/starboard.py
 =========================
 Starboard (NF-08, SPEC §22.4): un messaggio che riceve abbastanza stelle
 viene copiato nel canale "bacheca". Comandi in `/admin-moduli starboard`.
-Funzioni coperte: SPEC §22 (NF-08), §8.16 (D74: allegati senza link all'originale)
+Funzioni coperte: SPEC §22 (NF-08), §8.16 (D74: allegati senza link all'originale); catalogo #128 UTL-143, 144, 145, 146, 147, 150, 153 (r2utl)
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.i18n import testo_per
 from core.premium import PremiumModule, registry
-from core.repositories.starboard_repo import starboard_repo
+from core.repositories.starboard_repo import MAX_ESCLUSI, starboard_repo
 from core.role_menu_logic import valida_emoji
 from core.starboard_logic import (
     EMOJI_PREDEFINITA,
@@ -142,6 +142,8 @@ class StarboardCog(CogConGruppi, commands.Cog):
             return False  # i thread privati ereditano i permessi del padre: non si sa chi li vede
         if canale.is_nsfw() and not config.allow_nsfw:
             return False
+        if {canale.id, getattr(canale, "parent_id", None)} & set(getattr(config, "canali_esclusi", ()) or ()):
+            return False  # UTL-146: canale escluso dall'admin (anche i suoi thread)
         pubblico = canale.permissions_for(guild.default_role)
         return bool(pubblico.view_channel and pubblico.read_message_history)  # la bacheca è pubblica
 
@@ -348,6 +350,44 @@ class StarboardCog(CogConGruppi, commands.Cog):
         else:
             testo = "La bacheca non è ancora impostata: usa prima `/admin-moduli starboard imposta`."
         await interaction.response.send_message(testo, ephemeral=True)
+
+    @comando_di_gruppo(
+        "admin-moduli",
+        nome="esclusi",
+        descrizione="Canali che non finiscono mai in bacheca (al massimo 25).",
+        sottogruppo=_SG_STARBOARD,
+    )
+    @app_commands.describe(canale="Il canale da escludere o riammettere", togli="Riammette il canale")
+    async def esclusi(self, interaction: discord.Interaction, canale: discord.abc.GuildChannel, togli: bool = False) -> None:
+        if not await self._modulo_attivo(interaction):
+            return
+        nuovo = await starboard_repo.cambia_escluso(interaction.guild.id, canale.id, not togli)
+        if nuovo is None:
+            chiave = "starboard_la_bacheca_non_era_impostata"
+        elif not togli and canale.id not in nuovo:
+            chiave = "starboard_esclusi_pieno"
+        else:
+            chiave = "starboard_esclusi_salvato"
+        await interaction.response.send_message(await testo_per(interaction, chiave, massimo=MAX_ESCLUSI), ephemeral=True)
+
+    @comando_di_gruppo(
+        "admin-moduli",
+        nome="stato",
+        descrizione="Come è impostata la bacheca.",
+        sottogruppo=_SG_STARBOARD,
+    )
+    async def stato(self, interaction: discord.Interaction) -> None:
+        if not await self._modulo_attivo(interaction):
+            return
+        c = await starboard_repo.get_config(interaction.guild.id)
+        if c is None:
+            await interaction.response.send_message(await testo_per(interaction, "starboard_la_bacheca_non_era_impostata"), ephemeral=True)
+            return
+        testo = await testo_per(
+            interaction, "starboard_stato", canale=f"<#{c.channel_id}>", soglia=c.threshold, emoji=c.emoji,
+            acceso="sì" if c.enabled else "no", nsfw="sì" if c.allow_nsfw else "no", autore="sì" if c.self_star else "no",
+            auto=f"<#{c.canale_auto}>" if c.canale_auto else "-", esclusi=" ".join(f"<#{i}>" for i in c.canali_esclusi) or "-")
+        await interaction.response.send_message(testo[:2000], ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE)
 
     @comando_di_gruppo(
         "admin-moduli",

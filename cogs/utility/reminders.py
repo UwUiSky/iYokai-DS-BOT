@@ -244,6 +244,8 @@ class RemindersCog(CogConGruppi, commands.Cog):
                 interaction, "reminders_pubblico", pubblica=True, mention=interaction.user.mention,
                 durata=format_duration(duration_seconds), testo=message[:300], massimo=MAX_ISCRITTI,
             )
+            if ripeti_secondi is not None:  # chi legge deve sapere che il promemoria torna
+                pubblico += "\n" + await testo_per(interaction, "reminders_pubblico_ripete", pubblica=True, ogni=format_duration(ripeti_secondi))
             await interaction.response.send_message(pubblico[:2000], view=vista, allowed_mentions=discord.AllowedMentions.none())
             return
         await interaction.response.send_message(testo, ephemeral=True)
@@ -266,9 +268,9 @@ class RemindersCog(CogConGruppi, commands.Cog):
 
         righe = []
         for azione in azioni:
-            quando = discord.utils.format_dt(azione["execute_at"], style="R")
+            quando = f'{discord.utils.format_dt(azione["execute_at"], style="f")} ({discord.utils.format_dt(azione["execute_at"], style="R")})'
             testo = azione["payload"].get("message", "(nessun testo)")
-            righe.append(f"`#{azione['id']}` {quando} — {testo}")
+            righe.append(f"`#{azione['id']}` {quando} — {testo}")  # UTL-101: giorno e ora esatti, nel fuso di chi guarda
 
         descrizione, _ = righe_entro_limite(righe, 4000)  # LIM-13: 4096 al massimo
         embed = discord.Embed(

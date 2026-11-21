@@ -32,6 +32,7 @@ def test_regex_con_backtracking_cattivo_non_blocca():
     assert time.monotonic() - inizio < 2
 
 
+# UTL-059: risposta se il messaggio inizia con il testo
 def test_inizia_con_e_resto():
     assert trigger_corrisponde("!dado", "inizia", "!dado 3d6") and trigger_corrisponde("!dado", "inizia", "!DADO")
     assert not trigger_corrisponde("!dado", "inizia", "ciao !dado") and not trigger_corrisponde("dado", "inizia", "dadone")

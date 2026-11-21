@@ -109,6 +109,7 @@ async def test_aggiungi_tag_inesistente_o_pieno_o_gia_presente(cog):
     cog.sched.schedule.assert_not_awaited()
 
 
+# UTL-050: bottoni dell'embed che eseguono un tag
 async def test_aggiungi_bottone_deve_esistere(cog):
     i, _ = _i()
     cog.eb.prendi.return_value = None
@@ -156,6 +157,7 @@ async def test_reazione_in_privato_non_fa_niente(cog):
     cog.repo.per_tipo.assert_not_awaited()
 
 
+# UTL-052: comando che parte quando un membro riceve o perde un ruolo
 async def test_ruolo_dato_e_tolto(cog):
     server = fake_guild()
     canale = fake_text_channel()
@@ -210,6 +212,7 @@ async def test_giro_in_ora_esclusa_salta_ma_riprenota(cog, monkeypatch):
     cog.tag_cog.esegui_innesco.assert_not_awaited()
 
 
+# UTL-054: far partire subito un comando a intervalli (avvia-ora)
 async def test_togli_elenco_avvia_ora(cog):
     i, _ = _i()
     cog.repo.togli.return_value = True
@@ -246,3 +249,40 @@ async def test_giro_senza_server_non_riprenota(cog):
     cog.repo.prendi_per_id.return_value = riga(tipo="intervallo", valore="30m", canale_id=3)
     await cog.handle_innesco(1, 0, {"innesco_id": 5})
     cog.sched.schedule.assert_not_awaited()
+
+
+def _messaggio(canale_id=3, testo="un argomento", bot=False, tipo=discord.MessageType.default):
+    server = fake_guild()
+    autore = MagicMock(spec=discord.Member)
+    autore.bot = bot
+    canale = fake_text_channel(canale_id)
+    return SimpleNamespace(guild=server, author=autore, content=testo, channel=canale, type=tipo)
+
+
+async def test_utl_070_canale_scorciatoia_fa_partire_il_tag_con_il_testo(cog):
+    """UTL-070: ogni messaggio scritto nel canale scorciatoia fa partire il tag col testo come argomento."""
+    cog.repo.per_tipo.return_value = [riga(tipo="canale_testo", valore="3", canale_id=3)]
+    msg = _messaggio(testo="x" * 500)
+    await cog.on_message(msg)
+    cog.tag_cog.esegui_innesco.assert_awaited_once()
+    k = cog.tag_cog.esegui_innesco.await_args.kwargs
+    assert k["membro"] is msg.author and 0 < len(k["argomenti"]) <= 200
+
+
+async def test_utl_070_ignora_bot_altri_canali_vuoti_e_messaggi_di_sistema(cog):
+    cog.repo.per_tipo.return_value = [riga(tipo="canale_testo", valore="3", canale_id=3)]
+    for msg in (_messaggio(bot=True), _messaggio(canale_id=4), _messaggio(testo=""),
+                _messaggio(tipo=discord.MessageType.new_member)):
+        await cog.on_message(msg)
+    cog.tag_cog.esegui_innesco.assert_not_awaited()
+
+
+async def test_utl_070_aggiungi_usa_il_canale_come_valore(cog):
+    i, server = _i()
+    canale = fake_text_channel(123456789012345678)
+    canale.permissions_for.return_value = discord.Permissions(send_messages=True)
+    await cog.aggiungi.callback(cog, i, "dado", scelta("canale_testo"), "", None, canale, "")
+    assert cog.repo.aggiungi.await_args.args[3] == "123456789012345678"
+    cog.repo.aggiungi.reset_mock()
+    await cog.aggiungi.callback(cog, i, "dado", scelta("canale_testo"), "", None, None, "")
+    cog.repo.aggiungi.assert_not_awaited()  # senza canale non si crea

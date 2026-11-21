@@ -156,3 +156,36 @@ async def test_albero_utility_e_web():
     d = comando_nel_gruppo("web", "wiki").to_dict(bot.tree)
     assert d["options"][0]["max_length"] == 100
     assert comando_nel_gruppo("utility", "strumenti caratteri").to_dict(bot.tree)["options"][0]["max_length"] == 100
+
+
+def test_utl_196_avatar_in_grande_globale_o_del_server():
+    """UTL-196: del server se c'è, globale a richiesta, predefinito senza avatar; sempre a 1024 punti."""
+    from types import SimpleNamespace
+    from core.strumenti_rapidi_logic import avatar_in_grande
+
+    def risorsa(nome):
+        return SimpleNamespace(with_size=lambda n: SimpleNamespace(url=f"https://cdn.discordapp.com/{nome}?size={n}"))
+
+    utente = SimpleNamespace(display_avatar=risorsa("server"), avatar=risorsa("globale"), default_avatar=risorsa("predefinito"))
+    assert avatar_in_grande(utente) == "https://cdn.discordapp.com/server?size=1024"
+    assert avatar_in_grande(utente, globale=True) == "https://cdn.discordapp.com/globale?size=1024"
+    senza = SimpleNamespace(display_avatar=risorsa("server"), avatar=None, default_avatar=risorsa("predefinito"))
+    assert avatar_in_grande(senza, globale=True) == "https://cdn.discordapp.com/predefinito?size=1024"
+
+
+@pytest.mark.asyncio
+async def test_utl_196_il_comando_risponde_in_privato_con_il_nome_pulito():
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+    from cogs.utility.strumenti_rapidi import StrumentiRapidiCog
+    from tests.support.discord_fakes import fake_interaction, fake_member
+
+    cog = StrumentiRapidiCog(MagicMock())
+    img = SimpleNamespace(with_size=lambda n: SimpleNamespace(url="https://cdn.discordapp.com/a.png?size=1024"))
+    persona = fake_member(7)
+    persona.display_name = "*nome* @everyone"
+    persona.display_avatar = img
+    i = fake_interaction(user=fake_member(5))
+    await cog.avatar.callback(cog, i, persona, False)
+    kw = i.response.send_message.await_args.kwargs
+    assert kw["ephemeral"] is True and kw["embed"].image.url.endswith("size=1024") and kw["allowed_mentions"].everyone is False

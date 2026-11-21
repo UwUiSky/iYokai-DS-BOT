@@ -8,12 +8,14 @@ server (10 righe), lo storico di un membro e da chi è stato invitato. Ogni memb
 suo link personale «finto vanity» sul sito (core/invite_service.py). L'attribuzione è "giusta o
 sconosciuta", ma con ingressi simultanei può mancare: lo diciamo sempre (LC-6).
 Comandi: `/level inviti utente|classifica|storico|link`; per lo staff `/admin-inviti impostazioni|bonus|escludi`.
-Funzioni coperte: SPEC §23 (NF-27, link personali r10)
+Funzioni coperte: SPEC §23 (NF-27, link personali r10); catalogo #128 UTL-163, 164, 165, 168, 177 (r2utl)
 """
 
 from __future__ import annotations
 
 import logging
+
+from datetime import datetime, timedelta, timezone
 
 import discord
 from discord import app_commands
@@ -190,8 +192,18 @@ class InvitesCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo("level", nome="classifica", descrizione="I 10 membri che hanno invitato più persone.", sottogruppo=_SG_INVITI)
-    async def classifica(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(giorni="Conta solo gli ingressi degli ultimi giorni (vuoto: da sempre)")
+    async def classifica(self, interaction: discord.Interaction, giorni: app_commands.Range[int, 1, 365] | None = None) -> None:
         if not await self._pronto(interaction):
+            return
+        if giorni is not None:  # UTL-164: classifica per periodo (esclusi sempre nascosti)
+            dal = datetime.now(timezone.utc) - timedelta(days=giorni)
+            invitanti, _codici = await invite_stats_repo.top_nel_periodo(interaction.guild.id, dal, 25)
+            tenuti = await _senza_esclusi(interaction.guild, invitanti, 10)
+            corpo = "\n".join(f"{i}. <@{uid}>: {n} ingressi" for i, (uid, n) in enumerate(tenuti, 1)) or "Nessun invito in questo periodo."
+            await interaction.response.send_message(
+                f"**Classifica inviti, ultimi {giorni} giorni**\n{corpo}\n{AVVISO_ATTRIBUZIONE}",
+                ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE)
             return
         righe = await _senza_esclusi(interaction.guild, await invite_stats_repo.top(interaction.guild.id, 100, tetto=100), 10)
         if not righe:

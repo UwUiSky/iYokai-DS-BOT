@@ -56,6 +56,7 @@ async def test_e_o_non():
 
 
 # ------------------------------------------------------------------ variabili
+# UTL-028: variabili e liste dentro il tag
 async def test_variabili_e_contesto():
     assert await run("{var:x=5}{x}") == "5"
     assert await run("{set:x=ciao}{x}!") == "ciao!"
@@ -98,6 +99,7 @@ async def test_caso_intervallo_invalido():
     assert r.errore
 
 
+# UTL-029: calcoli e numeri casuali
 async def test_calcola():
     assert await run("{calcola:2+3*4}") == "14"
     assert await run("{calc:sqrt(16)}") == "4"
@@ -107,6 +109,7 @@ async def test_calcola():
     assert r.errore
 
 
+# UTL-030: trasformazioni del testo
 async def test_maiuscole_sostituisci_lunghezza():
     assert await run("{maiuscolo:ciao}") == "CIAO"
     assert await run("{lower:CIAO}") == "ciao"
@@ -125,6 +128,7 @@ async def test_regex_re2():
     assert r.errore and r.errore.chiave == "tag_script_regex"
 
 
+# UTL-031: date e differenze di tempo nel testo
 async def test_data_e_tra():
     assert await run("{data:%d/%m/%Y %H:%M}") == "09/11/2026 15:30"
     assert await run("{data:%A %B}") == "lunedì novembre"

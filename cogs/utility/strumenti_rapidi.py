@@ -3,7 +3,7 @@ cogs/utility/strumenti_rapidi.py
 ================================
 `/utility strumenti caratteri`, `/utility strumenti cronometro` (bottoni Giro e Ferma, nessun dato salvato:
 l'inizio sta nel custom_id) e `/utility novita` (file data/novita/<lingua>.json).
-Funzioni coperte: catalogo #128 UTL-203, 212, 221 (D69, B1)
+Funzioni coperte: catalogo #128 UTL-203, 212, 221 (D69, B1); UTL-196 (r2utl: avatar in grande)
 """
 
 from __future__ import annotations
@@ -94,6 +94,17 @@ class StrumentiRapidiCog(CogConGruppi, commands.Cog):
         if tagliati:
             embed.set_footer(text=t("caratteri_tagliati", lingua, n=tagliati)[:2048])
         await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @comando_di_gruppo("utility", sottogruppo=SOTTOGRUPPI["utility strumenti"], nome="avatar", descrizione="L'avatar di un membro in grande, del server o globale.")
+    @app_commands.describe(utente="Di chi (vuoto: il tuo)", globale="Mostra l'avatar globale invece di quello del server")
+    async def avatar(self, interaction: discord.Interaction, utente: discord.User | None = None, globale: bool = False) -> None:
+        lingua = await lingua_interazione(interaction)
+        scelto = utente or interaction.user
+        immagine = logica.avatar_in_grande(scelto, globale)
+        embed = discord.Embed(title=t("avatar_titolo", lingua, nome=discord.utils.escape_markdown(scelto.display_name)[:200])[:256],
+                              color=discord.Color.blurple())
+        embed.set_image(url=immagine)
+        await interaction.response.send_message(embed=embed, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
 
     @comando_di_gruppo("utility", sottogruppo=SOTTOGRUPPI["utility strumenti"], nome="cronometro", descrizione="Un cronometro con i bottoni Giro e Ferma.")
     async def cronometro(self, interaction: discord.Interaction) -> None:

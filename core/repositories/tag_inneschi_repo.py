@@ -3,7 +3,7 @@ core/repositories/tag_inneschi_repo.py
 ======================================
 Inneschi dei tag: al massimo 25 per server (conteggio e scrittura sotto lo stesso blocco), uno solo per tag, tipo e valore.
 Tabella: core/migrations/0563_tag_inneschi.sql.
-Funzioni coperte: catalogo #128 UTL-047..050, 052, 054 (D69, B27)
+Funzioni coperte: catalogo #128 UTL-047, 048, 049, 050, 052, 054; UTL-070 (r2utl: canale scorciatoia) (D69, B27)
 """
 
 from __future__ import annotations

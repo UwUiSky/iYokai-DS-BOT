@@ -45,6 +45,7 @@ async def test_rientro_con_altro_invito_non_conta_due_volte(repo):
     assert (s.totale, s.presenti) == (1, 1)
 
 
+# UTL-164: classifica degli inviti (10 righe; per periodo in test_inviti_bonus_esclusi.py)
 @pytest.mark.asyncio
 async def test_classifica_di_dieci_righe_ordinata(repo):
     for inv in range(100, 115):
@@ -190,6 +191,7 @@ async def test_comando_link_da_l_indirizzo_o_il_motivo():
         assert "Crea invito" in inter.response.send_message.call_args.args[0]
 
 
+# UTL-163: quante persone ha invitato un membro (/level inviti utente); UTL-165: chi ha invitato un certo membro (storico)
 @pytest.mark.asyncio
 async def test_comando_storico_e_utente_dicono_da_chi_e_stato_invitato():
     cog = _cog()
@@ -234,6 +236,7 @@ async def test_comando_opzioni_passa_dal_punto_unico():
         assert inter.response.send_message.call_args.args[0] == "No."
 
 
+# UTL-177: canale di log degli inviti (senza menzioni)
 @pytest.mark.asyncio
 async def test_registro_scrive_nel_canale_scelto_senza_menzioni():
     cog = _cog()

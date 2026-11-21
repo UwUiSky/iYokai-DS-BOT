@@ -232,6 +232,7 @@ async def test_comando_imposta_controlla_i_permessi_nel_canale(monkeypatch):
     assert "incorporare" in interazione.response.send_message.await_args.args[0].lower()
 
 
+# UTL-147: emoji diversa dalla stella (validata)
 @pytest.mark.asyncio
 async def test_comando_imposta_rifiuta_emoji_non_valida(monkeypatch):
     s = _Scena(monkeypatch)
@@ -245,6 +246,7 @@ async def test_comando_imposta_rifiuta_emoji_non_valida(monkeypatch):
     s.repo.set_config.assert_not_awaited()
 
 
+# UTL-153: spegnere la bacheca (disattiva); lo stato è in test_utl_153
 @pytest.mark.asyncio
 async def test_i_comandi_stanno_in_moduli_starboard():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
@@ -361,6 +363,7 @@ async def test_il_voto_dell_autore_conta_solo_se_acceso(monkeypatch):
     s.bacheca.send.assert_awaited_once()
 
 
+# UTL-143: canale della bacheca con soglia di stelle (imposta, soglia); UTL-144: stella al proprio messaggio (voto_autore); UTL-145: canali NSFW esclusi di default
 @pytest.mark.asyncio
 async def test_comando_imposta_passa_nsfw_e_voto_autore(monkeypatch):
     s = _Scena(monkeypatch)
@@ -415,3 +418,42 @@ async def test_bacheca_allegati_copia_rifatta_e_scheda_mai_il_link(monkeypatch, 
     assert len(kw["files"]) == 1 and kw["embed"].image.url == "attachment://allegato0.png"
     testo = " ".join(c.value for c in kw["embed"].fields) + (kw["embed"].description or "")
     assert "doc.pdf" in testo and "cdn.discordapp.com" not in testo
+
+
+@pytest.mark.asyncio
+async def test_utl_146_canale_escluso_non_finisce_in_bacheca(monkeypatch):
+    """UTL-146: un canale nell'elenco degli esclusi non arriva in bacheca, anche con molte stelle."""
+    s = _Scena(monkeypatch, stelle=5, soglia=3)
+    s.config.canali_esclusi = (10,)
+    await s.cog.aggiorna(s.guild.id, 10, 100)
+    s.bacheca.send.assert_not_awaited()
+    s.config.canali_esclusi = (11,)
+    await s.cog.aggiorna(s.guild.id, 10, 100)
+    s.bacheca.send.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_utl_146_repo_esclusi_con_tetto_e_canale_cancellato(repo):
+    """UTL-146: al massimo 25; se il canale viene cancellato esce dall'elenco; senza bacheca non si crea nulla."""
+    from core.repositories.starboard_repo import MAX_ESCLUSI
+    assert await repo.cambia_escluso(1, 7, True) is None
+    await repo.set_config(1, 50, 3, "⭐")
+    assert await repo.cambia_escluso(1, 7, True) == [7] and await repo.cambia_escluso(1, 7, True) == [7]
+    for i in range(100, 100 + MAX_ESCLUSI):
+        await repo.cambia_escluso(1, i, True)
+    assert len((await repo.get_config(1)).canali_esclusi) == MAX_ESCLUSI
+    await repo.togli_canale(1, 7)
+    assert 7 not in (await repo.get_config(1)).canali_esclusi
+    assert await repo.cambia_escluso(1, 100, False) is not None and 100 not in (await repo.get_config(1)).canali_esclusi
+
+
+@pytest.mark.asyncio
+async def test_utl_153_stato_mostra_le_impostazioni_senza_pingare(monkeypatch):
+    """UTL-153: riepilogo delle impostazioni (la rimozione è `disattiva`)."""
+    s = _Scena(monkeypatch)
+    s.config.canali_esclusi = (11,)
+    i = fake_interaction(guild=s.guild)
+    await s.cog.stato.callback(s.cog, i)
+    corpo = i.response.send_message.await_args.args[0]
+    assert "<#50>" in corpo and "<#11>" in corpo
+    assert i.response.send_message.await_args.kwargs["allowed_mentions"].users is False

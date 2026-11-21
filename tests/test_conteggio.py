@@ -63,6 +63,7 @@ async def test_piu_canali_con_tetto_a_dieci(repo):
     assert await repo.togli_canale(G, 100) is True and await repo.togli_canale(G, 100) is False
 
 
+# UTL-185: canale dove si conta un numero alla volta (sbagliati rifiutati)
 @pytest.mark.asyncio
 async def test_register_giusto_sbagliato_e_punteggi(repo):
     await repo.aggiungi_canale(G, 5)

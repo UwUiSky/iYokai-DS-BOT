@@ -6,7 +6,7 @@ un testo o un embed, un ruolo da dare o togliere, una pausa. Si usano con
 `/tag usa` e, se l'admin sceglie un prefisso, anche scrivendo
 `<prefisso>nome` (usa guild_config.prefix, M 10.15). Si gestiscono con
 `/admin-tag tag crea|modifica|elimina|elenco|prefisso`.
-Funzioni coperte: SPEC §22 (NF-09)
+Funzioni coperte: SPEC §22 (NF-09), catalogo #128 UTL-003, 012, 038 (r2utl)
 """
 
 from __future__ import annotations
@@ -32,6 +32,7 @@ from core.custom_command_logic import (
     MAX_TESTO,
     AZIONE_CANCELLA_RISPOSTA,
     azione_ruolo,
+    vietato_a,
     costruisci_risposta,
     dividi_testo,
     e_nuovo_innesco,
@@ -52,7 +53,9 @@ from core.tag_eliminazione import pulisci_tag_eliminato
 from core.nome_logic import normalizza_nome
 from core.lista_limiti_logic import righe_entro_limite
 from core.premium import PremiumModule, registry
+from core.embed_builder_logic import costruisci as costruisci_embed, da_json
 from core.repositories.custom_command_repo import custom_command_repo
+from core.repositories.saved_embed_repo import saved_embed_repo
 from core.scheduler import in_seconds, scheduler
 from core.role_safety import check_role_assignable, motivo_ruolo_automatico_non_assegnabile
 
@@ -132,6 +135,9 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             return "tag_solo_nsfw"
         if tag.bersaglio and bersaglio is None:
             return "tag_serve_bersaglio"
+        vietato = vietato_a(tag, membro, canale)  # UTL-014
+        if vietato is not None:
+            return vietato
         if tag.cancella_messaggi and not (hasattr(canale, "permissions_for") and canale.permissions_for(membro).manage_messages):
             return "tag_serve_gestire_messaggi"  # chi pulisce il canale deve poterlo fare da solo
         return None
@@ -162,14 +168,22 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         return canale, False
 
     @staticmethod
-    async def _manda(invia, tag, testo: str):
+    async def _manda(invia, tag, testo: str, autore: discord.abc.User | None = None):
         """Manda il testo (diviso in due se supera 2.000 caratteri; embed fino a 4.096). Mette le reazioni e prenota la
-        cancellazione se il tag la chiede. Ritorna l'ultimo messaggio."""
+        cancellazione se il tag la chiede. Con `autore` e invio «altro» la risposta pinga chi ha usato il tag (UTL-038).
+        Se il tag ha un embed salvato (UTL-018) lo manda con il testo. Ritorna l'ultimo messaggio."""
         menzioni = menzioni_ammesse(tag.ping_ruoli)
-        if tag.use_embed:
-            inviati = [await invia(embed=discord.Embed(description=testo[:4096]), allowed_mentions=menzioni)]
+        ping = f"{autore.mention} " if autore is not None and tag.invio == "altro" else ""
+        salvato = await saved_embed_repo.get(tag.guild_id, tag.embed_nome) if tag.embed_nome else None
+        if salvato is not None:
+            inviati = [await invia((ping + testo)[:2000], embed=costruisci_embed(da_json(salvato.data)), allowed_mentions=menzioni)]
+        elif tag.use_embed:
+            inviati = [await invia(ping.strip() or None, embed=discord.Embed(description=testo[:4096]), allowed_mentions=menzioni)]
         else:
-            inviati = [await invia(pezzo, allowed_mentions=menzioni) for pezzo in dividi_testo(testo)]
+            pezzi = dividi_testo(testo)
+            if ping and pezzi:
+                pezzi[0] = (ping + pezzi[0])[:2000]
+            inviati = [await invia(pezzo, allowed_mentions=menzioni) for pezzo in pezzi]
         for messaggio in inviati:
             if messaggio is None:
                 continue
@@ -225,8 +239,11 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         return None
 
     @staticmethod
-    def _pausa(tag, guild_id: int, user_id: int, minimo: int = 0) -> float:
-        chiave = (guild_id, tag.name, user_id)
+    def _pausa(tag, guild_id: int, user_id: int, minimo: int = 0, canale_id: int = 0) -> float:
+        """Secondi che mancano al prossimo uso. La pausa vale per utente, per canale o per tutto il server (UTL-012):
+        la chiave usa l'utente, il canale (in negativo) o zero."""
+        soggetto = {"canale": -canale_id, "server": 0}.get(tag.pausa_ambito, user_id)
+        chiave = (guild_id, tag.name, soggetto)
         ora = datetime.now(timezone.utc)
         attesa = max(tag.cooldown_seconds, minimo)
         residuo = pausa_residua(_ultimo_uso.get(chiave), ora, attesa)
@@ -257,13 +274,13 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         if trovato is None:
             return
         nome, argomenti = trovato
-        tag = await custom_command_repo.get_tag(message.guild.id, nome)
+        tag = await custom_command_repo.get_tag_o_alias(message.guild.id, nome)
         if tag is None or (dalla_modifica and not tag.anche_modificati):
             return
         if self._rifiuto(tag, message.author, message.channel, message.mentions[0] if message.mentions else None) is not None \
                 or await self._rifiuto_gruppo(tag, message.author, message.channel) is not None:
             return  # col prefisso si tace: niente messaggi di servizio nel canale
-        if self._pausa(tag, message.guild.id, message.author.id) > 0:
+        if self._pausa(tag, message.guild.id, message.author.id, canale_id=message.channel.id) > 0:
             return
         bersaglio = message.mentions[0] if message.mentions else None
         testo, nota = await self._prepara(tag, message.author, message.channel, argomenti[:MAX_ARGOMENTI], bersaglio)
@@ -271,7 +288,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         if tag.cancella_messaggi:
             await self._pulisci_canale(tag, message.channel, message.id)
         try:
-            await self._manda(dest.send, tag, testo)
+            await self._manda(dest.send, tag, testo, message.author)
         except discord.HTTPException:
             logger.warning("Tag %s: invio fallito nel canale %s", nome, message.channel.id)
             return
@@ -291,7 +308,8 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             logger.warning("Blacklist non letta per l'innesco (utente %s).", user_id, exc_info=True)
             return False
 
-    async def esegui_innesco(self, guild: discord.Guild, nome: str, canale, *, membro: discord.Member | None = None) -> str | None:
+    async def esegui_innesco(self, guild: discord.Guild, nome: str, canale, *, membro: discord.Member | None = None,
+                             argomenti: str = "") -> str | None:
         """Fa partire il tag `nome` per un innesco (B27). `membro` è chi l'ha fatto scattare (reazione, ruolo, bottone); a tempo
         è None e parla il bot, senza toccare ruoli. Ritorna la chiave del motivo se il tag non può partire, altrimenti None."""
         tag = await custom_command_repo.get_tag(guild.id, nome)
@@ -305,14 +323,14 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             rifiuto = self._rifiuto(tag, membro, canale, None) or await self._rifiuto_gruppo(tag, membro, canale)
             if rifiuto is not None:
                 return rifiuto
-            if self._pausa(tag, guild.id, membro.id, minimo=PAUSA_MINIMA_INNESCO) > 0:
+            if self._pausa(tag, guild.id, membro.id, minimo=PAUSA_MINIMA_INNESCO, canale_id=getattr(canale, "id", 0)) > 0:
                 return "inn_pausa"
         if not canale.permissions_for(guild.me).send_messages:
             return "inn_canale_senza_permesso"
-        testo, _ = await self._prepara(tag, membro or guild.me, canale, "", None, ruolo=membro is not None)
+        testo, _ = await self._prepara(tag, membro or guild.me, canale, argomenti, None, ruolo=membro is not None)
         dest = self._destinazione(tag, membro, canale)[0] if membro is not None else canale
         try:
-            await self._manda(dest.send, tag, testo)
+            await self._manda(dest.send, tag, testo, membro)
         except discord.HTTPException:
             logger.warning("Innesco del tag %s: invio fallito nel canale %s", nome, getattr(canale, "id", None))
             return "tag_invio_fallito"
@@ -359,13 +377,13 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             )
             return
         normalizzato = normalizza_nome(nome)
-        tag = await custom_command_repo.get_tag(guild.id, normalizzato) if normalizzato else None
+        tag = await custom_command_repo.get_tag_o_alias(guild.id, normalizzato) if normalizzato else None
         if tag is None:
             await interaction.response.send_message(
                 await testo_per(interaction, "customcomman_questo_server_non_ha_un"), ephemeral=True
             )
             return
-        residuo = self._pausa(tag, guild.id, interaction.user.id)
+        residuo = self._pausa(tag, guild.id, interaction.user.id, canale_id=getattr(interaction.channel, "id", 0))
         if residuo > 0:
             await interaction.response.send_message(
                 await testo_per(interaction, "customcomman_aspetta_ancora_secondi_prima_di", v1=int(residuo) + 1), ephemeral=True
@@ -384,7 +402,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             await self._pulisci_canale(tag, interaction.channel, interaction.id)
         testo, nota = await self._prepara(tag, interaction.user, interaction.channel, argomenti, bersaglio)
         try:
-            await self._manda(dest.send if fuori else interaction.followup.send, tag, testo)
+            await self._manda(dest.send if fuori else interaction.followup.send, tag, testo, interaction.user)
         except discord.HTTPException:
             await interaction.followup.send(await testo_per(interaction, "tag_invio_fallito"), ephemeral=True)
             return
@@ -482,6 +500,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         ruolo="Nuovo ruolo (serve anche l'azione)",
         azione="Cosa fare col ruolo (\"nessuna\" toglie il ruolo dal comando)",
         pausa_secondi="Nuova pausa tra un uso e l'altro",
+        in_coda="Testo da aggiungere in fondo alla risposta, senza riscriverla",
     )
     @app_commands.choices(azione=_SCELTE_AZIONE)
     @app_commands.autocomplete(nome=_completa_admin)
@@ -494,10 +513,14 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         ruolo: discord.Role | None = None,
         azione: str | None = None,
         pausa_secondi: app_commands.Range[int, 0, MAX_PAUSA] | None = None,
+        in_coda: app_commands.Range[str, 1, MAX_TESTO] | None = None,
     ) -> None:
         if not await self._pronto(interaction):
             return
         normalizzato = normalizza_nome(nome)
+        if in_coda is not None and testo is not None:
+            await interaction.response.send_message(await testo_per(interaction, "tag_coda_o_testo"), ephemeral=True)
+            return
         campi: dict = {}
         if testo is not None:
             campi["response"] = testo
@@ -514,10 +537,16 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         elif ruolo is not None:
             await interaction.response.send_message(await testo_per(interaction, "customcomman_se_scegli_un_ruolo_scegli"), ephemeral=True)
             return
-        if not campi or normalizzato is None:
+        if (not campi and in_coda is None) or normalizzato is None:
             await interaction.response.send_message(await testo_per(interaction, "customcomman_non_hai_indicato_nulla_da"), ephemeral=True)
             return
-        fatto = await custom_command_repo.update_tag(interaction.guild.id, normalizzato, **campi)
+        fatto = await custom_command_repo.update_tag(interaction.guild.id, normalizzato, **campi) if campi else True
+        if fatto and in_coda is not None:  # UTL-003: in fondo, in un colpo solo e dentro il tetto
+            fatto = await custom_command_repo.aggiungi_in_coda(
+                interaction.guild.id, normalizzato, in_coda, utente_puo_pingare_ruoli(interaction.user))
+            if not fatto:
+                await interaction.response.send_message(await testo_per(interaction, "tag_coda_non_riuscita", massimo=MAX_TESTO), ephemeral=True)
+                return
         await interaction.response.send_message(
             await testo_per(interaction, "customcomman_comando_aggiornato") if fatto else await testo_per(interaction, "customcomman_non_esiste_un_comando_con"), ephemeral=True
         )

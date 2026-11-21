@@ -3,7 +3,7 @@ core/repositories/custom_command_repo.py
 ========================================
 Comandi personalizzati del server (NF-09) e prefisso per usarli
 (guild_config.prefix, M 10.15). Tabella: core/migrations/0082_custom_commands.sql.
-Funzioni coperte: SPEC §22 (NF-09)
+Funzioni coperte: SPEC §22 (NF-09), catalogo #128 UTL-003, 009, 012, 014, 018 (r2utl)
 """
 
 from __future__ import annotations
@@ -14,7 +14,11 @@ import asyncpg
 
 from core.repositories.tetto_server import tetto_per_server
 
-from core.custom_command_logic import MAX_TAG
+from core.custom_command_logic import MAX_TAG, MAX_TESTO
+
+MAX_ALIAS = 3
+MAX_VIETATI = 10
+DIVIETI = {"ruolo": "ruoli_vietati", "canale": "canali_vietati", "utente": "utenti_vietati"}
 
 
 @dataclass(frozen=True)
@@ -40,15 +44,22 @@ class CustomCommand:
     anche_modificati: bool = False
     gruppo: str | None = None
     created_by: int | None = None
+    pausa_ambito: str = "utente"
+    ruoli_vietati: tuple = ()
+    canali_vietati: tuple = ()
+    utenti_vietati: tuple = ()
+    embed_nome: str | None = None
 
 
 _COLONNE = (
     "guild_id, name, response, use_embed, role_id, role_action, cooldown_seconds, ping_ruoli, uses, permesso, bersaglio, "
-    "cancella_innesco, invio, canale_id, reazioni, si_cancella_dopo, cancella_messaggi, solo_nsfw, anche_modificati, gruppo, created_by"
+    "cancella_innesco, invio, canale_id, reazioni, si_cancella_dopo, cancella_messaggi, solo_nsfw, anche_modificati, gruppo, created_by, "
+    "pausa_ambito, ruoli_vietati, canali_vietati, utenti_vietati, embed_nome"
 )
 _MODIFICABILI = {
     "response", "use_embed", "role_id", "role_action", "cooldown_seconds", "ping_ruoli", "permesso", "bersaglio", "cancella_innesco",
     "invio", "canale_id", "reazioni", "si_cancella_dopo", "cancella_messaggi", "solo_nsfw", "anche_modificati", "gruppo", "created_by",
+    "pausa_ambito", "embed_nome",
 }
 
 
@@ -99,6 +110,57 @@ class CustomCommandRepository:
             f"SELECT {_COLONNE} FROM custom_commands WHERE guild_id = $1 AND name = $2", guild_id, name
         )
         return None if r is None else CustomCommand(**dict(r))
+
+    async def get_tag_o_alias(self, guild_id: int, nome: str) -> CustomCommand | None:
+        """Il tag chiamato `nome` oppure quello che ha `nome` come nome alternativo (UTL-009)."""
+        r = await self._pool.fetchrow(
+            f"SELECT {_COLONNE} FROM custom_commands WHERE guild_id = $1 AND name = COALESCE("
+            "(SELECT name FROM custom_commands WHERE guild_id = $1 AND name = $2), "
+            "(SELECT name FROM tag_alias WHERE guild_id = $1 AND alias = $2))", guild_id, nome)
+        return None if r is None else CustomCommand(**dict(r))
+
+    async def alias_di(self, guild_id: int, name: str) -> list[str]:
+        righe = await self._pool.fetch("SELECT alias FROM tag_alias WHERE guild_id = $1 AND name = $2 ORDER BY alias", guild_id, name)
+        return [r["alias"] for r in righe]
+
+    async def aggiungi_alias(self, guild_id: int, name: str, alias: str) -> str:
+        """"ok", "tag_manca", "occupato" (nome già di un tag o di un alias) o "pieno" (già MAX_ALIAS)."""
+        async with tetto_per_server(self._pool, "tag_alias", guild_id) as conn:
+            if not await conn.fetchval("SELECT 1 FROM custom_commands WHERE guild_id = $1 AND name = $2", guild_id, name):
+                return "tag_manca"
+            if await conn.fetchval(
+                "SELECT 1 FROM custom_commands WHERE guild_id = $1 AND name = $2 "
+                "UNION ALL SELECT 1 FROM tag_alias WHERE guild_id = $1 AND alias = $2", guild_id, alias):
+                return "occupato"
+            if await conn.fetchval("SELECT count(*) FROM tag_alias WHERE guild_id = $1 AND name = $2", guild_id, name) >= MAX_ALIAS:
+                return "pieno"
+            await conn.execute("INSERT INTO tag_alias (guild_id, alias, name) VALUES ($1, $2, $3)", guild_id, alias, name)
+            return "ok"
+
+    async def togli_alias(self, guild_id: int, alias: str) -> bool:
+        return (await self._pool.execute("DELETE FROM tag_alias WHERE guild_id = $1 AND alias = $2", guild_id, alias)).endswith(" 1")
+
+    async def aggiungi_in_coda(self, guild_id: int, name: str, testo: str, ping_ruoli: bool) -> bool:
+        """Mette `testo` in fondo alla risposta (UTL-003). Falso se il tag non c'è o il totale supera MAX_TESTO.
+        Il ping dei ruoli resta acceso solo se lo era già e chi aggiunge può pingare (mai un permesso in più)."""
+        esito = await self._pool.execute(
+            "UPDATE custom_commands SET response = response || $3, ping_ruoli = ping_ruoli AND $4 "
+            "WHERE guild_id = $1 AND name = $2 AND char_length(response) + char_length($3) <= $5",
+            guild_id, name, testo, ping_ruoli, MAX_TESTO)
+        return esito.endswith(" 1")
+
+    async def cambia_divieto(self, guild_id: int, name: str, tipo: str, valore: int, aggiungi: bool) -> list[int] | None:
+        """Aggiunge o toglie un ruolo, canale o utente dall'elenco dei vietati del tag (al massimo MAX_VIETATI per elenco).
+        Ritorna l'elenco nuovo, None se il tag non c'è. `tipo` è una chiave di DIVIETI (la colonna viene da un elenco fisso)."""
+        colonna = DIVIETI[tipo]
+        if aggiungi:
+            sql = (f"UPDATE custom_commands SET {colonna} = CASE WHEN $3 = ANY({colonna}) OR cardinality({colonna}) >= $4 "
+                   f"THEN {colonna} ELSE array_append({colonna}, $3) END WHERE guild_id = $1 AND name = $2 RETURNING {colonna}")
+        else:
+            sql = (f"UPDATE custom_commands SET {colonna} = array_remove({colonna}, $3) "
+                   f"WHERE guild_id = $1 AND name = $2 AND $4::int > 0 RETURNING {colonna}")
+        riga = await self._pool.fetchrow(sql, guild_id, name, valore, MAX_VIETATI)
+        return None if riga is None else list(riga[colonna])
 
     async def list_tags(self, guild_id: int) -> list[CustomCommand]:
         righe = await self._pool.fetch(

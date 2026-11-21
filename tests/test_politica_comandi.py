@@ -107,6 +107,7 @@ def _interazione(comando="immagini meme", *, permessi=None, canale_id=10, user_i
     return i
 
 
+# UTL-225: risposta dei comandi fuori dal canale scelto: effimera, niente deviazione
 async def test_il_controllo_dell_albero_ferma_il_comando_spento_e_risponde_effimero(db_pronto, monkeypatch):
     monkeypatch.setattr("core.blacklist_tree.blacklist_repo.is_user_blacklisted", AsyncMock(return_value=False), raising=False)
     await pol.modifica_elenco(700, pol.CHIAVE_COMANDI_OFF, "immagini meme", aggiungi=True, changed_by=1)
@@ -176,6 +177,7 @@ async def cog(db_pronto):
     return PoliticaCog(bot)
 
 
+# UTL-224: spegnere singoli comandi (/admin-bot comando)
 async def test_comando_spegne_riaccende_e_rifiuta_i_nomi_sbagliati(cog, db_pronto):
     i = _interazione()
     await cog.comando.callback(cog, i, "/immagini meme", False)
@@ -196,6 +198,7 @@ async def test_comando_spegne_riaccende_e_rifiuta_i_nomi_sbagliati(cog, db_pront
     assert "non si spengono" in i.response.send_message.call_args.args[0]
 
 
+# UTL-223: canali dove il bot non risponde ai comandi (/admin-bot canali, ignora)
 async def test_canali_ignora_ed_elenco(cog, db_pronto):
     canale = fake_text_channel(55)
     i = _interazione()
@@ -243,6 +246,7 @@ async def test_modifica_elenco_insieme_non_perde_voci(db_pronto):
 # ----------------------------------------------------------------------
 # CFG-012: ruoli richiesti per un comando o un gruppo
 # ----------------------------------------------------------------------
+# UTL-227: ruolo richiesto per usare i comandi (delega, /admin-bot ruolo-richiesto)
 def test_cfg012_serve_uno_dei_ruoli_richiesti_per_il_comando_e_il_suo_gruppo():
     p = pol.Politica(ruoli_richiesti={"immagini": frozenset({5, 6}), "fun dado": frozenset({7})})
     assert not p.vuota

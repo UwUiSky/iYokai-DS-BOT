@@ -5,7 +5,7 @@ Compleanni (NF-26, SPEC §23.4): ogni utente registra giorno e mese (niente anno
 cancellarli; il giorno giusto il bot fa gli auguri in un canale e può dare un ruolo per 24 ore.
 Comandi: `/level compleanno imposta|rimuovi` (utente), `/admin-moduli compleanni canale|ruolo` (admin).
 Il giro è in core/birthday_worker.py ed è ospitato da questo cog.
-Funzioni coperte: SPEC §23 (NF-26)
+Funzioni coperte: SPEC §23 (NF-26); catalogo #128 UTL-156, 157, 161, 162 (r2utl)
 """
 
 from __future__ import annotations
@@ -224,6 +224,17 @@ class BirthdaysCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "birthdays_auguri_in_un_solo_messaggio", mention=canale.mention),
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
+
+    @comando_di_gruppo("admin-moduli", nome="stato", descrizione="Come sono impostati gli auguri di compleanno.", sottogruppo=_SG_COMPLEANNI)
+    async def stato(self, interaction: discord.Interaction) -> None:
+        if not await self._pronto(interaction):
+            return
+        c = await birthday_repo.get_config(interaction.guild.id)
+        testo = await testo_per(
+            interaction, "birthdays_stato", canale=f"<#{c.channel_id}>" if c.channel_id else "-",
+            ruolo=f"<@&{c.role_id}>" if c.role_id else "-", registrati=await birthday_repo.conta(interaction.guild.id),
+            messaggio=discord.utils.escape_markdown(c.message)[:300] if c.message else "-")
+        await interaction.response.send_message(testo[:2000], ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE)
 
     @comando_di_gruppo("admin-moduli", nome="ruolo", descrizione="Un ruolo per 24 ore a chi compie gli anni (vuoto per toglierlo).", sottogruppo=_SG_COMPLEANNI)
     @app_commands.describe(ruolo="Il ruolo del compleanno")

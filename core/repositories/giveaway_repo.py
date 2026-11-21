@@ -475,6 +475,27 @@ class GiveawayRepository:
         )
         return self._row_to_giveaway(row) if row is not None else None
 
+    async def chiudi_subito(self, guild_id: int, giveaway_id: int) -> bool:
+        """UTL-114: porta la scadenza a adesso; il giro del worker estrae i vincitori. Falso se non c'è, è finito o non è partito."""
+        esito = await self._pool.execute(
+            "UPDATE giveaways SET ends_at = now() WHERE guild_id = $1 AND id = $2 AND ended = false AND started = true",
+            guild_id, giveaway_id)
+        return esito.endswith(" 1")
+
+    async def annulla_in_corso(self, guild_id: int, giveaway_id: int) -> Giveaway | None:
+        """UTL-117: conclude un giveaway in corso senza vincitori. Ritorna la riga (per aggiornare l'annuncio) o None."""
+        row = await self._pool.fetchrow(
+            "UPDATE giveaways SET ended = true WHERE guild_id = $1 AND id = $2 AND ended = false AND started = true RETURNING *",
+            guild_id, giveaway_id)
+        return self._row_to_giveaway(row) if row is not None else None
+
+    async def list_in_corso(self, guild_id: int, limite: int = 25) -> list[Giveaway]:
+        """UTL-118: i giveaway già partiti e non finiti, i più vicini alla fine per primi."""
+        rows = await self._pool.fetch(
+            "SELECT * FROM giveaways WHERE guild_id = $1 AND ended = false AND started = true ORDER BY ends_at, id LIMIT $2",
+            guild_id, min(limite, 25))
+        return [self._row_to_giveaway(r) for r in rows]
+
     async def list_modificabili(self, guild_id: int, cerca: str = "", limite: int = 25) -> list[Giveaway]:
         """Giveaway non conclusi del server (anche i programmati) per il completamento: al massimo 25."""
         rows = await self._pool.fetch(

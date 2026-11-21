@@ -45,6 +45,7 @@ def extra(clean_db):
     return InvitiExtraRepository(pool_provider=lambda: clean_db)
 
 
+# UTL-168: conteggio pulito: presenti, usciti, finti e bonus separati
 @pytest.mark.asyncio
 async def test_finti_non_contano_ma_si_vedono(stats):
     await stats.record_join(G, 1, 5, "a")
@@ -167,3 +168,19 @@ async def test_servizio_segna_il_finto(clean_db, monkeypatch):
     assert (await svc.registra_ingresso(guild, 1, ("c", 7), ora - timedelta(days=3))).finto is True
     assert (await svc.registra_ingresso(guild, 2, ("c", 7), ora - timedelta(days=300))).finto is False
     assert (await svc.registra_ingresso(guild, 2, ("c", 7), ora - timedelta(days=300))).finto is True  # rientro
+
+
+@pytest.mark.asyncio
+async def test_utl_164_classifica_per_periodo_nasconde_gli_esclusi():
+    """UTL-164: con `giorni` conta solo gli ingressi del periodo; gli esclusi dallo staff restano fuori."""
+    s = _Scena()
+    with patch.object(modulo.db, "is_module_active_for_guild", AsyncMock(return_value=True)), \
+         patch.object(modulo.invite_stats_repo, "top_nel_periodo", AsyncMock(return_value=([(1, 5), (2, 3)], []))) as top, \
+         patch.object(modulo.inviti_extra_repo, "esclusi", AsyncMock(return_value=({1}, set()))):
+        s.guild.get_member = lambda uid: None
+        i = fake_interaction(guild=s.guild)
+        await s.cog.classifica.callback(s.cog, i, 7)
+        assert top.await_args.args[1] <= datetime.now(timezone.utc) - timedelta(days=7) + timedelta(seconds=5)
+        corpo = i.response.send_message.await_args.args[0]
+        assert "<@2>" in corpo and "<@1>" not in corpo and "7 giorni" in corpo
+        assert i.response.send_message.await_args.kwargs["allowed_mentions"].users is False

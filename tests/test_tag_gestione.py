@@ -88,6 +88,7 @@ async def test_codice_scade_dopo_sette_giorni_e_importa_salta_i_doppioni(repo, c
     assert (await repo.get_tag(2, "uno")).created_by == 8
 
 
+# UTL-013: tag usabile solo da certi ruoli o canali (gruppi di tag)
 @pytest.mark.asyncio
 async def test_gruppo_regole_di_canale_e_ruolo(repo):
     await repo.imposta_gruppo(1, "staff", 50, 60)

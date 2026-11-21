@@ -120,6 +120,7 @@ def _risposta(stato="pending"):
     return FormResponse(5, 1, G, 7, ["Mario"], stato, 99, None)
 
 
+# UTL-051: moduli (finestre con domande); coperto dai moduli di NF-34
 @pytest.mark.asyncio
 async def test_invio_consegna_allo_staff_e_registra_il_bottone():
     cog = _cog()

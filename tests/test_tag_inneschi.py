@@ -16,6 +16,7 @@ def roma(*a):
     return datetime(*a, tzinfo=ROMA)
 
 
+# UTL-048: comando che parte a intervalli, con ore e giorni esclusi (test_escludi)
 def test_intervallo():
     assert L.leggi_intervallo("30m") == 1800
     assert L.leggi_intervallo("2h") == 7200
@@ -27,6 +28,7 @@ def test_intervallo():
     assert L.leggi_intervallo("") is None
 
 
+# UTL-049: comando che parte a orari fissi (cron scritto; la forma guidata è nel test seguente)
 def test_cron_valido_e_normalizzato():
     assert L.leggi_cron("0  9 * * 1") == "0 9 * * 1"
     assert L.leggi_cron("*/15 8-18 * * 1-5") == "*/15 8-18 * * 1-5"
@@ -123,3 +125,14 @@ async def test_cerca_per_tipo_e_togli(repo):
     await repo.aggiungi(G, "dado", "ruolo_tolto", "55", 7, "", 5)
     await repo.aggiungi(G, "dado", "ruolo_dato", "56", 7, "", 5)
     assert await repo.togli_per_ruolo(G, 55) == 2 and await repo.togli_per_ruolo(G, 55) == 0
+
+
+def test_utl_049_orario_guidato_diventa_cron():
+    """UTL-049: «ogni giorno 09:30» e «lun, gio 18:00» senza scrivere il cron; orari storti rifiutati."""
+    assert L.orario_guidato("ogni giorno 09:30") == "30 9 * * *"
+    assert L.orario_guidato("Lun, gio alle 18.00") == "0 18 * * 1,4"
+    assert L.orario_guidato("dom 8:05") == "5 8 * * 0"
+    for storto in ("ogni giorno 25:00", "lun 9:75", "mai 09:30", "ogni giorno", "lun 9:3"):
+        assert L.orario_guidato(storto) is None, storto
+    assert L.valida("orario", "ogni giorno 09:30") == ("30 9 * * *", None)
+    assert L.valida("orario", "ogni giorno 25:00")[1] == "inn_orario_non_valido"
