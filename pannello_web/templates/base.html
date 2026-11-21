@@ -20,6 +20,7 @@
   </nav>
 </header>
 <main>
+{% if sola_lettura %}<p class="avviso">Hai il livello «sola lettura»: puoi guardare le pagine ma non salvare modifiche.</p>{% endif %}
 {% if messaggio %}<p class="avviso {{ 'errore' if errore else 'ok' }}">{{ messaggio }}</p>{% endif %}
 {% block corpo %}{% endblock %}
 </main>

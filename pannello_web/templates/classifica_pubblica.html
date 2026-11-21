@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block titolo %}Classifica · {{ guild.name }}{% endblock %}
+{% block corpo %}
+<h1>Classifica · {{ guild.name }}</h1>
+<table>
+<tr><th>#</th><th>Chi</th><th>XP</th></tr>
+{% for v in voci %}<tr><td>{{ v.posto }}</td><td>{{ v.nome }}</td><td>{{ v.xp }}</td></tr>{% else %}<tr><td colspan="3" class="tenue">Ancora nessun dato.</td></tr>{% endfor %}
+</table>
+{% endblock %}

@@ -1839,3 +1839,16 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `RUO-069` — due menu con `/admin-menu-ruoli gruppo nome:colori`: prendi un ruolo dal primo e poi uno dal secondo: il primo si toglie nello stesso istante (nel registro del server una sola modifica). Tocca due bottoni quasi insieme su menu diversi: resta un solo ruolo.
 - [ ] `RUO-083` — `/admin-menu-ruoli ruoli-extra menu_id: ruolo: extra:`: cliccando l'opzione si ricevono tutti i ruoli, cliccando di nuovo si tolgono tutti. Il 5° ruolo in più è rifiutato (4 in più + il suo); un ruolo con permessi pericolosi è rifiutato.
 - [ ] `SIC-041` — `/admin-filtri phishing enabled:sì azione_extra:ban` e, da un account di prova senza ruoli, scrivi un link di phishing noto: messaggio cancellato, account bannato, caso nel log di moderazione con motivo «AutoMod: link di phishing…». Ripeti con un account con «Gestisci server», con il proprietario e con un ruolo sopra il bot: nessuna sanzione in più. `azione_extra:nessuna` la spegne.
+
+
+## Pannello web — giro r1web (#122, #124, #127, #130)
+
+- [ ] `CFG-002` — `/server/<id>/accesso` (da admin): scegli un ruolo «sola lettura» e uno «lettura e scrittura». Con un account che ha solo il primo ruolo: il server compare in «I tuoi server», le pagine si aprono con l'avviso «sola lettura» e ogni «Salva» è rifiutato. Con il secondo ruolo: salva, ma «Chi usa il pannello», «Statistiche pubbliche», «Classifica web» e «Chiave API» danno «Accesso negato». Togli il ruolo su Discord: entro 30 secondi la pagina non si apre più.
+- [ ] `CFG-027` — `/admin-bot politica` spegni il gruppo `admin-musica` (o chiedi un ruolo per `admin-musica`): con l'account «lettura e scrittura» il salvataggio di una impostazione di Musica dal pannello è rifiutato; chi ha «Gestisci server» con il ruolo richiesto mancante salva, con il comando spento no.
+- [ ] `CFG-003` — `/server/<id>/panoramica`: moduli accesi, punteggio di sicurezza e consigli (uguali a `/admin-sicurezza score`), azioni rapide, ultime modifiche.
+- [ ] `VOC-020` — dopo `/admin-vocali crea`: `/server/<id>/vocali` mostra le opzioni attuali; cambia nome (`Stanza {numero}`), registro, tetto e colore, poi entra nel generatore: il canale nuovo ha il nome e il pannello i nuovi testi. Un modello storto (`{utente.x}`) è rifiutato.
+- [ ] `STA-012`/`STA-028` — `/server/<id>/statistiche`: accendi la pagina e, a parte, i membri; da un browser senza accesso apri `/stats/<id>`: niente canali privati; chi ha usato `/utility privacy statistiche anonimo:sì` compare come «utente anonimo». Spegni: la stessa pagina diventa «non trovata».
+- [ ] `LIV-062` — `/server/<id>/classifica`: scegli `il-mio-server`; da un altro server lo stesso indirizzo è rifiutato; `/c/il-mio-server` mostra la classifica XP; con indirizzo `admin` o `iyokai-x` è rifiutato.
+- [ ] `STA-061` — `/server/<id>/api`: crea la chiave (si vede una volta, ricaricando non c'è più). `curl -H "Authorization: Bearer <chiave>" <sito>/api/v1/stats` dà il JSON; con una chiave sbagliata 401; creane un'altra: la prima smette; oltre 30 richieste al minuto 429.
+- [ ] `CFG-006` — `/server/<id>/avvisi`: scegli «Nel sito» per Sicurezza; da un altro admin crea una chiave API: compare un avviso (senza la chiave). Con «In DM» arriva un messaggio privato (al massimo 3 all'ora). Non c'è la scelta «email» e la pagina dice perché.
+

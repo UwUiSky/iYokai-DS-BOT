@@ -11,7 +11,7 @@
 {% if server %}
 <div class="griglia">
 {% for g in server %}
-  <a class="carta" href="/server/{{ g.id }}"><strong>{{ g.name }}</strong><br><span class="tenue">{{ g.id }}</span></a>
+  <a class="carta" href="/server/{{ g.id }}/panoramica"><strong>{{ g.name }}</strong><br><span class="tenue">{{ g.id }}</span></a>
 {% endfor %}
 </div>
 {% else %}

@@ -33,7 +33,7 @@ from core.command_access import (
     imposta_ruolo,
     leggi_ruolo,
 )
-from core import alt_detection_logic as doppi_logica
+from core import alt_detection_logic as doppi_logica, web_panel_accesso as accesso
 from core.command_search_logic import ComandoInfo, raccogli_comandi
 from core.config import config
 from core.config_history_logic import TIPI_MODIFICA
@@ -106,19 +106,54 @@ async def puo_gestire(guild: discord.Guild, user_id: int, *, chiedi_a_discord: b
     )
 
 
-async def server_gestibile(bot, guild_id: int, user_id: int) -> discord.Guild | None:
-    """Il server, solo se il bot c'è e l'utente lo può gestire adesso."""
-    guild = bot.get_guild(guild_id)
-    if guild is None or not await puo_gestire(guild, user_id):
+async def livello_accesso(guild: discord.Guild, user_id: int, *, chiedi_a_discord: bool = True) -> str | None:
+    """
+    Il livello di chi chiede il pannello di questo server, ricalcolato a ogni richiesta (CFG-002):
+    «admin» (come i comandi `admin-…`), «scrittura» o «lettura» (ruoli scelti dal server), oppure None.
+    """
+    if await puo_gestire(guild, user_id, chiedi_a_discord=chiedi_a_discord):
+        return accesso.ADMIN
+    membro = await _membro(guild, user_id, chiedi_a_discord=chiedi_a_discord)
+    if membro is None:
         return None
+    return accesso.livello_da_ruoli({r.id for r in membro.roles}, await accesso.leggi_ruoli(guild.id))
+
+
+def _e_esente_politica(guild: discord.Guild, membro, user_id: int) -> bool:
+    """Come la politica dei comandi: owner del bot, proprietario del server, «Gestisci server»."""
+    permessi = getattr(membro, "guild_permissions", None)
+    return user_id == config.OWNER_ID or user_id == guild.owner_id or bool(permessi is not None and permessi.manage_guild)
+
+
+async def server_gestibile(
+    bot, guild_id: int, user_id: int, *, richiesto: str = accesso.ADMIN, percorso: str | None = None
+) -> discord.Guild | None:
+    """
+    Il server, solo se il bot c'è e l'utente ha ADESSO il livello richiesto. Per impostazione serve essere admin;
+    il pannello chiede «lettura» per le pagine e «scrittura» per salvare. Se si passa il `percorso` della pagina,
+    anche la politica dei comandi del server deve consentire la scrittura (CFG-027).
+    """
+    guild = bot.get_guild(guild_id)
+    if guild is None:
+        return None
+    livello = await livello_accesso(guild, user_id)
+    if not accesso.basta(livello, richiesto):
+        return None
+    if richiesto != accesso.LETTURA and percorso is not None:
+        membro = await _membro(guild, user_id, chiedi_a_discord=True)
+        gruppo = accesso.percorso_comando(percorso)
+        if membro is None or await accesso.policy_blocca(
+            guild, membro, gruppo, esente=_e_esente_politica(guild, membro, user_id)
+        ):
+            return None
     return guild
 
 
-async def server_gestibili(bot, user_id: int) -> list[discord.Guild]:
-    """I server dove il bot c'è e l'utente può gestirli (solo dalla memoria del bot)."""
+async def server_gestibili(bot, user_id: int, *, minimo: str = accesso.ADMIN) -> list[discord.Guild]:
+    """I server dove il bot c'è e l'utente ha almeno il livello `minimo` (solo dalla memoria del bot)."""
     risultato = []
     for guild in bot.guilds:
-        if await puo_gestire(guild, user_id, chiedi_a_discord=False):
+        if accesso.basta(await livello_accesso(guild, user_id, chiedi_a_discord=False), minimo):
             risultato.append(guild)
     return sorted(risultato, key=lambda g: g.name.lower())
 
