@@ -35,6 +35,11 @@ from core.music_settings_logic import (
     SETTING_ANNOUNCE_CHANNEL,
     SETTING_QUEUE_MODE,
     SETTING_JUKEBOX_PRICE,
+    SETTING_DJ_MODE,
+    SETTING_DJ_ROLE,
+    SETTING_SKIP_VOTE,
+    SETTING_EMPTY_PAUSE,
+    SETTING_BOT_STATUS,
     SETTING_KNOWN_SITES_ONLY,
     SETTING_MAX_TRACK_MINUTES,
     SETTING_MAX_VOLUME,
@@ -88,6 +93,12 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         playlist_del_giorno="Tiene la playlist «Oggi» con i brani suonati nel giorno",
         coda_salvata="Salva la coda per ritrovarla dopo un riavvio (/music coda ripristina)",
         prezzo_jukebox="Monete per mettere un brano in coda, alla cassa del server (0 = spento)",
+        modalita_dj="Solo DJ, staff o chi è solo nel canale comandano coda e player (spenta di base)",
+        ruolo_dj="Ruolo dei DJ",
+        togli_ruolo_dj="Togli il ruolo DJ",
+        voto_salto="Percentuale degli ascoltatori che serve per saltare un brano (1-100, di base 50)",
+        pausa_canale_vuoto="Metti in pausa quando nel canale non resta nessuno, riprendi al rientro",
+        stato_bot="Mostra il titolo del brano come stato dei music bot",
     )
     @app_commands.rename(
         volume_massimo="volume-massimo",
@@ -104,6 +115,12 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         playlist_del_giorno="playlist-del-giorno",
         coda_salvata="coda-salvata",
         prezzo_jukebox="prezzo-jukebox",
+        modalita_dj="modalita-dj",
+        ruolo_dj="ruolo-dj",
+        togli_ruolo_dj="togli-ruolo-dj",
+        voto_salto="voto-salto",
+        pausa_canale_vuoto="pausa-canale-vuoto",
+        stato_bot="stato-bot",
     )
     @app_commands.choices(ricerca_predefinita=SCELTE_RICERCA, coda=SCELTE_CODA)
     async def impostazioni(
@@ -125,6 +142,12 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         playlist_del_giorno: bool | None = None,
         coda_salvata: bool | None = None,
         prezzo_jukebox: app_commands.Range[int, 0, PREZZO_MAX] | None = None,
+        modalita_dj: bool | None = None,
+        ruolo_dj: discord.Role | None = None,
+        togli_ruolo_dj: bool = False,
+        voto_salto: app_commands.Range[int, 1, 100] | None = None,
+        pausa_canale_vuoto: bool | None = None,
+        stato_bot: bool | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -173,13 +196,28 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
             cambi[SETTING_PERSIST_QUEUE] = coda_salvata
         if prezzo_jukebox is not None:  # MUS-065: 0 lo spegne
             cambi[SETTING_JUKEBOX_PRICE] = prezzo_jukebox
+        if ruolo_dj is not None and togli_ruolo_dj:
+            await interaction.response.send_message(
+                await testo_per(interaction, "settings_ruolo_dj_oppure_togli"), ephemeral=True
+            )
+            return
+        if modalita_dj is not None:  # MUS-051
+            cambi[SETTING_DJ_MODE] = modalita_dj
+        if ruolo_dj is not None:
+            cambi[SETTING_DJ_ROLE] = ruolo_dj.id
+        if voto_salto is not None:  # MUS-052
+            cambi[SETTING_SKIP_VOTE] = voto_salto
+        if pausa_canale_vuoto is not None:  # MUS-053
+            cambi[SETTING_EMPTY_PAUSE] = pausa_canale_vuoto
+        if stato_bot is not None:  # MUS-061
+            cambi[SETTING_BOT_STATUS] = stato_bot
         if annunci is not None:  # MUS-057
             cambi[SETTING_ANNOUNCE] = annunci
         if canale_annunci is not None:  # MUS-058
             cambi[SETTING_ANNOUNCE_CHANNEL] = canale_annunci.id
         if canale_vocale is not None:
             cambi[SETTING_ALLOWED_CHANNEL] = canale_vocale.id
-        if not cambi and not tutti_i_canali:
+        if not cambi and not tutti_i_canali and not togli_ruolo_dj:
             await interaction.response.send_message(
                 await testo_per(interaction, "settings_non_hai_cambiato_nulla_indica"),
                 ephemeral=True,
@@ -189,6 +227,8 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         await interaction.response.defer(ephemeral=True)
         for chiave, valore in cambi.items():
             await save_music_setting(db, guild.id, chiave, valore, interaction.user.id)
+        if togli_ruolo_dj:
+            await save_music_setting(db, guild.id, SETTING_DJ_ROLE, None, interaction.user.id)
         if tutti_i_canali:
             await save_music_setting(db, guild.id, SETTING_ALLOWED_CHANNEL, None, interaction.user.id)
 

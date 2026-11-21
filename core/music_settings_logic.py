@@ -6,7 +6,7 @@ MUS-044 durata massima, MUS-055 restare a coda finita, MUS-059 canale
 vocale permesso, MUS-066 riepilogo, MUS-054 attesa prima di uscire,
 MUS-062 parole vietate nei titoli, MUS-064 solo siti conosciuti, MUS-012 fonte di ricerca, MUS-037 coda equa,
 MUS-041 playlist di riserva (e MUS-040: continuare da soli dalla playlist scelta), MUS-045 playlist «Oggi»,
-MUS-042 coda salvata, MUS-065 jukebox (prezzo in monete), MUS-057 annunci «ora in riproduzione» accesi/spenti, MUS-058 canale degli annunci).
+MUS-042 coda salvata, MUS-051 DJ, MUS-052 voto per saltare, MUS-053 pausa a canale vuoto, MUS-061 stato del bot, MUS-065 jukebox (prezzo in monete), MUS-057 annunci «ora in riproduzione» accesi/spenti, MUS-058 canale degli annunci).
 MUS-063 parole vietate in tutto il bot (elenco dell'owner, `imposta_parole_globali`).
 MUS-048 qualità audio per server: non fatta, la qualità si regola sul nodo Lavalink (D85). Stanno nella colonna `settings` di
 guild_config (come le altre impostazioni dei cog: cronologia delle
@@ -55,6 +55,11 @@ SETTING_DAILY_PLAYLIST = "music_daily_playlist"  # MUS-045
 SETTING_PERSIST_QUEUE = "music_persist_queue"  # MUS-042
 SETTING_ANNOUNCE_CHANNEL = "music_announce_channel_id"  # MUS-058
 SETTING_JUKEBOX_PRICE = "music_jukebox_price"  # MUS-065
+SETTING_DJ_MODE = "music_dj_mode"  # MUS-051
+SETTING_DJ_ROLE = "music_dj_role_id"  # MUS-051
+SETTING_SKIP_VOTE = "music_skip_vote_percent"  # MUS-052
+SETTING_EMPTY_PAUSE = "music_empty_pause"  # MUS-053
+SETTING_BOT_STATUS = "music_bot_status"  # MUS-061
 QUEUE_MODES = ("normale", "equa")
 
 
@@ -75,6 +80,11 @@ class MusicSettings:
     announce: bool = False  # MUS-057: spento di base (D85), niente messaggi non chiesti
     announce_channel_id: int | None = None  # MUS-058
     jukebox_price: int = 0  # MUS-065: monete per mettere un brano in coda; 0 = spento (D97)
+    dj_mode: bool = False  # MUS-051: spenta di base
+    dj_role_id: int | None = None  # MUS-051
+    skip_vote_percent: int = 50  # MUS-052: percentuale degli ascoltatori umani
+    empty_pause: bool = True  # MUS-053: pausa se nel canale non resta nessuno
+    bot_status: bool = False  # MUS-061: titolo come stato del bot della flotta, spento di base
     default_search: str = ""  # fonte dove cercare un titolo; "" = automatica (YouTube, poi SoundCloud)
 
 
@@ -170,6 +180,10 @@ def summary_lines(settings: MusicSettings) -> list[str]:
         f"📅 Playlist «Oggi» automatica: **{'accesa' if settings.daily_playlist else 'spenta'}**",
         f"💾 Coda salvata per i riavvii: **{'accesa' if settings.persist_queue else 'spenta'}**",
         f"🪙 Jukebox: **{f'{settings.jukebox_price} monete per richiesta' if settings.jukebox_price else 'spento'}**",
+        f"🎧 Modalità DJ: **{'accesa' if settings.dj_mode else 'spenta'}** (ruolo DJ: {f'<@&{settings.dj_role_id}>' if settings.dj_role_id else 'nessuno'})",
+        f"🗳️ Voto per saltare: **{settings.skip_vote_percent}%** degli ascoltatori",
+        f"⏸️ Pausa a canale vuoto: **{'accesa' if settings.empty_pause else 'spenta'}**",
+        f"🏷️ Titolo come stato dei music bot: **{'acceso' if settings.bot_status else 'spento'}**",
         f"🌐 Link ammessi: **{'solo siti conosciuti' if settings.known_sites_only else 'tutti i siti sicuri'}**",
     ]
 
@@ -187,6 +201,13 @@ def _modo_coda_valido(valore) -> str:
 def _id_valido(valore) -> int | None:
     """Un id di canale (intero positivo) oppure None."""
     return valore if isinstance(valore, int) and not isinstance(valore, bool) and valore > 0 else None
+
+
+def _percentuale_valida(valore) -> int:
+    """Una percentuale da 1 a 100, altrimenti il 50 di base."""
+    if isinstance(valore, bool) or not isinstance(valore, int) or not 1 <= valore <= 100:
+        return 50
+    return valore
 
 
 async def load_music_settings(database, guild_id: int) -> MusicSettings:
@@ -211,6 +232,11 @@ async def load_music_settings(database, guild_id: int) -> MusicSettings:
         persist_queue=bool(await get(guild_id, SETTING_PERSIST_QUEUE, False)),
         announce_channel_id=_id_valido(await get(guild_id, SETTING_ANNOUNCE_CHANNEL, None)),
         jukebox_price=prezzo_valido(await get(guild_id, SETTING_JUKEBOX_PRICE, 0)),
+        dj_mode=bool(await get(guild_id, SETTING_DJ_MODE, False)),
+        dj_role_id=_id_valido(await get(guild_id, SETTING_DJ_ROLE, None)),
+        skip_vote_percent=_percentuale_valida(await get(guild_id, SETTING_SKIP_VOTE, 50)),
+        empty_pause=bool(await get(guild_id, SETTING_EMPTY_PAUSE, True)),
+        bot_status=bool(await get(guild_id, SETTING_BOT_STATUS, False)),
     )
 
 
