@@ -611,6 +611,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("autoresponders", "Risposte automatiche del server", colonne_attore=("created_by",), colonna_server="guild_id"),
     _t("custom_command_risposte", "Risposte con peso dei tag", colonna_server="guild_id"),
     _t("tag_gruppi", "Gruppi di tag con canale e ruolo", colonna_server="guild_id"),
+    _t("tag_alias", "Nomi alternativi dei tag (nessun dato personale)", colonna_server="guild_id"),
     _t("tag_pacchetti", "Pacchetti di tag da condividere con un codice (7 giorni)", colonne_attore=("creato_da",),
        colonna_server="guild_id", scadenza=Scadenza("scade_il", 0)),
     _t("autorisposte_globali", "Risposte automatiche dell'owner, valide in ogni server (nessun dato personale)",

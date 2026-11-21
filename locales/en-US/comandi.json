@@ -444,7 +444,9 @@
   "personale": "personal",
   "ruolo-mio": "my-role",
   "colore": "color",
-  "identita": "identity"
+  "identita": "identity",
+  "alias": "alias",
+  "divieti": "blocks"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1608,7 +1610,10 @@
   "admin-benvenuto immagini": "Own welcome images (10 at most): one is picked at random on every join.",
   "utility identita": "Your personal role and the colour of your name",
   "utility identita colore": "Pick the colour of your name from the server palette.",
-  "utility identita ruolo-mio": "Change the name and colour of your personal role (if staff granted it)."
+  "utility identita ruolo-mio": "Change the name and colour of your personal role (if staff granted it).",
+  "admin-tag tag info": "Card of a tag: author, uses, alternative names and raw text.",
+  "admin-tag tag alias": "Alternative names of a tag (up to 3).",
+  "admin-tag tag divieti": "Block a tag for a role, a channel or a user (up to 10 per list)."
  },
  "parametri": {},
  "menu": {

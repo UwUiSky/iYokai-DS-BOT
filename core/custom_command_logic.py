@@ -31,6 +31,17 @@ AZIONI_RUOLO = ("nessuna", "dai", "togli", "alterna")
 _PREFISSO_VIETATI = set("/@#<>*_`~|\\")
 
 
+def vietato_a(tag, membro, canale) -> str | None:
+    """UTL-014: la chiave del testo se il tag è vietato a questo membro, ruolo o canale (anche il canale padre di un thread)."""
+    if membro.id in (tag.utenti_vietati or ()):
+        return "tag_vietato_utente"
+    if set(tag.ruoli_vietati or ()) & {r.id for r in getattr(membro, "roles", ())}:
+        return "tag_vietato_ruolo"
+    if {getattr(canale, "id", None), getattr(canale, "parent_id", None)} & set(tag.canali_vietati or ()):
+        return "tag_vietato_canale"
+    return None
+
+
 def valida_prefisso(prefisso: str) -> str | None:
     """None se il prefisso va bene, altrimenti il motivo in italiano."""
     if not 1 <= len(prefisso) <= 3:

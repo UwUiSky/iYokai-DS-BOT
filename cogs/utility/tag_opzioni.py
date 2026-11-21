@@ -3,7 +3,7 @@ cogs/utility/tag_opzioni.py
 ===========================
 Opzioni di comportamento dei tag e risposte con peso: `/admin-tag tag opzioni` (permesso richiesto, bersaglio, cancella
 l'innesco, dove rispondere, solo NSFW) e `/admin-tag tag risposte` (fino a 5 risposte con peso, in una finestra).
-Funzioni coperte: catalogo #128 UTL-011, 015, 017, 019, 020, 021, 037 (D69, B19-B20)
+Funzioni coperte: catalogo #128 UTL-011, 015, 017, 019, 020, 021, 037 (D69, B19-B20); UTL-012, 018 (r2utl: pausa per utente, canale o server; embed salvato)
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ from core.database import db
 from core.i18n import testo_per
 from core.nome_logic import normalizza_nome
 from core.repositories.custom_command_repo import custom_command_repo
+from core.repositories.saved_embed_repo import saved_embed_repo
 from core.tag_pacchetti_logic import nome_gruppo_valido
 from core.ui_base import BaseModal
 
@@ -34,6 +35,10 @@ _SCELTE_INVIO = [
     app_commands.Choice(name="in privato a chi lo usa", value="privato"),
     app_commands.Choice(name="in un altro canale", value="altro"),
 ]
+
+
+_SCELTE_AMBITO = [app_commands.Choice(name="ogni utente", value="utente"), app_commands.Choice(name="ogni canale", value="canale"),
+                  app_commands.Choice(name="tutto il server", value="server")]
 
 
 class RisposteModal(BaseModal):
@@ -95,8 +100,10 @@ class TagOpzioniCog(CogConGruppi, commands.Cog):
         cancella_messaggi="Prima di rispondere cancella gli ultimi N messaggi (0: nessuno; non oltre 14 giorni)",
         anche_modificati="Scatta anche se il messaggio viene modificato in un comando",
         gruppo="Il gruppo del tag, con le sue regole di canale e ruolo (vuoto: nessuno)",
+        ambito_pausa="Chi aspetta tra un uso e l'altro: ogni utente, ogni canale o tutto il server",
+        embed="Un embed salvato (/admin-messaggi) da mandare con la risposta (vuoto: nessuno)",
     )
-    @app_commands.choices(permesso=_SCELTE_PERMESSO, invio=_SCELTE_INVIO)
+    @app_commands.choices(permesso=_SCELTE_PERMESSO, invio=_SCELTE_INVIO, ambito_pausa=_SCELTE_AMBITO)
     @app_commands.autocomplete(nome=_completa)
     async def opzioni(
         self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, MAX_NOME], permesso: str | None = None,
@@ -106,6 +113,8 @@ class TagOpzioniCog(CogConGruppi, commands.Cog):
         si_cancella_dopo: app_commands.Range[int, 0, 3600] | None = None,
         cancella_messaggi: app_commands.Range[int, 0, 100] | None = None, anche_modificati: bool | None = None,
         gruppo: app_commands.Range[str, 0, 32] | None = None,
+        ambito_pausa: str | None = None,
+        embed: app_commands.Range[str, 0, 32] | None = None,
     ) -> None:
         if not await self._pronto(interaction):
             return
@@ -137,6 +146,14 @@ class TagOpzioniCog(CogConGruppi, commands.Cog):
             if nome_g and await custom_command_repo.gruppo(interaction.guild.id, nome_g) is None:
                 await custom_command_repo.imposta_gruppo(interaction.guild.id, nome_g, None, None)  # nasce senza regole
             campi["gruppo"] = nome_g
+        if ambito_pausa is not None:
+            campi["pausa_ambito"] = ambito_pausa
+        if embed is not None:  # UTL-018: un embed salvato collegato al tag
+            nome_embed = embed.strip().lower()
+            if nome_embed and await saved_embed_repo.get(interaction.guild.id, nome_embed) is None:
+                await interaction.response.send_message(await testo_per(interaction, "tag_embed_non_trovato"), ephemeral=True)
+                return
+            campi["embed_nome"] = nome_embed or None
         if cancella_messaggi is not None:
             campi["cancella_messaggi"] = cancella_messaggi or None
         for chiave, valore in (("bersaglio", bersaglio), ("cancella_innesco", cancella_innesco), ("solo_nsfw", solo_nsfw),
