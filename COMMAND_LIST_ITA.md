@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 04:57 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 18:10 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 1008 comandi in 51 categorie.**
+**Totale: 1024 comandi in 51 categorie.**
 
 ## Admin: AI
 
@@ -280,7 +280,10 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 04:
 
 ## Admin: giveaway
 
+- **`/admin-giveaway annulla`** — Annulla un giveaway in corso, senza vincitori.
 - **`/admin-giveaway avvia`** — Avvia un giveaway.
+- **`/admin-giveaway chiudi`** — Chiude un giveaway prima del tempo ed estrae i vincitori.
+- **`/admin-giveaway elenco`** — I giveaway in corso nel server.
 - **`/admin-giveaway modello`** — Modelli di giveaway: salva, elenca, elimina, avvia.
 - **`/admin-giveaway modifica`** — Cambia durata, vincitori, premio o immagine di un giveaway.
 - **`/admin-giveaway opzioni`** — Aspetto, messaggi, log e ruoli esclusi dei giveaway.
@@ -366,6 +369,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 04:
 
 - **`/admin-messaggi auto`** — Automatismi: citazioni, correzione link, pubblicazione annunci, accorciatore.
 - **`/admin-messaggi embed bottoni`** — Aggiungi o togli i bottoni di un embed (link o mostra tag).
+- **`/admin-messaggi embed colore`** — Il colore predefinito dei tuoi embed (vuoto per toglierlo).
 - **`/admin-messaggi embed crea`** — Crea un embed e guarda l'anteprima.
 - **`/admin-messaggi embed elenco`** — Mostra gli embed salvati.
 - **`/admin-messaggi embed elimina`** — Elimina un embed salvato (il messaggio pubblicato resta).
@@ -401,6 +405,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 04:
 - **`/admin-moduli compleanni canale`** — Scegli il canale degli auguri (vuoto per spegnerli).
 - **`/admin-moduli compleanni membro`** — Registra il compleanno di un membro (solo giorno e mese).
 - **`/admin-moduli compleanni ruolo`** — Un ruolo per 24 ore a chi compie gli anni (vuoto per toglierlo).
+- **`/admin-moduli compleanni stato`** — Come sono impostati gli auguri di compleanno.
 - **`/admin-moduli contatori azzera`** — Smetti di aggiornare tutti i contatori (i canali restano).
 - **`/admin-moduli contatori categoria`** — Crea una categoria con i contatori più usati.
 - **`/admin-moduli contatori crea`** — Crea un canale che mostra un numero.
@@ -409,8 +414,10 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 04:
 - **`/admin-moduli contatori modifica`** — Cambia l'etichetta o l'obiettivo di un contatore.
 - **`/admin-moduli sondaggi pesi`** — Dai un peso al voto di un ruolo nei sondaggi (max 25 ruoli).
 - **`/admin-moduli starboard disattiva`** — Spegni la bacheca.
+- **`/admin-moduli starboard esclusi`** — Canali che non finiscono mai in bacheca (al massimo 25).
 - **`/admin-moduli starboard imposta`** — Scegli il canale della bacheca e la soglia di stelle.
 - **`/admin-moduli starboard soglia`** — Cambia quante stelle servono per finire in bacheca.
+- **`/admin-moduli starboard stato`** — Come è impostata la bacheca.
 - **`/admin-moduli statistiche diagnosi`** — Perché le statistiche non si contano?
 - **`/admin-moduli statistiche elenco`** — Mostra regole ed esclusioni delle statistiche.
 - **`/admin-moduli statistiche esporta`** — Esporta in un file ZIP le statistiche, i contatori e le regole del server.
@@ -493,15 +500,21 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 04:
 - **`/admin-tag risposte crea`** — Crea una risposta automatica.
 - **`/admin-tag risposte elenco`** — Mostra le risposte automatiche del server.
 - **`/admin-tag risposte elimina`** — Elimina una risposta automatica.
+- **`/admin-tag risposte escludi`** — Utenti, canali e ruoli che non fanno scattare una risposta (10 per elenco).
 - **`/admin-tag risposte globali`** — Accendi o spegni le risposte automatiche dell'owner in questo server.
+- **`/admin-tag risposte modifica`** — Cambia risposta, modo o limiti di una risposta automatica.
+- **`/admin-tag risposte mostra`** — Dettaglio di una risposta automatica, anche il testo grezzo.
 - **`/admin-tag risposte svuota`** — Elimina tutte le risposte automatiche del server.
+- **`/admin-tag tag alias`** — Nomi alternativi di un tag (al massimo 3).
 - **`/admin-tag tag crea`** — Crea un comando personalizzato.
 - **`/admin-tag tag creatori`** — Scegli il ruolo di chi può creare tag propri con /tag crea.
+- **`/admin-tag tag divieti`** — Vieta un tag a un ruolo, un canale o un utente (al massimo 10 per elenco).
 - **`/admin-tag tag elenco`** — Mostra i comandi personalizzati del server.
 - **`/admin-tag tag elimina`** — Elimina un comando personalizzato.
 - **`/admin-tag tag esporta`** — Esporta i tag del server in un codice o in un file.
 - **`/admin-tag tag gruppi`** — Regole per gruppo di tag: un solo canale e/o un ruolo richiesto.
 - **`/admin-tag tag importa`** — Importa tag da un codice o da un file JSON.
+- **`/admin-tag tag info`** — Scheda di un tag: autore, usi, nomi alternativi e testo grezzo.
 - **`/admin-tag tag modifica`** — Cambia un comando personalizzato.
 - **`/admin-tag tag opzioni`** — Come si comporta un tag: permesso, bersaglio, dove risponde.
 - **`/admin-tag tag prefisso`** — Scegli il prefisso per usare i comandi scrivendo nel canale.
@@ -821,6 +834,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 04:
 - **`/level inviti utente`** — Quante persone ha invitato un membro.
 - **`/level leaderboard`** — Mostra la classifica del server.
 - **`/level livelli-recenti`** — Gli ultimi 25 level-up del server.
+- **`/level movimenti`** — Gli ultimi movimenti delle tue monete (si tengono 30 giorni).
 - **`/level premi`** — Mostra i ruoli-premio dei livelli e i moltiplicatori di XP attivi.
 - **`/level profilo`** — Mostra il profilo di un membro; con «presentazione» cambi il tuo.
 - **`/level progressi`** — Missioni, serie, traguardi e pass di 90 giorni, in un menu.
@@ -928,6 +942,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 04:
 - **`/monete conto guadagni`** — Come si guadagnano monete in questo server.
 - **`/monete conto lavoro`** — Il tuo lavoro attuale e quanto manca alla promozione.
 - **`/monete conto lotteria`** — Compra biglietti della lotteria di oggi o guarda le ultime estrazioni.
+- **`/monete conto portafoglio`** — Il tuo saldo come immagine.
 - **`/monete conto potenzia`** — Potenzia il lavoro o il premio periodico: più livelli, più monete.
 - **`/monete conto prestigio`** — Ricomincia da capo per un bonus permanente (+5% a lavoro e premio per livello).
 - **`/monete conto rimborso`** — Riscuoti una parte delle tue perdite nei giochi, se il server la rimborsa.
@@ -1130,6 +1145,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 04:
 - **`/utility snipe messaggio`** — Mostra l'ultimo messaggio cancellato in questo canale.
 - **`/utility snipe modifica`** — Mostra l'ultimo messaggio modificato in questo canale.
 - **`/utility snipe reazione`** — Mostra l'ultima reazione rimossa in questo canale.
+- **`/utility strumenti avatar`** — L'avatar di un membro in grande, del server o globale.
 - **`/utility strumenti caratteri`** — Nome, codice e categoria Unicode dei caratteri di un testo.
 - **`/utility strumenti cronometro`** — Un cronometro con i bottoni Giro e Ferma.
 - **`/utility suggest`** — Proponi un'idea per questo server.

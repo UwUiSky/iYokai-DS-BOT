@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 04:57 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 18:10 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 1008 commands in 51 categories.**
+**Total: 1024 commands in 51 categories.**
 
 ## Admin: AI
 
@@ -280,7 +280,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 04:5
 
 ## Admin: giveaways
 
+- **`/admin-giveaway cancel`** — Cancels a running giveaway, with no winners.
+- **`/admin-giveaway close`** — Closes a giveaway early and draws the winners.
 - **`/admin-giveaway edit`** — Change duration, winners, prize or image of a giveaway.
+- **`/admin-giveaway list`** — The giveaways running in the server.
 - **`/admin-giveaway options`** — Look, messages, log and excluded roles of giveaways.
 - **`/admin-giveaway participants`** — Who takes part in a giveaway, 20 per page.
 - **`/admin-giveaway scheduled`** — Scheduled giveaways: list (including failed ones) or cancel.
@@ -366,6 +369,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 04:5
 
 - **`/admin-messages auto`** — Automations: quotes, link fixing, announcement publishing, shortener.
 - **`/admin-messages embed buttons`** — Add or remove an embed's buttons (link or show tag).
+- **`/admin-messages embed color`** — The default color of your embeds (empty to remove it).
 - **`/admin-messages embed create`** — Creates an embed and shows the preview.
 - **`/admin-messages embed delete`** — Deletes a saved embed (the published message stays).
 - **`/admin-messages embed edit`** — Edits a saved embed (and the already published message).
@@ -400,6 +404,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 04:5
 - **`/admin-modules birthdays channel`** — Picks the wishes channel (empty to turn them off).
 - **`/admin-modules birthdays member`** — Register a member's birthday (day and month only).
 - **`/admin-modules birthdays role`** — A role for 24 hours for whoever has a birthday (empty to remove it).
+- **`/admin-modules birthdays status`** — How the birthday wishes are set up.
 - **`/admin-modules counters category`** — Creates a category with the most used counters.
 - **`/admin-modules counters create`** — Creates a channel that shows a number.
 - **`/admin-modules counters delete`** — Stops updating a counter (the channel stays).
@@ -409,7 +414,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 04:5
 - **`/admin-modules polls weights`** — Give a weight to the vote of a role in polls (max 25 roles).
 - **`/admin-modules quotes action`** — Export, import or delete the quotes (JSON).
 - **`/admin-modules starboard disattiva`** — Turns the board off.
+- **`/admin-modules starboard excluded`** — Channels that never reach the board (up to 25).
 - **`/admin-modules starboard set`** — Picks the board channel and the star threshold.
+- **`/admin-modules starboard status`** — How the board is set up.
 - **`/admin-modules starboard threshold`** — Changes how many stars are needed to reach the board.
 - **`/admin-modules statistics diagnosis`** — Why are the statistics not counting?
 - **`/admin-modules statistics export`** — Exports statistics, counters and rules to a ZIP file.
@@ -493,8 +500,13 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 04:5
 - **`/admin-tag replies clear`** — Delete all the automatic replies of the server.
 - **`/admin-tag replies create`** — Creates an automatic reply.
 - **`/admin-tag replies delete`** — Deletes an automatic reply.
+- **`/admin-tag replies edit`** — Change the reply, mode or limits of an automatic reply.
+- **`/admin-tag replies exclude`** — Users, channels and roles that do not trigger a reply (10 per list).
 - **`/admin-tag replies global`** — Turn the owner's shared automatic replies on or off in this server.
 - **`/admin-tag replies list`** — Shows the server's automatic replies.
+- **`/admin-tag replies show`** — Detail of an automatic reply, with the raw text.
+- **`/admin-tag tag alias`** — Alternative names of a tag (up to 3).
+- **`/admin-tag tag blocks`** — Block a tag for a role, a channel or a user (up to 10 per list).
 - **`/admin-tag tag create`** — Creates a custom command.
 - **`/admin-tag tag creators`** — Pick the role of who can create their own tags with /tag crea.
 - **`/admin-tag tag delete`** — Deletes a custom command.
@@ -502,6 +514,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 04:5
 - **`/admin-tag tag export`** — Export the server's tags to a code or a file.
 - **`/admin-tag tag groups`** — Rules per tag group: one channel and/or a required role.
 - **`/admin-tag tag import`** — Import tags from a code or a JSON file.
+- **`/admin-tag tag info`** — Card of a tag: author, uses, alternative names and raw text.
 - **`/admin-tag tag list`** — Shows the server's custom commands.
 - **`/admin-tag tag options`** — How a tag behaves: permission, target, where it replies.
 - **`/admin-tag tag prefix`** — Picks the prefix to use commands by typing in the channel.
@@ -820,6 +833,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 04:5
 - **`/level invites link`** — Your personal invite link, served through the bot's website.
 - **`/level invites user`** — How many people a member invited.
 - **`/level leaderboard`** — Shows the server leaderboard.
+- **`/level movements`** — The latest movements of your coins (kept for 30 days).
 - **`/level profile`** — Shows a member's profile; with "presentazione" you change yours.
 - **`/level progress`** — Missions, streaks, achievements and the 90-day pass, in a menu.
 - **`/level rank`** — Shows the rank card: level, XP, position and coins.
@@ -928,6 +942,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 04:5
 - **`/coins account refund`** — Collect part of your game losses, if the server refunds them.
 - **`/coins account resign`** — Quit the job and restart as an intern.
 - **`/coins account upgrade`** — Upgrade your job or periodic reward: more levels, more coins.
+- **`/coins account wallet`** — Your balance as an image.
 - **`/coins balance`** — Shows your coins.
 - **`/coins cashbox`** — Shows the server treasury balance.
 - **`/coins collect`** — Collect the salary of your roles (and pay the taxes).
@@ -1130,6 +1145,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 04:5
 - **`/utility snipe edit`** — Shows the last edited message in this channel.
 - **`/utility snipe message`** — Shows the last deleted message in this channel.
 - **`/utility snipe reaction`** — Shows the last removed reaction in this channel.
+- **`/utility strumenti avatar`** — A member's avatar in large size, of the server or global.
 - **`/utility strumenti characters`** — Unicode name, code and category of the characters in a text.
 - **`/utility strumenti stopwatch`** — A stopwatch with Lap and Stop buttons.
 - **`/utility suggest`** — Suggest an idea for this server.

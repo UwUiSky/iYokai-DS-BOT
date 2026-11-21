@@ -5,7 +5,7 @@ Risposte automatiche (NF-10, SPEC §14.7): quando un messaggio contiene una
 parola o frase scelta, il bot risponde da solo. Condizioni: canale, ruolo,
 corrispondenza esatta o parziale. Comandi: `risposta-...` di `/admin-messaggi`.
 Richiede l'intent `message_content` (D9).
-Funzioni coperte: SPEC §14.7 (NF-10)
+Funzioni coperte: SPEC §14.7 (NF-10), catalogo #128 UTL-060, 062, 064, 065, 066, 067 (r2utl)
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ from core.autoresponder_logic import (
     regex_valida,
     resto_dopo,
     trigger_corrisponde,
+    MAX_ESCLUSI,
     MAX_JOLLY,
     MAX_RISPOSTA,
     MAX_RISPOSTE,
@@ -60,6 +61,7 @@ _SCELTE_MODO = [
     app_commands.Choice(name="parola o frase intera nel messaggio", value="parziale"),
     app_commands.Choice(name="tutto il messaggio uguale", value="esatta"),
     app_commands.Choice(name="il messaggio inizia così (il resto è {resto})", value="inizia"),
+    app_commands.Choice(name="il messaggio finisce così", value="finisce"),
     app_commands.Choice(name="espressione regolare (RE2)", value="regex"),
 ]
 SECONDI_CONFERMA = 60
@@ -136,6 +138,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
             message.content,
             message.channel.id,
             {r.id for r in getattr(message.author, "roles", [])},
+            message.author.id,
         )
         resto = ""
         if regola is not None and regola.match_mode == "inizia":
@@ -198,6 +201,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
         modalita="Come cercare la parola nel messaggio",
         canale="Solo in questo canale (vuoto = ovunque)",
         ruolo="Solo per chi ha questo ruolo (vuoto = tutti)",
+        maiuscole="Le maiuscole contano (di base no)",
     )
     @app_commands.choices(modalita=_SCELTE_MODO)
     async def risposta_crea(
@@ -208,6 +212,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
         modalita: str = "parziale",
         canale: discord.TextChannel | None = None,
         ruolo: discord.Role | None = None,
+        maiuscole: bool = False,
     ) -> None:
         if not await self._pronto(interaction):
             return
@@ -242,6 +247,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
             role_id=ruolo.id if ruolo else None,
             ping_ruoli=utente_puo_pingare_ruoli(interaction.user),
             created_by=interaction.user.id,
+            maiuscole=maiuscole,
         )
         _cache_regole.delete(interaction.guild.id)
         messaggi = {
@@ -279,6 +285,103 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
             ephemeral=True,
             allowed_mentions=discord.AllowedMentions.none(),
         )
+
+    @comando_di_gruppo("admin-tag", nome="modifica", descrizione="Cambia risposta, modo o limiti di una risposta automatica.", sottogruppo=SOTTOGRUPPI["admin-tag risposte"])
+    @app_commands.describe(
+        numero="Il numero mostrato da /admin-tag risposte elenco", risposta="Nuova risposta", modalita="Nuovo modo di cercare la parola",
+        maiuscole="Le maiuscole contano?", canale="Solo in questo canale", ruolo="Solo per chi ha questo ruolo",
+        ovunque="Toglie il limite di canale e di ruolo",
+    )
+    @app_commands.choices(modalita=_SCELTE_MODO)
+    async def risposta_modifica(
+        self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 2_000_000_000],
+        risposta: app_commands.Range[str, 1, MAX_RISPOSTA] | None = None, modalita: str | None = None,
+        maiuscole: bool | None = None, canale: discord.TextChannel | None = None, ruolo: discord.Role | None = None,
+        ovunque: bool = False,
+    ) -> None:
+        if not await self._pronto(interaction):
+            return
+        attuale = await autoresponder_repo.get(interaction.guild.id, numero)
+        if attuale is None:
+            await interaction.response.send_message(await testo_per(interaction, "autoresponde_non_esiste_una_risposta_con"), ephemeral=True)
+            return
+        campi: dict = {}
+        if risposta is not None:
+            if not risposta.strip():
+                await interaction.response.send_message(await testo_per(interaction, "autoresponde_la_parola_la_risposta_non"), ephemeral=True)
+                return
+            campi["response"] = risposta
+            campi["ping_ruoli"] = utente_puo_pingare_ruoli(interaction.user)
+        if modalita is not None:
+            campi["match_mode"] = modalita
+        if maiuscole is not None:
+            campi["maiuscole"] = maiuscole
+        if ovunque:
+            campi["channel_id"], campi["role_id"] = None, None
+        if canale is not None:
+            campi["channel_id"] = canale.id
+        if ruolo is not None:
+            campi["role_id"] = ruolo.id
+        if not campi:
+            await interaction.response.send_message(await testo_per(interaction, "customcomman_non_hai_indicato_nulla_da"), ephemeral=True)
+            return
+        modo = campi.get("match_mode", attuale.match_mode)
+        testo_risposta = campi.get("response", attuale.response)
+        if modo == "regex" and regex_valida(attuale.trigger) is not None or modo != "regex" and not jolly_validi(attuale.trigger):
+            await interaction.response.send_message(await testo_per(interaction, "risposte_modo_non_adatto"), ephemeral=True)
+            return
+        if "{resto}" in testo_risposta and modo != "inizia":
+            await interaction.response.send_message(await testo_per(interaction, "risposte_resto_solo_inizia"), ephemeral=True)
+            return
+        await autoresponder_repo.modifica(interaction.guild.id, numero, **campi)
+        _cache_regole.delete(interaction.guild.id)
+        await interaction.response.send_message(await testo_per(interaction, "risposte_modificata", numero=numero), ephemeral=True)
+
+    @comando_di_gruppo("admin-tag", nome="mostra", descrizione="Dettaglio di una risposta automatica, anche il testo grezzo.", sottogruppo=SOTTOGRUPPI["admin-tag risposte"])
+    @app_commands.describe(numero="Il numero mostrato da /admin-tag risposte elenco")
+    async def risposta_mostra(self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 2_000_000_000]) -> None:
+        if not await self._pronto(interaction):
+            return
+        r = await autoresponder_repo.get(interaction.guild.id, numero)
+        if r is None:
+            await interaction.response.send_message(await testo_per(interaction, "autoresponde_non_esiste_una_risposta_con"), ephemeral=True)
+            return
+        righe = [
+            await testo_per(interaction, "risposte_dettaglio", modo=r.match_mode, maiuscole="sì" if r.maiuscole else "no",
+                            canale=f"<#{r.channel_id}>" if r.channel_id else "-", ruolo=f"<@&{r.role_id}>" if r.role_id else "-"),
+            await testo_per(interaction, "risposte_dettaglio_esclusi",
+                            ruoli=" ".join(f"<@&{i}>" for i in r.ruoli_esclusi) or "-",
+                            canali=" ".join(f"<#{i}>" for i in r.canali_esclusi) or "-",
+                            utenti=" ".join(f"<@{i}>" for i in r.utenti_esclusi) or "-"),
+            f"```\n{r.trigger[:200].replace('```', chr(39) * 3)}\n```",
+            f"```\n{r.response[:1000].replace('```', chr(39) * 3)}\n```",
+        ]
+        await interaction.response.send_message("\n".join(righe)[:2000], ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+
+    @comando_di_gruppo("admin-tag", nome="escludi", descrizione="Utenti, canali e ruoli che non fanno scattare una risposta (10 per elenco).", sottogruppo=SOTTOGRUPPI["admin-tag risposte"])
+    @app_commands.describe(numero="Il numero della risposta", ruolo="Ruolo escluso", canale="Canale escluso", utente="Utente escluso",
+                           togli="Toglie l'esclusione invece di metterla")
+    async def risposta_escludi(
+        self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 2_000_000_000],
+        ruolo: discord.Role | None = None, canale: discord.abc.GuildChannel | None = None, utente: discord.User | None = None,
+        togli: bool = False,
+    ) -> None:
+        if not await self._pronto(interaction):
+            return
+        scelte = [(t, o) for t, o in (("ruolo", ruolo), ("canale", canale), ("utente", utente)) if o is not None]
+        if not scelte:
+            await interaction.response.send_message(await testo_per(interaction, "risposte_escludi_scegli"), ephemeral=True)
+            return
+        pieno = False
+        for tipo, oggetto in scelte:
+            nuovo = await autoresponder_repo.cambia_esclusione(interaction.guild.id, numero, tipo, oggetto.id, not togli, MAX_ESCLUSI)
+            if nuovo is None:
+                await interaction.response.send_message(await testo_per(interaction, "autoresponde_non_esiste_una_risposta_con"), ephemeral=True)
+                return
+            pieno = pieno or (not togli and oggetto.id not in nuovo)
+        _cache_regole.delete(interaction.guild.id)
+        await interaction.response.send_message(
+            await testo_per(interaction, "risposte_escludi_piena" if pieno else "risposte_escludi_salvata", massimo=MAX_ESCLUSI), ephemeral=True)
 
     @comando_di_gruppo("admin-tag", nome="svuota", descrizione="Elimina tutte le risposte automatiche del server.", sottogruppo=SOTTOGRUPPI["admin-tag risposte"])
     async def risposte_svuota(self, interaction: discord.Interaction) -> None:

@@ -4,7 +4,7 @@ core/embed_builder_logic.py
 Controllo dei limiti e costruzione dell'embed (NF-17, SPEC §22.6). Tutti i
 limiti di Discord si controllano QUANDO l'admin salva, non quando Discord
 rifiuta il messaggio. Funzioni pure, usate anche dal pannello web (D16).
-Funzioni coperte: SPEC §22 (NF-17), catalogo #128 UTL-075, 076, 079, 081 (D69, B4)
+Funzioni coperte: SPEC §22 (NF-17), catalogo #128 UTL-075, 076, 079, 081 (D69, B4); UTL-074 (r2utl: autore, link del titolo, data)
 """
 
 from __future__ import annotations
@@ -25,6 +25,7 @@ MAX_CAMPI = 25
 MAX_NOME_CAMPO = 256
 MAX_VALORE_CAMPO = 1024
 MAX_PIEDE = 2048
+MAX_AUTORE = 256
 MAX_TOTALE = 6000
 MAX_URL = 2000
 MAX_JSON_BYTE = 1_048_576  # file JSON importato: 1 MiB
@@ -44,6 +45,9 @@ class DatiEmbed:
     thumbnail_url: str | None = None
     footer: str | None = None
     fields: tuple[tuple[str, str, bool], ...] = ()
+    author: str | None = None  # UTL-074
+    url: str | None = None  # il titolo diventa un link
+    timestamp: bool = False  # data e ora dell'invio nel piede
 
 
 def lunghezza_totale(dati: DatiEmbed) -> int:
@@ -52,6 +56,7 @@ def lunghezza_totale(dati: DatiEmbed) -> int:
         len(dati.title or "")
         + len(dati.description or "")
         + len(dati.footer or "")
+        + len(dati.author or "")
         + sum(len(n) + len(v) for n, v, _ in dati.fields)
     )
 
@@ -74,6 +79,10 @@ def valida(dati: DatiEmbed) -> list[str]:
         errori.append(f"La descrizione supera {MAX_DESCRIZIONE} caratteri.")
     if dati.footer and len(dati.footer) > MAX_PIEDE:
         errori.append(f"Il piede supera {MAX_PIEDE} caratteri.")
+    if dati.author and len(dati.author) > MAX_AUTORE:
+        errori.append(f"L'autore supera {MAX_AUTORE} caratteri.")
+    if dati.url and not _url_valido(dati.url):
+        errori.append(f"Il link del titolo deve cominciare con http:// o https:// ed essere più corto di {MAX_URL} caratteri.")
     if len(dati.fields) > MAX_CAMPI:
         errori.append(f"Un embed ha al massimo {MAX_CAMPI} campi.")
     for numero, (nome, valore, _) in enumerate(dati.fields, start=1):
@@ -99,6 +108,7 @@ def costruisci(dati: DatiEmbed) -> discord.Embed:
     embed = discord.Embed(
         title=dati.title or None,
         description=dati.description or None,
+        url=dati.url or None,
         colour=int(colore[1:], 16) if colore else discord.Colour.blurple(),
     )
     for nome, valore, inline in dati.fields:
@@ -109,6 +119,10 @@ def costruisci(dati: DatiEmbed) -> discord.Embed:
         embed.set_thumbnail(url=dati.thumbnail_url)
     if dati.footer:
         embed.set_footer(text=dati.footer)
+    if dati.author:
+        embed.set_author(name=dati.author)
+    if dati.timestamp:
+        embed.timestamp = discord.utils.utcnow()
     return embed
 
 
@@ -121,6 +135,9 @@ def a_json(dati: DatiEmbed) -> str:
             "image_url": dati.image_url,
             "thumbnail_url": dati.thumbnail_url,
             "footer": dati.footer,
+            "author": dati.author,
+            "url": dati.url,
+            "timestamp": dati.timestamp,
             "fields": [[n, v, i] for n, v, i in dati.fields],
         },
         ensure_ascii=False,
@@ -135,6 +152,9 @@ def da_json(dati: dict) -> DatiEmbed:
         image_url=dati.get("image_url"),
         thumbnail_url=dati.get("thumbnail_url"),
         footer=dati.get("footer"),
+        author=dati.get("author"),
+        url=dati.get("url"),
+        timestamp=bool(dati.get("timestamp", False)),
         fields=tuple((str(n), str(v), bool(i)) for n, v, i in dati.get("fields", [])),
     )
 
@@ -157,6 +177,9 @@ def da_json_discord(d: dict) -> DatiEmbed:
         thumbnail_url=(d.get("thumbnail") or {}).get("url") if isinstance(d.get("thumbnail"), dict) else None,
         footer=(d.get("footer") or {}).get("text") if isinstance(d.get("footer"), dict) else None,
         fields=campi,
+        author=(d.get("author") or {}).get("name") if isinstance(d.get("author"), dict) else None,
+        url=d.get("url") if isinstance(d.get("url"), str) else None,
+        timestamp=bool(d.get("timestamp")),
     )
 
 

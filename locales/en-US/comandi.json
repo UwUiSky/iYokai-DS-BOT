@@ -449,7 +449,12 @@
   "tieni-aperto": "keep-open",
   "pronta": "canned",
   "log": "log",
-  "riassunto-ticket": "ticket-summary"
+  "riassunto-ticket": "ticket-summary",
+  "alias": "alias",
+  "divieti": "blocks",
+  "avatar": "avatar",
+  "movimenti": "movements",
+  "portafoglio": "wallet"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1621,7 +1626,23 @@
   "ticket pronta": "Writes a ready-made answer (approved article) in the ticket.",
   "admin-ticket log": "Which ticket actions go to the log, and in which channel.",
   "admin-ticket pannelli modello": "Imports a ready-made panel template (form, reasons, answers).",
-  "admin-ai staff riassunto-ticket": "Turns the AI summary in the log on or off when a ticket closes."
+  "admin-ai staff riassunto-ticket": "Turns the AI summary in the log on or off when a ticket closes.",
+  "admin-tag tag info": "Card of a tag: author, uses, alternative names and raw text.",
+  "admin-tag tag alias": "Alternative names of a tag (up to 3).",
+  "admin-tag tag divieti": "Block a tag for a role, a channel or a user (up to 10 per list).",
+  "admin-tag risposte modifica": "Change the reply, mode or limits of an automatic reply.",
+  "admin-tag risposte mostra": "Detail of an automatic reply, with the raw text.",
+  "admin-tag risposte escludi": "Users, channels and roles that do not trigger a reply (10 per list).",
+  "admin-messaggi embed colore": "The default color of your embeds (empty to remove it).",
+  "admin-giveaway chiudi": "Closes a giveaway early and draws the winners.",
+  "admin-giveaway annulla": "Cancels a running giveaway, with no winners.",
+  "admin-giveaway elenco": "The giveaways running in the server.",
+  "admin-moduli starboard esclusi": "Channels that never reach the board (up to 25).",
+  "admin-moduli starboard stato": "How the board is set up.",
+  "admin-moduli compleanni stato": "How the birthday wishes are set up.",
+  "utility strumenti avatar": "A member's avatar in large size, of the server or global.",
+  "level movimenti": "The latest movements of your coins (kept for 30 days).",
+  "monete conto portafoglio": "Your balance as an image."
  },
  "parametri": {},
  "menu": {

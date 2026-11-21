@@ -42,7 +42,8 @@ def e_un_nostro_bot(user_id: int | None, principale: discord.Client) -> bool:
     """True per il bot principale e per Mod: le loro azioni non contano come attacchi."""
     if user_id is None:
         return False
-    if principale.user is not None and user_id == principale.user.id:
+    io = getattr(principale, "user", None)  # prima del collegamento (o in un finto) può non esserci
+    if io is not None and user_id == io.id:
         return True
     return _mod is not None and _mod.user is not None and user_id == _mod.user.id
 

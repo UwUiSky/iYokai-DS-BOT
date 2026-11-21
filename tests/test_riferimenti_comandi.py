@@ -49,6 +49,13 @@ ECCEZIONI: frozenset[str] = frozenset(
         "/privacy",
         "/termini",
         "/proprietario",
+        # pagine del pannello web aggiunte in r1web (core/web_panel_pagine.py, web_panel_panoramica.py)
+        "/accesso",
+        "/vocali",
+        "/statistiche",
+        "/classifica",
+        "/api",
+        "/avvisi",
         # pagina del pannello web `/server/<id>/ai` (core/web_panel_server.py): non è il comando `/admin-ai`
         "/ai",
     }

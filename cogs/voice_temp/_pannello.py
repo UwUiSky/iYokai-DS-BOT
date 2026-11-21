@@ -13,7 +13,7 @@ from __future__ import annotations
 import discord
 
 from core.i18n import testo_per
-from core.ui_base import BaseView
+from core.ui_base import BaseModal, BaseView
 
 NOME_COG = "VoiceTempCog"
 MAX_NOME = 100
@@ -27,7 +27,7 @@ async def _no_cog(interaction: discord.Interaction) -> None:
     await interaction.response.send_message(await testo_per(interaction, "voicepanel_non_disponibile"), ephemeral=True)
 
 
-class _FinestraNome(discord.ui.Modal):
+class _FinestraNome(BaseModal):
     def __init__(self) -> None:
         super().__init__(title="Nuovo nome del canale", timeout=300)
         self.nome = discord.ui.TextInput(label="Nome", min_length=1, max_length=MAX_NOME)
@@ -40,7 +40,7 @@ class _FinestraNome(discord.ui.Modal):
         await cog.rename.callback(cog, interaction, str(self.nome.value).strip()[:MAX_NOME] or "canale")
 
 
-class _FinestraLimite(discord.ui.Modal):
+class _FinestraLimite(BaseModal):
     def __init__(self) -> None:
         super().__init__(title="Limite di utenti", timeout=300)
         self.limite = discord.ui.TextInput(label="Numero da 0 a 99 (0 = nessun limite)", min_length=1, max_length=2)

@@ -1852,3 +1852,7 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `STA-061` — `/server/<id>/api`: crea la chiave (si vede una volta, ricaricando non c'è più). `curl -H "Authorization: Bearer <chiave>" <sito>/api/v1/stats` dà il JSON; con una chiave sbagliata 401; creane un'altra: la prima smette; oltre 30 richieste al minuto 429.
 - [ ] `CFG-006` — `/server/<id>/avvisi`: scegli «Nel sito» per Sicurezza; da un altro admin crea una chiave API: compare un avviso (senza la chiave). Con «In DM» arriva un messaggio privato (al massimo 3 all'ora). Non c'è la scelta «email» e la pagina dice perché.
 
+- [ ] `ECO-007` — `/level movimenti` elenca gli ultimi movimenti delle tue monete (daily, lavoro, pagamenti, spese, guadagni) dal più nuovo, a pagine di 15; si tengono 30 giorni; i minuti in vocale non compaiono (sono troppi).
+- [ ] `ECO-017` — `/monete conto portafoglio`: immagine con nome, contanti, banca, posizione e (se il server l'ha caricata) l'immagine della moneta.
+- [ ] `ECO-161` — `/admin-livelli guadagno vocale max_minuti:60`: dopo 60 minuti in vocale in un giorno non arrivano più XP né monete (di base 360).
+- [ ] `ECO-158` — `/admin-economia limiti controllo:500`: `/monete work`, `/monete daily` e i piccoli guadagni, una volta su due, si fermano con una domanda «quanto fa a + b?» con tre bottoni (solo per te, un tentativo); risposta giusta = verificato 10 minuti, poi ripeti il comando; con `controllo:0` mai.

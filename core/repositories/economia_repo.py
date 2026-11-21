@@ -242,6 +242,15 @@ class EconomiaRepository:
         )
 
 
+    async def movimenti(self, guild_id: int, user_id: int, pagina: int = 1, per_pagina: int = 15) -> list[asyncpg.Record]:
+        """ECO-007: i movimenti recenti di una persona, dal più nuovo, a pagine."""
+        pagina = max(1, min(pagina, 100))
+        return await self._pool.fetch(
+            "SELECT delta, motivo, at FROM economia_movimenti WHERE guild_id = $1 AND user_id = $2 "
+            "ORDER BY id DESC LIMIT $3 OFFSET $4",
+            guild_id, user_id, per_pagina, (pagina - 1) * per_pagina,
+        )
+
     # ---------------------------------------------------------------- ECO-057: evento di monete
     async def avvia_evento(
         self, guild_id: int, channel_id: int, per_messaggio: int, tetto: int, staff_id: int

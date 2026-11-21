@@ -234,3 +234,13 @@ async def cerca_parola(lingua: str, parola: str) -> dict[str, str] | None:
         return None
 
     return await _con_cache("dizionario", lingua, parola, produci)
+
+
+def avatar_in_grande(utente, globale: bool = False) -> str:
+    """UTL-196: l'indirizzo dell'avatar a 1024 punti. Globale = quello del profilo; altrimenti quello del server se c'è.
+    Senza avatar vale quello predefinito di Discord. Sono indirizzi della rete di Discord: il bot non li scarica."""
+    if globale:
+        base = getattr(utente, "avatar", None) or utente.default_avatar
+    else:
+        base = utente.display_avatar
+    return base.with_size(1024).url

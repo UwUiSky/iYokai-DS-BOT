@@ -4,7 +4,7 @@ cogs/utility/inneschi.py
 Inneschi dei tag (B27): `/admin-automazioni inneschi aggiungi|elenco|togli|avvia-ora`. Un tag parte da solo con una reazione,
 a intervalli, a un orario (cron), con un bottone di un embed, quando un ruolo viene dato o tolto. A tempo: scheduler (il giro
 dopo si prenota prima di eseguire). Al massimo 25 inneschi per server.
-Funzioni coperte: catalogo #128 UTL-047..050, 052, 054 (D69, B27)
+Funzioni coperte: catalogo #128 UTL-047, 048, 049, 050, 052, 054; UTL-070 (r2utl: canale scorciatoia) (D69, B27)
 Dipende da: cogs/utility/custom_commands.py (esegui_innesco), core/tag_inneschi_logic.py
 """
 
@@ -22,7 +22,7 @@ from core import tag_inneschi_logic as L
 from core.bounded_cache import BoundedCache
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
-from core.custom_command_logic import MAX_NOME
+from core.custom_command_logic import MAX_ARGOMENTI, MAX_NOME
 from core.database import db
 from core.i18n import testo_per
 from core.nome_logic import normalizza_nome
@@ -40,7 +40,8 @@ MAX_PER_EVENTO = 3  # un'emoji o un ruolo non fa partire più di 3 tag insieme
 _SCELTE_TIPO = [app_commands.Choice(name=n, value=v) for n, v in (
     ("reazione (un'emoji sotto un messaggio)", "reazione"), ("intervallo (ogni tanto, da 10 minuti)", "intervallo"),
     ("orario (cron a 5 campi)", "orario"), ("bottone di un embed", "bottone"),
-    ("ruolo dato", "ruolo_dato"), ("ruolo tolto", "ruolo_tolto"))]
+    ("ruolo dato", "ruolo_dato"), ("ruolo tolto", "ruolo_tolto"),
+    ("canale scorciatoia (ogni messaggio è l'argomento)", "canale_testo"))]
 
 
 class InneschiCog(CogConGruppi, commands.Cog):
@@ -99,6 +100,25 @@ class InneschiCog(CogConGruppi, commands.Cog):
         canale = guild.get_channel_or_thread(payload.channel_id) if guild and righe else None
         if righe and canale is not None:
             await self._fai_partire(guild, righe, canale, membro)
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message) -> None:
+        """UTL-070: un messaggio scritto in un canale scorciatoia fa partire il suo tag, con il testo come argomento."""
+        if message.guild is None or message.author.bot or not message.content or message.type not in (
+                discord.MessageType.default, discord.MessageType.reply):
+            return
+        righe = [r for r in await self._inneschi(message.guild.id, "canale_testo") if r["valore"] == str(message.channel.id)]
+        if not righe or not isinstance(message.author, discord.Member):
+            return
+        tag_cog = self.tag_cog
+        if tag_cog is None or not await db.is_module_active_for_guild(message.guild.id, MODULE_CUSTOM_COMMANDS):
+            return
+        for r in righe[:MAX_PER_EVENTO]:
+            try:
+                await tag_cog.esegui_innesco(message.guild, r["tag"], message.channel, membro=message.author,
+                                             argomenti=message.content[:MAX_ARGOMENTI])
+            except Exception:
+                logger.warning("Canale scorciatoia %s del tag %s fallito.", r["id"], r["tag"], exc_info=True)
 
     @commands.Cog.listener()
     async def on_member_update(self, prima: discord.Member, dopo: discord.Member) -> None:
@@ -161,7 +181,7 @@ class InneschiCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo("admin-automazioni", nome="aggiungi", descrizione="Fa partire un tag da solo: reazione, intervallo, orario, bottone, ruolo.",
                        sottogruppo=SOTTOGRUPPI["admin-automazioni inneschi"])
-    @app_commands.describe(tag="Il tag da far partire", tipo="Cosa lo fa partire", valore="Emoji, 30m, cron (0 9 * * 1) o embed:posizione",
+    @app_commands.describe(tag="Il tag da far partire", tipo="Cosa lo fa partire", valore="Emoji, 30m, orario (ogni giorno 09:30, lun gio 18:00), cron o embed:posizione",
                            ruolo="Il ruolo (per ruolo dato o tolto)", canale="Dove scrive (serve a tempo e a ruolo)",
                            escludi="Ore e giorni da saltare, per esempio 23-7 sab dom")
     @app_commands.choices(tipo=_SCELTE_TIPO)
@@ -178,8 +198,10 @@ class InneschiCog(CogConGruppi, commands.Cog):
             return
         if tipo_v in ("ruolo_dato", "ruolo_tolto"):
             valore = str(ruolo.id) if ruolo else ""
+        if tipo_v == "canale_testo":
+            valore = str(canale.id) if canale else ""
         pulito, errore = L.valida(tipo_v, valore)
-        if errore is None and tipo_v in L.TIPI_A_TEMPO + ("ruolo_dato", "ruolo_tolto") and canale is None:
+        if errore is None and tipo_v in L.TIPI_A_TEMPO + ("ruolo_dato", "ruolo_tolto", "canale_testo") and canale is None:
             errore = "inn_canale_serve"
         if errore is None and tipo_v == "bottone":
             nome_embed, _, posizione = pulito.partition(":")

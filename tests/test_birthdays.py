@@ -221,6 +221,7 @@ def cog(monkeypatch):
     return c
 
 
+# UTL-156: registrare il proprio compleanno (giorno e mese, niente anno)
 @pytest.mark.asyncio
 async def test_imposta_valida_la_data(cog):
     i = fake_interaction()
@@ -230,6 +231,7 @@ async def test_imposta_valida_la_data(cog):
     cog.repo.set_birthday.assert_awaited_once_with(i.guild.id, i.user.id, 29, 2)
 
 
+# UTL-157: togliere il proprio compleanno
 @pytest.mark.asyncio
 async def test_rimuovi_cancella_il_dato(cog):
     i = fake_interaction()
@@ -256,6 +258,7 @@ async def test_canale_senza_permessi_rifiutato(cog):
     cog.repo.set_channel.assert_not_awaited()
 
 
+# UTL-161: canale degli auguri e ruolo temporaneo (canale e ruolo in test_canale_senza_permessi_rifiutato)
 @pytest.mark.asyncio
 async def test_ruolo_non_assegnabile_rifiutato_alla_configurazione(cog):
     server = fake_guild()
@@ -338,3 +341,15 @@ async def test_chi_esce_dal_server_perde_il_compleanno(cog):
     bot.guild = server
     await cog.on_member_remove(bot)
     cog.repo.remove_birthday.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_utl_162_stato_riepiloga_canale_ruolo_e_conteggio_senza_pingare(cog):
+    """UTL-162: riepilogo della configurazione dei compleanni; il testo del messaggio non pinga."""
+    cog.repo.get_config.return_value = SimpleNamespace(channel_id=5, role_id=6, message="auguri {users} @everyone", ping_ruoli=False)
+    cog.repo.conta = AsyncMock(return_value=12)
+    i = fake_interaction()
+    await cog.stato.callback(cog, i)
+    corpo = i.response.send_message.await_args.args[0]
+    assert "<#5>" in corpo and "<@&6>" in corpo and "12" in corpo
+    assert i.response.send_message.await_args.kwargs["allowed_mentions"].everyone is False

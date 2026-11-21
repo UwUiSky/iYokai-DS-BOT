@@ -130,3 +130,10 @@
 - Numeri D: alert ha usato D90-D94, eco D86, sta D87, mus D85, liv D80.
 - Script conflitti: scratchpad risolvi_merge.py (unione con virgole per JSON); attenzione a voci doppie in core/data_registry.py dopo l'unione (auto-merge silenzioso).
 - /admin-moduli pesa 6596: niente altro lì.
+
+## 21/11
+- Main e24ee075 pubblicato: uniti r5mus, r5eco (fino a 131fa41a), r1cfg, r2ben, r1web. 1008 comandi.
+- Owner 21/11: riattivate 12 voci musica (MUS-013, 022-026, 028, 033, 034, 046 testi sincronizzati karaoke, 051, 052) + aggiungere MUS-053, 061. EQ e filtri (049, 050) restano no. Giro musica da lanciare al primo posto libero (migrazioni 0731-0739).
+- Controllo aree chiuse (292 voci): tabella revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.md (esiste/corretta/azione/test). In corso: r2utl (wt-128, 0760-0769, D100), r2tkt (wt-120, 0770-0779, D101). Poi: divertimento 91, moderazione 28, backup 23, verifica 16, AI 5.
+- Da sistemare prima della suite finale: nella serie combinata i test del pannello (test_panel_*) danno errori di setup per ordine dei test (da soli e tra loro passano: 200). Qualche test lascia sporco lo stato globale del db.
+- Non lanciare mai due serie di test sullo stesso database insieme (si cancellano i dati a vicenda).

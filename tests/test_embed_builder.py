@@ -99,6 +99,7 @@ def repo(clean_db):
     return SavedEmbedRepository(pool_provider=lambda: clean_db)
 
 
+# UTL-078: embed salvati con nome, da riusare
 @pytest.mark.asyncio
 async def test_salva_leggi_elenca_elimina(repo):
     assert await repo.create(1, "annuncio", a_json(_e()), created_by=7) == "ok"
@@ -141,6 +142,8 @@ def scena(monkeypatch):
     repo.set_published = AsyncMock()
     repo.list = AsyncMock(return_value=[])
     repo.delete = AsyncMock(return_value=True)
+    repo.colore_predefinito = AsyncMock(return_value=None)
+    modulo._ultima_pubblicazione.__init__(100)
     monkeypatch.setattr(modulo, "saved_embed_repo", repo)
     monkeypatch.setattr(modulo.embed_bottoni_repo, "elenco", AsyncMock(return_value=[]))  # B4: nessun bottone
     monkeypatch.setattr(modulo, "url_e_sicuro", AsyncMock(return_value=True))
@@ -151,6 +154,7 @@ def scena(monkeypatch):
     return cog
 
 
+# UTL-073: embed semplice con un comando; UTL-082: anteprima privata mentre componi
 @pytest.mark.asyncio
 async def test_crea_salva_e_mostra_l_anteprima(scena):
     i = fake_interaction()
@@ -206,6 +210,7 @@ async def test_pubblica_senza_permessi_non_invia(scena):
     canale.send.assert_not_awaited()
 
 
+# UTL-077: modificare un messaggio già mandato dal bot
 @pytest.mark.asyncio
 async def test_modifica_aggiorna_il_messaggio_gia_pubblicato_prima_di_salvare(scena):
     scena.repo.get.return_value = SimpleNamespace(

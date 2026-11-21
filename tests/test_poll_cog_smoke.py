@@ -53,6 +53,7 @@ async def test_poll_dichiara_i_limiti_di_discord_su_domanda_e_risposte():
     assert opzioni["option3"].get("required", False) is False
 
 
+# UTL-086: sondaggio fino a 10 opzioni
 async def test_poll_con_dieci_opzioni_crea_dieci_risposte(monkeypatch):
     """Le dieci opzioni del comando arrivano tutte nel sondaggio."""
     import cogs.utility.poll as modulo

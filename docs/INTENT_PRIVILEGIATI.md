@@ -18,6 +18,7 @@ Members are needed to react to joins and leaves (verification, anti-raid, welcom
 | AutoMod rules on joins, leaves, nicknames and roles | `cogs/automod/eventi.py` | Apply the server's own AutoMod rules to member events |
 | Autoroles and sticky roles | `cogs/utility/autoroles.py` | Give roles on join, restore on return |
 | Welcome and goodbye messages | `cogs/utility/greetings.py` | Greet members |
+| Personal roles | `cogs/utility/ruoli_extra.py` | Delete a member's personal role when they leave |
 | Invite tracking | `cogs/utility/invites.py` | Credit the inviter |
 | Restore after a server backup | `cogs/utility/restore.py` | Return members to their roles |
 | Backup of member roles | `cogs/utility/backup.py` | Keep the role snapshot up to date |
@@ -40,6 +41,7 @@ Message content is needed by features that read what is written: AutoMod filters
 
 | Feature | File | Why |
 |---|---|---|
+| Channel triggers for tags | `cogs/utility/inneschi.py` | Pass the message text to the tag the staff linked to that channel |
 | Guess the song game | `cogs/music/indovina.py` | Compare answers in the game channel with the song title, only during a game |
 | Reaction on a new member's first message | `cogs/utility/greetings.py` | Only who wrote is checked, the text is never read |
 | Coin event in a channel | `cogs/leveling/evento_monete.py` | Give coins for a message in the channel the staff chose (the text is not read) |

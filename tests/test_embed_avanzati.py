@@ -104,6 +104,8 @@ async def test_pubblica_piu_embed_in_un_messaggio(monkeypatch):
     dati = lambda t: type("S", (), {"data": json.loads(L.a_json(L.DatiEmbed(title=t))), "name": t, "formato": "classico"})()
     monkeypatch.setattr(eb.saved_embed_repo, "get", AsyncMock(side_effect=lambda g, n: dati(n)))
     monkeypatch.setattr(eb.saved_embed_repo, "set_published", AsyncMock())
+    monkeypatch.setattr(eb.saved_embed_repo, "colore_predefinito", AsyncMock(return_value=None))
+    eb._ultima_pubblicazione.__init__(100)
     monkeypatch.setattr(av.embed_bottoni_repo, "elenco", AsyncMock(return_value=[]))
     canale = MagicMock(spec=discord.TextChannel)
     canale.permissions_for.return_value = discord.Permissions(send_messages=True, embed_links=True)
@@ -113,6 +115,7 @@ async def test_pubblica_piu_embed_in_un_messaggio(monkeypatch):
     kw = canale.send.await_args.kwargs
     assert len(kw["embeds"]) == 3 and "embed" not in kw
     canale.send.reset_mock()
+    eb._ultima_pubblicazione.__init__(100)
     await cog.pubblica.callback(cog, it, "a", canale, "b", "v2")  # V2 con altri: rifiutato
     canale.send.assert_not_called()
 

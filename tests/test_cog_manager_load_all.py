@@ -67,7 +67,10 @@ async def test_tutti_i_cog_si_caricano_insieme_senza_collisioni_di_nome():
     già_connesso = db._pool is not None
     if not già_connesso:
         await db.connect()
-    bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
+    # Lo stesso albero del bot vero: Discord ora accetta 15 menu per tipo, discord.py ne conta ancora 5.
+    from core.blacklist_tree import BlacklistAwareCommandTree
+
+    bot = commands.Bot(command_prefix="!", intents=discord.Intents.default(), tree_cls=BlacklistAwareCommandTree)
     try:
         await db.run_migrations()
 

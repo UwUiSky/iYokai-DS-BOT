@@ -100,6 +100,7 @@ async def _crea(repo, guild=1, nome="regole", **kw):
     return await repo.create_tag(guild, nome, **campi)
 
 
+# UTL-004: cancellare un tag; UTL-005: elenco dei tag del server
 @pytest.mark.asyncio
 async def test_crea_leggi_elenca_elimina(repo):
     assert await _crea(repo) == "ok"
@@ -120,6 +121,7 @@ async def test_tetto_dei_tag_per_server(repo):
     assert await _crea(repo, guild=2, nome="troppo") == "ok"
 
 
+# UTL-002: modificare un tag (solo i campi dati)
 @pytest.mark.asyncio
 async def test_modifica_cambia_solo_i_campi_dati(repo):
     await _crea(repo, response="Vecchio", cooldown_seconds=30)
@@ -151,7 +153,8 @@ def _tag(**kw):
     base = dict(guild_id=1, name="regole", response="Ciao {user} {args}", use_embed=False, role_id=None,
                 role_action="nessuna", cooldown_seconds=0, ping_ruoli=False, uses=0,
                 permesso=None, bersaglio=False, cancella_innesco=False, invio="canale", canale_id=None, reazioni=[],
-                si_cancella_dopo=None, cancella_messaggi=None, solo_nsfw=False, anche_modificati=False, gruppo=None, created_by=None)
+                si_cancella_dopo=None, cancella_messaggi=None, solo_nsfw=False, anche_modificati=False, gruppo=None, created_by=None,
+                pausa_ambito="utente", ruoli_vietati=[], canali_vietati=[], utenti_vietati=[], embed_nome=None)
     base.update(kw)
     return SimpleNamespace(**base)
 
@@ -161,6 +164,7 @@ def scena(monkeypatch):
     cog = CustomCommandsCog(MagicMock())
     repo = MagicMock()
     repo.get_tag = AsyncMock(return_value=_tag())
+    repo.get_tag_o_alias = repo.get_tag
     repo.add_use = AsyncMock()
     repo.get_risposte = AsyncMock(return_value=[])
     repo.get_prefix = AsyncMock(return_value="!")
@@ -190,6 +194,7 @@ def _interazione(utente=None):
     return i, server, utente
 
 
+# UTL-026: argomenti dell'utente nella risposta, menzioni spente
 @pytest.mark.asyncio
 async def test_uso_con_slash_risponde_con_testo_senza_ping(scena):
     i, server, utente = _interazione()
@@ -210,6 +215,7 @@ async def test_tag_inesistente(scena):
     assert i.response.send_message.await_args.kwargs["ephemeral"] is True
 
 
+# UTL-012: pausa tra un uso e l'altro (per utente; canale e server in test_tag_extra_r2utl.py)
 @pytest.mark.asyncio
 async def test_pausa_blocca_il_secondo_uso(scena):
     scena.repo.get_tag.return_value = _tag(cooldown_seconds=60)
@@ -221,6 +227,7 @@ async def test_pausa_blocca_il_secondo_uso(scena):
     assert "attendere" in i2.response.send_message.await_args.args[0].lower() or "aspetta" in i2.response.send_message.await_args.args[0].lower()
 
 
+# UTL-016: tag che dà o toglie un ruolo a chi lo usa
 @pytest.mark.asyncio
 async def test_tag_con_ruolo_lo_da(scena):
     i, server, utente = _interazione()
@@ -242,6 +249,7 @@ async def test_ruolo_diventato_pericoloso_non_si_da_ma_il_tag_risponde(scena):
     i.followup.send.assert_awaited()
 
 
+# UTL-018: risposta del tag dentro un embed
 @pytest.mark.asyncio
 async def test_embed_tag(scena):
     scena.repo.get_tag.return_value = _tag(use_embed=True, response="x" * 1900)
@@ -299,6 +307,7 @@ async def test_crea_ruolo_senza_azione_o_azione_senza_ruolo_rifiutati(scena):
     scena.repo.create_tag.assert_not_awaited()
 
 
+# UTL-001: creare un comando del server con una risposta di testo
 @pytest.mark.asyncio
 async def test_crea_ok_salva_ping_ruoli_secondo_i_permessi(scena):
     i, server, utente = _interazione(fake_member(5, guild_permissions=discord.Permissions(mention_everyone=True)))
@@ -343,6 +352,7 @@ async def test_il_tag_prenota_la_risposta_prima_di_toccare_i_ruoli(scena):
     assert ordine[:2] == ["defer", "ruolo"]
 
 
+# UTL-006: cercare un tag per nome (completamento a 25 voci)
 @pytest.mark.asyncio
 async def test_search_names_tratta_percento_e_trattino_basso_come_testo(repo):
     for nome in ("a_b", "axb", "100%", "cento"):
@@ -395,6 +405,7 @@ async def test_risposta_vuota_dopo_i_segnaposto_ha_un_testo_di_ripiego(scena):
 
 
 # -------------------------------------------------------------------------- D69 B19-B20: opzioni, pesi, testo lungo
+# UTL-010: risposta scelta a caso tra più testi; UTL-033: tag oltre 2000 caratteri, diviso in più messaggi
 def test_risposte_con_peso_e_testo_lungo():
     from core.custom_command_logic import dividi_testo, ha_il_permesso, leggi_risposta, scegli_pesata
     import discord, random
@@ -447,6 +458,7 @@ async def test_tag_con_permesso_mancante_non_risponde_col_prefisso(scena):
     msg.delete.assert_awaited_once()
 
 
+# UTL-053: comando che parte anche sui messaggi modificati
 def test_reazioni_e_nuovo_innesco():
     from core.custom_command_logic import e_nuovo_innesco, leggi_reazioni
     assert leggi_reazioni("👍 🎉") == ["👍", "🎉"] and leggi_reazioni("") == [] and leggi_reazioni("👍 👍") == ["👍"]
@@ -456,6 +468,7 @@ def test_reazioni_e_nuovo_innesco():
     assert e_nuovo_innesco("!regole", "!altro", "!") and not e_nuovo_innesco("ciao", "ciao a tutti", "!") and not e_nuovo_innesco(None, "x", None)
 
 
+# UTL-022: reazioni sulla risposta; UTL-023: risposta che si cancella da sola
 @pytest.mark.asyncio
 async def test_risposta_con_reazioni_e_cancellazione_prenotata(scena, monkeypatch):
     scena.repo.get_tag.return_value = _tag(reazioni=["👍"], si_cancella_dopo=30)
@@ -474,6 +487,7 @@ async def test_risposta_con_reazioni_e_cancellazione_prenotata(scena, monkeypatc
     assert prenota.await_args.args[2] == modulo.AZIONE_CANCELLA_RISPOSTA and prenota.await_args.args[4] == {"channel_id": 5, "message_id": 99}
 
 
+# UTL-025: tag che cancella N messaggi (con il permesso di chi lo usa)
 @pytest.mark.asyncio
 async def test_pulizia_solo_con_il_permesso_e_modifica_solo_se_richiesta(scena):
     server = fake_guild()

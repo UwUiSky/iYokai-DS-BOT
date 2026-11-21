@@ -263,18 +263,20 @@ class GuadagnoCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         persone="Persone nel canale (te compreso) perché si prenda XP: da 1 a 10",
         anti_farm="Sì = niente XP a chi è assordato e conta solo chi non è muto (di base sì)",
+        max_minuti="Minuti al giorno in vocale che danno XP e monete (30-1440; di base 360)",  # ECO-161
     )
     async def guadagno_vocale(
         self,
         interaction: discord.Interaction,
         persone: app_commands.Range[int, 1, 10] | None = None,
         anti_farm: bool | None = None,
+        max_minuti: app_commands.Range[int, 30, 1440] | None = None,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
         if not await _puo_gestire(interaction):
             return
-        campi = {n: v for n, v in (("voce_min_persone", persone), ("anti_farm", anti_farm)) if v is not None}
+        campi = {n: v for n, v in (("voce_min_persone", persone), ("anti_farm", anti_farm), ("voce_max_minuti", max_minuti)) if v is not None}
         if campi:
             await leveling_settings_repo.set_options(interaction.guild.id, **campi)
             logger.info("XP vocale cambiato: server %s, staff %s, %s.", interaction.guild.id, interaction.user.id, campi)
