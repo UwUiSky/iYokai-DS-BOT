@@ -238,6 +238,8 @@ class AutomodAdvancedConfig:
     # SIC-042: categorie del phishing con interruttore proprio.
     phishing_accorciatori: bool = False
     phishing_inviti_adulti: bool = False
+    # SIC-041: sanzione in più sul phishing ("" = spenta, poi timeout, kick o ban).
+    phishing_azione_extra: str = ""
     # AMD-002/003/005: 0 = filtro spento.
     max_a_capo: int = 0
     max_lunghezza: int = 0

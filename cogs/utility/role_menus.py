@@ -32,7 +32,9 @@ finta a monte.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import dataclasses
+import io
 from datetime import datetime, timedelta, timezone
 import logging
 import time
@@ -77,12 +79,15 @@ from core.role_menu_logic import (
     valida_emoji,
 )
 from core.scheduler import in_seconds, scheduler
+from core.repositories.ruoli_extra_repo import RuoliExtraRepository
 from core.role_safety import check_role_assignable
+from core.ruoli_extra_logic import applica_extra_e_gruppo
 from core.ui_base import BaseView
 
 logger = logging.getLogger("iyokai.role_menus")
 
 MODULE_ROLE_MENUS = "role_menus"
+NOME_FILE_IMMAGINE = "menu.png"  # RUO-053
 
 BUTTON_CUSTOM_ID_PREFIX = "iyokai_rolemenu_btn"
 SELECT_CUSTOM_ID_PREFIX = "iyokai_rolemenu_select"
@@ -167,6 +172,9 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         self._blocchi_membro: "weakref.WeakValueDictionary[tuple[int, int], asyncio.Lock]" = (
             weakref.WeakValueDictionary()
         )
+        self._blocchi_gruppo: "weakref.WeakValueDictionary[tuple[int, str, int], asyncio.Lock]" = (
+            weakref.WeakValueDictionary()
+        )
 
     def _blocco_membro(self, menu_id: int, user_id: int) -> asyncio.Lock:
         """Un blocco per (menu, membro): due clic insieme di una persona si mettono in fila."""
@@ -176,6 +184,36 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             blocco = asyncio.Lock()
             self._blocchi_membro[chiave] = blocco
         return blocco
+
+    def _extra_repo(self) -> RuoliExtraRepository:
+        """RUO-083, 069, 053, 046: stesso database del repo dei menu (così lo usano anche i test)."""
+        return RuoliExtraRepository(role_menu_repo.pool_provider())
+
+    @contextlib.asynccontextmanager
+    async def _blocchi_per(self, menu: RoleMenu, user_id: int):
+        """
+        Il blocco di (menu, membro) e, se il menu è in un gruppo (RUO-069), prima quello di (gruppo, membro):
+        due clic su menu diversi dello stesso gruppo si mettono in fila e il ruolo vecchio si toglie senza corse.
+        """
+        async with contextlib.AsyncExitStack() as pila:
+            if menu.gruppo:
+                chiave = (menu.guild_id, menu.gruppo, user_id)
+                blocco = self._blocchi_gruppo.get(chiave)
+                if blocco is None:
+                    blocco = asyncio.Lock()
+                    self._blocchi_gruppo[chiave] = blocco
+                await pila.enter_async_context(blocco)
+            await pila.enter_async_context(self._blocco_membro(menu.id, user_id))
+            yield
+
+    async def _estendi(
+        self, guild: discord.Guild, menu: RoleMenu, decisione: Decisione, ruoli_membro: set[int]
+    ) -> Decisione:
+        """RUO-083: i ruoli in più delle opzioni. RUO-069: il ruolo vecchio degli altri menu del gruppo."""
+        repo = self._extra_repo()
+        extra = await repo.extra_del_menu(menu.id)
+        gruppo = await repo.ruoli_del_gruppo(guild.id, menu.gruppo) if menu.gruppo else frozenset()
+        return applica_extra_e_gruppo(decisione, extra=extra, ruoli_gruppo=gruppo, ruoli_membro=ruoli_membro)
 
     @staticmethod
     async def _membro_aggiornato(guild: discord.Guild, member: discord.Member) -> discord.Member:
@@ -284,6 +322,9 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             if menu.show_counts else None
         )
         embed = _build_embed(menu, options, conteggi)
+        immagine = None if menu.external else await self._extra_repo().immagine_menu(menu.id)  # RUO-053
+        if immagine is not None:
+            embed.set_image(url=f"attachment://{NOME_FILE_IMMAGINE}")
         if len(embed) > 6000:
             raise MenuNonPubblicabile(
                 "Il menu supera i 6000 caratteri consentiti da Discord: accorcia titolo, "
@@ -310,7 +351,12 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             raise MenuNonPubblicabile("Il messaggio a cui è agganciato il menu non esiste più.")
         if nuovo:
             try:
-                message = await channel.send(embed=embed, view=view)
+                if immagine is not None:
+                    message = await channel.send(
+                        embed=embed, view=view, file=discord.File(io.BytesIO(immagine), filename=NOME_FILE_IMMAGINE)
+                    )
+                else:
+                    message = await channel.send(embed=embed, view=view)
             except discord.HTTPException as errore:
                 logger.warning(
                     "Impossibile pubblicare il role menu %s (server %s): %s",
@@ -343,7 +389,15 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
 
         if not nuovo and not menu.external:
             try:
-                await message.edit(embed=embed, view=view)
+                if immagine is not None:  # RUO-053: l'immagine si rimanda a ogni modifica
+                    await message.edit(
+                        embed=embed, view=view,
+                        attachments=[discord.File(io.BytesIO(immagine), filename=NOME_FILE_IMMAGINE)],
+                    )
+                elif isinstance(message.attachments, list) and message.attachments:  # immagine tolta
+                    await message.edit(embed=embed, view=view, attachments=[])
+                else:
+                    await message.edit(embed=embed, view=view)
             except discord.HTTPException as errore:
                 await self._annulla_pubblicazione(message, False, reazioni_aggiunte)
                 logger.warning(
@@ -413,7 +467,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             return
         # fetch_member, add_roles e scheduler possono superare i 3 secondi: si prenota la risposta.
         await interaction.response.defer(ephemeral=True)
-        async with self._blocco_membro(menu.id, interaction.user.id):
+        async with self._blocchi_per(menu, interaction.user.id):
             utente = await self._membro_aggiornato(guild, interaction.user)
             ruoli_membro = {r.id for r in utente.roles}
             negato = membro_ammesso(list(menu.allowed_role_ids), list(menu.excluded_role_ids), ruoli_membro)
@@ -434,11 +488,13 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             if decisione.rifiuto is None:
                 limite = self._rifiuto_limiti(guild, menu, opzioni, decisione, ruoli_membro)
                 decisione = dataclasses.replace(decisione, rifiuto=limite) if limite else decisione
+            if decisione.rifiuto is None:
+                decisione = await self._estendi(guild, menu, decisione, ruoli_membro)  # RUO-083, 069
             if decisione.rifiuto is not None:
                 await interaction.followup.send(decisione.rifiuto, ephemeral=True)
                 return
 
-            errore = await self._applica(guild, utente, decisione, "Role menu")
+            errore = await self._applica(guild, utente, decisione, "Role menu", atomico=bool(menu.gruppo))
             if errore is not None:
                 await interaction.followup.send(errore, ephemeral=True)
                 return
@@ -508,7 +564,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         return None
 
     async def _applica(
-        self, guild: discord.Guild, member: discord.Member, decisione: Decisione, motivo: str
+        self, guild: discord.Guild, member: discord.Member, decisione: Decisione, motivo: str, *, atomico: bool = False
     ) -> str | None:
         """
         Dà e toglie i ruoli di una decisione. SEC-4/SEC-17: ogni ruolo da DARE si ricontrolla
@@ -528,10 +584,17 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             da_dare.append(ruolo)
         da_togliere = [r for r in (guild.get_role(rid) for rid in decisione.togli) if r is not None]
         try:
-            if da_dare:
-                await member.add_roles(*da_dare, reason=motivo)
-            if da_togliere:
-                await member.remove_roles(*da_togliere, reason=motivo)
+            if atomico and da_dare and da_togliere:
+                # RUO-069: un'unica richiesta a Discord: se fallisce il membro resta com'era, non senza ruolo.
+                tolti = {r.id for r in da_togliere}
+                finali = [r for r in member.roles if not r.is_default() and r.id not in tolti]
+                finali += [r for r in da_dare if r not in finali]
+                await member.edit(roles=finali, reason=motivo)
+            else:
+                if da_dare:
+                    await member.add_roles(*da_dare, reason=motivo)
+                if da_togliere:
+                    await member.remove_roles(*da_togliere, reason=motivo)
         except discord.Forbidden:
             return "I don't have permission to manage that role."
         except discord.HTTPException:
@@ -578,7 +641,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.defer(ephemeral=True)
         options = await role_menu_repo.get_options(menu_id)
-        async with self._blocco_membro(menu.id, interaction.user.id):
+        async with self._blocchi_per(menu, interaction.user.id):
             utente = await self._membro_aggiornato(guild, interaction.user)
             ruoli_membro = {r.id for r in utente.roles}
             negato = membro_ammesso(list(menu.allowed_role_ids), list(menu.excluded_role_ids), ruoli_membro)
@@ -595,10 +658,12 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
             if decisione.rifiuto is None:
                 limite = self._rifiuto_limiti(guild, menu, options, decisione, ruoli_membro)
                 decisione = dataclasses.replace(decisione, rifiuto=limite) if limite else decisione
+            if decisione.rifiuto is None:
+                decisione = await self._estendi(guild, menu, decisione, ruoli_membro)  # RUO-083, 069
             if decisione.rifiuto is not None:
                 await interaction.followup.send(decisione.rifiuto, ephemeral=True)
                 return
-            errore = await self._applica(guild, utente, decisione, "Role menu")
+            errore = await self._applica(guild, utente, decisione, "Role menu", atomico=bool(menu.gruppo))
             if errore is not None:
                 await interaction.followup.send(errore, ephemeral=True)
                 return
@@ -653,7 +718,7 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         self, guild: discord.Guild, menu: RoleMenu, role_id: int, member: discord.Member, *, attiva: bool, motivo: str
     ) -> None:
         """Una reazione messa o tolta su un menu: accesso, comportamento, ruoli (nessuna risposta possibile)."""
-        async with self._blocco_membro(menu.id, member.id):
+        async with self._blocchi_per(menu, member.id):
             member = await self._membro_aggiornato(guild, member)
             ruoli_membro = {r.id for r in member.roles}
             if membro_ammesso(list(menu.allowed_role_ids), list(menu.excluded_role_ids), ruoli_membro) is not None:
@@ -673,9 +738,11 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
                 decisione = dataclasses.replace(
                     decisione, rifiuto=self._rifiuto_limiti(guild, menu, opzioni, decisione, ruoli_membro)
                 )
+            if decisione.rifiuto is None:
+                decisione = await self._estendi(guild, menu, decisione, ruoli_membro)  # RUO-083, 069
             if decisione.rifiuto is not None:
                 return
-            errore = await self._applica(guild, member, decisione, motivo)
+            errore = await self._applica(guild, member, decisione, motivo, atomico=bool(menu.gruppo))
             if errore is not None:
                 logger.warning("Reazione sul menu %s nel server %s: %s", menu.id, guild.id, errore)
             else:

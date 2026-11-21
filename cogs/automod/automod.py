@@ -60,6 +60,7 @@ from core import bot_roles
 from core import channel_router as router
 from core.i18n import testo_per
 from core.phishing_list_fetcher import lista_phishing
+from core.phishing_azione_logic import SCELTE as SCELTE_PHISHING_EXTRA, aggiungi_extra, motivo_extra
 from core.phishing_logic import codici_invito, server_per_adulti
 from core.repositories.output_channel_repo import output_channel_repo
 
@@ -483,6 +484,26 @@ async def _esegui_regola(
             avvisa_staff=avvisa_staff,
         ),
     )
+
+
+async def _registra_caso_extra(message: discord.Message, scelta: str, durata_secondi: int) -> None:
+    """SIC-041: l'azione in più sul phishing entra tra i casi di moderazione e nel log, con il motivo (massimo 512)."""
+    from cogs.moderation._shared import post_to_mod_log
+    from core.repositories.moderation_repo import moderation_repo
+
+    motivo = motivo_extra("Sanzione scelta dal server per il filtro phishing.")
+    try:
+        numero = await moderation_repo.create_case(
+            guild_id=message.guild.id, user_id=message.author.id,
+            moderator_id=message.guild.me.id if message.guild.me else message.author.id,
+            action_type=scelta, reason=motivo, duration_seconds=durata_secondi if scelta == "timeout" else None,
+            origine="automod",
+        )
+        embed = discord.Embed(title=f"AutoMod: {scelta} per phishing", description=f"Caso #{numero}: {motivo}", color=discord.Color.red())
+        embed.add_field(name="Utente", value=f"<@{message.author.id}>")
+        await post_to_mod_log(message.guild, embed)
+    except Exception:
+        logger.exception("Caso di moderazione per l'azione in più sul phishing non scritto (server %s).", message.guild.id)
 
 
 async def _log_violation(
@@ -1129,7 +1150,12 @@ class AutomodCog(CogConGruppi, commands.Cog):
         canale_log="Canale o forum dove scrivere ogni link bloccato (vuoto: il log dell'AutoMod)",
         accorciatori="Blocca anche gli accorciatori di link (bit.ly, tinyurl...); vuoto: non cambia",
         inviti_adulti="Blocca anche gli inviti a server per adulti; vuoto: non cambia",
+        azione_extra="Sanzione in più oltre alla cancellazione (mai sullo staff); vuoto: non cambia",
     )
+    @app_commands.choices(azione_extra=[
+        app_commands.Choice(name="nessuna", value="nessuna"),
+        *(app_commands.Choice(name=n, value=n) for n in SCELTE_PHISHING_EXTRA),
+    ])
     async def anti_phishing(
         self,
         interaction: discord.Interaction,
@@ -1137,6 +1163,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         canale_log: discord.TextChannel | discord.ForumChannel | None = None,
         accorciatori: bool | None = None,
         inviti_adulti: bool | None = None,
+        azione_extra: str | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -1148,6 +1175,8 @@ class AutomodCog(CogConGruppi, commands.Cog):
             cambi["phishing_accorciatori"] = accorciatori
         if inviti_adulti is not None:
             cambi["phishing_inviti_adulti"] = inviti_adulti
+        if azione_extra is not None:
+            cambi["phishing_azione_extra"] = "" if azione_extra == "nessuna" else azione_extra  # SIC-041
         nuova = _replace_settings(settings, **cambi)
         await automod_advanced_repo.save_settings(nuova)
         if enabled:
@@ -1157,6 +1186,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
             f"Blocco del phishing {'attivato: cancello il messaggio e metto in timeout chi lo ha scritto' if enabled else 'disattivato'}. "
             f"Accorciatori di link: {'bloccati' if c.phishing_accorciatori else 'permessi'}. "
             f"Inviti a server per adulti: {'bloccati' if c.phishing_inviti_adulti else 'permessi'}. "
+            f"Sanzione in più: {c.phishing_azione_extra or 'nessuna'} (mai su staff, proprietario o chi sta sopra il bot). "
             "Se blocco un dominio per sbaglio, mettilo nella whitelist con `/admin-filtri anti-link-domain`."
             + (f" I link bloccati si scrivono in {canale_log.mention}." if canale_log is not None else ""),
             ephemeral=True,
@@ -1811,11 +1841,17 @@ class AutomodCog(CogConGruppi, commands.Cog):
             azioni = regola.azioni if regola.id is not None else azioni_dai_nomi_vecchi(
                 AZIONI_DI_PARTENZA.get(violazione, AZIONI_DI_PARTENZA_GENERALI), settings.mute_duration_seconds
             )
+            extra = settings.config.phishing_azione_extra if violazione in _VIOLAZIONI_PHISHING else ""
+            con_extra = aggiungi_extra(azioni, extra, settings.mute_duration_seconds)  # SIC-041
+            extra_nuova = len(con_extra) > len(azioni)
+            azioni = con_extra
             eseguite = await _esegui_regola(
                 message, violazione, azioni, modificato=modificato, contatore=regola.contatore.nome if regola.contatore else None,
                 etichetta=regola.nome if regola.tipo == "personale" else None, canale_log_id=settings.log_channel_id,
             )
             await _log_violation(message, violazione, eseguite, settings, regola)
+            if extra_nuova and ("mute" if extra == "timeout" else extra) in eseguite:
+                await _registra_caso_extra(message, extra, settings.mute_duration_seconds)
             await self._scalda(message, regola, settings, modificato, ultimo_nel_canale)
             if regola.contatore and regola.contatore.soglie and isinstance(message.author, discord.Member):
                 eseguite_soglia = await self._controlla_soglia(message, violazione, regola, modificato)

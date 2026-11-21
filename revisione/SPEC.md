@@ -1498,6 +1498,12 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   077), sposta e aggancia (RUO-072, 073), ripara (RUO-074), emoji di altri server (RUO-075), svuota (RUO-080); cambio di tipo
   (RUO-088) e `elimina tieni_messaggio` (RUO-079). Già presenti e ora provate: RUO-002, 003, 006, 009, 011, 020, 021,
   028-033, 037, 039, 051, 054-061, 064, 066, 067, 078. Migrazioni 0640-0650.
+- `[x]` 14.22b Benvenuto e ruoli, catalogo #123 (giro r2ben, 20/11, D98) — `core/ruoli_extra_logic.py`, `ruoli_guidata_logic.py`,
+  `ruoli_immagini.py`, `repositories/ruoli_extra_repo.py`, `cogs/utility/ruoli_extra.py`: immagini proprie del benvenuto (RUO-012,
+  `/admin-benvenuto immagini`), ruolo personale (RUO-045, `/admin-menu-ruoli personale`, `/utility identita ruolo-mio`), colore del nome
+  (RUO-046, `/admin-menu-ruoli colori`, `/utility identita colore`), creazione guidata (RUO-047), immagine nel menu (RUO-053),
+  gruppo di menu (RUO-069), più ruoli per opzione (RUO-083); SIC-041 (#117): `/admin-filtri phishing azione_extra`
+  (`core/phishing_azione_logic.py`). Migrazioni 0740-0742.
 - `[x]` 14.23 Alert social, catalogo #129 (giro r1alert, 17/11) — gruppo `/admin-alert` (D92): messaggio per ogni tipo con
   `{ruolo}`, `{gioco}`, `{vod}`, `{thumbnail}`, `{descrizione}`, `{durata}` (ALR-020, 021, 022, 023, 029, 012), formato testo o embed
   e embed salvato (ALR-014, 024), Short di YouTube (ALR-009), sposta (ALR-037), ferma-tutti con conferma (ALR-038), elenco con

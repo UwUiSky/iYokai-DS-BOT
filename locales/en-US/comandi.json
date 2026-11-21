@@ -436,7 +436,15 @@
   "mantieni": "keep",
   "divorzia": "divorce",
   "azzera-dati": "reset-data",
-  "prestigio": "prestige"
+  "prestigio": "prestige",
+  "ruoli-extra": "extra-roles",
+  "gruppo": "group",
+  "colori": "colors",
+  "guidata": "guided",
+  "personale": "personal",
+  "ruolo-mio": "my-role",
+  "colore": "color",
+  "identita": "identity"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1590,7 +1598,17 @@
   "level sociale mantieni": "Keep your marriage alive (valid 14 days).",
   "level sociale divorzia": "End your marriage.",
   "level sociale azzera-dati": "Delete your game data on this server (coins, pets, fish...).",
-  "monete conto prestigio": "Start over for a permanent bonus (+5% to work and reward per level)."
+  "monete conto prestigio": "Start over for a permanent bonus (+5% to work and reward per level).",
+  "admin-menu-ruoli ruoli-extra": "An option of a menu also gives other roles (5 at most in total).",
+  "admin-menu-ruoli gruppo": "Link menus: only one role is kept across all of them. Empty name: unlink.",
+  "admin-menu-ruoli immagine": "Put an image inside the menu message (attachment or link).",
+  "admin-menu-ruoli colori": "Use the roles of a unique menu as the name colour palette.",
+  "admin-menu-ruoli guidata": "Create a role menu step by step: type, text, channel, roles and emoji.",
+  "admin-menu-ruoli personale": "Grant or remove a member's personal role (name and colour chosen by them).",
+  "admin-benvenuto immagini": "Own welcome images (10 at most): one is picked at random on every join.",
+  "utility identita": "Your personal role and the colour of your name",
+  "utility identita colore": "Pick the colour of your name from the server palette.",
+  "utility identita ruolo-mio": "Change the name and colour of your personal role (if staff granted it)."
  },
  "parametri": {},
  "menu": {
