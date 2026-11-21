@@ -73,6 +73,7 @@ from core.main_radio_logic import (
 )
 from core.music_announce_logic import copertina_sicura
 from core.repositories.music_playlist_repo import music_saved_queue_repo
+from core.music_dj_logic import VotiSalto, e_privilegiato
 from core.music_fleet import MusicFleet, handle_worker_voice_update
 from core.music_logic import (
     EMBED_DESCRIPTION_LIMIT,
@@ -200,6 +201,7 @@ def crea_cartella_locale() -> None:
 class MusicCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        self.voti_salto: dict[tuple[int, int], VotiSalto] = {}  # MUS-052, per (server, canale)
         # Task lanciati senza aspettarli. asyncio tiene solo un
         # riferimento debole ai task: senza questo insieme Python
         # potrebbe eliminarli prima che finiscano.
@@ -229,7 +231,37 @@ class MusicCog(CogConGruppi, commands.Cog):
     # ================================================================
     # Controlli condivisi e instradamento verso il worker giusto
     # ================================================================
-    async def _controlli_base(self, interaction: discord.Interaction) -> bool:
+    @staticmethod
+    def _ascoltatori_umani(canale) -> list[int]:
+        """Gli id delle persone (non bot) nel canale vocale."""
+        return [m.id for m in getattr(canale, "members", []) if not getattr(m, "bot", False)]
+
+    @staticmethod
+    def _e_staff(utente) -> bool:
+        permessi = getattr(utente, "guild_permissions", None)
+        return bool(permessi and permessi.manage_guild)
+
+    async def _privilegi(self, interaction: discord.Interaction, impostazioni=None) -> bool:
+        """MUS-051: vero se l'utente è DJ, staff o da solo nel canale con il bot (un solo punto)."""
+        impostazioni = impostazioni or await load_music_settings(db, interaction.guild.id)
+        utente = interaction.user
+        canale = getattr(getattr(utente, "voice", None), "channel", None)
+        ruoli = [r.id for r in getattr(utente, "roles", [])]
+        return e_privilegiato(
+            impostazioni, utente.id, ruoli, self._e_staff(utente), self._ascoltatori_umani(canale)
+        )
+
+    async def _gate_dj(self, interaction: discord.Interaction) -> bool:
+        """MUS-051: con la modalità DJ accesa solo i privilegiati comandano; se no risponde e dà False."""
+        impostazioni = await load_music_settings(db, interaction.guild.id)
+        if not impostazioni.dj_mode or await self._privilegi(interaction, impostazioni):
+            return True
+        await interaction.response.send_message(
+            await testo_per(interaction, "music_dj_solo_dj"), ephemeral=True
+        )
+        return False
+
+    async def _controlli_base(self, interaction: discord.Interaction, dj: bool = False) -> bool:
         """
         Vero se l'utente può usare i comandi musicali qui: dentro un
         server, con il modulo attivo, in un canale vocale. Condiviso
@@ -256,6 +288,8 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
             return False
 
+        if dj and not await self._gate_dj(interaction):  # MUS-051: comandi che cambiano coda o player
+            return False
         return True
 
     async def _get_worker_guild(
@@ -821,13 +855,32 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
             return
 
+        # MUS-052: chi ha messo il brano, i DJ e lo staff saltano subito; gli altri votano
+        impostazioni = await load_music_settings(db, interaction.guild.id)
+        corrente = getattr(player, "current", None)
+        if requester_of(corrente) != interaction.user.id and not await self._privilegi(interaction, impostazioni):
+            canale = getattr(player, "channel", None) or getattr(interaction.user.voice, "channel", None)
+            chiave_voti = (interaction.guild.id, getattr(canale, "id", 0))
+            voti = self.voti_salto.setdefault(chiave_voti, VotiSalto())
+            esito = voti.vota(
+                id(corrente), interaction.user.id, self._ascoltatori_umani(canale), impostazioni.skip_vote_percent
+            )
+            if not esito.raggiunto:
+                chiave = "music_voto_gia_dato" if esito.gia_votato else "music_voto_registrato"
+                await interaction.response.send_message(
+                    await testo_per(interaction, chiave, pubblica=True, voti=esito.voti, necessari=esito.necessari),
+                    allowed_mentions=discord.AllowedMentions.none(),
+                )
+                return
+            voti.azzera()
+
         await interaction.response.defer()  # M 8.16: Lavalink puo' metterci piu' di 3 secondi
         await player.skip()
         await interaction.followup.send(await testo_per(interaction, "player_traccia_saltata", pubblica=True))
 
     @comando_di_gruppo("music", nome="stop", descrizione="Ferma la riproduzione e svuota la coda.")
     async def stop(self, interaction: discord.Interaction) -> None:
-        if not await self._controlli_base(interaction):
+        if not await self._controlli_base(interaction, dj=True):
             return
 
         worker_guild, errore = await self._get_worker_guild(
@@ -852,7 +905,7 @@ class MusicCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo("music", nome="pause", descrizione="Mette in pausa la riproduzione.")
     async def pause(self, interaction: discord.Interaction) -> None:
-        if not await self._controlli_base(interaction):
+        if not await self._controlli_base(interaction, dj=True):
             return
 
         worker_guild, errore = await self._get_worker_guild(
@@ -875,7 +928,7 @@ class MusicCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo("music", nome="resume", descrizione="Riprende la riproduzione in pausa.")
     async def resume(self, interaction: discord.Interaction) -> None:
-        if not await self._controlli_base(interaction):
+        if not await self._controlli_base(interaction, dj=True):
             return
 
         worker_guild, errore = await self._get_worker_guild(
@@ -940,7 +993,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         # comando musicale con nome duplicato avrebbe disattivato
         # l'intero modulo Music senza che nessuno lo notasse finché
         # qualcuno non avesse controllato i log).
-        if not await self._controlli_base(interaction):
+        if not await self._controlli_base(interaction, dj=True):
             return
 
         worker_guild, errore = await self._get_worker_guild(
@@ -976,7 +1029,7 @@ class MusicCog(CogConGruppi, commands.Cog):
     async def shuffle(
         self, interaction: discord.Interaction, solo_miei: bool = False, resta: bool | None = None
     ) -> None:
-        if not await self._controlli_base(interaction):
+        if not await self._controlli_base(interaction, dj=True):
             return
 
         worker_guild, errore = await self._get_worker_guild(
@@ -1194,7 +1247,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         sottogruppo=SG_LOOP,
     )
     async def loop_track(self, interaction: discord.Interaction) -> None:
-        if not await self._controlli_base(interaction):
+        if not await self._controlli_base(interaction, dj=True):
             return
 
         worker_guild, errore = await self._get_worker_guild(
@@ -1229,7 +1282,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         sottogruppo=SG_LOOP,
     )
     async def loop_queue(self, interaction: discord.Interaction) -> None:
-        if not await self._controlli_base(interaction):
+        if not await self._controlli_base(interaction, dj=True):
             return
 
         worker_guild, errore = await self._get_worker_guild(
@@ -1310,7 +1363,7 @@ class MusicCog(CogConGruppi, commands.Cog):
     async def volume_set(
         self, interaction: discord.Interaction, level: app_commands.Range[int, 0, 200]
     ) -> None:
-        if not await self._controlli_base(interaction):
+        if not await self._controlli_base(interaction, dj=True):
             return
 
         worker_guild, errore = await self._get_worker_guild(
@@ -1344,7 +1397,7 @@ class MusicCog(CogConGruppi, commands.Cog):
     async def volume_up(
         self, interaction: discord.Interaction, amount: app_commands.Range[int, 1, 200] = 10
     ) -> None:
-        if not await self._controlli_base(interaction):
+        if not await self._controlli_base(interaction, dj=True):
             return
 
         worker_guild, errore = await self._get_worker_guild(
@@ -1378,7 +1431,7 @@ class MusicCog(CogConGruppi, commands.Cog):
     async def volume_down(
         self, interaction: discord.Interaction, amount: app_commands.Range[int, 1, 200] = 10
     ) -> None:
-        if not await self._controlli_base(interaction):
+        if not await self._controlli_base(interaction, dj=True):
             return
 
         worker_guild, errore = await self._get_worker_guild(
@@ -1402,7 +1455,7 @@ class MusicCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo("music", nome="disconnect", descrizione="Disconnette il music bot dal canale vocale.")
     async def disconnect(self, interaction: discord.Interaction) -> None:
-        if not await self._controlli_base(interaction):
+        if not await self._controlli_base(interaction, dj=True):
             return
 
         worker_guild, errore = await self._get_worker_guild(
@@ -1431,10 +1484,10 @@ class MusicCog(CogConGruppi, commands.Cog):
     # ================================================================
     # Catalogo MUS (issue #126): entrare, saltare, togliere, tornare indietro
     # ================================================================
-    async def _giocatore_attivo(self, interaction: discord.Interaction):
+    async def _giocatore_attivo(self, interaction: discord.Interaction, dj: bool = False):
         """Controlli comuni dei comandi sulla coda: il player del canale dell'utente, o None
-        (e la risposta d'errore è già partita)."""
-        if not await self._controlli_base(interaction):
+        (e la risposta d'errore è già partita). `dj`: vale la modalità DJ (MUS-051)."""
+        if not await self._controlli_base(interaction, dj=dj):
             return None
         worker_guild, errore = await self._get_worker_guild(
             interaction.guild.id, auto_assign=False, interaction=interaction
@@ -1501,7 +1554,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 10000]
     ) -> None:
         # MUS-029
-        player = await self._giocatore_attivo(interaction)
+        player = await self._giocatore_attivo(interaction, dj=True)
         if player is None:
             return
         if numero > len(player.queue):
@@ -1522,7 +1575,7 @@ class MusicCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo("music", nome="previous", descrizione="Torna al brano precedente.")
     async def previous(self, interaction: discord.Interaction) -> None:
         # MUS-031
-        player = await self._giocatore_attivo(interaction)
+        player = await self._giocatore_attivo(interaction, dj=True)
         if player is None:
             return
         storico = player.queue.history

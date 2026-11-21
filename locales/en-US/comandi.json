@@ -449,7 +449,14 @@
   "divieti": "blocks",
   "avatar": "avatar",
   "movimenti": "movements",
-  "portafoglio": "wallet"
+  "portafoglio": "wallet",
+  "cima": "top",
+  "subito": "now",
+  "ultimo": "last",
+  "miei": "mine",
+  "brano": "track",
+  "ricomincia": "restart",
+  "vai-a": "seek-to"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1629,7 +1636,19 @@
   "admin-moduli compleanni stato": "How the birthday wishes are set up.",
   "utility strumenti avatar": "A member's avatar in large size, of the server or global.",
   "level movimenti": "The latest movements of your coins (kept for 30 days).",
-  "monete conto portafoglio": "Your balance as an image."
+  "monete conto portafoglio": "Your balance as an image.",
+  "music coda togli": "Removes a track from the queue.",
+  "music coda ultimo": "Removes the last track you added.",
+  "music coda miei": "Removes all your tracks from the queue.",
+  "music coda sposta": "Moves a queue track to another position.",
+  "music coda cima": "Moves a queue track to the top, right after the current one.",
+  "music coda subito": "Plays a queue track right now, skipping the current one.",
+  "music brano": "Position in the track and search with a choice menu.",
+  "music brano ricomincia": "Restarts the current track from the beginning.",
+  "music brano vai-a": "Jumps to a point in the track: 1:30, +0:30 forward, -0:15 back.",
+  "music brano cerca": "Searches for a track and lets you pick from 10 results.",
+  "music brano testo": "Shows the lyrics of the current track.",
+  "music brano karaoke": "Shows the lines of the track as it plays, in time."
  },
  "parametri": {},
  "menu": {

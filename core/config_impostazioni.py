@@ -84,6 +84,11 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
         _c("music_announce", "Annuncia il brano in riproduzione (serve il canale degli annunci)", BOOL),
         _c("music_announce_channel_id", "Canale degli annunci «ora in riproduzione»", CANALE),
         _c("music_default_search", "Dove cercare un titolo senza link (youtube, soundcloud, spotify, applemusic, deezer, tidal)", SCELTA),
+        _c("music_dj_mode", "Modalità DJ: solo DJ, staff o chi è solo nel canale comandano la musica", BOOL),
+        _c("music_dj_role_id", "Ruolo DJ", RUOLO),
+        _c("music_skip_vote_percent", "Voto per saltare: percentuale degli ascoltatori (1-100)", NUMERO),
+        _c("music_empty_pause", "Pausa automatica quando nel canale non resta nessuno", BOOL),
+        _c("music_bot_status", "Titolo del brano come stato dei music bot", BOOL),
         _c("music_jukebox_price", "Prezzo in monete per mettere un brano in coda (0 = gratis, jukebox spento)", NUMERO),
     ),
     "fun": (
