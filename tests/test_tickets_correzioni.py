@@ -683,6 +683,7 @@ async def test_il_limite_per_utente_e_configurabile_nel_repository():
     assert await ticket_repo.count_open_tickets_for_user(ID_SERVER, ID_UTENTE) == 2
 
 
+# TKT-015: il limite regge con aperture insieme (vincolo nel database).
 async def test_il_limite_regge_con_aperture_in_parallelo():
     import asyncio
 
@@ -696,6 +697,7 @@ async def test_il_limite_regge_con_aperture_in_parallelo():
     assert await ticket_repo.count_open_tickets_for_user(ID_SERVER, ID_UTENTE) == 2
 
 
+# TKT-015, TKT-016: limite di ticket aperti per utente su tutto il server.
 async def test_con_limite_due_il_cog_lascia_aprire_il_secondo_ticket():
     await db.set_guild_setting(ID_SERVER, "ticket_max_per_utente", 2)
     server = Server()

@@ -113,6 +113,7 @@ async def test_il_26esimo_pannello_e_rifiutato_e_il_nome_e_unico():
         await ticket_form_repo.crea_pannello(ID_SERVER + 1, "p0", 1, "x")
 
 
+# TKT-010: modulo con al massimo 5 domande.
 async def test_la_sesta_domanda_e_rifiutata_e_le_posizioni_scorrono():
     p = await _pannello()
     for i in range(1, 6):
@@ -188,6 +189,7 @@ async def test_pannello_con_domande_apre_la_finestra_e_non_il_ticket(scheduler_d
     assert s.canali == []  # il ticket nasce solo all'invio
 
 
+# TKT-010, TKT-011: la finestra con le domande (obbligatoria o no, riga breve o lunga, segnaposto) apre il ticket.
 async def test_invio_del_modulo_crea_il_ticket_con_le_risposte(scheduler_di_test):
     p = await _pannello(welcome_text="Ciao {utente}!")
     await ticket_form_repo.aggiungi_domanda(p.id, "Nick in gioco")
@@ -270,6 +272,7 @@ def test_i_bottoni_dei_pannelli_hanno_custom_id_stabile_e_la_view_non_scade():
     assert all(len(c) <= 100 for c in ids)
 
 
+# TKT-001: oltre 25 pannelli in un messaggio non si pubblicano.
 def test_oltre_25_pannelli_in_un_messaggio_e_rifiutato():
     pannelli = [SimpleNamespace(id=i, button_label="x", button_emoji=None) for i in range(26)]
     with pytest.raises(form.ErroreConfigurazione):
@@ -294,6 +297,7 @@ async def test_setup_registra_i_bottoni_dinamici_e_i_comandi_stanno_nei_limiti()
             await bot.remove_cog(cog)
 
 
+# TKT-065: voto a stelle (1-5) dopo la chiusura, una volta sola.
 async def test_il_clic_sul_voto_registra_le_stelle_una_volta_sola():
     await ticket_repo.create_ticket(ID_SERVER, ID_UTENTE, 555, ticket_number=1)
     await ticket_repo.close_ticket(555, 1)
@@ -309,6 +313,7 @@ async def test_il_clic_sul_voto_registra_le_stelle_una_volta_sola():
     assert (await ticket_repo.get_ticket_by_channel(555)).rating == 5
 
 
+# TKT-065: il voto si chiede solo se il pannello lo vuole.
 async def test_voto_chiesto_in_dm_solo_se_acceso_nel_pannello(scheduler_di_test):
     p = await _pannello()
     await ticket_repo.create_ticket(ID_SERVER, ID_UTENTE, 555, ticket_number=1, panel_id=p.id)
@@ -385,6 +390,7 @@ async def test_pubblica_con_un_pannello_inesistente_non_manda_nulla():
     assert "view" not in i.response.send_message.await_args.kwargs
 
 
+# TKT-001: più pannelli riuniti in un solo messaggio (fino a 25 bottoni).
 async def test_pubblica_due_pannelli_in_un_solo_messaggio():
     await _pannello("Supporto")
     await _pannello("Candidature")

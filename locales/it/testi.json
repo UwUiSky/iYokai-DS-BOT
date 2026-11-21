@@ -3493,5 +3493,9 @@
   "ruoli_extra_bv_non_trovata": "Non trovo quell'immagine.",
   "ruoli_extra_bv_serve_allegato": "Allega l'immagine da aggiungere.",
   "ruoli_extra_bv_piene": "Ci sono già {max} immagini: togline una prima.",
-  "ruoli_extra_bv_salvata": "Immagine {id} salvata. A ogni ingresso se ne sceglie una a caso."
+  "ruoli_extra_bv_salvata": "Immagine {id} salvata. A ogni ingresso se ne sceglie una a caso.",
+  "modmail_intestazione": "Rispondi con `/ticket rispondi` (anche anonimo). I messaggi scritti qui restano interni. Chiudi con `/ticket dm-chiudi`.",
+  "modmail_intestazione_inoltra": "Ogni messaggio scritto qui arriva all'utente; comincia con `//` per una nota interna. Chiudi con `/ticket dm-chiudi`.",
+  "modmail_opzioni_spento": "Il ModMail è spento: accendilo prima con `/admin-ticket modmail attiva`.",
+  "modmail_opzioni_attuali": "Opzioni del ModMail: risposte anonime {anonimo} · ogni messaggio dello staff inoltrato {inoltra} · conferma prima dell'invio {conferma}."
 }

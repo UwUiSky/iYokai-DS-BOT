@@ -1608,7 +1608,8 @@
   "admin-benvenuto immagini": "Own welcome images (10 at most): one is picked at random on every join.",
   "utility identita": "Your personal role and the colour of your name",
   "utility identita colore": "Pick the colour of your name from the server palette.",
-  "utility identita ruolo-mio": "Change the name and colour of your personal role (if staff granted it)."
+  "utility identita ruolo-mio": "Change the name and colour of your personal role (if staff granted it).",
+  "admin-ticket modmail opzioni": "ModMail options: anonymous replies, forwarding, confirmation."
  },
  "parametri": {},
  "menu": {

@@ -139,6 +139,7 @@ async def test_rilascia_su_ticket_non_preso(cog):
     assert "Nessuno" in _testo(inter)
 
 
+# TKT-049: passare il ticket a un collega (solo dello staff).
 async def test_passa_solo_a_un_membro_dello_staff(cog, monkeypatch):
     await _ticket()
     monkeypatch.setattr(modulo, "_support_role_ids", AsyncMock(return_value=[7]))
@@ -156,6 +157,7 @@ async def test_passa_solo_a_un_membro_dello_staff(cog, monkeypatch):
     assert (await ticket_repo.get_ticket_by_channel(CANALE)).claimed_by == 52
 
 
+# TKT-069: transcript su richiesta, senza chiudere il ticket.
 async def test_transcript_solo_staff_e_il_ticket_resta_aperto(cog):
     await _ticket()
     cog._build_transcript_text = AsyncMock(return_value="ciao")
@@ -294,6 +296,7 @@ async def test_chi_esce_chiude_anche_il_ticket_senza_pannello_e_il_motivo_si_sal
     assert t.status == "closed" and "lasciato il server" in t.close_reason
 
 
+# TKT-013: le risposte del modulo stanno in un embed dentro il ticket (un campo per domanda, tagliato).
 async def test_il_benvenuto_con_cinque_risposte_lunghe_resta_sotto_6000_e_il_ticket_nasce(cog):
     from core import ticket_form_logic as form
     from core.repositories.ticket_form_repo import ticket_form_repo
