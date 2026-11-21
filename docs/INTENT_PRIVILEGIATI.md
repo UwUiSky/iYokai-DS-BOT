@@ -41,6 +41,7 @@ Message content is needed by features that read what is written: AutoMod filters
 
 | Feature | File | Why |
 |---|---|---|
+| Channel triggers for tags | `cogs/utility/inneschi.py` | Pass the message text to the tag the staff linked to that channel |
 | Guess the song game | `cogs/music/indovina.py` | Compare answers in the game channel with the song title, only during a game |
 | Reaction on a new member's first message | `cogs/utility/greetings.py` | Only who wrote is checked, the text is never read |
 | Coin event in a channel | `cogs/leveling/evento_monete.py` | Give coins for a message in the channel the staff chose (the text is not read) |

@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 05:25 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 18:10 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 1022 commands in 51 categories.**
+**Total: 1024 commands in 51 categories.**
 
 ## Admin: AI
 
@@ -833,6 +833,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 05:2
 - **`/level invites link`** — Your personal invite link, served through the bot's website.
 - **`/level invites user`** — How many people a member invited.
 - **`/level leaderboard`** — Shows the server leaderboard.
+- **`/level movements`** — The latest movements of your coins (kept for 30 days).
 - **`/level profile`** — Shows a member's profile; with "presentazione" you change yours.
 - **`/level progress`** — Missions, streaks, achievements and the 90-day pass, in a menu.
 - **`/level rank`** — Shows the rank card: level, XP, position and coins.
@@ -941,6 +942,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 05:2
 - **`/coins account refund`** — Collect part of your game losses, if the server refunds them.
 - **`/coins account resign`** — Quit the job and restart as an intern.
 - **`/coins account upgrade`** — Upgrade your job or periodic reward: more levels, more coins.
+- **`/coins account wallet`** — Your balance as an image.
 - **`/coins balance`** — Shows your coins.
 - **`/coins cashbox`** — Shows the server treasury balance.
 - **`/coins collect`** — Collect the salary of your roles (and pay the taxes).

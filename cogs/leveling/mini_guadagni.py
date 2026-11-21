@@ -20,10 +20,8 @@ from discord.ext import commands
 from cogs.leveling.leveling import _comando_rifiutato, _format_seconds
 from cogs.leveling.rischio import _SG_RISCHIO
 from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
-from core.i18n import testo_guild, testo_per
-
 from core.anti_automazione import serve_controllo
-from core.i18n import testo_per
+from core.i18n import testo_guild, testo_per
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.repositories.potenziamenti_repo import potenziamenti_repo
 from core.repositories.rischio_repo import rischio_repo

@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 05:25 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 18:10 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 1022 comandi in 51 categorie.**
+**Totale: 1024 comandi in 51 categorie.**
 
 ## Admin: AI
 
@@ -834,6 +834,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 05:
 - **`/level inviti utente`** — Quante persone ha invitato un membro.
 - **`/level leaderboard`** — Mostra la classifica del server.
 - **`/level livelli-recenti`** — Gli ultimi 25 level-up del server.
+- **`/level movimenti`** — Gli ultimi movimenti delle tue monete (si tengono 30 giorni).
 - **`/level premi`** — Mostra i ruoli-premio dei livelli e i moltiplicatori di XP attivi.
 - **`/level profilo`** — Mostra il profilo di un membro; con «presentazione» cambi il tuo.
 - **`/level progressi`** — Missioni, serie, traguardi e pass di 90 giorni, in un menu.
@@ -941,6 +942,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 05:
 - **`/monete conto guadagni`** — Come si guadagnano monete in questo server.
 - **`/monete conto lavoro`** — Il tuo lavoro attuale e quanto manca alla promozione.
 - **`/monete conto lotteria`** — Compra biglietti della lotteria di oggi o guarda le ultime estrazioni.
+- **`/monete conto portafoglio`** — Il tuo saldo come immagine.
 - **`/monete conto potenzia`** — Potenzia il lavoro o il premio periodico: più livelli, più monete.
 - **`/monete conto prestigio`** — Ricomincia da capo per un bonus permanente (+5% a lavoro e premio per livello).
 - **`/monete conto rimborso`** — Riscuoti una parte delle tue perdite nei giochi, se il server la rimborsa.
