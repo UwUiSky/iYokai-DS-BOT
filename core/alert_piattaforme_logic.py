@@ -32,7 +32,7 @@ def indirizzo_bluesky(testo: str) -> str | None:
     t = re.sub(r"^https?://bsky\.app/profile/", "", t).split("/")[0].split("?")[0]
     if not _HANDLE_BLUESKY.match(t):
         return None
-    return f"https://bsky.app/profile/{t}/rss"
+    return "/".join(("https://bsky.app/profile", t, "rss"))
 
 
 def indirizzo_subreddit(nome: str, solo_sicuri: bool = False) -> str | None:

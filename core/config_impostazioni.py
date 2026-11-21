@@ -84,6 +84,7 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
         _c("music_announce", "Annuncia il brano in riproduzione (serve il canale degli annunci)", BOOL),
         _c("music_announce_channel_id", "Canale degli annunci «ora in riproduzione»", CANALE),
         _c("music_default_search", "Dove cercare un titolo senza link (youtube, soundcloud, spotify, applemusic, deezer, tidal)", SCELTA),
+        _c("music_jukebox_price", "Prezzo in monete per mettere un brano in coda (0 = gratis, jukebox spento)", NUMERO),
     ),
     "fun": (
         _c("fun_immagini_post", "Immagini dalle comunità Lemmy (/immagini post)", BOOL),

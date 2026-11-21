@@ -2,7 +2,7 @@
 cogs/leveling/stipendi.py
 =========================
 Stipendi e tasse per ruolo (/admin-giochi stipendi ..., /monete riscuoti), pagamento automatico a un'ora
-scelta (UTC) e monete per i messaggi nei canali scelti (/admin-giochi stipendi messaggi). Ogni pagamento è
+scelta (UTC) e monete per i messaggi nei canali scelti (/admin-giochi stipendi auto). Ogni pagamento è
 una transazione sola (core/repositories/stipendi_repo.py).
 Funzioni coperte: ECO-033, ECO-034, ECO-035, ECO-036, ECO-037, ECO-038
 """
@@ -160,7 +160,7 @@ class StipendiCog(CogConGruppi, commands.Cog):
         i = (await leveling_settings_repo.get_config(interaction.guild.id)).impostazioni
         righe = [f"<@&{v['role_id']}> {v['importo']:+d} {'(banca)' if v['in_banca'] else ''}" for v in voci] or ["-"]
         righe.append(f"Auto: {'sì' if i.stipendio_auto else 'no'} alle {i.stipendio_ora}:00 UTC")
-        righe.append(f"Messaggi: {i.msg_coins} ogni {i.msg_coins_pausa}s, tetto {i.msg_coins_tetto}/giorno; canali: " + (" ".join(f"<#{c}>" for c in sorted(canali)) or "-"))
+        righe.append(f"Messaggi: {i.msg_coins} ogni {i.msg_coins_pausa}s, tetto {i.msg_coins_tetto} al giorno; canali: " + (" ".join(f"<#{c}>" for c in sorted(canali)) or "-"))
         await interaction.response.send_message("\n".join(righe)[:3900], ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
     @comando_di_gruppo("admin-giochi", nome="auto", descrizione="Paga gli stipendi da solo a un'ora (UTC) e scegli le monete per messaggio.", sottogruppo=_SG)

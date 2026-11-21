@@ -22,7 +22,9 @@ GUILD = 5000
 # ------------------------------------------------------------------ gruppi per ruolo
 def test_i_gruppi_di_ogni_ruolo_sono_quelli_della_issue():
     admin = cp.GRUPPI_DEL_RUOLO[TipoRuolo.ADMIN]
-    assert len(admin) == 20 and all(n.startswith("admin-") for n in admin)  # D60: tutti i gruppi `admin-…`
+    from core.command_groups import nomi_gruppi
+    attesi = [n for n in nomi_gruppi() if n.startswith("admin-")]
+    assert list(admin) == attesi and len(admin) >= 20  # D60: tutti i gruppi `admin-…`, anche quelli aggiunti dopo
     assert {"admin-bot", "admin-sicurezza", "admin-log", "admin-ticket-opzioni"} <= set(admin)
     assert cp.GRUPPI_DEL_RUOLO[TipoRuolo.MOD] == ("mod-sanzioni", "mod-casi", "mod-canali")
     assert cp.GRUPPI_DEL_RUOLO[TipoRuolo.MODBAN] == ("mod-ban",)
@@ -204,7 +206,9 @@ def _token(scade_tra_ore=100):
 
 
 _ADMIN, _MOD, _MODBAN = (cp.GRUPPI_DEL_RUOLO[t] for t in (TipoRuolo.ADMIN, TipoRuolo.MOD, TipoRuolo.MODBAN))
-COMANDI = {nome: i for i, nome in enumerate([*_ADMIN, *_MOD, *_MODBAN], start=1)}  # admin 1-20, mod 21-23, modban 24
+COMANDI = {nome: i for i, nome in enumerate([*_ADMIN, *_MOD, *_MODBAN], start=1)}  # admin 1..N_ADMIN, poi mod (3) e modban (1)
+N_ADMIN = len(_ADMIN)
+ID_MOD_TUTTI = [N_ADMIN + 1, N_ADMIN + 2, N_ADMIN + 3]
 ID_MOD = COMANDI["mod-sanzioni"]
 
 
@@ -223,7 +227,7 @@ async def test_il_ruolo_admin_arriva_a_tutti_i_gruppi_admin():
     esito = await cp.applica_ruolo(GUILD, TipoRuolo.ADMIN, None, 33, repo=RepoFinto(_token()), client=client, app_id=1, comandi=COMANDI)
 
     assert esito.stato == cp.STATO_OK
-    assert sorted(client.scritti) == list(range(1, 21))
+    assert sorted(client.scritti) == list(range(1, N_ADMIN + 1))
     assert client.scritti[1] == [{"id": "33", "type": 1, "permission": True}]
     assert sorted(esito.gruppi_scritti) == sorted(cp.GRUPPI_DEL_RUOLO[TipoRuolo.ADMIN])
 
@@ -232,7 +236,7 @@ async def test_il_ruolo_admin_arriva_a_tutti_i_gruppi_admin():
 async def test_il_ruolo_mod_arriva_solo_ai_gruppi_mod():
     client = ClientFinto()
     await cp.applica_ruolo(GUILD, TipoRuolo.MOD, 5, 6, repo=RepoFinto(_token()), client=client, app_id=1, comandi=COMANDI)
-    assert sorted(client.scritti) == [21, 22, 23]
+    assert sorted(client.scritti) == ID_MOD_TUTTI
 
 
 @pytest.mark.asyncio
@@ -264,7 +268,7 @@ async def test_un_gruppo_che_fallisce_non_ferma_gli_altri():
     esito = await cp.applica_ruolo(GUILD, TipoRuolo.ADMIN, None, 33, repo=RepoFinto(_token()), client=client, app_id=1, comandi=COMANDI)
 
     assert esito.stato == cp.STATO_PARZIALE
-    assert sorted(client.scritti) == [i for i in range(1, 21) if i != 2]
+    assert sorted(client.scritti) == [i for i in range(1, N_ADMIN + 1) if i != 2]
     assert esito.errori == {_ADMIN[1]: 500}
 
 

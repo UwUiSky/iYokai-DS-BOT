@@ -115,6 +115,7 @@ SETTINGS_VALIDE = {
     "music_persist_queue": True,
     "music_announce": True,
     "music_announce_channel_id": 212121212121212121,
+    "music_jukebox_price": 250,
     "policy_comandi_off": ["immagini meme"],
     "policy_canali_ok": [171717171717171717],
     "policy_canali_no": [181818181818181818],
