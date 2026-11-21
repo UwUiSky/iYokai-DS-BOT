@@ -42,6 +42,7 @@ from core.repositories.leveling_repo import TettoSaldoRaggiunto, leveling_repo
 from core.repositories.rischio_repo import rischio_repo
 from core.repositories.potenziamenti_repo import potenziamenti_repo
 from core.repositories.sociale_repo import BONUS_PRESTIGIO, sociale_repo
+from core.anti_automazione import serve_controllo
 from core.repositories.animali_repo import animali_repo
 from core.rischio_logic import lavoro_per_turni, paga_con_lavoro
 from core.repositories.level_reward_repo import level_reward_repo
@@ -79,7 +80,7 @@ from core.rank_card_image import (
 )
 from core.moneta_server import MonetaNonValida, aggiungi_moneta, prepara_moneta
 from core.safe_image import MAX_IMAGE_BYTES, run_image_task
-from core.drop_logic import DEFAULT_MAX_COINS, DEFAULT_MIN_COINS, should_trigger_drop
+from core.drop_logic import DEFAULT_DROP_CHANCE, DEFAULT_MAX_COINS, DEFAULT_MIN_COINS, should_trigger_drop
 from core.channel_access import PERMESSI_DI_SCRITTURA, motivo_se_il_bot_non_puo
 from core.giveaway_immagine import conserva_allegato, file_annuncio
 from core.giveaway_logic import (
@@ -1222,21 +1223,23 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
     async def _drop_casuale(self, message: discord.Message, impostazioni: LevelingSettings) -> None:
         """ECO-053: con la probabilità scelta dal server compare un drop (primo che clicca vince)."""
-        if impostazioni.drop_per_mille <= 0:
+        per_mille = getattr(impostazioni, "drop_per_mille", 5)  # le impostazioni finte dei test possono non averlo
+        if per_mille <= 0:
             return
-        if impostazioni.drop_canale_id and impostazioni.drop_canale_id not in id_canali_per_le_regole(message.channel):
+        if getattr(impostazioni, "drop_canale_id", None) and impostazioni.drop_canale_id not in id_canali_per_le_regole(message.channel):
             return
-        if not should_trigger_drop(random.random(), impostazioni.drop_per_mille / 1000):
+        # Il tiro si riscala sulla probabilità di base (0,5%): scatta se tiro < probabilità del server.
+        if not should_trigger_drop(random.random() * DEFAULT_DROP_CHANCE / (per_mille / 1000)):
             return
         adesso = time.monotonic()
-        if adesso - self._ultimo_drop.get(message.guild.id, -1e9) < impostazioni.drop_pausa:
+        if adesso - self._ultimo_drop.get(message.guild.id, -1e9) < getattr(impostazioni, "drop_pausa", 0):
             return
         self._ultimo_drop[message.guild.id] = adesso
-        importo = random.randint(impostazioni.drop_min, max(impostazioni.drop_min, impostazioni.drop_max))
+        importo = random.randint(getattr(impostazioni, "drop_min", DEFAULT_MIN_COINS), max(getattr(impostazioni, "drop_min", DEFAULT_MIN_COINS), getattr(impostazioni, "drop_max", DEFAULT_MAX_COINS)))
         view = self.DropClaimView(message.guild.id, importo)
         try:
             await message.channel.send(
-                f"💰 È apparso un drop di **{importo}** {impostazioni.currency_name}! Clicca per raccoglierlo.",
+                f"💰 È apparso un drop di **{importo}** {getattr(impostazioni, 'currency_name', 'coin')}! Clicca per raccoglierlo.",
                 view=view,
                 allowed_mentions=discord.AllowedMentions.none(),
             )
@@ -1630,6 +1633,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         adesso = datetime.now(timezone.utc)
         impostazioni = (await self._config(interaction.guild.id)).impostazioni
+        if await serve_controllo(interaction, impostazioni.controllo_per_mille):  # ECO-158
+            return
         attesa_totale = attesa_daily_secondi(impostazioni)  # ECO-024
         extra = await self._bonus_serie_daily(interaction, impostazioni, adesso)  # ECO-025
         livelli_pot = await potenziamenti_repo.livelli(interaction.guild.id, interaction.user.id)  # ECO-081
@@ -1686,6 +1691,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         adesso = datetime.now(timezone.utc)
         impostazioni = (await self._config(interaction.guild.id)).impostazioni
+        if await serve_controllo(interaction, impostazioni.controllo_per_mille):  # ECO-158
+            return
         guadagno = random.randint(impostazioni.work_min, impostazioni.work_max)
         # ECO-029: la paga sale con i turni fatti (scala dei lavori)
         turni_fatti = await rischio_repo.turni(interaction.guild.id, interaction.user.id)

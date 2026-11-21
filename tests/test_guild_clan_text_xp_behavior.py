@@ -48,6 +48,10 @@ class _FakeMessage:
         self.guild = guild
         self.channel = channel
         self.type = discord.MessageType.default  # un messaggio normale
+        self.content = "ciao a tutti"
+        self.attachments = []
+        self.stickers = []
+        self.embeds = []
 
 
 @pytest.fixture

@@ -3533,5 +3533,9 @@
   "starboard_esclusi_pieno": "Ci sono già {massimo} canali esclusi: non ho aggiunto nulla.",
   "starboard_stato": "Bacheca: {canale}\nStelle: {soglia} {emoji} - Accesa: {acceso}\nCanali vietati ai minori inclusi: {nsfw} - Voto dell'autore: {autore}\nCanale automatico: {auto}\nCanali esclusi: {esclusi}",
   "birthdays_stato": "Auguri di compleanno\nCanale: {canale}\nRuolo: {ruolo}\nCompleanni registrati: {registrati}\nMessaggio: {messaggio}",
-  "avatar_titolo": "Avatar di {nome}"
+  "avatar_titolo": "Avatar di {nome}",
+  "mov_nessuno": "Nessun movimento negli ultimi 30 giorni.",
+  "aut_sfida": "🤖 Controllo veloce: quanto fa **{domanda}**? Poi ripeti il comando.",
+  "aut_ok": "✅ Verificato per 10 minuti: ripeti il comando.",
+  "aut_no": "❌ Risposta sbagliata: ripeti il comando per un nuovo controllo."
 }

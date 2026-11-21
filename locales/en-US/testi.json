@@ -3533,5 +3533,9 @@
   "starboard_esclusi_pieno": "There are already {massimo} excluded channels: nothing was added.",
   "starboard_stato": "Board: {canale}\nStars: {soglia} {emoji} - On: {acceso}\nAge-restricted channels included: {nsfw} - Author's own vote: {autore}\nAutomatic channel: {auto}\nExcluded channels: {esclusi}",
   "birthdays_stato": "Birthday wishes\nChannel: {canale}\nRole: {ruolo}\nBirthdays saved: {registrati}\nMessage: {messaggio}",
-  "avatar_titolo": "{nome}'s avatar"
+  "avatar_titolo": "{nome}'s avatar",
+  "mov_nessuno": "No movements in the last 30 days.",
+  "aut_sfida": "🤖 Quick check: what is **{domanda}**? Then repeat the command.",
+  "aut_ok": "✅ Verified for 10 minutes: repeat the command.",
+  "aut_no": "❌ Wrong answer: repeat the command for a new check."
 }

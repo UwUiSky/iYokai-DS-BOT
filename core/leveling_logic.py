@@ -160,6 +160,7 @@ def compute_voice_minute(
     consecutive_minutes_in_channel: int,
     minutes_today: int,
     changed_channel: bool,
+    cap_minuti: int = DAILY_CAP_MINUTES,
 ) -> VoiceMinuteResult:
     """
     Calcola l'esito di UN minuto di presenza vocale idonea (l'idoneità
@@ -183,7 +184,7 @@ def compute_voice_minute(
     if new_consecutive > MAX_CONSECUTIVE_MINUTES_SAME_CHANNEL:
         return VoiceMinuteResult(0, 0, new_consecutive, new_minutes_today, capped=False)
 
-    if minutes_today >= DAILY_CAP_MINUTES:
+    if minutes_today >= cap_minuti:  # ECO-161: tetto scelto dal server
         return VoiceMinuteResult(0, 0, new_consecutive, new_minutes_today, capped=True)
 
     return VoiceMinuteResult(
@@ -473,6 +474,8 @@ LIMITI_IMPOSTAZIONI = {
     "stipendio_ora": (0, 23),  # ECO-037: ora (UTC) del pagamento automatico
     "lotteria_prezzo": (0, 10_000),  # ECO-118: prezzo di un biglietto, 0 = lotteria spenta
     "rimborso_pct": (0, 20),  # ECO-117: quota delle perdite nette che torna indietro
+    "voce_max_minuti": (30, 1440),  # ECO-161: minuti al giorno in vocale che danno XP e monete
+    "controllo_per_mille": (0, 500),  # ECO-158: probabilità (in millesimi) del controllo anti-automazione, 0 = spento
 }
 MODI_SALDO_USCITA = ("tieni", "cancella")  # ECO-014
 MAX_NOME_MONETA = 20  # ECO-001
@@ -564,6 +567,8 @@ class LevelingSettings:
     stipendio_ora: int = 12  # ECO-037
     lotteria_prezzo: int = 0  # ECO-118
     rimborso_pct: int = 0  # ECO-117
+    voce_max_minuti: int = 360  # ECO-161
+    controllo_per_mille: int = 0  # ECO-158
 
 
 @dataclass(frozen=True)

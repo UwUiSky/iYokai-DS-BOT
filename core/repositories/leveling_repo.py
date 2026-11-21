@@ -224,8 +224,17 @@ def valore_nuovo_con_tetto_sql(g: int, a: int) -> str:
 # mettere più scritture nella stessa transazione (acquisto dello shop,
 # premi dalla cassa): il controllo del saldo sta dentro la UPDATE.
 # ----------------------------------------------------------------------
+async def registra_movimento(conn: asyncpg.Connection, guild_id: int, user_id: int, delta: int, motivo: str) -> None:
+    """ECO-007: una riga dello storico personale (si tiene 30 giorni). Nella stessa transazione del movimento."""
+    if delta:
+        await conn.execute(
+            "INSERT INTO economia_movimenti (guild_id, user_id, delta, motivo) VALUES ($1, $2, $3, $4)",
+            guild_id, user_id, delta, motivo[:30],
+        )
+
+
 async def spend_coins_in(
-    conn: asyncpg.Connection, guild_id: int, user_id: int, amount: int
+    conn: asyncpg.Connection, guild_id: int, user_id: int, amount: int, motivo: str = "spesa"
 ) -> bool:
     """Toglie `amount` coin solo se il saldo basta. False se non basta."""
     if amount <= 0:
@@ -240,11 +249,13 @@ async def spend_coins_in(
         user_id,
         amount,
     )
+    if saldo is not None:
+        await registra_movimento(conn, guild_id, user_id, -amount, motivo)
     return saldo is not None
 
 
 async def add_coins_in(
-    conn: asyncpg.Connection, guild_id: int, user_id: int, amount: int, classifica: bool = True
+    conn: asyncpg.Connection, guild_id: int, user_id: int, amount: int, classifica: bool = True, motivo: str = "guadagno"
 ) -> int:
     """
     Aggiunge coin (saldo e, se `classifica`, classifica del mese). Rispetta il tetto
@@ -262,6 +273,7 @@ async def add_coins_in(
         user_id,
         amount,
     )
+    await registra_movimento(conn, guild_id, user_id, amount, motivo)
     if not classifica:
         return saldo
     await conn.execute(
@@ -510,7 +522,7 @@ class LevelingRepository:
                         continue
 
                     changed_channel = (row["voice_channel_id"] if row else None) != canale
-                    result = compute_voice_minute(stored_consecutive, minutes_today, changed_channel)
+                    result = compute_voice_minute(stored_consecutive, minutes_today, changed_channel, impostazioni.voce_max_minuti)
                     if result.xp_granted > 0:  # minuto che conta: valgono i numeri del server
                         result = replace(
                             result,
@@ -919,6 +931,8 @@ class LevelingRepository:
                     to_user_id,
                     amount - tassa,
                 )
+                await registra_movimento(conn, guild_id, from_user_id, -amount, "pagamento")
+                await registra_movimento(conn, guild_id, to_user_id, amount - tassa, "pagamento ricevuto")
                 if tassa:
                     from core.repositories.guild_chest_repo import REASON_PAY_TAX, deposit_in
 
@@ -1041,6 +1055,7 @@ class LevelingRepository:
                 )
                 if riga is None:
                     return False
+                await registra_movimento(conn, guild_id, user_id, amount, "daily" if colonna == "last_daily_at" else "lavoro")
                 await self._add_period_activity(conn, guild_id, user_id, 0, amount)
         # §23.17: la serie di giorni e la missione del giorno.
         from core import progressi_service

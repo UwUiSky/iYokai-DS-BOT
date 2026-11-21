@@ -447,7 +447,9 @@
   "identita": "identity",
   "alias": "alias",
   "divieti": "blocks",
-  "avatar": "avatar"
+  "avatar": "avatar",
+  "movimenti": "movements",
+  "portafoglio": "wallet"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1625,7 +1627,9 @@
   "admin-moduli starboard esclusi": "Channels that never reach the board (up to 25).",
   "admin-moduli starboard stato": "How the board is set up.",
   "admin-moduli compleanni stato": "How the birthday wishes are set up.",
-  "utility strumenti avatar": "A member's avatar in large size, of the server or global."
+  "utility strumenti avatar": "A member's avatar in large size, of the server or global.",
+  "level movimenti": "The latest movements of your coins (kept for 30 days).",
+  "monete conto portafoglio": "Your balance as an image."
  },
  "parametri": {},
  "menu": {
