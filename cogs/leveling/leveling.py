@@ -1521,6 +1521,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         descrizione="Mostra i ruoli-premio dei livelli e i moltiplicatori di XP attivi.",
     )
     async def premi(self, interaction: discord.Interaction) -> None:
+        """ECO-150: l'elenco dei premi di ogni livello (ruoli-premio) e dei moltiplicatori attivi."""
         """LIV-048 e LIV-027: elenco pubblico di ruoli-premio e moltiplicatori."""
         if await _comando_rifiutato(interaction):
             return
