@@ -40,7 +40,7 @@ YouTube è scritto nella colonna "Come farla". Regola già scritta in
 | MUS-010 | Ricerca e ascolto di radio dal mondo | Jockie (oltre 37.000 stazioni) [JOCKIE], NadekoBot (`.radio`, da link) [NADEKO] | 🟡 parziale: solo la radio dell'owner; un link di radio funziona con `/play` | `/music radio <nome>` con un elenco pubblico di stazioni; nessun problema di YouTube | nuova |
 | MUS-011 | Accendere e spegnere ogni sorgente | Red (`llset config source …`: youtube, soundcloud, bandcamp, twitch, vimeo, http, local) [RED] | ❌ manca | `/owner radio sorgenti`; serve per spegnere YouTube in un colpo se arriva una diffida | nuova |
 | MUS-012 | Scegliere su quale servizio cercare un titolo | JMusicBot (`scsearch` per SoundCloud) [JMB] | ❌ manca: un titolo viene sempre cercato su YouTube Music | Opzione `sorgente` in `/music play` e valore predefinito del server; permette un default diverso da YouTube | nuova |
-| MUS-013 | Ricerca con elenco di risultati tra cui scegliere | Red (`search`) [RED], FredBoat (`select`) [FRED], JMusicBot (`search`) [JMB], NadekoBot (`.queuesearch`) [NADEKO] | ❌ manca | — | da fare: l'owner l'ha chiesta il 21/11/2026 |
+| MUS-013 | Ricerca con elenco di risultati tra cui scegliere | Red (`search`) [RED], FredBoat (`select`) [FRED], JMusicBot (`search`) [JMB], NadekoBot (`.queuesearch`) [NADEKO] | ✅ fatta (giro r6mus, 21/11/2026) | — | fatta il 21/11/2026 (r6mus) |
 | MUS-014 | Scegliere una playlist per genere da un elenco di categorie | Red (`genre`, da Spotify) [RED] | ❌ manca | Menu a tendina con playlist scelte dall'owner | nuova |
 | MUS-015 | Paese usato per le ricerche Spotify, per server e per utente | Red (`audioset countrycode`, `mycountrycode`) [RED] | ❌ manca | Impostazione del server (default IT) | nuova |
 | MUS-016 | Preferire le versioni "solo audio" ai video musicali | Red (`audioset lyrics`) [RED] | ❌ manca | Filtro sul titolo del risultato; riguarda solo le ricerche YouTube | nuova |
@@ -54,19 +54,19 @@ YouTube è scritto nella colonna "Come farla". Regola già scritta in
 |---|---|---|---|---|---|
 | MUS-020 | Entrare nel canale vocale senza far partire niente | Red (`summon`) [RED], FredBoat (`join`) [FRED], NadekoBot (`.join`) [NADEKO] | ❌ manca | `/music entra`; assegna un bot libero della flotta | nuova |
 | MUS-021 | Mettere un brano nuovo in cima alla coda | FredBoat (`playnext`) [FRED], JMusicBot (`playnext`) [JMB], NadekoBot (`.queuenext`) [NADEKO] | ❌ manca | Opzione `prossimo: sì` in `/music play`. Non è tra gli scartati, ma è vicino a "move": chiedere all'owner | nuova |
-| MUS-022 | Portare in cima un brano già in coda | Red (`bump`) [RED] | ❌ manca | — (è uno spostamento) | da fare: l'owner l'ha chiesta il 21/11/2026 |
-| MUS-023 | Far partire subito un brano, interrompendo quello in corso | Red (`bumpplay`) [RED] | ❌ manca | — (è un "forceskip") | da fare: l'owner l'ha chiesta il 21/11/2026 |
-| MUS-024 | Togliere un brano dalla coda | Red (`remove`) [RED], JMusicBot (`remove`) [JMB], NadekoBot (`.songremove`) [NADEKO] | ❌ manca | — | da fare: l'owner l'ha chiesta il 21/11/2026 |
-| MUS-025 | Togliere l'ultimo brano che hai messo per sbaglio | NadekoBot (`.wrongsong`) [NADEKO] | ❌ manca | — (variante di "remove") | da fare: l'owner l'ha chiesta il 21/11/2026 |
-| MUS-026 | Togliere dalla coda tutti i propri brani | Red (`queue cleanself`) [RED] | ❌ manca | — (variante di "remove") | da fare: l'owner l'ha chiesta il 21/11/2026 |
+| MUS-022 | Portare in cima un brano già in coda | Red (`bump`) [RED] | ✅ fatta (giro r6mus, 21/11/2026) | — (è uno spostamento) | fatta il 21/11/2026 (r6mus) |
+| MUS-023 | Far partire subito un brano, interrompendo quello in corso | Red (`bumpplay`) [RED] | ✅ fatta (giro r6mus, 21/11/2026) | — (è un "forceskip") | fatta il 21/11/2026 (r6mus) |
+| MUS-024 | Togliere un brano dalla coda | Red (`remove`) [RED], JMusicBot (`remove`) [JMB], NadekoBot (`.songremove`) [NADEKO] | ✅ fatta (giro r6mus, 21/11/2026) | — | fatta il 21/11/2026 (r6mus) |
+| MUS-025 | Togliere l'ultimo brano che hai messo per sbaglio | NadekoBot (`.wrongsong`) [NADEKO] | ✅ fatta (giro r6mus, 21/11/2026) | — (variante di "remove") | fatta il 21/11/2026 (r6mus) |
+| MUS-026 | Togliere dalla coda tutti i propri brani | Red (`queue cleanself`) [RED] | ✅ fatta (giro r6mus, 21/11/2026) | — (variante di "remove") | fatta il 21/11/2026 (r6mus) |
 | MUS-027 | Togliere i brani di chi non è più nel canale vocale | Red (`queue clean`) [RED], JMusicBot (`forceremove`) [JMB] | ❌ manca | Come pulizia automatica quando un utente esce; chiedere all'owner (vicino a "remove") | nuova |
-| MUS-028 | Spostare un brano in un'altra posizione | JMusicBot (`movetrack`) [JMB], NadekoBot (`.trackmove`) [NADEKO] | ❌ manca | — | da fare: l'owner l'ha chiesta il 21/11/2026 |
+| MUS-028 | Spostare un brano in un'altra posizione | JMusicBot (`movetrack`) [JMB], NadekoBot (`.trackmove`) [NADEKO] | ✅ fatta (giro r6mus, 21/11/2026) | — | fatta il 21/11/2026 (r6mus) |
 | MUS-029 | Saltare direttamente al brano numero N | Red (`skip <n>`) [RED], JMusicBot (`skipto`) [JMB], FredBoat [FRED] | ❌ manca | Opzione `a` in `/music skip` | nuova |
 | MUS-030 | Saltare un intervallo di brani o tutti i brani di un utente | FredBoat (`skip n-m`, `skip @utente`) [FRED] | ❌ manca | Opzioni di `/music skip`; solo per chi gestisce il server | nuova |
 | MUS-031 | Tornare al brano precedente | Red (`prev`) [RED] | ❌ manca | `/music precedente`; tenere gli ultimi brani in memoria | nuova |
 | MUS-032 | Elenco dei brani già suonati | FredBoat (`history`) [FRED] | ❌ manca | Scheda "già suonati" in `/music queue` | nuova |
-| MUS-033 | Ricominciare il brano da capo | FredBoat (`restart`) [FRED] | ❌ manca | — (è un "seek" a zero) | da fare: l'owner l'ha chiesta il 21/11/2026 |
-| MUS-034 | Andare a un punto del brano, avanti o indietro | Red (`seek`) [RED], FredBoat (`seek`, `forward`, `rewind`) [FRED], JMusicBot (`seek`) [JMB] | ❌ manca | — | da fare: l'owner l'ha chiesta il 21/11/2026 |
+| MUS-033 | Ricominciare il brano da capo | FredBoat (`restart`) [FRED] | ✅ fatta (giro r6mus, 21/11/2026) | — (è un "seek" a zero) | fatta il 21/11/2026 (r6mus) |
+| MUS-034 | Andare a un punto del brano, avanti o indietro | Red (`seek`) [RED], FredBoat (`seek`, `forward`, `rewind`) [FRED], JMusicBot (`seek`) [JMB] | ✅ fatta (giro r6mus, 21/11/2026) | — | fatta il 21/11/2026 (r6mus) |
 | MUS-035 | Cercare un brano dentro la coda | Red (`queue search`) [RED], NadekoBot (`.queuefind`) [NADEKO] | ❌ manca | Opzione `cerca` in `/music queue` | nuova |
 | MUS-036 | Vedere quanta parte della coda ha messo ogni utente | Red (`percent`) [RED] | ❌ manca | Riga in fondo a `/music queue` | nuova |
 | MUS-037 | Coda "equa": i brani di utenti diversi si alternano | NadekoBot (`.qfp`) [NADEKO], JMusicBot (`queuetype`) [JMB] | ❌ manca | Impostazione del server `coda: normale/equa` | nuova |
@@ -78,7 +78,7 @@ YouTube è scritto nella colonna "Come farla". Regola già scritta in
 | MUS-043 | Esportare la coda come link o file | FredBoat (`export`) [FRED] | ❌ manca | File di testo allegato (sotto 10 MiB) | nuova |
 | MUS-044 | Durata massima di un brano accettato | Red (`audioset maxlength`) [RED] | ❌ manca | Impostazione in secondi | nuova |
 | MUS-045 | Playlist automatica "tutto quello che è stato suonato oggi" | Red (`audioset dailyqueue`) [RED] | ❌ manca | Dipende da NF-19 | nuova |
-| MUS-046 | Testo della canzone | NadekoBot (`.lyrics`) [NADEKO], JMusicBot (`lyrics`) [JMB] | ❌ manca | — | da fare: l'owner l'ha chiesta il 21/11/2026 (testi sincronizzati per il karaoke) |
+| MUS-046 | Testo della canzone | NadekoBot (`.lyrics`) [NADEKO], JMusicBot (`lyrics`) [JMB] | ✅ fatta (giro r6mus, 21/11/2026) | — | fatta il 21/11/2026 (r6mus) (testi sincronizzati per il karaoke) |
 
 ## 3. Impostazioni del player
 
@@ -88,9 +88,9 @@ YouTube è scritto nella colonna "Come farla". Regola già scritta in
 | MUS-048 | Qualità audio predefinita | NadekoBot (`.musicquality`) [NADEKO] | ❌ manca | Con Lavalink si regola sul nodo, non per server: bassa priorità | nuova |
 | MUS-049 | Equalizzatore a bande con preset salvati | Red (`eq set`, `save`, `load`, `list`, `delete`, `reset`) [RED] | ❌ manca | — | scelta dell'owner: no (confermata il 21/11/2026: pesa sul server Lavalink) |
 | MUS-050 | Filtri audio (bassboost, nightcore, 8D…) | Maki [MAKI] | ❌ manca | — | scelta dell'owner: no (confermata il 21/11/2026: pesa sul server Lavalink) |
-| MUS-051 | Ruolo DJ e modalità DJ | Red (`audioset dj`, `audioset role`) [RED], JMusicBot (`setdj`) [JMB] | ❌ manca | — | da fare: l'owner l'ha chiesta il 21/11/2026 |
-| MUS-052 | Voto per saltare, con percentuale | Red (`audioset vote`) [RED], JMusicBot (`setskip`) [JMB] | ❌ manca | — | da fare: l'owner l'ha chiesta il 21/11/2026 |
-| MUS-053 | Pausa automatica quando il canale resta vuoto | Red (`audioset emptypause`) [RED] | ❌ manca | Evento `on_voice_state_update`; riprende al rientro | nuova |
+| MUS-051 | Ruolo DJ e modalità DJ | Red (`audioset dj`, `audioset role`) [RED], JMusicBot (`setdj`) [JMB] | ✅ fatta (giro r6mus, 21/11/2026) | — | fatta il 21/11/2026 (r6mus) |
+| MUS-052 | Voto per saltare, con percentuale | Red (`audioset vote`) [RED], JMusicBot (`setskip`) [JMB] | ✅ fatta (giro r6mus, 21/11/2026) | — | fatta il 21/11/2026 (r6mus) |
+| MUS-053 | Pausa automatica quando il canale resta vuoto | Red (`audioset emptypause`) [RED] | ✅ fatta (giro r6mus, 21/11/2026) | Evento `on_voice_state_update`; riprende al rientro | nuova, fatta il 21/11/2026 (r6mus) |
 | MUS-054 | Tempo di attesa prima di uscire da un canale vuoto, scelto dal server | Red (`audioset emptydisconnect`) [RED], NadekoBot (`.autodisconnect`) [NADEKO] | 🟡 parziale: 300 secondi fissi | Impostazione (da 30 a 3600 secondi) | nuova |
 | MUS-055 | Scelta: uscire o restare quando la coda finisce | Red (`audioset dc`) [RED] | ❌ manca | Impostazione sì/no | nuova |
 | MUS-056 | Il bot entra "sordo" in vocale | Red (`audioset autodeafen`) [RED] | ❌ manca | `self_deaf=True` alla connessione | nuova |
@@ -98,7 +98,7 @@ YouTube è scritto nella colonna "Come farla". Regola già scritta in
 | MUS-058 | Canale fisso dove arrivano gli annunci della musica | NadekoBot (`.setmusicchannel`, `.unsetmusicchannel`) [NADEKO], JMusicBot (`settc`) [JMB] | ❌ manca | Canale dal router (NF-01); coincide con il canale richieste | NF-19 |
 | MUS-059 | Musica permessa in un solo canale vocale | JMusicBot (`setvc`) [JMB] | ❌ manca | Elenco di canali vocali ammessi | nuova |
 | MUS-060 | Copertina del brano nei messaggi | Red (`audioset thumbnail`) [RED] | ❌ manca | Miniatura nell'embed di `/music nowplaying` | NF-19 |
-| MUS-061 | Titolo del brano come stato del bot | Red (`audioset status`) [RED] | ❌ manca | Solo sui bot musicali della flotta (uno per canale); non sul bot principale, che è in molti server | nuova |
+| MUS-061 | Titolo del brano come stato del bot | Red (`audioset status`) [RED] | ✅ fatta (giro r6mus, 21/11/2026) | Solo sui bot musicali della flotta (uno per canale); non sul bot principale, che è in molti server | nuova, fatta il 21/11/2026 (r6mus) |
 | MUS-062 | Parole vietate o permesse nei titoli dei brani | Red (`audioset restrictions blacklist`, `whitelist`: `add`, `delete`, `list`, `clear`) [RED] | ❌ manca | Due elenchi per server (max 50 voci) | nuova |
 | MUS-063 | Elenchi di parole vietate validi per tutto il bot | Red (`audioset restrictions global …`) [RED] | ❌ manca | `/owner radio blocca-parola` | nuova |
 | MUS-064 | Solo link di siti conosciuti | Red (`audioset restrict`) [RED] | ❌ manca: i controlli di `core/safe_http.py` valgono solo per i feed | Lista di domini ammessi anche per `/music play` | nuova |
