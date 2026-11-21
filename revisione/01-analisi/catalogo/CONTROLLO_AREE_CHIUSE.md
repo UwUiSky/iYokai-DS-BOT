@@ -60,3 +60,44 @@ Giro r2utl (issue #128). «Corretta» = fa ciò che dice il catalogo e rispetta 
 | UTL-082 | sì (anteprima privata) | sì | nessuna | test_crea_salva_e_mostra_l_anteprima |
 | UTL-084 | no | sì | realizzata: `/admin-messaggi embed colore` (0762), vale solo se l'embed non ha il suo | saved_embed_repo; tests/test_embed_r2utl.py::test_utl_084_* |
 | UTL-085 | no | sì | realizzata: un invio al minuto per server in `pubblica` | embed_builder.py; test_utl_085 |
+| UTL-086 | sì (10 opzioni, sondaggio nativo) | sì | nessuna | cogs/utility/poll.py; tests/test_poll_cog_smoke.py::test_poll_con_dieci_opzioni_crea_dieci_risposte |
+| UTL-101 | in parte (solo tempo relativo) | sì | realizzata: elenco con data esatta e relativa | cogs/utility/reminders.py; tests/test_promemoria_catalogo.py::test_utl_101 |
+| (difetto trovato) | promemoria ripetuto nel canale | no: il messaggio pubblico non diceva che si ripete | aggiornata: riga «Si ripete ogni…» (lingua del server); test del giro riparati (payload mancante) | reminders.py; tests/test_promemoria_catalogo.py |
+| UTL-110 | in parte (ping di ruolo sì, everyone/here muti) | sì | non fattibile D100 (everyone e here mai, D12) | DECISIONI.md D100 |
+| UTL-114 | no | sì | realizzata: `/admin-giveaway chiudi` (scadenza a ora, estrae il worker) | cogs/utility/giveaway_extra.py; tests/test_giveaway_extra.py::test_utl_114_117_118_* |
+| UTL-115 | sì (menu «Riestrai giveaway», solo staff) | sì | nessuna (alternativa al comando: menu sul messaggio) | test_riestrai_solo_su_annuncio_finito_e_ripesca |
+| UTL-117 | in parte (solo programmati) | sì | realizzata: `/admin-giveaway annulla` (senza vincitori, annuncio aggiornato) | giveaway_extra.py; stesso test |
+| UTL-118 | in parte (solo programmati) | sì | realizzata: `/admin-giveaway elenco` | stesso |
+| UTL-121 | in parte (comando con opzioni) | sì | non fattibile D100 (alternativa più completa) | DECISIONI.md D100 |
+| UTL-122 | sì | sì (tetto 25) | nessuna | tests/test_giveaway_avanzati.py::test_modelli_salva_aggiorna_elenca_elimina |
+| UTL-123 | sì | sì | nessuna | test_giveaway_programmato_non_posta_subito |
+| UTL-124 | sì | sì | nessuna | test_requisito_sui_messaggi |
+| UTL-125 | sì | sì | nessuna | test_il_ruolo_bypass_salta_tutti_i_requisiti |
+| UTL-127 | sì | sì | nessuna | test_biglietti_extra_solo_con_il_ruolo |
+| UTL-143 | sì | sì (permessi del bot nel canale controllati) | nessuna | cogs/utility/starboard.py; tests/test_starboard.py::test_comando_imposta_passa_nsfw_e_voto_autore |
+| UTL-144 | sì | sì | nessuna | stesso |
+| UTL-145 | sì | sì (di base esclusi) | nessuna | stesso; test_canale_nsfw_escluso_di_default |
+| UTL-146 | in parte (solo NSFW e privati) | sì | realizzata: `/admin-moduli starboard esclusi` (0764, 25 canali, thread inclusi) | starboard.py; tests/test_starboard.py::test_utl_146_* |
+| UTL-147 | sì | sì (emoji validata) | nessuna | test_comando_imposta_rifiuta_emoji_non_valida |
+| UTL-150 | sì (`caso`, link nel post) | sì | nessuna | tests/test_starboard_bacheca.py::test_caso_manda_il_link_al_post |
+| UTL-153 | in parte (solo disattiva) | sì | realizzata: `/admin-moduli starboard stato` | tests/test_starboard.py::test_utl_153 |
+| UTL-156 | sì | sì (niente anno) | nessuna | cogs/utility/birthdays.py; tests/test_birthdays.py::test_imposta_valida_la_data |
+| UTL-157 | sì | sì | nessuna | test_rimuovi_cancella_il_dato |
+| UTL-161 | sì | sì (permessi e ruolo assegnabile controllati) | nessuna | test_ruolo_non_assegnabile_rifiutato_alla_configurazione |
+| UTL-162 | no | sì | realizzata: `/admin-moduli compleanni stato` | tests/test_birthdays.py::test_utl_162 |
+| UTL-163 | sì (`/level inviti utente`) | sì (l'attribuzione può mancare: avviso sempre) | nessuna | cogs/utility/invites.py; tests/test_invites.py::test_comando_storico_e_utente_dicono_da_chi_e_stato_invitato |
+| UTL-164 | in parte (solo da sempre; esclusi per utente e ruolo sì) | sì | realizzata: opzione `giorni` (1-365) | invites.py; tests/test_inviti_bonus_esclusi.py::test_utl_164 |
+| UTL-165 | sì (`storico`) | sì | nessuna | stesso test di UTL-163 |
+| UTL-168 | sì (presenti, usciti, finti, bonus) | sì | nessuna | tests/test_inviti_bonus_esclusi.py::test_finti_non_contano_ma_si_vedono |
+| UTL-177 | sì (canale del registro, senza menzioni) | sì | nessuna (nessun ping, per scelta) | tests/test_invites.py::test_registro_scrive_nel_canale_scelto_senza_menzioni |
+| UTL-185 | sì | sì | nessuna | cogs/utility/conteggio.py; tests/test_conteggio.py::test_register_giusto_sbagliato_e_punteggi |
+| UTL-196 | no | sì | realizzata: `/utility strumenti avatar` (server o globale, 1024 punti, nome senza markdown) | cogs/utility/strumenti_rapidi.py; tests/test_strumenti_rapidi.py::test_utl_196_* |
+| UTL-204 | no | - | non è mio: `/mod esporta-chat` sta in moderazione (nota in D100) | - |
+| UTL-205 | no | - | non è mio: `cogs/utility/snipe.py` è di altro agente (nota in D100) | - |
+| UTL-216 | in parte (`/fun search-image`) | - | non fattibile D100 | DECISIONI.md D100 |
+| UTL-223 | sì (`/admin-bot canali`, `ignora`) | sì | nessuna | cogs/utility/politica.py; tests/test_politica_comandi.py::test_canali_ignora_ed_elenco |
+| UTL-224 | sì (`/admin-bot comando`) | sì | nessuna | test_comando_spegne_riaccende_e_rifiuta_i_nomi_sbagliati |
+| UTL-225 | sì (risposta effimera) | sì | nessuna | test_il_controllo_dell_albero_ferma_il_comando_spento_e_risponde_effimero |
+| UTL-226 | no | - | non è mio: `config_history.py` (nota in D100) | - |
+| UTL-227 | sì (`ruolo-richiesto`) | sì | nessuna | test_cfg012_serve_uno_dei_ruoli_richiesti_per_il_comando_e_il_suo_gruppo |
+| UTL-228 | in parte | - | non è mio: `config_history.py` (nota in D100) | - |
