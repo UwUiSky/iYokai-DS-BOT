@@ -108,6 +108,29 @@ class RischioCog(CogConGruppi, commands.Cog):
         persi = await rischio_repo.dimettiti(interaction.guild.id, interaction.user.id)
         await interaction.response.send_message(await testo_per(interaction, "rsk_dimesso", turni=persi), ephemeral=True)
 
+    @comando_di_gruppo("monete", nome="deposito", descrizione="Blocca monete della banca per 7 giorni e ricevi il 10% in più (ECO-005).", sottogruppo=_SG_CONTO)
+    @app_commands.describe(importo="Quante monete della banca bloccare (senza numero: ritira o vedi il deposito)")
+    async def deposito(self, interaction: discord.Interaction, importo: app_commands.Range[int, 1, 1_000_000_000] | None = None) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        g, u = interaction.guild.id, interaction.user.id
+        moneta = (await self._impostazioni(interaction)).currency_name
+        if importo is not None:
+            esito = await rischio_repo.blocca(g, u, importo)
+            chiave = {"ok": "rsk_dep_ok", "gia": "rsk_dep_gia", "poche": "rsk_banca_no"}[esito]
+            await interaction.response.send_message(await testo_per(interaction, chiave, importo=importo, moneta=moneta), ephemeral=esito != "ok")
+            return
+        esito, valore = await rischio_repo.sblocca(g, u)
+        if esito == "ok":
+            await interaction.response.send_message(await testo_per(interaction, "rsk_dep_ritirato", totale=valore, moneta=moneta), ephemeral=True)
+        elif esito == "presto":
+            dep = await rischio_repo.deposito_di(g, u)
+            await interaction.response.send_message(
+                await testo_per(interaction, "rsk_dep_presto", tempo=_format_seconds(valore), importo=dep["importo"] if dep else 0, moneta=moneta), ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(await testo_per(interaction, "rsk_dep_niente"), ephemeral=True)
+
     # ---------------------------------------------------------------- colpo e avventura
     async def _colpo(self, interaction, chiave, pausa_s, successo, molt) -> None:
         if await _comando_rifiutato(interaction):

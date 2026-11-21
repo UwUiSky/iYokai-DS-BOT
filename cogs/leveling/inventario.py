@@ -25,6 +25,8 @@ from core.leveling_logic import prezzo_rivendita, tasso_del_giorno
 from core.repositories.inventario_repo import Esito, inventario_repo
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.repositories.shop_repo import shop_repo
+from core.repositories.sociale_repo import sociale_repo
+from core.role_safety import check_role_assignable
 
 logger = logging.getLogger("iyokai.leveling.inventario")
 NESSUNA_MENZIONE = discord.AllowedMentions.none()
@@ -58,11 +60,65 @@ class InventarioCog(CogConGruppi, commands.Cog):
             return
         guild = interaction.guild
         item = await shop_repo.get_item(item_id, guild.id)
-        if item is None or not await inventario_repo.usa(guild.id, interaction.user.id, item_id):
+        if item is None:
             await interaction.response.send_message(await testo_per(interaction, "inv_non_lo_hai"), ephemeral=True)
             return
-        testo = item.reply_text or await testo_guild(guild, "inv_usato", nome=item.name)
+        extra = ""
+        if item.azione == "monete":  # ECO-060: pezzo e monete nella stessa transazione
+            saldo = await inventario_repo.usa_con_monete(guild.id, interaction.user.id, item_id, item.azione_valore)
+            if saldo is None:
+                await interaction.response.send_message(await testo_per(interaction, "inv_non_lo_hai"), ephemeral=True)
+                return
+            extra = await testo_per(interaction, "inv_azione_monete", monete=item.azione_valore, saldo=saldo)
+        elif item.azione in ("ruolo_dai", "ruolo_togli"):
+            ruolo = guild.get_role(item.azione_valore)
+            motivo = "ruolo non trovato" if ruolo is None else check_role_assignable(guild, ruolo, interaction.user, self_service=True)
+            if motivo is not None:  # prima di consumare: se il ruolo non si può dare il pezzo resta
+                await interaction.response.send_message(f"❌ {motivo}", ephemeral=True)
+                return
+            if not await inventario_repo.usa(guild.id, interaction.user.id, item_id):
+                await interaction.response.send_message(await testo_per(interaction, "inv_non_lo_hai"), ephemeral=True)
+                return
+            try:
+                if item.azione == "ruolo_dai":
+                    await interaction.user.add_roles(ruolo, reason="Oggetto usato")
+                else:
+                    await interaction.user.remove_roles(ruolo, reason="Oggetto usato")
+            except discord.HTTPException:
+                await inventario_repo.restituisci(guild.id, interaction.user.id, item_id)
+                await interaction.response.send_message(await testo_per(interaction, "inv_azione_fallita"), ephemeral=True)
+                return
+            extra = await testo_per(interaction, "inv_azione_ruolo", ruolo=ruolo.name[:60])
+        elif not await inventario_repo.usa(guild.id, interaction.user.id, item_id):
+            await interaction.response.send_message(await testo_per(interaction, "inv_non_lo_hai"), ephemeral=True)
+            return
+        testo = (item.reply_text or await testo_guild(guild, "inv_usato", nome=item.name)) + (f"\n{extra}" if extra else "")
         await interaction.response.send_message(testo[:1900], allowed_mentions=NESSUNA_MENZIONE)
+
+    @comando_di_gruppo("admin-giochi", nome="oggetto-azione", descrizione="Cosa fa un oggetto del negozio quando lo si usa: monete o un ruolo.")
+    @app_commands.describe(item_id="ID dell'oggetto", azione="Cosa succede", monete="Monete (solo per «Dà monete»)", ruolo="Il ruolo (per «Dà un ruolo» o «Toglie un ruolo»)")
+    @app_commands.choices(azione=[
+        app_commands.Choice(name="Niente", value="nessuna"), app_commands.Choice(name="Dà monete", value="monete"),
+        app_commands.Choice(name="Dà un ruolo", value="ruolo_dai"), app_commands.Choice(name="Toglie un ruolo", value="ruolo_togli"),
+    ])
+    async def oggetto_azione(
+        self, interaction: discord.Interaction, item_id: IdOggetto, azione: app_commands.Choice[str],
+        monete: app_commands.Range[int, 1, 100_000] | None = None, ruolo: discord.Role | None = None,
+    ) -> None:
+        if await _comando_rifiutato(interaction):
+            return
+        valore = monete if azione.value == "monete" else (ruolo.id if ruolo else None)
+        if ruolo is not None and azione.value in ("ruolo_dai", "ruolo_togli"):
+            motivo = check_role_assignable(interaction.guild, ruolo, interaction.user, self_service=True)
+            if motivo is not None:
+                await interaction.response.send_message(f"❌ {motivo}", ephemeral=True)
+                return
+        try:
+            trovato = await shop_repo.imposta_azione(item_id, interaction.guild.id, azione.value, valore)
+        except ValueError as errore:
+            await interaction.response.send_message(f"❌ {errore}", ephemeral=True)
+            return
+        await interaction.response.send_message(await testo_per(interaction, "eco_salvato" if trovato else "inv_oggetto_inesistente"), ephemeral=True)
 
     @comando_di_gruppo("monete", nome="regala", descrizione="Regala un oggetto del tuo inventario a un altro membro.")
     @app_commands.describe(membro="Chi lo riceve", item_id="ID dell'oggetto (vedi /monete inventario)")
@@ -74,6 +130,9 @@ class InventarioCog(CogConGruppi, commands.Cog):
             return
         if membro.bot:
             await interaction.response.send_message(await testo_per(interaction, "leveling_non_puoi_pagare_un_bot"), ephemeral=True)
+            return
+        if await sociale_repo.ha_bloccato(membro.id, interaction.user.id):  # ECO-155
+            await interaction.response.send_message(await testo_per(interaction, "soc_bloccato"), ephemeral=True)
             return
         esito = await inventario_repo.regala(interaction.guild.id, interaction.user.id, membro.id, item_id)
         if esito is Esito.NON_REGALABILE:

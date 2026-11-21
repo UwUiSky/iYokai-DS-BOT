@@ -39,6 +39,8 @@ class ShopItem:
     list_item: bool = False  # ECO-067: ogni acquisto consegna una riga
     lines_left: int | None = None  # righe ancora da consegnare (solo oggetti a elenco)
     regalabile: bool = True  # ECO-071: chi lo compra lo può regalare
+    azione: str = "nessuna"  # ECO-060: cosa succede quando lo si usa
+    azione_valore: int | None = None  # monete o id del ruolo
 
 
 @dataclass(frozen=True)
@@ -146,6 +148,8 @@ class ShopRepository:
             list_item=row["list_item"],
             lines_left=row["lines_left"] if "lines_left" in row else None,
             regalabile=row["regalabile"] if "regalabile" in row else True,
+            azione=row["azione"] if "azione" in row else "nessuna",
+            azione_valore=row["azione_valore"] if "azione_valore" in row else None,
         )
 
     async def add_item(
@@ -228,6 +232,27 @@ class ShopRepository:
             *campi.values(),
         )
         return self._row_to_item(riga) if riga is not None else None
+
+    async def imposta_azione(self, item_id: int, guild_id: int, azione: str, valore: int | None) -> bool:
+        """
+        ECO-060: cosa fa un oggetto quando lo si usa: nessuna, dà monete (1-100000) o dà/toglie un ruolo.
+        False se l'oggetto non esiste in quel server; ValueError per valori non validi.
+        """
+        if azione not in ("nessuna", "monete", "ruolo_dai", "ruolo_togli"):
+            raise ValueError("Azione sconosciuta.")
+        if azione == "nessuna":
+            valore = None
+        elif azione == "monete" and not (valore and 1 <= valore <= 100_000):
+            raise ValueError("Le monete devono stare tra 1 e 100000.")
+        elif azione != "monete" and not valore:
+            raise ValueError("Serve un ruolo.")
+        if not 1 <= item_id <= MAX_ID_OGGETTO:
+            return False
+        esito = await self._pool.execute(
+            "UPDATE shop_items SET azione = $3, azione_valore = $4 WHERE id = $1 AND guild_id = $2",
+            item_id, guild_id, azione, valore,
+        )
+        return esito.endswith(" 1")
 
     async def remove_item(self, item_id: int, guild_id: int) -> bool:
         if not 1 <= item_id <= MAX_ID_OGGETTO:

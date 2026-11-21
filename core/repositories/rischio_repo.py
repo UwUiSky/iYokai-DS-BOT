@@ -87,6 +87,68 @@ class RischioRepository:
         )
         return Banca(riga["coins_total"], riga["banca_total"]) if riga else None
 
+    # ---------------------------------------------------------------- deposito vincolato (ECO-005)
+    async def blocca(self, guild_id: int, user_id: int, importo: int, giorni: int = 7) -> str:
+        """
+        Blocca `importo` della banca per `giorni` giorni (un deposito alla volta). «ok», «gia» (ce n'è già uno)
+        o «poche» (la banca non basta). Banca e riga del deposito cambiano nella stessa transazione.
+        """
+        if importo <= 0 or giorni <= 0:
+            raise ValueError("Importo o durata non validi.")
+        try:
+            return await self._blocca(guild_id, user_id, importo, giorni)
+        except _Poche:  # la riga del deposito è annullata con la transazione
+            return "poche"
+
+    async def _blocca(self, guild_id: int, user_id: int, importo: int, giorni: int) -> str:
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                nuovo = await conn.fetchval(
+                    "INSERT INTO economia_depositi (guild_id, user_id, importo, scade_at) "
+                    "VALUES ($1, $2, $3, now() + make_interval(days => $4)) ON CONFLICT DO NOTHING RETURNING 1",
+                    guild_id, user_id, importo, giorni,
+                )
+                if nuovo is None:
+                    return "gia"
+                tolto = await conn.fetchval(
+                    "UPDATE leveling_totals SET banca_total = banca_total - $3 WHERE guild_id = $1 AND user_id = $2 "
+                    "AND banca_total >= $3 RETURNING 1",
+                    guild_id, user_id, importo,
+                )
+                if tolto is None:
+                    raise _Poche()
+                return "ok"
+
+    async def sblocca(self, guild_id: int, user_id: int, percentuale: int = 10) -> tuple[str, int]:
+        """
+        Ritira il deposito scaduto con l'interesse (alla banca). («ok», totale), («presto», secondi che mancano)
+        o («niente», 0). La riga si cancella una volta sola: l'interesse si paga una volta sola.
+        """
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                riga = await conn.fetchrow(
+                    "DELETE FROM economia_depositi WHERE guild_id = $1 AND user_id = $2 AND scade_at <= now() RETURNING importo",
+                    guild_id, user_id,
+                )
+                if riga is None:
+                    resto = await conn.fetchval(
+                        "SELECT CEIL(EXTRACT(EPOCH FROM scade_at - now())) FROM economia_depositi WHERE guild_id = $1 AND user_id = $2",
+                        guild_id, user_id,
+                    )
+                    return ("presto", int(resto)) if resto is not None else ("niente", 0)
+                totale = riga["importo"] + riga["importo"] * percentuale // 100
+                await conn.execute(
+                    "INSERT INTO leveling_totals (guild_id, user_id, banca_total) VALUES ($1, $2, $3) "
+                    "ON CONFLICT (guild_id, user_id) DO UPDATE SET banca_total = leveling_totals.banca_total + $3",
+                    guild_id, user_id, totale,
+                )
+                return "ok", totale
+
+    async def deposito_di(self, guild_id: int, user_id: int):
+        return await self._pool.fetchrow(
+            "SELECT importo, scade_at FROM economia_depositi WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
+        )
+
     # ---------------------------------------------------------------- guadagni con pausa
     async def guadagna(self, guild_id: int, user_id: int, chiave: str, pausa_s: int, importo: int) -> int | None:
         """
@@ -228,6 +290,10 @@ class RischioRepository:
 
 
 class _Protetto(Exception):
+    pass
+
+
+class _Poche(Exception):
     pass
 
 

@@ -5,7 +5,8 @@ cogs/leveling/progressi.py
 serie di giorni con protezione, pass di 90 giorni con traccia premium, profilo globale). /admin-livelli
 progressi: lo staff li accende e sceglie l'obiettivo del server. Le monete le accredita
 core/progressi_service.py in modo atomico.
-Funzioni coperte: SPEC §23.17 (NF-41, D49, D51)
+Funzioni coperte: SPEC §23.17 (NF-41, D49, D51), ECO-143 (registro delle missioni attive),
+ECO-151 (traguardi come medaglie), ECO-157 (promemoria della serie)
 Dipende da: core/progressi_service.py, core/progressi_logic.py
 """
 

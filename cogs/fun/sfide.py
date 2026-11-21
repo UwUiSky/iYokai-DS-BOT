@@ -23,6 +23,7 @@ from core.duello_logic import ATTESA_RISPOSTA, POSTA_MASSIMA, POSTA_MINIMA, lanc
 from core.i18n import testo_per
 from core.repositories.duelli_repo import EsitoPosta, duelli_repo
 from core.repositories.leveling_settings_repo import leveling_settings_repo
+from core.repositories.sociale_repo import sociale_repo
 from core.ui_base import BaseView
 
 logger = logging.getLogger("iyokai.sfide")
@@ -113,6 +114,9 @@ class SfideCog(CogConGruppi, commands.Cog):
             return
         if membro.id == interaction.user.id or membro.bot:
             await interaction.response.send_message(await testo_per(interaction, "sfd_bersaglio"), ephemeral=True)
+            return
+        if await sociale_repo.ha_bloccato(membro.id, interaction.user.id):  # ECO-155
+            await interaction.response.send_message(await testo_per(interaction, "soc_bloccato"), ephemeral=True)
             return
         impostazioni = (await leveling_settings_repo.get_config(interaction.guild.id)).impostazioni
         chiave = (interaction.guild.id, interaction.user.id)

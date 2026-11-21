@@ -234,7 +234,9 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "entertainmen_hai_tirato_un", pubblica=True, risultato=risultato, sides=sides))
 
     @comando_di_gruppo("giochi", nome="rps", descrizione="Carta, forbici, sasso contro il bot.")
-    @app_commands.describe(scelta="Sasso, carta o forbici")
+    @app_commands.describe(
+        scelta="Sasso, carta o forbici", puntata="Monete da puntare (facoltativo: senza puntata è solo un gioco)"
+    )
     @app_commands.choices(
         scelta=[
             app_commands.Choice(name="Sasso", value="sasso"),
@@ -242,8 +244,17 @@ class EntertainmentCog(CogConGruppi, commands.Cog):
             app_commands.Choice(name="Forbici", value="forbici"),
         ]
     )
-    async def rps(self, interaction: discord.Interaction, scelta: app_commands.Choice[str]) -> None:
+    async def rps(
+        self, interaction: discord.Interaction, scelta: app_commands.Choice[str],
+        puntata: app_commands.Range[int, 1, 1_000_000] | None = None,
+    ) -> None:
         if not await self._modulo_attivo(interaction):
+            return
+        if puntata is not None:  # ECO-097: con la puntata passa dal motore dei giochi con le monete
+            from cogs.fun.giochi_monete import RNG as RNG_MONETE, esegui_partita
+            from core.coin_games_logic import gioca_rps
+
+            await esegui_partita(interaction, "rps", "Sasso-carta-forbici", puntata, lambda p: gioca_rps(scelta.value, p, RNG_MONETE))
             return
 
         scelta_bot, esito = play_rps(scelta.value, self._rng)

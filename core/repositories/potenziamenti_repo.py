@@ -62,7 +62,9 @@ class PotenziamentiRepository:
                 await deposit_in(conn, guild_id, costo, REASON_POTENZIAMENTO)
                 return "ok", attuale + 1
 
-    async def scrigno(self, guild_id: int, user_id: int, prezzo: int, premio: int) -> int | None:
+    async def scrigno(
+        self, guild_id: int, user_id: int, prezzo: int, premio: int, chiave: str = "scrigno", pausa_s: int = PAUSA_SCRIGNO
+    ) -> int | None:
         """
         ECO-077: paga `prezzo` e riceve `premio` (anche 0) in una transazione, con una pausa tra due scrigni.
         Il prezzo va alla cassa, il premio è creato dal gioco come ogni vincita. None se pausa o saldo non bastano.
@@ -72,10 +74,10 @@ class PotenziamentiRepository:
         async with self._pool.acquire() as conn:
             async with conn.transaction():
                 preso = await conn.fetchval(
-                    "INSERT INTO economia_pause (guild_id, user_id, chiave, ultima_at) VALUES ($1, $2, 'scrigno', now()) "
+                    "INSERT INTO economia_pause (guild_id, user_id, chiave, ultima_at) VALUES ($1, $2, $3, now()) "
                     "ON CONFLICT (guild_id, user_id, chiave) DO UPDATE SET ultima_at = now() "
-                    "WHERE economia_pause.ultima_at <= now() - make_interval(secs => $3) RETURNING 1",
-                    guild_id, user_id, float(PAUSA_SCRIGNO),
+                    "WHERE economia_pause.ultima_at <= now() - make_interval(secs => $4) RETURNING 1",
+                    guild_id, user_id, chiave, float(pausa_s),
                 )
                 if preso is None or not await spend_coins_in(conn, guild_id, user_id, prezzo):
                     return None

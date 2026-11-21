@@ -81,6 +81,21 @@ class InventarioRepository:
                 await conn.execute(_PULISCI, guild_id, user_id, item_id)
                 return True
 
+    async def usa_con_monete(self, guild_id: int, user_id: int, item_id: int, monete: int) -> int | None:
+        """ECO-060: consuma un pezzo e dà `monete` nella stessa transazione. Il nuovo saldo, o None se non lo si ha."""
+        if not 1 <= monete <= 100_000:
+            raise ValueError("Monete non valide.")
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                if await conn.fetchval(_TOGLI_UNO, guild_id, user_id, item_id) is None:
+                    return None
+                await conn.execute(_PULISCI, guild_id, user_id, item_id)
+                return await add_coins_in(conn, guild_id, user_id, monete, classifica=False)
+
+    async def restituisci(self, guild_id: int, user_id: int, item_id: int) -> None:
+        """Rimette un pezzo consumato (l'effetto non è riuscito)."""
+        await self._pool.execute(_METTI_UNO, guild_id, user_id, item_id)
+
     async def regala(self, guild_id: int, da: int, a: int, item_id: int) -> Esito:
         """
         ECO-070/071: un pezzo da `da` ad `a`, in una transazione, con le due righe bloccate in

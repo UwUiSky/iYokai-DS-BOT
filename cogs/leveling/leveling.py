@@ -41,6 +41,8 @@ from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.leveling_repo import TettoSaldoRaggiunto, leveling_repo
 from core.repositories.rischio_repo import rischio_repo
 from core.repositories.potenziamenti_repo import potenziamenti_repo
+from core.repositories.sociale_repo import BONUS_PRESTIGIO, sociale_repo
+from core.repositories.animali_repo import animali_repo
 from core.rischio_logic import lavoro_per_turni, paga_con_lavoro
 from core.repositories.level_reward_repo import level_reward_repo
 from core.repositories.leveling_settings_repo import (
@@ -1519,6 +1521,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         descrizione="Mostra i ruoli-premio dei livelli e i moltiplicatori di XP attivi.",
     )
     async def premi(self, interaction: discord.Interaction) -> None:
+        """ECO-150: l'elenco dei premi di ogni livello (ruoli-premio) e dei moltiplicatori attivi."""
         """LIV-048 e LIV-027: elenco pubblico di ruoli-premio e moltiplicatori."""
         if await _comando_rifiutato(interaction):
             return
@@ -1631,6 +1634,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         extra = await self._bonus_serie_daily(interaction, impostazioni, adesso)  # ECO-025
         livelli_pot = await potenziamenti_repo.livelli(interaction.guild.id, interaction.user.id)  # ECO-081
         importo = con_potenziamento(impostazioni.daily_coins, livelli_pot["premio"]) + extra
+        importo += importo * (await animali_repo.bonus(interaction.guild.id, interaction.user.id, "premio") + BONUS_PRESTIGIO * await sociale_repo.livello_prestigio(interaction.guild.id, interaction.user.id)) // 100  # ECO-131, ECO-148
         riscosso = await leveling_repo.claim_daily(
             interaction.guild.id, interaction.user.id,
             importo, attesa_totale, adesso,
@@ -1687,6 +1691,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         turni_fatti = await rischio_repo.turni(interaction.guild.id, interaction.user.id)
         guadagno = max(guadagno if guadagno == 0 else 1, paga_con_lavoro(guadagno, lavoro_per_turni(turni_fatti)[2]))
         guadagno = con_potenziamento(guadagno, (await potenziamenti_repo.livelli(interaction.guild.id, interaction.user.id))["lavoro"])  # ECO-081
+        guadagno += guadagno * (await animali_repo.bonus(interaction.guild.id, interaction.user.id, "lavoro") + BONUS_PRESTIGIO * await sociale_repo.livello_prestigio(interaction.guild.id, interaction.user.id)) // 100  # ECO-131, ECO-148
         riscosso = await leveling_repo.claim_work(
             interaction.guild.id, interaction.user.id,
             guadagno, attesa_work_secondi(impostazioni), adesso,  # ECO-019, ECO-028
@@ -1729,6 +1734,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
             return
 
+        if await sociale_repo.ha_bloccato(member.id, interaction.user.id):  # ECO-155: chi ha bloccato non riceve
+            await interaction.response.send_message(await testo_per(interaction, "soc_bloccato"), ephemeral=True)
+            return
         impostazioni = (await self._config(interaction.guild.id)).impostazioni
         moneta = impostazioni.currency_name
         if impostazioni.pay_max and amount > impostazioni.pay_max:
@@ -1737,7 +1745,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 ephemeral=True,
             )
             return
-        tassa = tassa_su_pagamento(amount, impostazioni.pay_tax_pct)
+        # ECO-154: tra amici nessuna tassa
+        amici = await sociale_repo.sono_amici(interaction.guild.id, interaction.user.id, member.id)
+        tassa = 0 if amici else tassa_su_pagamento(amount, impostazioni.pay_tax_pct)
         # Con la tassa per eccesso, 1 finirebbe tutto in cassa: il minimo diventa 2.
         minimo = max(impostazioni.pay_min, 2 if tassa else 0)
         if amount < minimo:
@@ -1778,6 +1788,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         metric="XP, coin, minuti in vocale o reazioni (questi ultimi sono sempre di sempre)",
         period="Questa settimana, questo mese o di sempre",
         posizioni="Quante posizioni mostrare, da 10 a 100 (a pagine)",
+        solo_presenti="Sì = niente chi ha lasciato il server",
     )
     @app_commands.choices(
         metric=[
@@ -1799,28 +1810,32 @@ class LevelingCog(CogConGruppi, commands.Cog):
         metric: app_commands.Choice[str],
         period: app_commands.Choice[str],
         posizioni: app_commands.Range[int, 10, 100] = 10,
+        solo_presenti: bool = False,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
 
+        richieste = min(300, posizioni * 3) if solo_presenti else posizioni  # ECO-013: se ne chiedono di più, poi si tolgono gli usciti
         if metric.value == "voce":
-            voci = await leveling_repo.top_minuti_vocale(interaction.guild.id, posizioni)
+            voci = await leveling_repo.top_minuti_vocale(interaction.guild.id, richieste)
         elif metric.value in ("reazioni", "reazioni_ricevute"):
             voci = await leveling_repo.top_reazioni(
-                interaction.guild.id, metric.value == "reazioni_ricevute", posizioni
+                interaction.guild.id, metric.value == "reazioni_ricevute", richieste
             )
         elif metric.value == "xp" and period.value == "alltime":
-            voci = await leveling_repo.top_xp_alltime(interaction.guild.id, posizioni)
+            voci = await leveling_repo.top_xp_alltime(interaction.guild.id, richieste)
         elif metric.value == "xp":
             voci = await leveling_repo.top_xp_period(
-                interaction.guild.id, posizioni, week_key() if period.value == "week" else None
+                interaction.guild.id, richieste, week_key() if period.value == "week" else None
             )
         elif metric.value == "coins" and period.value == "alltime":
-            voci = await leveling_repo.top_coins_alltime(interaction.guild.id, posizioni)
+            voci = await leveling_repo.top_coins_alltime(interaction.guild.id, richieste)
         else:
             voci = await leveling_repo.top_coins_period(
-                interaction.guild.id, posizioni, week_key() if period.value == "week" else None
+                interaction.guild.id, richieste, week_key() if period.value == "week" else None
             )
+        if solo_presenti:  # ECO-013
+            voci = [v for v in voci if interaction.guild.get_member(v.user_id) is not None][:posizioni]
 
         if not voci:
             await interaction.response.send_message(
