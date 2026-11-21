@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-20 19:30 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 04:57 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 973 comandi in 51 categorie.**
+**Totale: 1008 comandi in 51 categorie.**
 
 ## Admin: AI
 
@@ -169,6 +169,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-20 19:
 - **`/admin-benvenuto embed`** — Usa un embed salvato per il benvenuto, il DM o l'addio.
 - **`/admin-benvenuto extra`** — Benvenuto: DM, varianti, reazioni; messaggi di ban e addio.
 - **`/admin-benvenuto immagine`** — Aggiungi al benvenuto un'immagine con avatar, nome e numero del membro.
+- **`/admin-benvenuto immagini`** — Immagini proprie del benvenuto (al massimo 10): a ogni ingresso se ne sceglie una a caso.
 - **`/admin-benvenuto messaggio`** — Configura il messaggio di benvenuto.
 
 ## Admin: impianto del bot
@@ -259,6 +260,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-20 19:
 - **`/admin-giochi conteggio traguardo`** — Ruolo o messaggio quando il conteggio tocca un numero.
 - **`/admin-giochi evento avvia`** — Avvia l'evento: chi scrive nel canale riceve monete.
 - **`/admin-giochi evento chiudi`** — Chiudi l'evento di monete in corso.
+- **`/admin-giochi evento riffa`** — Una riffa pagata dalla cassa del server: chi clicca può vincere il premio.
+- **`/admin-giochi oggetto-azione`** — Cosa fa un oggetto del negozio quando lo si usa: monete o un ruolo.
 - **`/admin-giochi punteggi azzera`** — Azzera i punteggi di una gara (con conferma).
 - **`/admin-giochi quiz carica`** — Carica domande per il quiz da un file CSV o JSON.
 - **`/admin-giochi quiz elenca`** — Le domande del quiz caricate dal server.
@@ -347,9 +350,15 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-20 19:
 
 - **`/admin-menu-ruoli aggiungi-molti`** — Aggiungi a un menu più coppie emoji-ruolo in un colpo solo.
 - **`/admin-menu-ruoli canale`** — Crea un canale per i menu dei ruoli: tutti leggono, scrive solo il bot.
+- **`/admin-menu-ruoli colori`** — Usa i ruoli di un menu «unique» come tavolozza dei colori del nome.
+- **`/admin-menu-ruoli gruppo`** — Collega più menu: tra tutti si tiene un solo ruolo. Nome vuoto: scollega.
+- **`/admin-menu-ruoli guidata`** — Crea un menu dei ruoli a passi: tipo, testo, canale, ruoli ed emoji.
+- **`/admin-menu-ruoli immagine`** — Metti un'immagine dentro il messaggio del menu (allegato o indirizzo).
 - **`/admin-menu-ruoli modello`** — Crea un menu da un modello pronto: verifica, notifiche, colori, interessi.
 - **`/admin-menu-ruoli opzione`** — Cambia emoji, etichetta, descrizione, colore o posto di un'opzione di un menu.
+- **`/admin-menu-ruoli personale`** — Concedi o togli a un membro il ruolo personale (nome e colore scelti da lui).
 - **`/admin-menu-ruoli ripara`** — Rimetti le reazioni del bot su un menu a reazioni se qualcuno le ha tolte.
+- **`/admin-menu-ruoli ruoli-extra`** — Una opzione di un menu dà anche altri ruoli (al massimo 5 in tutto).
 - **`/admin-menu-ruoli sposta`** — Aggancia o sposta un menu a reazioni su un messaggio già scritto.
 - **`/admin-menu-ruoli svuota`** — Elimina tutti i menu di ruoli del server, o di un canale.
 
@@ -714,6 +723,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-20 19:
 ## Divertimento
 
 - **`/fun 8ball`** — Fai una domanda alla palla magica 8.
+- **`/fun animali attivita`** — Un'attività con un tuo animale in salute: ti porta qualche moneta (ogni 2 ore).
+- **`/fun animali compra`** — Compra un animale da accudire.
+- **`/fun animali cura`** — Dai da mangiare, pulisci o gioca con un animale (una volta all'ora per tipo).
+- **`/fun animali lista`** — I tuoi animali: fame, pulizia, gioco e livello.
+- **`/fun animali posto`** — Compra un posto in più per un altro animale (massimo 2 in più).
 - **`/fun casuale`** — Preferiresti, argomento, consiglio, oggetto magico, classe.
 - **`/fun citazioni aggiungi`** — Salva una citazione del server.
 - **`/fun citazioni caso`** — Mostra una citazione a caso: del server o tra quelle famose.
@@ -726,6 +740,10 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-20 19:
 - **`/fun joke`** — Racconta una barzelletta a caso.
 - **`/fun misura`** — Misura da 0 a 100% quanto c'è di una cosa a tua scelta.
 - **`/fun numero`** — Un numero a caso in un intervallo.
+- **`/fun pesca classifica`** — I migliori pescatori di oggi.
+- **`/fun pesca guida`** — Il tuo deposito di pesci e le specie che hai già trovato.
+- **`/fun pesca lancia`** — Getta la lenza in un luogo (ogni 15 minuti).
+- **`/fun pesca vendi`** — Vendi tutti i pesci del deposito.
 - **`/fun rate`** — Valuta qualcosa da 0 a 10.
 - **`/fun scegli`** — Scelgo a caso tra le opzioni che scrivi.
 - **`/fun scherzo`** — Uno scherzo innocuo verso un utente.
@@ -807,6 +825,14 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-20 19:
 - **`/level profilo`** — Mostra il profilo di un membro; con «presentazione» cambi il tuo.
 - **`/level progressi`** — Missioni, serie, traguardi e pass di 90 giorni, in un menu.
 - **`/level rank`** — Mostra la rank card: livello, XP, posizione e coin.
+- **`/level sociale amici`** — I tuoi amici, e togline uno.
+- **`/level sociale amico`** — Chiedi a un membro di diventare tuo amico (tra amici i pagamenti non hanno tassa).
+- **`/level sociale azzera-dati`** — Cancella i tuoi dati di gioco in questo server (monete, animali, pesci...).
+- **`/level sociale blocca`** — Blocca un utente: niente richieste, regali, pagamenti o sfide da lui.
+- **`/level sociale divorzia`** — Chiudi il tuo matrimonio.
+- **`/level sociale mantieni`** — Mantieni vivo il tuo matrimonio (vale 14 giorni).
+- **`/level sociale sblocca`** — Togli un utente dai bloccati (senza nome: l'elenco dei bloccati).
+- **`/level sociale sposa`** — Proponi il matrimonio (200 monete a testa alla cassa); va mantenuto.
 - **`/level stelle caso`** — Un messaggio a caso dalla bacheca.
 - **`/level stelle classifica`** — Chi ha ricevuto più stelle in bacheca.
 
@@ -897,11 +923,13 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-20 19:
 - **`/monete balance`** — Mostra i tuoi coin.
 - **`/monete cassa`** — Mostra il saldo della cassa del server.
 - **`/monete conto banca`** — La tua banca: vedi, deposita o preleva (i furti toccano solo i contanti).
+- **`/monete conto deposito`** — Blocca monete della banca per 7 giorni e ricevi il 10% in più (ECO-005).
 - **`/monete conto dimettiti`** — Lascia il lavoro e ricomincia da stagista.
 - **`/monete conto guadagni`** — Come si guadagnano monete in questo server.
 - **`/monete conto lavoro`** — Il tuo lavoro attuale e quanto manca alla promozione.
 - **`/monete conto lotteria`** — Compra biglietti della lotteria di oggi o guarda le ultime estrazioni.
 - **`/monete conto potenzia`** — Potenzia il lavoro o il premio periodico: più livelli, più monete.
+- **`/monete conto prestigio`** — Ricomincia da capo per un bonus permanente (+5% a lavoro e premio per livello).
 - **`/monete conto rimborso`** — Riscuoti una parte delle tue perdite nei giochi, se il server la rimborsa.
 - **`/monete daily`** — Riscuoti la ricompensa giornaliera.
 - **`/monete inventario`** — Gli oggetti che hai comprato.
@@ -911,10 +939,15 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-20 19:
 - **`/monete pay`** — Trasferisci coin a un altro utente.
 - **`/monete regala`** — Regala un oggetto del tuo inventario a un altro membro.
 - **`/monete rischio avventura`** — Un'uscita a rischio più prudente: paga meno, riesce più spesso.
+- **`/monete rischio bersaglio`** — Un bersaglio compare dopo qualche secondo: clicca in tempo.
 - **`/monete rischio cerca`** — Cerca monete in un luogo a scelta.
+- **`/monete rischio coccole`** — Coccola il bot: ti lascia qualche moneta.
 - **`/monete rischio colpo`** — Un colpo rischioso: paga alta se va bene, multa se va male.
 - **`/monete rischio elemosina`** — Chiedi l'elemosina: una piccola cifra, a volte niente.
 - **`/monete rischio furto`** — Prova a rubare dei contanti a un membro (solo se il server lo permette).
+- **`/monete rischio gratta`** — Gratta e vinci: un biglietto da 20 monete, scegli una casella.
+- **`/monete rischio meme`** — Pubblica un meme: il tipo che scegli cambia rischio e premio.
+- **`/monete rischio scava`** — Scava in cerca di monete (a volte un tesoro).
 - **`/monete rischio scrigno`** — Apri uno scrigno a sorpresa per 100 monete.
 - **`/monete riscuoti`** — Riscuoti lo stipendio dei tuoi ruoli (e paga le tasse).
 - **`/monete settimanale`** — Riscuoti il premio della settimana.
@@ -1066,6 +1099,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-20 19:
 
 ## Utility
 
+- **`/utility identita colore`** — Scegli il colore del tuo nome dalla tavolozza del server.
+- **`/utility identita ruolo-mio`** — Cambia nome e colore del tuo ruolo personale (se lo staff te l'ha concesso).
 - **`/utility info`** — Informazioni sul bot: versione, invito e supporto.
 - **`/utility lingua`** — Mostra o cambia la tua lingua personale (italiano o inglese).
 - **`/utility mie-sanzioni`** — Le sanzioni che hai ricevuto in questo server (solo tu le vedi).

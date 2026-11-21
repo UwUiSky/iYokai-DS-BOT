@@ -11,25 +11,25 @@ Generato da `scripts/stato_catalogo.py` il 2026-11-21. Non modificare a mano: ri
 |---|---|---|---|---|---|---|
 | 01-moderazione | #115 chiusa | 116 | 84 | 4 | 28 | 0 |
 | 02-automod | #116 chiusa | 75 | 71 | 0 | 4 | 0 |
-| 03-sicurezza-antiraid-antinuke | #117 aperta | 46 | 42 | 4 | 0 | 0 |
+| 03-sicurezza-antiraid-antinuke | #117 aperta | 46 | 43 | 3 | 0 | 0 |
 | 04-verifica | #118 chiusa | 31 | 15 | 0 | 16 | 0 |
 | 05-log | #119 aperta | 30 | 29 | 1 | 0 | 0 |
 | 06-ticket-e-modmail | #120 chiusa | 88 | 52 | 3 | 33 | 0 |
 | 07-backup-e-restore | #121 chiusa | 41 | 18 | 0 | 23 | 0 |
-| 08-configurazione-pannello-premium | #122 aperta | 46 | 30 | 15 | 1 | 0 |
-| 09-benvenuto-e-ruoli | #123 aperta | 113 | 104 | 9 | 0 | 0 |
-| 10-livelli-e-rank | #124 aperta | 91 | 58 | 33 | 0 | 0 |
+| 08-configurazione-pannello-premium | #122 aperta | 46 | 35 | 10 | 1 | 0 |
+| 09-benvenuto-e-ruoli | #123 aperta | 113 | 111 | 2 | 0 | 0 |
+| 10-livelli-e-rank | #124 aperta | 91 | 59 | 32 | 0 | 0 |
 | 11-economia-e-giochi | #125 aperta | 161 | 107 | 0 | 54 | 0 |
 | 12-musica | #126 aperta | 90 | 68 | 2 | 6 | 14 |
 | 13-vocali-temporanei | #127 aperta | 21 | 17 | 4 | 0 | 0 |
 | 14-utility | #128 chiusa | 229 | 131 | 6 | 92 | 0 |
 | 15-alert-social | #129 aperta | 49 | 48 | 1 | 0 | 0 |
-| 16-statistiche | #130 aperta | 61 | 59 | 2 | 0 | 0 |
+| 16-statistiche | #130 aperta | 61 | 61 | 0 | 0 | 0 |
 | 17-divertimento-e-immagini | #131 chiusa | 139 | 41 | 7 | 91 | 0 |
 | 18-ai | #132 chiusa | 25 | 15 | 5 | 5 | 0 |
-| **Totale** | | **1452** | **989** | **96** | **353** | **14** |
+| **Totale** | | **1452** | **1005** | **80** | **353** | **14** |
 
-Nelle sole aree con l'issue aperta: 708 voci, 562 fatte, 71 solo nei registri, **61 da fare**, 14 scartate.
+Nelle sole aree con l'issue aperta: 708 voci, 578 fatte, 55 solo nei registri, **61 da fare**, 14 scartate.
 
 ## Voci non trovate, per area
 

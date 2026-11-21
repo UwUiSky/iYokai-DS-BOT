@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:30 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 04:57 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 973 commands in 51 categories.**
+**Total: 1008 commands in 51 categories.**
 
 ## Admin: AI
 
@@ -114,7 +114,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:3
 - **`/admin-automod exemptions channel-remove`** — Removes a channel's exemption.
 - **`/admin-automod exemptions role-add`** — Exempts a role from all advanced AutoMod filters.
 - **`/admin-automod exemptions role-remove`** — Removes a role's exemption.
-- **`/admin-automod gruppo`** — Turns all rules of a group on or off.
+- **`/admin-automod group`** — Turns all rules of a group on or off.
 - **`/admin-automod images`** — Settings for the suspicious image filter.
 - **`/admin-automod liste`** — Opens the AutoMod named lists panel: words and domains.
 - **`/admin-automod log-channel`** — Sets the channel for the advanced AutoMod action log.
@@ -167,6 +167,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:3
 - **`/admin-welcome extra`** — Welcome: DM text, variants, reactions; ban and goodbye messages.
 - **`/admin-welcome goodbye`** — Sets up the goodbye message.
 - **`/admin-welcome image`** — Adds to the welcome an image with the member's avatar, name and number.
+- **`/admin-welcome images`** — Own welcome images (10 at most): one is picked at random on every join.
 - **`/admin-welcome message`** — Sets up the welcome message.
 - **`/admin-welcome preview`** — Shows a preview of how a message would look.
 - **`/admin-welcome topic-notice`** — Announce in a channel when a channel's topic changes.
@@ -199,8 +200,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:3
 - **`/admin-bot premium branding`** — Use a bot with your own name and avatar (premium).
 - **`/admin-bot premium redeem`** — Redeems a premium code for this server.
 - **`/admin-bot premium remove-seat`** — Removes your premium seat from this server.
-- **`/admin-bot premium sblocca`** — Unlocks a premium module for 30 days with coins from the server treasury.
 - **`/admin-bot premium status`** — Shows how premium is unlocked in this server.
+- **`/admin-bot premium unblock`** — Unlocks a premium module for 30 days with coins from the server treasury.
 - **`/admin-bot setup enable`** — Turns the bot's modules on or off, by category.
 - **`/admin-bot setup wizard`** — Step-by-step setup of the bot's roles and modules, one category at a time.
 
@@ -258,7 +259,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:3
 - **`/admin-games counting milestone`** — Role or message when the count hits a number.
 - **`/admin-games counting rules`** — Punishment after a mistake and role of the last counter.
 - **`/admin-games event close`** — Close the running coin event.
+- **`/admin-games event raffle`** — A raffle paid by the server chest: whoever clicks can win the prize.
 - **`/admin-games event start`** — Start the event: whoever writes in the channel gets coins.
+- **`/admin-games item-action`** — What a shop item does when used: coins or a role.
 - **`/admin-games punteggi reset`** — Reset the scores of a game (with confirmation).
 - **`/admin-games quiz list`** — The quiz questions uploaded by the server.
 - **`/admin-games quiz load`** — Upload quiz questions from a CSV or JSON file.
@@ -348,8 +351,14 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:3
 - **`/admin-role-menus add-many`** — Add several emoji-role pairs to a menu in one go.
 - **`/admin-role-menus channel`** — Create a channel for role menus: everyone reads, only the bot writes.
 - **`/admin-role-menus clear`** — Delete all role menus in the server or in one channel.
+- **`/admin-role-menus colors`** — Use the roles of a unique menu as the name colour palette.
+- **`/admin-role-menus extra-roles`** — An option of a menu also gives other roles (5 at most in total).
+- **`/admin-role-menus group`** — Link menus: only one role is kept across all of them. Empty name: unlink.
+- **`/admin-role-menus guided`** — Create a role menu step by step: type, text, channel, roles and emoji.
+- **`/admin-role-menus image`** — Put an image inside the menu message (attachment or link).
 - **`/admin-role-menus move`** — Attach or move a reaction menu to an existing message.
 - **`/admin-role-menus option`** — Change an option's emoji, label, description, colour or position in a menu.
+- **`/admin-role-menus personal`** — Grant or remove a member's personal role (name and colour chosen by them).
 - **`/admin-role-menus repair`** — Put the bot's reactions back on a reaction menu if someone removed them.
 - **`/admin-role-menus template`** — Create a menu from a ready-made template: verify, notifications, colours, interests.
 
@@ -644,7 +653,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:3
 - **`/settings replies`** — Command replies are seen only by you, or by everyone.
 - **`/settings show`** — Your current settings.
 - **`/strumenti calcola`** — Calculates an expression, e.g. (2+3)*4 or sqrt(16).
-- **`/strumenti colore`** — Shows a colour in HEX, RGB and HSL.
+- **`/strumenti color`** — Shows a colour in HEX, RGB and HSL.
 - **`/strumenti converti`** — Converts lengths, weights, volumes, speeds, data and temperatures.
 - **`/strumenti fuso`** — What time it is in another time zone.
 - **`/strumenti qr`** — Makes a QR code from a text or link.
@@ -718,10 +727,19 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:3
 - **`/fun coinflip`** — Flips a coin: heads or tails.
 - **`/fun dice`** — Rolls a die.
 - **`/fun fact`** — Shows a random fun fact.
+- **`/fun fishing cast`** — Cast the line in a place (every 15 minutes).
+- **`/fun fishing guide`** — Your fish storage and the species you have found.
+- **`/fun fishing leaderboard`** — Today's best fishers.
+- **`/fun fishing sell`** — Sell every fish in the storage.
 - **`/fun guess-the-song`** — Guess the song from a short excerpt, in voice.
 - **`/fun joke`** — Tells a random joke.
 - **`/fun measure`** — Measures from 0 to 100% how much of something you choose.
 - **`/fun number`** — A random number in a range.
+- **`/fun pets activity`** — An activity with a healthy pet: it brings a few coins (every 2 hours).
+- **`/fun pets buy`** — Buy a pet to take care of.
+- **`/fun pets care`** — Feed, clean or play with a pet (once an hour per kind).
+- **`/fun pets list`** — Your pets: hunger, cleanliness, play and level.
+- **`/fun pets slot`** — Buy one more slot for another pet (max 2 extra).
 - **`/fun prank`** — A harmless prank on a user.
 - **`/fun quotes add`** — Save a quote of the server.
 - **`/fun quotes case`** — Show a random quote: from the server or a famous one.
@@ -807,6 +825,14 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:3
 - **`/level rank`** — Shows the rank card: level, XP, position and coins.
 - **`/level recent-levels`** — The last 25 level-ups in the server.
 - **`/level rewards`** — Shows level reward roles and active XP multipliers.
+- **`/level social block`** — Block a user: no requests, gifts, payments or challenges from them.
+- **`/level social divorce`** — End your marriage.
+- **`/level social friend`** — Ask a member to be your friend (no tax on payments between friends).
+- **`/level social friends`** — Your friends, and remove one.
+- **`/level social keep`** — Keep your marriage alive (valid 14 days).
+- **`/level social marry`** — Propose marriage (200 coins each to the chest); it must be kept alive.
+- **`/level social reset-data`** — Delete your game data on this server (coins, pets, fish...).
+- **`/level social unblock`** — Unblock a user (no name: list the blocked).
 - **`/level stars case`** — A random message from the board.
 - **`/level stars leaderboard`** — Who received the most stars on the board.
 
@@ -894,9 +920,11 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:3
 ## Coins
 
 - **`/coins account bank`** — Your bank: view, deposit or withdraw (thefts only hit cash).
+- **`/coins account deposit`** — Lock bank coins for 7 days and get 10% more (ECO-005).
 - **`/coins account earnings`** — How to earn coins on this server.
 - **`/coins account job`** — Your current job and how far the promotion is.
 - **`/coins account lottery`** — Buy tickets for today's lottery or see the latest draws.
+- **`/coins account prestige`** — Start over for a permanent bonus (+5% to work and reward per level).
 - **`/coins account refund`** — Collect part of your game losses, if the server refunds them.
 - **`/coins account resign`** — Quit the job and restart as an intern.
 - **`/coins account upgrade`** — Upgrade your job or periodic reward: more levels, more coins.
@@ -914,8 +942,13 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:3
 - **`/coins risk adventure`** — A safer risky outing: pays less, works more often.
 - **`/coins risk beg`** — Beg: a small amount, sometimes nothing.
 - **`/coins risk chest-box`** — Open a surprise chest for 100 coins.
+- **`/coins risk dig`** — Dig for coins (sometimes a treasure).
 - **`/coins risk heist`** — A risky heist: big pay if it works, a fine if it fails.
+- **`/coins risk meme`** — Post a meme: the type you pick changes risk and prize.
+- **`/coins risk pet`** — Pet the bot: it leaves you a few coins.
+- **`/coins risk scratch`** — Scratch card: a 20-coin ticket, pick a square.
 - **`/coins risk search`** — Search for coins in a place of your choice.
+- **`/coins risk target`** — A target appears in a few seconds: click in time.
 - **`/coins risk theft`** — Try to steal cash from a member (only if the server allows it).
 - **`/coins sell`** — Resell an item for half its price.
 - **`/coins shop buy`** — Buys a shop item.
@@ -1067,6 +1100,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-20 19:3
 ## Utility
 
 - **`/utility form`** — Fills in a form or application of this server.
+- **`/utility identity color`** — Pick the colour of your name from the server palette.
+- **`/utility identity my-role`** — Change the name and colour of your personal role (if staff granted it).
 - **`/utility info`** — Bot information: version, invite and support.
 - **`/utility language`** — Shows or changes your personal language (Italian or English).
 - **`/utility lookup channel`** — Channel card.
