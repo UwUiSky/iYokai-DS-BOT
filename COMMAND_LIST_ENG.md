@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 18:10 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 18:39 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 1024 commands in 51 categories.**
+**Total: 1043 commands in 51 categories.**
 
 ## Admin: AI
 
@@ -30,6 +30,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 18:1
 - **`/admin-ai staff incident`** — Summarises the latest security events of the server.
 - **`/admin-ai staff rule`** — Tell AutoMod what you want: it proposes the rule, you turn it on.
 - **`/admin-ai staff search-log`** — Search the logs with a question (who, what, when).
+- **`/admin-ai staff ticket-summary`** — Turns the AI summary in the log on or off when a ticket closes.
 - **`/admin-ai status`** — AI status in the server: providers, settings and monthly usage.
 - **`/admin-ai summary preview`** — Shows you the digest as of now, without publishing it.
 - **`/admin-ai summary set`** — Server digest: channel, hour, frequency and channels to read.
@@ -533,11 +534,15 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 18:1
 - **`/admin-tickets labels list`** — Lists the ticket labels.
 - **`/admin-tickets labels remove`** — Removes a label (it disappears from tickets that have it).
 - **`/admin-tickets limite`** — How many open tickets each user can have at once (default 1).
+- **`/admin-tickets log`** — Which ticket actions go to the log, and in which channel.
 - **`/admin-tickets modmail block`** — Blocks or unblocks a user from ModMail.
 - **`/admin-tickets modmail enable`** — Turns ModMail (tickets in DM) on or off.
+- **`/admin-tickets modmail options`** — ModMail options: anonymous replies, forwarding, confirmation.
 - **`/admin-tickets panel`** — Publishes the ticket opening panel in this channel.
+- **`/admin-tickets panels appearance`** — Button colour, menu text and opening message of a panel.
 - **`/admin-tickets panels create`** — Creates a ticket panel.
 - **`/admin-tickets panels form-add`** — Adds a question to the form (max 5).
+- **`/admin-tickets panels form-copy`** — Copies a panel's form to another (replaces its questions).
 - **`/admin-tickets panels form-remove`** — Removes a question from the form.
 - **`/admin-tickets panels form-show`** — Shows the questions of a panel's form.
 - **`/admin-tickets panels list`** — Lists the server's ticket panels.
@@ -545,6 +550,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 18:1
 - **`/admin-tickets panels reason-add`** — Adds a ready-made reason to the panel (max 24).
 - **`/admin-tickets panels reason-remove`** — Removes a ready-made reason (no number: lists them).
 - **`/admin-tickets panels remove`** — Deletes a panel and its form.
+- **`/admin-tickets panels template`** — Imports a ready-made panel template (form, reasons, answers).
 - **`/admin-tickets reminder`** — Reminder after N minutes without staff (0 = off).
 - **`/admin-tickets replies article`** — Knowledge base: new article, edit or delete one.
 - **`/admin-tickets replies delete`** — Deletes a standard reply.
@@ -975,10 +981,16 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 18:1
 ## Music
 
 - **`/music clear-queue`** — Clears the queue without touching the track that is playing.
+- **`/music coda last`** — Removes the last track you added.
+- **`/music coda mine`** — Removes all your tracks from the queue.
+- **`/music coda move`** — Moves a queue track to another position.
+- **`/music coda now`** — Plays a queue track right now, skipping the current one.
 - **`/music coda pulisci`** — Removes from the queue the tracks of people who left the voice channel.
+- **`/music coda remove`** — Removes a track from the queue.
 - **`/music coda restore`** — Puts the saved tracks of your voice channel back in the queue (after a restart).
 - **`/music coda search`** — Searches the queue for a track by title.
 - **`/music coda skip`** — Removes a range of positions and/or one user's tracks from the queue.
+- **`/music coda top`** — Moves a queue track to the top, right after the current one.
 - **`/music disconnect`** — Disconnects the music bot from the voice channel.
 - **`/music genre`** — Pick a playlist by genre from the menu.
 - **`/music history`** — Shows the latest tracks already played.
@@ -1017,6 +1029,11 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 18:1
 - **`/music skipto`** — Jumps straight to track number N of the queue.
 - **`/music sound`** — Plays a sound effect in your voice channel.
 - **`/music stop`** — Stops playback and clears the queue.
+- **`/music track karaoke`** — Shows the lines of the track as it plays, in time.
+- **`/music track restart`** — Restarts the current track from the beginning.
+- **`/music track search`** — Searches for a track and lets you pick from 10 results.
+- **`/music track seek-to`** — Jumps to a point in the track: 1:30, +0:30 forward, -0:15 back.
+- **`/music track text`** — Shows the lyrics of the current track.
 - **`/music volume down`** — Lowers the volume.
 - **`/music volume set`** — Sets the volume to a specific value (0-200).
 - **`/music volume up`** — Raises the volume.
@@ -1095,10 +1112,12 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 18:1
 - **`/ticket add`** — Adds a user or role to this ticket.
 - **`/ticket ask-close`** — Ask the user whether the ticket can be closed.
 - **`/ticket assistant`** — AI assistant answer (for staff: draft and triage).
+- **`/ticket canned`** — Writes a ready-made answer (approved article) in the ticket.
 - **`/ticket claim`** — Takes charge of this ticket.
 - **`/ticket close`** — Closes this ticket.
 - **`/ticket dm-close`** — Closes this ModMail conversation.
 - **`/ticket forceclose`** — Closes this ticket immediately, with no wait.
+- **`/ticket keep-open`** — Excludes this ticket from automatic closing (or puts it back).
 - **`/ticket notes`** — Private staff thread to discuss the ticket.
 - **`/ticket on-call`** — Join or leave the staff notified on every new ticket.
 - **`/ticket open`** — Open a ticket (staff also for a user or from a message).

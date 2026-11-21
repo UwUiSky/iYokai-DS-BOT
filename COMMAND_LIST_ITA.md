@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 18:10 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 18:39 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 1024 comandi in 51 categorie.**
+**Totale: 1043 comandi in 51 categorie.**
 
 ## Admin: AI
 
@@ -31,6 +31,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 18:
 - **`/admin-ai staff incidente`** — Riassume gli ultimi eventi di sicurezza del server.
 - **`/admin-ai staff prima-risposta`** — Accende o spegne la prima risposta automatica dell'AI in un pannello ticket.
 - **`/admin-ai staff regola`** — Scrivi cosa vuoi da AutoMod: ti propongo la regola, la attivi tu.
+- **`/admin-ai staff riassunto-ticket`** — Accende o spegne il riassunto AI nel log alla chiusura di un ticket.
 - **`/admin-ai stato`** — Stato dell'AI nel server: fornitori, scelte e uso del mese.
 - **`/admin-ai traduzione`** — Traduce da solo ogni messaggio di un canale in una lingua.
 - **`/admin-ai vietate`** — Parole o argomenti che l'AI deve rifiutare.
@@ -533,12 +534,17 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 18:
 - **`/admin-ticket etichette togli`** — Togli un'etichetta (sparisce dai ticket che la hanno).
 - **`/admin-ticket limite`** — Quanti ticket aperti alla volta può avere ogni utente (predefinito 1).
 - **`/admin-ticket lista-nera`** — Utenti e ruoli che non possono aprire ticket.
+- **`/admin-ticket log`** — Quali azioni sui ticket finiscono nel log, e in quale canale.
 - **`/admin-ticket modmail attiva`** — Accendi o spegni il ModMail (ticket in DM).
 - **`/admin-ticket modmail blocca`** — Blocca o sblocca un utente dal ModMail.
+- **`/admin-ticket modmail opzioni`** — Opzioni del ModMail: risposte anonime, inoltro, conferma.
 - **`/admin-ticket panel`** — Pubblica il pannello per l'apertura dei ticket in questo canale.
+- **`/admin-ticket pannelli aspetto`** — Colore del bottone, testo del menu e messaggio di apertura di un pannello.
 - **`/admin-ticket pannelli crea`** — Crea un pannello di ticket.
 - **`/admin-ticket pannelli elenco`** — Elenca i pannelli di ticket del server.
+- **`/admin-ticket pannelli modello`** — Importa un modello pronto di pannello (modulo, motivi, risposte).
 - **`/admin-ticket pannelli modulo-aggiungi`** — Aggiungi una domanda al modulo (max 5).
+- **`/admin-ticket pannelli modulo-copia`** — Copia il modulo di un pannello su un altro (sostituisce le sue domande).
 - **`/admin-ticket pannelli modulo-mostra`** — Mostra le domande del modulo di un pannello.
 - **`/admin-ticket pannelli modulo-togli`** — Togli una domanda dal modulo.
 - **`/admin-ticket pannelli motivo-aggiungi`** — Aggiungi un motivo pronto al pannello (max 24).
@@ -974,11 +980,22 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 18:
 
 ## Musica
 
+- **`/music brano cerca`** — Cerca un brano e scegli tra 10 risultati.
+- **`/music brano karaoke`** — Mostra le righe del brano mentre suona, a tempo.
+- **`/music brano ricomincia`** — Rifà partire da capo il brano in corso.
+- **`/music brano testo`** — Mostra il testo del brano in corso.
+- **`/music brano vai-a`** — Va a un punto del brano: 1:30, +0:30 avanti, -0:15 indietro.
 - **`/music clear-queue`** — Svuota la coda, senza toccare la traccia in riproduzione.
 - **`/music coda cerca`** — Cerca un brano nella coda per titolo.
+- **`/music coda cima`** — Porta un brano della coda in cima, subito dopo quello in corso.
+- **`/music coda miei`** — Toglie dalla coda tutti i tuoi brani.
 - **`/music coda pulisci`** — Toglie dalla coda i brani di chi non e' piu' nel canale vocale.
 - **`/music coda ripristina`** — Rimette in coda i brani salvati del tuo canale vocale (dopo un riavvio).
 - **`/music coda salta`** — Toglie dalla coda un intervallo di posizioni e/o i brani di un utente.
+- **`/music coda sposta`** — Sposta un brano della coda in un'altra posizione.
+- **`/music coda subito`** — Fa partire subito un brano della coda, saltando quello in corso.
+- **`/music coda togli`** — Toglie un brano dalla coda.
+- **`/music coda ultimo`** — Toglie l'ultimo brano che hai messo in coda.
 - **`/music disconnect`** — Disconnette il music bot dal canale vocale.
 - **`/music genere`** — Scegli una playlist per genere dal menu.
 - **`/music history`** — Mostra gli ultimi brani già suonati.
@@ -1104,12 +1121,14 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 18:
 - **`/ticket note`** — Thread privato dello staff per parlare del ticket.
 - **`/ticket passa`** — Passa la presa in carico a un collega.
 - **`/ticket priority`** — Imposta la priorità di questo ticket.
+- **`/ticket pronta`** — Scrivi nel ticket una risposta pronta (articolo approvato).
 - **`/ticket remove`** — Rimuovi un utente o un ruolo da questo ticket.
 - **`/ticket rename`** — Rinomina questo ticket.
 - **`/ticket reperibile`** — Entra o esci dallo staff avvisato a ogni nuovo ticket.
 - **`/ticket riapri`** — Riapri questo ticket chiuso (se il pannello tiene il canale).
 - **`/ticket rilascia`** — Lascia la presa in carico di questo ticket.
 - **`/ticket rispondi`** — Rispondi all'utente di questa conversazione ModMail.
+- **`/ticket tieni-aperto`** — Escludi questo ticket dalla chiusura automatica (o rimettilo).
 - **`/ticket transcript`** — Ricevi il transcript senza chiudere il ticket.
 
 ## Utility
