@@ -25,6 +25,7 @@ from core.leveling_logic import prezzo_rivendita, tasso_del_giorno
 from core.repositories.inventario_repo import Esito, inventario_repo
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.repositories.shop_repo import shop_repo
+from core.repositories.sociale_repo import sociale_repo
 from core.role_safety import check_role_assignable
 
 logger = logging.getLogger("iyokai.leveling.inventario")
@@ -129,6 +130,9 @@ class InventarioCog(CogConGruppi, commands.Cog):
             return
         if membro.bot:
             await interaction.response.send_message(await testo_per(interaction, "leveling_non_puoi_pagare_un_bot"), ephemeral=True)
+            return
+        if await sociale_repo.ha_bloccato(membro.id, interaction.user.id):  # ECO-155
+            await interaction.response.send_message(await testo_per(interaction, "soc_bloccato"), ephemeral=True)
             return
         esito = await inventario_repo.regala(interaction.guild.id, interaction.user.id, membro.id, item_id)
         if esito is Esito.NON_REGALABILE:

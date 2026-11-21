@@ -23,6 +23,7 @@ from core.database import db
 from core.i18n import testo_per
 from core.leveling_logic import controlla_puntata
 from core.repositories.leveling_settings_repo import leveling_settings_repo
+from core.repositories.sociale_repo import sociale_repo
 from core.repositories.partite_repo import EsitoApertura, partite_repo
 from core.tavolo_logic import (
     COLONNE_F4, RIGHE_F4, SEGNI, SEGNI_TRIS, metti_f4, metti_tris, nuova_griglia, piena, testo_griglia,
@@ -201,6 +202,9 @@ class TavoloCog(CogConGruppi, commands.Cog):
             return
         if membro.id == interaction.user.id or membro.bot:
             await interaction.response.send_message(await testo_per(interaction, "sfd_bersaglio"), ephemeral=True)
+            return
+        if await sociale_repo.ha_bloccato(membro.id, interaction.user.id):  # ECO-155
+            await interaction.response.send_message(await testo_per(interaction, "soc_bloccato"), ephemeral=True)
             return
         if puntata:
             for modulo in ("fun", "leveling"):

@@ -41,6 +41,7 @@ from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.leveling_repo import TettoSaldoRaggiunto, leveling_repo
 from core.repositories.rischio_repo import rischio_repo
 from core.repositories.potenziamenti_repo import potenziamenti_repo
+from core.repositories.sociale_repo import BONUS_PRESTIGIO, sociale_repo
 from core.repositories.animali_repo import animali_repo
 from core.rischio_logic import lavoro_per_turni, paga_con_lavoro
 from core.repositories.level_reward_repo import level_reward_repo
@@ -1632,7 +1633,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         extra = await self._bonus_serie_daily(interaction, impostazioni, adesso)  # ECO-025
         livelli_pot = await potenziamenti_repo.livelli(interaction.guild.id, interaction.user.id)  # ECO-081
         importo = con_potenziamento(impostazioni.daily_coins, livelli_pot["premio"]) + extra
-        importo += importo * await animali_repo.bonus(interaction.guild.id, interaction.user.id, "premio") // 100  # ECO-131
+        importo += importo * (await animali_repo.bonus(interaction.guild.id, interaction.user.id, "premio") + BONUS_PRESTIGIO * await sociale_repo.livello_prestigio(interaction.guild.id, interaction.user.id)) // 100  # ECO-131, ECO-148
         riscosso = await leveling_repo.claim_daily(
             interaction.guild.id, interaction.user.id,
             importo, attesa_totale, adesso,
@@ -1689,7 +1690,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         turni_fatti = await rischio_repo.turni(interaction.guild.id, interaction.user.id)
         guadagno = max(guadagno if guadagno == 0 else 1, paga_con_lavoro(guadagno, lavoro_per_turni(turni_fatti)[2]))
         guadagno = con_potenziamento(guadagno, (await potenziamenti_repo.livelli(interaction.guild.id, interaction.user.id))["lavoro"])  # ECO-081
-        guadagno += guadagno * await animali_repo.bonus(interaction.guild.id, interaction.user.id, "lavoro") // 100  # ECO-131
+        guadagno += guadagno * (await animali_repo.bonus(interaction.guild.id, interaction.user.id, "lavoro") + BONUS_PRESTIGIO * await sociale_repo.livello_prestigio(interaction.guild.id, interaction.user.id)) // 100  # ECO-131, ECO-148
         riscosso = await leveling_repo.claim_work(
             interaction.guild.id, interaction.user.id,
             guadagno, attesa_work_secondi(impostazioni), adesso,  # ECO-019, ECO-028
@@ -1732,6 +1733,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
             return
 
+        if await sociale_repo.ha_bloccato(member.id, interaction.user.id):  # ECO-155: chi ha bloccato non riceve
+            await interaction.response.send_message(await testo_per(interaction, "soc_bloccato"), ephemeral=True)
+            return
         impostazioni = (await self._config(interaction.guild.id)).impostazioni
         moneta = impostazioni.currency_name
         if impostazioni.pay_max and amount > impostazioni.pay_max:
@@ -1740,7 +1744,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 ephemeral=True,
             )
             return
-        tassa = tassa_su_pagamento(amount, impostazioni.pay_tax_pct)
+        # ECO-154: tra amici nessuna tassa
+        amici = await sociale_repo.sono_amici(interaction.guild.id, interaction.user.id, member.id)
+        tassa = 0 if amici else tassa_su_pagamento(amount, impostazioni.pay_tax_pct)
         # Con la tassa per eccesso, 1 finirebbe tutto in cassa: il minimo diventa 2.
         minimo = max(impostazioni.pay_min, 2 if tassa else 0)
         if amount < minimo:

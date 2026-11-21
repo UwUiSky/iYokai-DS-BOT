@@ -427,7 +427,16 @@
   "lancia": "cast",
   "guida": "guide",
   "deposito": "deposit",
-  "riffa": "raffle"
+  "riffa": "raffle",
+  "sociale": "social",
+  "sblocca": "unblock",
+  "amico": "friend",
+  "amici": "friends",
+  "sposa": "marry",
+  "mantieni": "keep",
+  "divorzia": "divorce",
+  "azzera-dati": "reset-data",
+  "prestigio": "prestige"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1571,7 +1580,17 @@
   "fun pesca guida": "Your fish storage and the species you have found.",
   "fun pesca classifica": "Today's best fishers.",
   "monete conto deposito": "Lock bank coins for 7 days and get 10% more (ECO-005).",
-  "admin-giochi evento riffa": "A raffle paid by the server chest: whoever clicks can win the prize."
+  "admin-giochi evento riffa": "A raffle paid by the server chest: whoever clicks can win the prize.",
+  "level sociale": "Friends, blocks, marriage and game data",
+  "level sociale blocca": "Block a user: no requests, gifts, payments or challenges from them.",
+  "level sociale sblocca": "Unblock a user (no name: list the blocked).",
+  "level sociale amico": "Ask a member to be your friend (no tax on payments between friends).",
+  "level sociale amici": "Your friends, and remove one.",
+  "level sociale sposa": "Propose marriage (200 coins each to the chest); it must be kept alive.",
+  "level sociale mantieni": "Keep your marriage alive (valid 14 days).",
+  "level sociale divorzia": "End your marriage.",
+  "level sociale azzera-dati": "Delete your game data on this server (coins, pets, fish...).",
+  "monete conto prestigio": "Start over for a permanent bonus (+5% to work and reward per level)."
  },
  "parametri": {},
  "menu": {
