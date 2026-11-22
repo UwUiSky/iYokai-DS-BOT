@@ -499,6 +499,10 @@ class Caricatore:
                 if len(self.guild.roles) >= MAX_RUOLI:
                     self.r.saltati += 1
                     continue
+                if self._tetto is not None:
+                    # Solo l'owner conferma ruoli con permessi pericolosi (admin, gestione, ban…):
+                    # per gli altri il ruolo nasce senza.
+                    permessi = self._senza_nuovi_pericolosi(permessi, discord.Permissions.none())
                 nuovo = await self.guild.create_role(
                     name=dato["nome"][:MAX_NOME], permissions=permessi,
                     colour=discord.Colour(dato.get("colore", 0)), hoist=bool(dato.get("hoist")),
@@ -726,6 +730,7 @@ class Caricatore:
                 r for r in (self._ruolo_per_nome(n) for n in dato.get("ruoli", []))
                 if r is not None and not r.managed and r < me.top_role and r not in membro.roles
                 and not self._sopra_il_tetto(r)
+                and (self._tetto is None or not r.permissions.value & PERMESSI_PERICOLOSI)
             ]
             puo_nick = membro.top_role < me.top_role and not self._sopra_il_tetto(membro.top_role)
             try:
