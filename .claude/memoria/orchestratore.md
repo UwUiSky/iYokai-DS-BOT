@@ -143,3 +143,16 @@
 - Dopo un riavvio: `pg_ctlcluster 16 main start` (può servire un minuto di recupero), poi riprendere.
 - Uniti 22/11: r2bkp, r6eco (economia finita, restano solo le 8 escluse), r1dep (librerie aggiornate, venv aggiornato con `VIRTUAL_ENV=.venv uv pip install -r requirements.txt -r requirements-dev.txt`). 1103 comandi, 1291/1452 voci.
 - In corso: r2mod parte 3 (11 voci MOD/AMD), r2web (interruttore AI, pagina backup, TKT-085, ALR-049, schede moduli).
+
+## 22/11 sera — coda dei lavori dopo D111 (in ordine)
+1. IN CORSO r1rete (wt-net): AMD-030 controllo link a più fonti + VER-025 rete tra server (0820-0829, D112).
+2. IN CORSO r3automod (wt-am): avviso privato alla cancellazione automod + bottone Traduci (D110).
+3. IN CORSO isolamento test pannello (wt-iso).
+4. DA LANCIARE: TKT-072 trascrizioni cifrate 90 giorni + HTML con immagini (dev-log-ticket, 0770+).
+5. DA LANCIARE: musica MUS-018 cartella locale owner, MUS-015 filtro paese, MUS-017 capitoli dalla descrizione, max 8 ore (dev-musica, 0731-0739).
+6. DA LANCIARE: UTL-226 (7 giorni), UTL-228 (30 giorni), CFG-032, FUN-078, segni FUN-068/070 (dev-core/utilita).
+7. DA LANCIARE: FUN-019, FUN-017 auto con foto (D74), FUN-013/014 tela di pixel con pagina web (dev-economia + dev-web).
+8. DA LANCIARE: MUS-090/identità dei bot al setup (nickname e avatar del server, esclusi i music bot) e VER-027 (ruoli collegati per la verifica).
+9. DA LANCIARE: controllo voce per voce delle 89 voci in revisione/01-analisi/catalogo/SOLO_NEI_DOCUMENTI.md.
+10. BKP-039: spiegato all'owner, attendere la risposta.
+11. Poi: suite completa, cacciatore-bug, revisore-capo.
