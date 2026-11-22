@@ -43,7 +43,7 @@ def test_il_menu_dei_motivi_sta_in_25_voci_con_altro():
     motivi = [SimpleNamespace(id=i, etichetta=f"M{i}", emoji=None) for i in range(1, 25)]
     opzioni = form.opzioni_motivi(motivi)
     assert len(opzioni) == 25 and opzioni[-1][0] == form.VALORE_ALTRO
-    assert all(len(v) <= 100 and len(e) <= 100 for v, e, _ in opzioni)
+    assert all(len(v) <= 100 and len(e) <= 100 for v, e, *_ in opzioni)
 
 
 def test_admin_dei_ticket_senza_ruoli_admin_vale_ogni_staff():

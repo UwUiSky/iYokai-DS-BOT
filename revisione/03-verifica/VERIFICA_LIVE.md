@@ -1856,3 +1856,51 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `ECO-017` — `/monete conto portafoglio`: immagine con nome, contanti, banca, posizione e (se il server l'ha caricata) l'immagine della moneta.
 - [ ] `ECO-161` — `/admin-livelli guadagno vocale max_minuti:60`: dopo 60 minuti in vocale in un giorno non arrivano più XP né monete (di base 360).
 - [ ] `ECO-158` — `/admin-economia limiti controllo:500`: `/monete work`, `/monete daily` e i piccoli guadagni, una volta su due, si fermano con una domanda «quanto fa a + b?» con tre bottoni (solo per te, un tentativo); risposta giusta = verificato 10 minuti, poi ripeti il comando; con `controllo:0` mai.
+
+## Musica — giro r6mus (#126, MUS-013/022-026/028/033/034/046/051/052/053/061)
+
+- [ ] `MUS-024/025/026` — in vocale metti 3 brani tuoi e 2 di un amico. `/music coda togli posizione:2` toglie il tuo; su un brano dell'amico dice «solo i tuoi». `/music coda ultimo` toglie l'ultimo tuo; `/music coda miei` toglie tutti i tuoi e non quelli dell'amico. Un utente con «Gestisci server» o il ruolo DJ toglie anche quelli degli altri.
+- [ ] `MUS-028/022/023` — `/music coda sposta da:3 a:1` e `cima posizione:4` cambiano l'ordine (controlla con `/music queue`). `/music coda subito posizione:2` come DJ/staff: il brano in corso salta e parte quello scelto; da non-DJ con altre persone nel canale è rifiutato; da solo nel canale funziona.
+- [ ] `MUS-033/034` — durante un brano lungo: `/music brano ricomincia` lo rifà da capo; `/music brano vai-a punto:1:30` va a 1:30; `+0:30` avanti e `-0:15` indietro; `xx` e `1:99` sono rifiutati; su una diretta/radio dice che non si può.
+- [ ] `MUS-013` — `/music brano cerca testo:<titolo>`: menu con al massimo 10 risultati; un'altra persona che lo tocca è respinta; scegli un brano: va in coda come con `/music play`; dopo 60 s senza scelta il menu si spegne. Due ricerche entro 3 s: «aspetta».
+- [ ] `MUS-051` — `/admin-musica impostazioni modalita-dj:sì ruolo-dj:@DJ`; il riepilogo lo dice. Un utente senza @DJ e senza «Gestisci server», con altre persone nel canale: pausa, stop, volume, loop, ricomincia, vai-a, coda sposta su brani altrui sono rifiutati; `play`, `skip` (voto) e togliere i propri brani funzionano. Con @DJ, staff o da solo nel canale tutto funziona. `modalita-dj:no` toglie la regola.
+- [ ] `MUS-052` — con 4 persone nel canale e `voto-salto:50`: un non-DJ che non ha messo il brano fa `/music skip`: «1 su 2»; di nuovo: «già votato»; un secondo ascoltatore vota: il brano salta. Chi ha messo il brano, un DJ o lo staff salta subito. Uno che esce dal canale perde il voto.
+- [ ] `MUS-046` — con un brano famoso: `/music brano testo` mostra il testo (solo a te, in lingua originale, troncato). `/music brano karaoke`: un messaggio che cambia riga a tempo, senza raffiche (circa ogni 2,5 s al massimo); a fine brano o con `/music stop` scrive «Karaoke finito»; un secondo karaoke nello stesso server dice «già in corso». Un brano senza testo: «non ho trovato il testo». **Prova dal vivo del servizio:** da questa macchina lrclib.net risponde (`/api/get` e `/api/search`), ma `core/safe_http` con la rete del server va provato; con un brano strumentale deve dire che non c'è. Con la rete di LRCLIB spenta deve dire che il servizio non risponde.
+- [ ] `MUS-053` — con `pausa-canale-vuoto` acceso (di base): esci dal canale lasciando il bot con un brano: va in pausa; rientra: riprende. Se avevi messo la pausa a mano, al rientro NON riprende. Non vale per la radio 24/7.
+- [ ] `MUS-061` — `/admin-musica impostazioni stato-bot:sì`: lo stato del music bot mostra «Ascolta <titolo>»; cambia con i brani, non più di una volta ogni 15 s; sparisce a coda finita e quando il bot esce. Il bot principale NON cambia stato. Durante «indovina la canzone» non compare il titolo.
+
+
+## Giro r2tkt (#120, ticket e ModMail)
+
+- Pannello: `pannelli pubblica` con colore, miniatura, immagine, `per_riga`; `pannelli aspetto` (colore bottone, testo menu, embed di apertura con {utente} {nome} {server} {numero} {pannello}); `pannelli modello`.
+- Finestra del modulo con menu a scelta e selezione di utente/ruolo/canale dentro la finestra (da provare su Discord vero), minimo e massimo di caratteri.
+- `voto` con questionario: dopo le stelle si apre la finestra con la domanda.
+- `admin-ticket log` (azioni accese una a una, canale scelto), `stats dettagli`, `/ticket tieni-aperto`, `/ticket pronta`.
+- ModMail: `modmail opzioni` (anonimo predefinito, inoltra tutto con `//` come nota, conferma disattivabile).
+- Riassunto AI alla chiusura: `/admin-ai staff riassunto-ticket` (serve l'AI accesa).
+
+## Backup e AI — giro r2bkp (#121, #132)
+
+- [ ] BKP-003 permessi — un admin non owner (livello «Gli admin creano e caricano») carica una copia con un ruolo nuovo che ha «Amministratore». Risultato atteso: il ruolo nasce senza «Amministratore» e il riepilogo lo dice; se carica l'owner il ruolo lo ha.
+- [ ] BKP-006/007 — `/admin-backup lista copia:1` mostra i conteggi; `/admin-backup elimina copia:1` chiede conferma (bottone solo per chi l'ha chiesto); `elimina tutte:Sì` toglie ogni copia dopo il clic.
+- [ ] BKP-008 — `/founder backup automatico ore:4 copie:2`; con `ultimo` portato indietro nel database (o dopo 4 ore) compare una copia «auto …» (⏱️ in `lista`); alla terza la più vecchia automatica sparisce, le copie a mano restano.
+- [ ] BKP-002 — `/admin-backup salva thread:Sì` in un server con un forum e un thread archiviato; `/admin-backup carica` scegliendo «Thread e post dei forum» in un server vuoto con gli stessi canali. Risultato atteso: i post e i thread tornano senza doppioni, il primo messaggio del post è senza menzioni vere.
+- [ ] BKP-020/021 — `/admin-backup modello azione:Elenco`, poi `Scheda` con `gioco`, poi `Usa` con un vero link `discord.new/…`. Risultato atteso: il modello di Discord si legge (ruoli, canali, categorie) e il menu delle parti compare.
+- [ ] BKP-028 — owner di due server: `/founder backup sincronia-canali azione:Attiva canale:#a altro_canale:<ID di #b> direzione:In tutte e due le direzioni`. Scrivi in #a: il messaggio compare in #b con nome e avatar; il messaggio copiato non torna in #a. `Disattiva` ferma tutto.
+- [ ] AI-001 — `/assistente scrivi richiesta:una poesia sulla luna`. Risultato atteso: risposta con avviso «Scritto dall'AI», nessuna menzione vera anche se il testo contiene @everyone.
+- [ ] AI-017 — `/admin-ai interruttore funzione:scrivi acceso:No`, poi `/assistente scrivi`: risposta «funzione spenta»; `/assistente traduci` continua a funzionare.
+- [ ] AI-004 — `/assistente immagina` con un fornitore vero: l'immagine arriva come PNG sotto 9,5 MiB.
+
+## Economia e giochi (#125, r6eco)
+- [ ] `ECO-075` — `/admin-negozio rotazione quanti:2` e `rotazione oggetto` su 4 oggetti: `/monete shop list` mostra solo 2 oggetti a rotazione, cambiano il giorno dopo; comprare uno nascosto dice «non in vetrina».
+- [ ] `ECO-076` — `/admin-negozio offerta lampo oggetto sconto:50 minuti:5 usi:1`: appare il messaggio col bottone; il primo clic paga metà, il secondo dice che il prezzo è cambiato; `/monete shop list` mostra il prezzo barrato. Dopo un riavvio il bottone non funziona più, ma `/monete shop buy` sì finché l'offerta dura.
+- [ ] `ECO-078` — `/admin-negozio ricetta crea` poi `/monete shop ricette` e `/monete shop crea`: gli ingredienti spariscono e arriva il risultato; con un ingrediente in meno non cambia niente.
+- [ ] `ECO-091/101-103/105/110-112` — `/sala roulette|corsa|lotta|bomba|carte|bingo puntata:10` con 2-3 account: la sala si riempie, la puntata esce a tutti alla partenza, solo i giocatori premono i bottoni, il piatto va al vincitore. Con un solo giocatore la partita non parte e nessuna moneta si muove. Riavvio a metà partita: le puntate tornano.
+- [ ] `ECO-113/114` — `/sala impiccato` e `/sala quiz`: premio in monete con il tetto di 300 al giorno per tipo.
+- [ ] `ECO-074/120` — `/mercato vendi|elenco|compra|offri|accetta|ritira|dona|fondo` con due account: oggetto e monete cambiano mano insieme; un blocco personale impedisce lo scambio; `/admin-negozio fondo dai` consegna dal fondo.
+- [ ] `ECO-039/152` — `/admin-negozio guadagno crea` poi `/monete rischio guadagna nome:`; `/level righe scelta:banca,monete` mostra solo quelle righe in quell'ordine.
+- [ ] `ECO-125..129` — `/fun animali sitter|lotta|incontro|abbandona|adozioni|adotta` con due account: incontro accettato dal secondo, cucciolo nella coda, adozione solo con un posto libero.
+- [ ] `ECO-135..141` — `/fun pesca abilita|attrezzi|stagione|rete|acquario|storico`: perle dopo qualche lancio, esca e rete comprate, rete riscossa dopo un'ora, premio del pass.
+- [ ] `ECO-018/027/045/087/142/146/147` — `/mondo diretta|vacanza|casa|fattoria|personaggio|avventura`: un tentativo al giorno per personaggio, gettoni per i mobili, la vacanza non fa perdere la serie del daily.
+- [ ] `ECO-083..085` — `/mondo borsa prezzi|scambia|ordine|ordini` e `/mondo autovendita`: commissione del 3%, un ordine scatta all'ora successiva, la vendita automatica agisce nel giro orario.
+- [ ] `ECO-054/056/144/145` — `/admin-negozio evento codice|bonus|casuali|server`: il primo che prende vince; il bonus si vede in `/monete work`.

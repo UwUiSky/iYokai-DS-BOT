@@ -49,6 +49,7 @@ def _scatta(regola, **k):
     return w.regola_scattata(regola, **base)
 
 
+# TKT-060: chiusura se l'utente non scrive mai (senza messaggi vale l'apertura).
 def test_regola_utente_conta_dall_ultimo_messaggio_dell_utente():
     r = w.Regola(1, 1, "utente", 30, "chiudi")
     assert _scatta(r, ultimo_utente=_min(10), adesso=_min(39)) is False

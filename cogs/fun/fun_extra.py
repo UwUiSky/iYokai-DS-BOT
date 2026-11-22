@@ -19,9 +19,11 @@ from cogs.fun.entertainment import MODULE_FUN, EntertainmentCog
 from core import fun_extra_logic as logica
 from core import fun_piccoli_logic as piccoli
 from core import image_effects_logic as effetti
+from core.ui_base import BaseView
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.i18n import testo_per
+from core.repositories.gif_privacy_repo import gif_privacy_repo
 
 NESSUNA_MENZIONE = discord.AllowedMentions.none()
 
@@ -49,6 +51,35 @@ _EFFETTI = {
 async def _completa_gioco(interaction: discord.Interaction, digitato: str) -> list[app_commands.Choice[str]]:
     """Solo dati locali: il completamento ha 3 secondi e non vincola il valore."""
     return [app_commands.Choice(name=n, value=v) for n, v in piccoli.suggerisci_giochi(digitato)]
+
+
+class PreferireView(BaseView):
+    """FUN-027: due bottoni con il conteggio dei voti; ognuno ha un voto (cambiabile); i bot non votano; si chiude dopo 10 minuti."""
+
+    def __init__(self, a: str, b: str) -> None:
+        super().__init__(timeout=600)
+        self.voci = {0: a, 1: b}
+        self.voti: dict[int, int] = {}
+        for n in (0, 1):
+            bottone = discord.ui.Button(label=f"{n + 1}: {self.voci[n]}"[:80], style=discord.ButtonStyle.primary if n == 0 else discord.ButtonStyle.secondary)
+            bottone.callback = self._vota(n)
+            self.add_item(bottone)
+
+    def conteggio(self) -> tuple[int, int]:
+        return sum(1 for v in self.voti.values() if v == 0), sum(1 for v in self.voti.values() if v == 1)
+
+    def testo(self) -> str:
+        a, b = self.conteggio()
+        return f"🤔 Preferiresti…\n**1** {self.voci[0]} — {a} voti\n**2** {self.voci[1]} — {b} voti"
+
+    def _vota(self, n: int):
+        async def _cb(interaction: discord.Interaction) -> None:
+            if interaction.user.bot or len(self.voti) >= 5000 and interaction.user.id not in self.voti:
+                await interaction.response.send_message("…", ephemeral=True)
+                return
+            self.voti[interaction.user.id] = n  # un voto per persona, cambiabile
+            await interaction.response.edit_message(content=self.testo(), view=self, allowed_mentions=NESSUNA_MENZIONE)
+        return _cb
 
 
 class FunExtraCog(CogConGruppi, commands.Cog):
@@ -171,6 +202,11 @@ class FunExtraCog(CogConGruppi, commands.Cog):
                 return
             await self._scrivi(interaction, f"🎲 <@{self._rng.choice(candidati).id}>")
             return
+        if tipo.value == "preferiresti":  # FUN-027: due bottoni con il conteggio
+            a, b = self._rng.choice(logica.PREFERIRESTI)
+            vista = PreferireView(a, b)
+            await interaction.response.send_message(vista.testo(), view=vista, allowed_mentions=NESSUNA_MENZIONE)
+            return
         emoji, genera = _CASUALI[tipo.value]
         await self._scrivi(interaction, f"{emoji} {genera(self._rng)}")
 
@@ -197,6 +233,9 @@ class FunExtraCog(CogConGruppi, commands.Cog):
         testo: app_commands.Range[str, 1, 100] | None = None,
     ) -> None:
         if not await self._modulo_attivo(interaction):
+            return
+        if await gif_privacy_repo.e_bloccato(utente.id, interaction.user.id):  # FUN-031/032/037: rispetta il blocco personale (FUN-137)
+            await self._scrivi(interaction, await testo_per(interaction, "gif_bloccata"), ephemeral=True)
             return
         if tipo.value == "spoiler":
             if not testo:

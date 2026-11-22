@@ -12,6 +12,7 @@ from types import SimpleNamespace
 import pytest
 
 from cogs.music.player import MusicCog
+from core.music_settings_logic import MusicSettings
 
 
 class _Registro:
@@ -71,7 +72,7 @@ def _cog_e_interazione(monkeypatch):
     flotta = SimpleNamespace(release_session=_async_nulla)
     cog = MusicCog(bot=SimpleNamespace(music_fleet=flotta))
 
-    async def _sempre_si(interaction):
+    async def _sempre_si(interaction, **_kw):
         return True
 
     async def _worker(guild_id, **kw):
@@ -80,15 +81,20 @@ def _cog_e_interazione(monkeypatch):
     cog._controlli_base = _sempre_si
     cog._get_worker_guild = _worker
 
+    async def _privilegiato(*_a, **_kw):  # DJ/staff: salta senza voto (MUS-052), qui conta solo il defer
+        return True
+
+    cog._privilegi = _privilegiato
+
     async def _impostazioni(db, guild_id):
-        return SimpleNamespace(max_volume=200)
+        return MusicSettings(max_volume=200)  # le impostazioni vere: anche DJ e voto
 
     import cogs.music.player as modulo
 
     monkeypatch.setattr(modulo, "load_music_settings", _impostazioni)
     interazione = SimpleNamespace(
         guild=SimpleNamespace(id=1),
-        user=SimpleNamespace(voice=SimpleNamespace(channel=SimpleNamespace(id=9))),
+        user=SimpleNamespace(id=7, voice=SimpleNamespace(channel=SimpleNamespace(id=9))),
         response=_Risposta(reg),
         followup=_Seguito(reg),
     )
@@ -165,7 +171,7 @@ async def test_play_con_allegato_audio_accoda_il_suo_url():
     cog = MusicCog(bot=None)
     accodati = []
 
-    async def _sempre_si(interaction):
+    async def _sempre_si(interaction, **_kw):
         return True
 
     async def _accoda(guild, membro, query, rispondi, **kw):
@@ -185,7 +191,7 @@ async def test_play_con_allegato_audio_accoda_il_suo_url():
 async def test_play_con_allegato_non_audio_rifiuta():
     cog = MusicCog(bot=None)
 
-    async def _sempre_si(interaction):
+    async def _sempre_si(interaction, **_kw):
         return True
 
     cog._controlli_base = _sempre_si
@@ -201,7 +207,7 @@ async def test_play_con_allegato_non_audio_rifiuta():
 async def test_play_senza_query_ne_allegato_rifiuta():
     cog = MusicCog(bot=None)
 
-    async def _sempre_si(interaction):
+    async def _sempre_si(interaction, **_kw):
         return True
 
     cog._controlli_base = _sempre_si

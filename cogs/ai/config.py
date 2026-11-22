@@ -26,13 +26,13 @@ from cogs.ai._comune import (
 from core.ai_cost_logic import GIORNI_PROVA, prova_attiva
 from core.ai_impostazioni import (
     MAX_CANALI_SPENTI, MAX_PAROLE_VIETATE, TESTO_CONSENSO, accendi_ai, imposta_canali_spenti, imposta_lore, imposta_parole_vietate,
-    imposta_scelte, spegni_ai,
+    imposta_interruttore, imposta_scelte, spegni_ai,
 )
 from core.config_schema import ImpostazioneNonValida
 from core.ai_router import avviso_chiavi
 from core import ai_override_logic as ov
 from core.ai_servizio import imposta_manutenzione_ai, imposta_scelte_owner, servizio_ai
-from core.ai_testi_logic import ISTRUZIONI, LINGUE, TEMI, leggi_proposta_server, nome_lingua, testo_lore
+from core.ai_testi_logic import INTERRUTTORI, ISTRUZIONI, LINGUE, TEMI, leggi_proposta_server, nome_lingua, testo_lore
 from core.bot_ready import attendi_bot_pronto
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
@@ -402,6 +402,21 @@ class AiConfigCog(CogConGruppi, commands.Cog):
     async def funzioni(self, interaction: discord.Interaction, funzione: str, acceso: bool) -> None:
         await ai_repo.imposta(interaction.guild_id, **{funzione: acceso})
         await interaction.response.send_message(f"{funzione}: {'accesa' if acceso else 'spenta'}.", ephemeral=True)
+
+    @comando_di_gruppo("admin-ai", nome="interruttore", descrizione="Spegne o riaccende una funzione dell'AI, una per una.")
+    @app_commands.describe(funzione="La funzione", acceso="Sì o no")
+    @app_commands.choices(funzione=[app_commands.Choice(name=n, value=n) for n in INTERRUTTORI])
+    async def interruttore(self, interaction: discord.Interaction, funzione: str, acceso: bool) -> None:
+        """AI-017: ogni funzione ha il suo interruttore; tutto parte acceso solo dopo `/admin-ai attiva`."""
+        try:
+            spente = await imposta_interruttore(interaction.guild_id, funzione, acceso)
+        except ImpostazioneNonValida as errore:
+            await interaction.response.send_message(str(errore), ephemeral=True)
+            return
+        elenco = ", ".join(spente) or "nessuna"
+        await interaction.response.send_message(
+            f"{funzione}: {'accesa' if acceso else 'spenta'}. Funzioni spente: {elenco}.", ephemeral=True
+        )
 
     @comando_di_gruppo("admin-ai", nome="moderazione", descrizione="L'AI segnala allo staff i messaggi sospetti di un canale.")
     @app_commands.describe(canale="Canale da sorvegliare", acceso="Sì o no", avvisi="Dove mandare le segnalazioni (vuoto: canale dei log)")

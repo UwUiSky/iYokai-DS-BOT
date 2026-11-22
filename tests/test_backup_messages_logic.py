@@ -146,6 +146,7 @@ async def test_canali_in_serie_e_ognuno_col_suo_webhook(hooks):
 
 
 @pytest.mark.asyncio
+# BKP-011
 async def test_ultimi_n_messaggi_e_tetto_predefinito(hooks):
     src = _Sorgente(1, [_msg(str(i)) for i in range(200)])
     await _copia(_Guild(src), _Guild(_Destinazione(11)), {1: 11}, {1: URL_A})
@@ -158,6 +159,7 @@ async def test_ultimi_n_messaggi_e_tetto_predefinito(hooks):
 
 
 @pytest.mark.asyncio
+# BKP-012
 async def test_invio_con_autore_senza_menzioni_e_con_allegati(hooks):
     lungo = "x" * 1990
     src = _Sorgente(1, [_msg("ciao @everyone", nome="Discord Bot Clyde", allegati=["https://cdn/f.png"]), _msg(lungo, allegati=["https://cdn/g.png"])])

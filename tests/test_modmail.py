@@ -193,6 +193,7 @@ def scena(monkeypatch):
     return Scena(monkeypatch)
 
 
+# TKT-081: ticket via messaggio privato (ModMail).
 async def test_il_dm_apre_un_canale_privato_per_lo_staff_e_inoltra_il_messaggio(scena):
     await scena.configura()
     m = scena.dm()
@@ -322,6 +323,7 @@ async def test_i_bot_e_i_messaggi_nei_server_non_aprono_nulla(scena):
     assert scena.canali == []
 
 
+# TKT-084: con più server in comune l'utente sceglie a quale staff scrivere.
 async def test_con_due_server_si_chiede_quale_e_si_apre_dopo_la_scelta(scena):
     await scena.configura()
     altro = Scena._server(ID_ALTRO_SERVER, "Server due")
@@ -360,6 +362,7 @@ async def _con_conversazione(scena):
     return scena.canali[0]
 
 
+# TKT-082: risposta anonima.
 async def test_risposta_anonima_non_mostra_il_nome_dello_staff(scena):
     canale = await _con_conversazione(scena)
     scena.utente.send.reset_mock()
@@ -503,3 +506,87 @@ async def test_i_comandi_stanno_nei_gruppi_e_sotto_i_25_figli(scena):
     finally:
         for cog in list(bot.cogs):
             await bot.remove_cog(cog)
+
+
+# ---------------------------------------------------------------- opzioni del server (TKT-082, TKT-083, TKT-084)
+async def test_opzioni_predefinite_cambiano_solo_con_il_modmail_acceso():
+    predefinite = await modmail_repo.opzioni(ID_SERVER)
+    assert (predefinite.anonimo_predefinito, predefinite.inoltra_tutto, predefinite.conferma_invio) == (False, False, True)
+    assert not await modmail_repo.imposta_opzioni(ID_SERVER, 1, inoltra_tutto=True)  # spento: niente riga
+    await modmail_repo.imposta_categoria(ID_SERVER, ID_CATEGORIA)
+    assert await modmail_repo.imposta_opzioni(ID_SERVER, 1, inoltra_tutto=True, conferma_invio=False)
+    assert (await modmail_repo.opzioni(ID_SERVER)).inoltra_tutto is True
+    assert (await modmail_repo.opzioni(ID_SERVER)).anonimo_predefinito is False  # le altre restano
+    with pytest.raises(ValueError):
+        await modmail_repo.imposta_opzioni(ID_SERVER, 1, **{"category_id = 0, x": True})
+
+
+# TKT-082: anonimo come impostazione predefinita del server.
+async def test_senza_scelta_la_risposta_segue_il_predefinito_del_server(scena):
+    canale = await _con_conversazione(scena)
+    await modmail_repo.imposta_opzioni(ID_SERVER, 1, anonimo_predefinito=True)
+    await scena.cog.rispondi.callback(scena.cog, scena.staff(canale), "ok")
+    assert scena.utente.send.await_args.kwargs["embed"].author.name == "Staff di Server uno"
+    await scena.cog.rispondi.callback(scena.cog, scena.staff(canale), "ok", False)  # la scelta esplicita vince
+    assert "Giulia" in scena.utente.send.await_args.kwargs["embed"].author.name
+
+
+# TKT-084: la conferma prima dell'invio si può togliere.
+async def test_senza_conferma_il_primo_dm_apre_subito_il_canale(scena):
+    await scena.configura()
+    await modmail_repo.imposta_opzioni(ID_SERVER, 1, conferma_invio=False)
+    scena.auto_conferma = False
+    m = scena.dm()
+    await scena.cog.on_message(m)
+    assert len(scena.canali) == 1
+    viste = [c.kwargs.get("view") for c in m.channel.send.await_args_list]
+    assert not any(isinstance(v, modulo.ConfermaInvioView) for v in viste)
+
+
+def _dal_canale(scena, canale, testo, *, staff=True, allegati=()):
+    autore = fake_member(ID_STAFF if staff else 4242, "Staff", guild_permissions=discord.Permissions(manage_guild=staff))
+    autore.display_name = "Giulia"
+    m = fake_message(author=autore, channel=canale, content=testo)
+    m.guild = scena.guild
+    m.type = discord.MessageType.default
+    m.attachments = list(allegati)
+    m.add_reaction = AsyncMock()
+    return m
+
+
+# TKT-083: con «inoltra tutto» ogni messaggio dello staff nel canale arriva all'utente.
+async def test_inoltra_tutto_manda_il_testo_dello_staff_e_rispetta_le_note_interne(scena):
+    canale = await _con_conversazione(scena)
+    scena.utente.send.reset_mock()
+    await scena.cog.on_message(_dal_canale(scena, canale, "spento"))
+    scena.utente.send.assert_not_awaited()  # predefinito: solo con il comando
+
+    await modmail_repo.imposta_opzioni(ID_SERVER, 1, inoltra_tutto=True)
+    m = _dal_canale(scena, canale, "Ciao @everyone")
+    await scena.cog.on_message(m)
+    embed = scena.utente.send.await_args.kwargs["embed"]
+    assert embed.description == "Ciao @everyone" and "Giulia" in embed.author.name
+    m.add_reaction.assert_awaited_once_with("✅")
+
+    scena.utente.send.reset_mock()
+    await scena.cog.on_message(_dal_canale(scena, canale, "// nota per noi"))
+    await scena.cog.on_message(_dal_canale(scena, canale, "non sono staff", staff=False))
+    await scena.cog.on_message(_dal_canale(scena, fake_text_channel(9999, "generale"), "altrove"))
+    scena.utente.send.assert_not_awaited()
+
+
+async def test_inoltra_tutto_con_dm_chiusi_mette_la_croce(scena):
+    canale = await _con_conversazione(scena)
+    await modmail_repo.imposta_opzioni(ID_SERVER, 1, inoltra_tutto=True, anonimo_predefinito=True)
+    scena.utente.send.side_effect = discord.Forbidden(MagicMock(status=403), "chiusi")
+    m = _dal_canale(scena, canale, "ciao")
+    await scena.cog.on_message(m)
+    m.add_reaction.assert_awaited_once_with("❌")
+
+
+async def test_il_comando_opzioni_salva_e_mostra(scena):
+    await scena.configura()
+    i = scena.staff(fake_text_channel(1, "x"))
+    await scena.cog.dm_opzioni.callback(scena.cog, i, True, None, False)
+    attuali = await modmail_repo.opzioni(ID_SERVER)
+    assert (attuali.anonimo_predefinito, attuali.inoltra_tutto, attuali.conferma_invio) == (True, False, False)

@@ -391,6 +391,9 @@ async def test_senza_risposta_dello_staff_il_bot_chiede_di_cosa_ha_bisogno_una_v
     canale = _canale_bot(cog, monkeypatch)
     await cog.handle_ticket_sollecito(GUILD, UTENTE, {"channel_id": CANALE})
     assert "Di cosa hai bisogno" in canale.send.await_args.args[0]
+    # Il testo può venire dall'AI: anche con un @everyone dentro avvisa solo chi ha aperto il ticket.
+    permessi = canale.send.await_args.kwargs["allowed_mentions"]
+    assert permessi.everyone is False and permessi.roles is False and [u.id for u in permessi.users] == [UTENTE]
     assert (await ticket_repo.get_ticket_by_channel(CANALE)).sollecito_at is not None
     await cog.handle_ticket_sollecito(GUILD, UTENTE, {"channel_id": CANALE})
     canale.send.assert_awaited_once()

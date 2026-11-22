@@ -173,11 +173,17 @@ class ProgressiRepository:
                     guild_id, user_id,
                 )
                 riga = await conn.fetchrow(
-                    "SELECT serie, record, ultima_at, scudi FROM progress_serie "
+                    "SELECT serie, record, ultima_at, scudi, vacanza_da, vacanza_fino FROM progress_serie "
                     "WHERE guild_id = $1 AND user_id = $2 FOR UPDATE",
                     guild_id, user_id,
                 )
-                esito = aggiorna_serie(riga["serie"], riga["record"], riga["ultima_at"], riga["scudi"], adesso)
+                ultima = riga["ultima_at"]
+                if ultima is not None and riga["vacanza_da"] is not None and riga["vacanza_fino"] is not None:
+                    # ECO-027: il tempo di vacanza tra l'ultima riscossione e adesso non conta (la serie resta ferma)
+                    inizio, fine = max(riga["vacanza_da"], ultima), min(riga["vacanza_fino"], adesso)
+                    if fine > inizio:
+                        ultima = ultima + (fine - inizio)
+                esito = aggiorna_serie(riga["serie"], riga["record"], ultima, riga["scudi"], adesso)
                 if esito.contata:
                     await conn.execute(
                         "UPDATE progress_serie SET serie = $3, record = $4, scudi = $5, ultima_at = $6, "

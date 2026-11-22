@@ -28,7 +28,7 @@ from core.ai_cost_logic import LimitatoreUtente, prova_attiva, prova_finita, sti
 from core.ai_guardrail_logic import componi_messaggi, pulisci_dati_personali, pulisci_uscita, richiesta_vietata
 from core.ai_providers import TrasportoHTTP, env_con_file, leggi_fornitori, usa_chiavi_a_pagamento
 from core.ai_router import MotoreAI, NessunFornitore
-from core.ai_testi_logic import testo_lore
+from core.ai_testi_logic import interruttore_di, testo_lore
 
 logger = logging.getLogger("iyokai.ai_servizio")
 
@@ -45,6 +45,7 @@ MESSAGGI_LOCALI: dict[str, str] = {
     "coda_scaduta": "L'AI ci mette troppo a rispondere: riprova tra poco.",
     "spenta": "L'AI è spenta in questo server. Un amministratore può accenderla con `/admin-ai attiva`.",
     "canale": "L'AI è spenta in questo canale.",
+    "funzione_spenta": "Questa funzione dell'AI è spenta in questo server. Un amministratore può accenderla con `/admin-ai interruttore`.",
     "privacy": "Il server ha scelto di non mandare messaggi degli utenti all'AI.",
     "utente_spento": "Hai spento l'assistente AI per te: puoi riaccenderlo con `/assistente preferenza`.",
     "vietata": "Questa richiesta non è permessa.",
@@ -159,7 +160,9 @@ class ServizioAI:
     def configurato(self) -> bool:
         return self.motore.configurato
 
-    async def controlla_accesso(self, guild_id: int | None, channel_id: int | None = None, tipo: str = "chat"):
+    async def controlla_accesso(
+        self, guild_id: int | None, channel_id: int | None = None, tipo: str = "chat", funzione: str | None = None
+    ):
         """La config del server se l'AI può lavorare lì, altrimenti `AINonDisponibile`."""
         await self._leggi_scelte_owner()  # prima del controllo: i tipi scelti dall'owner valgono già dalla prima richiesta
         if not self.motore.configurato or not self.motore.sa_fare(tipo):
@@ -176,6 +179,8 @@ class ServizioAI:
             raise AINonDisponibile("prova_finita" if prova_finita(cfg.prova_inizio) else "premium")
         if channel_id is not None and channel_id in cfg.canali_spenti:
             raise AINonDisponibile("canale")
+        if funzione is not None and interruttore_di(funzione) in cfg.funzioni_spente:
+            raise AINonDisponibile("funzione_spenta")  # AI-017
         return cfg
 
     def ricarica_scelte_owner(self) -> None:
@@ -221,7 +226,7 @@ class ServizioAI:
         self._preferenze.pop(user_id, None)
 
     async def richiedi(self, r: RichiestaAI) -> RispostaAI:
-        cfg = await self.controlla_accesso(r.guild_id, r.channel_id, r.tipo)
+        cfg = await self.controlla_accesso(r.guild_id, r.channel_id, r.tipo, r.funzione)
         if r.conta_utente and not await self.assistente_acceso(r.user_id):
             raise AINonDisponibile("utente_spento")
         if cfg is not None and r.messaggi_utenti and cfg.privacy == "senza_messaggi":

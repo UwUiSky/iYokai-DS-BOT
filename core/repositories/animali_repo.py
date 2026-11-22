@@ -143,7 +143,10 @@ class AnimaliRepository:
         )
 
     # ---------------------------------------------------------------- pesca
-    async def pesca(self, guild_id: int, user_id: int, oggi: date, specie: str | None, pausa_s: int) -> bool | None:
+    async def pesca(
+        self, guild_id: int, user_id: int, oggi: date, specie: str | None, pausa_s: int,
+        capienza: int = MAX_PESCI_DEPOSITO, usa_esca: bool = False,
+    ) -> bool | None:
         """
         Registra una lanciata: pausa, pesce nel deposito, specie vista e punti del giorno nella stessa transazione.
         Restituisce True se ha preso un pesce, False se niente, None se in pausa o deposito pieno.
@@ -153,7 +156,7 @@ class AnimaliRepository:
                 tot = await conn.fetchval(
                     "SELECT COALESCE(SUM(quantita), 0) FROM economia_pesci WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
                 )
-                if specie and tot >= MAX_PESCI_DEPOSITO:
+                if specie and tot >= capienza:
                     return None
                 preso = await conn.fetchval(
                     "INSERT INTO economia_pause (guild_id, user_id, chiave, ultima_at) VALUES ($1, $2, 'pesca', now()) "
@@ -163,6 +166,12 @@ class AnimaliRepository:
                 )
                 if preso is None:
                     return None
+                # ECO-135/137: lanci, esca consumata (solo se c'è), nella stessa transazione
+                await conn.execute(
+                    "INSERT INTO economia_pesca_profilo (guild_id, user_id, lanci, esche) VALUES ($1, $2, 1, 0) "
+                    "ON CONFLICT (guild_id, user_id) DO UPDATE SET lanci = economia_pesca_profilo.lanci + 1, "
+                    "esche = GREATEST(economia_pesca_profilo.esche - CASE WHEN $3 THEN 1 ELSE 0 END, 0)", guild_id, user_id, usa_esca,
+                )
                 if specie is None:
                     return False
                 if specie not in PESCI:
@@ -181,6 +190,7 @@ class AnimaliRepository:
                     "ON CONFLICT (guild_id, giorno, user_id) DO UPDATE SET punti = economia_pesca_giorno.punti + $4",
                     guild_id, oggi, user_id, PESCI[specie][0],
                 )
+                await registra_cattura(conn, guild_id, user_id, specie, oggi)
                 return True
 
     async def deposito(self, guild_id: int, user_id: int) -> dict[str, int]:
@@ -189,7 +199,7 @@ class AnimaliRepository:
         )
         return {r["specie"]: r["quantita"] for r in righe}
 
-    async def vendi_pesci(self, guild_id: int, user_id: int) -> tuple[int, int]:
+    async def vendi_pesci(self, guild_id: int, user_id: int, bonus_pct: int = 0) -> tuple[int, int]:
         """Vende tutto il deposito: (pesci, monete). Si svuota con DELETE ... RETURNING: una volta sola."""
         async with self._pool.acquire() as conn:
             async with conn.transaction():
@@ -197,10 +207,13 @@ class AnimaliRepository:
                     "DELETE FROM economia_pesci WHERE guild_id = $1 AND user_id = $2 RETURNING specie, quantita", guild_id, user_id
                 )
                 quantita = {r["specie"]: r["quantita"] for r in righe}
-                monete = valore_pesci(quantita)
+                monete = valore_pesci(quantita) * (100 + max(0, bonus_pct)) // 100
                 n = sum(quantita.values())
                 if monete > 0:
                     await add_coins_in(conn, guild_id, user_id, monete)
+                    await conn.execute(
+                        "INSERT INTO economia_pesca_storico (guild_id, user_id, tipo, valore) VALUES ($1, $2, 'vendita', $3)", guild_id, user_id, monete
+                    )
                 return n, monete
 
     async def visti(self, guild_id: int, user_id: int) -> set[str]:
@@ -213,6 +226,26 @@ class AnimaliRepository:
             "ORDER BY punti DESC, user_id LIMIT $3",
             guild_id, giorno, min(max(1, limite), 10),
         )
+
+
+async def registra_cattura(conn: asyncpg.Connection, guild_id: int, user_id: int, specie: str, oggi: date) -> None:
+    """Un pesce preso (lanciata o rete): contatori, perle, punti del pass e storico, nella transazione di chi chiama."""
+    from core.animali_avanzati_logic import perle_per, stagione
+
+    valore = PESCI[specie][0]
+    await conn.execute(
+        "INSERT INTO economia_pesca_profilo (guild_id, user_id, pescati, perle) VALUES ($1, $2, 1, $3) "
+        "ON CONFLICT (guild_id, user_id) DO UPDATE SET pescati = economia_pesca_profilo.pescati + 1, "
+        "perle = economia_pesca_profilo.perle + $3", guild_id, user_id, perle_per(specie),
+    )
+    await conn.execute(
+        "INSERT INTO economia_pesca_stagione (guild_id, user_id, stagione, punti) VALUES ($1, $2, $3, $4) "
+        "ON CONFLICT (guild_id, user_id, stagione) DO UPDATE SET punti = economia_pesca_stagione.punti + $4",
+        guild_id, user_id, stagione(oggi), valore,
+    )
+    await conn.execute(
+        "INSERT INTO economia_pesca_storico (guild_id, user_id, tipo, specie, valore) VALUES ($1, $2, 'pesca', $3, $4)", guild_id, user_id, specie, valore
+    )
 
 
 class _Pausa(Exception):

@@ -55,6 +55,7 @@ async def repo():
     await database.close()
 
 
+# BKP-017
 def test_il_codice_ha_la_forma_attesa_e_non_si_ripete():
     codici = {genera_codice() for _ in range(50)}
     assert len(codici) == 50
@@ -66,6 +67,7 @@ def test_l_impronta_ignora_trattini_spazi_e_maiuscole():
 
 
 @pytest.mark.asyncio
+# BKP-017
 async def test_codice_giusto_collega_e_mette_in_coda_la_copia(repo):
     codice, _scade = await crea_codice_collegamento(repo, MAIN, creato_da=1)
     esito = await collega_backup(repo, codice, BACKUP)
@@ -159,6 +161,7 @@ async def test_restore_dopo_la_promozione_riconosce_la_coppia_storica(repo):
 
 
 @pytest.mark.asyncio
+# BKP-017
 async def test_il_codice_vale_24_ore_esatte(repo):
     adesso = datetime.now(timezone.utc)
     assert VALIDITA_CODICE == timedelta(hours=24)

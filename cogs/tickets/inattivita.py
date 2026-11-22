@@ -94,6 +94,8 @@ class TicketInattivitaCog(commands.Cog):
                 ultima_esecuzione=eseguite.get(regola.id),
                 adesso=adesso,
             )
+            if scattata and riga.get("tieni_aperto") and regola.azione in ("chiudi", "elimina"):
+                continue  # TKT-062: escluso dalla chiusura automatica; i messaggi di sollecito continuano
             if scattata and await self._esegui(guild, channel, riga, regola, adesso):
                 return  # chiuso o eliminato: le altre regole non servono
 
@@ -132,7 +134,7 @@ class TicketInattivitaCog(commands.Cog):
         """Esegue la regola. Vero se il ticket è stato chiuso (le altre regole si fermano)."""
         if regola.azione == "messaggio":
             testo = (regola.testo or "").replace("{utente}", f"<@{riga['user_id']}>")[:2000]
-            await channel.send(testo, allowed_mentions=discord.AllowedMentions(users=[discord.Object(riga["user_id"])]))
+            await channel.send(testo, allowed_mentions=discord.AllowedMentions(everyone=False, roles=False, users=[discord.Object(riga["user_id"])]))
             await repo.segna_eseguita(riga["id"], regola.id, adesso)
             return False
         cog = self.bot.get_cog("TicketsCog")

@@ -29,6 +29,7 @@ DM_FINESTRA_SECONDI = 10.0
 _MAX_UTENTI_TRACCIATI = 5000
 
 PREFISSO_CANALE = "modmail-"
+PREFISSO_NOTA = "//"  # TKT-083: con «inoltra tutto» acceso, un messaggio che comincia così resta interno
 
 _NON_AMMESSI = re.compile(r"[^a-z0-9-]+")
 

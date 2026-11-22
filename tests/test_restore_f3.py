@@ -171,6 +171,7 @@ async def discord_finto():
 
 
 @pytest.mark.asyncio
+# BKP-038
 async def test_un_429_attende_il_retry_after_e_riprova(discord_finto):
     server, stato = discord_finto
     attese: list[float] = []
@@ -204,6 +205,23 @@ async def test_il_rinnovo_usa_grant_type_refresh_token(discord_finto):
     assert nuovo.expires_at > datetime.now(timezone.utc)
     assert rifiutato is None
     assert stato["refresh"][0]["grant_type"] == "refresh_token"
+
+
+@pytest.mark.asyncio
+# BKP-038
+async def test_nessun_token_nei_log_quando_il_rinnovo_fallisce(discord_finto, caplog):
+    """Sicurezza: un rinnovo rifiutato o un join in errore non scrive mai i token nei log."""
+    import logging
+
+    server, _stato = discord_finto
+    orch = RestoreOrchestrator(token_url=str(server.make_url("/oauth2/token")), api_base_url=str(server.make_url("")))
+    try:
+        with caplog.at_level(logging.DEBUG):
+            assert await orch.refresh_access_token("cid", "segreto-client", "ref-scaduto-SEGRETO") is None
+            await orch.join_user_via_oauth(bot_token="bot-SEGRETO", guild_id=2, user_id=1, access_token="acc-SEGRETO")
+    finally:
+        await orch.close()
+    assert "SEGRETO" not in caplog.text and "segreto-client" not in caplog.text
 
 
 # ------------------------------------------------------------------- cog ----
@@ -276,6 +294,7 @@ async def test_restore_dopo_la_promozione_funziona(database_cog, monkeypatch):
 
 
 @pytest.mark.asyncio
+# BKP-038
 async def test_token_scaduto_si_rinnova_e_si_usa_quello_nuovo(database_cog, monkeypatch):
     """M 12.10 (LIM-37)."""
     from core.restore_orchestrator import ExchangedToken
@@ -296,6 +315,7 @@ async def test_token_scaduto_si_rinnova_e_si_usa_quello_nuovo(database_cog, monk
 
 
 @pytest.mark.asyncio
+# BKP-038
 async def test_rinnovo_rifiutato_ricade_sulla_richiesta_di_consenso(database_cog, monkeypatch):
     import dataclasses
 
@@ -317,6 +337,7 @@ async def test_rinnovo_rifiutato_ricade_sulla_richiesta_di_consenso(database_cog
 
 
 @pytest.mark.asyncio
+# BKP-038
 async def test_si_conta_dopo_l_esito_e_si_fa_una_pausa_tra_i_dm(database_cog, monkeypatch):
     """M 12.11: un join fallito non è un "aggiunto"; pausa tra un DM e l'altro."""
     import dataclasses

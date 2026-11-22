@@ -54,6 +54,7 @@ async def repos(monkeypatch):
     await database.close()
 
 
+# BKP-031
 async def test_repository_coppia_unica_e_tetto(repos):
     assert await repos.attiva(B, A, True, False, 1)
     assert await repos.attiva(A, B, True, True, 1)  # stessa coppia: aggiornata
@@ -115,6 +116,7 @@ async def test_solo_l_owner_di_entrambi_attiva(repos):
     assert await repos.sincronie_di(A) == []
 
 
+# BKP-029
 async def test_ban_copiato_una_volta_senza_eco(repos):
     a, b = _Server(A), _Server(B)
     cog = BackupCog(_Bot(a, b))
@@ -131,6 +133,7 @@ async def test_ban_copiato_una_volta_senza_eco(repos):
     assert a.sbannati == [77]
 
 
+# BKP-030
 async def test_ruoli_per_nome_e_niente_chiamate_se_gia_uguale(repos):
     a, b = _Server(A), _Server(B)
     cog = BackupCog(_Bot(a, b))
@@ -195,3 +198,20 @@ async def test_ruolo_omonimo_con_piu_permessi_non_si_da(repos):
         SimpleNamespace(id=77, roles=[], guild=a), SimpleNamespace(id=77, roles=[admin_a, a.roles[0]], guild=a)
     )
     assert dati == ["Vip"]
+
+
+async def test_elenco_e_disattiva_dal_comando(repos):
+    """BKP-031: l'elenco mostra le sincronie attive; «disattiva» le toglie (e un secondo giro dice che non ci sono)."""
+    a, b = _Server(A), _Server(B)
+    cog = BackupCog(_Bot(a, b))
+    await cog.sincronia.callback(cog, _interazione(a), SimpleNamespace(value="attiva"), str(B), True, True)
+    i = _interazione(a)
+    await cog.sincronia.callback(cog, i, SimpleNamespace(value="elenco"), None, True, True)
+    assert str(B) in i.risposte[0] and "ban sì" in i.risposte[0]
+    i = _interazione(a)
+    await cog.sincronia.callback(cog, i, SimpleNamespace(value="disattiva"), str(B), True, True)
+    assert "disattivata" in i.risposte[0]
+    i = _interazione(a)
+    await cog.sincronia.callback(cog, i, SimpleNamespace(value="disattiva"), str(B), True, True)
+    assert "Nessuna sincronia" in i.risposte[0]
+    assert await repos.sincronie_di(A) == []

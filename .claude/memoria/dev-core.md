@@ -4,6 +4,7 @@
 18/11/2026 · ramo `feat/r1cfg` · #122 catalogo configurazione (D96): fatte 013, 014, 033, 012, 022, 023, 025, 026, 029, 034, 035, 043 (+ provate 007, 028, 031, 037, 042, 045).
 
 ## In corso
+- r1dep (#161) pronto, ramo `feat/r1dep`: dipendenze all'ultima stabile (requirements*.txt e .lock). Smoke da fare dopo l'unione: tree_invariants, cog_manager, immagini/allegati, pannello web, musica, migrazioni, data_registry. Python resta 3.11 (wavelink dichiara fino a 3.11). Venv di prova `.venv-dep` (non committato).
 - r1cfg pubblicato (Refs #122). Tocca `main.py` (on_guild_join), `core/database.py` (ensure_guild_exists con lingua), `core/blacklist_tree.py`, `core/premium.py`, import/export: serve la suite completa dell'orchestratore. Smoke da fare dopo l'unione (risposte, politica, permessi_vista, premium_posti, config_trasloco, import, migrazione 0720, data_registry, tree_invariants, i18n). Restano per #122: CFG-024 (con dev-moderazione), 015/016/017/044 (altre aree), 036/039/040/041 (scelte dell'owner), 001/002/003/006/027 (dev-web), 032 (marchio: resincronizza e registro errori).
 - r15immagini pubblicato. Smoke da fare dopo l'unione (test_immagini_*, tree_invariants, data_registry, migrazioni 0504-0506, i18n, config_import). Da fare dopo il merge col filone A: `/admin-automod immagini` e aggancio a `core/automod_azioni.py` (oggi `cogs/automod/immagini.py::_applica` usa bot_roles/try_dm/post_to_mod_log).
 - r14lingue (D58) pubblicato. Smoke da fare dopo l'unione (i18n, translator, command_sync, tree_invariants, riferimenti, cog utility/lingua).

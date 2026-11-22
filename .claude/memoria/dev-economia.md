@@ -1,13 +1,15 @@
 # Memoria di dev-economia
 
 ## Aggiornata
-17/11/2026 · giro r5eco (#125 Economia e giochi), ramo `feat/r5eco`, wt `/home/user/wt-125`, db `iyokai_w125`, migrazioni 0670-0679 (0670-0672 usate).
+22/11/2026 · giro r6eco (#125), ramo `feat/r6eco`, wt `/home/user/wt-125b`, db `iyokai_w125b`, migrazioni 0687-0689 e 0790-0792 USATE (restano 0793-0799). Tutte le voci della scheda r6eco fatte (D104, D105). Smoke da fare.
 
 ## In corso
+- Dopo B17: restano solo le ECO con motivo in D86 (ripartire da 075/076/078 se si vuole realizzarle).
 - r5eco: fatti 16 blocchi (B1-B16: + movimenti, portafoglio, tetto vocale, controllo anti-automazione). Prossimo: 075/076 (rotazione e offerte lampo), 078 ricette, 039, 042-051, 054, 056, 060, 117-119, clan/tesoreria, animali, pesca. `monete` è a 18 figli: nuovi comandi nei sottogruppi `conto` (6) e `rischio` (6), animali/pesca, profilo/missioni. Nuovi comandi admin vanno in `admin-giochi` (admin-economia è a 18 figli: tetto) negozio (061 requisiti, 075-076), B6 giochi a più passi (088 blackjack, 094, 098: serve tabella `economia_partite_aperte` con rimborso all'avvio), B7 clan/tesoreria, B8 animali/pesca. Migrazione libera: 0687 (0687-0689) (restano 0683-0689: una per clan, una per profilo/missioni) (SOLO 0670-0689). `loc.py` della scratchpad è di altri: usare `eco/loc125.py`.
 - Smoke da fare (lo lancia l'orchestratore). Test già rossi su main, non miei: `test_data_registry` (guild_card_sfondi, leveling_reazioni, leveling_ruoli_classifica, voice_roles), `test_intent_usage::..._messaggi` (greetings).
 
 ## Fatto
+- r5eco B17: D86 con il motivo di ogni ECO non fatta; controllo area 17 (#131): 91 voci FUN in `CONTROLLO_AREE_CHIUSE.md`, D103, `tests/test_fun_controllo_area17*.py`; FUN-027 con bottoni, scherzi che rispettano il blocco (FUN-031/032). Cricchetto `SENZA_FONTE` per le GIF senza raccolta.
 - r5eco B16: 0685 (`economia_movimenti`, `voce_max_minuti`), 0686 (`controllo_per_mille`); storico in `add_coins_in`/`spend_coins_in`/daily/lavoro/pay, `/level movimenti`, `core/wallet_card.py` + `/monete conto portafoglio`, `core/anti_automazione.py` (work, daily, mini guadagni), tetto vocale in `compute_voice_minute`. Trappola: i test che sostituiscono `should_trigger_drop` con lambda a 1 argomento: la logica dei drop deve restare a una sola chiamata `should_trigger_drop(roll)`. Mai aggiungere righe a una migrazione già applicata (nemmeno nel proprio DB di test).
 - r5eco B15: 0684 (blocchi, amici, matrimoni, prestigio), `sociale_repo`, `cogs/leveling/sociale.py` (`/level sociale ...`, `/monete conto prestigio`), blocchi in pay/regala/duello/tris/forza4, amici senza tassa, prestigio nel lavoro e nel premio (ECO-148, 149, 153-155, 159).
 - r5eco B14: 0683 `economia_depositi`, `rischio_repo.blocca/sblocca`, `/monete conto deposito`, `/giochi rps puntata`, `leaderboard solo_presenti`, `cogs/leveling/riffa.py` (ECO-005, 013, 092, 095-097, 119).

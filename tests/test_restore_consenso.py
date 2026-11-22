@@ -76,6 +76,7 @@ async def test_ritirare_il_consenso(ambiente):
     assert not await oauth.ha_consenso(100, 1)
 
 
+# BKP-038
 async def test_senza_consenso_nessun_dm(ambiente):
     """M 12.12: utente senza consenso, nessun DM; con consenso, DM."""
     _db, snap, oauth, backup = ambiente

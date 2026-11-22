@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:22 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:24 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 1031 commands in 51 categories.**
+**Total: 1110 commands in 55 categories.**
 
 ## Admin: AI
 
@@ -16,6 +16,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/admin-ai dungeon stories`** — How many dungeon stories are ready for the server theme.
 - **`/admin-ai enable`** — Turns the AI on or off in the server (consent required).
 - **`/admin-ai features`** — Turns on automatic features: reply to mentions, flags.
+- **`/admin-ai interruttore`** — Turns one AI feature off or on, one by one.
 - **`/admin-ai knowledge add`** — Adds an entry to the knowledge base.
 - **`/admin-ai knowledge list`** — The knowledge base entries.
 - **`/admin-ai knowledge remove`** — Removes an entry from the knowledge base.
@@ -30,6 +31,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/admin-ai staff incident`** — Summarises the latest security events of the server.
 - **`/admin-ai staff rule`** — Tell AutoMod what you want: it proposes the rule, you turn it on.
 - **`/admin-ai staff search-log`** — Search the logs with a question (who, what, when).
+- **`/admin-ai staff ticket-summary`** — Turns the AI summary in the log on or off when a ticket closes.
 - **`/admin-ai status`** — AI status in the server: providers, settings and monthly usage.
 - **`/admin-ai summary preview`** — Shows you the digest as of now, without publishing it.
 - **`/admin-ai summary set`** — Server digest: channel, hour, frequency and channels to read.
@@ -146,10 +148,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/admin-backup copy channel`** — Copies a channel with its permissions; a category with its channels.
 - **`/admin-backup copy role`** — Copies a role with its permissions and, optionally, its channel permissions.
 - **`/admin-backup create`** — Prepares the backup: link code and link for the new server.
-- **`/admin-backup delete`** — Deletes a saved copy.
+- **`/admin-backup delete`** — Deletes a saved copy, or all of them (with confirmation).
 - **`/admin-backup export`** — Exports structure, channels, roles, bans or reactions to a file.
 - **`/admin-backup import`** — Imports the structure from a JSON file, picking what to apply.
-- **`/admin-backup list`** — The saved copies of this server, with their date.
+- **`/admin-backup list`** — The saved copies, with their date; with a number, what a copy contains.
 - **`/admin-backup load`** — Loads a saved copy into this server, picking the parts.
 - **`/admin-backup log`** — Who used backups, templates and syncs (last 20, 365 days).
 - **`/admin-backup main`** — Registers this server as 'main' for the Backup System.
@@ -158,7 +160,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/admin-backup restore users`** — Restores into THIS server the users of another server's latest snapshot.
 - **`/admin-backup save`** — Saves a dated copy of this server structure.
 - **`/admin-backup status`** — Progress of the latest load in this server.
-- **`/admin-backup template`** — Templates: share a copy with a code or load another server one.
+- **`/admin-backup template`** — Templates: ready-made, yours or Discord ones. List, card, use and share.
 
 ## Admin: welcome
 
@@ -254,7 +256,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/admin-games battitura add`** — Add a typing text (window).
 - **`/admin-games battitura list`** — The server's typing texts.
 - **`/admin-games battitura remove`** — Remove a typing text.
-- **`/admin-games carte pacchetti`** — Which card packs are turned on in the server.
+- **`/admin-games cards pacchetti`** — Which card packs are turned on in the server.
 - **`/admin-games counting channel`** — Pick the channels where people count (up to 10) and how.
 - **`/admin-games counting import`** — Bring scores from a CSV or JSON file into a channel.
 - **`/admin-games counting milestone`** — Role or message when the count hits a number.
@@ -433,6 +435,22 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/admin-music summary`** — Shows all the server's music settings.
 - **`/admin-music suono-ruoli`** — Who can use a sound: allowed or banned roles.
 
+## Admin: advanced shop
+
+- **`/admin-shop deal close`** — Close the flash deal of an item right now.
+- **`/admin-shop deal flash`** — Start a timed flash deal with a buy button.
+- **`/admin-shop event bonus`** — Leave a timed bonus in chat: the first to take it earns more for a while.
+- **`/admin-shop event code`** — Launch a code in chat: who writes it first wins the coins.
+- **`/admin-shop event random`** — Turn the server's random events on or off in a channel.
+- **`/admin-shop event server`** — A timed bonus for the whole server, right now (work and rewards).
+- **`/admin-shop fund give`** — Give a member an item donated to the prize fund.
+- **`/admin-shop gain create`** — Create an earning command: whoever uses it receives coins, with a cooldown.
+- **`/admin-shop gain delete`** — Delete a server earning command.
+- **`/admin-shop recipe create`** — Create a recipe: some items become another item.
+- **`/admin-shop recipe delete`** — Delete a recipe.
+- **`/admin-shop rotation how-many`** — How many rotating items are in the window each day (0 = off).
+- **`/admin-shop rotation item`** — Put an item among the rotating ones (or take it out).
+
 ## Admin: roles
 
 - **`/admin-roles auto add`** — Adds a role given automatically to new members.
@@ -534,11 +552,15 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/admin-tickets labels list`** — Lists the ticket labels.
 - **`/admin-tickets labels remove`** — Removes a label (it disappears from tickets that have it).
 - **`/admin-tickets limite`** — How many open tickets each user can have at once (default 1).
+- **`/admin-tickets log`** — Which ticket actions go to the log, and in which channel.
 - **`/admin-tickets modmail block`** — Blocks or unblocks a user from ModMail.
 - **`/admin-tickets modmail enable`** — Turns ModMail (tickets in DM) on or off.
+- **`/admin-tickets modmail options`** — ModMail options: anonymous replies, forwarding, confirmation.
 - **`/admin-tickets panel`** — Publishes the ticket opening panel in this channel.
+- **`/admin-tickets panels appearance`** — Button colour, menu text and opening message of a panel.
 - **`/admin-tickets panels create`** — Creates a ticket panel.
 - **`/admin-tickets panels form-add`** — Adds a question to the form (max 5).
+- **`/admin-tickets panels form-copy`** — Copies a panel's form to another (replaces its questions).
 - **`/admin-tickets panels form-remove`** — Removes a question from the form.
 - **`/admin-tickets panels form-show`** — Shows the questions of a panel's form.
 - **`/admin-tickets panels list`** — Lists the server's ticket panels.
@@ -546,6 +568,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/admin-tickets panels reason-add`** — Adds a ready-made reason to the panel (max 24).
 - **`/admin-tickets panels reason-remove`** — Removes a ready-made reason (no number: lists them).
 - **`/admin-tickets panels remove`** — Deletes a panel and its form.
+- **`/admin-tickets panels template`** — Imports a ready-made panel template (form, reasons, answers).
 - **`/admin-tickets reminder`** — Reminder after N minutes without staff (0 = off).
 - **`/admin-tickets replies article`** — Knowledge base: new article, edit or delete one.
 - **`/admin-tickets replies delete`** — Deletes a standard reply.
@@ -703,6 +726,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/assistant summarize`** — Summary of the latest messages of a channel.
 - **`/assistant translate`** — Translates a text into the language you choose.
 - **`/assistant upscale`** — Upscales and cleans up an image you upload.
+- **`/assistant write`** — Writes a text you ask for: a poem, an explanation, an answer.
 
 ## Clan
 
@@ -730,7 +754,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 
 ## Founder (server owner)
 
+- **`/founder backup automatico`** — Automatic copies of the structure at intervals.
 - **`/founder backup permissions`** — Who can create and who can load backups (owner only).
+- **`/founder backup sincronia-canali`** — Copies messages between two channels of yours, one way or both.
 - **`/founder backup sync`** — Keeps bans and roles equal with another server of yours.
 - **`/founder moderation immune`** — Roles manual moderation can't touch (owner only).
 
@@ -741,18 +767,30 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/fun coinflip`** — Flips a coin: heads or tails.
 - **`/fun dice`** — Rolls a die.
 - **`/fun fact`** — Shows a random fun fact.
+- **`/fun fishing aquarium`** — Your aquarium: the species you found and how many you have.
 - **`/fun fishing cast`** — Cast the line in a place (every 15 minutes).
 - **`/fun fishing guide`** — Your fish storage and the species you have found.
+- **`/fun fishing history`** — The latest fish caught and sales (30 days).
 - **`/fun fishing leaderboard`** — Today's best fishers.
+- **`/fun fishing net`** — Collect the fish your net caught while you were away (one cast per hour).
+- **`/fun fishing season`** — The monthly pass: a reward every 100 fishing points (free track).
 - **`/fun fishing sell`** — Sell every fish in the storage.
+- **`/fun fishing skills`** — Fishing skills: unlocked with challenge points.
+- **`/fun fishing tackle`** — The tackle shop: paid with pearls you find while fishing.
 - **`/fun guess-the-song`** — Guess the song from a short excerpt, in voice.
 - **`/fun joke`** — Tells a random joke.
 - **`/fun measure`** — Measures from 0 to 100% how much of something you choose.
 - **`/fun number`** — A random number in a range.
+- **`/fun pets abandon`** — Leave one of your animals in the server's adoption queue.
 - **`/fun pets activity`** — An activity with a healthy pet: it brings a few coins (every 2 hours).
+- **`/fun pets adopt`** — Adopt an animal from the queue (you need a free slot).
+- **`/fun pets adoptions`** — The animals waiting for a family.
 - **`/fun pets buy`** — Buy a pet to take care of.
 - **`/fun pets care`** — Feed, clean or play with a pet (once an hour per kind).
+- **`/fun pets fight`** — Make your animal fight another member's animal (no stake).
 - **`/fun pets list`** — Your pets: hunger, cleanliness, play and level.
+- **`/fun pets meeting`** — Make two animals meet: they play together and a puppy may be born.
+- **`/fun pets sitter`** — Pay a pet sitter: the animal's needs stay full for the chosen days.
 - **`/fun pets slot`** — Buy one more slot for another pet (max 2 extra).
 - **`/fun prank`** — A harmless prank on a user.
 - **`/fun quotes add`** — Save a quote of the server.
@@ -779,7 +817,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/games acronimi`** — Invent phrases that follow the given letters and vote for the best.
 - **`/games battitura`** — Typing race: copy the text shown in the image.
 - **`/games card`** — Guess the drawn card: colour, suit or value.
-- **`/games carte start`** — Card game: complete the sentence with the funniest card.
+- **`/games cards start`** — Card game: complete the sentence with the funniest card.
 - **`/games challenges blackjack`** — Blackjack against the dealer: hit, stand, double down, surrender.
 - **`/games challenges connect4`** — Connect four against a member, with an optional stake.
 - **`/games challenges duel`** — Challenge a member to a duel: the winner takes the stake.
@@ -840,6 +878,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/level rank`** — Shows the rank card: level, XP, position and coins.
 - **`/level recent-levels`** — The last 25 level-ups in the server.
 - **`/level rewards`** — Shows level reward roles and active XP multipliers.
+- **`/level rows`** — Choose which rows to show in your summary and in which order.
 - **`/level social block`** — Block a user: no requests, gifts, payments or challenges from them.
 - **`/level social divorce`** — End your marriage.
 - **`/level social friend`** — Ask a member to be your friend (no tax on payments between friends).
@@ -850,6 +889,17 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/level social unblock`** — Unblock a user (no name: list the blocked).
 - **`/level stars case`** — A random message from the board.
 - **`/level stars leaderboard`** — Who received the most stars on the board.
+
+## Market
+
+- **`/market accept`** — Accept a member's offer on your listing (without a member: see the offers).
+- **`/market buy`** — Buy a listing at the stated price.
+- **`/market donate`** — Donate coins or an item to the server's prize fund.
+- **`/market fund`** — The items donated to the server's prize fund.
+- **`/market list`** — The market listings (also only one member's).
+- **`/market offer`** — Make a lower offer: the coins are held in custody until the seller answers.
+- **`/market sell`** — Put one of your items up for sale to other members.
+- **`/market withdraw`** — Withdraw one of your listings (or offers): item and coins go back.
 
 ## Mod: bans
 
@@ -938,6 +988,20 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/mod-sanctions untimeout`** — Removes a member's timeout.
 - **`/mod-sanctions warn`** — Gives a member a warning.
 
+## Your world
+
+- **`/world adventure`** — A choice-based story: the ending gives coins (once every 6 hours).
+- **`/world autosell`** — Sell an item automatically when the day's rate reaches the threshold.
+- **`/world character`** — Talk to a character: one question a day, a gift if you answer well.
+- **`/world farm`** — Plant in your garden and harvest when ripe (3 plots).
+- **`/world house`** — Your house: furnish it with tokens (the coin of all servers).
+- **`/world live`** — Today's stream: more days in a row, more coins.
+- **`/world stocks order`** — An automatic order: buy or sell when the price reaches the threshold.
+- **`/world stocks orders`** — Your automatic orders (with a number you cancel it).
+- **`/world stocks prices`** — The fake stock market prices and your shares.
+- **`/world stocks trade`** — Buy or sell fake market shares at the current price.
+- **`/world vacation`** — Freeze the daily reward streak while you are away.
+
 ## Coins
 
 - **`/coins account bank`** — Your bank: view, deposit or withdraw (thefts only hit cash).
@@ -965,6 +1029,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/coins risk beg`** — Beg: a small amount, sometimes nothing.
 - **`/coins risk chest-box`** — Open a surprise chest for 100 coins.
 - **`/coins risk dig`** — Dig for coins (sometimes a treasure).
+- **`/coins risk earn`** — Use a server-made earning command (without a name: the list).
 - **`/coins risk heist`** — A risky heist: big pay if it works, a fine if it fails.
 - **`/coins risk meme`** — Post a meme: the type you pick changes risk and prize.
 - **`/coins risk pet`** — Pet the bot: it leaves you a few coins.
@@ -974,7 +1039,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/coins risk theft`** — Try to steal cash from a member (only if the server allows it).
 - **`/coins sell`** — Resell an item for half its price.
 - **`/coins shop buy`** — Buys a shop item.
+- **`/coins shop create`** — Craft an item from other items with a recipe.
 - **`/coins shop list`** — Shows the items available in the shop.
+- **`/coins shop recipes`** — The server's recipes: what you craft with what.
 - **`/coins use`** — Use an item from your inventory.
 - **`/coins weekly`** — Claim the weekly reward.
 - **`/coins work`** — Work to earn some coins.
@@ -982,10 +1049,16 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 ## Music
 
 - **`/music clear-queue`** — Clears the queue without touching the track that is playing.
+- **`/music coda last`** — Removes the last track you added.
+- **`/music coda mine`** — Removes all your tracks from the queue.
+- **`/music coda move`** — Moves a queue track to another position.
+- **`/music coda now`** — Plays a queue track right now, skipping the current one.
 - **`/music coda pulisci`** — Removes from the queue the tracks of people who left the voice channel.
+- **`/music coda remove`** — Removes a track from the queue.
 - **`/music coda restore`** — Puts the saved tracks of your voice channel back in the queue (after a restart).
 - **`/music coda search`** — Searches the queue for a track by title.
 - **`/music coda skip`** — Removes a range of positions and/or one user's tracks from the queue.
+- **`/music coda top`** — Moves a queue track to the top, right after the current one.
 - **`/music disconnect`** — Disconnects the music bot from the voice channel.
 - **`/music genre`** — Pick a playlist by genre from the menu.
 - **`/music history`** — Shows the latest tracks already played.
@@ -1024,6 +1097,11 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/music skipto`** — Jumps straight to track number N of the queue.
 - **`/music sound`** — Plays a sound effect in your voice channel.
 - **`/music stop`** — Stops playback and clears the queue.
+- **`/music track karaoke`** — Shows the lines of the track as it plays, in time.
+- **`/music track restart`** — Restarts the current track from the beginning.
+- **`/music track search`** — Searches for a track and lets you pick from 10 results.
+- **`/music track seek-to`** — Jumps to a point in the track: 1:30, +0:30 forward, -0:15 back.
+- **`/music track text`** — Shows the lyrics of the current track.
 - **`/music volume down`** — Lowers the volume.
 - **`/music volume set`** — Sets the volume to a specific value (0-200).
 - **`/music volume up`** — Raises the volume.
@@ -1081,6 +1159,17 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/owner system stats`** — Global bot statistics.
 - **`/owner system storico-vpn`** — Bot owner only: servers that let a person through (VPN/proxy) and their IPs.
 
+## Game room
+
+- **`/room bingo`** — Bingo among members: complete a row of your card to win the pot.
+- **`/room bomb`** — Cut the right wire: who blows up the bomb is out, the last one wins.
+- **`/room cards`** — Turn-based cards: same colour or same number, who runs out of cards wins.
+- **`/room fight`** — Fight with up to 6 with your pet: the last one standing takes the pot.
+- **`/room hangman`** — Group hangman: guess the word together and win a prize.
+- **`/room quiz`** — Timed quiz with a coin prize: five questions, four answers.
+- **`/room race`** — Animal race: whoever arrives first takes the pot.
+- **`/room roulette`** — Multiplayer roulette: the same stake for everyone, a single spin.
+
 ## Polls
 
 - **`/polls buttons`** — Create a button poll (up to 20 options).
@@ -1102,10 +1191,12 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/ticket add`** — Adds a user or role to this ticket.
 - **`/ticket ask-close`** — Ask the user whether the ticket can be closed.
 - **`/ticket assistant`** — AI assistant answer (for staff: draft and triage).
+- **`/ticket canned`** — Writes a ready-made answer (approved article) in the ticket.
 - **`/ticket claim`** — Takes charge of this ticket.
 - **`/ticket close`** — Closes this ticket.
 - **`/ticket dm-close`** — Closes this ModMail conversation.
 - **`/ticket forceclose`** — Closes this ticket immediately, with no wait.
+- **`/ticket keep-open`** — Excludes this ticket from automatic closing (or puts it back).
 - **`/ticket notes`** — Private staff thread to discuss the ticket.
 - **`/ticket on-call`** — Join or leave the staff notified on every new ticket.
 - **`/ticket open`** — Open a ticket (staff also for a user or from a message).

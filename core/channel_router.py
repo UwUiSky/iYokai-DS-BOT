@@ -39,6 +39,7 @@ TIPO_AI = "ai"  # segnalazioni dell'AI allo staff (§25.37)
 TIPO_MODERAZIONE = "moderazione"  # casi del mod-log (§18.1)
 TIPO_AUTOMOD = "automod"  # violazioni dell'AutoMod (§18.1)
 TIPO_BENVENUTO = "benvenuto"  # messaggio di benvenuto (§18.1)
+TIPO_TICKET = "ticket"  # azioni sui ticket (TKT-076)
 
 DESCRIZIONE_TIPO = {
     TIPO_EVENTI: "Eventi dei membri e dei ruoli",
@@ -51,6 +52,7 @@ DESCRIZIONE_TIPO = {
     TIPO_MODERAZIONE: "Casi di moderazione",
     TIPO_AUTOMOD: "Violazioni dell'AutoMod",
     TIPO_BENVENUTO: "Messaggi di benvenuto",
+    TIPO_TICKET: "Azioni sui ticket",
 }
 NOME_POST = {
     TIPO_EVENTI: "Log eventi",
@@ -63,6 +65,7 @@ NOME_POST = {
     TIPO_MODERAZIONE: "Casi di moderazione",
     TIPO_AUTOMOD: "Log AutoMod",
     TIPO_BENVENUTO: "Benvenuti",
+    TIPO_TICKET: "Log ticket",
 }
 
 # LIM-38: dal 16/11/2026 Discord mostra così i canali che il bot non vede.
