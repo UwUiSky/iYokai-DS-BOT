@@ -5,7 +5,7 @@ Pagine AI del pannello web, oltre a quella base: `/server/<id>/ai/altro` (lore, 
 `/server/<id>/ai/riepilogo` (l'ultimo riepilogo del server) e `/server/<id>/ai/uso` («Uso dell'AI»: cosa tiene l'AI,
 per quanto, e quali servizi esterni usa). Le scelte passano dagli stessi punti dei comandi `/admin-ai` (D16).
 Si registra con una riga da `core/web_panel_server.py`; sessione, permessi, CSRF e limiti sono quelli del pannello.
-Funzioni coperte: SPEC §25.91, §25.92, §25.93 (AI-R-098, AI-R-099, AI-R-100)
+Funzioni coperte: SPEC §25.91, §25.92, §25.93 (AI-R-098, AI-R-099, AI-R-100); AI-017 (interruttori, `/server/<id>/ai/interruttori`)
 Dipende da: core/ai_impostazioni.py, core/ai_pannello_logic.py
 """
 
@@ -19,7 +19,7 @@ from aiohttp import web
 from core import ai_impostazioni as impostazioni
 from core.ai_pannello_logic import numeri, righe_uso
 from core.ai_servizio import servizio_ai
-from core.ai_testi_logic import TEMI
+from core.ai_testi_logic import INTERRUTTORI, TEMI
 from core.config_schema import ImpostazioneNonValida
 from core.repositories.ai_repo import ai_repo
 from core.repositories.ai_riepilogo_repo import ai_riepilogo_repo
@@ -27,6 +27,11 @@ from core.repositories.ai_riepilogo_repo import ai_riepilogo_repo
 logger = logging.getLogger("iyokai.web_panel_ai")
 
 ESITI = {"salvato": ("Salvato.", False), "non_valido": ("Valore non valido: controlla i campi.", True)}
+ETICHETTE_FUNZIONI = {
+    "scrivi": "Scrivi testi", "chiedi": "Assistente dei comandi", "traduci": "Traduzioni", "riassumi": "Riassunti",
+    "spiega": "Spiega un messaggio", "stile": "Cambia stile", "immagina": "Immagini", "ricerca": "Ricerca sul web",
+    "ticket": "Ticket e segnalazioni", "giochi": "Giochi con l'AI",
+}
 CAMPI_LIMITI = (
     "tetto_mensile_cent", "quota_utente_giorno", "quota_utente_30g", "quota_funzione_giorno", "quota_immagini_settimana",
 )
@@ -95,6 +100,33 @@ def registra_rotte(app: web.Application, *, bot, pagina, errore, server, scrittu
         fornitori = sorted({f.nome for f in servizio_ai().motore.fornitori})
         return pagina(request, "ai_uso.html", guild=guild, cfg=cfg, righe=righe_uso(), fornitori=fornitori)
 
+    async def interruttori(request: web.Request) -> web.StreamResponse:
+        guild, rifiuto = await server(request)
+        if rifiuto is not None:
+            return rifiuto
+        cfg = await ai_repo.get_config(guild.id)
+        funzioni = [(n, ETICHETTE_FUNZIONI.get(n, n), n not in cfg.funzioni_spente) for n in INTERRUTTORI]
+        return pagina(request, "ai_interruttori.html", guild=guild, cfg=cfg, funzioni=funzioni, **esito_di(request))
+
+    async def salva_interruttore(request: web.Request) -> web.StreamResponse:
+        guild, rifiuto = await server(request)
+        if rifiuto is not None:
+            return rifiuto
+        form, rifiuto = await scrittura(request)
+        if rifiuto is not None:
+            return rifiuto
+        indietro = f"/server/{guild.id}/ai/interruttori?esito="
+        acceso = form.get("acceso")
+        if acceso not in ("0", "1"):
+            return web.Response(status=302, headers={"Location": indietro + "non_valido"})
+        try:  # stesso punto unico di `/admin-ai interruttore` (D16)
+            await impostazioni.imposta_interruttore(guild.id, str(form.get("funzione", ""))[:40], acceso == "1")
+        except ImpostazioneNonValida:
+            return web.Response(status=302, headers={"Location": indietro + "non_valido"})
+        return web.Response(status=302, headers={"Location": indietro + "salvato"})
+
+    app.router.add_get(r"/server/{guild_id:\d{1,20}}/ai/interruttori", interruttori)
+    app.router.add_post(r"/server/{guild_id:\d{1,20}}/ai/interruttori", salva_interruttore)
     app.router.add_get(r"/server/{guild_id:\d{1,20}}/ai/altro", altro)
     app.router.add_post(r"/server/{guild_id:\d{1,20}}/ai/altro", salva_altro)
     app.router.add_get(r"/server/{guild_id:\d{1,20}}/ai/riepilogo", riepilogo)

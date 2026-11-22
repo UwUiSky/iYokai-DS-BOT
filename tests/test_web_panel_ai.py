@@ -94,3 +94,44 @@ async def test_estraneo_non_vede_le_pagine_ai(ai):
             assert (await client.get(f"/server/{GUILD}/ai/{p}")).status == 403
     finally:
         await client.close()
+
+
+@pytest.mark.asyncio
+async def test_interruttori_per_funzione_dal_punto_unico(ai):
+    """AI-017: la pagina usa `imposta_interruttore`; CSRF, funzione sconosciuta e senza accesso sono rifiutati."""
+    base = f"/server/{GUILD}/ai/interruttori"
+    client = await _client(ai.app)
+    try:
+        assert (await client.get(base, allow_redirects=False)).status == 302
+        await _entra(client)
+        pagina = await (await client.get(base)).text()
+        for nome in ("scrivi", "ricerca", "giochi"):
+            assert f'value="{nome}"' in pagina
+        csrf = await _csrf(client, base)
+        assert (await client.post(base, data={"funzione": "scrivi", "acceso": "0"})).status == 403
+        r = await client.post(base, data={"csrf": csrf, "funzione": "scrivi", "acceso": "0"}, allow_redirects=False)
+        assert r.headers["Location"].endswith("esito=salvato")
+        assert (await ai_repo.get_config(GUILD)).funzioni_spente == ("scrivi",)
+        assert "spenta" in await (await client.get(base)).text()
+        await client.post(base, data={"csrf": csrf, "funzione": "scrivi", "acceso": "1"})
+        assert (await ai_repo.get_config(GUILD)).funzioni_spente == ()
+        for male in ({"funzione": "boh", "acceso": "1"}, {"funzione": "scrivi", "acceso": "forse"}, {"acceso": "1"}):
+            r = await client.post(base, data={"csrf": csrf, **male}, allow_redirects=False)
+            assert r.headers["Location"].endswith("esito=non_valido"), male
+        assert (await ai_repo.get_config(GUILD)).funzioni_spente == ()
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_interruttori_chi_non_gestisce_non_scrive(ai):
+    ai.oauth.utente_id = 99  # non è nel server
+    client = await _client(ai.app)
+    try:
+        await _entra(client)
+        r = await client.post(f"/server/{GUILD}/ai/interruttori", data={"funzione": "scrivi", "acceso": "0"})
+        assert r.status == 403
+        assert (await client.get(f"/server/{GUILD}/ai/interruttori")).status == 403
+        assert (await ai_repo.get_config(GUILD)).funzioni_spente == ()
+    finally:
+        await client.close()
