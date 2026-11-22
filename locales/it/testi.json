@@ -3906,8 +3906,10 @@
   "nomi_storico_spento": "Lo storico dei nomi è spento: si accende con /mod-sanzioni opzioni memoria.",
   "nomi_nessun_cambio": "Nessun cambio di nome registrato per questa persona.",
   "nomi_titolo": "Nomi di {nome}",
-  "opzioni_memoria_stato": "Storico dei nomi: {nomi}. Soprannome e mute vocale a chi rientra: {persistenza}.",
+  "opzioni_memoria_stato": "Storico dei nomi: {nomi}. Soprannome e mute vocale a chi rientra: {persistenza}. Registro della chat con i casi: {chat}.",
   "opzioni_aspetto_colore_no": "Il colore va scritto come #c24a3a (o «nessuno»).",
   "opzioni_aspetto_icona_no": "L'icona è un'emoji sola (o «nessuno»).",
-  "opzioni_aspetto_salvato": "Caso «{tipo}» nel log: colore {colore}, icona {icona}."
+  "opzioni_aspetto_salvato": "Caso «{tipo}» nel log: colore {colore}, icona {icona}.",
+  "casesystem_chat_non_c_e": "Per questo caso non c'è un registro della chat (spento, scaduto dopo 30 giorni o caso senza canale).",
+  "casesystem_chat_pronta": "Ultimi {n} messaggi di {canale} al momento del caso. Degli allegati restano nome, tipo e peso."
 }

@@ -89,6 +89,7 @@ SETTINGS_SCHEMA = {
     "verify_captcha_tipo": "captcha_tipo",
     "verify_alt_ruolo_id": "id",
     "verify_dm_ingresso": "bool",
+    "mod_registro_chat": "bool",
     "mod_aspetto_casi": "aspetto_casi",
     "mod_storico_nomi": "bool",
     "mod_persistenza": "bool",

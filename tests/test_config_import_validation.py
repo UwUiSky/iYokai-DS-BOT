@@ -80,6 +80,7 @@ SETTINGS_VALIDE = {
     "verify_captcha_tipo": "immagine",
     "verify_alt_ruolo_id": 321,
     "verify_dm_ingresso": True,
+    "mod_registro_chat": True,
     "mod_aspetto_casi": {"ban": {"colore": 12798522, "icona": "🦊"}},
     "mod_storico_nomi": True,
     "mod_persistenza": True,

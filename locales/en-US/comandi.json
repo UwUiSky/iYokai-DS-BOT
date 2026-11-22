@@ -515,7 +515,8 @@
   "quarantena": "quarantine",
   "libera": "release",
   "nomi": "names",
-  "memoria": "memory"
+  "memoria": "memory",
+  "chat": "chat"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1799,7 +1800,8 @@
   "mod-sanzioni libera": "Ends a member's quarantine and gives their old roles back.",
   "mod-casi nomi": "Shows the names and nicknames a member has had.",
   "mod-sanzioni opzioni memoria": "Turns on the name history and the nickname and voice mute given back to returning members.",
-  "mod-sanzioni opzioni aspetto": "Picks the colour and icon of a case type in the moderation log."
+  "mod-sanzioni opzioni aspetto": "Picks the colour and icon of a case type in the moderation log.",
+  "mod-casi caso chat": "Sends the log of the channel's last messages saved with a case."
  },
  "parametri": {},
  "menu": {

@@ -371,20 +371,28 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         nomi="Tiene i nomi e i soprannomi di ogni membro per 90 giorni (si legge con /mod-casi nomi)",
         persistenza="Chi esce e rientra entro 30 giorni riprende il soprannome e il mute vocale",
+        registro_chat="Con warn, timeout, kick e ban salva gli ultimi 100 messaggi del canale (30 giorni)",
     )
-    async def memoria(self, interaction: discord.Interaction, nomi: bool | None = None, persistenza: bool | None = None) -> None:
+    async def memoria(
+        self, interaction: discord.Interaction, nomi: bool | None = None, persistenza: bool | None = None,
+        registro_chat: bool | None = None,
+    ) -> None:
         """MOD-103, MOD-104: spenti di base, sono dati personali con scadenza (registro dei dati)."""
         if not await self._controlli(interaction):
             return
-        from core import moderation_nomi
+        from core import moderation_nomi, moderation_registro_chat
 
-        for chiave, valore in ((moderation_nomi.SETTING_STORICO_NOMI, nomi), (moderation_nomi.SETTING_PERSISTENZA, persistenza)):
+        for chiave, valore in (
+            (moderation_nomi.SETTING_STORICO_NOMI, nomi), (moderation_nomi.SETTING_PERSISTENZA, persistenza),
+            (moderation_registro_chat.SETTING_REGISTRO_CHAT, registro_chat),
+        ):
             if valore is not None:
                 await db.set_guild_setting(interaction.guild.id, chiave, valore, changed_by=interaction.user.id)
         a = bool(await db.get_guild_setting(interaction.guild.id, moderation_nomi.SETTING_STORICO_NOMI))
         b = bool(await db.get_guild_setting(interaction.guild.id, moderation_nomi.SETTING_PERSISTENZA))
+        c = bool(await db.get_guild_setting(interaction.guild.id, moderation_registro_chat.SETTING_REGISTRO_CHAT))
         await interaction.response.send_message(
-            await testo_per(interaction, "opzioni_memoria_stato", nomi="sì" if a else "no", persistenza="sì" if b else "no"),
+            await testo_per(interaction, "opzioni_memoria_stato", nomi="sì" if a else "no", persistenza="sì" if b else "no", chat="sì" if c else "no"),
             ephemeral=True,
         )
 

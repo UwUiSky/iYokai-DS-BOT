@@ -55,7 +55,7 @@ from discord.ext import commands
 from core import bot_roles
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
-from core import moderation_dm, moderation_opzioni
+from core import moderation_dm, moderation_opzioni, moderation_registro_chat as registro_chat
 from core.database import db
 from core.i18n import testo_per
 from core.repositories.moderation_repo import moderation_repo
@@ -347,6 +347,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             action_type="warn",
             reason=reason,
         )
+        await registro_chat.salva(interaction, case_number)  # MOD-051
 
         embed = _case_embed(
             "⚠️ Warn", discord.Color.yellow(), member, interaction.user, reason, case_number
@@ -428,6 +429,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             action_type="kick",
             reason=reason,
         )
+        await registro_chat.salva(interaction, case_number)  # MOD-051
         await self._chiudi_sanzioni_a_tempo(interaction.guild, member.id, interaction.user.id)
         embed = _case_embed(
             "👢 Kick", discord.Color.orange(), member, interaction.user, reason, case_number
@@ -504,6 +506,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             action_type="ban",
             reason=reason,
         )
+        await registro_chat.salva(interaction, case_number)  # MOD-051
         if not appello:  # MOD-008
             await moderation_repo.segna_senza_appello(interaction.guild.id, case_number)
         await self._chiudi_sanzioni_a_tempo(interaction.guild, member.id, interaction.user.id)
@@ -1060,6 +1063,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             reason=reason,
             duration_seconds=duration_seconds,
         )
+        await registro_chat.salva(interaction, case_number)  # MOD-051
         if not appello:  # MOD-008
             await moderation_repo.segna_senza_appello(interaction.guild.id, case_number)
         embed = _case_embed(
