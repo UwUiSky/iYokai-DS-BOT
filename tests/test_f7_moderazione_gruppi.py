@@ -60,7 +60,7 @@ ATTESI: dict[tuple[str, str | None], set[str]] = {
     ("mod-canali", "vocale"): {"muta", "sordina", "scollega", "sposta", "sposta-tutti", "dove"},
     ("founder", "moderazione"): {"immuni"},
     ("mod-ban", None): {"ban", "tempban", "softban", "kick", "unban", "cerca"},
-    ("mod-ban", "appelli"): {"canale", "elenco"},
+    ("mod-ban", "appelli"): {"canale", "elenco", "timeout"},
     ("mod-ban", "massa"): {"ban", "unban", "kick", "entrati", "invito"},
     ("admin-sicurezza", None): {"heatmap", "score", "spamtrap"},
     ("admin-sicurezza", "escalation"): {"enable", "disable", "set-reset-days", "set-step", "remove-step", "reset", "status"},

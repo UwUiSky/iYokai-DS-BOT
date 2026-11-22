@@ -3544,5 +3544,7 @@
   "opzioni_muto_creazione_fallita": "Non sono riuscito a creare il ruolo: controlla i miei permessi e il numero di ruoli.",
   "opzioni_muto_nessun_ruolo": "Nessun ruolo mute scelto. Il primo mute ne crea uno, oppure indicane uno qui.",
   "opzioni_muto_ruolo": "Ruolo del mute: {ruolo}.",
-  "opzioni_muto_canali": "Canali sistemati: {fatti}. Falliti: {falliti}."
+  "opzioni_muto_canali": "Canali sistemati: {fatti}. Falliti: {falliti}.",
+  "banappeal_timeout_acceso": "Gli appelli valgono anche per i timeout dati da ora (serve il canale degli appelli).",
+  "banappeal_timeout_spento": "Gli appelli non valgono più per i timeout."
 }

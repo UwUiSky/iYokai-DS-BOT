@@ -3,7 +3,7 @@ core/ban_appeal_logic.py
 ========================
 Regole degli appelli contro i ban manuali (ban e tempban): un appello
 ogni 24 ore, testo limitato, nomi dei bottoni, chi può decidere.
-Funzioni coperte: SPEC §23 (NF-30, issue #101)
+Funzioni coperte: SPEC §23 (NF-30, issue #101), MOD-008, MOD-063
 """
 
 from __future__ import annotations
@@ -24,6 +24,12 @@ STATO_RIFIUTATO = "rifiutato"
 
 # Casi che un appello può contestare.
 CASI_CON_APPELLO = ("ban", "tempban")
+# MOD-063: il timeout si contesta solo se il server lo ha acceso (`/mod-ban appelli timeout`).
+CASO_TIMEOUT = "timeout"
+
+
+def tipi_con_appello(timeout_acceso: bool) -> tuple[str, ...]:
+    return CASI_CON_APPELLO + ((CASO_TIMEOUT,) if timeout_acceso else ())
 
 
 def attesa_rimasta(ultimo: datetime | None, adesso: datetime) -> timedelta | None:

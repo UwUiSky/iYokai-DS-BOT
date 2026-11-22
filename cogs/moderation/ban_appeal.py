@@ -12,7 +12,7 @@ Chi ha perso il messaggio (o aveva i DM chiusi) scrive al bot in privato:
 come per lo spam-trap, riceve un bottone «Fai appello» per ogni server
 dove ha un ban manuale attivo e gli appelli sono accesi. Uno sban fatto
 fuori dal bot (da Discord) chiude i casi e gli appelli aperti.
-Funzioni coperte: SPEC §23 (NF-30, issue #101)
+Funzioni coperte: SPEC §23 (NF-30, issue #101), MOD-008 (ban senza appello), MOD-061, MOD-062, MOD-063 (appello per i timeout)
 Dipende da: core/ban_appeal_logic.py
 """
 
@@ -29,6 +29,7 @@ from discord.ext import commands
 from core.ban_appeal_logic import (
     ATTESA_TRA_APPELLI,
     CASI_CON_APPELLO,
+    CASO_TIMEOUT,
     MAX_TESTO_APPELLO,
     MIN_TESTO_APPELLO,
     STATO_ACCETTATO,
@@ -37,6 +38,7 @@ from core.ban_appeal_logic import (
     attesa_rimasta,
     attesa_a_parole,
     lunghezza_valida,
+    tipi_con_appello,
 )
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.bounded_cache import BoundedCache
@@ -51,6 +53,18 @@ from cogs.moderation._shared import MODULE_ACTIONS, ensure_module_enabled, post_
 logger = logging.getLogger("iyokai.moderation.ban_appeal")
 
 SETTING_CANALE_APPELLI = "appelli_channel_id"
+SETTING_APPELLI_TIMEOUT = "appelli_timeout"  # MOD-063
+
+
+async def timeout_contestabile(guild_id: int) -> bool:
+    return bool(await db.get_guild_setting(guild_id, SETTING_APPELLI_TIMEOUT))
+
+
+async def vista_appello_timeout(guild_id: int) -> BaseView | None:
+    """MOD-063: il bottone per un timeout, solo se il server ha acceso gli appelli anche per i timeout."""
+    if not await timeout_contestabile(guild_id):
+        return None
+    return await vista_appello(guild_id)
 
 
 async def vista_appello(guild_id: int) -> BaseView | None:
@@ -93,9 +107,12 @@ async def invia_appello(
     if canale is None:
         return "Questo server non accetta appelli in questo momento."
     caso = None
-    for tipo in CASI_CON_APPELLO:
-        caso = await moderation_repo.get_latest_active_case(guild_id, utente.id, tipo)
-        if caso is not None:
+    for tipo in tipi_con_appello(await timeout_contestabile(guild_id)):
+        trovato = await moderation_repo.get_latest_active_case(guild_id, utente.id, tipo)
+        if trovato is not None and await moderation_repo.caso_senza_appello(guild_id, trovato.case_number):
+            return "Questa sanzione è stata data senza possibilità di appello."  # MOD-008
+        if trovato is not None:
+            caso = trovato
             break
     if caso is None:
         return "Non risulta nessun ban attivo a tuo nome in questo server."
@@ -114,7 +131,7 @@ async def invia_appello(
         color=discord.Color.orange(),
     )
     embed.add_field(name="Utente", value=f"<@{utente.id}> ({utente.id})", inline=False)
-    embed.add_field(name="Motivo del ban", value=truncate_text(caso.reason or "Nessun motivo", 1000), inline=False)
+    embed.add_field(name="Motivo", value=truncate_text(caso.reason or "Nessun motivo", 1000), inline=False)
     vista = BaseView(timeout=None)
     vista.add_item(BottoneEsitoAppello(appello_id, True))
     vista.add_item(BottoneEsitoAppello(appello_id, False))
@@ -190,10 +207,17 @@ async def offri_appello_in_dm(bot: discord.Client, utente: discord.abc.User, can
     if await modmail_repo.aperta_dell_utente(utente.id) is not None:
         return False
     casi = []
-    for tipo in CASI_CON_APPELLO:
+    for tipo in CASI_CON_APPELLO + (CASO_TIMEOUT,):
         casi += await moderation_repo.get_active_cases_for_user_across_guilds(utente.id, tipo)
+    contestabili = []
+    for c in casi:
+        if c.action_type == CASO_TIMEOUT and not await timeout_contestabile(c.guild_id):
+            continue
+        if await moderation_repo.caso_senza_appello(c.guild_id, c.case_number):  # MOD-008
+            continue
+        contestabili.append(c)
     server: list[discord.Guild] = []
-    for guild_id in dict.fromkeys(c.guild_id for c in casi):
+    for guild_id in dict.fromkeys(c.guild_id for c in contestabili):
         guild = bot.get_guild(guild_id)
         if guild is None or await db.get_guild_setting(guild_id, SETTING_CANALE_APPELLI) is None:
             continue
@@ -208,7 +232,7 @@ async def offri_appello_in_dm(bot: discord.Client, utente: discord.abc.User, can
     nomi = ", ".join(f"**{g.name}**" for g in server)
     try:
         await canale_dm.send(
-            truncate_text(f"Risulta un ban attivo a tuo nome su {nomi}.", 1800)
+            truncate_text(f"Risulta una sanzione attiva a tuo nome su {nomi}.", 1800)
             + "\nPremi il bottone per fare appello (uno ogni 24 ore per server).",
             view=vista,
         )
@@ -242,7 +266,11 @@ _APPELLI_IN_CORSO: set[int] = set()
 
 
 async def _accetta(
-    guild: discord.Guild, appello: dict, moderatore_id: int, client: discord.Client | None = None
+    guild: discord.Guild,
+    appello: dict,
+    moderatore_id: int,
+    client: discord.Client | None = None,
+    moderatore: discord.Member | None = None,
 ) -> tuple[str | None, str | None]:
     """
     Toglie il ban contestato PRIMA di segnare l'appello come accettato.
@@ -256,7 +284,7 @@ async def _accetta(
     caso = await moderation_repo.get_case(guild.id, numero) if numero is not None else None
     if caso is None or not caso.active:
         altro = None
-        for tipo in CASI_CON_APPELLO:
+        for tipo in tipi_con_appello(await timeout_contestabile(guild.id)):
             altro = altro or await moderation_repo.get_latest_active_case(guild.id, uid, tipo)
         if altro is not None:
             return None, (
@@ -264,6 +292,8 @@ async def _accetta(
                 "un altro: per quello puoi fare un nuovo appello."
             )
         return None, f"Il ban su **{guild.name}** che contestavi risulta già tolto."
+    if caso.action_type == CASO_TIMEOUT:
+        return await _accetta_timeout(guild, appello, caso, moderatore_id, moderatore)
     try:
         await guild.unban(discord.Object(id=uid), reason=f"Appello #{appello['id']} accettato")
     except discord.NotFound:
@@ -280,10 +310,28 @@ async def _accetta(
     return None, None
 
 
+async def _accetta_timeout(
+    guild: discord.Guild, appello: dict, caso, moderatore_id: int, moderatore: discord.Member | None
+) -> tuple[str | None, str | None]:
+    """MOD-063: accettare l'appello di un timeout lo toglie. Chi decide deve stare sopra l'utente (o essere il proprietario)."""
+    membro = guild.get_member(appello["user_id"])
+    if membro is not None and moderatore is not None and moderatore.id != guild.owner_id:
+        if membro.top_role >= moderatore.top_role:
+            return "Non puoi togliere il timeout a chi ha un ruolo pari o sopra il tuo: l'appello resta aperto.", None
+    if membro is not None and membro.is_timed_out():
+        try:
+            await membro.timeout(None, reason=f"Appello #{appello['id']} accettato"[:512])
+        except discord.HTTPException:
+            return "Non sono riuscito a togliere il timeout: l'appello resta aperto. Controlla i miei permessi.", None
+    await moderation_repo.revoke_case(guild.id, caso.case_number, moderatore_id)
+    return None, f"Il tuo appello su **{guild.name}** è stato accettato: il timeout è tolto."
+
+
 async def decidi_appello(interaction: discord.Interaction, appello_id: int, accetta: bool) -> None:
     """Lo staff decide: solo chi può bannare; due click insieme valgono uno."""
     guild = interaction.guild
-    if guild is None or not interaction.user.guild_permissions.ban_members:
+    permessi = interaction.user.guild_permissions if guild is not None else None
+    if guild is None or not (permessi.ban_members or permessi.moderate_members):
         await interaction.response.send_message(
             await testo_per(interaction, "banappeal_solo_chi_puo_bannare_membri"), ephemeral=True
         )
@@ -291,6 +339,13 @@ async def decidi_appello(interaction: discord.Interaction, appello_id: int, acce
     appello = await moderation_repo.get_appeal(appello_id)
     if appello is None or appello["guild_id"] != guild.id:
         await interaction.response.send_message(await testo_per(interaction, "banappeal_appello_non_trovato"), ephemeral=True)
+        return
+    # MOD-063: chi ha solo «Moderare i membri» decide solo gli appelli dei timeout; i ban restano di chi può bannare.
+    caso_contestato = await moderation_repo.get_case(guild.id, appello["case_number"]) if appello["case_number"] is not None else None
+    if not permessi.ban_members and (caso_contestato is None or caso_contestato.action_type != CASO_TIMEOUT):
+        await interaction.response.send_message(
+            await testo_per(interaction, "banappeal_solo_chi_puo_bannare_membri"), ephemeral=True
+        )
         return
     stato = STATO_ACCETTATO if accetta else STATO_RIFIUTATO
     if appello["stato"] != STATO_APERTO or appello_id in _APPELLI_IN_CORSO:
@@ -305,7 +360,7 @@ async def decidi_appello(interaction: discord.Interaction, appello_id: int, acce
         await interaction.response.defer()
         if accetta:
             esito, testo_utente = await _accetta(
-                guild, appello, interaction.user.id, interaction.client
+                guild, appello, interaction.user.id, interaction.client, interaction.user
             )
             if esito is not None:
                 # Il ban non è stato tolto: l'appello resta aperto, si può riprovare.
@@ -370,6 +425,23 @@ class ModerationBanAppealCog(CogConGruppi, commands.Cog):
             else "Appelli spenti."
         )
         await interaction.response.send_message(testo, ephemeral=True)
+
+    @comando_di_gruppo(
+        "mod-ban",
+        nome="timeout",
+        descrizione="Accende o spegne gli appelli anche per i timeout.",
+        sottogruppo=("appelli", "Appelli contro i ban."),
+    )
+    @app_commands.describe(attivo="Sì: il messaggio privato di un timeout porta il bottone «Fai appello»")
+    async def timeout_appelli(self, interaction: discord.Interaction, attivo: bool) -> None:
+        """MOD-063. Serve anche il canale degli appelli (`/mod-ban appelli canale`)."""
+        if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
+            return
+        await db.set_guild_setting(
+            interaction.guild.id, SETTING_APPELLI_TIMEOUT, bool(attivo), changed_by=interaction.user.id
+        )
+        chiave = "banappeal_timeout_acceso" if attivo else "banappeal_timeout_spento"
+        await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
 
     @comando_di_gruppo(
         "mod-ban",

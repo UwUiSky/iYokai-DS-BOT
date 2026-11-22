@@ -1631,7 +1631,8 @@
   "utility strumenti avatar": "A member's avatar in large size, of the server or global.",
   "level movimenti": "The latest movements of your coins (kept for 30 days).",
   "monete conto portafoglio": "Your balance as an image.",
-  "mod-sanzioni opzioni muto": "Pick or create the mute role and put the block back on every channel."
+  "mod-sanzioni opzioni muto": "Pick or create the mute role and put the block back on every channel.",
+  "mod-ban appelli timeout": "Turns appeals on or off for timeouts too."
  },
  "parametri": {},
  "menu": {

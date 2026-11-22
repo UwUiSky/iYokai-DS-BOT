@@ -675,6 +675,21 @@ class ModerationRepository:
                 )
                 return appello_id, None
 
+    async def segna_senza_appello(self, guild_id: int, case_number: int) -> None:
+        """MOD-008: il caso non si può contestare (niente bottone, appello rifiutato)."""
+        await self._pool.execute(
+            "UPDATE moderation_cases SET senza_appello = TRUE WHERE guild_id = $1 AND case_number = $2",
+            guild_id, case_number,
+        )
+
+    async def caso_senza_appello(self, guild_id: int, case_number: int) -> bool:
+        return bool(
+            await self._pool.fetchval(
+                "SELECT senza_appello FROM moderation_cases WHERE guild_id = $1 AND case_number = $2",
+                guild_id, case_number,
+            )
+        )
+
     async def close_open_appeals(self, guild_id: int, user_id: int, deciso_da: int) -> int:
         """Un unban chiude gli appelli ancora aperti dell'utente (come accettati)."""
         result = await self._pool.execute(
