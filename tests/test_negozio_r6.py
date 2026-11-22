@@ -155,3 +155,22 @@ async def test_togliere_un_oggetto_toglie_ricette_e_offerte(r):
     assert await r.shop.remove_item(a.id, G)
     assert await r.neg.ricette(G) == [] and await r.neg.offerte_attive(G) == {}
     assert await r.pool.fetchval("SELECT count(*) FROM economia_ricette_ingredienti") == 0
+
+
+@pytest.mark.asyncio
+async def test_rimborso_dell_acquisto_rende_l_uso_dell_offerta(r):
+    item = await _oggetto(r)
+    await r.neg.crea_offerta(G, item.id, 50, 10, 1, 9)
+    await r.lev.add_coins(G, 1, 500)
+    await r.lev.add_coins(G, 2, 500)
+    a = await r.shop.buy_item(G, 1, item, prezzo_atteso=50)
+    assert a.con_offerta and await r.neg.offerte_attive(G) == {}  # usi finiti
+    assert await r.shop.refund_purchase(a.purchase_id, G, 1, a.prezzo, a.con_offerta)
+    assert await _saldo(r, 1) == 500 and list((await r.neg.offerte_attive(G)).values())[0].usi == 0
+    b = await r.shop.buy_item(G, 2, item, prezzo_atteso=50)  # l'uso reso lo prende un altro
+    assert b.esito == EsitoAcquisto.RIUSCITO and b.prezzo == 50
+    assert not await r.shop.refund_purchase(a.purchase_id, G, 1, a.prezzo, a.con_offerta)  # due volte: niente
+    assert list((await r.neg.offerte_attive(G)).values()) == []
+    await r.pool.execute("UPDATE economia_offerte SET usi_max = NULL")
+    c = await r.shop.buy_item(G, 1, item)
+    assert not c.con_offerta or c.prezzo == 50

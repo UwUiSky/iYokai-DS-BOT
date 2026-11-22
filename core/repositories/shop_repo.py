@@ -69,6 +69,7 @@ class Acquisto:
     riga: str | None = None  # oggetto a elenco: la riga consegnata
     ruolo_scade_il: datetime | None = None  # ruolo a tempo: quando finisce
     prezzo: int = 0  # quanto è stato pagato davvero (offerta lampo compresa)
+    con_offerta: bool = False  # l'acquisto ha consumato un uso di un'offerta lampo (si rende se viene rimborsato)
 
 
 class _SaldoInsufficiente(Exception):
@@ -391,7 +392,7 @@ class ShopRepository:
                     )
                     if riga_oggetto is None:
                         raise _Esaurito
-                    prezzo = await prezzo_di_oggi_in(conn, guild_id, item.id, riga_oggetto["price"], riga_oggetto["a_rotazione"])
+                    prezzo, con_offerta = await prezzo_di_oggi_in(conn, guild_id, item.id, riga_oggetto["price"], riga_oggetto["a_rotazione"])
                     if prezzo_atteso is not None and prezzo != prezzo_atteso:
                         raise _PrezzoCambiato
                     # Oggetto a elenco: la riga si prende qui (la riga dell'oggetto è
@@ -425,7 +426,7 @@ class ShopRepository:
                             "DO UPDATE SET quantita = economia_inventario.quantita + 1",
                             guild_id, user_id, item.id,
                         )
-                    return Acquisto(EsitoAcquisto.RIUSCITO, purchase_id, riga, scade, prezzo)
+                    return Acquisto(EsitoAcquisto.RIUSCITO, purchase_id, riga, scade, prezzo, con_offerta)
         except _Esaurito:
             return Acquisto(EsitoAcquisto.ESAURITO)
         except _PrezzoCambiato:
@@ -436,7 +437,7 @@ class ShopRepository:
             return Acquisto(EsitoAcquisto.SALDO_INSUFFICIENTE)
 
     async def refund_purchase(
-        self, purchase_id: int, guild_id: int, user_id: int, price: int
+        self, purchase_id: int, guild_id: int, user_id: int, price: int, con_offerta: bool = False
     ) -> bool:
         """
         Annulla un acquisto appena fatto (il ruolo non è stato dato):
@@ -461,6 +462,11 @@ class ShopRepository:
                     "WHERE purchase_id = $1",
                     purchase_id,
                 )
+                if con_offerta:  # l'uso dell'offerta lampo torna libero
+                    await conn.execute(
+                        "UPDATE economia_offerte SET usi = GREATEST(usi - 1, 0) WHERE guild_id = $1 AND item_id = $2",
+                        guild_id, cancellato["item_id"],
+                    )
                 await refund_coins_in(conn, guild_id, user_id, price)
                 return True
 
@@ -501,7 +507,7 @@ class ShopRepository:
         )
 
 
-async def prezzo_di_oggi_in(conn: asyncpg.Connection, guild_id: int, item_id: int, base: int, a_rotazione: bool) -> int:
+async def prezzo_di_oggi_in(conn: asyncpg.Connection, guild_id: int, item_id: int, base: int, a_rotazione: bool) -> tuple[int, bool]:
     """
     ECO-075/076: il prezzo che vale ORA, dentro la transazione dell'acquisto. Un'offerta lampo attiva (e con usi
     liberi) si prende con una UPDATE condizionata: due acquisti insieme non superano gli usi. Senza offerta, un
@@ -514,14 +520,14 @@ async def prezzo_di_oggi_in(conn: asyncpg.Connection, guild_id: int, item_id: in
         "AND (usi_max IS NULL OR usi < usi_max) RETURNING sconto_pct", guild_id, item_id,
     )
     if sconto is not None:
-        return prezzo_con_sconto(base, sconto)
+        return prezzo_con_sconto(base, sconto), True
     if a_rotazione:
         quanti = await conn.fetchval("SELECT rotazione_quanti FROM economia_negozio_conf WHERE guild_id = $1", guild_id) or 0
         if quanti > 0:
             ids = [r["id"] for r in await conn.fetch("SELECT id FROM shop_items WHERE guild_id = $1 AND a_rotazione", guild_id)]
             if item_id not in scelti_rotazione(ids, guild_id, datetime.now(timezone.utc).date(), quanti):
                 raise _NonInVendita
-    return base
+    return base, False
 
 
 def righe_valide(righe: list[str]) -> list[str]:

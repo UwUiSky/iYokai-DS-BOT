@@ -2265,7 +2265,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             # Il ruolo non è arrivato: l'acquisto si annulla e i coin
             # tornano indietro.
             await shop_repo.refund_purchase(
-                acquisto.purchase_id, guild.id, interaction.user.id, acquisto.prezzo
+                acquisto.purchase_id, guild.id, interaction.user.id, acquisto.prezzo, acquisto.con_offerta
             )
             logger.warning(
                 "Impossibile assegnare il ruolo shop %s a %s: acquisto rimborsato.",
