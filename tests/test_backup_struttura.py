@@ -115,6 +115,7 @@ async def _nessuna_pausa(_s):
 
 
 # ---------------------------------------------------------------- lettura
+# BKP-001
 def test_lettura_salta_canali_offuscati_ruoli_gestiti_e_mappa_i_permessi_per_nome():
     staff = fake_role(5, "Staff", position=3)
     staff.colour, staff.hoist, staff.mentionable = discord.Colour(0xFF0000), True, False
@@ -167,6 +168,7 @@ def test_solo_immagini_di_discord():
 
 
 # ---------------------------------------------------------------- caricamento
+# BKP-003
 async def test_caricamento_riusa_per_nome_e_adatta_il_bitrate():
     esistente = fake_role(5, "Staff", position=1)
     cat = _Cat(10, "Info")
@@ -246,6 +248,7 @@ async def test_membri_ruoli_sopra_il_bot_non_si_danno():
     assert r.riusati == 1 and r.saltati == 1
 
 
+# BKP-004
 def test_parti_presenti_e_passi():
     dati = {"versione": 1, "ruoli": [{}], "canali": [{}, {}], "categorie": [{}], "ban": []}
     assert st.parti_presenti(dati) == ["ruoli", "canali"]
@@ -321,6 +324,7 @@ async def test_registro(repo):
     json.dumps([str(r) for r in righe])
 
 
+# BKP-011
 async def test_messaggi_ricaricati_solo_nei_canali_vuoti_con_lo_stesso_nome(monkeypatch):
     from core import backup_messages_logic as bm
 
@@ -359,6 +363,7 @@ async def test_messaggi_ricaricati_solo_nei_canali_vuoti_con_lo_stesso_nome(monk
 
 
 # ---------------------------------------------------------------- file da fuori
+# BKP-037
 def test_file_con_tipi_sbagliati_si_rifiuta_prima_di_toccare_il_server():
     """Ogni campo letto dal Caricatore ha il tipo giusto: niente errori a metà caricamento."""
     casi = [

@@ -108,6 +108,7 @@ async def test_file_non_valido_non_tocca_il_server(ambiente):
     assert "view" not in i.followup.messaggi[0][1]
 
 
+# BKP-004
 async def test_menu_delle_parti_e_caricamento_con_riepilogo_nel_canale(ambiente, monkeypatch):
     _db, repo = ambiente
     cog = BackupCog(bot=None)
@@ -143,6 +144,7 @@ async def test_esporta_un_ruolo_senza_ruolo_spiega(ambiente):
     assert "Scegli il ruolo" in i.followup.messaggi[0][0]
 
 
+# BKP-020, BKP-023
 async def test_modello_si_pubblica_e_si_usa_senza_dati_personali(ambiente):
     _db, repo = ambiente
     copia = await repo.salva_struttura(
