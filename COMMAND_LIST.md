@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:39 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:56 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 1047 comandi in 51 categorie.**
+**Totale: 1103 comandi in 55 categorie.**
 
 ## Admin: AI
 
@@ -434,6 +434,22 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:
 - **`/admin-musica riepilogo`** — Mostra tutte le impostazioni musicali del server.
 - **`/admin-musica suono-ruoli`** — Chi può usare un suono: ruoli consentiti o vietati.
 
+## Admin: negozio avanzato
+
+- **`/admin-negozio evento bonus`** — Lascia in chat un bonus a tempo: il primo che lo prende guadagna di più per un po'.
+- **`/admin-negozio evento casuali`** — Accendi o spegni gli eventi casuali del server in un canale.
+- **`/admin-negozio evento codice`** — Lancia un codice in chat: chi lo scrive per primo vince le monete.
+- **`/admin-negozio evento server`** — Bonus a tempo per tutto il server, subito (lavoro e premio).
+- **`/admin-negozio fondo dai`** — Dai a un membro un oggetto donato al fondo premi.
+- **`/admin-negozio guadagno crea`** — Crea un comando di guadagno: chi lo usa riceve monete, con una pausa.
+- **`/admin-negozio guadagno elimina`** — Elimina un comando di guadagno del server.
+- **`/admin-negozio offerta chiudi`** — Chiude subito l'offerta lampo di un oggetto.
+- **`/admin-negozio offerta lampo`** — Lancia un'offerta lampo a tempo con il bottone per comprare.
+- **`/admin-negozio ricetta crea`** — Crea una ricetta: certi oggetti diventano un altro oggetto.
+- **`/admin-negozio ricetta elimina`** — Elimina una ricetta.
+- **`/admin-negozio rotazione oggetto`** — Mette un oggetto tra quelli che ruotano (o lo toglie).
+- **`/admin-negozio rotazione quanti`** — Quanti oggetti a rotazione sono in vetrina ogni giorno (0 = spenta).
+
 ## Admin: ruoli
 
 - **`/admin-ruoli auto aggiungi`** — Aggiungi un ruolo dato in automatico a chi entra.
@@ -746,11 +762,17 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:
 ## Divertimento
 
 - **`/fun 8ball`** — Fai una domanda alla palla magica 8.
+- **`/fun animali abbandona`** — Lascia un tuo animale nella coda di adozione del server.
+- **`/fun animali adotta`** — Adotta un animale della coda (serve un posto libero).
+- **`/fun animali adozioni`** — Gli animali in attesa di una famiglia.
 - **`/fun animali attivita`** — Un'attività con un tuo animale in salute: ti porta qualche moneta (ogni 2 ore).
 - **`/fun animali compra`** — Compra un animale da accudire.
 - **`/fun animali cura`** — Dai da mangiare, pulisci o gioca con un animale (una volta all'ora per tipo).
+- **`/fun animali incontro`** — Fai incontrare due animali: giocano insieme e può nascere un cucciolo.
 - **`/fun animali lista`** — I tuoi animali: fame, pulizia, gioco e livello.
+- **`/fun animali lotta`** — Fai lottare il tuo animale con quello di un altro membro (senza puntata).
 - **`/fun animali posto`** — Compra un posto in più per un altro animale (massimo 2 in più).
+- **`/fun animali sitter`** — Paga un pet sitter: i bisogni dell'animale restano pieni per i giorni scelti.
 - **`/fun casuale`** — Preferiresti, argomento, consiglio, oggetto magico, classe.
 - **`/fun citazioni aggiungi`** — Salva una citazione del server.
 - **`/fun citazioni caso`** — Mostra una citazione a caso: del server o tra quelle famose.
@@ -763,9 +785,15 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:
 - **`/fun joke`** — Racconta una barzelletta a caso.
 - **`/fun misura`** — Misura da 0 a 100% quanto c'è di una cosa a tua scelta.
 - **`/fun numero`** — Un numero a caso in un intervallo.
+- **`/fun pesca abilita`** — Le abilità di pesca: si sbloccano con i punti delle sfide.
+- **`/fun pesca acquario`** — Il tuo acquario: le specie trovate e quanti ne hai.
+- **`/fun pesca attrezzi`** — Il negozio di attrezzi: si pagano con le perle che trovi pescando.
 - **`/fun pesca classifica`** — I migliori pescatori di oggi.
 - **`/fun pesca guida`** — Il tuo deposito di pesci e le specie che hai già trovato.
 - **`/fun pesca lancia`** — Getta la lenza in un luogo (ogni 15 minuti).
+- **`/fun pesca rete`** — Raccogli i pesci che la tua rete ha preso mentre eri via (un lancio all'ora).
+- **`/fun pesca stagione`** — Il pass del mese: ogni 100 punti di pesca un premio (traccia gratuita).
+- **`/fun pesca storico`** — Gli ultimi pesci presi e le ultime vendite (30 giorni).
 - **`/fun pesca vendi`** — Vendi tutti i pesci del deposito.
 - **`/fun rate`** — Valuta qualcosa da 0 a 10.
 - **`/fun scegli`** — Scelgo a caso tra le opzioni che scrivi.
@@ -849,6 +877,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:
 - **`/level profilo`** — Mostra il profilo di un membro; con «presentazione» cambi il tuo.
 - **`/level progressi`** — Missioni, serie, traguardi e pass di 90 giorni, in un menu.
 - **`/level rank`** — Mostra la rank card: livello, XP, posizione e coin.
+- **`/level righe`** — Scegli quali righe mostrare nel tuo riepilogo e in che ordine.
 - **`/level sociale amici`** — I tuoi amici, e togline uno.
 - **`/level sociale amico`** — Chiedi a un membro di diventare tuo amico (tra amici i pagamenti non hanno tassa).
 - **`/level sociale azzera-dati`** — Cancella i tuoi dati di gioco in questo server (monete, animali, pesci...).
@@ -859,6 +888,17 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:
 - **`/level sociale sposa`** — Proponi il matrimonio (200 monete a testa alla cassa); va mantenuto.
 - **`/level stelle caso`** — Un messaggio a caso dalla bacheca.
 - **`/level stelle classifica`** — Chi ha ricevuto più stelle in bacheca.
+
+## Mercato
+
+- **`/mercato accetta`** — Accetta l'offerta di un membro sul tuo annuncio (senza membro: vedi le offerte).
+- **`/mercato compra`** — Compra un annuncio al prezzo indicato.
+- **`/mercato dona`** — Dona monete o un oggetto al fondo premi del server.
+- **`/mercato elenco`** — Gli annunci del mercato (anche solo di un membro).
+- **`/mercato fondo`** — Gli oggetti donati al fondo premi del server.
+- **`/mercato offri`** — Fai un'offerta più bassa: le monete restano in custodia finché non risponde.
+- **`/mercato ritira`** — Ritira un tuo annuncio (o una tua offerta): oggetto e monete tornano a chi spettano.
+- **`/mercato vendi`** — Metti un tuo oggetto in vendita agli altri membri.
 
 ## Mod: ban
 
@@ -941,6 +981,20 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:
 - **`/mod-sanzioni untimeout`** — Rimuove il timeout da un membro.
 - **`/mod-sanzioni warn`** — Assegna un warn a un membro.
 
+## Il tuo mondo
+
+- **`/mondo autovendita`** — Vendi un oggetto da solo quando il cambio del giorno arriva alla soglia.
+- **`/mondo avventura`** — Una storia a scelte: il finale dà monete (una volta ogni 6 ore).
+- **`/mondo borsa ordine`** — Un ordine automatico: compra o vendi quando il prezzo arriva alla soglia.
+- **`/mondo borsa ordini`** — I tuoi ordini automatici (con un numero lo annulli).
+- **`/mondo borsa prezzi`** — I prezzi della borsa finta e i tuoi titoli.
+- **`/mondo borsa scambia`** — Compra o vendi titoli della borsa finta al prezzo di adesso.
+- **`/mondo casa`** — La tua casa: arredala con i gettoni (la moneta di tutti i server).
+- **`/mondo diretta`** — La tua diretta di oggi: più giorni di fila, più monete.
+- **`/mondo fattoria`** — Pianta nel tuo orto e raccogli quando è maturo (3 posti).
+- **`/mondo personaggio`** — Parla con un personaggio: una domanda al giorno, un regalo se rispondi bene.
+- **`/mondo vacanza`** — Ferma la serie del premio giornaliero mentre sei via.
+
 ## Monete
 
 - **`/monete attese`** — Quando potrai di nuovo usare daily e work.
@@ -971,13 +1025,16 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:
 - **`/monete rischio elemosina`** — Chiedi l'elemosina: una piccola cifra, a volte niente.
 - **`/monete rischio furto`** — Prova a rubare dei contanti a un membro (solo se il server lo permette).
 - **`/monete rischio gratta`** — Gratta e vinci: un biglietto da 20 monete, scegli una casella.
+- **`/monete rischio guadagna`** — Usa un comando di guadagno creato dal server (senza nome: l'elenco).
 - **`/monete rischio meme`** — Pubblica un meme: il tipo che scegli cambia rischio e premio.
 - **`/monete rischio scava`** — Scava in cerca di monete (a volte un tesoro).
 - **`/monete rischio scrigno`** — Apri uno scrigno a sorpresa per 100 monete.
 - **`/monete riscuoti`** — Riscuoti lo stipendio dei tuoi ruoli (e paga le tasse).
 - **`/monete settimanale`** — Riscuoti il premio della settimana.
 - **`/monete shop buy`** — Acquista un oggetto dello shop.
+- **`/monete shop crea`** — Crea un oggetto da altri oggetti con una ricetta.
 - **`/monete shop list`** — Mostra gli oggetti disponibili nello shop.
+- **`/monete shop ricette`** — Le ricette del server: cosa si crea con cosa.
 - **`/monete usa`** — Usa un oggetto del tuo inventario.
 - **`/monete vendi`** — Rivendi un oggetto per metà del suo prezzo.
 - **`/monete work`** — Lavora per guadagnare qualche coin.
@@ -1094,6 +1151,17 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:
 - **`/owner system shell`** — Esegue un comando shell (con conferma).
 - **`/owner system stats`** — Statistiche globali del bot.
 - **`/owner system storico-vpn`** — Solo proprietario: server che l'hanno lasciata passare e IP della persona (VPN/proxy).
+
+## Sala giochi
+
+- **`/sala bingo`** — Bingo tra membri: completa una riga della cartella per vincere il piatto.
+- **`/sala bomba`** — Taglia il filo giusto: chi fa esplodere la bomba esce, l'ultimo vince.
+- **`/sala carte`** — Carte a turni: stesso colore o stesso numero, chi finisce le carte vince.
+- **`/sala corsa`** — Corsa di animali: chi arriva primo prende il piatto.
+- **`/sala impiccato`** — Impiccato di gruppo: indovinate la parola insieme e vincete un premio.
+- **`/sala lotta`** — Lotta fino a 6 con il tuo animale: l'ultimo in piedi prende il piatto.
+- **`/sala quiz`** — Quiz a tempo con premio in monete: cinque domande, quattro risposte.
+- **`/sala roulette`** — Roulette a più giocatori: una puntata uguale per tutti, un solo giro.
 
 ## Sondaggi
 

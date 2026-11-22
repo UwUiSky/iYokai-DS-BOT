@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 01:39 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 01:56 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 1047 commands in 51 categories.**
+**Total: 1103 commands in 55 categories.**
 
 ## Admin: AI
 
@@ -255,7 +255,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 01:3
 - **`/admin-games battitura add`** — Add a typing text (window).
 - **`/admin-games battitura list`** — The server's typing texts.
 - **`/admin-games battitura remove`** — Remove a typing text.
-- **`/admin-games carte pacchetti`** — Which card packs are turned on in the server.
+- **`/admin-games cards pacchetti`** — Which card packs are turned on in the server.
 - **`/admin-games counting channel`** — Pick the channels where people count (up to 10) and how.
 - **`/admin-games counting import`** — Bring scores from a CSV or JSON file into a channel.
 - **`/admin-games counting milestone`** — Role or message when the count hits a number.
@@ -433,6 +433,22 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 01:3
 - **`/admin-music settings`** — Changes the server's music settings.
 - **`/admin-music summary`** — Shows all the server's music settings.
 - **`/admin-music suono-ruoli`** — Who can use a sound: allowed or banned roles.
+
+## Admin: advanced shop
+
+- **`/admin-shop deal close`** — Close the flash deal of an item right now.
+- **`/admin-shop deal flash`** — Start a timed flash deal with a buy button.
+- **`/admin-shop event bonus`** — Leave a timed bonus in chat: the first to take it earns more for a while.
+- **`/admin-shop event code`** — Launch a code in chat: who writes it first wins the coins.
+- **`/admin-shop event random`** — Turn the server's random events on or off in a channel.
+- **`/admin-shop event server`** — A timed bonus for the whole server, right now (work and rewards).
+- **`/admin-shop fund give`** — Give a member an item donated to the prize fund.
+- **`/admin-shop gain create`** — Create an earning command: whoever uses it receives coins, with a cooldown.
+- **`/admin-shop gain delete`** — Delete a server earning command.
+- **`/admin-shop recipe create`** — Create a recipe: some items become another item.
+- **`/admin-shop recipe delete`** — Delete a recipe.
+- **`/admin-shop rotation how-many`** — How many rotating items are in the window each day (0 = off).
+- **`/admin-shop rotation item`** — Put an item among the rotating ones (or take it out).
 
 ## Admin: roles
 
@@ -750,18 +766,30 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 01:3
 - **`/fun coinflip`** — Flips a coin: heads or tails.
 - **`/fun dice`** — Rolls a die.
 - **`/fun fact`** — Shows a random fun fact.
+- **`/fun fishing aquarium`** — Your aquarium: the species you found and how many you have.
 - **`/fun fishing cast`** — Cast the line in a place (every 15 minutes).
 - **`/fun fishing guide`** — Your fish storage and the species you have found.
+- **`/fun fishing history`** — The latest fish caught and sales (30 days).
 - **`/fun fishing leaderboard`** — Today's best fishers.
+- **`/fun fishing net`** — Collect the fish your net caught while you were away (one cast per hour).
+- **`/fun fishing season`** — The monthly pass: a reward every 100 fishing points (free track).
 - **`/fun fishing sell`** — Sell every fish in the storage.
+- **`/fun fishing skills`** — Fishing skills: unlocked with challenge points.
+- **`/fun fishing tackle`** — The tackle shop: paid with pearls you find while fishing.
 - **`/fun guess-the-song`** — Guess the song from a short excerpt, in voice.
 - **`/fun joke`** — Tells a random joke.
 - **`/fun measure`** — Measures from 0 to 100% how much of something you choose.
 - **`/fun number`** — A random number in a range.
+- **`/fun pets abandon`** — Leave one of your animals in the server's adoption queue.
 - **`/fun pets activity`** — An activity with a healthy pet: it brings a few coins (every 2 hours).
+- **`/fun pets adopt`** — Adopt an animal from the queue (you need a free slot).
+- **`/fun pets adoptions`** — The animals waiting for a family.
 - **`/fun pets buy`** — Buy a pet to take care of.
 - **`/fun pets care`** — Feed, clean or play with a pet (once an hour per kind).
+- **`/fun pets fight`** — Make your animal fight another member's animal (no stake).
 - **`/fun pets list`** — Your pets: hunger, cleanliness, play and level.
+- **`/fun pets meeting`** — Make two animals meet: they play together and a puppy may be born.
+- **`/fun pets sitter`** — Pay a pet sitter: the animal's needs stay full for the chosen days.
 - **`/fun pets slot`** — Buy one more slot for another pet (max 2 extra).
 - **`/fun prank`** — A harmless prank on a user.
 - **`/fun quotes add`** — Save a quote of the server.
@@ -788,7 +816,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 01:3
 - **`/games acronimi`** — Invent phrases that follow the given letters and vote for the best.
 - **`/games battitura`** — Typing race: copy the text shown in the image.
 - **`/games card`** — Guess the drawn card: colour, suit or value.
-- **`/games carte start`** — Card game: complete the sentence with the funniest card.
+- **`/games cards start`** — Card game: complete the sentence with the funniest card.
 - **`/games challenges blackjack`** — Blackjack against the dealer: hit, stand, double down, surrender.
 - **`/games challenges connect4`** — Connect four against a member, with an optional stake.
 - **`/games challenges duel`** — Challenge a member to a duel: the winner takes the stake.
@@ -849,6 +877,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 01:3
 - **`/level rank`** — Shows the rank card: level, XP, position and coins.
 - **`/level recent-levels`** — The last 25 level-ups in the server.
 - **`/level rewards`** — Shows level reward roles and active XP multipliers.
+- **`/level rows`** — Choose which rows to show in your summary and in which order.
 - **`/level social block`** — Block a user: no requests, gifts, payments or challenges from them.
 - **`/level social divorce`** — End your marriage.
 - **`/level social friend`** — Ask a member to be your friend (no tax on payments between friends).
@@ -859,6 +888,17 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 01:3
 - **`/level social unblock`** — Unblock a user (no name: list the blocked).
 - **`/level stars case`** — A random message from the board.
 - **`/level stars leaderboard`** — Who received the most stars on the board.
+
+## Market
+
+- **`/market accept`** — Accept a member's offer on your listing (without a member: see the offers).
+- **`/market buy`** — Buy a listing at the stated price.
+- **`/market donate`** — Donate coins or an item to the server's prize fund.
+- **`/market fund`** — The items donated to the server's prize fund.
+- **`/market list`** — The market listings (also only one member's).
+- **`/market offer`** — Make a lower offer: the coins are held in custody until the seller answers.
+- **`/market sell`** — Put one of your items up for sale to other members.
+- **`/market withdraw`** — Withdraw one of your listings (or offers): item and coins go back.
 
 ## Mod: bans
 
@@ -941,6 +981,20 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 01:3
 - **`/mod-sanctions untimeout`** — Removes a member's timeout.
 - **`/mod-sanctions warn`** — Gives a member a warning.
 
+## Your world
+
+- **`/world adventure`** — A choice-based story: the ending gives coins (once every 6 hours).
+- **`/world autosell`** — Sell an item automatically when the day's rate reaches the threshold.
+- **`/world character`** — Talk to a character: one question a day, a gift if you answer well.
+- **`/world farm`** — Plant in your garden and harvest when ripe (3 plots).
+- **`/world house`** — Your house: furnish it with tokens (the coin of all servers).
+- **`/world live`** — Today's stream: more days in a row, more coins.
+- **`/world stocks order`** — An automatic order: buy or sell when the price reaches the threshold.
+- **`/world stocks orders`** — Your automatic orders (with a number you cancel it).
+- **`/world stocks prices`** — The fake stock market prices and your shares.
+- **`/world stocks trade`** — Buy or sell fake market shares at the current price.
+- **`/world vacation`** — Freeze the daily reward streak while you are away.
+
 ## Coins
 
 - **`/coins account bank`** — Your bank: view, deposit or withdraw (thefts only hit cash).
@@ -968,6 +1022,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 01:3
 - **`/coins risk beg`** — Beg: a small amount, sometimes nothing.
 - **`/coins risk chest-box`** — Open a surprise chest for 100 coins.
 - **`/coins risk dig`** — Dig for coins (sometimes a treasure).
+- **`/coins risk earn`** — Use a server-made earning command (without a name: the list).
 - **`/coins risk heist`** — A risky heist: big pay if it works, a fine if it fails.
 - **`/coins risk meme`** — Post a meme: the type you pick changes risk and prize.
 - **`/coins risk pet`** — Pet the bot: it leaves you a few coins.
@@ -977,7 +1032,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 01:3
 - **`/coins risk theft`** — Try to steal cash from a member (only if the server allows it).
 - **`/coins sell`** — Resell an item for half its price.
 - **`/coins shop buy`** — Buys a shop item.
+- **`/coins shop create`** — Craft an item from other items with a recipe.
 - **`/coins shop list`** — Shows the items available in the shop.
+- **`/coins shop recipes`** — The server's recipes: what you craft with what.
 - **`/coins use`** — Use an item from your inventory.
 - **`/coins weekly`** — Claim the weekly reward.
 - **`/coins work`** — Work to earn some coins.
@@ -1094,6 +1151,17 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 01:3
 - **`/owner system shell`** — Runs a shell command (with confirmation).
 - **`/owner system stats`** — Global bot statistics.
 - **`/owner system storico-vpn`** — Bot owner only: servers that let a person through (VPN/proxy) and their IPs.
+
+## Game room
+
+- **`/room bingo`** — Bingo among members: complete a row of your card to win the pot.
+- **`/room bomb`** — Cut the right wire: who blows up the bomb is out, the last one wins.
+- **`/room cards`** — Turn-based cards: same colour or same number, who runs out of cards wins.
+- **`/room fight`** — Fight with up to 6 with your pet: the last one standing takes the pot.
+- **`/room hangman`** — Group hangman: guess the word together and win a prize.
+- **`/room quiz`** — Timed quiz with a coin prize: five questions, four answers.
+- **`/room race`** — Animal race: whoever arrives first takes the pot.
+- **`/room roulette`** — Multiplayer roulette: the same stake for everyone, a single spin.
 
 ## Polls
 
