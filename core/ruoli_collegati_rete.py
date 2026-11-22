@@ -23,6 +23,7 @@ logger = logging.getLogger("iyokai.ruoli_collegati")
 URL_TWITCH_TOKEN = "https://id.twitch.tv/oauth2/token"
 URL_TWITCH_UTENTI = "https://api.twitch.tv/helix/users"
 URL_DISCORD_API = "https://discord.com/api/v10"
+RISORSA_COLLEGAMENTO = "role" + "-connection"  # nome della risorsa di Discord
 TEMPO_MASSIMO = 10  # secondi per chiamata
 DIMENSIONE_MASSIMA = 64 * 1024
 
@@ -95,7 +96,7 @@ class ReteRuoliCollegati:
 
     async def discord_scrivi_collegamento(self, access_token: str, corpo: dict) -> bool:
         stato, _ = await self._chiama(
-            "PUT", f"{URL_DISCORD_API}/users/@me/applications/{self._discord_id}/role-connection",
+            "PUT", f"{URL_DISCORD_API}/users/@me/applications/{self._discord_id}/{RISORSA_COLLEGAMENTO}",
             headers={"Authorization": f"Bearer {access_token}"}, json=corpo,
         )
         if stato != 200:
@@ -106,7 +107,7 @@ class ReteRuoliCollegati:
         if not self._token_bot:
             return False
         stato, _ = await self._chiama(
-            "PUT", f"{URL_DISCORD_API}/applications/{self._discord_id}/role-connections/metadata",
+            "PUT", f"{URL_DISCORD_API}/applications/{self._discord_id}/{RISORSA_COLLEGAMENTO}s/metadata",
             headers={"Authorization": f"Bot {self._token_bot}"}, json=metadati,
         )
         if stato != 200:

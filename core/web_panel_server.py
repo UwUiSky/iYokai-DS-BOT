@@ -9,10 +9,10 @@ lingua dai punti unici dei comandi (D16), storico, premium e wiki dei comandi, �
 (copia e richiesta di cancellazione, #46), verifica dei membri dalla pagina web (link firmato,
 impronte senza IP), istantanee dei log (`core/web_panel_istantanee.py`), l'interfaccia di iYokai Desktop (`core/desktop_api.py`), link d'invito personali e inviti (`core/web_panel_inviti.py`),
 ruoli del pannello in lettura e scrittura e panoramica del server (`core/web_panel_accesso.py`, `core/web_panel_panoramica.py`), pagine per area e pagine pubbliche (`core/web_panel_pagine.py`), informativa privacy e termini (pubbliche) e pagina del proprietario del bot
-(moduli premium, server, AI in manutenzione).
+(moduli premium, server, AI in manutenzione). Pagine dei backup (`core/web_panel_backup.py`), risposta ai ticket (`core/web_panel_ticket.py`) e ruoli collegati Twitch (`core/web_panel_ruoli_collegati.py`).
 Pagine HTML semplici (Jinja2 con escape automatico, nessuno script). Unica eccezione: la pagina «radio iYokai»
 dentro Discord (`core/web_panel_attivita.py`, B.8), con script propri e il suo riquadro ammesso solo a Discord.
-Funzioni coperte: SPEC §24.1–24.4, §24.6, §24.7, C.1–C.5, §4.2–4.3, §23.15, B.8 (CFG-001, CFG-002, CFG-003, CFG-027, #122; NF-20, issue #91; NF-22, #93; NF-21, #92; NF-38, #109; CFG-030, #122; #46; NF-27 r10)
+Funzioni coperte: SPEC §24.1–24.4, §24.6, §24.7, C.1–C.5, §4.2–4.3, §23.15, B.8 (CFG-001, CFG-002, CFG-003, CFG-027, #122; NF-20, issue #91; NF-22, #93; NF-21, #92; NF-38, #109; CFG-030, #122; #46; NF-27 r10; BKP-041, TKT-085, ALR-049 r2web)
 Dipende da: core/panel_bridge.py, core/web_panel_logic.py,
 core/redacted_access_log.py (la query del callback non va nei log)
 

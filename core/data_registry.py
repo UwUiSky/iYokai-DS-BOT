@@ -970,7 +970,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("ruoli_collegati_twitch", "Collegamento Twitch per i ruoli collegati di Discord: canale, tipo (affiliato o partner) e token cifrati (catalogo ALR-049)",
        colonne_utente=("user_id",), utente="cancella", esporta=True, server="conserva",
        escludi_dall_esportazione=("twitch_token", "twitch_refresh", "discord_token", "discord_refresh"),
-       nota="i token stanno solo cifrati e non escono mai in una copia dei dati; «Scollega» e /privacy cancellano la riga"),
+       nota="i token stanno solo cifrati e non escono mai in una copia dei dati; «Scollega» e la richiesta di cancellazione dei dati cancellano la riga"),
     _t("verify_impronte", "Impronte della verifica web (HMAC con sale, mai l'IP in chiaro)",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True,
        escludi_dall_esportazione=("impronta",), scadenza=Scadenza("creato_il", 30),
