@@ -19,6 +19,7 @@ from cogs.fun.entertainment import MODULE_FUN, EntertainmentCog
 from core import fun_extra_logic as logica
 from core import fun_piccoli_logic as piccoli
 from core import image_effects_logic as effetti
+from core.ui_base import BaseView
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.i18n import testo_per
@@ -52,7 +53,7 @@ async def _completa_gioco(interaction: discord.Interaction, digitato: str) -> li
     return [app_commands.Choice(name=n, value=v) for n, v in piccoli.suggerisci_giochi(digitato)]
 
 
-class PreferireView(discord.ui.View):
+class PreferireView(BaseView):
     """FUN-027: due bottoni con il conteggio dei voti; ognuno ha un voto (cambiabile); i bot non votano; si chiude dopo 10 minuti."""
 
     def __init__(self, a: str, b: str) -> None:

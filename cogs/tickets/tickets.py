@@ -3445,7 +3445,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo("ticket", nome="tieni-aperto", descrizione="Escludi questo ticket dalla chiusura automatica (o rimettilo).")
     @app_commands.describe(attivo="Sì: il ticket non si chiude da solo; no: torna come gli altri")
     async def tieni_aperto(self, interaction: discord.Interaction, attivo: bool = True) -> None:
-        """TKT-062: come `/autoclose exclude`. Vale per la chiusura del pannello e per le regole che chiudono o eliminano."""
+        """TKT-062: esclude il ticket dalla chiusura automatica. Vale per la chiusura del pannello e per le regole che chiudono o eliminano."""
         ticket = await self._get_ticket_for_staff_or_reply(interaction)
         if ticket is None:
             return

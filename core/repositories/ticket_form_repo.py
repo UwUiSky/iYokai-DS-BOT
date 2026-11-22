@@ -206,9 +206,6 @@ class TicketFormRepository:
         )
         return esito.endswith(" 1")
 
-    async def risposta_questionario(self, ticket_id: int) -> str | None:
-        return await self._pool.fetchval("SELECT risposta FROM ticket_questionario_risposte WHERE ticket_id = $1", ticket_id)
-
     async def imposta_standard(self, panel_id: int, attive: bool) -> bool:
         """#139: risposte standard accese o spente per il pannello."""
         esito = await self._pool.execute(

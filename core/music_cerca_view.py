@@ -13,6 +13,7 @@ from dataclasses import dataclass
 import discord
 
 from core.i18n import t
+from core.ui_base import BaseView
 from core.music_logic import format_duration, truncate_title
 
 MAX_RISULTATI = 10
@@ -40,7 +41,7 @@ def risultati_da_tracce(tracce, filtro=None) -> list[Risultato]:
     return fuori
 
 
-class CercaView(discord.ui.View):
+class CercaView(BaseView):
     """Un menu con i risultati. Lo usa solo chi ha cercato; dopo la scadenza si spegne."""
 
     def __init__(self, utente_id: int, risultati: list[Risultato], lingua: str, avvia) -> None:
@@ -64,6 +65,8 @@ class CercaView(discord.ui.View):
         self.add_item(menu)
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if not await super().interaction_check(interaction):  # blacklist (SEC-10)
+            return False
         if interaction.user.id == self.utente_id:
             return True
         await interaction.response.send_message(t("music_cerca_non_tuo", self.lingua), ephemeral=True)

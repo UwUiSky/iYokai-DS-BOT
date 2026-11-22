@@ -177,7 +177,7 @@ async def test_tkt_066_la_risposta_si_salva_solo_dopo_il_voto_una_volta_e_solo_d
     assert not await ticket_form_repo.salva_risposta_questionario(t.id, UTENTE + 1, "intruso")
     assert await ticket_form_repo.salva_risposta_questionario(t.id, UTENTE, "I tempi")
     assert not await ticket_form_repo.salva_risposta_questionario(t.id, UTENTE, "di nuovo")
-    assert await ticket_form_repo.risposta_questionario(t.id) == "I tempi"
+    assert await ticket_form_repo._pool.fetchval("SELECT risposta FROM ticket_questionario_risposte WHERE ticket_id = $1", t.id) == "I tempi"
     assert await ticket_form_repo.questionario_in_attesa(t.id, UTENTE) is None
 
 
@@ -201,7 +201,7 @@ async def test_tkt_066_il_clic_sul_voto_apre_il_questionario_e_chi_chiude_la_fin
     inv = fake_interaction(user=fake_member(UTENTE))
     inv.client = MagicMock()
     await finestra.on_submit(inv)
-    assert await ticket_form_repo.risposta_questionario(t.id) == "Più staff"
+    assert await ticket_form_repo._pool.fetchval("SELECT risposta FROM ticket_questionario_risposte WHERE ticket_id = $1", t.id) == "Più staff"
     inv.response.edit_message.assert_awaited_once()
     i3 = fake_interaction(user=fake_member(UTENTE))
     i3.client = MagicMock()
@@ -220,7 +220,7 @@ async def test_tkt_066_una_risposta_vuota_o_di_un_altro_non_si_salva():
     finestra.children[0]._value = "ok"
     altro = fake_interaction(user=fake_member(UTENTE + 5))
     await finestra.on_submit(altro)
-    assert await ticket_form_repo.risposta_questionario(t.id) is None
+    assert await ticket_form_repo._pool.fetchval("SELECT risposta FROM ticket_questionario_risposte WHERE ticket_id = $1", t.id) is None
 
 
 async def test_tkt_066_il_comando_voto_imposta_e_toglie_la_domanda(cog):
