@@ -24,6 +24,7 @@ class LadderStep:
     level: int
     action_type: str  # "warn" | "timeout" | "kick" | "ban"
     duration_seconds: int | None = None  # solo per "timeout"
+    finestra_giorni: int | None = None  # MOD-033: il livello conta solo le infrazioni degli ultimi N giorni
 
 
 def get_ladder_action(
@@ -31,6 +32,7 @@ def get_ladder_action(
     ladder: list[LadderStep],
     moltiplicatore: float = 1.0,
     tetto_strike: int = 5,
+    conteggi_finestra: dict[int, int] | None = None,
 ) -> LadderStep | None:
     """
     Trova il gradino della scala corrispondente a questo numero di
@@ -44,6 +46,8 @@ def get_ladder_action(
     """
     if not ladder:
         return None
+    if any(s.finestra_giorni for s in ladder):
+        return _gradino_con_finestre(violation_count, ladder, moltiplicatore, tetto_strike, conteggi_finestra or {})
 
     ladder_ordinata = sorted(ladder, key=lambda step: step.level)
 
@@ -55,6 +59,31 @@ def get_ladder_action(
     # severo), non su un gradino a caso o su "nessuna azione".
     ultimo = ladder_ordinata[-1]
     return timeout_che_cresce(ultimo, violation_count - ultimo.level, moltiplicatore, tetto_strike)
+
+
+def finestre_della_scala(ladder: list[LadderStep]) -> set[int]:
+    return {s.finestra_giorni for s in ladder if s.finestra_giorni}
+
+
+def _gradino_con_finestre(
+    totale: int, ladder: list[LadderStep], moltiplicatore: float, tetto_strike: int, finestre: dict[int, int]
+) -> LadderStep | None:
+    """
+    MOD-033: ogni livello conta le infrazioni di tutta la storia (senza finestra) o degli ultimi N giorni.
+    Scatta il livello più alto raggiunto; oltre l'ultimo il timeout cresce come nella scala semplice.
+    """
+    raggiunti = []
+    for s in ladder:
+        n = finestre.get(s.finestra_giorni, 0) if s.finestra_giorni else totale
+        if n >= s.level:
+            raggiunti.append((s.level, n, s))
+    if not raggiunti:
+        return None
+    livello, n, step = max(raggiunti, key=lambda r: r[0])
+    ultimo = max(s.level for s in ladder)
+    if livello == ultimo:
+        return timeout_che_cresce(step, n - livello, moltiplicatore, tetto_strike)
+    return step
 
 
 def timeout_che_cresce(

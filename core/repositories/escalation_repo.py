@@ -38,6 +38,8 @@ class EscalationConfig:
     # AMD-070: timeout che cresce a ogni ricaduta oltre l'ultimo gradino (1 = fisso).
     moltiplicatore: float = 1.0
     tetto_strike: int = 5
+    # MOD-035: dopo una sanzione della scala il conteggio riparte da zero (i casi restano).
+    azzera_dopo_scatto: bool = False
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -82,7 +84,7 @@ class EscalationRepository:
     # ================================================================
     async def get_config(self, guild_id: int) -> EscalationConfig:
         row = await self._pool.fetchrow(
-            "SELECT enabled, reset_after_days, conta_warn_manuali, moltiplicatore, tetto_strike "
+            "SELECT enabled, reset_after_days, conta_warn_manuali, moltiplicatore, tetto_strike, azzera_dopo_scatto "
             "FROM automod_escalation_config WHERE guild_id = $1",
             guild_id,
         )
@@ -91,15 +93,16 @@ class EscalationRepository:
         conta_warn_manuali = row["conta_warn_manuali"] if row else False
         moltiplicatore = row["moltiplicatore"] if row else 1.0
         tetto_strike = row["tetto_strike"] if row else 5
+        azzera = row["azzera_dopo_scatto"] if row else False
 
         step_rows = await self._pool.fetch(
-            "SELECT level, action_type, duration_seconds FROM automod_escalation_steps "
+            "SELECT level, action_type, duration_seconds, finestra_giorni FROM automod_escalation_steps "
             "WHERE guild_id = $1 ORDER BY level",
             guild_id,
         )
         if step_rows:
             ladder = [
-                LadderStep(r["level"], r["action_type"], r["duration_seconds"])
+                LadderStep(r["level"], r["action_type"], r["duration_seconds"], r["finestra_giorni"])
                 for r in step_rows
             ]
         else:
@@ -111,7 +114,7 @@ class EscalationRepository:
             ladder = DEFAULT_LADDER
 
         return EscalationConfig(
-            guild_id, enabled, reset_after_days, ladder, conta_warn_manuali, moltiplicatore, tetto_strike
+            guild_id, enabled, reset_after_days, ladder, conta_warn_manuali, moltiplicatore, tetto_strike, azzera
         )
 
     async def set_enabled(self, guild_id: int, enabled: bool) -> None:
@@ -162,21 +165,44 @@ class EscalationRepository:
         )
 
     async def set_step(
-        self, guild_id: int, level: int, action_type: str, duration_seconds: int | None
+        self, guild_id: int, level: int, action_type: str, duration_seconds: int | None,
+        finestra_giorni: int | None = None,
     ) -> None:
         await self._pool.execute(
             """
-            INSERT INTO automod_escalation_steps (guild_id, level, action_type, duration_seconds)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO automod_escalation_steps (guild_id, level, action_type, duration_seconds, finestra_giorni)
+            VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (guild_id, level) DO UPDATE
                 SET action_type = EXCLUDED.action_type,
-                    duration_seconds = EXCLUDED.duration_seconds
+                    duration_seconds = EXCLUDED.duration_seconds,
+                    finestra_giorni = EXCLUDED.finestra_giorni
             """,
             guild_id,
             level,
             action_type,
             duration_seconds,
+            finestra_giorni,
         )
+
+    async def set_azzera_dopo_scatto(self, guild_id: int, attivo: bool) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO automod_escalation_config (guild_id, azzera_dopo_scatto) VALUES ($1, $2)
+            ON CONFLICT (guild_id) DO UPDATE SET azzera_dopo_scatto = EXCLUDED.azzera_dopo_scatto
+            """,
+            guild_id, attivo,
+        )
+
+    async def conta_in_finestre(self, guild_id: int, user_id: int, finestre: set[int], adesso: datetime) -> dict[int, int]:
+        """MOD-033: quante infrazioni nelle ultime N giorni, per ogni finestra chiesta."""
+        risultato = {}
+        for giorni in finestre:
+            risultato[giorni] = await self._pool.fetchval(
+                "SELECT COUNT(*) FROM automod_violazioni_date WHERE guild_id = $1 AND user_id = $2 "
+                "AND quando > $3::timestamptz - make_interval(days => $4)",
+                guild_id, user_id, adesso, giorni,
+            )
+        return risultato
 
     async def remove_step(self, guild_id: int, level: int) -> bool:
         result = await self._pool.execute(
@@ -199,6 +225,13 @@ class EscalationRepository:
         Se dall'ultima infrazione sono passati almeno
         `reset_after_days` giorni (buona condotta), si riparte da 1.
         """
+        await self._pool.execute(
+            "INSERT INTO automod_violazioni_date (guild_id, user_id, quando) VALUES ($1, $2, $3)", guild_id, user_id, when
+        )
+        await self._pool.execute(  # al massimo 90 giorni, quanto la finestra più larga
+            "DELETE FROM automod_violazioni_date WHERE guild_id = $1 AND user_id = $2 AND quando < $3::timestamptz - INTERVAL '90 days'",
+            guild_id, user_id, when,
+        )
         return await self._pool.fetchval(
             """
             INSERT INTO automod_violations (guild_id, user_id, violation_count, last_violation_at)
@@ -225,6 +258,9 @@ class EscalationRepository:
             "DELETE FROM automod_violations WHERE guild_id = $1 AND user_id = $2",
             guild_id,
             user_id,
+        )
+        await self._pool.execute(
+            "DELETE FROM automod_violazioni_date WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
         )
 
 
