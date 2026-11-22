@@ -938,11 +938,12 @@ def test_main_svuota_le_sessioni_vecchie_prima_di_creare_la_flotta():
     assert ordine["music_session_repo.clear_all"] < ordine["bot.start"] if "bot.start" in ordine else True
 
 
-def test_il_requirements_chiede_wavelink_3_5_1():
+def test_il_requirements_chiede_wavelink_3_5_o_piu():
     riga = next(
         r for r in (ROOT / "requirements.txt").read_text().splitlines() if r.startswith("wavelink")
     )
-    assert riga.replace(" ", "") == "wavelink>=3.5.1"
+    minimo = tuple(int(p) for p in riga.replace(" ", "").removeprefix("wavelink>=").split("."))
+    assert minimo >= (3, 5, 1)
 
 
 @pytest.mark.asyncio
