@@ -632,6 +632,7 @@
   "admin-backup ripristino modo": "Picks how this server handles user restore via OAuth2.",
   "admin-backup ripristino utenti": "Restores into THIS server the users of another server's latest snapshot.",
   "admin-backup salva": "Saves a dated copy of this server structure.",
+  "founder backup sincronia-canali": "Copies messages between two channels of yours, one way or both.",
   "founder backup sincronia": "Keeps bans and roles equal with another server of yours.",
   "admin-backup stato": "Progress of the latest load in this server.",
   "clan": "Server clans: create, manage and grow your clan",

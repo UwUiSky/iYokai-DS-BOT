@@ -3624,5 +3624,11 @@
   "backup_automatico_attivo": "⏱️ Copie automatiche accese: ogni {ore} ore, ne tengo {copie}. La più vecchia automatica viene sovrascritta; le copie fatte a mano non si toccano.",
   "backup_modelli_titolo": "Modelli di server",
   "backup_modelli_piede": "Si usano con «Usa un modello»: nome, codice o link discord.new. Mai ban, membri o messaggi.",
-  "backup_modello_contiene": "Contiene"
+  "backup_modello_contiene": "Contiene",
+  "backup_sync_canali_nessuna": "Nessuna sincronia tra questi canali.",
+  "backup_sync_canali_scegli": "Scegli un canale di testo di questo server e l'ID di un altro canale di testo, diverso dal primo.",
+  "backup_sync_canali_tolta": "Sincronia dei messaggi disattivata.",
+  "backup_sync_canali_webhook": "Non riesco a creare il webhook in {v1}: serve il permesso «Gestire i webhook» (e al massimo 15 webhook per canale).",
+  "backup_sync_canali_troppe": "Uno dei due server ha già {v1} direzioni di sincronia.",
+  "backup_sync_canali_attiva": "🔗 Sincronia dei messaggi attiva tra {v1} e «{v2}». Da adesso in poi, con nome e avatar dell'autore; i messaggi dei bot non si copiano."
 }

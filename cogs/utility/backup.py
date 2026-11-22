@@ -40,6 +40,7 @@ from core.backup_permessi_logic import (
 from core import server_sync_logic as sync
 from core.database import db
 from core.i18n import testo_per
+from core.repositories.backup_sincronia_canali_repo import MAX_DIREZIONI_PER_SERVER, backup_sincronia_canali_repo
 from core.repositories.backup_sincronia_repo import backup_sincronia_repo
 from core.repositories.backup_struttura_repo import MAX_COPIE_PER_SERVER, backup_struttura_repo
 from core.ui_base import BaseView
@@ -845,6 +846,85 @@ class BackupCog(CogConGruppi, commands.Cog):
             self._sincronie.pop(altro_id, None)
             await registra_uso(guild.id, interaction.user.id, f"sincronia {azione.value}", server)
         await interaction.response.send_message(testo, ephemeral=True)
+
+    @comando_di_gruppo("founder", nome="sincronia-canali", descrizione="Copia i messaggi tra due canali tuoi, in una o in due direzioni.", sottogruppo=SOTTOGRUPPI["founder backup"])
+    @app_commands.describe(
+        azione="Cosa fare",
+        canale="Il canale di QUESTO server",
+        altro_canale="ID dell'altro canale (anche di un altro tuo server)",
+        direzione="Verso dove vanno i messaggi (per «attiva»)",
+    )
+    @app_commands.choices(
+        azione=[
+            app_commands.Choice(name="Attiva", value="attiva"),
+            app_commands.Choice(name="Disattiva", value="disattiva"),
+            app_commands.Choice(name="Elenco", value="elenco"),
+        ],
+        direzione=[
+            app_commands.Choice(name="Da questo canale all'altro", value="verso_altro"),
+            app_commands.Choice(name="Dall'altro canale a questo", value="verso_qui"),
+            app_commands.Choice(name="In tutte e due le direzioni", value="due_sensi"),
+        ],
+    )
+    async def sincronia_canali(
+        self, interaction: discord.Interaction, azione: app_commands.Choice[str],
+        canale: discord.TextChannel | None = None, altro_canale: app_commands.Range[str, 15, 21] | None = None,
+        direzione: app_commands.Choice[str] | None = None,
+    ) -> None:
+        """BKP-028: solo l'owner di entrambi i server; i messaggi di bot e webhook non si copiano (niente cicli)."""
+        guild = interaction.guild
+        if guild is None or interaction.user.id != guild.owner_id:
+            await interaction.response.send_message(await testo_per(interaction, "backup_la_sincronia_la_gestisce_solo"), ephemeral=True)
+            return
+        if azione.value == "elenco":
+            elenco = await backup_sincronia_canali_repo.elenco(guild.id)
+            righe = [f"<#{d.canale_da}> → <#{d.canale_a}>" for d in elenco]
+            await interaction.response.send_message(
+                "\n".join(righe) or await testo_per(interaction, "backup_sync_canali_nessuna"), ephemeral=True
+            )
+            return
+        altro = self.bot.get_channel(int(altro_canale)) if altro_canale and altro_canale.isdigit() else None
+        if canale is None or not isinstance(altro, discord.TextChannel) or altro.id == canale.id:
+            await interaction.response.send_message(await testo_per(interaction, "backup_sync_canali_scegli"), ephemeral=True)
+            return
+        if not sync.stesso_proprietario(interaction.user.id, guild.owner_id, altro.guild.owner_id):
+            await interaction.response.send_message(await testo_per(interaction, "backup_devi_essere_owner_di_entrambi"), ephemeral=True)
+            return
+        if azione.value == "disattiva":
+            tolte = await backup_sincronia_canali_repo.togli_coppia(guild.id, canale.id, altro.id)
+            if tolte:
+                await registra_uso(guild.id, interaction.user.id, "sincronia canali", f"togli {canale.id} {altro.id}")
+            await interaction.response.send_message(
+                await testo_per(interaction, "backup_sync_canali_tolta" if tolte else "backup_sync_canali_nessuna"), ephemeral=True
+            )
+            return
+        scelta = direzione.value if direzione else "due_sensi"
+        coppie = []
+        if scelta in ("verso_altro", "due_sensi"):
+            coppie.append((canale, altro))
+        if scelta in ("verso_qui", "due_sensi"):
+            coppie.append((altro, canale))
+        await interaction.response.defer(ephemeral=True)
+        for origine, arrivo in coppie:
+            try:
+                hook = await webhook_chat(arrivo)
+            except discord.HTTPException:
+                hook = None
+            if hook is None or not hook.url:
+                await interaction.followup.send(await testo_per(interaction, "backup_sync_canali_webhook", v1=arrivo.mention), ephemeral=True)
+                return
+            ok = await backup_sincronia_canali_repo.attiva(
+                origine.id, origine.guild.id, arrivo.id, arrivo.guild.id, hook.url, interaction.user.id
+            )
+            if not ok:
+                await interaction.followup.send(
+                    await testo_per(interaction, "backup_sync_canali_troppe", v1=MAX_DIREZIONI_PER_SERVER), ephemeral=True
+                )
+                return
+        await registra_uso(guild.id, interaction.user.id, "sincronia canali", f"{scelta} {canale.id} {altro.id}")
+        await interaction.followup.send(
+            await testo_per(interaction, "backup_sync_canali_attiva", v1=canale.mention, v2=altro.name), ephemeral=True
+        )
 
     async def _sincronie_di(self, guild_id: int) -> list:
         letto = self._sincronie.get(guild_id)

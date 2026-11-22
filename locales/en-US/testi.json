@@ -3624,5 +3624,11 @@
   "backup_automatico_attivo": "⏱️ Automatic copies on: every {ore} hours, keeping {copie}. The oldest automatic copy is overwritten; manual copies are never touched.",
   "backup_modelli_titolo": "Server templates",
   "backup_modelli_piede": "Use them with \"Use a template\": name, code or discord.new link. Never bans, members or messages.",
-  "backup_modello_contiene": "Contains"
+  "backup_modello_contiene": "Contains",
+  "backup_sync_canali_nessuna": "No sync between these channels.",
+  "backup_sync_canali_scegli": "Pick a text channel of this server and the ID of another, different text channel.",
+  "backup_sync_canali_tolta": "Message sync turned off.",
+  "backup_sync_canali_webhook": "I cannot create the webhook in {v1}: I need the Manage Webhooks permission (and at most 15 webhooks per channel).",
+  "backup_sync_canali_troppe": "One of the two servers already has {v1} sync directions.",
+  "backup_sync_canali_attiva": "🔗 Message sync is on between {v1} and {v2}. From now on, with the author's name and avatar; bot messages are not copied."
 }
