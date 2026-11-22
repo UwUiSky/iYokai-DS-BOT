@@ -293,6 +293,25 @@ class ModerationRepository:
         )
         return [_row_to_case(row) for row in rows]
 
+    async def statistiche_moderatore(self, guild_id: int, moderator_id: int) -> dict:
+        """MOD-040: i casi di un moderatore per tipo e negli ultimi 7, 30 e 90 giorni (i nascosti non contano)."""
+        per_tipo = await self._pool.fetch(
+            "SELECT action_type, COUNT(*) AS n FROM moderation_cases WHERE guild_id = $1 AND moderator_id = $2 "
+            "AND NOT hidden GROUP BY action_type ORDER BY n DESC, action_type",
+            guild_id, moderator_id,
+        )
+        periodi = await self._pool.fetchrow(
+            "SELECT COUNT(*) FILTER (WHERE created_at > now() - INTERVAL '7 days') AS g7, "
+            "COUNT(*) FILTER (WHERE created_at > now() - INTERVAL '30 days') AS g30, "
+            "COUNT(*) FILTER (WHERE created_at > now() - INTERVAL '90 days') AS g90 "
+            "FROM moderation_cases WHERE guild_id = $1 AND moderator_id = $2 AND NOT hidden",
+            guild_id, moderator_id,
+        )
+        return {
+            "per_tipo": {r["action_type"]: r["n"] for r in per_tipo},
+            "periodi": {7: periodi["g7"], 30: periodi["g30"], 90: periodi["g90"]},
+        }
+
     async def moderator_ranking(self, guild_id: int, limit: int = 10) -> list[tuple[int, int]]:
         """(moderatore, numero di azioni), dal più attivo (MOD-039)."""
         rows = await self._pool.fetch(

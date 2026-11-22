@@ -756,6 +756,13 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
                 return
             testo = join_within_limit([_format_case_line(c) for c in casi], "…e altri {n} casi.")
             titolo = f"Casi di {moderatore.display_name}"
+            stat = await moderation_repo.statistiche_moderatore(interaction.guild.id, moderatore.id)  # MOD-040
+            tipi = ", ".join(f"{t} {n}" for t, n in list(stat["per_tipo"].items())[:12])
+            p = stat["periodi"]
+            testo = (
+                await testo_per(interaction, "casesystem_statistiche_moderatore", tipi=tipi or "-", g7=p[7], g30=p[30], g90=p[90])
+                + "\n\n" + testo
+            )[:4000]
         else:
             classifica = await moderation_repo.moderator_ranking(interaction.guild.id)
             if not classifica:
