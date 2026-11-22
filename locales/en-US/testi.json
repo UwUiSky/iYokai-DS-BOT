@@ -3906,5 +3906,8 @@
   "nomi_storico_spento": "The name history is off: turn it on with /mod-sanzioni opzioni memoria.",
   "nomi_nessun_cambio": "No name change recorded for this person.",
   "nomi_titolo": "Names of {nome}",
-  "opzioni_memoria_stato": "Name history: {nomi}. Nickname and voice mute for returning members: {persistenza}."
+  "opzioni_memoria_stato": "Name history: {nomi}. Nickname and voice mute for returning members: {persistenza}.",
+  "opzioni_aspetto_colore_no": "Write the colour as #c24a3a (or \"nessuno\").",
+  "opzioni_aspetto_icona_no": "The icon is a single emoji (or \"nessuno\").",
+  "opzioni_aspetto_salvato": "Case \"{tipo}\" in the log: colour {colore}, icon {icona}."
 }

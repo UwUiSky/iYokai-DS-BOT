@@ -27,7 +27,7 @@ from core.lockdown_logic import puo_agire_in_panico
 from core.repositories.security_repo import security_repo
 from core.duration_logic import format_duration, parse_duration  # noqa: F401 — re-export
 from core.moderation_validation_logic import is_valid_reason
-from core import moderation_motivi, moderation_opzioni
+from core import moderation_aspetto, moderation_motivi, moderation_opzioni
 from core.permissions import ModerationActor, can_moderate
 
 # Nomi dei tre moduli premium-differenziabili di moderazione, come
@@ -169,6 +169,12 @@ async def post_to_mod_log(guild: discord.Guild, embed: discord.Embed) -> None:
     # §18.1: passa dal router (forum, un solo avviso al proprietario, iYokai Mod).
     dest = await router.destinazione(guild, router.TIPO_MODERAZIONE, channel_id)
     if dest is not None:
+        try:  # MOD-053: colore e icona scelti dal server; un errore qui non ferma il log
+            embed = moderation_aspetto.applica(embed, moderation_aspetto.pulita(
+                await db.get_guild_setting(guild.id, moderation_aspetto.SETTING_ASPETTO)
+            ))
+        except Exception:
+            pass
         await router.invia_a(dest, guild, router.TIPO_MODERAZIONE, embed=embed)
 
 

@@ -19,6 +19,7 @@ from cogs.moderation._shared import MODULE_ACTIONS, audit_reason, ensure_module_
 from cogs.moderation.softban_mute import SETTING_MUTE_ROLE_ID, aggiorna_ruolo_muto
 from cogs.moderation._shared import SETTING_AVVISO_CANALE
 from core import moderation_dm
+from core import moderation_aspetto
 from core import moderation_permessi_azioni as permessi_azioni
 from core import moderation_opzioni as opzioni
 from core.command_groups import SOTTOGRUPPI, CogConGruppi, comando_di_gruppo
@@ -308,6 +309,58 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
             fatti, falliti = await aggiorna_ruolo_muto(guild, ruolo)
             righe.append(await testo_per(interaction, "opzioni_muto_canali", fatti=fatti, falliti=falliti))
         await interaction.followup.send("\n".join(righe)[:2000], ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+
+    @comando_di_gruppo(
+        "mod-sanzioni",
+        nome="aspetto",
+        descrizione="Sceglie colore e icona di un tipo di caso nel log di moderazione.",
+        sottogruppo=SOTTOGRUPPO,
+    )
+    @app_commands.describe(
+        tipo="Il tipo di caso",
+        colore="Colore, per esempio #c24a3a; «nessuno» toglie la scelta",
+        icona="Emoji davanti al titolo; «nessuno» toglie la scelta",
+    )
+    @app_commands.choices(tipo=[app_commands.Choice(name=t, value=t) for t in moderation_aspetto.TIPI])
+    async def aspetto(
+        self,
+        interaction: discord.Interaction,
+        tipo: app_commands.Choice[str],
+        colore: app_commands.Range[str, 4, 7] | None = None,
+        icona: app_commands.Range[str, 1, 60] | None = None,
+    ) -> None:
+        """MOD-053: cambia solo il riquadro nel log. Colore e icona si controllano prima di salvare."""
+        if not await self._controlli(interaction):
+            return
+        scelte = moderation_aspetto.pulita(await db.get_guild_setting(interaction.guild.id, moderation_aspetto.SETTING_ASPETTO))
+        voce = dict(scelte.get(tipo.value, {}))
+        if colore is not None:
+            if colore.strip().lower() == "nessuno":
+                voce.pop("colore", None)
+            else:
+                grezzo = colore.strip().lstrip("#")
+                if len(grezzo) != 6 or any(c not in "0123456789abcdefABCDEF" for c in grezzo):
+                    await interaction.response.send_message(await testo_per(interaction, "opzioni_aspetto_colore_no"), ephemeral=True)
+                    return
+                voce["colore"] = int(grezzo, 16)
+        if icona is not None:
+            if icona.strip().lower() == "nessuno":
+                voce.pop("icona", None)
+            elif not moderation_aspetto.icona_valida(icona):
+                await interaction.response.send_message(await testo_per(interaction, "opzioni_aspetto_icona_no"), ephemeral=True)
+                return
+            else:
+                voce["icona"] = icona.strip()
+        if voce:
+            scelte[tipo.value] = voce
+        else:
+            scelte.pop(tipo.value, None)
+        await db.set_guild_setting(interaction.guild.id, moderation_aspetto.SETTING_ASPETTO, scelte, changed_by=interaction.user.id)
+        colore_txt = f"#{voce['colore']:06x}" if "colore" in voce else "di base"
+        await interaction.response.send_message(
+            await testo_per(interaction, "opzioni_aspetto_salvato", tipo=tipo.value, colore=colore_txt, icona=voce.get("icona", "di base")),
+            ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
+        )
 
     @comando_di_gruppo(
         "mod-sanzioni",

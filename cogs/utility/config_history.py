@@ -89,6 +89,7 @@ SETTINGS_SCHEMA = {
     "verify_captcha_tipo": "captcha_tipo",
     "verify_alt_ruolo_id": "id",
     "verify_dm_ingresso": "bool",
+    "mod_aspetto_casi": "aspetto_casi",
     "mod_storico_nomi": "bool",
     "mod_persistenza": "bool",
     "mod_avviso_canale_id": "id",
@@ -290,6 +291,12 @@ CONTROLLI_PER_TIPO = {
         and set(valore) <= {"menzioni_soglia", "menzioni_secondi", "menzioni_minuti", "panico", "panico_utenti"}
         and all(isinstance(v, (int, bool)) for v in valore.values()),
         "le scelte di emergenza dell'AutoMod (soglie in numeri, panico true o false)",
+    ),
+    "aspetto_casi": (
+        lambda valore: isinstance(valore, dict)
+        and len(valore) <= 12
+        and all(isinstance(k, str) and isinstance(v, dict) and len(v) <= 2 for k, v in valore.items()),
+        "colore e icona per tipo di caso",
     ),
     "int_4_8": (_intero_tra(4, 8), "un intero tra 4 e 8"),
     "captcha_misura": (lambda valore: valore in ("piccola", "media", "grande"), "piccola, media oppure grande"),
