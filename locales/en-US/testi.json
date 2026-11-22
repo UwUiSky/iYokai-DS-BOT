@@ -3546,5 +3546,8 @@
   "opzioni_muto_ruolo": "Mute role: {ruolo}.",
   "opzioni_muto_canali": "Channels fixed: {fatti}. Failed: {falliti}.",
   "banappeal_timeout_acceso": "Appeals now also work for timeouts given from now on (the appeals channel is needed).",
-  "banappeal_timeout_spento": "Appeals no longer work for timeouts."
+  "banappeal_timeout_spento": "Appeals no longer work for timeouts.",
+  "esportachat_bot_senza_permesso": "I am missing the permission to read the messages of {mention}.",
+  "esportachat_pronto": "Here are the last {n} messages. Only the name, type and size of attachments are kept.",
+  "esportachat_tagliato": "The file was too big: the oldest messages are missing."
 }

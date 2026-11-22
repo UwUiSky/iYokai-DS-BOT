@@ -3546,5 +3546,8 @@
   "opzioni_muto_ruolo": "Ruolo del mute: {ruolo}.",
   "opzioni_muto_canali": "Canali sistemati: {fatti}. Falliti: {falliti}.",
   "banappeal_timeout_acceso": "Gli appelli valgono anche per i timeout dati da ora (serve il canale degli appelli).",
-  "banappeal_timeout_spento": "Gli appelli non valgono più per i timeout."
+  "banappeal_timeout_spento": "Gli appelli non valgono più per i timeout.",
+  "esportachat_bot_senza_permesso": "Mi manca il permesso di leggere i messaggi di {mention}.",
+  "esportachat_pronto": "Ecco gli ultimi {n} messaggi. Degli allegati restano solo nome, tipo e peso.",
+  "esportachat_tagliato": "Il file era troppo grande: mancano i messaggi più vecchi."
 }

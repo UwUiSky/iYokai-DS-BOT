@@ -23,7 +23,7 @@ Developer Portal, da 10.000 serve la domanda a Discord, da rifare ogni
 anno). Il canale può essere diverso da quello del comando; chi usa il comando
 deve poter vedere e gestire i messaggi di quel canale. Ogni pulizia
 scrive una riga nel log di moderazione (M 1.8).
-Funzioni coperte: SPEC §5.4 (MOD-069-072, 073-079, 080-089)
+Funzioni coperte: SPEC §5.4 (MOD-069-072, 073-079, 080-089), UTL-204 (`esporta-chat`)
 """
 
 from __future__ import annotations
@@ -31,6 +31,7 @@ from __future__ import annotations
 from typing import Literal
 
 import asyncio
+import io
 import time
 
 import discord
@@ -50,6 +51,7 @@ from core.clear_filter_logic import (
     leggi_riferimento_messaggio,
 )
 from core.duration_logic import parse_duration
+from core import moderation_esporta_chat as esporta
 from core.message_log_logic import regex_non_valida
 from cogs.moderation._shared import (
     MODULE_CLEAR,
@@ -232,6 +234,58 @@ class ModerationClearCog(CogConGruppi, commands.Cog):
             await rifiuta("clear_valore_non_valido", motivo=str(errore))
             return None
         return dopo_id, prima_id, vecchi_s, nuovi_s
+
+    @comando_di_gruppo(
+        "mod-canali",
+        nome="esporta-chat",
+        descrizione="Manda in un file di testo gli ultimi messaggi di un canale (solo a te).",
+    )
+    @app_commands.describe(
+        quanti=f"Quanti messaggi salvare (da 1 a {esporta.MAX_MESSAGGI})",
+        canale="Il canale da salvare (default: quello attuale)",
+    )
+    @requires_module(MODULE_CLEAR)
+    async def esporta_chat(
+        self,
+        interaction: discord.Interaction,
+        quanti: app_commands.Range[int, 1, esporta.MAX_MESSAGGI],
+        canale: discord.TextChannel | None = None,
+    ) -> None:
+        """UTL-204. I permessi si rileggono adesso: chi comanda deve poter vedere e gestire i messaggi del canale."""
+        if not await ensure_module_enabled(interaction, MODULE_CLEAR):
+            return
+        target = canale or interaction.channel
+        if not isinstance(target, discord.TextChannel):
+            await interaction.response.send_message(
+                await testo_per(interaction, "channelcontr_questo_comando_funziona_solo_su"), ephemeral=True
+            )
+            return
+        permessi = target.permissions_for(interaction.user)
+        if not (permessi.view_channel and permessi.read_message_history and permessi.manage_messages):
+            await interaction.response.send_message(
+                await testo_per(interaction, "clear_non_hai_il_permesso_gestire", mention=target.mention), ephemeral=True
+            )
+            return
+        del_bot = target.permissions_for(interaction.guild.me)
+        if not (del_bot.view_channel and del_bot.read_message_history):
+            await interaction.response.send_message(
+                await testo_per(interaction, "esportachat_bot_senza_permesso", mention=target.mention), ephemeral=True
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        messaggi = [m async for m in target.history(limit=quanti)]
+        messaggi.reverse()
+        contenuto, scritti, tagliato = esporta.costruisci_file(messaggi, target.name)
+        file = discord.File(io.BytesIO(contenuto), filename=f"chat-{target.id}.txt")
+        testo = await testo_per(interaction, "esportachat_pronto", n=scritti)
+        if tagliato:
+            testo += " " + await testo_per(interaction, "esportachat_tagliato")
+        await interaction.followup.send(testo, file=file, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+        log = discord.Embed(title="📄 Chat esportata", color=discord.Color.blurple())
+        log.add_field(name="Canale", value=target.mention, inline=True)
+        log.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
+        log.add_field(name="Messaggi", value=str(scritti), inline=True)
+        await post_to_mod_log(interaction.guild, log)
 
     @comando_di_gruppo(
         "mod-canali",
