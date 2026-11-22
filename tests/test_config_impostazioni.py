@@ -135,3 +135,24 @@ async def test_ruolo_non_verificato_con_il_controllo_del_comando(guild, monkeypa
     assert await db.get_guild_setting(G, "verify_unverified_role_id") is None
     monkeypatch.setattr(ci, "check_role_assignable", lambda *a, **k: None)
     assert await ci.imposta_impostazione(guild, "verify", "verify_unverified_role_id", "11", 9)
+
+
+def test_moduli_log_e_livelli_hanno_la_loro_scheda():
+    """24.2: le impostazioni già validate dello schema per log e livelli hanno una pagina nel pannello."""
+    chiavi = {n: {c.chiave for c in ci.campi_modulo(n)} for n in ("logging_basic", "logging_advanced", "leveling")}
+    assert chiavi["logging_basic"] == {"log_channel_id", "log_webhook"}
+    assert chiavi["logging_advanced"] == {"log_webhook", "log_webhook_utente"}
+    assert chiavi["leveling"] == {"progressi_attivi", "progressi_obiettivo_server"}
+
+
+async def test_scrive_le_schede_nuove_con_i_controlli_dello_schema(guild):
+    assert await ci.imposta_impostazione(guild, "leveling", "progressi_obiettivo_server", "500", 9)
+    assert await db.get_guild_setting(G, "progressi_obiettivo_server") == 500
+    for male in ("10", "999999", "abc"):
+        with pytest.raises(ci.ImpostazioneNonValida):
+            await ci.imposta_impostazione(guild, "leveling", "progressi_obiettivo_server", male, 9)
+    assert await ci.imposta_impostazione(guild, "logging_basic", "log_channel_id", "21", 9)
+    with pytest.raises(ci.ImpostazioneNonValida):  # un canale che non è di questo server
+        await ci.imposta_impostazione(guild, "logging_basic", "log_channel_id", "99999", 9)
+    with pytest.raises(ci.ImpostazioneNonValida):  # una chiave di un altro modulo non passa da qui
+        await ci.imposta_impostazione(guild, "leveling", "log_channel_id", "21", 9)
