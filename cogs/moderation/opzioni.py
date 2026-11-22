@@ -311,6 +311,32 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo(
         "mod-sanzioni",
+        nome="memoria",
+        descrizione="Accende lo storico dei nomi e il soprannome e il mute vocale ridati a chi rientra.",
+        sottogruppo=SOTTOGRUPPO,
+    )
+    @app_commands.describe(
+        nomi="Tiene i nomi e i soprannomi di ogni membro per 90 giorni (si legge con /mod-casi nomi)",
+        persistenza="Chi esce e rientra entro 30 giorni riprende il soprannome e il mute vocale",
+    )
+    async def memoria(self, interaction: discord.Interaction, nomi: bool | None = None, persistenza: bool | None = None) -> None:
+        """MOD-103, MOD-104: spenti di base, sono dati personali con scadenza (registro dei dati)."""
+        if not await self._controlli(interaction):
+            return
+        from core import moderation_nomi
+
+        for chiave, valore in ((moderation_nomi.SETTING_STORICO_NOMI, nomi), (moderation_nomi.SETTING_PERSISTENZA, persistenza)):
+            if valore is not None:
+                await db.set_guild_setting(interaction.guild.id, chiave, valore, changed_by=interaction.user.id)
+        a = bool(await db.get_guild_setting(interaction.guild.id, moderation_nomi.SETTING_STORICO_NOMI))
+        b = bool(await db.get_guild_setting(interaction.guild.id, moderation_nomi.SETTING_PERSISTENZA))
+        await interaction.response.send_message(
+            await testo_per(interaction, "opzioni_memoria_stato", nomi="sì" if a else "no", persistenza="sì" if b else "no"),
+            ephemeral=True,
+        )
+
+    @comando_di_gruppo(
+        "mod-sanzioni",
         nome="avvisi",
         descrizione="Scrive l'avviso delle sanzioni in un canale invece che nel messaggio privato.",
         sottogruppo=SOTTOGRUPPO,

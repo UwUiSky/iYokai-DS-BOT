@@ -513,7 +513,9 @@
   "esporta-chat": "export-chat",
   "azioni": "actions",
   "quarantena": "quarantine",
-  "libera": "release"
+  "libera": "release",
+  "nomi": "names",
+  "memoria": "memory"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1794,7 +1796,9 @@
   "mod-sanzioni opzioni avvisi": "Writes the sanction notice in a channel instead of a private message.",
   "mod-canali blocco canali": "Locks only some channels (picked from a menu) or the saved group.",
   "mod-sanzioni quarantena": "Removes a member's roles and gives the quarantine role (can be timed).",
-  "mod-sanzioni libera": "Ends a member's quarantine and gives their old roles back."
+  "mod-sanzioni libera": "Ends a member's quarantine and gives their old roles back.",
+  "mod-casi nomi": "Shows the names and nicknames a member has had.",
+  "mod-sanzioni opzioni memoria": "Turns on the name history and the nickname and voice mute given back to returning members."
  },
  "parametri": {},
  "menu": {

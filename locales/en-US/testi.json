@@ -3902,5 +3902,9 @@
   "quarantena_durata_non_valida": "The duration goes from 1 minute to 1 year.",
   "quarantena_non_riuscita": "I could not quarantine: check my permissions and role. Nothing has changed.",
   "quarantena_ruoli_non_tolti": "The quarantine role is given, but some roles could not be removed (above mine).",
-  "quarantena_non_in_quarantena": "{mention} is not in a manual quarantine."
+  "quarantena_non_in_quarantena": "{mention} is not in a manual quarantine.",
+  "nomi_storico_spento": "The name history is off: turn it on with /mod-sanzioni opzioni memoria.",
+  "nomi_nessun_cambio": "No name change recorded for this person.",
+  "nomi_titolo": "Names of {nome}",
+  "opzioni_memoria_stato": "Name history: {nomi}. Nickname and voice mute for returning members: {persistenza}."
 }

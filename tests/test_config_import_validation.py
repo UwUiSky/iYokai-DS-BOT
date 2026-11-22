@@ -80,6 +80,8 @@ SETTINGS_VALIDE = {
     "verify_captcha_tipo": "immagine",
     "verify_alt_ruolo_id": 321,
     "verify_dm_ingresso": True,
+    "mod_storico_nomi": True,
+    "mod_persistenza": True,
     "mod_avviso_canale_id": 555,
     "automod_emergenza": {"menzioni_soglia": 20, "panico": True},
     "verify_testo_pagina": "Benvenuto, premi il bottone.",

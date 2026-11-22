@@ -3902,5 +3902,9 @@
   "quarantena_durata_non_valida": "La durata va da 1 minuto a 1 anno.",
   "quarantena_non_riuscita": "Non sono riuscito a mettere in quarantena: controlla i miei permessi e il mio ruolo. Non è cambiato niente.",
   "quarantena_ruoli_non_tolti": "Il ruolo di quarantena è dato, ma alcuni ruoli non si sono potuti togliere (sopra il mio).",
-  "quarantena_non_in_quarantena": "{mention} non è in quarantena a mano."
+  "quarantena_non_in_quarantena": "{mention} non è in quarantena a mano.",
+  "nomi_storico_spento": "Lo storico dei nomi è spento: si accende con /mod-sanzioni opzioni memoria.",
+  "nomi_nessun_cambio": "Nessun cambio di nome registrato per questa persona.",
+  "nomi_titolo": "Nomi di {nome}",
+  "opzioni_memoria_stato": "Storico dei nomi: {nomi}. Soprannome e mute vocale a chi rientra: {persistenza}."
 }

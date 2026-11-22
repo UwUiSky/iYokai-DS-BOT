@@ -849,6 +849,51 @@ class ModerationRepository:
             "DELETE FROM moderation_quarantena WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
         )
 
+    # ---- MOD-103: storico dei nomi
+    async def registra_nome(
+        self, guild_id: int, user_id: int, tipo: str, prima: str | None, dopo: str | None, tetto: int = 30
+    ) -> None:
+        """Una riga per cambio; per persona se ne tengono al massimo `tetto` (le più nuove)."""
+        await self._pool.execute(
+            "INSERT INTO moderation_nomi (guild_id, user_id, tipo, prima, dopo) VALUES ($1, $2, $3, $4, $5)",
+            guild_id, user_id, tipo, (prima or None) and prima[:100], (dopo or None) and dopo[:100],
+        )
+        await self._pool.execute(
+            "DELETE FROM moderation_nomi WHERE id IN (SELECT id FROM moderation_nomi WHERE guild_id = $1 AND user_id = $2 "
+            "ORDER BY quando DESC, id DESC OFFSET $3)", guild_id, user_id, tetto,
+        )
+
+    async def elenco_nomi(self, guild_id: int, user_id: int, limite: int = 25) -> list[dict]:
+        righe = await self._pool.fetch(
+            "SELECT tipo, prima, dopo, quando FROM moderation_nomi WHERE guild_id = $1 AND user_id = $2 "
+            "ORDER BY quando DESC, id DESC LIMIT $3", guild_id, user_id, limite,
+        )
+        return [dict(r) for r in righe]
+
+    # ---- MOD-104: soprannome e mute vocale per chi rientra
+    async def salva_persistenza(self, guild_id: int, user_id: int, nick: str | None, mute: bool, deaf: bool) -> None:
+        if not nick and not mute and not deaf:
+            await self._pool.execute(
+                "DELETE FROM moderation_persistenza WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
+            )
+            return
+        await self._pool.execute(
+            "INSERT INTO moderation_persistenza (guild_id, user_id, nick, mute, deaf) VALUES ($1, $2, $3, $4, $5) "
+            "ON CONFLICT (guild_id, user_id) DO UPDATE SET nick = $3, mute = $4, deaf = $5, quando = NOW()",
+            guild_id, user_id, nick, mute, deaf,
+        )
+
+    async def leggi_persistenza(self, guild_id: int, user_id: int) -> dict | None:
+        r = await self._pool.fetchrow(
+            "SELECT nick, mute, deaf FROM moderation_persistenza WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
+        )
+        return dict(r) if r else None
+
+    async def togli_persistenza(self, guild_id: int, user_id: int) -> None:
+        await self._pool.execute(
+            "DELETE FROM moderation_persistenza WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
+        )
+
     async def save_mute_state(
         self,
         guild_id: int,
