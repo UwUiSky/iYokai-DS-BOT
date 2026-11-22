@@ -1373,7 +1373,7 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
 - **Difetto corretto:** `AllowedMentions(users=[...])` lascia `everyone` e `roles` accesi: sollecito (testo che può venire dall'AI), regole di inattività, benvenuto e richiesta di chiusura ora li spengono.
 - Migrazioni usate: 0770 (opzioni ModMail), 0771 (aspetto pannelli, campi del modulo), 0772 (tieni aperto, questionario, log azioni), 0773 (riassunto AI).
 
-## D105 — Controllo delle aree backup/restore (#121) e AI (#132), giro r2bkp, 22/11/2026, opzione prudente, da confermare dall'owner
+## D108 — Controllo delle aree backup/restore (#121) e AI (#132), giro r2bkp, 22/11/2026, opzione prudente, da confermare dall'owner
 
 - **BKP-022 (raccolta pubblica di modelli con categorie, ricerca, lingua, voti):** nel bot ci sono tre modelli pronti (Comunità, Gioco, Studio) e i modelli propri con codice; si usano anche modelli di Discord (nome, codice o link `discord.new`). La raccolta pubblica con ricerca e voti vive nel pannello web e non è fatta: serve una pagina del pannello (dev-web), che oggi non ha una sezione backup.
 - **BKP-023 (pubblicare un modello con revisione prima che compaia):** non si fa nel bot. Un codice condivisibile c'è già (`/admin-backup modello pubblica`), ma la revisione dell'owner prima della pubblicazione richiede la pagina del pannello (stesso motivo di BKP-022).

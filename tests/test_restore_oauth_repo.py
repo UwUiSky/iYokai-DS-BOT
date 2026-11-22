@@ -203,7 +203,7 @@ async def test_save_token_su_utente_kickato_lo_riporta_attivo(repo):
 @pytest.mark.asyncio
 # BKP-040
 async def test_il_ripristino_non_raccoglie_indirizzi_ip(clean_db):
-    """BKP-040: nessuna colonna di IP o paese nelle tabelle di restore e backup (D105: regole per paese/VPN restano alla verifica)."""
+    """BKP-040: nessuna colonna di IP o paese nelle tabelle di restore e backup (D108: regole per paese/VPN restano alla verifica)."""
     colonne = await clean_db.fetch(
         "SELECT table_name, column_name FROM information_schema.columns "
         "WHERE table_schema = 'public' AND (table_name LIKE 'restore\\_%' OR table_name LIKE 'backup\\_%')"

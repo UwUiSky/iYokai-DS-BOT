@@ -8,7 +8,7 @@
   e suite completa dell'orchestratore (migrazioni 0420-0429, main.py e user_app_bot toccati).
 
 ## Fatto
-- r2bkp (22/11): `/assistente scrivi` (AI-001), `/admin-ai interruttore` + `ai_config.funzioni_spente` (AI-017, 0812, `interruttore_di` in `ai_testi_logic`), `ripulisci` per l'immagine generata (AI-004). Dettagli: CONTROLLO_AREE_CHIUSE, D105.
+- r2bkp (22/11): `/assistente scrivi` (AI-001), `/admin-ai interruttore` + `ai_config.funzioni_spente` (AI-017, 0812, `interruttore_di` in `ai_testi_logic`), `ripulisci` per l'immagine generata (AI-004). Dettagli: CONTROLLO_AREE_CHIUSE, D108.
 - r142voce: saluto vocale all'apertura del ticket (`AiVoceCog.saluto_ticket`, `core/voice_ticket_logic.py`, aggancio `_saluto_vocale` in tickets.py). Resto di #142 nell'issue.
 - r12: assistente, boss, dungeon, misteri, spirito, tema/nomi a tema, segnalazioni, `/ai staff`, ricerca web, riepilogo
   a orario e avvisi, ticket AI (bottone, prima risposta, risposte standard durevoli), voce (`cogs/ai/voce.py`,

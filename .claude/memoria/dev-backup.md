@@ -9,7 +9,7 @@ Giro r10 chiuso: tutte le voci SPEC §11 `[x]` (11.1–11.17). Da fare dopo, in 
 2. #113 iYokai Mod (serve l'owner). 3. Revisione del cacciatore-bug sul giro r10.
 
 ## Fatto
-- r2bkp (22/11, #121/#132): controllo delle 23+5 voci in `revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.md`; realizzate BKP-002/006/007/008/020/021/022(pronti)/028, AI-001/004/017; D105 per BKP-022/023/039/040/041, AI-003, AI-010. Ruoli nuovi pericolosi solo se carica l'owner. `lista copia:N` fa da info (admin-backup è a 18 figli).
+- r2bkp (22/11, #121/#132): controllo delle 23+5 voci in `revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.md`; realizzate BKP-002/006/007/008/020/021/022(pronti)/028, AI-001/004/017; D108 per BKP-022/023/039/040/041, AI-003, AI-010. Ruoli nuovi pericolosi solo se carica l'owner. `lista copia:N` fa da info (admin-backup è a 18 figli).
 - r10 (27/10): espressioni senza doppioni, permesso, tetto suoni per boost (11.5-7); forum+stage, riuso sui campi diversi,
   spostamento di categoria (11.4); aggiornamento ogni 6 ore in `backup_queue_worker`, 0320 (11.17); mirror con coda per
   canale e file (11.9); promuovi al livello di carica e mirror tolto (11.13); webhook con immagine (11.8).
