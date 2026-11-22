@@ -24,6 +24,28 @@ class ImmagineNonValida(ValueError):
     pass
 
 
+MAX_BYTES_INVIO = int(9.5 * 1024 * 1024)  # D74: file inviati sotto 9,5 MiB
+
+
+def ripulisci(dati: bytes) -> bytes:
+    """
+    AI-004: l'immagine generata si controlla DOPO (è davvero un'immagine, pixel entro il limite) e si
+    ricodifica in PNG dai soli pixel (via ogni metadato). Sopra 9,5 MiB non si manda.
+    """
+    try:
+        img = safe_open_image(dati, max_side=MAX_LATO)
+    except ImmagineTroppoGrande as exc:
+        raise ImmagineNonValida("Immagine troppo grande.") from exc
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
+        raise ImmagineNonValida("Il file non è un'immagine leggibile.") from exc
+    img = img.convert("RGBA" if "A" in img.getbands() else "RGB")
+    uscita = io.BytesIO()
+    img.save(uscita, format="PNG", optimize=True)
+    if uscita.tell() > MAX_BYTES_INVIO:
+        raise ImmagineNonValida("Immagine troppo pesante da mandare.")
+    return uscita.getvalue()
+
+
 def ingrandisci(dati: bytes, fattore: int = 2) -> tuple[bytes, str]:
     """
     (byte, estensione). Lavoro pesante per la CPU: dai cog si chiama in un thread. Ingrandisce di `fattore` (senza superare MAX_LATO per lato),

@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 18:39 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 01:39 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 1043 commands in 51 categories.**
+**Total: 1047 commands in 51 categories.**
 
 ## Admin: AI
 
@@ -16,6 +16,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 18:3
 - **`/admin-ai dungeon stories`** — How many dungeon stories are ready for the server theme.
 - **`/admin-ai enable`** — Turns the AI on or off in the server (consent required).
 - **`/admin-ai features`** — Turns on automatic features: reply to mentions, flags.
+- **`/admin-ai interruttore`** — Turns one AI feature off or on, one by one.
 - **`/admin-ai knowledge add`** — Adds an entry to the knowledge base.
 - **`/admin-ai knowledge list`** — The knowledge base entries.
 - **`/admin-ai knowledge remove`** — Removes an entry from the knowledge base.
@@ -147,10 +148,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 18:3
 - **`/admin-backup copy channel`** — Copies a channel with its permissions; a category with its channels.
 - **`/admin-backup copy role`** — Copies a role with its permissions and, optionally, its channel permissions.
 - **`/admin-backup create`** — Prepares the backup: link code and link for the new server.
-- **`/admin-backup delete`** — Deletes a saved copy.
+- **`/admin-backup delete`** — Deletes a saved copy, or all of them (with confirmation).
 - **`/admin-backup export`** — Exports structure, channels, roles, bans or reactions to a file.
 - **`/admin-backup import`** — Imports the structure from a JSON file, picking what to apply.
-- **`/admin-backup list`** — The saved copies of this server, with their date.
+- **`/admin-backup list`** — The saved copies, with their date; with a number, what a copy contains.
 - **`/admin-backup load`** — Loads a saved copy into this server, picking the parts.
 - **`/admin-backup log`** — Who used backups, templates and syncs (last 20, 365 days).
 - **`/admin-backup main`** — Registers this server as 'main' for the Backup System.
@@ -159,7 +160,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 18:3
 - **`/admin-backup restore users`** — Restores into THIS server the users of another server's latest snapshot.
 - **`/admin-backup save`** — Saves a dated copy of this server structure.
 - **`/admin-backup status`** — Progress of the latest load in this server.
-- **`/admin-backup template`** — Templates: share a copy with a code or load another server one.
+- **`/admin-backup template`** — Templates: ready-made, yours or Discord ones. List, card, use and share.
 
 ## Admin: welcome
 
@@ -708,6 +709,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 18:3
 - **`/assistant summarize`** — Summary of the latest messages of a channel.
 - **`/assistant translate`** — Translates a text into the language you choose.
 - **`/assistant upscale`** — Upscales and cleans up an image you upload.
+- **`/assistant write`** — Writes a text you ask for: a poem, an explanation, an answer.
 
 ## Clan
 
@@ -735,7 +737,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 18:3
 
 ## Founder (server owner)
 
+- **`/founder backup automatico`** — Automatic copies of the structure at intervals.
 - **`/founder backup permissions`** — Who can create and who can load backups (owner only).
+- **`/founder backup sincronia-canali`** — Copies messages between two channels of yours, one way or both.
 - **`/founder backup sync`** — Keeps bans and roles equal with another server of yours.
 - **`/founder moderation immune`** — Roles manual moderation can't touch (owner only).
 

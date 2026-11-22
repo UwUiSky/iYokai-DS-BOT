@@ -1,7 +1,7 @@
 # Memoria di dev-backup
 
 ## Aggiornata
-27/10/2026 · ramo `feat/r10bak` · DB `iyokai_wr10bak` · migrazioni 0190–0192 e 0320 usate (0321–0329 libere)
+22/11/2026 · ramo `feat/r2bkp` · DB `iyokai_w121` · migrazioni 0190–0192, 0320, 0810–0812 usate (0813–0819 libere)
 
 ## In corso
 Giro r10 chiuso: tutte le voci SPEC §11 `[x]` (11.1–11.17). Da fare dopo, in quest'ordine:
@@ -9,6 +9,7 @@ Giro r10 chiuso: tutte le voci SPEC §11 `[x]` (11.1–11.17). Da fare dopo, in 
 2. #113 iYokai Mod (serve l'owner). 3. Revisione del cacciatore-bug sul giro r10.
 
 ## Fatto
+- r2bkp (22/11, #121/#132): controllo delle 23+5 voci in `revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.md`; realizzate BKP-002/006/007/008/020/021/022(pronti)/028, AI-001/004/017; D105 per BKP-022/023/039/040/041, AI-003, AI-010. Ruoli nuovi pericolosi solo se carica l'owner. `lista copia:N` fa da info (admin-backup è a 18 figli).
 - r10 (27/10): espressioni senza doppioni, permesso, tetto suoni per boost (11.5-7); forum+stage, riuso sui campi diversi,
   spostamento di categoria (11.4); aggiornamento ogni 6 ore in `backup_queue_worker`, 0320 (11.17); mirror con coda per
   canale e file (11.9); promuovi al livello di carica e mirror tolto (11.13); webhook con immagine (11.8).
@@ -34,6 +35,8 @@ Giro r10 chiuso: tutte le voci SPEC §11 `[x]` (11.1–11.17). Da fare dopo, in 
 - Aggiornamento continuo: `popola_server_backup(..., con_messaggi=False)`; un test del worker con `popola_server_backup` finto deve accettare `con_messaggi`.
 
 ## Aperto
+- r2bkp: provare live (VERIFICA_LIVE «giro r2bkp»), in particolare la lettura di un vero modello `discord.new` (ruolo @everyone con id 0).
+- Pagina backup nel pannello web (BKP-041/022/023): serve dev-web. `test_repository_callers` fallisce per `ticket_form_repo.risposta_questionario` (non mio).
 - Giri r7 e r10 da provare live (VERIFICA_LIVE).
 - La proposta di consenso in DM (verifica a reazione) usa una View non persistente: dopo un riavvio i bottoni non rispondono (15 minuti).
 - Chat salvate: nome, avatar e testo dei messaggi dentro `backup_strutture.dati`: la cancellazione per utente (NF-04) non li tocca, vanno via con la copia o col server (nota nel registro dati).

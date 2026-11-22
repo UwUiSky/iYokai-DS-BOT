@@ -161,3 +161,17 @@ async def imposta_canali_spenti(guild_id: int, ids: list[int], validi: set[int])
     scelti = tuple(dict.fromkeys(i for i in ids if i in validi))[:MAX_CANALI_SPENTI]
     await ai_repo.imposta(guild_id, canali_spenti=scelti)
     return scelti
+
+
+async def imposta_interruttore(guild_id: int, nome: str, acceso: bool) -> tuple[str, ...]:
+    """AI-017: accende o spegne una funzione AI del server (comandi e pannello web). Restituisce le spente."""
+    from core.ai_testi_logic import INTERRUTTORI
+    from core.repositories.ai_repo import ai_repo
+
+    if nome not in INTERRUTTORI:
+        raise ImpostazioneNonValida(f"La funzione «{nome}» non ha un interruttore.")
+    spente = set((await ai_repo.get_config(guild_id)).funzioni_spente)
+    spente.discard(nome) if acceso else spente.add(nome)
+    scelte = tuple(sorted(spente))
+    await ai_repo.imposta(guild_id, funzioni_spente=scelte)
+    return scelte

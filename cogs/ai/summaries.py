@@ -4,7 +4,7 @@ cogs/ai/summaries.py
 `/assistente riassumi` (ultimi messaggi di un canale), `/assistente spiega`
 (un messaggio dato con il suo link), `/assistente stile` (un messaggio nuovo
 scritto come scrivi tu, dai tuoi messaggi del canale, o come un'altra persona che l'ha permesso).
-Funzioni coperte: SPEC §25.6, §25.36, §25.88 (AI-R-043, AI-R-038, AI-R-095; catalogo AI-024)
+Funzioni coperte: SPEC §25.6, §25.36, §25.88 (AI-R-043, AI-R-038, AI-R-095; catalogo AI-024, AI-001)
 
 Senza AI: riassumi mostra i numeri del canale (messaggi, persone, le più attive).
 "Nello stile di un utente" (AI-024) usa i messaggi di chi lo chiede, o di un'altra persona solo se
@@ -92,6 +92,26 @@ class AiRiassuntiCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(
             embed=embed_risposta(f"Riassunto di #{canale.name}", risposta.testo, da_cache=risposta.da_cache),
             ephemeral=True,
+        )
+
+    @comando_di_gruppo("assistente", nome="scrivi", descrizione="Scrive un testo che chiedi: una poesia, una spiegazione, una risposta.")
+    @app_commands.describe(richiesta="Cosa vuoi che scriva", privato="Sì: solo tu vedi la risposta")
+    @richiede_ai()
+    async def scrivi(
+        self, interaction: discord.Interaction, richiesta: app_commands.Range[str, 3, 500], privato: bool = False
+    ) -> None:
+        """AI-001: testo a richiesta, dalla porta unica dell'AI (consenso, quote, filtri); mai menzioni vere."""
+        await interaction.response.defer(ephemeral=privato)
+        risposta, locale = await chiedi(richiesta_da(
+            interaction, "scrivi", "testo", richiesta, istruzioni=ISTRUZIONI["scrivi"],
+            messaggi_utenti=True, lingua=riconosci_lingua(richiesta),
+        ))
+        if risposta is None:
+            await interaction.followup.send(locale, ephemeral=True)
+            return
+        await interaction.followup.send(
+            embed=embed_risposta(richiesta[:100], risposta.testo, da_cache=risposta.da_cache),
+            ephemeral=privato, allowed_mentions=NESSUNA_MENZIONE,
         )
 
     @comando_di_gruppo("assistente", nome="spiega", descrizione="Spiega in parole semplici un messaggio (dal suo link).")

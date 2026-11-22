@@ -70,7 +70,32 @@ def nome_lingua(codice: str) -> str:
 
 
 # ---------------------------------------------------------------- istruzioni per funzione
+# AI-017: le funzioni che un admin può spegnere una per una (nome dell'interruttore -> prefissi delle funzioni).
+INTERRUTTORI: dict[str, tuple[str, ...]] = {
+    "scrivi": ("scrivi",),
+    "chiedi": ("chiedi", "app_assistente"),
+    "traduci": ("traduci", "vocale_traduci", "vocale_persona_traduci"),
+    "riassumi": ("riassumi", "riepilogo_", "incidente_riassunto"),
+    "spiega": ("spiega",),
+    "stile": ("stile",),
+    "immagina": ("immagina",),
+    "ricerca": ("ricerca_web",),
+    "ticket": ("ticket_", "segnalazione_"),
+    "giochi": ("dungeon_", "boss_", "frammenti_", "misteri", "stanza", "room"),
+}
+
+
+def interruttore_di(funzione: str) -> str | None:
+    """L'interruttore che comanda una funzione AI; None se la funzione non ne ha (resta sempre accesa)."""
+    for nome, prefissi in INTERRUTTORI.items():
+        if any(funzione == p or (p.endswith("_") and funzione.startswith(p)) for p in prefissi):
+            return nome
+    return None
+
+
 ISTRUZIONI: dict[str, str] = {
+    "scrivi": "Scrivi il testo che la persona chiede (una poesia, una spiegazione, una risposta) in modo chiaro, "
+    "in meno di 1500 caratteri. Non dare consigli medici o legali e non scrivere contenuti vietati da Discord.",
     "chiedi": "Aiuta l'utente a usare il bot. Usa SOLO i comandi dell'elenco. Proponi al massimo 3 comandi, "
     "ognuno su una riga che comincia con il percorso esatto tra barre, es. /mod-sanzioni timeout. Se la richiesta "
     "è un'azione (es. 'metti in timeout Mario 10 minuti'), indica il comando e i valori da inserire.",

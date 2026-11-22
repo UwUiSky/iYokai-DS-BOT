@@ -61,6 +61,7 @@ async def test_attiva_chiede_il_consenso_poi_accende(repo):
     assert not (await repo.get_config(G)).attivo
 
 
+# AI-010
 async def test_limiti_privacy_lore_vietate(repo):
     _usa(repo)
     cog = cfg_mod.AiConfigCog(bot=None)
@@ -100,6 +101,7 @@ async def test_traduci_con_ai(repo):
     assert "inglese" in trasporto.chiamate[0][1][0]["content"]
 
 
+# AI-004
 async def test_immagina_con_bottoni_e_ingrandisci(repo):
     _usa(repo, fornitori=[fornitore("img", tipi=("immagine",))])
     await repo.registra_consenso(G, U, True)
@@ -365,3 +367,70 @@ async def test_canale_con_cento_spenti_rifiuta_invece_di_perderne_uno(repo):
     await cog.canale.callback(cog, i, canali[100], False)
     assert "100" in i.response.send_message.call_args.args[0]
     assert (await repo.get_config(G)).canali_spenti == tuple(c.id for c in canali[:100])
+
+
+async def test_scrivi_testo_a_richiesta_senza_menzioni_e_solo_con_consenso(repo):
+    """AI-001: `/assistente scrivi` passa dalla porta unica; con la funzione spenta o senza consenso non scrive."""
+    trasporto = _usa(repo, risposte={"alfa": "Una poesia per @everyone"})
+    await repo.registra_consenso(G, U, True)
+    cog = summaries.AiRiassuntiCog(bot=None)
+    i = _inter()
+    await cog.scrivi.callback(cog, i, "una poesia sulla luna", False)
+    invio = i.followup.send.call_args
+    assert "poesia" in invio.kwargs["embed"].description and invio.kwargs["allowed_mentions"].everyone is False
+    assert "una poesia sulla luna" in str(trasporto.chiamate[0][1][-1]["content"])
+    assert "scrivi" in trasporto.chiamate[0][1][0]["content"].lower() or "poesia" in trasporto.chiamate[0][1][0]["content"].lower()
+    await repo.registra_consenso(G, U, False)
+    i = _inter()
+    await cog.scrivi.callback(cog, i, "una poesia sulla luna", True)
+    assert "embed" not in i.followup.send.call_args.kwargs
+
+
+async def test_interruttore_spegne_una_funzione_per_volta(repo):
+    """AI-017: ogni funzione si spegne da sola; le altre restano accese; la porta unica lo rispetta."""
+    trasporto = _usa(repo)
+    await repo.registra_consenso(G, U, True)
+    cfg = cfg_mod.AiConfigCog(bot=None)
+    i = _inter()
+    await cfg.interruttore.callback(cfg, i, "scrivi", False)
+    assert (await repo.get_config(G)).funzioni_spente == ("scrivi",)
+    scr = summaries.AiRiassuntiCog(bot=None)
+    i = _inter()
+    await scr.scrivi.callback(scr, i, "una poesia sulla luna", False)
+    assert "spenta in questo server" in i.followup.send.call_args.args[0]
+    assert trasporto.chiamate == []
+    tr = traduzione.AiTraduzioneCog(bot=None)
+    i = _inter()
+    await tr.traduci.callback(tr, i, "ciao", "en")
+    assert trasporto.chiamate  # la traduzione resta accesa
+    await cfg.interruttore.callback(cfg, _inter(), "scrivi", True)
+    assert (await repo.get_config(G)).funzioni_spente == ()
+    i = _inter()
+    await cfg.interruttore.callback(cfg, i, "inesistente", False)
+    assert "non ha un interruttore" in i.response.send_message.call_args.args[0]
+
+
+async def test_immagine_generata_non_valida_non_si_manda(repo):
+    """AI-004: se il servizio restituisce byte che non sono un'immagine, non si invia nulla di quel file."""
+    _usa(repo, fornitori=[fornitore("img", tipi=("immagine",))])
+    await repo.registra_consenso(G, U, True)
+    import tests.support.ai_finto as finto
+
+    finto.PNG_1X1, originale = b"<html>non un'immagine</html>", finto.PNG_1X1
+    try:
+        servizio, trasporto = servizio_finto(repo, fornitori=[fornitore("img", tipi=("immagine",))],
+                                             trasporto=TrasportoFinto())
+
+        async def immagine(f, prompt):
+            from core.ai_providers import EsitoChiamata
+            return EsitoChiamata(immagine=b"<html>non un'immagine</html>")
+
+        trasporto.immagine = immagine
+        imposta_servizio_ai(servizio)
+        cog = images.AiImmaginiCog(bot=None)
+        i = _inter()
+        await cog.immagina.callback(cog, i, "un gatto")
+        invio = i.followup.send.call_args
+        assert "file" not in invio.kwargs and "valida" in invio.args[0]
+    finally:
+        finto.PNG_1X1 = originale
