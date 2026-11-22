@@ -762,6 +762,13 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonne_attore=("created_by",), colonna_server="guild_id",
        nota="i dati possono contenere ID di utenti (ban e membri, se scelti) e, nelle chat salvate, nome, avatar e testo "
             "dei messaggi: vanno via con il server o con la copia; i modelli si pubblicano senza ban e membri, mai le chat"),
+    _t("backup_automatici", "Copie automatiche della struttura: ogni quante ore e quante tenerne (BKP-008)",
+       colonne_attore=("created_by",), colonna_server="guild_id",
+       nota="le copie fatte stanno in backup_strutture; qui solo l'impostazione"),
+    _t("backup_sincronia_canali", "Canali in sincronia di messaggi, con l'indirizzo del webhook (BKP-028)",
+       colonne_attore=("created_by",), colonna_server="guild_da",
+       dopo_purga_server="DELETE FROM backup_sincronia_canali WHERE guild_a = $1",
+       nota="la riga appartiene a entrambi i server; l'indirizzo del webhook è un segreto: mai in log né messaggi"),
     _t("backup_caricamenti", "Stato dei caricamenti di un backup (BKP-009/010)",
        colonne_attore=("created_by",), colonna_server="guild_id",
        scadenza=Scadenza("creato_il", 30), nota="serve solo a seguire e annullare il caricamento"),

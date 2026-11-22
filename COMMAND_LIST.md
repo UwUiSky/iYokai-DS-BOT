@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 18:39 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:39 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 1043 comandi in 51 categorie.**
+**Totale: 1047 comandi in 51 categorie.**
 
 ## Admin: AI
 
@@ -17,6 +17,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 18:
 - **`/admin-ai dungeon avvia`** — Avvia un dungeon di gruppo in un canale.
 - **`/admin-ai dungeon storie`** — Quante storie di dungeon ci sono pronte per il tema del server.
 - **`/admin-ai funzioni`** — Accende le funzioni automatiche: risposta alla menzione, bandiere.
+- **`/admin-ai interruttore`** — Spegne o riaccende una funzione dell'AI, una per una.
 - **`/admin-ai limiti`** — Tetto di spesa e quote: per utente, funzione, immagini.
 - **`/admin-ai lore`** — Tono e ambientazione del server per ogni testo dell'AI.
 - **`/admin-ai mistero crea`** — Nasconde un mistero con un codice e un premio per il server.
@@ -148,12 +149,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 18:
 - **`/admin-backup copia canale`** — Copia un canale con i permessi; una categoria con i suoi canali.
 - **`/admin-backup copia ruolo`** — Copia un ruolo con i permessi e, a scelta, i permessi nei canali.
 - **`/admin-backup crea`** — Prepara il backup: codice di collegamento e link per il nuovo server.
-- **`/admin-backup elimina`** — Elimina una copia salvata.
+- **`/admin-backup elimina`** — Elimina una copia salvata, o tutte (con conferma).
 - **`/admin-backup esporta`** — Esporta struttura, canali, ruoli, ban o reazioni in un file.
 - **`/admin-backup importa`** — Importa la struttura da un file JSON, scegliendo cosa applicare.
-- **`/admin-backup lista`** — Le copie salvate di questo server, con la data.
+- **`/admin-backup lista`** — Le copie salvate, con la data; con un numero, cosa contiene una copia.
 - **`/admin-backup main`** — Registra questo server come 'main' per il Backup System.
-- **`/admin-backup modello`** — Modelli: condividi una copia con un codice o carica quella di un altro server.
+- **`/admin-backup modello`** — Modelli: pronti, tuoi o di Discord. Elenco, scheda, uso e condivisione.
 - **`/admin-backup promuovi`** — Promuove QUESTO server (finora backup) a nuovo main, se il main originale è perso.
 - **`/admin-backup registro`** — Chi ha usato backup, modelli e sincronie (ultimi 20, 365 giorni).
 - **`/admin-backup ripristino modo`** — Scegli come questo server gestisce il restore utenti via OAuth2.
@@ -704,6 +705,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 18:
 - **`/assistente personaggio`** — Parla con un personaggio AI del server.
 - **`/assistente preferenza`** — Le tue scelte sull'AI: risposte per te e stile imitabile dagli altri.
 - **`/assistente riassumi`** — Riassunto degli ultimi messaggi di un canale.
+- **`/assistente scrivi`** — Scrive un testo che chiedi: una poesia, una spiegazione, una risposta.
 - **`/assistente spiega`** — Spiega in parole semplici un messaggio (dal suo link).
 - **`/assistente spirito`** — Il tuo spirito Yokai: cresce con la tua attività.
 - **`/assistente stile`** — Un messaggio nuovo scritto come scrivi tu (o come chi lo permette).
@@ -735,8 +737,10 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 18:
 
 ## Founder (proprietario del server)
 
+- **`/founder backup automatico`** — Copie automatiche della struttura a intervalli.
 - **`/founder backup permessi`** — Chi può creare e chi può caricare i backup (solo l'owner).
 - **`/founder backup sincronia`** — Tieni uguali ban e ruoli con un altro tuo server.
+- **`/founder backup sincronia-canali`** — Copia i messaggi tra due canali tuoi, in una o in due direzioni.
 - **`/founder moderazione immuni`** — Ruoli che la moderazione manuale non tocca (solo il proprietario).
 
 ## Divertimento

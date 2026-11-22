@@ -115,6 +115,7 @@ async def _nessuna_pausa(_s):
 
 
 # ---------------------------------------------------------------- lettura
+# BKP-001
 def test_lettura_salta_canali_offuscati_ruoli_gestiti_e_mappa_i_permessi_per_nome():
     staff = fake_role(5, "Staff", position=3)
     staff.colour, staff.hoist, staff.mentionable = discord.Colour(0xFF0000), True, False
@@ -167,6 +168,7 @@ def test_solo_immagini_di_discord():
 
 
 # ---------------------------------------------------------------- caricamento
+# BKP-003
 async def test_caricamento_riusa_per_nome_e_adatta_il_bitrate():
     esistente = fake_role(5, "Staff", position=1)
     cat = _Cat(10, "Info")
@@ -246,6 +248,7 @@ async def test_membri_ruoli_sopra_il_bot_non_si_danno():
     assert r.riusati == 1 and r.saltati == 1
 
 
+# BKP-004
 def test_parti_presenti_e_passi():
     dati = {"versione": 1, "ruoli": [{}], "canali": [{}, {}], "categorie": [{}], "ban": []}
     assert st.parti_presenti(dati) == ["ruoli", "canali"]
@@ -321,6 +324,7 @@ async def test_registro(repo):
     json.dumps([str(r) for r in righe])
 
 
+# BKP-011
 async def test_messaggi_ricaricati_solo_nei_canali_vuoti_con_lo_stesso_nome(monkeypatch):
     from core import backup_messages_logic as bm
 
@@ -359,6 +363,7 @@ async def test_messaggi_ricaricati_solo_nei_canali_vuoti_con_lo_stesso_nome(monk
 
 
 # ---------------------------------------------------------------- file da fuori
+# BKP-037
 def test_file_con_tipi_sbagliati_si_rifiuta_prima_di_toccare_il_server():
     """Ogni campo letto dal Caricatore ha il tipo giusto: niente errori a metà caricamento."""
     casi = [
@@ -455,3 +460,37 @@ async def test_admin_non_tocca_ruoli_pari_o_sopra_il_suo():
     g2 = _Guild(ruoli=[fake_role(6, "Capo", position=20)])
     await st.Caricatore(g2, {"versione": 1, "ruoli": [{"nome": "Capo", "permessi": voluti}]}, {"ruoli"}).esegui()
     g2.roles[1].edit.assert_awaited()
+
+
+async def test_ruolo_nuovo_con_permessi_pericolosi_nasce_senza_se_non_carica_l_owner():
+    """BKP-003: solo l'owner conferma ruoli con admin o gestione; chi ha un tetto li crea senza."""
+    pericolosi = discord.Permissions(administrator=True, send_messages=True).value
+    dati = {"versione": 1, "ruoli": [{"nome": "Capo", "permessi": pericolosi}]}
+    g = _Guild()
+    r = await st.Caricatore(g, dati, {"ruoli"}, tetto=fake_role(7, "Mod", position=10)).esegui()
+    creato = [x for x in g.roles if x.name == "Capo"][0]
+    assert not creato.permissions.administrator and creato.permissions.send_messages
+    assert any("pericolosi" in n for n in r.note)
+    g2 = _Guild()
+    await st.Caricatore(g2, dati, {"ruoli"}, tetto=None).esegui()
+    assert [x for x in g2.roles if x.name == "Capo"][0].permissions.administrator
+
+
+async def test_ruolo_esistente_pericoloso_non_si_da_ai_membri_da_chi_non_e_owner():
+    """BKP-014: un file non fa avere admin a un membro tramite un ruolo già esistente."""
+    admin = fake_role(5, "Admin", position=1, permissions=discord.Permissions(administrator=True))
+    g = _Guild(ruoli=[admin])
+    dati_ricevuti = []
+
+    class _M:
+        roles = []
+        top_role = fake_role(3, "x", position=0)
+        nick = None
+
+        async def add_roles(self, *r, **kw):
+            dati_ricevuti.extend(x.name for x in r)
+
+    g.membri = {9: _M()}
+    dati = {"versione": 1, "membri": [{"user_id": 9, "nick": None, "ruoli": ["Admin"]}]}
+    await st.Caricatore(g, dati, {"membri"}, pausa=_nessuna_pausa, tetto=fake_role(7, "Mod", position=10)).esegui()
+    assert dati_ricevuti == []

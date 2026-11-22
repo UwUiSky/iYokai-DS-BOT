@@ -1259,7 +1259,11 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   `chat-carica` anche in un altro canale (BKP-026/027); `copia-canale` e
   `copia-ruolo` (BKP-024/025). Logica in `core/backup_struttura_logic.py`,
   `core/backup_messages_logic.py`, `core/backup_copia_logic.py`
-- `[x]` 11.16 Modelli e sincronia (§23, NF-39, 15/10): `/admin-backup modello`
+  → **Stato 22/11 (r2bkp):** `lista copia:N` mostra il contenuto (BKP-006); `elimina` chiede conferma e ha
+  `tutte` (BKP-007); `/founder backup automatico` fa copie ogni 4-168 ore, 1-8 tenute (BKP-008, 0810,
+  `core/backup_automatico_logic.py`); `salva thread:Sì` e parte «thread» nel caricamento (BKP-002); un ruolo nuovo
+  con permessi pericolosi nasce senza se non carica l'owner
+- `[x]` 11.16 Modelli e sincronia (§23, NF-39, 15/10; 22/11 r2bkp: modelli pronti, elenco, scheda e uso da nome, codice o link discord.new, BKP-020/021/022, `core/backup_modelli_logic.py`; `/founder backup sincronia-canali`, BKP-028, 0811): `/admin-backup modello`
   pubblica una copia con un codice (senza ban, membri, messaggi e permessi
   dei singoli; mai una chat) e la carica in un altro server;
   `/founder backup sincronia` tiene uguali ban e ruoli (per nome) tra due server
@@ -2382,6 +2386,7 @@ di quel file.
   AI-R-049, AI-R-051)
 - `[x]` 25.8 Generazione di immagini (AI-R-065)
 - `[x]` 25.9 Interruttore per server e per canale (AI-R-017, AI-R-019)
+  → **Stato 22/11 (r2bkp):** `/admin-ai interruttore` spegne una funzione per volta (AI-017, `ai_config.funzioni_spente`, 0812, controllo in `ServizioAI.controlla_accesso`); `/assistente scrivi` è il testo a richiesta (AI-001); l'immagine generata si ricontrolla e si ricodifica prima di inviarla (AI-004)
 
 **Motore e infrastruttura**
 

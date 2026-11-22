@@ -1878,3 +1878,15 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - `admin-ticket log` (azioni accese una a una, canale scelto), `stats dettagli`, `/ticket tieni-aperto`, `/ticket pronta`.
 - ModMail: `modmail opzioni` (anonimo predefinito, inoltra tutto con `//` come nota, conferma disattivabile).
 - Riassunto AI alla chiusura: `/admin-ai staff riassunto-ticket` (serve l'AI accesa).
+
+## Backup e AI — giro r2bkp (#121, #132)
+
+- [ ] BKP-003 permessi — un admin non owner (livello «Gli admin creano e caricano») carica una copia con un ruolo nuovo che ha «Amministratore». Risultato atteso: il ruolo nasce senza «Amministratore» e il riepilogo lo dice; se carica l'owner il ruolo lo ha.
+- [ ] BKP-006/007 — `/admin-backup lista copia:1` mostra i conteggi; `/admin-backup elimina copia:1` chiede conferma (bottone solo per chi l'ha chiesto); `elimina tutte:Sì` toglie ogni copia dopo il clic.
+- [ ] BKP-008 — `/founder backup automatico ore:4 copie:2`; con `ultimo` portato indietro nel database (o dopo 4 ore) compare una copia «auto …» (⏱️ in `lista`); alla terza la più vecchia automatica sparisce, le copie a mano restano.
+- [ ] BKP-002 — `/admin-backup salva thread:Sì` in un server con un forum e un thread archiviato; `/admin-backup carica` scegliendo «Thread e post dei forum» in un server vuoto con gli stessi canali. Risultato atteso: i post e i thread tornano senza doppioni, il primo messaggio del post è senza menzioni vere.
+- [ ] BKP-020/021 — `/admin-backup modello azione:Elenco`, poi `Scheda` con `gioco`, poi `Usa` con un vero link `discord.new/…`. Risultato atteso: il modello di Discord si legge (ruoli, canali, categorie) e il menu delle parti compare.
+- [ ] BKP-028 — owner di due server: `/founder backup sincronia-canali azione:Attiva canale:#a altro_canale:<ID di #b> direzione:In tutte e due le direzioni`. Scrivi in #a: il messaggio compare in #b con nome e avatar; il messaggio copiato non torna in #a. `Disattiva` ferma tutto.
+- [ ] AI-001 — `/assistente scrivi richiesta:una poesia sulla luna`. Risultato atteso: risposta con avviso «Scritto dall'AI», nessuna menzione vera anche se il testo contiene @everyone.
+- [ ] AI-017 — `/admin-ai interruttore funzione:scrivi acceso:No`, poi `/assistente scrivi`: risposta «funzione spenta»; `/assistente traduci` continua a funzionare.
+- [ ] AI-004 — `/assistente immagina` con un fornitore vero: l'immagine arriva come PNG sotto 9,5 MiB.

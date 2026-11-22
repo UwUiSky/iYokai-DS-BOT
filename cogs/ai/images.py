@@ -21,7 +21,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from cogs.ai._comune import MODULO_AI, SOTTO_AI, chiedi, registra_modulo_ai, richiesta_da
-from core.ai_immagini_logic import ImmagineNonValida, ingrandisci
+from core.ai_immagini_logic import ImmagineNonValida, ingrandisci, ripulisci
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.premium import requires_module
 from core.safe_image import MAX_IMAGE_BYTES, run_image_task
@@ -78,12 +78,17 @@ async def genera(interaction: discord.Interaction, prompt: str, variante: int = 
     if risposta is None or not risposta.immagine:
         await interaction.followup.send(locale or "Il servizio non ha restituito un'immagine.", ephemeral=True)
         return
+    try:
+        immagine = await run_image_task(ripulisci, risposta.immagine)  # AI-004: controllo dopo la generazione
+    except ImmagineNonValida:
+        await interaction.followup.send("Il servizio non ha restituito un'immagine valida.", ephemeral=True)
+        return
     embed = discord.Embed(description=prompt[:300], color=discord.Color.blurple())
     embed.set_image(url="attachment://immagine.png")
     embed.set_footer(text="Immagine generata dall'AI")
     await interaction.followup.send(
-        embed=embed, file=discord.File(io.BytesIO(risposta.immagine), filename="immagine.png"),
-        view=_ImmagineView(interaction.user.id, prompt, risposta.immagine, variante),
+        embed=embed, file=discord.File(io.BytesIO(immagine), filename="immagine.png"),
+        view=_ImmagineView(interaction.user.id, prompt, immagine, variante),
     )
 
 

@@ -117,6 +117,7 @@ class _Dest:
 
 
 @pytest.mark.asyncio
+# BKP-001
 async def test_forum_e_stage_si_creano_con_etichette():
     forum = _Forum(1, "idee", tags=[_Tag("bug", True), _Tag("novità")], topic="Proposte")
     stage = _Stage(2, "Assemblea")

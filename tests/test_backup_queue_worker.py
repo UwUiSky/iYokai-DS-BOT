@@ -101,6 +101,7 @@ async def test_tick_senza_job_non_fa_nulla(database_e_repo, monkeypatch):
 
 
 @pytest.mark.asyncio
+# BKP-001
 async def test_tick_copia_sul_server_del_creator_e_notifica(database_e_repo, monkeypatch):
     _database, repo, mirror_repo = database_e_repo
     import core.backup_queue_worker as worker_module

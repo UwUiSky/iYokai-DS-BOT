@@ -42,6 +42,7 @@ async def test_senza_fornitori_non_configurata(repo):
     assert errore.motivo == "non_configurata" and ".env" in errore.testo
 
 
+# AI-017
 async def test_spenta_finche_non_ce_il_consenso(repo):
     servizio, trasporto = servizio_finto(repo)
     assert await _motivo(servizio, _r()) == "spenta"
@@ -52,6 +53,7 @@ async def test_spenta_finche_non_ce_il_consenso(repo):
     assert len(trasporto.chiamate) == 1
 
 
+# AI-017
 async def test_canale_spento_e_privacy(repo):
     servizio, _ = servizio_finto(repo)
     await repo.registra_consenso(G, U, True)
@@ -116,6 +118,7 @@ async def test_tetto_zero_solo_fornitori_gratuiti(repo):
     assert (await servizio.richiedi(_r())).fornitore == "costa"
 
 
+# AI-010
 async def test_lore_e_dati_personali(repo):
     servizio, trasporto = servizio_finto(repo)
     await repo.registra_consenso(G, U, True)
@@ -158,6 +161,7 @@ async def test_memoria_corta_con_scadenza(repo):
     assert not memoria.leggi(conv, 0, ora=1)
 
 
+# AI-003
 async def test_dm_senza_server_solo_gratuiti(repo):
     servizio, _ = servizio_finto(repo)
     assert (await servizio.richiedi(_r(guild_id=None))).testo == "risposta di alfa"
@@ -305,6 +309,7 @@ async def test_chiamata_fallita_libera_il_posto_e_rende_il_credito(repo):
     assert (uso.funzione_oggi, uso.immagini_settimana, uso.immagini_extra) == (1, 1, 1)
 
 
+# AI-003
 async def test_modulo_premium_non_sbloccato_ferma_anche_le_funzioni_automatiche(repo, monkeypatch):
     """D13: se l'owner rende premium il modulo ai, la porta unica rifiuta anche chiedi e i listener."""
     from core import premium

@@ -41,6 +41,7 @@ class ConfigAI:
     menzione: bool = False
     bandiere: bool = False
     moderazione_canali: tuple[int, ...] = ()
+    funzioni_spente: tuple[str, ...] = ()
     prova_inizio: datetime | None = None
 
     def quote(self) -> Quote:
@@ -52,7 +53,7 @@ class ConfigAI:
 
 
 _CAMPI = {f.name for f in fields(ConfigAI)} - {"guild_id", "consenso_da"}
-_TUPLE = {"canali_spenti", "parole_vietate", "moderazione_canali"}
+_TUPLE = {"canali_spenti", "parole_vietate", "moderazione_canali", "funzioni_spente"}
 
 
 @dataclass(frozen=True)

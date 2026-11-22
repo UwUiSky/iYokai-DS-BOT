@@ -176,6 +176,7 @@ async def test_restore_users_senza_snapshot_avvisa(database, monkeypatch):
 
 
 @pytest.mark.asyncio
+# BKP-038
 async def test_restore_users_senza_coppia_backup_rifiuta(database, monkeypatch):
     """
     SEC-2: senza una coppia main=origine/backup=questo server, il

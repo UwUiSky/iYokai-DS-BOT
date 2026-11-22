@@ -52,7 +52,9 @@ PERMESSI_PERICOLOSI = discord.Permissions(
     kick_members=True, moderate_members=True, manage_webhooks=True, mention_everyone=True,
 ).value
 
-PARTI = ("impostazioni", "ruoli", "canali", "emoji", "messaggi", "ban", "membri")
+PARTI = ("impostazioni", "ruoli", "canali", "emoji", "thread", "messaggi", "ban", "membri")
+MAX_THREAD = 200
+MAX_THREAD_PER_CANALE = 25
 MAX_MESSAGGI_PER_CANALE = 100
 
 _TIPI = {
@@ -147,6 +149,37 @@ async def leggi_ban(guild: discord.Guild, limite: int = MAX_BAN) -> list[dict]:
         {"user_id": voce.user.id, "nome": voce.user.name, "motivo": (voce.reason or "")[:MAX_MOTIVO]}
         async for voce in guild.bans(limit=limite)
     ]
+
+
+async def leggi_thread(guild: discord.Guild) -> list[dict]:
+    """
+    BKP-002: thread pubblici (attivi e archiviati) dei canali di testo, annunci e forum, solo struttura: nome,
+    stato e, per i post dei forum, il primo messaggio. I thread privati non si leggono. Un canale alla volta.
+    """
+    risultato: list[dict] = []
+    canali = [c for c in guild.channels if c.type in (discord.ChannelType.text, discord.ChannelType.news, discord.ChannelType.forum)
+              and c.name != NOME_CANALE_OFFUSCATO]
+    for canale in canali:
+        trovati = {t.id: t for t in getattr(canale, "threads", []) if not t.is_private()}
+        try:
+            async for t in canale.archived_threads(limit=MAX_THREAD_PER_CANALE):
+                trovati.setdefault(t.id, t)
+        except discord.HTTPException:
+            pass  # canale che il bot non legge
+        for t in list(trovati.values())[:MAX_THREAD_PER_CANALE]:
+            if len(risultato) >= MAX_THREAD:
+                return risultato
+            primo = None
+            if canale.type == discord.ChannelType.forum:
+                try:
+                    primo = ((await t.fetch_message(t.id)).content or "")[:2000] or None
+                except discord.HTTPException:
+                    primo = None
+            risultato.append({
+                "canale": canale.name, "nome": t.name[:MAX_NOME], "archiviato": bool(t.archived),
+                "slowmode": t.slowmode_delay or 0, "primo": primo,
+            })
+    return risultato
 
 
 def leggi_membri(guild: discord.Guild) -> list[dict]:
@@ -270,6 +303,13 @@ def valida_struttura(dati) -> list[str]:
         if not isinstance(m, dict) or not _int_ok(m.get("user_id"), 1 << 64) \
                 or not _testo_o_none(m.get("nick"), 32) or not _elenco_di_testi(m.get("ruoli", [])):
             errori.append(f"membro {i + 1}: ID, nickname o ruoli non validi")
+    elenco_thread = dati.get("thread", [])
+    if not isinstance(elenco_thread, list) or len(elenco_thread) > MAX_THREAD or not all(
+        isinstance(t, dict) and _testo_ok(t.get("canale")) and _testo_ok(t.get("nome"))
+        and _testo_o_none(t.get("primo"), 2000) and isinstance(t.get("archiviato", False), bool)
+        and _int_ok(t.get("slowmode", 0), 21601) for t in elenco_thread
+    ):
+        errori.append(f"«thread»: al massimo {MAX_THREAD}, nomi entro {MAX_NOME} caratteri, primo messaggio entro 2000")
     for chiave in ("emoji", "sticker"):
         for i, e in enumerate(dati.get(chiave, [])):
             if not isinstance(e, dict) or not _testo_ok(e.get("nome")) or not _testo_ok(e.get("url"), 2000) \
@@ -362,7 +402,7 @@ async def _niente(_passo: str, _fatti: int, _totale: int) -> bool:
 def conta_passi(dati: dict, parti: set[str]) -> int:
     """Quanti passi farà il caricamento (per lo stato, BKP-009)."""
     elenchi = {"ruoli": ("ruoli",), "canali": ("categorie", "canali"), "emoji": ("emoji",),
-               "ban": ("ban",), "membri": ("membri",)}
+               "thread": ("thread",), "ban": ("ban",), "membri": ("membri",)}
     passi = sum(len(dati.get(e, [])) for p in parti for e in elenchi.get(p, ()))
     if "messaggi" in parti:
         passi += sum(len(m) for m in (dati.get("messaggi") or {}).values())
@@ -375,12 +415,26 @@ def parti_presenti(dati: dict) -> list[str]:
             or p == "ruoli" and (dati.get("ruoli") or "everyone" in dati)
             or p == "canali" and (dati.get("canali") or dati.get("categorie"))
             or p == "emoji" and (dati.get("emoji") or dati.get("sticker"))
-            or p in ("ban", "membri", "messaggi") and dati.get(p)]
+            or p in ("ban", "membri", "messaggi", "thread") and dati.get(p)]
+
+
+def riassunto(dati: dict) -> dict[str, int]:
+    """BKP-006: i conteggi di ciò che contiene una copia, senza caricarla."""
+    conteggi = {
+        "ruoli": len(dati.get("ruoli", [])), "categorie": len(dati.get("categorie", [])),
+        "canali": len(dati.get("canali", [])), "emoji": len(dati.get("emoji", [])),
+        "sticker": len(dati.get("sticker", [])), "ban": len(dati.get("ban", [])),
+        "membri": len(dati.get("membri", [])),
+        "messaggi": sum(len(m) for m in (dati.get("messaggi") or {}).values()) if dati.get("tipo") != "chat"
+        else len(dati.get("messaggi") or []),
+        "thread": len(dati.get("thread", [])),
+    }
+    return {k: v for k, v in conteggi.items() if v}
 
 
 def senza_dati_personali(dati: dict) -> dict:
     """Un modello (NF-39) si condivide senza ban, membri e permessi dei singoli utenti."""
-    pulito = {k: v for k, v in dati.items() if k not in ("ban", "membri", "messaggi")}
+    pulito = {k: v for k, v in dati.items() if k not in ("ban", "membri", "messaggi", "thread")}
     for chiave in ("categorie", "canali"):
         pulito[chiave] = [
             {**c, "overwrite": [o for o in c.get("overwrite", []) if "membro" not in o]}
@@ -438,6 +492,8 @@ class Caricatore:
                 await self._impostazioni()
             if "emoji" in self.parti:
                 await self._emoji()
+            if "thread" in self.parti:
+                await self._thread()
             if "messaggi" in self.parti:
                 await self._messaggi()
             if "membri" in self.parti:
@@ -499,6 +555,10 @@ class Caricatore:
                 if len(self.guild.roles) >= MAX_RUOLI:
                     self.r.saltati += 1
                     continue
+                if self._tetto is not None:
+                    # Solo l'owner conferma ruoli con permessi pericolosi (admin, gestione, ban…):
+                    # per gli altri il ruolo nasce senza.
+                    permessi = self._senza_nuovi_pericolosi(permessi, discord.Permissions.none())
                 nuovo = await self.guild.create_role(
                     name=dato["nome"][:MAX_NOME], permissions=permessi,
                     colour=discord.Colour(dato.get("colore", 0)), hoist=bool(dato.get("hoist")),
@@ -682,6 +742,39 @@ class Caricatore:
             except discord.HTTPException:
                 self.r.falliti += 1
 
+    # thread (BKP-002) -------------------------------------------------
+    async def _thread(self) -> None:
+        """Thread nei canali di testo e post nei forum con lo stesso nome; quelli con lo stesso nome restano."""
+        for dato in self.dati.get("thread", []):
+            await self._passo("thread")
+            canale = self._canali_creati.get(dato["canale"]) or next(
+                (c for c in self.guild.channels if c.name == dato["canale"]
+                 and c.type in (discord.ChannelType.text, discord.ChannelType.news, discord.ChannelType.forum)), None
+            )
+            if canale is None:
+                self.r.saltati += 1
+                continue
+            if any(t.name == dato["nome"] for t in getattr(canale, "threads", [])):
+                self.r.riusati += 1
+                continue
+            try:
+                if canale.type == discord.ChannelType.forum:
+                    creato = await canale.create_thread(
+                        name=dato["nome"][:MAX_NOME], content=dato.get("primo") or dato["nome"][:MAX_NOME],
+                        allowed_mentions=discord.AllowedMentions.none(), reason=MOTIVO,
+                    )
+                    thread = getattr(creato, "thread", creato)
+                else:
+                    thread = await canale.create_thread(
+                        name=dato["nome"][:MAX_NOME], type=discord.ChannelType.public_thread, reason=MOTIVO
+                    )
+                if dato.get("archiviato"):
+                    await thread.edit(archived=True, reason=MOTIVO)
+                self.r.creati += 1
+            except discord.HTTPException:
+                self.r.falliti += 1
+            await self._pausa(1.0)
+
     # messaggi (M 12.17) -----------------------------------------------
     async def _messaggi(self) -> None:
         """Gli ultimi messaggi salvati, nei canali di testo con lo stesso nome ancora vuoti."""
@@ -726,6 +819,7 @@ class Caricatore:
                 r for r in (self._ruolo_per_nome(n) for n in dato.get("ruoli", []))
                 if r is not None and not r.managed and r < me.top_role and r not in membro.roles
                 and not self._sopra_il_tetto(r)
+                and (self._tetto is None or not r.permissions.value & PERMESSI_PERICOLOSI)
             ]
             puo_nick = membro.top_role < me.top_role and not self._sopra_il_tetto(membro.top_role)
             try:

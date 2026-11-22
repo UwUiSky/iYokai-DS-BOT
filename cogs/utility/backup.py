@@ -25,6 +25,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core import backup_modelli_logic as modelli
 from core import backup_struttura_logic as struttura
 from core.backup_copia_logic import copia_canale, copia_ruolo
 from core.backup_messages_logic import leggi_chat, ricarica_chat, webhook_chat
@@ -39,6 +40,7 @@ from core.backup_permessi_logic import (
 from core import server_sync_logic as sync
 from core.database import db
 from core.i18n import testo_per
+from core.repositories.backup_sincronia_canali_repo import MAX_DIREZIONI_PER_SERVER, backup_sincronia_canali_repo
 from core.repositories.backup_sincronia_repo import backup_sincronia_repo
 from core.repositories.backup_struttura_repo import MAX_COPIE_PER_SERVER, backup_struttura_repo
 from core.ui_base import BaseView
@@ -57,6 +59,7 @@ from core.backup_link_logic import (
 )
 
 from core.command_groups import SOTTOGRUPPI, CogConGruppi, comando_di_gruppo
+from core.repositories.backup_automatico_repo import backup_automatico_repo
 from core.repositories.backup_mirror_repo import backup_mirror_repo
 from core.repositories.backup_repo import backup_repo
 
@@ -67,6 +70,7 @@ _ETICHETTE_PARTI = {
     "ruoli": "Ruoli e permessi",
     "canali": "Categorie e canali con i permessi",
     "emoji": "Emoji e sticker",
+    "thread": "Thread e post dei forum (nomi e primo messaggio)",
     "messaggi": "Ultimi messaggi nei canali ancora vuoti",
     "ban": "Lista dei ban",
     "membri": "Nickname e ruoli dei membri presenti",
@@ -132,6 +136,36 @@ class ScegliPartiView(BaseView):
         self.stop()
         testo = await self.cog.avvia_caricamento(interaction, self.dati, self.scelte, self.fonte)
         await interaction.response.edit_message(content=testo, view=None)
+
+
+class ConfermaEliminaView(BaseView):
+    """BKP-007: nessuna copia sparisce senza un clic di conferma di chi l'ha chiesto."""
+
+    def __init__(self, autore_id: int, guild_id: int, copia: int | None) -> None:
+        super().__init__(timeout=60)
+        self.autore_id, self.guild_id, self.copia = autore_id, guild_id, copia
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.autore_id and await super().interaction_check(interaction)
+
+    @discord.ui.button(label="Elimina", style=discord.ButtonStyle.danger)
+    async def conferma(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.stop()
+        if self.copia is None:
+            quante = await backup_struttura_repo.elimina_tutte(self.guild_id)
+            await registra_uso(self.guild_id, self.autore_id, "elimina", f"tutte ({quante})")
+            testo = await testo_per(interaction, "backup_copie_eliminate", n=quante)
+        elif await backup_struttura_repo.elimina_struttura(self.guild_id, self.copia):
+            await registra_uso(self.guild_id, self.autore_id, "elimina", f"#{self.copia}")
+            testo = await testo_per(interaction, "backup_copia_eliminata", copia=self.copia)
+        else:
+            testo = await testo_per(interaction, "backup_copia_non_trovata")
+        await interaction.response.edit_message(content=testo, view=None)
+
+    @discord.ui.button(label="Annulla", style=discord.ButtonStyle.secondary)
+    async def annulla(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.stop()
+        await interaction.response.edit_message(content=await testo_per(interaction, "backup_elimina_annullata"), view=None)
 
 
 class BackupCog(CogConGruppi, commands.Cog):
@@ -435,10 +469,12 @@ class BackupCog(CogConGruppi, commands.Cog):
         ban="Salva anche la lista dei ban",
         membri="Salva anche nickname e ruoli dei membri",
         messaggi="Salva anche gli ultimi N messaggi di ogni canale di testo (0-100)",
+        thread="Salva anche i thread pubblici e i post dei forum (nome e primo messaggio)",
     )
     async def salva(
         self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, 50],
         ban: bool = False, membri: bool = False, messaggi: app_commands.Range[int, 0, 100] = 0,
+        thread: bool = False,
     ) -> None:
         if not await self._puo(interaction, AZIONE_CREA):
             return
@@ -455,6 +491,8 @@ class BackupCog(CogConGruppi, commands.Cog):
             dati["membri"] = struttura.leggi_membri(guild)
         if messaggi:
             dati["messaggi"] = await self._ultimi_messaggi(guild, messaggi)
+        if thread:
+            dati["thread"] = await struttura.leggi_thread(guild)
         if len(struttura.in_json(dati)) > struttura.MAX_FILE_BYTE:
             await interaction.followup.send(await testo_per(interaction, "backup_la_copia_supera_mib_salvala"), ephemeral=True)
             return
@@ -469,7 +507,8 @@ class BackupCog(CogConGruppi, commands.Cog):
             f"✅ Copia `#{copia_id}` salvata: {len(dati['ruoli'])} ruoli, {len(dati['canali'])} canali"
             + (f", {len(dati['ban'])} ban" if ban else "")
             + (f", {len(dati['membri'])} membri" if membri else "")
-            + (f", {sum(len(m) for m in dati['messaggi'].values())} messaggi" if messaggi else "") + ".",
+            + (f", {sum(len(m) for m in dati['messaggi'].values())} messaggi" if messaggi else "")
+            + (f", {len(dati['thread'])} thread" if thread else "") + ".",
             ephemeral=True,
         )
 
@@ -487,22 +526,50 @@ class BackupCog(CogConGruppi, commands.Cog):
                 risultato[canale.name] = righe
         return risultato
 
-    @comando_di_gruppo("admin-backup", nome="lista", descrizione="Le copie salvate di questo server, con la data.")
-    async def lista(self, interaction: discord.Interaction) -> None:
+    @comando_di_gruppo("admin-backup", nome="lista", descrizione="Le copie salvate, con la data; con un numero, cosa contiene una copia.")
+    @app_commands.describe(copia="Numero di una copia: ne mostra il contenuto senza caricarla")
+    async def lista(self, interaction: discord.Interaction, copia: app_commands.Range[int, 1] | None = None) -> None:
         if not await self._puo(interaction, AZIONE_CREA):
+            return
+        if copia is not None:
+            await self._info_copia(interaction, copia)
             return
         copie = await backup_struttura_repo.lista_strutture(interaction.guild.id)
         if not copie:
             await interaction.response.send_message(await testo_per(interaction, "backup_nessuna_copia_salvata_usa_backup"), ephemeral=True)
             return
         righe = [
-            f"`#{c.id}` {'💬' if c.chat else '🏗️'} **{discord.utils.escape_markdown(c.nome)}** · "
+            f"`#{c.id}` {'💬' if c.chat else '⏱️' if c.automatica else '🏗️'} **{discord.utils.escape_markdown(c.nome)}** · "
             f"{discord.utils.format_dt(c.creato_il, 'f')}"
             + (f" · modello `{c.codice_modello}`" if c.codice_modello else "")
             for c in copie
         ]
         embed = discord.Embed(title=await testo_per(interaction, "backup_copie_salvate"), description="\n".join(righe)[:4000], color=discord.Color.blurple())
         embed.set_footer(text=await testo_per(interaction, "backup_al_massimo_copie_per_server", v1=MAX_COPIE_PER_SERVER))
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+    async def _info_copia(self, interaction: discord.Interaction, copia: int) -> None:
+        """BKP-006: nome, data e conteggi della copia, senza caricarla."""
+        trovata = await backup_struttura_repo.leggi_con_data(interaction.guild.id, copia)
+        if trovata is None:
+            await interaction.response.send_message(await testo_per(interaction, "backup_copia_non_trovata"), ephemeral=True)
+            return
+        nome, creato_il, dati = trovata
+        conteggi = struttura.riassunto(dati)
+        etichette = {
+            "ruoli": "ruoli", "categorie": "categorie", "canali": "canali", "emoji": "emoji", "sticker": "sticker",
+            "ban": "ban", "membri": "membri", "messaggi": "messaggi", "thread": "thread",
+        }
+        righe = [f"**{etichette[k]}**: {v}" for k, v in conteggi.items()] or [await testo_per(interaction, "backup_copia_vuota")]
+        embed = discord.Embed(
+            title=f"#{copia} · {nome}"[:256], description="\n".join(righe)[:4000], color=discord.Color.blurple(),
+        )
+        embed.add_field(name=await testo_per(interaction, "backup_info_creata"), value=discord.utils.format_dt(creato_il, "f"))
+        embed.add_field(
+            name=await testo_per(interaction, "backup_info_tipo"),
+            value=await testo_per(interaction, "backup_info_tipo_chat" if dati.get("tipo") == "chat" else "backup_info_tipo_struttura"),
+        )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @comando_di_gruppo("admin-backup", nome="carica", descrizione="Ricarica in questo server una copia salvata, scegliendo le parti.")
@@ -523,16 +590,61 @@ class BackupCog(CogConGruppi, commands.Cog):
             ephemeral=True,
         )
 
-    @comando_di_gruppo("admin-backup", nome="elimina", descrizione="Elimina una copia salvata.")
-    @app_commands.describe(copia="Numero della copia (da /admin-backup lista)")
-    async def elimina(self, interaction: discord.Interaction, copia: app_commands.Range[int, 1]) -> None:
+    @comando_di_gruppo("founder", nome="automatico", descrizione="Copie automatiche della struttura a intervalli.", sottogruppo=SOTTOGRUPPI["founder backup"])
+    @app_commands.describe(
+        ore="Ogni quante ore (4-168); vuoto con «spegni» per fermarle",
+        copie="Quante copie automatiche tenere (1-8): la più vecchia si sovrascrive",
+        spegni="Ferma le copie automatiche",
+    )
+    async def automatico(
+        self, interaction: discord.Interaction, ore: app_commands.Range[int, 4, 168] | None = None,
+        copie: app_commands.Range[int, 1, 8] = 3, spegni: bool = False,
+    ) -> None:
+        """BKP-008."""
         if not await self._puo(interaction, AZIONE_CREA):
             return
-        if not await backup_struttura_repo.elimina_struttura(interaction.guild.id, copia):
+        guild = interaction.guild
+        if spegni:
+            fatto = await backup_automatico_repo.togli(guild.id)
+            if fatto:
+                await registra_uso(guild.id, interaction.user.id, "automatico", "spento")
+            await interaction.response.send_message(
+                await testo_per(interaction, "backup_automatico_spento" if fatto else "backup_automatico_non_attivo"), ephemeral=True
+            )
+            return
+        if ore is None:
+            attuale = await backup_automatico_repo.leggi(guild.id)
+            testo = (
+                await testo_per(interaction, "backup_automatico_attivo", ore=attuale.ore, copie=attuale.copie)
+                if attuale else await testo_per(interaction, "backup_automatico_non_attivo")
+            )
+            await interaction.response.send_message(testo, ephemeral=True)
+            return
+        await backup_automatico_repo.imposta(guild.id, ore, copie, interaction.user.id)
+        await registra_uso(guild.id, interaction.user.id, "automatico", f"{ore} ore, {copie} copie")
+        await interaction.response.send_message(
+            await testo_per(interaction, "backup_automatico_attivo", ore=ore, copie=copie), ephemeral=True
+        )
+
+    @comando_di_gruppo("admin-backup", nome="elimina", descrizione="Elimina una copia salvata, o tutte (con conferma).")
+    @app_commands.describe(copia="Numero della copia (da /admin-backup lista)", tutte="Elimina tutte le copie del server")
+    async def elimina(
+        self, interaction: discord.Interaction, copia: app_commands.Range[int, 1] | None = None, tutte: bool = False,
+    ) -> None:
+        """BKP-007: sempre con un bottone di conferma."""
+        if not await self._puo(interaction, AZIONE_CREA):
+            return
+        if tutte == (copia is not None):
+            await interaction.response.send_message(await testo_per(interaction, "backup_elimina_scegli"), ephemeral=True)
+            return
+        if copia is not None and await backup_struttura_repo.leggi_struttura(interaction.guild.id, copia) is None:
             await interaction.response.send_message(await testo_per(interaction, "backup_copia_non_trovata"), ephemeral=True)
             return
-        await registra_uso(interaction.guild.id, interaction.user.id, "elimina", f"#{copia}")
-        await interaction.response.send_message(await testo_per(interaction, "backup_copia_eliminata", copia=copia), ephemeral=True)
+        await interaction.response.send_message(
+            await testo_per(interaction, "backup_elimina_conferma_tutte" if tutte else "backup_elimina_conferma", copia=copia),
+            view=ConfermaEliminaView(interaction.user.id, interaction.guild.id, copia),
+            ephemeral=True,
+        )
 
     @comando_di_gruppo("admin-backup", nome="stato", descrizione="Avanzamento dell'ultimo caricamento in questo server.")
     async def stato(self, interaction: discord.Interaction) -> None:
@@ -579,14 +691,34 @@ class BackupCog(CogConGruppi, commands.Cog):
     # ------------------------------------------------------------
     # Modelli (NF-39)
     # ------------------------------------------------------------
-    @comando_di_gruppo("admin-backup", nome="modello", descrizione="Modelli: condividi una copia con un codice o carica quella di un altro server.")
+    async def _leggi_modello(self, testo: str) -> tuple[str, dict, str] | None:
+        """BKP-020: (nome, dati, descrizione) da un modello pronto, un codice nostro o un modello di Discord."""
+        pronto = modelli.trova_pronto(testo)
+        if pronto is not None:
+            return pronto[1]["titolo"], pronto[1]["dati"], pronto[1]["descrizione"]
+        nostro = await backup_struttura_repo.leggi_modello(testo.strip())
+        if nostro is not None:
+            return nostro[0], nostro[1], ""
+        codice = modelli.codice_discord(testo)
+        if codice is None:
+            return None
+        try:
+            esterno = await self.bot.fetch_template(codice)
+        except discord.HTTPException:
+            return None
+        letto = modelli.da_modello_discord(esterno)
+        return (letto[0], letto[1], (esterno.description or "")[:200]) if letto is not None else None
+
+    @comando_di_gruppo("admin-backup", nome="modello", descrizione="Modelli: pronti, tuoi o di Discord. Elenco, scheda, uso e condivisione.")
     @app_commands.describe(
         azione="Cosa fare",
         copia="Per «pubblica» e «ritira»: numero della copia (da /admin-backup lista)",
-        codice="Per «usa»: il codice del modello",
+        codice="Per «usa» e «scheda»: nome di un modello pronto, codice o link discord.new",
     )
     @app_commands.choices(
         azione=[
+            app_commands.Choice(name="Elenco dei modelli", value="elenco"),
+            app_commands.Choice(name="Scheda di un modello", value="scheda"),
             app_commands.Choice(name="Pubblica una copia come modello", value="pubblica"),
             app_commands.Choice(name="Usa un modello in questo server", value="usa"),
             app_commands.Choice(name="Ritira il codice di un modello", value="ritira"),
@@ -595,20 +727,52 @@ class BackupCog(CogConGruppi, commands.Cog):
     async def modello(
         self, interaction: discord.Interaction, azione: app_commands.Choice[str],
         copia: app_commands.Range[int, 1] | None = None,
-        codice: app_commands.Range[str, 4, 32] | None = None,
+        codice: app_commands.Range[str, 2, 100] | None = None,
     ) -> None:
         if not await self._puo(interaction, AZIONE_CARICA if azione.value == "usa" else AZIONE_CREA):
             return
         guild = interaction.guild
-        if azione.value == "usa":
-            trovato = await backup_struttura_repo.leggi_modello(codice.strip()) if codice else None
-            if trovato is None:
-                await interaction.response.send_message(await testo_per(interaction, "backup_modello_non_trovato_controlla_il"), ephemeral=True)
+        if azione.value == "elenco":
+            righe = [f"🧩 **{m['titolo']}** (`{k}`): {m['descrizione']}" for k, m in modelli.MODELLI_PRONTI.items()]
+            miei = [c for c in await backup_struttura_repo.lista_strutture(guild.id) if c.codice_modello]
+            righe += [f"📎 `#{c.id}` {discord.utils.escape_markdown(c.nome)}: codice `{c.codice_modello}`" for c in miei]
+            embed = discord.Embed(
+                title=await testo_per(interaction, "backup_modelli_titolo"), description="\n".join(righe)[:4000],
+                color=discord.Color.blurple(),
+            )
+            embed.set_footer(text=await testo_per(interaction, "backup_modelli_piede"))
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+        if azione.value == "scheda":
+            await interaction.response.defer(ephemeral=True)
+            letto = await self._leggi_modello(codice) if codice else None
+            if letto is None:
+                await interaction.followup.send(await testo_per(interaction, "backup_modello_non_trovato_controlla_il"), ephemeral=True)
                 return
-            nome, dati = trovato
-            await interaction.response.send_message(
+            nome, dati, descrizione = letto
+            conteggi = struttura.riassunto(struttura.senza_dati_personali(dati))
+            embed = discord.Embed(
+                title=nome[:256], description=(discord.utils.escape_markdown(descrizione) or "—")[:1000],
+                color=discord.Color.blurple(),
+            )
+            embed.add_field(
+                name=await testo_per(interaction, "backup_modello_contiene"),
+                value=", ".join(f"{k}: {v}" for k, v in conteggi.items()) or "—", inline=False,
+            )
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+        if azione.value == "usa":
+            if codice:
+                await interaction.response.defer(ephemeral=True)
+            letto = await self._leggi_modello(codice) if codice else None
+            if letto is None:
+                invia = interaction.followup.send if codice else interaction.response.send_message
+                await invia(await testo_per(interaction, "backup_modello_non_trovato_controlla_il"), ephemeral=True)
+                return
+            nome, dati, _desc = letto
+            await interaction.followup.send(
                 await testo_per(interaction, "backup_modello_senza_ban_membri_permessi", v1=discord.utils.escape_markdown(nome)),
-                view=ScegliPartiView(self, interaction.user.id, struttura.senza_dati_personali(dati), f"modello {codice}"),
+                view=ScegliPartiView(self, interaction.user.id, struttura.senza_dati_personali(dati), f"modello {codice[:60]}"),
                 ephemeral=True,
             )
             return
@@ -688,6 +852,85 @@ class BackupCog(CogConGruppi, commands.Cog):
             self._sincronie.pop(altro_id, None)
             await registra_uso(guild.id, interaction.user.id, f"sincronia {azione.value}", server)
         await interaction.response.send_message(testo, ephemeral=True)
+
+    @comando_di_gruppo("founder", nome="sincronia-canali", descrizione="Copia i messaggi tra due canali tuoi, in una o in due direzioni.", sottogruppo=SOTTOGRUPPI["founder backup"])
+    @app_commands.describe(
+        azione="Cosa fare",
+        canale="Il canale di QUESTO server",
+        altro_canale="ID dell'altro canale (anche di un altro tuo server)",
+        direzione="Verso dove vanno i messaggi (per «attiva»)",
+    )
+    @app_commands.choices(
+        azione=[
+            app_commands.Choice(name="Attiva", value="attiva"),
+            app_commands.Choice(name="Disattiva", value="disattiva"),
+            app_commands.Choice(name="Elenco", value="elenco"),
+        ],
+        direzione=[
+            app_commands.Choice(name="Da questo canale all'altro", value="verso_altro"),
+            app_commands.Choice(name="Dall'altro canale a questo", value="verso_qui"),
+            app_commands.Choice(name="In tutte e due le direzioni", value="due_sensi"),
+        ],
+    )
+    async def sincronia_canali(
+        self, interaction: discord.Interaction, azione: app_commands.Choice[str],
+        canale: discord.TextChannel | None = None, altro_canale: app_commands.Range[str, 15, 21] | None = None,
+        direzione: app_commands.Choice[str] | None = None,
+    ) -> None:
+        """BKP-028: solo l'owner di entrambi i server; i messaggi di bot e webhook non si copiano (niente cicli)."""
+        guild = interaction.guild
+        if guild is None or interaction.user.id != guild.owner_id:
+            await interaction.response.send_message(await testo_per(interaction, "backup_la_sincronia_la_gestisce_solo"), ephemeral=True)
+            return
+        if azione.value == "elenco":
+            elenco = await backup_sincronia_canali_repo.elenco(guild.id)
+            righe = [f"<#{d.canale_da}> → <#{d.canale_a}>" for d in elenco]
+            await interaction.response.send_message(
+                "\n".join(righe) or await testo_per(interaction, "backup_sync_canali_nessuna"), ephemeral=True
+            )
+            return
+        altro = self.bot.get_channel(int(altro_canale)) if altro_canale and altro_canale.isdigit() else None
+        if canale is None or not isinstance(altro, discord.TextChannel) or altro.id == canale.id:
+            await interaction.response.send_message(await testo_per(interaction, "backup_sync_canali_scegli"), ephemeral=True)
+            return
+        if not sync.stesso_proprietario(interaction.user.id, guild.owner_id, altro.guild.owner_id):
+            await interaction.response.send_message(await testo_per(interaction, "backup_devi_essere_owner_di_entrambi"), ephemeral=True)
+            return
+        if azione.value == "disattiva":
+            tolte = await backup_sincronia_canali_repo.togli_coppia(guild.id, canale.id, altro.id)
+            if tolte:
+                await registra_uso(guild.id, interaction.user.id, "sincronia canali", f"togli {canale.id} {altro.id}")
+            await interaction.response.send_message(
+                await testo_per(interaction, "backup_sync_canali_tolta" if tolte else "backup_sync_canali_nessuna"), ephemeral=True
+            )
+            return
+        scelta = direzione.value if direzione else "due_sensi"
+        coppie = []
+        if scelta in ("verso_altro", "due_sensi"):
+            coppie.append((canale, altro))
+        if scelta in ("verso_qui", "due_sensi"):
+            coppie.append((altro, canale))
+        await interaction.response.defer(ephemeral=True)
+        for origine, arrivo in coppie:
+            try:
+                hook = await webhook_chat(arrivo)
+            except discord.HTTPException:
+                hook = None
+            if hook is None or not hook.url:
+                await interaction.followup.send(await testo_per(interaction, "backup_sync_canali_webhook", v1=arrivo.mention), ephemeral=True)
+                return
+            ok = await backup_sincronia_canali_repo.attiva(
+                origine.id, origine.guild.id, arrivo.id, arrivo.guild.id, hook.url, interaction.user.id
+            )
+            if not ok:
+                await interaction.followup.send(
+                    await testo_per(interaction, "backup_sync_canali_troppe", v1=MAX_DIREZIONI_PER_SERVER), ephemeral=True
+                )
+                return
+        await registra_uso(guild.id, interaction.user.id, "sincronia canali", f"{scelta} {canale.id} {altro.id}")
+        await interaction.followup.send(
+            await testo_per(interaction, "backup_sync_canali_attiva", v1=canale.mention, v2=altro.name), ephemeral=True
+        )
 
     async def _sincronie_di(self, guild_id: int) -> list:
         letto = self._sincronie.get(guild_id)

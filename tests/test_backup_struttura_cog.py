@@ -108,6 +108,7 @@ async def test_file_non_valido_non_tocca_il_server(ambiente):
     assert "view" not in i.followup.messaggi[0][1]
 
 
+# BKP-004
 async def test_menu_delle_parti_e_caricamento_con_riepilogo_nel_canale(ambiente, monkeypatch):
     _db, repo = ambiente
     cog = BackupCog(bot=None)
@@ -143,6 +144,7 @@ async def test_esporta_un_ruolo_senza_ruolo_spiega(ambiente):
     assert "Scegli il ruolo" in i.followup.messaggi[0][0]
 
 
+# BKP-020, BKP-023
 async def test_modello_si_pubblica_e_si_usa_senza_dati_personali(ambiente):
     _db, repo = ambiente
     copia = await repo.salva_struttura(
@@ -156,7 +158,7 @@ async def test_modello_si_pubblica_e_si_usa_senza_dati_personali(ambiente):
 
     i = _interazione(owner=True)
     await cog.modello.callback(cog, i, SimpleNamespace(value="usa", name="u"), None, codice)
-    view = i.response.messaggi[0][1]["view"]
+    view = i.followup.messaggi[0][1]["view"]
     assert "ban" not in view.dati and [o.value for o in view.menu.options] == ["ruoli"]
 
     i = _interazione(owner=True)
@@ -236,3 +238,81 @@ async def test_stato_mostra_ora_ed_esito_dell_aggiornamento_automatico(ambiente)
     finally:
         backup_module.backup_repo = originale
         await database.pool.execute("DELETE FROM backup_pairs WHERE main_guild_id = $1", GUILD)
+
+
+async def test_info_mostra_i_conteggi_senza_caricare(ambiente):
+    """BKP-006: `/admin-backup info` dice cosa c'è nella copia e non tocca il server."""
+    _db, repo = ambiente
+    cog = BackupCog(bot=None)
+    dati = {"versione": 1, "ruoli": [{"nome": "r", "permessi": 0}] * 3, "canali": [{"nome": "c"}], "ban": [{"user_id": 7}]}
+    copia = await repo.salva_struttura(GUILD, "prima", 1, dati)
+    i = _interazione(owner=True)
+    await cog.lista.callback(cog, i, copia)
+    embed = i.response.messaggi[0][1]["embed"]
+    assert "**ruoli**: 3" in embed.description and "**ban**: 1" in embed.description
+    assert "thread" not in embed.description
+    altra = _interazione(owner=True)
+    await cog.lista.callback(cog, altra, copia + 999)
+    assert "non trovata" in altra.response.messaggi[0][0].lower()
+
+
+async def test_elimina_chiede_conferma_e_tutte_toglie_ogni_copia(ambiente):
+    """BKP-007: una copia o tutte, solo dopo il bottone; chi non l'ha chiesto non conferma."""
+    _db, repo = ambiente
+    cog = BackupCog(bot=None)
+    for n in ("a", "b", "c"):
+        await repo.salva_struttura(GUILD, n, 1, {"versione": 1})
+    copie = await repo.lista_strutture(GUILD)
+    i = _interazione(owner=True)
+    await cog.elimina.callback(cog, i, copie[0].id, False)
+    vista = i.response.messaggi[0][1]["view"]
+    assert len(await repo.lista_strutture(GUILD)) == 3  # niente senza conferma
+    estraneo = _interazione(owner=True)
+    estraneo.user.id = 99
+    assert not await vista.interaction_check(estraneo)
+    await vista.conferma.callback(_interazione(owner=True))
+    assert len(await repo.lista_strutture(GUILD)) == 2
+    i = _interazione(owner=True)
+    await cog.elimina.callback(cog, i, None, True)
+    await i.response.messaggi[0][1]["view"].conferma.callback(_interazione(owner=True))
+    assert await repo.lista_strutture(GUILD) == []
+    errore = _interazione(owner=True)
+    await cog.elimina.callback(cog, errore, None, False)
+    assert "view" not in errore.response.messaggi[0][1]
+
+
+async def test_modello_pronto_elenco_e_scheda_senza_dati_personali(ambiente):
+    """BKP-020/021/022: l'elenco ha i pronti e i miei codici; la scheda e «usa» accettano il nome."""
+    _db, repo = ambiente
+    cog = BackupCog(bot=None)
+    i = _interazione(owner=True)
+    await cog.modello.callback(cog, i, SimpleNamespace(value="elenco", name="e"), None, None)
+    assert "Comunità" in i.response.messaggi[0][1]["embed"].description
+    i = _interazione(owner=True)
+    await cog.modello.callback(cog, i, SimpleNamespace(value="scheda", name="s"), None, "gioco")
+    campo = i.followup.messaggi[0][1]["embed"].fields[0]
+    assert "canali: 5" in campo.value and "ruoli: 2" in campo.value
+    i = _interazione(owner=True)
+    await cog.modello.callback(cog, i, SimpleNamespace(value="usa", name="u"), None, "Studio")
+    assert [o.value for o in i.followup.messaggi[0][1]["view"].menu.options] == ["ruoli", "canali"]
+
+
+async def test_modello_di_discord_da_link_e_codice_sbagliato(ambiente):
+    """BKP-020: un link discord.new si legge con fetch_template; un indirizzo estraneo non parte."""
+    from tests.test_backup_modelli import _modello_discord
+
+    chiamate = []
+
+    class _Bot:
+        async def fetch_template(self, codice):
+            chiamate.append(codice)
+            return _modello_discord()
+
+    cog = BackupCog(bot=_Bot())
+    i = _interazione(owner=True)
+    await cog.modello.callback(cog, i, SimpleNamespace(value="usa", name="u"), None, "https://discord.new/abcDEF1234")
+    assert chiamate == ["abcDEF1234"]
+    assert {o.value for o in i.followup.messaggi[0][1]["view"].menu.options} == {"impostazioni", "ruoli", "canali"}
+    i = _interazione(owner=True)
+    await cog.modello.callback(cog, i, SimpleNamespace(value="usa", name="u"), None, "https://evil.example/abcDEF1234")
+    assert chiamate == ["abcDEF1234"] and "view" not in i.followup.messaggi[0][1]
