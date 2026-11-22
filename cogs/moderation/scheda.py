@@ -74,7 +74,7 @@ class ModuloAzione(BaseModal):
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         livello = Livello.MODBAN if self.azione in AZIONI_DEL_MODBAN else Livello.MOD
-        if not await puo_usare(interaction, livello):  # il livello può cambiare mentre la finestra è aperta
+        if not await puo_usare(interaction, livello, self.azione):  # il livello può cambiare mentre la finestra è aperta
             await interaction.response.send_message(await testo_per(interaction, "scheda_serve_staff"), ephemeral=True)
             return
         if self.azione == "nota":

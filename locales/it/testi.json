@@ -3550,5 +3550,9 @@
   "esportachat_bot_senza_permesso": "Mi manca il permesso di leggere i messaggi di {mention}.",
   "esportachat_pronto": "Ecco gli ultimi {n} messaggi. Degli allegati restano solo nome, tipo e peso.",
   "esportachat_tagliato": "Il file era troppo grande: mancano i messaggi più vecchi.",
-  "snipe_solo_i_tuoi_o_staff": "Puoi vedere solo i tuoi messaggi cancellati, a meno che tu possa gestire i messaggi."
+  "snipe_solo_i_tuoi_o_staff": "Puoi vedere solo i tuoi messaggi cancellati, a meno che tu possa gestire i messaggi.",
+  "opzioni_azioni_nessuno": "Nessun ruolo ha permessi per singola azione.",
+  "opzioni_azioni_tolte": "Permessi tolti: {n}.",
+  "opzioni_azioni_serve_azione": "Scegli quale azione dare a questo ruolo.",
+  "opzioni_azioni_date": "{ruolo} può usare «{azione}» (restano i controlli di gerarchia)."
 }

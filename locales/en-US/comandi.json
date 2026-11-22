@@ -451,7 +451,8 @@
   "movimenti": "movements",
   "portafoglio": "wallet",
   "muto": "mute-role",
-  "esporta-chat": "export-chat"
+  "esporta-chat": "export-chat",
+  "azioni": "actions"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1635,7 +1636,8 @@
   "mod-sanzioni opzioni muto": "Pick or create the mute role and put the block back on every channel.",
   "mod-ban appelli timeout": "Turns appeals on or off for timeouts too.",
   "mod-canali blocco stato": "Shows whether a lockdown is on, since when and when it ends.",
-  "mod-canali esporta-chat": "Sends the last messages of a channel in a text file (only to you)."
+  "mod-canali esporta-chat": "Sends the last messages of a channel in a text file (only to you).",
+  "mod-sanzioni opzioni azioni": "Gives a role the permission for one moderation action only (or removes it)."
  },
  "parametri": {},
  "menu": {

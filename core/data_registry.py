@@ -231,6 +231,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("automod_violazioni_date", "Date delle infrazioni contate dalla scala (finestra in giorni)",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True,
        scadenza=Scadenza("quando", 90)),
+    _t("moderation_ruoli_azioni", "Azioni di moderazione concesse a un ruolo", colonne_attore=("dato_da",), colonna_server="guild_id"),
     _t("automod_config", "Configurazione dell'automod", colonna_server="guild_id"),
     _t("automod_advanced_config", "Configurazione avanzata dell'automod", colonna_server="guild_id"),
     _t("automod_regole", "Regole AutoMod del server: condizioni, azioni, contatore",

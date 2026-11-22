@@ -133,7 +133,7 @@ class VistaProposta(BaseView):
         self._partita = True  # segnato prima del primo await: due clic insieme danno una sola sanzione
         # Il livello può cambiare mentre la proposta è aperta: si ricontrolla per ogni sanzione.
         livello = Livello.MODBAN if self.azione in AZIONI_DEL_MODBAN else Livello.MOD
-        if not await puo_usare(interaction, livello):
+        if not await puo_usare(interaction, livello, self.azione):
             self._partita = False
             chiave = "motivopronto_serve_modban" if livello is Livello.MODBAN else "motivopronto_serve_mod"
             await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)

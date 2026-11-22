@@ -6,7 +6,7 @@ comandi e dal futuro pannello web (D16): decisione pura
 (`decidi_accesso`), controllo per le interazioni (`controlla`,
 `puo_usare`), `richiedi` per i comandi, `GruppoYokai` per i gruppi, e le
 funzioni che leggono e scrivono i ruoli scelti dall'admin del server.
-Funzioni coperte: NF-05 (issue #76)
+Funzioni coperte: NF-05 (issue #76), CFG-024 (azioni di moderazione date a un ruolo)
 Dipende da: core/config.py (OWNER_ID), core/database.py (impostazioni)
 
 REGOLA PER GLI AUTOCOMPLETE: discord.py NON esegue i controlli dei
@@ -31,6 +31,7 @@ from collections.abc import Iterable
 import discord
 from discord import app_commands
 
+from core import moderation_permessi_azioni as permessi_azioni
 from core.config import config
 from core.database import db
 
@@ -229,8 +230,11 @@ async def imposta_ruolo(
 # ----------------------------------------------------------------------
 # Controllo sulle interazioni
 # ----------------------------------------------------------------------
-async def controlla(interaction: discord.Interaction, livello: Livello) -> bool:
-    """True se può usare il comando, altrimenti solleva AccessoNegato."""
+async def controlla(interaction: discord.Interaction, livello: Livello, azione: str | None = None) -> bool:
+    """
+    True se può usare il comando, altrimenti solleva AccessoNegato. CFG-024: ai livelli mod e modban passa anche
+    chi ha un ruolo con l'azione di questo comando (`azione` serve ai tasti, che non hanno un comando).
+    """
     if livello is Livello.OWNER:
         if interaction.user.id == config.OWNER_ID:
             return True
@@ -256,15 +260,17 @@ async def controlla(interaction: discord.Interaction, livello: Livello) -> bool:
         ruolo_configurato_id=configurato,
         ruolo_esiste=configurato is not None and guild.get_role(configurato) is not None,
     )
+    if not ok and await permessi_azioni.consente(interaction, livello.value, azione):
+        return True
     if not ok:
         raise AccessoNegato(livello)
     return True
 
 
-async def puo_usare(interaction: discord.Interaction, livello: Livello) -> bool:
+async def puo_usare(interaction: discord.Interaction, livello: Livello, azione: str | None = None) -> bool:
     """Come `controlla`, ma restituisce False invece di sollevare."""
     try:
-        return await controlla(interaction, livello)
+        return await controlla(interaction, livello, azione)
     except AccessoNegato:
         return False
 

@@ -6,7 +6,7 @@ cancellati al ban, durata predefinita del timeout, DM per tipo di azione,
 ruoli immuni alla moderazione manuale, casi per le azioni fatte fuori da
 iYokai, avvisi allo staff. La logica e il salvataggio sono in
 core/moderation_opzioni.py (un solo punto, anche per il pannello web).
-Funzioni coperte: SPEC §5.13 (MOD-010, MOD-017, MOD-018, MOD-019, MOD-057, MOD-068), §5.2 (MOD-047), §5.3 (MOD-036, MOD-064)
+Funzioni coperte: SPEC §5.13 (MOD-010, MOD-017, MOD-018, MOD-019, MOD-057, MOD-068), CFG-024, §5.2 (MOD-047), §5.3 (MOD-036, MOD-064)
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from discord.ext import commands
 from cogs.moderation._shared import MODULE_ACTIONS, audit_reason, ensure_module_enabled, format_duration, parse_duration
 from cogs.moderation.softban_mute import SETTING_MUTE_ROLE_ID, aggiorna_ruolo_muto
 from core import moderation_dm
+from core import moderation_permessi_azioni as permessi_azioni
 from core import moderation_opzioni as opzioni
 from core.command_groups import SOTTOGRUPPI, CogConGruppi, comando_di_gruppo
 from core.database import db
@@ -306,6 +307,54 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
             fatti, falliti = await aggiorna_ruolo_muto(guild, ruolo)
             righe.append(await testo_per(interaction, "opzioni_muto_canali", fatti=fatti, falliti=falliti))
         await interaction.followup.send("\n".join(righe)[:2000], ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+
+    @comando_di_gruppo(
+        "mod-sanzioni",
+        nome="azioni",
+        descrizione="Dà a un ruolo il permesso di una sola azione di moderazione (o lo toglie).",
+        sottogruppo=SOTTOGRUPPO,
+    )
+    @app_commands.describe(
+        ruolo="Il ruolo. Vuoto: mostra chi ha già permessi",
+        azione="L'azione. Vuoto con «togli»: le toglie tutte a quel ruolo",
+        togli="Sì: toglie il permesso invece di darlo",
+    )
+    @app_commands.choices(azione=[app_commands.Choice(name=a, value=a) for a in permessi_azioni.AZIONI])
+    async def azioni(
+        self,
+        interaction: discord.Interaction,
+        ruolo: discord.Role | None = None,
+        azione: app_commands.Choice[str] | None = None,
+        togli: bool = False,
+    ) -> None:
+        """CFG-024. Restano sempre i controlli di gerarchia e il permesso del bot."""
+        if not await self._controlli(interaction):
+            return
+        guild = interaction.guild
+        if ruolo is None:
+            dati = await permessi_azioni.elenco(guild.id)
+            righe = [f"<@&{r}>: {', '.join(a)}" for r, a in dati.items()] or [await testo_per(interaction, "opzioni_azioni_nessuno")]
+            await interaction.response.send_message(
+                "\n".join(righe)[:1900], ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
+            )
+            return
+        if togli:
+            n = await permessi_azioni.togli(guild.id, ruolo.id, azione.value if azione else None)
+            await interaction.response.send_message(
+                await testo_per(interaction, "opzioni_azioni_tolte", n=n), ephemeral=True
+            )
+            return
+        if azione is None:
+            await interaction.response.send_message(await testo_per(interaction, "opzioni_azioni_serve_azione"), ephemeral=True)
+            return
+        errore = await permessi_azioni.concedi(guild, ruolo, azione.value, interaction.user)
+        if errore:
+            await interaction.response.send_message(errore[:1900], ephemeral=True)
+            return
+        await interaction.response.send_message(
+            await testo_per(interaction, "opzioni_azioni_date", ruolo=ruolo.mention, azione=azione.value),
+            ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
+        )
 
     @comando_di_gruppo(
         "founder",

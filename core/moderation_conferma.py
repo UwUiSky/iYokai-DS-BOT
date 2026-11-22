@@ -91,7 +91,7 @@ async def conferma_sanzione(
         return None
     nuova = vista.interazione
     # Tra la domanda e il clic il livello o i ruoli possono cambiare: si ricontrolla tutto.
-    if not await puo_usare(nuova, livello):
+    if not await puo_usare(nuova, livello, azione):
         chiave = "motivopronto_serve_modban" if livello is Livello.MODBAN else "motivopronto_serve_mod"
         await nuova.response.send_message(await testo_per(nuova, chiave), ephemeral=True)
         return None
