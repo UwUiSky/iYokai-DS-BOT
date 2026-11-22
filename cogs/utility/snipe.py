@@ -7,7 +7,7 @@ canale, Reactionsnipe (ultima reazione tolta) e Ghost ping detection
 messaggi si ricordano 5 minuti e solo nei server che accendono il modulo
 `snipe` (privacy). Il ghost ping non scatta se un moderatore ha cancellato
 il messaggio (registro di controllo).
-Funzioni coperte: SPEC §14.9-§14.12 (NF-03, M 5.9)
+Funzioni coperte: SPEC §14.9-§14.12 (NF-03, M 5.9), UTL-205 (opzione `utente`: ognuno vede i suoi, lo staff di tutti)
 Dipende da: core/snipe_logic.py, core/channel_router.py
 """
 
@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from core.allegati_tipo_logic import nome_pulito
@@ -89,6 +90,20 @@ class _TrackedMention:
     created_at: datetime
 
 
+def _chiave_autore(channel_id: int, author_id: int) -> int:
+    return (channel_id << 64) | author_id
+
+
+class _PerAutore:
+    """Fa sembrare la memoria «per persona» una memoria per canale, per riusare `_ricordato`."""
+
+    def __init__(self, ricordi: RicordiSnipe, author_id: int) -> None:
+        self._ricordi, self._author_id = ricordi, author_id
+
+    def get(self, channel_id: int):
+        return self._ricordi.get(_chiave_autore(channel_id, self._author_id))
+
+
 class SnipeCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -100,6 +115,8 @@ class SnipeCog(CogConGruppi, commands.Cog):
         self._tracked_mentions: BoundedCache[int, _TrackedMention] = BoundedCache(_CACHE_MAX_SIZE)
         # Chiave: channel_id -> ultimo messaggio cancellato / ultima modifica.
         self._ultimo_cancellato = RicordiSnipe()
+        # UTL-205: l'ultimo cancellato di ogni persona in ogni canale (stessa durata e stessi tetti).
+        self._ultimo_per_autore = RicordiSnipe()
         self._ultima_modifica = RicordiSnipe()
         # Voci del registro di controllo già viste (id voce -> conteggio).
         self._voci_viste: dict[int, int] = {}
@@ -173,8 +190,21 @@ class SnipeCog(CogConGruppi, commands.Cog):
         descrizione="Mostra l'ultimo messaggio cancellato in questo canale.",
         sottogruppo=SOTTOGRUPPI["utility snipe"],
     )
-    async def snipe(self, interaction: discord.Interaction) -> None:
-        voce = await self._ricordato(interaction, self._ultimo_cancellato)
+    @app_commands.describe(utente="L'ultimo messaggio cancellato da questa persona (il tuo, o di chiunque se gestisci i messaggi)")
+    async def snipe(self, interaction: discord.Interaction, utente: discord.Member | None = None) -> None:
+        privato = utente is not None
+        if privato:
+            if utente.id != interaction.user.id and not (
+                interaction.channel is not None
+                and interaction.channel.permissions_for(interaction.user).manage_messages
+            ):
+                await interaction.response.send_message(
+                    await testo_per(interaction, "snipe_solo_i_tuoi_o_staff"), ephemeral=True
+                )
+                return
+            voce = await self._ricordato(interaction, _PerAutore(self._ultimo_per_autore, utente.id))
+        else:
+            voce = await self._ricordato(interaction, self._ultimo_cancellato)
         if voce is None:
             return
         embed = discord.Embed(
@@ -185,7 +215,7 @@ class SnipeCog(CogConGruppi, commands.Cog):
         )
         embed.set_footer(text=await testo_per(interaction, "snipe_scritto_da", pubblica=True, author_nome=voce.author_nome))
         await interaction.response.send_message(
-            embed=embed, allowed_mentions=discord.AllowedMentions.none()
+            embed=embed, allowed_mentions=discord.AllowedMentions.none(), ephemeral=privato
         )
 
     @comando_di_gruppo(
@@ -337,17 +367,16 @@ class SnipeCog(CogConGruppi, commands.Cog):
             return  # né snipe né ghost ping: l'ha tolto un moderatore o l'automod
 
         if ricorda:
-            self._ultimo_cancellato.set(
-                payload.channel_id,
-                _MessaggioCancellato(
-                    author_id=messaggio.author.id,
-                    author_nome=messaggio.author.display_name,
-                    content=messaggio.content,
-                    allegati=tuple(nome_pulito(a.filename) for a in messaggio.attachments),
-                    quando=datetime.now(timezone.utc),
-                    guild_id=payload.guild_id,
-                ),
+            cancellato = _MessaggioCancellato(
+                author_id=messaggio.author.id,
+                author_nome=messaggio.author.display_name,
+                content=messaggio.content,
+                allegati=tuple(nome_pulito(a.filename) for a in messaggio.attachments),
+                quando=datetime.now(timezone.utc),
+                guild_id=payload.guild_id,
             )
+            self._ultimo_cancellato.set(payload.channel_id, cancellato)
+            self._ultimo_per_autore.set(_chiave_autore(payload.channel_id, messaggio.author.id), cancellato)
         if destinazione is not None:
             await self._avvisa_ghost_ping(guild, destinazione, tracciato)
 

@@ -3549,5 +3549,6 @@
   "banappeal_timeout_spento": "Appeals no longer work for timeouts.",
   "esportachat_bot_senza_permesso": "I am missing the permission to read the messages of {mention}.",
   "esportachat_pronto": "Here are the last {n} messages. Only the name, type and size of attachments are kept.",
-  "esportachat_tagliato": "The file was too big: the oldest messages are missing."
+  "esportachat_tagliato": "The file was too big: the oldest messages are missing.",
+  "snipe_solo_i_tuoi_o_staff": "You can only see your own deleted messages, unless you can manage messages."
 }
