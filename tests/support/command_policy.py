@@ -56,6 +56,9 @@ AUDIENCE: dict[str, str] = {
     "mod-sanzioni": STAFF,  # gruppo condiviso per ruolo (D60)
     "founder": STAFF,  # gruppo condiviso per ruolo (D60)
     "assistente": PUBLIC,  # gruppo condiviso per tutti (D56)
+    "admin-negozio": STAFF,  # gruppo condiviso per ruolo (D60)
+    "mercato": PUBLIC,
+    "sala": PUBLIC,
     "giochi": PUBLIC,  # gruppo condiviso per tutti (D56)
     "immagini": PUBLIC,  # gruppo condiviso per tutti (D56)
     "monete": PUBLIC,  # gruppo condiviso per tutti (D56)

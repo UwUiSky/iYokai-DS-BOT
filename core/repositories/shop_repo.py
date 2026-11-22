@@ -14,7 +14,7 @@ Funzioni coperte: SPEC §15.4
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 import asyncpg
@@ -41,6 +41,7 @@ class ShopItem:
     regalabile: bool = True  # ECO-071: chi lo compra lo può regalare
     azione: str = "nessuna"  # ECO-060: cosa succede quando lo si usa
     azione_valore: int | None = None  # monete o id del ruolo
+    a_rotazione: bool = False  # ECO-075: compare in vetrina solo nei giorni in cui la rotazione lo sceglie
 
 
 @dataclass(frozen=True)
@@ -58,6 +59,7 @@ class EsitoAcquisto(str, Enum):
     SALDO_INSUFFICIENTE = "saldo_insufficiente"
     ESAURITO = "esaurito"
     PREZZO_CAMBIATO = "prezzo_cambiato"
+    NON_IN_VENDITA = "non_in_vendita"  # ECO-075: oggi non è in vetrina
 
 
 @dataclass(frozen=True)
@@ -66,6 +68,7 @@ class Acquisto:
     purchase_id: int | None = None
     riga: str | None = None  # oggetto a elenco: la riga consegnata
     ruolo_scade_il: datetime | None = None  # ruolo a tempo: quando finisce
+    prezzo: int = 0  # quanto è stato pagato davvero (offerta lampo compresa)
 
 
 class _SaldoInsufficiente(Exception):
@@ -74,6 +77,10 @@ class _SaldoInsufficiente(Exception):
 
 class _Esaurito(Exception):
     """Interna a buy_item: le scorte sono finite, annulla la transazione."""
+
+
+class _NonInVendita(Exception):
+    """Interna a buy_item: l'oggetto oggi non è in vetrina."""
 
 
 class _PrezzoCambiato(Exception):
@@ -150,6 +157,7 @@ class ShopRepository:
             regalabile=row["regalabile"] if "regalabile" in row else True,
             azione=row["azione"] if "azione" in row else "nessuna",
             azione_valore=row["azione_valore"] if "azione_valore" in row else None,
+            a_rotazione=row["a_rotazione"] if "a_rotazione" in row else False,
         )
 
     async def add_item(
@@ -271,6 +279,12 @@ class ShopRepository:
                 await conn.execute(
                     "DELETE FROM economia_inventario WHERE item_id = $1 AND guild_id = $2", item_id, guild_id
                 )
+                # ECO-078/076: ricette e offerte che citano l'oggetto non hanno più senso
+                await conn.execute(
+                    "DELETE FROM economia_ricette WHERE guild_id = $1 AND (risultato_item = $2 OR id IN "
+                    "(SELECT ricetta_id FROM economia_ricette_ingredienti WHERE item_id = $2))", guild_id, item_id,
+                )
+                await conn.execute("DELETE FROM economia_offerte WHERE guild_id = $1 AND item_id = $2", guild_id, item_id)
                 return True
 
     # Le righe ancora libere di un oggetto a elenco (None per gli altri).
@@ -371,13 +385,13 @@ class ShopRepository:
                     riga_oggetto = await conn.fetchrow(
                         "UPDATE shop_items SET stock = CASE WHEN stock IS NULL THEN NULL ELSE stock - 1 END "
                         "WHERE id = $1 AND guild_id = $2 AND (stock IS NULL OR stock > 0) "
-                        "RETURNING price, list_item, role_duration_hours",
+                        "RETURNING price, list_item, role_duration_hours, a_rotazione",
                         item.id,
                         guild_id,
                     )
                     if riga_oggetto is None:
                         raise _Esaurito
-                    prezzo = riga_oggetto["price"]
+                    prezzo = await prezzo_di_oggi_in(conn, guild_id, item.id, riga_oggetto["price"], riga_oggetto["a_rotazione"])
                     if prezzo_atteso is not None and prezzo != prezzo_atteso:
                         raise _PrezzoCambiato
                     # Oggetto a elenco: la riga si prende qui (la riga dell'oggetto è
@@ -411,11 +425,13 @@ class ShopRepository:
                             "DO UPDATE SET quantita = economia_inventario.quantita + 1",
                             guild_id, user_id, item.id,
                         )
-                    return Acquisto(EsitoAcquisto.RIUSCITO, purchase_id, riga, scade)
+                    return Acquisto(EsitoAcquisto.RIUSCITO, purchase_id, riga, scade, prezzo)
         except _Esaurito:
             return Acquisto(EsitoAcquisto.ESAURITO)
         except _PrezzoCambiato:
             return Acquisto(EsitoAcquisto.PREZZO_CAMBIATO)
+        except _NonInVendita:
+            return Acquisto(EsitoAcquisto.NON_IN_VENDITA)
         except _SaldoInsufficiente:
             return Acquisto(EsitoAcquisto.SALDO_INSUFFICIENTE)
 
@@ -483,6 +499,29 @@ class ShopRepository:
             "WHERE id = $1 RETURNING expiry_attempts",
             purchase_id,
         )
+
+
+async def prezzo_di_oggi_in(conn: asyncpg.Connection, guild_id: int, item_id: int, base: int, a_rotazione: bool) -> int:
+    """
+    ECO-075/076: il prezzo che vale ORA, dentro la transazione dell'acquisto. Un'offerta lampo attiva (e con usi
+    liberi) si prende con una UPDATE condizionata: due acquisti insieme non superano gli usi. Senza offerta, un
+    oggetto a rotazione non scelto per oggi non si vende.
+    """
+    from core.negozio_logic import prezzo_con_sconto, scelti_rotazione
+
+    sconto = await conn.fetchval(
+        "UPDATE economia_offerte SET usi = usi + 1 WHERE guild_id = $1 AND item_id = $2 AND scade_at > now() "
+        "AND (usi_max IS NULL OR usi < usi_max) RETURNING sconto_pct", guild_id, item_id,
+    )
+    if sconto is not None:
+        return prezzo_con_sconto(base, sconto)
+    if a_rotazione:
+        quanti = await conn.fetchval("SELECT rotazione_quanti FROM economia_negozio_conf WHERE guild_id = $1", guild_id) or 0
+        if quanti > 0:
+            ids = [r["id"] for r in await conn.fetch("SELECT id FROM shop_items WHERE guild_id = $1 AND a_rotazione", guild_id)]
+            if item_id not in scelti_rotazione(ids, guild_id, datetime.now(timezone.utc).date(), quanti):
+                raise _NonInVendita
+    return base
 
 
 def righe_valide(righe: list[str]) -> list[str]:

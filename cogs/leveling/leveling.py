@@ -59,6 +59,8 @@ from cogs.leveling._pagine import elenco_entro_2000, invia_lista, taglia
 from core.repositories.monthly_winners_repo import monthly_winners_repo
 from core.clan_leaderboard_logic import previous_period_key as clan_previous_period_key
 from core.repositories.clan_leaderboard_config_repo import clan_leaderboard_config_repo
+from core.negozio_logic import prezzo_con_sconto
+from core.repositories.negozio_repo import negozio_repo
 from core.repositories.shop_repo import (
     EsitoAcquisto,
     MAX_CATEGORIA,
@@ -2096,6 +2098,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
 
         moneta = await self._moneta(guild.id)
+        in_vetrina = await negozio_repo.in_vetrina(guild.id)  # ECO-075
+        offerte = await negozio_repo.offerte_attive(guild.id)  # ECO-076
+        oggetti = [o for o in oggetti if in_vetrina is None or not o.a_rotazione or o.id in in_vetrina or o.id in offerte]
+        if not oggetti:
+            await interaction.response.send_message(await testo_per(interaction, "leveling_lo_shop_di_questo_server"), ephemeral=True)
+            return
         righe = []
         categoria_corrente = object()
         con_categorie = any(o.category for o in oggetti)
@@ -2104,7 +2112,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 categoria_corrente = oggetto.category
                 righe.append(f"__**{taglia(oggetto.category or 'Senza categoria', MAX_CATEGORIA)}**__")
             nome = taglia(oggetto.name, MAX_NOME_OGGETTO)
-            riga = f"`{oggetto.id}` **{nome}** — {oggetto.price} {moneta}"
+            offerta = offerte.get(oggetto.id)
+            if offerta is not None:
+                riga = f"`{oggetto.id}` **{nome}** — ~~{oggetto.price}~~ {prezzo_con_sconto(oggetto.price, offerta.sconto_pct)} {moneta} (-{offerta.sconto_pct}%, <t:{int(offerta.scade_at.timestamp())}:R>)"
+            else:
+                riga = f"`{oggetto.id}` **{nome}** — {oggetto.price} {moneta}"
             if oggetto.role_id is not None:
                 riga += f" (ruolo <@&{oggetto.role_id}>)"
             if oggetto.list_item:
@@ -2138,10 +2150,11 @@ class LevelingCog(CogConGruppi, commands.Cog):
             if oggetto is not None:
                 nome = taglia(oggetto.name, MAX_NOME_OGGETTO)
                 moneta = await self._moneta(interaction.guild.id)
+                prezzo_oggi, _ = await negozio_repo.prezzo_oggi(interaction.guild.id, oggetto)  # ECO-076
                 await interaction.response.send_message(
-                    await testo_per(interaction, "leveling_vuoi_comprare_per", nome=nome, price=oggetto.price, moneta=moneta),
+                    await testo_per(interaction, "leveling_vuoi_comprare_per", nome=nome, price=prezzo_oggi, moneta=moneta),
                     ephemeral=True,
-                    view=ConfermaAcquistoView(self, interaction, item_id, oggetto.price),
+                    view=ConfermaAcquistoView(self, interaction, item_id, prezzo_oggi),
                 )
                 return
         await self._acquista(interaction, item_id)
@@ -2198,10 +2211,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
         moneta = await self._moneta(guild.id)
         # Senza conferma vale il prezzo appena letto: addebito, messaggio e rimborso coincidono.
-        acquisto = await shop_repo.buy_item(
-            guild.id, interaction.user.id, oggetto,
-            prezzo_atteso=prezzo_atteso if prezzo_atteso is not None else oggetto.price,
-        )
+        if prezzo_atteso is None:
+            prezzo_atteso, _ = await negozio_repo.prezzo_oggi(guild.id, oggetto)
+        acquisto = await shop_repo.buy_item(guild.id, interaction.user.id, oggetto, prezzo_atteso=prezzo_atteso)
+        if acquisto.esito == EsitoAcquisto.NON_IN_VENDITA:
+            await interaction.response.send_message(await testo_per(interaction, "neg_non_in_vetrina"), ephemeral=True)
+            return
         if acquisto.esito == EsitoAcquisto.PREZZO_CAMBIATO:
             await interaction.response.send_message(
                 await testo_per(interaction, "leveling_il_prezzo_cambiato_mentre_confermavi", prezzo_atteso=prezzo_atteso, moneta=moneta),
@@ -2220,12 +2235,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
         if acquisto.esito == EsitoAcquisto.SALDO_INSUFFICIENTE:
             await interaction.response.send_message(
-                await testo_per(interaction, "leveling_non_hai_abbastanza_servono", moneta=moneta, price=oggetto.price), ephemeral=True
+                await testo_per(interaction, "leveling_non_hai_abbastanza_servono", moneta=moneta, price=prezzo_atteso), ephemeral=True
             )
             return
 
         nome = taglia(oggetto.name, 200)
-        conferma = f"✅ Hai acquistato **{nome}** per {oggetto.price} {moneta}!"
+        conferma = f"✅ Hai acquistato **{nome}** per {acquisto.prezzo} {moneta}!"
         if acquisto.ruolo_scade_il is not None:
             conferma += f"\nIl ruolo dura fino a <t:{int(acquisto.ruolo_scade_il.timestamp())}:f>."
         if oggetto.reply_text:
@@ -2250,7 +2265,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             # Il ruolo non è arrivato: l'acquisto si annulla e i coin
             # tornano indietro.
             await shop_repo.refund_purchase(
-                acquisto.purchase_id, guild.id, interaction.user.id, oggetto.price
+                acquisto.purchase_id, guild.id, interaction.user.id, acquisto.prezzo
             )
             logger.warning(
                 "Impossibile assegnare il ruolo shop %s a %s: acquisto rimborsato.",
@@ -2258,7 +2273,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 interaction.user.id,
             )
             await interaction.followup.send(
-                await testo_per(interaction, "leveling_non_sono_riuscito_darti_il", price=oggetto.price, moneta=moneta),
+                await testo_per(interaction, "leveling_non_sono_riuscito_darti_il", price=acquisto.prezzo, moneta=moneta),
                 ephemeral=True,
             )
             return

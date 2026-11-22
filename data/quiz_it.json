@@ -1,0 +1,731 @@
+{
+ "_nota": "Domande del quiz a monete (#125, ECO-114): italiano, 4 risposte, g = indice della giusta.",
+ "domande": [
+  {
+   "d": "Qual è la capitale del Giappone?",
+   "r": [
+    "Tokyo",
+    "Kyoto",
+    "Osaka",
+    "Nagoya"
+   ],
+   "g": 0,
+   "c": "geografia"
+  },
+  {
+   "d": "Qual è il fiume più lungo d'Italia?",
+   "r": [
+    "Po",
+    "Tevere",
+    "Adige",
+    "Arno"
+   ],
+   "g": 0,
+   "c": "geografia"
+  },
+  {
+   "d": "Quanti sono i continenti comunemente contati?",
+   "r": [
+    "Cinque",
+    "Sei",
+    "Sette",
+    "Otto"
+   ],
+   "g": 2,
+   "c": "geografia"
+  },
+  {
+   "d": "Qual è il monte più alto d'Italia?",
+   "r": [
+    "Monte Bianco",
+    "Monte Rosa",
+    "Gran Sasso",
+    "Etna"
+   ],
+   "g": 0,
+   "c": "geografia"
+  },
+  {
+   "d": "Qual è l'oceano più grande?",
+   "r": [
+    "Atlantico",
+    "Pacifico",
+    "Indiano",
+    "Artico"
+   ],
+   "g": 1,
+   "c": "geografia"
+  },
+  {
+   "d": "In quale città si trova il Colosseo?",
+   "r": [
+    "Roma",
+    "Napoli",
+    "Firenze",
+    "Milano"
+   ],
+   "g": 0,
+   "c": "geografia"
+  },
+  {
+   "d": "Qual è il paese più popoloso d'Europa per abitanti, esclusa la Russia?",
+   "r": [
+    "Germania",
+    "Francia",
+    "Italia",
+    "Spagna"
+   ],
+   "g": 0,
+   "c": "geografia"
+  },
+  {
+   "d": "Quale isola italiana è la più grande?",
+   "r": [
+    "Sardegna",
+    "Sicilia",
+    "Elba",
+    "Capri"
+   ],
+   "g": 1,
+   "c": "geografia"
+  },
+  {
+   "d": "Qual è il deserto più grande del mondo (caldo)?",
+   "r": [
+    "Gobi",
+    "Sahara",
+    "Kalahari",
+    "Atacama"
+   ],
+   "g": 1,
+   "c": "geografia"
+  },
+  {
+   "d": "Che lingua si parla in Brasile?",
+   "r": [
+    "Spagnolo",
+    "Portoghese",
+    "Inglese",
+    "Francese"
+   ],
+   "g": 1,
+   "c": "geografia"
+  },
+  {
+   "d": "Chi dipinse la Gioconda?",
+   "r": [
+    "Michelangelo",
+    "Raffaello",
+    "Leonardo da Vinci",
+    "Caravaggio"
+   ],
+   "g": 2,
+   "c": "arte"
+  },
+  {
+   "d": "Chi scrisse la Divina Commedia?",
+   "r": [
+    "Petrarca",
+    "Boccaccio",
+    "Dante Alighieri",
+    "Manzoni"
+   ],
+   "g": 2,
+   "c": "letteratura"
+  },
+  {
+   "d": "Chi scrisse I Promessi Sposi?",
+   "r": [
+    "Alessandro Manzoni",
+    "Giacomo Leopardi",
+    "Ugo Foscolo",
+    "Italo Calvino"
+   ],
+   "g": 0,
+   "c": "letteratura"
+  },
+  {
+   "d": "Chi dipinse la Cappella Sistina?",
+   "r": [
+    "Michelangelo",
+    "Giotto",
+    "Tiziano",
+    "Botticelli"
+   ],
+   "g": 0,
+   "c": "arte"
+  },
+  {
+   "d": "Chi compose le Quattro Stagioni?",
+   "r": [
+    "Mozart",
+    "Vivaldi",
+    "Verdi",
+    "Bach"
+   ],
+   "g": 1,
+   "c": "musica"
+  },
+  {
+   "d": "Quanti sono i tasti di un pianoforte standard?",
+   "r": [
+    "76",
+    "88",
+    "92",
+    "100"
+   ],
+   "g": 1,
+   "c": "musica"
+  },
+  {
+   "d": "Quale strumento ha sei corde, di solito?",
+   "r": [
+    "Violino",
+    "Chitarra",
+    "Arpa",
+    "Violoncello"
+   ],
+   "g": 1,
+   "c": "musica"
+  },
+  {
+   "d": "Chi scrisse Romeo e Giulietta?",
+   "r": [
+    "Shakespeare",
+    "Dickens",
+    "Goethe",
+    "Molière"
+   ],
+   "g": 0,
+   "c": "letteratura"
+  },
+  {
+   "d": "Quanto fa 7 per 8?",
+   "r": [
+    "54",
+    "56",
+    "58",
+    "64"
+   ],
+   "g": 1,
+   "c": "matematica"
+  },
+  {
+   "d": "Quanti gradi ha un angolo retto?",
+   "r": [
+    "45",
+    "90",
+    "120",
+    "180"
+   ],
+   "g": 1,
+   "c": "matematica"
+  },
+  {
+   "d": "Quanto fa la radice quadrata di 144?",
+   "r": [
+    "10",
+    "11",
+    "12",
+    "14"
+   ],
+   "g": 2,
+   "c": "matematica"
+  },
+  {
+   "d": "Quanti lati ha un esagono?",
+   "r": [
+    "Cinque",
+    "Sei",
+    "Sette",
+    "Otto"
+   ],
+   "g": 1,
+   "c": "matematica"
+  },
+  {
+   "d": "Quale numero è primo?",
+   "r": [
+    "21",
+    "27",
+    "29",
+    "33"
+   ],
+   "g": 2,
+   "c": "matematica"
+  },
+  {
+   "d": "Quanto fa 15 più 27?",
+   "r": [
+    "41",
+    "42",
+    "43",
+    "44"
+   ],
+   "g": 1,
+   "c": "matematica"
+  },
+  {
+   "d": "Qual è il pianeta più vicino al Sole?",
+   "r": [
+    "Venere",
+    "Mercurio",
+    "Marte",
+    "Terra"
+   ],
+   "g": 1,
+   "c": "scienze"
+  },
+  {
+   "d": "Qual è il pianeta più grande del sistema solare?",
+   "r": [
+    "Saturno",
+    "Giove",
+    "Nettuno",
+    "Urano"
+   ],
+   "g": 1,
+   "c": "scienze"
+  },
+  {
+   "d": "Qual è il simbolo chimico dell'acqua?",
+   "r": [
+    "H2O",
+    "CO2",
+    "O2",
+    "NaCl"
+   ],
+   "g": 0,
+   "c": "scienze"
+  },
+  {
+   "d": "Quante zampe ha un ragno?",
+   "r": [
+    "Sei",
+    "Otto",
+    "Dieci",
+    "Dodici"
+   ],
+   "g": 1,
+   "c": "scienze"
+  },
+  {
+   "d": "Quale gas respiriamo per vivere?",
+   "r": [
+    "Azoto",
+    "Ossigeno",
+    "Elio",
+    "Idrogeno"
+   ],
+   "g": 1,
+   "c": "scienze"
+  },
+  {
+   "d": "Qual è l'animale terrestre più veloce?",
+   "r": [
+    "Leone",
+    "Ghepardo",
+    "Cavallo",
+    "Antilope"
+   ],
+   "g": 1,
+   "c": "scienze"
+  },
+  {
+   "d": "Quale organo pompa il sangue?",
+   "r": [
+    "Fegato",
+    "Cuore",
+    "Polmone",
+    "Rene"
+   ],
+   "g": 1,
+   "c": "scienze"
+  },
+  {
+   "d": "A che temperatura ghiaccia l'acqua, in gradi Celsius?",
+   "r": [
+    "-10",
+    "0",
+    "4",
+    "10"
+   ],
+   "g": 1,
+   "c": "scienze"
+  },
+  {
+   "d": "Quale pianeta è chiamato il pianeta rosso?",
+   "r": [
+    "Marte",
+    "Giove",
+    "Mercurio",
+    "Venere"
+   ],
+   "g": 0,
+   "c": "scienze"
+  },
+  {
+   "d": "Quante ossa ha, circa, un adulto?",
+   "r": [
+    "106",
+    "206",
+    "306",
+    "406"
+   ],
+   "g": 1,
+   "c": "scienze"
+  },
+  {
+   "d": "In che anno l'uomo arrivò sulla Luna?",
+   "r": [
+    "1959",
+    "1969",
+    "1979",
+    "1989"
+   ],
+   "g": 1,
+   "c": "storia"
+  },
+  {
+   "d": "Chi fu il primo imperatore romano?",
+   "r": [
+    "Giulio Cesare",
+    "Augusto",
+    "Nerone",
+    "Traiano"
+   ],
+   "g": 1,
+   "c": "storia"
+  },
+  {
+   "d": "In che anno cadde il muro di Berlino?",
+   "r": [
+    "1979",
+    "1985",
+    "1989",
+    "1993"
+   ],
+   "g": 2,
+   "c": "storia"
+  },
+  {
+   "d": "In che anno fu proclamata l'Unità d'Italia?",
+   "r": [
+    "1848",
+    "1861",
+    "1870",
+    "1900"
+   ],
+   "g": 1,
+   "c": "storia"
+  },
+  {
+   "d": "Chi scoprì l'America nel 1492?",
+   "r": [
+    "Marco Polo",
+    "Cristoforo Colombo",
+    "Amerigo Vespucci",
+    "Magellano"
+   ],
+   "g": 1,
+   "c": "storia"
+  },
+  {
+   "d": "Quale civiltà costruì le piramidi di Giza?",
+   "r": [
+    "Romana",
+    "Egizia",
+    "Greca",
+    "Maya"
+   ],
+   "g": 1,
+   "c": "storia"
+  },
+  {
+   "d": "Come si chiama il teatro giapponese con le maschere?",
+   "r": [
+    "Noh",
+    "Kabuki",
+    "Bunraku",
+    "Rakugo"
+   ],
+   "g": 0,
+   "c": "giappone"
+  },
+  {
+   "d": "Cosa significa «sakura»?",
+   "r": [
+    "Fiore di ciliegio",
+    "Luna",
+    "Montagna",
+    "Spada"
+   ],
+   "g": 0,
+   "c": "giappone"
+  },
+  {
+   "d": "Come si chiama l'arte di piegare la carta?",
+   "r": [
+    "Ikebana",
+    "Origami",
+    "Bonsai",
+    "Haiku"
+   ],
+   "g": 1,
+   "c": "giappone"
+  },
+  {
+   "d": "Quale animale è associato a nove code nel folklore giapponese?",
+   "r": [
+    "Tanuki",
+    "Kitsune",
+    "Tora",
+    "Kappa"
+   ],
+   "g": 1,
+   "c": "giappone"
+  },
+  {
+   "d": "Come si chiama la breve poesia giapponese di 17 sillabe?",
+   "r": [
+    "Haiku",
+    "Tanka",
+    "Sonetto",
+    "Ode"
+   ],
+   "g": 0,
+   "c": "giappone"
+  },
+  {
+   "d": "Qual è la montagna sacra più alta del Giappone?",
+   "r": [
+    "Monte Fuji",
+    "Monte Aso",
+    "Monte Tate",
+    "Monte Hiei"
+   ],
+   "g": 0,
+   "c": "giappone"
+  },
+  {
+   "d": "Come si chiama la cerimonia del tè in Giappone?",
+   "r": [
+    "Chanoyu",
+    "Sumo",
+    "Hanami",
+    "Matsuri"
+   ],
+   "g": 0,
+   "c": "giappone"
+  },
+  {
+   "d": "Cosa significa «hanami»?",
+   "r": [
+    "Guardare i fiori",
+    "Mangiare il riso",
+    "Tirare con l'arco",
+    "Dormire"
+   ],
+   "g": 0,
+   "c": "giappone"
+  },
+  {
+   "d": "Quale creatura giapponese ha un piatto d'acqua sulla testa?",
+   "r": [
+    "Kappa",
+    "Oni",
+    "Tengu",
+    "Nekomata"
+   ],
+   "g": 0,
+   "c": "giappone"
+  },
+  {
+   "d": "Cosa indossa tradizionalmente chi fa judo?",
+   "r": [
+    "Kimono",
+    "Judogi",
+    "Hakama",
+    "Yukata"
+   ],
+   "g": 1,
+   "c": "giappone"
+  },
+  {
+   "d": "Qual è la bevanda a base di tè verde in polvere?",
+   "r": [
+    "Matcha",
+    "Sake",
+    "Ramune",
+    "Mugicha"
+   ],
+   "g": 0,
+   "c": "giappone"
+  },
+  {
+   "d": "Che lingua si parla in Argentina?",
+   "r": [
+    "Portoghese",
+    "Spagnolo",
+    "Italiano",
+    "Inglese"
+   ],
+   "g": 1,
+   "c": "cultura"
+  },
+  {
+   "d": "Quanti giocatori ha una squadra di calcio in campo?",
+   "r": [
+    "9",
+    "10",
+    "11",
+    "12"
+   ],
+   "g": 2,
+   "c": "sport"
+  },
+  {
+   "d": "Ogni quanti anni si svolgono le Olimpiadi estive?",
+   "r": [
+    "2",
+    "3",
+    "4",
+    "5"
+   ],
+   "g": 2,
+   "c": "sport"
+  },
+  {
+   "d": "In quale sport si usa una racchetta e una rete, con punteggio 15, 30, 40?",
+   "r": [
+    "Tennis",
+    "Golf",
+    "Rugby",
+    "Pallavolo"
+   ],
+   "g": 0,
+   "c": "sport"
+  },
+  {
+   "d": "Quanti scacchi ha una scacchiera, in tutto?",
+   "r": [
+    "32",
+    "48",
+    "64",
+    "81"
+   ],
+   "g": 2,
+   "c": "giochi"
+  },
+  {
+   "d": "Quale colore si ottiene mescolando blu e giallo?",
+   "r": [
+    "Verde",
+    "Viola",
+    "Arancione",
+    "Marrone"
+   ],
+   "g": 0,
+   "c": "arte"
+  },
+  {
+   "d": "Quanti giorni ha un anno bisestile?",
+   "r": [
+    "364",
+    "365",
+    "366",
+    "367"
+   ],
+   "g": 2,
+   "c": "cultura"
+  },
+  {
+   "d": "Quale animale produce il miele?",
+   "r": [
+    "Vespa",
+    "Ape",
+    "Formica",
+    "Farfalla"
+   ],
+   "g": 1,
+   "c": "scienze"
+  },
+  {
+   "d": "Quale pasta ha la forma di piccole farfalle?",
+   "r": [
+    "Penne",
+    "Farfalle",
+    "Fusilli",
+    "Rigatoni"
+   ],
+   "g": 1,
+   "c": "cucina"
+  },
+  {
+   "d": "Quale formaggio si usa tradizionalmente sulla pizza margherita?",
+   "r": [
+    "Mozzarella",
+    "Gorgonzola",
+    "Pecorino",
+    "Ricotta"
+   ],
+   "g": 0,
+   "c": "cucina"
+  },
+  {
+   "d": "Di che colore è il semaforo che dice di fermarsi?",
+   "r": [
+    "Verde",
+    "Rosso",
+    "Giallo",
+    "Blu"
+   ],
+   "g": 1,
+   "c": "cultura"
+  },
+  {
+   "d": "Quanti minuti ci sono in un'ora e mezza?",
+   "r": [
+    "60",
+    "75",
+    "90",
+    "120"
+   ],
+   "g": 2,
+   "c": "matematica"
+  },
+  {
+   "d": "Qual è la lingua più parlata al mondo per numero di madrelingua?",
+   "r": [
+    "Inglese",
+    "Cinese mandarino",
+    "Spagnolo",
+    "Hindi"
+   ],
+   "g": 1,
+   "c": "cultura"
+  },
+  {
+   "d": "Quale pianeta ha gli anelli più famosi?",
+   "r": [
+    "Saturno",
+    "Marte",
+    "Mercurio",
+    "Terra"
+   ],
+   "g": 0,
+   "c": "scienze"
+  },
+  {
+   "d": "Chi è l'autore di Pinocchio?",
+   "r": [
+    "Carlo Collodi",
+    "Gianni Rodari",
+    "Umberto Eco",
+    "Dino Buzzati"
+   ],
+   "g": 0,
+   "c": "letteratura"
+  }
+ ]
+}
