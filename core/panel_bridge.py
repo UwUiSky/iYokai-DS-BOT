@@ -311,6 +311,16 @@ async def _verifica_aperta(bot, guild_id: int, user_id: int):
     return (guild, membro), None
 
 
+async def testo_pagina_verifica(guild_id: int) -> list[str]:
+    """VER-006: le righe che il server mostra sopra il bottone (vuoto se non ne ha scritte o la lettura fallisce)."""
+    from core.database import db
+
+    try:
+        return doppi_logica.testo_pagina_pulito(await db.get_guild_setting(guild_id, "verify_testo_pagina"))
+    except Exception:
+        return []
+
+
 async def pagina_verifica(bot, guild_id: int, user_id: int) -> tuple[str | None, str | None]:
     """(nome del server, None) se la verifica si può fare, altrimenti (None, motivo)."""
     trovato, motivo = await _verifica_aperta(bot, guild_id, user_id)

@@ -27,7 +27,7 @@ from core.lockdown_logic import puo_agire_in_panico
 from core.repositories.security_repo import security_repo
 from core.duration_logic import format_duration, parse_duration  # noqa: F401 — re-export
 from core.moderation_validation_logic import is_valid_reason
-from core import moderation_motivi, moderation_opzioni
+from core import moderation_aspetto, moderation_motivi, moderation_opzioni
 from core.permissions import ModerationActor, can_moderate
 
 # Nomi dei tre moduli premium-differenziabili di moderazione, come
@@ -46,6 +46,7 @@ MODULE_REPORT = "moderation_report"
 # cogs/moderation/report.py per il proprio canale, non una nuova
 # colonna dedicata.
 SETTING_MOD_LOG_CHANNEL = "mod_log_channel_id"
+SETTING_AVVISO_CANALE = "mod_avviso_canale_id"  # MOD-060: l'avviso della sanzione in un canale invece che in DM
 
 # Il registro di controllo di Discord accetta un motivo di 512
 # caratteri al massimo (LIM-8). Dichiararlo sull'opzione fa rifiutare
@@ -168,6 +169,12 @@ async def post_to_mod_log(guild: discord.Guild, embed: discord.Embed) -> None:
     # §18.1: passa dal router (forum, un solo avviso al proprietario, iYokai Mod).
     dest = await router.destinazione(guild, router.TIPO_MODERAZIONE, channel_id)
     if dest is not None:
+        try:  # MOD-053: colore e icona scelti dal server; un errore qui non ferma il log
+            embed = moderation_aspetto.applica(embed, moderation_aspetto.pulita(
+                await db.get_guild_setting(guild.id, moderation_aspetto.SETTING_ASPETTO)
+            ))
+        except Exception:
+            pass
         await router.invia_a(dest, guild, router.TIPO_MODERAZIONE, embed=embed)
 
 
@@ -280,6 +287,32 @@ async def motivo_immune(guild: discord.Guild, moderatore: discord.Member, target
     )
 
 
+async def _avviso_in_canale(user, embed: discord.Embed, guild_id: int) -> discord.Message | None:
+    """
+    MOD-060: se il server ha scelto un canale per gli avvisi, l'avviso va lì (con la menzione della persona,
+    solo di lei) invece che in DM. None se non c'è il canale, non si può scrivere o la persona non è un membro
+    del server (un ban per ID): si prova col DM.
+    """
+    guild = getattr(user, "guild", None)
+    try:
+        canale_id = await db.get_guild_setting(guild_id, SETTING_AVVISO_CANALE)
+    except Exception:
+        return None
+    canale = guild.get_channel(canale_id) if guild is not None and isinstance(canale_id, int) else None
+    if not isinstance(canale, discord.TextChannel):
+        return None
+    permessi = canale.permissions_for(guild.me)
+    if not (permessi.view_channel and permessi.send_messages and permessi.embed_links):
+        return None
+    try:
+        return await canale.send(
+            content=user.mention, embed=embed,
+            allowed_mentions=discord.AllowedMentions(everyone=False, roles=False, users=[user], replied_user=False),
+        )
+    except discord.HTTPException:
+        return None
+
+
 async def try_dm_message(
     user: discord.abc.Snowflake,
     embed: discord.Embed,
@@ -302,6 +335,10 @@ async def try_dm_message(
         return None
     if forza is None and azione is not None and guild_id is not None and not await moderation_opzioni.dm_attivo(guild_id, azione):
         return None
+    if guild_id is not None:
+        avviso = await _avviso_in_canale(user, embed, guild_id)
+        if avviso is not None:
+            return avviso
     try:
         # user qui è sempre un discord.Member/discord.User vero
         # (Snowflake nel type hint solo per generalità); .send()

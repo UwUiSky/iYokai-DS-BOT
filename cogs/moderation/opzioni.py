@@ -6,7 +6,7 @@ cancellati al ban, durata predefinita del timeout, DM per tipo di azione,
 ruoli immuni alla moderazione manuale, casi per le azioni fatte fuori da
 iYokai, avvisi allo staff. La logica e il salvataggio sono in
 core/moderation_opzioni.py (un solo punto, anche per il pannello web).
-Funzioni coperte: SPEC §5.13 (MOD-010, MOD-017, MOD-057, MOD-068), §5.2 (MOD-047), §5.3 (MOD-036, MOD-064)
+Funzioni coperte: SPEC §5.13 (MOD-010, MOD-017, MOD-018, MOD-019, MOD-057, MOD-060, MOD-068), CFG-024, §5.2 (MOD-047), §5.3 (MOD-036, MOD-064)
 """
 
 from __future__ import annotations
@@ -15,11 +15,17 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from cogs.moderation._shared import MODULE_ACTIONS, ensure_module_enabled, format_duration, parse_duration
+from cogs.moderation._shared import MODULE_ACTIONS, audit_reason, ensure_module_enabled, format_duration, parse_duration
+from cogs.moderation.softban_mute import SETTING_MUTE_ROLE_ID, aggiorna_ruolo_muto
+from cogs.moderation._shared import SETTING_AVVISO_CANALE
 from core import moderation_dm
+from core import moderation_aspetto
+from core import moderation_permessi_azioni as permessi_azioni
 from core import moderation_opzioni as opzioni
 from core.command_groups import SOTTOGRUPPI, CogConGruppi, comando_di_gruppo
+from core.database import db
 from core.i18n import testo_per
+from core.role_safety import check_role_assignable
 from core.ui_base import BaseModal
 
 SOTTOGRUPPO = ("opzioni", "Opzioni di moderazione del server.")
@@ -243,6 +249,226 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.send_message(
             await testo_per(interaction, "opzioni_dm_per", name=azione.name, v2=(await testo_per(interaction, "opzioni_acceso")) if attivo else (await testo_per(interaction, "opzioni_spento"))), ephemeral=True
+        )
+
+    @comando_di_gruppo(
+        "mod-sanzioni",
+        nome="muto",
+        descrizione="Sceglie o crea il ruolo del mute e rimette il blocco su tutti i canali.",
+        sottogruppo=SOTTOGRUPPO,
+    )
+    @app_commands.describe(
+        ruolo="Un ruolo che c'è già, da usare per il mute",
+        nome_nuovo="Oppure crea un ruolo nuovo con questo nome",
+        aggiorna="Rimette il blocco del mute sui canali che non l'hanno (fino a 500)",
+    )
+    async def muto(
+        self,
+        interaction: discord.Interaction,
+        ruolo: discord.Role | None = None,
+        nome_nuovo: app_commands.Range[str, 1, 100] | None = None,
+        aggiorna: bool = False,
+    ) -> None:
+        """MOD-018: ruolo del mute scelto o creato dal server. MOD-019: aggiorna i canali."""
+        if not await self._controlli(interaction):
+            return
+        guild = interaction.guild
+        if ruolo is not None and nome_nuovo is not None:
+            await interaction.response.send_message(await testo_per(interaction, "opzioni_muto_una_scelta"), ephemeral=True)
+            return
+        permessi_bot = guild.me.guild_permissions
+        if (ruolo is not None or nome_nuovo is not None or aggiorna) and not permessi_bot.manage_roles:
+            await interaction.response.send_message(await testo_per(interaction, "opzioni_muto_bot_senza_ruoli"), ephemeral=True)
+            return
+        if aggiorna and not permessi_bot.manage_channels:
+            await interaction.response.send_message(await testo_per(interaction, "opzioni_muto_bot_senza_canali"), ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        cambiato = ruolo is not None or nome_nuovo is not None
+        if ruolo is not None:
+            rifiuto = check_role_assignable(guild, ruolo, interaction.user, self_service=True)
+            if rifiuto is not None:
+                await interaction.followup.send(rifiuto[:2000], ephemeral=True)
+                return
+        elif nome_nuovo is not None:
+            try:
+                ruolo = await guild.create_role(name=nome_nuovo.strip(), reason=audit_reason(f"Ruolo mute creato da {interaction.user}"))
+            except discord.HTTPException:
+                await interaction.followup.send(await testo_per(interaction, "opzioni_muto_creazione_fallita"), ephemeral=True)
+                return
+        if ruolo is not None:
+            await db.set_guild_setting(guild.id, SETTING_MUTE_ROLE_ID, ruolo.id, changed_by=interaction.user.id)
+        else:
+            id_salvato = await db.get_guild_setting(guild.id, SETTING_MUTE_ROLE_ID)
+            ruolo = guild.get_role(id_salvato) if id_salvato else None
+            if ruolo is None:
+                await interaction.followup.send(await testo_per(interaction, "opzioni_muto_nessun_ruolo"), ephemeral=True)
+                return
+        righe = [await testo_per(interaction, "opzioni_muto_ruolo", ruolo=ruolo.mention)]
+        if aggiorna or cambiato:
+            fatti, falliti = await aggiorna_ruolo_muto(guild, ruolo)
+            righe.append(await testo_per(interaction, "opzioni_muto_canali", fatti=fatti, falliti=falliti))
+        await interaction.followup.send("\n".join(righe)[:2000], ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+
+    @comando_di_gruppo(
+        "mod-sanzioni",
+        nome="aspetto",
+        descrizione="Sceglie colore e icona di un tipo di caso nel log di moderazione.",
+        sottogruppo=SOTTOGRUPPO,
+    )
+    @app_commands.describe(
+        tipo="Il tipo di caso",
+        colore="Colore, per esempio #c24a3a; «nessuno» toglie la scelta",
+        icona="Emoji davanti al titolo; «nessuno» toglie la scelta",
+    )
+    @app_commands.choices(tipo=[app_commands.Choice(name=t, value=t) for t in moderation_aspetto.TIPI])
+    async def aspetto(
+        self,
+        interaction: discord.Interaction,
+        tipo: app_commands.Choice[str],
+        colore: app_commands.Range[str, 4, 7] | None = None,
+        icona: app_commands.Range[str, 1, 60] | None = None,
+    ) -> None:
+        """MOD-053: cambia solo il riquadro nel log. Colore e icona si controllano prima di salvare."""
+        if not await self._controlli(interaction):
+            return
+        scelte = moderation_aspetto.pulita(await db.get_guild_setting(interaction.guild.id, moderation_aspetto.SETTING_ASPETTO))
+        voce = dict(scelte.get(tipo.value, {}))
+        if colore is not None:
+            if colore.strip().lower() == "nessuno":
+                voce.pop("colore", None)
+            else:
+                grezzo = colore.strip().lstrip("#")
+                if len(grezzo) != 6 or any(c not in "0123456789abcdefABCDEF" for c in grezzo):
+                    await interaction.response.send_message(await testo_per(interaction, "opzioni_aspetto_colore_no"), ephemeral=True)
+                    return
+                voce["colore"] = int(grezzo, 16)
+        if icona is not None:
+            if icona.strip().lower() == "nessuno":
+                voce.pop("icona", None)
+            elif not moderation_aspetto.icona_valida(icona):
+                await interaction.response.send_message(await testo_per(interaction, "opzioni_aspetto_icona_no"), ephemeral=True)
+                return
+            else:
+                voce["icona"] = icona.strip()
+        if voce:
+            scelte[tipo.value] = voce
+        else:
+            scelte.pop(tipo.value, None)
+        await db.set_guild_setting(interaction.guild.id, moderation_aspetto.SETTING_ASPETTO, scelte, changed_by=interaction.user.id)
+        colore_txt = f"#{voce['colore']:06x}" if "colore" in voce else "di base"
+        await interaction.response.send_message(
+            await testo_per(interaction, "opzioni_aspetto_salvato", tipo=tipo.value, colore=colore_txt, icona=voce.get("icona", "di base")),
+            ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
+        )
+
+    @comando_di_gruppo(
+        "mod-sanzioni",
+        nome="memoria",
+        descrizione="Accende lo storico dei nomi e il soprannome e il mute vocale ridati a chi rientra.",
+        sottogruppo=SOTTOGRUPPO,
+    )
+    @app_commands.describe(
+        nomi="Tiene i nomi e i soprannomi di ogni membro per 90 giorni (si legge con /mod-casi nomi)",
+        persistenza="Chi esce e rientra entro 30 giorni riprende il soprannome e il mute vocale",
+        registro_chat="Con warn, timeout, kick e ban salva gli ultimi 100 messaggi del canale (30 giorni)",
+    )
+    async def memoria(
+        self, interaction: discord.Interaction, nomi: bool | None = None, persistenza: bool | None = None,
+        registro_chat: bool | None = None,
+    ) -> None:
+        """MOD-103, MOD-104: spenti di base, sono dati personali con scadenza (registro dei dati)."""
+        if not await self._controlli(interaction):
+            return
+        from core import moderation_nomi, moderation_registro_chat
+
+        for chiave, valore in (
+            (moderation_nomi.SETTING_STORICO_NOMI, nomi), (moderation_nomi.SETTING_PERSISTENZA, persistenza),
+            (moderation_registro_chat.SETTING_REGISTRO_CHAT, registro_chat),
+        ):
+            if valore is not None:
+                await db.set_guild_setting(interaction.guild.id, chiave, valore, changed_by=interaction.user.id)
+        a = bool(await db.get_guild_setting(interaction.guild.id, moderation_nomi.SETTING_STORICO_NOMI))
+        b = bool(await db.get_guild_setting(interaction.guild.id, moderation_nomi.SETTING_PERSISTENZA))
+        c = bool(await db.get_guild_setting(interaction.guild.id, moderation_registro_chat.SETTING_REGISTRO_CHAT))
+        await interaction.response.send_message(
+            await testo_per(interaction, "opzioni_memoria_stato", nomi="sì" if a else "no", persistenza="sì" if b else "no", chat="sì" if c else "no"),
+            ephemeral=True,
+        )
+
+    @comando_di_gruppo(
+        "mod-sanzioni",
+        nome="avvisi",
+        descrizione="Scrive l'avviso delle sanzioni in un canale invece che nel messaggio privato.",
+        sottogruppo=SOTTOGRUPPO,
+    )
+    @app_commands.describe(canale="Il canale degli avvisi (vuoto: si torna al messaggio privato)")
+    async def avvisi(self, interaction: discord.Interaction, canale: discord.TextChannel | None = None) -> None:
+        """MOD-060. Il bot deve poter scrivere e mettere embed nel canale."""
+        if not await self._controlli(interaction):
+            return
+        if canale is not None:
+            permessi = canale.permissions_for(interaction.guild.me)
+            if not (permessi.view_channel and permessi.send_messages and permessi.embed_links):
+                await interaction.response.send_message(
+                    await testo_per(interaction, "opzioni_avvisi_bot_senza_permesso", canale=canale.mention), ephemeral=True
+                )
+                return
+        await db.set_guild_setting(
+            interaction.guild.id, SETTING_AVVISO_CANALE, canale.id if canale else None, changed_by=interaction.user.id
+        )
+        chiave = "opzioni_avvisi_in_canale" if canale else "opzioni_avvisi_in_dm"
+        await interaction.response.send_message(
+            await testo_per(interaction, chiave, canale=canale.mention if canale else ""),
+            ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
+        )
+
+    @comando_di_gruppo(
+        "mod-sanzioni",
+        nome="azioni",
+        descrizione="Dà a un ruolo il permesso di una sola azione di moderazione (o lo toglie).",
+        sottogruppo=SOTTOGRUPPO,
+    )
+    @app_commands.describe(
+        ruolo="Il ruolo. Vuoto: mostra chi ha già permessi",
+        azione="L'azione. Vuoto con «togli»: le toglie tutte a quel ruolo",
+        togli="Sì: toglie il permesso invece di darlo",
+    )
+    @app_commands.choices(azione=[app_commands.Choice(name=a, value=a) for a in permessi_azioni.AZIONI])
+    async def azioni(
+        self,
+        interaction: discord.Interaction,
+        ruolo: discord.Role | None = None,
+        azione: app_commands.Choice[str] | None = None,
+        togli: bool = False,
+    ) -> None:
+        """CFG-024. Restano sempre i controlli di gerarchia e il permesso del bot."""
+        if not await self._controlli(interaction):
+            return
+        guild = interaction.guild
+        if ruolo is None:
+            dati = await permessi_azioni.elenco(guild.id)
+            righe = [f"<@&{r}>: {', '.join(a)}" for r, a in dati.items()] or [await testo_per(interaction, "opzioni_azioni_nessuno")]
+            await interaction.response.send_message(
+                "\n".join(righe)[:1900], ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
+            )
+            return
+        if togli:
+            n = await permessi_azioni.togli(guild.id, ruolo.id, azione.value if azione else None)
+            await interaction.response.send_message(
+                await testo_per(interaction, "opzioni_azioni_tolte", n=n), ephemeral=True
+            )
+            return
+        if azione is None:
+            await interaction.response.send_message(await testo_per(interaction, "opzioni_azioni_serve_azione"), ephemeral=True)
+            return
+        errore = await permessi_azioni.concedi(guild, ruolo, azione.value, interaction.user)
+        if errore:
+            await interaction.response.send_message(errore[:1900], ephemeral=True)
+            return
+        await interaction.response.send_message(
+            await testo_per(interaction, "opzioni_azioni_date", ruolo=ruolo.mention, azione=azione.value),
+            ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
         )
 
     @comando_di_gruppo(

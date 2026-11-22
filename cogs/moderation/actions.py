@@ -55,7 +55,7 @@ from discord.ext import commands
 from core import bot_roles
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
-from core import moderation_dm, moderation_opzioni
+from core import moderation_dm, moderation_opzioni, moderation_registro_chat as registro_chat
 from core.database import db
 from core.i18n import testo_per
 from core.repositories.moderation_repo import moderation_repo
@@ -69,7 +69,7 @@ from core.tempban_logic import (
     testo_fine,
 )
 from cogs.moderation import _tempban_modes as tempban_modes
-from cogs.moderation.ban_appeal import vista_appello
+from cogs.moderation.ban_appeal import vista_appello, vista_appello_timeout
 from cogs.automod.escalation import scala_per_warn_manuale
 from core.spam_trap_logic import BAN_ACTION_TYPE as SPAM_TRAP_BAN_ACTION_TYPE
 from cogs.moderation.ricerca import completa_ban
@@ -347,6 +347,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             action_type="warn",
             reason=reason,
         )
+        await registro_chat.salva(interaction, case_number)  # MOD-051
 
         embed = _case_embed(
             "⚠️ Warn", discord.Color.yellow(), member, interaction.user, reason, case_number
@@ -428,6 +429,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             action_type="kick",
             reason=reason,
         )
+        await registro_chat.salva(interaction, case_number)  # MOD-051
         await self._chiudi_sanzioni_a_tempo(interaction.guild, member.id, interaction.user.id)
         embed = _case_embed(
             "👢 Kick", discord.Color.orange(), member, interaction.user, reason, case_number
@@ -452,6 +454,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         reason="Motivo del ban",
         delete_message_days="Giorni di messaggi da cancellare (0-7). Vuoto: quelli di /mod-sanzioni opzioni",
         dm="Mandare il DM all'utente? Vuoto: come impostato per il server",
+        appello="No: ban senza possibilità di appello (niente bottone nel messaggio privato)",
     )
     @app_commands.autocomplete(reason=completa_motivo)
     async def ban(
@@ -461,6 +464,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         reason: Reason | None = None,
         delete_message_days: app_commands.Range[int, 0, 7] | None = None,
         dm: bool | None = None,
+        appello: bool = True,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
             return
@@ -482,7 +486,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             await moderation_dm.costruisci(
                 interaction.guild, "ban", titolo="🔨 Ban", colore=discord.Color.red(), moderatore=interaction.user, motivo=reason
             ),
-            view=await vista_appello(interaction.guild.id),
+            view=await vista_appello(interaction.guild.id) if appello else None,
             azione="ban", guild_id=interaction.guild.id, forza=dm,
         )
         try:
@@ -502,6 +506,9 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             action_type="ban",
             reason=reason,
         )
+        await registro_chat.salva(interaction, case_number)  # MOD-051
+        if not appello:  # MOD-008
+            await moderation_repo.segna_senza_appello(interaction.guild.id, case_number)
         await self._chiudi_sanzioni_a_tempo(interaction.guild, member.id, interaction.user.id)
         embed = _case_embed(
             "🔨 Ban", discord.Color.red(), member, interaction.user, reason, case_number
@@ -523,6 +530,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         modo="Fuori dal server, fuori con invito e ruoli al rientro, oppure isolamento",
         giorni_messaggi="Giorni di messaggi da cancellare (0-7). Vuoto: quelli di /mod-sanzioni opzioni",
         dm="Mandare il DM all'utente? Vuoto: come impostato per il server",
+        appello="No: tempban senza possibilità di appello (niente bottone nel messaggio privato)",
     )
     @app_commands.choices(
         modo=[
@@ -541,6 +549,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         modo: str = MODO_FUORI,
         giorni_messaggi: app_commands.Range[int, 0, 7] | None = None,
         dm: bool | None = None,
+        appello: bool = True,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
             return
@@ -614,7 +623,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
                 guild, "tempban", titolo=titolo, colore=discord.Color.dark_red(), moderatore=interaction.user,
                 motivo=reason, durata_s=duration_seconds, extra=tuple(extra_dm),
             ),
-            view=None if modo != MODO_FUORI else await vista_appello(guild.id),
+            view=None if modo != MODO_FUORI or not appello else await vista_appello(guild.id),
             azione="tempban", guild_id=guild.id, forza=dm,
         )
 
@@ -670,6 +679,8 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             reason=reason,
             duration_seconds=duration_seconds,
         )
+        if not appello:  # MOD-008
+            await moderation_repo.segna_senza_appello(guild.id, case_number)
 
         if modo != MODO_FUORI:
             await moderation_repo.set_tempban_state_case(guild.id, member.id, case_number)
@@ -985,6 +996,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         duration="Durata, es. 10m, 1h, 7d (max 28 giorni). Vuoto: quella di /mod-sanzioni opzioni",
         reason="Motivo del timeout (anche un motivo pronto)",
         dm="Mandare il DM all'utente? Vuoto: come impostato per il server",
+        appello="No: timeout senza possibilità di appello (vale se il server accetta appelli per i timeout)",
     )
     @app_commands.autocomplete(reason=completa_motivo)
     async def timeout(
@@ -994,6 +1006,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
         reason: Reason | None = None,
         duration: app_commands.Range[str, 1, 20] | None = None,
         dm: bool | None = None,
+        appello: bool = True,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
             return
@@ -1050,6 +1063,9 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             reason=reason,
             duration_seconds=duration_seconds,
         )
+        await registro_chat.salva(interaction, case_number)  # MOD-051
+        if not appello:  # MOD-008
+            await moderation_repo.segna_senza_appello(interaction.guild.id, case_number)
         embed = _case_embed(
             "🔇 Timeout",
             discord.Color.dark_orange(),
@@ -1064,7 +1080,11 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             interaction.guild, "timeout", titolo="🔇 Timeout", colore=discord.Color.dark_orange(), moderatore=interaction.user,
             motivo=reason, caso=case_number, durata_s=duration_seconds,
         )
-        await try_dm(member, dm_embed, azione="timeout", guild_id=interaction.guild.id, forza=dm)
+        # MOD-063: il bottone «Fai appello» compare solo se il server lo ha acceso per i timeout.
+        await try_dm_message(
+            member, dm_embed, view=await vista_appello_timeout(interaction.guild.id) if appello else None,
+            azione="timeout", guild_id=interaction.guild.id, forza=dm,
+        )
         await post_to_mod_log(interaction.guild, embed)
 
     @comando_di_gruppo(

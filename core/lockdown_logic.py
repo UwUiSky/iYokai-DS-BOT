@@ -38,6 +38,10 @@ PERMESSI_TESTO = (
     "add_reactions",
 )
 PERMESSI_VOCE = ("connect", "speak")
+PERMESSI_NASCOSTI = ("view_channel",)  # MOD-094: il blocco «cieco» nasconde il canale invece di chiuderlo
+NOME_CANALE_AVVISO = "server-bloccato"
+MAX_CANALI_SCELTI = 25  # MOD-091/092: un menu di Discord arriva a 25 scelte
+MODI_INGRESSI = ("kick", "ban")  # MOD-095
 
 TIPO_BLOCCO = "blocco"
 TIPO_PANICO = "panico"
@@ -49,8 +53,12 @@ STATO_IN_RIAPERTURA = "in_riapertura"
 Prima = dict[str, bool | None]
 
 
-def permessi_da_bloccare(canale) -> tuple[str, ...]:
+def permessi_da_bloccare(canale, nascondi: bool = False) -> tuple[str, ...]:
     """I permessi di @everyone da negare in questo canale (vuoto: il canale non si tocca)."""
+    if nascondi:
+        return PERMESSI_NASCOSTI if isinstance(
+            canale, (discord.TextChannel, discord.ForumChannel, discord.VoiceChannel, discord.StageChannel)
+        ) else ()
     if isinstance(canale, (discord.VoiceChannel, discord.StageChannel)):
         return PERMESSI_VOCE
     if isinstance(canale, (discord.TextChannel, discord.ForumChannel)):
@@ -64,16 +72,33 @@ def canale_escluso(canale, categorie_escluse) -> bool:
     return canale.id in escluse or getattr(canale, "category_id", None) in escluse
 
 
-def canali_da_bloccare(canali, categorie_escluse) -> list[tuple[object, tuple[str, ...]]]:
+def canali_da_bloccare(canali, categorie_escluse, nascondi: bool = False) -> list[tuple[object, tuple[str, ...]]]:
     """(canale, permessi) per ogni canale che il blocco deve toccare, nell'ordine dato."""
     piano = []
     for canale in canali:
         if getattr(canale, "name", "") == NOME_CANALE_NASCOSTO:
             continue
-        permessi = permessi_da_bloccare(canale)
+        permessi = permessi_da_bloccare(canale, nascondi)
         if permessi and not canale_escluso(canale, categorie_escluse):
             piano.append((canale, permessi))
     return piano
+
+
+def permessi_pericolosi_da_togliere(permessi: discord.Permissions, critici) -> int:
+    """MOD-096: i bit dei permessi critici che il ruolo ha e il blocco toglie (0 = niente da fare)."""
+    bit = 0
+    for nome in critici:
+        if getattr(permessi, nome, False):
+            bit |= getattr(discord.Permissions, nome).flag
+    return bit
+
+
+def opzioni_valide(nascondi=False, ingressi=None, ruoli=False, solo_canali=False) -> dict:
+    """Le opzioni di un blocco, come si salvano: solo valori ammessi."""
+    return {
+        "nascosto": bool(nascondi), "ingressi": ingressi if ingressi in MODI_INGRESSI else None,
+        "ruoli": bool(ruoli), "solo_canali": bool(solo_canali),
+    }
 
 
 def stato_prima(overwrite: discord.PermissionOverwrite, permessi: tuple[str, ...]) -> Prima:

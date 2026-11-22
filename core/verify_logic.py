@@ -19,7 +19,7 @@ espone quel dato a un bot). È un segnale debole, non una prova.
 Già annotato così nello schema di progetto originale.
 Promemoria, tempo massimo, azione su chi fallisce e verifica solo per gli
 account sospetti (VER-008, 011, 012, 013): le regole sono qui sotto.
-Funzioni coperte: SPEC §4.1, §4.4-§4.6 (VER-008, 011, 012, 013)
+Funzioni coperte: SPEC §4.1, §4.4-§4.6 (VER-008, 011, 012, 013), VER-028 (pannello personalizzato)
 """
 
 from __future__ import annotations
@@ -148,3 +148,45 @@ def sospesa_adesso(fino_epoch: int | None, adesso: datetime | None = None) -> bo
     if not fino_epoch:
         return False
     return (adesso or datetime.now(timezone.utc)).timestamp() < fino_epoch
+
+
+# VER-028: limiti di Discord per titolo (256), testo (4096, qui 2000), etichetta del bottone (80).
+MAX_TITOLO_PANNELLO = 256
+MAX_TESTO_PANNELLO = 2000
+MAX_BOTTONE_PANNELLO = 80
+
+
+@dataclass(frozen=True)
+class PannelloPersonalizzato:
+    titolo: str | None = None
+    testo: str | None = None
+    colore: int | None = None
+    bottone: str | None = None
+    emoji: str | None = None
+
+
+def pannello_personalizzato(
+    titolo: str | None, testo: str | None, colore: str | None, bottone: str | None, emoji: str | None
+) -> tuple[PannelloPersonalizzato | None, str | None]:
+    """(pannello, errore). Colore «#c24a3a» o «c24a3a»; emoji unicode o personalizzata «<:nome:id>»."""
+    import re
+
+    valore_colore = None
+    if colore:
+        grezzo = colore.strip().lstrip("#")
+        if not re.fullmatch(r"[0-9a-fA-F]{6}", grezzo):
+            return None, "Il colore va scritto come #c24a3a."
+        valore_colore = int(grezzo, 16)
+    if titolo and len(titolo) > MAX_TITOLO_PANNELLO:
+        return None, f"Il titolo arriva a {MAX_TITOLO_PANNELLO} caratteri."
+    if testo and len(testo) > MAX_TESTO_PANNELLO:
+        return None, f"Il testo arriva a {MAX_TESTO_PANNELLO} caratteri."
+    if bottone and len(bottone) > MAX_BOTTONE_PANNELLO:
+        return None, f"Il bottone arriva a {MAX_BOTTONE_PANNELLO} caratteri."
+    if emoji and not (len(emoji.strip()) <= 8 or re.fullmatch(r"<a?:\w{2,32}:\d{15,25}>", emoji.strip())):
+        return None, "L'emoji non è valida."
+    return PannelloPersonalizzato(
+        (titolo or "").strip() or None, (testo or "").strip() or None, valore_colore,
+        (bottone or "").strip() or None, (emoji or "").strip() or None,
+    ), None
+

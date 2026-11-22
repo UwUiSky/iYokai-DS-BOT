@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:56 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 17:36 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 1103 comandi in 55 categorie.**
+**Totale: 1117 comandi in 55 categorie.**
 
 ## Admin: AI
 
@@ -245,6 +245,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:
 - **`/admin-filtri anti-zalgo`** — Attiva o disattiva l'anti-zalgo (testo con segni diacritici anomali).
 - **`/admin-filtri canale-media`** — Canale solo media, senza allegati o normale.
 - **`/admin-filtri contenuto`** — Embed e inoltri controllati dai filtri; tipi di file vietati.
+- **`/admin-filtri emergenza`** — Blocco dei canali per troppe menzioni e modalità panico dell'AutoMod.
 - **`/admin-filtri forma-testo`** — Limiti sulla forma del messaggio: a-capo, lunghezza, spoiler (0 = spento).
 - **`/admin-filtri invites`** — Attiva o disattiva il blocco automatico degli inviti Discord.
 - **`/admin-filtri messaggi`** — Ripetuti, troppo corti, link e menzioni contati nel tempo (0 = spento).
@@ -904,6 +905,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:
 
 - **`/mod-ban appelli canale`** — Sceglie il canale staff per gli appelli (vuoto per spegnerli).
 - **`/mod-ban appelli elenco`** — Mostra gli ultimi appelli del server.
+- **`/mod-ban appelli timeout`** — Accende o spegne gli appelli anche per i timeout.
 - **`/mod-ban ban`** — Banna permanentemente un membro.
 - **`/mod-ban cerca`** — Cerca tra i ban del server per nome, ID o motivo.
 - **`/mod-ban kick`** — Espelle un membro dal server.
@@ -919,8 +921,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:
 ## Mod: canali
 
 - **`/mod-canali blocco attiva`** — Blocca tutti i canali, gli inviti e gli ingressi del server.
+- **`/mod-canali blocco canali`** — Blocca solo alcuni canali (scelti da un menu) o il gruppo salvato.
+- **`/mod-canali blocco stato`** — Mostra se c'e' un blocco attivo, da quando e quando finisce.
 - **`/mod-canali blocco togli`** — Riapre il server com'era prima del blocco.
 - **`/mod-canali clear`** — Cancella un numero di messaggi, con filtri opzionali.
+- **`/mod-canali esporta-chat`** — Manda in un file di testo gli ultimi messaggi di un canale (solo a te).
 - **`/mod-canali espressione`** — Aggiungi un'emoji o uno sticker al server da un file o da un'emoji.
 - **`/mod-canali lock`** — Blocca la possibilità di scrivere in un canale.
 - **`/mod-canali reazioni`** — Toglie le reazioni dagli ultimi messaggi di un canale, senza cancellarli.
@@ -943,6 +948,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:
 - **`/mod-casi avvisi togli`** — Toglie un singolo warn (per numero di caso).
 - **`/mod-casi carico`** — Carico dello staff e turni proposti. Solo amministratori, mai pubblico.
 - **`/mod-casi caso attive`** — Sanzioni ancora in corso: tempban, timeout, mute, lock a tempo.
+- **`/mod-casi caso chat`** — Manda il registro degli ultimi messaggi del canale salvato con un caso.
 - **`/mod-casi caso classifica-staff`** — Classifica dei moderatori per numero di azioni, o casi di uno solo.
 - **`/mod-casi caso durata`** — Cambia la durata di un tempban, di un timeout o di un mute ancora in corso.
 - **`/mod-casi caso elimina`** — Elimina un caso (serve «Gestire il server»).
@@ -959,6 +965,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:
 - **`/mod-casi motivi elenco`** — Mostra i motivi pronti del server.
 - **`/mod-casi motivi modifica`** — Cambia testo, severità o sanzione di un motivo pronto (serve «Gestire il server»).
 - **`/mod-casi motivi togli`** — Toglie un motivo pronto (serve «Gestire il server»).
+- **`/mod-casi nomi`** — Mostra i nomi e i soprannomi che un membro ha avuto.
 - **`/mod-casi nota aggiungi`** — Aggiunge una nota su un utente.
 - **`/mod-casi nota elenca`** — Elenca le note su un utente.
 - **`/mod-casi nota modifica`** — Cambia il testo di una nota.
@@ -970,12 +977,19 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:
 ## Mod: sanzioni
 
 - **`/mod-sanzioni applica`** — Dà la sanzione di un motivo pronto, che puoi cambiare prima di confermare.
+- **`/mod-sanzioni libera`** — Toglie la quarantena a un membro e gli ridà i ruoli di prima.
 - **`/mod-sanzioni massa timeout`** — Mette in timeout più membri insieme (max 28 giorni).
 - **`/mod-sanzioni massa warn`** — Assegna un warn a più membri insieme.
 - **`/mod-sanzioni mute`** — Silenzia un membro con un ruolo dedicato (alternativa al timeout).
 - **`/mod-sanzioni nick`** — Cambia o azzera il soprannome di un membro.
+- **`/mod-sanzioni opzioni aspetto`** — Sceglie colore e icona di un tipo di caso nel log di moderazione.
+- **`/mod-sanzioni opzioni avvisi`** — Scrive l'avviso delle sanzioni in un canale invece che nel messaggio privato.
+- **`/mod-sanzioni opzioni azioni`** — Dà a un ruolo il permesso di una sola azione di moderazione (o lo toglie).
 - **`/mod-sanzioni opzioni dm`** — Sceglie se l'utente riceve un DM per un tipo di azione.
 - **`/mod-sanzioni opzioni imposta`** — Messaggi al ban, timeout, casi esterni, avvisi. Vuoto: mostra le opzioni.
+- **`/mod-sanzioni opzioni memoria`** — Accende lo storico dei nomi e il soprannome e il mute vocale ridati a chi rientra.
+- **`/mod-sanzioni opzioni muto`** — Sceglie o crea il ruolo del mute e rimette il blocco su tutti i canali.
+- **`/mod-sanzioni quarantena`** — Toglie i ruoli a un membro e gli dà il ruolo di quarantena (anche a tempo).
 - **`/mod-sanzioni timeout`** — Mette in timeout un membro (max 28 giorni).
 - **`/mod-sanzioni unmute`** — Rimuove il ruolo mute da un membro.
 - **`/mod-sanzioni untimeout`** — Rimuove il timeout da un membro.

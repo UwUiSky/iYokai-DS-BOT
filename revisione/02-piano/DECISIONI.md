@@ -1322,6 +1322,21 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
 - **Fuori dal mio perimetro, da fare dagli agenti che li hanno:** UTL-204 (`/mod esporta-chat`, moderazione), UTL-205 (opzione `utente` in `/utility messaggio`, file `snipe.py`), UTL-226 e UTL-228 (`/admin-bot config pulisci` e «anche i dati» in `reset`, file `config_history.py`).
 - Migrazioni: 0760 (tag), 0761 (risposte automatiche), 0762 (colore embed), 0763 (innesco canale), 0764 (bacheca).
 
+## D106 — Controllo delle aree chiuse di moderazione, AutoMod e verifica (#115, #116, #118, giro r2mod), 22/11/2026, opzione prudente, da confermare dall'owner
+
+- **AMD-030 (Google Safe Browsing):** non si fa ora. Serve una chiave API con quota dell'owner e va scritta in `LIMITI.md`; senza chiave resta la lista di phishing locale.
+- **VER-025 (impronte tra server):** non si fa. Per privacy (D19) l'impronta dello stesso IP è diversa in ogni server: confrontare tra server vorrebbe dire conservare una chiave comune e rompere questa garanzia.
+- **VER-027 (ruoli collegati di Discord):** non si fa ora. Servono l'OAuth del pannello con `role_connections.write` e la registrazione dei metadati dell'applicazione, come per ALR-049 (D99).
+- **Appelli (MOD-008, MOD-063):** `appello: no` su ban, tempban e timeout segna il caso (migrazione 0800). L'appello per i timeout è spento di base (`/mod-ban appelli timeout`); accettarlo toglie il timeout solo se chi decide sta sopra l'utente.
+- **Scala dei warn (MOD-033, MOD-035):** un gradino con `finestra_giorni` (1-90) conta le infrazioni degli ultimi N giorni (date in `automod_violazioni_date`, 0801); scatta il livello più alto raggiunto. `azzera_dopo_scatto` azzera conteggio e date dopo una sanzione, i casi restano.
+- **Chat esportata (UTL-204):** dei file allegati restano nome pulito, tipo e peso (D74); un file sotto 9,5 MB, risposta solo per chi comanda.
+- Migrazioni usate: 0800 (ban senza appello), 0801 (scala con finestra e azzeramento).
+- **Permesso per singola azione (CFG-024, VER-018):** tabella `moderation_ruoli_azioni` (0802). Un ruolo con l'azione `timeout`, `warn`, `mute`, `kick`, `ban`, `tempban`, `softban`, `unban` usa quel comando anche senza il permesso di Discord né il ruolo mod; non apre gli altri. L'azione `verifica` apre solo `verify manuale` e `verify invia`. Il controllo sta in `core/command_access.controlla`; restano i controlli di gerarchia dei comandi, il permesso del bot e il rifiuto per le azioni di massa. Lo dà chi gestisce il server, mai per `@everyone` né per un ruolo pari o sopra chi lo dà (salvo il proprietario), al massimo 25 ruoli.
+- **Difese di emergenza dell'AutoMod (AMD-057, AMD-071):** una sola chiave `automod_emergenza`. Blocco per menzioni: da 5 a 500 menzioni in 5-300 secondi, blocco da 1 a 1440 minuti, bot e amministratori non contano, un blocco ogni 10 minuti. Panico: da 3 a 50 persone in un minuto, dura 10 minuti, solo timeout di 10 minuti agli account sospetti (meno di 7 giorni o senza avatar) che violano ancora una regola.
+- **Verifica (VER-002, 003, 006, 007, 023, 028):** il captcha ha lunghezza 4-8, misura piccola/media/grande e colore scuro abbastanza da leggersi; un codice nuovo tiene i tentativi già usati (3 rinnovi al massimo); il testo della pagina web è fino a 1000 caratteri e 20 righe, mostrato con l'escape; il ruolo avvisato per gli account doppi lo sceglie chi può «Menziona tutti».
+- **Avviso in un canale (MOD-060):** `/mod-sanzioni opzioni avvisi`: l'avviso della sanzione va nel canale con la menzione della sola persona; se non si può scrivere resta il DM.
+- Migrazioni usate anche: 0802 (permessi per azione). Non fatte in questo giro: MOD-016, 051, 053, 091, 092, 094, 095, 096, 103, 104, AMD-031 (restano aperte in #115 e #116).
+
 ## D103 — Controllo dell'area divertimento e immagini (#131, giro r5eco), 21/11/2026, opzione prudente, da confermare dall'owner
 
 - Sulle 91 voci FUN senza codice: 86 esistevano già (o sono state completate) e ora hanno il codice accanto a una prova (`tests/test_fun_controllo_area17.py` e `tests/test_fun_controllo_area17_db.py`). Una (FUN-027 «Preferiresti») era a metà: ora ha i due bottoni con il conteggio (un voto per persona, cambiabile, bot esclusi, 10 minuti). Due (FUN-031, FUN-032, scherzi) non rispettavano il blocco personale di FUN-137: corretto con lo stesso controllo delle GIF.
@@ -1380,3 +1395,8 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
 - **AI-017 sul web:** `/server/<id>/ai/interruttori`, da `imposta_interruttore` (punto unico).
 - **24.2:** schede per `logging_basic`, `logging_advanced` e `leveling` (solo chiavi già nello schema). Gli altri moduli senza scheda non hanno impostazioni validate nello schema: restano al comando.
 - Migrazioni: 0753 (ruoli collegati Twitch).
+
+- **Ultime voci di #115 e #116 (giro r2mod, parte 3):** MOD-016 quarantena a mano (ruoli salvati prima, 0804); MOD-091/092/094/095/096 blocchi mirati sul servizio del blocco totale (opzioni nel JSON dello stato, tabella dei ruoli, 0803; kick o ban di chi entra solo se chi comanda e il bot hanno il permesso; permessi critici tolti solo ai ruoli sotto il bot e rimessi come bit); MOD-103/104 storico dei nomi (90 giorni) e soprannome e mute vocale a chi rientra (30 giorni), spenti di base (0805); MOD-051 registro della chat col caso, spento di base (0806, 30 giorni); MOD-053 colore e icona dei casi nel log; AMD-031 siti che catturano l'IP, per adulti o con malware.
+- **AMD-031 resta in parte:** la lista dei malware è vuota di proposito (data/siti_malware.txt): la sceglie l'owner (fonte e quota in LIMITI.md). Le liste dei siti che catturano l'IP e dei siti per adulti sono di partenza, da allargare a mano.
+- Migrazioni usate in tutto: 0800-0806 (restano 0807-0809).
+

@@ -644,7 +644,7 @@ def build_app(
         if nome is None:
             return _errore(request, 400, "Verifica non disponibile", motivo)
         return _pagina(
-            request, "verifica.html", server_nome=nome, token=token,
+            request, "verifica.html", server_nome=nome, token=token, testo_server=await ponte.testo_pagina_verifica(chi[0]),
             campo=verifica.csrf_verifica(chiave, token), giorni=verifica.GIORNI_IMPRONTE,
         )
 

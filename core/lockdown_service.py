@@ -27,9 +27,14 @@ import discord
 
 from core import channel_router as router
 from core.bounded_cache import BoundedCache
+from core.permission_risk_logic import CRITICAL_PERMISSIONS
 from core.lockdown_logic import (
+    NOME_CANALE_AVVISO,
+    opzioni_valide,
+    permessi_pericolosi_da_togliere,
     GRANDEZZA_GRUPPO,
     MAX_MOTIVO,
+    MAX_SBLOCCO_MINUTI,
     PAUSA_TRA_GRUPPI,
     STATO_ATTIVO,
     STATO_IN_CORSO,
@@ -56,6 +61,12 @@ _da_fermare: set[int] = set()
 # si legge a ogni comando di moderazione, non si interroga il database ogni volta.
 _panico: dict[int, bool] = {}
 _lavori: set[asyncio.Task] = set()
+# MOD-095: server -> «kick» o «ban» per chi entra durante il blocco. In memoria, riletto all'avvio.
+_ingressi: dict[int, str] = {}
+
+
+def modo_ingressi(guild_id: int) -> str | None:
+    return _ingressi.get(guild_id)
 
 
 def _blocco(guild_id: int) -> asyncio.Lock:
@@ -75,8 +86,12 @@ def _motivo(prefisso: str, motivo: str) -> str:
 async def carica_panici() -> None:
     """All'avvio del cog: rimette in memoria i server rimasti in panico."""
     _panico.clear()
+    _ingressi.clear()
     for stato in await lockdown_repo.panici_attivi():
         _panico[stato.guild_id] = stato.solo_proprietario
+    for stato in await lockdown_repo.stati_con_opzioni():
+        if stato.opzioni.get("ingressi"):
+            _ingressi[stato.guild_id] = stato.opzioni["ingressi"]
 
 
 def in_panico(guild_id: int) -> bool:
@@ -162,14 +177,21 @@ async def attiva(
     avviato_da: int,
     motivo: str,
     riepilogo_in: discord.abc.Messageable | None = None,
+    durata_minuti: int | None = None,
+    canali: list | None = None,
+    nascondi: bool = False,
+    ingressi: str | None = None,
+    ruoli: bool = False,
 ) -> Esito:
-    """Blocca il server. Mai solleva per un singolo canale; il riepilogo va anche nel canale."""
+    """Blocca il server. Con `durata_minuti` (MOD-093, al massimo un giorno) si riapre da solo. Mai solleva per un singolo canale; il riepilogo va anche nel canale."""
     async with _blocco(guild.id):
         config = await lockdown_repo.get_config(guild.id)
         adesso = datetime.now(timezone.utc)
         finisce = None
         if tipo == TIPO_PANICO and config.sblocco_auto_minuti:
             finisce = adesso + timedelta(minutes=config.sblocco_auto_minuti)
+        if durata_minuti:
+            finisce = adesso + timedelta(minutes=min(durata_minuti, MAX_SBLOCCO_MINUTI))
         creato = await lockdown_repo.crea_stato(
             guild.id, tipo=tipo, avviato_da=avviato_da, motivo=motivo[:MAX_MOTIVO],
             finisce_il=finisce, solo_proprietario=config.solo_proprietario and tipo == TIPO_PANICO,
@@ -179,9 +201,17 @@ async def attiva(
         if tipo == TIPO_PANICO:
             _panico[guild.id] = config.solo_proprietario
         razon = _motivo("Panico" if tipo == TIPO_PANICO else "Blocco totale", motivo)
-        verifica, inviti = await _chiudi_ingressi(guild, razon)
+        # MOD-091/092: con canali scelti il server resta com'è (verifica e inviti non si toccano).
+        opzioni = opzioni_valide(nascondi, ingressi, ruoli, solo_canali=canali is not None)
+        await lockdown_repo.salva_opzioni(guild.id, opzioni)
+        if opzioni["ingressi"]:
+            _ingressi[guild.id] = opzioni["ingressi"]
+        verifica, inviti = (False, False) if canali is not None else await _chiudi_ingressi(guild, razon)
 
-        piano = canali_da_bloccare(guild.channels, config.categorie_escluse)
+        piano = canali_da_bloccare(
+            guild.channels if canali is None else canali,
+            () if canali is not None else config.categorie_escluse, nascondi,
+        )
         esiti: list[str] = []
         for inizio in range(0, len(piano), GRANDEZZA_GRUPPO):
             if guild.id in _da_fermare:
@@ -196,11 +226,26 @@ async def attiva(
                          bloccati=esiti.count("bloccato"))
         bloccati, falliti = esiti.count("bloccato"), esiti.count("fallito")
         saltati = len(guild.channels) - bloccati - falliti
+        extra = []
+        if opzioni["ruoli"]:
+            toccati = await _togli_permessi_ai_ruoli(guild, razon)
+            extra.append(f"Ruoli a cui ho tolto i permessi pericolosi: {toccati}.")
+        if nascondi:
+            avviso = await _crea_canale_avviso(guild, motivo, razon)
+            if avviso is not None:
+                opzioni["avviso"] = avviso
+                await lockdown_repo.salva_opzioni(guild.id, opzioni)
+                extra.append(f"Canale per i membri: <#{avviso}>.")
+        if opzioni["ingressi"]:
+            extra.append(f"Chi entra viene {'espulso' if opzioni['ingressi'] == 'kick' else 'bannato'} finché dura il blocco.")
         await lockdown_repo.imposta_stato(guild.id, STATO_ATTIVO)
         testo = testo_riepilogo(
             tipo=tipo, bloccati=bloccati, saltati=saltati, falliti=falliti,
             verifica=verifica, inviti=inviti, finisce_il=finisce,
         )
+        if canali is not None:
+            testo = testo.replace("Ingressi: livello di verifica invariato.", "Ingressi: invariati.")
+        testo = "\n".join([testo, *extra])[:1900]
     await _annuncia(guild, testo, config.ruoli_avviso, riepilogo_in, titolo_ping=tipo == TIPO_PANICO)
     return Esito(True, testo, bloccati=bloccati, saltati=saltati, falliti=falliti)
 
@@ -246,10 +291,14 @@ async def togli(
 
             esiti = await _in_gruppi(righe, _riapri)
             server_ok = await _riapri_ingressi(guild, stato, razon)
+            ruoli_ok = await _rimetti_permessi_ai_ruoli(guild, razon)
+            await _togli_canale_avviso(guild, stato, razon)
+            server_ok = server_ok and ruoli_ok
             falliti = esiti.count("fallito")
             if falliti == 0 and server_ok:
                 await lockdown_repo.elimina_blocco(guild.id)
                 _panico.pop(guild.id, None)
+                _ingressi.pop(guild.id, None)
             testo = (
                 f"Blocco tolto: {esiti.count('riaperto')} canali riaperti."
                 if falliti == 0 and server_ok
@@ -263,6 +312,79 @@ async def togli(
     if riuscito or not ritenta:
         await _annuncia(guild, testo, (), riepilogo_in, titolo_ping=False)
     return Esito(riuscito, testo, bloccati=esiti.count("riaperto"), falliti=falliti)
+
+
+async def _togli_permessi_ai_ruoli(guild: discord.Guild, motivo: str) -> int:
+    """
+    MOD-096: toglie i permessi critici a ogni ruolo SOTTO il bot (mai @everyone, mai ruoli gestiti, mai ruoli pari
+    o sopra il bot). Salva i bit tolti PRIMA di toccare il ruolo. Restituisce quanti ruoli sono stati toccati.
+    """
+    toccati = 0
+    sotto = [r for r in guild.roles if not r.is_default() and not r.managed and r < guild.me.top_role]
+    for inizio in range(0, len(sotto), GRANDEZZA_GRUPPO):
+        for ruolo in sotto[inizio : inizio + GRANDEZZA_GRUPPO]:
+            bit = permessi_pericolosi_da_togliere(ruolo.permissions, CRITICAL_PERMISSIONS)
+            if not bit:
+                continue
+            await lockdown_repo.salva_ruolo(guild.id, ruolo.id, bit)
+            try:
+                await ruolo.edit(permissions=discord.Permissions(ruolo.permissions.value & ~bit), reason=motivo)
+                toccati += 1
+            except discord.HTTPException as errore:
+                logger.warning("Ruolo %s non limitato (server %s): %s", ruolo.id, guild.id, errore)
+        await asyncio.sleep(PAUSA_TRA_GRUPPI)
+    return toccati
+
+
+async def _rimetti_permessi_ai_ruoli(guild: discord.Guild, motivo: str) -> bool:
+    """Rimette SOLO i bit tolti dal blocco: una scelta fatta a mano nel frattempo resta. False se un ruolo non si riapre."""
+    ok = True
+    for role_id, tolti in await lockdown_repo.ruoli_da_ripristinare(guild.id):
+        ruolo = guild.get_role(role_id)
+        if ruolo is None or ruolo >= guild.me.top_role:
+            await lockdown_repo.segna_ruolo_ripristinato(guild.id, role_id)  # sparito o ora fuori portata: niente da fare
+            continue
+        try:
+            await ruolo.edit(permissions=discord.Permissions(ruolo.permissions.value | tolti), reason=motivo)
+        except discord.HTTPException as errore:
+            logger.warning("Ruolo %s non rimesso (server %s): %s", role_id, guild.id, errore)
+            ok = False
+            continue
+        await lockdown_repo.segna_ruolo_ripristinato(guild.id, role_id)
+    return ok
+
+
+async def _crea_canale_avviso(guild: discord.Guild, motivo: str, razon: str) -> int | None:
+    """MOD-094: un canale che i membri vedono (solo lettura) per dire che il server è bloccato. None se non riesce."""
+    try:
+        canale = await guild.create_text_channel(
+            NOME_CANALE_AVVISO,
+            overwrites={
+                guild.default_role: discord.PermissionOverwrite(
+                    view_channel=True, read_message_history=True, send_messages=False, add_reactions=False
+                ),
+                guild.me: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+            },
+            topic="Il server è bloccato dallo staff."[:1024], reason=razon,
+        )
+        await canale.send(
+            f"Il server è bloccato dallo staff. Motivo: {motivo}"[:2000], allowed_mentions=discord.AllowedMentions.none()
+        )
+    except discord.HTTPException as errore:
+        logger.warning("Canale di avviso non creato (server %s): %s", guild.id, errore)
+        return None
+    return canale.id
+
+
+async def _togli_canale_avviso(guild: discord.Guild, stato, razon: str) -> None:
+    canale_id = stato.opzioni.get("avviso")
+    canale = guild.get_channel(canale_id) if canale_id else None
+    if canale is None or canale.name != NOME_CANALE_AVVISO:  # solo il canale che abbiamo creato noi
+        return
+    try:
+        await canale.delete(reason=razon)
+    except discord.HTTPException as errore:
+        logger.warning("Canale di avviso non tolto (server %s): %s", guild.id, errore)
 
 
 async def _riapri_ingressi(guild: discord.Guild, stato, motivo: str) -> bool:

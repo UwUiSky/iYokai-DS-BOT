@@ -151,6 +151,39 @@ ACCORCIATORI = frozenset({
 })
 
 
+# AMD-031: siti che catturano l'indirizzo IP, malware e siti per adulti. Tre liste in data/siti_<categoria>.txt,
+# una per riga (come quella del phishing): chi le accende le sceglie una per una. La lista dei malware parte vuota:
+# la riempie l'owner con la fonte scelta (nome e quota in LIMITI.md); senza voci quella categoria non blocca niente.
+CATEGORIE_SITI = ("ip_logger", "adulti", "malware")
+_CARTELLA_DATI = Path(__file__).resolve().parent.parent / "data"
+_liste_siti: dict[str, frozenset[str]] = {}
+
+
+def lista_siti(categoria: str) -> frozenset[str]:
+    """I domini di una categoria, letti una volta dal file (vuota se il file manca o la categoria non esiste)."""
+    if categoria not in CATEGORIE_SITI:
+        return frozenset()
+    if categoria not in _liste_siti:
+        _liste_siti[categoria] = carica_lista_locale(_CARTELLA_DATI / f"siti_{categoria}.txt")
+    return _liste_siti[categoria]
+
+
+def e_sito_pericoloso(domini, categorie, consentiti=()) -> bool:
+    """AMD-031: True se un dominio (o un suo dominio padre) sta in una delle categorie accese e non è in whitelist."""
+    elenchi = [lista_siti(c) for c in categorie]
+    if not any(elenchi):
+        return False
+    consentiti_n = {normalize_domain(d) for d in consentiti} - {""}
+    for dominio in domini:
+        parti = normalize_domain(dominio).split(".")
+        catena = {".".join(parti[i:]) for i in range(len(parti))}
+        if catena & consentiti_n:
+            continue
+        if any(catena & elenco for elenco in elenchi):
+            return True
+    return False
+
+
 def e_accorciatore(domini, consentiti=()) -> bool:
     """True se almeno un dominio (o un suo dominio padre) e' un accorciatore non in whitelist."""
     consentiti_n = {normalize_domain(d) for d in consentiti} - {""}

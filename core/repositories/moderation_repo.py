@@ -293,6 +293,25 @@ class ModerationRepository:
         )
         return [_row_to_case(row) for row in rows]
 
+    async def statistiche_moderatore(self, guild_id: int, moderator_id: int) -> dict:
+        """MOD-040: i casi di un moderatore per tipo e negli ultimi 7, 30 e 90 giorni (i nascosti non contano)."""
+        per_tipo = await self._pool.fetch(
+            "SELECT action_type, COUNT(*) AS n FROM moderation_cases WHERE guild_id = $1 AND moderator_id = $2 "
+            "AND NOT hidden GROUP BY action_type ORDER BY n DESC, action_type",
+            guild_id, moderator_id,
+        )
+        periodi = await self._pool.fetchrow(
+            "SELECT COUNT(*) FILTER (WHERE created_at > now() - INTERVAL '7 days') AS g7, "
+            "COUNT(*) FILTER (WHERE created_at > now() - INTERVAL '30 days') AS g30, "
+            "COUNT(*) FILTER (WHERE created_at > now() - INTERVAL '90 days') AS g90 "
+            "FROM moderation_cases WHERE guild_id = $1 AND moderator_id = $2 AND NOT hidden",
+            guild_id, moderator_id,
+        )
+        return {
+            "per_tipo": {r["action_type"]: r["n"] for r in per_tipo},
+            "periodi": {7: periodi["g7"], 30: periodi["g30"], 90: periodi["g90"]},
+        }
+
     async def moderator_ranking(self, guild_id: int, limit: int = 10) -> list[tuple[int, int]]:
         """(moderatore, numero di azioni), dal più attivo (MOD-039)."""
         rows = await self._pool.fetch(
@@ -335,7 +354,8 @@ class ModerationRepository:
         """Elimina un caso (MOD-044). La numerazione non si riusa."""
         result = await self._pool.execute(
             """
-            WITH prove AS (DELETE FROM moderation_prove WHERE guild_id = $1 AND case_number = $2)
+            WITH prove AS (DELETE FROM moderation_prove WHERE guild_id = $1 AND case_number = $2),
+                 registro AS (DELETE FROM moderation_chat_log WHERE guild_id = $1 AND case_number = $2)
             DELETE FROM moderation_cases WHERE guild_id = $1 AND case_number = $2
             """,
             guild_id, case_number,
@@ -675,6 +695,21 @@ class ModerationRepository:
                 )
                 return appello_id, None
 
+    async def segna_senza_appello(self, guild_id: int, case_number: int) -> None:
+        """MOD-008: il caso non si può contestare (niente bottone, appello rifiutato)."""
+        await self._pool.execute(
+            "UPDATE moderation_cases SET senza_appello = TRUE WHERE guild_id = $1 AND case_number = $2",
+            guild_id, case_number,
+        )
+
+    async def caso_senza_appello(self, guild_id: int, case_number: int) -> bool:
+        return bool(
+            await self._pool.fetchval(
+                "SELECT senza_appello FROM moderation_cases WHERE guild_id = $1 AND case_number = $2",
+                guild_id, case_number,
+            )
+        )
+
     async def close_open_appeals(self, guild_id: int, user_id: int, deciso_da: int) -> int:
         """Un unban chiude gli appelli ancora aperti dell'utente (come accettati)."""
         result = await self._pool.execute(
@@ -789,6 +824,77 @@ class ModerationRepository:
     # ------------------------------------------------------------
     # Mute con ruolo: a tempo, hardmute, rientro (MOD-014, 015, 021)
     # ------------------------------------------------------------
+    async def salva_quarantena(
+        self, guild_id: int, user_id: int, ruoli: list[int], case_number: int | None, finisce_il, dato_da: int
+    ) -> None:
+        """MOD-016: i ruoli di prima e la fine; si scrive prima di toccare il membro."""
+        await self._pool.execute(
+            """
+            INSERT INTO moderation_quarantena (guild_id, user_id, ruoli, case_number, finisce_il, dato_da)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (guild_id, user_id) DO UPDATE
+                SET ruoli = $3, case_number = $4, finisce_il = $5, dato_da = $6
+            """,
+            guild_id, user_id, ruoli, case_number, finisce_il, dato_da,
+        )
+
+    async def get_quarantena(self, guild_id: int, user_id: int) -> dict | None:
+        r = await self._pool.fetchrow(
+            "SELECT ruoli, case_number, finisce_il FROM moderation_quarantena WHERE guild_id = $1 AND user_id = $2",
+            guild_id, user_id,
+        )
+        return dict(r) if r else None
+
+    async def elimina_quarantena(self, guild_id: int, user_id: int) -> None:
+        await self._pool.execute(
+            "DELETE FROM moderation_quarantena WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
+        )
+
+    # ---- MOD-103: storico dei nomi
+    async def registra_nome(
+        self, guild_id: int, user_id: int, tipo: str, prima: str | None, dopo: str | None, tetto: int = 30
+    ) -> None:
+        """Una riga per cambio; per persona se ne tengono al massimo `tetto` (le più nuove)."""
+        await self._pool.execute(
+            "INSERT INTO moderation_nomi (guild_id, user_id, tipo, prima, dopo) VALUES ($1, $2, $3, $4, $5)",
+            guild_id, user_id, tipo, (prima or None) and prima[:100], (dopo or None) and dopo[:100],
+        )
+        await self._pool.execute(
+            "DELETE FROM moderation_nomi WHERE id IN (SELECT id FROM moderation_nomi WHERE guild_id = $1 AND user_id = $2 "
+            "ORDER BY quando DESC, id DESC OFFSET $3)", guild_id, user_id, tetto,
+        )
+
+    async def elenco_nomi(self, guild_id: int, user_id: int, limite: int = 25) -> list[dict]:
+        righe = await self._pool.fetch(
+            "SELECT tipo, prima, dopo, quando FROM moderation_nomi WHERE guild_id = $1 AND user_id = $2 "
+            "ORDER BY quando DESC, id DESC LIMIT $3", guild_id, user_id, limite,
+        )
+        return [dict(r) for r in righe]
+
+    # ---- MOD-104: soprannome e mute vocale per chi rientra
+    async def salva_persistenza(self, guild_id: int, user_id: int, nick: str | None, mute: bool, deaf: bool) -> None:
+        if not nick and not mute and not deaf:
+            await self._pool.execute(
+                "DELETE FROM moderation_persistenza WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
+            )
+            return
+        await self._pool.execute(
+            "INSERT INTO moderation_persistenza (guild_id, user_id, nick, mute, deaf) VALUES ($1, $2, $3, $4, $5) "
+            "ON CONFLICT (guild_id, user_id) DO UPDATE SET nick = $3, mute = $4, deaf = $5, quando = NOW()",
+            guild_id, user_id, nick, mute, deaf,
+        )
+
+    async def leggi_persistenza(self, guild_id: int, user_id: int) -> dict | None:
+        r = await self._pool.fetchrow(
+            "SELECT nick, mute, deaf FROM moderation_persistenza WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
+        )
+        return dict(r) if r else None
+
+    async def togli_persistenza(self, guild_id: int, user_id: int) -> None:
+        await self._pool.execute(
+            "DELETE FROM moderation_persistenza WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
+        )
+
     async def save_mute_state(
         self,
         guild_id: int,

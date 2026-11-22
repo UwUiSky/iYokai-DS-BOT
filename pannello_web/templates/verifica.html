@@ -3,7 +3,8 @@
 {% block corpo %}
 <h1>Verifica · {{ server_nome }}</h1>
 <div class="carta">
-<p>Premi il bottone per completare la verifica e ricevere l'accesso al server.</p>
+{% for riga in testo_server or [] %}<p>{{ riga }}</p>
+{% endfor %}<p>Premi il bottone per completare la verifica e ricevere l'accesso al server.</p>
 <form method="post" action="/verifica/{{ token }}">
   <input type="hidden" name="campo" value="{{ campo }}">
   <input type="hidden" name="fuso" id="fuso" value="">

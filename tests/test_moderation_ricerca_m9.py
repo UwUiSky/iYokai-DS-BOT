@@ -75,6 +75,7 @@ def _m(i, nome="anna", ruoli=(), vocale=False, bot=False, entrato=ORA, creato=OR
     )
 
 
+# MOD-109
 def test_filtri_membri():
     ms = [_m(1, "Anna"), _m(2, "Bruno", ruoli=(7,), vocale=True), _m(3, "BotX", bot=True), _m(4, "nuovo", creato=ORA - timedelta(days=2))]
     f = lambda **k: [m.id for m in logica.filtra_membri(ms, ora=ORA, **k)]

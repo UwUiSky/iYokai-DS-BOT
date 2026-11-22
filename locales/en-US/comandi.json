@@ -508,7 +508,15 @@
   "codice": "code",
   "bonus": "bonus",
   "casuali": "random",
-  "server": "server"
+  "server": "server",
+  "muto": "mute-role",
+  "esporta-chat": "export-chat",
+  "azioni": "actions",
+  "quarantena": "quarantine",
+  "libera": "release",
+  "nomi": "names",
+  "memoria": "memory",
+  "chat": "chat"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1779,7 +1787,21 @@
   "admin-negozio evento codice": "Launch a code in chat: who writes it first wins the coins.",
   "admin-negozio evento bonus": "Leave a timed bonus in chat: the first to take it earns more for a while.",
   "admin-negozio evento casuali": "Turn the server's random events on or off in a channel.",
-  "admin-negozio evento server": "A timed bonus for the whole server, right now (work and rewards)."
+  "admin-negozio evento server": "A timed bonus for the whole server, right now (work and rewards).",
+  "mod-sanzioni opzioni muto": "Pick or create the mute role and put the block back on every channel.",
+  "mod-ban appelli timeout": "Turns appeals on or off for timeouts too.",
+  "mod-canali blocco stato": "Shows whether a lockdown is on, since when and when it ends.",
+  "mod-canali esporta-chat": "Sends the last messages of a channel in a text file (only to you).",
+  "mod-sanzioni opzioni azioni": "Gives a role the permission for one moderation action only (or removes it).",
+  "admin-filtri emergenza": "Lockdown for too many mentions and the AutoMod panic mode.",
+  "mod-sanzioni opzioni avvisi": "Writes the sanction notice in a channel instead of a private message.",
+  "mod-canali blocco canali": "Locks only some channels (picked from a menu) or the saved group.",
+  "mod-sanzioni quarantena": "Removes a member's roles and gives the quarantine role (can be timed).",
+  "mod-sanzioni libera": "Ends a member's quarantine and gives their old roles back.",
+  "mod-casi nomi": "Shows the names and nicknames a member has had.",
+  "mod-sanzioni opzioni memoria": "Turns on the name history and the nickname and voice mute given back to returning members.",
+  "mod-sanzioni opzioni aspetto": "Picks the colour and icon of a case type in the moderation log.",
+  "mod-casi caso chat": "Sends the log of the channel's last messages saved with a case."
  },
  "parametri": {},
  "menu": {

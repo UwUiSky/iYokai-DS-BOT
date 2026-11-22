@@ -39,7 +39,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from cogs.moderation.prove import allega_a_nota
-from core import bot_roles, moderation_opzioni
+from core import bot_roles, moderation_opzioni, moderation_registro_chat
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.moderation_casi_logic import errore_durata_caso, testo_esportazione
@@ -756,6 +756,13 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
                 return
             testo = join_within_limit([_format_case_line(c) for c in casi], "…e altri {n} casi.")
             titolo = f"Casi di {moderatore.display_name}"
+            stat = await moderation_repo.statistiche_moderatore(interaction.guild.id, moderatore.id)  # MOD-040
+            tipi = ", ".join(f"{t} {n}" for t, n in list(stat["per_tipo"].items())[:12])
+            p = stat["periodi"]
+            testo = (
+                await testo_per(interaction, "casesystem_statistiche_moderatore", tipi=tipi or "-", g7=p[7], g30=p[30], g90=p[90])
+                + "\n\n" + testo
+            )[:4000]
         else:
             classifica = await moderation_repo.moderator_ranking(interaction.guild.id)
             if not classifica:
@@ -971,6 +978,29 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "casesystem_esporta_pronto", v1=len(casi), v2=len(note)),
             file=discord.File(io.BytesIO(dati), filename=f"casi_{utente.id}.txt"),
             ephemeral=True,
+        )
+
+    @comando_di_gruppo(
+        "mod-casi",
+        nome="chat",
+        descrizione="Manda il registro degli ultimi messaggi del canale salvato con un caso.",
+        sottogruppo=("caso", "Storico e dettagli dei casi di moderazione."),
+    )
+    @app_commands.describe(numero="Il numero del caso")
+    @requires_module(MODULE_CASE_SYSTEM)
+    async def case_chat(self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, INT4_MAX]) -> None:
+        """MOD-051. Solo per chi usa i comandi di moderazione; è un file privato, i messaggi sono quelli del canale."""
+        if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
+            return
+        letto = await moderation_registro_chat.leggi(interaction.guild.id, numero)
+        if letto is None:
+            await interaction.response.send_message(await testo_per(interaction, "casesystem_chat_non_c_e"), ephemeral=True)
+            return
+        contenuto, messaggi, canale_id = letto
+        await interaction.response.send_message(
+            await testo_per(interaction, "casesystem_chat_pronta", n=messaggi, canale=f"<#{canale_id}>"),
+            file=discord.File(io.BytesIO(contenuto), filename=f"chat_caso_{numero}.txt"),
+            ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
         )
 
     # ================================================================

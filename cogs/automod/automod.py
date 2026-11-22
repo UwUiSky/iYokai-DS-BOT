@@ -61,7 +61,7 @@ from core import channel_router as router
 from core.i18n import testo_per
 from core.phishing_list_fetcher import lista_phishing
 from core.phishing_azione_logic import SCELTE as SCELTE_PHISHING_EXTRA, aggiungi_extra, motivo_extra
-from core.phishing_logic import codici_invito, server_per_adulti
+from core.phishing_logic import CATEGORIE_SITI, codici_invito, server_per_adulti
 from core.repositories.output_channel_repo import output_channel_repo
 
 from core.automod_sync import (
@@ -102,6 +102,7 @@ from core.automod_advanced_logic import (
     VIOLATION_LUNGHEZZA,
     VIOLATION_SPOILER,
     VIOLATION_ACCORCIATORI,
+    VIOLATION_SITI_PERICOLOSI,
     VIOLATION_INVITI_ADULTI,
     VIOLATION_RIPETUTI,
     VIOLATION_CORTO,
@@ -124,6 +125,7 @@ from core.automod_decisioni import BottoneDecisione
 from core.automod_innesco_logic import innesco_scatta, parametri_soglia_canale
 from core import automod_azioni as azioni_motore, automod_contatori as contatori
 from core.scheduler import scheduler
+from core import automod_emergenza as emergenza_logic
 from core.automod_azioni import Bersaglio, e_protetto, esegui_azioni, registra_messaggio
 from core.automod_regole_logic import azioni_dai_nomi_vecchi, condizioni_ok
 from core.automod_parole_logic import MessaggiBrevi
@@ -198,6 +200,7 @@ _VIOLATION_LABELS = {
     VIOLATION_LUNGHEZZA: "Messaggio troppo lungo",
     VIOLATION_SPOILER: "Troppi spoiler",
     VIOLATION_ACCORCIATORI: "Accorciatori di link",
+    VIOLATION_SITI_PERICOLOSI: "Siti pericolosi",
     VIOLATION_INVITI_ADULTI: "Inviti a server per adulti",
     VIOLATION_RIPETUTI: "Messaggi ripetuti",
     VIOLATION_CORTO: "Messaggio troppo corto",
@@ -262,9 +265,9 @@ def _media_inoltrati(message: discord.Message) -> int:
     )
 
 # Le violazioni della famiglia phishing: canale di log suo e link non cliccabile.
-_VIOLAZIONI_PHISHING = frozenset({VIOLATION_PHISHING, VIOLATION_ACCORCIATORI, VIOLATION_INVITI_ADULTI})
+_VIOLAZIONI_PHISHING = frozenset({VIOLATION_PHISHING, VIOLATION_ACCORCIATORI, VIOLATION_INVITI_ADULTI, VIOLATION_SITI_PERICOLOSI})
 # AMD-019: le sole violazioni che il testo di un embed può far scattare.
-_VIOLAZIONI_LINK = frozenset({VIOLATION_ANTI_LINK, VIOLATION_PHISHING, VIOLATION_ACCORCIATORI})
+_VIOLAZIONI_LINK = frozenset({VIOLATION_ANTI_LINK, VIOLATION_PHISHING, VIOLATION_ACCORCIATORI, VIOLATION_SITI_PERICOLOSI})
 
 # SIC-042: esito degli inviti gia' chiesti a Discord (codice -> per adulti?). Tetto in memoria.
 MAX_INVITI_IN_MEMORIA = 2000
@@ -1150,9 +1153,16 @@ class AutomodCog(CogConGruppi, commands.Cog):
         canale_log="Canale o forum dove scrivere ogni link bloccato (vuoto: il log dell'AutoMod)",
         accorciatori="Blocca anche gli accorciatori di link (bit.ly, tinyurl...); vuoto: non cambia",
         inviti_adulti="Blocca anche gli inviti a server per adulti; vuoto: non cambia",
+        siti="Blocca siti che catturano l'IP, per adulti o malware; «nessuno» li spegne",
         azione_extra="Sanzione in più oltre alla cancellazione (mai sullo staff); vuoto: non cambia",
     )
-    @app_commands.choices(azione_extra=[
+    @app_commands.choices(siti=[
+        app_commands.Choice(name="Nessuno", value="nessuno"),
+        app_commands.Choice(name="Cattura dell'IP", value="ip_logger"),
+        app_commands.Choice(name="Per adulti", value="adulti"),
+        app_commands.Choice(name="Malware", value="malware"),
+        app_commands.Choice(name="Tutti", value="tutti"),
+    ], azione_extra=[
         app_commands.Choice(name="nessuna", value="nessuna"),
         *(app_commands.Choice(name=n, value=n) for n in SCELTE_PHISHING_EXTRA),
     ])
@@ -1164,6 +1174,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         accorciatori: bool | None = None,
         inviti_adulti: bool | None = None,
         azione_extra: str | None = None,
+        siti: app_commands.Choice[str] | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -1175,6 +1186,10 @@ class AutomodCog(CogConGruppi, commands.Cog):
             cambi["phishing_accorciatori"] = accorciatori
         if inviti_adulti is not None:
             cambi["phishing_inviti_adulti"] = inviti_adulti
+        if siti is not None:  # AMD-031: una scelta sola per volta; «tutti» le accende tutte, «nessuno» le spegne
+            cambi["phishing_siti"] = (
+                () if siti.value == "nessuno" else CATEGORIE_SITI if siti.value == "tutti" else (siti.value,)
+            )
         if azione_extra is not None:
             cambi["phishing_azione_extra"] = "" if azione_extra == "nessuna" else azione_extra  # SIC-041
         nuova = _replace_settings(settings, **cambi)
@@ -1186,6 +1201,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
             f"Blocco del phishing {'attivato: cancello il messaggio e metto in timeout chi lo ha scritto' if enabled else 'disattivato'}. "
             f"Accorciatori di link: {'bloccati' if c.phishing_accorciatori else 'permessi'}. "
             f"Inviti a server per adulti: {'bloccati' if c.phishing_inviti_adulti else 'permessi'}. "
+            f"Siti pericolosi: {', '.join(c.phishing_siti) or 'permessi'}. "
             f"Sanzione in più: {c.phishing_azione_extra or 'nessuna'} (mai su staff, proprietario o chi sta sopra il bot). "
             "Se blocco un dominio per sbaglio, mettilo nella whitelist con `/admin-filtri anti-link-domain`."
             + (f" I link bloccati si scrivono in {canale_log.mention}." if canale_log is not None else ""),
@@ -1277,6 +1293,58 @@ class AutomodCog(CogConGruppi, commands.Cog):
             f"Ripetuti: {nuova.max_ripetuti or 'spento'}. Minimo caratteri: {nuova.min_caratteri or 'spento'}. "
             f"Link: {f'più di {link.max_count} in {link.window_seconds}s' if link.enabled else 'spento'}. "
             f"Menzioni: {f'più di {menz.max_count} in {menz.window_seconds}s' if menz.enabled else 'spento'}.",
+            ephemeral=True,
+        )
+
+    @comando_di_gruppo(
+        "admin-filtri",
+        nome="emergenza",
+        descrizione="Blocco dei canali per troppe menzioni e modalità panico dell'AutoMod.",
+    )
+    @app_commands.describe(
+        menzioni_soglia="Blocca i canali se il server riceve più di N menzioni nella finestra (0 = spento, da 5 a 500)",
+        menzioni_secondi="Finestra delle menzioni, in secondi (da 5 a 300)",
+        menzioni_minuti="Dopo quanti minuti il blocco si toglie da solo (da 1 a 1440)",
+        panico="Panico: dopo un'ondata di violazioni, gli account sospetti che violano vanno in timeout",
+        panico_utenti="Persone diverse che violano una regola in un minuto per accendere il panico (da 3 a 50)",
+    )
+    async def emergenza(
+        self,
+        interaction: discord.Interaction,
+        menzioni_soglia: app_commands.Range[int, 0, 500] | None = None,
+        menzioni_secondi: app_commands.Range[int, 5, 300] | None = None,
+        menzioni_minuti: app_commands.Range[int, 1, 1440] | None = None,
+        panico: bool | None = None,
+        panico_utenti: app_commands.Range[int, 3, 50] | None = None,
+    ) -> None:
+        """AMD-057, AMD-071. Il blocco passa dal servizio del blocco totale (stato salvato, si riapre com'era)."""
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        guild = interaction.guild
+        if menzioni_soglia and menzioni_soglia < 5:
+            await interaction.response.send_message(await testo_per(interaction, "automod_emergenza_soglia_minima"), ephemeral=True)
+            return
+        if menzioni_soglia and not (
+            interaction.user.id == guild.owner_id or interaction.user.guild_permissions.manage_guild
+        ):  # il blocco chiude tutto il server: lo accende chi potrebbe farlo da sé con `/mod-canali blocco attiva`
+            await interaction.response.send_message(await testo_per(interaction, "automod_emergenza_serve_gestire"), ephemeral=True)
+            return
+        attuale = await emergenza_logic.leggi_config(guild.id)
+        for chiave, valore in (
+            ("menzioni_soglia", menzioni_soglia), ("menzioni_secondi", menzioni_secondi), ("menzioni_minuti", menzioni_minuti),
+            ("panico", panico), ("panico_utenti", panico_utenti),
+        ):
+            if valore is not None:
+                attuale[chiave] = valore
+        await db.set_guild_setting(guild.id, emergenza_logic.SETTING_EMERGENZA, attuale, changed_by=interaction.user.id)
+        attuale = emergenza_logic.config_pulita(attuale)
+        await interaction.response.send_message(
+            await testo_per(
+                interaction, "automod_emergenza_stato",
+                menzioni=(f"più di {attuale['menzioni_soglia']} in {attuale['menzioni_secondi']}s, blocco di {attuale['menzioni_minuti']} min"
+                          if attuale["menzioni_soglia"] else "spento"),
+                panico=(f"acceso ({attuale['panico_utenti']} persone in un minuto)" if attuale["panico"] else "spento"),
+            ),
             ephemeral=True,
         )
 
@@ -1793,6 +1861,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
 
         if solo_embed and not settings.config.controlla_embed:
             return
+        emergenza_config = await emergenza_logic.leggi_config(message.guild.id)
+        if not modificato and not solo_embed and not esente:
+            await emergenza_logic.dopo_messaggio(message, emergenza_config)  # AMD-057
         segnali = build_message_signals(
             message, settings.config, conta_nel_tempo=not modificato, solo_embed=solo_embed
         )
@@ -1820,6 +1891,8 @@ class AutomodCog(CogConGruppi, commands.Cog):
                     return
         if not solo_embed:  # AMD-011/012/016/025: le regole personali con un innesco sul testo
             violazioni = (*violazioni, *await self._personali_scattate(message, regole, segnali.content, modificato))
+        if violazioni and not modificato and not solo_embed:
+            await emergenza_logic.dopo_violazione(message, emergenza_config, esente)  # AMD-071
         if not violazioni:
             return
 

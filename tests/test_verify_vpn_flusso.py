@@ -76,6 +76,7 @@ async def _verifica(amb, user_id, ip, **extra):
 
 
 # ------------------------------------------------------------------ blocco
+# VER-026
 @pytest.mark.asyncio
 async def test_vpn_bloccata_subito_con_avviso_e_nessun_dato_in_piu(monkeypatch, clean_db):
     amb = _ambiente(monkeypatch, clean_db)

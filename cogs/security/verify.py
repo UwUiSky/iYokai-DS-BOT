@@ -67,7 +67,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core import captcha_image, verify_blocchi, verify_ip
+from cogs.security.alt_detection import SETTING_RUOLO_AVVISO_ALT
+from core import captcha_image, verify_blocchi, verify_ip, verify_logic
 from core.i18n import testo_per
 from core.bounded_cache import BoundedCache
 from core.panel_bridge import METODO_WEB, link_verifica_web
@@ -109,6 +110,11 @@ MODULE_VERIFY = "verify"
 SETTING_RUOLO_NON_VERIFICATO = "verify_unverified_role_id"
 SETTING_RUOLI_EXTRA = "verify_extra_role_ids"
 SETTING_LOG_COMPATTO = "verify_log_compatto"  # VER-029: True = una riga, False = scheda completa
+SETTING_DM_INGRESSO = "verify_dm_ingresso"  # VER-007: all'ingresso un DM col link personale
+SETTING_TESTO_PAGINA = "verify_testo_pagina"  # VER-006: testo del server sulla pagina web di verifica
+SETTING_CAPTCHA_LUNGHEZZA = "verify_captcha_lunghezza"  # VER-002: 4-8 lettere
+SETTING_CAPTCHA_MISURA = "verify_captcha_misura"  # piccola | media | grande
+SETTING_CAPTCHA_COLORE = "verify_captcha_colore"  # colore delle lettere, numero 0-16777215
 SETTING_CAPTCHA_TIPO = "verify_captcha_tipo"  # captcha_image.TIPO_TESTO | TIPO_IMMAGINE
 SETTING_PROMEMORIA_MINUTI = "verify_promemoria_minuti"  # VER-008: 0 = spento
 SETTING_SCADENZA_MINUTI = "verify_scadenza_minuti"  # VER-011: 0 = spento
@@ -184,7 +190,7 @@ class CaptchaImmagineModal(BaseModal, title="Verifica"):
 
     def __init__(self, cog: "VerifyCog", guild_id: int, user_id: int) -> None:
         super().__init__()
-        self.answer_input = discord.ui.TextInput(max_length=captcha_image.LUNGHEZZA_CODICE + 3)
+        self.answer_input = discord.ui.TextInput(max_length=captcha_image.MAX_LUNGHEZZA_RISPOSTA)
         self.add_item(discord.ui.Label(text="Scrivi le lettere dell'immagine", component=self.answer_input))
         self.cog = cog
         self.guild_id = guild_id
@@ -247,6 +253,23 @@ class CaptchaImmagineView(BaseView):
             await interaction.response.send_message(await testo_per(interaction, "verify_il_tempo_scaduto_premi_di"), ephemeral=True)
             return
         await interaction.response.send_modal(CaptchaImmagineModal(self.cog, self.guild_id, self.user_id))
+
+    @discord.ui.button(label="Codice nuovo", style=discord.ButtonStyle.secondary)
+    async def nuovo(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        """VER-003: rifà l'immagine. I tentativi già usati restano usati e i rinnovi sono tre."""
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message(await testo_per(interaction, "verify_questo_codice_di_un_altro"), ephemeral=True)
+            return
+        chiave = (self.guild_id, self.user_id)
+        vecchia = self.cog.sfide.get(chiave)
+        nuova = vecchia.rinnova() if vecchia is not None else None
+        if nuova is None:
+            await interaction.response.send_message(await testo_per(interaction, "verify_codice_nuovo_non_piu"), ephemeral=True)
+            return
+        await interaction.response.defer()
+        png = await asyncio.to_thread(captcha_image.disegna_immagine, nuova.codice, None, *await self.cog.aspetto_captcha(self.guild_id))
+        self.cog.sfide.set(chiave, nuova)
+        await interaction.edit_original_response(attachments=[discord.File(io.BytesIO(png), filename="verifica.png")])
 
 
 class VerifyPanelView(BaseView):
@@ -383,11 +406,23 @@ class VerifyCog(CogConGruppi, commands.Cog):
         # (server, utente) -> sfida aperta; in memoria e con tetto: dopo un riavvio si chiede un codice nuovo.
         self.sfide: BoundedCache = BoundedCache(2000)
 
+    @staticmethod
+    async def aspetto_captcha(guild_id: int) -> tuple[str, int | None]:
+        """VER-002: (misura, colore) scelti dal server; valori strani valgono quelli di base."""
+        misura = await db.get_guild_setting(guild_id, SETTING_CAPTCHA_MISURA)
+        colore = await db.get_guild_setting(guild_id, SETTING_CAPTCHA_COLORE)
+        if misura not in captcha_image.MISURE:
+            misura = "media"
+        if not isinstance(colore, int) or isinstance(colore, bool) or not captcha_image.colore_leggibile(colore):
+            colore = None
+        return misura, colore
+
     async def manda_captcha_immagine(self, interaction: discord.Interaction, guild_id: int) -> None:
         """Risponde al clic con l'immagine e il bottone che apre il modulo."""
         await interaction.response.defer(ephemeral=True)
-        sfida = captcha_image.nuova_sfida()
-        png = await asyncio.to_thread(captcha_image.disegna_immagine, sfida.codice)
+        lunghezza = captcha_image.lunghezza_valida(await db.get_guild_setting(guild_id, SETTING_CAPTCHA_LUNGHEZZA))
+        sfida = captcha_image.nuova_sfida(lunghezza=lunghezza)
+        png = await asyncio.to_thread(captcha_image.disegna_immagine, sfida.codice, None, *await self.aspetto_captcha(guild_id))
         self.sfide.set((guild_id, interaction.user.id), sfida)
         await interaction.followup.send(
             await testo_per(interaction, "verify_ricopia_le_lettere_dell_immagine"),
@@ -511,6 +546,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
                 logger.warning("Ruolo non verificato non dato a %s (server %s).", member.id, guild.id)
         if config.verified_role_id is None:
             return
+        # VER-007: un solo DM all'ingresso (chi aspetta l'età minima lo riceve dopo, da handle_eta); DM chiusi: niente.
+        if attesa == 0 and await db.get_guild_setting(guild.id, SETTING_DM_INGRESSO, False):
+            await self._manda_dm(member, self._testo_invito(guild, config, "Per entrare in"))
         for chiave, tipo in ((SETTING_PROMEMORIA_MINUTI, VERIFY_PROMEMORIA), (SETTING_SCADENZA_MINUTI, VERIFY_SCADENZA)):
             minuti = await db.get_guild_setting(guild.id, chiave, 0) or 0
             if minuti > 0:
@@ -857,7 +895,22 @@ class VerifyCog(CogConGruppi, commands.Cog):
         descrizione="Pubblica il pannello di verifica.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
-    async def panel_cmd(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(
+        titolo="Titolo del pannello (vuoto: quello di base)",
+        testo="Testo del pannello (vuoto: quello di base)",
+        colore="Colore, per esempio #c24a3a",
+        bottone="Scritta del bottone (vuoto: «Verify»)",
+        emoji="Emoji del bottone",
+    )
+    async def panel_cmd(
+        self,
+        interaction: discord.Interaction,
+        titolo: app_commands.Range[str, 1, 256] | None = None,
+        testo: app_commands.Range[str, 1, 2000] | None = None,
+        colore: app_commands.Range[str, 6, 7] | None = None,
+        bottone: app_commands.Range[str, 1, 80] | None = None,
+        emoji: app_commands.Range[str, 1, 60] | None = None,
+    ) -> None:
         # Un pannello pubblicato con il modulo spento risponderebbe "Verify non è attivo".
         if not await ensure_module_enabled(interaction, MODULE_VERIFY):
             return
@@ -869,6 +922,10 @@ class VerifyCog(CogConGruppi, commands.Cog):
             )
             return
 
+        personale, errore = verify_logic.pannello_personalizzato(titolo, testo, colore, bottone, emoji)
+        if errore:  # VER-028
+            await interaction.response.send_message(errore, ephemeral=True)
+            return
         embed = discord.Embed(
             title=await testo_per(interaction, "verify_server_verification", pubblica=True),
             description=await testo_per(interaction, "verify_click_the_button_below_to", pubblica=True)
@@ -876,12 +933,24 @@ class VerifyCog(CogConGruppi, commands.Cog):
             else await testo_per(interaction, "verify_react_with_to_verify_and", v1=VERIFY_REACTION_EMOJI, pubblica=True),
             color=discord.Color.blurple(),
         )
+        vista = VerifyPanelView()
+        if personale is not None:
+            if personale.titolo:
+                embed.title = personale.titolo
+            if personale.testo:
+                embed.description = personale.testo
+            if personale.colore is not None:
+                embed.colour = discord.Colour(personale.colore)
+            if personale.bottone:
+                vista.children[0].label = personale.bottone
+            if personale.emoji:
+                vista.children[0].emoji = discord.PartialEmoji.from_str(personale.emoji)
 
         if config.method in ("button", METODO_WEB):
-            await interaction.response.send_message(embed=embed, view=VerifyPanelView())
+            await interaction.response.send_message(embed=embed, view=vista, allowed_mentions=discord.AllowedMentions.none())
             sent = await interaction.original_response()
         else:
-            await interaction.response.send_message(embed=embed)
+            await interaction.response.send_message(embed=embed, allowed_mentions=discord.AllowedMentions.none())
             sent = await interaction.original_response()
             try:
                 await sent.add_reaction(VERIFY_REACTION_EMOJI)
@@ -959,6 +1028,14 @@ class VerifyCog(CogConGruppi, commands.Cog):
         extra_3="Altro ruolo extra",
         azzera="Togli questi ruoli",
         log_compatto="Nel log una riga sola per tentativo, invece della scheda completa",
+        ruolo_avviso_alt="Ruolo avvisato a ogni account doppio (serve il permesso «Menziona tutti»)",
+        testo_pagina="Testo mostrato sopra il bottone della pagina web di verifica (fino a 1000 caratteri)",
+        captcha_lunghezza="Lettere del captcha a immagine (da 4 a 8)",
+        captcha_misura="Grandezza dell'immagine del captcha",
+        captcha_colore="Colore delle lettere, scuro, per esempio #3a2a2a",
+    )
+    @app_commands.choices(
+        captcha_misura=[app_commands.Choice(name=n.capitalize(), value=n) for n in captcha_image.MISURE]
     )
     async def options_cmd(
         self,
@@ -969,15 +1046,46 @@ class VerifyCog(CogConGruppi, commands.Cog):
         extra_3: discord.Role | None = None,
         azzera: bool = False,
         log_compatto: bool | None = None,
+        ruolo_avviso_alt: discord.Role | None = None,
+        captcha_lunghezza: app_commands.Range[int, 4, 8] | None = None,
+        testo_pagina: app_commands.Range[str, 1, 1000] | None = None,
+        captcha_misura: app_commands.Choice[str] | None = None,
+        captcha_colore: app_commands.Range[str, 6, 7] | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_VERIFY):
             return
         guild = interaction.guild
+        if captcha_colore is not None:  # VER-002: il colore si controlla prima di salvare qualsiasi cosa
+            try:
+                valore_colore = int(captcha_colore.strip().lstrip("#"), 16)
+            except ValueError:
+                valore_colore = -1
+            if len(captcha_colore.strip().lstrip("#")) != 6 or not captcha_image.colore_leggibile(valore_colore):
+                await interaction.response.send_message(await testo_per(interaction, "verify_captcha_colore_non_valido"), ephemeral=True)
+                return
+            await db.set_guild_setting(guild.id, SETTING_CAPTCHA_COLORE, valore_colore, changed_by=interaction.user.id)
+        if testo_pagina is not None:  # VER-006
+            await db.set_guild_setting(guild.id, SETTING_TESTO_PAGINA, testo_pagina.strip(), changed_by=interaction.user.id)
+        if captcha_lunghezza is not None:
+            await db.set_guild_setting(guild.id, SETTING_CAPTCHA_LUNGHEZZA, captcha_lunghezza, changed_by=interaction.user.id)
+        if captcha_misura is not None:
+            await db.set_guild_setting(guild.id, SETTING_CAPTCHA_MISURA, captcha_misura.value, changed_by=interaction.user.id)
+        if ruolo_avviso_alt is not None:  # VER-023: come in D12, il ping di un ruolo lo sceglie chi può «Menziona tutti»
+            if ruolo_avviso_alt.is_default() or not (
+                interaction.user.id == guild.owner_id or interaction.user.guild_permissions.mention_everyone
+            ):
+                await interaction.response.send_message(await testo_per(interaction, "verify_alt_ruolo_non_permesso"), ephemeral=True)
+                return
+            await db.set_guild_setting(
+                guild.id, SETTING_RUOLO_AVVISO_ALT, ruolo_avviso_alt.id, changed_by=interaction.user.id
+            )
         if log_compatto is not None:
             await db.set_guild_setting(guild.id, SETTING_LOG_COMPATTO, log_compatto, changed_by=interaction.user.id)
         if azzera:
             await db.set_guild_setting(guild.id, SETTING_RUOLO_NON_VERIFICATO, None)
             await db.set_guild_setting(guild.id, SETTING_RUOLI_EXTRA, None)
+            await db.set_guild_setting(guild.id, SETTING_RUOLO_AVVISO_ALT, None)
+            await db.set_guild_setting(guild.id, SETTING_TESTO_PAGINA, None)
             await interaction.response.send_message(await testo_per(interaction, "verify_ruoli_extra_della_verifica_tolti"), ephemeral=True)
             return
         extra = [r for r in (extra_1, extra_2, extra_3) if r is not None]
@@ -1020,6 +1128,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         solo_sospetti="Verifica solo account giovani (meno di 7 giorni) o senza avatar",
         azione_eta="Account più giovane dell'età minima: aspetta il via libera o viene espulso",
         sospendi_ore="Modalità cieca: per queste ore chi entra riceve subito il ruolo (0 = spenta)",
+        dm_ingresso="Chi entra riceve subito un messaggio privato con il modo di verificarsi",
     )
     @app_commands.choices(
         azione_scadenza=[
@@ -1039,6 +1148,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         solo_sospetti: bool | None = None,
         azione_eta: app_commands.Choice[str] | None = None,
         sospendi_ore: app_commands.Range[int, 0, 720] | None = None,
+        dm_ingresso: bool | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_VERIFY):
             return
@@ -1050,6 +1160,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
             (SETTING_AZIONE_FALLITA, azione_fallita.value if azione_fallita else None),
             (SETTING_SOLO_SOSPETTI, solo_sospetti),
             (SETTING_AZIONE_ETA, azione_eta.value if azione_eta else None),
+            (SETTING_DM_INGRESSO, dm_ingresso),
             (SETTING_SOSPESA_FINO, None if sospendi_ore is None else (
                 int(time.time()) + sospendi_ore * 3600 if sospendi_ore else 0)),
         ):
@@ -1063,6 +1174,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
             f"Chi non passa: {await db.get_guild_setting(gid, SETTING_AZIONE_FALLITA, 'niente') or 'niente'}. "
             f"Solo account sospetti: {'sì' if await db.get_guild_setting(gid, SETTING_SOLO_SOSPETTI, False) else 'no'}. "
             f"Account troppo giovane: {await db.get_guild_setting(gid, SETTING_AZIONE_ETA, 'attendi') or 'attendi'}. "
+            f"DM all'ingresso: {'sì' if await db.get_guild_setting(gid, SETTING_DM_INGRESSO, False) else 'no'}. "
             f"Modalità cieca: "
             f"{'attiva fino a <t:' + str(fino) + ':f>' if sospesa_adesso(fino := await db.get_guild_setting(gid, SETTING_SOSPESA_FINO, 0)) else 'spenta'}. "
             "Valgono per chi entra da adesso.",

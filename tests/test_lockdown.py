@@ -139,6 +139,7 @@ def test_chi_agisce_in_panico():
 
 
 # ================================================================== servizio
+# MOD-093
 async def test_blocco_e_sblocco_lasciano_il_server_com_era():
     testo, esplicito, vocale = _tre_canali()
     gia = _canale(discord.TextChannel, 4, ow=discord.PermissionOverwrite(send_messages=False, add_reactions=False,

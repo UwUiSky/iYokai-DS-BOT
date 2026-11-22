@@ -27,7 +27,7 @@ il filtro nativo senza la scala di severità crescente.
 
 Anche una parola vietata trovata dal filtro del bot conta un'infrazione
 (AMD-014, evento `automod_parole_vietate` mandato da cogs/automod/automod.py).
-Funzioni coperte: SPEC §6 (escalation ladder, M 1.10, AMD-014)
+Funzioni coperte: SPEC §6 (escalation ladder, M 1.10, AMD-014), MOD-032, MOD-033 (finestra in giorni), MOD-034 (durata del timeout per gradino), MOD-035 (azzera dopo la sanzione)
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core import bot_roles
 from core.bounded_cache import BoundedCache
 from core.database import db
-from core.escalation_ladder_logic import get_ladder_action
+from core.escalation_ladder_logic import finestre_della_scala, get_ladder_action
 from core.i18n import testo_per
 from core.repositories.escalation_repo import escalation_repo
 from core.repositories.moderation_repo import moderation_repo
@@ -70,7 +70,22 @@ def _adesso() -> datetime:
 
 
 # D29: il permesso di Discord che serve al moderatore per ogni gradino.
-_PERMESSO_GRADINO = {"timeout": "moderate_members", "kick": "kick_members", "ban": "ban_members"}
+_PERMESSO_GRADINO = {"timeout": "moderate_members", "kick": "kick_members", "ban": "ban_members", "tempban": "ban_members"}
+# Gradini con una durata: il timeout (sul membro) e il tempban (ban che si toglie da solo, MOD-034).
+_CON_DURATA = ("timeout", "tempban")
+
+
+def _descrivi(step) -> str:
+    return step.action_type + (f" {step.duration_seconds // 60} min" if step.action_type in _CON_DURATA and step.duration_seconds else "")
+
+
+async def scegli_gradino(config, guild_id: int, user_id: int, conteggio: int, adesso: datetime | None = None):
+    """Il gradino per questo conteggio; con i gradini a finestra (MOD-033) conta le infrazioni degli ultimi N giorni."""
+    finestre = finestre_della_scala(config.ladder)
+    conteggi = (
+        await escalation_repo.conta_in_finestre(guild_id, user_id, finestre, adesso or _adesso()) if finestre else None
+    )
+    return get_ladder_action(conteggio, config.ladder, config.moltiplicatore, config.tetto_strike, conteggi)
 
 
 def _timeout_piu_lungo_in_corso(member: discord.Member, step) -> bool:
@@ -109,7 +124,7 @@ async def _applica_passo(
             await bot_roles.isola(member, timedelta(seconds=step.duration_seconds or 600), reason=reason)
         elif step.action_type == "kick":
             await bot_roles.espelli(member, reason=reason)
-        elif step.action_type == "ban":
+        elif step.action_type in ("ban", "tempban"):
             await bot_roles.banna(
                 member.guild, member, reason=reason, delete_message_seconds=86400,
                 principale=lambda: member.ban(reason=reason),
@@ -127,9 +142,21 @@ async def _applica_passo(
         moderator_id=bot.user.id,
         action_type=ESCALATION_ACTION_TYPE,
         reason=reason,
-        duration_seconds=step.duration_seconds if step.action_type == "timeout" else None,
+        duration_seconds=step.duration_seconds if step.action_type in _CON_DURATA else None,
         origine="automod",
     )
+    if step.action_type == "tempban":  # MOD-034: il ban finisce da solo, come /mod-ban tempban
+        from cogs.moderation.actions import MODO_FUORI, SCHEDULED_TEMPBAN_EXPIRE
+        from core.scheduler import scheduler
+
+        await moderation_repo.cancel_tempban_jobs(guild_id, member.id)
+        await scheduler.schedule(
+            guild_id=guild_id, user_id=member.id, action_type=SCHEDULED_TEMPBAN_EXPIRE,
+            execute_at=_adesso() + timedelta(seconds=step.duration_seconds or 3600),
+            payload={"case_number": case_number, "modo": MODO_FUORI},
+        )
+    if step.action_type != "warn" and (await escalation_repo.get_config(guild_id)).azzera_dopo_scatto:
+        await escalation_repo.reset_violations(guild_id, member.id)  # MOD-035: i casi restano
     if step.action_type == "warn":
         try:
             await member.send(f"⚠️ {reason} (caso #{case_number})")
@@ -141,7 +168,7 @@ async def _applica_passo(
 
 async def _scrivi_nel_log(member: discord.Member, step, reason: str, case_number: int) -> None:
     """§18.7: ogni gradino applicato lascia una riga nel log di moderazione (mai solleva)."""
-    azione = step.action_type + (f" {step.duration_seconds // 60} min" if step.action_type == "timeout" else "")
+    azione = _descrivi(step)
     embed = discord.Embed(title="⚖️ Scala di escalation", color=discord.Color.orange())
     embed.add_field(name="Utente", value=f"{member.mention} ({member.id})", inline=False)
     embed.add_field(name="Azione", value=azione, inline=True)
@@ -177,12 +204,12 @@ async def scala_per_warn_manuale(
     conteggio = await escalation_repo.record_violation(
         member.guild.id, member.id, _adesso(), config.reset_after_days
     )
-    step = get_ladder_action(conteggio, config.ladder, config.moltiplicatore, config.tetto_strike)
+    step = await scegli_gradino(config, member.guild.id, member.id, conteggio)
     if step is None or step.action_type == "warn":
         return None
-    azione = step.action_type + (f" {step.duration_seconds // 60} min" if step.action_type == "timeout" else "")
+    azione = _descrivi(step)
     richiesta = f"La scala chiedeva **{azione}** (infrazione #{conteggio}), ma"
-    if in_massa and step.action_type in ("kick", "ban"):
+    if in_massa and step.action_type in ("kick", "ban", "tempban"):
         return f"{richiesta} dai warn in massa kick e ban non partono: decidi tu."
     non_permesso = _motivo_non_permesso(moderatore, member, step)
     if non_permesso:
@@ -244,7 +271,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
         nuovo_conteggio = await escalation_repo.record_violation(
             execution.guild_id, member.id, now, config.reset_after_days
         )
-        step = get_ladder_action(nuovo_conteggio, config.ladder, config.moltiplicatore, config.tetto_strike)
+        step = await scegli_gradino(config, execution.guild_id, member.id, nuovo_conteggio, now)
         if step is None:
             return  # scala non configurata: solo il conteggio viene tenuto
 
@@ -280,7 +307,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
         conteggio = await escalation_repo.record_violation(
             message.guild.id, member.id, now, config.reset_after_days
         )
-        step = get_ladder_action(conteggio, config.ladder)
+        step = await scegli_gradino(config, message.guild.id, member.id, conteggio)
         if step is None:
             return
         if _timeout_piu_lungo_in_corso(member, step):
@@ -301,6 +328,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
         warn_manuali="Conta anche i warn dati a mano con /mod-sanzioni warn. Vuoto: resta com'è",
         moltiplicatore="Il timeout oltre l'ultimo gradino dura base x questo numero a ogni ricaduta (1 = fisso)",
         tetto_strike="Ricadute contate per il moltiplicatore (da 1 a 10). Vuoto: resta com'è",
+        azzera_dopo_scatto="Dopo una sanzione della scala il conteggio riparte da zero (i casi restano). Vuoto: resta com'è",
     )
     async def enable(
         self,
@@ -308,10 +336,13 @@ class EscalationCog(CogConGruppi, commands.Cog):
         warn_manuali: bool | None = None,
         moltiplicatore: app_commands.Range[float, 1.0, 10.0] | None = None,
         tetto_strike: app_commands.Range[int, 1, 10] | None = None,
+        azzera_dopo_scatto: bool | None = None,
     ) -> None:
         if interaction.guild is None:
             return
         await escalation_repo.set_enabled(interaction.guild.id, True)
+        if azzera_dopo_scatto is not None:
+            await escalation_repo.set_azzera_dopo_scatto(interaction.guild.id, azzera_dopo_scatto)
         if warn_manuali is not None:
             await escalation_repo.set_conta_warn_manuali(interaction.guild.id, warn_manuali)
         if moltiplicatore is not None or tetto_strike is not None:
@@ -372,7 +403,8 @@ class EscalationCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         level="Numero dell'infrazione (1 = prima volta, 2 = seconda...)",
         action="Azione da applicare",
-        duration_minutes="Durata in minuti (solo per timeout)",
+        duration_minutes="Durata in minuti (timeout e tempban)",
+        finestra_giorni="Conta solo le infrazioni degli ultimi N giorni (da 1 a 90). Vuoto: tutte",
     )
     @app_commands.choices(
         action=[
@@ -380,6 +412,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
             app_commands.Choice(name="Timeout", value="timeout"),
             app_commands.Choice(name="Kick", value="kick"),
             app_commands.Choice(name="Ban", value="ban"),
+            app_commands.Choice(name="Tempban", value="tempban"),
         ]
     )
     async def set_step(
@@ -388,21 +421,23 @@ class EscalationCog(CogConGruppi, commands.Cog):
         level: app_commands.Range[int, 1, 20],
         action: app_commands.Choice[str],
         duration_minutes: app_commands.Range[int, 1, 40320] | None = None,
+        finestra_giorni: app_commands.Range[int, 1, 90] | None = None,
     ) -> None:
         if interaction.guild is None:
             return
 
-        if action.value == "timeout" and duration_minutes is None:
+        if action.value in _CON_DURATA and duration_minutes is None:
             await interaction.response.send_message(
                 await testo_per(interaction, "escalation_specifica_una_durata_in_minuti"), ephemeral=True
             )
             return
 
-        durata_secondi = duration_minutes * 60 if duration_minutes else None
-        await escalation_repo.set_step(interaction.guild.id, level, action.value, durata_secondi)
+        durata_secondi = duration_minutes * 60 if duration_minutes and action.value in _CON_DURATA else None
+        await escalation_repo.set_step(interaction.guild.id, level, action.value, durata_secondi, finestra_giorni)
         await interaction.response.send_message(
             f"Livello {level} impostato su **{action.name}**"
             + (f" ({duration_minutes} minuti)" if durata_secondi else "")
+            + (f", infrazioni degli ultimi {finestra_giorni} giorni" if finestra_giorni else "")
             + ".",
             ephemeral=True,
         )

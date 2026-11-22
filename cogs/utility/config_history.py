@@ -87,6 +87,19 @@ SETTINGS_SCHEMA = {
     "verify_unverified_role_id": "id",
     "verify_extra_role_ids": "lista_id",
     "verify_captcha_tipo": "captcha_tipo",
+    "verify_alt_ruolo_id": "id",
+    "verify_dm_ingresso": "bool",
+    "mod_registro_chat": "bool",
+    "mod_aspetto_casi": "aspetto_casi",
+    "mod_storico_nomi": "bool",
+    "mod_persistenza": "bool",
+    "mod_avviso_canale_id": "id",
+    "automod_emergenza": "automod_emergenza",
+    "verify_testo_pagina": "testo_1500",
+    "verify_captcha_lunghezza": "int_4_8",
+    "verify_captcha_misura": "captcha_misura",
+    "verify_captcha_colore": "colore",
+    "appelli_timeout": "bool",
     "verify_log_compatto": "bool",
     "verify_promemoria_minuti": "int_0_1440",
     "verify_scadenza_minuti": "int_0_1440",
@@ -274,6 +287,20 @@ CONTROLLI_PER_TIPO = {
     "azione_eta": (lambda valore: valore in ("attendi", "kick"), "attendi oppure kick"),
     "epoch": (_intero_tra(0, 4_102_444_800), "un istante in secondi, tra 0 e il 2100"),
     "data_iso": (_e_una_data_iso, "una data in formato ISO"),
+    "automod_emergenza": (
+        lambda valore: isinstance(valore, dict)
+        and set(valore) <= {"menzioni_soglia", "menzioni_secondi", "menzioni_minuti", "panico", "panico_utenti"}
+        and all(isinstance(v, (int, bool)) for v in valore.values()),
+        "le scelte di emergenza dell'AutoMod (soglie in numeri, panico true o false)",
+    ),
+    "aspetto_casi": (
+        lambda valore: isinstance(valore, dict)
+        and len(valore) <= 12
+        and all(isinstance(k, str) and isinstance(v, dict) and len(v) <= 2 for k, v in valore.items()),
+        "colore e icona per tipo di caso",
+    ),
+    "int_4_8": (_intero_tra(4, 8), "un intero tra 4 e 8"),
+    "captcha_misura": (lambda valore: valore in ("piccola", "media", "grande"), "piccola, media oppure grande"),
     "int_0_200": (_intero_tra(0, 200), "un intero tra 0 e 200"),
     "int_0_365": (_intero_tra(0, 365), "un intero tra 0 e 365"),
     "int_0_3600": (_intero_tra(0, 3600), "un intero tra 0 e 3600"),

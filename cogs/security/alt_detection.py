@@ -5,7 +5,7 @@ Account doppi trovati dalla verifica web (NF-21): l'avviso allo staff nel
 canale del log della verifica e `/admin-sicurezza alt elenco`. Nessun ban
 automatico: decide lo staff. La verifica dalla pagina e il confronto delle
 impronte stanno in `core/panel_bridge.py` e `core/alt_detection_logic.py`.
-Funzioni coperte: SPEC §4.2, §4.3 (NF-21)
+Funzioni coperte: SPEC §4.2, §4.3 (NF-21), VER-023 (ruolo avvisato)
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ import discord
 from discord.ext import commands
 
 from cogs.moderation._shared import ensure_module_enabled
+from core.database import db
 from core.alt_detection_logic import GIORNI_DOPPI, Doppio, testo_avviso
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.repositories.fingerprint_repo import MAX_ELENCO, fingerprint_repo
@@ -24,6 +25,7 @@ from core.repositories.verify_repo import verify_repo
 logger = logging.getLogger("iyokai.alt_detection")
 
 MODULO_VERIFY = "verify"
+SETTING_RUOLO_AVVISO_ALT = "verify_alt_ruolo_id"  # VER-023 (scritto da `verify opzioni`)
 SOTTOGRUPPO = ("alt", "Account doppi trovati dalla verifica web.")
 
 
@@ -39,7 +41,17 @@ async def avvisa_staff(guild: discord.Guild, membro: discord.Member, doppi: list
         color=discord.Color.orange(),
     )
     try:
-        await canale.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+        ruolo_id = await db.get_guild_setting(guild.id, SETTING_RUOLO_AVVISO_ALT)
+    except Exception:  # un ruolo non letto non deve fermare l'avviso
+        ruolo_id = None
+    ruolo = guild.get_role(ruolo_id) if isinstance(ruolo_id, int) and not isinstance(ruolo_id, bool) else None
+    if ruolo is not None and ruolo.is_default():
+        ruolo = None
+    menzioni = discord.AllowedMentions(
+        everyone=False, users=False, replied_user=False, roles=[ruolo] if ruolo is not None else False
+    )
+    try:
+        await canale.send(content=ruolo.mention if ruolo is not None else None, embed=embed, allowed_mentions=menzioni)
     except discord.HTTPException:
         logger.warning("Avviso dei doppi non inviato nel server %s.", guild.id)
         return False

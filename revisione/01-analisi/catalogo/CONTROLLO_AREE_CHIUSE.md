@@ -102,6 +102,82 @@ Giro r2utl (issue #128). «Corretta» = fa ciò che dice il catalogo e rispetta 
 | UTL-227 | sì (`ruolo-richiesto`) | sì | nessuna | test_cfg012_serve_uno_dei_ruoli_richiesti_per_il_comando_e_il_suo_gruppo |
 | UTL-228 | in parte | - | non è mio: `config_history.py` (nota in D100) | - |
 
+## 01-moderazione
+
+Giro r2mod (issue #115, #116, #118). «Corretta» = fa ciò che dice il catalogo e rispetta SICUREZZA.md (gerarchia, permessi riletti, motivi entro 512, menzioni spente).
+
+| codice | esiste | corretta | azione | file e test |
+|---|---|---|---|---|
+| MOD-008 | no | sì | realizzata: `appello: no` su ban, tempban e timeout; caso segnato (0800), niente bottone, appello rifiutato | cogs/moderation/actions.py, ban_appeal.py; tests/test_catalogo_r2mod_appelli.py |
+| MOD-016 | no | sì | realizzata: `/mod-sanzioni quarantena` (anche a tempo, fino a 1 anno) e `libera`; usa il ruolo dell'anti-raid; i ruoli si salvano PRIMA (0804), il rilascio ridà solo quelli che il bot può ridare; gerarchia, conferma, permesso del bot e caso come ogni sanzione; azione `quarantena` concedibile a un ruolo (CFG-024) | core/moderation_quarantena.py, cogs/moderation/softban_mute.py; tests/test_catalogo_r2mod_quarantena.py |
+| MOD-018 | no (il ruolo nasceva solo da solo) | sì | realizzata: `/mod-sanzioni opzioni muto ruolo:\|nome_nuovo:`; il ruolo deve stare sotto il bot e sotto chi comanda, non gestito, senza permessi pericolosi | cogs/moderation/opzioni.py; tests/test_catalogo_r2mod_mute.py |
+| MOD-019 | no | sì | realizzata: `muto aggiorna:` rimette il blocco su fino a 500 canali, a gruppi di 8 con pausa | softban_mute.aggiorna_ruolo_muto; tests/test_catalogo_r2mod_mute.py |
+| MOD-020 | sì (`add_reactions` già negato) | sì | test aggiunto | softban_mute.MUTE_OVERWRITE; tests/test_catalogo_r2mod_mute.py |
+| MOD-032 | sì (`conta_warn_manuali`) | sì (gerarchia e permessi del moderatore, in massa mai kick/ban) | segnata | tests/test_escalation_warn_manuali.py::test_tre_warn_manuali_fanno_scattare_il_gradino |
+| MOD-033 | no | sì | realizzata: `set-step finestra_giorni:` (1-90), date delle infrazioni (0801), livello più alto raggiunto | core/escalation_ladder_logic.py, escalation_repo.py; tests/test_catalogo_r2mod_scala.py |
+| MOD-034 | in parte (durata solo per i timeout) | sì | completata: gradino `tempban` con durata (ban che finisce da solo, stesso scheduler di `/mod-ban tempban`; parte solo se chi ha dato il warn potrebbe bannare, mai dai warn in massa). Il mute a ruolo a tempo non c'è: il timeout è il mute a tempo | cogs/automod/escalation.py; tests/test_catalogo_r2mod_scala.py |
+| MOD-035 | no | sì | realizzata: `enable azzera_dopo_scatto:` azzera conteggio e date, i casi restano | escalation.py; tests/test_catalogo_r2mod_scala.py |
+| MOD-040 | in parte | sì | completata: `classifica-staff moderatore:` mostra i casi per tipo e negli ultimi 7, 30 e 90 giorni (i nascosti non contano) | core/repositories/moderation_repo.statistiche_moderatore; tests/test_catalogo_r2mod_stat_moderatore.py |
+| MOD-051 | no | sì | realizzata: con `/mod-sanzioni opzioni memoria registro_chat: sì` (spento di base) warn, timeout, kick e ban salvano gli ultimi 100 messaggi del canale col caso (0806, 30 giorni nel registro dei dati, tolto col caso); si legge con `/mod-casi caso chat numero:` in privato; degli allegati solo nome pulito, tipo e peso (D74); un errore non ferma la sanzione. Dai comandi di massa e da tempban/softban non si salva | core/moderation_registro_chat.py, cogs/moderation/actions.py, case_system.py; tests/test_catalogo_r2mod_registro_chat.py |
+| MOD-052 | sì (il passo «moderazione» di `/admin-bot setup` crea `#mod-log` riservato) | sì | segnata | tests/test_setup_wizard.py::test_il_canale_modlog_si_crea_riservato_e_si_collega |
+| MOD-053 | no | sì | realizzata: `/mod-sanzioni opzioni aspetto tipo: colore: icona:` per warn, timeout, mute, kick, ban, tempban, softban, isolamento, quarantena; cambia solo il riquadro nel log di moderazione (il tipo si riconosce dal titolo; copia, l'originale non cambia); valori controllati prima di salvare, «nessuno» toglie la scelta. Il pannello web resta da fare (dev-web) | core/moderation_aspetto.py, cogs/moderation/_shared.post_to_mod_log; tests/test_catalogo_r2mod_aspetto.py |
+| MOD-060 | no | sì | realizzata: `/mod-sanzioni opzioni avvisi canale:`; l'avviso va nel canale con la menzione della sola persona; senza permessi del bot o per un ban per ID resta il DM; `dm: no` spegne anche l'avviso | cogs/moderation/_shared._avviso_in_canale, cogs/moderation/opzioni.py; tests/test_catalogo_r2mod_avvisi.py |
+| MOD-061 | sì (`/mod-sanzioni opzioni dm testo:` + bottone «Fai appello» nel DM) | sì | segnata | tests/test_moderation_appelli.py::test_dm_di_chi_ha_un_ban_manuale_riceve_il_bottone; tests/test_catalogo_r2mod_appelli.py |
+| MOD-062 | sì (`/mod-ban appelli canale`; non passa dal router dei canali) | sì | segnata | tests/test_moderation_appelli.py::test_comandi_appelli_canale_ed_elenco |
+| MOD-063 | no | sì | realizzata: `/mod-ban appelli timeout`; accettare toglie il timeout solo se chi decide sta sopra l'utente; «Moderare i membri» decide solo i timeout | ban_appeal.py; tests/test_catalogo_r2mod_appelli.py |
+| MOD-091 | no | sì | realizzata: `/mod-canali blocco canali` con un menu fino a 25 canali; il server (verifica, inviti) resta com'è; si riapre con `blocco togli`; permesso riletto a ogni clic | cogs/security/lockdown.py, core/lockdown_service.py; tests/test_catalogo_r2mod_blocco_mirato.py |
+| MOD-092 | no | sì | realizzata: «Salva come gruppo» nel menu (al massimo 25, 0803) e `blocco canali gruppo: sì` | core/repositories/lockdown_repo.py; tests/test_catalogo_r2mod_blocco_mirato.py |
+| MOD-093 | sì (`/mod-canali blocco attiva`, stato salvato, 500 canali) | sì | realizzato il tempo: `minuti:` (al massimo 1440), si riapre dallo scheduler | core/lockdown_service.py; tests/test_catalogo_r2mod_blocco.py, tests/test_lockdown.py |
+| MOD-094 | no | sì | realizzata: `blocco attiva nascondi:` toglie `view_channel` a @everyone, crea `#server-bloccato` in sola lettura e lo toglie allo sblocco (solo se l'ha creato il bot); senza il canale il blocco parte lo stesso | core/lockdown_service.py; tests/test_catalogo_r2mod_blocco_mirato.py |
+| MOD-095 | no | sì | realizzata: `blocco attiva ingressi: espelli\|banna`; mai bot né protetti, serve il permesso vero a chi comanda e al bot, caso scritto, la scelta si rilegge dopo un riavvio e si spegne con lo sblocco | cogs/security/lockdown.py; tests/test_catalogo_r2mod_blocco_mirato.py |
+| MOD-096 | no | sì | realizzata: `blocco attiva ruoli: sì` toglie i permessi critici ai ruoli sotto il bot (mai @everyone, gestiti, pari o sopra il bot), salva i bit tolti prima; lo sblocco rimette solo quelli, e se un ruolo non si riapre il blocco resta | core/lockdown_service.py; tests/test_catalogo_r2mod_blocco_mirato.py |
+| MOD-097 | in parte (solo `/admin-sicurezza panico stato`) | sì | realizzata: `/mod-canali blocco stato` | cogs/security/lockdown.py; tests/test_catalogo_r2mod_blocco.py |
+| MOD-103 | no | sì | realizzata: `/mod-casi nomi utente:` (soprannomi, nomi utente e nomi visualizzati, ultimi 30 per persona, scadenza 90 giorni nel registro dei dati, 0805); spento di base, si accende con `/mod-sanzioni opzioni memoria`; nomi senza menzioni né markdown | cogs/moderation/nickname.py, core/moderation_nomi.py; tests/test_catalogo_r2mod_nomi.py |
+| MOD-104 | no | sì | realizzata: chi esce e rientra entro 30 giorni riprende il soprannome (solo se il bot può e il membro non sta sopra il bot) e il mute vocale alla prossima entrata in vocale, una volta sola; spento di base (`opzioni memoria`) | cogs/moderation/nickname.py; tests/test_catalogo_r2mod_nomi.py |
+| MOD-109 | in parte (`/mod-casi membri` con `entrato_dopo` e `account_piu_giovane_di`, senza ordinamento) | sì | segnata; l'ordinamento a 25 righe non c'è | tests/test_moderation_ricerca_m9.py::test_filtri_membri |
+| MOD-111 | sì (`/utility permessi membro: canale:`, in `cogs/utility/schede.py`) | sì | test aggiunto sul membro | tests/test_catalogo_r2mod_mute.py::test_i_permessi_di_un_membro_in_un_canale_si_vedono_con_utility_permessi |
+
+## 02-automod
+
+Giro r2mod (issue #115, #116, #118). «Corretta» = fa ciò che dice il catalogo e rispetta SICUREZZA.md (gerarchia, permessi riletti, motivi entro 512, menzioni spente).
+
+| codice | esiste | corretta | azione | file e test |
+|---|---|---|---|---|
+| AMD-030 | no | - | non fattibile ora, D106: serve una chiave API con quota (Google Safe Browsing) da scrivere in LIMITI.md | DECISIONI.md D106 |
+| AMD-031 | no | in parte | realizzata la funzione: `/admin-filtri phishing siti: cattura IP\|adulti\|malware\|tutti\|nessuno`, violazione «Siti pericolosi» con le sue azioni e regole, chiave `phishing_siti` in AutomodAdvancedConfig, whitelist dei domini che vince. Le liste: IP logger (17 domini) e adulti (13) di partenza; la lista dei MALWARE è VUOTA (data/siti_malware.txt): la riempie l'owner con la fonte che sceglie, senza voci quella categoria non blocca niente | core/phishing_logic.py, core/automod_advanced_logic.py, data/siti_*.txt; tests/test_catalogo_r2mod_siti.py |
+| AMD-057 | no | sì | realizzata: `/admin-filtri emergenza menzioni_soglia: menzioni_secondi: menzioni_minuti:` blocca i canali (servizio del blocco totale, si riapre da solo) alla soglia; bot e amministratori non contano, un blocco ogni 10 minuti al massimo; accenderla serve «Gestire il server» | core/automod_emergenza.py, cogs/automod/automod.py; tests/test_catalogo_r2mod_emergenza.py |
+| AMD-071 | no | sì | realizzata: `/admin-filtri emergenza panico: panico_utenti:` a N persone che violano una regola in un minuto il panico dura 10 minuti; in panico un account sospetto (giovane o senza avatar) che viola ancora va in timeout di 10 minuti, con caso; mai protetti, esenti o sopra il bot | core/automod_emergenza.py; tests/test_catalogo_r2mod_emergenza.py |
+
+## 04-verifica
+
+Giro r2mod (issue #115, #116, #118). «Corretta» = fa ciò che dice il catalogo e rispetta SICUREZZA.md (gerarchia, permessi riletti, motivi entro 512, menzioni spente).
+
+| codice | esiste | corretta | azione | file e test |
+|---|---|---|---|---|
+| VER-001 | sì (`captcha_tipo: immagine`, Pillow) | sì | segnata | tests/test_captcha_image.py::test_clic_con_immagine_manda_file_e_bottone_poi_modulo_poi_ruolo |
+| VER-002 | no | sì | realizzata: `verify opzioni captcha_lunghezza: captcha_misura: captcha_colore:` (4-8 lettere, piccola/media/grande, colore scuro abbastanza da leggersi) | core/captcha_image.py, cogs/security/verify.py; tests/test_catalogo_r2mod_verifica.py |
+| VER-003 | in parte (la prova scade dopo 180 s) | sì | completata: bottone «Codice nuovo», i tentativi già usati restano usati, al massimo 3 rinnovi | core/captcha_image.py; tests/test_catalogo_r2mod_verifica.py |
+| VER-004 | in parte (3 tentativi per prova, poi blocco con motivo) | sì | segnata; l'azzeramento dello staff è `verify manuale` (verifica a mano) | tests/test_captcha_image.py::test_la_sfida_finisce_dopo_tre_errori |
+| VER-005 | sì (modo «Pagina web» con link firmato di 15 minuti; senza captcha esterno) | sì | segnata | tests/test_alt_detection.py::test_pagina_verifica_e_doppio_segnalato |
+| VER-006 | no | sì | realizzata: `verify opzioni testo_pagina:` (1000 caratteri, 20 righe, senza HTML), mostrato sopra il bottone della pagina | core/alt_detection_logic.testo_pagina_pulito, pannello_web/templates/verifica.html; tests/test_catalogo_r2mod_verifica.py |
+| VER-007 | in parte (`verify invia` a mano) | sì | completata: `verify tempi dm_ingresso:` un DM all'ingresso (chi aspetta l'età lo riceve dopo), DM chiusi senza errori | cogs/security/verify.py; tests/test_catalogo_r2mod_verifica.py |
+| VER-018 | non verificato | sì | realizzata via CFG-024: l'azione `verifica` data a un ruolo apre solo `verify manuale` e `verify invia` | core/moderation_permessi_azioni.py; tests/test_catalogo_r2mod_permessi_azioni.py |
+| VER-021 | sì (impronta HMAC per server, mai l'IP in chiaro) | sì | segnata | tests/test_alt_detection.py::test_repo_trova_i_doppi_solo_nello_stesso_server |
+| VER-022 | sì (avviso con elenco degli account collegati, menzioni spente) | sì | segnata | tests/test_alt_detection.py::test_avviso_allo_staff_senza_menzioni |
+| VER-023 | no | sì | realizzata: `verify opzioni ruolo_avviso_alt:` (serve «Menziona tutti», mai @everyone), ping solo di quel ruolo | cogs/security/alt_detection.py; tests/test_catalogo_r2mod_verifica.py |
+| VER-024 | sì come scelta (nessun ban automatico, solo avviso) | sì | segnata; il bottone «Banna» dell'alternativa NON c'è | tests/test_alt_detection.py::test_avviso_allo_staff_senza_menzioni |
+| VER-025 | no | - | non fattibile, D106: le impronte sono diverse in ogni server per privacy (D19) | DECISIONI.md D106 |
+| VER-026 | sì (strati ASN, Tor, elenchi, servizio; staff può far passare) | sì | segnata | tests/test_verify_vpn_flusso.py::test_vpn_bloccata_subito_con_avviso_e_nessun_dato_in_piu |
+| VER-027 | no | - | non fattibile ora, D106: serve OAuth con `role_connections.write` e i metadati dell'applicazione | DECISIONI.md D106 |
+| VER-028 | no | sì | realizzata: `verify panel titolo: testo: colore: bottone: emoji:` | core/verify_logic.pannello_personalizzato; tests/test_catalogo_r2mod_verifica.py |
+
+## Voci passate da altri controlli
+
+| codice | esiste | corretta | azione | file e test |
+|---|---|---|---|---|
+| UTL-204 | no | sì | realizzata: `/mod-canali esporta-chat` (1-1000 messaggi, file sotto 9,5 MB, allegati solo come scheda, permessi riletti, riga nel log) | core/moderation_esporta_chat.py, cogs/moderation/clear.py; tests/test_catalogo_r2mod_esporta_chat.py |
+| UTL-205 | no | sì | realizzata: opzione `utente` di `/utility messaggio`, ognuno vede i suoi, chi gestisce i messaggi di tutti, sempre in privato | cogs/utility/snipe.py; tests/test_catalogo_r2mod_snipe_utente.py |
+| CFG-024 | no | sì | realizzata: tabella `moderation_ruoli_azioni` (0802), `/mod-sanzioni opzioni azioni`, controllo in `core/command_access.controlla`; un ruolo con solo «timeout» non banna | core/moderation_permessi_azioni.py, core/command_access.py; tests/test_catalogo_r2mod_permessi_azioni.py |
 ## 17-divertimento-e-immagini
 
 Giro r5eco (issue #131, controllo). «Corretta» = fa ciò che dice il catalogo e rispetta SICUREZZA.md. Le 91 voci FUN che lo stato segnava come non trovate.

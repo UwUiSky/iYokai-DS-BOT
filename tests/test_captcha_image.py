@@ -53,6 +53,7 @@ def test_la_risposta_ignora_maiuscole_e_spazi():
     assert not captcha_image.risposta_giusta("AC2DK", "")
 
 
+# VER-004
 def test_la_sfida_finisce_dopo_tre_errori():
     sfida = Sfida("AC2DK", datetime.now(timezone.utc) + timedelta(seconds=60))
     esiti = [sfida.prova("xxxxx") for _ in range(TENTATIVI_MASSIMI)]
@@ -70,7 +71,7 @@ def test_la_sfida_scade_col_tempo():
 def test_l_etichetta_del_modulo_sta_nel_limite():
     modulo = CaptchaImmagineModal(MagicMock(), GUILD_ID, UTENTE_ID)
     assert len(modulo.children[0].text) <= captcha_image.ETICHETTA_MAX
-    assert modulo.answer_input.max_length == captcha_image.LUNGHEZZA_CODICE + 3
+    assert modulo.answer_input.max_length == captcha_image.MAX_LUNGHEZZA_RISPOSTA
 
 
 async def _setup_immagine(scenario, tipo="immagine"):
@@ -105,6 +106,7 @@ async def test_setup_reaction_con_immagine_e_rifiutato(scenario):
     assert "non è supportato" in interazione.response.send_message.call_args.args[0]
 
 
+# VER-001
 async def test_clic_con_immagine_manda_file_e_bottone_poi_modulo_poi_ruolo(scenario, clean_db):
     await _setup_immagine(scenario)
     clic = scenario.clic()

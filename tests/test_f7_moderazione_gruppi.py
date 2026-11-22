@@ -48,20 +48,20 @@ MODULI = (
 
 # (gruppo, sottogruppo o None) -> nomi dei figli attesi
 ATTESI: dict[tuple[str, str | None], set[str]] = {
-    ("mod-sanzioni", None): {"warn", "timeout", "untimeout", "mute", "unmute", "nick", "applica"},
+    ("mod-sanzioni", None): {"warn", "timeout", "untimeout", "mute", "unmute", "nick", "applica", "quarantena", "libera"},
     ("mod-sanzioni", "massa"): {"timeout", "warn"},
-    ("mod-sanzioni", "opzioni"): {"imposta", "dm"},
-    ("mod-casi", "caso"): {"storico", "vedi", "motivo", "elimina", "classifica-staff", "attive", "registra", "durata", "nascondi", "esporta", "prova"},
+    ("mod-sanzioni", "opzioni"): {"imposta", "dm", "muto", "azioni", "avvisi", "memoria", "aspetto"},
+    ("mod-casi", "caso"): {"storico", "vedi", "motivo", "elimina", "classifica-staff", "attive", "registra", "durata", "nascondi", "esporta", "prova", "chat"},
     ("mod-casi", "nota"): {"aggiungi", "elenca", "rimuovi", "modifica", "svuota"},
     ("mod-casi", "avvisi"): {"togli", "azzera", "classifica", "elenco", "azzera-tutti"},
     ("mod-casi", "motivi"): {"aggiungi", "elenco", "togli", "modifica"},
-    ("mod-canali", None): {"clear", "reazioni", "lock", "unlock", "slowmode"},
-    ("mod-canali", "blocco"): {"attiva", "togli"},
+    ("mod-canali", None): {"clear", "reazioni", "lock", "unlock", "slowmode", "esporta-chat"},
+    ("mod-canali", "blocco"): {"attiva", "togli", "stato", "canali"},
     ("mod-canali", "vocale"): {"muta", "sordina", "scollega", "sposta", "sposta-tutti", "dove"},
     ("founder", "moderazione"): {"immuni"},
     ("mod-ban", None): {"ban", "tempban", "softban", "kick", "unban", "cerca"},
-    ("mod-ban", "appelli"): {"canale", "elenco"},
-    ("mod-ban", "massa"): {"ban", "unban", "kick", "entrati"},
+    ("mod-ban", "appelli"): {"canale", "elenco", "timeout"},
+    ("mod-ban", "massa"): {"ban", "unban", "kick", "entrati", "invito"},
     ("admin-sicurezza", None): {"heatmap", "score", "spamtrap"},
     ("admin-sicurezza", "escalation"): {"enable", "disable", "set-reset-days", "set-step", "remove-step", "reset", "status"},
     ("admin-antinuke", None): {
@@ -83,7 +83,7 @@ ATTESI: dict[tuple[str, str | None], set[str]] = {
     ("admin-filtri", None): {
         "invites", "anti-link-mode", "anti-link-domain", "anti-spam-messages", "anti-spam-emoji",
         "anti-spam-sticker", "anti-caps", "anti-zalgo", "phishing", "forma-testo", "anti-mention", "anti-attachment", "actions-set",
-        "messaggi", "contenuto", "canale-media",
+        "messaggi", "contenuto", "canale-media", "emergenza",
     },
     ("admin-automod", "parole"): {"add", "remove", "list"},
     ("admin-automod", "odio"): {"stato", "base", "parola", "nomi", "prova", "blocco", "richiami"},

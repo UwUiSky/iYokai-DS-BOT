@@ -27,6 +27,8 @@ GIORNI_IMPRONTE = 30
 GIORNI_DOPPI = 90
 MAX_TOKEN = 200
 MAX_TESTO_BROWSER = 512
+MAX_TESTO_PAGINA = 1000  # VER-006: il testo del server sopra il bottone della pagina di verifica
+MAX_RIGHE_PAGINA = 20
 
 TIPO_IP = "ip"
 TIPO_BROWSER = "browser"
@@ -39,6 +41,18 @@ _ORDINE_LIVELLI = {LIVELLO_ALTO: 0, LIVELLO_MEDIO: 1, LIVELLO_BASSO: 2}
 
 def _firma(chiave: str, testo: str) -> str:
     return hmac.new(chiave.encode("utf-8"), testo.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+# ------------------------------------------------------------------ testo della pagina (VER-006)
+def testo_pagina_pulito(testo) -> list[str]:
+    """
+    Le righe del testo scritto dal server, senza caratteri di controllo, al massimo 20 righe e 1000 caratteri.
+    Il modello della pagina le scrive con l'escape automatico: niente HTML, niente script.
+    """
+    if not isinstance(testo, str):
+        return []
+    pulito = "".join(c for c in testo[:MAX_TESTO_PAGINA] if c in "\n" or (c.isprintable() and c not in "\u202e\u2066\u2067\u2068\u2069"))
+    return [r.strip() for r in pulito.splitlines() if r.strip()][:MAX_RIGHE_PAGINA]
 
 
 # ------------------------------------------------------------------ link
