@@ -15,6 +15,7 @@ from core.database import db
 from core.verify_logic import pannello_personalizzato
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member, fake_role
 from tests.test_verify_risposta_subito import GUILD_ID, scenario  # noqa: F401
+from tests.test_verify_vpn_flusso import web  # noqa: F401  (fixture della pagina web)
 
 
 # VER-028
@@ -230,3 +231,42 @@ async def test_un_colore_troppo_chiaro_o_sbagliato_non_si_salva(scenario):
         await scenario.cog.options_cmd.callback(scenario.cog, i, captcha_colore=colore, captcha_lunghezza=6)
         assert await db.get_guild_setting(GUILD_ID, modulo.SETTING_CAPTCHA_COLORE) is None
         assert await db.get_guild_setting(GUILD_ID, modulo.SETTING_CAPTCHA_LUNGHEZZA) is None  # niente salvato a metà
+
+
+# VER-006
+def test_il_testo_della_pagina_e_ripulito_e_ha_dei_tetti():
+    from core.alt_detection_logic import MAX_RIGHE_PAGINA, MAX_TESTO_PAGINA, testo_pagina_pulito
+
+    assert testo_pagina_pulito("Ciao\n\n  entra ‮ qui \x00 ") == ["Ciao", "entra  qui"]
+    assert testo_pagina_pulito(None) == [] and testo_pagina_pulito(5) == []
+    assert len(testo_pagina_pulito("\n".join(["riga"] * 100))) == MAX_RIGHE_PAGINA
+    assert sum(len(r) for r in testo_pagina_pulito("x" * 5000)) <= MAX_TESTO_PAGINA
+
+
+# VER-006
+async def test_la_pagina_web_mostra_il_testo_del_server_senza_html(clean_db, monkeypatch):
+    import core.database as database_module
+    from core import panel_bridge
+
+    monkeypatch.setattr(database_module.db, "_pool", clean_db)
+    await db.set_guild_setting(GUILD_ID, "verify_testo_pagina", "Benvenuto!\n<script>alert(1)</script>")
+    righe = await panel_bridge.testo_pagina_verifica(GUILD_ID)
+    assert righe == ["Benvenuto!", "<script>alert(1)</script>"]
+
+
+# VER-006
+async def test_la_pagina_escapa_il_testo_scritto_dal_server(web, monkeypatch):
+    from core import panel_bridge
+
+    monkeypatch.setattr(panel_bridge, "testo_pagina_verifica", AsyncMock(return_value=["Benvenuto!", "<script>x</script>"]))
+    pagina = await web.client.get(f"/verifica/{web.token}")
+    testo = await pagina.text()
+    assert "<p>Benvenuto!</p>" in testo and "&lt;script&gt;x&lt;/script&gt;" in testo and "<script>x</script>" not in testo
+
+
+# VER-006
+async def test_il_comando_salva_il_testo_e_azzera_lo_toglie(scenario):
+    for kw, atteso in (({"testo_pagina": "  Entra pure  "}, "Entra pure"), ({"azzera": True}, None)):
+        i = fake_interaction(guild=scenario.server, user=fake_member(55, guild_permissions=discord.Permissions(manage_guild=True)))
+        await scenario.cog.options_cmd.callback(scenario.cog, i, **kw)
+        assert await db.get_guild_setting(GUILD_ID, "verify_testo_pagina") == atteso
