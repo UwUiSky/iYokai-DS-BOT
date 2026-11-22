@@ -5,7 +5,7 @@ Permesso per singola azione di moderazione dato a un ruolo (CFG-024): un ruolo p
 il permesso di Discord né il ruolo mod, e non può per questo bannare. Il controllo sta in `core/command_access.py`
 (punto unico); restano sempre i controlli di gerarchia dei comandi. Mai per `@everyone`, mai per un ruolo pari
 o sopra chi lo concede (salvo il proprietario), al massimo 25 ruoli per server. Le azioni di massa non si concedono.
-Funzioni coperte: CFG-024
+Funzioni coperte: CFG-024, VER-018 (azione «verifica»)
 """
 
 from __future__ import annotations
@@ -28,10 +28,14 @@ COMANDI = {
     "mod-ban tempban": "tempban",
     "mod-ban softban": "softban",
     "mod-ban unban": "unban",
+    # VER-018: lo staff che verifica a mano senza essere amministratore (livello «security» del gruppo).
+    "admin-sicurezza verify manuale": "verifica",
+    "admin-sicurezza verify invia": "verifica",
 }
 AZIONI = tuple(dict.fromkeys(COMANDI.values()))
-# Un'azione del gruppo `mod-ban` si concede solo se il livello richiesto è MODBAN, le altre per MOD.
-LIVELLI_ABILITATI = ("mod", "modban")
+# Dove vale un'azione: le sanzioni ai livelli mod e modban, la verifica a mano al livello security.
+LIVELLI_DELL_AZIONE = {"verifica": ("security",)}
+LIVELLI_DI_BASE = ("mod", "modban")
 
 
 def azione_del_comando(interaction: discord.Interaction) -> str | None:
@@ -53,13 +57,13 @@ async def azioni_dei_ruoli(guild_id: int, ruoli_ids) -> set[str]:
 
 async def consente(interaction: discord.Interaction, livello_valore: str, azione: str | None = None) -> bool:
     """True se un ruolo di chi comanda ha ricevuto questa azione. `azione` si dà per i tasti (nessun comando)."""
-    if livello_valore not in LIVELLI_ABILITATI:
-        return False
     guild, utente = interaction.guild, interaction.user
     if guild is None or not isinstance(utente, discord.Member):
         return False
     azione = azione or azione_del_comando(interaction)
     if azione is None or azione not in AZIONI:
+        return False
+    if livello_valore not in LIVELLI_DELL_AZIONE.get(azione, LIVELLI_DI_BASE):
         return False
     try:
         concesse = await azioni_dei_ruoli(guild.id, [r.id for r in utente.roles if guild.get_role(r.id) is not None])

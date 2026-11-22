@@ -146,3 +146,32 @@ async def test_il_bottone_codice_nuovo_rifa_l_immagine_ma_solo_a_chi_l_ha_chiest
     nuova = scenario.cog.sfide.get((GUILD_ID, UTENTE_ID))
     assert nuova is not vecchia and nuova.rinnovi == 1
     assert mio.edit_original_response.await_args.kwargs["attachments"][0].filename == "verifica.png"
+
+
+# VER-007
+async def test_il_dm_all_ingresso_parte_solo_se_acceso_e_una_volta(scenario):
+    from tests.test_verify_tempi import _tempi
+
+    await scenario.configura(captcha=False)
+    scenario.utente.guild = scenario.server
+    scenario.utente.roles = []
+    scenario.utente.send = AsyncMock()
+    await scenario.cog.on_member_join(scenario.utente)
+    scenario.utente.send.assert_not_awaited()  # spento di base
+    await _tempi(scenario, dm_ingresso=True)
+    await scenario.cog.on_member_join(scenario.utente)
+    scenario.utente.send.assert_awaited_once()
+    assert "Per entrare in" in scenario.utente.send.await_args.args[0]
+
+
+# VER-007
+async def test_con_i_dm_chiusi_l_ingresso_non_si_rompe(scenario):
+    from tests.test_verify_tempi import _tempi
+
+    await scenario.configura(captcha=False)
+    await _tempi(scenario, dm_ingresso=True)
+    scenario.utente.guild = scenario.server
+    scenario.utente.roles = []
+    scenario.utente.send = AsyncMock(side_effect=discord.Forbidden(MagicMock(status=403), "chiusi"))
+    await scenario.cog.on_member_join(scenario.utente)
+    scenario.utente.send.assert_awaited_once()

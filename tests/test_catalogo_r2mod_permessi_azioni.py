@@ -114,3 +114,22 @@ async def test_il_comando_concede_e_toglie_solo_a_chi_gestisce_il_server():
     assert await pa.elenco(G) == {RUOLO: ["timeout"]}
     await cog.azioni.callback(cog, i, ruolo, None, True)
     assert await pa.elenco(G) == {}
+
+
+# VER-018
+async def test_il_ruolo_con_l_azione_verifica_verifica_a_mano_ma_non_tocca_altro_di_sicurezza():
+    await _dai("verifica")
+    assert await ca.controlla(_inter("admin-sicurezza verify manuale"), Livello.SECURITY) is True
+    assert await ca.controlla(_inter("admin-sicurezza verify invia"), Livello.SECURITY) is True
+    for comando in ("admin-sicurezza verify setup", "admin-sicurezza panico attiva", "admin-sicurezza verify whitelist-add"):
+        with pytest.raises(AccessoNegato):
+            await ca.controlla(_inter(comando), Livello.SECURITY)
+    with pytest.raises(AccessoNegato):  # l'azione «verifica» non apre i livelli mod
+        await ca.controlla(_inter("admin-sicurezza verify manuale"), Livello.MOD)
+
+
+# VER-018
+async def test_il_ruolo_con_solo_timeout_non_verifica():
+    await _dai("timeout")
+    with pytest.raises(AccessoNegato):
+        await ca.controlla(_inter("admin-sicurezza verify manuale"), Livello.SECURITY)

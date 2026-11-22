@@ -110,6 +110,7 @@ MODULE_VERIFY = "verify"
 SETTING_RUOLO_NON_VERIFICATO = "verify_unverified_role_id"
 SETTING_RUOLI_EXTRA = "verify_extra_role_ids"
 SETTING_LOG_COMPATTO = "verify_log_compatto"  # VER-029: True = una riga, False = scheda completa
+SETTING_DM_INGRESSO = "verify_dm_ingresso"  # VER-007: all'ingresso un DM col link personale
 SETTING_CAPTCHA_TIPO = "verify_captcha_tipo"  # captcha_image.TIPO_TESTO | TIPO_IMMAGINE
 SETTING_PROMEMORIA_MINUTI = "verify_promemoria_minuti"  # VER-008: 0 = spento
 SETTING_SCADENZA_MINUTI = "verify_scadenza_minuti"  # VER-011: 0 = spento
@@ -529,6 +530,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
                 logger.warning("Ruolo non verificato non dato a %s (server %s).", member.id, guild.id)
         if config.verified_role_id is None:
             return
+        # VER-007: un solo DM all'ingresso (chi aspetta l'età minima lo riceve dopo, da handle_eta); DM chiusi: niente.
+        if attesa == 0 and await db.get_guild_setting(guild.id, SETTING_DM_INGRESSO, False):
+            await self._manda_dm(member, self._testo_invito(guild, config, "Per entrare in"))
         for chiave, tipo in ((SETTING_PROMEMORIA_MINUTI, VERIFY_PROMEMORIA), (SETTING_SCADENZA_MINUTI, VERIFY_SCADENZA)):
             minuti = await db.get_guild_setting(guild.id, chiave, 0) or 0
             if minuti > 0:
@@ -1081,6 +1085,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         solo_sospetti="Verifica solo account giovani (meno di 7 giorni) o senza avatar",
         azione_eta="Account più giovane dell'età minima: aspetta il via libera o viene espulso",
         sospendi_ore="Modalità cieca: per queste ore chi entra riceve subito il ruolo (0 = spenta)",
+        dm_ingresso="Chi entra riceve subito un messaggio privato con il modo di verificarsi",
     )
     @app_commands.choices(
         azione_scadenza=[
@@ -1100,6 +1105,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         solo_sospetti: bool | None = None,
         azione_eta: app_commands.Choice[str] | None = None,
         sospendi_ore: app_commands.Range[int, 0, 720] | None = None,
+        dm_ingresso: bool | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_VERIFY):
             return
@@ -1111,6 +1117,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
             (SETTING_AZIONE_FALLITA, azione_fallita.value if azione_fallita else None),
             (SETTING_SOLO_SOSPETTI, solo_sospetti),
             (SETTING_AZIONE_ETA, azione_eta.value if azione_eta else None),
+            (SETTING_DM_INGRESSO, dm_ingresso),
             (SETTING_SOSPESA_FINO, None if sospendi_ore is None else (
                 int(time.time()) + sospendi_ore * 3600 if sospendi_ore else 0)),
         ):
@@ -1124,6 +1131,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
             f"Chi non passa: {await db.get_guild_setting(gid, SETTING_AZIONE_FALLITA, 'niente') or 'niente'}. "
             f"Solo account sospetti: {'sì' if await db.get_guild_setting(gid, SETTING_SOLO_SOSPETTI, False) else 'no'}. "
             f"Account troppo giovane: {await db.get_guild_setting(gid, SETTING_AZIONE_ETA, 'attendi') or 'attendi'}. "
+            f"DM all'ingresso: {'sì' if await db.get_guild_setting(gid, SETTING_DM_INGRESSO, False) else 'no'}. "
             f"Modalità cieca: "
             f"{'attiva fino a <t:' + str(fino) + ':f>' if sospesa_adesso(fino := await db.get_guild_setting(gid, SETTING_SOSPESA_FINO, 0)) else 'spenta'}. "
             "Valgono per chi entra da adesso.",
