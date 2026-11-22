@@ -249,6 +249,23 @@ class CaptchaImmagineView(BaseView):
             return
         await interaction.response.send_modal(CaptchaImmagineModal(self.cog, self.guild_id, self.user_id))
 
+    @discord.ui.button(label="Codice nuovo", style=discord.ButtonStyle.secondary)
+    async def nuovo(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        """VER-003: rifà l'immagine. I tentativi già usati restano usati e i rinnovi sono tre."""
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message(await testo_per(interaction, "verify_questo_codice_di_un_altro"), ephemeral=True)
+            return
+        chiave = (self.guild_id, self.user_id)
+        vecchia = self.cog.sfide.get(chiave)
+        nuova = vecchia.rinnova() if vecchia is not None else None
+        if nuova is None:
+            await interaction.response.send_message(await testo_per(interaction, "verify_codice_nuovo_non_piu"), ephemeral=True)
+            return
+        await interaction.response.defer()
+        png = await asyncio.to_thread(captcha_image.disegna_immagine, nuova.codice)
+        self.cog.sfide.set(chiave, nuova)
+        await interaction.edit_original_response(attachments=[discord.File(io.BytesIO(png), filename="verifica.png")])
+
 
 class VerifyPanelView(BaseView):
     """Persistente — stesso motivo/pattern di TicketPanelView e CreateVoiceView."""

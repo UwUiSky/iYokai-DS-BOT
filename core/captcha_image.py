@@ -3,7 +3,7 @@ core/captcha_image.py
 =====================
 Captcha a immagine: genera il codice, lo disegna storto con un po' di
 disturbo e dice se la risposta e' giusta, scaduta o se i tentativi sono finiti.
-Funzioni coperte: SPEC §22 (NF-18)
+Funzioni coperte: SPEC §22 (NF-18), VER-003 (codice nuovo a richiesta, con i tentativi già usati)
 
 Limiti: immagine piccola (200x80, PNG di pochi KB), codice di 5 caratteri
 senza lettere ambigue (0/O, 1/I/L), tempo massimo e tentativi contati dalla sfida.
@@ -26,6 +26,7 @@ LARGHEZZA = 200
 ALTEZZA = 80
 TEMPO_MASSIMO_SECONDI = 180
 TENTATIVI_MASSIMI = 3
+RINNOVI_MASSIMI = 3  # VER-003: quante volte si può chiedere un codice nuovo nella stessa prova
 ETICHETTA_MAX = 45  # il campo del modulo accetta al massimo 45 caratteri di etichetta
 
 TIPO_TESTO = "testo"
@@ -99,6 +100,21 @@ class Sfida:
     scade_il: datetime
     tentativi_rimasti: int = TENTATIVI_MASSIMI
     chiusa: bool = field(default=False)
+    rinnovi: int = 0
+
+    def rinnova(self, adesso: datetime | None = None, rng=None) -> "Sfida | None":
+        """
+        VER-003: un codice nuovo con una nuova scadenza. I tentativi già usati restano usati (un codice nuovo non
+        è una scorciatoia per riprovare all'infinito) e i rinnovi sono pochi. None se non si può più.
+        """
+        adesso = adesso or datetime.now(timezone.utc)
+        if self.chiusa or self.rinnovi >= RINNOVI_MASSIMI or self.tentativi_rimasti <= 0:
+            return None
+        self.chiusa = True  # il vecchio codice non vale più
+        return Sfida(
+            genera_codice(rng), adesso + timedelta(seconds=TEMPO_MASSIMO_SECONDI),
+            self.tentativi_rimasti, False, self.rinnovi + 1,
+        )
 
     def scaduta(self, adesso: datetime | None = None) -> bool:
         return (adesso or datetime.now(timezone.utc)) >= self.scade_il

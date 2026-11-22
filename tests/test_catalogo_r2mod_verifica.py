@@ -104,3 +104,45 @@ async def test_il_ruolo_si_sceglie_solo_con_menziona_tutti_e_mai_everyone(scenar
         i = fake_interaction(guild=scenario.server, user=fake_member(55, guild_permissions=permessi))
         await scenario.cog.options_cmd.callback(scenario.cog, i, None, None, None, None, False, None, ruolo_scelto)
         assert await db.get_guild_setting(GUILD_ID, cog_alt.SETTING_RUOLO_AVVISO_ALT) == atteso
+
+
+# VER-003
+def test_il_codice_nuovo_tiene_i_tentativi_usati_e_ha_un_tetto_di_rinnovi():
+    from datetime import datetime, timedelta, timezone
+
+    from core import captcha_image
+
+    ora = datetime(2026, 11, 1, tzinfo=timezone.utc)
+    prima = captcha_image.nuova_sfida(ora)
+    assert prima.prova("zzzzz", ora) == "sbagliata" and prima.tentativi_rimasti == 2
+    seconda = prima.rinnova(ora + timedelta(seconds=60))
+    assert seconda.codice != "" and seconda.tentativi_rimasti == 2 and seconda.rinnovi == 1
+    assert prima.chiusa and prima.prova(prima.codice, ora) == "scaduta"  # il vecchio codice non vale più
+    assert seconda.scade_il > prima.scade_il
+    attuale = seconda
+    for _ in range(captcha_image.RINNOVI_MASSIMI - 1):
+        attuale = attuale.rinnova(ora)
+    assert attuale.rinnovi == captcha_image.RINNOVI_MASSIMI and attuale.rinnova(ora) is None
+
+
+# VER-003
+async def test_il_bottone_codice_nuovo_rifa_l_immagine_ma_solo_a_chi_l_ha_chiesta(scenario):
+    from tests.test_captcha_image import _setup_immagine
+    from cogs.security.verify import VerifyPanelView
+    from tests.test_verify_risposta_subito import UTENTE_ID
+
+    await _setup_immagine(scenario)
+    clic = scenario.clic()
+    await VerifyPanelView().verify_click.callback(clic)
+    vista = clic.followup.send.call_args.kwargs["view"]
+    vecchia = scenario.cog.sfide.get((GUILD_ID, UTENTE_ID))
+    estraneo = scenario.clic()
+    estraneo.user = fake_member(1234)
+    await vista.nuovo.callback(estraneo)
+    assert scenario.cog.sfide.get((GUILD_ID, UTENTE_ID)) is vecchia  # un altro non tocca il codice
+    mio = scenario.clic()
+    mio.edit_original_response = AsyncMock()
+    await vista.nuovo.callback(mio)
+    nuova = scenario.cog.sfide.get((GUILD_ID, UTENTE_ID))
+    assert nuova is not vecchia and nuova.rinnovi == 1
+    assert mio.edit_original_response.await_args.kwargs["attachments"][0].filename == "verifica.png"

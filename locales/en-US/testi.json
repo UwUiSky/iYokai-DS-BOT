@@ -3555,5 +3555,6 @@
   "opzioni_azioni_tolte": "Permissions removed: {n}.",
   "opzioni_azioni_serve_azione": "Pick which action to give this role.",
   "opzioni_azioni_date": "{ruolo} can use \"{azione}\" (hierarchy checks still apply).",
-  "verify_alt_ruolo_non_permesso": "To pick the role to alert you need the \"Mention Everyone\" permission, and it cannot be @everyone."
+  "verify_alt_ruolo_non_permesso": "To pick the role to alert you need the \"Mention Everyone\" permission, and it cannot be @everyone.",
+  "verify_codice_nuovo_non_piu": "You cannot ask for another code: press \"Verify\" to start again."
 }

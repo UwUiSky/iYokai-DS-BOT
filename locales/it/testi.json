@@ -3555,5 +3555,6 @@
   "opzioni_azioni_tolte": "Permessi tolti: {n}.",
   "opzioni_azioni_serve_azione": "Scegli quale azione dare a questo ruolo.",
   "opzioni_azioni_date": "{ruolo} può usare «{azione}» (restano i controlli di gerarchia).",
-  "verify_alt_ruolo_non_permesso": "Per scegliere il ruolo da avvisare serve il permesso «Menziona tutti», e non può essere @everyone."
+  "verify_alt_ruolo_non_permesso": "Per scegliere il ruolo da avvisare serve il permesso «Menziona tutti», e non può essere @everyone.",
+  "verify_codice_nuovo_non_piu": "Non puoi chiedere un altro codice: premi «Verify» per ricominciare."
 }
