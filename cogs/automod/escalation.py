@@ -70,7 +70,13 @@ def _adesso() -> datetime:
 
 
 # D29: il permesso di Discord che serve al moderatore per ogni gradino.
-_PERMESSO_GRADINO = {"timeout": "moderate_members", "kick": "kick_members", "ban": "ban_members"}
+_PERMESSO_GRADINO = {"timeout": "moderate_members", "kick": "kick_members", "ban": "ban_members", "tempban": "ban_members"}
+# Gradini con una durata: il timeout (sul membro) e il tempban (ban che si toglie da solo, MOD-034).
+_CON_DURATA = ("timeout", "tempban")
+
+
+def _descrivi(step) -> str:
+    return step.action_type + (f" {step.duration_seconds // 60} min" if step.action_type in _CON_DURATA and step.duration_seconds else "")
 
 
 async def scegli_gradino(config, guild_id: int, user_id: int, conteggio: int, adesso: datetime | None = None):
@@ -118,7 +124,7 @@ async def _applica_passo(
             await bot_roles.isola(member, timedelta(seconds=step.duration_seconds or 600), reason=reason)
         elif step.action_type == "kick":
             await bot_roles.espelli(member, reason=reason)
-        elif step.action_type == "ban":
+        elif step.action_type in ("ban", "tempban"):
             await bot_roles.banna(
                 member.guild, member, reason=reason, delete_message_seconds=86400,
                 principale=lambda: member.ban(reason=reason),
@@ -136,9 +142,19 @@ async def _applica_passo(
         moderator_id=bot.user.id,
         action_type=ESCALATION_ACTION_TYPE,
         reason=reason,
-        duration_seconds=step.duration_seconds if step.action_type == "timeout" else None,
+        duration_seconds=step.duration_seconds if step.action_type in _CON_DURATA else None,
         origine="automod",
     )
+    if step.action_type == "tempban":  # MOD-034: il ban finisce da solo, come /mod-ban tempban
+        from cogs.moderation.actions import MODO_FUORI, SCHEDULED_TEMPBAN_EXPIRE
+        from core.scheduler import scheduler
+
+        await moderation_repo.cancel_tempban_jobs(guild_id, member.id)
+        await scheduler.schedule(
+            guild_id=guild_id, user_id=member.id, action_type=SCHEDULED_TEMPBAN_EXPIRE,
+            execute_at=_adesso() + timedelta(seconds=step.duration_seconds or 3600),
+            payload={"case_number": case_number, "modo": MODO_FUORI},
+        )
     if step.action_type != "warn" and (await escalation_repo.get_config(guild_id)).azzera_dopo_scatto:
         await escalation_repo.reset_violations(guild_id, member.id)  # MOD-035: i casi restano
     if step.action_type == "warn":
@@ -152,7 +168,7 @@ async def _applica_passo(
 
 async def _scrivi_nel_log(member: discord.Member, step, reason: str, case_number: int) -> None:
     """§18.7: ogni gradino applicato lascia una riga nel log di moderazione (mai solleva)."""
-    azione = step.action_type + (f" {step.duration_seconds // 60} min" if step.action_type == "timeout" else "")
+    azione = _descrivi(step)
     embed = discord.Embed(title="⚖️ Scala di escalation", color=discord.Color.orange())
     embed.add_field(name="Utente", value=f"{member.mention} ({member.id})", inline=False)
     embed.add_field(name="Azione", value=azione, inline=True)
@@ -191,9 +207,9 @@ async def scala_per_warn_manuale(
     step = await scegli_gradino(config, member.guild.id, member.id, conteggio)
     if step is None or step.action_type == "warn":
         return None
-    azione = step.action_type + (f" {step.duration_seconds // 60} min" if step.action_type == "timeout" else "")
+    azione = _descrivi(step)
     richiesta = f"La scala chiedeva **{azione}** (infrazione #{conteggio}), ma"
-    if in_massa and step.action_type in ("kick", "ban"):
+    if in_massa and step.action_type in ("kick", "ban", "tempban"):
         return f"{richiesta} dai warn in massa kick e ban non partono: decidi tu."
     non_permesso = _motivo_non_permesso(moderatore, member, step)
     if non_permesso:
@@ -387,7 +403,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         level="Numero dell'infrazione (1 = prima volta, 2 = seconda...)",
         action="Azione da applicare",
-        duration_minutes="Durata in minuti (solo per timeout)",
+        duration_minutes="Durata in minuti (timeout e tempban)",
         finestra_giorni="Conta solo le infrazioni degli ultimi N giorni (da 1 a 90). Vuoto: tutte",
     )
     @app_commands.choices(
@@ -396,6 +412,7 @@ class EscalationCog(CogConGruppi, commands.Cog):
             app_commands.Choice(name="Timeout", value="timeout"),
             app_commands.Choice(name="Kick", value="kick"),
             app_commands.Choice(name="Ban", value="ban"),
+            app_commands.Choice(name="Tempban", value="tempban"),
         ]
     )
     async def set_step(
@@ -409,13 +426,13 @@ class EscalationCog(CogConGruppi, commands.Cog):
         if interaction.guild is None:
             return
 
-        if action.value == "timeout" and duration_minutes is None:
+        if action.value in _CON_DURATA and duration_minutes is None:
             await interaction.response.send_message(
                 await testo_per(interaction, "escalation_specifica_una_durata_in_minuti"), ephemeral=True
             )
             return
 
-        durata_secondi = duration_minutes * 60 if duration_minutes else None
+        durata_secondi = duration_minutes * 60 if duration_minutes and action.value in _CON_DURATA else None
         await escalation_repo.set_step(interaction.guild.id, level, action.value, durata_secondi, finestra_giorni)
         await interaction.response.send_message(
             f"Livello {level} impostato su **{action.name}**"

@@ -22,8 +22,8 @@ MAX_TIMEOUT_SECONDI = 28 * 24 * 3600
 @dataclass(frozen=True)
 class LadderStep:
     level: int
-    action_type: str  # "warn" | "timeout" | "kick" | "ban"
-    duration_seconds: int | None = None  # solo per "timeout"
+    action_type: str  # "warn" | "timeout" | "kick" | "ban" | "tempban"
+    duration_seconds: int | None = None  # solo per "timeout" e "tempban"
     finestra_giorni: int | None = None  # MOD-033: il livello conta solo le infrazioni degli ultimi N giorni
 
 

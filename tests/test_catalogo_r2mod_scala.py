@@ -101,3 +101,45 @@ async def db_conteggio() -> int:
     from core.database import db
 
     return await db.pool.fetchval("SELECT COALESCE(MAX(violation_count), 0) FROM automod_violations WHERE guild_id = $1 AND user_id = $2", SERVER, A)
+
+
+# MOD-034
+async def test_un_gradino_tempban_banna_e_pianifica_la_fine(monkeypatch, clean_db):
+    from cogs.moderation.actions import SCHEDULED_TEMPBAN_EXPIRE
+
+    banna = AsyncMock()
+    monkeypatch.setattr(esc.bot_roles, "banna", banna)
+    await escalation_repo.set_enabled(SERVER, True)
+    await escalation_repo.set_conta_warn_manuali(SERVER, True)
+    await escalation_repo.set_step(SERVER, 1, "warn", None)
+    await escalation_repo.set_step(SERVER, 2, "tempban", 7200)
+    cog = _cog()
+    membro, interazione = _scena()
+    await _warn(cog, membro, interazione)
+    banna.assert_not_awaited()
+    await _warn(cog, membro, interazione)
+    banna.assert_awaited_once()
+    assert len(banna.await_args.kwargs["reason"]) <= 512
+    riga = await clean_db.fetchrow(
+        "SELECT payload, execute_at - now() AS tra FROM scheduled_actions WHERE guild_id = $1 AND action_type = $2",
+        SERVER, SCHEDULED_TEMPBAN_EXPIRE,
+    )
+    assert timedelta(hours=1, minutes=55) < riga["tra"] <= timedelta(hours=2)
+    caso = (await moderation_repo.list_cases_for_user(SERVER, A))[0]
+    assert caso.duration_seconds == 7200 and '"modo"' in riga["payload"]
+
+
+# MOD-034
+async def test_il_gradino_tempban_parte_solo_se_il_moderatore_potrebbe_bannare(monkeypatch):
+    banna = AsyncMock()
+    monkeypatch.setattr(esc.bot_roles, "banna", banna)
+    await escalation_repo.set_enabled(SERVER, True)
+    await escalation_repo.set_conta_warn_manuali(SERVER, True)
+    await escalation_repo.set_step(SERVER, 1, "tempban", 3600)
+    import discord
+
+    cog = _cog()
+    membro, interazione = _scena(permessi=discord.Permissions(moderate_members=True, kick_members=True))
+    await _warn(cog, membro, interazione)
+    banna.assert_not_awaited()
+    assert "non l'ho applicato" in interazione.followup.send.await_args.args[0]
