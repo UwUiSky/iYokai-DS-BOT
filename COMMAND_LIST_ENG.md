@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:24 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 17:30 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 1110 commands in 55 categories.**
+**Total: 1117 commands in 55 categories.**
 
 ## Admin: AI
 
@@ -123,7 +123,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/admin-automod mute-duration`** — Sets the timeout length used by the AutoMod 'mute' action.
 - **`/admin-automod odio base`** — Turns the base list of hate slurs on or off.
 - **`/admin-automod odio lockdown`** — Preventive block of hateful phrases.
-- **`/admin-automod odio nomi`** — Checks nicknames and display names on join and on change.
+- **`/admin-automod odio names`** — Checks nicknames and display names on join and on change.
 - **`/admin-automod odio proof`** — Tests a text against the banned words without acting.
 - **`/admin-automod odio richiami`** — How many warnings for hate words lead to a timeout.
 - **`/admin-automod odio status`** — Shows how the banned words are set up.
@@ -924,6 +924,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/mod-channels export-chat`** — Sends the last messages of a channel in a text file (only to you).
 - **`/mod-channels expression`** — Add an emoji or a sticker to the server from a file or from an emoji.
 - **`/mod-channels lock`** — Blocks the ability to write in a channel.
+- **`/mod-channels lockdown channels`** — Locks only some channels (picked from a menu) or the saved group.
 - **`/mod-channels lockdown enable`** — Lock all channels, invites and joins of the server.
 - **`/mod-channels lockdown remove`** — Reopen the server as it was before the lockdown.
 - **`/mod-channels lockdown status`** — Shows whether a lockdown is on, since when and when it ends.
@@ -946,6 +947,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/mod-cases alerts remove`** — Removes a single warning (by case number).
 - **`/mod-cases alerts reset`** — Removes all of a member's active warnings (needs "Manage Server").
 - **`/mod-cases case active`** — Sanctions still running: tempbans, timeouts, mutes, timed locks.
+- **`/mod-cases case chat`** — Sends the log of the channel's last messages saved with a case.
 - **`/mod-cases case delete`** — Deletes a case (needs "Manage Server").
 - **`/mod-cases case durata`** — Changes the duration of a tempban, timeout or mute still in progress.
 - **`/mod-cases case export`** — Sends a member's cases and notes in a text file.
@@ -963,6 +965,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/mod-cases motivi edit`** — Changes text, severity or sanction of a saved reason (needs "Manage Server").
 - **`/mod-cases motivi list`** — Shows the server's saved reasons.
 - **`/mod-cases motivi remove`** — Removes a saved reason (needs "Manage Server").
+- **`/mod-cases names`** — Shows the names and nicknames a member has had.
 - **`/mod-cases note add`** — Adds a note on a user.
 - **`/mod-cases note clear`** — Deletes all of a member's notes (needs "Manage Server").
 - **`/mod-cases note edit`** — Changes a note's text.
@@ -980,9 +983,13 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:2
 - **`/mod-sanctions nick`** — Changes or resets a member's nickname.
 - **`/mod-sanctions options actions`** — Gives a role the permission for one moderation action only (or removes it).
 - **`/mod-sanctions options alerts`** — Writes the sanction notice in a channel instead of a private message.
+- **`/mod-sanctions options appearance`** — Picks the colour and icon of a case type in the moderation log.
 - **`/mod-sanctions options dm`** — Choose whether the user gets a DM for a type of action.
+- **`/mod-sanctions options memory`** — Turns on the name history and the nickname and voice mute given back to returning members.
 - **`/mod-sanctions options mute-role`** — Pick or create the mute role and put the block back on every channel.
 - **`/mod-sanctions options set`** — Ban message cleanup, timeout, external cases, alerts. Empty: shows the options.
+- **`/mod-sanctions quarantine`** — Removes a member's roles and gives the quarantine role (can be timed).
+- **`/mod-sanctions release`** — Ends a member's quarantine and gives their old roles back.
 - **`/mod-sanctions timeout`** — Times out a member (max 28 days).
 - **`/mod-sanctions unmute`** — Removes the mute role from a member.
 - **`/mod-sanctions untimeout`** — Removes a member's timeout.

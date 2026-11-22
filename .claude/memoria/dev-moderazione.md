@@ -2,8 +2,9 @@
 ## Aggiornata
 2026-11-22, giro r2mod (ramo feat/r2mod, wt /home/user/wt-115, DB iyokai_w115; migr. 0800, 0801). Controllo voce per voce di #115, #116, #118: tabella in revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.md, D106. Smoke da fare.
 ## In corso
-Resto di r2mod (NON FATTE nella tabella): MOD-016 (quarantena a mano: stato dei ruoli in tabella 0803, scheduler come il mute), MOD-051, 053, 091, 092, 094, 095, 096 (blocchi mirati), 103, 104, AMD-031 (liste IP logger/adulti/malware in core/phishing_logic.py, chiavi in AutomodAdvancedConfig). Migrazioni libere: 0803-0809. Test: tests/test_catalogo_r2mod_*.py.
+Tutte le voci della scheda r2mod sono fatte (resta in parte AMD-031: lista malware vuota, la riempie l'owner). Da fare dopo il merge: smoke, controlli di cacciatore-bug e revisore-capo, prova su Discord (vedi rapporto). Migrazioni libere: 0807-0809.
 ## Fatto
+- r2mod parte 3: MOD-016 (0804), MOD-091/092/094/095/096 (0803), MOD-103/104 (0805), MOD-051 (0806), MOD-053, AMD-031
 - r2mod parte 2: CFG-024+VER-018 (permessi per azione, 0802), MOD-034 tempban, MOD-040, MOD-060, AMD-057/071 (core/automod_emergenza.py), VER-002/003/006/007/023/028
 - r2mod: MOD-008/063 (appelli: senza appello, timeout; 0800), MOD-018/019 (ruolo mute), MOD-033/035 (scala con finestra; 0801), MOD-093/097 (blocco a tempo e stato), UTL-204 (esporta-chat), UTL-205 (snipe utente); segni nei test per MOD-020/032/052/061/062/109/111, VER-001/004/005/021/022/024/026
 - r19 M6 resto, M9, MOD-102: core/moderation_conferma.py (conferma 2 tasti, risposte compatte/cancella-dopo, GIA_CONFERMATA per /mod-sanzioni applica), moderation_risposte.py; ricerca ban/membri/invito (cogs/moderation/ricerca.py, moderation_ricerca_logic.py); prove (0511, moderation_prove.py, prove.py); dehoist/simboli (automod_nomi_logic.py, parole_odio.py); test_moderation_risposte_m6, test_moderation_ricerca_m9, test_automod_nomi_pulizia

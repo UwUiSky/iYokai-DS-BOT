@@ -9,8 +9,8 @@ Generato da `scripts/stato_catalogo.py` il 2026-11-22. Non modificare a mano: ri
 
 | Area | Issue | Totale | Fatte | Solo registri | Non trovate | Scartate |
 |---|---|---|---|---|---|---|
-| 01-moderazione | #115 chiusa | 116 | 102 | 12 | 2 | 0 |
-| 02-automod | #116 chiusa | 75 | 73 | 1 | 1 | 0 |
+| 01-moderazione | #115 chiusa | 116 | 112 | 4 | 0 | 0 |
+| 02-automod | #116 chiusa | 75 | 74 | 0 | 1 | 0 |
 | 03-sicurezza-antiraid-antinuke | #117 aperta | 46 | 43 | 3 | 0 | 0 |
 | 04-verifica | #118 chiusa | 31 | 29 | 0 | 2 | 0 |
 | 05-log | #119 aperta | 30 | 29 | 1 | 0 | 0 |
@@ -27,13 +27,12 @@ Generato da `scripts/stato_catalogo.py` il 2026-11-22. Non modificare a mano: ri
 | 16-statistiche | #130 aperta | 61 | 61 | 0 | 0 | 0 |
 | 17-divertimento-e-immagini | #131 chiusa | 139 | 125 | 7 | 7 | 0 |
 | 18-ai | #132 chiusa | 25 | 20 | 5 | 0 | 0 |
-| **Totale** | | **1452** | **1328** | **100** | **22** | **2** |
+| **Totale** | | **1452** | **1339** | **91** | **20** | **2** |
 
 Nelle sole aree con l'issue aperta: 708 voci, 639 fatte, 62 solo nei registri, **5 da fare**, 2 scartate.
 
 ## Voci non trovate, per area
 
-- **01-moderazione** (#115, chiusa: controllare a mano), 2: MOD-103, MOD-104
 - **02-automod** (#116, chiusa: controllare a mano), 1: AMD-030
 - **04-verifica** (#118, chiusa: controllare a mano), 2: VER-025, VER-027
 - **06-ticket-e-modmail** (#120, chiusa: controllare a mano), 2: TKT-072, TKT-085
