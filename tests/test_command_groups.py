@@ -29,7 +29,7 @@ MOD_ATTESI = ["mod-sanzioni", "mod-casi", "mod-canali", "mod-ban"]
 ATTESI = [
     "owner", *ADMIN_ATTESI, *MOD_ATTESI, "founder",
     "ticket", "voice", "music", "level", "monete", "clan", "fun", "immagini", "giochi", "sondaggi", "assistente", "gif",
-    "admin-inviti", "admin-giochi", "tag", "admin-automazioni", "admin-tag", "admin-alert", "admin-negozio", "mercato", "sala", "eventi", "web", "utility",
+    "admin-inviti", "admin-giochi", "tag", "admin-automazioni", "admin-tag", "admin-alert", "admin-negozio", "mercato", "sala", "mondo", "eventi", "web", "utility",
 ]
 # D56: massimo 60 gruppi di primo livello (Discord ne accetta 100).
 MAX_GRUPPI = 60

@@ -100,6 +100,7 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "admin-negozio": ("Negozio avanzato (admin): rotazione, offerte lampo, ricette, comandi di guadagno", "manage_guild", Livello.ADMIN),
     "mercato": ("Mercato tra utenti, donazioni al fondo premi e creazione di oggetti", None, None),
     "sala": ("Giochi a più giocatori con sala d'attesa e puntata", None, None),
+    "mondo": ("Il tuo mondo: diretta, casa, fattoria, personaggi, avventure, borsa e vacanza", None, None),
     "eventi": ("Eventi del server: crea, iscriviti, elenco, modifica, annulla", None, None),
     "web": ("Cerca sul web: Wikipedia, dizionario, emergenze, meteo, film, giochi, prezzi", None, None),
     "utility": ("Strumenti utili: segnalazioni, suggerimenti, promemoria, schede, snipe", None, None),
