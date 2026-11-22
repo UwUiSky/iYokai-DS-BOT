@@ -1638,7 +1638,8 @@
   "mod-canali blocco stato": "Shows whether a lockdown is on, since when and when it ends.",
   "mod-canali esporta-chat": "Sends the last messages of a channel in a text file (only to you).",
   "mod-sanzioni opzioni azioni": "Gives a role the permission for one moderation action only (or removes it).",
-  "admin-filtri emergenza": "Lockdown for too many mentions and the AutoMod panic mode."
+  "admin-filtri emergenza": "Lockdown for too many mentions and the AutoMod panic mode.",
+  "mod-sanzioni opzioni avvisi": "Writes the sanction notice in a channel instead of a private message."
  },
  "parametri": {},
  "menu": {

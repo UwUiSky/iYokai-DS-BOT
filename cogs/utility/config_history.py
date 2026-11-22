@@ -89,6 +89,7 @@ SETTINGS_SCHEMA = {
     "verify_captcha_tipo": "captcha_tipo",
     "verify_alt_ruolo_id": "id",
     "verify_dm_ingresso": "bool",
+    "mod_avviso_canale_id": "id",
     "automod_emergenza": "automod_emergenza",
     "verify_testo_pagina": "testo_1500",
     "verify_captcha_lunghezza": "int_4_8",

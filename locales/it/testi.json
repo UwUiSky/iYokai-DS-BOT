@@ -3561,5 +3561,8 @@
   "casesystem_statistiche_moderatore": "**Per tipo:** {tipi}\n**Ultimi 7 giorni:** {g7} · **30 giorni:** {g30} · **90 giorni:** {g90}",
   "automod_emergenza_soglia_minima": "La soglia delle menzioni parte da 5 (0 per spegnere).",
   "automod_emergenza_serve_gestire": "Il blocco chiude tutto il server: serve il permesso «Gestire il server».",
-  "automod_emergenza_stato": "Menzioni: {menzioni}. Modalità panico: {panico}."
+  "automod_emergenza_stato": "Menzioni: {menzioni}. Modalità panico: {panico}.",
+  "opzioni_avvisi_bot_senza_permesso": "Nel canale {canale} mi servono i permessi di vedere, scrivere e mettere embed.",
+  "opzioni_avvisi_in_canale": "Gli avvisi delle sanzioni vanno in {canale} (con la menzione della persona), non più nel messaggio privato.",
+  "opzioni_avvisi_in_dm": "Gli avvisi delle sanzioni tornano nel messaggio privato."
 }

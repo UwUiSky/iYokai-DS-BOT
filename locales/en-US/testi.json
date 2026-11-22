@@ -3561,5 +3561,8 @@
   "casesystem_statistiche_moderatore": "**By type:** {tipi}\n**Last 7 days:** {g7} · **30 days:** {g30} · **90 days:** {g90}",
   "automod_emergenza_soglia_minima": "The mention threshold starts at 5 (0 to turn it off).",
   "automod_emergenza_serve_gestire": "The lockdown closes the whole server: the \"Manage Server\" permission is needed.",
-  "automod_emergenza_stato": "Mentions: {menzioni}. Panic mode: {panico}."
+  "automod_emergenza_stato": "Mentions: {menzioni}. Panic mode: {panico}.",
+  "opzioni_avvisi_bot_senza_permesso": "In {canale} I need the permissions to view, send messages and embed links.",
+  "opzioni_avvisi_in_canale": "Sanction notices go to {canale} (mentioning the person) instead of a private message.",
+  "opzioni_avvisi_in_dm": "Sanction notices go back to private messages."
 }

@@ -6,7 +6,7 @@ cancellati al ban, durata predefinita del timeout, DM per tipo di azione,
 ruoli immuni alla moderazione manuale, casi per le azioni fatte fuori da
 iYokai, avvisi allo staff. La logica e il salvataggio sono in
 core/moderation_opzioni.py (un solo punto, anche per il pannello web).
-Funzioni coperte: SPEC §5.13 (MOD-010, MOD-017, MOD-018, MOD-019, MOD-057, MOD-068), CFG-024, §5.2 (MOD-047), §5.3 (MOD-036, MOD-064)
+Funzioni coperte: SPEC §5.13 (MOD-010, MOD-017, MOD-018, MOD-019, MOD-057, MOD-060, MOD-068), CFG-024, §5.2 (MOD-047), §5.3 (MOD-036, MOD-064)
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ from discord.ext import commands
 
 from cogs.moderation._shared import MODULE_ACTIONS, audit_reason, ensure_module_enabled, format_duration, parse_duration
 from cogs.moderation.softban_mute import SETTING_MUTE_ROLE_ID, aggiorna_ruolo_muto
+from cogs.moderation._shared import SETTING_AVVISO_CANALE
 from core import moderation_dm
 from core import moderation_permessi_azioni as permessi_azioni
 from core import moderation_opzioni as opzioni
@@ -307,6 +308,33 @@ class OpzioniModerazioneCog(CogConGruppi, commands.Cog):
             fatti, falliti = await aggiorna_ruolo_muto(guild, ruolo)
             righe.append(await testo_per(interaction, "opzioni_muto_canali", fatti=fatti, falliti=falliti))
         await interaction.followup.send("\n".join(righe)[:2000], ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+
+    @comando_di_gruppo(
+        "mod-sanzioni",
+        nome="avvisi",
+        descrizione="Scrive l'avviso delle sanzioni in un canale invece che nel messaggio privato.",
+        sottogruppo=SOTTOGRUPPO,
+    )
+    @app_commands.describe(canale="Il canale degli avvisi (vuoto: si torna al messaggio privato)")
+    async def avvisi(self, interaction: discord.Interaction, canale: discord.TextChannel | None = None) -> None:
+        """MOD-060. Il bot deve poter scrivere e mettere embed nel canale."""
+        if not await self._controlli(interaction):
+            return
+        if canale is not None:
+            permessi = canale.permissions_for(interaction.guild.me)
+            if not (permessi.view_channel and permessi.send_messages and permessi.embed_links):
+                await interaction.response.send_message(
+                    await testo_per(interaction, "opzioni_avvisi_bot_senza_permesso", canale=canale.mention), ephemeral=True
+                )
+                return
+        await db.set_guild_setting(
+            interaction.guild.id, SETTING_AVVISO_CANALE, canale.id if canale else None, changed_by=interaction.user.id
+        )
+        chiave = "opzioni_avvisi_in_canale" if canale else "opzioni_avvisi_in_dm"
+        await interaction.response.send_message(
+            await testo_per(interaction, chiave, canale=canale.mention if canale else ""),
+            ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
+        )
 
     @comando_di_gruppo(
         "mod-sanzioni",
