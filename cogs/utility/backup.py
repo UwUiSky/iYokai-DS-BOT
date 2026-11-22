@@ -70,6 +70,7 @@ _ETICHETTE_PARTI = {
     "ruoli": "Ruoli e permessi",
     "canali": "Categorie e canali con i permessi",
     "emoji": "Emoji e sticker",
+    "thread": "Thread e post dei forum (nomi e primo messaggio)",
     "messaggi": "Ultimi messaggi nei canali ancora vuoti",
     "ban": "Lista dei ban",
     "membri": "Nickname e ruoli dei membri presenti",
@@ -468,10 +469,12 @@ class BackupCog(CogConGruppi, commands.Cog):
         ban="Salva anche la lista dei ban",
         membri="Salva anche nickname e ruoli dei membri",
         messaggi="Salva anche gli ultimi N messaggi di ogni canale di testo (0-100)",
+        thread="Salva anche i thread pubblici e i post dei forum (nome e primo messaggio)",
     )
     async def salva(
         self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, 50],
         ban: bool = False, membri: bool = False, messaggi: app_commands.Range[int, 0, 100] = 0,
+        thread: bool = False,
     ) -> None:
         if not await self._puo(interaction, AZIONE_CREA):
             return
@@ -488,6 +491,8 @@ class BackupCog(CogConGruppi, commands.Cog):
             dati["membri"] = struttura.leggi_membri(guild)
         if messaggi:
             dati["messaggi"] = await self._ultimi_messaggi(guild, messaggi)
+        if thread:
+            dati["thread"] = await struttura.leggi_thread(guild)
         if len(struttura.in_json(dati)) > struttura.MAX_FILE_BYTE:
             await interaction.followup.send(await testo_per(interaction, "backup_la_copia_supera_mib_salvala"), ephemeral=True)
             return
@@ -502,7 +507,8 @@ class BackupCog(CogConGruppi, commands.Cog):
             f"✅ Copia `#{copia_id}` salvata: {len(dati['ruoli'])} ruoli, {len(dati['canali'])} canali"
             + (f", {len(dati['ban'])} ban" if ban else "")
             + (f", {len(dati['membri'])} membri" if membri else "")
-            + (f", {sum(len(m) for m in dati['messaggi'].values())} messaggi" if messaggi else "") + ".",
+            + (f", {sum(len(m) for m in dati['messaggi'].values())} messaggi" if messaggi else "")
+            + (f", {len(dati['thread'])} thread" if thread else "") + ".",
             ephemeral=True,
         )
 
