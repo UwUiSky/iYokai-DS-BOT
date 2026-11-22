@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block titolo %}Ruoli collegati · iYokai Panel{% endblock %}
+{% block corpo %}
+<h1>Ruoli collegati: Twitch</h1>
+<p><a href="/">&larr; Home</a></p>
+<p class="tenue">Collega il tuo canale Twitch a Discord: i server che usano iYokai possono dare un ruolo agli affiliati e ai partner Twitch (Impostazioni del server &rarr; Ruoli &rarr; Collegamenti). Il bot non scrive a nome tuo e non vede la tua password: usi i normali accessi di Twitch e di Discord, e puoi scollegare quando vuoi.</p>
+{% if not pronta %}
+<p class="avviso errore">Il collegamento con Twitch non è configurato su questo bot. Mancano: {% for n in mancanti %}<code>{{ n }}</code>{{ ", " if not loop.last }}{% endfor %}. Chi gestisce il bot deve aggiungerli.</p>
+{% elif c %}
+<div class="carta">
+  <p>Collegato: <strong>{{ c.twitch_login }}</strong> · {{ etichetta }}.</p>
+  <p class="tenue">Il tipo di canale è quello di quando hai collegato: se è cambiato, ricollega.</p>
+  <form method="post" action="/ruoli-collegati/avvia" class="riga">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">Ricollega</button></form>
+  <form method="post" action="/ruoli-collegati/scollega" class="riga">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">Scollega</button></form>
+</div>
+{% else %}
+<form class="carta" method="post" action="/ruoli-collegati/avvia">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <p>Due passi: prima Twitch (senza permessi in più), poi Discord.</p>
+  <button type="submit">Collega Twitch</button>
+</form>
+{% endif %}
+{% endblock %}

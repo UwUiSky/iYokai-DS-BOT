@@ -32,7 +32,7 @@ from urllib.parse import urlsplit
 import jinja2
 from aiohttp import BodyPartReader, MultipartReader, web
 
-from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_backup, web_panel_editor, web_panel_inviti, web_panel_istantanee, web_panel_pagine, web_panel_ticket, web_panel_accesso as regole_accesso, web_panel_panoramica as panoramica, web_panel_logic as regole, verify_vpn_logic as vpn_logica
+from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_backup, web_panel_editor, web_panel_inviti, web_panel_istantanee, web_panel_pagine, web_panel_ruoli_collegati, web_panel_ticket, web_panel_accesso as regole_accesso, web_panel_panoramica as panoramica, web_panel_logic as regole, verify_vpn_logic as vpn_logica
 from core.bot_aspetto import MAX_IMMAGINE
 from core.command_access import RuoloAdminNegato
 from core.command_search_logic import cerca
@@ -87,6 +87,10 @@ ESITI = {
     "backup_eliminato": ("Copia eliminata.", False),
     "ticket_inviato": ("Risposta inviata nel canale del ticket.", False),
     "ticket_non_inviato": ("Discord non ha accettato il messaggio: controlla che il canale ci sia ancora e riprova.", True),
+    "rc_collegato": ("Twitch collegato: il tuo ruolo collegato è aggiornato su Discord.", False),
+    "rc_non_riuscito": ("Discord non ha accettato il collegamento: riprova tra poco.", True),
+    "rc_scollegato": ("Collegamento tolto.", False),
+    "rc_non_configurato": ("Il collegamento con Twitch non è configurato su questo bot.", True),
     "dati_attendi": ("Una copia dei dati al minuto: aspetta e riprova.", True),
 }
 
@@ -828,6 +832,10 @@ def build_app(
     )
     web_panel_ticket.registra_rotte(
         app, bot=bot, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE,
+    )
+    web_panel_ruoli_collegati.registra_rotte(
+        app, pagina=_pagina, errore=_errore, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE, ip=_ip,
+        client_id=client_id, client_secret=client_secret, url_pubblico=url_pubblico,
     )
     web_panel_pagine.registra_rotte(
         app, bot=bot, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura,
