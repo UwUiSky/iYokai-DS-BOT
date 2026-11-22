@@ -520,7 +520,7 @@ async def test_il_rientro_in_un_server_di_backup_segna_l_ingresso_ma_non_il_benv
             eventi.append(("entrato", gid))
 
     class _Db:
-        async def ensure_guild_exists(self, gid):
+        async def ensure_guild_exists(self, gid, **_kw):
             eventi.append(("config", gid))
 
     async def benvenuto(self, guild):

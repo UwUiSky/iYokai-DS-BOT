@@ -2,7 +2,7 @@
 cogs/leveling/negozio_extra.py
 ==============================
 Negozio avanzato: oggetti a rotazione e offerte lampo con bottone (/admin-negozio rotazione, offerta), ricette per
-creare oggetti da altri oggetti (/admin-negozio ricetta-*, /monete shop ricette, crea). Il prezzo effettivo si
+creare oggetti da altri oggetti (comandi «ricetta» di /admin-negozio, /monete shop ricette, crea). Il prezzo effettivo si
 calcola in un solo punto (core/negozio_logic.py) e si applica dentro la scrittura dell'acquisto.
 Funzioni coperte: ECO-075, ECO-076, ECO-078
 Dipende da: core/repositories/negozio_repo.py, core/repositories/shop_repo.py

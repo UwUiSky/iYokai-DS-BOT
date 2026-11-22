@@ -34,7 +34,7 @@ from core.repositories.contenuti_repo import contenuti_repo
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.repositories.partite_repo import EsitoApertura, partite_repo
 from core.repositories.sociale_repo import sociale_repo
-from core.ui_base import BaseView
+from core.ui_base import BaseModal, BaseView
 
 logger = logging.getLogger("iyokai.sala")
 NESSUNA_MENZIONE = discord.AllowedMentions.none()
@@ -111,7 +111,7 @@ def vince_il_piatto(giocatori: list[int], puntata: int, vincitore: int) -> dict[
 
 
 # ============================================================== roulette (ECO-091)
-class ModaleNumero(discord.ui.Modal):
+class ModaleNumero(BaseModal):
     def __init__(self, vista: "VistaRoulette", titolo: str, etichetta: str) -> None:
         super().__init__(title=titolo[:45])
         self.vista = vista

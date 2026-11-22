@@ -137,3 +137,9 @@
 - Controllo aree chiuse (292 voci): tabella revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.md (esiste/corretta/azione/test). In corso: r2utl (wt-128, 0760-0769, D100), r2tkt (wt-120, 0770-0779, D101). Poi: divertimento 91, moderazione 28, backup 23, verifica 16, AI 5.
 - Da sistemare prima della suite finale: nella serie combinata i test del pannello (test_panel_*) danno errori di setup per ordine dei test (da soli e tra loro passano: 200). Qualche test lascia sporco lo stato globale del db.
 - Non lanciare mai due serie di test sullo stesso database insieme (si cancellano i dati a vicenda).
+
+## 22/11 — regola dell'owner sui limiti
+- Quando gli agenti si fermano per il limite di 5 ore: programmare SUBITO un promemoria (send_later) all'orario di ripristino indicato nella notifica, e alla ripresa rimandare gli agenti con SendMessage. Non aspettare che l'owner lo chieda.
+- Dopo un riavvio: `pg_ctlcluster 16 main start` (può servire un minuto di recupero), poi riprendere.
+- Uniti 22/11: r2bkp, r6eco (economia finita, restano solo le 8 escluse), r1dep (librerie aggiornate, venv aggiornato con `VIRTUAL_ENV=.venv uv pip install -r requirements.txt -r requirements-dev.txt`). 1103 comandi, 1291/1452 voci.
+- In corso: r2mod parte 3 (11 voci MOD/AMD), r2web (interruttore AI, pagina backup, TKT-085, ALR-049, schede moduli).
