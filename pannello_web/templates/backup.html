@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block titolo %}Backup · {{ guild.name }} · iYokai Panel{% endblock %}
+{% block corpo %}
+<h1>Backup · {{ guild.name }}</h1>
+<p><a href="/server/{{ guild.id }}">&larr; {{ guild.name }}</a></p>
+<p class="tenue">Le stesse copie di <code>/admin-backup lista</code>: vedi cosa contengono ed elimini quelle che non servono. Caricare una copia non si fa da qui: resta al comando, nel server.</p>
+{% if righe %}
+<table>
+<tr><th>#</th><th>Nome</th><th>Tipo</th><th>Creata (UTC)</th><th></th></tr>
+{% for c, tipo in righe %}
+<tr><td>{{ c.id }}</td><td>{{ c.nome }}</td><td>{{ tipo }}</td><td>{{ c.creato_il.strftime('%Y-%m-%d %H:%M') }}</td>
+<td><a href="/server/{{ guild.id }}/backup/{{ c.id }}">Scheda</a> · <a href="/server/{{ guild.id }}/backup/{{ c.id }}/elimina">Elimina</a></td></tr>
+{% endfor %}
+</table>
+{% else %}
+<p>Nessuna copia salvata: si crea con il comando di salvataggio dei backup.</p>
+{% endif %}
+{% endblock %}

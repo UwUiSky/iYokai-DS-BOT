@@ -1904,3 +1904,12 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `ECO-018/027/045/087/142/146/147` — `/mondo diretta|vacanza|casa|fattoria|personaggio|avventura`: un tentativo al giorno per personaggio, gettoni per i mobili, la vacanza non fa perdere la serie del daily.
 - [ ] `ECO-083..085` — `/mondo borsa prezzi|scambia|ordine|ordini` e `/mondo autovendita`: commissione del 3%, un ordine scatta all'ora successiva, la vendita automatica agisce nel giro orario.
 - [ ] `ECO-054/056/144/145` — `/admin-negozio evento codice|bonus|casuali|server`: il primo che prende vince; il bonus si vede in `/monete work`.
+
+## Pannello web — giro r2web (#120, #121, #122, #129, #132)
+
+- [ ] `AI-017` — `/server/<id>/ai/interruttori`: spegni «Ricerca sul web»; `/admin-ai interruttore` mostra la stessa funzione spenta e la ricerca sul web dell'AI è rifiutata. Riaccendila dal comando e la pagina lo mostra.
+- [ ] `BKP-041` — `/server/<id>/backup` dal proprietario: elenco uguale a `/admin-backup lista`; scheda con i conteggi; «Elimina» chiede conferma e la copia sparisce anche da `/admin-backup lista`. Con un admin e `/founder backup permessi` su «solo owner»: pagina negata. Non esiste nessun modo di caricare dal sito.
+- [ ] `TKT-085` — apri un ticket: da `/server/<id>/ticket` scrivi una risposta con `@everyone` dentro: nel canale del ticket compare «nome (dal sito)» e nessuno è menzionato. Un membro senza ruolo di supporto non vede il ticket né può scrivere.
+- [ ] `ALR-049` — Prima: `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `OAUTH_ENCRYPTION_KEY` nel `.env`; indirizzo `…/ruoli-collegati/twitch` nella console Twitch e `…/ruoli-collegati/discord` nel Developer Portal (Redirects). `/ruoli-collegati` → «Collega Twitch»: Twitch, poi Discord con «collegamenti di ruolo». In un server: Impostazioni → Ruoli → Collegamenti → aggiungi iYokai con «Affiliato Twitch» o «Partner Twitch»: il ruolo arriva a un canale affiliato o partner e non a uno senza. «Scollega» toglie il requisito. Controllare nel database che i token siano cifrati (iniziano con `v2.`).
+- [ ] `24.2` — `/server/<id>/modulo/leveling` e `…/logging_basic`: scegli il canale dei log e l'obiettivo del server; `/admin-bot config history` mostra le modifiche.
+

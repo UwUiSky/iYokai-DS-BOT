@@ -9,10 +9,10 @@ lingua dai punti unici dei comandi (D16), storico, premium e wiki dei comandi, �
 (copia e richiesta di cancellazione, #46), verifica dei membri dalla pagina web (link firmato,
 impronte senza IP), istantanee dei log (`core/web_panel_istantanee.py`), l'interfaccia di iYokai Desktop (`core/desktop_api.py`), link d'invito personali e inviti (`core/web_panel_inviti.py`),
 ruoli del pannello in lettura e scrittura e panoramica del server (`core/web_panel_accesso.py`, `core/web_panel_panoramica.py`), pagine per area e pagine pubbliche (`core/web_panel_pagine.py`), informativa privacy e termini (pubbliche) e pagina del proprietario del bot
-(moduli premium, server, AI in manutenzione).
+(moduli premium, server, AI in manutenzione). Pagine dei backup (`core/web_panel_backup.py`), risposta ai ticket (`core/web_panel_ticket.py`) e ruoli collegati Twitch (`core/web_panel_ruoli_collegati.py`).
 Pagine HTML semplici (Jinja2 con escape automatico, nessuno script). Unica eccezione: la pagina «radio iYokai»
 dentro Discord (`core/web_panel_attivita.py`, B.8), con script propri e il suo riquadro ammesso solo a Discord.
-Funzioni coperte: SPEC §24.1–24.4, §24.6, §24.7, C.1–C.5, §4.2–4.3, §23.15, B.8 (CFG-001, CFG-002, CFG-003, CFG-027, #122; NF-20, issue #91; NF-22, #93; NF-21, #92; NF-38, #109; CFG-030, #122; #46; NF-27 r10)
+Funzioni coperte: SPEC §24.1–24.4, §24.6, §24.7, C.1–C.5, §4.2–4.3, §23.15, B.8 (CFG-001, CFG-002, CFG-003, CFG-027, #122; NF-20, issue #91; NF-22, #93; NF-21, #92; NF-38, #109; CFG-030, #122; #46; NF-27 r10; BKP-041, TKT-085, ALR-049 r2web)
 Dipende da: core/panel_bridge.py, core/web_panel_logic.py,
 core/redacted_access_log.py (la query del callback non va nei log)
 
@@ -32,7 +32,7 @@ from urllib.parse import urlsplit
 import jinja2
 from aiohttp import BodyPartReader, MultipartReader, web
 
-from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_editor, web_panel_inviti, web_panel_istantanee, web_panel_pagine, web_panel_accesso as regole_accesso, web_panel_panoramica as panoramica, web_panel_logic as regole, verify_vpn_logic as vpn_logica
+from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_backup, web_panel_editor, web_panel_inviti, web_panel_istantanee, web_panel_pagine, web_panel_ruoli_collegati, web_panel_ticket, web_panel_accesso as regole_accesso, web_panel_panoramica as panoramica, web_panel_logic as regole, verify_vpn_logic as vpn_logica
 from core.bot_aspetto import MAX_IMMAGINE
 from core.command_access import RuoloAdminNegato
 from core.command_search_logic import cerca
@@ -84,6 +84,13 @@ ESITI = {
     "marchio_non_disponibile": ("Il bot con marchio non è attivo su questo bot: avvisa il proprietario.", True),
     "marchio_attendi": ("Tre collegamenti al minuto per server: aspetta e riprova.", True),
     "ai_consenso": ("Per accendere l'AI devi leggere e accettare il consenso: niente è stato salvato.", True),
+    "backup_eliminato": ("Copia eliminata.", False),
+    "ticket_inviato": ("Risposta inviata nel canale del ticket.", False),
+    "ticket_non_inviato": ("Discord non ha accettato il messaggio: controlla che il canale ci sia ancora e riprova.", True),
+    "rc_collegato": ("Twitch collegato: il tuo ruolo collegato è aggiornato su Discord.", False),
+    "rc_non_riuscito": ("Discord non ha accettato il collegamento: riprova tra poco.", True),
+    "rc_scollegato": ("Collegamento tolto.", False),
+    "rc_non_configurato": ("Il collegamento con Twitch non è configurato su questo bot.", True),
     "dati_attendi": ("Una copia dei dati al minuto: aspetta e riprova.", True),
 }
 
@@ -819,6 +826,16 @@ def build_app(
     )
     web_panel_ai.registra_rotte(
         app, bot=bot, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE,
+    )
+    web_panel_backup.registra_rotte(
+        app, bot=bot, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE,
+    )
+    web_panel_ticket.registra_rotte(
+        app, bot=bot, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE,
+    )
+    web_panel_ruoli_collegati.registra_rotte(
+        app, pagina=_pagina, errore=_errore, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE, ip=_ip,
+        client_id=client_id, client_secret=client_secret, url_pubblico=url_pubblico,
     )
     web_panel_pagine.registra_rotte(
         app, bot=bot, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura,

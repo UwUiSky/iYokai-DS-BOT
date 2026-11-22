@@ -150,6 +150,18 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
         _c("account_rubato_minuti_uguali", "Account rubato: timeout per i messaggi uguali (minuti, 1-40320)", NUMERO),
         _c("account_rubato_minuti_malevole", "Account rubato: timeout per le immagini malevole (minuti, 1-40320)", NUMERO),
     ),
+    "logging_basic": (
+        _c("log_channel_id", "Canale dei log", CANALE),
+        _c("log_webhook", "Scrivi i log con un webhook (più veloce, un solo messaggio alla volta per canale)", BOOL),
+    ),
+    "logging_advanced": (
+        _c("log_webhook", "Scrivi i log con un webhook (più veloce, un solo messaggio alla volta per canale)", BOOL),
+        _c("log_webhook_utente", "Nei log di messaggi modificati e cancellati mostra il nome e l'immagine di chi li ha scritti", BOOL),
+    ),
+    "leveling": (
+        _c("progressi_attivi", "Progressi del server (obiettivo comune)", BOOL),
+        _c("progressi_obiettivo_server", "Obiettivo di base del server (50-100000)", NUMERO),
+    ),
     "invites": (
         _c("inviti_log_channel_id", "Canale del registro degli inviti", CANALE),
         _c("inviti_link_mode", "Chi può creare un link", SCELTA),

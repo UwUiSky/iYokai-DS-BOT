@@ -84,6 +84,11 @@ async def _membro(guild: discord.Guild, user_id: int, *, chiedi_a_discord: bool)
     return membro
 
 
+async def membro_del_server(guild: discord.Guild, user_id: int) -> discord.Member | None:
+    """Il membro com'è ADESSO (dalla memoria del bot o da Discord, con la cache breve), o None."""
+    return await _membro(guild, user_id, chiedi_a_discord=True)
+
+
 async def puo_gestire(guild: discord.Guild, user_id: int, *, chiedi_a_discord: bool = True) -> bool:
     """
     Stessa regola dei comandi di `admin-…` (Livello.ADMIN): «Gestisci server»,
