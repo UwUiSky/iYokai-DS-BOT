@@ -191,6 +191,8 @@ SETTINGS_SCHEMA = {
     "automod_parole_proprie": "lista_parole",
     "automod_parole_lecite": "lista_parole",
     # Difesa dalle parole d'odio (core/odio_opzioni.py, D35)
+    "automod_avviso_attivo": "bool",
+    "automod_avviso_testo": "testo_500",
     "odio_blocco_attivo": "bool",
     "odio_blocco_messaggio": "testo_150",
     "odio_richiami_soglia": "int_1_20",
@@ -310,6 +312,7 @@ CONTROLLI_PER_TIPO = {
     "int_0_60": (_intero_tra(0, 60), "un intero tra 0 e 60"),
     "testo_300": (lambda valore: isinstance(valore, str) and len(valore) <= 300, "un testo fino a 300 caratteri"),
     "testo_1500": (lambda valore: valore is None or (isinstance(valore, str) and len(valore) <= 1500), "un testo fino a 1500 caratteri"),
+    "testo_500": (lambda valore: valore is None or (isinstance(valore, str) and len(valore) <= 500), "un testo fino a 500 caratteri"),
     "testo_150": (lambda valore: isinstance(valore, str) and len(valore) <= 150, "un testo fino a 150 caratteri"),
     "int_1_100": (_intero_tra(1, 100), "un intero tra 1 e 100"),
     "int_1_20": (_intero_tra(1, 20), "un intero tra 1 e 20"),

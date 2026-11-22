@@ -59,6 +59,8 @@ SETTINGS_VALIDE = {
     "automod_nomi_simboli": True,
     "automod_parole_proprie": ["scemo"],
     "automod_parole_lecite": [],
+    "automod_avviso_attivo": True,
+    "automod_avviso_testo": "Messaggio rimosso: {regole}",
     "odio_blocco_attivo": True,
     "odio_blocco_messaggio": "Primo richiamo.",
     "odio_richiami_soglia": 3,

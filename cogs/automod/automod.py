@@ -126,6 +126,7 @@ from core.automod_innesco_logic import innesco_scatta, parametri_soglia_canale
 from core import automod_azioni as azioni_motore, automod_contatori as contatori
 from core.scheduler import scheduler
 from core import automod_emergenza as emergenza_logic
+from core import automod_avviso
 from core.automod_azioni import Bersaglio, e_protetto, esegui_azioni, registra_messaggio
 from core.automod_regole_logic import azioni_dai_nomi_vecchi, condizioni_ok
 from core.automod_parole_logic import MessaggiBrevi
@@ -265,6 +266,8 @@ def _media_inoltrati(message: discord.Message) -> int:
     )
 
 # Le violazioni della famiglia phishing: canale di log suo e link non cliccabile.
+# Azioni che gia' parlano all'utente (DM, warn, espulsione, avviso nel canale): l'avviso della cancellazione si salta (D110).
+_AZIONI_CHE_AVVISANO = frozenset({"dm", "warn", "kick", "ban", "ban_tempo", "avviso_canale"})
 _VIOLAZIONI_PHISHING = frozenset({VIOLATION_PHISHING, VIOLATION_ACCORCIATORI, VIOLATION_INVITI_ADULTI, VIOLATION_SITI_PERICOLOSI})
 # AMD-019: le sole violazioni che il testo di un embed può far scattare.
 _VIOLAZIONI_LINK = frozenset({VIOLATION_ANTI_LINK, VIOLATION_PHISHING, VIOLATION_ACCORCIATORI, VIOLATION_SITI_PERICOLOSI})
@@ -1903,7 +1906,10 @@ class AutomodCog(CogConGruppi, commands.Cog):
             message, nostro_bot=self._e_nostro, id_applicazione=getattr(self.bot, "application_id", None) if isinstance(getattr(self.bot, "application_id", None), int) else None,
             livello=livello,
         )
-        for violazione in violazioni:
+        motivi: list[tuple[str, str | None]] = []  # #116: le regole non rispettate, per l'avviso all'utente
+        cancellato = False
+        avvisato = False
+        for indice, violazione in enumerate(violazioni):
             regola = await regole_service.regola_effettiva(message.guild.id, violazione)
             if not regola.attiva:
                 continue
@@ -1911,6 +1917,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
                 continue
             if not condizioni_ok(regola.condizioni, contesto):
                 continue
+            motivi.append((violazione, regola.nome if regola.tipo == "personale" else None))
             azioni = regola.azioni if regola.id is not None else azioni_dai_nomi_vecchi(
                 AZIONI_DI_PARTENZA.get(violazione, AZIONI_DI_PARTENZA_GENERALI), settings.mute_duration_seconds
             )
@@ -1940,8 +1947,16 @@ class AutomodCog(CogConGruppi, commands.Cog):
             # filtri scattati insieme) non hanno più nulla da
             # cancellare né senso di valutare per azioni aggiuntive
             # sullo stesso contenuto — esce dal ciclo.
+            avvisato = avvisato or any(a in eseguite for a in _AZIONI_CHE_AVVISANO)
             if "delete" in eseguite:
+                cancellato = True
+                for dopo in violazioni[indice + 1:]:  # le altre regole scattate insieme, solo per elencarle
+                    altra = await regole_service.regola_effettiva(message.guild.id, dopo)
+                    if altra.attiva and not (esente and altra.condizioni.esenzioni_globali) and condizioni_ok(altra.condizioni, contesto):
+                        motivi.append((dopo, altra.nome if altra.tipo == "personale" else None))
                 break
+        if cancellato and not avvisato:
+            await automod_avviso.avvisa(message, motivi, db)
 
 
 async def _cancella_frammenti(message: discord.Message, frammenti: list[int]) -> None:
