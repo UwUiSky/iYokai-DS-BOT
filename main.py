@@ -37,6 +37,7 @@ from pathlib import Path
 import discord
 from discord.ext import commands
 
+from core.collaudo_avviso import messaggio_collaudo
 from core.command_groups import registra_owner
 from core.command_translator import TraduttoreYokai
 from core.command_sync import StatoSyncDatabase, sincronizza_all_avvio
@@ -645,6 +646,9 @@ async def main() -> None:
     logger.info("Avvio iYokai Main in modalità: %s", config.ENVIRONMENT)
 
     avvisa_opzioni_rischiose()
+    avviso_collaudo = messaggio_collaudo()
+    if avviso_collaudo:
+        logger.info(avviso_collaudo)
 
     # Il database va connesso PRIMA del bot, perché setup_hook()
     # (chiamato durante bot.start()) già presuppone che db.pool

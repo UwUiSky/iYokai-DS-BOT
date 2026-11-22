@@ -22,6 +22,7 @@
 - r13gruppi (D56/D57): 152 comandi spostati, 11 gruppi, 0485-0487, `core/livelli_funzione.py`.
 - Giri precedenti (r12, r10, r9, r5, F5/F7, R1-bis): vedi `git log`.
 
+- r1collaudo (#94, D109): `scripts/collaudo.py` (assistente prove dal vivo, terminale separato), `core/collaudo_avviso.py`, avviso in `main.py` con COLLAUDO=1; test `tests/test_collaudo.py`.
 ## Cose imparate
 - `interaction.response` e `followup` sono `cached_slot_property`: si sostituiscono con `interaction._cs_response` / `_cs_followup` (sottoclassi di `InteractionResponse` e `Webhook`); le `__slots__` vietano altri attributi.
 - `SETTINGS_SCHEMA` nuovo = anche `SETTINGS_VALIDE` in `tests/test_config_import_validation.py`. L'import ora scarta gli ID che non esistono nel server (guild finto: `roles` e `get_channel`).

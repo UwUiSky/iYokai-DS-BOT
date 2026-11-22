@@ -1400,3 +1400,10 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
 - **AMD-031 resta in parte:** la lista dei malware è vuota di proposito (data/siti_malware.txt): la sceglie l'owner (fonte e quota in LIMITI.md). Le liste dei siti che catturano l'IP e dei siti per adulti sono di partenza, da allargare a mano.
 - Migrazioni usate in tutto: 0800-0806 (restano 0807-0809).
 
+
+## D109 — Collaudo interattivo delle prove dal vivo (#94), 22/11/2026, opzione prudente, da confermare dall'owner
+
+- Il collaudo è lo script `scripts/collaudo.py`, in un **terminale separato**. Il bot non lo lancia e non esegue il suo codice: con `COLLAUDO=1` e un terminale vero (`sys.stdin.isatty()`) scrive solo un avviso nel log (`core/collaudo_avviso.py`). Motivo: `input()` dentro il processo del bot bloccherebbe un thread e mescolerebbe le domande con i log.
+- Le prove si leggono da `VERIFICA_LIVE.md`. Superata: non si ripropone e la riga diventa `- [x]` (`--non-modificare` per non toccare il file). Errore: issue via API REST (`urllib`, nessuna libreria nuova) con etichette `verifica-live` e `bug`; se manca il token o la rete, l'errore resta salvato e si invia con `--invia-in-sospeso`.
+- Stato in `collaudo/stato.json`, storico in `collaudo/storico.jsonl` (cartella in `.gitignore`). Il token non è mai stampato né salvato; il testo dell'owner è troncato a 4000 caratteri.
+- Il token deve avere solo `Issues: Read and write` sul repository. Test e codice delle prove non si cancellano mai.
