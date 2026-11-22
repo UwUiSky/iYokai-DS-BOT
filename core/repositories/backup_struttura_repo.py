@@ -80,6 +80,18 @@ class BackupStrutturaRepository:
         )
         return esito.endswith(" 1")
 
+    async def elimina_tutte(self, guild_id: int) -> int:
+        """BKP-007: toglie tutte le copie del server; quante."""
+        esito = await self._pool.execute("DELETE FROM backup_strutture WHERE guild_id = $1", guild_id)
+        return int(esito.rsplit(" ", 1)[-1])
+
+    async def leggi_con_data(self, guild_id: int, copia_id: int) -> tuple[str, datetime, dict] | None:
+        """BKP-006: nome, data e dati di una copia."""
+        riga = await self._pool.fetchrow(
+            "SELECT nome, creato_il, dati FROM backup_strutture WHERE guild_id = $1 AND id = $2", guild_id, copia_id
+        )
+        return (riga["nome"], riga["creato_il"], json.loads(riga["dati"])) if riga is not None else None
+
     # modelli (NF-39) --------------------------------------------------
     async def pubblica_modello(self, guild_id: int, copia_id: int) -> str | None:
         """Dà alla copia un codice condivisibile (lo stesso se lo ha già). None se non c'è o è una chat."""

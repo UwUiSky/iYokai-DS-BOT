@@ -236,3 +236,44 @@ async def test_stato_mostra_ora_ed_esito_dell_aggiornamento_automatico(ambiente)
     finally:
         backup_module.backup_repo = originale
         await database.pool.execute("DELETE FROM backup_pairs WHERE main_guild_id = $1", GUILD)
+
+
+async def test_info_mostra_i_conteggi_senza_caricare(ambiente):
+    """BKP-006: `/admin-backup info` dice cosa c'è nella copia e non tocca il server."""
+    _db, repo = ambiente
+    cog = BackupCog(bot=None)
+    dati = {"versione": 1, "ruoli": [{"nome": "r", "permessi": 0}] * 3, "canali": [{"nome": "c"}], "ban": [{"user_id": 7}]}
+    copia = await repo.salva_struttura(GUILD, "prima", 1, dati)
+    i = _interazione(owner=True)
+    await cog.info.callback(cog, i, copia)
+    embed = i.response.messaggi[0][1]["embed"]
+    assert "**ruoli**: 3" in embed.description and "**ban**: 1" in embed.description
+    assert "thread" not in embed.description
+    altra = _interazione(owner=True)
+    await cog.info.callback(cog, altra, copia + 999)
+    assert "non trovata" in altra.response.messaggi[0][0].lower()
+
+
+async def test_elimina_chiede_conferma_e_tutte_toglie_ogni_copia(ambiente):
+    """BKP-007: una copia o tutte, solo dopo il bottone; chi non l'ha chiesto non conferma."""
+    _db, repo = ambiente
+    cog = BackupCog(bot=None)
+    for n in ("a", "b", "c"):
+        await repo.salva_struttura(GUILD, n, 1, {"versione": 1})
+    copie = await repo.lista_strutture(GUILD)
+    i = _interazione(owner=True)
+    await cog.elimina.callback(cog, i, copie[0].id, False)
+    vista = i.response.messaggi[0][1]["view"]
+    assert len(await repo.lista_strutture(GUILD)) == 3  # niente senza conferma
+    estraneo = _interazione(owner=True)
+    estraneo.user.id = 99
+    assert not await vista.interaction_check(estraneo)
+    await vista.conferma.callback(_interazione(owner=True))
+    assert len(await repo.lista_strutture(GUILD)) == 2
+    i = _interazione(owner=True)
+    await cog.elimina.callback(cog, i, None, True)
+    await i.response.messaggi[0][1]["view"].conferma.callback(_interazione(owner=True))
+    assert await repo.lista_strutture(GUILD) == []
+    errore = _interazione(owner=True)
+    await cog.elimina.callback(cog, errore, None, False)
+    assert "view" not in errore.response.messaggi[0][1]

@@ -3608,5 +3608,15 @@
   "music_karaoke_gia_attivo": "A karaoke is already running in this server.",
   "music_karaoke_solo_semplice": "This track has lyrics, but without timing: use /music track text.",
   "music_karaoke_titolo": "🎤 Karaoke: **{titolo}**",
-  "music_karaoke_finito": "Karaoke finished."
+  "music_karaoke_finito": "Karaoke finished.",
+  "backup_copia_vuota": "The copy is empty.",
+  "backup_info_creata": "Created",
+  "backup_info_tipo": "Type",
+  "backup_info_tipo_chat": "Saved chat",
+  "backup_info_tipo_struttura": "Server structure",
+  "backup_elimina_scegli": "Give a copy number or choose \"all\": not both.",
+  "backup_elimina_conferma": "Delete copy `#{copia}`? This cannot be undone.",
+  "backup_elimina_conferma_tutte": "Delete ALL copies of this server? This cannot be undone.",
+  "backup_copie_eliminate": "🗑️ Copies deleted: {n}.",
+  "backup_elimina_annullata": "Nothing deleted."
 }

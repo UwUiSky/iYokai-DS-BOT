@@ -378,6 +378,20 @@ def parti_presenti(dati: dict) -> list[str]:
             or p in ("ban", "membri", "messaggi") and dati.get(p)]
 
 
+def riassunto(dati: dict) -> dict[str, int]:
+    """BKP-006: i conteggi di ciò che contiene una copia, senza caricarla."""
+    conteggi = {
+        "ruoli": len(dati.get("ruoli", [])), "categorie": len(dati.get("categorie", [])),
+        "canali": len(dati.get("canali", [])), "emoji": len(dati.get("emoji", [])),
+        "sticker": len(dati.get("sticker", [])), "ban": len(dati.get("ban", [])),
+        "membri": len(dati.get("membri", [])),
+        "messaggi": sum(len(m) for m in (dati.get("messaggi") or {}).values()) if dati.get("tipo") != "chat"
+        else len(dati.get("messaggi") or []),
+        "thread": len(dati.get("thread", [])),
+    }
+    return {k: v for k, v in conteggi.items() if v}
+
+
 def senza_dati_personali(dati: dict) -> dict:
     """Un modello (NF-39) si condivide senza ban, membri e permessi dei singoli utenti."""
     pulito = {k: v for k, v in dati.items() if k not in ("ban", "membri", "messaggi")}

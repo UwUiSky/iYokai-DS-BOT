@@ -134,6 +134,36 @@ class ScegliPartiView(BaseView):
         await interaction.response.edit_message(content=testo, view=None)
 
 
+class ConfermaEliminaView(BaseView):
+    """BKP-007: nessuna copia sparisce senza un clic di conferma di chi l'ha chiesto."""
+
+    def __init__(self, autore_id: int, guild_id: int, copia: int | None) -> None:
+        super().__init__(timeout=60)
+        self.autore_id, self.guild_id, self.copia = autore_id, guild_id, copia
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.autore_id and await super().interaction_check(interaction)
+
+    @discord.ui.button(label="Elimina", style=discord.ButtonStyle.danger)
+    async def conferma(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.stop()
+        if self.copia is None:
+            quante = await backup_struttura_repo.elimina_tutte(self.guild_id)
+            await registra_uso(self.guild_id, self.autore_id, "elimina", f"tutte ({quante})")
+            testo = await testo_per(interaction, "backup_copie_eliminate", n=quante)
+        elif await backup_struttura_repo.elimina_struttura(self.guild_id, self.copia):
+            await registra_uso(self.guild_id, self.autore_id, "elimina", f"#{self.copia}")
+            testo = await testo_per(interaction, "backup_copia_eliminata", copia=self.copia)
+        else:
+            testo = await testo_per(interaction, "backup_copia_non_trovata")
+        await interaction.response.edit_message(content=testo, view=None)
+
+    @discord.ui.button(label="Annulla", style=discord.ButtonStyle.secondary)
+    async def annulla(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.stop()
+        await interaction.response.edit_message(content=await testo_per(interaction, "backup_elimina_annullata"), view=None)
+
+
 class BackupCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -523,16 +553,52 @@ class BackupCog(CogConGruppi, commands.Cog):
             ephemeral=True,
         )
 
-    @comando_di_gruppo("admin-backup", nome="elimina", descrizione="Elimina una copia salvata.")
+    @comando_di_gruppo("admin-backup", nome="info", descrizione="Cosa contiene una copia salvata, senza caricarla.")
     @app_commands.describe(copia="Numero della copia (da /admin-backup lista)")
-    async def elimina(self, interaction: discord.Interaction, copia: app_commands.Range[int, 1]) -> None:
+    async def info(self, interaction: discord.Interaction, copia: app_commands.Range[int, 1]) -> None:
+        """BKP-006: nome, data e conteggi della copia."""
         if not await self._puo(interaction, AZIONE_CREA):
             return
-        if not await backup_struttura_repo.elimina_struttura(interaction.guild.id, copia):
+        trovata = await backup_struttura_repo.leggi_con_data(interaction.guild.id, copia)
+        if trovata is None:
             await interaction.response.send_message(await testo_per(interaction, "backup_copia_non_trovata"), ephemeral=True)
             return
-        await registra_uso(interaction.guild.id, interaction.user.id, "elimina", f"#{copia}")
-        await interaction.response.send_message(await testo_per(interaction, "backup_copia_eliminata", copia=copia), ephemeral=True)
+        nome, creato_il, dati = trovata
+        conteggi = struttura.riassunto(dati)
+        etichette = {
+            "ruoli": "ruoli", "categorie": "categorie", "canali": "canali", "emoji": "emoji", "sticker": "sticker",
+            "ban": "ban", "membri": "membri", "messaggi": "messaggi", "thread": "thread",
+        }
+        righe = [f"**{etichette[k]}**: {v}" for k, v in conteggi.items()] or [await testo_per(interaction, "backup_copia_vuota")]
+        embed = discord.Embed(
+            title=f"#{copia} · {nome}"[:256], description="\n".join(righe)[:4000], color=discord.Color.blurple(),
+        )
+        embed.add_field(name=await testo_per(interaction, "backup_info_creata"), value=discord.utils.format_dt(creato_il, "f"))
+        embed.add_field(
+            name=await testo_per(interaction, "backup_info_tipo"),
+            value=await testo_per(interaction, "backup_info_tipo_chat" if dati.get("tipo") == "chat" else "backup_info_tipo_struttura"),
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @comando_di_gruppo("admin-backup", nome="elimina", descrizione="Elimina una copia salvata, o tutte (con conferma).")
+    @app_commands.describe(copia="Numero della copia (da /admin-backup lista)", tutte="Elimina tutte le copie del server")
+    async def elimina(
+        self, interaction: discord.Interaction, copia: app_commands.Range[int, 1] | None = None, tutte: bool = False,
+    ) -> None:
+        """BKP-007: sempre con un bottone di conferma."""
+        if not await self._puo(interaction, AZIONE_CREA):
+            return
+        if tutte == (copia is not None):
+            await interaction.response.send_message(await testo_per(interaction, "backup_elimina_scegli"), ephemeral=True)
+            return
+        if copia is not None and await backup_struttura_repo.leggi_struttura(interaction.guild.id, copia) is None:
+            await interaction.response.send_message(await testo_per(interaction, "backup_copia_non_trovata"), ephemeral=True)
+            return
+        await interaction.response.send_message(
+            await testo_per(interaction, "backup_elimina_conferma_tutte" if tutte else "backup_elimina_conferma", copia=copia),
+            view=ConfermaEliminaView(interaction.user.id, interaction.guild.id, copia),
+            ephemeral=True,
+        )
 
     @comando_di_gruppo("admin-backup", nome="stato", descrizione="Avanzamento dell'ultimo caricamento in questo server.")
     async def stato(self, interaction: discord.Interaction) -> None:
