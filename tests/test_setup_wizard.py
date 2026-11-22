@@ -271,6 +271,7 @@ def _server_per_canali(guild_id):
     return server
 
 
+# MOD-052
 async def test_il_canale_modlog_si_crea_riservato_e_si_collega(clean_db, monkeypatch):
     from core.database import db
 

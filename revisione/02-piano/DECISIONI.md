@@ -1303,3 +1303,14 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
 - **Colore e pausa degli embed (UTL-084, 085):** un colore per server (`/admin-messaggi embed colore`), usato solo se l'embed non ne ha uno; un invio al minuto per server con `pubblica`.
 - **Fuori dal mio perimetro, da fare dagli agenti che li hanno:** UTL-204 (`/mod esporta-chat`, moderazione), UTL-205 (opzione `utente` in `/utility messaggio`, file `snipe.py`), UTL-226 e UTL-228 (`/admin-bot config pulisci` e «anche i dati» in `reset`, file `config_history.py`).
 - Migrazioni: 0760 (tag), 0761 (risposte automatiche), 0762 (colore embed), 0763 (innesco canale), 0764 (bacheca).
+
+## D104 — Controllo delle aree chiuse di moderazione, AutoMod e verifica (#115, #116, #118, giro r2mod), 22/11/2026, opzione prudente, da confermare dall'owner
+
+- **AMD-030 (Google Safe Browsing):** non si fa ora. Serve una chiave API con quota dell'owner e va scritta in `LIMITI.md`; senza chiave resta la lista di phishing locale.
+- **VER-025 (impronte tra server):** non si fa. Per privacy (D19) l'impronta dello stesso IP è diversa in ogni server: confrontare tra server vorrebbe dire conservare una chiave comune e rompere questa garanzia.
+- **VER-027 (ruoli collegati di Discord):** non si fa ora. Servono l'OAuth del pannello con `role_connections.write` e la registrazione dei metadati dell'applicazione, come per ALR-049 (D99).
+- **Appelli (MOD-008, MOD-063):** `appello: no` su ban, tempban e timeout segna il caso (migrazione 0800). L'appello per i timeout è spento di base (`/mod-ban appelli timeout`); accettarlo toglie il timeout solo se chi decide sta sopra l'utente.
+- **Scala dei warn (MOD-033, MOD-035):** un gradino con `finestra_giorni` (1-90) conta le infrazioni degli ultimi N giorni (date in `automod_violazioni_date`, 0801); scatta il livello più alto raggiunto. `azzera_dopo_scatto` azzera conteggio e date dopo una sanzione, i casi restano.
+- **Chat esportata (UTL-204):** dei file allegati restano nome pulito, tipo e peso (D74); un file sotto 9,5 MB, risposta solo per chi comanda.
+- Migrazioni usate: 0800 (ban senza appello), 0801 (scala con finestra e azzeramento).
+

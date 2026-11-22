@@ -361,6 +361,7 @@ async def test_accettare_chiude_lo_stato_del_tempban_e_scrive_nel_log(amb, monke
     assert "accettato" in log.call_args.args[1].title
 
 
+# MOD-062
 async def test_comandi_appelli_canale_ed_elenco(amb):
     from cogs.moderation.ban_appeal import ModerationBanAppealCog
 
@@ -401,6 +402,7 @@ async def test_modulo_appello_risponde_con_l_esito(amb):
 
 
 # ------------------------------------------------- DM al bot (come lo spam-trap)
+# MOD-061
 async def test_dm_di_chi_ha_un_ban_manuale_riceve_il_bottone(amb):
     server, _, bot = amb
     await moderation_repo.create_case(guild_id=G, user_id=UTENTE, moderator_id=1, action_type="ban", reason="x")

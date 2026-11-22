@@ -96,6 +96,7 @@ async def test_anzianita_scarica_i_membri_e_va_a_pagine(monkeypatch):
     assert invia.await_args.kwargs["dopo_defer"] is True
 
 
+# MOD-111
 @pytest.mark.asyncio
 async def test_permessi_del_bot_per_predefinito():
     cog = SchedeCog(MagicMock())

@@ -77,6 +77,7 @@ async def test_di_base_i_warn_manuali_non_contano(monkeypatch):
     assert await _tipi(A) == ["warn"] * 3
 
 
+# MOD-032
 async def test_tre_warn_manuali_fanno_scattare_il_gradino(monkeypatch):
     isola = AsyncMock()
     monkeypatch.setattr(modulo_escalation.bot_roles, "isola", isola)

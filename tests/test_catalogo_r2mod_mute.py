@@ -149,3 +149,21 @@ async def test_il_comando_aggiorna_chiede_il_permesso_sui_canali_al_bot():
     await cog.muto.callback(cog, s.interazione, None, None, True)
     s.interazione.response.send_message.assert_awaited_once()
     assert await db.get_guild_setting(ID_SERVER, softban_mute.SETTING_MUTE_ROLE_ID) is None
+
+
+# MOD-111
+async def test_i_permessi_di_un_membro_in_un_canale_si_vedono_con_utility_permessi():
+    from unittest.mock import MagicMock
+
+    from cogs.utility.schede import SchedeCog
+    from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member
+
+    cog = SchedeCog(MagicMock())
+    membro = fake_member(77)
+    canale = fake_text_channel(5, "staff")
+    canale.permissions_for = MagicMock(return_value=discord.Permissions(send_messages=True, ban_members=False))
+    it = fake_interaction(guild=fake_guild(), channel=canale)
+    await cog.permessi.callback(cog, it, membro, canale)
+    canale.permissions_for.assert_called_once_with(membro)
+    campi = {c.name: c.value for c in it.response.send_message.call_args.kwargs["embed"].fields}
+    assert "Concessi" in campi and "Mancanti" in campi

@@ -78,6 +78,7 @@ def test_solo_la_stessa_rete_fa_un_doppio():
 
 
 # ------------------------------------------------------------ repository
+# VER-021
 @pytest.mark.asyncio
 async def test_repo_trova_i_doppi_solo_nello_stesso_server(clean_db):
     repo = FingerprintRepository(pool_provider=lambda: clean_db)
@@ -158,6 +159,7 @@ async def _verifica(client, user_id, ua="Firefox"):
     return await client.post(f"/verifica/{token}", data={"campo": campo}, headers=intestazioni)
 
 
+# VER-005
 @pytest.mark.asyncio
 async def test_pagina_verifica_e_doppio_segnalato(ambiente, monkeypatch):
     avvisi = []
@@ -266,6 +268,7 @@ def test_link_verifica_solo_con_pannello_acceso(monkeypatch):
     assert logica.leggi_token(acceso.WEB_PANEL_SECRET_KEY, link.rsplit("/", 1)[1]) == (GUILD, MEMBRO)
 
 
+# VER-022, VER-024 (nessun ban automatico: solo l'avviso allo staff)
 @pytest.mark.asyncio
 async def test_avviso_allo_staff_senza_menzioni(monkeypatch):
     import cogs.security.alt_detection as cog_alt
