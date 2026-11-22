@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 18:10 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 01:33 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 1024 commands in 51 categories.**
+**Total: 1028 commands in 51 categories.**
 
 ## Admin: AI
 
@@ -854,6 +854,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 18:1
 
 - **`/mod-ban appeals channel`** — Picks the staff channel for appeals (empty to turn them off).
 - **`/mod-ban appeals list`** — Shows the server's latest appeals.
+- **`/mod-ban appeals timeout`** — Turns appeals on or off for timeouts too.
 - **`/mod-ban ban`** — Permanently bans a member.
 - **`/mod-ban bulk ban`** — Bans several users at once, even outside the server (IDs or mentions).
 - **`/mod-ban bulk entrati`** — Bans or kicks whoever joined in the last minutes (after a confirmation).
@@ -869,10 +870,12 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 18:1
 ## Mod: channels
 
 - **`/mod-channels clear`** — Deletes a number of messages, with optional filters.
+- **`/mod-channels export-chat`** — Sends the last messages of a channel in a text file (only to you).
 - **`/mod-channels expression`** — Add an emoji or a sticker to the server from a file or from an emoji.
 - **`/mod-channels lock`** — Blocks the ability to write in a channel.
 - **`/mod-channels lockdown enable`** — Lock all channels, invites and joins of the server.
 - **`/mod-channels lockdown remove`** — Reopen the server as it was before the lockdown.
+- **`/mod-channels lockdown status`** — Shows whether a lockdown is on, since when and when it ends.
 - **`/mod-channels reactions`** — Removes reactions from the latest messages of a channel, without deleting them.
 - **`/mod-channels slowmode`** — Sets slowmode on a channel or category. With no values: lists channels with slowmode.
 - **`/mod-channels thread`** — Create, archive or delete a thread.
@@ -925,6 +928,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-21 18:1
 - **`/mod-sanctions mute`** — Mutes a member with a dedicated role (alternative to timeout).
 - **`/mod-sanctions nick`** — Changes or resets a member's nickname.
 - **`/mod-sanctions options dm`** — Choose whether the user gets a DM for a type of action.
+- **`/mod-sanctions options mute-role`** — Pick or create the mute role and put the block back on every channel.
 - **`/mod-sanctions options set`** — Ban message cleanup, timeout, external cases, alerts. Empty: shows the options.
 - **`/mod-sanctions timeout`** — Times out a member (max 28 days).
 - **`/mod-sanctions unmute`** — Removes the mute role from a member.

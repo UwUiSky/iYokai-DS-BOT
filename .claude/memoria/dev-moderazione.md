@@ -1,15 +1,18 @@
 # Memoria dev-moderazione
 ## Aggiornata
-2026-11-09, giro r19mod (ramo feat/r19mod, wt /home/claude/wt/r19mod, DB iyokai_w19mod; migr. 0511 usata per le prove). Blocco Moderazione #115 chiuso a livello di codice. Smoke da fare.
+2026-11-22, giro r2mod (ramo feat/r2mod, wt /home/user/wt-115, DB iyokai_w115; migr. 0800, 0801). Controllo voce per voce di #115, #116, #118: tabella in revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.md, D104. Smoke da fare.
 ## In corso
-Nessun lavoro aperto sul blocco #115. Prossimo (se serve): scarico di PDF/TXT delle prove dal pannello (dev-web), poi i controlli (cacciatore-bug, revisore-capo) e lo smoke dopo il merge. Comando: DATABASE_URL=...iyokai_w19mod (scratchpad/envw19.sh); testi: scratchpad/addt19.py file.json (chiave -> [it, en]).
+Prossimo giro r2mod (voci NON FATTE nella tabella): MOD-016 (quarantena a mano), MOD-091/092/094/095/096 (blocchi mirati), MOD-103/104, MOD-051/053/060, MOD-034 (tempban/mute nella scala), MOD-040 (conteggi), AMD-031/057/071, VER-002/003/006/007/018/023/028, CFG-024. Test: tests/test_catalogo_r2mod_*.py. Comandi: scratchpad t.sh/p.sh; testi: addt.py (it + en-US + descrizioni comandi).
 ## Fatto
+- r2mod: MOD-008/063 (appelli: senza appello, timeout; 0800), MOD-018/019 (ruolo mute), MOD-033/035 (scala con finestra; 0801), MOD-093/097 (blocco a tempo e stato), UTL-204 (esporta-chat), UTL-205 (snipe utente); segni nei test per MOD-020/032/052/061/062/109/111, VER-001/004/005/021/022/024/026
 - r19 M6 resto, M9, MOD-102: core/moderation_conferma.py (conferma 2 tasti, risposte compatte/cancella-dopo, GIA_CONFERMATA per /mod-sanzioni applica), moderation_risposte.py; ricerca ban/membri/invito (cogs/moderation/ricerca.py, moderation_ricerca_logic.py); prove (0511, moderation_prove.py, prove.py); dehoist/simboli (automod_nomi_logic.py, parole_odio.py); test_moderation_risposte_m6, test_moderation_ricerca_m9, test_automod_nomi_pulizia
 - r18 D68: core/moderation_motivi.py (PREIMPOSTATI 14 motivi, Proposta, modifica, semina alla prima lettura), migr. 0532 (+ moderation_motivi_semina), repo motivi, /mod-casi motivi aggiungi/modifica con severita/azione/durata, cogs/moderation/motivo_pronto.py (/mod-sanzioni applica: menu + durata + Conferma; kick/ban solo con livello MODBAN); test_moderation_motivi_severita
 - r18 M6 (MOD-050, 059): core/moderation_dm.py unico punto del DM (comandi + core/automod_azioni.py warn/kick/ban/tempban), mod_anonimo, mod_dm_testo_<azione>, finestra ModuloTestoDm; test_moderation_dm_m6. NON fatti: MOD-066, MOD-067
 - r18 M8: core/moderation_scheda.py, cogs/moderation/scheda.py (/mod-casi scheda, menu «Scheda moderazione» con 5 tasti, «Segnala messaggio», /utility mie-sanzioni, mod_utente_vede_casi), report.invia_segnalazione; test_moderation_scheda_m8
 - r17 M4 voce, M5 opzioni e motivi pronti (0512), M7 canali/nick/entrati (0513, 0514); r17 A9 eventi e D67 account rubato; r15-r16 A1-A8 AutoMod, verifica VPN/IP, giri G1-G7 e R5-R14 (git log, REGISTRO_RISOLTE)
 ## Cose imparate
+- Locales: json.dumps(ensure_ascii=False, indent=2 testi / 1 comandi)+newline riscrive il file identico: si puo' usare; i comandi in en-US vanno in `descrizioni` (percorso intero) e `nomi` (nome singolo)
+- Un comando nuovo: aggiungilo agli ATTESI di test_f7_moderazione_gruppi; `$3 - INTERVAL` in asyncpg vuole il cast ::timestamptz
 - Anti-giri-a-vuoto (A9): esegui_azioni segna in automod_eventi_logic.effetti ruolo/nome/uscita PRIMA di agire; casi con origine automod ignorati; thread creati dal bot ignorati (e_un_nostro_bot sull'autore)
 - Testi: locales/it e en-US testi.json, riga in coda (no json.dump); un test che mette un'opzione nuova letta da db va patchato (db non connesso nei test di cog)
 - Scadenze IP (verify_ip): il ban vince sempre (on_member_remove arriva anche dopo il ban); kick riconosciuto dal registro audit, senza permesso = uscita volontaria; log IP: mai exc_info, solo type(errore)

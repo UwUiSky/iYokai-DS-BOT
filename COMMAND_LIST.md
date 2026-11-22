@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 18:10 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:33 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 1024 comandi in 51 categorie.**
+**Totale: 1028 comandi in 51 categorie.**
 
 ## Admin: AI
 
@@ -854,6 +854,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 18:
 
 - **`/mod-ban appelli canale`** — Sceglie il canale staff per gli appelli (vuoto per spegnerli).
 - **`/mod-ban appelli elenco`** — Mostra gli ultimi appelli del server.
+- **`/mod-ban appelli timeout`** — Accende o spegne gli appelli anche per i timeout.
 - **`/mod-ban ban`** — Banna permanentemente un membro.
 - **`/mod-ban cerca`** — Cerca tra i ban del server per nome, ID o motivo.
 - **`/mod-ban kick`** — Espelle un membro dal server.
@@ -869,8 +870,10 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 18:
 ## Mod: canali
 
 - **`/mod-canali blocco attiva`** — Blocca tutti i canali, gli inviti e gli ingressi del server.
+- **`/mod-canali blocco stato`** — Mostra se c'e' un blocco attivo, da quando e quando finisce.
 - **`/mod-canali blocco togli`** — Riapre il server com'era prima del blocco.
 - **`/mod-canali clear`** — Cancella un numero di messaggi, con filtri opzionali.
+- **`/mod-canali esporta-chat`** — Manda in un file di testo gli ultimi messaggi di un canale (solo a te).
 - **`/mod-canali espressione`** — Aggiungi un'emoji o uno sticker al server da un file o da un'emoji.
 - **`/mod-canali lock`** — Blocca la possibilità di scrivere in un canale.
 - **`/mod-canali reazioni`** — Toglie le reazioni dagli ultimi messaggi di un canale, senza cancellarli.
@@ -926,6 +929,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-21 18:
 - **`/mod-sanzioni nick`** — Cambia o azzera il soprannome di un membro.
 - **`/mod-sanzioni opzioni dm`** — Sceglie se l'utente riceve un DM per un tipo di azione.
 - **`/mod-sanzioni opzioni imposta`** — Messaggi al ban, timeout, casi esterni, avvisi. Vuoto: mostra le opzioni.
+- **`/mod-sanzioni opzioni muto`** — Sceglie o crea il ruolo del mute e rimette il blocco su tutti i canali.
 - **`/mod-sanzioni timeout`** — Mette in timeout un membro (max 28 giorni).
 - **`/mod-sanzioni unmute`** — Rimuove il ruolo mute da un membro.
 - **`/mod-sanzioni untimeout`** — Rimuove il timeout da un membro.
