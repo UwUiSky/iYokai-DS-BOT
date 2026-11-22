@@ -1,0 +1,19 @@
+# Siti che catturano l'indirizzo IP di chi apre il link (iYokai, AMD-031). Un dominio per riga, # per i commenti.
+# Lista di partenza: l'owner la allarga a mano. Un dominio padre blocca anche i suoi sottodomini.
+grabify.link
+iplogger.org
+iplogger.com
+iplogger.ru
+iplogger.co
+2no.co
+yip.su
+ipgrabber.ru
+blasze.com
+blasze.tk
+leancoding.co
+stopify.co
+freegiftcards.co
+joinmy.site
+curiouscat.club
+gyazo.nl
+ps3cfw.com

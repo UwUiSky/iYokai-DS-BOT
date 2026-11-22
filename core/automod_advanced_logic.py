@@ -238,6 +238,8 @@ class AutomodAdvancedConfig:
     # SIC-042: categorie del phishing con interruttore proprio.
     phishing_accorciatori: bool = False
     phishing_inviti_adulti: bool = False
+    # AMD-031: categorie di siti bloccate (ip_logger, adulti, malware); vuoto = nessuna.
+    phishing_siti: tuple[str, ...] = ()
     # SIC-041: sanzione in più sul phishing ("" = spenta, poi timeout, kick o ban).
     phishing_azione_extra: str = ""
     # AMD-002/003/005: 0 = filtro spento.
@@ -281,6 +283,7 @@ VIOLATION_A_CAPO = "anti_a_capo"
 VIOLATION_LUNGHEZZA = "anti_lunghezza"
 VIOLATION_SPOILER = "anti_spoiler"
 VIOLATION_ACCORCIATORI = "anti_accorciatori"
+VIOLATION_SITI_PERICOLOSI = "anti_siti_pericolosi"
 VIOLATION_INVITI_ADULTI = "anti_inviti_adulti"
 VIOLATION_RIPETUTI = "anti_ripetuti"
 VIOLATION_CORTO = "anti_corto"
@@ -304,6 +307,7 @@ ALL_VIOLATIONS = (
     VIOLATION_LUNGHEZZA,
     VIOLATION_SPOILER,
     VIOLATION_ACCORCIATORI,
+    VIOLATION_SITI_PERICOLOSI,
     VIOLATION_INVITI_ADULTI,
     VIOLATION_RIPETUTI,
     VIOLATION_CORTO,
@@ -347,7 +351,7 @@ def evaluate_message_violations(
     violare più filtri insieme (es. tutto maiuscolo E con un link
     non in whitelist), il chiamante decide come combinare le azioni.
     """
-    from core.phishing_logic import domini_nel_testo, e_accorciatore, e_phishing  # qui, perche' phishing_logic importa questo file
+    from core.phishing_logic import domini_nel_testo, e_accorciatore, e_phishing, e_sito_pericoloso  # qui, perche' phishing_logic importa questo file
 
     violazioni = []
 
@@ -365,6 +369,11 @@ def evaluate_message_violations(
         domini_nel_testo(testo_link), consentiti=config.anti_link.whitelist
     ):
         violazioni.append(VIOLATION_ACCORCIATORI)
+
+    if config.phishing_siti and e_sito_pericoloso(
+        domini_nel_testo(testo_link), config.phishing_siti, consentiti=config.anti_link.whitelist
+    ):
+        violazioni.append(VIOLATION_SITI_PERICOLOSI)
 
     if is_text_shape_violation(signals.content.count("\n"), config.max_a_capo):
         violazioni.append(VIOLATION_A_CAPO)

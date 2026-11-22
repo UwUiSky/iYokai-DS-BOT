@@ -144,7 +144,7 @@ Giro r2mod (issue #115, #116, #118). «Corretta» = fa ciò che dice il catalogo
 | codice | esiste | corretta | azione | file e test |
 |---|---|---|---|---|
 | AMD-030 | no | - | non fattibile ora, D106: serve una chiave API con quota (Google Safe Browsing) da scrivere in LIMITI.md | DECISIONI.md D106 |
-| AMD-031 | no | - | NON FATTA (liste di siti per adulti e malware in `core/phishing_logic.py`) | resta aperta |
+| AMD-031 | no | in parte | realizzata la funzione: `/admin-filtri phishing siti: cattura IP\|adulti\|malware\|tutti\|nessuno`, violazione «Siti pericolosi» con le sue azioni e regole, chiave `phishing_siti` in AutomodAdvancedConfig, whitelist dei domini che vince. Le liste: IP logger (17 domini) e adulti (13) di partenza; la lista dei MALWARE è VUOTA (data/siti_malware.txt): la riempie l'owner con la fonte che sceglie, senza voci quella categoria non blocca niente | core/phishing_logic.py, core/automod_advanced_logic.py, data/siti_*.txt; tests/test_catalogo_r2mod_siti.py |
 | AMD-057 | no | sì | realizzata: `/admin-filtri emergenza menzioni_soglia: menzioni_secondi: menzioni_minuti:` blocca i canali (servizio del blocco totale, si riapre da solo) alla soglia; bot e amministratori non contano, un blocco ogni 10 minuti al massimo; accenderla serve «Gestire il server» | core/automod_emergenza.py, cogs/automod/automod.py; tests/test_catalogo_r2mod_emergenza.py |
 | AMD-071 | no | sì | realizzata: `/admin-filtri emergenza panico: panico_utenti:` a N persone che violano una regola in un minuto il panico dura 10 minuti; in panico un account sospetto (giovane o senza avatar) che viola ancora va in timeout di 10 minuti, con caso; mai protetti, esenti o sopra il bot | core/automod_emergenza.py; tests/test_catalogo_r2mod_emergenza.py |
 
