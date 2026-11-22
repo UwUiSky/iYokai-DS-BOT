@@ -62,3 +62,6 @@ data/vpn/reti_*.txt
 config/gif_fornitori.env
 config/giochi_servizi.env
 config/nsfw_fornitori.env
+
+# Collaudo: stato e storico delle prove dal vivo (scripts/collaudo.py)
+collaudo/
