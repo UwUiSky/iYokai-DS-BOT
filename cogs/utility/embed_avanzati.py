@@ -28,6 +28,7 @@ from core.repositories.custom_command_repo import custom_command_repo
 from core.repositories.embed_bottoni_repo import MAX_BOTTONI, embed_bottoni_repo
 from core.repositories.saved_embed_repo import saved_embed_repo
 from core.repositories.tag_inneschi_repo import tag_inneschi_repo
+from core.controllo_link import e_link_pericoloso
 from core.safe_http import url_e_sicuro
 from core.ui_base import BaseLayoutView, BaseModal, BaseView, _utente_o_server_in_blacklist
 
@@ -136,7 +137,7 @@ async def contenuto_messaggio(guild_id: int, nome: str, dati: DatiEmbed, formato
 
 async def indirizzi_non_ammessi(dati: DatiEmbed) -> str | None:
     for etichetta, url in (("immagine", dati.image_url), ("miniatura", dati.thumbnail_url)):
-        if url and not await url_e_sicuro(url):
+        if url and (not await url_e_sicuro(url) or await e_link_pericoloso(url)):
             return f"L'indirizzo della {etichetta} non è ammesso (indirizzo interno o porta non consentita)."
     return None
 
@@ -282,7 +283,7 @@ class EmbedAvanzatiCog(CogConGruppi, commands.Cog):
             esito = t("bottoni_tolto", lingua)
         else:
             errore = L.errore_bottone(tipo, etichetta, valore)
-            if errore is None and tipo == "link" and (e_phishing([_host(valore)], carica_lista_locale()) or not await url_e_sicuro(valore)):
+            if errore is None and tipo == "link" and (e_phishing([_host(valore)], carica_lista_locale()) or not await url_e_sicuro(valore) or await e_link_pericoloso(valore)):
                 errore = t("bottoni_link_pericoloso", lingua)
             if errore is None and tipo == "tag" and await custom_command_repo.get_tag(gid, normalizza_nome(valore) or "") is None:
                 errore = t("bottoni_tag_non_esiste", lingua)

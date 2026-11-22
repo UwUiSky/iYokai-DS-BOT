@@ -33,6 +33,7 @@ from core.autoresponder_logic import (
     scegli_risposta,
 )
 from core.bounded_cache import BoundedCache
+from core.controllo_link import togli_link_pericolosi
 from core.command_access import Livello, puo_usare
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
@@ -167,6 +168,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
                 "channel": getattr(message.channel, "mention", ""),
             },
         )
+        testo, _ = await togli_link_pericolosi(testo)  # AMD-030
         try:
             await message.channel.send(
                 testo,

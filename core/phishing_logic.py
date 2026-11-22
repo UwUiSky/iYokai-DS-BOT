@@ -164,7 +164,12 @@ def lista_siti(categoria: str) -> frozenset[str]:
     if categoria not in CATEGORIE_SITI:
         return frozenset()
     if categoria not in _liste_siti:
-        _liste_siti[categoria] = carica_lista_locale(_CARTELLA_DATI / f"siti_{categoria}.txt")
+        locale = carica_lista_locale(_CARTELLA_DATI / f"siti_{categoria}.txt")
+        if categoria == "malware":  # AMD-030: la riempiono anche le liste scaricate (URLhaus)
+            from core.controllo_link_liste import stato
+
+            locale = locale | stato.categoria("malware")
+        _liste_siti[categoria] = locale
     return _liste_siti[categoria]
 
 

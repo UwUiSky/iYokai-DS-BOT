@@ -234,6 +234,13 @@ class Config:
     # questo bot rifiltrare i risultati.
     PIXABAY_API_KEY: str = field(default="", repr=False)
 
+    # Controllo dei link (AMD-030, D111): servizi esterni facoltativi. Ognuno si spegne da solo se la chiave manca.
+    # Mai nei log; chi li usa legge solo da qui (core/controllo_link_servizi.py).
+    GOOGLE_SAFE_BROWSING_KEY: str = field(default="", repr=False)
+    CLOUDFLARE_API_TOKEN: str = field(default="", repr=False)
+    CLOUDFLARE_ACCOUNT_ID: str = field(default="", repr=False)
+    VIRUSTOTAL_API_KEY: str = field(default="", repr=False)
+
     # Prezzi cripto di /web prezzo (CoinGecko, piano Demo, D69). Vuota = il comando risponde che non è attivo.
     COINGECKO_API_KEY: str = field(default="", repr=False)
 
@@ -451,6 +458,10 @@ def _load_config() -> Config:
         YOUTUBE_API_KEY=_optional("YOUTUBE_API_KEY", ""),
         PIXABAY_API_KEY=_optional("PIXABAY_API_KEY", ""),
         COINGECKO_API_KEY=_optional("COINGECKO_API_KEY", ""),
+        GOOGLE_SAFE_BROWSING_KEY=_optional("GOOGLE_SAFE_BROWSING_KEY", ""),
+        CLOUDFLARE_API_TOKEN=_optional("CLOUDFLARE_API_TOKEN", ""),
+        CLOUDFLARE_ACCOUNT_ID=_optional("CLOUDFLARE_ACCOUNT_ID", ""),
+        VIRUSTOTAL_API_KEY=_optional("VIRUSTOTAL_API_KEY", ""),
         MAIN_RADIO_LOCAL_FOLDER=_optional("MAIN_RADIO_LOCAL_FOLDER", ""),
         MEMORY_ALERT_THRESHOLD_MB=_optional_int("MEMORY_ALERT_THRESHOLD_MB", 512),
         WEB_BIND_HOST=_optional("WEB_BIND_HOST", "127.0.0.1"),

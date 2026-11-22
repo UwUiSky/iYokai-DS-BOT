@@ -41,6 +41,7 @@ from core.repositories.picarto_subscription_repo import picarto_subscription_rep
 from core.repositories.twitch_subscription_repo import twitch_subscription_repo
 from core.repositories.youtube_subscription_repo import youtube_subscription_repo
 from core.premium import PremiumModule, registry
+from core.controllo_link import e_link_pericoloso
 from core.safe_http import url_e_sicuro
 
 
@@ -132,7 +133,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         # rifiutato subito, non salvato. Il controllo risolve il nome
         # host e può superare i 3 secondi di Discord: prima il defer.
         await interaction.response.defer(ephemeral=True)
-        if not await url_e_sicuro(feed_url):
+        if not await url_e_sicuro(feed_url) or await e_link_pericoloso(feed_url):
             await interaction.followup.send(
                 "⚠️ URL non valido o non raggiungibile. Deve iniziare con `http://` o "
                 "`https://`, usare la porta standard (80 o 443) e puntare a un sito "

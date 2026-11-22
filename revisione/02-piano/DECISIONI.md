@@ -1439,3 +1439,16 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
   - A parte c'è una **rete facoltativa**: un server sceglie se applicare in automatico i ban decisi negli altri server della rete.
 - **MUS-015 (paese delle ricerche):** impostazione **globale** (brani ascoltabili in tutto il mondo). Un server può chiedere un **filtro per paese**: le ricerche controllano che il brano sia disponibile in quel paese (esempio: Turchia).
 - **MUS-017:** NON si spezza il video. Lunghezza massima del video **8 ore**. Se la **descrizione** del video contiene l'elenco dei brani con gli orari, il bot può usare quell'elenco (capitoli) invece del video intero.
+
+## D112 — Controllo dei link (AMD-030) e rete di protezione tra server (VER-025) — scelte prudenti (22/11/2026)
+
+Attuano D111. Dove D111 lascia aperto, si è scelta l'opzione più prudente.
+
+**Controllo dei link (core/controllo_link.py)**
+- Un solo punto: `valuta(url)` dà sicuro, sospetto o pericoloso, con fonte e categoria. Cache dei verdetti: pericoloso 6 ore, il resto 1 ora, servizi senza risposta 2 minuti.
+- Ordine: domini ufficiali e whitelist del server (nessuna quota spesa), liste locali e scaricate, euristica del phishing, poi i servizi con chiave: Google Safe Browsing, Cloudflare Intel, VirusTotal. Si ferma al primo «pericoloso».
+- Liste pubbliche ogni 12 ore con `safe_http`, tetto 8 MB, cache su disco in `data/cache_liste/` (fuori da git). Fonti: URLhaus (CC0), Phishing Army e OpenPhish (uso non commerciale: l'owner le spegne con `LINK_LISTE_ATTIVE` se il bot diventa a pagamento), Phishing.Database (MIT). AGCOM e ADM: struttura pronta, senza indirizzo stabile verificato restano spente finché l'owner non mette l'indirizzo.
+- Non usati: PhishTank (iscrizioni chiuse), URLScan.io (analisi lente e pubbliche).
+- Accorciatori: il redirect si segue solo con `safe_http.safe_segui_redirect` (3 salti, tetto di 30 al minuto in tutto il bot) e mai per i siti che catturano l'IP. I rimandi noti (google.com/url?q=) si leggono dal parametro, senza rete.
+- AutoMod: violazione «Link pericolosi», di base spenta (scelta del server: spenta / solo pericolosi / anche sospetti). Azioni di partenza: cancella e avvisa.
+- Chi pubblica testo o link di utenti (tag, risposte automatiche, embed, alert, saluti, pannello) toglie o rifiuta i link pericolosi.

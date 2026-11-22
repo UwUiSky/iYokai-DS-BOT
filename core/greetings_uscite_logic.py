@@ -16,6 +16,7 @@ import time
 from dataclasses import dataclass
 
 from core.bounded_cache import BoundedCache
+from core.controllo_link import e_link_pericoloso
 from core.safe_http import url_e_sicuro
 from core.safe_image import safe_open_image
 
@@ -68,7 +69,7 @@ async def valida_link(testo: str) -> str | None:
         return f"Il link è troppo lungo (massimo {MAX_LINK} caratteri)."
     if not testo.lower().startswith("https://"):
         return "Il link deve cominciare con https://"
-    if not await url_e_sicuro(testo):
+    if not await url_e_sicuro(testo) or await e_link_pericoloso(testo):
         return "Questo link non è raggiungibile in sicurezza."
     return None
 

@@ -240,6 +240,8 @@ class AutomodAdvancedConfig:
     phishing_inviti_adulti: bool = False
     # AMD-031: categorie di siti bloccate (ip_logger, adulti, malware); vuoto = nessuna.
     phishing_siti: tuple[str, ...] = ()
+    # AMD-030: «Link pericolosi». 0 = spento, 1 = solo i pericolosi, 2 = anche i sospetti (core/controllo_link.py).
+    link_pericolosi: int = 0
     # SIC-041: sanzione in più sul phishing ("" = spenta, poi timeout, kick o ban).
     phishing_azione_extra: str = ""
     # AMD-002/003/005: 0 = filtro spento.
@@ -284,6 +286,7 @@ VIOLATION_LUNGHEZZA = "anti_lunghezza"
 VIOLATION_SPOILER = "anti_spoiler"
 VIOLATION_ACCORCIATORI = "anti_accorciatori"
 VIOLATION_SITI_PERICOLOSI = "anti_siti_pericolosi"
+VIOLATION_LINK_PERICOLOSI = "anti_link_pericolosi"  # AMD-030: giudicata da core/controllo_link.py (rete), non da evaluate_message_violations
 VIOLATION_INVITI_ADULTI = "anti_inviti_adulti"
 VIOLATION_RIPETUTI = "anti_ripetuti"
 VIOLATION_CORTO = "anti_corto"
@@ -308,6 +311,7 @@ ALL_VIOLATIONS = (
     VIOLATION_SPOILER,
     VIOLATION_ACCORCIATORI,
     VIOLATION_SITI_PERICOLOSI,
+    VIOLATION_LINK_PERICOLOSI,
     VIOLATION_INVITI_ADULTI,
     VIOLATION_RIPETUTI,
     VIOLATION_CORTO,
@@ -338,7 +342,7 @@ def pulisci_estensioni(testo: str) -> tuple[str, ...]:
 
 # Azioni di partenza quando il server non ha scelto: il phishing viene di solito da un account rubato,
 # quindi oltre a cancellare il messaggio si ferma l'account (timeout).
-AZIONI_DI_PARTENZA = {VIOLATION_PHISHING: ("delete", "mute")}
+AZIONI_DI_PARTENZA = {VIOLATION_PHISHING: ("delete", "mute"), VIOLATION_LINK_PERICOLOSI: ("delete", "warn")}
 AZIONI_DI_PARTENZA_GENERALI = ("delete",)
 
 

@@ -25,6 +25,7 @@ from core.repositories.alert_options_repo import alert_options_repo
 from core.repositories.feed_subscription_repo import feed_subscription_repo
 from core.repositories.picarto_subscription_repo import picarto_subscription_repo
 from core.repositories.youtube_subscription_repo import youtube_subscription_repo
+from core.controllo_link import e_link_pericoloso
 from core.safe_http import url_e_sicuro
 from core.twitch_eventi import twitch_eventi
 from core.ui_base import BaseView
@@ -58,7 +59,7 @@ async def aggiungi_feed(
 ) -> int | None:
     """Crea un feed del server (tetti, indirizzo sicuro). Risponde con il followup: `interaction` deve avere fatto defer."""
     guild = interaction.guild
-    if not await url_e_sicuro(url):
+    if not await url_e_sicuro(url) or await e_link_pericoloso(url):
         await interaction.followup.send(await testo_per(interaction, "alertplat_indirizzo_non_valido"), ephemeral=True)
         return None
     tetto, pieno = await tetto_e_pieno(guild.id, interaction.client)

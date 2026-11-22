@@ -50,6 +50,7 @@ from core.lista_limiti_logic import righe_entro_limite
 from core.nome_logic import normalizza_nome
 from core.premium import PremiumModule, registry
 from core.repositories.saved_embed_repo import saved_embed_repo
+from core.controllo_link import e_link_pericoloso
 from core.safe_http import url_e_sicuro
 
 logger = logging.getLogger("iyokai.embed_builder")
@@ -94,7 +95,7 @@ class EmbedBuilderCog(CogConGruppi, commands.Cog):
     async def _indirizzi_sicuri(dati: DatiEmbed) -> str | None:
         """Ogni indirizzo scritto da un utente passa da safe_http (SEC): None se tutti ammessi."""
         for etichetta, url in (("immagine", dati.image_url), ("miniatura", dati.thumbnail_url)):
-            if url and not await url_e_sicuro(url):
+            if url and (not await url_e_sicuro(url) or await e_link_pericoloso(url)):
                 return f"L'indirizzo della {etichetta} non è ammesso (indirizzo interno o porta non consentita)."
         return None
 

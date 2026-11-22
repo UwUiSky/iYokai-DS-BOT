@@ -204,6 +204,16 @@ Stato di iYokai (misurato, D60): 39 comandi globali di primo livello (tetto D56:
 | Pixabay | cache | ogni ricerca va tenuta in cache 24 ore | [Pixabay API](https://pixabay.com/api/docs/) |
 | Pixabay | immagini | vietato il collegamento diretto permanente; l'indirizzo vale 24 ore | Pixabay API |
 | Pixabay | ricerca | testo fino a 100 caratteri; 100 richieste ogni 60 secondi | Pixabay API |
+| URLhaus (abuse.ch) | lista dei siti con malware, `/downloads/text_online/` | licenza CC0 1.0; scaricata ogni 12 ore, tetto 8 MB | [abuse.ch](https://urlhaus.abuse.ch/api/) — **licenza da ricontrollare all'avvio** |
+| Phishing Army | `phishing_army_blocklist.txt` | CC BY-NC 4.0: **solo uso non commerciale**, con citazione della fonte. Se iYokai diventa a pagamento si spegne (`LINK_LISTE_ATTIVE`) | [phishing.army](https://phishing.army) — da ricontrollare |
+| OpenPhish | `feed.txt` (feed gratuito) | uso non commerciale; aggiornato ogni 12 ore circa; non scaricare più spesso | [openphish.com](https://openphish.com) — da ricontrollare |
+| Phishing.Database | `phishing-domains-ACTIVE.txt` | licenza MIT | [GitHub](https://github.com/mitchellkrogza/Phishing.Database) |
+| AGCOM / ADM | siti oscurati (pirateria) e inibiti (gioco non autorizzato) | dati pubblici; **nessun indirizzo di scarico stabile verificato**: l'owner mette l'indirizzo in `LINK_LISTA_AGCOM_URL` / `LINK_LISTA_ADM_URL` (un dominio per riga). Senza indirizzo la fonte resta spenta | — |
+| Google Safe Browsing v4 | Lookup | gratuito per uso non commerciale, circa 10.000 richieste al giorno; nostro tetto 9.000 al giorno, 60 al minuto | [Google](https://developers.google.com/safe-browsing/v4) — da ricontrollare |
+| Cloudflare Intel | `intel/domain` | quota larga; nostro tetto 30 al minuto, 3.000 al giorno | Cloudflare API — da ricontrollare |
+| VirusTotal | `domains/{dominio}` | piano gratuito: 4 al minuto, 500 al giorno, **vietato l'uso commerciale**; nostro tetto 4 al minuto, 450 al giorno | [VirusTotal](https://docs.virustotal.com/reference/public-vs-premium-api) — da ricontrollare |
+| PhishTank | — | iscrizioni nuove chiuse: **non usato** (D112) | — |
+| URLScan.io | — | analisi lente e pubbliche (il link verrebbe pubblicato): **non usato** (D112) | — |
 | RSS | cortesia | nessun limite scritto: usare `User-Agent` e `ETag` | buona pratica |
 | RedGifs (istanza NSFW) | API | gettone temporaneo (`/v2/auth/temporary`), ricerca `/v2/gifs/search`; quota non pubblicata. Nostro uso: cache 10 minuti per tag (200 tag), gettone tenuto 12 ore, 6 anteprime al massimo per pubblicazione, 8 MB per anteprima | **a memoria**, da ricontrollare (rete del giro senza accesso) |
 | RedGifs | condizioni d'uso | solo elementi con `verified` (creatore con età e consenso controllati); link alla pagina della fonte, anteprima come allegato con spoiler | da ricontrollare con le condizioni della fonte |

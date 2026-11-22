@@ -65,3 +65,6 @@ config/nsfw_fornitori.env
 
 # Collaudo: stato e storico delle prove dal vivo (scripts/collaudo.py)
 collaudo/
+
+# Liste di siti pericolosi scaricate (AMD-030)
+data/cache_liste/
