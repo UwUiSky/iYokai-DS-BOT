@@ -3558,5 +3558,8 @@
   "verify_alt_ruolo_non_permesso": "Per scegliere il ruolo da avvisare serve il permesso «Menziona tutti», e non può essere @everyone.",
   "verify_codice_nuovo_non_piu": "Non puoi chiedere un altro codice: premi «Verify» per ricominciare.",
   "verify_captcha_colore_non_valido": "Il colore va scritto come #3a2a2a ed è troppo chiaro se non si legge sullo sfondo: scegline uno più scuro.",
-  "casesystem_statistiche_moderatore": "**Per tipo:** {tipi}\n**Ultimi 7 giorni:** {g7} · **30 giorni:** {g30} · **90 giorni:** {g90}"
+  "casesystem_statistiche_moderatore": "**Per tipo:** {tipi}\n**Ultimi 7 giorni:** {g7} · **30 giorni:** {g30} · **90 giorni:** {g90}",
+  "automod_emergenza_soglia_minima": "La soglia delle menzioni parte da 5 (0 per spegnere).",
+  "automod_emergenza_serve_gestire": "Il blocco chiude tutto il server: serve il permesso «Gestire il server».",
+  "automod_emergenza_stato": "Menzioni: {menzioni}. Modalità panico: {panico}."
 }

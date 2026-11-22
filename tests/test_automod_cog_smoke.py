@@ -50,6 +50,7 @@ async def test_automod_cog_si_carica_correttamente():
         "messaggi",
         "contenuto",
         "canale-media",
+        "emergenza",
     }
     assert {c.name for c in esenzioni.commands} == {
         "channel-add",

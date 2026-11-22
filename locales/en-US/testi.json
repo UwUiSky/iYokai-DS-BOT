@@ -3558,5 +3558,8 @@
   "verify_alt_ruolo_non_permesso": "To pick the role to alert you need the \"Mention Everyone\" permission, and it cannot be @everyone.",
   "verify_codice_nuovo_non_piu": "You cannot ask for another code: press \"Verify\" to start again.",
   "verify_captcha_colore_non_valido": "Write the colour as #3a2a2a; if it is too light to read on the background, pick a darker one.",
-  "casesystem_statistiche_moderatore": "**By type:** {tipi}\n**Last 7 days:** {g7} · **30 days:** {g30} · **90 days:** {g90}"
+  "casesystem_statistiche_moderatore": "**By type:** {tipi}\n**Last 7 days:** {g7} · **30 days:** {g30} · **90 days:** {g90}",
+  "automod_emergenza_soglia_minima": "The mention threshold starts at 5 (0 to turn it off).",
+  "automod_emergenza_serve_gestire": "The lockdown closes the whole server: the \"Manage Server\" permission is needed.",
+  "automod_emergenza_stato": "Mentions: {menzioni}. Panic mode: {panico}."
 }

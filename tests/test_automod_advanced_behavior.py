@@ -37,6 +37,7 @@ class _FakeGuild:
     def __init__(self, guild_id: int, owner_id: int = 999999) -> None:
         self.id = guild_id
         self.owner_id = owner_id
+        self.name = "Server di prova"
         self.me = None
 
     def get_channel(self, channel_id: int):

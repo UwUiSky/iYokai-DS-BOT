@@ -124,6 +124,7 @@ from core.automod_decisioni import BottoneDecisione
 from core.automod_innesco_logic import innesco_scatta, parametri_soglia_canale
 from core import automod_azioni as azioni_motore, automod_contatori as contatori
 from core.scheduler import scheduler
+from core import automod_emergenza as emergenza_logic
 from core.automod_azioni import Bersaglio, e_protetto, esegui_azioni, registra_messaggio
 from core.automod_regole_logic import azioni_dai_nomi_vecchi, condizioni_ok
 from core.automod_parole_logic import MessaggiBrevi
@@ -1282,6 +1283,58 @@ class AutomodCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo(
         "admin-filtri",
+        nome="emergenza",
+        descrizione="Blocco dei canali per troppe menzioni e modalità panico dell'AutoMod.",
+    )
+    @app_commands.describe(
+        menzioni_soglia="Blocca i canali se il server riceve più di N menzioni nella finestra (0 = spento, da 5 a 500)",
+        menzioni_secondi="Finestra delle menzioni, in secondi (da 5 a 300)",
+        menzioni_minuti="Dopo quanti minuti il blocco si toglie da solo (da 1 a 1440)",
+        panico="Panico: dopo un'ondata di violazioni, gli account sospetti che violano vanno in timeout",
+        panico_utenti="Persone diverse che violano una regola in un minuto per accendere il panico (da 3 a 50)",
+    )
+    async def emergenza(
+        self,
+        interaction: discord.Interaction,
+        menzioni_soglia: app_commands.Range[int, 0, 500] | None = None,
+        menzioni_secondi: app_commands.Range[int, 5, 300] | None = None,
+        menzioni_minuti: app_commands.Range[int, 1, 1440] | None = None,
+        panico: bool | None = None,
+        panico_utenti: app_commands.Range[int, 3, 50] | None = None,
+    ) -> None:
+        """AMD-057, AMD-071. Il blocco passa dal servizio del blocco totale (stato salvato, si riapre com'era)."""
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        guild = interaction.guild
+        if menzioni_soglia and menzioni_soglia < 5:
+            await interaction.response.send_message(await testo_per(interaction, "automod_emergenza_soglia_minima"), ephemeral=True)
+            return
+        if menzioni_soglia and not (
+            interaction.user.id == guild.owner_id or interaction.user.guild_permissions.manage_guild
+        ):  # il blocco chiude tutto il server: lo accende chi potrebbe farlo da sé con `/mod-canali blocco attiva`
+            await interaction.response.send_message(await testo_per(interaction, "automod_emergenza_serve_gestire"), ephemeral=True)
+            return
+        attuale = await emergenza_logic.leggi_config(guild.id)
+        for chiave, valore in (
+            ("menzioni_soglia", menzioni_soglia), ("menzioni_secondi", menzioni_secondi), ("menzioni_minuti", menzioni_minuti),
+            ("panico", panico), ("panico_utenti", panico_utenti),
+        ):
+            if valore is not None:
+                attuale[chiave] = valore
+        await db.set_guild_setting(guild.id, emergenza_logic.SETTING_EMERGENZA, attuale, changed_by=interaction.user.id)
+        attuale = emergenza_logic.config_pulita(attuale)
+        await interaction.response.send_message(
+            await testo_per(
+                interaction, "automod_emergenza_stato",
+                menzioni=(f"più di {attuale['menzioni_soglia']} in {attuale['menzioni_secondi']}s, blocco di {attuale['menzioni_minuti']} min"
+                          if attuale["menzioni_soglia"] else "spento"),
+                panico=(f"acceso ({attuale['panico_utenti']} persone in un minuto)" if attuale["panico"] else "spento"),
+            ),
+            ephemeral=True,
+        )
+
+    @comando_di_gruppo(
+        "admin-filtri",
         nome="contenuto",
         descrizione="Embed e inoltri controllati dai filtri; tipi di file vietati.",
     )
@@ -1793,6 +1846,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
 
         if solo_embed and not settings.config.controlla_embed:
             return
+        emergenza_config = await emergenza_logic.leggi_config(message.guild.id)
+        if not modificato and not solo_embed and not esente:
+            await emergenza_logic.dopo_messaggio(message, emergenza_config)  # AMD-057
         segnali = build_message_signals(
             message, settings.config, conta_nel_tempo=not modificato, solo_embed=solo_embed
         )
@@ -1820,6 +1876,8 @@ class AutomodCog(CogConGruppi, commands.Cog):
                     return
         if not solo_embed:  # AMD-011/012/016/025: le regole personali con un innesco sul testo
             violazioni = (*violazioni, *await self._personali_scattate(message, regole, segnali.content, modificato))
+        if violazioni and not modificato and not solo_embed:
+            await emergenza_logic.dopo_violazione(message, emergenza_config, esente)  # AMD-071
         if not violazioni:
             return
 
