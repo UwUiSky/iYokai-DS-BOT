@@ -23,7 +23,9 @@ from core.animali_logic import (
 )
 from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
 from core.i18n import testo_per
+from core.animali_avanzati_logic import bonus_vendita, capienza, pausa_pesca, pesca_con
 from core.repositories.animali_repo import animali_repo
+from core.repositories.pesca_repo import pesca_repo
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.repositories.rischio_repo import rischio_repo
 
@@ -132,10 +134,12 @@ class AnimaliCog(CogConGruppi, commands.Cog):
         if await _comando_rifiutato(interaction):
             return
         g, u = interaction.guild.id, interaction.user.id
-        specie = pesca(RNG, luogo.value)
-        esito = await animali_repo.pesca(g, u, datetime.now(timezone.utc).date(), specie, PAUSA_PESCA)
+        profilo = await pesca_repo.profilo(g, u)  # ECO-135/137: abilità, esche e canna cambiano pausa, deposito e probabilità
+        pausa, cap = pausa_pesca(set(profilo.abilita), profilo.canna), capienza(set(profilo.abilita))
+        specie = pesca_con(RNG, luogo.value, set(profilo.abilita), profilo.esche > 0)
+        esito = await animali_repo.pesca(g, u, datetime.now(timezone.utc).date(), specie, pausa, capienza=cap, usa_esca=profilo.esche > 0)
         if esito is None:
-            resto = await rischio_repo.pausa_rimasta(g, u, "pesca", PAUSA_PESCA)
+            resto = await rischio_repo.pausa_rimasta(g, u, "pesca", pausa)
             chiave = "rsk_pausa" if resto > 0 else "pes_pieno"
             await interaction.response.send_message(await testo_per(interaction, chiave, tempo=_format_seconds(max(1, resto))), ephemeral=True)
             return
@@ -148,7 +152,8 @@ class AnimaliCog(CogConGruppi, commands.Cog):
     async def vendi(self, interaction: discord.Interaction) -> None:
         if await _comando_rifiutato(interaction):
             return
-        n, monete = await animali_repo.vendi_pesci(interaction.guild.id, interaction.user.id)
+        profilo = await pesca_repo.profilo(interaction.guild.id, interaction.user.id)
+        n, monete = await animali_repo.vendi_pesci(interaction.guild.id, interaction.user.id, bonus_vendita(set(profilo.abilita)))
         if n == 0:
             await interaction.response.send_message(await testo_per(interaction, "pes_vuoto"), ephemeral=True)
             return

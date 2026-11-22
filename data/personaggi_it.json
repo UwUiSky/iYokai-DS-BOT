@@ -1,0 +1,71 @@
+{
+ "_nota": "Personaggi con una domanda al giorno (#125, ECO-142). g = indice della risposta giusta, regalo in monete.",
+ "personaggi": [
+  {
+   "nome": "Haru il pescatore",
+   "saluto": "Il fiume oggi è calmo. Dimmi: quale pesce, nella leggenda, diventa drago saltando la cascata?",
+   "r": [
+    "La carpa",
+    "Il luccio",
+    "L'anguilla"
+   ],
+   "g": 0,
+   "regalo": 25
+  },
+  {
+   "nome": "Obaa la tessitrice",
+   "saluto": "Il mio telaio canta. Quale filo non si spezza mai nelle fiabe giapponesi?",
+   "r": [
+    "Il filo rosso del destino",
+    "Il filo d'argento",
+    "Il filo di ferro"
+   ],
+   "g": 0,
+   "regalo": 30
+  },
+  {
+   "nome": "Kuro il gatto del tempio",
+   "saluto": "Miau. Quante code ha una volpe kitsune al massimo della sua forza?",
+   "r": [
+    "Tre",
+    "Nove",
+    "Cento"
+   ],
+   "g": 1,
+   "regalo": 35
+  },
+  {
+   "nome": "Sora la viaggiatrice",
+   "saluto": "Ho girato il mondo. Come si chiama la stagione dei fiori di ciliegio?",
+   "r": [
+    "Hanami",
+    "Obon",
+    "Tanabata"
+   ],
+   "g": 0,
+   "regalo": 25
+  },
+  {
+   "nome": "Mamoru il custode",
+   "saluto": "Custodisco le porte rosse dei santuari. Come si chiamano?",
+   "r": [
+    "Torii",
+    "Shoji",
+    "Fusuma"
+   ],
+   "g": 0,
+   "regalo": 30
+  },
+  {
+   "nome": "Yuki la cuoca",
+   "saluto": "Il mio brodo è il migliore. Quale alga si usa per il dashi?",
+   "r": [
+    "Kombu",
+    "Nori",
+    "Wakame"
+   ],
+   "g": 0,
+   "regalo": 30
+  }
+ ]
+}

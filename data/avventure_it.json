@@ -1,0 +1,98 @@
+{
+ "_nota": "Avventura a scelte (#125, ECO-147). Ogni nodo ha testo e scelte [etichetta, nodo]; i finali danno monete e gettoni.",
+ "inizio": "inizio",
+ "nodi": {
+  "inizio": {
+   "t": "Una nebbia sottile copre il sentiero del bosco. Tra gli alberi brilla una lanterna e senti un fruscio di code.",
+   "s": [
+    [
+     "Seguo la lanterna",
+     "lanterna"
+    ],
+    [
+     "Mi addentro nel bosco buio",
+     "buio"
+    ]
+   ]
+  },
+  "lanterna": {
+   "t": "La lanterna è tenuta da una piccola kitsune. Ti chiede un favore: riportare un ventaglio perduto al santuario.",
+   "s": [
+    [
+     "Accetto",
+     "santuario"
+    ],
+    [
+     "Rifiuto con gentilezza",
+     "fine_pace"
+    ]
+   ]
+  },
+  "buio": {
+   "t": "Nel buio incontri un tanuki che finge di essere un sasso. Ti propone un indovinello in cambio del passaggio.",
+   "s": [
+    [
+     "Rispondo «il vento»",
+     "tanuki_ok"
+    ],
+    [
+     "Rispondo «la luna»",
+     "tanuki_no"
+    ]
+   ]
+  },
+  "santuario": {
+   "t": "Al santuario il custode sorride: il ventaglio apparteneva alla dea del vento. Ti offre una scelta come ringraziamento.",
+   "s": [
+    [
+     "Prendo la benedizione",
+     "fine_benedizione"
+    ],
+    [
+     "Prendo il sacchetto di monete",
+     "fine_monete"
+    ]
+   ]
+  },
+  "tanuki_ok": {
+   "t": "Il tanuki ride e ti lascia passare. In fondo al sentiero trovi un ruscello con un piccolo forziere.",
+   "s": [
+    [
+     "Apro il forziere",
+     "fine_monete"
+    ],
+    [
+     "Lo lascio al ruscello",
+     "fine_pace"
+    ]
+   ]
+  },
+  "tanuki_no": {
+   "t": "Il tanuki scuote la testa ma ti lascia andare con una foglia magica come consolazione.",
+   "s": [
+    [
+     "Prendo la foglia",
+     "fine_pace"
+    ]
+   ]
+  },
+  "fine_pace": {
+   "t": "Torni a casa in pace, con una bella storia da raccontare.",
+   "fine": true,
+   "monete": 10,
+   "gettoni": 0
+  },
+  "fine_monete": {
+   "t": "Torni a casa con un sacchetto che tintinna.",
+   "fine": true,
+   "monete": 60,
+   "gettoni": 0
+  },
+  "fine_benedizione": {
+   "t": "La dea del vento ti benedice: senti il passo leggero e un gettone d'argento nella tasca.",
+   "fine": true,
+   "monete": 30,
+   "gettoni": 1
+  }
+ }
+}

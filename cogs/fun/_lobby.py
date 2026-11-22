@@ -19,8 +19,12 @@ NESSUNA_MENZIONE = discord.AllowedMentions.none()
 
 
 class VistaLobby(BaseView):
-    def __init__(self, host_id: int, minimo: int, massimo: int, intestazione: str, etichette: tuple[str, str, str], secondi: int = 45) -> None:
+    def __init__(
+        self, host_id: int, minimo: int, massimo: int, intestazione: str, etichette: tuple[str, str, str], secondi: int = 45,
+        verifica=None,
+    ) -> None:
         super().__init__(timeout=secondi)
+        self.verifica = verifica  # facoltativa: async (interaction) -> chiave del testo di rifiuto, o None se può entrare
         self.giocatori: list[int] = [host_id]
         self.host_id, self.minimo, self.massimo, self.intestazione = host_id, minimo, massimo, intestazione
         self.pronta = asyncio.Event()
@@ -37,6 +41,11 @@ class VistaLobby(BaseView):
 
     @discord.ui.button(style=discord.ButtonStyle.success)
     async def entra(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        if self.verifica is not None:
+            rifiuto = await self.verifica(interaction)  # prima dei controlli: dopo questo punto non ci sono await fino al segno
+            if rifiuto:
+                await interaction.response.send_message(await testo_per(interaction, rifiuto), ephemeral=True)
+                return
         if interaction.user.id in self.giocatori:
             await interaction.response.send_message(await testo_per(interaction, "gioco_lobby_gia"), ephemeral=True)
         elif len(self.giocatori) >= self.massimo:
@@ -73,11 +82,13 @@ class VistaLobby(BaseView):
         self.pronta.set()
 
 
-async def apri_lobby(interaction: discord.Interaction, minimo: int, massimo: int, chiave_intro: str, secondi: int, **kw) -> list[int] | None:
+async def apri_lobby(
+    interaction: discord.Interaction, minimo: int, massimo: int, chiave_intro: str, secondi: int, verifica=None, **kw
+) -> list[int] | None:
     """Mostra la sala d'attesa (dopo un defer) e aspetta. Restituisce i giocatori, None se la partita non parte."""
     etichette = tuple([await testo_per(interaction, k, pubblica=True) for k in ("gioco_lobby_entra", "gioco_lobby_esci", "gioco_lobby_avvia")])
     intro = await testo_per(interaction, chiave_intro, pubblica=True, **kw)
-    vista = VistaLobby(interaction.user.id, minimo, massimo, intro, etichette, secondi)  # type: ignore[arg-type]
+    vista = VistaLobby(interaction.user.id, minimo, massimo, intro, etichette, secondi, verifica)  # type: ignore[arg-type]
     await interaction.followup.send(await vista.testo(interaction), view=vista, allowed_mentions=NESSUNA_MENZIONE)
     await vista.pronta.wait()
     return list(vista.giocatori) if vista.avviata else None

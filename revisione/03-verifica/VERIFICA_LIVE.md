@@ -1890,3 +1890,17 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] AI-001 — `/assistente scrivi richiesta:una poesia sulla luna`. Risultato atteso: risposta con avviso «Scritto dall'AI», nessuna menzione vera anche se il testo contiene @everyone.
 - [ ] AI-017 — `/admin-ai interruttore funzione:scrivi acceso:No`, poi `/assistente scrivi`: risposta «funzione spenta»; `/assistente traduci` continua a funzionare.
 - [ ] AI-004 — `/assistente immagina` con un fornitore vero: l'immagine arriva come PNG sotto 9,5 MiB.
+
+## Economia e giochi (#125, r6eco)
+- [ ] `ECO-075` — `/admin-negozio rotazione quanti:2` e `rotazione oggetto` su 4 oggetti: `/monete shop list` mostra solo 2 oggetti a rotazione, cambiano il giorno dopo; comprare uno nascosto dice «non in vetrina».
+- [ ] `ECO-076` — `/admin-negozio offerta lampo oggetto sconto:50 minuti:5 usi:1`: appare il messaggio col bottone; il primo clic paga metà, il secondo dice che il prezzo è cambiato; `/monete shop list` mostra il prezzo barrato. Dopo un riavvio il bottone non funziona più, ma `/monete shop buy` sì finché l'offerta dura.
+- [ ] `ECO-078` — `/admin-negozio ricetta crea` poi `/monete shop ricette` e `/monete shop crea`: gli ingredienti spariscono e arriva il risultato; con un ingrediente in meno non cambia niente.
+- [ ] `ECO-091/101-103/105/110-112` — `/sala roulette|corsa|lotta|bomba|carte|bingo puntata:10` con 2-3 account: la sala si riempie, la puntata esce a tutti alla partenza, solo i giocatori premono i bottoni, il piatto va al vincitore. Con un solo giocatore la partita non parte e nessuna moneta si muove. Riavvio a metà partita: le puntate tornano.
+- [ ] `ECO-113/114` — `/sala impiccato` e `/sala quiz`: premio in monete con il tetto di 300 al giorno per tipo.
+- [ ] `ECO-074/120` — `/mercato vendi|elenco|compra|offri|accetta|ritira|dona|fondo` con due account: oggetto e monete cambiano mano insieme; un blocco personale impedisce lo scambio; `/admin-negozio fondo dai` consegna dal fondo.
+- [ ] `ECO-039/152` — `/admin-negozio guadagno crea` poi `/monete rischio guadagna nome:`; `/level righe scelta:banca,monete` mostra solo quelle righe in quell'ordine.
+- [ ] `ECO-125..129` — `/fun animali sitter|lotta|incontro|abbandona|adozioni|adotta` con due account: incontro accettato dal secondo, cucciolo nella coda, adozione solo con un posto libero.
+- [ ] `ECO-135..141` — `/fun pesca abilita|attrezzi|stagione|rete|acquario|storico`: perle dopo qualche lancio, esca e rete comprate, rete riscossa dopo un'ora, premio del pass.
+- [ ] `ECO-018/027/045/087/142/146/147` — `/mondo diretta|vacanza|casa|fattoria|personaggio|avventura`: un tentativo al giorno per personaggio, gettoni per i mobili, la vacanza non fa perdere la serie del daily.
+- [ ] `ECO-083..085` — `/mondo borsa prezzi|scambia|ordine|ordini` e `/mondo autovendita`: commissione del 3%, un ordine scatta all'ora successiva, la vendita automatica agisce nel giro orario.
+- [ ] `ECO-054/056/144/145` — `/admin-negozio evento codice|bonus|casuali|server`: il primo che prende vince; il bonus si vede in `/monete work`.
