@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titolo %}Ticket · {{ guild.name }} · iYokai Panel{% endblock %}
+{% block corpo %}
+<h1>Ticket aperti · {{ guild.name }}</h1>
+<p><a href="/server/{{ guild.id }}">&larr; {{ guild.name }}</a></p>
+<p class="tenue">Vedi solo i ticket dove fai parte dello staff. Il testo dei ticket non si salva: da qui si risponde, la conversazione resta su Discord.</p>
+{% if ticket %}
+<table>
+<tr><th>#</th><th>Categoria</th><th>Aperto (UTC)</th><th></th></tr>
+{% for t in ticket %}
+<tr><td>{{ t.ticket_number }}</td><td>{{ t.category_label or "—" }}</td><td>{{ t.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+<td><a href="/server/{{ guild.id }}/ticket/{{ t.id }}">Rispondi</a></td></tr>
+{% endfor %}
+</table>
+{% else %}<p>Nessun ticket aperto dove puoi rispondere.</p>{% endif %}
+{% endblock %}
