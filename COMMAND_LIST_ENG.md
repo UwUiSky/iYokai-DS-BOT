@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 01:33 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 02:22 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 1028 commands in 51 categories.**
+**Total: 1031 commands in 51 categories.**
 
 ## Admin: AI
 
@@ -242,6 +242,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 01:3
 - **`/admin-filters anti-spam-sticker`** — Configures sticker anti-spam (too many stickers in a short time).
 - **`/admin-filters anti-zalgo`** — Turns anti-zalgo on or off (text with abnormal diacritics).
 - **`/admin-filters content`** — Embeds and forwards checked by filters; banned file types.
+- **`/admin-filters emergency`** — Lockdown for too many mentions and the AutoMod panic mode.
 - **`/admin-filters invites`** — Turns the automatic Discord invite block on or off.
 - **`/admin-filters media-channel`** — Media-only channel, no attachments or normal.
 - **`/admin-filters messages`** — Repeated, too short, links and mentions counted over time (0 = off).
@@ -927,6 +928,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 01:3
 - **`/mod-sanctions bulk warn`** — Warns several members at once.
 - **`/mod-sanctions mute`** — Mutes a member with a dedicated role (alternative to timeout).
 - **`/mod-sanctions nick`** — Changes or resets a member's nickname.
+- **`/mod-sanctions options actions`** — Gives a role the permission for one moderation action only (or removes it).
+- **`/mod-sanctions options alerts`** — Writes the sanction notice in a channel instead of a private message.
 - **`/mod-sanctions options dm`** — Choose whether the user gets a DM for a type of action.
 - **`/mod-sanctions options mute-role`** — Pick or create the mute role and put the block back on every channel.
 - **`/mod-sanctions options set`** — Ban message cleanup, timeout, external cases, alerts. Empty: shows the options.

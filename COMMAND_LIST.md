@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:33 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 02:22 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 1028 comandi in 51 categorie.**
+**Totale: 1031 comandi in 51 categorie.**
 
 ## Admin: AI
 
@@ -243,6 +243,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:
 - **`/admin-filtri anti-zalgo`** — Attiva o disattiva l'anti-zalgo (testo con segni diacritici anomali).
 - **`/admin-filtri canale-media`** — Canale solo media, senza allegati o normale.
 - **`/admin-filtri contenuto`** — Embed e inoltri controllati dai filtri; tipi di file vietati.
+- **`/admin-filtri emergenza`** — Blocco dei canali per troppe menzioni e modalità panico dell'AutoMod.
 - **`/admin-filtri forma-testo`** — Limiti sulla forma del messaggio: a-capo, lunghezza, spoiler (0 = spento).
 - **`/admin-filtri invites`** — Attiva o disattiva il blocco automatico degli inviti Discord.
 - **`/admin-filtri messaggi`** — Ripetuti, troppo corti, link e menzioni contati nel tempo (0 = spento).
@@ -927,6 +928,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 01:
 - **`/mod-sanzioni massa warn`** — Assegna un warn a più membri insieme.
 - **`/mod-sanzioni mute`** — Silenzia un membro con un ruolo dedicato (alternativa al timeout).
 - **`/mod-sanzioni nick`** — Cambia o azzera il soprannome di un membro.
+- **`/mod-sanzioni opzioni avvisi`** — Scrive l'avviso delle sanzioni in un canale invece che nel messaggio privato.
+- **`/mod-sanzioni opzioni azioni`** — Dà a un ruolo il permesso di una sola azione di moderazione (o lo toglie).
 - **`/mod-sanzioni opzioni dm`** — Sceglie se l'utente riceve un DM per un tipo di azione.
 - **`/mod-sanzioni opzioni imposta`** — Messaggi al ban, timeout, casi esterni, avvisi. Vuoto: mostra le opzioni.
 - **`/mod-sanzioni opzioni muto`** — Sceglie o crea il ruolo del mute e rimette il blocco su tutti i canali.

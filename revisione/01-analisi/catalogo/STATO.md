@@ -9,14 +9,14 @@ Generato da `scripts/stato_catalogo.py` il 2026-11-22. Non modificare a mano: ri
 
 | Area | Issue | Totale | Fatte | Solo registri | Non trovate | Scartate |
 |---|---|---|---|---|---|---|
-| 01-moderazione | #115 chiusa | 116 | 100 | 4 | 12 | 0 |
-| 02-automod | #116 chiusa | 75 | 71 | 0 | 4 | 0 |
+| 01-moderazione | #115 chiusa | 116 | 102 | 12 | 2 | 0 |
+| 02-automod | #116 chiusa | 75 | 73 | 1 | 1 | 0 |
 | 03-sicurezza-antiraid-antinuke | #117 aperta | 46 | 43 | 3 | 0 | 0 |
-| 04-verifica | #118 chiusa | 31 | 22 | 0 | 9 | 0 |
+| 04-verifica | #118 chiusa | 31 | 29 | 0 | 2 | 0 |
 | 05-log | #119 aperta | 30 | 29 | 1 | 0 | 0 |
 | 06-ticket-e-modmail | #120 chiusa | 88 | 52 | 3 | 33 | 0 |
 | 07-backup-e-restore | #121 chiusa | 41 | 18 | 0 | 23 | 0 |
-| 08-configurazione-pannello-premium | #122 aperta | 46 | 35 | 10 | 1 | 0 |
+| 08-configurazione-pannello-premium | #122 aperta | 46 | 36 | 9 | 1 | 0 |
 | 09-benvenuto-e-ruoli | #123 aperta | 113 | 111 | 2 | 0 | 0 |
 | 10-livelli-e-rank | #124 aperta | 91 | 59 | 32 | 0 | 0 |
 | 11-economia-e-giochi | #125 aperta | 161 | 111 | 0 | 50 | 0 |
@@ -27,15 +27,15 @@ Generato da `scripts/stato_catalogo.py` il 2026-11-22. Non modificare a mano: ri
 | 16-statistiche | #130 aperta | 61 | 61 | 0 | 0 | 0 |
 | 17-divertimento-e-immagini | #131 chiusa | 139 | 41 | 7 | 91 | 0 |
 | 18-ai | #132 chiusa | 25 | 15 | 5 | 5 | 0 |
-| **Totale** | | **1452** | **1119** | **95** | **236** | **2** |
+| **Totale** | | **1452** | **1131** | **103** | **216** | **2** |
 
-Nelle sole aree con l'issue aperta: 708 voci, 582 fatte, 67 solo nei registri, **57 da fare**, 2 scartate.
+Nelle sole aree con l'issue aperta: 708 voci, 583 fatte, 66 solo nei registri, **57 da fare**, 2 scartate.
 
 ## Voci non trovate, per area
 
-- **01-moderazione** (#115, chiusa: controllare a mano), 12: MOD-016, MOD-040, MOD-051, MOD-053, MOD-060, MOD-091, MOD-092, MOD-094, MOD-095, MOD-096, MOD-103, MOD-104
-- **02-automod** (#116, chiusa: controllare a mano), 4: AMD-030, AMD-031, AMD-057, AMD-071
-- **04-verifica** (#118, chiusa: controllare a mano), 9: VER-002, VER-003, VER-006, VER-007, VER-018, VER-023, VER-025, VER-027, VER-028
+- **01-moderazione** (#115, chiusa: controllare a mano), 2: MOD-103, MOD-104
+- **02-automod** (#116, chiusa: controllare a mano), 1: AMD-030
+- **04-verifica** (#118, chiusa: controllare a mano), 2: VER-025, VER-027
 - **06-ticket-e-modmail** (#120, chiusa: controllare a mano), 33: TKT-001, TKT-002, TKT-003, TKT-004, TKT-005, TKT-010, TKT-011, TKT-012, TKT-013, TKT-014, TKT-015, TKT-016, TKT-036, TKT-049, TKT-059, TKT-060, TKT-061, TKT-062, TKT-065, TKT-066, TKT-069, TKT-072, TKT-076, TKT-077, TKT-078, TKT-080, TKT-081, TKT-082, TKT-083, TKT-084, TKT-085, TKT-086, TKT-087
 - **07-backup-e-restore** (#121, chiusa: controllare a mano), 23: BKP-001, BKP-002, BKP-003, BKP-004, BKP-005, BKP-006, BKP-007, BKP-008, BKP-011, BKP-012, BKP-017, BKP-020, BKP-021, BKP-022, BKP-023, BKP-028, BKP-029, BKP-030, BKP-031, BKP-038, BKP-039, BKP-040, BKP-041
 - **08-configurazione-pannello-premium** (#122, aperta), 1: CFG-032

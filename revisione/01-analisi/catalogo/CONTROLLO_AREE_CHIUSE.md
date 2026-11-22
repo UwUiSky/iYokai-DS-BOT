@@ -121,7 +121,7 @@ Giro r2mod (issue #115, #116, #118). «Corretta» = fa ciò che dice il catalogo
 | MOD-051 | no | - | NON FATTA: serve `message_content` e un file allegato al caso; in parte coperta da `/mod-canali esporta-chat` | resta aperta |
 | MOD-052 | sì (il passo «moderazione» di `/admin-bot setup` crea `#mod-log` riservato) | sì | segnata | tests/test_setup_wizard.py::test_il_canale_modlog_si_crea_riservato_e_si_collega |
 | MOD-053 | no | - | NON FATTA (meglio dal pannello web) | resta aperta |
-| MOD-060 | no | - | NON FATTA: tipo di uscita «avvisi sanzione» nel router | resta aperta |
+| MOD-060 | no | sì | realizzata: `/mod-sanzioni opzioni avvisi canale:`; l'avviso va nel canale con la menzione della sola persona; senza permessi del bot o per un ban per ID resta il DM; `dm: no` spegne anche l'avviso | cogs/moderation/_shared._avviso_in_canale, cogs/moderation/opzioni.py; tests/test_catalogo_r2mod_avvisi.py |
 | MOD-061 | sì (`/mod-sanzioni opzioni dm testo:` + bottone «Fai appello» nel DM) | sì | segnata | tests/test_moderation_appelli.py::test_dm_di_chi_ha_un_ban_manuale_riceve_il_bottone; tests/test_catalogo_r2mod_appelli.py |
 | MOD-062 | sì (`/mod-ban appelli canale`; non passa dal router dei canali) | sì | segnata | tests/test_moderation_appelli.py::test_comandi_appelli_canale_ed_elenco |
 | MOD-063 | no | sì | realizzata: `/mod-ban appelli timeout`; accettare toglie il timeout solo se chi decide sta sopra l'utente; «Moderare i membri» decide solo i timeout | ban_appeal.py; tests/test_catalogo_r2mod_appelli.py |
@@ -145,8 +145,8 @@ Giro r2mod (issue #115, #116, #118). «Corretta» = fa ciò che dice il catalogo
 |---|---|---|---|---|
 | AMD-030 | no | - | non fattibile ora, D104: serve una chiave API con quota (Google Safe Browsing) da scrivere in LIMITI.md | DECISIONI.md D104 |
 | AMD-031 | no | - | NON FATTA (liste di siti per adulti e malware in `core/phishing_logic.py`) | resta aperta |
-| AMD-057 | no | - | NON FATTA (blocco automatico per troppe menzioni) | resta aperta |
-| AMD-071 | no | - | NON FATTA (modalità panico dell'AutoMod) | resta aperta |
+| AMD-057 | no | sì | realizzata: `/admin-filtri emergenza menzioni_soglia: menzioni_secondi: menzioni_minuti:` blocca i canali (servizio del blocco totale, si riapre da solo) alla soglia; bot e amministratori non contano, un blocco ogni 10 minuti al massimo; accenderla serve «Gestire il server» | core/automod_emergenza.py, cogs/automod/automod.py; tests/test_catalogo_r2mod_emergenza.py |
+| AMD-071 | no | sì | realizzata: `/admin-filtri emergenza panico: panico_utenti:` a N persone che violano una regola in un minuto il panico dura 10 minuti; in panico un account sospetto (giovane o senza avatar) che viola ancora va in timeout di 10 minuti, con caso; mai protetti, esenti o sopra il bot | core/automod_emergenza.py; tests/test_catalogo_r2mod_emergenza.py |
 
 ## 04-verifica
 
