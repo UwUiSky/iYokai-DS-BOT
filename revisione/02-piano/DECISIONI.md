@@ -1407,3 +1407,35 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
 - Le prove si leggono da `VERIFICA_LIVE.md`. Superata: non si ripropone e la riga diventa `- [x]` (`--non-modificare` per non toccare il file). Errore: issue via API REST (`urllib`, nessuna libreria nuova) con etichette `verifica-live` e `bug`; se manca il token o la rete, l'errore resta salvato e si invia con `--invia-in-sospeso`.
 - Stato in `collaudo/stato.json`, storico in `collaudo/storico.jsonl` (cartella in `.gitignore`). Il token non è mai stampato né salvato; il testo dell'owner è troncato a 4000 caratteri.
 - Il token deve avere solo `Issues: Read and write` sul repository. Test e codice delle prove non si cancellano mai.
+
+## D111 — Decisioni dell'owner sulle 19 voci senza codice (22/11/2026, VINCOLANTI)
+
+- **FUN-068, FUN-070:** esistono già in `/web scheda`; si segna solo il codice.
+- **UTL-226 (pulizia della configurazione da canali e ruoli cancellati):** sì, ma con **7 giorni di ritardo**. Un server colpito da un nuke deve poter ripristinare tutto. Se dopo 7 giorni canali o ruoli non sono tornati, si pulisce.
+- **UTL-228 (azzerare tutti i dati del bot per un server):** sì, con **30 giorni di ritardo**. Copre account dell'owner rubati e server nukati, perché l'assistenza di Discord è lenta. Fino a quel momento i dati restano e la richiesta si può annullare.
+- **CFG-032 (strumenti del bot con marchio proprio: risincronizza i comandi, registro degli errori):** sì.
+- **FUN-078 (fermare il suono in corso):** sì. Lo ferma chi l'ha fatto partire, oppure chiunque se non c'è più nessuno che lo controlla (stessa logica dei brani della musica).
+- **FUN-019 (battaglia testuale a turni tra due utenti):** sì.
+- **AMD-030 e sicurezza dei link (obiettivo: nessuno deve farsi truffare da un link passato dal bot o in un canale che il bot gestisce):** sì, a più livelli:
+  - Google Safe Browsing: la struttura è pronta, la chiave la mette l'owner nel file delle chiavi (`.env`) sul server;
+  - liste pubbliche gratuite senza chiave: URLhaus, Phishing Army, OpenPhish e simili, che riempiono anche la lista dei siti con malware;
+  - Cloudflare e gli altri servizi di controllo dei link (con chiave facoltativa);
+  - le liste italiane AGCOM e ADM dei siti oscurati.
+  Ogni servizio è facoltativo e si spegne da solo se manca la chiave. Cache e tetti per non superare le quote.
+- **VER-027 (verifica con i ruoli collegati di Discord):** sì, sulla base OAuth già fatta per Twitch (ALR-049).
+- **TKT-072 (trascrizioni consultabili online):** sì.
+  - Trascrizioni conservate **cifrate, con scadenza di 90 giorni**, visibili solo allo staff dal pannello.
+  - In più, trascrizione in **file HTML** con orario (minuti e secondi), autore e testo. Le **immagini e gli screenshot sono incorporati** nella trascrizione, sempre e solo la copia ricodificata in sandbox (D74), mai l'originale. Gli altri allegati (zip, video, …) compaiono solo con il nome del file.
+- **BKP-039 (pagina di consenso):** da spiegare all'owner prima di farla.
+- **MUS-018 (cartella di file locali):** sì, **solo l'owner** del bot. L'owner mette un brano nella cartella del server, il bot aggiorna da solo l'elenco dei brani disponibili e li può mettere in riproduzione insieme agli altri (anteprime di brani non ancora pubblicati). Gli utenti non vedono mai percorsi né file.
+- **MUS-090 e identità dei bot:** ogni bot (main, mod, …) ha già il suo logo, impostato dall'owner nel Developer Portal.
+  - Al setup del bot main, il server può scegliere per ogni bot se tenere nickname e logo originali o metterne di suoi. Si usano il nickname e l'avatar **del server** (profilo del bot nel server), non il nome vero del bot.
+  - **I bot musicali sono esclusi:** si chiamano tutti «iYokai Music», hanno lo stesso logo, entrano in scala se uno è occupato, e ai comandi risponde sempre il bot main.
+- **FUN-017 (gara di auto da collezione):** sì, con garage nel database e la possibilità di usare **le foto delle proprie auto**, solo come copia ricodificata (D74).
+- **FUN-013, FUN-014 (tela di pixel del server):** sì, progettata bene: tela salvata, moderazione dei pixel, pagina web.
+- **VER-025 (rete tra server): SÌ, CATEGORICA.**
+  - Se un utente fa danni in un server dove c'è il bot (tossicità, spam di server propri, truffe, raggiri), gli owner degli altri server dove l'utente e il bot sono presenti vengono **avvisati**.
+  - Se un account risulta **compromesso** (rubato, nuke), il **timeout scatta in tutti i server** in cui c'è il bot, non solo in quello colpito.
+  - A parte c'è una **rete facoltativa**: un server sceglie se applicare in automatico i ban decisi negli altri server della rete.
+- **MUS-015 (paese delle ricerche):** impostazione **globale** (brani ascoltabili in tutto il mondo). Un server può chiedere un **filtro per paese**: le ricerche controllano che il brano sia disponibile in quel paese (esempio: Turchia).
+- **MUS-017:** NON si spezza il video. Lunghezza massima del video **8 ore**. Se la **descrizione** del video contiene l'elenco dei brani con gli orari, il bot può usare quell'elenco (capitoli) invece del video intero.
