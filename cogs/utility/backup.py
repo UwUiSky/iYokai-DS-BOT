@@ -57,6 +57,7 @@ from core.backup_link_logic import (
 )
 
 from core.command_groups import SOTTOGRUPPI, CogConGruppi, comando_di_gruppo
+from core.repositories.backup_automatico_repo import backup_automatico_repo
 from core.repositories.backup_mirror_repo import backup_mirror_repo
 from core.repositories.backup_repo import backup_repo
 
@@ -526,7 +527,7 @@ class BackupCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(await testo_per(interaction, "backup_nessuna_copia_salvata_usa_backup"), ephemeral=True)
             return
         righe = [
-            f"`#{c.id}` {'💬' if c.chat else '🏗️'} **{discord.utils.escape_markdown(c.nome)}** · "
+            f"`#{c.id}` {'💬' if c.chat else '⏱️' if c.automatica else '🏗️'} **{discord.utils.escape_markdown(c.nome)}** · "
             f"{discord.utils.format_dt(c.creato_il, 'f')}"
             + (f" · modello `{c.codice_modello}`" if c.codice_modello else "")
             for c in copie
@@ -551,6 +552,42 @@ class BackupCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "backup_copia_scegli_cosa_caricare_cio", copia=copia),
             view=ScegliPartiView(self, interaction.user.id, dati, f"copia #{copia}"),
             ephemeral=True,
+        )
+
+    @comando_di_gruppo("admin-backup", nome="automatico", descrizione="Copie automatiche della struttura a intervalli.")
+    @app_commands.describe(
+        ore="Ogni quante ore (4-168); vuoto con «spegni» per fermarle",
+        copie="Quante copie automatiche tenere (1-8): la più vecchia si sovrascrive",
+        spegni="Ferma le copie automatiche",
+    )
+    async def automatico(
+        self, interaction: discord.Interaction, ore: app_commands.Range[int, 4, 168] | None = None,
+        copie: app_commands.Range[int, 1, 8] = 3, spegni: bool = False,
+    ) -> None:
+        """BKP-008."""
+        if not await self._puo(interaction, AZIONE_CREA):
+            return
+        guild = interaction.guild
+        if spegni:
+            fatto = await backup_automatico_repo.togli(guild.id)
+            if fatto:
+                await registra_uso(guild.id, interaction.user.id, "automatico", "spento")
+            await interaction.response.send_message(
+                await testo_per(interaction, "backup_automatico_spento" if fatto else "backup_automatico_non_attivo"), ephemeral=True
+            )
+            return
+        if ore is None:
+            attuale = await backup_automatico_repo.leggi(guild.id)
+            testo = (
+                await testo_per(interaction, "backup_automatico_attivo", ore=attuale.ore, copie=attuale.copie)
+                if attuale else await testo_per(interaction, "backup_automatico_non_attivo")
+            )
+            await interaction.response.send_message(testo, ephemeral=True)
+            return
+        await backup_automatico_repo.imposta(guild.id, ore, copie, interaction.user.id)
+        await registra_uso(guild.id, interaction.user.id, "automatico", f"{ore} ore, {copie} copie")
+        await interaction.response.send_message(
+            await testo_per(interaction, "backup_automatico_attivo", ore=ore, copie=copie), ephemeral=True
         )
 
     @comando_di_gruppo("admin-backup", nome="info", descrizione="Cosa contiene una copia salvata, senza caricarla.")

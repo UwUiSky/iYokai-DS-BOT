@@ -3618,5 +3618,8 @@
   "backup_elimina_conferma": "Delete copy `#{copia}`? This cannot be undone.",
   "backup_elimina_conferma_tutte": "Delete ALL copies of this server? This cannot be undone.",
   "backup_copie_eliminate": "🗑️ Copies deleted: {n}.",
-  "backup_elimina_annullata": "Nothing deleted."
+  "backup_elimina_annullata": "Nothing deleted.",
+  "backup_automatico_spento": "Automatic copies turned off. Existing ones stay.",
+  "backup_automatico_non_attivo": "Automatic copies are not active. Turn them on with `ore:`.",
+  "backup_automatico_attivo": "⏱️ Automatic copies on: every {ore} hours, keeping {copie}. The oldest automatic copy is overwritten; manual copies are never touched."
 }

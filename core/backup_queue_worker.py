@@ -6,7 +6,7 @@ Un job alla volta. Il job nasce dal collegamento con il codice (D8) già legato
 al server di backup creato da un admin; il Creator lo porta allo stato
 corrente con il suo client e il proprietario del server principale riceve
 un riepilogo. Il giro parte solo quando il bot principale è pronto.
-Funzioni coperte: SPEC §11.2, §11.17, M 12.1, M 12.2, REVIEW.md BUG-19
+Funzioni coperte: SPEC §11.2, §11.17, BKP-008, M 12.1, M 12.2, REVIEW.md BUG-19
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ from discord.ext import commands, tasks
 
 from core.bot_ready import attendi_bot_pronto
 from core.backup_orchestrator import popola_server_backup, riassunto_copia
+from core.backup_automatico_logic import fai_copia_automatica
 from core.repositories.backup_mirror_repo import backup_mirror_repo
 from core.repositories.backup_repo import backup_repo
 
@@ -98,6 +99,10 @@ class BackupQueueWorker:
 
         job = await backup_repo.get_next_pending_job()
         if job is None:
+            try:
+                await fai_copia_automatica(main_bot)  # BKP-008: una sola per giro
+            except Exception:
+                logger.exception("Copia automatica della struttura fallita.")
             await self._allinea_una_coppia(creator_client, main_bot)
             return
 

@@ -25,6 +25,7 @@ class CopiaStruttura:
     creato_il: datetime
     codice_modello: str | None
     chat: bool = False
+    automatica: bool = False
 
 
 @dataclass(frozen=True)
@@ -60,9 +61,30 @@ class BackupStrutturaRepository:
                 guild_id, nome[:50], created_by, json.dumps(dati, ensure_ascii=False),
             )
 
+    async def salva_automatica(self, guild_id: int, nome: str, dati: dict, tieni: int) -> int | None:
+        """
+        BKP-008: una copia automatica; le automatiche più vecchie oltre `tieni` si sovrascrivono.
+        Mai una copia fatta a mano si tocca: se il server è pieno di quelle, None.
+        """
+        dati = {**dati, "automatica": True}
+        async with self._pool.acquire() as conn, conn.transaction():
+            await conn.execute("SELECT pg_advisory_xact_lock(hashtext('backup_strutture'), $1::int)", guild_id % (1 << 31))
+            await conn.execute(
+                "DELETE FROM backup_strutture WHERE id IN (SELECT id FROM backup_strutture "
+                "WHERE guild_id = $1 AND dati->>'automatica' = 'true' ORDER BY creato_il DESC OFFSET $2)",
+                guild_id, max(0, tieni - 1),
+            )
+            quante = await conn.fetchval("SELECT count(*) FROM backup_strutture WHERE guild_id = $1", guild_id)
+            if quante >= MAX_COPIE_PER_SERVER:
+                return None
+            return await conn.fetchval(
+                "INSERT INTO backup_strutture (guild_id, nome, created_by, dati) VALUES ($1, $2, 0, $3::jsonb) RETURNING id",
+                guild_id, nome[:50], json.dumps(dati, ensure_ascii=False),
+            )
+
     async def lista_strutture(self, guild_id: int) -> list[CopiaStruttura]:
         righe = await self._pool.fetch(
-            "SELECT id, nome, creato_il, codice_modello, (dati->>'tipo' = 'chat') IS TRUE AS chat FROM backup_strutture "
+            "SELECT id, nome, creato_il, codice_modello, (dati->>'tipo' = 'chat') IS TRUE AS chat, (dati->>'automatica' = 'true') IS TRUE AS automatica FROM backup_strutture "
             "WHERE guild_id = $1 ORDER BY creato_il DESC LIMIT $2",
             guild_id, MAX_COPIE_PER_SERVER,
         )

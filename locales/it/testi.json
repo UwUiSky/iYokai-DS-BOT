@@ -3618,5 +3618,8 @@
   "backup_elimina_conferma": "Eliminare la copia `#{copia}`? Non si può annullare.",
   "backup_elimina_conferma_tutte": "Eliminare TUTTE le copie di questo server? Non si può annullare.",
   "backup_copie_eliminate": "🗑️ Copie eliminate: {n}.",
-  "backup_elimina_annullata": "Niente eliminato."
+  "backup_elimina_annullata": "Niente eliminato.",
+  "backup_automatico_spento": "Copie automatiche spente. Quelle già fatte restano.",
+  "backup_automatico_non_attivo": "Le copie automatiche non sono attive. Accendile con `ore:`.",
+  "backup_automatico_attivo": "⏱️ Copie automatiche accese: ogni {ore} ore, ne tengo {copie}. La più vecchia automatica viene sovrascritta; le copie fatte a mano non si toccano."
 }
