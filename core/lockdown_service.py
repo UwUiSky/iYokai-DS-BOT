@@ -30,6 +30,7 @@ from core.bounded_cache import BoundedCache
 from core.lockdown_logic import (
     GRANDEZZA_GRUPPO,
     MAX_MOTIVO,
+    MAX_SBLOCCO_MINUTI,
     PAUSA_TRA_GRUPPI,
     STATO_ATTIVO,
     STATO_IN_CORSO,
@@ -162,14 +163,17 @@ async def attiva(
     avviato_da: int,
     motivo: str,
     riepilogo_in: discord.abc.Messageable | None = None,
+    durata_minuti: int | None = None,
 ) -> Esito:
-    """Blocca il server. Mai solleva per un singolo canale; il riepilogo va anche nel canale."""
+    """Blocca il server. Con `durata_minuti` (MOD-093, al massimo un giorno) si riapre da solo. Mai solleva per un singolo canale; il riepilogo va anche nel canale."""
     async with _blocco(guild.id):
         config = await lockdown_repo.get_config(guild.id)
         adesso = datetime.now(timezone.utc)
         finisce = None
         if tipo == TIPO_PANICO and config.sblocco_auto_minuti:
             finisce = adesso + timedelta(minutes=config.sblocco_auto_minuti)
+        if durata_minuti:
+            finisce = adesso + timedelta(minutes=min(durata_minuti, MAX_SBLOCCO_MINUTI))
         creato = await lockdown_repo.crea_stato(
             guild.id, tipo=tipo, avviato_da=avviato_da, motivo=motivo[:MAX_MOTIVO],
             finisce_il=finisce, solo_proprietario=config.solo_proprietario and tipo == TIPO_PANICO,

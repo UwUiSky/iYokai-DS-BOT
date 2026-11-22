@@ -88,12 +88,15 @@ class LockdownCog(CogConGruppi, commands.Cog):
         await super().cog_unload()
 
     # ------------------------------------------------------------ lavoro comune
-    async def _attiva(self, interaction: discord.Interaction, tipo: str, motivo: str | None) -> None:
+    async def _attiva(
+        self, interaction: discord.Interaction, tipo: str, motivo: str | None, durata_minuti: int | None = None
+    ) -> None:
         await interaction.response.defer(ephemeral=True, thinking=True)  # 500 canali: ben oltre i 3 secondi
         try:
             esito = await servizio.attiva(
                 interaction.guild, tipo=tipo, avviato_da=interaction.user.id,
                 motivo=motivo or "nessun motivo indicato", riepilogo_in=interaction.channel,
+                durata_minuti=durata_minuti,
             )
         except Exception:
             logger.exception("Blocco non riuscito (server %s)", interaction.guild.id)
@@ -124,11 +127,31 @@ class LockdownCog(CogConGruppi, commands.Cog):
         descrizione="Blocca tutti i canali, gli inviti e gli ingressi del server.",
         sottogruppo=("blocco", "Blocco totale del server."),
     )
-    @app_commands.describe(motivo="Perche' si blocca il server")
-    async def blocco_attiva(self, interaction: discord.Interaction, motivo: Motivo | None = None) -> None:
+    @app_commands.describe(
+        motivo="Perche' si blocca il server",
+        minuti="Il server si riapre da solo dopo questi minuti (al massimo 1440, un giorno)",
+    )
+    async def blocco_attiva(
+        self,
+        interaction: discord.Interaction,
+        motivo: Motivo | None = None,
+        minuti: app_commands.Range[int, 1, 1440] | None = None,
+    ) -> None:
         if await _rifiuta_senza_gestione(interaction):
             return
-        await self._attiva(interaction, TIPO_BLOCCO, motivo)
+        await self._attiva(interaction, TIPO_BLOCCO, motivo, minuti)
+
+    @comando_di_gruppo(
+        "mod-canali",
+        nome="stato",
+        descrizione="Mostra se c'e' un blocco attivo, da quando e quando finisce.",
+        sottogruppo=("blocco", "Blocco totale del server."),
+    )
+    async def blocco_stato(self, interaction: discord.Interaction) -> None:
+        """MOD-097. Come `/admin-sicurezza panico stato`, ma senza le scelte del panico."""
+        if await _rifiuta_senza_gestione(interaction):
+            return
+        await self._mostra_stato(interaction, con_scelte=False)
 
     @comando_di_gruppo(
         "mod-canali",
@@ -247,6 +270,9 @@ class LockdownCog(CogConGruppi, commands.Cog):
         sottogruppo=("panico", "Modalita' panico: blocco d'emergenza del server."),
     )
     async def panico_stato(self, interaction: discord.Interaction) -> None:
+        await self._mostra_stato(interaction, con_scelte=True)
+
+    async def _mostra_stato(self, interaction: discord.Interaction, *, con_scelte: bool) -> None:
         stato = await lockdown_repo.get_stato(interaction.guild.id)
         config = await lockdown_repo.get_config(interaction.guild.id)
         if stato is None:
@@ -260,7 +286,7 @@ class LockdownCog(CogConGruppi, commands.Cog):
             if stato.finisce_il is not None:
                 riga += f" Si riapre <t:{int(stato.finisce_il.timestamp())}:R>."
         await interaction.response.send_message(
-            f"{riga}\n\n{self._testo_config(config)}"[:2000],
+            (f"{riga}\n\n{self._testo_config(config)}" if con_scelte else riga)[:2000],
             ephemeral=True,
             allowed_mentions=discord.AllowedMentions.none(),
         )
