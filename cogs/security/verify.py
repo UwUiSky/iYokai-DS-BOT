@@ -67,7 +67,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core import captcha_image, verify_blocchi, verify_ip
+from cogs.security.alt_detection import SETTING_RUOLO_AVVISO_ALT
+from core import captcha_image, verify_blocchi, verify_ip, verify_logic
 from core.i18n import testo_per
 from core.bounded_cache import BoundedCache
 from core.panel_bridge import METODO_WEB, link_verifica_web
@@ -857,7 +858,22 @@ class VerifyCog(CogConGruppi, commands.Cog):
         descrizione="Pubblica il pannello di verifica.",
         sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
-    async def panel_cmd(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(
+        titolo="Titolo del pannello (vuoto: quello di base)",
+        testo="Testo del pannello (vuoto: quello di base)",
+        colore="Colore, per esempio #c24a3a",
+        bottone="Scritta del bottone (vuoto: «Verify»)",
+        emoji="Emoji del bottone",
+    )
+    async def panel_cmd(
+        self,
+        interaction: discord.Interaction,
+        titolo: app_commands.Range[str, 1, 256] | None = None,
+        testo: app_commands.Range[str, 1, 2000] | None = None,
+        colore: app_commands.Range[str, 6, 7] | None = None,
+        bottone: app_commands.Range[str, 1, 80] | None = None,
+        emoji: app_commands.Range[str, 1, 60] | None = None,
+    ) -> None:
         # Un pannello pubblicato con il modulo spento risponderebbe "Verify non è attivo".
         if not await ensure_module_enabled(interaction, MODULE_VERIFY):
             return
@@ -869,6 +885,10 @@ class VerifyCog(CogConGruppi, commands.Cog):
             )
             return
 
+        personale, errore = verify_logic.pannello_personalizzato(titolo, testo, colore, bottone, emoji)
+        if errore:  # VER-028
+            await interaction.response.send_message(errore, ephemeral=True)
+            return
         embed = discord.Embed(
             title=await testo_per(interaction, "verify_server_verification", pubblica=True),
             description=await testo_per(interaction, "verify_click_the_button_below_to", pubblica=True)
@@ -876,12 +896,24 @@ class VerifyCog(CogConGruppi, commands.Cog):
             else await testo_per(interaction, "verify_react_with_to_verify_and", v1=VERIFY_REACTION_EMOJI, pubblica=True),
             color=discord.Color.blurple(),
         )
+        vista = VerifyPanelView()
+        if personale is not None:
+            if personale.titolo:
+                embed.title = personale.titolo
+            if personale.testo:
+                embed.description = personale.testo
+            if personale.colore is not None:
+                embed.colour = discord.Colour(personale.colore)
+            if personale.bottone:
+                vista.children[0].label = personale.bottone
+            if personale.emoji:
+                vista.children[0].emoji = discord.PartialEmoji.from_str(personale.emoji)
 
         if config.method in ("button", METODO_WEB):
-            await interaction.response.send_message(embed=embed, view=VerifyPanelView())
+            await interaction.response.send_message(embed=embed, view=vista, allowed_mentions=discord.AllowedMentions.none())
             sent = await interaction.original_response()
         else:
-            await interaction.response.send_message(embed=embed)
+            await interaction.response.send_message(embed=embed, allowed_mentions=discord.AllowedMentions.none())
             sent = await interaction.original_response()
             try:
                 await sent.add_reaction(VERIFY_REACTION_EMOJI)
@@ -959,6 +991,7 @@ class VerifyCog(CogConGruppi, commands.Cog):
         extra_3="Altro ruolo extra",
         azzera="Togli questi ruoli",
         log_compatto="Nel log una riga sola per tentativo, invece della scheda completa",
+        ruolo_avviso_alt="Ruolo avvisato a ogni account doppio (serve il permesso «Menziona tutti»)",
     )
     async def options_cmd(
         self,
@@ -969,15 +1002,26 @@ class VerifyCog(CogConGruppi, commands.Cog):
         extra_3: discord.Role | None = None,
         azzera: bool = False,
         log_compatto: bool | None = None,
+        ruolo_avviso_alt: discord.Role | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_VERIFY):
             return
         guild = interaction.guild
+        if ruolo_avviso_alt is not None:  # VER-023: come in D12, il ping di un ruolo lo sceglie chi può «Menziona tutti»
+            if ruolo_avviso_alt.is_default() or not (
+                interaction.user.id == guild.owner_id or interaction.user.guild_permissions.mention_everyone
+            ):
+                await interaction.response.send_message(await testo_per(interaction, "verify_alt_ruolo_non_permesso"), ephemeral=True)
+                return
+            await db.set_guild_setting(
+                guild.id, SETTING_RUOLO_AVVISO_ALT, ruolo_avviso_alt.id, changed_by=interaction.user.id
+            )
         if log_compatto is not None:
             await db.set_guild_setting(guild.id, SETTING_LOG_COMPATTO, log_compatto, changed_by=interaction.user.id)
         if azzera:
             await db.set_guild_setting(guild.id, SETTING_RUOLO_NON_VERIFICATO, None)
             await db.set_guild_setting(guild.id, SETTING_RUOLI_EXTRA, None)
+            await db.set_guild_setting(guild.id, SETTING_RUOLO_AVVISO_ALT, None)
             await interaction.response.send_message(await testo_per(interaction, "verify_ruoli_extra_della_verifica_tolti"), ephemeral=True)
             return
         extra = [r for r in (extra_1, extra_2, extra_3) if r is not None]

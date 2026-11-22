@@ -87,6 +87,8 @@ SETTINGS_SCHEMA = {
     "verify_unverified_role_id": "id",
     "verify_extra_role_ids": "lista_id",
     "verify_captcha_tipo": "captcha_tipo",
+    "verify_alt_ruolo_id": "id",
+    "appelli_timeout": "bool",
     "verify_log_compatto": "bool",
     "verify_promemoria_minuti": "int_0_1440",
     "verify_scadenza_minuti": "int_0_1440",
