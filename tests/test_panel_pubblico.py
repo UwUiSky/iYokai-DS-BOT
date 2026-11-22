@@ -47,7 +47,9 @@ async def dati(ambiente):
     )
     await activity_stats_repo.set_anonymous(UTENTE_ANONIMO, True)
     for nome in ("server_stats", "leveling"):
-        registry.register(PremiumModule(nome, nome, "prova", category="utility"))
+        # L'albero vero (caricato da un test precedente) li ha già registrati.
+        if registry.get(nome) is None:
+            registry.register(PremiumModule(nome, nome, "prova", category="utility"))
         await db.set_module_active_for_guild(GUILD, nome, True, changed_by=ADMIN)
     await db.pool.execute(
         "INSERT INTO leveling_totals (guild_id, user_id, xp_total) VALUES ($1, $2, 500), ($1, $3, 900)",
