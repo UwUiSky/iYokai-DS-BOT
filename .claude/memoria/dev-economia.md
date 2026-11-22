@@ -1,8 +1,7 @@
 # Memoria di dev-economia
 
 ## Aggiornata
-22/11/2026 · giro r6eco (#125), ramo `feat/r6eco`, wt `/home/user/wt-125b`, db `iyokai_w125b`, migrazioni 0687-0689 USATE (restano 0790-0799). Fatti: negozio avanzato, sala giochi, mercato, ECO-039/152 (D104). Restano: animali 125-129, pesca 135-141, 018, 027, 045, 054, 056, 083-085, 087, 142, 144-147. Smoke da fare.
-17/11/2026 · giro r5eco (#125 Economia e giochi), ramo `feat/r5eco`, wt `/home/user/wt-125`, db `iyokai_w125`, migrazioni 0670-0679 (0670-0672 usate).
+22/11/2026 · giro r6eco (#125), ramo `feat/r6eco`, wt `/home/user/wt-125b`, db `iyokai_w125b`, migrazioni 0687-0689 e 0790-0792 USATE (restano 0793-0799). Tutte le voci della scheda r6eco fatte (D104, D105). Smoke da fare.
 
 ## In corso
 - Dopo B17: restano solo le ECO con motivo in D86 (ripartire da 075/076/078 se si vuole realizzarle).

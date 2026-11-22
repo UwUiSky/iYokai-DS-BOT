@@ -1865,3 +1865,8 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `ECO-113/114` — `/sala impiccato` e `/sala quiz`: premio in monete con il tetto di 300 al giorno per tipo.
 - [ ] `ECO-074/120` — `/mercato vendi|elenco|compra|offri|accetta|ritira|dona|fondo` con due account: oggetto e monete cambiano mano insieme; un blocco personale impedisce lo scambio; `/admin-negozio fondo dai` consegna dal fondo.
 - [ ] `ECO-039/152` — `/admin-negozio guadagno crea` poi `/monete rischio guadagna nome:`; `/level righe scelta:banca,monete` mostra solo quelle righe in quell'ordine.
+- [ ] `ECO-125..129` — `/fun animali sitter|lotta|incontro|abbandona|adozioni|adotta` con due account: incontro accettato dal secondo, cucciolo nella coda, adozione solo con un posto libero.
+- [ ] `ECO-135..141` — `/fun pesca abilita|attrezzi|stagione|rete|acquario|storico`: perle dopo qualche lancio, esca e rete comprate, rete riscossa dopo un'ora, premio del pass.
+- [ ] `ECO-018/027/045/087/142/146/147` — `/mondo diretta|vacanza|casa|fattoria|personaggio|avventura`: un tentativo al giorno per personaggio, gettoni per i mobili, la vacanza non fa perdere la serie del daily.
+- [ ] `ECO-083..085` — `/mondo borsa prezzi|scambia|ordine|ordini` e `/mondo autovendita`: commissione del 3%, un ordine scatta all'ora successiva, la vendita automatica agisce nel giro orario.
+- [ ] `ECO-054/056/144/145` — `/admin-negozio evento codice|bonus|casuali|server`: il primo che prende vince; il bonus si vede in `/monete work`.
