@@ -466,7 +466,13 @@
   "carte": "cards",
   "bingo": "bingo",
   "impiccato": "hangman",
-  "quiz": "quiz"
+  "quiz": "quiz",
+  "accetta": "accept",
+  "ritira": "withdraw",
+  "offri": "offer",
+  "fondo": "fund",
+  "guadagna": "earn",
+  "righe": "rows"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1668,7 +1674,22 @@
   "sala carte": "Turn-based cards: same colour or same number, who runs out of cards wins.",
   "sala bingo": "Bingo among members: complete a row of your card to win the pot.",
   "sala impiccato": "Group hangman: guess the word together and win a prize.",
-  "sala quiz": "Timed quiz with a coin prize: five questions, four answers."
+  "sala quiz": "Timed quiz with a coin prize: five questions, four answers.",
+  "mercato vendi": "Put one of your items up for sale to other members.",
+  "mercato elenco": "The market listings (also only one member's).",
+  "mercato compra": "Buy a listing at the stated price.",
+  "mercato offri": "Make a lower offer: the coins are held in custody until the seller answers.",
+  "mercato accetta": "Accept a member's offer on your listing (without a member: see the offers).",
+  "mercato ritira": "Withdraw one of your listings (or offers): item and coins go back.",
+  "mercato dona": "Donate coins or an item to the server's prize fund.",
+  "mercato fondo": "The items donated to the server's prize fund.",
+  "admin-negozio guadagno": "Earning commands of the server",
+  "admin-negozio guadagno crea": "Create an earning command: whoever uses it receives coins, with a cooldown.",
+  "admin-negozio guadagno elimina": "Delete a server earning command.",
+  "monete rischio guadagna": "Use a server-made earning command (without a name: the list).",
+  "level righe": "Choose which rows to show in your summary and in which order.",
+  "admin-negozio fondo": "Server prize fund",
+  "admin-negozio fondo dai": "Give a member an item donated to the prize fund."
  },
  "parametri": {},
  "menu": {

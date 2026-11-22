@@ -17,7 +17,7 @@ import asyncpg
 from core.repositories.leveling_repo import add_coins_in
 
 MAX_COMANDI_GUADAGNO = 10
-RIGHE_PROFILO = ("monete", "banca", "serie", "animali", "partner", "prestigio", "clan")
+RIGHE_PROFILO = ("monete", "banca", "animali", "partner", "prestigio", "amici")
 MAX_RIGHE_PROFILO = len(RIGHE_PROFILO)
 
 

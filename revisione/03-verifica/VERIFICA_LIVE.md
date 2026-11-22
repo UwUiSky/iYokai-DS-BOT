@@ -1856,3 +1856,12 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `ECO-017` — `/monete conto portafoglio`: immagine con nome, contanti, banca, posizione e (se il server l'ha caricata) l'immagine della moneta.
 - [ ] `ECO-161` — `/admin-livelli guadagno vocale max_minuti:60`: dopo 60 minuti in vocale in un giorno non arrivano più XP né monete (di base 360).
 - [ ] `ECO-158` — `/admin-economia limiti controllo:500`: `/monete work`, `/monete daily` e i piccoli guadagni, una volta su due, si fermano con una domanda «quanto fa a + b?» con tre bottoni (solo per te, un tentativo); risposta giusta = verificato 10 minuti, poi ripeti il comando; con `controllo:0` mai.
+
+## Economia e giochi (#125, r6eco)
+- [ ] `ECO-075` — `/admin-negozio rotazione quanti:2` e `rotazione oggetto` su 4 oggetti: `/monete shop list` mostra solo 2 oggetti a rotazione, cambiano il giorno dopo; comprare uno nascosto dice «non in vetrina».
+- [ ] `ECO-076` — `/admin-negozio offerta lampo oggetto sconto:50 minuti:5 usi:1`: appare il messaggio col bottone; il primo clic paga metà, il secondo dice che il prezzo è cambiato; `/monete shop list` mostra il prezzo barrato. Dopo un riavvio il bottone non funziona più, ma `/monete shop buy` sì finché l'offerta dura.
+- [ ] `ECO-078` — `/admin-negozio ricetta crea` poi `/monete shop ricette` e `/monete shop crea`: gli ingredienti spariscono e arriva il risultato; con un ingrediente in meno non cambia niente.
+- [ ] `ECO-091/101-103/105/110-112` — `/sala roulette|corsa|lotta|bomba|carte|bingo puntata:10` con 2-3 account: la sala si riempie, la puntata esce a tutti alla partenza, solo i giocatori premono i bottoni, il piatto va al vincitore. Con un solo giocatore la partita non parte e nessuna moneta si muove. Riavvio a metà partita: le puntate tornano.
+- [ ] `ECO-113/114` — `/sala impiccato` e `/sala quiz`: premio in monete con il tetto di 300 al giorno per tipo.
+- [ ] `ECO-074/120` — `/mercato vendi|elenco|compra|offri|accetta|ritira|dona|fondo` con due account: oggetto e monete cambiano mano insieme; un blocco personale impedisce lo scambio; `/admin-negozio fondo dai` consegna dal fondo.
+- [ ] `ECO-039/152` — `/admin-negozio guadagno crea` poi `/monete rischio guadagna nome:`; `/level righe scelta:banca,monete` mostra solo quelle righe in quell'ordine.
