@@ -18,6 +18,7 @@ import asyncpg
 @dataclass(frozen=True)
 class ConfigBlocco:
     categorie_escluse: tuple[int, ...] = ()
+    gruppo_canali: tuple[int, ...] = ()  # MOD-092: il gruppo di canali da bloccare insieme (al massimo 25)
     ruoli_avviso: tuple[int, ...] = ()
     sblocco_auto_minuti: int = 0  # 0 = niente sblocco automatico
     solo_proprietario: bool = True  # in panico: solo proprietario e fidati usano i gruppi mod-…
@@ -36,6 +37,7 @@ class StatoBlocco:
     verifica_prima: str | None
     inviti_chiusi_da_noi: bool
     solo_proprietario: bool
+    opzioni: dict = field(default_factory=dict)  # MOD-091…096: nascosto, ingressi, avviso, ruoli, solo_canali
 
 
 @dataclass(frozen=True)
@@ -49,7 +51,7 @@ def _stato(r) -> StatoBlocco:
         guild_id=r["guild_id"], tipo=r["tipo"], stato=r["stato"], avviato_da=r["avviato_da"],
         avviato_il=r["avviato_il"], finisce_il=r["finisce_il"], motivo=r["motivo"],
         verifica_prima=r["verifica_prima"], inviti_chiusi_da_noi=r["inviti_chiusi_da_noi"],
-        solo_proprietario=r["solo_proprietario"],
+        solo_proprietario=r["solo_proprietario"], opzioni=json.loads(r["opzioni"] or "{}"),
     )
 
 
@@ -67,7 +69,7 @@ class LockdownRepository:
         if r is None:
             return ConfigBlocco()
         return ConfigBlocco(
-            categorie_escluse=tuple(r["categorie_escluse"]), ruoli_avviso=tuple(r["ruoli_avviso"]),
+            categorie_escluse=tuple(r["categorie_escluse"]), gruppo_canali=tuple(r["gruppo_canali"]), ruoli_avviso=tuple(r["ruoli_avviso"]),
             sblocco_auto_minuti=r["sblocco_auto_minuti"], solo_proprietario=r["solo_proprietario"],
             automatico=r["automatico"],
         )
@@ -117,6 +119,39 @@ class LockdownRepository:
             guild_id, verifica_prima, inviti_chiusi_da_noi,
         )
 
+    async def salva_opzioni(self, guild_id: int, opzioni: dict) -> None:
+        await self._pool.execute(
+            "UPDATE lockdown_stato SET opzioni = $2 WHERE guild_id = $1", guild_id, json.dumps(opzioni)
+        )
+
+    async def stati_con_opzioni(self) -> list[StatoBlocco]:
+        righe = await self._pool.fetch("SELECT * FROM lockdown_stato WHERE opzioni <> '{}'")
+        return [_stato(r) for r in righe]
+
+    async def imposta_gruppo(self, guild_id: int, canali: list[int]) -> None:
+        await self._pool.execute(
+            "INSERT INTO lockdown_config (guild_id, gruppo_canali) VALUES ($1, $2) "
+            "ON CONFLICT (guild_id) DO UPDATE SET gruppo_canali = EXCLUDED.gruppo_canali",
+            guild_id, canali[:25],
+        )
+
+    async def salva_ruolo(self, guild_id: int, role_id: int, tolti: int) -> None:
+        await self._pool.execute(
+            "INSERT INTO lockdown_ruoli (guild_id, role_id, tolti) VALUES ($1, $2, $3) ON CONFLICT (guild_id, role_id) DO NOTHING",
+            guild_id, role_id, tolti,
+        )
+
+    async def ruoli_da_ripristinare(self, guild_id: int) -> list[tuple[int, int]]:
+        righe = await self._pool.fetch(
+            "SELECT role_id, tolti FROM lockdown_ruoli WHERE guild_id = $1 AND NOT ripristinato ORDER BY role_id", guild_id
+        )
+        return [(r["role_id"], r["tolti"]) for r in righe]
+
+    async def segna_ruolo_ripristinato(self, guild_id: int, role_id: int) -> None:
+        await self._pool.execute(
+            "UPDATE lockdown_ruoli SET ripristinato = TRUE WHERE guild_id = $1 AND role_id = $2", guild_id, role_id
+        )
+
     async def scaduti(self, adesso: datetime) -> list[int]:
         righe = await self._pool.fetch(
             "SELECT guild_id FROM lockdown_stato WHERE finisce_il IS NOT NULL AND finisce_il <= $1 "
@@ -133,6 +168,7 @@ class LockdownRepository:
         async with self._pool.acquire() as conn:
             async with conn.transaction():
                 await conn.execute("DELETE FROM lockdown_canali WHERE guild_id = $1", guild_id)
+                await conn.execute("DELETE FROM lockdown_ruoli WHERE guild_id = $1", guild_id)
                 await conn.execute("DELETE FROM lockdown_stato WHERE guild_id = $1", guild_id)
 
     # ------------------------------------------------------------ canali

@@ -3892,5 +3892,10 @@
   "automod_emergenza_stato": "Mentions: {menzioni}. Panic mode: {panico}.",
   "opzioni_avvisi_bot_senza_permesso": "In {canale} I need the permissions to view, send messages and embed links.",
   "opzioni_avvisi_in_canale": "Sanction notices go to {canale} (mentioning the person) instead of a private message.",
-  "opzioni_avvisi_in_dm": "Sanction notices go back to private messages."
+  "opzioni_avvisi_in_dm": "Sanction notices go back to private messages.",
+  "lockdown_gruppo_vuoto": "There is no saved group (or its channels are gone): pick channels from the menu and press \"Save as group\".",
+  "lockdown_scegli_i_canali": "Pick up to {massimo} channels, then press \"Lock\" or \"Save as group\".",
+  "lockdown_scegli_almeno_un_canale": "Pick at least one channel from the menu.",
+  "lockdown_gruppo_salvato": "Group saved: {n} channels. Lock it with \"group: yes\".",
+  "lockdown_manca_il_permesso": "This choice needs the \"{permesso}\" permission for you and for me."
 }

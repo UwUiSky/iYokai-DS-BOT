@@ -3892,5 +3892,10 @@
   "automod_emergenza_stato": "Menzioni: {menzioni}. Modalità panico: {panico}.",
   "opzioni_avvisi_bot_senza_permesso": "Nel canale {canale} mi servono i permessi di vedere, scrivere e mettere embed.",
   "opzioni_avvisi_in_canale": "Gli avvisi delle sanzioni vanno in {canale} (con la menzione della persona), non più nel messaggio privato.",
-  "opzioni_avvisi_in_dm": "Gli avvisi delle sanzioni tornano nel messaggio privato."
+  "opzioni_avvisi_in_dm": "Gli avvisi delle sanzioni tornano nel messaggio privato.",
+  "lockdown_gruppo_vuoto": "Non c'è un gruppo salvato (o i suoi canali non esistono più): scegli i canali dal menu e premi «Salva come gruppo».",
+  "lockdown_scegli_i_canali": "Scegli fino a {massimo} canali, poi premi «Blocca» o «Salva come gruppo».",
+  "lockdown_scegli_almeno_un_canale": "Scegli almeno un canale dal menu.",
+  "lockdown_gruppo_salvato": "Gruppo salvato: {n} canali. Si blocca con «gruppo: sì».",
+  "lockdown_manca_il_permesso": "Per questa scelta serve il permesso «{permesso}» a te e a me."
 }

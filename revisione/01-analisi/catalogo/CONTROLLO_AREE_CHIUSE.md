@@ -125,12 +125,12 @@ Giro r2mod (issue #115, #116, #118). «Corretta» = fa ciò che dice il catalogo
 | MOD-061 | sì (`/mod-sanzioni opzioni dm testo:` + bottone «Fai appello» nel DM) | sì | segnata | tests/test_moderation_appelli.py::test_dm_di_chi_ha_un_ban_manuale_riceve_il_bottone; tests/test_catalogo_r2mod_appelli.py |
 | MOD-062 | sì (`/mod-ban appelli canale`; non passa dal router dei canali) | sì | segnata | tests/test_moderation_appelli.py::test_comandi_appelli_canale_ed_elenco |
 | MOD-063 | no | sì | realizzata: `/mod-ban appelli timeout`; accettare toglie il timeout solo se chi decide sta sopra l'utente; «Moderare i membri» decide solo i timeout | ban_appeal.py; tests/test_catalogo_r2mod_appelli.py |
-| MOD-091 | no | - | NON FATTA (blocco di più canali scelti) | resta aperta |
-| MOD-092 | no | - | NON FATTA (gruppo di canali predefinito) | resta aperta |
+| MOD-091 | no | sì | realizzata: `/mod-canali blocco canali` con un menu fino a 25 canali; il server (verifica, inviti) resta com'è; si riapre con `blocco togli`; permesso riletto a ogni clic | cogs/security/lockdown.py, core/lockdown_service.py; tests/test_catalogo_r2mod_blocco_mirato.py |
+| MOD-092 | no | sì | realizzata: «Salva come gruppo» nel menu (al massimo 25, 0803) e `blocco canali gruppo: sì` | core/repositories/lockdown_repo.py; tests/test_catalogo_r2mod_blocco_mirato.py |
 | MOD-093 | sì (`/mod-canali blocco attiva`, stato salvato, 500 canali) | sì | realizzato il tempo: `minuti:` (al massimo 1440), si riapre dallo scheduler | core/lockdown_service.py; tests/test_catalogo_r2mod_blocco.py, tests/test_lockdown.py |
-| MOD-094 | no | - | NON FATTA (blocco «cieco») | resta aperta |
-| MOD-095 | no | - | NON FATTA (kick/ban di chi entra durante il blocco) | resta aperta |
-| MOD-096 | no | - | NON FATTA (blocco dei permessi dei ruoli) | resta aperta |
+| MOD-094 | no | sì | realizzata: `blocco attiva nascondi:` toglie `view_channel` a @everyone, crea `#server-bloccato` in sola lettura e lo toglie allo sblocco (solo se l'ha creato il bot); senza il canale il blocco parte lo stesso | core/lockdown_service.py; tests/test_catalogo_r2mod_blocco_mirato.py |
+| MOD-095 | no | sì | realizzata: `blocco attiva ingressi: espelli\|banna`; mai bot né protetti, serve il permesso vero a chi comanda e al bot, caso scritto, la scelta si rilegge dopo un riavvio e si spegne con lo sblocco | cogs/security/lockdown.py; tests/test_catalogo_r2mod_blocco_mirato.py |
+| MOD-096 | no | sì | realizzata: `blocco attiva ruoli: sì` toglie i permessi critici ai ruoli sotto il bot (mai @everyone, gestiti, pari o sopra il bot), salva i bit tolti prima; lo sblocco rimette solo quelli, e se un ruolo non si riapre il blocco resta | core/lockdown_service.py; tests/test_catalogo_r2mod_blocco_mirato.py |
 | MOD-097 | in parte (solo `/admin-sicurezza panico stato`) | sì | realizzata: `/mod-canali blocco stato` | cogs/security/lockdown.py; tests/test_catalogo_r2mod_blocco.py |
 | MOD-103 | no | - | NON FATTA (storico nomi, tabella con scadenza) | resta aperta |
 | MOD-104 | no | - | NON FATTA (nickname e mute vocale ridati a chi rientra) | resta aperta |
