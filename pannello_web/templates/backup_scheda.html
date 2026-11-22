@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block titolo %}Copia #{{ copia }} · {{ guild.name }} · iYokai Panel{% endblock %}
+{% block corpo %}
+<h1>Copia #{{ copia }} · {{ nome }}</h1>
+<p><a href="/server/{{ guild.id }}/backup">&larr; Backup</a></p>
+<div class="carta">
+<p>Tipo: {{ tipo }} · creata il {{ creato_il.strftime('%Y-%m-%d %H:%M') }} UTC</p>
+{% if conteggi %}<ul>{% for k, v in conteggi.items() %}<li><strong>{{ k }}</strong>: {{ v }}</li>{% endfor %}</ul>{% else %}<p>La copia è vuota.</p>{% endif %}
+</div>
+<p><a href="/server/{{ guild.id }}/backup/{{ copia }}/elimina">Elimina questa copia</a></p>
+{% endblock %}

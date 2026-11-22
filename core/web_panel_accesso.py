@@ -34,6 +34,8 @@ GRUPPO_PER_AREA = {
     "benvenuto": "admin-benvenuto",
     "vocali": "admin-vocali",
     "embed": "admin-messaggi",
+    "backup": "admin-backup",
+    "ticket": "admin-ticket",
 }
 # Modulo (pagina /server/<id>/modulo/<nome>) -> gruppo di comandi.
 GRUPPO_PER_MODULO = {

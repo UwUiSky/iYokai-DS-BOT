@@ -32,7 +32,7 @@ from urllib.parse import urlsplit
 import jinja2
 from aiohttp import BodyPartReader, MultipartReader, web
 
-from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_editor, web_panel_inviti, web_panel_istantanee, web_panel_pagine, web_panel_accesso as regole_accesso, web_panel_panoramica as panoramica, web_panel_logic as regole, verify_vpn_logic as vpn_logica
+from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_backup, web_panel_editor, web_panel_inviti, web_panel_istantanee, web_panel_pagine, web_panel_accesso as regole_accesso, web_panel_panoramica as panoramica, web_panel_logic as regole, verify_vpn_logic as vpn_logica
 from core.bot_aspetto import MAX_IMMAGINE
 from core.command_access import RuoloAdminNegato
 from core.command_search_logic import cerca
@@ -84,6 +84,7 @@ ESITI = {
     "marchio_non_disponibile": ("Il bot con marchio non è attivo su questo bot: avvisa il proprietario.", True),
     "marchio_attendi": ("Tre collegamenti al minuto per server: aspetta e riprova.", True),
     "ai_consenso": ("Per accendere l'AI devi leggere e accettare il consenso: niente è stato salvato.", True),
+    "backup_eliminato": ("Copia eliminata.", False),
     "dati_attendi": ("Una copia dei dati al minuto: aspetta e riprova.", True),
 }
 
@@ -818,6 +819,9 @@ def build_app(
         chiave_utente=CHIAVE_UTENTE,
     )
     web_panel_ai.registra_rotte(
+        app, bot=bot, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE,
+    )
+    web_panel_backup.registra_rotte(
         app, bot=bot, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE,
     )
     web_panel_pagine.registra_rotte(
