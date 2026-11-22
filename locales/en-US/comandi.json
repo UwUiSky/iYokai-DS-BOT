@@ -472,7 +472,17 @@
   "offri": "offer",
   "fondo": "fund",
   "guadagna": "earn",
-  "righe": "rows"
+  "righe": "rows",
+  "sitter": "sitter",
+  "incontro": "meeting",
+  "abbandona": "abandon",
+  "adozioni": "adoptions",
+  "adotta": "adopt",
+  "abilita": "skills",
+  "attrezzi": "tackle",
+  "stagione": "season",
+  "rete": "net",
+  "acquario": "aquarium"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1689,7 +1699,19 @@
   "monete rischio guadagna": "Use a server-made earning command (without a name: the list).",
   "level righe": "Choose which rows to show in your summary and in which order.",
   "admin-negozio fondo": "Server prize fund",
-  "admin-negozio fondo dai": "Give a member an item donated to the prize fund."
+  "admin-negozio fondo dai": "Give a member an item donated to the prize fund.",
+  "fun animali sitter": "Pay a pet sitter: the animal's needs stay full for the chosen days.",
+  "fun animali lotta": "Make your animal fight another member's animal (no stake).",
+  "fun animali incontro": "Make two animals meet: they play together and a puppy may be born.",
+  "fun animali abbandona": "Leave one of your animals in the server's adoption queue.",
+  "fun animali adozioni": "The animals waiting for a family.",
+  "fun animali adotta": "Adopt an animal from the queue (you need a free slot).",
+  "fun pesca abilita": "Fishing skills: unlocked with challenge points.",
+  "fun pesca attrezzi": "The tackle shop: paid with pearls you find while fishing.",
+  "fun pesca stagione": "The monthly pass: a reward every 100 fishing points (free track).",
+  "fun pesca rete": "Collect the fish your net caught while you were away (one cast per hour).",
+  "fun pesca acquario": "Your aquarium: the species you found and how many you have.",
+  "fun pesca storico": "The latest fish caught and sales (30 days)."
  },
  "parametri": {},
  "menu": {
