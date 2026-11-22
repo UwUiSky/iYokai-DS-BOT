@@ -71,7 +71,7 @@ def test_la_sfida_scade_col_tempo():
 def test_l_etichetta_del_modulo_sta_nel_limite():
     modulo = CaptchaImmagineModal(MagicMock(), GUILD_ID, UTENTE_ID)
     assert len(modulo.children[0].text) <= captcha_image.ETICHETTA_MAX
-    assert modulo.answer_input.max_length == captcha_image.LUNGHEZZA_CODICE + 3
+    assert modulo.answer_input.max_length == captcha_image.MAX_LUNGHEZZA_RISPOSTA
 
 
 async def _setup_immagine(scenario, tipo="immagine"):

@@ -111,6 +111,9 @@ SETTING_RUOLO_NON_VERIFICATO = "verify_unverified_role_id"
 SETTING_RUOLI_EXTRA = "verify_extra_role_ids"
 SETTING_LOG_COMPATTO = "verify_log_compatto"  # VER-029: True = una riga, False = scheda completa
 SETTING_DM_INGRESSO = "verify_dm_ingresso"  # VER-007: all'ingresso un DM col link personale
+SETTING_CAPTCHA_LUNGHEZZA = "verify_captcha_lunghezza"  # VER-002: 4-8 lettere
+SETTING_CAPTCHA_MISURA = "verify_captcha_misura"  # piccola | media | grande
+SETTING_CAPTCHA_COLORE = "verify_captcha_colore"  # colore delle lettere, numero 0-16777215
 SETTING_CAPTCHA_TIPO = "verify_captcha_tipo"  # captcha_image.TIPO_TESTO | TIPO_IMMAGINE
 SETTING_PROMEMORIA_MINUTI = "verify_promemoria_minuti"  # VER-008: 0 = spento
 SETTING_SCADENZA_MINUTI = "verify_scadenza_minuti"  # VER-011: 0 = spento
@@ -186,7 +189,7 @@ class CaptchaImmagineModal(BaseModal, title="Verifica"):
 
     def __init__(self, cog: "VerifyCog", guild_id: int, user_id: int) -> None:
         super().__init__()
-        self.answer_input = discord.ui.TextInput(max_length=captcha_image.LUNGHEZZA_CODICE + 3)
+        self.answer_input = discord.ui.TextInput(max_length=captcha_image.MAX_LUNGHEZZA_RISPOSTA)
         self.add_item(discord.ui.Label(text="Scrivi le lettere dell'immagine", component=self.answer_input))
         self.cog = cog
         self.guild_id = guild_id
@@ -263,7 +266,7 @@ class CaptchaImmagineView(BaseView):
             await interaction.response.send_message(await testo_per(interaction, "verify_codice_nuovo_non_piu"), ephemeral=True)
             return
         await interaction.response.defer()
-        png = await asyncio.to_thread(captcha_image.disegna_immagine, nuova.codice)
+        png = await asyncio.to_thread(captcha_image.disegna_immagine, nuova.codice, None, *await self.cog.aspetto_captcha(self.guild_id))
         self.cog.sfide.set(chiave, nuova)
         await interaction.edit_original_response(attachments=[discord.File(io.BytesIO(png), filename="verifica.png")])
 
@@ -402,11 +405,23 @@ class VerifyCog(CogConGruppi, commands.Cog):
         # (server, utente) -> sfida aperta; in memoria e con tetto: dopo un riavvio si chiede un codice nuovo.
         self.sfide: BoundedCache = BoundedCache(2000)
 
+    @staticmethod
+    async def aspetto_captcha(guild_id: int) -> tuple[str, int | None]:
+        """VER-002: (misura, colore) scelti dal server; valori strani valgono quelli di base."""
+        misura = await db.get_guild_setting(guild_id, SETTING_CAPTCHA_MISURA)
+        colore = await db.get_guild_setting(guild_id, SETTING_CAPTCHA_COLORE)
+        if misura not in captcha_image.MISURE:
+            misura = "media"
+        if not isinstance(colore, int) or isinstance(colore, bool) or not captcha_image.colore_leggibile(colore):
+            colore = None
+        return misura, colore
+
     async def manda_captcha_immagine(self, interaction: discord.Interaction, guild_id: int) -> None:
         """Risponde al clic con l'immagine e il bottone che apre il modulo."""
         await interaction.response.defer(ephemeral=True)
-        sfida = captcha_image.nuova_sfida()
-        png = await asyncio.to_thread(captcha_image.disegna_immagine, sfida.codice)
+        lunghezza = captcha_image.lunghezza_valida(await db.get_guild_setting(guild_id, SETTING_CAPTCHA_LUNGHEZZA))
+        sfida = captcha_image.nuova_sfida(lunghezza=lunghezza)
+        png = await asyncio.to_thread(captcha_image.disegna_immagine, sfida.codice, None, *await self.aspetto_captcha(guild_id))
         self.sfide.set((guild_id, interaction.user.id), sfida)
         await interaction.followup.send(
             await testo_per(interaction, "verify_ricopia_le_lettere_dell_immagine"),
@@ -1013,6 +1028,12 @@ class VerifyCog(CogConGruppi, commands.Cog):
         azzera="Togli questi ruoli",
         log_compatto="Nel log una riga sola per tentativo, invece della scheda completa",
         ruolo_avviso_alt="Ruolo avvisato a ogni account doppio (serve il permesso «Menziona tutti»)",
+        captcha_lunghezza="Lettere del captcha a immagine (da 4 a 8)",
+        captcha_misura="Grandezza dell'immagine del captcha",
+        captcha_colore="Colore delle lettere, scuro, per esempio #3a2a2a",
+    )
+    @app_commands.choices(
+        captcha_misura=[app_commands.Choice(name=n.capitalize(), value=n) for n in captcha_image.MISURE]
     )
     async def options_cmd(
         self,
@@ -1024,10 +1045,26 @@ class VerifyCog(CogConGruppi, commands.Cog):
         azzera: bool = False,
         log_compatto: bool | None = None,
         ruolo_avviso_alt: discord.Role | None = None,
+        captcha_lunghezza: app_commands.Range[int, 4, 8] | None = None,
+        captcha_misura: app_commands.Choice[str] | None = None,
+        captcha_colore: app_commands.Range[str, 6, 7] | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_VERIFY):
             return
         guild = interaction.guild
+        if captcha_colore is not None:  # VER-002: il colore si controlla prima di salvare qualsiasi cosa
+            try:
+                valore_colore = int(captcha_colore.strip().lstrip("#"), 16)
+            except ValueError:
+                valore_colore = -1
+            if len(captcha_colore.strip().lstrip("#")) != 6 or not captcha_image.colore_leggibile(valore_colore):
+                await interaction.response.send_message(await testo_per(interaction, "verify_captcha_colore_non_valido"), ephemeral=True)
+                return
+            await db.set_guild_setting(guild.id, SETTING_CAPTCHA_COLORE, valore_colore, changed_by=interaction.user.id)
+        if captcha_lunghezza is not None:
+            await db.set_guild_setting(guild.id, SETTING_CAPTCHA_LUNGHEZZA, captcha_lunghezza, changed_by=interaction.user.id)
+        if captcha_misura is not None:
+            await db.set_guild_setting(guild.id, SETTING_CAPTCHA_MISURA, captcha_misura.value, changed_by=interaction.user.id)
         if ruolo_avviso_alt is not None:  # VER-023: come in D12, il ping di un ruolo lo sceglie chi può «Menziona tutti»
             if ruolo_avviso_alt.is_default() or not (
                 interaction.user.id == guild.owner_id or interaction.user.guild_permissions.mention_everyone

@@ -175,3 +175,58 @@ async def test_con_i_dm_chiusi_l_ingresso_non_si_rompe(scenario):
     scenario.utente.send = AsyncMock(side_effect=discord.Forbidden(MagicMock(status=403), "chiusi"))
     await scenario.cog.on_member_join(scenario.utente)
     scenario.utente.send.assert_awaited_once()
+
+
+# VER-002
+def test_lunghezza_misura_e_colore_del_captcha_stanno_nei_limiti():
+    import io
+    import random
+
+    from PIL import Image
+
+    from core import captcha_image as ci
+
+    assert [ci.lunghezza_valida(v) for v in (2, 4, 6, 8, 99, "x", True, None)] == [4, 4, 6, 8, 8, 5, 5, 5]
+    assert len(ci.genera_codice(None, 8)) == 8 and len(ci.genera_codice(None, 3)) == 4
+    assert ci.colore_leggibile(0x3A2A2A) and not ci.colore_leggibile(0xFFFFFF) and not ci.colore_leggibile(0xFFEE00)
+    piccola = Image.open(io.BytesIO(ci.disegna_immagine("AC2DK", random.Random(1), "piccola"))).size
+    grande = Image.open(io.BytesIO(ci.disegna_immagine("AC2DK", random.Random(1), "grande"))).size
+    assert piccola[0] < ci.LARGHEZZA < grande[0] and piccola[1] < ci.ALTEZZA < grande[1]
+    otto = Image.open(io.BytesIO(ci.disegna_immagine("ACDEFGHJ", random.Random(1), "media"))).size
+    assert otto[0] > ci.LARGHEZZA  # più lettere, immagine più larga
+    colorata = Image.open(io.BytesIO(ci.disegna_immagine("AC2DK", random.Random(1), "media", 0x801010)))
+    assert colorata.size == (ci.LARGHEZZA, ci.ALTEZZA)
+    ci.disegna_immagine("AC2DK", random.Random(1), "enorme", 0xFFFFFF)  # valori strani: quelli di base, nessun errore
+
+
+# VER-002
+async def test_il_server_sceglie_lunghezza_misura_e_colore_e_l_immagine_li_usa(scenario):
+    from discord import app_commands
+
+    from cogs.security import verify as modulo
+    from tests.test_captcha_image import _setup_immagine
+    from tests.test_verify_risposta_subito import UTENTE_ID
+
+    await _setup_immagine(scenario)
+    i = fake_interaction(guild=scenario.server, user=fake_member(55, guild_permissions=discord.Permissions(manage_guild=True)))
+    await scenario.cog.options_cmd.callback(
+        scenario.cog, i, captcha_lunghezza=7, captcha_misura=app_commands.Choice(name="Grande", value="grande"),
+        captcha_colore="#802020",
+    )
+    assert await db.get_guild_setting(GUILD_ID, modulo.SETTING_CAPTCHA_LUNGHEZZA) == 7
+    assert await db.get_guild_setting(GUILD_ID, modulo.SETTING_CAPTCHA_COLORE) == 0x802020
+    clic = scenario.clic()
+    await scenario.cog.manda_captcha_immagine(clic, GUILD_ID)
+    assert len(scenario.cog.sfide.get((GUILD_ID, clic.user.id)).codice) == 7
+    assert await scenario.cog.aspetto_captcha(GUILD_ID) == ("grande", 0x802020)
+
+
+# VER-002
+async def test_un_colore_troppo_chiaro_o_sbagliato_non_si_salva(scenario):
+    from cogs.security import verify as modulo
+
+    for colore in ("#ffffff", "ciao", "#12345"):
+        i = fake_interaction(guild=scenario.server, user=fake_member(55, guild_permissions=discord.Permissions(manage_guild=True)))
+        await scenario.cog.options_cmd.callback(scenario.cog, i, captcha_colore=colore, captcha_lunghezza=6)
+        assert await db.get_guild_setting(GUILD_ID, modulo.SETTING_CAPTCHA_COLORE) is None
+        assert await db.get_guild_setting(GUILD_ID, modulo.SETTING_CAPTCHA_LUNGHEZZA) is None  # niente salvato a metà
