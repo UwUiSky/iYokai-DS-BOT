@@ -3621,5 +3621,8 @@
   "backup_elimina_annullata": "Niente eliminato.",
   "backup_automatico_spento": "Copie automatiche spente. Quelle già fatte restano.",
   "backup_automatico_non_attivo": "Le copie automatiche non sono attive. Accendile con `ore:`.",
-  "backup_automatico_attivo": "⏱️ Copie automatiche accese: ogni {ore} ore, ne tengo {copie}. La più vecchia automatica viene sovrascritta; le copie fatte a mano non si toccano."
+  "backup_automatico_attivo": "⏱️ Copie automatiche accese: ogni {ore} ore, ne tengo {copie}. La più vecchia automatica viene sovrascritta; le copie fatte a mano non si toccano.",
+  "backup_modelli_titolo": "Modelli di server",
+  "backup_modelli_piede": "Si usano con «Usa un modello»: nome, codice o link discord.new. Mai ban, membri o messaggi.",
+  "backup_modello_contiene": "Contiene"
 }

@@ -156,7 +156,7 @@ async def test_modello_si_pubblica_e_si_usa_senza_dati_personali(ambiente):
 
     i = _interazione(owner=True)
     await cog.modello.callback(cog, i, SimpleNamespace(value="usa", name="u"), None, codice)
-    view = i.response.messaggi[0][1]["view"]
+    view = i.followup.messaggi[0][1]["view"]
     assert "ban" not in view.dati and [o.value for o in view.menu.options] == ["ruoli"]
 
     i = _interazione(owner=True)
@@ -245,12 +245,12 @@ async def test_info_mostra_i_conteggi_senza_caricare(ambiente):
     dati = {"versione": 1, "ruoli": [{"nome": "r", "permessi": 0}] * 3, "canali": [{"nome": "c"}], "ban": [{"user_id": 7}]}
     copia = await repo.salva_struttura(GUILD, "prima", 1, dati)
     i = _interazione(owner=True)
-    await cog.info.callback(cog, i, copia)
+    await cog.lista.callback(cog, i, copia)
     embed = i.response.messaggi[0][1]["embed"]
     assert "**ruoli**: 3" in embed.description and "**ban**: 1" in embed.description
     assert "thread" not in embed.description
     altra = _interazione(owner=True)
-    await cog.info.callback(cog, altra, copia + 999)
+    await cog.lista.callback(cog, altra, copia + 999)
     assert "non trovata" in altra.response.messaggi[0][0].lower()
 
 
@@ -277,3 +277,40 @@ async def test_elimina_chiede_conferma_e_tutte_toglie_ogni_copia(ambiente):
     errore = _interazione(owner=True)
     await cog.elimina.callback(cog, errore, None, False)
     assert "view" not in errore.response.messaggi[0][1]
+
+
+async def test_modello_pronto_elenco_e_scheda_senza_dati_personali(ambiente):
+    """BKP-020/021/022: l'elenco ha i pronti e i miei codici; la scheda e «usa» accettano il nome."""
+    _db, repo = ambiente
+    cog = BackupCog(bot=None)
+    i = _interazione(owner=True)
+    await cog.modello.callback(cog, i, SimpleNamespace(value="elenco", name="e"), None, None)
+    assert "Comunità" in i.response.messaggi[0][1]["embed"].description
+    i = _interazione(owner=True)
+    await cog.modello.callback(cog, i, SimpleNamespace(value="scheda", name="s"), None, "gioco")
+    campo = i.followup.messaggi[0][1]["embed"].fields[0]
+    assert "canali: 5" in campo.value and "ruoli: 2" in campo.value
+    i = _interazione(owner=True)
+    await cog.modello.callback(cog, i, SimpleNamespace(value="usa", name="u"), None, "Studio")
+    assert [o.value for o in i.followup.messaggi[0][1]["view"].menu.options] == ["ruoli", "canali"]
+
+
+async def test_modello_di_discord_da_link_e_codice_sbagliato(ambiente):
+    """BKP-020: un link discord.new si legge con fetch_template; un indirizzo estraneo non parte."""
+    from tests.test_backup_modelli import _modello_discord
+
+    chiamate = []
+
+    class _Bot:
+        async def fetch_template(self, codice):
+            chiamate.append(codice)
+            return _modello_discord()
+
+    cog = BackupCog(bot=_Bot())
+    i = _interazione(owner=True)
+    await cog.modello.callback(cog, i, SimpleNamespace(value="usa", name="u"), None, "https://discord.new/abcDEF1234")
+    assert chiamate == ["abcDEF1234"]
+    assert {o.value for o in i.followup.messaggi[0][1]["view"].menu.options} == {"impostazioni", "ruoli", "canali"}
+    i = _interazione(owner=True)
+    await cog.modello.callback(cog, i, SimpleNamespace(value="usa", name="u"), None, "https://evil.example/abcDEF1234")
+    assert chiamate == ["abcDEF1234"] and "view" not in i.followup.messaggi[0][1]
