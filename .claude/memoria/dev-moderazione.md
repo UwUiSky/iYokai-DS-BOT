@@ -1,6 +1,6 @@
 # Memoria dev-moderazione
 ## Aggiornata
-2026-11-22, giro r2mod (ramo feat/r2mod, wt /home/user/wt-115, DB iyokai_w115; migr. 0800, 0801). Controllo voce per voce di #115, #116, #118: tabella in revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.md, D104. Smoke da fare.
+2026-11-22, giro r2mod (ramo feat/r2mod, wt /home/user/wt-115, DB iyokai_w115; migr. 0800, 0801). Controllo voce per voce di #115, #116, #118: tabella in revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.md, D106. Smoke da fare.
 ## In corso
 Resto di r2mod (NON FATTE nella tabella): MOD-016 (quarantena a mano: stato dei ruoli in tabella 0803, scheduler come il mute), MOD-051, 053, 091, 092, 094, 095, 096 (blocchi mirati), 103, 104, AMD-031 (liste IP logger/adulti/malware in core/phishing_logic.py, chiavi in AutomodAdvancedConfig). Migrazioni libere: 0803-0809. Test: tests/test_catalogo_r2mod_*.py.
 ## Fatto
