@@ -114,7 +114,9 @@ class SceltaCanali(BaseView):
         self.scelti: list[int] = []
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        # Il menu è di chi ha dato il comando e il permesso si rilegge a ogni clic.
+        # Il menu è di chi ha dato il comando e il permesso si rilegge a ogni clic (prima la blacklist, SEC-10).
+        if not await super().interaction_check(interaction):
+            return False
         return interaction.user.id == self.user_id and _gestisce(interaction)
 
     async def _scelti(self, interaction: discord.Interaction) -> None:

@@ -49,7 +49,13 @@ async def test_si_bloccano_solo_i_canali_scelti_e_il_server_resta_com_e():
 
 
 # MOD-091
-async def test_il_menu_e_di_chi_comanda_ha_un_tetto_e_il_permesso_si_rilegge():
+async def test_il_menu_e_di_chi_comanda_ha_un_tetto_e_il_permesso_si_rilegge(monkeypatch):
+    import core.ui_base as ui
+
+    async def nessuno(_interazione):  # nessuno in blacklist: qui conta il controllo del menu
+        return False
+
+    monkeypatch.setattr(ui, "_utente_o_server_in_blacklist", nessuno)
     server = _server(_quattro())
     vista = cog_modulo.SceltaCanali(MagicMock(), PROPRIETARIO, None, None, False)
     assert vista.menu.max_values == logica.MAX_CANALI_SCELTI == 25

@@ -57,7 +57,13 @@ def config_pulita(valore) -> dict:
 
 
 async def leggi_config(guild_id: int) -> dict:
-    return config_pulita(await db.get_guild_setting(guild_id, SETTING_EMERGENZA))
+    """Se l'impostazione non si legge, l'emergenza resta spenta: il resto dell'automod deve continuare a lavorare."""
+    try:
+        valore = await db.get_guild_setting(guild_id, SETTING_EMERGENZA)
+    except Exception:  # noqa: BLE001
+        logger.warning("Impostazioni di emergenza non lette (server %s).", guild_id, exc_info=True)
+        valore = None
+    return config_pulita(valore)
 
 
 def account_sospetto(member, adesso: datetime | None = None) -> bool:

@@ -689,7 +689,7 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         if fine is not None:
             embed.add_field(name=await testo_per(interaction, "softbanmute_fine", pubblica=True), value=discord.utils.format_dt(fine, "R"), inline=True)
         if non_tolti:
-            embed.set_footer(text=await testo_per(interaction, "quarantena_ruoli_non_tolti"))
+            embed.set_footer(text=await testo_per(interaction, "quarantena_ruoli_non_tolti", pubblica=True))
         await invia_esito(interaction, embed, seguito=True)
         await post_to_mod_log(guild, embed)
 

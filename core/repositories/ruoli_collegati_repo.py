@@ -75,10 +75,6 @@ class RuoliCollegatiRepository:
         esito = await self._pool.execute("DELETE FROM ruoli_collegati_twitch WHERE user_id = $1", user_id)
         return esito.endswith(" 1")
 
-    async def elimina_dati_utente(self, user_id: int) -> int:
-        """Cancellazione dati (/privacy): lo stesso effetto di `elimina`."""
-        return 1 if await self.elimina(user_id) else 0
-
 
 def _get_pool():
     from core.database import db
