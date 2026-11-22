@@ -109,7 +109,7 @@ Giro r2mod (issue #115, #116, #118). «Corretta» = fa ciò che dice il catalogo
 | codice | esiste | corretta | azione | file e test |
 |---|---|---|---|---|
 | MOD-008 | no | sì | realizzata: `appello: no` su ban, tempban e timeout; caso segnato (0800), niente bottone, appello rifiutato | cogs/moderation/actions.py, ban_appeal.py; tests/test_catalogo_r2mod_appelli.py |
-| MOD-016 | no | - | NON FATTA: manca `/mod-canali quarantena` (riuso del ruolo dell'anti-raid, ruoli salvati) | resta aperta in #115 |
+| MOD-016 | no | sì | realizzata: `/mod-sanzioni quarantena` (anche a tempo, fino a 1 anno) e `libera`; usa il ruolo dell'anti-raid; i ruoli si salvano PRIMA (0804), il rilascio ridà solo quelli che il bot può ridare; gerarchia, conferma, permesso del bot e caso come ogni sanzione; azione `quarantena` concedibile a un ruolo (CFG-024) | core/moderation_quarantena.py, cogs/moderation/softban_mute.py; tests/test_catalogo_r2mod_quarantena.py |
 | MOD-018 | no (il ruolo nasceva solo da solo) | sì | realizzata: `/mod-sanzioni opzioni muto ruolo:\|nome_nuovo:`; il ruolo deve stare sotto il bot e sotto chi comanda, non gestito, senza permessi pericolosi | cogs/moderation/opzioni.py; tests/test_catalogo_r2mod_mute.py |
 | MOD-019 | no | sì | realizzata: `muto aggiorna:` rimette il blocco su fino a 500 canali, a gruppi di 8 con pausa | softban_mute.aggiorna_ruolo_muto; tests/test_catalogo_r2mod_mute.py |
 | MOD-020 | sì (`add_reactions` già negato) | sì | test aggiunto | softban_mute.MUTE_OVERWRITE; tests/test_catalogo_r2mod_mute.py |

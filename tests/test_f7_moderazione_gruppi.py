@@ -48,7 +48,7 @@ MODULI = (
 
 # (gruppo, sottogruppo o None) -> nomi dei figli attesi
 ATTESI: dict[tuple[str, str | None], set[str]] = {
-    ("mod-sanzioni", None): {"warn", "timeout", "untimeout", "mute", "unmute", "nick", "applica"},
+    ("mod-sanzioni", None): {"warn", "timeout", "untimeout", "mute", "unmute", "nick", "applica", "quarantena", "libera"},
     ("mod-sanzioni", "massa"): {"timeout", "warn"},
     ("mod-sanzioni", "opzioni"): {"imposta", "dm", "muto", "azioni", "avvisi"},
     ("mod-casi", "caso"): {"storico", "vedi", "motivo", "elimina", "classifica-staff", "attive", "registra", "durata", "nascondi", "esporta", "prova"},

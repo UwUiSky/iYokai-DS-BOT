@@ -23,6 +23,8 @@ COMANDI = {
     "mod-sanzioni untimeout": "timeout",
     "mod-sanzioni mute": "mute",
     "mod-sanzioni unmute": "mute",
+    "mod-sanzioni quarantena": "quarantena",
+    "mod-sanzioni libera": "quarantena",
     "mod-ban kick": "kick",
     "mod-ban ban": "ban",
     "mod-ban tempban": "tempban",

@@ -257,6 +257,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("lockdown_config", "Scelte del blocco totale e del panico", colonna_server="guild_id"),
     _t("lockdown_stato", "Blocco totale o panico in corso", colonne_attore=("avviato_da",),
        colonna_server="guild_id", nota="dura quanto il blocco: si cancella allo sblocco"),
+    _t("moderation_quarantena", "Quarantena a mano: ruoli da ridare", colonne_utente=("user_id",), colonne_attore=("dato_da",),
+       colonna_server="guild_id", utente="cancella", esporta=True),
     _t("lockdown_ruoli", "Permessi tolti ai ruoli durante il blocco", colonna_server="guild_id"),
     _t("lockdown_canali", "Permessi di @everyone prima del blocco, per canale", colonna_server="guild_id",
        nota="si cancella allo sblocco"),

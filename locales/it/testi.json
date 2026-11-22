@@ -3897,5 +3897,10 @@
   "lockdown_scegli_i_canali": "Scegli fino a {massimo} canali, poi premi «Blocca» o «Salva come gruppo».",
   "lockdown_scegli_almeno_un_canale": "Scegli almeno un canale dal menu.",
   "lockdown_gruppo_salvato": "Gruppo salvato: {n} canali. Si blocca con «gruppo: sì».",
-  "lockdown_manca_il_permesso": "Per questa scelta serve il permesso «{permesso}» a te e a me."
+  "lockdown_manca_il_permesso": "Per questa scelta serve il permesso «{permesso}» a te e a me.",
+  "quarantena_bot_senza_permesso": "Mi manca il permesso «Gestire i ruoli».",
+  "quarantena_durata_non_valida": "La durata va da 1 minuto a 1 anno.",
+  "quarantena_non_riuscita": "Non sono riuscito a mettere in quarantena: controlla i miei permessi e il mio ruolo. Non è cambiato niente.",
+  "quarantena_ruoli_non_tolti": "Il ruolo di quarantena è dato, ma alcuni ruoli non si sono potuti togliere (sopra il mio).",
+  "quarantena_non_in_quarantena": "{mention} non è in quarantena a mano."
 }

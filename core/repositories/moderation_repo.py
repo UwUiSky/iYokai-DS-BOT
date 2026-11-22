@@ -823,6 +823,32 @@ class ModerationRepository:
     # ------------------------------------------------------------
     # Mute con ruolo: a tempo, hardmute, rientro (MOD-014, 015, 021)
     # ------------------------------------------------------------
+    async def salva_quarantena(
+        self, guild_id: int, user_id: int, ruoli: list[int], case_number: int | None, finisce_il, dato_da: int
+    ) -> None:
+        """MOD-016: i ruoli di prima e la fine; si scrive prima di toccare il membro."""
+        await self._pool.execute(
+            """
+            INSERT INTO moderation_quarantena (guild_id, user_id, ruoli, case_number, finisce_il, dato_da)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (guild_id, user_id) DO UPDATE
+                SET ruoli = $3, case_number = $4, finisce_il = $5, dato_da = $6
+            """,
+            guild_id, user_id, ruoli, case_number, finisce_il, dato_da,
+        )
+
+    async def get_quarantena(self, guild_id: int, user_id: int) -> dict | None:
+        r = await self._pool.fetchrow(
+            "SELECT ruoli, case_number, finisce_il FROM moderation_quarantena WHERE guild_id = $1 AND user_id = $2",
+            guild_id, user_id,
+        )
+        return dict(r) if r else None
+
+    async def elimina_quarantena(self, guild_id: int, user_id: int) -> None:
+        await self._pool.execute(
+            "DELETE FROM moderation_quarantena WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
+        )
+
     async def save_mute_state(
         self,
         guild_id: int,

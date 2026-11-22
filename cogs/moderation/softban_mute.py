@@ -20,7 +20,7 @@ su ogni canale di ogni tipo. I canali creati dopo ricevono lo stesso
 blocco da on_guild_channel_create. Il mute può avere una fine (lo toglie lo
 scheduler, anche dopo un riavvio), può essere un hardmute (toglie anche gli
 altri ruoli e li ridà alla fine) e resta se l'utente esce e rientra.
-Funzioni coperte: SPEC §5.1, §5.10 (MOD-014, 015, 018, 019, 020, 021, 026)
+Funzioni coperte: SPEC §5.1, §5.10 (MOD-014, 015, 016, 018, 019, 020, 021, 026)
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from typing import Literal
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import discord
 from discord import app_commands
@@ -38,7 +38,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core.database import db
 from core.i18n import testo_per
-from core import moderation_dm
+from core import moderation_dm, moderation_quarantena
 from core.moderazione_vocale_logic import scelta_mute_valida
 from core.moderation_mute_logic import (
     MAX_MUTE_SECONDI,
@@ -613,7 +613,122 @@ class ModerationSoftbanMuteCog(CogConGruppi, commands.Cog):
         await post_to_mod_log(interaction.guild, log_embed)
 
 
+    # ================================================================
+    # Quarantena a mano (MOD-016)
+    # ================================================================
+    async def handle_quarantena_fine(self, guild_id: int, user_id: int, payload: dict) -> None:
+        """Lo scheduler: la quarantena a tempo è finita."""
+        stato = await moderation_repo.get_quarantena(guild_id, user_id)
+        if stato is None or stato["case_number"] != payload.get("caso"):
+            return  # tolta prima, oppure sostituita da una più nuova
+        guild = self.bot.get_guild(guild_id)
+        if guild is None:
+            return
+        member = await trova_membro(guild, user_id)
+        if member is None:  # fuori dal server: niente da ridare, si chiude lo stato e il caso
+            await moderation_repo.revoke_case(guild_id, stato["case_number"], self.bot.user.id)
+            await moderation_repo.elimina_quarantena(guild_id, user_id)
+            return
+        if await moderation_quarantena.libera(guild, member, "Quarantena scaduta", self.bot.user.id) is False:
+            raise RuntimeError("ruoli della quarantena non sistemati")  # lo scheduler riprova
+
+    @comando_di_gruppo(
+        "mod-sanzioni",
+        nome="quarantena",
+        descrizione="Toglie i ruoli a un membro e gli dà il ruolo di quarantena (anche a tempo).",
+    )
+    @app_commands.describe(
+        member="Il membro da mettere in quarantena",
+        reason="Motivo della quarantena",
+        durata="Per quanto tempo (es. 2h, 3d). Vuoto: finché non lo liberi (max 1 anno)",
+    )
+    @app_commands.autocomplete(reason=completa_motivo)
+    async def quarantena(
+        self,
+        interaction: discord.Interaction,
+        member: discord.Member,
+        reason: Reason | None = None,
+        durata: app_commands.Range[str, 1, 20] | None = None,
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
+            return
+        reason = await risolvi_motivo(interaction, reason)
+        if reason is None:
+            return
+        if not await check_can_moderate(interaction, member):
+            return
+        guild = interaction.guild
+        if not guild.me.guild_permissions.manage_roles:
+            await interaction.response.send_message(await testo_per(interaction, "quarantena_bot_senza_permesso"), ephemeral=True)
+            return
+        fine = None
+        if durata is not None:
+            try:
+                secondi = parse_duration(durata)
+            except ValueError as exc:
+                await interaction.response.send_message(str(exc), ephemeral=True)
+                return
+            if not 60 <= secondi <= moderation_quarantena.MAX_DURATA_SECONDI:
+                await interaction.response.send_message(await testo_per(interaction, "quarantena_durata_non_valida"), ephemeral=True)
+                return
+            fine = discord.utils.utcnow() + timedelta(seconds=secondi)
+        interaction = await conferma_sanzione(interaction, member, "quarantena", reason, livello=Livello.MOD)
+        if interaction is None:
+            return
+        await interaction.response.defer()
+        await scheduler.cancel_for_user(guild.id, member.id, moderation_quarantena.SCHEDULED_QUARANTENA_FINE)
+        riuscita, caso, non_tolti = await moderation_quarantena.metti(member, audit_reason(f"Quarantena: {reason}"), interaction.user.id, fine)
+        if not riuscita:
+            await interaction.followup.send(await testo_per(interaction, "quarantena_non_riuscita"), ephemeral=True)
+            return
+        if fine is not None:
+            await scheduler.schedule(
+                guild.id, member.id, moderation_quarantena.SCHEDULED_QUARANTENA_FINE, fine, payload={"caso": caso}
+            )
+        embed = _case_embed("🔒 Quarantena", discord.Color.dark_orange(), member, interaction.user, reason, caso)
+        if fine is not None:
+            embed.add_field(name=await testo_per(interaction, "softbanmute_fine", pubblica=True), value=discord.utils.format_dt(fine, "R"), inline=True)
+        if non_tolti:
+            embed.set_footer(text=await testo_per(interaction, "quarantena_ruoli_non_tolti"))
+        await invia_esito(interaction, embed, seguito=True)
+        await post_to_mod_log(guild, embed)
+
+    @comando_di_gruppo(
+        "mod-sanzioni",
+        nome="libera",
+        descrizione="Toglie la quarantena a un membro e gli ridà i ruoli di prima.",
+    )
+    @app_commands.describe(member="Il membro da liberare", reason="Motivo")
+    @app_commands.autocomplete(reason=completa_motivo)
+    async def libera(
+        self, interaction: discord.Interaction, member: discord.Member, reason: Reason | None = None
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_ACTIONS):
+            return
+        reason = await risolvi_motivo(interaction, reason)
+        if reason is None:
+            return
+        if not await check_can_moderate(interaction, member):
+            return
+        await interaction.response.defer()
+        await scheduler.cancel_for_user(interaction.guild.id, member.id, moderation_quarantena.SCHEDULED_QUARANTENA_FINE)
+        esito = await moderation_quarantena.libera(interaction.guild, member, audit_reason(f"Quarantena tolta: {reason}"), interaction.user.id)
+        if esito is None:
+            await interaction.followup.send(await testo_per(interaction, "quarantena_non_in_quarantena", mention=member.mention), ephemeral=True)
+            return
+        if esito is False:
+            await interaction.followup.send(await testo_per(interaction, "softbanmute_non_sono_riuscito_sistemare_ruoli"), ephemeral=True)
+            return
+        embed = discord.Embed(title="🔓 Quarantena tolta", color=discord.Color.green())
+        embed.add_field(name="Utente", value=f"{member.mention} ({member.id})", inline=False)
+        embed.add_field(name="Moderatore", value=interaction.user.mention, inline=True)
+        embed.add_field(name="Motivo", value=reason, inline=False)
+        await interaction.followup.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+        await post_to_mod_log(interaction.guild, embed)
+
+
 async def setup(bot: commands.Bot) -> None:
     cog = ModerationSoftbanMuteCog(bot)
     await bot.add_cog(cog)
+    scheduler.register_handler(moderation_quarantena.SCHEDULED_QUARANTENA_FINE, cog.handle_quarantena_fine)
     scheduler.register_handler(SCHEDULED_MUTE_EXPIRE, cog.handle_mute_expire)

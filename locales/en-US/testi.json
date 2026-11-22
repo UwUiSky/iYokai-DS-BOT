@@ -3897,5 +3897,10 @@
   "lockdown_scegli_i_canali": "Pick up to {massimo} channels, then press \"Lock\" or \"Save as group\".",
   "lockdown_scegli_almeno_un_canale": "Pick at least one channel from the menu.",
   "lockdown_gruppo_salvato": "Group saved: {n} channels. Lock it with \"group: yes\".",
-  "lockdown_manca_il_permesso": "This choice needs the \"{permesso}\" permission for you and for me."
+  "lockdown_manca_il_permesso": "This choice needs the \"{permesso}\" permission for you and for me.",
+  "quarantena_bot_senza_permesso": "I am missing the \"Manage Roles\" permission.",
+  "quarantena_durata_non_valida": "The duration goes from 1 minute to 1 year.",
+  "quarantena_non_riuscita": "I could not quarantine: check my permissions and role. Nothing has changed.",
+  "quarantena_ruoli_non_tolti": "The quarantine role is given, but some roles could not be removed (above mine).",
+  "quarantena_non_in_quarantena": "{mention} is not in a manual quarantine."
 }
