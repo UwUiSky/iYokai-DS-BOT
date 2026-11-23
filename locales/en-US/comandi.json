@@ -536,7 +536,9 @@
   "togli-utente": "remove-user",
   "identita-bot": "bot-identity",
   "rep": "rep",
-  "admin-rep": "admin-rep"
+  "admin-rep": "admin-rep",
+  "suono-condividi": "share-sound",
+  "suono-altri": "sound-others"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1871,7 +1873,9 @@
   "admin-rep premio": "Roles given at a reputation threshold (no threshold: the list).",
   "admin-livelli azzera importa": "Load XP from a JSON or CSV file exported from another bot.",
   "monete conto voto": "Claim the reward for voting for the bot, or choose automatic claiming.",
-  "admin-giochi voto": "The reward this server gives to who votes for the bot (no values: the status)."
+  "admin-giochi voto": "The reward this server gives to who votes for the bot (no values: the status).",
+  "admin-musica suono-condividi": "Choose whether this server's sounds can be used elsewhere and vice versa.",
+  "music suono-altri": "Pick a sound from other servers' soundboards, preview it and play it in voice."
  },
  "parametri": {},
  "menu": {

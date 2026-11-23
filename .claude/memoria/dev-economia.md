@@ -1,6 +1,8 @@
 # Memoria di dev-economia
 
 ## Aggiornata
+23/11/2026 · giro r2fun (#131, #125), ramo `feat/r2fun`, wt-fun, db `iyokai_wfun`, migrazioni 0940-0949 (0940 usata). GIF D127 e FUN-075 fatti; ECO-112/087 immagini in corso. Smoke da fare.
+
 23/11/2026 · giro r1fun (#131), ramo `feat/r1fun`, wt `/home/user/wt-fun`, db `iyokai_wfun`, migrazioni 0840-0849 (0840-0842 usate). Smoke da fare.
 
 ## In corso
@@ -9,6 +11,7 @@
 - Dopo: restano solo le ECO con motivo in D86.
 
 ## Fatto
+- r2fun GIF: Tenor, accensione con la chiave (`FONTI` con acceso=True), `QUOTA_ORARIA`, categoria prima della ricerca (`prendi`), FUN-104 otakugifs sing; le altre 9 via Giphy/Tenor (D129). FUN-075: `cogs/fun/suoni_altri.py` (`/music suono-altri`, `/admin-musica suono-condividi`), 0940. Trappola: i gruppi di primo livello sono a 58+2 (tetto 60): niente gruppi nuovi; `/music` è a 25.
 - r1fun FUN-013/014: gruppo `/tela` + `/admin-giochi tela`, `tela_logic/tela_image/tela_repo`, `cogs/fun/tela.py`, 0842, pagina pubblica `core/web_panel_tela.py` (una riga in `build_app`). Trappola: nei `COALESCE($n, ...)` di asyncpg servono i cast (`$2::int`).
 - r1fun FUN-017: gruppo nuovo `/auto` (in `GRUPPI` e `AUDIENCE`; `giochi` è a 18 figli), `core/auto_logic.py`, `auto_image.py`, `auto_repo.py`, `cogs/fun/auto.py`, 0841 `fun_auto_garage`/`fun_auto_foto`; foto = `esamina_allegato` + `riduci_foto`, segnalazioni con `immagini_segnalazioni_repo` (chiave `auto:server:utente:sha`); `spend_coins_in` nella stessa transazione.
 - r1fun FUN-019: `core/battaglia_logic.py`, `cogs/fun/battaglia.py` (`/giochi sfide battaglia|battaglie`), 0840 `fun_battaglie_stat`; puntata con `apri_gruppo`/`chiudi_gruppo`, max 16 turni (la riga della partita scade a 900 s), `view.timeout` rimesso a 40 s dopo l'accettazione.

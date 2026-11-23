@@ -151,7 +151,7 @@ def _richiesta(fonte: Fonte, voce: Voce) -> str | None:
             return None
         q = quote(voce.ricerca[:50])
         return (
-            f"{fonte.url}/search?key={quote(fonte.chiave)}&client_key=iyokai&q={q}&limit=10&contentfilter=high"
+            f"{'/'.join((fonte.url, 'search'))}?key={quote(fonte.chiave)}&client_key=iyokai&q={q}&limit=10&contentfilter=high"
             "&media_filter=mediumgif,tinygif,gif&random=true"
         )
     if fonte.nome == "giphy":
