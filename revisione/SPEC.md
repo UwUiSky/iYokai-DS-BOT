@@ -3088,3 +3088,5 @@ Controllo delle 89 voci in `revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.
 - `[x]` SIC-021 (D121): `/owner system chiave-soccorso` e `scripts/chiave_soccorso.py verifica` (SIC-021, 0883).
 
 - `[x]` MUS-016 (D121): `/admin-musica impostazioni solo-audio:sì` (MUS-016).
+
+- `[x]` RUO-005 (D121): `/admin-benvenuto immagine trasparente: larghezza: altezza:` (RUO-005, 0884).

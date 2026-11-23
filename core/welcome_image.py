@@ -13,7 +13,7 @@ from __future__ import annotations
 import io
 from dataclasses import dataclass
 
-from PIL import Image, ImageDraw, ImageOps
+from PIL import Image, ImageDraw, ImageFilter, ImageOps
 
 from core.leveling_logic import colore_valido
 from core.rank_card_image import carica_font, senza_quadrati, taglia_al_largo
@@ -21,6 +21,8 @@ from core.safe_image import safe_open_image
 
 LARGHEZZA = 1024
 ALTEZZA = 400
+MISURA_MIN = 64  # RUO-005
+MISURA_MAX = 2048  # RUO-005: come il tetto di safe_image
 LATO_AVATAR = 200
 MAX_SFONDO_BYTE = 3 * 1024 * 1024  # come ProBot: sfondo sotto 3 MB
 MAX_TITOLO = 40
@@ -54,6 +56,9 @@ class DatiBenvenuto:
     testo: str = ""
     allineamento: str = "sinistra"
     colore_nome: str = ""
+    larghezza: int = LARGHEZZA  # RUO-005
+    altezza: int = ALTEZZA  # RUO-005
+    trasparente: bool = False  # RUO-005: niente sfondo, solo avatar e testi
 
 
 def prepara_sfondo(image_bytes: bytes) -> bytes:
@@ -123,7 +128,10 @@ def render_welcome_image(dati: DatiBenvenuto, avatar_bytes: bytes | None, sfondo
     rgb = tuple(int(colore[i : i + 2], 16) for i in (1, 3, 5))
     colore_nome = colore_valido(dati.colore_nome) if dati.colore_nome else None
     rgb_nome = tuple(int(colore_nome[i : i + 2], 16) for i in (1, 3, 5)) if colore_nome else rgb
-    immagine = _sfondo(dati.modello, sfondo_bytes, dati.opacita)
+    if dati.trasparente:  # RUO-005: lo sfondo caricato e il modello non si disegnano
+        immagine = Image.new("RGBA", (LARGHEZZA, ALTEZZA), (0, 0, 0, 0))
+    else:
+        immagine = _sfondo(dati.modello, sfondo_bytes, dati.opacita)
     draw = ImageDraw.Draw(immagine)
 
     avatar = _avatar(avatar_bytes, dati.forma)
@@ -156,6 +164,32 @@ def render_welcome_image(dati: DatiBenvenuto, avatar_bytes: bytes | None, sfondo
         libero = taglia_al_largo(draw, senza_quadrati(dati.testo[:MAX_TESTO], f_testo), f_testo, larghezza)
         scrivi(315, libero, f_testo, rgb)
 
+    immagine = _alla_misura(immagine, dati)
     buffer = io.BytesIO()
     immagine.save(buffer, format="PNG")
     return buffer.getvalue()
+
+
+def misura_valida(valore: int, base: int) -> int:
+    """RUO-005: una misura intera tra MISURA_MIN e MISURA_MAX (un valore strano torna la misura di base)."""
+    try:
+        return max(MISURA_MIN, min(MISURA_MAX, int(valore)))
+    except (TypeError, ValueError):
+        return base
+
+
+def _alla_misura(immagine: Image.Image, dati: DatiBenvenuto) -> Image.Image:
+    """RUO-005: porta il disegno (1024x400) alla misura scelta, senza deformarlo. Il resto si riempie
+    con lo stesso disegno sfocato (o resta trasparente)."""
+    larghezza, altezza = misura_valida(dati.larghezza, LARGHEZZA), misura_valida(dati.altezza, ALTEZZA)
+    if (larghezza, altezza) == immagine.size:
+        return immagine
+    fattore = min(larghezza / LARGHEZZA, altezza / ALTEZZA)
+    interno = immagine.resize((max(1, round(LARGHEZZA * fattore)), max(1, round(ALTEZZA * fattore))), Image.LANCZOS)
+    if dati.trasparente:
+        tela = Image.new("RGBA", (larghezza, altezza), (0, 0, 0, 0))
+    else:
+        tela = ImageOps.fit(immagine.convert("RGB"), (larghezza, altezza), method=Image.BILINEAR).filter(ImageFilter.GaussianBlur(24))
+        tela = tela.convert("RGBA")
+    tela.paste(interno, ((larghezza - interno.width) // 2, (altezza - interno.height) // 2), interno if interno.mode == "RGBA" else None)
+    return tela

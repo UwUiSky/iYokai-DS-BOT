@@ -1529,3 +1529,4 @@ Attua D119 per le voci medie. Elenco delle voci e dei motivi in fondo, aggiornat
 - **ECO-050**: fatta: premium (D72), 4 ore, nel worker del bot (non nello scheduler a righe: serve un solo giro periodico per tutti). Ritentare un giro non paga due volte (la riga si sposta prima di pagare).
 - **SIC-021**: fatta: l'uso non può passare da `/owner` (l'owner senza account non lo apre): la verifica è uno script sul server e il cambio di `OWNER_ID` resta manuale, come dice il catalogo («controllo a mano»). Comando dentro `/owner system`: nessun figlio nuovo di `/owner`.
 - **MUS-016**: fatta: filtro sul titolo dei risultati (parole intere), impostazione del server accesa a scelta, spenta di base.
+- **RUO-005**: fatta: tetto 2048 come `safe_image`; il layout resta quello 1024x400, scalato senza deformarlo.

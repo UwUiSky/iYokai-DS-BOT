@@ -423,3 +423,41 @@ async def test_RUO_004_007_008_010_il_comando_salva_solo_cio_che_si_indica(monke
     s.repo.set_welcome_image_extra.assert_not_awaited()
     await s.cog.immagine.callback(s.cog, i, True, testo="togli", colore_nome="predefinito")
     assert s.repo.set_welcome_image_extra.await_args.args[2] == "" and s.repo.set_welcome_image_extra.await_args.args[5] == ""
+
+
+# ---- RUO-005 (D121): sfondo trasparente e misure a scelta ----
+def _dati5(**kw):
+    return DatiBenvenuto(nome="Anna", numero=7, **kw)
+
+
+def test_ruo005_le_misure_scelte_sono_quelle_del_png():
+    png = render_welcome_image(_dati5(larghezza=600, altezza=300), None, None)
+    assert Image.open(io.BytesIO(png)).size == (600, 300)
+
+
+def test_ruo005_senza_misure_resta_1024_per_400():
+    assert Image.open(io.BytesIO(render_welcome_image(_dati5(), None, None))).size == (LARGHEZZA, ALTEZZA)
+
+
+def test_ruo005_le_misure_fuori_dai_limiti_si_riportano_dentro():
+    png = render_welcome_image(_dati5(larghezza=99999, altezza=1), None, None)
+    assert Image.open(io.BytesIO(png)).size == (2048, 64)
+
+
+def test_ruo005_trasparente_ha_gli_angoli_vuoti_e_il_testo_pieno():
+    img = Image.open(io.BytesIO(render_welcome_image(_dati5(trasparente=True, larghezza=800, altezza=400), None, None))).convert("RGBA")
+    assert img.getpixel((0, 0))[3] == 0 and img.getpixel((799, 399))[3] == 0
+    assert any(p[3] > 200 for p in img.getdata())  # l'avatar e il testo ci sono
+
+
+def test_ruo005_non_trasparente_e_tutto_opaco():
+    img = Image.open(io.BytesIO(render_welcome_image(_dati5(larghezza=900, altezza=300), None, None))).convert("RGBA")
+    assert img.getpixel((0, 0))[3] == 255 and img.getpixel((899, 299))[3] == 255
+
+
+async def test_ruo005_le_misure_si_salvano_e_si_leggono(clean_db):
+    repo = GreetingsRepository(lambda: clean_db)
+    assert (await repo.get_config(880001)).welcome_image_width == 1024
+    await repo.set_welcome_image_misure(880001, 800, 200, True)
+    c = await repo.get_config(880001)
+    assert (c.welcome_image_width, c.welcome_image_height, c.welcome_image_transparent) == (800, 200, True)
