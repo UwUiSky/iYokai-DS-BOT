@@ -1440,6 +1440,12 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
 - **MUS-015 (paese delle ricerche):** impostazione **globale** (brani ascoltabili in tutto il mondo). Un server può chiedere un **filtro per paese**: le ricerche controllano che il brano sia disponibile in quel paese (esempio: Turchia).
 - **MUS-017:** NON si spezza il video. Lunghezza massima del video **8 ore**. Se la **descrizione** del video contiene l'elenco dei brani con gli orari, il bot può usare quell'elenco (capitoli) invece del video intero.
 
+## D117 — Battaglia a turni, auto da collezione e tela di pixel (#131, giro r1fun), 23/11/2026, opzione prudente, da confermare dall'owner
+
+Attuano D111 (FUN-019, FUN-017, FUN-013, FUN-014).
+
+- **Battaglia (FUN-019):** `/giochi sfide battaglia membro puntata` e `/giochi sfide battaglie`. Ognuno parte con 100 punti vita. A turno: attacco (8-14 danni), difesa (+3 PV e il prossimo colpo subito si dimezza) o abilità (18-26 danni, 25% di mancare, ricarica di 3 turni propri). 40 secondi per turno: chi non agisce perde. Al massimo 16 turni in tutto, poi vince chi ha più PV (a pari PV, pareggio): così la partita sta sempre dentro i 15 minuti dopo i quali le puntate aperte vengono rimborsate. Con la puntata le monete di entrambi si tolgono insieme in una transazione (`partite_repo.apri_gruppo`, se uno non può non si toglie niente a nessuno) e si pagano insieme (`chiudi_gruppo`): chi vince prende il doppio, nel pareggio ognuno la sua. Se il bot si riavvia a metà, le puntate tornano indietro. Il blocco personale vale in entrambe le direzioni. Statistiche vinte e perse per server (tabella `fun_battaglie_stat`); il pareggio non conta.
+
 ## D113 — BKP-039, pagina di consenso del ripristino (23/11/2026, scelta dell'owner)
 
 - La pagina di consenso per il rientro dei membri dopo un ripristino sta sul dominio del bot, all'indirizzo **`iyokai.dev/join/<nomeserver>`**, con nome, icona e colori del server. Niente domini propri dei server.

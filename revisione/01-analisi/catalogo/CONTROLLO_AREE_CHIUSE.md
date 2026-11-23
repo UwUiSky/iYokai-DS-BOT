@@ -187,7 +187,7 @@ Giro r5eco (issue #131, controllo). «Corretta» = fa ciò che dice il catalogo 
 | FUN-013 | no | sì | non realizzata: D103 (tela persistente da tenere e disegnare) | nessun file |
 | FUN-014 | no | sì | non realizzata: D103 (tela persistente da tenere e disegnare) | nessun file |
 | FUN-017 | no | sì | non realizzata: D103 (collezione di oggetti da progettare con il negozio) | nessun file |
-| FUN-019 | no | sì | non realizzata: D103 (il duello a tiri di /giochi sfide duello copre la sfida; il combattimento a turni con bottoni resta da progettare) | cogs/fun/sfide.py (duello con posta) |
+| FUN-019 | sì (`/giochi sfide battaglia`, `battaglie`) | sì (D111, D117) | realizzata nel giro r1fun | cogs/fun/battaglia.py; tests/test_battaglia_fun.py |
 | FUN-022 | sì (`/fun misura`) | sì (tema filtrato, stabile nel giorno) | nessuna | cogs/fun/coin_games.py; tests/test_fun_controllo_area17.py::test_fun_022_misura_a_tema_libero_e_stabile_nel_giorno |
 | FUN-024 | sì (`/fun dice formula`) | sì (tetto 20 dadi, 1000 facce, modificatore 1000: più prudente dei 30 del catalogo) | nessuna | cogs/fun/entertainment.py; tests/test_fun_controllo_area17.py::test_fun_024_dadi_in_formato_da_gioco_di_ruolo_con_tetto |
 | FUN-025 | sì (`/fun numero`) | sì (intervallo invertito rifiutato) | nessuna | cogs/fun/fun_extra.py; tests/test_fun_controllo_area17.py::test_fun_025_numero_in_un_intervallo |

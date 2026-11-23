@@ -47,7 +47,7 @@ funzioni nuove vanno dentro pochi sotto-comandi con una scelta
 | FUN-016 | Mazzo di carte del server: pesca fino a 10 carte, rimescola | NadekoBot (`.draw`, `.drawnew`, `.deckshuffle`) [NADEKO] | ❌ manca | Mazzo per canale in memoria | nuova |
 | FUN-017 | Gara tra auto da collezione, con garage personale | Yggdrasil (`--race`, `--garage`) [YGG] | ❌ manca | Collezione di oggetti (NF-40) | NF-40 |
 | FUN-018 | Gara di "fidget spinner" con classifica | Yggdrasil (`--spinner`, `--spinner scores`) [YGG] | ❌ manca | Durata casuale; classifica dei giri più lunghi | nuova |
-| FUN-019 | Battaglia testuale a turni tra due utenti | Yggdrasil (`--deathbattle`) [YGG] | ❌ manca | Come il duello di ECO-104, senza monete | NF-40 |
+| FUN-019 | Battaglia testuale a turni tra due utenti | Yggdrasil (`--deathbattle`) [YGG] | ✅ fatta (r1fun, `/giochi sfide battaglia`) | Come il duello di ECO-104, senza monete | NF-40 |
 | FUN-020 | "Punteggio di amicizia" tra due utenti | Yggdrasil (`--friendscore`) [YGG] | 🟡 parziale: c'è `/ship` | Variante di `/fun ship` con testi diversi | nuova |
 | FUN-021 | "Smash or pass" su personaggi di anime, che cambiano ogni settimana | Lawliet (`smashorpass`) [LAWLIET] | ❌ manca | Tema delicato e immagini di terzi: bassa priorità | nuova |
 | FUN-022 | "Quanto è probabile che sia…": percentuale scherzosa su un utente | Lawliet (`kira`) [LAWLIET] | 🟡 parziale: `/rate` dà un voto da 0 a 10 | È il "misuratore a tema libero" già previsto (`/fun misura`) | NF-40 |

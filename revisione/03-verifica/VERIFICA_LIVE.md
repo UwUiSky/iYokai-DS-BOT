@@ -1921,3 +1921,9 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `VER-025 avvisi` — Con due server grandi (50 membri o più, bot dentro da 7 giorni) e un utente in entrambi: `/mod-ban` con motivo «Truffa o phishing» nel server A. L'owner (o il canale scelto con `/admin-sicurezza rete impostazioni`) del server B riceve l'avviso senza testo dei messaggi. Con `ricezione:no` in B non arriva. Il nome di A compare solo con `mostra_origine:sì` in A. Un server piccolo non fa partire avvisi. `/owner rete blocca server_id:` ferma un server scorretto.
 - [ ] `VER-025 compromesso` — Account di prova che manda lo stesso messaggio in 3 canali (account rubato): timeout in tutti i server dove c'è, caso «Rete di protezione», avviso agli owner con tasto «Togli il timeout»; il tasto e `/admin-sicurezza rete timeout-togli` funzionano solo per il proprietario del server o del bot. Mai su proprietari né bot; un utente con ruolo sopra il bot è saltato.
 - [ ] `VER-025 ban` — Due server con `/admin-sicurezza rete ban aderisce:sì`: un ban per truffa in A fa comparire in B la proposta con «Banna» e «Ignora»; con `modo:Ban automatico` B banna da solo e avvisa. `/admin-sicurezza rete ban annulla:utente` toglie il ban. Il ban di rete non ne genera altri.
+
+
+## Divertimento: battaglia, auto e tela — giro r1fun (#131)
+
+- [ ] `FUN-019` — Con due utenti: `/giochi sfide battaglia membro:@B puntata:20`. Solo B vede i bottoni utili: A non può accettare. Dopo «Accetta» a entrambi mancano 20 monete; agisce solo chi è di turno (l'altro riceve un messaggio privato). L'abilità resta spenta per 2 turni dopo l'uso. Lascia passare 40 secondi al tuo turno: perdi e l'altro prende 40. `/giochi sfide battaglie` mostra vinte e perse. Con `/level sociale` blocca l'altro: la sfida è rifiutata.
+

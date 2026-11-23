@@ -374,6 +374,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
        scadenza=Scadenza("giocato_at", 365)),
     _t("economia_partite_aperte", "Partite a più passi in corso, con la puntata già tolta (ECO-088)",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", scadenza=Scadenza("scade_at", 1)),
+    _t("fun_battaglie_stat", "Battaglie a turni vinte e perse (FUN-019)",
+       colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True),
     _t("economia_canali_monete", "Canali dove i messaggi danno monete (ECO-033)", colonna_server="guild_id"),
     _t("economia_msg_giorno", "Monete da messaggi prese oggi (ECO-033)",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", scadenza=Scadenza("giorno", 3)),
