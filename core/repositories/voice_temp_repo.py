@@ -309,6 +309,17 @@ class VoiceTempRepository:
             numero,
         )
 
+    async def canali_di(self, guild_id: int, owner_id: int) -> list[int]:
+        """VOC-014: i canali registrati di un proprietario (le stanze di scorta hanno come proprietario il bot)."""
+        righe = await self._pool.fetch(
+            "SELECT channel_id FROM voice_temp_channels WHERE guild_id = $1 AND owner_id = $2 ORDER BY channel_id",
+            guild_id, owner_id,
+        )
+        return [r["channel_id"] for r in righe]
+
+    async def numero_di(self, channel_id: int) -> int | None:
+        return await self._pool.fetchval("SELECT numero FROM voice_temp_channels WHERE channel_id = $1", channel_id)
+
     async def get_owner(self, channel_id: int) -> int | None:
         """
         Restituisce il proprietario del canale, oppure None se questo

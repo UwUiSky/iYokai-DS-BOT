@@ -1531,3 +1531,4 @@ Attua D119 per le voci medie. Elenco delle voci e dei motivi in fondo, aggiornat
 - **MUS-016**: fatta: filtro sul titolo dei risultati (parole intere), impostazione del server accesa a scelta, spenta di base.
 - **RUO-005**: fatta: tetto 2048 come `safe_image`; il layout resta quello 1024x400, scalato senza deformarlo.
 - **CFG-044**: fatta: duplica per pannello e per risposta pronta; il bottone pubblicato e i ticket aperti non si copiano. Il comando sta nel gruppo `admin-ticket pannelli`, già esistente.
+- **VOC-014**: fatta: stanza di scorta con proprietario il bot, presa da chi entra. Trovato e corretto un difetto di r1doc: il blocco VOC-017 (azione/ruolo) stava nel comando dei generatori invece che in `opzioni` (NameError su `ruolo`); sistemati anche 10 test senza DB.

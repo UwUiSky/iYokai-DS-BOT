@@ -57,6 +57,7 @@ from core.channel_rename import (
 from cogs.moderation._shared import actor_from_member
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core import voice_azioni_ruoli as azioni_ruoli
+from core import voice_scorta as scorta_logic
 from core.database import db
 from core.i18n import testo_per
 from core.permissions import can_moderate
@@ -81,6 +82,8 @@ from core.voice_temp_logic import (
 from core.premium import PremiumModule, registry
 from core.ui_base import BaseView
 from cogs.voice_temp._pannello import PannelloVocaleView
+
+_blocchi_scorta: dict[int, asyncio.Lock] = {}  # VOC-014: una preparazione alla volta per server
 
 logger = logging.getLogger("iyokai.voice_temp")
 
@@ -241,6 +244,7 @@ async def _create_temp_channel(
     category: discord.CategoryChannel,
     config,
     limite_utenti: int = 0,
+    scorta: bool = False,
 ) -> discord.VoiceChannel | None:
     """
     Crea il canale vocale temporaneo, lo registra nel repository, e
@@ -285,7 +289,7 @@ async def _create_temp_channel(
         numero = primo_numero_libero(await voice_temp_repo.numeri_usati(guild.id))
         try:
             channel = await category.create_voice_channel(
-                name=nome_da_modello(config.nome_modello, owner.display_name, numero),
+                name=nome_da_modello(config.nome_modello, scorta_logic.NOME_NEL_MODELLO if scorta else owner.display_name, numero),
                 overwrites=overwrites,
                 reason=f"Vocale temporaneo per {owner}",
                 **extra,
@@ -303,6 +307,15 @@ async def _create_temp_channel(
         # Prima del blocco «Connetti» era ereditato: unlock lo rimette così.
         await voice_temp_repo.segna_bloccato(channel.id, None)
 
+    if scorta:  # VOC-014: la stanza di scorta non ha ancora un proprietario: niente messaggi finché non la prende qualcuno
+        return channel
+    await _annuncia_canale(guild, owner, channel, config)
+
+    return channel
+
+
+async def _annuncia_canale(guild: discord.Guild, owner: discord.Member, channel: discord.VoiceChannel, config) -> None:
+    """Il messaggio e il pannello nel canale appena preso da `owner` (creato o di scorta)."""
     # SPEC.md §12.4: notifica personale alla creazione del canale —
     # richiesta esplicitamente perché la modalità automatica sposta
     # l'utente in totale silenzio. Un canale vocale è Messageable
@@ -328,8 +341,6 @@ async def _create_temp_channel(
     # ne resterebbe una in memoria per ogni canale creato.
     view.stop()
     await _registra(guild, f"🔊 {owner.mention} ha creato {channel.mention}.", config)
-
-    return channel
 
 
 class CreateVoiceView(BaseView):
@@ -537,23 +548,6 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
                 await testo_per(interaction, "voicetemp_quello_gia_il_generatore_principale"), ephemeral=True
             )
             return
-        if azione is not None or ruolo is not None:  # VOC-017
-            if azione is None or ruolo is None:
-                await interaction.response.send_message(await testo_per(interaction, "voicetemp_azione_serve_ruolo"), ephemeral=True)
-                return
-            try:
-                await azioni_ruoli.imposta(interaction.guild.id, azione, ruolo.id, consenti, interaction.user.id)
-            except azioni_ruoli.AzioneNonValida as errore:
-                await interaction.response.send_message(await testo_per(interaction, str(errore)), ephemeral=True)
-                return
-            await interaction.response.send_message(
-                await testo_per(
-                    interaction, "voicetemp_azione_ruolo_salvata", azione=azione, ruolo=ruolo.mention,
-                    stato=await testo_per(interaction, "voicetemp_azione_puo" if consenti else "voicetemp_azione_non_puo"),
-                ),
-                ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
-            )
-            return
         if nome is not None and (errore := errore_modello_nome(nome)):
             await interaction.response.send_message(errore, ephemeral=True)
             return
@@ -700,6 +694,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         azione="Un'azione del proprietario da togliere o rendere a un ruolo (con «ruolo»)",
         ruolo="Il ruolo a cui togliere o rendere l'azione",
         consenti="Sì = il ruolo può di nuovo fare l'azione; No = non può (di base)",
+        scorta="Sì = tiene sempre una stanza vuota pronta nella categoria (entro il tetto)",
     )
     @app_commands.autocomplete(azione=_completa_azione)
     async def voicetemp_opzioni(
@@ -716,6 +711,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         azione: app_commands.Range[str, 1, 20] | None = None,
         ruolo: discord.Role | None = None,
         consenti: bool = False,
+        scorta: bool | None = None,
     ) -> None:
         """#127 VOC-010, 011, 012, 013, 015, 018, 017."""
         if interaction.guild is None:
@@ -728,6 +724,23 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(
                 await testo_per(interaction, "voicetemp_configura_prima_generatore_categoria_con"),
                 ephemeral=True,
+            )
+            return
+        if azione is not None or ruolo is not None:  # VOC-017
+            if azione is None or ruolo is None:
+                await interaction.response.send_message(await testo_per(interaction, "voicetemp_azione_serve_ruolo"), ephemeral=True)
+                return
+            try:
+                await azioni_ruoli.imposta(interaction.guild.id, azione, ruolo.id, consenti, interaction.user.id)
+            except azioni_ruoli.AzioneNonValida as errore:
+                await interaction.response.send_message(await testo_per(interaction, str(errore)), ephemeral=True)
+                return
+            await interaction.response.send_message(
+                await testo_per(
+                    interaction, "voicetemp_azione_ruolo_salvata", azione=azione, ruolo=ruolo.mention,
+                    stato=await testo_per(interaction, "voicetemp_azione_puo" if consenti else "voicetemp_azione_non_puo"),
+                ),
+                ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
             )
             return
         if nome is not None and (errore := errore_modello_nome(nome)):
@@ -751,6 +764,10 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         if predefiniti:
             clona, titolo, testo, colore = False, None, None, None
         await voice_temp_repo.set_aspetto(interaction.guild.id, titolo, testo, colore, clona)
+        if scorta is not None:  # VOC-014
+            await scorta_logic.imposta(db, interaction.guild.id, scorta, interaction.user.id)
+            if scorta:
+                await self._assicura_scorta(interaction.guild)
         await interaction.response.send_message(
             f"Nome dei nuovi canali: **{discord.utils.escape_markdown(modello or 'Canale di {utente}')}**\n"
             f"Nascono bloccati: **{'sì' if bloccati else 'no'}**\n"
@@ -1277,6 +1294,50 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
                     "Pulizia all'avvio non riuscita per il vocale temporaneo %s",
                     tracked.channel_id,
                 )
+        for guild in self.bot.guilds:  # VOC-014: la pulizia ha tolto le stanze di scorta vuote
+            await self._assicura_scorta(guild)
+
+    async def _assicura_scorta(self, guild: discord.Guild) -> None:
+        """VOC-014: con la scorta accesa c'è sempre una stanza vuota pronta nella categoria (entro il tetto)."""
+        try:
+            if not await db.is_module_active_for_guild(guild.id, MODULE_VOICE_TEMP) or not await scorta_logic.attiva(db, guild.id):
+                return
+            config = await voice_temp_repo.get_config(guild.id)
+            category = guild.get_channel(config.category_id) if config.category_id else None
+            if not isinstance(category, discord.CategoryChannel) or guild.me is None:
+                return
+            async with _blocchi_scorta.setdefault(guild.id, asyncio.Lock()):
+                vuote = 0
+                for canale_id in await voice_temp_repo.canali_di(guild.id, guild.me.id):
+                    canale = guild.get_channel(canale_id)
+                    if canale is None:
+                        await voice_temp_repo.unregister_channel(canale_id)
+                    elif not canale.members:
+                        vuote += 1
+                if scorta_logic.serve_nuova(vuote):
+                    await _create_temp_channel(guild, guild.me, category, config, scorta=True)
+        except Exception:
+            logger.exception("Stanza di scorta non preparata (server %s).", guild.id)
+
+    async def _prendi_scorta(self, member: discord.Member, channel: discord.VoiceChannel) -> bool:
+        """VOC-014: chi entra in una stanza di scorta ne diventa il proprietario. Vero se l'ha presa."""
+        guild = member.guild
+        if guild.me is None or member.bot:
+            return False
+        if not await voice_temp_repo.cambia_proprietario(channel.id, guild.me.id, member.id):
+            return False  # non è di scorta, o l'ha già presa un altro
+        config = await voice_temp_repo.get_config(guild.id)
+        try:
+            await channel.set_permissions(member, reason="Ha preso la stanza di scorta", **OWNER_PERMISSIONS)
+            numero = await voice_temp_repo.numero_di(channel.id)
+            await channel.edit(name=nome_da_modello(config.nome_modello, member.display_name, numero or 1), reason="Stanza di scorta presa")
+        except discord.HTTPException:
+            await voice_temp_repo.cambia_proprietario(channel.id, member.id, guild.me.id)  # torna di scorta
+            logger.warning("Stanza di scorta %s non assegnata a %s.", channel.id, member.id)
+            return False
+        await _annuncia_canale(guild, member, channel, config)
+        await _registra(guild, f"🔊 {member.mention} ha preso {channel.mention}.", config)
+        return True
 
     async def _cleanup_tracked_channel(self, guild: discord.Guild, channel_id: int) -> None:
         channel = guild.get_channel(channel_id)
@@ -1353,6 +1414,11 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
                     if channel is not None:
                         await self._sposta(member, channel)
 
+        # --- VOC-014: ingresso in una stanza di scorta, o stanza di scorta da preparare ---
+        if isinstance(after.channel, discord.VoiceChannel) and not await blacklist_repo.is_user_blacklisted(member.id):
+            if await self._prendi_scorta(member, after.channel):
+                await self._assicura_scorta(guild)
+
         # --- Cleanup: il canale lasciato è un temporaneo tracciato ed è vuoto? ---
         if before_channel_id is not None:
             owner_id = await voice_temp_repo.get_owner(before_channel_id)
@@ -1370,6 +1436,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
                     return
                 await voice_temp_repo.unregister_channel(before_channel_id)
                 await _registra(guild, f"🗑️ Vocale **{before.channel.name}** eliminato: era vuoto.")
+                await self._assicura_scorta(guild)
 
 
 async def setup(bot: commands.Bot) -> None:

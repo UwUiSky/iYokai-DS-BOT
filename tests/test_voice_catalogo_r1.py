@@ -16,6 +16,16 @@ import cogs.voice_temp.voice_temp as modulo
 from core.repositories.voice_temp_repo import VoiceTempRepository
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member, fake_role, fake_voice_channel
 
+
+@pytest.fixture(autouse=True)
+def _senza_azioni_vietate(monkeypatch):
+    """VOC-017: il controllo per ruolo legge le impostazioni del server; qui il database non c'è e nessuna azione è vietata."""
+    async def _nessuna(guild_id):
+        return {}
+
+    monkeypatch.setattr(modulo.azioni_ruoli, "leggi", _nessuna)
+
+
 PROPRIETARIO = 10
 
 
