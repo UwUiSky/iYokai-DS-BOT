@@ -12,9 +12,9 @@
 
 ## Fatto
 - r1doc (D119): LIV-013 (0850 `xp_testo`/`xp_vocale`), 046 (0852), 053 (`core/sfondi_pronti.py`), 061 (0851, `tick_settimanale`), 090, 091; CFG-011; VOC-017 (`core/voice_azioni_ruoli.py`); MUS-043; FUN-030; AI-022; 33 voci già fatte segnate col codice nel test.
-- r1cfg (D96, #122): `core/risposte_server.py` (+ `config_risposte.py`), `policy_ruoli_richiesti` in `command_policy.py` (+ `politica ruolo-richiesto`), `core/permessi_vista.py` (+ `config_permessi.py`), `lingua_iniziale_del_server`, `core/premium_posti_service.py` (0720, `/owner premium grant utente: posti:`, `premium assegna|togli-posto`), `core/config_trasloco.py` (import senza ID stranieri).
-- r15immagini (D62, #153): `core/immagini_*` (byte, quarantena, sandbox un processo per immagine, coda 100/20, dHash, QR zxing-cpp 3.1.1, libreria trappola D39, pipeline, opzioni D16, azioni), cog `cogs/automod/immagini.py`, `/owner immagini-trappola`, 0504-0506, `deploy/systemd/iyokai-sandbox.service`, `docs/immagini-sandbox.md`, testi `amimg_*`.
-- r14lingue (D58, #77): `locales/<lingua>/testi.json`+`comandi.json` (10 lingue Discord, 8 vuote), ripiego lingua->en-US->it, `core/lingue_controllo.py` + 2 script, bottone «Chiedi una lingua» in `/utility lingua` (`core/lingua_richieste.py`), `aiuto` in comandi.json letto da cerca-comando, peso 8000 su tutte le lingue.
+- r1cfg (D96, #122): `core/risposte_server.py`, `permessi_vista.py`, `premium_posti_service.py` (0720), `config_trasloco.py`.
+- r15immagini (D62, #153): `core/immagini_*`, cog `cogs/automod/immagini.py`, `/owner immagini-trappola`, 0504-0506, sandbox.
+- r14lingue (D58, #77): `locales/<lingua>/`, ripiego lingua->en-US->it, `core/lingue_controllo.py`, `core/lingua_richieste.py`.
 - r13ruoli (D60): 25 gruppi staff (`admin-*` 20, `mod-*` 4, `founder`), 377 percorsi spostati; `Livello.FOUNDER`;
   `PREFISSI_SEMPRE_APERTI=("admin-bot","owner")`; migrazione 0488; `GRUPPI_DEL_RUOLO` dai prefissi; traduzioni en.
 - r13gruppi (D56/D57): 152 comandi spostati, 11 gruppi, 0485-0487, `core/livelli_funzione.py`.
