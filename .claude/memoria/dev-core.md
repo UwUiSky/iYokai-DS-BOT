@@ -1,7 +1,7 @@
 # Memoria di dev-core
 
 ## Aggiornata
-23/11/2026 · ramo `feat/r1doc` · controllo delle 89 voci solo nei documenti (D119): 43 esistono o fatte, 10 non fatte con motivo, 36 da fare (18 «grandi»).
+23/11/2026 · ramo `feat/r1doc` · controllo delle 89 voci solo nei documenti (D119): 44 esistono o fatte, 10 non fatte con motivo, 35 da fare (18 «grandi»).
 
 ## In corso
 - r1doc (ramo `feat/r1doc`, da unire): tocca `core/migrations/0850-0852`, `core/data_registry.py`, `core/risposte_server.py`, `core/monthly_winners_announcer.py`, `cogs/leveling/leveling.py`, `cogs/voice_temp/voice_temp.py`, `cogs/music/player.py`. Smoke da fare dopo l'unione: tree_invariants (peso `admin-livelli`), risposte_server, config_import, leveling_repo/classifica/card/settings, progressi, profiles, top_settimanale, voice_azioni_ruoli, music_queue_cmds, citazioni, user_app, data_registry, migrazioni 0850-0852, i18n.

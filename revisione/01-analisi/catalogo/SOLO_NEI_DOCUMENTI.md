@@ -1,4 +1,4 @@
-# Voci citate solo nei documenti (47)
+# Voci citate solo nei documenti (46)
 
 Elenco generato il 22/11/2026 e aggiornato il 23/11/2026 (giro r1doc, D119): sono tolte le voci che ora hanno il codice nel codice o nei test. Quelle rimaste sono non fatte con un motivo, da fare o scelte aperte: vedi la sezione «Voci solo nei documenti» di `CONTROLLO_AREE_CHIUSE.md`.
 
@@ -40,7 +40,6 @@ Elenco generato il 22/11/2026 e aggiornato il 23/11/2026 (giro r1doc, D119): son
 | LIV-019 | Bonus XP per chi vota il bot | DECISIONI.md: - Voto al bot (LIV-019): codice pronto per top. |
 | LIV-032 | Annuncio dentro un embed |  |
 | LIV-033 | Immagine di level-up allegata all'annuncio |  |
-| LIV-046 | Ruolo premio che chiede insieme livello di testo e livello vocale |  |
 | LIV-072 | Importare i livelli da un altro bot |  |
 | LIV-076 | Punto reputazione dato a un altro utente | REGISTRO_RISOLTE.md: Restano le altre (reputazione LIV-076…088, banca, stipendi, drop, voti del bot, ecc. |
 | LIV-077 | Togliere reputazione a un utente |  |
