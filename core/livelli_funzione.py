@@ -1,7 +1,7 @@
 """
 core/livelli_funzione.py
 ========================
-Il livello di abbonamento di ogni funzione (gratuito, premium, VIP 5, VIP 20): un solo
+Il livello di abbonamento di ogni funzione (gratuito, premium, Ultra, VIP; D59): un solo
 punto che lo legge e lo scrive (D16), usato da `/premium`, `/vip`, dal controllo all'avvio
 di ogni comando e dal futuro pannello. Di default tutto è gratuito. I livelli stanno nella
 tabella `livelli_funzione`; chi li cambia passa da `imposta_livello`: gli ascoltatori
@@ -19,12 +19,10 @@ from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
-GRATUITO = "gratuito"
-PREMIUM = "premium"
-VIP5 = "vip5"
-VIP20 = "vip20"
-LIVELLI = (GRATUITO, PREMIUM, VIP5, VIP20)
-ETICHETTE = {GRATUITO: "gratuito", PREMIUM: "Premium", VIP5: "VIP 5", VIP20: "VIP 20"}
+from core.piani import ETICHETTE, GRATUITO, LIVELLI, PREMIUM, ULTRA, VIP
+
+VIP5 = ULTRA  # nomi di prima di D59 (VIP 5 è Ultra, VIP 20 è VIP)
+VIP20 = VIP
 
 # chiave: (nome leggibile, percorsi dei comandi della funzione)
 FUNZIONI: dict[str, tuple[str, tuple[str, ...]]] = {
@@ -225,20 +223,20 @@ def funzione_del_comando(percorso: str, funzioni: dict | None = None) -> str | N
 async def ha_livello(interaction, livello: str, chiave: str | None = None) -> bool:
     """
     Il server o l'utente ha il livello? Gratuito: sempre. L'owner del bot: sempre.
-    Premium: il server ha accesso premium (core/premium.py: whitelist, acquisto, boost,
-    abbonamento; `chiave` vale come modulo). VIP 5 e VIP 20 non hanno ancora una fonte:
-    il collegamento ai pagamenti si farà col pannello (D57).
+    Altrimenti decide `core/piani.py` (un solo punto, D59): il massimo tra il livello del server e quello
+    della persona (concessioni, Patreon, boost, abbonamenti, posti, chiave propria).
     """
+    from core import piani
     from core.config import config
 
     if livello == GRATUITO or interaction.user.id == config.OWNER_ID:
         return True
+    bot = getattr(interaction, "client", None)
     guild = getattr(interaction, "guild", None)
-    if livello == PREMIUM and guild is not None:
-        from core import premium
-
-        return await premium.guild_has_premium_access(guild.id, chiave or "", bot=getattr(interaction, "client", None))
-    return False
+    posseduto = await piani.livello_utente(interaction.user.id, bot)
+    if guild is not None:
+        posseduto = piani.livello_massimo(posseduto, await piani.livello_server(guild.id, bot, chiave or ""))
+    return piani.basta(posseduto, livello)
 
 
 async def motivo_negato(interaction, funzioni: dict | None = None) -> str | None:

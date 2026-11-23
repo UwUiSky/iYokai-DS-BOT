@@ -65,7 +65,7 @@ def test_elenco_per_livello():
     assert "`/fun dice`" in lf.testo_elenco((lf.PREMIUM,))
     assert "fun joke" not in lf.testo_elenco((lf.PREMIUM,))
     testo = lf.testo_elenco((lf.VIP5, lf.VIP20))
-    assert "VIP 20" in testo and "`/fun joke`" in testo
+    assert "VIP" in testo and "`/fun joke`" in testo
     assert lf.aree_disponibili((lf.PREMIUM,), "fu") == ["fun"]
     assert lf.aree_disponibili((lf.PREMIUM,), "xx") == []
 
@@ -208,7 +208,10 @@ async def test_riga_lunga_si_taglia():
     assert len(riga) <= 300
 
 
-async def test_motivo_negato_solo_se_la_funzione_non_e_gratuita():
+async def test_motivo_negato_solo_se_la_funzione_non_e_gratuita(clean_db, monkeypatch):
+    from core import database as database_module
+
+    monkeypatch.setattr(database_module.db, "_pool", clean_db)
     from unittest.mock import MagicMock
 
     inter = MagicMock()
@@ -216,7 +219,7 @@ async def test_motivo_negato_solo_se_la_funzione_non_e_gratuita():
     inter.command.qualified_name = "fun dice"
     assert await lf.motivo_negato(inter) is None
     lf.applica_livello("finta", lf.VIP5)
-    assert "VIP 5" in await lf.motivo_negato(inter)
+    assert "Ultra" in await lf.motivo_negato(inter)
     from core.config import config
 
     inter.user.id = config.OWNER_ID
@@ -226,7 +229,10 @@ async def test_motivo_negato_solo_se_la_funzione_non_e_gratuita():
     assert await lf.motivo_negato(inter) is None
 
 
-async def test_ha_livello_gratuito_per_tutti_e_premium_dal_sistema_premium(monkeypatch):
+async def test_ha_livello_gratuito_per_tutti_e_premium_dal_sistema_premium(clean_db, monkeypatch):
+    from core import database as database_module
+
+    monkeypatch.setattr(database_module.db, "_pool", clean_db)
     """Gratuito: passa chiunque. Premium: passa il server con premium attivo (core/premium.py), non solo l'owner."""
     from unittest.mock import MagicMock
 
@@ -235,6 +241,7 @@ async def test_ha_livello_gratuito_per_tutti_e_premium_dal_sistema_premium(monke
     inter = MagicMock()
     inter.user.id = 999
     inter.guild.id = 4242
+    inter.client = None
     assert await lf.ha_livello(inter, lf.GRATUITO)
     visti = []
 

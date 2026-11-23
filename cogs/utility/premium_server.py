@@ -28,6 +28,7 @@ from core.ui_base import BaseView
 from core.premium_code_service import TroppiTentativi, riscatta_codice
 from core.premium_entitlement_service import allinea_con_discord, registra_evento
 from core.premium_posti_service import Esito, assegna, posto_del_server, stato_utente, togli
+from core.piani_comandi import esegui_chiave
 from core.premium_status_logic import righe_stato_server
 from core.repositories.module_subscription_repo import module_subscription_repo
 
@@ -223,6 +224,61 @@ class PremiumServerCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "prem_sblocca_chiedi", modulo=modulo, costo=costo, giorni=GIORNI_MODULO_IN_COIN),
             view=vista, ephemeral=True,
         )
+
+
+    @comando_di_gruppo(
+        "admin-bot", nome="chiave", descrizione="Usa la tua chiave API per i servizi AI: dà il livello VIP.",
+        sottogruppo=SOTTOGRUPPO_PREMIUM,
+    )
+    @app_commands.describe(
+        azione="Metti, togli o elenca le chiavi",
+        ambito="Per questo server o solo per te",
+        servizio="Il servizio (es. gemini); vuoto = tutti, solo per «togli»",
+    )
+    @app_commands.choices(
+        azione=[app_commands.Choice(name=n, value=v) for n, v in (("Metti una chiave", "imposta"), ("Togli", "togli"), ("Elenca", "elenco"))],
+        ambito=[app_commands.Choice(name=n, value=v) for n, v in (("Questo server", "server"), ("Solo io", "utente"))],
+    )
+    async def chiave(
+        self, interaction: discord.Interaction, azione: app_commands.Choice[str], ambito: app_commands.Choice[str],
+        servizio: app_commands.Range[str, 1, 40] | None = None,
+    ) -> None:
+        ambito_id = interaction.guild.id if ambito.value == "server" else interaction.user.id
+        if azione.value == "imposta":
+            await interaction.response.send_modal(ModaleChiave(ambito.value, ambito_id, (servizio or "").strip().lower()))
+            return
+        testo = await esegui_chiave(
+            azione.value, ambito=ambito.value, ambito_id=ambito_id,
+            servizio=(servizio or "").strip().lower() or None, chiave=None, utente_id=interaction.user.id,
+            t=lambda k, **kw: testo_per(interaction, k, **kw),
+        )
+        await interaction.response.send_message(testo, ephemeral=True)
+
+
+class ModaleChiave(discord.ui.Modal, title="Chiave API del servizio AI"):
+    """La chiave si scrive qui e non nel comando: non resta nei suggerimenti né nella cronologia dei comandi."""
+
+    servizio = discord.ui.TextInput(label="Servizio (es. gemini)", min_length=1, max_length=40)
+    chiave = discord.ui.TextInput(label="Chiave API", min_length=8, max_length=400)
+
+    def __init__(self, ambito: str, ambito_id: int, servizio: str) -> None:
+        super().__init__()
+        self.ambito, self.ambito_id = ambito, ambito_id
+        self.servizio.default = servizio or None
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        if self.ambito == "server" and not (
+            interaction.guild is not None and interaction.guild.id == self.ambito_id
+            and interaction.permissions.manage_guild
+        ):  # il permesso si rilegge ora, non alla scrittura del comando
+            await interaction.response.send_message(await testo_per(interaction, "accesso_admin"), ephemeral=True)
+            return
+        testo = await esegui_chiave(
+            "imposta", ambito=self.ambito, ambito_id=self.ambito_id, servizio=str(self.servizio).strip().lower(),
+            chiave=str(self.chiave).strip(), utente_id=interaction.user.id,
+            t=lambda k, **kw: testo_per(interaction, k, **kw),
+        )
+        await interaction.response.send_message(testo, ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:
