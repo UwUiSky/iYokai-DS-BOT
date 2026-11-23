@@ -169,6 +169,7 @@ Giro r2mod (issue #115, #116, #118). «Corretta» = fa ciò che dice il catalogo
 | VER-025 | no | - | non fattibile, D106: le impronte sono diverse in ogni server per privacy (D19) | DECISIONI.md D106 |
 | VER-026 | sì (strati ASN, Tor, elenchi, servizio; staff può far passare) | sì | segnata | tests/test_verify_vpn_flusso.py::test_vpn_bloccata_subito_con_avviso_e_nessun_dato_in_piu |
 | ALR-049 | sì (r2web, r4web, D127) | sì | Kick non c'è (D131: nessun campo affiliato o partner nell'API, nessun posto libero tra i 5 metadati) | core/ruoli_collegati_giro.py, core/web_panel_ruoli_collegati.py; tests/test_panel_ruoli_collegati_giro.py, tests/test_panel_ruoli_collegati_invito.py |
+| MUS-015 | sì (r7mus, r4web, D115, D127) | sì | Spotify solo con le chiavi anche nel bot (D131) | core/music_paese_logic.py, core/music_spotify_mercati.py; tests/test_music_paese.py, tests/test_music_spotify_mercati.py |
 | VER-027 | sì (r3web, D111) | sì | fatta sulla base di ALR-049 | core/ruoli_collegati_verifica.py, core/web_panel_ruoli_collegati.py; tests/test_panel_ruoli_collegati_verifica.py |
 | VER-028 | no | sì | realizzata: `verify panel titolo: testo: colore: bottone: emoji:` | core/verify_logic.pannello_personalizzato; tests/test_catalogo_r2mod_verifica.py |
 
