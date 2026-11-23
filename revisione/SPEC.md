@@ -3090,3 +3090,5 @@ Controllo delle 89 voci in `revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.
 - `[x]` MUS-016 (D121): `/admin-musica impostazioni solo-audio:sì` (MUS-016).
 
 - `[x]` RUO-005 (D121): `/admin-benvenuto immagine trasparente: larghezza: altezza:` (RUO-005, 0884).
+
+- `[x]` CFG-044 (D121): `/admin-ticket pannelli duplica` (CFG-044).

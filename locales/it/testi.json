@@ -4025,5 +4025,9 @@
   "soccorso_creata": "Chiave di soccorso creata. Scrivila ORA e tienila fuori da Discord (carta, cassaforte): non si può rivedere.\n```\n{codice}\n```\nSe perdi l'account: sul server del bot lancia `python scripts/chiave_soccorso.py verifica`, poi cambia `OWNER_ID` nel `.env` a mano. Dopo 5 errori la chiave si blocca.",
   "soccorso_revocata": "Chiave di soccorso revocata.",
   "soccorso_assente": "Non c'è nessuna chiave di soccorso.",
-  "soccorso_stato": "Chiave di soccorso presente. Creata {creata}, ultimo uso {uso}, bloccata: {bloccata}."
+  "soccorso_stato": "Chiave di soccorso presente. Creata {creata}, ultimo uso {uso}, bloccata: {bloccata}.",
+  "tickets_duplica_scelta": "Per duplicare un pannello indica `da` e `nome`. Per copiare una risposta pronta indica `da`, `risposta` e `a`. Non le due cose insieme.",
+  "tickets_pannello_duplicato": "Pannello «{da}» duplicato in «{nuovo}»: domande, motivi, opzioni, accessi e risposte pronte approvate. Ora sono indipendenti. Pubblica il bottone del nuovo pannello a parte.",
+  "tickets_risposta_copiata": "Risposta pronta «{titolo}» copiata sul pannello «{a}».",
+  "tickets_risposta_non_trovata": "Non trovo la risposta pronta approvata «{titolo}» in quel pannello."
 }

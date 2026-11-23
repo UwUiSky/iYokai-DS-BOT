@@ -127,6 +127,22 @@ class TicketStandardRepository:
         )
         return [_risposta(r) for r in righe]
 
+    async def copia_su_pannello(self, guild_id: int, reply_id: int, panel_id: int) -> RispostaStandard | None:
+        """CFG-044: una copia approvata della risposta (senza usi) su un altro pannello dello stesso server.
+        None se la risposta o il pannello non sono di questo server."""
+        riga = await self._pool.fetchrow(
+            """
+            INSERT INTO ticket_standard_replies
+                (guild_id, panel_id, title, keywords, body, attachments, status, approved_by, approved_at)
+            SELECT r.guild_id, p.id, r.title, r.keywords, r.body, r.attachments, 'approved', r.approved_by, r.approved_at
+            FROM ticket_standard_replies r JOIN ticket_panels p ON p.guild_id = r.guild_id
+            WHERE r.id = $2 AND r.guild_id = $1 AND p.id = $3 AND r.status = 'approved'
+            RETURNING *
+            """,
+            guild_id, reply_id, panel_id,
+        )
+        return _risposta(riga) if riga else None
+
     async def approvate(self, guild_id: int, panel_id: int) -> list[RispostaStandard]:
         righe = await self._pool.fetch(
             "SELECT * FROM ticket_standard_replies WHERE guild_id = $1 AND panel_id = $2 AND status = 'approved'",
