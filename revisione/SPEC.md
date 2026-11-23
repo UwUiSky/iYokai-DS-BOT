@@ -788,7 +788,11 @@ Totale voci: **514**.
   `/admin-log archivio-canale canale: messaggi:` (fino a 20.000, file sotto i 10 MiB, con i cancellati
   dell'ultima ora tenuti solo in memoria, 100 per canale; serve poter leggere il canale) (LOG-027,
   LOG-030); `/mod-casi caso chat archivio:sì`: archivio degli eventi dei messaggi di un utente
-  (3 giorni) dal registro eventi, salvato a ogni sanzione e tenuto con il caso, senza testo (LOG-029, D121, 0880)
+  (3 giorni) dal registro eventi, salvato a ogni sanzione e tenuto con il caso; il TESTO dei messaggi dei canali registrati
+  si salva solo cifrato (AES-256-GCM, `LOG_TESTI_KEY`, 7 giorni a scorrimento, scritture a lotti, tetto 20.000 righe per server,
+  allegati solo nome, tipo e peso), si copia cifrato nel caso (3 giorni) e si apre solo dalla pagina
+  `/server/<id>/moderazione/archivio/<caso>` del pannello (staff con «Gestisci server» o «Modera i membri», riletto a ogni
+  richiesta, CSP senza script, nessuna cache); il comando dà il link (LOG-029, D121, D122, 0880, 0900, 0901)
 - `[x]` 8.19 Ogni evento acceso o spento (LOG-017): `/admin-log eventi`, un menu con 24 interruttori
   e le scelte rapide «Tutto», «Niente», «Predefinito» (tutto tranne microfono e audio spenti da
   soli); senza scelte tutto acceso come prima. Migrazione 0180 (`log_eventi_spenti`)

@@ -9,7 +9,7 @@ lingua dai punti unici dei comandi (D16), storico, premium e wiki dei comandi, �
 (copia e richiesta di cancellazione, #46), verifica dei membri dalla pagina web (link firmato,
 impronte senza IP), istantanee dei log (`core/web_panel_istantanee.py`), l'interfaccia di iYokai Desktop (`core/desktop_api.py`), link d'invito personali e inviti (`core/web_panel_inviti.py`), tela di pixel pubblica (`core/web_panel_tela.py`),
 ruoli del pannello in lettura e scrittura e panoramica del server (`core/web_panel_accesso.py`, `core/web_panel_panoramica.py`), pagine per area e pagine pubbliche (`core/web_panel_pagine.py`), informativa privacy e termini (pubbliche) e pagina del proprietario del bot
-(moduli premium, server, AI in manutenzione). Pagina di consenso del rientro (`core/web_panel_join.py`), pagine dei backup (`core/web_panel_backup.py`), risposta ai ticket (`core/web_panel_ticket.py`), trascrizioni dei ticket (`core/web_panel_ticket_trascrizioni.py`) e ruoli collegati Twitch (`core/web_panel_ruoli_collegati.py`).
+(moduli premium, server, AI in manutenzione). Pagina di consenso del rientro (`core/web_panel_join.py`), pagine dei backup (`core/web_panel_backup.py`), risposta ai ticket (`core/web_panel_ticket.py`), trascrizioni dei ticket (`core/web_panel_ticket_trascrizioni.py`), archivio dei messaggi di un caso (`core/web_panel_archivio_casi.py`) e ruoli collegati Twitch (`core/web_panel_ruoli_collegati.py`).
 Pagine HTML semplici (Jinja2 con escape automatico, nessuno script). Unica eccezione: la pagina «radio iYokai»
 dentro Discord (`core/web_panel_attivita.py`, B.8), con script propri e il suo riquadro ammesso solo a Discord.
 Funzioni coperte: SPEC §24.1–24.4, §24.6, §24.7, C.1–C.5, §4.2–4.3, §23.15, B.8 (CFG-001, CFG-002, CFG-003, CFG-027, #122; NF-20, issue #91; NF-22, #93; NF-21, #92; NF-38, #109; CFG-030, #122; #46; NF-27 r10; BKP-041, TKT-085, ALR-049 r2web)
@@ -32,7 +32,7 @@ from urllib.parse import urlsplit
 import jinja2
 from aiohttp import BodyPartReader, MultipartReader, web
 
-from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_backup, web_panel_editor, web_panel_inviti, web_panel_istantanee, web_panel_pagine, web_panel_join, web_panel_ruoli_collegati, web_panel_tela, web_panel_ticket, web_panel_ticket_trascrizioni, web_panel_accesso as regole_accesso, web_panel_panoramica as panoramica, web_panel_logic as regole, verify_vpn_logic as vpn_logica
+from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_backup, web_panel_editor, web_panel_inviti, web_panel_istantanee, web_panel_pagine, web_panel_join, web_panel_ruoli_collegati, web_panel_tela, web_panel_ticket, web_panel_ticket_trascrizioni, web_panel_archivio_casi, web_panel_accesso as regole_accesso, web_panel_panoramica as panoramica, web_panel_logic as regole, verify_vpn_logic as vpn_logica
 from core.bot_aspetto import MAX_IMMAGINE
 from core.command_access import RuoloAdminNegato
 from core.command_search_logic import cerca
@@ -850,6 +850,9 @@ def build_app(
     web_panel_ticket_trascrizioni.registra_rotte(
         app, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE,
         chiave_intestazioni=CHIAVE_DOWNLOAD,
+    )
+    web_panel_archivio_casi.registra_rotte(
+        app, errore=_errore, server=_server, chiave_utente=CHIAVE_UTENTE, chiave_intestazioni=CHIAVE_DOWNLOAD,
     )
     web_panel_join.registra_rotte(
         app, bot=bot, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE,

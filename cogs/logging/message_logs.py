@@ -11,10 +11,11 @@ l'evento «messaggi cancellati» è acceso. Le immagini vere dei messaggi si cop
 senza aprirle (`core/allegati_sicuri.py`, D61): nel log del cancellato vanno i link di
 download firmati e al massimo 3 anteprime PNG ricodificate, mai l'originale. Ogni altro
 file (PDF, audio, video, Office, archivi) resta una scheda con nome, tipo, peso e impronta;
-travestito, eseguibile o sconosciuto lascia solo un avviso (D74). Fa parte
+travestito, eseguibile o sconosciuto lascia solo un avviso (D74). Il TESTO dei messaggi dei canali registrati si salva solo
+cifrato, 7 giorni, a lotti (LOG-029, D122: `core/log_testi_servizio.py`). Fa parte
 del Logging Avanzato. Ogni evento si può spegnere (LOG-017).
 Funzioni coperte: SPEC §8.16 (NF-02: LOG-001 cancellati, LOG-002 modificati, LOG-003 in blocco, LOG-004 allegati
-ed embed), §8.18 (LOG-005, LOG-027), D61, D74 (#152, #160)
+ed embed), §8.18 (LOG-005, LOG-027, LOG-029), D61, D74 (#152, #160)
 Dipende da: core/channel_router.py, core/repositories/log_ignora_repo.py,
 core/repositories/log_eventi_repo.py
 """
@@ -28,7 +29,7 @@ import discord
 from discord.ext import commands, tasks
 
 from cogs.logging.advanced_logs import logging_avanzato_attivo
-from core import allegati_sicuri
+from core import allegati_sicuri, log_testi_servizio
 from core import channel_router as router
 from core import log_personalizza
 from core import log_webhook
@@ -123,18 +124,55 @@ class MessageLogsCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._pulizia = tasks.loop(hours=1)(self._giro_pulizia)
+        self._scrittura = tasks.loop(seconds=15)(self._giro_scrittura)
 
     async def cog_load(self) -> None:
         self._pulizia.start()
+        self._scrittura.start()
 
     async def cog_unload(self) -> None:
         self._pulizia.cancel()
+        self._scrittura.cancel()
+        await self._giro_scrittura()  # LOG-029: il lotto in attesa non si perde
+
+    async def _giro_scrittura(self) -> None:
+        """LOG-029 (D122): il testo cifrato si scrive a lotti, mai uno per messaggio."""
+        try:
+            await log_testi_servizio.coda.svuota()
+        except Exception:  # noqa: BLE001
+            logger.warning("Scrittura del testo dei messaggi non riuscita", exc_info=True)
+
+    async def _testo_acceso(self, guild_id: int) -> bool:
+        """Il server registra i messaggi (log avanzato e almeno uno tra cancellati e modificati) e c'è la chiave."""
+        if not log_testi_servizio.attivo() or not await logging_avanzato_attivo(guild_id, self.bot):
+            return False
+        return await log_eventi_repo.evento_acceso(guild_id, "message_delete") or await log_eventi_repo.evento_acceso(guild_id, "message_edit")
+
+    @commands.Cog.listener("on_message")
+    async def salva_testo(self, message: discord.Message) -> None:
+        """LOG-029 (D122): il testo di ogni messaggio dei canali registrati, cifrato, in coda per la scrittura a lotti."""
+        guild = message.guild
+        if guild is None or message.author.bot or not (message.content or message.attachments):
+            return
+        try:
+            if not await self._testo_acceso(guild.id):
+                return
+            if _scartato(await log_ignora_repo.carica(guild.id), message.channel, message, message.channel.id):
+                return
+            log_testi_servizio.coda.accoda(
+                guild.id, message.channel.id, message.id, message.author.id, "creato", message.content, message.attachments,
+            )
+        except Exception:  # noqa: BLE001 - il testo dei log non deve mai rompere altro
+            logger.warning("Testo del messaggio non accodato", exc_info=True)
 
     async def _giro_pulizia(self) -> None:
         try:
             tolti = await allegati_sicuri.pulisci()
             if tolti:
                 logger.info("Copie degli allegati: %d file tolti", tolti)
+            potate = await log_testi_servizio.pota()  # LOG-029: tetto per server
+            if potate:
+                logger.info("Testo dei messaggi: %d righe oltre il tetto del server tolte", potate)
         except Exception:  # noqa: BLE001
             logger.warning("Pulizia delle copie degli allegati non riuscita", exc_info=True)
 
@@ -200,6 +238,10 @@ class MessageLogsCog(commands.Cog):
         # LOG-027: in memoria solo se l'evento è acceso (spento = il server non li vuole).
         if messaggio is not None and await log_eventi_repo.evento_acceso(guild.id, "message_delete"):
             cancellati_recenti.aggiungi(payload.channel_id, archiviato(messaggio))
+        if messaggio is not None and await self._testo_acceso(guild.id):  # LOG-029: il testo dell'ultima versione, cifrato
+            log_testi_servizio.coda.accoda(
+                guild.id, payload.channel_id, messaggio.id, messaggio.author.id, "cancellato", messaggio.content, messaggio.attachments,
+            )
         await event_log_repo.log_event(
             guild.id,
             "message_delete",
@@ -294,6 +336,10 @@ class MessageLogsCog(commands.Cog):
         ):
             return
 
+        if await self._testo_acceso(after.guild.id):  # LOG-029: il testo nuovo, cifrato
+            log_testi_servizio.coda.accoda(
+                after.guild.id, after.channel.id, after.id, after.author.id, "modificato", after.content, after.attachments,
+            )
         await event_log_repo.log_event(
             after.guild.id,
             "message_edit",

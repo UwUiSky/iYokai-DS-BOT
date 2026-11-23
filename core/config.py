@@ -307,6 +307,8 @@ class Config:
     # TKT-072 (D111): chiave (AES-256, base64 di 32 byte) che cifra le trascrizioni dei ticket conservate per il
     # pannello. Vuota: si usa OAUTH_ENCRYPTION_KEY; se manca anche quella, le trascrizioni NON si conservano.
     TICKET_TRASCRIZIONI_KEY: str = field(default="", repr=False)
+    # Chiave del testo dei messaggi dei log (LOG-029, D122). Vuota: si usa TICKET_TRASCRIZIONI_KEY; senza nessuna chiave il testo non si salva.
+    LOG_TESTI_KEY: str = field(default="", repr=False)
     # Porta su cui core/restore_web_server.py ascolta le callback
     # OAuth2 di Discord dopo che un utente autorizza il restore
     # (indirizzo: WEB_BIND_HOST, condiviso con il server webhook sotto).
@@ -491,6 +493,7 @@ def _load_config() -> Config:
         OAUTH_ENCRYPTION_KEY=_optional("OAUTH_ENCRYPTION_KEY", ""),
         VERIFY_IP_ENCRYPTION_KEY=_optional("VERIFY_IP_ENCRYPTION_KEY", ""),
         TICKET_TRASCRIZIONI_KEY=_optional("TICKET_TRASCRIZIONI_KEY", ""),
+        LOG_TESTI_KEY=_optional("LOG_TESTI_KEY", ""),
         VOTO_SEGRETO=_optional("VOTO_SEGRETO", ""),
         VOTO_PORT=_optional_int("VOTO_PORT", 8422),
         RESTORE_WEB_PORT=_optional_int("RESTORE_WEB_PORT", 8420),
