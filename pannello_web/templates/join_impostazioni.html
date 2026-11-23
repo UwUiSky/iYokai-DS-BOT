@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titolo %}Pagina di rientro · {{ guild.name }} · iYokai Panel{% endblock %}
+{% block corpo %}
+<h1>Pagina di rientro</h1>
+<p><a href="/server/{{ guild.id }}">&larr; {{ guild.name }}</a></p>
+<p class="tenue">Una pagina pubblica dove i tuoi membri autorizzano iYokai a farli rientrare da soli se il server dovrà essere ripristinato. Mostra il nome e l'icona del server e i colori che scegli. L'indirizzo è un nome breve unico: da 3 a 32 caratteri (lettere minuscole, numeri e trattini). Senza un nome si usa l'ID del server. Non cambia come funziona il ripristino: la persona autorizza su Discord, solo per questo server.</p>
+<form class="carta" method="post" action="/server/{{ guild.id }}/join">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <p><label><input type="checkbox" name="attiva" value="1"{% if p.join_attiva %} checked{% endif %}> Pagina accesa</label></p>
+  <p><label>Nome breve: /join/ <input type="text" name="nome" maxlength="32" value="{{ p.join_slug or '' }}" pattern="[a-z0-9\-]*" autocomplete="off"></label></p>
+  <p><label>Colore principale <input type="text" name="accento" maxlength="7" value="{{ p.join_accento or '' }}" pattern="#[0-9a-fA-F]{6}" placeholder="#c24a3a" autocomplete="off"></label></p>
+  <p><label>Colore di sfondo <input type="text" name="sfondo" maxlength="7" value="{{ p.join_sfondo or '' }}" pattern="#[0-9a-fA-F]{6}" placeholder="#07070b" autocomplete="off"></label></p>
+  <button type="submit">Salva</button>
+</form>
+{% if p.join_attiva %}<p>Indirizzo: <a href="/join/{{ p.join_slug or guild.id }}">/join/{{ p.join_slug or guild.id }}</a></p>{% endif %}
+{% endblock %}

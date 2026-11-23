@@ -137,7 +137,7 @@ YouTube è scritto nella colonna "Come farla". Regola già scritta in
 |---|---|---|---|---|---|
 | MUS-088 | Più bot musicali nello stesso server, uno per canale vocale | Jockie (4 gratis, altri con il premium) [JOCKIE] | 🟡 parziale: 5 bot, ma oggi uno per server e quasi certamente senza audio (LIM-40) | D10: un nodo per bot, un bot per canale | M 8.1 |
 | MUS-089 | Canale richieste con messaggio "player" e bottoni | Hydra (storico, 2023) (terzi) [HYDRA-T] | ❌ manca | Vista persistente; 5 bottoni per riga; aggiornamento ogni pochi secondi | NF-19 |
-| MUS-090 | Bot musicali di colore diverso, a scelta | Jockie [JOCKIE] | 🟡 parziale: i 5 bot esistono, senza scelta | Solo estetica: nome e avatar dei worker | nuova |
+| MUS-090 | Bot musicali di colore diverso, a scelta | Jockie [JOCKIE] | ✅ fatto (r3web, D111): i bot musicali restano «iYokai Music»; scelta per Mod, Creator, NSFW e App con `/admin-bot setup identita-bot` | Solo estetica: nome e avatar del server | nuova |
 
 ## Fonti
 

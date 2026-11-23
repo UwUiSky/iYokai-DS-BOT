@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block titolo %}Rientra in {{ guild.name }}{% endblock %}
+{% block testa %}{% if con_colori %}<link rel="stylesheet" href="/join/{{ nome }}/colori.css">{% endif %}{% endblock %}
+{% block corpo %}
+<div class="carta">
+  {% if icona %}<p><img src="{{ icona }}?size=128" alt="" width="96" height="96"></p>{% endif %}
+  <h1>{{ guild.name }}</h1>
+  <p>Se questo server dovrà essere ripristinato (per esempio dopo un attacco), puoi autorizzare iYokai ad <strong>aggiungerti di nuovo</strong> da solo, senza che tu debba cercare un nuovo invito.</p>
+  <p class="tenue">Cosa autorizzi su Discord: <strong>identificarti</strong> (vedere chi sei) e <strong>aggiungerti a un server</strong>. Non leggiamo i tuoi messaggi né i tuoi altri server, e non scriviamo a nome tuo. Conserviamo un token cifrato, solo per questo server, fino a quando lo revochi: puoi farlo in ogni momento da Discord (Impostazioni &rarr; App autorizzate) o chiedendo la cancellazione dei tuoi dati.</p>
+  {% if utente_id %}
+  <form method="post" action="/join/{{ nome }}/avvia">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button type="submit">Autorizzo il rientro</button>
+  </form>
+  {% else %}
+  <p><a class="bottone" href="/join/{{ nome }}/accedi">Accedi con Discord per continuare</a></p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -533,7 +533,8 @@
   "tela": "canvas",
   "colora": "paint",
   "pixel": "pixel",
-  "togli-utente": "remove-user"
+  "togli-utente": "remove-user",
+  "identita-bot": "bot-identity"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1852,7 +1853,8 @@
   "admin-giochi tela togli-utente": "Remove from the canvas all pixels placed by a person.",
   "admin-giochi tela blocca": "Block a person from the pixel canvas.",
   "admin-giochi tela sblocca": "Unblock a person from the pixel canvas.",
-  "admin-giochi tela impostazioni": "Wait, cost to skip it and public page of the canvas."
+  "admin-giochi tela impostazioni": "Wait, cost to skip it and public page of the canvas.",
+  "admin-bot setup identita-bot": "Name and logo of the other iYokai bots in this server."
  },
  "parametri": {},
  "menu": {

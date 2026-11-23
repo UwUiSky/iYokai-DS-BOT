@@ -740,6 +740,11 @@ class VerifyCog(CogConGruppi, commands.Cog):
                     "Please contact the server staff.",
                 )
 
+        if outcome.success:  # VER-027: se ha collegato la verifica ai ruoli collegati di Discord, i valori si aggiornano
+            from core.ruoli_collegati_verifica import programma_aggiornamento
+
+            programma_aggiornamento(member.id, avatar_presente=getattr(member, "avatar", None) is not None)
+
         if config.log_channel_id is not None:
             log_channel = guild.get_channel(config.log_channel_id)
             if isinstance(log_channel, discord.TextChannel):

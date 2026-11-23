@@ -309,6 +309,7 @@ class SetupCog(CogConGruppi, commands.Cog):
             )
         if not righe:
             return ""
+        righe.append(await testo_per(interaction, "setup_bot_identita"))  # MUS-090: nome e logo scelti dal server
         return ("**" + await testo_per(interaction, "setup_bot_titolo") + "**\n" + "\n".join(righe))[:2000]
 
     async def _embed_stato_moduli(self, guild_id: int) -> discord.Embed:
