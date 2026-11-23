@@ -7,7 +7,7 @@ scrivere) e lingua del server. È solo l'interfaccia comandi: legge e scrive con
 core/database.py. Nessun controllo "modulo attivo": deve funzionare
 anche prima che qualunque modulo sia acceso, come /admin-bot setup attiva.
 Funzioni coperte: SPEC §2.1, §2.3 (solo infrastruttura), §2.5, §2.6,
-§2.7; REVIEW.md BUG-6, BUG-31, BUG-32; catalogo #122 (CFG-004, CFG-005).
+§2.7; REVIEW.md BUG-6, BUG-31, BUG-32; catalogo #122 (CFG-004, CFG-005), #128 (UTL-228: reset con «anche i dati»).
 """
 
 from __future__ import annotations
@@ -19,7 +19,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from cogs.utility.azzeramento_dati import ConfermaNomeModal, quando as quando_azz
+from core import azzeramento_dati_logic as azzeramento_logica
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.config import config as config_bot
 from core.command_access import (
     CHIAVI_RUOLI,
     SETTING_ADMIN_ROLE,
@@ -790,15 +793,25 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "admin-bot",
         nome="reset",
-        descrizione="Azzera la configurazione di questo server.",
+        descrizione="Azzera la configurazione di questo server (e, a richiesta, tutti i dati dopo 30 giorni).",
         sottogruppo=("config", "Configurazione: canali, storico, ripristino ed esportazione"),
     )
-    async def reset(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(
+        anche_i_dati="Solo il proprietario del server: chiede di cancellare TUTTI i dati del bot dopo 30 giorni",
+        annulla_dati="Annulla la richiesta di cancellazione dei dati (proprietario del server o del bot)",
+    )
+    async def reset(
+        self, interaction: discord.Interaction, anche_i_dati: bool = False, annulla_dati: bool = False
+    ) -> None:
         guild = interaction.guild
         if guild is None:
             await interaction.response.send_message(
                 await testo_per(interaction, "accesso_solo_server"), ephemeral=True
             )
+            return
+
+        if annulla_dati or anche_i_dati:
+            await self._reset_dati(interaction, guild, annulla=annulla_dati)
             return
 
         view = ResetConfirmView(guild.id, interaction.user.id)
@@ -807,6 +820,40 @@ class ConfigHistoryCog(CogConGruppi, commands.Cog):
             view=view,
             ephemeral=True,
         )
+
+    async def _reset_dati(self, interaction: discord.Interaction, guild: discord.Guild, *, annulla: bool) -> None:
+        """UTL-228: richiesta, stato, conferma del nuovo proprietario o annullamento dell'azzeramento dei dati."""
+        corrente = await azzeramento_logica.azzeramento_repo.get(guild.id)
+        if annulla:
+            try:
+                tolta = await azzeramento_logica.annulla(guild.id, interaction.user.id, guild.owner_id, config_bot.OWNER_ID)
+            except PermissionError:
+                await interaction.response.send_message(await testo_per(interaction, "az_non_puoi_annullare"), ephemeral=True)
+                return
+            chiave = "az_annullata" if tolta is not None else "az_nessuna_richiesta"
+            await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
+            return
+        if not azzeramento_logica.puo_chiedere(interaction.user.id, guild.owner_id):
+            # Un admin può solo vedere lo stato: mai chiedere né confermare.
+            if corrente is None:
+                chiave = "az_solo_proprietario"
+            else:
+                chiave = "az_stato_sospesa" if corrente.stato == azzeramento_logica.STATO_SOSPESA else "az_stato_attiva"
+            testo = await testo_per(interaction, chiave, quando=quando_azz(corrente.esegui_il) if corrente else "")
+            await interaction.response.send_message(testo, ephemeral=True)
+            return
+        if corrente is not None and corrente.stato == azzeramento_logica.STATO_ATTIVA:
+            await interaction.response.send_message(
+                await testo_per(interaction, "az_stato_attiva", quando=quando_azz(corrente.esegui_il)), ephemeral=True
+            )
+            return
+        riprendi = corrente is not None  # sospesa: il nuovo proprietario deve confermare
+        modale = ConfermaNomeModal(
+            await testo_per(interaction, "az_modal_titolo"),
+            await testo_per(interaction, "az_modal_nome"),
+            riprendi=riprendi,
+        )
+        await interaction.response.send_modal(modale)
 
     @comando_di_gruppo(
         "admin-bot",

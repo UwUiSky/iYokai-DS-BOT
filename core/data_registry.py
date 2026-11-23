@@ -873,6 +873,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
        nota="resta solo lo sban programmato (tempban): promemoria e messaggi programmati hanno testo libero e vanno via; "
             "nelle righe 'channel_unlock' (lock a tempo, MOD-090) user_id contiene l'ID del CANALE, non di una persona"),
     _t("guild_config", "Configurazione del server", colonna_server="guild_id"),
+    _t("richieste_azzeramento", "Richiesta di azzerare i dati del bot per un server, con 30 giorni di ritardo (UTL-228)",
+       colonne_attore=("richiesto_da",), colonna_server="guild_id", azzera_attore=False),
     _t("config_orfani", "Canali e ruoli della configurazione che non esistono più, con la data da cui mancano (UTL-226)", colonna_server="guild_id"),
     _t("guild_presence", "Quando il bot è entrato e uscito da ogni server", server="conserva",
        nota="serve a contare i 90 giorni"),

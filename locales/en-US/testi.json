@@ -3963,5 +3963,21 @@
   "cfg_pulisci_solo_proprietario": "Only the server owner can clean up right now.",
   "cfg_pulisci_anteprima": "{n} channels or roles named in the settings no longer exist. Nothing is touched for {giorni} days, so a restore (even after a nuke) can find them again. If they come back sooner, they stay. When they will be removed:\n{elenco}",
   "cfg_pulisci_chiedi": "Clean up now, without waiting? Every change goes in the history and /admin-bot config rollback undoes it.",
-  "cfg_pulisci_annullato": "Cleanup cancelled."
+  "cfg_pulisci_annullato": "Cleanup cancelled.",
+  "az_solo_proprietario": "Only the server owner can request or confirm deleting all data.",
+  "az_non_puoi_annullare": "Only the server owner or the bot owner can cancel the request.",
+  "az_nome_sbagliato": "The name you wrote is not the server's name: the request did not start.",
+  "az_gia_richiesta": "There is already a request for this server.",
+  "az_richiesta": "Request recorded. All the bot's data for this server will be deleted {quando}, in {giorni} days. Until then nothing changes and you can cancel with `/admin-bot config reset annulla_dati:yes`. I will also warn you 3 days before.",
+  "az_ripresa": "Request confirmed by the new owner. The data will be deleted {quando}. You can cancel with `/admin-bot config reset annulla_dati:yes`.",
+  "az_annullata": "Request cancelled: the data stays where it is.",
+  "az_nessuna_richiesta": "There is no data deletion request for this server.",
+  "az_stato_attiva": "This server has a request to delete all data: it will happen {quando}. Only the server owner or the bot owner can cancel it.",
+  "az_stato_sospesa": "The data deletion request is suspended because the server owner changed. The new owner must confirm it with `/admin-bot config reset anche_i_dati:yes`, or cancel it.",
+  "az_modal_titolo": "Delete all data",
+  "az_modal_nome": "Write the server's name",
+  "az_dm_inizio": "You asked to delete all the bot's data for the server \"{server}\". It will happen {quando}. Until then the data stays and you can cancel with `/admin-bot config reset annulla_dati:yes`. If it was not you, cancel now and secure your account.",
+  "az_dm_preavviso": "In 3 days ({quando}) the bot will delete all data for the server \"{server}\". To stop it use `/admin-bot config reset annulla_dati:yes`.",
+  "az_dm_sospesa": "The request to delete the data of the server \"{server}\" is suspended: the server owner changed. Nothing is deleted until the new owner confirms it with `/admin-bot config reset anche_i_dati:yes` (or cancels it with `annulla_dati:yes`).",
+  "az_dm_fatto": "The bot's data for the server \"{server}\" has been deleted, as requested."
 }

@@ -1475,3 +1475,11 @@ Attuano D111. Dove D111 lascia aperto, si è scelta l'opzione più prudente.
 - Si segna la data in cui un canale o ruolo citato manca (`config_orfani`, 0830). Un ID tornato (o non più citato, per esempio rimappato da un ripristino) perde il segno: se sparisce di nuovo i 7 giorni ripartono.
 - Un giro ogni 6 ore toglie dalla configurazione solo ciò che manca da 7 giorni ed è ancora assente in quel momento (canali non in memoria: `fetch_channel`). Un server non caricato non si tocca. Ogni modifica ha la sua riga nello storico (`changed_by` vuoto, `rollback` la annulla).
 - «Pulire subito» (`subito:sì`): solo il proprietario del server (non un admin), con bottone di conferma. È l'unico modo di pulire prima dei 7 giorni.
+
+**UTL-228 (azzeramento dei dati, 30 giorni)**
+- Si estende `/admin-bot config reset` con `anche_i_dati` (chiede) e `annulla_dati` (annulla). Con `anche_i_dati` la configurazione NON si azzera subito: tutto va via allo scadere dei 30 giorni, così annullare riporta davvero allo stato di prima. Il reset semplice della configurazione resta com'era.
+- Chiede e conferma solo il proprietario del server (mai un admin, nemmeno l'owner del bot: non possiede il server), scrivendo il nome del server uguale al vero. Annulla il proprietario del server o dell'owner del bot. Tutto si ricontrolla alla conferma della finestra.
+- Avvisi: messaggio privato al proprietario all'inizio e 3 giorni prima; se non si può, una riga nel canale dei log del server (senza menzioni). Un admin vede solo lo stato.
+- Proprietario cambiato (evento `on_guild_update`, o controllo all'esecuzione se il bot era spento): la richiesta passa a «sospesa», si toglie dalla coda e il nuovo proprietario è avvisato. Per riprenderla il nuovo proprietario ripete `reset anche_i_dati:sì` con il nome del server: i 30 giorni ripartono da capo.
+- La verità è nel database (`richieste_azzeramento`), non nella coda: l'esecuzione ricontrolla stato, scadenza e proprietario con la riga bloccata, in una transazione con la cancellazione. Un server non in memoria non si cancella (lo scheduler riprova); un giro ogni 6 ore esegue le richieste scadute che la coda non ha eseguito.
+- Cosa va via è deciso da `data_registry` (cancellazione per server): restano ban e kick di sicurezza, premium, registri contabili e le tabelle «conserva». Il bot resta nel server e riparte da zero.

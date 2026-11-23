@@ -184,7 +184,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:
 - **`/admin-bot config nickname-bot`** — Cambia il nome del bot in questo server.
 - **`/admin-bot config permessi`** — Mostra il livello di permesso di un membro e perché.
 - **`/admin-bot config pulisci`** — Canali e ruoli cancellati: cosa si pulirà dalla configurazione e quando (dopo 7 giorni).
-- **`/admin-bot config reset`** — Azzera la configurazione di questo server.
+- **`/admin-bot config reset`** — Azzera la configurazione di questo server (e, a richiesta, tutti i dati dopo 30 giorni).
 - **`/admin-bot config risposte`** — Risposte del bot: private, cancellate dopo un po', colori.
 - **`/admin-bot config rollback`** — Ripristina il valore precedente di una modifica.
 - **`/admin-bot config sincronizza`** — Riscrive i permessi dei comandi di questo server.
