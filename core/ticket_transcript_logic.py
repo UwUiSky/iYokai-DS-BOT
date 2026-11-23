@@ -4,7 +4,7 @@ core/ticket_transcript_logic.py
 Transcript HTML e ZIP degli allegati dei ticket (TKT-070, 071, 074). Funzioni pure, senza Discord.
 Il file HTML non apre mai risorse remote (CSP + niente avatar o immagini dal CDN) e ogni testo passa
 dall'autoescape di jinja2. Le immagini entrano solo come copia ricodificata dalla pipeline (D62), mai l'originale.
-Funzioni coperte: SPEC §13.22
+Funzioni coperte: SPEC §13.22, TKT-072 (D111: orario con i secondi, tetto per immagine, solo nome per gli altri allegati)
 """
 
 from __future__ import annotations
@@ -12,17 +12,33 @@ from __future__ import annotations
 import base64
 import io
 import re
+import unicodedata
 import zipfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from datetime import datetime
 
 from jinja2 import Environment
 
 FORMATI = ("testo", "html", "entrambi")
 MAX_BYTE_FILE = 8 * 1024 * 1024  # sotto i 10 MiB di Discord (LIM-55) con margine
+MAX_BYTE_IMMAGINE = 2 * 1024 * 1024  # una PNG ricodificata più grande resta solo nome (D111)
 MAX_IMMAGINI = 25  # per transcript: oltre, solo nome e impronta
 MAX_BYTE_IMMAGINI_ZIP = 7 * 1024 * 1024
 CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:"
 _SPAZI = re.compile(r"\s+")
+
+
+def ora_completa(quando: datetime) -> str:
+    """Data e ora con i secondi (UTC come arriva da Discord)."""
+    return quando.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def nome_autore(nome: str | None) -> str:
+    """Il nome di chi scrive, senza caratteri di controllo, invisibili o inversioni; mai vuoto."""
+    pulito = "".join(
+        c for c in str(nome or "") if c.isprintable() and unicodedata.category(c) not in ("Cf", "Cc")
+    ).strip()
+    return pulito[:80] or "?"
 
 
 def formato_valido(formato: str | None) -> str:
@@ -35,6 +51,7 @@ class AllegatoT:
     peso: int = 0
     sha256: str = ""
     png: bytes = b""  # copia ricodificata dalla pipeline; vuota = niente anteprima
+    tipo: str = ""  # tipo dichiarato da Discord (solo da mostrare, mai per decidere)
 
 
 @dataclass(frozen=True)
@@ -75,7 +92,7 @@ _MESSAGGIO = _ambiente.from_string(
 <div class="h"><b>{{ m.autore }}</b> <span>{{ m.ora }}</span></div>
 <div class="t">{{ m.testo if m.testo else "(nessun testo)" }}</div>
 {% for a in m.allegati %}<div class="f">{% if a.png and immagini %}<img alt="{{ a.nome }}" src="{{ a.png|uri }}">{% endif %}
-<small>{{ a.nome }}{% if a.peso %} · {{ a.peso }} byte{% endif %}{% if a.sha256 %} · SHA-256 {{ a.sha256 }}{% endif %}</small></div>{% endfor %}
+<small>{{ a.nome }}{% if a.tipo %} · {{ a.tipo }}{% endif %}{% if a.peso %} · {{ a.peso }} byte{% endif %}{% if a.sha256 %} · SHA-256 {{ a.sha256 }}{% endif %}</small></div>{% endfor %}
 </div></div>"""
 )
 
@@ -103,6 +120,25 @@ display:flex;align-items:center;justify-content:center;font-weight:700}.b .a{bac
 )
 
 
+def limita_immagini(messaggi: list[MessaggioT], budget: int) -> list[MessaggioT]:
+    """
+    Tetti delle immagini incorporate: ognuna sotto MAX_BYTE_IMMAGINE e tutte insieme sotto `budget` byte (in ordine
+    di arrivo). Quelle che non entrano perdono la copia e restano solo nome, tipo e peso.
+    """
+    usati = 0
+    fuori: list[MessaggioT] = []
+    for m in messaggi:
+        nuovi = []
+        for a in m.allegati:
+            if a.png and (len(a.png) > MAX_BYTE_IMMAGINE or usati + len(a.png) > budget):
+                a = replace(a, png=b"")
+            elif a.png:
+                usati += len(a.png)
+            nuovi.append(a)
+        fuori.append(replace(m, allegati=tuple(nuovi)))
+    return fuori
+
+
 def _corpo(messaggi, immagini: bool) -> str:
     if not messaggi:
         return '<div class="m"><div class="t">(nessun messaggio nel canale)</div></div>'
@@ -124,6 +160,7 @@ def html_in_parti(
     Le pagine HTML del transcript. Prima con le immagini; se il file supera `max_byte` si
     tolgono le immagini; se ancora troppo grande si divide in parti (a fine messaggio).
     """
+    messaggi = limita_immagini(messaggi, max(0, (max_byte - 512 * 1024) * 3 // 4))
     con_immagini = _pagina(h, _corpo(messaggi, True), None)
     if _pesa(con_immagini) <= max_byte:
         return [con_immagini]

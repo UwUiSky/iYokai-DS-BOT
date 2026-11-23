@@ -145,8 +145,16 @@ def _finto_allegati_sicuri(monkeypatch, esiti):
     return conserva
 
 
-async def test_opzioni_di_base_danno_il_solo_testo(monkeypatch):
+async def test_opzioni_di_base_danno_testo_e_html(monkeypatch):
+    # TKT-072 (D111): di base il file HTML c'e' insieme al testo.
     monkeypatch.setattr(modulo, "_opzioni_pannello", AsyncMock(return_value=Opzioni()))
+    cog, guild, canale, ticket = _scena([])
+    assert sorted(n for n, _ in await cog._file_transcript(guild, canale, ticket)) == [
+        "ticket-0001-transcript.html", "ticket-0001-transcript.txt"]
+
+
+async def test_formato_testo_resta_il_solo_testo(monkeypatch):
+    monkeypatch.setattr(modulo, "_opzioni_pannello", AsyncMock(return_value=Opzioni(transcript_formato="testo")))
     cog, guild, canale, ticket = _scena([])
     assert [n for n, _ in await cog._file_transcript(guild, canale, ticket)] == ["ticket-0001-transcript.txt"]
 
@@ -185,7 +193,7 @@ async def test_ogni_allegato_del_transcript_passa_da_allegati_sicuri_con_origine
 
 
 async def test_anche_il_transcript_solo_testo_conserva_le_copie(monkeypatch):
-    monkeypatch.setattr(modulo, "_opzioni_pannello", AsyncMock(return_value=Opzioni()))
+    monkeypatch.setattr(modulo, "_opzioni_pannello", AsyncMock(return_value=Opzioni(transcript_formato="testo")))
     conserva = _finto_allegati_sicuri(monkeypatch, {"buona.png": EsitoImmagine(PULITA, "ab" * 32, png=b"PNG")})
     cog, guild, canale, ticket = _scena([_allegato("buona.png")])
     assert [n for n, _ in await cog._file_transcript(guild, canale, ticket)] == ["ticket-0001-transcript.txt"]
@@ -199,3 +207,35 @@ async def test_il_transcript_non_conserva_oltre_il_tetto(monkeypatch):
     cog, guild, canale, ticket = _scena([_allegato(f"{i}.png") for i in range(5)])
     await cog._file_transcript(guild, canale, ticket)
     assert len(conserva.chiamate) == 2
+
+
+# ====================================================================
+# TKT-072 (D111): pagine HTML per la conservazione cifrata
+# ====================================================================
+async def test_le_pagine_per_la_conservazione_escono_anche_col_solo_testo(monkeypatch):
+    monkeypatch.setattr(modulo, "_opzioni_pannello", AsyncMock(return_value=Opzioni(transcript_formato="testo")))
+    _finto_allegati_sicuri(monkeypatch, {"buona.png": EsitoImmagine(PULITA, "ab" * 32, png=b"RICODIFICATO")})
+    cog, guild, canale, ticket = _scena([_allegato("buona.png"), _allegato("a.zip", tipo="application/zip")])
+    parti: list[str] = []
+    file = await cog._file_transcript(guild, canale, ticket, parti)
+    assert [n for n, _ in file] == ["ticket-0001-transcript.txt"]  # il pannello non vuole il file HTML
+    assert len(parti) == 1 and "09:30:00" in parti[0]
+    assert base64.b64encode(b"RICODIFICATO").decode() in parti[0] and base64.b64encode(b"ORIGINALE").decode() not in parti[0]
+    assert "a.zip" in parti[0] and "application/zip" in parti[0] and "<a " not in parti[0]
+
+
+async def test_alla_chiusura_la_trascrizione_si_conserva_cifrata(monkeypatch, clean_db):
+    from core import ticket_trascrizioni_servizio as servizio
+    from core.oauth_crypto import generate_key
+    from core.repositories.ticket_trascrizioni_repo import ticket_trascrizioni_repo as repo
+
+    monkeypatch.setattr(repo, "_pool_provider", lambda: clean_db)
+    monkeypatch.setattr(servizio, "config", SimpleNamespace(TICKET_TRASCRIZIONI_KEY=generate_key(), OAUTH_ENCRYPTION_KEY=""))
+    monkeypatch.setattr(modulo, "_opzioni_pannello", AsyncMock(return_value=Opzioni(transcript_formato="testo")))
+    monkeypatch.setattr(modulo.db, "get_guild_setting", AsyncMock(return_value=None))
+    monkeypatch.setattr(modulo.router, "destinazione", AsyncMock(return_value=None))
+    cog, guild, canale, ticket = _scena([])
+    ticket.id, ticket.guild_id = 41, guild.id
+    await cog._deliver_transcript(guild, canale, ticket, dm=False)
+    riga = await clean_db.fetchrow("SELECT cifrato FROM ticket_trascrizioni WHERE ticket_id = 41")
+    assert riga is not None and "ciao" not in riga["cifrato"] and "<b>" not in riga["cifrato"]

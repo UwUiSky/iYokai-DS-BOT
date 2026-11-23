@@ -129,6 +129,7 @@ from core.ticket_logic import (
 from core import ticket_gestione_logic as gestione
 from core import ticket_thread_logic as thread_logic
 from core import ticket_transcript_logic as tr_logic
+from core import ticket_trascrizioni_servizio as trascrizioni
 from core.repositories.ticket_gestione_repo import (
     EtichettaGiaEsistente,
     TroppeEtichette,
@@ -3568,7 +3569,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
                         letta = await allegati_sicuri.leggi(copia.id)
                         if letta is not None:
                             png = letta[1]
-            risultato.append(AllegatoT(nome_pulito(allegato.filename), allegato.size or 0, sha, png))
+            risultato.append(AllegatoT(nome_pulito(allegato.filename), allegato.size or 0, sha, png, tipo[:80]))
         return tuple(risultato)
 
     async def _conserva_copie_canale(self, guild: discord.Guild, channel) -> None:
@@ -3586,14 +3587,18 @@ class TicketsCog(CogConGruppi, commands.Cog):
         except Exception:  # noqa: BLE001
             logger.warning("Copie degli allegati del ticket %s non conservate.", channel.id, exc_info=True)
 
-    async def _file_transcript(self, guild: discord.Guild, channel, ticket) -> list[tuple[str, bytes]]:
+    async def _file_transcript(
+        self, guild: discord.Guild, channel, ticket, parti_out: list[str] | None = None
+    ) -> list[tuple[str, bytes]]:
         """
         I file del transcript secondo il pannello (TKT-071): testo, HTML o entrambi, più lo ZIP delle immagini
         controllate (TKT-074). Con le opzioni di base è identico al transcript testuale di sempre.
+        TKT-072: se `parti_out` è una lista, ci finiscono le pagine HTML (anche se il pannello non vuole il file),
+        da conservare cifrate per lo staff.
         """
         opzioni = await _opzioni_pannello(ticket.panel_id)
         formato = tr_logic.formato_valido(opzioni.transcript_formato)
-        if formato == "testo" and not opzioni.allegati_zip:
+        if formato == "testo" and not opzioni.allegati_zip and parti_out is None:
             await self._conserva_copie_canale(guild, channel)
             return self._transcript_files(await self._build_transcript_text(channel, ticket), ticket.ticket_number)
         messaggi = [m async for m in channel.history(limit=None, oldest_first=True)]
@@ -3611,10 +3616,10 @@ class TicketsCog(CogConGruppi, commands.Cog):
             for e in getattr(m, "embeds", None) or []:
                 testo += "\n" + "\n".join(x for x in (getattr(e, "title", None), getattr(e, "description", None)) if x)
             convertiti.append(tr_logic.MessaggioT(
-                m.created_at.strftime("%Y-%m-%d %H:%M"), str(m.author), testo.strip(), allegati,
+                tr_logic.ora_completa(m.created_at), tr_logic.nome_autore(str(m.author)), testo.strip(), allegati,
                 bool(getattr(m.author, "bot", False)),
             ))
-        if formato in ("html", "entrambi"):
+        if formato in ("html", "entrambi") or parti_out is not None:
             riga = lambda k, v: (k, str(v))  # noqa: E731
             testata = tr_logic.IntestazioneT(
                 ticket.ticket_number,
@@ -3626,7 +3631,11 @@ class TicketsCog(CogConGruppi, commands.Cog):
                 None if self.bot.intents.message_content else MESSAGE_CONTENT_WARNING,
             )
             parti = tr_logic.html_in_parti(testata, convertiti)
+            if parti_out is not None:
+                parti_out.extend(parti)
             for numero, pagina in enumerate(parti, start=1):
+                if formato not in ("html", "entrambi"):
+                    break
                 nome = f"{base}-transcript.html" if len(parti) == 1 else f"{base}-transcript-parte-{numero}-di-{len(parti)}.html"
                 file_pronti.append((nome, pagina.encode("utf-8")))
         if opzioni.allegati_zip:
@@ -3639,11 +3648,15 @@ class TicketsCog(CogConGruppi, commands.Cog):
         self, guild: discord.Guild, channel: discord.TextChannel, ticket, *, dm: bool = True
     ) -> None:
         """SPEC.md §13.11: invio nel canale log configurato + DM all'utente (se il pannello lo vuole, TKT-075)."""
+        conserva = await trascrizioni.attiva(guild.id)  # TKT-072: copia cifrata per lo staff nel pannello
+        parti_html: list[str] | None = [] if conserva else None
         try:
-            file_del_transcript = await self._file_transcript(guild, channel, ticket)
+            file_del_transcript = await self._file_transcript(guild, channel, ticket, parti_html)
         except discord.HTTPException:
             logger.warning("Impossibile leggere la history del ticket %s per il transcript", channel.id)
             return
+        if parti_html:
+            await trascrizioni.conserva(guild.id, ticket, parti_html)
 
         # Il canale dei log può essere un forum: il router lo gestisce (post nel forum).
         predefinito = await db.get_guild_setting(guild.id, SETTING_LOG_CHANNEL)

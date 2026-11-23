@@ -76,7 +76,7 @@ class Opzioni:
     prefisso_chiuso: str | None = None
     prefisso_preso: str | None = None
     solo_admin: bool = False
-    transcript_formato: str = "testo"
+    transcript_formato: str = "entrambi"  # TKT-072 (D111): il file HTML c'è di base
     allegati_zip: bool = False
     attesa_categoria_id: int | None = None
     attesa_minuti: int = 0
