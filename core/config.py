@@ -318,6 +318,15 @@ class Config:
     VOTO_SEGRETO: str = field(default="", repr=False)
     VOTO_PORT: int = field(default=8422)
 
+    # --- Piani e Patreon (D59, CFG-036, CFG-040) -------------------------
+    # Altri server dell'owner il cui boost dà il Premium (si somma a MAIN_GUILD_ID), ID separati da virgola.
+    PREMIUM_BOOST_GUILD_IDS: str = field(default="")
+    # Patreon: senza queste chiavi il modulo resta spento (nessuna rotta, nessun errore).
+    PATREON_CLIENT_ID: str = field(default="")
+    PATREON_CLIENT_SECRET: str = field(default="", repr=False)
+    PATREON_WEBHOOK_SECRET: str = field(default="", repr=False)
+    PATREON_PORT: int = field(default=8423)
+
     # --- Webhook custom in ricezione (SPEC.md §10.8) --------------------
     # Porta su cui core/custom_webhook_server.py ascolta i webhook PUSH
     # di servizi terzi — a differenza del server restore sopra, questo
@@ -493,6 +502,11 @@ def _load_config() -> Config:
         TICKET_TRASCRIZIONI_KEY=_optional("TICKET_TRASCRIZIONI_KEY", ""),
         VOTO_SEGRETO=_optional("VOTO_SEGRETO", ""),
         VOTO_PORT=_optional_int("VOTO_PORT", 8422),
+        PREMIUM_BOOST_GUILD_IDS=_optional("PREMIUM_BOOST_GUILD_IDS", ""),
+        PATREON_CLIENT_ID=_optional("PATREON_CLIENT_ID", ""),
+        PATREON_CLIENT_SECRET=_optional("PATREON_CLIENT_SECRET", ""),
+        PATREON_WEBHOOK_SECRET=_optional("PATREON_WEBHOOK_SECRET", ""),
+        PATREON_PORT=_optional_int("PATREON_PORT", 8423),
         RESTORE_WEB_PORT=_optional_int("RESTORE_WEB_PORT", 8420),
         ALERTS_WEBHOOK_PORT=_optional_int("ALERTS_WEBHOOK_PORT", 8421),
         ALERTS_WEBHOOK_PUBLIC_BASE_URL=_optional("ALERTS_WEBHOOK_PUBLIC_BASE_URL", ""),

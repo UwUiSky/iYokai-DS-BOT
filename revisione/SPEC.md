@@ -2118,9 +2118,18 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   e `permessi` (CFG-022, 023, 025, 026, `core/permessi_vista.py`); lingua di partenza dal locale di Discord (CFG-029);
   posti premium di una persona (CFG-034, 035, migrazione 0720, `core/premium_posti_service.py`); esportazione con nomi e
   importazione senza ID di altri server (CFG-043, `core/config_trasloco.py`). Già presenti e ora provate: CFG-007 (parte),
-  028, 031, 035, 037, 042, 045. Non fatte: CFG-024, 036, 039, 040, 041 (D96); CFG-015, 016, 017, 044 (altre aree);
+  028, 031, 035, 037, 042, 045. Non fatte: CFG-024, 039 (D96; 036, 040, 041 in 20.11); CFG-015, 016, 017, 044 (altre aree);
   CFG-001, 002, 003, 006, 027 (pannello web). Test: `tests/test_risposte_server.py`, `test_permessi_vista.py`,
   `test_premium_posti.py`, `test_config_trasloco.py`, `test_lingua_iniziale.py`, `test_cfg_gia_coperte.py`.
+- `[x]` 20.11 Piani, Patreon e @everyone programmato, catalogo #122 #128 (giro r1premium, 23/11, D59, D124, D127) — livelli
+  Gratuito, Premium, Ultra, VIP in un solo punto (`core/piani.py`: concessioni mensile/annuale/a vita, boost di più server
+  dell'owner con `PREMIUM_BOOST_GUILD_IDS`, posti, chiave propria), limiti numerici per livello (copie di backup, serie
+  programmate, pannelli ticket, @everyone al giorno) scelti con `/owner premium piano` e letti dai moduli, prezzi e sconti
+  senza valori nel codice (CFG-040, 041, migrazione 0910); chiavi API proprie cifrate per server o persona, VIP a chi le
+  mette, `/admin-bot premium chiave` con finestra (AI-003, 0911); messaggi programmati con @everyone/@here solo per
+  proprietario o «Menziona @everyone» riletto all'invio, tetto, log (UTL-110, 0912); Patreon con OAuth, webhook firmato,
+  eventi idempotenti, token cifrati, spento senza chiavi (CFG-036, 0913). Test: `tests/test_piani.py`,
+  `test_patreon.py`, `test_everyone_programmati.py`.
 
 ## §21 LINGUE E RICERCA DEI COMANDI — da fare (fase F8)
 

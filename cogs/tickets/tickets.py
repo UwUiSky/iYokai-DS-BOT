@@ -71,6 +71,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core import piani
 from core.channel_rename import (
     RenameRateLimited,
     rename_channel,
@@ -2144,7 +2145,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
         except TroppiPannelli:
             await interaction.response.send_message(
-                await testo_per(interaction, "tickets_un_server_puo_avere_al", v1=form.MAX_PANNELLI_PER_SERVER),
+                await testo_per(interaction, "tickets_un_server_puo_avere_al", v1=await piani.limite_server_sicuro(interaction.guild.id, "pannelli_ticket")),
                 ephemeral=True,
             )
             return
@@ -2427,7 +2428,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
         except TroppiPannelli:
             await interaction.response.send_message(
-                await testo_per(interaction, "tickets_un_server_puo_avere_al", v1=form.MAX_PANNELLI_PER_SERVER), ephemeral=True
+                await testo_per(interaction, "tickets_un_server_puo_avere_al", v1=await piani.limite_server_sicuro(interaction.guild.id, "pannelli_ticket")), ephemeral=True
             )
             return
         await interaction.response.send_message(
@@ -2481,7 +2482,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
             return
         except TroppiPannelli:
             await interaction.response.send_message(
-                await testo_per(interaction, "tickets_un_server_puo_avere_al", v1=form.MAX_PANNELLI_PER_SERVER), ephemeral=True
+                await testo_per(interaction, "tickets_un_server_puo_avere_al", v1=await piani.limite_server_sicuro(interaction.guild.id, "pannelli_ticket")), ephemeral=True
             )
             return
         await interaction.response.defer(ephemeral=True)

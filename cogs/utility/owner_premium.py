@@ -29,6 +29,8 @@ from core import bot_info, hot_patch
 from core import chiave_soccorso as chiave_soccorso_logic
 from core.blacklist_exit import esci_dettaglio
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core import piani
+from core.piani_comandi import AZIONI_OWNER, esegui_owner
 from core.premium_posti_service import MAX_POSTI, concedi_posti
 from core.config import config
 from core.i18n import testo_per
@@ -332,9 +334,22 @@ class _ShellConfirmView(BaseView):
         await interaction.response.edit_message(embed=embed, view=None)
 
 
+def _scelte(valori: tuple[str, ...]):
+    async def completa(interaction: discord.Interaction, corrente: str) -> list[app_commands.Choice[str]]:
+        return [app_commands.Choice(name=v, value=v) for v in valori if corrente.lower() in v][:25]
+
+    return completa
+
+
+_scelte_azione = _scelte(AZIONI_OWNER)
+_scelte_livello = _scelte(piani.LIVELLI)
+_scelte_periodo = _scelte(piani.PERIODI)
+
+
 class OwnerPremiumCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        piani.registra_bot(bot)
 
     @comando_di_gruppo(
         "owner",
@@ -355,6 +370,51 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
             lines.append(f"`{m.name}` — {m.display_name}: **{stato}**")
 
         await invia_a_pagine(interaction, "Moduli premium", lines or ["Nessun modulo registrato."])
+
+    @comando_di_gruppo(
+        "owner",
+        nome="piano",
+        descrizione="Piani: limiti, prezzi, sconti, livelli dati.",
+        sottogruppo=("premium", "Premium: moduli, abbonamenti e whitelist"),
+    )
+    @app_commands.describe(
+        azione="Cosa fare",
+        livello="Livello",
+        periodo="Periodo",
+        chiave="Limite o sconto",
+        valore="Numero (vuoto = toglie)",
+        utente="Persona",
+        server="ID del server",
+    )
+    @app_commands.autocomplete(azione=_scelte_azione, livello=_scelte_livello, periodo=_scelte_periodo)
+    async def piano(
+        self,
+        interaction: discord.Interaction,
+        azione: app_commands.Range[str, 1, 12],
+        livello: app_commands.Range[str, 1, 12] | None = None,
+        periodo: app_commands.Range[str, 1, 12] | None = None,
+        chiave: app_commands.Range[str, 1, 40] | None = None,
+        valore: app_commands.Range[int, 0, 100_000_000] | None = None,
+        utente: discord.User | None = None,
+        server: app_commands.Range[str, 1, 25] | None = None,
+    ) -> None:
+        if not _is_owner(interaction):
+            await interaction.response.send_message("Solo il proprietario del bot.", ephemeral=True)
+            return
+        if server is not None and not server.isdigit():
+            await interaction.response.send_message("ID server non valido.", ephemeral=True)
+            return
+        if azione not in AZIONI_OWNER or livello not in (None, *piani.LIVELLI) or periodo not in (None, *piani.PERIODI):
+            await interaction.response.send_message(
+                f"Azioni: {', '.join(AZIONI_OWNER)}. Livelli: {', '.join(piani.LIVELLI)}. Periodi: {', '.join(piani.PERIODI)}.",
+                ephemeral=True,
+            )
+            return
+        testo = await esegui_owner(
+            azione, livello=livello, periodo=periodo, chiave=chiave, valore=valore,
+            utente_id=utente.id if utente else None, server_id=int(server) if server else None, owner_id=interaction.user.id,
+        )
+        await interaction.response.send_message(testo, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
 
     async def _apply_premium_toggle(
         self, module_name: str, active: bool, changed_by: int

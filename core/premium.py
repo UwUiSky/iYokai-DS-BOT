@@ -263,15 +263,9 @@ async def _guild_owner_boosts_main_guild(guild_id: int, bot) -> bool:
     if guild is None or guild.owner_id is None:
         return False
 
-    main_guild = bot.get_guild(config.MAIN_GUILD_ID)
-    if main_guild is None:
-        return False
+    from core.piani import utente_fa_boost
 
-    member = main_guild.get_member(guild.owner_id)
-    if member is None:
-        return False
-
-    return member.premium_since is not None
+    return utente_fa_boost(guild.owner_id, bot, config)
 
 
 async def guild_has_premium_access(

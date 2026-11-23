@@ -1684,3 +1684,14 @@ Attua D119 per le voci medie. Elenco delle voci e dei motivi in fondo, aggiornat
   - il bot poi lo integra nei server in comune con l'utente.
 - **TKT-085:** la risposta dal sito diventa in tempo reale (aggiornamento della pagina, o webhook verso il canale) e può essere anonima, come le risposte anonime del modmail.
 - **Liste AGCOM e ADM:** l'owner cerca gli indirizzi e li mette lui.
+
+## D125 — Scelte aperte nel giro r1premium (23/11/2026, da confermare dall'owner)
+Scelte fatte con l'opzione consigliata; l'owner le cambia con un comando o un valore.
+- **Limiti predefiniti = valori di oggi per tutti i livelli** (10 copie di backup, 25 serie programmate, 25 pannelli ticket, 2 invii con @everyone al giorno). Cambiano solo quando l'owner li imposta con `/owner premium piano azione:limite`.
+- **Nessun prezzo nel codice.** Prezzi in centesimi e sconti (percentuale, livello, periodo, durata) si scrivono con `/owner premium piano`. Il bot li mostra in `/premium info`; non incassa: il pagamento resta fuori (D5, `/owner premium grant`) o Patreon.
+- **Chiave propria = VIP** per la persona e per i server di cui è proprietaria, finché la chiave c'è. La chiave sta cifrata (AES-GCM, `OAUTH_ENCRYPTION_KEY`, dato associato ambito+id+servizio), mai nei log, mai nell'esportazione dei dati, si toglie con `/admin-bot premium chiave azione:togli` o dal pannello. Il router AI (custode-ai) la legge con `core.ai_chiavi_proprie.chiave_per(servizio, guild_id=, user_id=)`: prima quella della persona, poi quella del server, poi quelle dell'owner. Il collegamento al router resta da fare in quell'area.
+- **Patreon: grazia di 45 giorni.** Ogni evento del webhook rinnova la concessione `patreon` per 45 giorni; se i rinnovi spariscono il livello scade da solo. Le disdette (eventi `delete`, stato non attivo) lo tolgono subito. I livelli Patreon si associano con `/owner premium piano azione:patreon chiave:<tier> livello:<livello>`. Un account Patreon appartiene a una sola persona Discord (l'ultimo collegamento vince). Il collegamento parte dal pannello (`patreon_service.crea_stato` + `url_collegamento`) e torna a `/patreon/callback`; lo scollegamento è `patreon_service.scollega`.
+- **@everyone programmato:** vale il permesso di chi ha programmato, riletto all'invio. Se manca o il tetto è raggiunto, il messaggio parte lo stesso ma con la menzione resa inerte e l'autore è avvisato in privato. Il posto del tetto si restituisce se l'invio fallisce.
+- **Boost:** si sommano `MAIN_GUILD_ID` e `PREMIUM_BOOST_GUILD_IDS` (ID separati da virgola). Il boost dà Premium al server il cui proprietario lo fa, come prima.
+- **Livello di una persona che non è proprietaria** non passa al server (i posti premium restano il modo di dare il Premium a un server, CFG-034).
+
