@@ -383,6 +383,12 @@ class ProgressiRepository:
         )
         return int(totale), level_for_xp(int(totale)) if totale else 0
 
+    async def monete_globali(self, user_id: int) -> int:
+        """LIV-089: le monete di tutti i server sommate (solo i saldi positivi)."""
+        return int(await self._pool.fetchval(
+            "SELECT COALESCE(sum(coins_total), 0)::bigint FROM leveling_totals WHERE user_id = $1 AND coins_total > 0", user_id
+        ))
+
     async def profilo_globale(self, user_id: int) -> tuple[int, int, int, int]:
         """(server con un livello, livello massimo, serie record, traguardi diversi)."""
         livelli = await self._pool.fetchrow(

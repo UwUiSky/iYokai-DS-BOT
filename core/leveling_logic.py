@@ -539,6 +539,8 @@ class LevelingSettings:
     prefissi_ignorati: tuple = ()  # LIV-018
     canali_modo: str = "tutti"  # LIV-021: "solo_questi" = l'elenco dei canali è una lista bianca
     levelup_testo: str = ""  # LIV-034: testo dell'annuncio con segnaposto; vuoto = quello di base
+    levelup_embed: str = ""  # LIV-032: nome di un embed salvato per l'annuncio; vuoto = solo testo
+    levelup_immagine: bool = False  # LIV-033: allega la piccola card del level-up
     saldo_iniziale: int = 0  # ECO-002
     tetto_saldo: int = 0  # ECO-003
     puntata_min: int = 1  # ECO-021

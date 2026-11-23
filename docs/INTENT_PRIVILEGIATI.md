@@ -47,6 +47,7 @@ Message content is needed by features that read what is written: AutoMod filters
 | Guess the song game | `cogs/music/indovina.py` | Compare answers in the game channel with the song title, only during a game |
 | Reaction on a new member's first message | `cogs/utility/greetings.py` | Only who wrote is checked, the text is never read |
 | Coin event in a channel | `cogs/leveling/evento_monete.py` | Give coins for a message in the channel the staff chose (the text is not read) |
+| Reputation by thanks | `cogs/leveling/reputazione.py` | Read a message only in the channels the staff chose, to see "thanks @member" and give one reputation point (off by default) |
 | Coins per message | `cogs/leveling/stipendi.py` | Give coins for a message in the channels the staff chose (the text is not read) |
 | AutoMod filters | `cogs/automod/automod.py` | Read text to apply the server rules |
 | Compromised account defence | `cogs/automod/account_rubato.py` | Spot the same scam message sent in many channels and stop it |

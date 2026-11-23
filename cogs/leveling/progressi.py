@@ -13,6 +13,8 @@ Dipende da: core/progressi_service.py, core/progressi_logic.py
 from __future__ import annotations
 
 
+import io
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -21,7 +23,11 @@ from cogs.leveling.leveling import _comando_rifiutato
 from core import progressi_service as servizio
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.profile_logic import PER_ID
+from core.rank_card_image import DatiProfilo, render_profile_card
+from core.repositories.leveling_repo import leveling_repo
+from core.safe_image import run_image_task
 from core.progressi_logic import (
+    TRAGUARDI,
     MISSIONI_GIORNO,
     MISSIONI_SERVER,
     MISSIONI_SETTIMANA,
@@ -286,6 +292,22 @@ async def costruisci(guild: discord.Guild, utente: discord.abc.User, sezione: st
     return embed, VistaProgressi(utente.id, sezione, riscuotibile=riscuotibile, premium=premium, promemoria=promemoria)
 
 
+async def carta_globale(utente: discord.abc.User) -> bytes:
+    """LIV-089: la card del profilo con i dati di tutti i server (livello da XP sommati, monete, traguardi). Pillow fuori dal ciclo."""
+    repo = servizio.progressi_repo
+    server, massimo, record, traguardi = await repo.profilo_globale(utente.id)
+    xp_totale, livello = await repo.xp_globale(utente.id)
+    try:
+        avatar = await utente.display_avatar.read()
+    except Exception:  # anche errori di rete: la card esce senza avatar
+        avatar = None
+    dati = DatiProfilo(
+        nome=utente.display_name, presentazione=f"{server} server · livello più alto {massimo} · serie record {record}", livello=livello,
+        xp_totale=xp_totale, posizione=None, coin=await repo.monete_globali(utente.id), collezione=traguardi, collezione_totale=len(TRAGUARDI),
+    )
+    return await run_image_task(render_profile_card, dati, avatar, await leveling_repo.get_sfondo_card(utente.id))
+
+
 class ProgressiCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -303,8 +325,14 @@ class ProgressiCog(CogConGruppi, commands.Cog):
         nome="progressi",
         descrizione="Missioni, serie, traguardi e pass di 90 giorni, in un menu.",
     )
-    async def progressi(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(carta="Sì = il tuo profilo globale come immagine, uguale in tutti i server")
+    async def progressi(self, interaction: discord.Interaction, carta: bool = False) -> None:
         if await _comando_rifiutato(interaction):
+            return
+        if carta:  # LIV-089
+            await interaction.response.defer(ephemeral=True)
+            png = await carta_globale(interaction.user)
+            await interaction.followup.send(file=discord.File(io.BytesIO(png), filename="profilo-globale.png"), ephemeral=True)
             return
         embed, vista = await costruisci(interaction.guild, interaction.user, "missioni")
         await interaction.response.send_message(embed=embed, view=vista, ephemeral=True)

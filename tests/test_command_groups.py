@@ -24,12 +24,12 @@ ADMIN_ATTESI = [
     "admin-ticket", "admin-ticket-opzioni", "admin-backup", "admin-benvenuto", "admin-vocali",
 ]
 # Gruppi admin nati dopo la mappa F7 (catalogo #123, #128, #131): stanno dopo i gruppi per tutti.
-ADMIN_AGGIUNTI = ["admin-inviti", "admin-giochi", "admin-automazioni", "admin-tag", "admin-alert", "admin-negozio"]
+ADMIN_AGGIUNTI = ["admin-inviti", "admin-giochi", "admin-automazioni", "admin-tag", "admin-alert", "admin-negozio", "admin-rep"]
 MOD_ATTESI = ["mod-sanzioni", "mod-casi", "mod-canali", "mod-ban"]
 ATTESI = [
     "owner", *ADMIN_ATTESI, *MOD_ATTESI, "founder",
     "ticket", "voice", "music", "level", "monete", "clan", "fun", "immagini", "giochi", "sondaggi", "assistente", "gif",
-    "admin-inviti", "admin-giochi", "tag", "admin-automazioni", "admin-tag", "admin-alert", "admin-negozio", "mercato", "sala", "mondo", "eventi", "web", "utility",
+    "admin-inviti", "admin-giochi", "tag", "admin-automazioni", "admin-tag", "admin-alert", "admin-negozio", "mercato", "sala", "mondo", "eventi", "web", "rep", "admin-rep", "utility",
 ]
 # D56: massimo 60 gruppi di primo livello (Discord ne accetta 100).
 MAX_GRUPPI = 60
