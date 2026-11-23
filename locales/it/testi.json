@@ -3960,5 +3960,18 @@
   "rete_owner_sbloccato": "Server {server} sbloccato.",
   "rete_owner_non_bloccato": "Quel server non era bloccato.",
   "rete_owner_elenco_vuoto": "Nessun server bloccato.",
-  "rete_owner_id_non_valido": "L'ID del server non è valido."
+  "rete_owner_id_non_valido": "L'ID del server non è valido.",
+  "music_cartella_non_impostata": "La cartella dei brani non è impostata: scrivi MUSICA_CARTELLA_OWNER nel file .env e riavvia il bot.",
+  "music_cartella_aggiornata": "📂 Cartella riletta: {v1} brani ({v2} nuovi, {v3} cambiati, {v4} tolti).",
+  "music_cartella_troncata": "Ho raggiunto il tetto di file o di peso: i brani in più non sono nell'elenco.",
+  "music_cartella_errore": "Non sono riuscito a leggere la cartella: guarda il log del bot.",
+  "music_cartella_vuota": "Nessun brano nella cartella. Metti file audio (mp3, flac, ogg, opus, wav, m4a, aac) e rileggila.",
+  "music_cartella_altri": "… e altri {v1} brani.",
+  "music_cartella_anteprime_accese": "🎧 Anteprime accese: tutti possono metterle in coda con `/music coda anteprime`.",
+  "music_cartella_anteprime_spente": "🔒 Anteprime spente: solo tu puoi metterle in coda.",
+  "music_anteprime_spente": "Le anteprime non sono disponibili.",
+  "music_anteprime_non_trovate": "Non trovo questo brano tra le anteprime.",
+  "music_anteprime_niente_nodo": "Le anteprime hanno bisogno del nodo Lavalink locale libero: se il bot sta già suonando da un altro nodo, ferma la musica e riprova; altrimenti il nodo locale non è collegato.",
+  "music_anteprime_non_lette": "Il nodo non riesce a leggere i brani in anteprima.",
+  "music_testo_anteprima": "Questo brano è un'anteprima: il testo non si cerca."
 }

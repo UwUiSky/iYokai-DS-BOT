@@ -251,6 +251,9 @@ class Config:
     # progettare questa feature). Vuota di default: gli inediti
     # restano semplicemente non disponibili finché non è impostata.
     MAIN_RADIO_LOCAL_FOLDER: str = field(default="")
+    # MUS-018 (D111): cartella di brani dell'owner (anteprime di brani non ancora pubblicati). Vuota = si usa
+    # MAIN_RADIO_LOCAL_FOLDER; se anche quella e' vuota la funzione e' spenta.
+    MUSICA_CARTELLA_OWNER: str = field(default="")
 
     # --- Memory Guard --------------------------------------------------
     # Soglia oltre la quale il Memory Guard forza una garbage
@@ -463,6 +466,7 @@ def _load_config() -> Config:
         CLOUDFLARE_ACCOUNT_ID=_optional("CLOUDFLARE_ACCOUNT_ID", ""),
         VIRUSTOTAL_API_KEY=_optional("VIRUSTOTAL_API_KEY", ""),
         MAIN_RADIO_LOCAL_FOLDER=_optional("MAIN_RADIO_LOCAL_FOLDER", ""),
+        MUSICA_CARTELLA_OWNER=_optional("MUSICA_CARTELLA_OWNER", ""),
         MEMORY_ALERT_THRESHOLD_MB=_optional_int("MEMORY_ALERT_THRESHOLD_MB", 512),
         WEB_BIND_HOST=_optional("WEB_BIND_HOST", "127.0.0.1"),
         OAUTH2_CLIENT_ID=_optional("OAUTH2_CLIENT_ID"),

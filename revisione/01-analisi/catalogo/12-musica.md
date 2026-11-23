@@ -45,7 +45,7 @@ YouTube è scritto nella colonna "Come farla". Regola già scritta in
 | MUS-015 | Paese usato per le ricerche Spotify, per server e per utente | Red (`audioset countrycode`, `mycountrycode`) [RED] | ❌ manca | Impostazione del server (default IT) | nuova |
 | MUS-016 | Preferire le versioni "solo audio" ai video musicali | Red (`audioset lyrics`) [RED] | ❌ manca | Filtro sul titolo del risultato; riguarda solo le ricerche YouTube | nuova |
 | MUS-017 | Dividere un video lungo nei brani elencati nella descrizione | FredBoat (`playsplit`) [FRED] | ❌ manca | Dipende da YouTube: sconsigliata | nuova |
-| MUS-018 | Riprodurre una cartella di file locali o cercare tra i file | Red (`local folder`, `local play`, `local search`) [RED], NadekoBot (`.local`, `.localplaylist`) [NADEKO] | 🟡 parziale: file locali solo nella radio (e oggi non trovati, BUG-10) | Dopo M 8.4: `/owner radio cartella` | M 8.4 |
+| MUS-018 | Riprodurre una cartella di file locali o cercare tra i file | Red (`local folder`, `local play`, `local search`) [RED], NadekoBot (`.local`, `.localplaylist`) [NADEKO] | ✅ fatta (giro r7mus, 23/11/2026) | — | fatta il 23/11/2026 (r7mus, D111, D115): solo owner, `/owner radio cartella` e `/music coda anteprime` |
 | MUS-019 | Gioco "indovina la canzone" | Jockie [JOCKIE] | ❌ manca | `/fun gioca canzone`; brevi estratti dei brani dell'owner | nuova |
 
 ## 2. Coda e riproduzione

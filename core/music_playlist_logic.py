@@ -58,6 +58,8 @@ def brano_da_traccia(traccia) -> BranoSalvato | None:
     encoded = getattr(traccia, "encoded", None)
     if not encoded:
         return None
+    if str(getattr(traccia, "source", "") or "").lower() == "local":
+        return None  # MUS-018: un file della cartella dell'owner non finisce mai in una playlist o in un file
     return BranoSalvato(
         titolo=str(getattr(traccia, "title", "") or "Senza titolo")[:200],
         uri=getattr(traccia, "uri", None),

@@ -33,7 +33,7 @@ services:
       # La cartella degli inediti, in sola lettura. Nel bot:
       #   MAIN_RADIO_LOCAL_FOLDER = la cartella sul tuo PC / server
       #   LAVALINK_LOCAL_ROOT     = /audio/local   (come la vede Lavalink)
-      - ${MAIN_RADIO_LOCAL_FOLDER:-./radio-local}:/audio/local:ro
+      - ${MUSICA_CARTELLA_OWNER:-${MAIN_RADIO_LOCAL_FOLDER:-./radio-local}}:/audio/local:ro
     ports:
       # Solo localhost: Lavalink non va esposto su Internet.
       - "127.0.0.1:2333:2333"

@@ -3960,5 +3960,18 @@
   "rete_owner_sbloccato": "Server {server} unblocked.",
   "rete_owner_non_bloccato": "That server was not blocked.",
   "rete_owner_elenco_vuoto": "No blocked servers.",
-  "rete_owner_id_non_valido": "The server ID is not valid."
+  "rete_owner_id_non_valido": "The server ID is not valid.",
+  "music_cartella_non_impostata": "The track folder is not set: write MUSICA_CARTELLA_OWNER in the .env file and restart the bot.",
+  "music_cartella_aggiornata": "📂 Folder read again: {v1} tracks ({v2} new, {v3} changed, {v4} removed).",
+  "music_cartella_troncata": "I reached the limit of files or size: the extra tracks are not in the list.",
+  "music_cartella_errore": "I could not read the folder: check the bot log.",
+  "music_cartella_vuota": "No tracks in the folder. Put audio files (mp3, flac, ogg, opus, wav, m4a, aac) in it and read it again.",
+  "music_cartella_altri": "… and {v1} more tracks.",
+  "music_cartella_anteprime_accese": "🎧 Previews on: everyone can queue them with `/music coda anteprime`.",
+  "music_cartella_anteprime_spente": "🔒 Previews off: only you can queue them.",
+  "music_anteprime_spente": "Previews are not available.",
+  "music_anteprime_non_trovate": "I cannot find this track among the previews.",
+  "music_anteprime_niente_nodo": "Previews need the free local Lavalink node: if the bot is already playing from another node, stop the music and try again; otherwise the local node is not connected.",
+  "music_anteprime_non_lette": "The node cannot read the preview tracks.",
+  "music_testo_anteprima": "This track is a preview: its lyrics are not searched."
 }
