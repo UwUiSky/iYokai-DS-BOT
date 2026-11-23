@@ -1629,3 +1629,14 @@ Attua D119 per le voci medie. Elenco delle voci e dei motivi in fondo, aggiornat
 - **Non fatta, nessun motivo che regga: TKT-073** (copia del transcript su Google Drive). Il lavoro resta: OAuth Google dell'admin del server dal pannello web, token cifrato, caricamento nella cartella scelta, spenta finché l'owner non mette le chiavi Google nel `.env`. Va nel prossimo giro con `dev-web` per le pagine del consenso.
 - **Chiavi per l'owner:** `BLOXLINK_API_KEY` nel `.env` (TKT-088; vuota = funzione spenta). Nessuna altra chiave nuova in questo giro.
 - **Cose trovate e corrette lungo la strada:** il blocco VOC-017 (azione/ruolo) di r1doc era finito nel comando dei generatori (NameError su `ruolo`) invece che in `/admin-vocali opzioni`; 10 test dei vocali non avevano il database dopo VOC-017.
+
+## D122 — Scelte dell'owner del 23/11/2026 (VINCOLANTI)
+
+- **LOG-029, testo dei messaggi:** si conserva **anche il testo**, cifrato.
+  - Nei canali che il server registra, il testo dei messaggi (con modifiche e cancellazioni) si salva cifrato, con una finestra a scorrimento.
+  - A ogni sanzione, i messaggi dell'utente degli ultimi 3 giorni si copiano cifrati nell'archivio del caso, che resta come storico finché esiste il caso.
+  - Si decifra solo all'apertura da parte dello staff autorizzato, dal pannello web tramite link, come le trascrizioni dei ticket (TKT-072).
+  - Allegati sempre secondo D74.
+  - Valgono le regole dei 30 giorni dell'owner (chiusura del server, azzeramento UTL-228).
+- **Foto delle auto (FUN-017):** nessun interruttore per i canali con limite d'età. Ogni foto passa da un **controllo automatico dei contenuti per adulti**: classificatore tramite lo snodo AI, se c'è un fornitore con moderazione delle immagini. Se la foto risulta per adulti viene rifiutata o tolta, e si chiede un'altra foto. Restano le segnalazioni e la rimozione dello staff.
+- **Prezzi di auto e tela:** vanno bene quelli scelti (auto da 150 a 12.000 monete; tela: pausa di 5 minuti, 10 monete per ogni minuto saltato). Si possono cambiare in ogni momento.
