@@ -4029,5 +4029,22 @@
   "tickets_duplica_scelta": "To duplicate a panel give `da` and `nome`. To copy a ready reply give `da`, `risposta` and `a`. Not both.",
   "tickets_pannello_duplicato": "Panel \"{da}\" duplicated as \"{nuovo}\": questions, reasons, options, access and approved ready replies. They are now independent. Publish the new panel's button separately.",
   "tickets_risposta_copiata": "Ready reply \"{titolo}\" copied to panel \"{a}\".",
-  "tickets_risposta_non_trovata": "I can't find the approved ready reply \"{titolo}\" in that panel."
+  "tickets_risposta_non_trovata": "I can't find the approved ready reply \"{titolo}\" in that panel.",
+  "sospensione_avviso": "You are suspended from games in this server. Reason: {motivo}.{scade}",
+  "sospensione_bottone": "Ask for a review",
+  "sospensione_revisione_aperta": "Your review request is already with the staff.",
+  "sospensione_revisione_respinta": "Your review request was rejected.",
+  "sospensione_appello_inviato": "Request sent to the staff. You will hear back when they decide.",
+  "sospensione_appello_no": "I can't record the request: you are not suspended, it expired, or you already made one.",
+  "sospensione_decisa_accolta": "Review accepted: {utente} can play again.",
+  "sospensione_decisa_respinta": "Review rejected: {utente} stays suspended.",
+  "sospensione_nessuna_richiesta": "{utente} has no open review request.",
+  "sospensione_messa": "{utente} is suspended from games{scade}.",
+  "sospensione_tolta": "{utente} can play again.",
+  "sospensione_non_c_e": "{utente} is not suspended.",
+  "sospensione_elenco_vuoto": "Nobody is suspended from games.",
+  "sospensione_serve_utente": "Give the user.",
+  "sospensione_non_staff": "You can't suspend someone with moderation powers, a bot or yourself.",
+  "sospensione_esito_dm_accolta": "Your review request on \"{server}\" was accepted: you can play again.",
+  "sospensione_esito_dm_respinta": "Your review request on \"{server}\" was rejected: the suspension stays."
 }

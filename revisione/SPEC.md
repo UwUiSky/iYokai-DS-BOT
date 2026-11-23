@@ -3094,3 +3094,5 @@ Controllo delle 89 voci in `revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.
 - `[x]` CFG-044 (D121): `/admin-ticket pannelli duplica` (CFG-044).
 
 - `[x]` VOC-014 (D121): `/admin-vocali opzioni scorta:sì` tiene una stanza vuota pronta (VOC-014).
+
+- `[x]` ECO-160 (D121): `/admin-giochi sospensione` e bottone «Chiedi una revisione» (ECO-160, 0885).

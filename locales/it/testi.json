@@ -4029,5 +4029,22 @@
   "tickets_duplica_scelta": "Per duplicare un pannello indica `da` e `nome`. Per copiare una risposta pronta indica `da`, `risposta` e `a`. Non le due cose insieme.",
   "tickets_pannello_duplicato": "Pannello «{da}» duplicato in «{nuovo}»: domande, motivi, opzioni, accessi e risposte pronte approvate. Ora sono indipendenti. Pubblica il bottone del nuovo pannello a parte.",
   "tickets_risposta_copiata": "Risposta pronta «{titolo}» copiata sul pannello «{a}».",
-  "tickets_risposta_non_trovata": "Non trovo la risposta pronta approvata «{titolo}» in quel pannello."
+  "tickets_risposta_non_trovata": "Non trovo la risposta pronta approvata «{titolo}» in quel pannello.",
+  "sospensione_avviso": "Sei sospeso dal gioco in questo server. Motivo: {motivo}.{scade}",
+  "sospensione_bottone": "Chiedi una revisione",
+  "sospensione_revisione_aperta": "La tua richiesta di revisione è già dallo staff.",
+  "sospensione_revisione_respinta": "La tua richiesta di revisione è stata respinta.",
+  "sospensione_appello_inviato": "Richiesta inviata allo staff. Riceverai la risposta quando decideranno.",
+  "sospensione_appello_no": "Non posso registrare la richiesta: non sei sospeso, scaduta, o l'hai già fatta.",
+  "sospensione_decisa_accolta": "Revisione accolta: {utente} può giocare di nuovo.",
+  "sospensione_decisa_respinta": "Revisione respinta: la sospensione di {utente} resta.",
+  "sospensione_nessuna_richiesta": "Per {utente} non c'è una richiesta di revisione aperta.",
+  "sospensione_messa": "{utente} è sospeso dal gioco{scade}.",
+  "sospensione_tolta": "{utente} può giocare di nuovo.",
+  "sospensione_non_c_e": "{utente} non è sospeso.",
+  "sospensione_elenco_vuoto": "Nessuno è sospeso dal gioco.",
+  "sospensione_serve_utente": "Indica l'utente.",
+  "sospensione_non_staff": "Non puoi sospendere chi ha poteri di moderazione, un bot o te stesso.",
+  "sospensione_esito_dm_accolta": "La tua richiesta di revisione su «{server}» è stata accolta: puoi giocare di nuovo.",
+  "sospensione_esito_dm_respinta": "La tua richiesta di revisione su «{server}» è stata respinta: la sospensione resta."
 }
