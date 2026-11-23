@@ -1,14 +1,15 @@
 # Memoria di dev-economia
 
 ## Aggiornata
-23/11/2026 · giro r1fun (#131), ramo `feat/r1fun`, wt `/home/user/wt-fun`, db `iyokai_wfun`, migrazioni 0840-0849 (0840, 0841 usate). Smoke da fare.
+23/11/2026 · giro r1fun (#131), ramo `feat/r1fun`, wt `/home/user/wt-fun`, db `iyokai_wfun`, migrazioni 0840-0849 (0840-0842 usate). Smoke da fare.
 
 ## In corso
-- Previsione r1fun: 3 voci (FUN-019 e FUN-017 fatte, poi FUN-013/014 tela). Decisioni in D117 (DECISIONI.md): aggiungere un punto per ogni voce.
+- Previsione r1fun: 3 voci (FUN-019, FUN-017, FUN-013/014 fatte: giro chiuso). Decisioni in D117 (DECISIONI.md): aggiungere un punto per ogni voce.
 - Strumenti scratchpad `fun/`: `pesi.py <gruppi>`, `loc.py file.json` (it, en, nomi, desc) per wt-fun.
 - Dopo: restano solo le ECO con motivo in D86.
 
 ## Fatto
+- r1fun FUN-013/014: gruppo `/tela` + `/admin-giochi tela`, `tela_logic/tela_image/tela_repo`, `cogs/fun/tela.py`, 0842, pagina pubblica `core/web_panel_tela.py` (una riga in `build_app`). Trappola: nei `COALESCE($n, ...)` di asyncpg servono i cast (`$2::int`).
 - r1fun FUN-017: gruppo nuovo `/auto` (in `GRUPPI` e `AUDIENCE`; `giochi` è a 18 figli), `core/auto_logic.py`, `auto_image.py`, `auto_repo.py`, `cogs/fun/auto.py`, 0841 `fun_auto_garage`/`fun_auto_foto`; foto = `esamina_allegato` + `riduci_foto`, segnalazioni con `immagini_segnalazioni_repo` (chiave `auto:server:utente:sha`); `spend_coins_in` nella stessa transazione.
 - r1fun FUN-019: `core/battaglia_logic.py`, `cogs/fun/battaglia.py` (`/giochi sfide battaglia|battaglie`), 0840 `fun_battaglie_stat`; puntata con `apri_gruppo`/`chiudi_gruppo`, max 16 turni (la riga della partita scade a 900 s), `view.timeout` rimesso a 40 s dopo l'accettazione.
 - r5eco B17: D86 con il motivo di ogni ECO non fatta; controllo area 17 (#131): 91 voci FUN in `CONTROLLO_AREE_CHIUSE.md`, D103, `tests/test_fun_controllo_area17*.py`; FUN-027 con bottoni, scherzi che rispettano il blocco (FUN-031/032). Cricchetto `SENZA_FONTE` per le GIF senza raccolta.

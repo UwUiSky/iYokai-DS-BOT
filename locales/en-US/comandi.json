@@ -524,7 +524,11 @@
   "gara": "race",
   "foto": "photo",
   "foto-togli": "photo-remove",
-  "togli-foto": "remove-photo"
+  "togli-foto": "remove-photo",
+  "tela": "canvas",
+  "colora": "paint",
+  "pixel": "pixel",
+  "togli-utente": "remove-user"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1827,7 +1831,18 @@
   "auto foto": "Set your car's photo (only the re-encoded image is kept).",
   "auto foto-togli": "Remove the photo of one of your cars.",
   "admin-giochi auto": "Collectible cars: garage photos",
-  "admin-giochi auto togli-foto": "Remove the photo of a member's car (one or all)."
+  "admin-giochi auto togli-foto": "Remove the photo of a member's car (one or all).",
+  "tela": "The server's pixel canvas: paint, view and zoom",
+  "tela vedi": "View the server's pixel canvas, or a zoomed area.",
+  "tela colora": "Paint a pixel of the canvas (there is a wait between pixels).",
+  "tela pixel": "Who painted a pixel and when.",
+  "tela stato": "Your wait, your pixels and what skipping the wait costs.",
+  "admin-giochi tela": "Pixel canvas: moderation and settings",
+  "admin-giochi tela azzera": "Empty the whole server pixel canvas.",
+  "admin-giochi tela togli-utente": "Remove from the canvas all pixels placed by a person.",
+  "admin-giochi tela blocca": "Block a person from the pixel canvas.",
+  "admin-giochi tela sblocca": "Unblock a person from the pixel canvas.",
+  "admin-giochi tela impostazioni": "Wait, cost to skip it and public page of the canvas."
  },
  "parametri": {},
  "menu": {

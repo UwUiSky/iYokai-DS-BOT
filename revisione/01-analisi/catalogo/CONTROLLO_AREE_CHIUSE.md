@@ -184,8 +184,8 @@ Giro r5eco (issue #131, controllo). «Corretta» = fa ciò che dice il catalogo 
 
 | codice | esiste | corretta | azione | file e test |
 |---|---|---|---|---|
-| FUN-013 | no | sì | non realizzata: D103 (tela persistente da tenere e disegnare) | nessun file |
-| FUN-014 | no | sì | non realizzata: D103 (tela persistente da tenere e disegnare) | nessun file |
+| FUN-013 | sì (`/tela ...`, `/admin-giochi tela ...`, `/tela/<server>`) | sì (D111, D117) | realizzata nel giro r1fun | cogs/fun/tela.py, core/web_panel_tela.py; tests/test_tela_fun.py |
+| FUN-014 | sì (`/tela ...`, `/admin-giochi tela ...`, `/tela/<server>`) | sì (D111, D117) | realizzata nel giro r1fun | cogs/fun/tela.py, core/web_panel_tela.py; tests/test_tela_fun.py |
 | FUN-017 | sì (`/auto ...`) | sì (D111, D117) | realizzata nel giro r1fun | cogs/fun/auto.py; tests/test_auto_fun.py |
 | FUN-019 | sì (`/giochi sfide battaglia`, `battaglie`) | sì (D111, D117) | realizzata nel giro r1fun | cogs/fun/battaglia.py; tests/test_battaglia_fun.py |
 | FUN-022 | sì (`/fun misura`) | sì (tema filtrato, stabile nel giorno) | nessuna | cogs/fun/coin_games.py; tests/test_fun_controllo_area17.py::test_fun_022_misura_a_tema_libero_e_stabile_nel_giorno |

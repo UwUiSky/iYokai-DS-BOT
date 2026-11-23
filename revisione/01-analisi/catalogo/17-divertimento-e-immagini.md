@@ -41,8 +41,8 @@ funzioni nuove vanno dentro pochi sotto-comandi con una scelta
 | FUN-010 | Gioco degli acronimi: tutti inventano una frase, poi si vota | NadekoBot (`.acrophobia`) [NADEKO] | ❌ manca | Modulo per la frase, bottoni per il voto | nuova |
 | FUN-011 | Gara di battitura: chi ricopia più in fretta un testo | NadekoBot (`.typestart`, `.typestop`) [NADEKO] | ❌ manca | Testo come immagine (così non si copia e incolla); serve `message_content` | nuova |
 | FUN-012 | Testi della gara di battitura aggiunti dal server | NadekoBot (`.typeadd`, `.typelist`, `.typedel`) [NADEKO] | ❌ manca | Elenco per server | nuova |
-| FUN-013 | Tela di pixel del server: ognuno colora un pixel, pagando monete | NadekoBot (`.ncanvas`, `.nczoom`, `.ncsetpixel`, `.ncpixel`) [NADEKO] | ❌ manca | Immagine Pillow; pausa per utente | NF-40 |
-| FUN-014 | Lo staff azzera la tela o toglie i pixel di un utente | NadekoBot (`.ncreset`, `.ncnuke`, `.ncsetimg`) [NADEKO] | ❌ manca | Comandi admin | nuova |
+| FUN-013 | Tela di pixel del server: ognuno colora un pixel, pagando monete | NadekoBot (`.ncanvas`, `.nczoom`, `.ncsetpixel`, `.ncpixel`) [NADEKO] | ✅ fatta (r1fun, `/tela ...`) | Immagine Pillow; pausa per utente | NF-40 |
+| FUN-014 | Lo staff azzera la tela o toglie i pixel di un utente | NadekoBot (`.ncreset`, `.ncnuke`, `.ncsetimg`) [NADEKO] | ✅ fatta (r1fun, `/admin-giochi tela ...`) | Comandi admin | nuova |
 | FUN-015 | Gara giornaliera "chi tira il numero più alto", con classifica | Carl-bot (`games toproll`, `games leaderboard`) [CARL] | ❌ manca | Un tiro al giorno per utente | nuova |
 | FUN-016 | Mazzo di carte del server: pesca fino a 10 carte, rimescola | NadekoBot (`.draw`, `.drawnew`, `.deckshuffle`) [NADEKO] | ❌ manca | Mazzo per canale in memoria | nuova |
 | FUN-017 | Gara tra auto da collezione, con garage personale | Yggdrasil (`--race`, `--garage`) [YGG] | ✅ fatta (r1fun, `/auto ...`) | Collezione di oggetti (NF-40) | NF-40 |
