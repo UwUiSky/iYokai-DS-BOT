@@ -4068,5 +4068,7 @@
   "sala_tamburo_salvo": "🔘 {chi} preme: la casella è vuota.",
   "sala_tamburo_fuori": "🔴 {chi} trova la sfera rossa ed è fuori!",
   "sala_tamburo_vince": "🏆 {chi} è l'ultimo rimasto e vince il piatto!",
-  "sala_tamburo_turno": "🎯 Tocca a {chi}: preme una casella ({secondi} secondi). {caselle}\nIn gara: {vivi}"
+  "sala_tamburo_turno": "🎯 Tocca a {chi}: preme una casella ({secondi} secondi). {caselle}\nIn gara: {vivi}",
+  "eco_negozio_web_acceso": "Il negozio si vede anche sul sito (sola lettura), all'indirizzo `{indirizzo}` del pannello web.",
+  "eco_negozio_web_spento": "Il negozio non si vede più sul sito."
 }

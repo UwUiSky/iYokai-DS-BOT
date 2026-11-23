@@ -3106,3 +3106,5 @@ Controllo delle 89 voci in `revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.
 - `[x]` TKT-088 (D121): `/admin-ticket setup roblox:sì` e chiave `BLOXLINK_API_KEY` (TKT-088).
 
 - `[x]` ECO-093 (D121): `/sala tamburo` (ECO-093).
+
+- `[x]` ECO-080 (D121): `/admin-economia limiti negozio_web:sì` e pagina `/n/{id}` (ECO-080).

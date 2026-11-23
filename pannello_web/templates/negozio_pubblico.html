@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block titolo %}Negozio · {{ guild.name }}{% endblock %}
+{% block corpo %}
+<h1>Negozio · {{ guild.name }}</h1>
+<table>
+<tr><th>Oggetto</th><th>Categoria</th><th>Prezzo</th><th></th></tr>
+{% for v in voci %}<tr><td><strong>{{ v.nome }}</strong>{% if v.descrizione %}<br><span class="tenue">{{ v.descrizione }}</span>{% endif %}</td><td>{{ v.categoria }}</td><td>{{ v.prezzo }}</td><td>{% if v.esaurito %}<span class="tenue">esaurito</span>{% endif %}</td></tr>{% else %}<tr><td colspan="4" class="tenue">Il negozio è vuoto.</td></tr>{% endfor %}
+</table>
+<p class="tenue">Si compra su Discord, con il comando del negozio.</p>
+{% endblock %}

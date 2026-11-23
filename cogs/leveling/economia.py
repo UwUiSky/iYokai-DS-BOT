@@ -21,6 +21,7 @@ from discord.ext import commands
 
 from cogs.leveling.leveling import MODULE_LEVELING, _comando_rifiutato, _format_seconds
 from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
+from core import web_panel_pubblico as pubblico
 from core.database import db
 from core.i18n import testo_per
 from core.leveling_azzera_logic import nome_confermato
@@ -233,6 +234,7 @@ class EconomiaCog(CogConGruppi, commands.Cog):
         furto_successo="Probabilità che un furto riesca, in % (1-90)",
         colpo_successo="Probabilità che un colpo riesca, in % (1-90)",
         controllo="Probabilità (in millesimi, 0-500) del controllo anti-automazione nei comandi di guadagno (0 = spento)",
+        negozio_web="Sì = il negozio si vede anche sul sito, in sola lettura (spento di base)",
     )
     @app_commands.choices(saldo_uscita=_SCELTE_USCITA)
     async def limiti(
@@ -249,9 +251,19 @@ class EconomiaCog(CogConGruppi, commands.Cog):
         furto_successo: app_commands.Range[int, 1, 90] | None = None,
         colpo_successo: app_commands.Range[int, 1, 90] | None = None,
         controllo: app_commands.Range[int, 0, 500] | None = None,
+        negozio_web: bool | None = None,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
+        if negozio_web is not None:  # ECO-080
+            await db.set_guild_setting(interaction.guild.id, pubblico.SETTING_NEGOZIO_WEB, negozio_web, changed_by=interaction.user.id)
+            altri = (saldo_iniziale, tetto_saldo, puntata_min, puntata_max, attesa_gioco, saldo_uscita, furto, furto_quota, furto_successo, colpo_successo, controllo)
+            if all(v is None for v in altri):  # solo l'interruttore: si risponde qui; con altre opzioni risponde il salvataggio
+                chiave = "eco_negozio_web_acceso" if negozio_web else "eco_negozio_web_spento"
+                await interaction.response.send_message(
+                    await testo_per(interaction, chiave, indirizzo=f"/n/{interaction.guild.id}"), ephemeral=True
+                )
+                return
         scelti = {
             "saldo_iniziale": saldo_iniziale, "tetto_saldo": tetto_saldo, "puntata_min": puntata_min,
             "puntata_max": puntata_max, "attesa_gioco": attesa_gioco,

@@ -4068,5 +4068,7 @@
   "sala_tamburo_salvo": "🔘 {chi} presses: the slot is empty.",
   "sala_tamburo_fuori": "🔴 {chi} finds the red ball and is out!",
   "sala_tamburo_vince": "🏆 {chi} is the last one left and wins the pot!",
-  "sala_tamburo_turno": "🎯 It's {chi}'s turn: press a slot ({secondi} seconds). {caselle}\nStill in: {vivi}"
+  "sala_tamburo_turno": "🎯 It's {chi}'s turn: press a slot ({secondi} seconds). {caselle}\nStill in: {vivi}",
+  "eco_negozio_web_acceso": "The shop is now also on the website (read-only), at `{indirizzo}` of the web panel.",
+  "eco_negozio_web_spento": "The shop is no longer shown on the website."
 }
