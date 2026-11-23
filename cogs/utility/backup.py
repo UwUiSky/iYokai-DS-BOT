@@ -42,6 +42,7 @@ from core.database import db
 from core.i18n import testo_per
 from core.repositories.backup_sincronia_canali_repo import MAX_DIREZIONI_PER_SERVER, backup_sincronia_canali_repo
 from core.repositories.backup_sincronia_repo import backup_sincronia_repo
+from core import piani
 from core.repositories.backup_struttura_repo import MAX_COPIE_PER_SERVER, backup_struttura_repo
 from core.ui_base import BaseView
 from core.backup_link_logic import (
@@ -499,7 +500,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         copia_id = await backup_struttura_repo.salva_struttura(guild.id, nome, interaction.user.id, dati)
         if copia_id is None:
             await interaction.followup.send(
-                await testo_per(interaction, "backup_ci_sono_gia_copie_eliminane", v1=MAX_COPIE_PER_SERVER), ephemeral=True
+                await testo_per(interaction, "backup_ci_sono_gia_copie_eliminane", v1=await piani.limite_server_sicuro(interaction.guild.id, "backup_copie")), ephemeral=True
             )
             return
         await registra_uso(guild.id, interaction.user.id, "salva", f"#{copia_id} {nome}")
@@ -545,7 +546,7 @@ class BackupCog(CogConGruppi, commands.Cog):
             for c in copie
         ]
         embed = discord.Embed(title=await testo_per(interaction, "backup_copie_salvate"), description="\n".join(righe)[:4000], color=discord.Color.blurple())
-        embed.set_footer(text=await testo_per(interaction, "backup_al_massimo_copie_per_server", v1=MAX_COPIE_PER_SERVER))
+        embed.set_footer(text=await testo_per(interaction, "backup_al_massimo_copie_per_server", v1=await piani.limite_server_sicuro(interaction.guild.id, "backup_copie")))
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
@@ -1108,7 +1109,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         )
         if copia_id is None:
             await interaction.followup.send(
-                await testo_per(interaction, "backup_ci_sono_gia_copie_eliminane", v1=MAX_COPIE_PER_SERVER), ephemeral=True
+                await testo_per(interaction, "backup_ci_sono_gia_copie_eliminane", v1=await piani.limite_server_sicuro(interaction.guild.id, "backup_copie")), ephemeral=True
             )
             return
         await registra_uso(interaction.guild.id, interaction.user.id, "chat-salva", f"#{copia_id} {canale.name}")

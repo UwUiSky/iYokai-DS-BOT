@@ -210,6 +210,29 @@ async def limite_server(guild_id: int, chiave: str, bot=None) -> int:
     return await limite_di(chiave, await livello_server(guild_id, bot))
 
 
+_bot_registrato = None
+
+
+def registra_bot(bot) -> None:
+    """Il bot che si usa quando chi chiama non ne ha uno (repository, worker): serve a leggere boost e proprietari."""
+    global _bot_registrato
+    _bot_registrato = bot
+
+
+async def limite_server_sicuro(guild_id: int, chiave: str, bot=None) -> int:
+    """
+    Come `limite_server`, ma se il database non risponde torna al valore predefinito del livello gratuito
+    (il comportamento di prima): un guasto qui non deve bloccare la creazione di una copia o di un pannello.
+    """
+    import logging
+
+    try:
+        return await limite_server(guild_id, chiave, bot or _bot_registrato)
+    except Exception:
+        logging.getLogger("iyokai.piani").warning("Limite %s non letto: valore predefinito.", chiave, exc_info=True)
+        return LIMITI[chiave][1][0]
+
+
 async def imposta_limite(chiave: str, livello: str, valore: int | None) -> None:
     """Scrive il limite (None = torna il predefinito)."""
     _controlla_limite(chiave, livello)

@@ -13,7 +13,13 @@ import secrets
 from dataclasses import dataclass
 from datetime import datetime
 
-MAX_COPIE_PER_SERVER = 10
+MAX_COPIE_PER_SERVER = 10  # predefinito; il tetto vero dipende dal livello del server (core/piani.py, CFG-040)
+
+
+async def _massimo(guild_id: int) -> int:
+    from core import piani
+
+    return await piani.limite_server_sicuro(guild_id, "backup_copie")
 # Un caricamento senza notizie da tanto è morto con il bot: non blocca il prossimo.
 MINUTI_CARICAMENTO_MORTO = 30
 
@@ -51,10 +57,11 @@ class BackupStrutturaRepository:
     # copie ------------------------------------------------------------
     async def salva_struttura(self, guild_id: int, nome: str, created_by: int, dati: dict) -> int | None:
         """Id della copia nuova, o None se il server ha già 10 copie."""
+        massimo = await _massimo(guild_id)
         async with self._pool.acquire() as conn, conn.transaction():
             await conn.execute("SELECT pg_advisory_xact_lock(hashtext('backup_strutture'), $1::int)", guild_id % (1 << 31))
             quante = await conn.fetchval("SELECT count(*) FROM backup_strutture WHERE guild_id = $1", guild_id)
-            if quante >= MAX_COPIE_PER_SERVER:
+            if quante >= massimo:
                 return None
             return await conn.fetchval(
                 "INSERT INTO backup_strutture (guild_id, nome, created_by, dati) VALUES ($1, $2, $3, $4::jsonb) RETURNING id",
@@ -67,6 +74,7 @@ class BackupStrutturaRepository:
         Mai una copia fatta a mano si tocca: se il server è pieno di quelle, None.
         """
         dati = {**dati, "automatica": True}
+        massimo = await _massimo(guild_id)
         async with self._pool.acquire() as conn, conn.transaction():
             await conn.execute("SELECT pg_advisory_xact_lock(hashtext('backup_strutture'), $1::int)", guild_id % (1 << 31))
             await conn.execute(
@@ -75,7 +83,7 @@ class BackupStrutturaRepository:
                 guild_id, max(0, tieni - 1),
             )
             quante = await conn.fetchval("SELECT count(*) FROM backup_strutture WHERE guild_id = $1", guild_id)
-            if quante >= MAX_COPIE_PER_SERVER:
+            if quante >= massimo:
                 return None
             return await conn.fetchval(
                 "INSERT INTO backup_strutture (guild_id, nome, created_by, dati) VALUES ($1, $2, 0, $3::jsonb) RETURNING id",
@@ -86,7 +94,7 @@ class BackupStrutturaRepository:
         righe = await self._pool.fetch(
             "SELECT id, nome, creato_il, codice_modello, (dati->>'tipo' = 'chat') IS TRUE AS chat, (dati->>'automatica' = 'true') IS TRUE AS automatica FROM backup_strutture "
             "WHERE guild_id = $1 ORDER BY creato_il DESC LIMIT $2",
-            guild_id, MAX_COPIE_PER_SERVER,
+            guild_id, max(MAX_COPIE_PER_SERVER, await _massimo(guild_id)),
         )
         return [CopiaStruttura(**dict(r)) for r in righe]
 

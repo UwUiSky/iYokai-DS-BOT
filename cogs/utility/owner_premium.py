@@ -349,6 +349,7 @@ _scelte_periodo = _scelte(piani.PERIODI)
 class OwnerPremiumCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        piani.registra_bot(bot)
 
     @comando_di_gruppo(
         "owner",
