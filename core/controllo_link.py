@@ -36,10 +36,10 @@ MAX_SALTI_AL_MINUTO = 30  # redirect degli accorciatori seguiti per minuto, in t
 
 # Siti che rimandano a un indirizzo scritto nei parametri: l'indirizzo vero sta nel parametro, senza richieste di rete.
 _RIMANDI = {
-    "google.com": ("/url", ("q", "url")),
-    "l.facebook.com": ("/l.php", ("u",)),
-    "lm.facebook.com": ("/l.php", ("u",)),
-    "discord.com": ("/linkfilter", ("url",)),
+    "google.com": ("url", ("q", "url")),
+    "l.facebook.com": ("l.php", ("u",)),
+    "lm.facebook.com": ("l.php", ("u",)),
+    "discord.com": ("linkfilter", ("url",)),
 }
 
 
@@ -81,7 +81,7 @@ def scarta_rimando(url: URL) -> URL:
     """Se è un rimando noto (google.com/url?q=...), l'indirizzo vero dentro il parametro. Altrimenti lo stesso URL."""
     host = (url.raw_host or "").removeprefix("www.")
     regola = _RIMANDI.get(host)
-    if regola and url.path == regola[0]:
+    if regola and url.path.lstrip("/") == regola[0]:
         valori = parse_qs(url.raw_query_string)
         for nome in regola[1]:
             if valori.get(nome):

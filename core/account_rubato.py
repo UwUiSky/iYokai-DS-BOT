@@ -85,7 +85,12 @@ def _canale_annunci(canale) -> bool:
 async def gestisci(bot: discord.Client, sintesi: Sintesi, message: discord.Message | None) -> bool:
     """Agisce in ogni server della sintesi, una persona alla volta (un solo avviso e un solo timeout)."""
     async with _serratura(sintesi.user_id):
-        return await _gestisci(bot, sintesi, message)
+        agito = await _gestisci(bot, sintesi, message)
+    if agito:  # VER-025: un account compromesso va fermato in tutti i server dove c'è, non solo in quelli dove ha scritto
+        from core import rete_protezione
+
+        rete_protezione.avvia_compromesso(bot, sintesi.user_id, next(iter(sintesi.guild_ids), None), escludi=sintesi.guild_ids)
+    return agito
 
 
 async def _gestisci(bot: discord.Client, sintesi: Sintesi, message: discord.Message | None) -> bool:

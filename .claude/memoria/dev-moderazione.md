@@ -1,6 +1,7 @@
 # Memoria dev-moderazione
 ## Aggiornata
-2026-11-22, giro r2mod (ramo feat/r2mod, wt /home/user/wt-115, DB iyokai_w115; migr. 0800, 0801). Controllo voce per voce di #115, #116, #118: tabella in revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.md, D106. Smoke da fare.
+2026-11-23, giro r1rete (wt /home/user/wt-net, DB iyokai_wnet; migr. 0820): AMD-030 link (commit db4e8179) e VER-025 rete tra server. Smoke da fare. Migrazioni libere: 0821-0829.
+(prima) 2026-11-22, giro r2mod (ramo feat/r2mod, wt /home/user/wt-115, DB iyokai_w115; migr. 0800, 0801). Controllo voce per voce di #115, #116, #118: tabella in revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.md, D106. Smoke da fare.
 ## In corso
 Tutte le voci della scheda r2mod sono fatte (resta in parte AMD-031: lista malware vuota, la riempie l'owner). Da fare dopo il merge: smoke, controlli di cacciatore-bug e revisore-capo, prova su Discord (vedi rapporto). Migrazioni libere: 0807-0809.
 ## Fatto
@@ -13,6 +14,9 @@ Tutte le voci della scheda r2mod sono fatte (resta in parte AMD-031: lista malwa
 - r18 M8: core/moderation_scheda.py, cogs/moderation/scheda.py (/mod-casi scheda, menu «Scheda moderazione» con 5 tasti, «Segnala messaggio», /utility mie-sanzioni, mod_utente_vede_casi), report.invia_segnalazione; test_moderation_scheda_m8
 - r17 M4 voce, M5 opzioni e motivi pronti (0512), M7 canali/nick/entrati (0513, 0514); r17 A9 eventi e D67 account rubato; r15-r16 A1-A8 AutoMod, verifica VPN/IP, giri G1-G7 e R5-R14 (git log, REGISTRO_RISOLTE)
 ## Cose imparate
+- Cog con CogConGruppi: se sovrascrivi cog_load/cog_unload chiama super(), altrimenti i comandi non entrano nell'albero
+- Config e` frozen: nei test l'OWNER_ID e` quello di conftest (123456789); i test non scaricano liste (LINK_LISTE_ATTIVE=nessuna in conftest)
+- Metodi di repo senza chiamante in produzione rompono test_repository_callers; stringhe «/qualcosa» nel codice sono lette da test_riferimenti_comandi
 - Chiavi guild nuove: aggiungi tipo in config_history (SETTINGS_SCHEMA + CONTROLLI_PER_TIPO) e un valore in SETTINGS_VALIDE di test_config_import_validation; descrizioni di opzioni e comandi entro 95 caratteri
 - Nei test fake_member(1) e' il proprietario (owner_id=1): usa altri id per chi deve essere sanzionato
 - Locales: json.dumps(ensure_ascii=False, indent=2 testi / 1 comandi)+newline riscrive il file identico: si puo' usare; i comandi in en-US vanno in `descrizioni` (percorso intero) e `nomi` (nome singolo)
