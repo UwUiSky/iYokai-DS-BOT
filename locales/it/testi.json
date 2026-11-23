@@ -4046,5 +4046,20 @@
   "sospensione_serve_utente": "Indica l'utente.",
   "sospensione_non_staff": "Non puoi sospendere chi ha poteri di moderazione, un bot o te stesso.",
   "sospensione_esito_dm_accolta": "La tua richiesta di revisione su «{server}» è stata accolta: puoi giocare di nuovo.",
-  "sospensione_esito_dm_respinta": "La tua richiesta di revisione su «{server}» è stata respinta: la sospensione resta."
+  "sospensione_esito_dm_respinta": "La tua richiesta di revisione su «{server}» è stata respinta: la sospensione resta.",
+  "tag_azioni_rifiutate": "Alcune azioni del tag non sono state fatte: {motivi}",
+  "tag_azioni_titolo": "Azioni di «{nome}»",
+  "tag_azioni_nessuna": "Il tag non ha azioni.",
+  "tag_azioni_aggiunta": "Azione aggiunta. Si fa dopo la risposta, con i permessi di chi usa il tag.",
+  "tag_azioni_piene": "Il tag ha già 3 azioni (o non esiste).",
+  "tag_azioni_tolta": "Azione tolta.",
+  "tag_azioni_non_trovata": "Non c'è un'azione con quel numero.",
+  "tag_azione_non_valida": "Azione non valida: {motivo}",
+  "programma_nessuna": "Nessuna azione programmata.",
+  "programma_tolta": "Azione programmata tolta.",
+  "programma_non_trovata": "Non trovo un'azione programmata con quel numero.",
+  "programma_serve_tra": "Indica fra quanto, per esempio `2h`.",
+  "programma_piene": "Ci sono già {massimo} azioni programmate: togline una.",
+  "programma_attesa": "L'attesa va da 1 minuto a 30 giorni.",
+  "programma_ok": "Azione programmata (numero {numero}). Quando scatta si ricontrollano i tuoi permessi."
 }

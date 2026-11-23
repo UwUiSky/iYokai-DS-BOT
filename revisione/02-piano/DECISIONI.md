@@ -1533,3 +1533,5 @@ Attua D119 per le voci medie. Elenco delle voci e dei motivi in fondo, aggiornat
 - **CFG-044**: fatta: duplica per pannello e per risposta pronta; il bottone pubblicato e i ticket aperti non si copiano. Il comando sta nel gruppo `admin-ticket pannelli`, già esistente.
 - **VOC-014**: fatta: stanza di scorta con proprietario il bot, presa da chi entra. Trovato e corretto un difetto di r1doc: il blocco VOC-017 (azione/ruolo) stava nel comando dei generatori invece che in `opzioni` (NameError su `ruolo`); sistemati anche 10 test senza DB.
 - **ECO-160**: fatta: la sospensione sta in `/admin-giochi` (staff del server) e la revisione arriva allo staff, non all'owner del bot; ferma solo `/monete`, `/giochi`, `/clan`.
+- **UTL-024**: fatta come elenco chiuso (D18): ruolo, messaggio, reazione; mai un comando qualsiasi. Il ruolo e la risposta singoli dei tag (UTL-016, UTL-022) restano; queste azioni sono in più (fino a 3). Chi usa il tag è il bersaglio: nessuna azione colpisce altri.
+- **UTL-111**: fatta: poche azioni sicure, fino a 5 (il catalogo: sblocca canale, togli ruolo; in più dai ruolo e messaggio). Mai comandi di moderazione.

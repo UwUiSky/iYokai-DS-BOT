@@ -12,6 +12,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core import azioni_sicure
+from core.role_safety import motivo_ruolo_automatico_non_assegnabile
 from core.channel_access import PERMESSI_DI_SCRITTURA, permessi_mancanti
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
@@ -181,6 +183,79 @@ class TagOpzioniCog(CogConGruppi, commands.Cog):
             return
         await custom_command_repo.update_tag(interaction.guild.id, normalizzato, **campi)
         await interaction.response.send_message(await testo_per(interaction, "tag_opzioni_salvate", nome=normalizzato), ephemeral=True)
+
+    @comando_di_gruppo("admin-tag", nome="azioni", descrizione="Azioni sicure di un tag: ruolo, messaggio, reazione (fino a 3).",
+                       sottogruppo=SOTTOGRUPPI["admin-tag tag"])
+    @app_commands.describe(
+        nome="Il tag", operazione="Che cosa fare", tipo="Il tipo di azione (per «aggiungi»)",
+        ruolo="Il ruolo (dai o togli: lo riceve chi usa il tag)", canale="Il canale (per «messaggio»)",
+        testo="Il testo del messaggio (massimo 200, senza menzioni)", emoji="L'emoji (per «reazione»: sul messaggio che usa il tag)",
+        numero="Il numero dell'azione da togliere (lo vedi con «elenco»)",
+    )
+    @app_commands.choices(
+        operazione=[app_commands.Choice(name=n, value=n) for n in ("elenco", "aggiungi", "togli")],
+        tipo=[app_commands.Choice(name=n.replace("_", " "), value=n) for n in azioni_sicure.TIPI_TAG],
+    )
+    @app_commands.autocomplete(nome=_completa)
+    async def azioni(
+        self,
+        interaction: discord.Interaction,
+        nome: app_commands.Range[str, 1, MAX_NOME],
+        operazione: app_commands.Choice[str],
+        tipo: app_commands.Choice[str] | None = None,
+        ruolo: discord.Role | None = None,
+        canale: discord.TextChannel | None = None,
+        testo: app_commands.Range[str, 1, azioni_sicure.MAX_TESTO] | None = None,
+        emoji: app_commands.Range[str, 1, 64] | None = None,
+        numero: app_commands.Range[int, 1, azioni_sicure.MAX_AZIONI_TAG] | None = None,
+    ) -> None:
+        """UTL-024: solo un elenco chiuso (mai moderazione né amministrazione); si fanno con i permessi di chi usa il tag."""
+        if not await self._pronto(interaction):
+            return
+        guild_id = interaction.guild.id
+        normalizzato = normalizza_nome(nome)
+        tag = await custom_command_repo.get_tag(guild_id, normalizzato) if normalizzato else None
+        if tag is None:
+            await interaction.response.send_message(await testo_per(interaction, "tag_non_esiste"), ephemeral=True)
+            return
+        if operazione.value == "aggiungi":
+            try:
+                azione = azioni_sicure.da_dict(
+                    {"tipo": tipo.value if tipo else None, "ruolo_id": ruolo.id if ruolo else None,
+                     "canale_id": canale.id if canale else None, "testo": testo, "emoji": emoji},
+                    ammessi=azioni_sicure.TIPI_TAG,
+                )
+            except azioni_sicure.AzioneNonValida as errore:
+                await interaction.response.send_message(await testo_per(interaction, "tag_azione_non_valida", motivo=str(errore)), ephemeral=True)
+                return
+            if ruolo is not None:
+                motivo = motivo_ruolo_automatico_non_assegnabile(interaction.guild, ruolo.id)
+                if motivo is not None:
+                    await interaction.response.send_message(await testo_per(interaction, "tag_azione_non_valida", motivo=motivo), ephemeral=True)
+                    return
+            ok = await custom_command_repo.aggiungi_azione(guild_id, normalizzato, azioni_sicure.a_dict(azione), azioni_sicure.MAX_AZIONI_TAG)
+            await interaction.response.send_message(await testo_per(interaction, "tag_azioni_aggiunta" if ok else "tag_azioni_piene"), ephemeral=True)
+            return
+        if operazione.value == "togli":
+            ok = numero is not None and await custom_command_repo.togli_azione(guild_id, normalizzato, numero)
+            await interaction.response.send_message(await testo_per(interaction, "tag_azioni_tolta" if ok else "tag_azioni_non_trovata"), ephemeral=True)
+            return
+        attuali = await custom_command_repo.azioni_di(guild_id, normalizzato)
+        if not attuali:
+            await interaction.response.send_message(await testo_per(interaction, "tag_azioni_nessuna"), ephemeral=True)
+            return
+        righe = [
+            f"{i}. {a['tipo'].replace('_', ' ')}"
+            + (f" <@&{a['ruolo_id']}>" if a.get("ruolo_id") else "")
+            + (f" <#{a['canale_id']}>" if a.get("canale_id") else "")
+            + (f" {discord.utils.escape_markdown(str(a['testo']))[:60]}" if a.get("testo") else "")
+            + (f" {a['emoji']}" if a.get("emoji") else "")
+            for i, a in enumerate(attuali, 1)
+        ]
+        await interaction.response.send_message(
+            await testo_per(interaction, "tag_azioni_titolo", nome=normalizzato) + "\n" + "\n".join(righe),
+            ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
+        )
 
     @comando_di_gruppo("admin-tag", nome="risposte", descrizione="Dai a un tag fino a 5 risposte, ognuna con il suo peso.",
                        sottogruppo=SOTTOGRUPPI["admin-tag tag"])

@@ -4046,5 +4046,20 @@
   "sospensione_serve_utente": "Give the user.",
   "sospensione_non_staff": "You can't suspend someone with moderation powers, a bot or yourself.",
   "sospensione_esito_dm_accolta": "Your review request on \"{server}\" was accepted: you can play again.",
-  "sospensione_esito_dm_respinta": "Your review request on \"{server}\" was rejected: the suspension stays."
+  "sospensione_esito_dm_respinta": "Your review request on \"{server}\" was rejected: the suspension stays.",
+  "tag_azioni_rifiutate": "Some tag actions were not done: {motivi}",
+  "tag_azioni_titolo": "Actions of \"{nome}\"",
+  "tag_azioni_nessuna": "The tag has no actions.",
+  "tag_azioni_aggiunta": "Action added. It runs after the reply, with the permissions of whoever uses the tag.",
+  "tag_azioni_piene": "The tag already has 3 actions (or does not exist).",
+  "tag_azioni_tolta": "Action removed.",
+  "tag_azioni_non_trovata": "There is no action with that number.",
+  "tag_azione_non_valida": "Invalid action: {motivo}",
+  "programma_nessuna": "No scheduled actions.",
+  "programma_tolta": "Scheduled action removed.",
+  "programma_non_trovata": "I can't find a scheduled action with that number.",
+  "programma_serve_tra": "Say how long from now, for example `2h`.",
+  "programma_piene": "There are already {massimo} scheduled actions: remove one.",
+  "programma_attesa": "The wait goes from 1 minute to 30 days.",
+  "programma_ok": "Action scheduled (number {numero}). Your permissions are checked again when it runs."
 }

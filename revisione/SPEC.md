@@ -3096,3 +3096,7 @@ Controllo delle 89 voci in `revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.
 - `[x]` VOC-014 (D121): `/admin-vocali opzioni scorta:sì` tiene una stanza vuota pronta (VOC-014).
 
 - `[x]` ECO-160 (D121): `/admin-giochi sospensione` e bottone «Chiedi una revisione» (ECO-160, 0885).
+
+- `[x]` UTL-024 (D121): `/admin-tag tag azioni` (UTL-024, 0886).
+
+- `[x]` UTL-111 (D121): `/admin-automazioni programma` (UTL-111, 0886).
