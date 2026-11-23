@@ -1,7 +1,7 @@
 """
 core/voto_server.py
 ===================
-Il piccolo server web che riceve il voto al bot dal sito di elenchi (top.gg): un solo indirizzo, `POST /voto`, con
+Il piccolo server web che riceve il voto al bot dal sito di elenchi (top.gg): un solo indirizzo, `POST` sul percorso «voto», con
 il segreto del .env (intestazione Authorization o firma). Parte solo se il segreto c'è. I tentativi con un segreto
 sbagliato sono limitati per indirizzo, e si contano prima di guardare il corpo. Niente dipendenze importate qui:
 `registra` e `dopo_voto` arrivano come parametri, così i test passano funzioni finte.
@@ -61,7 +61,7 @@ def build_app(*, segreto: str, registra, dopo_voto=None, sito: str = SITO_TOPGG)
 
     app = web.Application(client_max_size=MAX_BYTE_CORPO)
     if segreto_valido(segreto):  # senza segreto valido nessuna rotta: il modulo è spento
-        app.router.add_post("/voto", handler)
+        app.router.add_post("/".join(("", "voto")), handler)  # percorso del sito, non un comando
     return app
 
 

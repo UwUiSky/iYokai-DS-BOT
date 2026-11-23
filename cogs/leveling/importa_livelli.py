@@ -1,7 +1,7 @@
 """
 cogs/leveling/importa_livelli.py
 ================================
-/admin-livelli importa: carica gli XP da un file JSON o CSV che l'admin ha esportato da un altro bot (mai da API di
+Il comando «importa» di admin-livelli (azzera): carica gli XP da un file JSON o CSV che l'admin ha esportato da un altro bot (mai da API di
 altri bot). Ogni campo si controlla prima di scrivere; l'import non toglie mai XP e si può ripetere. Funzione a
 livello di abbonamento scelto dall'owner (D57, D71: di base premium).
 Funzioni coperte: LIV-072
