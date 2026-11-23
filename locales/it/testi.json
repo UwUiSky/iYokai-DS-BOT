@@ -4017,5 +4017,8 @@
   "casesystem_archivio_pronto": "Archivio dei messaggi dell'utente prima del caso: {n} eventi degli ultimi 3 giorni, presi dal registro del bot. Il testo dei messaggi non è conservato.",
   "economia_registro_attivo": "Il registro dei movimenti di monete andrà in {mention}: un riepilogo ogni minuto, solo dei movimenti da ora in poi (non quelli dello staff).",
   "economia_registro_spento": "Registro dei movimenti spento.",
-  "economia_registro_non_era_attivo": "Il registro dei movimenti non era acceso."
+  "economia_registro_non_era_attivo": "Il registro dei movimenti non era acceso.",
+  "autolavoro_acceso": "Da ora lavori da solo ogni 4 ore (se l'attesa del lavoro è finita). Le monete e lo storico sono come quelli di `/monete work`.",
+  "autolavoro_serve_premium": "Il lavoro automatico serve il premium del server.",
+  "autolavoro_spento": "Lavoro automatico spento."
 }

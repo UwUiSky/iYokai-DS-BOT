@@ -66,7 +66,7 @@ from core.feed_watcher import feed_watcher
 from core.kick_watcher import kick_watcher
 from core.twitch_watcher import twitch_watcher
 from core.youtube_watcher import youtube_watcher
-from core import economia_registro
+from core import economia_autolavoro, economia_registro
 from core.monthly_winners_announcer import monthly_winners_announcer
 from core.clan_leaderboard_announcer import clan_leaderboard_announcer
 from core.giveaway_worker import giveaway_worker
@@ -311,6 +311,7 @@ class iYokaiBot(commands.AutoShardedBot):
         # Annuncio automatico dei vincitori a fine mese (SPEC.md
         # §15.11): tick orario, idempotente tramite database.
         monthly_winners_announcer.start(self)
+        economia_autolavoro.start(self)  # ECO-050
         economia_registro.start(self)  # ECO-006: un riepilogo al minuto, solo per i server che lo accendono
 
         # Giveaway (SPEC.md §15.5): ri-registra le view persistenti
@@ -595,6 +596,7 @@ def _servizi_periodici() -> list:
         youtube_watcher,
         monthly_winners_announcer,
         economia_registro,
+        economia_autolavoro,
         giveaway_worker,
         guild_clan_voice_worker,
         guild_clan_treasury_decay_worker,

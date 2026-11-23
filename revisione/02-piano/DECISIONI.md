@@ -1526,3 +1526,4 @@ Attua D119 per le voci medie. Elenco delle voci e dei motivi in fondo, aggiornat
 
 ### Voci fatte e voci non fatte (D121)
 - **ECO-006**: fatta: riepilogo a lotti (D86 temeva un messaggio per movimento: ora ce n'è uno al minuto per server, tetto 300 movimenti per giro, il resto al giro dopo). Se il bot non può scrivere il lotto resta e si riprova.
+- **ECO-050**: fatta: premium (D72), 4 ore, nel worker del bot (non nello scheduler a righe: serve un solo giro periodico per tutti). Ritentare un giro non paga due volte (la riga si sposta prima di pagare).

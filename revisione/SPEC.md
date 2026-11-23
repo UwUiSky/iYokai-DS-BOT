@@ -3082,3 +3082,5 @@ Controllo delle 89 voci in `revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.
 ## Appendice — Giro r1med: voci medie rimaste (D121)
 
 - `[x]` ECO-006 (D121): `/admin-economia annunci vincitori-set registro:sì` manda ogni minuto un riepilogo dei movimenti di monete (ECO-006, 0881, `core/economia_registro.py`).
+
+- `[x]` ECO-050 (D121): `/monete work automatico:sì` (premium): lavoro da solo ogni 4 ore (ECO-050, 0882, `core/economia_autolavoro.py`).

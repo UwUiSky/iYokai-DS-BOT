@@ -85,7 +85,8 @@ from core.moneta_server import MonetaNonValida, aggiungi_moneta, prepara_moneta
 from core.safe_image import MAX_IMAGE_BYTES, run_image_task
 from core.drop_logic import DEFAULT_DROP_CHANCE, DEFAULT_MAX_COINS, DEFAULT_MIN_COINS, should_trigger_drop
 from core.channel_access import PERMESSI_DI_SCRITTURA, motivo_se_il_bot_non_puo
-from core import economia_registro
+from core import economia_autolavoro, economia_registro
+from core.economia_autolavoro import paga_lavoro
 from core.giveaway_immagine import conserva_allegato, file_annuncio
 from core.giveaway_logic import (
     MAX_INGRESSI_EXTRA,
@@ -1745,20 +1746,25 @@ class LevelingCog(CogConGruppi, commands.Cog):
         nome="work",
         descrizione="Lavora per guadagnare qualche coin.",
     )
-    async def work(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(automatico="Premium: sì = lavori da solo ogni 4 ore, no = smetti (senza: lavori ora)")
+    async def work(self, interaction: discord.Interaction, automatico: bool | None = None) -> None:
         if await _comando_rifiutato(interaction):
+            return
+        if automatico is not None:  # ECO-050
+            if automatico:
+                ok = await economia_autolavoro.accendi(interaction.guild.id, interaction.user.id, bot=self.bot)
+                chiave = "autolavoro_acceso" if ok else "autolavoro_serve_premium"
+            else:
+                await economia_autolavoro.spegni(interaction.guild.id, interaction.user.id)
+                chiave = "autolavoro_spento"
+            await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
             return
 
         adesso = datetime.now(timezone.utc)
         impostazioni = (await self._config(interaction.guild.id)).impostazioni
         if await serve_controllo(interaction, impostazioni.controllo_per_mille):  # ECO-158
             return
-        guadagno = random.randint(impostazioni.work_min, impostazioni.work_max)
-        # ECO-029: la paga sale con i turni fatti (scala dei lavori)
-        turni_fatti = await rischio_repo.turni(interaction.guild.id, interaction.user.id)
-        guadagno = max(guadagno if guadagno == 0 else 1, paga_con_lavoro(guadagno, lavoro_per_turni(turni_fatti)[2]))
-        guadagno = con_potenziamento(guadagno, (await potenziamenti_repo.livelli(interaction.guild.id, interaction.user.id))["lavoro"])  # ECO-081
-        guadagno += guadagno * (await animali_repo.bonus(interaction.guild.id, interaction.user.id, "lavoro") + BONUS_PRESTIGIO * await sociale_repo.livello_prestigio(interaction.guild.id, interaction.user.id) + await mondo_repo.bonus_percento(interaction.guild.id, interaction.user.id)) // 100  # ECO-131, ECO-148, ECO-056/144
+        guadagno = await paga_lavoro(interaction.guild.id, interaction.user.id, impostazioni)  # ECO-029/081/131/148, punto unico (ECO-050)
         riscosso = await leveling_repo.claim_work(
             interaction.guild.id, interaction.user.id,
             guadagno, attesa_work_secondi(impostazioni), adesso,  # ECO-019, ECO-028
@@ -4787,6 +4793,14 @@ async def setup(bot: commands.Bot) -> None:
             category="leveling",
             description="XP, livelli, daily/work/pay, classifiche mensili e all-time.",
             premium_capable=False,
+        )
+    )
+    registry.register(
+        PremiumModule(
+            name=economia_autolavoro.MODULO_AUTOLAVORO,
+            display_name="Lavoro automatico",
+            category="leveling",
+            description="Il lavoro di /monete work si fa da solo ogni 4 ore per chi lo accende.",
         )
     )
     # Gli inviti in gilda devono funzionare anche dopo un riavvio.

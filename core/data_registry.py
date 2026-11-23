@@ -570,6 +570,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("guild_premium_status", "Scadenza del premium del server", colonna_server="guild_id",
        server="conserva"),
     _t("monthly_winners_config", "Annuncio dei vincitori del mese", colonna_server="guild_id"),
+    _t("economia_autolavoro", "Chi ha acceso il lavoro automatico (ECO-050)",
+       colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True),
     _t("economia_registro_conf", "Canale del registro dei movimenti di monete (ECO-006)", colonna_server="guild_id"),
     _t("top_settimanale_conf", "Canale della top 10 della settimana (LIV-061)", colonna_server="guild_id"),
     # ---------------------------------------------------------------- clan

@@ -413,7 +413,7 @@ Giro r1doc (D119, 23/11/2026): le 89 voci citate solo nei documenti, controllate
 | ECO-006 | no | n/d | realizzata (0881, D121): `/admin-economia annunci vincitori-set channel: registro:sì` (e `vincitori-off registro:sì`); un riepilogo ogni minuto dei movimenti nuovi dello storico (ECO-007), 300 per giro e 20 righe per messaggio, menzioni spente; non racconta il passato né le modifiche dello staff | core/economia_registro.py; tests/test_economia_registro_eco006.py |
 | ECO-048 | no | n/d | non fatta: il bot non è su nessun elenco (D86). **Conflitto**: D72 chiede il codice pronto e spento. Da fare: grande (modulo voto, D119) | — |
 | ECO-049 | no | n/d | come ECO-048 (dipende da quella) | — |
-| ECO-050 | no | n/d | da fare: media, premium (D72 lo vuole). Il motivo di D86 («da progettare con dev-core») non regge | — |
+| ECO-050 | no | n/d | realizzata (0882, D121): `/monete work automatico:sì|no`, premium del server (modulo `autolavoro`); un giro ogni 5 minuti paga i turni scaduti con la paga di `/monete work` (punto unico `paga_lavoro`) e li sposta di 4 ore nella stessa istruzione; salta se l'attesa del lavoro non è finita; senza premium o con i livelli spenti la riga si toglie | core/economia_autolavoro.py; tests/test_economia_autolavoro_eco050.py |
 | ECO-051 | no | n/d | da fare: media. Il motivo di D86 non è un divieto | — |
 | ECO-080 | no | n/d | da fare: grande (pagina del pannello web, NF-20). Il motivo «area di dev-web» non regge | — |
 | ECO-093 | no | n/d | da fare: media, con nome e grafica neutri come dice il catalogo (D86 «scelta prudente di non farla» non basta: D18) | — |
