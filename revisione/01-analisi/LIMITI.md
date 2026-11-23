@@ -223,6 +223,14 @@ Stato di iYokai (misurato, D60): 39 comandi globali di primo livello (tetto D56:
 | PostgreSQL | colonna `SERIAL` | finisce a circa 2,1 miliardi | REVIEW PERF-3 |
 | aiohttp (server) | corpo della richiesta | 1 MiB di default | aiohttp |
 | aiohttp (client) | sessioni | ogni `ClientSession` va chiusa | aiohttp |
+| GIF: nekos.best | `GET /api/v2/{categoria}` | senza chiave, solo SFW; vietati uso commerciale e scraping in massa (D70); crediti da non togliere; nostro tetto 600 richieste/ora | docs.nekos.best (23/11/2026) |
+| GIF: purrbot.site | `GET /img/sfw/{nome}/gif` | senza chiave; codice sotto licenza MIT; limiti non pubblicati, nostro tetto 600/ora | purrbot.site/api (23/11/2026) |
+| GIF: waifu.pics | `GET /sfw/{categoria}` | senza chiave; pagina dei termini non leggibile ai robot, da ricontrollare; tetto 600/ora | waifu.pics/docs |
+| GIF: otakugifs | `GET /gif?reaction=` | senza chiave, 83 reazioni (tra cui `sing`, letto il 23/11/2026); termini non letti; tetto 600/ora | api.otakugifs.xyz/gif/allreactions |
+| GIF: nekos.life | `GET /api/v2/img/{nome}` | senza chiave, spenta di base (servizio non verificato); tetto 300/ora | non verificato |
+| GIF: Giphy | `GET /v1/gifs/search` | chiave `GIF_GIPHY_KEY`; beta 100 chiamate/ora (nostro tetto 90); rating=g sempre; «Powered by GIPHY» | developers.giphy.com |
+| GIF: Tenor | `GET /v2/search` | chiave `GIF_TENOR_KEY`; da gennaio 2026 non accetta nuovi clienti API; `contentfilter=high`; attribuzione a Tenor; tetto 300/ora | developers.google.com/tenor (23/11/2026) |
+| GIF: Klipy, waifu.im, nekosia | non aggiunti | documentazione o condizioni non leggibili il 23/11/2026: nessun adattatore finché un permesso scritto o una pagina chiara non c'è (D70, D127) | docs.klipy.com |
 | Pillow (nostro) | immagini | 16 megapixel (4 per WebP e JPEG progressivo), ridotte a 2048 px, allegato fino a 8 MB | `core/safe_image.py` |
 | Token OAuth Discord | durata | circa 7 giorni, poi va rinnovato con il `refresh_token` | OAuth2 (`expires_in`) |
 

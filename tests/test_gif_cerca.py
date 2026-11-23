@@ -30,7 +30,7 @@ def test_voce_di_ricerca_pulisce_aggiunge_tema_e_rifiuta_adulti():
 
 def test_ricerca_libera_solo_dove_ce_giphy():
     assert logica.ricerca_disponibile(["nekosbest", "giphy"]) and not logica.ricerca_disponibile(["nekosbest", "purrbot"])
-    assert gf.FONTI_RICERCA == ("giphy",)
+    assert gf.FONTI_RICERCA == ("giphy", "tenor")
 
 
 async def test_il_servizio_cerca_solo_con_giphy_e_rating_g():

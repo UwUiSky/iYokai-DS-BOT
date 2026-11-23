@@ -38,9 +38,10 @@ CODICI_AZIONE = (
 )
 
 
-# Voci presenti (frase e nome nelle due lingue) ma ancora senza una raccolta di GIF con licenza chiara: rispondono solo con la frase.
-# Cricchetto: quando una voce trova una fonte va tolta da qui (il test sotto lo pretende).
-SENZA_FONTE = frozenset({"FUN-101", "FUN-104", "FUN-105", "FUN-115", "FUN-127", "FUN-128", "FUN-132", "FUN-133", "FUN-134", "FUN-135"})
+# Voci senza una raccolta per categoria: le copre solo la ricerca libera dei servizi con chiave (Giphy, Tenor; D127).
+# Senza chiave rispondono con la sola frase. FUN-104 ha una categoria vera (otakugifs «sing»): tolta da qui.
+# Cricchetto: quando una voce trova una fonte per categoria va tolta da qui (il test sotto lo pretende).
+SENZA_FONTE = frozenset({"FUN-101", "FUN-105", "FUN-115", "FUN-127", "FUN-128", "FUN-132", "FUN-133", "FUN-134", "FUN-135"})
 
 
 @pytest.mark.parametrize("codice", CODICI_REAZIONE + CODICI_AZIONE)
