@@ -104,6 +104,7 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "eventi": ("Eventi del server: crea, iscriviti, elenco, modifica, annulla", None, None),
     "web": ("Cerca sul web: Wikipedia, dizionario, emergenze, meteo, film, giochi, prezzi", None, None),
     "utility": ("Strumenti utili: segnalazioni, suggerimenti, promemoria, schede, snipe", None, None),
+    "auto": ("Auto da collezione: garage, gare, potenziamenti e foto", None, None),
 }
 
 

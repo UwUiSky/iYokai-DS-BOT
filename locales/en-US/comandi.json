@@ -518,7 +518,13 @@
   "memoria": "memory",
   "chat": "chat",
   "battaglia": "battle",
-  "battaglie": "battles"
+  "battaglie": "battles",
+  "catalogo": "catalogue",
+  "garage": "garage",
+  "gara": "race",
+  "foto": "photo",
+  "foto-togli": "photo-remove",
+  "togli-foto": "remove-photo"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1810,7 +1816,18 @@
   "mod-sanzioni opzioni aspetto": "Picks the colour and icon of a case type in the moderation log.",
   "mod-casi caso chat": "Sends the log of the channel's last messages saved with a case.",
   "giochi sfide battaglia": "Turn-based battle against a member: attack, defend and skill, with an optional stake.",
-  "giochi sfide battaglie": "A member's battles won and lost, and the server's best."
+  "giochi sfide battaglie": "A member's battles won and lost, and the server's best.",
+  "auto": "Collectible cars: garage, races, upgrades and photos",
+  "auto catalogo": "The collectible cars you can buy.",
+  "auto compra": "Buy a collectible car for your garage.",
+  "auto garage": "The cars in your garage (or another member's).",
+  "auto vedi": "A garage car's sheet, with its photo.",
+  "auto potenzia": "Upgrade a part of your car with coins.",
+  "auto gara": "Race with one of your cars against the house or a member, with an optional stake.",
+  "auto foto": "Set your car's photo (only the re-encoded image is kept).",
+  "auto foto-togli": "Remove the photo of one of your cars.",
+  "admin-giochi auto": "Collectible cars: garage photos",
+  "admin-giochi auto togli-foto": "Remove the photo of a member's car (one or all)."
  },
  "parametri": {},
  "menu": {
