@@ -1,20 +1,24 @@
 # Memoria di dev-utilita
 
 ## Aggiornata
+23/11/2026 · r3utl (feat/r3utl, DB iyokai_w128) · D111/D116: UTL-226 (0830), UTL-228 (0831), CFG-032, FUN-078, segni FUN-068/070. Non unito, niente push. Smoke da fare.
 21/11/2026 · r2utl (feat/r2utl, DB iyokai_w128) · #128 controllo UTL: 85 voci segnate o realizzate, 7 senza codice (UTL-110, 121, 216 in D100; 204, 205, 226, 228 non miei). Migrazioni 0760-0764.
-20/11/2026 · r2ben (feat/r2ben, DB iyokai_w123) · #123: RUO-012, 045, 046, 047, 053, 069, 083; #117: SIC-041. Migrazioni usate 0740-0742 (libere 0743-0749).
 
 ## In corso
+- Giro r3utl chiuso (commit 46cfa302, 5185ad09, 5470b232, fc83831b, 47f26d8e). Smoke da fare dell'orchestratore: test_config_orfani, test_azzeramento_dati, test_marchio_strumenti, test_suono_ferma + test_data_registry, test_repository_callers, test_command_groups. Prova live in VERIFICA_LIVE (UTL-226, UTL-228, CFG-032, FUN-078).
 - Giro r2utl chiuso (non unito, niente push). Smoke da fare. Righe in revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.md (sezione 14-utility). Da far rivedere: tag (divieti, alias, embed salvato), canale_testo, esclusi.
-- Giro r2ben chiuso (non unito, niente push). Smoke da fare dell'orchestratore. Prossimo: RUO-005; ALR-049 (con dev-web) e VOC-020; revisione di sicurezza del diff (ruolo personale, immagini, gruppo).
 
 ## Fatto
+- r3utl D111/D116: pulizia a 7 giorni (core/config_orfani_logic, repositories/config_orfani_repo, /admin-bot config pulisci al posto di pulizia, giro 6 ore in config_strumenti); azzeramento dati a 30 giorni (core/azzeramento_dati_logic, azzeramento_repo, cogs/utility/azzeramento_dati.py, reset anche_i_dati/annulla_dati in config_history); strumenti marchio (core/marchio_errori, GestoreMarchio.risincronizza, azioni risincronizza/errori in marchio.py); /music suono-ferma (core/music_sound_logic SuoniInCorso, soundboard.py).
+- r2ben/r1/r24 e giri precedenti (#123 #127 #129 #130, D87-D98): vedi git log; ruoli extra in core/ruoli_extra_logic e cogs/utility/ruoli_extra.py.
 - r2utl #128: tag (in coda, alias, divieti, ambito pausa, embed, info), risposte (finisce, maiuscole, esclusi, modifica, mostra), canale scorciatoia, orario guidato, embed (autore, link, data, colore, pausa), giveaway (chiudi, annulla, elenco), bacheca (esclusi, stato), compleanni stato, inviti per periodo, avatar. D100. Test: test_*_r2utl.py.
 - r2ben #123/#117: core/ruoli_extra_logic, ruoli_guidata_logic, ruoli_immagini, phishing_azione_logic; repositories/ruoli_extra_repo; cogs/utility/ruoli_extra.py (admin-menu-ruoli: ruoli-extra, gruppo, immagine, colori, guidata, personale; utility: colore, ruolo-mio; admin-benvenuto: immagini); ganci in role_menus.py (_blocchi_per, _estendi, _applica atomico, immagine nel messaggio) e greetings.py (_immagine_a_caso). Decisione D98. Test: test_ruoli_extra_cog.py, test_ruoli_extra_logica.py, test_ruoli_guidata_logica.py, test_ruoli_immagini.py, test_phishing_azione_extra.py.
-- r1alert #129/#127 (0690-0693, D90-D94) e r1sta #130 (0700-0702, D87): vedi git log (gruppo /admin-alert, contatori, schede statistiche).
-- r1ben #123 (0640-0650), r24util B25-B28, giri r19-r23 e r4-r11: vedi git log.
 
 ## Cose imparate
+- Cancellazione per server senza presenza: `azzeramento_dati_logic._cancella_dati` ripete il ciclo di `retention_worker.purga_server` (REGISTRO) senza controllare guild_presence. Tabella nuova con colonna utente: dichiararla in data_registry (colonne_attore + azzera_attore=False se è solo staff).
+- Gli handler dello scheduler hanno firma (guild_id, user_id, payload): la verità sta nel database, non nel payload; handler idempotente. Frozen config: nei test sostituire il nome del modulo (`monkeypatch.setattr(modulo, "config_bot", SimpleNamespace(...))`).
+- Un suono di soundboard non si interrompe con l'API: FUN-078 fa uscire il bot entrato solo per il suono. /music ha 24 figli (limite 25).
+- Test su DB: `DATABASE_URL=...iyokai_w128` va messo davanti a ogni comando (l'export non resta tra le chiamate).
 - Il catalogo vede UTL-047..050 solo con virgole (UTL-047, 048, 049): «..» non è un intervallo. Un test che costruisce tag finti (SimpleNamespace) deve avere i campi nuovi della dataclass (pausa_ambito, vietati, embed_nome).
 - Un valore di innesco «ruolo/canale» passa da regex di 15-20 cifre: nei test usare id lunghi.
 - Un cog nuovo che avvia un loop (watcher) lo fa in cog_load (super().cog_load() prima): così main.py non cambia. Picarto e eventi Twitch partono da cogs/utility/alert_piattaforme.py.
@@ -23,11 +27,9 @@
 - Aggiungere una chiamata al DB (tetto totale degli avvisi) in un comando già testato con repo finti rompe quei test: patchare `cogs.utility.feed_alerts.tetto_e_pieno` nelle loro fixture.
 - Tabelle nuove: dichiararle in core/data_registry.py (test_ogni_tabella_dello_schema_e_dichiarata); voice_roles (0647) mancava: aggiunta.
 - Un autocomplete in un cog con comando_di_gruppo: funzione con @autocomplete_protetto(Livello.ADMIN) sopra il comando e @app_commands.autocomplete(param=funzione).
-- Un secondo messaggio nel canale vocale (pannello) fa salire a 2 i send: i test di creazione contano 2.
 - Il catalogo vede i codici SOLO con il trattino (RUO-021) in codice o test: `RUO_021` nel nome non basta, `RUO-018..021` non è un intervallo. Ogni test ha un commento `# RUO-xxx`.
 - Peso dei gruppi: /admin-ruoli era a 8.162: le funzioni nuove dei menu stanno in /admin-menu-ruoli (gruppo nuovo = command_groups + command_policy + generate_command_list + comandi.json nomi e descrizioni). test_command_groups.py ha 2 test già rotti su main (elenco gruppi vecchio).
 - comandi.json: sezioni `nomi` (nome comando -> inglese, un nome per tutti) e `descrizioni`; mai riscrivere un nome già presente (es. «svuota» = clear). Script: scratchpad/en_agg.py.
-- Menu del tasto destro nel tree: get_commands() li include; command_search li rompe (vedi Aperto). Un cog con ContextMenu: cog_load chiama super().cog_load() (CogConGruppi) e poi add_command.
 - Tag: opzioni in colonne di custom_commands (0557), risposte con peso in custom_command_risposte; chi usa un tag passa da _rifiuto (sync) e _rifiuto_gruppo (async). Cancellazioni future via scheduler (AZIONE_CANCELLA_RISPOSTA).
 - Un gruppo nuovo: _DEFINIZIONI in core/command_groups.py + AUDIENCE in tests/support/command_policy.py + nome in scripts/generate_command_list.py + descrizione in locales/en-US/comandi.json.
 - Testi: locales/{it,en-US}/testi.json (indent 2, ordine libero) e comandi.json (indent 1; i nomi di parametri NON vanno in «nomi»). Aggiunta senza riscrivere: scratchpad/uti19_agg.py. 
@@ -35,8 +37,6 @@
 - Impostazioni di moduli senza passare da config_history/config_impostazioni (non miei): tabella propria + repo con copia in memoria che si riempie solo dopo lettura riuscita (messaggi_auto, suggestions_config).
 - LayoutView: BaseLayoutView in core/ui_base.py (e nella lista del test ui_base_wiring). V2: 40 componenti, 4.000 caratteri, niente content/embed.
 - DynamicItem per bottoni persistenti (cronometro, tag degli embed, ricordalo anche a me, chi l'ha scritto): template + add_dynamic_items in setup/cog_load.
-- Servizi esterni: chiave nell'intestazione (aiohttp diretto, host fisso), mai nell'URL: safe_get logga gli URL. User-Agent di safe_http è «lettore di feed».
-- Log al server: core.channel_router (destinazione + invia_a, TIPO_SERVER/MODERAZIONE). Pubblicazione annunci: 10 all'ora per canale, un solo avviso.
 - clean_db + Repo(pool_provider=lambda: clean_db) per i test su DB; i test di cog che toccano un repo nuovo devono patcharlo (suggestions_limiti, embed_builder).
 
 - Migrazione già applicata in un DB di test: mai riscriverla, usare il numero dopo.
@@ -44,19 +44,11 @@
 - Gruppo /admin-automazioni: sottogruppi script/inneschi/slash in SOTTOGRUPPI. Nuovo repo con metodo mai chiamato = fallisce test_repository_callers: non aggiungere metodi non usati.
 - Comandi del server (B28): l'albero mirror del DB (_monta, solo i nostri nomi), sync = tree.sync(guild) con impronta delle definizioni, non dell'albero. Rows asyncpg jsonb tornano come stringa.
 
-- Un repo nuovo che lavora sulle tabelle di un repo esistente si costruisce con `RuoliExtraRepository(role_menu_repo.pool_provider)`: i test che patchano il repo vecchio portano con sé il pool (niente patch in più).
-- Cambio di ruoli + togliere un altro in un colpo: `member.edit(roles=...)` (escludere `is_default()`), non add_roles+remove_roles.
-- Timestamp in SQL con parametri: `$3::timestamptz - make_interval(secs => $4::double precision)`.
 
 ## Aperto
-- #130: test_data_registry fallisce su main per 4 tabelle non mie (guild_card_sfondi, leveling_reazioni, leveling_ruoli_classifica, voice_roles). Pannello web: serve la pagina pubblica delle statistiche e l'accesso per ruoli; le API restano dopo il pannello.
+- r3utl: da provare dal vivo che uscire dal canale interrompa il suono (FUN-078). Il pannello web non ha ancora gli strumenti del marchio né lo stato dell'azzeramento (D16). Il registro errori del marchio è in memoria (si svuota al riavvio). `reset anche_i_dati` non azzera la configurazione subito (D116).
 - #123 resta solo RUO-005 (dimensioni libere dell'immagine). r2ben: le immagini del menu sono allegate (`menu.png`) e si rimandano a ogni modifica; il gruppo di menu usa `member.edit(roles=)` (un solo colpo); il ruolo personale non ha un tetto per chi lascia il server se il bot era spento (resta il ruolo: ripulire a mano).
-- Menu: il messaggio esterno non ha contatori né bottoni; cambio tipo vale solo per menu del bot. Reazione negata da un limite: nessun avviso (le reazioni non hanno risposta).
-- Sondaggi nativi programmati: non compaiono in `/sondaggi gestisci` (solo bottoni) e non si annullano; il conteggio a N voti conta i voti (non i votanti) e perde quelli arrivati col bot spento.
 - UTL-184 `/mod-ban massa invito codice:` non fatto: è in cogs/moderation (r19mod). Servono: completamento sul codice + ban di massa dei membri entrati con quel codice (invite_joins.code).
-- Pannello web: editor benvenuto elenca i segnaposto (templates/editor_benvenuto.html) senza i 4 nuovi.
-- test_command_policy::top_level_ha_un_pubblico fallisce su main per il menu «Apri ticket» (AUDIENCE, ticket): non mio.
-- safe_http.USER_AGENT senza contatto: MET Norway e Wikimedia chiedono un contatto (core, non mio).
 - #129 non fatto: ALR-049 (Linked Roles: OAuth e pagine web, D92). ALR-035: alternativa D90 (frequenze da .env). #127 non fatto: VOC-020 (D91).
 - Feed noti (FEED_NOTI in alert_piattaforme_logic) e Bluesky: indirizzi da provare su Discord. YouTube live da link dipende da YOUTUBE_API_KEY.
 - Alternative D18 non fatte: UTL-111 (comando programmato), azioni in borsa in /web prezzo (nessuna fonte gratis).
