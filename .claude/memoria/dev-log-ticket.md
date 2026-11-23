@@ -1,6 +1,7 @@
 # Memoria di dev-log-ticket
 
 ## Aggiornata
+23/11/2026 · ramo `feat/r3tkt` (wt-120, DB iyokai_w120) · #120 TKT-072 trascrizioni (D111, D114), migrazione 0774: FATTO. Resta: smoke dall'orchestratore, prova live (VERIFICA_LIVE «giro r3tkt»), chiave `TICKET_TRASCRIZIONI_KEY` nel .env.
 21/11/2026 · ramo `feat/r2tkt` (wt-120, DB iyokai_w120) · #120 controllo voce per voce, migrazioni 0770-0773: FATTO (vedi CONTROLLO_AREE_CHIUSE.md, D101). Resta: smoke dall'orchestratore e prova live.
 18/11/2026 · ramo `feat/r2log` (copia /home/user/wt-119, DB iyokai_w119) · #119 catalogo log, migrazioni 0710-0719.
 10-17/11/2026 · giri r152img (0304), r160 (D74 parti 1-3), r18ticket (0526, 0534), r10logt (0300-0302): vedi sotto e git log.
@@ -14,6 +15,7 @@
 - r10: c210f52 /log cerca ruolo+giorni · f364d84 diff permessi canale · poi ignora esteso, VOC-010/013/016, TKT-051/063/027/026.
 
 ## Cose imparate
+- Trascrizioni (TKT-072): contenuto cifrato in `ticket_trascrizioni.cifrato` (AAD = server + ticket, `core/ticket_trascrizioni_logic.py`); scadenza e pulizia dal registro dati (`Scadenza("scade_il", 0)`); la pagina servita ha CSP sua passando da `CHIAVE_DOWNLOAD` (il middleware sovrascrive le intestazioni). `_file_transcript(..., parti_out=[])` raccoglie le pagine HTML per la conservazione. Formato di base ora «entrambi»: i test di testo puro usano `Opzioni(transcript_formato="testo")`.
 - `discord.AllowedMentions(users=[...])` lascia everyone e roles accesi: sempre `everyone=False, roles=False` espliciti. Un log di azione non deve mai far fallire una chiusura (try/except dentro l'hook).
 - Menu nelle finestre: `discord.ui.Label(text, component=Select/UserSelect/...)`; i valori si leggono da `label.component.values`; nei test `component._values = [...]`.
 - Log azioni ticket: `tickets.registra_azione(guild, azione, ticket, ...)` (interruttori in `ticket_log_azioni`, tutti spenti di base, tipo router `ticket`). Benvenuto e risposte pronte: `form.testo_benvenuto` (elenco chiuso) e `form.nome_sicuro`.
@@ -50,7 +52,6 @@
 - Misura dei gruppi: scratchpad/tkt_peso.py (stdout solo, 2>/dev/null). Traduzioni: aggiungere senza riordinare il JSON.
 - Migrazione cambiata dopo l'applicazione: DROP tabelle + `DELETE FROM schema_migrations WHERE version=N`.
 - Test ticket: svuotare `ticket_opzioni_repo._cache` e `rename_tracker._renames` nella fixture; `DELETE FROM scheduled_actions`.
-- Peso di `/gestione`: vicino a 6800; descrizioni dei parametri brevi.
 - Mai `git stash` con un test in background.
 
 ## Aperto

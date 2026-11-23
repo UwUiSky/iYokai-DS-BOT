@@ -121,3 +121,12 @@ async def test_ricerca_per_utente_pannello_voto_e_motivo(conn):
 def test_filtro_da_form_ignora_valori_strani():
     f = logica.filtro_da_form("<@700000000000000001>", "x", "9", "a\x00b")
     assert f == logica.Filtro(700000000000000001, None, None, "ab")
+
+
+@pytest.mark.asyncio
+async def test_cancellazione_su_richiesta_dell_utente(conn):
+    await servizio.conserva(GUILD, conn.ticket, ["x"])
+    t = data_registry.tabella("ticket_trascrizioni")
+    assert t.utente == "cancella" and t.esporta is False and "cifrat" in t.nota
+    await conn.pool.execute(t.sql_cancella_utente(), conn.ticket.user_id)
+    assert await conn.pool.fetchval("SELECT count(*) FROM ticket_trascrizioni") == 0

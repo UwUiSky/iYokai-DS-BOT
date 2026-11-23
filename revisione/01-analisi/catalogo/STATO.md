@@ -35,7 +35,7 @@ Nelle sole aree con l'issue aperta: 708 voci, 640 fatte, 61 solo nei registri, *
 
 - **02-automod** (#116, chiusa: controllare a mano), 1: AMD-030
 - **04-verifica** (#118, chiusa: controllare a mano), 2: VER-025, VER-027
-- **06-ticket-e-modmail** (#120, chiusa: controllare a mano), 1: TKT-072
+- **06-ticket-e-modmail** (#120, chiusa: controllare a mano), 0 voci aperte (TKT-072 fatta in r3tkt)
 - **07-backup-e-restore** (#121, chiusa: controllare a mano), 1: BKP-039
 - **08-configurazione-pannello-premium** (#122, aperta), 1: CFG-032
 - **12-musica** (#126, aperta), 4: MUS-015, MUS-017, MUS-018, MUS-090

@@ -303,7 +303,7 @@ Giro r2tkt (issue #120). «Corretta» = fa ciò che dice il catalogo e rispetta 
 | TKT-065 | sì | sì | nessuna (codice nel test) | tests/test_ticket_form.py::test_il_clic_sul_voto_registra_le_stelle_una_volta_sola |
 | TKT-066 | no | - | realizzata | `voto questionario`, `ModuloQuestionario`, tabella `ticket_questionario_risposte` (0772); tests/test_ticket_catalogo_r2tkt_b.py::test_tkt_066_* |
 | TKT-069 | sì | sì | nessuna (codice nel test) | tests/test_ticket_catalogo.py::test_transcript_solo_staff_e_il_ticket_resta_aperto |
-| TKT-072 | no | - | non fattibile D101 | il bot non salva il testo dei messaggi; è del pannello web (NF-20) |
+| TKT-072 | sì | r3tkt | fatta (D111, D114) | HTML con secondi e immagini ricodificate; copia cifrata 90 giorni; pagina `/server/<id>/ticket/trascrizioni` |
 | TKT-076 | in parte (solo transcript) | no: nessuna azione registrata | realizzata | `registra_azione`, `/admin-ticket log`, tipo «ticket» del router; tests/test_ticket_catalogo_r2tkt_b.py::test_tkt_076_* |
 | TKT-077 | in parte (3 numeri) | no: mancavano i numeri avanzati | realizzata, con una variante (D101) | `stats dettagli`, `ticket_repo.get_statistiche_avanzate`; tests/test_ticket_catalogo_r2tkt_b.py::test_tkt_077_* |
 | TKT-078 | in parte (articoli solo nel ModMail) | no: nei ticket non si potevano usare | realizzata | cogs/tickets/risposte.py `/ticket pronta`; tests/test_ticket_catalogo_r2tkt_b.py::test_tkt_078_* |

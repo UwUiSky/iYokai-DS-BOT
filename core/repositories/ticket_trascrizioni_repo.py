@@ -38,11 +38,13 @@ class Riga:
     creata_il: datetime
     scade_il: datetime
     peso: int
+    solo_admin: bool
 
 
 _RIGA = """
     SELECT t.id, t.guild_id, t.ticket_id, t.ticket_number, t.user_id, t.panel_id, p.name AS nome_pannello,
-           k.rating AS voto, k.close_reason AS motivo, t.creata_il, t.scade_il, t.peso
+           k.rating AS voto, k.close_reason AS motivo, t.creata_il, t.scade_il, t.peso,
+           COALESCE(k.solo_admin, FALSE) AS solo_admin
     FROM ticket_trascrizioni t
     LEFT JOIN tickets k ON k.id = t.ticket_id
     LEFT JOIN ticket_panels p ON p.id = t.panel_id

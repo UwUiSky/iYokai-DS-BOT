@@ -3518,6 +3518,7 @@
   "tickets_log_campo_dettaglio": "Details",
   "tickets_log_canale_senza_permessi": "I can't write in that channel: I need View Channel, Send Messages and Embed Links.",
   "tickets_log_nessuna": "none",
+  "tickets_trascrizione_conservata": "Encrypted copy kept for staff in the web panel (90 days at most).",
   "tickets_log_stato": "Ticket actions in the log: {v1}.",
   "tickets_questionario_non_salvato": "I can't save this answer: it is empty, or the survey was already filled in.",
   "tickets_questionario_grazie": "Thank you for the rating and your answer.",

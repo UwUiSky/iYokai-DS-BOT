@@ -1857,6 +1857,13 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `ECO-161` — `/admin-livelli guadagno vocale max_minuti:60`: dopo 60 minuti in vocale in un giorno non arrivano più XP né monete (di base 360).
 - [ ] `ECO-158` — `/admin-economia limiti controllo:500`: `/monete work`, `/monete daily` e i piccoli guadagni, una volta su due, si fermano con una domanda «quanto fa a + b?» con tre bottoni (solo per te, un tentativo); risposta giusta = verificato 10 minuti, poi ripeti il comando; con `controllo:0` mai.
 
+## Trascrizioni dei ticket — giro r3tkt (#120, TKT-072)
+
+- Metti `TICKET_TRASCRIZIONI_KEY` nel `.env` (vedi `.env.example`) e riavvia. Chiudi un ticket con testo, uno screenshot e uno zip: nel canale dei log arriva `transcript.html`; aprilo: orario con i secondi, autore, testo, immagine incorporata, lo zip solo come nome/tipo/peso, nessun link cliccabile.
+- Apri `/server/<id>/ticket/trascrizioni` come staff: il ticket è in elenco; cerca per utente, pannello, voto, motivo; «Apri» mostra la pagina. Come membro non staff (o con ruolo solo lettura): «non trovata», uguale a un numero inventato.
+- Opzioni (solo admin del pannello): spegni la conservazione o metti 7 giorni, chiudi un altro ticket: nessuna nuova riga / scadenza a 7 giorni. In database la colonna `cifrato` non deve mostrare testo leggibile.
+- `/utility privacy cancella` di chi ha aperto il ticket: la sua trascrizione sparisce dall'elenco.
+
 ## Musica — giro r6mus (#126, MUS-013/022-026/028/033/034/046/051/052/053/061)
 
 - [ ] `MUS-024/025/026` — in vocale metti 3 brani tuoi e 2 di un amico. `/music coda togli posizione:2` toglie il tuo; su un brano dell'amico dice «solo i tuoi». `/music coda ultimo` toglie l'ultimo tuo; `/music coda miei` toglie tutti i tuoi e non quelli dell'amico. Un utente con «Gestisci server» o il ruolo DJ toglie anche quelli degli altri.

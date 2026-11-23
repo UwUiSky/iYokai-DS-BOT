@@ -3655,8 +3655,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         except discord.HTTPException:
             logger.warning("Impossibile leggere la history del ticket %s per il transcript", channel.id)
             return
-        if parti_html:
-            await trascrizioni.conserva(guild.id, ticket, parti_html)
+        nota = ""
+        if parti_html and await trascrizioni.conserva(guild.id, ticket, parti_html):
+            nota = "\n" + await testo_guild(guild, "tickets_trascrizione_conservata")
 
         # Il canale dei log può essere un forum: il router lo gestisce (post nel forum).
         predefinito = await db.get_guild_setting(guild.id, SETTING_LOG_CHANNEL)
@@ -3667,7 +3668,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
                     destinazione,
                     guild,
                     TIPO_EVENTI,
-                    content=f"Transcript ticket #{ticket.ticket_number:04d}",
+                    content=f"Transcript ticket #{ticket.ticket_number:04d}{nota}",
                     file=discord.File(io.BytesIO(contenuto), filename=nome_file),
                 )
 
