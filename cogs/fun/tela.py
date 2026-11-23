@@ -107,7 +107,7 @@ class TelaCog(CogConGruppi, commands.Cog):
         if p is None:
             await interaction.response.send_message(await testo_per(interaction, "tela_pixel_vuoto", x=x, y=y), ephemeral=True)
             return
-        autore = f"<@{p.user_id}>" if p.user_id else await testo_per(interaction, "tela_autore_ignoto")
+        autore = f"<@{p.user_id}>" if p.user_id else await testo_per(interaction, "tela_autore_ignoto", pubblica=True)
         await interaction.response.send_message(
             await testo_per(interaction, "tela_pixel", pubblica=True, x=x, y=y, colore=await testo_per(interaction, f"tela_c_{p.colore}", pubblica=True),
                             chi=autore, quando=f"<t:{int(p.messo_il.timestamp())}:R>"),

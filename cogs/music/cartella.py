@@ -207,7 +207,7 @@ class MusicCartellaCog(CogConGruppi, commands.Cog):
 
         async def rispondi(testo: str) -> None:
             if problema:  # al posto del generico «nessun risultato» (solo la prima risposta)
-                testo = await testo_per(interaction, problema.pop())
+                testo = await testo_per(interaction, problema.pop(), pubblica=True)
                 problema.clear()
             await interaction.followup.send(testo, allowed_mentions=discord.AllowedMentions.none())
 
