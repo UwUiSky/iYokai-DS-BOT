@@ -519,7 +519,9 @@
   "chat": "chat",
   "cartella": "folder",
   "anteprime": "previews",
-  "paese": "country"
+  "paese": "country",
+  "pulisci": "clean-up",
+  "suono-ferma": "stop-sound"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -531,8 +533,7 @@
   "admin-bot config history": "Shows the latest configuration changes.",
   "admin-bot config import": "Imports a configuration from a file exported with /admin-bot config export.",
   "admin-bot config nickname-bot": "Changes the bot's name in this server.",
-  "admin-bot config pulizia": "Removes channels and roles that no longer exist from the settings.",
-  "admin-bot config reset": "Resets this server's configuration.",
+  "admin-bot config reset": "Resets this server's configuration (and, on request, all data after 30 days).",
   "admin-bot config rollback": "Restores the previous value of a change.",
   "admin-bot config sincronizza": "Rewrites this server's command permissions.",
   "admin-bot lingua": "Server language",
@@ -1813,7 +1814,9 @@
   "mod-casi caso chat": "Sends the log of the channel's last messages saved with a case.",
   "owner radio cartella": "Owner track folder: list, reread, previews.",
   "music coda anteprime": "Queues the owner's preview tracks.",
-  "owner radio paese": "Global country for music searches (no limit by default)."
+  "owner radio paese": "Global country for music searches (no limit by default).",
+  "admin-bot config pulisci": "Deleted channels and roles: what will be cleaned from the settings and when (after 7 days).",
+  "music suono-ferma": "Stops the sound that just started in your voice channel."
  },
  "parametri": {},
  "menu": {

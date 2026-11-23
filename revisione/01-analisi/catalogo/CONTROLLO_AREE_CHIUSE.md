@@ -98,9 +98,9 @@ Giro r2utl (issue #128). «Corretta» = fa ciò che dice il catalogo e rispetta 
 | UTL-223 | sì (`/admin-bot canali`, `ignora`) | sì | nessuna | cogs/utility/politica.py; tests/test_politica_comandi.py::test_canali_ignora_ed_elenco |
 | UTL-224 | sì (`/admin-bot comando`) | sì | nessuna | test_comando_spegne_riaccende_e_rifiuta_i_nomi_sbagliati |
 | UTL-225 | sì (risposta effimera) | sì | nessuna | test_il_controllo_dell_albero_ferma_il_comando_spento_e_risponde_effimero |
-| UTL-226 | no | - | non è mio: `config_history.py` (nota in D100) | - |
+| UTL-226 | sì (`/admin-bot config pulisci`, 7 giorni, D111) | sì | nessuna | tests/test_config_orfani.py |
 | UTL-227 | sì (`ruolo-richiesto`) | sì | nessuna | test_cfg012_serve_uno_dei_ruoli_richiesti_per_il_comando_e_il_suo_gruppo |
-| UTL-228 | in parte | - | non è mio: `config_history.py` (nota in D100) | - |
+| UTL-228 | sì (`/admin-bot config reset anche_i_dati`, 30 giorni, D111) | sì | nessuna | tests/test_azzeramento_dati.py |
 
 ## 01-moderazione
 
@@ -221,7 +221,7 @@ Giro r5eco (issue #131, controllo). «Corretta» = fa ciò che dice il catalogo 
 | FUN-074 | sì (`/music suono`) | sì (solo suoni della soundboard di Discord, senza file nostri) | nessuna | cogs/fun/soundboard.py; tests/test_fun_controllo_area17.py::test_fun_074_075_077_suoni_del_server_con_completamento |
 | FUN-075 | in parte (i suoni del server sono quelli della soundboard di Discord, non file caricati da noi) | sì | nessuna: caricare file propri nel bot è fuori scelta (nessun file di terzi sul nostro disco; D70) | cogs/fun/soundboard.py; tests/test_fun_controllo_area17.py::test_fun_074_075_077_suoni_del_server_con_completamento |
 | FUN-077 | sì (completamento a 25 voci) | sì | nessuna | cogs/fun/soundboard.py; tests/test_fun_controllo_area17.py::test_fun_074_075_077_suoni_del_server_con_completamento |
-| FUN-078 | no | sì | non realizzata: D103 (un suono di soundboard dura pochi secondi e Discord non permette di fermarlo) | nessun file |
+| FUN-078 | sì (`/music suono-ferma` e bottone sotto il suono; il bot entrato solo per il suono esce dal canale) | sì | con la musica in riproduzione non si può fermare (D116) | tests/test_suono_ferma.py |
 | FUN-082 | sì | sì (categoria sicura, frase it/en, menzioni spente) | nessuna | cogs/fun/gif.py; data/gif_catalogo.json; tests/test_fun_controllo_area17.py::test_ogni_voce_gif_esiste_con_frase_nelle_due_lingue_e_una_fonte |
 | FUN-083 | sì | sì (categoria sicura, frase it/en, menzioni spente) | nessuna | cogs/fun/gif.py; data/gif_catalogo.json; tests/test_fun_controllo_area17.py::test_ogni_voce_gif_esiste_con_frase_nelle_due_lingue_e_una_fonte |
 | FUN-084 | sì | sì (categoria sicura, frase it/en, menzioni spente) | nessuna | cogs/fun/gif.py; data/gif_catalogo.json; tests/test_fun_controllo_area17.py::test_ogni_voce_gif_esiste_con_frase_nelle_due_lingue_e_una_fonte |

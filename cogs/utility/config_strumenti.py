@@ -1,23 +1,26 @@
 """
 cogs/utility/config_strumenti.py
 ================================
-Strumenti di configurazione del server e informazioni sul bot (#122): `/admin-bot config pulizia` (CFG-019),
+Strumenti di configurazione del server e informazioni sul bot (#122): `/admin-bot config pulisci` (CFG-019, UTL-226: pulizia dopo 7 giorni),
 `/admin-bot config sincronizza` (CFG-020), `/admin-bot config nickname-bot` (CFG-021) e `/utility info` (CFG-046).
 Funzioni coperte: SPEC §20 (NF-05), catalogo #122, parte E (D15)
-Dipende da: core/bot_aspetto.py, core/config_cleanup_logic.py, core/command_permissions.py, core/bot_info.py, core/bot_roles.py
+Dipende da: core/bot_aspetto.py, core/config_cleanup_logic.py, core/config_orfani_logic.py, core/command_permissions.py, core/bot_info.py, core/bot_roles.py
 """
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import platform
 import time
 
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 from core import bot_info, bot_roles
 from core.bot_aspetto import applica_aspetto
+from core.bot_ready import attendi_bot_pronto
 from core.command_permissions import (
     STATO_DA_RIPROVARE,
     STATO_SENZA_AUTORIZZAZIONE,
@@ -27,11 +30,16 @@ from core.command_permissions import (
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config
 from core.config_cleanup_logic import pulisci_configurazione
+from core.config_orfani_logic import GIORNI_ATTESA, anteprima, pulisci_scaduti
+from core.repositories.config_orfani_repo import config_orfani_repo
+from core.ui_base import BaseView
 from core.i18n import lingua_interazione, t, testo_per
 
 SOTTOGRUPPO_CONFIG = ("config", "Configurazione: canali, storico, ripristino ed esportazione")
 ATTESA_SYNC_SECONDI = 300
 MAX_VOCI_ANTEPRIMA = 15
+INTERVALLO_ORE_PULIZIA = 6
+logger = logging.getLogger("iyokai.config")
 
 
 def elenco_anteprima(voci) -> str:
@@ -40,6 +48,52 @@ def elenco_anteprima(voci) -> str:
     if len(voci) > MAX_VOCI_ANTEPRIMA:
         righe.append(f"... +{len(voci) - MAX_VOCI_ANTEPRIMA}")
     return "\n".join(righe)
+
+
+def e_proprietario(user_id: int, guild) -> bool:
+    """Solo chi possiede il server (mai un admin) può pulire subito."""
+    return guild is not None and user_id == guild.owner_id
+
+
+def elenco_ritardato(righe) -> str:
+    """Una riga per oggetto mancante: tipo, ID e quando verrà tolto dalla configurazione."""
+    out = [
+        f"- {r.tipo} `{r.oggetto_id}`: <t:{int(r.pulizia_il.timestamp())}:R> (`{', '.join(r.chiavi[:3])}`)"
+        for r in righe[:MAX_VOCI_ANTEPRIMA]
+    ]
+    if len(righe) > MAX_VOCI_ANTEPRIMA:
+        out.append(f"... +{len(righe) - MAX_VOCI_ANTEPRIMA}")
+    return "\n".join(out)
+
+
+class PulisciSubitoView(BaseView):
+    """Conferma della pulizia immediata: solo chi l'ha chiesta, e ancora proprietario del server."""
+
+    def __init__(self, guild, user_id: int) -> None:
+        super().__init__(timeout=60)
+        self.guild = guild
+        self.user_id = user_id
+
+    @discord.ui.button(label="Pulisci ora", style=discord.ButtonStyle.danger)
+    async def conferma(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        if interaction.user.id != self.user_id or not e_proprietario(interaction.user.id, self.guild):
+            await interaction.response.send_message(await testo_per(interaction, "cfg_pulisci_solo_proprietario"), ephemeral=True)
+            return
+        self.stop()
+        await interaction.response.defer(ephemeral=True)
+        esito = await pulisci_configurazione(self.guild, applica=True, changed_by=interaction.user.id)
+        await config_orfani_repo.togli(self.guild.id, [(v.tipo, i) for v in esito.voci for i in v.morti])
+        await interaction.edit_original_response(
+            content=await testo_per(interaction, "cfg_pulizia_fatta", n=esito.totale), view=None
+        )
+
+    @discord.ui.button(label="Annulla", style=discord.ButtonStyle.secondary)
+    async def annulla(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message(await testo_per(interaction, "cfg_pulisci_solo_proprietario"), ephemeral=True)
+            return
+        self.stop()
+        await interaction.response.edit_message(content=await testo_per(interaction, "cfg_pulisci_annullato"), view=None)
 
 
 def riassumi_esiti(esiti: dict) -> tuple[str, dict]:
@@ -65,26 +119,55 @@ class ConfigStrumentiCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------------
     @comando_di_gruppo(
-        "admin-bot", nome="pulizia", descrizione="Toglie dalla configurazione canali e ruoli che non esistono più.",
+        "admin-bot", nome="pulisci",
+        descrizione="Canali e ruoli cancellati: cosa si pulirà dalla configurazione e quando (dopo 7 giorni).",
         sottogruppo=SOTTOGRUPPO_CONFIG,
     )
-    @app_commands.describe(applica="Sì = toglie davvero; No = mostra solo cosa toglierebbe")
-    async def pulizia(self, interaction: discord.Interaction, applica: bool = False) -> None:
-        await interaction.response.defer(ephemeral=True)
+    @app_commands.describe(subito="Solo il proprietario del server: pulisce subito, dopo la tua conferma")
+    async def pulisci(self, interaction: discord.Interaction, subito: bool = False) -> None:
         guild = interaction.guild
         if guild is None or not guild.roles:
-            await interaction.followup.send(await testo_per(interaction, "cfg_pulizia_non_pronto"), ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "cfg_pulizia_non_pronto"), ephemeral=True)
             return
-        esito = await pulisci_configurazione(guild, applica=applica, changed_by=interaction.user.id)
-        if not esito.voci:
-            testo = await testo_per(interaction, "cfg_pulizia_niente")
-        elif applica:
-            testo = await testo_per(interaction, "cfg_pulizia_fatta", n=esito.totale)
-        else:
-            testo = await testo_per(
-                interaction, "cfg_pulizia_anteprima", n=esito.totale, elenco=elenco_anteprima(esito.voci)
-            )
-        await interaction.followup.send(testo[:1900], ephemeral=True)
+        if subito and not e_proprietario(interaction.user.id, guild):
+            await interaction.response.send_message(await testo_per(interaction, "cfg_pulisci_solo_proprietario"), ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        righe = await anteprima(guild, config_orfani_repo)
+        if not righe:
+            await interaction.followup.send(await testo_per(interaction, "cfg_pulizia_niente"), ephemeral=True)
+            return
+        testo = await testo_per(
+            interaction, "cfg_pulisci_anteprima", n=len(righe), giorni=GIORNI_ATTESA, elenco=elenco_ritardato(righe)
+        )
+        if not subito:
+            await interaction.followup.send(testo[:1900], ephemeral=True)
+            return
+        vista = PulisciSubitoView(guild, interaction.user.id)
+        await interaction.followup.send(
+            (testo + "\n\n" + await testo_per(interaction, "cfg_pulisci_chiedi"))[:1900], view=vista, ephemeral=True
+        )
+
+    @tasks.loop(hours=INTERVALLO_ORE_PULIZIA)
+    async def _giro_pulizia(self) -> None:
+        for guild in list(self.bot.guilds):
+            try:
+                await pulisci_scaduti(guild, config_orfani_repo)
+            except Exception:  # noqa: BLE001 - un server rotto non ferma gli altri
+                logger.warning("Pulizia ritardata della configurazione fallita per il server %s.", guild.id, exc_info=True)
+            await asyncio.sleep(0.2)
+
+    @_giro_pulizia.before_loop
+    async def _prima_del_giro(self) -> None:
+        await attendi_bot_pronto(self.bot)
+
+    async def cog_load(self) -> None:
+        await super().cog_load()
+        self._giro_pulizia.start()
+
+    async def cog_unload(self) -> None:
+        self._giro_pulizia.cancel()
+        await super().cog_unload()
 
     # ------------------------------------------------------------------
     @comando_di_gruppo(

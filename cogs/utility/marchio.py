@@ -5,7 +5,7 @@ cogs/utility/marchio.py
 `/admin-bot premium aspetto` (CFG-030, #122): avatar, banner e descrizione dello stesso iYokai, solo in questo server.
 Il token si scrive in una finestra (mai come opzione del comando), si prova con Discord e si salva cifrato.
 Le azioni passano da `core/whitelabel_bot.py`, le stesse del pannello web (D16).
-Funzioni coperte: SPEC §23 (NF-38), catalogo #122 (CFG-030)
+Funzioni coperte: SPEC §23 (NF-38), catalogo #122 (CFG-030), #128 (CFG-032: risincronizza i comandi e ultimi errori)
 Dipende da: core/whitelabel_bot.py, core/bot_aspetto.py, cogs/utility/premium_server.py (stesso sotto-gruppo)
 """
 
@@ -21,6 +21,7 @@ from cogs.utility.premium_server import SOTTOGRUPPO_PREMIUM
 from core.bot_aspetto import MAX_BIO, MAX_IMMAGINE, applica_aspetto
 from core.bot_ready import attendi_bot_pronto
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core import marchio_errori as errori_marchio
 from core.config import config
 from core.i18n import testo_per
 from core.ui_base import BaseModal
@@ -33,10 +34,20 @@ from core.whitelabel_bot import (
     collega_e_avvia,
     ha_premium,
     link_invito,
+    puo_usare_strumenti,
 )
 
 logger = logging.getLogger("iyokai.whitelabel")
 INTERVALLO_MINUTI = 30
+
+
+AZIONI_STRUMENTI = frozenset({"risincronizza", "errori"})
+
+
+def riga_errore(e: errori_marchio.ErroreMarchio) -> str:
+    """Una riga del registro: ora, origine e tipo di errore. Mai testi di errore, token o ID."""
+    extra = f" ({e.dettaglio})" if e.dettaglio else ""
+    return f"- <t:{int(e.quando.timestamp())}:R> `{e.origine}`: `{e.tipo}`{extra}"
 
 
 class TokenModal(BaseModal):
@@ -119,6 +130,8 @@ class MarchioCog(CogConGruppi, commands.Cog):
     @app_commands.choices(
         azione=[
             app_commands.Choice(name="stato", value="stato"),
+            app_commands.Choice(name="risincronizza i comandi", value="risincronizza"),
+            app_commands.Choice(name="ultimi errori", value="errori"),
             app_commands.Choice(name="collega bot (token)", value="imposta"),
             app_commands.Choice(name="testo di stato", value="testo"),
             app_commands.Choice(name="accendi", value="avvia"),
@@ -144,6 +157,9 @@ class MarchioCog(CogConGruppi, commands.Cog):
             )
             await interaction.response.send_modal(modal)
             return
+        if azione.value in AZIONI_STRUMENTI:
+            await self._strumenti(interaction, azione.value)
+            return
         if azione.value != "stato":
             chiave = await applica_azione(self.gestore, self.bot, guild.id, azione.value, testo)
             await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
@@ -159,6 +175,29 @@ class MarchioCog(CogConGruppi, commands.Cog):
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
+
+    async def _strumenti(self, interaction: discord.Interaction, azione: str) -> None:
+        """CFG-032: risincronizza i comandi e registro degli errori. Solo chi possiede il bot con marchio."""
+        guild = interaction.guild
+        marchio = await whitelabel_repo.get(guild.id)
+        if marchio is None:
+            await interaction.response.send_message(await testo_per(interaction, "mar_nessuno"), ephemeral=True)
+            return
+        if not puo_usare_strumenti(interaction.user.id, guild.owner_id, marchio):
+            await interaction.response.send_message(await testo_per(interaction, "mar_strumenti_non_tuoi"), ephemeral=True)
+            return
+        if azione == "risincronizza":
+            await interaction.response.defer(ephemeral=True)
+            chiave, valori = await self.gestore.risincronizza(guild.id)
+            await interaction.followup.send(await testo_per(interaction, chiave, **valori), ephemeral=True)
+            return
+        errori = errori_marchio.elenco(guild.id)
+        if not errori:
+            await interaction.response.send_message(await testo_per(interaction, "mar_errori_nessuno"), ephemeral=True)
+            return
+        righe = [riga_errore(e) for e in errori]
+        testo = await testo_per(interaction, "mar_errori_titolo", n=len(righe)) + "\n" + "\n".join(righe)
+        await interaction.response.send_message(testo[:1900], ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
 
     # ------------------------------------------------------------------
     @comando_di_gruppo(

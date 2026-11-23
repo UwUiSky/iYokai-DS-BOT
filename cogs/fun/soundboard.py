@@ -5,9 +5,10 @@ Effetti sonori in vocale: un suono della soundboard (del server o
 predefinito di Discord) suonato da un bot musicale nel canale di chi lo
 chiede. Se il canale ha già un bot musicale si usa quello (la musica non
 si ferma); se no entra il primo libero, suona e poi esce. Pausa per utente.
-Il comando sta nel gruppo music (il gruppo fun ha già 25 figli). Un admin può
-limitare ogni suono a certi ruoli o vietarlo ad altri con `/admin-musica suono-ruoli` (massimo 20 ruoli per suono).
-Funzioni coperte: SPEC §23 (NF-35, FUN-076)
+Il comando sta nel gruppo music (il gruppo fun ha già 25 figli). Il suono in corso si ferma con `/music suono-ferma`
+o col bottone sotto «suono partito»: chi l'ha avviato, staff e DJ, o chiunque sia nel canale se chi l'ha avviato non c'è
+più. Un admin può limitare ogni suono a certi ruoli o vietarlo ad altri con `/admin-musica suono-ruoli` (massimo 20 ruoli per suono).
+Funzioni coperte: SPEC §23 (NF-35, FUN-076, FUN-078)
 Dipende da: cogs/music/player.py (worker, nodo, ingresso nel canale),
 core/music_sound_logic.py, core/suoni_ruoli_logic.py.
 """
@@ -26,8 +27,9 @@ from core.command_access import Livello, autocomplete_protetto, richiedi
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.i18n import testo_per
+from core.ui_base import BaseView
 from core.music_settings_logic import channel_not_allowed, load_music_settings
-from core.music_sound_logic import ATTESA_USCITA, PausaUtente, Suono, scelte, trova
+from core.music_sound_logic import ATTESA_USCITA, PausaUtente, Suono, SuoniInCorso, puo_fermare_suono, scelte, trova
 from core.repositories.suoni_ruoli_repo import suoni_ruoli_repo
 from core.suoni_ruoli_logic import MAX_RUOLI_PER_SUONO, MODI, RUOLO_BLOCCO, puo_suonare
 
@@ -35,6 +37,20 @@ logger = logging.getLogger("iyokai.music.suoni")
 
 MSG_NESSUN_NODO = "Nessun nodo audio è collegato per il music bot libero. Riprova tra poco."
 RIPRISTINA_SORDO_DOPO = 6.0  # secondi
+
+
+class FermaSuonoView(BaseView):
+    """Il bottone sotto «suono partito»: vale quanto dura il suono. Chi preme si controlla di nuovo ogni volta."""
+
+    def __init__(self, cog: "SoundboardCog", canale_id: int) -> None:
+        super().__init__(timeout=ATTESA_USCITA)
+        self.cog = cog
+        self.canale_id = canale_id
+
+    @discord.ui.button(label="Ferma il suono", style=discord.ButtonStyle.secondary, emoji="⏹️")
+    async def ferma(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        chiave = await self.cog.ferma_suono(interaction, self.canale_id)
+        await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
 
 
 class SoundboardCog(CogConGruppi, commands.Cog):
@@ -47,6 +63,10 @@ class SoundboardCog(CogConGruppi, commands.Cog):
         self._uscite: dict[tuple[int, int], asyncio.Task] = {}
         # Ritorno "sordo" programmato del bot musicale, per (server, canale).
         self._sordi: dict[tuple[int, int], asyncio.Task] = {}
+        # Il suono appena partito per (server, canale): chi l'ha avviato e se il bot è entrato solo per quello.
+        self._in_corso = SuoniInCorso()
+        # Il bot che l'ha suonato, per fermarlo uscendo dal canale.
+        self._worker_suono: dict[tuple[int, int], tuple] = {}
 
     async def cog_unload(self) -> None:
         await super().cog_unload()
@@ -157,7 +177,62 @@ class SoundboardCog(CogConGruppi, commands.Cog):
         oggetto = disponibili[trovato.valore][1]
         self.pausa.segna(guild.id, interaction.user.id)
         testo = await self.suona(musica, interaction, canale_id, oggetto)
-        await interaction.followup.send(testo.replace("{nome}", trovato.nome), ephemeral=True)
+        vista = FermaSuonoView(self, canale_id) if self._in_corso.attivo(guild.id, canale_id) else None
+        if vista is not None:
+            await interaction.followup.send(testo.replace("{nome}", trovato.nome), view=vista, ephemeral=True)
+        else:
+            await interaction.followup.send(testo.replace("{nome}", trovato.nome), ephemeral=True)
+
+    @comando_di_gruppo("music", nome="suono-ferma", descrizione="Ferma il suono appena partito nel tuo canale vocale.")
+    async def suono_ferma(self, interaction: discord.Interaction) -> None:
+        musica = self.bot.get_cog("MusicCog")
+        if musica is None:
+            await interaction.response.send_message(await testo_per(interaction, "soundboard_la_musica_non_disponibile_ora"), ephemeral=True)
+            return
+        if not await musica._controlli_base(interaction):
+            return
+        chiave = await self.ferma_suono(interaction, interaction.user.voice.channel.id)
+        await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
+
+    async def ferma_suono(self, interaction: discord.Interaction, canale_id: int) -> str:
+        """
+        FUN-078: ferma il suono in corso nel canale. Restituisce la chiave del messaggio. Discord non ha un comando per
+        interrompere un suono della soundboard: se il bot è entrato solo per il suono esce dal canale (e il suono si
+        interrompe con lui); se sta suonando musica non si tocca, e si dice chiaro.
+        """
+        guild = interaction.guild
+        musica = self.bot.get_cog("MusicCog")
+        suono = self._in_corso.attivo(guild.id, canale_id)
+        if suono is None or musica is None:
+            return "suono_nessuno_in_corso"
+        utente = interaction.user
+        canale_utente = getattr(getattr(utente, "voice", None), "channel", None)
+        canale_suono = guild.get_channel(canale_id)
+        umani = musica._ascoltatori_umani(canale_suono) if canale_suono is not None else []
+        if canale_utente is not None and canale_utente.id != canale_id:
+            return "suono_altro_canale"  # chi sta in un altro canale non ferma questo (nemmeno lo staff)
+        privilegiato = await musica._privilegi(interaction)
+        if not puo_fermare_suono(privilegiato, suono.avviato_da, utente.id, umani):
+            return "suono_non_tuo"
+        if not suono.da_solo:
+            return "suono_con_musica"  # il bot sta suonando musica: uscire la fermerebbe
+        worker_guild = self._worker_suono.get((guild.id, canale_id))
+        player = worker_guild.voice_client if worker_guild is not None else None
+        if player is None:
+            self._in_corso.togli(guild.id, canale_id)
+            return "suono_nessuno_in_corso"
+        async with musica._lock_canale(guild.id, canale_id):
+            if getattr(player, "playing", False) or not getattr(player.queue, "is_empty", True):
+                return "suono_con_musica"  # nel frattempo è partita della musica
+            uscita = self._uscite.pop((guild.id, canale_id), None)
+            if uscita is not None:
+                uscita.cancel()
+            try:
+                await player.disconnect()
+            finally:
+                await self.bot.music_fleet.release_session(guild.id, canale_id)
+        self._in_corso.togli(guild.id, canale_id)
+        return "suono_fermato"
 
     @autocomplete_protetto(Livello.ADMIN)
     async def _nomi_admin(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
@@ -267,6 +342,9 @@ class SoundboardCog(CogConGruppi, commands.Cog):
                 if era_sordo:
                     await worker_guild.change_voice_state(channel=canale, self_deaf=False)
                 await canale.send_sound(oggetto)
+                da_solo = temporaneo or (guild_id, canale_id) in self._uscite
+                self._in_corso.segna(guild_id, canale_id, interaction.user.id, da_solo)
+                self._worker_suono[chiave] = worker_guild
             except discord.Forbidden:
                 return "Il music bot non ha il permesso di usare la soundboard in questo canale."
             except discord.HTTPException:
