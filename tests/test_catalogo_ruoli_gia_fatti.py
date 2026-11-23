@@ -202,6 +202,7 @@ def test_RUO_060_RUO_061_temp_ha_scadenza_e_normal_e_il_ritorno():
     assert n.aggiungi == (1,) and n.temporaneo_secondi is None
 
 
+# RUO-035
 def test_RUO_066_RUO_067_ruoli_ammessi_ed_esclusi_l_esclusione_vince():
 
 

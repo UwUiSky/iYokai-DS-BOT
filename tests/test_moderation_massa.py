@@ -74,6 +74,7 @@ def test_lettura_dell_elenco():
     assert "2 fatti" in riepilogo(["a", "b"], []) and "1 saltati" in riepilogo([], ["x"])
 
 
+# MOD-001
 async def test_ban_in_massa_anche_fuori_dal_server_e_salta_chi_non_si_tocca():
     server, membri, interazione, log = _scena(membri_ids=(A,))
     capo = fake_member(B, roles=[fake_role(role_id=9, position=45)])  # sopra il moderatore

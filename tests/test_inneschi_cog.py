@@ -259,6 +259,7 @@ def _messaggio(canale_id=3, testo="un argomento", bot=False, tipo=discord.Messag
     return SimpleNamespace(guild=server, author=autore, content=testo, channel=canale, type=tipo)
 
 
+# CFG-016
 async def test_utl_070_canale_scorciatoia_fa_partire_il_tag_con_il_testo(cog):
     """UTL-070: ogni messaggio scritto nel canale scorciatoia fa partire il tag col testo come argomento."""
     cog.repo.per_tipo.return_value = [riga(tipo="canale_testo", valore="3", canale_id=3)]

@@ -49,6 +49,7 @@ def test_normalizza_nome(grezzo, atteso):
 @pytest.mark.parametrize("prefisso, valido", [("!", True), ("?!", True), (".", True), ("", False), ("abcd", False),
                                                 ("a", False), ("1", False), (" ", False), ("/", False), ("@", False),
                                                 ("#", False), ("<", False), ("!!!!", False)])
+# CFG-017
 def test_valida_prefisso(prefisso, valido):
     assert (valida_prefisso(prefisso) is None) is valido
 
@@ -131,6 +132,7 @@ async def test_modifica_cambia_solo_i_campi_dati(repo):
     assert await repo.update_tag(1, "assente", response="x") is False
 
 
+# CFG-017
 @pytest.mark.asyncio
 async def test_prefisso_per_server(repo):
     assert await repo.get_prefix(1) is None

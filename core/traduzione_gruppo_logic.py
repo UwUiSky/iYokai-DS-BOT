@@ -3,7 +3,7 @@ core/traduzione_gruppo_logic.py
 ===============================
 Raccoglie i messaggi consecutivi della stessa persona in un canale con traduzione automatica, così si traduce
 una volta sola e con tutto il senso. Nessun accesso a Discord.
-Funzioni coperte: SPEC §25.77 (AI-R-084)
+Funzioni coperte: SPEC §25.77 (AI-R-084); AI-022 (menu «Traduci» di iYokai App)
 """
 
 from __future__ import annotations
@@ -42,3 +42,20 @@ class RaccoltaMessaggi:
             return None
         ids, parti = trovata
         return ids, "\n".join(parti)
+
+
+def unisci_successivi(testo: str, autore: int, dopo: list[tuple[int, str]]) -> str:
+    """AI-022: al testo del messaggio scelto aggiunge quelli di fila dello stesso autore (`dopo` = (autore, testo) in
+    ordine); si ferma al primo di un'altra persona, al tetto di messaggi o di caratteri. Senza testo non entra."""
+    parti = [testo]
+    totale = len(testo)
+    for chi, altro in dopo:
+        if chi != autore or len(parti) >= MAX_MESSAGGI:
+            break
+        if not altro.strip():
+            continue
+        if totale + len(altro) > MAX_CARATTERI:
+            break
+        parti.append(altro)
+        totale += len(altro)
+    return "\n".join(parti)

@@ -5,7 +5,7 @@ Menu «App» sul messaggio (tasto destro) di iYokai App (SPEC §B.2): Traduci, S
 Citazione come immagine, Meme da questa immagine, Controlla i link, Segnala alla rete iYokai, Spiega o riassumi;
 più `/segnalibri elenco|rimuovi`. Ogni comando risponde una volta sola (dove l'app non è nel server Discord ne
 ammette 5 in tutto). Si carica solo sul client dell'app (core/user_app_bot.py).
-Funzioni coperte: SPEC §B.2 (NF-36, #107)
+Funzioni coperte: SPEC §B.2 (NF-36, #107); AI-022 (Traduci unisce i messaggi di fila)
 Dipende da: core/user_app_messaggi.py, core/user_app_ai.py, core/support_service.py
 """
 
@@ -24,6 +24,7 @@ from core.meme_logic import render_meme
 from core.phishing_list_fetcher import lista_phishing
 from core.repositories.user_app_repo import MAX_SEGNALIBRI, user_app_repo
 from core.safe_image import MAX_IMAGE_BYTES, run_image_task
+from core.traduzione_gruppo_logic import MAX_MESSAGGI, unisci_successivi
 from core.support_service import SupportoNonAttivo, TroppeRichieste, apri_richiesta
 from core.ui_base import BaseModal
 from core.user_app_ai import chiedi_ai_app
@@ -192,10 +193,23 @@ class MessaggiCog(commands.Cog):
         if funzione == "spiega" and len(testo) > SOGLIA_RIASSUNTO:
             funzione = "riassumi"
         await interaction.response.defer(ephemeral=True)
+        if funzione == "traduci":
+            testo = await self._con_successivi(messaggio, testo)
         risposta, motivo = await chiedi_ai_app(
             interaction.user.id, f"app_{funzione}", tipo, testo, istruzioni_ai(funzione, lingua), lingua
         )
         await interaction.followup.send((risposta or motivo or "")[:2000], ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
+
+    async def _con_successivi(self, messaggio: discord.Message, testo: str) -> str:
+        """AI-022: accoda al testo i messaggi di fila dello stesso autore, se il canale si può leggere."""
+        try:
+            dopo = [
+                (m.author.id, testo_del_messaggio(m))
+                async for m in messaggio.channel.history(limit=MAX_MESSAGGI, after=messaggio, oldest_first=True)
+            ]
+        except (discord.HTTPException, AttributeError, TypeError):
+            return testo
+        return unisci_successivi(testo, messaggio.author.id, dopo)
 
     async def menu_traduci(self, interaction: discord.Interaction, messaggio: discord.Message) -> None:
         await self._con_ai(interaction, messaggio, "traduci", "traduzione")

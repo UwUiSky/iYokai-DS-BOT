@@ -74,6 +74,7 @@ def test_striscia_con_immagine_rotta_ricade_sulla_base():
     assert Image.open(io.BytesIO(png)).size == (256, 128)
 
 
+# FUN-020
 def test_ship_amicizia_diversa_da_amore_e_simmetrica():
     from core.fun_logic import compute_ship_percentage, ship_flavor_text
 
@@ -85,6 +86,7 @@ def test_ship_amicizia_diversa_da_amore_e_simmetrica():
     assert ship_flavor_text(95, "amicizia") != ship_flavor_text(95)
 
 
+# FUN-033
 def test_chuck_in_italiano_e_nelle_scelte():
     from core.classic_entertainment_logic import JOKES_TEMATICHE
 
@@ -158,6 +160,7 @@ def test_coinflip_quante_e_ship_tema_sono_facoltative_con_limiti():
     assert t["tema"].required is False and len(t["tema"].choices) == 2
 
 
+# FUN-020
 async def test_ship_amicizia_titolo():
     from cogs.fun.ship_rate import ShipRateCog
 
@@ -169,6 +172,7 @@ async def test_ship_amicizia_titolo():
     assert "mic" in emb.title.lower()
 
 
+# FUN-033
 async def test_joke_chuck():
     cog = EntertainmentCog(bot=None)
     it = _it()

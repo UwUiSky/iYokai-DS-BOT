@@ -82,6 +82,7 @@ async def test_tetto_variabili():
     assert r.errore and r.errore.chiave == "tag_script_troppe_variabili"
 
 
+# FUN-136
 # ------------------------------------------------------------------ funzioni
 async def test_lista_caso_ripeti_con_rng_fisso():
     assert await run("{lista:a|b|c}") in {"a", "b", "c"}
