@@ -4070,5 +4070,8 @@
   "sala_tamburo_vince": "🏆 {chi} is the last one left and wins the pot!",
   "sala_tamburo_turno": "🎯 It's {chi}'s turn: press a slot ({secondi} seconds). {caselle}\nStill in: {vivi}",
   "eco_negozio_web_acceso": "The shop is now also on the website (read-only), at `{indirizzo}` of the web panel.",
-  "eco_negozio_web_spento": "The shop is no longer shown on the website."
+  "eco_negozio_web_spento": "The shop is no longer shown on the website.",
+  "backup_carica_scegli": "Give a copy number, or `ultima_automatica:yes`: only one of the two.",
+  "backup_ultima_solo_proprietario": "Only the server owner can load the latest automatic copy after an attack.",
+  "backup_nessuna_automatica": "There is no automatic copy. Turn them on with `/founder backup automatico` (from 3 hours)."
 }

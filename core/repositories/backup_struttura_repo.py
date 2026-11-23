@@ -90,6 +90,15 @@ class BackupStrutturaRepository:
         )
         return [CopiaStruttura(**dict(r)) for r in righe]
 
+    async def ultima_automatica(self, guild_id: int) -> tuple[int, datetime, dict] | None:
+        """SIC-016: la copia automatica più recente (mai una fatta a mano): (id, data, dati) o None."""
+        riga = await self._pool.fetchrow(
+            "SELECT id, creato_il, dati FROM backup_strutture WHERE guild_id = $1 AND dati->>'automatica' = 'true' "
+            "ORDER BY creato_il DESC, id DESC LIMIT 1",
+            guild_id,
+        )
+        return None if riga is None else (riga["id"], riga["creato_il"], json.loads(riga["dati"]))
+
     async def leggi_struttura(self, guild_id: int, copia_id: int) -> dict | None:
         dati = await self._pool.fetchval(
             "SELECT dati FROM backup_strutture WHERE guild_id = $1 AND id = $2", guild_id, copia_id

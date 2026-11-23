@@ -409,6 +409,12 @@ def conta_passi(dati: dict, parti: set[str]) -> int:
     return passi
 
 
+def solo_struttura(dati: dict) -> dict:
+    """SIC-016: la copia ridotta alla sola struttura (ruoli, categorie, canali): niente ban, membri, messaggi, emoji, impostazioni."""
+    tenuti = ("versione", "tipo", "ruoli", "everyone", "categorie", "canali")
+    return {k: v for k, v in dati.items() if k in tenuti}
+
+
 def parti_presenti(dati: dict) -> list[str]:
     """Le parti che il file contiene davvero (ban e membri solo se salvati)."""
     return [p for p in PARTI if p == "impostazioni" and dati.get("impostazioni")

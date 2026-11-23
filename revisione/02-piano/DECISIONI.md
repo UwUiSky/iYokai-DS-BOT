@@ -1539,3 +1539,4 @@ Attua D119 per le voci medie. Elenco delle voci e dei motivi in fondo, aggiornat
 - **TKT-088**: fatta, con il vincolo dell'owner: serve una chiave Bloxlink nel `.env`; senza resta spenta. Il collegamento Discord-Roblox è di Bloxlink (il bot non lo conosce); l'API di Roblox è pubblica.
 - **ECO-093**: fatta: tema delicato risolto con nome e grafica neutri («Tamburo», una sfera rossa in una casella), come dice il catalogo.
 - **ECO-080**: fatta: il sito mostra il negozio in sola lettura; comprare resta su Discord (il sito non tocca le monete di nessuno).
+- **SIC-016**: fatta: nessun sistema nuovo, si riusa BKP-008 e il caricamento esistente. L'avviso dell'anti-nuke non cita ancora il comando (resta una riga di testo da aggiungere in `cogs/security/anti_nuke.py`).

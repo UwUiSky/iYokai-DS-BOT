@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-ORE_MINIME, ORE_MASSIME = 4, 168
+ORE_MINIME, ORE_MASSIME = 3, 168  # SIC-016: 3 ore per chi vuole ripartire da una copia fresca dopo un attacco
 COPIE_MINIME, COPIE_MASSIME = 1, 8
 
 

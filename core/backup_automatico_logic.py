@@ -1,9 +1,9 @@
 """
 core/backup_automatico_logic.py
 ===============================
-Copie automatiche della struttura del server a intervalli (da 4 ore a 7 giorni), con da 1 a 8 copie
+Copie automatiche della struttura del server a intervalli (da 3 ore a 7 giorni: SIC-016), con da 1 a 8 copie
 tenute: la più vecchia automatica si sovrascrive, le copie fatte a mano non si toccano.
-Funzioni coperte: BKP-008
+Funzioni coperte: BKP-008, SIC-016
 """
 
 from __future__ import annotations
