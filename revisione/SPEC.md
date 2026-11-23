@@ -3078,3 +3078,7 @@ tabella dei totali: **238/3/35**.
 ## Appendice — Giro r1doc: voci del catalogo citate solo nei documenti (23/11/2026, D119)
 
 Controllo delle 89 voci in `revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.md` (sezione «Voci solo nei documenti»). Fatte in questo giro: LIV-013 (XP da messaggi e da vocale, 0850), LIV-046 (ruolo premio con livello vocale, 0852), LIV-053 (sfondi pronti), LIV-061 (top 10 settimanale, 0851), LIV-090 (filtro sulla presentazione), LIV-091 (XP globali), CFG-011 (risposte private fuori dal canale dei bot), VOC-017 (azioni del vocale per ruolo), MUS-043 (`/music queue file:`), FUN-030 (`caso immagine:`), AI-022 (Traduci unisce i messaggi di fila). Già fatte ma senza il codice nei test, ora segnate: LIV-020, 026, 035, 036, 037, 065, 066, 067; AI-012, 016, 023, 025; CFG-015, 016, 017; FUN-020, 033, 063, 136, 139; MOD-001, 028, 029, 042; RUO-035; SIC-045; TKT-038; UTL-154, 158, 159, 160; VOC-021.
+
+## Appendice — Giro r1med: voci medie rimaste (D121)
+
+- `[x]` ECO-006 (D121): `/admin-economia annunci vincitori-set registro:sì` manda ogni minuto un riepilogo dei movimenti di monete (ECO-006, 0881, `core/economia_registro.py`).

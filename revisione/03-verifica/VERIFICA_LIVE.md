@@ -1956,3 +1956,4 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 ## Giro r1med (D121)
 
 - [ ] `LOG-029` — Fai cancellare e modificare qualche messaggio a un utente di prova (con i log dei messaggi accesi), poi dagli un warn. `/mod-casi caso chat numero:<caso> archivio:sì` manda `archivio_caso_N.txt` con una riga per evento (quando, canale, id messaggio) e dice che il testo non è conservato. Un caso senza eventi risponde che non c'è archivio.
+- [ ] `ECO-006` — `/admin-economia annunci vincitori-set channel:#registro registro:sì` poi fai un daily e un acquisto: entro un minuto compare UN messaggio «Registro dei movimenti di monete» con i totali e le righe. `vincitori-off registro:sì` lo spegne.

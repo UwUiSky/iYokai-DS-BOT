@@ -4014,5 +4014,8 @@
   "voicetemp_azione_puo": "can do",
   "voicetemp_azione_non_puo": "cannot do",
   "casesystem_archivio_non_c_e": "This case has no message archive (the user had no deleted or edited messages in the 3 days before).",
-  "casesystem_archivio_pronto": "Archive of the user's messages before the case: {n} events from the last 3 days, taken from the bot's log. Message text is not kept."
+  "casesystem_archivio_pronto": "Archive of the user's messages before the case: {n} events from the last 3 days, taken from the bot's log. Message text is not kept.",
+  "economia_registro_attivo": "The coin movements log will go to {mention}: one summary per minute, only for movements from now on (not staff changes).",
+  "economia_registro_spento": "Movements log turned off.",
+  "economia_registro_non_era_attivo": "The movements log was not on."
 }

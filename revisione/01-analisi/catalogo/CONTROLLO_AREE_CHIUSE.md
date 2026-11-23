@@ -410,7 +410,7 @@ Giro r1doc (D119, 23/11/2026): le 89 voci citate solo nei documenti, controllate
 | CFG-040 | in parte (tetti gratis/premium per funzione, es. dati dei tag 1.000 e 5.000) | sì | non fatta: piani e prezzi sono una scelta commerciale dell'owner (D96). Il motivo regge | — |
 | CFG-041 | in parte (concessione mensile o annuale senza prezzi) | sì | non fatta: prezzi e sconti sono una scelta commerciale dell'owner (D96). Il motivo regge | — |
 | CFG-044 | in parte (`/admin-ticket pannelli modulo-copia`) | sì per ciò che c'è | da fare: media (duplica per pannello e risposta pronta). Il motivo «tocca altre aree» non regge (D18) | tests/test_ticket_form*.py (modulo-copia) |
-| ECO-006 | no | n/d | da fare: media. Il motivo di D86 (volumi alti) non regge: si manda un riepilogo ogni minuto, non un messaggio per movimento | — |
+| ECO-006 | no | n/d | realizzata (0881, D121): `/admin-economia annunci vincitori-set channel: registro:sì` (e `vincitori-off registro:sì`); un riepilogo ogni minuto dei movimenti nuovi dello storico (ECO-007), 300 per giro e 20 righe per messaggio, menzioni spente; non racconta il passato né le modifiche dello staff | core/economia_registro.py; tests/test_economia_registro_eco006.py |
 | ECO-048 | no | n/d | non fatta: il bot non è su nessun elenco (D86). **Conflitto**: D72 chiede il codice pronto e spento. Da fare: grande (modulo voto, D119) | — |
 | ECO-049 | no | n/d | come ECO-048 (dipende da quella) | — |
 | ECO-050 | no | n/d | da fare: media, premium (D72 lo vuole). Il motivo di D86 («da progettare con dev-core») non regge | — |

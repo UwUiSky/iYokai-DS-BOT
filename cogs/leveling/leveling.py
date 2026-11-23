@@ -85,6 +85,7 @@ from core.moneta_server import MonetaNonValida, aggiungi_moneta, prepara_moneta
 from core.safe_image import MAX_IMAGE_BYTES, run_image_task
 from core.drop_logic import DEFAULT_DROP_CHANCE, DEFAULT_MAX_COINS, DEFAULT_MIN_COINS, should_trigger_drop
 from core.channel_access import PERMESSI_DI_SCRITTURA, motivo_se_il_bot_non_puo
+from core import economia_registro
 from core.giveaway_immagine import conserva_allegato, file_annuncio
 from core.giveaway_logic import (
     MAX_INGRESSI_EXTRA,
@@ -2108,12 +2109,27 @@ class LevelingCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         channel="Canale dell'annuncio",
         settimanale="Sì = annuncia la top 10 di ogni settimana (il lunedì) invece dei vincitori del mese",
+        registro="Sì = il canale riceve ogni minuto il riepilogo dei movimenti di monete (ECO-006)",
     )
     async def monthly_winners_set(
-        self, interaction: discord.Interaction, channel: discord.TextChannel, settimanale: bool = False
+        self, interaction: discord.Interaction, channel: discord.TextChannel, settimanale: bool = False,
+        registro: bool = False,
     ) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
+            return
+
+        if registro:  # ECO-006
+            permessi = channel.permissions_for(guild.me)
+            if not (permessi.view_channel and permessi.send_messages and permessi.embed_links):
+                await interaction.response.send_message(
+                    await testo_per(interaction, "annuncio_prova_permessi", canale=channel.mention), ephemeral=True
+                )
+                return
+            await economia_registro.imposta(guild.id, channel.id)
+            await interaction.response.send_message(
+                await testo_per(interaction, "economia_registro_attivo", mention=channel.mention), ephemeral=True
+            )
             return
 
         if settimanale:  # LIV-061
@@ -2142,10 +2158,20 @@ class LevelingCog(CogConGruppi, commands.Cog):
         descrizione="Disattiva l'annuncio dei vincitori del mese.",
         sottogruppo=SOTTOGRUPPI["admin-economia annunci"],
     )
-    @app_commands.describe(settimanale="Sì = spegne la top 10 della settimana invece dei vincitori del mese")
-    async def monthly_winners_disable(self, interaction: discord.Interaction, settimanale: bool = False) -> None:
+    @app_commands.describe(
+        settimanale="Sì = spegne la top 10 della settimana invece dei vincitori del mese",
+        registro="Sì = spegne il registro dei movimenti di monete (ECO-006)",
+    )
+    async def monthly_winners_disable(
+        self, interaction: discord.Interaction, settimanale: bool = False, registro: bool = False
+    ) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
+            return
+
+        if registro:  # ECO-006
+            chiave = "economia_registro_spento" if await economia_registro.togli(guild.id) else "economia_registro_non_era_attivo"
+            await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
             return
 
         if settimanale:  # LIV-061

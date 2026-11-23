@@ -4014,5 +4014,8 @@
   "voicetemp_azione_puo": "può fare",
   "voicetemp_azione_non_puo": "non può fare",
   "casesystem_archivio_non_c_e": "Per questo caso non c'è un archivio dei messaggi (nessun messaggio cancellato o modificato dall'utente nei 3 giorni prima).",
-  "casesystem_archivio_pronto": "Archivio dei messaggi dell'utente prima del caso: {n} eventi degli ultimi 3 giorni, presi dal registro del bot. Il testo dei messaggi non è conservato."
+  "casesystem_archivio_pronto": "Archivio dei messaggi dell'utente prima del caso: {n} eventi degli ultimi 3 giorni, presi dal registro del bot. Il testo dei messaggi non è conservato.",
+  "economia_registro_attivo": "Il registro dei movimenti di monete andrà in {mention}: un riepilogo ogni minuto, solo dei movimenti da ora in poi (non quelli dello staff).",
+  "economia_registro_spento": "Registro dei movimenti spento.",
+  "economia_registro_non_era_attivo": "Il registro dei movimenti non era acceso."
 }
