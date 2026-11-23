@@ -308,6 +308,12 @@ class Config:
     # (indirizzo: WEB_BIND_HOST, condiviso con il server webhook sotto).
     RESTORE_WEB_PORT: int = field(default=8420)
 
+    # --- Voto al bot su un sito di elenchi (D119, D120) ----------------
+    # Segreto che il sito (es. top.gg) manda con ogni voto, e porta del piccolo server che lo riceve
+    # (indirizzo: WEB_BIND_HOST). Senza segreto il modulo «voto» resta spento e non apre nessuna porta.
+    VOTO_SEGRETO: str = field(default="", repr=False)
+    VOTO_PORT: int = field(default=8422)
+
     # --- Webhook custom in ricezione (SPEC.md §10.8) --------------------
     # Porta su cui core/custom_webhook_server.py ascolta i webhook PUSH
     # di servizi terzi — a differenza del server restore sopra, questo
@@ -479,6 +485,8 @@ def _load_config() -> Config:
         OAUTH_ENCRYPTION_KEY=_optional("OAUTH_ENCRYPTION_KEY", ""),
         VERIFY_IP_ENCRYPTION_KEY=_optional("VERIFY_IP_ENCRYPTION_KEY", ""),
         TICKET_TRASCRIZIONI_KEY=_optional("TICKET_TRASCRIZIONI_KEY", ""),
+        VOTO_SEGRETO=_optional("VOTO_SEGRETO", ""),
+        VOTO_PORT=_optional_int("VOTO_PORT", 8422),
         RESTORE_WEB_PORT=_optional_int("RESTORE_WEB_PORT", 8420),
         ALERTS_WEBHOOK_PORT=_optional_int("ALERTS_WEBHOOK_PORT", 8421),
         ALERTS_WEBHOOK_PUBLIC_BASE_URL=_optional("ALERTS_WEBHOOK_PUBLIC_BASE_URL", ""),

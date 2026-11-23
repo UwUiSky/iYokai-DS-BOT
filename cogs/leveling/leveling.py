@@ -189,6 +189,9 @@ from core.leveling_logic import (
     xp_for_level,
 )
 from core.premium import PremiumModule, registry
+from core.config import config as app_config
+from core.repositories.voto_repo import voto_repo
+from core.voto_logic import segreto_valido
 
 logger = logging.getLogger("iyokai.leveling")
 
@@ -268,6 +271,16 @@ def tipo_di_canale(canale) -> str:
     if isinstance(canale, (discord.VoiceChannel, discord.StageChannel)):
         return "chat_vocale"
     return "testo"
+
+
+async def _fattore_voto(guild_id: int, user_id: int) -> float:
+    """LIV-019: +N% di XP per qualche ora dopo aver votato il bot. Senza chiave del voto vale 1 e non tocca il database."""
+    if not segreto_valido(app_config.VOTO_SEGRETO):
+        return 1.0
+    try:
+        return await voto_repo.fattore_xp(guild_id, user_id)
+    except Exception:
+        return 1.0
 
 
 async def _comando_rifiutato(interaction: discord.Interaction) -> bool:
@@ -1169,7 +1182,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
     ) -> None:
         """Dà l'XP testuale (stessa attesa per messaggi e comandi) e annuncia il level-up."""
         impostazioni = config.impostazioni
-        importo = xp_con_moltiplicatore(base, config.moltiplicatore(id_canale, id_ruoli))
+        importo = xp_con_moltiplicatore(base, config.moltiplicatore(id_canale, id_ruoli) * await _fattore_voto(guild.id, utente.id))
         risultato = await leveling_repo.add_text_xp(
             guild.id,
             utente.id,
@@ -1227,7 +1240,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         id_ruoli = [r.id for r in getattr(utente, "roles", [])]
         if config.e_escluso(id_canale, id_ruoli) or await blacklist_repo.is_user_blacklisted(utente.id):
             return
-        importo = xp_con_moltiplicatore(base, config.moltiplicatore(id_canale, id_ruoli))
+        importo = xp_con_moltiplicatore(base, config.moltiplicatore(id_canale, id_ruoli) * await _fattore_voto(utente.guild.id, utente.id))
         risultato = await leveling_repo.add_reaction_xp(
             utente.guild.id, utente.id, importo, direzione, imp.reazioni_attesa,
             max_level=imp.max_level, formula=imp.formula, tetto_giorno=MAX_REAZIONI_AL_GIORNO,
@@ -1424,7 +1437,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 id_canale = id_canali_per_le_regole(channel)
                 if config.e_escluso(id_canale, id_ruoli):
                     eligible = False
-                moltiplicatori[member.id] = config.moltiplicatore(id_canale, id_ruoli)
+                moltiplicatori[member.id] = config.moltiplicatore(id_canale, id_ruoli) * await _fattore_voto(guild.id, member.id)
                 presenti.append((member, channel, eligible))
 
         if not presenti:

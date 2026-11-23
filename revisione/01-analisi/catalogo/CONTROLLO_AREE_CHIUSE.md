@@ -360,16 +360,16 @@ Giro r2bkp (issue #132). Il codice AI passa sempre dalla porta unica `core/ai_se
 
 ## Voci solo nei documenti
 
-Giro r1doc (D119, 23/11/2026): le 89 voci citate solo nei documenti, controllate una per una. Esito: **44** esistono o sono state fatte (con il codice della voce nel test), **10** non fatte con un motivo che regge, **35** ancora da fare, di cui **18** segnate «da fare: grande». Le voci non fatte con un motivo che «tocca file di altri» o «non c'era tempo» sono state riprese (D18).
+Giro r1doc (D119, 23/11/2026): le 89 voci citate solo nei documenti, controllate una per una. Esito: **44** esistono o sono state fatte (con il codice della voce nel test), **10** non fatte con un motivo che regge, **35** ancora da fare, di cui **18** segnate «da fare: grande». Le voci non fatte con un motivo che «tocca file di altri» o «non c'era tempo» sono state riprese (D18). **Giro r1rep (23/11/2026):** fatte 21 voci grandi o medie: reputazione (LIV-076…088), annuncio con embed e immagine (LIV-032, 033), import da file (LIV-072), profilo globale come immagine (LIV-089) e il modulo «voto» (LIV-019, ECO-048, ECO-049, CFG-039; D120).
 
 | codice | esiste | corretta | azione | file e test |
 |---|---|---|---|---|
 | LIV-013 | in parte (un solo totale) | sì | realizzata (0850): `xp_testo` e `xp_vocale` a parte, `/level leaderboard metric:XP da messaggi/XP da vocale` con il livello di ogni classifica; il passato resta nel totale (D71) | core/repositories/leveling_repo.py `top_xp_tipo`; tests/test_leveling_repo.py::test_xp_di_testo_e_di_vocale_hanno_due_classifiche_e_due_livelli, tests/test_leveling_classifica_e_calcolo.py::test_la_classifica_degli_xp_da_messaggi_e_da_vocale_mostra_il_livello |
-| LIV-019 | no | n/d | non fatta: serve un elenco di bot dove iYokai non è (D86, ECO-048). **Conflitto**: D71 e D72 chiedono il codice pronto e spento, oggi non c'è. Da fare: grande (modulo «voto» unico per LIV-019, ECO-048, ECO-049, CFG-039; D119) | — |
+| LIV-019 | no | n/d | realizzata (r1rep, D120): modulo «voto» unico (D120): bonus XP a tempo dopo il voto (`xp_bonus_pct`, `xp_bonus_ore`), spento senza `VOTO_SEGRETO` | tests/test_voto.py::test_bonus_xp_e_riscatto_automatico |
 | LIV-020 | sì (`/admin-livelli escludi`) | sì | codice nel test | cogs/leveling/leveling.py `impostazioni_escludi`; tests/test_leveling_settings.py::test_canale_escluso_non_da_xp, test_ruolo_escluso_non_da_xp, test_comando_escludi_aggiunge_e_poi_toglie |
 | LIV-026 | sì (`/admin-livelli moltiplicatore`, modo somma o massimo) | sì | codice nel test | core/leveling_logic.py `moltiplicatore_xp`; tests/test_leveling_settings.py::test_moltiplicatori_si_sommano_oppure_vale_il_piu_alto, test_moltiplicatore_modalita_massimo |
-| LIV-032 | no (annuncio solo di testo) | n/d | da fare: media (annuncio dentro un embed salvato, NF-17) | — |
-| LIV-033 | no | n/d | da fare: media (variante piccola della rank card allegata, Pillow in sandbox) | — |
+| LIV-032 | no (annuncio solo di testo) | n/d | realizzata (r1rep, D120): `/admin-livelli impostazioni-annuncio embed:<nome salvato>` (0871); stessi segnaposto del testo; `-` lo toglie | tests/test_levelup_embed_immagine.py::test_annuncio_con_embed_e_immagine, test_il_comando_salva_embed_e_immagine_e_rifiuta_un_nome_sconosciuto |
+| LIV-033 | no | n/d | realizzata (r1rep, D120): `immagine:sì` allega una piccola card (avatar, nome, livello), Pillow fuori dal ciclo; se fallisce l'annuncio parte lo stesso | tests/test_levelup_embed_immagine.py::test_la_card_del_levelup_e_un_png_della_misura_giusta, test_embed_mancante_o_immagine_rotta_non_fermano_l_annuncio |
 | LIV-035 | sì (`livello_minimo`) | sì | codice nel test | core/leveling_logic.py `deve_annunciare`; tests/test_leveling_settings.py::test_deve_annunciare |
 | LIV-036 | sì (`ogni`) | sì (con salti di più livelli) | codice nel test | tests/test_leveling_settings.py::test_deve_annunciare |
 | LIV-037 | sì (`solo_premi`) | sì | codice nel test | tests/test_leveling_settings.py::test_deve_annunciare |
@@ -379,21 +379,21 @@ Giro r1doc (D119, 23/11/2026): le 89 voci citate solo nei documenti, controllate
 | LIV-065 | sì (`/admin-livelli membro azione:livello`) | sì | codice nel test | tests/test_leveling_gestione_staff.py::test_xp_dopo_modifica, test_comando_xp_risponde_dopo_defer_e_allinea_i_ruoli |
 | LIV-066 | sì (`azione:xp_nel_livello`) | sì (il livello non cambia) | codice nel test | tests/test_leveling_gestione_staff.py::test_xp_dopo_modifica |
 | LIV-067 | sì (`azione:azzera`) | sì | codice nel test | tests/test_leveling_gestione_staff.py::test_xp_dopo_modifica |
-| LIV-072 | no | n/d | da fare: media (premium, D71): lettura della classifica pubblica solo se i termini lo permettono, altrimenti file | — |
-| LIV-076 | no | n/d | da fare: grande (modulo reputazione, dare un punto): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
-| LIV-077 | no | n/d | da fare: grande (modulo reputazione, toglierlo): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
-| LIV-078 | no | n/d | da fare: grande (modulo reputazione, «grazie @utente»): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
-| LIV-079 | no | n/d | da fare: grande (modulo reputazione, vedere reputazione e posizione): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
-| LIV-080 | no | n/d | da fare: grande (modulo reputazione, classifica): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
-| LIV-081 | no | n/d | da fare: grande (modulo reputazione, registro): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
-| LIV-082 | no | n/d | da fare: grande (modulo reputazione, staff imposta o cancella): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
-| LIV-083 | no | n/d | da fare: grande (modulo reputazione, nome dei punti): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
-| LIV-084 | no | n/d | da fare: grande (modulo reputazione, pausa e massimo): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
-| LIV-085 | no | n/d | da fare: grande (modulo reputazione, ruoli che danno o ricevono): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
-| LIV-086 | no | n/d | da fare: grande (modulo reputazione, ruoli premio a soglie): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
-| LIV-087 | no | n/d | da fare: grande (modulo reputazione, azzerare tutto il server): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
-| LIV-088 | no | n/d | da fare: grande (modulo reputazione, punti dei moderatori (coperta da LIV-082, D71)): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
-| LIV-089 | no (testo in `/level progressi sezione:globale`) | sì per il testo | da fare: media (immagine del profilo globale, D57) | — |
+| LIV-072 | no | n/d | realizzata (r1rep, D120): `/admin-livelli azzera importa file:` (solo file JSON o CSV dell'admin, mai API di altri bot); ogni campo controllato, un errore blocca tutto, non toglie mai XP, si può ripetere; funzione `livelli_importa` (di base gratuita, l'owner la porta a Premium dal pannello) | tests/test_livelli_import.py |
+| LIV-076 | no | n/d | realizzata (r1rep, D120): `/rep dai`: pausa 1 ora-7 giorni, tetto nelle 24 ore, mai a se stessi né ai bot, blocchi personali rispettati | tests/test_reputazione.py::test_tetto_giornaliero_e_blocco, test_due_comandi_insieme_pagano_una_volta; tests/test_reputazione_cog.py::test_dai_spenta_bot_se_stessi_e_poi_ok |
+| LIV-077 | no | n/d | realizzata (r1rep, D120): `/rep togli`: solo chi ha il ruolo scelto dall'admin (o gestisce il server); stesso limite | tests/test_reputazione_cog.py::test_ruoli_dare_ricevere_e_togliere |
+| LIV-078 | no | n/d | realizzata (r1rep, D120): «grazie @utente» (parola, una sola persona nominata, solo nei canali scelti, spento di base) con una reazione 🙏 | tests/test_reputazione_cog.py::test_grazie_solo_nei_canali_scelti_e_una_persona; tests/test_reputazione.py::test_logica_ruoli_e_grazie |
+| LIV-079 | no | n/d | realizzata (r1rep, D120): `/rep mostra`: punti e posizione | tests/test_reputazione.py::test_staff_classifica_registro_azzera |
+| LIV-080 | no | n/d | realizzata (r1rep, D120): `/rep classifica` a pagine (D119: nel gruppo `/rep`, non in `/level leaderboard`) | tests/test_reputazione.py::test_staff_classifica_registro_azzera |
+| LIV-081 | no | n/d | realizzata (r1rep, D120): `/rep registro` (il proprio; lo staff vede quello di altri); 90 giorni, cancellato con l'utente (registro dei dati) | tests/test_reputazione_cog.py::test_registro_degli_altri_solo_staff; tests/test_data_registry.py |
+| LIV-082 | no | n/d | realizzata (r1rep, D120): `/admin-rep imposta` e `/admin-rep cancella` (restano nel registro come «staff») | tests/test_reputazione.py::test_staff_classifica_registro_azzera |
+| LIV-083 | no | n/d | realizzata (r1rep, D120): `/admin-rep impostazioni nome:` (1-20 caratteri) | tests/test_reputazione.py::test_impostazioni_solo_campi_noti |
+| LIV-084 | no | n/d | realizzata (r1rep, D120): `/admin-rep impostazioni pausa_ore: massimo: tetto:` | tests/test_reputazione.py::test_spenta_di_base_poi_dare_e_togliere, test_tetto_giornaliero_e_blocco |
+| LIV-085 | no | n/d | realizzata (r1rep, D120): `/admin-rep impostazioni dare_richiesto: dare_escluso: ricevere_richiesto: ricevere_escluso:` | core/reputazione_logic.py `puo_agire`; tests/test_reputazione_cog.py::test_ruoli_dare_ricevere_e_togliere |
+| LIV-086 | no | n/d | realizzata (r1rep, D120): `/admin-rep premio soglia: ruolo:` (al massimo 10; `check_role_assignable` prima di salvare e di dare) | tests/test_reputazione.py::test_premi_a_soglia_e_tetto |
+| LIV-087 | no | n/d | realizzata (r1rep, D120): `/admin-rep azzera conferma:AZZERA` (punti, registro e pause in una transazione; i ruoli per soglia si tolgono) | tests/test_reputazione.py::test_staff_classifica_registro_azzera |
+| LIV-088 | no | n/d | realizzata (r1rep, D120): coperta da LIV-082 (D71): nessuna classifica doppia | tests/test_reputazione.py::test_staff_classifica_registro_azzera |
+| LIV-089 | no (testo in `/level progressi sezione:globale`) | sì per il testo | realizzata (r1rep, D120): `/level progressi carta:sì`: la card del profilo con XP e monete di tutti i server (solo positivi) e i traguardi | tests/test_levelup_embed_immagine.py::test_carta_globale_somma_tutti_i_server |
 | LIV-090 | sì (`/level profilo presentazione:`, 140 caratteri) | no: non passava dal filtro delle parole vietate | corretta: la presentazione passa dal filtro del server | cogs/leveling/profiles.py; tests/test_profiles.py::test_la_presentazione_passa_dal_filtro_delle_parole_vietate |
 | LIV-091 | in parte (livello più alto e server, senza somma) | sì | completata: `XP globali` e livello globale nel profilo globale personale, solo XP positivi | core/repositories/progressi_repo.py `xp_globale`; tests/test_progressi.py::test_xp_globale_somma_gli_xp_di_tutti_i_server_e_da_un_livello |
 | AI-012 | sì (`/owner ai modello`: modello, fascia, tipi, tetto di lunghezza) | sì | codice nel test | cogs/ai/config.py `modello`; tests/test_ai_scelte_owner.py::test_modello_fascia_e_tipi_si_applicano_a_caldo, test_tetto_di_lunghezza_limita_le_risposte |
@@ -406,13 +406,13 @@ Giro r1doc (D119, 23/11/2026): le 89 voci citate solo nei documenti, controllate
 | CFG-016 | sì (canale scorciatoia di un tag, UTL-070) | sì | codice nel test | cogs/utility/inneschi.py; tests/test_inneschi_cog.py::test_utl_070_canale_scorciatoia_fa_partire_il_tag_con_il_testo |
 | CFG-017 | sì (`/admin-tag tag prefisso`) | sì | codice nel test | cogs/utility/custom_commands.py; tests/test_custom_commands.py::test_valida_prefisso, test_prefisso_per_server |
 | CFG-036 | no | n/d | non fatta: serve un account e una chiave Patreon dell'owner; resta la concessione a mano e i codici CFG-038 (D96). Il motivo regge | — |
-| CFG-039 | no | n/d | non fatta come voce a sé: serve la chiave di un sito di elenchi (D96); rientra nel modulo «voto» (D119). Il motivo regge finché iYokai non è su un elenco | — |
+| CFG-039 | no | n/d | realizzata (r1rep, D120): premio «premium a tempo» (`premium_giorni`, 0-30) dello stesso modulo; mai legato all'NSFW | tests/test_voto.py (riscatto con `premium_giorni`: `core/premium_code_service.applica_sblocco`) |
 | CFG-040 | in parte (tetti gratis/premium per funzione, es. dati dei tag 1.000 e 5.000) | sì | non fatta: piani e prezzi sono una scelta commerciale dell'owner (D96). Il motivo regge | — |
 | CFG-041 | in parte (concessione mensile o annuale senza prezzi) | sì | non fatta: prezzi e sconti sono una scelta commerciale dell'owner (D96). Il motivo regge | — |
 | CFG-044 | in parte (`/admin-ticket pannelli modulo-copia`) | sì per ciò che c'è | da fare: media (duplica per pannello e risposta pronta). Il motivo «tocca altre aree» non regge (D18) | tests/test_ticket_form*.py (modulo-copia) |
 | ECO-006 | no | n/d | da fare: media. Il motivo di D86 (volumi alti) non regge: si manda un riepilogo ogni minuto, non un messaggio per movimento | — |
-| ECO-048 | no | n/d | non fatta: il bot non è su nessun elenco (D86). **Conflitto**: D72 chiede il codice pronto e spento. Da fare: grande (modulo voto, D119) | — |
-| ECO-049 | no | n/d | come ECO-048 (dipende da quella) | — |
+| ECO-048 | no | n/d | realizzata (r1rep, D120): `/monete conto voto` riscatta monete, XP, bonus XP e premium a tempo; `/admin-giochi voto` li sceglie; un premio per voto | tests/test_voto.py::test_due_voti_uguali_pagano_una_volta, test_riscatto_spento_o_senza_voti_non_da_nulla |
+| ECO-049 | no | n/d | realizzata (r1rep, D120): `/monete conto voto automatico:sì`: il premio arriva da solo nel server scelto | tests/test_voto.py::test_bonus_xp_e_riscatto_automatico, test_server_web_rifiuta_chi_non_ha_il_segreto_e_accetta_il_voto |
 | ECO-050 | no | n/d | da fare: media, premium (D72 lo vuole). Il motivo di D86 («da progettare con dev-core») non regge | — |
 | ECO-051 | no | n/d | da fare: media. Il motivo di D86 non è un divieto | — |
 | ECO-080 | no | n/d | da fare: grande (pagina del pannello web, NF-20). Il motivo «area di dev-web» non regge | — |
