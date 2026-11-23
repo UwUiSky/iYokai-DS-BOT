@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:51 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 09:44 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 1122 comandi in 55 categorie.**
+**Totale: 1146 comandi in 57 categorie.**
 
 ## Admin: AI
 
@@ -254,6 +254,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:
 
 ## Admin: giochi
 
+- **`/admin-giochi auto togli-foto`** — Toglie la foto di un'auto di un membro (una o tutte).
 - **`/admin-giochi battitura aggiungi`** — Aggiunge un testo per la battitura (finestra).
 - **`/admin-giochi battitura elenca`** — I testi di battitura del server.
 - **`/admin-giochi battitura rimuovi`** — Toglie un testo di battitura.
@@ -277,6 +278,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:
 - **`/admin-giochi stipendi imposta`** — Stipendio (positivo) o tassa (negativo) per un ruolo.
 - **`/admin-giochi stipendi lotteria`** — Prezzo della lotteria e quota di perdite rimborsata.
 - **`/admin-giochi stipendi toglie`** — Toglie lo stipendio o la tassa di un ruolo.
+- **`/admin-giochi tela azzera`** — Svuota tutta la tela di pixel del server.
+- **`/admin-giochi tela blocca`** — Blocca una persona dalla tela di pixel.
+- **`/admin-giochi tela impostazioni`** — Pausa, costo per saltarla e pagina pubblica della tela.
+- **`/admin-giochi tela sblocca`** — Toglie il blocco dalla tela di pixel a una persona.
+- **`/admin-giochi tela togli-utente`** — Toglie dalla tela tutti i pixel messi da una persona.
 - **`/admin-giochi telefono blocca`** — Blocca o sblocca una persona o un altro server dal telefono.
 - **`/admin-giochi telefono canale`** — Il canale del telefono del server.
 - **`/admin-giochi telefono consenso`** — Accende o spegne il telefono: spento di base.
@@ -732,6 +738,17 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:
 - **`/assistente stile`** — Un messaggio nuovo scritto come scrivi tu (o come chi lo permette).
 - **`/assistente traduci`** — Traduce un testo nella lingua che scegli.
 
+## Auto
+
+- **`/auto catalogo`** — Le auto da collezione che puoi comprare.
+- **`/auto compra`** — Compra un'auto da collezione per il tuo garage.
+- **`/auto foto`** — Metti la foto della tua auto (solo l'immagine ricodificata si conserva).
+- **`/auto foto-togli`** — Toglie la foto di una tua auto.
+- **`/auto gara`** — Gara con una tua auto contro il banco o contro un membro, anche con una puntata.
+- **`/auto garage`** — Le auto del tuo garage (o di un altro membro).
+- **`/auto potenzia`** — Potenzia una parte della tua auto con le monete.
+- **`/auto vedi`** — La scheda di un'auto del garage, con la sua foto.
+
 ## Clan
 
 - **`/clan boost gilda`** — Acquista un boost ×2 per 24h per TUTTI i membri, dalla tesoreria.
@@ -835,6 +852,8 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:
 - **`/giochi rps`** — Carta, forbici, sasso contro il bot.
 - **`/giochi scala`** — Scala fortunata: più sali, più rende.
 - **`/giochi sfide alto-basso`** — Più alta o più bassa? Il premio cresce a ogni risposta giusta.
+- **`/giochi sfide battaglia`** — Battaglia a turni contro un membro: attacco, difesa e abilità, anche con una puntata.
+- **`/giochi sfide battaglie`** — Le battaglie vinte e perse di un membro e i migliori del server.
 - **`/giochi sfide blackjack`** — Blackjack contro il banco: carta, stai, raddoppia, arrenditi.
 - **`/giochi sfide duelli`** — Classifica dei duelli e i tuoi ultimi.
 - **`/giochi sfide duello`** — Sfida un membro a duello: chi vince prende la posta.
@@ -1151,13 +1170,13 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:
 - **`/owner radio add-local`** — Aggiunge un file dalla cartella inediti alla playlist della radio.
 - **`/owner radio add-track`** — Aggiunge una traccia alla playlist della radio.
 - **`/owner radio blocca-parola`** — Parole vietate nei titoli in tutto il bot.
-- **`/owner radio fonti`** — Mostra lo stato delle fonti musicali (accesa, chiavi sì/no, pausa).
 - **`/owner radio cartella`** — Brani della cartella dell'owner: elenco, rilettura, anteprime.
+- **`/owner radio fonti`** — Mostra lo stato delle fonti musicali (accesa, chiavi sì/no, pausa).
 - **`/owner radio genere`** — Playlist del menu /music genere.
-- **`/owner radio paese`** — Paese globale delle ricerche musicali (di base nessun limite).
 - **`/owner radio list-tracks`** — Mostra la playlist della radio.
 - **`/owner radio log`** — Scarica la coda del log del Lavalink locale (ripulita dalle chiavi).
 - **`/owner radio nodi`** — Mostra i nodi Lavalink di ogni bot musicale (senza password).
+- **`/owner radio paese`** — Paese globale delle ricerche musicali (di base nessun limite).
 - **`/owner radio remove-track`** — Rimuove una traccia dalla playlist della radio.
 - **`/owner radio riconnetti`** — Riprova subito a collegare i nodi Lavalink non collegati.
 - **`/owner radio sorgente`** — Accende o spegne una fonte musicale a bot acceso.
@@ -1201,6 +1220,13 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:
 - **`/tag prendi`** — Prendi un tag il cui autore ha lasciato il server.
 - **`/tag prova`** — Prova uno script di tag: non salva niente e non scrive i dati veri.
 - **`/tag usa`** — Usa un comando personalizzato di questo server.
+
+## Tela
+
+- **`/tela colora`** — Colora un pixel della tela (c'è una pausa tra un pixel e l'altro).
+- **`/tela pixel`** — Chi ha colorato un pixel e quando.
+- **`/tela stato`** — La tua pausa, i tuoi pixel e quanto costa saltarla.
+- **`/tela vedi`** — Guarda la tela di pixel del server, o una zona ingrandita.
 
 ## Ticket
 

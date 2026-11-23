@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 04:51 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 09:44 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 1122 commands in 55 categories.**
+**Total: 1146 commands in 57 categories.**
 
 ## Admin: AI
 
@@ -178,14 +178,14 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 04:5
 ## Admin: bot setup
 
 - **`/admin-bot config bot-nickname`** — Changes the bot's name in this server.
-- **`/admin-bot config cleanup`** — Removes channels and roles that no longer exist from the settings.
+- **`/admin-bot config clean-up`** — Deleted channels and roles: what will be cleaned from the settings and when (after 7 days).
 - **`/admin-bot config export`** — Exports this server's configuration to a file.
 - **`/admin-bot config history`** — Shows the latest configuration changes.
 - **`/admin-bot config import`** — Imports a configuration from a file exported with /admin-bot config export.
 - **`/admin-bot config permissions`** — Shows a member's permission level and why.
 - **`/admin-bot config replies`** — Bot replies: private, deleted after a while, colours.
 - **`/admin-bot config report-channel`** — Sets the reports channel.
-- **`/admin-bot config reset`** — Resets this server's configuration.
+- **`/admin-bot config reset`** — Resets this server's configuration (and, on request, all data after 30 days).
 - **`/admin-bot config rollback`** — Restores the previous value of a change.
 - **`/admin-bot config staff`** — Bot admin, mod and ban roles: list and choice.
 - **`/admin-bot config suggestions-channel`** — Sets the suggestions channel.
@@ -254,9 +254,15 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 04:5
 
 ## Admin: games
 
+- **`/admin-games auto remove-photo`** — Remove the photo of a member's car (one or all).
 - **`/admin-games battitura add`** — Add a typing text (window).
 - **`/admin-games battitura list`** — The server's typing texts.
 - **`/admin-games battitura remove`** — Remove a typing text.
+- **`/admin-games canvas block`** — Block a person from the pixel canvas.
+- **`/admin-games canvas remove-user`** — Remove from the canvas all pixels placed by a person.
+- **`/admin-games canvas reset`** — Empty the whole server pixel canvas.
+- **`/admin-games canvas settings`** — Wait, cost to skip it and public page of the canvas.
+- **`/admin-games canvas unblock`** — Unblock a person from the pixel canvas.
 - **`/admin-games cards pacchetti`** — Which card packs are turned on in the server.
 - **`/admin-games counting channel`** — Pick the channels where people count (up to 10) and how.
 - **`/admin-games counting import`** — Bring scores from a CSV or JSON file into a channel.
@@ -732,6 +738,17 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 04:5
 - **`/assistant upscale`** — Upscales and cleans up an image you upload.
 - **`/assistant write`** — Writes a text you ask for: a poem, an explanation, an answer.
 
+## Auto
+
+- **`/auto buy`** — Buy a collectible car for your garage.
+- **`/auto catalogue`** — The collectible cars you can buy.
+- **`/auto garage`** — The cars in your garage (or another member's).
+- **`/auto photo`** — Set your car's photo (only the re-encoded image is kept).
+- **`/auto photo-remove`** — Remove the photo of one of your cars.
+- **`/auto race`** — Race with one of your cars against the house or a member, with an optional stake.
+- **`/auto upgrade`** — Upgrade a part of your car with coins.
+- **`/auto view`** — A garage car's sheet, with its photo.
+
 ## Clan
 
 - **`/clan boost guild`** — Buys a x2 boost for 24h for ALL members, from the treasury.
@@ -822,6 +839,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 04:5
 - **`/games battitura`** — Typing race: copy the text shown in the image.
 - **`/games card`** — Guess the drawn card: colour, suit or value.
 - **`/games cards start`** — Card game: complete the sentence with the funniest card.
+- **`/games challenges battle`** — Turn-based battle against a member: attack, defend and skill, with an optional stake.
+- **`/games challenges battles`** — A member's battles won and lost, and the server's best.
 - **`/games challenges blackjack`** — Blackjack against the dealer: hit, stand, double down, surrender.
 - **`/games challenges connect4`** — Connect four against a member, with an optional stake.
 - **`/games challenges duel`** — Challenge a member to a duel: the winner takes the stake.
@@ -850,11 +869,11 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 04:5
 - **`/images animal`** — Shows random animal pictures (up to 5).
 - **`/images blur`** — Blurs an image.
 - **`/images effect`** — Avatar effect: rainbow, R.I.P., wanted, pinged, sepia, neon...
-- **`/images foto`** — A nice photo to look at: food or good mood.
 - **`/images fusione`** — Two Pokémon: the fused name and their official images side by side.
 - **`/images grayscale`** — Turns an image to grayscale.
 - **`/images invert`** — Inverts an image's colors.
 - **`/images meme`** — Makes a meme with top/bottom text.
+- **`/images photo`** — A nice photo to look at: food or good mood.
 - **`/images pixelate`** — Pixelates an image.
 - **`/images post`** — An image from a Lemmy community (off by default: an admin turns it on).
 - **`/images search-image`** — Searches a SFW image on Pixabay.
@@ -1060,11 +1079,12 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 04:5
 ## Music
 
 - **`/music clear-queue`** — Clears the queue without touching the track that is playing.
+- **`/music coda clean-up`** — Removes from the queue the tracks of people who left the voice channel.
 - **`/music coda last`** — Removes the last track you added.
 - **`/music coda mine`** — Removes all your tracks from the queue.
 - **`/music coda move`** — Moves a queue track to another position.
 - **`/music coda now`** — Plays a queue track right now, skipping the current one.
-- **`/music coda pulisci`** — Removes from the queue the tracks of people who left the voice channel.
+- **`/music coda previews`** — Queues the owner's preview tracks.
 - **`/music coda remove`** — Removes a track from the queue.
 - **`/music coda restore`** — Puts the saved tracks of your voice channel back in the queue (after a restart).
 - **`/music coda search`** — Searches the queue for a track by title.
@@ -1108,6 +1128,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 04:5
 - **`/music skipto`** — Jumps straight to track number N of the queue.
 - **`/music sound`** — Plays a sound effect in your voice channel.
 - **`/music stop`** — Stops playback and clears the queue.
+- **`/music stop-sound`** — Stops the sound that just started in your voice channel.
 - **`/music track karaoke`** — Shows the lines of the track as it plays, in time.
 - **`/music track restart`** — Restarts the current track from the beginning.
 - **`/music track search`** — Searches for a track and lets you pick from 10 results.
@@ -1150,6 +1171,8 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 04:5
 - **`/owner radio add-local`** — Adds a file from the unreleased folder to the radio playlist.
 - **`/owner radio add-track`** — Adds a track to the radio playlist.
 - **`/owner radio ban-word`** — Words banned in track titles across the whole bot.
+- **`/owner radio country`** — Global country for music searches (no limit by default).
+- **`/owner radio folder`** — Owner track folder: list, reread, previews.
 - **`/owner radio fonti`** — Shows the state of the music sources (on, keys yes/no, paused).
 - **`/owner radio genre`** — Genre playlists for the /music genere menu.
 - **`/owner radio list-tracks`** — Shows the radio playlist.
@@ -1197,6 +1220,13 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 04:5
 - **`/tag proof`** — Test a tag script: saves nothing and does not write the real data.
 - **`/tag take`** — Take a tag whose author left the server.
 - **`/tag use`** — Uses a custom command of this server.
+
+## Tela
+
+- **`/canvas paint`** — Paint a pixel of the canvas (there is a wait between pixels).
+- **`/canvas pixel`** — Who painted a pixel and when.
+- **`/canvas status`** — Your wait, your pixels and what skipping the wait costs.
+- **`/canvas view`** — View the server's pixel canvas, or a zoomed area.
 
 ## Tickets
 

@@ -41,13 +41,13 @@ funzioni nuove vanno dentro pochi sotto-comandi con una scelta
 | FUN-010 | Gioco degli acronimi: tutti inventano una frase, poi si vota | NadekoBot (`.acrophobia`) [NADEKO] | ❌ manca | Modulo per la frase, bottoni per il voto | nuova |
 | FUN-011 | Gara di battitura: chi ricopia più in fretta un testo | NadekoBot (`.typestart`, `.typestop`) [NADEKO] | ❌ manca | Testo come immagine (così non si copia e incolla); serve `message_content` | nuova |
 | FUN-012 | Testi della gara di battitura aggiunti dal server | NadekoBot (`.typeadd`, `.typelist`, `.typedel`) [NADEKO] | ❌ manca | Elenco per server | nuova |
-| FUN-013 | Tela di pixel del server: ognuno colora un pixel, pagando monete | NadekoBot (`.ncanvas`, `.nczoom`, `.ncsetpixel`, `.ncpixel`) [NADEKO] | ❌ manca | Immagine Pillow; pausa per utente | NF-40 |
-| FUN-014 | Lo staff azzera la tela o toglie i pixel di un utente | NadekoBot (`.ncreset`, `.ncnuke`, `.ncsetimg`) [NADEKO] | ❌ manca | Comandi admin | nuova |
+| FUN-013 | Tela di pixel del server: ognuno colora un pixel, pagando monete | NadekoBot (`.ncanvas`, `.nczoom`, `.ncsetpixel`, `.ncpixel`) [NADEKO] | ✅ fatta (r1fun, `/tela ...`) | Immagine Pillow; pausa per utente | NF-40 |
+| FUN-014 | Lo staff azzera la tela o toglie i pixel di un utente | NadekoBot (`.ncreset`, `.ncnuke`, `.ncsetimg`) [NADEKO] | ✅ fatta (r1fun, `/admin-giochi tela ...`) | Comandi admin | nuova |
 | FUN-015 | Gara giornaliera "chi tira il numero più alto", con classifica | Carl-bot (`games toproll`, `games leaderboard`) [CARL] | ❌ manca | Un tiro al giorno per utente | nuova |
 | FUN-016 | Mazzo di carte del server: pesca fino a 10 carte, rimescola | NadekoBot (`.draw`, `.drawnew`, `.deckshuffle`) [NADEKO] | ❌ manca | Mazzo per canale in memoria | nuova |
-| FUN-017 | Gara tra auto da collezione, con garage personale | Yggdrasil (`--race`, `--garage`) [YGG] | ❌ manca | Collezione di oggetti (NF-40) | NF-40 |
+| FUN-017 | Gara tra auto da collezione, con garage personale | Yggdrasil (`--race`, `--garage`) [YGG] | ✅ fatta (r1fun, `/auto ...`) | Collezione di oggetti (NF-40) | NF-40 |
 | FUN-018 | Gara di "fidget spinner" con classifica | Yggdrasil (`--spinner`, `--spinner scores`) [YGG] | ❌ manca | Durata casuale; classifica dei giri più lunghi | nuova |
-| FUN-019 | Battaglia testuale a turni tra due utenti | Yggdrasil (`--deathbattle`) [YGG] | ❌ manca | Come il duello di ECO-104, senza monete | NF-40 |
+| FUN-019 | Battaglia testuale a turni tra due utenti | Yggdrasil (`--deathbattle`) [YGG] | ✅ fatta (r1fun, `/giochi sfide battaglia`) | Come il duello di ECO-104, senza monete | NF-40 |
 | FUN-020 | "Punteggio di amicizia" tra due utenti | Yggdrasil (`--friendscore`) [YGG] | 🟡 parziale: c'è `/ship` | Variante di `/fun ship` con testi diversi | nuova |
 | FUN-021 | "Smash or pass" su personaggi di anime, che cambiano ogni settimana | Lawliet (`smashorpass`) [LAWLIET] | ❌ manca | Tema delicato e immagini di terzi: bassa priorità | nuova |
 | FUN-022 | "Quanto è probabile che sia…": percentuale scherzosa su un utente | Lawliet (`kira`) [LAWLIET] | 🟡 parziale: `/rate` dà un voto da 0 a 10 | È il "misuratore a tema libero" già previsto (`/fun misura`) | NF-40 |
