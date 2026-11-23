@@ -1684,3 +1684,16 @@ Attua D119 per le voci medie. Elenco delle voci e dei motivi in fondo, aggiornat
   - il bot poi lo integra nei server in comune con l'utente.
 - **TKT-085:** la risposta dal sito diventa in tempo reale (aggiornamento della pagina, o webhook verso il canale) e può essere anonima, come le risposte anonime del modmail.
 - **Liste AGCOM e ADM:** l'owner cerca gli indirizzi e li mette lui.
+
+
+## D128 — Mute a ruolo come gradino della scala e shadowban (#115, giro r3mod), 23/11/2026, opzione prudente, da confermare dall'owner
+
+- **Mute a ruolo a tempo (MUS-034 nella scheda; è la scala delle sanzioni):** il mute con il ruolo «muto» aveva già la durata (MOD-014). Ora è anche un gradino della scala (`/admin-sicurezza escalation set-step action:Mute (ruolo) duration_minutes:`), tetto 28 giorni come gli altri gradini (il comando `/mod-sanzioni mute` arriva a 1 anno). Un solo punto: `core/moderation_mute_azione.py` (ruolo, stato `mute_stato` con la fine, caso e scadenza nello scheduler). Dopo un riavvio la scadenza vale: stato e coda stanno nel database. Il caso è del tipo `mute_role` (così la fine lo chiude). Il moderatore del warn deve poter «moderare i membri» (come per il timeout).
+- **Shadowban:** `/mod-sanzioni shadowban dai|togli|canali` (sotto-gruppo nuovo di `/mod-sanzioni`, che ora ha 9 figli e 3 sotto-gruppi). Livello come la quarantena (mod). Azione `shadowban` concedibile a un ruolo con CFG-024.
+  - Il membro perde tutti i ruoli (tranne quelli gestiti da Discord) e riceve il ruolo «Shadowban», che nega `view_channel` su ogni canale tranne i due dedicati. I ruoli tolti si scrivono PRIMA in `moderation_shadowban` (0930), con chiave unica `(server, utente)`: due shadowban insieme sulla stessa persona ne fanno passare uno solo; chi è già dentro non perde i ruoli salvati. I ruoli tolti stanno anche nel log di moderazione.
+  - I due canali (testo e vocale) li crea il bot se mancano (nome «shadowban») o li sceglie lo staff con `/mod-sanzioni shadowban canali`; la scelta toglie a `@everyone` la vista su quei canali (sono visibili solo a shadowbannati e admin). Ruolo e canali stanno in `moderation_shadowban_config`. I canali nati dopo ricevono il blocco da `on_guild_channel_create`. Chi è in vocale è spostato nel vocale dedicato.
+  - Si toglie con `togli` o alla scadenza: ridà solo i ruoli che il bot può ridare oggi. Chi esce e rientra resta in shadowban fino alla fine.
+  - Mai su proprietario, bot, chi sta sopra il bot o alla pari; prima si controllano i permessi del bot («Gestire i ruoli» e «Gestire i canali»).
+  - XP e statistiche: i due canali e il ruolo sono esclusi sempre (anche con i canali XP in modo «solo questi»); `ConfigLivelli.canali_sempre_esclusi` e `ActivitySettings.sempre_esclusi`.
+  - **Limiti noti:** un ruolo gestito (booster, integrazione) non si può togliere: se ha un permesso esplicito su un canale, può ancora vederlo (il bot lo dice solo se la modifica dei ruoli fallisce). I thread privati a cui l'utente era già stato aggiunto non si toccano. Lo shadowban non è un gradino della scala (solo il mute lo è).
+- Migrazione usata: 0930.

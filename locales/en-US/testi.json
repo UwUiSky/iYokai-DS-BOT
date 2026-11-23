@@ -4284,5 +4284,14 @@
   "eco_negozio_web_spento": "The shop is no longer shown on the website.",
   "backup_carica_scegli": "Give a copy number, or `ultima_automatica:yes`: only one of the two.",
   "backup_ultima_solo_proprietario": "Only the server owner can load the latest automatic copy after an attack.",
-  "backup_nessuna_automatica": "There is no automatic copy. Turn them on with `/founder backup automatico` (from 3 hours)."
+  "backup_nessuna_automatica": "There is no automatic copy. Turn them on with `/founder backup automatico` (from 3 hours).",
+  "shadowban_bot_senza_permesso": "I am missing the \"Manage Roles\" and \"Manage Channels\" permissions.",
+  "shadowban_durata_non_valida": "The duration goes from 1 minute to 1 year.",
+  "shadowban_gia": "{mention} is already shadowbanned.",
+  "shadowban_non_riuscito": "I could not shadowban: check my permissions and role. Nothing has changed.",
+  "shadowban_non_in_shadowban": "{mention} is not shadowbanned.",
+  "shadowban_ruoli_tolti": "Roles removed",
+  "shadowban_canali_non_preparati": "I could not prepare the shadowban role and channels: check my permissions.",
+  "shadowban_canali_pronti": "Shadowban: text {testo}, voice {vocale}. Only shadowbanned members and administrators can see them: @everyone no longer can.",
+  "shadowban_blocco_incompleto": "{falliti} channels did not get the block: check my permissions on them."
 }

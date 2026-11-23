@@ -1,22 +1,23 @@
 # Memoria dev-moderazione
 ## Aggiornata
-2026-11-23, giro r1rete (wt /home/user/wt-net, DB iyokai_wnet; migr. 0820): AMD-030 link (commit db4e8179) e VER-025 rete tra server. Smoke da fare. Migrazioni libere: 0821-0829.
-(prima) 2026-11-22, giro r2mod (ramo feat/r2mod, wt /home/user/wt-115, DB iyokai_w115; migr. 0800, 0801). Controllo voce per voce di #115, #116, #118: tabella in revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.md, D106. Smoke da fare.
+2026-11-23 sera, giro r3mod (ramo feat/r3mod, wt /home/user/wt-115, DB iyokai_w115; migr. 0930; restano 0931-0939): mute a ruolo come gradino della scala e shadowban (D127, D128). Smoke da fare.
+(prima) 2026-11-23, giro r1rete (wt /home/user/wt-net, DB iyokai_wnet; migr. 0820): AMD-030 link (commit db4e8179) e VER-025 rete tra server. Smoke da fare. Migrazioni libere: 0821-0829.
 
-2026-11-22, giro r3automod (ramo feat/r3automod, wt /home/user/wt-am, DB iyokai_wam; nessuna migrazione, restano 0807-0809). D110. Smoke da fare.
 ## In corso
-Giro r3automod finito: avviso all'utente (#116) e bottone Traduci (#115). Da fare dopo il merge: smoke, cacciatore-bug, revisore-capo, prova su Discord (VERIFICA_LIVE «AutoMod: avviso e bottone Traduci»). Quarantena: nessun messaggio pubblico suo, senza bottone.
+Giro r3mod finito. Dopo il merge: smoke (test_f7_moderazione_gruppi, test_command_tree_invariants, test_i18n_completo, test_moderation_shadowban, test_moderation_mute_scala), cacciatore-bug, revisore-capo, prova su Discord (VERIFICA_LIVE MOD-SHADOW, MOD-MUTE-SCALA). Idea non fatta: shadowban come gradino della scala.
 ## Fatto
+- r3mod: gradino `mute` della scala (core/moderation_mute_azione.py, escalation.py); shadowban (core/moderation_shadowban.py, cogs/moderation/shadowban.py, 0930, XP e statistiche escluse); test_moderation_shadowban, test_moderation_mute_scala
 - r3automod: core/automod_avviso.py (DM con le regole, canale 8 s se DM chiusi, tetto 30 s e 5 in 10 min, /admin-automod avviso, chiavi automod_avviso_attivo/testo); core/moderazione_traduci.py (bottone persistente iyokai:modtraduci, `traducibile(guild, **kw)`, testi del bot o snodo AI) + cogs/moderation/traduci.py; test_automod_avviso, test_moderazione_traduci
 - r2mod parte 3: MOD-016 (0804), MOD-091/092/094/095/096 (0803), MOD-103/104 (0805), MOD-051 (0806), MOD-053, AMD-031
 - r2mod parte 2: CFG-024+VER-018 (permessi per azione, 0802), MOD-034 tempban, MOD-040, MOD-060, AMD-057/071 (core/automod_emergenza.py), VER-002/003/006/007/023/028
 - r2mod: MOD-008/063 (appelli: senza appello, timeout; 0800), MOD-018/019 (ruolo mute), MOD-033/035 (scala con finestra; 0801), MOD-093/097 (blocco a tempo e stato), UTL-204 (esporta-chat), UTL-205 (snipe utente); segni nei test per MOD-020/032/052/061/062/109/111, VER-001/004/005/021/022/024/026
-- r19 M6 resto, M9, MOD-102: core/moderation_conferma.py (conferma 2 tasti, risposte compatte/cancella-dopo, GIA_CONFERMATA per /mod-sanzioni applica), moderation_risposte.py; ricerca ban/membri/invito (cogs/moderation/ricerca.py, moderation_ricerca_logic.py); prove (0511, moderation_prove.py, prove.py); dehoist/simboli (automod_nomi_logic.py, parole_odio.py); test_moderation_risposte_m6, test_moderation_ricerca_m9, test_automod_nomi_pulizia
-- r18 D68: core/moderation_motivi.py (PREIMPOSTATI 14 motivi, Proposta, modifica, semina alla prima lettura), migr. 0532 (+ moderation_motivi_semina), repo motivi, /mod-casi motivi aggiungi/modifica con severita/azione/durata, cogs/moderation/motivo_pronto.py (/mod-sanzioni applica: menu + durata + Conferma; kick/ban solo con livello MODBAN); test_moderation_motivi_severita
-- r18 M6 (MOD-050, 059): core/moderation_dm.py unico punto del DM (comandi + core/automod_azioni.py warn/kick/ban/tempban), mod_anonimo, mod_dm_testo_<azione>, finestra ModuloTestoDm; test_moderation_dm_m6. NON fatti: MOD-066, MOD-067
-- r18 M8: core/moderation_scheda.py, cogs/moderation/scheda.py (/mod-casi scheda, menu «Scheda moderazione» con 5 tasti, «Segnala messaggio», /utility mie-sanzioni, mod_utente_vede_casi), report.invia_segnalazione; test_moderation_scheda_m8
-- r17 M4 voce, M5 opzioni e motivi pronti (0512), M7 canali/nick/entrati (0513, 0514); r17 A9 eventi e D67 account rubato; r15-r16 A1-A8 AutoMod, verifica VPN/IP, giri G1-G7 e R5-R14 (git log, REGISTRO_RISOLTE)
+- r15-r19 (git log, REGISTRO_RISOLTE): moderation_conferma/risposte/ricerca/prove, motivi preimpostati (D68), moderation_dm, scheda e segnalazioni, opzioni M5/M7, eventi A9, AutoMod A1-A8, verifica VPN/IP
+- r15-r19 (git log, REGISTRO_RISOLTE): moderation_conferma/risposte/ricerca/prove, motivi preimpostati (D68), moderation_dm, scheda e segnalazioni, opzioni M5/M7, eventi A9, AutoMod A1-A8, verifica VPN/IP
+- r15-r19 (git log, REGISTRO_RISOLTE): moderation_conferma/risposte/ricerca/prove, motivi preimpostati (D68), moderation_dm, scheda e segnalazioni, opzioni M5/M7, eventi A9, AutoMod A1-A8, verifica VPN/IP
+- r15-r19 (git log, REGISTRO_RISOLTE): moderation_conferma/risposte/ricerca/prove, motivi preimpostati (D68), moderation_dm, scheda e segnalazioni, opzioni M5/M7, eventi A9, AutoMod A1-A8, verifica VPN/IP
+- r15-r19 (git log, REGISTRO_RISOLTE): moderation_conferma/risposte/ricerca/prove, motivi preimpostati (D68), moderation_dm, scheda e segnalazioni, opzioni M5/M7, eventi A9, AutoMod A1-A8, verifica VPN/IP
 ## Cose imparate
+- Test con fake_role: is_default() e' vero solo per id 0, quindi @everyone finto = fake_role(0); i canali finti vogliono .guild e overwrites_for/set_permissions a mano; guild.get_member va registrato o check_can_moderate dice «non riesco a verificare»
 - Cog con CogConGruppi: se sovrascrivi cog_load/cog_unload chiama super(), altrimenti i comandi non entrano nell'albero
 - Config e` frozen: nei test l'OWNER_ID e` quello di conftest (123456789); i test non scaricano liste (LINK_LISTE_ATTIVE=nessuna in conftest)
 - Metodi di repo senza chiamante in produzione rompono test_repository_callers; stringhe «/qualcosa» nel codice sono lette da test_riferimenti_comandi
@@ -57,10 +58,6 @@ Giro r3automod finito: avviso all'utente (#116) e bottone Traduci (#115). Da far
 - Il DM delle sanzioni legge le opzioni dal db: i test dei cog senza db vanno patchati (core.moderation_dm.costruisci)
 ## Aperto
 - r3automod: l'avviso si salta se la regola ha gia' mandato dm/warn/kick/ban/avviso_canale (scelta mia, D110); il bottone Traduci riconosce i testi fissi solo per testo esatto o modello; i motivi misti (testo fisso + dati) vanno all'AI
-- Cose imparate r19: i moduli in cogs/ senza setup() rompono test_command_tree_invariants: il codice senza cog va in core/ (conferma e` core/moderation_conferma.py)
 - re2 non ha re2.IGNORECASE: usare il prefisso (?i). Comando che deve continuare dopo una conferma: ritorna l'interazione del tasto e il comando sostituisce `interaction` (la prima e` gia` risposta)
 - Mai lanciare pytest di altri file sullo stesso DB mentre ne gira uno in background: e anche modificare cog durante la run falsa i test dell'albero comandi
-- Aperto: scarico PDF/TXT delle prove solo dal pannello (non fatto, dev-web); /mod-casi caso vedi non elenca le prove; le prove si leggono con /mod-casi caso prova numero senza file
-- MOD-066, MOD-067, MOD-102 e M9 da fare. Custom_id dei tasti della scheda non sono persistenti (vista a tempo, 10 min): scelta mia.
 - M5: _prepara_massa dà (ids, motivo); nel DM il nome locale del messaggio inviato è dm_inviato (il parametro dm del comando è un bool)
-- M5: durata nel motivo pronto: fatta in D68

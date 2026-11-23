@@ -582,6 +582,8 @@ class ConfigLivelli:
     ruoli_esclusi: frozenset = frozenset()
     mult_canali: dict = field(default_factory=dict)
     mult_ruoli: dict = field(default_factory=dict)
+    # D127: i canali dedicati dello shadowban non danno mai XP, nemmeno in modo «solo_questi»
+    canali_sempre_esclusi: frozenset = frozenset()
 
     def fattori_attivi(self, channel_ids, role_ids) -> list[float]:
         """
@@ -614,6 +616,8 @@ class ConfigLivelli:
         if isinstance(channel_ids, int):
             channel_ids = [channel_ids]
         if any(r in self.ruoli_esclusi for r in role_ids):
+            return True
+        if any(c in self.canali_sempre_esclusi for c in channel_ids):
             return True
         nell_elenco = any(c in self.canali_esclusi for c in channel_ids)
         if self.impostazioni.canali_modo == "solo_questi" and self.canali_esclusi:

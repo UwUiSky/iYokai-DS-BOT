@@ -162,6 +162,8 @@ def conta_secondo_i_filtri(imp, utente_id: int, ruoli_utente, canali_ids) -> boo
     """
     if utente_id in set(getattr(imp, "ignored_members", ()) or ()):
         return False
+    if (set(getattr(imp, "sempre_esclusi", ()) or ())) & (set(canali_ids) | set(ruoli_utente)):
+        return False  # D127: canali e ruolo dello shadowban
     for elenco, modo, ids in (
         (imp.ignored_channels, getattr(imp, "channel_mode", "escludi"), set(canali_ids)),
         (imp.ignored_roles, getattr(imp, "role_mode", "escludi"), set(ruoli_utente)),

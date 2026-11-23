@@ -33,6 +33,7 @@ class ActivitySettings:
     ignored_members: list[int] = field(default_factory=list)   # STA-026
     view_roles: list[int] = field(default_factory=list)        # STA-013: chi può guardare le statistiche
     track_online: bool = False             # STA-008
+    sempre_esclusi: list[int] = field(default_factory=list)   # D127: canali e ruolo dello shadowban, mai contati
 
 
 @dataclass(frozen=True)
@@ -254,11 +255,19 @@ class ActivityStatsRepository:
     async def get_settings(self, guild_id: int) -> ActivitySettings:
         r = await self._pool.fetchrow("SELECT * FROM activity_settings WHERE guild_id = $1", guild_id)
         if r is None:
-            return ActivitySettings()
+            return ActivitySettings(sempre_esclusi=await self._ombra(guild_id))
         return ActivitySettings(
             list(r["ignored_channels"]), list(r["ignored_roles"]), r["channel_mode"], r["role_mode"],
-            list(r["ignored_members"]), list(r["view_roles"]), r["track_online"],
+            list(r["ignored_members"]), list(r["view_roles"]), r["track_online"], await self._ombra(guild_id),
         )
+
+    async def _ombra(self, guild_id: int) -> list[int]:
+        """D127: ruolo e canali dedicati dello shadowban."""
+        o = await self._pool.fetchrow(
+            "SELECT ruolo_id, canale_testo_id, canale_vocale_id FROM moderation_shadowban_config WHERE guild_id = $1",
+            guild_id,
+        )
+        return [v for v in (o["ruolo_id"], o["canale_testo_id"], o["canale_vocale_id"]) if v] if o else []
 
     async def _toggle(self, colonna: str, guild_id: int, valore: int) -> bool:
         """True se ora è ignorato, False se è stato rimesso. Un solo comando SQL (niente leggi-poi-scrivi)."""
