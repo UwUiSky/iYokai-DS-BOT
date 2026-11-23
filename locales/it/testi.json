@@ -3997,5 +3997,20 @@
   "modtrad_niente": "Questo messaggio non ha testo da tradurre.",
   "modtrad_gia_tua": "Questo messaggio è già nella tua lingua.",
   "modtrad_ai_no": "Non posso tradurre ora: la traduzione di questa lingua usa l'AI, che non è disponibile.",
-  "modtrad_nota_ai": "Traduzione automatica con l'AI"
+  "modtrad_nota_ai": "Traduzione automatica con l'AI",
+  "top_settimanale_attiva": "La top 10 della settimana verrà pubblicata ogni lunedì in {mention}.",
+  "top_settimanale_spenta": "Top 10 settimanale disattivata.",
+  "top_settimanale_non_era_attiva": "La top 10 settimanale non era attiva.",
+  "risp_stato_canale_bot": "\n- Canale dei bot: **{canale}** (fuori da lì le risposte sono private) · comandi: **{comandi}**",
+  "risp_canale_non_valido": "Il canale non è valido.",
+  "risp_comando_non_valido": "Scrivi i comandi come «fun dado» o «giochi», separati da virgole (senza «/»).",
+  "risp_troppi_comandi": "Al massimo 25 comandi.",
+  "sfondo_pronto_sconosciuto": "Questo sfondo non esiste: scegli uno dall'elenco che compare mentre scrivi.",
+  "voicetemp_azione_non_consentita": "Il server ha tolto questa azione al tuo ruolo.",
+  "voicetemp_azione_sconosciuta": "Azione non valida: scegli dall'elenco che compare mentre scrivi.",
+  "voicetemp_troppi_ruoli_vietati": "Per ogni azione si possono vietare al massimo 10 ruoli.",
+  "voicetemp_azione_serve_ruolo": "Per cambiare un'azione scegli sia l'azione sia il ruolo.",
+  "voicetemp_azione_ruolo_salvata": "Il ruolo {ruolo} {stato} l'azione «{azione}» sul proprio canale vocale.",
+  "voicetemp_azione_puo": "può fare",
+  "voicetemp_azione_non_puo": "non può fare"
 }

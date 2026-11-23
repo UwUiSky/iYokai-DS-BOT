@@ -315,3 +315,32 @@ async def test_apply_weekly_decay_guild_marca_il_periodo_coperto(repo, clean_db)
 @pytest.mark.asyncio
 async def test_apply_weekly_decay_guild_su_server_senza_righe_non_solleva_errore(repo):
     assert await repo.apply_weekly_decay_guild(999, PERIODO, NATI_PRIMA_DI) == (0, 0)
+
+
+# LIV-013
+@pytest.mark.asyncio
+async def test_xp_di_testo_e_di_vocale_hanno_due_classifiche_e_due_livelli(repo):
+    from core.leveling_logic import level_for_xp
+
+    await repo.add_text_xp(100, 1, amount=40)
+    await repo.add_text_xp(100, 2, amount=15)
+    await _minuto(repo, 2, 7, True)
+    await _minuto(repo, 3, 7, True)
+    await _minuto(repo, 3, 7, True)
+    testo = await repo.top_xp_tipo(100, "testo", 10)
+    assert [(v.user_id, v.amount) for v in testo] == [(1, 40), (2, 15)]
+    voce = await repo.top_xp_tipo(100, "vocale", 10)
+    assert [v.user_id for v in voce] == [3, 2] and voce[0].amount > voce[1].amount > 0
+    # il totale resta la somma e il livello di ogni classifica viene dal suo XP
+    assert (await repo.get_totals(100, 2)).xp_total == 15 + voce[1].amount
+    assert level_for_xp(testo[0].amount) >= 0
+    with pytest.raises(ValueError):
+        await repo.top_xp_tipo(100, "tutto", 10)
+
+
+# LIV-013
+@pytest.mark.asyncio
+async def test_l_xp_dato_dallo_staff_non_entra_nelle_due_classifiche(repo):
+    await repo.modifica_xp(100, 5, "aggiungi", 500, 0)
+    assert await repo.top_xp_tipo(100, "testo", 10) == []
+    assert await repo.top_xp_tipo(100, "vocale", 10) == []

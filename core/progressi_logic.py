@@ -353,13 +353,19 @@ class ProfiloGlobale:
     livello_massimo: int
     record_serie: int
     traguardi: int  # numero di traguardi (chiavi diverse) ottenuti in almeno un server
+    xp_totale: int = 0  # LIV-091: somma degli XP di tutti i server (solo dati positivi)
+    livello_globale: int = 0
 
 
 def testo_profilo_globale(p: ProfiloGlobale) -> str:
     """Solo cose belle e solo numeri: niente nomi di server, niente sanzioni, niente monete."""
+    globale = (
+        f"XP globali: **{p.xp_totale}** (livello globale **{p.livello_globale}**)\n" if p.xp_totale > 0 else ""
+    )
     return (
         f"Server in cui giochi: **{p.server}**\n"
         f"Livello più alto: **{p.livello_massimo}**\n"
-        f"Serie più lunga: **{p.record_serie}** giorni\n"
+        + globale
+        + f"Serie più lunga: **{p.record_serie}** giorni\n"
         f"Traguardi diversi ottenuti: **{p.traguardi}** su {len(TRAGUARDI)}"
     )

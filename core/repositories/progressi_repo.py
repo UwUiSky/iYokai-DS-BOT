@@ -374,6 +374,15 @@ class ProgressiRepository:
         ))
 
     # ---- profilo globale (solo numeri positivi, solo i propri) ----
+    async def xp_globale(self, user_id: int) -> tuple[int, int]:
+        """LIV-091: (XP di tutti i server sommati, livello che ne viene). Solo XP positivi: niente sanzioni o monete."""
+        from core.leveling_logic import level_for_xp
+
+        totale = await self._pool.fetchval(
+            "SELECT COALESCE(sum(xp_total), 0)::bigint FROM leveling_totals WHERE user_id = $1 AND xp_total > 0", user_id
+        )
+        return int(totale), level_for_xp(int(totale)) if totale else 0
+
     async def profilo_globale(self, user_id: int) -> tuple[int, int, int, int]:
         """(server con un livello, livello massimo, serie record, traguardi diversi)."""
         livelli = await self._pool.fetchrow(

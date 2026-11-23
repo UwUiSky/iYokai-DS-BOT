@@ -265,7 +265,8 @@ async def costruisci(guild: discord.Guild, utente: discord.abc.User, sezione: st
     colore = discord.Color.gold()
     if sezione == "globale":
         server, massimo, record, traguardi = await servizio.progressi_repo.profilo_globale(utente.id)
-        testo = testo_profilo_globale(ProfiloGlobale(server, massimo, record, traguardi))
+        xp_totale, livello_globale = await servizio.progressi_repo.xp_globale(utente.id)
+        testo = testo_profilo_globale(ProfiloGlobale(server, massimo, record, traguardi, xp_totale, livello_globale))
         return discord.Embed(title=TITOLI[sezione], description=testo, color=colore), VistaProgressi(utente.id, sezione)
     if not await servizio.attivo(guild.id):
         return discord.Embed(title=TITOLI[sezione], description=SPENTO, color=colore), VistaProgressi(utente.id, sezione)

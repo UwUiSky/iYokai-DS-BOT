@@ -5,7 +5,7 @@ XP testuale (on_message) e vocale (task periodico ogni 60s), livelli,
 economia (daily/work/pay/balance, shop, drop, giveaway), cassa del
 server, gilde/clan, classifiche mensili e di sempre, impostazioni dei
 livelli. Modulo sempre gratuito.
-Funzioni coperte: SPEC §15, §22.14, §23.6
+Funzioni coperte: SPEC §15, §22.14, §23.6; LIV-013 (classifiche XP da messaggi e da vocale), LIV-053 (sfondi pronti), LIV-061 (top 10 settimanale), LIV-046 (ruolo premio con livello vocale)
 
 Message Content Intent: è attivo (vedi main.py). L'XP però non guarda
 mai il testo: gli basta sapere CHE un messaggio è stato inviato.
@@ -146,9 +146,13 @@ from core.guild_clan_boost_logic import (
     tipi_acquistabili,
 )
 from core.leveling_azzera_logic import rifiutato_dal_blocco
+from core.repositories.top_settimanale_repo import top_settimanale_repo
+from core.top_settimanale_logic import settimana_precedente
+from core.sfondi_pronti import SFONDI_PRONTI, disegna_sfondo_pronto
 from core.leveling_logic import (
     attesa_daily_secondi,
     attesa_work_secondi,
+    level_for_xp,
     bonus_serie,
     con_potenziamento,
     ConfigLivelli,
@@ -231,6 +235,19 @@ async def _sfondo_pronto(allegato: discord.Attachment) -> tuple[bytes | None, st
         return None, "Non riesco ad aprire questa immagine: prova con un PNG o un JPEG più piccolo."
     except discord.HTTPException:
         return None, "Non sono riuscito a scaricare l'immagine: riprova."
+
+
+async def _completa_sfondo_pronto(interaction: discord.Interaction, scritto: str) -> list[app_commands.Choice[str]]:
+    """LIV-053: gli sfondi pronti (a completamento: nessun peso in più nel gruppo, D56)."""
+    cerca = scritto.lower()
+    return [app_commands.Choice(name=nome, value=i) for i, nome in SFONDI_PRONTI.items() if cerca in nome.lower() or cerca in i][:25]
+
+
+async def _sfondo_dal_catalogo(id_sfondo: str) -> bytes | None:
+    """LIV-053: uno degli sfondi pronti, disegnato fuori dal ciclo principale. None se l'id non è nell'elenco."""
+    if id_sfondo not in SFONDI_PRONTI:
+        return None
+    return await run_image_task(disegna_sfondo_pronto, id_sfondo)
 
 
 async def _salva_sfondo(user_id: int, allegato: discord.Attachment) -> str | None:
@@ -857,6 +874,15 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 for r in await level_reward_repo.list_rewards(guild.id)
                 if r.level_threshold > new_level
             ]
+        if any(r.livello_vocale for r in ricompense):  # LIV-046: serve anche il livello vocale
+            impostazioni_voce = (await self._config(guild.id)).impostazioni
+            livello_vocale = level_for_xp(
+                await leveling_repo.xp_vocale(guild.id, member.id), impostazioni_voce.max_level, impostazioni_voce.formula
+            )
+            mancanti = [r for r in ricompense if r.livello_vocale > livello_vocale]
+            ricompense = [r for r in ricompense if r.livello_vocale <= livello_vocale]
+            if togli_superiori:
+                non_piu_raggiunti += [r.role_id for r in mancanti]
         if not ricompense and not non_piu_raggiunti:
             return True
 
@@ -949,6 +975,17 @@ class LevelingCog(CogConGruppi, commands.Cog):
             await member.send(testo[:2000])
         except discord.HTTPException:
             logger.info("Avviso del ruolo-premio non mandato a %s: DM chiusi.", member.id)
+
+    async def _ha_premi_vocali(self, guild_id: int) -> bool:
+        """LIV-046: il server ha ruoli premio con livello vocale? Si rilegge ogni 5 minuti, non a ogni minuto vocale."""
+        memoria = self.__dict__.setdefault("_premi_vocali", BoundedCache(max_size=5_000))
+        adesso = time.monotonic()
+        noto = memoria.get(guild_id)
+        if noto is not None and adesso - noto[0] < 300:
+            return noto[1]
+        valore = await level_reward_repo.ha_requisiti_vocali(guild_id)
+        memoria.set(guild_id, (adesso, valore))
+        return valore
 
     async def sincronizza_premi(self, guild, member, forza: bool = False):
         """
@@ -1362,6 +1399,16 @@ class LevelingCog(CogConGruppi, commands.Cog):
             impostazioni=config.impostazioni,
             moltiplicatori=moltiplicatori,
         )
+        if risultati and await self._ha_premi_vocali(guild.id):
+            # LIV-046: il livello vocale può essere salito anche senza un level-up totale: si ricontrolla (al massimo
+            # ogni 10 minuti per membro).
+            for member, _, _ in presenti:
+                grant = risultati.get(member.id)
+                if grant is not None and grant.xp_granted > 0 and not grant.leveled_up:
+                    try:
+                        await self.sincronizza_premi(guild, member)
+                    except Exception:
+                        logger.warning("Premi vocali di %s non ricontrollati.", member.id, exc_info=True)
         for member, channel, _ in presenti:
             grant = risultati.get(member.id)
             if grant is None or not grant.leveled_up:
@@ -1393,8 +1440,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
         sfondo="Un'immagine tua come sfondo di card e profilo (PNG, JPEG, WEBP; max 8 MB)",
         colore_testo="Colore del nome e dell'anello dell'avatar, es. #FFFFFF (resta salvato)",
         velo="Quanto il pannello copre lo sfondo, da 0 (si vede tutto) a 100 (resta salvato)",
+        sfondo_pronto="Uno sfondo già pronto (al posto di un'immagine tua)",
     )
     @app_commands.choices(tema=_SCELTE_TEMA)
+    @app_commands.autocomplete(sfondo_pronto=_completa_sfondo_pronto)
     async def rank(
         self,
         interaction: discord.Interaction,
@@ -1405,6 +1454,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         sfondo: discord.Attachment | None = None,
         colore_testo: app_commands.Range[str, 1, 7] | None = None,
         velo: app_commands.Range[int, 0, 100] | None = None,
+        sfondo_pronto: app_commands.Range[str, 1, 20] | None = None,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -1416,7 +1466,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         nota = None
         vuole_cambiare = (
             colore is not None or tema is not None or reimposta or sfondo is not None
-            or colore_testo is not None or velo is not None
+            or colore_testo is not None or velo is not None or sfondo_pronto is not None
         )
         if vuole_cambiare:
             if target.id != interaction.user.id:
@@ -1439,6 +1489,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
                     if errore:
                         await interaction.followup.send(errore, ephemeral=True)
                         return
+                elif sfondo_pronto is not None:  # LIV-053
+                    disegnato = await _sfondo_dal_catalogo(sfondo_pronto)
+                    if disegnato is None:
+                        await interaction.followup.send(await testo_per(interaction, "sfondo_pronto_sconosciuto"), ephemeral=True)
+                        return
+                    await leveling_repo.set_sfondo_card(target.id, disegnato)
                 await leveling_repo.set_rank_card_prefs(
                     target.id, colore=esadecimale, tema=tema.value if tema else None
                 )
@@ -1795,7 +1851,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         descrizione="Mostra la classifica del server.",
     )
     @app_commands.describe(
-        metric="XP, coin, minuti in vocale o reazioni (questi ultimi sono sempre di sempre)",
+        metric="XP, XP da messaggi o vocale, coin, minuti in vocale o reazioni (questi: di sempre)",
         period="Questa settimana, questo mese o di sempre",
         posizioni="Quante posizioni mostrare, da 10 a 100 (a pagine)",
         solo_presenti="Sì = niente chi ha lasciato il server",
@@ -1804,6 +1860,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
         metric=[
             app_commands.Choice(name="XP", value="xp"),
             app_commands.Choice(name="Coin", value="coins"),
+            app_commands.Choice(name="XP da messaggi", value="xp_testo"),  # LIV-013
+            app_commands.Choice(name="XP da vocale", value="xp_vocale"),  # LIV-013
             app_commands.Choice(name="Minuti in vocale", value="voce"),  # LIV-059
             app_commands.Choice(name="Reazioni messe", value="reazioni"),  # LIV-060
             app_commands.Choice(name="Reazioni ricevute", value="reazioni_ricevute"),  # LIV-060
@@ -1828,6 +1886,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
         richieste = min(300, posizioni * 3) if solo_presenti else posizioni  # ECO-013: se ne chiedono di più, poi si tolgono gli usciti
         if metric.value == "voce":
             voci = await leveling_repo.top_minuti_vocale(interaction.guild.id, richieste)
+        elif metric.value in ("xp_testo", "xp_vocale"):  # LIV-013
+            voci = await leveling_repo.top_xp_tipo(interaction.guild.id, metric.value[3:], richieste)
         elif metric.value in ("reazioni", "reazioni_ricevute"):
             voci = await leveling_repo.top_reazioni(
                 interaction.guild.id, metric.value == "reazioni_ricevute", richieste
@@ -1854,15 +1914,21 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return
 
         moneta = await self._moneta(interaction.guild.id)
+        config_livelli = await self._config(interaction.guild.id)
         righe = []
         for posizione, voce in enumerate(voci, start=1):
             prefisso = MEDALS[posizione - 1] if posizione <= len(MEDALS) else f"{posizione}."
-            unita = {"xp": "XP", "voce": "min", "reazioni": "reazioni", "reazioni_ricevute": "reazioni"}.get(
+            # LIV-013: «XP (livello N)» dal solo XP di quel tipo
+            unita = {"xp": "XP", "xp_testo": "XP", "xp_vocale": "XP", "voce": "min", "reazioni": "reazioni", "reazioni_ricevute": "reazioni"}.get(
                 metric.value, moneta
             )
-            righe.append(f"{prefisso} <@{voce.user_id}> — **{voce.amount}** {unita}")
+            livello_tipo = (
+                f" (livello {level_for_xp(voce.amount, config_livelli.impostazioni.max_level, config_livelli.impostazioni.formula)})"
+                if metric.value in ("xp_testo", "xp_vocale") else ""
+            )
+            righe.append(f"{prefisso} <@{voce.user_id}> — **{voce.amount}** {unita}{livello_tipo}")
 
-        solo_sempre = metric.value in ("voce", "reazioni", "reazioni_ricevute")
+        solo_sempre = metric.value in ("voce", "reazioni", "reazioni_ricevute", "xp_testo", "xp_vocale")
         titolo = f"Classifica {metric.name} — {'Di sempre' if solo_sempre else period.name}"
         if posizioni > 10:
             await invia_lista(
@@ -1938,6 +2004,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         level="Livello richiesto",
         role="Ruolo da assegnare al raggiungimento (fino a 3 per livello)",
         avvisa_dm="Manda un messaggio privato a chi riceve il ruolo",
+        livello_vocale="Serve anche questo livello vocale (0 = basta il livello)",
     )
     async def level_roles_add(
         self,
@@ -1945,6 +2012,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         level: app_commands.Range[int, 1, 1000],
         role: discord.Role,
         avvisa_dm: bool = False,
+        livello_vocale: app_commands.Range[int, 0, 1000] = 0,
     ) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
@@ -1969,7 +2037,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
                     ephemeral=True,
                 )
                 return
-        esito = await level_reward_repo.add_reward(guild.id, level_threshold=level, role_id=role.id, avvisa_dm=avvisa_dm)
+        esito = await level_reward_repo.add_reward(
+            guild.id, level_threshold=level, role_id=role.id, avvisa_dm=avvisa_dm, livello_vocale=livello_vocale
+        )
         if esito is None:
             await interaction.response.send_message(
                 await testo_per(interaction, "premi_livello_pieno", massimo=MAX_RUOLI_PER_LIVELLO), ephemeral=True
@@ -2035,14 +2105,29 @@ class LevelingCog(CogConGruppi, commands.Cog):
         descrizione="Imposta il canale dove annunciare i vincitori del mese.",
         sottogruppo=SOTTOGRUPPI["admin-economia annunci"],
     )
-    @app_commands.describe(channel="Canale dell'annuncio")
+    @app_commands.describe(
+        channel="Canale dell'annuncio",
+        settimanale="Sì = annuncia la top 10 di ogni settimana (il lunedì) invece dei vincitori del mese",
+    )
     async def monthly_winners_set(
-        self, interaction: discord.Interaction, channel: discord.TextChannel
+        self, interaction: discord.Interaction, channel: discord.TextChannel, settimanale: bool = False
     ) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
             return
 
+        if settimanale:  # LIV-061
+            permessi = channel.permissions_for(guild.me)
+            if not (permessi.view_channel and permessi.send_messages and permessi.embed_links):
+                await interaction.response.send_message(
+                    await testo_per(interaction, "annuncio_prova_permessi", canale=channel.mention), ephemeral=True
+                )
+                return
+            await top_settimanale_repo.imposta(guild.id, channel.id, gia_coperta=settimana_precedente())
+            await interaction.response.send_message(
+                await testo_per(interaction, "top_settimanale_attiva", mention=channel.mention), ephemeral=True
+            )
+            return
         await monthly_winners_repo.set_channel(
             guild.id, channel.id, already_covered_period=previous_period_key()
         )
@@ -2057,11 +2142,16 @@ class LevelingCog(CogConGruppi, commands.Cog):
         descrizione="Disattiva l'annuncio dei vincitori del mese.",
         sottogruppo=SOTTOGRUPPI["admin-economia annunci"],
     )
-    async def monthly_winners_disable(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(settimanale="Sì = spegne la top 10 della settimana invece dei vincitori del mese")
+    async def monthly_winners_disable(self, interaction: discord.Interaction, settimanale: bool = False) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
             return
 
+        if settimanale:  # LIV-061
+            chiave = "top_settimanale_spenta" if await top_settimanale_repo.togli(guild.id) else "top_settimanale_non_era_attiva"
+            await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
+            return
         if await monthly_winners_repo.disable(guild.id):
             await interaction.response.send_message(await testo_per(interaction, "leveling_annuncio_mensile_disattivato"), ephemeral=True)
         else:
@@ -4138,7 +4228,9 @@ class LevelingCog(CogConGruppi, commands.Cog):
         senza_sfondo="Sì = togli lo sfondo del server",
         colore="Colore di tutte le card per chi non ne ha scelto uno: #RRGGBB oppure auto (dall'icona)",
         senza_colore="Sì = togli il colore del server",
+        sfondo_pronto="Sfondo già pronto",
     )
+    @app_commands.autocomplete(sfondo_pronto=_completa_sfondo_pronto)
     async def impostazioni_card(
         self,
         interaction: discord.Interaction,
@@ -4147,6 +4239,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         senza_sfondo: bool | None = None,
         colore: app_commands.Range[str, 1, 7] | None = None,
         senza_colore: bool | None = None,
+        sfondo_pronto: app_commands.Range[str, 1, 20] | None = None,
     ) -> None:
         """NF-12, LIV-057: lo staff spegne gli sfondi con immagine. LIV-055, LIV-056: sfondo e colore del server."""
         if await _comando_rifiutato(interaction):
@@ -4156,7 +4249,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 await testo_per(interaction, "azz_serve_gestire_server"), ephemeral=True
             )
             return
-        if (sfondo is not None and senza_sfondo) or (colore is not None and senza_colore):
+        if (sfondo is not None or sfondo_pronto is not None) and senza_sfondo or (sfondo is not None and sfondo_pronto is not None) or (colore is not None and senza_colore):
             await interaction.response.send_message(
                 await testo_per(interaction, "leveling_scegli_carichi_un_immagine_la"), ephemeral=True
             )
@@ -4181,9 +4274,15 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 await interaction.followup.send(errore, ephemeral=True)
                 return
             await leveling_repo.set_sfondo_server(interaction.guild.id, pronto)
+        elif sfondo_pronto is not None:  # LIV-053
+            disegnato = await _sfondo_dal_catalogo(sfondo_pronto)
+            if disegnato is None:
+                await interaction.response.send_message(await testo_per(interaction, "sfondo_pronto_sconosciuto"), ephemeral=True)
+                return
+            await leveling_repo.set_sfondo_server(interaction.guild.id, disegnato)
         elif senza_sfondo:
             await leveling_repo.set_sfondo_server(interaction.guild.id, None)
-        if not campi and sfondo is None and not senza_sfondo:
+        if not campi and sfondo is None and sfondo_pronto is None and not senza_sfondo:
             await interaction.response.send_message(
                 await testo_per(interaction, "leveling_scegli_almeno_un_valore_da"), ephemeral=True
             )

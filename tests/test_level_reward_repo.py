@@ -86,3 +86,17 @@ async def test_get_rewards_up_to_level_include_la_soglia_esatta(repo):
 @pytest.mark.asyncio
 async def test_get_rewards_up_to_level_nessuna_ricompensa_configurata(repo):
     assert await repo.get_rewards_up_to_level(100, level=50) == []
+
+
+# LIV-046
+@pytest.mark.asyncio
+async def test_il_livello_vocale_del_ruolo_premio_si_salva_e_si_legge(clean_db):
+    repo = LevelRewardRepository(pool_provider=lambda: clean_db)
+    assert await repo.ha_requisiti_vocali(1) is False
+    primo = await repo.add_reward(1, 10, 500, livello_vocale=4)
+    await repo.add_reward(1, 10, 501)
+    premi = {r.role_id: r.livello_vocale for r in await repo.list_rewards(1)}
+    assert premi == {500: 4, 501: 0}
+    assert await repo.ha_requisiti_vocali(1) is True and await repo.ha_requisiti_vocali(2) is False
+    assert await repo.add_reward(1, 10, 500, livello_vocale=2) == primo  # stesso ruolo: cambia il requisito
+    assert (await repo.get_rewards_up_to_level(1, 10))[0].livello_vocale == 2
