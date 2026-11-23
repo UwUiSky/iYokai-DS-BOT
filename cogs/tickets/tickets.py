@@ -83,6 +83,7 @@ from core.database import db
 from core.allegati_tipo_logic import nome_pulito
 from core.i18n import lingua_interazione, testo_guild, testo_per
 from core.repositories.ticket_standard_repo import ticket_standard_repo
+from core import ticket_roblox
 from core.repositories.ticket_form_repo import (
     DomandaModulo,
     PannelloGiaEsistente,
@@ -501,6 +502,22 @@ async def _vista_assistente(guild_id: int):
         return None
 
 
+async def _profilo_roblox(channel, guild, utente) -> None:
+    """TKT-088: il profilo Roblox di chi apre il ticket, se il server lo vuole e l'owner ha messo la chiave di Bloxlink. Mai blocca il ticket."""
+    try:
+        if not ticket_roblox.disponibile() or not await db.get_guild_setting(guild.id, ticket_roblox.SETTING_ACCESO, False):
+            return
+        trovato = await ticket_roblox.profilo(guild.id, utente.id)
+        if trovato is None:
+            return
+        await channel.send(
+            embed=discord.Embed(title="Profilo Roblox", description=ticket_roblox.come_testo(trovato), color=discord.Color.blurple()),
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+    except Exception:  # noqa: BLE001 - il ticket esiste già
+        logger.warning("Profilo Roblox non mostrato nel ticket %s.", getattr(channel, "id", None), exc_info=True)
+
+
 async def _vista_benvenuto(interaction, vista_ai, ticket):
     """Il messaggio di benvenuto: bottone dell'assistente (se c'è) e menu «Gestisci» dello staff (una riga in più)."""
     if ticket is None:
@@ -836,6 +853,7 @@ async def _crea_ticket(
     except discord.HTTPException:
         logger.warning("Messaggio di benvenuto non inviato (o non fissato) nel ticket %s.", channel.id)
 
+    await _profilo_roblox(channel, guild, utente)  # TKT-088
     await _avvisi_di_apertura(channel, guild, utente, opzioni, reperibili, ticket_number)
     if come_thread:
         await _avviso_thread_allo_staff(guild, channel, opzioni, utente, ticket_number)
@@ -1975,12 +1993,14 @@ class TicketsCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         category="La categoria dove verranno creati i canali dei ticket",
         support_role="Ruolo che vedrà automaticamente ogni ticket (facoltativo)",
+        roblox="Mostra nel ticket il profilo Roblox di chi lo apre (serve la chiave Bloxlink del bot)",
     )
     async def ticket_setup(
         self,
         interaction: discord.Interaction,
         category: discord.CategoryChannel,
         support_role: discord.Role | None = None,
+        roblox: bool | None = None,
     ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
@@ -1995,6 +2015,11 @@ class TicketsCog(CogConGruppi, commands.Cog):
                 interaction.guild.id, SETTING_SUPPORT_ROLE, support_role.id
             )
 
+        if roblox is not None:  # TKT-088
+            if roblox and not ticket_roblox.disponibile():
+                await interaction.response.send_message(await testo_per(interaction, "tickets_roblox_senza_chiave"), ephemeral=True)
+                return
+            await db.set_guild_setting(interaction.guild.id, ticket_roblox.SETTING_ACCESO, roblox, changed_by=interaction.user.id)
         messaggio = f"Categoria dei ticket impostata su **{category.name}**."
         if support_role is not None:
             messaggio += f" Ruolo di supporto: {support_role.mention}."

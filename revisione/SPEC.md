@@ -3102,3 +3102,5 @@ Controllo delle 89 voci in `revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.
 - `[x]` UTL-111 (D121): `/admin-automazioni programma` (UTL-111, 0886).
 
 - `[x]` ECO-051 (D121): `/sondaggi crea premio_monete: vincitori:` (ECO-051, 0887).
+
+- `[x]` TKT-088 (D121): `/admin-ticket setup roblox:sì` e chiave `BLOXLINK_API_KEY` (TKT-088).
