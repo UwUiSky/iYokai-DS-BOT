@@ -1640,3 +1640,17 @@ Attua D119 per le voci medie. Elenco delle voci e dei motivi in fondo, aggiornat
   - Valgono le regole dei 30 giorni dell'owner (chiusura del server, azzeramento UTL-228).
 - **Foto delle auto (FUN-017):** nessun interruttore per i canali con limite d'età. Ogni foto passa da un **controllo automatico dei contenuti per adulti**: classificatore tramite lo snodo AI, se c'è un fornitore con moderazione delle immagini. Se la foto risulta per adulti viene rifiutata o tolta, e si chiede un'altra foto. Restano le segnalazioni e la rimozione dello staff.
 - **Prezzi di auto e tela:** vanno bene quelli scelti (auto da 150 a 12.000 monete; tela: pausa di 5 minuti, 10 monete per ogni minuto saltato). Si possono cambiare in ogni momento.
+
+## D124 — Scelte dell'owner sulle voci lasciate fuori (23/11/2026, VINCOLANTI)
+
+- **VOC-006:** non si fa. Il canale vocale ha già la sua chat di testo, due canali non servono.
+- **UTL-121 (creazione guidata a passi):** sì. Una procedura guidata con bottoni e finestre, passo per passo, per creare un giveaway. Lo stesso schema serve per il **primo setup del bot** e per **modificare un setup già fatto**. Resta anche il comando unico con le opzioni.
+- **UTL-216 («cerca qualsiasi cosa»):** sì. La ricerca usa i servizi AI con ricerca web tramite lo snodo AI (custode-ai); l'owner aggiungerà molte chiavi di servizi gratuiti. Senza un servizio adatto il comando lo dice.
+- **FUN-138:** sì, come preferenza di ogni utente che la vuole: genere dei personaggi, personaggi preferiti e tipo di GIF (anime o non anime, …). Senza preferenze tutto resta come oggi.
+- **CFG-036 (Patreon):** si prepara tutto, spento finché l'owner non mette le chiavi.
+- **CFG-040, CFG-041:** si fanno secondo **D59**:
+  - livelli **Gratuito, Premium, Ultra, VIP** e chiave propria;
+  - Premium mensile, annuale o a vita, oppure con il boost di un server dell'owner;
+  - limiti numerici diversi per livello (copie, messaggi, pannelli, …) scelti dall'owner dal pannello o con i comandi;
+  - prezzi e sconti sono numeri che sceglie l'owner, non scritti nel codice.
+- **UTL-110 (messaggi programmati con @everyone o @here):** sì. Solo il proprietario del server, o chi ha il permesso «Menziona @everyone» riletto al momento dell'invio; tetto di invii; log.
