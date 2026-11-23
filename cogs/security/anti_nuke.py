@@ -47,6 +47,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core import bot_roles
 from core import channel_router as router
 from core.bounded_cache import BoundedCache
+from core import rete_protezione
 from core.database import db
 from core.i18n import testo_per
 from core.lockdown_service import panico_automatico
@@ -1005,6 +1006,9 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
 
         esito, tolti = await _punish_actor(guild, actor_id, settings.anti_nuke, reason=reason)
         dettaglio = f"{detail_suffix} — {quanti} — {esito}"
+        if not esito.startswith("nessuna azione") and not esito.startswith("tentativo"):
+            # VER-025: l'autore di un nuke è un account da fermare ovunque (mai proprietari né bot: lo controlla la rete)
+            rete_protezione.avvia_compromesso(self.bot, actor_id, guild.id, escludi={guild.id})
         await security_repo.log_action(guild.id, f"nuke_{category}", actor_id, dettaglio)
         numero = await security_repo.create_nuke_case(
             guild.id, actor_id, category, dettaglio, esito, tuple(tolti)

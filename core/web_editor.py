@@ -24,6 +24,7 @@ from core.leveling_logic import colore_valido
 from core.nome_logic import normalizza_nome
 from core.repositories.greetings_repo import greetings_repo
 from core.repositories.saved_embed_repo import saved_embed_repo
+from core.controllo_link import e_link_pericoloso
 from core.safe_http import url_e_sicuro
 
 CAMPI_NEL_MODULO = 3  # il modulo ha 3 campi; per averne di più si usa il comando di modifica
@@ -77,7 +78,7 @@ async def errori_embed(dati: DatiEmbed) -> list[str]:
     """Gli errori del comando (limiti) più gli indirizzi che il bot non può raggiungere in sicurezza."""
     errori = valida(dati)
     for etichetta, url in (("immagine", dati.image_url), ("miniatura", dati.thumbnail_url)):
-        if url and not errori and not await url_e_sicuro(url):
+        if url and not errori and (not await url_e_sicuro(url) or await e_link_pericoloso(url)):
             errori.append(f"L'indirizzo della {etichetta} non è ammesso (indirizzo interno o porta non consentita).")
     return errori
 

@@ -374,6 +374,34 @@ async def safe_richiesta(
         return None
 
 
+async def safe_segui_redirect(url: str, *, max_salti: int = MAX_REDIRECTS) -> str | None:
+    """
+    AMD-030: l'indirizzo a cui porta un accorciatore, senza leggere il corpo. Segue a mano al massimo `max_salti`
+    redirect, ricontrollando ogni destinazione come `safe_get`. Restituisce l'ultimo URL (anche quello di partenza
+    se non c'è redirect); None se una destinazione è rifiutata o la richiesta fallisce.
+    """
+    corrente = url
+    try:
+        sessione = await _sessione_condivisa()
+        for _ in range(max_salti + 1):
+            destinazione = _destinazione_ammessa(corrente)
+            if destinazione is None:
+                return None
+            async with sessione.get(
+                destinazione, allow_redirects=False, timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS)
+            ) as risposta:
+                if risposta.status not in _REDIRECT_STATUS:
+                    return corrente
+                dove = risposta.headers.get("Location")
+                if not dove:
+                    return corrente
+                corrente = urljoin(corrente, dove)
+        return corrente
+    except (aiohttp.ClientError, TimeoutError, ValueError, RuntimeError) as exc:
+        logger.warning("Redirect di %s non seguito: %s", _per_log(url), type(exc).__name__)
+        return None
+
+
 async def safe_richiesta_byte(url: str, *, max_bytes: int = DEFAULT_MAX_BYTES, tipo_prefisso: str = "image/") -> tuple[bytes, str] | None:
     """
     GET di un file binario (un'immagine) con gli stessi controlli di `safe_richiesta`: schema, porta e indirizzi,

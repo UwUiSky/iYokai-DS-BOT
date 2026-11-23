@@ -22,6 +22,7 @@ import aiohttp
 from core import strumenti_rapidi_logic as rapidi
 from core.bounded_cache import BoundedCache
 from core.phishing_logic import ACCORCIATORI, carica_lista_locale, e_phishing
+from core.controllo_link import e_link_pericoloso
 from core.safe_http import USER_AGENT, safe_get, url_e_sicuro
 
 TIMEOUT_SECONDI = 8
@@ -313,7 +314,7 @@ async def accorcia_link(link: str) -> str:
         return "non_valido"
     if p.hostname.casefold() in ACCORCIATORI:
         return "gia_corto"
-    if e_phishing([p.hostname], _lista_phishing()) or not await url_e_sicuro(link):
+    if e_phishing([p.hostname], _lista_phishing()) or not await url_e_sicuro(link) or await e_link_pericoloso(link):
         return "pericoloso"
     try:
         risposta = await asyncio.wait_for(safe_get(f"https://is.gd/create.php?format=simple&url={quote(link, safe='')}", max_bytes=2000), TIMEOUT_SECONDI)

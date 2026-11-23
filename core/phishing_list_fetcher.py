@@ -50,10 +50,18 @@ class ListaPhishing:
         self._scaricata: frozenset[str] = frozenset()
         self._ultimo_tentativo = 0.0
         self._compito: asyncio.Task | None = None
+        self._unione: tuple[int, int, int, frozenset[str]] | None = None
 
     @property
     def domini(self) -> frozenset[str]:
-        return self._locale | self._scaricata
+        """Locale, scaricata con PHISHING_LIST_URL e liste pubbliche di core/controllo_link_liste (AMD-030). L'unione si rifà solo se una cambia."""
+        from core.controllo_link_liste import CATEGORIA_PHISHING, stato
+
+        pubbliche = stato.categoria(CATEGORIA_PHISHING)
+        chiave = (id(self._locale), id(self._scaricata), id(pubbliche))
+        if self._unione is None or self._unione[:3] != chiave:
+            self._unione = (*chiave, self._locale | self._scaricata | pubbliche)
+        return self._unione[3]
 
     def url(self) -> str | None:
         valore = os.environ.get(VARIABILE_URL, "").strip()
@@ -90,6 +98,9 @@ class ListaPhishing:
 
     def aggiorna_se_serve(self) -> None:
         """Lancia il download in sottofondo se e' passato l'intervallo; torna subito."""
+        from core.controllo_link_liste import stato
+
+        stato.aggiorna_se_serve()  # AMD-030: URLhaus, Phishing Army, OpenPhish... (ogni 12 ore, sottofondo)
         url = self.url()
         adesso = time.monotonic()
         if url is None or (self._compito is not None and not self._compito.done()):

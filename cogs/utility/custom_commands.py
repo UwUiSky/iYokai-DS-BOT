@@ -22,6 +22,7 @@ from discord.ext import commands
 
 from core.admin_mentions_logic import menzioni_ammesse, utente_puo_pingare_ruoli
 from core.bounded_cache import BoundedCache
+from core.controllo_link import togli_link_pericolosi
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.custom_command_logic import (
@@ -173,6 +174,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         cancellazione se il tag la chiede. Con `autore` e invio «altro» la risposta pinga chi ha usato il tag (UTL-038).
         Se il tag ha un embed salvato (UTL-018) lo manda con il testo. Ritorna l'ultimo messaggio."""
         menzioni = menzioni_ammesse(tag.ping_ruoli)
+        testo, _ = await togli_link_pericolosi(testo)  # AMD-030: il bot non pubblica link giudicati pericolosi
         ping = f"{autore.mention} " if autore is not None and tag.invio == "altro" else ""
         salvato = await saved_embed_repo.get(tag.guild_id, tag.embed_nome) if tag.embed_nome else None
         if salvato is not None:

@@ -102,6 +102,7 @@ from core.automod_advanced_logic import (
     VIOLATION_LUNGHEZZA,
     VIOLATION_SPOILER,
     VIOLATION_ACCORCIATORI,
+    VIOLATION_LINK_PERICOLOSI,
     VIOLATION_SITI_PERICOLOSI,
     VIOLATION_INVITI_ADULTI,
     VIOLATION_RIPETUTI,
@@ -201,6 +202,7 @@ _VIOLATION_LABELS = {
     VIOLATION_SPOILER: "Troppi spoiler",
     VIOLATION_ACCORCIATORI: "Accorciatori di link",
     VIOLATION_SITI_PERICOLOSI: "Siti pericolosi",
+    VIOLATION_LINK_PERICOLOSI: "Link pericolosi",
     VIOLATION_INVITI_ADULTI: "Inviti a server per adulti",
     VIOLATION_RIPETUTI: "Messaggi ripetuti",
     VIOLATION_CORTO: "Messaggio troppo corto",
@@ -265,9 +267,9 @@ def _media_inoltrati(message: discord.Message) -> int:
     )
 
 # Le violazioni della famiglia phishing: canale di log suo e link non cliccabile.
-_VIOLAZIONI_PHISHING = frozenset({VIOLATION_PHISHING, VIOLATION_ACCORCIATORI, VIOLATION_INVITI_ADULTI, VIOLATION_SITI_PERICOLOSI})
+_VIOLAZIONI_PHISHING = frozenset({VIOLATION_PHISHING, VIOLATION_ACCORCIATORI, VIOLATION_INVITI_ADULTI, VIOLATION_SITI_PERICOLOSI, VIOLATION_LINK_PERICOLOSI})
 # AMD-019: le sole violazioni che il testo di un embed può far scattare.
-_VIOLAZIONI_LINK = frozenset({VIOLATION_ANTI_LINK, VIOLATION_PHISHING, VIOLATION_ACCORCIATORI, VIOLATION_SITI_PERICOLOSI})
+_VIOLAZIONI_LINK = frozenset({VIOLATION_ANTI_LINK, VIOLATION_PHISHING, VIOLATION_ACCORCIATORI, VIOLATION_SITI_PERICOLOSI, VIOLATION_LINK_PERICOLOSI})
 
 # SIC-042: esito degli inviti gia' chiesti a Discord (codice -> per adulti?). Tetto in memoria.
 MAX_INVITI_IN_MEMORIA = 2000
@@ -1154,6 +1156,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         accorciatori="Blocca anche gli accorciatori di link (bit.ly, tinyurl...); vuoto: non cambia",
         inviti_adulti="Blocca anche gli inviti a server per adulti; vuoto: non cambia",
         siti="Blocca siti che catturano l'IP, per adulti o malware; «nessuno» li spegne",
+        link_pericolosi="Controlla ogni link con liste e servizi di sicurezza; vuoto: non cambia",
         azione_extra="Sanzione in più oltre alla cancellazione (mai sullo staff); vuoto: non cambia",
     )
     @app_commands.choices(siti=[
@@ -1162,6 +1165,10 @@ class AutomodCog(CogConGruppi, commands.Cog):
         app_commands.Choice(name="Per adulti", value="adulti"),
         app_commands.Choice(name="Malware", value="malware"),
         app_commands.Choice(name="Tutti", value="tutti"),
+    ], link_pericolosi=[
+        app_commands.Choice(name="Spento", value="0"),
+        app_commands.Choice(name="Solo i pericolosi", value="1"),
+        app_commands.Choice(name="Anche i sospetti", value="2"),
     ], azione_extra=[
         app_commands.Choice(name="nessuna", value="nessuna"),
         *(app_commands.Choice(name=n, value=n) for n in SCELTE_PHISHING_EXTRA),
@@ -1175,6 +1182,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         inviti_adulti: bool | None = None,
         azione_extra: str | None = None,
         siti: app_commands.Choice[str] | None = None,
+        link_pericolosi: app_commands.Choice[str] | None = None,
     ) -> None:
         if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
             return
@@ -1190,6 +1198,8 @@ class AutomodCog(CogConGruppi, commands.Cog):
             cambi["phishing_siti"] = (
                 () if siti.value == "nessuno" else CATEGORIE_SITI if siti.value == "tutti" else (siti.value,)
             )
+        if link_pericolosi is not None:  # AMD-030
+            cambi["link_pericolosi"] = int(link_pericolosi.value)
         if azione_extra is not None:
             cambi["phishing_azione_extra"] = "" if azione_extra == "nessuna" else azione_extra  # SIC-041
         nuova = _replace_settings(settings, **cambi)
@@ -1202,6 +1212,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
             f"Accorciatori di link: {'bloccati' if c.phishing_accorciatori else 'permessi'}. "
             f"Inviti a server per adulti: {'bloccati' if c.phishing_inviti_adulti else 'permessi'}. "
             f"Siti pericolosi: {', '.join(c.phishing_siti) or 'permessi'}. "
+            f"Controllo dei link: {('spento', 'solo pericolosi', 'anche sospetti')[c.link_pericolosi]}. "
             f"Sanzione in più: {c.phishing_azione_extra or 'nessuna'} (mai su staff, proprietario o chi sta sopra il bot). "
             "Se blocco un dominio per sbaglio, mettilo nella whitelist con `/admin-filtri anti-link-domain`."
             + (f" I link bloccati si scrivono in {canale_log.mention}." if canale_log is not None else ""),
@@ -1867,7 +1878,7 @@ class AutomodCog(CogConGruppi, commands.Cog):
         segnali = build_message_signals(
             message, settings.config, conta_nel_tempo=not modificato, solo_embed=solo_embed
         )
-        if settings.config.anti_phishing_enabled:
+        if settings.config.anti_phishing_enabled or settings.config.link_pericolosi:
             lista_phishing.aggiorna_se_serve()
         violazioni = evaluate_message_violations(segnali, settings.config, lista_phishing.domini)
         if solo_embed:
@@ -1878,6 +1889,9 @@ class AutomodCog(CogConGruppi, commands.Cog):
                 if await _invito_per_adulti(self.bot, codice, message.guild.id):
                     violazioni = (*violazioni, VIOLATION_INVITI_ADULTI)
                     break
+        if settings.config.link_pericolosi:  # AMD-030: punto di aggancio per le regole del giro r3automod (condizioni, azioni)
+            if await _link_pericolosi(message, segnali, settings.config):
+                violazioni = (*violazioni, VIOLATION_LINK_PERICOLOSI)
         frammenti: list[int] = []
         if not solo_embed:
             trovata = await self._parola_vietata(message, segnali.content, modificato)
@@ -1942,6 +1956,21 @@ class AutomodCog(CogConGruppi, commands.Cog):
             # sullo stesso contenuto — esce dal ciclo.
             if "delete" in eseguite:
                 break
+
+
+async def _link_pericolosi(message: discord.Message, segnali, config) -> bool:
+    """AMD-030: True se un link del messaggio (o dell'embed) è pericoloso per controllo_link; con livello 2 anche se sospetto."""
+    from core import controllo_link
+
+    testo = f"{segnali.content}\n{segnali.testo_embed}" if segnali.testo_embed else segnali.content
+    try:
+        esito = await controllo_link.primo_pericoloso(
+            testo, anche_sospetti=config.link_pericolosi >= 2, consentiti=tuple(config.anti_link.whitelist)
+        )
+    except Exception:  # noqa: BLE001  # un guasto del controllo non deve fermare l'AutoMod
+        logger.warning("Controllo dei link non riuscito (server %s).", message.guild.id)
+        return False
+    return esito is not None
 
 
 async def _cancella_frammenti(message: discord.Message, frammenti: list[int]) -> None:

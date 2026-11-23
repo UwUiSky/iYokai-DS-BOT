@@ -34,6 +34,7 @@ os.environ.setdefault(
     "postgresql://postgres:testpass@127.0.0.1:5432/iyokai_test",
 )
 os.environ.setdefault("ENVIRONMENT", "development")
+os.environ.setdefault("LINK_LISTE_ATTIVE", "nessuna")  # AMD-030: i test non scaricano le liste dei siti pericolosi
 
 import asyncio
 

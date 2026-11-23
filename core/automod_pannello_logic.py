@@ -28,7 +28,7 @@ from core.duration_logic import MAX_DURATION_SECONDS, parse_duration
 CATEGORIE = ("testo", "link", "spam", "allegati", "nomi", "vocali", "eventi", "personali")
 FILTRI_PER_CATEGORIA = {
     "testo": ("anti_caps", "anti_zalgo", "anti_a_capo", "anti_lunghezza", "anti_corto", "anti_spoiler", "parole_vietate"),
-    "link": ("anti_link", "anti_phishing", "anti_accorciatori", "anti_inviti_adulti", "anti_link_tempo"),
+    "link": ("anti_link", "anti_phishing", "anti_accorciatori", "anti_inviti_adulti", "anti_siti_pericolosi", "anti_link_pericolosi", "anti_link_tempo"),
     "spam": ("anti_spam_messages", "anti_spam_emoji", "anti_spam_sticker", "anti_mass_mention", "anti_ripetuti",
              "anti_menzioni_tempo"),
     "allegati": ("anti_attachment_spam", "anti_estensioni", "solo_media", "senza_allegati"),

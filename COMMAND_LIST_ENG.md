@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 17:36 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 04:26 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 1117 commands in 55 categories.**
+**Total: 1121 commands in 55 categories.**
 
 ## Admin: AI
 
@@ -495,6 +495,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 17:3
 - **`/admin-security globalban enable`** — Joins the global ban network (send and receive).
 - **`/admin-security globalban status`** — Shows the global ban status and recent history.
 - **`/admin-security heatmap`** — Shows which roles have critical permissions and who holds them.
+- **`/admin-security net ban`** — Optional ban network: join, choose proposal or automatic, undo.
+- **`/admin-security net settings`** — Protection network: alerts from other servers and safety timeout.
+- **`/admin-security net timeout-togli`** — Removes the timeout the network put on a compromised account.
 - **`/admin-security panic configura`** — Panic settings: notified roles, excluded categories, unlock, rules.
 - **`/admin-security panic enable`** — Turn panic on: full lockdown with the emergency rules.
 - **`/admin-security panic remove`** — Turn panic off and reopen the server as it was.
@@ -1129,6 +1132,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-22 17:3
 - **`/owner cog unload`** — Unloads an extension.
 - **`/owner hate-words`** — Bot owner only: the worldwide library of hate words.
 - **`/owner immagini-trappola`** — Bot owner only: the shared library of trap images.
+- **`/owner net`** — Bot owner only: block servers that report in a wrong way.
 - **`/owner premium grant`** — Grants premium to a server, or creates a code to redeem.
 - **`/owner premium list`** — Shows the premium status of all modules.
 - **`/owner premium panel`** — Interactive panel to turn premium modules on or off.

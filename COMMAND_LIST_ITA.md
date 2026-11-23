@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 17:36 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:26 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 1117 comandi in 55 categorie.**
+**Totale: 1121 comandi in 55 categorie.**
 
 ## Admin: AI
 
@@ -499,6 +499,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 17:
 - **`/admin-sicurezza panico configura`** — Scelte del panico: ruoli avvisati, categorie escluse, sblocco, regole.
 - **`/admin-sicurezza panico stato`** — Mostra se il server e' bloccato e le scelte del panico.
 - **`/admin-sicurezza panico togli`** — Spegne il panico e riapre il server com'era.
+- **`/admin-sicurezza rete ban`** — Rete facoltativa dei ban: aderisci, scegli proposta o automatico, annulla.
+- **`/admin-sicurezza rete impostazioni`** — Rete di protezione: avvisi dagli altri server e timeout di sicurezza.
+- **`/admin-sicurezza rete timeout-togli`** — Toglie il timeout messo dalla rete per un account compromesso.
 - **`/admin-sicurezza score`** — Calcola il punteggio di sicurezza del server con consigli.
 - **`/admin-sicurezza spamtrap`** — Configura i canali trappola e log dello Spam Trap.
 - **`/admin-sicurezza verify blacklist-add`** — Aggiungi un utente alla blacklist.
@@ -1156,6 +1159,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 17:
 - **`/owner radio start`** — Entra nella radio condivisa, nel punto in cui si trova ora.
 - **`/owner radio stato`** — Quanti player musicali stanno suonando ora.
 - **`/owner radio stop`** — Esce dalla radio su questo server.
+- **`/owner rete`** — Solo proprietario del bot: blocca i server che segnalano in modo scorretto.
 - **`/owner system announce`** — Manda un annuncio a tutti i server.
 - **`/owner system eval`** — Esegue codice Python (con conferma).
 - **`/owner system leave-guild`** — Forza il bot a lasciare un server specifico (senza bloccarlo).
