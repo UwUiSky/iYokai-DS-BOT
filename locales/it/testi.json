@@ -4284,5 +4284,19 @@
   "eco_negozio_web_spento": "Il negozio non si vede più sul sito.",
   "backup_carica_scegli": "Indica il numero di una copia, oppure `ultima_automatica:sì`: una cosa sola.",
   "backup_ultima_solo_proprietario": "La copia automatica dopo un attacco la carica solo il proprietario del server.",
-  "backup_nessuna_automatica": "Non c'è nessuna copia automatica. Accendile con `/founder backup automatico` (da 3 ore)."
+  "backup_nessuna_automatica": "Non c'è nessuna copia automatica. Accendile con `/founder backup automatico` (da 3 ore).",
+  "guidata_non_tua": "Questa procedura è di un'altra persona: avviane una tua.",
+  "guidata_annullata": "Procedura annullata. Non è stato salvato niente.",
+  "guidata_scaduta": "Procedura scaduta. Non è stato salvato niente: riavviala quando vuoi.",
+  "guidata_riepilogo_titolo": "Riepilogo",
+  "guidata_passo": "Passo {n} di {totale}: {nome}",
+  "guidata_footer": "Non si salva niente finché non confermi. La procedura scade dopo {minuti} minuti.",
+  "guidata_indietro": "Indietro",
+  "guidata_avanti": "Avanti",
+  "guidata_conferma": "Conferma",
+  "guidata_annulla": "Annulla",
+  "guidata_mancano_dati": "Prima di andare avanti scegli i dati di questo passo.",
+  "guidata_errore": "Qualcosa è andato storto: non è stato salvato tutto. Riprova.",
+  "guidata_permesso_perso": "Non hai più il permesso per questa procedura. Non è stato salvato niente.",
+  "guidata_solo_server": "Questa procedura funziona solo in un server."
 }

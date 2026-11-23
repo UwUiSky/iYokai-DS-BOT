@@ -4284,5 +4284,19 @@
   "eco_negozio_web_spento": "The shop is no longer shown on the website.",
   "backup_carica_scegli": "Give a copy number, or `ultima_automatica:yes`: only one of the two.",
   "backup_ultima_solo_proprietario": "Only the server owner can load the latest automatic copy after an attack.",
-  "backup_nessuna_automatica": "There is no automatic copy. Turn them on with `/founder backup automatico` (from 3 hours)."
+  "backup_nessuna_automatica": "There is no automatic copy. Turn them on with `/founder backup automatico` (from 3 hours).",
+  "guidata_non_tua": "This guided procedure belongs to someone else: start your own.",
+  "guidata_annullata": "Procedure cancelled. Nothing was saved.",
+  "guidata_scaduta": "Procedure expired. Nothing was saved: start it again whenever you like.",
+  "guidata_riepilogo_titolo": "Summary",
+  "guidata_passo": "Step {n} of {totale}: {nome}",
+  "guidata_footer": "Nothing is saved until you confirm. The procedure expires after {minuti} minutes.",
+  "guidata_indietro": "Back",
+  "guidata_avanti": "Next",
+  "guidata_conferma": "Confirm",
+  "guidata_annulla": "Cancel",
+  "guidata_mancano_dati": "Choose the data for this step before moving on.",
+  "guidata_errore": "Something went wrong: not everything was saved. Try again.",
+  "guidata_permesso_perso": "You no longer have permission for this procedure. Nothing was saved.",
+  "guidata_solo_server": "This procedure only works in a server."
 }
