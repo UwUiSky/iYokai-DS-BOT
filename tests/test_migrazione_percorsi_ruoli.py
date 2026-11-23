@@ -17,6 +17,13 @@ SQL = (Path(__file__).parent.parent / "core/migrations/0488_percorsi_comandi_ruo
 COPPIE = re.findall(r"\('([^']+)', '([^']+)'\)", SQL.split("WITH m(vecchio, nuovo)", 2)[1])
 
 
+def _spostati_da_migrazioni_successive() -> set[str]:
+    """Percorsi nuovi di 0488 che una migrazione più recente ha già spostato di nuovo (es. 0557)."""
+    cartella = Path(__file__).parent.parent / "core/migrations"
+    testo = "".join(f.read_text() for f in sorted(cartella.glob("*.sql")) if f.name > "0488_z")
+    return {n for _, n in COPPIE if f"'{n}'" in testo}
+
+
 def _json(valore):
     return json.loads(valore) if isinstance(valore, str) else valore
 
@@ -48,7 +55,8 @@ async def test_percorsi_vecchi_spariti_e_nuovi_presenti_nell_albero_vero():
     try:
         assert not falliti, falliti
         percorsi = set(percorsi_dei_comandi(list(GRUPPI.values())))
-        mancano = sorted(n for _, n in COPPIE if n not in percorsi)
+        spostati = _spostati_da_migrazioni_successive()
+        mancano = sorted(n for _, n in COPPIE if n not in percorsi and n not in spostati)
         assert not mancano, f"Percorsi nuovi che non esistono: {mancano}"
         restano = sorted(v for v, _ in COPPIE if v in percorsi)
         assert not restano, f"Percorsi vecchi ancora nell'albero: {restano}"

@@ -32,7 +32,9 @@ R_LETTURA, R_SCRITTURA, R_ALTRO, R_MANAGED = 7001, 7002, 7003, 7004
 def ambiente(monkeypatch, clean_db, reset_premium_registry):
     monkeypatch.setattr(database_module.db, "_pool", clean_db)
     monkeypatch.setattr(panel_bridge, "_cache_membri", OrderedDict())
-    registry.register(PremiumModule("music", "Musica", "Prova", category="music"))
+    # Se un test precedente ha caricato l'albero vero, "music" c'è già (con la sua dichiarazione).
+    if registry.get("music") is None:
+        registry.register(PremiumModule("music", "Musica", "Prova", category="music"))
     ruoli = {
         R_LETTURA: fake_role(R_LETTURA, "Lettori"), R_SCRITTURA: fake_role(R_SCRITTURA, "Scrittori"),
         R_ALTRO: fake_role(R_ALTRO, "Altro"), R_MANAGED: fake_role(R_MANAGED, "Bot", managed=True),
