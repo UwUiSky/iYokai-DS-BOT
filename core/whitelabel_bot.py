@@ -15,17 +15,20 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from dataclasses import dataclass
 
 import discord
 
 from core.bot_info import url_invito
+from core import marchio_errori as errori_marchio
 from core.repositories.whitelabel_repo import Marchio, whitelabel_repo
 
 logger = logging.getLogger("iyokai.whitelabel")
 
 MODULO_MARCHIO = "marchio"
 MAX_TESTO_STATO = 100
+ATTESA_SYNC_SECONDI = 300
 
 STATO_FERMO = "fermo"
 STATO_ATTIVO = "attivo"
@@ -99,17 +102,40 @@ def inoltra_interazioni(client: discord.Client, bot) -> None:
         if str(dati.get("guild_id")) != server:
             logger.info("Marchio del server %s: interazione da fuori server ignorata.", server)
             return
-        principale.parse_interaction_create(dati)
+        try:
+            principale.parse_interaction_create(dati)
+        except Exception as exc:  # noqa: BLE001 - un'interazione rotta non ferma il client
+            errori_marchio.registra(client.guild_id, "interazione", exc)
+            raise
 
     client._connection.parsers["INTERACTION_CREATE"] = inoltra
 
 
-async def sincronizza_comandi_marchio(client: discord.Client, bot, guild_id: int, application_id: int, stato) -> str:
+class _StatoForzato:
+    """Per la risincronizzazione a mano: l'impronta salvata non conta, ma quella nuova si salva."""
+
+    def __init__(self, stato) -> None:
+        self._stato = stato
+
+    async def leggi(self, scope: str) -> str | None:
+        return None
+
+    async def salva(self, scope: str, impronta: str) -> None:
+        await self._stato.salva(scope, impronta)
+
+
+async def sincronizza_comandi_marchio(
+    client: discord.Client, bot, guild_id: int, application_id: int, stato, *, forza: bool = False
+) -> str:
     """
     Registra i comandi globali del principale sull'applicazione del marchio, solo nel suo server. Solo se l'albero
-    è cambiato dall'ultima volta (impronta salvata per questo marchio). Mai eccezioni.
+    è cambiato dall'ultima volta (impronta salvata per questo marchio), a meno che `forza` (CFG-032). Mai eccezioni;
+    un errore finisce nel registro degli errori del marchio.
     """
     from core.command_sync import sincronizza_se_cambiato
+
+    if forza:
+        stato = _StatoForzato(stato)
 
     albero = bot.tree
     comandi = list(albero.get_commands())
@@ -120,7 +146,11 @@ async def sincronizza_comandi_marchio(client: discord.Client, bot, guild_id: int
             await c.get_translated_payload(albero, traduttore) if traduttore is not None else c.to_dict(albero)
             for c in comandi
         ]
-        await client.http.bulk_upsert_guild_commands(application_id, guild_id, payload)
+        try:
+            await client.http.bulk_upsert_guild_commands(application_id, guild_id, payload)
+        except Exception as exc:
+            errori_marchio.registra(guild_id, "comandi", exc)
+            raise
 
     return await sincronizza_se_cambiato(scope_marchio(guild_id), comandi, albero, sync, stato)
 
@@ -164,6 +194,7 @@ class _ClientMarchio(discord.Client):
                 self, self.bot, self.guild_id, self.application_id_marchio, StatoSyncDatabase(db.pool)
             )
         except Exception as exc:  # noqa: BLE001
+            errori_marchio.registra(self.guild_id, "comandi", exc)
             logger.warning("Marchio del server %s: comandi non registrati (%s).", self.guild_id, type(exc).__name__)
 
     async def on_guild_join(self, guild: discord.Guild) -> None:
@@ -197,6 +228,8 @@ class GestoreMarchio:
         self._task: dict[int, asyncio.Task] = {}
         # Due `avvia` insieme (giro di allineamento e collegamento) non devono aprire due client con lo stesso token.
         self._blocco_avvio = asyncio.Lock()
+        self._ultima_sync: dict[int, float] = {}
+        self._sync_in_corso: set[int] = set()
 
     def in_esecuzione(self, guild_id: int) -> bool:
         task = self._task.get(guild_id)
@@ -215,6 +248,7 @@ class GestoreMarchio:
         try:
             letto = await whitelabel_repo.get_con_token(guild_id)
         except Exception as exc:  # noqa: BLE001 - token illeggibile (chiave cambiata, riga rovinata): solo questo marchio
+            errori_marchio.registra(guild_id, "avvio", exc)
             logger.warning("Marchio del server %s: token non leggibile (%s).", guild_id, type(exc).__name__)
             await whitelabel_repo.imposta_stato(guild_id, STATO_ERRORE, type(exc).__name__)
             return False
@@ -232,12 +266,14 @@ class GestoreMarchio:
     async def _esegui(self, guild_id: int, client: _ClientMarchio, token: str) -> None:
         try:
             await client.start(token)
-        except discord.LoginFailure:
+        except discord.LoginFailure as exc:
+            errori_marchio.registra(guild_id, "login", exc)
             await whitelabel_repo.imposta_stato(guild_id, STATO_TOKEN_NON_VALIDO)
             await whitelabel_repo.imposta_abilitato(guild_id, False)
         except asyncio.CancelledError:
             raise
         except Exception as exc:  # noqa: BLE001 - un marchio rotto non ferma il bot principale
+            errori_marchio.registra(guild_id, "client", exc)
             logger.warning("Marchio del server %s fermato (%s).", guild_id, type(exc).__name__)
             await whitelabel_repo.imposta_stato(guild_id, STATO_ERRORE, type(exc).__name__)
 
@@ -256,6 +292,34 @@ class GestoreMarchio:
             await whitelabel_repo.imposta_stato(guild_id, stato)
         except Exception:  # noqa: BLE001 - ad esempio il marchio è già stato cancellato
             logger.debug("Stato del marchio %s non aggiornato.", guild_id)
+
+    async def risincronizza(self, guild_id: int) -> tuple[str, dict]:
+        """
+        Riscrive i comandi del marchio anche se l'albero non è cambiato (CFG-032). Restituisce la chiave del messaggio
+        e i suoi valori. Una alla volta per server e non più di una ogni `ATTESA_SYNC_SECONDI` (se riuscita).
+        """
+        from core.command_sync import SINCRONIZZATA, StatoSyncDatabase
+        from core.database import db
+
+        client = self._client.get(guild_id)
+        if client is None or not self.in_esecuzione(guild_id) or not client.is_ready() or not client.application_id_marchio:
+            return "mar_non_acceso", {}
+        if guild_id in self._sync_in_corso:
+            return "mar_sync_in_corso", {}
+        trascorso = time.monotonic() - self._ultima_sync.get(guild_id, -ATTESA_SYNC_SECONDI)
+        if trascorso < ATTESA_SYNC_SECONDI:
+            return "mar_sync_attesa", {"secondi": int(ATTESA_SYNC_SECONDI - trascorso) + 1}
+        self._sync_in_corso.add(guild_id)
+        try:
+            esito = await sincronizza_comandi_marchio(
+                client, self.bot, guild_id, client.application_id_marchio, StatoSyncDatabase(db.pool), forza=True
+            )
+        finally:
+            self._sync_in_corso.discard(guild_id)
+        if esito != SINCRONIZZATA:
+            return "mar_sync_errore", {}
+        self._ultima_sync[guild_id] = time.monotonic()
+        return "mar_sync_ok", {}
 
     async def aggiorna_testo(self, guild_id: int, testo: str | None) -> None:
         client = self._client.get(guild_id)
@@ -320,6 +384,16 @@ async def collega_marchio(guild, token: str, user_id: int, *, config) -> Marchio
 def link_invito(marchio: Marchio) -> str | None:
     """Il link per far entrare il bot del marchio nel suo server."""
     return url_invito(marchio.application_id, marchio.guild_id)
+
+
+def puo_usare_strumenti(user_id: int, proprietario_server: int | None, marchio: Marchio | None) -> bool:
+    """
+    Gli strumenti del marchio (risincronizza, errori) sono di chi possiede il bot con marchio: il proprietario del
+    server o chi l'ha collegato. Un admin qualunque no (CFG-032).
+    """
+    if marchio is None:
+        return False
+    return user_id in {i for i in (proprietario_server, marchio.created_by) if i}
 
 
 # ---------------------------------------------- punto unico (D16): comando e pannello

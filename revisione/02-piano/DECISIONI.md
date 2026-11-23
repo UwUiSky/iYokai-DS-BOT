@@ -1483,3 +1483,10 @@ Attuano D111. Dove D111 lascia aperto, si è scelta l'opzione più prudente.
 - Proprietario cambiato (evento `on_guild_update`, o controllo all'esecuzione se il bot era spento): la richiesta passa a «sospesa», si toglie dalla coda e il nuovo proprietario è avvisato. Per riprenderla il nuovo proprietario ripete `reset anche_i_dati:sì` con il nome del server: i 30 giorni ripartono da capo.
 - La verità è nel database (`richieste_azzeramento`), non nella coda: l'esecuzione ricontrolla stato, scadenza e proprietario con la riga bloccata, in una transazione con la cancellazione. Un server non in memoria non si cancella (lo scheduler riprova); un giro ogni 6 ore esegue le richieste scadute che la coda non ha eseguito.
 - Cosa va via è deciso da `data_registry` (cancellazione per server): restano ban e kick di sicurezza, premium, registri contabili e le tabelle «conserva». Il bot resta nel server e riparte da zero.
+
+**CFG-032 (strumenti del bot con marchio)**
+- Sono due azioni nuove di `/admin-bot premium marchio` (il comando che c'è già): «risincronizza i comandi» e «ultimi errori». Lo stato era già `azione:stato`.
+- Permessi: oltre al livello admin del gruppo, solo il proprietario del server o chi ha collegato il bot con marchio (`created_by`). Un admin qualunque non può: l'applicazione del marchio è di chi l'ha portata.
+- La risincronizzazione ignora l'impronta salvata ma la riscrive; una alla volta per server, attesa di 5 minuti solo se riuscita (come `config sincronizza`).
+- Il registro degli errori sta in memoria (20 per server) e salva solo ora, origine (codice fisso), tipo di errore e, per Discord, stato HTTP e codice. Mai il testo dell'errore (può contenere pezzi di richieste), mai il token, mai ID. Si svuota al riavvio; per un registro che resta servirebbe una tabella (non fatta: i log del bot hanno già il tipo dell'errore).
+- Il pannello web (D16) non ha ancora i due strumenti: usano `GestoreMarchio.risincronizza` e `marchio_errori.elenco`.

@@ -3979,5 +3979,13 @@
   "az_dm_inizio": "Hai chiesto di cancellare tutti i dati del bot per il server «{server}». Succederà {quando}. Fino ad allora i dati restano e puoi annullare con `/admin-bot config reset annulla_dati:sì`. Se non sei stato tu, annulla subito e cambia la sicurezza del tuo account.",
   "az_dm_preavviso": "Tra 3 giorni ({quando}) il bot cancellerà tutti i dati del server «{server}». Per fermarlo usa `/admin-bot config reset annulla_dati:sì`.",
   "az_dm_sospesa": "La richiesta di cancellare i dati del server «{server}» è sospesa: il proprietario del server è cambiato. Non si cancella niente finché il nuovo proprietario non la conferma con `/admin-bot config reset anche_i_dati:sì` (o la annulla con `annulla_dati:sì`).",
-  "az_dm_fatto": "I dati del bot per il server «{server}» sono stati cancellati, come richiesto."
+  "az_dm_fatto": "I dati del bot per il server «{server}» sono stati cancellati, come richiesto.",
+  "mar_strumenti_non_tuoi": "Questi strumenti sono solo del proprietario del server o di chi ha collegato il bot con marchio.",
+  "mar_non_acceso": "Il bot con marchio non è acceso: accendilo prima con «accendi».",
+  "mar_sync_in_corso": "Una risincronizzazione è già in corso.",
+  "mar_sync_attesa": "Hai risincronizzato da poco: riprova tra {secondi} secondi.",
+  "mar_sync_ok": "Comandi risincronizzati sul bot con marchio. Discord può metterci qualche istante a mostrarli.",
+  "mar_sync_errore": "La risincronizzazione non è riuscita. Controlla «ultimi errori»; di solito manca lo scope dei comandi nell'invito: rientra con il link di invito.",
+  "mar_errori_titolo": "Ultimi errori del bot con marchio ({n}), dal più recente. Niente token né dati privati:",
+  "mar_errori_nessuno": "Nessun errore registrato dal bot con marchio. (Il registro si svuota al riavvio del bot.)"
 }
