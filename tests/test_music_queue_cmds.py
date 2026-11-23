@@ -442,3 +442,21 @@ async def test_nonstop_senza_premium_fa_il_loop_ma_esce_dal_canale_vuoto(monkeyp
     assert getattr(player, "is_nonstop", False) is False
     assert player.inactive_channel_tokens == 3
     assert "premium" in str(interazione.response.inviati).lower()
+
+
+# MUS-043
+@pytest.mark.asyncio
+async def test_queue_con_file_allega_la_coda_come_testo(monkeypatch):
+    player = _player([_t("Blue Monday", 1), _t("Red", 2)], corrente=_t("x"))
+    cog = _cog(player, monkeypatch)
+    i = _Interazione()
+    allegati = []
+
+    async def invia(content=None, embed=None, **kw):
+        allegati.append(kw.get("file"))
+
+    i.response.send_message = invia
+    await cog.queue_command.callback(cog, i, file=True)
+    assert allegati[0] is not None and allegati[0].filename == "coda.txt"
+    testo = allegati[0].fp.read().decode()
+    assert "Blue Monday" in testo and "Red" in testo and "<@" not in testo  # niente nomi di chi ha chiesto

@@ -31,7 +31,7 @@ sposta anche i permessi del canale; all'avvio i canali rimasti vuoti
 mentre il bot era spento vengono cancellati.
 Funzioni coperte: SPEC §12, §22 (claim, permit, deny, bitrate, nascondi, invita,
 stato, opzioni, aspetto del pannello, copia del generatore e altri generatori di
-/admin-vocali: catalogo #127; blocco salvato nel database, #144)
+/admin-vocali: catalogo #127; blocco salvato nel database, #144); VOC-017 (azioni per ruolo)
 
 SPEC.md §12.8: il cap per categoria (/admin-vocali cap) è sempre
 troncato al limite hard di Discord di 50 canali per categoria — vedi
@@ -56,6 +56,7 @@ from core.channel_rename import (
 )
 from cogs.moderation._shared import actor_from_member
 from core.command_groups import CogConGruppi, comando_di_gruppo
+from core import voice_azioni_ruoli as azioni_ruoli
 from core.database import db
 from core.i18n import testo_per
 from core.permissions import can_moderate
@@ -391,6 +392,11 @@ class CreateVoiceView(BaseView):
         )
 
 
+async def _completa_azione(interaction: discord.Interaction, scritto: str) -> list[app_commands.Choice[str]]:
+    """VOC-017: le azioni del proprietario che si possono togliere a un ruolo."""
+    return [app_commands.Choice(name=a, value=a) for a in azioni_ruoli.AZIONI if scritto.lower() in a][:25]
+
+
 class VoiceTempCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
@@ -529,6 +535,23 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         if canale.id == config.generator_channel_id:
             await interaction.response.send_message(
                 await testo_per(interaction, "voicetemp_quello_gia_il_generatore_principale"), ephemeral=True
+            )
+            return
+        if azione is not None or ruolo is not None:  # VOC-017
+            if azione is None or ruolo is None:
+                await interaction.response.send_message(await testo_per(interaction, "voicetemp_azione_serve_ruolo"), ephemeral=True)
+                return
+            try:
+                await azioni_ruoli.imposta(interaction.guild.id, azione, ruolo.id, consenti, interaction.user.id)
+            except azioni_ruoli.AzioneNonValida as errore:
+                await interaction.response.send_message(await testo_per(interaction, str(errore)), ephemeral=True)
+                return
+            await interaction.response.send_message(
+                await testo_per(
+                    interaction, "voicetemp_azione_ruolo_salvata", azione=azione, ruolo=ruolo.mention,
+                    stato=await testo_per(interaction, "voicetemp_azione_puo" if consenti else "voicetemp_azione_non_puo"),
+                ),
+                ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
             )
             return
         if nome is not None and (errore := errore_modello_nome(nome)):
@@ -674,7 +697,11 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         pannello_titolo="Titolo del pannello",
         pannello_testo="Testo del pannello",
         pannello_colore="Colore esadecimale (5865F2)",
+        azione="Un'azione del proprietario da togliere o rendere a un ruolo (con «ruolo»)",
+        ruolo="Il ruolo a cui togliere o rendere l'azione",
+        consenti="Sì = il ruolo può di nuovo fare l'azione; No = non può (di base)",
     )
+    @app_commands.autocomplete(azione=_completa_azione)
     async def voicetemp_opzioni(
         self,
         interaction: discord.Interaction,
@@ -686,8 +713,11 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         pannello_titolo: app_commands.Range[str, 1, MAX_PANNELLO_TITOLO] | None = None,
         pannello_testo: app_commands.Range[str, 1, MAX_PANNELLO_TESTO] | None = None,
         pannello_colore: app_commands.Range[str, 3, 7] | None = None,
+        azione: app_commands.Range[str, 1, 20] | None = None,
+        ruolo: discord.Role | None = None,
+        consenti: bool = False,
     ) -> None:
-        """#127 VOC-010, 011, 012, 013, 015, 018."""
+        """#127 VOC-010, 011, 012, 013, 015, 018, 017."""
         if interaction.guild is None:
             await interaction.response.send_message(
                 await testo_per(interaction, "guild_only_command"), ephemeral=True
@@ -734,7 +764,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
     # Gestione del proprio canale
     # ================================================================
     async def _get_managed_channel_or_reply(
-        self, interaction: discord.Interaction
+        self, interaction: discord.Interaction, azione: str | None = None
     ) -> discord.VoiceChannel | None:
         if not isinstance(interaction.user, discord.Member) or interaction.user.voice is None:
             await interaction.response.send_message(
@@ -760,6 +790,15 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             )
             return None
 
+        # VOC-017: il server può togliere certe azioni ad alcuni ruoli (mai a chi gestisce i canali).
+        if azione is not None and not actor_has_manage_channels:
+            vietate = await azioni_ruoli.leggi(interaction.guild.id)
+            if not azioni_ruoli.azione_permessa(vietate, azione, {r.id for r in interaction.user.roles}):
+                await interaction.response.send_message(
+                    await testo_per(interaction, "voicetemp_azione_non_consentita"), ephemeral=True
+                )
+                return None
+
         return channel
 
     @comando_di_gruppo("voice", nome="rename", descrizione="Rinomina il tuo canale vocale.")
@@ -769,7 +808,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         interaction: discord.Interaction,
         name: app_commands.Range[str, 1, MAX_CHANNEL_NAME_LENGTH],
     ) -> None:
-        channel = await self._get_managed_channel_or_reply(interaction)
+        channel = await self._get_managed_channel_or_reply(interaction, "rename")
         if channel is None:
             return
 
@@ -809,7 +848,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
     async def limit(
         self, interaction: discord.Interaction, limit: app_commands.Range[int, 0, 99]
     ) -> None:
-        channel = await self._get_managed_channel_or_reply(interaction)
+        channel = await self._get_managed_channel_or_reply(interaction, "limit")
         if channel is None:
             return
         try:
@@ -822,7 +861,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo("voice", nome="lock", descrizione="Blocca il canale (nessun nuovo ingresso).")
     async def lock(self, interaction: discord.Interaction) -> None:
-        channel = await self._get_managed_channel_or_reply(interaction)
+        channel = await self._get_managed_channel_or_reply(interaction, "lock")
         if channel is None:
             return
         try:
@@ -844,7 +883,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo("voice", nome="unlock", descrizione="Sblocca il canale.")
     async def unlock(self, interaction: discord.Interaction) -> None:
-        channel = await self._get_managed_channel_or_reply(interaction)
+        channel = await self._get_managed_channel_or_reply(interaction, "unlock")
         if channel is None:
             return
         try:
@@ -895,7 +934,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo("voice", nome="kick", descrizione="Espelli un utente dal tuo canale.")
     @app_commands.describe(member="L'utente da espellere dal canale")
     async def kick(self, interaction: discord.Interaction, member: discord.Member) -> None:
-        channel = await self._get_managed_channel_or_reply(interaction)
+        channel = await self._get_managed_channel_or_reply(interaction, "kick")
         if channel is None:
             return
         if member.voice is None or member.voice.channel is None or member.voice.channel.id != channel.id:
@@ -995,7 +1034,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
     @app_commands.describe(member="L'utente o il ruolo da ammettere")
     async def permit(self, interaction: discord.Interaction, member: discord.Member | discord.Role) -> None:
         # VOC-002: anche un ruolo intero (mai @everyone: per aprire a tutti c'è /voice unlock).
-        channel = await self._get_managed_channel_or_reply(interaction)
+        channel = await self._get_managed_channel_or_reply(interaction, "permit")
         if channel is None:
             return
         if isinstance(member, discord.Role) and member.is_default():
@@ -1025,7 +1064,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
     @app_commands.describe(member="L'utente o il ruolo da escludere")
     async def deny(self, interaction: discord.Interaction, member: discord.Member | discord.Role) -> None:
         # VOC-003: nega «Connetti» (e scollega chi è dentro): chi è escluso non può rientrare.
-        channel = await self._get_managed_channel_or_reply(interaction)
+        channel = await self._get_managed_channel_or_reply(interaction, "deny")
         if channel is None:
             return
         if isinstance(member, discord.Role):
@@ -1065,7 +1104,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
     async def bitrate(
         self, interaction: discord.Interaction, kbps: app_commands.Range[int, 8, 384]
     ) -> None:
-        channel = await self._get_managed_channel_or_reply(interaction)
+        channel = await self._get_managed_channel_or_reply(interaction, "bitrate")
         if channel is None:
             return
         massimo = interaction.guild.bitrate_limit // 1000
@@ -1084,7 +1123,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo("voice", nome="nascondi", descrizione="Nascondi o mostra il canale a chi non è dentro.")
     @app_commands.describe(nascosto="Sì per nasconderlo, no per mostrarlo di nuovo")
     async def nascondi(self, interaction: discord.Interaction, nascosto: bool) -> None:
-        channel = await self._get_managed_channel_or_reply(interaction)
+        channel = await self._get_managed_channel_or_reply(interaction, "nascondi")
         if channel is None:
             return
         await interaction.response.defer()  # un set_permissions per ogni presente: più di 3 secondi
@@ -1112,7 +1151,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
     @app_commands.describe(member="L'utente da invitare (può entrare anche se il canale è bloccato)")
     async def invita(self, interaction: discord.Interaction, member: discord.Member) -> None:
         """VOC-007: invito monouso di un giorno, in DM; ammette anche l'utente come /voice permit."""
-        channel = await self._get_managed_channel_or_reply(interaction)
+        channel = await self._get_managed_channel_or_reply(interaction, "invita")
         if channel is None:
             return
         if member.bot:
@@ -1163,7 +1202,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         testo: app_commands.Range[str, 1, 500] | None = None,
     ) -> None:
         """VOC-008: lo stato del canale vocale di Discord (sotto il nome)."""
-        channel = await self._get_managed_channel_or_reply(interaction)
+        channel = await self._get_managed_channel_or_reply(interaction, "stato")
         if channel is None:
             return
         try:
@@ -1179,7 +1218,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo("voice", nome="transfer", descrizione="Trasferisci la proprietà del canale.")
     @app_commands.describe(member="Il nuovo proprietario del canale")
     async def transfer(self, interaction: discord.Interaction, member: discord.Member) -> None:
-        channel = await self._get_managed_channel_or_reply(interaction)
+        channel = await self._get_managed_channel_or_reply(interaction, "transfer")
         if channel is None:
             return
         if member.bot:

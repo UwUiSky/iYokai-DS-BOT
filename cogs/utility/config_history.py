@@ -160,6 +160,8 @@ SETTINGS_SCHEMA = {
     "risposte_cancella_secondi": "int_0_600",
     "colore_successo": "colore",
     "colore_errore": "colore",
+    "risposte_canale_bot": "id",
+    "risposte_canale_bot_comandi": "lista_comandi",
     # Opzioni di moderazione (core/moderation_opzioni.py)
     "mod_ban_giorni_messaggi": "int_0_7",
     "mod_timeout_predefinito": "durata_timeout",

@@ -38,7 +38,7 @@ quello che è verificabile senza — i controlli di guardia, il
 routing verso il worker giusto (con bot finti), la logica pura. Il
 resto va verificato una volta distribuito, con le credenziali vere.
 
-Funzioni coperte: SPEC §9 (catalogo MUS, #126), tra cui la coda: /music coda
+Funzioni coperte: SPEC §9 (catalogo MUS, #126), tra cui la coda: /music coda; MUS-043 (/music queue file:)
 (cerca, salta, pulisci), coda equa (impostazione) e mescola fisso.
 """
 
@@ -48,6 +48,7 @@ Funzioni coperte: SPEC §9 (catalogo MUS, #126), tra cui la coda: /music coda
 
 from __future__ import annotations
 
+import io
 import asyncio
 import functools
 import logging
@@ -100,6 +101,7 @@ from core.music_logic import (
     voice_join_problem,
 )
 from core.music_nodes import MAIN_KEY, MusicNodeManager, worker_key
+from core.music_queue_logic import coda_come_testo
 from core.music_queue_logic import (
     MAX_HISTORY_SHOWN,
     format_share,
@@ -950,7 +952,8 @@ class MusicCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(await testo_per(interaction, "player_ripreso", pubblica=True))
 
     @comando_di_gruppo("music", nome="queue", descrizione="Mostra la coda di riproduzione.")
-    async def queue_command(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(file="Sì = la coda come file di testo, con gli indirizzi dei brani")
+    async def queue_command(self, interaction: discord.Interaction, file: bool = False) -> None:
         if not await self._controlli_base(interaction):
             return
         if in_gioco(interaction.guild.id):  # MUS-019: niente titoli durante «indovina la canzone»
@@ -981,6 +984,18 @@ class MusicCog(CogConGruppi, commands.Cog):
                 embed.add_field(name=await testo_per(interaction, "player_chi_ha_messo_cosa", pubblica=True), value=format_share(quote), inline=False)
         if player and getattr(player, "mescola_fisso", False):  # MUS-038
             embed.set_footer(text=await testo_per(interaction, "player_mescola_fisso_acceso_riga", pubblica=True))
+        if file:  # MUS-043
+            def voce(t) -> tuple[str, str, str]:
+                return (getattr(t, "title", "") or "", getattr(t, "author", "") or "", getattr(t, "uri", "") or "")
+
+            testo_file = coda_come_testo(
+                voce(player.current) if player and player.current else None,
+                [voce(t) for t in player.queue] if player else [],
+            )
+            await interaction.response.send_message(
+                embed=embed, file=discord.File(io.BytesIO(testo_file.encode("utf-8")), filename="coda.txt")
+            )
+            return
         await interaction.response.send_message(embed=embed)
 
     @comando_di_gruppo("music", nome="clear-queue", descrizione="Svuota la coda, senza toccare la traccia in riproduzione.")
