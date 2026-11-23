@@ -168,6 +168,7 @@ Giro r2mod (issue #115, #116, #118). «Corretta» = fa ciò che dice il catalogo
 | VER-024 | sì come scelta (nessun ban automatico, solo avviso) | sì | segnata; il bottone «Banna» dell'alternativa NON c'è | tests/test_alt_detection.py::test_avviso_allo_staff_senza_menzioni |
 | VER-025 | no | - | non fattibile, D106: le impronte sono diverse in ogni server per privacy (D19) | DECISIONI.md D106 |
 | VER-026 | sì (strati ASN, Tor, elenchi, servizio; staff può far passare) | sì | segnata | tests/test_verify_vpn_flusso.py::test_vpn_bloccata_subito_con_avviso_e_nessun_dato_in_piu |
+| ALR-049 | sì (r2web, r4web, D127) | sì | Kick non c'è (D131: nessun campo affiliato o partner nell'API, nessun posto libero tra i 5 metadati) | core/ruoli_collegati_giro.py, core/web_panel_ruoli_collegati.py; tests/test_panel_ruoli_collegati_giro.py, tests/test_panel_ruoli_collegati_invito.py |
 | VER-027 | sì (r3web, D111) | sì | fatta sulla base di ALR-049 | core/ruoli_collegati_verifica.py, core/web_panel_ruoli_collegati.py; tests/test_panel_ruoli_collegati_verifica.py |
 | VER-028 | no | sì | realizzata: `verify panel titolo: testo: colore: bottone: emoji:` | core/verify_logic.pannello_personalizzato; tests/test_catalogo_r2mod_verifica.py |
 

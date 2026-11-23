@@ -25,6 +25,7 @@ from __future__ import annotations
 import hmac
 import logging
 import pathlib
+import asyncio
 from datetime import datetime, timedelta, timezone
 from itertools import groupby
 from urllib.parse import urlsplit
@@ -32,7 +33,7 @@ from urllib.parse import urlsplit
 import jinja2
 from aiohttp import BodyPartReader, MultipartReader, web
 
-from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_backup, web_panel_editor, web_panel_inviti, web_panel_istantanee, web_panel_pagine, web_panel_join, web_panel_ruoli_collegati, web_panel_tela, web_panel_ticket, web_panel_ticket_trascrizioni, web_panel_accesso as regole_accesso, web_panel_panoramica as panoramica, web_panel_logic as regole, verify_vpn_logic as vpn_logica
+from core import alt_detection_logic as verifica, allegati_sicuri, ruoli_collegati_giro, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_backup, web_panel_editor, web_panel_inviti, web_panel_istantanee, web_panel_pagine, web_panel_join, web_panel_ruoli_collegati, web_panel_tela, web_panel_ticket, web_panel_ticket_trascrizioni, web_panel_accesso as regole_accesso, web_panel_panoramica as panoramica, web_panel_logic as regole, verify_vpn_logic as vpn_logica
 from core.bot_aspetto import MAX_IMMAGINE
 from core.command_access import RuoloAdminNegato
 from core.command_search_logic import cerca
@@ -95,6 +96,8 @@ ESITI = {
     "rc_non_riuscito": ("Discord non ha accettato il collegamento: riprova tra poco.", True),
     "rc_scollegato": ("Collegamento tolto.", False),
     "rc_non_configurato": ("Il collegamento con Twitch non è configurato su questo bot.", True),
+    "rc_connessioni_ok": ("Fatto: ho controllato i collegamenti del tuo profilo. Non ho salvato nomi né ID.", False),
+    "rc_connessioni_dimenticate": ("Ho cancellato il risultato del controllo dei collegamenti.", False),
     "rc_verifica_collegata": ("Verifica collegata: i tuoi valori sono aggiornati su Discord.", False),
     "rc_verifica_scollegata": ("Verifica scollegata: i valori sono stati tolti.", False),
     "rc_verifica_non_configurata": ("Il collegamento della verifica non è configurato su questo bot.", True),
@@ -126,6 +129,7 @@ def build_app(
     allegati_url: str = "",
     restore_redirect_uri: str = "",
     chiave_ripristino: str = "",
+    giro_ruoli_collegati: bool = False,
 ) -> web.Application:
     """
     `sessioni`: `WebPanelSessionRepository`. `oauth`: oggetto con
@@ -858,7 +862,7 @@ def build_app(
         puo_gestire=web_panel_backup.puo_gestire_backup,
     )
     web_panel_ruoli_collegati.registra_rotte(
-        app, pagina=_pagina, errore=_errore, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE, ip=_ip,
+        app, bot=bot, pagina=_pagina, errore=_errore, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE, ip=_ip,
         client_id=client_id, client_secret=client_secret, url_pubblico=url_pubblico,
     )
     web_panel_pagine.registra_rotte(
@@ -867,6 +871,14 @@ def build_app(
     )
     web_panel_istantanee.registra_rotte(app, bot=bot, ponte=ponte, pagina=_pagina, errore=_errore, chiave_utente=CHIAVE_UTENTE)
     web_panel_tela.registra_rotte(app, bot=bot, pagina=_pagina, errore=_errore, ip=_ip)
+    if giro_ruoli_collegati:  # ALR-049: ogni 12 ore aggiorna i ruoli collegati Twitch; si ferma con il sito
+        async def _giro_ruoli_collegati(app_: web.Application):
+            compito = asyncio.create_task(ruoli_collegati_giro.ciclo())
+            yield
+            compito.cancel()
+            await asyncio.gather(compito, return_exceptions=True)
+
+        app.cleanup_ctx.append(_giro_ruoli_collegati)
     return app
 
 

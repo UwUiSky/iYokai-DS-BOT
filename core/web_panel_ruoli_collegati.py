@@ -9,7 +9,8 @@ Flusso: accesso al pannello → Twitch (senza permessi in più, `state` firmato)
 stesso indirizzo di ritorno di Discord, con un `state` di altro scopo. I token stanno solo cifrati. L'utente del
 `state` deve essere quello della sessione; ogni `state` vale una volta. Senza le chiavi di Twitch la pagina lo dice
 e il resto del pannello non cambia. Il bot non automatizza account: è il normale OAuth2 di Discord.
-Funzioni coperte: SPEC §24.9 (ALR-049, issue #129), §24.11 (VER-027, issue #118)
+Facoltativo (D127): con il permesso `connections` si guarda solo se il profilo ha Twitch o Kick (due sì/no, token revocato subito)
+e si propone il collegamento. Funzioni coperte: SPEC §24.9 (ALR-049, issue #129), §24.11 (VER-027, issue #118)
 Dipende da: core/ruoli_collegati_logic.py, core/ruoli_collegati_rete.py, core/ruoli_collegati_verifica.py, core/repositories/ruoli_collegati_repo.py
 """
 
@@ -23,6 +24,7 @@ from cryptography.exceptions import InvalidTag
 
 from core import ruoli_collegati_logic as logica, web_panel_logic as regole
 from core.oauth_crypto import OAuthEncryptionNotConfigured
+from core.repositories.ruoli_collegati_connessioni_repo import ruoli_collegati_connessioni_repo
 from core.repositories.ruoli_collegati_repo import ruoli_collegati_repo
 from core.repositories.ruoli_collegati_verifica_repo import CollegamentoVerifica, ruoli_collegati_verifica_repo
 from core.ruoli_collegati_verifica import corpo_unico
@@ -43,7 +45,7 @@ def crea_rete(cfg: logica.Configurazione, client_id: str, client_secret: str) ->
 
 
 def registra_rotte(
-    app: web.Application, *, pagina, errore, scrittura, chiave_utente, ip, client_id: str, client_secret: str, url_pubblico: str,
+    app: web.Application, *, bot=None, pagina, errore, scrittura, chiave_utente, ip, client_id: str, client_secret: str, url_pubblico: str,
 ) -> None:
     limite = regole.LimiteFrequenza(20, 60)  # per persona: ogni passo parla con Twitch o con Discord
     base_url = url_pubblico.rstrip("/") + "/ruoli-collegati"
@@ -83,10 +85,12 @@ def registra_rotte(
             collegamento = await ruoli_collegati_repo.stato(utente)
         if cfg.verifica_pronta:
             verifica = await ruoli_collegati_verifica_repo.leggi(utente)
+        connessioni = await ruoli_collegati_connessioni_repo.leggi(utente) if cfg.verifica_pronta else None
         return pagina(
             request, "ruoli_collegati.html", pronta=cfg.pronta, mancanti=cfg.mancanti(), c=collegamento,
             etichetta=ETICHETTE_TIPO.get(collegamento.tipo if collegamento else "", ""),
             verifica_pronta=cfg.verifica_pronta, v=verifica, eta=logica.eta_giorni(utente),
+            connessioni=connessioni, server_comuni=logica.server_con_ruoli_collegati(getattr(bot, "guilds", ()), utente),
         )
 
     async def avvia(request: web.Request) -> web.StreamResponse:
@@ -119,6 +123,32 @@ def registra_rotte(
         state = logica.crea_state(cfg.chiave_cifratura, utente, logica.SCOPO_VERIFICA)
         return vai(logica.url_discord(client_id, uri_discord, state))
 
+    async def avvia_connessioni(request: web.Request) -> web.StreamResponse:
+        """Facoltativo: chiede a Discord il permesso `connections` solo per sapere se il profilo ha Twitch o Kick."""
+        utente, rifiuto = utente_o_accesso(request)
+        if rifiuto is not None:
+            return rifiuto
+        _, rifiuto = await scrittura(request)
+        if rifiuto is not None:
+            return rifiuto
+        cfg = leggi_configurazione()
+        if not cfg.verifica_pronta:
+            return vai(base_url + "?esito=rc_verifica_non_configurata")
+        if not limite.consenti(f"rc:{utente}"):
+            return errore(request, 429, "Troppi tentativi", "Aspetta un minuto e riprova.")
+        state = logica.crea_state(cfg.chiave_cifratura, utente, logica.SCOPO_CONNESSIONI)
+        return vai(logica.url_discord(client_id, uri_discord, state, logica.SCOPE_CONNESSIONI))
+
+    async def dimentica_connessioni(request: web.Request) -> web.StreamResponse:
+        utente, rifiuto = utente_o_accesso(request)
+        if rifiuto is not None:
+            return rifiuto
+        _, rifiuto = await scrittura(request)
+        if rifiuto is not None:
+            return rifiuto
+        await ruoli_collegati_connessioni_repo.elimina(utente)
+        return vai(base_url + "?esito=rc_connessioni_dimenticate")
+
     async def _controlli(request: web.Request, scopo: str):
         """(utente, cfg, rifiuto): sessione, limite, configurazione, `code` e `state` giusti e dell'utente di questa sessione."""
         utente, rifiuto = utente_o_accesso(request)
@@ -128,7 +158,7 @@ def registra_rotte(
             return None, None, errore(request, 429, "Troppi tentativi", "Aspetta un minuto e riprova.")
         cfg = leggi_configurazione()
         code = request.query.get("code", "")
-        pronta = cfg.verifica_pronta if scopo == logica.SCOPO_VERIFICA else cfg.pronta
+        pronta = cfg.verifica_pronta if scopo in (logica.SCOPO_VERIFICA, logica.SCOPO_CONNESSIONI) else cfg.pronta
         if not pronta or not code or len(code) > 512:
             return None, None, riprova(request)
         try:
@@ -157,15 +187,38 @@ def registra_rotte(
         del token  # il token non serve oltre: sta cifrato nel database
         return vai(logica.url_discord(client_id, uri_discord, logica.crea_state(k, utente, logica.SCOPO_DISCORD)))
 
-    def _e_della_verifica(request: web.Request) -> bool:
-        """Lo `state` è di una collegamento della verifica? (si guarda senza consumarlo: lo consuma `_controlli`)."""
+    def _scopo_discord(request: web.Request) -> str | None:
+        """Lo `state` è della verifica o delle connessioni? (si guarda senza consumarlo: lo consuma `_controlli`)."""
         cfg = leggi_configurazione()
         if not cfg.verifica_pronta:
-            return False
+            return None
+        for scopo in (logica.SCOPO_VERIFICA, logica.SCOPO_CONNESSIONI):
+            try:
+                if logica.verifica_state(cfg.chiave_cifratura, request.query.get("state"), scopo, consuma=False) is not None:
+                    return scopo
+            except OAuthEncryptionNotConfigured:
+                return None
+        return None
+
+    async def da_discord_connessioni(request: web.Request) -> web.StreamResponse:
+        utente, cfg, rifiuto = await _controlli(request, logica.SCOPO_CONNESSIONI)
+        if rifiuto is not None:
+            return rifiuto
+        rete = crea_rete(cfg, client_id, client_secret)
+        token = await rete.discord_scambia(request.query["code"], uri_discord)
+        if token is None:
+            return riprova(request)
         try:
-            return logica.verifica_state(cfg.chiave_cifratura, request.query.get("state"), logica.SCOPO_VERIFICA, consuma=False) is not None
-        except OAuthEncryptionNotConfigured:
-            return False
+            if await rete.discord_utente(token.access_token) != utente:
+                return riprova(request)  # il token Discord deve essere di chi è nella sessione
+            tipi = await rete.discord_connessioni(token.access_token)
+        finally:
+            await rete.discord_revoca(token.access_token)  # serve una volta sola: non si tiene
+        if tipi is None:
+            return vai(base_url + "?esito=rc_non_riuscito")
+        ha_twitch, ha_kick = logica.piattaforme_collegate(tipi)
+        await ruoli_collegati_connessioni_repo.salva(utente, ha_twitch, ha_kick)
+        return vai(base_url + "?esito=rc_connessioni_ok")
 
     async def da_discord_verifica(request: web.Request) -> web.StreamResponse:
         utente, cfg, rifiuto = await _controlli(request, logica.SCOPO_VERIFICA)
@@ -188,8 +241,11 @@ def registra_rotte(
         return vai(base_url + "?esito=rc_verifica_collegata")
 
     async def da_discord(request: web.Request) -> web.StreamResponse:
-        if _e_della_verifica(request):
+        scopo = _scopo_discord(request)
+        if scopo == logica.SCOPO_VERIFICA:
             return await da_discord_verifica(request)
+        if scopo == logica.SCOPO_CONNESSIONI:
+            return await da_discord_connessioni(request)
         utente, cfg, rifiuto = await _controlli(request, logica.SCOPO_DISCORD)
         if rifiuto is not None:
             return rifiuto
@@ -253,6 +309,8 @@ def registra_rotte(
     app.router.add_get("/ruoli-collegati", mostra)
     app.router.add_post("/ruoli-collegati/verifica/avvia", avvia_verifica)
     app.router.add_post("/ruoli-collegati/verifica/scollega", scollega_verifica)
+    app.router.add_post("/ruoli-collegati/connessioni/avvia", avvia_connessioni)
+    app.router.add_post("/ruoli-collegati/connessioni/dimentica", dimentica_connessioni)
     app.router.add_post("/ruoli-collegati/avvia", avvia)
     app.router.add_get("/ruoli-collegati/twitch", da_twitch)
     app.router.add_get("/ruoli-collegati/discord", da_discord)

@@ -115,13 +115,67 @@ class ReteRuoliCollegati:
             return None
         return self._token(payload)
 
-    async def discord_scrivi_collegamento(self, access_token: str, corpo: dict) -> bool:
+    async def discord_scrivi_stato(self, access_token: str, corpo: dict) -> int:
+        """Come `discord_scrivi_collegamento`, ma ritorna il codice (401: il token non vale più; 429: troppe richieste)."""
         stato, _ = await self._chiama(
             "PUT", f"{URL_DISCORD_API}/users/@me/applications/{self._discord_id}/{RISORSA_COLLEGAMENTO}",
             headers={"Authorization": f"Bearer {access_token}"}, json=corpo,
         )
         if stato != 200:
             logger.warning("Ruoli collegati: Discord non ha accettato il collegamento (stato %s).", stato)
+        return stato
+
+    async def discord_scrivi_collegamento(self, access_token: str, corpo: dict) -> bool:
+        return await self.discord_scrivi_stato(access_token, corpo) == 200
+
+    # ---- giro periodico (D127): il codice di ritorno dice se il token è revocato o se è un guasto passeggero
+    @staticmethod
+    def _esito(stato: int) -> str:
+        """«ok», «revocato» (400: il refresh token non vale più), «limite» (429) o «errore» (rete, 5xx, 401 = chiavi nostre)."""
+        return {200: "ok", 400: "revocato", 429: "limite"}.get(stato, "errore")
+
+    async def twitch_rinnova(self, refresh_token: str) -> tuple[TokenOAuth | None, str]:
+        stato, payload = await self._chiama(
+            "POST", URL_TWITCH_TOKEN,
+            data={"client_id": self._twitch_id, "client_secret": self._twitch_segreto, "refresh_token": refresh_token,
+                  "grant_type": "refresh_token"},
+        )
+        esito = self._esito(stato)
+        token = self._token(payload) if esito == "ok" else None
+        return token, ("ok" if token else ("errore" if esito == "ok" else esito))
+
+    async def discord_rinnova_esito(self, refresh_token: str) -> tuple[TokenOAuth | None, str]:
+        stato, payload = await self._chiama(
+            "POST", f"{URL_DISCORD_API}/oauth2/token",
+            data={"client_id": self._discord_id, "client_secret": self._discord_segreto, "refresh_token": refresh_token,
+                  "grant_type": "refresh_token"},
+        )
+        esito = self._esito(stato)
+        token = self._token(payload) if esito == "ok" else None
+        return token, ("ok" if token else ("errore" if esito == "ok" else esito))
+
+    async def twitch_utente_stato(self, access_token: str) -> tuple[dict | None, int]:
+        stato, payload = await self._chiama(
+            "GET", URL_TWITCH_UTENTI, headers={"Authorization": f"Bearer {access_token}", "Client-Id": self._twitch_id}
+        )
+        return (payload if stato == 200 and isinstance(payload, dict) else None), stato
+
+    # ---- connessioni del profilo (D127): solo con il consenso OAuth `connections`; si leggono i tipi, mai i nomi
+    async def discord_connessioni(self, access_token: str) -> list[str] | None:
+        stato, payload = await self._chiama(
+            "GET", f"{URL_DISCORD_API}/users/@me/connections", headers={"Authorization": f"Bearer {access_token}"}
+        )
+        if stato != 200 or not isinstance(payload, list):
+            return None
+        return [v["type"] for v in payload if isinstance(v, dict) and isinstance(v.get("type"), str)][:100]
+
+    async def discord_revoca(self, access_token: str) -> bool:
+        """Il token delle connessioni non serve più dopo la lettura: si revoca (al meglio)."""
+        stato, _ = await self._chiama(
+            "POST", f"{URL_DISCORD_API}/oauth2/token/revoke",
+            data={"client_id": self._discord_id, "client_secret": self._discord_segreto, "token": access_token,
+                  "token_type_hint": "access_token"},
+        )
         return stato == 200
 
     async def registra_metadati(self, metadati: list[dict]) -> bool:

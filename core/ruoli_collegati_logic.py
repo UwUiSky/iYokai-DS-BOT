@@ -27,6 +27,7 @@ from core import oauth_crypto
 
 SCOPE_TWITCH = ""  # niente permessi in più: serve solo sapere chi sei e che tipo di canale hai
 SCOPE_DISCORD = "identify role_connections.write"
+SCOPE_CONNESSIONI = "identify connections"  # facoltativo (D127): solo per sapere se il profilo ha Twitch o Kick
 URL_TWITCH_AUTORIZZA = "https://id.twitch.tv/oauth2/authorize"
 URL_DISCORD_AUTORIZZA = "https://discord.com/oauth2/authorize"
 DURATA_STATE_SECONDI = 600
@@ -36,6 +37,7 @@ CHIAVE_PARTNER = "twitch_partner"
 TIPO_BOOLEANO = 7  # BOOLEAN_EQUAL dei metadati di Discord
 SCOPO_TWITCH = "tw"
 SCOPO_DISCORD = "dc"
+SCOPO_CONNESSIONI = "cn"  # stesso indirizzo di ritorno di Discord, `state` di un altro scopo
 SCOPO_VERIFICA = "vf"  # VER-027: stesso indirizzo di ritorno di Discord, `state` di un altro scopo
 PIATTAFORMA_VERIFICA = "iYokai"
 CHIAVE_VERIFICA = "verifica_superata"
@@ -132,9 +134,9 @@ def url_twitch(twitch_id: str, redirect_uri: str, state: str) -> str:
     return f"{URL_TWITCH_AUTORIZZA}?{urlencode(query)}"
 
 
-def url_discord(discord_id: str, redirect_uri: str, state: str) -> str:
+def url_discord(discord_id: str, redirect_uri: str, state: str, scope: str = SCOPE_DISCORD) -> str:
     query = urlencode(
-        {"client_id": discord_id, "redirect_uri": redirect_uri, "response_type": "code", "scope": SCOPE_DISCORD,
+        {"client_id": discord_id, "redirect_uri": redirect_uri, "response_type": "code", "scope": scope,
          "state": state, "prompt": "consent"}
     )
     return f"{URL_DISCORD_AUTORIZZA}?{query}"
@@ -161,6 +163,34 @@ def metadati_applicazione(con_twitch: bool = True) -> list[dict]:
          "name_localizations": {"en-US": "Avatar set"}, "description_localizations": {"en-US": "The account has its own avatar"}},
     ]
     return (twitch if con_twitch else []) + verifica
+
+
+def piattaforme_collegate(tipi: object) -> tuple[bool, bool]:
+    """(ha Twitch, ha Kick) dai tipi delle connessioni del profilo. Si guarda solo il tipo: mai nomi né ID."""
+    if not isinstance(tipi, list):
+        return False, False
+    minuscoli = {t.lower() for t in tipi if isinstance(t, str)}
+    return "twitch" in minuscoli, "kick" in minuscoli
+
+
+def server_con_ruoli_collegati(guilds, user_id: int, *, massimo: int = 25) -> list[tuple[str, list[str]]]:
+    """
+    I server in comune con la persona dove c'è almeno un ruolo che chiede un collegamento (D127: «integra i ruoli nei
+    server in comune»): (nome del server, nomi dei ruoli). Si guarda solo ciò che il bot già vede; nomi tagliati.
+    """
+    trovati: list[tuple[str, list[str]]] = []
+    for guild in list(guilds or ()):
+        try:
+            if guild.get_member(user_id) is None:
+                continue
+            ruoli = [r.name[:60] for r in guild.roles if r.tags is not None and r.tags.is_guild_connection()][:5]
+        except AttributeError:
+            continue
+        if ruoli:
+            trovati.append((str(guild.name)[:100], ruoli))
+        if len(trovati) >= massimo:
+            break
+    return trovati
 
 
 def eta_giorni(user_id: int, *, ora: float | None = None) -> int:

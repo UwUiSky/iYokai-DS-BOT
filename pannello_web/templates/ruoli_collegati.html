@@ -5,6 +5,12 @@
 <p><a href="/">&larr; Home</a></p>
 <h2>Twitch</h2>
 <p class="tenue">Collega il tuo canale Twitch a Discord: i server che usano iYokai possono dare un ruolo agli affiliati e ai partner Twitch (Impostazioni del server &rarr; Ruoli &rarr; Collegamenti). Il bot non scrive a nome tuo e non vede la tua password: usi i normali accessi di Twitch e di Discord, e puoi scollegare quando vuoi.</p>
+{% if connessioni and connessioni.ha_twitch and not c %}
+<p class="avviso">Il tuo profilo Discord ha Twitch collegato: collega anche qui il canale, così i ruoli dei server si aggiornano da soli.</p>
+{% endif %}
+{% if connessioni and connessioni.ha_kick %}
+<p class="tenue">Il tuo profilo ha anche Kick collegato. Per ora i ruoli collegati funzionano solo con Twitch: Kick non dice se un canale è affiliato o partner.</p>
+{% endif %}
 {% if not pronta %}
 <p class="avviso errore">Il collegamento con Twitch non è configurato su questo bot. Mancano: {% for n in mancanti %}<code>{{ n }}</code>{{ ", " if not loop.last }}{% endfor %}. Chi gestisce il bot deve aggiungerli.</p>
 {% elif c %}
@@ -23,7 +29,21 @@
   <button type="submit">Collega Twitch</button>
 </form>
 {% endif %}
+{% if server_comuni %}
+<h2>I tuoi server</h2>
+<p class="tenue">Server in comune con iYokai che hanno un ruolo con un requisito di collegamento. Il ruolo lo assegna Discord, da solo, appena i tuoi valori sono aggiornati.</p>
+<ul>{% for nome, ruoli in server_comuni %}<li><strong>{{ nome }}</strong>: {% for r in ruoli %}{{ r }}{{ ", " if not loop.last }}{% endfor %}</li>{% endfor %}</ul>
+{% endif %}
 {% if verifica_pronta %}
+<h2>I tuoi collegamenti (facoltativo)</h2>
+<p class="tenue">Se vuoi, iYokai può guardare se il tuo profilo Discord ha Twitch o Kick collegati, per proporti i ruoli giusti. Discord ti chiede un permesso in più (<code>connections</code>); il bot guarda solo il tipo (due sì o no), non salva nomi né ID e subito dopo revoca il permesso. Senza il tuo consenso non guarda niente.</p>
+{% if connessioni %}
+<p>Ultimo controllo: Twitch <strong>{{ "sì" if connessioni.ha_twitch else "no" }}</strong>, Kick <strong>{{ "sì" if connessioni.ha_kick else "no" }}</strong>.</p>
+<form method="post" action="/ruoli-collegati/connessioni/dimentica" class="riga">
+  <input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">Dimentica</button></form>
+{% endif %}
+<form method="post" action="/ruoli-collegati/connessioni/avvia" class="riga">
+  <input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">{{ "Controlla di nuovo" if connessioni else "Controlla i miei collegamenti" }}</button></form>
 <h2>Verifica</h2>
 <p class="tenue">Collega la verifica a Discord: un server può chiedere come requisito di un ruolo che tu abbia superato la verifica, che l'account abbia una certa età o che abbia un avatar. Discord riceve solo tre valori (verifica superata, età dell'account in giorni, avatar presente): niente altro. Puoi scollegare quando vuoi.</p>
 {% if v %}
