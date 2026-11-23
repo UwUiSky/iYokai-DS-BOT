@@ -3086,3 +3086,5 @@ Controllo delle 89 voci in `revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.
 - `[x]` ECO-050 (D121): `/monete work automatico:sì` (premium): lavoro da solo ogni 4 ore (ECO-050, 0882, `core/economia_autolavoro.py`).
 
 - `[x]` SIC-021 (D121): `/owner system chiave-soccorso` e `scripts/chiave_soccorso.py verifica` (SIC-021, 0883).
+
+- `[x]` MUS-016 (D121): `/admin-musica impostazioni solo-audio:sì` (MUS-016).

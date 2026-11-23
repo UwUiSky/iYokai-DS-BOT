@@ -39,6 +39,7 @@ from core.music_settings_logic import (
     SETTING_DJ_ROLE,
     SETTING_SKIP_VOTE,
     SETTING_EMPTY_PAUSE,
+    SETTING_AUDIO_ONLY,
     SETTING_BOT_STATUS,
     SETTING_KNOWN_SITES_ONLY,
     SETTING_MAX_TRACK_MINUTES,
@@ -99,6 +100,7 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         voto_salto="Percentuale degli ascoltatori che serve per saltare un brano (1-100, di base 50)",
         pausa_canale_vuoto="Metti in pausa quando nel canale non resta nessuno, riprendi al rientro",
         stato_bot="Mostra il titolo del brano come stato dei music bot",
+        solo_audio="Nelle ricerche per titolo, prima le versioni senza «video ufficiale»",
     )
     @app_commands.rename(
         volume_massimo="volume-massimo",
@@ -121,6 +123,7 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         voto_salto="voto-salto",
         pausa_canale_vuoto="pausa-canale-vuoto",
         stato_bot="stato-bot",
+        solo_audio="solo-audio",
     )
     @app_commands.choices(ricerca_predefinita=SCELTE_RICERCA, coda=SCELTE_CODA)
     async def impostazioni(
@@ -148,6 +151,7 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         voto_salto: app_commands.Range[int, 1, 100] | None = None,
         pausa_canale_vuoto: bool | None = None,
         stato_bot: bool | None = None,
+        solo_audio: bool | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -211,6 +215,8 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
             cambi[SETTING_EMPTY_PAUSE] = pausa_canale_vuoto
         if stato_bot is not None:  # MUS-061
             cambi[SETTING_BOT_STATUS] = stato_bot
+        if solo_audio is not None:  # MUS-016
+            cambi[SETTING_AUDIO_ONLY] = solo_audio
         if annunci is not None:  # MUS-057
             cambi[SETTING_ANNOUNCE] = annunci
         if canale_annunci is not None:  # MUS-058

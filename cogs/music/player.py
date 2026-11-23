@@ -122,6 +122,7 @@ from core.music_settings_logic import (
     idle_seconds,
     load_music_settings,
     msg_brano_troppo_lungo,
+    preferisci_solo_audio,
     site_not_allowed,
     title_blocked,
     track_too_long,
@@ -738,6 +739,8 @@ class MusicCog(CogConGruppi, commands.Cog):
         except wavelink.exceptions.WavelinkException:
             logger.warning("Ricerca musicale fallita sul nodo %s.", nodo.identifier, exc_info=True)
             risultati = None
+        if risultati and impostazioni.audio_only and classify_query(query) == QUERY_TESTO:  # MUS-016
+            risultati = preferisci_solo_audio(risultati)
         if not risultati:
             await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
             await rispondi(testo_tradotto("music_nessun_risultato", await lingua_risposta(guild_id, utente_id)))
