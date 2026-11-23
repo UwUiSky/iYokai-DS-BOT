@@ -154,5 +154,5 @@
 7. DA LANCIARE: FUN-019, FUN-017 auto con foto (D74), FUN-013/014 tela di pixel con pagina web (dev-economia + dev-web).
 8. DA LANCIARE: MUS-090/identità dei bot al setup (nickname e avatar del server, esclusi i music bot) e VER-027 (ruoli collegati per la verifica).
 9. DA LANCIARE: controllo voce per voce delle 89 voci in revisione/01-analisi/catalogo/SOLO_NEI_DOCUMENTI.md.
-10. BKP-039: spiegato all'owner, attendere la risposta.
+10. BKP-039: owner ha scelto iyokai.dev/join/<nomeserver> (D113): da fare con dev-web.
 11. Poi: suite completa, cacciatore-bug, revisore-capo.

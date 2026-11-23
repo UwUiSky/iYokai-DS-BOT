@@ -1439,3 +1439,9 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
   - A parte c'è una **rete facoltativa**: un server sceglie se applicare in automatico i ban decisi negli altri server della rete.
 - **MUS-015 (paese delle ricerche):** impostazione **globale** (brani ascoltabili in tutto il mondo). Un server può chiedere un **filtro per paese**: le ricerche controllano che il brano sia disponibile in quel paese (esempio: Turchia).
 - **MUS-017:** NON si spezza il video. Lunghezza massima del video **8 ore**. Se la **descrizione** del video contiene l'elenco dei brani con gli orari, il bot può usare quell'elenco (capitoli) invece del video intero.
+
+## D113 — BKP-039, pagina di consenso del ripristino (23/11/2026, scelta dell'owner)
+
+- La pagina di consenso per il rientro dei membri dopo un ripristino sta sul dominio del bot, all'indirizzo **`iyokai.dev/join/<nomeserver>`**, con nome, icona e colori del server. Niente domini propri dei server.
+- `<nomeserver>` è un nome breve scelto dal server, validato come gli altri indirizzi brevi (LIV-062): unico, 3–32 caratteri, minuscole, cifre e trattini, senza nomi riservati. Se il server non lo sceglie, si usa l'ID.
+- Un dominio proprio del server potrà essere aggiunto in futuro come opzione premium.
