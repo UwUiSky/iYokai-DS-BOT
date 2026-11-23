@@ -4061,5 +4061,6 @@
   "programma_serve_tra": "Indica fra quanto, per esempio `2h`.",
   "programma_piene": "Ci sono già {massimo} azioni programmate: togline una.",
   "programma_attesa": "L'attesa va da 1 minuto a 30 giorni.",
-  "programma_ok": "Azione programmata (numero {numero}). Quando scatta si ricontrollano i tuoi permessi."
+  "programma_ok": "Azione programmata (numero {numero}). Quando scatta si ricontrollano i tuoi permessi.",
+  "sondaggio_premio_serve_economia": "Il premio è in monete: serve il modulo livelli ed economia acceso."
 }

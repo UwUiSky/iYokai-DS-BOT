@@ -4061,5 +4061,6 @@
   "programma_serve_tra": "Say how long from now, for example `2h`.",
   "programma_piene": "There are already {massimo} scheduled actions: remove one.",
   "programma_attesa": "The wait goes from 1 minute to 30 days.",
-  "programma_ok": "Action scheduled (number {numero}). Your permissions are checked again when it runs."
+  "programma_ok": "Action scheduled (number {numero}). Your permissions are checked again when it runs.",
+  "sondaggio_premio_serve_economia": "The prize is in coins: the levels and economy module must be on."
 }

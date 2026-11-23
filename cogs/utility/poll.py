@@ -22,7 +22,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core import sondaggi_logic
+from core import sondaggi_logic, sondaggio_premio
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.duration_logic import parse_duration
@@ -39,6 +39,7 @@ PAUSA_RIPROVA_S = 300
 MAX_TENTATIVI_CHIUSURA = 24
 
 MODULE_POLL = "poll"
+MODULE_LEVELING = "leveling"  # ECO-051: le monete stanno nel modulo livelli
 
 # Limiti dei sondaggi di Discord: 300 caratteri per la domanda, 55 per
 # ogni risposta, 10 risposte. Dichiarati sulle opzioni del comando, è
@@ -73,6 +74,8 @@ class PollCog(CogConGruppi, commands.Cog):
         discussione="Apri un thread per discutere il sondaggio",
         inizia_tra="Si pubblica più tardi: 30m, 12h, 7d (da 1 minuto a 30 giorni)",
         chiudi_a_voti="Si chiude da solo dopo tanti voti (massimo 100000)",
+        premio_monete="Premio in monete per chi viene estratto tra i votanti (1-100000, a testa)",
+        vincitori="Quante persone estrarre per il premio (1-10, di base 1)",
     )
     async def poll(
         self,
@@ -93,6 +96,8 @@ class PollCog(CogConGruppi, commands.Cog):
         discussione: bool = False,
         inizia_tra: app_commands.Range[str, 2, 6] | None = None,
         chiudi_a_voti: app_commands.Range[int, 1, sondaggi_logic.MAX_VOTANTI_CHIUSURA] | None = None,
+        premio_monete: app_commands.Range[int, 1, 100_000] | None = None,
+        vincitori: app_commands.Range[int, 1, 10] = 1,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -124,8 +129,12 @@ class PollCog(CogConGruppi, commands.Cog):
             )
             return
 
+        if premio_monete and not await db.is_module_active_for_guild(guild.id, MODULE_LEVELING):  # ECO-051: le monete stanno nel modulo livelli
+            await interaction.response.send_message(await testo_per(interaction, "sondaggio_premio_serve_economia"), ephemeral=True)
+            return
         if inizia_tra:
-            await self._programma(interaction, question, opzioni, duration_hours, multiple, discussione, inizia_tra, chiudi_a_voti)
+            await self._programma(interaction, question, opzioni, duration_hours, multiple, discussione, inizia_tra, chiudi_a_voti,
+                                  premio_monete, vincitori)
             return
 
         sondaggio = discord.Poll(
@@ -137,8 +146,8 @@ class PollCog(CogConGruppi, commands.Cog):
             sondaggio.add_answer(text=opzione)
 
         await interaction.response.send_message(poll=sondaggio)
-        if chiudi_a_voti:
-            await self._segui(interaction, question, opzioni, duration_hours, multiple, discussione, chiudi_a_voti)
+        if chiudi_a_voti or premio_monete:
+            await self._segui(interaction, question, opzioni, duration_hours, multiple, discussione, chiudi_a_voti, premio_monete, vincitori)
         if discussione and not interaction.channel.permissions_for(interaction.user).create_public_threads:
             # Il thread lo apre il bot: non lo fa per chi nel canale non potrebbe aprirlo da solo.
             await interaction.followup.send(
@@ -154,20 +163,22 @@ class PollCog(CogConGruppi, commands.Cog):
                     await testo_per(interaction, "poll_sondaggio_pubblicato_ma_non_ho"), ephemeral=True
                 )
 
-    async def _segui(self, interaction, question, opzioni, ore, multipla, discussione, chiudi_a_voti) -> None:
+    async def _segui(self, interaction, question, opzioni, ore, multipla, discussione, chiudi_a_voti, premio=None, vincitori=1) -> None:
         """Salva il sondaggio appena pubblicato per contare i voti, e prepara la pulizia alla scadenza."""
         try:
             messaggio = await interaction.original_response()
             nid = await sondaggi_nativi_repo.crea(
                 interaction.guild.id, interaction.channel.id, interaction.user.id, question, opzioni, multipla=multipla,
-                durata_ore=ore, discussione=discussione, chiudi_a_voti=chiudi_a_voti, stato="aperto")
+                durata_ore=ore, discussione=discussione, chiudi_a_voti=chiudi_a_voti, stato="aperto",
+                premio=premio, vincitori=vincitori)
             await sondaggi_nativi_repo.imposta_messaggio(nid, messaggio.id)
             fine = datetime.now(timezone.utc) + timedelta(hours=ore, minutes=1)
             await scheduler.schedule(interaction.guild.id, interaction.user.id, AZIONE_FINE_NATIVO, fine, {"id": nid})
         except discord.HTTPException:
             logger.warning("Sondaggio nativo: chiusura a voti non attivata", exc_info=True)
 
-    async def _programma(self, interaction, question, opzioni, ore, multipla, discussione, inizia_tra, chiudi_a_voti) -> None:
+    async def _programma(self, interaction, question, opzioni, ore, multipla, discussione, inizia_tra, chiudi_a_voti,
+                         premio=None, vincitori=1) -> None:
         try:
             attesa = parse_duration(inizia_tra)
         except ValueError as exc:
@@ -185,7 +196,7 @@ class PollCog(CogConGruppi, commands.Cog):
         inizio = datetime.now(timezone.utc) + timedelta(seconds=attesa)
         nid = await sondaggi_nativi_repo.crea(
             interaction.guild.id, canale.id, interaction.user.id, question, opzioni, multipla=multipla, durata_ore=ore,
-            discussione=discussione, chiudi_a_voti=chiudi_a_voti, inizia_il=inizio)
+            discussione=discussione, chiudi_a_voti=chiudi_a_voti, inizia_il=inizio, premio=premio, vincitori=vincitori)
         await scheduler.schedule(interaction.guild.id, interaction.user.id, AZIONE_APRI_NATIVO, inizio, {"id": nid})
         await interaction.response.send_message(
             await testo_per(interaction, "sb_programmato_nativo", quando=discord.utils.format_dt(inizio, "R")), ephemeral=True)
@@ -223,8 +234,27 @@ class PollCog(CogConGruppi, commands.Cog):
         await scheduler.schedule(guild_id, user_id, AZIONE_FINE_NATIVO, fine, {"id": r["id"]})
 
     async def alla_fine(self, guild_id: int, user_id: int, payload: dict) -> None:
-        """Scheduler: il sondaggio è scaduto da solo, la riga non serve più."""
-        await sondaggi_nativi_repo.elimina(int(payload["id"]))
+        """Scheduler: il sondaggio è scaduto da solo: si dà il premio (ECO-051, se c'è) e la riga non serve più."""
+        nid = int(payload["id"])
+        r = await sondaggi_nativi_repo.prendi(nid)
+        if r is not None and r["premio"] and not r["premiato"] and not await self._premia(r):
+            raise RuntimeError("sondaggio non leggibile: il premio si riprova")  # la riga resta, lo scheduler riprova
+        await sondaggi_nativi_repo.elimina(nid)
+
+    async def _premia(self, r) -> bool:
+        """ECO-051: legge il sondaggio e dà il premio. Se il messaggio non si legge ora, la riga resta e lo scheduler riprova."""
+        canale = self.bot.get_channel(r["channel_id"])
+        if canale is None or r["message_id"] is None:
+            return True  # canale o messaggio spariti: non c'è più niente da premiare
+        try:
+            messaggio = await canale.fetch_message(r["message_id"])
+        except discord.NotFound:
+            return True
+        except discord.HTTPException:
+            logger.warning("Sondaggio %s: messaggio non letto per il premio", r["id"], exc_info=True)
+            return False
+        await sondaggio_premio.premia(r["guild_id"], r, messaggio)
+        return True
 
     @commands.Cog.listener()
     async def on_raw_poll_vote_add(self, payload: discord.RawPollVoteActionEvent) -> None:
@@ -269,6 +299,9 @@ class PollCog(CogConGruppi, commands.Cog):
                 await scheduler.schedule(guild_id, user_id, AZIONE_RIPROVA_CHIUSURA, quando, {
                     "id": nativo_id, "channel_id": canale.id, "message_id": message_id, "tentativo": tentativo + 1})
                 return
+        r = await sondaggi_nativi_repo.prendi(nativo_id)
+        if r is not None and r["premio"] and not r["premiato"]:  # ECO-051
+            await self._premia(r)
         await sondaggi_nativi_repo.elimina(nativo_id)
 
     async def riprova_chiusura(self, guild_id: int, user_id: int, payload: dict) -> None:

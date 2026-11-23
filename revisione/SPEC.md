@@ -3100,3 +3100,5 @@ Controllo delle 89 voci in `revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.
 - `[x]` UTL-024 (D121): `/admin-tag tag azioni` (UTL-024, 0886).
 
 - `[x]` UTL-111 (D121): `/admin-automazioni programma` (UTL-111, 0886).
+
+- `[x]` ECO-051 (D121): `/sondaggi crea premio_monete: vincitori:` (ECO-051, 0887).
