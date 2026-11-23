@@ -192,6 +192,20 @@ def registra_rotte(app: web.Application, *, bot, pagina, errore, server, scrittu
             return _non_trovata(request)
         return pagina(request, "classifica_pubblica.html", guild=guild, voci=await pubblico.dati_classifica(guild))
 
+    async def negozio_pubblico(request: web.Request) -> web.StreamResponse:
+        """ECO-080: il negozio del server in sola lettura. Acceso dallo staff; stesso 404 per «non esiste» e «spento»."""
+        if not limite_pubbliche.consenti(ip(request)):
+            return errore(request, 429, "Troppe richieste", "Aspetta un minuto e riprova.")
+        guild_id = int(request.match_info["guild_id"])
+        guild = bot.get_guild(guild_id)
+        if (
+            guild is None
+            or not await db.is_module_active_for_guild(guild_id, "leveling")
+            or not await db.get_guild_setting(guild_id, pubblico.SETTING_NEGOZIO_WEB, False)
+        ):
+            return _non_trovata(request)
+        return pagina(request, "negozio_pubblico.html", guild=guild, voci=await pubblico.dati_negozio(guild))
+
     # --------------------------------------------------------------- API (STA-061)
     def _json(stato: int, corpo: dict) -> web.Response:
         return web.json_response(corpo, status=stato)
@@ -220,5 +234,6 @@ def registra_rotte(app: web.Application, *, bot, pagina, errore, server, scrittu
     app.router.add_get(r"/server/{guild_id:\d{1,20}}/avvisi", pagina_avvisi)
     app.router.add_post(r"/server/{guild_id:\d{1,20}}/avvisi", salva_avvisi)
     app.router.add_get(r"/stats/{guild_id:\d{1,20}}", statistiche_pubbliche)
+    app.router.add_get(r"/n/{guild_id:\d{1,20}}", negozio_pubblico)
     app.router.add_get(r"/c/{slug:[a-z0-9\-]{3,32}}", classifica_pubblica)
     app.router.add_get("/api/v1/stats", api_statistiche)

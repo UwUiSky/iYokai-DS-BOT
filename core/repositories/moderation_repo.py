@@ -355,7 +355,8 @@ class ModerationRepository:
         result = await self._pool.execute(
             """
             WITH prove AS (DELETE FROM moderation_prove WHERE guild_id = $1 AND case_number = $2),
-                 registro AS (DELETE FROM moderation_chat_log WHERE guild_id = $1 AND case_number = $2)
+                 registro AS (DELETE FROM moderation_chat_log WHERE guild_id = $1 AND case_number = $2),
+                 archivio AS (DELETE FROM moderation_archivio_utente WHERE guild_id = $1 AND case_number = $2)
             DELETE FROM moderation_cases WHERE guild_id = $1 AND case_number = $2
             """,
             guild_id, case_number,

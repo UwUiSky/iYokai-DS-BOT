@@ -58,6 +58,7 @@ from core.embed_builder_logic import costruisci as costruisci_embed, da_json
 from core.repositories.custom_command_repo import custom_command_repo
 from core.repositories.saved_embed_repo import saved_embed_repo
 from core.scheduler import in_seconds, scheduler
+from core import azioni_sicure
 from core.role_safety import check_role_assignable, motivo_ruolo_automatico_non_assegnabile
 
 PAUSA_MINIMA_INNESCO = 3  # secondi tra due richieste dello stesso utente, anche con cooldown 0
@@ -240,6 +241,24 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             return "Non sono riuscito a cambiare il ruolo."
         return None
 
+    async def _azioni_extra(self, tag, guild: discord.Guild, membro: discord.Member, messaggio) -> list[str]:
+        """UTL-024: le azioni sicure del tag (fino a 3), fatte per chi lo usa e con i suoi permessi. Una che non va
+        non ferma le altre; restituisce i motivi dei rifiuti. Mai solleva."""
+        note: list[str] = []
+        try:
+            for dati in await custom_command_repo.azioni_di(guild.id, tag.name):
+                try:
+                    azione = azioni_sicure.da_dict(dati, ammessi=azioni_sicure.TIPI_TAG)
+                except azioni_sicure.AzioneNonValida as errore:
+                    note.append(str(errore))
+                    continue
+                motivo = await azioni_sicure.esegui(guild, azione, esecutore=membro, bersaglio=membro, messaggio=messaggio, autonomo=False)
+                if motivo:
+                    note.append(motivo)
+        except Exception:
+            logger.warning("Tag %s: azioni non eseguite.", getattr(tag, "name", "?"), exc_info=True)
+        return note
+
     @staticmethod
     def _pausa(tag, guild_id: int, user_id: int, minimo: int = 0, canale_id: int = 0) -> float:
         """Secondi che mancano al prossimo uso. La pausa vale per utente, per canale o per tutto il server (UTL-012):
@@ -294,6 +313,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         except discord.HTTPException:
             logger.warning("Tag %s: invio fallito nel canale %s", nome, message.channel.id)
             return
+        await self._azioni_extra(tag, message.guild, message.author, message)  # UTL-024
         if tag.cancella_innesco:
             try:
                 await message.delete()
@@ -412,6 +432,10 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             await interaction.followup.send(await testo_per(interaction, "tag_inviato_privato" if tag.invio == "privato" or dest is interaction.user else "tag_inviato_altro"), ephemeral=True)
         if nota:
             await interaction.followup.send(nota, ephemeral=True)
+        note_azioni = await self._azioni_extra(tag, guild, interaction.user, None)  # UTL-024
+        if note_azioni:
+            await interaction.followup.send(
+                await testo_per(interaction, "tag_azioni_rifiutate", motivi="; ".join(note_azioni)[:500]), ephemeral=True)
         await custom_command_repo.add_use(guild.id, tag.name)
 
     # ================================================================

@@ -88,6 +88,8 @@ from core.greetings_embed_logic import embed_con_segnaposto
 from core.repositories.saved_embed_repo import saved_embed_repo
 from core.drop_logic import DEFAULT_DROP_CHANCE, DEFAULT_MAX_COINS, DEFAULT_MIN_COINS, should_trigger_drop
 from core.channel_access import PERMESSI_DI_SCRITTURA, motivo_se_il_bot_non_puo
+from core import economia_autolavoro, economia_registro
+from core.economia_autolavoro import paga_lavoro
 from core.giveaway_immagine import conserva_allegato, file_annuncio
 from core.giveaway_logic import (
     MAX_INGRESSI_EXTRA,
@@ -1801,20 +1803,25 @@ class LevelingCog(CogConGruppi, commands.Cog):
         nome="work",
         descrizione="Lavora per guadagnare qualche coin.",
     )
-    async def work(self, interaction: discord.Interaction) -> None:
+    @app_commands.describe(automatico="Premium: sì = lavori da solo ogni 4 ore, no = smetti (senza: lavori ora)")
+    async def work(self, interaction: discord.Interaction, automatico: bool | None = None) -> None:
         if await _comando_rifiutato(interaction):
+            return
+        if automatico is not None:  # ECO-050
+            if automatico:
+                ok = await economia_autolavoro.accendi(interaction.guild.id, interaction.user.id, bot=self.bot)
+                chiave = "autolavoro_acceso" if ok else "autolavoro_serve_premium"
+            else:
+                await economia_autolavoro.spegni(interaction.guild.id, interaction.user.id)
+                chiave = "autolavoro_spento"
+            await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
             return
 
         adesso = datetime.now(timezone.utc)
         impostazioni = (await self._config(interaction.guild.id)).impostazioni
         if await serve_controllo(interaction, impostazioni.controllo_per_mille):  # ECO-158
             return
-        guadagno = random.randint(impostazioni.work_min, impostazioni.work_max)
-        # ECO-029: la paga sale con i turni fatti (scala dei lavori)
-        turni_fatti = await rischio_repo.turni(interaction.guild.id, interaction.user.id)
-        guadagno = max(guadagno if guadagno == 0 else 1, paga_con_lavoro(guadagno, lavoro_per_turni(turni_fatti)[2]))
-        guadagno = con_potenziamento(guadagno, (await potenziamenti_repo.livelli(interaction.guild.id, interaction.user.id))["lavoro"])  # ECO-081
-        guadagno += guadagno * (await animali_repo.bonus(interaction.guild.id, interaction.user.id, "lavoro") + BONUS_PRESTIGIO * await sociale_repo.livello_prestigio(interaction.guild.id, interaction.user.id) + await mondo_repo.bonus_percento(interaction.guild.id, interaction.user.id)) // 100  # ECO-131, ECO-148, ECO-056/144
+        guadagno = await paga_lavoro(interaction.guild.id, interaction.user.id, impostazioni)  # ECO-029/081/131/148, punto unico (ECO-050)
         riscosso = await leveling_repo.claim_work(
             interaction.guild.id, interaction.user.id,
             guadagno, attesa_work_secondi(impostazioni), adesso,  # ECO-019, ECO-028
@@ -2165,12 +2172,27 @@ class LevelingCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         channel="Canale dell'annuncio",
         settimanale="Sì = annuncia la top 10 di ogni settimana (il lunedì) invece dei vincitori del mese",
+        registro="Sì = il canale riceve ogni minuto il riepilogo dei movimenti di monete (ECO-006)",
     )
     async def monthly_winners_set(
-        self, interaction: discord.Interaction, channel: discord.TextChannel, settimanale: bool = False
+        self, interaction: discord.Interaction, channel: discord.TextChannel, settimanale: bool = False,
+        registro: bool = False,
     ) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
+            return
+
+        if registro:  # ECO-006
+            permessi = channel.permissions_for(guild.me)
+            if not (permessi.view_channel and permessi.send_messages and permessi.embed_links):
+                await interaction.response.send_message(
+                    await testo_per(interaction, "annuncio_prova_permessi", canale=channel.mention), ephemeral=True
+                )
+                return
+            await economia_registro.imposta(guild.id, channel.id)
+            await interaction.response.send_message(
+                await testo_per(interaction, "economia_registro_attivo", mention=channel.mention), ephemeral=True
+            )
             return
 
         if settimanale:  # LIV-061
@@ -2199,10 +2221,20 @@ class LevelingCog(CogConGruppi, commands.Cog):
         descrizione="Disattiva l'annuncio dei vincitori del mese.",
         sottogruppo=SOTTOGRUPPI["admin-economia annunci"],
     )
-    @app_commands.describe(settimanale="Sì = spegne la top 10 della settimana invece dei vincitori del mese")
-    async def monthly_winners_disable(self, interaction: discord.Interaction, settimanale: bool = False) -> None:
+    @app_commands.describe(
+        settimanale="Sì = spegne la top 10 della settimana invece dei vincitori del mese",
+        registro="Sì = spegne il registro dei movimenti di monete (ECO-006)",
+    )
+    async def monthly_winners_disable(
+        self, interaction: discord.Interaction, settimanale: bool = False, registro: bool = False
+    ) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
+            return
+
+        if registro:  # ECO-006
+            chiave = "economia_registro_spento" if await economia_registro.togli(guild.id) else "economia_registro_non_era_attivo"
+            await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
             return
 
         if settimanale:  # LIV-061
@@ -4841,6 +4873,14 @@ async def setup(bot: commands.Bot) -> None:
             category="leveling",
             description="XP, livelli, daily/work/pay, classifiche mensili e all-time.",
             premium_capable=False,
+        )
+    )
+    registry.register(
+        PremiumModule(
+            name=economia_autolavoro.MODULO_AUTOLAVORO,
+            display_name="Lavoro automatico",
+            category="leveling",
+            description="Il lavoro di /monete work si fa da solo ogni 4 ore per chi lo accende.",
         )
     )
     # Gli inviti in gilda devono funzionare anche dopo un riavvio.

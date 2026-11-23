@@ -72,7 +72,7 @@ async def test_server_assente_si_segna_e_non_blocca_gli_altri(ambiente):
 async def test_limiti_e_spegnimento(ambiente):
     _db, auto, _c = ambiente
     with pytest.raises(ValueError):
-        await auto.imposta(G, 3, 1, 1)
+        await auto.imposta(G, 2, 1, 1)
     with pytest.raises(ValueError):
         await auto.imposta(G, 4, 9, 1)
     await auto.imposta(G, 24, 3, 1)

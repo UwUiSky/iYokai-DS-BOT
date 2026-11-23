@@ -63,6 +63,8 @@ from core.welcome_image import (
     FORME,
     MAX_SFONDO_BYTE,
     MAX_TITOLO,
+    MISURA_MAX,
+    MISURA_MIN,
     MODELLI,
     DatiBenvenuto,
     prepara_sfondo,
@@ -365,6 +367,9 @@ async def _file_benvenuto(config, member: discord.Member) -> discord.File | None
             testo=_testo_sull_immagine(config.welcome_image_text, member),
             allineamento=config.welcome_image_align,
             colore_nome=config.welcome_image_name_color,
+            larghezza=config.welcome_image_width,
+            altezza=config.welcome_image_height,
+            trasparente=config.welcome_image_transparent,
         )
         png = await run_image_task(render_welcome_image, dati, avatar, sfondo)
     except Exception:
@@ -850,6 +855,9 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         ordine="Se l'immagine va con il testo, prima del testo o da sola",
         allineamento="Dove stanno i testi accanto all'avatar",
         colore_nome="Colore del nome, per esempio #FFD700 (oppure «predefinito»)",
+        trasparente="Sì = nessuno sfondo: solo avatar e testi (il PNG resta trasparente)",
+        larghezza="Larghezza in pixel, da 64 a 2048 (di base 1024)",
+        altezza="Altezza in pixel, da 64 a 2048 (di base 400)",
     )
     @app_commands.choices(
         modello=[app_commands.Choice(name=nome, value=nome) for nome in MODELLI],
@@ -876,6 +884,9 @@ class GreetingsCog(CogConGruppi, commands.Cog):
         ordine: str | None = None,
         allineamento: str | None = None,
         colore_nome: app_commands.Range[str, 4, 11] | None = None,
+        trasparente: bool | None = None,
+        larghezza: app_commands.Range[int, MISURA_MIN, MISURA_MAX] | None = None,
+        altezza: app_commands.Range[int, MISURA_MIN, MISURA_MAX] | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -942,6 +953,13 @@ class GreetingsCog(CogConGruppi, commands.Cog):
                 ordine or attuale.welcome_image_order,
                 allineamento or attuale.welcome_image_align,
                 attuale.welcome_image_name_color if colore_nome is None else (nome_colore or ""),
+            )
+        if any(v is not None for v in (trasparente, larghezza, altezza)):  # RUO-005
+            await greetings_repo.set_welcome_image_misure(
+                guild.id,
+                attuale.welcome_image_width if larghezza is None else larghezza,
+                attuale.welcome_image_height if altezza is None else altezza,
+                attuale.welcome_image_transparent if trasparente is None else trasparente,
             )
         if pronto is not None:
             await greetings_repo.set_welcome_background(guild.id, pronto)

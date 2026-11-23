@@ -15,6 +15,16 @@ import asyncpg
 from core.ticket_form_logic import MAX_DOMANDE, MAX_MOTIVI, MAX_PANNELLI_PER_SERVER
 
 
+async def _colonne_da_copiare(conn, tabella: str, escluse: tuple[str, ...]) -> list[str]:
+    """Le colonne di una tabella (nomi dal database, mai dall'utente) tranne `escluse`: una colonna nuova si copia da sola."""
+    righe = await conn.fetch(
+        "SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = $1 "
+        "ORDER BY ordinal_position",
+        tabella,
+    )
+    return [r["column_name"] for r in righe if r["column_name"] not in escluse]
+
+
 class PannelloGiaEsistente(Exception):
     """Esiste già un pannello con questo nome nel server."""
 
@@ -138,6 +148,49 @@ class TicketFormRepository:
                     )
                 except asyncpg.UniqueViolationError as errore:
                     raise PannelloGiaEsistente() from errore
+        return _pannello(riga)
+
+    async def duplica_pannello(
+        self, guild_id: int, da_panel_id: int, nuovo_nome: str, categoria_id: int | None = None
+    ) -> PannelloTicket:
+        """CFG-044: un nuovo pannello con le stesse scelte dell'originale: domande, motivi, opzioni, accessi e risposte
+        pronte approvate (senza gli usi). Poi sono indipendenti. Non si copiano ticket, trascrizioni, automazioni né il
+        messaggio pubblicato. Solleva PannelloGiaEsistente, TroppiPannelli o LookupError (originale di un altro server)."""
+        async with self._pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute("SELECT pg_advisory_xact_lock($1, $2)", 8413, guild_id % 2**31)
+                if await conn.fetchval("SELECT count(*) FROM ticket_panels WHERE guild_id = $1", guild_id) >= MAX_PANNELLI_PER_SERVER:
+                    raise TroppiPannelli()
+                colonne = await _colonne_da_copiare(conn, "ticket_panels", ("id", "guild_id", "name", "created_at", "category_id"))
+                elenco = ", ".join(colonne)
+                try:
+                    nuovo_id = await conn.fetchval(
+                        f"INSERT INTO ticket_panels (guild_id, name, category_id{', ' + elenco if elenco else ''}) "
+                        f"SELECT guild_id, $3, COALESCE($4, category_id){', ' + elenco if elenco else ''} "
+                        "FROM ticket_panels WHERE id = $1 AND guild_id = $2 RETURNING id",
+                        da_panel_id, guild_id, nuovo_nome, categoria_id,
+                    )
+                except asyncpg.UniqueViolationError as errore:
+                    raise PannelloGiaEsistente() from errore
+                if nuovo_id is None:
+                    raise LookupError("pannello di origine non trovato")
+                for tabella in ("ticket_form_questions", "ticket_panel_motivi", "ticket_panel_opzioni", "ticket_panel_accesso"):
+                    cols = await _colonne_da_copiare(conn, tabella, ("id", "panel_id"))
+                    lista = ", ".join(cols)
+                    await conn.execute(
+                        f"INSERT INTO {tabella} (panel_id, {lista}) SELECT $2, {lista} FROM {tabella} WHERE panel_id = $1",
+                        da_panel_id, nuovo_id,
+                    )
+                await conn.execute(
+                    """
+                    INSERT INTO ticket_standard_replies
+                        (guild_id, panel_id, title, keywords, body, attachments, status, approved_by, approved_at)
+                    SELECT guild_id, $2, title, keywords, body, attachments, 'approved', approved_by, approved_at
+                    FROM ticket_standard_replies WHERE panel_id = $1 AND status = 'approved'
+                    """,
+                    da_panel_id, nuovo_id,
+                )
+                riga = await conn.fetchrow("SELECT * FROM ticket_panels WHERE id = $1", nuovo_id)
         return _pannello(riga)
 
     async def elenca_pannelli(self, guild_id: int) -> list[PannelloTicket]:

@@ -14,7 +14,7 @@ from datetime import datetime
 import asyncpg
 
 _COLONNE = ("id, guild_id, channel_id, message_id, autore_id, domanda, opzioni, multipla, durata_ore, discussione, "
-            "chiudi_a_voti, voti, inizia_il, stato")
+            "chiudi_a_voti, voti, inizia_il, stato, premio, vincitori, premiato")
 
 
 class SondaggiNativiRepository:
@@ -27,11 +27,13 @@ class SondaggiNativiRepository:
 
     async def crea(self, guild_id: int, channel_id: int, autore_id: int, domanda: str, opzioni: list[str], *,
                    multipla: bool = False, durata_ore: int = 24, discussione: bool = False, chiudi_a_voti: int | None = None,
-                   inizia_il: datetime | None = None, stato: str = "programmato") -> int:
+                   inizia_il: datetime | None = None, stato: str = "programmato",
+                   premio: int | None = None, vincitori: int = 1) -> int:
         return await self._pool.fetchval(
             "INSERT INTO sondaggi_nativi (guild_id, channel_id, autore_id, domanda, opzioni, multipla, durata_ore, discussione, "
-            "chiudi_a_voti, inizia_il, stato) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id",
+            "chiudi_a_voti, inizia_il, stato, premio, vincitori) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id",
             guild_id, channel_id, autore_id, domanda, opzioni, multipla, durata_ore, discussione, chiudi_a_voti, inizia_il, stato,
+            premio, vincitori,
         )
 
     async def prendi(self, nativo_id: int) -> asyncpg.Record | None:
@@ -94,6 +96,11 @@ class SondaggiNativiRepository:
             await conn.execute("SELECT pg_advisory_xact_lock(hashtext('sondaggio_nativo'), $1)", nativo_id % 2**31)
             r = await conn.execute("DELETE FROM sondaggi_nativi WHERE id = $1 AND stato = 'programmato'", nativo_id)
         return r != "DELETE 0"
+
+    async def segna_premiato(self, nativo_id: int) -> bool:
+        """ECO-051: vero per un solo chiamante: il premio si dà una volta sola, anche con due chiusure insieme."""
+        return bool(await self._pool.fetchval(
+            "UPDATE sondaggi_nativi SET premiato = TRUE WHERE id = $1 AND premiato = FALSE AND premio IS NOT NULL RETURNING TRUE", nativo_id))
 
     async def elimina(self, nativo_id: int) -> None:
         await self._pool.execute("DELETE FROM sondaggi_nativi WHERE id = $1", nativo_id)

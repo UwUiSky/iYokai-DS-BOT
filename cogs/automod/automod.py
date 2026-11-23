@@ -495,6 +495,16 @@ async def _esegui_regola(
     )
 
 
+ACTION_TYPE_POSSIBILI = tuple(SCELTE_PHISHING_EXTRA)
+
+
+def _tipo_caso_extra(scelta: str) -> str:
+    """Il tipo del caso è la scelta del server, ma solo se è tra quelle ammesse (test: ogni action_type è dichiarato)."""
+    if scelta not in ACTION_TYPE_POSSIBILI:
+        raise ValueError(f"azione extra sconosciuta: {scelta!r}")
+    return scelta
+
+
 async def _registra_caso_extra(message: discord.Message, scelta: str, durata_secondi: int) -> None:
     """SIC-041: l'azione in più sul phishing entra tra i casi di moderazione e nel log, con il motivo (massimo 512)."""
     from cogs.moderation._shared import post_to_mod_log
@@ -505,7 +515,7 @@ async def _registra_caso_extra(message: discord.Message, scelta: str, durata_sec
         numero = await moderation_repo.create_case(
             guild_id=message.guild.id, user_id=message.author.id,
             moderator_id=message.guild.me.id if message.guild.me else message.author.id,
-            action_type=scelta, reason=motivo, duration_seconds=durata_secondi if scelta == "timeout" else None,
+            action_type=_tipo_caso_extra(scelta), reason=motivo, duration_seconds=durata_secondi if scelta == "timeout" else None,
             origine="automod",
         )
         embed = discord.Embed(title=f"AutoMod: {scelta} per phishing", description=f"Caso #{numero}: {motivo}", color=discord.Color.red())

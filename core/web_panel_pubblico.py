@@ -25,6 +25,8 @@ ANONIMO = "utente anonimo"
 GIORNI_STATISTICHE = 30
 RIGHE_CLASSIFICA_PUBBLICA = 10
 RIGHE_CLASSIFICA_WEB = 50
+RIGHE_NEGOZIO_WEB = 50  # ECO-080
+SETTING_NEGOZIO_WEB = "negozio_web"  # ECO-080: spento di base, lo accende lo staff
 PREFISSO_CHIAVE = "iyk_"
 LUNGHEZZA_VISIBILE_PREFISSO = 8  # «iyk_» + 4 caratteri: basta a riconoscerla, non a indovinarla
 
@@ -183,3 +185,28 @@ async def dati_classifica(guild) -> list[dict]:
     return [
         {"posto": i, "nome": _nome_membro(guild, v.user_id, anonimi), "xp": v.amount} for i, v in enumerate(voci, start=1)
     ]
+
+
+async def dati_negozio_da_oggetti(oggetti) -> list[dict]:
+    """ECO-080: le righe del negozio per la pagina pubblica. Solo nome, prezzo, descrizione, categoria e se è esaurito:
+    mai il ruolo richiesto, il messaggio di acquisto o l'azione. Al massimo 50; i testi si tagliano (l'escape lo fa il modello)."""
+    voci = []
+    for o in oggetti:
+        if getattr(o, "a_rotazione", False):
+            continue  # gli oggetti a rotazione compaiono in vetrina solo certi giorni: non si mostrano qui
+        voci.append({
+            "nome": str(o.name)[:100],
+            "prezzo": int(o.price),
+            "descrizione": (str(o.description)[:300] if o.description else ""),
+            "categoria": (str(o.category)[:50] if o.category else ""),
+            "esaurito": o.stock is not None and o.stock <= 0,
+        })
+        if len(voci) >= RIGHE_NEGOZIO_WEB:
+            break
+    return voci
+
+
+async def dati_negozio(guild) -> list[dict]:
+    from core.repositories.shop_repo import shop_repo
+
+    return await dati_negozio_da_oggetti(await shop_repo.list_items(guild.id))

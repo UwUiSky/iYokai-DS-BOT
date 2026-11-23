@@ -787,8 +787,8 @@ Totale voci: **514**.
   primo; il registro non dice chi è stato spostato, lo dice il log della voce) (LOG-006, LOG-012);
   `/admin-log archivio-canale canale: messaggi:` (fino a 20.000, file sotto i 10 MiB, con i cancellati
   dell'ultima ora tenuti solo in memoria, 100 per canale; serve poter leggere il canale) (LOG-027,
-  LOG-030). Resta: LOG-029 (archivio di un utente su 3 giorni a ogni sanzione: servirebbe tenere
-  su disco il testo di tutti i messaggi, scelta di privacy da fare)
+  LOG-030); `/mod-casi caso chat archivio:sì`: archivio degli eventi dei messaggi di un utente
+  (3 giorni) dal registro eventi, salvato a ogni sanzione e tenuto con il caso, senza testo (LOG-029, D121, 0880)
 - `[x]` 8.19 Ogni evento acceso o spento (LOG-017): `/admin-log eventi`, un menu con 24 interruttori
   e le scelte rapide «Tutto», «Niente», «Predefinito» (tutto tranne microfono e audio spenti da
   soli); senza scelte tutto acceso come prima. Migrazione 0180 (`log_eventi_spenti`)
@@ -3103,3 +3103,43 @@ Controllo delle 89 voci in `revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.
 
 Fatte: reputazione (LIV-076…088; `cogs/leveling/reputazione.py`, `core/repositories/reputazione_repo.py`, `core/reputazione_logic.py`, 0870), annuncio con embed e immagine (LIV-032, 033; 0871), import da file (LIV-072; `cogs/leveling/importa_livelli.py`, `core/livelli_import_logic.py`), profilo globale come immagine (LIV-089; `cogs/leveling/progressi.py`), modulo voto (LIV-019, ECO-048, ECO-049, CFG-039; `cogs/leveling/voto.py`, `core/voto_server.py`, `core/voto_logic.py`, `core/repositories/voto_repo.py`, 0872). Tutte le scelte in D120.
 
+
+## Appendice — Giro r1med: voci medie rimaste (D121)
+
+- `[x]` ECO-006 (D121): `/admin-economia annunci vincitori-set registro:sì` manda ogni minuto un riepilogo dei movimenti di monete (ECO-006, 0881, `core/economia_registro.py`).
+
+- `[x]` ECO-050 (D121): `/monete work automatico:sì` (premium): lavoro da solo ogni 4 ore (ECO-050, 0882, `core/economia_autolavoro.py`).
+
+- `[x]` SIC-021 (D121): `/owner system chiave-soccorso` e `scripts/chiave_soccorso.py verifica` (SIC-021, 0883).
+
+- `[x]` MUS-016 (D121): `/admin-musica impostazioni solo-audio:sì` (MUS-016).
+
+- `[x]` RUO-005 (D121): `/admin-benvenuto immagine trasparente: larghezza: altezza:` (RUO-005, 0884).
+
+- `[x]` CFG-044 (D121): `/admin-ticket pannelli duplica` (CFG-044).
+
+- `[x]` VOC-014 (D121): `/admin-vocali opzioni scorta:sì` tiene una stanza vuota pronta (VOC-014).
+
+- `[x]` ECO-160 (D121): `/admin-giochi sospensione` e bottone «Chiedi una revisione» (ECO-160, 0885).
+
+- `[x]` UTL-024 (D121): `/admin-tag tag azioni` (UTL-024, 0886).
+
+- `[x]` UTL-111 (D121): `/admin-automazioni programma` (UTL-111, 0886).
+
+- `[x]` ECO-051 (D121): `/sondaggi crea premio_monete: vincitori:` (ECO-051, 0887).
+
+- `[x]` TKT-088 (D121): `/admin-ticket setup roblox:sì` e chiave `BLOXLINK_API_KEY` (TKT-088).
+
+- `[x]` ECO-093 (D121): `/sala tamburo` (ECO-093).
+
+- `[x]` ECO-080 (D121): `/admin-economia limiti negozio_web:sì` e pagina `/n/{id}` (ECO-080).
+
+- `[x]` SIC-016 (D121): `/admin-backup carica ultima_automatica:sì` e copie ogni 3 ore (SIC-016, 0888).
+
+Fatte in questo giro (migrazioni 0880-0888, scelte in D121): LOG-029 (archivio degli eventi dei messaggi legato al caso, `/mod-casi caso chat archivio:sì`);
+ECO-006 (`/admin-economia annunci vincitori-set registro:sì`); ECO-050 (`/monete work automatico:sì`, premium); ECO-051 (`/sondaggi crea premio_monete:`);
+ECO-080 (pagina `/n/{id}` e `/admin-economia limiti negozio_web:sì`); ECO-093 (`/sala tamburo`); ECO-160 (`/admin-giochi sospensione`);
+CFG-044 (`/admin-ticket pannelli duplica`); MUS-016 (`/admin-musica impostazioni solo-audio:sì`); RUO-005 (`/admin-benvenuto immagine trasparente: larghezza: altezza:`);
+SIC-016 (`/admin-backup carica ultima_automatica:sì`, copie ogni 3 ore); SIC-021 (`/owner system chiave-soccorso`, `scripts/chiave_soccorso.py`);
+UTL-024 (`/admin-tag tag azioni`); UTL-111 (`/admin-automazioni programma`); VOC-014 (`/admin-vocali opzioni scorta:sì`); TKT-088 (`/admin-ticket setup roblox:sì`, chiave `BLOXLINK_API_KEY`).
+Non fatta: TKT-073 (Google Drive).

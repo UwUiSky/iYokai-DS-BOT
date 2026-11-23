@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 14:54 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:03 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 1147 comandi in 57 categorie.**
+**Totale: 1166 comandi in 59 categorie.**
 
 ## Admin: AI
 
@@ -102,6 +102,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 14:
 - **`/admin-automazioni inneschi avvia-ora`** — Fa partire un innesco subito, per provarlo.
 - **`/admin-automazioni inneschi elenco`** — Gli inneschi del server.
 - **`/admin-automazioni inneschi togli`** — Toglie un innesco.
+- **`/admin-automazioni programma`** — Programma un'azione sicura per più tardi (ruolo, messaggio, sblocco canale): fino a 5.
 - **`/admin-automazioni script errori`** — Gli ultimi 10 errori dello script di un tag.
 - **`/admin-automazioni slash elenco`** — I comandi e i menu del server.
 - **`/admin-automazioni slash menu`** — Voci del menu col tasto destro (su un utente o un messaggio) che rispondono con un tag.
@@ -274,6 +275,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 14:
 - **`/admin-giochi quiz regole`** — Regole del quiz: punti, tempo, risposta mostrata, il bot gioca.
 - **`/admin-giochi quiz rimuovi`** — Toglie una domanda caricata dal server.
 - **`/admin-giochi servizi`** — Accende o spegne i servizi esterni: immagini Lemmy e ricerca di GIF.
+- **`/admin-giochi sospensione`** — Sospendi una persona dal gioco, riabilitala o decidi sulla sua richiesta di revisione.
 - **`/admin-giochi stipendi auto`** — Paga gli stipendi da solo a un'ora (UTC) e scegli le monete per messaggio.
 - **`/admin-giochi stipendi elenco`** — Gli stipendi e le tasse per ruolo, e le regole dei messaggi.
 - **`/admin-giochi stipendi imposta`** — Stipendio (positivo) o tassa (negativo) per un ruolo.
@@ -288,6 +290,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 14:
 - **`/admin-giochi telefono canale`** — Il canale del telefono del server.
 - **`/admin-giochi telefono consenso`** — Accende o spegne il telefono: spento di base.
 - **`/admin-giochi telefono registro`** — Le ultime chiamate del server: solo server, ora e durata.
+- **`/admin-giochi voto`** — Il premio che il server dà a chi vota il bot (senza valori: lo stato).
 
 ## Admin: giveaway
 
@@ -319,6 +322,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 14:
 
 - **`/admin-livelli annuncio`** — Dove e quando annunciare i level-up.
 - **`/admin-livelli azzera auto`** — Azzera chi esce o viene bannato; blocca XP e azzeramenti al proprietario.
+- **`/admin-livelli azzera importa`** — Carica gli XP da un file JSON o CSV esportato da un altro bot.
 - **`/admin-livelli azzera ripristina`** — Rimette gli XP di una copia di sicurezza (valida 30 giorni).
 - **`/admin-livelli azzera server`** — Azzera gli XP di tutto il server (prima fa una copia di sicurezza).
 - **`/admin-livelli card`** — Mostra o nascondi in questo server gli sfondi con immagine di card e profili.
@@ -459,6 +463,14 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 14:
 - **`/admin-negozio rotazione oggetto`** — Mette un oggetto tra quelli che ruotano (o lo toglie).
 - **`/admin-negozio rotazione quanti`** — Quanti oggetti a rotazione sono in vetrina ogni giorno (0 = spenta).
 
+## Admin-rep
+
+- **`/admin-rep azzera`** — Azzera la reputazione di tutto il server (serve la parola di conferma).
+- **`/admin-rep cancella`** — Porta a zero la reputazione di un membro.
+- **`/admin-rep imposta`** — Fissa i punti reputazione di un membro.
+- **`/admin-rep impostazioni`** — Accendi la reputazione e scegli nome, pausa, limiti, ruoli e «grazie».
+- **`/admin-rep premio`** — Ruoli dati a una soglia di reputazione (senza soglia: l'elenco).
+
 ## Admin: ruoli
 
 - **`/admin-ruoli auto aggiungi`** — Aggiungi un ruolo dato in automatico a chi entra.
@@ -536,6 +548,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 14:
 - **`/admin-tag risposte mostra`** — Dettaglio di una risposta automatica, anche il testo grezzo.
 - **`/admin-tag risposte svuota`** — Elimina tutte le risposte automatiche del server.
 - **`/admin-tag tag alias`** — Nomi alternativi di un tag (al massimo 3).
+- **`/admin-tag tag azioni`** — Azioni sicure di un tag: ruolo, messaggio, reazione (fino a 3).
 - **`/admin-tag tag crea`** — Crea un comando personalizzato.
 - **`/admin-tag tag creatori`** — Scegli il ruolo di chi può creare tag propri con /tag crea.
 - **`/admin-tag tag divieti`** — Vieta un tag a un ruolo, un canale o un utente (al massimo 10 per elenco).
@@ -570,6 +583,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 14:
 - **`/admin-ticket panel`** — Pubblica il pannello per l'apertura dei ticket in questo canale.
 - **`/admin-ticket pannelli aspetto`** — Colore del bottone, testo del menu e messaggio di apertura di un pannello.
 - **`/admin-ticket pannelli crea`** — Crea un pannello di ticket.
+- **`/admin-ticket pannelli duplica`** — Duplica un pannello già configurato, o copia una risposta pronta su un altro pannello.
 - **`/admin-ticket pannelli elenco`** — Elenca i pannelli di ticket del server.
 - **`/admin-ticket pannelli modello`** — Importa un modello pronto di pannello (modulo, motivi, risposte).
 - **`/admin-ticket pannelli modulo-aggiungi`** — Aggiungi una domanda al modulo (max 5).
@@ -1048,6 +1062,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 14:
 - **`/monete conto potenzia`** — Potenzia il lavoro o il premio periodico: più livelli, più monete.
 - **`/monete conto prestigio`** — Ricomincia da capo per un bonus permanente (+5% a lavoro e premio per livello).
 - **`/monete conto rimborso`** — Riscuoti una parte delle tue perdite nei giochi, se il server la rimborsa.
+- **`/monete conto voto`** — Riscatta il premio per aver votato il bot, o scegli il riscatto automatico.
 - **`/monete daily`** — Riscuoti la ricompensa giornaliera.
 - **`/monete inventario`** — Gli oggetti che hai comprato.
 - **`/monete lascia`** — Lascia delle monete in questo canale: le prende chi arriva prima.
@@ -1186,6 +1201,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 14:
 - **`/owner radio stop`** — Esce dalla radio su questo server.
 - **`/owner rete`** — Solo proprietario del bot: blocca i server che segnalano in modo scorretto.
 - **`/owner system announce`** — Manda un annuncio a tutti i server.
+- **`/owner system chiave-soccorso`** — Chiave di soccorso: per riprendere il controllo se perdi l'account.
 - **`/owner system eval`** — Esegue codice Python (con conferma).
 - **`/owner system leave-guild`** — Forza il bot a lasciare un server specifico (senza bloccarlo).
 - **`/owner system memory-status`** — Mostra il consumo di RAM attuale del processo.
@@ -1194,6 +1210,14 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 14:
 - **`/owner system shell`** — Esegue un comando shell (con conferma).
 - **`/owner system stats`** — Statistiche globali del bot.
 - **`/owner system storico-vpn`** — Solo proprietario: server che l'hanno lasciata passare e IP della persona (VPN/proxy).
+
+## Rep
+
+- **`/rep classifica`** — Classifica della reputazione del server.
+- **`/rep dai`** — Dai punti reputazione a un membro.
+- **`/rep mostra`** — Reputazione e posizione di un membro (senza nome: la tua).
+- **`/rep registro`** — Chi ha dato o tolto reputazione (la tua; lo staff può vedere quella di altri).
+- **`/rep togli`** — Togli punti reputazione a un membro (solo chi ha il ruolo scelto dal server).
 
 ## Sala giochi
 
@@ -1205,6 +1229,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 14:
 - **`/sala lotta`** — Lotta fino a 6 con il tuo animale: l'ultimo in piedi prende il piatto.
 - **`/sala quiz`** — Quiz a tempo con premio in monete: cinque domande, quattro risposte.
 - **`/sala roulette`** — Roulette a più giocatori: una puntata uguale per tutti, un solo giro.
+- **`/sala tamburo`** — Un tamburo con una sfera rossa: chi la trova esce, l'ultimo prende il piatto.
 
 ## Sondaggi
 

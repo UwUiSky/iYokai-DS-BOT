@@ -308,6 +308,35 @@ class CustomCommandRepository:
             "UPDATE custom_commands SET invio = 'canale', canale_id = NULL WHERE guild_id = $1 AND canale_id = $2", guild_id, channel_id)
         await self._pool.execute("UPDATE tag_gruppi SET canale_id = NULL WHERE guild_id = $1 AND canale_id = $2", guild_id, channel_id)
 
+    # ---- UTL-024: azioni sicure del tag (core/azioni_sicure.py) ----
+    async def azioni_di(self, guild_id: int, name: str) -> list[dict]:
+        import json
+        righe = await self._pool.fetch("SELECT azione FROM tag_azioni WHERE guild_id = $1 AND name = $2 ORDER BY pos", guild_id, name)
+        return [json.loads(r["azione"]) if isinstance(r["azione"], str) else dict(r["azione"]) for r in righe]
+
+    async def aggiungi_azione(self, guild_id: int, name: str, azione: dict, massimo: int) -> bool:
+        """Falso se il tag non c'è o ha già `massimo` azioni."""
+        import json
+        async with self._pool.acquire() as conn, conn.transaction():
+            await conn.execute("SELECT pg_advisory_xact_lock(hashtext('tag_azioni'), $1)", guild_id % 2**31)
+            if not await conn.fetchval("SELECT 1 FROM custom_commands WHERE guild_id = $1 AND name = $2", guild_id, name):
+                return False
+            usate = {r["pos"] for r in await conn.fetch("SELECT pos FROM tag_azioni WHERE guild_id = $1 AND name = $2", guild_id, name)}
+            libera = next((p for p in range(1, massimo + 1) if p not in usate), None)
+            if libera is None:
+                return False
+            await conn.execute("INSERT INTO tag_azioni (guild_id, name, pos, azione) VALUES ($1, $2, $3, $4::jsonb)",
+                               guild_id, name, libera, json.dumps(azione))
+        return True
+
+    async def togli_azione(self, guild_id: int, name: str, numero: int) -> bool:
+        """Toglie l'azione che è all'`numero`-esimo posto dell'elenco mostrato (1 = la prima)."""
+        righe = await self._pool.fetch("SELECT pos FROM tag_azioni WHERE guild_id = $1 AND name = $2 ORDER BY pos", guild_id, name)
+        if not 1 <= numero <= len(righe):
+            return False
+        await self._pool.execute("DELETE FROM tag_azioni WHERE guild_id = $1 AND name = $2 AND pos = $3", guild_id, name, righe[numero - 1]["pos"])
+        return True
+
     async def delete_tag(self, guild_id: int, name: str) -> bool:
         esito = await self._pool.execute(
             "DELETE FROM custom_commands WHERE guild_id = $1 AND name = $2", guild_id, name

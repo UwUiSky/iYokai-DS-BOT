@@ -573,11 +573,32 @@ class BackupCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @comando_di_gruppo("admin-backup", nome="carica", descrizione="Ricarica in questo server una copia salvata, scegliendo le parti.")
-    @app_commands.describe(copia="Numero della copia (da /admin-backup lista)")
-    async def carica(self, interaction: discord.Interaction, copia: app_commands.Range[int, 1]) -> None:
+    @app_commands.describe(
+        copia="Numero della copia (da /admin-backup lista)",
+        ultima_automatica="Dopo un attacco: la copia automatica più recente, solo la struttura (solo il proprietario)",
+    )
+    async def carica(
+        self, interaction: discord.Interaction, copia: app_commands.Range[int, 1] | None = None, ultima_automatica: bool = False
+    ) -> None:
         if not await self._puo(interaction, AZIONE_CARICA):
             return
-        dati = await backup_struttura_repo.leggi_struttura(interaction.guild.id, copia)
+        if ultima_automatica == (copia is not None):
+            await interaction.response.send_message(await testo_per(interaction, "backup_carica_scegli"), ephemeral=True)
+            return
+        fonte = f"copia #{copia}"
+        if ultima_automatica:  # SIC-016
+            if interaction.user.id != interaction.guild.owner_id:
+                await interaction.response.send_message(await testo_per(interaction, "backup_ultima_solo_proprietario"), ephemeral=True)
+                return
+            trovata = await backup_struttura_repo.ultima_automatica(interaction.guild.id)
+            if trovata is None:
+                await interaction.response.send_message(await testo_per(interaction, "backup_nessuna_automatica"), ephemeral=True)
+                return
+            copia, quando, dati = trovata
+            dati = struttura.solo_struttura(dati)
+            fonte = f"copia automatica #{copia} del {quando:%d/%m %H:%M}"
+        else:
+            dati = await backup_struttura_repo.leggi_struttura(interaction.guild.id, copia)
         if dati is None:
             await interaction.response.send_message(await testo_per(interaction, "backup_copia_non_trovata_guarda_backup"), ephemeral=True)
             return
@@ -586,18 +607,18 @@ class BackupCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.send_message(
             await testo_per(interaction, "backup_copia_scegli_cosa_caricare_cio", copia=copia),
-            view=ScegliPartiView(self, interaction.user.id, dati, f"copia #{copia}"),
+            view=ScegliPartiView(self, interaction.user.id, dati, fonte),
             ephemeral=True,
         )
 
     @comando_di_gruppo("founder", nome="automatico", descrizione="Copie automatiche della struttura a intervalli.", sottogruppo=SOTTOGRUPPI["founder backup"])
     @app_commands.describe(
-        ore="Ogni quante ore (4-168); vuoto con «spegni» per fermarle",
+        ore="Ogni quante ore (3-168); vuoto con «spegni» per fermarle",
         copie="Quante copie automatiche tenere (1-8): la più vecchia si sovrascrive",
         spegni="Ferma le copie automatiche",
     )
     async def automatico(
-        self, interaction: discord.Interaction, ore: app_commands.Range[int, 4, 168] | None = None,
+        self, interaction: discord.Interaction, ore: app_commands.Range[int, 3, 168] | None = None,
         copie: app_commands.Range[int, 1, 8] = 3, spegni: bool = False,
     ) -> None:
         """BKP-008."""

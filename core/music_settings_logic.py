@@ -17,6 +17,7 @@ usato da comandi, controlli e, piu' avanti, dal pannello (D16).
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
@@ -62,6 +63,7 @@ SETTING_SKIP_VOTE = "music_skip_vote_percent"  # MUS-052
 SETTING_EMPTY_PAUSE = "music_empty_pause"  # MUS-053
 SETTING_BOT_STATUS = "music_bot_status"  # MUS-061
 SETTING_SEARCH_COUNTRY = "music_search_country"  # MUS-015
+SETTING_AUDIO_ONLY = "music_audio_only"  # MUS-016
 QUEUE_MODES = ("normale", "equa")
 
 
@@ -87,6 +89,7 @@ class MusicSettings:
     skip_vote_percent: int = 50  # MUS-052: percentuale degli ascoltatori umani
     empty_pause: bool = True  # MUS-053: pausa se nel canale non resta nessuno
     bot_status: bool = False  # MUS-061: titolo come stato del bot della flotta, spento di base
+    audio_only: bool = False  # MUS-016: nelle ricerche per titolo, prima le versioni senza «video ufficiale»
     default_search: str = ""  # fonte dove cercare un titolo; "" = automatica (YouTube, poi SoundCloud)
     search_country: str = ""  # MUS-015: paese ISO delle ricerche; "" = quello globale dell'owner, di base nessun limite
 
@@ -114,6 +117,29 @@ def title_blocked(titolo: str, settings: MusicSettings) -> bool:
     parole = [normalizza_per_filtro(p) for p in settings.banned_words.split(",")]
     normale = normalizza_per_filtro(titolo or "")
     return any(p and p in normale for p in [*parole, *_parole_globali])
+
+
+# MUS-016: espressioni che dicono «video» nel titolo (parole intere: «videogame» non conta).
+_VIDEO = re.compile(
+    r"\b(official (music )?video|music video|video ufficiale|videoclip|video clip|lyric video|official mv)\b", re.IGNORECASE
+)
+_AUDIO = re.compile(r"\b(audio|solo audio|official audio|audio only|topic)\b", re.IGNORECASE)
+
+
+def preferisci_solo_audio(tracce):
+    """MUS-016: stesso elenco, ma i titoli da «video musicale» in fondo (ordine stabile). Se sono tutti video, non cambia.
+
+    Un titolo che dice anche «audio» conta come audio. Un valore che non è un elenco torna com'è (playlist, link)."""
+    if not isinstance(tracce, list) or not tracce:
+        return tracce
+
+    def e_video(t) -> bool:
+        titolo = getattr(t, "title", "") or ""
+        return bool(_VIDEO.search(titolo)) and not _AUDIO.search(titolo)
+
+    if all(e_video(t) for t in tracce):
+        return tracce
+    return [t for t in tracce if not e_video(t)] + [t for t in tracce if e_video(t)]
 
 
 def site_not_allowed(query: str, settings: MusicSettings) -> str | None:
@@ -187,6 +213,7 @@ def summary_lines(settings: MusicSettings) -> list[str]:
         f"🎧 Modalità DJ: **{'accesa' if settings.dj_mode else 'spenta'}** (ruolo DJ: {f'<@&{settings.dj_role_id}>' if settings.dj_role_id else 'nessuno'})",
         f"🗳️ Voto per saltare: **{settings.skip_vote_percent}%** degli ascoltatori",
         f"⏸️ Pausa a canale vuoto: **{'accesa' if settings.empty_pause else 'spenta'}**",
+        f"🎧 Ricerche: **{'prima le versioni solo audio' if settings.audio_only else 'come arrivano'}**",
         f"🏷️ Titolo come stato dei music bot: **{'acceso' if settings.bot_status else 'spento'}**",
         f"🌐 Link ammessi: **{'solo siti conosciuti' if settings.known_sites_only else 'tutti i siti sicuri'}**",
     ]
@@ -242,6 +269,7 @@ async def load_music_settings(database, guild_id: int) -> MusicSettings:
         empty_pause=bool(await get(guild_id, SETTING_EMPTY_PAUSE, True)),
         bot_status=bool(await get(guild_id, SETTING_BOT_STATUS, False)),
         search_country=paese_valido(await get(guild_id, SETTING_SEARCH_COUNTRY, "")) or "",
+        audio_only=bool(await get(guild_id, SETTING_AUDIO_ONLY, False)),
     )
 
 

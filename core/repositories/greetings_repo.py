@@ -50,6 +50,9 @@ class GreetingsConfig:
     welcome_image_text: str = ""
     welcome_image_order: str = "insieme"
     welcome_image_align: str = "sinistra"
+    welcome_image_width: int = 1024  # RUO-005 (migrazione 0884)
+    welcome_image_height: int = 400
+    welcome_image_transparent: bool = False
     welcome_image_name_color: str = ""
     # RUO-001, 014, 015 (migrazione 0644): nome dell'embed salvato ('' = nessuno)
     welcome_embed: str = ""
@@ -148,6 +151,9 @@ class GreetingsRepository:
             welcome_image_text=row["welcome_image_text"],
             welcome_image_order=row["welcome_image_order"],
             welcome_image_align=row["welcome_image_align"],
+            welcome_image_width=row["welcome_image_width"],
+            welcome_image_height=row["welcome_image_height"],
+            welcome_image_transparent=row["welcome_image_transparent"],
             welcome_image_name_color=row["welcome_image_name_color"],
             welcome_dm_message=row["welcome_dm_message"],
             welcome_variants=list(row["welcome_variants"]),
@@ -240,6 +246,20 @@ class GreetingsRepository:
                     welcome_image_name_color = EXCLUDED.welcome_image_name_color
             """,
             guild_id, opacity, text, order, align, name_color,
+        )
+
+    async def set_welcome_image_misure(self, guild_id: int, larghezza: int, altezza: int, trasparente: bool) -> None:
+        """RUO-005: misure del PNG (già dentro i limiti) e sfondo trasparente."""
+        await self._pool.execute(
+            """
+            INSERT INTO greetings_config (guild_id, welcome_image_width, welcome_image_height, welcome_image_transparent)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (guild_id) DO UPDATE
+                SET welcome_image_width = EXCLUDED.welcome_image_width,
+                    welcome_image_height = EXCLUDED.welcome_image_height,
+                    welcome_image_transparent = EXCLUDED.welcome_image_transparent
+            """,
+            guild_id, larghezza, altezza, trasparente,
         )
 
     async def set_topic_notice(self, guild_id: int, channel_id: int | None) -> None:

@@ -82,6 +82,8 @@ from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
 from core.allegati_tipo_logic import nome_pulito
 from core.i18n import lingua_interazione, testo_guild, testo_per
+from core.repositories.ticket_standard_repo import ticket_standard_repo
+from core import ticket_roblox
 from core.repositories.ticket_form_repo import (
     DomandaModulo,
     PannelloGiaEsistente,
@@ -500,6 +502,22 @@ async def _vista_assistente(guild_id: int):
         return None
 
 
+async def _profilo_roblox(channel, guild, utente) -> None:
+    """TKT-088: il profilo Roblox di chi apre il ticket, se il server lo vuole e l'owner ha messo la chiave di Bloxlink. Mai blocca il ticket."""
+    try:
+        if not ticket_roblox.disponibile() or not await db.get_guild_setting(guild.id, ticket_roblox.SETTING_ACCESO, False):
+            return
+        trovato = await ticket_roblox.profilo(guild.id, utente.id)
+        if trovato is None:
+            return
+        await channel.send(
+            embed=discord.Embed(title="Profilo Roblox", description=ticket_roblox.come_testo(trovato), color=discord.Color.blurple()),
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+    except Exception:  # noqa: BLE001 - il ticket esiste già
+        logger.warning("Profilo Roblox non mostrato nel ticket %s.", getattr(channel, "id", None), exc_info=True)
+
+
 async def _vista_benvenuto(interaction, vista_ai, ticket):
     """Il messaggio di benvenuto: bottone dell'assistente (se c'è) e menu «Gestisci» dello staff (una riga in più)."""
     if ticket is None:
@@ -835,6 +853,7 @@ async def _crea_ticket(
     except discord.HTTPException:
         logger.warning("Messaggio di benvenuto non inviato (o non fissato) nel ticket %s.", channel.id)
 
+    await _profilo_roblox(channel, guild, utente)  # TKT-088
     await _avvisi_di_apertura(channel, guild, utente, opzioni, reperibili, ticket_number)
     if come_thread:
         await _avviso_thread_allo_staff(guild, channel, opzioni, utente, ticket_number)
@@ -1974,12 +1993,14 @@ class TicketsCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         category="La categoria dove verranno creati i canali dei ticket",
         support_role="Ruolo che vedrà automaticamente ogni ticket (facoltativo)",
+        roblox="Mostra nel ticket il profilo Roblox di chi lo apre (serve la chiave Bloxlink del bot)",
     )
     async def ticket_setup(
         self,
         interaction: discord.Interaction,
         category: discord.CategoryChannel,
         support_role: discord.Role | None = None,
+        roblox: bool | None = None,
     ) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
@@ -1994,6 +2015,11 @@ class TicketsCog(CogConGruppi, commands.Cog):
                 interaction.guild.id, SETTING_SUPPORT_ROLE, support_role.id
             )
 
+        if roblox is not None:  # TKT-088
+            if roblox and not ticket_roblox.disponibile():
+                await interaction.response.send_message(await testo_per(interaction, "tickets_roblox_senza_chiave"), ephemeral=True)
+                return
+            await db.set_guild_setting(interaction.guild.id, ticket_roblox.SETTING_ACCESO, roblox, changed_by=interaction.user.id)
         messaggio = f"Categoria dei ticket impostata su **{category.name}**."
         if support_role is not None:
             messaggio += f" Ruolo di supporto: {support_role.mention}."
@@ -2323,6 +2349,89 @@ class TicketsCog(CogConGruppi, commands.Cog):
         quante = await ticket_form_repo.copia_modulo(origine.id, destinazione.id)
         await interaction.response.send_message(
             await testo_per(interaction, "tickets_modulo_copiato", n=quante, da=origine.name, a=destinazione.name),
+            ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
+        )
+
+    async def _completa_risposte_pronte(self, interaction: discord.Interaction, corrente: str):
+        """CFG-044: i titoli delle risposte pronte approvate del pannello scelto in `da`."""
+        if interaction.guild is None:
+            return []
+        panel = await ticket_form_repo.pannello_per_nome(interaction.guild.id, str(getattr(interaction.namespace, "da", "") or "").strip())
+        if panel is None:
+            return []
+        risposte = await ticket_standard_repo.approvate(interaction.guild.id, panel.id)
+        return [
+            app_commands.Choice(name=r.title[:100], value=r.title[:100])
+            for r in risposte if corrente.strip().casefold() in r.title.casefold()
+        ][:25]
+
+    @comando_di_gruppo(
+        "admin-ticket",
+        nome="duplica",
+        descrizione="Duplica un pannello già configurato, o copia una risposta pronta su un altro pannello.",
+        sottogruppo=SOTTOGRUPPI["admin-ticket pannelli"],
+    )
+    @app_commands.describe(
+        da="Il pannello da copiare",
+        nome="Nome del nuovo pannello (per duplicare tutto il pannello)",
+        categoria="Categoria dei canali del nuovo pannello (di base quella dell'originale)",
+        risposta="Una risposta pronta di «da» da copiare (con «a»), invece di duplicare il pannello",
+        a="Il pannello che riceve la risposta pronta",
+    )
+    @app_commands.autocomplete(da=_completa_pannelli, a=_completa_pannelli, risposta=_completa_risposte_pronte)
+    async def pannello_duplica(
+        self,
+        interaction: discord.Interaction,
+        da: app_commands.Range[str, 1, form.MAX_NOME_PANNELLO],
+        nome: app_commands.Range[str, 1, form.MAX_NOME_PANNELLO] | None = None,
+        categoria: discord.CategoryChannel | None = None,
+        risposta: app_commands.Range[str, 1, 100] | None = None,
+        a: app_commands.Range[str, 1, form.MAX_NOME_PANNELLO] | None = None,
+    ) -> None:
+        """CFG-044: copia un pannello (domande, motivi, opzioni, accessi, risposte pronte approvate) o una sola risposta pronta."""
+        if interaction.guild is None:
+            return
+        if (risposta is None) == (nome is None) or (risposta is not None) != (a is not None):
+            await interaction.response.send_message(await testo_per(interaction, "tickets_duplica_scelta"), ephemeral=True)
+            return
+        origine = await self._pannello_o_risposta(interaction, da)
+        if origine is None:
+            return
+        if risposta is not None:
+            destinazione = await self._pannello_o_risposta(interaction, a)
+            if destinazione is None:
+                return
+            scelta = next(
+                (r for r in await ticket_standard_repo.approvate(interaction.guild.id, origine.id) if r.title.casefold() == risposta.strip().casefold()),
+                None,
+            )
+            copia = await ticket_standard_repo.copia_su_pannello(interaction.guild.id, scelta.id, destinazione.id) if scelta else None
+            chiave = "tickets_risposta_copiata" if copia else "tickets_risposta_non_trovata"
+            await interaction.response.send_message(
+                await testo_per(interaction, chiave, titolo=risposta[:100], a=destinazione.name),
+                ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
+            )
+            return
+        try:
+            nome_pulito = form.nome_pannello_valido(nome)
+            nuovo = await ticket_form_repo.duplica_pannello(
+                interaction.guild.id, origine.id, nome_pulito, categoria.id if categoria else None
+            )
+        except form.ErroreConfigurazione as errore:
+            await interaction.response.send_message(str(errore), ephemeral=True)
+            return
+        except PannelloGiaEsistente:
+            await interaction.response.send_message(
+                await testo_per(interaction, "tickets_esiste_gia_un_pannello_chiamato", nome_pulito=nome), ephemeral=True
+            )
+            return
+        except TroppiPannelli:
+            await interaction.response.send_message(
+                await testo_per(interaction, "tickets_un_server_puo_avere_al", v1=form.MAX_PANNELLI_PER_SERVER), ephemeral=True
+            )
+            return
+        await interaction.response.send_message(
+            await testo_per(interaction, "tickets_pannello_duplicato", da=origine.name, nuovo=nuovo.name),
             ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
         )
 

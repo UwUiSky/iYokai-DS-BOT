@@ -26,10 +26,12 @@ from discord.ext import commands
 
 from cogs.utility._owner_pagine import invia_a_pagine
 from core import bot_info, hot_patch
+from core import chiave_soccorso as chiave_soccorso_logic
 from core.blacklist_exit import esci_dettaglio
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.premium_posti_service import MAX_POSTI, concedi_posti
 from core.config import config
+from core.i18n import testo_per
 from core.database import db
 from core.eval_shell_logic import truncate_output
 from core.premium_flags import applica_cambio_premium
@@ -1299,6 +1301,50 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
             cliente = hot_patch.ClienteGitHub(sessione, config.HOT_PATCH_REPO, config.HOT_PATCH_GITHUB_TOKEN)
             solo = hot_patch.modulo_a_percorso(extension) if extension else None
             return await hot_patch.pacchetto_da_github(cliente, commit, bot_info.commit_completo(), solo)
+
+    @comando_di_gruppo(
+        "owner",
+        nome="chiave-soccorso",
+        descrizione="Chiave di soccorso: per riprendere il controllo se perdi l'account.",
+        sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
+    )
+    @app_commands.describe(
+        azione="Che cosa fare con la chiave",
+        sostituisci="Sì = se la chiave c'è già, ne crea una nuova e butta la vecchia",
+    )
+    @app_commands.choices(azione=[
+        app_commands.Choice(name="crea (mostra il codice una volta)", value="crea"),
+        app_commands.Choice(name="stato", value="stato"),
+        app_commands.Choice(name="revoca", value="revoca"),
+    ])
+    async def chiave_soccorso(
+        self, interaction: discord.Interaction, azione: app_commands.Choice[str], sostituisci: bool = False
+    ) -> None:
+        """SIC-021. Solo l'owner (controllo del gruppo). Il codice esce una sola volta e solo in privato."""
+        if azione.value == "crea":
+            try:
+                codice = await chiave_soccorso_logic.crea(sostituisci=sostituisci)
+            except chiave_soccorso_logic.GiaPresente:
+                await interaction.response.send_message(await testo_per(interaction, "soccorso_gia_presente"), ephemeral=True)
+                return
+            await interaction.response.send_message(
+                await testo_per(interaction, "soccorso_creata", codice=codice), ephemeral=True
+            )
+            return
+        if azione.value == "revoca":
+            chiave = "soccorso_revocata" if await chiave_soccorso_logic.revoca() else "soccorso_assente"
+            await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
+            return
+        st = await chiave_soccorso_logic.stato()
+        if not st.presente:
+            await interaction.response.send_message(await testo_per(interaction, "soccorso_assente"), ephemeral=True)
+            return
+        uso = discord.utils.format_dt(st.ultimo_uso, "R") if st.ultimo_uso else "mai"
+        await interaction.response.send_message(
+            await testo_per(interaction, "soccorso_stato", creata=discord.utils.format_dt(st.creata_at, "R"), uso=uso,
+                            bloccata="sì" if st.bloccata else "no"),
+            ephemeral=True,
+        )
 
 
 def testo_esito_aggiornamento(esito, sha: str | None) -> str:

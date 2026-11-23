@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 14:54 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 16:03 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 1147 commands in 57 categories.**
+**Total: 1166 commands in 59 categories.**
 
 ## Admin: AI
 
@@ -102,6 +102,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 14:5
 - **`/admin-automazioni inneschi avvia-ora`** — Run a trigger right now, to test it.
 - **`/admin-automazioni inneschi list`** — The triggers of the server.
 - **`/admin-automazioni inneschi remove`** — Remove a trigger.
+- **`/admin-automazioni programma`** — Programma un'azione sicura per più tardi (ruolo, messaggio, sblocco canale): fino a 5.
 - **`/admin-automazioni script errori`** — The latest 10 errors of a tag's script.
 - **`/admin-automazioni slash list`** — The server's commands and menu entries.
 - **`/admin-automazioni slash menu`** — Right-click menu entries (on a user or a message) that answer with a tag.
@@ -284,10 +285,12 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 14:5
 - **`/admin-games salaries remove`** — Remove the salary or tax of a role.
 - **`/admin-games salaries set`** — Salary (positive) or tax (negative) for a role.
 - **`/admin-games servizi`** — Turn the external services on or off: Lemmy images and GIF search.
+- **`/admin-games sospensione`** — Sospendi una persona dal gioco, riabilitala o decidi sulla sua richiesta di revisione.
 - **`/admin-games telefono block`** — Block or unblock a person or another server from the phone.
 - **`/admin-games telefono channel`** — The server's phone channel.
 - **`/admin-games telefono consenso`** — Turn the phone on or off: off by default.
 - **`/admin-games telefono log`** — The server's latest calls: only servers, time and length.
+- **`/admin-games vote`** — The reward this server gives to who votes for the bot (no values: the status).
 
 ## Admin: giveaways
 
@@ -334,6 +337,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 14:5
 - **`/admin-levels progress`** — Turns missions, streaks, achievements and pass on or off; sets the server goal.
 - **`/admin-levels ranking-roles`** — A role for the XP leaderboard's first place, top 3 or top 10 (updated hourly).
 - **`/admin-levels reset auto`** — Resets whoever leaves or is banned; locks XP and resets to the owner.
+- **`/admin-levels reset import`** — Load XP from a JSON or CSV file exported from another bot.
 - **`/admin-levels reset restore`** — Puts back the XP of a backup (valid 30 days).
 - **`/admin-levels reset server`** — Resets the XP of the whole server (makes a backup first).
 - **`/admin-levels rewards`** — Reward roles: keep them all or only the highest.
@@ -459,6 +463,14 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 14:5
 - **`/admin-shop rotation how-many`** — How many rotating items are in the window each day (0 = off).
 - **`/admin-shop rotation item`** — Put an item among the rotating ones (or take it out).
 
+## Admin-rep
+
+- **`/admin-rep delete`** — Reset the reputation of a member to zero.
+- **`/admin-rep reset`** — Reset the reputation of the whole server (needs the confirmation word).
+- **`/admin-rep reward`** — Roles given at a reputation threshold (no threshold: the list).
+- **`/admin-rep set`** — Set the reputation points of a member.
+- **`/admin-rep settings`** — Turn reputation on and choose name, pause, limits, roles and "thanks".
+
 ## Admin: roles
 
 - **`/admin-roles auto add`** — Adds a role given automatically to new members.
@@ -535,6 +547,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 14:5
 - **`/admin-tag replies global`** — Turn the owner's shared automatic replies on or off in this server.
 - **`/admin-tag replies list`** — Shows the server's automatic replies.
 - **`/admin-tag replies show`** — Detail of an automatic reply, with the raw text.
+- **`/admin-tag tag actions`** — Azioni sicure di un tag: ruolo, messaggio, reazione (fino a 3).
 - **`/admin-tag tag alias`** — Alternative names of a tag (up to 3).
 - **`/admin-tag tag blocks`** — Block a tag for a role, a channel or a user (up to 10 per list).
 - **`/admin-tag tag create`** — Creates a custom command.
@@ -570,6 +583,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 14:5
 - **`/admin-tickets panel`** — Publishes the ticket opening panel in this channel.
 - **`/admin-tickets panels appearance`** — Button colour, menu text and opening message of a panel.
 - **`/admin-tickets panels create`** — Creates a ticket panel.
+- **`/admin-tickets panels duplica`** — Duplica un pannello già configurato, o copia una risposta pronta su un altro pannello.
 - **`/admin-tickets panels form-add`** — Adds a question to the form (max 5).
 - **`/admin-tickets panels form-copy`** — Copies a panel's form to another (replaces its questions).
 - **`/admin-tickets panels form-remove`** — Removes a question from the form.
@@ -1044,6 +1058,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 14:5
 - **`/coins account refund`** — Collect part of your game losses, if the server refunds them.
 - **`/coins account resign`** — Quit the job and restart as an intern.
 - **`/coins account upgrade`** — Upgrade your job or periodic reward: more levels, more coins.
+- **`/coins account vote`** — Claim the reward for voting for the bot, or choose automatic claiming.
 - **`/coins account wallet`** — Your balance as an image.
 - **`/coins balance`** — Shows your coins.
 - **`/coins cashbox`** — Shows the server treasury balance.
@@ -1186,6 +1201,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 14:5
 - **`/owner radio status`** — How many music players are playing now.
 - **`/owner radio stop`** — Leaves the radio on this server.
 - **`/owner system announce`** — Sends an announcement to all servers.
+- **`/owner system chiave-soccorso`** — Chiave di soccorso: per riprendere il controllo se perdi l'account.
 - **`/owner system eval`** — Runs Python code (with confirmation).
 - **`/owner system global-replies`** — Automatic replies shared by all servers (up to 20).
 - **`/owner system leave-guild`** — Forces the bot to leave a specific server (without blocking it).
@@ -1194,6 +1210,14 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 14:5
 - **`/owner system shell`** — Runs a shell command (with confirmation).
 - **`/owner system stats`** — Global bot statistics.
 - **`/owner system storico-vpn`** — Bot owner only: servers that let a person through (VPN/proxy) and their IPs.
+
+## Rep
+
+- **`/rep give`** — Give reputation points to a member.
+- **`/rep leaderboard`** — Reputation leaderboard of the server.
+- **`/rep log`** — Who gave or took reputation (yours; staff can see others').
+- **`/rep remove`** — Take reputation points from a member (only who has the role chosen by the server).
+- **`/rep show`** — Reputation and rank of a member (no name: yours).
 
 ## Game room
 
@@ -1205,6 +1229,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 14:5
 - **`/room quiz`** — Timed quiz with a coin prize: five questions, four answers.
 - **`/room race`** — Animal race: whoever arrives first takes the pot.
 - **`/room roulette`** — Multiplayer roulette: the same stake for everyone, a single spin.
+- **`/room tamburo`** — Un tamburo con una sfera rossa: chi la trova esce, l'ultimo prende il piatto.
 
 ## Polls
 

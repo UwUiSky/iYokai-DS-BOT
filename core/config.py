@@ -240,6 +240,7 @@ class Config:
     CLOUDFLARE_API_TOKEN: str = field(default="", repr=False)
     CLOUDFLARE_ACCOUNT_ID: str = field(default="", repr=False)
     VIRUSTOTAL_API_KEY: str = field(default="", repr=False)
+    BLOXLINK_API_KEY: str = field(default="", repr=False)  # TKT-088: profilo Roblox nel ticket; vuota = funzione spenta
 
     # Prezzi cripto di /web prezzo (CoinGecko, piano Demo, D69). Vuota = il comando risponde che non è attivo.
     COINGECKO_API_KEY: str = field(default="", repr=False)
@@ -474,6 +475,7 @@ def _load_config() -> Config:
         CLOUDFLARE_API_TOKEN=_optional("CLOUDFLARE_API_TOKEN", ""),
         CLOUDFLARE_ACCOUNT_ID=_optional("CLOUDFLARE_ACCOUNT_ID", ""),
         VIRUSTOTAL_API_KEY=_optional("VIRUSTOTAL_API_KEY", ""),
+        BLOXLINK_API_KEY=_optional("BLOXLINK_API_KEY", ""),
         MAIN_RADIO_LOCAL_FOLDER=_optional("MAIN_RADIO_LOCAL_FOLDER", ""),
         MUSICA_CARTELLA_OWNER=_optional("MUSICA_CARTELLA_OWNER", ""),
         MEMORY_ALERT_THRESHOLD_MB=_optional_int("MEMORY_ALERT_THRESHOLD_MB", 512),

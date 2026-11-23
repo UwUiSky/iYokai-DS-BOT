@@ -25,6 +25,7 @@ import discord
 
 from core.bot_stats import command_counter
 from core.command_policy import valuta_interazione
+from core.economia_sospensioni_view import rifiuta_se_sospeso
 from core.i18n import testo_per
 from core.risposte_server import applica_regole as applica_regole_risposte
 from core.repositories.blacklist_repo import blacklist_repo
@@ -85,6 +86,10 @@ class BlacklistAwareCommandTree(discord.app_commands.CommandTree):
                 )
             except discord.HTTPException:
                 pass
+            return False
+
+        # ECO-160: sospeso dal gioco dallo staff del server (solo i comandi di gioco).
+        if await rifiuta_se_sospeso(interaction):
             return False
 
         # D57: livello di abbonamento della funzione (tutto gratuito finché l'owner non cambia i livelli).
