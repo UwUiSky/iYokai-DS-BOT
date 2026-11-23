@@ -2367,6 +2367,8 @@ Completa la parte C più sotto (pagine di verifica e dell'owner).
 
 - `[x]` 24.10 Identità dei bot secondari nel server (MUS-090, D111; r3web)
   → **Stato 23/11 (r3web):** `core/bot_identita.py` (nickname e avatar del server di Mod, Creator, NSFW, App con `Member.edit`; bot musicali esclusi; permesso «Gestisci server» riletto; pausa 4 cambi ogni 10 minuti; ritorno all'originale sempre possibile; logo ricodificato dalla pipeline D74) e `cogs/utility/identita_bot.py` (`/admin-bot setup identita-bot`). Test: `tests/test_bot_identita.py`. Prova live in `VERIFICA_LIVE.md`.
+- `[x]` 24.11 Verifica con i ruoli collegati di Discord (VER-027, D111; r3web, #118)
+  → **Stato 23/11 (r3web):** sulla base di ALR-049. `core/ruoli_collegati_verifica.py` (corpo unico Twitch più verifica, rinnovo del token, aggiornamento quando la verifica del server riesce: gancio in `cogs/security/verify.py`), `core/repositories/ruoli_collegati_verifica_repo.py` (0754), rotte `/ruoli-collegati/verifica/avvia` e `/scollega` in `core/web_panel_ruoli_collegati.py`. Tre metadati: `verifica_superata`, `eta_account_giorni` (almeno), `avatar_presente`; con i due di Twitch fanno 5, il massimo di Discord. `state` firmato (scopo `vf`), monouso, dell'utente della sessione; token cifrati; l'età si ricava dall'ID. Test: `tests/test_panel_ruoli_collegati_verifica.py`. Prova live in `VERIFICA_LIVE.md`.
 - `[x]` 24.9b Pagina `/server/<id>/ticket/trascrizioni` (TKT-072): elenco con ricerca (utente, pannello, voto, motivo), apertura con CSP
   propria, opzioni (accesa, giorni 1-90) per gli admin; `core/web_panel_ticket_trascrizioni.py`. (da verificare live)
 

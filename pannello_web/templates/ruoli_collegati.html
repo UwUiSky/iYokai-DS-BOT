@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% block titolo %}Ruoli collegati · iYokai Panel{% endblock %}
 {% block corpo %}
-<h1>Ruoli collegati: Twitch</h1>
+<h1>Ruoli collegati</h1>
 <p><a href="/">&larr; Home</a></p>
+<h2>Twitch</h2>
 <p class="tenue">Collega il tuo canale Twitch a Discord: i server che usano iYokai possono dare un ruolo agli affiliati e ai partner Twitch (Impostazioni del server &rarr; Ruoli &rarr; Collegamenti). Il bot non scrive a nome tuo e non vede la tua password: usi i normali accessi di Twitch e di Discord, e puoi scollegare quando vuoi.</p>
 {% if not pronta %}
 <p class="avviso errore">Il collegamento con Twitch non è configurato su questo bot. Mancano: {% for n in mancanti %}<code>{{ n }}</code>{{ ", " if not loop.last }}{% endfor %}. Chi gestisce il bot deve aggiungerli.</p>
@@ -21,5 +22,25 @@
   <p>Due passi: prima Twitch (senza permessi in più), poi Discord.</p>
   <button type="submit">Collega Twitch</button>
 </form>
+{% endif %}
+{% if verifica_pronta %}
+<h2>Verifica</h2>
+<p class="tenue">Collega la verifica a Discord: un server può chiedere come requisito di un ruolo che tu abbia superato la verifica, che l'account abbia una certa età o che abbia un avatar. Discord riceve solo tre valori (verifica superata, età dell'account in giorni, avatar presente): niente altro. Puoi scollegare quando vuoi.</p>
+{% if v %}
+<div class="carta">
+  <p>Collegata. Verifica superata: <strong>{{ "sì" if v.verificato else "non ancora" }}</strong> · età dell'account: <strong>{{ eta }}</strong> giorni · avatar presente: <strong>{{ "sì" if v.avatar_presente else "no" }}</strong>.</p>
+  <p class="tenue">I valori si aggiornano quando superi la verifica di un server; per rileggere l'avatar ricollega.</p>
+  <form method="post" action="/ruoli-collegati/verifica/avvia" class="riga">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">Ricollega</button></form>
+  <form method="post" action="/ruoli-collegati/verifica/scollega" class="riga">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit">Scollega</button></form>
+</div>
+{% else %}
+<form class="carta" method="post" action="/ruoli-collegati/verifica/avvia">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <p>Un solo passo: Discord ti chiede di autorizzare i collegamenti di ruolo.</p>
+  <button type="submit">Collega la verifica</button>
+</form>
+{% endif %}
 {% endif %}
 {% endblock %}

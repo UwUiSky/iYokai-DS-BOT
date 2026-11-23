@@ -1,11 +1,13 @@
 """
 core/ruoli_collegati_logic.py
 =============================
-Ruoli collegati (Linked Roles) di Discord per affiliati e partner Twitch (ALR-049): configurazione, `state` firmato
-a scadenza breve e monouso, indirizzi di autorizzazione, metadati dell'applicazione, lettura delle risposte di Twitch e
-corpo del collegamento. Niente rete qui: la rete sta in `core/ruoli_collegati_rete.py` (si sostituisce nei test).
+Ruoli collegati (Linked Roles) di Discord per affiliati e partner Twitch (ALR-049) e per la verifica del server
+(VER-027, D111): configurazione, `state` firmato a scadenza breve e monouso, indirizzi di autorizzazione, metadati
+dell'applicazione, lettura delle risposte di Twitch e corpo del collegamento (che unisce i valori di Twitch e della
+verifica: Discord tiene un solo collegamento per persona e applicazione). Niente rete qui: la rete sta in
+`core/ruoli_collegati_rete.py` (si sostituisce nei test).
 I token si cifrano con `core/oauth_crypto` (AES-256-GCM) e legati all'utente e al campo (dati aggiuntivi autenticati).
-Funzioni coperte: SPEC §24.9 (ALR-049, issue #129)
+Funzioni coperte: SPEC §24.9 (ALR-049, issue #129), §24.11 (VER-027, issue #118)
 Dipende da: core/oauth_crypto.py
 """
 
@@ -34,6 +36,12 @@ CHIAVE_PARTNER = "twitch_partner"
 TIPO_BOOLEANO = 7  # BOOLEAN_EQUAL dei metadati di Discord
 SCOPO_TWITCH = "tw"
 SCOPO_DISCORD = "dc"
+SCOPO_VERIFICA = "vf"  # VER-027: stesso indirizzo di ritorno di Discord, `state` di un altro scopo
+PIATTAFORMA_VERIFICA = "iYokai"
+CHIAVE_VERIFICA = "verifica_superata"
+CHIAVE_ETA = "eta_account_giorni"
+CHIAVE_AVATAR = "avatar_presente"
+TIPO_INTERO_MINIMO = 2  # INTEGER_GREATER_THAN_OR_EQUAL dei metadati di Discord
 
 
 @dataclass(frozen=True)
@@ -54,6 +62,15 @@ class Configurazione:
     @property
     def pronta(self) -> bool:
         return not self.mancanti()
+
+    @property
+    def twitch_pronto(self) -> bool:
+        return self.pronta
+
+    @property
+    def verifica_pronta(self) -> bool:
+        """La verifica (VER-027) non usa Twitch: servono solo la chiave di cifratura e il bot per registrare i metadati."""
+        return bool(self.chiave_cifratura)
 
 
 def leggi_configurazione() -> Configurazione:
@@ -124,12 +141,32 @@ def url_discord(discord_id: str, redirect_uri: str, state: str) -> str:
 
 
 # -------------------------------------------------------------- metadati
-def metadati_applicazione() -> list[dict]:
-    """I campi registrati sull'applicazione: due booleani (massimo 5 per applicazione, nome fino a 100 caratteri)."""
-    return [
-        {"key": CHIAVE_AFFILIATO, "name": "Affiliato Twitch", "description": "Ha un canale Twitch affiliato", "type": TIPO_BOOLEANO},
-        {"key": CHIAVE_PARTNER, "name": "Partner Twitch", "description": "Ha un canale Twitch partner", "type": TIPO_BOOLEANO},
+def metadati_applicazione(con_twitch: bool = True) -> list[dict]:
+    """
+    I campi registrati sull'applicazione (massimo 5, nome fino a 100 caratteri, descrizione fino a 200): i due booleani
+    di Twitch (se è configurato) e i tre della verifica. Discord li mostra nelle impostazioni del ruolo.
+    """
+    twitch = [
+        {"key": CHIAVE_AFFILIATO, "name": "Affiliato Twitch", "description": "Ha un canale Twitch affiliato", "type": TIPO_BOOLEANO,
+         "name_localizations": {"en-US": "Twitch affiliate"}, "description_localizations": {"en-US": "Has an affiliate Twitch channel"}},
+        {"key": CHIAVE_PARTNER, "name": "Partner Twitch", "description": "Ha un canale Twitch partner", "type": TIPO_BOOLEANO,
+         "name_localizations": {"en-US": "Twitch partner"}, "description_localizations": {"en-US": "Has a partner Twitch channel"}},
     ]
+    verifica = [
+        {"key": CHIAVE_VERIFICA, "name": "Verifica superata", "description": "Ha superato la verifica di un server con iYokai", "type": TIPO_BOOLEANO,
+         "name_localizations": {"en-US": "Verification passed"}, "description_localizations": {"en-US": "Passed verification in a server using iYokai"}},
+        {"key": CHIAVE_ETA, "name": "Età dell'account (giorni)", "description": "Giorni dalla creazione dell'account Discord (almeno)", "type": TIPO_INTERO_MINIMO,
+         "name_localizations": {"en-US": "Account age (days)"}, "description_localizations": {"en-US": "Days since the Discord account was created (at least)"}},
+        {"key": CHIAVE_AVATAR, "name": "Avatar presente", "description": "L'account ha un avatar suo", "type": TIPO_BOOLEANO,
+         "name_localizations": {"en-US": "Avatar set"}, "description_localizations": {"en-US": "The account has its own avatar"}},
+    ]
+    return (twitch if con_twitch else []) + verifica
+
+
+def eta_giorni(user_id: int, *, ora: float | None = None) -> int:
+    """Giorni dalla creazione dell'account, ricavati dall'ID (nessun dato in più da chiedere a Discord)."""
+    creato = ((int(user_id) >> 22) + 1420070400000) / 1000
+    return max(0, int(((time.time() if ora is None else ora) - creato) // 86400))
 
 
 def tipo_canale(valore: object) -> str:
@@ -137,13 +174,24 @@ def tipo_canale(valore: object) -> str:
     return valore if valore in ("affiliate", "partner") else ""
 
 
-def corpo_collegamento(login: str, tipo: str) -> dict:
-    """Il corpo del collegamento: il nome del canale (al massimo 100 caratteri) e i due booleani."""
-    return {
-        "platform_name": PIATTAFORMA,
-        "platform_username": (login or "")[:100],
-        "metadata": {CHIAVE_AFFILIATO: tipo == "affiliate", CHIAVE_PARTNER: tipo == "partner"},
-    }
+def corpo_collegamento(
+    login: str, tipo: str, *, verifica: tuple[bool, int, bool] | None = None, con_twitch: bool = True
+) -> dict:
+    """
+    Il corpo del collegamento (Discord ne tiene uno per persona e applicazione: ogni scrittura lo sostituisce tutto).
+    Twitch: il nome del canale (al massimo 100 caratteri) e i due booleani. Verifica, se la persona l'ha collegata:
+    (verifica superata, età in giorni, avatar presente). Senza verifica il corpo è quello di sempre.
+    """
+    metadati: dict = {}
+    if con_twitch:
+        metadati.update({CHIAVE_AFFILIATO: tipo == "affiliate", CHIAVE_PARTNER: tipo == "partner"})
+    if verifica is not None:
+        superata, giorni, avatar = verifica
+        metadati.update({CHIAVE_VERIFICA: bool(superata), CHIAVE_ETA: max(0, int(giorni)), CHIAVE_AVATAR: bool(avatar)})
+    corpo = {"platform_name": PIATTAFORMA if con_twitch else PIATTAFORMA_VERIFICA, "metadata": metadati}
+    if con_twitch or (login or ""):
+        corpo["platform_username"] = (login or "")[:100]
+    return corpo
 
 
 def leggi_utente_twitch(payload: object) -> tuple[str, str, str] | None:

@@ -5,7 +5,7 @@ Le chiamate di rete dei ruoli collegati (ALR-049): token e profilo di Twitch, to
 registrazione dei metadati dell'applicazione. Ogni chiamata ha un limite di tempo e ritorna None/False se qualcosa va
 storto: mai un'eccezione, mai un segreto nei log (si scrive solo il codice di risposta). I test mettono un finto al posto
 di questa classe.
-Funzioni coperte: SPEC §24.9 (ALR-049, issue #129)
+Funzioni coperte: SPEC §24.9 (ALR-049, issue #129), §24.11 (VER-027)
 Dipende da: core/ruoli_collegati_logic.py
 """
 
@@ -93,6 +93,27 @@ class ReteRuoliCollegati:
             return int(payload["id"]) if stato == 200 else None
         except (KeyError, TypeError, ValueError):
             return None
+
+    async def discord_profilo(self, access_token: str) -> tuple[int, bool] | None:
+        """(ID, ha un avatar suo) dell'utente del token, o None. Dell'avatar si legge solo se c'è: mai l'indirizzo."""
+        stato, payload = await self._chiama(
+            "GET", f"{URL_DISCORD_API}/users/@me", headers={"Authorization": f"Bearer {access_token}"}
+        )
+        try:
+            return (int(payload["id"]), bool(payload.get("avatar"))) if stato == 200 else None
+        except (KeyError, TypeError, ValueError, AttributeError):
+            return None
+
+    async def discord_rinnova(self, refresh_token: str) -> TokenOAuth | None:
+        stato, payload = await self._chiama(
+            "POST", f"{URL_DISCORD_API}/oauth2/token",
+            data={"client_id": self._discord_id, "client_secret": self._discord_segreto, "refresh_token": refresh_token,
+                  "grant_type": "refresh_token"},
+        )
+        if stato != 200:
+            logger.warning("Ruoli collegati: Discord non ha rinnovato il token (stato %s).", stato)
+            return None
+        return self._token(payload)
 
     async def discord_scrivi_collegamento(self, access_token: str, corpo: dict) -> bool:
         stato, _ = await self._chiama(

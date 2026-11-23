@@ -93,6 +93,9 @@ ESITI = {
     "rc_non_riuscito": ("Discord non ha accettato il collegamento: riprova tra poco.", True),
     "rc_scollegato": ("Collegamento tolto.", False),
     "rc_non_configurato": ("Il collegamento con Twitch non è configurato su questo bot.", True),
+    "rc_verifica_collegata": ("Verifica collegata: i tuoi valori sono aggiornati su Discord.", False),
+    "rc_verifica_scollegata": ("Verifica scollegata: i valori sono stati tolti.", False),
+    "rc_verifica_non_configurata": ("Il collegamento della verifica non è configurato su questo bot.", True),
     "dati_attendi": ("Una copia dei dati al minuto: aspetta e riprova.", True),
 }
 
