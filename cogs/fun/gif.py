@@ -2,10 +2,10 @@
 cogs/fun/gif.py
 ===============
 GIF di reazione e di azione (#131, D70): `/gif reazione`, `/gif azione` (con il bottone «Ricambia»),
-`/gif privacy` (chi non vuole ricevere azioni) e `/gif cerca` (ricerca libera: spenta di base e solo con una
+`/gif preferenze` (FUN-138), `/gif privacy` (chi non vuole ricevere azioni) e `/gif cerca` (ricerca libera: spenta di base e solo con una
 chiave). Gratuite per tutti, solo SFW; la fonte e il credito sono sempre mostrati. Le azioni tra utenti si spengono con `/admin-bot politica` su `gif azione`.
 Funzioni coperte: SPEC §16 (FUN-081..135, 137, 139; D70)
-Dipende da: core/gif_catalogo.py, core/gif_fonti.py, core/gif_logic.py, core/repositories/gif_privacy_repo.py
+Dipende da: core/gif_catalogo.py, core/gif_fonti.py, core/gif_logic.py, core/repositories/gif_privacy_repo.py, core/gif_preferenze_logic.py
 """
 
 from __future__ import annotations
@@ -23,7 +23,9 @@ from core import gif_logic as logica
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core import fun_servizi_logic as servizi
 from core.database import db
+from core import gif_preferenze_logic as pref_logica
 from core.gif_fonti import Gif, servizio_gif
+from core.repositories.gif_preferenze_repo import gif_preferenze_repo
 from core.i18n import da_locale_discord, t, testo_per
 from core.repositories.gif_privacy_repo import MAX_BLOCCHI, gif_privacy_repo
 from core.ui_base import BaseView
@@ -46,6 +48,19 @@ def _scelte(tipo: str, interaction: discord.Interaction, digitato: str) -> list[
     """Solo dati locali: nessuna rete e nessun database (il completamento ha 3 secondi)."""
     lingua = da_locale_discord(getattr(interaction, "locale", None))
     return [app_commands.Choice(name=n, value=v) for n, v in catalogo.suggerimenti(tipo, digitato, lingua)]
+
+
+async def _completa_personaggio(interaction: discord.Interaction, digitato: str) -> list[app_commands.Choice[str]]:
+    """Solo dati locali: il catalogo dei personaggi, al massimo 25 voci."""
+    return [app_commands.Choice(name=n, value=v) for n, v in pref_logica.suggerimenti(digitato)]
+
+
+async def _preferenze_di(utente_id: int) -> pref_logica.Preferenze:
+    """Le preferenze della persona; se il database non risponde, nessuna preferenza (le GIF restano come prima)."""
+    try:
+        return await gif_preferenze_repo.leggi(utente_id)
+    except Exception:  # noqa: BLE001 - una preferenza in più non deve fermare la GIF
+        return pref_logica.Preferenze()
 
 
 def _embed(gif: Gif, lingua: str, descrizione: str | None = None) -> discord.Embed:
@@ -146,7 +161,7 @@ class GifCog(CogConGruppi, commands.Cog):
         bersaglio: discord.abc.User, *, con_bottone: bool, dopo_defer_pubblico: bool = False,
     ) -> None:
         """Manda la GIF e la frase; la risposta all'interazione è già stata data (defer o bottone)."""
-        gif = await servizio_gif.prendi(voce)
+        gif = await servizio_gif.prendi(voce, await _preferenze_di(autore.id))
         if gif is None:
             await self._niente_gif(interaction, dopo_defer_pubblico)
             return
@@ -174,7 +189,7 @@ class GifCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(await testo_per(interaction, "gif_voce_sconosciuta"), ephemeral=True)
             return
         await interaction.response.defer()
-        gif = await servizio_gif.prendi(voce)
+        gif = await servizio_gif.prendi(voce, await _preferenze_di(interaction.user.id))
         if gif is None:
             await self._niente_gif(interaction, True)
             return
@@ -241,6 +256,55 @@ class GifCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.defer()
         await self.manda_azione(interaction, voce, interaction.user, utente, con_bottone=True, dopo_defer_pubblico=True)
+
+    @comando_di_gruppo("gif", nome="preferenze", descrizione="Le tue preferenze per le GIF: genere, personaggi preferiti, anime o no.")
+    @app_commands.describe(
+        genere="Il genere dei personaggi che preferisci", tipo="Anime, non anime o entrambi",
+        aggiungi="Un personaggio preferito da aggiungere (massimo 10)", togli="Un personaggio preferito da togliere",
+        azzera="Cancella tutte le tue preferenze",
+    )
+    @app_commands.choices(
+        genere=[app_commands.Choice(name=n, value=v) for n, v in (
+            ("Qualsiasi", "qualsiasi"), ("Femminile", "femminile"), ("Maschile", "maschile"), ("Neutro", "neutro"))],
+        tipo=[app_commands.Choice(name=n, value=v) for n, v in (
+            ("Entrambi", "entrambi"), ("Solo anime", "anime"), ("Solo non anime", "non_anime"))],
+    )
+    @app_commands.autocomplete(aggiungi=_completa_personaggio, togli=_completa_personaggio)
+    async def preferenze(
+        self, interaction: discord.Interaction, genere: Optional[app_commands.Choice[str]] = None,
+        tipo: Optional[app_commands.Choice[str]] = None, aggiungi: Optional[app_commands.Range[str, 1, 100]] = None,
+        togli: Optional[app_commands.Range[str, 1, 100]] = None, azzera: bool = False,
+    ) -> None:
+        # Un diritto della persona: funziona anche con il modulo spento. Risposta sempre nascosta.
+        me = interaction.user.id
+        if azzera:
+            await gif_preferenze_repo.azzera(me)
+            await interaction.response.send_message(await testo_per(interaction, "gif_pref_azzerate"), ephemeral=True)
+            return
+        attuali = await gif_preferenze_repo.leggi(me)
+        nuove, avvisi = attuali, []
+        if genere is not None:
+            nuove = pref_logica.replace(nuove, genere=genere.value)
+        if tipo is not None:
+            nuove = pref_logica.replace(nuove, tipo=tipo.value)
+        if aggiungi is not None:
+            nuove, esito = pref_logica.aggiungi_preferito(nuove, aggiungi)
+            if esito != "ok":
+                avvisi.append(await testo_per(interaction, f"gif_pref_{esito}", massimo=pref_logica.MAX_PREFERITI))
+        if togli is not None:
+            nuove, tolto = pref_logica.togli_preferito(nuove, togli)
+            if not tolto:
+                avvisi.append(await testo_per(interaction, "gif_pref_non_in_elenco"))
+        if nuove != attuali:
+            await gif_preferenze_repo.salva(me, nuove)
+        elenco = ", ".join(pref_logica.catalogo()[i].nome for i in nuove.personaggi) or "-"
+        testo = await testo_per(
+            interaction, "gif_pref_stato", genere=nuove.genere, tipo=nuove.tipo, elenco=elenco,
+            numero=len(nuove.personaggi), massimo=pref_logica.MAX_PREFERITI,
+        )
+        await interaction.response.send_message(
+            "\n".join([*avvisi, testo])[:2000], ephemeral=True, allowed_mentions=NESSUNA_MENZIONE
+        )
 
     @comando_di_gruppo("gif", nome="privacy", descrizione="Scegli chi può farti le azioni con le GIF.")
     @app_commands.describe(modo="Cosa vuoi fare", utente="L'utente (solo per bloccare o sbloccare)")

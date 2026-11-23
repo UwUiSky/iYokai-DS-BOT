@@ -4348,5 +4348,11 @@
   "cerca_ai_niente": "I found nothing useful. Try other words.",
   "cerca_ai_titolo": "Search",
   "cerca_ai_avviso": "Answer from an AI service that searches the web: check the sources.",
-  "cerca_ai_avviso_tolti": "Answer from an AI service that searches the web: check the sources. {n} dangerous or extra links were removed."
+  "cerca_ai_avviso_tolti": "Answer from an AI service that searches the web: check the sources. {n} dangerous or extra links were removed.",
+  "gif_pref_azzerate": "GIF preferences deleted: GIFs are back to normal.",
+  "gif_pref_sconosciuto": "That character is not in the list: pick one from the suggestions.",
+  "gif_pref_gia": "That character is already in your favourites.",
+  "gif_pref_tetto": "You already have {massimo} favourites: remove one first.",
+  "gif_pref_non_in_elenco": "That character is not among your favourites.",
+  "gif_pref_stato": "**Your GIF preferences**\nGender: {genere}\nType: {tipo}\nFavourites ({numero}/{massimo}): {elenco}\nThey are used when the GIF source allows it; delete them with `azzera`."
 }

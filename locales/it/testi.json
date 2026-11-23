@@ -4348,5 +4348,11 @@
   "cerca_ai_niente": "Non ho trovato niente di utile. Prova con altre parole.",
   "cerca_ai_titolo": "Ricerca",
   "cerca_ai_avviso": "Risposta di un servizio AI che cerca sul web: controlla le fonti.",
-  "cerca_ai_avviso_tolti": "Risposta di un servizio AI che cerca sul web: controlla le fonti. {n} link pericolosi o in eccesso sono stati tolti."
+  "cerca_ai_avviso_tolti": "Risposta di un servizio AI che cerca sul web: controlla le fonti. {n} link pericolosi o in eccesso sono stati tolti.",
+  "gif_pref_azzerate": "Preferenze delle GIF cancellate: le GIF tornano come prima.",
+  "gif_pref_sconosciuto": "Quel personaggio non è nell'elenco: scegline uno dal completamento.",
+  "gif_pref_gia": "Quel personaggio è già tra i tuoi preferiti.",
+  "gif_pref_tetto": "Hai già {massimo} preferiti: togline uno prima.",
+  "gif_pref_non_in_elenco": "Quel personaggio non è tra i tuoi preferiti.",
+  "gif_pref_stato": "**Le tue preferenze per le GIF**\nGenere: {genere}\nTipo: {tipo}\nPreferiti ({numero}/{massimo}): {elenco}\nSi usano quando la fonte della GIF lo permette; si cancellano con `azzera`."
 }

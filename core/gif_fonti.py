@@ -269,9 +269,22 @@ class ServizioGif:
             return self._rng.choice(pool) if pool else None
         return self._rng.choice(self._salva(fonte.nome, voce, nuove))
 
-    async def prendi(self, voce: Voce) -> Gif | None:
-        """Una GIF per `voce`, o None. La prima fonte cambia a ogni richiesta; se non risponde si prova la prossima."""
+    async def prendi(self, voce: Voce, preferenze=None) -> Gif | None:
+        """
+        Una GIF per `voce`, o None. La prima fonte cambia a ogni richiesta; se non risponde si prova la prossima.
+        Con `preferenze` (FUN-138) la ricerca si adatta dove la fonte lo permette (testo libero: Giphy); chi vuole
+        solo «non anime» passa prima dalle fonti che cercano testo. Senza fonti adatte tutto resta come prima.
+        """
         copre = [f for f in self.fonti() if _richiesta(f, voce) is not None]
+        if preferenze is not None and not preferenze.vuote:
+            from core.gif_preferenze_logic import voce_con_preferenze
+
+            con_ricerca = [f for f in copre if f.nome in FONTI_RICERCA]
+            if con_ricerca:
+                voce = voce_con_preferenze(voce, preferenze, self._rng)
+                copre = [f for f in copre if f.nome in FONTI_RICERCA] if preferenze.tipo == "non_anime" else (
+                    con_ricerca + [f for f in copre if f.nome not in FONTI_RICERCA]
+                )
         if not copre:
             return None
         partenza = self._giro % len(copre)

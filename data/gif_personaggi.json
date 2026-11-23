@@ -1,0 +1,598 @@
+{
+ "personaggi": [
+  {
+   "id": "naruto-uzumaki",
+   "nome": "Naruto Uzumaki",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "sakura-haruno",
+   "nome": "Sakura Haruno",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "hinata-hyuga",
+   "nome": "Hinata Hyuga",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "sasuke-uchiha",
+   "nome": "Sasuke Uchiha",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "kakashi-hatake",
+   "nome": "Kakashi Hatake",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "monkey-d-luffy",
+   "nome": "Monkey D. Luffy",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "nami",
+   "nome": "Nami",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "roronoa-zoro",
+   "nome": "Roronoa Zoro",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "nico-robin",
+   "nome": "Nico Robin",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "son-goku",
+   "nome": "Son Goku",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "vegeta",
+   "nome": "Vegeta",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "bulma",
+   "nome": "Bulma",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "light-yagami",
+   "nome": "Light Yagami",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "misa-amane",
+   "nome": "Misa Amane",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "eren-yeager",
+   "nome": "Eren Yeager",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "mikasa-ackerman",
+   "nome": "Mikasa Ackerman",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "levi-ackerman",
+   "nome": "Levi Ackerman",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "tanjiro-kamado",
+   "nome": "Tanjiro Kamado",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "nezuko-kamado",
+   "nome": "Nezuko Kamado",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "zenitsu-agatsuma",
+   "nome": "Zenitsu Agatsuma",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "shinobu-kocho",
+   "nome": "Shinobu Kocho",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "izuku-midoriya",
+   "nome": "Izuku Midoriya",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "ochaco-uraraka",
+   "nome": "Ochaco Uraraka",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "katsuki-bakugo",
+   "nome": "Katsuki Bakugo",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "satoru-gojo",
+   "nome": "Satoru Gojo",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "yuji-itadori",
+   "nome": "Yuji Itadori",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "nobara-kugisaki",
+   "nome": "Nobara Kugisaki",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "edward-elric",
+   "nome": "Edward Elric",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "winry-rockbell",
+   "nome": "Winry Rockbell",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "spike-spiegel",
+   "nome": "Spike Spiegel",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "faye-valentine",
+   "nome": "Faye Valentine",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "sailor-moon",
+   "nome": "Sailor Moon",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "usagi-tsukino",
+   "nome": "Usagi Tsukino",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "totoro",
+   "nome": "Totoro",
+   "genere": "n",
+   "tipo": "anime"
+  },
+  {
+   "id": "chihiro",
+   "nome": "Chihiro",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "howl",
+   "nome": "Howl",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "sophie",
+   "nome": "Sophie",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "kiki",
+   "nome": "Kiki",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "pikachu",
+   "nome": "Pikachu",
+   "genere": "n",
+   "tipo": "anime"
+  },
+  {
+   "id": "ash-ketchum",
+   "nome": "Ash Ketchum",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "misty",
+   "nome": "Misty",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "doraemon",
+   "nome": "Doraemon",
+   "genere": "n",
+   "tipo": "anime"
+  },
+  {
+   "id": "nobita",
+   "nome": "Nobita",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "shizuka",
+   "nome": "Shizuka",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "asuka-langley",
+   "nome": "Asuka Langley",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "rei-ayanami",
+   "nome": "Rei Ayanami",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "shinji-ikari",
+   "nome": "Shinji Ikari",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "rem",
+   "nome": "Rem",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "emilia",
+   "nome": "Emilia",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "megumin",
+   "nome": "Megumin",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "aqua",
+   "nome": "Aqua",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "frieren",
+   "nome": "Frieren",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "anya-forger",
+   "nome": "Anya Forger",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "loid-forger",
+   "nome": "Loid Forger",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "yor-forger",
+   "nome": "Yor Forger",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "denji",
+   "nome": "Denji",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "makima",
+   "nome": "Makima",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "power",
+   "nome": "Power",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "hatsune-miku",
+   "nome": "Hatsune Miku",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "saitama",
+   "nome": "Saitama",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "killua-zoldyck",
+   "nome": "Killua Zoldyck",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "gon-freecss",
+   "nome": "Gon Freecss",
+   "genere": "m",
+   "tipo": "anime"
+  },
+  {
+   "id": "violet-evergarden",
+   "nome": "Violet Evergarden",
+   "genere": "f",
+   "tipo": "anime"
+  },
+  {
+   "id": "mario",
+   "nome": "Mario",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "luigi",
+   "nome": "Luigi",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "princess-peach",
+   "nome": "Princess Peach",
+   "genere": "f",
+   "tipo": "altro"
+  },
+  {
+   "id": "link",
+   "nome": "Link",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "zelda",
+   "nome": "Zelda",
+   "genere": "f",
+   "tipo": "altro"
+  },
+  {
+   "id": "sonic",
+   "nome": "Sonic",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "kirby",
+   "nome": "Kirby",
+   "genere": "n",
+   "tipo": "altro"
+  },
+  {
+   "id": "mickey-mouse",
+   "nome": "Mickey Mouse",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "minnie-mouse",
+   "nome": "Minnie Mouse",
+   "genere": "f",
+   "tipo": "altro"
+  },
+  {
+   "id": "bugs-bunny",
+   "nome": "Bugs Bunny",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "homer-simpson",
+   "nome": "Homer Simpson",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "bart-simpson",
+   "nome": "Bart Simpson",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "lisa-simpson",
+   "nome": "Lisa Simpson",
+   "genere": "f",
+   "tipo": "altro"
+  },
+  {
+   "id": "spongebob",
+   "nome": "SpongeBob",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "patrick-star",
+   "nome": "Patrick Star",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "elsa",
+   "nome": "Elsa",
+   "genere": "f",
+   "tipo": "altro"
+  },
+  {
+   "id": "anna",
+   "nome": "Anna",
+   "genere": "f",
+   "tipo": "altro"
+  },
+  {
+   "id": "winnie-the-pooh",
+   "nome": "Winnie the Pooh",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "stitch",
+   "nome": "Stitch",
+   "genere": "n",
+   "tipo": "altro"
+  },
+  {
+   "id": "batman",
+   "nome": "Batman",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "spider-man",
+   "nome": "Spider-Man",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "wonder-woman",
+   "nome": "Wonder Woman",
+   "genere": "f",
+   "tipo": "altro"
+  },
+  {
+   "id": "iron-man",
+   "nome": "Iron Man",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "black-widow",
+   "nome": "Black Widow",
+   "genere": "f",
+   "tipo": "altro"
+  },
+  {
+   "id": "harley-quinn",
+   "nome": "Harley Quinn",
+   "genere": "f",
+   "tipo": "altro"
+  },
+  {
+   "id": "shrek",
+   "nome": "Shrek",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "garfield",
+   "nome": "Garfield",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "tom-and-jerry",
+   "nome": "Tom and Jerry",
+   "genere": "n",
+   "tipo": "altro"
+  },
+  {
+   "id": "pink-panther",
+   "nome": "Pink Panther",
+   "genere": "n",
+   "tipo": "altro"
+  },
+  {
+   "id": "rick-sanchez",
+   "nome": "Rick Sanchez",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "morty-smith",
+   "nome": "Morty Smith",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "steven-universe",
+   "nome": "Steven Universe",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "finn-the-human",
+   "nome": "Finn the Human",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "jake-the-dog",
+   "nome": "Jake the Dog",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "gumball",
+   "nome": "Gumball",
+   "genere": "m",
+   "tipo": "altro"
+  },
+  {
+   "id": "hello-kitty",
+   "nome": "Hello Kitty",
+   "genere": "f",
+   "tipo": "altro"
+  }
+ ]
+}

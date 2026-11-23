@@ -54,7 +54,7 @@ class _Servizio:
     def fonti(self):
         return [Fonte(n, "https://x") for n in self._nomi]
 
-    async def prendi(self, voce):
+    async def prendi(self, voce, preferenze=None):
         self.viste.append(voce.ricerca)
         return self.gif
 

@@ -537,7 +537,8 @@
   "identita-bot": "bot-identity",
   "rep": "rep",
   "admin-rep": "admin-rep",
-  "guidato": "guided"
+  "guidato": "guided",
+  "preferenze": "preferences"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1875,7 +1876,8 @@
   "admin-giochi voto": "The reward this server gives to who votes for the bot (no values: the status).",
   "admin-giveaway guidato": "Creates a giveaway step by step: prize, duration, channel and requirements.",
   "admin-bot setup guidato": "First setup or setup edit, step by step with a summary.",
-  "web cerca": "Search anything: a quick answer, the web or videos."
+  "web cerca": "Search anything: a quick answer, the web or videos.",
+  "gif preferenze": "Your GIF preferences: character gender, favourite characters, anime or not."
  },
  "parametri": {},
  "menu": {

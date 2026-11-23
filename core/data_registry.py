@@ -793,6 +793,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("sondaggi_pesi", "Pesi dei voti per ruolo nei sondaggi (max 25 per server)", colonna_server="guild_id"),
     _t("gif_privacy", "Chi non vuole ricevere le GIF di azione (blocca tutti)",
        colonne_utente=("user_id",), utente="cancella", esporta=True),
+    _t("gif_preferenze", "Preferenze delle GIF: genere dei personaggi, preferiti, anime o no (FUN-138)",
+       colonne_utente=("user_id",), utente="cancella", esporta=True),
     _t("gif_blocchi", "Utenti bloccati dalle GIF di azione di una persona",
        colonne_utente=("user_id", "bloccato_id"), utente="cancella",
        nota="si cancella da entrambe le parti; non si esporta (la copia mostrerebbe chi ti ha bloccato)"),

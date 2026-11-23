@@ -1,20 +1,25 @@
 # Memoria di dev-utilita
 
 ## Aggiornata
+23/11/2026 · r1guidata (feat/r1guidata, DB iyokai_wcerca) · D124: UTL-121 (schema + giveaway + setup guidati), UTL-216 (/web cerca), FUN-138 (/gif preferenze, 0920). Non unito, niente push. Smoke da fare.
 23/11/2026 · r3utl (feat/r3utl, DB iyokai_w128) · D111/D116: UTL-226 (0830), UTL-228 (0831), CFG-032, FUN-078, segni FUN-068/070. Non unito, niente push. Smoke da fare.
 21/11/2026 · r2utl (feat/r2utl, DB iyokai_w128) · #128 controllo UTL: 85 voci segnate o realizzate, 7 senza codice (UTL-110, 121, 216 in D100; 204, 205, 226, 228 non miei). Migrazioni 0760-0764.
 
 ## In corso
+- Giro r1guidata chiuso. Smoke da fare: test_procedura_guidata, test_giveaway_guidato, test_setup_guidato, test_cerca_ai, test_gif_preferenze, test_gif_comandi, test_gif_cerca + test_command_groups, test_command_translator (1 rosso già su main: 6 descrizioni en-US mancanti non mie), test_data_registry, test_repository_callers. Prova live in VERIFICA_LIVE (UTL-121, UTL-216, FUN-138).
 - Giro r3utl chiuso (commit 46cfa302, 5185ad09, 5470b232, fc83831b, 47f26d8e). Smoke da fare dell'orchestratore: test_config_orfani, test_azzeramento_dati, test_marchio_strumenti, test_suono_ferma + test_data_registry, test_repository_callers, test_command_groups. Prova live in VERIFICA_LIVE (UTL-226, UTL-228, CFG-032, FUN-078).
 - Giro r2utl chiuso (non unito, niente push). Smoke da fare. Righe in revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.md (sezione 14-utility). Da far rivedere: tag (divieti, alias, embed salvato), canale_testo, esclusi.
 
 ## Fatto
+- r1guidata D124: core/procedura_guidata (StatoProcedura pura + VistaGuidata legata all'autore, permesso riletto, scade, niente scritto se annulli); cogs/utility/giveaway_guidato.py (/admin-giveaway guidato), cogs/utility/setup_guidato.py (/admin-bot setup guidato, diff su snapshot, ruolo admin controllato prima di scrivere); core/cerca_ai_logic + cogs/utility/cerca_ai.py (/web cerca, tipo «ricerca» aggiunto a TIPI in ai_providers, `citations` come fonti); core/gif_preferenze_logic + repo + data/gif_personaggi.json + /gif preferenze, ServizioGif.prendi(voce, preferenze).
 - r3utl D111/D116: pulizia a 7 giorni (core/config_orfani_logic, repositories/config_orfani_repo, /admin-bot config pulisci al posto di pulizia, giro 6 ore in config_strumenti); azzeramento dati a 30 giorni (core/azzeramento_dati_logic, azzeramento_repo, cogs/utility/azzeramento_dati.py, reset anche_i_dati/annulla_dati in config_history); strumenti marchio (core/marchio_errori, GestoreMarchio.risincronizza, azioni risincronizza/errori in marchio.py); /music suono-ferma (core/music_sound_logic SuoniInCorso, soundboard.py).
 - r2ben/r1/r24 e giri precedenti (#123 #127 #129 #130, D87-D98): vedi git log; ruoli extra in core/ruoli_extra_logic e cogs/utility/ruoli_extra.py.
 - r2utl #128: tag (in coda, alias, divieti, ambito pausa, embed, info), risposte (finisce, maiuscole, esclusi, modifica, mostra), canale scorciatoia, orario guidato, embed (autore, link, data, colore, pausa), giveaway (chiudi, annulla, elenco), bacheca (esclusi, stato), compleanni stato, inviti per periodo, avatar. D100. Test: test_*_r2utl.py.
 - r2ben #123/#117: core/ruoli_extra_logic, ruoli_guidata_logic, ruoli_immagini, phishing_azione_logic; repositories/ruoli_extra_repo; cogs/utility/ruoli_extra.py (admin-menu-ruoli: ruoli-extra, gruppo, immagine, colori, guidata, personale; utility: colore, ruolo-mio; admin-benvenuto: immagini); ganci in role_menus.py (_blocchi_per, _estendi, _applica atomico, immagine nel messaggio) e greetings.py (_immagine_a_caso). Decisione D98. Test: test_ruoli_extra_cog.py, test_ruoli_extra_logica.py, test_ruoli_guidata_logica.py, test_ruoli_immagini.py, test_phishing_azione_extra.py.
 
 ## Cose imparate
+- Procedura guidata nuova: Passo(chiave, richiesti, titolo); testi `<chiave>_titolo`/`_testo`; il costruttore dei passi legge `vista.contesto`. Una finestra (Modal) deve chiamare `vista.autorizza` in on_submit. I finti di `servizio_gif.prendi` nei test devono accettare `preferenze=None`.
+- DATABASE_URL va messo davanti a OGNI comando pytest (anche i test non-DB aprono iyokai_test altrimenti).
 - Cancellazione per server senza presenza: `azzeramento_dati_logic._cancella_dati` ripete il ciclo di `retention_worker.purga_server` (REGISTRO) senza controllare guild_presence. Tabella nuova con colonna utente: dichiararla in data_registry (colonne_attore + azzera_attore=False se è solo staff).
 - Gli handler dello scheduler hanno firma (guild_id, user_id, payload): la verità sta nel database, non nel payload; handler idempotente. Frozen config: nei test sostituire il nome del modulo (`monkeypatch.setattr(modulo, "config_bot", SimpleNamespace(...))`).
 - Un suono di soundboard non si interrompe con l'API: FUN-078 fa uscire il bot entrato solo per il suono. /music ha 24 figli (limite 25).
@@ -46,6 +51,7 @@
 
 
 ## Aperto
+- r1guidata: nessun fornitore dichiara ancora `ricerca` (l'owner aggiunge chiavi); i personaggi GIF contano solo con Giphy attiva; `/gif cerca` non usa le preferenze. Giveaway guidato: solo avvio immediato (niente inizia_tra, ruoli extra, immagine: restano in `avvia`). Pannello web senza preferenze GIF (D16).
 - r3utl: da provare dal vivo che uscire dal canale interrompa il suono (FUN-078). Il pannello web non ha ancora gli strumenti del marchio né lo stato dell'azzeramento (D16). Il registro errori del marchio è in memoria (si svuota al riavvio). `reset anche_i_dati` non azzera la configurazione subito (D116).
 - #123 resta solo RUO-005 (dimensioni libere dell'immagine). r2ben: le immagini del menu sono allegate (`menu.png`) e si rimandano a ogni modifica; il gruppo di menu usa `member.edit(roles=)` (un solo colpo); il ruolo personale non ha un tetto per chi lascia il server se il bot era spento (resta il ruolo: ripulire a mano).
 - UTL-184 `/mod-ban massa invito codice:` non fatto: è in cogs/moderation (r19mod). Servono: completamento sul codice + ban di massa dei membri entrati con quel codice (invite_joins.code).
