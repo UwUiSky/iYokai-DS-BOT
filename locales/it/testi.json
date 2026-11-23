@@ -4114,6 +4114,7 @@
   "auto_foto_grande": "La foto pesa troppo: il massimo è 8 MB.",
   "auto_foto_no": "Non posso usare questo file: serve una foto vera (PNG, JPEG, GIF, WebP o BMP) e sicura.",
   "auto_foto_ok": "📷 Foto di **{nome}** salvata. Di questa foto conservo solo una copia ricodificata, mai il file originale. La togli con `/auto foto-togli`.",
+  "auto_foto_adulti": "Questa foto non va bene: il controllo automatico ha trovato contenuti per adulti. Scegline un'altra.",
   "auto_foto_tolta": "La foto di **{nome}** è stata tolta.",
   "auto_foto_non_c_era": "**{nome}** non ha una foto.",
   "auto_foto_tolta_staff": "Foto tolte: {n} (di {chi}).",

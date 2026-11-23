@@ -265,6 +265,24 @@ class ServizioAI:
             self.memoria.aggiungi(r.conversazione, testo, risposta)
         return RispostaAI(testo=risposta, immagine=esito.immagine, fornitore=esito.fornitore)
 
+    async def modera_immagine(self, png: bytes, guild_id: int | None = None) -> bool | None:
+        """
+        FUN-017 (D122): True se l'immagine è per adulti, False se no, None se il controllo non c'è (nessun fornitore di
+        moderazione, manutenzione, quota o rete). Passa sempre dallo snodo; mai un fornitore che addestra sui dati (è la
+        foto di una persona, non un testo del server); non conta sulla quota di nessuna persona.
+        """
+        try:
+            await self.controlla_accesso(None, tipo="moderazione_immagine")
+            r = RichiestaAI(user_id=0, funzione="moderazione_immagine", tipo="moderazione_immagine", testo="", guild_id=guild_id, conta_utente=False)
+            async with self.coda.posto(guild_id or 0):
+                _, risposta = await self._con_posto(r, None, [], 0, guild_id or 0, 0, "", True, immagine_in=png)
+        except (AINonDisponibile, CodaPiena, NessunFornitore):
+            return None
+        except Exception:  # noqa: BLE001 - un controllo che non riesce non ferma la funzione: «non so»
+            logger.warning("Moderazione dell'immagine non riuscita.", exc_info=True)
+            return None
+        return risposta.strip().lower() == "adulti"
+
     async def _chiama(self, r: RichiestaAI, cfg, testo, lore, istruzioni, guild_conti, utente_conti):
         quote = cfg.quote() if cfg else None
         if quote is not None and not r.conta_utente:
@@ -287,7 +305,7 @@ class ServizioAI:
         except CodaPiena as exc:
             raise AINonDisponibile(exc.motivo) from None
 
-    async def _con_posto(self, r, quote, messaggi, max_token, guild_conti, utente_conti, testo, senza_addestranti=False):
+    async def _con_posto(self, r, quote, messaggi, max_token, guild_conti, utente_conti, testo, senza_addestranti=False, immagine_in=None):
         token_previsti = stima_token(" ".join(str(m.get("content", "")) for m in messaggi)) + max_token
         p = await self.repo.prenota(
             guild_conti, utente_conti, r.funzione, quote=quote, immagine=r.tipo == "immagine",
@@ -298,7 +316,7 @@ class ServizioAI:
         try:
             esito = await self.motore.esegui(
                 r.tipo, r.fascia, messaggi=messaggi, prompt=testo, max_token=max_token, solo_gratuiti=p.solo_gratuiti,
-                senza_addestranti=senza_addestranti,
+                senza_addestranti=senza_addestranti, immagine_in=immagine_in,
             )
         except BaseException as exc:
             await self.repo.annulla(p)

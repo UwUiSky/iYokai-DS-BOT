@@ -4114,6 +4114,7 @@
   "auto_foto_grande": "The photo is too big: the maximum is 8 MB.",
   "auto_foto_no": "I cannot use this file: it must be a real, safe photo (PNG, JPEG, GIF, WebP or BMP).",
   "auto_foto_ok": "📷 Photo of **{nome}** saved. I only keep a re-encoded copy of this photo, never the original file. Remove it with `/auto foto-togli`.",
+  "auto_foto_adulti": "This photo is not allowed: the automatic check found adult content. Please choose another one.",
   "auto_foto_tolta": "The photo of **{nome}** was removed.",
   "auto_foto_non_c_era": "**{nome}** has no photo.",
   "auto_foto_tolta_staff": "Photos removed: {n} (of {chi}).",

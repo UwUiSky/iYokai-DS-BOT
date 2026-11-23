@@ -4,10 +4,12 @@ cogs/fun/auto.py
 Auto da collezione (/auto ...): catalogo, acquisto, garage personale, potenziamenti con monete, gara contro
 il banco o contro un altro utente (anche con una puntata) e la foto della propria auto. La foto è un allegato
 controllato come ogni immagine degli utenti: tipo dai primi byte, ricodifica in sandbox (D74); si conserva solo la
-copia PNG ridotta, mai l'originale. Si può togliere (da chi l'ha messa e dallo staff con /admin-giochi auto togli-foto);
+copia PNG ridotta, mai l'originale. Prima di salvarla (e alla prossima visualizzazione delle foto già salvate) passa
+dal controllo automatico dei contenuti per adulti dello snodo AI (D122): se risulta per adulti si rifiuta o si toglie; se il
+controllo non c'è la foto passa come prima (D123). Si può togliere (da chi l'ha messa e dallo staff con /admin-giochi auto togli-foto);
 nei messaggi pubblici ha il bottone «Segnala» e con 3 persone sparisce, come le immagini di /immagini post.
 Funzioni coperte: FUN-017
-Dipende da: core/auto_logic.py, core/auto_image.py, core/repositories/auto_repo.py, core/immagini_pipeline.py
+Dipende da: core/auto_logic.py, core/auto_foto_controllo.py, core/auto_image.py, core/repositories/auto_repo.py, core/immagini_pipeline.py
 """
 
 from __future__ import annotations
@@ -23,6 +25,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from core import allegati_tipo_logic
+from core import auto_foto_controllo as controllo
 from core import auto_logic as al
 from core.auto_image import affianca, riduci_foto
 from core.command_access import Livello, richiedi
@@ -65,7 +68,17 @@ async def foto_visibile(guild_id: int, auto) -> bytes | None:
     if chiave in await immagini_segnalazioni_repo.bloccati([chiave]):
         return None
     trovata = await auto_repo.foto(guild_id, auto.user_id, auto.modello)
-    return trovata[0] if trovata else None
+    if not trovata:
+        return None
+    if not trovata[2]:  # D122: le foto già salvate si ricontrollano alla prossima visualizzazione
+        esito = await controllo.controlla(trovata[0], guild_id)
+        if esito == controllo.ADULTI:
+            await auto_repo.togli_foto(guild_id, auto.user_id, auto.modello)
+            logger.info("Foto di un'auto tolta dal controllo automatico (server %s).", guild_id)
+            return None
+        if esito == controllo.PULITA:
+            await auto_repo.segna_controllata(guild_id, auto.user_id, auto.modello, trovata[1])
+    return trovata[0]
 
 
 async def _completa_catalogo(interaction: discord.Interaction, digitato: str) -> list[app_commands.Choice[str]]:
@@ -453,7 +466,13 @@ class AutoCog(CogConGruppi, commands.Cog):
         except Exception:
             await interaction.followup.send(await testo_per(interaction, "auto_foto_no"), ephemeral=True)
             return
-        if not await auto_repo.imposta_foto(guild.id, interaction.user.id, m.chiave, png, hashlib.sha256(png).hexdigest()):
+        esito = await controllo.controlla(png, guild.id)  # D122: contenuti per adulti, dallo snodo AI
+        if esito == controllo.ADULTI:
+            await interaction.followup.send(await testo_per(interaction, "auto_foto_adulti"), ephemeral=True)
+            return
+        if not await auto_repo.imposta_foto(
+            guild.id, interaction.user.id, m.chiave, png, hashlib.sha256(png).hexdigest(), controllata=esito == controllo.PULITA,
+        ):
             await interaction.followup.send(await testo_per(interaction, "auto_non_tua"), ephemeral=True)
             return
         await interaction.followup.send(await testo_per(interaction, "auto_foto_ok", nome=m.nome), ephemeral=True)

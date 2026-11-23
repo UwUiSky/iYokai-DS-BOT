@@ -192,7 +192,7 @@ class MotoreAI:
     async def esegui(
         self, tipo: str, fascia: str, *, messaggi: list[dict] | None = None, prompt: str = "",
         max_token: int = 600, solo_gratuiti: bool = False,
-        senza_addestranti: bool = False,
+        senza_addestranti: bool = False, immagine_in: bytes | None = None,
     ) -> EsitoMotore:
         candidati = scegli_fornitori(
             self.fornitori, tipo, fascia, self.stato, usa_pagamento=self.usa_pagamento, solo_gratuiti=solo_gratuiti,
@@ -200,8 +200,10 @@ class MotoreAI:
         )
         for f in candidati:
             try:
-                if tipo == "immagine":
-                    esito: EsitoChiamata = await self.trasporto.immagine(f, prompt)
+                if tipo == "moderazione_immagine":
+                    esito: EsitoChiamata = await self.trasporto.moderazione_immagine(f, immagine_in or b"")
+                elif tipo == "immagine":
+                    esito = await self.trasporto.immagine(f, prompt)
                 else:
                     esito = await self.trasporto.completa(f, messaggi or [], max_token)
             except ErroreFornitore as exc:
