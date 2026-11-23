@@ -4302,5 +4302,18 @@
   "suoni_altri_permesso": "In questo canale non puoi usare la soundboard o i suoni di altri server: servono i permessi «Usa soundboard» e «Usa suoni esterni».",
   "suoni_altri_stato": "Suoni condivisi con altri server: **{condividi}**.\nI tuoi membri possono usare i suoni degli altri server: **{usa}**.\nI suoni di altri server si usano solo se il loro server li condivide.",
   "suoni_altri_si": "sì",
-  "suoni_altri_no": "no"
+  "suoni_altri_no": "no",
+  "mon_casa_m_letto": "Letto",
+  "mon_casa_m_scrivania": "Scrivania",
+  "mon_casa_m_lampada": "Lampada",
+  "mon_casa_m_finestra": "Finestra",
+  "mon_casa_m_tatami": "Tatami",
+  "mon_casa_m_tavolino": "Tavolino",
+  "mon_casa_m_pianta": "Pianta",
+  "mon_casa_m_libreria": "Libreria",
+  "mon_casa_m_tv": "TV",
+  "mon_casa_m_gatto": "Gatto",
+  "mon_casa_m_bonsai": "Bonsai",
+  "mon_casa_m_specchio": "Specchio",
+  "mon_casa_img": "🏠 La tua casa\nGettoni: **{gettoni}** (valgono in tutti i server, non si cambiano in monete)\nDa comprare: {listino}"
 }

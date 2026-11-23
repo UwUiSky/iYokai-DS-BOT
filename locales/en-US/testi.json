@@ -4302,5 +4302,18 @@
   "suoni_altri_permesso": "In this channel you cannot use the soundboard or sounds from other servers: you need the “Use Soundboard” and “Use External Sounds” permissions.",
   "suoni_altri_stato": "Sounds shared with other servers: **{condividi}**.\nYour members can use sounds from other servers: **{usa}**.\nSounds from other servers are used only if their server shares them.",
   "suoni_altri_si": "yes",
-  "suoni_altri_no": "no"
+  "suoni_altri_no": "no",
+  "mon_casa_m_letto": "Bed",
+  "mon_casa_m_scrivania": "Desk",
+  "mon_casa_m_lampada": "Lamp",
+  "mon_casa_m_finestra": "Window",
+  "mon_casa_m_tatami": "Tatami",
+  "mon_casa_m_tavolino": "Table",
+  "mon_casa_m_pianta": "Plant",
+  "mon_casa_m_libreria": "Bookcase",
+  "mon_casa_m_tv": "TV",
+  "mon_casa_m_gatto": "Cat",
+  "mon_casa_m_bonsai": "Bonsai",
+  "mon_casa_m_specchio": "Mirror",
+  "mon_casa_img": "🏠 Your home\nTokens: **{gettoni}** (valid in every server, not convertible to coins)\nTo buy: {listino}"
 }

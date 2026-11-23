@@ -1,7 +1,7 @@
 # Memoria di dev-economia
 
 ## Aggiornata
-23/11/2026 · giro r2fun (#131, #125), ramo `feat/r2fun`, wt-fun, db `iyokai_wfun`, migrazioni 0940-0949 (0940 usata). GIF D127 e FUN-075 fatti; ECO-112/087 immagini in corso. Smoke da fare.
+23/11/2026 · giro r2fun (#131, #125), ramo `feat/r2fun`, wt-fun, db `iyokai_wfun`, migrazioni 0940-0949 (0940 usata). GIF D127 e FUN-075 fatti; ECO-112/087 immagini fatte: giro chiuso. Smoke da fare.
 
 23/11/2026 · giro r1fun (#131), ramo `feat/r1fun`, wt `/home/user/wt-fun`, db `iyokai_wfun`, migrazioni 0840-0849 (0840-0842 usate). Smoke da fare.
 
@@ -11,27 +11,10 @@
 - Dopo: restano solo le ECO con motivo in D86.
 
 ## Fatto
+- r2fun ECO-112/087: `core/bingo_image.py` (cartella 528x336 nel bottone di `/sala bingo`), `core/casa_image.py` (`/mondo casa`, nomi `mon_casa_m_*`); `run_image_task`, ripiego testuale. Il comando fa `defer` prima del disegno.
 - r2fun GIF: Tenor, accensione con la chiave (`FONTI` con acceso=True), `QUOTA_ORARIA`, categoria prima della ricerca (`prendi`), FUN-104 otakugifs sing; le altre 9 via Giphy/Tenor (D129). FUN-075: `cogs/fun/suoni_altri.py` (`/music suono-altri`, `/admin-musica suono-condividi`), 0940. Trappola: i gruppi di primo livello sono a 58+2 (tetto 60): niente gruppi nuovi; `/music` è a 25.
-- r1fun FUN-013/014: gruppo `/tela` + `/admin-giochi tela`, `tela_logic/tela_image/tela_repo`, `cogs/fun/tela.py`, 0842, pagina pubblica `core/web_panel_tela.py` (una riga in `build_app`). Trappola: nei `COALESCE($n, ...)` di asyncpg servono i cast (`$2::int`).
-- r1fun FUN-017: gruppo nuovo `/auto` (in `GRUPPI` e `AUDIENCE`; `giochi` è a 18 figli), `core/auto_logic.py`, `auto_image.py`, `auto_repo.py`, `cogs/fun/auto.py`, 0841 `fun_auto_garage`/`fun_auto_foto`; foto = `esamina_allegato` + `riduci_foto`, segnalazioni con `immagini_segnalazioni_repo` (chiave `auto:server:utente:sha`); `spend_coins_in` nella stessa transazione.
-- r1fun FUN-019: `core/battaglia_logic.py`, `cogs/fun/battaglia.py` (`/giochi sfide battaglia|battaglie`), 0840 `fun_battaglie_stat`; puntata con `apri_gruppo`/`chiudi_gruppo`, max 16 turni (la riga della partita scade a 900 s), `view.timeout` rimesso a 40 s dopo l'accettazione.
-- r5eco B17: D86 con il motivo di ogni ECO non fatta; controllo area 17 (#131): 91 voci FUN in `CONTROLLO_AREE_CHIUSE.md`, D103, `tests/test_fun_controllo_area17*.py`; FUN-027 con bottoni, scherzi che rispettano il blocco (FUN-031/032). Cricchetto `SENZA_FONTE` per le GIF senza raccolta.
-- r5eco B16: 0685 (`economia_movimenti`, `voce_max_minuti`), 0686 (`controllo_per_mille`); storico in `add_coins_in`/`spend_coins_in`/daily/lavoro/pay, `/level movimenti`, `core/wallet_card.py` + `/monete conto portafoglio`, `core/anti_automazione.py` (work, daily, mini guadagni), tetto vocale in `compute_voice_minute`. Trappola: i test che sostituiscono `should_trigger_drop` con lambda a 1 argomento: la logica dei drop deve restare a una sola chiamata `should_trigger_drop(roll)`. Mai aggiungere righe a una migrazione già applicata (nemmeno nel proprio DB di test).
-- r5eco B15: 0684 (blocchi, amici, matrimoni, prestigio), `sociale_repo`, `cogs/leveling/sociale.py` (`/level sociale ...`, `/monete conto prestigio`), blocchi in pay/regala/duello/tris/forza4, amici senza tassa, prestigio nel lavoro e nel premio (ECO-148, 149, 153-155, 159).
-- r5eco B14: 0683 `economia_depositi`, `rischio_repo.blocca/sblocca`, `/monete conto deposito`, `/giochi rps puntata`, `leaderboard solo_presenti`, `cogs/leveling/riffa.py` (ECO-005, 013, 092, 095-097, 119).
-- r5eco B13: 0682 (animali, posti, pesci, visti, pesca giorno), `animali_logic`, `animali_repo`, `cogs/fun/animali.py` (`/fun animali ...`, `/fun pesca ...`, ECO-122-124, 130-134, 138). `fun` ha 2 sottogruppi nuovi.
-- r5eco B12: 0681 (`shop_items.azione*`), `cogs/leveling/mini_guadagni.py` (`/monete rischio scava|meme|coccole|gratta|bersaglio`), `/admin-giochi oggetto-azione`, azioni in `/monete usa` (ECO-042, 043, 044, 046, 047, 060).
-- r5eco B11: 0680 (`lotteria_prezzo`, `rimborso_pct`, 3 tabelle), `lotteria_repo`, `cogs/leveling/lotteria.py` (ECO-117, 118, 121). `monete conto` è a 7 figli.
-- r5eco B10: 0679 `economia_potenziamenti`; `potenziamenti_repo`, `cogs/leveling/potenziamenti.py` (potenzia, scrigno, guadagni), tasso del giorno in `/monete vendi`, `tavolo_logic`, `cogs/fun/tavolo.py` (tris, forza4) (ECO-077, 079, 081, 082, 107-109).
-- r5eco B9: 0678 (`msg_coins*`, `stipendio_*`, 4 tabelle), `stipendi_repo`, `cogs/leveling/stipendi.py`, `passi_logic`, `cogs/fun/giochi_passi.py` (ECO-033-038, 094, 098).
-- r5eco B7-B8: 0676 `economia_duelli`, 0677 `economia_partite_aperte`; `duello_logic`, `duelli_repo`, `blackjack_logic`, `partite_repo`, `cogs/fun/sfide.py` (`/giochi sfide duello|duelli`), `cogs/fun/blackjack.py` (ECO-088/089 senza divisione, 104, 106).
-- r5eco B6: 0675 (`banca_total`, `furto_*`/`colpo_successo`, `economia_pause`, `economia_lavoro`), `rischio_logic`, `rischio_repo`, `cogs/leveling/rischio.py` (`/monete conto banca|lavoro|dimettiti`, `/monete rischio colpo|avventura|furto|elemosina|cerca`), paga del `/monete work` per turni (ECO-004/029/030/031/032/040/041/156 parziale).
-- r5eco B5: 0674 `economia_eventi`, `cogs/leveling/evento_monete.py` (`/admin-giochi evento avvia|chiudi`, ECO-057). Merge di main fatto (f083dfce).
-- r5eco B4: 0673 (`drop_*` in leveling_settings, `economia_lasciti`), `lasciti_repo`, `cogs/leveling/drop.py`, `_drop_casuale` in leveling.py (ECO-052/053/055). Test `test_drop_behavior` rimessi in piedi (fake con content/attachments).
-- r5eco B3 (1128615e): 0672 `economia_inventario`+`shop_items.regalabile`, `inventario_repo`, `cogs/leveling/inventario.py` (ECO-058/059/070-073/086).
-- r5eco B2 (a88b13cd): 0671 `economia_giochi_stat`, roulette/carta/scala in `coin_games_logic`, `cogs/fun/giochi_monete.py` (`esegui_partita`), puntate e pausa del server anche in `/giochi gioca` (ECO-021/022/090/099/100/115/116).
-- r5eco B1 (696c9de4): 0670 (colonne in `leveling_settings` + `economia_accrediti_iniziali`, `economia_premi_periodici`), `economia_repo`, `cogs/leveling/economia.py`, tetto al saldo in `add_coins_in`/`_riscuoti_premio`/`gioca`/`transfer_coins` (ECO-002/003/008/010/012/014/019/023-026/028).
-- r3liv B3-B8: formule, XP reazioni/vocale/contesti, card, ruoli di classifica (0660-0665).
+- r1fun (0840-0842): FUN-019 battaglia, FUN-017 auto, FUN-013/014 tela. Trappola: nei `COALESCE($n, ...)` di asyncpg servono i cast (`$2::int`).
+- r5eco B1-B16 (0670-0686) e r3liv: economia, giochi, rischio, lotteria, animali, sociale, potenziamenti, stipendi, drop, inventario, storico movimenti. Dettaglio nella storia di git.
 - Giri più vecchi (r1liv-r2liv, r21-r24, r10-r11, r4-r7): nella storia di git.
 
 23/11/2026 · giro r1rep (#124, #125, #122), ramo `feat/r1rep`, wt `/home/user/wt-rep`, db `iyokai_wrep`, migrazioni 0870-0872 USATE (restano 0873-0879). Voci della scheda fatte (D120). Smoke da fare.

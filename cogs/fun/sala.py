@@ -13,6 +13,7 @@ Dipende da: core/sala_logic.py, cogs/fun/_lobby.py, core/repositories/partite_re
 from __future__ import annotations
 
 import asyncio
+import io
 import logging
 import random
 import time
@@ -24,6 +25,8 @@ from discord.ext import commands, tasks
 
 from cogs.fun._lobby import apri_lobby
 from core import sala_logic as sl
+from core.bingo_image import render_cartella
+from core.safe_image import run_image_task
 from core.animali_logic import livello as livello_animale, salute as salute_animale
 from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
 from core.database import db
@@ -447,7 +450,17 @@ class VistaBingo(VistaGiocatori):
     @discord.ui.button(style=discord.ButtonStyle.secondary, label="…")
     async def vista_cartella(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         c = self.cartelle[interaction.user.id]
-        await interaction.response.send_message(f"```\n{sl.testo_cartella(c, self.estratti)}\n```", ephemeral=True)
+        estratti = set(self.estratti)
+        await interaction.response.defer(ephemeral=True)
+        try:
+            png = await run_image_task(render_cartella, c, estratti)  # ECO-112: Pillow fuori dal ciclo principale
+        except Exception:
+            logger.warning("Cartella del bingo non disegnata", exc_info=True)
+            png = None
+        if png is None:  # ripiego: la versione testuale
+            await interaction.followup.send(f"```\n{sl.testo_cartella(c, estratti)}\n```", ephemeral=True)
+            return
+        await interaction.followup.send(file=discord.File(io.BytesIO(png), filename="cartella.png"), ephemeral=True)
 
     @discord.ui.button(style=discord.ButtonStyle.success, label="…")
     async def bingo(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
