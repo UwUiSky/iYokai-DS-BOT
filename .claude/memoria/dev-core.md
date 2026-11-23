@@ -4,7 +4,7 @@
 23/11/2026 · ramo `feat/r1doc` · controllo delle 89 voci solo nei documenti (D119): 44 esistono o fatte, 10 non fatte con motivo, 35 da fare (18 «grandi»).
 
 ## In corso
-- r1med (ramo `feat/r1med`, da unire): fatte LOG-029 (0880), correzione automod, ECO-006 (0881), ECO-050 (0882), SIC-021 (0883), MUS-016, RUO-005 (0884), CFG-044, VOC-014, ECO-160 (0885). Restano: UTL-111, UTL-024, ECO-051, ECO-093, ECO-080, TKT-088, TKT-073, SIC-016. Prossimo numero migrazione: 0886. Smoke da fare: tree_invariants, data_registry, i18n, forget_user, economia_registro/autolavoro/sospensioni, chiave_soccorso, archivio_utente, voice_scorta/azioni_ruoli, welcome_image, ticket_duplica, blacklist_tree.
+- r1med (ramo `feat/r1med`, da unire, NON pushato): fatte LOG-029 e 15 voci (migrazioni 0880-0888, D121); resta TKT-073 (Google Drive: OAuth Google dal pannello web + token cifrato + caricamento, spenta senza chiavi Google). Prossimo numero migrazione: 0889. Smoke da fare: tree_invariants (admin-ticket oltre l'avviso di 6.800 caratteri), data_registry, i18n, forget_user, archivio_utente, economia_registro/autolavoro/sospensioni, chiave_soccorso, voice_scorta/azioni_ruoli/transfer/catalogo_r1, welcome_image, ticket_duplica/roblox/form, blacklist_tree, azioni_sicure/programmate/tag_azioni, sondaggio_premio, sala_tamburo, negozio_web, backup_sic016/automatico, music_settings.
 - r1doc (ramo `feat/r1doc`, da unire): tocca `core/migrations/0850-0852`, `core/data_registry.py`, `core/risposte_server.py`, `core/monthly_winners_announcer.py`, `cogs/leveling/leveling.py`, `cogs/voice_temp/voice_temp.py`, `cogs/music/player.py`. Smoke da fare dopo l'unione: tree_invariants (peso `admin-livelli`), risposte_server, config_import, leveling_repo/classifica/card/settings, progressi, profiles, top_settimanale, voice_azioni_ruoli, music_queue_cmds, citazioni, user_app, data_registry, migrazioni 0850-0852, i18n.
 - Prossimo passo r1doc (tabella in `CONTROLLO_AREE_CHIUSE.md`): ECO-006, ECO-050, ECO-160, VOC-014, MUS-016, RUO-005, CFG-044, UTL-111, SIC-021 (medie); poi i «grandi»: reputazione LIV-076…088, modulo voto (LIV-019, ECO-048/049, CFG-039), SIC-016, UTL-024, TKT-073/088, ECO-080.
 - Restano da giri vecchi (smoke già in coda): r1dep (#161), r1cfg (#122: CFG-024 con dev-moderazione, 036/039/040/041 scelte dell'owner, 001/002/003/006/027 dev-web, 032 marchio), r15immagini (`/admin-automod immagini` da agganciare a `core/automod_azioni.py`), r14lingue, r14lunghezze, r13ruoli. #67: 11.11, 11.12. #70: 14.10, 14.12-14.14.
@@ -48,7 +48,12 @@
 - Il codice di una voce nel test conta come «fatta» per `scripts/stato_catalogo.py`: mai metterlo su una voce non fatta. Una descrizione di opzione ≤ 95 caratteri (test tree_invariants). Scelte lunghe: autocompletamento, non `choices` (pesa nel gruppo, D56).
 - Con tanti test su DB condiviso una prova di 25 file dura 30+ minuti: lanciarla in background e scrivere i documenti nel frattempo; non attendere con `pgrep -f` (si trova da solo).
 
+- Un blocco aggiunto con una sostituzione di testo può finire nella prima funzione che ha le stesse righe: dopo ogni modifica a comandi con opzioni simili, rilanciare i test del file (VOC-017 era finito in `voicetemp_generatore`).
+- Config è congelata (`frozen`): nei test si sostituisce `modulo.config` con un `SimpleNamespace`. `scheduler.register_handler` vuole un metodo legato (serve `__qualname__`), non un `functools.partial`.
+- Per sapere se una voce del catalogo c'è già, cercare le opzioni dei tag e dei cog (UTL-024 era già per metà in UTL-016/022): meglio aggiungere il pezzo mancante che rifare.
+
 ## Aperto
+- TKT-073 (Drive) non fatta in r1med. `admin-ticket` pesa 7.142 caratteri (avviso a 6.800, limite 8.000): al prossimo comando si divide in un sotto-gruppo. L'avviso dell'anti-nuke non cita ancora `/admin-backup carica ultima_automatica:sì`.
 - Lingue: tetto richiesta giornaliero in memoria (si azzera al riavvio); lingua personale ammette solo it/en finché una migrazione non allarga il CHECK di `user_language`; `aiuto` vuoto in tutte le lingue.
 - `/admin-ai` 19 figli (KNOWN_OLTRE_18), `/admin-antiraid` 17: al prossimo comando si dividono.
 - `/admin-ruoli`: Discord `manage_roles`, codice `Livello.ADMIN` (`manage_guild`): chi ha solo «Gestisci ruoli» lo vede

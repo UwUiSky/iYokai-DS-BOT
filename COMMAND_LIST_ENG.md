@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 04:51 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 15:59 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 1122 commands in 55 categories.**
+**Total: 1128 commands in 55 categories.**
 
 ## Admin: AI
 
@@ -102,6 +102,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 04:5
 - **`/admin-automazioni inneschi avvia-ora`** — Run a trigger right now, to test it.
 - **`/admin-automazioni inneschi list`** — The triggers of the server.
 - **`/admin-automazioni inneschi remove`** — Remove a trigger.
+- **`/admin-automazioni programma`** — Programma un'azione sicura per più tardi (ruolo, messaggio, sblocco canale): fino a 5.
 - **`/admin-automazioni script errori`** — The latest 10 errors of a tag's script.
 - **`/admin-automazioni slash list`** — The server's commands and menu entries.
 - **`/admin-automazioni slash menu`** — Right-click menu entries (on a user or a message) that answer with a tag.
@@ -277,6 +278,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 04:5
 - **`/admin-games salaries remove`** — Remove the salary or tax of a role.
 - **`/admin-games salaries set`** — Salary (positive) or tax (negative) for a role.
 - **`/admin-games servizi`** — Turn the external services on or off: Lemmy images and GIF search.
+- **`/admin-games sospensione`** — Sospendi una persona dal gioco, riabilitala o decidi sulla sua richiesta di revisione.
 - **`/admin-games telefono block`** — Block or unblock a person or another server from the phone.
 - **`/admin-games telefono channel`** — The server's phone channel.
 - **`/admin-games telefono consenso`** — Turn the phone on or off: off by default.
@@ -528,6 +530,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 04:5
 - **`/admin-tag replies global`** — Turn the owner's shared automatic replies on or off in this server.
 - **`/admin-tag replies list`** — Shows the server's automatic replies.
 - **`/admin-tag replies show`** — Detail of an automatic reply, with the raw text.
+- **`/admin-tag tag actions`** — Azioni sicure di un tag: ruolo, messaggio, reazione (fino a 3).
 - **`/admin-tag tag alias`** — Alternative names of a tag (up to 3).
 - **`/admin-tag tag blocks`** — Block a tag for a role, a channel or a user (up to 10 per list).
 - **`/admin-tag tag create`** — Creates a custom command.
@@ -563,6 +566,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 04:5
 - **`/admin-tickets panel`** — Publishes the ticket opening panel in this channel.
 - **`/admin-tickets panels appearance`** — Button colour, menu text and opening message of a panel.
 - **`/admin-tickets panels create`** — Creates a ticket panel.
+- **`/admin-tickets panels duplica`** — Duplica un pannello già configurato, o copia una risposta pronta su un altro pannello.
 - **`/admin-tickets panels form-add`** — Adds a question to the form (max 5).
 - **`/admin-tickets panels form-copy`** — Copies a panel's form to another (replaces its questions).
 - **`/admin-tickets panels form-remove`** — Removes a question from the form.
@@ -1162,6 +1166,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 04:5
 - **`/owner radio status`** — How many music players are playing now.
 - **`/owner radio stop`** — Leaves the radio on this server.
 - **`/owner system announce`** — Sends an announcement to all servers.
+- **`/owner system chiave-soccorso`** — Chiave di soccorso: per riprendere il controllo se perdi l'account.
 - **`/owner system eval`** — Runs Python code (with confirmation).
 - **`/owner system global-replies`** — Automatic replies shared by all servers (up to 20).
 - **`/owner system leave-guild`** — Forces the bot to leave a specific server (without blocking it).
@@ -1181,6 +1186,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 04:5
 - **`/room quiz`** — Timed quiz with a coin prize: five questions, four answers.
 - **`/room race`** — Animal race: whoever arrives first takes the pot.
 - **`/room roulette`** — Multiplayer roulette: the same stake for everyone, a single spin.
+- **`/room tamburo`** — Un tamburo con una sfera rossa: chi la trova esce, l'ultimo prende il piatto.
 
 ## Polls
 

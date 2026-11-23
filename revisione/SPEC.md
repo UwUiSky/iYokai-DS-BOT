@@ -3110,3 +3110,11 @@ Controllo delle 89 voci in `revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.
 - `[x]` ECO-080 (D121): `/admin-economia limiti negozio_web:sì` e pagina `/n/{id}` (ECO-080).
 
 - `[x]` SIC-016 (D121): `/admin-backup carica ultima_automatica:sì` e copie ogni 3 ore (SIC-016, 0888).
+
+Fatte in questo giro (migrazioni 0880-0888, scelte in D121): LOG-029 (archivio degli eventi dei messaggi legato al caso, `/mod-casi caso chat archivio:sì`);
+ECO-006 (`/admin-economia annunci vincitori-set registro:sì`); ECO-050 (`/monete work automatico:sì`, premium); ECO-051 (`/sondaggi crea premio_monete:`);
+ECO-080 (pagina `/n/{id}` e `/admin-economia limiti negozio_web:sì`); ECO-093 (`/sala tamburo`); ECO-160 (`/admin-giochi sospensione`);
+CFG-044 (`/admin-ticket pannelli duplica`); MUS-016 (`/admin-musica impostazioni solo-audio:sì`); RUO-005 (`/admin-benvenuto immagine trasparente: larghezza: altezza:`);
+SIC-016 (`/admin-backup carica ultima_automatica:sì`, copie ogni 3 ore); SIC-021 (`/owner system chiave-soccorso`, `scripts/chiave_soccorso.py`);
+UTL-024 (`/admin-tag tag azioni`); UTL-111 (`/admin-automazioni programma`); VOC-014 (`/admin-vocali opzioni scorta:sì`); TKT-088 (`/admin-ticket setup roblox:sì`, chiave `BLOXLINK_API_KEY`).
+Non fatta: TKT-073 (Google Drive).

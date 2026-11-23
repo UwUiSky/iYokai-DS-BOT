@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:51 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 15:59 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 1122 comandi in 55 categorie.**
+**Totale: 1128 comandi in 55 categorie.**
 
 ## Admin: AI
 
@@ -102,6 +102,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:
 - **`/admin-automazioni inneschi avvia-ora`** — Fa partire un innesco subito, per provarlo.
 - **`/admin-automazioni inneschi elenco`** — Gli inneschi del server.
 - **`/admin-automazioni inneschi togli`** — Toglie un innesco.
+- **`/admin-automazioni programma`** — Programma un'azione sicura per più tardi (ruolo, messaggio, sblocco canale): fino a 5.
 - **`/admin-automazioni script errori`** — Gli ultimi 10 errori dello script di un tag.
 - **`/admin-automazioni slash elenco`** — I comandi e i menu del server.
 - **`/admin-automazioni slash menu`** — Voci del menu col tasto destro (su un utente o un messaggio) che rispondono con un tag.
@@ -272,6 +273,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:
 - **`/admin-giochi quiz regole`** — Regole del quiz: punti, tempo, risposta mostrata, il bot gioca.
 - **`/admin-giochi quiz rimuovi`** — Toglie una domanda caricata dal server.
 - **`/admin-giochi servizi`** — Accende o spegne i servizi esterni: immagini Lemmy e ricerca di GIF.
+- **`/admin-giochi sospensione`** — Sospendi una persona dal gioco, riabilitala o decidi sulla sua richiesta di revisione.
 - **`/admin-giochi stipendi auto`** — Paga gli stipendi da solo a un'ora (UTC) e scegli le monete per messaggio.
 - **`/admin-giochi stipendi elenco`** — Gli stipendi e le tasse per ruolo, e le regole dei messaggi.
 - **`/admin-giochi stipendi imposta`** — Stipendio (positivo) o tassa (negativo) per un ruolo.
@@ -529,6 +531,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:
 - **`/admin-tag risposte mostra`** — Dettaglio di una risposta automatica, anche il testo grezzo.
 - **`/admin-tag risposte svuota`** — Elimina tutte le risposte automatiche del server.
 - **`/admin-tag tag alias`** — Nomi alternativi di un tag (al massimo 3).
+- **`/admin-tag tag azioni`** — Azioni sicure di un tag: ruolo, messaggio, reazione (fino a 3).
 - **`/admin-tag tag crea`** — Crea un comando personalizzato.
 - **`/admin-tag tag creatori`** — Scegli il ruolo di chi può creare tag propri con /tag crea.
 - **`/admin-tag tag divieti`** — Vieta un tag a un ruolo, un canale o un utente (al massimo 10 per elenco).
@@ -563,6 +566,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:
 - **`/admin-ticket panel`** — Pubblica il pannello per l'apertura dei ticket in questo canale.
 - **`/admin-ticket pannelli aspetto`** — Colore del bottone, testo del menu e messaggio di apertura di un pannello.
 - **`/admin-ticket pannelli crea`** — Crea un pannello di ticket.
+- **`/admin-ticket pannelli duplica`** — Duplica un pannello già configurato, o copia una risposta pronta su un altro pannello.
 - **`/admin-ticket pannelli elenco`** — Elenca i pannelli di ticket del server.
 - **`/admin-ticket pannelli modello`** — Importa un modello pronto di pannello (modulo, motivi, risposte).
 - **`/admin-ticket pannelli modulo-aggiungi`** — Aggiungi una domanda al modulo (max 5).
@@ -1162,6 +1166,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:
 - **`/owner radio stop`** — Esce dalla radio su questo server.
 - **`/owner rete`** — Solo proprietario del bot: blocca i server che segnalano in modo scorretto.
 - **`/owner system announce`** — Manda un annuncio a tutti i server.
+- **`/owner system chiave-soccorso`** — Chiave di soccorso: per riprendere il controllo se perdi l'account.
 - **`/owner system eval`** — Esegue codice Python (con conferma).
 - **`/owner system leave-guild`** — Forza il bot a lasciare un server specifico (senza bloccarlo).
 - **`/owner system memory-status`** — Mostra il consumo di RAM attuale del processo.
@@ -1181,6 +1186,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:
 - **`/sala lotta`** — Lotta fino a 6 con il tuo animale: l'ultimo in piedi prende il piatto.
 - **`/sala quiz`** — Quiz a tempo con premio in monete: cinque domande, quattro risposte.
 - **`/sala roulette`** — Roulette a più giocatori: una puntata uguale per tutti, un solo giro.
+- **`/sala tamburo`** — Un tamburo con una sfera rossa: chi la trova esce, l'ultimo prende il piatto.
 
 ## Sondaggi
 

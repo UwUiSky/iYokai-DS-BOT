@@ -1540,3 +1540,9 @@ Attua D119 per le voci medie. Elenco delle voci e dei motivi in fondo, aggiornat
 - **ECO-093**: fatta: tema delicato risolto con nome e grafica neutri («Tamburo», una sfera rossa in una casella), come dice il catalogo.
 - **ECO-080**: fatta: il sito mostra il negozio in sola lettura; comprare resta su Discord (il sito non tocca le monete di nessuno).
 - **SIC-016**: fatta: nessun sistema nuovo, si riusa BKP-008 e il caricamento esistente. L'avviso dell'anti-nuke non cita ancora il comando (resta una riga di testo da aggiungere in `cogs/security/anti_nuke.py`).
+
+### Esito del giro r1med (23/11/2026)
+- **Fatte (15 delle 16 voci della scheda, più LOG-029 per scelta dell'owner e la correzione dell'AutoMod):** LOG-029, ECO-006, ECO-050, ECO-051 (come premio di un sondaggio del server), ECO-080, ECO-093, ECO-160, CFG-044, MUS-016, RUO-005, SIC-016, SIC-021, UTL-024, UTL-111, VOC-014, TKT-088 (spenta senza chiave Bloxlink).
+- **Non fatta, nessun motivo che regga: TKT-073** (copia del transcript su Google Drive). Il lavoro resta: OAuth Google dell'admin del server dal pannello web, token cifrato, caricamento nella cartella scelta, spenta finché l'owner non mette le chiavi Google nel `.env`. Va nel prossimo giro con `dev-web` per le pagine del consenso.
+- **Chiavi per l'owner:** `BLOXLINK_API_KEY` nel `.env` (TKT-088; vuota = funzione spenta). Nessuna altra chiave nuova in questo giro.
+- **Cose trovate e corrette lungo la strada:** il blocco VOC-017 (azione/ruolo) di r1doc era finito nel comando dei generatori (NameError su `ruolo`) invece che in `/admin-vocali opzioni`; 10 test dei vocali non avevano il database dopo VOC-017.
