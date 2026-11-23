@@ -46,6 +46,7 @@ from core.invio_file import FileTroppoGrande, invia_file_su_interazione
 from core.modules_updated_logic import emetti_modules_updated, stato_moduli
 from core.backup_permessi_logic import LIVELLI as LIVELLI_BACKUP, SETTING_LIVELLO as SETTING_LIVELLO_BACKUP
 from core.premium import registry
+from core.music_paese_logic import paese_valido
 from core.music_sources import FONTI_DI_RICERCA
 from core.moderation_opzioni import AZIONI_CON_DM, MAX_TIMEOUT, MIN_TIMEOUT, SETTING_RUOLI_IMMUNI
 from core.spam_trap_logic import PUNIZIONI as PUNIZIONI_TRAPPOLA
@@ -145,6 +146,7 @@ SETTINGS_SCHEMA = {
     "music_skip_vote_percent": "int_1_100",
     "music_empty_pause": "bool",
     "music_bot_status": "bool",
+    "music_search_country": "paese_iso",
     "fun_immagini_post": "bool",
     "fun_gif_cerca": "bool",
     "fun_telefono": "bool",
@@ -319,6 +321,7 @@ CONTROLLI_PER_TIPO = {
     "modalita_risposte_mod": (
         lambda valore: valore in ("normale", "compatta", "cancella-dopo"), "normale, compatta oppure cancella-dopo"
     ),
+    "paese_iso": (lambda valore: paese_valido(valore) is not None, "un codice paese di 2 lettere (es. TR)"),
     "modo_coda": (lambda valore: valore in ("normale", "equa"), "normale oppure equa"),
     "fonte_ricerca": (lambda valore: valore in FONTI_DI_RICERCA, ", ".join(FONTI_DI_RICERCA)),
     "int_5_300": (_intero_tra(5, 300), "un intero tra 5 e 300"),

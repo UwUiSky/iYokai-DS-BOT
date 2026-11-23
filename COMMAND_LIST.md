@@ -1152,6 +1152,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:
 - **`/owner radio fonti`** — Mostra lo stato delle fonti musicali (accesa, chiavi sì/no, pausa).
 - **`/owner radio cartella`** — Brani della cartella dell'owner: elenco, rilettura, anteprime.
 - **`/owner radio genere`** — Playlist del menu /music genere.
+- **`/owner radio paese`** — Paese globale delle ricerche musicali (di base nessun limite).
 - **`/owner radio list-tracks`** — Mostra la playlist della radio.
 - **`/owner radio log`** — Scarica la coda del log del Lavalink locale (ripulita dalle chiavi).
 - **`/owner radio nodi`** — Mostra i nodi Lavalink di ogni bot musicale (senza password).

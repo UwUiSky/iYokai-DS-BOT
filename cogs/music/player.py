@@ -114,6 +114,7 @@ from core.music_queue_logic import (
 )
 from core.music_radio_view import RadioListView, pagina_embed
 from core.music_request_logic import allegato_audio
+from core.music_paese_logic import paese_effettivo, togli_non_disponibili
 from core.music_settings_logic import (
     channel_not_allowed,
     clamp_volume,
@@ -427,7 +428,7 @@ class MusicCog(CogConGruppi, commands.Cog):
 
     async def _cerca(
         self, query: str, nodo: wavelink.Node, nodo_locale: wavelink.Node | None = None,
-        fonte: str | None = None,
+        fonte: str | None = None, paese: str | None = None,
     ) -> tuple[wavelink.Search | None, wavelink.Node]:
         """
         LIM-42/43: la ricerca gira su un nodo SCELTO (quello del bot che
@@ -438,12 +439,12 @@ class MusicCog(CogConGruppi, commands.Cog):
         Restituisce anche il nodo che ha risposto: il player deve nascere
         lì, perché le tracce dei plugin si suonano solo dove il plugin c'è.
         """
-        risultati = await self._cerca_su(query, nodo, fonte)
+        risultati = await self._cerca_su(query, nodo, fonte, paese)
         if risultati or not is_spotify_query(query):
             return risultati, nodo
         if nodo_locale is None or nodo_locale is nodo:
             return risultati, nodo
-        return await self._cerca_su(query, nodo_locale), nodo_locale
+        return await self._cerca_su(query, nodo_locale, None, paese), nodo_locale
 
     @staticmethod
     def _come_playlist(nome: str, tracce: list) -> wavelink.Search:
@@ -457,7 +458,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         })
 
     @staticmethod
-    async def _cerca_su(query: str, nodo: wavelink.Node, fonte: str | None = None) -> wavelink.Search | None:
+    async def _cerca_su(
+        query: str, nodo: wavelink.Node, fonte: str | None = None, paese: str | None = None
+    ) -> wavelink.Search | None:
         """
         Mai una query grezza scritta da un utente: URL http(s) e URI Spotify
         validi vanno cosi' come sono; qualunque altro testo diventa SEMPRE
@@ -476,7 +479,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         if tipo == QUERY_TESTO:
             if fonte == "deezer" and fonti_musicali.fonte_usabile("deezer"):
                 try:  # Deezer dà solo i metadati: i brani si cercano altrove
-                    trovati = await fonti_musicali.risolvi_titolo_deezer(testo, cerca_con_prefisso)
+                    trovati = await fonti_musicali.risolvi_titolo_deezer(testo, cerca_con_prefisso, paese)
                     if trovati:
                         return trovati[:1]
                 except fonti_musicali.FonteNonRisponde:
@@ -488,7 +491,7 @@ class MusicCog(CogConGruppi, commands.Cog):
             id_ = fonti_musicali.id_deezer(testo)
             if id_ is None or not fonti_musicali.fonte_usabile("deezer"):
                 raise fonti_musicali.FonteNonRisponde("deezer")
-            tracce = await fonti_musicali.risolvi_deezer(link.tipo, id_, cerca_con_prefisso)
+            tracce = await fonti_musicali.risolvi_deezer(link.tipo, id_, cerca_con_prefisso, paese)
             return MusicCog._come_playlist("Deezer", tracce)
         fonte = "spotify" if tipo == QUERY_SPOTIFY else (link.fonte if link else "http")
         if tipo != QUERY_SPOTIFY:
@@ -721,13 +724,15 @@ class MusicCog(CogConGruppi, commands.Cog):
             return False
 
         nodo_locale = gestore.locale_di(chiave) if (gestore and nuova_sessione) else None
+        paese = paese_effettivo(impostazioni.search_country)  # MUS-015: di base nessun limite
         try:
             if cerca is not None:
                 risultati, nodo = await cerca(nodo, nodo_locale)
             else:
                 # La fonte scelta nel comando vince su quella preferita dal server.
                 risultati, nodo = await self._cerca(
-                    query, nodo, nodo_locale, fonte or impostazioni.default_search or None
+                    query, nodo, nodo_locale, fonte or impostazioni.default_search or None,
+                    **({"paese": paese} if paese else {}),
                 )
         except fonti_musicali.FonteNonRisponde as exc:
             await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
@@ -741,16 +746,31 @@ class MusicCog(CogConGruppi, commands.Cog):
             await rispondi(testo_tradotto("music_nessun_risultato", await lingua_risposta(guild_id, utente_id)))
             return False
 
+        # MUS-015: via i brani che la fonte dice non ascoltabili nel paese del server (senza dato passano).
+        scartate_paese = 0
+        if paese and not isinstance(risultati, wavelink.Playlist):
+            risultati, scartate_paese = togli_non_disponibili(list(risultati), paese)
+            if not risultati:
+                await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
+                await rispondi(testo_tradotto("music_paese_nessun_brano", await lingua_risposta(guild_id, utente_id), paese=paese))
+                return False
+
         # MUS-044: i brani oltre la durata massima non entrano in coda.
         scartate_lunghe = 0
         tracce_playlist: list = []
         if isinstance(risultati, wavelink.Playlist):
-            candidate = truncate_playlist_tracks(risultati, MAX_PLAYLIST_TRACKS)
+            candidate, scartate_paese = togli_non_disponibili(
+                truncate_playlist_tracks(risultati, MAX_PLAYLIST_TRACKS), paese
+            )
             tracce_playlist = [
                 t for t in candidate
                 if not _troppo_lungo(t, impostazioni) and not title_blocked(t.title, impostazioni)
             ]
             scartate_lunghe = len(candidate) - len(tracce_playlist)
+            if not candidate and scartate_paese:
+                await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
+                await rispondi(testo_tradotto("music_paese_nessun_brano", await lingua_risposta(guild_id, utente_id), paese=paese))
+                return False
             if not tracce_playlist:
                 await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
                 await rispondi(
@@ -831,6 +851,10 @@ class MusicCog(CogConGruppi, commands.Cog):
                 f"({format_duration(traccia.length)}) alla coda."
             )
 
+        if scartate_paese:
+            await rispondi(testo_tradotto(
+                "music_paese_scartati", await lingua_risposta(guild_id, utente_id), v1=scartate_paese, paese=paese
+            ))
         if not player.playing and not player.queue.is_empty:
             prossima = await player.queue.get_wait()
             await player.play(prossima)

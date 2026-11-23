@@ -89,6 +89,7 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
         _c("music_skip_vote_percent", "Voto per saltare: percentuale degli ascoltatori (1-100)", NUMERO),
         _c("music_empty_pause", "Pausa automatica quando nel canale non resta nessuno", BOOL),
         _c("music_bot_status", "Titolo del brano come stato dei music bot", BOOL),
+        _c("music_search_country", "Paese delle ricerche (codice di 2 lettere, es. TR; vuoto = ascoltabili in tutto il mondo)", TESTO),
         _c("music_jukebox_price", "Prezzo in monete per mettere un brano in coda (0 = gratis, jukebox spento)", NUMERO),
     ),
     "fun": (

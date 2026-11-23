@@ -3973,5 +3973,11 @@
   "music_anteprime_non_trovate": "Non trovo questo brano tra le anteprime.",
   "music_anteprime_niente_nodo": "Le anteprime hanno bisogno del nodo Lavalink locale libero: se il bot sta già suonando da un altro nodo, ferma la musica e riprova; altrimenti il nodo locale non è collegato.",
   "music_anteprime_non_lette": "Il nodo non riesce a leggere i brani in anteprima.",
-  "music_testo_anteprima": "Questo brano è un'anteprima: il testo non si cerca."
+  "music_testo_anteprima": "Questo brano è un'anteprima: il testo non si cerca.",
+  "music_paese_non_valido": "Il paese non è valido: scrivi il codice di 2 lettere (per esempio TR o IT), oppure «-» per togliere il filtro.",
+  "music_paese_nessun_brano": "Nessun risultato è ascoltabile in questo paese ({paese}): la fonte dice che non è disponibile.",
+  "music_paese_scartati": "({v1} non ascoltabili nel paese {paese})",
+  "music_paese_globale_impostato": "🌍 Paese globale delle ricerche: **{paese}**. I server senza una scelta propria usano questo.",
+  "music_paese_globale_tolto": "🌍 Nessun limite globale: i brani sono ascoltabili in tutto il mondo.",
+  "music_paese_globale_stato": "🌍 Paese globale delle ricerche: **{paese}**."
 }

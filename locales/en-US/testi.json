@@ -3973,5 +3973,11 @@
   "music_anteprime_non_trovate": "I cannot find this track among the previews.",
   "music_anteprime_niente_nodo": "Previews need the free local Lavalink node: if the bot is already playing from another node, stop the music and try again; otherwise the local node is not connected.",
   "music_anteprime_non_lette": "The node cannot read the preview tracks.",
-  "music_testo_anteprima": "This track is a preview: its lyrics are not searched."
+  "music_testo_anteprima": "This track is a preview: its lyrics are not searched.",
+  "music_paese_non_valido": "The country is not valid: write the 2-letter code (for example TR or IT), or «-» to remove the filter.",
+  "music_paese_nessun_brano": "No result can be played in this country ({paese}): the source says it is not available.",
+  "music_paese_scartati": "({v1} not playable in country {paese})",
+  "music_paese_globale_impostato": "🌍 Global search country: **{paese}**. Servers without their own choice use this one.",
+  "music_paese_globale_tolto": "🌍 No global limit: tracks can be played all over the world.",
+  "music_paese_globale_stato": "🌍 Global search country: **{paese}**."
 }

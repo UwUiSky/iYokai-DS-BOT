@@ -6,7 +6,7 @@ MUS-044 durata massima, MUS-055 restare a coda finita, MUS-059 canale
 vocale permesso, MUS-066 riepilogo, MUS-054 attesa prima di uscire,
 MUS-062 parole vietate nei titoli, MUS-064 solo siti conosciuti, MUS-012 fonte di ricerca, MUS-037 coda equa,
 MUS-041 playlist di riserva (e MUS-040: continuare da soli dalla playlist scelta), MUS-045 playlist «Oggi»,
-MUS-042 coda salvata, MUS-051 DJ, MUS-052 voto per saltare, MUS-053 pausa a canale vuoto, MUS-061 stato del bot, MUS-065 jukebox (prezzo in monete), MUS-057 annunci «ora in riproduzione» accesi/spenti, MUS-058 canale degli annunci).
+MUS-042 coda salvata, MUS-051 DJ, MUS-052 voto per saltare, MUS-053 pausa a canale vuoto, MUS-061 stato del bot, MUS-015 paese delle ricerche, MUS-065 jukebox (prezzo in monete), MUS-057 annunci «ora in riproduzione» accesi/spenti, MUS-058 canale degli annunci).
 MUS-063 parole vietate in tutto il bot (elenco dell'owner, `imposta_parole_globali`).
 MUS-048 qualità audio per server: non fatta, la qualità si regola sul nodo Lavalink (D85). Stanno nella colonna `settings` di
 guild_config (come le altre impostazioni dei cog: cronologia delle
@@ -23,6 +23,7 @@ from urllib.parse import urlparse
 from core.fun_logic import normalizza_per_filtro
 from core.music_jukebox_logic import prezzo_valido
 from core.music_logic import format_duration, truncate_title
+from core.music_paese_logic import paese_effettivo, paese_valido
 from core.music_sources import FONTI, FONTI_DI_RICERCA
 
 MAX_VOLUME = 200
@@ -60,6 +61,7 @@ SETTING_DJ_ROLE = "music_dj_role_id"  # MUS-051
 SETTING_SKIP_VOTE = "music_skip_vote_percent"  # MUS-052
 SETTING_EMPTY_PAUSE = "music_empty_pause"  # MUS-053
 SETTING_BOT_STATUS = "music_bot_status"  # MUS-061
+SETTING_SEARCH_COUNTRY = "music_search_country"  # MUS-015
 QUEUE_MODES = ("normale", "equa")
 
 
@@ -86,6 +88,7 @@ class MusicSettings:
     empty_pause: bool = True  # MUS-053: pausa se nel canale non resta nessuno
     bot_status: bool = False  # MUS-061: titolo come stato del bot della flotta, spento di base
     default_search: str = ""  # fonte dove cercare un titolo; "" = automatica (YouTube, poi SoundCloud)
+    search_country: str = ""  # MUS-015: paese ISO delle ricerche; "" = quello globale dell'owner, di base nessun limite
 
 
 # MUS-063: le parole vietate dall'owner in tutto il bot (già normalizzate); le imposta il cog dell'owner.
@@ -174,6 +177,7 @@ def summary_lines(settings: MusicSettings) -> list[str]:
         f"⏳ Attesa prima di uscire: **{f'{settings.idle_minutes} minuti' if settings.idle_minutes else 'predefinita (5 minuti)'}**",
         f"🚫 Parole vietate nei titoli: **{settings.banned_words or 'nessuna'}**",
         f"🔎 Ricerca di un titolo: **{FONTI[settings.default_search].etichetta if settings.default_search in FONTI else 'automatica (YouTube, poi SoundCloud)'}**",
+        f"🌍 Paese delle ricerche: **{paese_effettivo(settings.search_country) or 'nessun limite (ascoltabili in tutto il mondo)'}**",
         f"⚖️ Ordine della coda: **{'equa (a giro tra gli utenti)' if settings.queue_mode == 'equa' else 'normale (come arrivano)'}**",
         f"📢 Annunci «ora in riproduzione»: **{(f'nel canale <#{settings.announce_channel_id}>' if settings.announce_channel_id else 'accesi, ma serve un canale') if settings.announce else 'spenti'}**",
         f"📻 Playlist di riserva a coda finita: **{settings.fallback_playlist or 'nessuna'}**",
@@ -237,6 +241,7 @@ async def load_music_settings(database, guild_id: int) -> MusicSettings:
         skip_vote_percent=_percentuale_valida(await get(guild_id, SETTING_SKIP_VOTE, 50)),
         empty_pause=bool(await get(guild_id, SETTING_EMPTY_PAUSE, True)),
         bot_status=bool(await get(guild_id, SETTING_BOT_STATUS, False)),
+        search_country=paese_valido(await get(guild_id, SETTING_SEARCH_COUNTRY, "")) or "",
     )
 
 

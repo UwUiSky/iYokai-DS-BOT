@@ -10,6 +10,7 @@
 - Giro r6mus FATTO (non unito): MUS-013, 022-026, 028, 033, 034, 046, 051, 052, 053, 061. `/owner` pesa ~7.4k con `cartella`: niente altri comandi owner senza controllare.
 
 ## Fatto
+- r7mus: MUS-015 paese delle ricerche (D115): `music_paese_logic`, `/owner radio paese`, `/admin-musica impostazioni paese:`; filtro solo se la fonte dice i paesi.
 - r7mus: MUS-018 cartella dell'owner (D115): scansione ogni 5 min, `/owner radio cartella`, `/music coda anteprime` (nel gruppo `coda`: `playlist` e' a 18 figli).
 - r6/r10: 8.16 defer, sordo, allegato, canale richieste, playlist, suoni, nonstop, ALR-030..036, MUS-054/062/064.
 - F2 (#64, #47+#48, #45, #126 parti 1-2), F7 3b (#76): nodi per bot, radio, deploy Lavalink, catalogo MUS, impostazioni.
