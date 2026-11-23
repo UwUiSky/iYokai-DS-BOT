@@ -4340,5 +4340,13 @@
   "setup_guidato_nessun_cambio": "No changes: confirming changes nothing.",
   "setup_guidato_ruolo_sparito": "A chosen role no longer exists: nothing was saved.",
   "setup_guidato_admin_negato": "Choosing the bot admin role needs the «Administrator» permission or being the server owner: nothing was saved.",
-  "setup_guidato_fatto": "Setup saved: {ruoli} roles and {moduli} modules changed."
+  "setup_guidato_fatto": "Setup saved: {ruoli} roles and {moduli} modules changed.",
+  "cerca_ai_solo_server": "This command only works in a server.",
+  "cerca_ai_domanda_vuota": "Write at least two characters to search for.",
+  "cerca_ai_pausa": "Wait {secondi} seconds before searching again (there is also a daily limit).",
+  "cerca_ai_nessun_servizio": "No web-search service is connected to the bot: the owner has to add one. For now you can use `/web wiki` and the other `/web` commands.",
+  "cerca_ai_niente": "I found nothing useful. Try other words.",
+  "cerca_ai_titolo": "Search",
+  "cerca_ai_avviso": "Answer from an AI service that searches the web: check the sources.",
+  "cerca_ai_avviso_tolti": "Answer from an AI service that searches the web: check the sources. {n} dangerous or extra links were removed."
 }

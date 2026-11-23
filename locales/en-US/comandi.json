@@ -1874,7 +1874,8 @@
   "monete conto voto": "Claim the reward for voting for the bot, or choose automatic claiming.",
   "admin-giochi voto": "The reward this server gives to who votes for the bot (no values: the status).",
   "admin-giveaway guidato": "Creates a giveaway step by step: prize, duration, channel and requirements.",
-  "admin-bot setup guidato": "First setup or setup edit, step by step with a summary."
+  "admin-bot setup guidato": "First setup or setup edit, step by step with a summary.",
+  "web cerca": "Search anything: a quick answer, the web or videos."
  },
  "parametri": {},
  "menu": {
