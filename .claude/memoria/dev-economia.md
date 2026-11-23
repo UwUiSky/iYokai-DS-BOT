@@ -31,6 +31,17 @@
 - r3liv B3-B8: formule, XP reazioni/vocale/contesti, card, ruoli di classifica (0660-0665).
 - Giri più vecchi (r1liv-r2liv, r21-r24, r10-r11, r4-r7): nella storia di git.
 
+23/11/2026 · giro r1rep (#124, #125, #122), ramo `feat/r1rep`, wt `/home/user/wt-rep`, db `iyokai_wrep`, migrazioni 0870-0872 USATE (restano 0873-0879). Voci della scheda fatte (D120). Smoke da fare.
+
+## In corso
+- Niente di aperto. Prossimo giro: ECO con motivo in D86 (075/076/078 già fatte) e voci «da fare» del catalogo (`CONTROLLO_AREE_CHIUSE.md`).
+- Smoke da fare (lo lancia l'orchestratore). Test già rossi su main, non miei: `test_riferimenti_comandi` (`/opzioni` in `web_panel_ticket_trascrizioni.py`).
+
+## Fatto
+- r1rep: reputazione (0870; `/rep`, `/admin-rep`, `reputazione_repo`, `reputazione_logic`, «grazie @utente» in `on_message`), annuncio con embed e card (0871, `render_levelup_card`), import da file (`/admin-livelli azzera importa`, `livelli_importa` in `livelli_funzione`), `/level progressi carta:sì` (LIV-089), modulo voto (0872; `voto_server` su `VOTO_PORT`, `VOTO_SEGRETO` nel .env, `/monete conto voto`, `/admin-giochi voto`, bonus XP via `_fattore_voto`).
+- r6eco (0687-0689, 0790-0792): D104, D105; r5eco B1-B17 (0670-0686): economia, giochi, rischio, lotteria, animali, sociale, controllo area 17 (D86, D103).
+- r3liv: formule, XP reazioni/vocale, card, ruoli di classifica (0660-0665). Giri più vecchi: nella storia di git.
+
 ## Cose imparate
 - Il bot dei test (`fake_member(bot=True)`) non ha `manage_roles`: nei test dei ruoli-premio va dato `guild_permissions=Permissions(manage_roles=True)`. Un nuovo ascoltatore di eventi membri va in `core/intent_usage.py` e `docs/INTENT_PRIVILEGIATI.md` si rigenera con `genera_documento()`.
 - Azzeramenti: copia + UPDATE nella stessa transazione, `pg_advisory_xact_lock` per server (due azzeramenti insieme = una copia sola); mai copie vuote. Ripristino: `ON CONFLICT ... WHERE EXCLUDED.xp_total > t.xp_total` (non toglie mai XP, si può ripetere). `get_config(guild, fresco=True)` salta la cache di 60 s per i controlli di blocco. `on_member_remove` scatta anche col ban: «uscita» aspetta 3 s e guarda la cache dei bannati.
@@ -60,6 +71,9 @@
 
 - Tetto al saldo: usare `somma_con_tetto_sql`/`valore_nuovo_con_tetto_sql` (leveling_repo) in ogni nuova scrittura che accredita; `refund_coins_in` e lo staff restano senza tetto. `add_item` restituisce l'id (non l'oggetto). CHECK su quantità: `>= 0` se si decrementa prima di pulire.
 - Un cog nuovo per ogni blocco (leveling.py ha 4600 righe). Testi: `loc.py` in scratchpad (it, en, nomi, desc). Nuovi `on_member_*` in `core/intent_usage.py` e rigenerare `docs/INTENT_PRIVILEGIATI.md`.
+- `Config` è frozen: nei test si sostituisce una funzione del modulo (`modulo_acceso`), non il campo. `nomi` di `comandi.json` en-US solo per nomi di comandi (non parametri).
+- Nuovo gruppo di primo livello: va in `command_groups._DEFINIZIONI`, `tests/support/command_policy.py` e `tests/test_command_groups.py` (ordine = ordine dei cog).
+- Un voto o un «grazie» rinviato dal sito: pausa/dedup nella stessa transazione, con `pg_advisory_xact_lock(hashtextextended(...))`; niente conteggi fuori transazione.
 
 ## Aperto
 - `test_leveling_premi_b2::test_prova_senza_permesso_di_scrittura_non_scrive` fallisce già su main 6d19555d (non mio).

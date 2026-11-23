@@ -534,7 +534,9 @@
   "colora": "paint",
   "pixel": "pixel",
   "togli-utente": "remove-user",
-  "identita-bot": "bot-identity"
+  "identita-bot": "bot-identity",
+  "rep": "rep",
+  "admin-rep": "admin-rep"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1854,7 +1856,22 @@
   "admin-giochi tela blocca": "Block a person from the pixel canvas.",
   "admin-giochi tela sblocca": "Unblock a person from the pixel canvas.",
   "admin-giochi tela impostazioni": "Wait, cost to skip it and public page of the canvas.",
-  "admin-bot setup identita-bot": "Name and logo of the other iYokai bots in this server."
+  "admin-bot setup identita-bot": "Name and logo of the other iYokai bots in this server.",
+  "rep": "Reputation: give points to members, leaderboard and log",
+  "admin-rep": "Reputation (admin): points, settings, reward roles, reset",
+  "rep dai": "Give reputation points to a member.",
+  "rep togli": "Take reputation points from a member (only who has the role chosen by the server).",
+  "rep mostra": "Reputation and rank of a member (no name: yours).",
+  "rep classifica": "Reputation leaderboard of the server.",
+  "rep registro": "Who gave or took reputation (yours; staff can see others').",
+  "admin-rep imposta": "Set the reputation points of a member.",
+  "admin-rep cancella": "Reset the reputation of a member to zero.",
+  "admin-rep azzera": "Reset the reputation of the whole server (needs the confirmation word).",
+  "admin-rep impostazioni": "Turn reputation on and choose name, pause, limits, roles and \"thanks\".",
+  "admin-rep premio": "Roles given at a reputation threshold (no threshold: the list).",
+  "admin-livelli azzera importa": "Load XP from a JSON or CSV file exported from another bot.",
+  "monete conto voto": "Claim the reward for voting for the bot, or choose automatic claiming.",
+  "admin-giochi voto": "The reward this server gives to who votes for the bot (no values: the status)."
  },
  "parametri": {},
  "menu": {

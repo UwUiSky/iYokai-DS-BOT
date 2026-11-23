@@ -76,8 +76,8 @@ mai comprare con soldi veri (vedi NF-40).
 | ECO-045 | "Diretta": gioco a serie giornaliera che paga monete | Dank Memer (`/stream`) [DANK] | ❌ manca | Dipende da ECO-025 | NF-41 |
 | ECO-046 | Coccolare il bot per avere monete | Mimu (`/pet`, `/snuggle`) [MIMU] | ❌ manca | Variante leggera di `/work` | NF-40 |
 | ECO-047 | Cliccare un bersaglio entro un tempo per guadagnare | Mimu (`/clickcake`) [MIMU] | ❌ manca | Bottone che compare dopo un'attesa casuale | NF-40 |
-| ECO-048 | Monete a chi vota il bot su un elenco di bot | Dank Memer (`/vote`) [DANK], Lawliet (`claim`) [LAWLIET], NadekoBot (`.vote`) [NADEKO] | ❌ manca | Solo se iYokai sarà in un elenco; webhook del voto | nuova |
-| ECO-049 | Riscatto automatico del premio del voto | Lawliet (`autoclaim`) [LAWLIET] | ❌ manca | Opzione personale; dipende da ECO-048 | nuova |
+| ECO-048 | Monete a chi vota il bot su un elenco di bot | Dank Memer (`/vote`) [DANK], Lawliet (`claim`) [LAWLIET], NadekoBot (`.vote`) [NADEKO] | ✅ fatta (r1rep, D120) | Solo se iYokai sarà in un elenco; webhook del voto | nuova |
+| ECO-049 | Riscatto automatico del premio del voto | Lawliet (`autoclaim`) [LAWLIET] | ✅ fatta (r1rep, D120) | Opzione personale; dipende da ECO-048 | nuova |
 | ECO-050 | Il bot "lavora" da solo ogni 4 ore per l'utente | Lawliet (`autowork`, a pagamento) [LAWLIET] | ❌ manca | Opzione premium; lavoro nello scheduler | nuova |
 | ECO-051 | Sondaggio periodico: chi vota può vincere monete | Lawliet (`survey`) [LAWLIET] | ❌ manca | Sondaggio settimanale dell'owner | nuova |
 | ECO-052 | Lasciare monete in un canale: le prende chi arriva prima | Mimu (`/drop`, `/pick`) [MIMU], NadekoBot (`.plant`, `.pick`) [NADEKO] | 🟡 parziale: i drop sono solo automatici | `/level lascia <importo>`; stesso bottone dei drop | nuova |

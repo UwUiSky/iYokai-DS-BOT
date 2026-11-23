@@ -34,6 +34,8 @@ FUNZIONI: dict[str, tuple[str, tuple[str, ...]]] = {
     "ai_voce": ("Voce AI", ("assistente parla",)),
     # D71: il primo ruolo di un livello è libero; dal secondo il comando controlla il livello da dentro.
     "livelli_piu_ruoli": ("Più ruoli per livello", ()),
+    # D71, LIV-072: importare i livelli da un file di un altro bot.
+    "livelli_importa": ("Importa i livelli da file", ("admin-livelli azzera importa",)),
 }
 
 _livelli: dict[str, str] = {}

@@ -79,10 +79,13 @@ from core.rank_card_image import (
     SfondoNonValido,
     colore_medio,
     prepara_sfondo,
+    render_levelup_card,
     render_rank_card,
 )
 from core.moneta_server import MonetaNonValida, aggiungi_moneta, prepara_moneta
 from core.safe_image import MAX_IMAGE_BYTES, run_image_task
+from core.greetings_embed_logic import embed_con_segnaposto
+from core.repositories.saved_embed_repo import saved_embed_repo
 from core.drop_logic import DEFAULT_DROP_CHANCE, DEFAULT_MAX_COINS, DEFAULT_MIN_COINS, should_trigger_drop
 from core.channel_access import PERMESSI_DI_SCRITTURA, motivo_se_il_bot_non_puo
 from core.giveaway_immagine import conserva_allegato, file_annuncio
@@ -186,6 +189,9 @@ from core.leveling_logic import (
     xp_for_level,
 )
 from core.premium import PremiumModule, registry
+from core.config import config as app_config
+from core.repositories.voto_repo import voto_repo
+from core.voto_logic import segreto_valido
 
 logger = logging.getLogger("iyokai.leveling")
 
@@ -265,6 +271,16 @@ def tipo_di_canale(canale) -> str:
     if isinstance(canale, (discord.VoiceChannel, discord.StageChannel)):
         return "chat_vocale"
     return "testo"
+
+
+async def _fattore_voto(guild_id: int, user_id: int) -> float:
+    """LIV-019: +N% di XP per qualche ora dopo aver votato il bot. Senza chiave del voto vale 1 e non tocca il database."""
+    if not segreto_valido(app_config.VOTO_SEGRETO):
+        return 1.0
+    try:
+        return await voto_repo.fattore_xp(guild_id, user_id)
+    except Exception:
+        return 1.0
 
 
 async def _comando_rifiutato(interaction: discord.Interaction) -> bool:
@@ -816,13 +832,54 @@ class LevelingCog(CogConGruppi, commands.Cog):
             destinazione = canale_corrente
         if destinazione is None:
             return
+        extra: dict = {}
+        embed = await self._embed_annuncio(guild, member, impostazioni, testo, new_level, ruoli_premio)  # LIV-032
+        file = await self._immagine_annuncio(member, impostazioni, new_level)  # LIV-033
+        if file is not None:
+            extra["file"] = file
+            if embed is not None:
+                embed.set_image(url=f"attachment://{file.filename}")
+        if embed is not None:
+            extra["embed"] = embed
         try:
             # Si menziona solo chi è salito di livello: mai ruoli, mai @everyone.
             await destinazione.send(
-                testo, allowed_mentions=discord.AllowedMentions(users=[member], roles=False, everyone=False)
+                testo, allowed_mentions=discord.AllowedMentions(users=[member], roles=False, everyone=False), **extra
             )
         except discord.HTTPException:
             pass
+
+    async def _embed_annuncio(self, guild, member, impostazioni, testo: str, new_level: int, ruoli_premio: list[str]) -> discord.Embed | None:
+        """LIV-032: l'embed salvato scelto dal server, con i segnaposto; None se non c'è o non è valido."""
+        if not impostazioni.levelup_embed:
+            return None
+        try:
+            salvato = await saved_embed_repo.get(guild.id, impostazioni.levelup_embed)
+            if salvato is None:
+                return None
+            xp = await self._xp_totale(guild.id, member.id)
+            return embed_con_segnaposto(
+                salvato.data,
+                lambda t: rendi_annuncio(t, utente=member.mention, livello=new_level, server=guild.name, ruoli_premio=ruoli_premio, xp=xp),
+            )
+        except Exception:
+            logger.warning("Embed dell'annuncio non pronto nel server %s.", guild.id, exc_info=True)
+            return None
+
+    async def _immagine_annuncio(self, member, impostazioni, new_level: int) -> discord.File | None:
+        """LIV-033: la piccola card del level-up; Pillow fuori dal ciclo principale, se fallisce l'annuncio parte senza."""
+        if not impostazioni.levelup_immagine:
+            return None
+        try:
+            try:
+                avatar = await member.display_avatar.read()
+            except Exception:
+                avatar = None
+            png = await run_image_task(render_levelup_card, member.display_name, new_level, avatar)
+            return discord.File(io.BytesIO(png), filename="level-up.png")
+        except Exception:
+            logger.warning("Immagine del level-up non disegnata per %s.", member.id, exc_info=True)
+            return None
 
     async def _grant_level_rewards(
         self,
@@ -1125,7 +1182,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
     ) -> None:
         """Dà l'XP testuale (stessa attesa per messaggi e comandi) e annuncia il level-up."""
         impostazioni = config.impostazioni
-        importo = xp_con_moltiplicatore(base, config.moltiplicatore(id_canale, id_ruoli))
+        importo = xp_con_moltiplicatore(base, config.moltiplicatore(id_canale, id_ruoli) * await _fattore_voto(guild.id, utente.id))
         risultato = await leveling_repo.add_text_xp(
             guild.id,
             utente.id,
@@ -1183,7 +1240,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         id_ruoli = [r.id for r in getattr(utente, "roles", [])]
         if config.e_escluso(id_canale, id_ruoli) or await blacklist_repo.is_user_blacklisted(utente.id):
             return
-        importo = xp_con_moltiplicatore(base, config.moltiplicatore(id_canale, id_ruoli))
+        importo = xp_con_moltiplicatore(base, config.moltiplicatore(id_canale, id_ruoli) * await _fattore_voto(utente.guild.id, utente.id))
         risultato = await leveling_repo.add_reaction_xp(
             utente.guild.id, utente.id, importo, direzione, imp.reazioni_attesa,
             max_level=imp.max_level, formula=imp.formula, tetto_giorno=MAX_REAZIONI_AL_GIORNO,
@@ -1380,7 +1437,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 id_canale = id_canali_per_le_regole(channel)
                 if config.e_escluso(id_canale, id_ruoli):
                     eligible = False
-                moltiplicatori[member.id] = config.moltiplicatore(id_canale, id_ruoli)
+                moltiplicatori[member.id] = config.moltiplicatore(id_canale, id_ruoli) * await _fattore_voto(guild.id, member.id)
                 presenti.append((member, channel, eligible))
 
         if not presenti:
@@ -3932,6 +3989,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
         solo_premi="Annuncia solo i livelli che danno un ruolo-premio",
         testo="Il tuo testo: {utente} {livello} {xp} {server} {ruolo_premio} {premio:testo se c'è un ruolo}",
         testo_base="Sì = torna al testo di iYokai",
+        embed="Nome di un embed salvato per l'annuncio (con gli stessi segnaposto); «-» lo toglie",
+        immagine="Sì = allega una piccola card con avatar e livello",
         prova="Sì = manda subito un annuncio di prova (una prova ogni 5 minuti)",
     )
     @app_commands.choices(modo=_SCELTE_ANNUNCIO)
@@ -3945,11 +4004,23 @@ class LevelingCog(CogConGruppi, commands.Cog):
         solo_premi: bool | None = None,
         testo: app_commands.Range[str, 1, MAX_TESTO_ANNUNCIO] | None = None,
         testo_base: bool | None = None,
+        embed: app_commands.Range[str, 1, 32] | None = None,
+        immagine: bool | None = None,
         prova: bool | None = None,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
         campi = {}
+        if embed is not None:  # LIV-032
+            if embed.strip() == "-":
+                campi["levelup_embed"] = ""
+            elif await saved_embed_repo.get(interaction.guild.id, embed.strip()) is None:
+                await interaction.response.send_message(await testo_per(interaction, "levelup_embed_non_trovato"), ephemeral=True)
+                return
+            else:
+                campi["levelup_embed"] = embed.strip()
+        if immagine is not None:  # LIV-033
+            campi["levelup_immagine"] = immagine
         if testo is not None:
             campi["levelup_testo"] = testo
         elif testo_base:
@@ -4018,10 +4089,19 @@ class LevelingCog(CogConGruppi, commands.Cog):
         else:
             corpo = f"🎉 {interaction.user.mention} è salito al livello **{livello}**!"
         prefisso = await testo_guild(guild, "annuncio_prova_prefisso")
+        extra: dict = {}
+        embed = await self._embed_annuncio(guild, interaction.user, i, corpo, livello, [r for r in ruoli])
+        file = await self._immagine_annuncio(interaction.user, i, livello)
+        if file is not None:
+            extra["file"] = file
+            if embed is not None:
+                embed.set_image(url=f"attachment://{file.filename}")
+        if embed is not None:
+            extra["embed"] = embed
         try:
             await destinazione.send(
                 (prefisso + corpo)[:2000],
-                allowed_mentions=discord.AllowedMentions(users=[interaction.user], roles=False, everyone=False),
+                allowed_mentions=discord.AllowedMentions(users=[interaction.user], roles=False, everyone=False), **extra,
             )
         except discord.HTTPException:
             await interaction.response.send_message(

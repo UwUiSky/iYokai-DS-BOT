@@ -37,7 +37,7 @@ sempre nel canale dove avviene; `/monthly-winners` (podio del mese).
 | LIV-016 | XP per i messaggi scritti nella chat dei canali vocali: acceso o spento | Arcane [ARCANE] | ❌ manca | Interruttore | NF-15 |
 | LIV-017 | XP per l'uso dei comandi slash: acceso o spento | Arcane [ARCANE] | ❌ manca | Interruttore; default spento | nuova |
 | LIV-018 | Messaggi che iniziano con il prefisso di altri bot non danno XP | Lurkr ("Ignored Bot Prefixes") [LURKR] | ❌ manca | Elenco di prefissi (max 10); serve `message_content` | nuova |
-| LIV-019 | Bonus XP per chi vota il bot | Arcane (+10% per 12 ore; si spegne con il premium) [ARCANE] | ❌ manca | Solo se iYokai sarà su un elenco di bot; webhook del voto | nuova |
+| LIV-019 | Bonus XP per chi vota il bot | Arcane (+10% per 12 ore; si spegne con il premium) [ARCANE] | ✅ fatta (r1rep, D120) | Solo se iYokai sarà su un elenco di bot; webhook del voto | nuova |
 
 ## 2. Esclusioni e moltiplicatori
 
@@ -60,8 +60,8 @@ sempre nel canale dove avviene; `/monthly-winners` (podio del mese).
 | LIV-029 | Annuncio in messaggio privato | MEE6 [MEE6], Carl-bot [CARL] | ❌ manca | Modo `dm`; `HTTPException` catturata se i DM sono chiusi | NF-15 |
 | LIV-030 | Annuncio in un canale scelto | MEE6 [MEE6], Carl-bot [CARL], Arcane [ARCANE] | ❌ manca | Modo `canale`; canale dal router (NF-01) | NF-15 |
 | LIV-031 | Testo dell'annuncio personalizzabile con segnaposto (utente, livello, XP) | MEE6 [MEE6], Arcane [ARCANE], AmariBot [AMARI] | ❌ manca | Testo ≤ 1800 con `{user} {level} {xp}`; renderer comune | NF-15 |
-| LIV-032 | Annuncio dentro un embed | Arcane (con il sistema dei tag) [ARCANE] | ❌ manca | Opzione `embed:<nome>` (embed salvato) | NF-17 |
-| LIV-033 | Immagine di level-up allegata all'annuncio | Arcane ("Include levelup image") [ARCANE] | ❌ manca | Variante piccola della rank card; Pillow fuori dal ciclo principale | NF-12 |
+| LIV-032 | Annuncio dentro un embed | Arcane (con il sistema dei tag) [ARCANE] | ✅ fatta (r1rep, D120) | Opzione `embed:<nome>` (embed salvato) | NF-17 |
+| LIV-033 | Immagine di level-up allegata all'annuncio | Arcane ("Include levelup image") [ARCANE] | ✅ fatta (r1rep, D120) | Variante piccola della rank card; Pillow fuori dal ciclo principale | NF-12 |
 | LIV-034 | Parte di testo mostrata solo se il livello dà un ruolo premio, con nome o menzione del ruolo | Arcane (`{earned:…}`, `{name}`, `{mention}`) [ARCANE], AmariBot (`{role}`) [AMARI] | ❌ manca | Segnaposto `{ruolo_premio}` e blocco condizionale nel renderer | nuova |
 | LIV-035 | Annuncio solo sopra un certo livello | Carl-bot ("announcement limit") [CARL] | ❌ manca | Opzione `da-livello` | nuova |
 | LIV-036 | Annuncio solo ogni N livelli (5, 10, 15…) | Carl-bot ("announcement modulo") [CARL] | ❌ manca | Opzione `ogni` | nuova |
@@ -120,7 +120,7 @@ sempre nel canale dove avviene; `/monthly-winners` (podio del mese).
 | LIV-069 | Copia di sicurezza automatica prima dell'azzeramento, con ripristino | Carl-bot ("reset all" e "restore") [CARL] | ❌ manca | Tabella di copia con scadenza (30 giorni) e comando `ripristina` | nuova |
 | LIV-070 | Azzeramento automatico dei livelli di chi esce o viene bannato | Arcane ("Auto Reset") [ARCANE], Lurkr (uscita, ban o entrambi) [LURKR] | ❌ manca | Opzione `azzera-su: uscita/ban/entrambi`; va d'accordo con la conservazione dei dati (NF-04) | nuova |
 | LIV-071 | Bloccare i comandi di XP a tutti tranne il proprietario del server | Arcane ("Disable /xp command", "Disable leaderboard reset") [ARCANE] | ❌ manca | Due interruttori; controllo `guild.owner_id` | nuova |
-| LIV-072 | Importare i livelli da un altro bot | Carl-bot (da MEE6, stessa curva) [CARL], Lurkr (da MEE6, Amari, Polaris) [LURKR] | ❌ manca | Lettura della classifica pubblica dell'altro bot solo se le sue condizioni d'uso lo permettono; altrimenti import da file | nuova |
+| LIV-072 | Importare i livelli da un altro bot | Carl-bot (da MEE6, stessa curva) [CARL], Lurkr (da MEE6, Amari, Polaris) [LURKR] | ✅ fatta (r1rep, D120) | Lettura della classifica pubblica dell'altro bot solo se le sue condizioni d'uso lo permettono; altrimenti import da file | nuova |
 | LIV-073 | Vedere tutte le impostazioni dei livelli in un riepilogo | Carl-bot ("configuration") [CARL] | ❌ manca | `/admin economia livelli stato` | NF-15 |
 | LIV-074 | Calcolatore: quanti messaggi mancano a un livello | Lurkr (pagina "Level Calculator") [LURKR] | ❌ manca | `/level calcola <livello>`; solo matematica | nuova |
 | LIV-075 | Strumento di diagnosi "perché non prendo XP" | Arcane (pagina "Debugging") [ARCANE] | ❌ manca | `/admin economia livelli diagnosi <membro>`: canale escluso, ruolo escluso, pausa, modulo spento | nuova |
@@ -129,20 +129,20 @@ sempre nel canale dove avviene; `/monthly-winners` (podio del mese).
 
 | ID | Funzione o comando | Chi ce l'ha | iYokai oggi | Come farla in iYokai | Scheda |
 |---|---|---|---|---|---|
-| LIV-076 | Punto reputazione dato a un altro utente | YAGPDB (`/rep give`) [YAGPDB], ProBot (`rep`, una volta ogni 24 ore) [PROBOT] | ❌ manca | `/level rep dai`; pausa per utente; mai a se stessi né ai bot | nuova |
-| LIV-077 | Togliere reputazione a un utente | YAGPDB (`/rep take`) [YAGPDB] | ❌ manca | `/level rep togli`; stesso limite | nuova |
-| LIV-078 | Reputazione data scrivendo "grazie @utente" | YAGPDB [YAGPDB] | ❌ manca | Serve `message_content`; interruttore per server | nuova |
-| LIV-079 | Vedere reputazione e posizione di un utente | YAGPDB (`/rep check`) [YAGPDB] | ❌ manca | `/level rep vedi` | nuova |
-| LIV-080 | Classifica della reputazione | YAGPDB (`/rep top`) [YAGPDB] | ❌ manca | Scelta `tipo: reputazione` in `/level leaderboard` | nuova |
-| LIV-081 | Registro di chi ha dato o tolto reputazione a un utente | YAGPDB (`/rep log`) [YAGPDB] | ❌ manca | Tabella dei movimenti; dato personale (NF-04) | nuova |
-| LIV-082 | Lo staff imposta o cancella la reputazione di un utente | YAGPDB (`/rep set`, `/rep delete`) [YAGPDB] | ❌ manca | `/admin economia rep imposta/cancella` | nuova |
-| LIV-083 | Nome dei punti reputazione scelto dal server | YAGPDB [YAGPDB] | ❌ manca | Impostazione di testo (max 20 caratteri) | nuova |
-| LIV-084 | Pausa e massimo di punti per comando | YAGPDB [YAGPDB] | ❌ manca | Due impostazioni numeriche | nuova |
-| LIV-085 | Ruoli che possono (o non possono) dare e ricevere reputazione | YAGPDB (quattro elenchi di ruoli) [YAGPDB] | ❌ manca | Ruolo richiesto ed escluso, per dare e per ricevere | nuova |
-| LIV-086 | Ruoli premio per soglie di reputazione | YAGPDB (5 gratis, 25 premium) [YAGPDB] | ❌ manca | Stessa tabella dei ruoli premio, con `tipo: reputazione` | nuova |
-| LIV-087 | Azzerare la reputazione di tutto il server | YAGPDB [YAGPDB] | ❌ manca | Comando con conferma | nuova |
-| LIV-088 | Punti dati a mano dai moderatori, con classifica propria | ProBot (`points`) [PROBOT] | ❌ manca | Si può coprire con la reputazione (LIV-082) | nuova |
-| LIV-089 | Profilo globale come immagine, uguale in tutti i server | ProBot (`profile`) [PROBOT], Tatsu ("Profile Cards") [TATSU] | ❌ manca | `/level profilo`; immagine con badge e sfondo | NF-40 |
+| LIV-076 | Punto reputazione dato a un altro utente | YAGPDB (`/rep give`) [YAGPDB], ProBot (`rep`, una volta ogni 24 ore) [PROBOT] | ✅ fatta (r1rep, D120) | `/level rep dai`; pausa per utente; mai a se stessi né ai bot | nuova |
+| LIV-077 | Togliere reputazione a un utente | YAGPDB (`/rep take`) [YAGPDB] | ✅ fatta (r1rep, D120) | `/level rep togli`; stesso limite | nuova |
+| LIV-078 | Reputazione data scrivendo "grazie @utente" | YAGPDB [YAGPDB] | ✅ fatta (r1rep, D120) | Serve `message_content`; interruttore per server | nuova |
+| LIV-079 | Vedere reputazione e posizione di un utente | YAGPDB (`/rep check`) [YAGPDB] | ✅ fatta (r1rep, D120) | `/level rep vedi` | nuova |
+| LIV-080 | Classifica della reputazione | YAGPDB (`/rep top`) [YAGPDB] | ✅ fatta (r1rep, D120) | Scelta `tipo: reputazione` in `/level leaderboard` | nuova |
+| LIV-081 | Registro di chi ha dato o tolto reputazione a un utente | YAGPDB (`/rep log`) [YAGPDB] | ✅ fatta (r1rep, D120) | Tabella dei movimenti; dato personale (NF-04) | nuova |
+| LIV-082 | Lo staff imposta o cancella la reputazione di un utente | YAGPDB (`/rep set`, `/rep delete`) [YAGPDB] | ✅ fatta (r1rep, D120) | `/admin economia rep imposta/cancella` | nuova |
+| LIV-083 | Nome dei punti reputazione scelto dal server | YAGPDB [YAGPDB] | ✅ fatta (r1rep, D120) | Impostazione di testo (max 20 caratteri) | nuova |
+| LIV-084 | Pausa e massimo di punti per comando | YAGPDB [YAGPDB] | ✅ fatta (r1rep, D120) | Due impostazioni numeriche | nuova |
+| LIV-085 | Ruoli che possono (o non possono) dare e ricevere reputazione | YAGPDB (quattro elenchi di ruoli) [YAGPDB] | ✅ fatta (r1rep, D120) | Ruolo richiesto ed escluso, per dare e per ricevere | nuova |
+| LIV-086 | Ruoli premio per soglie di reputazione | YAGPDB (5 gratis, 25 premium) [YAGPDB] | ✅ fatta (r1rep, D120) | Stessa tabella dei ruoli premio, con `tipo: reputazione` | nuova |
+| LIV-087 | Azzerare la reputazione di tutto il server | YAGPDB [YAGPDB] | ✅ fatta (r1rep, D120) | Comando con conferma | nuova |
+| LIV-088 | Punti dati a mano dai moderatori, con classifica propria | ProBot (`points`) [PROBOT] | ✅ fatta (r1rep, D120) | Si può coprire con la reputazione (LIV-082) | nuova |
+| LIV-089 | Profilo globale come immagine, uguale in tutti i server | ProBot (`profile`) [PROBOT], Tatsu ("Profile Cards") [TATSU] | ✅ fatta (r1rep, D120) | `/level profilo`; immagine con badge e sfondo | NF-40 |
 | LIV-090 | Titolo o frase personale sul profilo | ProBot (`title`) [PROBOT] | ❌ manca | Testo ≤ 60 caratteri; passa dal filtro delle parole vietate | NF-40 |
 | LIV-091 | XP e livello globali, validi in tutti i server | Tatsu ("level up across all of Discord") [TATSU] | ❌ manca | Somma degli XP per utente; solo dati positivi (NF-41) | NF-41 |
 

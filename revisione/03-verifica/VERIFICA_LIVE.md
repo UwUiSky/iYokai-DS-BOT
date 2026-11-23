@@ -1979,3 +1979,17 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `MUS-043` — Con brani in coda: `/music queue file:sì` allega `coda.txt` con un brano per riga (titolo, autore, indirizzo), senza nomi di utenti.
 - [ ] `FUN-030` — `/fun citazioni caso immagine:sì` (dal server e con `fonte:famose`) manda un PNG con la frase; senza citazioni salvate dice che non ce ne sono.
 - [ ] `AI-022` — Con l'app installata: menu «Traduci» su un messaggio di una persona che ne ha scritti tre di fila: la traduzione contiene tutti e tre. In un canale che il bot non può leggere traduce solo quello scelto.
+
+## Reputazione, annuncio, import e voto — giro r1rep (D120)
+
+- [ ] `LIV-076` `LIV-077` — `/admin-rep impostazioni attiva:sì`; `/rep dai membro:@A`: risposta pubblica con il totale. Il secondo `/rep dai` subito dopo dice quanto aspettare. `/rep dai` a te stesso o a un bot è rifiutato. `/rep togli` è rifiutato a chi non ha il ruolo scelto con `ruolo_togliere:`.
+- [ ] `LIV-078` — `/admin-rep impostazioni grazie:sì grazie_canale:#chat`: in #chat scrivere «grazie @A» dà un punto e mette 🙏; in un altro canale, o nominando due persone, no.
+- [ ] `LIV-079` `LIV-080` `LIV-081` — `/rep mostra`, `/rep classifica` (a pagine), `/rep registro` (il proprio; di un altro solo con «Gestisci server»).
+- [ ] `LIV-082` `LIV-087` — `/admin-rep imposta membro: punti:`, `/admin-rep cancella`, `/admin-rep azzera conferma:AZZERA`.
+- [ ] `LIV-083` `LIV-084` `LIV-085` — `/admin-rep impostazioni nome:onore pausa_ore:2 massimo:3 tetto:10 dare_richiesto:@Ruolo`: chi non ha il ruolo non può dare.
+- [ ] `LIV-086` — `/admin-rep premio soglia:5 ruolo:@Stimato`: a 5 punti il ruolo arriva da solo, sotto 5 si toglie. Un ruolo sopra quello del bot è rifiutato.
+- [ ] `LIV-032` `LIV-033` — Con un embed salvato: `/admin-livelli impostazioni-annuncio embed:nome immagine:sì prova:sì` mostra testo, embed e la card piccola con avatar e livello.
+- [ ] `LIV-072` — `/admin-livelli azzera importa file:` con un file `.json` o `.csv` (colonne `id` e `xp`) esportato da un altro bot: «Import fatto: N persone»; di nuovo lo stesso file: 0 cambiate. Un file con un id sbagliato è rifiutato per intero. Se la funzione `livelli_importa` è Premium, un server senza premium è fermato.
+- [ ] `LIV-089` — `/level progressi carta:sì` manda la card con i dati di tutti i server.
+- [ ] `LIV-019` `ECO-048` `ECO-049` `CFG-039` — Con `VOTO_SEGRETO` nel `.env` e il webhook messo su top.gg (indirizzo del reverse proxy verso `VOTO_PORT`, percorso `/voto`): «Test» su top.gg risponde 200 senza premio. Un voto vero: `/admin-giochi voto attivo:sì monete:50 xp:20 bonus_xp:10 bonus_ore:12`; `/monete conto voto` dà il premio una volta sola, la seconda volta dice che non c'è nulla. `/monete conto voto automatico:sì` e un nuovo voto: il premio arriva da solo con un messaggio privato. Senza `VOTO_SEGRETO`: `/monete conto voto` risponde «non è attivo», nessuna porta aperta, nessun errore nel registro.
+

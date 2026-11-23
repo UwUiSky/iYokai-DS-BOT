@@ -24,6 +24,7 @@ ALTEZZA = 240
 COLORE_DI_BASE = "#5865F2"
 LATO_AVATAR = 140
 ALTEZZA_PROFILO = 360
+ALTEZZA_LEVELUP = 160
 # Lo sfondo si salva già ridotto (JPEG), della misura più grande tra le due card.
 LATO_SFONDO = (LARGHEZZA, ALTEZZA_PROFILO)
 MAX_BYTE_SFONDO = 256 * 1024
@@ -343,6 +344,24 @@ def render_profile_card(
         draw.text((sx + larghezza // 2, y0 + 14), etichetta, font=f_piccolo, fill=tema.testo_secondario, anchor="ma")
         draw.text((sx + larghezza // 2, y1 - 14), valore, font=f_medio, fill=accento, anchor="md")
 
+    buffer = io.BytesIO()
+    immagine.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def render_levelup_card(nome: str, livello: int, avatar_bytes: bytes | None, colore: str = COLORE_DI_BASE, tema_nome: str = TEMA_DI_BASE) -> bytes:
+    """LIV-033: la piccola card allegata all'annuncio (avatar, nome, nuovo livello) come PNG di LARGHEZZA x ALTEZZA_LEVELUP."""
+    tema = TEMI.get(tema_nome, TEMI[TEMA_DI_BASE])
+    accento = _rgb(colore)
+    immagine = _tela(LARGHEZZA, ALTEZZA_LEVELUP, tema, None)
+    draw = ImageDraw.Draw(immagine)
+    _metti_avatar(immagine, avatar_bytes, tema, accento, (ALTEZZA_LEVELUP - LATO_AVATAR) // 2)
+    x_testo = 40 + LATO_AVATAR + 40
+    f_grande, f_medio = carica_font(48), carica_font(28)
+    spazio = LARGHEZZA - 44 - x_testo
+    nome = taglia_al_largo(draw, senza_quadrati(nome[:MAX_CARATTERI_NOME], f_medio), f_medio, spazio)
+    draw.text((x_testo, 26), nome, font=f_medio, fill=tema.testo_secondario)
+    draw.text((x_testo, 70), f"LIV {_compatto(livello)}", font=f_grande, fill=accento)
     buffer = io.BytesIO()
     immagine.save(buffer, format="PNG")
     return buffer.getvalue()
