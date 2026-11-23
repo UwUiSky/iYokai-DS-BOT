@@ -163,3 +163,5 @@
 - Suite completa: lanciarla con nohup (staccata): supera le 2 ore del limite dei comandi in background.
 - 23/11 notte: /owner a 7.898 su 8.000 dopo r1premium: prima di altri comandi owner va diviso (es. /owner e /owner2 o sotto-gruppi più corti). Router AI da collegare alle chiavi proprie (core/ai_chiavi_proprie.chiave_per) nell'area custode-ai. Mancano 6 descrizioni en-US da r1med (admin-giochi sospensione, sala tamburo, admin-ticket pannelli duplica, admin-automazioni programma, admin-tag tag azioni, owner system chiave-soccorso) e test_i18n_pubblica per cogs/fun/giochi_sospensioni.py:114 e test_riferimenti per /join in core/web_panel_join.py.
 - 23/11 notte: LIMITI RAGGIUNTI: /music 25/25 figli, gruppi di primo livello 60/60, /owner 7.898/8.000. Prima di nuovi comandi: riorganizzare (unire gruppi piccoli, spostare in sotto-gruppi). Tenor non accetta nuovi clienti API dal 01/2026.
+
+- 23/11: feat/r3bkp (BKP-022/023/040) rivisto da Opus: OK, da unire dopo la suite insieme a r2log029, r1guidata, r3mod, r2fun, fix/r1infra (contiene premium).
