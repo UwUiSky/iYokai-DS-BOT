@@ -54,6 +54,7 @@ def test_specchio_e_simmetrico_e_pingato_ha_il_nome():
     assert Image.open(io.BytesIO(ef.effetto_pingato(_png(), "x" * 100))).height == ef.LATO + 110
 
 
+# FUN-063
 def test_logica_scherzi():
     assert lg.tutto_in_spoiler("ciao  a | tutti") == "||ciao|| ||a|| ||tutti||"
     assert lg.barra_caricamento().count("▓") == 9 and len(lg.barra_caricamento()) == 10
@@ -76,6 +77,7 @@ def _it():
     return it
 
 
+# FUN-063
 async def test_scherzi_nuovi_senza_ping():
     cog = FunExtraCog(bot=None)
     bersaglio = fake_member()

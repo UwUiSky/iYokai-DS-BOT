@@ -4170,5 +4170,20 @@
   "idn_logo_non_valido": "The logo is not valid or did not pass the checks: use a normal PNG, JPEG, GIF or WEBP.",
   "idn_attendi": "Too many changes in a row: wait a few minutes. Going back to the original is always possible.",
   "idn_errore": "Discord did not accept the change. Try again later.",
-  "setup_bot_identita": "The name and logo of these bots in your server are chosen with /admin-bot setup identita-bot (music bots stay the same)."
+  "setup_bot_identita": "The name and logo of these bots in your server are chosen with /admin-bot setup identita-bot (music bots stay the same).",
+  "top_settimanale_attiva": "The weekly top 10 will be posted every Monday in {mention}.",
+  "top_settimanale_spenta": "Weekly top 10 turned off.",
+  "top_settimanale_non_era_attiva": "The weekly top 10 was not on.",
+  "risp_stato_canale_bot": "\n- Bot channel: **{canale}** (outside it, replies are private) · commands: **{comandi}**",
+  "risp_canale_non_valido": "The channel is not valid.",
+  "risp_comando_non_valido": "Write commands like \"fun dado\" or \"giochi\", separated by commas (no \"/\").",
+  "risp_troppi_comandi": "At most 25 commands.",
+  "sfondo_pronto_sconosciuto": "That background does not exist: pick one from the list that appears as you type.",
+  "voicetemp_azione_non_consentita": "The server has removed this action from your role.",
+  "voicetemp_azione_sconosciuta": "Invalid action: pick one from the list that appears as you type.",
+  "voicetemp_troppi_ruoli_vietati": "You can block at most 10 roles for each action.",
+  "voicetemp_azione_serve_ruolo": "To change an action, choose both the action and the role.",
+  "voicetemp_azione_ruolo_salvata": "The role {ruolo} {stato} the action \"{azione}\" on its own voice channel.",
+  "voicetemp_azione_puo": "can do",
+  "voicetemp_azione_non_puo": "cannot do"
 }

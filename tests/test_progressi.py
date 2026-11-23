@@ -806,3 +806,20 @@ async def test_il_comando_dello_staff_accende_spegne_e_fissa_l_obiettivo(mondo, 
     i3 = _interazione()
     await cog.progressi_staff.callback(cog, i3, None, None)  # senza opzioni: dice com'è
     assert "spenti" in i3.response.send_message.await_args.args[0] and "400" in i3.response.send_message.await_args.args[0]
+
+
+# LIV-091
+@pytest.mark.asyncio
+async def test_xp_globale_somma_gli_xp_di_tutti_i_server_e_da_un_livello(repo, clean_db):
+    from core.leveling_logic import level_for_xp
+
+    await clean_db.execute(
+        "INSERT INTO leveling_totals (guild_id, user_id, xp_total, level) VALUES ($1, $2, 500, 4), ($3, $2, 900, 9), ($4, $2, 0, 0)",
+        SERVER, A, SERVER + 1, SERVER + 2,
+    )
+    xp, livello = await repo.xp_globale(A)
+    assert xp == 1400 and livello == level_for_xp(1400)
+    assert await repo.xp_globale(A + 1) == (0, 0)
+    testo = scrivi_profilo(ProfiloGlobale(server=2, livello_massimo=9, record_serie=0, traguardi=0, xp_totale=1400, livello_globale=livello))
+    assert "**1400**" in testo and f"**{livello}**" in testo
+    assert "XP globali" not in scrivi_profilo(ProfiloGlobale(server=1, livello_massimo=1, record_serie=0, traguardi=0))

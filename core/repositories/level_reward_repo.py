@@ -1,8 +1,8 @@
 """
 core/repositories/level_reward_repo.py
 ==========================================
-Ruoli-premio per livello raggiunto (SPEC.md §15.13, LIV-042, LIV-047). Fino a tre
-ruoli per livello, con avviso in DM facoltativo. Cumulativo, non
+Ruoli-premio per livello raggiunto (SPEC.md §15.13, LIV-042, LIV-047, LIV-046). Fino a tre
+ruoli per livello, con avviso in DM facoltativo e, a scelta, un livello vocale minimo (LIV-046). Cumulativo, non
 esclusivo: un utente che sale di livello riceve OGNI ruolo-premio
 configurato fino al suo nuovo livello che non ha già — non solo
 quello più alto. Coerente con l'aspettativa comune di questo tipo di
@@ -28,6 +28,7 @@ class LevelReward:
     role_id: int
     created_at: datetime
     avvisa_dm: bool = False
+    livello_vocale: int = 0  # LIV-046: 0 = basta il livello totale; altrimenti serve anche questo livello vocale
 
 
 async def run_migrations(pool: asyncpg.Pool) -> None:
@@ -64,10 +65,11 @@ class LevelRewardRepository:
             role_id=row["role_id"],
             created_at=row["created_at"],
             avvisa_dm=row["avvisa_dm"],
+            livello_vocale=row["livello_vocale"] if "livello_vocale" in row.keys() else 0,
         )
 
     async def add_reward(
-        self, guild_id: int, level_threshold: int, role_id: int, avvisa_dm: bool = False
+        self, guild_id: int, level_threshold: int, role_id: int, avvisa_dm: bool = False, livello_vocale: int = 0
     ) -> int | None:
         """
         Aggiunge un ruolo al livello (LIV-042: al massimo tre per livello). Se il ruolo c'è già
@@ -82,9 +84,9 @@ class LevelRewardRepository:
                     str(guild_id),
                 )
                 riga = await conn.fetchrow(
-                    "UPDATE level_reward_roles SET avvisa_dm = $4 "
+                    "UPDATE level_reward_roles SET avvisa_dm = $4, livello_vocale = $5 "
                     "WHERE guild_id = $1 AND level_threshold = $2 AND role_id = $3 RETURNING id",
-                    guild_id, level_threshold, role_id, avvisa_dm,
+                    guild_id, level_threshold, role_id, avvisa_dm, livello_vocale,
                 )
                 if riga is not None:
                     return riga["id"]
@@ -95,9 +97,9 @@ class LevelRewardRepository:
                 if presenti >= MAX_RUOLI_PER_LIVELLO:
                     return None
                 return await conn.fetchval(
-                    "INSERT INTO level_reward_roles (guild_id, level_threshold, role_id, avvisa_dm) "
-                    "VALUES ($1, $2, $3, $4) RETURNING id",
-                    guild_id, level_threshold, role_id, avvisa_dm,
+                    "INSERT INTO level_reward_roles (guild_id, level_threshold, role_id, avvisa_dm, livello_vocale) "
+                    "VALUES ($1, $2, $3, $4, $5) RETURNING id",
+                    guild_id, level_threshold, role_id, avvisa_dm, livello_vocale,
                 )
 
     async def remove_reward(self, reward_id: int, guild_id: int) -> bool:
@@ -114,6 +116,12 @@ class LevelRewardRepository:
             guild_id,
         )
         return [self._row_to_reward(r) for r in rows]
+
+    async def ha_requisiti_vocali(self, guild_id: int) -> bool:
+        """LIV-046: il server ha almeno un ruolo premio che chiede anche un livello vocale?"""
+        return bool(await self._pool.fetchval(
+            "SELECT EXISTS (SELECT 1 FROM level_reward_roles WHERE guild_id = $1 AND livello_vocale > 0)", guild_id
+        ))
 
     async def get_rewards_up_to_level(self, guild_id: int, level: int) -> list[LevelReward]:
         """Tutti i ruoli-premio con soglia <= level — CUMULATIVO,

@@ -421,16 +421,18 @@ class LevelingRepository:
 
                 await conn.execute(
                     """
-                    INSERT INTO leveling_totals (guild_id, user_id, xp_total, level, last_text_xp_at)
-                    VALUES ($1, $2, $3, $4, $5)
+                    INSERT INTO leveling_totals (guild_id, user_id, xp_total, level, last_text_xp_at, xp_testo)
+                    VALUES ($1, $2, $3, $4, $5, $6)
                     ON CONFLICT (guild_id, user_id) DO UPDATE
-                        SET xp_total = $3, level = $4, last_text_xp_at = $5
+                        SET xp_total = $3, level = $4, last_text_xp_at = $5,
+                            xp_testo = leveling_totals.xp_testo + $6
                     """,
                     guild_id,
                     user_id,
                     xp_after,
                     new_level,
                     now,
+                    amount,
                 )
                 await self._add_period_activity(conn, guild_id, user_id, amount, 0)
 
@@ -517,7 +519,7 @@ class LevelingRepository:
                         risultati[user_id] = None
                         scritture.append(
                             (guild_id, user_id, xp_before, level_for_xp(xp_before, tetto, formula), 0,
-                             canale, stored_consecutive, minutes_today, 0)
+                             canale, stored_consecutive, minutes_today, 0, 0)
                         )
                         continue
 
@@ -536,7 +538,8 @@ class LevelingRepository:
                     scritture.append(
                         (guild_id, user_id, xp_after, new_level, result.coins_granted,
                          canale, result.new_consecutive_minutes, result.new_minutes_today,
-                         1 if result.xp_granted > 0 else 0)  # LIV-059: minuti che contano
+                         1 if result.xp_granted > 0 else 0,  # LIV-059: minuti che contano
+                         result.xp_granted)  # LIV-013: XP da vocale
                     )
                     risultati[user_id] = VoiceMinuteGrant(
                         xp_granted=result.xp_granted,
@@ -551,8 +554,8 @@ class LevelingRepository:
                     INSERT INTO leveling_totals
                         (guild_id, user_id, xp_total, level, coins_total,
                          voice_channel_id, voice_consecutive_minutes,
-                         voice_minutes_today, voice_minutes_total, voice_activity_date)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::date)
+                         voice_minutes_today, voice_minutes_total, xp_vocale, voice_activity_date)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::date)
                     ON CONFLICT (guild_id, user_id) DO UPDATE
                         SET xp_total = EXCLUDED.xp_total,
                             level = EXCLUDED.level,
@@ -562,6 +565,7 @@ class LevelingRepository:
                             voice_minutes_today = EXCLUDED.voice_minutes_today,
                             voice_minutes_total = leveling_totals.voice_minutes_total
                                 + EXCLUDED.voice_minutes_total,
+                            xp_vocale = leveling_totals.xp_vocale + EXCLUDED.xp_vocale,
                             voice_activity_date = EXCLUDED.voice_activity_date
                     """,
                     [riga + (today,) for riga in scritture],
@@ -1141,6 +1145,24 @@ class LevelingRepository:
             "SELECT user_id, voice_minutes_total AS amount FROM leveling_totals "
             "WHERE guild_id = $1 AND voice_minutes_total > 0 "
             "ORDER BY voice_minutes_total DESC, user_id LIMIT $2",
+            guild_id, limit,
+        )
+        return [LeaderboardEntry(r["user_id"], r["amount"]) for r in rows]
+
+    async def xp_vocale(self, guild_id: int, user_id: int) -> int:
+        """LIV-013, LIV-046: gli XP presi in vocale da un membro (0 se non ne ha)."""
+        return int(await self._pool.fetchval(
+            "SELECT xp_vocale FROM leveling_totals WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
+        ) or 0)
+
+    async def top_xp_tipo(self, guild_id: int, tipo: str, limit: int = 10) -> list[LeaderboardEntry]:
+        """LIV-013: classifica degli XP presi con i messaggi (`testo`) o in vocale (`vocale`), di sempre."""
+        colonna = {"testo": "xp_testo", "vocale": "xp_vocale"}.get(tipo)
+        if colonna is None:
+            raise ValueError(f"Tipo di XP sconosciuto: {tipo}")
+        rows = await self._pool.fetch(
+            f"SELECT user_id, {colonna} AS amount FROM leveling_totals "  # colonna scelta da una tabella fissa
+            f"WHERE guild_id = $1 AND {colonna} > 0 ORDER BY {colonna} DESC, user_id LIMIT $2",
             guild_id, limit,
         )
         return [LeaderboardEntry(r["user_id"], r["amount"]) for r in rows]

@@ -19,6 +19,8 @@ from discord.ext import commands
 
 from cogs.leveling._pagine import taglia
 from cogs.leveling.leveling import _comando_rifiutato
+from core.automod_parole_logic import trova
+from core.automod_parole_opzioni import filtro_del_server
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.profile_logic import (
     CATALOGO,
@@ -89,6 +91,13 @@ class ProfilesCog(CogConGruppi, commands.Cog):
                 )
                 return
             bio = None if cancella_presentazione else pulisci_bio(presentazione or "")
+            if bio:  # LIV-090: la frase passa dal filtro delle parole vietate del server
+                filtro, _ = await filtro_del_server(guild.id)
+                if trova(bio, filtro) is not None:
+                    await interaction.response.send_message(
+                        "❌ Questa presentazione contiene parole che il server non permette.", ephemeral=True
+                    )
+                    return
             await profile_repo.set_bio(guild.id, interaction.user.id, bio)
             nota = "✅ Presentazione salvata." if bio else "✅ Presentazione tolta."
 

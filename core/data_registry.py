@@ -581,6 +581,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("guild_premium_status", "Scadenza del premium del server", colonna_server="guild_id",
        server="conserva"),
     _t("monthly_winners_config", "Annuncio dei vincitori del mese", colonna_server="guild_id"),
+    _t("top_settimanale_conf", "Canale della top 10 della settimana (LIV-061)", colonna_server="guild_id"),
     # ---------------------------------------------------------------- clan
     _t("clan_treasury_ledger", "Movimenti della tesoreria del clan",
        colonne_utente=("user_id",), utente="anonimizza", anonimizza=(("user_id", "NULL"),), esporta=True,

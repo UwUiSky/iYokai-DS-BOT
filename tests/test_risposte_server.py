@@ -222,3 +222,61 @@ async def test_pannelli_permanenti_e_sondaggi_restano_pubblici_e_non_si_cancella
     invio.reset_mock()
     await rs.RispostaServer(interazione, regole).send_message("pagine", view=discord.ui.View(timeout=60))
     assert invio.await_args.kwargs.get("ephemeral") is True  # una vista che scade segue la regola
+
+
+# CFG-011
+def test_fuori_dal_canale_dei_bot_la_risposta_e_privata_solo_per_i_comandi_scelti():
+    base = rs.Risposte(canale_bot=77)
+    assert base.privata_per(77, "fun dado") is False  # nel canale giusto
+    assert base.privata_per(78, "fun dado") is True  # altrove: tutti i comandi
+    assert base.privata_per(None, "fun dado") is True
+    scelti = rs.Risposte(canale_bot=77, comandi_canale_bot=("fun", "giochi gioca"))
+    assert scelti.privata_per(78, "fun dado") is True  # il gruppo intero
+    assert scelti.privata_per(78, "giochi gioca") is True
+    assert scelti.privata_per(78, "giochi quiz avvia") is False  # un altro percorso del gruppo
+    assert scelti.privata_per(78, "funzione") is False  # «fun» non è un prefisso di «funzione»
+    assert rs.Risposte().privata_per(78, "fun dado") is False
+    assert rs.Risposte(effimere=True).privata_per(77, "x") is True
+    assert rs.Risposte(canale_bot=77).di_base is False
+
+
+# CFG-011
+def test_i_comandi_del_canale_dei_bot_si_scrivono_con_nomi_semplici():
+    assert rs.comandi_da_testo("/fun dado, giochi;\nFun   Dado") == ["fun dado", "giochi"]
+    assert rs.comandi_da_testo("") == []
+    for brutto in ("fun dado!", "a b c d", "<@1>"):
+        with pytest.raises(rs.RispostaNonValida):
+            rs.comandi_da_testo(brutto)
+    with pytest.raises(rs.RispostaNonValida):
+        rs.comandi_da_testo(",".join(f"c{i}" for i in range(26)))
+
+
+# CFG-011
+async def test_la_risposta_diventa_privata_fuori_dal_canale_dei_bot(monkeypatch):
+    invio = AsyncMock()
+    monkeypatch.setattr(InteractionResponse, "send_message", invio)
+    monkeypatch.setattr(discord.Webhook, "send", invio)
+    regole = rs.Risposte(canale_bot=77)
+    fuori = MagicMock(channel_id=78, application_id=1, token="t")
+    fuori.command.qualified_name = "fun dado"
+    assert rs.applica_a_interazione(fuori, regole) is True
+    await fuori._cs_response.send_message("ciao", ephemeral=False)
+    assert invio.await_args.kwargs["ephemeral"] is True
+    await fuori._cs_followup.send("ancora", ephemeral=False)
+    assert invio.await_args.kwargs["ephemeral"] is True
+    dentro = MagicMock(channel_id=77, application_id=1, token="t")
+    dentro.command.qualified_name = "fun dado"
+    rs.applica_a_interazione(dentro, regole)
+    await dentro._cs_response.send_message("ciao", ephemeral=False)
+    assert invio.await_args.kwargs["ephemeral"] is False
+
+
+# CFG-011
+async def test_il_canale_dei_bot_si_salva_e_si_toglie(db_pronto):
+    await rs.imposta_risposte(910, canale_bot=77, comandi_canale_bot=["fun"], changed_by=1, premium=False)
+    letto = await rs.leggi_risposte(910)
+    assert (letto.canale_bot, letto.comandi_canale_bot) == (77, ("fun",))
+    await rs.imposta_risposte(910, canale_bot=None, comandi_canale_bot=[], changed_by=1, premium=False)
+    assert (await rs.leggi_risposte(910)).canale_bot is None
+    with pytest.raises(rs.RispostaNonValida):
+        await rs.imposta_risposte(910, canale_bot=-5, changed_by=1, premium=False)

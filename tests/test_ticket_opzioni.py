@@ -202,6 +202,7 @@ async def test_reperibile_si_accende_e_si_spegne_solo_per_lo_staff():
     assert await ticket_opzioni_repo.reperibili(ID_SERVER) == []
 
 
+# TKT-038
 # ---------------------------------------------------------------- apertura con le opzioni
 async def test_l_apertura_usa_nome_permessi_osservatori_squadra_reperibili_e_ruoli_durante():
     s = Server()
@@ -229,6 +230,7 @@ async def test_l_apertura_usa_nome_permessi_osservatori_squadra_reperibili_e_ruo
     assert t.ruoli_dati == (RUOLO_VIP,)
     utente.send.assert_awaited_once()
     assert "Ciao" in utente.send.call_args.args[0]
+    canale.send.return_value.pin.assert_awaited_once()  # TKT-038: il primo messaggio è fissato
 
 
 async def test_un_reperibile_che_non_e_piu_staff_non_entra_nei_ticket_nuovi():

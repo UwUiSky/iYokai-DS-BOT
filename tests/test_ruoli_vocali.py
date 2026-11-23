@@ -16,6 +16,7 @@ from core.ruoli_vocali_logic import MAX_RUOLI_VOCALI, cambio_ruoli, correzioni
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member, fake_role
 
 
+# VOC-021
 def test_RUO_044_cambio_di_canale_da_e_toglie_il_ruolo():
 
 
@@ -76,6 +77,7 @@ def _stato(canale_id):
     return MagicMock(channel=MagicMock(id=canale_id) if canale_id else None)
 
 
+# VOC-021
 @pytest.mark.asyncio
 async def test_RUO_044_entrare_da_il_ruolo_e_uscire_lo_toglie(monkeypatch):
     # RUO-044

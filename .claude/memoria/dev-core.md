@@ -1,19 +1,16 @@
 # Memoria di dev-core
 
 ## Aggiornata
-18/11/2026 · ramo `feat/r1cfg` · #122 catalogo configurazione (D96): fatte 013, 014, 033, 012, 022, 023, 025, 026, 029, 034, 035, 043 (+ provate 007, 028, 031, 037, 042, 045).
+23/11/2026 · ramo `feat/r1doc` · controllo delle 89 voci solo nei documenti (D119): 44 esistono o fatte, 10 non fatte con motivo, 35 da fare (18 «grandi»).
 
 ## In corso
-- r1dep (#161) pronto, ramo `feat/r1dep`: dipendenze all'ultima stabile (requirements*.txt e .lock). Smoke da fare dopo l'unione: tree_invariants, cog_manager, immagini/allegati, pannello web, musica, migrazioni, data_registry. Python resta 3.11 (wavelink dichiara fino a 3.11). Venv di prova `.venv-dep` (non committato).
-- r1cfg pubblicato (Refs #122). Tocca `main.py` (on_guild_join), `core/database.py` (ensure_guild_exists con lingua), `core/blacklist_tree.py`, `core/premium.py`, import/export: serve la suite completa dell'orchestratore. Smoke da fare dopo l'unione (risposte, politica, permessi_vista, premium_posti, config_trasloco, import, migrazione 0720, data_registry, tree_invariants, i18n). Restano per #122: CFG-024 (con dev-moderazione), 015/016/017/044 (altre aree), 036/039/040/041 (scelte dell'owner), 001/002/003/006/027 (dev-web), 032 (marchio: resincronizza e registro errori).
-- r15immagini pubblicato. Smoke da fare dopo l'unione (test_immagini_*, tree_invariants, data_registry, migrazioni 0504-0506, i18n, config_import). Da fare dopo il merge col filone A: `/admin-automod immagini` e aggancio a `core/automod_azioni.py` (oggi `cogs/automod/immagini.py::_applica` usa bot_roles/try_dm/post_to_mod_log).
-- r14lingue (D58) pubblicato. Smoke da fare dopo l'unione (i18n, translator, command_sync, tree_invariants, riferimenti, cog utility/lingua).
-- r14lunghezze pubblicato. Smoke da fare dopo l'unione (tree_invariants, cog feed_alerts, fun, mod-ban, messaggi programmati, radio).
-- Restano #67: 11.11 (hash token webhook, migrazione, F5), 11.12 (F13). #70: 14.10, 14.12, 14.13, 14.14 (non piccoli).
-- r13ruoli chiuso e pubblicato. Smoke da fare dopo l'unione (0488, command_permissions/access/groups/policy).
+- r1doc (ramo `feat/r1doc`, da unire): tocca `core/migrations/0850-0852`, `core/data_registry.py`, `core/risposte_server.py`, `core/monthly_winners_announcer.py`, `cogs/leveling/leveling.py`, `cogs/voice_temp/voice_temp.py`, `cogs/music/player.py`. Smoke da fare dopo l'unione: tree_invariants (peso `admin-livelli`), risposte_server, config_import, leveling_repo/classifica/card/settings, progressi, profiles, top_settimanale, voice_azioni_ruoli, music_queue_cmds, citazioni, user_app, data_registry, migrazioni 0850-0852, i18n.
+- Prossimo passo r1doc (tabella in `CONTROLLO_AREE_CHIUSE.md`): ECO-006, ECO-050, ECO-160, VOC-014, MUS-016, RUO-005, CFG-044, UTL-111, SIC-021 (medie); poi i «grandi»: reputazione LIV-076…088, modulo voto (LIV-019, ECO-048/049, CFG-039), SIC-016, UTL-024, TKT-073/088, ECO-080.
+- Restano da giri vecchi (smoke già in coda): r1dep (#161), r1cfg (#122: CFG-024 con dev-moderazione, 036/039/040/041 scelte dell'owner, 001/002/003/006/027 dev-web, 032 marchio), r15immagini (`/admin-automod immagini` da agganciare a `core/automod_azioni.py`), r14lingue, r14lunghezze, r13ruoli. #67: 11.11, 11.12. #70: 14.10, 14.12-14.14.
 - Rimandato: persistenza/pannello dei livelli (D57), permessi per ruolo dal pannello (OAuth), nascondere `/founder` agli admin.
 
 ## Fatto
+- r1doc (D119): LIV-013 (0850 `xp_testo`/`xp_vocale`), 046 (0852), 053 (`core/sfondi_pronti.py`), 061 (0851, `tick_settimanale`), 090, 091; CFG-011; VOC-017 (`core/voice_azioni_ruoli.py`); MUS-043; FUN-030; AI-022; 33 voci già fatte segnate col codice nel test.
 - r1cfg (D96, #122): `core/risposte_server.py` (+ `config_risposte.py`), `policy_ruoli_richiesti` in `command_policy.py` (+ `politica ruolo-richiesto`), `core/permessi_vista.py` (+ `config_permessi.py`), `lingua_iniziale_del_server`, `core/premium_posti_service.py` (0720, `/owner premium grant utente: posti:`, `premium assegna|togli-posto`), `core/config_trasloco.py` (import senza ID stranieri).
 - r15immagini (D62, #153): `core/immagini_*` (byte, quarantena, sandbox un processo per immagine, coda 100/20, dHash, QR zxing-cpp 3.1.1, libreria trappola D39, pipeline, opzioni D16, azioni), cog `cogs/automod/immagini.py`, `/owner immagini-trappola`, 0504-0506, `deploy/systemd/iyokai-sandbox.service`, `docs/immagini-sandbox.md`, testi `amimg_*`.
 - r14lingue (D58, #77): `locales/<lingua>/testi.json`+`comandi.json` (10 lingue Discord, 8 vuote), ripiego lingua->en-US->it, `core/lingue_controllo.py` + 2 script, bottone «Chiedi una lingua» in `/utility lingua` (`core/lingua_richieste.py`), `aiuto` in comandi.json letto da cerca-comando, peso 8000 su tutte le lingue.
@@ -47,6 +44,8 @@
 - Viste con select: `interaction.data = {"values": [...]}`; `fake_member.premium_since` va messo a None.
 - Rifiuto di accesso = `AccessoNegato` risposto da `handle_app_command_error`; il defer pubblico lascia un `loading`.
 - Test a metà su due DB: `iyokai_wruoli` e `iyokai_wruoli2`.
+- Il codice di una voce nel test conta come «fatta» per `scripts/stato_catalogo.py`: mai metterlo su una voce non fatta. Una descrizione di opzione ≤ 95 caratteri (test tree_invariants). Scelte lunghe: autocompletamento, non `choices` (pesa nel gruppo, D56).
+- Con tanti test su DB condiviso una prova di 25 file dura 30+ minuti: lanciarla in background e scrivere i documenti nel frattempo; non attendere con `pgrep -f` (si trova da solo).
 
 ## Aperto
 - Lingue: tetto richiesta giornaliero in memoria (si azzera al riavvio); lingua personale ammette solo it/en finché una migrazione non allarga il CHECK di `user_language`; `aiuto` vuoto in tutte le lingue.

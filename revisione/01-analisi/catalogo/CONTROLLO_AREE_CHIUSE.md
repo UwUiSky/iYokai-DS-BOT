@@ -358,3 +358,98 @@ Giro r2bkp (issue #132). Il codice AI passa sempre dalla porta unica `core/ai_se
 | AI-010 | sì (`/admin-ai lore`) | sì (tetto 1000 caratteri come AI-R-051, non 2000: D108; dati personali tolti dalle istruzioni) | nessuna (codice nel test) | cogs/ai/config.py `lore`, core/ai_impostazioni.py `imposta_lore`; tests/test_ai_cogs.py::test_limiti_privacy_lore_vietate, tests/test_ai_servizio.py::test_lore_e_dati_personali |
 | AI-017 | in parte (server e canale; menzione, bandiere, moderazione) | sì | completata: `/admin-ai interruttore` per scrivi, chiedi, traduci, riassumi, spiega, stile, immagina, ricerca, ticket, giochi (0812); tutto resta spento finché non si accende l'AI | core/ai_servizio.py `controlla_accesso`, core/ai_impostazioni.py `imposta_interruttore`; tests/test_ai_cogs.py::test_interruttore_spegne_una_funzione_per_volta, tests/test_ai_servizio.py::test_spenta_finche_non_ce_il_consenso |
 
+## Voci solo nei documenti
+
+Giro r1doc (D119, 23/11/2026): le 89 voci citate solo nei documenti, controllate una per una. Esito: **44** esistono o sono state fatte (con il codice della voce nel test), **10** non fatte con un motivo che regge, **35** ancora da fare, di cui **18** segnate «da fare: grande». Le voci non fatte con un motivo che «tocca file di altri» o «non c'era tempo» sono state riprese (D18).
+
+| codice | esiste | corretta | azione | file e test |
+|---|---|---|---|---|
+| LIV-013 | in parte (un solo totale) | sì | realizzata (0850): `xp_testo` e `xp_vocale` a parte, `/level leaderboard metric:XP da messaggi/XP da vocale` con il livello di ogni classifica; il passato resta nel totale (D71) | core/repositories/leveling_repo.py `top_xp_tipo`; tests/test_leveling_repo.py::test_xp_di_testo_e_di_vocale_hanno_due_classifiche_e_due_livelli, tests/test_leveling_classifica_e_calcolo.py::test_la_classifica_degli_xp_da_messaggi_e_da_vocale_mostra_il_livello |
+| LIV-019 | no | n/d | non fatta: serve un elenco di bot dove iYokai non è (D86, ECO-048). **Conflitto**: D71 e D72 chiedono il codice pronto e spento, oggi non c'è. Da fare: grande (modulo «voto» unico per LIV-019, ECO-048, ECO-049, CFG-039; D119) | — |
+| LIV-020 | sì (`/admin-livelli escludi`) | sì | codice nel test | cogs/leveling/leveling.py `impostazioni_escludi`; tests/test_leveling_settings.py::test_canale_escluso_non_da_xp, test_ruolo_escluso_non_da_xp, test_comando_escludi_aggiunge_e_poi_toglie |
+| LIV-026 | sì (`/admin-livelli moltiplicatore`, modo somma o massimo) | sì | codice nel test | core/leveling_logic.py `moltiplicatore_xp`; tests/test_leveling_settings.py::test_moltiplicatori_si_sommano_oppure_vale_il_piu_alto, test_moltiplicatore_modalita_massimo |
+| LIV-032 | no (annuncio solo di testo) | n/d | da fare: media (annuncio dentro un embed salvato, NF-17) | — |
+| LIV-033 | no | n/d | da fare: media (variante piccola della rank card allegata, Pillow in sandbox) | — |
+| LIV-035 | sì (`livello_minimo`) | sì | codice nel test | core/leveling_logic.py `deve_annunciare`; tests/test_leveling_settings.py::test_deve_annunciare |
+| LIV-036 | sì (`ogni`) | sì (con salti di più livelli) | codice nel test | tests/test_leveling_settings.py::test_deve_annunciare |
+| LIV-037 | sì (`solo_premi`) | sì | codice nel test | tests/test_leveling_settings.py::test_deve_annunciare |
+| LIV-046 | no | n/d | realizzata (0852): `/admin-ruoli premio aggiungi livello_vocale:`; il ruolo arriva solo con il livello totale e il livello vocale, e si toglie se il livello vocale scende; il ricontrollo parte a ogni minuto vocale che dà XP (al massimo ogni 10 minuti per membro) | core/repositories/level_reward_repo.py, cogs/leveling/leveling.py `_grant_level_rewards`; tests/test_leveling_gestione_staff.py::test_il_ruolo_con_livello_vocale_arriva_solo_con_tutti_e_due_i_livelli, tests/test_level_reward_repo.py::test_il_livello_vocale_del_ruolo_premio_si_salva_e_si_legge |
+| LIV-053 | no | n/d | realizzata: otto sfondi disegnati da Pillow (nessun file nel repository), scelti per completamento in `/level rank sfondo_pronto:` e `/admin-livelli card sfondo_pronto:`; nessun peso in più nel gruppo | core/sfondi_pronti.py; tests/test_sfondi_pronti.py, tests/test_leveling_card_b6.py::test_liv053_sfondo_pronto_del_server_e_della_card_personale |
+| LIV-061 | in parte (podio del mese) | sì | realizzata (0851): `/admin-economia annunci vincitori-set settimanale:sì` e `vincitori-off settimanale:sì`; top 10 XP della settimana appena finita, una volta sola, menzioni spente | core/top_settimanale_logic.py, core/repositories/top_settimanale_repo.py, core/monthly_winners_announcer.py `tick_settimanale`; tests/test_top_settimanale.py |
+| LIV-065 | sì (`/admin-livelli membro azione:livello`) | sì | codice nel test | tests/test_leveling_gestione_staff.py::test_xp_dopo_modifica, test_comando_xp_risponde_dopo_defer_e_allinea_i_ruoli |
+| LIV-066 | sì (`azione:xp_nel_livello`) | sì (il livello non cambia) | codice nel test | tests/test_leveling_gestione_staff.py::test_xp_dopo_modifica |
+| LIV-067 | sì (`azione:azzera`) | sì | codice nel test | tests/test_leveling_gestione_staff.py::test_xp_dopo_modifica |
+| LIV-072 | no | n/d | da fare: media (premium, D71): lettura della classifica pubblica solo se i termini lo permettono, altrimenti file | — |
+| LIV-076 | no | n/d | da fare: grande (modulo reputazione, dare un punto): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
+| LIV-077 | no | n/d | da fare: grande (modulo reputazione, toglierlo): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
+| LIV-078 | no | n/d | da fare: grande (modulo reputazione, «grazie @utente»): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
+| LIV-079 | no | n/d | da fare: grande (modulo reputazione, vedere reputazione e posizione): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
+| LIV-080 | no | n/d | da fare: grande (modulo reputazione, classifica): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
+| LIV-081 | no | n/d | da fare: grande (modulo reputazione, registro): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
+| LIV-082 | no | n/d | da fare: grande (modulo reputazione, staff imposta o cancella): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
+| LIV-083 | no | n/d | da fare: grande (modulo reputazione, nome dei punti): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
+| LIV-084 | no | n/d | da fare: grande (modulo reputazione, pausa e massimo): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
+| LIV-085 | no | n/d | da fare: grande (modulo reputazione, ruoli che danno o ricevono): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
+| LIV-086 | no | n/d | da fare: grande (modulo reputazione, ruoli premio a soglie): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
+| LIV-087 | no | n/d | da fare: grande (modulo reputazione, azzerare tutto il server): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
+| LIV-088 | no | n/d | da fare: grande (modulo reputazione, punti dei moderatori (coperta da LIV-082, D71)): due gruppi nuovi, 3 tabelle, 13 voci insieme; progetto in D119 | — |
+| LIV-089 | no (testo in `/level progressi sezione:globale`) | sì per il testo | da fare: media (immagine del profilo globale, D57) | — |
+| LIV-090 | sì (`/level profilo presentazione:`, 140 caratteri) | no: non passava dal filtro delle parole vietate | corretta: la presentazione passa dal filtro del server | cogs/leveling/profiles.py; tests/test_profiles.py::test_la_presentazione_passa_dal_filtro_delle_parole_vietate |
+| LIV-091 | in parte (livello più alto e server, senza somma) | sì | completata: `XP globali` e livello globale nel profilo globale personale, solo XP positivi | core/repositories/progressi_repo.py `xp_globale`; tests/test_progressi.py::test_xp_globale_somma_gli_xp_di_tutti_i_server_e_da_un_livello |
+| AI-012 | sì (`/owner ai modello`: modello, fascia, tipi, tetto di lunghezza) | sì | codice nel test | cogs/ai/config.py `modello`; tests/test_ai_scelte_owner.py::test_modello_fascia_e_tipi_si_applicano_a_caldo, test_tetto_di_lunghezza_limita_le_risposte |
+| AI-016 | sì (lingua della richiesta riconosciuta e passata al modello) | in parte: segue la lingua del testo, non quella del server (D1, F8) | codice nel test; la lingua del server resta da decidere con F8 | core/ai_guardrail_logic.py `componi_messaggi`; tests/test_ai_guardrail_logic.py::test_testo_utente_separato_dalle_istruzioni |
+| AI-022 | in parte (c'era per i canali con traduzione automatica) | sì | completata: il menu «Traduci» di iYokai App unisce i messaggi di fila dello stesso autore (tetti 6 messaggi e 1.500 caratteri) | core/traduzione_gruppo_logic.py `unisci_successivi`, cogs/user_app/messaggi.py; tests/test_voci_solo_documenti_ai.py |
+| AI-023 | sì (completamento a 25) | sì | test aggiunto | cogs/ai/_comune.py `completa_lingue`; tests/test_voci_solo_documenti_ai.py::test_elenco_delle_lingue_si_cerca_per_nome_e_per_codice_con_tetto_25 |
+| AI-025 | sì (`/admin-ai costruisci`) | sì (conferma solo di chi ha chiesto, motivo nel registro) | test aggiunto | cogs/ai/config.py `_CostruisciView`; tests/test_voci_solo_documenti_ai.py::test_costruisci_crea_solo_dopo_la_conferma_di_chi_l_ha_chiesto |
+| CFG-011 | no | n/d | realizzata: `/admin-bot config risposte canale_bot: comandi_canale_bot:`; fuori dal canale le risposte (anche i messaggi dopo il primo) diventano private; elenco di comandi o gruppi (massimo 25); import ed esportazione della configurazione | core/risposte_server.py; tests/test_risposte_server.py (4 test CFG-011), tests/test_config_import_validation.py |
+| CFG-015 | sì (alias dei tag, fino a 3 per tag) | sì | codice nel test | tests/test_tag_extra_r2utl.py::test_utl_009_alias_chiama_il_tag_e_ha_un_tetto |
+| CFG-016 | sì (canale scorciatoia di un tag, UTL-070) | sì | codice nel test | cogs/utility/inneschi.py; tests/test_inneschi_cog.py::test_utl_070_canale_scorciatoia_fa_partire_il_tag_con_il_testo |
+| CFG-017 | sì (`/admin-tag tag prefisso`) | sì | codice nel test | cogs/utility/custom_commands.py; tests/test_custom_commands.py::test_valida_prefisso, test_prefisso_per_server |
+| CFG-036 | no | n/d | non fatta: serve un account e una chiave Patreon dell'owner; resta la concessione a mano e i codici CFG-038 (D96). Il motivo regge | — |
+| CFG-039 | no | n/d | non fatta come voce a sé: serve la chiave di un sito di elenchi (D96); rientra nel modulo «voto» (D119). Il motivo regge finché iYokai non è su un elenco | — |
+| CFG-040 | in parte (tetti gratis/premium per funzione, es. dati dei tag 1.000 e 5.000) | sì | non fatta: piani e prezzi sono una scelta commerciale dell'owner (D96). Il motivo regge | — |
+| CFG-041 | in parte (concessione mensile o annuale senza prezzi) | sì | non fatta: prezzi e sconti sono una scelta commerciale dell'owner (D96). Il motivo regge | — |
+| CFG-044 | in parte (`/admin-ticket pannelli modulo-copia`) | sì per ciò che c'è | da fare: media (duplica per pannello e risposta pronta). Il motivo «tocca altre aree» non regge (D18) | tests/test_ticket_form*.py (modulo-copia) |
+| ECO-006 | no | n/d | da fare: media. Il motivo di D86 (volumi alti) non regge: si manda un riepilogo ogni minuto, non un messaggio per movimento | — |
+| ECO-048 | no | n/d | non fatta: il bot non è su nessun elenco (D86). **Conflitto**: D72 chiede il codice pronto e spento. Da fare: grande (modulo voto, D119) | — |
+| ECO-049 | no | n/d | come ECO-048 (dipende da quella) | — |
+| ECO-050 | no | n/d | da fare: media, premium (D72 lo vuole). Il motivo di D86 («da progettare con dev-core») non regge | — |
+| ECO-051 | no | n/d | da fare: media. Il motivo di D86 non è un divieto | — |
+| ECO-080 | no | n/d | da fare: grande (pagina del pannello web, NF-20). Il motivo «area di dev-web» non regge | — |
+| ECO-093 | no | n/d | da fare: media, con nome e grafica neutri come dice il catalogo (D86 «scelta prudente di non farla» non basta: D18) | — |
+| ECO-160 | in parte (`/owner blacklist-user-add` blocca tutto) | sì | da fare: media (blocco solo dell'economia con bottone di appello; `/owner` è pieno: va in `/admin-giochi` per il server). Il motivo «area di dev-core» non regge | — |
+| FUN-020 | sì (`/fun ship tema:amicizia`) | sì | codice nel test | tests/test_fun_piccoli.py::test_ship_amicizia_diversa_da_amore_e_simmetrica, test_ship_amicizia_titolo |
+| FUN-030 | no | n/d | realizzata: `/fun citazioni caso immagine:sì` (citazioni del server e famose), PNG disegnato fuori dal ciclo, senza avatar | cogs/utility/citazioni.py; tests/test_citazioni.py::test_caso_con_immagine_manda_un_png_e_non_il_testo, test_caso_famose_con_immagine_non_cerca_nel_server |
+| FUN-033 | sì (`/fun joke tema:chuck`) | sì | codice nel test | tests/test_fun_piccoli.py::test_chuck_in_italiano_e_nelle_scelte, test_joke_chuck |
+| FUN-063 | sì (`/fun scherzo`: spoiler, barra di caricamento, brindisi) | sì (Nitro finto scartato) | codice nel test | tests/test_fun_effetti.py::test_logica_scherzi, test_scherzi_nuovi_senza_ping |
+| FUN-136 | sì come alternativa (tag con `{lista:…}` che sceglie a caso un'immagine) | sì | codice nel test (D18: alternativa più vicina, i tag fanno già «azioni» del server) | core/tag_script_logic.py; tests/test_tag_script_logic.py::test_lista_caso_ripeti_con_rng_fisso |
+| FUN-138 | no | n/d | non fatta: il genere è un dato personale da non chiedere; le GIF restano neutre (scelta del catalogo e del disegno). Il motivo regge | — |
+| FUN-139 | sì (`/admin-bot politica comando` su `gif azione`) | sì | test aggiunto | core/command_policy.py; tests/test_voci_solo_documenti_varie.py::test_le_azioni_tra_utenti_si_spengono_con_la_politica_dei_comandi |
+| LOG-029 | no (c'è il registro del canale a ogni caso, MOD-051) | n/d | scelta aperta (D119): serve decidere se tenere il testo dei messaggi di un utente per 3 giorni. Non fatta finché l'owner non sceglie | — |
+| MOD-001 | sì come alternativa (`/mod-ban massa ban` con ID anche fuori dal server) | sì | codice nel test (D18) | cogs/moderation/actions.py `ban_massa`; tests/test_moderation_massa.py::test_ban_in_massa_anche_fuori_dal_server_e_salta_chi_non_si_tocca |
+| MOD-028 | sì (`/mod-casi avvisi togli`) | sì | codice nel test | tests/test_moderation_caso_note_warn.py::test_warn_togli_azzera_classifica |
+| MOD-029 | sì (`/mod-casi avvisi azzera`) | sì | codice nel test | tests/test_moderation_caso_note_warn.py::test_warn_togli_azzera_classifica |
+| MOD-042 | sì (`/mod-casi caso storico tipo:`) | sì | codice nel test | tests/test_moderation_caso_note_warn.py::test_storico_filtrato_per_tipo |
+| MUS-016 | no | n/d | da fare: media (filtro sul titolo delle ricerche YouTube, impostazione del server) | — |
+| MUS-043 | in parte (`playlist salva` + `esporta`) | sì | realizzata: `/music queue file:sì` allega `coda.txt` (titolo, autore, indirizzo http/https; niente nomi di chi ha chiesto; tetto 1 MB) | core/music_queue_logic.py `coda_come_testo`; tests/test_music_esporta_coda.py, tests/test_music_queue_cmds.py::test_queue_con_file_allega_la_coda_come_testo |
+| RUO-005 | no | n/d | da fare: media (sfondo trasparente e misure a scelta del benvenuto, tetto 2048 px) | — |
+| RUO-035 | sì (`/admin-ruoli auto aggiungi non_con:`) | sì (l'esclusione vince) | codice nel test | tests/test_catalogo_ruoli_gia_fatti.py::test_RUO_066_RUO_067_ruoli_ammessi_ed_esclusi_l_esclusione_vince |
+| SIC-016 | in parte (anti-nuke ricrea dalla cache; copia automatica ogni 4 ore: BKP-008) | sì per ciò che c'è | da fare: grande (usare l'ultima copia come fonte del ripristino) | — |
+| SIC-021 | no | n/d | da fare: media, sicurezza (codice mostrato una volta, salvato come hash, uso da `/owner`) | — |
+| SIC-045 | sì (`/utility privacy cancella` toglie le segnalazioni della rete, `utente=cancella`) | sì (i ban di sicurezza restano, D6) | test aggiunto | core/data_registry.py `rete_*`; tests/test_forget_user.py::test_chi_chiede_di_essere_dimenticato_esce_dalla_raccolta_della_rete |
+| TKT-038 | sì (opzione `fissa_primo`) | sì | codice nel test (asserzione aggiunta: il messaggio è fissato) | cogs/tickets/tickets.py; tests/test_ticket_opzioni.py::test_l_apertura_usa_nome_permessi_osservatori_squadra_reperibili_e_ruoli_durante |
+| TKT-073 | no | n/d | da fare: grande (chiave del proprietario del server cifrata, caricamento su Drive) | — |
+| TKT-088 | no | n/d | da fare: grande (servizio esterno con chiave del server, cache) | — |
+| UTL-024 | no (restano gli inneschi dei tag, che fanno parlare il bot) | n/d | da fare: grande (azioni da un elenco chiuso: dare o togliere un ruolo, scrivere; mai un comando qualsiasi) | — |
+| UTL-110 | no | n/d | non fatta, per scelta di sicurezza: `@everyone` e `@here` restano muti anche con «Menziona tutti»; si pinga un ruolo (D100, D12). Il motivo regge | — |
+| UTL-111 | no | n/d | da fare: media (poche azioni sicure, fino a 5 per server, con lo scheduler) | — |
+| UTL-121 | sì (`/admin-giveaway avvia` con più opzioni e i modelli) | sì | non fatta come finestra a 5 campi: l'alternativa fa di più (D100). Il motivo regge | — |
+| UTL-154 | sì (`/admin-messaggi fissi elenco`) | sì | codice nel test | cogs/utility/sticky_messages.py; tests/test_messaggi_auto.py::test_albero_auto_scrivi_fissi_elenco_e_limiti |
+| UTL-158 | sì (`/admin-moduli compleanni membro`) | sì (il membro può cambiarlo) | codice nel test | tests/test_orari_compleanni_promemoria.py::test_comando_staff_rifiuta_bot_e_date_impossibili, test_compleanno_registrato_dallo_staff_e_poi_dal_membro |
+| UTL-159 | sì (`/level compleanno mostra`) | sì | codice nel test | tests/test_orari_compleanni_promemoria.py::test_albero_nuovi_comandi_e_menu |
+| UTL-160 | sì (`/level compleanno prossimi`) | sì (riparte da gennaio, a pagine) | codice nel test | tests/test_orari_compleanni_promemoria.py::test_compleanni_prossimi_ripartono_da_gennaio_e_restano_a_pagine |
+| UTL-216 | no | n/d | non fatta: serve una ricerca web o video con chiave a quota (D100); si riprende con l'AI. Il motivo regge | — |
+| VOC-006 | sì (chat integrata del canale vocale di Discord) | sì | nessun lavoro: alternativa del catalogo (D18) | — |
+| VOC-014 | no | n/d | da fare: media (una stanza vuota di scorta per generatore, entro `/admin-vocali cap`) | — |
+| VOC-017 | no | n/d | realizzata: `/admin-vocali opzioni azione: ruolo: consenti:`; l'elenco dei ruoli vietati per azione sta nelle impostazioni del server (tetto 10 ruoli per azione); chi gestisce i canali non è mai fermato; vale anche per il pannello a bottoni | core/voice_azioni_ruoli.py, cogs/voice_temp/voice_temp.py; tests/test_voice_azioni_ruoli.py |
+| VOC-021 | sì (`/admin-ruoli vocale`) | sì | codice nel test (RUO-044) | cogs/utility/ruoli_vocali.py; tests/test_ruoli_vocali.py::test_RUO_044_cambio_di_canale_da_e_toglie_il_ruolo, test_RUO_044_entrare_da_il_ruolo_e_uscire_lo_toglie |

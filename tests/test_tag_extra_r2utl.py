@@ -48,6 +48,7 @@ async def test_utl_003_in_coda_aggiunge_senza_riscrivere_e_rispetta_il_tetto(rep
     assert await repo.aggiungi_in_coda(2, "regole", "a", ping_ruoli=False) is False  # un altro server
 
 
+# CFG-015
 @pytest.mark.asyncio
 async def test_utl_009_alias_chiama_il_tag_e_ha_un_tetto(repo):
     """UTL-009: fino a 3 nomi alternativi per tag, mai uguali a un tag o a un altro alias, per server."""

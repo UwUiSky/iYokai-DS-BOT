@@ -45,6 +45,7 @@ def test_fusi_completamento_entro_25():
     assert O.fuso_esiste("Europe/Rome") and not O.fuso_esiste("Marte/Olimpo")
 
 
+# UTL-160
 @pytest.mark.asyncio
 async def test_compleanni_prossimi_ripartono_da_gennaio_e_restano_a_pagine(clean_db):
     r = BirthdayRepository(pool_provider=lambda: clean_db)
@@ -56,6 +57,7 @@ async def test_compleanni_prossimi_ripartono_da_gennaio_e_restano_a_pagine(clean
     assert await r.conta(1) == 5
 
 
+# UTL-158
 @pytest.mark.asyncio
 async def test_compleanno_registrato_dallo_staff_e_poi_dal_membro(clean_db):
     r = BirthdayRepository(pool_provider=lambda: clean_db)
@@ -65,6 +67,7 @@ async def test_compleanno_registrato_dallo_staff_e_poi_dal_membro(clean_db):
     assert await clean_db.fetchval("SELECT inserito_da FROM birthdays WHERE user_id = 7") is None
 
 
+# UTL-158
 @pytest.mark.asyncio
 async def test_comando_staff_rifiuta_bot_e_date_impossibili(monkeypatch):
     c = bd.BirthdaysCog(MagicMock())
@@ -176,6 +179,7 @@ async def test_menu_orari_usa_il_fuso_dell_autore(monkeypatch):
     assert it2.response.send_message.await_args.kwargs["ephemeral"] is True
 
 
+# UTL-159
 @pytest.mark.asyncio
 async def test_albero_nuovi_comandi_e_menu():
     bot = ext.Bot(command_prefix="!", intents=discord.Intents.default())

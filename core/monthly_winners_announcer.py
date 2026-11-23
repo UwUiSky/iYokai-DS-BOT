@@ -2,7 +2,7 @@
 core/monthly_winners_announcer.py
 =====================================
 Servizio periodico dell'annuncio vincitori a fine mese (SPEC.md
-§15.11) — stesso pattern di core/feed_watcher.py: tasks.loop avviato
+§15.11) e della top 10 della settimana (LIV-061) — stesso pattern di core/feed_watcher.py: tasks.loop avviato
 una volta da main.py, non un Cog.
 
 Tick ogni ora: basta per annunciare entro la prima ora del nuovo mese,
@@ -29,6 +29,8 @@ from core.monthly_winners_logic import (
 )
 from core.repositories.leveling_repo import leveling_repo
 from core.repositories.monthly_winners_repo import monthly_winners_repo
+from core.repositories.top_settimanale_repo import top_settimanale_repo
+from core.top_settimanale_logic import POSIZIONI, da_annunciare, settimana_precedente, testo_top
 
 logger = logging.getLogger("iyokai.monthly_winners")
 
@@ -91,6 +93,32 @@ class MonthlyWinnersAnnouncer:
 
             await monthly_winners_repo.mark_announced(config.guild_id, periodo)
 
+    async def tick_settimanale(self, bot: commands.Bot, now: datetime | None = None) -> None:
+        """LIV-061: la top 10 della settimana appena finita, una volta sola per server."""
+        adesso = now or datetime.now(timezone.utc)
+        settimana = settimana_precedente(adesso)
+        for conf in await top_settimanale_repo.tutte():
+            if not da_annunciare(conf.ultima_annunciata, adesso):
+                continue
+            guild = bot.get_guild(conf.guild_id)
+            canale = guild.get_channel(conf.channel_id) if guild else None
+            if not isinstance(canale, discord.TextChannel):
+                logger.warning("Canale %s non raggiungibile per la top settimanale del server %s.", conf.channel_id, conf.guild_id)
+                await top_settimanale_repo.segna_annunciata(conf.guild_id, settimana)  # niente tentativi ogni ora
+                continue
+            top_xp = await leveling_repo.top_xp_period(conf.guild_id, limit=POSIZIONI, period=settimana)
+            embed = discord.Embed(
+                title=f"🏆 Top {POSIZIONI} della settimana {settimana}",
+                description=testo_top([(v.user_id, v.amount) for v in top_xp], "XP"),
+                color=discord.Color.gold(),
+            )
+            try:
+                await canale.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+            except discord.HTTPException:
+                logger.warning("Top settimanale non pubblicata nel server %s.", conf.guild_id)
+                continue  # un errore passeggero si riprova al tick dopo
+            await top_settimanale_repo.segna_annunciata(conf.guild_id, settimana)
+
     def start(self, bot: commands.Bot) -> None:
         if self._loop_task is not None:
             return
@@ -101,6 +129,10 @@ class MonthlyWinnersAnnouncer:
                 await self.tick(bot)
             except Exception:
                 logger.exception("Errore nel tick dell'annuncio mensile")
+            try:
+                await self.tick_settimanale(bot)
+            except Exception:
+                logger.exception("Errore nel tick della top settimanale")
 
         @_loop.before_loop
         async def _before():

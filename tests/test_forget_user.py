@@ -510,3 +510,16 @@ async def test_l_ordine_dell_esportazione_segue_la_chiave_primaria_non_la_posizi
 
     ids = [r["id"] for r in dati["tabelle"]["moderation_cases"]["righe"]]
     assert ids == sorted(ids)
+
+
+# SIC-045
+@pytest.mark.asyncio
+async def test_chi_chiede_di_essere_dimenticato_esce_dalla_raccolta_della_rete(clean_db):
+    for utente in (U, V):
+        await clean_db.execute(
+            "INSERT INTO rete_segnalazioni (user_id, guild_origine, categoria, gravita) VALUES ($1, 5, 'truffa', 'grave')", utente
+        )
+    rapporto = await servizio.dimentica_utente(clean_db, U)
+    assert await _conta(clean_db, "rete_segnalazioni", "user_id", U) == 0
+    assert await _conta(clean_db, "rete_segnalazioni", "user_id", V) == 1
+    assert rapporto["rete_segnalazioni"]["cancellate"] == 1

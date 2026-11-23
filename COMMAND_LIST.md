@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 09:44 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 14:54 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 1146 comandi in 57 categorie.**
+**Totale: 1147 comandi in 57 categorie.**
 
 ## Admin: AI
 
@@ -206,6 +206,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 09:
 - **`/admin-bot premium stato`** — Mostra come è sbloccato il premium in questo server.
 - **`/admin-bot premium togli-posto`** — Togli il tuo posto premium da questo server.
 - **`/admin-bot setup attiva`** — Attiva o disattiva i moduli del bot, per categoria.
+- **`/admin-bot setup identita-bot`** — Nome e logo degli altri bot di iYokai in questo server.
 - **`/admin-bot setup wizard`** — Configura passo-passo ruoli e moduli del bot, una categoria alla volta.
 
 ## Admin: economia

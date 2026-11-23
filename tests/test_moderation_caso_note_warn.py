@@ -54,6 +54,7 @@ async def _casi():
     await moderation_repo.create_case(G, 2, 10, "warn", "quattro")
 
 
+# MOD-042
 async def test_storico_filtrato_per_tipo():
     await _casi()
     inter, _ = _inter()
@@ -130,6 +131,7 @@ async def test_elenco_note_mostra_il_numero():
     assert f"#{n}" in inter.response.send_message.call_args.kwargs["embed"].description
 
 
+# MOD-028, MOD-029
 async def test_warn_togli_azzera_classifica():
     await _casi()
     cog = ModerationCaseSystemCog(bot=None)

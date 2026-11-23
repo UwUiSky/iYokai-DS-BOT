@@ -4,7 +4,7 @@ cogs/utility/citazioni.py
 Citazioni del server (fino a 500) e registro dei comandi: `/fun citazioni caso|aggiungi|cerca|elimina` (con `caso fonte:famose` esce una citazione famosa, come faceva il vecchio comando), menu del
 tasto destro «Salva citazione», `/admin-moduli citazioni azione` (esporta, importa, elimina in JSON). Conta i comandi usati per
 server e giorno (metrica «comandi» di `/utility serverstats`) e scrive nel log lo staff che usa un comando di gestione.
-Funzioni coperte: catalogo #128 UTL-206, 207, 222, 229 (D69, B16)
+Funzioni coperte: catalogo #128 UTL-206, 207, 222, 229 (D69, B16); FUN-030 (`caso immagine:`)
 """
 
 from __future__ import annotations
@@ -30,7 +30,9 @@ from core.database import db
 from core.i18n import lingua_risposta, t, testo_per
 from core.repositories.citazioni_repo import TroppeCitazioni, citazioni_repo, comandi_uso_repo
 from core.repositories.log_eventi_repo import log_eventi_repo
+from core.safe_image import run_image_task
 from core.ui_base import BaseView
+from core.user_app_messaggi import citazione_png
 
 logger = logging.getLogger("iyokai.citazioni")
 
@@ -130,19 +132,39 @@ class CitazioniCog(CogConGruppi, commands.Cog):
             await self._salva(interaction, testo, autore.id if autore and not autore.bot else None, None)
 
     @comando_di_gruppo("fun", nome="caso", descrizione="Mostra una citazione a caso: del server o tra quelle famose.", sottogruppo=_SG)
-    @app_commands.describe(fonte="Di quale raccolta (di base quella del server)")
+    @app_commands.describe(
+        fonte="Di quale raccolta (di base quella del server)",
+        immagine="Sì = la frase come immagine",
+    )
     @app_commands.choices(fonte=_FONTI)
-    async def caso(self, interaction: discord.Interaction, fonte: app_commands.Choice[str] | None = None) -> None:
+    async def caso(
+        self, interaction: discord.Interaction, fonte: app_commands.Choice[str] | None = None, immagine: bool = False
+    ) -> None:
         if not await self._pronto(interaction):
             return
         if fonte is not None and fonte.value == "famose":  # prende il posto del vecchio `/fun quote`
-            await interaction.response.send_message(f"💬 {random_quote(random)}", allowed_mentions=_NESSUNA_MENZIONE)
+            frase = random_quote(random)
+            if immagine:  # FUN-030
+                await self._manda_immagine(interaction, frase, "")
+                return
+            await interaction.response.send_message(f"💬 {frase}", allowed_mentions=_NESSUNA_MENZIONE)
             return
         riga = await citazioni_repo.a_caso(interaction.guild.id)
         if riga is None:
             await interaction.response.send_message(await testo_per(interaction, "citazioni_nessuna"), ephemeral=True)
             return
+        if immagine:  # FUN-030
+            autore = interaction.guild.get_member(riga["autore_id"]) if riga.get("autore_id") else None
+            await self._manda_immagine(interaction, riga["testo"], autore.display_name if autore else "")
+            return
         await interaction.response.send_message(riga_citazione(riga)[:2000], allowed_mentions=_NESSUNA_MENZIONE)
+
+    @staticmethod
+    async def _manda_immagine(interaction: discord.Interaction, frase: str, autore: str) -> None:
+        """FUN-030: la frase come immagine, disegnata fuori dal ciclo principale; senza avatar, solo testo e nome."""
+        await interaction.response.defer()
+        png = await run_image_task(citazione_png, frase, autore, None)
+        await interaction.followup.send(file=discord.File(io.BytesIO(png), filename="citazione.png"))
 
     @comando_di_gruppo("fun", nome="cerca", descrizione="Cerca una parola tra le citazioni del server.", sottogruppo=_SG)
     @app_commands.describe(testo="La parola o la frase da cercare")

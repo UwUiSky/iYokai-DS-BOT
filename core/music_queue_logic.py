@@ -140,3 +140,40 @@ def indici_da_saltare(
 def indici_di_assenti(richiedenti: list[int | None], presenti: set[int]) -> list[int]:
     """I brani di chi non e' tra i presenti. Quelli senza richiedente non si toccano."""
     return [i for i, r in enumerate(richiedenti) if r is not None and r not in presenti]
+
+
+MAX_BYTE_FILE_CODA = 1_000_000  # MUS-043: molto sotto il limite degli allegati di Discord
+
+
+def _riga_pulita(testo: str, massimo: int = 200) -> str:
+    return " ".join((testo or "").split())[:massimo]
+
+
+def coda_come_testo(attuale: tuple[str, str, str] | None, coda: list[tuple[str, str, str]]) -> str:
+    """
+    MUS-043: la coda come testo semplice, un brano per riga (titolo, autore, indirizzo). `attuale` e ogni voce sono
+    (titolo, autore, indirizzo). Gli indirizzi che non cominciano con http(s) non entrano; i titoli su una riga sola.
+    Niente nomi di chi ha chiesto i brani (dati personali). Si ferma prima di `MAX_BYTE_FILE_CODA`.
+    """
+    def pezzi(voce: tuple[str, str, str]) -> list[str]:
+        titolo, autore, indirizzo = voce
+        valori = [_riga_pulita(titolo) or "(senza titolo)", _riga_pulita(autore, 100)]
+        if (indirizzo or "").lower().startswith(("http://", "https://")) and len(indirizzo) <= 500 and " " not in indirizzo:
+            valori.append(indirizzo)
+        return [v for v in valori if v]
+
+    if attuale is None and not coda:
+        return "La coda è vuota.\n"
+    righe: list[str] = []
+    if attuale is not None:
+        righe.append("In riproduzione: " + " — ".join(pezzi(attuale)))
+    for numero, voce in enumerate(coda, start=1):
+        righe.append(f"{numero}. " + " — ".join(pezzi(voce)))
+    testo, usati = [], 0
+    for riga in righe:
+        usati += len(riga.encode()) + 1
+        if usati > MAX_BYTE_FILE_CODA:
+            testo.append("… (elenco tagliato)")
+            break
+        testo.append(riga)
+    return "\n".join(testo) + "\n"

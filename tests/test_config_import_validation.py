@@ -145,6 +145,8 @@ SETTINGS_VALIDE = {
     "policy_ruoli_richiesti": {"fun dado": [202020202020202020]},
     "risposte_effimere": True,
     "risposte_cancella_secondi": 30,
+    "risposte_canale_bot": 212121212121212121,
+    "risposte_canale_bot_comandi": ["fun dado"],
     "colore_successo": 0x2ECC71,
     "colore_errore": 0xE74C3C,
     "mod_ban_giorni_messaggi": 1,

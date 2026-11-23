@@ -363,3 +363,21 @@ async def test_un_premio_non_si_compra_ma_si_regala_una_volta_sola(repo, monete,
         assert await regala_oggetti_in(conn, GUILD, 1, ["scintilla"]) == []
     assert "scintilla" in (await repo.get_profile(GUILD, 1)).posseduti
     assert await repo.equip(GUILD, 1, "badge", "scintilla")
+
+
+# LIV-090
+@pytest.mark.asyncio
+async def test_la_presentazione_passa_dal_filtro_delle_parole_vietate(scena):
+    from core.automod_parole_logic import costruisci
+
+    async def filtro(guild_id, archivio=None):
+        return costruisci(False, ("zozzone",)), None
+
+    scena.monkeypatch.setattr(modulo, "filtro_del_server", filtro)
+    cattiva = _interazione()
+    await scena.comandi["level profilo"].callback(scena.cog, cattiva, membro=None, presentazione="sei uno zozzone", cancella_presentazione=False)
+    assert "non permette" in _testo(cattiva)
+    assert (await scena.profili.get_profile(GUILD, 1)).bio is None
+    buona = _interazione()
+    await scena.comandi["level profilo"].callback(scena.cog, buona, membro=None, presentazione="amo i gatti", cancella_presentazione=False)
+    assert (await scena.profili.get_profile(GUILD, 1)).bio == "amo i gatti"

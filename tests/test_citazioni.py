@@ -137,3 +137,31 @@ async def test_caso_famose_prende_il_posto_di_fun_quote():
     dal_server.assert_not_awaited()
     testo = inter.response.send_message.call_args.args[0]
     assert testo.removeprefix("💬 ") in QUOTES
+
+
+# FUN-030
+async def test_caso_con_immagine_manda_un_png_e_non_il_testo():
+    cog = modulo.CitazioniCog(MagicMock())
+    inter = fake_interaction(guild=fake_guild(G), user=fake_member(5))
+    inter.response.defer = AsyncMock()
+    inter.followup.send = AsyncMock()
+    riga = {"id": 3, "testo": "Meglio tardi che mai", "autore_id": None}
+    with patch.object(modulo.db, "is_module_active_for_guild", AsyncMock(return_value=True)), \
+            patch.object(modulo.citazioni_repo, "a_caso", AsyncMock(return_value=riga)):
+        await modulo.CitazioniCog.caso.callback(cog, inter, None, True)
+    inter.response.send_message.assert_not_awaited()
+    file = inter.followup.send.await_args.kwargs["file"]
+    assert file.filename == "citazione.png" and file.fp.read(8) == b"\x89PNG\r\n\x1a\n"
+
+
+# FUN-030
+async def test_caso_famose_con_immagine_non_cerca_nel_server():
+    cog = modulo.CitazioniCog(MagicMock())
+    inter = fake_interaction()
+    inter.response.defer = AsyncMock()
+    inter.followup.send = AsyncMock()
+    with patch.object(modulo.db, "is_module_active_for_guild", AsyncMock(return_value=True)), \
+            patch.object(modulo.citazioni_repo, "a_caso", AsyncMock()) as dal_server:
+        await modulo.CitazioniCog.caso.callback(cog, inter, SimpleNamespace(value="famose"), True)
+    dal_server.assert_not_awaited()
+    assert inter.followup.send.await_args.kwargs["file"].filename == "citazione.png"

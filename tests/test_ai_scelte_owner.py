@@ -35,6 +35,7 @@ def test_errori_di_scelta():
     assert ov.tetto_valido("50") is None and ov.tetto_valido("800") == 800 and ov.tetto_valido("x") is None
 
 
+# AI-012
 async def test_modello_fascia_e_tipi_si_applicano_a_caldo(servizio):
     s, _ = servizio
     assert await imposta_scelte_owner("alfa", "nuovo-modello", "alta", "codice,chat", user_id=1) is None
@@ -50,6 +51,7 @@ async def test_fornitore_sconosciuto_e_scelte_sbagliate(servizio):
     assert await imposta_scelte_owner(tetto_token=50) is not None
 
 
+# AI-012
 async def test_tetto_di_lunghezza_limita_le_risposte(servizio):
     s, t = servizio
     await ai_repo.registra_consenso(G, U, True)

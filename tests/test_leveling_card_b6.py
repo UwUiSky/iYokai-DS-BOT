@@ -184,3 +184,39 @@ async def test_liv055_056_il_comando_card_chiede_il_permesso_e_salva(monkeypatch
     grande.size, grande.content_type = 99_000_000, "image/png"
     await cmd.callback(cog, inter, None, grande, None, None, None)
     assert await modulo.leveling_repo.get_sfondo_server(GUILD) is None  # troppo grande: rifiutata
+
+
+# LIV-053
+@pytest.mark.asyncio
+async def test_liv053_sfondo_pronto_del_server_e_della_card_personale(monkeypatch, clean_db):
+    from types import SimpleNamespace
+
+    from core.repositories.leveling_settings_repo import leveling_settings_repo
+    from tests.support.moduli import attiva_livelli
+
+    await attiva_livelli(monkeypatch, clean_db, GUILD)
+    for r in (leveling_settings_repo, modulo.leveling_repo):
+        monkeypatch.setattr(r, "_pool_provider", lambda: clean_db)
+    cog = modulo.LevelingCog(bot=None)
+    cog.cog_unload()
+    from core.command_groups import costruisci_gruppi, registra_comandi_del_cog
+
+    cmd = next(c for c in registra_comandi_del_cog(cog, gruppi=costruisci_gruppi(), tree=None) if c.qualified_name == "admin-livelli card")
+    inter = fake_interaction(guild=fake_guild(GUILD), user=fake_member(7), permissions=discord.Permissions(manage_guild=True))
+    await cmd.callback(cog, inter, None, None, None, None, None, "tramonto")
+    assert await modulo.leveling_repo.get_sfondo_server(GUILD) is not None
+    # un'immagine e uno sfondo pronto insieme, o togliere e mettere insieme: si rifiuta senza toccare nulla
+    prima = await modulo.leveling_repo.get_sfondo_server(GUILD)
+    await cmd.callback(cog, inter, None, None, True, None, None, "notte")
+    assert await modulo.leveling_repo.get_sfondo_server(GUILD) == prima
+    # un id inventato non cambia niente e lo dice
+    prima = await modulo.leveling_repo.get_sfondo_server(GUILD)
+    await cmd.callback(cog, inter, None, None, None, None, None, "inventato")
+    assert await modulo.leveling_repo.get_sfondo_server(GUILD) == prima
+    assert "non esiste" in inter.response.send_message.await_args.args[0].lower() 
+    # lo sfondo personale della card
+    from core.sfondi_pronti import SFONDI_PRONTI
+
+    assert "tramonto" in SFONDI_PRONTI
+    await modulo.leveling_repo.set_sfondo_card(7, await modulo._sfondo_dal_catalogo("oceano"))
+    assert await modulo.leveling_repo.get_sfondo_card(7) is not None

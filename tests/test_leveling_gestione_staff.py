@@ -31,6 +31,7 @@ from tests.support.moduli import attiva_livelli
 GUILD = 100
 
 
+# LIV-065, LIV-066, LIV-067
 # ----------------------------------------------------------------------
 # Logica pura
 # ----------------------------------------------------------------------
@@ -339,6 +340,7 @@ async def test_i_comandi_stanno_sotto_economia(cog_comandi):
     assert "admin-economia monete" in comandi
 
 
+# LIV-065, LIV-066, LIV-067
 @pytest.mark.asyncio
 async def test_comando_xp_risponde_dopo_defer_e_allinea_i_ruoli(cog_comandi):
     cog, comandi, repo, sincronizza = cog_comandi
@@ -414,3 +416,49 @@ async def test_comando_monete_senza_importo_non_scrive(cog_comandi):
 
     assert (await repo.get_totals(GUILD, 9)).coins_total == 0
     assert "importo" in interazione.response.send_message.await_args.args[0].lower()
+
+
+# LIV-046
+@pytest.mark.asyncio
+async def test_il_ruolo_con_livello_vocale_arriva_solo_con_tutti_e_due_i_livelli(monkeypatch):
+    from types import SimpleNamespace
+
+    from core.leveling_logic import LevelingSettings, xp_for_level
+    from core.repositories.level_reward_repo import level_reward_repo
+
+    ruolo = fake_role(role_id=100, name="veterano", position=1)
+    bot_member = fake_member(
+        user_id=999, guild_permissions=discord.Permissions(manage_roles=True), bot=True, roles=[fake_role(role_id=1, name="bot", position=50)]
+    )
+    guild = fake_guild(GUILD)
+    guild.me = bot_member
+    guild.get_role = lambda rid: ruolo if rid == 100 else None
+    membro = fake_member(user_id=5, roles=[])
+    membro.add_roles = AsyncMock()
+    membro.remove_roles = AsyncMock()
+    premio = LevelReward(id=2, guild_id=GUILD, level_threshold=10, role_id=100, created_at=None, livello_vocale=3)
+
+    async def fino_a(guild_id, livello):
+        return [premio] if livello >= 10 else []
+
+    async def elenco(guild_id):
+        return [premio]
+
+    monkeypatch.setattr(level_reward_repo, "get_rewards_up_to_level", fino_a)
+    monkeypatch.setattr(level_reward_repo, "list_rewards", elenco)
+    cog = modulo.LevelingCog.__new__(modulo.LevelingCog)
+    cog._config = AsyncMock(return_value=SimpleNamespace(impostazioni=LevelingSettings()))
+    xp = {"voce": 0}
+    monkeypatch.setattr(modulo.leveling_repo, "xp_vocale", AsyncMock(side_effect=lambda g, u: xp["voce"]))
+
+    await cog._grant_level_rewards(membro, guild, 12, "accumula", togli_superiori=True)  # livello alto, ma niente vocale
+    membro.add_roles.assert_not_awaited()
+    xp["voce"] = xp_for_level(3)
+    await cog._grant_level_rewards(membro, guild, 12, "accumula", togli_superiori=True)
+    assert membro.add_roles.await_args.args == (ruolo,)
+    # chi ha il ruolo ma ha perso il livello vocale (azzeramento) lo perde
+    membro.roles = [ruolo]
+    xp["voce"] = 0
+    membro.remove_roles.reset_mock()
+    await cog._grant_level_rewards(membro, guild, 12, "accumula", togli_superiori=True)
+    assert membro.remove_roles.await_args.args == (ruolo,)

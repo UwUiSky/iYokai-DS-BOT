@@ -4170,5 +4170,20 @@
   "idn_logo_non_valido": "Il logo non è valido o non ha passato i controlli: usa un PNG, JPEG, GIF o WEBP normale.",
   "idn_attendi": "Troppi cambi ravvicinati: aspetta qualche minuto. Tornare all'originale si può sempre.",
   "idn_errore": "Discord non ha accettato il cambio. Riprova più tardi.",
-  "setup_bot_identita": "Nome e logo di questi bot nel tuo server si scelgono con /admin-bot setup identita-bot (i bot musicali restano uguali)."
+  "setup_bot_identita": "Nome e logo di questi bot nel tuo server si scelgono con /admin-bot setup identita-bot (i bot musicali restano uguali).",
+  "top_settimanale_attiva": "La top 10 della settimana verrà pubblicata ogni lunedì in {mention}.",
+  "top_settimanale_spenta": "Top 10 settimanale disattivata.",
+  "top_settimanale_non_era_attiva": "La top 10 settimanale non era attiva.",
+  "risp_stato_canale_bot": "\n- Canale dei bot: **{canale}** (fuori da lì le risposte sono private) · comandi: **{comandi}**",
+  "risp_canale_non_valido": "Il canale non è valido.",
+  "risp_comando_non_valido": "Scrivi i comandi come «fun dado» o «giochi», separati da virgole (senza «/»).",
+  "risp_troppi_comandi": "Al massimo 25 comandi.",
+  "sfondo_pronto_sconosciuto": "Questo sfondo non esiste: scegli uno dall'elenco che compare mentre scrivi.",
+  "voicetemp_azione_non_consentita": "Il server ha tolto questa azione al tuo ruolo.",
+  "voicetemp_azione_sconosciuta": "Azione non valida: scegli dall'elenco che compare mentre scrivi.",
+  "voicetemp_troppi_ruoli_vietati": "Per ogni azione si possono vietare al massimo 10 ruoli.",
+  "voicetemp_azione_serve_ruolo": "Per cambiare un'azione scegli sia l'azione sia il ruolo.",
+  "voicetemp_azione_ruolo_salvata": "Il ruolo {ruolo} {stato} l'azione «{azione}» sul proprio canale vocale.",
+  "voicetemp_azione_puo": "può fare",
+  "voicetemp_azione_non_puo": "non può fare"
 }

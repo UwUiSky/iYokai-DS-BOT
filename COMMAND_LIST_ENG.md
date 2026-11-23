@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 09:44 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 14:54 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 1146 commands in 57 categories.**
+**Total: 1147 commands in 57 categories.**
 
 ## Admin: AI
 
@@ -205,6 +205,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 09:4
 - **`/admin-bot premium remove-seat`** — Removes your premium seat from this server.
 - **`/admin-bot premium status`** — Shows how premium is unlocked in this server.
 - **`/admin-bot premium unblock`** — Unlocks a premium module for 30 days with coins from the server treasury.
+- **`/admin-bot setup bot-identity`** — Name and logo of the other iYokai bots in this server.
 - **`/admin-bot setup enable`** — Turns the bot's modules on or off, by category.
 - **`/admin-bot setup wizard`** — Step-by-step setup of the bot's roles and modules, one category at a time.
 

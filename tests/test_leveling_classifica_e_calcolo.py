@@ -148,3 +148,21 @@ async def test_calcola_oltre_il_livello_massimo_e_rifiutato(scena):
     interazione = _interazione()
     await scena.comandi["level calcola"].callback(scena.cog, interazione, livello=11, member=None)
     assert "livello massimo" in interazione.response.send_message.await_args.args[0].lower()
+
+
+# LIV-013
+@pytest.mark.asyncio
+async def test_la_classifica_degli_xp_da_messaggi_e_da_vocale_mostra_il_livello(scena):
+    await scena.monete.add_text_xp(GUILD, 1, amount=250)
+    await scena.monete.add_voice_minutes(GUILD, [(2, 5, True)])
+    messaggi = _interazione()
+    await scena.comandi["level leaderboard"].callback(
+        scena.cog, messaggi, metric=_scelta("xp_testo", "XP da messaggi"), period=_scelta("alltime", "Di sempre"),
+    )
+    testo = messaggi.response.send_message.await_args.kwargs["embed"].description
+    assert "<@1>" in testo and "<@2>" not in testo and "250" in testo and "livello" in testo
+    vocale = _interazione()
+    await scena.comandi["level leaderboard"].callback(
+        scena.cog, vocale, metric=_scelta("xp_vocale", "XP da vocale"), period=_scelta("alltime", "Di sempre"),
+    )
+    assert "<@2>" in vocale.response.send_message.await_args.kwargs["embed"].description

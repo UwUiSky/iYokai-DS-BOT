@@ -38,6 +38,7 @@ GUILD = 100
 # ----------------------------------------------------------------------
 # Logica pura
 # ----------------------------------------------------------------------
+# LIV-026
 def test_moltiplicatori_si_sommano_oppure_vale_il_piu_alto():
     assert moltiplicatore_xp("somma", [1.5, 2.0]) == 2.5
     assert moltiplicatore_xp("massimo", [1.5, 2.0]) == 2.0
@@ -67,6 +68,7 @@ def test_xp_con_moltiplicatore_arrotonda_per_eccesso_sul_mezzo():
         ("dm", 3, 0, 1, True, True, True),
     ],
 )
+# LIV-035, LIV-036, LIV-037
 def test_deve_annunciare(modo, livello, min_livello, ogni, solo_premi, ha_premio, atteso):
     impostazioni = LevelingSettings(
         levelup_mode=modo,
@@ -278,6 +280,7 @@ def _messaggio(canale_id=111, ruoli=()):
     return msg
 
 
+# LIV-020
 @pytest.mark.asyncio
 async def test_canale_escluso_non_da_xp(cog_xp):
     cog, repo_xp, config, _ = cog_xp
@@ -288,6 +291,7 @@ async def test_canale_escluso_non_da_xp(cog_xp):
     repo_xp.add_text_xp.assert_not_awaited()
 
 
+# LIV-020
 @pytest.mark.asyncio
 async def test_ruolo_escluso_non_da_xp(cog_xp):
     cog, repo_xp, config, _ = cog_xp
@@ -322,6 +326,7 @@ async def test_moltiplicatore_di_canale_e_di_ruolo_si_sommano(cog_xp):
     assert repo_xp.add_text_xp.await_args.kwargs["amount"] == 25  # 10 * (1 + 1.0 + 0.5)
 
 
+# LIV-026
 @pytest.mark.asyncio
 async def test_moltiplicatore_modalita_massimo(cog_xp):
     cog, repo_xp, config, _ = cog_xp
@@ -577,6 +582,7 @@ async def test_comando_xp_senza_valori_non_scrive(cog_comandi):
     assert "almeno un valore" in _messaggio_inviato(interazione)
 
 
+# LIV-020
 @pytest.mark.asyncio
 async def test_comando_escludi_aggiunge_e_poi_toglie(cog_comandi):
     from tests.support.discord_fakes import fake_text_channel
