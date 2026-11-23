@@ -61,7 +61,7 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
         try:
             utente = self.bot.get_user(user_id) or await self.bot.fetch_user(user_id)
             await utente.send(testo)
-        except (discord.HTTPException, AttributeError):
+        except Exception:  # un avviso privato che non arriva non deve mai fermare l invio
             logger.warning("Non sono riuscito ad avvisare l'utente %s dell'invio fallito.", user_id)
 
     async def handle_scheduled_message_fire(

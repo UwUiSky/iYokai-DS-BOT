@@ -206,6 +206,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:
 - **`/admin-bot premium sblocca`** — Sblocca un modulo premium per 30 giorni con le monete della cassa del server.
 - **`/admin-bot premium stato`** — Mostra come è sbloccato il premium in questo server.
 - **`/admin-bot premium togli-posto`** — Togli il tuo posto premium da questo server.
+- **`/admin-bot premium chiave`** — Usa la tua chiave API per i servizi AI: dà il livello VIP.
 - **`/admin-bot setup attiva`** — Attiva o disattiva i moduli del bot, per categoria.
 - **`/admin-bot setup identita-bot`** — Nome e logo degli altri bot di iYokai in questo server.
 - **`/admin-bot setup wizard`** — Configura passo-passo ruoli e moduli del bot, una categoria alla volta.
@@ -1171,6 +1172,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:
 - **`/owner immagini-trappola`** — Solo proprietario del bot: libreria delle immagini trappola.
 - **`/owner parole-odio`** — Solo proprietario del bot: libreria delle parole.
 - **`/owner premium grant`** — Concede il premium a un server, o crea un codice da riscattare.
+- **`/owner premium piano`** — Piani: limiti, prezzi, sconti, livelli dati.
 - **`/owner premium list`** — Mostra lo stato premium di tutti i moduli.
 - **`/owner premium panel`** — Pannello interattivo per attivare/disattivare i moduli premium.
 - **`/owner premium revoke`** — Revoca l'abbonamento di un modulo per un server.

@@ -12,7 +12,7 @@ from __future__ import annotations
 from core import ai_chiavi_proprie as chiavi
 from core import piani
 
-AZIONI_OWNER = ("mostra", "limite", "prezzo", "sconto", "concedi", "revoca")
+AZIONI_OWNER = ("mostra", "limite", "prezzo", "sconto", "concedi", "revoca", "patreon")
 AZIONI_CHIAVE = ("imposta", "togli", "elenco")
 
 
@@ -46,6 +46,13 @@ async def esegui_owner(azione: str, *, livello: str | None, periodo: str | None,
                 return "Serve `chiave`: il nome dello sconto. `valore` è la percentuale (1-100); senza `valore` lo sconto si toglie."
             await piani.imposta_sconto(chiave, valore, livello if livello in piani.LIVELLI_A_PAGAMENTO else None, periodo)
             return "Sconto tolto." if valore is None else f"Sconto `{chiave}`: {valore}%."
+        if azione == "patreon":
+            from core import patreon_service
+
+            if not chiave:
+                return "Serve `chiave`: l'ID del livello Patreon. `livello` è il livello del bot; senza `livello` l'associazione si toglie."
+            await patreon_service.imposta_livello_tier(chiave, livello)
+            return "Associazione tolta." if livello is None else f"Livello Patreon `{chiave}` = {piani.ETICHETTE[livello]}."
         if azione in ("concedi", "revoca"):
             soggetto, sid = ("server", server_id) if server_id else ("utente", utente_id)
             if not sid:
