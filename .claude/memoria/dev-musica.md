@@ -4,12 +4,12 @@
 23/11/2026 · ramo `feat/r7mus` · migrazione 0731 (giro r7mus, issue #126)
 
 ## In corso
-- Giro r7mus: previste 3 voci (MUS-018, MUS-015, MUS-017; D111, D115). Fatta: MUS-018 (`cogs/music/cartella.py`,
-  `core/music_cartella_logic.py`, `core/music_anteprime_logic.py`, tabelle 0731). Prossimo: vedi ultimo commit.
-  Smoke da fare dall'orchestratore (invarianti albero, i18n, traduttore); prove live in VERIFICA_LIVE «r7mus».
-- Giro r6mus FATTO (non unito): MUS-013, 022-026, 028, 033, 034, 046, 051, 052, 053, 061. `/owner` pesa ~7.4k con `cartella`: niente altri comandi owner senza controllare.
+- Giro r7mus FATTO (non unito, nessun push): MUS-018, 015, 017 (D111, D115; migrazione 0731). Prossimo: prove live (VERIFICA_LIVE «r7mus»);
+  smoke dall'orchestratore. `/owner` pesa vicino a 7,5k: niente altri comandi owner senza controllare.
+- Giro r6mus FATTO (non unito): MUS-013, 022-026, 028, 033, 034, 046, 051, 052, 053, 061.
 
 ## Fatto
+- r7mus: MUS-017 video lunghi (D115): max 8 ore, elenco da `pluginInfo.chapters` o descrizione (`YOUTUBE_API_KEY`), voci con start/end (`PlayerCapitoli`).
 - r7mus: MUS-015 paese delle ricerche (D115): `music_paese_logic`, `/owner radio paese`, `/admin-musica impostazioni paese:`; filtro solo se la fonte dice i paesi.
 - r7mus: MUS-018 cartella dell'owner (D115): scansione ogni 5 min, `/owner radio cartella`, `/music coda anteprime` (nel gruppo `coda`: `playlist` e' a 18 figli).
 - r6/r10: 8.16 defer, sordo, allegato, canale richieste, playlist, suoni, nonstop, ALR-030..036, MUS-054/062/064.
@@ -20,6 +20,7 @@
 - Migrazioni: 0170 `music_request_channels`, 0171 `music_playlists`. Cacciatore r6: tracce decodificate filtrate, import robusto, pausa 3 s per utente, uscita del bot dei suoni col lock (`6b8faaf`, `b4a5cd1`, `3d93028`).
 
 ## Cose imparate
+- r7mus: il player e' `PlayerCapitoli` (sottoclasse di wavelink.Player): inizio/fine di una voce in `extras`; i test confrontano `canale.cls.func`.
 - r7mus: un brano `local` suona solo su un player del nodo locale; i dati mostrati agli utenti passano da `dati_traccia_pulita` (niente uri/percorso/copertina); `brano_da_traccia` rifiuta `source == local`.
 - r7mus: `.env`/locales: `locales/*/testi.json` = indent 2 + a capo; `en-US/comandi.json` = indent 1 + a capo (scrivere con json.dumps, mai a mano).
 - r6mus: `/music` ha 22 figli (tetto 25): comandi nuovi solo in sotto-gruppi (`coda`, `brano`). Il `remove-track` esistente e' della radio.

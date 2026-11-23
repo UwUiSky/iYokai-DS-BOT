@@ -44,7 +44,7 @@ YouTube è scritto nella colonna "Come farla". Regola già scritta in
 | MUS-014 | Scegliere una playlist per genere da un elenco di categorie | Red (`genre`, da Spotify) [RED] | ❌ manca | Menu a tendina con playlist scelte dall'owner | nuova |
 | MUS-015 | Paese usato per le ricerche Spotify, per server e per utente | Red (`audioset countrycode`, `mycountrycode`) [RED] | ✅ fatta (giro r7mus, 23/11/2026) | — | fatta il 23/11/2026 (r7mus, D111, D115): globale dell'owner (`/owner radio paese`, di base nessun limite) e filtro del server (`/admin-musica impostazioni paese:`) |
 | MUS-016 | Preferire le versioni "solo audio" ai video musicali | Red (`audioset lyrics`) [RED] | ❌ manca | Filtro sul titolo del risultato; riguarda solo le ricerche YouTube | nuova |
-| MUS-017 | Dividere un video lungo nei brani elencati nella descrizione | FredBoat (`playsplit`) [FRED] | ❌ manca | Dipende da YouTube: sconsigliata | nuova |
+| MUS-017 | Dividere un video lungo nei brani elencati nella descrizione | FredBoat (`playsplit`) [FRED] | ✅ fatta (giro r7mus, 23/11/2026) | — | fatta il 23/11/2026 (r7mus, D111, D115): niente taglio del video; limite di 8 ore; elenco dei brani dalla descrizione o dai capitoli, voci con seek e fine |
 | MUS-018 | Riprodurre una cartella di file locali o cercare tra i file | Red (`local folder`, `local play`, `local search`) [RED], NadekoBot (`.local`, `.localplaylist`) [NADEKO] | ✅ fatta (giro r7mus, 23/11/2026) | — | fatta il 23/11/2026 (r7mus, D111, D115): solo owner, `/owner radio cartella` e `/music coda anteprime` |
 | MUS-019 | Gioco "indovina la canzone" | Jockie [JOCKIE] | ❌ manca | `/fun gioca canzone`; brevi estratti dei brani dell'owner | nuova |
 

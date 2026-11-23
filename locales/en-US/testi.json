@@ -3979,5 +3979,15 @@
   "music_paese_scartati": "({v1} not playable in country {paese})",
   "music_paese_globale_impostato": "🌍 Global search country: **{paese}**. Servers without their own choice use this one.",
   "music_paese_globale_tolto": "🌍 No global limit: tracks can be played all over the world.",
-  "music_paese_globale_stato": "🌍 Global search country: **{paese}**."
+  "music_paese_globale_stato": "🌍 Global search country: **{paese}**.",
+  "music_capitoli_proposta": "🎼 The description of **{titolo}** has a list of {v1} tracks with times. Do you want to use it? Each track starts at the right point of the same video: the video is not downloaded or cut.",
+  "music_capitoli_usa": "Use the list",
+  "music_capitoli_intero": "Keep the whole video",
+  "music_capitoli_fatto": "✅ {v1} tracks queued instead of the video.",
+  "music_capitoli_intero_ok": "OK: the whole video stays.",
+  "music_capitoli_non_piu": "The video is no longer in the queue: nothing changed.",
+  "music_capitoli_di_altri": "This choice belongs to whoever queued the video.",
+  "music_video_troppo_lungo": "**{titolo}** lasts {durata}: videos over 8 hours cannot be queued.",
+  "music_video_troppo_lungo_playlist": "All the videos in this playlist last more than 8 hours: they cannot be queued.",
+  "music_video_scartati": "({v1} videos over 8 hours not added.)"
 }
