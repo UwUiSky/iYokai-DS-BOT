@@ -1684,3 +1684,13 @@ Attua D119 per le voci medie. Elenco delle voci e dei motivi in fondo, aggiornat
   - il bot poi lo integra nei server in comune con l'utente.
 - **TKT-085:** la risposta dal sito diventa in tempo reale (aggiornamento della pagina, o webhook verso il canale) e può essere anonima, come le risposte anonime del modmail.
 - **Liste AGCOM e ADM:** l'owner cerca gli indirizzi e li mette lui.
+
+## D130 — Raccolta dei modelli (BKP-022/023) e regole di ammissione (BKP-040), giro r3bkp, 23/11/2026, opzione prudente, da confermare dall'owner
+
+Attua D127.
+- **Proposta (BKP-023):** `/admin-backup raccolta proponi copia: nome: descrizione:` (chi può creare copie, BKP-018). La struttura si **ricostruisce da zero** con i soli campi noti: niente ID, membri, ban, messaggi, emoji, impostazioni, permessi di singoli utenti; nei nomi e negli argomenti dei canali si tolgono caratteri invisibili, menzioni (`@everyone`, `<@…>`) e link; `@everyone` non porta mai permessi pericolosi; negli overwrite di canale non si concede mai un permesso pericoloso. Tetti: 100 ruoli, 50 categorie, 200 canali, 50 canali per categoria; nomi doppi o vuoti rifiutati. Al massimo 3 proposte in attesa per server. Nome 3-60, descrizione 300.
+- **Revisione:** la decide l'owner del bot **dal pannello** (`/proprietario/modelli`: approva, rifiuta, toglie un approvato, modifica nome, descrizione e struttura; ogni modifica rifà la stessa ricostruzione). Niente comando `/owner`: il gruppo è quasi pieno e la struttura si modifica meglio in una pagina. Un modello non approvato non si vede né si vota né si usa, da nessuno tranne l'owner.
+- **Elenco e voti:** `/admin-backup raccolta elenco|vota|usa|mie` (per chi può usare `/admin-backup`; il voto è uno per persona e per modello, ripetuto conta una volta). Elenco pubblico in sola lettura nel pannello, `modelli`, senza accesso (solo nome, descrizione, lingua, conteggi, voti; mai la struttura).
+- **Uso:** «Crea la struttura» (riusa per nome, crea il resto, come gli altri modelli) oppure «Solo ciò che manca» dopo un nuke: aggiunge ruoli, categorie e canali assenti, **non tocca** nessun ruolo o canale esistente né `@everyone`, non cancella; **solo il proprietario del server** lo conferma. Un ruolo con permessi pericolosi nasce **senza** quei permessi a meno che il proprietario del server prema «Confermo i ruoli con permessi pericolosi» (la chiede solo a lui; per tutti gli altri non c'è).
+- **Dati:** tabelle `backup_raccolta` e `backup_raccolta_voti` (0950); il modello va via con il server proponente (90 giorni dopo l'uscita), il voto con la persona.
+- **BKP-040:** vedi la riga seguente.

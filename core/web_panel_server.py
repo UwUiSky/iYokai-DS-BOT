@@ -32,7 +32,7 @@ from urllib.parse import urlsplit
 import jinja2
 from aiohttp import BodyPartReader, MultipartReader, web
 
-from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_backup, web_panel_editor, web_panel_inviti, web_panel_istantanee, web_panel_pagine, web_panel_join, web_panel_ruoli_collegati, web_panel_tela, web_panel_ticket, web_panel_ticket_trascrizioni, web_panel_accesso as regole_accesso, web_panel_panoramica as panoramica, web_panel_logic as regole, verify_vpn_logic as vpn_logica
+from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_backup, web_panel_editor, web_panel_inviti, web_panel_istantanee, web_panel_pagine, web_panel_join, web_panel_raccolta, web_panel_ruoli_collegati, web_panel_tela, web_panel_ticket, web_panel_ticket_trascrizioni, web_panel_accesso as regole_accesso, web_panel_panoramica as panoramica, web_panel_logic as regole, verify_vpn_logic as vpn_logica
 from core.bot_aspetto import MAX_IMMAGINE
 from core.command_access import RuoloAdminNegato
 from core.command_search_logic import cerca
@@ -856,6 +856,10 @@ def build_app(
         ip=_ip, client_id=client_id, restore_redirect_uri=restore_redirect_uri, chiave_firma=chiave_ripristino,
         imposta_ritorno=lambda risposta, percorso: _cookie(risposta, cookie_ritorno, percorso, regole.DURATA_STATE_SECONDI),
         puo_gestire=web_panel_backup.puo_gestire_backup,
+    )
+    web_panel_raccolta.registra_rotte(
+        app, pagina=_pagina, errore=_errore, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE, ip=_ip,
+        e_proprietario=lambda utente: ponte.e_proprietario(utente),
     )
     web_panel_ruoli_collegati.registra_rotte(
         app, pagina=_pagina, errore=_errore, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE, ip=_ip,

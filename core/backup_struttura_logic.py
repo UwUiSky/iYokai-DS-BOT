@@ -453,6 +453,9 @@ class Caricatore:
     """
     Applica una struttura a un server. `avanza(passo, fatti, totale)` salva lo
     stato (BKP-009) e restituisce True se è stato chiesto di annullare (BKP-010).
+    `solo_mancanti`: aggiunge ciò che manca e non tocca niente di ciò che c'è (né permessi di ruoli, né @everyone).
+    `pericolosi_ok`: False = i ruoli nuovi nascono SEMPRE senza permessi pericolosi; True = li ricevono se chi carica
+    è l'owner del server (la conferma esplicita del proprietario, D127); None = come sempre.
     `scarica(url)` legge un'immagine (emoji e sticker); `pausa` tra ban e membri.
     `tetto`: il ruolo più alto di chi carica (None per l'owner del server). I ruoli
     da lì in su non si modificano, non si spostano e non si danno: la gerarchia
@@ -468,8 +471,12 @@ class Caricatore:
         scarica: Callable[[str], Awaitable[bytes | None]] | None = None,
         pausa: Callable[[float], Awaitable[None]] = asyncio.sleep,
         tetto=None,
+        solo_mancanti: bool = False,
+        pericolosi_ok: bool | None = None,
     ) -> None:
         self.guild = guild
+        self._solo_mancanti = solo_mancanti
+        self._pericolosi_ok = pericolosi_ok
         self.dati = dati
         self.parti = parti
         self._avanza = avanza
@@ -529,7 +536,7 @@ class Caricatore:
         return discord.Permissions(voluti.value & ~tolti)
 
     async def _ruoli(self) -> None:
-        if "everyone" in self.dati:
+        if "everyone" in self.dati and not self._solo_mancanti:
             try:
                 everyone = self.guild.default_role
                 await everyone.edit(
@@ -551,6 +558,9 @@ class Caricatore:
                     self.r.saltati += 1
                     self._nota("ruoli pari o sopra il tuo ruolo più alto: non toccati")
                     continue
+                if esistente is not None and self._solo_mancanti:
+                    self.r.riusati += 1  # c'è già: non si tocca
+                    continue
                 if esistente is not None and not esistente.managed:
                     permessi = self._senza_nuovi_pericolosi(permessi, esistente.permissions)
                     if esistente.permissions != permessi:
@@ -561,7 +571,7 @@ class Caricatore:
                 if len(self.guild.roles) >= MAX_RUOLI:
                     self.r.saltati += 1
                     continue
-                if self._tetto is not None:
+                if self._tetto is not None or self._pericolosi_ok is False:
                     # Solo l'owner conferma ruoli con permessi pericolosi (admin, gestione, ban…):
                     # per gli altri il ruolo nasce senza.
                     permessi = self._senza_nuovi_pericolosi(permessi, discord.Permissions.none())

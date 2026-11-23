@@ -118,7 +118,7 @@ async def test_menu_delle_parti_e_caricamento_con_riepilogo_nel_canale(ambiente,
     assert view.scelte == {"ruoli"}  # i ban non partono se non li scegli
 
     class _Caricatore:
-        def __init__(self, guild, dati, parti, avanza, scarica, tetto):
+        def __init__(self, guild, dati, parti, avanza, scarica, tetto, solo_mancanti=False, pericolosi_ok=None):
             assert tetto is None  # l'owner del server non ha tetto
             self.avanza = avanza
 

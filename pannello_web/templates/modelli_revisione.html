@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block titolo %}Revisione modelli · iYokai Panel{% endblock %}
+{% block corpo %}
+<h1>Revisione dei modelli</h1>
+<p><a href="/proprietario">&larr; Proprietario</a></p>
+<h2>In attesa</h2>
+{% if attesa %}<table><tr><th>#</th><th>Nome</th><th>Ruoli</th><th>Canali</th><th></th></tr>
+{% for m in attesa %}<tr><td>{{ m.id }}</td><td>{{ m.nome }}</td><td>{{ m.ruoli }}</td><td>{{ m.canali }}</td><td><a href="/proprietario/modelli/{{ m.id }}">Apri</a></td></tr>{% endfor %}</table>
+{% else %}<p>Niente da rivedere.</p>{% endif %}
+<h2>Approvati</h2>
+{% if approvati %}<table><tr><th>#</th><th>Nome</th><th>Voti</th><th></th></tr>
+{% for m in approvati %}<tr><td>{{ m.id }}</td><td>{{ m.nome }}</td><td>{{ m.voti }}</td><td><a href="/proprietario/modelli/{{ m.id }}">Apri</a></td></tr>{% endfor %}</table>
+{% else %}<p>Nessuno.</p>{% endif %}
+{% endblock %}
