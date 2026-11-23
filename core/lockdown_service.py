@@ -26,6 +26,7 @@ from datetime import datetime, timedelta, timezone
 import discord
 
 from core import channel_router as router
+from core.moderazione_traduci import traducibile
 from core.bounded_cache import BoundedCache
 from core.permission_risk_logic import CRITICAL_PERMISSIONS
 from core.lockdown_logic import (
@@ -368,7 +369,7 @@ async def _crea_canale_avviso(guild: discord.Guild, motivo: str, razon: str) -> 
             topic="Il server è bloccato dallo staff."[:1024], reason=razon,
         )
         await canale.send(
-            f"Il server è bloccato dallo staff. Motivo: {motivo}"[:2000], allowed_mentions=discord.AllowedMentions.none()
+            **await traducibile(guild, content=f"Il server è bloccato dallo staff. Motivo: {motivo}"[:2000], allowed_mentions=discord.AllowedMentions.none())
         )
     except discord.HTTPException as errore:
         logger.warning("Canale di avviso non creato (server %s): %s", guild.id, errore)
@@ -429,7 +430,9 @@ async def _annuncia(
         menzioni = discord.AllowedMentions(
             everyone=False, users=False, replied_user=False, roles=[discord.Object(id=r) for r in ruoli_avviso]
         )
-    await router.invia_a(dest, guild, router.TIPO_ALLARMI, content=(ping + testo)[:2000], allowed_mentions=menzioni)
+    await router.invia_a(
+        dest, guild, router.TIPO_ALLARMI, **await traducibile(guild, content=(ping + testo)[:2000], allowed_mentions=menzioni)
+    )
 
 
 async def _panico_in_background(guild: discord.Guild, motivo: str) -> None:

@@ -70,7 +70,7 @@ class _FakeMessageChannel(discord.TextChannel):
     def __init__(self) -> None:
         self.sent_embeds: list = []
 
-    async def send(self, embed=None) -> None:
+    async def send(self, embed=None, view=None) -> None:  # view: bottone Traduci (D110)
         self.sent_embeds.append(embed)
 
 

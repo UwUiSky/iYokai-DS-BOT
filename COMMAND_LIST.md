@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:26 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:51 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 1121 comandi in 55 categorie.**
+**Totale: 1122 comandi in 55 categorie.**
 
 ## Admin: AI
 
@@ -110,6 +110,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:
 
 ## Admin: AutoMod
 
+- **`/admin-automod avviso`** — Avvisa chi si vede cancellare un messaggio dall'AutoMod.
 - **`/admin-automod azzera`** — Azzera un contatore delle regole AutoMod.
 - **`/admin-automod calore`** — Calore: le regole danno punti che calano col tempo; alla soglia scatta una sanzione.
 - **`/admin-automod esenzioni channel-add`** — Esenta un canale da tutti i filtri AutoMod avanzati.

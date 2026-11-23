@@ -14,7 +14,7 @@ Generato da `scripts/stato_catalogo.py` il 2026-11-23. Non modificare a mano: ri
 | 03-sicurezza-antiraid-antinuke | #117 aperta | 46 | 43 | 3 | 0 | 0 |
 | 04-verifica | #118 chiusa | 31 | 30 | 1 | 0 | 0 |
 | 05-log | #119 aperta | 30 | 29 | 1 | 0 | 0 |
-| 06-ticket-e-modmail | #120 chiusa | 88 | 84 | 4 | 0 | 0 |
+| 06-ticket-e-modmail | #120 chiusa | 88 | 85 | 3 | 0 | 0 |
 | 07-backup-e-restore | #121 chiusa | 41 | 40 | 1 | 0 | 0 |
 | 08-configurazione-pannello-premium | #122 aperta | 46 | 36 | 10 | 0 | 0 |
 | 09-benvenuto-e-ruoli | #123 aperta | 113 | 111 | 2 | 0 | 0 |
@@ -27,7 +27,7 @@ Generato da `scripts/stato_catalogo.py` il 2026-11-23. Non modificare a mano: ri
 | 16-statistiche | #130 aperta | 61 | 61 | 0 | 0 | 0 |
 | 17-divertimento-e-immagini | #131 chiusa | 139 | 125 | 12 | 2 | 0 |
 | 18-ai | #132 chiusa | 25 | 20 | 5 | 0 | 0 |
-| **Totale** | | **1452** | **1344** | **104** | **2** | **2** |
+| **Totale** | | **1452** | **1345** | **103** | **2** | **2** |
 
 Nelle sole aree con l'issue aperta: 708 voci, 640 fatte, 66 solo nei registri, **0 da fare**, 2 scartate.
 

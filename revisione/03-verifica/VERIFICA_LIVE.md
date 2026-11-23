@@ -1928,3 +1928,12 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `VER-025 avvisi` — Con due server grandi (50 membri o più, bot dentro da 7 giorni) e un utente in entrambi: `/mod-ban` con motivo «Truffa o phishing» nel server A. L'owner (o il canale scelto con `/admin-sicurezza rete impostazioni`) del server B riceve l'avviso senza testo dei messaggi. Con `ricezione:no` in B non arriva. Il nome di A compare solo con `mostra_origine:sì` in A. Un server piccolo non fa partire avvisi. `/owner rete blocca server_id:` ferma un server scorretto.
 - [ ] `VER-025 compromesso` — Account di prova che manda lo stesso messaggio in 3 canali (account rubato): timeout in tutti i server dove c'è, caso «Rete di protezione», avviso agli owner con tasto «Togli il timeout»; il tasto e `/admin-sicurezza rete timeout-togli` funzionano solo per il proprietario del server o del bot. Mai su proprietari né bot; un utente con ruolo sopra il bot è saltato.
 - [ ] `VER-025 ban` — Due server con `/admin-sicurezza rete ban aderisce:sì`: un ban per truffa in A fa comparire in B la proposta con «Banna» e «Ignora»; con `modo:Ban automatico` B banna da solo e avvisa. `/admin-sicurezza rete ban annulla:utente` toglie il ban. Il ban di rete non ne genera altri.
+
+## AutoMod: avviso e bottone Traduci — giro r3automod (#116, #115, D110)
+
+1. Con un filtro acceso (es. `/admin-filtri anti-link-mode`), scrivi con un secondo account un messaggio che lo viola. Il messaggio sparisce e l'account riceve un DM «Messaggio rimosso» con le regole non rispettate.
+2. Chiudi i DM dell'account e ripeti dopo 30 secondi: nel canale compare un messaggio breve con la sola menzione, che sparisce dopo 8 secondi.
+3. Viola due regole insieme (link + maiuscole): un solo avviso con tutte e due le regole. Ripeti subito: nessun secondo avviso prima di 30 secondi; dal sesto in 10 minuti, nessuno.
+4. `/admin-automod avviso attivo:no` spegne l'avviso; `testo:` con `{server} {canale} {regole} {utente}` cambia il DM; `testo:-` torna a quello di base.
+5. Sul registro di moderazione, sull'esito di un `/mod-sanzioni warn` e sul log AutoMod compare il bottone «Traduci». Riavvia il bot: il bottone sui vecchi messaggi risponde ancora.
+6. Con il client in una lingua diversa da quella del server (es. turco su server inglese) il bottone dà una risposta effimera tradotta; con client italiano/inglese i testi fissi sono quelli del bot. Con l'AI spenta (`/admin-ai`) dice che la traduzione non è disponibile. Sei pressioni in un minuto: la sesta è rifiutata. Nessuna menzione fa notifica.

@@ -24,7 +24,7 @@ from core.automod_odio_azioni import sincronizza_blocco
 from cogs.moderation._shared import ensure_module_enabled
 from core import automod_parole_opzioni as opzioni_parole
 from core import channel_router as router
-from core import odio_opzioni
+from core import automod_avviso, odio_opzioni
 from core.config import config
 from core.i18n import testo_per
 from core.odio_libreria_logic import (
@@ -252,6 +252,34 @@ class ParoleOdioCog(CogConGruppi, commands.Cog):
         finally:
             self._giri.discard(guild.id)
         await interaction.followup.send(f"{messaggio}\n" + await testo_per(interaction, "paroleodio_giro_fatto", n=fatti, tetto=MAX_MEMBRI_GIRO), ephemeral=True)
+
+    @comando_di_gruppo(
+        "admin-automod", nome="avviso", descrizione="Avvisa chi si vede cancellare un messaggio dall'AutoMod.",
+    )
+    @app_commands.describe(
+        attivo="Acceso (di base) o spento",
+        testo=f"Testo del DM (max {automod_avviso.MAX_TESTO}): {{server}} {{canale}} {{regole}} {{utente}}; «-» = predefinito",
+    )
+    async def avviso(
+        self,
+        interaction: discord.Interaction,
+        attivo: bool | None = None,
+        testo: app_commands.Range[str, 1, automod_avviso.MAX_TESTO] | None = None,
+    ) -> None:
+        if not await ensure_module_enabled(interaction, MODULE_AUTOMOD):
+            return
+        guild_id = interaction.guild.id
+        if attivo is not None or testo is not None:
+            await automod_avviso.imposta(
+                guild_id, attivo, ("" if testo.strip() == "-" else testo) if testo is not None else None, interaction.user.id
+            )
+        opz = await automod_avviso.leggi(guild_id)
+        stato = await testo_per(interaction, "automod_avviso_stato_acceso" if opz.attivo else "automod_avviso_stato_spento")
+        corpo = opz.testo or await testo_per(interaction, "automod_avviso_testo_base")
+        await interaction.response.send_message(
+            await testo_per(interaction, "automod_avviso_riepilogo", stato=stato, testo=corpo[:600]),
+            ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
+        )
 
     async def _giro_pulizia(self, guild: discord.Guild) -> int:
         """MOD-102: ripulisce i nomi dei membri gia' dentro, con tetto e pausa tra una modifica e l'altra."""

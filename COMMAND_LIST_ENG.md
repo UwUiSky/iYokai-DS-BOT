@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 04:26 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 04:51 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 1121 commands in 55 categories.**
+**Total: 1122 commands in 55 categories.**
 
 ## Admin: AI
 
@@ -110,6 +110,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 04:2
 
 ## Admin: AutoMod
 
+- **`/admin-automod alert`** — Tells people when AutoMod deletes their message.
 - **`/admin-automod calore`** — Heat: rules add points that fade over time; a penalty fires at the threshold.
 - **`/admin-automod cleanup`** — Cleans a channel now and then, by message type.
 - **`/admin-automod exemptions channel-add`** — Exempts a channel from all advanced AutoMod filters.

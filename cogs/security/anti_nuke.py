@@ -46,6 +46,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core import bot_roles
 from core import channel_router as router
+from core.moderazione_traduci import traducibile
 from core.bounded_cache import BoundedCache
 from core import rete_protezione
 from core.database import db
@@ -264,7 +265,7 @@ async def _alert_staff(guild: discord.Guild, settings: SecuritySettings, embed: 
         await try_dm(guild.owner, embed)
     dest = await router.destinazione(guild, router.TIPO_ALLARMI, settings.alert_channel_id)
     if dest is not None:
-        await router.invia_a(dest, guild, router.TIPO_ALLARMI, embed=embed)
+        await router.invia_a(dest, guild, router.TIPO_ALLARMI, **await traducibile(guild, embed=embed))
 
 
 def _campi_fiducia(config: AntiNukeConfig) -> dict:

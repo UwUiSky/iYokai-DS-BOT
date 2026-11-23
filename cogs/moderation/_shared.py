@@ -20,6 +20,7 @@ import discord
 from discord import app_commands
 
 from core import channel_router as router
+from core.moderazione_traduci import traducibile
 from core import lockdown_service
 from core.database import db
 from core.i18n import testo_per
@@ -175,7 +176,7 @@ async def post_to_mod_log(guild: discord.Guild, embed: discord.Embed) -> None:
             ))
         except Exception:
             pass
-        await router.invia_a(dest, guild, router.TIPO_MODERAZIONE, embed=embed)
+        await router.invia_a(dest, guild, router.TIPO_MODERAZIONE, **await traducibile(guild, embed=embed))
 
 
 async def ensure_module_enabled(

@@ -111,7 +111,7 @@ class _FakeTextChannel(discord.TextChannel):
     def mention(self):
         return f"<#{self._id_finto}>"
 
-    async def send(self, embed=None) -> None:
+    async def send(self, embed=None, view=None) -> None:  # view: bottone Traduci (D110)
         self.sent.append(embed)
 
 

@@ -19,6 +19,7 @@ import discord
 
 from core import bot_roles
 from core import channel_router as router
+from core.moderazione_traduci import traducibile
 from core import odio_moderazione
 from core.automod_odio_nativo_logic import RULE_NAME_ODIO, costruisci_regex
 from core.automod_parole_logic import trova
@@ -171,7 +172,7 @@ async def _registra(message: discord.Message, azioni: list[str], motivo: str, n:
     embed.add_field(name="Richiami", value=f"{n} di {opz.soglia} in {opz.minuti} min" if n else "non contato (AI ferma)", inline=True)
     if contenuto:
         embed.add_field(name="Contenuto", value=contenuto, inline=False)
-    await router.invia_a(canale, guild, router.TIPO_AUTOMOD, embed=embed)
+    await router.invia_a(canale, guild, router.TIPO_AUTOMOD, **await traducibile(guild, embed=embed))
 
 
 def _etichetta_motivo(motivo: str) -> str:

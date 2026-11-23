@@ -1476,3 +1476,15 @@ Attuano D111. Dove D111 lascia aperto, si è scelta l'opzione più prudente.
 - **File HTML di base:** il formato di base delle opzioni del pannello passa da «testo» a «entrambi» (colonna DB e valore di base). Chi aveva scelto «testo» a mano lo tiene.
 - **Immagini:** al massimo 2 MiB l'una e 8 MiB il file; quelle che non entrano restano solo nome, tipo e peso. Nessun allegato non immagine ha mai un link o i byte nel file.
 - **Non fatto:** un comando per le opzioni (oggi solo dal sito); la trascrizione del ModMail (solo ticket).
+
+## D110 — Avviso all'utente e bottone «Traduci» (#116, #115, giro r3automod), 22/11/2026, opzione prudente, da confermare dall'owner
+
+- **Una sola valutazione per messaggio:** le violazioni si calcolano una volta sola (filtri, parole, regole personali insieme). L'avviso elenca tutte le regole scattate (al massimo 5, nomi fino a 50 caratteri, senza menzioni).
+- **Avviso:** Discord non ha messaggi «solo per te» fuori dalle interazioni, quindi va in DM (`core/automod_avviso.py`, via `try_dm_message`). Se i DM sono chiusi: messaggio breve nel canale con la sola menzione della persona, cancellato dopo 8 secondi. Mai il contenuto del messaggio cancellato.
+- **Impostazione** (`automod_avviso_attivo`, acceso di base; `automod_avviso_testo`, fino a 500 caratteri; segnaposto chiusi `{server} {canale} {regole} {utente}`; comando `/admin-automod avviso`, anche nel pannello). Testo e nomi delle regole nella lingua del server.
+- **Tetto per persona:** un avviso ogni 30 secondi e al massimo 5 in 10 minuti (in memoria, con tetto di 20.000 persone). Bot e webhook non si avvisano.
+- **Non si raddoppia:** se la regola ha già parlato all'utente (azioni `dm`, `warn`, `kick`, `ban`, `ban_tempo`, `avviso_canale`) l'avviso si salta. Il percorso delle parole d'odio ha già il suo richiamo.
+- **Errori:** un errore dell'avviso non ferma mai la cancellazione, il log o le altre regole.
+- **Traduci:** bottone persistente (custom_id `iyokai:modtraduci`, `core/moderazione_traduci.py`, registrato da `cogs/moderation/traduci.py`). Risposta effimera, senza menzioni, nella lingua del client (`interaction.locale`). Lingua del bot (it, en): i testi fissi tornano dal catalogo (riconosciuti per testo esatto o modello); il testo libero (motivi dei moderatori) e le altre lingue passano dallo snodo AI (`tipo traduzione`, funzione `traduci`, cache dello snodo, consenso e privacy del server rispettati). AI spenta o senza fornitore: lo dice con il motivo dello snodo. Limite 5 al minuto per persona. Nessun permesso in più: mostra solo il testo già pubblico.
+- **Dove c'è il bottone:** esiti pubblici delle sanzioni (`invia_esito`), registro di moderazione (`post_to_mod_log`), log AutoMod e parole d'odio, allarmi anti-nuke e blocco del server (allarme e canale di avviso). `traducibile(guild, **kw)` è il punto unico per aggiungerlo altrove. La quarantena non ha un messaggio pubblico suo: segue i log di sicurezza (da fare se l'owner lo vuole).
+- Migrazioni: nessuna (restano 0807-0809).
