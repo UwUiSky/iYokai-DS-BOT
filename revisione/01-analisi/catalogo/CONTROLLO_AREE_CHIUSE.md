@@ -313,7 +313,7 @@ Giro r2tkt (issue #120). «Corretta» = fa ciò che dice il catalogo e rispetta 
 | TKT-082 | in parte (anonimo solo per risposta) | sì; la chiusura non mostra mai il nome | aggiornata (anonimo predefinito del server) | `modmail opzioni`, 0770; tests/test_modmail.py::test_senza_scelta_la_risposta_segue_il_predefinito_del_server |
 | TKT-083 | no (solo con il comando) | - | realizzata | `inoltra_tutto`, `//` = nota interna; tests/test_modmail.py::test_inoltra_tutto_manda_il_testo_dello_staff_e_rispetta_le_note_interne |
 | TKT-084 | in parte (conferma sempre accesa) | sì | aggiornata (conferma disattivabile) | tests/test_modmail.py::test_senza_conferma_il_primo_dm_apre_subito_il_canale |
-| TKT-085 | no | - | non fattibile D101 | scrittura dal web a nome dello staff: pannello web |
+| TKT-085 | sì (r2web, r4web, D127) | sì | nessuna | core/web_panel_ticket.py, pannello_web/static/ticket_live.js; tests/test_panel_ticket.py, tests/test_panel_ticket_live.py |
 | TKT-086 | no | - | realizzata (spento di base, D101) | cogs/ai/ticket_ai.py `riassunto_alla_chiusura`, 0773; tests/test_ticket_catalogo_r2tkt_c.py::test_tkt_086_* |
 | TKT-087 | sì (`/ticket assistente`, bozza per lo staff) | sì: ephemeral, mai inviata | nessuna (test aggiunto) | cogs/ai/ticket_ai.py; tests/test_ticket_catalogo_r2tkt_b.py::test_tkt_087_* |
 

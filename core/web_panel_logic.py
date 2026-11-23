@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import re
 import secrets
 import time
 from collections import OrderedDict, deque
@@ -156,6 +157,10 @@ CSP = (
     "form-action 'self' https://discord.com; frame-ancestors 'none'; base-uri 'none'"
 )
 
+
+# La scheda di un ticket carica un solo script dello stesso sito (tempo reale, TKT-085) e parla solo con il sito (D127).
+CSP_TICKET = CSP.replace("default-src 'none';", "default-src 'none'; script-src 'self'; connect-src 'self';", 1)
+SCHEDA_TICKET = re.compile(r"^/server/\d{1,20}/ticket/\d{1,10}$")
 
 # La pagina di verifica carica un solo script dello stesso sito (il fuso orario, D64).
 CSP_VERIFICA = CSP.replace("default-src 'none';", "default-src 'none'; script-src 'self';", 1)

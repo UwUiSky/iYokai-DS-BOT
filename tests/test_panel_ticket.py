@@ -31,6 +31,7 @@ async def tk(ambiente, clean_db, monkeypatch):  # noqa: F811
     canale.id = CANALE
     canale.guild = guild
     canale.send = AsyncMock()
+    canale.permissions_for = MagicMock(return_value=discord.Permissions(send_messages=True))  # senza webhook: risponde il bot
     guild.get_channel_or_thread = MagicMock(side_effect=lambda i: canale if i == CANALE else None)
     ambiente.canale = canale
     # ADMIN: ruolo di supporto, senza «Gestisci server». Il pannello lo ammette col ruolo «scrittura».

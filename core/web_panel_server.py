@@ -163,7 +163,8 @@ def build_app(
     file_radio = {  # i soli altri file statici: la pagina «radio iYokai» dentro Discord
         nome: ((CARTELLA / "static" / nome).read_bytes(), tipo)
         for nome, tipo in (
-            ("discord-sdk.js", "text/javascript"), ("radio.js", "text/javascript"), ("verifica.js", "text/javascript")
+            ("discord-sdk.js", "text/javascript"), ("radio.js", "text/javascript"), ("verifica.js", "text/javascript"),
+            ("ticket_live.js", "text/javascript")
         )
     }
     intestazioni_radio = web_panel_attivita.intestazioni_attivita(https)
@@ -264,6 +265,8 @@ def build_app(
         risposta.headers.update(intestazioni_radio if in_discord else intestazioni)
         if request.get(CHIAVE_DOWNLOAD):  # il download tiene le sue intestazioni (attachment, sandbox)
             risposta.headers.update(request[CHIAVE_DOWNLOAD])
+        if request.method == "GET" and regole.SCHEDA_TICKET.match(request.path):  # TKT-085: lo script del tempo reale
+            risposta.headers["Content-Security-Policy"] = regole.CSP_TICKET
         if request.path.startswith("/verifica/"):  # D64: solo qui, lo script che manda il fuso orario
             risposta.headers["Content-Security-Policy"] = regole.CSP_VERIFICA
         return risposta
@@ -796,7 +799,7 @@ def build_app(
 
     app = web.Application(middlewares=[sicurezza, sessione], client_max_size=DIMENSIONE_MASSIMA_RICHIESTA)
     app.router.add_get("/static/pannello.css", stile)
-    app.router.add_get(r"/static/{nome:discord-sdk\.js|radio\.js|verifica\.js}", file_statico)
+    app.router.add_get(r"/static/{nome:discord-sdk\.js|radio\.js|verifica\.js|ticket_live\.js}", file_statico)
     pagina_radio = web_panel_attivita.registra_rotte(
         app, ambiente=ambiente, client_id=client_id, flusso=radio_flusso, testo_spenta="La radio è spenta."
     )
