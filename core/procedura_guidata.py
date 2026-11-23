@@ -40,6 +40,7 @@ class Passo:
 
     chiave: str
     richiesti: tuple[str, ...] = ()
+    titolo: str = ""  # per i passi creati al volo (es. una categoria di moduli); senza, vale `<chiave>_titolo`
 
 
 @dataclass
@@ -117,8 +118,10 @@ class VistaGuidata(BaseView):
         riepilogo: Testo,
         conferma: Conferma,
         timeout: float = TEMPO_MASSIMO_SECONDI,
+        contesto: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(timeout=timeout)
+        self.contesto = contesto or {}  # oggetti che i costruttori dei passi leggono (server, moduli...)
         self.stato = stato
         self.titolo = titolo
         self.lingua = lingua
@@ -167,7 +170,7 @@ class VistaGuidata(BaseView):
             nome = t("guidata_riepilogo_titolo", self.lingua)
             corpo = self._riepilogo(self)
         else:
-            nome = t(f"{s.passo.chiave}_titolo", self.lingua)
+            nome = s.passo.titolo or t(f"{s.passo.chiave}_titolo", self.lingua)
             corpo = self._testi[s.passo.chiave](self)
         totale = len(s.passi) + 1
         intestazione = t("guidata_passo", self.lingua, n=s.indice + 1, totale=totale, nome=nome)

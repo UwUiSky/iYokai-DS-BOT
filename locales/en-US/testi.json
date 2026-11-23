@@ -4329,5 +4329,16 @@
   "giveaway_guidato_canale_sparito": "The channel no longer exists: nothing was created.",
   "giveaway_guidato_non_posso": "I cannot write in that channel ({motivo}): nothing was created.",
   "giveaway_guidato_ruolo_sparito": "The required role no longer exists: nothing was created.",
-  "giveaway_guidato_creato": "Giveaway created in {canale}."
+  "giveaway_guidato_creato": "Giveaway created in {canale}.",
+  "setup_guidato_titolo_primo": "First setup",
+  "setup_guidato_titolo_modifica": "Edit setup",
+  "setup_guidato_ruoli_titolo": "Bot roles",
+  "setup_guidato_ruoli_testo": "Choose who can use the admin, moderation and ban commands. Nothing is saved until you confirm.",
+  "setup_guidato_r_ruolo": "**{nome}:** {valore}",
+  "setup_guidato_r_modulo_si": "✅ Turned on: {nome}",
+  "setup_guidato_r_modulo_no": "❌ Turned off: {nome}",
+  "setup_guidato_nessun_cambio": "No changes: confirming changes nothing.",
+  "setup_guidato_ruolo_sparito": "A chosen role no longer exists: nothing was saved.",
+  "setup_guidato_admin_negato": "Choosing the bot admin role needs the «Administrator» permission or being the server owner: nothing was saved.",
+  "setup_guidato_fatto": "Setup saved: {ruoli} roles and {moduli} modules changed."
 }

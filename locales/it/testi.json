@@ -4329,5 +4329,16 @@
   "giveaway_guidato_canale_sparito": "Il canale non esiste più: non è stato creato niente.",
   "giveaway_guidato_non_posso": "Non posso scrivere in quel canale ({motivo}): non è stato creato niente.",
   "giveaway_guidato_ruolo_sparito": "Il ruolo richiesto non esiste più: non è stato creato niente.",
-  "giveaway_guidato_creato": "Giveaway creato in {canale}."
+  "giveaway_guidato_creato": "Giveaway creato in {canale}.",
+  "setup_guidato_titolo_primo": "Primo setup",
+  "setup_guidato_titolo_modifica": "Modifica del setup",
+  "setup_guidato_ruoli_titolo": "Ruoli del bot",
+  "setup_guidato_ruoli_testo": "Scegli chi può usare i comandi di admin, moderazione e ban. Non si salva niente finché non confermi.",
+  "setup_guidato_r_ruolo": "**{nome}:** {valore}",
+  "setup_guidato_r_modulo_si": "✅ Si accende: {nome}",
+  "setup_guidato_r_modulo_no": "❌ Si spegne: {nome}",
+  "setup_guidato_nessun_cambio": "Nessun cambiamento: confermando non cambia niente.",
+  "setup_guidato_ruolo_sparito": "Un ruolo scelto non esiste più: non è stato salvato niente.",
+  "setup_guidato_admin_negato": "Per scegliere il ruolo admin del bot serve il permesso «Amministratore» o essere il proprietario del server: non è stato salvato niente.",
+  "setup_guidato_fatto": "Setup salvato: {ruoli} ruoli e {moduli} moduli cambiati."
 }
