@@ -1112,6 +1112,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:
 - **`/music skipto`** — Salta direttamente al brano numero N della coda.
 - **`/music stop`** — Ferma la riproduzione e svuota la coda.
 - **`/music suono`** — Fa partire un effetto sonoro nel tuo canale vocale.
+- **`/music suono-ferma`** — Ferma il suono appena partito nel tuo canale vocale.
 - **`/music volume down`** — Diminuisce il volume.
 - **`/music volume set`** — Imposta il volume a un valore specifico (0-200).
 - **`/music volume up`** — Aumenta il volume.

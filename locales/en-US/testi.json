@@ -3987,5 +3987,10 @@
   "mar_sync_ok": "Commands resynced on the branded bot. Discord may take a moment to show them.",
   "mar_sync_errore": "The resync failed. Check \"latest errors\"; usually the invite is missing the commands scope: rejoin with the invite link.",
   "mar_errori_titolo": "Latest errors of the branded bot ({n}), newest first. No tokens or private data:",
-  "mar_errori_nessuno": "No errors recorded by the branded bot. (The log is emptied when the bot restarts.)"
+  "mar_errori_nessuno": "No errors recorded by the branded bot. (The log is emptied when the bot restarts.)",
+  "suono_nessuno_in_corso": "No sound is playing in this channel: a sound only lasts a few seconds.",
+  "suono_altro_canale": "The sound is in another voice channel: you must be in the same channel to stop it.",
+  "suono_non_tuo": "Whoever started it, staff and DJs can stop it. Anyone in the channel can only do so if the person who started it is gone.",
+  "suono_con_musica": "The bot is playing music in that channel: Discord cannot stop just the sound, and leaving would stop the music too. The sound ends on its own in a few seconds.",
+  "suono_fermato": "Sound stopped: the bot left the channel."
 }

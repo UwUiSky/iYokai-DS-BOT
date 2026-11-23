@@ -517,7 +517,8 @@
   "nomi": "names",
   "memoria": "memory",
   "chat": "chat",
-  "pulisci": "clean-up"
+  "pulisci": "clean-up",
+  "suono-ferma": "stop-sound"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1807,7 +1808,8 @@
   "mod-sanzioni opzioni memoria": "Turns on the name history and the nickname and voice mute given back to returning members.",
   "mod-sanzioni opzioni aspetto": "Picks the colour and icon of a case type in the moderation log.",
   "mod-casi caso chat": "Sends the log of the channel's last messages saved with a case.",
-  "admin-bot config pulisci": "Deleted channels and roles: what will be cleaned from the settings and when (after 7 days)."
+  "admin-bot config pulisci": "Deleted channels and roles: what will be cleaned from the settings and when (after 7 days).",
+  "music suono-ferma": "Stops the sound that just started in your voice channel."
  },
  "parametri": {},
  "menu": {

@@ -3,13 +3,14 @@ core/music_sound_logic.py
 =========================
 Effetti sonori in vocale: pausa per utente, scelta del suono dal nome,
 valori dell'autocompletamento.
-Funzioni coperte: SPEC §23 (NF-35)
+Funzioni coperte: SPEC §23 (NF-35, FUN-078)
 Dipende da: niente di Discord (logica pura).
 """
 
 from __future__ import annotations
 
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 PAUSA_PER_UTENTE = 10.0  # secondi tra due suoni dello stesso utente
@@ -79,3 +80,50 @@ class PausaUtente:
         self._ultimo[(guild_id, user_id)] = adesso
         if len(self._ultimo) > 5000:  # niente crescita senza fine
             self._ultimo = {k: v for k, v in self._ultimo.items() if adesso - v < self._pausa}
+
+
+# ---- FUN-078: fermare il suono in corso ----
+@dataclass(frozen=True)
+class SuonoInCorso:
+    """Un suono appena partito in un canale: chi l'ha fatto partire e fino a quando conta come «in corso»."""
+
+    avviato_da: int
+    fino_a: float  # secondi dell'orologio monotonico
+    da_solo: bool  # il bot è entrato solo per il suono: si può fermare uscendo dal canale
+
+
+class SuoniInCorso:
+    """Il suono in corso per (server, canale): uno solo, l'ultimo partito."""
+
+    def __init__(self, durata: float = ATTESA_USCITA, orologio=time.monotonic) -> None:
+        self._durata = durata
+        self._orologio = orologio
+        self._suoni: dict[tuple[int, int], SuonoInCorso] = {}
+
+    def segna(self, guild_id: int, canale_id: int, avviato_da: int, da_solo: bool) -> None:
+        adesso = self._orologio()
+        self._suoni = {k: v for k, v in self._suoni.items() if v.fino_a > adesso}  # niente crescita senza fine
+        self._suoni[(guild_id, canale_id)] = SuonoInCorso(avviato_da, adesso + self._durata, da_solo)
+
+    def attivo(self, guild_id: int, canale_id: int) -> SuonoInCorso | None:
+        suono = self._suoni.get((guild_id, canale_id))
+        if suono is None or suono.fino_a <= self._orologio():
+            self._suoni.pop((guild_id, canale_id), None)
+            return None
+        return suono
+
+    def togli(self, guild_id: int, canale_id: int) -> None:
+        self._suoni.pop((guild_id, canale_id), None)
+
+
+def puo_fermare_suono(
+    privilegiato: bool, avviato_da: int, utente_id: int, ascoltatori_umani: Iterable[int]
+) -> bool:
+    """
+    FUN-078, stessa logica dei brani della musica: chi l'ha fatto partire; staff e DJ (`privilegiato`) sempre; chiunque
+    sia nel canale se chi l'ha avviato non c'è più (nessuno controlla il suono). Chi sta fuori dal canale mai.
+    """
+    umani = set(ascoltatori_umani)
+    if utente_id not in umani:
+        return privilegiato or utente_id == avviato_da
+    return privilegiato or utente_id == avviato_da or avviato_da not in umani

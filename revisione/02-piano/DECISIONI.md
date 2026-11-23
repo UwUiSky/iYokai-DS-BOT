@@ -1490,3 +1490,9 @@ Attuano D111. Dove D111 lascia aperto, si è scelta l'opzione più prudente.
 - La risincronizzazione ignora l'impronta salvata ma la riscrive; una alla volta per server, attesa di 5 minuti solo se riuscita (come `config sincronizza`).
 - Il registro degli errori sta in memoria (20 per server) e salva solo ora, origine (codice fisso), tipo di errore e, per Discord, stato HTTP e codice. Mai il testo dell'errore (può contenere pezzi di richieste), mai il token, mai ID. Si svuota al riavvio; per un registro che resta servirebbe una tabella (non fatta: i log del bot hanno già il tipo dell'errore).
 - Il pannello web (D16) non ha ancora i due strumenti: usano `GestoreMarchio.risincronizza` e `marchio_errori.elenco`.
+
+**FUN-078 (fermare il suono in corso)**
+- Discord non ha una chiamata per interrompere un suono della soundboard (D103). Alternativa più vicina: il suono in corso è «l'ultimo partito nel canale, da meno di 8 secondi» (un suono dura al massimo 5,2 s). Se il bot musicale è entrato solo per quel suono, lo si ferma facendolo uscire dal canale (da provare dal vivo che il suono si interrompa). Se il bot sta suonando musica in quel canale non si tocca: uscire fermerebbe anche la musica, e lo si dice all'utente.
+- Chi può: chi l'ha avviato (anche se è uscito dal canale); staff e DJ (la stessa regola dei brani, `_privilegi`: «Gestire il server», ruolo DJ, o da solo nel canale); chiunque nel canale se chi l'ha avviato non c'è più. Chi sta in un altro canale vocale non ferma questo suono, nemmeno lo staff. Il controllo si rifà a ogni pressione del bottone.
+- Il gruppo `/music` arriva a 24 figli (limite 25, obiettivo 18 già superato prima: serve spostare comandi se ne arrivano altri).
+- FUN-068 e FUN-070 esistono in `/web scheda`: segnati con `# FUN-068` e `# FUN-070` in `tests/test_fun_controllo_area17.py`.

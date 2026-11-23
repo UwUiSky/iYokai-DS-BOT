@@ -3987,5 +3987,10 @@
   "mar_sync_ok": "Comandi risincronizzati sul bot con marchio. Discord può metterci qualche istante a mostrarli.",
   "mar_sync_errore": "La risincronizzazione non è riuscita. Controlla «ultimi errori»; di solito manca lo scope dei comandi nell'invito: rientra con il link di invito.",
   "mar_errori_titolo": "Ultimi errori del bot con marchio ({n}), dal più recente. Niente token né dati privati:",
-  "mar_errori_nessuno": "Nessun errore registrato dal bot con marchio. (Il registro si svuota al riavvio del bot.)"
+  "mar_errori_nessuno": "Nessun errore registrato dal bot con marchio. (Il registro si svuota al riavvio del bot.)",
+  "suono_nessuno_in_corso": "Nessun suono in corso in questo canale: un suono dura solo pochi secondi.",
+  "suono_altro_canale": "Il suono è in un altro canale vocale: devi essere nello stesso canale per fermarlo.",
+  "suono_non_tuo": "Lo ferma chi l'ha fatto partire, staff e DJ. Chiunque nel canale può farlo solo se chi l'ha avviato non c'è più.",
+  "suono_con_musica": "Il bot sta suonando musica in quel canale: Discord non permette di fermare solo il suono, e uscire fermerebbe anche la musica. Il suono finisce da solo in pochi secondi.",
+  "suono_fermato": "Suono fermato: il bot è uscito dal canale."
 }
