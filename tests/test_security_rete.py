@@ -378,6 +378,21 @@ async def test_ascoltatore_dei_casi_solo_azioni_gravi_e_mai_casi_della_rete(repo
     assert rete.compromesso.await_count == 1 and rete.dopo_ban.await_count == 1
 
 
+@pytest.mark.asyncio
+async def test_caso_a_mano_da_server_piccolo_non_fa_scattare_il_timeout_ovunque(repo, mondo, monkeypatch):
+    """Un moderatore di un server piccolo, nuovo o bloccato non può fermare una persona in tutti i server."""
+    a, b = Server(1, utenti=[Membro(42)]), Server(2, utenti=[Membro(42)])
+    monkeypatch.setattr(rete, "dopo_ban", AsyncMock())
+    monkeypatch.setattr(rete, "compromesso", AsyncMock())
+    for rifiuto in ("piccolo", "nuovo", "bloccato", "tetto"):
+        monkeypatch.setattr(rete, "segnala", AsyncMock(return_value=rete.Risultato(rifiuto)))
+        await rete.ascoltatore_casi(_bot(a, b))(1, 9, 42, 5, "timeout", "manuale", "Account rubato")
+    assert rete.compromesso.await_count == 0
+    monkeypatch.setattr(rete, "segnala", AsyncMock(return_value=rete.Risultato(None, 1)))
+    await rete.ascoltatore_casi(_bot(a, b))(1, 10, 42, 5, "timeout", "manuale", "Account rubato")
+    assert rete.compromesso.await_count == 1
+
+
 # --- comandi, tasti e punti di aggancio -----------------------------------
 def _interazione(utente_id, guild, client=None):
     from tests.support.discord_fakes import fake_interaction, fake_member

@@ -334,10 +334,13 @@ async def _dopo_caso(bot, guild_id: int, user_id: int, azione: str, origine: str
     if guild is None or categoria is None or origine == _ORIGINE_CASO or azione not in lg.AZIONI_CHE_SEGNALANO:
         return
     try:
-        await segnala(bot, guild, user_id, categoria, azione)
+        esito = await segnala(bot, guild, user_id, categoria, azione)
         if azione == "ban":
             await dopo_ban(bot, guild, user_id, categoria, origine, crea_vista=crea_vista)
-        if categoria == "account_compromesso":
+        # Da un caso scritto a mano il timeout in tutti i server parte solo se il server d'origine supera gli stessi
+        # controlli delle segnalazioni (non piccolo, non nuovo, non bloccato, sotto il tetto): un moderatore di un
+        # server qualsiasi non deve poter fermare una persona ovunque. Il rilevamento automatico resta immediato.
+        if categoria == "account_compromesso" and not getattr(esito, "rifiuto", None):
             await compromesso(bot, user_id, guild_id, crea_vista=crea_vista, escludi=frozenset({guild_id}))
     except Exception:  # noqa: BLE001
         logger.warning("Rete: caso del server %s non gestito.", guild_id, exc_info=False)
