@@ -4045,7 +4045,7 @@
   "liv_import_errore": "Import not done: {errore}",
   "liv_import_ok": "Import done: {cambiate} members added or raised, {uguali} left as they were (the import never lowers XP).",
   "voto_spento": "Voting for the bot is not active.",
-  "voto_server_spento": "This server does not give a reward for voting.",
+  "voto_server_spento": "This server does not give a reward for voting. Votes waiting for a server that does: {n}.",
   "voto_auto_si": "Done: at every vote the reward arrives by itself in this server.",
   "voto_auto_no": "Automatic claim off: use this command after each vote.",
   "voto_niente": "There is no vote to claim. Vote for the bot on {sito} and try again (you have 7 days to claim).",

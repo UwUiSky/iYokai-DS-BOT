@@ -105,7 +105,7 @@ class VotoCog(CogConGruppi, commands.Cog):
             return
         i = await voto_repo.impostazioni(g.id)
         if not i["attivo"]:
-            await interaction.response.send_message(await testo_per(interaction, "voto_server_spento"), ephemeral=True)
+            await interaction.response.send_message(await testo_per(interaction, "voto_server_spento", n=await voto_repo.da_riscattare(u)), ephemeral=True)
             return
         premio = await self.premia(g, u)
         if premio is None:

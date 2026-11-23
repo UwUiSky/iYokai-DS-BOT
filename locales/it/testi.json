@@ -4045,7 +4045,7 @@
   "liv_import_errore": "Import non fatto: {errore}",
   "liv_import_ok": "Import fatto: {cambiate} persone nuove o aumentate, {uguali} lasciate come erano (l'import non toglie mai XP).",
   "voto_spento": "Il voto al bot non è attivo.",
-  "voto_server_spento": "Questo server non dà un premio per il voto.",
+  "voto_server_spento": "Questo server non dà un premio per il voto. Voti in attesa di un server che lo dia: {n}.",
   "voto_auto_si": "Fatto: a ogni voto il premio arriva da solo in questo server.",
   "voto_auto_no": "Riscatto automatico spento: userai questo comando dopo ogni voto.",
   "voto_niente": "Non c'è nessun voto da riscattare. Vota il bot su {sito} e riprova (hai 7 giorni per riscattare).",
