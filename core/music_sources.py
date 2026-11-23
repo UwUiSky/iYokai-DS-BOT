@@ -434,6 +434,7 @@ class Metadato:
     titolo: str
     artista: str
     isrc: str = ""
+    paesi: tuple[str, ...] = ()  # MUS-015: paesi dove il brano si ascolta, se la fonte li dice (vuoto = non lo dice)
 
 
 def id_deezer(testo: str) -> str | None:
@@ -457,7 +458,10 @@ def _un_metadato(dati) -> Metadato | None:
     if not titolo:
         return None
     isrc = str(dati.get("isrc") or "").strip().upper()
-    return Metadato(titolo, artista, isrc if _ISRC.match(isrc) else "")
+    from core.music_paese_logic import paesi_dai_dati
+
+    paesi = tuple(sorted(paesi_dai_dati(dati)))
+    return Metadato(titolo, artista, isrc if _ISRC.match(isrc) else "", paesi)
 
 
 def interpreta_deezer(tipo: str, dati) -> list[Metadato]:
@@ -534,15 +538,22 @@ async def _risolvi_elenco(metadati: list[Metadato], esegui_con_prefisso) -> list
     return tracce
 
 
-async def risolvi_deezer(tipo: str, id_: str, esegui_con_prefisso) -> list:
+def filtra_metadati_per_paese(metadati: list[Metadato], paese: str | None) -> list[Metadato]:
+    """MUS-015: toglie i brani che Deezer dichiara non ascoltabili nel paese; senza dato il brano resta."""
+    if not paese:
+        return metadati
+    return [m for m in metadati if not m.paesi or paese in m.paesi]
+
+
+async def risolvi_deezer(tipo: str, id_: str, esegui_con_prefisso, paese: str | None = None) -> list:
     """Un link Deezer: i metadati dall'API pubblica, poi i brani da un'altra fonte. Lista di tracce."""
-    metadati = await cerca_link("deezer", lambda: metadati_deezer(tipo, id_))
+    metadati = filtra_metadati_per_paese(await cerca_link("deezer", lambda: metadati_deezer(tipo, id_)), paese)
     return await _risolvi_elenco(metadati, esegui_con_prefisso) if metadati else []
 
 
-async def risolvi_titolo_deezer(testo: str, esegui_con_prefisso) -> list:
+async def risolvi_titolo_deezer(testo: str, esegui_con_prefisso, paese: str | None = None) -> list:
     """Un titolo cercato «su Deezer»: il primo risultato dell'API, poi il brano da un'altra fonte."""
-    metadati = await cerca_link("deezer", lambda: metadati_deezer_ricerca(testo))
+    metadati = filtra_metadati_per_paese(await cerca_link("deezer", lambda: metadati_deezer_ricerca(testo)), paese)
     return await _risolvi_elenco(metadati, esegui_con_prefisso) if metadati else []
 
 

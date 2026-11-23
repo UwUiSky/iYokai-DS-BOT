@@ -322,6 +322,9 @@ class MusicControlloCog(CogConGruppi, commands.Cog):
                 await testo_per(interaction, "player_non_nessuna_traccia_in_riproduzione"), ephemeral=True
             )
             return None
+        if str(getattr(player.current, "source", "") or "").lower() == "local":  # MUS-018: niente titoli ai servizi esterni
+            await interaction.response.send_message(await testo_per(interaction, "music_testo_anteprima"), ephemeral=True)
+            return None
         guild_id, utente_id = interaction.guild.id, interaction.user.id
         resta = self.pausa_testi.resta(guild_id, utente_id)
         if resta > 0:

@@ -1,17 +1,17 @@
 # Memoria di dev-musica
 
 ## Aggiornata
-21/11/2026 · ramo `feat/r6mus` · nessuna migrazione (giro r6mus, issue #126)
+23/11/2026 · ramo `feat/r7mus` · migrazione 0731 (giro r7mus, issue #126)
 
 ## In corso
-- Giro r6mus FATTO (non unito, nessun push): MUS-013, 022-026, 028, 033, 034, 046, 051, 052, 053, 061 (D102, LIM-60).
-  Codice: `cogs/music/controllo.py` (coda, brano, testo, karaoke), `core/music_dj_logic.py`, `core/music_cerca_view.py`,
-  `core/music_lyrics_logic.py`, `core/music_stato_logic.py`; DJ in `MusicCog._controlli_base(dj=True)`; pausa e stato in `eventi.py`.
-  Prossimo: prove live (VERIFICA_LIVE «r6mus»); smoke da fare dall'orchestratore (invarianti albero, i18n, traduttore).
-- Giro r5mus CHIUSO (MUS-010, 014, 019, 065; D97). `/owner` pesa 6715 (avviso a 6800): niente altri comandi owner.
-- Restano fuori per scelta dell'owner: MUS-049, 050 (equalizzatore e filtri).
+- Giro r7mus FATTO (non unito, nessun push): MUS-018, 015, 017 (D111, D115; migrazione 0731). Prossimo: prove live (VERIFICA_LIVE «r7mus»);
+  smoke dall'orchestratore. `/owner` pesa vicino a 7,5k: niente altri comandi owner senza controllare.
+- Giro r6mus FATTO (non unito): MUS-013, 022-026, 028, 033, 034, 046, 051, 052, 053, 061.
 
 ## Fatto
+- r7mus: MUS-017 video lunghi (D115): max 8 ore, elenco da `pluginInfo.chapters` o descrizione (`YOUTUBE_API_KEY`), voci con start/end (`PlayerCapitoli`).
+- r7mus: MUS-015 paese delle ricerche (D115): `music_paese_logic`, `/owner radio paese`, `/admin-musica impostazioni paese:`; filtro solo se la fonte dice i paesi.
+- r7mus: MUS-018 cartella dell'owner (D115): scansione ogni 5 min, `/owner radio cartella`, `/music coda anteprime` (nel gruppo `coda`: `playlist` e' a 18 figli).
 - r6/r10: 8.16 defer, sordo, allegato, canale richieste, playlist, suoni, nonstop, ALR-030..036, MUS-054/062/064.
 - F2 (#64, #47+#48, #45, #126 parti 1-2), F7 3b (#76): nodi per bot, radio, deploy Lavalink, catalogo MUS, impostazioni.
 - r6: `2d0b176` defer prima di Lavalink, bot sordo, allegato a play; `7ee6e39` canale richieste
@@ -20,6 +20,9 @@
 - Migrazioni: 0170 `music_request_channels`, 0171 `music_playlists`. Cacciatore r6: tracce decodificate filtrate, import robusto, pausa 3 s per utente, uscita del bot dei suoni col lock (`6b8faaf`, `b4a5cd1`, `3d93028`).
 
 ## Cose imparate
+- r7mus: il player e' `PlayerCapitoli` (sottoclasse di wavelink.Player): inizio/fine di una voce in `extras`; i test confrontano `canale.cls.func`.
+- r7mus: un brano `local` suona solo su un player del nodo locale; i dati mostrati agli utenti passano da `dati_traccia_pulita` (niente uri/percorso/copertina); `brano_da_traccia` rifiuta `source == local`.
+- r7mus: `.env`/locales: `locales/*/testi.json` = indent 2 + a capo; `en-US/comandi.json` = indent 1 + a capo (scrivere con json.dumps, mai a mano).
 - r6mus: `/music` ha 22 figli (tetto 25): comandi nuovi solo in sotto-gruppi (`coda`, `brano`). Il `remove-track` esistente e' della radio.
 - r6mus: in un file di test non importare funzioni che iniziano per `test` (pytest le raccoglie): usare un alias di modulo.
 - r6mus: nuove chiavi di impostazione = `music_settings_logic` + `config_history.py` (tipo) + `config_impostazioni.py` + `test_config_import_validation.py`.

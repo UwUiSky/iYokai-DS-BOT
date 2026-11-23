@@ -1065,6 +1065,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:
 - **`/music brano testo`** — Mostra il testo del brano in corso.
 - **`/music brano vai-a`** — Va a un punto del brano: 1:30, +0:30 avanti, -0:15 indietro.
 - **`/music clear-queue`** — Svuota la coda, senza toccare la traccia in riproduzione.
+- **`/music coda anteprime`** — Mette in coda i brani in anteprima dell'owner del bot.
 - **`/music coda cerca`** — Cerca un brano nella coda per titolo.
 - **`/music coda cima`** — Porta un brano della coda in cima, subito dopo quello in corso.
 - **`/music coda miei`** — Toglie dalla coda tutti i tuoi brani.
@@ -1150,7 +1151,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:
 - **`/owner radio add-track`** — Aggiunge una traccia alla playlist della radio.
 - **`/owner radio blocca-parola`** — Parole vietate nei titoli in tutto il bot.
 - **`/owner radio fonti`** — Mostra lo stato delle fonti musicali (accesa, chiavi sì/no, pausa).
+- **`/owner radio cartella`** — Brani della cartella dell'owner: elenco, rilettura, anteprime.
 - **`/owner radio genere`** — Playlist del menu /music genere.
+- **`/owner radio paese`** — Paese globale delle ricerche musicali (di base nessun limite).
 - **`/owner radio list-tracks`** — Mostra la playlist della radio.
 - **`/owner radio log`** — Scarica la coda del log del Lavalink locale (ripulita dalle chiavi).
 - **`/owner radio nodi`** — Mostra i nodi Lavalink di ogni bot musicale (senza password).

@@ -21,6 +21,7 @@ from core.music_playlist_logic import NOME_MAX
 from core.repositories.music_playlist_repo import music_guild_playlist_repo
 from core.music_sources import FONTI, FONTI_DI_RICERCA
 from core.music_jukebox_logic import PREZZO_MAX
+from core.music_paese_logic import paese_valido
 from core.music_settings_logic import (
     MAX_IDLE_MINUTES,
     MAX_PAROLE_VIETATE,
@@ -40,6 +41,7 @@ from core.music_settings_logic import (
     SETTING_SKIP_VOTE,
     SETTING_EMPTY_PAUSE,
     SETTING_BOT_STATUS,
+    SETTING_SEARCH_COUNTRY,
     SETTING_KNOWN_SITES_ONLY,
     SETTING_MAX_TRACK_MINUTES,
     SETTING_MAX_VOLUME,
@@ -99,6 +101,7 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         voto_salto="Percentuale degli ascoltatori che serve per saltare un brano (1-100, di base 50)",
         pausa_canale_vuoto="Metti in pausa quando nel canale non resta nessuno, riprendi al rientro",
         stato_bot="Mostra il titolo del brano come stato dei music bot",
+        paese="Paese delle ricerche (2 lettere, es. TR): scarta i brani non ascoltabili; «-» toglie il filtro",
     )
     @app_commands.rename(
         volume_massimo="volume-massimo",
@@ -148,6 +151,7 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
         voto_salto: app_commands.Range[int, 1, 100] | None = None,
         pausa_canale_vuoto: bool | None = None,
         stato_bot: bool | None = None,
+        paese: app_commands.Range[str, 1, 2] | None = None,
     ) -> None:
         guild = interaction.guild
         if guild is None:
@@ -174,6 +178,12 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
                 await interaction.response.send_message(
                     await testo_per(interaction, "playlist_server_non_trovata"), ephemeral=True
                 )
+                return
+        paese_scelto = None
+        if paese is not None:  # MUS-015: «-» toglie il filtro del server
+            paese_scelto = None if paese.strip() == "-" else paese_valido(paese)
+            if paese.strip() != "-" and paese_scelto is None:
+                await interaction.response.send_message(await testo_per(interaction, "music_paese_non_valido"), ephemeral=True)
                 return
         cambi = {
             SETTING_MAX_VOLUME: volume_massimo,
@@ -211,6 +221,8 @@ class MusicSettingsCog(CogConGruppi, commands.Cog):
             cambi[SETTING_EMPTY_PAUSE] = pausa_canale_vuoto
         if stato_bot is not None:  # MUS-061
             cambi[SETTING_BOT_STATUS] = stato_bot
+        if paese is not None:  # MUS-015: None toglie la scelta
+            cambi[SETTING_SEARCH_COUNTRY] = paese_scelto
         if annunci is not None:  # MUS-057
             cambi[SETTING_ANNOUNCE] = annunci
         if canale_annunci is not None:  # MUS-058

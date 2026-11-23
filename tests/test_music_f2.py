@@ -35,6 +35,7 @@ from core.music_logic import (
     truncate_title,
     voice_join_problem,
 )
+from core.music_capitoli_player import PlayerCapitoli
 from core.music_nodes import MAIN_KEY, MusicNodeManager, worker_key
 
 
@@ -477,7 +478,7 @@ async def test_il_player_di_un_worker_nasce_sul_nodo_di_quel_worker(modulo_attiv
     assert cerca.await_args.args[1] is nodo_w2
     assert canale.cls.keywords["nodes"] == [nodo_w2]
     canale.player.set_volume.assert_awaited_once_with(100)  # MUS-047: volume all'ingresso
-    assert canale.cls.func is wavelink.Player
+    assert canale.cls.func is PlayerCapitoli
 
 
 @pytest.mark.asyncio
