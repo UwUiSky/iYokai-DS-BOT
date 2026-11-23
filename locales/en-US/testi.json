@@ -4012,5 +4012,7 @@
   "voicetemp_azione_serve_ruolo": "To change an action, choose both the action and the role.",
   "voicetemp_azione_ruolo_salvata": "The role {ruolo} {stato} the action \"{azione}\" on its own voice channel.",
   "voicetemp_azione_puo": "can do",
-  "voicetemp_azione_non_puo": "cannot do"
+  "voicetemp_azione_non_puo": "cannot do",
+  "casesystem_archivio_non_c_e": "This case has no message archive (the user had no deleted or edited messages in the 3 days before).",
+  "casesystem_archivio_pronto": "Archive of the user's messages before the case: {n} events from the last 3 days, taken from the bot's log. Message text is not kept."
 }

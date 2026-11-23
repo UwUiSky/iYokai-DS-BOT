@@ -39,7 +39,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from cogs.moderation.prove import allega_a_nota
-from core import bot_roles, moderation_opzioni, moderation_registro_chat
+from core import bot_roles, moderation_archivio_utente, moderation_opzioni, moderation_registro_chat
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.moderation_casi_logic import errore_durata_caso, testo_esportazione
@@ -986,11 +986,26 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         descrizione="Manda il registro degli ultimi messaggi del canale salvato con un caso.",
         sottogruppo=("caso", "Storico e dettagli dei casi di moderazione."),
     )
-    @app_commands.describe(numero="Il numero del caso")
+    @app_commands.describe(numero="Il numero del caso", archivio="Sì: l'archivio dei messaggi dell'utente (3 giorni)")
     @requires_module(MODULE_CASE_SYSTEM)
-    async def case_chat(self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, INT4_MAX]) -> None:
-        """MOD-051. Solo per chi usa i comandi di moderazione; è un file privato, i messaggi sono quelli del canale."""
+    async def case_chat(
+        self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, INT4_MAX], archivio: bool = False
+    ) -> None:
+        """MOD-051, LOG-029. Solo per chi usa i comandi di moderazione; è un file privato."""
         if not await ensure_module_enabled(interaction, MODULE_CASE_SYSTEM):
+            return
+        if archivio:
+            trovato = await moderation_archivio_utente.leggi(interaction.guild.id, numero)
+            if trovato is None:
+                await interaction.response.send_message(
+                    await testo_per(interaction, "casesystem_archivio_non_c_e"), ephemeral=True
+                )
+                return
+            await interaction.response.send_message(
+                await testo_per(interaction, "casesystem_archivio_pronto", n=trovato[1]),
+                file=discord.File(io.BytesIO(trovato[0]), filename=f"archivio_caso_{numero}.txt"),
+                ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
+            )
             return
         letto = await moderation_registro_chat.leggi(interaction.guild.id, numero)
         if letto is None:

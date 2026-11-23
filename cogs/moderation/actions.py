@@ -55,6 +55,7 @@ from discord.ext import commands
 from core import bot_roles
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
+from core import moderation_archivio_utente as archivio_utente
 from core import moderation_dm, moderation_opzioni, moderation_registro_chat as registro_chat
 from core.database import db
 from core.i18n import testo_per
@@ -348,6 +349,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             reason=reason,
         )
         await registro_chat.salva(interaction, case_number)  # MOD-051
+        await archivio_utente.salva(interaction.guild.id, case_number, member.id)  # LOG-029
 
         embed = _case_embed(
             "⚠️ Warn", discord.Color.yellow(), member, interaction.user, reason, case_number
@@ -430,6 +432,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             reason=reason,
         )
         await registro_chat.salva(interaction, case_number)  # MOD-051
+        await archivio_utente.salva(interaction.guild.id, case_number, member.id)  # LOG-029
         await self._chiudi_sanzioni_a_tempo(interaction.guild, member.id, interaction.user.id)
         embed = _case_embed(
             "👢 Kick", discord.Color.orange(), member, interaction.user, reason, case_number
@@ -507,6 +510,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             reason=reason,
         )
         await registro_chat.salva(interaction, case_number)  # MOD-051
+        await archivio_utente.salva(interaction.guild.id, case_number, member.id)  # LOG-029
         if not appello:  # MOD-008
             await moderation_repo.segna_senza_appello(interaction.guild.id, case_number)
         await self._chiudi_sanzioni_a_tempo(interaction.guild, member.id, interaction.user.id)
@@ -1064,6 +1068,7 @@ class ModerationActionsCog(CogConGruppi, commands.Cog):
             duration_seconds=duration_seconds,
         )
         await registro_chat.salva(interaction, case_number)  # MOD-051
+        await archivio_utente.salva(interaction.guild.id, case_number, member.id)  # LOG-029
         if not appello:  # MOD-008
             await moderation_repo.segna_senza_appello(interaction.guild.id, case_number)
         embed = _case_embed(

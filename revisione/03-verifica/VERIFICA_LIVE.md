@@ -1952,3 +1952,7 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `MUS-043` — Con brani in coda: `/music queue file:sì` allega `coda.txt` con un brano per riga (titolo, autore, indirizzo), senza nomi di utenti.
 - [ ] `FUN-030` — `/fun citazioni caso immagine:sì` (dal server e con `fonte:famose`) manda un PNG con la frase; senza citazioni salvate dice che non ce ne sono.
 - [ ] `AI-022` — Con l'app installata: menu «Traduci» su un messaggio di una persona che ne ha scritti tre di fila: la traduzione contiene tutti e tre. In un canale che il bot non può leggere traduce solo quello scelto.
+
+## Giro r1med (D121)
+
+- [ ] `LOG-029` — Fai cancellare e modificare qualche messaggio a un utente di prova (con i log dei messaggi accesi), poi dagli un warn. `/mod-casi caso chat numero:<caso> archivio:sì` manda `archivio_caso_N.txt` con una riga per evento (quando, canale, id messaggio) e dice che il testo non è conservato. Un caso senza eventi risponde che non c'è archivio.
