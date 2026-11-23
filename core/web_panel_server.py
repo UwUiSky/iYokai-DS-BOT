@@ -9,7 +9,7 @@ lingua dai punti unici dei comandi (D16), storico, premium e wiki dei comandi, �
 (copia e richiesta di cancellazione, #46), verifica dei membri dalla pagina web (link firmato,
 impronte senza IP), istantanee dei log (`core/web_panel_istantanee.py`), l'interfaccia di iYokai Desktop (`core/desktop_api.py`), link d'invito personali e inviti (`core/web_panel_inviti.py`),
 ruoli del pannello in lettura e scrittura e panoramica del server (`core/web_panel_accesso.py`, `core/web_panel_panoramica.py`), pagine per area e pagine pubbliche (`core/web_panel_pagine.py`), informativa privacy e termini (pubbliche) e pagina del proprietario del bot
-(moduli premium, server, AI in manutenzione). Pagine dei backup (`core/web_panel_backup.py`), risposta ai ticket (`core/web_panel_ticket.py`), trascrizioni dei ticket (`core/web_panel_ticket_trascrizioni.py`) e ruoli collegati Twitch (`core/web_panel_ruoli_collegati.py`).
+(moduli premium, server, AI in manutenzione). Pagina di consenso del rientro (`core/web_panel_join.py`), pagine dei backup (`core/web_panel_backup.py`), risposta ai ticket (`core/web_panel_ticket.py`), trascrizioni dei ticket (`core/web_panel_ticket_trascrizioni.py`) e ruoli collegati Twitch (`core/web_panel_ruoli_collegati.py`).
 Pagine HTML semplici (Jinja2 con escape automatico, nessuno script). Unica eccezione: la pagina «radio iYokai»
 dentro Discord (`core/web_panel_attivita.py`, B.8), con script propri e il suo riquadro ammesso solo a Discord.
 Funzioni coperte: SPEC §24.1–24.4, §24.6, §24.7, C.1–C.5, §4.2–4.3, §23.15, B.8 (CFG-001, CFG-002, CFG-003, CFG-027, #122; NF-20, issue #91; NF-22, #93; NF-21, #92; NF-38, #109; CFG-030, #122; #46; NF-27 r10; BKP-041, TKT-085, ALR-049 r2web)
@@ -32,7 +32,7 @@ from urllib.parse import urlsplit
 import jinja2
 from aiohttp import BodyPartReader, MultipartReader, web
 
-from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_backup, web_panel_editor, web_panel_inviti, web_panel_istantanee, web_panel_pagine, web_panel_ruoli_collegati, web_panel_ticket, web_panel_ticket_trascrizioni, web_panel_accesso as regole_accesso, web_panel_panoramica as panoramica, web_panel_logic as regole, verify_vpn_logic as vpn_logica
+from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_backup, web_panel_editor, web_panel_inviti, web_panel_istantanee, web_panel_pagine, web_panel_join, web_panel_ruoli_collegati, web_panel_ticket, web_panel_ticket_trascrizioni, web_panel_accesso as regole_accesso, web_panel_panoramica as panoramica, web_panel_logic as regole, verify_vpn_logic as vpn_logica
 from core.bot_aspetto import MAX_IMMAGINE
 from core.command_access import RuoloAdminNegato
 from core.command_search_logic import cerca
@@ -89,6 +89,8 @@ ESITI = {
     "trascrizioni_salvate": ("Opzioni delle trascrizioni salvate.", False),
     "trascrizioni_giorni": ("I giorni di conservazione vanno da 1 a 90: niente è stato salvato.", True),
     "ticket_non_inviato": ("Discord non ha accettato il messaggio: controlla che il canale ci sia ancora e riprova.", True),
+    "join_salvata": (web_panel_join.RISPOSTE["join_salvata"], False),
+    "join_spenta": (web_panel_join.RISPOSTE["join_spenta"], False),
     "rc_collegato": ("Twitch collegato: il tuo ruolo collegato è aggiornato su Discord.", False),
     "rc_non_riuscito": ("Discord non ha accettato il collegamento: riprova tra poco.", True),
     "rc_scollegato": ("Collegamento tolto.", False),
@@ -122,17 +124,22 @@ def build_app(
     ponte=panel_bridge,
     radio_flusso: str = "",
     allegati_url: str = "",
+    restore_redirect_uri: str = "",
+    chiave_ripristino: str = "",
 ) -> web.Application:
     """
     `sessioni`: `WebPanelSessionRepository`. `oauth`: oggetto con
     `exchange_code_for_token(client_id=, client_secret=, redirect_uri=, code=)`
     e `fetch_current_user(access_token)` (in produzione `restore_orchestrator`).
     `proxy_fidati`: IP dei reverse proxy di cui si legge `X-Forwarded-For`.
+    `restore_redirect_uri` e `chiave_ripristino`: indirizzo di ritorno e chiave di firma del ripristino utenti, per la pagina
+    di consenso `/join/<nome>` (BKP-039); senza, quella pagina risponde 404.
     """
     https = regole.cookie_sicuro(url_pubblico)
     prefisso = "__Host-" if https else ""
     cookie_sessione = prefisso + "iyokai_sessione"
     cookie_state = prefisso + "iyokai_state"
+    cookie_ritorno = prefisso + "iyokai_ritorno"  # solo `/join/<nome>`: dopo l'accesso si torna alla pagina di consenso
     redirect_uri = regole.url_redirect(url_pubblico)
     origine_ammessa = regole.origine(url_pubblico)
     intestazioni = regole.intestazioni_sicurezza(https)
@@ -330,9 +337,11 @@ def build_app(
         scade = datetime.now(timezone.utc) + timedelta(seconds=regole.DURATA_SESSIONE_SECONDI)
         await sessioni.crea(regole.impronta(nuovo), utente_id, scade)
         logger.info("Accesso al pannello web dell'utente %s.", utente_id)
-        risposta = _vai("/")
+        ritorno = request.cookies.get(cookie_ritorno, "")
+        risposta = _vai(ritorno if web_panel_join.PERCORSO_RITORNO.match(ritorno) else "/")
         _cookie(risposta, cookie_sessione, nuovo, regole.DURATA_SESSIONE_SECONDI)
         _cancella_cookie(risposta, cookie_state)
+        _cancella_cookie(risposta, cookie_ritorno)
         return risposta
 
     async def esci(request: web.Request) -> web.StreamResponse:
@@ -841,6 +850,12 @@ def build_app(
     web_panel_ticket_trascrizioni.registra_rotte(
         app, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE,
         chiave_intestazioni=CHIAVE_DOWNLOAD,
+    )
+    web_panel_join.registra_rotte(
+        app, bot=bot, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE,
+        ip=_ip, client_id=client_id, restore_redirect_uri=restore_redirect_uri, chiave_firma=chiave_ripristino,
+        imposta_ritorno=lambda risposta, percorso: _cookie(risposta, cookie_ritorno, percorso, regole.DURATA_STATE_SECONDI),
+        puo_gestire=web_panel_backup.puo_gestire_backup,
     )
     web_panel_ruoli_collegati.registra_rotte(
         app, pagina=_pagina, errore=_errore, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE, ip=_ip,

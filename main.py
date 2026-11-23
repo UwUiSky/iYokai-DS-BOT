@@ -820,6 +820,8 @@ async def main() -> None:
             proxy_fidati=proxy_fidati(config.WEB_PANEL_TRUSTED_PROXY),
             radio_flusso=config.RADIO_STREAM_URL,
             allegati_url=config.WEB_ALLEGATI_PUBLIC_URL,
+            restore_redirect_uri=config.OAUTH2_REDIRECT_URI,
+            chiave_ripristino=config.OAUTH_ENCRYPTION_KEY,
         )
         web_panel_runner = await web_panel_start_server(web_panel_app, config.WEB_BIND_HOST, config.WEB_PANEL_PORT)
     else:

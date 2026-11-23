@@ -342,7 +342,7 @@ Giro r2bkp (issue #121). «Corretta» = fa ciò che dice il catalogo e rispetta 
 | BKP-030 | sì | sì (ruoli per nome, mai con più permessi dell'originale) | nessuna | core/server_sync_logic.py; tests/test_server_sync_logic.py::test_ruoli_per_nome_e_niente_chiamate_se_gia_uguale, test_ruolo_omonimo_con_piu_permessi_non_si_da |
 | BKP-031 | sì | sì | test aggiunto per l'elenco e «disattiva» dal comando | `sincronia`; tests/test_server_sync_logic.py::test_elenco_e_disattiva_dal_comando, test_repository_coppia_unica_e_tetto |
 | BKP-038 | sì | sì (token cifrati con dato associato, rinnovo, 429, pause tra i DM, link di 7 giorni legato al destinatario, DM solo a chi ha acconsentito) | test aggiunto: nessun token nei log se il rinnovo o il join falliscono | core/restore_orchestrator.py, cogs/utility/restore.py; tests/test_restore_f3.py::test_nessun_token_nei_log_quando_il_rinnovo_fallisce, test_un_429_attende_il_retry_after_e_riprova, tests/test_restore_consenso.py::test_senza_consenso_nessun_dm |
-| BKP-039 | no | n/a | non fattibile nel codice (dominio, certificato e proxy per server): D108 | — |
+| BKP-039 | sì (r3web, D113) | sì | pagina sul dominio del bot, non su domini propri | core/web_panel_join.py; tests/test_panel_join.py |
 | BKP-040 | no | n/a | alternativa: il restore non raccoglie IP né paese (D108); regole per VPN e paese restano alla verifica | tests/test_restore_oauth_repo.py::test_il_ripristino_non_raccoglie_indirizzi_ip |
 | BKP-041 | no | n/a | non fatta: manca la sezione backup nel pannello web (dev-web), D108 | — |
 

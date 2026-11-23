@@ -84,9 +84,11 @@ class WebPanelPubblicoRepository:
     async def guild_da_join(self, nome: str) -> int | None:
         """Il server della pagina `/join/<nome>`: il nome scelto o, se è un numero, l'ID. Solo se la pagina è accesa."""
         if nome.isascii() and nome.isdigit():
+            if len(nome) > 19 or int(nome) >= 2**63:  # non entra in un BIGINT: di certo non esiste
+                return None
             return await self._pool.fetchval(
                 "SELECT guild_id FROM web_panel_pubblico WHERE guild_id = $1 AND join_attiva AND join_slug IS NULL", int(nome)
-            ) if len(nome) <= 19 else None
+            )
         return await self._pool.fetchval("SELECT guild_id FROM web_panel_pubblico WHERE join_slug = $1 AND join_attiva", nome)
 
     async def imposta_chiave(self, guild_id: int, impronta: str | None, prefisso: str | None, creata_da: int | None) -> None:
