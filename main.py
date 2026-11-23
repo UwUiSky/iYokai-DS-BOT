@@ -82,6 +82,7 @@ from core.backup_creator_bot import BackupCreatorBot
 from core import bot_roles
 from core.mod_bot import ModBot
 from core.nsfw_autopost_worker import nsfw_autopost_worker
+from core import bot_identita
 from core.nsfw_bot import NsfwBot
 from core.nsfw_fonti import fonti_nsfw
 from core.user_app_bot import UserAppBot
@@ -710,6 +711,9 @@ async def main() -> None:
     nsfw = NsfwBot() if config.NSFW_TOKEN else None
     # iYokai App (NF-36): facoltativa. Senza YOKAI_APP_TOKEN non esiste e nulla cambia.
     app = UserAppBot(bot_principale=bot) if config.YOKAI_APP_TOKEN else None
+    # MUS-090: i bot secondari di cui il server sceglie nome e logo (i bot musicali non si registrano mai).
+    for chiave_identita, client_identita in (("mod", mod), ("creator", creator), ("nsfw", nsfw), ("app", app)):
+        bot_identita.registra(chiave_identita, client_identita)
 
     # #36 (parte R0): un intent privileged (members, message_content)
     # va abilitato anche nel Developer Portal di Discord, non solo nel

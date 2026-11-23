@@ -2365,6 +2365,8 @@ Completa la parte C più sotto (pagine di verifica e dell'owner).
 - `[x]` 24.9 Pagine web per backup, ticket, ruoli collegati e interruttori AI (BKP-041, TKT-085, ALR-049, AI-017; r2web)
   → **Stato 22/11 (r2web):** `core/web_panel_backup.py` (elenco, scheda, eliminazione con conferma; stessi permessi di `/admin-backup`; nessun caricamento dal web), `core/web_panel_ticket.py` (risposta dal sito, solo staff del ticket, menzioni spente), `core/web_panel_ruoli_collegati.py` + `core/ruoli_collegati_logic.py` + `core/ruoli_collegati_rete.py` + `core/repositories/ruoli_collegati_repo.py` (OAuth di Twitch e di Discord, `state` firmato, token cifrati, migrazione 0753), `/server/<id>/ai/interruttori` in `core/web_panel_ai.py`, schede nuove per log e livelli in `core/config_impostazioni.py`. Vedi D107. Da provare dal vivo: `VERIFICA_LIVE.md`, sezione r2web.
 
+- `[x]` 24.10 Identità dei bot secondari nel server (MUS-090, D111; r3web)
+  → **Stato 23/11 (r3web):** `core/bot_identita.py` (nickname e avatar del server di Mod, Creator, NSFW, App con `Member.edit`; bot musicali esclusi; permesso «Gestisci server» riletto; pausa 4 cambi ogni 10 minuti; ritorno all'originale sempre possibile; logo ricodificato dalla pipeline D74) e `cogs/utility/identita_bot.py` (`/admin-bot setup identita-bot`). Test: `tests/test_bot_identita.py`. Prova live in `VERIFICA_LIVE.md`.
 - `[x]` 24.9b Pagina `/server/<id>/ticket/trascrizioni` (TKT-072): elenco con ricerca (utente, pannello, voto, motivo), apertura con CSP
   propria, opzioni (accesa, giorni 1-90) per gli admin; `core/web_panel_ticket_trascrizioni.py`. (da verificare live)
 

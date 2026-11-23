@@ -1937,3 +1937,7 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 4. `/admin-automod avviso attivo:no` spegne l'avviso; `testo:` con `{server} {canale} {regole} {utente}` cambia il DM; `testo:-` torna a quello di base.
 5. Sul registro di moderazione, sull'esito di un `/mod-sanzioni warn` e sul log AutoMod compare il bottone «Traduci». Riavvia il bot: il bottone sui vecchi messaggi risponde ancora.
 6. Con il client in una lingua diversa da quella del server (es. turco su server inglese) il bottone dà una risposta effimera tradotta; con client italiano/inglese i testi fissi sono quelli del bot. Con l'AI spenta (`/admin-ai`) dice che la traduzione non è disponibile. Sei pressioni in un minuto: la sesta è rifiutata. Nessuna menzione fa notifica.
+
+## Pannello web, identità e ripristino — giro r3web (#118, #121, #126)
+
+- [ ] `MUS-090` — Con Mod, NSFW o App nel server: `/admin-bot setup identita-bot` senza scelte elenca i bot. Con `bot:iYokai Mod nome:Custode` il nome di Mod cambia solo in quel server; con `logo:` (PNG) cambia l'avatar del server. Con `originale:sì` tornano nome e logo veri. Dopo quattro cambi ravvicinati risponde «aspetta», ma `originale:sì` funziona ancora. Un utente senza «Gestisci server» è rifiutato. I bot musicali non compaiono e restano «iYokai Music».

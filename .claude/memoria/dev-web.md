@@ -1,9 +1,10 @@
 # Memoria di dev-web
 
 ## Aggiornata
-22/11/2026 · ramo `feat/r2web` · giro r2web (migrazione 0753; D107)
+23/11/2026 · ramo `feat/r3web` · giro r3web (MUS-090, VER-027, BKP-039; previste 3 voci)
 
 ## In corso
+- r3web: MUS-090 fatta (`core/bot_identita.py`, `cogs/utility/identita_bot.py`, `tests/test_bot_identita.py`). Restano VER-027 e BKP-039. Migrazioni libere: 0754-0759.
 - Giro r2web chiuso (5 voci su 5). Ramo `feat/r2web`, nessun push. Smoke da fare (lo lancia l'orchestratore).
 - Prossimo passo: aggiornamento periodico del tipo di canale Twitch (oggi si ricollega a mano); produttori di avvisi per sicurezza e log; `leveling` e i moduli log non hanno un gruppo in `GRUPPO_PER_MODULO` (la politica dei comandi non li tocca).
 - Migrazioni usate: 0753. Libere: 0754-0759.
