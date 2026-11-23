@@ -1937,3 +1937,18 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 4. `/admin-automod avviso attivo:no` spegne l'avviso; `testo:` con `{server} {canale} {regole} {utente}` cambia il DM; `testo:-` torna a quello di base.
 5. Sul registro di moderazione, sull'esito di un `/mod-sanzioni warn` e sul log AutoMod compare il bottone «Traduci». Riavvia il bot: il bottone sui vecchi messaggi risponde ancora.
 6. Con il client in una lingua diversa da quella del server (es. turco su server inglese) il bottone dà una risposta effimera tradotta; con client italiano/inglese i testi fissi sono quelli del bot. Con l'AI spenta (`/admin-ai`) dice che la traduzione non è disponibile. Sei pressioni in un minuto: la sesta è rifiutata. Nessuna menzione fa notifica.
+
+
+## Voci solo nei documenti — giro r1doc (D119)
+
+- [ ] `LIV-013` — Con un server dove qualcuno ha scritto e qualcuno è stato in vocale: `/level leaderboard metric:XP da messaggi` e `metric:XP da vocale` mostrano due elenchi diversi, ognuno con «(livello N)». Il totale e `/level rank` non cambiano. Gli XP dati con `/admin-livelli membro` non compaiono nelle due classifiche.
+- [ ] `LIV-046` — `/admin-ruoli premio aggiungi level:5 role:@Veterano livello_vocale:2`: chi ha livello 5 ma niente vocale non riceve il ruolo; dopo abbastanza minuti in vocale (al massimo 10 minuti dopo il livello vocale 2) lo riceve. `/admin-livelli membro azione:azzera` lo toglie di nuovo al controllo successivo.
+- [ ] `LIV-053` — `/level rank sfondo_pronto:` mostra gli otto sfondi mentre scrivi; scegline uno e la card cambia. `/admin-livelli card sfondo_pronto:` lo mette per tutto il server; `senza_sfondo:sì` lo toglie; un nome inventato è rifiutato.
+- [ ] `LIV-061` — `/admin-economia annunci vincitori-set channel:#canale settimanale:sì`; il lunedì dopo la mezzanotte UTC compare l'embed «Top 10 della settimana» (una volta sola, anche dopo un riavvio). `vincitori-off settimanale:sì` lo spegne. Senza i permessi di scrittura nel canale il comando lo dice.
+- [ ] `LIV-090` — `/level profilo presentazione:` con una parola vietata dal server (`/admin-filtri`) è rifiutata; una frase normale si salva.
+- [ ] `LIV-091` — `/level progressi sezione:globale` mostra «XP globali» e il livello globale solo se hai XP in almeno un server.
+- [ ] `CFG-011` — `/admin-bot config risposte canale_bot:#bot`: un comando scritto in un altro canale risponde in privato (anche il messaggio dopo il primo), nel canale dei bot risponde come prima. `comandi_canale_bot:fun, giochi` limita la regola a quei gruppi; `comandi_canale_bot:tutti` toglie l'elenco; `senza_canale_bot:sì` spegne la regola. Un pannello permanente (menu dei ruoli, ticket) resta pubblico.
+- [ ] `VOC-017` — `/admin-vocali opzioni azione:kick ruolo:@Ospiti consenti:no`: chi ha quel ruolo e possiede un vocale temporaneo non può usare `/voice kick` né il bottone «Espelli» del pannello (risposta «Il server ha tolto questa azione al tuo ruolo»); le altre azioni e chi gestisce i canali non sono toccati. `consenti:sì` la ridà.
+- [ ] `MUS-043` — Con brani in coda: `/music queue file:sì` allega `coda.txt` con un brano per riga (titolo, autore, indirizzo), senza nomi di utenti.
+- [ ] `FUN-030` — `/fun citazioni caso immagine:sì` (dal server e con `fonte:famose`) manda un PNG con la frase; senza citazioni salvate dice che non ce ne sono.
+- [ ] `AI-022` — Con l'app installata: menu «Traduci» su un messaggio di una persona che ne ha scritti tre di fila: la traduzione contiene tutti e tre. In un canale che il bot non può leggere traduce solo quello scelto.
