@@ -124,6 +124,8 @@ def test_fun_067_068_069_070_073_la_scheda_sul_web_ha_i_servizi_del_catalogo():
 
     scelte = {c.value for c in SchedeGiochiCog.scheda.callback.__discord_app_commands_param_choices__["tipo"]}
     assert {"pokemon", "anime", "manga", "magic", "hearthstone", "osu"} <= scelte
+    assert "pokemon" in scelte  # FUN-068: scheda di un Pokémon e delle sue abilità
+    assert {"magic", "hearthstone"} <= scelte  # FUN-070: carte di Hearthstone e di Magic
     d = sl.debolezze(["fire"])  # FUN-069: tabella dei tipi nel codice
     assert 2.0 in d and "water" in d[2.0] and 0.5 in d and "fire" in d[0.5]
     assert "FUN-" not in inspect.getsource(SchedeGiochiCog) or True
