@@ -123,6 +123,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-22 17:
 - **`/admin-automod mute-duration`** — Imposta la durata del timeout usato dall'azione 'mute' dell'AutoMod.
 - **`/admin-automod odio base`** — Accende o spegne la lista di base degli insulti d'odio.
 - **`/admin-automod odio blocco`** — Blocco preventivo delle frasi d'odio.
+- **`/admin-automod avviso`** — Avvisa chi si vede cancellare un messaggio dall'AutoMod (acceso/spento, testo proprio).
 - **`/admin-automod odio nomi`** — Controlla nickname e nomi visualizzati all'ingresso e al cambio.
 - **`/admin-automod odio parola`** — Aggiunge o toglie una parola propria o una parola lecita.
 - **`/admin-automod odio prova`** — Prova un testo contro le parole vietate, senza agire.

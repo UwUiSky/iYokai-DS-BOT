@@ -3940,5 +3940,12 @@
   "automod_avviso_v_parole_vietate": "Banned words",
   "automod_avviso_stato_acceso": "on",
   "automod_avviso_stato_spento": "off",
-  "automod_avviso_riepilogo": "Notice to the user when AutoMod deletes a message: **{stato}**.\nText: {testo}"
+  "automod_avviso_riepilogo": "Notice to the user when AutoMod deletes a message: **{stato}**.\nText: {testo}",
+  "modtrad_bottone": "Translate",
+  "modtrad_non_disponibile": "I can't translate this message.",
+  "modtrad_troppe": "You translated too many messages: try again in a minute.",
+  "modtrad_niente": "This message has no text to translate.",
+  "modtrad_gia_tua": "This message is already in your language.",
+  "modtrad_ai_no": "I can't translate right now: translating into this language uses AI, which is not available.",
+  "modtrad_nota_ai": "Automatic translation with AI"
 }

@@ -1,9 +1,10 @@
 # Memoria dev-moderazione
 ## Aggiornata
-2026-11-22, giro r2mod (ramo feat/r2mod, wt /home/user/wt-115, DB iyokai_w115; migr. 0800, 0801). Controllo voce per voce di #115, #116, #118: tabella in revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.md, D106. Smoke da fare.
+2026-11-22, giro r3automod (ramo feat/r3automod, wt /home/user/wt-am, DB iyokai_wam; nessuna migrazione, restano 0807-0809). D110. Smoke da fare.
 ## In corso
-Tutte le voci della scheda r2mod sono fatte (resta in parte AMD-031: lista malware vuota, la riempie l'owner). Da fare dopo il merge: smoke, controlli di cacciatore-bug e revisore-capo, prova su Discord (vedi rapporto). Migrazioni libere: 0807-0809.
+Giro r3automod finito: avviso all'utente (#116) e bottone Traduci (#115). Da fare dopo il merge: smoke, cacciatore-bug, revisore-capo, prova su Discord (VERIFICA_LIVE «AutoMod: avviso e bottone Traduci»). Quarantena: nessun messaggio pubblico suo, senza bottone.
 ## Fatto
+- r3automod: core/automod_avviso.py (DM con le regole, canale 8 s se DM chiusi, tetto 30 s e 5 in 10 min, /admin-automod avviso, chiavi automod_avviso_attivo/testo); core/moderazione_traduci.py (bottone persistente iyokai:modtraduci, `traducibile(guild, **kw)`, testi del bot o snodo AI) + cogs/moderation/traduci.py; test_automod_avviso, test_moderazione_traduci
 - r2mod parte 3: MOD-016 (0804), MOD-091/092/094/095/096 (0803), MOD-103/104 (0805), MOD-051 (0806), MOD-053, AMD-031
 - r2mod parte 2: CFG-024+VER-018 (permessi per azione, 0802), MOD-034 tempban, MOD-040, MOD-060, AMD-057/071 (core/automod_emergenza.py), VER-002/003/006/007/023/028
 - r2mod: MOD-008/063 (appelli: senza appello, timeout; 0800), MOD-018/019 (ruolo mute), MOD-033/035 (scala con finestra; 0801), MOD-093/097 (blocco a tempo e stato), UTL-204 (esporta-chat), UTL-205 (snipe utente); segni nei test per MOD-020/032/052/061/062/109/111, VER-001/004/005/021/022/024/026
@@ -49,6 +50,7 @@ Tutte le voci della scheda r2mod sono fatte (resta in parte AMD-031: lista malwa
 - Test che chiamano il callback di un cog: get_member deve conoscere sia il moderatore sia il bersaglio (side_effect per id), se no «su te stesso»
 - Il DM delle sanzioni legge le opzioni dal db: i test dei cog senza db vanno patchati (core.moderation_dm.costruisci)
 ## Aperto
+- r3automod: l'avviso si salta se la regola ha gia' mandato dm/warn/kick/ban/avviso_canale (scelta mia, D110); il bottone Traduci riconosce i testi fissi solo per testo esatto o modello; i motivi misti (testo fisso + dati) vanno all'AI
 - Cose imparate r19: i moduli in cogs/ senza setup() rompono test_command_tree_invariants: il codice senza cog va in core/ (conferma e` core/moderation_conferma.py)
 - re2 non ha re2.IGNORECASE: usare il prefisso (?i). Comando che deve continuare dopo una conferma: ritorna l'interazione del tasto e il comando sostituisce `interaction` (la prima e` gia` risposta)
 - Mai lanciare pytest di altri file sullo stesso DB mentre ne gira uno in background: e anche modificare cog durante la run falsa i test dell'albero comandi

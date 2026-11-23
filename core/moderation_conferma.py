@@ -19,6 +19,7 @@ from cogs.moderation._shared import check_can_moderate
 from core import moderation_opzioni, moderation_risposte as risposte
 from core.command_access import Livello, puo_usare
 from core.i18n import testo_per
+from core.moderazione_traduci import traducibile
 from core.ui_base import BaseView
 
 logger = logging.getLogger(__name__)
@@ -120,6 +121,7 @@ async def invia_esito(
         if nota:
             embed.set_footer(text=nota)
         corpo = {"embed": embed}
+    corpo = await traducibile(interaction.guild, **corpo)  # D110: bottone Traduci sull'esito pubblico
     cancella = o.risposte == risposte.MODO_CANCELLA_DOPO and risposte.puo_cancellare(o.risposte_secondi)
     messaggio = None
     if seguito:

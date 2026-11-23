@@ -3940,5 +3940,12 @@
   "automod_avviso_v_parole_vietate": "Parole vietate",
   "automod_avviso_stato_acceso": "acceso",
   "automod_avviso_stato_spento": "spento",
-  "automod_avviso_riepilogo": "Avviso all'utente quando l'AutoMod cancella un messaggio: **{stato}**.\nTesto: {testo}"
+  "automod_avviso_riepilogo": "Avviso all'utente quando l'AutoMod cancella un messaggio: **{stato}**.\nTesto: {testo}",
+  "modtrad_bottone": "Traduci",
+  "modtrad_non_disponibile": "Non posso tradurre questo messaggio.",
+  "modtrad_troppe": "Hai tradotto troppi messaggi: riprova tra un minuto.",
+  "modtrad_niente": "Questo messaggio non ha testo da tradurre.",
+  "modtrad_gia_tua": "Questo messaggio è già nella tua lingua.",
+  "modtrad_ai_no": "Non posso tradurre ora: la traduzione di questa lingua usa l'AI, che non è disponibile.",
+  "modtrad_nota_ai": "Traduzione automatica con l'AI"
 }

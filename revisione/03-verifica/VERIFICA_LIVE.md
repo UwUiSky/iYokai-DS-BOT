@@ -1913,3 +1913,12 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `ALR-049` — Prima: `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `OAUTH_ENCRYPTION_KEY` nel `.env`; indirizzo `…/ruoli-collegati/twitch` nella console Twitch e `…/ruoli-collegati/discord` nel Developer Portal (Redirects). `/ruoli-collegati` → «Collega Twitch»: Twitch, poi Discord con «collegamenti di ruolo». In un server: Impostazioni → Ruoli → Collegamenti → aggiungi iYokai con «Affiliato Twitch» o «Partner Twitch»: il ruolo arriva a un canale affiliato o partner e non a uno senza. «Scollega» toglie il requisito. Controllare nel database che i token siano cifrati (iniziano con `v2.`).
 - [ ] `24.2` — `/server/<id>/modulo/leveling` e `…/logging_basic`: scegli il canale dei log e l'obiettivo del server; `/admin-bot config history` mostra le modifiche.
 
+
+## AutoMod: avviso e bottone Traduci — giro r3automod (#116, #115, D110)
+
+1. Con un filtro acceso (es. `/admin-filtri anti-link-mode`), scrivi con un secondo account un messaggio che lo viola. Il messaggio sparisce e l'account riceve un DM «Messaggio rimosso» con le regole non rispettate.
+2. Chiudi i DM dell'account e ripeti dopo 30 secondi: nel canale compare un messaggio breve con la sola menzione, che sparisce dopo 8 secondi.
+3. Viola due regole insieme (link + maiuscole): un solo avviso con tutte e due le regole. Ripeti subito: nessun secondo avviso prima di 30 secondi; dal sesto in 10 minuti, nessuno.
+4. `/admin-automod avviso attivo:no` spegne l'avviso; `testo:` con `{server} {canale} {regole} {utente}` cambia il DM; `testo:-` torna a quello di base.
+5. Sul registro di moderazione, sull'esito di un `/mod-sanzioni warn` e sul log AutoMod compare il bottone «Traduci». Riavvia il bot: il bottone sui vecchi messaggi risponde ancora.
+6. Con il client in una lingua diversa da quella del server (es. turco su server inglese) il bottone dà una risposta effimera tradotta; con client italiano/inglese i testi fissi sono quelli del bot. Con l'AI spenta (`/admin-ai`) dice che la traduzione non è disponibile. Sei pressioni in un minuto: la sesta è rifiutata. Nessuna menzione fa notifica.

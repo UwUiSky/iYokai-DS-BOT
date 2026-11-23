@@ -58,6 +58,7 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core import bot_roles
 from core import channel_router as router
+from core.moderazione_traduci import traducibile
 from core.i18n import testo_per
 from core.phishing_list_fetcher import lista_phishing
 from core.phishing_azione_logic import SCELTE as SCELTE_PHISHING_EXTRA, aggiungi_extra, motivo_extra
@@ -547,7 +548,7 @@ async def _log_violation(
         valore = f"`{contenuto.replace('`', '')}`" if violation in _VIOLAZIONI_PHISHING else contenuto
         embed.add_field(name="Contenuto", value=valore, inline=False)
     tipo = router.TIPO_PHISHING if violation in _VIOLAZIONI_PHISHING else router.TIPO_AUTOMOD
-    await router.invia_a(canale, message.guild, tipo, embed=embed)
+    await router.invia_a(canale, message.guild, tipo, **await traducibile(message.guild, embed=embed))
 
 # Nomi delle regole che iYokai gestisce, sempre con il prefisso
 # convenzionale (vedi core/automod_sync.py) così non vengono mai
