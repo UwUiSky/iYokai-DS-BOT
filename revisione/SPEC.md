@@ -3084,3 +3084,5 @@ Controllo delle 89 voci in `revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.
 - `[x]` ECO-006 (D121): `/admin-economia annunci vincitori-set registro:sì` manda ogni minuto un riepilogo dei movimenti di monete (ECO-006, 0881, `core/economia_registro.py`).
 
 - `[x]` ECO-050 (D121): `/monete work automatico:sì` (premium): lavoro da solo ogni 4 ore (ECO-050, 0882, `core/economia_autolavoro.py`).
+
+- `[x]` SIC-021 (D121): `/owner system chiave-soccorso` e `scripts/chiave_soccorso.py verifica` (SIC-021, 0883).

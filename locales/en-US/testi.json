@@ -4020,5 +4020,10 @@
   "economia_registro_non_era_attivo": "The movements log was not on.",
   "autolavoro_acceso": "You now work on your own every 4 hours (when the work cooldown is over). Coins and history are the same as `/monete work`.",
   "autolavoro_serve_premium": "Automatic work needs the server's premium.",
-  "autolavoro_spento": "Automatic work turned off."
+  "autolavoro_spento": "Automatic work turned off.",
+  "soccorso_gia_presente": "A rescue key already exists. To change it use `sostituisci:yes`: the old one stops working.",
+  "soccorso_creata": "Rescue key created. Write it down NOW and keep it outside Discord (paper, safe): it cannot be shown again.\n```\n{codice}\n```\nIf you lose your account: on the bot's server run `python scripts/chiave_soccorso.py verifica`, then change `OWNER_ID` in `.env` by hand. After 5 mistakes the key locks.",
+  "soccorso_revocata": "Rescue key revoked.",
+  "soccorso_assente": "There is no rescue key.",
+  "soccorso_stato": "Rescue key present. Created {creata}, last used {uso}, locked: {bloccata}."
 }

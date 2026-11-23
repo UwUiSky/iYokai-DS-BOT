@@ -718,6 +718,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonna_server="guild_id", utente="cancella", esporta=True,
        scadenza=Scadenza("COALESCE(last_used_at, created_at)", 365),
        nota="r10: lo slug contiene il nome del membro, quindi si cancella con lui e dopo 365 giorni senza uso"),
+    _t("owner_chiave_soccorso", "Impronta della chiave di soccorso dell'owner (SIC-021)",
+       nota="globale: nessun dato di utenti né di server, solo l'impronta di un codice; non si esporta"),
     _t("web_luoghi_cache", "Città cercate con /web meteo (cache obbligatoria di Nominatim, D69)", scadenza=Scadenza("creato_il", 90),
        nota="globale: testo cercato e coordinate, nessun dato di utenti né di server"),
     _t("web_impostazioni", "Impostazioni di /web per server (accorciatore di link)", colonna_server="guild_id"),

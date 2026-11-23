@@ -4020,5 +4020,10 @@
   "economia_registro_non_era_attivo": "Il registro dei movimenti non era acceso.",
   "autolavoro_acceso": "Da ora lavori da solo ogni 4 ore (se l'attesa del lavoro è finita). Le monete e lo storico sono come quelli di `/monete work`.",
   "autolavoro_serve_premium": "Il lavoro automatico serve il premium del server.",
-  "autolavoro_spento": "Lavoro automatico spento."
+  "autolavoro_spento": "Lavoro automatico spento.",
+  "soccorso_gia_presente": "C'è già una chiave di soccorso. Per cambiarla usa `sostituisci:sì`: la vecchia smette di valere.",
+  "soccorso_creata": "Chiave di soccorso creata. Scrivila ORA e tienila fuori da Discord (carta, cassaforte): non si può rivedere.\n```\n{codice}\n```\nSe perdi l'account: sul server del bot lancia `python scripts/chiave_soccorso.py verifica`, poi cambia `OWNER_ID` nel `.env` a mano. Dopo 5 errori la chiave si blocca.",
+  "soccorso_revocata": "Chiave di soccorso revocata.",
+  "soccorso_assente": "Non c'è nessuna chiave di soccorso.",
+  "soccorso_stato": "Chiave di soccorso presente. Creata {creata}, ultimo uso {uso}, bloccata: {bloccata}."
 }
