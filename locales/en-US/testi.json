@@ -4063,5 +4063,10 @@
   "programma_attesa": "The wait goes from 1 minute to 30 days.",
   "programma_ok": "Action scheduled (number {numero}). Your permissions are checked again when it runs.",
   "sondaggio_premio_serve_economia": "The prize is in coins: the levels and economy module must be on.",
-  "tickets_roblox_senza_chiave": "The Roblox profile is not available: the bot owner has not set the Bloxlink key."
+  "tickets_roblox_senza_chiave": "The Roblox profile is not available: the bot owner has not set the Bloxlink key.",
+  "sala_nome_tamburo": "Drum",
+  "sala_tamburo_salvo": "🔘 {chi} presses: the slot is empty.",
+  "sala_tamburo_fuori": "🔴 {chi} finds the red ball and is out!",
+  "sala_tamburo_vince": "🏆 {chi} is the last one left and wins the pot!",
+  "sala_tamburo_turno": "🎯 It's {chi}'s turn: press a slot ({secondi} seconds). {caselle}\nStill in: {vivi}"
 }

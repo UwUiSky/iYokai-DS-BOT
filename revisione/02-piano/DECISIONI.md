@@ -1537,3 +1537,4 @@ Attua D119 per le voci medie. Elenco delle voci e dei motivi in fondo, aggiornat
 - **UTL-111**: fatta: poche azioni sicure, fino a 5 (il catalogo: sblocca canale, togli ruolo; in più dai ruolo e messaggio). Mai comandi di moderazione.
 - **ECO-051**: fatta come premio di un sondaggio del server (D18: alternativa più vicina). Un sondaggio dell'owner su tutti i server non esiste: il bot non ha una rete di server dove mandare un sondaggio unico senza che lo staff lo scelga.
 - **TKT-088**: fatta, con il vincolo dell'owner: serve una chiave Bloxlink nel `.env`; senza resta spenta. Il collegamento Discord-Roblox è di Bloxlink (il bot non lo conosce); l'API di Roblox è pubblica.
+- **ECO-093**: fatta: tema delicato risolto con nome e grafica neutri («Tamburo», una sfera rossa in una casella), come dice il catalogo.

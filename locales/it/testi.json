@@ -4063,5 +4063,10 @@
   "programma_attesa": "L'attesa va da 1 minuto a 30 giorni.",
   "programma_ok": "Azione programmata (numero {numero}). Quando scatta si ricontrollano i tuoi permessi.",
   "sondaggio_premio_serve_economia": "Il premio è in monete: serve il modulo livelli ed economia acceso.",
-  "tickets_roblox_senza_chiave": "Il profilo Roblox non è disponibile: il proprietario del bot non ha messo la chiave di Bloxlink."
+  "tickets_roblox_senza_chiave": "Il profilo Roblox non è disponibile: il proprietario del bot non ha messo la chiave di Bloxlink.",
+  "sala_nome_tamburo": "Tamburo",
+  "sala_tamburo_salvo": "🔘 {chi} preme: la casella è vuota.",
+  "sala_tamburo_fuori": "🔴 {chi} trova la sfera rossa ed è fuori!",
+  "sala_tamburo_vince": "🏆 {chi} è l'ultimo rimasto e vince il piatto!",
+  "sala_tamburo_turno": "🎯 Tocca a {chi}: preme una casella ({secondi} secondi). {caselle}\nIn gara: {vivi}"
 }

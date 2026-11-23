@@ -135,6 +135,62 @@ class Bomba:
             self._nuovo_giro()
 
 
+# ---------------------------------------------------------------- tamburo (ECO-093)
+class Tamburo:
+    """Un tamburo di sei caselle con una sola sfera rossa. A turno si preme: chi trova la sfera esce e il tamburo si
+    ricarica. L'ultimo rimasto vince. Un gioco finto: nessuna arma, nessun danno, solo una sfera in una casella."""
+
+    CASELLE = 6
+
+    def __init__(self, giocatori: list[int], rng: random.Random) -> None:
+        if len(giocatori) < 2 or len(giocatori) > MAX_GIOCATORI:
+            raise ValueError("Servono da 2 a 10 giocatori.")
+        self.rng = rng
+        self.vivi = list(giocatori)
+        self.turno = 0
+        self.ultimo_eliminato: int | None = None
+        self._ricarica()
+
+    def _ricarica(self) -> None:
+        self.carica = self.rng.randrange(self.CASELLE)
+        self.posizione = 0  # quante caselle sono già state scoperte in questo giro
+
+    @property
+    def di_turno(self) -> int:
+        return self.vivi[self.turno % len(self.vivi)]
+
+    @property
+    def vincitore(self) -> int | None:
+        return self.vivi[0] if len(self.vivi) == 1 else None
+
+    def premi(self, utente: int) -> str:
+        """'non_turno' | 'salvo' | 'fuori' | 'vince'."""
+        if self.vincitore is not None or utente != self.di_turno:
+            return "non_turno"
+        if self.posizione != self.carica:
+            self.posizione += 1
+            self.turno = (self.turno + 1) % len(self.vivi)
+            return "salvo"
+        posto = self.vivi.index(utente)
+        self.vivi.remove(utente)
+        self.ultimo_eliminato = utente
+        if len(self.vivi) == 1:
+            return "vince"
+        self.turno = posto % len(self.vivi)
+        self._ricarica()
+        return "fuori"
+
+    def esci(self, utente: int) -> None:
+        """Chi non preme in tempo è fuori (l'ultimo rimasto no)."""
+        if utente in self.vivi and len(self.vivi) > 1:
+            posto = self.vivi.index(utente)
+            self.vivi.remove(utente)
+            if posto < self.turno:
+                self.turno -= 1
+            self.turno %= len(self.vivi)
+            self._ricarica()
+
+
 # ---------------------------------------------------------------- carte a turni (ECO-111)
 SEMI_CARTE = ("🟥", "🟦", "🟩", "🟨")
 CARTE_IN_MANO = 5

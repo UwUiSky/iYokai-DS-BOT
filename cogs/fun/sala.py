@@ -6,7 +6,7 @@ con la puntata di tutti; impiccato e quiz con un piccolo premio e un tetto al gi
 insieme, in una sola transazione, quando la partita parte (partite_repo.apri_gruppo): se la partita non parte non si
 è pagato niente, e se il bot si ferma le puntate rimaste tornano indietro all'avvio. Solo i giocatori della sala
 agiscono. Le monete dei giochi non si comprano con soldi veri.
-Funzioni coperte: ECO-091, ECO-101, ECO-102, ECO-103, ECO-105, ECO-110, ECO-111, ECO-112, ECO-113, ECO-114
+Funzioni coperte: ECO-091, ECO-093, ECO-101, ECO-102, ECO-103, ECO-105, ECO-110, ECO-111, ECO-112, ECO-113, ECO-114
 Dipende da: core/sala_logic.py, cogs/fun/_lobby.py, core/repositories/partite_repo.py
 """
 
@@ -288,6 +288,60 @@ async def gioca_bomba(tv: Tavolo) -> dict[int, int]:
     return vince_il_piatto(tv.giocatori, tv.puntata, bomba.vincitore)
 
 
+# ============================================================== tamburo (ECO-093)
+class VistaTamburo(VistaGiocatori):
+    """Un solo bottone: preme la prossima casella chi ha il turno. Nome e testi neutri: una sfera rossa in un tamburo."""
+
+    def __init__(self, tamburo: sl.Tamburo, giocatori: list[int]) -> None:
+        super().__init__(giocatori, DURATA_MASSIMA)
+        self.tamburo = tamburo
+        self.ultima_mossa = time.monotonic()
+        self.ultimo_testo = ""
+
+    @discord.ui.button(label="🎯", style=discord.ButtonStyle.primary)
+    async def premi(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        esito = self.tamburo.premi(interaction.user.id)  # nessun await tra il controllo del turno e la mossa
+        if esito == "non_turno":
+            await interaction.response.send_message(await testo_per(interaction, "sala_non_tuo_turno"), ephemeral=True)
+            return
+        self.ultima_mossa = time.monotonic()
+        chiave = {"salvo": "sala_tamburo_salvo", "fuori": "sala_tamburo_fuori", "vince": "sala_tamburo_fuori"}[esito]
+        self.ultimo_testo = await testo_per(interaction, chiave, pubblica=True, chi=f"<@{interaction.user.id}>")
+        if esito == "vince":
+            self.stop()
+        await interaction.response.edit_message(content=await self._testo(interaction), view=None if esito == "vince" else self, allowed_mentions=NESSUNA_MENZIONE)
+
+    async def _testo(self, interaction) -> str:
+        if self.tamburo.vincitore is not None:
+            return f"{self.ultimo_testo}\n" + await testo_per(interaction, "sala_tamburo_vince", pubblica=True, chi=f"<@{self.tamburo.vincitore}>")
+        vivi = " ".join(f"<@{u}>" for u in self.tamburo.vivi)
+        caselle = "🔘" * self.tamburo.posizione + "⚪" * (sl.Tamburo.CASELLE - self.tamburo.posizione)
+        return f"{self.ultimo_testo}\n" + await testo_per(
+            interaction, "sala_tamburo_turno", pubblica=True, chi=f"<@{self.tamburo.di_turno}>", vivi=vivi, secondi=SECONDI_TURNO, caselle=caselle
+        )
+
+
+async def gioca_tamburo(tv: Tavolo) -> dict[int, int]:
+    tamburo = sl.Tamburo(list(tv.giocatori), tv.rng)
+    vista = VistaTamburo(tamburo, tv.giocatori)
+    msg = await tv.invia(await vista._testo(tv.interaction), vista)
+    while tamburo.vincitore is None and not tv.scaduto():
+        await asyncio.sleep(1)
+        if time.monotonic() - vista.ultima_mossa > SECONDI_TURNO:
+            lento = tamburo.di_turno
+            tamburo.esci(lento)
+            vista.ultima_mossa = time.monotonic()
+            vista.ultimo_testo = await tv.t("sala_lento", chi=f"<@{lento}>")
+            if tamburo.vincitore is not None:
+                vista.stop()
+            await tv.modifica(msg, await vista._testo(tv.interaction), None if tamburo.vincitore is not None else vista)
+    vista.stop()
+    if tamburo.vincitore is None:
+        await tv.modifica(msg, await tv.t("sala_tempo_finito"))
+        return rimborso(tv.giocatori, tv.puntata)
+    return vince_il_piatto(tv.giocatori, tv.puntata, tamburo.vincitore)
+
+
 # ============================================================== carte a turni (ECO-111)
 class SceltaCarta(discord.ui.Select):
     def __init__(self, vista: "VistaCarte", utente: int, segnaposto: str) -> None:
@@ -435,6 +489,7 @@ MOTORI = {
     "corsa": ("sala:corsa", gioca_corsa, 2, 10),
     "lotta": ("sala:lotta", gioca_lotta, 2, 6),
     "bomba": ("sala:bomba", gioca_bomba, 2, 10),
+    "tamburo": ("sala:tamburo", gioca_tamburo, 2, 10),  # ECO-093
     "carte": ("sala:carte", gioca_carte, 2, 6),
     "bingo": ("sala:bingo", gioca_bingo, 2, 10),
 }
@@ -694,6 +749,11 @@ class SalaCog(CogConGruppi, commands.Cog):
     @app_commands.describe(puntata="Monete da puntare, uguali per tutti")
     async def bomba(self, interaction: discord.Interaction, puntata: app_commands.Range[int, 1, PUNTATA_TETTO]) -> None:
         await self._partita(interaction, "bomba", puntata)
+
+    @comando_di_gruppo("sala", nome="tamburo", descrizione="Un tamburo con una sfera rossa: chi la trova esce, l'ultimo prende il piatto.")
+    @app_commands.describe(puntata="Monete da puntare, uguali per tutti")
+    async def tamburo(self, interaction: discord.Interaction, puntata: app_commands.Range[int, 1, PUNTATA_TETTO]) -> None:
+        await self._partita(interaction, "tamburo", puntata)
 
     @comando_di_gruppo("sala", nome="carte", descrizione="Carte a turni: stesso colore o stesso numero, chi finisce le carte vince.")
     @app_commands.describe(puntata="Monete da puntare, uguali per tutti")
