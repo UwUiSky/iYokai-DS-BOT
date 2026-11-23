@@ -1371,6 +1371,12 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   risorsa remota (avatar a iniziali), formato testo|html|entrambi (TKT-070, 071; `/admin-ticket-opzioni chiusura formato:`)
   e ZIP con le sole immagini ricodificate dalla pipeline D62 più l'elenco degli altri file (TKT-074; `allegati_zip:`).
   Core in `core/ticket_transcript_logic.py`. File sopra 8 MiB: senza immagini, poi in parti. (da verificare live)
+- `[x]` 13.22b Trascrizioni dei ticket (TKT-072, D111, D114, migrazione 0774): file HTML di base con orario ai secondi, autore
+  pulito, testo escapato, immagini solo come PNG ricodificato (tetto 2 MiB l'una, 8 MiB il file; oltre, solo nome), gli altri
+  allegati solo nome, tipo e peso, nessun link. Alla chiusura la pagina si cifra (AES-256-GCM, `TICKET_TRASCRIZIONI_KEY` o
+  `OAUTH_ENCRYPTION_KEY`, mai nel database) e si conserva fino a 90 giorni (tabella `ticket_trascrizioni`, scadenza dal registro
+  dati). Core: `core/ticket_trascrizioni_logic.py`, `core/ticket_trascrizioni_servizio.py`,
+  `core/repositories/ticket_trascrizioni_repo.py`. (da verificare live)
 - `[x]` 13.23 Blocco T3 del catalogo (D66, migrazioni 0522 e 0525): menu «Gestisci» con «Etichette» e «Sposta in un
   altro pannello». Etichette colorate, 25 per server, nome ≤ 32, mostrate nel colore e in un campo del benvenuto, mai nel
   nome del canale (TKT-068; `/admin-ticket etichette aggiungi|togli|elenco`). Spostamento: categoria, permessi dello staff,
@@ -2358,6 +2364,9 @@ Completa la parte C più sotto (pagine di verifica e dell'owner).
   → **Stato 20/11 (r1web):** `core/web_panel_accesso.py` (livelli admin, scrittura, lettura da `web_panel_ruoli`, 0750; politica dei comandi valida nelle scritture), `core/web_panel_panoramica.py` (pagina iniziale), `core/web_panel_vocali.py`, `core/web_panel_pubblico.py` (statistiche pubbliche, indirizzo breve della classifica, chiave API; 0751), `core/web_panel_avvisi.py` (avvisi nel sito o in DM, niente email; 0752), rotte in `core/web_panel_pagine.py`. Test: `tests/test_panel_accesso.py`, `test_panel_vocali.py`, `test_panel_pubblico.py`, `test_panel_avvisi.py`. Non fatto: ALR-049 (D99, manca l'OAuth di Twitch).
 - `[x]` 24.9 Pagine web per backup, ticket, ruoli collegati e interruttori AI (BKP-041, TKT-085, ALR-049, AI-017; r2web)
   → **Stato 22/11 (r2web):** `core/web_panel_backup.py` (elenco, scheda, eliminazione con conferma; stessi permessi di `/admin-backup`; nessun caricamento dal web), `core/web_panel_ticket.py` (risposta dal sito, solo staff del ticket, menzioni spente), `core/web_panel_ruoli_collegati.py` + `core/ruoli_collegati_logic.py` + `core/ruoli_collegati_rete.py` + `core/repositories/ruoli_collegati_repo.py` (OAuth di Twitch e di Discord, `state` firmato, token cifrati, migrazione 0753), `/server/<id>/ai/interruttori` in `core/web_panel_ai.py`, schede nuove per log e livelli in `core/config_impostazioni.py`. Vedi D107. Da provare dal vivo: `VERIFICA_LIVE.md`, sezione r2web.
+
+- `[x]` 24.9b Pagina `/server/<id>/ticket/trascrizioni` (TKT-072): elenco con ricerca (utente, pannello, voto, motivo), apertura con CSP
+  propria, opzioni (accesa, giorni 1-90) per gli admin; `core/web_panel_ticket_trascrizioni.py`. (da verificare live)
 
 ## §25 MOTORE AI — in corso (fase F12, issue #95, #50, #132)
 

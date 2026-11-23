@@ -21,6 +21,7 @@ import pytest
 from discord.ext import commands
 
 import cogs.tickets.tickets as modulo
+from core.ticket_opzioni_logic import Opzioni
 from cogs.logging.basic_logs import SETTING_LOG_CHANNEL
 from cogs.tickets.tickets import TicketsCog, _open_ticket_channel
 from core.database import db
@@ -71,6 +72,15 @@ def _messaggio(nome: str, testo: str, allegati: tuple[str, ...] = ()):
         messaggio.attachments.append(allegato)
     return messaggio
 
+
+
+@pytest.fixture(autouse=True)
+def _solo_testo(monkeypatch):
+    """Questi test provano il transcript di testo; il file HTML (TKT-072) e' provato in test_ticket_transcript_html."""
+    async def solo_testo(panel_id):
+        return Opzioni(transcript_formato="testo")
+
+    monkeypatch.setattr(modulo, "_opzioni_pannello", solo_testo)
 
 class Scena:
     def __init__(self, messaggi) -> None:

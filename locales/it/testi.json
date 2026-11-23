@@ -3518,6 +3518,7 @@
   "tickets_log_campo_dettaglio": "Dettaglio",
   "tickets_log_canale_senza_permessi": "Non posso scrivere in quel canale: servono «Vedere il canale», «Inviare messaggi» e «Incorporare link».",
   "tickets_log_nessuna": "nessuna",
+  "tickets_trascrizione_conservata": "Copia cifrata conservata per lo staff nel pannello web (al massimo 90 giorni).",
   "tickets_log_stato": "Azioni dei ticket nel log: {v1}.",
   "tickets_questionario_non_salvato": "Non posso salvare questa risposta: è vuota, o il questionario è già stato compilato.",
   "tickets_questionario_grazie": "Grazie per il voto e per la risposta.",

@@ -590,6 +590,14 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("tickets", "Ticket", colonne_utente=("user_id",), colonne_attore=("claimed_by", "closed_by"),
        colonna_server="guild_id", utente="anonimizza", anonimizza=(("user_id", str(UTENTE_CANCELLATO)),),
        esporta=True, escludi_dall_esportazione=("close_reason",)),
+    _t("ticket_trascrizioni", "Trascrizioni dei ticket conservate cifrate per lo staff (TKT-072, D111)",
+       colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella",
+       scadenza=Scadenza("scade_il", 0),
+       nota="testo e immagini ricodificate, cifrati (AES-256-GCM, chiave nel file .env, mai nel database); la scadenza "
+            "è scelta dal server, al massimo 90 giorni; non si esportano (dentro ci sono anche i messaggi dello staff e di "
+            "altre persone); la cancellazione su richiesta toglie le trascrizioni dei ticket aperti dall'utente"),
+    _t("ticket_trascrizioni_opzioni", "Trascrizioni dei ticket: accesa o spenta e giorni di conservazione, per server",
+       colonna_server="guild_id", nota="solo l'interruttore e i giorni, senza dati degli utenti"),
     _t("modmail_threads", "Conversazioni ModMail (ticket via messaggio privato)",
        colonne_utente=("user_id",), colonne_attore=("closed_by",), colonna_server="guild_id",
        utente="anonimizza", anonimizza=(("user_id", str(UTENTE_CANCELLATO)),), esporta=True,

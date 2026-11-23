@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block titolo %}Trascrizioni dei ticket · {{ guild.name }} · iYokai Panel{% endblock %}
+{% block corpo %}
+<h1>Trascrizioni dei ticket · {{ guild.name }}</h1>
+<p><a href="/server/{{ guild.id }}/ticket">&larr; Ticket</a></p>
+<p class="tenue">Le trascrizioni dei ticket chiusi si conservano <strong>cifrate</strong> e si cancellano da sole alla scadenza. Le vede solo lo staff di ciascun ticket. Immagini e screenshot sono le copie ricodificate; gli altri allegati compaiono solo con il nome.</p>
+{% if not con_chiave %}<p class="errore">Il bot non ha una chiave di cifratura (<code>TICKET_TRASCRIZIONI_KEY</code>): per ora non conserva trascrizioni.</p>{% endif %}
+<form class="carta" method="get" action="/server/{{ guild.id }}/ticket/trascrizioni">
+  <label>Utente (ID o menzione)
+    <input name="utente" maxlength="40" value="{{ utente_q }}"></label>
+  <label>Pannello
+    <select name="pannello"><option value="">Tutti</option>
+    {% for pid, nome in pannelli %}<option value="{{ pid }}"{% if filtro.panel_id == pid %} selected{% endif %}>{{ nome }}</option>{% endfor %}
+    </select></label>
+  <label>Voto
+    <select name="voto"><option value="">Tutti</option>
+    {% for v in (1, 2, 3, 4, 5) %}<option value="{{ v }}"{% if filtro.voto == v %} selected{% endif %}>{{ v }}</option>{% endfor %}
+    </select></label>
+  <label>Motivo di chiusura contiene
+    <input name="motivo" maxlength="100" value="{{ motivo_q }}"></label>
+  <button type="submit">Cerca</button>
+</form>
+{% if righe %}
+<table>
+<tr><th>#</th><th>Utente</th><th>Pannello</th><th>Voto</th><th>Motivo</th><th>Chiuso (UTC)</th><th>Scade (UTC)</th><th></th></tr>
+{% for r in righe %}
+<tr><td>{{ r.ticket_number }}</td><td>{{ r.user_id }}</td><td>{{ r.nome_pannello or "—" }}</td><td>{{ r.voto or "—" }}</td>
+<td>{{ (r.motivo or "—")[:80] }}</td><td>{{ r.creata_il.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ r.scade_il.strftime('%Y-%m-%d') }}</td>
+<td><a href="/server/{{ guild.id }}/ticket/trascrizioni/{{ r.id }}">Apri</a></td></tr>
+{% endfor %}
+</table>
+<p>{% if numero > 0 %}<a href="?pagina={{ numero - 1 }}&amp;utente={{ utente_q|urlencode }}&amp;pannello={{ filtro.panel_id or '' }}&amp;voto={{ filtro.voto or '' }}&amp;motivo={{ motivo_q|urlencode }}">&larr; Prima</a> {% endif %}
+{% if altre %}<a href="?pagina={{ numero + 1 }}&amp;utente={{ utente_q|urlencode }}&amp;pannello={{ filtro.panel_id or '' }}&amp;voto={{ filtro.voto or '' }}&amp;motivo={{ motivo_q|urlencode }}">Dopo &rarr;</a>{% endif %}</p>
+{% else %}<p>Nessuna trascrizione che puoi vedere.</p>{% endif %}
+{% if puo_configurare %}
+<h2>Conservazione</h2>
+<form class="carta" method="post" action="/server/{{ guild.id }}/ticket/trascrizioni/opzioni">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <label><input type="checkbox" name="attiva" value="1"{% if opzioni.attiva %} checked{% endif %}> Conserva le trascrizioni</label>
+  <label>Giorni (da 1 a {{ max_giorni }})
+    <input type="number" name="giorni" min="1" max="{{ max_giorni }}" value="{{ opzioni.giorni }}" required></label>
+  <button type="submit">Salva</button>
+</form>
+<p class="tenue">Accorciando i giorni cambia solo per le trascrizioni future. Chi ha aperto un ticket può chiedere la cancellazione con <code>/utility privacy cancella</code>.</p>
+{% endif %}
+{% endblock %}
