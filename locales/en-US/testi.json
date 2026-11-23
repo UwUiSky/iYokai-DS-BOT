@@ -4297,5 +4297,10 @@
   "piani_chiave_tolte": "Keys removed: {n}.",
   "piani_chiave_salvata": "The key for `{servizio}` is saved, encrypted. You now have the VIP level.",
   "piani_chiave_senza_cifratura": "The bot cannot store keys: the encryption key is missing. Tell the bot owner.",
-  "piani_chiave_non_valida": "Invalid value: the service uses lowercase letters, digits and _; the key has no spaces."
+  "piani_chiave_non_valida": "Invalid value: the service uses lowercase letters, digits and _; the key has no spaces.",
+  "programmati_everyone_non_puoi": "To schedule a message with @everyone or @here you must be the server owner or have the «Mention @everyone» permission.",
+  "programmati_everyone_senza_permesso": "Your scheduled message was sent without @everyone or @here: you no longer have the «Mention @everyone» permission.\n> {anteprima}",
+  "programmati_everyone_tetto": "Your scheduled message was sent without @everyone or @here: the server reached today's cap of mass-mention messages.\n> {anteprima}",
+  "programmati_everyone_log_titolo": "Scheduled message with @everyone",
+  "programmati_everyone_log": "{utente} triggered a scheduled message with @everyone or @here in {canale}: {link}"
 }

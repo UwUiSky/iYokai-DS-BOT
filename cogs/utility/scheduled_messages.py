@@ -21,7 +21,10 @@ from core.admin_mentions_logic import menzioni_ammesse, utente_puo_pingare_ruoli
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
 from core.duration_logic import format_duration, parse_duration
-from core.i18n import testo_per
+from core.i18n import testo_guild, testo_per
+from core import everyone_programmati as everyone
+from core import piani
+from core import channel_router as router
 from core.premium import PremiumModule, registry
 from core.lista_limiti_logic import righe_entro_limite
 from core import programmati_logic as prog
@@ -100,12 +103,19 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
             if prog.deve_saltare(True, ultimo[0].id if ultimo else None, payload.get("ultimo_id")):
                 return
 
+        # UTL-110: il permesso «Menziona @everyone» si rilegge adesso, non alla creazione.
+        esito = await everyone.decidi(guild, user_id, testo, self.bot)
+        if esito in (everyone.Esito.SENZA_PERMESSO, everyone.Esito.TETTO_RAGGIUNTO):
+            testo = everyone.testo_senza_menzione(testo)
+            await self._avvisa_autore(user_id, await self._testo_rifiuto(guild, esito, anteprima))
         try:
             inviato = await channel.send(
                 testo,
-                allowed_mentions=menzioni_ammesse(bool(payload.get("ping_ruoli", False))),
+                allowed_mentions=everyone.menzioni(bool(payload.get("ping_ruoli", False)), esito),
             )
         except discord.HTTPException as errore:
+            if esito is everyone.Esito.AMMESSA:
+                await everyone.restituisci(guild_id)
             logger.warning(
                 "Impossibile pubblicare il messaggio programmato nel canale %s "
                 "(server %s): %s",
@@ -119,6 +129,8 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
                 f"{channel.mention}: permessi insufficienti o errore di Discord.\n> {anteprima}",
             )
             return
+        if esito is everyone.Esito.AMMESSA:
+            await self._scrivi_nel_log(guild, user_id, channel, inviato)
         if prossimo_id and payload.get("salta_se_ultimo"):
             await self._ricorda_ultimo(prossimo_id, inviato.id)
         ruolo_id = payload.get("ping_ruolo_id")
@@ -132,6 +144,27 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
                 )
             except discord.HTTPException as errore:
                 logger.warning("Ping breve non inviato nel canale %s: %s", channel_id, errore)
+
+    async def _testo_rifiuto(self, guild: discord.Guild, esito, anteprima: str) -> str:
+        """Il messaggio per chi ha programmato: è partito senza @everyone/@here, e perché."""
+        chiave = "programmati_everyone_senza_permesso" if esito is everyone.Esito.SENZA_PERMESSO else "programmati_everyone_tetto"
+        return await testo_guild(guild, chiave, anteprima=anteprima)
+
+    async def _scrivi_nel_log(self, guild: discord.Guild, user_id: int, channel: discord.TextChannel, inviato) -> None:
+        """UTL-110: ogni invio con @everyone/@here lascia una riga nel canale dei log del server."""
+        try:
+            predefinito = await db.get_guild_setting(guild.id, router.SETTING_LOG_CHANNEL)
+            destinazione = await router.destinazione(guild, router.TIPO_SERVER, predefinito)
+            if destinazione is None:
+                return
+            embed = discord.Embed(
+                title=await testo_guild(guild, "programmati_everyone_log_titolo"),
+                description=await testo_guild(guild, "programmati_everyone_log", utente=f"<@{user_id}>", canale=channel.mention, link=inviato.jump_url),
+                color=discord.Color.orange(),
+            )
+            await router.invia_a(destinazione, guild, router.TIPO_SERVER, embed=embed, allowed_mentions=discord.AllowedMentions.none())
+        except Exception:
+            logger.warning("Log dell'invio con @everyone non scritto (server %s).", guild.id, exc_info=True)
 
     async def _riprogramma(self, guild_id: int, user_id: int, payload: dict, ripeti: int) -> tuple[int, datetime]:
         adesso = datetime.now(timezone.utc)
@@ -206,6 +239,10 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(str(exc), ephemeral=True)
             return
 
+        if everyone.contiene_menzione_di_massa(message) and not everyone.puo_usare_everyone(guild, interaction.user.id):
+            await interaction.response.send_message(await testo_per(interaction, "programmati_everyone_non_puoi"), ephemeral=True)
+            return
+
         execute_at = datetime.now(timezone.utc) + timedelta(seconds=duration_seconds)
         extra, errore = await self._opzioni_ripetizione(
             interaction, guild, execute_at, ripeti, ora, salta_se_ultimo, ping_ruolo
@@ -252,8 +289,9 @@ class ScheduledMessagesCog(CogConGruppi, commands.Cog):
             if errore:
                 return {}, errore
             presenti = await scheduler.list_pending_for_guild(guild.id, SCHEDULED_MESSAGE_ACTION_TYPE, limit=200)
-            if sum(1 for a in presenti if prog.giro_di(a["payload"])) >= prog.MAX_SERIE_PER_SERVER:
-                return {}, await testo_per(interaction, "programmati_troppe_serie", massimo=prog.MAX_SERIE_PER_SERVER)
+            massimo = await piani.limite_server_sicuro(guild.id, "programmati_serie", self.bot)
+            if sum(1 for a in presenti if prog.giro_di(a["payload"])) >= massimo:
+                return {}, await testo_per(interaction, "programmati_troppe_serie", massimo=massimo)
             extra = {"ripeti": secondi, "quando": primo.isoformat()}
             if orario:
                 fuso = prog.FUSO_PREDEFINITO

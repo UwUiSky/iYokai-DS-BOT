@@ -959,6 +959,8 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("piani_concessioni", "Livelli concessi a una persona o a un server (D59)", colonne_utente=("soggetto_id",),
        colonne_attore=("concesso_da",), utente="conserva", server="conserva", esporta=True,
        filtro_server="soggetto = 'server' AND soggetto_id = $1", nota="registro contabile; soggetto_id è un utente o un server"),
+    _t("everyone_invii", "Invii programmati con @everyone, per server e giorno (UTL-110)", colonna_server="guild_id",
+       server="cancella"),
     _t("piani_limiti", "Limiti numerici per livello scelti dall'owner"),
     _t("piani_prezzi", "Prezzi dei piani scelti dall'owner"),
     _t("piani_sconti", "Sconti scelti dall'owner"),

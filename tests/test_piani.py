@@ -200,3 +200,23 @@ async def test_comando_owner_piani(pronto):
     assert await piani.livello_server(100) == "gratuito"
     assert "4,99" in await esegui_owner("prezzo", **{**base, "livello": "premium", "periodo": "mensile", "valore": 499})
     assert "4,99" in await esegui_owner("mostra", **base)
+
+
+async def test_i_moduli_leggono_il_limite_dal_livello(pronto):
+    """Le copie di backup e i pannelli ticket seguono il limite del livello (non più la costante)."""
+    from core.repositories.backup_struttura_repo import BackupStrutturaRepository
+    from core.repositories.ticket_form_repo import TroppiPannelli, ticket_form_repo
+    import core.database as database_module
+
+    repo = BackupStrutturaRepository(lambda: pronto) if "pool_provider" in BackupStrutturaRepository.__init__.__code__.co_varnames else None
+    assert repo is not None
+    await piani.imposta_limite("backup_copie", piani.GRATUITO, 2)
+    assert await repo.salva_struttura(100, "a", 1, {}) is not None
+    assert await repo.salva_struttura(100, "b", 1, {}) is not None
+    assert await repo.salva_struttura(100, "c", 1, {}) is None  # gratuito: 2 copie
+    await piani.concedi("server", 100, piani.PREMIUM, "mensile", giorni=30)
+    await piani.imposta_limite("backup_copie", piani.PREMIUM, 3)
+    assert await repo.salva_struttura(100, "c", 1, {}) is not None
+    assert await repo.salva_struttura(100, "d", 1, {}) is None
+    assert len(await repo.lista_strutture(100)) == 3
+    assert database_module.db is not None and TroppiPannelli and ticket_form_repo
