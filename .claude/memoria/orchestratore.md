@@ -156,3 +156,8 @@
 9. DA LANCIARE: controllo voce per voce delle 89 voci in revisione/01-analisi/catalogo/SOLO_NEI_DOCUMENTI.md.
 10. BKP-039: owner ha scelto iyokai.dev/join/<nomeserver> (D113): da fare con dev-web.
 11. Poi: suite completa, cacciatore-bug, revisore-capo.
+
+## 23/11 sera — coda dopo D127
+- In corso: r2log029 (D122), r1premium (D124 + AI-003), r1guidata (D124).
+- Da lanciare (D127): (1) BKP-022/023 raccolta modelli + BKP-040 regole di ammissione (dev-backup); (2) MUS-034 mute a tempo + shadowban (dev-moderazione); (3) servizi GIF + FUN-075 soundboard di altri server + ECO-112/087 immagini (dev-economia o dev-utilita); (4) MUS-015 altri servizi + ALR-049 aggiornamento e invito + TKT-085 tempo reale + AI-010 (dev-web/dev-musica). BKP-004 da spiegare all'owner.
+- Suite completa: lanciarla con nohup (staccata): supera le 2 ore del limite dei comandi in background.

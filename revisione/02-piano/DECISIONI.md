@@ -1654,3 +1654,33 @@ Attua D119 per le voci medie. Elenco delle voci e dei motivi in fondo, aggiornat
   - limiti numerici diversi per livello (copie, messaggi, pannelli, …) scelti dall'owner dal pannello o con i comandi;
   - prezzi e sconti sono numeri che sceglie l'owner, non scritti nel codice.
 - **UTL-110 (messaggi programmati con @everyone o @here):** sì. Solo il proprietario del server, o chi ha il permesso «Menziona @everyone» riletto al momento dell'invio; tetto di invii; log.
+
+## D127 — Scelte dell'owner del 23/11/2026 sera (VINCOLANTI)
+
+- **MUS-049, MUS-050, TKT-073:** restano fuori. Per TKT-073 l'utente scarica la trascrizione e la carica dove vuole.
+- **BKP-022/023, raccolta dei modelli:** sì.
+  - Raccolta di modelli di server, con voti e revisione prima della pubblicazione.
+  - L'owner li modifica e li usa come modelli per creare un server e per ripristinare canali e ruoli tolti da un nuke.
+- **BKP-004:** spiegazione da dare all'owner, poi si decide (cosa caricare di un backup, e se cancellare canali e ruoli già presenti; di base non si cancella).
+- **BKP-040, regole di ammissione alla pagina di consenso per paese, rete o VPN:** sì, con il controllo VPN e di rete della verifica web (VER-026), senza conservare gli IP.
+- **AI-003, chiave propria:** un server o un utente può usare le proprie chiavi API dei servizi AI al posto di quelle dell'owner, e così sblocca le funzioni VIP (D59).
+- **AI-010, lunghezza della lore:** 1.000 caratteri di base, 2.000 da Premium in su. La lore viaggia con ogni richiesta all'AI: raddoppiarla per tutti raddoppia il costo di ogni risposta.
+- **GIF (FUN-101, 104, 105, 115, 127, 128, 132, 133, 134, 135):**
+  - elenco di tutti i servizi di GIF possibili, gratuiti e con chiave;
+  - ogni servizio si attiva da solo quando l'owner mette la sua chiave nel `.env`;
+  - il bot usa quelli che trova disponibili.
+- **FUN-075, suoni:** sì. Oltre alla soundboard del server si possono usare i suoni delle soundboard degli altri server dove c'è il bot: menu con anteprima testuale, bottone di ascolto e bottone d'invio.
+- **ECO-112 (bingo) ed ECO-087 (casa):** anche come immagini, generate con Pillow fuori dal ciclo principale.
+- **MUS-034 (scala delle sanzioni) e moderazione:**
+  - **mute a ruolo a tempo**;
+  - **shadowban**: toglie l'accesso a tutti i canali di testo e vocali e lascia solo un canale di testo e un vocale dedicati, visibili agli shadowbannati e agli admin;
+  - i ruoli tolti vanno nel log, per poterli ripristinare;
+  - i canali dedicati sono esclusi dal sistema degli XP;
+  - gerarchia e permessi come ogni sanzione.
+- **MUS-015:** il filtro per paese vale per ogni servizio che dà il dato (Deezer già fatto; dove Spotify o altri lo danno, si aggiunge).
+- **ALR-049:**
+  - i dati Twitch e Kick si aggiornano anche dopo il collegamento, con un giro periodico usando i token salvati;
+  - se il bot vede che un utente ha Twitch o Kick collegati al suo account Discord (connessioni del profilo, solo con OAuth `connections`), lo invita a collegarsi al pannello;
+  - il bot poi lo integra nei server in comune con l'utente.
+- **TKT-085:** la risposta dal sito diventa in tempo reale (aggiornamento della pagina, o webhook verso il canale) e può essere anonima, come le risposte anonime del modmail.
+- **Liste AGCOM e ADM:** l'owner cerca gli indirizzi e li mette lui.
