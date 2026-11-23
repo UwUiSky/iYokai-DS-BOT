@@ -19,6 +19,8 @@ Members are needed to react to joins and leaves (verification, anti-raid, welcom
 | Autoroles and sticky roles | `cogs/utility/autoroles.py` | Give roles on join, restore on return |
 | Welcome and goodbye messages | `cogs/utility/greetings.py` | Greet members |
 | Personal roles | `cogs/utility/ruoli_extra.py` | Delete a member's personal role when they leave |
+| Name history and returning members | `cogs/moderation/nickname.py` | Remember nicknames and give back nickname or voice mute to members who rejoin (off by default) |
+| Targeted lockdown | `cogs/security/lockdown.py` | Kick or ban new members during a lockdown, if the staff chose so |
 | Invite tracking | `cogs/utility/invites.py` | Credit the inviter |
 | Restore after a server backup | `cogs/utility/restore.py` | Return members to their roles |
 | Backup of member roles | `cogs/utility/backup.py` | Keep the role snapshot up to date |

@@ -17,6 +17,7 @@ import discord
 from core import rete_protezione as rete
 from core.config import config
 from core.i18n import testo_guild, testo_per
+from core.ui_base import BaseView
 from core.repositories.rete_repo import rete_repo
 
 MODELLO = r"rete:(?P<az>to|ap|ri|an):(?P<a>\d{1,20}):(?P<b>\d{1,20})"
@@ -73,7 +74,7 @@ class BottoneRete(discord.ui.DynamicItem[discord.ui.Button], template=MODELLO):
 
 async def crea_vista(guild: discord.Guild, az: str, a: int, b: int) -> discord.ui.View:
     """La vista dei tasti per un avviso: «to» = togli timeout; «ap» = Banna e Ignora per una proposta."""
-    vista = discord.ui.View(timeout=None)
+    vista = BaseView(timeout=None)  # controllo blacklist (SEC-10)
     azioni = ("ap", "ri") if az == "ap" else (az,)
     for azione in azioni:
         vista.add_item(BottoneRete(azione, a, b, await testo_guild(guild, _ETICHETTE[azione])))
