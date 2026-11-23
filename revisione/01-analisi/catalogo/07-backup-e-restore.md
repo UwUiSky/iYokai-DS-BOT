@@ -46,7 +46,7 @@ Stato di iYokai preso da `SPEC.md` §11: il backup va rifatto secondo la decisio
 | BKP-037 | **Importare la struttura** da un file JSON, scegliendo cosa applicare | Xenon `/import guild` (Premium) [XENON] | ❌ manca | Stesso motore del caricamento; file validato con uno schema prima di toccare il server | nuova |
 | BKP-038 | **Ritorno dei membri** dopo la perdita del server, per chi ha dato il consenso | RestoreCord [RESTORECORD] (terzi) | 🟡 parziale: scritto, ma senza coppia di server non parte; token mai rinnovati | Rinnovo dei token, pause e gestione dei 429, invito in DM solo a chi ha acconsentito | M 12.10 |
 | BKP-039 | Pagina di consenso su un **indirizzo web proprio** del server | RestoreCord [RESTORECORD] (terzi) | ✅ fatto (r3web, D113): `iyokai.dev/join/<nome>` con nome, icona e colori del server; dominio proprio = futuro premium | Solo con il pannello web e il bot con marchio proprio | NF-38 |
-| BKP-040 | **Regole di ammissione** alla pagina di consenso per paese, rete o VPN | RestoreCord [RESTORECORD] (terzi) | ❌ manca | iYokai non raccoglie IP nel restore: l'alternativa è il controllo VPN della verifica web (VER-026) | NF-21 |
+| BKP-040 | **Regole di ammissione** alla pagina di consenso per paese, rete o VPN | RestoreCord [RESTORECORD] (terzi) | ✅ r3bkp (D130, solo VPN e rete, nessun IP) | iYokai non raccoglie IP nel restore: l'alternativa è il controllo VPN della verifica web (VER-026) | NF-21 |
 | BKP-041 | **Gestione dei backup dal pannello web**: vedere, caricare, eliminare | Wick [WICK] | ❌ manca | Pagina del pannello che chiama le stesse funzioni dei comandi | NF-20 |
 
 ## Fonti

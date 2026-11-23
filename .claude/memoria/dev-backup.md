@@ -1,14 +1,16 @@
 # Memoria di dev-backup
 
 ## Aggiornata
-22/11/2026 · ramo `feat/r2bkp` · DB `iyokai_w121` · migrazioni 0190–0192, 0320, 0810–0812 usate (0813–0819 libere)
+23/11/2026 · ramo `feat/r3bkp` · DB `iyokai_w121` · migrazioni 0950–0951 usate (0952–0959 libere)
 
 ## In corso
+Giro r3bkp chiuso (BKP-022/023/040, D130): restano la prova live (VERIFICA_LIVE «giro r3bkp») e la revisione del cacciatore-bug.
 Giro r10 chiuso: tutte le voci SPEC §11 `[x]` (11.1–11.17). Da fare dopo, in quest'ordine:
 1. Prove su Discord (VERIFICA_LIVE «Backup — giro r10» e «giro r7»).
 2. #113 iYokai Mod (serve l'owner). 3. Revisione del cacciatore-bug sul giro r10.
 
 ## Fatto
+- r3bkp (23/11, #121): raccolta pubblica modelli (`core/backup_raccolta_logic.py`, repo, `core/web_panel_raccolta.py`, `/admin-backup raccolta`, `Caricatore(solo_mancanti, pericolosi_ok)`, 0950); BKP-040 interruttore VPN/rete su `/join` senza IP (0951).
 - r2bkp (22/11, #121/#132): controllo delle 23+5 voci in `revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.md`; realizzate BKP-002/006/007/008/020/021/022(pronti)/028, AI-001/004/017; D108 per BKP-022/023/039/040/041, AI-003, AI-010. Ruoli nuovi pericolosi solo se carica l'owner. `lista copia:N` fa da info (admin-backup è a 18 figli).
 - r10 (27/10): espressioni senza doppioni, permesso, tetto suoni per boost (11.5-7); forum+stage, riuso sui campi diversi,
   spostamento di categoria (11.4); aggiornamento ogni 6 ore in `backup_queue_worker`, 0320 (11.17); mirror con coda per
@@ -17,6 +19,8 @@ Giro r10 chiuso: tutte le voci SPEC §11 `[x]` (11.1–11.17). Da fare dopo, in 
 - Fino al 13/10: #68 12.1–12.15 (codice di collegamento, Creator senza create_guild, rinnovo token, 429, chiave ruotabile).
 
 ## Cose imparate
+- Un IP non va mai a `verify_vpn_staff.controlla` se non deve restare: usa `verify_vpn.rileva` e scarta. Test «niente IP»: cerca il testo in `row_to_json` di tutte le tabelle.
+- Routes web: il test dei comandi citati (`test_riferimenti_comandi`) legge anche le stringhe con `/nome`: scrivere `"/" + "nome"`.
 - Migrazioni: file `core/migrations/NNNN_*.sql`; repository in `core/repositories/` (non `repositories/`).
 - Il nome `test*` importato in un file di test viene raccolto da pytest: non chiamare funzioni `testo_*`.
 - I fake dei test clone sono minimi: dopo ogni nuova chiamata a Discord aggiungere il metodo al fake.
@@ -35,6 +39,7 @@ Giro r10 chiuso: tutte le voci SPEC §11 `[x]` (11.1–11.17). Da fare dopo, in 
 - Aggiornamento continuo: `popola_server_backup(..., con_messaggi=False)`; un test del worker con `popola_server_backup` finto deve accettare `con_messaggi`.
 
 ## Aperto
+- r3bkp: la revisione dei modelli è solo dal pannello (`/proprietario/modelli`), nessun comando `/owner`. Tocchi fuori area: `core/web_panel_server.py` (2 righe di collegamento), `locales/en-US/comandi.json` (raccolta). La raccolta non ha filtro per lingua nel comando (c'è nel pannello).
 - r2bkp: provare live (VERIFICA_LIVE «giro r2bkp»), in particolare la lettura di un vero modello `discord.new` (ruolo @everyone con id 0).
 - Pagina backup nel pannello web (BKP-041/022/023): serve dev-web. `test_repository_callers` fallisce per `ticket_form_repo.risposta_questionario` (non mio).
 - Giri r7 e r10 da provare live (VERIFICA_LIVE).

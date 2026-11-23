@@ -855,7 +855,7 @@ def build_app(
         app, bot=bot, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE,
         ip=_ip, client_id=client_id, restore_redirect_uri=restore_redirect_uri, chiave_firma=chiave_ripristino,
         imposta_ritorno=lambda risposta, percorso: _cookie(risposta, cookie_ritorno, percorso, regole.DURATA_STATE_SECONDI),
-        puo_gestire=web_panel_backup.puo_gestire_backup,
+        puo_gestire=web_panel_backup.puo_gestire_backup, proxy_fidati=proxy_fidati,
     )
     web_panel_raccolta.registra_rotte(
         app, pagina=_pagina, errore=_errore, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE, ip=_ip,

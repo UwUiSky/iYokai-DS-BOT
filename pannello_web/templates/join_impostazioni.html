@@ -10,6 +10,7 @@
   <p><label>Nome breve: /join/ <input type="text" name="nome" maxlength="32" value="{{ p.join_slug or '' }}" pattern="[a-z0-9\-]*" autocomplete="off"></label></p>
   <p><label>Colore principale <input type="text" name="accento" maxlength="7" value="{{ p.join_accento or '' }}" pattern="#[0-9a-fA-F]{6}" placeholder="#c24a3a" autocomplete="off"></label></p>
   <p><label>Colore di sfondo <input type="text" name="sfondo" maxlength="7" value="{{ p.join_sfondo or '' }}" pattern="#[0-9a-fA-F]{6}" placeholder="#07070b" autocomplete="off"></label></p>
+  <p><label><input type="checkbox" name="controllo_rete" value="1"{% if p.join_controllo_rete %} checked{% endif %}> Chiedi di non usare VPN o proxy prima del consenso</label><br><span class="tenue">Usa lo stesso controllo della verifica web. L'indirizzo della persona si controlla al momento e non si salva.</span></p>
   <button type="submit">Salva</button>
 </form>
 {% if p.join_attiva %}<p>Indirizzo: <a href="/join/{{ p.join_slug or guild.id }}">/join/{{ p.join_slug or guild.id }}</a></p>{% endif %}

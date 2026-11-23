@@ -25,6 +25,7 @@ class Pubblico:
     join_slug: str | None = None
     join_accento: str | None = None
     join_sfondo: str | None = None
+    join_controllo_rete: bool = False
 
 
 class WebPanelPubblicoRepository:
@@ -38,7 +39,7 @@ class WebPanelPubblicoRepository:
     async def leggi(self, guild_id: int) -> Pubblico:
         r = await self._pool.fetchrow(
             "SELECT stat_pubbliche, stat_membri, classifica_slug, api_prefisso, api_creata_il, "
-            "join_attiva, join_slug, join_accento, join_sfondo "
+            "join_attiva, join_slug, join_accento, join_sfondo, join_controllo_rete "
             "FROM web_panel_pubblico WHERE guild_id = $1",
             guild_id,
         )
@@ -67,15 +68,16 @@ class WebPanelPubblicoRepository:
         return await self._pool.fetchval("SELECT guild_id FROM web_panel_pubblico WHERE classifica_slug = $1", slug)
 
     async def imposta_join(
-        self, guild_id: int, attiva: bool, slug: str | None, accento: str | None, sfondo: str | None
+        self, guild_id: int, attiva: bool, slug: str | None, accento: str | None, sfondo: str | None,
+        controllo_rete: bool = False,
     ) -> bool:
         """BKP-039: pagina di consenso del rientro. False se il nome è già di un altro server (indice unico)."""
         try:
             await self._pool.execute(
-                "INSERT INTO web_panel_pubblico (guild_id, join_attiva, join_slug, join_accento, join_sfondo) "
-                "VALUES ($1, $2, $3, $4, $5) ON CONFLICT (guild_id) DO UPDATE SET join_attiva = $2, join_slug = $3, "
-                "join_accento = $4, join_sfondo = $5, aggiornato_il = now()",
-                guild_id, attiva, slug, accento, sfondo,
+                "INSERT INTO web_panel_pubblico (guild_id, join_attiva, join_slug, join_accento, join_sfondo, join_controllo_rete) "
+                "VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (guild_id) DO UPDATE SET join_attiva = $2, join_slug = $3, "
+                "join_accento = $4, join_sfondo = $5, join_controllo_rete = $6, aggiornato_il = now()",
+                guild_id, attiva, slug, accento, sfondo, controllo_rete,
             )
         except asyncpg.UniqueViolationError:
             return False
