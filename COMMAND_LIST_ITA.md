@@ -183,7 +183,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 04:
 - **`/admin-bot config import`** — Importa una configurazione da un file esportato con /admin-bot config export.
 - **`/admin-bot config nickname-bot`** — Cambia il nome del bot in questo server.
 - **`/admin-bot config permessi`** — Mostra il livello di permesso di un membro e perché.
-- **`/admin-bot config pulizia`** — Toglie dalla configurazione canali e ruoli che non esistono più.
+- **`/admin-bot config pulisci`** — Canali e ruoli cancellati: cosa si pulirà dalla configurazione e quando (dopo 7 giorni).
 - **`/admin-bot config reset`** — Azzera la configurazione di questo server.
 - **`/admin-bot config risposte`** — Risposte del bot: private, cancellate dopo un po', colori.
 - **`/admin-bot config rollback`** — Ripristina il valore precedente di una modifica.

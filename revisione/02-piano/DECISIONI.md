@@ -1465,3 +1465,13 @@ Attuano D111. Dove D111 lascia aperto, si è scelta l'opzione più prudente.
 - Account compromesso: timeout in ogni server dove c'è l'utente (anche senza adesione: D111 lo vuole categorico), durata del server da 1 a 672 ore, base 24. Mai su proprietari, bot o chi sta sopra il bot. Caso con origine «rete», avviso agli owner con tasto per toglierlo.
 - Rete dei ban: solo su adesione. Ban solo dove l'utente è già presente (scelta prudente: niente ban preventivi). Di base «proposta con tasto»; «automatico» a scelta del server. Proposta una sola volta per terna (utente, origine, destinazione); un ban di rete non ne fa partire altri.
 - Dati: tabelle `rete_*` in `data_registry`; segnalazioni e proposte 90 giorni, poi si cancellano; l'utente può chiedere la cancellazione (base legittimo interesse per la sicurezza, da confermare con il garante/consulente: nota dell'owner). Mai il testo dei messaggi.
+
+## D116 — Pulizia ritardata, azzeramento dei dati, strumenti del marchio, stop dei suoni (UTL-226, UTL-228, CFG-032, FUN-078; giro r3utl, 23/11/2026, opzione prudente)
+
+Attuano D111. Dove D111 lascia aperto, si è scelta l'opzione più prudente.
+
+**UTL-226 (pulizia della configurazione, 7 giorni)**
+- `/admin-bot config pulisci` sostituisce `config pulizia`. Senza opzioni mostra cosa verrà tolto e quando; non cambia niente.
+- Si segna la data in cui un canale o ruolo citato manca (`config_orfani`, 0830). Un ID tornato (o non più citato, per esempio rimappato da un ripristino) perde il segno: se sparisce di nuovo i 7 giorni ripartono.
+- Un giro ogni 6 ore toglie dalla configurazione solo ciò che manca da 7 giorni ed è ancora assente in quel momento (canali non in memoria: `fetch_channel`). Un server non caricato non si tocca. Ogni modifica ha la sua riga nello storico (`changed_by` vuoto, `rollback` la annulla).
+- «Pulire subito» (`subito:sì`): solo il proprietario del server (non un admin), con bottone di conferma. È l'unico modo di pulire prima dei 7 giorni.

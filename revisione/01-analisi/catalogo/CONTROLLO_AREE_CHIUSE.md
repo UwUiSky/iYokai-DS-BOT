@@ -98,7 +98,7 @@ Giro r2utl (issue #128). «Corretta» = fa ciò che dice il catalogo e rispetta 
 | UTL-223 | sì (`/admin-bot canali`, `ignora`) | sì | nessuna | cogs/utility/politica.py; tests/test_politica_comandi.py::test_canali_ignora_ed_elenco |
 | UTL-224 | sì (`/admin-bot comando`) | sì | nessuna | test_comando_spegne_riaccende_e_rifiuta_i_nomi_sbagliati |
 | UTL-225 | sì (risposta effimera) | sì | nessuna | test_il_controllo_dell_albero_ferma_il_comando_spento_e_risponde_effimero |
-| UTL-226 | no | - | non è mio: `config_history.py` (nota in D100) | - |
+| UTL-226 | sì (`/admin-bot config pulisci`, 7 giorni, D111) | sì | nessuna | tests/test_config_orfani.py |
 | UTL-227 | sì (`ruolo-richiesto`) | sì | nessuna | test_cfg012_serve_uno_dei_ruoli_richiesti_per_il_comando_e_il_suo_gruppo |
 | UTL-228 | in parte | - | non è mio: `config_history.py` (nota in D100) | - |
 

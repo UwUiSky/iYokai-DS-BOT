@@ -516,7 +516,8 @@
   "libera": "release",
   "nomi": "names",
   "memoria": "memory",
-  "chat": "chat"
+  "chat": "chat",
+  "pulisci": "clean-up"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -528,7 +529,6 @@
   "admin-bot config history": "Shows the latest configuration changes.",
   "admin-bot config import": "Imports a configuration from a file exported with /admin-bot config export.",
   "admin-bot config nickname-bot": "Changes the bot's name in this server.",
-  "admin-bot config pulizia": "Removes channels and roles that no longer exist from the settings.",
   "admin-bot config reset": "Resets this server's configuration.",
   "admin-bot config rollback": "Restores the previous value of a change.",
   "admin-bot config sincronizza": "Rewrites this server's command permissions.",
@@ -1806,7 +1806,8 @@
   "mod-casi nomi": "Shows the names and nicknames a member has had.",
   "mod-sanzioni opzioni memoria": "Turns on the name history and the nickname and voice mute given back to returning members.",
   "mod-sanzioni opzioni aspetto": "Picks the colour and icon of a case type in the moderation log.",
-  "mod-casi caso chat": "Sends the log of the channel's last messages saved with a case."
+  "mod-casi caso chat": "Sends the log of the channel's last messages saved with a case.",
+  "admin-bot config pulisci": "Deleted channels and roles: what will be cleaned from the settings and when (after 7 days)."
  },
  "parametri": {},
  "menu": {

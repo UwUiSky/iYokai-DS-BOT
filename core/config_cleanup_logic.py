@@ -92,6 +92,18 @@ async def _canali_morti_per_discord(guild, sospetti) -> set[int]:
     return morti
 
 
+async def orfani_confermati(guild, settings: dict) -> list[VocePulizia]:
+    """Le voci che puntano a canali e ruoli che Discord conferma inesistenti (canali non in memoria: `fetch_channel`)."""
+    in_memoria = lambda i: guild.get_channel_or_thread(i) is not None  # noqa: E731
+    ruolo_esiste = lambda i: guild.get_role(i) is not None  # noqa: E731
+    sospetti = {
+        i for v in trova_orfani(settings, canale_esiste=in_memoria, ruolo_esiste=ruolo_esiste)
+        if v.tipo == TIPO_CANALE for i in v.morti
+    }
+    morti = await _canali_morti_per_discord(guild, sospetti)
+    return trova_orfani(settings, canale_esiste=lambda i: i not in morti, ruolo_esiste=ruolo_esiste)
+
+
 async def pulisci_configurazione(guild, *, applica: bool, changed_by: int | None) -> EsitoPulizia:
     """
     Anteprima (`applica=False`) o pulizia vera della configurazione di `guild` (un `discord.Guild`).
@@ -102,18 +114,7 @@ async def pulisci_configurazione(guild, *, applica: bool, changed_by: int | None
     if guild is None or not guild.roles:
         return EsitoPulizia()
     config = await db.get_full_config(guild.id)
-    in_memoria = lambda i: guild.get_channel_or_thread(i) is not None  # noqa: E731
-    ruolo_esiste = lambda i: guild.get_role(i) is not None  # noqa: E731
-    sospetti = {
-        i for v in trova_orfani(config["settings"], canale_esiste=in_memoria, ruolo_esiste=ruolo_esiste)
-        if v.tipo == TIPO_CANALE for i in v.morti
-    }
-    morti = await _canali_morti_per_discord(guild, sospetti)
-    voci = trova_orfani(
-        config["settings"],
-        canale_esiste=lambda i: i not in morti,
-        ruolo_esiste=ruolo_esiste,
-    )
+    voci = await orfani_confermati(guild, config["settings"])
     if applica:
         for voce in voci:
             if voce.nuovo is None:

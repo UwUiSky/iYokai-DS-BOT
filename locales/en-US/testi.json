@@ -28,7 +28,6 @@
   "cfg_nick_errore": "Discord refused the name change. Try again shortly.",
   "cfg_nick_ok": "The bot's nickname in this server is now «{nome}».",
   "cfg_nick_permesso": "The bot is missing the «Change Nickname» permission in this server.",
-  "cfg_pulizia_anteprima": "I found {n} entries pointing to channels or roles that no longer exist:\n{elenco}\nTo remove them, run the command again with «applica» set to Yes.",
   "cfg_pulizia_fatta": "Removed {n} entries that pointed to channels or roles that no longer exist. /admin-bot config rollback undoes every change.",
   "cfg_pulizia_niente": "Nothing to clean: every channel and role in the configuration still exists.",
   "cfg_pulizia_non_pronto": "The server is not fully loaded yet: try again in a moment.",
@@ -3960,5 +3959,9 @@
   "rete_owner_sbloccato": "Server {server} unblocked.",
   "rete_owner_non_bloccato": "That server was not blocked.",
   "rete_owner_elenco_vuoto": "No blocked servers.",
-  "rete_owner_id_non_valido": "The server ID is not valid."
+  "rete_owner_id_non_valido": "The server ID is not valid.",
+  "cfg_pulisci_solo_proprietario": "Only the server owner can clean up right now.",
+  "cfg_pulisci_anteprima": "{n} channels or roles named in the settings no longer exist. Nothing is touched for {giorni} days, so a restore (even after a nuke) can find them again. If they come back sooner, they stay. When they will be removed:\n{elenco}",
+  "cfg_pulisci_chiedi": "Clean up now, without waiting? Every change goes in the history and /admin-bot config rollback undoes it.",
+  "cfg_pulisci_annullato": "Cleanup cancelled."
 }

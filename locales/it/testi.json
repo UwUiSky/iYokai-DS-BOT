@@ -28,7 +28,6 @@
   "cfg_nick_errore": "Discord ha rifiutato il cambio di nome. Riprova tra poco.",
   "cfg_nick_ok": "Il nickname del bot in questo server è ora «{nome}».",
   "cfg_nick_permesso": "Al bot manca il permesso «Cambia nickname» in questo server.",
-  "cfg_pulizia_anteprima": "Ho trovato {n} voci che puntano a canali o ruoli che non esistono più:\n{elenco}\nPer toglierle rilancia il comando con «applica» su Sì.",
   "cfg_pulizia_fatta": "Tolte {n} voci che puntavano a canali o ruoli che non esistono più. /admin-bot config rollback annulla ogni modifica.",
   "cfg_pulizia_niente": "Niente da pulire: ogni canale e ruolo della configurazione esiste ancora.",
   "cfg_pulizia_non_pronto": "Il server non è ancora caricato del tutto: riprova tra poco.",
@@ -3960,5 +3959,9 @@
   "rete_owner_sbloccato": "Server {server} sbloccato.",
   "rete_owner_non_bloccato": "Quel server non era bloccato.",
   "rete_owner_elenco_vuoto": "Nessun server bloccato.",
-  "rete_owner_id_non_valido": "L'ID del server non è valido."
+  "rete_owner_id_non_valido": "L'ID del server non è valido.",
+  "cfg_pulisci_solo_proprietario": "Solo il proprietario del server può pulire subito.",
+  "cfg_pulisci_anteprima": "{n} canali o ruoli citati nella configurazione non esistono più. Non si tocca niente per {giorni} giorni, così un ripristino (anche dopo un nuke) li ritrova. Se tornano prima, restano. Quando verranno tolti:\n{elenco}",
+  "cfg_pulisci_chiedi": "Vuoi pulire subito, senza aspettare? Ogni modifica finisce nello storico e /admin-bot config rollback la annulla.",
+  "cfg_pulisci_annullato": "Pulizia annullata."
 }
