@@ -111,7 +111,7 @@ class GiochiSospensioniCog(CogConGruppi, commands.Cog):
         )
         try:  # la persona lo sa: messaggio privato, se può riceverlo
             await utente.send(
-                await testo_per(interaction, "sospensione_esito_dm_accolta" if accogli else "sospensione_esito_dm_respinta", server=discord.utils.escape_markdown(guild.name))
+                await testo_per(interaction, "sospensione_esito_dm_accolta" if accogli else "sospensione_esito_dm_respinta", server=discord.utils.escape_markdown(guild.name), pubblica=True)
             )
         except discord.HTTPException:
             pass
