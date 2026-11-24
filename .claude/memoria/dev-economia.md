@@ -1,6 +1,8 @@
 # Memoria di dev-economia
 
 ## Aggiornata
+24/11/2026 · giro r8eco (#125), ramo `feat/r8eco` (il nome r5eco era già preso), wt `/home/user/wt-eco`, db `iyokai_weco`, migrazione 0965 usata. ECO-101 e 105 fatte (D134). Smoke da fare.
+
 23/11/2026 · giro r1fun (#131), ramo `feat/r1fun`, wt `/home/user/wt-fun`, db `iyokai_wfun`, migrazioni 0840-0849 (0840-0842 usate). Smoke da fare.
 
 ## In corso
@@ -9,6 +11,7 @@
 - Dopo: restano solo le ECO con motivo in D86.
 
 ## Fatto
+- r8eco ECO-101/105 (D134): `creature_logic`, `creature_repo`, `cogs/fun/creature.py` (`/giochi sfide creature|scontro`, azione «creatura» in `/monete usa` e `oggetto-azione`), `combattimento_logic`, `cogs/fun/_combattimento.py` + `/sala combattimento`, 0965. Rossi non miei: `test_command_translator` (6 descrizioni en mancanti), `test_i18n_pubblica` (`giochi_sospensioni.py:114`). Trappola: i test di viste con `interaction_check` vogliono `ui_base._utente_o_server_in_blacklist` sostituita.
 - r1fun FUN-013/014: gruppo `/tela` + `/admin-giochi tela`, `tela_logic/tela_image/tela_repo`, `cogs/fun/tela.py`, 0842, pagina pubblica `core/web_panel_tela.py` (una riga in `build_app`). Trappola: nei `COALESCE($n, ...)` di asyncpg servono i cast (`$2::int`).
 - r1fun FUN-017: gruppo nuovo `/auto` (in `GRUPPI` e `AUDIENCE`; `giochi` è a 18 figli), `core/auto_logic.py`, `auto_image.py`, `auto_repo.py`, `cogs/fun/auto.py`, 0841 `fun_auto_garage`/`fun_auto_foto`; foto = `esamina_allegato` + `riduci_foto`, segnalazioni con `immagini_segnalazioni_repo` (chiave `auto:server:utente:sha`); `spend_coins_in` nella stessa transazione.
 - r1fun FUN-019: `core/battaglia_logic.py`, `cogs/fun/battaglia.py` (`/giochi sfide battaglia|battaglie`), 0840 `fun_battaglie_stat`; puntata con `apri_gruppo`/`chiudi_gruppo`, max 16 turni (la riga della partita scade a 900 s), `view.timeout` rimesso a 40 s dopo l'accettazione.
