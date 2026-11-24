@@ -169,3 +169,8 @@
 - 24/11 01:30: unite r3bkp, r2log029, r1guidata, r3mod, r2fun (bedc9df0). Suite completa interrotta dal riavvio al 56%: si rilancia solo alla fine di tutto. In corso: r1infra (wt-infra), r4web (wt-web), r5eco ECO-101/105 (wt-eco). Dopo: BKP-004 opzione cancella (D133).
 
 - 24/11 ~03:00: unite anche fix/r1infra, r4web, r5bkp4 (BKP-004), r8eco (ECO-101/105). Test mirati verdi. Nessun agente in corso. Prossimo: controllo finale (cacciatore-bug, revisore-capo) e poi la suite completa staccata.
+
+## 24/11 — suite completa e main finale
+- Suite completa su main 37144315: 12547 ok, 29 ko. 8 veri, corretti (schema 4 chiavi, migrazione 0971 config pulizia→pulisci, finti livelli, test /fun quote tolto). 21 passano da soli e in giro ordinato fino ad alt_detection: instabili sotto carico (agenti in parallelo), non riprodotti.
+- main = 378955ee (fix/finale-a/b/c + .venv tolto + correzioni suite). Pubblicato, SHA uguali.
+- Prossimo: revisione infrastruttura con l'owner (60/60 gruppi, /music 25/25), poi wiki, poi sito.
