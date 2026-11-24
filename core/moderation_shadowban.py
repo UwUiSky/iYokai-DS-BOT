@@ -227,6 +227,30 @@ async def in_shadowban(guild_id: int, user_id: int) -> bool:
     return await moderation_repo.get_shadowban(guild_id, user_id) is not None
 
 
+async def ruoli_negati(member: discord.Member) -> bool:
+    """
+    True se a questa persona non si danno ruoli in automatico o su sua richiesta (shadowban in corso). Se il
+    database non risponde si lascia passare: un errore di lettura non deve bloccare ruoli a tutto il server.
+    """
+    try:
+        return await in_shadowban(member.guild.id, member.id)
+    except Exception:  # noqa: BLE001 - fallisce aperto, vedi docstring
+        logger.debug("Shadowban: stato non letto per %s, ruoli non negati.", getattr(member, "id", None), exc_info=True)
+        return False
+
+
+async def add_roles_se_libero(member: discord.Member, *ruoli, reason: str | None = None, **kw) -> bool:
+    """
+    Come `member.add_roles`, ma non dà niente a chi è in shadowban (un ruolo che fa «vedere un canale» scavalcherebbe
+    il blocco). Per i ruoli dati da automatismi o su richiesta dell'utente; le azioni dello staff usano `add_roles`.
+    True se ha chiamato Discord, False se ha saltato.
+    """
+    if await ruoli_negati(member):
+        return False
+    await member.add_roles(*ruoli, reason=reason, **kw)
+    return True
+
+
 async def togli(guild: discord.Guild, member: discord.Member, motivo: str, chi_id: int) -> bool | None:
     """
     Toglie lo shadowban e ridà i ruoli salvati (solo quelli che il bot può ridare oggi). True se fatto, False se

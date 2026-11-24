@@ -25,6 +25,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.moderation_shadowban import add_roles_se_libero
 from core import backup_modelli_logic as modelli
 from core import backup_pulizia_logic as pulizia
 from core import backup_raccolta_logic as raccolta
@@ -1289,7 +1290,7 @@ class BackupCog(CogConGruppi, commands.Cog):
             da_togliere = [r for r in sync.ruoli_applicabili(tolti, altro.roles, altro.me.top_role) if r in presenti]
             try:
                 if da_dare:
-                    await membro.add_roles(*da_dare, reason=sync.motivo(dopo.guild.name, None))
+                    await add_roles_se_libero(membro, *da_dare, reason=sync.motivo(dopo.guild.name, None))
                 if da_togliere:
                     await membro.remove_roles(*da_togliere, reason=sync.motivo(dopo.guild.name, None))
             except discord.HTTPException:

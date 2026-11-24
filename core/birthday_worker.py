@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 
+from core.moderation_shadowban import add_roles_se_libero
 from core.birthday_logic import dividi_auguri
 from core.guild_iteration import for_each_guild_safely
 from core.role_safety import motivo_ruolo_automatico_non_assegnabile
@@ -89,7 +90,7 @@ class BirthdayWorker:
         ruolo = guild.get_role(role_id)
         for membro in membri:
             try:
-                await membro.add_roles(ruolo, reason="Compleanno")
+                await add_roles_se_libero(membro, ruolo, reason="Compleanno")
             except discord.HTTPException:
                 logger.warning("Ruolo del compleanno non dato a %s nel server %s", membro.id, guild.id)
                 continue

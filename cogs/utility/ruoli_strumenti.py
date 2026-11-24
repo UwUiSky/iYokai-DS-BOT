@@ -21,6 +21,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.moderation_shadowban import add_roles_se_libero
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.duration_logic import format_duration, parse_duration
@@ -717,7 +718,7 @@ class RuoliStrumentiCog(CogConGruppi, commands.Cog):
         togli = [ammessi[i] for i in da_lasciare if i in ammessi and i in posseduti]
         try:
             if dai:
-                await membro.add_roles(*dai, reason="Ruolo a scelta")
+                await add_roles_se_libero(membro, *dai, reason="Ruolo a scelta")
             if togli:
                 await membro.remove_roles(*togli, reason="Ruolo a scelta")
         except discord.HTTPException:

@@ -16,6 +16,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.moderation_shadowban import add_roles_se_libero
 from core.channel_access import PERMESSI_DI_REAZIONE, motivo_se_il_bot_non_puo
 from core.command_access import Livello, puo_usare, richiedi
 from core.command_groups import CogConGruppi, comando_di_gruppo
@@ -161,7 +162,7 @@ class ConteggioCog(CogConGruppi, commands.Cog):
                 ruolo = message.guild.get_role(traguardo.ruolo_id)
                 if ruolo is not None:
                     try:
-                        await message.author.add_roles(ruolo, reason="Traguardo del conteggio")
+                        await add_roles_se_libero(message.author, ruolo, reason="Traguardo del conteggio")
                     except discord.HTTPException:
                         logger.info("Conteggio: ruolo %s non dato a %s", ruolo.id, message.author.id)
             if traguardo.messaggio:
@@ -188,7 +189,7 @@ class ConteggioCog(CogConGruppi, commands.Cog):
         if ruolo is None or not isinstance(message.author, discord.Member):
             return
         try:
-            await message.author.add_roles(ruolo, reason="Ultimo del conteggio")
+            await add_roles_se_libero(message.author, ruolo, reason="Ultimo del conteggio")
         except discord.HTTPException:
             logger.info("Conteggio: ruolo %s non dato a %s", ruolo.id, message.author.id)
             return

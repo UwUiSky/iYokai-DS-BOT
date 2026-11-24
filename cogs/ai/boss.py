@@ -22,6 +22,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from cogs.ai._comune import NESSUNA_MENZIONE, chiedi, registra_modulo_ai, taglia
+from core.moderation_shadowban import add_roles_se_libero
 from core import boss_logic as logica
 from core.ai_servizio import RichiestaAI
 from core.bot_ready import attendi_bot_pronto
@@ -135,7 +136,7 @@ async def _dai_ruolo(guild: discord.Guild, ruolo: discord.Role, user_id: int, or
     if membro is None or check_role_assignable(guild, ruolo, guild.me, self_service=True) is not None:
         return False
     try:
-        await membro.add_roles(ruolo, reason="Premio del World Boss")
+        await add_roles_se_libero(membro, ruolo, reason="Premio del World Boss")
         await scheduler.schedule(guild.id, user_id, AZIONE_RUOLO, datetime.now(timezone.utc) + timedelta(hours=ore), {"role_id": ruolo.id})
     except discord.HTTPException:
         return False

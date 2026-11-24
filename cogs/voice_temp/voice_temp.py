@@ -48,6 +48,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.moderation_shadowban import add_roles_se_libero
 from core.channel_rename import (
     RenameRateLimited,
     rename_channel,
@@ -202,7 +203,7 @@ class PlatformRoleView(BaseView):
                 if da_rimuovere:
                     await interaction.user.remove_roles(*da_rimuovere, reason="Cambio piattaforma vocale temporaneo")
                 if ruolo_scelto not in interaction.user.roles:
-                    await interaction.user.add_roles(ruolo_scelto, reason="Selezione piattaforma vocale temporaneo")
+                    await add_roles_se_libero(interaction.user, ruolo_scelto, reason="Selezione piattaforma vocale temporaneo")
             except (discord.Forbidden, discord.HTTPException):
                 await interaction.response.send_message(
                     await testo_per(interaction, "voicetemp_non_ho_permessi_per_assegnare"),

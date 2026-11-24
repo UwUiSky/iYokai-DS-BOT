@@ -29,6 +29,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
+from core.moderation_shadowban import add_roles_se_libero
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo, togli_comandi_del_cog
 from core.database import db
 from core import livelli_funzione
@@ -994,7 +995,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
         try:
             if da_assegnare:
-                await member.add_roles(
+                await add_roles_se_libero(member, 
                     *da_assegnare, reason=f"Ruolo-premio per aver raggiunto il livello {new_level}"
                 )
             if da_togliere and nuovo_assicurato:
@@ -2438,7 +2439,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         # Da qui si parla con Discord: prima il defer, poi il ruolo.
         await interaction.response.defer(ephemeral=riservato)
         try:
-            await interaction.user.add_roles(
+            await add_roles_se_libero(interaction.user, 
                 ruolo_shop, reason=taglia(f"Acquisto shop: {oggetto.name}", LIMITE_MOTIVO)
             )
         except discord.HTTPException:

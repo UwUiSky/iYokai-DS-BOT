@@ -17,6 +17,7 @@ from urllib.parse import urlsplit
 
 import discord
 
+from core.moderation_shadowban import add_roles_se_libero
 from core.role_safety import check_role_assignable
 from core.alert_messaggio_logic import pulisci_esterno
 from core.alert_options_logic import parse_parole
@@ -42,7 +43,7 @@ async def aggiorna_ruolo_live(guild, member_id: int | None, role_id: int | None,
     ce_l_ha = ruolo in membro.roles
     try:
         if in_diretta and not ce_l_ha:
-            await membro.add_roles(ruolo, reason="In diretta")
+            await add_roles_se_libero(membro, ruolo, reason="In diretta")
             return True
         if not in_diretta and ce_l_ha:
             await membro.remove_roles(ruolo, reason="Diretta finita")

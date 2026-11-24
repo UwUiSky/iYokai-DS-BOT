@@ -16,6 +16,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.moderation_shadowban import add_roles_se_libero
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.i18n import testo_per
 from core.repositories.voice_role_repo import voice_role_repo
@@ -81,7 +82,7 @@ class RuoliVocaliCog(CogConGruppi, commands.Cog):
         ruoli_togliere = [r for r in (guild.get_role(rid) for rid in da_togliere) if r is not None]
         try:
             if ruoli_dare:
-                await member.add_roles(*ruoli_dare, reason="Ruolo vocale")
+                await add_roles_se_libero(member, *ruoli_dare, reason="Ruolo vocale")
             if ruoli_togliere:
                 await member.remove_roles(*ruoli_togliere, reason="Ruolo vocale")
         except discord.HTTPException as errore:

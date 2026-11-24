@@ -21,6 +21,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.moderation_shadowban import add_roles_se_libero
 from core import invite_links_logic as logica, invite_service
 from core.command_access import Livello, richiedi
 from core.command_groups import CogConGruppi, comando_di_gruppo
@@ -125,7 +126,7 @@ class InvitesCog(CogConGruppi, commands.Cog):
             logger.info("Codice %s: il bot non può dare il ruolo %s nel server %s", codice, ruolo.id, member.guild.id)
             return
         try:
-            await member.add_roles(ruolo, reason=f"Entrato con il codice {codice}")
+            await add_roles_se_libero(member, ruolo, reason=f"Entrato con il codice {codice}")
         except discord.HTTPException:
             logger.warning("Codice %s: ruolo %s non dato a %s", codice, ruolo.id, member.id)
 

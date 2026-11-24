@@ -20,6 +20,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.moderation_shadowban import add_roles_se_libero
 from core.admin_mentions_logic import menzioni_ammesse, utente_puo_pingare_ruoli
 from core.bounded_cache import BoundedCache
 from core.controllo_link import togli_link_pericolosi
@@ -234,7 +235,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         mossa = azione_ruolo(tag.role_action, ruolo in membro.roles)
         try:
             if mossa == "dai":
-                await membro.add_roles(ruolo, reason=f"Comando personalizzato {tag.name}")
+                await add_roles_se_libero(membro, ruolo, reason=f"Comando personalizzato {tag.name}")
             elif mossa == "togli":
                 await membro.remove_roles(ruolo, reason=f"Comando personalizzato {tag.name}")
         except discord.HTTPException:

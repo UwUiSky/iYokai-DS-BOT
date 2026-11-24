@@ -21,6 +21,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
+from core.moderation_shadowban import add_roles_se_libero
 from core.activity_stats_logic import (
     GIORNI_CONSERVAZIONE,
     MAX_REGOLE_PER_SERVER,
@@ -288,7 +289,7 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
                 continue
             try:
                 if uid in dare:
-                    await membro.add_roles(ruolo, reason=motivo)
+                    await add_roles_se_libero(membro, ruolo, reason=motivo)
                 else:
                     await membro.remove_roles(ruolo, reason=motivo)
             except discord.HTTPException:
