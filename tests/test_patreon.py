@@ -225,6 +225,16 @@ async def test_account_patreon_gia_di_un_altro_passa_al_nuovo_e_scollega_toglie_
     assert await pronto.fetchval("SELECT count(*) FROM patreon_collegamenti") == 0
 
 
+async def test_account_patreon_ricollegato_piu_volte_lascia_il_livello_solo_all_ultimo(pronto):
+    await patreon_service.imposta_livello_tier("t1", "vip")
+    for utente in (11, 22, 33):
+        await patreon_service.completa_collegamento(await patreon_service.crea_stato(utente), "codice-ok", _Cliente())
+    assert await piani.livello_utente(11) == piani.GRATUITO
+    assert await piani.livello_utente(22) == piani.GRATUITO
+    assert await piani.livello_utente(33) == piani.VIP
+    assert await pronto.fetchval("SELECT count(*) FROM piani_concessioni WHERE fonte = 'patreon'") == 1
+
+
 async def test_sostenitore_non_ancora_collegato_prende_il_livello_al_collegamento(pronto):
     await patreon_service.imposta_livello_tier("t1", "premium")
     corpo = _corpo()
