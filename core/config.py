@@ -465,7 +465,7 @@ def _load_config() -> Config:
         OWNER_ID=_require_int("OWNER_ID"),
         MAIN_GUILD_ID=_require_int("MAIN_GUILD_ID"),
         DATABASE_URL=_require("DATABASE_URL"),
-        # LIM-50 (M 14.6): Aiven gratuito concede 20 connessioni in tutto.
+        # LIM-50 (M 14.6): PostgreSQL locale, 100 connessioni di base condivise da tutti i processi.
         DB_POOL_MIN=_optional_int("DB_POOL_MIN", 2 if in_sviluppo else 5),
         DB_POOL_MAX=_optional_int("DB_POOL_MAX", 5 if in_sviluppo else 10),
         ENVIRONMENT=environment,

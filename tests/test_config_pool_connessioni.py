@@ -36,8 +36,8 @@ def test_i_valori_del_file_env_vincono(monkeypatch, ambiente):
     assert (c.DB_POOL_MIN, c.DB_POOL_MAX) == (1, 3)
 
 
-def test_env_example_spiega_il_limite_di_aiven():
+def test_env_example_spiega_il_limite_delle_connessioni():
     from pathlib import Path
 
     testo = (Path(__file__).resolve().parents[1] / ".env.example").read_text(encoding="utf-8")
-    assert "20 connessioni" in testo
+    assert "100 connessioni" in testo and "max_connections" in testo
