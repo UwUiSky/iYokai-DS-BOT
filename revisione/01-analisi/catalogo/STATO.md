@@ -1,6 +1,6 @@
 # Stato del catalogo
 
-Generato da `scripts/stato_catalogo.py` il 2026-11-23. Non modificare a mano: rilancia lo script.
+Generato da `scripts/stato_catalogo.py` il 2026-11-24. Non modificare a mano: rilancia lo script.
 
 - **Fatte**: il codice della voce compare nel codice o nei test.
 - **Solo registri**: citata in SPEC, registro o memorie ma non nel codice: da controllare.

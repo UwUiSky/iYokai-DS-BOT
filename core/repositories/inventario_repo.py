@@ -53,6 +53,14 @@ _METTI_UNO = (
 _PULISCI = "DELETE FROM economia_inventario WHERE guild_id = $1 AND user_id = $2 AND item_id = $3 AND quantita <= 0"
 
 
+async def consuma_in(conn: asyncpg.Connection, guild_id: int, user_id: int, item_id: int) -> bool:
+    """Toglie un pezzo dentro la transazione di chi chiama (l'effetto è nella stessa transazione). False se non c'è."""
+    if await conn.fetchval(_TOGLI_UNO, guild_id, user_id, item_id) is None:
+        return False
+    await conn.execute(_PULISCI, guild_id, user_id, item_id)
+    return True
+
+
 class InventarioRepository:
     def __init__(self, pool_provider) -> None:
         self._pool_provider = pool_provider

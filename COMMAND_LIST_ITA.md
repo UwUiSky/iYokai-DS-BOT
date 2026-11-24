@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:03 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:28 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 1166 comandi in 59 categorie.**
+**Totale: 1170 comandi in 59 categorie.**
 
 ## Admin: AI
 
@@ -158,6 +158,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:
 - **`/admin-backup main`** — Registra questo server come 'main' per il Backup System.
 - **`/admin-backup modello`** — Modelli: pronti, tuoi o di Discord. Elenco, scheda, uso e condivisione.
 - **`/admin-backup promuovi`** — Promuove QUESTO server (finora backup) a nuovo main, se il main originale è perso.
+- **`/admin-backup raccolta`** — Raccolta pubblica di modelli: elenco, voto, uso e proposta.
 - **`/admin-backup registro`** — Chi ha usato backup, modelli e sincronie (ultimi 20, 365 giorni).
 - **`/admin-backup ripristino modo`** — Scegli come questo server gestisce il restore utenti via OAuth2.
 - **`/admin-backup ripristino utenti`** — Ripristina in QUESTO server gli utenti dell'ultimo snapshot di un altro server.
@@ -268,7 +269,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:
 - **`/admin-giochi evento avvia`** — Avvia l'evento: chi scrive nel canale riceve monete.
 - **`/admin-giochi evento chiudi`** — Chiudi l'evento di monete in corso.
 - **`/admin-giochi evento riffa`** — Una riffa pagata dalla cassa del server: chi clicca può vincere il premio.
-- **`/admin-giochi oggetto-azione`** — Cosa fa un oggetto del negozio quando lo si usa: monete o un ruolo.
+- **`/admin-giochi oggetto-azione`** — Cosa fa un oggetto del negozio quando lo si usa: monete, un ruolo o una creatura.
 - **`/admin-giochi punteggi azzera`** — Azzera i punteggi di una gara (con conferma).
 - **`/admin-giochi quiz carica`** — Carica domande per il quiz da un file CSV o JSON.
 - **`/admin-giochi quiz elenca`** — Le domande del quiz caricate dal server.
@@ -870,9 +871,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:
 - **`/giochi sfide battaglia`** — Battaglia a turni contro un membro: attacco, difesa e abilità, anche con una puntata.
 - **`/giochi sfide battaglie`** — Le battaglie vinte e perse di un membro e i migliori del server.
 - **`/giochi sfide blackjack`** — Blackjack contro il banco: carta, stai, raddoppia, arrenditi.
+- **`/giochi sfide creature`** — Le tue creature di fantasia: forza e vittorie.
 - **`/giochi sfide duelli`** — Classifica dei duelli e i tuoi ultimi.
 - **`/giochi sfide duello`** — Sfida un membro a duello: chi vince prende la posta.
 - **`/giochi sfide forza4`** — Forza 4 contro un membro, anche con una puntata.
+- **`/giochi sfide scontro`** — Fai combattere la tua creatura contro quella di un membro, con una posta.
 - **`/giochi sfide torre`** — Sali la torre: ogni piano rende di più, ma può crollare.
 - **`/giochi sfide tris`** — Tris contro un membro, anche con una puntata.
 - **`/giochi smash`** — Smash or pass: un personaggio adulto di AniList (solo canali con limite d'età).
@@ -1224,6 +1227,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:
 - **`/sala bingo`** — Bingo tra membri: completa una riga della cartella per vincere il piatto.
 - **`/sala bomba`** — Taglia il filo giusto: chi fa esplodere la bomba esce, l'ultimo vince.
 - **`/sala carte`** — Carte a turni: stesso colore o stesso numero, chi finisce le carte vince.
+- **`/sala combattimento`** — Combattimento fino a 6 con regole tue: vite, giri e oggetti.
 - **`/sala corsa`** — Corsa di animali: chi arriva primo prende il piatto.
 - **`/sala impiccato`** — Impiccato di gruppo: indovinate la parola insieme e vincete un premio.
 - **`/sala lotta`** — Lotta fino a 6 con il tuo animale: l'ultimo in piedi prende il piatto.

@@ -10,6 +10,7 @@ Funzioni coperte: ECO-058, ECO-059, ECO-070, ECO-071, ECO-072, ECO-073, ECO-086
 from __future__ import annotations
 
 import logging
+import random
 
 import discord
 from discord import app_commands
@@ -18,10 +19,12 @@ from discord.ext import commands
 from cogs.leveling.leveling import IdOggetto, _comando_rifiutato
 from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
 from core.i18n import testo_guild, testo_per
+from core.creature_logic import MAX_CREATURE
 from core.leveling_azzera_logic import nome_confermato
 from datetime import datetime, timezone
 
 from core.leveling_logic import prezzo_rivendita, tasso_del_giorno
+from core.repositories.creature_repo import EsitoEvoca, creature_repo
 from core.repositories.inventario_repo import Esito, inventario_repo
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.repositories.shop_repo import shop_repo
@@ -30,6 +33,7 @@ from core.role_safety import check_role_assignable
 
 logger = logging.getLogger("iyokai.leveling.inventario")
 NESSUNA_MENZIONE = discord.AllowedMentions.none()
+RNG = random.SystemRandom()
 
 
 class InventarioCog(CogConGruppi, commands.Cog):
@@ -89,25 +93,39 @@ class InventarioCog(CogConGruppi, commands.Cog):
                 await interaction.response.send_message(await testo_per(interaction, "inv_azione_fallita"), ephemeral=True)
                 return
             extra = await testo_guild(guild, "inv_azione_ruolo", ruolo=ruolo.name[:60])
+        elif item.azione == "creatura":  # ECO-101: pezzo consumato e creatura creata insieme; con la scorta piena il pezzo resta
+            evocata = await creature_repo.evoca(guild.id, interaction.user.id, item_id, RNG)
+            if evocata.esito is EsitoEvoca.PIENO:
+                await interaction.response.send_message(await testo_per(interaction, "crt_piena", max=MAX_CREATURE), ephemeral=True)
+                return
+            if evocata.esito is not EsitoEvoca.FATTO:
+                await interaction.response.send_message(await testo_per(interaction, "inv_non_lo_hai"), ephemeral=True)
+                return
+            extra = await testo_guild(guild, "crt_evocata", nome=await testo_guild(guild, f"crt_specie_{evocata.specie}"), forza=evocata.forza, id=evocata.creatura_id)
         elif not await inventario_repo.usa(guild.id, interaction.user.id, item_id):
             await interaction.response.send_message(await testo_per(interaction, "inv_non_lo_hai"), ephemeral=True)
             return
         testo = (item.reply_text or await testo_guild(guild, "inv_usato", nome=item.name)) + (f"\n{extra}" if extra else "")
         await interaction.response.send_message(testo[:1900], allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("admin-giochi", nome="oggetto-azione", descrizione="Cosa fa un oggetto del negozio quando lo si usa: monete o un ruolo.")
-    @app_commands.describe(item_id="ID dell'oggetto", azione="Cosa succede", monete="Monete (solo per «Dà monete»)", ruolo="Il ruolo (per «Dà un ruolo» o «Toglie un ruolo»)")
+    @comando_di_gruppo("admin-giochi", nome="oggetto-azione", descrizione="Cosa fa un oggetto del negozio quando lo si usa: monete, un ruolo o una creatura.")
+    @app_commands.describe(item_id="ID dell'oggetto", azione="Cosa succede", monete="Monete (solo per «Dà monete»)", ruolo="Il ruolo (per «Dà un ruolo» o «Toglie un ruolo»)", specie="Specie 1-8 (per «Evoca una creatura»)")
     @app_commands.choices(azione=[
         app_commands.Choice(name="Niente", value="nessuna"), app_commands.Choice(name="Dà monete", value="monete"),
         app_commands.Choice(name="Dà un ruolo", value="ruolo_dai"), app_commands.Choice(name="Toglie un ruolo", value="ruolo_togli"),
+        app_commands.Choice(name="Evoca una creatura", value="creatura"),
     ])
     async def oggetto_azione(
         self, interaction: discord.Interaction, item_id: IdOggetto, azione: app_commands.Choice[str],
         monete: app_commands.Range[int, 1, 100_000] | None = None, ruolo: discord.Role | None = None,
+        specie: app_commands.Range[int, 1, 8] | None = None,
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
-        valore = monete if azione.value == "monete" else (ruolo.id if ruolo else None)
+        if azione.value == "creatura":
+            valore = specie
+        else:
+            valore = monete if azione.value == "monete" else (ruolo.id if ruolo else None)
         if ruolo is not None and azione.value in ("ruolo_dai", "ruolo_togli"):
             motivo = check_role_assignable(interaction.guild, ruolo, interaction.user, self_service=True)
             if motivo is not None:

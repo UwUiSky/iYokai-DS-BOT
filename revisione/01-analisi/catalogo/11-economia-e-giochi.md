@@ -139,11 +139,11 @@ mai comprare con soldi veri (vedi NF-40).
 | ECO-098 | "Torre": alzi il moltiplicatore finché non crolla | Lawliet (`tower`) [LAWLIET] | ❌ manca | Due bottoni: alza o incassa | NF-40 |
 | ECO-099 | "Scala fortunata" | NadekoBot (`.luckyladder`) [NADEKO] | ❌ manca | Estrazione di un gradino con moltiplicatore | NF-40 |
 | ECO-100 | Scommessa sulla carta estratta (colore e valore) | NadekoBot (`.betdraw`) [NADEKO] | ❌ manca | Mazzo virtuale | NF-40 |
-| ECO-101 | Combattimento tra galli comprati al negozio | UnbelievaBoat (`chicken-fight`: forza 50–70%, +1% a vittoria) [UNB] | ❌ manca | Meglio una creatura di fantasia | NF-40 |
+| ECO-101 | Combattimento tra galli comprati al negozio | UnbelievaBoat (`chicken-fight`: forza 50–70%, +1% a vittoria) [UNB] | ✅ fatta (r8eco, D134, `/giochi sfide scontro`, creature dal negozio) | Meglio una creatura di fantasia | NF-40 |
 | ECO-102 | Corse di animali: compri, nutri, alleni e fai correre | UnbelievaBoat (`animals store`, `buy`, `inventory`; `provisions`; `animal-race`) [UNB] | ❌ manca | Statistiche di età, salute, energia, esperienza | NF-40 |
 | ECO-103 | Corsa di animali a cui ci si unisce con una puntata | NadekoBot (`.race`, `.joinrace`) [NADEKO] | ❌ manca | Una corsa per canale, iscrizione a tempo | NF-40 |
 | ECO-104 | Duello tra utenti con posta in monete o oggetti | Dank Memer (`/fight quick`, 7 modalità) [DANK] | ❌ manca | Turni con bottoni | NF-40 |
-| ECO-105 | Combattimento a più giocatori con regole su misura | Dank Memer (`/fight create`, fino a 6) [DANK] | ❌ manca | Estensione di ECO-104 | NF-40 |
+| ECO-105 | Combattimento a più giocatori con regole su misura | Dank Memer (`/fight create`, fino a 6) [DANK] | ✅ fatta (r8eco, D134, `/sala combattimento`) | Estensione di ECO-104 | NF-40 |
 | ECO-106 | Classifica e storico dei duelli | Dank Memer (`/fight ranking`, `/fight history`) [DANK] | ❌ manca | Tabella degli esiti | NF-40 |
 | ECO-107 | Forza 4 tra utenti, anche con puntata | NadekoBot (`.connect4`) [NADEKO], Dank Memer [DANK] | ❌ manca | Griglia di bottoni (5 righe da 5: campo ridotto) o immagine | NF-40 |
 | ECO-108 | Tris tra utenti | Dank Memer [DANK], NadekoBot (`.tictactoe`) [NADEKO] | ❌ manca | 9 bottoni | NF-40 |
