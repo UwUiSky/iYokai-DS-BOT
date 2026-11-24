@@ -1,13 +1,15 @@
 """
 core/web_panel_join.py
 ======================
-Pagina di consenso per il rientro dopo un ripristino (BKP-039, D113): `/join/<nome>`, con nome, icona e colori del server.
-Il server la accende dal pannello (`/server/<id>/join`), sceglie un nome breve unico (3-32 caratteri: minuscole, cifre e trattini,
+Pagina di consenso per il rientro dopo un ripristino (BKP-039, D113): indirizzo «join» più il nome, con nome, icona e colori del server.
+Il server la accende dal pannello (pagina «join» del server), sceglie un nome breve unico (3-32 caratteri: minuscole, cifre e trattini,
 nomi riservati esclusi; senza nome vale l'ID) e due colori. La persona entra con Discord, poi autorizza: da lì parte lo STESSO
 flusso OAuth del ripristino utenti (`core/restore_oauth_logic.py`, `state` firmato e monouso, legato a chi l'ha chiesto,
 solo consenso, stessa callback): niente cambia nella sua sicurezza. Pagina e colori sono pubblici, con limite per IP; nome
 inesistente, pagina spenta, server senza il bot, ripristino «solo invito» e funzione non configurata hanno la STESSA 404.
-Funzioni coperte: SPEC §24.12 (BKP-039, D113, issue #121)
+Regola di ammissione (BKP-040, D127, D130): il server può chiedere il controllo VPN e di rete della verifica web (VER-026) prima
+del consenso. Il controllo usa gli stessi servizi e scarta l'indirizzo: non si salva né si registra niente (nessun IP, nessun esito).
+Funzioni coperte: SPEC §24.12 (BKP-039, BKP-040, D113, D130, issue #121)
 Dipende da: core/web_panel_pubblico.py (stessa validazione degli indirizzi brevi, LIV-062), core/restore_oauth_logic.py
 """
 
@@ -18,7 +20,7 @@ import re
 
 from aiohttp import web
 
-from core import web_panel_logic as regole, web_panel_pubblico as pubblico
+from core import verify_vpn, verify_vpn_logic as vpn_logica, web_panel_logic as regole, web_panel_pubblico as pubblico
 from core.config_schema import ImpostazioneNonValida
 from core.repositories.web_panel_pubblico_repo import web_panel_pubblico_repo
 from core.restore_batch_logic import DEFAULT_RESTORE_MODE, MODE_CLASSIC_INVITE
@@ -35,6 +37,7 @@ _COLORE = re.compile(r"^#[0-9a-f]{6}$")
 ICONA_CDN = "https://cdn.discordapp.com/"
 NON_DISPONIBILE = (404, "Pagina non disponibile", "Questa pagina non esiste o non è disponibile in questo momento.")
 PERCORSO_RITORNO = re.compile(r"^/join/[a-z0-9-]{1,32}$")  # le sole destinazioni dopo l'accesso (nessun redirect libero)
+RETE_NON_AMMESSA = "Questo server chiede di non usare una VPN o un proxy. Spegnili e riprova."
 RISPOSTE = {"join_salvata": "Pagina di rientro salvata.", "join_spenta": "Pagina di rientro spenta."}
 
 
@@ -56,13 +59,15 @@ def valida_colore(testo: str) -> str | None:
     return colore
 
 
-async def imposta_pagina(guild_id: int, attiva: bool, nome: str, accento: str, sfondo: str, changed_by: int | None) -> str | None:
+async def imposta_pagina(
+    guild_id: int, attiva: bool, nome: str, accento: str, sfondo: str, changed_by: int | None, controllo_rete: bool = False
+) -> str | None:
     """Accende o spegne la pagina e salva nome e colori (un solo punto, D16). Ritorna il nome scelto o None."""
     from core.database import db
 
     slug = valida_nome(nome) if (nome or "").strip() else None
     a, s = valida_colore(accento), valida_colore(sfondo)
-    if not await web_panel_pubblico_repo.imposta_join(guild_id, bool(attiva), slug, a, s):
+    if not await web_panel_pubblico_repo.imposta_join(guild_id, bool(attiva), slug, a, s, bool(controllo_rete)):
         raise ImpostazioneNonValida("Questo indirizzo è già usato da un altro server.")
     await db._record_config_change(guild_id, changed_by, "setting", "pagina_rientro", None, slug or ("id" if attiva else None))
     return slug
@@ -104,11 +109,24 @@ async def pagina_disponibile(bot, guild_id: int):
 
 def registra_rotte(
     app: web.Application, *, bot, pagina, errore, server, scrittura, chiave_utente, ip, client_id: str,
-    restore_redirect_uri: str, chiave_firma: str, imposta_ritorno, puo_gestire,
+    restore_redirect_uri: str, chiave_firma: str, imposta_ritorno, puo_gestire, proxy_fidati: frozenset[str] = frozenset(),
 ) -> None:
     """`imposta_ritorno(risposta, percorso)`: ricorda dove tornare dopo l'accesso. `puo_gestire(guild, user_id)`: permessi del ripristino."""
     limite_pubbliche = regole.LimiteFrequenza(30, 60)  # per IP: pagina e colori interrogano il database
     limite_avvio = regole.LimiteFrequenza(5, 60)  # per persona: ogni avvio crea uno state
+
+    async def rete_bloccata(request: web.Request) -> bool:
+        """BKP-040: True se la rete è una VPN o un proxy (stessa regola della verifica web). L'IP si usa e si scarta: mai salvato.
+        Se il controllo non riesce, la persona non passa (il server lo ha chiesto)."""
+        try:
+            esito = await verify_vpn.rileva(
+                ip(request), segnali_intestazioni=vpn_logica.segnali_intestazioni(request.remote, request.headers, proxy_fidati),
+                chiave=chiave_firma,
+            )
+        except Exception:  # noqa: BLE001
+            logger.warning("Controllo di rete della pagina di rientro non riuscito: la persona non passa.")
+            return True
+        return bool(esito.bloccato)
 
     def vai(url: str) -> web.Response:
         return web.Response(status=302, headers={"Location": url})
@@ -136,6 +154,7 @@ def registra_rotte(
         guild, scelte = trovato
         return pagina(
             request, "join.html", guild=guild, nome=request.match_info["nome"], icona=icona_del_server(guild),
+            controllo_rete=scelte.join_controllo_rete,
             con_colori=bool(foglio_colori(scelte.join_accento, scelte.join_sfondo)),
         )
 
@@ -171,7 +190,9 @@ def registra_rotte(
         trovato = await trova(request)
         if trovato is None:
             return non_disponibile(request)
-        guild, _ = trovato
+        guild, scelte = trovato
+        if scelte.join_controllo_rete and await rete_bloccata(request):
+            return errore(request, 403, "Rete non ammessa", RETE_NON_AMMESSA)
         try:  # lo stesso `state` del ripristino: per chi l'ha chiesto, a scadenza, monouso
             url = build_authorize_url(
                 client_id=client_id, redirect_uri=restore_redirect_uri, source_guild_id=guild.id,
@@ -204,11 +225,11 @@ def registra_rotte(
         form, rifiuto = await scrittura(request)
         if rifiuto is not None:
             return rifiuto
-        indietro = f"/server/{guild.id}/join"
+        indietro = f"/server/{guild.id}/" + "join"
         try:
             await imposta_pagina(
                 guild.id, form.get("attiva") == "1", str(form.get("nome", ""))[:64], str(form.get("accento", ""))[:16],
-                str(form.get("sfondo", ""))[:16], request[chiave_utente],
+                str(form.get("sfondo", ""))[:16], request[chiave_utente], controllo_rete=form.get("controllo_rete") == "1",
             )
         except ImpostazioneNonValida as exc:
             return pagina(

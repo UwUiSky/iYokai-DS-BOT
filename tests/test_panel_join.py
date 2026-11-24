@@ -7,6 +7,7 @@ unico e valido (3-32 caratteri, minuscole, cifre, trattini, riservati esclusi), 
 Sessioni e database veri, Discord finto.
 """
 
+import re
 import secrets
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -355,5 +356,115 @@ async def test_nome_nei_form_con_html_resta_escapato(jn, clean_db):
         r = await client.post(f"/server/{GUILD}/join", data={"csrf": csrf, "nome": '"><script>x</script>'})
         testo = await r.text()
         assert r.status == 400 and "<script>x" not in testo
+    finally:
+        await client.close()
+
+
+# --- BKP-040: regole di ammissione (D127, D130) -----------------------------------
+async def _tabelle_con(clean_db, testo: str) -> list[str]:
+    """Le tabelle dove una qualunque riga contiene il testo (per provare che un IP non è salvato da nessuna parte)."""
+    trovate = []
+    for r in await clean_db.fetch("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"):
+        n = r["table_name"]
+        if await clean_db.fetchval(f'SELECT count(*) FROM "{n}" t WHERE row_to_json(t)::text LIKE $1', f"%{testo}%"):
+            trovate.append(n)
+    return trovate
+
+
+@pytest.mark.asyncio
+async def test_controllo_rete_spento_di_base_e_salvato_dal_pannello(jn):
+    assert (await repo.leggi(GUILD)).join_controllo_rete is False
+    await join.imposta_pagina(GUILD, True, "il-mio-server", "", "", ADMIN, controllo_rete=True)
+    assert (await repo.leggi(GUILD)).join_controllo_rete is True
+    await join.imposta_pagina(GUILD, True, "il-mio-server", "", "", ADMIN)
+    assert (await repo.leggi(GUILD)).join_controllo_rete is False
+
+
+@pytest.mark.asyncio
+async def test_vpn_rifiutata_senza_salvare_l_ip(jn, clean_db, monkeypatch):
+    from core import verify_vpn
+    from core.verify_vpn_logic import METODO_TOR, Rilevazione
+
+    visti = []
+
+    async def rileva(ip, **kw):
+        visti.append(ip)
+        return Rilevazione(True, (METODO_TOR,))
+
+    monkeypatch.setattr(verify_vpn, "rileva", rileva)
+    await join.imposta_pagina(GUILD, True, "il-mio-server", "", "", ADMIN, controllo_rete=True)
+    client = await _client(jn.app)
+    try:
+        await _entra(client)
+        csrf = await _csrf(client, "/join/il-mio-server")
+        r = await client.post("/join/il-mio-server/avvia", data={"csrf": csrf}, allow_redirects=False)
+        corpo = await r.text()
+        assert r.status == 403 and "discord.com" not in r.headers.get("Location", "")
+        assert "VPN" in corpo and not re.search(r"\btor\b", corpo.lower()) and "127.0.0.1" not in corpo  # né il metodo né l'IP
+        assert visti == ["127.0.0.1"]  # il servizio ha controllato l'IP della richiesta...
+        assert await _tabelle_con(clean_db, "127.0.0.1") == []  # ...e non è finito in nessuna tabella
+        for tabella in ("verify_vpn", "verify_ip", "restore_oauth_states"):
+            if await clean_db.fetchval("SELECT to_regclass($1)", tabella):
+                assert await clean_db.fetchval(f"SELECT count(*) FROM {tabella}") == 0, tabella
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_rete_pulita_passa_e_senza_regola_non_si_controlla(jn, monkeypatch):
+    from core import verify_vpn
+    from core.verify_vpn_logic import Rilevazione
+
+    chiamate = []
+
+    async def rileva(ip, **kw):
+        chiamate.append(ip)
+        return Rilevazione(False)
+
+    monkeypatch.setattr(verify_vpn, "rileva", rileva)
+    client = await _client(jn.app)
+    try:
+        await _entra(client)
+        await _accendi()  # controllo spento
+        csrf = await _csrf(client, "/join/il-mio-server")
+        assert (await client.post("/join/il-mio-server/avvia", data={"csrf": csrf}, allow_redirects=False)).status == 302
+        assert chiamate == []
+        await join.imposta_pagina(GUILD, True, "il-mio-server", "", "", ADMIN, controllo_rete=True)
+        assert (await client.post("/join/il-mio-server/avvia", data={"csrf": csrf}, allow_redirects=False)).status == 302
+        assert chiamate == ["127.0.0.1"]
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_se_il_controllo_non_riesce_la_pagina_non_fa_passare(jn, monkeypatch):
+    from core import verify_vpn
+
+    async def rileva(ip, **kw):
+        raise RuntimeError("servizio giù")
+
+    monkeypatch.setattr(verify_vpn, "rileva", rileva)
+    await join.imposta_pagina(GUILD, True, "il-mio-server", "", "", ADMIN, controllo_rete=True)
+    client = await _client(jn.app)
+    try:
+        await _entra(client)
+        csrf = await _csrf(client, "/join/il-mio-server")
+        r = await client.post("/join/il-mio-server/avvia", data={"csrf": csrf}, allow_redirects=False)
+        assert r.status in (403, 503) and "discord.com" not in r.headers.get("Location", "")
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_il_modulo_del_pannello_salva_il_controllo_rete(jn):
+    jn.permessi[ADMIN] = True
+    client = await _client(jn.app)
+    try:
+        await _entra(client)
+        csrf = await _csrf(client, f"/server/{GUILD}/join")
+        r = await client.post(f"/server/{GUILD}/join", data={"csrf": csrf, "attiva": "1", "nome": "x-server", "controllo_rete": "1"}, allow_redirects=False)
+        assert r.status == 302 and (await repo.leggi(GUILD)).join_controllo_rete is True
+        r = await client.post(f"/server/{GUILD}/join", data={"csrf": csrf, "attiva": "1", "nome": "x-server"}, allow_redirects=False)
+        assert (await repo.leggi(GUILD)).join_controllo_rete is False
     finally:
         await client.close()

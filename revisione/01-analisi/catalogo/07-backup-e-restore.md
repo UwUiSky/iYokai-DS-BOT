@@ -28,8 +28,8 @@ Stato di iYokai preso da `SPEC.md` §11: il backup va rifatto secondo la decisio
 | BKP-019 | **Registro di chi ha usato** backup, modelli e sincronie, tenuto 365 giorni | Xenon `/audit logs` [XENON] | ❌ manca | Riga nello storico eventi per ogni comando di backup | nuova |
 | BKP-020 | **Caricare un modello di server** da un nome, un codice o un link `discord.new` | Xenon `/template load` con opzioni [XENON] | ❌ manca | `/admin backup modello carica`; stesso motore del caricamento | NF-39 |
 | BKP-021 | **Elenco e scheda** dei modelli dentro Discord | Xenon `/template list`, `/template info` [XENON] | ❌ manca | `/admin backup modello elenco` e `info` | NF-39 |
-| BKP-022 | **Raccolta pubblica di modelli** con categorie, ricerca, lingua, voti | Xenon, 5.730 modelli [XENON] | ❌ manca | Si parte con pochi modelli pronti nel bot; la raccolta pubblica vive nel pannello web | NF-39 |
-| BKP-023 | **Pubblicare un proprio modello**, con revisione prima che compaia | Xenon [XENON] | ❌ manca | Invio dal pannello web; approvazione dell'owner | NF-39 |
+| BKP-022 | **Raccolta pubblica di modelli** con categorie, ricerca, lingua, voti | Xenon, 5.730 modelli [XENON] | ✅ r3bkp (D130) | Pochi modelli pronti nel bot più la raccolta pubblica con voti: `/admin-backup raccolta`, elenco in sola lettura nel pannello | NF-39 |
+| BKP-023 | **Pubblicare un proprio modello**, con revisione prima che compaia | Xenon [XENON] | ✅ r3bkp (D130) | Proposta dal bot, revisione e modifica dell'owner nel pannello (`/proprietario/modelli`) | NF-39 |
 | BKP-024 | **Copiare un canale** con i suoi permessi; per una categoria, anche i canali dentro | Xenon `/clone channel` [XENON] | ❌ manca | `/admin backup copia-canale`; tetti di 50 per categoria e 500 per server | nuova |
 | BKP-025 | **Copiare un ruolo** con i suoi permessi e, a scelta, i permessi nei canali | Xenon `/clone role` [XENON] | ❌ manca | `/admin backup copia-ruolo`; tetto di 250 ruoli | nuova |
 | BKP-026 | **Salvare gli ultimi messaggi di un canale** (fino a 1000) per ricaricarli dopo | Xenon `/chatlog create [message_count] [before]`, `/chatlog list`, `/chatlog delete` (Premium) [XENON] | ❌ manca | `/admin backup canale salva`; tetto per piano | nuova |
@@ -46,7 +46,7 @@ Stato di iYokai preso da `SPEC.md` §11: il backup va rifatto secondo la decisio
 | BKP-037 | **Importare la struttura** da un file JSON, scegliendo cosa applicare | Xenon `/import guild` (Premium) [XENON] | ❌ manca | Stesso motore del caricamento; file validato con uno schema prima di toccare il server | nuova |
 | BKP-038 | **Ritorno dei membri** dopo la perdita del server, per chi ha dato il consenso | RestoreCord [RESTORECORD] (terzi) | 🟡 parziale: scritto, ma senza coppia di server non parte; token mai rinnovati | Rinnovo dei token, pause e gestione dei 429, invito in DM solo a chi ha acconsentito | M 12.10 |
 | BKP-039 | Pagina di consenso su un **indirizzo web proprio** del server | RestoreCord [RESTORECORD] (terzi) | ✅ fatto (r3web, D113): `iyokai.dev/join/<nome>` con nome, icona e colori del server; dominio proprio = futuro premium | Solo con il pannello web e il bot con marchio proprio | NF-38 |
-| BKP-040 | **Regole di ammissione** alla pagina di consenso per paese, rete o VPN | RestoreCord [RESTORECORD] (terzi) | ❌ manca | iYokai non raccoglie IP nel restore: l'alternativa è il controllo VPN della verifica web (VER-026) | NF-21 |
+| BKP-040 | **Regole di ammissione** alla pagina di consenso per paese, rete o VPN | RestoreCord [RESTORECORD] (terzi) | ✅ r3bkp (D130, solo VPN e rete, nessun IP) | iYokai non raccoglie IP nel restore: l'alternativa è il controllo VPN della verifica web (VER-026) | NF-21 |
 | BKP-041 | **Gestione dei backup dal pannello web**: vedere, caricare, eliminare | Wick [WICK] | ❌ manca | Pagina del pannello che chiama le stesse funzioni dei comandi | NF-20 |
 
 ## Fonti

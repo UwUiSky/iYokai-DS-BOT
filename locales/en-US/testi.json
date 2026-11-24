@@ -4284,5 +4284,22 @@
   "eco_negozio_web_spento": "The shop is no longer shown on the website.",
   "backup_carica_scegli": "Give a copy number, or `ultima_automatica:yes`: only one of the two.",
   "backup_ultima_solo_proprietario": "Only the server owner can load the latest automatic copy after an attack.",
-  "backup_nessuna_automatica": "There is no automatic copy. Turn them on with `/founder backup automatico` (from 3 hours)."
+  "backup_nessuna_automatica": "There is no automatic copy. Turn them on with `/founder backup automatico` (from 3 hours).",
+  "raccolta_titolo": "Server template collection",
+  "raccolta_riga": "`#{id}` **{nome}** · {voti} votes · {ruoli} roles, {canali} channels · {lingua}",
+  "raccolta_elenco_vuoto": "No approved templates yet. Propose yours with `/admin-backup raccolta proponi`.",
+  "raccolta_non_trovato": "Template not found (or not approved yet).",
+  "raccolta_voto_nuovo": "Vote recorded. Thank you!",
+  "raccolta_voto_gia": "You already voted for this template: a vote counts only once.",
+  "raccolta_serve_copia": "To propose, enter the number of your copy (from `/admin-backup lista`) and a name.",
+  "raccolta_proposta_non_valida": "Invalid proposal: {errori}",
+  "raccolta_proposta_troppe": "You already have too many proposals waiting for review. Wait for a decision.",
+  "raccolta_proposta_ok": "Proposal #{id} sent. It goes to review: the bot owner approves or rejects it. The template holds only roles, channels and permissions, with no members, messages or IDs.",
+  "raccolta_nessuna_mia": "This server has no proposals.",
+  "raccolta_mia_riga": "`#{id}` {nome}: {stato}",
+  "raccolta_stato_revisione": "in review",
+  "raccolta_stato_approvato": "approved",
+  "raccolta_stato_rifiutato": "rejected",
+  "raccolta_solo_proprietario": "Adding only what is missing, after a nuke, must be confirmed by the server owner.",
+  "raccolta_usa": "**{nome}**\n{mancano} items (roles, categories, channels) are missing from the server.\nRoles with dangerous permissions: {pericolosi}. Without the server owner's confirmation they are created without those permissions.\nLoading never deletes anything."
 }

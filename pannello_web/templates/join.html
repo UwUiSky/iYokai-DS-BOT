@@ -7,6 +7,7 @@
   <h1>{{ guild.name }}</h1>
   <p>Se questo server dovrà essere ripristinato (per esempio dopo un attacco), puoi autorizzare iYokai ad <strong>aggiungerti di nuovo</strong> da solo, senza che tu debba cercare un nuovo invito.</p>
   <p class="tenue">Cosa autorizzi su Discord: <strong>identificarti</strong> (vedere chi sei) e <strong>aggiungerti a un server</strong>. Non leggiamo i tuoi messaggi né i tuoi altri server, e non scriviamo a nome tuo. Conserviamo un token cifrato, solo per questo server, fino a quando lo revochi: puoi farlo in ogni momento da Discord (Impostazioni &rarr; App autorizzate) o chiedendo la cancellazione dei tuoi dati.</p>
+  {% if controllo_rete %}<p class="tenue">Questo server chiede di non usare una VPN o un proxy: se li hai accesi, spegnili prima di continuare. Il tuo indirizzo non viene salvato.</p>{% endif %}
   {% if utente_id %}
   <form method="post" action="/join/{{ nome }}/avvia">
     <input type="hidden" name="csrf" value="{{ csrf }}">

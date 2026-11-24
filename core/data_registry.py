@@ -883,6 +883,13 @@ REGISTRO: tuple[TabellaDati, ...] = (
     _t("backup_link_codes", "Codici di collegamento del server di backup (solo l'impronta)",
        colonne_attore=("created_by",), colonna_server="main_guild_id",
        scadenza=Scadenza("created_at", 30), nota="il codice vale 24 ore; dopo 30 giorni la riga va via"),
+    _t("backup_raccolta_voti", "Voti ai modelli della raccolta pubblica (BKP-022, uno per persona)",
+       colonne_utente=("user_id",), utente="cancella", esporta=True,
+       filtro_server="modello_id IN (SELECT id FROM backup_raccolta WHERE guild_id = $1)",
+       nota="il voto va via con la persona o con il modello"),
+    _t("backup_raccolta", "Modelli di server proposti alla raccolta pubblica (BKP-022/023, D127)",
+       colonne_attore=("proposto_da", "deciso_da"), colonna_server="guild_id",
+       nota="la struttura è ricostruita senza ID, membri, messaggi né dati personali; il modello va via con il server proponente"),
     _t("backup_strutture", "Copie datate della struttura, chat salvate e modelli con codice (M 12.17, NF-39, BKP-026)",
        colonne_attore=("created_by",), colonna_server="guild_id",
        nota="i dati possono contenere ID di utenti (ban e membri, se scelti) e, nelle chat salvate, nome, avatar e testo "

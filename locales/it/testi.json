@@ -4284,5 +4284,22 @@
   "eco_negozio_web_spento": "Il negozio non si vede più sul sito.",
   "backup_carica_scegli": "Indica il numero di una copia, oppure `ultima_automatica:sì`: una cosa sola.",
   "backup_ultima_solo_proprietario": "La copia automatica dopo un attacco la carica solo il proprietario del server.",
-  "backup_nessuna_automatica": "Non c'è nessuna copia automatica. Accendile con `/founder backup automatico` (da 3 ore)."
+  "backup_nessuna_automatica": "Non c'è nessuna copia automatica. Accendile con `/founder backup automatico` (da 3 ore).",
+  "raccolta_titolo": "Raccolta di modelli di server",
+  "raccolta_riga": "`#{id}` **{nome}** · {voti} voti · {ruoli} ruoli, {canali} canali · {lingua}",
+  "raccolta_elenco_vuoto": "Nessun modello approvato per ora. Proponi il tuo con `/admin-backup raccolta proponi`.",
+  "raccolta_non_trovato": "Modello non trovato (o non ancora approvato).",
+  "raccolta_voto_nuovo": "Voto registrato. Grazie!",
+  "raccolta_voto_gia": "Hai già votato questo modello: il voto conta una volta sola.",
+  "raccolta_serve_copia": "Per proporre scrivi il numero della copia (da `/admin-backup lista`) e un nome.",
+  "raccolta_proposta_non_valida": "Proposta non valida: {errori}",
+  "raccolta_proposta_troppe": "Hai già troppe proposte in attesa di revisione. Aspetta la decisione.",
+  "raccolta_proposta_ok": "Proposta #{id} inviata. Entra in revisione: la approva o la rifiuta il proprietario del bot. Il modello contiene solo ruoli, canali e permessi, senza membri, messaggi né ID.",
+  "raccolta_nessuna_mia": "Questo server non ha proposte.",
+  "raccolta_mia_riga": "`#{id}` {nome}: {stato}",
+  "raccolta_stato_revisione": "in revisione",
+  "raccolta_stato_approvato": "approvato",
+  "raccolta_stato_rifiutato": "rifiutato",
+  "raccolta_solo_proprietario": "Aggiungere solo ciò che manca, dopo un nuke, lo conferma il proprietario del server.",
+  "raccolta_usa": "**{nome}**\nCi sono {mancano} elementi (ruoli, categorie, canali) che nel server non ci sono.\nRuoli con permessi pericolosi: {pericolosi}. Senza la conferma del proprietario del server nascono senza quei permessi.\nIl caricamento non cancella mai niente."
 }

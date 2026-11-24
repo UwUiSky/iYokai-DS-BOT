@@ -26,6 +26,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core import backup_modelli_logic as modelli
+from core import backup_raccolta_logic as raccolta
 from core import backup_struttura_logic as struttura
 from core.backup_copia_logic import copia_canale, copia_ruolo
 from core.backup_messages_logic import leggi_chat, ricarica_chat, webhook_chat
@@ -42,6 +43,7 @@ from core.database import db
 from core.i18n import testo_per
 from core.repositories.backup_sincronia_canali_repo import MAX_DIREZIONI_PER_SERVER, backup_sincronia_canali_repo
 from core.repositories.backup_sincronia_repo import backup_sincronia_repo
+from core.repositories.backup_raccolta_repo import backup_raccolta_repo
 from core.repositories.backup_struttura_repo import MAX_COPIE_PER_SERVER, backup_struttura_repo
 from core.ui_base import BaseView
 from core.backup_link_logic import (
@@ -138,6 +140,47 @@ class ScegliPartiView(BaseView):
         await interaction.response.edit_message(content=testo, view=None)
 
 
+class UsaRaccoltaView(BaseView):
+    """BKP-022 (D127): usa un modello della raccolta. Ruoli pericolosi e ripristino dei mancanti solo con il proprietario."""
+
+    def __init__(self, cog: "BackupCog", interaction: discord.Interaction, dati: dict, modello_id: int) -> None:
+        super().__init__(timeout=300)
+        self.cog, self.autore_id, self.dati, self.modello_id = cog, interaction.user.id, dati, modello_id
+        self.e_proprietario = interaction.user.id == interaction.guild.owner_id
+        self.pericolosi_ok = False
+        if not raccolta.ruoli_pericolosi(dati) or not self.e_proprietario:
+            self.remove_item(self.conferma_pericolosi)
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.autore_id and await super().interaction_check(interaction)
+
+    @discord.ui.button(label="Confermo i ruoli con permessi pericolosi: no", style=discord.ButtonStyle.secondary, row=0)
+    async def conferma_pericolosi(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.pericolosi_ok = not self.pericolosi_ok
+        button.label = f"Confermo i ruoli con permessi pericolosi: {'sì' if self.pericolosi_ok else 'no'}"
+        button.style = discord.ButtonStyle.danger if self.pericolosi_ok else discord.ButtonStyle.secondary
+        await interaction.response.edit_message(view=self)
+
+    async def _avvia(self, interaction: discord.Interaction, solo_mancanti: bool) -> None:
+        if solo_mancanti and not self.e_proprietario:
+            await interaction.response.send_message(await testo_per(interaction, "raccolta_solo_proprietario"), ephemeral=True)
+            return
+        self.stop()
+        testo = await self.cog.avvia_caricamento(
+            interaction, self.dati, {"ruoli", "canali"}, f"raccolta #{self.modello_id}",
+            solo_mancanti=solo_mancanti, pericolosi_ok=self.pericolosi_ok and self.e_proprietario,
+        )
+        await interaction.response.edit_message(content=testo, view=None)
+
+    @discord.ui.button(label="Crea la struttura", style=discord.ButtonStyle.danger, row=1)
+    async def crea(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await self._avvia(interaction, False)
+
+    @discord.ui.button(label="Solo ciò che manca (proprietario)", style=discord.ButtonStyle.primary, row=1)
+    async def mancanti(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await self._avvia(interaction, True)
+
+
 class ConfermaEliminaView(BaseView):
     """BKP-007: nessuna copia sparisce senza un clic di conferma di chi l'ha chiesto."""
 
@@ -197,7 +240,8 @@ class BackupCog(CogConGruppi, commands.Cog):
         return False
 
     async def avvia_caricamento(
-        self, interaction: discord.Interaction, dati: dict, parti: set[str], fonte: str
+        self, interaction: discord.Interaction, dati: dict, parti: set[str], fonte: str,
+        solo_mancanti: bool = False, pericolosi_ok: bool | None = None,
     ) -> str:
         """Fa partire il caricamento di una struttura e restituisce il testo per chi l'ha chiesto."""
         guild = interaction.guild
@@ -205,7 +249,8 @@ class BackupCog(CogConGruppi, commands.Cog):
 
         async def lavoro(avanza):
             caricatore = struttura.Caricatore(
-                guild, dati, parti, avanza=avanza, scarica=struttura.scarica_immagine, tetto=tetto
+                guild, dati, parti, avanza=avanza, scarica=struttura.scarica_immagine, tetto=tetto,
+                solo_mancanti=solo_mancanti, pericolosi_ok=pericolosi_ok,
             )
             return await caricatore.esegui()
 
@@ -812,6 +857,96 @@ class BackupCog(CogConGruppi, commands.Cog):
         if nuovo:
             await registra_uso(guild.id, interaction.user.id, f"modello {azione.value}", f"#{copia}")
         await interaction.response.send_message(testo, ephemeral=True)
+
+    # ------------------------------------------------------------
+    # Raccolta pubblica dei modelli (BKP-022/023, D127)
+    # ------------------------------------------------------------
+    @comando_di_gruppo("admin-backup", nome="raccolta", descrizione="Raccolta pubblica di modelli: elenco, voto, uso e proposta.")
+    @app_commands.describe(
+        azione="Cosa fare", modello="Numero del modello nella raccolta", copia="Per «proponi»: numero della tua copia",
+        nome="Per «proponi»: nome del modello", descrizione="Per «proponi»: a cosa serve", cerca="Per «elenco»: testo da cercare",
+    )
+    @app_commands.choices(
+        azione=[
+            app_commands.Choice(name="Elenco dei modelli approvati", value="elenco"),
+            app_commands.Choice(name="Vota un modello", value="vota"),
+            app_commands.Choice(name="Usa un modello", value="usa"),
+            app_commands.Choice(name="Proponi una tua copia", value="proponi"),
+            app_commands.Choice(name="Le mie proposte", value="mie"),
+        ]
+    )
+    async def raccolta_cmd(
+        self, interaction: discord.Interaction, azione: app_commands.Choice[str],
+        modello: app_commands.Range[int, 1, 2**31 - 1] | None = None, copia: app_commands.Range[int, 1] | None = None,
+        nome: app_commands.Range[str, 3, 60] | None = None, descrizione: app_commands.Range[str, 0, 300] = "",
+        cerca: app_commands.Range[str, 0, 40] = "",
+    ) -> None:
+        if not await self._puo(interaction, AZIONE_CARICA if azione.value in ("usa", "elenco", "vota") else AZIONE_CREA):
+            return
+        guild = interaction.guild
+        if azione.value == "elenco":
+            voci = await backup_raccolta_repo.elenco_pubblico(lingua=None, ricerca=raccolta.ricerca_pulita(cerca), limite=20)
+            righe = [
+                await testo_per(
+                    interaction, "raccolta_riga", id=m.id, nome=discord.utils.escape_markdown(m.nome), voti=m.voti,
+                    ruoli=m.ruoli, canali=m.canali, lingua=m.lingua,
+                ) for m in voci
+            ]
+            testo = "\n".join(righe)[:3900] if righe else await testo_per(interaction, "raccolta_elenco_vuoto")
+            embed = discord.Embed(title=await testo_per(interaction, "raccolta_titolo"), description=testo, color=discord.Color.blurple())
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+        if azione.value == "mie":
+            mie = await backup_raccolta_repo.del_server(guild.id)
+            righe = [await testo_per(interaction, "raccolta_mia_riga", id=m.id, nome=discord.utils.escape_markdown(m.nome),
+                                     stato=await testo_per(interaction, f"raccolta_stato_{m.stato}")) for m in mie]
+            await interaction.response.send_message(
+                "\n".join(righe)[:1900] if righe else await testo_per(interaction, "raccolta_nessuna_mia"), ephemeral=True
+            )
+            return
+        if azione.value == "proponi":
+            if copia is None or nome is None:
+                await interaction.response.send_message(await testo_per(interaction, "raccolta_serve_copia"), ephemeral=True)
+                return
+            trovata = await backup_struttura_repo.leggi_struttura(guild.id, copia)
+            pulita, errori = raccolta.prepara_struttura(trovata) if trovata is not None else (None, ["copia non trovata"])
+            titolo = raccolta.nome_modello(nome)
+            if pulita is None or titolo is None:
+                await interaction.response.send_message(
+                    await testo_per(interaction, "raccolta_proposta_non_valida", errori="; ".join(errori[:3]) or nome), ephemeral=True
+                )
+                return
+            lingua = interaction.locale.value if getattr(interaction, "locale", None) else "it"
+            nuovo = await backup_raccolta_repo.proponi(
+                guild.id, interaction.user.id, titolo, raccolta.descrizione_modello(descrizione),
+                raccolta.lingua_valida(lingua) or "it", pulita,
+            )
+            if nuovo is None:
+                await interaction.response.send_message(await testo_per(interaction, "raccolta_proposta_troppe"), ephemeral=True)
+                return
+            await registra_uso(guild.id, interaction.user.id, "raccolta proponi", f"#{copia} -> {nuovo}")
+            await interaction.response.send_message(await testo_per(interaction, "raccolta_proposta_ok", id=nuovo), ephemeral=True)
+            return
+        if modello is None:
+            await interaction.response.send_message(await testo_per(interaction, "raccolta_non_trovato"), ephemeral=True)
+            return
+        if azione.value == "vota":
+            esito = await backup_raccolta_repo.vota(modello, interaction.user.id)
+            chiave = {"nuovo": "raccolta_voto_nuovo", "gia": "raccolta_voto_gia"}.get(esito, "raccolta_non_trovato")
+            await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
+            return
+        trovato = await backup_raccolta_repo.leggi_pubblico(modello)
+        if trovato is None:
+            await interaction.response.send_message(await testo_per(interaction, "raccolta_non_trovato"), ephemeral=True)
+            return
+        scheda, dati = trovato
+        manca = raccolta.mancanti(guild, dati)
+        pericolosi = raccolta.ruoli_pericolosi(dati)
+        testo = await testo_per(
+            interaction, "raccolta_usa", nome=discord.utils.escape_markdown(scheda.nome), mancano=manca.totale(),
+            pericolosi=discord.utils.escape_markdown(", ".join(pericolosi)) or "-",
+        )
+        await interaction.response.send_message(testo[:1900], view=UsaRaccoltaView(self, interaction, dati, modello), ephemeral=True)
 
     # ------------------------------------------------------------
     # Sincronia di ban e ruoli (NF-39)

@@ -158,6 +158,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:
 - **`/admin-backup main`** — Registra questo server come 'main' per il Backup System.
 - **`/admin-backup modello`** — Modelli: pronti, tuoi o di Discord. Elenco, scheda, uso e condivisione.
 - **`/admin-backup promuovi`** — Promuove QUESTO server (finora backup) a nuovo main, se il main originale è perso.
+- **`/admin-backup raccolta`** — Raccolta pubblica di modelli: elenco, voto, uso e proposta.
 - **`/admin-backup registro`** — Chi ha usato backup, modelli e sincronie (ultimi 20, 365 giorni).
 - **`/admin-backup ripristino modo`** — Scegli come questo server gestisce il restore utenti via OAuth2.
 - **`/admin-backup ripristino utenti`** — Ripristina in QUESTO server gli utenti dell'ultimo snapshot di un altro server.
