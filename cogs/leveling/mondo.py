@@ -11,6 +11,7 @@ Dipende da: core/repositories/mondo_repo.py, core/mondo_logic.py
 
 from __future__ import annotations
 
+import io
 import logging
 import random
 from datetime import datetime, timezone
@@ -21,11 +22,13 @@ from discord.ext import commands, tasks
 
 from cogs.leveling.leveling import _comando_rifiutato
 from core import mondo_logic as ml
+from core.casa_image import render_casa
 from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
 from core.i18n import testo_guild, testo_per
 from core.leveling_logic import tasso_del_giorno
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.repositories.mondo_repo import COSTO_VACANZA_GIORNO, VACANZA_GIORNI_MAX, mondo_repo
+from core.safe_image import run_image_task
 from core.ui_base import BaseModal, BaseView
 
 logger = logging.getLogger("iyokai.mondo")
@@ -203,9 +206,22 @@ class MondoCog(CogConGruppi, commands.Cog):
                 return
         posseduti = await mondo_repo.casa(u)
         listino = ", ".join(f"{e} {n} ({c})" for n, (c, e, _) in ml.MOBILI.items() if n not in posseduti)
-        await interaction.response.send_message(
-            await testo_per(interaction, "mon_casa", stanza=ml.disegna_casa(posseduti), gettoni=await mondo_repo.gettoni(u), listino=listino or "-"), ephemeral=True
-        )
+        gettoni = await mondo_repo.gettoni(u)
+        testo = await testo_per(interaction, "mon_casa", stanza=ml.disegna_casa(posseduti), gettoni=gettoni, listino=listino or "-")
+        # ECO-087: la stanza anche come immagine (Pillow fuori dal ciclo principale); se non si disegna resta il testo con le emoji
+        png = None
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
+        try:
+            etichette = {n: await testo_per(interaction, f"mon_casa_m_{n}") for n in ml.MOBILI}
+            png = await run_image_task(render_casa, set(posseduti), etichette)
+        except Exception:
+            logger.warning("Casa non disegnata", exc_info=True)
+        if png is None:
+            await interaction.followup.send(testo, ephemeral=True)
+            return
+        sotto = await testo_per(interaction, "mon_casa_img", gettoni=gettoni, listino=listino or "-")
+        await interaction.followup.send(sotto[:2000], file=discord.File(io.BytesIO(png), filename="casa.png"), ephemeral=True)
 
     @comando_di_gruppo("mondo", nome="fattoria", descrizione="Pianta nel tuo orto e raccogli quando è maturo (3 posti).")
     @app_commands.describe(posto="Il posto dove piantare (1-3)", coltura="Cosa piantare", raccogli="Raccogli quello che è maturo")

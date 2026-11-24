@@ -45,13 +45,18 @@ FONTI: dict[str, tuple[str, bool, bool, tuple[str, ...]]] = {
     "waifupics": ("https://api.waifu.pics", True, False, ("waifu.pics",)),
     "otakugifs": ("https://api.otakugifs.xyz", True, False, ("otakugifs.xyz",)),
     "nekoslife": ("https://nekos.life/api/v2", False, False, ("nekos.life",)),
-    "giphy": ("https://api.giphy.com/v1", False, True, ("giphy.com",)),
+    "giphy": ("https://api.giphy.com/v1", True, True, ("giphy.com",)),
+    "tenor": ("https://tenor.googleapis.com/v2", True, True, ("tenor.com", "tenor.googleapis.com")),
 }
-# Fonti che cercano testo libero (`/gif cerca`): Klipy si aggiunge qui con il suo adattatore, dopo il permesso scritto (D70).
-FONTI_RICERCA = ("giphy",)
+# Fonti che cercano testo libero (`/gif cerca` e voci senza categoria): con chiave, si accendono da sole (D127).
+# Klipy si aggiunge qui con il suo adattatore quando le sue condizioni saranno leggibili (D70, D127).
+FONTI_RICERCA = ("giphy", "tenor")
+# Tetto di richieste all'ora per fonte (D127): sotto i limiti noti dei servizi; `GIF_<FONTE>_QUOTA_ORA` lo cambia.
+QUOTA_ORARIA = {"giphy": 90, "tenor": 300, "nekosbest": 600, "purrbot": 600, "waifupics": 600, "otakugifs": 600, "nekoslife": 300}
+TENOR_CREDITO = "Via Tenor"
 NOMI_VISIBILI = {
     "nekosbest": "nekos.best", "purrbot": "purrbot.site", "waifupics": "waifu.pics", "otakugifs": "otakugifs",
-    "nekoslife": "nekos.life", "giphy": "GIPHY",
+    "nekoslife": "nekos.life", "giphy": "GIPHY", "tenor": "Tenor",
 }
 # Parole che indicano contenuti per adulti: se una categoria le contiene la richiesta non parte (SFW sempre).
 PAROLE_VIETATE = (
@@ -115,11 +120,13 @@ def leggi_fonti(env: Mapping[str, str] | None = None) -> list[Fonte]:
     for nome in nomi:
         base, acceso, serve_chiave, _ = FONTI[nome]
         su = nome.upper()
+        esplicito = (env.get(f"GIF_{su}_ATTIVO") or "").strip()
         if not _si(env.get(f"GIF_{su}_ATTIVO"), acceso):
             continue
         chiave = (env.get(f"GIF_{su}_KEY") or "").strip()
         if serve_chiave and not chiave:
-            logger.warning("Fonte GIF %s accesa ma senza chiave: resta spenta.", nome)
+            if esplicito:
+                logger.warning("Fonte GIF %s accesa ma senza chiave: resta spenta.", nome)
             continue
         url = (env.get(f"GIF_{su}_URL") or base).strip().rstrip("/")
         if not _dominio_ammesso(nome, url):
@@ -129,9 +136,24 @@ def leggi_fonti(env: Mapping[str, str] | None = None) -> list[Fonte]:
     return fonti
 
 
+def quota_oraria(nome: str, env: Mapping[str, str] | None = None) -> int:
+    """Richieste all'ora ammesse per la fonte (da `GIF_<FONTE>_QUOTA_ORA`, altrimenti il tetto di base)."""
+    env = os.environ if env is None else env
+    grezzo = (env.get(f"GIF_{nome.upper()}_QUOTA_ORA") or "").strip()
+    return int(grezzo) if grezzo.isdigit() and 0 < int(grezzo) <= 100_000 else QUOTA_ORARIA.get(nome, 300)
+
+
 def _richiesta(fonte: Fonte, voce: Voce) -> str | None:
     """L'indirizzo da chiamare, solo nella parte SFW del servizio. None se la fonte non copre la voce."""
     categoria = voce.fonti.get(fonte.nome)
+    if fonte.nome == "tenor":
+        if not voce.ricerca or not categoria_sfw(voce.ricerca):
+            return None
+        q = quote(voce.ricerca[:50])
+        return (
+            f"{'/'.join((fonte.url, 'search'))}?key={quote(fonte.chiave)}&client_key=iyokai&q={q}&limit=10&contentfilter=high"
+            "&media_filter=mediumgif,tinygif,gif&random=true"
+        )
     if fonte.nome == "giphy":
         if not voce.ricerca or not categoria_sfw(voce.ricerca):
             return None
@@ -192,6 +214,16 @@ def leggi_risposta(nome: str, testo: str) -> list[Gif]:
                 if _dominio_ammesso(nome, url):
                     trovate.append(Gif(url, visibile, GIPHY_CREDITO, _link(r.get("url"))))
                     break
+    elif nome == "tenor":
+        for r in dati.get("results") or []:
+            if not isinstance(r, dict) or not isinstance(r.get("media_formats"), dict):
+                continue
+            for tipo in ("mediumgif", "tinygif", "gif"):
+                formato = r["media_formats"].get(tipo)
+                url = formato.get("url") if isinstance(formato, dict) else None
+                if _dominio_ammesso(nome, url):
+                    trovate.append(Gif(url, visibile, TENOR_CREDITO, _link(r.get("itemurl"))))
+                    break
     else:
         url = dati.get("link") if nome == "purrbot" else dati.get("url")
         if _dominio_ammesso(nome, url):
@@ -227,12 +259,24 @@ class ServizioGif:
         self._adesso = adesso
         self._cache: BoundedCache[tuple[str, str], tuple[float, list[Gif]]] = BoundedCache(MAX_VOCI_IN_CACHE)
         self._riposo: dict[str, float] = {}
+        self._richieste: dict[str, list[float]] = {}
         self._giro = 0
 
     def fonti(self) -> list[Fonte]:
         if self._fonti is None:
             self._fonti = leggi_fonti(env_con_file())
         return self._fonti
+
+    def _quota_libera(self, nome: str) -> bool:
+        """Conta una richiesta nell'ultima ora; False se il tetto della fonte è già raggiunto (la fonte riposa)."""
+        adesso = self._adesso()
+        recenti = [t for t in self._richieste.get(nome, []) if adesso - t < 3600]
+        if len(recenti) >= quota_oraria(nome):
+            self._richieste[nome] = recenti
+            return False
+        recenti.append(adesso)
+        self._richieste[nome] = recenti
+        return True
 
     def ricarica(self) -> None:
         self._fonti = None
@@ -261,6 +305,8 @@ class ServizioGif:
             return None
         if self._riposo.get(fonte.nome, 0) > self._adesso():
             return self._rng.choice(pool) if pool else None
+        if not self._quota_libera(fonte.nome):
+            return self._rng.choice(pool) if pool else None
         testo = await self._scarica(url)
         nuove = leggi_risposta(fonte.nome, testo) if testo else []
         if not nuove:
@@ -287,9 +333,18 @@ class ServizioGif:
                 )
         if not copre:
             return None
-        partenza = self._giro % len(copre)
+        # Prima le fonti con la categoria giusta (a turno), poi quelle di ricerca libera, nell'ordine scelto (D127).
+        per_categoria = [f for f in copre if f.nome not in FONTI_RICERCA or f.nome in voce.fonti]
+        per_ricerca = [f for f in copre if f not in per_categoria]
+        giro = self._giro
         self._giro += 1
-        for fonte in copre[partenza:] + copre[:partenza]:
+        if per_categoria:
+            partenza = giro % len(per_categoria)
+            per_categoria = per_categoria[partenza:] + per_categoria[:partenza]
+        if per_ricerca:
+            partenza = giro % len(per_ricerca)
+            per_ricerca = per_ricerca[partenza:] + per_ricerca[:partenza]
+        for fonte in per_categoria + per_ricerca:
             try:
                 gif = await self._da_fonte(fonte, voce)
             except Exception:

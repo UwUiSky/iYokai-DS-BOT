@@ -120,7 +120,7 @@ mai comprare con soldi veri (vedi NF-40).
 | ECO-084 | Borsa finta: comprare e vendere azioni virtuali | Lawliet (`stocks`) [LAWLIET] | ❌ manca | Prezzi inventati dal bot | NF-40 |
 | ECO-085 | Ordini automatici in borsa a soglia | Lawliet (`autostocks`) [LAWLIET] | ❌ manca | Dipende da ECO-084 | NF-40 |
 | ECO-086 | Azzerare inventari o negozio del server | Mimu (`/reset user inventory`, `/reset server inventories`, `/reset server shop`) [MIMU] | ❌ manca | Comandi con conferma | nuova |
-| ECO-087 | Casa personale da arredare con mobili | Tatsu (oltre 1.000 mobili) [TATSU] | ❌ manca | Immagine composta con Pillow | NF-40 |
+| ECO-087 | Casa personale da arredare con mobili | Tatsu (oltre 1.000 mobili) [TATSU] | ✅ `/mondo casa` con immagine fissa 4x3 (`core/casa_image.py`, D127), ripiego con le emoji | Immagine composta con Pillow | NF-40 |
 
 ## 4. Giochi con le monete
 
@@ -150,7 +150,7 @@ mai comprare con soldi veri (vedi NF-40).
 | ECO-109 | Stesso gioco in due versioni: per divertimento o con scommessa | Dank Memer (`/game`, `/wager`) [DANK] | ❌ manca | Opzione `puntata` facoltativa su ogni gioco | NF-40 |
 | ECO-110 | "Bomba": taglia il filo giusto, l'ultimo rimasto vince tutto | Lawliet (`bomb`) [LAWLIET] | ❌ manca | Bottoni colorati | NF-40 |
 | ECO-111 | Gioco di carte a turni (stesso valore o colore) | Lawliet (`matchingcards`) [LAWLIET] | ❌ manca | Mano mostrata in privato | NF-40 |
-| ECO-112 | Bingo tra membri | Lawliet (`bingo`) [LAWLIET] | ❌ manca | Cartella come immagine | NF-40 |
+| ECO-112 | Bingo tra membri | Lawliet (`bingo`) [LAWLIET] | ✅ `/sala bingo` con la cartella come immagine (`core/bingo_image.py`, D127), ripiego testuale | Cartella come immagine | NF-40 |
 | ECO-113 | Impiccato | Lawliet (`hangman`) [LAWLIET], NadekoBot (`.hangman`, con categorie) [NADEKO] | ❌ manca | Parole in italiano | NF-40 |
 | ECO-114 | Quiz a tempo con premio in monete | Lawliet (`quiz`, `animequiz`: 15 secondi) [LAWLIET], Red (`triviaset payout`) [RED] | ❌ manca | Domande in italiano; bottoni A–D | NF-40 |
 | ECO-115 | Statistiche personali di vincite e perdite | Lawliet (`casinostats`) [LAWLIET], NadekoBot (`.betstats`, `.gamblestats`) [NADEKO] | ❌ manca | Conteggi per gioco | NF-40 |

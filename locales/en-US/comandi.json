@@ -540,7 +540,9 @@
   "admin-rep": "admin-rep",
   "raccolta": "collection",
   "guidato": "guided",
-  "preferenze": "preferences"
+  "preferenze": "preferences",
+  "suono-condividi": "share-sound",
+  "suono-altri": "sound-others"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1884,7 +1886,9 @@
   "admin-giveaway guidato": "Creates a giveaway step by step: prize, duration, channel and requirements.",
   "admin-bot setup guidato": "First setup or setup edit, step by step with a summary.",
   "web cerca": "Search anything: a quick answer, the web or videos.",
-  "gif preferenze": "Your GIF preferences: character gender, favourite characters, anime or not."
+  "gif preferenze": "Your GIF preferences: character gender, favourite characters, anime or not.",
+  "admin-musica suono-condividi": "Choose whether this server's sounds can be used elsewhere and vice versa.",
+  "music suono-altri": "Pick a sound from other servers' soundboards, preview it and play it in voice."
  },
  "parametri": {},
  "menu": {
