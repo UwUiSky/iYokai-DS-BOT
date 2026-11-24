@@ -537,7 +537,9 @@
   "identita-bot": "bot-identity",
   "rep": "rep",
   "admin-rep": "admin-rep",
-  "raccolta": "collection"
+  "raccolta": "collection",
+  "guidato": "guided",
+  "preferenze": "preferences"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1873,7 +1875,11 @@
   "admin-livelli azzera importa": "Load XP from a JSON or CSV file exported from another bot.",
   "monete conto voto": "Claim the reward for voting for the bot, or choose automatic claiming.",
   "admin-giochi voto": "The reward this server gives to who votes for the bot (no values: the status).",
-  "admin-backup raccolta": "Public template collection: list, vote, use and propose."
+  "admin-backup raccolta": "Public template collection: list, vote, use and propose.",
+  "admin-giveaway guidato": "Creates a giveaway step by step: prize, duration, channel and requirements.",
+  "admin-bot setup guidato": "First setup or setup edit, step by step with a summary.",
+  "web cerca": "Search anything: a quick answer, the web or videos.",
+  "gif preferenze": "Your GIF preferences: character gender, favourite characters, anime or not."
  },
  "parametri": {},
  "menu": {

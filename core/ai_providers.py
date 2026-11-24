@@ -44,7 +44,7 @@ import aiohttp
 
 logger = logging.getLogger("iyokai.ai_providers")
 
-TIPI = ("chat", "testo", "giudizio", "codice", "traduzione", "confronto", "immagine", "audio", "musica", "video", "moderazione_immagine")
+TIPI = ("chat", "testo", "giudizio", "codice", "traduzione", "confronto", "immagine", "audio", "musica", "video", "moderazione_immagine", "ricerca")
 FASCE = ("bassa", "media", "alta")
 _NOME_VALIDO = re.compile(r"^[a-z0-9_]{1,24}$")
 _HOST_LOCALI = ("localhost", "127.0.0.1", "[::1]")
@@ -95,6 +95,15 @@ class EsitoChiamata:
     token_in: int = 0
     token_out: int = 0
     intestazioni: Mapping[str, str] = field(default_factory=dict)
+
+
+def _fonti_dichiarate(dati: dict) -> str:
+    """Le fonti che un servizio con ricerca web dichiara (`citations`, solo indirizzi https): in coda al testo, al massimo 8."""
+    grezze = dati.get("citations") if isinstance(dati, dict) else None
+    if not isinstance(grezze, list):
+        return ""
+    link = [c for c in grezze if isinstance(c, str) and c.startswith("https://") and len(c) <= 300][:8]
+    return "\nFonti:\n" + "\n".join(link) if link else ""
 
 
 def _si(valore: str | None) -> bool:
@@ -249,6 +258,7 @@ class TrasportoHTTP:
         )
         try:
             testo = str(dati["choices"][0]["message"]["content"] or "")
+            testo += _fonti_dichiarate(dati)
             uso = dati.get("usage") or {}
             token_in, token_out = int(uso.get("prompt_tokens") or 0), int(uso.get("completion_tokens") or 0)
         except (KeyError, IndexError, TypeError, ValueError, AttributeError) as exc:
