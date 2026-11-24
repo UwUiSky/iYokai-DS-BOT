@@ -40,6 +40,7 @@ from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.database import db
 from core.i18n import testo_per
 from core.premium import PremiumModule, registry
+from core.moderation_shadowban import in_shadowban as shadowban_in_corso
 from core.repositories.autorole_repo import autorole_repo
 from core.repositories.verify_repo import verify_repo
 from core.role_safety import check_role_assignable, motivo_ruolo_automatico_non_assegnabile
@@ -114,7 +115,9 @@ class AutorolesCog(CogConGruppi, commands.Cog):
         return (await verify_repo.get_config(guild.id)).verified_role_id
 
     async def _assegna(self, member: discord.Member, ruoli_id: list[int]) -> None:
-        """Dà i ruoli che il bot può assegnare; salta gli altri con un avviso nel log."""
+        """Dà i ruoli che il bot può assegnare; salta gli altri con un avviso nel log. Mai a chi è in shadowban."""
+        if await shadowban_in_corso(member.guild.id, member.id):
+            return
         da_dare: list[discord.Role] = []
         for rid in ruoli_id:
             motivo = motivo_ruolo_automatico_non_assegnabile(member.guild, rid)
@@ -142,8 +145,8 @@ class AutorolesCog(CogConGruppi, commands.Cog):
     async def _applica_regole(self, member: discord.Member) -> None:
         """Ruoli ricordati e regole: subito o in coda sullo scheduler. Si arriva qui solo quando il
         membro non è più in attesa (schermata di verifica / ruolo Verify), mai prima."""
-        if member.bot:
-            return
+        if member.bot or await shadowban_in_corso(member.guild.id, member.id):
+            return  # chi è in shadowban non prende ruoli: un «vedi canale» scavalcherebbe il blocco
         guild = member.guild
         regole = await autorole_repo.list_rules(guild.id)
         posseduti = {r.id for r in member.roles}
@@ -294,7 +297,7 @@ class AutorolesCog(CogConGruppi, commands.Cog):
                 await guild.chunk()
             regole = await autorole_repo.list_rules(guild.id)
             for member in list(guild.members):
-                if member.bot or member.pending:
+                if member.bot or member.pending or await shadowban_in_corso(guild.id, member.id):
                     continue
                 mancanti = ruoli_da_sincronizzare(regole, {r.id for r in member.roles})
                 ruoli = [

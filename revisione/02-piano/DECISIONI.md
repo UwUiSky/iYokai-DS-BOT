@@ -1786,3 +1786,10 @@ Sostituisce per queste due voci la scelta di D104 («la creatura è il proprio a
 - **Tempi:** 30 secondi a turno: chi non muove **esce**. Fine: ultimo in piedi, o a fine giri chi ha più vite (i pari dividono il piatto, il resto di una divisione va ai primi). Il vincitore prende il **piatto intero** (nessuna commissione). **Annulla** (solo il creatore) o partita oltre 11 minuti o errore: **tutti rimborsati**. Puntate tolte a tutti insieme all'avvio (`partite_repo.apri_gruppo`), una partita per canale, rimborso all'avvio del bot per le righe `sala:` rimaste.
 - **Dati:** `economia_creature`, `economia_lotte_creature` (0965), CHECK di `shop_items.azione` esteso a `creatura`; tutte nel registro dei dati (si cancellano con l'utente, si esportano).
 
+
+## D136 — Shadowban: chi sceglie i canali, scadenza e autoruoli (#115, controllo finale), 24/11/2026, opzione prudente, da confermare dall'owner
+
+- **`/mod-sanzioni shadowban canali`:** oltre al livello mod, chi comanda deve avere «Gestisci canali» su **ogni canale scelto** (riletto con `permissions_for` al comando e di nuovo dopo la conferma). Se un canale scelto è oggi visibile a `@everyone` (nessun divieto esplicito), il bot mostra un riepilogo con Conferma/Annulla (60 secondi) prima di nasconderlo; un canale già nascosto non chiede conferma. Il blocco sugli altri canali tocca solo il ruolo Shadowban del bot, non i permessi di altri.
+- **`togli`:** la scadenza programmata si annulla solo dopo che lo shadowban è stato tolto davvero; se Discord rifiuta, la scadenza resta e si può riprovare.
+- **Autoruoli:** a chi è in shadowban non si dà nessun ruolo automatico (ingresso, ritardati, «ridai se tolto», sincronizzazione), perché un permesso «vedi canale» di quel ruolo scavalcherebbe il blocco. Il controllo legge lo stato nel database, quindi vale in qualunque ordine arrivino gli eventi di ingresso.
+- **Limite noto:** il ruolo «verificato» della verifica e i ruoli dei menu a tasti non passano da qui.

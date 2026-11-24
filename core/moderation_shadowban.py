@@ -5,7 +5,7 @@ Lo shadowban (D127): il membro perde i suoi ruoli, riceve il ruolo «Shadowban»
 tranne due dedicati (uno di testo e uno vocale, visibili solo agli shadowbannati e agli admin) e li riprende al
 rilascio, a mano o alla scadenza. Lo stato (con i ruoli tolti) si scrive prima di toccare il membro, con una chiave
 unica: due shadowban insieme sulla stessa persona ne fanno passare uno solo. Come la quarantena (MOD-016).
-Funzioni coperte: D127 (shadowban), CFG-024 (azione «shadowban»)
+Funzioni coperte: D127, D136 (shadowban), CFG-024 (azione «shadowban»)
 """
 
 from __future__ import annotations
@@ -138,6 +138,11 @@ async def prepara(
         return Preparazione(ruolo, scelto_testo, scelto_vocale)
 
 
+def visibile_a_tutti(canale) -> bool:
+    """True se @everyone vede il canale (nessun divieto esplicito): scegliendolo come dedicato lo si nasconderebbe."""
+    return canale.overwrites_for(canale.guild.default_role).view_channel is not False
+
+
 def _ha_blocco(canale, ruolo: discord.Role) -> bool:
     return canale.overwrites_for(ruolo).view_channel is False
 
@@ -215,6 +220,11 @@ async def metti(member: discord.Member, motivo: str, moderatore_id: int, fine) -
     await moderation_repo.collega_caso_shadowban(guild.id, member.id, caso)
     await _sposta_nel_vocale(member, prep)
     return EsitoShadowban(True, caso, ruoli_non_tolti=non_tolti, ruoli_salvati=tuple(salvati))
+
+
+async def in_shadowban(guild_id: int, user_id: int) -> bool:
+    """True se la persona ha uno shadowban in corso (usato da chi dà ruoli in automatico)."""
+    return await moderation_repo.get_shadowban(guild_id, user_id) is not None
 
 
 async def togli(guild: discord.Guild, member: discord.Member, motivo: str, chi_id: int) -> bool | None:

@@ -145,6 +145,7 @@ def cog(monkeypatch):
     db_finto.is_module_active_for_guild = AsyncMock(return_value=True)
     db_finto.get_guild_setting = AsyncMock(return_value=None)
     monkeypatch.setattr(modulo, "db", db_finto)
+    monkeypatch.setattr(modulo, "shadowban_in_corso", AsyncMock(return_value=False))  # nessuno shadowban in questi test
     repo_finto = MagicMock()
     repo_finto.list_rules = AsyncMock(return_value=[])
     repo_finto.get_config = AsyncMock(

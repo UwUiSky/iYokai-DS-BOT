@@ -4385,6 +4385,8 @@
   "shadowban_canali_non_preparati": "I could not prepare the shadowban role and channels: check my permissions.",
   "shadowban_canali_pronti": "Shadowban: text {testo}, voice {vocale}. Only shadowbanned members and administrators can see them: @everyone no longer can.",
   "shadowban_blocco_incompleto": "{falliti} channels did not get the block: check my permissions on them.",
+  "shadowban_canale_senza_permesso": "You cannot pick this channel: you need «Manage Channels» on every channel you choose.",
+  "shadowban_canali_conferma": "@everyone can see these channels today: if you make them the dedicated ones, @everyone stops seeing them and only shadowbanned members and administrators will. Channels: {canali}. Confirm?",
   "suoni_altri_server_no": "This server chose not to use sounds from other servers. An admin can change it with `/admin-musica suono-condividi`.",
   "suoni_altri_titolo": "Sounds from other servers",
   "suoni_altri_scegli": "Pick a sound from the menu: you will see its name and, if the server is public, where it comes from.",
