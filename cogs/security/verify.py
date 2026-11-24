@@ -778,8 +778,8 @@ class VerifyCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="storico-vpn",
-        descrizione="Solo proprietario: server che l'hanno lasciata passare e IP della persona (VPN/proxy).",
-        sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
+        descrizione="Server che l'hanno lasciata passare e suoi IP (VPN).",
+        sottogruppo=("system", "Sistema: codice, annunci, statistiche"),
     )
     @app_commands.describe(utente="La persona di cui vedere lo storico (D65)")
     async def storico_vpn(self, interaction: discord.Interaction, utente: discord.User) -> None:

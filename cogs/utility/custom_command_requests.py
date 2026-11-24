@@ -268,7 +268,7 @@ class CustomCommandRequestsCog(CogConGruppi, commands.Cog):
         "owner",
         nome="richieste-canale",
         descrizione="Imposta il canale delle richieste (solo nel server principale).",
-        sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
+        sottogruppo=("system", "Sistema: codice, annunci, statistiche"),
     )
     @app_commands.describe(channel="Il canale dove pubblicare le richieste")
     async def setup_requests_channel(

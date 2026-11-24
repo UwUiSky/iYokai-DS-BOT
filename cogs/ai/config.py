@@ -230,8 +230,8 @@ class AiConfigCog(CogConGruppi, commands.Cog):
             embed.add_field(name="Nota", value="Il proprietario del bot non ha ancora configurato fornitori AI.")
         await interaction.response.send_message(embed=embed, view=_ConsensoView(interaction.user.id), ephemeral=True)
 
-    @comando_di_gruppo("owner", nome="manutenzione", descrizione="Solo proprietario: mette l'AI in manutenzione in tutti i server.", sottogruppo=SOTTOGRUPPI["owner ai"])
-    @app_commands.describe(acceso="Sì: l'AI si ferma ovunque (il resto del bot no); no: torna in servizio", messaggio="Cosa vedranno gli utenti")
+    @comando_di_gruppo("owner", nome="manutenzione", descrizione="Mette l'AI in manutenzione ovunque.", sottogruppo=SOTTOGRUPPI["owner ai"])
+    @app_commands.describe(acceso="Sì: l'AI si ferma; no: riparte", messaggio="Cosa vedranno gli utenti")
     async def manutenzione(
         self, interaction: discord.Interaction, acceso: bool, messaggio: app_commands.Range[str, 1, 300] | None = None
     ) -> None:
@@ -250,11 +250,11 @@ class AiConfigCog(CogConGruppi, commands.Cog):
         nomi = [f.nome for f in servizio_ai().motore._fornitori_base if current.lower() in f.nome.lower()]
         return [app_commands.Choice(name=n, value=n) for n in nomi[:25]]
 
-    @comando_di_gruppo("owner", nome="modello", descrizione="Solo proprietario: modello, fascia e tipi di un fornitore; tetto di lunghezza.", sottogruppo=SOTTOGRUPPI["owner ai"])
+    @comando_di_gruppo("owner", nome="modello", descrizione="Modello, fascia e tipi di un fornitore; tetto.", sottogruppo=SOTTOGRUPPI["owner ai"])
     @app_commands.describe(
-        fornitore="Quale fornitore cambiare (vuoto: mostra le scelte attuali)", modello="Nome del modello",
-        fascia="bassa: chiacchiere; media; alta: lavori che contano", tipi="Lavori che gli dai, separati da virgola (chat,testo,codice...)",
-        tetto_token="Lunghezza massima di ogni risposta in token, per tutti i server (100-4000)", togli_tetto="Sì: toglie il tetto",
+        fornitore="Fornitore (vuoto: mostra le scelte)", modello="Nome del modello",
+        fascia="bassa, media o alta", tipi="Lavori, separati da virgola",
+        tetto_token="Tetto di token per risposta (100-4000)", togli_tetto="Sì: toglie il tetto",
     )
     @app_commands.choices(fascia=[app_commands.Choice(name=n, value=n) for n in ("bassa", "media", "alta")])
     @app_commands.autocomplete(fornitore=_completa_fornitore)

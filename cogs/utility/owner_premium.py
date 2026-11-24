@@ -440,8 +440,8 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         sottogruppo=("premium", "Premium: moduli, abbonamenti e whitelist"),
     )
     @app_commands.describe(
-        module_name="Nome tecnico del modulo (vedi /owner premium list)",
-        active="True per rendere premium, False per rendere gratis",
+        module_name="Nome del modulo",
+        active="Sì: premium; no: gratis",
     )
     async def premium_toggle(
         self,
@@ -563,16 +563,16 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         sottogruppo=("premium", "Premium: moduli, abbonamenti e whitelist"),
     )
     @app_commands.describe(
-        module_name="Nome tecnico del modulo (vedi /owner premium list) o «tutti»",
-        duration="Mensile (30 giorni), annuale (365 giorni) o permanente",
-        guild_id="ID del server; vuoto = crea un codice che il server riscatta con /admin-bot premium riscatta",
-        utente="CFG-034: dà dei posti premium a una persona (il modulo e il server si ignorano)",
-        posti="Con «utente»: quanti posti (1-10); 0 = toglie tutti i suoi posti",
+        module_name="Modulo (vedi premium list) o «tutti»",
+        duration="Mensile, annuale o permanente",
+        guild_id="ID del server; vuoto: crea un codice",
+        utente="Persona a cui dare posti premium",
+        posti="Posti (1-10); 0 li toglie tutti",
     )
     @app_commands.choices(
         duration=[
-            app_commands.Choice(name="Mensile (30 giorni)", value="monthly"),
-            app_commands.Choice(name="Annuale (365 giorni)", value="yearly"),
+            app_commands.Choice(name="Mensile", value="monthly"),
+            app_commands.Choice(name="Annuale", value="yearly"),
             app_commands.Choice(name="Permanente", value="permanent"),
         ]
     )
@@ -651,7 +651,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="revoke",
-        descrizione="Revoca l'abbonamento di un modulo per un server.",
+        descrizione="Revoca l'abbonamento di un modulo.",
         sottogruppo=("premium", "Premium: moduli, abbonamenti e whitelist"),
     )
     @app_commands.describe(
@@ -681,7 +681,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="subscriptions",
-        descrizione="Mostra gli abbonamenti per modulo attivi su un server.",
+        descrizione="Abbonamenti attivi di un server.",
         sottogruppo=("premium", "Premium: moduli, abbonamenti e whitelist"),
     )
     @app_commands.describe(guild_id="ID del server")
@@ -710,7 +710,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="status-all",
-        descrizione="Mostra lo stato premium di TUTTI i server in cui è presente il bot.",
+        descrizione="Stato premium di tutti i server del bot.",
         sottogruppo=("premium", "Premium: moduli, abbonamenti e whitelist"),
     )
     async def premium_status_all(self, interaction: discord.Interaction) -> None:
@@ -835,7 +835,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         "owner",
         nome="eval",
         descrizione="Esegue codice Python (con conferma).",
-        sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
+        sottogruppo=("system", "Sistema: codice, annunci, statistiche"),
     )
     @app_commands.describe(code="Il codice Python da eseguire")
     async def eval_code(
@@ -861,7 +861,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         "owner",
         nome="shell",
         descrizione="Esegue un comando shell (con conferma).",
-        sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
+        sottogruppo=("system", "Sistema: codice, annunci, statistiche"),
     )
     @app_commands.describe(command="Il comando shell da eseguire")
     async def shell_command(
@@ -887,7 +887,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         "owner",
         nome="memory-status",
         descrizione="Mostra il consumo di RAM attuale del processo.",
-        sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
+        sottogruppo=("system", "Sistema: codice, annunci, statistiche"),
     )
     async def memory_status(self, interaction: discord.Interaction) -> None:
         from core.memory_guard import memory_guard
@@ -902,7 +902,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="panel",
-        descrizione="Pannello interattivo per attivare/disattivare i moduli premium.",
+        descrizione="Pannello per accendere o spegnere i moduli premium.",
         sottogruppo=("premium", "Premium: moduli, abbonamenti e whitelist"),
     )
     async def premium_panel(self, interaction: discord.Interaction) -> None:
@@ -922,7 +922,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="utente-add",
-        descrizione="Blocca globalmente un utente dall'uso del bot.",
+        descrizione="Blocca un utente dal bot.",
         sottogruppo=("blacklist", "Blacklist globale di utenti e server"),
     )
     @app_commands.describe(user_id="ID Discord dell'utente", reason="Motivo (facoltativo)")
@@ -948,7 +948,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="utente-remove",
-        descrizione="Rimuove un utente dalla blacklist globale.",
+        descrizione="Toglie un utente dalla blacklist.",
         sottogruppo=("blacklist", "Blacklist globale di utenti e server"),
     )
     @app_commands.describe(user_id="ID Discord dell'utente")
@@ -976,7 +976,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="utente-list",
-        descrizione="Mostra gli utenti bloccati globalmente.",
+        descrizione="Utenti bloccati.",
         sottogruppo=("blacklist", "Blacklist globale di utenti e server"),
     )
     async def blacklist_user_list(self, interaction: discord.Interaction) -> None:
@@ -993,7 +993,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="server-add",
-        descrizione="Blocca globalmente un server (il bot ne uscirà se già presente).",
+        descrizione="Blocca un server (il bot ne esce).",
         sottogruppo=("blacklist", "Blacklist globale di utenti e server"),
     )
     @app_commands.describe(guild_id="ID del server", reason="Motivo (facoltativo)")
@@ -1031,7 +1031,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="server-remove",
-        descrizione="Rimuove un server dalla blacklist globale.",
+        descrizione="Toglie un server dalla blacklist.",
         sottogruppo=("blacklist", "Blacklist globale di utenti e server"),
     )
     @app_commands.describe(guild_id="ID del server")
@@ -1059,7 +1059,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="server-list",
-        descrizione="Mostra i server bloccati globalmente.",
+        descrizione="Server bloccati.",
         sottogruppo=("blacklist", "Blacklist globale di utenti e server"),
     )
     async def blacklist_guild_list(self, interaction: discord.Interaction) -> None:
@@ -1079,8 +1079,8 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="leave-guild",
-        descrizione="Forza il bot a lasciare un server specifico (senza bloccarlo).",
-        sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
+        descrizione="Il bot lascia un server (senza bloccarlo).",
+        sottogruppo=("system", "Sistema: codice, annunci, statistiche"),
     )
     @app_commands.describe(guild_id="ID del server da cui uscire")
     async def leave_guild(self, interaction: discord.Interaction, guild_id: app_commands.Range[str, 1, 25]) -> None:
@@ -1108,7 +1108,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         "owner",
         nome="announce",
         descrizione="Manda un annuncio a tutti i server.",
-        sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
+        sottogruppo=("system", "Sistema: codice, annunci, statistiche"),
     )
     @app_commands.describe(message="Il testo dell'annuncio")
     async def announce(
@@ -1146,7 +1146,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         "owner",
         nome="stats",
         descrizione="Statistiche globali del bot.",
-        sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
+        sottogruppo=("system", "Sistema: codice, annunci, statistiche"),
     )
     async def stats(self, interaction: discord.Interaction) -> None:
         from core.memory_guard import memory_guard
@@ -1194,7 +1194,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         descrizione="Carica un'estensione (es. cogs.moderation.actions).",
         sottogruppo=("cog", "Carica, scarica e ricarica le estensioni"),
     )
-    @app_commands.describe(extension="Percorso completo del modulo, es. cogs.moderation.actions")
+    @app_commands.describe(extension="Percorso del modulo, es. cogs.moderation.actions")
     async def owner_cog_load(self, interaction: discord.Interaction, extension: app_commands.Range[str, 1, 100]) -> None:
         if await _reply_if_eval_disabled(interaction):
             return
@@ -1254,10 +1254,10 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         sottogruppo=("cog", "Carica, scarica e ricarica le estensioni"),
     )
     @app_commands.describe(
-        extension="Percorso completo del modulo (con un file allegato è obbligatorio)",
-        commit="Aggiorna da GitHub: «main» o lo SHA di un commit di main",
-        file="Aggiorna da file: un .py per il modulo indicato, oppure uno .zip con cogs/ e core/",
-        registro="Sì = mostra gli ultimi aggiornamenti a caldo",
+        extension="Percorso del modulo (obbligatorio con un file)",
+        commit="GitHub: «main» o SHA di un commit",
+        file="Un .py o uno .zip con cogs/ e core/",
+        registro="Sì: mostra gli ultimi aggiornamenti",
     )
     async def owner_cog_reload(
         self,
@@ -1365,15 +1365,15 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="chiave-soccorso",
-        descrizione="Chiave di soccorso: per riprendere il controllo se perdi l'account.",
-        sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"),
+        descrizione="Chiave di soccorso per riprendere il controllo.",
+        sottogruppo=("system", "Sistema: codice, annunci, statistiche"),
     )
     @app_commands.describe(
         azione="Che cosa fare con la chiave",
-        sostituisci="Sì = se la chiave c'è già, ne crea una nuova e butta la vecchia",
+        sostituisci="Sì: sostituisce la chiave già presente",
     )
     @app_commands.choices(azione=[
-        app_commands.Choice(name="crea (mostra il codice una volta)", value="crea"),
+        app_commands.Choice(name="crea", value="crea"),
         app_commands.Choice(name="stato", value="stato"),
         app_commands.Choice(name="revoca", value="revoca"),
     ])

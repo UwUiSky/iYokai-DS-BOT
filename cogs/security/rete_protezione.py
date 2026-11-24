@@ -29,9 +29,9 @@ logger = logging.getLogger("iyokai.rete")
 SOTTOGRUPPO = ("rete", "Rete di protezione tra server: avvisi, timeout, ban.")
 MODI = [app_commands.Choice(name="Solo proposta con tasto", value="proposta"), app_commands.Choice(name="Ban automatico", value="automatico")]
 AZIONI_OWNER = [
-    app_commands.Choice(name="Blocca un server", value="blocca"),
-    app_commands.Choice(name="Sblocca un server", value="sblocca"),
-    app_commands.Choice(name="Elenca i bloccati", value="elenca"),
+    app_commands.Choice(name="Blocca", value="blocca"),
+    app_commands.Choice(name="Sblocca", value="sblocca"),
+    app_commands.Choice(name="Elenca", value="elenca"),
 ]
 
 
@@ -161,7 +161,7 @@ class ReteProtezioneCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------------ proprietario del bot
     @comando_di_gruppo(
-        "owner", nome="rete", descrizione="Solo proprietario del bot: blocca i server che segnalano in modo scorretto.",
+        "owner", nome="rete", descrizione="Blocca i server che segnalano in modo scorretto.",
     )
     @app_commands.describe(azione="Cosa fare", server_id="ID del server (per blocca e sblocca)", motivo="Perché (per blocca)")
     @app_commands.choices(azione=AZIONI_OWNER)

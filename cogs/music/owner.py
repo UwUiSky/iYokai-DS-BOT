@@ -42,12 +42,12 @@ from core.safe_http import url_e_sicuro
 
 logger = logging.getLogger("iyokai.music.owner")
 
-RADIO = ("radio", "Radio 24/7 condivisa del bot principale, playlist personale")
+RADIO = ("radio", "Radio 24/7 condivisa del bot")
 SCELTE_FONTE = [app_commands.Choice(name=f.etichetta, value=n) for n, f in fonti_musicali.FONTI.items()]
 SCELTE_STATO = [
     app_commands.Choice(name="Accesa", value="acceso"),
     app_commands.Choice(name="Spenta", value="spento"),
-    app_commands.Choice(name="Come da ambiente (toglie la scelta)", value="predefinito"),
+    app_commands.Choice(name="Da ambiente", value="predefinito"),
 ]
 SCELTE_AZIONE = [
     app_commands.Choice(name="Aggiungi", value="aggiungi"),
@@ -123,7 +123,7 @@ class MusicOwnerCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "music_owner_stato", v1=suonano, v2=collegati), ephemeral=True
         )
 
-    @comando_di_gruppo("owner", nome="riconnetti", descrizione="Riprova subito a collegare i nodi Lavalink non collegati.",
+    @comando_di_gruppo("owner", nome="riconnetti", descrizione="Ricollega i nodi Lavalink caduti.",
                        sottogruppo=RADIO)
     async def riconnetti(self, interaction: discord.Interaction) -> None:
         if not await self._solo_owner(interaction):  # MUS-068
@@ -139,7 +139,7 @@ class MusicOwnerCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "music_owner_riconnetti", v1=ripartiti), ephemeral=True
         )
 
-    @comando_di_gruppo("owner", nome="log", descrizione="Scarica la coda del log del Lavalink locale (ripulita dalle chiavi).",
+    @comando_di_gruppo("owner", nome="log", descrizione="Coda del log del Lavalink locale (senza chiavi).",
                        sottogruppo=RADIO)
     async def log(self, interaction: discord.Interaction) -> None:
         if not await self._solo_owner(interaction):  # MUS-069

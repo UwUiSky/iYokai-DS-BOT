@@ -151,7 +151,7 @@ CANALE_VUOTO_BRANI_DEFAULT = 3
 
 SG_CODA = ("coda", "Cerca e ripulisce la coda.")
 SG_NONSTOP = ("nonstop", "Riproduzione continua in loop sulla sessione musicale attiva.")
-RADIO = ("radio", "Radio 24/7 condivisa del bot principale, playlist personale")
+RADIO = ("radio", "Radio 24/7 condivisa del bot")
 
 
 # Scelte fisse di /music play (6, il tetto è 25): le fonti spente rispondono con un messaggio.
@@ -1891,8 +1891,8 @@ class MusicCog(CogConGruppi, commands.Cog):
         sottogruppo=RADIO,
     )
     @app_commands.describe(
-        query="URL o ricerca (YouTube, Spotify, SoundCloud...)",
-        label="Nome descrittivo per /owner radio list-tracks (facoltativo)",
+        query="URL o ricerca",
+        label="Nome descrittivo (facoltativo)",
     )
     async def nonstop_main_add_track(
         self, interaction: discord.Interaction, query: app_commands.Range[str, 1, 500],
@@ -1925,12 +1925,12 @@ class MusicCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="add-local",
-        descrizione="Aggiunge un file dalla cartella inediti alla playlist della radio.",
+        descrizione="Aggiunge un file inedito alla playlist della radio.",
         sottogruppo=RADIO,
     )
     @app_commands.describe(
-        filename="Nome del file nella cartella inediti (MAIN_RADIO_LOCAL_FOLDER)",
-        label="Nome descrittivo per /owner radio list-tracks (facoltativo)",
+        filename="File nella cartella inediti",
+        label="Nome descrittivo (facoltativo)",
     )
     async def nonstop_main_add_local(
         self, interaction: discord.Interaction, filename: app_commands.Range[str, 1, 255],
@@ -1986,7 +1986,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         descrizione="Rimuove una traccia dalla playlist della radio.",
         sottogruppo=RADIO,
     )
-    @app_commands.describe(track_id="ID della traccia (vedi /owner radio list-tracks)")
+    @app_commands.describe(track_id="ID della traccia")
     async def nonstop_main_remove_track(
         self, interaction: discord.Interaction, track_id: int
     ) -> None:

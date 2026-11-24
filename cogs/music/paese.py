@@ -23,7 +23,7 @@ from core.repositories.music_cartella_repo import CHIAVE_PAESE, music_cartella_r
 
 logger = logging.getLogger("iyokai.music.paese")
 
-RADIO = ("radio", "Radio 24/7 condivisa del bot principale, playlist personale")
+RADIO = ("radio", "Radio 24/7 condivisa del bot")
 
 
 async def carica_paese_globale() -> None:
@@ -42,9 +42,9 @@ class MusicPaeseCog(CogConGruppi, commands.Cog):
         except Exception:
             logger.exception("Lettura del paese globale delle ricerche non riuscita.")
 
-    @comando_di_gruppo("owner", nome="paese", descrizione="Paese globale delle ricerche musicali (di base nessun limite).",
+    @comando_di_gruppo("owner", nome="paese", descrizione="Paese delle ricerche musicali (di base nessuno).",
                        sottogruppo=RADIO)
-    @app_commands.describe(codice="Codice di 2 lettere (es. IT); «-» toglie il limite; vuoto mostra quello attuale")
+    @app_commands.describe(codice="2 lettere (es. IT); «-» toglie il limite")
     async def paese(self, interaction: discord.Interaction, codice: app_commands.Range[str, 1, 2] | None = None) -> None:
         if interaction.user.id != config.OWNER_ID:
             await interaction.response.send_message(await testo_per(interaction, "owner_solo_proprietario"), ephemeral=True)

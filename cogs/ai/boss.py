@@ -388,8 +388,8 @@ class AiBossCog(CogConGruppi, commands.Cog):
         ev_id, motivo = await avvia_evento(self.bot, interaction.guild, destinazione, cfg)
         await interaction.followup.send(f"Il boss è comparso in {destinazione.mention}." if ev_id else motivo, ephemeral=True)
 
-    @comando_di_gruppo("owner", nome="boss-rete", descrizione="Solo proprietario: pubblica o chiude il boss di rete.", sottogruppo=SOTTOGRUPPI["owner ai"])
-    @app_commands.describe(nome="Nome del mostro (vuoto: chiude il boss di rete)", aspetto="Come appare", vita_extra="Vita in più")
+    @comando_di_gruppo("owner", nome="boss-rete", descrizione="Pubblica o chiude il boss di rete.", sottogruppo=SOTTOGRUPPI["owner ai"])
+    @app_commands.describe(nome="Nome del mostro (vuoto: chiude)", aspetto="Come appare", vita_extra="Vita in più")
     async def boss_rete(
         self, interaction: discord.Interaction, nome: app_commands.Range[str, 2, 40] | None = None,
         aspetto: app_commands.Range[str, 0, 200] = "", vita_extra: app_commands.Range[int, 0, 100000] = 0,

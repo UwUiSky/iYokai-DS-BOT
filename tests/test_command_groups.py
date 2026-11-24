@@ -233,3 +233,21 @@ def test_founder_e_riservato_al_proprietario_del_server():
     assert g.livello is Livello.FOUNDER
     assert g.default_permissions == discord.Permissions(administrator=True)
     assert "proprietario" in g.description and len(g.description) <= 100
+
+
+async def test_owner_resta_sotto_la_soglia_di_6800_caratteri():
+    """D132: `/owner` pesa meno dell'avviso (6.800), traduzioni comprese: spazio per i comandi futuri."""
+    from tests.support.full_tree import build_full_bot, close_full_bot, connect_db_if_needed
+    from tests.test_command_tree_invariants import SOGLIA_ALLARME_CARATTERI, peso_con_lingue
+
+    creato_qui = await connect_db_if_needed()
+    bot, falliti = await build_full_bot()
+    try:
+        assert not falliti
+        assert peso_con_lingue(cg.GRUPPI["owner"]) < SOGLIA_ALLARME_CARATTERI
+    finally:
+        await close_full_bot(bot)
+        if creato_qui:
+            from core.database import db
+
+            await db.close()

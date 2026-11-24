@@ -32,14 +32,14 @@ from core.repositories.music_cartella_repo import CHIAVE_ANTEPRIME, BranoSalvato
 
 logger = logging.getLogger("iyokai.music.cartella")
 
-RADIO = ("radio", "Radio 24/7 condivisa del bot principale, playlist personale")
+RADIO = ("radio", "Radio 24/7 condivisa del bot")
 SG_CODA = ("coda", "Cerca e ripulisce la coda.")
 MINUTI_SCANSIONE = 5
 SCELTE_AZIONE = [
-    app_commands.Choice(name="Elenco dei brani", value="elenco"),
-    app_commands.Choice(name="Rileggi la cartella ora", value="aggiorna"),
-    app_commands.Choice(name="Anteprime agli utenti: accese", value="anteprime-si"),
-    app_commands.Choice(name="Anteprime agli utenti: spente", value="anteprime-no"),
+    app_commands.Choice(name="Elenco", value="elenco"),
+    app_commands.Choice(name="Rileggi", value="aggiorna"),
+    app_commands.Choice(name="Anteprime on", value="anteprime-si"),
+    app_commands.Choice(name="Anteprime off", value="anteprime-no"),
 ]
 
 
@@ -97,7 +97,7 @@ class MusicCartellaCog(CogConGruppi, commands.Cog):
         return self.bot.get_cog("MusicCog")
 
     # ------------------------------------------------------------- owner
-    @comando_di_gruppo("owner", nome="cartella", descrizione="Brani della cartella dell'owner: elenco, rilettura, anteprime.",
+    @comando_di_gruppo("owner", nome="cartella", descrizione="Cartella dell'owner: elenco, rilettura, anteprime.",
                        sottogruppo=RADIO)
     @app_commands.describe(azione="Cosa fare")
     @app_commands.choices(azione=SCELTE_AZIONE)

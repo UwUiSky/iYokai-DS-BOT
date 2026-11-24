@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:03 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:18 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 1166 comandi in 59 categorie.**
+**Totale: 1168 comandi in 59 categorie.**
 
 ## Admin: AI
 
@@ -201,12 +201,12 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:
 - **`/admin-bot politica ruolo-richiesto`** — Chi usa un comando deve avere un certo ruolo.
 - **`/admin-bot premium aspetto`** — Avatar, banner e descrizione del bot in questo server (premium).
 - **`/admin-bot premium assegna`** — Metti uno dei tuoi posti premium su questo server.
+- **`/admin-bot premium chiave`** — Usa la tua chiave API per i servizi AI: dà il livello VIP.
 - **`/admin-bot premium marchio`** — Usa un bot con il tuo nome e il tuo avatar (premium).
 - **`/admin-bot premium riscatta`** — Riscatta un codice premium per questo server.
 - **`/admin-bot premium sblocca`** — Sblocca un modulo premium per 30 giorni con le monete della cassa del server.
 - **`/admin-bot premium stato`** — Mostra come è sbloccato il premium in questo server.
 - **`/admin-bot premium togli-posto`** — Togli il tuo posto premium da questo server.
-- **`/admin-bot premium chiave`** — Usa la tua chiave API per i servizi AI: dà il livello VIP.
 - **`/admin-bot setup attiva`** — Attiva o disattiva i moduli del bot, per categoria.
 - **`/admin-bot setup identita-bot`** — Nome e logo degli altri bot di iYokai in questo server.
 - **`/admin-bot setup wizard`** — Configura passo-passo ruoli e moduli del bot, una categoria alla volta.
@@ -1157,61 +1157,61 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:
 
 ## Owner
 
-- **`/owner ai boss-rete`** — Solo proprietario: pubblica o chiude il boss di rete.
-- **`/owner ai manutenzione`** — Solo proprietario: mette l'AI in manutenzione in tutti i server.
-- **`/owner ai modello`** — Solo proprietario: modello, fascia e tipi di un fornitore; tetto di lunghezza.
-- **`/owner blacklist server-add`** — Blocca globalmente un server (il bot ne uscirà se già presente).
-- **`/owner blacklist server-list`** — Mostra i server bloccati globalmente.
-- **`/owner blacklist server-remove`** — Rimuove un server dalla blacklist globale.
-- **`/owner blacklist utente-add`** — Blocca globalmente un utente dall'uso del bot.
-- **`/owner blacklist utente-list`** — Mostra gli utenti bloccati globalmente.
-- **`/owner blacklist utente-remove`** — Rimuove un utente dalla blacklist globale.
+- **`/owner ai boss-rete`** — Pubblica o chiude il boss di rete.
+- **`/owner ai manutenzione`** — Mette l'AI in manutenzione ovunque.
+- **`/owner ai modello`** — Modello, fascia e tipi di un fornitore; tetto.
+- **`/owner blacklist server-add`** — Blocca un server (il bot ne esce).
+- **`/owner blacklist server-list`** — Server bloccati.
+- **`/owner blacklist server-remove`** — Toglie un server dalla blacklist.
+- **`/owner blacklist utente-add`** — Blocca un utente dal bot.
+- **`/owner blacklist utente-list`** — Utenti bloccati.
+- **`/owner blacklist utente-remove`** — Toglie un utente dalla blacklist.
 - **`/owner cog load`** — Carica un'estensione (es. cogs.moderation.actions).
 - **`/owner cog reload`** — Ricarica un'estensione, anche aggiornandola da GitHub o da un file.
 - **`/owner cog unload`** — Scarica un'estensione.
-- **`/owner immagini-trappola`** — Solo proprietario del bot: libreria delle immagini trappola.
-- **`/owner parole-odio`** — Solo proprietario del bot: libreria delle parole.
+- **`/owner immagini-trappola`** — Libreria delle immagini trappola.
+- **`/owner parole-odio`** — Libreria delle parole.
 - **`/owner premium grant`** — Concede il premium a un server, o crea un codice da riscattare.
-- **`/owner premium piano`** — Piani: limiti, prezzi, sconti, livelli dati.
 - **`/owner premium list`** — Mostra lo stato premium di tutti i moduli.
-- **`/owner premium panel`** — Pannello interattivo per attivare/disattivare i moduli premium.
-- **`/owner premium revoke`** — Revoca l'abbonamento di un modulo per un server.
-- **`/owner premium status-all`** — Mostra lo stato premium di TUTTI i server in cui è presente il bot.
-- **`/owner premium subscriptions`** — Mostra gli abbonamenti per modulo attivi su un server.
+- **`/owner premium panel`** — Pannello per accendere o spegnere i moduli premium.
+- **`/owner premium piano`** — Piani: limiti, prezzi, sconti, livelli dati.
+- **`/owner premium revoke`** — Revoca l'abbonamento di un modulo.
+- **`/owner premium status-all`** — Stato premium di tutti i server del bot.
+- **`/owner premium subscriptions`** — Abbonamenti attivi di un server.
 - **`/owner premium toggle`** — Accende o spegne la natura premium di un modulo.
 - **`/owner premium whitelist-add`** — Aggiunge un server alla whitelist premium.
 - **`/owner premium whitelist-list`** — Elenca i server nella whitelist premium.
 - **`/owner premium whitelist-remove`** — Rimuove un server dalla whitelist premium.
 - **`/owner privacy approva`** — Esegue una richiesta di cancellazione e avvisa l'utente.
-- **`/owner privacy richieste`** — Elenca le richieste di cancellazione dei dati in attesa.
-- **`/owner privacy rifiuta`** — Rifiuta una richiesta di cancellazione e dì all'utente perché.
-- **`/owner radio add-local`** — Aggiunge un file dalla cartella inediti alla playlist della radio.
+- **`/owner privacy richieste`** — Richieste di cancellazione dati in attesa.
+- **`/owner privacy rifiuta`** — Rifiuta una richiesta e dice perché.
+- **`/owner radio add-local`** — Aggiunge un file inedito alla playlist della radio.
 - **`/owner radio add-track`** — Aggiunge una traccia alla playlist della radio.
 - **`/owner radio blocca-parola`** — Parole vietate nei titoli in tutto il bot.
-- **`/owner radio cartella`** — Brani della cartella dell'owner: elenco, rilettura, anteprime.
+- **`/owner radio cartella`** — Cartella dell'owner: elenco, rilettura, anteprime.
 - **`/owner radio fonti`** — Mostra lo stato delle fonti musicali (accesa, chiavi sì/no, pausa).
 - **`/owner radio genere`** — Playlist del menu /music genere.
 - **`/owner radio list-tracks`** — Mostra la playlist della radio.
-- **`/owner radio log`** — Scarica la coda del log del Lavalink locale (ripulita dalle chiavi).
+- **`/owner radio log`** — Coda del log del Lavalink locale (senza chiavi).
 - **`/owner radio nodi`** — Mostra i nodi Lavalink di ogni bot musicale (senza password).
-- **`/owner radio paese`** — Paese globale delle ricerche musicali (di base nessun limite).
+- **`/owner radio paese`** — Paese delle ricerche musicali (di base nessuno).
 - **`/owner radio remove-track`** — Rimuove una traccia dalla playlist della radio.
-- **`/owner radio riconnetti`** — Riprova subito a collegare i nodi Lavalink non collegati.
+- **`/owner radio riconnetti`** — Ricollega i nodi Lavalink caduti.
 - **`/owner radio sorgente`** — Accende o spegne una fonte musicale a bot acceso.
 - **`/owner radio start`** — Entra nella radio condivisa, nel punto in cui si trova ora.
 - **`/owner radio stato`** — Quanti player musicali stanno suonando ora.
 - **`/owner radio stop`** — Esce dalla radio su questo server.
-- **`/owner rete`** — Solo proprietario del bot: blocca i server che segnalano in modo scorretto.
+- **`/owner rete`** — Blocca i server che segnalano in modo scorretto.
 - **`/owner system announce`** — Manda un annuncio a tutti i server.
-- **`/owner system chiave-soccorso`** — Chiave di soccorso: per riprendere il controllo se perdi l'account.
+- **`/owner system chiave-soccorso`** — Chiave di soccorso per riprendere il controllo.
 - **`/owner system eval`** — Esegue codice Python (con conferma).
-- **`/owner system leave-guild`** — Forza il bot a lasciare un server specifico (senza bloccarlo).
+- **`/owner system leave-guild`** — Il bot lascia un server (senza bloccarlo).
 - **`/owner system memory-status`** — Mostra il consumo di RAM attuale del processo.
 - **`/owner system richieste-canale`** — Imposta il canale delle richieste (solo nel server principale).
-- **`/owner system risposte-globali`** — Risposte automatiche comuni a tutti i server (massimo 20).
+- **`/owner system risposte-globali`** — Risposte automatiche globali (massimo 20).
 - **`/owner system shell`** — Esegue un comando shell (con conferma).
 - **`/owner system stats`** — Statistiche globali del bot.
-- **`/owner system storico-vpn`** — Solo proprietario: server che l'hanno lasciata passare e IP della persona (VPN/proxy).
+- **`/owner system storico-vpn`** — Server che l'hanno lasciata passare e suoi IP (VPN).
 
 ## Rep
 
