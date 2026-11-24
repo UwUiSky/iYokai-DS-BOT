@@ -16,6 +16,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.moderation_shadowban import add_roles_se_libero
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
 from core.i18n import lingua_interazione, t, testo_per
 from core.repositories.role_menu_repo import role_menu_repo
@@ -620,7 +621,7 @@ class RuoliExtraCog(CogConGruppi, commands.Cog):
             if rifiuto is not None:
                 return rifiuto
             if ruolo not in utente.roles:
-                await utente.add_roles(ruolo, reason="Ruolo personale")
+                await add_roles_se_libero(utente, ruolo, reason="Ruolo personale")
         except discord.Forbidden:
             return "Non ho il permesso di gestire quel ruolo."
         except discord.HTTPException:

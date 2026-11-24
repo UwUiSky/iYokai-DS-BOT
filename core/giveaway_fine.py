@@ -13,6 +13,7 @@ import logging
 
 import discord
 
+from core.moderation_shadowban import add_roles_se_libero
 from core.giveaway_logic import riempi
 from core.i18n import t
 
@@ -54,7 +55,7 @@ async def dai_ruolo_premio(guild, giveaway, vincitori: list[int]) -> tuple[int, 
         try:
             if membro is None:
                 raise discord.NotFound(_RispostaFinta(), "membro uscito")
-            await membro.add_roles(ruolo, reason=f"Premio del giveaway {giveaway.id}")
+            await add_roles_se_libero(membro, ruolo, reason=f"Premio del giveaway {giveaway.id}")
             riusciti += 1
         except discord.HTTPException:
             falliti += 1

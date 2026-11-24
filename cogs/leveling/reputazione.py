@@ -18,6 +18,7 @@ from discord.ext import commands
 
 from cogs.leveling._pagine import invia_lista
 from cogs.leveling.leveling import _comando_rifiutato
+from core.moderation_shadowban import add_roles_se_libero
 from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
 from core.i18n import testo_per
 from core.reputazione_logic import bersaglio_del_grazie, puo_agire, puo_togliere
@@ -48,7 +49,7 @@ async def sincronizza_ruoli(guild: discord.Guild, membro: discord.Member) -> Non
                 continue
             ha = ruolo in membro.roles
             if punti >= soglia and not ha:
-                await membro.add_roles(ruolo, reason="Reputazione: soglia raggiunta")
+                await add_roles_se_libero(membro, ruolo, reason="Reputazione: soglia raggiunta")
             elif punti < soglia and ha:
                 await membro.remove_roles(ruolo, reason="Reputazione: sotto la soglia")
     except discord.HTTPException:

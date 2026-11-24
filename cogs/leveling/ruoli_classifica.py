@@ -18,6 +18,7 @@ from discord.ext import commands, tasks
 
 from cogs.leveling.azzeramenti import _puo_gestire
 from cogs.leveling.leveling import MODULE_LEVELING, _comando_rifiutato
+from core.moderation_shadowban import add_roles_se_libero
 from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
 from core.database import db
 from core.i18n import testo_per
@@ -129,7 +130,7 @@ class RuoliClassificaCog(CogConGruppi, commands.Cog):
                 continue
             try:
                 if (utente, fascia) in da_dare:
-                    await membro.add_roles(ruoli[fascia], reason="Ruolo di classifica")
+                    await add_roles_se_libero(membro, ruoli[fascia], reason="Ruolo di classifica")
                 else:
                     await membro.remove_roles(ruoli[fascia], reason="Ruolo di classifica")
                 fatte += 1

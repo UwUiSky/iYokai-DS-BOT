@@ -71,6 +71,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.moderation_shadowban import add_roles_se_libero
 from core import piani
 from core.channel_rename import (
     RenameRateLimited,
@@ -452,7 +453,7 @@ async def _dai_ruoli_durante(guild: discord.Guild, utente, channel_id: int, opzi
     if not ruoli or not isinstance(utente, discord.Member):
         return
     try:
-        await utente.add_roles(*ruoli, reason="Ticket aperto")
+        await add_roles_se_libero(utente, *ruoli, reason="Ticket aperto")
     except discord.HTTPException:
         logger.warning("Ruoli del ticket non dati a %s nel server %s.", utente.id, guild.id)
         return

@@ -323,3 +323,108 @@ def test_lazione_shadowban_si_puo_dare_a_un_ruolo_ma_apre_solo_i_suoi_comandi():
     assert {c for c, a in pa.COMANDI.items() if a == "shadowban"} == {
         "mod-sanzioni shadowban dai", "mod-sanzioni shadowban togli", "mod-sanzioni shadowban canali",
     }
+
+
+# ------------------------------------------------------------------ D136: chi sceglie i canali, scadenza, autoruoli
+def _staff_canali(s, *, puo=True):
+    mod = s.nuovo_membro(STAFF, [fake_role(15, "mod", position=20)])
+    for c in (s.generale, s.voce):
+        c.permissions_for = MagicMock(return_value=discord.Permissions(manage_channels=puo))
+    return mod
+
+
+async def test_canali_senza_gestisci_canali_sul_canale_scelto_non_si_tocca_niente(monkeypatch):
+    s = Scena()
+    mod = _staff_canali(s, puo=False)
+    prepara = AsyncMock()
+    monkeypatch.setattr(sb, "prepara", prepara)
+    inter = fake_interaction(guild=s.guild, user=mod)
+    cog = ModerationShadowbanCog(MagicMock())
+    await cog.canali.callback(cog, inter, s.generale, None)
+    prepara.assert_not_awaited()
+    inter.response.send_message.assert_awaited_once()
+    assert s.generale.set_permissions.await_count == 0
+
+
+async def test_canali_un_canale_gia_visibile_a_tutti_chiede_conferma_e_se_annulla_non_cambia(monkeypatch):
+    s = Scena()
+    mod = _staff_canali(s)
+    prepara = AsyncMock()
+    monkeypatch.setattr(sb, "prepara", prepara)
+    chiesta = AsyncMock(return_value=None)  # annullato o scaduto
+    monkeypatch.setattr(cog_sb, "chiedi_conferma_canali", chiesta)
+    inter = fake_interaction(guild=s.guild, user=mod)
+    cog = ModerationShadowbanCog(MagicMock())
+    await cog.canali.callback(cog, inter, s.generale, None)  # generale: @everyone lo vede
+    chiesta.assert_awaited_once()
+    prepara.assert_not_awaited()
+
+
+async def test_canali_confermato_il_permesso_si_rilegge_e_poi_si_procede(monkeypatch):
+    s = Scena()
+    mod = _staff_canali(s)
+    inter = fake_interaction(guild=s.guild, user=mod)
+    nuova = fake_interaction(guild=s.guild, user=mod)
+
+    async def conferma(i, canali):
+        for c in (s.generale, s.voce):  # tra la domanda e il clic il permesso sparisce
+            c.permissions_for = MagicMock(return_value=discord.Permissions(manage_channels=False))
+        return nuova
+
+    monkeypatch.setattr(cog_sb, "chiedi_conferma_canali", conferma)
+    prepara = AsyncMock()
+    monkeypatch.setattr(sb, "prepara", prepara)
+    cog = ModerationShadowbanCog(MagicMock())
+    await cog.canali.callback(cog, inter, s.generale, None)
+    prepara.assert_not_awaited()
+    nuova.response.send_message.assert_awaited_once()
+
+
+async def test_canali_gia_nascosto_a_everyone_non_chiede_conferma(monkeypatch):
+    s = Scena()
+    mod = _staff_canali(s)
+    s.generale.stato[0] = discord.PermissionOverwrite(view_channel=False)
+    chiesta = AsyncMock()
+    monkeypatch.setattr(cog_sb, "chiedi_conferma_canali", chiesta)
+    prep = sb.Preparazione(fake_role(900, "Shadowban"), s.generale, s.voce)
+    monkeypatch.setattr(sb, "prepara", AsyncMock(return_value=prep))
+    monkeypatch.setattr(sb, "blocca_canali", AsyncMock(return_value=(0, 0)))
+    inter = fake_interaction(guild=s.guild, user=mod)
+    cog = ModerationShadowbanCog(MagicMock())
+    await cog.canali.callback(cog, inter, s.generale, None)
+    chiesta.assert_not_awaited()
+    sb.prepara.assert_awaited_once()
+
+
+async def test_togli_se_discord_rifiuta_la_scadenza_non_si_perde(monkeypatch):
+    s = Scena()
+    mod = _staff_canali(s)
+    cancella = AsyncMock()
+    monkeypatch.setattr(cog_sb.scheduler, "cancel_for_user", cancella)
+    monkeypatch.setattr(cog_sb.sb, "togli", AsyncMock(return_value=False))
+    monkeypatch.setattr(cog_sb, "check_can_moderate", AsyncMock(return_value=True))
+    monkeypatch.setattr(cog_sb, "risolvi_motivo", AsyncMock(return_value="x"))
+    inter = fake_interaction(guild=s.guild, user=mod)
+    cog = ModerationShadowbanCog(MagicMock())
+    await cog.togli.callback(cog, inter, s.membro, "x")
+    cancella.assert_not_awaited()
+    monkeypatch.setattr(cog_sb.sb, "togli", AsyncMock(return_value=True))
+    await cog.togli.callback(cog, inter, s.membro, "x")
+    cancella.assert_awaited_once()
+
+
+async def test_chi_e_in_shadowban_non_prende_gli_autoruoli_al_rientro(monkeypatch):
+    import cogs.utility.autoroles as cog_autorole
+    from cogs.utility.autoroles import AutorolesCog
+
+    s = Scena()
+    await sb.metti(s.membro, "x", STAFF, None)
+    nuovo = s.nuovo_membro(BERSAGLIO, [])
+    cog = AutorolesCog(MagicMock())
+    cog.bot = MagicMock()
+    await cog._assegna(nuovo, [11])
+    nuovo.add_roles.assert_not_awaited()
+    leggi = AsyncMock(return_value=[])
+    monkeypatch.setattr(cog_autorole.autorole_repo, "list_rules", leggi)
+    await cog._applica_regole(nuovo)  # in shadowban: nemmeno si leggono le regole
+    leggi.assert_not_awaited()

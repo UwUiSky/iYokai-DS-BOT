@@ -75,6 +75,7 @@ from core.panel_bridge import METODO_WEB, link_verifica_web
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config import config as config_bot
 
+from core.moderation_shadowban import ruoli_negati
 from core.database import db
 from core.premium import PremiumModule, registry
 from core.repositories.blacklist_repo import blacklist_repo
@@ -454,6 +455,8 @@ class VerifyCog(CogConGruppi, commands.Cog):
         «non verificato». Ogni ruolo passa dal controllo dei permessi pericolosi
         (SEC-4/SEC-17: può averli presi dopo il setup). False se Discord rifiuta.
         """
+        if await ruoli_negati(member):  # shadowban in corso (D136): la verifica non si completa, nessun ruolo
+            return False
         non_verificato_id = await db.get_guild_setting(guild.id, SETTING_RUOLO_NON_VERIFICATO)
         extra = list(await db.get_guild_setting(guild.id, SETTING_RUOLI_EXTRA) or [])
         da_dare = []

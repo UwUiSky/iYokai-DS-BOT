@@ -44,8 +44,9 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core.i18n import testo_per
+from core.i18n import testo_guild, testo_per
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
+from core.moderation_shadowban import ruoli_negati
 from core.database import db
 from core.premium import PremiumModule, registry
 from core.repositories.blacklist_repo import blacklist_repo
@@ -571,6 +572,8 @@ class RoleMenuCog(CogConGruppi, commands.Cog):
         (self_service); toglierlo resta sempre permesso. None se tutto bene, altrimenti il
         testo per l'utente. Il ruolo temporaneo programma la propria rimozione.
         """
+        if decisione.aggiungi and await ruoli_negati(member):  # shadowban in corso (D136)
+            return await testo_guild(guild, "shadowban_ruoli_negati")
         da_dare = []
         for rid in decisione.aggiungi:
             ruolo = guild.get_role(rid)

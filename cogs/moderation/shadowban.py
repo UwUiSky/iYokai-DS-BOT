@@ -4,7 +4,7 @@ cogs/moderation/shadowban.py
 Shadowban (D127): `/mod-sanzioni shadowban dai|togli|canali`. Il membro perde i ruoli (salvati prima e scritti nel log
 di moderazione) e vede solo un canale di testo e uno vocale dedicati, che vedono anche gli admin. A tempo con
 scadenza dello scheduler (vale anche dopo un riavvio); chi esce e rientra resta in shadowban fino alla fine.
-Funzioni coperte: D127 (shadowban), CFG-024 (azione «shadowban»)
+Funzioni coperte: D127, D136 (shadowban), CFG-024 (azione «shadowban»)
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ from core import moderation_shadowban as sb
 from core.command_access import Livello
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.i18n import testo_per
-from core.moderation_conferma import conferma_sanzione, invia_esito
+from core.moderation_conferma import ConfermaSanzione, conferma_sanzione, invia_esito
 from core.repositories.moderation_repo import moderation_repo
 from core.scheduler import scheduler
 
@@ -57,6 +57,27 @@ def _ruoli_nel_log(ruoli_ids) -> str:
     righe = " ".join(f"<@&{i}>" for i in list(ruoli_ids)[:MAX_RUOLI_NEL_LOG])
     resto = len(ruoli_ids) - MAX_RUOLI_NEL_LOG
     return (righe + (f" … +{resto}" if resto > 0 else "") or "-")[:1000]
+
+
+def canali_senza_permesso(utente, canali) -> list:
+    """I canali scelti su cui chi comanda non ha «Gestisci canali» (riletto ogni volta, mai ricordato)."""
+    return [c for c in canali if not c.permissions_for(utente).manage_channels]
+
+
+async def chiedi_conferma_canali(interaction: discord.Interaction, canali) -> discord.Interaction | None:
+    """Riepilogo prima di nascondere a @everyone canali che oggi vede. L'interazione del tasto, o None se annulla/scade."""
+    vista = ConfermaSanzione(interaction.user.id)
+    domanda = await testo_per(interaction, "shadowban_canali_conferma", canali=" ".join(c.mention for c in canali)[:1500])
+    await interaction.response.send_message(
+        domanda[:2000], view=vista, ephemeral=True, allowed_mentions=discord.AllowedMentions.none()
+    )
+    await vista.wait()
+    chiave = {True: "conferma_in_corso", False: "conferma_annullata", None: "conferma_scaduta"}[vista.esito]
+    try:
+        await interaction.edit_original_response(content=await testo_per(interaction, chiave), view=None)
+    except discord.HTTPException:
+        pass
+    return vista.interazione if vista.esito else None
 
 
 class ModerationShadowbanCog(CogConGruppi, commands.Cog):
@@ -189,8 +210,9 @@ class ModerationShadowbanCog(CogConGruppi, commands.Cog):
         if not await check_can_moderate(interaction, member):
             return
         await interaction.response.defer()
-        await scheduler.cancel_for_user(interaction.guild.id, member.id, sb.SCHEDULED_SHADOWBAN_FINE)
         esito = await sb.togli(interaction.guild, member, audit_reason(f"Shadowban tolto: {reason}"), interaction.user.id)
+        if esito is not False:  # se Discord rifiuta la scadenza resta: si può riprovare
+            await scheduler.cancel_for_user(interaction.guild.id, member.id, sb.SCHEDULED_SHADOWBAN_FINE)
         if esito is None:
             await interaction.followup.send(await testo_per(interaction, "shadowban_non_in_shadowban", mention=member.mention), ephemeral=True)
             return
@@ -221,6 +243,20 @@ class ModerationShadowbanCog(CogConGruppi, commands.Cog):
         if sb.permessi_bot_mancanti(guild):
             await interaction.response.send_message(await testo_per(interaction, "shadowban_bot_senza_permesso"), ephemeral=True)
             return
+        scelti = [c for c in (testo, vocale) if c is not None]
+        for _ in range(2):  # prima della scelta e di nuovo dopo la conferma: il permesso si rilegge
+            if canali_senza_permesso(interaction.user, scelti):
+                await interaction.response.send_message(
+                    await testo_per(interaction, "shadowban_canale_senza_permesso"), ephemeral=True
+                )
+                return
+            visibili = [c for c in scelti if sb.visibile_a_tutti(c)]
+            if not visibili or interaction.response.is_done() or _ == 1:
+                break
+            nuova = await chiedi_conferma_canali(interaction, visibili)
+            if nuova is None:
+                return
+            interaction = nuova
         await interaction.response.defer(ephemeral=True)
         prep = await sb.prepara(guild, testo, vocale)
         if prep is None:

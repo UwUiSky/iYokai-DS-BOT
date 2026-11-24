@@ -30,6 +30,7 @@ import logging
 
 import discord
 
+from core.moderation_shadowban import add_roles_se_libero
 from core.role_safety import check_role_assignable
 
 logger = logging.getLogger(__name__)
@@ -135,7 +136,7 @@ async def sync_shared_role(guild, member, role_name: str, should_have: bool) -> 
                     role_name, member, guild.id, motivo_rifiuto,
                 )
                 return
-            await member.add_roles(ruolo, reason=f"Sincronizzazione ruolo '{role_name}'")
+            await add_roles_se_libero(member, ruolo, reason=f"Sincronizzazione ruolo '{role_name}'")
         elif not should_have and ruolo in member.roles:
             await member.remove_roles(ruolo, reason=f"Sincronizzazione ruolo '{role_name}'")
     except (discord.Forbidden, discord.HTTPException):

@@ -386,7 +386,7 @@ Totale voci: **514**.
   scadenza riprende i ruoli di prima (issue #138, fase F9)
   → **Fatto:** `/mod-ban tempban modo:Isolamento` (ruolo e canale «isolamento», canali
   nuovi nascosti, uscita e rientro non liberano, `/mod-ban unban` libera prima).
-- `[x]` 5.14 **Mute a ruolo come gradino della scala e shadowban** (D127, D128, #115) — gradino `mute` in `cogs/automod/escalation.py` via `core/moderation_mute_azione.py`; `/mod-sanzioni shadowban dai|togli|canali` (`core/moderation_shadowban.py`, `cogs/moderation/shadowban.py`, tabelle `moderation_shadowban` e `moderation_shadowban_config`, 0930): ruoli salvati prima, canali dedicati senza XP né statistiche, un solo shadowban per persona.
+- `[x]` 5.14 **Mute a ruolo come gradino della scala e shadowban** (D127, D128, #115) — gradino `mute` in `cogs/automod/escalation.py` via `core/moderation_mute_azione.py`; `/mod-sanzioni shadowban dai|togli|canali` (`core/moderation_shadowban.py`, `cogs/moderation/shadowban.py`, tabelle `moderation_shadowban` e `moderation_shadowban_config`, 0930): ruoli salvati prima, canali dedicati senza XP né statistiche, un solo shadowban per persona; `canali` chiede «Gestisci canali» a chi comanda e conferma per i canali visibili a tutti, la scadenza resta se `togli` fallisce, niente ruoli automatici o su richiesta (autoruoli, verifica, menu a tasti, premi…) a chi è in shadowban (D136, `add_roles_se_libero`).
 - `[x]` 5.13 **Opzioni di moderazione** (MOD-010, 017, 057, 068) — `/mod-sanzioni opzioni
   imposta|dm` e `/founder moderazione immuni`, un solo punto in `core/moderation_opzioni.py`: giorni di
   messaggi cancellati quando il ban non li dice; durata del timeout quando non
