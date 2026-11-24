@@ -1695,3 +1695,7 @@ Scelte fatte con l'opzione consigliata; l'owner le cambia con un comando o un va
 - **Boost:** si sommano `MAIN_GUILD_ID` e `PREMIUM_BOOST_GUILD_IDS` (ID separati da virgola). Il boost dà Premium al server il cui proprietario lo fa, come prima.
 - **Livello di una persona che non è proprietaria** non passa al server (i posti premium restano il modo di dare il Premium a un server, CFG-034).
 
+
+## D132 — `/owner` sotto i 6.800 caratteri senza gruppi nuovi (23/11/2026, opzione consigliata, da confermare dall'owner)
+`/owner` pesava 7.898 su 8.000. Scelta: **accorciare** descrizioni, scelte e traduzioni en-US (via i prefissi «Solo proprietario», testi lunghi delle opzioni, nomi delle scelte), senza togliere funzioni. Peso finale 6.333. Nessun secondo gruppo owner: i gruppi di primo livello restano 60 su 60 (D56) e nessuno è stato unito. Se `/owner` torna sopra 6.800, si sposta un sotto-gruppo intero (`radio`, il più pesante) in un gruppo nuovo, dopo aver unito due gruppi piccoli e affini.
+Chiavi AI proprie (D125): il router le usa. Chi ha messo la chiave di un servizio la usa per quel servizio (prima la persona, poi il server), con tutti i suoi crediti, fuori da quote e pause dell'owner e senza costo per l'owner. Mai per altri, mai nei log. Se la chiave manca o non funziona, si passa ai fornitori dell'owner.

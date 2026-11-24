@@ -1,11 +1,11 @@
 # Memoria di dev-core
 
 ## Aggiornata
-23/11/2026 · ramo `feat/r1premium` (da main, NON pushato) · giro r1premium chiuso: CFG-036, 040, 041, AI-003 (D127), UTL-110.
+24/11/2026 · ramo `fix/r1infra` (NON pushato) · giro r1infra: `/owner` a 6.333 (D132), chiavi AI proprie nel router, 8 descrizioni en-US, test i18n e riferimenti sistemati. Prima: r1premium (CFG-036, 040, 041, AI-003, UTL-110).
 
 ## In corso
-- r1premium finito: da unire. Tocca `core/migrations/0910-0913`, `core/data_registry.py`, `core/config.py`, `core/premium.py`, `core/livelli_funzione.py`, `core/repositories/backup_struttura_repo.py` e `ticket_form_repo.py`, `cogs/utility/scheduled_messages.py`, `backup.py`, `cogs/tickets/tickets.py`, `locales/*/testi.json`. Smoke da fare: tree_invariants (`/owner` pesa 7.898 su 8.000), data_registry, i18n, migrazioni 0910-0913, premium_*, livelli_funzione, ticket_form, backup, scheduled_messages.
-- Prossimo numero migrazione libero nel blocco: 0914 (il blocco finisce a 0919). Prossimo passo: collegare il router AI a `ai_chiavi_proprie.chiave_per` (custode-ai); pannello web: collegamento Patreon (`patreon_service.crea_stato`, `url_collegamento`, `scollega`) e livelli/limiti/prezzi.
+- r1premium finito: da unire. Tocca `core/migrations/0910-0913`, `core/data_registry.py`, `core/config.py`, `core/premium.py`, `core/livelli_funzione.py`, `core/repositories/backup_struttura_repo.py` e `ticket_form_repo.py`, `cogs/utility/scheduled_messages.py`, `backup.py`, `cogs/tickets/tickets.py`, `locales/*/testi.json`. Smoke da fare: tree_invariants, data_registry, i18n, migrazioni 0910-0913, premium_*, livelli_funzione, ticket_form, backup, scheduled_messages.
+- Prossimo numero migrazione libero nel blocco: 0914 (il blocco finisce a 0919). Prossimo passo: pannello web: collegamento Patreon (`patreon_service.crea_stato`, `url_collegamento`, `scollega`) e livelli/limiti/prezzi.
 - r1med (`feat/r1med`, da unire): resta TKT-073 (Drive). r1doc (`feat/r1doc`, da unire): vedi `git log`; smoke in coda.
 - Restano: r1dep (#161), r1cfg (CFG-024 con dev-moderazione, 001/002/003/006/027 dev-web), r15immagini (`/admin-automod immagini` da agganciare), #67 11.11, 11.12; #70 14.10, 14.12-14.14.
 - Rimandato: permessi per ruolo dal pannello (OAuth), nascondere `/founder` agli admin.
@@ -18,7 +18,7 @@
 ## Cose imparate
 - Il livello di un server o di una persona passa solo da `piani.livello_server/livello_utente`; il limite di un modulo da `piani.limite_server_sicuro` (torna al predefinito se il database non risponde). `registra_bot` dà il bot ai repository.
 - `livelli_funzione`: VIP5/VIP20 sono alias di ULTRA/VIP (valori `ultra`, `vip` nel database dalla 0910).
-- `/owner` è a 7.898 su 8.000: un comando nuovo lì va dentro `piani` o in un altro gruppo. Scelte di un'opzione: autocompletamento, non `choices` (pesano).
+- `/owner` è a 6.333 su 8.000 (D132; un test lo tiene sotto 6.800). Il peso conta la traduzione più lunga: accorcia anche en-US. Gruppi di primo livello 60/60. Scelte di un'opzione: autocompletamento, non `choices` (pesano).
 - Un testo per l'utente fuori dai cog passa da `t(chiave, ...)` passato come parametro (come `esegui_chiave`): il test i18n cerca frasi nei cog.
 - Test del webhook: `webhook_rate_tracker._data.clear()` prima, il contatore è globale.
 - `interaction.response` e `followup` sono `cached_slot_property`: si sostituiscono con `interaction._cs_response` / `_cs_followup`.
@@ -32,9 +32,8 @@
 - Migrazione già applicata nel DB di prova: non si riesegue se cambia.
 
 ## Aperto
-- Il router AI non usa ancora le chiavi proprie (area custode-ai). Il livello VIP da chiave vale già.
+- Chiavi proprie: `MotoreAI.esegui(guild_id, user_id)` le usa (fuori da quote e pause, costo 0). Da provare live.
 - `test_ticket_form::test_pubblica_due_pannelli_in_un_solo_messaggio` ha dato un `KeyError: 'view'` una volta sotto carico, passa da solo: da controllare.
-- `tests/test_i18n_pubblica` fallisce per `cogs/fun/giochi_sospensioni.py:114` (r1med, non nostro).
 - TKT-073 (Drive) non fatta. `admin-ticket` 7.142 caratteri; `/admin-ai` 19 figli; `/admin-ruoli` permesso `manage_roles` da decidere.
 - Lingue: tetto richiesta giornaliero in memoria; lingua personale solo it/en; `aiuto` vuoto.
 - NSFW RedGifs da controllare live; clan sciolto: categoria da togliere a mano; worker musicale senza blacklist all'ingresso.
