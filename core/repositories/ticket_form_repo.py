@@ -25,6 +25,12 @@ async def _colonne_da_copiare(conn, tabella: str, escluse: tuple[str, ...]) -> l
     return [r["column_name"] for r in righe if r["column_name"] not in escluse]
 
 
+async def _massimo_pannelli(guild_id: int) -> int:
+    from core import piani
+
+    return await piani.limite_server_sicuro(guild_id, "pannelli_ticket")
+
+
 class PannelloGiaEsistente(Exception):
     """Esiste già un pannello con questo nome nel server."""
 
@@ -128,6 +134,7 @@ class TicketFormRepository:
         self, guild_id: int, name: str, category_id: int, button_label: str,
         button_emoji: str | None = None, welcome_text: str | None = None,
     ) -> PannelloTicket:
+        massimo = await _massimo_pannelli(guild_id)
         async with self._pool.acquire() as conn:
             async with conn.transaction():
                 # Blocco per server: due creazioni insieme non superano il tetto.
@@ -135,7 +142,7 @@ class TicketFormRepository:
                 esistenti = await conn.fetchval(
                     "SELECT count(*) FROM ticket_panels WHERE guild_id = $1", guild_id
                 )
-                if esistenti >= MAX_PANNELLI_PER_SERVER:
+                if esistenti >= massimo:
                     raise TroppiPannelli()
                 try:
                     riga = await conn.fetchrow(
@@ -156,10 +163,11 @@ class TicketFormRepository:
         """CFG-044: un nuovo pannello con le stesse scelte dell'originale: domande, motivi, opzioni, accessi e risposte
         pronte approvate (senza gli usi). Poi sono indipendenti. Non si copiano ticket, trascrizioni, automazioni né il
         messaggio pubblicato. Solleva PannelloGiaEsistente, TroppiPannelli o LookupError (originale di un altro server)."""
+        massimo = await _massimo_pannelli(guild_id)
         async with self._pool.acquire() as conn:
             async with conn.transaction():
                 await conn.execute("SELECT pg_advisory_xact_lock($1, $2)", 8413, guild_id % 2**31)
-                if await conn.fetchval("SELECT count(*) FROM ticket_panels WHERE guild_id = $1", guild_id) >= MAX_PANNELLI_PER_SERVER:
+                if await conn.fetchval("SELECT count(*) FROM ticket_panels WHERE guild_id = $1", guild_id) >= massimo:
                     raise TroppiPannelli()
                 colonne = await _colonne_da_copiare(conn, "ticket_panels", ("id", "guild_id", "name", "created_at", "category_id"))
                 elenco = ", ".join(colonne)

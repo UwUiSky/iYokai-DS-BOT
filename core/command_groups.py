@@ -150,7 +150,7 @@ SOTTOGRUPPI: dict[str, tuple[str, str]] = {
     "admin-giochi battitura": ("battitura", "Battitura: i testi del server"),
     "giochi carte": ("carte", "Carte: frasi a sorpresa con giudice o voto"),
     "admin-giochi carte": ("carte", "Carte: pacchetti accesi nel server"),
-    "owner ai": ("ai", "AI globale: manutenzione, modelli, rete del boss"),
+    "owner ai": ("ai", "AI globale: manutenzione e modelli"),
 }
 
 

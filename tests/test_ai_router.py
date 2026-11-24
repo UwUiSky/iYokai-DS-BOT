@@ -150,3 +150,102 @@ async def test_esegui_con_senza_addestranti_non_chiama_chi_addestra():
         await motore.esegui("chat", "bassa", messaggi=[], senza_addestranti=True)
     assert trasporto.chiamate == []
     assert (await motore.esegui("chat", "bassa", messaggi=[])).fornitore == "addestra"
+
+
+# ---------------------------------------------------------------------------
+# Chiavi proprie (AI-003, D127): un server o una persona con la sua chiave la usa, gli altri no
+# ---------------------------------------------------------------------------
+
+class _TrasportoChiavi(TrasportoFinto):
+    def __init__(self, **kw) -> None:
+        super().__init__(**kw)
+        self.chiavi_usate: list[str] = []
+
+    async def completa(self, f, messaggi, max_token):
+        self.chiavi_usate.append(f.chiave)
+        return await super().completa(f, messaggi, max_token)
+
+
+@pytest.fixture
+def chiavi_proprie(monkeypatch):
+    """Il server 111 e la persona 7 hanno una chiave per «alfa»; nessun altro."""
+    import core.ai_chiavi_proprie as cp
+
+    chiamate = []
+
+    async def finta(servizio, *, guild_id=None, user_id=None):
+        chiamate.append((servizio, guild_id, user_id))
+        if servizio == "alfa" and user_id == 7:
+            return "chiave-della-persona"
+        if servizio == "alfa" and guild_id == 111:
+            return "chiave-del-server"
+        return None
+
+    monkeypatch.setattr(cp, "chiave_per", finta)
+    return chiamate
+
+
+async def test_un_server_con_la_chiave_la_usa(chiavi_proprie):
+    t = _TrasportoChiavi()
+    motore = MotoreAI([fornitore("alfa")], t)
+    esito = await motore.esegui("chat", "bassa", messaggi=[], guild_id=111, user_id=5)
+    assert t.chiavi_usate == ["chiave-del-server"]
+    assert esito.costo_millesimi == 0  # paga lui, non l'owner
+
+
+async def test_un_altro_server_non_usa_quella_chiave(chiavi_proprie):
+    t = _TrasportoChiavi()
+    motore = MotoreAI([fornitore("alfa")], t)
+    await motore.esegui("chat", "bassa", messaggi=[], guild_id=222, user_id=5)
+    assert t.chiavi_usate == [fornitore("alfa").chiave]
+
+
+async def test_la_chiave_della_persona_vince_su_quella_del_server(chiavi_proprie):
+    t = _TrasportoChiavi()
+    await MotoreAI([fornitore("alfa")], t).esegui("chat", "bassa", messaggi=[], guild_id=111, user_id=7)
+    assert t.chiavi_usate == ["chiave-della-persona"]
+
+
+async def test_con_la_chiave_propria_non_pesano_le_quote_dell_owner(chiavi_proprie):
+    f = fornitore("alfa", limiti=LimitiFornitore(rpm=2))
+    t = _TrasportoChiavi()
+    motore = MotoreAI([f], t)
+    for _ in range(5):
+        await motore.esegui("chat", "bassa", messaggi=[], guild_id=111)
+    assert t.chiavi_usate == ["chiave-del-server"] * 5
+    assert motore.stato.uso(f) == 0  # niente conti sul fornitore condiviso
+
+
+async def test_chiave_propria_che_fallisce_ripiega_sul_fornitore_condiviso_senza_pausa(chiavi_proprie, caplog):
+    class Rotto(_TrasportoChiavi):
+        async def completa(self, f, messaggi, max_token):
+            if f.chiave == "chiave-del-server":
+                self.chiavi_usate.append(f.chiave)
+                raise ErroreFornitore(401)
+            return await super().completa(f, messaggi, max_token)
+
+    t = Rotto()
+    motore = MotoreAI([fornitore("alfa")], t)
+    with caplog.at_level("DEBUG"):
+        esito = await motore.esegui("chat", "bassa", messaggi=[], guild_id=111)
+    assert esito.testo == "risposta di alfa"
+    assert not motore.stato.in_pausa("alfa")
+    assert "chiave-del-server" not in caplog.text
+
+
+async def test_senza_id_non_si_cercano_chiavi_proprie(chiavi_proprie):
+    t = _TrasportoChiavi()
+    await MotoreAI([fornitore("alfa")], t).esegui("chat", "bassa", messaggi=[])
+    assert chiavi_proprie == []
+
+
+async def test_database_che_non_risponde_ripiega_sulla_chiave_dell_owner(monkeypatch):
+    import core.ai_chiavi_proprie as cp
+
+    async def guasta(*a, **k):
+        raise RuntimeError("database fermo")
+
+    monkeypatch.setattr(cp, "chiave_per", guasta)
+    t = _TrasportoChiavi()
+    await MotoreAI([fornitore("alfa")], t).esegui("chat", "bassa", messaggi=[], guild_id=111)
+    assert t.chiavi_usate == [fornitore("alfa").chiave]

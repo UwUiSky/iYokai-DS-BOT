@@ -363,7 +363,7 @@ class ParoleOdioCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="parole-odio",
-        descrizione="Solo proprietario del bot: libreria delle parole.",
+        descrizione="Libreria delle parole.",
     )
     @app_commands.describe(azione="Cosa fare", testo="La variante", lingua="Lingua, es. it")
     @app_commands.choices(azione=AZIONI_LIBRERIA)

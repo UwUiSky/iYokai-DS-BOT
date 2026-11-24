@@ -1,65 +1,40 @@
 # Memoria di dev-core
 
 ## Aggiornata
-23/11/2026 · ramo `feat/r1doc` · controllo delle 89 voci solo nei documenti (D119): 44 esistono o fatte, 10 non fatte con motivo, 35 da fare (18 «grandi»).
+24/11/2026 · ramo `fix/r1infra` (NON pushato) · giro r1infra: `/owner` a 6.333 (D132), chiavi AI proprie nel router, 8 descrizioni en-US, test i18n e riferimenti sistemati. Prima: r1premium (CFG-036, 040, 041, AI-003, UTL-110).
 
 ## In corso
-- r1med (ramo `feat/r1med`, da unire, NON pushato): fatte LOG-029 e 15 voci (migrazioni 0880-0888, D121); resta TKT-073 (Google Drive: OAuth Google dal pannello web + token cifrato + caricamento, spenta senza chiavi Google). Prossimo numero migrazione: 0889. Smoke da fare: tree_invariants (admin-ticket oltre l'avviso di 6.800 caratteri), data_registry, i18n, forget_user, archivio_utente, economia_registro/autolavoro/sospensioni, chiave_soccorso, voice_scorta/azioni_ruoli/transfer/catalogo_r1, welcome_image, ticket_duplica/roblox/form, blacklist_tree, azioni_sicure/programmate/tag_azioni, sondaggio_premio, sala_tamburo, negozio_web, backup_sic016/automatico, music_settings.
-- r1doc (ramo `feat/r1doc`, da unire): tocca `core/migrations/0850-0852`, `core/data_registry.py`, `core/risposte_server.py`, `core/monthly_winners_announcer.py`, `cogs/leveling/leveling.py`, `cogs/voice_temp/voice_temp.py`, `cogs/music/player.py`. Smoke da fare dopo l'unione: tree_invariants (peso `admin-livelli`), risposte_server, config_import, leveling_repo/classifica/card/settings, progressi, profiles, top_settimanale, voice_azioni_ruoli, music_queue_cmds, citazioni, user_app, data_registry, migrazioni 0850-0852, i18n.
-- Prossimo passo r1doc (tabella in `CONTROLLO_AREE_CHIUSE.md`): ECO-006, ECO-050, ECO-160, VOC-014, MUS-016, RUO-005, CFG-044, UTL-111, SIC-021 (medie); poi i «grandi»: reputazione LIV-076…088, modulo voto (LIV-019, ECO-048/049, CFG-039), SIC-016, UTL-024, TKT-073/088, ECO-080.
-- Restano da giri vecchi (smoke già in coda): r1dep (#161), r1cfg (#122: CFG-024 con dev-moderazione, 036/039/040/041 scelte dell'owner, 001/002/003/006/027 dev-web, 032 marchio), r15immagini (`/admin-automod immagini` da agganciare a `core/automod_azioni.py`), r14lingue, r14lunghezze, r13ruoli. #67: 11.11, 11.12. #70: 14.10, 14.12-14.14.
-- Rimandato: persistenza/pannello dei livelli (D57), permessi per ruolo dal pannello (OAuth), nascondere `/founder` agli admin.
+- r1premium finito: da unire. Tocca `core/migrations/0910-0913`, `core/data_registry.py`, `core/config.py`, `core/premium.py`, `core/livelli_funzione.py`, `core/repositories/backup_struttura_repo.py` e `ticket_form_repo.py`, `cogs/utility/scheduled_messages.py`, `backup.py`, `cogs/tickets/tickets.py`, `locales/*/testi.json`. Smoke da fare: tree_invariants, data_registry, i18n, migrazioni 0910-0913, premium_*, livelli_funzione, ticket_form, backup, scheduled_messages.
+- Prossimo numero migrazione libero nel blocco: 0914 (il blocco finisce a 0919). Prossimo passo: pannello web: collegamento Patreon (`patreon_service.crea_stato`, `url_collegamento`, `scollega`) e livelli/limiti/prezzi.
+- r1med (`feat/r1med`, da unire): resta TKT-073 (Drive). r1doc (`feat/r1doc`, da unire): vedi `git log`; smoke in coda.
+- Restano: r1dep (#161), r1cfg (CFG-024 con dev-moderazione, 001/002/003/006/027 dev-web), r15immagini (`/admin-automod immagini` da agganciare), #67 11.11, 11.12; #70 14.10, 14.12-14.14.
+- Rimandato: permessi per ruolo dal pannello (OAuth), nascondere `/founder` agli admin.
 
 ## Fatto
-- r1doc (D119): LIV-013 (0850 `xp_testo`/`xp_vocale`), 046 (0852), 053 (`core/sfondi_pronti.py`), 061 (0851, `tick_settimanale`), 090, 091; CFG-011; VOC-017 (`core/voice_azioni_ruoli.py`); MUS-043; FUN-030; AI-022; 33 voci già fatte segnate col codice nel test.
-- r1cfg (D96, #122): `core/risposte_server.py`, `permessi_vista.py`, `premium_posti_service.py` (0720), `config_trasloco.py`.
-- r15immagini (D62, #153): `core/immagini_*`, cog `cogs/automod/immagini.py`, `/owner immagini-trappola`, 0504-0506, sandbox.
-- r14lingue (D58, #77): `locales/<lingua>/`, ripiego lingua->en-US->it, `core/lingue_controllo.py`, `core/lingua_richieste.py`.
-- r13ruoli (D60): 25 gruppi staff (`admin-*` 20, `mod-*` 4, `founder`), 377 percorsi spostati; `Livello.FOUNDER`;
-  `PREFISSI_SEMPRE_APERTI=("admin-bot","owner")`; migrazione 0488; `GRUPPI_DEL_RUOLO` dai prefissi; traduzioni en.
-- r13gruppi (D56/D57): 152 comandi spostati, 11 gruppi, 0485-0487, `core/livelli_funzione.py`.
-- Giri precedenti (r12, r10, r9, r5, F5/F7, R1-bis): vedi `git log`.
+- r1premium (D59, D124, D127): `core/piani.py` (livelli, concessioni, limiti, prezzi, sconti), `ai_chiavi_proprie.py`, `piani_comandi.py`, `everyone_programmati.py`, `patreon_logic/service/server.py` + cog `utility/patreon.py`; `/owner premium piano`, `/admin-bot premium chiave`; test `test_piani`, `test_patreon`, `test_everyone_programmati`.
+- r1med: LOG-029 e 15 voci (0880-0888, D121). r1doc: LIV-013/046/053/061/090/091, CFG-011, VOC-017, MUS-043, FUN-030, AI-022.
+- r1cfg (D96), r15immagini (D62), r14lingue (D58), r13ruoli (D60), r13gruppi (D56/D57), r1collaudo (D109): vedi `git log`.
 
-- r1collaudo (#94, D109): `scripts/collaudo.py` (assistente prove dal vivo, terminale separato), `core/collaudo_avviso.py`, avviso in `main.py` con COLLAUDO=1; test `tests/test_collaudo.py`.
 ## Cose imparate
-- `interaction.response` e `followup` sono `cached_slot_property`: si sostituiscono con `interaction._cs_response` / `_cs_followup` (sottoclassi di `InteractionResponse` e `Webhook`); le `__slots__` vietano altri attributi.
-- `SETTINGS_SCHEMA` nuovo = anche `SETTINGS_VALIDE` in `tests/test_config_import_validation.py`. L'import ora scarta gli ID che non esistono nel server (guild finto: `roles` e `get_channel`).
-- In sviluppo `PREMIUM_ALPHA_UNLOCK_ALL` è vero: i test del premium sostituiscono `core.premium.config` (vedi `test_premium_posti.py`).
-- La macchina è condivisa con altri agenti: le prove di `tree_invariants` e i18n possono durare 3-4 minuti. `test_riferimenti_comandi` fallisce per `/rss` in `core/alert_piattaforme_logic.py` (non è di quest'area).
-- Sandbox: con `-I` la cartella dello script non è in sys.path (il worker la aggiunge); RLIMIT_FSIZE=0 manda SIGXFSZ (ignorato + `-B`); `unshare -rn` provato una volta. Un test non usa `tests/test_data_registry` su DB sporco: tabelle di altri rami (`verify_*`) lo fanno fallire.
-- Lingue: codice salvato nel DB `it`/`en` (CHECK 0130); `en`/`en-GB` sono alias di `en-US`; testo vuoto = da tradurre (ignorato). `lingua_valida` = solo lingue con testi.
-- Riordino per script: regex dei riferimenti con `(?![\w/])` dopo il nome (altrimenti riscrive gli URL `/ai/altro`);
-  offset AST in byte. I riferimenti senza `/` (tabelle di percorsi come `COMANDI_VICINI`, chiavi, `get_command("x")`)
-  e i sotto-comandi già vecchi prima (es. `/security antinuke`) non li trova nessun test: grep a parte, poi i test di quei file.
-- Nomi di prima di D60: tabella unica nella migrazione 0488 (letta da `command_search_logic` e `tests/support/percorsi.py`).
-- Un cog con `CogConGruppi` e `cog_load`/`cog_unload` propri chiama `super()`: senza, i comandi spariscono.
-- Comando staff in un gruppo pubblico: `@richiedi(Livello.X)` + `@autocomplete_protetto` con lo stesso livello.
-- Discord conta per gli 8.000 solo la traduzione più lunga per campo; discord.py passa `context.data` al traduttore.
-- Ogni tabella nuova in `core/data_registry.py`; ogni colonna `user_id`/`*_by` dichiarata; id di un bot = `bot_account_id`.
-- Migrazione già applicata nel DB di prova: non si riesegue se cambia; togliere la riga da `schema_migrations`.
-- Test che eseguono una migrazione a mano su `clean_db` sporcano il DB condiviso: ripristinare nel finally.
-- Cache impostazioni: SQL grezzo su guild_config richiede `db._settings_cache.clear()`.
-- `monkeypatch.undo()` con `clean_db` annulla anche il pool: ripristinare il singolo attributo.
-- Server senza il bot (app utente): `is_guild_integration()` falso; `guild` None anche per cache mancante (#147).
-- `View.clear_items()` stacca i figli: tenere `vista = self.view` prima di ricostruire.
-- Viste con select: `interaction.data = {"values": [...]}`; `fake_member.premium_since` va messo a None.
-- Rifiuto di accesso = `AccessoNegato` risposto da `handle_app_command_error`; il defer pubblico lascia un `loading`.
-- Test a metà su due DB: `iyokai_wruoli` e `iyokai_wruoli2`.
-- Il codice di una voce nel test conta come «fatta» per `scripts/stato_catalogo.py`: mai metterlo su una voce non fatta. Una descrizione di opzione ≤ 95 caratteri (test tree_invariants). Scelte lunghe: autocompletamento, non `choices` (pesa nel gruppo, D56).
-- Con tanti test su DB condiviso una prova di 25 file dura 30+ minuti: lanciarla in background e scrivere i documenti nel frattempo; non attendere con `pgrep -f` (si trova da solo).
-
-- Un blocco aggiunto con una sostituzione di testo può finire nella prima funzione che ha le stesse righe: dopo ogni modifica a comandi con opzioni simili, rilanciare i test del file (VOC-017 era finito in `voicetemp_generatore`).
-- Config è congelata (`frozen`): nei test si sostituisce `modulo.config` con un `SimpleNamespace`. `scheduler.register_handler` vuole un metodo legato (serve `__qualname__`), non un `functools.partial`.
-- Per sapere se una voce del catalogo c'è già, cercare le opzioni dei tag e dei cog (UTL-024 era già per metà in UTL-016/022): meglio aggiungere il pezzo mancante che rifare.
+- Il livello di un server o di una persona passa solo da `piani.livello_server/livello_utente`; il limite di un modulo da `piani.limite_server_sicuro` (torna al predefinito se il database non risponde). `registra_bot` dà il bot ai repository.
+- `livelli_funzione`: VIP5/VIP20 sono alias di ULTRA/VIP (valori `ultra`, `vip` nel database dalla 0910).
+- `/owner` è a 6.333 su 8.000 (D132; un test lo tiene sotto 6.800). Il peso conta la traduzione più lunga: accorcia anche en-US. Gruppi di primo livello 60/60. Scelte di un'opzione: autocompletamento, non `choices` (pesano).
+- Un testo per l'utente fuori dai cog passa da `t(chiave, ...)` passato come parametro (come `esegui_chiave`): il test i18n cerca frasi nei cog.
+- Test del webhook: `webhook_rate_tracker._data.clear()` prima, il contatore è globale.
+- `interaction.response` e `followup` sono `cached_slot_property`: si sostituiscono con `interaction._cs_response` / `_cs_followup`.
+- `SETTINGS_SCHEMA` nuovo = anche `SETTINGS_VALIDE` in `tests/test_config_import_validation.py`.
+- In sviluppo `PREMIUM_ALPHA_UNLOCK_ALL` è vero: i test premium sostituiscono `core.premium.config`.
+- La macchina è condivisa: tree_invariants e i18n durano 3-4 minuti; `/rss` in `alert_piattaforme_logic` fa fallire `test_riferimenti_comandi` (non nostro).
+- Lingue: `en`/`en-GB` alias di `en-US`; `testi.json` si riscrive con `json.dumps(indent=2, ensure_ascii=False)`; un testo inglese uguale all'italiano fa fallire `test_i18n_completo`.
+- Ogni tabella nuova in `core/data_registry.py`; colonne `user_id`/`*_by` dichiarate; tabelle con id di utente o server: `filtro_server`.
+- Il codice di una voce nel test conta come «fatta» per `scripts/stato_catalogo.py`: mai su una voce non fatta.
+- Config è congelata: nei test si sostituisce `modulo.config` con un `SimpleNamespace`. `monkeypatch.undo()` con `clean_db` annulla il pool.
+- Migrazione già applicata nel DB di prova: non si riesegue se cambia.
 
 ## Aperto
-- TKT-073 (Drive) non fatta in r1med. `admin-ticket` pesa 7.142 caratteri (avviso a 6.800, limite 8.000): al prossimo comando si divide in un sotto-gruppo. L'avviso dell'anti-nuke non cita ancora `/admin-backup carica ultima_automatica:sì`.
-- Lingue: tetto richiesta giornaliero in memoria (si azzera al riavvio); lingua personale ammette solo it/en finché una migrazione non allarga il CHECK di `user_language`; `aiuto` vuoto in tutte le lingue.
-- `/admin-ai` 19 figli (KNOWN_OLTRE_18), `/admin-antiraid` 17: al prossimo comando si dividono.
-- `/admin-ruoli`: Discord `manage_roles`, codice `Livello.ADMIN` (`manage_guild`): chi ha solo «Gestisci ruoli» lo vede
-  ma è rifiutato (D60 punto 4, da decidere).
-- NSFW: risposta RedGifs scritta a memoria, da controllare live; server con solo il bot NSFW non scade mai.
+- Chiavi proprie: `MotoreAI.esegui(guild_id, user_id)` le usa (fuori da quote e pause, costo 0). Da provare live.
+- `test_ticket_form::test_pubblica_due_pannelli_in_un_solo_messaggio` ha dato un `KeyError: 'view'` una volta sotto carico, passa da solo: da controllare.
+- TKT-073 (Drive) non fatta. `admin-ticket` 7.142 caratteri; `/admin-ai` 19 figli; `/admin-ruoli` permesso `manage_roles` da decidere.
+- Lingue: tetto richiesta giornaliero in memoria; lingua personale solo it/en; `aiuto` vuoto.
+- NSFW RedGifs da controllare live; clan sciolto: categoria da togliere a mano; worker musicale senza blacklist all'ingresso.
 - `tests/test_premium_invalidazione.py` assegna `db._pool`: da togliere.
-- #136, #141, #138, #135. 14.13 codice morto, 14.14 lingue (F8). KNOWN_SENZA_MAX_LENGTH vuoto: ogni opzione nuova senza Range fa fallire il test.
-- Clan sciolto: categoria/canali restano da togliere a mano. Worker musicale non controlla la blacklist all'ingresso.
-- `/assistente` esiste anche in iYokai App: i test dei riferimenti danno la precedenza al principale.

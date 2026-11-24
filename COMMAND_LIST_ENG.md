@@ -4,6 +4,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-24 01:1
 
 **Total: 1176 commands in 59 categories.**
 
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-24 01:18 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+
+**Total: 1168 commands in 59 categories.**
+
 ## Admin: AI
 
 - **`/admin-ai banned-words`** — Words or topics the AI must refuse.
@@ -102,7 +106,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-24 01:1
 - **`/admin-automazioni inneschi avvia-ora`** — Run a trigger right now, to test it.
 - **`/admin-automazioni inneschi list`** — The triggers of the server.
 - **`/admin-automazioni inneschi remove`** — Remove a trigger.
-- **`/admin-automazioni programma`** — Programma un'azione sicura per più tardi (ruolo, messaggio, sblocco canale): fino a 5.
+- **`/admin-automazioni programma`** — Schedule a safe action for later (role, message, channel unlock): up to 5.
 - **`/admin-automazioni script errori`** — The latest 10 errors of a tag's script.
 - **`/admin-automazioni slash list`** — The server's commands and menu entries.
 - **`/admin-automazioni slash menu`** — Right-click menu entries (on a user or a message) that answer with a tag.
@@ -203,6 +207,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-24 01:1
 - **`/admin-bot premium appearance`** — The bot's avatar, banner and description in this server (premium).
 - **`/admin-bot premium assign`** — Puts one of your premium seats on this server.
 - **`/admin-bot premium branding`** — Use a bot with your own name and avatar (premium).
+- **`/admin-bot premium chiave`** — Use your own AI API key: it gives the VIP level.
 - **`/admin-bot premium redeem`** — Redeems a premium code for this server.
 - **`/admin-bot premium remove-seat`** — Removes your premium seat from this server.
 - **`/admin-bot premium status`** — Shows how premium is unlocked in this server.
@@ -287,7 +292,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-24 01:1
 - **`/admin-games salaries remove`** — Remove the salary or tax of a role.
 - **`/admin-games salaries set`** — Salary (positive) or tax (negative) for a role.
 - **`/admin-games servizi`** — Turn the external services on or off: Lemmy images and GIF search.
-- **`/admin-games sospensione`** — Sospendi una persona dal gioco, riabilitala o decidi sulla sua richiesta di revisione.
+- **`/admin-games sospensione`** — Suspend a person from the games, restore them or rule on their appeal.
 - **`/admin-games telefono block`** — Block or unblock a person or another server from the phone.
 - **`/admin-games telefono channel`** — The server's phone channel.
 - **`/admin-games telefono consenso`** — Turn the phone on or off: off by default.
@@ -551,7 +556,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-24 01:1
 - **`/admin-tag replies global`** — Turn the owner's shared automatic replies on or off in this server.
 - **`/admin-tag replies list`** — Shows the server's automatic replies.
 - **`/admin-tag replies show`** — Detail of an automatic reply, with the raw text.
-- **`/admin-tag tag actions`** — Azioni sicure di un tag: ruolo, messaggio, reazione (fino a 3).
+- **`/admin-tag tag actions`** — Safe actions of a tag: role, message, reaction (up to 3).
 - **`/admin-tag tag alias`** — Alternative names of a tag (up to 3).
 - **`/admin-tag tag blocks`** — Block a tag for a role, a channel or a user (up to 10 per list).
 - **`/admin-tag tag create`** — Creates a custom command.
@@ -587,7 +592,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-24 01:1
 - **`/admin-tickets panel`** — Publishes the ticket opening panel in this channel.
 - **`/admin-tickets panels appearance`** — Button colour, menu text and opening message of a panel.
 - **`/admin-tickets panels create`** — Creates a ticket panel.
-- **`/admin-tickets panels duplica`** — Duplica un pannello già configurato, o copia una risposta pronta su un altro pannello.
+- **`/admin-tickets panels duplica`** — Duplicate a configured panel, or copy a canned reply to another panel.
 - **`/admin-tickets panels form-add`** — Adds a question to the form (max 5).
 - **`/admin-tickets panels form-copy`** — Copies a panel's form to another (replaces its questions).
 - **`/admin-tickets panels form-remove`** — Removes a question from the form.
@@ -1165,60 +1170,61 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-24 01:1
 
 ## Owner
 
-- **`/owner ai maintenance`** — Owner only: puts the AI in maintenance in every server.
-- **`/owner ai network-boss`** — Owner only: publish or close the network boss.
-- **`/owner ai template`** — Owner only: a provider model, tier and job types; length cap.
-- **`/owner blacklist server-add`** — Globally blocks a server (the bot leaves if already there).
-- **`/owner blacklist server-list`** — Shows the globally blocked servers.
-- **`/owner blacklist server-remove`** — Removes a server from the global blacklist.
-- **`/owner blacklist utente-add`** — Globally blocks a user from using the bot.
-- **`/owner blacklist utente-list`** — Shows the globally blocked users.
-- **`/owner blacklist utente-remove`** — Removes a user from the global blacklist.
+- **`/owner ai maintenance`** — Puts the AI in maintenance everywhere.
+- **`/owner ai network-boss`** — Publish or close the network boss.
+- **`/owner ai template`** — A provider's model, tier and types; cap.
+- **`/owner blacklist server-add`** — Blocks a server (the bot leaves).
+- **`/owner blacklist server-list`** — Blocked servers.
+- **`/owner blacklist server-remove`** — Removes a server from the blacklist.
+- **`/owner blacklist utente-add`** — Blocks a user from the bot.
+- **`/owner blacklist utente-list`** — Blocked users.
+- **`/owner blacklist utente-remove`** — Removes a user from the blacklist.
 - **`/owner cog load`** — Loads an extension (e.g. cogs.moderation.actions).
 - **`/owner cog reload`** — Reloads an extension, optionally updating it from GitHub or a file.
 - **`/owner cog unload`** — Unloads an extension.
-- **`/owner hate-words`** — Bot owner only: the worldwide library of hate words.
-- **`/owner immagini-trappola`** — Bot owner only: the shared library of trap images.
-- **`/owner net`** — Bot owner only: block servers that report in a wrong way.
+- **`/owner hate-words`** — Library of hate words.
+- **`/owner immagini-trappola`** — Library of trap images.
+- **`/owner net`** — Blocks servers that report wrongly.
 - **`/owner premium grant`** — Grants premium to a server, or creates a code to redeem.
 - **`/owner premium list`** — Shows the premium status of all modules.
 - **`/owner premium panel`** — Interactive panel to turn premium modules on or off.
-- **`/owner premium revoke`** — Revokes a module's subscription for a server.
-- **`/owner premium status-all`** — Shows the premium status of ALL servers the bot is in.
-- **`/owner premium subscriptions`** — Shows the active per-module subscriptions on a server.
+- **`/owner premium piano`** — Plans: limits, prices, discounts, levels given.
+- **`/owner premium revoke`** — Revokes a module's subscription.
+- **`/owner premium status-all`** — Premium status of all the bot's servers.
+- **`/owner premium subscriptions`** — A server's active subscriptions.
 - **`/owner premium toggle`** — Turns a module's premium nature on or off.
 - **`/owner premium whitelist-add`** — Adds a server to the premium whitelist.
 - **`/owner premium whitelist-list`** — Lists the servers in the premium whitelist.
 - **`/owner premium whitelist-remove`** — Removes a server from the premium whitelist.
 - **`/owner privacy approva`** — Runs a deletion request and notifies the user.
 - **`/owner privacy richieste`** — Lists the pending data deletion requests.
-- **`/owner privacy rifiuta`** — Rejects a deletion request and tells the user why.
-- **`/owner radio add-local`** — Adds a file from the unreleased folder to the radio playlist.
+- **`/owner privacy rifiuta`** — Rejects a request and says why.
+- **`/owner radio add-local`** — Adds an unreleased file to the radio playlist.
 - **`/owner radio add-track`** — Adds a track to the radio playlist.
 - **`/owner radio ban-word`** — Words banned in track titles across the whole bot.
-- **`/owner radio country`** — Global country for music searches (no limit by default).
+- **`/owner radio country`** — Country for music searches (default: none).
 - **`/owner radio folder`** — Owner track folder: list, reread, previews.
 - **`/owner radio fonti`** — Shows the state of the music sources (on, keys yes/no, paused).
 - **`/owner radio genre`** — Genre playlists for the /music genere menu.
 - **`/owner radio list-tracks`** — Shows the radio playlist.
-- **`/owner radio log`** — Downloads the tail of the local Lavalink log (keys removed).
+- **`/owner radio log`** — Local Lavalink log tail (no keys).
 - **`/owner radio nodes`** — Shows each music bot's Lavalink nodes (no passwords).
-- **`/owner radio reconnect`** — Retries at once to connect the Lavalink nodes that are down.
+- **`/owner radio reconnect`** — Reconnects the downed Lavalink nodes.
 - **`/owner radio remove-track`** — Removes a track from the radio playlist.
 - **`/owner radio source`** — Turns a music source on or off while the bot runs.
 - **`/owner radio start`** — Joins the shared radio at the point where it is now.
 - **`/owner radio status`** — How many music players are playing now.
 - **`/owner radio stop`** — Leaves the radio on this server.
 - **`/owner system announce`** — Sends an announcement to all servers.
-- **`/owner system chiave-soccorso`** — Chiave di soccorso: per riprendere il controllo se perdi l'account.
+- **`/owner system chiave-soccorso`** — Rescue key to regain control if you lose your account.
 - **`/owner system eval`** — Runs Python code (with confirmation).
-- **`/owner system global-replies`** — Automatic replies shared by all servers (up to 20).
-- **`/owner system leave-guild`** — Forces the bot to leave a specific server (without blocking it).
+- **`/owner system global-replies`** — Global automatic replies (up to 20).
+- **`/owner system leave-guild`** — The bot leaves a server (no block).
 - **`/owner system memory-status`** — Shows the process's current RAM use.
 - **`/owner system richieste-canale`** — Sets the requests channel (main server only).
 - **`/owner system shell`** — Runs a shell command (with confirmation).
 - **`/owner system stats`** — Global bot statistics.
-- **`/owner system storico-vpn`** — Bot owner only: servers that let a person through (VPN/proxy) and their IPs.
+- **`/owner system storico-vpn`** — Servers that let a person through, and their IPs (VPN).
 
 ## Rep
 
@@ -1238,7 +1244,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-24 01:1
 - **`/room quiz`** — Timed quiz with a coin prize: five questions, four answers.
 - **`/room race`** — Animal race: whoever arrives first takes the pot.
 - **`/room roulette`** — Multiplayer roulette: the same stake for everyone, a single spin.
-- **`/room tamburo`** — Un tamburo con una sfera rossa: chi la trova esce, l'ultimo prende il piatto.
+- **`/room tamburo`** — A drum with a red ball: whoever finds it leaves, the last one takes the pot.
 
 ## Polls
 

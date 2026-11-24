@@ -2,7 +2,7 @@
 core/ai_moderazione_immagini.py
 ===============================
 Moderazione delle immagini tramite lo snodo AI (FUN-017, D122): legge la risposta di un fornitore di moderazione
-(formato `/moderations` compatibile OpenAI, categorie e punteggi) e dice solo se l'immagine è per adulti.
+(formato «moderations» compatibile OpenAI, categorie e punteggi) e dice solo se l'immagine è per adulti.
 Funzioni pure. Il tipo di lavoro dello snodo è `moderazione_immagine`: lo fa solo un fornitore che lo dichiara in
 `AI_TIPI_<NOME>`; senza fornitore il controllo non c'è (il chiamante decide che cosa fare, D123).
 Funzioni coperte: SPEC §24 (FUN-017, D122)

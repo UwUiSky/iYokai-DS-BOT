@@ -107,7 +107,7 @@ class PrivacyCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="richieste",
-        descrizione="Elenca le richieste di cancellazione dei dati in attesa.",
+        descrizione="Richieste di cancellazione dati in attesa.",
         sottogruppo=SOTTOGRUPPO_OWNER,
     )
     async def privacy_richieste(self, interaction: discord.Interaction) -> None:
@@ -151,7 +151,7 @@ class PrivacyCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="rifiuta",
-        descrizione="Rifiuta una richiesta di cancellazione e dì all'utente perché.",
+        descrizione="Rifiuta una richiesta e dice perché.",
         sottogruppo=SOTTOGRUPPO_OWNER,
     )
     @app_commands.describe(richiesta="Il numero della richiesta", motivo="Il motivo, che l'utente leggerà")

@@ -19,6 +19,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core import livelli_funzione as livelli
+from core.i18n import testo_per
 from core.command_sync import SincronizzatoreDifferito, StatoSyncDatabase, sincronizza_all_avvio
 from core.config import config
 from core.database import db
@@ -112,7 +113,10 @@ def _gruppo(nome: str, descrizione: str, livelli_scelti: tuple[str, ...]) -> app
 
     @gruppo.command(name="info", description="Come funzionano i livelli")
     async def info(interaction: discord.Interaction) -> None:
-        await interaction.response.send_message(_testo_info(livelli_scelti), ephemeral=True)
+        from core import piani
+
+        testo = f"{_testo_info(livelli_scelti)}\n\n{await piani.testo_listino(lambda k, **kw: testo_per(interaction, k, **kw))}"
+        await interaction.response.send_message(testo[:2000], ephemeral=True)
 
     return gruppo
 
@@ -120,7 +124,7 @@ def _gruppo(nome: str, descrizione: str, livelli_scelti: tuple[str, ...]) -> app
 def crea_gruppi() -> tuple[app_commands.Group, app_commands.Group]:
     return (
         _gruppo("premium", "Funzioni Premium: elenco e informazioni", LIVELLI_PREMIUM),
-        _gruppo("vip", "Funzioni VIP 5 e VIP 20: elenco e informazioni", LIVELLI_VIP),
+        _gruppo("vip", "Funzioni Ultra e VIP: elenco e informazioni", LIVELLI_VIP),
     )
 
 

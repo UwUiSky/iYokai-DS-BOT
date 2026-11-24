@@ -25,8 +25,8 @@ class RisposteGlobaliCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @comando_di_gruppo("owner", nome="risposte-globali", descrizione="Risposte automatiche comuni a tutti i server (massimo 20).",
-                       sottogruppo=("system", "Sistema: codice, memoria, annunci e statistiche"))
+    @comando_di_gruppo("owner", nome="risposte-globali", descrizione="Risposte automatiche globali (massimo 20).",
+                       sottogruppo=("system", "Sistema: codice, annunci, statistiche"))
     @app_commands.describe(azione="Cosa fare", innesco="La frase che fa scattare la risposta", risposta="Cosa risponde il bot",
                            numero="Il numero della risposta da togliere")
     @app_commands.choices(azione=_SCELTE)

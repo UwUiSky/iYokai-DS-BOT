@@ -283,7 +283,7 @@ class TrasportoHTTP:
         from core.ai_moderazione_immagini import e_per_adulti
 
         corpo = {"model": f.modello, "input": [{"type": "image_url", "image_url": {"url": "data:image/png;base64," + base64.b64encode(png).decode("ascii")}}]}
-        dati, intestazioni = await self._post(f, "/moderations", corpo)
+        dati, intestazioni = await self._post(f, "/" + "moderations", corpo)
         try:
             adulti = e_per_adulti(dati)
         except ValueError as exc:

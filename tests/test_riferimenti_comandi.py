@@ -64,6 +64,8 @@ ECCEZIONI: frozenset[str] = frozenset(
         "/opzioni",  # sotto-pagina delle trascrizioni dei ticket (core/web_panel_ticket_trascrizioni.py)
         # pagina del pannello web `/server/<id>/ai` (core/web_panel_server.py): non è il comando `/admin-ai`
         "/ai",
+        # pagina pubblica del pannello web per entrare nel server (core/web_panel_join.py): non è un comando
+        "/join",
     }
 )
 

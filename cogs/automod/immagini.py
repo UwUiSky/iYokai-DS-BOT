@@ -224,11 +224,11 @@ class ImmaginiCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo(
         "owner",
         nome="immagini-trappola",
-        descrizione="Solo proprietario del bot: libreria delle immagini trappola.",
+        descrizione="Libreria delle immagini trappola.",
     )
     @app_commands.describe(
         azione="Cosa fare",
-        impronta="SHA-256 (o i primi 6 caratteri, per approva e rifiuta)",
+        impronta="SHA-256 (o i primi 6 caratteri)",
         immagine="L'immagine da aggiungere (con aggiungi)",
     )
     @app_commands.choices(azione=AZIONI_LIBRERIA)

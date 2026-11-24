@@ -65,6 +65,7 @@ USI: dict[str, tuple[UsoIntent, ...]] = {
         UsoIntent("Name history and returning members", "cogs/moderation/nickname.py",
                   "Remember nicknames and give back nickname or voice mute to members who rejoin (off by default)"),
         UsoIntent("Targeted lockdown", "cogs/security/lockdown.py", "Kick or ban new members during a lockdown, if the staff chose so"),
+        UsoIntent("Shadowban", "cogs/moderation/shadowban.py", "Give the shadowban role back to members who leave and rejoin"),
         UsoIntent("Invite tracking", "cogs/utility/invites.py", "Credit the inviter"),
         UsoIntent("Restore after a server backup", "cogs/utility/restore.py", "Return members to their roles"),
         UsoIntent("Backup of member roles", "cogs/utility/backup.py", "Keep the role snapshot up to date"),
