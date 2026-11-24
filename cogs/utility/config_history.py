@@ -141,6 +141,10 @@ SETTINGS_SCHEMA = {
     "music_fallback_playlist": "testo_300",
     "music_daily_playlist": "bool",
     "music_persist_queue": "bool",
+    "music_audio_only": "bool",  # MUS-016
+    "negozio_web": "bool",  # ECO-080
+    "ticket_roblox": "bool",
+    "voicetemp_scorta": "bool",
     "music_announce": "bool",
     "music_announce_channel_id": "id",
     "music_jukebox_price": "int_0_100000",

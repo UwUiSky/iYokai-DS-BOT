@@ -70,6 +70,9 @@ async def cog_e_repo(monkeypatch):
         async def get_rewards_up_to_level(self, guild_id, level):
             return []  # nessun ruolo-premio configurato - non è quello sotto test qui
 
+        async def ha_requisiti_vocali(self, guild_id):
+            return False
+
     monkeypatch.setattr(leveling_module, "leveling_repo", _RepoFinto())
     monkeypatch.setattr(leveling_module, "level_reward_repo", _RewardRepoFinto())
     return cog, chiamate_add_voice_minute

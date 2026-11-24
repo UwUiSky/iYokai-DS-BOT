@@ -8,7 +8,7 @@ quote|fact — stesso schema di tests/test_ship_rate_behavior.py.
 import pytest
 
 from cogs.fun.entertainment import EntertainmentCog, MODULE_FUN
-from core.classic_entertainment_logic import FACTS, JOKES, QUOTES
+from core.classic_entertainment_logic import FACTS, JOKES
 from core.database import Database
 from core.minigames_logic import EIGHT_BALL_ANSWERS
 
@@ -206,30 +206,6 @@ async def test_joke_risponde_con_una_barzelletta_valida(monkeypatch):
         assert any(barzelletta in messaggio for barzelletta in JOKES)
     finally:
         await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 810000007")
-        await database.close()
-
-
-@pytest.mark.asyncio
-async def test_quote_risponde_con_una_citazione_valida(monkeypatch):
-    database = Database()
-    await database.connect()
-    try:
-        await database.run_migrations()
-        guild_id = 810000008
-        await database.set_module_active_for_guild(guild_id, MODULE_FUN, True)
-
-        import cogs.fun.entertainment as modulo
-        monkeypatch.setattr(modulo, "db", database)
-
-        cog = EntertainmentCog(bot=None)
-        interaction = _FakeInteraction(guild_id)
-
-        await cog.quote.callback(cog, interaction)
-
-        messaggio = interaction.response.sent_messages[0]
-        assert any(citazione in messaggio for citazione in QUOTES)
-    finally:
-        await database.pool.execute("DELETE FROM guild_config WHERE guild_id = 810000008")
         await database.close()
 
 

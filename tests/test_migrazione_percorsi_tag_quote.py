@@ -2,7 +2,7 @@
 tests/test_migrazione_percorsi_tag_quote.py
 ===========================================
 Migrazioni 0557 (tag e risposte automatiche passano a `/tag` e `/admin-tag`) e 0558 (`/fun quote` diventa
-`/fun citazioni caso`) del blocco Utility (D69): un comando spento nella politica dei server resta spento col nome
+`/fun citazioni caso`) del blocco Utility (D69), e 0971 (`/admin-bot config pulizia` diventa `pulisci`, UTL-226): un comando spento nella politica dei server resta spento col nome
 nuovo; registro modifiche e ultimo comando usato seguono; rilanciarle non cambia nulla. Database vero.
 """
 
@@ -14,6 +14,7 @@ from pathlib import Path
 DIR = Path(__file__).parent.parent / "core/migrations"
 SQL_0557 = (DIR / "0557_tag_opzioni.sql").read_text()
 SQL_0558 = (DIR / "0558_fun_quote_citazioni.sql").read_text()
+SQL_0971 = (DIR / "0971_config_pulizia_pulisci.sql").read_text()
 
 VECCHI_TAG = {
     "utility tag": "tag usa", "admin-messaggi tag crea": "admin-tag tag crea", "admin-messaggi tag modifica": "admin-tag tag modifica",
@@ -58,6 +59,17 @@ async def test_0558_fun_quote_segue_il_nuovo_nome_senza_doppioni(clean_db):
     assert await clean_db.fetchval("SELECT command_path FROM command_usage WHERE guild_id = 779002") == "fun citazioni caso"
     assert _json(await clean_db.fetchval("SELECT settings FROM guild_config WHERE guild_id = 779003")) == {}
 
+
+
+async def test_0971_config_pulizia_segue_il_nuovo_nome(clean_db):
+    await _scenario(clean_db, 779004, ["admin-bot config pulizia", "fun dice"], "admin-bot config pulizia")
+    for _ in range(2):
+        await clean_db.execute(SQL_0971)
+        s = _json(await clean_db.fetchval("SELECT settings FROM guild_config WHERE guild_id = 779004"))
+        assert sorted(s["policy_comandi_off"]) == ["admin-bot config pulisci", "fun dice"]
+    cron = await clean_db.fetchrow("SELECT old_value, new_value FROM guild_config_history WHERE guild_id = 779004")
+    assert json.loads(cron["old_value"]) == ["admin-bot config pulisci"]
+    assert await clean_db.fetchval("SELECT command_path FROM command_usage WHERE guild_id = 779004") == "admin-bot config pulisci"
 
 async def test_percorsi_vecchi_spariti_e_nuovi_presenti_nell_albero():
     from core.command_groups import GRUPPI

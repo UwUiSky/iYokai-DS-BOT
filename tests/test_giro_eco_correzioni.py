@@ -213,6 +213,12 @@ async def test_vocale_in_categoria_esclusa_non_e_idoneo(monkeypatch):
     monkeypatch.setattr(leveling_settings_repo, "get_config", get_config)
     monkeypatch.setattr(modulo.blacklist_repo, "blacklisted_among", nessuno)
     monkeypatch.setattr(modulo, "leveling_repo", _Repo())
+
+    class _Premi:
+        async def ha_requisiti_vocali(self, guild_id):
+            return False
+
+    monkeypatch.setattr(modulo, "level_reward_repo", _Premi())
     cog = modulo.LevelingCog(bot=None)
     cog.cog_unload()
     canale = fake_voice_channel(channel_id=222)
@@ -365,6 +371,7 @@ async def test_rank_con_un_errore_qualunque_dell_avatar_manda_la_card(monkeypatc
     repo.get_totals.return_value = type("T", (), dict(level=1, xp_total=100, coins_total=5))()
     repo.get_xp_position.return_value = 1
     repo.get_rank_card_prefs.return_value = (None, None)
+    repo.get_card_extra.return_value = (None, None)
     db_finto = AsyncMock()
     db_finto.is_module_active_for_guild.return_value = True
     monkeypatch.setattr(modulo, "leveling_repo", repo)
