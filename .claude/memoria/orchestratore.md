@@ -165,3 +165,5 @@
 - 23/11 notte: LIMITI RAGGIUNTI: /music 25/25 figli, gruppi di primo livello 60/60, /owner 7.898/8.000. Prima di nuovi comandi: riorganizzare (unire gruppi piccoli, spostare in sotto-gruppi). Tenor non accetta nuovi clienti API dal 01/2026.
 
 - 23/11: feat/r3bkp (BKP-022/023/040) rivisto da Opus: OK, da unire dopo la suite insieme a r2log029, r1guidata, r3mod, r2fun, fix/r1infra (contiene premium).
+
+- 24/11 01:30: unite r3bkp, r2log029, r1guidata, r3mod, r2fun (bedc9df0). Suite completa interrotta dal riavvio al 56%: si rilancia solo alla fine di tutto. In corso: r1infra (wt-infra), r4web (wt-web), r5eco ECO-101/105 (wt-eco). Dopo: BKP-004 opzione cancella (D133).

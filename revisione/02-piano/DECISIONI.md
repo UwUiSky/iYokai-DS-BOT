@@ -1742,3 +1742,9 @@ Attua D122. Tutto ciò che D122 non fissa è deciso qui.
 - Migrazione 0940 (`suoni_condivisione`).
 
 - **Bingo e casa come immagini (ECO-112, ECO-087):** cartella 528x336 e stanza 688x528, misura fissa, Pillow in `run_image_task`; se il disegno fallisce restano il testo del bingo e le emoji della casa. I nomi dei mobili stanno nei testi (`mon_casa_m_*`), non nell'immagine; niente emoji disegnate (il font non le ha).
+
+## D133 — Scelte dell'owner del 24/11/2026
+
+- **BKP-004:** nel menu delle parti da caricare si aggiunge anche la scelta «cancella prima canali e ruoli che ci sono già» (come Xenon). Di base è spenta; la può usare solo il proprietario del server, con una conferma esplicita; i ruoli gestiti e quelli sopra il bot non si toccano. Sostituisce il «non offerto di proposito» di D108.
+- **ECO-101 e ECO-105:** si fanno (creature di fantasia al posto dei galli; mischia fino a 6 con regole su misura).
+- **AI-010:** confermata la scelta di D127 (lore 1000 caratteri gratis, 2000 da Premium in su).
