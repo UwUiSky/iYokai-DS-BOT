@@ -174,3 +174,9 @@
 - Suite completa su main 37144315: 12547 ok, 29 ko. 8 veri, corretti (schema 4 chiavi, migrazione 0971 config pulizia→pulisci, finti livelli, test /fun quote tolto). 21 passano da soli e in giro ordinato fino ad alt_detection: instabili sotto carico (agenti in parallelo), non riprodotti.
 - main = 378955ee (fix/finale-a/b/c + .venv tolto + correzioni suite). Pubblicato, SHA uguali.
 - Prossimo: revisione infrastruttura con l'owner (60/60 gruppi, /music 25/25), poi wiki, poi sito.
+
+## 24/11 — piano dopo l'approvazione dell'owner
+- Mappa v2 approvata (pagina artifact "Riordino comandi"): 55 gruppi globali per famiglie, 10 comandi diretti, peso calcolato con traduzioni +30%.
+- In corso: feat/riordino (dev-core: riordino + 10 diretti + D137), feat/trad1 (testi de/fr/es-ES), feat/trad2 (testi ru/uk/ja/ko/zh-CN). Worktree /home/user/wt-<nome>, DB iyokai_w<nome>.
+- Suite completa a blocchi su main 40d7002d: scratchpad/blocchi (riparte da sola dal blocco mancante: suite_blocchi.sh).
+- Dopo il riordino: alias a prefisso (tabella base + per server, prefissi nel primo setup, /admin-bot alias), traduzioni di comandi (nomi, descrizioni, opzioni) in 8 lingue, aggiornare i percorsi nei testi tradotti, COMMAND_LIST per lingua, poi wiki e pannello web con le lingue.
