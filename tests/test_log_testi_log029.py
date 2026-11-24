@@ -366,3 +366,40 @@ async def test_il_comando_archivio_da_il_link_al_pannello_e_mai_il_testo(amb, ch
     i2 = fake_interaction(guild=s.server, user=s.moderatore)
     await cs.case_chat.callback(cs, i2, 4, True)
     assert "https://" not in (i2.response.send_message.await_args.args[0])  # senza indirizzo: nessun link inventato
+
+
+async def test_due_svuota_insieme_non_scrivono_righe_doppie_ne_perdute(amb, chiave, monkeypatch):
+    """Giro periodico e sanzione insieme: ogni riga si scrive una volta sola, nessuna va persa."""
+    import asyncio
+
+    for i in range(5):
+        servizio.coda.accoda(G, CANALE, 200 + i, U, "creato", f"m{i}")
+    scritte = []
+    originale = servizio.log_testi_repo.inserisci_lotto
+
+    async def lento(righe):
+        scritte.extend(r.message_id for r in righe)
+        await asyncio.sleep(0.05)
+        await originale(righe)
+
+    monkeypatch.setattr(servizio.log_testi_repo, "inserisci_lotto", lento)
+    primo = asyncio.create_task(servizio.coda.svuota())
+    await asyncio.sleep(0.01)  # il primo giro e' dentro l'inserimento lento
+    for i in range(5):
+        servizio.coda.accoda(G, CANALE, 300 + i, U, "creato", f"n{i}")
+    secondo = asyncio.create_task(servizio.coda.svuota())
+    await asyncio.gather(primo, secondo)
+    assert sorted(scritte) == sorted([200 + i for i in range(5)] + [300 + i for i in range(5)])
+    assert len(servizio.coda) == 0
+
+
+async def test_se_l_inserimento_fallisce_il_lotto_resta_in_coda(amb, chiave, monkeypatch):
+    for i in range(3):
+        servizio.coda.accoda(G, CANALE, 400 + i, U, "creato", f"m{i}")
+
+    async def rotto(righe):
+        raise RuntimeError("db giu'")
+
+    monkeypatch.setattr(servizio.log_testi_repo, "inserisci_lotto", rotto)
+    assert await servizio.coda.svuota() == 0
+    assert len(servizio.coda) == 3

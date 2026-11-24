@@ -11,6 +11,7 @@ Dipende da: core/log_testi_logic.py, core/repositories/log_testi_repo.py
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections import defaultdict
 
@@ -39,6 +40,7 @@ class CodaTesti:
         self._righe: list[RigaCifrata] = []
         self._per_server: dict[int, int] = defaultdict(int)
         self.scartate = 0
+        self._blocco_svuota = asyncio.Lock()  # un solo svuotamento alla volta: giro periodico e sanzione non si pestano
 
     def __len__(self) -> int:
         return len(self._righe)
@@ -61,20 +63,21 @@ class CodaTesti:
 
     async def svuota(self) -> int:
         """Scrive tutto quel che e' in coda in poche transazioni. Se la scrittura fallisce il lotto resta in coda."""
-        scritte = 0
-        while self._righe:
-            lotto = self._righe[:MAX_PER_LOTTO]
-            try:
-                await log_testi_repo.inserisci_lotto(lotto)
-            except Exception:  # noqa: BLE001 - al giro dopo si riprova
-                logger.warning("Testo dei messaggi: lotto non scritto, si riprova.", exc_info=True)
-                break
-            del self._righe[:len(lotto)]
-            for r in lotto:
-                self._per_server[r.guild_id] = max(0, self._per_server[r.guild_id] - 1)
-            scritte += len(lotto)
-        self._per_server = defaultdict(int, {g: n for g, n in self._per_server.items() if n})
-        return scritte
+        async with self._blocco_svuota:
+            scritte = 0
+            while self._righe:
+                lotto = self._righe[:MAX_PER_LOTTO]
+                try:
+                    await log_testi_repo.inserisci_lotto(lotto)
+                except Exception:  # noqa: BLE001 - al giro dopo si riprova
+                    logger.warning("Testo dei messaggi: lotto non scritto, si riprova.", exc_info=True)
+                    break
+                del self._righe[:len(lotto)]  # sicuro: nessun altro svuota; accoda aggiunge solo in fondo
+                for r in lotto:
+                    self._per_server[r.guild_id] = max(0, self._per_server[r.guild_id] - 1)
+                scritte += len(lotto)
+            self._per_server = defaultdict(int, {g: n for g, n in self._per_server.items() if n})
+            return scritte
 
 
 coda = CodaTesti()
