@@ -129,15 +129,23 @@ server Lavalink 4.2.0 o successivo.
 ```bash
 git clone https://github.com/UwUiSky/iYokai-DS-BOT.git
 cd iYokai-DS-BOT
-
-python3 -m venv venv
-source venv/bin/activate          # Windows: venv\Scripts\activate
-
-pip install -r requirements.lock  # versioni esatte
-
 cp .env.example .env              # poi compila i valori
-python main.py
+
+./avvia.sh                        # Linux e macOS
+.\avvia.ps1                       # Windows (PowerShell)
 ```
+
+Lo script di avvio fa tutto nell'ordine giusto:
+
+1. controlla che ci sia il `.env`;
+2. crea l'ambiente Python (`.venv`) e installa `requirements.lock`, solo quando cambia;
+3. se `LAVALINK_HOST` è `127.0.0.1` o `localhost`, accende Lavalink con Docker
+   (`deploy/lavalink/`) e **aspetta che risponda** prima di andare avanti
+   (al massimo 5 minuti: al primo avvio scarica i plugin). Se Lavalink è già acceso lo usa;
+4. avvia il bot.
+
+Con `--senza-lavalink` (Windows: `-SenzaLavalink`) salta il punto 3.
+Avvio a mano, senza script: `pip install -r requirements.lock`, Lavalink acceso, poi `python main.py`.
 
 Se manca una variabile obbligatoria il bot **si ferma subito** e dice
 quale. Le tabelle del database si creano e si aggiornano da sole
