@@ -8,8 +8,8 @@
   <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="azione" value="lore">
   <label>Tema
     <select name="tema"><option value="nessuno">nessuno</option>{% for t in temi %}<option value="{{ t }}" {{ "selected" if t == cfg.lore_tema }}>{{ t }}</option>{% endfor %}</select></label>
-  <label>Le tue parole (al massimo 1000 caratteri)
-    <textarea name="testo" maxlength="1000" rows="3">{{ cfg.lore_testo or "" }}</textarea></label>
+  <label>Le tue parole (al massimo {{ lore_max }} caratteri{% if lore_max < lore_premium %}; {{ lore_premium }} con Premium{% endif %})
+    <textarea name="testo" maxlength="{{ lore_max }}" rows="3">{{ cfg.lore_testo or "" }}</textarea></label>
   <label><input type="checkbox" name="nomi_a_tema" value="1"> Il tema dà il nome a moneta, punti e titoli dei livelli</label>
   <button type="submit">Salva</button>
 </form>

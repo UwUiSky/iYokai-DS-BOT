@@ -168,6 +168,8 @@ Giro r2mod (issue #115, #116, #118). «Corretta» = fa ciò che dice il catalogo
 | VER-024 | sì come scelta (nessun ban automatico, solo avviso) | sì | segnata; il bottone «Banna» dell'alternativa NON c'è | tests/test_alt_detection.py::test_avviso_allo_staff_senza_menzioni |
 | VER-025 | no | - | non fattibile, D106: le impronte sono diverse in ogni server per privacy (D19) | DECISIONI.md D106 |
 | VER-026 | sì (strati ASN, Tor, elenchi, servizio; staff può far passare) | sì | segnata | tests/test_verify_vpn_flusso.py::test_vpn_bloccata_subito_con_avviso_e_nessun_dato_in_piu |
+| ALR-049 | sì (r2web, r4web, D127) | sì | Kick non c'è (D131: nessun campo affiliato o partner nell'API, nessun posto libero tra i 5 metadati) | core/ruoli_collegati_giro.py, core/web_panel_ruoli_collegati.py; tests/test_panel_ruoli_collegati_giro.py, tests/test_panel_ruoli_collegati_invito.py |
+| MUS-015 | sì (r7mus, r4web, D115, D127) | sì | Spotify solo con le chiavi anche nel bot (D131) | core/music_paese_logic.py, core/music_spotify_mercati.py; tests/test_music_paese.py, tests/test_music_spotify_mercati.py |
 | VER-027 | sì (r3web, D111) | sì | fatta sulla base di ALR-049 | core/ruoli_collegati_verifica.py, core/web_panel_ruoli_collegati.py; tests/test_panel_ruoli_collegati_verifica.py |
 | VER-028 | no | sì | realizzata: `verify panel titolo: testo: colore: bottone: emoji:` | core/verify_logic.pannello_personalizzato; tests/test_catalogo_r2mod_verifica.py |
 
@@ -312,7 +314,7 @@ Giro r2tkt (issue #120). «Corretta» = fa ciò che dice il catalogo e rispetta 
 | TKT-082 | in parte (anonimo solo per risposta) | sì; la chiusura non mostra mai il nome | aggiornata (anonimo predefinito del server) | `modmail opzioni`, 0770; tests/test_modmail.py::test_senza_scelta_la_risposta_segue_il_predefinito_del_server |
 | TKT-083 | no (solo con il comando) | - | realizzata | `inoltra_tutto`, `//` = nota interna; tests/test_modmail.py::test_inoltra_tutto_manda_il_testo_dello_staff_e_rispetta_le_note_interne |
 | TKT-084 | in parte (conferma sempre accesa) | sì | aggiornata (conferma disattivabile) | tests/test_modmail.py::test_senza_conferma_il_primo_dm_apre_subito_il_canale |
-| TKT-085 | no | - | non fattibile D101 | scrittura dal web a nome dello staff: pannello web |
+| TKT-085 | sì (r2web, r4web, D127) | sì | nessuna | core/web_panel_ticket.py, pannello_web/static/ticket_live.js; tests/test_panel_ticket.py, tests/test_panel_ticket_live.py |
 | TKT-086 | no | - | realizzata (spento di base, D101) | cogs/ai/ticket_ai.py `riassunto_alla_chiusura`, 0773; tests/test_ticket_catalogo_r2tkt_c.py::test_tkt_086_* |
 | TKT-087 | sì (`/ticket assistente`, bozza per lo staff) | sì: ephemeral, mai inviata | nessuna (test aggiunto) | cogs/ai/ticket_ai.py; tests/test_ticket_catalogo_r2tkt_b.py::test_tkt_087_* |
 
@@ -355,7 +357,7 @@ Giro r2bkp (issue #132). Il codice AI passa sempre dalla porta unica `core/ai_se
 | AI-001 | no (solo `chiedi` sui comandi e la risposta alla menzione) | sì | realizzata: `/assistente scrivi richiesta:` (3-500 caratteri, risposta pubblica o privata, menzioni neutre, filtri e quote della porta unica) | cogs/ai/summaries.py `scrivi`, core/ai_testi_logic.py `ISTRUZIONI["scrivi"]`; tests/test_ai_cogs.py::test_scrivi_testo_a_richiesta_senza_menzioni_e_solo_con_consenso |
 | AI-003 | sì (r1premium, D127) | sì | diritto del server e uso personale già presenti; ora anche la chiave API propria cifrata (server o persona) che dà il livello VIP; l'abbonamento personale a pagamento resta non fattibile (D108) | core/ai_chiavi_proprie.py; tests/test_piani.py::test_chiave_cifrata_mai_in_chiaro_e_si_toglie |
 | AI-004 | sì (`/assistente immagina`) | no: l'immagine del servizio non si ricontrollava dopo la generazione | corretta: controllo e ricodifica in PNG dai soli pixel, tetto 9,5 MiB (D74), errore se non è un'immagine | core/ai_immagini_logic.py `ripulisci`, cogs/ai/images.py `genera`; tests/test_ai_cogs.py::test_immagina_con_bottoni_e_ingrandisci, test_immagine_generata_non_valida_non_si_manda |
-| AI-010 | sì (`/admin-ai lore`) | sì (tetto 1000 caratteri come AI-R-051, non 2000: D108; dati personali tolti dalle istruzioni) | nessuna (codice nel test) | cogs/ai/config.py `lore`, core/ai_impostazioni.py `imposta_lore`; tests/test_ai_cogs.py::test_limiti_privacy_lore_vietate, tests/test_ai_servizio.py::test_lore_e_dati_personali |
+| AI-010 | sì (`/admin-ai lore`; r4web: 1000 di base e 2000 da Premium, D127) | sì (tetto per livello, D127; era 1000: D108; dati personali tolti dalle istruzioni) | nessuna (codice nel test) | cogs/ai/config.py `lore`, core/ai_impostazioni.py `imposta_lore`; tests/test_ai_cogs.py::test_limiti_privacy_lore_vietate, tests/test_ai_servizio.py::test_lore_e_dati_personali |
 | AI-017 | in parte (server e canale; menzione, bandiere, moderazione) | sì | completata: `/admin-ai interruttore` per scrivi, chiedi, traduci, riassumi, spiega, stile, immagina, ricerca, ticket, giochi (0812); tutto resta spento finché non si accende l'AI | core/ai_servizio.py `controlla_accesso`, core/ai_impostazioni.py `imposta_interruttore`; tests/test_ai_cogs.py::test_interruttore_spegne_una_funzione_per_volta, tests/test_ai_servizio.py::test_spenta_finche_non_ce_il_consenso |
 
 ## Voci solo nei documenti

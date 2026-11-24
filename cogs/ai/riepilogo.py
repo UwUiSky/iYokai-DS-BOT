@@ -21,7 +21,7 @@ from discord.ext import commands, tasks
 from cogs.ai._comune import NESSUNA_MENZIONE, SOTTO_AI, chiedi, registra_modulo_ai, taglia, testo_canale
 from core import riepilogo_logic as logica
 from core.ai_servizio import RichiestaAI
-from core.ai_testi_logic import testo_lore
+from core.ai_impostazioni import lore_del_server
 from core.bot_ready import attendi_bot_pronto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.repositories.activity_stats_repo import activity_stats_repo
@@ -82,7 +82,7 @@ async def componi_riepilogo(guild: discord.Guild, cfg: ConfigRiepilogo, adesso: 
     ai_cfg = await ai_repo.get_config(guild.id)
     risposta, _ = await chiedi(RichiestaAI(
         user_id=0, funzione="riepilogo_tono", tipo="testo", guild_id=guild.id, fascia="bassa", testo=testo,
-        istruzioni=logica.ISTRUZIONI_TONO + " Tema: " + (testo_lore(ai_cfg.lore_tema, ai_cfg.lore_testo) or "nessuno"),
+        istruzioni=logica.ISTRUZIONI_TONO + " Tema: " + (await lore_del_server(guild.id, ai_cfg) or "nessuno"),
         riusa=False, max_token=300, conta_utente=False,
     ))
     if risposta and risposta.testo.strip() and testo.count("<@") <= risposta.testo.count("<@"):

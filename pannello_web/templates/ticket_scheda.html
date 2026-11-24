@@ -1,13 +1,23 @@
 {% extends "base.html" %}
-{% block titolo %}Ticket #{{ t.ticket_number }} · {{ guild.name }} · iYokai Panel{% endblock %}
+{% block titolo %}Ticket #{{ t.ticket_number }} · {{ guild.name }} · iYokai Panel<script src="/static/ticket_live.js"></script>
+{% endblock %}
 {% block corpo %}
 <h1>Ticket #{{ t.ticket_number }}</h1>
 <p><a href="/server/{{ guild.id }}/ticket">&larr; Ticket aperti</a></p>
-<p class="tenue">Categoria: {{ t.category_label or "—" }} · aperto il {{ t.created_at.strftime('%Y-%m-%d %H:%M') }} UTC. La risposta esce nel canale del ticket con il tuo nome e «dal sito»; le menzioni restano spente.</p>
+<p class="tenue">Categoria: {{ t.category_label or "—" }} · aperto il {{ t.created_at.strftime('%Y-%m-%d %H:%M') }} UTC. La risposta esce nel canale del ticket con il tuo nome e la tua foto («dal sito»), oppure come «Staff»; le menzioni restano spente.</p>
+<div class="carta" id="ticket-live" data-url="/server/{{ guild.id }}/ticket/{{ t.id }}/stato">
+  <p>Stato: <strong id="live-stato">aperto</strong> · in carico a: <strong id="live-presa">{{ "—" if not t.claimed_by else "…" }}</strong></p>
+  <p>Ultimo messaggio dell'utente: <span id="live-utente">{{ t.utente_scritto_at.strftime('%Y-%m-%d %H:%M') ~ ' UTC' if t.utente_scritto_at else 'mai' }}</span> · ultima attività: <span id="live-attivita">{{ t.last_activity_at.strftime('%Y-%m-%d %H:%M') ~ ' UTC' if t.last_activity_at else '—' }}</span></p>
+  <p id="live-nuovo" class="avviso" hidden>L'utente ha scritto: controlla il canale del ticket.</p>
+  <p id="live-avviso" class="tenue"></p>
+  <p class="tenue">La pagina si aggiorna da sola. Il testo dei messaggi non si mostra qui: si legge nel canale del ticket.</p>
+</div>
 <form class="carta" method="post" action="/server/{{ guild.id }}/ticket/{{ t.id }}/rispondi">
   <input type="hidden" name="csrf" value="{{ csrf }}">
   <label>Risposta (al massimo {{ massimo }} caratteri)
     <textarea name="testo" maxlength="{{ massimo }}" rows="6" required></textarea></label>
+  <label class="riga"><input type="checkbox" name="anonimo" value="1"> Rispondi in forma anonima (nel canale esce «Staff», con l'icona del server)</label>
   <button type="submit">Invia</button>
 </form>
+<script src="/static/ticket_live.js"></script>
 {% endblock %}

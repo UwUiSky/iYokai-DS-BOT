@@ -121,6 +121,7 @@ from core.music_capitoli_logic import video_troppo_lungo
 from core.music_capitoli_player import PlayerCapitoli, brani_da_voci
 from core.music_capitoli_view import CapitoliView
 from core.music_paese_logic import paese_effettivo, togli_non_disponibili
+from core.music_spotify_mercati import arricchisci as paesi_spotify
 from core.music_settings_logic import (
     channel_not_allowed,
     clamp_volume,
@@ -812,6 +813,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         # MUS-015: via i brani che la fonte dice non ascoltabili nel paese del server (senza dato passano).
         scartate_paese = scartati_8_ore = 0
         if paese and not isinstance(risultati, wavelink.Playlist):
+            await paesi_spotify(risultati, paese)  # Spotify: i paesi dalla Web API, se ci sono le chiavi (D131)
             risultati, scartate_paese = togli_non_disponibili(list(risultati), paese)
             if not risultati:
                 await self._rilascia_se_libero(worker_guild, guild_id, canale_id)
@@ -822,9 +824,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         scartate_lunghe = 0
         tracce_playlist: list = []
         if isinstance(risultati, wavelink.Playlist):
-            candidate, scartate_paese = togli_non_disponibili(
-                truncate_playlist_tracks(risultati, MAX_PLAYLIST_TRACKS), paese
-            )
+            da_filtrare = truncate_playlist_tracks(risultati, MAX_PLAYLIST_TRACKS)
+            await paesi_spotify(da_filtrare, paese)
+            candidate, scartate_paese = togli_non_disponibili(da_filtrare, paese)
             tutte = len(candidate)
             candidate = [  # MUS-017 (D111): un video oltre 8 ore non entra in coda
                 t for t in candidate if not video_troppo_lungo(getattr(t, "length", 0), getattr(t, "is_stream", False))

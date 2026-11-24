@@ -71,6 +71,43 @@ class RuoliCollegatiRepository:
     async def leggi_token_discord(self, user_id: int) -> str | None:
         return await self._pool.fetchval("SELECT discord_token FROM ruoli_collegati_twitch WHERE user_id = $1", user_id)
 
+    async def da_aggiornare(self, limite: int, ore: int = 11) -> list[dict]:
+        """Collegamenti finiti non aggiornati da `ore` ore (prima i mai aggiornati), con i token cifrati."""
+        righe = await self._pool.fetch(
+            "SELECT user_id, twitch_id, twitch_login, tipo, twitch_token, twitch_refresh, twitch_scade_il, "
+            "discord_token, discord_refresh, discord_scade_il, errori FROM ruoli_collegati_twitch "
+            "WHERE collegato_il IS NOT NULL AND (aggiornato_il IS NULL OR aggiornato_il < now() - make_interval(hours => $2)) "
+            "ORDER BY aggiornato_il NULLS FIRST, user_id LIMIT $1",
+            limite, ore,
+        )
+        return [dict(r) for r in righe]
+
+    async def aggiorna_canale(self, user_id: int, login: str, tipo: str) -> None:
+        await self._pool.execute(
+            "UPDATE ruoli_collegati_twitch SET twitch_login = $2, tipo = $3 WHERE user_id = $1", user_id, login[:40], tipo
+        )
+
+    async def aggiorna_token_twitch(self, user_id: int, token: str, refresh: str | None, scade_il: datetime | None) -> None:
+        await self._pool.execute(
+            "UPDATE ruoli_collegati_twitch SET twitch_token = $2, twitch_refresh = $3, twitch_scade_il = $4 WHERE user_id = $1",
+            user_id, token, refresh, scade_il,
+        )
+
+    async def aggiorna_token_discord(self, user_id: int, token: str, refresh: str | None, scade_il: datetime | None) -> None:
+        await self._pool.execute(
+            "UPDATE ruoli_collegati_twitch SET discord_token = $2, discord_refresh = $3, discord_scade_il = $4 WHERE user_id = $1",
+            user_id, token, refresh, scade_il,
+        )
+
+    async def segna_giro(self, user_id: int, *, riuscito: bool) -> None:
+        """Giro riuscito: azzera gli errori e ricomincia il conto; andato male per un guasto passeggero: se ne tiene il conto."""
+        if riuscito:
+            await self._pool.execute("UPDATE ruoli_collegati_twitch SET aggiornato_il = now(), errori = 0 WHERE user_id = $1", user_id)
+        else:
+            await self._pool.execute(
+                "UPDATE ruoli_collegati_twitch SET errori = LEAST(errori + 1, 100) WHERE user_id = $1", user_id
+            )
+
     async def elimina(self, user_id: int) -> bool:
         esito = await self._pool.execute("DELETE FROM ruoli_collegati_twitch WHERE user_id = $1", user_id)
         return esito.endswith(" 1")

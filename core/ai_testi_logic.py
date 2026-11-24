@@ -4,7 +4,7 @@ core/ai_testi_logic.py
 Testi e dati fissi delle funzioni AI: temi pronti della lore, lingue della
 traduzione e bandiere, istruzioni per ogni funzione, elenco dei comandi
 per l'helpdesk, lettura della proposta di struttura del server.
-Funzioni coperte: SPEC §25.7, §25.27, §25.34, §25.35, §25.46, §25.74–§25.79 (AI-R-028, AI-R-036, AI-R-037, AI-R-050, AI-R-081..086)
+Funzioni coperte: SPEC §25.7, §25.106 (AI-010), §25.27, §25.34, §25.35, §25.46, §25.74–§25.79 (AI-R-028, AI-R-036, AI-R-037, AI-R-050, AI-R-081..086)
 """
 
 from __future__ import annotations
@@ -22,13 +22,15 @@ TEMI: dict[str, str] = {
     "spazio": "Fantascienza spaziale: astronavi, stazioni orbitali, pianeti sconosciuti e alieni.",
     "pirati": "Avventura piratesca: navi, isole del tesoro, mappe, tempeste e ciurme rivali.",
 }
-MAX_LORE = 1000
+MAX_LORE_BASE = 1000  # AI-010 (D127): le parole dell'admin, per tutti
+MAX_LORE_PREMIUM = 2000  # da Premium in su: la lore viaggia con ogni richiesta, quindi costa il doppio
+MAX_LORE = MAX_LORE_BASE
 
 
-def testo_lore(tema: str | None, testo: str | None) -> str:
-    """Il tema pronto più le parole dell'admin, entro MAX_LORE caratteri."""
-    parti = [TEMI.get(tema or "", ""), (testo or "").strip()]
-    return " ".join(p for p in parti if p)[:MAX_LORE]
+def testo_lore(tema: str | None, testo: str | None, massimo: int = MAX_LORE_BASE) -> str:
+    """Il tema pronto più le parole dell'admin (queste al massimo `massimo` caratteri; di base quelli del livello base)."""
+    parti = [TEMI.get(tema or "", ""), (testo or "").strip()[:massimo]]
+    return " ".join(p for p in parti if p)
 
 
 # ---------------------------------------------------------------- lingue
