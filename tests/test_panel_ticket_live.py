@@ -98,6 +98,8 @@ async def test_pagina_con_script_del_sito_e_csp_stretta(tk):
         assert "script-src 'self'" in csp and "connect-src 'self'" in csp and "unsafe" not in csp
         testo = await r.text()
         assert "/static/ticket_live.js" in testo and 'name="anonimo"' in testo and "<script>" not in testo
+        titolo = testo.split("<title>")[1].split("</title>")[0]
+        assert "<script" not in titolo and testo.count("ticket_live.js") == 1  # lo script sta solo in fondo, non nel titolo
         assert "script-src" not in (await client.get(BASE)).headers["Content-Security-Policy"]  # solo la scheda
         js = await client.get("/static/ticket_live.js")
         assert js.status == 200 and "If-None-Match" in await js.text()

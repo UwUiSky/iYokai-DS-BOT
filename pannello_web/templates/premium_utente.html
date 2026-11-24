@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block titolo %}Il tuo premium · iYokai Panel{% endblock %}
+{% block corpo %}
+<h1>Il tuo premium</h1>
+<p><a href="/">&larr; Home</a></p>
+{% if esito %}<p class="avviso">{{ esito }}</p>{% endif %}
+<div class="carta">
+  <p>Il tuo livello: <strong>{{ livello }}</strong>.</p>
+</div>
+<h2>Patreon</h2>
+<p class="tenue">Se sostieni iYokai su Patreon, collega il tuo account: il livello si applica da solo e si toglie se disdici. Il bot non vede la tua password e puoi scollegare quando vuoi.</p>
+{% if collegato %}
+<form class="carta" method="post" action="/premium/patreon/scollega">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <p>Il tuo account Patreon è collegato.</p>
+  <button type="submit">Scollega</button>
+</form>
+{% else %}
+<form class="carta" method="post" action="/premium/patreon/collega">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <button type="submit">Collega Patreon</button>
+</form>
+{% endif %}
+{% endblock %}
