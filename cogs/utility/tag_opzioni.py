@@ -1,8 +1,8 @@
 """
 cogs/utility/tag_opzioni.py
 ===========================
-Opzioni di comportamento dei tag e risposte con peso: `/admin-tag tag opzioni` (permesso richiesto, bersaglio, cancella
-l'innesco, dove rispondere, solo NSFW) e `/admin-tag tag risposte` (fino a 5 risposte con peso, in una finestra).
+Opzioni di comportamento dei tag e risposte con peso: `/admin-messaggi-tag opzioni` (permesso richiesto, bersaglio, cancella
+l'innesco, dove rispondere, solo NSFW) e `/admin-messaggi-tag risposte` (fino a 5 risposte con peso, in una finestra).
 Funzioni coperte: catalogo #128 UTL-011, 015, 017, 019, 020, 021, 037 (D69, B19-B20); UTL-012, 018 (r2utl: pausa per utente, canale o server; embed salvato)
 """
 
@@ -91,8 +91,7 @@ class TagOpzioniCog(CogConGruppi, commands.Cog):
             return False
         return True
 
-    @comando_di_gruppo("admin-tag", nome="opzioni", descrizione="Come si comporta un tag: permesso, bersaglio, dove risponde.",
-                       sottogruppo=SOTTOGRUPPI["admin-tag tag"])
+    @comando_di_gruppo("admin-messaggi-tag", nome="opzioni", descrizione="Come si comporta un tag: permesso, bersaglio, dove risponde.")
     @app_commands.describe(
         nome="Il tag da cambiare", permesso="Il permesso Discord che serve per usarlo",
         bersaglio="Il tag chiede un membro (segnaposto {bersaglio})", cancella_innesco="Col prefisso, cancella il messaggio che lo ha chiamato",
@@ -184,8 +183,7 @@ class TagOpzioniCog(CogConGruppi, commands.Cog):
         await custom_command_repo.update_tag(interaction.guild.id, normalizzato, **campi)
         await interaction.response.send_message(await testo_per(interaction, "tag_opzioni_salvate", nome=normalizzato), ephemeral=True)
 
-    @comando_di_gruppo("admin-tag", nome="azioni", descrizione="Azioni sicure di un tag: ruolo, messaggio, reazione (fino a 3).",
-                       sottogruppo=SOTTOGRUPPI["admin-tag tag"])
+    @comando_di_gruppo("admin-messaggi-tag", nome="azioni", descrizione="Azioni sicure di un tag: ruolo, messaggio, reazione (fino a 3).")
     @app_commands.describe(
         nome="Il tag", operazione="Che cosa fare", tipo="Il tipo di azione (per «aggiungi»)",
         ruolo="Il ruolo (dai o togli: lo riceve chi usa il tag)", canale="Il canale (per «messaggio»)",
@@ -257,8 +255,7 @@ class TagOpzioniCog(CogConGruppi, commands.Cog):
             ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
         )
 
-    @comando_di_gruppo("admin-tag", nome="risposte", descrizione="Dai a un tag fino a 5 risposte, ognuna con il suo peso.",
-                       sottogruppo=SOTTOGRUPPI["admin-tag tag"])
+    @comando_di_gruppo("admin-messaggi-tag", nome="risposte", descrizione="Dai a un tag fino a 5 risposte, ognuna con il suo peso.")
     @app_commands.describe(nome="Il tag da cambiare")
     @app_commands.autocomplete(nome=_completa)
     async def risposte(self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, MAX_NOME]) -> None:

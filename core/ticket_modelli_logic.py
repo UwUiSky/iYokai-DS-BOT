@@ -2,7 +2,7 @@
 core/ticket_modelli_logic.py
 ============================
 Raccolta di modelli pronti di pannelli ticket (TKT-080): ogni modello ha le domande del modulo, i motivi
-del menu e qualche risposta pronta (articolo). Si importano con `/admin-ticket pannelli modello`; i testi sono
+del menu e qualche risposta pronta (articolo). Si importano con `/admin-ticket-pannelli modello`; i testi sono
 nella lingua del server (italiano o inglese). La raccolta pubblica scambiata fra server resta del pannello web (NF-20).
 Funzioni coperte: SPEC §13 (TKT-080)
 """

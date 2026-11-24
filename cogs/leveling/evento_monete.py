@@ -1,8 +1,8 @@
 """
 cogs/leveling/evento_monete.py
 ==============================
-Evento di monete: lo staff lo avvia in un canale (/admin-giochi evento avvia) e lo chiude
-(/admin-giochi evento chiudi); chi scrive nel canale riceve monete, con una pausa per persona e un
+Evento di monete: lo staff lo avvia in un canale (/admin-economia-negozio evento avvia) e lo chiude
+(/admin-economia-negozio evento chiudi); chi scrive nel canale riceve monete, con una pausa per persona e un
 tetto di monete distribuite che chiude l'evento da solo.
 Funzioni coperte: ECO-057
 Dipende da: core/repositories/economia_repo.py
@@ -18,7 +18,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from cogs.leveling.leveling import _comando_rifiutato
-from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
+from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog, SOTTOGRUPPI
 from core.i18n import testo_per
 from core.repositories.economia_repo import economia_repo
 from core.repositories.leveling_settings_repo import leveling_settings_repo
@@ -66,7 +66,7 @@ class EventoMoneteCog(CogConGruppi, commands.Cog):
             self._canali[guild_id] = None
             self._ultimo.clear()
 
-    @comando_di_gruppo("admin-giochi", nome="avvia", descrizione="Avvia l'evento: chi scrive nel canale riceve monete.", sottogruppo=_SG)
+    @comando_di_gruppo("admin-economia-negozio", nome="avvia", descrizione="Avvia l'evento: chi scrive nel canale riceve monete.", sottogruppo=SOTTOGRUPPI["admin-economia-negozio evento"])
     @app_commands.describe(
         canale="Dove si scrive", monete="Monete per ogni messaggio (1-1000)", tetto="Monete totali da distribuire (massimo 1000000)"
     )
@@ -94,7 +94,7 @@ class EventoMoneteCog(CogConGruppi, commands.Cog):
             allowed_mentions=discord.AllowedMentions.none(),
         )
 
-    @comando_di_gruppo("admin-giochi", nome="chiudi", descrizione="Chiudi l'evento di monete in corso.", sottogruppo=_SG)
+    @comando_di_gruppo("admin-economia-negozio", nome="chiudi", descrizione="Chiudi l'evento di monete in corso.", sottogruppo=SOTTOGRUPPI["admin-economia-negozio evento"])
     async def chiudi(self, interaction: discord.Interaction) -> None:
         if await _comando_rifiutato(interaction):
             return

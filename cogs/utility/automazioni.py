@@ -1,7 +1,7 @@
 """
 cogs/utility/automazioni.py
 ===========================
-Script dei tag: `/tag prova` (finestra, nulla si salva) e `/admin-automazioni script errori`. Gli inneschi e i comandi
+Script dei tag: `/utility-server tag prova` (finestra, nulla si salva) e `/admin-automazioni script errori`. Gli inneschi e i comandi
 del server stanno nei blocchi B27 e B28 (stesso gruppo `/admin-automazioni`).
 Funzioni coperte: catalogo #128 UTL-043, UTL-044 (D69, B26)
 Dipende da: core/tag_script_logic.py
@@ -75,8 +75,8 @@ class AutomazioniCog(CogConGruppi, commands.Cog):
         ruolo_id = await db.get_guild_setting(interaction.guild.id, SETTING_RUOLO_CREATORI)
         return bool(ruolo_id) and any(r.id == ruolo_id for r in interaction.user.roles)
 
-    # ------------------------------------------------------------ /tag prova
-    @comando_di_gruppo("tag", nome="prova", descrizione="Prova uno script di tag: non salva niente e non scrive i dati veri.")
+    # ------------------------------------------------------------ /utility-server tag prova
+    @comando_di_gruppo("utility-server", nome="prova", descrizione="Prova uno script di tag: non salva niente e non scrive i dati veri.", sottogruppo=SOTTOGRUPPI["utility-server tag"])
     async def prova(self, interaction: discord.Interaction) -> None:
         if not await self._pronto(interaction):
             return

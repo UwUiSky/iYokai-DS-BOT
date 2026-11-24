@@ -117,8 +117,7 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
             if attuale in r.nome.lower()
         ][:25]
 
-    @comando_di_gruppo("music", nome="salva", descrizione="Salva la coda del tuo canale come playlist.",
-                       sottogruppo=SG_PLAYLIST)
+    @comando_di_gruppo("music-playlist", nome="salva", descrizione="Salva la coda del tuo canale come playlist.")
     @app_commands.describe(
         nome="Nome della playlist (se esiste già, viene sostituita)",
         link="Un link https (di una playlist o di un brano) da salvare al posto della coda",
@@ -206,8 +205,7 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
             ephemeral=True,
         )
 
-    @comando_di_gruppo("music", nome="aggiorna", descrizione="Rilegge il link da cui hai salvato una playlist.",
-                       sottogruppo=SG_PLAYLIST)
+    @comando_di_gruppo("music-playlist", nome="aggiorna", descrizione="Rilegge il link da cui hai salvato una playlist.")
     @app_commands.describe(nome="Nome della playlist salvata da un link")
     @app_commands.autocomplete(nome=_nomi)
     async def aggiorna(
@@ -230,8 +228,7 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "playlist_aggiornata", nome=nome, v1=len(brani)), ephemeral=True
         )
 
-    @comando_di_gruppo("music", nome="condividi", descrizione="Crea un codice per condividere una tua playlist.",
-                       sottogruppo=SG_PLAYLIST)
+    @comando_di_gruppo("music-playlist", nome="condividi", descrizione="Crea un codice per condividere una tua playlist.")
     @app_commands.describe(nome="Nome della playlist", nuovo="Crea un codice nuovo: il vecchio smette di valere",
                            revoca="Togli il codice: nessuno potrà più usarlo")
     @app_commands.autocomplete(nome=_nomi)
@@ -255,8 +252,7 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "playlist_codice_di", nome=nome, codice=codice), ephemeral=True
         )
 
-    @comando_di_gruppo("music", nome="ricevi", descrizione="Salva una copia di una playlist condivisa con un codice.",
-                       sottogruppo=SG_PLAYLIST)
+    @comando_di_gruppo("music-playlist", nome="ricevi", descrizione="Salva una copia di una playlist condivisa con un codice.")
     @app_commands.describe(codice="Il codice di 8 caratteri che ti ha dato chi condivide la playlist")
     async def ricevi(
         self, interaction: discord.Interaction, codice: app_commands.Range[str, 1, 20]
@@ -282,8 +278,7 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "playlist_copia_ricevuta", nome=nome_copia, v1=len(brani)), ephemeral=True
         )
 
-    @comando_di_gruppo("music", nome="carica", descrizione="Mette in coda una tua playlist salvata.",
-                       sottogruppo=SG_PLAYLIST)
+    @comando_di_gruppo("music-playlist", nome="carica", descrizione="Mette in coda una tua playlist salvata.")
     @app_commands.describe(nome="Nome della playlist",
                            di="Il proprietario, per una playlist condivisa con te come collaboratore")
     @app_commands.autocomplete(nome=_nomi)
@@ -322,8 +317,7 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
         )
 
 
-    @comando_di_gruppo("music", nome="elenco", descrizione="Le tue playlist salvate, o i brani di una.",
-                       sottogruppo=SG_PLAYLIST)
+    @comando_di_gruppo("music-playlist", nome="elenco", descrizione="Le tue playlist salvate, o i brani di una.")
     @app_commands.describe(nome="Una playlist di cui vedere i brani (vuoto = l'elenco delle playlist)",
                            pagina="Pagina dei brani (da 1)",
                            di="Il proprietario, per una playlist condivisa con te come collaboratore")
@@ -371,7 +365,7 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
         )
         await interaction.response.send_message(embed=embed, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
 
-    @comando_di_gruppo("music", nome="crea", descrizione="Crea una playlist vuota.", sottogruppo=SG_PLAYLIST)
+    @comando_di_gruppo("music-playlist", nome="crea", descrizione="Crea una playlist vuota.")
     @app_commands.describe(nome="Nome della nuova playlist")
     async def crea(self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, NOME_MAX]) -> None:
         pulito = nome_valido(nome)  # MUS-073
@@ -414,8 +408,7 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
         tracce = list(risultati.tracks) if isinstance(risultati, wavelink.Playlist) else [risultati[0]]
         return [b for b in (brano_da_traccia(t) for t in tracce[:MAX_BRANI_PER_PLAYLIST]) if b is not None]
 
-    @comando_di_gruppo("music", nome="aggiungi", descrizione="Aggiunge un brano (o un link) a una tua playlist.",
-                       sottogruppo=SG_PLAYLIST)
+    @comando_di_gruppo("music-playlist", nome="aggiungi", descrizione="Aggiunge un brano (o un link) a una tua playlist.")
     @app_commands.describe(nome="Nome della playlist", brano="Titolo o link del brano",
                            di="Il proprietario, se la playlist è sua e ti ha messo tra i collaboratori")
     @app_commands.autocomplete(nome=_nomi)
@@ -452,9 +445,8 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
             ephemeral=True,
         )
 
-    @comando_di_gruppo("music", nome="togli", descrizione="Toglie un brano da una tua playlist.",
-                       sottogruppo=SG_PLAYLIST)
-    @app_commands.describe(nome="Nome della playlist", posizione="Numero del brano (lo vedi con /music playlist elenco)",
+    @comando_di_gruppo("music-playlist", nome="togli", descrizione="Toglie un brano da una tua playlist.")
+    @app_commands.describe(nome="Nome della playlist", posizione="Numero del brano (lo vedi con /music-playlist elenco)",
                            di="Il proprietario, se la playlist è sua e ti ha messo tra i collaboratori")
     @app_commands.autocomplete(nome=_nomi)
     async def togli(
@@ -478,8 +470,7 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
             testo = await testo_per(interaction, "playlist_brano_tolto", titolo=esito.titolo[:100], nome=nome)
         await interaction.response.send_message(testo, ephemeral=True)
 
-    @comando_di_gruppo("music", nome="rinomina", descrizione="Cambia il nome di una tua playlist.",
-                       sottogruppo=SG_PLAYLIST)
+    @comando_di_gruppo("music-playlist", nome="rinomina", descrizione="Cambia il nome di una tua playlist.")
     @app_commands.describe(nome="Nome attuale", nuovo="Nuovo nome")
     @app_commands.autocomplete(nome=_nomi)
     async def rinomina(
@@ -496,8 +487,7 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
         chiave = {"ok": "playlist_rinominata", "esiste": "playlist_esiste_gia"}.get(esito, "playlist_non_hai_una_playlist_con")
         await interaction.response.send_message(await testo_per(interaction, chiave, nome=pulito), ephemeral=True)
 
-    @comando_di_gruppo("music", nome="elimina", descrizione="Cancella una tua playlist salvata.",
-                       sottogruppo=SG_PLAYLIST)
+    @comando_di_gruppo("music-playlist", nome="elimina", descrizione="Cancella una tua playlist salvata.")
     @app_commands.describe(nome="Nome della playlist")
     @app_commands.autocomplete(nome=_nomi)
     async def elimina(
@@ -510,8 +500,7 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
         )
 
 
-    @comando_di_gruppo("music", nome="esporta", descrizione="Scarica una tua playlist come file.",
-                       sottogruppo=SG_PLAYLIST)
+    @comando_di_gruppo("music-playlist", nome="esporta", descrizione="Scarica una tua playlist come file.")
     @app_commands.describe(nome="Nome della playlist")
     @app_commands.autocomplete(nome=_nomi)
     async def esporta(
@@ -530,8 +519,7 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
         )
 
 
-    @comando_di_gruppo("music", nome="importa", descrizione="Salva una playlist da un file esportato.",
-                       sottogruppo=SG_PLAYLIST)
+    @comando_di_gruppo("music-playlist", nome="importa", descrizione="Salva una playlist da un file esportato.")
     @app_commands.describe(file="Il file .json esportato", nome="Nome da dare alla playlist")
     async def importa(
         self,
@@ -568,8 +556,7 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
         )
 
 
-    @comando_di_gruppo("music", nome="collabora", descrizione="Chi può modificare una tua playlist.",
-                       sottogruppo=SG_PLAYLIST)
+    @comando_di_gruppo("music-playlist", nome="collabora", descrizione="Chi può modificare una tua playlist.")
     @app_commands.describe(nome="Nome della tua playlist", utente="La persona da aggiungere o togliere",
                            togli="Togli la persona invece di aggiungerla")
     @app_commands.autocomplete(nome=_nomi)
@@ -620,8 +607,7 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
         permessi = getattr(interaction.user, "guild_permissions", None)
         return bool(permessi and permessi.manage_guild)
 
-    @comando_di_gruppo("music", nome="server-salva", descrizione="Salva la coda come playlist del server.",
-                       sottogruppo=SG_PLAYLIST)
+    @comando_di_gruppo("music-playlist", nome="server-salva", descrizione="Salva la coda come playlist del server.")
     @app_commands.describe(nome="Nome della playlist del server (se esiste già, viene sostituita)")
     async def server_salva(
         self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, NOME_MAX]
@@ -657,8 +643,7 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, chiave, nome=pulito, v1=len(brani)), ephemeral=True
         )
 
-    @comando_di_gruppo("music", nome="server-carica", descrizione="Mette in coda una playlist del server.",
-                       sottogruppo=SG_PLAYLIST)
+    @comando_di_gruppo("music-playlist", nome="server-carica", descrizione="Mette in coda una playlist del server.")
     @app_commands.describe(nome="Nome della playlist del server")
     @app_commands.autocomplete(nome=_nomi_server)
     async def server_carica(
@@ -677,8 +662,7 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
             return
         await self._metti_in_coda(musica, interaction, nome, brani)
 
-    @comando_di_gruppo("music", nome="server-elenco", descrizione="Le playlist del server.",
-                       sottogruppo=SG_PLAYLIST)
+    @comando_di_gruppo("music-playlist", nome="server-elenco", descrizione="Le playlist del server.")
     async def server_elenco(self, interaction: discord.Interaction) -> None:
         if interaction.guild_id is None:
             await interaction.response.send_message(await testo_per(interaction, "guild_only_command"), ephemeral=True)
@@ -694,8 +678,7 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @comando_di_gruppo("music", nome="server-elimina", descrizione="Cancella una playlist del server.",
-                       sottogruppo=SG_PLAYLIST)
+    @comando_di_gruppo("music-playlist", nome="server-elimina", descrizione="Cancella una playlist del server.")
     @app_commands.describe(nome="Nome della playlist del server")
     @app_commands.autocomplete(nome=_nomi_server)
     async def server_elimina(

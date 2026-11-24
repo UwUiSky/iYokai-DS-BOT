@@ -1,7 +1,7 @@
 """
 cogs/leveling/guadagno.py
 =========================
-/admin-livelli guadagno (formula, messaggi, comandi, prefissi, canali): come si guadagna XP.
+/admin-livelli-guadagno (formula, messaggi, comandi, prefissi, canali): come si guadagna XP.
 Formula dei livelli, XP a parola e bonus impegno, XP dei comandi slash, prefissi di altri bot
 da ignorare, elenco dei canali come lista bianca.
 Funzioni coperte: SPEC §15 (LIV-004, 006, 007, 017, 018, 021; catalogo #124)
@@ -65,10 +65,9 @@ class GuadagnoCog(CogConGruppi, commands.Cog):
 
     # ---------------------------------------------------------------- LIV-004
     @comando_di_gruppo(
-        "admin-livelli",
+        "admin-livelli-guadagno",
         nome="formula",
         descrizione="Sceglie la curva dei livelli e ricalcola i livelli di tutti.",
-        sottogruppo=_SG,
     )
     @app_commands.describe(formula="Classica, lineare, esponenziale o costante")
     @app_commands.choices(formula=_SCELTE_FORMULA)
@@ -91,10 +90,9 @@ class GuadagnoCog(CogConGruppi, commands.Cog):
 
     # ---------------------------------------------------------------- LIV-006 e 007
     @comando_di_gruppo(
-        "admin-livelli",
+        "admin-livelli-guadagno",
         nome="messaggi",
         descrizione="XP per messaggio: fisso o a parola, più il bonus per messaggi lunghi o con immagini.",
-        sottogruppo=_SG,
     )
     @app_commands.describe(
         modo="Fisso per messaggio oppure a parola",
@@ -139,10 +137,9 @@ class GuadagnoCog(CogConGruppi, commands.Cog):
 
     # ---------------------------------------------------------------- LIV-017
     @comando_di_gruppo(
-        "admin-livelli",
+        "admin-livelli-guadagno",
         nome="comandi",
         descrizione="Accende o spegne l'XP per l'uso dei comandi slash (di base spento).",
-        sottogruppo=_SG,
     )
     @app_commands.describe(attivo="Sì = un comando riuscito dà XP (con la stessa pausa dei messaggi)")
     async def guadagno_comandi(self, interaction: discord.Interaction, attivo: bool) -> None:
@@ -155,10 +152,9 @@ class GuadagnoCog(CogConGruppi, commands.Cog):
 
     # ---------------------------------------------------------------- LIV-018
     @comando_di_gruppo(
-        "admin-livelli",
+        "admin-livelli-guadagno",
         nome="prefissi",
         descrizione="Prefissi di altri bot: i messaggi che iniziano così non danno XP.",
-        sottogruppo=_SG,
     )
     @app_commands.describe(
         azione="Cosa fare con l'elenco (al massimo 10 prefissi)",
@@ -197,10 +193,9 @@ class GuadagnoCog(CogConGruppi, commands.Cog):
 
     # ---------------------------------------------------------------- LIV-021
     @comando_di_gruppo(
-        "admin-livelli",
+        "admin-livelli-guadagno",
         nome="canali",
         descrizione="Dà XP in tutti i canali tranne gli esclusi, oppure solo in quelli dell'elenco.",
-        sottogruppo=_SG,
     )
     @app_commands.describe(modo="L'elenco è di canali esclusi (di base) oppure di soli canali che danno XP")
     @app_commands.choices(modo=_SCELTE_MODO_CANALI)
@@ -218,10 +213,9 @@ class GuadagnoCog(CogConGruppi, commands.Cog):
 
     # ---------------------------------------------------------------- LIV-014, 015, 016
     @comando_di_gruppo(
-        "admin-livelli",
+        "admin-livelli-guadagno",
         nome="contesti",
         descrizione="Se thread, post dei forum e chat dei canali vocali danno XP.",
-        sottogruppo=_SG,
     )
     @app_commands.describe(
         thread="Sì = i messaggi nei thread danno XP (valgono le regole del canale padre)",
@@ -255,10 +249,9 @@ class GuadagnoCog(CogConGruppi, commands.Cog):
 
     # ---------------------------------------------------------------- LIV-011, 012
     @comando_di_gruppo(
-        "admin-livelli",
+        "admin-livelli-guadagno",
         nome="vocale",
         descrizione="XP in vocale: persone minime nel canale e controllo anti-farm.",
-        sottogruppo=_SG,
     )
     @app_commands.describe(
         persone="Persone nel canale (te compreso) perché si prenda XP: da 1 a 10",
@@ -289,10 +282,9 @@ class GuadagnoCog(CogConGruppi, commands.Cog):
 
     # ---------------------------------------------------------------- LIV-008, 009
     @comando_di_gruppo(
-        "admin-livelli",
+        "admin-livelli-guadagno",
         nome="reazioni",
         descrizione="XP per le reazioni messe e ricevute (di base spento).",
-        sottogruppo=_SG,
     )
     @app_commands.describe(
         messa="XP a chi mette una reazione (0-20, 0 = spento)",

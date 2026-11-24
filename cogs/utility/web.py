@@ -1,7 +1,7 @@
 """
 cogs/utility/web.py
 ===================
-Gruppo `/web`: Wikipedia, Wikizionario, numeri di emergenza (e, nei blocchi
+Gruppo `/utility-web`: Wikipedia, Wikizionario, numeri di emergenza (e, nei blocchi
 seguenti, meteo, film, giochi, prezzi, accorciatore). Ogni richiesta esterna
 passa da core/safe_http.py con defer() subito e cache.
 Funzioni coperte: catalogo #128 UTL-215, 214, 220 (B1), 213, 217, 218, 219, 208 (B2, D69)
@@ -42,7 +42,7 @@ class WebCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @comando_di_gruppo("web", nome="wiki", descrizione="Il riassunto di una voce di Wikipedia.")
+    @comando_di_gruppo("utility-web", nome="wiki", descrizione="Il riassunto di una voce di Wikipedia.")
     @app_commands.describe(cerca="Che cosa cercare (massimo 100 caratteri)")
     async def wiki(self, interaction: discord.Interaction, cerca: app_commands.Range[str, 1, logica.MAX_RICERCA]) -> None:
         lingua = await lingua_interazione(interaction)
@@ -55,7 +55,7 @@ class WebCog(CogConGruppi, commands.Cog):
             embed=embed_wiki(r, t("wiki_fonte", lingua), discord.Color.light_grey()), ephemeral=True
         )
 
-    @comando_di_gruppo("web", nome="dizionario", descrizione="Il significato di una parola, da Wikizionario.")
+    @comando_di_gruppo("utility-web", nome="dizionario", descrizione="Il significato di una parola, da Wikizionario.")
     @app_commands.describe(parola="La parola (massimo 50 caratteri)")
     async def dizionario(
         self, interaction: discord.Interaction, parola: app_commands.Range[str, 1, logica.MAX_PAROLA]
@@ -70,7 +70,7 @@ class WebCog(CogConGruppi, commands.Cog):
             embed=embed_wiki(r, t("dizionario_fonte", lingua), discord.Color.dark_grey()), ephemeral=True
         )
 
-    @comando_di_gruppo("web", nome="emergenza", descrizione="I numeri di emergenza di un paese.")
+    @comando_di_gruppo("utility-web", nome="emergenza", descrizione="I numeri di emergenza di un paese.")
     @app_commands.describe(paese="Il paese (scrivi per cercare)")
     @app_commands.autocomplete(paese=_completa_paese)
     async def emergenza(self, interaction: discord.Interaction, paese: app_commands.Range[str, 1, 60]) -> None:
@@ -88,7 +88,7 @@ class WebCog(CogConGruppi, commands.Cog):
         embed.set_footer(text=t("emergenza_fonte", lingua, data=dati.get("data", ""))[:2048])
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @comando_di_gruppo("web", nome="meteo", descrizione="Il meteo di una città: adesso e i prossimi giorni.")
+    @comando_di_gruppo("utility-web", nome="meteo", descrizione="Il meteo di una città: adesso e i prossimi giorni.")
     @app_commands.describe(citta="La città (massimo 100 caratteri)")
     async def meteo(self, interaction: discord.Interaction, citta: app_commands.Range[str, 2, servizi.MAX_CITTA]) -> None:
         lingua = await lingua_interazione(interaction)
@@ -108,7 +108,7 @@ class WebCog(CogConGruppi, commands.Cog):
         embed.set_footer(text=t("meteo_fonte", lingua)[:2048])
         await interaction.followup.send(embed=embed, ephemeral=True)
 
-    @comando_di_gruppo("web", nome="film", descrizione="Informazioni su un film o una serie TV.")
+    @comando_di_gruppo("utility-web", nome="film", descrizione="Informazioni su un film o una serie TV.")
     @app_commands.describe(titolo="Il titolo (massimo 100 caratteri)", tipo="Film o serie (di base: serie)")
     @app_commands.choices(tipo=[app_commands.Choice(name="film", value="film"), app_commands.Choice(name="serie", value="serie")])
     async def film(self, interaction: discord.Interaction, titolo: app_commands.Range[str, 1, servizi.MAX_TITOLO],
@@ -127,7 +127,7 @@ class WebCog(CogConGruppi, commands.Cog):
             embed.add_field(name=t("film_dettagli", lingua)[:256], value=r["dettagli"][:1024])
         await interaction.followup.send(embed=embed, ephemeral=True)
 
-    @comando_di_gruppo("web", nome="gioco", descrizione="Un gioco di Steam: prezzo, data e generi.")
+    @comando_di_gruppo("utility-web", nome="gioco", descrizione="Un gioco di Steam: prezzo, data e generi.")
     @app_commands.describe(titolo="Il titolo (massimo 100 caratteri)")
     async def gioco(self, interaction: discord.Interaction, titolo: app_commands.Range[str, 1, servizi.MAX_TITOLO]) -> None:
         lingua = await lingua_interazione(interaction)
@@ -144,7 +144,7 @@ class WebCog(CogConGruppi, commands.Cog):
             embed.add_field(name=t("gioco_" + chiave, lingua)[:256], value=r[chiave][:1024])
         await interaction.followup.send(embed=embed, ephemeral=True)
 
-    @comando_di_gruppo("web", nome="prezzo", descrizione="Il prezzo di una criptovaluta.")
+    @comando_di_gruppo("utility-web", nome="prezzo", descrizione="Il prezzo di una criptovaluta.")
     @app_commands.describe(simbolo="Il simbolo, per esempio btc (scrivi per cercare)", valuta="Euro o dollari (di base: euro)")
     @app_commands.autocomplete(simbolo=_completa_moneta)
     @app_commands.choices(valuta=[app_commands.Choice(name="EUR", value="eur"), app_commands.Choice(name="USD", value="usd")])
@@ -167,7 +167,7 @@ class WebCog(CogConGruppi, commands.Cog):
             testo += "\n" + t("prezzo_variazione", lingua, v=f"{variazione:+.2f}")
         await interaction.followup.send(f"{testo}\n-# {t('prezzo_fonte', lingua)}"[:2000], ephemeral=True)
 
-    @comando_di_gruppo("web", nome="accorcia", descrizione="Accorcia un link (se il server ha acceso il comando).")
+    @comando_di_gruppo("utility-web", nome="accorcia", descrizione="Accorcia un link (se il server ha acceso il comando).")
     @app_commands.describe(link="Il link da accorciare (massimo 2000 caratteri)")
     async def accorcia(self, interaction: discord.Interaction, link: app_commands.Range[str, 8, servizi.MAX_LINK]) -> None:
         lingua = await lingua_interazione(interaction)

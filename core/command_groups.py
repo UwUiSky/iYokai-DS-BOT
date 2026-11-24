@@ -19,7 +19,7 @@ Come si sposta un comando (ricetta)
    autocomplete, checks.cooldown restano sotto, come oggi.
 3. Togli i check di permesso (`has_permissions`, `richiedi`): li dà il
    gruppo. Tolto anche il prefisso `[Admin] ` dalla descrizione.
-4. Un `Group` definito dentro il cog (`/clan`, `/ticket`, `/voice`,
+4. Un `Group` definito dentro il cog (`/monete-clan`, `/ticket`, `/vocali`,
    `/music`) sparisce: ogni suo comando diventa `@comando_di_gruppo("clan", ...)`
    sul gruppo condiviso; un sotto-livello è `sottogruppo=("nome", "descrizione")`.
    Un Group del cog con lo stesso nome del gruppo condiviso dà ValueError.
@@ -32,7 +32,7 @@ Nessun gruppo entra da solo nell'albero del bot: i gruppi vuoti non si
 sincronizzano. `registra_comandi_del_cog` aggiunge il gruppo all'albero
 quando il primo comando arriva e lo toglie quando l'ultimo se ne va;
 `registra_gruppi_usati` è una funzione di appoggio (oggi usata solo dai test,
-main.py non la chiama). `/owner` non entra mai da qui: va aggiunto a parte, solo nel server dell'owner (`registra_owner`, mappa §5).
+main.py non la chiama). `/owner` e `/owner-radio` non entrano mai da qui: va aggiunto a parte, solo nel server dell'owner (`registra_owner`, mappa §5).
 """
 
 from __future__ import annotations
@@ -44,32 +44,30 @@ import discord
 from discord import app_commands
 
 from core.command_access import GruppoYokai, Livello
+from core.comandi_diretti import NOME_DIRETTO_DI, crea_comando_diretto
 
-# I due comandi di primo livello fuori dai gruppi (D24, 06/10/2026). Il trattino
-# davanti li fa salire in lista; la regex dei nomi di Discord lo ammette.
-NOME_CERCA_COMANDO = "cerca-comando"
-NOME_CHIEDI = "chiedi"
+# I gruppi del solo server dell'owner: mai nell'albero globale (D137).
+GRUPPI_SOLO_OWNER: tuple[str, ...] = ("owner", "owner-radio")
+
+# Il comando di primo livello fuori dai gruppi (D24 e D137).
+NOME_HELP = "help"
 
 # nome: (descrizione, permesso predefinito di Discord o None, livello)
 _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "owner": ("Comandi riservati al proprietario del bot", "administrator", Livello.OWNER),
-    "admin-bot": ("Impianto del bot: setup, configurazione, lingua, politica dei comandi, premium", "manage_guild", Livello.ADMIN),
+    "admin-bot": ("Impianto del bot: setup, lingua, politica dei comandi, premium", "manage_guild", Livello.ADMIN),
     "admin-musica": ("Musica del server (admin): canale delle richieste, impostazioni, riepilogo", "manage_guild", Livello.ADMIN),
     "admin-ai": ("AI del server (admin): consenso, limiti, lore, conoscenza, funzioni, staff", "manage_guild", Livello.ADMIN),
     "admin-automod": ("AutoMod (admin): parole vietate, esenzioni, violazioni, odio", "manage_guild", Livello.ADMIN),
-    "admin-filtri": ("Filtri automatici sui messaggi (admin) e loro azioni", "manage_guild", Livello.ADMIN),
-    "admin-sicurezza": ("Sicurezza (admin): panico, verifica, ban globale, spam-trap, escalation", "administrator", Livello.SECURITY),
-    "admin-antinuke": ("Anti-nuke (admin): soglie, fiducia, guardie e casi", "administrator", Livello.SECURITY),
-    "admin-antiraid": ("Anti-raid (admin): soglie, filtri all'ingresso, segnali e allarmi", "administrator", Livello.SECURITY),
-    "admin-moduli": ("Moduli del server (admin): alert, starboard, contatori, compleanni", "manage_guild", Livello.ADMIN),
+    "admin-sicurezza": ("Sicurezza (admin): panico, ban globale, spam-trap, escalation, rete", "administrator", Livello.SECURITY),
+    "admin-moduli": ("Moduli del server (admin): statistiche, starboard, contatori, compleanni", "manage_guild", Livello.ADMIN),
     "admin-economia": ("Economia (admin): negozio, cassa, premi in monete, annunci del mese", "manage_guild", Livello.ADMIN),
-    "admin-livelli": ("Livelli e XP (admin): guadagno, annunci, premi, esclusioni, progressi", "manage_guild", Livello.ADMIN),
-    "admin-ruoli": ("Ruoli del server (admin): dai e togli, premio, automatici, menu, in massa", "manage_guild", Livello.ADMIN),
-    "admin-menu-ruoli": ("Menu dei ruoli (admin): modelli, in blocco, spostamento, riparazione", "manage_guild", Livello.ADMIN),
+    "admin-livelli": ("Livelli e XP (admin): annunci, premi, esclusioni, azzeramenti, progressi", "manage_guild", Livello.ADMIN),
+    "admin-ruoli": ("Ruoli del server (admin): dai e togli, crea, automatici, in massa, diagnosi", "manage_guild", Livello.ADMIN),
     "admin-log": ("Registro degli eventi (admin): canali, stato, ricerca, esportazione", "manage_guild", Livello.LOG),
     "admin-messaggi": ("Messaggi del server (admin): embed, programmati, fissi", "manage_guild", Livello.ADMIN),
     "admin-giveaway": ("Giveaway del server (admin): avvio, modelli, programmati", "manage_guild", Livello.ADMIN),
-    "admin-ticket": ("Ticket (admin): impianto, categorie, ruoli, ModMail, risposte, pannelli", "manage_guild", Livello.ADMIN),
+    "admin-ticket": ("Ticket (admin): impianto, categorie, ruoli, ModMail, risposte, etichette", "manage_guild", Livello.ADMIN),
     "admin-ticket-opzioni": ("Opzioni dei pannelli ticket (admin): limiti, orari, accesso, chiusura", "manage_guild", Livello.ADMIN),
     "admin-backup": ("Backup del server (admin): copia, ripristino, modelli, chat, esportazioni", "administrator", Livello.ADMIN),
     "admin-benvenuto": ("Benvenuto, addio e boost (admin): messaggi, immagine, anteprima", "manage_guild", Livello.ADMIN),
@@ -80,34 +78,38 @@ _DEFINIZIONI: dict[str, tuple[str, str | None, Livello | None]] = {
     "mod-ban": ("Moderazione dura: ban, kick, softban, sban, in massa, appelli", "ban_members", Livello.MODBAN),
     "founder": ("Solo per il proprietario del server (gli altri admin lo vedono ma sono rifiutati)", "administrator", Livello.FOUNDER),
     "ticket": ("Gestione del ticket in cui ti trovi", None, None),
-    "voice": ("Gestione del tuo canale vocale temporaneo", None, None),
-    "music": ("Musica nei canali vocali", None, None),
-    "level": ("Livelli, classifiche, profilo, collezione e inviti", None, None),
-    "monete": ("Le tue monete: saldo, giornaliera, lavoro, pagamenti, negozio", None, None),
-    "clan": ("Clan del server: crea, gestisci e fai crescere il tuo clan", None, None),
+    "music": ("Musica nei canali vocali: riproduzione, coda, brano, volume", None, None),
+    "level": ("Livelli, classifiche, profilo, collezione e reputazione", None, None),
+    "monete": ("Le tue monete: saldo, giornaliera, lavoro, pagamenti, negozio e mercato", None, None),
     "fun": ("Divertimento: dadi, domande, battute, giochi di fortuna", None, None),
-    "immagini": ("Immagini: filtri, meme, effetti, animali, ricerca", None, None),
-    "giochi": ("Giochi con le monete e contro il bot", None, None),
-    "sondaggi": ("Sondaggi del server", None, None),
-    "assistente": ("Funzioni AI per tutti: riassunti, traduzioni, immagini, personaggi", None, None),
-    "gif": ("GIF di reazione e di azione", None, None),
+    "immagini": ("Immagini: filtri, meme, effetti, animali, ricerca e GIF", None, None),
+    "giochi": ("Giochi con le monete e contro il bot: sfide, quiz, carte, tela di pixel", None, None),
     "admin-inviti": ("Inviti (admin): impostazioni, bonus, esclusi, codici, etichette, pulizia, esportazione", "manage_guild", Livello.ADMIN),
     "admin-giochi": ("Giochi del server (admin): conteggio, canali, regole, traguardi", "manage_guild", Livello.ADMIN),
-    "tag": ("Tag del server: usali e crea i tuoi", None, None),
-    "admin-automazioni": ("Automazioni del server (admin): script dei tag, inneschi, comandi e menu del server", "manage_guild", Livello.ADMIN),
-    "admin-tag": ("Tag e risposte automatiche (admin): crea, opzioni, gruppi, importa, esporta", "manage_guild", Livello.ADMIN),
+    "admin-automazioni": ("Automazioni del server (admin): script, inneschi, comandi, menu e risposte automatiche", "manage_guild", Livello.ADMIN),
     "admin-alert": ("Avvisi social (admin): messaggi, embed, sposta, ferma, controllo, piattaforme", "manage_guild", Livello.ADMIN),
-    "admin-negozio": ("Negozio avanzato (admin): rotazione, offerte lampo, ricette, comandi di guadagno", "manage_guild", Livello.ADMIN),
-    "mercato": ("Mercato tra utenti, donazioni al fondo premi e creazione di oggetti", None, None),
-    "sala": ("Giochi a più giocatori con sala d'attesa e puntata", None, None),
-    "mondo": ("Il tuo mondo: diretta, casa, fattoria, personaggi, avventure, borsa e vacanza", None, None),
-    "eventi": ("Eventi del server: crea, iscriviti, elenco, modifica, annulla", None, None),
-    "web": ("Cerca sul web: Wikipedia, dizionario, emergenze, meteo, film, giochi, prezzi", None, None),
-    "rep": ("Reputazione: dai punti ai membri, classifica e registro", None, None),
-    "admin-rep": ("Reputazione (admin): punti, impostazioni, ruoli premio, azzeramento", "manage_guild", Livello.ADMIN),
+    "owner-radio": ("Radio 24/7 condivisa del bot (solo owner)", "administrator", Livello.OWNER),
+    "admin-bot-config": ("Configurazione (admin): canali, storico, ripristino ed esportazione", "manage_guild", Livello.ADMIN),
+    "admin-sicurezza-verifica": ("Verifica dei nuovi membri (admin): pannello, liste, tempi, tentativi", "administrator", Livello.SECURITY),
+    "admin-sicurezza-antinuke": ("Anti-nuke (admin): soglie, fiducia, guardie e casi", "administrator", Livello.SECURITY),
+    "admin-sicurezza-antiraid": ("Anti-raid (admin): soglie, filtri all'ingresso, segnali e allarmi", "administrator", Livello.SECURITY),
+    "admin-automod-filtri": ("Filtri automatici sui messaggi (admin) e loro azioni", "manage_guild", Livello.ADMIN),
+    "admin-ruoli-menu": ("Menu dei ruoli (admin): crea, modelli, in blocco, spostamento, riparazione", "manage_guild", Livello.ADMIN),
+    "admin-livelli-guadagno": ("Come si guadagna XP (admin): formula, parole, comandi, prefissi, canali", "manage_guild", Livello.ADMIN),
+    "admin-livelli-rep": ("Reputazione (admin): punti, impostazioni, ruoli premio, azzeramento", "manage_guild", Livello.ADMIN),
+    "admin-economia-negozio": ("Negozio avanzato (admin): rotazione, offerte, ricette, guadagni, stipendi, eventi, voto", "manage_guild", Livello.ADMIN),
+    "admin-messaggi-tag": ("Tag del server (admin): crea, opzioni, gruppi, importa, esporta", "manage_guild", Livello.ADMIN),
+    "admin-ticket-pannelli": ("Pannelli dei ticket (admin): crea, pubblica, modulo", "manage_guild", Livello.ADMIN),
+    "music-playlist": ("Le tue playlist salvate: valgono in ogni server", None, None),
+    "giochi-sala": ("Giochi a più giocatori con sala d'attesa e puntata", None, None),
+    "giochi-mondo": ("Il tuo mondo: casa, fattoria, personaggi, avventure, borsa, vacanza e auto da collezione", None, None),
+    "giochi-animali": ("Animali da accudire e pesca: compra, cura, adotta, lancia la lenza", None, None),
+    "utility-web": ("Cerca sul web: Wikipedia, dizionario, emergenze, meteo, film, giochi, prezzi", None, None),
+    "utility-server": ("Il tuo server: sondaggi, eventi, tag, compleanni, inviti e stelle", None, None),
+    "monete-clan": ("Clan del server: crea, gestisci e fai crescere il tuo clan", None, None),
+    "ai": ("Funzioni AI per tutti: riassunti, traduzioni, immagini, personaggi", None, None),
+    "vocali": ("Gestione del tuo canale vocale temporaneo", None, None),
     "utility": ("Strumenti utili: segnalazioni, suggerimenti, promemoria, schede, snipe", None, None),
-    "auto": ("Auto da collezione: garage, gare, potenziamenti e foto", None, None),
-    "tela": ("Tela di pixel del server: guarda, colora e scopri chi ha messo un pixel", None, None),
 }
 
 
@@ -151,6 +153,33 @@ SOTTOGRUPPI: dict[str, tuple[str, str]] = {
     "giochi carte": ("carte", "Carte: frasi a sorpresa con giudice o voto"),
     "admin-giochi carte": ("carte", "Carte: pacchetti accesi nel server"),
     "owner ai": ("ai", "AI globale: manutenzione e modelli"),
+    # Riordino D137: sotto-gruppi nati dagli spostamenti.
+    "giochi-animali pesca": ("pesca", "Pesca: lancia, vendi e completa la guida"),
+    "giochi-mondo auto": ("auto", "Auto da collezione: garage, gare, potenziamenti e foto"),
+    "immagini gif": ("gif", "GIF di reazione e di azione"),
+    "giochi tela": ("tela", "Tela di pixel del server: guarda, colora e scopri chi ha messo un pixel"),
+    "admin-economia-negozio guadagno": ("guadagno", "Comandi di guadagno del server"),
+    "admin-economia-negozio fondo": ("fondo", "Fondo premi del server"),
+    "admin-economia-negozio evento": ("evento", "Eventi di monete: codici, bonus, casuali, avvio e riffa"),
+    "admin-livelli premi": ("premi", "Ruoli premio per livello e come si danno"),
+    "monete-clan tesoreria": ("tesoreria", "Tesoreria della tua gilda."),
+    "monete-clan boost": ("boost", "Boost XP/coin del Sistema Gilde/Clan."),
+    "admin-economia-negozio stipendi": ("stipendi", "Stipendi per ruolo e monete per messaggio"),
+    "monete mercato": ("mercato", "Mercato tra utenti, donazioni al fondo premi e creazione di oggetti"),
+    "giochi-mondo borsa": ("borsa", "Borsa finta: prezzi, scambi e ordini"),
+    "admin-economia-negozio rotazione": ("rotazione", "Oggetti che ruotano ogni giorno"),
+    "admin-economia-negozio offerta": ("offerta", "Offerte lampo a tempo"),
+    "admin-economia-negozio ricetta": ("ricetta", "Ricette per creare oggetti"),
+    "level rep": ("rep", "Reputazione: dai punti ai membri, classifica e registro"),
+    "music coda": ("coda", "La coda: mostra, cerca, sposta, svuota, salta"),
+    "utility-server tag": ("tag", "Tag del server: usali e crea i tuoi"),
+    "admin-automazioni risposte": ("risposte", "Risposte automatiche a parole chiave"),
+    "utility-server compleanno": ("compleanno", "Il tuo compleanno: imposta, rimuovi, prossimi"),
+    "utility-server eventi": ("eventi", "Eventi del server: crea, iscriviti, elenco, modifica, annulla"),
+    "admin-alert piattaforme": ("piattaforme", "Avvisi: feed, Twitch, YouTube, Kick"),
+    "utility-server inviti": ("inviti", "Quante persone ha invitato ognuno"),
+    "utility-server sondaggi": ("sondaggi", "Sondaggi del server"),
+    "utility-server stelle": ("stelle", "Bacheca: chi ha più stelle e un messaggio a caso"),
 }
 
 
@@ -214,7 +243,7 @@ def registra_gruppi_usati(
     tutti = GRUPPI if gruppi is None else gruppi
     aggiunti = []
     for nome, gruppo in tutti.items():
-        if nome == "owner" or not gruppo.commands:
+        if nome in GRUPPI_SOLO_OWNER or not gruppo.commands:
             continue
         _conflitto_nell_albero(tree, nome, gruppo)
         tree.add_command(gruppo, override=True)
@@ -240,15 +269,18 @@ def registra_owner(
     gruppi: dict[str, GruppoYokai] | None = None,
 ) -> bool:
     """
-    Aggiunge `/owner` SOLO per il server dell'owner (mappa §5), mai globale:
-    `copy_global_to` non lo copia, quindi non compare due volte. True se aggiunto.
+    Aggiunge `/owner` e `/owner-radio` SOLO per il server dell'owner (mappa §5, D137), mai globali:
+    `copy_global_to` non li copia, quindi non compaiono due volte. True se ne ha aggiunto almeno uno.
     """
     tutti = GRUPPI if gruppi is None else gruppi
-    gruppo = tutti["owner"]
-    if not gruppo.commands:
-        return False
-    tree.add_command(gruppo, guild=discord.Object(id=guild_id), override=True)
-    return True
+    aggiunto = False
+    for nome in GRUPPI_SOLO_OWNER:
+        gruppo = tutti.get(nome)
+        if gruppo is None or not gruppo.commands:
+            continue
+        tree.add_command(gruppo, guild=discord.Object(id=guild_id), override=True)
+        aggiunto = True
+    return aggiunto
 
 
 # ----------------------------------------------------------------------
@@ -343,7 +375,7 @@ def registra_comandi_del_cog(
     for m in marcati:  # prima controlla tutto, poi tocca l'albero
         if m.marca.gruppo not in tutti:
             raise KeyError(f"Gruppo sconosciuto '{m.marca.gruppo}' per il comando '{m.marca.nome}'.")
-        if tree is not None and m.marca.gruppo != "owner":
+        if tree is not None and m.marca.gruppo not in GRUPPI_SOLO_OWNER:
             _conflitto_nell_albero(tree, m.marca.gruppo, tutti[m.marca.gruppo])
 
     registrati: list[tuple[str, tuple[str, str] | None, app_commands.Command]] = []
@@ -365,8 +397,22 @@ def registra_comandi_del_cog(
         cog._yokai_registrazioni = (tutti, tree, registrati)
         togli_comandi_del_cog(cog)
         raise
+    diretti: list[app_commands.Command] = []
     if tree is not None:
-        for nome in {g for g, _, _ in registrati} - {"owner"}:  # /owner: solo registra_owner
+        for m, (gruppo, _sotto, lungo) in zip(marcati, registrati):
+            nome_diretto = NOME_DIRETTO_DI.get(lungo.qualified_name)
+            if nome_diretto is None:
+                continue
+            esistente = tree.get_command(nome_diretto)
+            if esistente is not None and not _stessa_classe(getattr(esistente, "binding", None), cog):
+                togli_comandi_del_cog(cog)
+                raise ValueError(f"'/{nome_diretto}' esiste già nell'albero: scegli un altro nome.")
+            diretto = crea_comando_diretto(nome_diretto, lungo, m.callback, tutti[gruppo])
+            tree.add_command(diretto, override=True)
+            diretti.append(diretto)
+    cog._yokai_diretti = diretti
+    if tree is not None:
+        for nome in {g for g, _, _ in registrati} - set(GRUPPI_SOLO_OWNER):  # /owner: solo registra_owner
             if tree.get_command(nome) is None:
                 tree.add_command(tutti[nome], override=True)
     cog._yokai_registrazioni = (tutti, tree, registrati)
@@ -380,6 +426,10 @@ def togli_comandi_del_cog(cog) -> None:
         return
     tutti, tree, registrati = stato
     cog._yokai_registrazioni = None
+    for diretto in getattr(cog, "_yokai_diretti", None) or []:
+        if tree is not None and tree.get_command(diretto.name) is diretto:
+            tree.remove_command(diretto.name)
+    cog._yokai_diretti = []
     for nome_gruppo, sottogruppo, comando in registrati:
         radice = tutti[nome_gruppo]
         dove: Any = radice if sottogruppo is None else radice.get_command(sottogruppo[0])

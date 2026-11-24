@@ -48,7 +48,7 @@ FONTI: dict[str, tuple[str, bool, bool, tuple[str, ...]]] = {
     "giphy": ("https://api.giphy.com/v1", True, True, ("giphy.com",)),
     "tenor": ("https://tenor.googleapis.com/v2", True, True, ("tenor.com", "tenor.googleapis.com")),
 }
-# Fonti che cercano testo libero (`/gif cerca` e voci senza categoria): con chiave, si accendono da sole (D127).
+# Fonti che cercano testo libero (`/immagini gif cerca` e voci senza categoria): con chiave, si accendono da sole (D127).
 # Klipy si aggiunge qui con il suo adattatore quando le sue condizioni saranno leggibili (D70, D127).
 FONTI_RICERCA = ("giphy", "tenor")
 # Tetto di richieste all'ora per fonte (D127): sotto i limiti noti dei servizi; `GIF_<FONTE>_QUOTA_ORA` lo cambia.

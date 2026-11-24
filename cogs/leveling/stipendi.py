@@ -1,8 +1,8 @@
 """
 cogs/leveling/stipendi.py
 =========================
-Stipendi e tasse per ruolo (/admin-giochi stipendi ..., /monete riscuoti), pagamento automatico a un'ora
-scelta (UTC) e monete per i messaggi nei canali scelti (/admin-giochi stipendi auto). Ogni pagamento è
+Stipendi e tasse per ruolo (/admin-economia-negozio stipendi ..., /monete riscuoti), pagamento automatico a un'ora
+scelta (UTC) e monete per i messaggi nei canali scelti (/admin-economia-negozio stipendi auto). Ogni pagamento è
 una transazione sola (core/repositories/stipendi_repo.py).
 Funzioni coperte: ECO-033, ECO-034, ECO-035, ECO-036, ECO-037, ECO-038
 """
@@ -18,7 +18,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from cogs.leveling.leveling import MODULE_LEVELING, _comando_rifiutato, _format_seconds
-from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
+from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog, SOTTOGRUPPI
 from core.database import db
 from core.i18n import testo_per
 from core.repositories.leveling_settings_repo import leveling_settings_repo
@@ -127,7 +127,7 @@ class StipendiCog(CogConGruppi, commands.Cog):
         return pagati
 
     # ---------------------------------------------------------------- admin
-    @comando_di_gruppo("admin-giochi", nome="imposta", descrizione="Stipendio (positivo) o tassa (negativo) per un ruolo.", sottogruppo=_SG)
+    @comando_di_gruppo("admin-economia-negozio", nome="imposta", descrizione="Stipendio (positivo) o tassa (negativo) per un ruolo.", sottogruppo=SOTTOGRUPPI["admin-economia-negozio stipendi"])
     @app_commands.describe(ruolo="Il ruolo", importo="Monete a ogni riscossione (da -100000 a 100000, non zero)", in_banca="Sì = lo stipendio va in banca")
     async def imposta(
         self, interaction: discord.Interaction, ruolo: discord.Role,
@@ -143,7 +143,7 @@ class StipendiCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.send_message(await testo_per(interaction, "eco_salvato"), ephemeral=True)
 
-    @comando_di_gruppo("admin-giochi", nome="toglie", descrizione="Toglie lo stipendio o la tassa di un ruolo.", sottogruppo=_SG)
+    @comando_di_gruppo("admin-economia-negozio", nome="toglie", descrizione="Toglie lo stipendio o la tassa di un ruolo.", sottogruppo=SOTTOGRUPPI["admin-economia-negozio stipendi"])
     @app_commands.describe(ruolo="Il ruolo")
     async def toglie(self, interaction: discord.Interaction, ruolo: discord.Role) -> None:
         if await _comando_rifiutato(interaction):
@@ -151,7 +151,7 @@ class StipendiCog(CogConGruppi, commands.Cog):
         fatto = await stipendi_repo.rimuovi(interaction.guild.id, ruolo.id)
         await interaction.response.send_message(await testo_per(interaction, "eco_salvato" if fatto else "stp_valore"), ephemeral=True)
 
-    @comando_di_gruppo("admin-giochi", nome="elenco", descrizione="Gli stipendi e le tasse per ruolo, e le regole dei messaggi.", sottogruppo=_SG)
+    @comando_di_gruppo("admin-economia-negozio", nome="elenco", descrizione="Gli stipendi e le tasse per ruolo, e le regole dei messaggi.", sottogruppo=SOTTOGRUPPI["admin-economia-negozio stipendi"])
     async def elenco(self, interaction: discord.Interaction) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -163,7 +163,7 @@ class StipendiCog(CogConGruppi, commands.Cog):
         righe.append(f"Messaggi: {i.msg_coins} ogni {i.msg_coins_pausa}s, tetto {i.msg_coins_tetto} al giorno; canali: " + (" ".join(f"<#{c}>" for c in sorted(canali)) or "-"))
         await interaction.response.send_message("\n".join(righe)[:3900], ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("admin-giochi", nome="auto", descrizione="Paga gli stipendi da solo a un'ora (UTC) e scegli le monete per messaggio.", sottogruppo=_SG)
+    @comando_di_gruppo("admin-economia-negozio", nome="auto", descrizione="Paga gli stipendi da solo a un'ora (UTC) e scegli le monete per messaggio.", sottogruppo=SOTTOGRUPPI["admin-economia-negozio stipendi"])
     @app_commands.describe(
         attivo="Sì = paga gli stipendi da solo ogni giorno", ora="Ora UTC del pagamento (0-23)",
         monete_messaggio="Monete per messaggio nei canali scelti (0 = spento)", pausa="Secondi tra due messaggi che pagano",

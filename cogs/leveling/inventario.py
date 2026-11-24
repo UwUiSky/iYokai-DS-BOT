@@ -109,7 +109,7 @@ class InventarioCog(CogConGruppi, commands.Cog):
         testo = (item.reply_text or await testo_guild(guild, "inv_usato", nome=item.name)) + (f"\n{extra}" if extra else "")
         await interaction.response.send_message(testo[:1900], allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("admin-giochi", nome="oggetto-azione", descrizione="Cosa fa un oggetto del negozio quando lo si usa: monete, un ruolo o una creatura.")
+    @comando_di_gruppo("admin-economia-negozio", nome="oggetto-azione", descrizione="Cosa fa un oggetto del negozio quando lo si usa: monete, un ruolo o una creatura.")
     @app_commands.describe(item_id="ID dell'oggetto", azione="Cosa succede", monete="Monete (solo per «Dà monete»)", ruolo="Il ruolo (per «Dà un ruolo» o «Toglie un ruolo»)", specie="Specie 1-8 (per «Evoca una creatura»)")
     @app_commands.choices(azione=[
         app_commands.Choice(name="Niente", value="nessuna"), app_commands.Choice(name="Dà monete", value="monete"),

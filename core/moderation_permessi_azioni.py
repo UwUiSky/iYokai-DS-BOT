@@ -10,6 +10,8 @@ Funzioni coperte: CFG-024, VER-018 (azione «verifica»)
 
 from __future__ import annotations
 
+from core.comandi_diretti import percorso_vero
+
 import discord
 
 from core.database import db
@@ -45,7 +47,7 @@ LIVELLI_DI_BASE = ("mod", "modban")
 
 def azione_del_comando(interaction: discord.Interaction) -> str | None:
     comando = getattr(interaction, "command", None)
-    nome = getattr(comando, "qualified_name", None)
+    nome = percorso_vero(comando) if comando is not None else None
     return COMANDI.get(nome) if isinstance(nome, str) else None
 
 

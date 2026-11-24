@@ -18,7 +18,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core import allegati_mostra
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, comando_di_gruppo, SOTTOGRUPPI
 from core.database import db
 from core.i18n import testo_per
 from core.premium import PremiumModule, registry
@@ -404,13 +404,13 @@ class StarboardCog(CogConGruppi, commands.Cog):
         )
 
     # ================================================================
-    # /level stelle
+    # /utility-server stelle
     # ================================================================
     @comando_di_gruppo(
-        "level",
+        "utility-server",
         nome="classifica",
         descrizione="Chi ha ricevuto più stelle in bacheca.",
-        sottogruppo=_SG_STELLE,
+        sottogruppo=SOTTOGRUPPI["utility-server stelle"],
     )
     @app_commands.describe(pagina="Pagina della classifica (10 membri per pagina)")
     async def stelle_classifica(
@@ -439,10 +439,10 @@ class StarboardCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(embed=embed, allowed_mentions=_NESSUNA_MENZIONE)
 
     @comando_di_gruppo(
-        "level",
+        "utility-server",
         nome="caso",
         descrizione="Un messaggio a caso dalla bacheca.",
-        sottogruppo=_SG_STELLE,
+        sottogruppo=SOTTOGRUPPI["utility-server stelle"],
     )
     async def stelle_caso(self, interaction: discord.Interaction) -> None:
         if not await self._modulo_attivo(interaction):

@@ -1,7 +1,7 @@
 """
 cogs/music/cartella.py
 ======================
-Cartella di brani dell'owner (MUS-018, D111): il bot rilegge da solo l'elenco ogni 5 minuti, `/owner radio cartella`
+Cartella di brani dell'owner (MUS-018, D111): il bot rilegge da solo l'elenco ogni 5 minuti, `/owner-radio cartella`
 lo forza, `/music coda anteprime` mette in coda i brani (l'owner sempre, gli utenti se le anteprime sono accese).
 Gli utenti vedono solo titoli puliti; mai un percorso, mai una sorgente `local` scelta da loro.
 Funzioni coperte: SPEC §9 (catalogo MUS-018)
@@ -17,7 +17,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, comando_di_gruppo, SOTTOGRUPPI
 from core.config import config
 from core.i18n import testo_per
 from core.music_anteprime_logic import come_ricerca, risolvi_brani
@@ -33,7 +33,7 @@ from core.repositories.music_cartella_repo import CHIAVE_ANTEPRIME, BranoSalvato
 logger = logging.getLogger("iyokai.music.cartella")
 
 RADIO = ("radio", "Radio 24/7 condivisa del bot")
-SG_CODA = ("coda", "Cerca e ripulisce la coda.")
+SG_CODA = SOTTOGRUPPI["music coda"]
 MINUTI_SCANSIONE = 5
 SCELTE_AZIONE = [
     app_commands.Choice(name="Elenco", value="elenco"),
@@ -97,8 +97,7 @@ class MusicCartellaCog(CogConGruppi, commands.Cog):
         return self.bot.get_cog("MusicCog")
 
     # ------------------------------------------------------------- owner
-    @comando_di_gruppo("owner", nome="cartella", descrizione="Cartella dell'owner: elenco, rilettura, anteprime.",
-                       sottogruppo=RADIO)
+    @comando_di_gruppo("owner-radio", nome="cartella", descrizione="Cartella dell'owner: elenco, rilettura, anteprime.")
     @app_commands.describe(azione="Cosa fare")
     @app_commands.choices(azione=SCELTE_AZIONE)
     async def cartella(self, interaction: discord.Interaction, azione: str) -> None:

@@ -73,7 +73,7 @@ async def main() -> None:
         # Le applicazioni separate (istanza NSFW, iYokai App) hanno un albero proprio: categorie a parte.
         from tests.support.full_tree import build_separate_trees
 
-        per_app: dict[int, str] = {}  # per oggetto: `/assistente` esiste in due app diverse
+        per_app: dict[int, str] = {}  # per oggetto: `/ai` esiste in due app diverse
         for altro in await build_separate_trees():
             for c in altro.tree.get_commands():
                 comandi_top_level.append(c)

@@ -1,8 +1,8 @@
 """
 cogs/utility/config_permessi.py
 ===============================
-`/admin-bot config staff` (CFG-022, CFG-023, #122): i ruoli admin, mod e ban del bot, con i gruppi che aprono; si
-scelgono o si tolgono qui. `/admin-bot config permessi` (CFG-026): il livello di permesso di un membro, con il motivo.
+`/admin-bot-config staff` (CFG-022, CFG-023, #122): i ruoli admin, mod e ban del bot, con i gruppi che aprono; si
+scelgono o si tolgono qui. `/admin-bot-config permessi` (CFG-026): il livello di permesso di un membro, con il motivo.
 Le scelte passano da `core/command_access.imposta_ruolo` (un solo punto, D16; il ruolo admin lo sceglie solo chi ha
 «Amministratore»). Il resto è sola lettura (`core/permessi_vista.py`).
 Funzioni coperte: SPEC §20 (NF-05), catalogo #122
@@ -39,8 +39,7 @@ class ConfigPermessiCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "admin-bot", nome="staff", descrizione="Ruoli admin, mod e ban del bot: elenco e scelta.",
-        sottogruppo=SOTTOGRUPPO_CONFIG,
+        "admin-bot-config", nome="staff", descrizione="Ruoli admin, mod e ban del bot: elenco e scelta.",
     )
     @app_commands.describe(
         admin="Il ruolo che gestisce il bot (apre i gruppi admin); serve «Amministratore»",
@@ -97,8 +96,7 @@ class ConfigPermessiCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin-bot", nome="permessi", descrizione="Mostra il livello di permesso di un membro e perché.",
-        sottogruppo=SOTTOGRUPPO_CONFIG,
+        "admin-bot-config", nome="permessi", descrizione="Mostra il livello di permesso di un membro e perché.",
     )
     @app_commands.describe(membro="Il membro da controllare")
     async def permessi(self, interaction: discord.Interaction, membro: discord.Member) -> None:

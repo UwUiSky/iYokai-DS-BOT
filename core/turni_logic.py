@@ -1,7 +1,7 @@
 """
 core/turni_logic.py
 ===================
-Turni dei giochi per `/web turni` (#131, D70, B11): le rotazioni di Splatoon 3 (da splatoon3.ink, `safe_get`,
+Turni dei giochi per `/utility-web turni` (#131, D70, B11): le rotazioni di Splatoon 3 (da splatoon3.ink, `safe_get`,
 cache comune di 15 minuti) e i reset settimanali di World of Warcraft (calcolati, nessuna rete). Splatoon 2 non c'è:
 la fonte non ha dati recenti. I tempi sono numeri epoch, mostrati come orari di Discord (ognuno nel suo fuso).
 Funzioni coperte: SPEC §16 (FUN-071)

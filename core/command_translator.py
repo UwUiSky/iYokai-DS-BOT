@@ -30,6 +30,7 @@ comandi.json fa risincronizzare i comandi al prossimo avvio.
 from __future__ import annotations
 
 import json
+import math
 import logging
 import pathlib
 import unicodedata
@@ -38,6 +39,7 @@ from typing import Any
 import discord
 from discord import app_commands
 
+from core.comandi_diretti import ComandoDiretto, percorso_vero
 from core.i18n import DEFAULT_LANGUAGE, LINGUA_RIPIEGO, LINGUE, da_locale_discord, normalizza_lingua, percorso_comandi
 
 logger = logging.getLogger("iyokai.command_translator")
@@ -175,23 +177,41 @@ def _lingue_tradotte() -> tuple[str, ...]:
     return tuple(l for l in LINGUE if l != DEFAULT_LANGUAGE)
 
 
+MARGINE_TRADUZIONI = 1.3  # D137: una traduzione futura può essere più lunga del 30% della versione più lunga tra it ed en
+
+
+def _peso_campo(base: str, inglese: str | None, tradotte: list[str], tetto: int) -> int:
+    """Caratteri stimati di un campo: la più lunga tra it ed en, +30% (con il tetto di Discord), o la traduzione vera se più lunga."""
+    stima = min(tetto, math.ceil(max(len(base), len(inglese or "")) * MARGINE_TRADUZIONI))
+    return max([stima] + [len(t) for t in tradotte])
+
+
 def caratteri_con_traduzioni(nodo: Any) -> int:
     """
-    I caratteri che Discord conta per un comando o gruppo (limite 8000): per ogni campo conta
-    solo la traduzione PIÙ LUNGA tra tutte le lingue presenti, base compresa (docs.discord.com).
+    I caratteri che Discord conta per un comando o gruppo (limite 8000), D137: per ogni campo (nome, descrizione,
+    nome e descrizione di un'opzione, nome di una scelta) si conta la versione più lunga tra it ed en con il 30% in più
+    (tetti di Discord: nome 32, descrizione 100, nome scelta 100), oppure la traduzione vera se è più lunga.
+    I valori delle scelte non si traducono.
     """
-    percorso = nodo.qualified_name
+    percorso = percorso_vero(nodo)
     lingue = _lingue_tradotte()
-    totale = max([len(nodo.name)] + [len(nome_tradotto(nodo.name, l) or "") for l in lingue]) + max(
-        [len(nodo.description)] + [len(descrizione_tradotta(percorso, l) or "") for l in lingue]
+    totale = _peso_campo(
+        nodo.name, nome_tradotto(nodo.name, LINGUA_RIPIEGO) if not isinstance(nodo, ComandoDiretto) else None,
+        [] if isinstance(nodo, ComandoDiretto) else [x for l in lingue if (x := nome_tradotto(nodo.name, l))], MAX_NOME,
+    ) + _peso_campo(
+        nodo.description, descrizione_tradotta(percorso, LINGUA_RIPIEGO),
+        [x for l in lingue if (x := descrizione_tradotta(percorso, l))], MAX_DESCRIZIONE,
     )
     if isinstance(nodo, app_commands.Group):
         return totale + sum(caratteri_con_traduzioni(c) for c in nodo.commands)
     for param in nodo.parameters:
-        totale += len(param.name)
-        totale += max([len(param.description)] + [len(parametro_tradotto(percorso, param.name, l) or "") for l in lingue])
+        totale += _peso_campo(param.name, None, [], MAX_NOME)
+        totale += _peso_campo(
+            param.description, parametro_tradotto(percorso, param.name, LINGUA_RIPIEGO),
+            [x for l in lingue if (x := parametro_tradotto(percorso, param.name, l))], MAX_DESCRIZIONE,
+        )
         for scelta in param.choices:
-            totale += len(scelta.name) + len(str(scelta.value))
+            totale += _peso_campo(scelta.name, None, [], 100) + len(str(scelta.value))
     return totale
 
 
@@ -206,12 +226,14 @@ def tradotto_per(contesto: Any, lingua: str) -> str | None:
     if posizione is L.command_name and isinstance(dato, app_commands.ContextMenu):
         return menu_tradotto(dato.name, lingua)
     if posizione in (L.command_name, L.group_name):
+        if isinstance(dato, ComandoDiretto):
+            return None  # D137: il nome di un comando diretto è lo stesso in tutte le lingue
         return nome_tradotto(dato.name, lingua)
     if posizione in (L.command_description, L.group_description):
-        return descrizione_tradotta(dato.qualified_name, lingua)
+        return descrizione_tradotta(percorso_vero(dato), lingua)
     if posizione is L.parameter_description:
         comando = getattr(dato, "command", None)
-        return parametro_tradotto(comando.qualified_name, dato.name, lingua) if comando is not None else None
+        return parametro_tradotto(percorso_vero(comando), dato.name, lingua) if comando is not None else None
     return None
 
 

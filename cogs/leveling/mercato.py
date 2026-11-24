@@ -1,8 +1,8 @@
 """
 cogs/leveling/mercato.py
 ========================
-Mercato tra utenti (/mercato vendi, elenco, compra, offri, accetta, ritira) e fondo premi del server
-(/mercato dona, fondo). Tutta la logica sta in core/repositories/mercato_repo.py (transazioni con righe bloccate in ordine).
+Mercato tra utenti (/monete mercato vendi, elenco, compra, offri, accetta, ritira) e fondo premi del server
+(/monete mercato dona, fondo). Tutta la logica sta in core/repositories/mercato_repo.py (transazioni con righe bloccate in ordine).
 Funzioni coperte: ECO-074, ECO-120
 """
 
@@ -15,7 +15,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from cogs.leveling.leveling import _comando_rifiutato
-from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
+from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog, SOTTOGRUPPI
 from core.i18n import testo_per
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.repositories.mercato_repo import GIORNI_DI_BASE, GIORNI_MASSIMI, Esito, mercato_repo
@@ -51,7 +51,7 @@ class MercatoCog(CogConGruppi, commands.Cog):
         chiave = ok if esito is Esito.FATTO else f"mer_{esito.value}"
         await interaction.response.send_message(await testo_per(interaction, chiave, **kw), ephemeral=True)
 
-    @comando_di_gruppo("mercato", nome="vendi", descrizione="Metti un tuo oggetto in vendita agli altri membri.")
+    @comando_di_gruppo("monete", nome="vendi", descrizione="Metti un tuo oggetto in vendita agli altri membri.", sottogruppo=SOTTOGRUPPI["monete mercato"])
     @app_commands.describe(oggetto="ID dell'oggetto (vedi /monete inventario)", prezzo="Prezzo in monete", quantita="Quanti pezzi", giorni=f"Durata (1-{GIORNI_MASSIMI})")
     async def vendi(
         self, interaction: discord.Interaction, oggetto: ID, prezzo: app_commands.Range[int, 1, 100_000_000],
@@ -62,7 +62,7 @@ class MercatoCog(CogConGruppi, commands.Cog):
         esito = await mercato_repo.pubblica(interaction.guild.id, interaction.user.id, oggetto, quantita, prezzo, giorni)
         await self._dillo(interaction, esito, "mer_pubblicato")
 
-    @comando_di_gruppo("mercato", nome="elenco", descrizione="Gli annunci del mercato (anche solo di un membro).")
+    @comando_di_gruppo("monete", nome="elenco", descrizione="Gli annunci del mercato (anche solo di un membro).", sottogruppo=SOTTOGRUPPI["monete mercato"])
     @app_commands.describe(pagina="Pagina", venditore="Solo gli annunci di questo membro")
     async def elenco(self, interaction: discord.Interaction, pagina: app_commands.Range[int, 1, 100] = 1, venditore: discord.Member | None = None) -> None:
         if await _comando_rifiutato(interaction):
@@ -79,21 +79,21 @@ class MercatoCog(CogConGruppi, commands.Cog):
         ]
         await interaction.response.send_message("\n".join(righe)[:1900], ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("mercato", nome="compra", descrizione="Compra un annuncio al prezzo indicato.")
+    @comando_di_gruppo("monete", nome="compra", descrizione="Compra un annuncio al prezzo indicato.", sottogruppo=SOTTOGRUPPI["monete mercato"])
     @app_commands.describe(annuncio="Numero dell'annuncio")
     async def compra(self, interaction: discord.Interaction, annuncio: ANN) -> None:
         if await _comando_rifiutato(interaction):
             return
         await self._dillo(interaction, await mercato_repo.compra(interaction.guild.id, interaction.user.id, annuncio), "mer_comprato")
 
-    @comando_di_gruppo("mercato", nome="offri", descrizione="Fai un'offerta più bassa: le monete restano in custodia finché non risponde.")
+    @comando_di_gruppo("monete", nome="offri", descrizione="Fai un'offerta più bassa: le monete restano in custodia finché non risponde.", sottogruppo=SOTTOGRUPPI["monete mercato"])
     @app_commands.describe(annuncio="Numero dell'annuncio", importo="Monete offerte (meno del prezzo)")
     async def offri(self, interaction: discord.Interaction, annuncio: ANN, importo: app_commands.Range[int, 1, 100_000_000]) -> None:
         if await _comando_rifiutato(interaction):
             return
         await self._dillo(interaction, await mercato_repo.offri(interaction.guild.id, interaction.user.id, annuncio, importo), "mer_offerto")
 
-    @comando_di_gruppo("mercato", nome="accetta", descrizione="Accetta l'offerta di un membro sul tuo annuncio (senza membro: vedi le offerte).")
+    @comando_di_gruppo("monete", nome="accetta", descrizione="Accetta l'offerta di un membro sul tuo annuncio (senza membro: vedi le offerte).", sottogruppo=SOTTOGRUPPI["monete mercato"])
     @app_commands.describe(annuncio="Numero del tuo annuncio", offerente="Chi ha fatto l'offerta")
     async def accetta(self, interaction: discord.Interaction, annuncio: ANN, offerente: discord.Member | None = None) -> None:
         if await _comando_rifiutato(interaction):
@@ -106,7 +106,7 @@ class MercatoCog(CogConGruppi, commands.Cog):
             return
         await self._dillo(interaction, await mercato_repo.accetta(g, interaction.user.id, annuncio, offerente.id), "mer_accettato")
 
-    @comando_di_gruppo("mercato", nome="ritira", descrizione="Ritira un tuo annuncio (o una tua offerta): oggetto e monete tornano a chi spettano.")
+    @comando_di_gruppo("monete", nome="ritira", descrizione="Ritira un tuo annuncio (o una tua offerta): oggetto e monete tornano a chi spettano.", sottogruppo=SOTTOGRUPPI["monete mercato"])
     @app_commands.describe(annuncio="Numero dell'annuncio", offerta="Sì = ritiri la tua offerta, no = il tuo annuncio")
     async def ritira(self, interaction: discord.Interaction, annuncio: ANN, offerta: bool = False) -> None:
         if await _comando_rifiutato(interaction):
@@ -115,7 +115,7 @@ class MercatoCog(CogConGruppi, commands.Cog):
         esito = await (mercato_repo.ritira_offerta(g, u, annuncio) if offerta else mercato_repo.ritira(g, u, annuncio))
         await self._dillo(interaction, esito, "mer_ritirato")
 
-    @comando_di_gruppo("mercato", nome="dona", descrizione="Dona monete o un oggetto al fondo premi del server.")
+    @comando_di_gruppo("monete", nome="dona", descrizione="Dona monete o un oggetto al fondo premi del server.", sottogruppo=SOTTOGRUPPI["monete mercato"])
     @app_commands.describe(monete="Monete da donare alla cassa", oggetto="ID di un oggetto da donare al fondo")
     async def dona(self, interaction: discord.Interaction, monete: app_commands.Range[int, 1, 10_000_000] | None = None, oggetto: ID | None = None) -> None:
         if await _comando_rifiutato(interaction):
@@ -130,7 +130,7 @@ class MercatoCog(CogConGruppi, commands.Cog):
             esito = await mercato_repo.dona_oggetto(g, u, oggetto)
         await self._dillo(interaction, esito, "mer_donato")
 
-    @comando_di_gruppo("mercato", nome="fondo", descrizione="Gli oggetti donati al fondo premi del server.")
+    @comando_di_gruppo("monete", nome="fondo", descrizione="Gli oggetti donati al fondo premi del server.", sottogruppo=SOTTOGRUPPI["monete mercato"])
     async def fondo(self, interaction: discord.Interaction) -> None:
         if await _comando_rifiutato(interaction):
             return

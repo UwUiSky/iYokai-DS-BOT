@@ -3,7 +3,7 @@ cogs/utility/inviti_codici.py
 =============================
 Codici d'invito (D69 B12): elenco dei codici di un membro, nome e ruolo per un codice, invito nuovo senza
 scadenza, cancellazione a gruppi (un invito al secondo, ci si ferma al primo rifiuto di Discord).
-Comandi: `/admin-inviti codici|etichetta|crea|cancella` e `/level inviti codici`.
+Comandi: `/admin-inviti codici|etichetta|crea|cancella` e `/utility-server inviti codici`.
 Funzioni coperte: catalogo UTL-166, 167, 174, 180, 181
 """
 
@@ -19,7 +19,7 @@ from discord.ext import commands
 from cogs.utility.invites import MODULE_INVITES, _SG_INVITI
 from core import invite_service
 from core.command_access import Livello, richiedi
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, comando_di_gruppo, SOTTOGRUPPI
 from core.database import db
 from core.i18n import testo_per
 from core.invite_tracker import invite_tracker
@@ -146,7 +146,7 @@ class InvitiCodiciCog(CogConGruppi, commands.Cog):
         if await self._pronto(interaction):
             await self._elenco(interaction, membro, pagina)
 
-    @comando_di_gruppo("level", nome="codici", descrizione="I tuoi codici d'invito, a pagine da 10.", sottogruppo=_SG_INVITI)
+    @comando_di_gruppo("utility-server", nome="codici", descrizione="I tuoi codici d'invito, a pagine da 10.", sottogruppo=SOTTOGRUPPI["utility-server inviti"])
     @app_commands.describe(pagina="Pagina dell'elenco")
     async def codici_miei(self, interaction: discord.Interaction, pagina: app_commands.Range[int, 1, 100] = 1) -> None:
         if await self._pronto(interaction):

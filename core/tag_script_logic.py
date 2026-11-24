@@ -117,7 +117,7 @@ class ArchivioMemoria:
 
 
 class ArchivioProva:
-    """Legge i dati veri, scrive solo in memoria: la prova (`/tag prova`) non salva niente."""
+    """Legge i dati veri, scrive solo in memoria: la prova (`/utility-server tag prova`) non salva niente."""
 
     def __init__(self, base) -> None:
         self.base = base

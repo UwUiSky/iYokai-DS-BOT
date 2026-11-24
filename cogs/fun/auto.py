@@ -1,7 +1,7 @@
 """
 cogs/fun/auto.py
 ================
-Auto da collezione (/auto ...): catalogo, acquisto, garage personale, potenziamenti con monete, gara contro
+Auto da collezione (/giochi-mondo auto ...): catalogo, acquisto, garage personale, potenziamenti con monete, gara contro
 il banco o contro un altro utente (anche con una puntata) e la foto della propria auto. La foto è un allegato
 controllato come ogni immagine degli utenti: tipo dai primi byte, ricodifica in sandbox (D74); si conserva solo la
 copia PNG ridotta, mai l'originale. Prima di salvarla (e alla prossima visualizzazione delle foto già salvate) passa
@@ -29,7 +29,7 @@ from core import auto_foto_controllo as controllo
 from core import auto_logic as al
 from core.auto_image import affianca, riduci_foto
 from core.command_access import Livello, richiedi
-from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
+from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog, SOTTOGRUPPI
 from core.database import db
 from core.i18n import testo_per
 from core.immagini_pipeline import esamina_allegato
@@ -293,7 +293,7 @@ class AutoCog(CogConGruppi, commands.Cog):
         return "\n".join(righe), file, vista
 
     # ---------------------------------------------------------------- comandi
-    @comando_di_gruppo("auto", nome="catalogo", descrizione="Le auto da collezione che puoi comprare.")
+    @comando_di_gruppo("giochi-mondo", nome="catalogo", descrizione="Le auto da collezione che puoi comprare.", sottogruppo=SOTTOGRUPPI["giochi-mondo auto"])
     async def catalogo(self, interaction: discord.Interaction) -> None:
         i = await self._pronto(interaction)
         if i is None:
@@ -304,7 +304,7 @@ class AutoCog(CogConGruppi, commands.Cog):
                                          prezzo=m.prezzo, moneta=i.currency_name, v=m.velocita, a=m.accelerazione, t=m.tenuta))
         await interaction.response.send_message("\n".join(righe), allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("auto", nome="compra", descrizione="Compra un'auto da collezione per il tuo garage.")
+    @comando_di_gruppo("giochi-mondo", nome="compra", descrizione="Compra un'auto da collezione per il tuo garage.", sottogruppo=SOTTOGRUPPI["giochi-mondo auto"])
     @app_commands.describe(auto="Quale auto")
     @app_commands.autocomplete(auto=_completa_catalogo)
     async def compra(self, interaction: discord.Interaction, auto: app_commands.Range[str, 1, 60]) -> None:
@@ -320,7 +320,7 @@ class AutoCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, chiave, pubblica=esito is Esito.OK, nome=m.nome, prezzo=m.prezzo, moneta=i.currency_name, chi=interaction.user.mention),
             ephemeral=esito is not Esito.OK, allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("auto", nome="garage", descrizione="Le auto del tuo garage (o di un altro membro).")
+    @comando_di_gruppo("giochi-mondo", nome="garage", descrizione="Le auto del tuo garage (o di un altro membro).", sottogruppo=SOTTOGRUPPI["giochi-mondo auto"])
     @app_commands.describe(membro="Di chi vuoi il garage (di base il tuo)")
     async def garage(self, interaction: discord.Interaction, membro: discord.Member | None = None) -> None:
         if await self._pronto(interaction) is None:
@@ -338,7 +338,7 @@ class AutoCog(CogConGruppi, commands.Cog):
                                              vinte=a.vinte, corse=a.corse, foto="📷" if a.con_foto else ""))
         await interaction.response.send_message("\n".join(righe)[:2000], allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("auto", nome="vedi", descrizione="La scheda di un'auto del garage, con la sua foto.")
+    @comando_di_gruppo("giochi-mondo", nome="vedi", descrizione="La scheda di un'auto del garage, con la sua foto.", sottogruppo=SOTTOGRUPPI["giochi-mondo auto"])
     @app_commands.describe(auto="Quale auto", membro="Di chi (di base la tua)")
     @app_commands.autocomplete(auto=_completa_catalogo)
     async def vedi(self, interaction: discord.Interaction, auto: app_commands.Range[str, 1, 60], membro: discord.Member | None = None) -> None:
@@ -362,7 +362,7 @@ class AutoCog(CogConGruppi, commands.Cog):
         vista = SegnalaFotoView([(chiave_foto(interaction.guild.id, chi.id, a.sha_foto), m.nome)], await testo_per(interaction, "auto_segnala", pubblica=True))
         await interaction.followup.send(testo, file=discord.File(io.BytesIO(png), filename="auto.png"), view=vista, allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("auto", nome="potenzia", descrizione="Potenzia una parte della tua auto con le monete.")
+    @comando_di_gruppo("giochi-mondo", nome="potenzia", descrizione="Potenzia una parte della tua auto con le monete.", sottogruppo=SOTTOGRUPPI["giochi-mondo auto"])
     @app_commands.describe(auto="Quale auto", parte="Motore (velocità), assetto (tenuta) o gomme (accelerazione)")
     @app_commands.autocomplete(auto=_completa_mie)
     @app_commands.choices(parte=[app_commands.Choice(name="Motore", value="motore"), app_commands.Choice(name="Assetto", value="assetto"),
@@ -380,7 +380,7 @@ class AutoCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, chiave, pubblica=esito is Esito.OK, nome=m.nome, parte=parte.name, livello=livello, costo=costo, moneta=i.currency_name,
                             chi=interaction.user.mention), ephemeral=esito is not Esito.OK, allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("auto", nome="gara", descrizione="Gara con una tua auto contro il banco o contro un membro, anche con una puntata.")
+    @comando_di_gruppo("giochi-mondo", nome="gara", descrizione="Gara con una tua auto contro il banco o contro un membro, anche con una puntata.", sottogruppo=SOTTOGRUPPI["giochi-mondo auto"])
     @app_commands.describe(auto="Con quale auto corri", membro="Chi sfidi (vuoto = contro il banco)", puntata="Monete in palio (solo contro un membro)")
     @app_commands.autocomplete(auto=_completa_mie)
     async def gara(self, interaction: discord.Interaction, auto: app_commands.Range[str, 1, 60], membro: discord.Member | None = None,
@@ -435,7 +435,7 @@ class AutoCog(CogConGruppi, commands.Cog):
         else:
             await interaction.followup.send(testo, file=file, view=vista, allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("auto", nome="foto", descrizione="Metti la foto della tua auto (solo l'immagine ricodificata si conserva).")
+    @comando_di_gruppo("giochi-mondo", nome="foto", descrizione="Metti la foto della tua auto (solo l'immagine ricodificata si conserva).", sottogruppo=SOTTOGRUPPI["giochi-mondo auto"])
     @app_commands.describe(auto="Di quale auto è la foto", immagine="La foto (PNG, JPEG, GIF, WebP o BMP, fino a 8 MB)")
     @app_commands.autocomplete(auto=_completa_mie)
     async def foto(self, interaction: discord.Interaction, auto: app_commands.Range[str, 1, 60], immagine: discord.Attachment) -> None:
@@ -477,7 +477,7 @@ class AutoCog(CogConGruppi, commands.Cog):
             return
         await interaction.followup.send(await testo_per(interaction, "auto_foto_ok", nome=m.nome), ephemeral=True)
 
-    @comando_di_gruppo("auto", nome="foto-togli", descrizione="Toglie la foto di una tua auto.")
+    @comando_di_gruppo("giochi-mondo", nome="foto-togli", descrizione="Toglie la foto di una tua auto.", sottogruppo=SOTTOGRUPPI["giochi-mondo auto"])
     @app_commands.describe(auto="Di quale auto")
     @app_commands.autocomplete(auto=_completa_mie)
     async def foto_togli(self, interaction: discord.Interaction, auto: app_commands.Range[str, 1, 60]) -> None:

@@ -1,8 +1,8 @@
 """
 cogs/fun/gif.py
 ===============
-GIF di reazione e di azione (#131, D70): `/gif reazione`, `/gif azione` (con il bottone «Ricambia»),
-`/gif preferenze` (FUN-138), `/gif privacy` (chi non vuole ricevere azioni) e `/gif cerca` (ricerca libera: spenta di base e solo con una
+GIF di reazione e di azione (#131, D70): `/immagini gif reazione`, `/immagini gif azione` (con il bottone «Ricambia»),
+`/immagini gif preferenze` (FUN-138), `/immagini gif privacy` (chi non vuole ricevere azioni) e `/immagini gif cerca` (ricerca libera: spenta di base e solo con una
 chiave). Gratuite per tutti, solo SFW; la fonte e il credito sono sempre mostrati. Le azioni tra utenti si spengono con `/admin-bot politica` su `gif azione`.
 Funzioni coperte: SPEC §16 (FUN-081..135, 137, 139; D70)
 Dipende da: core/gif_catalogo.py, core/gif_fonti.py, core/gif_logic.py, core/repositories/gif_privacy_repo.py, core/gif_preferenze_logic.py
@@ -20,7 +20,7 @@ from discord.ext import commands
 from cogs.fun.entertainment import MODULE_FUN
 from core import gif_catalogo as catalogo
 from core import gif_logic as logica
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, comando_di_gruppo, SOTTOGRUPPI
 from core import fun_servizi_logic as servizi
 from core.database import db
 from core import gif_preferenze_logic as pref_logica
@@ -175,7 +175,7 @@ class GifCog(CogConGruppi, commands.Cog):
             **extra,
         )
 
-    @comando_di_gruppo("gif", nome="reazione", descrizione="Una GIF di reazione: piangi, balli, ridi...")
+    @comando_di_gruppo("immagini", nome="reazione", descrizione="Una GIF di reazione: piangi, balli, ridi...", sottogruppo=SOTTOGRUPPI["immagini gif"])
     @app_commands.describe(nome="Quale reazione", testo="Un testo da mettere accanto alla GIF (massimo 200 caratteri)")
     @app_commands.autocomplete(nome=_completa_reazione)
     async def reazione(
@@ -197,7 +197,7 @@ class GifCog(CogConGruppi, commands.Cog):
         frase = logica.frase(voce, lingua, interaction.user.display_name, testo=testo)
         await interaction.followup.send(embed=_embed(gif, lingua, frase), allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("gif", nome="cerca", descrizione="Cerca una GIF con le parole (spento di base: serve una chiave del bot).")
+    @comando_di_gruppo("immagini", nome="cerca", descrizione="Cerca una GIF con le parole (spento di base: serve una chiave del bot).", sottogruppo=SOTTOGRUPPI["immagini gif"])
     @app_commands.describe(testo="Cosa cercare (massimo 50 caratteri)", tema="Un tema da aggiungere alla ricerca")
     @app_commands.choices(
         tema=[
@@ -238,7 +238,7 @@ class GifCog(CogConGruppi, commands.Cog):
             allowed_mentions=NESSUNA_MENZIONE,
         )
 
-    @comando_di_gruppo("gif", nome="azione", descrizione="Una GIF di azione verso un utente: abbraccio, bacio, schiaffo...")
+    @comando_di_gruppo("immagini", nome="azione", descrizione="Una GIF di azione verso un utente: abbraccio, bacio, schiaffo...", sottogruppo=SOTTOGRUPPI["immagini gif"])
     @app_commands.describe(nome="Quale azione", utente="Verso chi")
     @app_commands.autocomplete(nome=_completa_azione)
     async def azione(
@@ -257,7 +257,7 @@ class GifCog(CogConGruppi, commands.Cog):
         await interaction.response.defer()
         await self.manda_azione(interaction, voce, interaction.user, utente, con_bottone=True, dopo_defer_pubblico=True)
 
-    @comando_di_gruppo("gif", nome="preferenze", descrizione="Le tue preferenze per le GIF: genere, personaggi preferiti, anime o no.")
+    @comando_di_gruppo("immagini", nome="preferenze", descrizione="Le tue preferenze per le GIF: genere, personaggi preferiti, anime o no.", sottogruppo=SOTTOGRUPPI["immagini gif"])
     @app_commands.describe(
         genere="Il genere dei personaggi che preferisci", tipo="Anime, non anime o entrambi",
         aggiungi="Un personaggio preferito da aggiungere (massimo 10)", togli="Un personaggio preferito da togliere",
@@ -306,7 +306,7 @@ class GifCog(CogConGruppi, commands.Cog):
             "\n".join([*avvisi, testo])[:2000], ephemeral=True, allowed_mentions=NESSUNA_MENZIONE
         )
 
-    @comando_di_gruppo("gif", nome="privacy", descrizione="Scegli chi può farti le azioni con le GIF.")
+    @comando_di_gruppo("immagini", nome="privacy", descrizione="Scegli chi può farti le azioni con le GIF.", sottogruppo=SOTTOGRUPPI["immagini gif"])
     @app_commands.describe(modo="Cosa vuoi fare", utente="L'utente (solo per bloccare o sbloccare)")
     @app_commands.choices(
         modo=[

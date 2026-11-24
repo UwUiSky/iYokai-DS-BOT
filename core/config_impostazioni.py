@@ -94,7 +94,7 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
     ),
     "fun": (
         _c("fun_immagini_post", "Immagini dalle comunità Lemmy (/immagini post)", BOOL),
-        _c("fun_gif_cerca", "Ricerca libera di GIF (/gif cerca, serve una chiave del bot)", BOOL),
+        _c("fun_gif_cerca", "Ricerca libera di GIF (/immagini gif cerca, serve una chiave del bot)", BOOL),
         _c("fun_telefono", "Telefono tra server (/fun telefono, ogni chiamata va accettata)", BOOL),
     ),
     "tickets": (

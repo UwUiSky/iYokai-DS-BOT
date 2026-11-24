@@ -1,7 +1,7 @@
 """
 cogs/fun/schede_giochi.py
 =========================
-`/web scheda tipo: nome:` (#131, D70, B9): scheda di un Pokémon (con il bottone «Debolezze»), un anime, un manga,
+`/utility-web scheda tipo: nome:` (#131, D70, B9): scheda di un Pokémon (con il bottone «Debolezze»), un anime, un manga,
 una carta di Magic o Hearthstone, un giocatore di osu! o di Fortnite. I dati arrivano da `core/schede_giochi_logic.py`
 (cache comune, servizi spenti senza chiave). Contenuti per adulti solo nei canali con limite d'età.
 Funzioni coperte: SPEC §16 (B9 di #131: FUN-066..070, 073)
@@ -76,7 +76,7 @@ class SchedeGiochiCog(CogConGruppi, commands.Cog):
     async def cog_unload(self) -> None:
         await super().cog_unload()
 
-    @comando_di_gruppo("web", nome="scheda", descrizione="La scheda di un Pokémon, anime, carta o giocatore.")
+    @comando_di_gruppo("utility-web", nome="scheda", descrizione="La scheda di un Pokémon, anime, carta o giocatore.")
     @app_commands.describe(tipo="Che cosa cercare", nome="Il nome (massimo 100 caratteri)")
     @app_commands.choices(
         tipo=[

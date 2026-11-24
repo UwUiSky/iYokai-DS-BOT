@@ -1,7 +1,7 @@
 """
 core/repositories/web_repo.py
 =============================
-Cache delle città (Nominatim) e impostazioni del gruppo /web per server.
+Cache delle città (Nominatim) e impostazioni del gruppo /utility-web per server.
 Tabelle: core/migrations/0540_web_servizi.sql.
 Funzioni coperte: catalogo #128 UTL-213, 208 (D69, B2)
 """

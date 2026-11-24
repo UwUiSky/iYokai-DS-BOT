@@ -1,7 +1,7 @@
 """
 cogs/fun/giochi_extra.py
 ========================
-Giochi piccoli del gruppo /giochi (#131, D70): `/giochi minato`, `/giochi dado`, `/giochi spinner`,
+Giochi piccoli del gruppo /giochi (#131, D70): `/giochi minato`, `/giochi dado-del-giorno`, `/giochi spinner`,
 `/giochi mazzo` e `/admin-giochi punteggi azzera`. Nessuna puntata e nessuna moneta: i giochi di fortuna
 non si monetizzano.
 Funzioni coperte: SPEC §16 (FUN-003, 009, 015, 016, 018)
@@ -169,7 +169,7 @@ class GiochiExtraCog(CogConGruppi, commands.Cog):
             allowed_mentions=NESSUNA_MENZIONE,
         )
 
-    @comando_di_gruppo("giochi", nome="dado", descrizione="Un tiro al giorno da 1 a 100 e la classifica del server.")
+    @comando_di_gruppo("giochi", nome="dado-del-giorno", descrizione="Un tiro al giorno da 1 a 100 e la classifica del server.")
     @app_commands.describe(vista="Quale classifica mostrare (di base: oggi)")
     @app_commands.choices(
         vista=[

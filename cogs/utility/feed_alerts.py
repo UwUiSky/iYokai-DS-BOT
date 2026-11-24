@@ -3,7 +3,7 @@ cogs/utility/feed_alerts.py
 ==============================
 Comandi di Custom RSS/Alert (SPEC.md §10.3, §10.7, §10.8, §10.9, §10.13).
 Il polling vero vive nei watcher di core/ (servizi bot-wide, non legati a
-questo cog) — qui solo /admin-moduli alert feed|twitch|youtube-live|kick|webhook|
+questo cog) — qui solo /admin-alert piattaforme feed|twitch|youtube-live|kick|webhook|
 opzioni|ruolo-live|guida-social|rimuovi|elenco per gestire le
 sottoscrizioni e le loro opzioni.
 """
@@ -16,7 +16,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, comando_di_gruppo, SOTTOGRUPPI
 from core.alert_limiti_logic import tetto_e_pieno
 from core.alert_options_logic import (
     MAX_ATTESA_MINUTI,
@@ -58,7 +58,7 @@ MAX_CARATTERI_RIGA = 300
 async def _tetto_raggiunto(interaction: discord.Interaction, servizio: str, tetto: int = MAX_LIVE_PER_SERVER) -> None:
     await interaction.response.send_message(
         f"Questo server ha già {tetto} avvisi {servizio} (o il massimo in tutto), il massimo consentito. "
-        "Rimuovine uno con /admin-moduli alert rimuovi prima di aggiungerne un altro.",
+        "Rimuovine uno con /admin-alert piattaforme rimuovi prima di aggiungerne un altro.",
         ephemeral=True,
     )
 
@@ -87,10 +87,10 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "admin-moduli",
+        "admin-alert",
         nome="feed",
         descrizione="Segui un feed RSS/Atom.",
-        sottogruppo=SOTTOGRUPPO,
+        sottogruppo=SOTTOGRUPPI["admin-alert piattaforme"],
     )
     @app_commands.describe(
         feed_url="URL del feed RSS/Atom",
@@ -169,10 +169,10 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin-moduli",
+        "admin-alert",
         nome="webhook",
         descrizione="Crea un webhook per pubblicare da servizi esterni.",
-        sottogruppo=SOTTOGRUPPO,
+        sottogruppo=SOTTOGRUPPI["admin-alert piattaforme"],
     )
     @app_commands.describe(
         channel="Dove pubblicare",
@@ -246,10 +246,10 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin-moduli",
+        "admin-alert",
         nome="rimuovi",
         descrizione="Rimuove un avviso o un webhook.",
-        sottogruppo=SOTTOGRUPPO,
+        sottogruppo=SOTTOGRUPPI["admin-alert piattaforme"],
     )
     @app_commands.describe(
         subscription_id="ID con prefisso, es. TW-2 o WH-1"
@@ -298,10 +298,10 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
             )
 
     @comando_di_gruppo(
-        "admin-moduli",
+        "admin-alert",
         nome="twitch",
         descrizione="Avvisa quando uno streamer Twitch va live.",
-        sottogruppo=SOTTOGRUPPO,
+        sottogruppo=SOTTOGRUPPI["admin-alert piattaforme"],
     )
     @app_commands.describe(
         twitch_login="Nome utente Twitch (non l'URL)",
@@ -352,10 +352,10 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin-moduli",
+        "admin-alert",
         nome="youtube-live",
         descrizione="Avvisa quando un canale YouTube va live.",
-        sottogruppo=SOTTOGRUPPO,
+        sottogruppo=SOTTOGRUPPI["admin-alert piattaforme"],
     )
     @app_commands.describe(
         youtube_channel_id="ID del canale YouTube (UC…, non l'URL)",
@@ -417,10 +417,10 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin-moduli",
+        "admin-alert",
         nome="kick",
         descrizione="Avvisa quando un canale Kick va in diretta.",
-        sottogruppo=SOTTOGRUPPO,
+        sottogruppo=SOTTOGRUPPI["admin-alert piattaforme"],
     )
     @app_commands.describe(
         kick="Nome del canale Kick o link",
@@ -486,10 +486,10 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin-moduli",
+        "admin-alert",
         nome="opzioni",
         descrizione="Opzioni di un avviso: ruolo, fine diretta, bottone.",
-        sottogruppo=SOTTOGRUPPO,
+        sottogruppo=SOTTOGRUPPI["admin-alert piattaforme"],
     )
     @app_commands.describe(
         id_avviso="ID dell'avviso, es. TW-2 o KK-1",
@@ -587,7 +587,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         if campi.get("crosspost"):
             extra += "\nLa pubblicazione funziona solo se l'avviso va in un canale di annunci."
         if campi.get("live_member_id") and not await alert_options_repo.get_live_role(guild.id):
-            extra += "\nImposta anche il ruolo con /admin-moduli alert ruolo-live."
+            extra += "\nImposta anche il ruolo con /admin-alert piattaforme ruolo-live."
         await interaction.response.send_message(
             "✅ Opzioni aggiornate.\n" + self._riepilogo(subscription_id, opz) + extra, ephemeral=True
         )
@@ -634,10 +634,10 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin-moduli",
+        "admin-alert",
         nome="ruolo-live",
         descrizione="Ruolo dato a chi è in diretta.",
-        sottogruppo=SOTTOGRUPPO,
+        sottogruppo=SOTTOGRUPPI["admin-alert piattaforme"],
     )
     @app_commands.describe(ruolo="Il ruolo (vuoto: mostra quello attuale)")
     async def ruolo_live(self, interaction: discord.Interaction, ruolo: discord.Role | None = None) -> None:
@@ -679,10 +679,10 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin-moduli",
+        "admin-alert",
         nome="guida-social",
         descrizione="Avvisi per TikTok, Instagram e X.",
-        sottogruppo=SOTTOGRUPPO,
+        sottogruppo=SOTTOGRUPPI["admin-alert piattaforme"],
     )
     async def guida_social(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_message(
@@ -692,10 +692,10 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin-moduli",
+        "admin-alert",
         nome="elenco",
         descrizione="Elenca gli avvisi del server.",
-        sottogruppo=SOTTOGRUPPO,
+        sottogruppo=SOTTOGRUPPI["admin-alert piattaforme"],
     )
     async def list_alerts(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild

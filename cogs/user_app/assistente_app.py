@@ -1,7 +1,7 @@
 """
 cogs/user_app/assistente_app.py
 ===============================
-iYokai App: `/trova` cerca tra i comandi e i menu dell'app (senza AI) e `/assistente` è l'assistente personale con
+iYokai App: `/trova` cerca tra i comandi e i menu dell'app (senza AI) e `/ai` è l'assistente personale con
 l'AI, che conosce l'elenco delle funzioni dell'app. Con l'AI ferma o spenta dalla persona risponde `/trova`.
 Il testo della domanda passa dallo snodo come testo di utente e non si salva (D19). Si carica solo sul client dell'app.
 Funzioni coperte: SPEC §25.85, §25.86 (AI-R-092, AI-R-093)

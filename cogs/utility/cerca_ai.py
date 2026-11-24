@@ -1,7 +1,7 @@
 """
 cogs/utility/cerca_ai.py
 ========================
-`/web cerca`: «cerca qualsiasi cosa» (risposte rapide, web, video) con i servizi AI che sanno cercare sul web,
+`/utility-web cerca`: «cerca qualsiasi cosa» (risposte rapide, web, video) con i servizi AI che sanno cercare sul web,
 scelti dallo snodo AI con il lavoro «ricerca». Link controllati, testo troncato, menzioni spente, pausa e tetto
 al giorno per persona. Rispetta consenso, privacy e interruttori AI del server; senza un servizio adatto lo dice.
 Funzioni coperte: SPEC §25 (UTL-216; D124, D19, D55)
@@ -28,7 +28,7 @@ class CercaAICog(CogConGruppi, commands.Cog):
         self.bot = bot
         self.limite = logica.LimitePersona()
 
-    @comando_di_gruppo("web", nome="cerca", descrizione="Cerca qualsiasi cosa: una risposta rapida, il web o dei video.")
+    @comando_di_gruppo("utility-web", nome="cerca", descrizione="Cerca qualsiasi cosa: una risposta rapida, il web o dei video.")
     @app_commands.describe(domanda="Cosa cercare", tipo="Che tipo di risultato vuoi")
     @app_commands.choices(
         tipo=[

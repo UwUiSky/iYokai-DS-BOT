@@ -14,6 +14,8 @@ Dipende da: core/migrations/0486_livelli_funzione.sql, core/database.py
 
 from __future__ import annotations
 
+from core.comandi_diretti import percorso_vero
+
 import logging
 from collections.abc import Callable
 
@@ -247,7 +249,7 @@ async def motivo_negato(interaction, funzioni: dict | None = None) -> str | None
     comando = getattr(interaction, "command", None)
     if comando is None:
         return None
-    chiave = funzione_del_comando(comando.qualified_name, funzioni)
+    chiave = funzione_del_comando(percorso_vero(comando), funzioni)
     if chiave is None:
         return None
     livello = livello_di(chiave)

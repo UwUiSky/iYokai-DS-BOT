@@ -2,7 +2,7 @@
 cogs/ai/voce.py
 ===============
 La voce di Yokai: veri messaggi vocali di Discord scritti dal bot, con sotto «Trascrivi» e «Nella mia lingua»
-(vedono la risposta solo chi preme, nella lingua del loro client); `/admin-ai voce imposta|parla`, `/assistente parla`,
+(vedono la risposta solo chi preme, nella lingua del loro client); `/admin-ai voce imposta|parla`, `/ai parla`,
 saluti a voce nei canali scelti, saluto vocale all'apertura di un ticket. Il menu «Trascrivi vocale» sui vocali delle persone sta nell'app (cogs/user_app/voce_app.py). Senza motore vocale il bot manda
 solo il testo. Il motore si accende da `.env` (VOCE_MODELLO_DIR).
 Funzioni coperte: SPEC §14.19, §25.102, §25.103, §25.104, §25.105, ticket (AI-R-109..112, D22)
@@ -112,7 +112,7 @@ class VocaleView(BaseView):
 
 async def trascrivi_e_traduci(interaction: discord.Interaction, messaggio: discord.Message) -> None:
     """Menu «Trascrivi vocale» (AI-R-111): testo del vocale di una persona e traduzione nella lingua del client.
-    Il menu è di iYokai App: la richiesta all'AI è della persona, senza server (come `/assistente`)."""
+    Il menu è di iYokai App: la richiesta all'AI è della persona, senza server (come `/ai`)."""
     vocale = next((a for a in messaggio.attachments if a.is_voice_message()), None)
     if vocale is None:
         await interaction.response.send_message("Questo messaggio non è un vocale.", ephemeral=True)
@@ -212,7 +212,7 @@ class AiVoceCog(CogConGruppi, commands.Cog):
         partito = await parla(self.bot, destinazione, testo, "ANNOUNCEMENT", guild_id=interaction.guild_id, chi=interaction.user)
         await interaction.followup.send(f"Vocale in {destinazione.mention}." if partito else SPENTA, ephemeral=True)
 
-    @comando_di_gruppo("assistente", nome="parla", descrizione="Yokai dice una frase a voce in questo canale.")
+    @comando_di_gruppo("ai", nome="parla", descrizione="Yokai dice una frase a voce in questo canale.")
     @app_commands.describe(testo="Cosa dire")
     async def utility_parla(self, interaction: discord.Interaction, testo: app_commands.Range[str, 3, MAX_TESTO]) -> None:
         if interaction.guild_id is None or not isinstance(interaction.channel, discord.TextChannel):

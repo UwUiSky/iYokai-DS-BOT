@@ -470,7 +470,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
     ) -> bool:
         """
         SEC-4/SEC-17: il ruolo verificato può aver preso permessi
-        pericolosi dopo il /admin-sicurezza verify setup, quindi si ricontrolla al
+        pericolosi dopo il /admin-sicurezza-verifica setup, quindi si ricontrolla al
         momento dell'assegnazione. Se non va bene l'utente resta nel
         server senza il ruolo (False) e resta un avviso nei log.
         """

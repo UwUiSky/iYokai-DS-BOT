@@ -558,7 +558,7 @@ async def risolvi_titolo_deezer(testo: str, esegui_con_prefisso, paese: str | No
 
 
 def righe_stato(lingua: str | None = None) -> list[str]:
-    """Una riga per fonte per /owner radio fonti, nella lingua di chi legge. Chiavi solo sì/no."""
+    """Una riga per fonte per /owner-radio fonti, nella lingua di chi legge. Chiavi solo sì/no."""
     from core.i18n import t
 
     righe = []

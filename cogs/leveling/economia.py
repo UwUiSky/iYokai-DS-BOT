@@ -11,7 +11,6 @@ Dipende da: core/repositories/economia_repo.py
 
 from __future__ import annotations
 
-import io
 import logging
 from datetime import datetime, timezone
 
@@ -27,9 +26,6 @@ from core.i18n import testo_per
 from core.leveling_azzera_logic import nome_confermato
 from core.leveling_logic import ATTESA_PERIODICI, LevelingSettings, MODI_SALDO_USCITA, seconds_until_next_claim
 from core.repositories.leveling_repo import leveling_repo
-from core.repositories.rischio_repo import rischio_repo
-from core.safe_image import run_image_task
-from core.wallet_card import render_wallet_card
 from core.repositories.economia_repo import MAX_MEMBRI_PER_RUOLO, economia_repo
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 
@@ -114,26 +110,6 @@ class EconomiaCog(CogConGruppi, commands.Cog):
             return
         testo = "\n".join(f"`{r['delta']:+d}` {discord.utils.escape_markdown(r['motivo'])} · <t:{int(r['at'].timestamp())}:R>" for r in righe)
         await interaction.response.send_message(testo[:3900], ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
-
-    # ---------------------------------------------------------------- /monete conto portafoglio (ECO-017)
-    @comando_di_gruppo("monete", nome="portafoglio", descrizione="Il tuo saldo come immagine.", sottogruppo=("conto", "Banca e lavoro"))
-    async def portafoglio(self, interaction: discord.Interaction) -> None:
-        if await _comando_rifiutato(interaction):
-            return
-        await interaction.response.defer()
-        g, u = interaction.guild.id, interaction.user.id
-        totali = await leveling_repo.get_totals(g, u)
-        banca = (await rischio_repo.banca(g, u)).banca
-        posizione = await leveling_repo.get_coins_position(g, u)
-        moneta = (await leveling_settings_repo.get_config(g)).impostazioni.currency_name
-        immagine = await leveling_settings_repo.get_immagine_moneta(g)
-        try:
-            png = await run_image_task(render_wallet_card, interaction.user.display_name, totali.coins_total, banca, posizione, moneta, immagine)
-        except Exception:
-            logger.warning("Portafoglio non disegnato", exc_info=True)
-            await interaction.followup.send(f"**{totali.coins_total}** {moneta} · banca **{banca}**")
-            return
-        await interaction.followup.send(file=discord.File(io.BytesIO(png), filename="portafoglio.png"))
 
     # ---------------------------------------------------------------- /monete settimanale e mensile
     async def _riscuoti(self, interaction: discord.Interaction, tipo: str) -> None:

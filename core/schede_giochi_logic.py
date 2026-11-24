@@ -1,7 +1,7 @@
 """
 core/schede_giochi_logic.py
 ===========================
-Schede di giochi, anime e carte per `/web scheda` (#131, D70, B9): Pokémon (PokéAPI), anime e manga (AniList),
+Schede di giochi, anime e carte per `/utility-web scheda` (#131, D70, B9): Pokémon (PokéAPI), anime e manga (AniList),
 Magic (Scryfall), Hearthstone (HearthstoneJSON), osu! (API v2) e Fortnite (fortnite-api.com).
 Ogni risposta passa da `core/safe_http.safe_richiesta` (timeout, tetto di byte, nessun redirect), entra nella
 cache comune `cache_esterna` e diventa una «scheda» neutra rispetto alla lingua (i nomi dei campi sono chiavi

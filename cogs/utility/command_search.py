@@ -1,7 +1,7 @@
 """
 cogs/utility/command_search.py
 ==================================
-cerca-comando e chiedi (issue #147), comandi di primo livello usabili anche in DM e
+/help (D137: unisce `cerca-comando` e `chiedi`, issue #147), comando di primo livello usabili anche in DM e
 installabili dall'utente (NF-36, #107): dove il bot non c'è valgono come in DM.
 
 - Senza testo: pannello effimero con l'ultimo comando usato (tabella `command_usage`,
@@ -12,7 +12,7 @@ installabili dall'utente (NF-36, #107): dove il bot non c'è valgono come in DM.
   (ID da `fetch_commands`: cache che si ricarica per scadenza o quando manca un ID).
 - Nessun risultato: propone di aprire una richiesta allo sviluppatore, riusando il modal
   di cogs/utility/custom_command_requests.py.
-- chiedi: con l'AI accesa nel server risponde l'assistente (cogs/ai/helpdesk.py) con al
+- Con testo: con l'AI accesa nel server risponde l'assistente (cogs/ai/helpdesk.py) con al
   massimo 3 comandi cliccabili; senza AI, o se l'AI non risponde, la ricerca per parole.
 - Bottone "Apri nella wiki" se WIKI_BASE_URL è impostato.
 
@@ -21,6 +21,8 @@ Nessun gate is_module_active_for_guild: è uno strumento di scoperta rivolto a c
 
 
 from __future__ import annotations
+
+from core.comandi_diretti import percorso_vero
 
 import logging
 
@@ -32,7 +34,7 @@ from cogs.utility._command_search_views import DatiPannello, PannelloView, Risul
 from core import command_search_logic as logica
 from core.i18n import testo_per
 from core.command_access import Livello, puo_usare
-from core.command_groups import GRUPPI, NOME_CERCA_COMANDO, NOME_CHIEDI
+from core.command_groups import GRUPPI, NOME_HELP
 from core.config import config
 from core.database import db
 from core.i18n import lingua_interazione, t
@@ -209,39 +211,16 @@ class CommandSearchCog(commands.Cog):
     # Comandi
     # ------------------------------------------------------------------
     # Comando di PRIMO livello (non in /utility); usabile anche in DM (D24, 11/10/2026) e installabile
-    # dall'utente (NF-36): nei server senza il bot vale come un DM.
-    @app_commands.command(name=NOME_CERCA_COMANDO, description="Cerca un comando per descrizione.")
-    @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
-    @app_commands.allowed_installs(guilds=True, users=True)
-    @app_commands.describe(query="Descrivi cosa vuoi fare, es. 'bannare qualcuno' (vuoto: pannello)")
-    async def search(
-        self,
-        interaction: discord.Interaction,
-        # Il testo viene ricopiato nella risposta: va tenuto corto.
-        query: app_commands.Range[str, 1, 100] | None = None,
-    ) -> None:
-        if query is None:
-            await self._mostra_pannello(interaction)
-            return
-        await self._ricerca(interaction, query)
-
-    @search.autocomplete("query")
-    async def autocompleta_query(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
-        comandi = await self._comandi_accessibili(interaction)
-        return [
-            app_commands.Choice(name=nome, value=valore)
-            for nome, valore in logica.suggerimenti(current, comandi, lingua=await lingua_interazione(interaction))
-        ]
-
-    # `chiedi` (primo livello): senza testo il pannello; con testo l'assistente AI o la ricerca.
-    @app_commands.command(name=NOME_CHIEDI, description="Chiedi aiuto: ti mostro i comandi giusti.")
+    # dall'utente (NF-36): nei server senza il bot vale come un DM. `/help` unisce i vecchi `chiedi` e
+    # `cerca-comando` (D137): senza testo il pannello; con testo l'assistente AI o la ricerca per parole.
+    @app_commands.command(name=NOME_HELP, description="Scrivi cosa vuoi fare: ti mostro i comandi giusti.")
     @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
     @app_commands.allowed_installs(guilds=True, users=True)
     @app_commands.describe(
         domanda="Cosa vuoi fare? (vuoto: pannello dei comandi)",
         cerca="Sì: cerca la risposta sul web e ti riassume le fonti",
     )
-    async def chiedi(
+    async def aiuto(
         self,
         interaction: discord.Interaction,
         domanda: app_commands.Range[str, 1, 500] | None = None,
@@ -268,6 +247,14 @@ class CommandSearchCog(commands.Cog):
             await self._ricerca(interaction, pulita, nota, gia_differita=True)
         else:
             await self._ricerca(interaction, pulita, nota)
+
+    @aiuto.autocomplete("domanda")
+    async def autocompleta_domanda(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+        comandi = await self._comandi_accessibili(interaction)
+        return [
+            app_commands.Choice(name=nome, value=valore)
+            for nome, valore in logica.suggerimenti(current, comandi, lingua=await lingua_interazione(interaction))
+        ]
 
     async def _risposta_ai(self, interaction: discord.Interaction, domanda: str) -> bool | None:
         """
@@ -341,8 +328,8 @@ class CommandSearchCog(commands.Cog):
     async def on_app_command_completion(self, interaction: discord.Interaction, command) -> None:
         if not isinstance(command, app_commands.Command):
             return  # menu contestuali: non sono comandi da cercare
-        percorso = command.qualified_name
-        if percorso in (NOME_CERCA_COMANDO, NOME_CHIEDI):
+        percorso = percorso_vero(command)
+        if percorso in (NOME_HELP):
             return
         try:
             await self.repo.registra(_server_del_bot(interaction), interaction.user.id, percorso)

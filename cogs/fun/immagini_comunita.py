@@ -111,7 +111,7 @@ class ImmaginiComunitaCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(embed=embed, view=vista, allowed_mentions=NESSUNA_MENZIONE)
 
     @comando_di_gruppo("admin-giochi", nome="servizi", descrizione="Accende o spegne i servizi esterni: immagini Lemmy e ricerca di GIF.")
-    @app_commands.describe(immagini_post="Il comando /immagini post (spento di base)", gif_cerca="Il comando /gif cerca (spento di base, serve una chiave del bot)")
+    @app_commands.describe(immagini_post="Il comando /immagini post (spento di base)", gif_cerca="Il comando /immagini gif cerca (spento di base, serve una chiave del bot)")
     @richiedi(Livello.ADMIN)
     async def servizi_esterni(
         self, interaction: discord.Interaction, immagini_post: bool | None = None, gif_cerca: bool | None = None

@@ -1,7 +1,7 @@
 """
 cogs/music/owner.py
 ===================
-Comandi musicali riservati al proprietario del bot, in `/owner radio`: nodi Lavalink, stato dei
+Comandi musicali riservati al proprietario del bot, in `/owner-radio`: nodi Lavalink, stato dei
 player, riconnessione, log del Lavalink locale, fonti accese o spente, parole vietate in tutto il bot.
 Funzioni coperte: SPEC §9 (catalogo MUS-011, MUS-014, MUS-063, MUS-067, MUS-068, MUS-069, MUS-070)
 Dipende da: core/music_owner_logic.py, core/repositories/music_owner_repo.py, core/music_nodes.py
@@ -103,8 +103,7 @@ class MusicOwnerCog(CogConGruppi, commands.Cog):
     def _clienti(self) -> list:
         return [self.bot, *getattr(getattr(self.bot, "music_fleet", None), "worker_bots", [])]
 
-    @comando_di_gruppo("owner", nome="nodi", descrizione="Mostra i nodi Lavalink di ogni bot musicale (senza password).",
-                       sottogruppo=RADIO)
+    @comando_di_gruppo("owner-radio", nome="nodi", descrizione="Mostra i nodi Lavalink di ogni bot musicale (senza password).")
     async def nodi(self, interaction: discord.Interaction) -> None:
         if not await self._solo_owner(interaction):  # MUS-070
             return
@@ -113,8 +112,7 @@ class MusicOwnerCog(CogConGruppi, commands.Cog):
         testo = "\n".join(righe) or await testo_per(interaction, "music_owner_nessun_nodo")
         await interaction.response.send_message(truncate_title(testo, 1900), ephemeral=True)
 
-    @comando_di_gruppo("owner", nome="stato", descrizione="Quanti player musicali stanno suonando ora.",
-                       sottogruppo=RADIO)
+    @comando_di_gruppo("owner-radio", nome="stato", descrizione="Quanti player musicali stanno suonando ora.")
     async def stato(self, interaction: discord.Interaction) -> None:
         if not await self._solo_owner(interaction):  # MUS-067
             return
@@ -123,8 +121,7 @@ class MusicOwnerCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "music_owner_stato", v1=suonano, v2=collegati), ephemeral=True
         )
 
-    @comando_di_gruppo("owner", nome="riconnetti", descrizione="Ricollega i nodi Lavalink caduti.",
-                       sottogruppo=RADIO)
+    @comando_di_gruppo("owner-radio", nome="riconnetti", descrizione="Ricollega i nodi Lavalink caduti.")
     async def riconnetti(self, interaction: discord.Interaction) -> None:
         if not await self._solo_owner(interaction):  # MUS-068
             return
@@ -139,8 +136,7 @@ class MusicOwnerCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "music_owner_riconnetti", v1=ripartiti), ephemeral=True
         )
 
-    @comando_di_gruppo("owner", nome="log", descrizione="Coda del log del Lavalink locale (senza chiavi).",
-                       sottogruppo=RADIO)
+    @comando_di_gruppo("owner-radio", nome="log", descrizione="Coda del log del Lavalink locale (senza chiavi).")
     async def log(self, interaction: discord.Interaction) -> None:
         if not await self._solo_owner(interaction):  # MUS-069
             return
@@ -159,8 +155,7 @@ class MusicOwnerCog(CogConGruppi, commands.Cog):
             file=discord.File(io.BytesIO(testo.encode("utf-8")), filename="lavalink.log"), ephemeral=True
         )
 
-    @comando_di_gruppo("owner", nome="sorgente", descrizione="Accende o spegne una fonte musicale a bot acceso.",
-                       sottogruppo=RADIO)
+    @comando_di_gruppo("owner-radio", nome="sorgente", descrizione="Accende o spegne una fonte musicale a bot acceso.")
     @app_commands.describe(fonte="La fonte", stato="Accesa, spenta o come da ambiente")
     @app_commands.choices(fonte=SCELTE_FONTE, stato=SCELTE_STATO)
     async def sorgente(self, interaction: discord.Interaction, fonte: str, stato: str) -> None:
@@ -179,8 +174,7 @@ class MusicOwnerCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "music_owner_fonte_cambiata", fonte=etichetta, stato=stato), ephemeral=True
         )
 
-    @comando_di_gruppo("owner", nome="blocca-parola", descrizione="Parole vietate nei titoli in tutto il bot.",
-                       sottogruppo=RADIO)
+    @comando_di_gruppo("owner-radio", nome="blocca-parola", descrizione="Parole vietate nei titoli in tutto il bot.")
     @app_commands.describe(azione="Aggiungi, togli o elenco", parola="La parola (2-60 caratteri)")
     @app_commands.choices(azione=SCELTE_AZIONE)
     async def blocca_parola(
@@ -211,7 +205,7 @@ class MusicOwnerCog(CogConGruppi, commands.Cog):
             ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
         )
 
-    @comando_di_gruppo("owner", nome="genere", descrizione="Playlist del menu /music genere.", sottogruppo=RADIO)
+    @comando_di_gruppo("owner-radio", nome="genere", descrizione="Playlist del menu /music genere.")
     @app_commands.describe(azione="Aggiungi, togli o elenco", genere="Il genere", titolo="Nome della playlist", link="Link https")
     @app_commands.choices(azione=SCELTE_AZIONE)
     async def genere(

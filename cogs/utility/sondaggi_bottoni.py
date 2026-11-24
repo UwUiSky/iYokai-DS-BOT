@@ -1,8 +1,8 @@
 """
 cogs/utility/sondaggi_bottoni.py
 ================================
-Sondaggio a bottoni del bot: `/sondaggi bottoni` (fino a 20 opzioni, anonimo, risultati alla fine, più scelte, ruolo riservato,
-voti pesati per ruolo, chiusura a N votanti), `/sondaggi modifica` (finestra), `/sondaggi gestisci` (elenco, riepilogo, chiudi), inizio programmato (`inizia_tra`) e `/admin-moduli sondaggi` (pesi per ruolo).
+Sondaggio a bottoni del bot: `/utility-server sondaggi bottoni` (fino a 20 opzioni, anonimo, risultati alla fine, più scelte, ruolo riservato,
+voti pesati per ruolo, chiusura a N votanti), `/utility-server sondaggi modifica` (finestra), `/utility-server sondaggi gestisci` (elenco, riepilogo, chiudi), inizio programmato (`inizia_tra`) e `/admin-moduli sondaggi` (pesi per ruolo).
 I bottoni sono DynamicItem: funzionano dopo il riavvio. La scadenza passa dallo scheduler. Chi esce o è bannato perde il voto.
 Funzioni coperte: catalogo #128 UTL-088, 089, 091, 093, 094, 096, 090, 097 (D69, B22, B23)
 """
@@ -17,7 +17,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core import sondaggi_logic as L
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, comando_di_gruppo, SOTTOGRUPPI
 from core.database import db
 from core.duration_logic import parse_duration
 from core.i18n import lingua_interazione, lingua_risposta, t
@@ -410,8 +410,8 @@ class SondaggiBottoniCog(CogConGruppi, commands.Cog):
         vista = GestioneSondaggio(self, interaction.user.id, sondaggio_id, (t("sb_chiudi_ora", lingua), t("sb_scegli_ruoli", lingua)))
         await interaction.response.send_message(t("sb_gestione", lingua), view=vista, ephemeral=True)
 
-    # --- /sondaggi bottoni -------------------------------------------------------------------------------------------
-    @comando_di_gruppo("sondaggi", nome="bottoni", descrizione="Crea un sondaggio a bottoni (fino a 20 opzioni).")
+    # --- /utility-server sondaggi bottoni -------------------------------------------------------------------------------------------
+    @comando_di_gruppo("utility-server", nome="bottoni", descrizione="Crea un sondaggio a bottoni (fino a 20 opzioni).", sottogruppo=SOTTOGRUPPI["utility-server sondaggi"])
     @app_commands.describe(
         domanda="La domanda (massimo 256 caratteri)",
         opzioni="Le opzioni separate da | (da 2 a 20, massimo 80 caratteri l'una)",
@@ -501,8 +501,8 @@ class SondaggiBottoniCog(CogConGruppi, commands.Cog):
         await scheduler.schedule(guild.id, interaction.user.id, AZIONE_CHIUDI, scade, {"id": sid})
         await interaction.followup.send(t("sb_creato", lingua, link=messaggio.jump_url), ephemeral=True)
 
-    # --- /sondaggi modifica ------------------------------------------------------------------------------------------
-    @comando_di_gruppo("sondaggi", nome="modifica", descrizione="Cambia domanda, opzioni o durata di un sondaggio a bottoni aperto.")
+    # --- /utility-server sondaggi modifica ------------------------------------------------------------------------------------------
+    @comando_di_gruppo("utility-server", nome="modifica", descrizione="Cambia domanda, opzioni o durata di un sondaggio a bottoni aperto.", sottogruppo=SOTTOGRUPPI["utility-server sondaggi"])
     @app_commands.describe(sondaggio="Il sondaggio da cambiare (scegli dall'elenco)")
     @app_commands.autocomplete(sondaggio=_completa_sondaggi)
     async def modifica(self, interaction: discord.Interaction, sondaggio: app_commands.Range[str, 1, 20]) -> None:
@@ -561,8 +561,8 @@ class SondaggiBottoniCog(CogConGruppi, commands.Cog):
         await self.aggiorna_messaggio(sid)
         return "sb_modificato"
 
-    # --- /sondaggi gestisci ------------------------------------------------------------------------------------------
-    @comando_di_gruppo("sondaggi", nome="gestisci", descrizione="Elenco, riepilogo o chiusura dei sondaggi a bottoni.")
+    # --- /utility-server sondaggi gestisci ------------------------------------------------------------------------------------------
+    @comando_di_gruppo("utility-server", nome="gestisci", descrizione="Elenco, riepilogo o chiusura dei sondaggi a bottoni.", sottogruppo=SOTTOGRUPPI["utility-server sondaggi"])
     @app_commands.describe(azione="Cosa fare", sondaggio="Il sondaggio (serve per riepilogo e chiudi)")
     @app_commands.choices(azione=_AZIONI_GESTIONE)
     @app_commands.autocomplete(sondaggio=_completa_gestione)

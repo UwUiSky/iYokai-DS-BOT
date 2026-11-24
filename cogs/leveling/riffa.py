@@ -1,7 +1,7 @@
 """
 cogs/leveling/riffa.py
 ======================
-Riffa del server (/admin-giochi evento riffa): lo staff mette un premio pagato dalla cassa del server, chi clicca
+Riffa del server (/admin-economia-negozio evento riffa): lo staff mette un premio pagato dalla cassa del server, chi clicca
 «Partecipa» entra una volta sola, alla scadenza si estrae un vincitore e il premio passa dalla cassa al
 vincitore in una transazione sola (se la cassa non basta più, la riffa è annullata e non si muove niente).
 Se il bot si riavvia durante la riffa, nessuna moneta si è mossa.
@@ -20,7 +20,7 @@ from discord.ext import commands
 
 from cogs.leveling.evento_monete import _SG
 from cogs.leveling.leveling import _comando_rifiutato
-from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
+from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog, SOTTOGRUPPI
 from core.i18n import testo_per
 from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.guild_chest_repo import REASON_EVENT_WINNER_PRIZE, guild_chest_repo
@@ -92,7 +92,7 @@ class RiffaCog(CogConGruppi, commands.Cog):
     def cog_unload(self) -> None:
         togli_comandi_del_cog(self)
 
-    @comando_di_gruppo("admin-giochi", nome="riffa", descrizione="Una riffa pagata dalla cassa del server: chi clicca può vincere il premio.", sottogruppo=_SG)
+    @comando_di_gruppo("admin-economia-negozio", nome="riffa", descrizione="Una riffa pagata dalla cassa del server: chi clicca può vincere il premio.", sottogruppo=SOTTOGRUPPI["admin-economia-negozio evento"])
     @app_commands.describe(premio="Monete di premio (dalla cassa del server)", minuti="Quanto dura (1-60 minuti)")
     async def riffa(
         self, interaction: discord.Interaction, premio: app_commands.Range[int, 1, 100_000], minuti: app_commands.Range[int, 1, 60] = 5

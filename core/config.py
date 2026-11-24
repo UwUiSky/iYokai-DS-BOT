@@ -190,7 +190,7 @@ class Config:
     # Docker è il punto di montaggio, es. /audio/local). Vuota = la stessa
     # cartella del bot (MAIN_RADIO_LOCAL_FOLDER).
     LAVALINK_LOCAL_ROOT: str = field(default="")
-    # MUS-069: file di log del Lavalink locale (es. deploy/lavalink/logs/spring.log), letto da `/owner radio log`.
+    # MUS-069: file di log del Lavalink locale (es. deploy/lavalink/logs/spring.log), letto da `/owner-radio log`.
     LAVALINK_LOG_FILE: str = field(default="")
 
     # Token dell'istanza NSFW (NF-23, core/nsfw_bot.py): facoltativo.
@@ -242,7 +242,7 @@ class Config:
     VIRUSTOTAL_API_KEY: str = field(default="", repr=False)
     BLOXLINK_API_KEY: str = field(default="", repr=False)  # TKT-088: profilo Roblox nel ticket; vuota = funzione spenta
 
-    # Prezzi cripto di /web prezzo (CoinGecko, piano Demo, D69). Vuota = il comando risponde che non è attivo.
+    # Prezzi cripto di /utility-web prezzo (CoinGecko, piano Demo, D69). Vuota = il comando risponde che non è attivo.
     COINGECKO_API_KEY: str = field(default="", repr=False)
 
     # Radio condivisa del bot principale (SPEC.md §9.11) — cartella

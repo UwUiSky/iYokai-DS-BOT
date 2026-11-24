@@ -22,6 +22,8 @@ queste funzioni, sia per il comando sia per il futuro pannello (D16). Il control
 
 from __future__ import annotations
 
+from core.comandi_diretti import ComandoDiretto, percorso_vero
+
 import asyncio
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -239,6 +241,8 @@ def percorsi_dei_comandi(comandi: Iterable) -> list[str]:
 
     trovati: list[str] = []
     for nodo in comandi:
+        if isinstance(nodo, ComandoDiretto):
+            continue  # un comando diretto è un altro nome di un comando già nell'elenco
         if isinstance(nodo, app_commands.Group):
             trovati.extend(percorsi_dei_comandi(nodo.commands))
         else:
@@ -300,6 +304,6 @@ async def valuta_interazione(interaction) -> str | None:
         comando = interaction.command
         if comando is None:
             return None
-        return await valuta_percorso(interaction, comando.qualified_name)
+        return await valuta_percorso(interaction, percorso_vero(comando))
     except Exception:
         return None

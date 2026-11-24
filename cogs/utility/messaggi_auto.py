@@ -102,7 +102,7 @@ class MessaggiAutoCog(CogConGruppi, commands.Cog):
         correggi_link="Accendi o spegni la correzione di un dominio (ogni scelta cambia lo stato)",
         pubblica="Un canale annunci i cui messaggi si pubblicano da soli",
         togli_pubblica="Un canale annunci da non pubblicare più",
-        accorcia="Permetti /web accorcia in questo server",
+        accorcia="Permetti /utility-web accorcia in questo server",
     )
     @app_commands.choices(
         correggi_link=[app_commands.Choice(name=logica.etichetta_correzione(d).replace(">", " → "), value=d) for d in logica.CORREZIONI]

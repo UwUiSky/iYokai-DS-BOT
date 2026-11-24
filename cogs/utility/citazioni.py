@@ -9,6 +9,8 @@ Funzioni coperte: catalogo #128 UTL-206, 207, 222, 229 (D69, B16); FUN-030 (`cas
 
 from __future__ import annotations
 
+from core.comandi_diretti import percorso_vero
+
 import io
 import logging
 import random
@@ -227,7 +229,7 @@ class CitazioniCog(CogConGruppi, commands.Cog):
     async def on_app_command_completion(self, interaction: discord.Interaction, command) -> None:
         if not isinstance(command, app_commands.Command) or interaction.guild is None or not interaction.is_guild_integration():
             return
-        percorso = command.qualified_name
+        percorso = percorso_vero(command)
         try:
             await comandi_uso_repo.registra(interaction.guild.id, percorso, datetime.now(timezone.utc).date())
             if e_comando_staff(percorso):

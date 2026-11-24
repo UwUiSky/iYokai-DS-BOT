@@ -1,8 +1,8 @@
 """
 cogs/utility/tag_gestione.py
 ============================
-Tag di chi non è staff e strumenti dello staff per tutti i tag: `/tag crea|modifica|elimina|prendi` (solo i propri; crea
-solo con il ruolo scelto dal server), `/admin-tag tag creatori|sostituisci|esporta|importa|gruppi`. I pacchetti si condividono
+Tag di chi non è staff e strumenti dello staff per tutti i tag: `/utility-server tag crea|modifica|elimina|prendi` (solo i propri; crea
+solo con il ruolo scelto dal server), `/admin-messaggi-tag creatori|sostituisci|esporta|importa|gruppi`. I pacchetti si condividono
 con un codice (7 giorni) o un file JSON (1 MiB); non portano ruoli né canali.
 Funzioni coperte: catalogo #128 UTL-034, 035, 039, 040, 041, 042 (D69, B21)
 """
@@ -106,7 +106,7 @@ class TagGestioneCog(CogConGruppi, commands.Cog):
         ruolo_id = await db.get_guild_setting(interaction.guild.id, SETTING_RUOLO_CREATORI)
         return bool(ruolo_id) and any(r.id == ruolo_id for r in interaction.user.roles)
 
-    @comando_di_gruppo("tag", nome="crea", descrizione="Crea un tag tuo (serve il ruolo scelto dal server).")
+    @comando_di_gruppo("utility-server", nome="crea", descrizione="Crea un tag tuo (serve il ruolo scelto dal server).", sottogruppo=SOTTOGRUPPI["utility-server tag"])
     @app_commands.describe(nome="Il nome (lettere minuscole, cifre, - e _)", testo="Cosa risponde il tag")
     async def crea(self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, MAX_NOME],
                    testo: app_commands.Range[str, 1, MAX_TESTO_PUBBLICO]) -> None:
@@ -127,7 +127,7 @@ class TagGestioneCog(CogConGruppi, commands.Cog):
             cooldown_seconds=5, ping_ruoli=False, created_by=interaction.user.id)  # niente ruoli: chi crea non è staff
         await self._dire(interaction, {"ok": "tag_creato", "esiste": "tag_esiste_gia", "pieno": "tag_server_pieno"}[esito], nome=normalizzato, massimo=MAX_TAG)
 
-    @comando_di_gruppo("tag", nome="modifica", descrizione="Cambia il testo di un tag che hai creato tu.")
+    @comando_di_gruppo("utility-server", nome="modifica", descrizione="Cambia il testo di un tag che hai creato tu.", sottogruppo=SOTTOGRUPPI["utility-server tag"])
     @app_commands.describe(nome="Il tuo tag", testo="Il nuovo testo")
     @app_commands.autocomplete(nome=_miei)
     async def modifica(self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, MAX_NOME],
@@ -142,7 +142,7 @@ class TagGestioneCog(CogConGruppi, commands.Cog):
         await custom_command_repo.update_tag(interaction.guild.id, normalizzato, response=discord.utils.escape_mentions(testo))
         await self._dire(interaction, "tag_modificato")
 
-    @comando_di_gruppo("tag", nome="elimina", descrizione="Elimina un tag che hai creato tu.")
+    @comando_di_gruppo("utility-server", nome="elimina", descrizione="Elimina un tag che hai creato tu.", sottogruppo=SOTTOGRUPPI["utility-server tag"])
     @app_commands.describe(nome="Il tuo tag")
     @app_commands.autocomplete(nome=_miei)
     async def elimina(self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, MAX_NOME]) -> None:
@@ -154,7 +154,7 @@ class TagGestioneCog(CogConGruppi, commands.Cog):
             await pulisci_tag_eliminato(self.bot, interaction.guild.id, normalizzato)
         await self._dire(interaction, "tag_eliminato" if fatta else "tag_non_tuo")
 
-    @comando_di_gruppo("tag", nome="prendi", descrizione="Prendi un tag il cui autore ha lasciato il server.")
+    @comando_di_gruppo("utility-server", nome="prendi", descrizione="Prendi un tag il cui autore ha lasciato il server.", sottogruppo=SOTTOGRUPPI["utility-server tag"])
     @app_commands.describe(nome="Il tag")
     async def prendi(self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, MAX_NOME]) -> None:
         if not await self._pronto(interaction):
@@ -168,7 +168,7 @@ class TagGestioneCog(CogConGruppi, commands.Cog):
         await self._dire(interaction, {"ok": "tag_preso", "non_esiste": "tag_non_esiste", "tuo": "tag_gia_tuo", "autore_presente": "tag_autore_presente"}[esito])
 
     # ------------------------------------------------------------ staff
-    @comando_di_gruppo("admin-tag", nome="creatori", descrizione="Scegli il ruolo di chi può creare tag propri con /tag crea.", sottogruppo=SOTTOGRUPPI["admin-tag tag"])
+    @comando_di_gruppo("admin-messaggi-tag", nome="creatori", descrizione="Scegli il ruolo di chi può creare tag propri con /utility-server tag crea.")
     @app_commands.describe(ruolo="Il ruolo (vuoto: nessuno, solo lo staff crea tag)")
     async def creatori(self, interaction: discord.Interaction, ruolo: discord.Role | None = None) -> None:
         if not await self._pronto(interaction):
@@ -180,7 +180,7 @@ class TagGestioneCog(CogConGruppi, commands.Cog):
         await imposta_impostazione(interaction.guild, MODULE_CUSTOM_COMMANDS, SETTING_RUOLO_CREATORI, str(ruolo.id) if ruolo else "", interaction.user.id)
         await self._dire(interaction, "tag_creatori_impostato" if ruolo else "tag_creatori_tolto")
 
-    @comando_di_gruppo("admin-tag", nome="sostituisci", descrizione="Cambia un testo in tutti i tag, dopo l'anteprima.", sottogruppo=SOTTOGRUPPI["admin-tag tag"])
+    @comando_di_gruppo("admin-messaggi-tag", nome="sostituisci", descrizione="Cambia un testo in tutti i tag, dopo l'anteprima.")
     @app_commands.describe(da="Il testo da cercare (maiuscole contano)", a="Il testo nuovo (vuoto: lo toglie)")
     async def sostituisci(self, interaction: discord.Interaction, da: app_commands.Range[str, 1, 200], a: app_commands.Range[str, 0, 200] = "") -> None:
         if not await self._pronto(interaction):
@@ -194,7 +194,7 @@ class TagGestioneCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "tag_sostituisci_chiedi", quanti=quanti, da=da[:100], a=a[:100]), ephemeral=True,
             allowed_mentions=_NESSUNA_MENZIONE, view=ConfermaSostituisci(interaction.user.id, interaction.guild.id, da, a, etichette))
 
-    @comando_di_gruppo("admin-tag", nome="esporta", descrizione="Esporta i tag del server in un codice o in un file.", sottogruppo=SOTTOGRUPPI["admin-tag tag"])
+    @comando_di_gruppo("admin-messaggi-tag", nome="esporta", descrizione="Esporta i tag del server in un codice o in un file.")
     @app_commands.describe(formato="Un codice da dare a chi importa, o un file JSON")
     @app_commands.choices(formato=_SCELTE_FORMATO)
     async def esporta(self, interaction: discord.Interaction, formato: app_commands.Choice[str]) -> None:
@@ -214,8 +214,8 @@ class TagGestioneCog(CogConGruppi, commands.Cog):
         await custom_command_repo.crea_pacchetto(interaction.guild.id, dati, interaction.user.id, codice)
         await interaction.followup.send(await testo_per(interaction, "tag_esportati_codice", quanti=len(tags), codice=codice), ephemeral=True)
 
-    @comando_di_gruppo("admin-tag", nome="importa", descrizione="Importa tag da un codice o da un file JSON.", sottogruppo=SOTTOGRUPPI["admin-tag tag"])
-    @app_commands.describe(codice="Il codice dato da /admin-tag tag esporta", file="Oppure un file JSON esportato (1 MiB)")
+    @comando_di_gruppo("admin-messaggi-tag", nome="importa", descrizione="Importa tag da un codice o da un file JSON.")
+    @app_commands.describe(codice="Il codice dato da /admin-messaggi-tag esporta", file="Oppure un file JSON esportato (1 MiB)")
     async def importa(self, interaction: discord.Interaction, codice: app_commands.Range[str, 6, 16] | None = None, file: discord.Attachment | None = None) -> None:
         if not await self._pronto(interaction):
             return
@@ -235,8 +235,8 @@ class TagGestioneCog(CogConGruppi, commands.Cog):
         aggiunti, saltati = await custom_command_repo.importa(interaction.guild.id, voci, interaction.user.id)
         await interaction.followup.send(await testo_per(interaction, "tag_importati", aggiunti=aggiunti, saltati=saltati), ephemeral=True)
 
-    @comando_di_gruppo("admin-tag", nome="gruppi", descrizione="Regole per gruppo di tag: un solo canale e/o un ruolo richiesto.", sottogruppo=SOTTOGRUPPI["admin-tag tag"])
-    @app_commands.describe(azione="Cosa fare", gruppo="Il nome del gruppo (lo dai ai tag con /admin-tag tag opzioni)",
+    @comando_di_gruppo("admin-messaggi-tag", nome="gruppi", descrizione="Regole per gruppo di tag: un solo canale e/o un ruolo richiesto.")
+    @app_commands.describe(azione="Cosa fare", gruppo="Il nome del gruppo (lo dai ai tag con /admin-messaggi-tag opzioni)",
                            canale="I tag del gruppo si usano solo qui", ruolo="I tag del gruppo si usano solo con questo ruolo")
     @app_commands.choices(azione=_SCELTE_GRUPPO)
     async def gruppi(self, interaction: discord.Interaction, azione: app_commands.Choice[str], gruppo: app_commands.Range[str, 1, 32] | None = None,
