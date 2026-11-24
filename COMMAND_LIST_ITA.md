@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:03 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:19 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 1166 comandi in 59 categorie.**
+**Totale: 1176 comandi in 59 categorie.**
 
 ## Admin: AI
 
@@ -158,6 +158,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:
 - **`/admin-backup main`** — Registra questo server come 'main' per il Backup System.
 - **`/admin-backup modello`** — Modelli: pronti, tuoi o di Discord. Elenco, scheda, uso e condivisione.
 - **`/admin-backup promuovi`** — Promuove QUESTO server (finora backup) a nuovo main, se il main originale è perso.
+- **`/admin-backup raccolta`** — Raccolta pubblica di modelli: elenco, voto, uso e proposta.
 - **`/admin-backup registro`** — Chi ha usato backup, modelli e sincronie (ultimi 20, 365 giorni).
 - **`/admin-backup ripristino modo`** — Scegli come questo server gestisce il restore utenti via OAuth2.
 - **`/admin-backup ripristino utenti`** — Ripristina in QUESTO server gli utenti dell'ultimo snapshot di un altro server.
@@ -207,6 +208,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:
 - **`/admin-bot premium stato`** — Mostra come è sbloccato il premium in questo server.
 - **`/admin-bot premium togli-posto`** — Togli il tuo posto premium da questo server.
 - **`/admin-bot setup attiva`** — Attiva o disattiva i moduli del bot, per categoria.
+- **`/admin-bot setup guidato`** — Primo setup o modifica del setup, passo per passo e con riepilogo.
 - **`/admin-bot setup identita-bot`** — Nome e logo degli altri bot di iYokai in questo server.
 - **`/admin-bot setup wizard`** — Configura passo-passo ruoli e moduli del bot, una categoria alla volta.
 
@@ -298,6 +300,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:
 - **`/admin-giveaway avvia`** — Avvia un giveaway.
 - **`/admin-giveaway chiudi`** — Chiude un giveaway prima del tempo ed estrae i vincitori.
 - **`/admin-giveaway elenco`** — I giveaway in corso nel server.
+- **`/admin-giveaway guidato`** — Crea un giveaway passo per passo: premio, durata, canale e requisiti.
 - **`/admin-giveaway modello`** — Modelli di giveaway: salva, elenca, elimina, avvia.
 - **`/admin-giveaway modifica`** — Cambia durata, vincitori, premio o immagine di un giveaway.
 - **`/admin-giveaway opzioni`** — Aspetto, messaggi, log e ruoli esclusi dei giveaway.
@@ -445,6 +448,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:
 - **`/admin-musica canale-richieste`** — Canale dove si scrive un titolo per metterlo in coda, con il player.
 - **`/admin-musica impostazioni`** — Cambia le impostazioni musicali del server.
 - **`/admin-musica riepilogo`** — Mostra tutte le impostazioni musicali del server.
+- **`/admin-musica suono-condividi`** — Scegli se i suoni del server si usano in altri server e viceversa.
 - **`/admin-musica suono-ruoli`** — Chi può usare un suono: ruoli consentiti o vietati.
 
 ## Admin: negozio avanzato
@@ -845,6 +849,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:
 
 - **`/gif azione`** — Una GIF di azione verso un utente: abbraccio, bacio, schiaffo...
 - **`/gif cerca`** — Cerca una GIF con le parole (spento di base: serve una chiave del bot).
+- **`/gif preferenze`** — Le tue preferenze per le GIF: genere, personaggi preferiti, anime o no.
 - **`/gif privacy`** — Scegli chi può farti le azioni con le GIF.
 - **`/gif reazione`** — Una GIF di reazione: piangi, balli, ridi...
 
@@ -1028,6 +1033,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:
 - **`/mod-sanzioni opzioni memoria`** — Accende lo storico dei nomi e il soprannome e il mute vocale ridati a chi rientra.
 - **`/mod-sanzioni opzioni muto`** — Sceglie o crea il ruolo del mute e rimette il blocco su tutti i canali.
 - **`/mod-sanzioni quarantena`** — Toglie i ruoli a un membro e gli dà il ruolo di quarantena (anche a tempo).
+- **`/mod-sanzioni shadowban canali`** — Sceglie o crea i due canali dedicati dello shadowban.
+- **`/mod-sanzioni shadowban dai`** — Toglie ai membri ogni canale tranne due dedicati (anche a tempo).
+- **`/mod-sanzioni shadowban togli`** — Toglie lo shadowban e ridà i ruoli di prima.
 - **`/mod-sanzioni timeout`** — Mette in timeout un membro (max 28 giorni).
 - **`/mod-sanzioni unmute`** — Rimuove il ruolo mute da un membro.
 - **`/mod-sanzioni untimeout`** — Rimuove il timeout da un membro.
@@ -1149,6 +1157,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:
 - **`/music skipto`** — Salta direttamente al brano numero N della coda.
 - **`/music stop`** — Ferma la riproduzione e svuota la coda.
 - **`/music suono`** — Fa partire un effetto sonoro nel tuo canale vocale.
+- **`/music suono-altri`** — Scegli un suono dalle soundboard di altri server e mandalo in vocale.
 - **`/music suono-ferma`** — Ferma il suono appena partito nel tuo canale vocale.
 - **`/music volume down`** — Diminuisce il volume.
 - **`/music volume set`** — Imposta il volume a un valore specifico (0-200).
@@ -1337,6 +1346,7 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:
 ## Web
 
 - **`/web accorcia`** — Accorcia un link (se il server ha acceso il comando).
+- **`/web cerca`** — Cerca qualsiasi cosa: una risposta rapida, il web o dei video.
 - **`/web dizionario`** — Il significato di una parola, da Wikizionario.
 - **`/web emergenza`** — I numeri di emergenza di un paese.
 - **`/web film`** — Informazioni su un film o una serie TV.

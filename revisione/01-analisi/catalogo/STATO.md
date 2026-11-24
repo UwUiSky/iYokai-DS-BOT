@@ -1,6 +1,6 @@
 # Stato del catalogo
 
-Generato da `scripts/stato_catalogo.py` il 2026-11-23. Non modificare a mano: rilancia lo script.
+Generato da `scripts/stato_catalogo.py` il 2026-11-24. Non modificare a mano: rilancia lo script.
 
 - **Fatte**: il codice della voce compare nel codice o nei test.
 - **Solo registri**: citata in SPEC, registro o memorie ma non nel codice: da controllare.
@@ -22,12 +22,12 @@ Generato da `scripts/stato_catalogo.py` il 2026-11-23. Non modificare a mano: ri
 | 11-economia-e-giochi | #125 aperta | 161 | 161 | 0 | 0 | 0 |
 | 12-musica | #126 aperta | 90 | 88 | 0 | 0 | 2 |
 | 13-vocali-temporanei | #127 aperta | 21 | 20 | 1 | 0 | 0 |
-| 14-utility | #128 chiusa | 229 | 226 | 3 | 0 | 0 |
+| 14-utility | #128 chiusa | 229 | 228 | 1 | 0 | 0 |
 | 15-alert-social | #129 aperta | 49 | 49 | 0 | 0 | 0 |
 | 16-statistiche | #130 aperta | 61 | 61 | 0 | 0 | 0 |
-| 17-divertimento-e-immagini | #131 chiusa | 139 | 138 | 1 | 0 | 0 |
+| 17-divertimento-e-immagini | #131 chiusa | 139 | 139 | 0 | 0 | 0 |
 | 18-ai | #132 chiusa | 25 | 25 | 0 | 0 | 0 |
-| **Totale** | | **1452** | **1441** | **9** | **0** | **2** |
+| **Totale** | | **1452** | **1444** | **6** | **0** | **2** |
 
 Nelle sole aree con l'issue aperta: 708 voci, 702 fatte, 4 solo nei registri, **0 da fare**, 2 scartate.
 

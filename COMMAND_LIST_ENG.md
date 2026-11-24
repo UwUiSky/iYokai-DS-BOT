@@ -1,8 +1,8 @@
 # Command list (English) — iYokai
 
-Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 16:03 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-24 01:19 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
 
-**Total: 1166 commands in 59 categories.**
+**Total: 1176 commands in 59 categories.**
 
 ## Admin: AI
 
@@ -146,6 +146,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 16:0
 - **`/admin-backup cancel`** — Stops the running load (what is done stays).
 - **`/admin-backup chat load`** — Loads a saved chat into a channel, even a different one.
 - **`/admin-backup chat save`** — Saves the latest messages of a channel (up to 1000) to load them later.
+- **`/admin-backup collection`** — Public template collection: list, vote, use and propose.
 - **`/admin-backup connect`** — Links THIS server as backup, with the code received from the main server.
 - **`/admin-backup copy channel`** — Copies a channel with its permissions; a category with its channels.
 - **`/admin-backup copy role`** — Copies a role with its permissions and, optionally, its channel permissions.
@@ -208,6 +209,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 16:0
 - **`/admin-bot premium unblock`** — Unlocks a premium module for 30 days with coins from the server treasury.
 - **`/admin-bot setup bot-identity`** — Name and logo of the other iYokai bots in this server.
 - **`/admin-bot setup enable`** — Turns the bot's modules on or off, by category.
+- **`/admin-bot setup guided`** — First setup or setup edit, step by step with a summary.
 - **`/admin-bot setup wizard`** — Step-by-step setup of the bot's roles and modules, one category at a time.
 
 ## Admin: economy
@@ -297,6 +299,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 16:0
 - **`/admin-giveaway cancel`** — Cancels a running giveaway, with no winners.
 - **`/admin-giveaway close`** — Closes a giveaway early and draws the winners.
 - **`/admin-giveaway edit`** — Change duration, winners, prize or image of a giveaway.
+- **`/admin-giveaway guided`** — Creates a giveaway step by step: prize, duration, channel and requirements.
 - **`/admin-giveaway list`** — The giveaways running in the server.
 - **`/admin-giveaway options`** — Look, messages, log and excluded roles of giveaways.
 - **`/admin-giveaway participants`** — Who takes part in a giveaway, 20 per page.
@@ -444,6 +447,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 16:0
 
 - **`/admin-music request-channel`** — Channel where typing a title queues it, with the player.
 - **`/admin-music settings`** — Changes the server's music settings.
+- **`/admin-music share-sound`** — Choose whether this server's sounds can be used elsewhere and vice versa.
 - **`/admin-music summary`** — Shows all the server's music settings.
 - **`/admin-music suono-ruoli`** — Who can use a sound: allowed or banned roles.
 
@@ -844,6 +848,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 16:0
 ## Gif
 
 - **`/gif action`** — An action GIF aimed at a user: hug, kiss, slap...
+- **`/gif preferences`** — Your GIF preferences: character gender, favourite characters, anime or not.
 - **`/gif privacy`** — Choose who can send you GIF actions.
 - **`/gif reaction`** — A reaction GIF: cry, dance, laugh...
 - **`/gif search`** — Search a GIF by words (off by default: needs a key set up by the bot owner).
@@ -1028,6 +1033,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 16:0
 - **`/mod-sanctions options set`** — Ban message cleanup, timeout, external cases, alerts. Empty: shows the options.
 - **`/mod-sanctions quarantine`** — Removes a member's roles and gives the quarantine role (can be timed).
 - **`/mod-sanctions release`** — Ends a member's quarantine and gives their old roles back.
+- **`/mod-sanctions shadowban channels`** — Picks or creates the two dedicated shadowban channels.
+- **`/mod-sanctions shadowban give`** — Removes every channel from a member except two dedicated ones (can be timed).
+- **`/mod-sanctions shadowban remove`** — Ends a shadowban and gives the old roles back.
 - **`/mod-sanctions timeout`** — Times out a member (max 28 days).
 - **`/mod-sanctions unmute`** — Removes the mute role from a member.
 - **`/mod-sanctions untimeout`** — Removes a member's timeout.
@@ -1143,6 +1151,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 16:0
 - **`/music skip`** — Skips the track that is playing.
 - **`/music skipto`** — Jumps straight to track number N of the queue.
 - **`/music sound`** — Plays a sound effect in your voice channel.
+- **`/music sound-others`** — Pick a sound from other servers' soundboards, preview it and play it in voice.
 - **`/music stop`** — Stops playback and clears the queue.
 - **`/music stop-sound`** — Stops the sound that just started in your voice channel.
 - **`/music track karaoke`** — Shows the lines of the track as it plays, in time.
@@ -1342,6 +1351,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-23 16:0
 - **`/web lookup`** — The card of a Pokémon, anime, card or player.
 - **`/web movie`** — Information on a movie or a TV series.
 - **`/web price`** — The price of a cryptocurrency.
+- **`/web search`** — Search anything: a quick answer, the web or videos.
 - **`/web shorten`** — Shorten a link (if the server turned the command on).
 - **`/web turni`** — Splatoon 3 rotations and the World of Warcraft weekly reset.
 - **`/web weather`** — Weather of a city: now and the next days.
