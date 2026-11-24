@@ -78,18 +78,68 @@ async def test_boost_di_uno_dei_server_dell_owner(pronto, monkeypatch):
 
 
 async def test_chiave_propria_da_vip_a_se_e_al_server(pronto):
-    await chiavi.salva("utente", 5, "gemini", "chiave-segreta-1234", messa_da=5)
+    await chiavi.salva("utente", 5, "gemini", "chiave-segreta-1234", messa_da=5, verificata=True)
     assert await piani.livello_utente(5) == piani.VIP
     bot = _Bot(_Guild(100, owner_id=5))
     assert await piani.livello_server(100, bot) == piani.VIP  # il suo server
     assert await piani.livello_server(100) == piani.GRATUITO  # senza sapere chi è il proprietario
     assert await piani.livello_utente(6) == piani.GRATUITO  # un altro non ne approfitta
-    await chiavi.salva("server", 100, "groq", "altra-chiave-5678", messa_da=7)
+    await chiavi.salva("server", 100, "groq", "altra-chiave-5678", messa_da=7, verificata=True)
     assert await piani.livello_server(100) == piani.VIP
 
 
+async def test_chiave_mai_provata_non_da_vip(pronto):
+    await chiavi.salva("utente", 5, "inventato", "xxxxxxxx", messa_da=5)  # mai verificata
+    await chiavi.salva("server", 100, "inventato", "xxxxxxxx", messa_da=5)
+    assert await piani.livello_utente(5) == piani.GRATUITO
+    assert await piani.livello_server(100, _Bot(_Guild(100, owner_id=5))) == piani.GRATUITO
+    assert await chiavi.chiave_per("inventato", user_id=5) is None  # nemmeno il router la usa
+
+
+class _TrasportoProva:
+    def __init__(self, ok=True):
+        self.ok, self.provate = ok, []
+
+    async def controlla(self, f):
+        self.provate.append(f.chiave)
+        return self.ok
+
+
+def _forn(*nomi):
+    from core.ai_providers import Fornitore
+
+    return [Fornitore(nome=n, url=f"https://{n}.example/v1") for n in nomi]
+
+
+async def test_chiave_si_prova_presso_il_servizio_prima_di_dare_il_vip(pronto):
+    t = _TrasportoProva(ok=True)
+    await chiavi.verifica_e_salva("utente", 5, "gemini", "chiave-segreta-1234", 5, fornitori=_forn("gemini"), trasporto=t)
+    assert t.provate == ["chiave-segreta-1234"]
+    assert await piani.livello_utente(5) == piani.VIP
+
+
+async def test_servizio_inventato_o_chiave_rifiutata_non_si_salvano(pronto):
+    t = _TrasportoProva(ok=True)
+    with pytest.raises(chiavi.ServizioSconosciuto):
+        await chiavi.verifica_e_salva("utente", 5, "inventato", "xxxxxxxx", 5, fornitori=_forn("gemini"), trasporto=t)
+    assert t.provate == []
+    no = _TrasportoProva(ok=False)
+    with pytest.raises(chiavi.ChiaveRifiutata):
+        await chiavi.verifica_e_salva("utente", 5, "gemini", "chiave-sbagliata-1", 5, fornitori=_forn("gemini"), trasporto=no)
+    assert await pronto.fetchval("SELECT count(*) FROM ai_chiavi_proprie") == 0
+    assert await piani.livello_utente(5) == piani.GRATUITO
+
+
+async def test_chiave_rifiutata_dal_servizio_decade(pronto):
+    await chiavi.salva("utente", 5, "gemini", "chiave-segreta-1234", messa_da=5, verificata=True)
+    assert await piani.livello_utente(5) == piani.VIP
+    await chiavi.segna_non_valida("gemini", user_id=5)
+    assert await piani.livello_utente(5) == piani.GRATUITO
+    assert await chiavi.chiave_per("gemini", user_id=5) is None
+
+
 async def test_chiave_cifrata_mai_in_chiaro_e_si_toglie(pronto):
-    await chiavi.salva("server", 100, "gemini", "chiave-segreta-1234", messa_da=7)
+    await chiavi.salva("server", 100, "gemini", "chiave-segreta-1234", messa_da=7, verificata=True)
     grezzo = await pronto.fetchval("SELECT chiave_cifrata FROM ai_chiavi_proprie")
     assert "chiave-segreta-1234" not in grezzo
     assert await chiavi.chiave_per("gemini", guild_id=100) == "chiave-segreta-1234"
@@ -106,8 +156,8 @@ async def test_chiave_cifrata_mai_in_chiaro_e_si_toglie(pronto):
 
 
 async def test_chiave_utente_batte_chiave_server(pronto):
-    await chiavi.salva("server", 100, "gemini", "chiave-del-server", messa_da=7)
-    await chiavi.salva("utente", 5, "gemini", "chiave-della-persona", messa_da=5)
+    await chiavi.salva("server", 100, "gemini", "chiave-del-server", messa_da=7, verificata=True)
+    await chiavi.salva("utente", 5, "gemini", "chiave-della-persona", messa_da=5, verificata=True)
     assert await chiavi.chiave_per("gemini", guild_id=100, user_id=5) == "chiave-della-persona"
     assert await chiavi.chiave_per("gemini", guild_id=100, user_id=6) == "chiave-del-server"
 
@@ -177,14 +227,30 @@ async def _t(chiave, **kw):
     return f"{chiave}:{sorted(kw.items())}"
 
 
-async def test_comando_chiave_non_mostra_mai_la_chiave(pronto):
+async def test_comando_chiave_non_mostra_mai_la_chiave(pronto, monkeypatch):
     from core.piani_comandi import esegui_chiave
 
+    monkeypatch.setattr(chiavi, "verifica_e_salva", lambda a, i, sv, k, m: chiavi.salva(a, i, sv, k, m, verificata=True))
     ris = await esegui_chiave("imposta", ambito="server", ambito_id=100, servizio="gemini", chiave="chiave-segreta-1234", utente_id=7, t=_t)
     assert ris.startswith("piani_chiave_salvata") and "chiave-segreta" not in ris
     assert "gemini" in await esegui_chiave("elenco", ambito="server", ambito_id=100, servizio=None, chiave=None, utente_id=7, t=_t)
     assert (await esegui_chiave("imposta", ambito="server", ambito_id=100, servizio="Bad Name", chiave="chiave-segreta-1234", utente_id=7, t=_t)).startswith("piani_chiave_non_valida")
     assert "('n', 1)" in await esegui_chiave("togli", ambito="server", ambito_id=100, servizio=None, chiave=None, utente_id=7, t=_t)
+
+
+async def test_comando_chiave_servizio_ignoto_e_rifiutata(pronto, monkeypatch):
+    from core.piani_comandi import esegui_chiave
+
+    async def ignoto(*a, **k):
+        raise chiavi.ServizioSconosciuto("x")
+
+    async def rifiutata(*a, **k):
+        raise chiavi.ChiaveRifiutata("x")
+
+    monkeypatch.setattr(chiavi, "verifica_e_salva", ignoto)
+    assert (await esegui_chiave("imposta", ambito="server", ambito_id=100, servizio="x", chiave="chiave-segreta-1234", utente_id=7, t=_t)).startswith("piani_chiave_servizio_ignoto")
+    monkeypatch.setattr(chiavi, "verifica_e_salva", rifiutata)
+    assert (await esegui_chiave("imposta", ambito="server", ambito_id=100, servizio="x", chiave="chiave-segreta-1234", utente_id=7, t=_t)).startswith("piani_chiave_rifiutata")
 
 
 async def test_comando_owner_piani(pronto):
