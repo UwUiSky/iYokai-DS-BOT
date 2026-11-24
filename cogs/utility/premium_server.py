@@ -273,12 +273,13 @@ class ModaleChiave(BaseModal, title="Chiave API del servizio AI"):
         ):  # il permesso si rilegge ora, non alla scrittura del comando
             await interaction.response.send_message(await testo_per(interaction, "accesso_admin"), ephemeral=True)
             return
+        await interaction.response.defer(ephemeral=True)  # la prova in rete può superare i 3 secondi
         testo = await esegui_chiave(
             "imposta", ambito=self.ambito, ambito_id=self.ambito_id, servizio=str(self.servizio).strip().lower(),
             chiave=str(self.chiave).strip(), utente_id=interaction.user.id,
             t=lambda k, **kw: testo_per(interaction, k, **kw),
         )
-        await interaction.response.send_message(testo, ephemeral=True)
+        await interaction.followup.send(testo, ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:

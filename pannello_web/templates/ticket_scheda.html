@@ -1,6 +1,5 @@
 {% extends "base.html" %}
-{% block titolo %}Ticket #{{ t.ticket_number }} · {{ guild.name }} · iYokai Panel<script src="/static/ticket_live.js"></script>
-{% endblock %}
+{% block titolo %}Ticket #{{ t.ticket_number }} · {{ guild.name }} · iYokai Panel{% endblock %}
 {% block corpo %}
 <h1>Ticket #{{ t.ticket_number }}</h1>
 <p><a href="/server/{{ guild.id }}/ticket">&larr; Ticket aperti</a></p>

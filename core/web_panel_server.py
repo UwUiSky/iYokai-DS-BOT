@@ -12,6 +12,7 @@ ruoli del pannello in lettura e scrittura e panoramica del server (`core/web_pan
 (moduli premium, server, AI in manutenzione). Pagina di consenso del rientro (`core/web_panel_join.py`), pagine dei backup (`core/web_panel_backup.py`), risposta ai ticket (`core/web_panel_ticket.py`), trascrizioni dei ticket (`core/web_panel_ticket_trascrizioni.py`), archivio dei messaggi di un caso (`core/web_panel_archivio_casi.py`) e ruoli collegati Twitch (`core/web_panel_ruoli_collegati.py`).
 Pagine HTML semplici (Jinja2 con escape automatico, nessuno script). Unica eccezione: la pagina «radio iYokai»
 dentro Discord (`core/web_panel_attivita.py`, B.8), con script propri e il suo riquadro ammesso solo a Discord.
+Pagina personale Premium con Patreon (`core/web_panel_patreon.py`).
 Funzioni coperte: SPEC §24.1–24.4, §24.6, §24.7, C.1–C.5, §4.2–4.3, §23.15, B.8 (CFG-001, CFG-002, CFG-003, CFG-027, #122; NF-20, issue #91; NF-22, #93; NF-21, #92; NF-38, #109; CFG-030, #122; #46; NF-27 r10; BKP-041, TKT-085, ALR-049 r2web)
 Dipende da: core/panel_bridge.py, core/web_panel_logic.py,
 core/redacted_access_log.py (la query del callback non va nei log)
@@ -33,7 +34,8 @@ from urllib.parse import urlsplit
 import jinja2
 from aiohttp import BodyPartReader, MultipartReader, web
 
-from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_backup, web_panel_editor, web_panel_inviti, web_panel_istantanee, web_panel_pagine, web_panel_join, web_panel_raccolta, web_panel_ruoli_collegati, web_panel_tela, web_panel_ticket, web_panel_ticket_trascrizioni, web_panel_archivio_casi, web_panel_accesso as regole_accesso, web_panel_panoramica as panoramica, web_panel_logic as regole, verify_vpn_logic as vpn_logica, ruoli_collegati_giro
+from core import patreon_service
+from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_backup, web_panel_editor, web_panel_inviti, web_panel_istantanee, web_panel_pagine, web_panel_patreon, web_panel_join, web_panel_raccolta, web_panel_ruoli_collegati, web_panel_tela, web_panel_ticket, web_panel_ticket_trascrizioni, web_panel_archivio_casi, web_panel_accesso as regole_accesso, web_panel_panoramica as panoramica, web_panel_logic as regole, verify_vpn_logic as vpn_logica, ruoli_collegati_giro
 from core.bot_aspetto import MAX_IMMAGINE
 from core.command_access import RuoloAdminNegato
 from core.command_search_logic import cerca
@@ -311,7 +313,7 @@ def build_app(
         if web_panel_attivita.e_apertura_attivita(request.path, request.query):
             return pagina_radio()
         server = await ponte.server_gestibili(bot, request[CHIAVE_UTENTE], minimo=regole_accesso.LETTURA) if request.get(CHIAVE_UTENTE) else []
-        return _pagina(request, "home.html", server=server)
+        return _pagina(request, "home.html", server=server, patreon=patreon_service.acceso())
 
     async def accedi(request: web.Request) -> web.StreamResponse:
         if not limite_accesso.consenti(_ip(request)):
@@ -879,6 +881,7 @@ def build_app(
         app, bot=bot, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura,
         chiave_utente=CHIAVE_UTENTE, ip=_ip,
     )
+    web_panel_patreon.registra_rotte(app, pagina=_pagina, errore=_errore, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE)
     web_panel_istantanee.registra_rotte(app, bot=bot, ponte=ponte, pagina=_pagina, errore=_errore, chiave_utente=CHIAVE_UTENTE)
     web_panel_tela.registra_rotte(app, bot=bot, pagina=_pagina, errore=_errore, ip=_ip)
     if giro_ruoli_collegati:  # ALR-049: ogni 12 ore aggiorna i ruoli collegati Twitch; si ferma con il sito

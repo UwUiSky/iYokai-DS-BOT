@@ -1776,6 +1776,13 @@ Chiavi AI proprie (D125): il router le usa. Chi ha messo la chiave di un servizi
 - **AI-010, lunghezza della lore (D127).** Il tetto riguarda le parole scritte dall'admin: **1.000 caratteri di base, 2.000 per i server con Premium** (stessa regola di `guild_has_premium_access`: acquisto del server, abbonamento, posto, boost, whitelist; con lo sblocco «alpha» di tutti i moduli, oggi, tutti hanno 2.000). Il testo del tema pronto si aggiunge e non toglie spazio. Il controllo è uno solo (`imposta_lore`), usato dal comando e dal pannello: oltre il tetto il salvataggio si rifiuta con un messaggio che dice il numero (e, senza Premium, che con Premium arriva a 2.000); prima si tagliava in silenzio. Il campo del comando ammette 2.000 (Discord non sa il livello del server). **Quando finisce il Premium** la lore lunga resta salvata, ma ogni richiesta all'AI riceve solo i primi 1.000 caratteri; per salvarne una nuova bisogna accorciarla. In caso di errore nel leggere il livello vale 1.000. I livelli Premium separati (Premium, Pro…) non esistono ancora nel codice: «da Premium in su» vale per ogni forma di Premium; se arriveranno più livelli si cambia `lore_massima`.
 - Migrazioni usate in r4web: 0960 (restano 0961-0969).
 
+## D135 — Chiavi AI proprie verificate e Patreon dal pannello (#122, controllo finale), 24/11/2026, opzione consigliata, da confermare dall'owner
+
+Corregge D59 e D127 su tre punti.
+- **Una chiave propria dà il VIP solo se il servizio l'ha accettata.** Al salvataggio la chiave si prova presso il servizio (elenco dei modelli: non consuma token). Valgono solo i servizi della tabella dei fornitori (`AI_FORNITORI`): un nome inventato è rifiutato. Si salva con `verificata = true` (colonna in 0970; le chiavi già presenti ripartono come non verificate e vanno rimesse). Il router usa solo chiavi verificate; se il servizio risponde 401/403 la chiave si segna non valida e il VIP decade. Un errore di rete o 5xx non la invalida.
+- **Un account Patreon ricollegato a un altro Discord toglie la concessione `patreon` al vecchio utente.**
+- **Pannello:** pagina personale `/premium` con «Collega Patreon» / «Scollega» (POST con CSRF, stato monouso di 10 minuti). Senza le chiavi di Patreon le rotte non esistono (stessa 404). Il ritorno da Patreon resta nel piccolo server di `patreon_server.py`, che rimanda a `/premium?patreon=ok`.
+
 ## D134 — Creature di fantasia (ECO-101) e combattimento a più giocatori con regole su misura (ECO-105), giro r8eco, 24/11/2026, owner: vanno fatte (D18)
 
 Sostituisce per queste due voci la scelta di D104 («la creatura è il proprio animale»): `/sala lotta` resta com'è, le due voci hanno ora i loro comandi.

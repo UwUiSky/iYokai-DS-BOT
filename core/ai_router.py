@@ -264,6 +264,11 @@ class MotoreAI:
                 esito = await self._chiama(replace(f, chiave=chiave), tipo, messaggi, prompt, max_token)
             except ErroreFornitore as exc:
                 logger.info("Chiave AI propria rifiutata da %s (errore %s).", f.nome, exc.stato)
+                if exc.stato in (401, 403):  # chiave sbagliata o revocata: non vale più, e il VIP decade
+                    try:
+                        await ai_chiavi_proprie.segna_non_valida(f.nome, guild_id=guild_id, user_id=user_id)
+                    except Exception as errore:
+                        logger.warning("Chiave AI propria non segnata per %s (%s).", f.nome, type(errore).__name__)
                 continue
             except Exception as exc:
                 logger.info("Chiave AI propria: errore con %s (%s).", f.nome, type(exc).__name__)

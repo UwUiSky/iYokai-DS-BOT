@@ -88,11 +88,15 @@ async def esegui_chiave(azione: str, *, ambito: str, ambito_id: int, servizio: s
             invalida_cache_premium(ambito_id if ambito == "server" else None)
             return await t("piani_chiave_tolte", n=tolte)
         if azione == "imposta":
-            await chiavi.salva(ambito, ambito_id, servizio or "", chiave or "", utente_id)
+            await chiavi.verifica_e_salva(ambito, ambito_id, servizio or "", chiave or "", utente_id)
             invalida_cache_premium(ambito_id if ambito == "server" else None)
             return await t("piani_chiave_salvata", servizio=servizio)
     except chiavi.CifraturaNonConfigurata:
         return await t("piani_chiave_senza_cifratura")
+    except chiavi.ServizioSconosciuto:
+        return await t("piani_chiave_servizio_ignoto")
+    except chiavi.ChiaveRifiutata:
+        return await t("piani_chiave_rifiutata")
     except chiavi.ChiaveNonValida:
         return await t("piani_chiave_non_valida")
     return await t("piani_chiave_non_valida")

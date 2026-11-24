@@ -152,7 +152,10 @@ async def completa_collegamento(stato: str, codice: str, cliente: ClientePatreon
     aad = f"patreon:{discord_id}".encode()
     refresh = token.get("refresh_token")
     async with _pool().acquire() as conn, conn.transaction():
-        await conn.execute("DELETE FROM patreon_collegamenti WHERE patreon_id = $1 AND discord_user_id <> $2", patreon_id, discord_id)
+        vecchi = await conn.fetch(
+            "DELETE FROM patreon_collegamenti WHERE patreon_id = $1 AND discord_user_id <> $2 RETURNING discord_user_id",
+            patreon_id, discord_id,
+        )
         await conn.execute(
             """
             INSERT INTO patreon_collegamenti (discord_user_id, patreon_id, token_cifrato, refresh_cifrato)
@@ -170,8 +173,15 @@ async def completa_collegamento(stato: str, codice: str, cliente: ClientePatreon
             """,
             patreon_id, attivo, list(tiers),
         )
+    for vecchio in vecchi:  # l'account Patreon passa a un'altra persona: la sua concessione `patreon` non vale più
+        await piani.revoca("utente", vecchio["discord_user_id"], "patreon")
     await sincronizza(patreon_id)
     return discord_id
+
+
+async def collegato(discord_user_id: int) -> bool:
+    """Questa persona ha un account Patreon collegato?"""
+    return bool(await _pool().fetchval("SELECT 1 FROM patreon_collegamenti WHERE discord_user_id = $1", discord_user_id))
 
 
 async def scollega(discord_user_id: int) -> bool:

@@ -2142,6 +2142,9 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   proprietario o «Menziona @everyone» riletto all'invio, tetto, log (UTL-110, 0912); Patreon con OAuth, webhook firmato,
   eventi idempotenti, token cifrati, spento senza chiavi (CFG-036, 0913). Test: `tests/test_piani.py`,
   `test_patreon.py`, `test_everyone_programmati.py`.
+  Correzioni #122 (D135): la chiave propria si prova presso il servizio e dà il VIP solo se verificata (0970; un 401/403
+  la invalida); un account Patreon ricollegato toglie la concessione al vecchio utente; pagina `/premium` del pannello con
+  «Collega Patreon»/«Scollega» (`core/web_panel_patreon.py`, test `test_web_panel_patreon.py`).
 
 ## §21 LINGUE E RICERCA DEI COMANDI — da fare (fase F8)
 

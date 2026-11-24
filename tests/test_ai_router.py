@@ -181,7 +181,11 @@ def chiavi_proprie(monkeypatch):
             return "chiave-del-server"
         return None
 
+    async def segna(servizio, *, guild_id=None, user_id=None):
+        chiamate.append(("segnata", servizio, guild_id, user_id))
+
     monkeypatch.setattr(cp, "chiave_per", finta)
+    monkeypatch.setattr(cp, "segna_non_valida", segna)
     return chiamate
 
 
@@ -231,6 +235,18 @@ async def test_chiave_propria_che_fallisce_ripiega_sul_fornitore_condiviso_senza
     assert esito.testo == "risposta di alfa"
     assert not motore.stato.in_pausa("alfa")
     assert "chiave-del-server" not in caplog.text
+    assert ("segnata", "alfa", 111, None) in chiavi_proprie  # 401: la chiave non vale più
+
+
+async def test_errore_di_rete_non_segna_la_chiave_non_valida(chiavi_proprie):
+    class Rete(_TrasportoChiavi):
+        async def completa(self, f, messaggi, max_token):
+            if f.chiave == "chiave-del-server":
+                raise ErroreFornitore(500)
+            return await super().completa(f, messaggi, max_token)
+
+    await MotoreAI([fornitore("alfa")], Rete()).esegui("chat", "bassa", messaggi=[], guild_id=111)
+    assert not any(c[0] == "segnata" for c in chiavi_proprie)
 
 
 async def test_senza_id_non_si_cercano_chiavi_proprie(chiavi_proprie):
