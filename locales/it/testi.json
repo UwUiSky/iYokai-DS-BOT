@@ -4415,5 +4415,9 @@
   "mon_casa_m_gatto": "Gatto",
   "mon_casa_m_bonsai": "Bonsai",
   "mon_casa_m_specchio": "Specchio",
-  "mon_casa_img": "🏠 La tua casa\nGettoni: **{gettoni}** (valgono in tutti i server, non si cambiano in monete)\nDa comprare: {listino}"
+  "mon_casa_img": "🏠 La tua casa\nGettoni: **{gettoni}** (valgono in tutti i server, non si cambiano in monete)\nDa comprare: {listino}",
+  "backup_cancella_solo_proprietario": "⛔ Cancellare canali e ruoli prima di caricare lo può fare solo il proprietario del server.",
+  "backup_cancella_serve_la_parte": "Per cancellare i canali (o i ruoli) già presenti devi scegliere di caricare anche i canali (o i ruoli).",
+  "backup_cancella_riepilogo": "⚠️ **Conferma.** Prima di caricare verranno cancellati **{canali}** canali e **{ruoli}** ruoli già presenti. Non si torna indietro. Non toccati: @everyone, ruoli gestiti, ruoli pari o sopra il bot, questo canale.",
+  "backup_cancella_annullata": "Annullato: non è stato cancellato né caricato niente."
 }

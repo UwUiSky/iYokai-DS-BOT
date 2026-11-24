@@ -2013,6 +2013,10 @@ Serve: log avanzato acceso con l'evento «messaggi cancellati».
 - [ ] `ECO-080` — `/admin-economia limiti negozio_web:sì`, poi apri `<indirizzo del pannello>/n/<id del server>` da fuori Discord: l'elenco del negozio senza accesso; con `negozio_web:no` la pagina dà 404. Un oggetto con `<b>` nel nome si vede come testo.
 - [ ] `SIC-016` — `/founder backup automatico ore:3 copie:2`; dopo 3 ore compare «auto …» in `/admin-backup lista`. Dopo una prova di danno (canale cancellato), il proprietario: `/admin-backup carica ultima_automatica:sì` mostra il menu con solo Ruoli e Canali; «Carica» ricrea ciò che manca. Un amministratore che non è il proprietario è rifiutato.
 
+## Backup — BKP-004 cancella prima (D133, #121)
+
+- [ ] BKP-004 — in un server di prova (sei il proprietario) con alcuni canali, ruoli e un ruolo di bot: `/admin-backup carica copia:N`. Il menu mostra due bottoni «Cancella prima i canali/ruoli già presenti: no». Accendili, premi «Carica»: compare il riepilogo con il numero di canali e ruoli e il bottone «Sì, cancella e poi carica» (con «No» non succede niente). Dopo il sì: il canale in cui lavori, @everyone, i ruoli del bot/booster e quelli pari o sopra il bot restano; il resto sparisce, poi la struttura viene caricata; il riepilogo nel canale dice quanti cancellati e quanti saltati. Con un server Community le regole e gli aggiornamenti restano e sono nei saltati. Nel registro del server c'è «carica … prima cancella». Da admin non proprietario i due bottoni non compaiono. Un secondo ripristino avviato subito dopo dice «c'è già un caricamento in corso».
+
 ## Backup — giro r3bkp (#121)
 
 - [ ] BKP-022/023 — da un server con una copia: `/admin-backup raccolta proponi copia:1 nome:Prova`. Risultato atteso: «Proposta inviata»; `elenco` non la mostra. Come owner del bot apri `/proprietario/modelli`, controlla che non ci siano ID né membri, approva. Ora `/admin-backup raccolta elenco` la mostra; `vota` due volte dà «già votato» e il conteggio resta 1; la pagina pubblica `modelli` (senza accesso) la mostra senza la struttura. Rifiutala: sparisce dall'elenco e `usa` dice «non trovato».

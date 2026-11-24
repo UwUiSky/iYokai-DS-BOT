@@ -1745,6 +1745,6 @@ Attua D122. Tutto ciò che D122 non fissa è deciso qui.
 
 ## D133 — Scelte dell'owner del 24/11/2026
 
-- **BKP-004:** nel menu delle parti da caricare si aggiunge anche la scelta «cancella prima canali e ruoli che ci sono già» (come Xenon). Di base è spenta; la può usare solo il proprietario del server, con una conferma esplicita; i ruoli gestiti e quelli sopra il bot non si toccano. Sostituisce il «non offerto di proposito» di D108.
+- **BKP-004:** nel menu delle parti da caricare si aggiunge anche la scelta «cancella prima canali e ruoli che ci sono già» (come Xenon). Di base è spenta; la può usare solo il proprietario del server, con una conferma esplicita; i ruoli gestiti e quelli sopra il bot non si toccano. Sostituisce il «non offerto di proposito» di D108. Fatto il 24/11 (SPEC §11.18).
 - **ECO-101 e ECO-105:** si fanno (creature di fantasia al posto dei galli; mischia fino a 6 con regole su misura).
 - **AI-010:** confermata la scelta di D127 (lore 1000 caratteri gratis, 2000 da Premium in su).

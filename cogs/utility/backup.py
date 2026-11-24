@@ -9,8 +9,8 @@ modelli condivisibili con un codice e sincronia di ban e ruoli tra due server
 dello stesso owner (NF-39), copia di un canale o di un ruolo, livelli di
 permesso e registro.
 /admin-backup ripristino modo e restore-utenti sono in cogs/utility/restore.py.
-Funzioni coperte: SPEC §11.12, §11.13, §11.15, §11.16, M 12.1, M 12.9, M 12.17, NF-39,
-BKP-009, BKP-010, BKP-014, BKP-015, BKP-018, BKP-019, BKP-024…027, BKP-032…037
+Funzioni coperte: SPEC §11.12, §11.18, §11.13, §11.15, §11.16, M 12.1, M 12.9, M 12.17, NF-39,
+BKP-004 (cancella prima, D133), BKP-009, BKP-010, BKP-014, BKP-015, BKP-018, BKP-019, BKP-024…027, BKP-032…037
 """
 
 from __future__ import annotations
@@ -26,6 +26,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core import backup_modelli_logic as modelli
+from core import backup_pulizia_logic as pulizia
 from core import backup_raccolta_logic as raccolta
 from core import backup_struttura_logic as struttura
 from core.backup_copia_logic import copia_canale, copia_ruolo
@@ -99,15 +100,45 @@ def tetto_di(interaction: discord.Interaction):
     return getattr(interaction.user, "top_role", None) or guild.default_role
 
 
+class _Interrotto:
+    """Riepilogo di un caricamento che non è partito (BKP-004): conta come annullato."""
+
+    annullato = True
+
+    def __init__(self, messaggio: str, pulizia_fatta) -> None:
+        self._messaggio, self._pulizia = messaggio, pulizia_fatta
+
+    def testo(self) -> str:
+        return ((self._pulizia.testo() + "\n") if self._pulizia else "") + self._messaggio
+
+
+class _Unito:
+    """Riepilogo di pulizia e caricamento insieme."""
+
+    def __init__(self, pulizia_fatta, caricamento) -> None:
+        self._pulizia, self._caricamento = pulizia_fatta, caricamento
+        self.annullato = caricamento.annullato
+
+    def testo(self) -> str:
+        return self._pulizia.testo() + "\n" + self._caricamento.testo()
+
+
 class ScegliPartiView(BaseView):
     """BKP-037: chi carica sceglie le parti da applicare (menu con al massimo 6 voci)."""
 
-    def __init__(self, cog: "BackupCog", autore_id: int, dati: dict, fonte: str) -> None:
+    def __init__(self, cog: "BackupCog", autore_id: int, dati: dict, fonte: str, guild=None) -> None:
         super().__init__(timeout=300)
         self.cog = cog
         self.autore_id = autore_id
         self.dati = dati
         self.fonte = fonte
+        self.guild = guild
+        # BKP-004 (D133): spente di base; le offre solo il proprietario del server.
+        self.cancella_canali = False
+        self.cancella_ruoli = False
+        if not self._e_proprietario():
+            self.remove_item(self.alterna_canali)
+            self.remove_item(self.alterna_ruoli)
         presenti = struttura.parti_presenti(dati)
         self.scelte: set[str] = {p for p in presenti if p in ("ruoli", "canali")}
         menu = discord.ui.Select(
@@ -130,14 +161,92 @@ class ScegliPartiView(BaseView):
         self.scelte = set(self.menu.values) - {"niente"}
         await interaction.response.defer()
 
+    def _e_proprietario(self) -> bool:
+        """Letto dal server ogni volta: la proprietà può passare ad altri."""
+        return self.guild is not None and self.autore_id == self.guild.owner_id
+
+    async def _alterna(self, interaction: discord.Interaction, button: discord.ui.Button, nome: str, attributo: str) -> None:
+        if not self._e_proprietario():
+            setattr(self, attributo, False)
+            await interaction.response.send_message(await testo_per(interaction, "backup_cancella_solo_proprietario"), ephemeral=True)
+            return
+        acceso = not getattr(self, attributo)
+        setattr(self, attributo, acceso)
+        button.label = f"Cancella prima i {nome} già presenti: {'sì' if acceso else 'no'}"
+        button.style = discord.ButtonStyle.danger if acceso else discord.ButtonStyle.secondary
+        await interaction.response.edit_message(view=self)
+
+    @discord.ui.button(label="Cancella prima i canali già presenti: no", style=discord.ButtonStyle.secondary, row=2)
+    async def alterna_canali(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await self._alterna(interaction, button, "canali", "cancella_canali")
+
+    @discord.ui.button(label="Cancella prima i ruoli già presenti: no", style=discord.ButtonStyle.secondary, row=2)
+    async def alterna_ruoli(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await self._alterna(interaction, button, "ruoli", "cancella_ruoli")
+
     @discord.ui.button(label="Carica", style=discord.ButtonStyle.danger, row=1)
     async def conferma(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         if not self.scelte:
             await interaction.response.send_message(await testo_per(interaction, "backup_scegli_almeno_una_parte"), ephemeral=True)
             return
+        if self.cancella_canali or self.cancella_ruoli:
+            await self._primo_passo(interaction)
+            return
         self.stop()
         testo = await self.cog.avvia_caricamento(interaction, self.dati, self.scelte, self.fonte)
         await interaction.response.edit_message(content=testo, view=None)
+
+    async def _primo_passo(self, interaction: discord.Interaction) -> None:
+        """Passo uno: il riepilogo con i numeri. Non si cancella ancora niente."""
+        if not self._e_proprietario():
+            await interaction.response.send_message(await testo_per(interaction, "backup_cancella_solo_proprietario"), ephemeral=True)
+            return
+        if (self.cancella_canali and "canali" not in self.scelte) or (self.cancella_ruoli and "ruoli" not in self.scelte):
+            await interaction.response.send_message(await testo_per(interaction, "backup_cancella_serve_la_parte"), ephemeral=True)
+            return
+        canale = getattr(interaction, "channel", None)
+        piano = pulizia.pianifica(
+            self.guild, getattr(canale, "id", None), getattr(canale, "parent_id", None),
+            self.cancella_canali, self.cancella_ruoli,
+        )
+        self.stop()
+        testo = await testo_per(interaction, "backup_cancella_riepilogo", canali=len(piano.canali), ruoli=len(piano.ruoli))
+        testo += "".join(f"\n• {m}: {n}" for m, n in piano.risparmiati.items())
+        await interaction.response.edit_message(
+            content=testo[:2000],
+            view=ConfermaPuliziaView(self.cog, self.autore_id, self.dati, self.scelte, self.fonte,
+                                     self.cancella_canali, self.cancella_ruoli),
+        )
+
+
+class ConfermaPuliziaView(BaseView):
+    """BKP-004, passo due: la conferma esplicita prima di cancellare canali e ruoli."""
+
+    def __init__(self, cog: "BackupCog", autore_id: int, dati: dict, scelte: set[str], fonte: str,
+                 canali: bool, ruoli: bool) -> None:
+        super().__init__(timeout=120)
+        self.cog, self.autore_id, self.dati, self.scelte, self.fonte = cog, autore_id, dati, set(scelte), fonte
+        self.canali, self.ruoli = canali, ruoli
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.autore_id and await super().interaction_check(interaction)
+
+    @discord.ui.button(label="Sì, cancella e poi carica", style=discord.ButtonStyle.danger)
+    async def si(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        guild = interaction.guild
+        if guild is None or interaction.user.id != guild.owner_id:
+            await interaction.response.send_message(await testo_per(interaction, "backup_cancella_solo_proprietario"), ephemeral=True)
+            return
+        self.stop()
+        testo = await self.cog.avvia_caricamento(
+            interaction, self.dati, self.scelte, self.fonte, cancella_canali=self.canali, cancella_ruoli=self.ruoli
+        )
+        await interaction.response.edit_message(content=testo, view=None)
+
+    @discord.ui.button(label="No, annulla", style=discord.ButtonStyle.secondary)
+    async def no(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.stop()
+        await interaction.response.edit_message(content=await testo_per(interaction, "backup_cancella_annullata"), view=None)
 
 
 class UsaRaccoltaView(BaseView):
@@ -242,20 +351,51 @@ class BackupCog(CogConGruppi, commands.Cog):
     async def avvia_caricamento(
         self, interaction: discord.Interaction, dati: dict, parti: set[str], fonte: str,
         solo_mancanti: bool = False, pericolosi_ok: bool | None = None,
+        cancella_canali: bool = False, cancella_ruoli: bool = False,
     ) -> str:
-        """Fa partire il caricamento di una struttura e restituisce il testo per chi l'ha chiesto."""
+        """
+        Fa partire il caricamento di una struttura e restituisce il testo per chi l'ha chiesto.
+        BKP-004 (D133): con `cancella_*` prima si cancella (solo il proprietario, ricontrollato qui e
+        dentro la pulizia); se la cancellazione si ferma, il caricamento non parte.
+        """
         guild = interaction.guild
         tetto = tetto_di(interaction)
+        cancella = cancella_canali or cancella_ruoli
+        autore = interaction.user.id
+        if cancella and autore != guild.owner_id:
+            return await testo_per(interaction, "backup_cancella_solo_proprietario")
+        canale = getattr(interaction, "channel", None)
+        canale_id, genitore_id = getattr(canale, "id", None), getattr(canale, "parent_id", None)
+        da_cancellare = pulizia.pianifica(guild, canale_id, genitore_id, cancella_canali, cancella_ruoli).totale if cancella else 0
 
         async def lavoro(avanza):
-            caricatore = struttura.Caricatore(
-                guild, dati, parti, avanza=avanza, scarica=struttura.scarica_immagine, tetto=tetto,
-                solo_mancanti=solo_mancanti, pericolosi_ok=pericolosi_ok,
-            )
-            return await caricatore.esegui()
+            testa = None
+            if cancella:
+                try:
+                    testa = await pulizia.esegui(
+                        guild, autore, canale_id, genitore_id, cancella_canali, cancella_ruoli, avanza=avanza
+                    )
+                except pulizia.PuliziaNegata:
+                    return _Interrotto("⛔ Solo il proprietario del server può cancellare canali e ruoli.", None)
+                if testa.interrotta:
+                    return _Interrotto("⏹️ La cancellazione si è fermata: **il caricamento non è partito**. Ciò che era già fatto resta.", testa)
 
+            async def avanza_dopo(passo: str, fatti: int, totale: int) -> bool:
+                return await avanza(passo, fatti + da_cancellare, totale + da_cancellare)
+
+            caricatore = struttura.Caricatore(
+                guild, dati, parti, avanza=avanza_dopo if cancella else avanza, scarica=struttura.scarica_immagine,
+                tetto=tetto, solo_mancanti=solo_mancanti, pericolosi_ok=pericolosi_ok,
+            )
+            riepilogo = await caricatore.esegui()
+            return _Unito(testa, riepilogo) if testa else riepilogo
+
+        dettaglio = ", ".join(sorted(parti))
+        if cancella:
+            cosa = " e ".join(n for n, v in (("canali", cancella_canali), ("ruoli", cancella_ruoli)) if v)
+            dettaglio += f" (prima cancella: {cosa})"
         return await self.avvia_lavoro(
-            interaction, fonte, struttura.conta_passi(dati, parti), ", ".join(sorted(parti)), lavoro
+            interaction, fonte, struttura.conta_passi(dati, parti) + da_cancellare, dettaglio, lavoro
         )
 
     async def avvia_lavoro(self, interaction: discord.Interaction, fonte: str, totale: int, dettaglio: str, lavoro) -> str:
@@ -652,7 +792,7 @@ class BackupCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.send_message(
             await testo_per(interaction, "backup_copia_scegli_cosa_caricare_cio", copia=copia),
-            view=ScegliPartiView(self, interaction.user.id, dati, fonte),
+            view=ScegliPartiView(self, interaction.user.id, dati, fonte, guild=interaction.guild),
             ephemeral=True,
         )
 
@@ -838,7 +978,7 @@ class BackupCog(CogConGruppi, commands.Cog):
             nome, dati, _desc = letto
             await interaction.followup.send(
                 await testo_per(interaction, "backup_modello_senza_ban_membri_permessi", v1=discord.utils.escape_markdown(nome)),
-                view=ScegliPartiView(self, interaction.user.id, struttura.senza_dati_personali(dati), f"modello {codice[:60]}"),
+                view=ScegliPartiView(self, interaction.user.id, struttura.senza_dati_personali(dati), f"modello {codice[:60]}", guild=interaction.guild),
                 ephemeral=True,
             )
             return
@@ -1398,7 +1538,7 @@ class BackupCog(CogConGruppi, commands.Cog):
         dati.pop("membri", None)
         await interaction.followup.send(
             await testo_per(interaction, "backup_file_valido_scegli_cosa_caricare"),
-            view=ScegliPartiView(self, interaction.user.id, dati, f"file {file.filename[:60]}"),
+            view=ScegliPartiView(self, interaction.user.id, dati, f"file {file.filename[:60]}", guild=interaction.guild),
             ephemeral=True,
         )
 
