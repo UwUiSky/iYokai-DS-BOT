@@ -1,5 +1,6 @@
 # Discord
-discord.py>=2.7.1
+# [voice]: PyNaCl e davey (cifratura vocale DAVE). Senza, discord.py avvisa all'avvio che la voce non c'è.
+discord.py[voice]>=2.7.1
 
 # Database
 asyncpg>=0.32.0
