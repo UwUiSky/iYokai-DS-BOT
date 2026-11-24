@@ -350,7 +350,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo("admin-ai", nome="lore", descrizione="Tono e ambientazione del server per ogni testo dell'AI.")
     @app_commands.describe(
-        tema="Un tema pronto", testo="Le tue parole: fino a 1000 caratteri, 2000 con Premium (vuoto con tema 'nessuno': toglie la lore)",
+        tema="Un tema pronto", testo="Le tue parole: max 1000 caratteri, 2000 con Premium (vuoto con tema 'nessuno' toglie la lore)",
         nomi_a_tema="Sì: il tema dà il nome alla moneta, ai punti e ai titoli dei livelli",
     )
     @app_commands.choices(tema=[app_commands.Choice(name=n, value=n) for n in (*TEMI, "nessuno")])
