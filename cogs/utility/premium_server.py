@@ -24,7 +24,7 @@ from discord import app_commands
 from core.premium import get_guild_premium_breakdown, registry
 from core.premium_modulo_service import EsitoSblocco, sblocca_modulo_con_cassa
 from core.premium_pricing_logic import COSTO_MODULO_IN_COIN, GIORNI_MODULO_IN_COIN
-from core.ui_base import BaseView
+from core.ui_base import BaseModal, BaseView
 from core.premium_code_service import TroppiTentativi, riscatta_codice
 from core.premium_entitlement_service import allinea_con_discord, registra_evento
 from core.premium_posti_service import Esito, assegna, posto_del_server, stato_utente, togli
@@ -255,7 +255,7 @@ class PremiumServerCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(testo, ephemeral=True)
 
 
-class ModaleChiave(discord.ui.Modal, title="Chiave API del servizio AI"):
+class ModaleChiave(BaseModal, title="Chiave API del servizio AI"):
     """La chiave si scrive qui e non nel comando: non resta nei suggerimenti né nella cronologia dei comandi."""
 
     servizio = discord.ui.TextInput(label="Servizio (es. gemini)", min_length=1, max_length=40)
