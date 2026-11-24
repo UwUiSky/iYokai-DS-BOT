@@ -131,24 +131,35 @@ class AutoRepository:
                     )
 
     # ---------------------------------------------------------------- foto
-    async def imposta_foto(self, guild_id: int, user_id: int, modello: str, png: bytes, sha256: str) -> bool:
-        """Salva (o sostituisce) la foto dell'auto. False se l'auto non è nel garage. Solo copie PNG già ricodificate."""
+    async def imposta_foto(self, guild_id: int, user_id: int, modello: str, png: bytes, sha256: str, controllata: bool = False) -> bool:
+        """Salva (o sostituisce) la foto dell'auto. False se l'auto non è nel garage. Solo copie PNG già ricodificate.
+        `controllata`: la foto ha già passato il controllo dei contenuti per adulti (FUN-017, D122)."""
         if not png or len(png) > MAX_BYTE_FOTO:
             raise ValueError("Foto vuota o troppo grande.")
         return bool(await self._pool.fetchval(
             "WITH a AS (SELECT id FROM fun_auto_garage WHERE guild_id = $1 AND user_id = $2 AND modello = $3), "
-            "f AS (INSERT INTO fun_auto_foto (auto_id, guild_id, user_id, png, sha256) "
-            "SELECT id, $1, $2, $4, $5 FROM a ON CONFLICT (auto_id) DO UPDATE SET png = EXCLUDED.png, sha256 = EXCLUDED.sha256, "
-            "caricata_il = now() RETURNING 1) SELECT 1 FROM f",
-            guild_id, user_id, modello, png, sha256,
+            "f AS (INSERT INTO fun_auto_foto (auto_id, guild_id, user_id, png, sha256, controllata_il) "
+            "SELECT id, $1, $2, $4, $5, CASE WHEN $6 THEN now() END FROM a ON CONFLICT (auto_id) DO UPDATE SET png = EXCLUDED.png, "
+            "sha256 = EXCLUDED.sha256, caricata_il = now(), controllata_il = EXCLUDED.controllata_il RETURNING 1) SELECT 1 FROM f",
+            guild_id, user_id, modello, png, sha256, controllata,
         ))
 
-    async def foto(self, guild_id: int, user_id: int, modello: str) -> tuple[bytes, str] | None:
+    async def foto(self, guild_id: int, user_id: int, modello: str) -> tuple[bytes, str, bool] | None:
+        """(PNG, impronta, già controllata) oppure None."""
         r = await self._pool.fetchrow(
-            "SELECT f.png, f.sha256 FROM fun_auto_foto f JOIN fun_auto_garage g ON g.id = f.auto_id "
-            "WHERE g.guild_id = $1 AND g.user_id = $2 AND g.modello = $3", guild_id, user_id, modello,
+            "SELECT f.png, f.sha256, f.controllata_il IS NOT NULL AS controllata FROM fun_auto_foto f "
+            "JOIN fun_auto_garage g ON g.id = f.auto_id WHERE g.guild_id = $1 AND g.user_id = $2 AND g.modello = $3",
+            guild_id, user_id, modello,
         )
-        return (bytes(r["png"]), r["sha256"]) if r else None
+        return (bytes(r["png"]), r["sha256"], r["controllata"]) if r else None
+
+    async def segna_controllata(self, guild_id: int, user_id: int, modello: str, sha256: str) -> None:
+        """La foto con quell'impronta ha passato il controllo (una foto cambiata nel frattempo non si segna)."""
+        await self._pool.execute(
+            "UPDATE fun_auto_foto SET controllata_il = now() WHERE sha256 = $4 AND auto_id IN "
+            "(SELECT id FROM fun_auto_garage WHERE guild_id = $1 AND user_id = $2 AND modello = $3)",
+            guild_id, user_id, modello, sha256,
+        )
 
     async def togli_foto(self, guild_id: int, user_id: int, modello: str | None = None) -> int:
         """Toglie la foto di un'auto (o di tutte quelle dell'utente se `modello` è None). Restituisce quante."""

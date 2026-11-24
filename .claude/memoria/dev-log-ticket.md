@@ -1,9 +1,8 @@
 # Memoria di dev-log-ticket
 
 ## Aggiornata
+23/11/2026 · ramo `feat/r2log029` (wt-log, DB iyokai_wlog) · LOG-029 testo cifrato (D122/D123, 0900-0901) e FUN-017 controllo foto (0902): FATTI. Resta: smoke dall'orchestratore, prova live (VERIFICA_LIVE «giro r2log029»), chiave `LOG_TESTI_KEY` e fornitore di moderazione immagini nel .env.
 23/11/2026 · ramo `feat/r3tkt` (wt-120, DB iyokai_w120) · #120 TKT-072 trascrizioni (D111, D114), migrazione 0774: FATTO. Resta: smoke dall'orchestratore, prova live (VERIFICA_LIVE «giro r3tkt»), chiave `TICKET_TRASCRIZIONI_KEY` nel .env.
-21/11/2026 · ramo `feat/r2tkt` (wt-120, DB iyokai_w120) · #120 controllo voce per voce, migrazioni 0770-0773: FATTO (vedi CONTROLLO_AREE_CHIUSE.md, D101). Resta: smoke dall'orchestratore e prova live.
-18/11/2026 · ramo `feat/r2log` (copia /home/user/wt-119, DB iyokai_w119) · #119 catalogo log, migrazioni 0710-0719.
 10-17/11/2026 · giri r152img (0304), r160 (D74 parti 1-3), r18ticket (0526, 0534), r10logt (0300-0302): vedi sotto e git log.
 
 ## In corso
@@ -15,6 +14,7 @@
 - r10: c210f52 /log cerca ruolo+giorni · f364d84 diff permessi canale · poi ignora esteso, VOC-010/013/016, TKT-051/063/027/026.
 
 ## Cose imparate
+- LOG-029: testo cifrato solo in `log_messaggi_testi` (coda a lotti in `core/log_testi_servizio.py`, chiave `LOG_TESTI_KEY`>trascrizioni>OAuth, senza chiave niente); copia nel caso in `moderation_archivio_utente.testi_cifrato`; pagina `core/web_panel_archivio_casi.py` (stesso schema di TKT-072). FUN-017: `ServizioAI.modera_immagine` (tipo `moderazione_immagine`); `auto_repo.foto` ora ritorna 3 valori (png, sha, controllata).
 - Trascrizioni (TKT-072): contenuto cifrato in `ticket_trascrizioni.cifrato` (AAD = server + ticket, `core/ticket_trascrizioni_logic.py`); scadenza e pulizia dal registro dati (`Scadenza("scade_il", 0)`); la pagina servita ha CSP sua passando da `CHIAVE_DOWNLOAD` (il middleware sovrascrive le intestazioni). `_file_transcript(..., parti_out=[])` raccoglie le pagine HTML per la conservazione. Formato di base ora «entrambi»: i test di testo puro usano `Opzioni(transcript_formato="testo")`.
 - `discord.AllowedMentions(users=[...])` lascia everyone e roles accesi: sempre `everyone=False, roles=False` espliciti. Un log di azione non deve mai far fallire una chiusura (try/except dentro l'hook).
 - Menu nelle finestre: `discord.ui.Label(text, component=Select/UserSelect/...)`; i valori si leggono da `label.component.values`; nei test `component._values = [...]`.
@@ -56,5 +56,5 @@
 
 ## Aperto
 - Router: il benvenuto non passa dal router (§18.1 `[~]`, file di utilità).
-- Restano: #119 LOG-029; #127 VOC-014, 017, 021; #120 TKT-006, 029, 031, 032, 035, 045, 046, 064, 067, 068, 070, 071, 073, 074, 079, 088; #139 parole chiave AI e archivio file; 18.7 (area moderazione).
+- Restano: #127 VOC-014, 017, 021; #120 TKT-006, 029, 031, 032, 035, 045, 046, 064, 067, 068, 070, 071, 073, 074, 079, 088; #139 parole chiave AI e archivio file; 18.7 (area moderazione).
 - 13.10 transcript: serve la prova live con l'intent acceso.

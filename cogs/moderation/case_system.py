@@ -39,7 +39,8 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from cogs.moderation.prove import allega_a_nota
-from core import bot_roles, moderation_archivio_utente, moderation_opzioni, moderation_registro_chat
+from core import bot_roles, log_testi_logic, moderation_archivio_utente, moderation_opzioni, moderation_registro_chat
+from core.config import config
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.moderation_casi_logic import errore_durata_caso, testo_esportazione
@@ -1001,8 +1002,20 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
                     await testo_per(interaction, "casesystem_archivio_non_c_e"), ephemeral=True
                 )
                 return
+            testi = await moderation_archivio_utente.numero_testi(interaction.guild.id, numero)  # LOG-029, D122
+            collegamento = ""
+            if testi:
+                link = log_testi_logic.indirizzo_archivio(config.WEB_PANEL_PUBLIC_URL, interaction.guild.id, numero)
+                collegamento = "\n" + (
+                    await testo_per(interaction, "casesystem_archivio_link", m=testi, link=link) if link
+                    else await testo_per(interaction, "casesystem_archivio_senza_sito", m=testi)
+                )
+            intestazione = await testo_per(
+                interaction, "casesystem_archivio_pronto" if trovato[1] else "casesystem_archivio_solo_testo",
+                n=trovato[1], m=testi,
+            )
             await interaction.response.send_message(
-                await testo_per(interaction, "casesystem_archivio_pronto", n=trovato[1]),
+                intestazione + collegamento,
                 file=discord.File(io.BytesIO(trovato[0]), filename=f"archivio_caso_{numero}.txt"),
                 ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
             )

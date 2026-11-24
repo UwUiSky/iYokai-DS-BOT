@@ -268,7 +268,17 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonna_server="guild_id", scadenza=Scadenza("creato", 30)),
     _t("moderation_archivio_utente", "Archivio dei messaggi di un utente (3 giorni) legato a un caso (LOG-029)",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True,
-       nota="resta finché esiste il caso (D121); i 30 giorni partono dalla chiusura del server o dall'azzeramento"),
+       escludi_dall_esportazione=("testi_cifrato",),
+       nota="resta finché esiste il caso (D121); i 30 giorni partono dalla chiusura del server o dall'azzeramento; "
+            "il testo (D122) è cifrato (AES-256-GCM, chiave nel .env, mai nel database), si apre solo dal pannello per lo staff "
+            "di moderazione e non si esporta (contiene anche chi ha risposto); base giuridica: sicurezza e moderazione "
+            "del server (GDPR art. 6.1.f), conservato quanto il caso"),
+    _t("log_messaggi_testi", "Testo dei messaggi dei canali registrati, cifrato, finestra di 7 giorni (LOG-029, D122)",
+       colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella",
+       scadenza=Scadenza("creato", 7),
+       nota="solo cifrato (AES-256-GCM, chiave LOG_TESTI_KEY nel .env, mai nel database); 7 giorni a scorrimento e al massimo "
+            "20.000 righe per server; allegati solo nome, tipo e peso (D74); non si esporta; base giuridica: sicurezza e "
+            "moderazione del server (GDPR art. 6.1.f); la cancellazione su richiesta toglie le righe dell'utente"),
     _t("lockdown_ruoli", "Permessi tolti ai ruoli durante il blocco", colonna_server="guild_id"),
     _t("lockdown_canali", "Permessi di @everyone prima del blocco, per canale", colonna_server="guild_id",
        nota="si cancella allo sblocco"),

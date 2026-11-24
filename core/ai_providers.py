@@ -44,7 +44,7 @@ import aiohttp
 
 logger = logging.getLogger("iyokai.ai_providers")
 
-TIPI = ("chat", "testo", "giudizio", "codice", "traduzione", "confronto", "immagine", "audio", "musica", "video")
+TIPI = ("chat", "testo", "giudizio", "codice", "traduzione", "confronto", "immagine", "audio", "musica", "video", "moderazione_immagine")
 FASCE = ("bassa", "media", "alta")
 _NOME_VALIDO = re.compile(r"^[a-z0-9_]{1,24}$")
 _HOST_LOCALI = ("localhost", "127.0.0.1", "[::1]")
@@ -267,6 +267,18 @@ class TrasportoHTTP:
         if len(grezzo) > MAX_BYTES_IMMAGINE:
             raise ErroreFornitore(413)
         return EsitoChiamata(immagine=grezzo, intestazioni=intestazioni)
+
+    async def moderazione_immagine(self, f: Fornitore, png: bytes) -> EsitoChiamata:
+        """FUN-017: chiede a un fornitore di moderazione se l'immagine è per adulti. Il testo dell'esito è «adulti» o «ok»."""
+        from core.ai_moderazione_immagini import e_per_adulti
+
+        corpo = {"model": f.modello, "input": [{"type": "image_url", "image_url": {"url": "data:image/png;base64," + base64.b64encode(png).decode("ascii")}}]}
+        dati, intestazioni = await self._post(f, "/moderations", corpo)
+        try:
+            adulti = e_per_adulti(dati)
+        except ValueError as exc:
+            raise ErroreFornitore(502) from exc
+        return EsitoChiamata(testo="adulti" if adulti else "ok", intestazioni=intestazioni)
 
     async def controlla(self, f: Fornitore) -> bool:
         """Chiave valida? Chiede l'elenco dei modelli: non consuma token."""

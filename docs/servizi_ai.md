@@ -44,6 +44,7 @@ Legenda «Addestra»: `si` = nel livello gratuito può addestrare sui dati (ripi
 
 - **Chat, testo, giudizio, traduzione, codice:** Gemini, Groq, Mistral, OpenRouter, Cloudflare, NVIDIA, OVHcloud.
 - **Immagini:** solo Pollinations (da confermare). Gemini e altri servizi di immagini non sono gratuiti.
+- **Moderazione delle immagini (FUN-017, D122):** tipo `moderazione_immagine`, nessun servizio acceso di base. Serve un fornitore con endpoint `/moderations` compatibile OpenAI (nel file di esempio c'è la voce `MODERA_IMG`, in commento) che non addestri sui dati. Senza, le foto delle auto passano come prima (D123).
 - **Audio (trascrizione):** Groq (`whisper-large-v3`, 20 rpm, 2000 al giorno) e Gemini (`gemini-3.5-transcribe`) sono gratuiti, ma il bot non ha ancora il trasporto `/audio/transcriptions`: la voce usa il motore proprio (D44).
 - **Embedding (confronto):** NVIDIA, Cloudflare e Cohere ne hanno; il trasporto per `/embeddings` non c'è ancora: non compilato.
 - **Non compatibili o chiusi:** GitHub Models è ritirato dal 30/07/2026. Cloudflare ha il formato OpenAI solo per il testo.

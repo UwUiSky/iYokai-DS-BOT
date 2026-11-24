@@ -44,6 +44,7 @@ class TrasportoFinto:
         self.errori = errori or {}
         self.chiamate: list[tuple[str, object]] = []
         self.chiavi_valide: dict[str, bool] = {}
+        self.moderazione: dict[str, str] = {}  # nome -> «adulti» o «ok» (FUN-017)
 
     async def completa(self, f, messaggi, max_token):
         self.chiamate.append((f.nome, messaggi))
@@ -57,6 +58,12 @@ class TrasportoFinto:
         if f.nome in self.errori:
             raise self.errori[f.nome]
         return EsitoChiamata(immagine=PNG_1X1)
+
+    async def moderazione_immagine(self, f, png):
+        self.chiamate.append((f.nome, png))
+        if f.nome in self.errori:
+            raise self.errori[f.nome]
+        return EsitoChiamata(testo=self.moderazione.get(f.nome, "ok"))
 
     async def controlla(self, f):
         return self.chiavi_valide.get(f.nome, True)
