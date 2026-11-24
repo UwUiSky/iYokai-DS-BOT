@@ -40,7 +40,7 @@ class ShopItem:
     lines_left: int | None = None  # righe ancora da consegnare (solo oggetti a elenco)
     regalabile: bool = True  # ECO-071: chi lo compra lo può regalare
     azione: str = "nessuna"  # ECO-060: cosa succede quando lo si usa
-    azione_valore: int | None = None  # monete o id del ruolo
+    azione_valore: int | None = None  # monete, id del ruolo o numero della specie
     a_rotazione: bool = False  # ECO-075: compare in vetrina solo nei giorni in cui la rotazione lo sceglie
 
 
@@ -244,16 +244,18 @@ class ShopRepository:
 
     async def imposta_azione(self, item_id: int, guild_id: int, azione: str, valore: int | None) -> bool:
         """
-        ECO-060: cosa fa un oggetto quando lo si usa: nessuna, dà monete (1-100000) o dà/toglie un ruolo.
+        ECO-060: cosa fa un oggetto quando lo si usa: nessuna, dà monete (1-100000), dà/toglie un ruolo o evoca una creatura (ECO-101).
         False se l'oggetto non esiste in quel server; ValueError per valori non validi.
         """
-        if azione not in ("nessuna", "monete", "ruolo_dai", "ruolo_togli"):
+        if azione not in ("nessuna", "monete", "ruolo_dai", "ruolo_togli", "creatura"):
             raise ValueError("Azione sconosciuta.")
         if azione == "nessuna":
             valore = None
         elif azione == "monete" and not (valore and 1 <= valore <= 100_000):
             raise ValueError("Le monete devono stare tra 1 e 100000.")
-        elif azione != "monete" and not valore:
+        elif azione == "creatura" and not (valore and 1 <= valore <= 8):
+            raise ValueError("Serve una specie di creatura (1-8).")
+        elif azione not in ("monete", "creatura") and not valore:
             raise ValueError("Serve un ruolo.")
         if not 1 <= item_id <= MAX_ID_OGGETTO:
             return False

@@ -542,7 +542,10 @@
   "guidato": "guided",
   "preferenze": "preferences",
   "suono-condividi": "share-sound",
-  "suono-altri": "sound-others"
+  "suono-altri": "sound-others",
+  "creature": "creatures",
+  "scontro": "clash",
+  "combattimento": "battle"
  },
  "descrizioni": {
   "cerca-comando": "Searches a command by description.",
@@ -1677,7 +1680,7 @@
   "admin-bot politica ruolo-richiesto": "Whoever uses a command must have a certain role.",
   "admin-bot premium assegna": "Puts one of your premium seats on this server.",
   "admin-bot premium togli-posto": "Removes your premium seat from this server.",
-  "admin-giochi oggetto-azione": "What a shop item does when used: coins or a role.",
+  "admin-giochi oggetto-azione": "What a shop item does when used: coins, a role or a creature.",
   "monete rischio scava": "Dig for coins (sometimes a treasure).",
   "monete rischio meme": "Post a meme: the type you pick changes risk and prize.",
   "monete rischio coccole": "Pet the bot: it leaves you a few coins.",
@@ -1896,7 +1899,10 @@
   "admin-automazioni programma": "Schedule a safe action for later (role, message, channel unlock): up to 5.",
   "admin-tag tag azioni": "Safe actions of a tag: role, message, reaction (up to 3).",
   "owner system chiave-soccorso": "Rescue key to regain control if you lose your account.",
-  "owner premium piano": "Plans: limits, prices, discounts, levels given."
+  "owner premium piano": "Plans: limits, prices, discounts, levels given.",
+  "giochi sfide creature": "Your fantasy creatures: strength and wins.",
+  "giochi sfide scontro": "Make your creature fight a member's creature, with a stake.",
+  "sala combattimento": "Battle with up to 6 and your own rules: lives, rounds and items."
  },
  "parametri": {},
  "menu": {

@@ -4,6 +4,10 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-24 01:2
 
 **Total: 1178 commands in 59 categories.**
 
+Generated automatically by `scripts/generate_command_list.py` on 2026-11-24 01:28 UTC from the REAL command tree. English names and descriptions are the ones Discord shows to users with the client in English (`locales/en-US/comandi.json`); the base names in the code are Italian. Regenerate after every commit that adds, removes or renames a command.
+
+**Total: 1170 commands in 59 categories.**
+
 ## Admin: AI
 
 - **`/admin-ai banned-words`** — Words or topics the AI must refuse.
@@ -276,7 +280,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-24 01:2
 - **`/admin-games event close`** — Close the running coin event.
 - **`/admin-games event raffle`** — A raffle paid by the server chest: whoever clicks can win the prize.
 - **`/admin-games event start`** — Start the event: whoever writes in the channel gets coins.
-- **`/admin-games item-action`** — What a shop item does when used: coins or a role.
+- **`/admin-games item-action`** — What a shop item does when used: coins, a role or a creature.
 - **`/admin-games punteggi reset`** — Reset the scores of a game (with confirmation).
 - **`/admin-games quiz list`** — The quiz questions uploaded by the server.
 - **`/admin-games quiz load`** — Upload quiz questions from a CSV or JSON file.
@@ -863,7 +867,9 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-24 01:2
 - **`/games challenges battle`** — Turn-based battle against a member: attack, defend and skill, with an optional stake.
 - **`/games challenges battles`** — A member's battles won and lost, and the server's best.
 - **`/games challenges blackjack`** — Blackjack against the dealer: hit, stand, double down, surrender.
+- **`/games challenges clash`** — Make your creature fight a member's creature, with a stake.
 - **`/games challenges connect4`** — Connect four against a member, with an optional stake.
+- **`/games challenges creatures`** — Your fantasy creatures: strength and wins.
 - **`/games challenges duel`** — Challenge a member to a duel: the winner takes the stake.
 - **`/games challenges duels`** — Duel leaderboard and your latest duels.
 - **`/games challenges high-low`** — Higher or lower? The prize grows with every right answer.
@@ -1232,6 +1238,7 @@ Generated automatically by `scripts/generate_command_list.py` on 2026-11-24 01:2
 
 ## Game room
 
+- **`/room battle`** — Battle with up to 6 and your own rules: lives, rounds and items.
 - **`/room bingo`** — Bingo among members: complete a row of your card to win the pot.
 - **`/room bomb`** — Cut the right wire: who blows up the bomb is out, the last one wins.
 - **`/room cards`** — Turn-based cards: same colour or same number, who runs out of cards wins.

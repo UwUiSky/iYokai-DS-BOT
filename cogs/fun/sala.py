@@ -7,7 +7,7 @@ insieme, in una sola transazione, quando la partita parte (partite_repo.apri_gru
 è pagato niente, e se il bot si ferma le puntate rimaste tornano indietro all'avvio. Solo i giocatori della sala
 agiscono. Le monete dei giochi non si comprano con soldi veri.
 Funzioni coperte: ECO-091, ECO-093, ECO-101, ECO-102, ECO-103, ECO-105, ECO-110, ECO-111, ECO-112, ECO-113, ECO-114
-Dipende da: core/sala_logic.py, cogs/fun/_lobby.py, core/repositories/partite_repo.py
+Dipende da: core/sala_logic.py, core/combattimento_logic.py, cogs/fun/_combattimento.py, cogs/fun/_lobby.py, core/repositories/partite_repo.py
 """
 
 from __future__ import annotations
@@ -17,13 +17,16 @@ import io
 import logging
 import random
 import time
+from types import SimpleNamespace
 from datetime import datetime, timezone
 
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
+from cogs.fun._combattimento import gioca_combattimento
 from cogs.fun._lobby import apri_lobby
+from core import combattimento_logic as cb
 from core import sala_logic as sl
 from core.bingo_image import render_cartella
 from core.safe_image import run_image_task
@@ -77,6 +80,7 @@ class Tavolo:
         self.interaction, self.giocatori, self.puntata, self.moneta = interaction, giocatori, puntata, moneta
         self.fine_at = time.monotonic() + DURATA_MASSIMA
         self.rng = RNG
+        self.regole: SimpleNamespace | None = None  # solo i giochi con regole su misura (combattimento)
 
     async def t(self, chiave: str, **kw) -> str:
         return await testo_per(self.interaction, chiave, pubblica=True, **kw)
@@ -501,6 +505,7 @@ MOTORI = {
     "roulette": ("sala:roulette", gioca_roulette, 2, 10),
     "corsa": ("sala:corsa", gioca_corsa, 2, 10),
     "lotta": ("sala:lotta", gioca_lotta, 2, 6),
+    "combattimento": ("sala:combattimento", gioca_combattimento, cb.MIN_GIOCATORI, cb.MAX_GIOCATORI),  # ECO-105
     "bomba": ("sala:bomba", gioca_bomba, 2, 10),
     "tamburo": ("sala:tamburo", gioca_tamburo, 2, 10),  # ECO-093
     "carte": ("sala:carte", gioca_carte, 2, 6),
@@ -659,7 +664,7 @@ class SalaCog(CogConGruppi, commands.Cog):
             return None
         return verifica
 
-    async def _partita(self, interaction: discord.Interaction, nome: str, puntata: int) -> None:
+    async def _partita(self, interaction: discord.Interaction, nome: str, puntata: int, regole: SimpleNamespace | None = None) -> None:
         if not await self._attivo(interaction):
             return
         guild, canale = interaction.guild, interaction.channel
@@ -676,9 +681,17 @@ class SalaCog(CogConGruppi, commands.Cog):
         self._occupati.add(chiave)
         try:
             await interaction.response.defer()
+            intro, extra = "sala_intro", {}
+            if regole is not None:  # ECO-105: le regole scelte da chi crea si mostrano nella sala d'attesa
+                intro = "sala_comb_intro"
+                extra = {
+                    "vite": regole.vite, "giri": regole.giri,
+                    "oggetti": await testo_per(interaction, "cmb_si" if regole.oggetti else "cmb_no", pubblica=True),
+                }
             giocatori = await apri_lobby(
-                interaction, minimo, massimo, "sala_intro", SECONDI_LOBBY, verifica=self._verifica_ingresso(interaction.user.id),
+                interaction, minimo, massimo, intro, SECONDI_LOBBY, verifica=self._verifica_ingresso(interaction.user.id),
                 gioco=await testo_per(interaction, f"sala_nome_{nome}", pubblica=True), puntata=puntata, moneta=impostazioni.currency_name,
+                **extra,
             )
             if giocatori is None:
                 await interaction.followup.send(await testo_per(interaction, "sala_non_parte", pubblica=True))
@@ -687,6 +700,7 @@ class SalaCog(CogConGruppi, commands.Cog):
             if giocatori is None:
                 return
             tavolo = Tavolo(interaction, giocatori, puntata, impostazioni.currency_name)
+            tavolo.regole = regole
             try:
                 restituzioni = await motore(tavolo)
             except Exception:
@@ -757,6 +771,22 @@ class SalaCog(CogConGruppi, commands.Cog):
     @app_commands.describe(puntata="Monete da puntare, uguali per tutti")
     async def lotta(self, interaction: discord.Interaction, puntata: app_commands.Range[int, 1, PUNTATA_TETTO]) -> None:
         await self._partita(interaction, "lotta", puntata)
+
+    @comando_di_gruppo("sala", nome="combattimento", descrizione="Combattimento fino a 6 con regole tue: vite, giri e oggetti.")
+    @app_commands.describe(
+        puntata="Monete da puntare, uguali per tutti", vite=f"Vite di ciascuno ({cb.VITE_MIN}-{cb.VITE_MAX}, di base {cb.VITE_BASE})",
+        giri=f"Giri massimi ({cb.GIRI_MIN}-{cb.GIRI_MAX}, di base {cb.GIRI_BASE})", oggetti="Pozione e scudo ammessi (di base no)",
+    )
+    async def combattimento(
+        self, interaction: discord.Interaction, puntata: app_commands.Range[int, 1, PUNTATA_TETTO],
+        vite: app_commands.Range[int, cb.VITE_MIN, cb.VITE_MAX] = cb.VITE_BASE,
+        giri: app_commands.Range[int, cb.GIRI_MIN, cb.GIRI_MAX] = cb.GIRI_BASE, oggetti: bool = False,
+    ) -> None:
+        errore = cb.controlla_regole(vite, giri)
+        if errore is not None:  # i limiti stanno in un punto solo (core/combattimento_logic.py)
+            await interaction.response.send_message(f"❌ {errore}", ephemeral=True)
+            return
+        await self._partita(interaction, "combattimento", puntata, SimpleNamespace(vite=vite, giri=giri, oggetti=oggetti))
 
     @comando_di_gruppo("sala", nome="bomba", descrizione="Taglia il filo giusto: chi fa esplodere la bomba esce, l'ultimo vince.")
     @app_commands.describe(puntata="Monete da puntare, uguali per tutti")
