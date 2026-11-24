@@ -298,7 +298,7 @@ class ServizioAI:
         try:
             esito = await self.motore.esegui(
                 r.tipo, r.fascia, messaggi=messaggi, prompt=testo, max_token=max_token, solo_gratuiti=p.solo_gratuiti,
-                senza_addestranti=senza_addestranti,
+                senza_addestranti=senza_addestranti, guild_id=r.guild_id, user_id=r.user_id,
             )
         except BaseException as exc:
             await self.repo.annulla(p)

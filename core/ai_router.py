@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 import time
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from core.ai_cost_logic import costo_millesimi, stima_token
 from core.ai_providers import FASCE, ErroreFornitore, EsitoChiamata, Fornitore
@@ -192,8 +192,14 @@ class MotoreAI:
     async def esegui(
         self, tipo: str, fascia: str, *, messaggi: list[dict] | None = None, prompt: str = "",
         max_token: int = 600, solo_gratuiti: bool = False,
-        senza_addestranti: bool = False,
+        senza_addestranti: bool = False, guild_id: int | None = None, user_id: int | None = None,
     ) -> EsitoMotore:
+        if guild_id or user_id:
+            esito_proprio = await self._con_chiave_propria(
+                tipo, fascia, messaggi, prompt, max_token, senza_addestranti, guild_id, user_id
+            )
+            if esito_proprio is not None:
+                return esito_proprio
         candidati = scegli_fornitori(
             self.fornitori, tipo, fascia, self.stato, usa_pagamento=self.usa_pagamento, solo_gratuiti=solo_gratuiti,
             senza_addestranti=senza_addestranti,
@@ -224,6 +230,48 @@ class MotoreAI:
                 token_out=token_out, costo_millesimi=costo_millesimi(f.costo_cent_milione, token_in + token_out),
             )
         raise NessunFornitore(tipo)
+
+    async def _chiama(self, f: Fornitore, tipo: str, messaggi: list[dict] | None, prompt: str, max_token: int) -> EsitoChiamata:
+        if tipo == "immagine":
+            return await self.trasporto.immagine(f, prompt)
+        return await self.trasporto.completa(f, messaggi or [], max_token)
+
+    async def _con_chiave_propria(
+        self, tipo, fascia, messaggi, prompt, max_token, senza_addestranti, guild_id, user_id
+    ) -> EsitoMotore | None:
+        """
+        Chi ha messo la sua chiave (AI-003, D127) la usa per quel servizio, e solo lui: prima la persona, poi il server.
+        Non pesa sulle quote né sulle pause del fornitore condiviso e non costa all'owner. La chiave non va nei log.
+        Se non c'è o non funziona, torna None e si prosegue con i fornitori dell'owner.
+        """
+        from core import ai_chiavi_proprie
+
+        libero = scegli_fornitori(
+            self.fornitori, tipo, fascia, StatoFornitori(), usa_pagamento=True, senza_addestranti=senza_addestranti
+        )
+        for f in libero:
+            try:
+                chiave = await ai_chiavi_proprie.chiave_per(f.nome, guild_id=guild_id, user_id=user_id)
+            except Exception as exc:  # database fermo o chiave illeggibile: si usa quella dell'owner
+                logger.warning("Chiave AI propria non letta per %s (%s).", f.nome, type(exc).__name__)
+                return None
+            if not chiave:
+                continue
+            try:
+                esito = await self._chiama(replace(f, chiave=chiave), tipo, messaggi, prompt, max_token)
+            except ErroreFornitore as exc:
+                logger.info("Chiave AI propria rifiutata da %s (errore %s).", f.nome, exc.stato)
+                continue
+            except Exception as exc:
+                logger.info("Chiave AI propria: errore con %s (%s).", f.nome, type(exc).__name__)
+                continue
+            token_in = esito.token_in or stima_token(" ".join(str(m.get("content", "")) for m in messaggi or []) + prompt)
+            token_out = esito.token_out or (stima_token(esito.testo) if esito.testo else 0)
+            return EsitoMotore(
+                testo=esito.testo, immagine=esito.immagine, fornitore=f.nome, token_in=token_in, token_out=token_out,
+                costo_millesimi=0,
+            )
+        return None
 
     async def controlla_chiavi(self) -> dict[str, bool]:
         """Per ogni fornitore: la chiave risponde? (chiamata che non consuma token)."""
