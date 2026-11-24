@@ -4375,5 +4375,14 @@
   "gif_pref_gia": "Quel personaggio è già tra i tuoi preferiti.",
   "gif_pref_tetto": "Hai già {massimo} preferiti: togline uno prima.",
   "gif_pref_non_in_elenco": "Quel personaggio non è tra i tuoi preferiti.",
-  "gif_pref_stato": "**Le tue preferenze per le GIF**\nGenere: {genere}\nTipo: {tipo}\nPreferiti ({numero}/{massimo}): {elenco}\nSi usano quando la fonte della GIF lo permette; si cancellano con `azzera`."
+  "gif_pref_stato": "**Le tue preferenze per le GIF**\nGenere: {genere}\nTipo: {tipo}\nPreferiti ({numero}/{massimo}): {elenco}\nSi usano quando la fonte della GIF lo permette; si cancellano con `azzera`.",
+  "shadowban_bot_senza_permesso": "Mi mancano i permessi «Gestire i ruoli» e «Gestire i canali».",
+  "shadowban_durata_non_valida": "La durata va da 1 minuto a 1 anno.",
+  "shadowban_gia": "{mention} è già in shadowban.",
+  "shadowban_non_riuscito": "Non sono riuscito a mettere in shadowban: controlla i miei permessi e il mio ruolo. Non è cambiato niente.",
+  "shadowban_non_in_shadowban": "{mention} non è in shadowban.",
+  "shadowban_ruoli_tolti": "Ruoli tolti",
+  "shadowban_canali_non_preparati": "Non sono riuscito a preparare il ruolo e i canali dello shadowban: controlla i miei permessi.",
+  "shadowban_canali_pronti": "Shadowban: testo {testo}, vocale {vocale}. Li vedono solo gli shadowbannati e chi ha «Amministratore»: @everyone non li vede più.",
+  "shadowban_blocco_incompleto": "{falliti} canali non hanno preso il blocco: controlla i miei permessi su quei canali."
 }

@@ -70,9 +70,9 @@ def _adesso() -> datetime:
 
 
 # D29: il permesso di Discord che serve al moderatore per ogni gradino.
-_PERMESSO_GRADINO = {"timeout": "moderate_members", "kick": "kick_members", "ban": "ban_members", "tempban": "ban_members"}
+_PERMESSO_GRADINO = {"timeout": "moderate_members", "mute": "moderate_members", "kick": "kick_members", "ban": "ban_members", "tempban": "ban_members"}
 # Gradini con una durata: il timeout (sul membro) e il tempban (ban che si toglie da solo, MOD-034).
-_CON_DURATA = ("timeout", "tempban")
+_CON_DURATA = ("timeout", "tempban", "mute")
 
 
 def _descrivi(step) -> str:
@@ -117,6 +117,19 @@ async def _applica_passo(
     Esegue un gradino della scala e apre il caso. Restituisce il numero del
     caso, oppure None se l'azione su Discord non è riuscita.
     """
+    if step.action_type == "mute":  # D127: mute a ruolo a tempo; ruolo, stato, caso e scadenza in un punto solo
+        from core.moderation_mute_azione import applica_mute_a_tempo
+
+        try:
+            caso = await applica_mute_a_tempo(member, step.duration_seconds or 600, reason, bot.user.id)
+        except discord.HTTPException:
+            caso = None
+        if caso is None:
+            return None
+        if (await escalation_repo.get_config(guild_id)).azzera_dopo_scatto:
+            await escalation_repo.reset_violations(guild_id, member.id)
+        await _scrivi_nel_log(member, step, reason, caso)
+        return caso
     # Prima l'azione su Discord, poi il caso: se l'azione fallisce
     # non resta un caso per una punizione mai data.
     try:
@@ -403,13 +416,14 @@ class EscalationCog(CogConGruppi, commands.Cog):
     @app_commands.describe(
         level="Numero dell'infrazione (1 = prima volta, 2 = seconda...)",
         action="Azione da applicare",
-        duration_minutes="Durata in minuti (timeout e tempban)",
+        duration_minutes="Durata in minuti (timeout, mute e tempban)",
         finestra_giorni="Conta solo le infrazioni degli ultimi N giorni (da 1 a 90). Vuoto: tutte",
     )
     @app_commands.choices(
         action=[
             app_commands.Choice(name="Warn", value="warn"),
             app_commands.Choice(name="Timeout", value="timeout"),
+            app_commands.Choice(name="Mute (ruolo)", value="mute"),
             app_commands.Choice(name="Kick", value="kick"),
             app_commands.Choice(name="Ban", value="ban"),
             app_commands.Choice(name="Tempban", value="tempban"),

@@ -94,10 +94,17 @@ class LevelingSettingsRepository:
             "SELECT kind, target_id, factor FROM leveling_xp_rules WHERE guild_id = $1", guild_id
         )
         impostazioni = LevelingSettings(**_campi_da_riga(riga)) if riga else LevelingSettings()
+        ombra = await self._pool.fetchrow(
+            "SELECT ruolo_id, canale_testo_id, canale_vocale_id FROM moderation_shadowban_config WHERE guild_id = $1",
+            guild_id,
+        )  # D127: ruolo e canali dello shadowban non danno XP
+        ruoli_ombra = {ombra["ruolo_id"]} - {None} if ombra else set()
+        canali_ombra = {ombra["canale_testo_id"], ombra["canale_vocale_id"]} - {None} if ombra else set()
         config = ConfigLivelli(
+            canali_sempre_esclusi=frozenset(canali_ombra),
             impostazioni=impostazioni,
             canali_esclusi=frozenset(r["target_id"] for r in regole if r["kind"] == "canale_escluso"),
-            ruoli_esclusi=frozenset(r["target_id"] for r in regole if r["kind"] == "ruolo_escluso"),
+            ruoli_esclusi=frozenset(r["target_id"] for r in regole if r["kind"] == "ruolo_escluso") | frozenset(ruoli_ombra),
             mult_canali={r["target_id"]: float(r["factor"]) for r in regole if r["kind"] == "mult_canale"},
             mult_ruoli={r["target_id"]: float(r["factor"]) for r in regole if r["kind"] == "mult_ruolo"},
         )

@@ -23,6 +23,7 @@ MODULI = (
     "cogs.moderation.channel_control",
     "cogs.moderation.clear",
     "cogs.moderation.softban_mute",
+    "cogs.moderation.shadowban",
     "cogs.moderation.voce",
     "cogs.moderation.nickname",
     "cogs.moderation.motivo_pronto",
@@ -50,6 +51,7 @@ MODULI = (
 ATTESI: dict[tuple[str, str | None], set[str]] = {
     ("mod-sanzioni", None): {"warn", "timeout", "untimeout", "mute", "unmute", "nick", "applica", "quarantena", "libera"},
     ("mod-sanzioni", "massa"): {"timeout", "warn"},
+    ("mod-sanzioni", "shadowban"): {"dai", "togli", "canali"},
     ("mod-sanzioni", "opzioni"): {"imposta", "dm", "muto", "azioni", "avvisi", "memoria", "aspetto"},
     ("mod-casi", "caso"): {"storico", "vedi", "motivo", "elimina", "classifica-staff", "attive", "registra", "durata", "nascondi", "esporta", "prova", "chat"},
     ("mod-casi", "nota"): {"aggiungi", "elenca", "rimuovi", "modifica", "svuota"},

@@ -1029,6 +1029,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-23 16:
 - **`/mod-sanzioni opzioni memoria`** — Accende lo storico dei nomi e il soprannome e il mute vocale ridati a chi rientra.
 - **`/mod-sanzioni opzioni muto`** — Sceglie o crea il ruolo del mute e rimette il blocco su tutti i canali.
 - **`/mod-sanzioni quarantena`** — Toglie i ruoli a un membro e gli dà il ruolo di quarantena (anche a tempo).
+- **`/mod-sanzioni shadowban canali`** — Sceglie o crea i due canali dedicati dello shadowban.
+- **`/mod-sanzioni shadowban dai`** — Toglie ai membri ogni canale tranne due dedicati (anche a tempo).
+- **`/mod-sanzioni shadowban togli`** — Toglie lo shadowban e ridà i ruoli di prima.
 - **`/mod-sanzioni timeout`** — Mette in timeout un membro (max 28 giorni).
 - **`/mod-sanzioni unmute`** — Rimuove il ruolo mute da un membro.
 - **`/mod-sanzioni untimeout`** — Rimuove il timeout da un membro.

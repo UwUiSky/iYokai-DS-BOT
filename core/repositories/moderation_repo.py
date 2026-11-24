@@ -851,6 +851,63 @@ class ModerationRepository:
             "DELETE FROM moderation_quarantena WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
         )
 
+    # ---- D127: shadowban
+    async def prenota_shadowban(
+        self, guild_id: int, user_id: int, ruoli: list[int], finisce_il, dato_da: int
+    ) -> bool:
+        """
+        Scrive lo stato PRIMA di toccare il membro. True se questa chiamata ha preso il posto, False se la persona
+        era già in shadowban (due comandi insieme: ne vince uno solo, la chiave unica decide).
+        """
+        riga = await self._pool.fetchrow(
+            """
+            INSERT INTO moderation_shadowban (guild_id, user_id, ruoli, finisce_il, dato_da)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (guild_id, user_id) DO NOTHING
+            RETURNING user_id
+            """,
+            guild_id, user_id, ruoli, finisce_il, dato_da,
+        )
+        return riga is not None
+
+    async def collega_caso_shadowban(self, guild_id: int, user_id: int, case_number: int) -> None:
+        await self._pool.execute(
+            "UPDATE moderation_shadowban SET case_number = $3 WHERE guild_id = $1 AND user_id = $2",
+            guild_id, user_id, case_number,
+        )
+
+    async def get_shadowban(self, guild_id: int, user_id: int) -> dict | None:
+        r = await self._pool.fetchrow(
+            "SELECT ruoli, case_number, finisce_il FROM moderation_shadowban WHERE guild_id = $1 AND user_id = $2",
+            guild_id, user_id,
+        )
+        return dict(r) if r else None
+
+    async def elimina_shadowban(self, guild_id: int, user_id: int) -> None:
+        await self._pool.execute(
+            "DELETE FROM moderation_shadowban WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
+        )
+
+    async def get_shadowban_config(self, guild_id: int) -> dict:
+        r = await self._pool.fetchrow(
+            "SELECT ruolo_id, canale_testo_id, canale_vocale_id FROM moderation_shadowban_config WHERE guild_id = $1",
+            guild_id,
+        )
+        return dict(r) if r else {"ruolo_id": None, "canale_testo_id": None, "canale_vocale_id": None}
+
+    async def salva_shadowban_config(
+        self, guild_id: int, ruolo_id: int | None, canale_testo_id: int | None, canale_vocale_id: int | None
+    ) -> None:
+        await self._pool.execute(
+            """
+            INSERT INTO moderation_shadowban_config (guild_id, ruolo_id, canale_testo_id, canale_vocale_id)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (guild_id) DO UPDATE
+                SET ruolo_id = $2, canale_testo_id = $3, canale_vocale_id = $4
+            """,
+            guild_id, ruolo_id, canale_testo_id, canale_vocale_id,
+        )
+
     # ---- MOD-103: storico dei nomi
     async def registra_nome(
         self, guild_id: int, user_id: int, tipo: str, prima: str | None, dopo: str | None, tetto: int = 30

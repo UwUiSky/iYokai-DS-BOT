@@ -4375,5 +4375,14 @@
   "gif_pref_gia": "That character is already in your favourites.",
   "gif_pref_tetto": "You already have {massimo} favourites: remove one first.",
   "gif_pref_non_in_elenco": "That character is not among your favourites.",
-  "gif_pref_stato": "**Your GIF preferences**\nGender: {genere}\nType: {tipo}\nFavourites ({numero}/{massimo}): {elenco}\nThey are used when the GIF source allows it; delete them with `azzera`."
+  "gif_pref_stato": "**Your GIF preferences**\nGender: {genere}\nType: {tipo}\nFavourites ({numero}/{massimo}): {elenco}\nThey are used when the GIF source allows it; delete them with `azzera`.",
+  "shadowban_bot_senza_permesso": "I am missing the \"Manage Roles\" and \"Manage Channels\" permissions.",
+  "shadowban_durata_non_valida": "The duration goes from 1 minute to 1 year.",
+  "shadowban_gia": "{mention} is already shadowbanned.",
+  "shadowban_non_riuscito": "I could not shadowban: check my permissions and role. Nothing has changed.",
+  "shadowban_non_in_shadowban": "{mention} is not shadowbanned.",
+  "shadowban_ruoli_tolti": "Roles removed",
+  "shadowban_canali_non_preparati": "I could not prepare the shadowban role and channels: check my permissions.",
+  "shadowban_canali_pronti": "Shadowban: text {testo}, voice {vocale}. Only shadowbanned members and administrators can see them: @everyone no longer can.",
+  "shadowban_blocco_incompleto": "{falliti} channels did not get the block: check my permissions on them."
 }
