@@ -28,10 +28,10 @@ VIP20 = VIP
 
 # chiave: (nome leggibile, percorsi dei comandi della funzione)
 FUNZIONI: dict[str, tuple[str, tuple[str, ...]]] = {
-    "ai_immagini": ("Immagini AI", ("assistente immagina", "assistente ingrandisci", "assistente pacchetto")),
-    "ai_testo": ("Testo AI", ("assistente riassumi", "assistente spiega", "assistente traduci", "assistente stile")),
-    "ai_personaggi": ("Personaggi AI", ("assistente crea-personaggio", "assistente personaggio", "assistente mistero")),
-    "ai_voce": ("Voce AI", ("assistente parla",)),
+    "ai_immagini": ("Immagini AI", ("ai immagina", "ai ingrandisci", "ai pacchetto")),
+    "ai_testo": ("Testo AI", ("ai riassumi", "ai spiega", "ai traduci", "ai stile")),
+    "ai_personaggi": ("Personaggi AI", ("ai crea-personaggio", "ai personaggio", "ai mistero")),
+    "ai_voce": ("Voce AI", ("ai parla",)),
     # D71: il primo ruolo di un livello è libero; dal secondo il comando controlla il livello da dentro.
     "livelli_piu_ruoli": ("Più ruoli per livello", ()),
     # D71, LIV-072: importare i livelli da un file di un altro bot.

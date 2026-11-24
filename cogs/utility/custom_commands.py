@@ -513,8 +513,8 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             created_by=interaction.user.id,
         )
         messaggi = {
-            "ok": f"Comando `{normalizzato}` creato. Si usa con `/tag usa`.",
-            "esiste": f"Esiste già un comando `{normalizzato}`: usa `/admin-tag tag modifica`.",
+            "ok": f"Comando `{normalizzato}` creato. Si usa con `/utility-server tag usa`.",
+            "esiste": f"Esiste già un comando `{normalizzato}`: usa `/admin-messaggi-tag modifica`.",
             "pieno": f"Questo server ha già {MAX_TAG} comandi personalizzati: eliminane uno.",
         }
         await interaction.response.send_message(messaggi[esito], ephemeral=True)

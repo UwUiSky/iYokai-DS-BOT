@@ -12,6 +12,7 @@ import pytest
 from discord import app_commands
 
 from core import command_translator as tr
+from core.comandi_diretti import percorso_vero
 from tests.support.full_tree import build_separate_trees
 from tests.test_command_tree_invariants import _albero_vero, _chiudi, _radici, _tutti_i_nodi
 
@@ -22,7 +23,7 @@ MINIMO_PARAMETRI_TRADOTTI = 0
 
 
 def _percorso(nodo) -> str:
-    return nodo.qualified_name
+    return percorso_vero(nodo)  # un comando diretto (D137) ha le traduzioni del comando lungo
 
 
 def _nome_en(nodo) -> str:

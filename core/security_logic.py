@@ -400,7 +400,7 @@ def aggiungi_fiducia(
     voci = voci_fiducia(config)
     altre = tuple(v for v in voci if not (v.target_id == target_id and v.kind == kind))
     if len(altre) >= max_voci:
-        return None, f"La lista dei fidati è piena ({max_voci}): toglierne qualcuno con /admin-antinuke trusted-remove."
+        return None, f"La lista dei fidati è piena ({max_voci}): toglierne qualcuno con /admin-sicurezza-antinuke trusted-remove."
     nuova = TrustEntry(
         target_id=target_id,
         kind=kind,

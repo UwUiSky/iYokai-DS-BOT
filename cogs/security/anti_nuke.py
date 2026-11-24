@@ -1021,7 +1021,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
             color=discord.Color.red(),
         )
         if tolti:
-            embed.set_footer(text=f"Per rilasciare e rimettere i ruoli: /admin-antinuke rilascia caso:{numero}")
+            embed.set_footer(text=f"Per rilasciare e rimettere i ruoli: /admin-sicurezza-antinuke rilascia caso:{numero}")
         await _alert_staff(guild, settings, embed)
         # SIC-011: se il server l'ha scelto, un attacco riconosciuto accende il panico.
         await panico_automatico(guild, f"Anti-Nuke: {category}")

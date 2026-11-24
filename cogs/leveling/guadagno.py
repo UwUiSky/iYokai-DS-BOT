@@ -25,7 +25,6 @@ from core.repositories.leveling_settings_repo import leveling_settings_repo
 
 logger = logging.getLogger("iyokai.leveling.guadagno")
 
-_SG = SOTTOGRUPPI["admin-livelli guadagno"]
 _NO_MENZIONI = discord.AllowedMentions.none()
 
 _SCELTE_FORMULA = [

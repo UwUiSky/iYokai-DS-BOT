@@ -428,7 +428,7 @@ class RestoreCog(CogConGruppi, commands.Cog):
             )
             + (
                 f"\n⚠️ Ruolo verificato non assegnato (controlla il ruolo scelto in "
-                f"/admin-sicurezza verify setup): {contatori['ruolo_non_assegnato']}"
+                f"/admin-sicurezza-verifica setup): {contatori['ruolo_non_assegnato']}"
                 if contatori["ruolo_non_assegnato"]
                 else ""
             )

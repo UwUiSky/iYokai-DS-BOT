@@ -112,10 +112,9 @@ import warnings
 MAX_CARATTERI_COMANDO = 8000
 SOGLIA_ALLARME_CARATTERI = 6800
 MAX_COMANDI_PRIMO_LIVELLO = 100
-MAX_COMANDI_PRIMO_LIVELLO_D56 = 60  # D56: tetto nostro; i posti liberi restano per le esigenze future
+AVVISO_COMANDI_PRIMO_LIVELLO = 90  # D137: il tetto è quello di Discord (100), con avviso a 90
 OBIETTIVO_FIGLI = 18
-# Gruppi già sopra 18 figli (D56: si punta a 18). Non se ne aggiungono: si divide in sotto-gruppi.
-KNOWN_OLTRE_18: frozenset[str] = frozenset({"admin-ai", "ticket", "music"})
+# D137: i figli di un gruppo sono al massimo 25 (Discord); 18 è un obiettivo, oltre c'è solo un avviso.
 MAX_NOME = 32
 MAX_DESCRIZIONE = 100
 REGEX_NOME = re.compile(r"^[-_ʼ\w]{1,32}$")  # \w include lettere e cifre unicode
@@ -143,13 +142,14 @@ def conta_caratteri(nodo) -> int:
 
 
 def _radici(bot):
-    """Comandi globali più `/owner`, che vive solo nel server dell'owner (gruppo condiviso)."""
-    from core.command_groups import GRUPPI
+    """Comandi globali più `/owner` e `/owner-radio`, che vivono solo nel server dell'owner (gruppi condivisi)."""
+    from core.command_groups import GRUPPI, GRUPPI_SOLO_OWNER
 
     radici = list(bot.tree.get_commands(type=discord.AppCommandType.chat_input))
-    assert bot.tree.get_command("owner") is None, "/owner non deve stare nell'albero globale"
-    if GRUPPI["owner"].commands:
-        radici.append(GRUPPI["owner"])
+    for nome in GRUPPI_SOLO_OWNER:
+        assert bot.tree.get_command(nome) is None, f"/{nome} non deve stare nell'albero globale"
+        if GRUPPI[nome].commands:
+            radici.append(GRUPPI[nome])
     return radici
 
 
@@ -194,7 +194,7 @@ def test_conta_caratteri_segue_la_regola_ufficiale():
 
 
 def peso_con_lingue(nodo) -> int:
-    """D58: per ogni campo conta la versione più lunga tra tutte le lingue presenti (base compresa)."""
+    """D137: ogni campo conta la versione più lunga tra it ed en con il 30% in più (tetti di Discord), o la traduzione vera se più lunga."""
     from core.command_translator import caratteri_con_traduzioni
 
     return max(conta_caratteri(nodo), caratteri_con_traduzioni(nodo))
@@ -232,26 +232,33 @@ async def test_avviso_caratteri_oltre_6800():
         await _chiudi(creato_qui, bot)
 
 
-async def test_primo_livello_entro_il_tetto_di_60_e_con_premium_e_vip():
-    """D56: al massimo 60 comandi di primo livello, contando `/owner` e anche `/premium` e `/vip`."""
+async def test_primo_livello_entro_il_tetto_di_100_e_con_premium_e_vip():
+    """D137: al massimo 100 comandi di primo livello globali (avviso a 90), contando `/premium` e `/vip`.
+    `/owner` e `/owner-radio` stanno solo nel server dell'owner e non contano."""
+    from core.command_groups import GRUPPI_SOLO_OWNER
+
     creato_qui, bot = await _albero_vero()
     try:
-        assert len(_radici(bot)) + 2 <= MAX_COMANDI_PRIMO_LIVELLO_D56
-        assert MAX_COMANDI_PRIMO_LIVELLO_D56 <= MAX_COMANDI_PRIMO_LIVELLO
+        globali = [r for r in _radici(bot) if r.name not in GRUPPI_SOLO_OWNER]
+        n = len(globali) + 2
+        assert n <= MAX_COMANDI_PRIMO_LIVELLO, f"{n} comandi di primo livello con /premium e /vip (massimo 100)."
+        if n > AVVISO_COMANDI_PRIMO_LIVELLO:
+            warnings.warn(f"{n} comandi di primo livello: oltre l'avviso di {AVVISO_COMANDI_PRIMO_LIVELLO} (limite 100).", stacklevel=1)
     finally:
         await _chiudi(creato_qui, bot)
 
 
-async def test_figli_oltre_18_solo_nei_gruppi_gia_noti():
+async def test_figli_oltre_18_solo_un_avviso_e_mai_oltre_25():
     creato_qui, bot = await _albero_vero()
     try:
         sopra = {
-            _percorso(n)
+            _percorso(n): len(n.commands)
             for n in _tutti_i_nodi(_radici(bot))
             if isinstance(n, app_commands.Group) and len(n.commands) > OBIETTIVO_FIGLI
         }
-        assert sorted(sopra - KNOWN_OLTRE_18) == [], f"Gruppi con più di {OBIETTIVO_FIGLI} figli: dividi in sotto-gruppi (D56)"
-        assert sorted(KNOWN_OLTRE_18 - sopra) == [], f"Ora sono a {OBIETTIVO_FIGLI} figli o meno: toglili da KNOWN_OLTRE_18"
+        assert all(v <= MAX_SUBCOMMANDS_PER_GROUP for v in sopra.values()), sopra
+        if sopra:
+            warnings.warn(f"Gruppi con più di {OBIETTIVO_FIGLI} figli (obiettivo, non tetto): {sopra}", stacklevel=1)
     finally:
         await _chiudi(creato_qui, bot)
 
@@ -263,7 +270,7 @@ async def test_solo_proprietario_sta_solo_in_owner():
         fuori = [
             _percorso(n)
             for n in _tutti_i_nodi(_radici(bot))
-            if "olo proprietario" in str(n.description) and _percorso(n).split()[0] != "owner"
+            if "olo proprietario" in str(n.description) and not _percorso(n).split()[0].startswith("owner")
         ]
         assert fuori == [], f"Comandi solo-owner fuori da /owner: {fuori}"
     finally:
@@ -314,8 +321,9 @@ async def test_dopo_il_setup_di_tutti_i_cog_owner_non_e_nell_albero_globale():
 
     creato_qui, bot = await _albero_vero()
     try:
-        assert bot.tree.get_command("owner") is None
+        assert bot.tree.get_command("owner") is None and bot.tree.get_command("owner-radio") is None
         assert GRUPPI["owner"].commands, "i cog owner devono riempire il gruppo condiviso"
+        assert GRUPPI["owner-radio"].commands, "i cog della radio devono riempire /owner-radio"
     finally:
         await _chiudi(creato_qui, bot)
 

@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 
 from core.database import db
 
-RADICI_DI_GIOCO = frozenset({"monete", "giochi", "clan"})
+RADICI_DI_GIOCO = frozenset({"monete", "giochi", "monete-clan"})
 MAX_MOTIVO = 200
 MAX_APPELLO = 500
 MAX_DURATA = timedelta(days=365)

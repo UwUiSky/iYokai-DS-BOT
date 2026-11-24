@@ -44,7 +44,9 @@ class ComandoDiretto(app_commands.Command):
 
 def percorso_vero(comando: Any) -> str:
     """Il percorso del comando per politica, statistiche e livelli: per un comando diretto è quello lungo."""
-    return getattr(comando, "percorso_vero", None) or comando.qualified_name
+    if isinstance(comando, ComandoDiretto):
+        return comando.percorso_vero
+    return getattr(comando, "qualified_name", None)
 
 
 def e_diretto(comando: Any) -> bool:

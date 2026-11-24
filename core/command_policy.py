@@ -42,7 +42,7 @@ MAX_COMANDI_CON_RUOLI = 100
 MAX_RUOLI_PER_COMANDO = 10
 MAX_LUNGHEZZA_PERCORSO = 100
 # Mai spenti: servono a rimettere a posto la politica.
-PREFISSI_SEMPRE_APERTI = ("admin-bot", "owner")
+PREFISSI_SEMPRE_APERTI = ("admin-bot", "admin-bot-config", "owner", "owner-radio")
 
 _blocchi_elenco: dict[int, asyncio.Lock] = {}
 

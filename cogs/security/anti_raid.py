@@ -492,7 +492,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         descrizione="Impedisce a chi non è fidato di togliere la quarantena a mano.",
     )
     @app_commands.describe(
-        enabled="Se attivo, togliere la quarantena a mano viene annullato: usa /admin-sicurezza-antiraid rilascia"
+        enabled="Se attivo, la quarantena tolta a mano torna: usa /admin-sicurezza-antiraid rilascia"
     )
     @requires_module(MODULE_ANTI_RAID)
     async def quarantine_hold(self, interaction: discord.Interaction, enabled: bool) -> None:
@@ -595,7 +595,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         if filtro.value == FILTRO_NOME_VIETATO and not settings.anti_raid.nomi_vietati:
             testo += " La lista è vuota: aggiungi gli schemi con /admin-sicurezza-antiraid nomi-vietati."
         if filtro.value == FILTRO_ETA:
-            testo += f" Età minima: {settings.anti_raid.min_account_age_seconds} secondi (/admin-antiraid account-age)."
+            testo += f" Età minima: {settings.anti_raid.min_account_age_seconds} secondi (/admin-sicurezza-antiraid account-age)."
         await interaction.response.send_message(testo, ephemeral=True)
 
     @comando_di_gruppo(

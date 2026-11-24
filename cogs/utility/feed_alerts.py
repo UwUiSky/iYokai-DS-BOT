@@ -240,7 +240,7 @@ class FeedAlertsCog(CogConGruppi, commands.Cog):
             f"✅ Webhook creato (ID `WH-{webhook.id}`) per **{label}**.\n\n{corpo_url}\n\n"
             f"⚠️ Questo URL/token è SEGRETO: chiunque lo conosca può pubblicare in "
             f"{channel.mention}. Non lo mostrerò di nuovo — se lo perdi, crealo di nuovo "
-            f"e rimuovi quello vecchio con /admin-moduli alert rimuovi."
+            f"e rimuovi quello vecchio con /admin-alert piattaforme rimuovi."
             f"{avviso_riavvio}",
             ephemeral=True,
         )

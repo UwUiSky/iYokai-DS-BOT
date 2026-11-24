@@ -36,8 +36,8 @@ COMANDI = {
     "mod-ban softban": "softban",
     "mod-ban unban": "unban",
     # VER-018: lo staff che verifica a mano senza essere amministratore (livello «security» del gruppo).
-    "admin-sicurezza verify manuale": "verifica",
-    "admin-sicurezza verify invia": "verifica",
+    "admin-sicurezza-verifica manuale": "verifica",
+    "admin-sicurezza-verifica invia": "verifica",
 }
 AZIONI = tuple(dict.fromkeys(COMANDI.values()))
 # Dove vale un'azione: le sanzioni ai livelli mod e modban, la verifica a mano al livello security.

@@ -201,12 +201,12 @@ COMANDI_VICINI: dict[str, tuple[tuple[str, str], ...]] = {
     "ticket apri": (("utility report", "segnala un utente, senza aprire una conversazione"),),
     "admin-automod parole add": (
         ("admin-automod odio parola", "gestisce le parole d'odio, anche quelle lecite"),
-        ("admin-filtri messaggi", "conta messaggi ripetuti, link e menzioni"),
+        ("admin-automod-filtri messaggi", "conta messaggi ripetuti, link e menzioni"),
     ),
     "admin-log cerca utente": (("mod-casi caso storico", "mostra solo le sanzioni, non tutti gli eventi"),),
     "mod-casi caso storico": (("admin-log cerca utente", "mostra tutti gli eventi del registro, non solo le sanzioni"),),
-    "assistente riassumi": (("assistente spiega", "spiega un solo messaggio, non un canale"),),
-    "assistente spiega": (("assistente riassumi", "riassume gli ultimi messaggi di un canale"),),
+    "ai riassumi": (("ai spiega", "spiega un solo messaggio, non un canale"),),
+    "ai spiega": (("ai riassumi", "riassume gli ultimi messaggi di un canale"),),
 }
 
 
@@ -232,11 +232,11 @@ GRUPPI_ATTIVITA: tuple[tuple[str, str], ...] = (
     ("fun", "Divertimento"),
     ("giochi", "Giochi"),
     ("immagini", "Immagini"),
-    ("sondaggi", "Sondaggi"),
-    ("assistente", "Assistente AI"),
+    ("utility-server", "Sondaggi, eventi e tag"),
+    ("ai", "Assistente AI"),
     ("level", "Livelli e profilo"),
     ("monete", "Monete e negozio"),
-    ("clan", "Clan"),
+    ("monete-clan", "Clan"),
     ("music", "Musica"),
     ("utility", "Strumenti per tutti"),
     ("ticket", "Assistenza"),

@@ -145,7 +145,7 @@ class GifCog(CogConGruppi, commands.Cog):
 
         if interaction.guild is None or not await db.is_module_active_for_guild(interaction.guild.id, MODULE_FUN):
             return False
-        return await valuta_percorso(interaction, "gif azione") is None
+        return await valuta_percorso(interaction, "immagini gif azione") is None
 
     async def controlla_azione(self, autore: discord.abc.User, bersaglio: discord.abc.User) -> str | None:
         return await logica.esito_azione(gif_privacy_repo, autore.id, bersaglio.id, bool(bersaglio.bot))
