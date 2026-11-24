@@ -2699,6 +2699,8 @@ di quel file.
 - `[x]` 25.105 Saluti a voce: risposta al "buongiorno" con il nome, una
   sola risposta per più persone (AI-R-112)
   → **Stato 29/10 (r12ai):** Saluti a voce nei canali scelti con /admin-ai voce imposta: raccolta di 6 s con fino a 3 nomi, pausa di 2 minuti per canale, frasi fisse in cache senza scadenza.
+- `[x]` 25.106 Lunghezza della lore: 1.000 caratteri di base, 2.000 da Premium in su (AI-010, D127, D131; r4web)
+  → **Stato 23/11 (r4web):** `core/ai_impostazioni.py` (`lore_massima`, `lore_del_server`, controllo in `imposta_lore`, punto unico di comando e pannello), `core/ai_testi_logic.py` (`MAX_LORE_BASE`, `MAX_LORE_PREMIUM`, `testo_lore(..., massimo)`), `cogs/ai/config.py` (campo fino a 2000, errore chiaro oltre il tetto), `core/web_panel_ai.py` e `ai_altro.html` (tetto del server nel modulo). Letture: `core/ai_servizio.py` e i cog Storia, Riepilogo e Lore. Test: `tests/test_ai_lore_limite.py`.
 
 ---
 

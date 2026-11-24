@@ -23,7 +23,8 @@ from discord.ext import commands, tasks
 from cogs.ai._comune import NESSUNA_MENZIONE, chiedi, registra_modulo_ai, taglia
 from core import dungeon_logic as logica
 from core.ai_servizio import RichiestaAI
-from core.ai_testi_logic import estrai_json, testo_lore
+from core.ai_impostazioni import lore_del_server
+from core.ai_testi_logic import estrai_json
 from core.bot_ready import attendi_bot_pronto
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.repositories.ai_gioco_repo import Partita, ai_gioco_repo
@@ -44,7 +45,7 @@ TOKEN_STORIA = 1800
 async def tema_del_server(guild_id: int) -> tuple[str, str]:
     """(chiave del tema, testo della lore) del server; senza tema vale quello degli yokai."""
     cfg = await ai_repo.get_config(guild_id)
-    return cfg.lore_tema or "yokai", testo_lore(cfg.lore_tema, cfg.lore_testo)
+    return cfg.lore_tema or "yokai", await lore_del_server(guild_id, cfg)
 
 
 async def scegli_storia(guild_id: int, user_id: int, tema: str, lore: str):

@@ -26,13 +26,13 @@ from cogs.ai._comune import (
 from core.ai_cost_logic import GIORNI_PROVA, prova_attiva
 from core.ai_impostazioni import (
     MAX_CANALI_SPENTI, MAX_PAROLE_VIETATE, TESTO_CONSENSO, accendi_ai, imposta_canali_spenti, imposta_lore, imposta_parole_vietate,
-    imposta_interruttore, imposta_scelte, spegni_ai,
+    imposta_interruttore, imposta_scelte, lore_del_server, spegni_ai,
 )
 from core.config_schema import ImpostazioneNonValida
 from core.ai_router import avviso_chiavi
 from core import ai_override_logic as ov
 from core.ai_servizio import imposta_manutenzione_ai, imposta_scelte_owner, servizio_ai
-from core.ai_testi_logic import INTERRUTTORI, ISTRUZIONI, LINGUE, TEMI, leggi_proposta_server, nome_lingua, testo_lore
+from core.ai_testi_logic import INTERRUTTORI, ISTRUZIONI, LINGUE, MAX_LORE_PREMIUM, TEMI, leggi_proposta_server, nome_lingua, testo_lore
 from core.bot_ready import attendi_bot_pronto
 from core.command_access import Livello, autocomplete_protetto
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo
@@ -189,7 +189,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
             f"{cfg.quota_immagini_settimana} immagini a settimana",
             inline=False,
         )
-        lore = testo_lore(cfg.lore_tema, cfg.lore_testo)
+        lore = await lore_del_server(interaction.guild_id, cfg)
         embed.add_field(name="Lore", value=taglia(lore, 1000) if lore else "nessuna", inline=False)
         righe = await ai_repo.riepilogo_mese(interaction.guild_id)
         embed.add_field(
@@ -350,12 +350,12 @@ class AiConfigCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo("admin-ai", nome="lore", descrizione="Tono e ambientazione del server per ogni testo dell'AI.")
     @app_commands.describe(
-        tema="Un tema pronto", testo="Le tue parole (vuoto con tema 'nessuno': toglie la lore)",
+        tema="Un tema pronto", testo="Le tue parole: fino a 1000 caratteri, 2000 con Premium (vuoto con tema 'nessuno': toglie la lore)",
         nomi_a_tema="Sì: il tema dà il nome alla moneta, ai punti e ai titoli dei livelli",
     )
     @app_commands.choices(tema=[app_commands.Choice(name=n, value=n) for n in (*TEMI, "nessuno")])
     async def lore(
-        self, interaction: discord.Interaction, tema: str, testo: app_commands.Range[str, 1, 1000] | None = None,
+        self, interaction: discord.Interaction, tema: str, testo: app_commands.Range[str, 1, 2000] | None = None,
         nomi_a_tema: bool = False,
     ) -> None:
         scelto = None if tema == "nessuno" else tema
@@ -364,7 +364,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
         except (ImpostazioneNonValida, ValueError) as errore:
             await interaction.response.send_message(str(errore), ephemeral=True)
             return
-        lore = testo_lore(scelto, testo)
+        lore = testo_lore(scelto, testo, MAX_LORE_PREMIUM)
         risposta = f"Lore salvata:\n> {taglia(lore, 1500)}" if lore else "Lore tolta."
         if nomi:
             risposta += f"\nNomi a tema: moneta «{nomi['moneta']}», punti «{nomi['punti']}», titoli «{nomi['titoli']}»."

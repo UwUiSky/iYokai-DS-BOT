@@ -52,7 +52,7 @@ def registra_rotte(app: web.Application, *, bot, pagina, errore, server, scrittu
         cfg = await ai_repo.get_config(guild.id)
         canali = [(c.id, c.name) for c in guild.text_channels[:200]]
         return pagina(
-            request, "ai_altro.html", guild=guild, cfg=cfg, temi=TEMI, canali=canali, vietate="\n".join(cfg.parole_vietate),
+            request, "ai_altro.html", guild=guild, cfg=cfg, temi=TEMI, lore_max=await impostazioni.lore_massima(guild.id), lore_premium=impostazioni.MAX_LORE_PREMIUM, canali=canali, vietate="\n".join(cfg.parole_vietate),
             spenti=set(cfg.canali_spenti), **esito_di(request),
         )
 
@@ -68,7 +68,7 @@ def registra_rotte(app: web.Application, *, bot, pagina, errore, server, scrittu
             if azione == "lore":
                 tema = str(form.get("tema", "")) or None
                 await impostazioni.imposta_lore(
-                    guild.id, None if tema == "nessuno" else tema, str(form.get("testo", ""))[:1000],
+                    guild.id, None if tema == "nessuno" else tema, str(form.get("testo", "")),  # il tetto lo controlla `imposta_lore` (AI-010)
                     nomi_a_tema=form.get("nomi_a_tema") == "1",
                 )
             elif azione == "limiti":

@@ -11,6 +11,7 @@ Dipende da: core/repositories/ai_repo.py, core/ai_cost_logic.py, core/ai_servizi
 from __future__ import annotations
 
 from core.ai_cost_logic import GIORNI_PROVA, prova_attiva
+from core.ai_testi_logic import MAX_LORE_BASE, MAX_LORE_PREMIUM, testo_lore
 from core.config_schema import ImpostazioneNonValida
 
 TESTO_CONSENSO = (
@@ -69,6 +70,21 @@ async def imposta_scelte(guild_id: int, **campi):
     return cfg
 
 
+async def lore_massima(guild_id: int) -> int:
+    """AI-010 (D127): quanti caratteri può avere la lore del server: 2.000 da Premium in su, 1.000 per gli altri."""
+    from core.premium import guild_has_premium_access
+
+    try:
+        return MAX_LORE_PREMIUM if await guild_has_premium_access(guild_id, "ai") else MAX_LORE_BASE
+    except Exception:  # noqa: BLE001 - senza database o con un errore vale il livello base
+        return MAX_LORE_BASE
+
+
+async def lore_del_server(guild_id: int, cfg) -> str:
+    """La lore da mandare all'AI (tema e parole), tagliata al tetto di oggi del server (se il Premium è finito, torna a 1.000)."""
+    return testo_lore(cfg.lore_tema, cfg.lore_testo, await lore_massima(guild_id))
+
+
 async def imposta_lore(guild_id: int, tema: str | None, testo: str | None = None, *, nomi_a_tema: bool = False) -> dict:
     """
     Tema e parole del server per ogni testo dell'AI. Con `nomi_a_tema` il tema dà il nome alla moneta
@@ -81,7 +97,14 @@ async def imposta_lore(guild_id: int, tema: str | None, testo: str | None = None
 
     if tema is not None and tema not in TEMI:
         raise ImpostazioneNonValida(f"Il tema «{tema}» non esiste.")
-    campi: dict = {"lore_tema": tema, "lore_testo": (testo or "").strip()[:1000] or None}
+    pulito = (testo or "").strip()
+    massimo = await lore_massima(guild_id)
+    if len(pulito) > massimo:
+        raise ImpostazioneNonValida(
+            f"La lore può avere al massimo {massimo} caratteri (hai scritto {len(pulito)})."
+            + ("" if massimo >= MAX_LORE_PREMIUM else f" Con Premium arriva a {MAX_LORE_PREMIUM}.")
+        )
+    campi: dict = {"lore_tema": tema, "lore_testo": pulito or None}
     nomi = nomi_del_tema(tema)
     if tema is None:
         campi.update(nome_punti=None, prefisso_titolo=None)

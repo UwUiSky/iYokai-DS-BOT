@@ -20,7 +20,8 @@ from discord.ext import commands
 from cogs.ai._comune import (
     MODULO_AI, NESSUNA_MENZIONE, SOTTO_AI, chiedi, embed_risposta, registra_modulo_ai, richiesta_da, taglia,
 )
-from core.ai_testi_logic import ISTRUZIONI, riconosci_lingua, testo_lore
+from core.ai_impostazioni import lore_del_server
+from core.ai_testi_logic import ISTRUZIONI, riconosci_lingua
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.premium import requires_module
 from core.repositories.ai_repo import Personaggio, ai_repo
@@ -79,7 +80,7 @@ class AiLoreCog(CogConGruppi, commands.Cog):
         ))
         if risposta is None:
             cfg = await ai_repo.get_config(interaction.guild_id)
-            lore = testo_lore(cfg.lore_tema, cfg.lore_testo)
+            lore = await lore_del_server(interaction.guild_id, cfg)
             await interaction.followup.send(f"{locale}\n\n{taglia(lore, 1500)}" if lore else locale, ephemeral=True)
             return
         await interaction.followup.send(embed=embed_risposta(argomento, risposta.testo, da_cache=risposta.da_cache), ephemeral=True)

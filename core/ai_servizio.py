@@ -28,7 +28,8 @@ from core.ai_cost_logic import LimitatoreUtente, prova_attiva, prova_finita, sti
 from core.ai_guardrail_logic import componi_messaggi, pulisci_dati_personali, pulisci_uscita, richiesta_vietata
 from core.ai_providers import TrasportoHTTP, env_con_file, leggi_fornitori, usa_chiavi_a_pagamento
 from core.ai_router import MotoreAI, NessunFornitore
-from core.ai_testi_logic import interruttore_di, testo_lore
+from core.ai_impostazioni import lore_del_server
+from core.ai_testi_logic import interruttore_di
 
 logger = logging.getLogger("iyokai.ai_servizio")
 
@@ -237,7 +238,7 @@ class ServizioAI:
             raise AINonDisponibile("troppe")
 
         testo = pulisci_dati_personali(r.testo)
-        lore = pulisci_dati_personali(testo_lore(cfg.lore_tema, cfg.lore_testo)) if cfg else ""
+        lore = pulisci_dati_personali(await lore_del_server(r.guild_id, cfg)) if cfg else ""
         istruzioni_pulite = pulisci_dati_personali(r.istruzioni)
         istruzioni = istruzioni_pulite + (f"\n[lore] {lore}" if lore else "")
         # La traduzione contiene il testo della persona: resta nel server, mai nella libreria comune.
