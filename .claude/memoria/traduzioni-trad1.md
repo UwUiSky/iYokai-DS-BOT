@@ -1,4 +1,4 @@
 # Traduzioni trad1 (de, fr, es-ES) — Refs #77
 Metodo: blocchi da 250 chiavi in /tmp/claude-0/-home-user/b08e1c1f-65cb-58bd-a5aa-1e1344ae99a4/scratchpad/trad1/ (dump.py, merge.py, bNN.txt), tutte e tre le lingue insieme.
-Ultima chiave fatta: indice 2250 (`gif_reaz_spallucce`), 2250/4486 per de, fr, es-ES.
-Prossimo: dump.py 2250 2500, poi merge.py. Controllo: scripts/controlla_lingue.py (non committare locales/RIEPILOGO.md).
+Ultima chiave fatta: indice 3250 (`bj_pari`), 3250/4486 per de, fr, es-ES.
+Prossimo: dump.py 3250 3500, poi merge.py. Controllo: scripts/controlla_lingue.py (non committare locales/RIEPILOGO.md).
