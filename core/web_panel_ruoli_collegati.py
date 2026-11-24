@@ -50,7 +50,7 @@ def registra_rotte(
     limite = regole.LimiteFrequenza(20, 60)  # per persona: ogni passo parla con Twitch o con Discord
     base_url = url_pubblico.rstrip("/") + "/ruoli-collegati"
     uri_twitch, uri_discord = base_url + "/twitch", base_url + "/discord"
-    ultimo_tentativo = {"quando": 0.0, "fatto": False}
+    ultimo_tentativo = {"quando": None, "fatto": False}
 
     def vai(url: str) -> web.Response:
         return web.Response(status=302, headers={"Location": url})
@@ -61,7 +61,7 @@ def registra_rotte(
     async def registra_metadati(cfg: logica.Configurazione, rete) -> None:
         """Una volta per avvio, e se non va si riprova dopo dieci minuti; un errore non rompe la pagina."""
         adesso = time.monotonic()
-        if ultimo_tentativo["fatto"] or adesso - ultimo_tentativo["quando"] < PAUSA_METADATI:
+        if ultimo_tentativo["fatto"] or (ultimo_tentativo["quando"] is not None and adesso - ultimo_tentativo["quando"] < PAUSA_METADATI):
             return
         ultimo_tentativo["quando"] = adesso
         try:
