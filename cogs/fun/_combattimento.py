@@ -2,8 +2,8 @@
 cogs/fun/_combattimento.py
 ==========================
 Il combattimento a più giocatori della sala (/sala combattimento, ECO-105): turni con bottoni (un bottone per ogni
-avversario ancora in piedi, pozione e scudo se gli oggetti sono ammessi), chi non muove in tempo esce, il creatore
-può annullare e tutti riprendono la puntata. Le monete le muove solo `SalaCog` (puntate tolte e chiuse in gruppo).
+avversario ancora in piedi, pozione e scudo se gli oggetti sono ammessi), chi non muove in tempo esce. A partita
+iniziata nessuno annulla (Annulla vale solo nella sala d'attesa): restano il timeout e l'errore, che rimborsano. Le monete le muove solo `SalaCog` (puntate tolte e chiuse in gruppo).
 Funzioni coperte: ECO-105
 Dipende da: core/combattimento_logic.py, cogs/fun/sala.py (chi lo chiama)
 """
@@ -25,7 +25,7 @@ PAUSA = 1  # secondi tra un controllo dei tempi e il successivo
 
 
 class VistaCombattimento(BaseView):
-    """Solo chi gioca preme; solo chi è di turno muove; solo il creatore annulla."""
+    """Solo chi gioca preme; solo chi è di turno muove. Partita chiusa = nessuna mossa in più."""
 
     def __init__(self, tv, comb: cb.Combattimento, nomi: dict[int, str], host_id: int, testi: dict[str, str]) -> None:
         super().__init__(timeout=None)
@@ -34,8 +34,7 @@ class VistaCombattimento(BaseView):
         self.ultima_mossa = time.monotonic()
         self.cambiata = asyncio.Event()
         self.ultimo_testo = ""
-        self.annullata = False
-        self.annulla_partita.label = testi.get("annulla", "Annulla")[:80]
+        self.finita = False  # impostato nello stesso istante della mossa finale, prima di ogni await
         self.ricostruisci()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -57,20 +56,30 @@ class VistaCombattimento(BaseView):
                 b = discord.ui.Button(label=self.testi.get(chiave, chiave)[:80], emoji=emoji, style=discord.ButtonStyle.success, row=2)
                 b.callback = azione
                 self.add_item(b)
-        self.annulla_partita.row = 2
-        self.add_item(self.annulla_partita)
 
     # nessun await tra il controllo del turno e la mossa: due clic non muovono due volte
     def attacca_a(self, bersaglio: int):
         async def callback(interaction: discord.Interaction) -> None:
+            if self.finita:
+                await self._chiusa(interaction)
+                return
             esito = self.comb.attacca(interaction.user.id, bersaglio)
             await self._dopo(interaction, esito, bersaglio)
         return callback
 
+    async def _chiusa(self, interaction: discord.Interaction) -> None:
+        await interaction.response.send_message(await testo_per(interaction, "cmb_chiusa"), ephemeral=True)
+
     async def _pozione(self, interaction: discord.Interaction) -> None:
+        if self.finita:
+            await self._chiusa(interaction)
+            return
         await self._dopo(interaction, self.comb.usa_pozione(interaction.user.id), None)
 
     async def _scudo(self, interaction: discord.Interaction) -> None:
+        if self.finita:
+            await self._chiusa(interaction)
+            return
         await self._dopo(interaction, self.comb.usa_scudo(interaction.user.id), None)
 
     async def _dopo(self, interaction: discord.Interaction, esito: str, bersaglio: int | None) -> None:
@@ -81,27 +90,17 @@ class VistaCombattimento(BaseView):
             await interaction.response.send_message(await testo_per(interaction, f"cmb_{esito}"), ephemeral=True)
             return
         self.ultima_mossa = time.monotonic()
+        finito = self.comb.vincitori is not None
+        if finito:  # chiusa subito: nessun await tra la mossa vincente e questo flag
+            self.finita = True
         self.ultimo_testo = await testo_per(
             interaction, f"cmb_{esito}", pubblica=True, chi=f"<@{interaction.user.id}>", bersaglio=f"<@{bersaglio}>" if bersaglio else ""
         )
         self.ricostruisci()
-        finito = self.comb.vincitori is not None
         if finito:
             self.stop()
         await interaction.response.edit_message(
             content=await self.testo(interaction), view=None if finito else self, allowed_mentions=NESSUNA_MENZIONE
-        )
-        self.cambiata.set()
-
-    @discord.ui.button(label="Annulla", style=discord.ButtonStyle.secondary, row=2)
-    async def annulla_partita(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        if interaction.user.id != self.host_id:
-            await interaction.response.send_message(await testo_per(interaction, "gioco_lobby_solo_host"), ephemeral=True)
-            return
-        self.annullata = True
-        self.stop()
-        await interaction.response.edit_message(
-            content=await testo_per(interaction, "cmb_annullata", pubblica=True), view=None, allowed_mentions=NESSUNA_MENZIONE
         )
         self.cambiata.set()
 
@@ -119,19 +118,19 @@ class VistaCombattimento(BaseView):
 
 
 async def gioca_combattimento(tv) -> dict[int, int]:
-    """Il motore della sala: restituisce quanto riceve ciascuno alla chiusura (rimborso a tutti se si annulla o scade)."""
+    """Il motore della sala: restituisce quanto riceve ciascuno alla chiusura (rimborso a tutti se scade)."""
     regole = tv.regole
     comb = cb.Combattimento(list(tv.giocatori), regole.vite, regole.giri, regole.oggetti, tv.rng)
     nomi = {}
     for u in tv.giocatori:
         membro = tv.interaction.guild.get_member(u)
         nomi[u] = (getattr(membro, "display_name", None) or f"#{u}")[:20]
-    testi = {k: await tv.t(f"cmb_b_{k}") for k in ("pozione", "scudo", "annulla")}
+    testi = {k: await tv.t(f"cmb_b_{k}") for k in ("pozione", "scudo")}
     vista = VistaCombattimento(tv, comb, nomi, tv.interaction.user.id, testi)
     msg = await tv.invia(await vista.testo(tv.interaction), vista)
-    while comb.vincitori is None and not tv.scaduto() and not vista.annullata:
+    while comb.vincitori is None and not tv.scaduto():
         await asyncio.sleep(PAUSA)
-        if comb.vincitori is None and not vista.annullata and time.monotonic() - vista.ultima_mossa > SECONDI_TURNO:
+        if comb.vincitori is None and time.monotonic() - vista.ultima_mossa > SECONDI_TURNO:
             lento = comb.di_turno
             comb.esci(lento)
             vista.ultima_mossa = time.monotonic()
@@ -139,11 +138,11 @@ async def gioca_combattimento(tv) -> dict[int, int]:
             vista.ricostruisci()
             finito = comb.vincitori is not None
             if finito:
+                vista.finita = True
                 vista.stop()
             await tv.modifica(msg, await vista.testo(tv.interaction), None if finito else vista)
+    vista.finita = True
     vista.stop()
-    if vista.annullata:
-        return {u: tv.puntata for u in tv.giocatori}
     vincitori = comb.vincitori
     if vincitori is None:
         await tv.modifica(msg, await tv.t("sala_tempo_finito"))

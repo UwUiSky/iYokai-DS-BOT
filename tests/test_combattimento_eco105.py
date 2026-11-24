@@ -155,18 +155,87 @@ async def test_vista_solo_chi_e_di_turno_muove_e_gli_estranei_no(monkeypatch):
     assert comb.vite[2] == 1 and comb.di_turno == 2
 
 
-@pytest.mark.asyncio
-async def test_solo_il_creatore_annulla_e_tutti_sono_rimborsati(clean_db, monkeypatch):
+def test_a_partita_iniziata_non_esiste_il_bottone_annulla():
     tv = _tavolo([1, 2])
-    comb = cb.Combattimento([1, 2], 2, 4, False, RngFisso(0.0))
+    comb = cb.Combattimento([1, 2], 2, 4, True, RngFisso(0.0))
     vista = VistaCombattimento(tv, comb, {1: "A", 2: "B"}, host_id=1, testi={})
-    altro = fake_interaction(guild=fake_guild(G), user=fake_member(2))
-    await vista.annulla_partita.callback(altro)
-    assert vista.annullata is False and altro.response.send_message.await_args.kwargs["ephemeral"] is True
-    host = fake_interaction(guild=fake_guild(G), user=fake_member(1))
-    host.response.edit_message = AsyncMock()
-    await vista.annulla_partita.callback(host)
-    assert vista.annullata is True
+    assert not hasattr(vista, "annulla_partita") and not hasattr(vista, "annullata")
+    assert all("nnulla" not in (getattr(i, "label", "") or "") for i in vista.children)
+
+
+@pytest.mark.asyncio
+async def test_creatore_eliminato_non_puo_riprendere_la_puntata(clean_db, monkeypatch):
+    """Prima il creatore poteva annullare anche da eliminato: ora la partita finisce solo con un vincitore."""
+    import cogs.fun._combattimento as modulo
+    lev, partite = LevelingRepository(pool_provider=lambda: clean_db), PartiteRepository(pool_provider=lambda: clean_db)
+    for u in (1, 2):
+        await lev.add_coins(G, u, 100)
+    await partite.apri_gruppo(G, [1, 2], "sala:combattimento", 40, 0)
+    tv = _tavolo([1, 2], 40)
+    tv.regole = SimpleNamespace(vite=1, giri=5, oggetti=False)
+    comb_ref = {}
+    orig = cb.Combattimento
+
+    class Spia(orig):
+        def __init__(self, *a, **k):
+            super().__init__(*a, **k)
+            comb_ref["c"] = self
+
+    monkeypatch.setattr(modulo.cb, "Combattimento", Spia)
+    monkeypatch.setattr(modulo, "PAUSA", 0.01)
+    compito = asyncio.create_task(gioca_combattimento(tv))
+    await asyncio.sleep(0.05)
+    comb = comb_ref["c"]
+    assert comb.di_turno == 1
+    comb.esci(1)  # il creatore è eliminato: vince 2
+    restituzioni = await asyncio.wait_for(compito, 10)
+    assert restituzioni == {1: 0, 2: 80}
+    await partite.chiudi_gruppo(G, "sala:combattimento", restituzioni)
+    assert (await lev.get_totals(G, 1)).coins_total == 60 and (await lev.get_totals(G, 2)).coins_total == 140
+
+
+@pytest.mark.asyncio
+async def test_mossa_vincente_chiude_la_partita_prima_di_ogni_await(monkeypatch):
+    """Un clic concorrente durante l'await del testo della mossa finale non cambia l'esito: un solo esito, pagato."""
+    nessuno_in_blacklist(monkeypatch)
+    import cogs.fun._combattimento as modulo
+    tv = _tavolo([1, 2])
+    comb = cb.Combattimento([1, 2], 1, 4, False, RngFisso(0.0))
+    vista = VistaCombattimento(tv, comb, {1: "A", 2: "B"}, host_id=1, testi={})
+    vista.ultima_mossa = 0
+    visto = {}
+
+    async def lento(interaction, chiave, **k):
+        if chiave == "cmb_chiusa":
+            return "chiusa"
+        visto["finita_durante_await"] = vista.finita
+        concorrente = fake_interaction(guild=fake_guild(G), user=fake_member(2))
+        concorrente.response.send_message = AsyncMock()
+        await vista.attacca_a(1)(concorrente)  # mossa concorrente a partita già chiusa
+        visto["rifiutata"] = concorrente.response.send_message.await_count == 1
+        return "x"
+
+    monkeypatch.setattr(modulo, "testo_per", lento)
+    mossa = fake_interaction(guild=fake_guild(G), user=fake_member(1))
+    mossa.response.edit_message = AsyncMock()
+    await vista.attacca_a(2)(mossa)
+    assert comb.vincitori == [1] and vista.finita is True
+    assert visto == {"finita_durante_await": True, "rifiutata": True}
+
+
+@pytest.mark.asyncio
+async def test_chiusura_del_gruppo_e_unica_pagamento_o_rimborso(clean_db):
+    lev, partite = LevelingRepository(pool_provider=lambda: clean_db), PartiteRepository(pool_provider=lambda: clean_db)
+    for u in (1, 2):
+        await lev.add_coins(G, u, 100)
+    await partite.apri_gruppo(G, [1, 2], "sala:combattimento", 40, 0)
+    esiti = await asyncio.gather(
+        partite.chiudi_gruppo(G, "sala:combattimento", {1: 80, 2: 0}),
+        partite.chiudi_gruppo(G, "sala:combattimento", {1: 40, 2: 40}),
+    )
+    assert sorted(len(e) for e in esiti) == [0, 2]  # una sola chiusura paga, l'altra non tocca niente
+    totale = sum([(await lev.get_totals(G, u)).coins_total for u in (1, 2)])
+    assert totale == 200  # 120 rimasti dopo le puntate + 80 di piatto, mai di più
 
 
 @pytest.mark.asyncio

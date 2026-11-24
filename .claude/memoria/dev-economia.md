@@ -7,6 +7,8 @@
 
 23/11/2026 · giro r1fun (#131), ramo `feat/r1fun`, wt `/home/user/wt-fun`, db `iyokai_wfun`, migrazioni 0840-0849 (0840-0842 usate). Smoke da fare.
 
+24/11/2026 · fix finale-c (#125), ramo `fix/finale-c`, wt `/home/user/wt-fixc`, db `iyokai_wfixc`: ECO-105 senza Annulla a partita iniziata, flag `finita`. Smoke da fare.
+
 ## In corso
 - Previsione r1fun: 3 voci (FUN-019, FUN-017, FUN-013/014 fatte: giro chiuso). Decisioni in D117 (DECISIONI.md): aggiungere un punto per ogni voce.
 - Strumenti scratchpad `fun/`: `pesi.py <gruppi>`, `loc.py file.json` (it, en, nomi, desc) per wt-fun.
