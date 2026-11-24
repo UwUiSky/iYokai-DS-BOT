@@ -4,15 +4,17 @@
 # Avvio completo di iYokai su Linux e macOS, nell'ordine giusto:
 #   1. controlla il file .env;
 #   2. prepara l'ambiente Python e installa i requisiti (solo se sono cambiati);
-#   3. accende il Lavalink locale (Docker) e aspetta che risponda;
-#   4. avvia il bot.
-# Uso: ./avvia.sh            (con --senza-lavalink salta il punto 3)
+#   3. controlla che il database PostgreSQL risponda (se è locale e DB_DOCKER=1 lo accende con Docker);
+#   4. accende il Lavalink locale (Docker) e aspetta che risponda;
+#   5. avvia il bot.
+# Uso: ./avvia.sh            (con --senza-lavalink salta il punto 4)
 # Su Windows: avvia.ps1. Nessun segreto qui: password e chiavi si leggono dal .env.
 
 set -euo pipefail
 cd "$(dirname "$0")"
 
 ATTESA_LAVALINK=300   # secondi; al primo avvio Lavalink scarica i plugin
+ATTESA_DB=60          # secondi
 SENZA_LAVALINK=0
 [[ "${1:-}" == "--senza-lavalink" ]] && SENZA_LAVALINK=1
 
@@ -47,7 +49,42 @@ if [[ "$(cat .venv/.requisiti 2>/dev/null || true)" != "$IMPRONTA" ]]; then
     printf '%s' "$IMPRONTA" > .venv/.requisiti
 fi
 
-# 3. Lavalink locale
+# 3. Database
+DB_URL=$(leggi_env DATABASE_URL)
+[[ -n "$DB_URL" ]] || errore "manca DATABASE_URL nel .env."
+export DB_URL
+db_risponde() {
+    .venv/bin/python - <<'PY' >/dev/null 2>&1
+import asyncio, os, asyncpg
+async def prova():
+    c = await asyncpg.connect(os.environ["DB_URL"], timeout=5)
+    await c.fetchval("SELECT 1")
+    await c.close()
+asyncio.run(prova())
+PY
+}
+if db_risponde; then
+    info "Database pronto"
+else
+    if [[ "$(leggi_env DB_DOCKER)" == "1" ]]; then
+        command -v docker >/dev/null || errore "DB_DOCKER=1 ma Docker non c'è."
+        info "Accendo PostgreSQL (Docker)"
+        POSTGRES_PASSWORD=$(.venv/bin/python -c 'import os,urllib.parse as u;print(u.unquote(u.urlsplit(os.environ["DB_URL"]).password or ""))')
+        export POSTGRES_PASSWORD
+        (cd deploy/postgres && docker compose up -d) || errore "docker compose del database non è partito."
+    else
+        info "Il database non risponde ancora: aspetto (PostgreSQL deve essere acceso, vedi deploy/postgres/README.md)"
+    fi
+    inizio=$SECONDS
+    until db_risponde; do
+        (( SECONDS - inizio < ATTESA_DB )) || errore "il database non risponde dopo ${ATTESA_DB}s. Controlla che PostgreSQL sia acceso e che DATABASE_URL sia giusta."
+        sleep 2
+    done
+    info "Database pronto in $(( SECONDS - inizio ))s"
+fi
+unset DB_URL POSTGRES_PASSWORD
+
+# 4. Lavalink locale
 HOST=$(leggi_env LAVALINK_HOST)
 PORTA=$(leggi_env LAVALINK_PORT); PORTA=${PORTA:-2333}
 PASSWORD=$(leggi_env LAVALINK_PASSWORD)
@@ -84,6 +121,6 @@ else
     fi
 fi
 
-# 4. Il bot
+# 5. Il bot
 info "Avvio il bot"
 exec .venv/bin/python main.py

@@ -1,0 +1,17 @@
+# PostgreSQL locale per iYokai (guida: deploy/postgres/README.md).
+# Avvio: export POSTGRES_PASSWORD='<la stessa del DATABASE_URL>' && docker compose up -d
+# Nessun segreto in questo file: la password arriva dall'ambiente.
+services:
+  postgres:
+    image: postgres:19
+    container_name: iyokai-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=iyokai
+      - POSTGRES_DB=iyokai_bot
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?imposta POSTGRES_PASSWORD}
+    volumes:
+      - ./dati:/var/lib/postgresql
+    ports:
+      # Solo localhost: il database non va esposto su Internet.
+      - "127.0.0.1:5432:5432"

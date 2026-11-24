@@ -123,8 +123,8 @@ di frequenza di Discord e isola i problemi.
 
 ## Installazione
 
-Serve: Python 3.11, PostgreSQL 14 o successivo, e per la musica un
-server Lavalink 4.2.0 o successivo.
+Serve: Python 3.11, PostgreSQL locale (consigliata la 19, guida in `deploy/postgres/`), e per la musica un
+server Lavalink 4.2.0 o successivo (`deploy/lavalink/`).
 
 ```bash
 git clone https://github.com/UwUiSky/iYokai-DS-BOT.git
@@ -139,12 +139,13 @@ Lo script di avvio fa tutto nell'ordine giusto:
 
 1. controlla che ci sia il `.env`;
 2. crea l'ambiente Python (`.venv`) e installa `requirements.lock`, solo quando cambia;
-3. se `LAVALINK_HOST` è `127.0.0.1` o `localhost`, accende Lavalink con Docker
+3. aspetta che il database risponda (con `DB_DOCKER=1` nel `.env` accende da solo il container di `deploy/postgres/`);
+4. se `LAVALINK_HOST` è `127.0.0.1` o `localhost`, accende Lavalink con Docker
    (`deploy/lavalink/`) e **aspetta che risponda** prima di andare avanti
    (al massimo 5 minuti: al primo avvio scarica i plugin). Se Lavalink è già acceso lo usa;
-4. avvia il bot.
+5. avvia il bot.
 
-Con `--senza-lavalink` (Windows: `-SenzaLavalink`) salta il punto 3.
+Con `--senza-lavalink` (Windows: `-SenzaLavalink`) salta il punto 4.
 Avvio a mano, senza script: `pip install -r requirements.lock`, Lavalink acceso, poi `python main.py`.
 
 Se manca una variabile obbligatoria il bot **si ferma subito** e dice

@@ -3,8 +3,9 @@
 # Avvio completo di iYokai su Windows, nell'ordine giusto:
 #   1. controlla il file .env;
 #   2. prepara l'ambiente Python e installa i requisiti (solo se sono cambiati);
-#   3. accende il Lavalink locale (Docker Desktop) e aspetta che risponda;
-#   4. avvia il bot.
+#   3. controlla che il database PostgreSQL risponda (se è locale e DB_DOCKER=1 lo accende con Docker);
+#   4. accende il Lavalink locale (Docker Desktop) e aspetta che risponda;
+#   5. avvia il bot.
 # Uso (PowerShell, dalla cartella del bot):  .\avvia.ps1   oppure  .\avvia.ps1 -SenzaLavalink
 # Se Windows blocca lo script: powershell -ExecutionPolicy Bypass -File .\avvia.ps1
 # Nessun segreto qui: password e chiavi si leggono dal .env.
@@ -15,6 +16,7 @@ $ErrorActionPreference = "Stop"
 Set-Location -Path $PSScriptRoot
 
 $AttesaLavalink = 300   # secondi; al primo avvio Lavalink scarica i plugin
+$AttesaDb = 60          # secondi
 
 function Info($testo) { Write-Host "[avvio] $testo" }
 function Errore($testo) { Write-Host "[avvio] ERRORE: $testo" -ForegroundColor Red; exit 1 }
@@ -47,7 +49,45 @@ if ($Salvata -ne $Impronta) {
     Set-Content -Path .venv\.requisiti -Value $Impronta -NoNewline
 }
 
-# 3. Lavalink locale
+# 3. Database
+$env:DB_URL = Leggi-Env "DATABASE_URL"
+if (-not $env:DB_URL) { Errore "manca DATABASE_URL nel .env." }
+$ProvaDb = @"
+import asyncio, os, asyncpg
+async def prova():
+    c = await asyncpg.connect(os.environ["DB_URL"], timeout=5)
+    await c.fetchval("SELECT 1")
+    await c.close()
+asyncio.run(prova())
+"@
+function Db-Risponde { & $Py -c $ProvaDb 2>$null | Out-Null; return $LASTEXITCODE -eq 0 }
+if (Db-Risponde) {
+    Info "Database pronto"
+} else {
+    if ((Leggi-Env "DB_DOCKER") -eq "1") {
+        if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { Errore "DB_DOCKER=1 ma Docker non c'è." }
+        Info "Accendo PostgreSQL (Docker)"
+        $env:POSTGRES_PASSWORD = & $Py -c 'import os,urllib.parse as u;print(u.unquote(u.urlsplit(os.environ["DB_URL"]).password or ""))'
+        Push-Location deploy\postgres
+        docker compose up -d
+        $esito = $LASTEXITCODE
+        Pop-Location
+        if ($esito -ne 0) { Errore "docker compose del database non è partito." }
+    } else {
+        Info "Il database non risponde ancora: aspetto (PostgreSQL deve essere acceso, vedi deploy\postgres\README.md)"
+    }
+    $inizio = Get-Date
+    while (-not (Db-Risponde)) {
+        if (((Get-Date) - $inizio).TotalSeconds -ge $AttesaDb) {
+            Errore "il database non risponde dopo ${AttesaDb}s. Controlla che PostgreSQL sia acceso e che DATABASE_URL sia giusta."
+        }
+        Start-Sleep -Seconds 2
+    }
+    Info ("Database pronto in {0:N0}s" -f ((Get-Date) - $inizio).TotalSeconds)
+}
+Remove-Item env:DB_URL, env:POSTGRES_PASSWORD -ErrorAction SilentlyContinue
+
+# 4. Lavalink locale
 $Host_ = Leggi-Env "LAVALINK_HOST"
 $Porta = Leggi-Env "LAVALINK_PORT"; if (-not $Porta) { $Porta = "2333" }
 $Password = Leggi-Env "LAVALINK_PASSWORD"
@@ -94,7 +134,7 @@ if ($SenzaLavalink) {
     }
 }
 
-# 4. Il bot
+# 5. Il bot
 Info "Avvio il bot"
 & $Py main.py
 exit $LASTEXITCODE
