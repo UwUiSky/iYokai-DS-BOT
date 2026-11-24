@@ -4433,5 +4433,9 @@
   "programmati_everyone_senza_permesso": "Your scheduled message was sent without @everyone or @here: you no longer have the «Mention @everyone» permission.\n> {anteprima}",
   "programmati_everyone_tetto": "Your scheduled message was sent without @everyone or @here: the server reached today's cap of mass-mention messages.\n> {anteprima}",
   "programmati_everyone_log_titolo": "Scheduled message with @everyone",
-  "programmati_everyone_log": "{utente} triggered a scheduled message with @everyone or @here in {canale}: {link}"
+  "programmati_everyone_log": "{utente} triggered a scheduled message with @everyone or @here in {canale}: {link}",
+  "backup_cancella_solo_proprietario": "⛔ Only the server owner can delete channels and roles before loading.",
+  "backup_cancella_serve_la_parte": "To delete existing channels (or roles) you must also choose to load the channels (or roles).",
+  "backup_cancella_riepilogo": "⚠️ **Confirm.** Before loading, **{canali}** channels and **{ruoli}** roles already present will be deleted. This cannot be undone. Not touched: @everyone, managed roles, roles equal to or above the bot, this channel.",
+  "backup_cancella_annullata": "Cancelled: nothing was deleted or loaded."
 }

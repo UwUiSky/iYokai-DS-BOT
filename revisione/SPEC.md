@@ -1251,6 +1251,7 @@ superati. **iYokai Creator e `YOKAI_CREATOR_TOKEN` restano.**
   server creato dall'admin e lo porta allo stato corrente, messaggi in
   ordine compresi (D8, M 12.1/12.2). Gli allegati tornano come file entro
   10 MiB per messaggio e i fissati si rifissano (BKP-013/016, 15/10)
+- `[x]` 11.18 Cancella prima canali e ruoli già presenti (BKP-004, D133, 24/11, `core/backup_pulizia_logic.py`, `ScegliPartiView`/`ConfermaPuliziaView`): due scelte separate nel menu delle parti, spente di base e visibili solo al proprietario del server (ricontrollato al clic e all'esecuzione). Conferma in due passi con i numeri. Mai: @everyone, ruoli gestiti, ruoli pari o sopra il bot, il canale del lavoro e il suo genitore, canali richiesti dalla community. A gruppi di 5 con pausa, motivo ≤ 512, nel registro del server; si ferma e non carica se la cancellazione si interrompe.
 - `[x]` 11.17 Aggiornamento continuo del server di backup (D8): ogni 6 ore il
   Creator riallinea **una coppia per giro** dentro `backup_queue_worker`
   (`ALLINEAMENTO_ORE`): ruoli con colore e ordine, canali con permessi,

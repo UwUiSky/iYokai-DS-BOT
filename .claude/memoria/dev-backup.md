@@ -1,7 +1,7 @@
 # Memoria di dev-backup
 
 ## Aggiornata
-23/11/2026 · ramo `feat/r3bkp` · DB `iyokai_w121` · migrazioni 0950–0951 usate (0952–0959 libere)
+24/11/2026 · ramo `feat/r5bkp4` · DB `iyokai_wbkp4` · migrazioni 0950–0951 usate (0952–0959 libere)
 
 ## In corso
 Giro r3bkp chiuso (BKP-022/023/040, D130): restano la prova live (VERIFICA_LIVE «giro r3bkp») e la revisione del cacciatore-bug.
@@ -10,6 +10,7 @@ Giro r10 chiuso: tutte le voci SPEC §11 `[x]` (11.1–11.17). Da fare dopo, in 
 2. #113 iYokai Mod (serve l'owner). 3. Revisione del cacciatore-bug sul giro r10.
 
 ## Fatto
+- r5bkp4 (24/11, #121): BKP-004 cancella prima canali e ruoli (D133): `core/backup_pulizia_logic.py`, `ScegliPartiView` (2 bottoni, solo proprietario), `ConfermaPuliziaView` (2° passo), `avvia_caricamento(cancella_canali, cancella_ruoli)`; test `tests/test_backup_pulizia.py`. Da provare live.
 - r3bkp (23/11, #121): raccolta pubblica modelli (`core/backup_raccolta_logic.py`, repo, `core/web_panel_raccolta.py`, `/admin-backup raccolta`, `Caricatore(solo_mancanti, pericolosi_ok)`, 0950); BKP-040 interruttore VPN/rete su `/join` senza IP (0951).
 - r2bkp (22/11, #121/#132): controllo delle 23+5 voci in `revisione/01-analisi/catalogo/CONTROLLO_AREE_CHIUSE.md`; realizzate BKP-002/006/007/008/020/021/022(pronti)/028, AI-001/004/017; D108 per BKP-022/023/039/040/041, AI-003, AI-010. Ruoli nuovi pericolosi solo se carica l'owner. `lista copia:N` fa da info (admin-backup è a 18 figli).
 - r10 (27/10): espressioni senza doppioni, permesso, tetto suoni per boost (11.5-7); forum+stage, riuso sui campi diversi,
@@ -39,6 +40,7 @@ Giro r10 chiuso: tutte le voci SPEC §11 `[x]` (11.1–11.17). Da fare dopo, in 
 - Aggiornamento continuo: `popola_server_backup(..., con_messaggi=False)`; un test del worker con `popola_server_backup` finto deve accettare `con_messaggi`.
 
 ## Aperto
+- r5bkp4: `test_i18n_pubblica` (giochi_sospensioni.py:114) e `test_command_translator` (6 comandi senza descrizione en-US) falliscono già su main, non miei.
 - r3bkp: la revisione dei modelli è solo dal pannello (`/proprietario/modelli`), nessun comando `/owner`. Tocchi fuori area: `core/web_panel_server.py` (2 righe di collegamento), `locales/en-US/comandi.json` (raccolta). La raccolta non ha filtro per lingua nel comando (c'è nel pannello).
 - r2bkp: provare live (VERIFICA_LIVE «giro r2bkp»), in particolare la lettura di un vero modello `discord.new` (ruolo @everyone con id 0).
 - Pagina backup nel pannello web (BKP-041/022/023): serve dev-web. `test_repository_callers` fallisce per `ticket_form_repo.risposta_questionario` (non mio).

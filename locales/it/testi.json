@@ -4433,5 +4433,9 @@
   "programmati_everyone_senza_permesso": "Il tuo messaggio programmato è partito senza @everyone o @here: ora non hai più il permesso «Menziona @everyone».\n> {anteprima}",
   "programmati_everyone_tetto": "Il tuo messaggio programmato è partito senza @everyone o @here: il server ha raggiunto il tetto di invii con menzione di oggi.\n> {anteprima}",
   "programmati_everyone_log_titolo": "Messaggio programmato con @everyone",
-  "programmati_everyone_log": "{utente} ha fatto partire un messaggio programmato con @everyone o @here in {canale}: {link}"
+  "programmati_everyone_log": "{utente} ha fatto partire un messaggio programmato con @everyone o @here in {canale}: {link}",
+  "backup_cancella_solo_proprietario": "⛔ Cancellare canali e ruoli prima di caricare lo può fare solo il proprietario del server.",
+  "backup_cancella_serve_la_parte": "Per cancellare i canali (o i ruoli) già presenti devi scegliere di caricare anche i canali (o i ruoli).",
+  "backup_cancella_riepilogo": "⚠️ **Conferma.** Prima di caricare verranno cancellati **{canali}** canali e **{ruoli}** ruoli già presenti. Non si torna indietro. Non toccati: @everyone, ruoli gestiti, ruoli pari o sopra il bot, questo canale.",
+  "backup_cancella_annullata": "Annullato: non è stato cancellato né caricato niente."
 }
