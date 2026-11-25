@@ -18,6 +18,7 @@ from core import patreon_server, patreon_service, piani
 
 SEGRETO = "segreto-webhook-1234"
 CHIAVE_CIFRATURA = "A" * 43 + "="
+SESSIONE = "a" * 64  # impronta della sessione del pannello che ha cominciato il collegamento
 
 
 def _firma(corpo: bytes, segreto: str = SEGRETO) -> str:
@@ -150,7 +151,7 @@ async def test_troppe_firme_sbagliate_bloccano_l_indirizzo():
 
 
 async def test_callback_non_rivela_il_motivo_del_rifiuto():
-    async def completa(stato, codice):
+    async def completa(stato, codice, impronta_sessione):
         raise patreon_service.CollegamentoFallito("stato scaduto")
 
     c = await _client(completa=completa)
@@ -158,6 +159,27 @@ async def test_callback_non_rivela_il_motivo_del_rifiuto():
         r = await c.get("/patreon/callback?state=a&code=b")
         assert r.status == 400 and "scaduto" not in await r.text()
         assert (await c.get("/patreon/callback?code=b")).status == 400
+    finally:
+        await c.close()
+
+
+async def test_callback_passa_l_impronta_del_cookie_di_sessione_e_manda_a_confermare():
+    visti = []
+
+    async def completa(stato, codice, impronta_sessione):
+        visti.append(impronta_sessione)
+        if stato == "doppio":
+            raise logica.DaConfermare(5)
+        return 5
+
+    c = await _client(completa=completa, url_conferma="http://pannello.test/premium?patreon=conferma", cookie_sessione="__Host-iyokai_sessione")
+    try:
+        await c.get("/patreon/callback?state=ok&code=b", cookies={"__Host-iyokai_sessione": "token-della-sessione"}, allow_redirects=False)
+        assert visti == [hashlib.sha256(b"token-della-sessione").hexdigest()]
+        await c.get("/patreon/callback?state=ok&code=b", allow_redirects=False)  # senza cookie: impronta vuota, il servizio rifiuta
+        assert visti[-1] == ""
+        r = await c.get("/patreon/callback?state=doppio&code=b", cookies={"__Host-iyokai_sessione": "t"}, allow_redirects=False)
+        assert r.status == 302 and r.headers["Location"] == "http://pannello.test/premium?patreon=conferma"
     finally:
         await c.close()
 
@@ -192,9 +214,9 @@ async def test_disdetta_toglie_il_livello_e_livello_non_associato_non_da_niente(
 
 async def test_collegamento_oauth_stato_monouso_e_token_cifrati(pronto):
     await patreon_service.imposta_livello_tier("t1", "vip")
-    stato = await patreon_service.crea_stato(5)
+    stato = await patreon_service.crea_stato(5, SESSIONE)
     assert "state=" + stato in patreon_service.url_collegamento(stato)
-    assert await patreon_service.completa_collegamento(stato, "codice-ok", _Cliente()) == 5
+    assert await patreon_service.completa_collegamento(stato, "codice-ok", SESSIONE, _Cliente()) == 5
     assert await piani.livello_utente(5) == piani.VIP
     riga = await pronto.fetchrow("SELECT token_cifrato, refresh_cifrato FROM patreon_collegamenti WHERE discord_user_id = 5")
     assert "token-di-accesso-segreto" not in riga["token_cifrato"] and "refresh-segreto" not in riga["refresh_cifrato"]
@@ -202,37 +224,105 @@ async def test_collegamento_oauth_stato_monouso_e_token_cifrati(pronto):
 
     assert decrypt_token(riga["token_cifrato"], CHIAVE_CIFRATURA, aad=b"patreon:5") == "token-di-accesso-segreto"
     with pytest.raises(patreon_service.CollegamentoFallito):  # lo stato vale una volta sola
-        await patreon_service.completa_collegamento(stato, "codice-ok", _Cliente())
+        await patreon_service.completa_collegamento(stato, "codice-ok", SESSIONE, _Cliente())
     with pytest.raises(patreon_service.CollegamentoFallito):  # uno stato inventato
-        await patreon_service.completa_collegamento("inventato", "codice-ok", _Cliente())
+        await patreon_service.completa_collegamento("inventato", "codice-ok", SESSIONE, _Cliente())
 
 
 async def test_stato_scaduto_non_vale(pronto):
-    stato = await patreon_service.crea_stato(5)
+    stato = await patreon_service.crea_stato(5, SESSIONE)
     await pronto.execute("UPDATE patreon_stati SET scade_il = now() - interval '1 second'")
     with pytest.raises(patreon_service.CollegamentoFallito):
-        await patreon_service.completa_collegamento(stato, "codice-ok", _Cliente())
+        await patreon_service.completa_collegamento(stato, "codice-ok", SESSIONE, _Cliente())
 
 
-async def test_account_patreon_gia_di_un_altro_passa_al_nuovo_e_scollega_toglie_tutto(pronto):
+async def test_account_patreon_gia_di_un_altro_non_si_sposta_senza_conferma(pronto):
     await patreon_service.imposta_livello_tier("t1", "ultra")
-    for utente in (5, 6):
-        await patreon_service.completa_collegamento(await patreon_service.crea_stato(utente), "codice-ok", _Cliente())
-    assert await piani.livello_utente(6) == piani.ULTRA
+    await patreon_service.completa_collegamento(await patreon_service.crea_stato(5, SESSIONE), "codice-ok", SESSIONE, _Cliente())
+    assert await piani.livello_utente(5) == piani.ULTRA
+    with pytest.raises(logica.DaConfermare):  # lo stesso account Patreon, un'altra persona
+        await patreon_service.completa_collegamento(await patreon_service.crea_stato(6, SESSIONE), "codice-ok", SESSIONE, _Cliente())
+    assert await piani.livello_utente(5) == piani.ULTRA and await piani.livello_utente(6) == piani.GRATUITO
+    assert await pronto.fetchval("SELECT discord_user_id FROM patreon_collegamenti") == 5
+    assert await patreon_service.spostamento_in_attesa(6) is True
+    riga = await pronto.fetchrow("SELECT token_cifrato FROM patreon_spostamenti WHERE discord_user_id = 6")
+    assert "token-di-accesso-segreto" not in riga["token_cifrato"]  # anche in attesa, solo cifrato
+
+
+async def test_conferma_sposta_l_account_e_toglie_il_livello_a_chi_lo_aveva(pronto):
+    await patreon_service.imposta_livello_tier("t1", "ultra")
+    await patreon_service.completa_collegamento(await patreon_service.crea_stato(5, SESSIONE), "codice-ok", SESSIONE, _Cliente())
+    with pytest.raises(logica.DaConfermare):
+        await patreon_service.completa_collegamento(await patreon_service.crea_stato(6, SESSIONE), "codice-ok", SESSIONE, _Cliente())
+    assert await patreon_service.conferma_spostamento(6, True) is True
+    assert await piani.livello_utente(6) == piani.ULTRA and await piani.livello_utente(5) == piani.GRATUITO
     assert await pronto.fetchval("SELECT count(*) FROM patreon_collegamenti") == 1  # un account Patreon, una persona
+    assert await patreon_service.conferma_spostamento(6, True) is False  # vale una volta sola
     assert await patreon_service.scollega(6) is True
     assert await piani.livello_utente(6) == piani.GRATUITO
     assert await pronto.fetchval("SELECT count(*) FROM patreon_collegamenti") == 0
 
 
-async def test_account_patreon_ricollegato_piu_volte_lascia_il_livello_solo_all_ultimo(pronto):
+async def test_annulla_cancella_i_token_in_attesa_e_lascia_tutto_com_era(pronto):
     await patreon_service.imposta_livello_tier("t1", "vip")
-    for utente in (11, 22, 33):
-        await patreon_service.completa_collegamento(await patreon_service.crea_stato(utente), "codice-ok", _Cliente())
-    assert await piani.livello_utente(11) == piani.GRATUITO
-    assert await piani.livello_utente(22) == piani.GRATUITO
-    assert await piani.livello_utente(33) == piani.VIP
-    assert await pronto.fetchval("SELECT count(*) FROM piani_concessioni WHERE fonte = 'patreon'") == 1
+    await patreon_service.completa_collegamento(await patreon_service.crea_stato(5, SESSIONE), "codice-ok", SESSIONE, _Cliente())
+    with pytest.raises(logica.DaConfermare):
+        await patreon_service.completa_collegamento(await patreon_service.crea_stato(6, SESSIONE), "codice-ok", SESSIONE, _Cliente())
+    assert await patreon_service.conferma_spostamento(6, False) is True
+    assert await pronto.fetchval("SELECT count(*) FROM patreon_spostamenti") == 0
+    assert await piani.livello_utente(5) == piani.VIP and await piani.livello_utente(6) == piani.GRATUITO
+    assert await patreon_service.conferma_spostamento(6, True) is False  # non c'è più niente da confermare
+
+
+async def test_la_conferma_scaduta_non_sposta_niente(pronto):
+    await patreon_service.completa_collegamento(await patreon_service.crea_stato(5, SESSIONE), "codice-ok", SESSIONE, _Cliente())
+    with pytest.raises(logica.DaConfermare):
+        await patreon_service.completa_collegamento(await patreon_service.crea_stato(6, SESSIONE), "codice-ok", SESSIONE, _Cliente())
+    await pronto.execute("UPDATE patreon_spostamenti SET scade_il = now() - interval '1 second'")
+    assert await patreon_service.conferma_spostamento(6, True) is False
+    assert await pronto.fetchval("SELECT discord_user_id FROM patreon_collegamenti") == 5
+
+
+async def test_lo_stato_vale_solo_con_la_sessione_che_l_ha_creato(pronto):
+    """Il link d'autorizzazione di un attaccante, aperto da un'altra persona, non collega niente."""
+    stato = await patreon_service.crea_stato(5, SESSIONE)
+    with pytest.raises(patreon_service.CollegamentoFallito):
+        await patreon_service.completa_collegamento(stato, "codice-ok", "b" * 64, _Cliente())
+    with pytest.raises(patreon_service.CollegamentoFallito):  # lo stato si è bruciato
+        await patreon_service.completa_collegamento(stato, "codice-ok", SESSIONE, _Cliente())
+    stato = await patreon_service.crea_stato(5, SESSIONE)
+    with pytest.raises(patreon_service.CollegamentoFallito):  # nessuna sessione
+        await patreon_service.completa_collegamento(stato, "codice-ok", "", _Cliente())
+    assert await pronto.fetchval("SELECT count(*) FROM patreon_collegamenti") == 0
+    with pytest.raises(patreon_service.CollegamentoFallito):  # nemmeno un'impronta vuota alla creazione
+        await patreon_service.crea_stato(5, "")
+    await pronto.execute("INSERT INTO patreon_stati (impronta, discord_user_id, scade_il) VALUES ('vecchio', 5, now() + interval '5 minutes')")
+    assert await pronto.fetchval("SELECT sessione_impronta FROM patreon_stati WHERE impronta = 'vecchio'") is None
+
+
+async def test_evento_piu_vecchio_dello_stato_salvato_si_ignora(pronto):
+    await patreon_service.imposta_livello_tier("t1", "ultra")
+    await pronto.execute("INSERT INTO patreon_collegamenti (discord_user_id, patreon_id, token_cifrato) VALUES (5, 'u1', 'x')")
+
+    def corpo(stato, carica, member):
+        return json.dumps({"data": {"id": member, "attributes": {"patron_status": stato, "last_charge_date": carica},
+                                    "relationships": {"user": {"data": {"id": "u1"}}, "currently_entitled_tiers": {"data": [{"id": "t1"}]}}}}).encode()
+
+    recente = corpo("former_patron", "2026-11-20T10:00:00+00:00", "m1")  # ha disdetto dopo l'ultimo addebito
+    vecchio = corpo("active_patron", "2026-10-20T10:00:00+00:00", "m2")  # un evento di un mese prima, rimandato
+    assert await patreon_service.applica_evento(logica.leggi_evento("members:update", recente), recente) is True
+    assert await piani.livello_utente(5) == piani.GRATUITO
+    assert await patreon_service.applica_evento(logica.leggi_evento("members:update", vecchio), vecchio) is False
+    assert await piani.livello_utente(5) == piani.GRATUITO  # il rimando non rimette il premium
+    assert await pronto.fetchval("SELECT attivo FROM patreon_membri WHERE patreon_id = 'u1'") is False
+
+
+def test_le_impronte_degli_eventi_si_tengono_a_lungo():
+    from core.data_registry import REGISTRO
+
+    assert patreon_service.CONSERVA_EVENTI_GIORNI >= 365
+    voce = next(t for t in REGISTRO if t.nome == "patreon_eventi")
+    assert voce.scadenza.giorni == patreon_service.CONSERVA_EVENTI_GIORNI
 
 
 async def test_sostenitore_non_ancora_collegato_prende_il_livello_al_collegamento(pronto):
@@ -240,7 +330,7 @@ async def test_sostenitore_non_ancora_collegato_prende_il_livello_al_collegament
     corpo = _corpo()
     await patreon_service.applica_evento(logica.leggi_evento("members:create", corpo), corpo)  # prima del collegamento
     assert await pronto.fetchval("SELECT count(*) FROM piani_concessioni") == 0
-    await patreon_service.completa_collegamento(await patreon_service.crea_stato(5), "codice-ok", _Cliente())
+    await patreon_service.completa_collegamento(await patreon_service.crea_stato(5, SESSIONE), "codice-ok", SESSIONE, _Cliente())
     assert await piani.livello_utente(5) == piani.PREMIUM
 
 
@@ -248,9 +338,9 @@ async def test_spento_senza_chiavi(pronto, monkeypatch):
     monkeypatch.setattr(patreon_service, "_config", lambda: SimpleNamespace(PATREON_CLIENT_ID="", PATREON_CLIENT_SECRET="", PATREON_WEBHOOK_SECRET=""))
     assert patreon_service.acceso() is False
     with pytest.raises(patreon_service.PatreonSpento):
-        await patreon_service.crea_stato(5)
+        await patreon_service.crea_stato(5, SESSIONE)
     with pytest.raises(patreon_service.PatreonSpento):
-        await patreon_service.completa_collegamento("a", "b", _Cliente())
+        await patreon_service.completa_collegamento("a", "b", SESSIONE, _Cliente())
 
 
 async def test_cog_senza_chiavi_non_apre_porte(monkeypatch):

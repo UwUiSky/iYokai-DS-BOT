@@ -9,7 +9,14 @@
 </div>
 <h2>Patreon</h2>
 <p class="tenue">Se sostieni iYokai su Patreon, collega il tuo account: il livello si applica da solo e si toglie se disdici. Il bot non vede la tua password e puoi scollegare quando vuoi.</p>
-{% if collegato %}
+{% if da_confermare %}
+<form class="carta" method="post" action="/premium/patreon/sposta">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <p class="avviso errore">Questo account Patreon è già collegato a un'altra persona. Se lo sposti qui, l'altra persona perde il livello che ne arriva. Lo spostamento vale solo se sei tu il proprietario dell'account Patreon.</p>
+  <button type="submit" name="azione" value="conferma">Sì, sposta qui</button>
+  <button class="secondario" type="submit" name="azione" value="annulla">No, annulla</button>
+</form>
+{% elif collegato %}
 <form class="carta" method="post" action="/premium/patreon/scollega">
   <input type="hidden" name="csrf" value="{{ csrf }}">
   <p>Il tuo account Patreon è collegato.</p>

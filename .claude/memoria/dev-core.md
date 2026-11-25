@@ -38,7 +38,8 @@
 Scheda: /home/user/consiglio/schede/A_sicurezza.md. DB di prova iyokai_wsicurezza. Migrazioni mie: 0980-0989 (0980 fatta).
 - FATTA voce 1 (ban globale con affidabilità, D138): `core/global_ban_logic.py`, `cogs/security/global_ban.py` (propagate_ban unito alla rete: proposte `rete_ban_proposte`, categoria `ban_globale`), mig. 0980, `security_raid_state.segna_nuke`. Test: `test_global_ban_affidabilita`, `test_global_ban_rete_unica` + vecchi riscritti.
 - FATTE voci 2 e 3: tabella rotte `TABELLA_ROTTE` in `core/web_panel_accesso.py` + middleware `controllo_rotta` + `_server` che non scende sotto la tabella; `errore_ruolo_bot`/`RuoloBotNegato` in `core/command_access.py`; `imposta_modulo` chiede livello SECURITY per i 6 moduli di sicurezza e avvisa il proprietario. Test: `test_web_panel_tabella_rotte`, `test_config_schema_sicurezza`, `test_ruoli_bot_import`, aggiunte a `test_command_access`.
-- PROSSIMO: voce 4 (Patreon: state legato al cookie, conferma spostamento, webhook vecchi, DECISIONI 1284 vs 1650), poi 5, 6, 7, 8, 9, 10, 11, 12, 13.
+- FATTA voce 4 (Patreon, D139): stato legato alla sessione, conferma spostamento (`patreon_spostamenti`, mig. 0981), webhook vecchi ignorati, D96 annotata. Test: `test_patreon`, `test_web_panel_patreon`.
+- PROSSIMO: voce 5 (guilds.join in data_registry con scadenza, non toccare retention_worker), poi 6, 7, 8, 9, 10, 11, 12, 13.
 - Appunti: testi del pannello (ESITI) e `_assistente.py` restano in italiano nel codice (nessuna i18n del pannello); script chiavi lingue: scratchpad `chiavi.py`.
 
 ## Aperto

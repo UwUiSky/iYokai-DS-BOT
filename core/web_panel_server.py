@@ -149,7 +149,7 @@ def build_app(
     """
     https = regole.cookie_sicuro(url_pubblico)
     prefisso = "__Host-" if https else ""
-    cookie_sessione = prefisso + "iyokai_sessione"
+    cookie_sessione = regole.nome_cookie_sessione(url_pubblico)
     cookie_state = prefisso + "iyokai_state"
     cookie_ritorno = prefisso + "iyokai_ritorno"  # solo `/join/<nome>`: dopo l'accesso si torna alla pagina di consenso
     redirect_uri = regole.url_redirect(url_pubblico)
@@ -920,7 +920,9 @@ def build_app(
         app, bot=bot, pagina=_pagina, errore=_errore, server=_server, scrittura=_modulo_scrittura,
         chiave_utente=CHIAVE_UTENTE, ip=_ip,
     )
-    web_panel_patreon.registra_rotte(app, pagina=_pagina, errore=_errore, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE)
+    web_panel_patreon.registra_rotte(
+        app, pagina=_pagina, errore=_errore, scrittura=_modulo_scrittura, chiave_utente=CHIAVE_UTENTE, chiave_token=CHIAVE_TOKEN,
+    )
     web_panel_istantanee.registra_rotte(app, bot=bot, ponte=ponte, pagina=_pagina, errore=_errore, chiave_utente=CHIAVE_UTENTE)
     web_panel_tela.registra_rotte(app, bot=bot, pagina=_pagina, errore=_errore, ip=_ip)
     if giro_ruoli_collegati:  # ALR-049: ogni 12 ore aggiorna i ruoli collegati Twitch; si ferma con il sito

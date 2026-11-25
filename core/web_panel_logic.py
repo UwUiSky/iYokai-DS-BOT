@@ -45,6 +45,11 @@ def cookie_sicuro(url_pubblico: str) -> bool:
     return urlparse(url_pubblico).scheme == "https"
 
 
+def nome_cookie_sessione(url_pubblico: str) -> str:
+    """Il nome del cookie di sessione del pannello (`__Host-` su https). Lo stesso nome lo legge anche il ritorno da Patreon."""
+    return ("__Host-" if cookie_sicuro(url_pubblico) else "") + "iyokai_sessione"
+
+
 def origine(url_pubblico: str) -> str:
     parsed = urlparse(url_pubblico)
     return f"{parsed.scheme}://{parsed.netloc}"

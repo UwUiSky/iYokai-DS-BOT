@@ -54,7 +54,7 @@ _VOCI: dict[str, tuple[str, ...]] = {
         "POST /ruoli-collegati/verifica/avvia", "POST /ruoli-collegati/verifica/scollega",
         "POST /ruoli-collegati/connessioni/avvia", "POST /ruoli-collegati/connessioni/dimentica",
         "GET /ruoli-collegati/twitch", "GET /ruoli-collegati/discord", "POST /ruoli-collegati/scollega",
-        "GET /premium", "POST /premium/patreon/collega", "POST /premium/patreon/scollega",
+        "GET /premium", "POST /premium/patreon/collega", "POST /premium/patreon/scollega", "POST /premium/patreon/sposta",
     ),
     PROPRIETARIO: (
         "GET /proprietario", "POST /proprietario/ai", "POST /proprietario/premium", "GET /proprietario/storico-vpn",
