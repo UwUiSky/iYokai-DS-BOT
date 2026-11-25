@@ -19,7 +19,7 @@ from tests.test_command_tree_invariants import _albero_vero, _chiudi, _radici, _
 pytestmark = pytest.mark.asyncio
 
 # Cricchetto sulle descrizioni delle OPZIONI (comandi:opzione): si alza solo, mai si abbassa.
-MINIMO_PARAMETRI_TRADOTTI = 0
+MINIMO_PARAMETRI_TRADOTTI = 2400
 
 
 def _percorso(nodo) -> str:
