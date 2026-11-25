@@ -8,6 +8,7 @@ errore; lo spegnimento chiude bot, sessioni HTTP e database in ordine.
 
 import asyncio
 import signal
+from pathlib import Path
 
 import pytest
 
@@ -19,6 +20,8 @@ from core.bot_supervisor import (
     installa_gestori_segnali,
     spegni_ordinatamente,
 )
+
+RADICE_TEST = Path(__file__).resolve().parent.parent
 
 
 async def _fallisce():
@@ -288,7 +291,7 @@ async def test_main_con_due_sigterm_chiude_tutti_i_bot_i_loop_e_il_database(
         close_vero = classe.close
 
         async def _close_lento(self):
-            await asyncio.sleep(0.05)  # dà tempo al secondo segnale di arrivare
+            await asyncio.sleep(0.3)  # dà tempo al secondo segnale di arrivare (i bot ora si chiudono insieme)
             chiusi.append(self)
             # Su un AutoShardedBot mai loggato la close() vera solleva
             # (coda interna non creata): lo spegnimento lo registra e va avanti.
@@ -412,3 +415,80 @@ async def test_un_bot_chiuso_senza_errore_riparte_e_quando_resta_su_avvisa_il_ri
         await bs._supervisore(VoceBot("mod", avvio), notifica, ripresa)
     # Prima serie: un avviso, poi «tornato» (il secondo giro è durato a lungo); poi cade di nuovo: nuova serie, nuovo avviso.
     assert len(avvisi) == 2 and len(ripresi) == 1 and "mod" in ripresi[0]
+
+
+# ---- blocco C: ogni passo dello spegnimento ha un tempo massimo, poi pool.terminate() ----
+async def test_un_passo_bloccato_non_ferma_lo_spegnimento_e_il_pool_si_chiude_a_forza(monkeypatch):
+    from core import bot_supervisor as bs
+
+    for nome in ("TEMPO_SERVIZI", "TEMPO_BOT", "TEMPO_SESSIONI", "TEMPO_DATABASE"):
+        monkeypatch.setattr(bs, nome, 0.1)
+    ordine = []
+
+    class BotBloccato:
+        async def close(self):
+            await asyncio.sleep(60)
+
+    class BotSano:
+        async def close(self):
+            ordine.append("bot sano")
+
+    async def sessione_bloccata():
+        await asyncio.sleep(60)
+
+    async def database_bloccato():
+        await asyncio.sleep(60)
+
+    inizio = asyncio.get_running_loop().time()
+    await spegni_ordinatamente(
+        [BotBloccato(), BotSano()], [sessione_bloccata], database_bloccato,
+        termina_database=lambda: ordine.append("terminate"),
+    )
+    assert asyncio.get_running_loop().time() - inizio < 3
+    assert ordine == ["bot sano", "terminate"]  # il bot sano si è chiuso lo stesso; il pool a forza
+
+
+async def test_database_che_si_chiude_bene_non_viene_terminato():
+    terminato = []
+    chiuso = []
+
+    async def database():
+        chiuso.append(1)
+
+    await spegni_ordinatamente([], [], database, termina_database=lambda: terminato.append(1))
+    assert chiuso == [1] and terminato == []
+
+
+async def test_lo_spegnimento_ferma_i_giri_e_rilascia_la_leadership(monkeypatch):
+    from core import giro_periodico as gp
+
+    monkeypatch.setattr(gp, "GIRI", {})
+    rilasciata = []
+
+    async def finta_rilascia():
+        rilasciata.append(1)
+
+    monkeypatch.setattr(gp.leadership, "rilascia", finta_rilascia)
+
+    @gp.giro_periodico(seconds=0.01, subito=True)
+    async def lavoro():
+        pass
+
+    lavoro.start()
+    await asyncio.sleep(0.05)
+    compito = lavoro.get_task()
+
+    async def database():
+        assert compito.done()  # i giri sono già fermi quando si chiude il database
+
+    await spegni_ordinatamente([], [], database)
+    assert compito.done() and rilasciata == [1]
+
+
+def test_i_tempi_massimi_dello_spegnimento_stanno_sotto_il_timeout_di_systemd():
+    from core import bot_supervisor as bs
+
+    peggiore = bs.TEMPO_SERVIZI * 3 + bs.TEMPO_BOT + bs.TEMPO_SESSIONI + bs.TEMPO_DATABASE
+    assert peggiore < 60
+    unita = (RADICE_TEST / "deploy" / "systemd" / "iyokai-bot.service").read_text(encoding="utf-8")
+    assert "TimeoutStopSec=75" in unita

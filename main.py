@@ -921,6 +921,7 @@ async def main() -> None:
             ],
             db.close,
             servizi=_servizi_periodici(),
+            termina_database=db.terminate,
         )
         logger.info("Database disconnesso. Arresto completato.")
 

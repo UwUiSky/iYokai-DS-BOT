@@ -323,3 +323,15 @@ def giri_in_difficolta() -> list[str]:
         if not giro.is_running() or giro.errori_consecutivi >= ERRORI_PER_AVVISO:
             nomi.append(giro.nome)
     return nomi
+
+
+async def ferma_tutti_i_giri() -> None:
+    """Allo spegnimento: ferma ogni giro e aspetta che sia finito, così nessuno usa più il database."""
+    in_chiusura = []
+    for giro in list(GIRI.values()):
+        giro.cancel()
+        compito = giro.get_task()
+        if compito is not None:
+            in_chiusura.append(compito)
+    if in_chiusura:
+        await asyncio.gather(*in_chiusura, return_exceptions=True)

@@ -20,7 +20,8 @@ from typing import Awaitable, Callable
 
 import discord
 
-from core.giro_periodico import pausa_dopo_errori
+from core.giro_periodico import ferma_tutti_i_giri, leadership, pausa_dopo_errori
+from core.ripristino_differito import ferma_ripristini
 from core.i18n import t
 
 logger = logging.getLogger("iyokai.supervisor")
@@ -130,31 +131,57 @@ async def ferma_servizi_periodici(servizi) -> None:
     await asyncio.gather(*in_chiusura, return_exceptions=True)
 
 
-async def spegni_ordinatamente(clients, chiusure_sessioni, chiudi_database, servizi=()) -> None:
-    """
-    Chiude in quest'ordine: i servizi periodici di core/, i bot (che
-    fermano anche i loop dei cog), le sessioni HTTP condivise, il pool
-    del database. Un errore in un passo viene registrato e non salta i
-    passi successivi.
-    """
+# Tempi massimi dello spegnimento (secondi). In tutto restano sotto i 60 s: systemd chiude dopo 75 (TimeoutStopSec).
+TEMPO_SERVIZI = 8.0
+TEMPO_BOT = 15.0
+TEMPO_SESSIONI = 8.0
+TEMPO_DATABASE = 8.0
+
+
+async def _con_limite(nome: str, lavoro, secondi: float) -> bool:
+    """Esegue un passo con un tempo massimo. True se è finito; se scade o fallisce lo scrive nel log e va avanti."""
     try:
-        await ferma_servizi_periodici(servizi)
+        await asyncio.wait_for(lavoro, timeout=secondi)
+        return True
+    except asyncio.TimeoutError:
+        logger.error("Spegnimento: il passo «%s» non è finito in %.0f s, vado avanti.", nome, secondi)
     except Exception:
-        logger.exception("Errore nell'arresto dei servizi periodici")
-    for client in clients:
+        logger.exception("Errore nel passo di spegnimento «%s»", nome)
+    return False
+
+
+async def _chiudi_tutti(nome: str, chiusure) -> None:
+    """Chiude insieme tutto un gruppo; un errore di uno non ferma gli altri."""
+    esiti = await asyncio.gather(*chiusure, return_exceptions=True)
+    for esito in esiti:
+        if isinstance(esito, Exception):
+            logger.error("Errore nella chiusura (%s): %r", nome, esito)
+
+
+async def spegni_ordinatamente(clients, chiusure_sessioni, chiudi_database, servizi=(), termina_database=None) -> None:
+    """
+    Chiude in quest'ordine: i servizi periodici, i bot (insieme), i giri rimasti, le sessioni HTTP condivise,
+    il pool del database. Ogni passo ha un tempo massimo: se una connessione occupata lo blocca si
+    scrive nel log e si va avanti. Se il pool del database non si chiude in tempo si chiude a forza
+    (`termina_database`, cioè `pool.terminate()`). Un errore in un passo non salta i passi successivi.
+    """
+    await _con_limite("servizi periodici", ferma_servizi_periodici(servizi), TEMPO_SERVIZI)
+    await _con_limite("bot", _chiudi_tutti("bot", [c.close() for c in clients]), TEMPO_BOT)
+    # Dopo i bot (che fermano i loro cog): i giri rimasti e i ripristini in background.
+    await _con_limite("giri periodici", ferma_tutti_i_giri(), TEMPO_SERVIZI)
+    await _con_limite("ripristini in background", _ferma_ripristini(), TEMPO_SERVIZI)
+    await _con_limite("sessioni HTTP", _chiudi_tutti("sessioni", [chiudi() for chiudi in chiusure_sessioni]), TEMPO_SESSIONI)
+    await _con_limite("lock di leadership", leadership.rilascia(), TEMPO_SERVIZI)
+    if not await _con_limite("database", chiudi_database(), TEMPO_DATABASE) and termina_database is not None:
         try:
-            await client.close()
+            termina_database()
+            logger.warning("Pool del database chiuso a forza (terminate).")
         except Exception:
-            logger.exception("Errore nella chiusura di un bot")
-    for chiudi in chiusure_sessioni:
-        try:
-            await chiudi()
-        except Exception:
-            logger.exception("Errore nella chiusura di una sessione HTTP")
-    try:
-        await chiudi_database()
-    except Exception:
-        logger.exception("Errore nella chiusura del database")
+            logger.exception("Il pool del database non si è lasciato terminare")
+
+
+async def _ferma_ripristini() -> None:
+    ferma_ripristini()
 
 
 def _segnale_ignorato() -> None:

@@ -137,6 +137,12 @@ class Database:
             await self._pool.close()
             self._pool = None
 
+    def terminate(self) -> None:
+        """Chiude il pool a forza, senza aspettare le connessioni occupate (ultima risorsa dello spegnimento)."""
+        if self._pool is not None:
+            self._pool.terminate()
+            self._pool = None
+
     @property
     def pool(self) -> asyncpg.Pool:
         """
