@@ -1829,3 +1829,10 @@ Chiude la contraddizione tra D96 (CFG-036 «non fatta») e D124 (CFG-036 «si pr
 - **`state` legato alla sessione.** Lo stato OAuth porta l'impronta della sessione del pannello che l'ha creato; il ritorno da Patreon (`/patreon/callback`) legge lo stesso cookie del pannello e collega solo se coincide. Un link d'autorizzazione scritto da un altro e aperto da una vittima non collega niente (e lo stato si brucia).
 - **Conferma prima di spostare.** Se l'account Patreon è già di un'altra persona, il ritorno non lo sposta: salva i token cifrati in attesa (10 minuti, tabella `patreon_spostamenti`) e rimanda a `/premium?patreon=conferma`, dove la persona sceglie «Sì, sposta qui» o «No, annulla» (con CSRF). Solo con il sì l'account passa a lei e all'altra persona si toglie la concessione.
 - **Niente replay del webhook.** Un evento con la data dell'ultimo addebito più vecchia di quella già salvata si ignora; le impronte degli eventi visti si tengono 400 giorni (erano 30), così un evento vecchio rimandato non conta di nuovo.
+
+## D140 — Link diretti alla musica solo da host in elenco (blocco A, voce 9), 25/11/2026, opzione consigliata, da confermare dall'owner
+
+Lavalink scarica i link diretti (`sources.http`) da dentro la rete del server e segue i redirect: il controllo del bot sull'indirizzo scritto dall'utente (`url_e_sicuro`) non basta (redirect, DNS che cambia risposta).
+- **Cosa cambia per chi usa `/play`.** Un link diretto a un file audio passa solo da `cdn.discordapp.com`, `media.discordapp.net`, `upload.wikimedia.org`, `archive.org` e i suoi sotto-domini (https, niente porta né userinfo). I link delle fonti note (YouTube, SoundCloud, Bandcamp, Twitch, Vimeo, Spotify, Apple Music, Deezer) non cambiano. Gli altri host si rifiutano (nessun risultato). L'elenco è `HOST_LINK_DIRETTI` in `core/music_sources.py`.
+- **Playlist importate.** Un brano `http` di una playlist salvata o importata si suona solo se l'indirizzo è nello stesso elenco.
+- `url_e_sicuro` resta come seconda difesa; sull'host di Lavalink restano i blocchi in uscita delle reti private (README, «Rete»).

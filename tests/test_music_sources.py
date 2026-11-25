@@ -252,3 +252,14 @@ def test_riga_di_stato_non_mostra_mai_i_valori(monkeypatch):
     testo = "\n".join(ms.righe_stato())
     assert "segretissim" not in testo
     assert "Spotify" in testo and "chiavi sì" in testo
+
+
+def test_link_diretto_ammesso_solo_da_host_in_elenco():
+    from core.music_sources import link_diretto_ammesso as ok
+
+    assert ok("https://cdn.discordapp.com/attachments/1/2/a.mp3") and ok("https://ia800000.us.archive.org/x/a.mp3")
+    assert ok("https://archive.org/download/x/a.mp3")
+    for no in ("", "http://archive.org/a.mp3", "https://archive.org.evil.test/a", "https://evilarchive.org/a",
+               "https://archive.org:8080/a", "https://user@archive.org/a", "https://127.0.0.1/a", "https://archive.org\\@evil.test/a",
+               "https://archive.org/" + "a" * 300):
+        assert not ok(no), no

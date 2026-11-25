@@ -1133,9 +1133,11 @@ async def test_un_url_interno_non_arriva_mai_a_lavalink(indirizzo):
 @pytest.mark.asyncio
 async def test_un_url_pubblico_arriva_a_lavalink():
     nodo = object()
-    with patch("wavelink.Playable.search", new=AsyncMock(return_value=["x"])) as ricerca:
-        assert await MusicCog._cerca_su("https://93.184.216.34/a.mp3", nodo) == ["x"]
-    ricerca.assert_awaited_once_with("https://93.184.216.34/a.mp3", node=nodo)
+    with patch.object(player_module, "url_e_sicuro", new=AsyncMock(return_value=True)), patch(
+        "wavelink.Playable.search", new=AsyncMock(return_value=["x"])
+    ) as ricerca:
+        assert await MusicCog._cerca_su("https://cdn.discordapp.com/a.mp3", nodo) == ["x"]
+    ricerca.assert_awaited_once_with("https://cdn.discordapp.com/a.mp3", node=nodo)
 
 
 @pytest.mark.asyncio
@@ -1144,7 +1146,7 @@ async def test_il_nome_host_che_risolve_a_un_ip_interno_e_rifiutato():
     with patch.object(player_module, "url_e_sicuro", new=risolvi), patch(
         "wavelink.Playable.search", new=AsyncMock()
     ) as ricerca:
-        assert await MusicCog._cerca_su("https://nome.finto.test/a.mp3", object()) is None
+        assert await MusicCog._cerca_su("https://cdn.discordapp.com/a.mp3", object()) is None
     risolvi.assert_awaited_once()
     ricerca.assert_not_called()
 
@@ -1350,3 +1352,17 @@ async def test_la_radio_non_parte_da_sola_a_modulo_spento(monkeypatch):
 
     assert not cog.task_in_background
     cog._avvia_radio.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("indirizzo", [
+    "https://93.184.216.34/a.mp3", "https://esempio.test/a.mp3", "http://cdn.discordapp.com/a.mp3",
+    "https://cdn.discordapp.com@evil.test/a.mp3", "https://cdn.discordapp.com:8443/a.mp3", "https://evil.test/redirect",
+])
+async def test_un_link_diretto_fuori_elenco_non_arriva_a_lavalink(indirizzo):
+    """Blocco A, voce 9: Lavalink segue i redirect da dentro la rete, quindi i link diretti passano solo da host in elenco."""
+    with patch.object(player_module, "url_e_sicuro", new=AsyncMock(return_value=True)), patch(
+        "wavelink.Playable.search", new=AsyncMock()
+    ) as ricerca:
+        assert await MusicCog._cerca_su(indirizzo, object()) is None
+    ricerca.assert_not_called()

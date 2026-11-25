@@ -286,6 +286,32 @@ def _tipo_youtube(host: str, percorso: str, query: str) -> str | None:
     return None
 
 
+# Link diretti a un file audio (fonte `http` di Lavalink): SOLO da questi host. Lavalink scarica da dentro la
+# rete del server e segue i redirect: un controllo sull'indirizzo scritto dall'utente non basta (redirect, DNS che
+# cambia risposta). Con un elenco chiuso di host pubblici e fidati non c'è un indirizzo interno da raggiungere.
+HOST_LINK_DIRETTI = frozenset({"cdn.discordapp.com", "media.discordapp.net", "upload.wikimedia.org", "archive.org"})
+SUFFISSI_LINK_DIRETTI = (".archive.org",)
+
+
+def link_diretto_ammesso(testo: str) -> bool:
+    """
+    Un link a un file audio può andare a Lavalink? Solo https, host nell'elenco (`HOST_LINK_DIRETTI`, e i
+    sotto-domini di archive.org), niente userinfo, porta o barra rovesciata, al massimo `MAX_LUNGHEZZA_LINK` caratteri.
+    """
+    t = (testo or "").strip()
+    if not t or len(t) > MAX_LUNGHEZZA_LINK or "\\" in t:
+        return False
+    try:
+        url = urlparse(t)
+        porta = url.port
+    except ValueError:
+        return False
+    if url.scheme != "https" or not url.hostname or "@" in url.netloc or porta is not None:
+        return False
+    host = url.hostname.lower().rstrip(".")
+    return host in HOST_LINK_DIRETTI or host.endswith(SUFFISSI_LINK_DIRETTI)
+
+
 def classifica_link(testo: str) -> LinkFonte | None:
     """
     Il link di una fonte nota: (fonte, tipo). None per tutto il resto (titoli, siti non

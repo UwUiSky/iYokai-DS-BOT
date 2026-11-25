@@ -16,6 +16,8 @@ import re
 import secrets
 from dataclasses import dataclass
 
+from core.music_sources import link_diretto_ammesso
+
 MAX_PLAYLIST_PER_UTENTE = 25  # un elenco e un autocompletamento senza pagine
 MAX_BRANI_PER_PLAYLIST = 200
 NOME_MAX = 50
@@ -151,7 +153,11 @@ def riferimenti_traccia(info) -> list[str] | None:
     """
     if not isinstance(info, dict):
         return None
-    if str(info.get("sourceName") or "").strip().lower() in _SORGENTI_VIETATE:
+    sorgente = str(info.get("sourceName") or "").strip().lower()
+    if sorgente in _SORGENTI_VIETATE:
+        return None
+    # Un brano «http» è un link diretto che Lavalink scaricherebbe da dentro la rete del server: solo da host in elenco.
+    if sorgente == "http" and not link_diretto_ammesso(str(info.get("uri") or "")):
         return None
     da_controllare: list[str] = []
     for valore in (info.get("identifier"), info.get("uri")):

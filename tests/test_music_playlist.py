@@ -45,7 +45,7 @@ def _payload_traccia(i: int) -> dict:
         "encoded": f"QAAA{i}",
         "info": {
             "identifier": f"id{i}", "isSeekable": True, "author": "a", "length": 1000,
-            "isStream": False, "position": 0, "title": f"Brano {i}", "uri": None,
+            "isStream": False, "position": 0, "title": f"Brano {i}", "uri": f"https://cdn.discordapp.com/a{i}.mp3",
             "artworkUrl": None, "isrc": None, "sourceName": "http",
         },
         "pluginInfo": {},
@@ -317,7 +317,7 @@ def test_riferimenti_traccia():
 @pytest.mark.asyncio
 async def test_decodifica_scarta_file_locali_e_url_interni(monkeypatch):
     """Un `encoded` di un file importato non fa leggere al nodo file locali o URL interni (SSRF)."""
-    pubblico = "https://cdn.esempio.org/a.mp3"
+    pubblico = "https://cdn.discordapp.com/a.mp3"
 
     async def _sicuro(url):
         return url == pubblico
@@ -349,3 +349,14 @@ async def test_decodifica_scarta_file_locali_e_url_interni(monkeypatch):
             return [_p(1, "local", "/etc/passwd")]
 
     assert await decodifica_brani(_NodoSoloInterni(), "Furba", brani[:1]) is None
+
+
+def test_un_brano_http_si_suona_solo_da_un_host_in_elenco():
+    """Blocco A, voce 9: un file importato non può far scaricare a Lavalink un indirizzo scelto da chi lo ha scritto."""
+    from core.music_playlist_logic import riferimenti_traccia
+
+    ok = {"sourceName": "http", "uri": "https://archive.org/download/x/a.mp3", "identifier": "https://archive.org/download/x/a.mp3"}
+    assert riferimenti_traccia(ok) is not None
+    for uri in ("https://evil.test/a.mp3", "http://cdn.discordapp.com/a.mp3", "https://169.254.169.254/latest", ""):
+        assert riferimenti_traccia({"sourceName": "http", "uri": uri, "identifier": uri}) is None
+    assert riferimenti_traccia({"sourceName": "youtube", "uri": "https://www.youtube.com/watch?v=abc", "identifier": "abc"}) is not None

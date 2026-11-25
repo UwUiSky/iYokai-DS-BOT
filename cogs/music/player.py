@@ -505,7 +505,13 @@ class MusicCog(CogConGruppi, commands.Cog):
         if tipo != QUERY_SPOTIFY:
             # Lavalink (sources.http) scaricherebbe da dentro la rete del
             # server: niente 127.0.0.1, 10.x, metadati cloud (SSRF).
+            # Un link diretto (nessuna fonte nota) passa solo da un host
+            # dell'elenco chiuso: i redirect e un DNS che cambia risposta
+            # aggirerebbero qualsiasi controllo fatto qui (blocco A, voce 9).
             # Prima di fonte_usabile: la prova di una fonte non resta appesa.
+            if link is None and not fonti_musicali.link_diretto_ammesso(testo):
+                logger.info("Link diretto rifiutato (host non in elenco): %s", testo[:80])
+                return None
             if not await url_e_sicuro(testo):
                 logger.info("URL musicale rifiutato (non pubblico): %s", testo[:80])
                 return None
