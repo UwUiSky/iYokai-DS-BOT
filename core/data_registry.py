@@ -155,6 +155,20 @@ class TabellaDati:
             dove += f" AND NOT COALESCE({self._conserva_server()}, FALSE)"
         return f"DELETE FROM {self.nome} WHERE {dove}"
 
+    def sql_cancella_server_a_lotti(self, lotto: int) -> str | None:
+        """Come `sql_cancella_server`, ma toglie al massimo `lotto` righe per volta (si ripete finché ne toglie `lotto`)."""
+        grezzo = self.sql_cancella_server()
+        if grezzo is None:
+            return None
+        return _a_lotti(self.nome, grezzo.split(" WHERE ", 1)[1], lotto)
+
+    def sql_scaduti_a_lotti(self, lotto: int) -> str | None:
+        """Come `sql_scaduti`, ma toglie al massimo `lotto` righe per volta."""
+        grezzo = self.sql_scaduti()
+        if grezzo is None:
+            return None
+        return _a_lotti(self.nome, grezzo.split(" WHERE ", 1)[1], lotto)
+
     def sql_scaduti(self) -> str | None:
         if self.scadenza is None:
             return None
@@ -163,6 +177,11 @@ class TabellaDati:
         if s.solo_se:
             dove += f" AND ({s.solo_se})"
         return f"DELETE FROM {self.nome} WHERE {dove}"
+
+
+def _a_lotti(nome: str, dove: str, lotto: int) -> str:
+    """Una DELETE di al massimo `lotto` righe: in una sola istruzione, così `ctid` non può cambiare tra la scelta e la cancellazione."""
+    return f"DELETE FROM {nome} WHERE ctid IN (SELECT ctid FROM {nome} WHERE {dove} LIMIT {int(lotto)})"
 
 
 def _t(nome: str, descrizione: str, **kw) -> TabellaDati:
