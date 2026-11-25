@@ -156,6 +156,17 @@ def ip_cliente(remoto: str | None, inoltrato: str | None, fidati: frozenset[str]
     return remoto or "?"
 
 
+def ip_del_client(request) -> str:
+    """
+    L'UNICA funzione che dice l'IP di chi chiama, per tutti i server web del bot (pannello, voto, Patreon, webhook
+    custom): `X-Forwarded-For` vale solo se la connessione arriva da un proxy di `WEB_PANEL_TRUSTED_PROXY`
+    (di base 127.0.0.1 e ::1, il reverse proxy sulla stessa macchina). Mai un'altra copia di questa regola.
+    """
+    from core.config import config
+
+    return ip_cliente(request.remote, request.headers.get("X-Forwarded-For"), proxy_fidati(config.WEB_PANEL_TRUSTED_PROXY))
+
+
 # ------------------------------------------------- intestazioni di sicurezza
 CSP = (
     "default-src 'none'; style-src 'self'; img-src 'self' https://cdn.discordapp.com; "

@@ -17,6 +17,7 @@ from aiohttp import web
 
 from core import patreon_logic as logica
 from core import web_panel_logic
+from core.web_panel_logic import ip_del_client
 from core.redacted_access_log import RedactedAccessLogger
 from core.webhook_rate_tracker import webhook_rate_tracker
 
@@ -27,9 +28,7 @@ FINESTRA_SECONDI = 600
 
 
 def _ip(request: web.Request) -> str:
-    if request.remote in ("127.0.0.1", "::1"):  # dietro il reverse proxy
-        return request.headers.get("X-Forwarded-For", "").rsplit(",", 1)[-1].strip() or "locale"
-    return request.remote or "ignoto"
+    return ip_del_client(request)  # una sola regola per tutti i server web (core/web_panel_logic.py)
 
 
 def build_app(*, client_id: str, client_secret: str, webhook_secret: str, applica_evento, completa_collegamento,

@@ -212,6 +212,7 @@ def build_app(
         return _pagina(request, "errore.html", codice_http, titolo=titolo, testo=testo)
 
     def _ip(request: web.Request) -> str:
+        # Stessa regola di voto, Patreon e webhook custom (`ip_cliente`); qui l'elenco dei proxy arriva da `build_app`.
         return regole.ip_cliente(request.remote, request.headers.get("X-Forwarded-For"), proxy_fidati)
 
     async def _server(request: web.Request, *, solo_admin: bool = False, personale: bool = False):
