@@ -18,7 +18,8 @@ from discord.ext import commands
 
 from cogs.utility.setup import ETICHETTE_CATEGORIE
 from core import setup_guidato_logic as logica
-from core.command_access import Livello, TipoRuolo, errore_ruolo_admin, imposta_ruolo, leggi_ruolo, puo_usare, ruolo_valido_per_server
+from core.config_schema import ImpostazioneNonValida
+from core.command_access import Livello, TipoRuolo, errore_ruolo_bot, imposta_ruolo, leggi_ruolo, puo_usare, ruolo_valido_per_server
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.config_schema import imposta_modulo
 from core.database import db
@@ -127,13 +128,17 @@ async def scrivi_setup(interaction: discord.Interaction, dati: dict[str, Any]) -
     for tipo, nuovo in ruoli:
         if nuovo is not None and not ruolo_valido_per_server(guild, nuovo):
             raise ValueError(t("setup_guidato_ruolo_sparito", lingua))
-        if TipoRuolo(tipo) is TipoRuolo.ADMIN and errore_ruolo_admin(guild, autore, await leggi_ruolo(guild.id, TipoRuolo.ADMIN), nuovo):
-            raise ValueError(t("setup_guidato_admin_negato", lingua))
+        if errore_ruolo_bot(guild, TipoRuolo(tipo), autore, await leggi_ruolo(guild.id, TipoRuolo(tipo)), nuovo):
+            chiave = "setup_guidato_admin_negato" if TipoRuolo(tipo) is TipoRuolo.ADMIN else "setup_guidato_ruolo_bot_negato"
+            raise ValueError(t(chiave, lingua))
     for tipo, nuovo in ruoli:
         await imposta_ruolo(guild, TipoRuolo(tipo), guild.get_role(nuovo) if nuovo else None, interaction.user.id, autore=autore)
     cambiati = logica.moduli_cambiati(dati["iniziali_moduli"], dati["moduli"])
     for nome, attivo in cambiati:
-        await imposta_modulo(interaction.client, guild.id, nome, attivo, interaction.user.id)
+        try:
+            await imposta_modulo(interaction.client, guild.id, nome, attivo, interaction.user.id)
+        except ImpostazioneNonValida:
+            continue  # modulo di sicurezza senza il livello SECURITY: resta com'era
     return t("setup_guidato_fatto", lingua, ruoli=len(ruoli), moduli=len(cambiati))
 
 

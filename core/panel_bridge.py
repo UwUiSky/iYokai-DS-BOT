@@ -28,6 +28,7 @@ import discord
 from core.command_access import (
     Livello,
     RuoloAdminNegato,
+    RuoloBotNegato,
     TipoRuolo,
     decidi_accesso,
     imposta_ruolo,
@@ -273,7 +274,7 @@ async def applica_ruolo(guild: discord.Guild, tipo_nome: str, ruolo_id: int | No
         await imposta_ruolo(
             guild, tipo, ruolo, changed_by=user_id, autore=await _membro(guild, user_id, chiedi_a_discord=True)
         )
-    except RuoloAdminNegato:
+    except (RuoloAdminNegato, RuoloBotNegato):
         raise
     except ValueError as errore:
         raise ImpostazioneNonValida(str(errore)) from None

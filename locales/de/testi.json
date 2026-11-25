@@ -4487,5 +4487,9 @@
   "crt_specie_8": "Bakeneko",
   "rete_cat_ban_globale": "Bann eines Servers im Netz",
   "rete_ban_affidabilita_titolo": "Zuverlässigkeit des meldenden Servers",
-  "rete_ban_affidabilita_corpo": "Punktzahl {punteggio}/100. Bann-Grund: {motivo}"
+  "rete_ban_affidabilita_corpo": "Punktzahl {punteggio}/100. Bann-Grund: {motivo}",
+  "setup_guidato_ruolo_bot_negato": "Um die Mod- oder Bann-Rolle des Bots zu wählen, musst du die Berechtigung, die diese Rolle gäbe («Mitglieder timeouten» oder «Mitglieder bannen»), bereits auf Discord haben oder Serverbesitzer sein: Es wurde nichts gespeichert.",
+  "sicurezza_modulo_acceso": "eingeschaltet",
+  "sicurezza_modulo_spento": "ausgeschaltet",
+  "sicurezza_modulo_cambiato": "Sicherheit von **{server}**: Das Modul `{modulo}` wurde von {utente} {stato}. Wenn du das nicht erwartet hast, prüfe die Berechtigungen deines Teams."
 }

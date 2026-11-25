@@ -218,7 +218,8 @@ async def test_imposta_e_leggi_ruolo(finto_db):
     guild = fake_guild(guild_id=77)
     ruolo = fake_role(role_id=RUOLO)
     guild.get_role.side_effect = lambda rid: ruolo if rid == RUOLO else None
-    await ca.imposta_ruolo(guild, ca.TipoRuolo.MODBAN, ruolo, changed_by=9)
+    bannatore = fake_member(9, guild_permissions=discord.Permissions(ban_members=True))
+    await ca.imposta_ruolo(guild, ca.TipoRuolo.MODBAN, ruolo, changed_by=9, autore=bannatore)
     assert finto_db.scritti == [(77, "modban_role_id", RUOLO, 9)]
     assert await ca.leggi_ruolo(77, ca.TipoRuolo.MODBAN) == RUOLO
     await ca.imposta_ruolo(guild, ca.TipoRuolo.MODBAN, None, changed_by=9)
@@ -358,7 +359,8 @@ async def test_imposta_ruolo_admin_senza_amministratore_rifiutato(finto_db):
     with pytest.raises(ca.RuoloAdminNegato):
         await ca.imposta_ruolo(guild, ca.TipoRuolo.ADMIN, ruolo, changed_by=5)
     assert finto_db.scritti == []
-    await ca.imposta_ruolo(guild, ca.TipoRuolo.MOD, ruolo, changed_by=5, autore=gestore)  # solo l'admin
+    moderatore = fake_member(7, guild_permissions=discord.Permissions(moderate_members=True))
+    await ca.imposta_ruolo(guild, ca.TipoRuolo.MOD, ruolo, changed_by=7, autore=moderatore)
     amministratore = fake_member(6, guild_permissions=discord.Permissions(administrator=True))
     await ca.imposta_ruolo(guild, ca.TipoRuolo.ADMIN, ruolo, changed_by=6, autore=amministratore)
     assert await ca.leggi_ruolo(77, ca.TipoRuolo.ADMIN) == RUOLO
@@ -393,3 +395,40 @@ async def test_founder_il_check_rifiuta_un_amministratore_con_il_messaggio_giust
 async def test_founder_il_check_ammette_il_proprietario(finto_db):
     assert await ca.puo_usare(_interazione(user_id=OWNER_SERVER), Livello.FOUNDER) is True
     assert await ca.puo_usare(_interazione(user_id=OWNER_BOT, perm="administrator"), Livello.FOUNDER) is False
+
+
+# ---- blocco A, voce 3: ruoli mod e ban solo da chi ha già il permesso su Discord ----
+def test_errore_ruolo_bot_mod_e_modban():
+    guild = fake_guild(guild_id=77, owner_id=1)
+    gestore = fake_member(5, guild_permissions=discord.Permissions(manage_guild=True))
+    moderatore = fake_member(7, guild_permissions=discord.Permissions(moderate_members=True))
+    bannatore = fake_member(8, guild_permissions=discord.Permissions(ban_members=True))
+    amministratore = fake_member(6, guild_permissions=discord.Permissions(administrator=True))
+    proprietario = fake_member(1)
+    for tipo, giusto, sbagliato in (
+        (ca.TipoRuolo.MOD, moderatore, bannatore),
+        (ca.TipoRuolo.MODBAN, bannatore, moderatore),
+    ):
+        assert ca.errore_ruolo_bot(guild, tipo, giusto, None, RUOLO) is None
+        assert ca.errore_ruolo_bot(guild, tipo, sbagliato, None, RUOLO) == ca.MESSAGGI_RUOLO_BOT[tipo]
+        assert ca.errore_ruolo_bot(guild, tipo, gestore, None, RUOLO) == ca.MESSAGGI_RUOLO_BOT[tipo]
+        assert ca.errore_ruolo_bot(guild, tipo, None, None, RUOLO) == ca.MESSAGGI_RUOLO_BOT[tipo]
+        assert ca.errore_ruolo_bot(guild, tipo, amministratore, None, RUOLO) is None
+        assert ca.errore_ruolo_bot(guild, tipo, proprietario, None, RUOLO) is None
+        assert ca.errore_ruolo_bot(guild, tipo, gestore, RUOLO, RUOLO) is None  # invariato
+        assert ca.errore_ruolo_bot(guild, tipo, gestore, RUOLO, None) is None  # toglierlo non apre nulla
+
+
+async def test_imposta_ruolo_modban_senza_il_permesso_rifiutato_e_non_scrive(finto_db):
+    guild = fake_guild(guild_id=77, owner_id=1)
+    ruolo = fake_role(role_id=RUOLO)
+    guild.get_role.side_effect = lambda rid: ruolo if rid == RUOLO else None
+    helper = fake_member(5, guild_permissions=discord.Permissions(manage_guild=True, moderate_members=True))
+    with pytest.raises(ca.RuoloBotNegato):
+        await ca.imposta_ruolo(guild, ca.TipoRuolo.MODBAN, ruolo, changed_by=5, autore=helper)
+    with pytest.raises(ca.RuoloBotNegato):
+        await ca.imposta_ruolo(guild, ca.TipoRuolo.MODBAN, ruolo, changed_by=5)
+    assert finto_db.scritti == []
+    bannatore = fake_member(8, guild_permissions=discord.Permissions(ban_members=True))
+    await ca.imposta_ruolo(guild, ca.TipoRuolo.MODBAN, ruolo, changed_by=8, autore=bannatore)
+    assert await ca.leggi_ruolo(77, ca.TipoRuolo.MODBAN) == RUOLO

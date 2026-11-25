@@ -12,7 +12,7 @@ import pytest
 
 import core.database as database_module
 from core import panel_bridge
-from core.command_access import RuoloAdminNegato, TipoRuolo, leggi_ruolo
+from core.command_access import RuoloAdminNegato, RuoloBotNegato, TipoRuolo, leggi_ruolo
 from core.config_schema import ImpostazioneNonValida
 from core.database import db
 from core.premium import PremiumModule, registry
@@ -61,7 +61,13 @@ async def test_serve_gestisci_server_o_ruolo_admin(pool):
     with pytest.raises(RuoloAdminNegato):
         await panel_bridge.applica_ruolo(guild, "admin", 500, ADMIN)
     assert await leggi_ruolo(GUILD, TipoRuolo.ADMIN) is None
-    await panel_bridge.applica_ruolo(guild, "mod", 500, ADMIN)  # gli altri ruoli sì
+    # Blocco A: anche mod e ban solo da chi ha già il permesso su Discord.
+    with pytest.raises(RuoloBotNegato):
+        await panel_bridge.applica_ruolo(guild, "mod", 500, ADMIN)
+    with pytest.raises(RuoloBotNegato):
+        await panel_bridge.applica_ruolo(guild, "modban", 500, ADMIN)
+    con_permesso.guild_permissions = discord.Permissions(manage_guild=True, moderate_members=True)
+    await panel_bridge.applica_ruolo(guild, "mod", 500, ADMIN)
 
     con_permesso.guild_permissions = discord.Permissions(administrator=True)
     await panel_bridge.applica_ruolo(guild, "admin", 500, ADMIN)

@@ -71,5 +71,5 @@ async def test_imposta_lingua_server(pool):
     await imposta_lingua_server(GUILD, "en", 5)
     assert await db.get_guild_language(GUILD) == "en"
     with pytest.raises(ImpostazioneNonValida):
-        await imposta_lingua_server(GUILD, "de", 5)
+        await imposta_lingua_server(GUILD, "xx", 5)
     assert await db.get_guild_language(GUILD) == "en"

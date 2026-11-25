@@ -37,7 +37,7 @@ from aiohttp import BodyPartReader, MultipartReader, web
 from core import patreon_service
 from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_backup, web_panel_editor, web_panel_inviti, web_panel_istantanee, web_panel_pagine, web_panel_patreon, web_panel_join, web_panel_raccolta, web_panel_ruoli_collegati, web_panel_tela, web_panel_ticket, web_panel_ticket_trascrizioni, web_panel_archivio_casi, web_panel_accesso as regole_accesso, web_panel_panoramica as panoramica, web_panel_logic as regole, verify_vpn_logic as vpn_logica, ruoli_collegati_giro
 from core.bot_aspetto import MAX_IMMAGINE
-from core.command_access import RuoloAdminNegato
+from core.command_access import RuoloAdminNegato, RuoloBotNegato
 from core.command_search_logic import cerca
 from core.config_history_logic import TIPI_MODIFICA
 from core.config_schema import ImpostazioneNonValida
@@ -57,6 +57,7 @@ CHIAVE_UTENTE = web.RequestKey("utente_id", int)
 CHIAVE_TOKEN = web.RequestKey("token", str)
 CHIAVE_DOWNLOAD = web.RequestKey("intestazioni_download", dict)
 CHIAVE_LIVELLO = web.RequestKey("livello_pannello", str)
+CHIAVE_RICHIESTO = web.RequestKey("livello_richiesto", str)  # dalla tabella delle rotte (core/web_panel_accesso.py)
 LINGUE = (("it", "Italiano"), ("en", "English"))
 ETICHETTE_CATEGORIE = {
     "moderation": "Moderazione", "security": "Sicurezza", "automod": "AutoMod", "logging": "Log",
@@ -71,6 +72,11 @@ ESITI = {
     "serve_amministratore": (
         "Per scegliere il ruolo admin del bot serve il permesso «Amministratore» "
         "(o essere il proprietario del server): niente è stato salvato.",
+        True,
+    ),
+    "serve_permesso_ruolo": (
+        "Per scegliere il ruolo mod o ban del bot serve avere già, su Discord, il permesso che quel ruolo darebbe "
+        "(«Metti in timeout i membri» o «Banna i membri») o essere il proprietario del server: niente è stato salvato.",
         True,
     ),
     "permessi_ok": ("Permessi dei gruppi di comandi riscritti su Discord.", False),
@@ -187,6 +193,11 @@ def build_app(
             "utente_id": request.get(CHIAVE_UTENTE),
             "proprietario": ponte.e_proprietario(request.get(CHIAVE_UTENTE)),
             "sola_lettura": request.get(CHIAVE_LIVELLO) == regole_accesso.LETTURA,
+            # Le parti che chi guarda non può usare non si mostrano: `puo_aprire('/server/{guild_id}/marchio')` legge la stessa tabella delle rotte.
+            "puo_aprire": lambda canonico, metodo="GET": regole_accesso.basta(
+                request.get(CHIAVE_LIVELLO), regole_accesso.livello_rotta(metodo, canonico) or regole_accesso.ADMIN
+            ),
+            "puo_admin": request.get(CHIAVE_LIVELLO) == regole_accesso.ADMIN,
             "csrf": regole.csrf_per(chiave, request[CHIAVE_TOKEN]) if request.get(CHIAVE_TOKEN) else "",
             "messaggio": esito[0] if esito else None,
             "errore": esito[1] if esito else False,
@@ -217,6 +228,12 @@ def build_app(
             return None, _errore(request, 404, "Server non trovato", "Indirizzo non valido.")
         scrive = request.method not in ("GET", "HEAD") and not personale
         richiesto = regole_accesso.ADMIN if solo_admin else (regole_accesso.SCRITTURA if scrive else regole_accesso.LETTURA)
+        # La tabella delle rotte decide il minimo; l'handler può solo alzarlo, mai abbassarlo.
+        dalla_tabella = request.get(CHIAVE_RICHIESTO)
+        if dalla_tabella not in regole_accesso.LIVELLI_SERVER:
+            return None, _errore(request, 403, "Accesso negato", "Questa pagina non è disponibile.")
+        if not regole_accesso.basta(richiesto, dalla_tabella):
+            richiesto = dalla_tabella
         guild = await ponte.server_gestibile(
             bot, guild_id, utente_id, richiesto=richiesto, percorso=request.path if scrive else None
         )
@@ -226,8 +243,7 @@ def build_app(
                 "Non puoi gestire questo server: servono il permesso «Gestisci server» o il ruolo admin del bot "
                 "(o un ruolo del pannello con il livello giusto), e il bot deve essere nel server.",
             )
-        if not scrive:
-            request[CHIAVE_LIVELLO] = await ponte.livello_accesso(guild, utente_id) or ""
+        request[CHIAVE_LIVELLO] = await ponte.livello_accesso(guild, utente_id) or ""
         return guild, None
 
     async def _modulo_scrittura(request: web.Request):
@@ -272,6 +288,27 @@ def build_app(
         if request.path.startswith("/verifica/"):  # D64: solo qui, lo script che manda il fuso orario
             risposta.headers["Content-Security-Policy"] = regole.CSP_VERIFICA
         return risposta
+
+    @web.middleware
+    async def controllo_rotta(request: web.Request, handler):
+        """
+        La tabella unica delle rotte (core/web_panel_accesso.py): una rotta che non c'è si rifiuta; il proprietario del
+        bot e chi deve aver fatto l'accesso si controllano qui, prima di qualsiasi handler; per le rotte di un server il
+        livello minimo si porta in `_server`. Le rotte che non esistono (404, 405) passano: le risponde aiohttp.
+        """
+        risorsa = request.match_info.route.resource
+        if risorsa is None:
+            return await handler(request)
+        livello = regole_accesso.livello_rotta(request.method, risorsa.canonical)
+        if livello is None:
+            logger.error("Rotta del pannello fuori dalla tabella: %s %s", request.method, risorsa.canonical)
+            return _errore(request, 403, "Accesso negato", "Questa pagina non è disponibile.")
+        request[CHIAVE_RICHIESTO] = livello
+        if livello in (regole_accesso.PROPRIETARIO, regole_accesso.SESSIONE) and request.get(CHIAVE_UTENTE) is None:
+            return _vai("/accedi")
+        if livello == regole_accesso.PROPRIETARIO and not ponte.e_proprietario(request[CHIAVE_UTENTE]):
+            return _errore(request, 403, "Accesso negato", "Questa pagina è solo del proprietario del bot.")
+        return await handler(request)
 
     @web.middleware
     async def sessione(request: web.Request, handler):
@@ -438,6 +475,8 @@ def build_app(
             await ponte.applica_ruolo(guild, str(form.get("tipo", "")), int(testo) if testo else None, request[CHIAVE_UTENTE])
         except RuoloAdminNegato:
             return _torna(guild.id, "serve_amministratore")
+        except RuoloBotNegato:
+            return _torna(guild.id, "serve_permesso_ruolo")
         except ImpostazioneNonValida:
             return _torna(guild.id, "non_valido")
         return _torna(guild.id, "salvato")
@@ -799,7 +838,7 @@ def build_app(
                 return _pagina(request, "comando.html", c=comando)
         return _errore(request, 404, "Comando non trovato", "Questo comando non esiste (più).")
 
-    app = web.Application(middlewares=[sicurezza, sessione], client_max_size=DIMENSIONE_MASSIMA_RICHIESTA)
+    app = web.Application(middlewares=[sicurezza, sessione, controllo_rotta], client_max_size=DIMENSIONE_MASSIMA_RICHIESTA)
     app.router.add_get("/static/pannello.css", stile)
     app.router.add_get(r"/static/{nome:discord-sdk\.js|radio\.js|verifica\.js|ticket_live\.js}", file_statico)
     pagina_radio = web_panel_attivita.registra_rotte(

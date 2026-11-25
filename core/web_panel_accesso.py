@@ -27,6 +27,89 @@ ADMIN = "admin"
 LIVELLI_RUOLO = (LETTURA, SCRITTURA)
 MAX_RUOLI_PER_LIVELLO = 10
 
+# --- La tabella unica «rotta -> livello» (blocco A, voce 2) ---------------------------------------------------
+# Ogni rotta registrata nel pannello sta qui, con chi la può usare. Il middleware del pannello legge questa tabella
+# (una rotta che non c'è viene rifiutata) e `_server` non scende mai sotto il livello scritto qui: un handler
+# dimenticato non apre niente. Un test controlla che ogni rotta registrata ci sia, e prova ogni rotta con
+# lettura, scrittura, admin ed estraneo.
+PUBBLICA = "pubblica"          # senza accesso: pagine pubbliche e di ingresso
+SESSIONE = "sessione"          # serve solo aver fatto l'accesso (pagine personali)
+PROPRIETARIO = "proprietario"  # solo il proprietario del bot
+DESKTOP = "desktop"            # API di iYokai Desktop: ha il suo token (core/desktop_api.py)
+LIVELLI_SERVER = (LETTURA, SCRITTURA, ADMIN)  # per le rotte /server/<id>/...: livello minimo nel server
+
+_SERVER = "/server/{guild_id}"
+_VOCI: dict[str, tuple[str, ...]] = {
+    PUBBLICA: (
+        "GET /", "GET /accedi", "GET /callback", "POST /esci", "GET /allegato/{token}", "GET /static/pannello.css",
+        "GET /static/{nome}", "GET /privacy", "GET /termini", "GET /wiki", "GET /wiki/{percorso}", "GET /api/v1/stats",
+        "GET /invito/{slug}", "GET /stats/{guild_id}", "GET /n/{guild_id}", "GET /c/{slug}", "GET /tela/{guild_id}",
+        "GET /tela/{guild_id}/immagine.png", "GET /attivita/radio", "GET /attivita/radio/stato", "GET /modelli",
+        "GET /join/{nome}", "GET /join/{nome}/accedi", "GET /join/{nome}/colori.css", "GET /verifica/{token}",
+        "POST /verifica/{token}",
+    ),
+    SESSIONE: (
+        "GET /miei-dati", "POST /miei-dati", "GET /miei-inviti", "POST /miei-inviti",
+        "GET /istantanea/{segreto}", "POST /join/{nome}/avvia", "GET /ruoli-collegati", "POST /ruoli-collegati/avvia",
+        "POST /ruoli-collegati/verifica/avvia", "POST /ruoli-collegati/verifica/scollega",
+        "POST /ruoli-collegati/connessioni/avvia", "POST /ruoli-collegati/connessioni/dimentica",
+        "GET /ruoli-collegati/twitch", "GET /ruoli-collegati/discord", "POST /ruoli-collegati/scollega",
+        "GET /premium", "POST /premium/patreon/collega", "POST /premium/patreon/scollega",
+    ),
+    PROPRIETARIO: (
+        "GET /proprietario", "POST /proprietario/ai", "POST /proprietario/premium", "GET /proprietario/storico-vpn",
+        "GET /proprietario/modelli", "GET /proprietario/modelli/{modello}",
+        "POST /proprietario/modelli/{modello}/decidi", "POST /proprietario/modelli/{modello}/modifica",
+    ),
+    DESKTOP: (
+        "GET /api/desktop/io", "GET /api/desktop/server", "GET /api/desktop/eventi", "GET /api/desktop/storico",
+        "GET /api/desktop/risposte", "POST /api/desktop/traduci", "GET /api/desktop/staff/azioni",
+        "POST /api/desktop/staff/azione", "GET /api/desktop/radio",
+    ),
+    # Solo admin: ruoli del bot, moduli (accendere e spegnere), marchio, aspetto, permessi, lingua, chi usa il
+    # pannello, backup e ripristino, impostazioni che toccano dati e chiavi del server.
+    ADMIN: tuple(
+        f"{m} {_SERVER}{p}" for m, p in (
+            ("POST", "/modulo"), ("POST", "/ruolo"), ("POST", "/lingua"), ("POST", "/permessi"),
+            ("GET", "/accesso"), ("POST", "/accesso"),
+            ("GET", "/marchio"), ("POST", "/marchio"),
+            ("GET", "/aspetto"), ("POST", "/aspetto"), ("POST", "/aspetto/immagine"),
+            ("GET", "/backup"), ("GET", "/backup/{copia}"), ("GET", "/backup/{copia}/elimina"), ("POST", "/backup/{copia}/elimina"),
+            ("GET", "/join"), ("POST", "/join"),
+            ("GET", "/statistiche"), ("POST", "/statistiche"), ("GET", "/classifica"), ("POST", "/classifica"),
+            ("GET", "/api"), ("POST", "/api"),
+            ("POST", "/ticket/trascrizioni/opzioni"),
+        )
+    ),
+    SCRITTURA: tuple(
+        f"POST {_SERVER}{p}" for p in (
+            "/modulo/{nome}", "/ai", "/ai/altro", "/ai/interruttori", "/inviti", "/vocali", "/editor/embed",
+            "/editor/benvenuto", "/ticket/{ticket}/rispondi",
+        )
+    ),
+    LETTURA: tuple(
+        f"GET {_SERVER}{p}" for p in (
+            "", "/panoramica", "/storico", "/premium", "/modulo/{nome}", "/ai", "/ai/altro", "/ai/interruttori",
+            "/ai/riepilogo", "/ai/uso", "/inviti", "/vocali", "/editor/embed", "/editor/benvenuto", "/ticket",
+            "/ticket/{ticket}", "/ticket/{ticket}/stato", "/ticket/trascrizioni", "/ticket/trascrizioni/{id}",
+            "/moderazione/archivio/{caso}", "/avvisi",
+        )
+    ) + (f"POST {_SERVER}/avvisi",),  # le preferenze di chi guarda, non del server: bastano a chi vede il pannello
+}
+TABELLA_ROTTE: dict[tuple[str, str], str] = {}
+for _livello, _voci in _VOCI.items():
+    for _voce in _voci:
+        _metodo, _percorso = _voce.split(" ", 1)
+        if (_metodo, _percorso) in TABELLA_ROTTE:  # un doppione è un errore di chi scrive la tabella: il bot non parte
+            raise ValueError(f"rotta doppia nella tabella del pannello: {_voce}")
+        TABELLA_ROTTE[(_metodo, _percorso)] = _livello
+
+
+def livello_rotta(metodo: str, canonico: str) -> str | None:
+    """Il livello della rotta (HEAD vale come GET), o None se la tabella non la conosce: chi chiama la rifiuta."""
+    return TABELLA_ROTTE.get(("GET" if metodo == "HEAD" else metodo, canonico))
+
+
 # Area del pannello (secondo pezzo del percorso /server/<id>/<area>) -> gruppo di comandi che la rispecchia.
 GRUPPO_PER_AREA = {
     "ai": "admin-ai",

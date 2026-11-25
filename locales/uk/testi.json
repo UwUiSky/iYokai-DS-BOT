@@ -4487,5 +4487,9 @@
   "crt_specie_8": "Бакенеко",
   "rete_cat_ban_globale": "бан, виданий сервером мережі",
   "rete_ban_affidabilita_titolo": "Надійність сервера, що повідомив",
-  "rete_ban_affidabilita_corpo": "Оцінка {punteggio}/100. Причина бану: {motivo}"
+  "rete_ban_affidabilita_corpo": "Оцінка {punteggio}/100. Причина бану: {motivo}",
+  "setup_guidato_ruolo_bot_negato": "Щоб вибрати роль модератора або бану бота, ти вже маєш мати в Discord право, яке дає ця роль («Відправляти учасників подумати про поведінку» або «Банити учасників»), або бути власником сервера: нічого не збережено.",
+  "sicurezza_modulo_acceso": "увімкнено",
+  "sicurezza_modulo_spento": "вимкнено",
+  "sicurezza_modulo_cambiato": "Безпека **{server}**: модуль `{modulo}` {stato} користувачем {utente}. Якщо ти цього не очікував, перевір права своєї команди."
 }

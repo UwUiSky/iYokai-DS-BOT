@@ -4487,5 +4487,9 @@
   "crt_specie_8": "Bakeneko",
   "rete_cat_ban_globale": "ban decided by a server of the network",
   "rete_ban_affidabilita_titolo": "Reliability of the reporting server",
-  "rete_ban_affidabilita_corpo": "Score {punteggio}/100. Ban reason: {motivo}"
+  "rete_ban_affidabilita_corpo": "Score {punteggio}/100. Ban reason: {motivo}",
+  "setup_guidato_ruolo_bot_negato": "To choose the bot mod or ban role you must already have, on Discord, the permission that role would give («Timeout Members» or «Ban Members») or be the server owner: nothing was saved.",
+  "sicurezza_modulo_acceso": "turned on",
+  "sicurezza_modulo_spento": "turned off",
+  "sicurezza_modulo_cambiato": "Security of **{server}**: the `{modulo}` module was {stato} by {utente}. If you did not expect this, check your staff's permissions."
 }

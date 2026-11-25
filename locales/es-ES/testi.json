@@ -4487,5 +4487,9 @@
   "crt_specie_8": "Bakeneko",
   "rete_cat_ban_globale": "baneo decidido por un servidor de la red",
   "rete_ban_affidabilita_titolo": "Fiabilidad del servidor que informa",
-  "rete_ban_affidabilita_corpo": "Puntuación {punteggio}/100. Motivo del baneo: {motivo}"
+  "rete_ban_affidabilita_corpo": "Puntuación {punteggio}/100. Motivo del baneo: {motivo}",
+  "setup_guidato_ruolo_bot_negato": "Para elegir el rol de mod o de baneo del bot debes tener ya en Discord el permiso que ese rol daría («Aislar temporalmente a miembros» o «Banear miembros») o ser el propietario del servidor: no se ha guardado nada.",
+  "sicurezza_modulo_acceso": "activado",
+  "sicurezza_modulo_spento": "desactivado",
+  "sicurezza_modulo_cambiato": "Seguridad de **{server}**: el módulo `{modulo}` fue {stato} por {utente}. Si no lo esperabas, revisa los permisos de tu equipo."
 }

@@ -17,6 +17,7 @@ import logging
 
 import discord
 
+from core.config_schema import ImpostazioneNonValida
 from core.command_access import TipoRuolo, imposta_ruolo
 from core.config_schema import imposta_modulo
 from core.i18n import t, testo_per
@@ -218,7 +219,10 @@ class SetupWizardView(BaseView):
         cambiati = moduli_da_scrivere(self.iniziale, self.scelti)
         for nome, attivo in cambiati:
             # M 10.13 e D16: stesso punto unico di /admin-bot setup attiva e del pannello.
-            await imposta_modulo(interaction.client, self.guild_id, nome, attivo, interaction.user.id)
+            try:
+                await imposta_modulo(interaction.client, self.guild_id, nome, attivo, interaction.user.id)
+            except ImpostazioneNonValida:
+                continue  # modulo di sicurezza senza il livello SECURITY: resta com'era
         self.stop()
         await interaction.response.edit_message(
             content=await testo_per(interaction, "setup_wizard_fatto", cambiati=len(cambiati)),

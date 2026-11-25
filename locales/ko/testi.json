@@ -4487,5 +4487,9 @@
   "crt_specie_8": "바케네코",
   "rete_cat_ban_globale": "네트워크 서버가 결정한 밴",
   "rete_ban_affidabilita_titolo": "신고한 서버의 신뢰도",
-  "rete_ban_affidabilita_corpo": "점수 {punteggio}/100. 밴 사유: {motivo}"
+  "rete_ban_affidabilita_corpo": "점수 {punteggio}/100. 밴 사유: {motivo}",
+  "setup_guidato_ruolo_bot_negato": "봇의 관리자 또는 밴 역할을 고르려면 그 역할이 주는 권한(「멤버 타임아웃」 또는 「멤버 차단」)을 이미 디스코드에서 갖고 있거나 서버 소유자여야 해요. 아무것도 저장되지 않았어요.",
+  "sicurezza_modulo_acceso": "켜짐",
+  "sicurezza_modulo_spento": "꺼짐",
+  "sicurezza_modulo_cambiato": "**{server}** 보안: `{modulo}` 모듈이 {utente}님에 의해 {stato} 상태가 됐어요. 예상하지 못한 일이라면 스태프 권한을 확인하세요."
 }

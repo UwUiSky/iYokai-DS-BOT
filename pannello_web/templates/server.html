@@ -2,8 +2,9 @@
 {% block titolo %}{{ guild.name }} · iYokai Panel{% endblock %}
 {% block corpo %}
 <h1>{{ guild.name }}</h1>
-<p><a href="/server/{{ guild.id }}/panoramica">Panoramica</a> · <a href="/server/{{ guild.id }}/storico">Storico delle modifiche</a> · <a href="/server/{{ guild.id }}/accesso">Chi usa il pannello</a> · <a href="/server/{{ guild.id }}/premium">Premium</a> · <a href="/server/{{ guild.id }}/marchio">Bot con marchio</a> · <a href="/server/{{ guild.id }}/aspetto">Aspetto del bot</a> · <a href="/server/{{ guild.id }}/inviti">Inviti</a> · <a href="/server/{{ guild.id }}/ai">Intelligenza artificiale</a> · <a href="/server/{{ guild.id }}/backup">Backup</a> · <a href="/server/{{ guild.id }}/join">Pagina di rientro</a> · <a href="/server/{{ guild.id }}/ticket">Ticket</a> · <a href="/server/{{ guild.id }}/editor/embed">Editor embed</a> · <a href="/server/{{ guild.id }}/editor/benvenuto">Benvenuto</a></p>
+<p>{% if puo_aprire('/server/{guild_id}/panoramica') %}<a href="/server/{{ guild.id }}/panoramica">Panoramica</a>{% endif %} {% if puo_aprire('/server/{guild_id}/storico') %}<a href="/server/{{ guild.id }}/storico">Storico delle modifiche</a>{% endif %} {% if puo_aprire('/server/{guild_id}/accesso') %}<a href="/server/{{ guild.id }}/accesso">Chi usa il pannello</a>{% endif %} {% if puo_aprire('/server/{guild_id}/premium') %}<a href="/server/{{ guild.id }}/premium">Premium</a>{% endif %} {% if puo_aprire('/server/{guild_id}/marchio') %}<a href="/server/{{ guild.id }}/marchio">Bot con marchio</a>{% endif %} {% if puo_aprire('/server/{guild_id}/aspetto') %}<a href="/server/{{ guild.id }}/aspetto">Aspetto del bot</a>{% endif %} {% if puo_aprire('/server/{guild_id}/inviti') %}<a href="/server/{{ guild.id }}/inviti">Inviti</a>{% endif %} {% if puo_aprire('/server/{guild_id}/ai') %}<a href="/server/{{ guild.id }}/ai">Intelligenza artificiale</a>{% endif %} {% if puo_aprire('/server/{guild_id}/backup') %}<a href="/server/{{ guild.id }}/backup">Backup</a>{% endif %} {% if puo_aprire('/server/{guild_id}/join') %}<a href="/server/{{ guild.id }}/join">Pagina di rientro</a>{% endif %} {% if puo_aprire('/server/{guild_id}/ticket') %}<a href="/server/{{ guild.id }}/ticket">Ticket</a>{% endif %} {% if puo_aprire('/server/{guild_id}/editor/embed') %}<a href="/server/{{ guild.id }}/editor/embed">Editor embed</a>{% endif %} {% if puo_aprire('/server/{guild_id}/editor/benvenuto') %}<a href="/server/{{ guild.id }}/editor/benvenuto">Benvenuto</a>{% endif %}</p>
 
+{% if puo_admin %}
 <h2>Lingua del server</h2>
 <form class="carta riga" method="post" action="/server/{{ guild.id }}/lingua">
   <input type="hidden" name="csrf" value="{{ csrf }}">
@@ -28,6 +29,8 @@
 </form>
 {% endfor %}
 
+{% endif %}
+{% if puo_admin %}
 <h2>Comandi nascosti a chi non può usarli</h2>
 <div class="carta">
 <p>Discord mostra un gruppo di comandi solo a chi ha il ruolo del bot giusto: ruolo admin per
@@ -50,6 +53,8 @@ ma il bot li blocca lo stesso.</p>
 </div>
 </div>
 
+{% endif %}
+
 <h2>Moduli</h2>
 {% for categoria, moduli in categorie %}
 <h3>{{ categoria }}</h3>
@@ -63,8 +68,8 @@ ma il bot li blocca lo stesso.</p>
       {% if m.premium %}<span class="etichetta">premium</span>{% endif %}
       <span class="etichetta">{{ 'acceso' if m.attivo else 'spento' }}</span></div>
     <p class="tenue">{{ m.descrizione }}</p>
-    <button type="submit" class="{{ 'secondario' if m.attivo }}">{{ 'Spegni' if m.attivo else 'Accendi' }}</button>
-    {% if m.nome in con_impostazioni %}<a class="bottone secondario" href="/server/{{ guild.id }}/modulo/{{ m.nome }}">Impostazioni</a>{% endif %}
+    {% if puo_admin %}<button type="submit" class="{{ 'secondario' if m.attivo }}">{{ 'Spegni' if m.attivo else 'Accendi' }}</button>{% endif %}
+    {% if m.nome in con_impostazioni and puo_aprire('/server/{guild_id}/modulo/{nome}') %}<a class="bottone secondario" href="/server/{{ guild.id }}/modulo/{{ m.nome }}">Impostazioni</a>{% endif %}
   </form>
 {% endfor %}
 </div>

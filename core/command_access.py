@@ -195,6 +195,51 @@ def errore_ruolo_admin(
     return MESSAGGIO_RUOLO_ADMIN
 
 
+# Voce 3 del blocco A: un ruolo mod o ban del bot lo sceglie solo chi ha GIÀ su Discord il permesso
+# che quel ruolo darebbe (come D28 per l'admin). Altrimenti un helper si darebbe il ban da solo.
+PERMESSO_PER_TIPO_RUOLO = {TipoRuolo.MOD: "moderate_members", TipoRuolo.MODBAN: "ban_members"}
+MESSAGGI_RUOLO_BOT = {
+    TipoRuolo.MOD: (
+        "Per scegliere il ruolo mod del bot serve il permesso «Metti in timeout i membri» "
+        "(o essere il proprietario del server): quel ruolo lo darebbe a chi lo riceve."
+    ),
+    TipoRuolo.MODBAN: (
+        "Per scegliere il ruolo ban del bot serve il permesso «Banna i membri» "
+        "(o essere il proprietario del server): quel ruolo lo darebbe a chi lo riceve."
+    ),
+}
+
+
+class RuoloBotNegato(ValueError):
+    """Chi scrive non ha su Discord il permesso che il ruolo mod o ban del bot darebbe ad altri."""
+
+    def __init__(self, tipo: "TipoRuolo") -> None:
+        self.tipo = tipo
+        super().__init__(MESSAGGI_RUOLO_BOT[tipo])
+
+
+def errore_ruolo_bot(
+    guild: discord.Guild, tipo: "TipoRuolo", autore: discord.Member | None, vecchio: int | None, nuovo
+) -> str | None:
+    """
+    Il motivo del rifiuto, o None. Vale per tutti e tre i ruoli: l'admin (D28) con «Amministratore», il mod con
+    «Metti in timeout i membri», il ban con «Banna i membri»; il proprietario del server passa sempre. Mettere un
+    ruolo uguale a quello di oggi o toglierlo non apre nulla e passa. Chi non si conosce (`autore` None) è rifiutato.
+    Punto unico per comandi, pannello, procedura guidata, import e rollback.
+    """
+    if tipo is TipoRuolo.ADMIN:
+        return errore_ruolo_admin(guild, autore, vecchio, nuovo)
+    if nuovo is None or nuovo == vecchio:
+        return None
+    if autore is not None and (
+        autore.id == guild.owner_id
+        or autore.guild_permissions.administrator
+        or getattr(autore.guild_permissions, PERMESSO_PER_TIPO_RUOLO[tipo])
+    ):
+        return None
+    return MESSAGGI_RUOLO_BOT[tipo]
+
+
 async def imposta_ruolo(
     guild: discord.Guild,
     tipo: TipoRuolo,
@@ -205,8 +250,8 @@ async def imposta_ruolo(
 ) -> None:
     """
     Salva il ruolo (None lo toglie). Rifiuta @everyone e ruoli di altri
-    server. Il ruolo admin nuovo lo sceglie solo `autore` con
-    «Amministratore» o proprietario (`RuoloAdminNegato`, D28).
+    server. Il ruolo nuovo lo sceglie solo `autore` con il permesso che quel ruolo darebbe (admin: «Amministratore»,
+    D28; mod: «Metti in timeout i membri»; ban: «Banna i membri») o proprietario (`RuoloAdminNegato`, `RuoloBotNegato`).
     """
     if ruolo is not None:
         if ruolo.id == guild.id:
@@ -215,8 +260,8 @@ async def imposta_ruolo(
             raise ValueError("Questo ruolo non esiste in questo server.")
     vecchio = await leggi_ruolo(guild.id, tipo)
     nuovo = ruolo.id if ruolo is not None else None
-    if tipo is TipoRuolo.ADMIN and errore_ruolo_admin(guild, autore, vecchio, nuovo) is not None:
-        raise RuoloAdminNegato()
+    if errore_ruolo_bot(guild, tipo, autore, vecchio, nuovo) is not None:
+        raise RuoloAdminNegato() if tipo is TipoRuolo.ADMIN else RuoloBotNegato(tipo)
     await db.set_guild_setting(guild.id, tipo.value, nuovo, changed_by)
     if _dopo_imposta_ruolo is not None:
         try:
@@ -225,6 +270,27 @@ async def imposta_ruolo(
             logging.getLogger("iyokai.command_access").exception(
                 "Aggiornamento dei permessi dei comandi fallito per il server %s.", guild.id
             )
+
+
+async def ha_livello_sicurezza(guild: discord.Guild, membro: discord.Member | None) -> bool:
+    """
+    Chi può toccare la sicurezza del server ADESSO: «Amministratore», ruolo admin del bot (D28) o proprietario del
+    server, come il livello SECURITY dei comandi `admin-sicurezza…`. Punto unico per il pannello e per ogni via
+    che non passa da un comando (procedura guidata, assistente). `membro` None = nessuno.
+    """
+    if membro is None:
+        return False
+    ruolo_admin = await leggi_ruolo(guild.id, TipoRuolo.ADMIN)
+    return decidi_accesso(
+        Livello.SECURITY,
+        user_id=membro.id,
+        owner_bot_id=config.OWNER_ID,
+        guild_owner_id=guild.owner_id,
+        permessi=membro.guild_permissions,
+        ruoli_utente_ids=[r.id for r in membro.roles],
+        ruolo_configurato_id=ruolo_admin,
+        ruolo_esiste=ruolo_admin is not None and guild.get_role(ruolo_admin) is not None,
+    )
 
 
 # ----------------------------------------------------------------------

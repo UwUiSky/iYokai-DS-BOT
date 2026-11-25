@@ -34,6 +34,13 @@
 - Config è congelata: nei test si sostituisce `modulo.config` con un `SimpleNamespace`. `monkeypatch.undo()` con `clean_db` annulla il pool.
 - Migrazione già applicata nel DB di prova: non si riesegue se cambia.
 
+## Blocco A (sicurezza, ramo fix/sicurezza) — 25/11/2026
+Scheda: /home/user/consiglio/schede/A_sicurezza.md. DB di prova iyokai_wsicurezza. Migrazioni mie: 0980-0989 (0980 fatta).
+- FATTA voce 1 (ban globale con affidabilità, D138): `core/global_ban_logic.py`, `cogs/security/global_ban.py` (propagate_ban unito alla rete: proposte `rete_ban_proposte`, categoria `ban_globale`), mig. 0980, `security_raid_state.segna_nuke`. Test: `test_global_ban_affidabilita`, `test_global_ban_rete_unica` + vecchi riscritti.
+- FATTE voci 2 e 3: tabella rotte `TABELLA_ROTTE` in `core/web_panel_accesso.py` + middleware `controllo_rotta` + `_server` che non scende sotto la tabella; `errore_ruolo_bot`/`RuoloBotNegato` in `core/command_access.py`; `imposta_modulo` chiede livello SECURITY per i 6 moduli di sicurezza e avvisa il proprietario. Test: `test_web_panel_tabella_rotte`, `test_config_schema_sicurezza`, `test_ruoli_bot_import`, aggiunte a `test_command_access`.
+- PROSSIMO: voce 4 (Patreon: state legato al cookie, conferma spostamento, webhook vecchi, DECISIONI 1284 vs 1650), poi 5, 6, 7, 8, 9, 10, 11, 12, 13.
+- Appunti: testi del pannello (ESITI) e `_assistente.py` restano in italiano nel codice (nessuna i18n del pannello); script chiavi lingue: scratchpad `chiavi.py`.
+
 ## Aperto
 - Chiavi proprie: `MotoreAI.esegui(guild_id, user_id)` le usa (fuori da quote e pause, costo 0). Da provare live.
 - `test_ticket_form::test_pubblica_due_pannelli_in_un_solo_messaggio` ha dato un `KeyError: 'view'` una volta sotto carico, passa da solo: da controllare.
