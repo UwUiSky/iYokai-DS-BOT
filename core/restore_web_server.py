@@ -96,7 +96,7 @@ def build_app(
         # SEC-3: state firmato e con scadenza — vedi
         # core/restore_oauth_logic.py.
         stato = decode_and_verify_state(raw_state, oauth_encryption_key)
-        if stato is None or not riserva_nonce(stato):
+        if stato is None or not await riserva_nonce(stato):
             return _pagina_errore(
                 "Link non valido, scaduto o già usato — richiedine uno nuovo.", 400
             )
@@ -109,7 +109,7 @@ def build_app(
             riuscito = risposta.status == 200
             return risposta
         finally:
-            rilascia_nonce(stato, consumato=riuscito)
+            await rilascia_nonce(stato, consumato=riuscito)
 
     async def _completa_restore(stato: RestoreState, code: str) -> web.Response:
         token = await orchestrator.exchange_code_for_token(

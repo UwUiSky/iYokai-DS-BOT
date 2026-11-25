@@ -37,6 +37,7 @@ from aiohttp import BodyPartReader, MultipartReader, web
 from core import patreon_service
 from core import alt_detection_logic as verifica, allegati_sicuri, desktop_api, panel_bridge, web_panel_ai, web_panel_attivita, web_panel_backup, web_panel_editor, web_panel_inviti, web_panel_istantanee, web_panel_pagine, web_panel_patreon, web_panel_join, web_panel_raccolta, web_panel_ruoli_collegati, web_panel_tela, web_panel_ticket, web_panel_ticket_trascrizioni, web_panel_archivio_casi, web_panel_accesso as regole_accesso, web_panel_panoramica as panoramica, web_panel_logic as regole, verify_vpn_logic as vpn_logica, ruoli_collegati_giro
 from core.bot_aspetto import MAX_IMMAGINE
+from core.repositories.pannello_limiti_repo import LimitePersistente
 from core.command_access import RuoloAdminNegato, RuoloBotNegato
 from core.command_search_logic import cerca
 from core.config_history_logic import TIPI_MODIFICA
@@ -161,9 +162,10 @@ def build_app(
     # CGNAT) non deve bloccare l'accesso degli admin al pannello, né il contrario.
     limite_verifica = regole.LimiteFrequenza(30, 60)
     limite_scritture = regole.LimiteFrequenza(30, 60)
-    limite_sincronia = regole.LimiteFrequenza(1, 60)  # ogni sincronia sono più chiamate a Discord
-    limite_marchio = regole.LimiteFrequenza(3, 60)  # ogni collegamento prova il token con Discord
-    limite_esporta = regole.LimiteFrequenza(1, 60)  # come il comando: una copia al minuto per utente
+    # Questi tre contano nel database: un riavvio non li azzera (voce 6 del blocco A).
+    limite_sincronia = LimitePersistente("sincronia_permessi", 1, 60, "server")  # ogni sincronia sono più chiamate a Discord
+    limite_marchio = LimitePersistente("marchio", 3, 60, "server")  # ogni collegamento prova il token con Discord
+    limite_esporta = LimitePersistente("esporta_dati", 1, 60, "utente")  # come il comando: una copia al minuto per utente
     ambiente = jinja2.Environment(
         loader=jinja2.FileSystemLoader(CARTELLA / "templates"), autoescape=True, enable_async=False
     )
@@ -507,7 +509,7 @@ def build_app(
             return _torna(guild.id, "permessi_revocati")
         if azione != "sincronizza":
             return _torna(guild.id, "non_valido")
-        if not limite_sincronia.consenti(f"g:{guild.id}"):
+        if not await limite_sincronia.consenti(guild.id):
             return _torna(guild.id, "permessi_attendi")
         return _torna(guild.id, await ponte.risincronizza_permessi(bot, guild))
 
@@ -591,7 +593,7 @@ def build_app(
             token = str(form.get("token", "")).strip()
             if not 20 <= len(token) <= 120:
                 return _vai(indietro + "non_valido")
-            if not limite_marchio.consenti(f"g:{guild.id}"):
+            if not await limite_marchio.consenti(guild.id):
                 return _vai(indietro + "marchio_attendi")
             return _vai(indietro + await ponte.collega_marchio_web(bot, guild, token, request[CHIAVE_UTENTE]))
         testo = str(form.get("testo", "")) if azione == "testo" else None
@@ -675,7 +677,7 @@ def build_app(
             return rifiuto
         utente_id = request[CHIAVE_UTENTE]
         if form.get("azione") == "esporta":
-            if not limite_esporta.consenti(f"u:{utente_id}"):
+            if not await limite_esporta.consenti(utente_id):
                 return _vai("/miei-dati?esito=dati_attendi")
             contenuto, _, _ = await ponte.esporta_dati(utente_id)
             return web.Response(

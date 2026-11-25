@@ -1,9 +1,10 @@
 """
 core/restore_oauth_logic.py
 ===============================
-Logica pura del restore utenti via OAuth2: costruzione dell'URL di
+Logica del restore utenti via OAuth2: costruzione dell'URL di
 autorizzazione e dello "state" firmato che lo accompagna, senza
 chiamate di rete (quelle vivono in core/restore_orchestrator.py).
+I nonce dei link usati stanno nel database (tabella `restore_nonce`).
 Funzioni coperte: SPEC §11.11 (SEC-3, SEC-19, BUG-21)
 
 Lo state torna alla callback INVARIATO, quindi chiunque può leggerlo o
@@ -25,13 +26,18 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import os
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from urllib.parse import urlencode
 
+import asyncpg
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+
+logger = logging.getLogger("iyokai.restore_oauth_logic")
 
 DISCORD_AUTHORIZE_URL = "https://discord.com/oauth2/authorize"
 OAUTH_SCOPES = "identify guilds.join"
@@ -41,15 +47,10 @@ OAUTH_SCOPES = "identify guilds.join"
 STATE_TTL_SECONDS = 7 * 24 * 60 * 60
 _HKDF_INFO = b"iyokai-restore-state-v1"
 
-# Nonce di link già andati a buon fine: nonce -> scadenza (per la
-# pulizia lazy). In memoria: dopo un riavvio un link già usato torna
-# apribile, ma solo dal suo destinatario e solo con un nuovo consenso
-# su Discord, quindi al massimo rientra chi era già rientrato.
-_nonces_usati: dict[str, float] = {}
-
-# Nonce di callback in corso in questo momento: due richieste parallele
-# con lo stesso link non devono procedere entrambe.
-_nonces_in_corso: set[str] = set()
+# I nonce dei link (usati o in corso) stanno nel database (tabella `restore_nonce`): dopo un riavvio un link già
+# usato resta bloccato, e due bot insieme non lo usano due volte. Un link «in corso» da più di 5 minuti (il processo
+# è morto a metà) si può riprendere.
+RIPRESA_IN_CORSO_SECONDI = 5 * 60
 
 
 class RestoreStateSigningError(RuntimeError):
@@ -88,35 +89,48 @@ def _derive_signing_key(oauth_encryption_key_b64: str) -> bytes:
     return hkdf.derive(chiave_base)
 
 
-def _pulisci_nonce_scaduti(ora: float) -> None:
-    scaduti = [nonce for nonce, scadenza in _nonces_usati.items() if scadenza <= ora]
-    for nonce in scaduti:
-        del _nonces_usati[nonce]
-
-
-def riserva_nonce(state: RestoreState, *, now: float | None = None) -> bool:
+async def riserva_nonce(state: RestoreState, *, now: float | None = None) -> bool:
     """
-    Prenota il link per la callback che lo sta elaborando. False se il
-    link è già andato a buon fine o se un'altra callback lo sta usando
-    in questo momento. Chi riceve True DEVE poi chiamare rilascia_nonce.
+    Prenota il link per la callback che lo sta elaborando: una riga con INSERT ... ON CONFLICT, una volta sola.
+    False se il link è già andato a buon fine, se un'altra callback lo sta usando adesso o se il database non
+    risponde (meglio un link «già usato» che uno usato due volte). Chi riceve True DEVE poi chiamare rilascia_nonce.
     """
-    _pulisci_nonce_scaduti(now if now is not None else time.time())
-    if state.nonce in _nonces_usati or state.nonce in _nonces_in_corso:
+    from core.database import db
+
+    adesso = datetime.fromtimestamp(now if now is not None else time.time(), timezone.utc)
+    scade = datetime.fromtimestamp(max(state.expires_at, adesso.timestamp()), timezone.utc)
+    try:
+        preso = await db.pool.fetchval(
+            """
+            INSERT INTO restore_nonce (nonce, stato, preso_il, scade_il) VALUES ($1, 'in_corso', $2, $3)
+            ON CONFLICT (nonce) DO UPDATE SET preso_il = EXCLUDED.preso_il
+                WHERE restore_nonce.stato = 'in_corso' AND restore_nonce.preso_il < $2 - make_interval(secs => $4)
+            RETURNING 1
+            """,
+            state.nonce, adesso, scade, float(RIPRESA_IN_CORSO_SECONDI),
+        )
+    except (asyncpg.PostgresError, OSError):
+        logger.warning("Nonce del ripristino non prenotabile: link rifiutato.", exc_info=True)
         return False
-    _nonces_in_corso.add(state.nonce)
-    return True
+    return preso is not None
 
 
-def rilascia_nonce(state: RestoreState, *, consumato: bool) -> None:
+async def rilascia_nonce(state: RestoreState, *, consumato: bool) -> None:
     """
     Chiude la prenotazione fatta da riserva_nonce. `consumato=True`
     solo se il restore è riuscito: da quel momento il link non funziona
     più. Con False (errore temporaneo, account sbagliato) il link resta
-    utilizzabile (BUG-21).
+    utilizzabile (BUG-21). Se il database non risponde la riga «in corso» si libera da sola dopo 5 minuti.
     """
-    _nonces_in_corso.discard(state.nonce)
-    if consumato:
-        _nonces_usati[state.nonce] = state.expires_at
+    from core.database import db
+
+    try:
+        if consumato:
+            await db.pool.execute("UPDATE restore_nonce SET stato = 'usato' WHERE nonce = $1", state.nonce)
+        else:
+            await db.pool.execute("DELETE FROM restore_nonce WHERE nonce = $1 AND stato = 'in_corso'", state.nonce)
+    except (asyncpg.PostgresError, OSError):
+        logger.warning("Nonce del ripristino non aggiornato.", exc_info=True)
 
 
 def encode_state(state: RestoreState, signing_key_b64: str, *, now: float | None = None) -> str:
