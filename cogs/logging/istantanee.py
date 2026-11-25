@@ -15,7 +15,7 @@ import logging
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from cogs.logging import message_logs
 from core import channel_router as router
@@ -38,6 +38,7 @@ from core.repositories.event_log_repo import event_log_repo
 from core.repositories.log_eventi_repo import log_eventi_repo
 from core.repositories.log_ignora_repo import log_ignora_repo
 from core.repositories.log_istantanee_repo import log_istantanee_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.logging.istantanee")
 
@@ -54,7 +55,7 @@ class LogIstantaneeCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._in_corso: set[int] = set()  # un'istantanea alla volta per server
-        self._pulizia = tasks.loop(hours=1)(self._giro_pulizia)
+        self._pulizia = giro_periodico(hours=1)(self._giro_pulizia)
 
     async def cog_load(self) -> None:
         await super().cog_load()

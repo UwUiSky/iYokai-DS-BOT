@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from cogs.leveling.leveling import _comando_rifiutato
 from cogs.leveling.rischio import _SG_CONTO
@@ -24,6 +24,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_d
 from core.i18n import testo_per
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.repositories.lotteria_repo import MAX_BIGLIETTI_AL_GIORNO, lotteria_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.lotteria")
 NESSUNA_MENZIONE = discord.AllowedMentions.none()
@@ -42,7 +43,7 @@ class LotteriaCog(CogConGruppi, commands.Cog):
         self._giro.cancel()
         togli_comandi_del_cog(self)
 
-    @tasks.loop(minutes=10)
+    @giro_periodico(minutes=10)
     async def _giro(self) -> None:
         oggi = _oggi()
         try:

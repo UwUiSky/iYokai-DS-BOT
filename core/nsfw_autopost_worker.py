@@ -24,6 +24,7 @@ from core.bot_ready import attendi_bot_pronto
 from core.data_registry import GIORNI_DOPO_USCITA
 from core.nsfw_filter_logic import canale_ammesso
 from core.repositories.nsfw_repo import NsfwAutopost, nsfw_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.nsfw_autopost")
 
@@ -92,7 +93,7 @@ class NsfwAutopostWorker:
         if self._loop_task is not None:
             return
 
-        @tasks.loop(seconds=TICK_SECONDS)
+        @giro_periodico(seconds=TICK_SECONDS)
         async def _loop():
             try:
                 await self.tick(bot, vista)

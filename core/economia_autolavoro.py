@@ -29,6 +29,7 @@ from core.repositories.potenziamenti_repo import potenziamenti_repo
 from core.repositories.rischio_repo import rischio_repo
 from core.repositories.sociale_repo import BONUS_PRESTIGIO, sociale_repo
 from core.rischio_logic import lavoro_per_turni, paga_con_lavoro
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.economia_autolavoro")
 
@@ -122,7 +123,7 @@ def start(bot: commands.Bot) -> None:
     if _loop_task is not None:
         return
 
-    @tasks.loop(seconds=TICK_SECONDS)
+    @giro_periodico(seconds=TICK_SECONDS)
     async def _loop():
         await tick(bot)
 

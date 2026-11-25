@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from cogs.leveling.leveling import MODULE_LEVELING, _comando_rifiutato, _format_seconds
 from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog, SOTTOGRUPPI
@@ -23,6 +23,7 @@ from core.database import db
 from core.i18n import testo_per
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.repositories.stipendi_repo import EsitoRiscossione, PAUSA_STIPENDIO, stipendi_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.leveling.stipendi")
 NESSUNA_MENZIONE = discord.AllowedMentions.none()
@@ -93,7 +94,7 @@ class StipendiCog(CogConGruppi, commands.Cog):
         )
 
     # ---------------------------------------------------------------- ECO-035/037: giro automatico
-    @tasks.loop(minutes=10)
+    @giro_periodico(minutes=10)
     async def _giro(self) -> None:
         adesso = datetime.now(timezone.utc)
         for guild in list(self.bot.guilds):

@@ -25,6 +25,7 @@ from core.live_alert_flow import carica_contesto, pubblica_cambio_live
 from core.repositories.picarto_subscription_repo import picarto_subscription_repo
 from core.safe_http import safe_get
 from core.template_renderer import render_template
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.picarto_watcher")
 
@@ -109,7 +110,7 @@ class PicartoWatcherService:
         if self._loop_task is not None:
             return
 
-        @tasks.loop(seconds=intervallo("picarto"))
+        @giro_periodico(seconds=intervallo("picarto"))
         async def _loop():
             try:
                 await self.tick(bot)

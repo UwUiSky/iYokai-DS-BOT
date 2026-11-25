@@ -36,7 +36,7 @@ import logging
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from cogs.moderation.prove import allega_a_nota
 from core import bot_roles, log_testi_logic, moderation_archivio_utente, moderation_opzioni, moderation_registro_chat
@@ -72,6 +72,7 @@ from cogs.moderation._shared import (
     truncate_text,
     validate_reason,
 )
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger(__name__)
 
@@ -227,7 +228,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
         self.scadenza_casi.cancel()
         await super().cog_unload()
 
-    @tasks.loop(hours=1)
+    @giro_periodico(hours=1)
     async def scadenza_casi(self) -> None:
         """MOD-048: i casi AutoMod con la scadenza passata non contano più."""
         try:

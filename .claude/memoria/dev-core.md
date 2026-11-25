@@ -41,3 +41,8 @@
 - Lingue: tetto richiesta giornaliero in memoria; lingua personale solo it/en; `aiuto` vuoto.
 - NSFW RedGifs da controllare live; clan sciolto: categoria da togliere a mano; worker musicale senza blacklist all'ingresso.
 - `tests/test_premium_invalidazione.py` assegna `db._pool`: da togliere.
+
+## Blocco C (autonomia 24/7) — ramo fix/autonomia
+- Migrazioni riservate al blocco C: 0980 e seguenti (0980 = giri_periodici).
+- [1 FATTA] `core/giro_periodico.py`: `GiroPeriodico(tasks.Loop)` + decoratore `giro_periodico(...)` (stessi parametri di `tasks.loop`, più `subito=True`). Tutti i 56 loop convertiti con codemod. Errori contati, pause 5s..15min, stato in `giri_periodici`, attesa dopo riavvio (solo intervalli >= 5 min), lock `pg_try_advisory_lock` (`leadership`), ascoltatori caduta/ripresa (3 errori di fila) per gli avvisi owner, `stato_giri()`/`giri_in_difficolta()` per /salute. Cricchetto AST in `tests/test_giro_periodico.py`.
+- PROSSIMO: 2 avvio sicuro (`load_all_cogs` restituisce i falliti, niente sync globale se falliti, DM owner, ritentativi, cricchetto no I/O in setup()). Poi 3 pool, 4 musica, 5 servizio+/salute, 6 avvisi (usare gli ascoltatori di giro_periodico), 7 script, 8 spegnimento (chiamare `leadership.rilascia()`), 9 seri, 10 test di guasto.

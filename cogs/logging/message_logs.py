@@ -26,7 +26,7 @@ import io
 import logging
 
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from cogs.logging.advanced_logs import logging_avanzato_attivo
 from core import allegati_sicuri, log_testi_servizio
@@ -52,6 +52,7 @@ from core.phishing_logic import codici_invito
 from core.repositories.log_eventi_repo import log_eventi_repo
 from core.repositories.log_ignora_repo import log_ignora_repo
 from core.testo_limiti import CAMPO_MAX, DESCRIZIONE_MAX, tronca
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.logging.messaggi")
 
@@ -123,8 +124,8 @@ async def copie_per_il_log(guild_id: int, message_id: int) -> tuple[str, list[di
 class MessageLogsCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
-        self._pulizia = tasks.loop(hours=1)(self._giro_pulizia)
-        self._scrittura = tasks.loop(seconds=15)(self._giro_scrittura)
+        self._pulizia = giro_periodico(hours=1)(self._giro_pulizia)
+        self._scrittura = giro_periodico(seconds=15)(self._giro_scrittura)
 
     async def cog_load(self) -> None:
         self._pulizia.start()

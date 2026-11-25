@@ -16,7 +16,7 @@ from datetime import date, datetime, timedelta, timezone
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from cogs.ai._comune import NESSUNA_MENZIONE, SOTTO_AI, chiedi, registra_modulo_ai, taglia, testo_canale
 from core import riepilogo_logic as logica
@@ -27,6 +27,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.repositories.activity_stats_repo import activity_stats_repo
 from core.repositories.ai_repo import ai_repo
 from core.repositories.ai_riepilogo_repo import ConfigRiepilogo, ai_riepilogo_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.ai_riepilogo")
 
@@ -130,7 +131,7 @@ class AiRiepilogoCog(CogConGruppi, commands.Cog):
         await super().cog_unload()
 
     # ---------------------------------------------------------------- giro a orario
-    @tasks.loop(seconds=60)
+    @giro_periodico(seconds=60)
     async def _ciclo(self) -> None:
         adesso = datetime.now(timezone.utc)
         try:

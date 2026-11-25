@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from cogs.ai._comune import NESSUNA_MENZIONE, chiedi, registra_modulo_ai, taglia
 from core import dungeon_logic as logica
@@ -32,6 +32,7 @@ from core.repositories.ai_repo import ai_repo
 from core.repositories.leveling_repo import leveling_repo
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.ui_base import BaseView
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.ai_dungeon")
 
@@ -319,7 +320,7 @@ class AiDungeonCog(CogConGruppi, commands.Cog):
         self._ciclo.cancel()
         await super().cog_unload()
 
-    @tasks.loop(seconds=5)
+    @giro_periodico(seconds=5)
     async def _ciclo(self) -> None:
         try:
             for partita_id in list(AGGIORNA):

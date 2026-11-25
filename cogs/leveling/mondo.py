@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from cogs.leveling.leveling import _comando_rifiutato
 from core import mondo_logic as ml
@@ -30,6 +30,7 @@ from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.repositories.mondo_repo import COSTO_VACANZA_GIORNO, VACANZA_GIORNI_MAX, mondo_repo
 from core.safe_image import run_image_task
 from core.ui_base import BaseModal, BaseView
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.mondo")
 RNG = random.SystemRandom()
@@ -137,7 +138,7 @@ class MondoCog(CogConGruppi, commands.Cog):
         return (await leveling_settings_repo.get_config(g)).impostazioni.currency_name
 
     # ------------------------------------------------------------------ lavoro orario
-    @tasks.loop(hours=1)
+    @giro_periodico(hours=1)
     async def _giro(self) -> None:
         oggi = datetime.now(timezone.utc).date()
         for nome, f in (

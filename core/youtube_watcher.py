@@ -39,6 +39,7 @@ from core.youtube_api_logic import (
     stato_live_del_canale,
     video_id_da_voce,
 )
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.youtube_watcher")
 
@@ -250,7 +251,7 @@ class YoutubeWatcherService:
             )
             return
 
-        @tasks.loop(seconds=intervallo("youtube"))  # ALR-034: da .env, con minimo
+        @giro_periodico(seconds=intervallo("youtube"))  # ALR-034: da .env, con minimo
         async def _loop():
             try:
                 await self.tick(bot)

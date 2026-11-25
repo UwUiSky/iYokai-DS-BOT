@@ -22,7 +22,7 @@ import time
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from core import allegati_tipo_logic
 from core import auto_foto_controllo as controllo
@@ -41,6 +41,7 @@ from core.repositories.partite_repo import EsitoApertura, partite_repo
 from core.repositories.sociale_repo import sociale_repo
 from core.safe_image import run_image_task
 from core.ui_base import BaseView
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.auto")
 NESSUNA_MENZIONE = discord.AllowedMentions.none()
@@ -210,7 +211,7 @@ class AutoCog(CogConGruppi, commands.Cog):
         self._rimborsi.cancel()
         togli_comandi_del_cog(self)
 
-    @tasks.loop(minutes=5)
+    @giro_periodico(minutes=5)
     async def _rimborsi(self) -> None:
         try:
             await partite_repo.rimborsa_scadute()

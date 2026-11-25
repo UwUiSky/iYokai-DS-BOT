@@ -15,7 +15,7 @@ import logging
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from cogs.fun.entertainment import MODULE_FUN
 from core import allegati_mostra, allegati_tipo_logic
@@ -30,6 +30,7 @@ from core.i18n import testo_per, testo_guild
 from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.telefono_repo import TIPO_SERVER, TIPO_UTENTE, telefono_repo
 from core.ui_base import BaseView
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.telefono")
 NESSUNA_MENZIONE = discord.AllowedMentions.none()
@@ -382,7 +383,7 @@ class TelefonoCog(CogConGruppi, commands.Cog):
                     pass
         await telefono_repo.registra(chiamata.a, chiamata.b, chiamata.iniziata_il, durata, fine, chiamata.segnalata)
 
-    @tasks.loop(seconds=30)
+    @giro_periodico(seconds=30)
     async def controllo(self) -> None:
         for chiamata, motivo in tl.centralino.scadute():
             await self.chiudi(chiamata.a, motivo)

@@ -14,7 +14,7 @@ import logging
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from cogs.leveling.azzeramenti import _puo_gestire
 from cogs.leveling.leveling import MODULE_LEVELING, _comando_rifiutato
@@ -26,6 +26,7 @@ from core.leveling_ruoli_classifica_logic import FASCE, differenze, fasce_degli_
 from core.repositories.leveling_repo import leveling_repo
 from core.repositories.leveling_ruoli_classifica_repo import leveling_ruoli_classifica_repo
 from core.role_safety import check_role_assignable
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.leveling.ruoli_classifica")
 
@@ -88,7 +89,7 @@ class RuoliClassificaCog(CogConGruppi, commands.Cog):
             ephemeral=True, allowed_mentions=discord.AllowedMentions.none(),
         )
 
-    @tasks.loop(hours=1)
+    @giro_periodico(hours=1)
     async def _giro(self) -> None:
         try:
             for guild_id in await leveling_ruoli_classifica_repo.server_con_ruoli():

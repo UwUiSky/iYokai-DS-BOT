@@ -15,7 +15,7 @@ import random
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from cogs.fun.giochi_monete import PUNTATA_TETTO_ASSOLUTO
 from cogs.fun.sfide import SG_SFIDE
@@ -30,6 +30,7 @@ from core.repositories.economia_repo import economia_repo
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.repositories.partite_repo import EsitoApertura, partite_repo
 from core.ui_base import BaseView
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.blackjack")
 NESSUNA_MENZIONE = discord.AllowedMentions.none()
@@ -156,7 +157,7 @@ class BlackjackCog(CogConGruppi, commands.Cog):
         self._rimborsi.cancel()
         togli_comandi_del_cog(self)
 
-    @tasks.loop(minutes=5)
+    @giro_periodico(minutes=5)
     async def _rimborsi(self) -> None:
         try:
             await partite_repo.rimborsa_scadute()

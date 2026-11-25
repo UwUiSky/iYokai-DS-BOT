@@ -17,7 +17,7 @@ import logging
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 import core.channel_router as router
 from cogs.ai._comune import (
@@ -40,6 +40,7 @@ from core.config import config
 from core.repositories.ai_repo import ai_repo
 from core.repositories.output_channel_repo import output_channel_repo
 from core.ui_base import BaseModal, BaseView
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.ai_config")
 
@@ -510,7 +511,7 @@ class AiConfigCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message("Voce tolta." if ok else "Voce non trovata.", ephemeral=True)
 
     # ------------------------------------------------------------ controllo orario delle chiavi
-    @tasks.loop(hours=1)
+    @giro_periodico(hours=1)
     async def _controllo_orario(self) -> None:
         servizio = servizio_ai()
         if not servizio.configurato:

@@ -37,6 +37,7 @@ from core.twitch_api_logic import (
     parse_videos_response,
 )
 from core.repositories.twitch_subscription_repo import twitch_subscription_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.twitch_watcher")
 
@@ -312,7 +313,7 @@ class TwitchWatcherService:
             )
             return
 
-        @tasks.loop(seconds=intervallo("twitch"))  # ALR-034: da .env, con minimo
+        @giro_periodico(seconds=intervallo("twitch"))  # ALR-034: da .env, con minimo
         async def _loop():
             try:
                 await self.tick(bot)

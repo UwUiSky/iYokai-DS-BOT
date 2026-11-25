@@ -19,7 +19,7 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from core.moderation_shadowban import add_roles_se_libero
 from core.activity_stats_logic import (
@@ -39,6 +39,7 @@ from core.repositories.counter_repo import counter_repo
 from core.server_stats_logic import tabella_in_csv
 from core.i18n import testo_per
 from core.repositories.activity_stats_repo import ActivitySettings, activity_stats_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.activity_stats")
 
@@ -104,7 +105,7 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
         self._ultimo_errore: str | None = None
         self._giro_ruoli = 0
 
-        @tasks.loop(seconds=60)
+        @giro_periodico(seconds=60)
         async def _scrivi() -> None:
             await self.scrivi_lotto()
 
@@ -113,7 +114,7 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
             await self.bot.wait_until_ready()
             await self._riprendi_vocali()
 
-        @tasks.loop(minutes=30)
+        @giro_periodico(minutes=30)
         async def _ruoli() -> None:
             try:
                 await self.aggiorna_ruoli()
@@ -124,7 +125,7 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
         async def _prima_ruoli() -> None:
             await self.bot.wait_until_ready()
 
-        @tasks.loop(hours=1)
+        @giro_periodico(hours=1)
         async def _campioni() -> None:
             try:
                 await self.campiona_online()

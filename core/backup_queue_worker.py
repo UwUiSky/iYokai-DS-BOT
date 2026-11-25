@@ -20,6 +20,7 @@ from core.backup_orchestrator import popola_server_backup, riassunto_copia
 from core.backup_automatico_logic import fai_copia_automatica
 from core.repositories.backup_mirror_repo import backup_mirror_repo
 from core.repositories.backup_repo import backup_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.backup_queue_worker")
 
@@ -210,7 +211,7 @@ class BackupQueueWorker:
         if self._loop_task is not None:
             return
 
-        @tasks.loop(seconds=TICK_SECONDS)
+        @giro_periodico(seconds=TICK_SECONDS)
         async def _loop():
             await self._giro(creator_client, main_bot, main_permissions)
 

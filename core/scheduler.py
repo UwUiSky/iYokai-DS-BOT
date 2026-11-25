@@ -46,6 +46,7 @@ from typing import Awaitable, Callable
 from discord.ext import commands, tasks
 
 from core.bot_ready import attendi_bot_pronto
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.scheduler")
 
@@ -441,7 +442,7 @@ class Scheduler:
         if self._loop_task is not None:
             return  # già avviato, non farlo due volte
 
-        @tasks.loop(seconds=30)
+        @giro_periodico(seconds=30)
         async def _loop():
             await self._giro()
 

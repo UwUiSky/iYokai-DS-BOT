@@ -32,6 +32,7 @@ from core.memory_guard_logic import (
     should_force_gc,
     should_send_alert,
 )
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.memory_guard")
 
@@ -150,7 +151,7 @@ class MemoryGuard:
         if self._loop_task is not None:
             return
 
-        @tasks.loop(seconds=TICK_SECONDS)
+        @giro_periodico(seconds=TICK_SECONDS)
         async def _loop():
             try:
                 await self.tick(bot)

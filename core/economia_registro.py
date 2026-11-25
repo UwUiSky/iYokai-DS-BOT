@@ -18,6 +18,7 @@ from discord.ext import commands, tasks
 
 from core.bot_ready import attendi_bot_pronto
 from core.database import db
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.economia_registro")
 
@@ -98,7 +99,7 @@ def start(bot: commands.Bot) -> None:
     if _loop_task is not None:
         return
 
-    @tasks.loop(seconds=TICK_SECONDS)
+    @giro_periodico(seconds=TICK_SECONDS)
     async def _loop():
         await tick(bot)
 

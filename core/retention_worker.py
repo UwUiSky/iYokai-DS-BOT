@@ -23,6 +23,7 @@ from core.bot_ready import attendi_bot_pronto
 from core.data_registry import GIORNI_DOPO_USCITA, REGISTRO, tabelle_con_scadenza
 from core.forget_user_service import tabelle_esistenti, righe_toccate
 from core.repositories.guild_presence_repo import guild_presence_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.retention")
 
@@ -145,7 +146,7 @@ class RetentionWorker:
         if self._loop_task is not None:
             return
 
-        @tasks.loop(seconds=TICK_SECONDS)
+        @giro_periodico(seconds=TICK_SECONDS)
         async def _loop():
             try:
                 await self.tick(bot)

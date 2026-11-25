@@ -19,6 +19,7 @@ from core.alert_frequenze_logic import intervallo
 from core.alert_messaggio_logic import pulisci_esterno
 from core.bot_ready import attendi_bot_pronto
 from core.repositories.twitch_eventi_repo import twitch_eventi_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.twitch_eventi")
 
@@ -97,7 +98,7 @@ class TwitchEventiService:
         if self._loop_task is not None:
             return
 
-        @tasks.loop(seconds=intervallo("eventi"))
+        @giro_periodico(seconds=intervallo("eventi"))
         async def _loop():
             try:
                 await self.tick(bot)

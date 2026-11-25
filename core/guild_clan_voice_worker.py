@@ -39,6 +39,7 @@ from core.repositories.blacklist_repo import blacklist_repo
 from core.repositories.clan_voice_activity_repo import clan_voice_activity_repo
 from core.repositories.guild_clan_repo import REASON_VOICE_TICK, guild_clan_repo
 from core.repositories.leveling_settings_repo import leveling_settings_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.guild_clan_voice_worker")
 
@@ -175,7 +176,7 @@ class GuildClanVoiceWorker:
         if self._loop_task is not None:
             return
 
-        @tasks.loop(seconds=TICK_SECONDS)
+        @giro_periodico(seconds=TICK_SECONDS)
         async def _loop():
             try:
                 await self.tick(bot)

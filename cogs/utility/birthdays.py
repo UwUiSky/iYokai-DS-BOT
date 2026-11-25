@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from core.admin_mentions_logic import utente_puo_pingare_ruoli
 from core.birthday_logic import MAX_MESSAGGIO, data_valida
@@ -27,6 +27,7 @@ from core.premium import PremiumModule, registry
 from core.repositories.birthday_repo import birthday_repo
 from core.role_safety import check_role_assignable
 from core.scheduler import scheduler
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.birthdays")
 
@@ -43,7 +44,7 @@ class BirthdaysCog(CogConGruppi, commands.Cog):
         self.bot = bot
         self._worker = BirthdayWorker(birthday_repo, scheduler)
 
-        @tasks.loop(minutes=30)
+        @giro_periodico(minutes=30)
         async def _giro() -> None:
             try:
                 await self._worker.tick(self.bot)

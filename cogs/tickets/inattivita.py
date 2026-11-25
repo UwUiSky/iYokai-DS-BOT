@@ -15,7 +15,7 @@ import logging
 from datetime import datetime, timezone
 
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from cogs.tickets.tickets import _opzioni_pannello, _svuota_riserva
 from core import ticket_autoclose_worker as regole
@@ -23,6 +23,7 @@ from core.i18n import testo_guild
 from core.repositories.ticket_automazioni_repo import ticket_automazioni_repo as repo
 from core.repositories.ticket_repo import ticket_repo
 from core.ticket_autoclose_worker import Regola
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.tickets.inattivita")
 
@@ -43,7 +44,7 @@ class TicketInattivitaCog(commands.Cog):
     async def cog_unload(self) -> None:
         self._giro.cancel()
 
-    @tasks.loop(minutes=GIRO_MINUTI)
+    @giro_periodico(minutes=GIRO_MINUTI)
     async def _giro(self) -> None:
         try:
             await self.controlla_ticket(datetime.now(timezone.utc))

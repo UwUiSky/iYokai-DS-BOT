@@ -15,7 +15,7 @@ import logging
 from datetime import datetime, timezone
 
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from core import azzeramento_dati_logic as logica
 from core.bot_ready import attendi_bot_pronto
@@ -23,6 +23,7 @@ from core.database import db
 from core.i18n import lingua_server, t, testo_per
 from core.scheduler import scheduler
 from core.ui_base import BaseModal
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.azzeramento")
 
@@ -153,7 +154,7 @@ class AzzeramentoDatiCog(commands.Cog):
             logger.warning("Controllo del proprietario fallito (server %s).", after.id, exc_info=True)
 
     # ---- rete di sicurezza: richieste scadute che lo scheduler non ha eseguito ----
-    @tasks.loop(hours=INTERVALLO_ORE_RETE)
+    @giro_periodico(hours=INTERVALLO_ORE_RETE)
     async def _rete(self) -> None:
         for guild_id in await logica.azzeramento_repo.attive_scadute(datetime.now(timezone.utc)):
             try:

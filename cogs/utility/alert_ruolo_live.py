@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from core.role_safety import check_role_assignable
 from core.alert_options_logic import MAX_FILTRO
@@ -24,6 +24,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.i18n import testo_per
 from core.live_role_logic import MAX_MODELLO_ANNUNCIO, applica_regole, diretta_da_attivita
 from core.repositories.live_role_repo import MAX_REGOLE, MAX_VOCI, live_role_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.alert_ruolo_live")
 
@@ -84,7 +85,7 @@ class AlertRuoloLiveCog(CogConGruppi, commands.Cog):
         if regole:
             await applica_regole(after.guild, after, regole, dopo, datetime.now(timezone.utc))
 
-    @tasks.loop(minutes=RICONCILIA_MINUTI)
+    @giro_periodico(minutes=RICONCILIA_MINUTI)
     async def _riconcilia(self) -> None:
         """Rimette in ordine chi ha il ruolo ma non è più in diretta (bot spento durante la diretta)."""
         if not chiede_intent_presenze():

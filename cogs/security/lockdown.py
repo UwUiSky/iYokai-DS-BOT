@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from core import lockdown_service as servizio
 from core.bot_ready import attendi_bot_pronto
@@ -45,6 +45,7 @@ from core.lockdown_logic import (
 )
 from core.repositories.lockdown_repo import lockdown_repo
 from core.repositories.security_repo import security_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.lockdown")
 
@@ -433,7 +434,7 @@ class LockdownCog(CogConGruppi, commands.Cog):
         )
 
     # ------------------------------------------------------------ sblocco automatico (SIC-015)
-    @tasks.loop(seconds=60)
+    @giro_periodico(seconds=60)
     async def _sblocco_automatico(self) -> None:
         try:
             scaduti = await lockdown_repo.scaduti(datetime.now(timezone.utc))

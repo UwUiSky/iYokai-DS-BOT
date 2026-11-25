@@ -29,6 +29,7 @@ from core.guild_clan_logic import is_creation_deficit_covered
 from core.guild_clan_role_service import clear_clan_officers_presence
 from core.guild_iteration import for_each_guild_safely
 from core.repositories.guild_clan_repo import guild_clan_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.guild_clan_expiry_worker")
 
@@ -100,7 +101,7 @@ class GuildClanExpiryWorker:
         if self._loop_task is not None:
             return
 
-        @tasks.loop(seconds=TICK_SECONDS)
+        @giro_periodico(seconds=TICK_SECONDS)
         async def _loop():
             try:
                 await self.tick(bot)

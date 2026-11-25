@@ -52,7 +52,7 @@ from datetime import datetime, timedelta
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from core import bot_roles
 from core.command_groups import CogConGruppi, comando_di_gruppo
@@ -115,6 +115,7 @@ from core.security_quarantine import (
 from core.security_raid_state import DURATA_RAID_SECONDI, azzera, raid_in_corso, segna_raid
 from core.security_rate_tracker import GUILD_WIDE_KEY, security_rate_tracker
 from cogs.moderation._shared import ensure_module_enabled, try_dm
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.anti_raid")
 
@@ -1147,7 +1148,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
     # ================================================================
     # Fine del blocco: il livello di verifica torna quello di prima
     # ================================================================
-    @tasks.loop(seconds=60)
+    @giro_periodico(seconds=60)
     async def _controlla_scadenze(self) -> None:
         try:
             await self.ripristina_blocchi_scaduti(discord.utils.utcnow())

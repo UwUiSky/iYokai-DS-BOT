@@ -39,6 +39,7 @@ from core.feed_parsing_logic import (
 from core.repositories.alert_options_repo import alert_options_repo
 from core.repositories.feed_subscription_repo import feed_subscription_repo
 from core.safe_http import Scaricamento, chiudi_sessione_condivisa, safe_get_con_etag
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.feed_watcher")
 
@@ -222,7 +223,7 @@ class FeedWatcherService:
         if self._loop_task is not None:
             return
 
-        @tasks.loop(seconds=intervallo("feed"))  # ALR-034: da .env, con minimo
+        @giro_periodico(seconds=intervallo("feed"))  # ALR-034: da .env, con minimo
         async def _loop():
             try:
                 await self.tick(bot)

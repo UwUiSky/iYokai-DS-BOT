@@ -15,7 +15,7 @@ import logging
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from cogs.utility.premium_server import SOTTOGRUPPO_PREMIUM
 from core.bot_aspetto import MAX_BIO, MAX_IMMAGINE, applica_aspetto
@@ -36,6 +36,7 @@ from core.whitelabel_bot import (
     link_invito,
     puo_usare_strumenti,
 )
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.whitelabel")
 INTERVALLO_MINUTI = 30
@@ -80,7 +81,7 @@ class MarchioCog(CogConGruppi, commands.Cog):
         await self.gestore.ferma_tutti()
         await super().cog_unload()
 
-    @tasks.loop(minutes=INTERVALLO_MINUTI)
+    @giro_periodico(minutes=INTERVALLO_MINUTI)
     async def _giro(self) -> None:
         try:
             await self.gestore.riconcilia()

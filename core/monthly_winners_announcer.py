@@ -31,6 +31,7 @@ from core.repositories.leveling_repo import leveling_repo
 from core.repositories.monthly_winners_repo import monthly_winners_repo
 from core.repositories.top_settimanale_repo import top_settimanale_repo
 from core.top_settimanale_logic import POSIZIONI, da_annunciare, settimana_precedente, testo_top
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.monthly_winners")
 
@@ -123,7 +124,7 @@ class MonthlyWinnersAnnouncer:
         if self._loop_task is not None:
             return
 
-        @tasks.loop(seconds=TICK_SECONDS)
+        @giro_periodico(seconds=TICK_SECONDS)
         async def _loop():
             try:
                 await self.tick(bot)

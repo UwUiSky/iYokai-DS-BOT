@@ -18,7 +18,7 @@ from datetime import timedelta
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from cogs.moderation._shared import post_to_mod_log, try_dm
 from core import account_rubato, bot_roles
@@ -41,6 +41,7 @@ from core.immagini_coda import coda_immagini
 from core.immagini_pipeline import EsitoImmagine, analizza_immagine, impronte
 from core.immagini_trappola_service import libreria_immagini
 from core.safe_image import MAX_IMAGE_BYTES
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.immagini")
 
@@ -68,7 +69,7 @@ def e_allegato_immagine(allegato: discord.Attachment) -> bool:
 class ImmaginiCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
-        self._pulizia = tasks.loop(minutes=15)(self._giro_pulizia)
+        self._pulizia = giro_periodico(minutes=15)(self._giro_pulizia)
         self._pulizia.before_loop(self._prima)
 
     async def cog_load(self) -> None:

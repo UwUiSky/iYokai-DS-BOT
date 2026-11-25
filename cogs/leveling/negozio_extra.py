@@ -14,7 +14,7 @@ import logging
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from cogs.leveling.leveling import _comando_rifiutato
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo, togli_comandi_del_cog
@@ -24,6 +24,7 @@ from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.repositories.negozio_repo import EsitoRicetta, negozio_repo
 from core.repositories.shop_repo import shop_repo
 from core.ui_base import BaseView
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.negozio_extra")
 NESSUNA_MENZIONE = discord.AllowedMentions.none()
@@ -74,7 +75,7 @@ class NegozioExtraCog(CogConGruppi, commands.Cog):
         self._pulizia.cancel()
         togli_comandi_del_cog(self)
 
-    @tasks.loop(hours=6)
+    @giro_periodico(hours=6)
     async def _pulizia(self) -> None:
         try:
             await negozio_repo.pulisci_offerte()

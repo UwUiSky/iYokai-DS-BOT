@@ -15,7 +15,7 @@ import logging
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo, SOTTOGRUPPI
 from core.config import config
@@ -29,6 +29,7 @@ from core.music_cartella_logic import (
 )
 from core.music_logic import is_local_node, truncate_title
 from core.repositories.music_cartella_repo import CHIAVE_ANTEPRIME, BranoSalvato, music_cartella_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.music.cartella")
 
@@ -82,7 +83,7 @@ class MusicCartellaCog(CogConGruppi, commands.Cog):
         self._giro.cancel()
         await super().cog_unload()
 
-    @tasks.loop(minutes=MINUTI_SCANSIONE)
+    @giro_periodico(minutes=MINUTI_SCANSIONE)
     async def _giro(self) -> None:
         try:
             await aggiorna_elenco()

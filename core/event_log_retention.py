@@ -28,6 +28,7 @@ from core.guild_iteration import for_each_guild_safely
 from core.premium import guild_has_premium_access
 from core.repositories.event_log_repo import event_log_repo
 from cogs.logging.basic_logs import MODULE_LOGGING
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.event_log_retention")
 
@@ -70,7 +71,7 @@ class EventLogRetentionService:
         if self._loop_task is not None:
             return
 
-        @tasks.loop(seconds=TICK_SECONDS)
+        @giro_periodico(seconds=TICK_SECONDS)
         async def _loop():
             try:
                 await self.tick(bot)

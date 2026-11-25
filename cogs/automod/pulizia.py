@@ -14,7 +14,7 @@ import logging
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from cogs.automod.automod import MODULE_AUTOMOD
 from cogs.moderation._shared import ensure_module_enabled
@@ -27,6 +27,7 @@ from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.database import db
 from core.i18n import testo_guild, testo_per
 from core.repositories.automod_pulizie_repo import Pulizia, automod_pulizie_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.automod.pulizia")
 
@@ -45,7 +46,7 @@ class PuliziaAutomodCog(CogConGruppi, commands.Cog):
         self._ciclo.cancel()
         await super().cog_unload()
 
-    @tasks.loop(minutes=5)
+    @giro_periodico(minutes=5)
     async def _ciclo(self) -> None:
         try:
             await self.giro()

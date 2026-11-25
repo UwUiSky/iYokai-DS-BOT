@@ -31,6 +31,7 @@ from core.giveaway_logic import embed_annuncio, pick_winners_pesati
 from core.i18n import lingua_risposta
 from core.repositories.giveaway_repo import giveaway_repo
 from core.ui_base import BaseView
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.giveaway_worker")
 
@@ -158,7 +159,7 @@ class GiveawayWorker:
         if self._loop_task is not None:
             return
 
-        @tasks.loop(seconds=TICK_SECONDS)
+        @giro_periodico(seconds=TICK_SECONDS)
         async def _loop():
             try:
                 await self.tick(bot)

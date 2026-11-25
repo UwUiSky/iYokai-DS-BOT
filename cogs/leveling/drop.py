@@ -16,7 +16,7 @@ import random
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from cogs.leveling.leveling import LevelingCog, _comando_rifiutato
 from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
@@ -24,6 +24,7 @@ from core.i18n import testo_per
 from core.repositories.lasciti_repo import DURATA_SECONDI, MAX_LASCITO, lasciti_repo
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.ui_base import BaseView
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.leveling.drop")
 NESSUNA_MENZIONE = discord.AllowedMentions.none()
@@ -76,7 +77,7 @@ class DropCog(CogConGruppi, commands.Cog):
         self._rimborsi.cancel()
         togli_comandi_del_cog(self)
 
-    @tasks.loop(minutes=2)
+    @giro_periodico(minutes=2)
     async def _rimborsi(self) -> None:
         try:
             await lasciti_repo.rimborsa_scaduti()

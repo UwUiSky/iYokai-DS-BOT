@@ -13,7 +13,7 @@ import io
 import logging
 
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from cogs.ai._comune import chiedi, registra_modulo_ai
 from core import ai_bozza_logic as logica
@@ -22,6 +22,7 @@ from core.bot_ready import attendi_bot_pronto
 from core.config import config
 from core.github_bozze import github_bozze
 from core.repositories.ai_bozze_repo import ai_bozze_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.ai_bozze")
 
@@ -51,7 +52,7 @@ class AiBozzeCog(commands.Cog):
     async def cog_unload(self) -> None:
         self._ciclo.cancel()
 
-    @tasks.loop(minutes=10)
+    @giro_periodico(minutes=10)
     async def _ciclo(self) -> None:
         try:
             await self.giro()

@@ -27,7 +27,7 @@ from typing import Literal
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from core.moderation_shadowban import add_roles_se_libero
 from core.command_groups import CogConGruppi, SOTTOGRUPPI, comando_di_gruppo, togli_comandi_del_cog
@@ -195,6 +195,7 @@ from core.premium import PremiumModule, registry
 from core.config import config as app_config
 from core.repositories.voto_repo import voto_repo
 from core.voto_logic import segreto_valido
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.leveling")
 
@@ -1349,7 +1350,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
     # ================================================================
     # XP vocale — task periodico
     # ================================================================
-    @tasks.loop(seconds=60)
+    @giro_periodico(seconds=60)
     async def _voice_xp_tick(self) -> None:
         for guild in self.bot.guilds:
             try:
@@ -1368,7 +1369,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await self.bot.wait_until_ready()
 
     # ECO-063: toglie i ruoli comprati nello shop che sono scaduti.
-    @tasks.loop(minutes=5)
+    @giro_periodico(minutes=5)
     async def _scadenza_ruoli_shop(self) -> None:
         try:
             await self.togli_ruoli_shop_scaduti()

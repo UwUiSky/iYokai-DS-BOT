@@ -30,6 +30,7 @@ from core.live_alert_flow import carica_contesto, pubblica_cambio_live
 from core.repositories.kick_subscription_repo import kick_subscription_repo
 from core.alert_messaggio_logic import pulisci_esterno
 from core.template_renderer import render_template
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.kick_watcher")
 
@@ -163,7 +164,7 @@ class KickWatcherService:
             logger.info("KICK_CLIENT_ID/KICK_CLIENT_SECRET non configurati: il watcher Kick resta inattivo.")
             return
 
-        @tasks.loop(seconds=intervallo("kick"))  # ALR-034: da .env, con minimo
+        @giro_periodico(seconds=intervallo("kick"))  # ALR-034: da .env, con minimo
         async def _loop():
             try:
                 await self.tick(bot)

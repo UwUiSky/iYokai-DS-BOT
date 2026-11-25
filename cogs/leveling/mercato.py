@@ -12,13 +12,14 @@ import logging
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from cogs.leveling.leveling import _comando_rifiutato
 from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog, SOTTOGRUPPI
 from core.i18n import testo_per
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.repositories.mercato_repo import GIORNI_DI_BASE, GIORNI_MASSIMI, Esito, mercato_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.mercato")
 NESSUNA_MENZIONE = discord.AllowedMentions.none()
@@ -35,7 +36,7 @@ class MercatoCog(CogConGruppi, commands.Cog):
         self._scadenze.cancel()
         togli_comandi_del_cog(self)
 
-    @tasks.loop(minutes=10)
+    @giro_periodico(minutes=10)
     async def _scadenze(self) -> None:
         try:
             await mercato_repo.scadenze()

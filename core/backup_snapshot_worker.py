@@ -18,6 +18,7 @@ from core.backup_snapshot_logic import is_eligible_for_snapshot
 from core.repositories.backup_repo import backup_repo
 from core.repositories.backup_user_snapshot_repo import backup_user_snapshot_repo
 from core.repositories.verify_repo import verify_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.backup_snapshot_worker")
 
@@ -62,7 +63,7 @@ class BackupSnapshotWorker:
         if self._loop_task is not None:
             return
 
-        @tasks.loop(seconds=TICK_SECONDS)
+        @giro_periodico(seconds=TICK_SECONDS)
         async def _loop():
             try:
                 await self.tick(main_bot)

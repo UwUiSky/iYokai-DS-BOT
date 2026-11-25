@@ -13,7 +13,7 @@ import logging
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.counter_logic import (
@@ -36,6 +36,7 @@ from core.i18n import testo_per
 from core.premium import PremiumModule, registry
 from core.ui_base import BaseView
 from core.repositories.counter_repo import counter_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.counters")
 
@@ -50,7 +51,7 @@ class CountersCog(CogConGruppi, commands.Cog):
         self.bot = bot
         self._worker = CounterWorker(counter_repo)
 
-        @tasks.loop(seconds=INTERVALLO_SECONDI)
+        @giro_periodico(seconds=INTERVALLO_SECONDI)
         async def _giro() -> None:
             try:
                 await self._worker.tick(self.bot)

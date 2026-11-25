@@ -19,7 +19,7 @@ from datetime import datetime, timedelta, timezone
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from cogs.ai._comune import NESSUNA_MENZIONE, chiedi, registra_modulo_ai, taglia
 from core.moderation_shadowban import add_roles_se_libero
@@ -38,6 +38,7 @@ from core.role_safety import check_role_assignable
 from core.safe_image import run_image_task
 from core.scheduler import scheduler
 from core.ui_base import BaseView
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.ai_boss")
 
@@ -294,7 +295,7 @@ class AiBossCog(CogConGruppi, commands.Cog):
         self._ciclo.cancel()
         await super().cog_unload()
 
-    @tasks.loop(seconds=5)
+    @giro_periodico(seconds=5)
     async def _ciclo(self) -> None:
         """Ridisegna gli eventi toccati, chiude quelli scaduti e, ogni minuto, fa comparire i boss a orario."""
         try:

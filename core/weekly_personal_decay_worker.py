@@ -29,6 +29,7 @@ from core.bot_ready import attendi_bot_pronto
 from core.guild_iteration import for_each_guild_safely
 from core.leveling_logic import previous_week_start, week_key
 from core.repositories.leveling_repo import leveling_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.weekly_personal_decay_worker")
 
@@ -70,7 +71,7 @@ class WeeklyPersonalDecayWorker:
         if self._loop_task is not None:
             return
 
-        @tasks.loop(seconds=TICK_SECONDS)
+        @giro_periodico(seconds=TICK_SECONDS)
         async def _loop():
             try:
                 await self.tick()

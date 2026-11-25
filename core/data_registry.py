@@ -43,7 +43,7 @@ TESTO_CANCELLATO = "[cancellato]"
 GIORNI_DOPO_USCITA = 90
 
 # Tabelle da non dichiarare: dell'infrastruttura, senza dati personali né di server.
-TABELLE_ESCLUSE = frozenset({"schema_migrations"})
+TABELLE_ESCLUSE = frozenset({"schema_migrations", "giri_periodici"})
 
 _IDENTIFICATORE = re.compile(r"^[a-z_][a-z0-9_]*$")
 

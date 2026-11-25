@@ -28,6 +28,7 @@ from core.clan_leaderboard_logic import (
 )
 from core.repositories.clan_leaderboard_config_repo import clan_leaderboard_config_repo
 from core.repositories.guild_clan_repo import guild_clan_repo
+from core.giro_periodico import giro_periodico
 
 logger = logging.getLogger("iyokai.clan_leaderboard")
 
@@ -89,7 +90,7 @@ class ClanLeaderboardAnnouncer:
         if self._loop_task is not None:
             return
 
-        @tasks.loop(seconds=TICK_SECONDS)
+        @giro_periodico(seconds=TICK_SECONDS)
         async def _loop():
             try:
                 await self.tick(bot)

@@ -16,7 +16,7 @@ import time
 
 import discord
 from discord import app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 from core import bot_info, bot_roles
 from core.bot_aspetto import applica_aspetto
@@ -34,6 +34,7 @@ from core.config_orfani_logic import GIORNI_ATTESA, anteprima, pulisci_scaduti
 from core.repositories.config_orfani_repo import config_orfani_repo
 from core.ui_base import BaseView
 from core.i18n import lingua_interazione, t, testo_per
+from core.giro_periodico import giro_periodico
 
 SOTTOGRUPPO_CONFIG = ("config", "Configurazione: canali, storico, ripristino ed esportazione")
 ATTESA_SYNC_SECONDI = 300
@@ -147,7 +148,7 @@ class ConfigStrumentiCog(CogConGruppi, commands.Cog):
             (testo + "\n\n" + await testo_per(interaction, "cfg_pulisci_chiedi"))[:1900], view=vista, ephemeral=True
         )
 
-    @tasks.loop(hours=INTERVALLO_ORE_PULIZIA)
+    @giro_periodico(hours=INTERVALLO_ORE_PULIZIA)
     async def _giro_pulizia(self) -> None:
         for guild in list(self.bot.guilds):
             try:
