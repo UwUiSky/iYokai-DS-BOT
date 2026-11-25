@@ -1812,3 +1812,11 @@ Cambia D56 sui limiti e sposta i gruppi. Nessuna funzione si toglie: si sposta o
 - **Comandi diretti (10).** `/play`, `/skip`, `/stop`, `/pause`, `/resume`, `/queue`, `/ban`, `/kick`, `/mute`, `/shadowban` sono comandi di primo livello che chiamano la STESSA funzione del comando lungo, con gli stessi controlli (permesso predefinito, livello staff, lista nera, abbonamento). Politica dei comandi spenti e statistiche guardano il percorso vero (spento `music play` = spento `/play`). Il nome è uguale in tutte le lingue; la descrizione è quella del comando lungo. Una sola tabella: `core/comandi_diretti.py` (`DIRETTI`).
 - **Limiti (sostituiscono quelli di D56).** Comandi di primo livello globali: tetto 100 (limite Discord), avviso a 90, contando `/premium` e `/vip`; `/owner` e `/owner-radio` stanno solo nel server dell'owner. Figli: al massimo 25 per gruppo (18 resta un obiettivo, un avviso). Profondità 3. Peso: ogni gruppo si calcola come se ogni traduzione fosse più lunga del 30% della versione più lunga tra it ed en, per ogni campo (nome 32, descrizione 100, nome scelta 100; i valori delle scelte non si traducono), o con la traduzione vera se più lunga; limite 8.000, avviso a 6.800. Dopo il riordino: 54 gruppi globali, il più pesante `/admin-alert` a 7.478.
 - **Effetti da sapere.** Le sospensioni dei giochi (`RADICI_DI_GIOCO`) ora valgono anche per `/monete mercato` e `/giochi tela` (stanno sotto `monete` e `giochi`).
+
+## D139 — Sandbox obbligatoria, niente ripiego grafico (25/11/2026, richiesta dell'owner)
+
+Ogni file degli utenti (immagini, allegati, avatar, sfondi) si apre solo nel servizio `iyokai-sandbox`.
+Se il servizio non risponde, il lavoro si rifiuta con un messaggio chiaro e una riga nel log: rank card,
+avatar, sfondi dei benvenuti e level-up non si disegnano con un ripiego, si saltano. Il servizio lavora
+al massimo su 3 file insieme, con 2 GB di memoria. Il cancello dei download (4 insieme, 48 MiB in volo)
+vale per i log dei messaggi; per ticket, ModMail e backup è il prossimo passo.
