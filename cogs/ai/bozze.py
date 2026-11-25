@@ -54,10 +54,7 @@ class AiBozzeCog(commands.Cog):
 
     @giro_periodico(minutes=10)
     async def _ciclo(self) -> None:
-        try:
-            await self.giro()
-        except Exception:  # noqa: BLE001
-            logger.warning("Giro delle bozze non riuscito.", exc_info=True)
+        await self.giro()
 
     @_ciclo.before_loop
     async def _prima(self) -> None:

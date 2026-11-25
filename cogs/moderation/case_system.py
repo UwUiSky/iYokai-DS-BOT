@@ -231,10 +231,7 @@ class ModerationCaseSystemCog(CogConGruppi, commands.Cog):
     @giro_periodico(hours=1)
     async def scadenza_casi(self) -> None:
         """MOD-048: i casi AutoMod con la scadenza passata non contano più."""
-        try:
-            await moderation_repo.expire_due_cases()
-        except Exception:  # noqa: BLE001 - un errore del database non ferma il giro dopo
-            logger.exception("Scadenza dei casi AutoMod non riuscita.")
+        await moderation_repo.expire_due_cases()
 
     @scadenza_casi.before_loop
     async def _prima_della_scadenza(self) -> None:

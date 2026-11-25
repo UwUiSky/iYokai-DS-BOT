@@ -29,6 +29,7 @@ from core.i18n import testo_per
 from core.repositories.custom_command_repo import custom_command_repo
 from core.repositories.slash_server_repo import slash_server_repo
 from core.scheduler import scheduler
+from core.blocchi_deboli import BlocchiDeboli
 
 logger = logging.getLogger("iyokai.slash_server")
 
@@ -54,7 +55,7 @@ class SlashServerCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._montati: dict[int, list[tuple[str, discord.AppCommandType]]] = {}
-        self._blocchi: dict[int, asyncio.Lock] = {}
+        self._blocchi = BlocchiDeboli()
 
     async def cog_load(self) -> None:
         await super().cog_load()
@@ -149,7 +150,7 @@ class SlashServerCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------ sync con Discord
     def _blocco(self, guild_id: int) -> asyncio.Lock:
-        return self._blocchi.setdefault(guild_id, asyncio.Lock())
+        return self._blocchi.prendi(guild_id)
 
     async def sincronizza(self, guild_id: int) -> tuple[str, int]:
         """("fatto"|"uguale"|"attesa"|"limite"|"errore", secondi da aspettare). Una sync per volta per server."""

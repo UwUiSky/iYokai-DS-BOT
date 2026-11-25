@@ -1371,10 +1371,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
     # ECO-063: toglie i ruoli comprati nello shop che sono scaduti.
     @giro_periodico(minutes=5)
     async def _scadenza_ruoli_shop(self) -> None:
-        try:
-            await self.togli_ruoli_shop_scaduti()
-        except Exception:
-            logger.exception("Errore nel giro dei ruoli dello shop scaduti")
+        await self.togli_ruoli_shop_scaduti()
 
     @_scadenza_ruoli_shop.before_loop
     async def _before_scadenza_ruoli_shop(self) -> None:

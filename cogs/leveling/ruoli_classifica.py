@@ -91,17 +91,14 @@ class RuoliClassificaCog(CogConGruppi, commands.Cog):
 
     @giro_periodico(hours=1)
     async def _giro(self) -> None:
-        try:
-            for guild_id in await leveling_ruoli_classifica_repo.server_con_ruoli():
-                guild = self.bot.get_guild(guild_id)
-                if guild is None or not await db.is_module_active_for_guild(guild_id, MODULE_LEVELING):
-                    continue
-                try:
-                    await self.aggiorna_server(guild)
-                except Exception:
-                    logger.exception("Ruoli di classifica non aggiornati nel server %s.", guild_id)
-        except Exception:
-            logger.exception("Giro dei ruoli di classifica fallito.")
+        for guild_id in await leveling_ruoli_classifica_repo.server_con_ruoli():
+            guild = self.bot.get_guild(guild_id)
+            if guild is None or not await db.is_module_active_for_guild(guild_id, MODULE_LEVELING):
+                continue
+            try:
+                await self.aggiorna_server(guild)
+            except Exception:
+                logger.exception("Ruoli di classifica non aggiornati nel server %s.", guild_id)
 
     @_giro.before_loop
     async def _prima(self) -> None:

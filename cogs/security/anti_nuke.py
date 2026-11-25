@@ -61,6 +61,7 @@ from core.security_audit import (
     ATTESE_REGISTRO,
     ATTESE_REGISTRO_USCITA,
     LOOKBACK_REGISTRO_SECONDI,
+    registra_voce,
     resolve_voce,
 )
 from core.security_logic import (
@@ -98,6 +99,7 @@ from core.security_quarantine import (
 )
 from core.security_rate_tracker import security_rate_tracker
 from cogs.moderation._shared import ensure_module_enabled, try_dm
+from core.blocchi_deboli import BlocchiDeboli
 
 logger = logging.getLogger("iyokai.anti_nuke")
 
@@ -282,11 +284,12 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         # (server, autore) -> oggetti cancellati non ancora recuperati
         # perché l'autore era ancora sotto soglia.
         self._in_attesa: BoundedCache[tuple[int, int], list[tuple[datetime, str, object]]] = BoundedCache(max_size=500)
-        # (server, autore) -> blocco: eventi simultanei dello stesso attacco
-        # non puniscono due volte.
-        self._blocchi_punizione: BoundedCache[tuple[int, int], asyncio.Lock] = BoundedCache(max_size=500)
         # Server -> (ora dell'ultimo controllo dei prune, ID dell'ultima voce contata).
         self._prune: BoundedCache[int, tuple[datetime, int | None]] = BoundedCache(max_size=500)
+        # (server, autore) -> blocco: eventi simultanei dello stesso attacco non puniscono due volte.
+        # I blocchi della punizione NON stanno in una cache che sfratta: un blocco sfrattato mentre qualcuno lo
+        # tiene farebbe punire due volte lo stesso attacco. Con riferimenti deboli un blocco vive finché serve.
+        self._blocchi_punizione = BlocchiDeboli()
 
     async def _solo_chi_gestisce(
         self, interaction: discord.Interaction, settings: SecuritySettings
@@ -965,11 +968,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         # Una punizione per attacco: gli eventi che arrivano mentre il primo
         # sta ancora punendo, o dopo, aspettano e trovano il caso gia' aperto.
         chiave = (guild.id, actor_id)
-        blocco = self._blocchi_punizione.get(chiave)
-        if blocco is None:
-            blocco = asyncio.Lock()
-            self._blocchi_punizione.set(chiave, blocco)
-        async with blocco:
+        async with self._blocchi_punizione.prendi(chiave):
             await self._punisci_una_volta(guild, settings, category, actor_id, detail_suffix, quanti)
         return settings
 
@@ -1040,6 +1039,11 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
             qid = (await security_repo.get_settings(guild.id)).quarantine_role_id
             return qid is not None and any(r.id == qid for r in rimasti) and all(r.id == qid for r in rimasti)
         return not rimasti
+
+    @commands.Cog.listener()
+    async def on_audit_log_entry_create(self, entry: discord.AuditLogEntry) -> None:
+        """Le voci del registro di controllo arrivano da sole: si tengono in memoria per trovare l'autore senza leggerle."""
+        registra_voce(entry)
 
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel: discord.abc.GuildChannel) -> None:

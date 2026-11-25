@@ -65,10 +65,7 @@ class BackupSnapshotWorker:
 
         @giro_periodico(seconds=TICK_SECONDS)
         async def _loop():
-            try:
-                await self.tick(main_bot)
-            except Exception:
-                logger.exception("Errore nel tick dello snapshot settimanale utenti")
+            await self.tick(main_bot)
 
         @_loop.before_loop
         async def _before():

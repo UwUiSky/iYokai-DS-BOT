@@ -21,6 +21,7 @@ import discord
 from core import bot_roles, log_webhook
 from core.bounded_cache import BoundedCache
 from core.repositories.output_channel_repo import output_channel_repo
+from core.blocchi_deboli import BlocchiDeboli
 
 logger = logging.getLogger("iyokai.channel_router")
 
@@ -76,18 +77,14 @@ _avvisati: set[tuple[int, str]] = set()
 # (guild_id, tipo) con un avviso in corso: due eventi insieme non mandano due DM.
 _avvisando: set[tuple[int, str]] = set()
 # Un blocco per (server, tipo): due invii insieme in un forum creano un solo post.
-_blocchi: BoundedCache[tuple[int, str], asyncio.Lock] = BoundedCache(10_000)
+_blocchi = BlocchiDeboli()
 # (guild_id, tipo, di_mod): il post visto da ciascun bot. Un thread porta con sé il
 # client che lo ha in cache: quello di Mod non va usato quando scrive il principale.
 _post_noti: BoundedCache[tuple[int, str, bool], discord.Thread] = BoundedCache(10_000)
 
 
 def _blocco(chiave: tuple[int, str]) -> asyncio.Lock:
-    blocco = _blocchi.get(chiave)
-    if blocco is None:
-        blocco = asyncio.Lock()
-        _blocchi.set(chiave, blocco)
-    return blocco
+    return _blocchi.prendi(chiave)
 
 
 def canale_nascosto(canale) -> bool:

@@ -77,10 +77,7 @@ class NegozioExtraCog(CogConGruppi, commands.Cog):
 
     @giro_periodico(hours=6)
     async def _pulizia(self) -> None:
-        try:
-            await negozio_repo.pulisci_offerte()
-        except Exception:
-            logger.warning("Pulizia offerte non riuscita", exc_info=True)
+        await negozio_repo.pulisci_offerte()
 
     @_pulizia.before_loop
     async def _prima(self) -> None:

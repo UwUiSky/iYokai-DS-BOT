@@ -103,10 +103,7 @@ class GuildClanExpiryWorker:
 
         @giro_periodico(seconds=TICK_SECONDS)
         async def _loop():
-            try:
-                await self.tick(bot)
-            except Exception:
-                logger.exception("Errore nel tick del guild clan expiry worker")
+            await self.tick(bot)
 
         @_loop.before_loop
         async def _before():

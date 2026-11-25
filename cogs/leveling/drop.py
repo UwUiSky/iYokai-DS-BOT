@@ -79,10 +79,7 @@ class DropCog(CogConGruppi, commands.Cog):
 
     @giro_periodico(minutes=2)
     async def _rimborsi(self) -> None:
-        try:
-            await lasciti_repo.rimborsa_scaduti()
-        except Exception:
-            logger.exception("Giro dei rimborsi dei lasciti")
+        await lasciti_repo.rimborsa_scaduti()
 
     @_rimborsi.before_loop
     async def _prima(self) -> None:

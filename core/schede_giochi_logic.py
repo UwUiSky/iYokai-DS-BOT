@@ -25,6 +25,7 @@ from pathlib import Path
 from urllib.parse import quote, urlparse
 
 from core import safe_http
+from core.blocchi_deboli import BlocchiDeboli
 
 logger = logging.getLogger("iyokai.schede")
 
@@ -84,12 +85,12 @@ async def _http(url: str, **kw) -> str | None:
 
 
 _ultimo: dict[str, float] = {}
-_serrature: dict[str, asyncio.Lock] = {}
+_serrature = BlocchiDeboli()
 
 
 async def _ritmo(nome: str, secondi: float) -> None:
     """Aspetta che passino `secondi` dall'ultima richiesta allo stesso servizio (Scryfall 100 ms, osu! 1 s)."""
-    serratura = _serrature.setdefault(nome, asyncio.Lock())
+    serratura = _serrature.prendi(nome)
     async with serratura:
         attesa = _ultimo.get(nome, 0.0) + secondi - time.monotonic()
         if attesa > 0:

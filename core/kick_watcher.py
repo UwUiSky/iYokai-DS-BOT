@@ -166,10 +166,7 @@ class KickWatcherService:
 
         @giro_periodico(seconds=intervallo("kick"))  # ALR-034: da .env, con minimo
         async def _loop():
-            try:
-                await self.tick(bot)
-            except Exception:
-                logger.exception("Errore nel tick del Kick watcher")
+            await self.tick(bot)
 
         @_loop.before_loop
         async def _before():

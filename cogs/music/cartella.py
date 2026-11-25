@@ -85,10 +85,7 @@ class MusicCartellaCog(CogConGruppi, commands.Cog):
 
     @giro_periodico(minutes=MINUTI_SCANSIONE)
     async def _giro(self) -> None:
-        try:
-            await aggiorna_elenco()
-        except Exception:
-            logger.exception("Lettura della cartella dei brani non riuscita.")
+        await aggiorna_elenco()
 
     @_giro.before_loop
     async def _prima_del_giro(self) -> None:

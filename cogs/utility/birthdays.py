@@ -46,10 +46,7 @@ class BirthdaysCog(CogConGruppi, commands.Cog):
 
         @giro_periodico(minutes=30)
         async def _giro() -> None:
-            try:
-                await self._worker.tick(self.bot)
-            except Exception:
-                logger.exception("Errore nel giro dei compleanni")
+            await self._worker.tick(self.bot)
 
         @_giro.before_loop
         async def _prima() -> None:

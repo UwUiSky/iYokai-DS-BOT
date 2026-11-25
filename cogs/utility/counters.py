@@ -53,10 +53,7 @@ class CountersCog(CogConGruppi, commands.Cog):
 
         @giro_periodico(seconds=INTERVALLO_SECONDI)
         async def _giro() -> None:
-            try:
-                await self._worker.tick(self.bot)
-            except Exception:
-                logger.exception("Errore nel giro dei contatori")
+            await self._worker.tick(self.bot)
 
         @_giro.before_loop
         async def _prima() -> None:

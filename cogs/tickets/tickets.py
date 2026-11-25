@@ -200,6 +200,9 @@ _ATTIVITA_OGNI_SECONDI = 60
 # Un file allegato deve restare sotto i 10 MiB (LIM-55). Ci fermiamo a
 # 8 per lasciare margine al resto della richiesta.
 MAX_TRANSCRIPT_FILE_BYTES = 8 * 1024 * 1024
+# Un ticket enorme (decine di migliaia di messaggi) porterebbe il processo in OOM: si leggono al massimo
+# questi messaggi, i più vecchi per primi, e il transcript dice che è troncato.
+TETTO_MESSAGGI_TRANSCRIPT = 10_000
 MAX_COPIE_TRANSCRIPT = 30  # allegati conservati 30 giorni per ogni transcript (D74); gli altri restano nome e peso
 
 # Chi sta aprendo un ticket in questo momento: (id server, id utente).
@@ -3597,8 +3600,13 @@ class TicketsCog(CogConGruppi, commands.Cog):
         Senza l'intent Message Content Discord consegna i messaggi
         vuoti (BUG-5): in quel caso l'intestazione lo dice.
         """
-        messaggi = [m async for m in channel.history(limit=None, oldest_first=True)]
-        return self._testo_da_messaggi(ticket, messaggi)
+        messaggi = await self._leggi_messaggi(channel)
+        return await asyncio.to_thread(self._testo_da_messaggi, ticket, messaggi)
+
+    @staticmethod
+    async def _leggi_messaggi(channel) -> list:
+        """La history del ticket, UNA sola lettura, dai più vecchi e con un tetto (TETTO_MESSAGGI_TRANSCRIPT)."""
+        return [m async for m in channel.history(limit=TETTO_MESSAGGI_TRANSCRIPT, oldest_first=True)]
 
     def _testo_da_messaggi(self, ticket, messaggi) -> str:
         header = [
@@ -3612,6 +3620,8 @@ class TicketsCog(CogConGruppi, commands.Cog):
             header.append(f"Motivo di chiusura: {ticket.close_reason}")
         if not self.bot.intents.message_content:
             header.append(MESSAGE_CONTENT_WARNING)
+        if len(messaggi) >= TETTO_MESSAGGI_TRANSCRIPT:
+            header.append(f"Transcript troncato ai primi {TETTO_MESSAGGI_TRANSCRIPT} messaggi.")
         righe = []
         for messaggio in messaggi:
             righe.append(
@@ -3670,11 +3680,11 @@ class TicketsCog(CogConGruppi, commands.Cog):
             risultato.append(AllegatoT(nome_pulito(allegato.filename), allegato.size or 0, sha, png, tipo[:80]))
         return tuple(risultato)
 
-    async def _conserva_copie_canale(self, guild: discord.Guild, channel) -> None:
+    async def _conserva_copie_canale(self, guild: discord.Guild, channel, messaggi: list) -> None:
         """Transcript solo testo: gli allegati si conservano comunque 30 giorni (D74). Non ferma mai la chiusura."""
         fatte = 0
         try:
-            async for m in channel.history(limit=None, oldest_first=True):
+            for m in messaggi:
                 for indice, allegato in enumerate(m.attachments):
                     if indice >= allegati_sicuri.MAX_PER_MESSAGGIO or fatte >= MAX_COPIE_TRANSCRIPT:
                         break
@@ -3696,14 +3706,16 @@ class TicketsCog(CogConGruppi, commands.Cog):
         """
         opzioni = await _opzioni_pannello(ticket.panel_id)
         formato = tr_logic.formato_valido(opzioni.transcript_formato)
+        messaggi = await self._leggi_messaggi(channel)  # una sola lettura per tutti i formati
         if formato == "testo" and not opzioni.allegati_zip and parti_out is None:
-            await self._conserva_copie_canale(guild, channel)
-            return self._transcript_files(await self._build_transcript_text(channel, ticket), ticket.ticket_number)
-        messaggi = [m async for m in channel.history(limit=None, oldest_first=True)]
+            await self._conserva_copie_canale(guild, channel, messaggi)
+            testo = await asyncio.to_thread(self._testo_da_messaggi, ticket, messaggi)
+            return await asyncio.to_thread(self._transcript_files, testo, ticket.ticket_number)
         base = f"ticket-{ticket.ticket_number:04d}"
         file_pronti: list[tuple[str, bytes]] = []
         if formato in ("testo", "entrambi"):
-            file_pronti += self._transcript_files(self._testo_da_messaggi(ticket, messaggi), ticket.ticket_number)
+            testo = await asyncio.to_thread(self._testo_da_messaggi, ticket, messaggi)
+            file_pronti += await asyncio.to_thread(self._transcript_files, testo, ticket.ticket_number)
         conteggio = [0]
         convertiti = []
         tutti: list[AllegatoT] = []
@@ -3728,7 +3740,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
                 ) + ((("Motivo di chiusura", ticket.close_reason),) if ticket.close_reason else ())),
                 None if self.bot.intents.message_content else MESSAGE_CONTENT_WARNING,
             )
-            parti = tr_logic.html_in_parti(testata, convertiti)
+            parti = await asyncio.to_thread(tr_logic.html_in_parti, testata, convertiti)  # fuori dal ciclo principale
             if parti_out is not None:
                 parti_out.extend(parti)
             for numero, pagina in enumerate(parti, start=1):
@@ -3737,7 +3749,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
                 nome = f"{base}-transcript.html" if len(parti) == 1 else f"{base}-transcript-parte-{numero}-di-{len(parti)}.html"
                 file_pronti.append((nome, pagina.encode("utf-8")))
         if opzioni.allegati_zip:
-            archivio = tr_logic.zip_allegati(tutti)
+            archivio = await asyncio.to_thread(tr_logic.zip_allegati, tutti)
             if archivio:
                 file_pronti.append((f"{base}-allegati.zip", archivio))
         return file_pronti

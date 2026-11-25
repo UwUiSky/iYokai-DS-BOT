@@ -140,6 +140,7 @@ from core.music_jukebox_logic import Esito, esegui_con_addebito
 from core.repositories.main_radio_repo import main_radio_repo
 from core.repositories.music_jukebox_repo import music_jukebox_repo
 from core.safe_http import url_e_sicuro
+from core.blocchi_deboli import BlocchiDeboli
 
 logger = logging.getLogger("iyokai.music")
 
@@ -219,7 +220,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         # Server in cui la radio si sta avviando (comando o ingresso del
         # bot in vocale): evita un secondo avvio dallo stesso evento.
         self._radio_in_avvio: set[int] = set()
-        self._lock_canali: dict[tuple[int, int], asyncio.Lock] = {}
+        self._lock_canali = BlocchiDeboli()
 
     async def cog_load(self) -> None:
         await super().cog_load()
@@ -763,7 +764,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         self._applica_modo_coda(player, impostazioni)
 
     def blocco_canale(self, guild_id: int, canale_id: int) -> asyncio.Lock:
-        return self._lock_canali.setdefault((guild_id, canale_id), asyncio.Lock())
+        return self._lock_canali.prendi((guild_id, canale_id))
 
     async def rilascia_se_libero(self, worker_guild, guild_id: int, canale_id: int) -> None:
         """Libera lo slot SOLO se il bot non e' in vocale (mai sotto un player che suona)."""

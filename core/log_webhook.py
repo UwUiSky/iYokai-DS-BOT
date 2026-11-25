@@ -22,6 +22,7 @@ import unicodedata
 import discord
 
 from core.repositories.log_webhook_repo import ChiaveNonConfigurata, log_webhook_repo
+from core.blocchi_deboli import BlocchiDeboli
 
 logger = logging.getLogger("iyokai.log_webhook")
 
@@ -44,7 +45,7 @@ _SOLO_CANALE = ("view", "file", "files")  # bottoni: li gestisce il bot; file: i
 # (guild_id, channel_id) -> wrapper vivo: tiene la coda e il webhook in cache.
 _vivi: dict[tuple[int, int], "CanaleWebhook"] = {}
 # (guild_id, channel_id) -> blocco: righe insieme su un canale nuovo creano un solo webhook.
-_blocchi: dict[tuple[int, int], asyncio.Lock] = {}
+_blocchi = BlocchiDeboli()
 
 
 def nome_a_nome_utente(nome: str | None) -> str:
@@ -247,7 +248,7 @@ async def avvolgi(canale: discord.TextChannel, attivo: bool):
     if not attivo:
         return canale
     chiave = (canale.guild.id, canale.id)
-    async with _blocchi.setdefault(chiave, asyncio.Lock()):
+    async with _blocchi.prendi(chiave):
         vivo = _vivi.get(chiave)
         if vivo is not None:
             vivo._canale = canale  # il canale visto dal bot di turno (principale o Mod)

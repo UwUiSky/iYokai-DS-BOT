@@ -27,6 +27,7 @@ from core.automod_azioni import Bersaglio, esegui_azioni
 from core.automod_regole_logic import azioni_da_json
 from core.bounded_cache import BoundedCache
 from core.i18n import lingua_risposta, t
+from core.blocchi_deboli import BlocchiDeboli
 
 logger = logging.getLogger("iyokai.account_rubato")
 
@@ -36,15 +37,11 @@ PAUSA_DM_S = 6 * 3600  # un solo messaggio privato per persona, anche se continu
 registro = lg.RegistroInvii()
 _avvisi: BoundedCache[tuple[int, int], tuple[int, int]] = BoundedCache(5_000)  # (server, persona) -> (canale, messaggio)
 _dm_fatti: BoundedCache[int, float] = BoundedCache(5_000)
-_serrature: BoundedCache[int, asyncio.Lock] = BoundedCache(5_000)  # una persona alla volta: lo spam arriva a raffica
+_serrature = BlocchiDeboli()  # una persona alla volta: lo spam arriva a raffica
 
 
 def _serratura(user_id: int) -> asyncio.Lock:
-    serratura = _serrature.get(user_id)
-    if serratura is None:
-        serratura = asyncio.Lock()
-        _serrature.set(user_id, serratura)
-    return serratura
+    return _serrature.prendi(user_id)
 
 
 def firma_da_messaggio(message: discord.Message) -> str | None:

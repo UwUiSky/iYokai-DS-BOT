@@ -298,17 +298,14 @@ class AiBossCog(CogConGruppi, commands.Cog):
     @giro_periodico(seconds=5)
     async def _ciclo(self) -> None:
         """Ridisegna gli eventi toccati, chiude quelli scaduti e, ogni minuto, fa comparire i boss a orario."""
-        try:
-            for ev_id in list(AGGIORNA):
-                AGGIORNA.discard(ev_id)
-                await aggiorna_messaggio(self.bot, ev_id)
-            for ev in await ai_gioco_repo.boss_scaduti():
-                await chiudi_evento(self.bot, ev.id, "fuggito")
-            adesso = datetime.now(timezone.utc)
-            if adesso.second < 5:
-                await self._comparse_programmate(adesso)
-        except Exception:
-            logger.warning("Giro del World Boss non riuscito.", exc_info=True)
+        for ev_id in list(AGGIORNA):
+            AGGIORNA.discard(ev_id)
+            await aggiorna_messaggio(self.bot, ev_id)
+        for ev in await ai_gioco_repo.boss_scaduti():
+            await chiudi_evento(self.bot, ev.id, "fuggito")
+        adesso = datetime.now(timezone.utc)
+        if adesso.second < 5:
+            await self._comparse_programmate(adesso)
 
     @_ciclo.before_loop
     async def _prima(self) -> None:

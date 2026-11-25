@@ -29,12 +29,13 @@ from core.database import db
 from core.invite_tracker import invite_tracker
 from core.repositories.invite_links_repo import LinkPersonale, invite_links_repo
 from core.repositories.invite_stats_repo import invite_stats_repo
+from core.blocchi_deboli import BlocchiDeboli
 
 logger = logging.getLogger("iyokai.invite_service")
 
 MODULO_INVITI = "invites"
 NON_CAMBIARE = object()
-_blocchi: dict[str, asyncio.Lock] = {}
+_blocchi = BlocchiDeboli()
 # Inviti visti vivi da poco: {codice: quando}. Oltre VERIFICA_VALIDA secondi si richiede a Discord
 # (la cache del tracker si aggiorna solo agli ingressi e non sa se un invito è stato cancellato).
 VERIFICA_VALIDA = 300
@@ -245,10 +246,7 @@ async def invito_discord(bot, guild: discord.Guild, link: LinkPersonale, membro=
     uno nuovo (senza scadenza e senza limite d'usi, solo di quel membro, in un canale dove anche lui
     può creare inviti). Al massimo MAX_INVITI_PERSONALI inviti per server.
     """
-    if len(_blocchi) > 2000:  # pulizia: tengo solo i blocchi in uso
-        for chiave in [k for k, b in _blocchi.items() if not b.locked()]:
-            del _blocchi[chiave]
-    blocco = _blocchi.setdefault(link.slug, asyncio.Lock())
+    blocco = _blocchi.prendi(link.slug)
     async with blocco:
         attuale = await invite_links_repo.da_slug(link.slug)
         if attuale is None:

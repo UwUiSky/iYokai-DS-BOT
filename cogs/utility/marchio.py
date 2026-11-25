@@ -83,10 +83,7 @@ class MarchioCog(CogConGruppi, commands.Cog):
 
     @giro_periodico(minutes=INTERVALLO_MINUTI)
     async def _giro(self) -> None:
-        try:
-            await self.gestore.riconcilia()
-        except Exception:
-            logger.warning("Allineamento dei bot con marchio fallito.", exc_info=True)
+        await self.gestore.riconcilia()
 
     @_giro.before_loop
     async def _prima_del_giro(self) -> None:

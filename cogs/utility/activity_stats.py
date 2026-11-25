@@ -116,10 +116,7 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
 
         @giro_periodico(minutes=30)
         async def _ruoli() -> None:
-            try:
-                await self.aggiorna_ruoli()
-            except Exception:
-                logger.exception("Errore nel giro dei ruoli per attività")
+            await self.aggiorna_ruoli()
 
         @_ruoli.before_loop
         async def _prima_ruoli() -> None:
@@ -127,10 +124,7 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
 
         @giro_periodico(hours=1)
         async def _campioni() -> None:
-            try:
-                await self.campiona_online()
-            except Exception:
-                logger.exception("Errore nei campioni dei membri online")
+            await self.campiona_online()
 
         @_campioni.before_loop
         async def _prima_campioni() -> None:

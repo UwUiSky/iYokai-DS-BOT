@@ -54,6 +54,7 @@ from core.bot_supervisor import (
 from core.image_search_fetcher import image_search_fetcher
 from core.animal_fetcher import animal_fetcher
 from core.database import db
+from core.log_coda import avvia_log_in_coda, ferma_log_in_coda
 from core.salute import avvia_misure as salute_avvia_misure
 from core.salute import build_app as salute_build_app
 from core.salute import start_server as salute_start_server
@@ -153,7 +154,9 @@ def setup_logging() -> None:
     )
     file_handler.setFormatter(JSONFormatter())
 
-    logging.basicConfig(level=level, handlers=[console_handler, file_handler], force=True)
+    # Console e file stanno dietro una coda: la scrittura su disco avviene in un thread a parte e non
+    # ferma il ciclo asyncio quando il disco è lento (core/log_coda.py).
+    avvia_log_in_coda([console_handler, file_handler], level)
 
 
 logger = logging.getLogger("iyokai.main")
@@ -924,6 +927,7 @@ async def main() -> None:
             termina_database=db.terminate,
         )
         logger.info("Database disconnesso. Arresto completato.")
+        ferma_log_in_coda()  # scrive gli ultimi messaggi rimasti in coda
 
 
 if __name__ == "__main__":

@@ -48,10 +48,7 @@ class PuliziaAutomodCog(CogConGruppi, commands.Cog):
 
     @giro_periodico(minutes=5)
     async def _ciclo(self) -> None:
-        try:
-            await self.giro()
-        except Exception:  # noqa: BLE001
-            logger.warning("Giro di pulizia dei canali non riuscito.", exc_info=True)
+        await self.giro()
 
     @_ciclo.before_loop
     async def _prima(self) -> None:

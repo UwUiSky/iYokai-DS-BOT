@@ -239,3 +239,47 @@ async def test_alla_chiusura_la_trascrizione_si_conserva_cifrata(monkeypatch, cl
     await cog._deliver_transcript(guild, canale, ticket, dm=False)
     riga = await clean_db.fetchrow("SELECT cifrato FROM ticket_trascrizioni WHERE ticket_id = 41")
     assert riga is not None and "ciao" not in riga["cifrato"] and "<b>" not in riga["cifrato"]
+
+
+# ====================================================================
+# Blocco C: una sola lettura, con un tetto, e il rendering fuori dal ciclo principale
+# ====================================================================
+@pytest.mark.parametrize("formato", ["testo", "html", "entrambi"])
+async def test_la_history_si_legge_una_volta_sola_con_il_tetto(monkeypatch, formato):
+    monkeypatch.setattr(modulo, "_opzioni_pannello", AsyncMock(return_value=Opzioni(transcript_formato=formato)))
+    _finto_allegati_sicuri(monkeypatch, {"buona.png": EsitoImmagine(PULITA, "ab" * 32, png=b"PNG")})
+    cog, guild, canale, ticket = _scena([_allegato("buona.png")])
+    await cog._file_transcript(guild, canale, ticket)
+    assert canale.history.call_count == 1  # prima il formato «testo» leggeva il canale due volte
+    assert canale.history.call_args.kwargs["limit"] == modulo.TETTO_MESSAGGI_TRANSCRIPT  # mai limit=None
+
+
+async def test_un_transcript_oltre_il_tetto_dice_di_essere_troncato(monkeypatch):
+    monkeypatch.setattr(modulo, "_opzioni_pannello", AsyncMock(return_value=Opzioni(transcript_formato="testo")))
+    monkeypatch.setattr(modulo, "TETTO_MESSAGGI_TRANSCRIPT", 1)
+    cog, guild, canale, ticket = _scena([])
+    file = dict(await cog._file_transcript(guild, canale, ticket))
+    assert "troncato ai primi 1 messaggi" in file["ticket-0001-transcript.txt"].decode()
+
+
+async def test_il_rendering_pesante_gira_fuori_dal_ciclo_principale(monkeypatch):
+    import threading
+
+    monkeypatch.setattr(modulo, "_opzioni_pannello", AsyncMock(return_value=Opzioni(transcript_formato="entrambi", allegati_zip=True)))
+    visti: dict[str, str] = {}
+    vero_html, vero_testo = tr.html_in_parti, modulo.TicketsCog._testo_da_messaggi
+
+    def html(*a, **k):
+        visti["html"] = threading.current_thread().name
+        return vero_html(*a, **k)
+
+    def testo(self, *a, **k):
+        visti["testo"] = threading.current_thread().name
+        return vero_testo(self, *a, **k)
+
+    monkeypatch.setattr(tr, "html_in_parti", html)
+    monkeypatch.setattr(modulo.TicketsCog, "_testo_da_messaggi", testo)
+    cog, guild, canale, ticket = _scena([])
+    await cog._file_transcript(guild, canale, ticket)
+    principale = threading.current_thread().name
+    assert visti["html"] != principale and visti["testo"] != principale

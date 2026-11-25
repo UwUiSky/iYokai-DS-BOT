@@ -317,5 +317,5 @@ class TestIngressiInsieme:
             tracker.resolve_join_invite(server, member_id=2),
         )
 
-        assert tracker._guild_locks == {}
+        assert len(tracker._guild_locks) == 0
         assert tracker._in_corso == {}

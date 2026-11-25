@@ -40,6 +40,7 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 from core.command_access import TipoRuolo
 from core.command_groups import nomi_gruppi
+from core.blocchi_deboli import BlocchiDeboli
 
 logger = logging.getLogger("iyokai.command_permissions")
 
@@ -365,7 +366,7 @@ def _in_scadenza(token: TokenPermessi) -> bool:
     return token.scade_il - datetime.now(timezone.utc) < RINNOVA_SE_SCADE_ENTRO
 
 
-_BLOCCHI_RINNOVO: dict[tuple[int, int], asyncio.Lock] = {}
+_BLOCCHI_RINNOVO = BlocchiDeboli()
 
 
 async def _token_valido(guild_id: int, token: TokenPermessi, repo, client) -> tuple[TokenPermessi | None, str]:
@@ -376,7 +377,7 @@ async def _token_valido(guild_id: int, token: TokenPermessi, repo, client) -> tu
     """
     if not _in_scadenza(token):
         return token, STATO_OK
-    blocco = _BLOCCHI_RINNOVO.setdefault((id(asyncio.get_running_loop()), guild_id), asyncio.Lock())
+    blocco = _BLOCCHI_RINNOVO.prendi((id(asyncio.get_running_loop()), guild_id))
     async with blocco:
         attuale = await repo.get(guild_id)
         if attuale is None:

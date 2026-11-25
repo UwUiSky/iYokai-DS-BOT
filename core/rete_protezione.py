@@ -22,14 +22,14 @@ import discord
 
 from core import bot_roles
 from core import rete_protezione_logic as lg
-from core.bounded_cache import BoundedCache
 from core.i18n import testo_guild
 from core.repositories.moderation_repo import moderation_repo
 from core.repositories.rete_repo import rete_repo
+from core.blocchi_deboli import BlocchiDeboli
 
 logger = logging.getLogger("iyokai.rete")
 
-_serrature: BoundedCache[int, asyncio.Lock] = BoundedCache(5_000)  # un utente alla volta: l'allarme arriva a raffica
+_serrature = BlocchiDeboli()  # un utente alla volta: l'allarme arriva a raffica
 _ORIGINE_CASO = "rete"
 
 
@@ -40,11 +40,7 @@ class Risultato:
 
 
 def _serratura(user_id: int) -> asyncio.Lock:
-    s = _serrature.get(user_id)
-    if s is None:
-        s = asyncio.Lock()
-        _serrature.set(user_id, s)
-    return s
+    return _serrature.prendi(user_id)
 
 
 def _adesso() -> datetime:

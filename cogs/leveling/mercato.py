@@ -38,10 +38,7 @@ class MercatoCog(CogConGruppi, commands.Cog):
 
     @giro_periodico(minutes=10)
     async def _scadenze(self) -> None:
-        try:
-            await mercato_repo.scadenze()
-        except Exception:
-            logger.exception("Scadenza degli annunci")
+        await mercato_repo.scadenze()
 
     @_scadenze.before_loop
     async def _prima(self) -> None:

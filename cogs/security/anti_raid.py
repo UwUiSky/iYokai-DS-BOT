@@ -1150,12 +1150,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
     # ================================================================
     @giro_periodico(seconds=60)
     async def _controlla_scadenze(self) -> None:
-        try:
-            await self.ripristina_blocchi_scaduti(discord.utils.utcnow())
-        except Exception:
-            # Un'eccezione che esce da qui spegnerebbe il controllo fino
-            # al riavvio: si riprova al prossimo minuto.
-            logger.exception("Errore nel controllo delle scadenze dei blocchi anti-raid")
+        await self.ripristina_blocchi_scaduti(discord.utils.utcnow())
 
     @_controlla_scadenze.before_loop
     async def _prima_del_controllo(self) -> None:

@@ -27,6 +27,7 @@ from core.comandi_diretti import ComandoDiretto, percorso_vero
 import asyncio
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+from core.blocchi_deboli import BlocchiDeboli
 
 CHIAVE_COMANDI_OFF = "policy_comandi_off"
 CHIAVE_CANALI_OK = "policy_canali_ok"
@@ -44,12 +45,12 @@ MAX_LUNGHEZZA_PERCORSO = 100
 # Mai spenti: servono a rimettere a posto la politica.
 PREFISSI_SEMPRE_APERTI = ("admin-bot", "admin-bot-config", "owner", "owner-radio")
 
-_blocchi_elenco: dict[int, asyncio.Lock] = {}
+_blocchi_elenco = BlocchiDeboli()
 
 
 def _blocco_elenco(guild_id: int) -> asyncio.Lock:
     """Un solo cambio alla volta agli elenchi di un server: leggi-modifica-scrivi non si perde aggiunte."""
-    return _blocchi_elenco.setdefault(guild_id, asyncio.Lock())
+    return _blocchi_elenco.prendi(guild_id)
 
 
 MOTIVO_COMANDO_OFF = "pol_comando_spento"

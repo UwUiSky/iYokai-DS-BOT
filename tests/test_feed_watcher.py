@@ -263,3 +263,94 @@ async def test_tick_errore_imprevisto_su_una_sottoscrizione_non_ferma_le_altre(
 
     assert len(canale.sent_messages) == 1
     assert "Nuovo post" in canale.sent_messages[0]
+
+
+# ---- blocco C: dopo i rifiuti 403 di Discord pausa crescente e poi la sottoscrizione si ferma ----
+def test_freni_pausa_crescente_e_disattivazione_al_quinto_rifiuto():
+    from core.feed_alert_gate import FreniInvio
+
+    f = FreniInvio()
+    k = ("rss", 1)
+    assert f.puo_provare(k, 0.0)
+    assert f.rifiutato(k, 0.0) is False
+    assert not f.puo_provare(k, 599.0) and f.puo_provare(k, 601.0)  # prima pausa: 10 minuti
+    assert f.rifiutato(k, 1000.0) is False
+    assert not f.puo_provare(k, 1000.0 + 1799.0)  # seconda: 30 minuti
+    for _ in range(2):
+        assert f.rifiutato(k, 5000.0) is False
+    assert f.rifiutato(k, 6000.0) is True  # il quinto: da disattivare
+    assert f.puo_provare(k, 6000.0)  # e il conto riparte da zero
+
+
+def test_un_invio_riuscito_azzera_i_rifiuti():
+    from core.feed_alert_gate import FreniInvio
+
+    f = FreniInvio()
+    k = ("rss", 2)
+    for _ in range(4):
+        f.rifiutato(k, 0.0)
+    f.riuscito(k)
+    assert f.rifiutato(k, 0.0) is False  # dal primo, di nuovo
+
+
+@pytest.mark.asyncio
+async def test_il_feed_con_403_non_si_riprova_ogni_giro_e_alla_fine_va_in_pausa(monkeypatch):
+    import discord
+
+    import core.feed_watcher as fw
+    from core.feed_alert_gate import FreniInvio
+
+    chiamate, paused = [], []
+
+    class _Resp:
+        status, reason = 403, "Forbidden"
+
+    async def invia_403(*a, **k):
+        chiamate.append(1)
+        raise discord.Forbidden(_Resp(), "Missing Access")
+
+    from core.alert_options_logic import AlertOptions
+
+    async def opz_get(kind, sub_id):
+        return AlertOptions()
+
+    async def set_fields(kind, sub_id, guild_id, **campi):
+        paused.append(campi)
+
+    async def mai_pericoloso(link):
+        return False
+
+    async def aggiorna(*a, **k):
+        return None
+
+    monkeypatch.setattr(fw, "invia_alert", invia_403)
+    monkeypatch.setattr(fw, "e_link_pericoloso", mai_pericoloso)
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(fw, "alert_options_repo", SimpleNamespace(get=opz_get, set_fields=set_fields))
+    monkeypatch.setattr(fw, "feed_subscription_repo", SimpleNamespace(update_last_seen=aggiorna))
+    orologio = {"t": 1000.0}
+    monkeypatch.setattr(fw.time, "monotonic", lambda: orologio["t"])
+
+    canale = discord.TextChannel.__new__(discord.TextChannel)
+    guild = type("G", (), {"get_channel": lambda self, cid: canale})()
+    bot = type("B", (), {"get_guild": lambda self, gid: guild})()
+    sottoscrizione = type("S", (), {
+        "id": 7, "guild_id": 1, "channel_id": 2, "feed_url": "x", "label": "L", "message_template": "{titolo}",
+        "last_seen_entry_id": "vecchio", "last_seen_published": None,
+    })()
+    voce = type("V", (), {"entry_id": "nuovo", "link": "https://esempio.org/a", "published": None, "titolo": "T"})()
+    monkeypatch.setattr(fw, "find_new_entries", lambda voci, a, b: [voce])
+    monkeypatch.setattr(fw, "data_piu_recente", lambda voci: None)
+    monkeypatch.setattr(fw, "valori_voce", lambda *a: {})
+    monkeypatch.setattr(fw, "render_template", lambda *a: "msg")
+
+    servizio = fw.FeedWatcherService()
+    for _ in range(3):  # tre giri a distanza di un minuto: la pausa di 10 minuti li salta
+        await servizio._controlla_sottoscrizione(bot, sottoscrizione, [voce])
+        orologio["t"] += 60
+    assert len(chiamate) == 1, "dopo il primo 403 non si deve richiedere subito"
+    for _ in range(FreniInvio.RIFIUTI_PER_DISATTIVARE):
+        orologio["t"] += 30000  # oltre ogni pausa
+        await servizio._controlla_sottoscrizione(bot, sottoscrizione, [voce])
+    assert paused == [{"paused": True}]

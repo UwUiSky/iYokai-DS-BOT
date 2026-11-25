@@ -73,10 +73,7 @@ class WeeklyPersonalDecayWorker:
 
         @giro_periodico(seconds=TICK_SECONDS)
         async def _loop():
-            try:
-                await self.tick()
-            except Exception:
-                logger.exception("Errore nel tick del decadimento settimanale personale")
+            await self.tick()
 
         @_loop.before_loop
         async def _before():

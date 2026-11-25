@@ -83,8 +83,9 @@ from core.voice_temp_logic import (
 from core.premium import PremiumModule, registry
 from core.ui_base import BaseView
 from cogs.voice_temp._pannello import PannelloVocaleView
+from core.blocchi_deboli import BlocchiDeboli
 
-_blocchi_scorta: dict[int, asyncio.Lock] = {}  # VOC-014: una preparazione alla volta per server
+_blocchi_scorta = BlocchiDeboli()  # VOC-014: una preparazione alla volta per server
 
 logger = logging.getLogger("iyokai.voice_temp")
 
@@ -236,7 +237,7 @@ async def _registra(guild: discord.Guild, testo: str, config=None) -> None:
 
 # Un blocco per server: due canali creati insieme non prendono lo stesso
 # numero (scelta del numero, creazione e registrazione in fila).
-_blocchi_numero: dict[int, asyncio.Lock] = {}
+_blocchi_numero = BlocchiDeboli()
 
 
 async def _create_temp_channel(
@@ -286,7 +287,7 @@ async def _create_temp_channel(
         extra = impostazioni_da_generatore(generatore.bitrate, generatore.user_limit, int(guild.bitrate_limit))
     if limite_utenti:
         extra["user_limit"] = limite_utenti
-    async with _blocchi_numero.setdefault(guild.id, asyncio.Lock()):
+    async with _blocchi_numero.prendi(guild.id):
         numero = primo_numero_libero(await voice_temp_repo.numeri_usati(guild.id))
         try:
             channel = await category.create_voice_channel(
@@ -1307,7 +1308,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             category = guild.get_channel(config.category_id) if config.category_id else None
             if not isinstance(category, discord.CategoryChannel) or guild.me is None:
                 return
-            async with _blocchi_scorta.setdefault(guild.id, asyncio.Lock()):
+            async with _blocchi_scorta.prendi(guild.id):
                 vuote = 0
                 for canale_id in await voice_temp_repo.canali_di(guild.id, guild.me.id):
                     canale = guild.get_channel(canale_id)

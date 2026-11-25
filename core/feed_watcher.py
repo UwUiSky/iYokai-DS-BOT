@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from dataclasses import replace
 
 import discord
@@ -29,7 +30,7 @@ from core.controllo_link import e_link_pericoloso
 from core.template_renderer import render_template
 from core.alert_frequenze_logic import intervallo
 from core.bot_ready import attendi_bot_pronto
-from core.feed_alert_gate import AvvisoUnaVolta, filtra_attive
+from core.feed_alert_gate import AvvisoUnaVolta, FreniInvio, filtra_attive
 from core.feed_parsing_logic import (
     data_piu_recente,
     find_new_entries,
@@ -58,6 +59,7 @@ class FeedWatcherService:
     def __init__(self) -> None:
         self._loop_task: tasks.Loop | None = None
         self._avvisi = AvvisoUnaVolta()
+        self._freni = FreniInvio()  # pause e disattivazione dopo i rifiuti 403/404 di Discord
         self._etag_per_url: dict[str, str] = {}
 
     async def _fetch_feed_text(self, url: str, etag: str | None = None) -> Scaricamento | None:
@@ -162,6 +164,8 @@ class FeedWatcherService:
                 )
             return False
         self._avvisi.riarma(("rss", sottoscrizione.id))
+        if not self._freni.puo_provare(("rss", sottoscrizione.id), time.monotonic()):
+            return True  # in pausa dopo un rifiuto di Discord: niente richieste, niente 304 da evitare
 
         opz = replace(await alert_options_repo.get("RSS", sottoscrizione.id), watch_button=False)
 
@@ -191,6 +195,10 @@ class FeedWatcherService:
             messaggio = render_template(sottoscrizione.message_template, valori)
             try:
                 await invia_alert(canale, messaggio, opz, voce.link, valori)
+                self._freni.riuscito(("rss", sottoscrizione.id))
+            except (discord.Forbidden, discord.NotFound):
+                await self._rifiutato(sottoscrizione)
+                return True  # non si ritenta nello stesso giro: la pausa decide quando
             except discord.HTTPException:
                 # P3: invio fallito = niente avanzamento; la voce (e le
                 # successive, per mantenere l'ordine) si ritenta al giro dopo.
@@ -206,6 +214,22 @@ class FeedWatcherService:
                 sottoscrizione.id, voce.entry_id, voce.published
             )
         return True
+
+    async def _rifiutato(self, sottoscrizione) -> None:
+        """Discord ha rifiutato l'invio (403/404): pausa crescente; al quinto di fila la sottoscrizione si mette in pausa."""
+        chiave = ("rss", sottoscrizione.id)
+        if not self._freni.rifiutato(chiave, time.monotonic()):
+            logger.warning(
+                "Discord rifiuta l'invio nel canale %s (server %s): sottoscrizione #%s in pausa.",
+                sottoscrizione.channel_id, sottoscrizione.guild_id, sottoscrizione.id,
+            )
+            return
+        logger.error(
+            "Sottoscrizione #%s (server %s) messa in pausa: Discord ha rifiutato %d invii di fila nel canale %s. "
+            "Lo staff la riattiva con /admin-alert dopo aver sistemato i permessi.",
+            sottoscrizione.id, sottoscrizione.guild_id, FreniInvio.RIFIUTI_PER_DISATTIVARE, sottoscrizione.channel_id,
+        )
+        await alert_options_repo.set_fields("RSS", sottoscrizione.id, sottoscrizione.guild_id, paused=True)
 
     @staticmethod
     async def _durata(voce) -> str:
@@ -225,10 +249,7 @@ class FeedWatcherService:
 
         @giro_periodico(seconds=intervallo("feed"))  # ALR-034: da .env, con minimo
         async def _loop():
-            try:
-                await self.tick(bot)
-            except Exception:
-                logger.exception("Errore nel tick del feed watcher")
+            await self.tick(bot)  # un errore lo gestisce il GiroPeriodico (pausa crescente, avviso all'owner)
 
         @_loop.before_loop
         async def _before():

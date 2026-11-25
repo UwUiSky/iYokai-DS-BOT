@@ -322,18 +322,15 @@ class AiDungeonCog(CogConGruppi, commands.Cog):
 
     @giro_periodico(seconds=5)
     async def _ciclo(self) -> None:
-        try:
-            for partita_id in list(AGGIORNA):
-                AGGIORNA.discard(partita_id)
-                await aggiorna_messaggio(self.bot, partita_id)
-            for p in await ai_gioco_repo.partite_scadute():
-                try:
-                    await avanza(self.bot, p)
-                except Exception:
-                    logger.warning("Dungeon %s non avanzato.", p.id, exc_info=True)
-                    await ai_gioco_repo.partita_chiudi(p.id, "annullata")
-        except Exception:
-            logger.warning("Giro del dungeon non riuscito.", exc_info=True)
+        for partita_id in list(AGGIORNA):
+            AGGIORNA.discard(partita_id)
+            await aggiorna_messaggio(self.bot, partita_id)
+        for p in await ai_gioco_repo.partite_scadute():
+            try:
+                await avanza(self.bot, p)
+            except Exception:
+                logger.warning("Dungeon %s non avanzato.", p.id, exc_info=True)
+                await ai_gioco_repo.partita_chiudi(p.id, "annullata")
 
     @_ciclo.before_loop
     async def _prima(self) -> None:

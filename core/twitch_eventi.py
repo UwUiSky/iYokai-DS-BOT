@@ -100,10 +100,7 @@ class TwitchEventiService:
 
         @giro_periodico(seconds=intervallo("eventi"))
         async def _loop():
-            try:
-                await self.tick(bot)
-            except Exception:
-                logger.exception("Errore nel giro degli eventi dal calendario Twitch")
+            await self.tick(bot)
 
         @_loop.before_loop
         async def _before():

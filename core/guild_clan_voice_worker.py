@@ -178,10 +178,7 @@ class GuildClanVoiceWorker:
 
         @giro_periodico(seconds=TICK_SECONDS)
         async def _loop():
-            try:
-                await self.tick(bot)
-            except Exception:
-                logger.exception("Errore nel tick del guild clan voice worker")
+            await self.tick(bot)
 
         @_loop.before_loop
         async def _before():

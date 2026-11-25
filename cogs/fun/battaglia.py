@@ -238,10 +238,7 @@ class BattagliaCog(CogConGruppi, commands.Cog):
 
     @giro_periodico(minutes=5)
     async def _rimborsi(self) -> None:
-        try:
-            await partite_repo.rimborsa_scadute()
-        except Exception:
-            logger.exception("Giro dei rimborsi delle battaglie")
+        await partite_repo.rimborsa_scadute()
 
     @_rimborsi.before_loop
     async def _prima(self) -> None:

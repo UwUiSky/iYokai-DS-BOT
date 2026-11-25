@@ -83,10 +83,7 @@ class GuildClanTreasuryDecayWorker:
 
         @giro_periodico(seconds=TICK_SECONDS)
         async def _loop():
-            try:
-                await self.tick()
-            except Exception:
-                logger.exception("Errore nel tick del decadimento mensile tesoreria clan")
+            await self.tick()
 
         @_loop.before_loop
         async def _before():

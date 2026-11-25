@@ -70,6 +70,7 @@ import discord
 
 from core.bounded_cache import BoundedCache
 from core.spam_trap_logic import diff_invite_uses
+from core.blocchi_deboli import BlocchiDeboli
 
 logger = logging.getLogger("iyokai.invite_tracker")
 
@@ -128,7 +129,7 @@ class InviteTracker:
         # uno alla volta, così ognuno confronta contatori coerenti.
         # Lock e insieme dei membri "in corso" esistono solo mentre
         # c'è almeno un ingresso da risolvere per quel server.
-        self._guild_locks: dict[int, asyncio.Lock] = {}
+        self._guild_locks = BlocchiDeboli()
         self._in_corso: dict[int, set[int]] = {}
         # {guild_id: (codice, usi rimasti, scadenza)} — usi di un
         # invito già visti e non ancora attribuiti (vedi nota in cima).
@@ -259,7 +260,7 @@ class InviteTracker:
         # sta già lavorando vede subito che c'è un altro ingresso.
         in_corso = self._in_corso.setdefault(guild.id, set())
         in_corso.add(member_id)
-        lock = self._guild_locks.setdefault(guild.id, asyncio.Lock())
+        lock = self._guild_locks.prendi(guild.id)
         try:
             async with lock:
                 # Un altro chiamante potrebbe aver già risolto questa
@@ -274,7 +275,6 @@ class InviteTracker:
             in_corso.discard(member_id)
             if not in_corso:
                 self._in_corso.pop(guild.id, None)
-                self._guild_locks.pop(guild.id, None)
 
     def forget_member(self, guild_id: int, member_id: int) -> None:
         """Dimentica il risultato di un ingresso (da chiamare quando il membro esce): se rientra

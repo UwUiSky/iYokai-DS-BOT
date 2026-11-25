@@ -18,6 +18,7 @@ import logging
 from core import command_policy
 from core.config_schema import ImpostazioneNonValida
 from core.database import db
+from core.blocchi_deboli import BlocchiDeboli
 
 logger = logging.getLogger("iyokai.web_panel_accesso")
 
@@ -52,7 +53,7 @@ GRUPPO_PER_MODULO = {
     "fun": "admin-moduli",
 }
 
-_blocchi: dict[int, asyncio.Lock] = {}
+_blocchi = BlocchiDeboli()
 
 
 def percorso_comando(percorso_http: str, nome_modulo: str | None = None) -> str | None:
@@ -103,7 +104,7 @@ async def imposta_ruoli(guild, livello: str, ruoli_ids: list[int], changed_by: i
         ruolo = guild.get_role(ruolo_id)
         if ruolo is None or ruolo.id == guild.id or getattr(ruolo, "managed", False):
             raise ImpostazioneNonValida("Ruolo non valido per questo server.")
-    blocco = _blocchi.setdefault(guild.id, asyncio.Lock())
+    blocco = _blocchi.prendi(guild.id)
     async with blocco:
         prima = await web_panel_ruoli_repo.leggi(guild.id)
         if prima[livello] == frozenset(unici):

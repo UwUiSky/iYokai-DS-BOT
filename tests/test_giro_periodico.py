@@ -221,3 +221,56 @@ async def test_errore_nella_preparazione_non_uccide_il_giro():
         assert len(prove) == 3 and len(chiamate) >= 2
     finally:
         lavoro.cancel()
+
+
+def test_cricchetto_un_giro_non_inghiotte_ogni_errore_da_solo():
+    """
+    Un giro che mette tutto il corpo in `try ... except Exception: log` non conta mai un errore: niente pause
+    crescenti, niente avviso all'owner, niente stato in /salute. Gli errori per elemento (dentro un ciclo) vanno bene.
+    """
+    colpe = []
+    for percorso in _file_di_produzione():
+        albero = ast.parse(percorso.read_text(encoding="utf-8"))
+        for nodo in ast.walk(albero):
+            if not isinstance(nodo, ast.AsyncFunctionDef):
+                continue
+            if not any(
+                isinstance(d, ast.Call) and isinstance(d.func, ast.Name) and d.func.id == "giro_periodico"
+                for d in nodo.decorator_list
+            ):
+                continue
+            corpo = [b for b in nodo.body if not (isinstance(b, ast.Expr) and isinstance(b.value, ast.Constant))]
+            if len(corpo) == 1 and isinstance(corpo[0], ast.Try):
+                for gestore in corpo[0].handlers:
+                    cattura_tutto = gestore.type is not None and ast.unparse(gestore.type) in ("Exception", "BaseException")
+                    if cattura_tutto and not any(isinstance(n, ast.Raise) for n in ast.walk(gestore)):
+                        colpe.append(f"{percorso.relative_to(RADICE)}:{nodo.lineno} {nodo.name}")
+    assert not colpe, "togli il try/except che copre tutto il giro: " + ", ".join(colpe)
+
+
+def test_cricchetto_nessun_blocco_in_una_cache_che_sfratta():
+    """Un `asyncio.Lock` in una BoundedCache può essere sfrattato mentre è in uso: usa core.blocchi_deboli.BlocchiDeboli."""
+    colpe = []
+    for percorso in _file_di_produzione():
+        testo = percorso.read_text(encoding="utf-8")
+        albero = ast.parse(testo)
+        for nodo in ast.walk(albero):
+            if isinstance(nodo, (ast.AnnAssign, ast.Assign)):
+                if "BoundedCache" in ast.unparse(nodo) and "asyncio.Lock" in ast.unparse(nodo):
+                    colpe.append(f"{percorso.relative_to(RADICE)}:{nodo.lineno}")
+    assert not colpe, "blocco in una BoundedCache: " + ", ".join(colpe)
+
+
+def test_cricchetto_nessun_dizionario_di_blocchi_senza_tetto():
+    """Un dizionario di `asyncio.Lock` che cresce senza pulizia perde memoria a ogni server o canale nuovo: BlocchiDeboli."""
+    colpe = []
+    for percorso in _file_di_produzione():
+        if percorso.name == "blocchi_deboli.py":
+            continue
+        albero = ast.parse(percorso.read_text(encoding="utf-8"))
+        for nodo in ast.walk(albero):
+            if isinstance(nodo, ast.AnnAssign) and "asyncio.Lock" in ast.unparse(nodo.annotation):
+                if "Weak" not in ast.unparse(nodo.annotation) and isinstance(nodo.value, (ast.Dict, ast.Call)):
+                    if "BlocchiDeboli" not in ast.unparse(nodo):
+                        colpe.append(f"{percorso.relative_to(RADICE)}:{nodo.lineno}")
+    assert not colpe, "usa BlocchiDeboli: " + ", ".join(colpe)

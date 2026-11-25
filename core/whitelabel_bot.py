@@ -21,6 +21,7 @@ from dataclasses import dataclass
 import discord
 
 from core.bot_info import url_invito
+from core.giro_periodico import pausa_dopo_errori
 from core import marchio_errori as errori_marchio
 from core.repositories.whitelabel_repo import Marchio, whitelabel_repo
 
@@ -29,6 +30,8 @@ logger = logging.getLogger("iyokai.whitelabel")
 MODULO_MARCHIO = "marchio"
 MAX_TESTO_STATO = 100
 ATTESA_SYNC_SECONDI = 300
+STABILE_DOPO_SECONDI = 300.0  # un client che resta su così a lungo non è più «in serie di cadute»
+MAX_CADUTE_DI_FILA = 10
 
 STATO_FERMO = "fermo"
 STATO_ATTIVO = "attivo"
@@ -230,6 +233,11 @@ class GestoreMarchio:
         self._blocco_avvio = asyncio.Lock()
         self._ultima_sync: dict[int, float] = {}
         self._sync_in_corso: set[int] = set()
+        # Un client che cade non riparte subito ogni volta: pause crescenti (5 s ... 15 min) e, dopo troppi errori
+        # di fila, il marchio si spegne e l'owner lo sa. Un client che resta su 5 minuti riparte da zero.
+        self._errori_di_fila: dict[int, int] = {}
+        self._riprova_dopo: dict[int, float] = {}
+        self._avviato_il: dict[int, float] = {}
 
     def in_esecuzione(self, guild_id: int) -> bool:
         task = self._task.get(guild_id)
@@ -258,14 +266,20 @@ class GestoreMarchio:
         if not await guild_has_premium_access(guild_id, MODULO_MARCHIO, bot=self.bot):
             await whitelabel_repo.imposta_stato(guild_id, STATO_SENZA_PREMIUM)
             return False
+        if time.monotonic() < self._riprova_dopo.get(guild_id, 0.0):
+            return False  # in pausa dopo una caduta: si riprova al giro dopo
         client = _ClientMarchio(guild_id, marchio.status_text, self.bot, marchio.application_id)
         self._client[guild_id] = client
+        self._avviato_il[guild_id] = time.monotonic()
         self._task[guild_id] = asyncio.create_task(self._esegui(guild_id, client, token), name=f"marchio-{guild_id}")
         return True
 
     async def _esegui(self, guild_id: int, client: _ClientMarchio, token: str) -> None:
         try:
             await client.start(token)
+            if self._client.get(guild_id) is client:  # chiuso da solo, non da `ferma`: è una caduta
+                logger.warning("Marchio del server %s: il client si è chiuso da solo.", guild_id)
+                await self._dopo_caduta(guild_id)
         except discord.LoginFailure as exc:
             errori_marchio.registra(guild_id, "login", exc)
             await whitelabel_repo.imposta_stato(guild_id, STATO_TOKEN_NON_VALIDO)
@@ -276,8 +290,26 @@ class GestoreMarchio:
             errori_marchio.registra(guild_id, "client", exc)
             logger.warning("Marchio del server %s fermato (%s).", guild_id, type(exc).__name__)
             await whitelabel_repo.imposta_stato(guild_id, STATO_ERRORE, type(exc).__name__)
+            await self._dopo_caduta(guild_id)
+
+    async def _dopo_caduta(self, guild_id: int) -> None:
+        """Conta la caduta e decide la pausa; dopo `MAX_CADUTE_DI_FILA` di fila spegne il marchio e avvisa l'owner."""
+        if time.monotonic() - self._avviato_il.get(guild_id, 0.0) >= STABILE_DOPO_SECONDI:
+            self._errori_di_fila[guild_id] = 0  # era rimasto su a lungo: è una caduta nuova, non una serie
+        n = self._errori_di_fila.get(guild_id, 0) + 1
+        self._errori_di_fila[guild_id] = n
+        if n >= MAX_CADUTE_DI_FILA:
+            logger.error("Marchio del server %s spento: %d cadute di fila.", guild_id, n)
+            await whitelabel_repo.imposta_abilitato(guild_id, False)
+            from core.avvisi_owner import avvisi_owner
+
+            avvisi_owner.caduto(self.bot, f"marchio:{guild_id}", f"spento dopo {n} cadute di fila")
+            return
+        self._riprova_dopo[guild_id] = time.monotonic() + pausa_dopo_errori(n)
 
     async def ferma(self, guild_id: int, stato: str = STATO_FERMO) -> None:
+        for dizionario in (self._errori_di_fila, self._riprova_dopo, self._avviato_il):
+            dizionario.pop(guild_id, None)  # uno stop voluto azzera la storia delle cadute
         client = self._client.pop(guild_id, None)
         task = self._task.pop(guild_id, None)
         if client is not None:

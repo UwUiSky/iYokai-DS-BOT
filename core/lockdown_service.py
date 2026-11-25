@@ -27,7 +27,6 @@ import discord
 
 from core import channel_router as router
 from core.moderazione_traduci import traducibile
-from core.bounded_cache import BoundedCache
 from core.permission_risk_logic import CRITICAL_PERMISSIONS
 from core.lockdown_logic import (
     NOME_CANALE_AVVISO,
@@ -52,10 +51,11 @@ from core.lockdown_logic import (
 )
 from core.repositories.lockdown_repo import lockdown_repo
 from core.repositories.security_repo import security_repo
+from core.blocchi_deboli import BlocchiDeboli
 
 logger = logging.getLogger("iyokai.lockdown")
 
-_blocchi: BoundedCache[tuple[int, int], asyncio.Lock] = BoundedCache(max_size=5000)
+_blocchi = BlocchiDeboli()
 # Server in cui qualcuno ha chiesto «togli» mentre il blocco era ancora in corso.
 _da_fermare: set[int] = set()
 # Server in panico -> True se in panico i gruppi mod-… sono riservati (SIC-012). Cache in memoria:
@@ -73,11 +73,7 @@ def modo_ingressi(guild_id: int) -> str | None:
 def _blocco(guild_id: int) -> asyncio.Lock:
     # Un lock appartiene al ciclo di eventi che lo ha usato per primo: la chiave lo tiene distinto.
     chiave = (id(asyncio.get_running_loop()), guild_id)
-    blocco = _blocchi.get(chiave)
-    if blocco is None:
-        blocco = asyncio.Lock()
-        _blocchi.set(chiave, blocco)
-    return blocco
+    return _blocchi.prendi(chiave)
 
 
 def _motivo(prefisso: str, motivo: str) -> str:

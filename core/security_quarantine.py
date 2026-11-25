@@ -17,16 +17,15 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import logging
-import weakref
 from dataclasses import dataclass, field
 
 import discord
 
-from core.bounded_cache import BoundedCache
 from core.permission_risk_logic import critical_permissions_of
 from core.repositories.security_repo import SecuritySettings, security_repo
 from core.security_logic import ALL_NUKE_CATEGORIES, bot_role_problems
 from core.security_rate_tracker import security_rate_tracker
+from core.blocchi_deboli import BlocchiDeboli
 
 logger = logging.getLogger("iyokai.security_quarantine")
 
@@ -48,26 +47,14 @@ PERMESSI_QUARANTENA = {
 # nome finto (LIMITI.md, Parte 2): non va toccato.
 NOME_CANALE_NASCOSTO = "___hidden___"
 
-MAX_SERVER_CON_BLOCCO = 5000
 # Un asyncio.Lock vale per un solo ciclo di eventi: i blocchi stanno
 # dietro il ciclo che li ha creati (nel bot ce n'e' uno; nei test uno
 # per prova).
-_blocchi: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, BoundedCache[int, asyncio.Lock]]" = (
-    weakref.WeakKeyDictionary()
-)
+_blocchi = BlocchiDeboli()
 
 
 def _blocco(guild_id: int) -> asyncio.Lock:
-    ciclo = asyncio.get_running_loop()
-    per_server = _blocchi.get(ciclo)
-    if per_server is None:
-        per_server = BoundedCache(max_size=MAX_SERVER_CON_BLOCCO)
-        _blocchi[ciclo] = per_server
-    blocco = per_server.get(guild_id)
-    if blocco is None:
-        blocco = asyncio.Lock()
-        per_server.set(guild_id, blocco)
-    return blocco
+    return _blocchi.prendi((id(asyncio.get_running_loop()), guild_id))
 
 
 def allinea_necessario(channel: discord.abc.GuildChannel, role: discord.Role) -> bool:
