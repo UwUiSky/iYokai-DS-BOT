@@ -260,7 +260,7 @@ class RuoliExtraCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------ RUO-083
     @comando_di_gruppo(
-        "admin-menu-ruoli",
+        "admin-ruoli-menu",
         nome="ruoli-extra",
         descrizione="Una opzione di un menu dà anche altri ruoli (al massimo 5 in tutto).",
     )
@@ -297,7 +297,7 @@ class RuoliExtraCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------ RUO-069
     @comando_di_gruppo(
-        "admin-menu-ruoli",
+        "admin-ruoli-menu",
         nome="gruppo",
         descrizione="Collega più menu: tra tutti si tiene un solo ruolo. Nome vuoto: scollega.",
     )
@@ -321,7 +321,7 @@ class RuoliExtraCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------ RUO-053
     @comando_di_gruppo(
-        "admin-menu-ruoli",
+        "admin-ruoli-menu",
         nome="immagine",
         descrizione="Metti un'immagine dentro il messaggio del menu (allegato o indirizzo).",
     )
@@ -392,7 +392,7 @@ class RuoliExtraCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------ RUO-046
     @comando_di_gruppo(
-        "admin-menu-ruoli",
+        "admin-ruoli-menu",
         nome="colori",
         descrizione="Usa i ruoli di un menu «unique» come tavolozza dei colori del nome.",
     )
@@ -456,7 +456,7 @@ class RuoliExtraCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------ RUO-047
     @comando_di_gruppo(
-        "admin-menu-ruoli",
+        "admin-ruoli-menu",
         nome="guidata",
         descrizione="Crea un menu dei ruoli a passi: tipo, testo, canale, ruoli ed emoji.",
     )
@@ -492,7 +492,7 @@ class RuoliExtraCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------ RUO-045
     @comando_di_gruppo(
-        "admin-menu-ruoli",
+        "admin-ruoli-menu",
         nome="personale",
         descrizione="Concedi o togli a un membro il ruolo personale (nome e colore scelti da lui).",
     )

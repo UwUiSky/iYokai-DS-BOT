@@ -1,8 +1,8 @@
 """
 cogs/leveling/negozio_extra.py
 ==============================
-Negozio avanzato: oggetti a rotazione e offerte lampo con bottone (/admin-negozio rotazione, offerta), ricette per
-creare oggetti da altri oggetti (comandi «ricetta» di /admin-negozio, /monete shop ricette, crea). Il prezzo effettivo si
+Negozio avanzato: oggetti a rotazione e offerte lampo con bottone (/admin-economia-negozio rotazione, offerta), ricette per
+creare oggetti da altri oggetti (comandi «ricetta» di /admin-economia-negozio, /monete shop ricette, crea). Il prezzo effettivo si
 calcola in un solo punto (core/negozio_logic.py) e si applica dentro la scrittura dell'acquisto.
 Funzioni coperte: ECO-075, ECO-076, ECO-078
 Dipende da: core/repositories/negozio_repo.py, core/repositories/shop_repo.py
@@ -86,7 +86,7 @@ class NegozioExtraCog(CogConGruppi, commands.Cog):
         await self.bot.wait_until_ready()
 
     # ------------------------------------------------------------------ admin: rotazione (ECO-075)
-    @comando_di_gruppo("admin-negozio", nome="quanti", descrizione="Quanti oggetti a rotazione sono in vetrina ogni giorno (0 = spenta).", sottogruppo=SG_ROT)
+    @comando_di_gruppo("admin-economia-negozio", nome="quanti", descrizione="Quanti oggetti a rotazione sono in vetrina ogni giorno (0 = spenta).", sottogruppo=SOTTOGRUPPI["admin-economia-negozio rotazione"])
     @app_commands.describe(quanti=f"Oggetti in vetrina al giorno (0-{MAX_ROTAZIONE})")
     async def rotazione_quanti(self, interaction: discord.Interaction, quanti: app_commands.Range[int, 0, MAX_ROTAZIONE]) -> None:
         if await _comando_rifiutato(interaction):
@@ -94,7 +94,7 @@ class NegozioExtraCog(CogConGruppi, commands.Cog):
         await negozio_repo.imposta_rotazione(interaction.guild.id, quanti)
         await interaction.response.send_message(await testo_per(interaction, "neg_rotazione_ok", n=quanti), ephemeral=True)
 
-    @comando_di_gruppo("admin-negozio", nome="oggetto", descrizione="Mette un oggetto tra quelli che ruotano (o lo toglie).", sottogruppo=SG_ROT)
+    @comando_di_gruppo("admin-economia-negozio", nome="oggetto", descrizione="Mette un oggetto tra quelli che ruotano (o lo toglie).", sottogruppo=SOTTOGRUPPI["admin-economia-negozio rotazione"])
     @app_commands.describe(oggetto="ID dell'oggetto", ruota="Sì = ruota, no = sempre in vetrina")
     async def rotazione_oggetto(self, interaction: discord.Interaction, oggetto: app_commands.Range[int, 1, 2_147_483_647], ruota: bool) -> None:
         if await _comando_rifiutato(interaction):
@@ -103,7 +103,7 @@ class NegozioExtraCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "neg_oggetto_ok" if ok else "neg_oggetto_no"), ephemeral=True)
 
     # ------------------------------------------------------------------ admin: offerte lampo (ECO-076)
-    @comando_di_gruppo("admin-negozio", nome="lampo", descrizione="Lancia un'offerta lampo a tempo con il bottone per comprare.", sottogruppo=SG_OFF)
+    @comando_di_gruppo("admin-economia-negozio", nome="lampo", descrizione="Lancia un'offerta lampo a tempo con il bottone per comprare.", sottogruppo=SOTTOGRUPPI["admin-economia-negozio offerta"])
     @app_commands.describe(
         oggetto="ID dell'oggetto", sconto="Sconto in percentuale (1-90)", minuti="Durata in minuti",
         usi="Quante volte si può comprare (vuoto = senza limite)", canale="Dove annunciarla (vuoto = qui)",
@@ -137,7 +137,7 @@ class NegozioExtraCog(CogConGruppi, commands.Cog):
             return
         await interaction.followup.send(await testo_per(interaction, "neg_lampo_ok"), ephemeral=True)
 
-    @comando_di_gruppo("admin-negozio", nome="chiudi", descrizione="Chiude subito l'offerta lampo di un oggetto.", sottogruppo=SG_OFF)
+    @comando_di_gruppo("admin-economia-negozio", nome="chiudi", descrizione="Chiude subito l'offerta lampo di un oggetto.", sottogruppo=SOTTOGRUPPI["admin-economia-negozio offerta"])
     @app_commands.describe(oggetto="ID dell'oggetto")
     async def offerta_chiudi(self, interaction: discord.Interaction, oggetto: app_commands.Range[int, 1, 2_147_483_647]) -> None:
         if await _comando_rifiutato(interaction):
@@ -146,7 +146,7 @@ class NegozioExtraCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "neg_chiusa" if ok else "neg_nessuna_offerta"), ephemeral=True)
 
     # ------------------------------------------------------------------ admin: ricette (ECO-078)
-    @comando_di_gruppo("admin-negozio", nome="crea", descrizione="Crea una ricetta: certi oggetti diventano un altro oggetto.", sottogruppo=SG_RIC)
+    @comando_di_gruppo("admin-economia-negozio", nome="crea", descrizione="Crea una ricetta: certi oggetti diventano un altro oggetto.", sottogruppo=SOTTOGRUPPI["admin-economia-negozio ricetta"])
     @app_commands.describe(
         nome="Nome della ricetta", risultato="ID dell'oggetto che si ottiene", ingredienti="Ingredienti come ID:quantità, separati da virgola (massimo 5)",
         quantita="Quanti pezzi si ottengono (1-100)", costo="Monete da pagare per crearlo (0 = niente)",
@@ -164,7 +164,7 @@ class NegozioExtraCog(CogConGruppi, commands.Cog):
         esito = await negozio_repo.crea_ricetta(interaction.guild.id, nome.strip(), risultato, quantita, costo, letti)
         await interaction.response.send_message(await testo_per(interaction, f"neg_ricetta_{esito}"), ephemeral=True)
 
-    @comando_di_gruppo("admin-negozio", nome="elimina", descrizione="Elimina una ricetta.", sottogruppo=SG_RIC)
+    @comando_di_gruppo("admin-economia-negozio", nome="elimina", descrizione="Elimina una ricetta.", sottogruppo=SOTTOGRUPPI["admin-economia-negozio ricetta"])
     @app_commands.describe(nome="Nome della ricetta")
     async def ricetta_elimina(self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, 40]) -> None:
         if await _comando_rifiutato(interaction):

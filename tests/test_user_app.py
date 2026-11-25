@@ -183,7 +183,7 @@ async def test_menu_testo_pulito_risponde_in_privato():
 async def test_cerca_comando_e_chiedi_installabili_dall_utente():
     import cogs.utility.command_search as ricerca
 
-    for comando in (ricerca.CommandSearchCog.search, ricerca.CommandSearchCog.chiedi):
+    for comando in (ricerca.CommandSearchCog.aiuto,):
         assert comando.allowed_installs.user and comando.allowed_installs.guild
         assert comando.allowed_contexts.dm_channel and comando.allowed_contexts.private_channel
 

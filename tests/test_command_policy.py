@@ -79,11 +79,13 @@ def test_sempre_aperti_solo_admin_bot_e_owner_gli_altri_admin_si_spengono():
     """D60: `admin-bot` (con la politica) e `owner` restano accesi; `admin-filtri` e gli altri `admin-…` si spengono."""
     from core import command_policy as pol
 
-    assert pol.PREFISSI_SEMPRE_APERTI == ("admin-bot", "owner")
+    assert pol.PREFISSI_SEMPRE_APERTI == ("admin-bot", "admin-bot-config", "owner", "owner-radio")
     assert pol.sempre_aperto("admin-bot politica comando")
     assert pol.sempre_aperto("admin-bot setup attiva")
+    assert pol.sempre_aperto("admin-bot-config export")  # D137: la configurazione resta accesa
+    assert pol.sempre_aperto("owner-radio start")
     assert pol.sempre_aperto("owner system announce")
-    assert not pol.sempre_aperto("admin-filtri invites")
+    assert not pol.sempre_aperto("admin-automod-filtri invites")
     assert not pol.sempre_aperto("admin-musica impostazioni")
     assert not pol.sempre_aperto("admin-botx politica")  # solo il gruppo intero, non un prefisso di lettere
     assert not pol.sempre_aperto("mod-ban ban")

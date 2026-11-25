@@ -1,7 +1,7 @@
 """
 core/sala_logic.py
 ==================
-Regole pure dei giochi a più giocatori con sala d'attesa (/sala): roulette, corsa, lotta, bomba, carte a turni,
+Regole pure dei giochi a più giocatori con sala d'attesa (/giochi-sala): roulette, corsa, lotta, bomba, carte a turni,
 bingo, impiccato e quiz. Niente Discord e niente database: ricevono il generatore di numeri casuali, quindi si
 provano con un seme. Il banco (roulette) ha il suo vantaggio; negli altri giochi il piatto va tutto al vincitore.
 Funzioni coperte: ECO-091, ECO-101, ECO-102, ECO-103, ECO-105, ECO-110, ECO-111, ECO-112, ECO-113, ECO-114

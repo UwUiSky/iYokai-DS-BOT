@@ -202,7 +202,7 @@ async def test_chiedi_con_assistente_ai_e_ritorno_alla_ricerca(repo, monkeypatch
     _usa(repo, risposte={"alfa": "Usa /mod-sanzioni timeout con utente Mario e durata 10m."})
     await repo.registra_consenso(G, U, True)
     i = _inter()
-    await cog.chiedi.callback(cog, i, "metti in timeout Mario per 10 minuti")
+    await cog.aiuto.callback(cog, i, "metti in timeout Mario per 10 minuti")
     embed = i.followup.send.call_args.kwargs["embed"]
     assert embed.title == "Assistente" and "</mod-sanzioni timeout:42>" in embed.description
 
@@ -214,7 +214,7 @@ async def test_chiedi_con_assistente_ai_e_ritorno_alla_ricerca(repo, monkeypatch
         ricerche.append(query)
 
     monkeypatch.setattr(cog, "_ricerca", ricerca)
-    await cog.chiedi.callback(cog, _inter(), "timeout")
+    await cog.aiuto.callback(cog, _inter(), "timeout")
     assert ricerche == ["timeout"]
 
 
@@ -251,7 +251,7 @@ async def test_chiedi_con_motore_in_errore_torna_alla_ricerca(repo, monkeypatch)
         ricerche.append((query, gia_differita))
 
     monkeypatch.setattr(cog, "_ricerca", ricerca)
-    await cog.chiedi.callback(cog, _inter(), "come si banna")
+    await cog.aiuto.callback(cog, _inter(), "come si banna")
     assert ricerche == [("come si banna", True)]
 
 

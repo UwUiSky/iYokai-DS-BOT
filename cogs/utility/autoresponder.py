@@ -196,7 +196,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
             return False
         return True
 
-    @comando_di_gruppo("admin-tag", nome="crea", descrizione="Crea una risposta automatica.", sottogruppo=SOTTOGRUPPI["admin-tag risposte"])
+    @comando_di_gruppo("admin-automazioni", nome="crea", descrizione="Crea una risposta automatica.", sottogruppo=SOTTOGRUPPI["admin-automazioni risposte"])
     @app_commands.describe(
         parola="La parola o frase che fa scattare la risposta (* = pezzo di parola)",
         risposta="Cosa risponde il bot. Segnaposto: {user} {username} {server} {channel} {resto}",
@@ -254,13 +254,13 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
         _cache_regole.delete(interaction.guild.id)
         messaggi = {
             "ok": f"Risposta automatica n. {nuovo_id} creata.",
-            "esiste": "Esiste già una risposta con quella parola: eliminala prima con `/admin-tag risposte elimina`.",
+            "esiste": "Esiste già una risposta con quella parola: eliminala prima con `/admin-automazioni risposte elimina`.",
             "pieno": f"Questo server ha già {MAX_RISPOSTE} risposte automatiche: eliminane una.",
         }
         await interaction.response.send_message(messaggi[esito], ephemeral=True)
 
-    @comando_di_gruppo("admin-tag", nome="elimina", descrizione="Elimina una risposta automatica.", sottogruppo=SOTTOGRUPPI["admin-tag risposte"])
-    @app_commands.describe(numero="Il numero mostrato da /admin-tag risposte elenco")
+    @comando_di_gruppo("admin-automazioni", nome="elimina", descrizione="Elimina una risposta automatica.", sottogruppo=SOTTOGRUPPI["admin-automazioni risposte"])
+    @app_commands.describe(numero="Il numero mostrato da /admin-automazioni risposte elenco")
     async def risposta_elimina(self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 2_000_000_000]) -> None:
         if not await self._pronto(interaction):
             return
@@ -270,7 +270,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "autoresponde_risposta_eliminata") if fatta else await testo_per(interaction, "autoresponde_non_esiste_una_risposta_con"), ephemeral=True
         )
 
-    @comando_di_gruppo("admin-tag", nome="elenco", descrizione="Mostra le risposte automatiche del server.", sottogruppo=SOTTOGRUPPI["admin-tag risposte"])
+    @comando_di_gruppo("admin-automazioni", nome="elenco", descrizione="Mostra le risposte automatiche del server.", sottogruppo=SOTTOGRUPPI["admin-automazioni risposte"])
     async def risposte(self, interaction: discord.Interaction) -> None:
         if not await self._pronto(interaction):
             return
@@ -288,9 +288,9 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
             allowed_mentions=discord.AllowedMentions.none(),
         )
 
-    @comando_di_gruppo("admin-tag", nome="modifica", descrizione="Cambia risposta, modo o limiti di una risposta automatica.", sottogruppo=SOTTOGRUPPI["admin-tag risposte"])
+    @comando_di_gruppo("admin-automazioni", nome="modifica", descrizione="Cambia risposta, modo o limiti di una risposta automatica.", sottogruppo=SOTTOGRUPPI["admin-automazioni risposte"])
     @app_commands.describe(
-        numero="Il numero mostrato da /admin-tag risposte elenco", risposta="Nuova risposta", modalita="Nuovo modo di cercare la parola",
+        numero="Il numero mostrato da /admin-automazioni risposte elenco", risposta="Nuova risposta", modalita="Nuovo modo di cercare la parola",
         maiuscole="Le maiuscole contano?", canale="Solo in questo canale", ruolo="Solo per chi ha questo ruolo",
         ovunque="Toglie il limite di canale e di ruolo",
     )
@@ -339,8 +339,8 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
         _cache_regole.delete(interaction.guild.id)
         await interaction.response.send_message(await testo_per(interaction, "risposte_modificata", numero=numero), ephemeral=True)
 
-    @comando_di_gruppo("admin-tag", nome="mostra", descrizione="Dettaglio di una risposta automatica, anche il testo grezzo.", sottogruppo=SOTTOGRUPPI["admin-tag risposte"])
-    @app_commands.describe(numero="Il numero mostrato da /admin-tag risposte elenco")
+    @comando_di_gruppo("admin-automazioni", nome="mostra", descrizione="Dettaglio di una risposta automatica, anche il testo grezzo.", sottogruppo=SOTTOGRUPPI["admin-automazioni risposte"])
+    @app_commands.describe(numero="Il numero mostrato da /admin-automazioni risposte elenco")
     async def risposta_mostra(self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 2_000_000_000]) -> None:
         if not await self._pronto(interaction):
             return
@@ -360,7 +360,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
         ]
         await interaction.response.send_message("\n".join(righe)[:2000], ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
 
-    @comando_di_gruppo("admin-tag", nome="escludi", descrizione="Utenti, canali e ruoli che non fanno scattare una risposta (10 per elenco).", sottogruppo=SOTTOGRUPPI["admin-tag risposte"])
+    @comando_di_gruppo("admin-automazioni", nome="escludi", descrizione="Utenti, canali e ruoli che non fanno scattare una risposta (10 per elenco).", sottogruppo=SOTTOGRUPPI["admin-automazioni risposte"])
     @app_commands.describe(numero="Il numero della risposta", ruolo="Ruolo escluso", canale="Canale escluso", utente="Utente escluso",
                            togli="Toglie l'esclusione invece di metterla")
     async def risposta_escludi(
@@ -385,7 +385,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(
             await testo_per(interaction, "risposte_escludi_piena" if pieno else "risposte_escludi_salvata", massimo=MAX_ESCLUSI), ephemeral=True)
 
-    @comando_di_gruppo("admin-tag", nome="svuota", descrizione="Elimina tutte le risposte automatiche del server.", sottogruppo=SOTTOGRUPPI["admin-tag risposte"])
+    @comando_di_gruppo("admin-automazioni", nome="svuota", descrizione="Elimina tutte le risposte automatiche del server.", sottogruppo=SOTTOGRUPPI["admin-automazioni risposte"])
     async def risposte_svuota(self, interaction: discord.Interaction) -> None:
         if not await self._pronto(interaction):
             return
@@ -394,7 +394,7 @@ class AutoresponderCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "risposte_svuota_chiedi", quante=await autoresponder_repo.conta(interaction.guild.id)),
             ephemeral=True, view=ConfermaSvuota(interaction.user.id, interaction.guild.id, etichette))
 
-    @comando_di_gruppo("admin-tag", nome="globali", descrizione="Accendi o spegni le risposte automatiche dell'owner in questo server.", sottogruppo=SOTTOGRUPPI["admin-tag risposte"])
+    @comando_di_gruppo("admin-automazioni", nome="globali", descrizione="Accendi o spegni le risposte automatiche dell'owner in questo server.", sottogruppo=SOTTOGRUPPI["admin-automazioni risposte"])
     @app_commands.describe(accese="Sì: il bot usa anche le risposte comuni a tutti i server. No: solo le tue")
     async def risposte_globali(self, interaction: discord.Interaction, accese: bool) -> None:
         if not await self._pronto(interaction):

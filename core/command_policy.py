@@ -22,6 +22,8 @@ queste funzioni, sia per il comando sia per il futuro pannello (D16). Il control
 
 from __future__ import annotations
 
+from core.comandi_diretti import ComandoDiretto, percorso_vero
+
 import asyncio
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -40,7 +42,7 @@ MAX_COMANDI_CON_RUOLI = 100
 MAX_RUOLI_PER_COMANDO = 10
 MAX_LUNGHEZZA_PERCORSO = 100
 # Mai spenti: servono a rimettere a posto la politica.
-PREFISSI_SEMPRE_APERTI = ("admin-bot", "owner")
+PREFISSI_SEMPRE_APERTI = ("admin-bot", "admin-bot-config", "owner", "owner-radio")
 
 _blocchi_elenco: dict[int, asyncio.Lock] = {}
 
@@ -239,6 +241,8 @@ def percorsi_dei_comandi(comandi: Iterable) -> list[str]:
 
     trovati: list[str] = []
     for nodo in comandi:
+        if isinstance(nodo, ComandoDiretto):
+            continue  # un comando diretto è un altro nome di un comando già nell'elenco
         if isinstance(nodo, app_commands.Group):
             trovati.extend(percorsi_dei_comandi(nodo.commands))
         else:
@@ -300,6 +304,6 @@ async def valuta_interazione(interaction) -> str | None:
         comando = interaction.command
         if comando is None:
             return None
-        return await valuta_percorso(interaction, comando.qualified_name)
+        return await valuta_percorso(interaction, percorso_vero(comando))
     except Exception:
         return None

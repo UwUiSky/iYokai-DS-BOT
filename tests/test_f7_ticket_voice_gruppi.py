@@ -43,13 +43,13 @@ async def test_ticket_e_voice_stanno_nei_gruppi_giusti():
     bot = await _bot()
     try:
         assert TICKET_ATTESI <= percorsi_del_gruppo("ticket")
-        assert VOICE_ATTESI <= percorsi_del_gruppo("voice")
+        assert VOICE_ATTESI <= percorsi_del_gruppo("vocali")
         assert GESTIONE_TICKET_ATTESI <= percorsi_del_gruppo("admin-ticket")
         assert not {p for p in percorsi_del_gruppo("admin-vocali") if p.startswith("ticket ")}
         assert GESTIONE_VOICE_ATTESI <= percorsi_del_gruppo("admin-vocali")
         top = {c.name for c in bot.tree.get_commands()}
         assert not top & VECCHI_TOP
-        assert {"ticket", "voice", "admin-vocali", "admin-ticket"} <= top
+        assert {"ticket", "vocali", "admin-vocali", "admin-ticket"} <= top
     finally:
         for cog in list(bot.cogs):
             await bot.remove_cog(cog)
@@ -57,7 +57,7 @@ async def test_ticket_e_voice_stanno_nei_gruppi_giusti():
 
 async def test_ticket_e_voice_aperti_a_tutti_gestione_solo_admin():
     assert GRUPPI["ticket"].livello is None
-    assert GRUPPI["voice"].livello is None
+    assert GRUPPI["vocali"].livello is None
     assert GRUPPI["admin-vocali"].livello is Livello.ADMIN
     assert GRUPPI["admin-ticket"].livello is Livello.ADMIN
 
@@ -65,7 +65,7 @@ async def test_ticket_e_voice_aperti_a_tutti_gestione_solo_admin():
 async def test_un_solo_livello_di_sottogruppi_e_descrizioni_senza_prefisso():
     bot = await _bot()
     try:
-        for nome in ("ticket", "voice", "admin-vocali", "admin-ticket"):
+        for nome in ("ticket", "vocali", "admin-vocali", "admin-ticket"):
             for figlio in GRUPPI[nome].commands:
                 if isinstance(figlio, app_commands.Group):
                     assert not any(isinstance(n, app_commands.Group) for n in figlio.commands)

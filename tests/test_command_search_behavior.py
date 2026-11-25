@@ -8,6 +8,8 @@ solo che la funzione non sollevi.
 """
 
 import discord
+from unittest.mock import AsyncMock
+
 import pytest
 from discord import app_commands
 from discord.ext import commands
@@ -74,9 +76,10 @@ def _bot_con_comandi_reali() -> commands.Bot:
 async def test_search_trova_un_comando_reale():
     bot = _bot_con_comandi_reali()
     cog = CommandSearchCog(bot)
+    cog._risposta_ai = AsyncMock(return_value=None)  # D137: /help senza AI cerca per parole
     interaction = _FakeInteraction()
 
-    await cog.search.callback(cog, interaction, query="voglio bannare qualcuno")
+    await cog.aiuto.callback(cog, interaction, domanda="voglio bannare qualcuno")
 
     assert len(interaction.response.sent_embeds) == 1
     embed = interaction.response.sent_embeds[0]
@@ -87,9 +90,10 @@ async def test_search_trova_un_comando_reale():
 async def test_search_senza_risultati_propone_la_richiesta():
     bot = _bot_con_comandi_reali()
     cog = CommandSearchCog(bot)
+    cog._risposta_ai = AsyncMock(return_value=None)  # D137: /help senza AI cerca per parole
     interaction = _FakeInteraction()
 
-    await cog.search.callback(cog, interaction, query="ricetta della carbonara")
+    await cog.aiuto.callback(cog, interaction, domanda="ricetta della carbonara")
 
     assert len(interaction.response.sent_embeds) == 1
     assert "Nessun comando trovato" in interaction.response.sent_embeds[0].title

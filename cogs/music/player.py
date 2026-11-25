@@ -11,7 +11,7 @@ Architettura chiarita dall'utente: un solo punto di ingresso comandi
 riproduzione, il bot principale non entra MAI in vocale lui stesso —
 instrada verso una delle 5 istanze worker tramite core/music_fleet.py
 (quella già assegnata a questo server, o la prima libera). Il bot
-principale entra in vocale SOLO per /owner radio (streaming 24/7
+principale entra in vocale SOLO per /owner-radio (streaming 24/7
 dalla playlist personale dell'utente) — un comando completamente
 separato dal resto.
 
@@ -38,7 +38,7 @@ quello che è verificabile senza — i controlli di guardia, il
 routing verso il worker giusto (con bot finti), la logica pura. Il
 resto va verificato una volta distribuito, con le credenziali vere.
 
-Funzioni coperte: SPEC §9 (catalogo MUS, #126), tra cui la coda: /music coda; MUS-043 (/music queue file:)
+Funzioni coperte: SPEC §9 (catalogo MUS, #126), tra cui la coda: /music coda; MUS-043 (/music coda mostra file:)
 (cerca, salta, pulisci), coda equa (impostazione) e mescola fisso.
 """
 
@@ -63,7 +63,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core import music_sources as fonti_musicali
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, comando_di_gruppo, SOTTOGRUPPI
 from core.config import config
 from core.database import db
 from core.i18n import lingua_interazione, lingua_risposta, t as testo_tradotto, testo_per
@@ -150,7 +150,7 @@ SG_VOLUME = ("volume", "Controlla il volume della riproduzione (0-200, come Disc
 # Brani suonati in un canale vuoto prima di uscire (valore predefinito di wavelink).
 CANALE_VUOTO_BRANI_DEFAULT = 3
 
-SG_CODA = ("coda", "Cerca e ripulisce la coda.")
+SG_CODA = SOTTOGRUPPI["music coda"]
 SG_NONSTOP = ("nonstop", "Riproduzione continua in loop sulla sessione musicale attiva.")
 RADIO = ("radio", "Radio 24/7 condivisa del bot")
 
@@ -1064,7 +1064,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         await player.pause(False)
         await interaction.followup.send(await testo_per(interaction, "player_ripreso", pubblica=True))
 
-    @comando_di_gruppo("music", nome="queue", descrizione="Mostra la coda di riproduzione.")
+    @comando_di_gruppo("music", nome="mostra", descrizione="Mostra la coda di riproduzione.", sottogruppo=SOTTOGRUPPI["music coda"])
     @app_commands.describe(file="Sì = la coda come file di testo, con gli indirizzi dei brani")
     async def queue_command(self, interaction: discord.Interaction, file: bool = False) -> None:
         if not await self._controlli_base(interaction):
@@ -1111,7 +1111,7 @@ class MusicCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.send_message(embed=embed)
 
-    @comando_di_gruppo("music", nome="clear-queue", descrizione="Svuota la coda, senza toccare la traccia in riproduzione.")
+    @comando_di_gruppo("music", nome="svuota", descrizione="Svuota la coda, senza toccare la traccia in riproduzione.", sottogruppo=SOTTOGRUPPI["music coda"])
     async def clear_queue(self, interaction: discord.Interaction) -> None:
         # NON "clear": nome già usato da /mod-canali clear (cancella
         # messaggi) — un doppione avrebbe fatto fallire la REGISTRAZIONE
@@ -1676,7 +1676,7 @@ class MusicCog(CogConGruppi, commands.Cog):
             return
         await interaction.followup.send(await testo_per(interaction, "player_sono_entrato_nel_canale_usa", pubblica=True))
 
-    @comando_di_gruppo("music", nome="skipto", descrizione="Salta direttamente al brano numero N della coda.")
+    @comando_di_gruppo("music", nome="salta-a", descrizione="Salta direttamente al brano numero N della coda.", sottogruppo=SOTTOGRUPPI["music coda"])
     @app_commands.describe(numero="Posizione nella coda (1 = il prossimo brano)")
     async def skipto(
         self, interaction: discord.Interaction, numero: app_commands.Range[int, 1, 10000]
@@ -1824,7 +1824,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "player_loop_continuo_disattivato", pubblica=True))
 
     # ================================================================
-    # /owner radio — radio condivisa SOLO sul bot principale,
+    # /owner-radio — radio condivisa SOLO sul bot principale,
     # playlist personale (SPEC.md §9.11). Non instradata: il bot
     # principale entra in vocale lui stesso, comando distinto da
     # tutto il resto. "Condivisa" significa che ogni server dove è
@@ -1887,10 +1887,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         return risultati[0]
 
     @comando_di_gruppo(
-        "owner",
+        "owner-radio",
         nome="add-track",
         descrizione="Aggiunge una traccia alla playlist della radio.",
-        sottogruppo=RADIO,
     )
     @app_commands.describe(
         query="URL o ricerca",
@@ -1902,7 +1901,7 @@ class MusicCog(CogConGruppi, commands.Cog):
     ) -> None:
         if query.strip().startswith("local:"):
             await interaction.response.send_message(
-                "Per i file della cartella inediti usa /owner radio add-local.", ephemeral=True
+                "Per i file della cartella inediti usa /owner-radio add-local.", ephemeral=True
             )
             return
 
@@ -1925,10 +1924,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "owner",
+        "owner-radio",
         nome="add-local",
         descrizione="Aggiunge un file inedito alla playlist della radio.",
-        sottogruppo=RADIO,
     )
     @app_commands.describe(
         filename="File nella cartella inediti",
@@ -1983,10 +1981,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "owner",
+        "owner-radio",
         nome="remove-track",
         descrizione="Rimuove una traccia dalla playlist della radio.",
-        sottogruppo=RADIO,
     )
     @app_commands.describe(track_id="ID della traccia")
     async def nonstop_main_remove_track(
@@ -2001,16 +1998,15 @@ class MusicCog(CogConGruppi, commands.Cog):
             )
 
     @comando_di_gruppo(
-        "owner",
+        "owner-radio",
         nome="list-tracks",
         descrizione="Mostra la playlist della radio.",
-        sottogruppo=RADIO,
     )
     async def nonstop_main_list_tracks(self, interaction: discord.Interaction) -> None:
         tracce = await main_radio_repo.list_tracks()
         if not tracce:
             await interaction.response.send_message(
-                "La playlist della radio è vuota. Usa /owner radio add-track o add-local.",
+                "La playlist della radio è vuota. Usa /owner-radio add-track o add-local.",
                 ephemeral=True,
             )
             return
@@ -2027,10 +2023,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "owner",
+        "owner-radio",
         nome="fonti",
         descrizione="Mostra lo stato delle fonti musicali (accesa, chiavi sì/no, pausa).",
-        sottogruppo=RADIO,
     )
     async def nonstop_main_fonti(self, interaction: discord.Interaction) -> None:
         """B1 #126: una riga per fonte. Le chiavi non si mostrano mai: solo sì o no."""
@@ -2044,10 +2039,9 @@ class MusicCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @comando_di_gruppo(
-        "owner",
+        "owner-radio",
         nome="start",
         descrizione="Entra nella radio condivisa, nel punto in cui si trova ora.",
-        sottogruppo=RADIO,
     )
     async def nonstop_main_start(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
@@ -2064,14 +2058,14 @@ class MusicCog(CogConGruppi, commands.Cog):
 
         if guild.voice_client is not None:
             await interaction.response.send_message(
-                "La radio è già attiva su questo server. Usa /owner radio stop per fermarla prima.",
+                "La radio è già attiva su questo server. Usa /owner-radio stop per fermarla prima.",
                 ephemeral=True,
             )
             return
 
         if not await main_radio_repo.list_tracks():
             await interaction.response.send_message(
-                "La playlist della radio è vuota. Usa /owner radio add-track o add-local prima.",
+                "La playlist della radio è vuota. Usa /owner-radio add-track o add-local prima.",
                 ephemeral=True,
             )
             return
@@ -2097,7 +2091,7 @@ class MusicCog(CogConGruppi, commands.Cog):
     async def _avvia_radio_interna(self, guild: discord.Guild, canale) -> str:
         tracce_db = await main_radio_repo.list_tracks()
         if not tracce_db:
-            return "La playlist della radio è vuota. Usa /owner radio add-track o add-local prima."
+            return "La playlist della radio è vuota. Usa /owner-radio add-track o add-local prima."
 
         adesso = datetime.now(timezone.utc)
         stato = await main_radio_repo.get_state()
@@ -2171,7 +2165,7 @@ class MusicCog(CogConGruppi, commands.Cog):
         vocale senza un player (messo lì a mano da un admin, o rimasto
         dopo un riavvio), la radio parte da sola dal punto giusto.
         Solo il principale: i worker non caricano questo cog. Se il bot è
-        entrato con /owner radio start il player esiste già e non si
+        entrato con /owner-radio start il player esiste già e non si
         fa nulla. Se esce, lo stato condiviso non si tocca.
         """
         if self.bot.user is None or member.id != self.bot.user.id:
@@ -2192,10 +2186,9 @@ class MusicCog(CogConGruppi, commands.Cog):
             logger.exception("Avvio automatico della radio fallito (%s).", guild.id)
 
     @comando_di_gruppo(
-        "owner",
+        "owner-radio",
         nome="stop",
         descrizione="Esce dalla radio su questo server.",
-        sottogruppo=RADIO,
     )
     async def nonstop_main_stop(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild

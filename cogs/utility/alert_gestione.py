@@ -3,7 +3,7 @@ cogs/utility/alert_gestione.py
 ==============================
 Gestione degli avvisi social (feed, Twitch, YouTube, Kick, Picarto) con /admin-alert: messaggio per ogni
 tipo, formato ed embed, sposta, ferma tutti, controllo a mano di una diretta. Le opzioni già esistenti
-restano in /admin-moduli alert; qui stanno le funzioni nate dal catalogo (#129).
+restano in /admin-alert piattaforme; qui stanno le funzioni nate dal catalogo (#129).
 Funzioni coperte: SPEC §10.9, §10.13 (#129 ALR-009, 013, 014, 020, 021, 024, 029, 037, 038, 040)
 """
 

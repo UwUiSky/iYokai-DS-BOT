@@ -25,8 +25,8 @@ Restano SOLO informativi (nessun filtro di visibilità), per la stessa
 ragione già registrata sopra sulle due modalità sempre visibili.
 Anche questi bottoni sono persistenti.
 
-Gestione del canale (/voice …): la rinomina rispetta il limite di
-Discord di 2 ogni 10 minuti (core/channel_rename.py); /voice transfer
+Gestione del canale (/vocali …): la rinomina rispetta il limite di
+Discord di 2 ogni 10 minuti (core/channel_rename.py); /vocali transfer
 sposta anche i permessi del canale; all'avvio i canali rimasti vuoti
 mentre il bot era spento vengono cancellati.
 Funzioni coperte: SPEC §12, §22 (claim, permit, deny, bitrate, nascondi, invita,
@@ -101,7 +101,7 @@ GENERATORI_EXTRA_MAX = 5
 # Il nome di un canale Discord va da 1 a 100 caratteri (LIM-3).
 MAX_CHANNEL_NAME_LENGTH = 100
 
-# I permessi che il proprietario ha sul suo canale. /voice transfer li
+# I permessi che il proprietario ha sul suo canale. /vocali transfer li
 # sposta al nuovo proprietario.
 OWNER_PERMISSIONS = {"manage_channels": True, "move_members": True, "mute_members": True}
 
@@ -264,7 +264,7 @@ async def _create_temp_channel(
         return None
 
     # VOC-015: il canale può nascere bloccato (lo apre il proprietario
-    # con /voice unlock); il proprietario entra comunque.
+    # con /vocali unlock); il proprietario entra comunque.
     everyone = discord.PermissionOverwrite(connect=False) if config.nasce_bloccato else discord.PermissionOverwrite()
     proprietario = discord.PermissionOverwrite(**OWNER_PERMISSIONS)
     if config.nasce_bloccato:
@@ -685,7 +685,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
     )
     @app_commands.describe(
         nome="Modello del nome: {utente} e {numero} (es. Stanza {numero}). Vuoto: com'è ora",
-        chiusi="I nuovi canali nascono bloccati: li apre il proprietario con /voice unlock",
+        chiusi="I nuovi canali nascono bloccati: li apre il proprietario con /vocali unlock",
         registro="Canale dove scrivere le azioni sui vocali (creazione, blocco, espulsioni…)",
         predefiniti="Torna ai valori di partenza",
         copia_generatore="Copia permessi, limite e qualità del generatore",
@@ -819,7 +819,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
 
         return channel
 
-    @comando_di_gruppo("voice", nome="rename", descrizione="Rinomina il tuo canale vocale.")
+    @comando_di_gruppo("vocali", nome="rename", descrizione="Rinomina il tuo canale vocale.")
     @app_commands.describe(name="Il nuovo nome del canale")
     async def rename(
         self,
@@ -861,7 +861,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             allowed_mentions=discord.AllowedMentions.none(),
         )
 
-    @comando_di_gruppo("voice", nome="limit", descrizione="Imposta il limite di utenti del canale.")
+    @comando_di_gruppo("vocali", nome="limit", descrizione="Imposta il limite di utenti del canale.")
     @app_commands.describe(limit="Numero massimo di utenti (0 per nessun limite)")
     async def limit(
         self, interaction: discord.Interaction, limit: app_commands.Range[int, 0, 99]
@@ -877,7 +877,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         testo = "nessun limite" if limit == 0 else f"{limit} utenti"
         await interaction.response.send_message(f"Limite impostato: {testo}.")
 
-    @comando_di_gruppo("voice", nome="lock", descrizione="Blocca il canale (nessun nuovo ingresso).")
+    @comando_di_gruppo("vocali", nome="lock", descrizione="Blocca il canale (nessun nuovo ingresso).")
     async def lock(self, interaction: discord.Interaction) -> None:
         channel = await self._get_managed_channel_or_reply(interaction, "lock")
         if channel is None:
@@ -899,7 +899,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "voicetemp_canale_bloccato", pubblica=True))
         await _registra(interaction.guild, f"🔒 {interaction.user.mention} ha bloccato {channel.mention}.")
 
-    @comando_di_gruppo("voice", nome="unlock", descrizione="Sblocca il canale.")
+    @comando_di_gruppo("vocali", nome="unlock", descrizione="Sblocca il canale.")
     async def unlock(self, interaction: discord.Interaction) -> None:
         channel = await self._get_managed_channel_or_reply(interaction, "unlock")
         if channel is None:
@@ -949,7 +949,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             return False, "Non puoi espellere un amministratore o un moderatore dal tuo canale."
         return True, ""
 
-    @comando_di_gruppo("voice", nome="kick", descrizione="Espelli un utente dal tuo canale.")
+    @comando_di_gruppo("vocali", nome="kick", descrizione="Espelli un utente dal tuo canale.")
     @app_commands.describe(member="L'utente da espellere dal canale")
     async def kick(self, interaction: discord.Interaction, member: discord.Member) -> None:
         channel = await self._get_managed_channel_or_reply(interaction, "kick")
@@ -1015,7 +1015,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
                 )
         return True
 
-    @comando_di_gruppo("voice", nome="claim", descrizione="Prendi il canale se il proprietario non c'è più.")
+    @comando_di_gruppo("vocali", nome="claim", descrizione="Prendi il canale se il proprietario non c'è più.")
     async def claim(self, interaction: discord.Interaction) -> None:
         """VOC-001: il proprietario è uscito ma il canale resta (altri dentro): si può rilevare."""
         if not isinstance(interaction.user, discord.Member) or interaction.user.voice is None:
@@ -1048,10 +1048,10 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
         )
         await _registra(interaction.guild, f"👑 {interaction.user.mention} ha preso {channel.mention}.")
 
-    @comando_di_gruppo("voice", nome="permit", descrizione="Permetti a un utente o a un ruolo di entrare anche se il canale è bloccato.")
+    @comando_di_gruppo("vocali", nome="permit", descrizione="Permetti a un utente o a un ruolo di entrare anche se il canale è bloccato.")
     @app_commands.describe(member="L'utente o il ruolo da ammettere")
     async def permit(self, interaction: discord.Interaction, member: discord.Member | discord.Role) -> None:
-        # VOC-002: anche un ruolo intero (mai @everyone: per aprire a tutti c'è /voice unlock).
+        # VOC-002: anche un ruolo intero (mai @everyone: per aprire a tutti c'è /vocali unlock).
         channel = await self._get_managed_channel_or_reply(interaction, "permit")
         if channel is None:
             return
@@ -1078,7 +1078,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             return False
         return autore.id == interaction.guild.owner_id or ruolo < autore.top_role
 
-    @comando_di_gruppo("voice", nome="deny", descrizione="Vieta a un utente o a un ruolo di entrare nel canale.")
+    @comando_di_gruppo("vocali", nome="deny", descrizione="Vieta a un utente o a un ruolo di entrare nel canale.")
     @app_commands.describe(member="L'utente o il ruolo da escludere")
     async def deny(self, interaction: discord.Interaction, member: discord.Member | discord.Role) -> None:
         # VOC-003: nega «Connetti» (e scollega chi è dentro): chi è escluso non può rientrare.
@@ -1117,7 +1117,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             interaction.guild, f"⛔ {interaction.user.mention} ha escluso {member.mention} da {channel.mention}."
         )
 
-    @comando_di_gruppo("voice", nome="bitrate", descrizione="Imposta la qualità audio del canale (kbps).")
+    @comando_di_gruppo("vocali", nome="bitrate", descrizione="Imposta la qualità audio del canale (kbps).")
     @app_commands.describe(kbps="Qualità in kbps (8-384, dipende dal livello del server)")
     async def bitrate(
         self, interaction: discord.Interaction, kbps: app_commands.Range[int, 8, 384]
@@ -1138,7 +1138,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.send_message(await testo_per(interaction, "voicetemp_qualita_audio_impostata_kbps", pubblica=True, kbps=kbps))
 
-    @comando_di_gruppo("voice", nome="nascondi", descrizione="Nascondi o mostra il canale a chi non è dentro.")
+    @comando_di_gruppo("vocali", nome="nascondi", descrizione="Nascondi o mostra il canale a chi non è dentro.")
     @app_commands.describe(nascosto="Sì per nasconderlo, no per mostrarlo di nuovo")
     async def nascondi(self, interaction: discord.Interaction, nascosto: bool) -> None:
         channel = await self._get_managed_channel_or_reply(interaction, "nascondi")
@@ -1165,10 +1165,10 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             return
         await interaction.followup.send(await testo_per(interaction, "voicetemp_canale_nascosto", pubblica=True) if nascosto else await testo_per(interaction, "voicetemp_canale_di_nuovo_visibile", pubblica=True))
 
-    @comando_di_gruppo("voice", nome="invita", descrizione="Manda a un utente un invito al tuo canale.")
+    @comando_di_gruppo("vocali", nome="invita", descrizione="Manda a un utente un invito al tuo canale.")
     @app_commands.describe(member="L'utente da invitare (può entrare anche se il canale è bloccato)")
     async def invita(self, interaction: discord.Interaction, member: discord.Member) -> None:
-        """VOC-007: invito monouso di un giorno, in DM; ammette anche l'utente come /voice permit."""
+        """VOC-007: invito monouso di un giorno, in DM; ammette anche l'utente come /vocali permit."""
         channel = await self._get_managed_channel_or_reply(interaction, "invita")
         if channel is None:
             return
@@ -1212,7 +1212,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             allowed_mentions=discord.AllowedMentions.none(),
         )
 
-    @comando_di_gruppo("voice", nome="stato", descrizione="Scrivi cosa state facendo nel canale (vuoto: toglie).")
+    @comando_di_gruppo("vocali", nome="stato", descrizione="Scrivi cosa state facendo nel canale (vuoto: toglie).")
     @app_commands.describe(testo="Lo stato del canale, fino a 500 caratteri")
     async def stato(
         self,
@@ -1233,7 +1233,7 @@ class VoiceTempCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.send_message(await testo_per(interaction, "voicetemp_stato_aggiornato") if testo else await testo_per(interaction, "voicetemp_stato_tolto"), ephemeral=True)
 
-    @comando_di_gruppo("voice", nome="transfer", descrizione="Trasferisci la proprietà del canale.")
+    @comando_di_gruppo("vocali", nome="transfer", descrizione="Trasferisci la proprietà del canale.")
     @app_commands.describe(member="Il nuovo proprietario del canale")
     async def transfer(self, interaction: discord.Interaction, member: discord.Member) -> None:
         channel = await self._get_managed_channel_or_reply(interaction, "transfer")

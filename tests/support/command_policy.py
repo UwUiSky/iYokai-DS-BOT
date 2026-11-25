@@ -20,6 +20,7 @@ Pubblici:
 from __future__ import annotations
 
 from core.command_groups import nomi_gruppi
+from core.comandi_diretti import DIRETTI
 
 PUBLIC = "public"
 STAFF = "staff"
@@ -29,16 +30,12 @@ MIXED = "mixed"
 AUDIENCE: dict[str, str] = {
     # Staff, sotto il loro ruolo (D60)
     "admin-ai": STAFF,  # gruppo condiviso per ruolo (D60)
-    "admin-antinuke": STAFF,  # gruppo condiviso per ruolo (D60)
-    "admin-antiraid": STAFF,  # gruppo condiviso per ruolo (D60)
     "admin-automod": STAFF,  # gruppo condiviso per ruolo (D60)
     "admin-backup": STAFF,  # gruppo condiviso per ruolo (D60)
     "admin-benvenuto": STAFF,  # gruppo condiviso per ruolo (D60)
     "admin-bot": STAFF,  # gruppo condiviso per ruolo (D60)
     "admin-economia": STAFF,  # gruppo condiviso per ruolo (D60)
-    "admin-filtri": STAFF,  # gruppo condiviso per ruolo (D60)
     "admin-giveaway": STAFF,  # gruppo condiviso per ruolo (D60)
-    "admin-menu-ruoli": STAFF,  # gruppo condiviso per ruolo (D60)
     "admin-livelli": STAFF,  # gruppo condiviso per ruolo (D60)
     "admin-log": STAFF,  # gruppo condiviso per ruolo (D60)
     "admin-messaggi": STAFF,  # gruppo condiviso per ruolo (D60)
@@ -55,26 +52,43 @@ AUDIENCE: dict[str, str] = {
     "mod-casi": STAFF,  # gruppo condiviso per ruolo (D60)
     "mod-sanzioni": STAFF,  # gruppo condiviso per ruolo (D60)
     "founder": STAFF,  # gruppo condiviso per ruolo (D60)
-    "assistente": PUBLIC,  # gruppo condiviso per tutti (D56)
-    "admin-negozio": STAFF,  # gruppo condiviso per ruolo (D60)
-    "mercato": PUBLIC,
-    "rep": PUBLIC,
-    "admin-rep": STAFF,
-    "sala": PUBLIC,
-    "mondo": PUBLIC,
+    "admin-sicurezza-antinuke": STAFF,  # gruppo condiviso per ruolo (D137)
+    "admin-sicurezza-antiraid": STAFF,  # gruppo condiviso per ruolo (D137)
+    "admin-sicurezza-verifica": STAFF,  # gruppo condiviso per ruolo (D137)
+    "admin-automod-filtri": STAFF,  # gruppo condiviso per ruolo (D137)
+    "admin-ruoli-menu": STAFF,  # gruppo condiviso per ruolo (D137)
+    "admin-economia-negozio": STAFF,  # gruppo condiviso per ruolo (D137)
+    "admin-livelli-rep": STAFF,  # gruppo condiviso per ruolo (D137)
+    "admin-livelli-guadagno": STAFF,  # gruppo condiviso per ruolo (D137)
+    "admin-messaggi-tag": STAFF,  # gruppo condiviso per ruolo (D137)
+    "admin-ticket-pannelli": STAFF,  # gruppo condiviso per ruolo (D137)
+    "admin-bot-config": STAFF,  # gruppo condiviso per ruolo (D137)
+    "ai": PUBLIC,  # gruppo condiviso per tutti (D137)
+    "vocali": PUBLIC,  # gruppo condiviso per tutti (D137)
+    "monete-clan": PUBLIC,  # gruppo condiviso per tutti (D137)
+    "music-playlist": PUBLIC,  # gruppo condiviso per tutti (D137)
+    "giochi-sala": PUBLIC,  # gruppo condiviso per tutti (D137)
+    "giochi-mondo": PUBLIC,  # gruppo condiviso per tutti (D137)
+    "giochi-animali": PUBLIC,  # gruppo condiviso per tutti (D137)
+    "utility-web": PUBLIC,  # gruppo condiviso per tutti (D137)
+    "utility-server": PUBLIC,  # gruppo condiviso per tutti (D137)
+    "help": PUBLIC,  # primo livello, unisce chiedi e cerca-comando (D137)
+    "play": PUBLIC,  # comando diretto (D137)
+    "skip": PUBLIC,  # comando diretto (D137)
+    "stop": PUBLIC,  # comando diretto (D137)
+    "pause": PUBLIC,  # comando diretto (D137)
+    "resume": PUBLIC,  # comando diretto (D137)
+    "queue": PUBLIC,  # comando diretto (D137)
+    "ban": STAFF,  # comando diretto (D137)
+    "kick": STAFF,  # comando diretto (D137)
+    "mute": STAFF,  # comando diretto (D137)
+    "shadowban": STAFF,  # comando diretto (D137)
     "giochi": PUBLIC,  # gruppo condiviso per tutti (D56)
-    "auto": PUBLIC,  # gruppo condiviso per tutti (D56)
-    "tela": PUBLIC,  # gruppo condiviso per tutti (D56)
     "immagini": PUBLIC,  # gruppo condiviso per tutti (D56)
     "monete": PUBLIC,  # gruppo condiviso per tutti (D56)
-    "sondaggi": PUBLIC,  # gruppo condiviso per tutti (D56)
     "admin-inviti": STAFF,  # gruppo condiviso per ruolo (D69)
     "admin-automazioni": STAFF,  # script, inneschi e comandi del server (D69)
-    "admin-tag": STAFF,  # tag e risposte automatiche (D69)
-    "tag": PUBLIC,
     "admin-giochi": STAFF,  # gruppo condiviso per ruolo (D69)
-    "eventi": PUBLIC,  # gruppo per tutti (D69)
-    "web": PUBLIC,  # gruppo condiviso per tutti (D69)
     "Salva citazione": PUBLIC,  # menu del tasto destro (D69, B16)
     "Statistiche del membro": PUBLIC,  # menu del tasto destro, solo server (STA-011); il filtro per ruolo è nel codice (STA-013)
     "Statistiche del canale": PUBLIC,  # menu del tasto destro sul messaggio (STA-011)
@@ -88,19 +102,14 @@ AUDIENCE: dict[str, str] = {
     # Log
     # Fun
     "fun": PUBLIC,
-    "gif": PUBLIC,  # GIF di reazione e azione, gratuite per tutti (D70)
     # Livelli, economia, clan
     "level": PUBLIC,  # gruppo condiviso (core/command_groups.py)
-    "clan": PUBLIC,  # gruppo condiviso
     "music": PUBLIC,  # gruppo condiviso (core/command_groups.py)
     # Musica
     # Ticket
     "ticket": PUBLIC,
     # Vocali temporanei
-    "voice": PUBLIC,
     # Utility
-    "cerca-comando": PUBLIC,  # primo livello, col trattino (D24, 06/10/2026)
-    "chiedi": PUBLIC,  # primo livello, mostra il pannello di cerca-comando (#147)
     "utility": PUBLIC,  # gruppo condiviso (core/command_groups.py)
     # Owner: /owner è solo nel server dell'owner, non nell'albero globale
 }
@@ -108,7 +117,7 @@ AUDIENCE: dict[str, str] = {
 # I gruppi condivisi di F7 hanno già permessi e guild_only: fuori dai cricchetti.
 # I menu col tasto destro già solo-server (e con permessi, se staff) contano come i gruppi.
 _MENU_CON_PERMESSI = frozenset({"Scheda moderazione", "Apri ticket", "Segnala messaggio", "Riestrai giveaway"})
-_GRUPPI_YOKAI = frozenset(nomi_gruppi()) | _MENU_CON_PERMESSI
+_GRUPPI_YOKAI = frozenset(nomi_gruppi()) | _MENU_CON_PERMESSI | frozenset(DIRETTI)  # i diretti copiano i permessi del gruppo
 
 # Comandi staff/owner che oggi NON hanno default_permissions (tutti,
 # REVIEW.md §6 / SEC-1). Ogni fix toglie il nome da qui.
@@ -119,5 +128,5 @@ KNOWN_MISSING_DEFAULT_PERMISSIONS: frozenset[str] = frozenset(
 )
 
 # Comandi che oggi non sono guild_only (tutti, REVIEW.md LC-2).
-# `cerca-comando` è usabile anche in DM (D24): resta nel cricchetto.
+# `help` è usabile anche in DM (D24): resta nel cricchetto.
 KNOWN_NOT_GUILD_ONLY: frozenset[str] = frozenset(AUDIENCE) - _GRUPPI_YOKAI

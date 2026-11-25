@@ -48,7 +48,7 @@ MESSAGGI_LOCALI: dict[str, str] = {
     "canale": "L'AI è spenta in questo canale.",
     "funzione_spenta": "Questa funzione dell'AI è spenta in questo server. Un amministratore può accenderla con `/admin-ai interruttore`.",
     "privacy": "Il server ha scelto di non mandare messaggi degli utenti all'AI.",
-    "utente_spento": "Hai spento l'assistente AI per te: puoi riaccenderlo con `/assistente preferenza`.",
+    "utente_spento": "Hai spento l'assistente AI per te: puoi riaccenderlo con `/ai preferenza`.",
     "vietata": "Questa richiesta non è permessa.",
     "troppe": "Troppe richieste in poco tempo: riprova tra un minuto.",
     "tetto": "Il server ha raggiunto il tetto di spesa del mese per l'AI.",

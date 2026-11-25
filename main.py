@@ -38,7 +38,7 @@ import discord
 from discord.ext import commands
 
 from core.collaudo_avviso import messaggio_collaudo
-from core.command_groups import registra_owner
+from core.command_groups import GRUPPI_SOLO_OWNER, registra_owner
 from core.command_translator import TraduttoreYokai
 from core.command_sync import StatoSyncDatabase, sincronizza_all_avvio
 from core.config import config
@@ -341,7 +341,8 @@ class iYokaiBot(commands.AutoShardedBot):
         # `/owner` non è mai globale (mappa F7 §5): va solo nel server
         # dell'owner. Si toglie dall'albero globale PRIMA di copy_global_to,
         # così in sviluppo non compare due volte.
-        self.tree.remove_command("owner")
+        for nome_owner in GRUPPI_SOLO_OWNER:
+            self.tree.remove_command(nome_owner)
         owner_nel_server = bool(config.MAIN_GUILD_ID) and registra_owner(
             self.tree, config.MAIN_GUILD_ID
         )
@@ -787,7 +788,7 @@ async def main() -> None:
     # webhook configurato (SEC-14): nessun motivo di tenere una porta
     # in ascolto per una funzione che nessun server usa. Se il primo
     # webhook viene creato dopo l'avvio, il server parte al riavvio
-    # successivo — /admin-moduli alert webhook lo segnala nella risposta.
+    # successivo — /admin-alert piattaforme webhook lo segnala nella risposta.
     custom_webhook_runner = None
     if await custom_webhook_repo.has_any_webhook():
         custom_webhook_app = custom_webhook_build_app(
@@ -799,13 +800,13 @@ async def main() -> None:
         )
         if not config.ALERTS_WEBHOOK_PUBLIC_BASE_URL:
             logger.info(
-                "ALERTS_WEBHOOK_PUBLIC_BASE_URL non configurata: /admin-moduli alert webhook "
+                "ALERTS_WEBHOOK_PUBLIC_BASE_URL non configurata: /admin-alert piattaforme webhook "
                 "mostrerà solo il token, non un URL completo, finché non viene impostata."
             )
     else:
         logger.info(
             "Nessun webhook custom configurato: server webhook disattivato "
-            "(si avvia da solo al prossimo riavvio, dopo il primo /admin-moduli alert webhook)."
+            "(si avvia da solo al prossimo riavvio, dopo il primo /admin-alert piattaforme webhook)."
         )
     bot.custom_webhook_server_running = custom_webhook_runner is not None
 

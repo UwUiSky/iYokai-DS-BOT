@@ -308,7 +308,7 @@ async def _comando_rifiutato(interaction: discord.Interaction) -> bool:
     return True
 
 
-# Storico della tesoreria in /clan info: quante righe e come chiamarle.
+# Storico della tesoreria in /monete-clan info: quante righe e come chiamarle.
 MOVIMENTI_IN_CLAN_INFO = 5
 NOMI_DEI_MOVIMENTI = {
     "donation": "donazione",
@@ -323,7 +323,7 @@ NOMI_DEI_MOVIMENTI = {
 
 
 def _scelte_boost(prezzi: dict) -> list[app_commands.Choice[str]]:
-    """Le tre scelte fisse dell'opzione `tipo` di /clan boost (D23)."""
+    """Le tre scelte fisse dell'opzione `tipo` di /monete-clan boost (D23)."""
     return [
         app_commands.Choice(
             name=f"Exp: ×{BOOST_MULTIPLIER} ai punti esperienza ({prezzi[TipoBoost.EXP]} coin)",
@@ -598,7 +598,7 @@ def _embed_impostazioni(config: ConfigLivelli) -> discord.Embed:
         ),
         inline=False,
     )
-    # LIV-073: il riepilogo comprende anche come si guadagna XP (/admin-livelli guadagno).
+    # LIV-073: il riepilogo comprende anche come si guadagna XP (/admin-livelli-guadagno).
     sn = lambda v: "sì" if v else "no"  # noqa: E731
     canali_modo = "solo quelli dell'elenco" if i.canali_modo == "solo_questi" else "tutti tranne gli esclusi"
     prefissi = " ".join("`" + p.replace("`", "") + "`" for p in i.prefissi_ignorati)
@@ -1720,14 +1720,22 @@ class LevelingCog(CogConGruppi, commands.Cog):
         nome="balance",
         descrizione="Mostra i tuoi coin.",
     )
-    @app_commands.describe(member="Il membro di cui vedere il saldo (facoltativo)")
+    @app_commands.describe(
+        member="Il membro di cui vedere il saldo (facoltativo)",
+        immagine="Sì: il saldo come immagine (il portafoglio)",
+    )
     async def balance(
-        self, interaction: discord.Interaction, member: discord.Member | None = None
+        self, interaction: discord.Interaction, member: discord.Member | None = None, immagine: bool = False
     ) -> None:
         if await _comando_rifiutato(interaction):
             return
 
         target = member or interaction.user
+        if immagine:  # D137: era `/monete conto portafoglio`
+            from cogs.leveling._portafoglio import invia_portafoglio
+
+            await invia_portafoglio(interaction, target)
+            return
         totali = await leveling_repo.get_totals(interaction.guild.id, target.id)
         posizione = await leveling_repo.get_coins_position(interaction.guild.id, target.id)
         in_classifica = f" (#{posizione} in classifica)" if posizione else ""
@@ -2060,10 +2068,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
     # ================================================================
 
     @comando_di_gruppo(
-        "admin-ruoli",
+        "admin-livelli",
         nome="aggiungi",
         descrizione="Assegna un ruolo a chi raggiunge un livello.",
-        sottogruppo=SOTTOGRUPPI["admin-ruoli premio"],
+        sottogruppo=SOTTOGRUPPI["admin-livelli premi"],
     )
     @app_commands.describe(
         level="Livello richiesto",
@@ -2116,12 +2124,12 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin-ruoli",
+        "admin-livelli",
         nome="togli",
         descrizione="Rimuove un ruolo-premio configurato.",
-        sottogruppo=SOTTOGRUPPI["admin-ruoli premio"],
+        sottogruppo=SOTTOGRUPPI["admin-livelli premi"],
     )
-    @app_commands.describe(reward_id="ID della ricompensa (vedi /admin-ruoli premio elenco)")
+    @app_commands.describe(reward_id="ID della ricompensa (vedi /admin-livelli premi elenco)")
     async def level_roles_remove(self, interaction: discord.Interaction, reward_id: int) -> None:
         guild = interaction.guild
         if await _comando_rifiutato(interaction):
@@ -2136,10 +2144,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
 
     @comando_di_gruppo(
-        "admin-ruoli",
+        "admin-livelli",
         nome="elenco",
         descrizione="Mostra i ruoli-premio configurati su questo server.",
-        sottogruppo=SOTTOGRUPPI["admin-ruoli premio"],
+        sottogruppo=SOTTOGRUPPI["admin-livelli premi"],
     )
     async def level_roles_list(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
@@ -2975,7 +2983,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
 
     @comando_di_gruppo(
-        "clan",
+        "monete-clan",
         nome="crea",
         descrizione="Crea una nuova gilda/clan.",
     )
@@ -3072,7 +3080,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "clan",
+        "monete-clan",
         nome="info",
         descrizione="Mostra le informazioni di una gilda.",
     )
@@ -3148,7 +3156,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, file=file)
 
     @comando_di_gruppo(
-        "clan",
+        "monete-clan",
         nome="membri",
         descrizione="Mostra i membri di una gilda.",
     )
@@ -3182,7 +3190,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "clan",
+        "monete-clan",
         nome="classifica",
         descrizione="Classifica delle gilde per XP (mensile o totale).",
     )
@@ -3281,7 +3289,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
 
     @comando_di_gruppo(
-        "clan",
+        "monete-clan",
         nome="sciogli",
         descrizione="Sciogli la tua gilda.",
     )
@@ -3335,7 +3343,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(await testo_per(interaction, "leveling_la_gilda_stata_sciolta", pubblica=True, name=clan.name))
 
     @comando_di_gruppo(
-        "clan",
+        "monete-clan",
         nome="invita",
         descrizione="Invita un membro nella tua gilda.",
     )
@@ -3395,7 +3403,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "clan",
+        "monete-clan",
         nome="lascia",
         descrizione="Lascia la gilda di cui fai parte.",
     )
@@ -3430,7 +3438,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "clan",
+        "monete-clan",
         nome="espelli",
         descrizione="Espelli un membro dalla tua gilda.",
     )
@@ -3488,7 +3496,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "clan",
+        "monete-clan",
         nome="promuovi",
         descrizione="Cambia il ruolo di un membro della tua gilda.",
     )
@@ -3563,7 +3571,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "clan",
+        "monete-clan",
         nome="compra-canale",
         descrizione="Sblocca un nuovo canale extra per la tua gilda.",
     )
@@ -3666,10 +3674,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
 
     @comando_di_gruppo(
-        "clan",
+        "monete-clan",
         nome="dona",
         descrizione="Dona coin personali alla tesoreria della tua gilda.",
-        sottogruppo=_SG_TESORERIA,
+        sottogruppo=SOTTOGRUPPI["monete-clan tesoreria"],
     )
     @app_commands.describe(importo="Quante coin donare (dal tuo saldo personale)")
     async def clan_tesoreria_dona(
@@ -3703,10 +3711,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(messaggio)
 
     @comando_di_gruppo(
-        "clan",
+        "monete-clan",
         nome="trasferisci",
         descrizione="Trasferisci coin dalla tesoreria a un'altra TUA gilda (anche su un altro server).",
-        sottogruppo=_SG_TESORERIA,
+        sottogruppo=SOTTOGRUPPI["monete-clan tesoreria"],
     )
     @app_commands.describe(
         tag_destinazione="Tag dell'altra gilda di cui sei Capo Clan (anche su un server diverso)",
@@ -3786,10 +3794,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
 
     @comando_di_gruppo(
-        "clan",
+        "monete-clan",
         nome="individuale",
         descrizione=f"Acquista un boost personale ×{BOOST_MULTIPLIER} per {BOOST_DURATION_HOURS}h sul tuo tick vocale di gilda.",
-        sottogruppo=_SG_BOOST,
+        sottogruppo=SOTTOGRUPPI["monete-clan boost"],
     )
     @app_commands.describe(tipo="Cosa raddoppia: exp, coin o entrambi (super)")
     @app_commands.choices(tipo=_scelte_boost(INDIVIDUAL_BOOST_COSTS))
@@ -3841,10 +3849,10 @@ class LevelingCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "clan",
+        "monete-clan",
         nome="gilda",
         descrizione=f"Acquista un boost ×{BOOST_MULTIPLIER} per {BOOST_DURATION_HOURS}h per TUTTI i membri, dalla tesoreria.",
-        sottogruppo=_SG_BOOST,
+        sottogruppo=SOTTOGRUPPI["monete-clan boost"],
     )
     @app_commands.describe(tipo="Cosa raddoppia: exp, coin o entrambi (super)")
     @app_commands.choices(tipo=_scelte_boost(GUILD_BOOST_COSTS))
@@ -4149,8 +4157,8 @@ class LevelingCog(CogConGruppi, commands.Cog):
 
     @comando_di_gruppo(
         "admin-livelli",
-        nome="premi",
-        descrizione="Ruoli-premio: tienili tutti o tieni solo quello più alto.",
+        nome="modo",
+        descrizione="Ruoli-premio: tienili tutti o tieni solo quello più alto.", sottogruppo=SOTTOGRUPPI["admin-livelli premi"],
     )
     @app_commands.describe(modo="'accumula' li tiene tutti, 'sostituisci' toglie i precedenti")
     @app_commands.choices(modo=_SCELTE_PREMI)

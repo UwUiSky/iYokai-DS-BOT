@@ -123,10 +123,13 @@ commit, documentazione, issue. Frasi brevi e parole semplici.
 - Nessun segreto nel repository, nei commit, nelle issue o nei log
   (token, `DATABASE_URL`, password Lavalink, chiavi OAuth). Nei file di
   esempio solo segnaposto. Non committare `.env` né file in `logs/`.
-- Gruppi di comandi (D56): massimo 60 di primo livello (Discord 100), 25 figli per
-  gruppo (si punta a 18), profondità 3. Peso: limite vero 8.000 caratteri per gruppo,
-  avviso a 6.800. I comandi solo per l'owner del bot stanno in `/owner`, divisi in
-  sotto-gruppi per area (`/owner ai`, …), con controllo di OWNER_ID.
+- Gruppi di comandi (D56, D137): comandi di primo livello globali al massimo 100 (limite
+  Discord), avviso a 90, contando `/premium` e `/vip`; 25 figli per gruppo (18 è un obiettivo,
+  un avviso), profondità 3. Ogni comando sta nella sua famiglia (prefisso del gruppo: `giochi-sala`).
+  Peso: limite vero 8.000 caratteri per gruppo, calcolato con ogni traduzione più lunga del 30%
+  della versione più lunga tra it ed en (o la traduzione vera se più lunga); avviso a 6.800.
+  I comandi solo per l'owner del bot stanno in `/owner` e `/owner-radio` (solo nel server dell'owner),
+  divisi in sotto-gruppi per area (`/owner ai`, …), con controllo di OWNER_ID.
 - Non riscrivere la storia git senza richiesta esplicita dell'owner.
 - iYokai **non addestra modelli**. I servizi AI che addestrano sui dati si
   usano solo come ripiego e mai sui server che lo vietano (D19, D55).

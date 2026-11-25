@@ -1,7 +1,7 @@
 """
 cogs/fun/animali.py
 ===================
-Animali virtuali e pesca: /fun animali compra, lista, cura, posto, attivita; /fun pesca lancia, vendi, guida, classifica.
+Animali virtuali e pesca: /giochi-animali compra, lista, cura, posto, attivita; /giochi-animali pesca lancia, vendi, guida, classifica.
 Gli animali ben tenuti danno un piccolo bonus a lavoro e premio periodico (applicato in cogs/leveling/leveling.py).
 Funzioni coperte: ECO-122, ECO-123, ECO-124, ECO-130, ECO-131, ECO-132, ECO-133, ECO-134, ECO-138
 Dipende da: core/animali_logic.py, core/repositories/animali_repo.py
@@ -21,7 +21,7 @@ from core.animali_logic import (
     ATTIVITA, LUOGHI_PESCA, MAX_NOME, PAUSA_ATTIVITA, PAUSA_PESCA, PESCI, SPECIE, livello, nome_valido, pesca,
     premio_attivita, salute, valore_pesci, valore_stato,
 )
-from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
+from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog, SOTTOGRUPPI
 from core.i18n import testo_per
 from core.animali_avanzati_logic import bonus_vendita, capienza, pausa_pesca, pesca_con
 from core.repositories.animali_repo import animali_repo
@@ -52,7 +52,7 @@ class AnimaliCog(CogConGruppi, commands.Cog):
         return (await leveling_settings_repo.get_config(guild_id)).impostazioni.currency_name
 
     # ---------------------------------------------------------------- animali
-    @comando_di_gruppo("fun", nome="compra", descrizione="Compra un animale da accudire.", sottogruppo=SG_ANIMALI)
+    @comando_di_gruppo("giochi-animali", nome="compra", descrizione="Compra un animale da accudire.")
     @app_commands.describe(specie="Che animale", nome=f"Come lo chiami (massimo {MAX_NOME} caratteri)")
     @app_commands.choices(specie=_SCELTE_SPECIE)
     async def compra(self, interaction: discord.Interaction, specie: app_commands.Choice[str], nome: app_commands.Range[str, 1, MAX_NOME]) -> None:
@@ -69,7 +69,7 @@ class AnimaliCog(CogConGruppi, commands.Cog):
             ephemeral=esito != "ok", allowed_mentions=NESSUNA_MENZIONE,
         )
 
-    @comando_di_gruppo("fun", nome="lista", descrizione="I tuoi animali: fame, pulizia, gioco e livello.", sottogruppo=SG_ANIMALI)
+    @comando_di_gruppo("giochi-animali", nome="lista", descrizione="I tuoi animali: fame, pulizia, gioco e livello.")
     async def lista(self, interaction: discord.Interaction) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -85,8 +85,8 @@ class AnimaliCog(CogConGruppi, commands.Cog):
         )
         await interaction.response.send_message(testo[:3900], ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("fun", nome="cura", descrizione="Dai da mangiare, pulisci o gioca con un animale (una volta all'ora per tipo).", sottogruppo=SG_ANIMALI)
-    @app_commands.describe(animale="ID dell'animale (vedi /fun animali lista)", cosa="Cosa fai")
+    @comando_di_gruppo("giochi-animali", nome="cura", descrizione="Dai da mangiare, pulisci o gioca con un animale (una volta all'ora per tipo).")
+    @app_commands.describe(animale="ID dell'animale (vedi /giochi-animali lista)", cosa="Cosa fai")
     @app_commands.choices(cosa=_SCELTE_CURA)
     async def cura(self, interaction: discord.Interaction, animale: IdAnimale, cosa: app_commands.Choice[str]) -> None:
         if await _comando_rifiutato(interaction):
@@ -94,7 +94,7 @@ class AnimaliCog(CogConGruppi, commands.Cog):
         esito = await animali_repo.cura(interaction.guild.id, interaction.user.id, animale, cosa.value)
         await interaction.response.send_message(await testo_per(interaction, f"ani_cura_{esito}"), ephemeral=esito != "ok")
 
-    @comando_di_gruppo("fun", nome="posto", descrizione="Compra un posto in più per un altro animale (massimo 2 in più).", sottogruppo=SG_ANIMALI)
+    @comando_di_gruppo("giochi-animali", nome="posto", descrizione="Compra un posto in più per un altro animale (massimo 2 in più).")
     async def posto(self, interaction: discord.Interaction) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -103,7 +103,7 @@ class AnimaliCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, f"ani_posto_{esito}", costo=costo, moneta=await self._moneta(interaction.guild.id)), ephemeral=esito != "ok"
         )
 
-    @comando_di_gruppo("fun", nome="attivita", descrizione="Un'attività con un tuo animale in salute: ti porta qualche moneta (ogni 2 ore).", sottogruppo=SG_ANIMALI)
+    @comando_di_gruppo("giochi-animali", nome="attivita", descrizione="Un'attività con un tuo animale in salute: ti porta qualche moneta (ogni 2 ore).")
     @app_commands.describe(animale="ID dell'animale", tipo="Che attività")
     @app_commands.choices(tipo=_SCELTE_ATTIVITA)
     async def attivita(self, interaction: discord.Interaction, animale: IdAnimale, tipo: app_commands.Choice[str]) -> None:
@@ -127,7 +127,7 @@ class AnimaliCog(CogConGruppi, commands.Cog):
         )
 
     # ---------------------------------------------------------------- pesca
-    @comando_di_gruppo("fun", nome="lancia", descrizione="Getta la lenza in un luogo (ogni 15 minuti).", sottogruppo=SG_PESCA)
+    @comando_di_gruppo("giochi-animali", nome="lancia", descrizione="Getta la lenza in un luogo (ogni 15 minuti).", sottogruppo=SOTTOGRUPPI["giochi-animali pesca"])
     @app_commands.describe(luogo="Dove peschi")
     @app_commands.choices(luogo=_SCELTE_LUOGO)
     async def lancia(self, interaction: discord.Interaction, luogo: app_commands.Choice[str]) -> None:
@@ -148,7 +148,7 @@ class AnimaliCog(CogConGruppi, commands.Cog):
             return
         await interaction.response.send_message(await testo_per(interaction, "pes_preso", pesce=specie, emoji=PESCI[specie][1], luogo=luogo.value, pubblica=True))
 
-    @comando_di_gruppo("fun", nome="vendi", descrizione="Vendi tutti i pesci del deposito.", sottogruppo=SG_PESCA)
+    @comando_di_gruppo("giochi-animali", nome="vendi", descrizione="Vendi tutti i pesci del deposito.", sottogruppo=SOTTOGRUPPI["giochi-animali pesca"])
     async def vendi(self, interaction: discord.Interaction) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -161,7 +161,7 @@ class AnimaliCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "pes_venduti", n=n, monete=monete, moneta=await self._moneta(interaction.guild.id)), ephemeral=True
         )
 
-    @comando_di_gruppo("fun", nome="guida", descrizione="Il tuo deposito di pesci e le specie che hai già trovato.", sottogruppo=SG_PESCA)
+    @comando_di_gruppo("giochi-animali", nome="guida", descrizione="Il tuo deposito di pesci e le specie che hai già trovato.", sottogruppo=SOTTOGRUPPI["giochi-animali pesca"])
     async def guida(self, interaction: discord.Interaction) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -171,7 +171,7 @@ class AnimaliCog(CogConGruppi, commands.Cog):
         righe.append(await testo_per(interaction, "pes_guida", visti=len(visti), tutti=len(PESCI), valore=valore_pesci(deposito)))
         await interaction.response.send_message("\n".join(righe), ephemeral=True)
 
-    @comando_di_gruppo("fun", nome="classifica", descrizione="I migliori pescatori di oggi.", sottogruppo=SG_PESCA)
+    @comando_di_gruppo("giochi-animali", nome="classifica", descrizione="I migliori pescatori di oggi.", sottogruppo=SOTTOGRUPPI["giochi-animali pesca"])
     async def classifica_pesca(self, interaction: discord.Interaction) -> None:
         if await _comando_rifiutato(interaction):
             return

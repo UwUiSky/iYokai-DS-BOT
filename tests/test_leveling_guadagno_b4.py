@@ -50,7 +50,7 @@ def test_liv012_anti_farm_spento_non_guarda_l_assordato_ma_l_afk_resta_escluso()
 @pytest.mark.asyncio
 async def test_liv011_012_il_comando_salva_e_rifiuta_chi_non_gestisce(ambiente):  # noqa: F811
     cog = ambiente
-    cmd = _comando(cog, "admin-livelli guadagno vocale")
+    cmd = _comando(cog, "admin-livelli-guadagno vocale")
     senza = _inter(permessi=discord.Permissions.none())
     await cmd.callback(cog, senza, 5, False)
     assert (await leveling_settings_repo.get_config(GUILD, fresco=True)).impostazioni.voce_min_persone == 2
@@ -122,7 +122,7 @@ async def test_liv014_015_016_con_l_interruttore_spento_non_da_xp(cog_xp, campo,
 @pytest.mark.asyncio
 async def test_liv014_015_016_il_comando_salva(ambiente):  # noqa: F811
     cog = ambiente
-    await _comando(cog, "admin-livelli guadagno contesti").callback(cog, _inter(), False, None, False)
+    await _comando(cog, "admin-livelli-guadagno contesti").callback(cog, _inter(), False, None, False)
     i = (await leveling_settings_repo.get_config(GUILD, fresco=True)).impostazioni
     assert (i.xp_thread, i.xp_forum, i.xp_chat_vocale) == (False, True, False)
 

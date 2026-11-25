@@ -10,6 +10,8 @@ Dipende da: core/economia_sospensioni.py, cogs/moderation/_shared.py (canale dei
 
 from __future__ import annotations
 
+from core.comandi_diretti import percorso_vero
+
 import discord
 
 from core import economia_sospensioni as es
@@ -64,7 +66,7 @@ async def rifiuta_se_sospeso(interaction: discord.Interaction) -> bool:
     try:
         if interaction.guild is None or interaction.command is None:
             return False
-        if not es.e_di_gioco(interaction.command.qualified_name):
+        if not es.e_di_gioco(percorso_vero(interaction.command)):
             return False
         sosp = await es.attiva(interaction.guild.id, interaction.user.id)
         if sosp is None:

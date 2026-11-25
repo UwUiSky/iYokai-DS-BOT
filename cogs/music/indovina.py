@@ -1,7 +1,7 @@
 """
 cogs/music/indovina.py
 ======================
-`/fun indovina-canzone`: gioco «indovina la canzone» (MUS-019). Il bot musicale suona un estratto breve di un brano
+`/giochi indovina-canzone`: gioco «indovina la canzone» (MUS-019). Il bot musicale suona un estratto breve di un brano
 della playlist dell'owner (i file locali sono esclusi) e chi scrive per primo il titolo nel canale prende un punto.
 Una partita per server alla volta, da 1 a 10 giri, nessun punteggio salvato.
 Funzioni coperte: SPEC §9 (catalogo MUS-019)
@@ -74,7 +74,7 @@ class MusicIndovinaCog(CogConGruppi, commands.Cog):
         self._partite.clear()
 
     # ------------------------------------------------------------------ comando
-    @comando_di_gruppo("fun", nome="indovina-canzone", descrizione="Indovina la canzone da un breve estratto, in vocale.")
+    @comando_di_gruppo("giochi", nome="indovina-canzone", descrizione="Indovina la canzone da un breve estratto, in vocale.")
     @app_commands.describe(giri="Quanti brani (1-10)", ferma="Ferma la partita in corso")
     async def indovina(
         self, interaction: discord.Interaction, giri: app_commands.Range[int, 1, MAX_ROUND] = ROUND_PREDEFINITO,

@@ -33,7 +33,7 @@ async def test_comandi_del_catalogo_che_esistono_gia():
         assert "admin-bot premium marchio" in percorsi  # CFG-031
         assert "admin-bot premium stato" in percorsi  # CFG-035
         assert {"utility privacy esporta", "utility privacy cancella"} <= percorsi  # CFG-042
-        assert "cerca-comando" in percorsi  # CFG-045
+        assert "help" in percorsi  # CFG-045 (D137: ex cerca-comando)
         assert {"admin-bot lingua set", "admin-bot lingua show", "utility lingua"} <= percorsi  # CFG-028
     finally:
         await close_full_bot(bot)

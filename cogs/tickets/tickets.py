@@ -2096,10 +2096,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         return panel
 
     @comando_di_gruppo(
-        "admin-ticket",
+        "admin-ticket-pannelli",
         nome="crea",
         descrizione="Crea un pannello di ticket.",
-        sottogruppo=SOTTOGRUPPI["admin-ticket pannelli"],
     )
     @app_commands.describe(
         nome="Nome del pannello",
@@ -2156,10 +2155,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin-ticket",
+        "admin-ticket-pannelli",
         nome="rimuovi",
         descrizione="Elimina un pannello e il suo modulo.",
-        sottogruppo=SOTTOGRUPPI["admin-ticket pannelli"],
     )
     @app_commands.describe(nome="Il pannello da eliminare")
     @app_commands.autocomplete(nome=_completa_pannelli)
@@ -2177,10 +2175,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin-ticket",
+        "admin-ticket-pannelli",
         nome="elenco",
         descrizione="Elenca i pannelli di ticket del server.",
-        sottogruppo=SOTTOGRUPPI["admin-ticket pannelli"],
     )
     async def pannello_lista(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
@@ -2203,10 +2200,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(testo[:1900], ephemeral=True)
 
     @comando_di_gruppo(
-        "admin-ticket",
+        "admin-ticket-pannelli",
         nome="pubblica",
         descrizione="Pubblica qui i bottoni di uno o più pannelli.",
-        sottogruppo=SOTTOGRUPPI["admin-ticket pannelli"],
     )
     @app_commands.describe(
         pannelli="Nomi separati da virgola",
@@ -2263,10 +2259,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed_builder.costruisci(dati), view=vista)
 
     @comando_di_gruppo(
-        "admin-ticket",
+        "admin-ticket-pannelli",
         nome="modulo-aggiungi",
         descrizione="Aggiungi una domanda al modulo (max 5).",
-        sottogruppo=SOTTOGRUPPI["admin-ticket pannelli"],
     )
     @app_commands.describe(
         pannello="Il pannello",
@@ -2325,10 +2320,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin-ticket",
+        "admin-ticket-pannelli",
         nome="modulo-copia",
         descrizione="Copia il modulo di un pannello su un altro (sostituisce le sue domande).",
-        sottogruppo=SOTTOGRUPPI["admin-ticket pannelli"],
     )
     @app_commands.describe(da="Il pannello da cui copiare le domande", a="Il pannello che le riceve")
     @app_commands.autocomplete(da=_completa_pannelli, a=_completa_pannelli)
@@ -2368,10 +2362,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         ][:25]
 
     @comando_di_gruppo(
-        "admin-ticket",
+        "admin-ticket-pannelli",
         nome="duplica",
         descrizione="Duplica un pannello già configurato, o copia una risposta pronta su un altro pannello.",
-        sottogruppo=SOTTOGRUPPI["admin-ticket pannelli"],
     )
     @app_commands.describe(
         da="Il pannello da copiare",
@@ -2438,10 +2431,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin-ticket",
+        "admin-ticket-pannelli",
         nome="modello",
         descrizione="Importa un modello pronto di pannello (modulo, motivi, risposte).",
-        sottogruppo=SOTTOGRUPPI["admin-ticket pannelli"],
     )
     @app_commands.describe(
         modello="Il modello da importare (vuoto: l'elenco dei modelli)",
@@ -2514,10 +2506,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin-ticket",
+        "admin-ticket-pannelli",
         nome="aspetto",
         descrizione="Colore del bottone, testo del menu e messaggio di apertura di un pannello.",
-        sottogruppo=SOTTOGRUPPI["admin-ticket pannelli"],
     )
     @app_commands.describe(
         pannello="Il pannello",
@@ -2559,10 +2550,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin-ticket",
+        "admin-ticket-pannelli",
         nome="modulo-togli",
         descrizione="Togli una domanda dal modulo.",
-        sottogruppo=SOTTOGRUPPI["admin-ticket pannelli"],
     )
     @app_commands.describe(pannello="Il pannello", numero="Numero della domanda")
     @app_commands.autocomplete(pannello=_completa_pannelli)
@@ -2581,10 +2571,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(await testo_per(interaction, "tickets_non_una_domanda", numero=numero), ephemeral=True)
 
     @comando_di_gruppo(
-        "admin-ticket",
+        "admin-ticket-pannelli",
         nome="modulo-mostra",
         descrizione="Mostra le domande del modulo di un pannello.",
-        sottogruppo=SOTTOGRUPPI["admin-ticket pannelli"],
     )
     @app_commands.describe(pannello="Il pannello")
     @app_commands.autocomplete(pannello=_completa_pannelli)
@@ -2608,10 +2597,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message("\n".join(righe), ephemeral=True)
 
     @comando_di_gruppo(
-        "admin-ticket",
+        "admin-ticket-pannelli",
         nome="motivo-aggiungi",
         descrizione="Aggiungi un motivo pronto al pannello (max 24).",
-        sottogruppo=SOTTOGRUPPI["admin-ticket pannelli"],
     )
     @app_commands.describe(
         pannello="Il pannello",
@@ -2654,10 +2642,9 @@ class TicketsCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin-ticket",
+        "admin-ticket-pannelli",
         nome="motivo-togli",
         descrizione="Togli un motivo pronto dal pannello (senza numero: li elenca).",
-        sottogruppo=SOTTOGRUPPI["admin-ticket pannelli"],
     )
     @app_commands.describe(pannello="Il pannello", numero="Numero del motivo (vuoto = elenco)")
     @app_commands.autocomplete(pannello=_completa_pannelli)
@@ -2991,7 +2978,7 @@ class TicketsCog(CogConGruppi, commands.Cog):
         # Il ruolo può essere anche quello "storico" impostato con
         # /admin-ticket setup: va tolto pure da lì, altrimenti continua a
         # vedere i ticket. La chiave si toglie del tutto (un `null`
-        # verrebbe poi rifiutato da /admin-bot config import).
+        # verrebbe poi rifiutato da /admin-bot-config import).
         if await db.get_guild_setting(guild_id, SETTING_SUPPORT_ROLE) == role.id:
             await db.remove_guild_setting(guild_id, SETTING_SUPPORT_ROLE, interaction.user.id)
             rimosso = True

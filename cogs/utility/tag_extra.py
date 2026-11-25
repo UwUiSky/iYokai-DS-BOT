@@ -2,7 +2,7 @@
 cogs/utility/tag_extra.py
 =========================
 Scheda di un tag (autore, usi, nomi alternativi, testo grezzo), nomi alternativi (alias) e divieti per ruolo, canale o utente:
-`/admin-tag tag info|alias|divieti`.
+`/admin-messaggi-tag info|alias|divieti`.
 Funzioni coperte: catalogo #128 UTL-007, 008, 009, 014 (r2utl)
 """
 
@@ -61,8 +61,7 @@ class TagExtraCog(CogConGruppi, commands.Cog):
         return tag
 
     # ---------------------------------------------------------------- info (UTL-007, 008)
-    @comando_di_gruppo("admin-tag", nome="info", descrizione="Scheda di un tag: autore, usi, nomi alternativi e testo grezzo.",
-                       sottogruppo=SOTTOGRUPPI["admin-tag tag"])
+    @comando_di_gruppo("admin-messaggi-tag", nome="info", descrizione="Scheda di un tag: autore, usi, nomi alternativi e testo grezzo.")
     @app_commands.describe(nome="Il tag", grezzo="Mostra anche il testo così com'è, senza segnaposto risolti")
     @app_commands.autocomplete(nome=_completa)
     async def info(self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, MAX_NOME], grezzo: bool = False) -> None:
@@ -83,8 +82,7 @@ class TagExtraCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True, allowed_mentions=_NESSUNA)
 
     # ---------------------------------------------------------------- alias (UTL-009)
-    @comando_di_gruppo("admin-tag", nome="alias", descrizione="Nomi alternativi di un tag (al massimo 3).",
-                       sottogruppo=SOTTOGRUPPI["admin-tag tag"])
+    @comando_di_gruppo("admin-messaggi-tag", nome="alias", descrizione="Nomi alternativi di un tag (al massimo 3).")
     @app_commands.describe(nome="Il tag", azione="Cosa fare", alias="Il nome alternativo (serve per aggiungi e togli)")
     @app_commands.choices(azione=_SCELTE_ALIAS)
     @app_commands.autocomplete(nome=_completa)
@@ -114,8 +112,7 @@ class TagExtraCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, esito, nome=tag.name, alias=pulito, massimo=MAX_ALIAS), ephemeral=True)
 
     # ---------------------------------------------------------------- divieti (UTL-014)
-    @comando_di_gruppo("admin-tag", nome="divieti", descrizione="Vieta un tag a un ruolo, un canale o un utente (al massimo 10 per elenco).",
-                       sottogruppo=SOTTOGRUPPI["admin-tag tag"])
+    @comando_di_gruppo("admin-messaggi-tag", nome="divieti", descrizione="Vieta un tag a un ruolo, un canale o un utente (al massimo 10 per elenco).")
     @app_commands.describe(nome="Il tag", ruolo="Ruolo a cui è vietato", canale="Canale dove è vietato", utente="Utente a cui è vietato",
                            togli="Toglie il divieto invece di metterlo (senza scelte: mostra gli elenchi)")
     @app_commands.autocomplete(nome=_completa)

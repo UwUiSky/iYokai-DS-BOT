@@ -1,8 +1,8 @@
 """
 cogs/leveling/contenuti.py
 ==========================
-Comandi di guadagno creati dal server (/admin-negozio guadagno crea|elimina, /monete rischio guadagna), righe del
-profilo scelte dall'utente (/level righe) e oggetti dal fondo premi (/admin-negozio fondo dai).
+Comandi di guadagno creati dal server (/admin-economia-negozio guadagno crea|elimina, /monete rischio guadagna), righe del
+profilo scelte dall'utente (/level righe) e oggetti dal fondo premi (/admin-economia-negozio fondo dai).
 Funzioni coperte: ECO-039, ECO-152, ECO-120
 Dipende da: core/repositories/contenuti_repo.py
 """
@@ -17,7 +17,7 @@ from discord.ext import commands
 
 from cogs.leveling.leveling import _comando_rifiutato
 from cogs.leveling.rischio import _SG_RISCHIO
-from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
+from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog, SOTTOGRUPPI
 from core.i18n import testo_per
 from core.repositories.animali_repo import animali_repo
 from core.repositories.contenuti_repo import MAX_COMANDI_GUADAGNO, RIGHE_PROFILO, contenuti_repo
@@ -49,7 +49,7 @@ class ContenutiCog(CogConGruppi, commands.Cog):
         togli_comandi_del_cog(self)
 
     # ------------------------------------------------------------------ ECO-039
-    @comando_di_gruppo("admin-negozio", nome="crea", descrizione="Crea un comando di guadagno: chi lo usa riceve monete, con una pausa.", sottogruppo=SG_GUADAGNO)
+    @comando_di_gruppo("admin-economia-negozio", nome="crea", descrizione="Crea un comando di guadagno: chi lo usa riceve monete, con una pausa.", sottogruppo=SOTTOGRUPPI["admin-economia-negozio guadagno"])
     @app_commands.describe(nome="Nome (lettere minuscole, numeri e trattini)", minimo="Monete minime", massimo="Monete massime (fino a 10000)",
                            pausa_minuti="Minuti di pausa per persona (1-10080)", testo="Frase mostrata; {monete} diventa l'importo")
     async def guadagno_crea(
@@ -67,7 +67,7 @@ class ContenutiCog(CogConGruppi, commands.Cog):
         )
         await interaction.response.send_message(await testo_per(interaction, f"con_crea_{esito}", massimo=MAX_COMANDI_GUADAGNO), ephemeral=True)
 
-    @comando_di_gruppo("admin-negozio", nome="elimina", descrizione="Elimina un comando di guadagno del server.", sottogruppo=SG_GUADAGNO)
+    @comando_di_gruppo("admin-economia-negozio", nome="elimina", descrizione="Elimina un comando di guadagno del server.", sottogruppo=SOTTOGRUPPI["admin-economia-negozio guadagno"])
     @app_commands.describe(nome="Nome del comando")
     async def guadagno_elimina(self, interaction: discord.Interaction, nome: NOME) -> None:
         if await _comando_rifiutato(interaction):
@@ -127,8 +127,8 @@ class ContenutiCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message("\n".join(righe), ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
     # ------------------------------------------------------------------ ECO-120
-    @comando_di_gruppo("admin-negozio", nome="dai", descrizione="Dai a un membro un oggetto donato al fondo premi.", sottogruppo=SG_FONDO)
-    @app_commands.describe(membro="Chi lo riceve", oggetto="ID dell'oggetto (vedi /mercato fondo)")
+    @comando_di_gruppo("admin-economia-negozio", nome="dai", descrizione="Dai a un membro un oggetto donato al fondo premi.", sottogruppo=SOTTOGRUPPI["admin-economia-negozio fondo"])
+    @app_commands.describe(membro="Chi lo riceve", oggetto="ID dell'oggetto (vedi /monete mercato fondo)")
     async def fondo_dai(self, interaction: discord.Interaction, membro: discord.Member, oggetto: app_commands.Range[int, 1, 2_147_483_647]) -> None:
         if await _comando_rifiutato(interaction):
             return

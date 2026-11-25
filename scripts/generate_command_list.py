@@ -30,6 +30,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core.command_tree_utils import walk_commands
+from core.comandi_diretti import ComandoDiretto, percorso_vero
 
 
 async def main() -> None:
@@ -70,10 +71,12 @@ async def main() -> None:
         comandi_top_level = list(bot.tree.get_commands())
         if GRUPPI["owner"].commands:
             comandi_top_level.append(GRUPPI["owner"])
+        if GRUPPI["owner-radio"].commands:
+            comandi_top_level.append(GRUPPI["owner-radio"])
         # Le applicazioni separate (istanza NSFW, iYokai App) hanno un albero proprio: categorie a parte.
         from tests.support.full_tree import build_separate_trees
 
-        per_app: dict[int, str] = {}  # per oggetto: `/assistente` esiste in due app diverse
+        per_app: dict[int, str] = {}  # per oggetto: `/ai` esiste in due app diverse
         for altro in await build_separate_trees():
             for c in altro.tree.get_commands():
                 comandi_top_level.append(c)
@@ -81,10 +84,12 @@ async def main() -> None:
             await altro.close()
 
         # La categoria è il gruppo di primo livello (D24); i comandi
-        # singoli di primo livello (cerca-comando, chiedi) vanno in "aiuto".
+        # singoli di primo livello (/help) e i comandi diretti vanno nelle loro categorie.
         per_lingua = {"it": defaultdict(list), "en": defaultdict(list)}
         for cmd in comandi_top_level:
-            categoria = per_app.get(id(cmd)) or (cmd.name if isinstance(cmd, app_commands.Group) else "aiuto")
+            categoria = per_app.get(id(cmd)) or (
+                cmd.name if isinstance(cmd, app_commands.Group) else "diretti" if isinstance(cmd, ComandoDiretto) else "help"
+            )
             for lingua in ("it", "en"):
                 per_lingua[lingua][categoria].extend(_foglie(cmd, lingua))
 
@@ -115,29 +120,53 @@ def _foglie(nodo, lingua: str, prefisso: str = "") -> list[tuple[str, str]]:
     # dal nodo vero.
     descrizione = nodo.description or "(nessuna descrizione)"
     if lingua == "en":
-        descrizione = descrizione_inglese(nodo.qualified_name) or descrizione
+        descrizione = descrizione_inglese(percorso_vero(nodo)) or descrizione
     return [(mostrato, descrizione)]
+
+
+# Etichette dei gruppi nati dal riordino (D137), in italiano e in inglese.
+_ETICHETTE_RIORDINO = {
+    "it": {
+        "help": "Aiuto", "diretti": "Comandi diretti (stessa funzione del comando lungo)", "owner-radio": "Owner: radio",
+        "ai": "Assistente AI", "vocali": "Vocali", "monete-clan": "Clan",
+        "music-playlist": "Playlist", "giochi-sala": "Sala giochi", "giochi-mondo": "Il tuo mondo",
+        "giochi-animali": "Animali e pesca", "utility-web": "Cerca sul web", "utility-server": "Il tuo server",
+        "admin-automod-filtri": "Admin: filtri", "admin-sicurezza-antinuke": "Admin: anti-nuke",
+        "admin-sicurezza-antiraid": "Admin: anti-raid", "admin-sicurezza-verifica": "Admin: verifica",
+        "admin-ruoli-menu": "Admin: menu dei ruoli", "admin-economia-negozio": "Admin: negozio avanzato",
+        "admin-messaggi-tag": "Admin: tag", "admin-bot-config": "Admin: configurazione",
+        "admin-ticket-pannelli": "Admin: pannelli dei ticket", "admin-livelli-guadagno": "Admin: guadagno XP",
+        "admin-livelli-rep": "Admin: reputazione",
+    },
+    "en": {
+        "help": "Help", "diretti": "Direct commands (same function as the long command)", "owner-radio": "Owner: radio",
+        "ai": "AI assistant", "vocali": "Voice", "monete-clan": "Clan",
+        "music-playlist": "Playlists", "giochi-sala": "Game room", "giochi-mondo": "Your world",
+        "giochi-animali": "Pets and fishing", "utility-web": "Web search", "utility-server": "Your server",
+        "admin-automod-filtri": "Admin: filters", "admin-sicurezza-antinuke": "Admin: anti-nuke",
+        "admin-sicurezza-antiraid": "Admin: anti-raid", "admin-sicurezza-verifica": "Admin: verification",
+        "admin-ruoli-menu": "Admin: role menus", "admin-economia-negozio": "Admin: advanced shop",
+        "admin-messaggi-tag": "Admin: tags", "admin-bot-config": "Admin: configuration",
+        "admin-ticket-pannelli": "Admin: ticket panels", "admin-livelli-guadagno": "Admin: XP gain",
+        "admin-livelli-rep": "Admin: reputation",
+    },
+}
 
 
 def _scrivi_markdown(per_categoria: dict[str, list[tuple[str, str]]], file_nome: str = "COMMAND_LIST.md", lingua: str = "it") -> None:
     etichette_categoria = {
         "aiuto": "Aiuto (primo livello)",
-        "clan": "Clan",
         "fun": "Divertimento",
         "level": "Livelli",
         "music": "Musica",
         "owner": "Owner",
         "ticket": "Ticket",
         "utility": "Utility",
-        "voice": "Vocali",
-        "admin-bot": "Admin: impianto del bot",
+                "admin-bot": "Admin: impianto del bot",
         "admin-musica": "Admin: musica",
         "admin-ai": "Admin: AI",
         "admin-automod": "Admin: AutoMod",
-        "admin-filtri": "Admin: filtri",
         "admin-sicurezza": "Admin: sicurezza",
-        "admin-antinuke": "Admin: anti-nuke",
-        "admin-antiraid": "Admin: anti-raid",
         "admin-moduli": "Admin: moduli",
         "admin-economia": "Admin: economia",
         "admin-livelli": "Admin: livelli e XP",
@@ -146,16 +175,9 @@ def _scrivi_markdown(per_categoria: dict[str, list[tuple[str, str]]], file_nome:
         "admin-messaggi": "Admin: messaggi",
         "admin-inviti": "Admin: inviti",
         "admin-giochi": "Admin: giochi",
-        "admin-tag": "Admin: tag e risposte",
         "admin-automazioni": "Admin: automazioni",
-        "tag": "Tag",
         "admin-giveaway": "Admin: giveaway",
-        "admin-menu-ruoli": "Admin: menu dei ruoli",
         "admin-alert": "Admin: avvisi social",
-        "admin-negozio": "Admin: negozio avanzato",
-        "mercato": "Mercato",
-        "sala": "Sala giochi",
-        "mondo": "Il tuo mondo",
         "admin-ticket": "Admin: ticket",
         "admin-ticket-opzioni": "Admin: opzioni dei ticket",
         "admin-backup": "Admin: backup",
@@ -166,7 +188,7 @@ def _scrivi_markdown(per_categoria: dict[str, list[tuple[str, str]]], file_nome:
         "mod-canali": "Mod: canali",
         "mod-ban": "Mod: ban",
         "founder": "Founder (proprietario del server)",
-        "immagini": "Immagini", "giochi": "Giochi", "sondaggi": "Sondaggi", "eventi": "Eventi", "web": "Web", "assistente": "Assistente AI", "monete": "Monete",
+        "immagini": "Immagini", "giochi": "Giochi", "monete": "Monete",
         "premium": "Premium", "vip": "VIP",
         "app:nsfw": "iYokai NSFW (app separata, solo canali vietati ai minori)",
         "app:app": "iYokai App (app separata, installata sull'utente)",
@@ -175,15 +197,12 @@ def _scrivi_markdown(per_categoria: dict[str, list[tuple[str, str]]], file_nome:
     if lingua == "en":
         etichette_categoria = {
             "aiuto": "Help (top level)", "clan": "Clan", "fun": "Fun", "level": "Levels",
-            "music": "Music", "owner": "Owner", "ticket": "Tickets", "utility": "Utility", "voice": "Voice",
+            "music": "Music", "owner": "Owner", "ticket": "Tickets", "utility": "Utility",
             "admin-bot": "Admin: bot setup",
             "admin-musica": "Admin: music",
             "admin-ai": "Admin: AI",
             "admin-automod": "Admin: AutoMod",
-            "admin-filtri": "Admin: filters",
             "admin-sicurezza": "Admin: security",
-            "admin-antinuke": "Admin: anti-nuke",
-            "admin-antiraid": "Admin: anti-raid",
             "admin-moduli": "Admin: modules",
             "admin-economia": "Admin: economy",
             "admin-livelli": "Admin: levels and XP",
@@ -192,16 +211,9 @@ def _scrivi_markdown(per_categoria: dict[str, list[tuple[str, str]]], file_nome:
             "admin-messaggi": "Admin: messages",
             "admin-inviti": "Admin: invites",
             "admin-giochi": "Admin: games",
-            "admin-tag": "Admin: tags and replies",
             "admin-automazioni": "Admin: automations",
-            "tag": "Tags",
             "admin-giveaway": "Admin: giveaways",
-            "admin-menu-ruoli": "Admin: role menus",
             "admin-alert": "Admin: social alerts",
-            "admin-negozio": "Admin: advanced shop",
-            "mercato": "Market",
-            "sala": "Game room",
-            "mondo": "Your world",
             "admin-ticket": "Admin: tickets",
             "admin-ticket-opzioni": "Admin: ticket options",
             "admin-backup": "Admin: backup",
@@ -212,12 +224,13 @@ def _scrivi_markdown(per_categoria: dict[str, list[tuple[str, str]]], file_nome:
             "mod-canali": "Mod: channels",
             "mod-ban": "Mod: bans",
             "founder": "Founder (server owner)",
-            "immagini": "Images", "giochi": "Games", "sondaggi": "Polls", "eventi": "Events", "web": "Web", "assistente": "AI assistant", "monete": "Coins",
+            "immagini": "Images", "giochi": "Games", "monete": "Coins",
             "premium": "Premium", "vip": "VIP",
             "app:nsfw": "iYokai NSFW (separate app, age-restricted channels only)",
             "app:app": "iYokai App (separate app, installed on the user)",
         }
     etichette_categoria.setdefault("economia", "Economia")
+    etichette_categoria.update(_ETICHETTE_RIORDINO["en" if lingua == "en" else "it"])
     righe = [
         "# Command list (English) — iYokai" if lingua == "en" else "# Elenco comandi — iYokai",
         "",

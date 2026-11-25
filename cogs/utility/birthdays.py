@@ -3,7 +3,7 @@ cogs/utility/birthdays.py
 =========================
 Compleanni (NF-26, SPEC §23.4): ogni utente registra giorno e mese (niente anno) e può
 cancellarli; il giorno giusto il bot fa gli auguri in un canale e può dare un ruolo per 24 ore.
-Comandi: `/level compleanno imposta|rimuovi` (utente), `/admin-moduli compleanni canale|ruolo` (admin).
+Comandi: `/utility-server compleanno imposta|rimuovi` (utente), `/admin-moduli compleanni canale|ruolo` (admin).
 Il giro è in core/birthday_worker.py ed è ospitato da questo cog.
 Funzioni coperte: SPEC §23 (NF-26); catalogo #128 UTL-156, 157, 161, 162 (r2utl)
 """
@@ -20,7 +20,7 @@ from discord.ext import commands, tasks
 from core.admin_mentions_logic import utente_puo_pingare_ruoli
 from core.birthday_logic import MAX_MESSAGGIO, data_valida
 from core.birthday_worker import BIRTHDAY_ROLE_ACTION_TYPE, MODULE_BIRTHDAYS, BirthdayWorker
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, comando_di_gruppo, SOTTOGRUPPI
 from core.database import db
 from core.i18n import testo_per
 from core.premium import PremiumModule, registry
@@ -101,7 +101,7 @@ class BirthdaysCog(CogConGruppi, commands.Cog):
         return True
 
     # ---- utente
-    @comando_di_gruppo("level", nome="imposta", descrizione="Registra il tuo compleanno (solo giorno e mese).", sottogruppo=_SG_COMPLEANNO)
+    @comando_di_gruppo("utility-server", nome="imposta", descrizione="Registra il tuo compleanno (solo giorno e mese).", sottogruppo=SOTTOGRUPPI["utility-server compleanno"])
     @app_commands.describe(giorno="Il giorno", mese="Il mese (1-12)")
     async def imposta(
         self,
@@ -117,11 +117,11 @@ class BirthdaysCog(CogConGruppi, commands.Cog):
         await birthday_repo.set_birthday(interaction.guild.id, interaction.user.id, giorno, mese)
         await interaction.response.send_message(
             f"Compleanno registrato: {giorno} {_MESI[mese - 1]}. Non salvo l'anno. "
-            "Gli auguri partono nella giornata in UTC; lo cancelli con `/level compleanno rimuovi`.",
+            "Gli auguri partono nella giornata in UTC; lo cancelli con `/utility-server compleanno rimuovi`.",
             ephemeral=True,
         )
 
-    @comando_di_gruppo("level", nome="rimuovi", descrizione="Cancella il tuo compleanno.", sottogruppo=_SG_COMPLEANNO)
+    @comando_di_gruppo("utility-server", nome="rimuovi", descrizione="Cancella il tuo compleanno.", sottogruppo=SOTTOGRUPPI["utility-server compleanno"])
     async def rimuovi(self, interaction: discord.Interaction) -> None:
         if not await self._pronto(interaction):
             return
@@ -130,7 +130,7 @@ class BirthdaysCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "birthdays_compleanno_cancellato") if fatto else await testo_per(interaction, "birthdays_non_avevi_un_compleanno_registrato"), ephemeral=True
         )
 
-    @comando_di_gruppo("level", nome="mostra", descrizione="Mostra il tuo compleanno o quello di un membro.", sottogruppo=_SG_COMPLEANNO)
+    @comando_di_gruppo("utility-server", nome="mostra", descrizione="Mostra il tuo compleanno o quello di un membro.", sottogruppo=SOTTOGRUPPI["utility-server compleanno"])
     @app_commands.describe(membro="Di chi (vuoto = il tuo)")
     async def mostra(self, interaction: discord.Interaction, membro: discord.Member | None = None) -> None:
         if not await self._pronto(interaction):
@@ -149,7 +149,7 @@ class BirthdaysCog(CogConGruppi, commands.Cog):
             ephemeral=True,
         )
 
-    @comando_di_gruppo("level", nome="prossimi", descrizione="I prossimi compleanni del server.", sottogruppo=_SG_COMPLEANNO)
+    @comando_di_gruppo("utility-server", nome="prossimi", descrizione="I prossimi compleanni del server.", sottogruppo=SOTTOGRUPPI["utility-server compleanno"])
     @app_commands.describe(pagina="Quale pagina (15 compleanni per pagina)")
     async def prossimi(self, interaction: discord.Interaction, pagina: app_commands.Range[int, 1, 100] = 1) -> None:
         if not await self._pronto(interaction):

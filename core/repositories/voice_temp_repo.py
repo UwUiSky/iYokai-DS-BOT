@@ -10,7 +10,7 @@ Persistenza per i vocali temporanei:
 - opzioni del server: modello del nome, canali che nascono bloccati,
   canale di registro; numero di ogni canale nella sequenza; aspetto del
   pannello e copia del generatore; altri generatori con regole proprie (#127)
-- stato del blocco (/voice lock) con il valore di «Connetti» di prima,
+- stato del blocco (/vocali lock) con il valore di «Connetti» di prima,
   che resta anche dopo un riavvio del bot (#144)
 Funzioni coperte: SPEC §12
 """
@@ -343,7 +343,7 @@ class VoiceTempRepository:
 
     async def segna_bloccato(self, channel_id: int, connect_prima: bool | None) -> None:
         """
-        /voice lock: ricorda il valore di «Connetti» di @everyone prima
+        /vocali lock: ricorda il valore di «Connetti» di @everyone prima
         del blocco. Solo al primo lock: un secondo vedrebbe già False.
         """
         await self._pool.execute(
@@ -357,7 +357,7 @@ class VoiceTempRepository:
 
     async def togli_blocco(self, channel_id: int) -> tuple[bool, bool | None]:
         """
-        /voice unlock: restituisce (era bloccato, valore di «Connetti»
+        /vocali unlock: restituisce (era bloccato, valore di «Connetti»
         salvato dal lock) e cancella il ricordo, in una sola istruzione.
         Canale non bloccato o non tracciato: (False, None).
         """

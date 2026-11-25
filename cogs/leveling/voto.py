@@ -2,7 +2,7 @@
 cogs/leveling/voto.py
 =====================
 Voto al bot su un sito di elenchi (top.gg): il server web che riceve il voto (spento senza VOTO_SEGRETO nel .env),
-/monete conto voto (riscatta il premio, scegli il riscatto automatico) e /admin-giochi voto (premio del server: XP,
+/monete conto voto (riscatta il premio, scegli il riscatto automatico) e /admin-economia-negozio voto (premio del server: XP,
 monete, bonus XP a tempo, premium a tempo). Un premio per voto; le monete non si comprano con soldi veri.
 Funzioni coperte: LIV-019, ECO-048, ECO-049, CFG-039
 Dipende da: core/voto_server.py, core/repositories/voto_repo.py
@@ -117,7 +117,7 @@ class VotoCog(CogConGruppi, commands.Cog):
             ephemeral=True,
         )
 
-    @comando_di_gruppo("admin-giochi", nome="voto", descrizione="Il premio che il server dà a chi vota il bot (senza valori: lo stato).")
+    @comando_di_gruppo("admin-economia-negozio", nome="voto", descrizione="Il premio che il server dà a chi vota il bot (senza valori: lo stato).")
     @app_commands.describe(
         attivo="Accendi o spegni il premio", monete="Monete per voto (0-100000)", xp="XP per voto (0-100000)",
         bonus_xp="Bonus XP in % dopo il voto (0-100, 0 = nessuno)", bonus_ore="Ore di durata del bonus XP (1-48)", premium_giorni="Giorni di premium per voto (0-30, 0 = nessuno)",

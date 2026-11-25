@@ -4,7 +4,7 @@ core/channel_rename.py
 Rinomina di un canale rispettando il limite di Discord: 2 rinomine ogni
 10 minuti per canale (LIM-3). Alla terza discord.py resterebbe in attesa
 fino a 10 minuti e il comando scadrebbe; qui invece si risponde subito
-con "riprova tra N minuti". Usato da /ticket rename e /voice rename.
+con "riprova tra N minuti". Usato da /ticket rename e /vocali rename.
 Funzioni coperte: SPEC §12, §13
 """
 

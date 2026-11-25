@@ -1,8 +1,8 @@
 """
 cogs/fun/tela.py
 ================
-La tela di pixel del server (/tela ...): ognuno colora un pixel ogni tanto (di base ogni 5 minuti; chi vuole può pagare
-monete per saltare la pausa), `/tela vedi` disegna la tela o una zona ingrandita fuori dal ciclo principale. Per lo
+La tela di pixel del server (/giochi tela ...): ognuno colora un pixel ogni tanto (di base ogni 5 minuti; chi vuole può pagare
+monete per saltare la pausa), `/giochi tela vedi` disegna la tela o una zona ingrandita fuori dal ciclo principale. Per lo
 staff (FUN-014): `/admin-giochi tela azzera|togli-utente|blocca|sblocca|impostazioni`. La pagina pubblica in sola
 lettura è `/tela/<server>` del pannello web (core/web_panel_tela.py), solo se il server la accende.
 Funzioni coperte: FUN-013, FUN-014
@@ -21,7 +21,7 @@ from discord.ext import commands
 from core import tela_logic as tl
 from core.config import config
 from core.command_access import Livello, richiedi
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, comando_di_gruppo, SOTTOGRUPPI
 from core.database import db
 from core.i18n import testo_per
 from core.repositories.tela_repo import Esito, tela_repo
@@ -63,7 +63,7 @@ class TelaCog(CogConGruppi, commands.Cog):
         return True
 
     # ---------------------------------------------------------------- per tutti
-    @comando_di_gruppo("tela", nome="vedi", descrizione="Guarda la tela di pixel del server, o una zona ingrandita.")
+    @comando_di_gruppo("giochi", nome="vedi", descrizione="Guarda la tela di pixel del server, o una zona ingrandita.", sottogruppo=SOTTOGRUPPI["giochi tela"])
     @app_commands.describe(x="Colonna al centro della zona (0-99)", y="Riga al centro della zona (0-99)", zoom="1 = tutta la tela, 4 = zona piccolissima")
     async def vedi(self, interaction: discord.Interaction, x: app_commands.Range[int, 0, 99] = 50, y: app_commands.Range[int, 0, 99] = 50,
                    zoom: app_commands.Range[int, 1, 4] = 1) -> None:
@@ -78,7 +78,7 @@ class TelaCog(CogConGruppi, commands.Cog):
             testo += "\n" + await testo_per(interaction, "tela_link", pubblica=True, link=link)
         await interaction.followup.send(testo, file=discord.File(io.BytesIO(png), filename="tela.png"), allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("tela", nome="colora", descrizione="Colora un pixel della tela (c'è una pausa tra un pixel e l'altro).")
+    @comando_di_gruppo("giochi", nome="colora", descrizione="Colora un pixel della tela (c'è una pausa tra un pixel e l'altro).", sottogruppo=SOTTOGRUPPI["giochi tela"])
     @app_commands.describe(x="Colonna (0-99)", y="Riga (0-99)", colore="Il colore (0-15)", accorcia="Se sei in pausa, paga monete per saltarla")
     @app_commands.autocomplete(colore=_completa_colori)
     async def colora(self, interaction: discord.Interaction, x: app_commands.Range[int, 0, 99], y: app_commands.Range[int, 0, 99],
@@ -98,7 +98,7 @@ class TelaCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, chiave, x=x, y=y, colore=nome, attesa=tl.formatta_attesa(r.resta), costo=r.costo),
             ephemeral=True)
 
-    @comando_di_gruppo("tela", nome="pixel", descrizione="Chi ha colorato un pixel e quando.")
+    @comando_di_gruppo("giochi", nome="pixel", descrizione="Chi ha colorato un pixel e quando.", sottogruppo=SOTTOGRUPPI["giochi tela"])
     @app_commands.describe(x="Colonna (0-99)", y="Riga (0-99)")
     async def pixel(self, interaction: discord.Interaction, x: app_commands.Range[int, 0, 99], y: app_commands.Range[int, 0, 99]) -> None:
         if not await self._pronto(interaction):
@@ -113,7 +113,7 @@ class TelaCog(CogConGruppi, commands.Cog):
                             chi=autore, quando=f"<t:{int(p.messo_il.timestamp())}:R>"),
             allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("tela", nome="stato", descrizione="La tua pausa, i tuoi pixel e quanto costa saltarla.")
+    @comando_di_gruppo("giochi", nome="stato", descrizione="La tua pausa, i tuoi pixel e quanto costa saltarla.", sottogruppo=SOTTOGRUPPI["giochi tela"])
     async def stato(self, interaction: discord.Interaction) -> None:
         if not await self._pronto(interaction):
             return

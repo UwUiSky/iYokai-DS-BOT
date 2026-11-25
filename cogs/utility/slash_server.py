@@ -5,7 +5,7 @@ Comandi e menu del tasto destro di un server che rispondono con un tag (B28): `/
 I comandi stanno nell'albero del server (mai globali); la sync con Discord è una sola per server, solo se qualcosa è cambiato,
 al massimo una ogni 5 minuti (le altre vanno in coda nello scheduler) e al massimo 200 creazioni al giorno.
 Funzioni coperte: catalogo #128 UTL-045, UTL-046 (D69, D60, B28)
-Dipende da: cogs/utility/custom_commands.py (la risposta è quella di `/tag usa`), core/slash_server_logic.py
+Dipende da: cogs/utility/custom_commands.py (la risposta è quella di `/utility-server tag usa`), core/slash_server_logic.py
 """
 
 from __future__ import annotations
@@ -144,7 +144,7 @@ class SlashServerCog(CogConGruppi, commands.Cog):
         if tag is None or tag_cog is None:
             await interaction.response.send_message(await testo_per(interaction, "slash_sparito"), ephemeral=True)
             return
-        # la risposta, i permessi, la pausa e gli script sono quelli di /tag usa
+        # la risposta, i permessi, la pausa e gli script sono quelli di /utility-server tag usa
         await tag_cog.tag.callback(tag_cog, interaction, tag, argomenti, bersaglio)
 
     # ------------------------------------------------------------ sync con Discord

@@ -1,7 +1,7 @@
 """
 core/casa_image.py
 ==================
-La casa del `/mondo casa` (ECO-087) come immagine PNG di misura fissa: la stanza 4x3 con ogni mobile posseduto
+La casa del `/giochi-mondo casa` (ECO-087) come immagine PNG di misura fissa: la stanza 4x3 con ogni mobile posseduto
 come tessera con il suo nome, i posti vuoti scuri. Lavoro Pillow: si chiama sempre con `run_image_task`.
 Ripiego: `mondo_logic.disegna_casa` (emoji).
 Funzioni coperte: ECO-087

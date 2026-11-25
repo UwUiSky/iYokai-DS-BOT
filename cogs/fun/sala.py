@@ -1,7 +1,7 @@
 """
 cogs/fun/sala.py
 ================
-Giochi a più giocatori con sala d'attesa (/sala ...): roulette, corsa di animali, lotta, bomba, carte a turni e bingo
+Giochi a più giocatori con sala d'attesa (/giochi-sala ...): roulette, corsa di animali, lotta, bomba, carte a turni e bingo
 con la puntata di tutti; impiccato e quiz con un piccolo premio e un tetto al giorno. La puntata si toglie a tutti
 insieme, in una sola transazione, quando la partita parte (partite_repo.apri_gruppo): se la partita non parte non si
 è pagato niente, e se il bot si ferma le puntate rimaste tornano indietro all'avvio. Solo i giocatori della sala
@@ -757,22 +757,22 @@ class SalaCog(CogConGruppi, commands.Cog):
             self._occupati.discard(chiave)
 
     # ------------------------------------------------------------------ comandi
-    @comando_di_gruppo("sala", nome="roulette", descrizione="Roulette a più giocatori: una puntata uguale per tutti, un solo giro.")
+    @comando_di_gruppo("giochi-sala", nome="roulette", descrizione="Roulette a più giocatori: una puntata uguale per tutti, un solo giro.")
     @app_commands.describe(puntata="Monete da puntare, uguali per tutti")
     async def roulette(self, interaction: discord.Interaction, puntata: app_commands.Range[int, 1, PUNTATA_TETTO]) -> None:
         await self._partita(interaction, "roulette", puntata)
 
-    @comando_di_gruppo("sala", nome="corsa", descrizione="Corsa di animali: chi arriva primo prende il piatto.")
+    @comando_di_gruppo("giochi-sala", nome="corsa", descrizione="Corsa di animali: chi arriva primo prende il piatto.")
     @app_commands.describe(puntata="Monete da puntare, uguali per tutti")
     async def corsa(self, interaction: discord.Interaction, puntata: app_commands.Range[int, 1, PUNTATA_TETTO]) -> None:
         await self._partita(interaction, "corsa", puntata)
 
-    @comando_di_gruppo("sala", nome="lotta", descrizione="Lotta fino a 6 con il tuo animale: l'ultimo in piedi prende il piatto.")
+    @comando_di_gruppo("giochi-sala", nome="lotta", descrizione="Lotta fino a 6 con il tuo animale: l'ultimo in piedi prende il piatto.")
     @app_commands.describe(puntata="Monete da puntare, uguali per tutti")
     async def lotta(self, interaction: discord.Interaction, puntata: app_commands.Range[int, 1, PUNTATA_TETTO]) -> None:
         await self._partita(interaction, "lotta", puntata)
 
-    @comando_di_gruppo("sala", nome="combattimento", descrizione="Combattimento fino a 6 con regole tue: vite, giri e oggetti.")
+    @comando_di_gruppo("giochi-sala", nome="combattimento", descrizione="Combattimento fino a 6 con regole tue: vite, giri e oggetti.")
     @app_commands.describe(
         puntata="Monete da puntare, uguali per tutti", vite=f"Vite di ciascuno ({cb.VITE_MIN}-{cb.VITE_MAX}, di base {cb.VITE_BASE})",
         giri=f"Giri massimi ({cb.GIRI_MIN}-{cb.GIRI_MAX}, di base {cb.GIRI_BASE})", oggetti="Pozione e scudo ammessi (di base no)",
@@ -788,31 +788,31 @@ class SalaCog(CogConGruppi, commands.Cog):
             return
         await self._partita(interaction, "combattimento", puntata, SimpleNamespace(vite=vite, giri=giri, oggetti=oggetti))
 
-    @comando_di_gruppo("sala", nome="bomba", descrizione="Taglia il filo giusto: chi fa esplodere la bomba esce, l'ultimo vince.")
+    @comando_di_gruppo("giochi-sala", nome="bomba", descrizione="Taglia il filo giusto: chi fa esplodere la bomba esce, l'ultimo vince.")
     @app_commands.describe(puntata="Monete da puntare, uguali per tutti")
     async def bomba(self, interaction: discord.Interaction, puntata: app_commands.Range[int, 1, PUNTATA_TETTO]) -> None:
         await self._partita(interaction, "bomba", puntata)
 
-    @comando_di_gruppo("sala", nome="tamburo", descrizione="Un tamburo con una sfera rossa: chi la trova esce, l'ultimo prende il piatto.")
+    @comando_di_gruppo("giochi-sala", nome="tamburo", descrizione="Un tamburo con una sfera rossa: chi la trova esce, l'ultimo prende il piatto.")
     @app_commands.describe(puntata="Monete da puntare, uguali per tutti")
     async def tamburo(self, interaction: discord.Interaction, puntata: app_commands.Range[int, 1, PUNTATA_TETTO]) -> None:
         await self._partita(interaction, "tamburo", puntata)
 
-    @comando_di_gruppo("sala", nome="carte", descrizione="Carte a turni: stesso colore o stesso numero, chi finisce le carte vince.")
+    @comando_di_gruppo("giochi-sala", nome="carte", descrizione="Carte a turni: stesso colore o stesso numero, chi finisce le carte vince.")
     @app_commands.describe(puntata="Monete da puntare, uguali per tutti")
     async def carte(self, interaction: discord.Interaction, puntata: app_commands.Range[int, 1, PUNTATA_TETTO]) -> None:
         await self._partita(interaction, "carte", puntata)
 
-    @comando_di_gruppo("sala", nome="bingo", descrizione="Bingo tra membri: completa una riga della cartella per vincere il piatto.")
+    @comando_di_gruppo("giochi-sala", nome="bingo", descrizione="Bingo tra membri: completa una riga della cartella per vincere il piatto.")
     @app_commands.describe(puntata="Monete da puntare, uguali per tutti")
     async def bingo(self, interaction: discord.Interaction, puntata: app_commands.Range[int, 1, PUNTATA_TETTO]) -> None:
         await self._partita(interaction, "bingo", puntata)
 
-    @comando_di_gruppo("sala", nome="impiccato", descrizione="Impiccato di gruppo: indovinate la parola insieme e vincete un premio.")
+    @comando_di_gruppo("giochi-sala", nome="impiccato", descrizione="Impiccato di gruppo: indovinate la parola insieme e vincete un premio.")
     async def impiccato(self, interaction: discord.Interaction) -> None:
         await self._gratis(interaction, "impiccato", 1, 10, gioca_impiccato)
 
-    @comando_di_gruppo("sala", nome="quiz", descrizione="Quiz a tempo con premio in monete: cinque domande, quattro risposte.")
+    @comando_di_gruppo("giochi-sala", nome="quiz", descrizione="Quiz a tempo con premio in monete: cinque domande, quattro risposte.")
     async def quiz(self, interaction: discord.Interaction) -> None:
         await self._gratis(interaction, "quiz", 1, 10, gioca_quiz)
 

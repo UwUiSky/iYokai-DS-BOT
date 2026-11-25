@@ -9,6 +9,8 @@ Funzioni coperte: D60
 
 from __future__ import annotations
 
+from tests.support.percorsi_d137 import IMMAGINI_D137, dopo_d137
+
 import json
 import re
 from pathlib import Path
@@ -56,9 +58,9 @@ async def test_percorsi_vecchi_spariti_e_nuovi_presenti_nell_albero_vero():
         assert not falliti, falliti
         percorsi = set(percorsi_dei_comandi(list(GRUPPI.values())))
         spostati = _spostati_da_migrazioni_successive()
-        mancano = sorted(n for _, n in COPPIE if n not in percorsi and n not in spostati)
+        mancano = sorted(n for _, n in COPPIE if n not in percorsi and n not in spostati and dopo_d137(n) not in percorsi)
         assert not mancano, f"Percorsi nuovi che non esistono: {mancano}"
-        restano = sorted(v for v, _ in COPPIE if v in percorsi)
+        restano = sorted(v for v, _ in COPPIE if v in percorsi and v not in IMMAGINI_D137)  # D137 può riusare un nome
         assert not restano, f"Percorsi vecchi ancora nell'albero: {restano}"
     finally:
         await close_full_bot(bot)

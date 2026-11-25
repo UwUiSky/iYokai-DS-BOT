@@ -143,7 +143,17 @@ async def test_il_peso_conta_la_versione_piu_lunga_tra_le_lingue(monkeypatch):
     monkeypatch.setitem(dati, "de", {s: {} for s in tr.SEZIONI})
     dati["de"]["descrizioni"]["ban"] = "y" * 60
     dati["de"]["nomi"]["ban"] = "verbannen"
-    assert base == 13 and tr.caratteri_con_traduzioni(comando) == len("verbannen") + 60
+    # D137: nome 3 -> 4 (+30%), descrizione 10 -> 13; la traduzione vera più lunga vince sulla stima
+    assert base == 4 + 13 and tr.caratteri_con_traduzioni(comando) == len("verbannen") + 60
+
+
+async def test_il_peso_ha_il_30_per_cento_in_piu_con_i_tetti_di_discord():
+    from discord import app_commands
+
+    lungo = app_commands.Command(name="n" * 30, description="d" * 90, callback=_cb)
+    assert tr.caratteri_con_traduzioni(lungo) == 32 + 100  # i tetti di Discord: nome 32, descrizione 100
+    piccolo = app_commands.Command(name="abcde", description="x" * 50, callback=_cb)
+    assert tr.caratteri_con_traduzioni(piccolo) == 7 + 65  # 5*1,3 = 6,5 -> 7; 50*1,3 = 65
 
 
 async def _cb(interaction):  # pragma: no cover

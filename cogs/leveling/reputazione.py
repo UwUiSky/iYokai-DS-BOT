@@ -1,7 +1,7 @@
 """
 cogs/leveling/reputazione.py
 ============================
-Reputazione tra membri: /rep (dai, togli, mostra, classifica, registro) e /admin-rep (imposta, cancella, azzera,
+Reputazione tra membri: /level rep (dai, togli, mostra, classifica, registro) e /admin-livelli-rep (imposta, cancella, azzera,
 impostazioni, premio). Spenta di base. Pausa, tetto giornaliero e punti si scrivono in una transazione sola nel
 repository; qui si leggono le interazioni, si controllano i ruoli, si dà la risposta e si allineano i ruoli per soglia.
 Funzioni coperte: LIV-076, LIV-077, LIV-078, LIV-079, LIV-080, LIV-081, LIV-082, LIV-083, LIV-084, LIV-085, LIV-086, LIV-087, LIV-088
@@ -19,7 +19,7 @@ from discord.ext import commands
 from cogs.leveling._pagine import invia_lista
 from cogs.leveling.leveling import _comando_rifiutato
 from core.moderation_shadowban import add_roles_se_libero
-from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
+from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog, SOTTOGRUPPI
 from core.i18n import testo_per
 from core.reputazione_logic import bersaglio_del_grazie, puo_agire, puo_togliere
 from core.repositories.reputazione_repo import MAX_PREMI, reputazione_repo
@@ -97,18 +97,18 @@ class ReputazioneCog(CogConGruppi, commands.Cog):
         )
         await sincronizza_ruoli(g, membro)
 
-    @comando_di_gruppo("rep", nome="dai", descrizione="Dai punti reputazione a un membro.")
+    @comando_di_gruppo("level", nome="dai", descrizione="Dai punti reputazione a un membro.", sottogruppo=SOTTOGRUPPI["level rep"])
     @app_commands.describe(membro="Chi li riceve", punti="Quanti punti (il massimo lo sceglie il server)", motivo="Perché (facoltativo)")
     async def dai(self, interaction: discord.Interaction, membro: discord.Member, punti: app_commands.Range[int, 1, 10] = 1, motivo: app_commands.Range[str, 1, 100] | None = None) -> None:
         await self._muovi(interaction, membro, punti, motivo)
 
-    @comando_di_gruppo("rep", nome="togli", descrizione="Togli punti reputazione a un membro (solo chi ha il ruolo scelto dal server).")
+    @comando_di_gruppo("level", nome="togli", descrizione="Togli punti reputazione a un membro (solo chi ha il ruolo scelto dal server).", sottogruppo=SOTTOGRUPPI["level rep"])
     @app_commands.describe(membro="A chi li togli", punti="Quanti punti", motivo="Perché (facoltativo)")
     async def togli(self, interaction: discord.Interaction, membro: discord.Member, punti: app_commands.Range[int, 1, 10] = 1, motivo: app_commands.Range[str, 1, 100] | None = None) -> None:
         await self._muovi(interaction, membro, -punti, motivo)
 
     # ---------------------------------------------------------------- lettura
-    @comando_di_gruppo("rep", nome="mostra", descrizione="Reputazione e posizione di un membro (senza nome: la tua).")
+    @comando_di_gruppo("level", nome="mostra", descrizione="Reputazione e posizione di un membro (senza nome: la tua).", sottogruppo=SOTTOGRUPPI["level rep"])
     @app_commands.describe(membro="Di chi")
     async def mostra(self, interaction: discord.Interaction, membro: discord.Member | None = None) -> None:
         if await _comando_rifiutato(interaction):
@@ -121,7 +121,7 @@ class ReputazioneCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, chiave, membro=membro.mention, punti=punti, pos=pos or 0, nome=i["nome"], pubblica=True), ephemeral=not i["attiva"], allowed_mentions=NESSUNA_MENZIONE
         )
 
-    @comando_di_gruppo("rep", nome="classifica", descrizione="Classifica della reputazione del server.")
+    @comando_di_gruppo("level", nome="classifica", descrizione="Classifica della reputazione del server.", sottogruppo=SOTTOGRUPPI["level rep"])
     async def classifica(self, interaction: discord.Interaction) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -133,7 +133,7 @@ class ReputazioneCog(CogConGruppi, commands.Cog):
             return
         await invia_lista(interaction, f"🏅 {i['nome']}", righe, discord.Color.dark_gold())
 
-    @comando_di_gruppo("rep", nome="registro", descrizione="Chi ha dato o tolto reputazione (la tua; lo staff può vedere quella di altri).")
+    @comando_di_gruppo("level", nome="registro", descrizione="Chi ha dato o tolto reputazione (la tua; lo staff può vedere quella di altri).", sottogruppo=SOTTOGRUPPI["level rep"])
     @app_commands.describe(membro="Di chi (solo lo staff)")
     async def registro(self, interaction: discord.Interaction, membro: discord.Member | None = None) -> None:
         if await _comando_rifiutato(interaction):
@@ -153,7 +153,7 @@ class ReputazioneCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message("\n".join(righe)[:1900], ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
     # ---------------------------------------------------------------- staff
-    @comando_di_gruppo("admin-rep", nome="imposta", descrizione="Fissa i punti reputazione di un membro.")
+    @comando_di_gruppo("admin-livelli-rep", nome="imposta", descrizione="Fissa i punti reputazione di un membro.")
     @app_commands.describe(membro="Di chi", punti="Punti (anche negativi)")
     async def imposta(self, interaction: discord.Interaction, membro: discord.Member, punti: app_commands.Range[int, -1_000_000, 1_000_000]) -> None:
         if await _comando_rifiutato(interaction):
@@ -165,7 +165,7 @@ class ReputazioneCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "rep_staff_ok", membro=membro.mention, punti=punti), ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
         await sincronizza_ruoli(interaction.guild, membro)
 
-    @comando_di_gruppo("admin-rep", nome="cancella", descrizione="Porta a zero la reputazione di un membro.")
+    @comando_di_gruppo("admin-livelli-rep", nome="cancella", descrizione="Porta a zero la reputazione di un membro.")
     @app_commands.describe(membro="Di chi")
     async def cancella(self, interaction: discord.Interaction, membro: discord.Member) -> None:
         if await _comando_rifiutato(interaction):
@@ -174,7 +174,7 @@ class ReputazioneCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "rep_staff_ok", membro=membro.mention, punti=0), ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
         await sincronizza_ruoli(interaction.guild, membro)
 
-    @comando_di_gruppo("admin-rep", nome="azzera", descrizione="Azzera la reputazione di tutto il server (serve la parola di conferma).")
+    @comando_di_gruppo("admin-livelli-rep", nome="azzera", descrizione="Azzera la reputazione di tutto il server (serve la parola di conferma).")
     @app_commands.describe(conferma=f"Scrivi {PAROLA_AZZERA} per confermare")
     async def azzera(self, interaction: discord.Interaction, conferma: app_commands.Range[str, 1, 20]) -> None:
         if await _comando_rifiutato(interaction):
@@ -196,7 +196,7 @@ class ReputazioneCog(CogConGruppi, commands.Cog):
                     break
         await interaction.followup.send(await testo_per(interaction, "rep_azzerata", n=n), ephemeral=True)
 
-    @comando_di_gruppo("admin-rep", nome="impostazioni", descrizione="Accendi la reputazione e scegli nome, pausa, limiti, ruoli e «grazie».")
+    @comando_di_gruppo("admin-livelli-rep", nome="impostazioni", descrizione="Accendi la reputazione e scegli nome, pausa, limiti, ruoli e «grazie».")
     @app_commands.describe(
         attiva="Accendi o spegni la reputazione", nome="Nome dei punti (max 20 caratteri)", pausa_ore="Ore di pausa tra un comando e l'altro (1-168)",
         massimo="Punti al massimo per comando (1-10)", tetto="Punti al massimo per persona ogni 24 ore (1-100)",
@@ -251,7 +251,7 @@ class ReputazioneCog(CogConGruppi, commands.Cog):
         )
         await interaction.response.send_message(stato[:1900], ephemeral=True, allowed_mentions=NESSUNA_MENZIONE)
 
-    @comando_di_gruppo("admin-rep", nome="premio", descrizione="Ruoli dati a una soglia di reputazione (senza soglia: l'elenco).")
+    @comando_di_gruppo("admin-livelli-rep", nome="premio", descrizione="Ruoli dati a una soglia di reputazione (senza soglia: l'elenco).")
     @app_commands.describe(soglia="Punti da raggiungere", ruolo="Il ruolo da dare", togli="Sì = togli il premio di questa soglia")
     async def premio(self, interaction: discord.Interaction, soglia: app_commands.Range[int, 1, 1_000_000] | None = None, ruolo: discord.Role | None = None, togli: bool = False) -> None:
         if await _comando_rifiutato(interaction):

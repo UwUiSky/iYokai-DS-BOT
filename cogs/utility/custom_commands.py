@@ -3,9 +3,9 @@ cogs/utility/custom_commands.py
 ===============================
 Comandi personalizzati del server, detti tag (NF-09, SPEC §22.5): un nome,
 un testo o un embed, un ruolo da dare o togliere, una pausa. Si usano con
-`/tag usa` e, se l'admin sceglie un prefisso, anche scrivendo
+`/utility-server tag usa` e, se l'admin sceglie un prefisso, anche scrivendo
 `<prefisso>nome` (usa guild_config.prefix, M 10.15). Si gestiscono con
-`/admin-tag tag crea|modifica|elimina|elenco|prefisso`.
+`/admin-messaggi-tag crea|modifica|elimina|elenco|prefisso`.
 Funzioni coperte: SPEC §22 (NF-09), catalogo #128 UTL-003, 012, 038 (r2utl)
 """
 
@@ -374,9 +374,9 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         return await self._nomi_per_completamento(interaction, current)
 
     @comando_di_gruppo(
-        "tag",
+        "utility-server",
         nome="usa",
-        descrizione="Usa un comando personalizzato di questo server.",
+        descrizione="Usa un comando personalizzato di questo server.", sottogruppo=SOTTOGRUPPI["utility-server tag"],
     )
     @app_commands.describe(nome="Il comando da usare", argomenti="Testo da passare al comando (facoltativo)",
                            bersaglio="Il membro a cui è rivolto, se il tag lo chiede")
@@ -471,7 +471,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
                 return False
         return True
 
-    @comando_di_gruppo("admin-tag", nome="crea", descrizione="Crea un comando personalizzato.", sottogruppo=SOTTOGRUPPI["admin-tag tag"])
+    @comando_di_gruppo("admin-messaggi-tag", nome="crea", descrizione="Crea un comando personalizzato.")
     @app_commands.describe(
         nome=f"Il nome (lettere minuscole, cifre, - e _; massimo {MAX_NOME})",
         testo="La risposta. Segnaposto: {user} {username} {server} {channel} {args}",
@@ -513,13 +513,13 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             created_by=interaction.user.id,
         )
         messaggi = {
-            "ok": f"Comando `{normalizzato}` creato. Si usa con `/tag usa`.",
-            "esiste": f"Esiste già un comando `{normalizzato}`: usa `/admin-tag tag modifica`.",
+            "ok": f"Comando `{normalizzato}` creato. Si usa con `/utility-server tag usa`.",
+            "esiste": f"Esiste già un comando `{normalizzato}`: usa `/admin-messaggi-tag modifica`.",
             "pieno": f"Questo server ha già {MAX_TAG} comandi personalizzati: eliminane uno.",
         }
         await interaction.response.send_message(messaggi[esito], ephemeral=True)
 
-    @comando_di_gruppo("admin-tag", nome="modifica", descrizione="Cambia un comando personalizzato.", sottogruppo=SOTTOGRUPPI["admin-tag tag"])
+    @comando_di_gruppo("admin-messaggi-tag", nome="modifica", descrizione="Cambia un comando personalizzato.")
     @app_commands.describe(
         nome="Il comando da cambiare",
         testo="Nuova risposta",
@@ -578,7 +578,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "customcomman_comando_aggiornato") if fatto else await testo_per(interaction, "customcomman_non_esiste_un_comando_con"), ephemeral=True
         )
 
-    @comando_di_gruppo("admin-tag", nome="elimina", descrizione="Elimina un comando personalizzato.", sottogruppo=SOTTOGRUPPI["admin-tag tag"])
+    @comando_di_gruppo("admin-messaggi-tag", nome="elimina", descrizione="Elimina un comando personalizzato.")
     @app_commands.describe(nome="Il comando da eliminare")
     @app_commands.autocomplete(nome=_completa_admin)
     async def elimina(self, interaction: discord.Interaction, nome: app_commands.Range[str, 1, MAX_NOME]) -> None:
@@ -592,7 +592,7 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "customcomman_comando_eliminato") if fatto else await testo_per(interaction, "customcomman_non_esiste_un_comando_con"), ephemeral=True
         )
 
-    @comando_di_gruppo("admin-tag", nome="elenco", descrizione="Mostra i comandi personalizzati del server.", sottogruppo=SOTTOGRUPPI["admin-tag tag"])
+    @comando_di_gruppo("admin-messaggi-tag", nome="elenco", descrizione="Mostra i comandi personalizzati del server.")
     async def elenco(self, interaction: discord.Interaction) -> None:
         if not await self._pronto(interaction):
             return
@@ -600,11 +600,11 @@ class CustomCommandsCog(CogConGruppi, commands.Cog):
         prefisso = await custom_command_repo.get_prefix(interaction.guild.id)
         righe = [f"`{t.name}` — {t.uses} usi" for t in tag] or ["Nessun comando personalizzato."]
         testo, _ = righe_entro_limite(righe, 3800)
-        piede = f"\n\nPrefisso: `{prefisso}`" if prefisso else "\n\nPrefisso: nessuno (solo `/tag usa`)."
+        piede = f"\n\nPrefisso: `{prefisso}`" if prefisso else "\n\nPrefisso: nessuno (solo `/utility-server tag usa`)."
         embed = discord.Embed(title=await testo_per(interaction, "customcomman_comandi_personalizzati", v1=len(tag), v2=MAX_TAG), description=testo + piede)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @comando_di_gruppo("admin-tag", nome="prefisso", descrizione="Scegli il prefisso per usare i comandi scrivendo nel canale.", sottogruppo=SOTTOGRUPPI["admin-tag tag"])
+    @comando_di_gruppo("admin-messaggi-tag", nome="prefisso", descrizione="Scegli il prefisso per usare i comandi scrivendo nel canale.")
     @app_commands.describe(simbolo="1-3 simboli, per esempio ! — lascia vuoto per spegnere il prefisso")
     async def prefisso(self, interaction: discord.Interaction, simbolo: app_commands.Range[str, 0, 3] = "") -> None:
         if not await self._pronto(interaction):
@@ -631,7 +631,7 @@ async def setup(bot: commands.Bot) -> None:
             name=MODULE_CUSTOM_COMMANDS,
             display_name="Comandi personalizzati",
             category="utility",
-            description="Comandi creati dal server: testo o embed, ruolo, pausa; uso con /tag usa o col prefisso.",
+            description="Comandi creati dal server: testo o embed, ruolo, pausa; uso con /utility-server tag usa o col prefisso.",
             premium_capable=False,
         )
     )

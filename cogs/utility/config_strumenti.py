@@ -1,8 +1,8 @@
 """
 cogs/utility/config_strumenti.py
 ================================
-Strumenti di configurazione del server e informazioni sul bot (#122): `/admin-bot config pulisci` (CFG-019, UTL-226: pulizia dopo 7 giorni),
-`/admin-bot config sincronizza` (CFG-020), `/admin-bot config nickname-bot` (CFG-021) e `/utility info` (CFG-046).
+Strumenti di configurazione del server e informazioni sul bot (#122): `/admin-bot-config pulisci` (CFG-019, UTL-226: pulizia dopo 7 giorni),
+`/admin-bot-config sincronizza` (CFG-020), `/admin-bot-config nickname-bot` (CFG-021) e `/utility info` (CFG-046).
 Funzioni coperte: SPEC §20 (NF-05), catalogo #122, parte E (D15)
 Dipende da: core/bot_aspetto.py, core/config_cleanup_logic.py, core/config_orfani_logic.py, core/command_permissions.py, core/bot_info.py, core/bot_roles.py
 """
@@ -119,9 +119,8 @@ class ConfigStrumentiCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------------
     @comando_di_gruppo(
-        "admin-bot", nome="pulisci",
+        "admin-bot-config", nome="pulisci",
         descrizione="Canali e ruoli cancellati: cosa si pulirà dalla configurazione e quando (dopo 7 giorni).",
-        sottogruppo=SOTTOGRUPPO_CONFIG,
     )
     @app_commands.describe(subito="Solo il proprietario del server: pulisce subito, dopo la tua conferma")
     async def pulisci(self, interaction: discord.Interaction, subito: bool = False) -> None:
@@ -171,8 +170,7 @@ class ConfigStrumentiCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------------
     @comando_di_gruppo(
-        "admin-bot", nome="sincronizza", descrizione="Riscrive i permessi dei comandi di questo server.",
-        sottogruppo=SOTTOGRUPPO_CONFIG,
+        "admin-bot-config", nome="sincronizza", descrizione="Riscrive i permessi dei comandi di questo server.",
     )
     async def sincronizza(self, interaction: discord.Interaction) -> None:
         guild = interaction.guild
@@ -200,8 +198,7 @@ class ConfigStrumentiCog(CogConGruppi, commands.Cog):
 
     # ------------------------------------------------------------------
     @comando_di_gruppo(
-        "admin-bot", nome="nickname-bot", descrizione="Cambia il nome del bot in questo server.",
-        sottogruppo=SOTTOGRUPPO_CONFIG,
+        "admin-bot-config", nome="nickname-bot", descrizione="Cambia il nome del bot in questo server.",
     )
     @app_commands.describe(nome="Il nuovo nome (massimo 32 caratteri); vuoto = torna al nome normale")
     async def nickname_bot(

@@ -16,7 +16,7 @@ from pathlib import Path
 
 from discord import app_commands
 
-from core.command_groups import GRUPPI
+from core.command_groups import GRUPPI, GRUPPI_SOLO_OWNER
 from tests.support.full_tree import build_full_bot, build_separate_trees, close_full_bot, connect_db_if_needed
 
 RADICE = Path(__file__).resolve().parent.parent
@@ -66,6 +66,8 @@ ECCEZIONI: frozenset[str] = frozenset(
         "/ai",
         # pagina pubblica del pannello web per entrare nel server (core/web_panel_join.py): non è un comando
         "/join",
+        # parte dell'indirizzo di un servizio di GIF (core/gif_fonti.py): non è un comando
+        "/gif",
     }
 )
 
@@ -123,7 +125,8 @@ async def test_ogni_comando_citato_nei_messaggi_esiste_nell_albero():
     try:
         assert not falliti, f"Cog falliti nel caricamento: {falliti}"
         radici = {c.name: c for c in bot.tree.get_commands()}
-        radici.setdefault("owner", GRUPPI["owner"])
+        for nome_owner in GRUPPI_SOLO_OWNER:  # /owner e /owner-radio vivono solo nel server dell'owner
+            radici.setdefault(nome_owner, GRUPPI[nome_owner])
         from cogs.utility.livelli_comandi import crea_gruppi
 
         radici.update({g.name: g for g in crea_gruppi()})  # /premium e /vip nascono solo quando servono (D57)

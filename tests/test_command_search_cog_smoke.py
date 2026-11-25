@@ -10,7 +10,7 @@ from discord.ext import commands
 from discord import app_commands
 
 from cogs.utility.command_search import setup as command_search_setup
-from core.command_groups import NOME_CERCA_COMANDO, NOME_CHIEDI
+from core.command_groups import NOME_HELP
 from tests.support.percorsi import percorsi_del_gruppo
 
 
@@ -21,47 +21,42 @@ async def test_command_search_cog_si_carica_correttamente():
     assert bot.get_cog("CommandSearchCog") is not None
 
     nomi_comandi = {c.name for c in bot.tree.get_commands()}
-    assert NOME_CERCA_COMANDO == "cerca-comando"
-    assert NOME_CERCA_COMANDO in nomi_comandi  # primo livello, non in /utility
-    assert "search" not in nomi_comandi
-    assert "cerca-comando" not in percorsi_del_gruppo("utility")
-    comando = bot.tree.get_command(NOME_CERCA_COMANDO)
+    assert NOME_HELP == "help"
+    assert NOME_HELP in nomi_comandi  # primo livello, non in /utility
+    assert "search" not in nomi_comandi and "chiedi" not in nomi_comandi and "cerca-comando" not in nomi_comandi
+    assert "help" not in percorsi_del_gruppo("utility")
+    comando = bot.tree.get_command(NOME_HELP)
     assert not isinstance(comando, app_commands.Group)
 
 
-async def test_cerca_comando_funziona_anche_in_dm():
-    """D24: `cerca-comando` è usabile anche in DM (richiesta owner 11/10)."""
+async def test_help_funziona_anche_in_dm():
+    """D24: `/help` (ex `cerca-comando` e `chiedi`) è usabile anche in DM (richiesta owner 11/10)."""
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await command_search_setup(bot)
 
-    comando = bot.tree.get_command(NOME_CERCA_COMANDO)
+    comando = bot.tree.get_command(NOME_HELP)
     assert comando.guild_only is False
     assert sorted(comando.to_dict(bot.tree)["contexts"]) == [0, 1, 2]
 
 
-def test_i_nomi_dei_due_comandi_di_primo_livello_stanno_in_command_groups():
-    assert (NOME_CERCA_COMANDO, NOME_CHIEDI) == ("cerca-comando", "chiedi")
-
-
-def test_i_due_nomi_con_il_trattino_sono_validi_per_discord():
-    """Il trattino davanti è ammesso dalla regola dei nomi (mappa F7 §6); `/chiedi` arriva con #147."""
+def test_il_nome_del_comando_di_primo_livello_sta_in_command_groups():
     from tests.test_command_tree_invariants import REGEX_NOME
 
-    for nome in (NOME_CERCA_COMANDO, NOME_CHIEDI):
-        assert REGEX_NOME.match(nome) and nome == nome.lower() and len(nome) <= 32
+    assert NOME_HELP == "help"
+    assert REGEX_NOME.match(NOME_HELP) and NOME_HELP == NOME_HELP.lower() and len(NOME_HELP) <= 32
 
 
-async def test_search_dichiara_la_lunghezza_massima_del_testo_cercato():
+async def test_help_dichiara_la_lunghezza_massima_del_testo():
     """
-    LIM-23: il testo cercato viene ricopiato nella risposta "Nessun
-    comando trovato". Con un massimo di 100 caratteri la descrizione
-    dell'embed resta sempre molto sotto il limite di 4096.
+    LIM-23: il testo scritto viene ricopiato nella risposta "Nessun comando trovato" (ridotto a 100 caratteri
+    senza AI). Con un massimo di 500 caratteri la richiesta resta sotto il limite dell'embed.
     """
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await command_search_setup(bot)
 
-    opzioni = {o["name"]: o for o in bot.tree.get_command(NOME_CERCA_COMANDO).to_dict(bot.tree)["options"]}
+    opzioni = {o["name"]: o for o in bot.tree.get_command(NOME_HELP).to_dict(bot.tree)["options"]}
 
-    assert opzioni["query"]["min_length"] == 1
-    assert not opzioni["query"].get("required")  # senza testo: pannello
-    assert opzioni["query"]["max_length"] == 100
+    assert opzioni["domanda"]["min_length"] == 1
+    assert not opzioni["domanda"].get("required")  # senza testo: pannello
+    assert opzioni["domanda"]["max_length"] == 500
+    assert opzioni["domanda"]["autocomplete"] is True

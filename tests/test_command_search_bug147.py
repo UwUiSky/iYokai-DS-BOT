@@ -160,6 +160,7 @@ def cog(monkeypatch):
     repo = MagicMock(ultimo=AsyncMock(return_value=None), registra=AsyncMock())
     monkeypatch.setattr(modulo, "command_usage_repo", repo)
     c.repo = repo
+    c._risposta_ai = AsyncMock(return_value=None)  # D137: /help senza AI usa la ricerca per parole
     monkeypatch.setattr(modulo, "puo_usare", AsyncMock(return_value=True))
     return c
 
@@ -169,7 +170,7 @@ async def test_usa_guild_id_anche_se_il_server_non_e_in_cache(cog):
     i.guild = None
     i.guild_id = 4242
     cog.cache_ids.ottieni = AsyncMock(return_value={})
-    await cog.search.callback(cog, i, query=None)
+    await cog.aiuto.callback(cog, i, domanda=None)
     cog.repo.ultimo.assert_awaited_once_with(4242, i.user.id)
     embed = i.followup.send.call_args.kwargs["embed"]
     assert "In privato" not in embed.description
@@ -196,8 +197,8 @@ async def test_defer_prima_di_chiamare_discord(cog):
         return {}
 
     cog.cache_ids.ottieni = ids
-    await cog.search.callback(cog, i, query=None)
-    await cog.search.callback(cog, i, query="aperto")
+    await cog.aiuto.callback(cog, i, domanda=None)
+    await cog.aiuto.callback(cog, i, domanda="aperto")
     assert ordine[:2] == ["defer", "ids"]
     assert ordine[2:4] == ["defer", "ids"]
     assert i.followup.send.await_count == 2
@@ -207,7 +208,7 @@ async def test_defer_prima_di_chiamare_discord(cog):
 async def test_query_di_soli_spazi_e_rifiutata_con_messaggio(cog, testo):
     i = fake_interaction()
     i.guild_id = 1
-    await cog.search.callback(cog, i, query=testo)
+    await cog.aiuto.callback(cog, i, domanda=testo)
     i.response.send_message.assert_awaited_once()
     assert i.response.send_message.call_args.kwargs["ephemeral"] is True
     assert "parola" in i.response.send_message.call_args.args[0].lower()
@@ -217,13 +218,13 @@ async def test_query_di_soli_spazi_e_rifiutata_con_messaggio(cog, testo):
 async def test_chiedi_con_spazi_rifiuta_e_con_domanda_lunga_avvisa(cog):
     i = fake_interaction()
     i.guild_id = 1
-    await cog.chiedi.callback(cog, i, domanda="   ")
+    await cog.aiuto.callback(cog, i, domanda="   ")
     assert "parola" in i.response.send_message.call_args.args[0].lower()
 
     i = fake_interaction()
     i.guild_id = 1
     cog.cache_ids.ottieni = AsyncMock(return_value={})
-    await cog.chiedi.callback(cog, i, domanda="aperto " * 40)
+    await cog.aiuto.callback(cog, i, domanda="aperto " * 40)
     assert "100" in i.followup.send.call_args.kwargs["content"]
 
 
@@ -234,9 +235,9 @@ async def test_chiedi_taglia_la_domanda_a_100_caratteri(cog):
         visti.append((query, nota))
 
     cog._ricerca = spia
-    await cog.chiedi.callback(cog, fake_interaction(), domanda="x" * 150)
+    await cog.aiuto.callback(cog, fake_interaction(), domanda="x" * 150)
     assert len(visti[0][0]) == 100 and "100" in visti[0][1]
-    await cog.chiedi.callback(cog, fake_interaction(), domanda="  breve  ")
+    await cog.aiuto.callback(cog, fake_interaction(), domanda="  breve  ")
     assert visti[1] == ("breve", None)
 
 
@@ -246,7 +247,7 @@ async def test_il_pannello_chiede_anche_l_id_del_gruppo_dell_ultimo_comando(cog)
     cog.repo.ultimo.return_value = "gruppoassente comando"  # non è tra i comandi visibili
     spia = AsyncMock(return_value={})
     cog.cache_ids.ottieni = spia
-    await cog.search.callback(cog, i, query=None)
+    await cog.aiuto.callback(cog, i, domanda=None)
     assert "gruppoassente" in spia.call_args.args[1]
 
 

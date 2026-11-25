@@ -1,7 +1,7 @@
 """
 cogs/utility/config_risposte.py
 ===============================
-`/admin-bot config risposte` (CFG-013, CFG-014, CFG-033, CFG-011, #122): il server decide se le risposte del bot sono sempre
+`/admin-bot-config risposte` (CFG-013, CFG-014, CFG-033, CFG-011, #122): il server decide se le risposte del bot sono sempre
 private, dopo quanti secondi si cancellano e (premium) i colori di successo ed errore degli embed.
 La logica e il controllo del premium sono in `core/risposte_server.py` (un solo punto, D16).
 Funzioni coperte: SPEC §20 (NF-05), catalogo #122
@@ -39,8 +39,7 @@ class ConfigRisposteCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "admin-bot", nome="risposte", descrizione="Risposte del bot: private, cancellate dopo un po', colori.",
-        sottogruppo=SOTTOGRUPPO_CONFIG,
+        "admin-bot-config", nome="risposte", descrizione="Risposte del bot: private, cancellate dopo un po', colori.",
     )
     @app_commands.describe(
         solo_private="Sì = tutte le risposte del bot in questo server sono private",

@@ -1,9 +1,9 @@
 """
 cogs/leveling/mondo.py
 ======================
-/mondo: diretta (serie giornaliera), casa con i gettoni (seconda moneta globale), fattoria, personaggi con
+/giochi-mondo: diretta (serie giornaliera), casa con i gettoni (seconda moneta globale), fattoria, personaggi con
 una domanda al giorno, avventura a scelte, borsa finta con ordini a soglia, vendita automatica, vacanza della serie.
-Per lo staff, in /admin-negozio: codice in chat, bonus a tempo da raccogliere, eventi casuali del server.
+Per lo staff, in /admin-economia-negozio: codice in chat, bonus a tempo da raccogliere, eventi casuali del server.
 Un lavoro orario fa avanzare la borsa, vende gli oggetti con la soglia raggiunta e lancia gli eventi casuali.
 Funzioni coperte: ECO-018, 027, 045, 054, 056, 083, 084, 085, 087, 142, 144, 145, 146, 147
 Dipende da: core/repositories/mondo_repo.py, core/mondo_logic.py
@@ -23,7 +23,7 @@ from discord.ext import commands, tasks
 from cogs.leveling.leveling import _comando_rifiutato
 from core import mondo_logic as ml
 from core.casa_image import render_casa
-from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
+from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog, SOTTOGRUPPI
 from core.i18n import testo_guild, testo_per
 from core.leveling_logic import tasso_del_giorno
 from core.repositories.leveling_settings_repo import leveling_settings_repo
@@ -149,7 +149,7 @@ class MondoCog(CogConGruppi, commands.Cog):
             try:
                 await f()
             except Exception:
-                logger.exception("Giro orario di /mondo: %s", nome)
+                logger.exception("Giro orario di /giochi-mondo: %s", nome)
 
     @_giro.before_loop
     async def _prima(self) -> None:
@@ -171,7 +171,7 @@ class MondoCog(CogConGruppi, commands.Cog):
                 await pubblica_evento(canale, r["guild_id"], "raro", None, 200, 0, 0, 10, 0)
 
     # ------------------------------------------------------------------ giocatori
-    @comando_di_gruppo("mondo", nome="diretta", descrizione="La tua diretta di oggi: più giorni di fila, più monete.")
+    @comando_di_gruppo("giochi-mondo", nome="diretta", descrizione="La tua diretta di oggi: più giorni di fila, più monete.")
     async def diretta(self, interaction: discord.Interaction) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -182,7 +182,7 @@ class MondoCog(CogConGruppi, commands.Cog):
         serie, monete = esito
         await interaction.response.send_message(await testo_per(interaction, "mon_diretta_ok", serie=serie, monete=monete, moneta=await self._moneta(interaction.guild.id), pubblica=True))
 
-    @comando_di_gruppo("mondo", nome="vacanza", descrizione="Ferma la serie del premio giornaliero mentre sei via.")
+    @comando_di_gruppo("giochi-mondo", nome="vacanza", descrizione="Ferma la serie del premio giornaliero mentre sei via.")
     @app_commands.describe(giorni=f"Giorni (1-{VACANZA_GIORNI_MAX}), {COSTO_VACANZA_GIORNO} monete al giorno")
     async def vacanza(self, interaction: discord.Interaction, giorni: app_commands.Range[int, 1, VACANZA_GIORNI_MAX]) -> None:
         if await _comando_rifiutato(interaction):
@@ -192,7 +192,7 @@ class MondoCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, f"mon_vacanza_{esito}", giorni=giorni, costo=giorni * COSTO_VACANZA_GIORNO, moneta=await self._moneta(interaction.guild.id)), ephemeral=esito != "ok"
         )
 
-    @comando_di_gruppo("mondo", nome="casa", descrizione="La tua casa: arredala con i gettoni (la moneta di tutti i server).")
+    @comando_di_gruppo("giochi-mondo", nome="casa", descrizione="La tua casa: arredala con i gettoni (la moneta di tutti i server).")
     @app_commands.describe(compra="Il mobile da comprare (senza scelta vedi la casa)")
     @app_commands.choices(compra=MOBILI)
     async def casa(self, interaction: discord.Interaction, compra: app_commands.Choice[str] | None = None) -> None:
@@ -223,7 +223,7 @@ class MondoCog(CogConGruppi, commands.Cog):
         sotto = await testo_per(interaction, "mon_casa_img", gettoni=gettoni, listino=listino or "-")
         await interaction.followup.send(sotto[:2000], file=discord.File(io.BytesIO(png), filename="casa.png"), ephemeral=True)
 
-    @comando_di_gruppo("mondo", nome="fattoria", descrizione="Pianta nel tuo orto e raccogli quando è maturo (3 posti).")
+    @comando_di_gruppo("giochi-mondo", nome="fattoria", descrizione="Pianta nel tuo orto e raccogli quando è maturo (3 posti).")
     @app_commands.describe(posto="Il posto dove piantare (1-3)", coltura="Cosa piantare", raccogli="Raccogli quello che è maturo")
     @app_commands.choices(coltura=COLTURE)
     async def fattoria(
@@ -254,7 +254,7 @@ class MondoCog(CogConGruppi, commands.Cog):
         listino = ", ".join(f"{n}: {c} → {y} in {h} h" for n, (c, h, y) in ml.COLTURE.items())
         await interaction.response.send_message(await testo_per(interaction, "mon_fattoria", orto="\n".join(righe) or "-", listino=listino, moneta=moneta), ephemeral=True)
 
-    @comando_di_gruppo("mondo", nome="personaggio", descrizione="Parla con un personaggio: una domanda al giorno, un regalo se rispondi bene.")
+    @comando_di_gruppo("giochi-mondo", nome="personaggio", descrizione="Parla con un personaggio: una domanda al giorno, un regalo se rispondi bene.")
     @app_commands.describe(chi="Con chi parli")
     @app_commands.choices(chi=NPC)
     async def personaggio(self, interaction: discord.Interaction, chi: app_commands.Choice[str]) -> None:
@@ -273,7 +273,7 @@ class MondoCog(CogConGruppi, commands.Cog):
             view=VistaScelte(u, [(r, i) for i, r in enumerate(p["r"])], risposta),
         )
 
-    @comando_di_gruppo("mondo", nome="avventura", descrizione="Una storia a scelte: il finale dà monete (una volta ogni 6 ore).")
+    @comando_di_gruppo("giochi-mondo", nome="avventura", descrizione="Una storia a scelte: il finale dà monete (una volta ogni 6 ore).")
     async def avventura(self, interaction: discord.Interaction) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -301,7 +301,7 @@ class MondoCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(testo, view=v, ephemeral=True)
 
     # ------------------------------------------------------------------ borsa
-    @comando_di_gruppo("mondo", nome="prezzi", descrizione="I prezzi della borsa finta e i tuoi titoli.", sottogruppo=SG_BORSA)
+    @comando_di_gruppo("giochi-mondo", nome="prezzi", descrizione="I prezzi della borsa finta e i tuoi titoli.", sottogruppo=SOTTOGRUPPI["giochi-mondo borsa"])
     async def borsa_prezzi(self, interaction: discord.Interaction) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -310,7 +310,7 @@ class MondoCog(CogConGruppi, commands.Cog):
         righe = [f"**{s}** {p} (base {ml.SIMBOLI[s]}) · tuoi: {mio.get(s, 0)}" for s, p in prezzi.items()]
         await interaction.response.send_message(await testo_per(interaction, "mon_borsa", righe="\n".join(righe), comm=ml.COMMISSIONE_PCT), ephemeral=True)
 
-    @comando_di_gruppo("mondo", nome="scambia", descrizione="Compra o vendi titoli della borsa finta al prezzo di adesso.", sottogruppo=SG_BORSA)
+    @comando_di_gruppo("giochi-mondo", nome="scambia", descrizione="Compra o vendi titoli della borsa finta al prezzo di adesso.", sottogruppo=SOTTOGRUPPI["giochi-mondo borsa"])
     @app_commands.describe(titolo="Il titolo", lato="Compra o vendi", quote="Quante quote (1-100)")
     @app_commands.choices(titolo=SIMBOLI, lato=LATI)
     async def borsa_scambia(self, interaction: discord.Interaction, titolo: app_commands.Choice[str], lato: app_commands.Choice[str], quote: app_commands.Range[int, 1, 100]) -> None:
@@ -322,7 +322,7 @@ class MondoCog(CogConGruppi, commands.Cog):
             ephemeral=esito != "ok",
         )
 
-    @comando_di_gruppo("mondo", nome="ordine", descrizione="Un ordine automatico: compra o vendi quando il prezzo arriva alla soglia.", sottogruppo=SG_BORSA)
+    @comando_di_gruppo("giochi-mondo", nome="ordine", descrizione="Un ordine automatico: compra o vendi quando il prezzo arriva alla soglia.", sottogruppo=SOTTOGRUPPI["giochi-mondo borsa"])
     @app_commands.describe(titolo="Il titolo", lato="Compra (scatta se il prezzo scende) o vendi (se sale)", quote="Quante quote", soglia="Il prezzo di soglia")
     @app_commands.choices(titolo=SIMBOLI, lato=LATI)
     async def borsa_ordine(self, interaction: discord.Interaction, titolo: app_commands.Choice[str], lato: app_commands.Choice[str], quote: app_commands.Range[int, 1, 100], soglia: app_commands.Range[int, 1, 100000]) -> None:
@@ -331,7 +331,7 @@ class MondoCog(CogConGruppi, commands.Cog):
         esito = await mondo_repo.ordine(interaction.guild.id, interaction.user.id, titolo.value, lato.value, quote, soglia)
         await interaction.response.send_message(await testo_per(interaction, f"mon_ordine_{esito}", massimo=ml.MAX_ORDINI), ephemeral=True)
 
-    @comando_di_gruppo("mondo", nome="ordini", descrizione="I tuoi ordini automatici (con un numero lo annulli).", sottogruppo=SG_BORSA)
+    @comando_di_gruppo("giochi-mondo", nome="ordini", descrizione="I tuoi ordini automatici (con un numero lo annulli).", sottogruppo=SOTTOGRUPPI["giochi-mondo borsa"])
     @app_commands.describe(annulla="Numero dell'ordine da annullare")
     async def borsa_ordini(self, interaction: discord.Interaction, annulla: app_commands.Range[int, 1, 9_000_000_000_000_000] | None = None) -> None:
         if await _comando_rifiutato(interaction):
@@ -344,7 +344,7 @@ class MondoCog(CogConGruppi, commands.Cog):
         righe = [f"`{o['id']}` {o['lato']} {o['quote']}× {o['simbolo']} a {o['soglia']}" for o in await mondo_repo.ordini(g, u)]
         await interaction.response.send_message("\n".join(righe) or await testo_per(interaction, "mon_nessun_ordine"), ephemeral=True)
 
-    @comando_di_gruppo("mondo", nome="autovendita", descrizione="Vendi un oggetto da solo quando il cambio del giorno arriva alla soglia.")
+    @comando_di_gruppo("giochi-mondo", nome="autovendita", descrizione="Vendi un oggetto da solo quando il cambio del giorno arriva alla soglia.")
     @app_commands.describe(oggetto="ID dell'oggetto (senza: elenco)", soglia="Cambio minimo, da 40 a 60 (0 = togli la regola)")
     async def autovendita(self, interaction: discord.Interaction, oggetto: app_commands.Range[int, 1, 2_147_483_647] | None = None, soglia: app_commands.Range[int, 0, 60] = 50) -> None:
         if await _comando_rifiutato(interaction):
@@ -371,7 +371,7 @@ class MondoCog(CogConGruppi, commands.Cog):
             return False
         return True
 
-    @comando_di_gruppo("admin-negozio", nome="codice", descrizione="Lancia un codice in chat: chi lo scrive per primo vince le monete.", sottogruppo=SG_EVENTO)
+    @comando_di_gruppo("admin-economia-negozio", nome="codice", descrizione="Lancia un codice in chat: chi lo scrive per primo vince le monete.", sottogruppo=SOTTOGRUPPI["admin-economia-negozio evento"])
     @app_commands.describe(codice="Il codice da scrivere (lettere e numeri)", monete="Monete in palio", minuti="Quanto dura", canale="Dove lanciarlo (vuoto = qui)")
     async def evento_codice(self, interaction: discord.Interaction, codice: app_commands.Range[str, 3, 20], monete: app_commands.Range[int, 1, 100_000], minuti: app_commands.Range[int, 1, 60] = 10, canale: discord.TextChannel | None = None) -> None:
         if await _comando_rifiutato(interaction):
@@ -385,7 +385,7 @@ class MondoCog(CogConGruppi, commands.Cog):
         ok = await pubblica_evento(dove, interaction.guild.id, "codice", codice, monete, 0, 0, minuti, interaction.user.id)
         await interaction.followup.send(await testo_per(interaction, "neg_lampo_ok" if ok else "neg_canale_no"), ephemeral=True)
 
-    @comando_di_gruppo("admin-negozio", nome="bonus", descrizione="Lascia in chat un bonus a tempo: il primo che lo prende guadagna di più per un po'.", sottogruppo=SG_EVENTO)
+    @comando_di_gruppo("admin-economia-negozio", nome="bonus", descrizione="Lascia in chat un bonus a tempo: il primo che lo prende guadagna di più per un po'.", sottogruppo=SOTTOGRUPPI["admin-economia-negozio evento"])
     @app_commands.describe(percento="Bonus a lavoro e premio (1-100)", durata="Minuti di bonus (1-1440)", scade="Minuti per prenderlo (1-60)", canale="Dove (vuoto = qui)")
     async def evento_bonus(self, interaction: discord.Interaction, percento: app_commands.Range[int, 1, 100], durata: app_commands.Range[int, 1, 1440] = 60, scade: app_commands.Range[int, 1, 60] = 10, canale: discord.TextChannel | None = None) -> None:
         if await _comando_rifiutato(interaction):
@@ -397,7 +397,7 @@ class MondoCog(CogConGruppi, commands.Cog):
         ok = await pubblica_evento(dove, interaction.guild.id, "bonus", None, 0, percento, durata, scade, interaction.user.id)
         await interaction.followup.send(await testo_per(interaction, "neg_lampo_ok" if ok else "neg_canale_no"), ephemeral=True)
 
-    @comando_di_gruppo("admin-negozio", nome="casuali", descrizione="Accendi o spegni gli eventi casuali del server in un canale.", sottogruppo=SG_EVENTO)
+    @comando_di_gruppo("admin-economia-negozio", nome="casuali", descrizione="Accendi o spegni gli eventi casuali del server in un canale.", sottogruppo=SOTTOGRUPPI["admin-economia-negozio evento"])
     @app_commands.describe(canale="Dove annunciarli", attivi="Sì = accesi")
     async def evento_casuali(self, interaction: discord.Interaction, canale: discord.TextChannel, attivi: bool = True) -> None:
         if await _comando_rifiutato(interaction):
@@ -407,7 +407,7 @@ class MondoCog(CogConGruppi, commands.Cog):
         await mondo_repo.imposta_eventi(interaction.guild.id, canale.id, attivi)
         await interaction.response.send_message(await testo_per(interaction, "mon_casuali_ok" if attivi else "mon_casuali_off"), ephemeral=True)
 
-    @comando_di_gruppo("admin-negozio", nome="server", descrizione="Bonus a tempo per tutto il server, subito (lavoro e premio).", sottogruppo=SG_EVENTO)
+    @comando_di_gruppo("admin-economia-negozio", nome="server", descrizione="Bonus a tempo per tutto il server, subito (lavoro e premio).", sottogruppo=SOTTOGRUPPI["admin-economia-negozio evento"])
     @app_commands.describe(percento="Bonus (1-100)", minuti="Durata in minuti (1-1440)")
     async def evento_server(self, interaction: discord.Interaction, percento: app_commands.Range[int, 1, 100], minuti: app_commands.Range[int, 1, 1440]) -> None:
         if await _comando_rifiutato(interaction):

@@ -210,7 +210,7 @@ async def test_il_capo_clan_non_puo_lasciare(cog_e_repos):
     interazione = _FakeInteraction(guild, user=_FakeMember(CAPO))
     await cog.clan_lascia.callback(cog, interazione)
 
-    assert "/clan sciogli" in interazione.response.sent_messages[0]
+    assert "/monete-clan sciogli" in interazione.response.sent_messages[0]
     assert await clan_repo.get_member(clan_id, CAPO) is not None
 
 

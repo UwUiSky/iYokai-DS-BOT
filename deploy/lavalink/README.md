@@ -2,7 +2,7 @@
 
 Serve per tre cose che i nodi pubblici non fanno:
 
-1. **Gli inediti della radio** (`/owner radio add-local`): un nodo pubblico
+1. **Gli inediti della radio** (`/owner-radio add-local`): un nodo pubblico
    non legge il disco di questa macchina.
 2. **Spotify** (plugin LavaSrc, con le tue chiavi) e YouTube (plugin).
 3. **Stabilita'**: i nodi pubblici nascono, muoiono e hanno limiti.
@@ -86,7 +86,7 @@ curl -s -H "Authorization: $LAVALINK_PASSWORD" http://127.0.0.1:2333/v4/info | h
 ```
 
 Controlla `version.semver` (>= 4.2.0) e `sourceManagers` (`youtube`,
-`spotify`, `local`...). Poi: `/music play` con un titolo; `/owner radio
+`spotify`, `local`...). Poi: `/music play` con un titolo; `/owner-radio
 add-local` con un file della cartella. Le prove sul serio sono in
 `revisione/03-verifica/VERIFICA_LIVE.md`.
 

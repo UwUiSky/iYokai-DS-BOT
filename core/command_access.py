@@ -186,7 +186,7 @@ def errore_ruolo_admin(
     («Amministratore»). Metterne uno nuovo (diverso da quello attuale)
     richiede «Amministratore» o la proprietà del server; toglierlo no.
     Restituisce il motivo del rifiuto, o None. Punto unico per pannello,
-    `/admin-bot config import` e `/admin-bot config rollback`.
+    `/admin-bot-config import` e `/admin-bot-config rollback`.
     """
     if nuovo is None or nuovo == vecchio:
         return None

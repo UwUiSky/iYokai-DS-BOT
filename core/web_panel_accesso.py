@@ -46,7 +46,7 @@ GRUPPO_PER_MODULO = {
     "moderation_report": "mod-sanzioni",
     "automod": "admin-automod",
     "invites": "admin-inviti",
-    "custom_commands": "admin-tag",
+    "custom_commands": "admin-messaggi-tag",
     "suggestions": "admin-moduli",
     "spam_trap": "admin-sicurezza",
     "fun": "admin-moduli",

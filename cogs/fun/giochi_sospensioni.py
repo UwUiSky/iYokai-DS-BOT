@@ -2,7 +2,7 @@
 cogs/fun/giochi_sospensioni.py
 ==============================
 `/admin-giochi sospensione`: lo staff del server sospende una persona dai comandi di gioco (`/monete`, `/giochi`,
-`/clan`), la riabilita, vede l'elenco e decide sulle richieste di revisione (ECO-160). Il bottone per chiedere la
+`/monete-clan`), la riabilita, vede l'elenco e decide sulle richieste di revisione (ECO-160). Il bottone per chiedere la
 revisione lo vede la persona sospesa (core/economia_sospensioni_view.py). Non si sospendono bot, se stessi né chi
 può gestire il server.
 Funzioni coperte: ECO-160

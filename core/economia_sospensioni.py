@@ -2,7 +2,7 @@
 core/economia_sospensioni.py
 ============================
 La sospensione dal gioco (ECO-160, D121): lo staff del server ferma una persona dai comandi di gioco (`/monete`,
-`/giochi`, `/clan`) per sempre o per un tempo (al massimo 365 giorni), con un motivo. La persona può chiedere una
+`/giochi`, `/monete-clan`) per sempre o per un tempo (al massimo 365 giorni), con un motivo. La persona può chiedere una
 revisione una volta sola: la richiesta arriva allo staff (canale dei casi di moderazione) e lo staff accoglie (la
 sospensione cade) o respinge (resta, senza una seconda richiesta). Il resto del bot funziona. Un punto solo, usato da
 `/admin-giochi sospensione`, dal controllo comune dei comandi e dal futuro pannello (D16).
@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 
 from core.database import db
 
-RADICI_DI_GIOCO = frozenset({"monete", "giochi", "clan"})
+RADICI_DI_GIOCO = frozenset({"monete", "giochi", "monete-clan"})
 MAX_MOTIVO = 200
 MAX_APPELLO = 500
 MAX_DURATA = timedelta(days=365)

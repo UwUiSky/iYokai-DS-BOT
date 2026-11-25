@@ -39,7 +39,7 @@ def frase(voce: Voce, lingua: str, autore: str, bersaglio: str = "", testo: str 
 
 
 def voce_di_ricerca(testo: str, tema: str | None = None) -> Voce | None:
-    """La «voce» per `/gif cerca`: solo la ricerca libera dei servizi con chiave. None se il testo è vuoto o per adulti."""
+    """La «voce» per `/immagini gif cerca`: solo la ricerca libera dei servizi con chiave. None se il testo è vuoto o per adulti."""
     pulito = re.sub(r"\s+", " ", (testo or "").strip())[:MAX_RICERCA]
     if tema in TEMI_RICERCA:
         pulito = f"{pulito} {TEMI_RICERCA[tema]}"[: MAX_RICERCA + 12]

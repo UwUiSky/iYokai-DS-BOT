@@ -2,7 +2,7 @@
 cogs/leveling/lotteria.py
 =========================
 Lotteria giornaliera (/monete conto lotteria), rimborso di parte delle perdite (/monete conto rimborso) e
-le loro regole (/admin-giochi stipendi lotteria). Un lavoro ogni 10 minuti estrae i giorni passati: il vincitore
+le loro regole (/admin-economia-negozio stipendi lotteria). Un lavoro ogni 10 minuti estrae i giorni passati: il vincitore
 prende il 90% di quanto speso, il resto va alla cassa del server. Le monete non si comprano con soldi veri.
 Funzioni coperte: ECO-117, ECO-118, ECO-121
 Dipende da: core/repositories/lotteria_repo.py
@@ -20,7 +20,7 @@ from discord.ext import commands, tasks
 from cogs.leveling.leveling import _comando_rifiutato
 from cogs.leveling.rischio import _SG_CONTO
 from cogs.leveling.stipendi import _SG as _SG_ADMIN
-from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
+from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog, SOTTOGRUPPI
 from core.i18n import testo_per
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.repositories.lotteria_repo import MAX_BIGLIETTI_AL_GIORNO, lotteria_repo
@@ -106,7 +106,7 @@ class LotteriaCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, "lot_rimborso_ok", dato=dato, moneta=i.currency_name, pct=i.rimborso_pct, pubblica=True)
         )
 
-    @comando_di_gruppo("admin-giochi", nome="lotteria", descrizione="Prezzo della lotteria e quota di perdite rimborsata.", sottogruppo=_SG_ADMIN)
+    @comando_di_gruppo("admin-economia-negozio", nome="lotteria", descrizione="Prezzo della lotteria e quota di perdite rimborsata.", sottogruppo=SOTTOGRUPPI["admin-economia-negozio stipendi"])
     @app_commands.describe(prezzo="Prezzo di un biglietto (0 = lotteria spenta)", rimborso="Quota delle perdite nette che torna indietro, in % (0-20)")
     async def regole(
         self, interaction: discord.Interaction,

@@ -1,8 +1,8 @@
 # Elenco comandi — iYokai
 
-Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:41 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
+Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 09:03 UTC, interrogando l'albero comandi VERO del bot dopo aver caricato ogni cog — non un elenco scritto a mano. Da rigenerare dopo ogni commit che aggiunge, rimuove o rinomina un comando.
 
-**Totale: 1181 comandi in 59 categorie.**
+**Totale: 1189 comandi in 60 categorie.**
 
 ## Admin: AI
 
@@ -48,6 +48,16 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/admin-alert ferma-tutti`** — Cancella tutti gli avvisi del server o di un canale (con conferma).
 - **`/admin-alert formato`** — Testo o embed, embed salvato come modello, Short di YouTube.
 - **`/admin-alert messaggio`** — Cambia il testo di un avviso (anche Twitch, YouTube, Kick).
+- **`/admin-alert piattaforme elenco`** — Elenca gli avvisi del server.
+- **`/admin-alert piattaforme feed`** — Segui un feed RSS/Atom.
+- **`/admin-alert piattaforme guida-social`** — Avvisi per TikTok, Instagram e X.
+- **`/admin-alert piattaforme kick`** — Avvisa quando un canale Kick va in diretta.
+- **`/admin-alert piattaforme opzioni`** — Opzioni di un avviso: ruolo, fine diretta, bottone.
+- **`/admin-alert piattaforme rimuovi`** — Rimuove un avviso o un webhook.
+- **`/admin-alert piattaforme ruolo-live`** — Ruolo dato a chi è in diretta.
+- **`/admin-alert piattaforme twitch`** — Avvisa quando uno streamer Twitch va live.
+- **`/admin-alert piattaforme webhook`** — Crea un webhook per pubblicare da servizi esterni.
+- **`/admin-alert piattaforme youtube-live`** — Avvisa quando un canale YouTube va live.
 - **`/admin-alert picarto`** — Avvisa quando un canale Picarto va in diretta.
 - **`/admin-alert podcast`** — Cerca un podcast per nome e avvisa dei nuovi episodi.
 - **`/admin-alert ruolo-live aggiungi`** — Nuova regola: dà un ruolo a chi va in diretta.
@@ -61,41 +71,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/admin-alert subreddit`** — Avvisa dei nuovi post di un subreddit, come testo o embed.
 - **`/admin-alert youtube`** — Aggiungi un canale YouTube da qualsiasi link: video, Short, @nome, playlist.
 
-## Admin: anti-nuke
-
-- **`/admin-antinuke canale-allarmi`** — Sceglie dove arrivano gli allarmi dell'Anti-Nuke (canale o forum).
-- **`/admin-antinuke casi`** — Registro degli attacchi fermati: elenco o dettaglio di un caso.
-- **`/admin-antinuke enable`** — Attiva o disattiva l'Anti-Nuke.
-- **`/admin-antinuke guardie`** — Protezioni su azioni singole: permessi dei ruoli, ruoli ai membri, link, bot.
-- **`/admin-antinuke limits`** — Configura la soglia di rilevamento per una categoria.
-- **`/admin-antinuke punish-action`** — Cosa fare all'autore di un'azione distruttiva di massa.
-- **`/admin-antinuke recovery`** — Attiva/disattiva la ricreazione automatica di canali/ruoli cancellati durante un attacco.
-- **`/admin-antinuke rilascia`** — Toglie la quarantena all'autore di un caso e gli rimette i ruoli.
-- **`/admin-antinuke status`** — Mostra la configurazione attuale dell'Anti-Nuke.
-- **`/admin-antinuke trusted-add`** — Esenta un utente, un bot o un webhook dai controlli Anti-Nuke.
-- **`/admin-antinuke trusted-list`** — Elenca chi è esentato dai controlli Anti-Nuke e con quali limiti.
-- **`/admin-antinuke trusted-remove`** — Rimuove un utente, un bot o un webhook dalla lista fidati Anti-Nuke.
-
-## Admin: anti-raid
-
-- **`/admin-antiraid account-age`** — Età minima dell'account per non essere considerato sospetto.
-- **`/admin-antiraid alert-channel`** — Canale dove ricevere gli alert di sicurezza (Anti-Raid + Anti-Nuke).
-- **`/admin-antiraid avatar-check`** — Attiva/disattiva il rilevamento avatar assente.
-- **`/admin-antiraid elenco`** — File con tutti gli account dei raid nelle ultime ore.
-- **`/admin-antiraid enable`** — Attiva o disattiva l'Anti-Raid.
-- **`/admin-antiraid filtro-ingresso`** — Azione per un filtro all'ingresso (vale anche fuori da un raid).
-- **`/admin-antiraid join-rate`** — Configura il limite di join in un intervallo di tempo.
-- **`/admin-antiraid livello`** — Livelli di allerta: normale, allerta, alto, blocco.
-- **`/admin-antiraid lockdown-action`** — Cosa fare quando un raid viene rilevato.
-- **`/admin-antiraid nomi-vietati`** — Lista di parole o schemi (con *) vietati nei nomi di chi entra.
-- **`/admin-antiraid ping-ruoli`** — Ruoli dello staff pingati al primo allarme di un raid (vuoto: nessuno).
-- **`/admin-antiraid quarantine-hold`** — Impedisce a chi non è fidato di togliere la quarantena a mano.
-- **`/admin-antiraid rilascia`** — Toglie la quarantena a un membro (il modo giusto, col blocco attivo).
-- **`/admin-antiraid segnala`** — Segnala a chi gestisce il bot un raid che non è stato riconosciuto.
-- **`/admin-antiraid segnali`** — Segnali di raid sugli ultimi ingressi e azione su chi è entrato prima.
-- **`/admin-antiraid status`** — Mostra la configurazione attuale dell'Anti-Raid.
-- **`/admin-antiraid username-check`** — Attiva/disattiva il rilevamento pattern username sospetti.
-
 ## Admin: automazioni
 
 - **`/admin-automazioni inneschi aggiungi`** — Fa partire un tag da solo: reazione, intervallo, orario, bottone, ruolo.
@@ -103,6 +78,14 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/admin-automazioni inneschi elenco`** — Gli inneschi del server.
 - **`/admin-automazioni inneschi togli`** — Toglie un innesco.
 - **`/admin-automazioni programma`** — Programma un'azione sicura per più tardi (ruolo, messaggio, sblocco canale): fino a 5.
+- **`/admin-automazioni risposte crea`** — Crea una risposta automatica.
+- **`/admin-automazioni risposte elenco`** — Mostra le risposte automatiche del server.
+- **`/admin-automazioni risposte elimina`** — Elimina una risposta automatica.
+- **`/admin-automazioni risposte escludi`** — Utenti, canali e ruoli che non fanno scattare una risposta (10 per elenco).
+- **`/admin-automazioni risposte globali`** — Accendi o spegni le risposte automatiche dell'owner in questo server.
+- **`/admin-automazioni risposte modifica`** — Cambia risposta, modo o limiti di una risposta automatica.
+- **`/admin-automazioni risposte mostra`** — Dettaglio di una risposta automatica, anche il testo grezzo.
+- **`/admin-automazioni risposte svuota`** — Elimina tutte le risposte automatiche del server.
 - **`/admin-automazioni script errori`** — Gli ultimi 10 errori dello script di un tag.
 - **`/admin-automazioni slash elenco`** — I comandi e i menu del server.
 - **`/admin-automazioni slash menu`** — Voci del menu col tasto destro (su un utente o un messaggio) che rispondono con un tag.
@@ -140,6 +123,26 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/admin-automod sync`** — Forza una sincronizzazione manuale delle regole AutoMod.
 - **`/admin-automod violazione-togli`** — Toglie una violazione dal registro AutoMod.
 - **`/admin-automod violazioni`** — Mostra le violazioni AutoMod di un utente, a pagine.
+
+## Admin: filtri
+
+- **`/admin-automod-filtri actions-set`** — Configura quali azioni eseguire quando un filtro avanzato scatta.
+- **`/admin-automod-filtri anti-attachment`** — Configura l'anti-attachment-spam (troppi allegati in poco tempo).
+- **`/admin-automod-filtri anti-caps`** — Configura l'anti-caps (troppo maiuscolo).
+- **`/admin-automod-filtri anti-link-domain`** — Aggiunge o rimuove un dominio dalla whitelist/blacklist link.
+- **`/admin-automod-filtri anti-link-mode`** — Imposta la modalità del filtro link.
+- **`/admin-automod-filtri anti-mention`** — Configura l'anti-mass-mention (troppi utenti taggati in un messaggio).
+- **`/admin-automod-filtri anti-spam-emoji`** — Configura l'anti-spam emoji (troppe emoji in un messaggio).
+- **`/admin-automod-filtri anti-spam-messages`** — Configura l'anti-spam messaggi (troppi messaggi in poco tempo).
+- **`/admin-automod-filtri anti-spam-sticker`** — Configura l'anti-spam sticker (troppi sticker in poco tempo).
+- **`/admin-automod-filtri anti-zalgo`** — Attiva o disattiva l'anti-zalgo (testo con segni diacritici anomali).
+- **`/admin-automod-filtri canale-media`** — Canale solo media, senza allegati o normale.
+- **`/admin-automod-filtri contenuto`** — Embed e inoltri controllati dai filtri; tipi di file vietati.
+- **`/admin-automod-filtri emergenza`** — Blocco dei canali per troppe menzioni e modalità panico dell'AutoMod.
+- **`/admin-automod-filtri forma-testo`** — Limiti sulla forma del messaggio: a-capo, lunghezza, spoiler (0 = spento).
+- **`/admin-automod-filtri invites`** — Attiva o disattiva il blocco automatico degli inviti Discord.
+- **`/admin-automod-filtri messaggi`** — Ripetuti, troppo corti, link e menzioni contati nel tempo (0 = spento).
+- **`/admin-automod-filtri phishing`** — Attiva o disattiva il blocco dei link di phishing (finti regali, finti login).
 
 ## Admin: backup
 
@@ -179,19 +182,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 
 ## Admin: impianto del bot
 
-- **`/admin-bot config canale-report`** — Imposta il canale delle segnalazioni.
-- **`/admin-bot config canale-suggerimenti`** — Imposta il canale dei suggerimenti.
-- **`/admin-bot config export`** — Esporta la configurazione di questo server in un file.
-- **`/admin-bot config history`** — Mostra le ultime modifiche alla configurazione.
-- **`/admin-bot config import`** — Importa una configurazione da un file esportato con /admin-bot config export.
-- **`/admin-bot config nickname-bot`** — Cambia il nome del bot in questo server.
-- **`/admin-bot config permessi`** — Mostra il livello di permesso di un membro e perché.
-- **`/admin-bot config pulisci`** — Canali e ruoli cancellati: cosa si pulirà dalla configurazione e quando (dopo 7 giorni).
-- **`/admin-bot config reset`** — Azzera la configurazione di questo server (e, a richiesta, tutti i dati dopo 30 giorni).
-- **`/admin-bot config risposte`** — Risposte del bot: private, cancellate dopo un po', colori.
-- **`/admin-bot config rollback`** — Ripristina il valore precedente di una modifica.
-- **`/admin-bot config sincronizza`** — Riscrive i permessi dei comandi di questo server.
-- **`/admin-bot config staff`** — Ruoli admin, mod e ban del bot: elenco e scelta.
 - **`/admin-bot lingua set`** — Imposta la lingua di questo server.
 - **`/admin-bot lingua show`** — Mostra la lingua impostata per questo server.
 - **`/admin-bot politica canali`** — Dove il bot risponde ai comandi.
@@ -212,6 +202,22 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/admin-bot setup guidato`** — Primo setup o modifica del setup, passo per passo e con riepilogo.
 - **`/admin-bot setup identita-bot`** — Nome e logo degli altri bot di iYokai in questo server.
 - **`/admin-bot setup wizard`** — Configura passo-passo ruoli e moduli del bot, una categoria alla volta.
+
+## Admin: configurazione
+
+- **`/admin-bot-config canale-report`** — Imposta il canale delle segnalazioni.
+- **`/admin-bot-config canale-suggerimenti`** — Imposta il canale dei suggerimenti.
+- **`/admin-bot-config export`** — Esporta la configurazione di questo server in un file.
+- **`/admin-bot-config history`** — Mostra le ultime modifiche alla configurazione.
+- **`/admin-bot-config import`** — Importa una configurazione da un file esportato con /admin-bot-config export.
+- **`/admin-bot-config nickname-bot`** — Cambia il nome del bot in questo server.
+- **`/admin-bot-config permessi`** — Mostra il livello di permesso di un membro e perché.
+- **`/admin-bot-config pulisci`** — Canali e ruoli cancellati: cosa si pulirà dalla configurazione e quando (dopo 7 giorni).
+- **`/admin-bot-config reset`** — Azzera la configurazione di questo server (e, a richiesta, tutti i dati dopo 30 giorni).
+- **`/admin-bot-config risposte`** — Risposte del bot: private, cancellate dopo un po', colori.
+- **`/admin-bot-config rollback`** — Ripristina il valore precedente di una modifica.
+- **`/admin-bot-config sincronizza`** — Riscrive i permessi dei comandi di questo server.
+- **`/admin-bot-config staff`** — Ruoli admin, mod e ban del bot: elenco e scelta.
 
 ## Admin: economia
 
@@ -237,25 +243,31 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/admin-economia statistiche`** — Monete in giro nel server e come sono distribuite.
 - **`/admin-economia stato`** — Tutte le regole dell'economia in un colpo.
 
-## Admin: filtri
+## Admin: negozio avanzato
 
-- **`/admin-filtri actions-set`** — Configura quali azioni eseguire quando un filtro avanzato scatta.
-- **`/admin-filtri anti-attachment`** — Configura l'anti-attachment-spam (troppi allegati in poco tempo).
-- **`/admin-filtri anti-caps`** — Configura l'anti-caps (troppo maiuscolo).
-- **`/admin-filtri anti-link-domain`** — Aggiunge o rimuove un dominio dalla whitelist/blacklist link.
-- **`/admin-filtri anti-link-mode`** — Imposta la modalità del filtro link.
-- **`/admin-filtri anti-mention`** — Configura l'anti-mass-mention (troppi utenti taggati in un messaggio).
-- **`/admin-filtri anti-spam-emoji`** — Configura l'anti-spam emoji (troppe emoji in un messaggio).
-- **`/admin-filtri anti-spam-messages`** — Configura l'anti-spam messaggi (troppi messaggi in poco tempo).
-- **`/admin-filtri anti-spam-sticker`** — Configura l'anti-spam sticker (troppi sticker in poco tempo).
-- **`/admin-filtri anti-zalgo`** — Attiva o disattiva l'anti-zalgo (testo con segni diacritici anomali).
-- **`/admin-filtri canale-media`** — Canale solo media, senza allegati o normale.
-- **`/admin-filtri contenuto`** — Embed e inoltri controllati dai filtri; tipi di file vietati.
-- **`/admin-filtri emergenza`** — Blocco dei canali per troppe menzioni e modalità panico dell'AutoMod.
-- **`/admin-filtri forma-testo`** — Limiti sulla forma del messaggio: a-capo, lunghezza, spoiler (0 = spento).
-- **`/admin-filtri invites`** — Attiva o disattiva il blocco automatico degli inviti Discord.
-- **`/admin-filtri messaggi`** — Ripetuti, troppo corti, link e menzioni contati nel tempo (0 = spento).
-- **`/admin-filtri phishing`** — Attiva o disattiva il blocco dei link di phishing (finti regali, finti login).
+- **`/admin-economia-negozio evento avvia`** — Avvia l'evento: chi scrive nel canale riceve monete.
+- **`/admin-economia-negozio evento bonus`** — Lascia in chat un bonus a tempo: il primo che lo prende guadagna di più per un po'.
+- **`/admin-economia-negozio evento casuali`** — Accendi o spegni gli eventi casuali del server in un canale.
+- **`/admin-economia-negozio evento chiudi`** — Chiudi l'evento di monete in corso.
+- **`/admin-economia-negozio evento codice`** — Lancia un codice in chat: chi lo scrive per primo vince le monete.
+- **`/admin-economia-negozio evento riffa`** — Una riffa pagata dalla cassa del server: chi clicca può vincere il premio.
+- **`/admin-economia-negozio evento server`** — Bonus a tempo per tutto il server, subito (lavoro e premio).
+- **`/admin-economia-negozio fondo dai`** — Dai a un membro un oggetto donato al fondo premi.
+- **`/admin-economia-negozio guadagno crea`** — Crea un comando di guadagno: chi lo usa riceve monete, con una pausa.
+- **`/admin-economia-negozio guadagno elimina`** — Elimina un comando di guadagno del server.
+- **`/admin-economia-negozio offerta chiudi`** — Chiude subito l'offerta lampo di un oggetto.
+- **`/admin-economia-negozio offerta lampo`** — Lancia un'offerta lampo a tempo con il bottone per comprare.
+- **`/admin-economia-negozio oggetto-azione`** — Cosa fa un oggetto del negozio quando lo si usa: monete, un ruolo o una creatura.
+- **`/admin-economia-negozio ricetta crea`** — Crea una ricetta: certi oggetti diventano un altro oggetto.
+- **`/admin-economia-negozio ricetta elimina`** — Elimina una ricetta.
+- **`/admin-economia-negozio rotazione oggetto`** — Mette un oggetto tra quelli che ruotano (o lo toglie).
+- **`/admin-economia-negozio rotazione quanti`** — Quanti oggetti a rotazione sono in vetrina ogni giorno (0 = spenta).
+- **`/admin-economia-negozio stipendi auto`** — Paga gli stipendi da solo a un'ora (UTC) e scegli le monete per messaggio.
+- **`/admin-economia-negozio stipendi elenco`** — Gli stipendi e le tasse per ruolo, e le regole dei messaggi.
+- **`/admin-economia-negozio stipendi imposta`** — Stipendio (positivo) o tassa (negativo) per un ruolo.
+- **`/admin-economia-negozio stipendi lotteria`** — Prezzo della lotteria e quota di perdite rimborsata.
+- **`/admin-economia-negozio stipendi toglie`** — Toglie lo stipendio o la tassa di un ruolo.
+- **`/admin-economia-negozio voto`** — Il premio che il server dà a chi vota il bot (senza valori: lo stato).
 
 ## Admin: giochi
 
@@ -268,10 +280,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/admin-giochi conteggio importa`** — Porta in un canale i punteggi di un file CSV o JSON.
 - **`/admin-giochi conteggio regole`** — Punizione dopo uno sbaglio e ruolo di chi ha contato per ultimo.
 - **`/admin-giochi conteggio traguardo`** — Ruolo o messaggio quando il conteggio tocca un numero.
-- **`/admin-giochi evento avvia`** — Avvia l'evento: chi scrive nel canale riceve monete.
-- **`/admin-giochi evento chiudi`** — Chiudi l'evento di monete in corso.
-- **`/admin-giochi evento riffa`** — Una riffa pagata dalla cassa del server: chi clicca può vincere il premio.
-- **`/admin-giochi oggetto-azione`** — Cosa fa un oggetto del negozio quando lo si usa: monete, un ruolo o una creatura.
 - **`/admin-giochi punteggi azzera`** — Azzera i punteggi di una gara (con conferma).
 - **`/admin-giochi quiz carica`** — Carica domande per il quiz da un file CSV o JSON.
 - **`/admin-giochi quiz elenca`** — Le domande del quiz caricate dal server.
@@ -279,11 +287,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/admin-giochi quiz rimuovi`** — Toglie una domanda caricata dal server.
 - **`/admin-giochi servizi`** — Accende o spegne i servizi esterni: immagini Lemmy e ricerca di GIF.
 - **`/admin-giochi sospensione`** — Sospendi una persona dal gioco, riabilitala o decidi sulla sua richiesta di revisione.
-- **`/admin-giochi stipendi auto`** — Paga gli stipendi da solo a un'ora (UTC) e scegli le monete per messaggio.
-- **`/admin-giochi stipendi elenco`** — Gli stipendi e le tasse per ruolo, e le regole dei messaggi.
-- **`/admin-giochi stipendi imposta`** — Stipendio (positivo) o tassa (negativo) per un ruolo.
-- **`/admin-giochi stipendi lotteria`** — Prezzo della lotteria e quota di perdite rimborsata.
-- **`/admin-giochi stipendi toglie`** — Toglie lo stipendio o la tassa di un ruolo.
 - **`/admin-giochi tela azzera`** — Svuota tutta la tela di pixel del server.
 - **`/admin-giochi tela blocca`** — Blocca una persona dalla tela di pixel.
 - **`/admin-giochi tela impostazioni`** — Pausa, costo per saltarla e pagina pubblica della tela.
@@ -293,7 +296,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/admin-giochi telefono canale`** — Il canale del telefono del server.
 - **`/admin-giochi telefono consenso`** — Accende o spegne il telefono: spento di base.
 - **`/admin-giochi telefono registro`** — Le ultime chiamate del server: solo server, ora e durata.
-- **`/admin-giochi voto`** — Il premio che il server dà a chi vota il bot (senza valori: lo stato).
 
 ## Admin: giveaway
 
@@ -333,21 +335,35 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/admin-livelli classifica-ruoli`** — Un ruolo al primo della classifica XP, ai primi 3 o ai primi 10 (aggiornato ogni ora).
 - **`/admin-livelli diagnosi`** — Spiega perché un membro non prende XP in un canale.
 - **`/admin-livelli escludi`** — Un canale, una categoria o un ruolo non dà XP (rifallo per toglierlo).
-- **`/admin-livelli guadagno canali`** — Dà XP in tutti i canali tranne gli esclusi, oppure solo in quelli dell'elenco.
-- **`/admin-livelli guadagno comandi`** — Accende o spegne l'XP per l'uso dei comandi slash (di base spento).
-- **`/admin-livelli guadagno contesti`** — Se thread, post dei forum e chat dei canali vocali danno XP.
-- **`/admin-livelli guadagno formula`** — Sceglie la curva dei livelli e ricalcola i livelli di tutti.
-- **`/admin-livelli guadagno messaggi`** — XP per messaggio: fisso o a parola, più il bonus per messaggi lunghi o con immagini.
-- **`/admin-livelli guadagno prefissi`** — Prefissi di altri bot: i messaggi che iniziano così non danno XP.
-- **`/admin-livelli guadagno reazioni`** — XP per le reazioni messe e ricevute (di base spento).
-- **`/admin-livelli guadagno vocale`** — XP in vocale: persone minime nel canale e controllo anti-farm.
 - **`/admin-livelli membro`** — Modifica XP e livello di un membro.
 - **`/admin-livelli moltiplicatore`** — XP moltiplicati in un canale o per un ruolo (fattore 1 = toglie la regola).
 - **`/admin-livelli mostra`** — Mostra le impostazioni dei livelli di questo server.
 - **`/admin-livelli negozio`** — Chiedi conferma prima di ogni acquisto nel negozio (si può spegnere).
-- **`/admin-livelli premi`** — Ruoli-premio: tienili tutti o tieni solo quello più alto.
+- **`/admin-livelli premi aggiungi`** — Assegna un ruolo a chi raggiunge un livello.
+- **`/admin-livelli premi elenco`** — Mostra i ruoli-premio configurati su questo server.
+- **`/admin-livelli premi modo`** — Ruoli-premio: tienili tutti o tieni solo quello più alto.
+- **`/admin-livelli premi togli`** — Rimuove un ruolo-premio configurato.
 - **`/admin-livelli progressi`** — Accende o spegne missioni, serie, traguardi e pass, e fissa l'obiettivo del server.
 - **`/admin-livelli xp`** — Quanti XP e coin si guadagnano, e come si sommano i moltiplicatori.
+
+## Admin: guadagno XP
+
+- **`/admin-livelli-guadagno canali`** — Dà XP in tutti i canali tranne gli esclusi, oppure solo in quelli dell'elenco.
+- **`/admin-livelli-guadagno comandi`** — Accende o spegne l'XP per l'uso dei comandi slash (di base spento).
+- **`/admin-livelli-guadagno contesti`** — Se thread, post dei forum e chat dei canali vocali danno XP.
+- **`/admin-livelli-guadagno formula`** — Sceglie la curva dei livelli e ricalcola i livelli di tutti.
+- **`/admin-livelli-guadagno messaggi`** — XP per messaggio: fisso o a parola, più il bonus per messaggi lunghi o con immagini.
+- **`/admin-livelli-guadagno prefissi`** — Prefissi di altri bot: i messaggi che iniziano così non danno XP.
+- **`/admin-livelli-guadagno reazioni`** — XP per le reazioni messe e ricevute (di base spento).
+- **`/admin-livelli-guadagno vocale`** — XP in vocale: persone minime nel canale e controllo anti-farm.
+
+## Admin: reputazione
+
+- **`/admin-livelli-rep azzera`** — Azzera la reputazione di tutto il server (serve la parola di conferma).
+- **`/admin-livelli-rep cancella`** — Porta a zero la reputazione di un membro.
+- **`/admin-livelli-rep imposta`** — Fissa i punti reputazione di un membro.
+- **`/admin-livelli-rep impostazioni`** — Accendi la reputazione e scegli nome, pausa, limiti, ruoli e «grazie».
+- **`/admin-livelli-rep premio`** — Ruoli dati a una soglia di reputazione (senza soglia: l'elenco).
 
 ## Admin: log
 
@@ -367,22 +383,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/admin-log stato`** — Mostra dove vanno i log del server.
 - **`/admin-log vista-forum`** — Un forum con un post per canale o per caso. Senza forum, la vista si spegne.
 - **`/admin-log webhook`** — Manda i log da un webhook del canale, raggruppati, con limiti suoi.
-
-## Admin: menu dei ruoli
-
-- **`/admin-menu-ruoli aggiungi-molti`** — Aggiungi a un menu più coppie emoji-ruolo in un colpo solo.
-- **`/admin-menu-ruoli canale`** — Crea un canale per i menu dei ruoli: tutti leggono, scrive solo il bot.
-- **`/admin-menu-ruoli colori`** — Usa i ruoli di un menu «unique» come tavolozza dei colori del nome.
-- **`/admin-menu-ruoli gruppo`** — Collega più menu: tra tutti si tiene un solo ruolo. Nome vuoto: scollega.
-- **`/admin-menu-ruoli guidata`** — Crea un menu dei ruoli a passi: tipo, testo, canale, ruoli ed emoji.
-- **`/admin-menu-ruoli immagine`** — Metti un'immagine dentro il messaggio del menu (allegato o indirizzo).
-- **`/admin-menu-ruoli modello`** — Crea un menu da un modello pronto: verifica, notifiche, colori, interessi.
-- **`/admin-menu-ruoli opzione`** — Cambia emoji, etichetta, descrizione, colore o posto di un'opzione di un menu.
-- **`/admin-menu-ruoli personale`** — Concedi o togli a un membro il ruolo personale (nome e colore scelti da lui).
-- **`/admin-menu-ruoli ripara`** — Rimetti le reazioni del bot su un menu a reazioni se qualcuno le ha tolte.
-- **`/admin-menu-ruoli ruoli-extra`** — Una opzione di un menu dà anche altri ruoli (al massimo 5 in tutto).
-- **`/admin-menu-ruoli sposta`** — Aggancia o sposta un menu a reazioni su un messaggio già scritto.
-- **`/admin-menu-ruoli svuota`** — Elimina tutti i menu di ruoli del server, o di un canale.
 
 ## Admin: messaggi
 
@@ -405,18 +405,27 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/admin-messaggi promemoria`** — Per lo staff: i promemoria impostati in questo server.
 - **`/admin-messaggi scrivi`** — Fai scrivere un messaggio al bot in un canale.
 
+## Admin: tag
+
+- **`/admin-messaggi-tag alias`** — Nomi alternativi di un tag (al massimo 3).
+- **`/admin-messaggi-tag azioni`** — Azioni sicure di un tag: ruolo, messaggio, reazione (fino a 3).
+- **`/admin-messaggi-tag crea`** — Crea un comando personalizzato.
+- **`/admin-messaggi-tag creatori`** — Scegli il ruolo di chi può creare tag propri con /utility-server tag crea.
+- **`/admin-messaggi-tag divieti`** — Vieta un tag a un ruolo, un canale o un utente (al massimo 10 per elenco).
+- **`/admin-messaggi-tag elenco`** — Mostra i comandi personalizzati del server.
+- **`/admin-messaggi-tag elimina`** — Elimina un comando personalizzato.
+- **`/admin-messaggi-tag esporta`** — Esporta i tag del server in un codice o in un file.
+- **`/admin-messaggi-tag gruppi`** — Regole per gruppo di tag: un solo canale e/o un ruolo richiesto.
+- **`/admin-messaggi-tag importa`** — Importa tag da un codice o da un file JSON.
+- **`/admin-messaggi-tag info`** — Scheda di un tag: autore, usi, nomi alternativi e testo grezzo.
+- **`/admin-messaggi-tag modifica`** — Cambia un comando personalizzato.
+- **`/admin-messaggi-tag opzioni`** — Come si comporta un tag: permesso, bersaglio, dove risponde.
+- **`/admin-messaggi-tag prefisso`** — Scegli il prefisso per usare i comandi scrivendo nel canale.
+- **`/admin-messaggi-tag risposte`** — Dai a un tag fino a 5 risposte, ognuna con il suo peso.
+- **`/admin-messaggi-tag sostituisci`** — Cambia un testo in tutti i tag, dopo l'anteprima.
+
 ## Admin: moduli
 
-- **`/admin-moduli alert elenco`** — Elenca gli avvisi del server.
-- **`/admin-moduli alert feed`** — Segui un feed RSS/Atom.
-- **`/admin-moduli alert guida-social`** — Avvisi per TikTok, Instagram e X.
-- **`/admin-moduli alert kick`** — Avvisa quando un canale Kick va in diretta.
-- **`/admin-moduli alert opzioni`** — Opzioni di un avviso: ruolo, fine diretta, bottone.
-- **`/admin-moduli alert rimuovi`** — Rimuove un avviso o un webhook.
-- **`/admin-moduli alert ruolo-live`** — Ruolo dato a chi è in diretta.
-- **`/admin-moduli alert twitch`** — Avvisa quando uno streamer Twitch va live.
-- **`/admin-moduli alert webhook`** — Crea un webhook per pubblicare da servizi esterni.
-- **`/admin-moduli alert youtube-live`** — Avvisa quando un canale YouTube va live.
 - **`/admin-moduli candidature crea`** — Crea un modulo o una candidatura.
 - **`/admin-moduli candidature elenco`** — I moduli di questo server.
 - **`/admin-moduli candidature elimina`** — Elimina un modulo e le sue risposte.
@@ -452,30 +461,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/admin-musica suono-condividi`** — Scegli se i suoni del server si usano in altri server e viceversa.
 - **`/admin-musica suono-ruoli`** — Chi può usare un suono: ruoli consentiti o vietati.
 
-## Admin: negozio avanzato
-
-- **`/admin-negozio evento bonus`** — Lascia in chat un bonus a tempo: il primo che lo prende guadagna di più per un po'.
-- **`/admin-negozio evento casuali`** — Accendi o spegni gli eventi casuali del server in un canale.
-- **`/admin-negozio evento codice`** — Lancia un codice in chat: chi lo scrive per primo vince le monete.
-- **`/admin-negozio evento server`** — Bonus a tempo per tutto il server, subito (lavoro e premio).
-- **`/admin-negozio fondo dai`** — Dai a un membro un oggetto donato al fondo premi.
-- **`/admin-negozio guadagno crea`** — Crea un comando di guadagno: chi lo usa riceve monete, con una pausa.
-- **`/admin-negozio guadagno elimina`** — Elimina un comando di guadagno del server.
-- **`/admin-negozio offerta chiudi`** — Chiude subito l'offerta lampo di un oggetto.
-- **`/admin-negozio offerta lampo`** — Lancia un'offerta lampo a tempo con il bottone per comprare.
-- **`/admin-negozio ricetta crea`** — Crea una ricetta: certi oggetti diventano un altro oggetto.
-- **`/admin-negozio ricetta elimina`** — Elimina una ricetta.
-- **`/admin-negozio rotazione oggetto`** — Mette un oggetto tra quelli che ruotano (o lo toglie).
-- **`/admin-negozio rotazione quanti`** — Quanti oggetti a rotazione sono in vetrina ogni giorno (0 = spenta).
-
-## Admin-rep
-
-- **`/admin-rep azzera`** — Azzera la reputazione di tutto il server (serve la parola di conferma).
-- **`/admin-rep cancella`** — Porta a zero la reputazione di un membro.
-- **`/admin-rep imposta`** — Fissa i punti reputazione di un membro.
-- **`/admin-rep impostazioni`** — Accendi la reputazione e scegli nome, pausa, limiti, ruoli e «grazie».
-- **`/admin-rep premio`** — Ruoli dati a una soglia di reputazione (senza soglia: l'elenco).
-
 ## Admin: ruoli
 
 - **`/admin-ruoli auto aggiungi`** — Aggiungi un ruolo dato in automatico a chi entra.
@@ -490,20 +475,33 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/admin-ruoli diagnosi`** — Scopri perché il bot non riesce a dare un ruolo.
 - **`/admin-ruoli massa`** — Dai o togli un ruolo a molti membri insieme, con filtri.
 - **`/admin-ruoli massa-ferma`** — Ferma l'operazione di massa in corso.
-- **`/admin-ruoli menu accesso`** — Limita un menu a certi ruoli o escludine altri.
-- **`/admin-ruoli menu aggiungi`** — Aggiungi un'opzione a un role menu.
-- **`/admin-ruoli menu crea`** — Crea un nuovo role menu.
-- **`/admin-ruoli menu elenco`** — Mostra i menu di ruoli del server, con gli ID.
-- **`/admin-ruoli menu elimina`** — Elimina un role menu.
-- **`/admin-ruoli menu modifica`** — Cambia titolo, descrizione o comportamento di un menu già pubblicato.
-- **`/admin-ruoli menu togli`** — Rimuovi un'opzione da un role menu.
 - **`/admin-ruoli modifica`** — Cambia nome, colore e opzioni di un ruolo.
-- **`/admin-ruoli premio aggiungi`** — Assegna un ruolo a chi raggiunge un livello.
-- **`/admin-ruoli premio elenco`** — Mostra i ruoli-premio configurati su questo server.
-- **`/admin-ruoli premio togli`** — Rimuove un ruolo-premio configurato.
 - **`/admin-ruoli scelta`** — Ruoli che i membri si prendono da soli con /utility ruolo.
 - **`/admin-ruoli togli`** — Togli uno o più ruoli a un membro, anche per un tempo.
 - **`/admin-ruoli vocale`** — Un ruolo per chi è in un canale vocale.
+
+## Admin: menu dei ruoli
+
+- **`/admin-ruoli-menu accesso`** — Limita un menu a certi ruoli o escludine altri.
+- **`/admin-ruoli-menu aggiungi`** — Aggiungi un'opzione a un role menu.
+- **`/admin-ruoli-menu aggiungi-molti`** — Aggiungi a un menu più coppie emoji-ruolo in un colpo solo.
+- **`/admin-ruoli-menu canale`** — Crea un canale per i menu dei ruoli: tutti leggono, scrive solo il bot.
+- **`/admin-ruoli-menu colori`** — Usa i ruoli di un menu «unique» come tavolozza dei colori del nome.
+- **`/admin-ruoli-menu crea`** — Crea un nuovo role menu.
+- **`/admin-ruoli-menu elenco`** — Mostra i menu di ruoli del server, con gli ID.
+- **`/admin-ruoli-menu elimina`** — Elimina un role menu.
+- **`/admin-ruoli-menu gruppo`** — Collega più menu: tra tutti si tiene un solo ruolo. Nome vuoto: scollega.
+- **`/admin-ruoli-menu guidata`** — Crea un menu dei ruoli a passi: tipo, testo, canale, ruoli ed emoji.
+- **`/admin-ruoli-menu immagine`** — Metti un'immagine dentro il messaggio del menu (allegato o indirizzo).
+- **`/admin-ruoli-menu modello`** — Crea un menu da un modello pronto: verifica, notifiche, colori, interessi.
+- **`/admin-ruoli-menu modifica`** — Cambia titolo, descrizione o comportamento di un menu già pubblicato.
+- **`/admin-ruoli-menu opzione`** — Cambia emoji, etichetta, descrizione, colore o posto di un'opzione di un menu.
+- **`/admin-ruoli-menu personale`** — Concedi o togli a un membro il ruolo personale (nome e colore scelti da lui).
+- **`/admin-ruoli-menu ripara`** — Rimetti le reazioni del bot su un menu a reazioni se qualcuno le ha tolte.
+- **`/admin-ruoli-menu ruoli-extra`** — Una opzione di un menu dà anche altri ruoli (al massimo 5 in tutto).
+- **`/admin-ruoli-menu sposta`** — Aggancia o sposta un menu a reazioni su un messaggio già scritto.
+- **`/admin-ruoli-menu svuota`** — Elimina tutti i menu di ruoli del server, o di un canale.
+- **`/admin-ruoli-menu togli`** — Rimuovi un'opzione da un role menu.
 
 ## Admin: sicurezza
 
@@ -529,45 +527,56 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/admin-sicurezza rete timeout-togli`** — Toglie il timeout messo dalla rete per un account compromesso.
 - **`/admin-sicurezza score`** — Calcola il punteggio di sicurezza del server con consigli.
 - **`/admin-sicurezza spamtrap`** — Configura i canali trappola e log dello Spam Trap.
-- **`/admin-sicurezza verify blacklist-add`** — Aggiungi un utente alla blacklist.
-- **`/admin-sicurezza verify blacklist-remove`** — Rimuovi un utente dalla blacklist.
-- **`/admin-sicurezza verify invia`** — Rimanda a un membro il messaggio per verificarsi.
-- **`/admin-sicurezza verify manuale`** — Verifica a mano un membro, senza controlli.
-- **`/admin-sicurezza verify opzioni`** — Ruolo «non verificato» e ruoli extra.
-- **`/admin-sicurezza verify panel`** — Pubblica il pannello di verifica.
-- **`/admin-sicurezza verify setup`** — Configura il Verify.
-- **`/admin-sicurezza verify statistiche`** — Ingressi, uscite, captcha e verifiche.
-- **`/admin-sicurezza verify tempi`** — Promemoria, tempo massimo, azione su chi fallisce, verifica solo ai sospetti.
-- **`/admin-sicurezza verify tentativi`** — Tentativi di verifica di un utente.
-- **`/admin-sicurezza verify whitelist-add`** — Aggiungi un utente alla whitelist.
-- **`/admin-sicurezza verify whitelist-remove`** — Rimuovi un utente dalla whitelist.
 
-## Admin: tag e risposte
+## Admin: anti-nuke
 
-- **`/admin-tag risposte crea`** — Crea una risposta automatica.
-- **`/admin-tag risposte elenco`** — Mostra le risposte automatiche del server.
-- **`/admin-tag risposte elimina`** — Elimina una risposta automatica.
-- **`/admin-tag risposte escludi`** — Utenti, canali e ruoli che non fanno scattare una risposta (10 per elenco).
-- **`/admin-tag risposte globali`** — Accendi o spegni le risposte automatiche dell'owner in questo server.
-- **`/admin-tag risposte modifica`** — Cambia risposta, modo o limiti di una risposta automatica.
-- **`/admin-tag risposte mostra`** — Dettaglio di una risposta automatica, anche il testo grezzo.
-- **`/admin-tag risposte svuota`** — Elimina tutte le risposte automatiche del server.
-- **`/admin-tag tag alias`** — Nomi alternativi di un tag (al massimo 3).
-- **`/admin-tag tag azioni`** — Azioni sicure di un tag: ruolo, messaggio, reazione (fino a 3).
-- **`/admin-tag tag crea`** — Crea un comando personalizzato.
-- **`/admin-tag tag creatori`** — Scegli il ruolo di chi può creare tag propri con /tag crea.
-- **`/admin-tag tag divieti`** — Vieta un tag a un ruolo, un canale o un utente (al massimo 10 per elenco).
-- **`/admin-tag tag elenco`** — Mostra i comandi personalizzati del server.
-- **`/admin-tag tag elimina`** — Elimina un comando personalizzato.
-- **`/admin-tag tag esporta`** — Esporta i tag del server in un codice o in un file.
-- **`/admin-tag tag gruppi`** — Regole per gruppo di tag: un solo canale e/o un ruolo richiesto.
-- **`/admin-tag tag importa`** — Importa tag da un codice o da un file JSON.
-- **`/admin-tag tag info`** — Scheda di un tag: autore, usi, nomi alternativi e testo grezzo.
-- **`/admin-tag tag modifica`** — Cambia un comando personalizzato.
-- **`/admin-tag tag opzioni`** — Come si comporta un tag: permesso, bersaglio, dove risponde.
-- **`/admin-tag tag prefisso`** — Scegli il prefisso per usare i comandi scrivendo nel canale.
-- **`/admin-tag tag risposte`** — Dai a un tag fino a 5 risposte, ognuna con il suo peso.
-- **`/admin-tag tag sostituisci`** — Cambia un testo in tutti i tag, dopo l'anteprima.
+- **`/admin-sicurezza-antinuke canale-allarmi`** — Sceglie dove arrivano gli allarmi dell'Anti-Nuke (canale o forum).
+- **`/admin-sicurezza-antinuke casi`** — Registro degli attacchi fermati: elenco o dettaglio di un caso.
+- **`/admin-sicurezza-antinuke enable`** — Attiva o disattiva l'Anti-Nuke.
+- **`/admin-sicurezza-antinuke guardie`** — Protezioni su azioni singole: permessi dei ruoli, ruoli ai membri, link, bot.
+- **`/admin-sicurezza-antinuke limits`** — Configura la soglia di rilevamento per una categoria.
+- **`/admin-sicurezza-antinuke punish-action`** — Cosa fare all'autore di un'azione distruttiva di massa.
+- **`/admin-sicurezza-antinuke recovery`** — Attiva/disattiva la ricreazione automatica di canali/ruoli cancellati durante un attacco.
+- **`/admin-sicurezza-antinuke rilascia`** — Toglie la quarantena all'autore di un caso e gli rimette i ruoli.
+- **`/admin-sicurezza-antinuke status`** — Mostra la configurazione attuale dell'Anti-Nuke.
+- **`/admin-sicurezza-antinuke trusted-add`** — Esenta un utente, un bot o un webhook dai controlli Anti-Nuke.
+- **`/admin-sicurezza-antinuke trusted-list`** — Elenca chi è esentato dai controlli Anti-Nuke e con quali limiti.
+- **`/admin-sicurezza-antinuke trusted-remove`** — Rimuove un utente, un bot o un webhook dalla lista fidati Anti-Nuke.
+
+## Admin: anti-raid
+
+- **`/admin-sicurezza-antiraid account-age`** — Età minima dell'account per non essere considerato sospetto.
+- **`/admin-sicurezza-antiraid alert-channel`** — Canale dove ricevere gli alert di sicurezza (Anti-Raid + Anti-Nuke).
+- **`/admin-sicurezza-antiraid avatar-check`** — Attiva/disattiva il rilevamento avatar assente.
+- **`/admin-sicurezza-antiraid elenco`** — File con tutti gli account dei raid nelle ultime ore.
+- **`/admin-sicurezza-antiraid enable`** — Attiva o disattiva l'Anti-Raid.
+- **`/admin-sicurezza-antiraid filtro-ingresso`** — Azione per un filtro all'ingresso (vale anche fuori da un raid).
+- **`/admin-sicurezza-antiraid join-rate`** — Configura il limite di join in un intervallo di tempo.
+- **`/admin-sicurezza-antiraid livello`** — Livelli di allerta: normale, allerta, alto, blocco.
+- **`/admin-sicurezza-antiraid lockdown-action`** — Cosa fare quando un raid viene rilevato.
+- **`/admin-sicurezza-antiraid nomi-vietati`** — Lista di parole o schemi (con *) vietati nei nomi di chi entra.
+- **`/admin-sicurezza-antiraid ping-ruoli`** — Ruoli dello staff pingati al primo allarme di un raid (vuoto: nessuno).
+- **`/admin-sicurezza-antiraid quarantine-hold`** — Impedisce a chi non è fidato di togliere la quarantena a mano.
+- **`/admin-sicurezza-antiraid rilascia`** — Toglie la quarantena a un membro (il modo giusto, col blocco attivo).
+- **`/admin-sicurezza-antiraid segnala`** — Segnala a chi gestisce il bot un raid che non è stato riconosciuto.
+- **`/admin-sicurezza-antiraid segnali`** — Segnali di raid sugli ultimi ingressi e azione su chi è entrato prima.
+- **`/admin-sicurezza-antiraid status`** — Mostra la configurazione attuale dell'Anti-Raid.
+- **`/admin-sicurezza-antiraid username-check`** — Attiva/disattiva il rilevamento pattern username sospetti.
+
+## Admin: verifica
+
+- **`/admin-sicurezza-verifica blacklist-add`** — Aggiungi un utente alla blacklist.
+- **`/admin-sicurezza-verifica blacklist-remove`** — Rimuovi un utente dalla blacklist.
+- **`/admin-sicurezza-verifica invia`** — Rimanda a un membro il messaggio per verificarsi.
+- **`/admin-sicurezza-verifica manuale`** — Verifica a mano un membro, senza controlli.
+- **`/admin-sicurezza-verifica opzioni`** — Ruolo «non verificato» e ruoli extra.
+- **`/admin-sicurezza-verifica panel`** — Pubblica il pannello di verifica.
+- **`/admin-sicurezza-verifica setup`** — Configura il Verify.
+- **`/admin-sicurezza-verifica statistiche`** — Ingressi, uscite, captcha e verifiche.
+- **`/admin-sicurezza-verifica tempi`** — Promemoria, tempo massimo, azione su chi fallisce, verifica solo ai sospetti.
+- **`/admin-sicurezza-verifica tentativi`** — Tentativi di verifica di un utente.
+- **`/admin-sicurezza-verifica whitelist-add`** — Aggiungi un utente alla whitelist.
+- **`/admin-sicurezza-verifica whitelist-remove`** — Rimuovi un utente dalla whitelist.
 
 ## Admin: ticket
 
@@ -586,19 +595,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/admin-ticket modmail blocca`** — Blocca o sblocca un utente dal ModMail.
 - **`/admin-ticket modmail opzioni`** — Opzioni del ModMail: risposte anonime, inoltro, conferma.
 - **`/admin-ticket panel`** — Pubblica il pannello per l'apertura dei ticket in questo canale.
-- **`/admin-ticket pannelli aspetto`** — Colore del bottone, testo del menu e messaggio di apertura di un pannello.
-- **`/admin-ticket pannelli crea`** — Crea un pannello di ticket.
-- **`/admin-ticket pannelli duplica`** — Duplica un pannello già configurato, o copia una risposta pronta su un altro pannello.
-- **`/admin-ticket pannelli elenco`** — Elenca i pannelli di ticket del server.
-- **`/admin-ticket pannelli modello`** — Importa un modello pronto di pannello (modulo, motivi, risposte).
-- **`/admin-ticket pannelli modulo-aggiungi`** — Aggiungi una domanda al modulo (max 5).
-- **`/admin-ticket pannelli modulo-copia`** — Copia il modulo di un pannello su un altro (sostituisce le sue domande).
-- **`/admin-ticket pannelli modulo-mostra`** — Mostra le domande del modulo di un pannello.
-- **`/admin-ticket pannelli modulo-togli`** — Togli una domanda dal modulo.
-- **`/admin-ticket pannelli motivo-aggiungi`** — Aggiungi un motivo pronto al pannello (max 24).
-- **`/admin-ticket pannelli motivo-togli`** — Togli un motivo pronto dal pannello (senza numero: li elenca).
-- **`/admin-ticket pannelli pubblica`** — Pubblica qui i bottoni di uno o più pannelli.
-- **`/admin-ticket pannelli rimuovi`** — Elimina un pannello e il suo modulo.
 - **`/admin-ticket risposte articolo`** — Base di conoscenza: nuovo articolo, correggilo o eliminalo.
 - **`/admin-ticket risposte elenco`** — Elenca le risposte standard del server.
 - **`/admin-ticket risposte elimina`** — Elimina una risposta standard.
@@ -628,6 +624,22 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/admin-ticket-opzioni presa`** — Presa in carico: categoria, esclusiva, assegnazione automatica.
 - **`/admin-ticket-opzioni regole`** — Regole: se nessuno scrive da N minuti, chiudi, elimina o scrivi.
 
+## Admin: pannelli dei ticket
+
+- **`/admin-ticket-pannelli aspetto`** — Colore del bottone, testo del menu e messaggio di apertura di un pannello.
+- **`/admin-ticket-pannelli crea`** — Crea un pannello di ticket.
+- **`/admin-ticket-pannelli duplica`** — Duplica un pannello già configurato, o copia una risposta pronta su un altro pannello.
+- **`/admin-ticket-pannelli elenco`** — Elenca i pannelli di ticket del server.
+- **`/admin-ticket-pannelli modello`** — Importa un modello pronto di pannello (modulo, motivi, risposte).
+- **`/admin-ticket-pannelli modulo-aggiungi`** — Aggiungi una domanda al modulo (max 5).
+- **`/admin-ticket-pannelli modulo-copia`** — Copia il modulo di un pannello su un altro (sostituisce le sue domande).
+- **`/admin-ticket-pannelli modulo-mostra`** — Mostra le domande del modulo di un pannello.
+- **`/admin-ticket-pannelli modulo-togli`** — Togli una domanda dal modulo.
+- **`/admin-ticket-pannelli motivo-aggiungi`** — Aggiungi un motivo pronto al pannello (max 24).
+- **`/admin-ticket-pannelli motivo-togli`** — Togli un motivo pronto dal pannello (senza numero: li elenca).
+- **`/admin-ticket-pannelli pubblica`** — Pubblica qui i bottoni di uno o più pannelli.
+- **`/admin-ticket-pannelli rimuovi`** — Elimina un pannello e il suo modulo.
+
 ## Admin: vocali temporanei
 
 - **`/admin-vocali cap`** — Imposta il numero massimo di vocali temporanei per categoria.
@@ -638,19 +650,25 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/admin-vocali piattaforme`** — Configura i ruoli informativi PC/Console/Mobile per i vocali temporanei.
 - **`/admin-vocali setup`** — Configura il canale generatore e la categoria dei vocali temporanei.
 
-## Aiuto (primo livello)
+## Assistente AI
 
-- **`/Apri ticket`** — Menu «App» (tasto destro)
-- **`/Orari nel mio fuso`** — Menu «App» (tasto destro)
-- **`/Richiedi copia sicura`** — Menu «App» (tasto destro)
-- **`/Riestrai giveaway`** — Menu «App» (tasto destro)
-- **`/Salva citazione`** — Menu «App» (tasto destro)
-- **`/Scheda moderazione`** — Menu «App» (tasto destro)
-- **`/Segnala messaggio`** — Menu «App» (tasto destro)
-- **`/Statistiche del canale`** — Menu «App» (tasto destro)
-- **`/Statistiche del membro`** — Menu «App» (tasto destro)
-- **`/cerca-comando`** — Cerca un comando per descrizione.
-- **`/chiedi`** — Chiedi aiuto: ti mostro i comandi giusti.
+- **`/ai avviso`** — Segui fino a 3 parole: ti avviso quando se ne parla molto.
+- **`/ai crea-personaggio`** — Crea un personaggio AI con cui chattare.
+- **`/ai frammenti`** — I frammenti di lore che hai raccolto.
+- **`/ai immagina`** — Genera un'immagine da una descrizione.
+- **`/ai ingrandisci`** — Ingrandisce e ripulisce un'immagine che carichi.
+- **`/ai lore`** — Scheda di lore su un nome, un luogo o uno yokai.
+- **`/ai mistero`** — Rispondi a un mistero del server con il codice.
+- **`/ai pacchetto`** — Compra 5 immagini AI in più con le monete del server.
+- **`/ai parla`** — Yokai dice una frase a voce in questo canale.
+- **`/ai personaggio`** — Parla con un personaggio AI del server.
+- **`/ai preferenza`** — Le tue scelte sull'AI: risposte per te e stile imitabile dagli altri.
+- **`/ai riassumi`** — Riassunto degli ultimi messaggi di un canale.
+- **`/ai scrivi`** — Scrive un testo che chiedi: una poesia, una spiegazione, una risposta.
+- **`/ai spiega`** — Spiega in parole semplici un messaggio (dal suo link).
+- **`/ai spirito`** — Il tuo spirito Yokai: cresce con la tua attività.
+- **`/ai stile`** — Un messaggio nuovo scritto come scrivi tu (o come chi lo permette).
+- **`/ai traduci`** — Traduce un testo nella lingua che scegli.
 
 ## iYokai App (app separata, installata sull'utente)
 
@@ -738,60 +756,18 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/nsfw-admin tag-aggiungi`** — Aggiunge un tag alla lista permessa del server.
 - **`/nsfw-admin tag-togli`** — Toglie un tag dalla lista permessa del server.
 
-## Assistente AI
+## Comandi diretti (stessa funzione del comando lungo)
 
-- **`/assistente avviso`** — Segui fino a 3 parole: ti avviso quando se ne parla molto.
-- **`/assistente crea-personaggio`** — Crea un personaggio AI con cui chattare.
-- **`/assistente frammenti`** — I frammenti di lore che hai raccolto.
-- **`/assistente immagina`** — Genera un'immagine da una descrizione.
-- **`/assistente ingrandisci`** — Ingrandisce e ripulisce un'immagine che carichi.
-- **`/assistente lore`** — Scheda di lore su un nome, un luogo o uno yokai.
-- **`/assistente mistero`** — Rispondi a un mistero del server con il codice.
-- **`/assistente pacchetto`** — Compra 5 immagini AI in più con le monete del server.
-- **`/assistente parla`** — Yokai dice una frase a voce in questo canale.
-- **`/assistente personaggio`** — Parla con un personaggio AI del server.
-- **`/assistente preferenza`** — Le tue scelte sull'AI: risposte per te e stile imitabile dagli altri.
-- **`/assistente riassumi`** — Riassunto degli ultimi messaggi di un canale.
-- **`/assistente scrivi`** — Scrive un testo che chiedi: una poesia, una spiegazione, una risposta.
-- **`/assistente spiega`** — Spiega in parole semplici un messaggio (dal suo link).
-- **`/assistente spirito`** — Il tuo spirito Yokai: cresce con la tua attività.
-- **`/assistente stile`** — Un messaggio nuovo scritto come scrivi tu (o come chi lo permette).
-- **`/assistente traduci`** — Traduce un testo nella lingua che scegli.
-
-## Auto
-
-- **`/auto catalogo`** — Le auto da collezione che puoi comprare.
-- **`/auto compra`** — Compra un'auto da collezione per il tuo garage.
-- **`/auto foto`** — Metti la foto della tua auto (solo l'immagine ricodificata si conserva).
-- **`/auto foto-togli`** — Toglie la foto di una tua auto.
-- **`/auto gara`** — Gara con una tua auto contro il banco o contro un membro, anche con una puntata.
-- **`/auto garage`** — Le auto del tuo garage (o di un altro membro).
-- **`/auto potenzia`** — Potenzia una parte della tua auto con le monete.
-- **`/auto vedi`** — La scheda di un'auto del garage, con la sua foto.
-
-## Clan
-
-- **`/clan boost gilda`** — Acquista un boost ×2 per 24h per TUTTI i membri, dalla tesoreria.
-- **`/clan boost individuale`** — Acquista un boost personale ×2 per 24h sul tuo tick vocale di gilda.
-- **`/clan classifica`** — Classifica delle gilde per XP (mensile o totale).
-- **`/clan compra-canale`** — Sblocca un nuovo canale extra per la tua gilda.
-- **`/clan crea`** — Crea una nuova gilda/clan.
-- **`/clan espelli`** — Espelli un membro dalla tua gilda.
-- **`/clan info`** — Mostra le informazioni di una gilda.
-- **`/clan invita`** — Invita un membro nella tua gilda.
-- **`/clan lascia`** — Lascia la gilda di cui fai parte.
-- **`/clan membri`** — Mostra i membri di una gilda.
-- **`/clan promuovi`** — Cambia il ruolo di un membro della tua gilda.
-- **`/clan sciogli`** — Sciogli la tua gilda.
-- **`/clan tesoreria dona`** — Dona coin personali alla tesoreria della tua gilda.
-- **`/clan tesoreria trasferisci`** — Trasferisci coin dalla tesoreria a un'altra TUA gilda (anche su un altro server).
-
-## Eventi
-
-- **`/eventi annulla`** — Annulla un evento: gli iscritti non possono più cambiare.
-- **`/eventi crea`** — Crea un evento con iscrizioni, posti e promemoria.
-- **`/eventi elenco`** — I prossimi eventi, o gli iscritti di un evento.
-- **`/eventi modifica`** — Cambia titolo, data, posti o descrizione di un evento.
+- **`/ban`** — Banna permanentemente un membro.
+- **`/kick`** — Espelle un membro dal server.
+- **`/mute`** — Silenzia un membro con un ruolo dedicato (alternativa al timeout).
+- **`/pause`** — Mette in pausa la riproduzione.
+- **`/play`** — Riproduce una canzone o playlist.
+- **`/queue`** — Mostra la coda di riproduzione.
+- **`/resume`** — Riprende la riproduzione in pausa.
+- **`/shadowban`** — Toglie ai membri ogni canale tranne due dedicati (anche a tempo).
+- **`/skip`** — Salta la traccia in riproduzione.
+- **`/stop`** — Ferma la riproduzione e svuota la coda.
 
 ## Founder (proprietario del server)
 
@@ -804,17 +780,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 ## Divertimento
 
 - **`/fun 8ball`** — Fai una domanda alla palla magica 8.
-- **`/fun animali abbandona`** — Lascia un tuo animale nella coda di adozione del server.
-- **`/fun animali adotta`** — Adotta un animale della coda (serve un posto libero).
-- **`/fun animali adozioni`** — Gli animali in attesa di una famiglia.
-- **`/fun animali attivita`** — Un'attività con un tuo animale in salute: ti porta qualche moneta (ogni 2 ore).
-- **`/fun animali compra`** — Compra un animale da accudire.
-- **`/fun animali cura`** — Dai da mangiare, pulisci o gioca con un animale (una volta all'ora per tipo).
-- **`/fun animali incontro`** — Fai incontrare due animali: giocano insieme e può nascere un cucciolo.
-- **`/fun animali lista`** — I tuoi animali: fame, pulizia, gioco e livello.
-- **`/fun animali lotta`** — Fai lottare il tuo animale con quello di un altro membro (senza puntata).
-- **`/fun animali posto`** — Compra un posto in più per un altro animale (massimo 2 in più).
-- **`/fun animali sitter`** — Paga un pet sitter: i bisogni dell'animale restano pieni per i giorni scelti.
 - **`/fun casuale`** — Preferiresti, argomento, consiglio, oggetto magico, classe.
 - **`/fun citazioni aggiungi`** — Salva una citazione del server.
 - **`/fun citazioni caso`** — Mostra una citazione a caso: del server o tra quelle famose.
@@ -823,20 +788,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/fun coinflip`** — Lancia una moneta: testa o croce.
 - **`/fun dice`** — Tira un dado.
 - **`/fun fact`** — Mostra una curiosità a caso.
-- **`/fun indovina-canzone`** — Indovina la canzone da un breve estratto, in vocale.
 - **`/fun joke`** — Racconta una barzelletta a caso.
 - **`/fun misura`** — Misura da 0 a 100% quanto c'è di una cosa a tua scelta.
 - **`/fun numero`** — Un numero a caso in un intervallo.
-- **`/fun pesca abilita`** — Le abilità di pesca: si sbloccano con i punti delle sfide.
-- **`/fun pesca acquario`** — Il tuo acquario: le specie trovate e quanti ne hai.
-- **`/fun pesca attrezzi`** — Il negozio di attrezzi: si pagano con le perle che trovi pescando.
-- **`/fun pesca classifica`** — I migliori pescatori di oggi.
-- **`/fun pesca guida`** — Il tuo deposito di pesci e le specie che hai già trovato.
-- **`/fun pesca lancia`** — Getta la lenza in un luogo (ogni 15 minuti).
-- **`/fun pesca rete`** — Raccogli i pesci che la tua rete ha preso mentre eri via (un lancio all'ora).
-- **`/fun pesca stagione`** — Il pass del mese: ogni 100 punti di pesca un premio (traccia gratuita).
-- **`/fun pesca storico`** — Gli ultimi pesci presi e le ultime vendite (30 giorni).
-- **`/fun pesca vendi`** — Vendi tutti i pesci del deposito.
 - **`/fun rate`** — Valuta qualcosa da 0 a 10.
 - **`/fun scegli`** — Scelgo a caso tra le opzioni che scrivi.
 - **`/fun scherzo`** — Uno scherzo innocuo verso un utente.
@@ -846,14 +800,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/fun telefono segnala`** — Segnala la chiamata, blocca l'altro server e riaggancia.
 - **`/fun testo`** — Scrivi un testo in uno stile speciale.
 
-## Gif
-
-- **`/gif azione`** — Una GIF di azione verso un utente: abbraccio, bacio, schiaffo...
-- **`/gif cerca`** — Cerca una GIF con le parole (spento di base: serve una chiave del bot).
-- **`/gif preferenze`** — Le tue preferenze per le GIF: genere, personaggi preferiti, anime o no.
-- **`/gif privacy`** — Scegli chi può farti le azioni con le GIF.
-- **`/gif reazione`** — Una GIF di reazione: piangi, balli, ridi...
-
 ## Giochi
 
 - **`/giochi acronimi`** — Inventa frasi che seguono le lettere date e vota la migliore.
@@ -862,8 +808,9 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/giochi carte avvia`** — Gioco di carte: completa la frase con la carta più divertente.
 - **`/giochi conteggio avvisami`** — Ti avviso nel canale quando il conteggio arriva a un numero.
 - **`/giochi conteggio classifica`** — Chi ha contato più numeri giusti.
-- **`/giochi dado`** — Un tiro al giorno da 1 a 100 e la classifica del server.
+- **`/giochi dado-del-giorno`** — Un tiro al giorno da 1 a 100 e la classifica del server.
 - **`/giochi gioca`** — Gioca le tue coin: monetina, dadi o slot.
+- **`/giochi indovina-canzone`** — Indovina la canzone da un breve estratto, in vocale.
 - **`/giochi mazzo`** — Un mazzo di 52 carte per il server: pesca, rimescola, controlla.
 - **`/giochi minato`** — Campo minato: tocca gli spoiler ed evita le mine.
 - **`/giochi quiz avvia`** — Avvia un quiz a domande nel canale.
@@ -886,6 +833,82 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/giochi smash`** — Smash or pass: un personaggio adulto di AniList (solo canali con limite d'età).
 - **`/giochi spinner`** — Fai girare lo spinner: vince chi lo fa girare più a lungo.
 - **`/giochi statistiche`** — Le tue partite, vincite e perdite per gioco.
+- **`/giochi tela colora`** — Colora un pixel della tela (c'è una pausa tra un pixel e l'altro).
+- **`/giochi tela pixel`** — Chi ha colorato un pixel e quando.
+- **`/giochi tela stato`** — La tua pausa, i tuoi pixel e quanto costa saltarla.
+- **`/giochi tela vedi`** — Guarda la tela di pixel del server, o una zona ingrandita.
+
+## Animali e pesca
+
+- **`/giochi-animali abbandona`** — Lascia un tuo animale nella coda di adozione del server.
+- **`/giochi-animali adotta`** — Adotta un animale della coda (serve un posto libero).
+- **`/giochi-animali adozioni`** — Gli animali in attesa di una famiglia.
+- **`/giochi-animali attivita`** — Un'attività con un tuo animale in salute: ti porta qualche moneta (ogni 2 ore).
+- **`/giochi-animali compra`** — Compra un animale da accudire.
+- **`/giochi-animali cura`** — Dai da mangiare, pulisci o gioca con un animale (una volta all'ora per tipo).
+- **`/giochi-animali incontro`** — Fai incontrare due animali: giocano insieme e può nascere un cucciolo.
+- **`/giochi-animali lista`** — I tuoi animali: fame, pulizia, gioco e livello.
+- **`/giochi-animali lotta`** — Fai lottare il tuo animale con quello di un altro membro (senza puntata).
+- **`/giochi-animali pesca abilita`** — Le abilità di pesca: si sbloccano con i punti delle sfide.
+- **`/giochi-animali pesca acquario`** — Il tuo acquario: le specie trovate e quanti ne hai.
+- **`/giochi-animali pesca attrezzi`** — Il negozio di attrezzi: si pagano con le perle che trovi pescando.
+- **`/giochi-animali pesca classifica`** — I migliori pescatori di oggi.
+- **`/giochi-animali pesca guida`** — Il tuo deposito di pesci e le specie che hai già trovato.
+- **`/giochi-animali pesca lancia`** — Getta la lenza in un luogo (ogni 15 minuti).
+- **`/giochi-animali pesca rete`** — Raccogli i pesci che la tua rete ha preso mentre eri via (un lancio all'ora).
+- **`/giochi-animali pesca stagione`** — Il pass del mese: ogni 100 punti di pesca un premio (traccia gratuita).
+- **`/giochi-animali pesca storico`** — Gli ultimi pesci presi e le ultime vendite (30 giorni).
+- **`/giochi-animali pesca vendi`** — Vendi tutti i pesci del deposito.
+- **`/giochi-animali posto`** — Compra un posto in più per un altro animale (massimo 2 in più).
+- **`/giochi-animali sitter`** — Paga un pet sitter: i bisogni dell'animale restano pieni per i giorni scelti.
+
+## Il tuo mondo
+
+- **`/giochi-mondo auto catalogo`** — Le auto da collezione che puoi comprare.
+- **`/giochi-mondo auto compra`** — Compra un'auto da collezione per il tuo garage.
+- **`/giochi-mondo auto foto`** — Metti la foto della tua auto (solo l'immagine ricodificata si conserva).
+- **`/giochi-mondo auto foto-togli`** — Toglie la foto di una tua auto.
+- **`/giochi-mondo auto gara`** — Gara con una tua auto contro il banco o contro un membro, anche con una puntata.
+- **`/giochi-mondo auto garage`** — Le auto del tuo garage (o di un altro membro).
+- **`/giochi-mondo auto potenzia`** — Potenzia una parte della tua auto con le monete.
+- **`/giochi-mondo auto vedi`** — La scheda di un'auto del garage, con la sua foto.
+- **`/giochi-mondo autovendita`** — Vendi un oggetto da solo quando il cambio del giorno arriva alla soglia.
+- **`/giochi-mondo avventura`** — Una storia a scelte: il finale dà monete (una volta ogni 6 ore).
+- **`/giochi-mondo borsa ordine`** — Un ordine automatico: compra o vendi quando il prezzo arriva alla soglia.
+- **`/giochi-mondo borsa ordini`** — I tuoi ordini automatici (con un numero lo annulli).
+- **`/giochi-mondo borsa prezzi`** — I prezzi della borsa finta e i tuoi titoli.
+- **`/giochi-mondo borsa scambia`** — Compra o vendi titoli della borsa finta al prezzo di adesso.
+- **`/giochi-mondo casa`** — La tua casa: arredala con i gettoni (la moneta di tutti i server).
+- **`/giochi-mondo diretta`** — La tua diretta di oggi: più giorni di fila, più monete.
+- **`/giochi-mondo fattoria`** — Pianta nel tuo orto e raccogli quando è maturo (3 posti).
+- **`/giochi-mondo personaggio`** — Parla con un personaggio: una domanda al giorno, un regalo se rispondi bene.
+- **`/giochi-mondo vacanza`** — Ferma la serie del premio giornaliero mentre sei via.
+
+## Sala giochi
+
+- **`/giochi-sala bingo`** — Bingo tra membri: completa una riga della cartella per vincere il piatto.
+- **`/giochi-sala bomba`** — Taglia il filo giusto: chi fa esplodere la bomba esce, l'ultimo vince.
+- **`/giochi-sala carte`** — Carte a turni: stesso colore o stesso numero, chi finisce le carte vince.
+- **`/giochi-sala combattimento`** — Combattimento fino a 6 con regole tue: vite, giri e oggetti.
+- **`/giochi-sala corsa`** — Corsa di animali: chi arriva primo prende il piatto.
+- **`/giochi-sala impiccato`** — Impiccato di gruppo: indovinate la parola insieme e vincete un premio.
+- **`/giochi-sala lotta`** — Lotta fino a 6 con il tuo animale: l'ultimo in piedi prende il piatto.
+- **`/giochi-sala quiz`** — Quiz a tempo con premio in monete: cinque domande, quattro risposte.
+- **`/giochi-sala roulette`** — Roulette a più giocatori: una puntata uguale per tutti, un solo giro.
+- **`/giochi-sala tamburo`** — Un tamburo con una sfera rossa: chi la trova esce, l'ultimo prende il piatto.
+
+## Aiuto
+
+- **`/Apri ticket`** — Menu «App» (tasto destro)
+- **`/Orari nel mio fuso`** — Menu «App» (tasto destro)
+- **`/Richiedi copia sicura`** — Menu «App» (tasto destro)
+- **`/Riestrai giveaway`** — Menu «App» (tasto destro)
+- **`/Salva citazione`** — Menu «App» (tasto destro)
+- **`/Scheda moderazione`** — Menu «App» (tasto destro)
+- **`/Segnala messaggio`** — Menu «App» (tasto destro)
+- **`/Statistiche del canale`** — Menu «App» (tasto destro)
+- **`/Statistiche del membro`** — Menu «App» (tasto destro)
+- **`/help`** — Scrivi cosa vuoi fare: ti mostro i comandi giusti.
 
 ## Immagini
 
@@ -894,6 +917,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/immagini effetto`** — Effetto sull'avatar: arcobaleno, R.I.P., ricercato, pingato, sepia, neon...
 - **`/immagini foto`** — Una foto bella da vedere: cibo o buonumore.
 - **`/immagini fusione`** — Due Pokémon: il nome fuso e le loro immagini ufficiali affiancate.
+- **`/immagini gif azione`** — Una GIF di azione verso un utente: abbraccio, bacio, schiaffo...
+- **`/immagini gif cerca`** — Cerca una GIF con le parole (spento di base: serve una chiave del bot).
+- **`/immagini gif preferenze`** — Le tue preferenze per le GIF: genere, personaggi preferiti, anime o no.
+- **`/immagini gif privacy`** — Scegli chi può farti le azioni con le GIF.
+- **`/immagini gif reazione`** — Una GIF di reazione: piangi, balli, ridi...
 - **`/immagini grayscale`** — Trasforma un'immagine in scala di grigi.
 - **`/immagini invert`** — Inverte i colori di un'immagine.
 - **`/immagini meme`** — Genera un meme con testo sopra/sotto.
@@ -908,15 +936,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/level collezione compra`** — Compra un badge o uno sfondo con le tue coin.
 - **`/level collezione equipaggia`** — Metti un badge o uno sfondo sul tuo profilo (senza oggetto lo togli).
 - **`/level collezione negozio`** — Mostra badge e sfondi in vendita e quelli che hai.
-- **`/level compleanno imposta`** — Registra il tuo compleanno (solo giorno e mese).
-- **`/level compleanno mostra`** — Mostra il tuo compleanno o quello di un membro.
-- **`/level compleanno prossimi`** — I prossimi compleanni del server.
-- **`/level compleanno rimuovi`** — Cancella il tuo compleanno.
-- **`/level inviti classifica`** — I 10 membri che hanno invitato più persone.
-- **`/level inviti codici`** — I tuoi codici d'invito, a pagine da 10.
-- **`/level inviti link`** — Il tuo link d'invito personale, che passa dal sito del bot.
-- **`/level inviti storico`** — Chi ha invitato un membro e le ultime persone che ha portato.
-- **`/level inviti utente`** — Quante persone ha invitato un membro.
 - **`/level leaderboard`** — Mostra la classifica del server.
 - **`/level livelli-recenti`** — Gli ultimi 25 level-up del server.
 - **`/level movimenti`** — Gli ultimi movimenti delle tue monete (si tengono 30 giorni).
@@ -924,6 +943,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/level profilo`** — Mostra il profilo di un membro; con «presentazione» cambi il tuo.
 - **`/level progressi`** — Missioni, serie, traguardi e pass di 90 giorni, in un menu.
 - **`/level rank`** — Mostra la rank card: livello, XP, posizione e coin.
+- **`/level rep classifica`** — Classifica della reputazione del server.
+- **`/level rep dai`** — Dai punti reputazione a un membro.
+- **`/level rep mostra`** — Reputazione e posizione di un membro (senza nome: la tua).
+- **`/level rep registro`** — Chi ha dato o tolto reputazione (la tua; lo staff può vedere quella di altri).
+- **`/level rep togli`** — Togli punti reputazione a un membro (solo chi ha il ruolo scelto dal server).
 - **`/level righe`** — Scegli quali righe mostrare nel tuo riepilogo e in che ordine.
 - **`/level sociale amici`** — I tuoi amici, e togline uno.
 - **`/level sociale amico`** — Chiedi a un membro di diventare tuo amico (tra amici i pagamenti non hanno tassa).
@@ -933,19 +957,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/level sociale mantieni`** — Mantieni vivo il tuo matrimonio (vale 14 giorni).
 - **`/level sociale sblocca`** — Togli un utente dai bloccati (senza nome: l'elenco dei bloccati).
 - **`/level sociale sposa`** — Proponi il matrimonio (200 monete a testa alla cassa); va mantenuto.
-- **`/level stelle caso`** — Un messaggio a caso dalla bacheca.
-- **`/level stelle classifica`** — Chi ha ricevuto più stelle in bacheca.
-
-## Mercato
-
-- **`/mercato accetta`** — Accetta l'offerta di un membro sul tuo annuncio (senza membro: vedi le offerte).
-- **`/mercato compra`** — Compra un annuncio al prezzo indicato.
-- **`/mercato dona`** — Dona monete o un oggetto al fondo premi del server.
-- **`/mercato elenco`** — Gli annunci del mercato (anche solo di un membro).
-- **`/mercato fondo`** — Gli oggetti donati al fondo premi del server.
-- **`/mercato offri`** — Fai un'offerta più bassa: le monete restano in custodia finché non risponde.
-- **`/mercato ritira`** — Ritira un tuo annuncio (o una tua offerta): oggetto e monete tornano a chi spettano.
-- **`/mercato vendi`** — Metti un tuo oggetto in vendita agli altri membri.
 
 ## Mod: ban
 
@@ -1044,20 +1055,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/mod-sanzioni untimeout`** — Rimuove il timeout da un membro.
 - **`/mod-sanzioni warn`** — Assegna un warn a un membro.
 
-## Il tuo mondo
-
-- **`/mondo autovendita`** — Vendi un oggetto da solo quando il cambio del giorno arriva alla soglia.
-- **`/mondo avventura`** — Una storia a scelte: il finale dà monete (una volta ogni 6 ore).
-- **`/mondo borsa ordine`** — Un ordine automatico: compra o vendi quando il prezzo arriva alla soglia.
-- **`/mondo borsa ordini`** — I tuoi ordini automatici (con un numero lo annulli).
-- **`/mondo borsa prezzi`** — I prezzi della borsa finta e i tuoi titoli.
-- **`/mondo borsa scambia`** — Compra o vendi titoli della borsa finta al prezzo di adesso.
-- **`/mondo casa`** — La tua casa: arredala con i gettoni (la moneta di tutti i server).
-- **`/mondo diretta`** — La tua diretta di oggi: più giorni di fila, più monete.
-- **`/mondo fattoria`** — Pianta nel tuo orto e raccogli quando è maturo (3 posti).
-- **`/mondo personaggio`** — Parla con un personaggio: una domanda al giorno, un regalo se rispondi bene.
-- **`/mondo vacanza`** — Ferma la serie del premio giornaliero mentre sei via.
-
 ## Monete
 
 - **`/monete attese`** — Quando potrai di nuovo usare daily e work.
@@ -1069,7 +1066,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/monete conto guadagni`** — Come si guadagnano monete in questo server.
 - **`/monete conto lavoro`** — Il tuo lavoro attuale e quanto manca alla promozione.
 - **`/monete conto lotteria`** — Compra biglietti della lotteria di oggi o guarda le ultime estrazioni.
-- **`/monete conto portafoglio`** — Il tuo saldo come immagine.
 - **`/monete conto potenzia`** — Potenzia il lavoro o il premio periodico: più livelli, più monete.
 - **`/monete conto prestigio`** — Ricomincia da capo per un bonus permanente (+5% a lavoro e premio per livello).
 - **`/monete conto rimborso`** — Riscuoti una parte delle tue perdite nei giochi, se il server la rimborsa.
@@ -1078,6 +1074,14 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/monete inventario`** — Gli oggetti che hai comprato.
 - **`/monete lascia`** — Lascia delle monete in questo canale: le prende chi arriva prima.
 - **`/monete mensile`** — Riscuoti il premio del mese.
+- **`/monete mercato accetta`** — Accetta l'offerta di un membro sul tuo annuncio (senza membro: vedi le offerte).
+- **`/monete mercato compra`** — Compra un annuncio al prezzo indicato.
+- **`/monete mercato dona`** — Dona monete o un oggetto al fondo premi del server.
+- **`/monete mercato elenco`** — Gli annunci del mercato (anche solo di un membro).
+- **`/monete mercato fondo`** — Gli oggetti donati al fondo premi del server.
+- **`/monete mercato offri`** — Fai un'offerta più bassa: le monete restano in custodia finché non risponde.
+- **`/monete mercato ritira`** — Ritira un tuo annuncio (o una tua offerta): oggetto e monete tornano a chi spettano.
+- **`/monete mercato vendi`** — Metti un tuo oggetto in vendita agli altri membri.
 - **`/monete oggetto`** — La scheda di un oggetto del negozio.
 - **`/monete pay`** — Trasferisci coin a un altro utente.
 - **`/monete regala`** — Regala un oggetto del tuo inventario a un altro membro.
@@ -1103,6 +1107,23 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/monete vendi`** — Rivendi un oggetto per metà del suo prezzo.
 - **`/monete work`** — Lavora per guadagnare qualche coin.
 
+## Clan
+
+- **`/monete-clan boost gilda`** — Acquista un boost ×2 per 24h per TUTTI i membri, dalla tesoreria.
+- **`/monete-clan boost individuale`** — Acquista un boost personale ×2 per 24h sul tuo tick vocale di gilda.
+- **`/monete-clan classifica`** — Classifica delle gilde per XP (mensile o totale).
+- **`/monete-clan compra-canale`** — Sblocca un nuovo canale extra per la tua gilda.
+- **`/monete-clan crea`** — Crea una nuova gilda/clan.
+- **`/monete-clan espelli`** — Espelli un membro dalla tua gilda.
+- **`/monete-clan info`** — Mostra le informazioni di una gilda.
+- **`/monete-clan invita`** — Invita un membro nella tua gilda.
+- **`/monete-clan lascia`** — Lascia la gilda di cui fai parte.
+- **`/monete-clan membri`** — Mostra i membri di una gilda.
+- **`/monete-clan promuovi`** — Cambia il ruolo di un membro della tua gilda.
+- **`/monete-clan sciogli`** — Sciogli la tua gilda.
+- **`/monete-clan tesoreria dona`** — Dona coin personali alla tesoreria della tua gilda.
+- **`/monete-clan tesoreria trasferisci`** — Trasferisci coin dalla tesoreria a un'altra TUA gilda (anche su un altro server).
+
 ## Musica
 
 - **`/music brano cerca`** — Cerca un brano e scegli tra 10 risultati.
@@ -1110,16 +1131,18 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/music brano ricomincia`** — Rifà partire da capo il brano in corso.
 - **`/music brano testo`** — Mostra il testo del brano in corso.
 - **`/music brano vai-a`** — Va a un punto del brano: 1:30, +0:30 avanti, -0:15 indietro.
-- **`/music clear-queue`** — Svuota la coda, senza toccare la traccia in riproduzione.
 - **`/music coda anteprime`** — Mette in coda i brani in anteprima dell'owner del bot.
 - **`/music coda cerca`** — Cerca un brano nella coda per titolo.
 - **`/music coda cima`** — Porta un brano della coda in cima, subito dopo quello in corso.
 - **`/music coda miei`** — Toglie dalla coda tutti i tuoi brani.
+- **`/music coda mostra`** — Mostra la coda di riproduzione.
 - **`/music coda pulisci`** — Toglie dalla coda i brani di chi non e' piu' nel canale vocale.
 - **`/music coda ripristina`** — Rimette in coda i brani salvati del tuo canale vocale (dopo un riavvio).
 - **`/music coda salta`** — Toglie dalla coda un intervallo di posizioni e/o i brani di un utente.
+- **`/music coda salta-a`** — Salta direttamente al brano numero N della coda.
 - **`/music coda sposta`** — Sposta un brano della coda in un'altra posizione.
 - **`/music coda subito`** — Fa partire subito un brano della coda, saltando quello in corso.
+- **`/music coda svuota`** — Svuota la coda, senza toccare la traccia in riproduzione.
 - **`/music coda togli`** — Toglie un brano dalla coda.
 - **`/music coda ultimo`** — Toglie l'ultimo brano che hai messo in coda.
 - **`/music disconnect`** — Disconnette il music bot dal canale vocale.
@@ -1133,31 +1156,11 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/music nowplaying`** — Mostra la traccia in riproduzione con una barra di avanzamento.
 - **`/music pause`** — Mette in pausa la riproduzione.
 - **`/music play`** — Riproduce una canzone o playlist.
-- **`/music playlist aggiorna`** — Rilegge il link da cui hai salvato una playlist.
-- **`/music playlist aggiungi`** — Aggiunge un brano (o un link) a una tua playlist.
-- **`/music playlist carica`** — Mette in coda una tua playlist salvata.
-- **`/music playlist collabora`** — Chi può modificare una tua playlist.
-- **`/music playlist condividi`** — Crea un codice per condividere una tua playlist.
-- **`/music playlist crea`** — Crea una playlist vuota.
-- **`/music playlist elenco`** — Le tue playlist salvate, o i brani di una.
-- **`/music playlist elimina`** — Cancella una tua playlist salvata.
-- **`/music playlist esporta`** — Scarica una tua playlist come file.
-- **`/music playlist importa`** — Salva una playlist da un file esportato.
-- **`/music playlist ricevi`** — Salva una copia di una playlist condivisa con un codice.
-- **`/music playlist rinomina`** — Cambia il nome di una tua playlist.
-- **`/music playlist salva`** — Salva la coda del tuo canale come playlist.
-- **`/music playlist server-carica`** — Mette in coda una playlist del server.
-- **`/music playlist server-elenco`** — Le playlist del server.
-- **`/music playlist server-elimina`** — Cancella una playlist del server.
-- **`/music playlist server-salva`** — Salva la coda come playlist del server.
-- **`/music playlist togli`** — Toglie un brano da una tua playlist.
 - **`/music previous`** — Torna al brano precedente.
-- **`/music queue`** — Mostra la coda di riproduzione.
 - **`/music radio`** — Cerca una radio da tutto il mondo e la mette in coda.
 - **`/music resume`** — Riprende la riproduzione in pausa.
 - **`/music shuffle`** — Mescola l'ordine delle tracce in coda.
 - **`/music skip`** — Salta la traccia in riproduzione.
-- **`/music skipto`** — Salta direttamente al brano numero N della coda.
 - **`/music stop`** — Ferma la riproduzione e svuota la coda.
 - **`/music suono`** — Fa partire un effetto sonoro nel tuo canale vocale.
 - **`/music suono-altri`** — Scegli un suono dalle soundboard di altri server e mandalo in vocale.
@@ -1165,6 +1168,27 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/music volume down`** — Diminuisce il volume.
 - **`/music volume set`** — Imposta il volume a un valore specifico (0-200).
 - **`/music volume up`** — Aumenta il volume.
+
+## Playlist
+
+- **`/music-playlist aggiorna`** — Rilegge il link da cui hai salvato una playlist.
+- **`/music-playlist aggiungi`** — Aggiunge un brano (o un link) a una tua playlist.
+- **`/music-playlist carica`** — Mette in coda una tua playlist salvata.
+- **`/music-playlist collabora`** — Chi può modificare una tua playlist.
+- **`/music-playlist condividi`** — Crea un codice per condividere una tua playlist.
+- **`/music-playlist crea`** — Crea una playlist vuota.
+- **`/music-playlist elenco`** — Le tue playlist salvate, o i brani di una.
+- **`/music-playlist elimina`** — Cancella una tua playlist salvata.
+- **`/music-playlist esporta`** — Scarica una tua playlist come file.
+- **`/music-playlist importa`** — Salva una playlist da un file esportato.
+- **`/music-playlist ricevi`** — Salva una copia di una playlist condivisa con un codice.
+- **`/music-playlist rinomina`** — Cambia il nome di una tua playlist.
+- **`/music-playlist salva`** — Salva la coda del tuo canale come playlist.
+- **`/music-playlist server-carica`** — Mette in coda una playlist del server.
+- **`/music-playlist server-elenco`** — Le playlist del server.
+- **`/music-playlist server-elimina`** — Cancella una playlist del server.
+- **`/music-playlist server-salva`** — Salva la coda come playlist del server.
+- **`/music-playlist togli`** — Toglie un brano da una tua playlist.
 
 ## Owner
 
@@ -1196,22 +1220,6 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/owner privacy approva`** — Esegue una richiesta di cancellazione e avvisa l'utente.
 - **`/owner privacy richieste`** — Richieste di cancellazione dati in attesa.
 - **`/owner privacy rifiuta`** — Rifiuta una richiesta e dice perché.
-- **`/owner radio add-local`** — Aggiunge un file inedito alla playlist della radio.
-- **`/owner radio add-track`** — Aggiunge una traccia alla playlist della radio.
-- **`/owner radio blocca-parola`** — Parole vietate nei titoli in tutto il bot.
-- **`/owner radio cartella`** — Cartella dell'owner: elenco, rilettura, anteprime.
-- **`/owner radio fonti`** — Mostra lo stato delle fonti musicali (accesa, chiavi sì/no, pausa).
-- **`/owner radio genere`** — Playlist del menu /music genere.
-- **`/owner radio list-tracks`** — Mostra la playlist della radio.
-- **`/owner radio log`** — Coda del log del Lavalink locale (senza chiavi).
-- **`/owner radio nodi`** — Mostra i nodi Lavalink di ogni bot musicale (senza password).
-- **`/owner radio paese`** — Paese delle ricerche musicali (di base nessuno).
-- **`/owner radio remove-track`** — Rimuove una traccia dalla playlist della radio.
-- **`/owner radio riconnetti`** — Ricollega i nodi Lavalink caduti.
-- **`/owner radio sorgente`** — Accende o spegne una fonte musicale a bot acceso.
-- **`/owner radio start`** — Entra nella radio condivisa, nel punto in cui si trova ora.
-- **`/owner radio stato`** — Quanti player musicali stanno suonando ora.
-- **`/owner radio stop`** — Esce dalla radio su questo server.
 - **`/owner rete`** — Blocca i server che segnalano in modo scorretto.
 - **`/owner system announce`** — Manda un annuncio a tutti i server.
 - **`/owner system chiave-soccorso`** — Chiave di soccorso per riprendere il controllo.
@@ -1224,49 +1232,24 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/owner system stats`** — Statistiche globali del bot.
 - **`/owner system storico-vpn`** — Server che l'hanno lasciata passare e suoi IP (VPN).
 
-## Rep
+## Owner: radio
 
-- **`/rep classifica`** — Classifica della reputazione del server.
-- **`/rep dai`** — Dai punti reputazione a un membro.
-- **`/rep mostra`** — Reputazione e posizione di un membro (senza nome: la tua).
-- **`/rep registro`** — Chi ha dato o tolto reputazione (la tua; lo staff può vedere quella di altri).
-- **`/rep togli`** — Togli punti reputazione a un membro (solo chi ha il ruolo scelto dal server).
-
-## Sala giochi
-
-- **`/sala bingo`** — Bingo tra membri: completa una riga della cartella per vincere il piatto.
-- **`/sala bomba`** — Taglia il filo giusto: chi fa esplodere la bomba esce, l'ultimo vince.
-- **`/sala carte`** — Carte a turni: stesso colore o stesso numero, chi finisce le carte vince.
-- **`/sala combattimento`** — Combattimento fino a 6 con regole tue: vite, giri e oggetti.
-- **`/sala corsa`** — Corsa di animali: chi arriva primo prende il piatto.
-- **`/sala impiccato`** — Impiccato di gruppo: indovinate la parola insieme e vincete un premio.
-- **`/sala lotta`** — Lotta fino a 6 con il tuo animale: l'ultimo in piedi prende il piatto.
-- **`/sala quiz`** — Quiz a tempo con premio in monete: cinque domande, quattro risposte.
-- **`/sala roulette`** — Roulette a più giocatori: una puntata uguale per tutti, un solo giro.
-- **`/sala tamburo`** — Un tamburo con una sfera rossa: chi la trova esce, l'ultimo prende il piatto.
-
-## Sondaggi
-
-- **`/sondaggi bottoni`** — Crea un sondaggio a bottoni (fino a 20 opzioni).
-- **`/sondaggi crea`** — Crea un sondaggio (fino a 10 opzioni).
-- **`/sondaggi gestisci`** — Elenco, riepilogo o chiusura dei sondaggi a bottoni.
-- **`/sondaggi modifica`** — Cambia domanda, opzioni o durata di un sondaggio a bottoni aperto.
-
-## Tag
-
-- **`/tag crea`** — Crea un tag tuo (serve il ruolo scelto dal server).
-- **`/tag elimina`** — Elimina un tag che hai creato tu.
-- **`/tag modifica`** — Cambia il testo di un tag che hai creato tu.
-- **`/tag prendi`** — Prendi un tag il cui autore ha lasciato il server.
-- **`/tag prova`** — Prova uno script di tag: non salva niente e non scrive i dati veri.
-- **`/tag usa`** — Usa un comando personalizzato di questo server.
-
-## Tela
-
-- **`/tela colora`** — Colora un pixel della tela (c'è una pausa tra un pixel e l'altro).
-- **`/tela pixel`** — Chi ha colorato un pixel e quando.
-- **`/tela stato`** — La tua pausa, i tuoi pixel e quanto costa saltarla.
-- **`/tela vedi`** — Guarda la tela di pixel del server, o una zona ingrandita.
+- **`/owner-radio add-local`** — Aggiunge un file inedito alla playlist della radio.
+- **`/owner-radio add-track`** — Aggiunge una traccia alla playlist della radio.
+- **`/owner-radio blocca-parola`** — Parole vietate nei titoli in tutto il bot.
+- **`/owner-radio cartella`** — Cartella dell'owner: elenco, rilettura, anteprime.
+- **`/owner-radio fonti`** — Mostra lo stato delle fonti musicali (accesa, chiavi sì/no, pausa).
+- **`/owner-radio genere`** — Playlist del menu /music genere.
+- **`/owner-radio list-tracks`** — Mostra la playlist della radio.
+- **`/owner-radio log`** — Coda del log del Lavalink locale (senza chiavi).
+- **`/owner-radio nodi`** — Mostra i nodi Lavalink di ogni bot musicale (senza password).
+- **`/owner-radio paese`** — Paese delle ricerche musicali (di base nessuno).
+- **`/owner-radio remove-track`** — Rimuove una traccia dalla playlist della radio.
+- **`/owner-radio riconnetti`** — Ricollega i nodi Lavalink caduti.
+- **`/owner-radio sorgente`** — Accende o spegne una fonte musicale a bot acceso.
+- **`/owner-radio start`** — Entra nella radio condivisa, nel punto in cui si trova ora.
+- **`/owner-radio stato`** — Quanti player musicali stanno suonando ora.
+- **`/owner-radio stop`** — Esce dalla radio su questo server.
 
 ## Ticket
 
@@ -1331,33 +1314,61 @@ Generato automaticamente da `scripts/generate_command_list.py` il 2026-11-24 01:
 - **`/utility suggest`** — Proponi un'idea per questo server.
 - **`/utility verifica`** — Verificati in questo server (come il bottone del pannello).
 
+## Il tuo server
+
+- **`/utility-server compleanno imposta`** — Registra il tuo compleanno (solo giorno e mese).
+- **`/utility-server compleanno mostra`** — Mostra il tuo compleanno o quello di un membro.
+- **`/utility-server compleanno prossimi`** — I prossimi compleanni del server.
+- **`/utility-server compleanno rimuovi`** — Cancella il tuo compleanno.
+- **`/utility-server eventi annulla`** — Annulla un evento: gli iscritti non possono più cambiare.
+- **`/utility-server eventi crea`** — Crea un evento con iscrizioni, posti e promemoria.
+- **`/utility-server eventi elenco`** — I prossimi eventi, o gli iscritti di un evento.
+- **`/utility-server eventi modifica`** — Cambia titolo, data, posti o descrizione di un evento.
+- **`/utility-server inviti classifica`** — I 10 membri che hanno invitato più persone.
+- **`/utility-server inviti codici`** — I tuoi codici d'invito, a pagine da 10.
+- **`/utility-server inviti link`** — Il tuo link d'invito personale, che passa dal sito del bot.
+- **`/utility-server inviti storico`** — Chi ha invitato un membro e le ultime persone che ha portato.
+- **`/utility-server inviti utente`** — Quante persone ha invitato un membro.
+- **`/utility-server sondaggi bottoni`** — Crea un sondaggio a bottoni (fino a 20 opzioni).
+- **`/utility-server sondaggi crea`** — Crea un sondaggio (fino a 10 opzioni).
+- **`/utility-server sondaggi gestisci`** — Elenco, riepilogo o chiusura dei sondaggi a bottoni.
+- **`/utility-server sondaggi modifica`** — Cambia domanda, opzioni o durata di un sondaggio a bottoni aperto.
+- **`/utility-server stelle caso`** — Un messaggio a caso dalla bacheca.
+- **`/utility-server stelle classifica`** — Chi ha ricevuto più stelle in bacheca.
+- **`/utility-server tag crea`** — Crea un tag tuo (serve il ruolo scelto dal server).
+- **`/utility-server tag elimina`** — Elimina un tag che hai creato tu.
+- **`/utility-server tag modifica`** — Cambia il testo di un tag che hai creato tu.
+- **`/utility-server tag prendi`** — Prendi un tag il cui autore ha lasciato il server.
+- **`/utility-server tag prova`** — Prova uno script di tag: non salva niente e non scrive i dati veri.
+- **`/utility-server tag usa`** — Usa un comando personalizzato di questo server.
+
+## Cerca sul web
+
+- **`/utility-web accorcia`** — Accorcia un link (se il server ha acceso il comando).
+- **`/utility-web cerca`** — Cerca qualsiasi cosa: una risposta rapida, il web o dei video.
+- **`/utility-web dizionario`** — Il significato di una parola, da Wikizionario.
+- **`/utility-web emergenza`** — I numeri di emergenza di un paese.
+- **`/utility-web film`** — Informazioni su un film o una serie TV.
+- **`/utility-web gioco`** — Un gioco di Steam: prezzo, data e generi.
+- **`/utility-web meteo`** — Il meteo di una città: adesso e i prossimi giorni.
+- **`/utility-web prezzo`** — Il prezzo di una criptovaluta.
+- **`/utility-web scheda`** — La scheda di un Pokémon, anime, carta o giocatore.
+- **`/utility-web turni`** — Le rotazioni di Splatoon 3 e il reset settimanale di World of Warcraft.
+- **`/utility-web wiki`** — Il riassunto di una voce di Wikipedia.
+
 ## Vocali
 
-- **`/voice bitrate`** — Imposta la qualità audio del canale (kbps).
-- **`/voice claim`** — Prendi il canale se il proprietario non c'è più.
-- **`/voice deny`** — Vieta a un utente o a un ruolo di entrare nel canale.
-- **`/voice invita`** — Manda a un utente un invito al tuo canale.
-- **`/voice kick`** — Espelli un utente dal tuo canale.
-- **`/voice limit`** — Imposta il limite di utenti del canale.
-- **`/voice lock`** — Blocca il canale (nessun nuovo ingresso).
-- **`/voice nascondi`** — Nascondi o mostra il canale a chi non è dentro.
-- **`/voice permit`** — Permetti a un utente o a un ruolo di entrare anche se il canale è bloccato.
-- **`/voice rename`** — Rinomina il tuo canale vocale.
-- **`/voice stato`** — Scrivi cosa state facendo nel canale (vuoto: toglie).
-- **`/voice transfer`** — Trasferisci la proprietà del canale.
-- **`/voice unlock`** — Sblocca il canale.
-- **`/voice vai`** — Spostati in un vocale dove puoi entrare.
-
-## Web
-
-- **`/web accorcia`** — Accorcia un link (se il server ha acceso il comando).
-- **`/web cerca`** — Cerca qualsiasi cosa: una risposta rapida, il web o dei video.
-- **`/web dizionario`** — Il significato di una parola, da Wikizionario.
-- **`/web emergenza`** — I numeri di emergenza di un paese.
-- **`/web film`** — Informazioni su un film o una serie TV.
-- **`/web gioco`** — Un gioco di Steam: prezzo, data e generi.
-- **`/web meteo`** — Il meteo di una città: adesso e i prossimi giorni.
-- **`/web prezzo`** — Il prezzo di una criptovaluta.
-- **`/web scheda`** — La scheda di un Pokémon, anime, carta o giocatore.
-- **`/web turni`** — Le rotazioni di Splatoon 3 e il reset settimanale di World of Warcraft.
-- **`/web wiki`** — Il riassunto di una voce di Wikipedia.
+- **`/vocali bitrate`** — Imposta la qualità audio del canale (kbps).
+- **`/vocali claim`** — Prendi il canale se il proprietario non c'è più.
+- **`/vocali deny`** — Vieta a un utente o a un ruolo di entrare nel canale.
+- **`/vocali invita`** — Manda a un utente un invito al tuo canale.
+- **`/vocali kick`** — Espelli un utente dal tuo canale.
+- **`/vocali limit`** — Imposta il limite di utenti del canale.
+- **`/vocali lock`** — Blocca il canale (nessun nuovo ingresso).
+- **`/vocali nascondi`** — Nascondi o mostra il canale a chi non è dentro.
+- **`/vocali permit`** — Permetti a un utente o a un ruolo di entrare anche se il canale è bloccato.
+- **`/vocali rename`** — Rinomina il tuo canale vocale.
+- **`/vocali stato`** — Scrivi cosa state facendo nel canale (vuoto: toglie).
+- **`/vocali transfer`** — Trasferisci la proprietà del canale.
+- **`/vocali unlock`** — Sblocca il canale.
+- **`/vocali vai`** — Spostati in un vocale dove puoi entrare.

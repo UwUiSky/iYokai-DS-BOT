@@ -20,7 +20,7 @@ from discord.ext import commands
 from cogs.utility import command_search as modulo
 from cogs.utility.command_search import CommandSearchCog
 from core.command_access import Livello
-from core.command_groups import NOME_CERCA_COMANDO, NOME_CHIEDI, costruisci_gruppi
+from core.command_groups import NOME_HELP, costruisci_gruppi
 from tests.support.discord_fakes import fake_interaction as _fake_interaction
 
 
@@ -43,8 +43,7 @@ def _bot(n_gruppi_extra: int = 0) -> commands.Bot:
         g = app_commands.Group(name=f"extra{i}", description="extra")
         g.add_command(app_commands.Command(name="x", description="x", callback=_cb))
         bot.tree.add_command(g)
-    bot.tree.add_command(app_commands.Command(name=NOME_CERCA_COMANDO, description="Cerca un comando", callback=_cb))
-    bot.tree.add_command(app_commands.Command(name=NOME_CHIEDI, description="Chiedi aiuto", callback=_cb))
+    bot.tree.add_command(app_commands.Command(name=NOME_HELP, description="Cerca un comando", callback=_cb))
     return bot
 
 
@@ -56,8 +55,9 @@ def cog(monkeypatch):
     repo.registra = AsyncMock()
     monkeypatch.setattr(modulo, "command_usage_repo", repo)
     c.repo = repo
+    c._risposta_ai = AsyncMock(return_value=None)  # senza AI: ricerca per parole
     # Nessun accesso a Discord: gli ID arrivano da qui.
-    c.cache_ids.ottieni = AsyncMock(return_value={"fun": 5, "mod-sanzioni": 6, "mod-ban": 7, "level": 8, "cerca-comando": 9})
+    c.cache_ids.ottieni = AsyncMock(return_value={"fun": 5, "mod-sanzioni": 6, "mod-ban": 7, "level": 8, "help": 9})
 
     async def solo_mod(interaction, livello):
         return livello is Livello.MOD
@@ -93,7 +93,7 @@ def _etichette(view):
 async def test_pannello_senza_testo_mostra_ultimo_comando_e_categorie_filtrate(cog):
     cog.repo.ultimo.return_value = "fun uno"
     i = fake_interaction()
-    await cog.search.callback(cog, i, query=None)
+    await cog.aiuto.callback(cog, i, domanda=None)
 
     inviato = _invio(i)
     assert inviato["ephemeral"] is True
@@ -107,7 +107,7 @@ async def test_pannello_senza_testo_mostra_ultimo_comando_e_categorie_filtrate(c
 
 async def test_pannello_senza_ultimo_comando_non_ha_menzioni(cog):
     i = fake_interaction()
-    await cog.search.callback(cog, i, query=None)
+    await cog.aiuto.callback(cog, i, domanda=None)
     assert "</" not in _invio(i)["embed"].description
 
 
@@ -119,7 +119,7 @@ async def test_pannello_rispetta_i_limiti_di_discord_con_molte_categorie(monkeyp
     monkeypatch.setattr(modulo, "puo_usare", AsyncMock(return_value=True))
     _wiki(monkeypatch, "https://wiki.example")
     i = fake_interaction()
-    await c.search.callback(c, i, query=None)
+    await c.aiuto.callback(c, i, domanda=None)
 
     view = _invio(i)["view"]
     totale, righe = _componenti(view)
@@ -138,19 +138,19 @@ async def test_pannello_rispetta_i_limiti_di_discord_con_molte_categorie(monkeyp
 
 async def test_bottone_wiki_solo_se_la_variabile_e_impostata(cog, monkeypatch):
     i = fake_interaction()
-    await cog.search.callback(cog, i, query=None)
+    await cog.aiuto.callback(cog, i, domanda=None)
     assert all(b.label != "Apri nella wiki" for b in _invio(i)["view"].children)
 
     _wiki(monkeypatch, "https://wiki.example")
     i = fake_interaction()
-    await cog.search.callback(cog, i, query=None)
+    await cog.aiuto.callback(cog, i, domanda=None)
     wiki = next(b for b in _invio(i)["view"].children if b.label == "Apri nella wiki")
     assert wiki.url == "https://wiki.example"
 
 
 async def test_click_su_categoria_mostra_i_comandi_e_si_torna_indietro(cog):
     i = fake_interaction()
-    await cog.search.callback(cog, i, query=None)
+    await cog.aiuto.callback(cog, i, domanda=None)
     view = _invio(i)["view"]
     bottone = next(b for b in view.children if b.label == "fun")
 
@@ -167,7 +167,7 @@ async def test_click_su_categoria_mostra_i_comandi_e_si_torna_indietro(cog):
 
 async def test_ricerca_con_testo_da_risultati_con_menzione_e_opzioni(cog):
     i = fake_interaction()
-    await cog.search.callback(cog, i, query="comando di fun")
+    await cog.aiuto.callback(cog, i, domanda="comando di fun")
     inviato = _invio(i)
     campo = inviato["embed"].fields[0]
     assert "</fun uno:5>" in campo.value
@@ -176,7 +176,7 @@ async def test_ricerca_con_testo_da_risultati_con_menzione_e_opzioni(cog):
 
 async def test_ricerca_non_mostra_comandi_di_gruppi_non_accessibili(cog):
     i = fake_interaction()
-    await cog.search.callback(cog, i, query="zzzban")
+    await cog.aiuto.callback(cog, i, domanda="zzzban")
     inviato = _invio(i)
     assert "Nessun comando trovato" in inviato["embed"].title
 
@@ -185,7 +185,7 @@ async def test_in_dm_avvisa_che_i_comandi_si_usano_nei_server(cog):
     i = fake_interaction()
     i.guild = None
     i.guild_id = None
-    await cog.search.callback(cog, i, query=None)
+    await cog.aiuto.callback(cog, i, domanda=None)
     assert "server" in _invio(i)["embed"].description.lower()
     cog.repo.ultimo.assert_awaited_once_with(None, i.user.id)
 
@@ -194,7 +194,7 @@ async def test_ricerca_in_dm_avvisa_anche_nei_risultati(cog):
     i = fake_interaction()
     i.guild = None
     i.guild_id = None
-    await cog.search.callback(cog, i, query="comando di fun")
+    await cog.aiuto.callback(cog, i, domanda="comando di fun")
     assert "server" in (_invio(i)["embed"].footer.text or "").lower()
 
 
@@ -202,7 +202,7 @@ async def test_completamento_al_massimo_25_scelte_e_solo_gruppi_accessibili(monk
     c = CommandSearchCog(_bot(n_gruppi_extra=40))
     monkeypatch.setattr(modulo, "puo_usare", AsyncMock(return_value=False))
     i = fake_interaction()
-    scelte = await c.autocompleta_query(i, "")
+    scelte = await c.autocompleta_domanda(i, "")
     assert 0 < len(scelte) <= 25
     assert all(isinstance(s, app_commands.Choice) and len(s.name) <= 100 and len(s.value) <= 100 for s in scelte)
     assert not any(s.value.startswith("mod-ban") for s in scelte)
@@ -210,29 +210,28 @@ async def test_completamento_al_massimo_25_scelte_e_solo_gruppi_accessibili(monk
 
 
 async def test_completamento_filtra_per_testo(cog):
-    scelte = await cog.autocompleta_query(fake_interaction(), "level")
+    scelte = await cog.autocompleta_domanda(fake_interaction(), "level")
     assert [s.value for s in scelte][0] == "level uno"
 
 
-async def test_chiedi_mostra_lo_stesso_pannello(cog):
+async def test_help_senza_testo_mostra_il_pannello(cog):
     i = fake_interaction()
     cog.repo.ultimo.return_value = "mod-sanzioni uno"
-    await cog.chiedi.callback(cog, i)
+    await cog.aiuto.callback(cog, i)
     inviato = _invio(i)
     assert "</mod-sanzioni uno:6>" in inviato["embed"].description
     assert "mod-sanzioni" in _etichette(inviato["view"])
 
 
-async def test_il_cog_registra_chiedi_di_primo_livello_anche_in_dm():
+async def test_il_cog_registra_help_di_primo_livello_anche_in_dm():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await modulo.setup(bot)
-    comando = bot.tree.get_command(NOME_CHIEDI)
+    comando = bot.tree.get_command(NOME_HELP)
     assert comando is not None and not isinstance(comando, app_commands.Group)
     assert comando.guild_only is False
     opzioni = {o["name"]: o for o in comando.to_dict(bot.tree)["options"]}
     assert opzioni["domanda"]["max_length"] <= 500 and not opzioni["domanda"].get("required")
-    q = {o["name"]: o for o in bot.tree.get_command(NOME_CERCA_COMANDO).to_dict(bot.tree)["options"]}["query"]
-    assert q["autocomplete"] is True and not q.get("required")
+    assert opzioni["domanda"]["autocomplete"] is True
 
 
 async def test_listener_registra_l_ultimo_comando(cog):
@@ -244,10 +243,9 @@ async def test_listener_registra_l_ultimo_comando(cog):
 
 
 async def test_listener_ignora_i_comandi_di_ricerca_e_i_menu_contestuali(cog):
-    for nome in (NOME_CERCA_COMANDO, NOME_CHIEDI):
-        c = MagicMock(spec=app_commands.Command)
-        c.qualified_name = nome
-        await cog.on_app_command_completion(fake_interaction(), c)
+    c = MagicMock(spec=app_commands.Command)
+    c.qualified_name = NOME_HELP
+    await cog.on_app_command_completion(fake_interaction(), c)
     menu = MagicMock(spec=app_commands.ContextMenu)
     menu.qualified_name = "Segnala"
     await cog.on_app_command_completion(fake_interaction(), menu)

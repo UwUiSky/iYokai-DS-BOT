@@ -408,7 +408,7 @@ async def comandi(monkeypatch, clean_db):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("nome", ["mostra", "annuncio", "premi", "xp", "escludi", "moltiplicatore"])
+@pytest.mark.parametrize("nome", ["mostra", "annuncio", "premi modo", "xp", "escludi", "moltiplicatore"])
 async def test_chi_non_e_admin_non_puo_usare_level_impostazioni(comandi, nome):
     from core.command_access import AccessoNegato
 

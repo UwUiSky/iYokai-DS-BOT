@@ -23,7 +23,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from core import sondaggi_logic, sondaggio_premio
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, comando_di_gruppo, SOTTOGRUPPI
 from core.database import db
 from core.duration_logic import parse_duration
 from core.i18n import testo_per
@@ -53,9 +53,9 @@ class PollCog(CogConGruppi, commands.Cog):
         self.bot = bot
 
     @comando_di_gruppo(
-        "sondaggi",
+        "utility-server",
         nome="crea",
-        descrizione="Crea un sondaggio (fino a 10 opzioni).",
+        descrizione="Crea un sondaggio (fino a 10 opzioni).", sottogruppo=SOTTOGRUPPI["utility-server sondaggi"],
     )
     @app_commands.describe(
         question="La domanda del sondaggio (massimo 300 caratteri)",

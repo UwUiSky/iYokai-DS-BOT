@@ -466,7 +466,7 @@ class ActivityStatsCog(CogConGruppi, commands.Cog):
     @app_commands.checks.cooldown(1, 300.0, key=lambda i: i.guild_id)
     async def esporta(self, interaction: discord.Interaction) -> None:
         # STA-057: tutti i dati statistici del server in un file (solo numeri e ID, mai il testo dei messaggi).
-        # Il resto resta nei suoi comandi: /admin-bot config export, /logs export, /admin-inviti esporta.
+        # Il resto resta nei suoi comandi: /admin-bot-config export, /logs export, /admin-inviti esporta.
         if not await self._pronto(interaction):
             return
         await interaction.response.defer(ephemeral=True)

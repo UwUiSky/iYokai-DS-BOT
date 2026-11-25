@@ -19,32 +19,36 @@ from core import command_groups as cg
 from core.command_access import Livello
 
 ADMIN_ATTESI = [
-    "admin-bot", "admin-musica", "admin-ai", "admin-automod", "admin-filtri", "admin-sicurezza", "admin-antinuke", "admin-antiraid",
-    "admin-moduli", "admin-economia", "admin-livelli", "admin-ruoli", "admin-menu-ruoli", "admin-log", "admin-messaggi", "admin-giveaway",
-    "admin-ticket", "admin-ticket-opzioni", "admin-backup", "admin-benvenuto", "admin-vocali",
+    "admin-bot", "admin-bot-config", "admin-musica", "admin-ai", "admin-automod", "admin-automod-filtri", "admin-sicurezza",
+    "admin-sicurezza-verifica", "admin-sicurezza-antinuke", "admin-sicurezza-antiraid", "admin-moduli", "admin-economia",
+    "admin-economia-negozio", "admin-livelli", "admin-livelli-guadagno", "admin-livelli-rep", "admin-ruoli", "admin-ruoli-menu",
+    "admin-log", "admin-messaggi", "admin-messaggi-tag", "admin-giveaway", "admin-ticket", "admin-ticket-pannelli",
+    "admin-ticket-opzioni", "admin-backup", "admin-benvenuto", "admin-vocali", "admin-inviti", "admin-giochi",
+    "admin-automazioni", "admin-alert",
 ]
-# Gruppi admin nati dopo la mappa F7 (catalogo #123, #128, #131): stanno dopo i gruppi per tutti.
-ADMIN_AGGIUNTI = ["admin-inviti", "admin-giochi", "admin-automazioni", "admin-tag", "admin-alert", "admin-negozio", "admin-rep"]
+ADMIN_AGGIUNTI: list[str] = []
 MOD_ATTESI = ["mod-sanzioni", "mod-casi", "mod-canali", "mod-ban"]
-ATTESI = [
-    "owner", *ADMIN_ATTESI, *MOD_ATTESI, "founder",
-    "ticket", "voice", "music", "level", "monete", "clan", "fun", "immagini", "giochi", "sondaggi", "assistente", "gif",
-    "admin-inviti", "admin-giochi", "tag", "admin-automazioni", "admin-tag", "admin-alert", "admin-negozio", "mercato", "sala", "mondo", "eventi", "web", "rep", "admin-rep", "utility", "auto", "tela",
+# D137: dopo il riordino i gruppi per tutti sono famiglie (`giochi-…`, `utility-…`, `music-…`, `monete-…`).
+PUBBLICI_ATTESI = [
+    "ticket", "vocali", "music", "music-playlist", "level", "monete", "monete-clan", "fun", "immagini", "giochi", "giochi-sala",
+    "giochi-mondo", "giochi-animali", "ai", "utility", "utility-web", "utility-server",
 ]
-# D56: massimo 60 gruppi di primo livello (Discord ne accetta 100).
-MAX_GRUPPI = 60
+ATTESI = ["owner", "owner-radio", *ADMIN_ATTESI, *MOD_ATTESI, "founder", *PUBBLICI_ATTESI]
+# D137: i comandi di primo livello globali sono al massimo 100 (Discord), con avviso a 90.
+MAX_GRUPPI = 90
 # Eccezioni al permesso `manage_guild` dei gruppi admin (D60): sicurezza e backup chiedono administrator. I ruoli seguono la regola: manage_guild (scelta dell'owner 01/11).
 PERMESSI = {
     **{n: "manage_guild" for n in ADMIN_ATTESI + ADMIN_AGGIUNTI},
-    "admin-backup": "administrator", "admin-sicurezza": "administrator",
-    "admin-antinuke": "administrator", "admin-antiraid": "administrator",
-    "owner": "administrator", "founder": "administrator",
+    "admin-backup": "administrator", "admin-sicurezza": "administrator", "admin-sicurezza-verifica": "administrator",
+    "admin-sicurezza-antinuke": "administrator", "admin-sicurezza-antiraid": "administrator",
+    "owner": "administrator", "owner-radio": "administrator", "founder": "administrator",
     "mod-sanzioni": "moderate_members", "mod-casi": "moderate_members", "mod-canali": "moderate_members", "mod-ban": "ban_members",
 }
 LIVELLI = {
     **{n: Livello.ADMIN for n in ADMIN_ATTESI + ADMIN_AGGIUNTI},
-    "admin-sicurezza": Livello.SECURITY, "admin-antinuke": Livello.SECURITY, "admin-antiraid": Livello.SECURITY, "admin-log": Livello.LOG,
-    "owner": Livello.OWNER, "founder": Livello.FOUNDER,
+    "admin-sicurezza": Livello.SECURITY, "admin-sicurezza-verifica": Livello.SECURITY, "admin-sicurezza-antinuke": Livello.SECURITY,
+    "admin-sicurezza-antiraid": Livello.SECURITY, "admin-log": Livello.LOG,
+    "owner": Livello.OWNER, "owner-radio": Livello.OWNER, "founder": Livello.FOUNDER,
     "mod-sanzioni": Livello.MOD, "mod-casi": Livello.MOD, "mod-canali": Livello.MOD, "mod-ban": Livello.MODBAN,
 }
 
@@ -198,7 +202,7 @@ def test_il_prefisso_del_nome_dice_il_ruolo_del_gruppo():
         if nome == "founder":
             if livello is not Livello.FOUNDER:
                 errori.append(f"/{nome}: livello {livello}")
-        elif nome == "owner":
+        elif nome in ("owner", "owner-radio"):
             if livello is not Livello.OWNER:
                 errori.append(f"/{nome}: livello {livello}")
         elif nome.startswith(tuple(_LIVELLO_PER_PREFISSO)):
@@ -219,12 +223,12 @@ def test_nessun_gruppo_per_tutti_inizia_con_admin_mod_o_founder():
 
 
 def test_i_gruppi_staff_hanno_un_livello_e_i_vecchi_non_ci_sono_piu():
-    """Ogni gruppo da staff (admin-, mod-, founder) ha un livello di accesso; al massimo 60 gruppi in tutto (D56)."""
+    """Ogni gruppo da staff (admin-, mod-, founder) ha un livello di accesso; al massimo 90 gruppi in tutto (D137)."""
     assert len(list(cg.nomi_gruppi())) <= MAX_GRUPPI
     staff = [n for n in cg.nomi_gruppi() if n.startswith(("admin-", "mod-")) or n == "founder"]
     assert staff and all(getattr(cg.ottieni_gruppo(n), "livello", None) is not None for n in staff)
     vecchi = {"admin", "backup", "gestione", "economia", "moduli", "ruoli", "messaggi", "giveaway", "ticket-gestione", "ticket-pannelli",
-              "filtri", "security", "antinuke", "ai", "antiraid", "automod", "mod", "modban", "log"}
+              "filtri", "security", "antinuke", "antiraid", "automod", "mod", "modban", "log"}
     assert not vecchi & set(cg.nomi_gruppi())
 
 

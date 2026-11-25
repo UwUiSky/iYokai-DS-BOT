@@ -63,7 +63,7 @@ def embed_elenco(righe) -> discord.Embed:
     if not righe:
         embed.description = (
             "Nessun doppio trovato. Le coppie si vedono qui solo se il server usa la "
-            "verifica dalla pagina web (`/admin-sicurezza verify setup`, modalità Pagina web)."
+            "verifica dalla pagina web (`/admin-sicurezza-verifica setup`, modalità Pagina web)."
         )
         return embed
     embed.description = "\n".join(

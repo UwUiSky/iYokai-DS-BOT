@@ -4,7 +4,7 @@ cogs/voice_temp/_pannello.py
 Il pannello dei vocali temporanei (VOC-009): un messaggio nel canale con i bottoni per rinominare, cambiare il
 limite, bloccare, nascondere, espellere e cedere il canale, senza scrivere comandi (comodo anche da telefono).
 La vista è persistente (custom_id fissi, `bot.add_view` all'avvio): ogni clic passa dagli stessi comandi di
-`/voice`, che controllano a OGNI azione che chi clicca sia il proprietario del canale in cui si trova.
+`/vocali`, che controllano a OGNI azione che chi clicca sia il proprietario del canale in cui si trova.
 Funzioni coperte: SPEC §12 (#127 VOC-009)
 """
 

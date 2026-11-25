@@ -1,8 +1,8 @@
 """
 cogs/fun/turni_giochi.py
 ========================
-`/web turni gioco:` (#131, D70, B11): le rotazioni di Splatoon 3 e i reset settimanali di World of Warcraft.
-Sottocomando di `/web` registrato da questo cog (come `/web scheda`). I tempi sono orari di Discord.
+`/utility-web turni gioco:` (#131, D70, B11): le rotazioni di Splatoon 3 e i reset settimanali di World of Warcraft.
+Sottocomando di `/utility-web` registrato da questo cog (come `/utility-web scheda`). I tempi sono orari di Discord.
 Funzioni coperte: SPEC §16 (FUN-071)
 Dipende da: core/turni_logic.py, core/repositories/cache_esterna_repo.py
 """
@@ -55,7 +55,7 @@ class TurniGiochiCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @comando_di_gruppo("web", nome="turni", descrizione="Le rotazioni di Splatoon 3 e il reset settimanale di World of Warcraft.")
+    @comando_di_gruppo("utility-web", nome="turni", descrizione="Le rotazioni di Splatoon 3 e il reset settimanale di World of Warcraft.")
     @app_commands.describe(gioco="Di quale gioco")
     @app_commands.choices(
         gioco=[

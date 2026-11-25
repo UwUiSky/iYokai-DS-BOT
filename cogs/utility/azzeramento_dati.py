@@ -3,7 +3,7 @@ cogs/utility/azzeramento_dati.py
 ================================
 Azzeramento dei dati del bot per un server, con 30 giorni di ritardo (UTL-228, D111): avviso al proprietario all'inizio e
 3 giorni prima, sospensione se il proprietario del server cambia, cancellazione allo scadere. I comandi stanno in
-`/admin-bot config reset` (cogs/utility/config_history.py); qui ci sono la finestra di conferma con il nome del server e
+`/admin-bot-config reset` (cogs/utility/config_history.py); qui ci sono la finestra di conferma con il nome del server e
 i lavori dello scheduler.
 Funzioni coperte: SPEC §19 (NF-04), catalogo #128 (UTL-228)
 Dipende da: core/azzeramento_dati_logic.py, core/scheduler.py

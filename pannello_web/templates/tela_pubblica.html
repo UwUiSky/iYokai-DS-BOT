@@ -2,7 +2,7 @@
 {% block titolo %}Tela · {{ guild.name }}{% endblock %}
 {% block corpo %}
 <h1>Tela di pixel · {{ guild.name }}</h1>
-<p class="tenue">{{ n }} pixel colorati · zona da ({{ x0 }}, {{ y0 }}) a ({{ x1 }}, {{ y1 }}) · sola lettura: per colorare usa <code>/tela colora</code> su Discord.</p>
+<p class="tenue">{{ n }} pixel colorati · zona da ({{ x0 }}, {{ y0 }}) a ({{ x1 }}, {{ y1 }}) · sola lettura: per colorare usa <code>/giochi tela colora</code> su Discord.</p>
 <p><img src="/tela/{{ guild.id }}/immagine.png?x={{ x }}&amp;y={{ y }}&amp;zoom={{ zoom }}" alt="Tela di pixel del server" width="{{ lato_immagine }}" height="{{ lato_immagine }}"></p>
 <p>Ingrandimento:
 {% for z in livelli %}{% if z == zoom %}<strong>{{ z }}</strong>{% else %}<a href="/tela/{{ guild.id }}?x={{ x }}&amp;y={{ y }}&amp;zoom={{ z }}">{{ z }}</a>{% endif %} {% endfor %}

@@ -12,6 +12,8 @@ rischierebbero di divergere.
 
 from __future__ import annotations
 
+from core.comandi_diretti import ComandoDiretto
+
 from discord import app_commands
 
 
@@ -23,6 +25,8 @@ def walk_commands(
     risultati = []
     for cmd in command_list:
         nome_completo = f"{prefix}{cmd.name}" if not prefix else f"{prefix} {cmd.name}"
+        if isinstance(cmd, ComandoDiretto):
+            continue
         if isinstance(cmd, app_commands.Group):
             risultati.extend(walk_commands(cmd.commands, prefix=nome_completo))
         else:

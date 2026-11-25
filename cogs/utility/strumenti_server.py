@@ -2,7 +2,7 @@
 cogs/utility/strumenti_server.py
 ================================
 Strumenti del server per lo staff e per tutti: `/mod-canali espressione` (emoji o sticker da un allegato o da
-un'emoji di un messaggio), `/mod-canali thread` (crea, archivia, elimina) e `/voice vai` (spostarsi in un vocale dove si
+un'emoji di un messaggio), `/mod-canali thread` (crea, archivia, elimina) e `/vocali vai` (spostarsi in un vocale dove si
 può entrare). Si controlla il permesso Discord di chi scrive, non solo il livello del bot.
 Funzioni coperte: catalogo #128 UTL-209, 210, 211 (D69, B17)
 """
@@ -200,7 +200,7 @@ class StrumentiServerCog(CogConGruppi, commands.Cog):
             allowed_mentions=_NESSUNA_MENZIONE, view=ConfermaEliminaThread(interaction.user.id, bersaglio, etichette))
 
     # ------------------------------------------------------------ andare in un vocale (UTL-211)
-    @comando_di_gruppo("voice", nome="vai", descrizione="Spostati in un vocale dove puoi entrare.")
+    @comando_di_gruppo("vocali", nome="vai", descrizione="Spostati in un vocale dove puoi entrare.")
     @app_commands.describe(canale="Il vocale dove andare")
     async def vai(self, interaction: discord.Interaction, canale: discord.VoiceChannel | discord.StageChannel) -> None:
         guild = interaction.guild
@@ -221,7 +221,7 @@ class StrumentiServerCog(CogConGruppi, commands.Cog):
             await self._dire(interaction, "strumenti_bot_manca_permesso", permesso="move_members")
             return
         try:
-            await membro.move_to(canale, reason="Si è spostato con /voice vai")
+            await membro.move_to(canale, reason="Si è spostato con /vocali vai")
         except discord.HTTPException:
             await self._dire(interaction, "strumenti_non_riuscito")
             return

@@ -7,7 +7,7 @@ normale, vanity, sconosciuto); si vede quante persone ha invitato un membro, la 
 server (10 righe), lo storico di un membro e da chi è stato invitato. Ogni membro può avere il
 suo link personale «finto vanity» sul sito (core/invite_service.py). L'attribuzione è "giusta o
 sconosciuta", ma con ingressi simultanei può mancare: lo diciamo sempre (LC-6).
-Comandi: `/level inviti utente|classifica|storico|link`; per lo staff `/admin-inviti impostazioni|bonus|escludi`.
+Comandi: `/utility-server inviti utente|classifica|storico|link`; per lo staff `/admin-inviti impostazioni|bonus|escludi`.
 Funzioni coperte: SPEC §23 (NF-27, link personali r10); catalogo #128 UTL-163, 164, 165, 168, 177 (r2utl)
 """
 
@@ -24,7 +24,7 @@ from discord.ext import commands
 from core.moderation_shadowban import add_roles_se_libero
 from core import invite_links_logic as logica, invite_service
 from core.command_access import Livello, richiedi
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, comando_di_gruppo, SOTTOGRUPPI
 from core.config_schema import ImpostazioneNonValida
 from core.database import db
 from core.i18n import testo_per
@@ -178,7 +178,7 @@ class InvitesCog(CogConGruppi, commands.Cog):
             return False
         return True
 
-    @comando_di_gruppo("level", nome="utente", descrizione="Quante persone ha invitato un membro.", sottogruppo=_SG_INVITI)
+    @comando_di_gruppo("utility-server", nome="utente", descrizione="Quante persone ha invitato un membro.", sottogruppo=SOTTOGRUPPI["utility-server inviti"])
     @app_commands.describe(utente="Il membro (se vuoto, tu)")
     async def utente(self, interaction: discord.Interaction, utente: discord.Member | None = None) -> None:
         if not await self._pronto(interaction):
@@ -192,7 +192,7 @@ class InvitesCog(CogConGruppi, commands.Cog):
             ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE,
         )
 
-    @comando_di_gruppo("level", nome="classifica", descrizione="I 10 membri che hanno invitato più persone.", sottogruppo=_SG_INVITI)
+    @comando_di_gruppo("utility-server", nome="classifica", descrizione="I 10 membri che hanno invitato più persone.", sottogruppo=SOTTOGRUPPI["utility-server inviti"])
     @app_commands.describe(giorni="Conta solo gli ingressi degli ultimi giorni (vuoto: da sempre)")
     async def classifica(self, interaction: discord.Interaction, giorni: app_commands.Range[int, 1, 365] | None = None) -> None:
         if not await self._pronto(interaction):
@@ -222,7 +222,7 @@ class InvitesCog(CogConGruppi, commands.Cog):
         )
 
 
-    @comando_di_gruppo("level", nome="storico", descrizione="Chi ha invitato un membro e le ultime persone che ha portato.", sottogruppo=_SG_INVITI)
+    @comando_di_gruppo("utility-server", nome="storico", descrizione="Chi ha invitato un membro e le ultime persone che ha portato.", sottogruppo=SOTTOGRUPPI["utility-server inviti"])
     @app_commands.describe(utente="Il membro (se vuoto, tu)")
     async def storico(self, interaction: discord.Interaction, utente: discord.Member | None = None) -> None:
         if not await self._pronto(interaction):
@@ -248,7 +248,7 @@ class InvitesCog(CogConGruppi, commands.Cog):
             f"{testo}\n{AVVISO_ATTRIBUZIONE}", ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE
         )
 
-    @comando_di_gruppo("level", nome="link", descrizione="Il tuo link d'invito personale, che passa dal sito del bot.", sottogruppo=_SG_INVITI)
+    @comando_di_gruppo("utility-server", nome="link", descrizione="Il tuo link d'invito personale, che passa dal sito del bot.", sottogruppo=SOTTOGRUPPI["utility-server inviti"])
     async def link(self, interaction: discord.Interaction) -> None:
         if not await self._pronto(interaction):
             return

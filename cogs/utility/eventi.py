@@ -1,7 +1,7 @@
 """
 cogs/utility/eventi.py
 ======================
-Eventi con iscrizioni: `/eventi crea|elenco|modifica|annulla`. Bottoni «Ci sono», «Forse», «Esco», «Iscritti» (persistenti),
+Eventi con iscrizioni: `/utility-server eventi crea|elenco|modifica|annulla`. Bottoni «Ci sono», «Forse», «Esco», «Iscritti» (persistenti),
 lista d'attesa quando i posti finiscono, promemoria 15 minuti prima (scheduler), evento nativo di Discord a richiesta.
 Chi crea ha il permesso Discord «Crea eventi».
 Funzioni coperte: catalogo #128 UTL-113 (D69, B24)
@@ -18,7 +18,7 @@ from discord.ext import commands
 
 from core import eventi_logic as L
 from core.admin_mentions_logic import utente_puo_pingare_ruoli
-from core.command_groups import CogConGruppi, comando_di_gruppo
+from core.command_groups import CogConGruppi, comando_di_gruppo, SOTTOGRUPPI
 from core.i18n import lingua_interazione, lingua_risposta, t
 from core.programmati_logic import fuso_valido
 from core.repositories.eventi_repo import eventi_repo
@@ -240,8 +240,8 @@ class EventiCog(CogConGruppi, commands.Cog):
         except discord.HTTPException as exc:
             logger.warning("Evento %s: promemoria non inviato (%s)", e["id"], exc)
 
-    # --- /eventi crea ----------------------------------------------------------------------------------------------
-    @comando_di_gruppo("eventi", nome="crea", descrizione="Crea un evento con iscrizioni, posti e promemoria.")
+    # --- /utility-server eventi crea ----------------------------------------------------------------------------------------------
+    @comando_di_gruppo("utility-server", nome="crea", descrizione="Crea un evento con iscrizioni, posti e promemoria.", sottogruppo=SOTTOGRUPPI["utility-server eventi"])
     @app_commands.describe(
         titolo="Il titolo (massimo 100 caratteri)",
         quando="Data e ora (24/12/2026 21:00, nel tuo fuso) oppure tra quanto (3d, 5h)",
@@ -317,7 +317,7 @@ class EventiCog(CogConGruppi, commands.Cog):
         return True
 
     async def _aggiorna_evento_discord(self, e) -> None:
-        """Dopo `/eventi modifica`: titolo e data dell'evento nativo seguono quelli del bot."""
+        """Dopo `/utility-server eventi modifica`: titolo e data dell'evento nativo seguono quelli del bot."""
         guild = self.bot.get_guild(e["guild_id"])
         if guild is None or not e["discord_event_id"] or not guild.me.guild_permissions.manage_events:
             return
@@ -341,8 +341,8 @@ class EventiCog(CogConGruppi, commands.Cog):
         except discord.HTTPException:
             logger.warning("Evento %s: evento nativo non tolto", e["id"], exc_info=True)
 
-    # --- /eventi elenco --------------------------------------------------------------------------------------------
-    @comando_di_gruppo("eventi", nome="elenco", descrizione="I prossimi eventi, o gli iscritti di un evento.")
+    # --- /utility-server eventi elenco --------------------------------------------------------------------------------------------
+    @comando_di_gruppo("utility-server", nome="elenco", descrizione="I prossimi eventi, o gli iscritti di un evento.", sottogruppo=SOTTOGRUPPI["utility-server eventi"])
     @app_commands.describe(evento="Un evento: ne mostra gli iscritti (scegli dall'elenco)")
     @app_commands.autocomplete(evento=_completa_eventi)
     async def elenco(self, interaction: discord.Interaction, evento: app_commands.Range[str, 1, 20] | None = None) -> None:
@@ -364,7 +364,7 @@ class EventiCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(f"**{e['titolo'][:100]}**\n{testo}"[:1990], view=PaginaIscritti(interaction.user.id, e["id"], 0, totale, lingua),
                                                 ephemeral=True, allowed_mentions=_NESSUNA_MENZIONE)
 
-    # --- /eventi modifica e annulla --------------------------------------------------------------------------------
+    # --- /utility-server eventi modifica e annulla --------------------------------------------------------------------------------
     async def _evento_gestibile(self, interaction: discord.Interaction, evento: str, lingua: str):
         e = await eventi_repo.prendi(int(evento)) if evento.isdigit() else None
         if e is None or interaction.guild is None or e["guild_id"] != interaction.guild.id or e["stato"] != "attivo":
@@ -375,7 +375,7 @@ class EventiCog(CogConGruppi, commands.Cog):
             return None
         return e
 
-    @comando_di_gruppo("eventi", nome="modifica", descrizione="Cambia titolo, data, posti o descrizione di un evento.")
+    @comando_di_gruppo("utility-server", nome="modifica", descrizione="Cambia titolo, data, posti o descrizione di un evento.", sottogruppo=SOTTOGRUPPI["utility-server eventi"])
     @app_commands.describe(evento="L'evento (scegli dall'elenco)", titolo="Nuovo titolo (massimo 100 caratteri)",
                            quando="Nuova data e ora, o tra quanto (3d, 5h)", posti="Nuovi posti (0 = senza limite)",
                            descrizione="Nuova descrizione (massimo 1000 caratteri)")
@@ -414,7 +414,7 @@ class EventiCog(CogConGruppi, commands.Cog):
         await self._avvisa_promossi(nuovo, promossi)
         await interaction.followup.send(t("ev_modificato", lingua), ephemeral=True)
 
-    @comando_di_gruppo("eventi", nome="annulla", descrizione="Annulla un evento: gli iscritti non possono più cambiare.")
+    @comando_di_gruppo("utility-server", nome="annulla", descrizione="Annulla un evento: gli iscritti non possono più cambiare.", sottogruppo=SOTTOGRUPPI["utility-server eventi"])
     @app_commands.describe(evento="L'evento (scegli dall'elenco)")
     @app_commands.autocomplete(evento=_completa_eventi)
     async def annulla(self, interaction: discord.Interaction, evento: app_commands.Range[str, 1, 20]) -> None:

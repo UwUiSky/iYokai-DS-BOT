@@ -67,7 +67,7 @@ async def test_liv004_cambiare_formula_ricalcola_i_livelli(ambiente):
     await leveling_repo.modifica_xp(GUILD, 1, "aggiungi", 1000, 0, "classica")
     await leveling_repo.modifica_xp(GUILD, 2, "aggiungi", 10, 0, "classica")
     inter = _inter()
-    await _comando(cog, "admin-livelli guadagno formula").callback(cog, inter, _scelta("costante"))
+    await _comando(cog, "admin-livelli-guadagno formula").callback(cog, inter, _scelta("costante"))
     assert (await leveling_repo.get_totals(GUILD, 1)).level == 1000 // 200
     assert (await leveling_repo.get_totals(GUILD, 2)).level == 0
     assert (await leveling_settings_repo.get_config(GUILD, fresco=True)).impostazioni.formula == "costante"
@@ -100,7 +100,7 @@ async def test_liv004_il_blocco_al_proprietario_ferma_il_cambio(ambiente):
     cog = ambiente
     await leveling_settings_repo.set_options(GUILD, blocca_azzeramento=True)
     inter = _inter()
-    await _comando(cog, "admin-livelli guadagno formula").callback(cog, inter, _scelta("lineare"))
+    await _comando(cog, "admin-livelli-guadagno formula").callback(cog, inter, _scelta("lineare"))
     assert (await leveling_settings_repo.get_config(GUILD, fresco=True)).impostazioni.formula == "classica"
 
 
@@ -108,7 +108,7 @@ async def test_liv004_il_blocco_al_proprietario_ferma_il_cambio(ambiente):
 async def test_liv004_senza_permesso_non_cambia_niente(ambiente):
     cog = ambiente
     inter = _inter(permessi=discord.Permissions.none())
-    await _comando(cog, "admin-livelli guadagno formula").callback(cog, inter, _scelta("lineare"))
+    await _comando(cog, "admin-livelli-guadagno formula").callback(cog, inter, _scelta("lineare"))
     assert (await leveling_settings_repo.get_config(GUILD, fresco=True)).impostazioni.formula == "classica"
 
 
@@ -137,7 +137,7 @@ async def test_liv018_dodici_aggiunte_insieme_non_superano_il_tetto(ambiente):
 @pytest.mark.asyncio
 async def test_liv018_il_comando_mostra_l_elenco_senza_rompere_il_blocco_di_codice(ambiente):
     cog = ambiente
-    cmd = _comando(cog, "admin-livelli guadagno prefissi")
+    cmd = _comando(cog, "admin-livelli-guadagno prefissi")
     await cmd.callback(cog, _inter(), _scelta("aggiungi"), "!")
     inter = _inter()
     await cmd.callback(cog, inter, _scelta("elenco"), None)
@@ -149,7 +149,7 @@ async def test_liv018_il_comando_mostra_l_elenco_senza_rompere_il_blocco_di_codi
 async def test_liv018_senza_prefisso_non_si_aggiunge(ambiente):
     cog = ambiente
     inter = _inter()
-    await _comando(cog, "admin-livelli guadagno prefissi").callback(cog, inter, _scelta("aggiungi"), None)
+    await _comando(cog, "admin-livelli-guadagno prefissi").callback(cog, inter, _scelta("aggiungi"), None)
     assert (await leveling_settings_repo.get_config(GUILD, fresco=True)).impostazioni.prefissi_ignorati == ()
 
 
@@ -157,11 +157,11 @@ async def test_liv018_senza_prefisso_non_si_aggiunge(ambiente):
 @pytest.mark.asyncio
 async def test_liv006_007_021_017_i_comandi_salvano_le_impostazioni(ambiente):
     cog = ambiente
-    await _comando(cog, "admin-livelli guadagno messaggi").callback(
+    await _comando(cog, "admin-livelli-guadagno messaggi").callback(
         cog, _inter(), _scelta("parola"), 3, 20, 5, 100
     )
-    await _comando(cog, "admin-livelli guadagno comandi").callback(cog, _inter(), True)
-    await _comando(cog, "admin-livelli guadagno canali").callback(cog, _inter(), _scelta("solo_questi"))
+    await _comando(cog, "admin-livelli-guadagno comandi").callback(cog, _inter(), True)
+    await _comando(cog, "admin-livelli-guadagno canali").callback(cog, _inter(), _scelta("solo_questi"))
     i = (await leveling_settings_repo.get_config(GUILD, fresco=True)).impostazioni
     assert (i.xp_modo, i.xp_per_parola, i.parole_max, i.bonus_impegno, i.impegno_caratteri) == ("parola", 3, 20, 5, 100)
     assert i.xp_comandi is True and i.canali_modo == "solo_questi"
@@ -175,7 +175,7 @@ async def test_liv006_007_021_017_i_comandi_salvano_le_impostazioni(ambiente):
 async def test_i_comandi_senza_permesso_non_salvano(ambiente, nome, args):
     cog = ambiente
     inter = _inter(permessi=discord.Permissions.none())
-    await _comando(cog, f"admin-livelli guadagno {nome}").callback(cog, inter, *args)
+    await _comando(cog, f"admin-livelli-guadagno {nome}").callback(cog, inter, *args)
     inter.response.send_message.assert_awaited_once()
 
 
@@ -183,7 +183,7 @@ async def test_i_comandi_senza_permesso_non_salvano(ambiente, nome, args):
 async def test_liv021_elenco_vuoto_avvisa(ambiente):
     cog = ambiente
     inter = _inter()
-    await _comando(cog, "admin-livelli guadagno canali").callback(cog, inter, _scelta("solo_questi"))
+    await _comando(cog, "admin-livelli-guadagno canali").callback(cog, inter, _scelta("solo_questi"))
     assert "vuoto" in _testo(inter)
 
 

@@ -83,7 +83,7 @@ async def test_elenco_con_tetto():
 
 
 def test_solo_i_comandi_di_gioco_sono_fermati():
-    assert es.e_di_gioco("monete work") and es.e_di_gioco("giochi quiz avvia") and es.e_di_gioco("clan info")
+    assert es.e_di_gioco("monete work") and es.e_di_gioco("giochi quiz avvia") and es.e_di_gioco("monete-clan info")
     assert not es.e_di_gioco("level rank") and not es.e_di_gioco("admin-giochi sospensione") and not es.e_di_gioco("ticket aperti")
 
 

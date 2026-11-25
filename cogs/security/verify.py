@@ -4,23 +4,23 @@ cogs/security/verify.py
 Verify Base (SPEC.md §4.1, §4.4, §4.5, §4.6). Modulo SEMPRE GRATUITO,
 come da schema.
 
-Due modalità mutuamente esclusive, scelte a `/admin-sicurezza verify setup`:
+Due modalità mutuamente esclusive, scelte a `/admin-sicurezza-verifica setup`:
 - button: bottone persistente (stesso pattern di TicketPanelView) —
   supporta il captcha, perché un click su bottone È un'Interaction e
   può aprire un Modal.
 - reaction: l'utente reagisce a un messaggio con un'emoji — NON
   supporta il captcha: una reazione non è un'Interaction, non può
   aprire un Modal. La combinazione reaction+captcha viene rifiutata
-  esplicitamente a `/admin-sicurezza verify setup`, non implementata a metà con un
+  esplicitamente a `/admin-sicurezza-verifica setup`, non implementata a metà con un
   flusso DM fragile.
 
-Ruoli (impostazioni del server, `/admin-sicurezza verify opzioni`): un ruolo
+Ruoli (impostazioni del server, `/admin-sicurezza-verifica opzioni`): un ruolo
 «non verificato» dato all'ingresso e tolto alla verifica (VER-014) e fino
 a tre ruoli in più dati insieme a quello di verifica (VER-015). Lo staff
 può verificare a mano un membro (VER-016), cercare i tentativi di un
 utente (VER-031) e vedere le statistiche (VER-030).
 
-Captcha (`/admin-sicurezza verify setup`, opzione `captcha_tipo`): «testo» e' una
+Captcha (`/admin-sicurezza-verifica setup`, opzione `captcha_tipo`): «testo» e' una
 somma scritta nel modulo; «immagine» (NF-18) manda un'immagine con lettere
 storte e un bottone che apre il modulo per ricopiarle. Tempo massimo 3 minuti,
 3 tentativi (core/captcha_image.py).
@@ -28,7 +28,7 @@ storte e un bottone che apre il modulo per ricopiarle. Tempo massimo 3 minuti,
 Il membro può verificarsi anche con /utility verifica (VER-010), lo stesso
 percorso del bottone del pannello.
 
-Tempi e azioni (`/admin-sicurezza verify tempi`): promemoria in DM dopo X minuti
+Tempi e azioni (`/admin-sicurezza-verifica tempi`): promemoria in DM dopo X minuti
 (VER-008; con i DM chiusi un avviso nel canale del pannello che sparisce dopo
 pochi secondi, VER-009), tempo massimo con kick o ban alla scadenza
 (VER-011, scadenze nello scheduler: reggono un riavvio), azione su chi non
@@ -803,10 +803,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin-sicurezza",
+        "admin-sicurezza-verifica",
         nome="setup",
         descrizione="Configura il Verify.",
-        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
     @app_commands.describe(
         method="Modalità: bottone (supporta captcha), reazione o pagina web (riconosce gli account doppi)",
@@ -898,10 +897,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin-sicurezza",
+        "admin-sicurezza-verifica",
         nome="panel",
         descrizione="Pubblica il pannello di verifica.",
-        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
     @app_commands.describe(
         titolo="Titolo del pannello (vuoto: quello di base)",
@@ -971,10 +969,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
         await verify_repo.set_panel_message(interaction.guild.id, sent.channel.id, sent.id)
 
     @comando_di_gruppo(
-        "admin-sicurezza",
+        "admin-sicurezza-verifica",
         nome="whitelist-add",
         descrizione="Aggiungi un utente alla whitelist.",
-        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
     @app_commands.describe(member="L'utente (anche se non è nel server)")
     async def whitelist_add(self, interaction: discord.Interaction, member: discord.User) -> None:
@@ -984,10 +981,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "verify_aggiunto_alla_whitelist", mention=member.mention), ephemeral=True)
 
     @comando_di_gruppo(
-        "admin-sicurezza",
+        "admin-sicurezza-verifica",
         nome="whitelist-remove",
         descrizione="Rimuovi un utente dalla whitelist.",
-        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
     @app_commands.describe(member="L'utente (anche se non è nel server)")
     async def whitelist_remove(self, interaction: discord.Interaction, member: discord.User) -> None:
@@ -997,10 +993,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "verify_rimosso_dalla_whitelist", mention=member.mention), ephemeral=True)
 
     @comando_di_gruppo(
-        "admin-sicurezza",
+        "admin-sicurezza-verifica",
         nome="blacklist-add",
         descrizione="Aggiungi un utente alla blacklist.",
-        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
     @app_commands.describe(member="L'utente (anche se non è nel server)")
     async def blacklist_add(self, interaction: discord.Interaction, member: discord.User) -> None:
@@ -1010,10 +1005,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, "verify_aggiunto_alla_blacklist", mention=member.mention), ephemeral=True)
 
     @comando_di_gruppo(
-        "admin-sicurezza",
+        "admin-sicurezza-verifica",
         nome="blacklist-remove",
         descrizione="Rimuovi un utente dalla blacklist.",
-        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
     @app_commands.describe(member="L'utente (anche se non è nel server)")
     async def blacklist_remove(self, interaction: discord.Interaction, member: discord.User) -> None:
@@ -1024,10 +1018,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
 
 
     @comando_di_gruppo(
-        "admin-sicurezza",
+        "admin-sicurezza-verifica",
         nome="opzioni",
         descrizione="Ruolo «non verificato» e ruoli extra.",
-        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
     @app_commands.describe(
         non_verificato="Dato all'ingresso, tolto alla verifica",
@@ -1123,10 +1116,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
         await avvia_verifica(interaction)
 
     @comando_di_gruppo(
-        "admin-sicurezza",
+        "admin-sicurezza-verifica",
         nome="tempi",
         descrizione="Promemoria, tempo massimo, azione su chi fallisce, verifica solo ai sospetti.",
-        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
     @app_commands.describe(
         promemoria_minuti="DM di promemoria dopo questi minuti (0 = spento)",
@@ -1190,10 +1182,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
         )
 
     @comando_di_gruppo(
-        "admin-sicurezza",
+        "admin-sicurezza-verifica",
         nome="manuale",
         descrizione="Verifica a mano un membro, senza controlli.",
-        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
     @app_commands.describe(member="Il membro da verificare")
     async def manual_cmd(self, interaction: discord.Interaction, member: discord.Member) -> None:
@@ -1217,10 +1208,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(await testo_per(interaction, "verify_verificato_mano", mention=member.mention), ephemeral=True)
 
     @comando_di_gruppo(
-        "admin-sicurezza",
+        "admin-sicurezza-verifica",
         nome="invia",
         descrizione="Rimanda a un membro il messaggio per verificarsi.",
-        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
     @app_commands.describe(membro="Il membro a cui mandare l'invito in DM")
     async def send_cmd(self, interaction: discord.Interaction, membro: discord.Member) -> None:
@@ -1242,10 +1232,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
             )
 
     @comando_di_gruppo(
-        "admin-sicurezza",
+        "admin-sicurezza-verifica",
         nome="tentativi",
         descrizione="Tentativi di verifica di un utente.",
-        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
     @app_commands.describe(
         member="L'utente (anche se non è nel server)",
@@ -1303,10 +1292,9 @@ class VerifyCog(CogConGruppi, commands.Cog):
         await interaction.followup.send(await testo_per(interaction, "verify_tentativi_esportati", v1=len(righe)), file=file, ephemeral=True)
 
     @comando_di_gruppo(
-        "admin-sicurezza",
+        "admin-sicurezza-verifica",
         nome="statistiche",
         descrizione="Ingressi, uscite, captcha e verifiche.",
-        sottogruppo=("verify", "Sistema di verifica dei nuovi membri."),
     )
     @app_commands.describe(giorni="Giorni indietro (default 7)")
     async def stats_cmd(

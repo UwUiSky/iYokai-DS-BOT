@@ -1,7 +1,7 @@
 """
 cogs/fun/_combattimento.py
 ==========================
-Il combattimento a più giocatori della sala (/sala combattimento, ECO-105): turni con bottoni (un bottone per ogni
+Il combattimento a più giocatori della sala (/giochi-sala combattimento, ECO-105): turni con bottoni (un bottone per ogni
 avversario ancora in piedi, pozione e scudo se gli oggetti sono ammessi), chi non muove in tempo esce. A partita
 iniziata nessuno annulla (Annulla vale solo nella sala d'attesa): restano il timeout e l'errore, che rimborsano. Le monete le muove solo `SalaCog` (puntate tolte e chiuse in gruppo).
 Funzioni coperte: ECO-105

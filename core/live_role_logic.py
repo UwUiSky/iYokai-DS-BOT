@@ -2,7 +2,7 @@
 core/live_role_logic.py
 =======================
 Dà e toglie il ruolo «in diretta». Due strade: chi è collegato a un avviso Twitch, Kick o Picarto
-(NF-32, scelto con /admin-moduli alert ruolo-live, senza l'intent delle presenze) e chi risulta «in diretta» per
+(NF-32, scelto con /admin-alert piattaforme ruolo-live, senza l'intent delle presenze) e chi risulta «in diretta» per
 Discord, con le regole di /admin-alert ruolo-live (#129 ALR-042..048: solo certi ruoli, esclusi, parole o giochi,
 eccezioni, annuncio, fino a 5 regole; serve l'intent delle presenze).
 Funzioni coperte: SPEC §10.13 (NF-32, #129 ALR-042, 043, 044, 045, 046, 047, 048)

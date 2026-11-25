@@ -536,7 +536,10 @@ async def test_i_comandi_stanno_sotto_admin_livelli(cog_comandi):
         "admin-livelli moltiplicatore",
         "admin-livelli mostra",
         "admin-livelli negozio",
-        "admin-livelli premi",
+        "admin-livelli premi aggiungi",
+        "admin-livelli premi elenco",
+        "admin-livelli premi modo",
+        "admin-livelli premi togli",
         "admin-livelli xp",
     ]
 

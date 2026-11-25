@@ -1,7 +1,7 @@
 """
 core/web_servizi_logic.py
 =========================
-Servizi esterni di /web: meteo (MET Norway + geocodifica Nominatim con cache su DB e coda a 1 al secondo),
+Servizi esterni di /utility-web: meteo (MET Norway + geocodifica Nominatim con cache su DB e coda a 1 al secondo),
 film e serie (TVmaze, ripiego Wikipedia), giochi Steam, prezzi cripto (CoinGecko, chiave dell'owner) e
 accorciatore is.gd. Tempo massimo 8 secondi, cache in memoria, nessuna chiave nei log.
 Funzioni coperte: catalogo #128 UTL-213, 217, 218, 219, 208 (D69, B2)

@@ -154,7 +154,7 @@ async def test_liv008_canale_escluso_e_ruolo_escluso_non_danno_xp(cog_xp):  # no
 @pytest.mark.asyncio
 async def test_liv008_009_il_comando_salva_e_chiede_il_permesso(ambiente):  # noqa: F811
     cog = ambiente
-    cmd = _comando(cog, "admin-livelli guadagno reazioni")
+    cmd = _comando(cog, "admin-livelli-guadagno reazioni")
     await cmd.callback(cog, _inter(permessi=discord.Permissions.none()), 5, 5, 60)
     assert (await leveling_settings_repo.get_config(GUILD, fresco=True)).impostazioni.xp_reazione_messa == 0
     await cmd.callback(cog, _inter(), 5, 4, 600)

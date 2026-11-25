@@ -12,6 +12,8 @@ al comando spostato (tabella della migrazione 0488).
 
 from __future__ import annotations
 
+from core.comandi_diretti import ComandoDiretto
+
 import asyncio
 import functools
 import logging
@@ -165,7 +167,7 @@ def raccogli_comandi(comandi: Iterable, prefisso: str = "", livelli: tuple = ())
     """Cammina l'albero (gruppi annidati compresi) e dà un `ComandoInfo` per ogni comando foglia."""
     risultati: list[ComandoInfo] = []
     for cmd in comandi:
-        if isinstance(cmd, app_commands.ContextMenu):  # i menu col tasto destro non hanno descrizione né opzioni
+        if isinstance(cmd, (app_commands.ContextMenu, ComandoDiretto)):  # i menu col tasto destro non hanno descrizione né opzioni
             continue
         percorso = f"{prefisso} {cmd.name}".strip()
         if isinstance(cmd, app_commands.Group):

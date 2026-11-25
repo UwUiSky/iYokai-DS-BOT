@@ -92,12 +92,12 @@ async def test_livelli_di_accesso(clean_db):
     bot = await _carica(clean_db)
     try:
         assert GRUPPI["level"].livello is None
-        assert GRUPPI["clan"].livello is None
+        assert GRUPPI["monete-clan"].livello is None
         assert GRUPPI["monete"].livello is None
         assert GRUPPI["admin-benvenuto"].livello is Livello.ADMIN
         assert GRUPPI["admin-economia"].livello is Livello.ADMIN
         # D56: la bacheca clan è per lo staff, quindi sta in /admin-economia annunci
-        assert GRUPPI["clan"].get_command("bacheca") is None
+        assert GRUPPI["monete-clan"].get_command("bacheca") is None
         # i comandi pubblici non hanno controlli di permesso propri
         for percorso in ("crea", "boost gilda", "tesoreria dona"):
             assert not comando_nel_gruppo("clan", percorso).checks
@@ -108,14 +108,14 @@ async def test_livelli_di_accesso(clean_db):
 async def test_tetti_e_descrizioni(clean_db):
     bot = await _carica(clean_db)
     try:
-        for nome in ("level", "monete", "clan", "admin-benvenuto", "admin-economia", "admin-livelli", "admin-ruoli", "admin-giveaway"):
+        for nome in ("level", "monete", "monete-clan", "admin-benvenuto", "admin-economia", "admin-livelli", "admin-ruoli", "admin-giveaway"):
             gruppo = GRUPPI[nome]
             assert len(gruppo.commands) <= 25
             for figlio in gruppo.commands:
                 if isinstance(figlio, app_commands.Group):
                     assert len(figlio.commands) <= 25
                     assert not any(isinstance(x, app_commands.Group) for x in figlio.commands)
-        for nome in ("level", "monete", "clan"):
+        for nome in ("level", "monete", "monete-clan"):
             for comando in _comandi(GRUPPI[nome]):
                 assert not comando.description.startswith("["), comando.qualified_name
                 assert len(comando.name) <= 32

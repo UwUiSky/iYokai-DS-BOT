@@ -1,8 +1,8 @@
 """
 cogs/fun/animali_avanzati.py
 ============================
-Animali avanzati (/fun animali sitter, lotta, incontro, abbandona, adozioni, adotta) e pesca avanzata
-(/fun pesca abilita, attrezzi, stagione, rete, acquario, storico). Nessuna puntata: monete solo dalle
+Animali avanzati (/giochi-animali sitter, lotta, incontro, abbandona, adozioni, adotta) e pesca avanzata
+(/giochi-animali pesca abilita, attrezzi, stagione, rete, acquario, storico). Nessuna puntata: monete solo dalle
 casse e dalle riscossioni già previste; gli scambi tra utenti rispettano il blocco personale.
 Funzioni coperte: ECO-125, 126, 127, 128, 129, 135, 136, 137, 139, 140, 141
 Dipende da: core/repositories/animali_avanzati_repo.py, core/repositories/pesca_repo.py
@@ -21,7 +21,7 @@ from cogs.fun.animali import IdAnimale, SG_ANIMALI, SG_PESCA
 from cogs.leveling.leveling import _comando_rifiutato
 from core import animali_avanzati_logic as lg
 from core.animali_logic import LUOGHI_PESCA, PESCI, livello
-from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog
+from core.command_groups import CogConGruppi, comando_di_gruppo, togli_comandi_del_cog, SOTTOGRUPPI
 from core.i18n import testo_per
 from core.repositories.animali_avanzati_repo import animali_avanzati_repo
 from core.repositories.animali_repo import animali_repo
@@ -89,7 +89,7 @@ class AnimaliAvanzatiCog(CogConGruppi, commands.Cog):
         return suo
 
     # ---------------------------------------------------------------- animali
-    @comando_di_gruppo("fun", nome="sitter", descrizione="Paga un pet sitter: i bisogni dell'animale restano pieni per i giorni scelti.", sottogruppo=SG_ANIMALI)
+    @comando_di_gruppo("giochi-animali", nome="sitter", descrizione="Paga un pet sitter: i bisogni dell'animale restano pieni per i giorni scelti.")
     @app_commands.describe(animale="ID dell'animale", giorni=f"Giorni (1-{lg.SITTER_GIORNI_MAX}), {lg.COSTO_SITTER_GIORNO} monete al giorno")
     async def sitter(self, interaction: discord.Interaction, animale: IdAnimale, giorni: app_commands.Range[int, 1, lg.SITTER_GIORNI_MAX]) -> None:
         if await _comando_rifiutato(interaction):
@@ -99,7 +99,7 @@ class AnimaliAvanzatiCog(CogConGruppi, commands.Cog):
             await testo_per(interaction, f"ava_sitter_{esito}", costo=lg.costo_sitter(giorni), moneta=await self._moneta(interaction.guild.id)), ephemeral=esito != "ok"
         )
 
-    @comando_di_gruppo("fun", nome="lotta", descrizione="Fai lottare il tuo animale con quello di un altro membro (senza puntata).", sottogruppo=SG_ANIMALI)
+    @comando_di_gruppo("giochi-animali", nome="lotta", descrizione="Fai lottare il tuo animale con quello di un altro membro (senza puntata).")
     @app_commands.describe(animale="Il tuo animale", membro="L'avversario", suo_animale="ID dell'animale dell'avversario")
     async def lotta(self, interaction: discord.Interaction, animale: IdAnimale, membro: discord.Member, suo_animale: IdAnimale) -> None:
         if await _comando_rifiutato(interaction):
@@ -126,7 +126,7 @@ class AnimaliAvanzatiCog(CogConGruppi, commands.Cog):
                             nome=(mio if vinto else suo)["nome"][:20]), allowed_mentions=NESSUNA_MENZIONE,
         )
 
-    @comando_di_gruppo("fun", nome="incontro", descrizione="Fai incontrare due animali: giocano insieme e può nascere un cucciolo.", sottogruppo=SG_ANIMALI)
+    @comando_di_gruppo("giochi-animali", nome="incontro", descrizione="Fai incontrare due animali: giocano insieme e può nascere un cucciolo.")
     @app_commands.describe(animale="Il tuo animale", membro="L'altro padrone", suo_animale="ID del suo animale")
     async def incontro(self, interaction: discord.Interaction, animale: IdAnimale, membro: discord.Member, suo_animale: IdAnimale) -> None:
         if await _comando_rifiutato(interaction):
@@ -144,7 +144,7 @@ class AnimaliAvanzatiCog(CogConGruppi, commands.Cog):
             view=vista, allowed_mentions=discord.AllowedMentions(users=[membro]),
         )
 
-    @comando_di_gruppo("fun", nome="abbandona", descrizione="Lascia un tuo animale nella coda di adozione del server.", sottogruppo=SG_ANIMALI)
+    @comando_di_gruppo("giochi-animali", nome="abbandona", descrizione="Lascia un tuo animale nella coda di adozione del server.")
     @app_commands.describe(animale="ID dell'animale")
     async def abbandona(self, interaction: discord.Interaction, animale: IdAnimale) -> None:
         if await _comando_rifiutato(interaction):
@@ -152,7 +152,7 @@ class AnimaliAvanzatiCog(CogConGruppi, commands.Cog):
         esito = await animali_avanzati_repo.abbandona(interaction.guild.id, interaction.user.id, animale)
         await interaction.response.send_message(await testo_per(interaction, f"ava_abbandona_{esito}"), ephemeral=esito != "ok")
 
-    @comando_di_gruppo("fun", nome="adozioni", descrizione="Gli animali in attesa di una famiglia.", sottogruppo=SG_ANIMALI)
+    @comando_di_gruppo("giochi-animali", nome="adozioni", descrizione="Gli animali in attesa di una famiglia.")
     async def adozioni(self, interaction: discord.Interaction) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -160,8 +160,8 @@ class AnimaliAvanzatiCog(CogConGruppi, commands.Cog):
         testo = "\n".join(f"`{r['id']}` {r['specie']} · {r['nome'][:20]} · lv {livello(r['xp'])}" for r in righe) or await testo_per(interaction, "ava_nessuno")
         await interaction.response.send_message(testo, ephemeral=True)
 
-    @comando_di_gruppo("fun", nome="adotta", descrizione="Adotta un animale della coda (serve un posto libero).", sottogruppo=SG_ANIMALI)
-    @app_commands.describe(animale="ID dell'animale (vedi /fun animali adozioni)")
+    @comando_di_gruppo("giochi-animali", nome="adotta", descrizione="Adotta un animale della coda (serve un posto libero).")
+    @app_commands.describe(animale="ID dell'animale (vedi /giochi-animali adozioni)")
     async def adotta(self, interaction: discord.Interaction, animale: IdAnimale) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -169,7 +169,7 @@ class AnimaliAvanzatiCog(CogConGruppi, commands.Cog):
         await interaction.response.send_message(await testo_per(interaction, f"ava_adotta_{esito}"), ephemeral=esito != "ok")
 
     # ---------------------------------------------------------------- pesca avanzata
-    @comando_di_gruppo("fun", nome="abilita", descrizione="Le abilità di pesca: si sbloccano con i punti delle sfide.", sottogruppo=SG_PESCA)
+    @comando_di_gruppo("giochi-animali", nome="abilita", descrizione="Le abilità di pesca: si sbloccano con i punti delle sfide.", sottogruppo=SOTTOGRUPPI["giochi-animali pesca"])
     @app_commands.describe(sblocca="L'abilità da sbloccare (senza scelta vedi l'elenco)")
     @app_commands.choices(sblocca=ABILITA_SCELTE)
     async def abilita(self, interaction: discord.Interaction, sblocca: app_commands.Choice[str] | None = None) -> None:
@@ -186,7 +186,7 @@ class AnimaliAvanzatiCog(CogConGruppi, commands.Cog):
         righe.append(await testo_per(interaction, "ava_ab_punti", punti=await pesca_repo.punti_liberi(g, u)))
         await interaction.response.send_message("\n".join(righe), ephemeral=True)
 
-    @comando_di_gruppo("fun", nome="attrezzi", descrizione="Il negozio di attrezzi: si pagano con le perle che trovi pescando.", sottogruppo=SG_PESCA)
+    @comando_di_gruppo("giochi-animali", nome="attrezzi", descrizione="Il negozio di attrezzi: si pagano con le perle che trovi pescando.", sottogruppo=SOTTOGRUPPI["giochi-animali pesca"])
     @app_commands.describe(compra="Cosa comprare (senza scelta vedi i prezzi)")
     @app_commands.choices(compra=ATTREZZI_SCELTE)
     async def attrezzi(self, interaction: discord.Interaction, compra: app_commands.Choice[str] | None = None) -> None:
@@ -204,7 +204,7 @@ class AnimaliAvanzatiCog(CogConGruppi, commands.Cog):
                             p_esca=lg.PERLE_ESCA, p_rete=lg.PERLE_RETE, p_canna="/".join(map(str, lg.PERLE_CANNA))), ephemeral=True
         )
 
-    @comando_di_gruppo("fun", nome="stagione", descrizione="Il pass del mese: ogni 100 punti di pesca un premio (traccia gratuita).", sottogruppo=SG_PESCA)
+    @comando_di_gruppo("giochi-animali", nome="stagione", descrizione="Il pass del mese: ogni 100 punti di pesca un premio (traccia gratuita).", sottogruppo=SOTTOGRUPPI["giochi-animali pesca"])
     @app_commands.describe(riscuoti="Riscuoti il prossimo livello pronto")
     async def stagione(self, interaction: discord.Interaction, riscuoti: bool = False) -> None:
         if await _comando_rifiutato(interaction):
@@ -224,7 +224,7 @@ class AnimaliAvanzatiCog(CogConGruppi, commands.Cog):
                             prossimo=min(lg.LIVELLI_STAGIONE, riscossi + 1) * lg.SOGLIA_STAGIONE), ephemeral=True
         )
 
-    @comando_di_gruppo("fun", nome="rete", descrizione="Raccogli i pesci che la tua rete ha preso mentre eri via (un lancio all'ora).", sottogruppo=SG_PESCA)
+    @comando_di_gruppo("giochi-animali", nome="rete", descrizione="Raccogli i pesci che la tua rete ha preso mentre eri via (un lancio all'ora).", sottogruppo=SOTTOGRUPPI["giochi-animali pesca"])
     async def rete(self, interaction: discord.Interaction) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -236,7 +236,7 @@ class AnimaliAvanzatiCog(CogConGruppi, commands.Cog):
         elenco = ", ".join(f"{PESCI[s][1]} {s}" for s in prese if s) or "-"
         await interaction.response.send_message(await testo_per(interaction, "ava_rete_ok", n=len(prese), elenco=elenco), ephemeral=True)
 
-    @comando_di_gruppo("fun", nome="acquario", descrizione="Il tuo acquario: le specie trovate e quanti ne hai.", sottogruppo=SG_PESCA)
+    @comando_di_gruppo("giochi-animali", nome="acquario", descrizione="Il tuo acquario: le specie trovate e quanti ne hai.", sottogruppo=SOTTOGRUPPI["giochi-animali pesca"])
     async def acquario(self, interaction: discord.Interaction) -> None:
         if await _comando_rifiutato(interaction):
             return
@@ -247,7 +247,7 @@ class AnimaliAvanzatiCog(CogConGruppi, commands.Cog):
         )
         await interaction.response.send_message(f"```\n{'~' * 24}\n{vasca}\n{'~' * 24}\n```"[:1900], ephemeral=False)
 
-    @comando_di_gruppo("fun", nome="storico", descrizione="Gli ultimi pesci presi e le ultime vendite (30 giorni).", sottogruppo=SG_PESCA)
+    @comando_di_gruppo("giochi-animali", nome="storico", descrizione="Gli ultimi pesci presi e le ultime vendite (30 giorni).", sottogruppo=SOTTOGRUPPI["giochi-animali pesca"])
     async def storico(self, interaction: discord.Interaction) -> None:
         if await _comando_rifiutato(interaction):
             return

@@ -2,7 +2,7 @@
 core/risposte_server.py
 =======================
 Come il server vuole le risposte del bot (#122): sempre private (CFG-013), cancellate dopo N secondi (CFG-014) e
-con i colori di successo ed errore scelti (CFG-033, premium). Un solo punto (D16) per `/admin-bot config risposte`
+con i colori di successo ed errore scelti (CFG-033, premium). Un solo punto (D16) per `/admin-bot-config risposte`
 e per il pannello web: legge, controlla, scrive (con lo storico) e applica le regole alle interazioni.
 Il controllo gira in `BlacklistAwareCommandTree.interaction_check`, dopo la politica dei comandi.
 Funzioni coperte: SPEC §20 (NF-05), catalogo #122 (CFG-013, CFG-014, CFG-033); CFG-011 (private fuori dal canale dei bot)
@@ -10,6 +10,8 @@ Dipende da: core/database.py (impostazioni), core/premium.py (colori)
 """
 
 from __future__ import annotations
+
+from core.comandi_diretti import percorso_vero
 
 import asyncio
 import logging
@@ -250,7 +252,8 @@ def _messaggio_permanente(kw: dict) -> bool:
 
 
 def _privata_per(interazione, regole: Risposte) -> bool:
-    comando = getattr(getattr(interazione, "command", None), "qualified_name", None)
+    comando = getattr(interazione, "command", None)
+    comando = percorso_vero(comando) if comando is not None else None
     canale = getattr(interazione, "channel_id", None)
     return regole.privata_per(canale if isinstance(canale, int) else None, comando if isinstance(comando, str) else None)
 

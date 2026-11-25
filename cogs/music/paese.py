@@ -1,7 +1,7 @@
 """
 cogs/music/paese.py
 ===================
-Paese globale delle ricerche musicali (MUS-015, D111): `/owner radio paese`. Di base nessun limite (brani ascoltabili
+Paese globale delle ricerche musicali (MUS-015, D111): `/owner-radio paese`. Di base nessun limite (brani ascoltabili
 in tutto il mondo); i server possono scegliere il loro con `/admin-musica impostazioni paese:`.
 Funzioni coperte: SPEC §9 (catalogo MUS-015)
 Dipende da: core/music_paese_logic.py, core/repositories/music_cartella_repo.py (impostazioni globali dell'owner)
@@ -42,8 +42,7 @@ class MusicPaeseCog(CogConGruppi, commands.Cog):
         except Exception:
             logger.exception("Lettura del paese globale delle ricerche non riuscita.")
 
-    @comando_di_gruppo("owner", nome="paese", descrizione="Paese delle ricerche musicali (di base nessuno).",
-                       sottogruppo=RADIO)
+    @comando_di_gruppo("owner-radio", nome="paese", descrizione="Paese delle ricerche musicali (di base nessuno).")
     @app_commands.describe(codice="2 lettere (es. IT); «-» toglie il limite")
     async def paese(self, interaction: discord.Interaction, codice: app_commands.Range[str, 1, 2] | None = None) -> None:
         if interaction.user.id != config.OWNER_ID:
