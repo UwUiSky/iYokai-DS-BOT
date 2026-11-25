@@ -17,8 +17,13 @@ class TestT:
     def test_lingua_non_supportata_ricade_sull_italiano(self):
         assert t("module_not_active", "pt-BR") == "Questo modulo non è attivo su questo server."
 
-    def test_lingua_presente_ma_vuota_ricade_sull_inglese(self):
-        # D58: ripiego lingua -> en-US -> it (fr non ha ancora testi).
+    def test_lingua_presente_ma_vuota_ricade_sull_inglese(self, monkeypatch):
+        # D58: ripiego lingua -> en-US -> it, con una lingua che non ha ancora testi.
+        from core import i18n
+
+        catalogo = dict(i18n.carica_catalogo())
+        catalogo["fr"] = {}
+        monkeypatch.setattr(i18n, "carica_catalogo", lambda forza=False: catalogo)
         assert t("module_not_active", "fr") == t("module_not_active", "en")
 
     def test_chiave_inesistente_restituisce_la_chiave_stessa(self):
