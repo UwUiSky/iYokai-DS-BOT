@@ -6,7 +6,7 @@
 
 Python 3.11 · discord.py 2.7 · PostgreSQL · Lavalink
 
-*Repository privata — in sviluppo, non ancora in produzione*
+*In sviluppo, non ancora in produzione*
 
 </div>
 
@@ -58,7 +58,6 @@ Punti che lo distinguono:
 | | |
 |---|---|
 | Fase attuale | **Correzione** (fase F1 di 13). Lo sviluppo di funzioni nuove riprende a correzione finita |
-| Server in cui è presente | 0: non è ancora stato provato su Discord vero |
 | Test automatici | 2676, tutti verdi |
 | Voci della specifica | 97 fatte · 145 parziali · 246 da fare · 6 scartate ([`revisione/SPEC.md`](revisione/SPEC.md)) |
 | Lavoro da fare | [Issue](https://github.com/UwUiSky/iYokai-DS-BOT/issues), una [milestone](https://github.com/UwUiSky/iYokai-DS-BOT/milestones) per fase |
