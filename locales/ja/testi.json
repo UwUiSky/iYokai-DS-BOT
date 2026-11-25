@@ -4492,5 +4492,7 @@
   "sicurezza_modulo_cambiato": "**{server}** のセキュリティ：モジュール `{modulo}` が {utente} によって{stato}になりました。心当たりがない場合は、スタッフの権限を確認してください。",
   "mar_solo_proprietario": "独自ブランドのボットを連携できるのは、サーバーの所有者だけです。",
   "mar_avviso_collegato": "{utente} がこのサーバーに独自ブランドのボット（{nome}）を連携しました。",
-  "mar_avviso_rimosso": "{utente} がこのサーバーから独自ブランドのボットの連携を解除しました。"
+  "mar_avviso_rimosso": "{utente} がこのサーバーから独自ブランドのボットの連携を解除しました。",
+  "owner_2fa_non_configurato": "このコマンドには第2要素が必要ですが、.env に OWNER_TOTP_SECRET が設定されていません。コンソールからのみ実行できます。",
+  "owner_2fa_sbagliato": "コードがない、間違っている、または使用済みです。`codice` オプションに認証アプリの6桁を入力してください。"
 }

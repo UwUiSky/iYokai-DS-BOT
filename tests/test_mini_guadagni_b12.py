@@ -28,7 +28,7 @@ def test_logica_dei_piccoli_guadagni():
     assert {scava(rng) for _ in range(3000)} >= {0, 200} and all(v in (0, 200) or 15 <= v <= 60 for v in (scava(rng) for _ in range(3000)))
     for tipo, (_, lo, hi) in MEME.items():
         dati = {pubblica_meme(rng, tipo) for _ in range(500)}
-        assert 0 in dati or tipo == "di nicchia" or True
+        assert 0 in dati or tipo == "di nicchia"
         assert all(d == 0 or lo <= d <= hi for d in dati)
     with pytest.raises(ValueError):
         pubblica_meme(rng, "boh")

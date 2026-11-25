@@ -4492,5 +4492,7 @@
   "sicurezza_modulo_cambiato": "**{server}** 的安全：模块 `{modulo}` 已被 {utente} {stato}。如果这不在你的预期内，请检查你的管理团队权限。",
   "mar_solo_proprietario": "只有服务器所有者才能绑定自定义品牌机器人。",
   "mar_avviso_collegato": "{utente} 已为此服务器绑定自定义品牌机器人（{nome}）。",
-  "mar_avviso_rimosso": "{utente} 已解除此服务器的自定义品牌机器人绑定。"
+  "mar_avviso_rimosso": "{utente} 已解除此服务器的自定义品牌机器人绑定。",
+  "owner_2fa_non_configurato": "此命令需要第二重验证，但 .env 中没有设置 OWNER_TOTP_SECRET：只能在控制台执行。",
+  "owner_2fa_sbagliato": "验证码缺失、错误或已使用。请在 `codice` 选项中填入验证器应用中的 6 位数字。"
 }

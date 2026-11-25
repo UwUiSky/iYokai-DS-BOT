@@ -198,7 +198,7 @@ def test_sta_018_totale_membri_ricostruito_all_indietro():
     oggi = date(2026, 5, 10)
     variazioni = {oggi: 3, oggi - timedelta(days=1): -1, oggi - timedelta(days=2): 2}
     serie = totale_membri_per_giorno(100, variazioni, oggi - timedelta(days=3), oggi)
-    assert list(serie.values()) == [96, 98, 97, 100] or list(serie.values()) == [97, 98, 97, 100] or True
+    assert list(serie.values()) == [96, 98, 97, 100]
     assert serie[oggi] == 100 and serie[oggi - timedelta(days=1)] == 97 and serie[oggi - timedelta(days=2)] == 98
     assert totale_membri_per_giorno(1, {oggi: -5}, oggi, oggi)[oggi] == 1
     assert all(v >= 0 for v in totale_membri_per_giorno(2, {oggi - timedelta(days=1): 10}, oggi - timedelta(days=2), oggi).values())

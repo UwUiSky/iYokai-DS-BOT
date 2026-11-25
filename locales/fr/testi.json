@@ -4492,5 +4492,7 @@
   "sicurezza_modulo_cambiato": "Sécurité de **{server}** : le module `{modulo}` a été {stato} par {utente}. Si tu ne t'y attendais pas, vérifie les permissions de ton équipe.",
   "mar_solo_proprietario": "Seul le propriétaire du serveur peut lier un bot à son nom.",
   "mar_avviso_collegato": "{utente} a lié un bot à son nom ({nome}) à ce serveur.",
-  "mar_avviso_rimosso": "{utente} a délié le bot à son nom de ce serveur."
+  "mar_avviso_rimosso": "{utente} a délié le bot à son nom de ce serveur.",
+  "owner_2fa_non_configurato": "Cette commande demande le second facteur, mais OWNER_TOTP_SECRET n'est pas défini dans le .env : cela ne se fait que depuis la console.",
+  "owner_2fa_sbagliato": "Code absent, faux ou déjà utilisé. Indique dans l'option `codice` les 6 chiffres de ton application d'authentification."
 }

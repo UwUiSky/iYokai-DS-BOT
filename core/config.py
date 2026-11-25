@@ -387,6 +387,9 @@ class Config:
     # Spento se non c'è ENABLE_HOT_PATCH=1. `HOT_PATCH_REPO` è "proprietario/repository"; il token serve solo se il
     # repository è privato (permesso di sola lettura sul contenuto).
     ENABLE_HOT_PATCH: bool = field(default=False)
+    # Segreto TOTP (base32) del secondo fattore di eval, shell, cog load e aggiornamento a caldo
+    # (core/secondo_fattore.py). Vuoto = quei comandi si rifiutano: si fanno solo da console.
+    OWNER_TOTP_SECRET: str = field(default="", repr=False)
     HOT_PATCH_REPO: str = field(default="UwUiSky/iYokai-DS-BOT")
     HOT_PATCH_GITHUB_TOKEN: str = field(default="", repr=False)
 
@@ -541,6 +544,7 @@ def _load_config() -> Config:
         SUPPORT_CHANNEL_ID=_optional_int("SUPPORT_CHANNEL_ID", 0),
         RADIO_STREAM_URL=_optional("RADIO_STREAM_URL", ""),
         ENABLE_HOT_PATCH=_optional_bool("ENABLE_HOT_PATCH", False),
+        OWNER_TOTP_SECRET=_optional("OWNER_TOTP_SECRET", ""),
         HOT_PATCH_REPO=_optional("HOT_PATCH_REPO", "UwUiSky/iYokai-DS-BOT"),
         HOT_PATCH_GITHUB_TOKEN=_optional("HOT_PATCH_GITHUB_TOKEN", ""),
         PREMIUM_ALPHA_UNLOCK_ALL=_optional_bool("PREMIUM_ALPHA_UNLOCK_ALL", in_sviluppo),

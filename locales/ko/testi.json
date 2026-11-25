@@ -4492,5 +4492,7 @@
   "sicurezza_modulo_cambiato": "**{server}** 보안: `{modulo}` 모듈이 {utente}님에 의해 {stato} 상태가 됐어요. 예상하지 못한 일이라면 스태프 권한을 확인하세요.",
   "mar_solo_proprietario": "자체 브랜드 봇은 서버 소유자만 연결할 수 있어요.",
   "mar_avviso_collegato": "{utente}님이 이 서버에 자체 브랜드 봇({nome})을 연결했어요.",
-  "mar_avviso_rimosso": "{utente}님이 이 서버에서 자체 브랜드 봇 연결을 해제했어요."
+  "mar_avviso_rimosso": "{utente}님이 이 서버에서 자체 브랜드 봇 연결을 해제했어요.",
+  "owner_2fa_non_configurato": "이 명령에는 2차 인증이 필요하지만 .env에 OWNER_TOTP_SECRET이 설정되어 있지 않아요. 콘솔에서만 할 수 있어요.",
+  "owner_2fa_sbagliato": "코드가 없거나 틀렸거나 이미 사용됐어요. `codice` 옵션에 인증 앱의 6자리 숫자를 입력하세요."
 }

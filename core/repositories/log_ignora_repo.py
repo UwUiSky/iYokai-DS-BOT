@@ -31,7 +31,8 @@ class LogIgnoraRepository:
 
     async def aggiungi(self, guild_id: int, genere: str, valore: str, massimo: int) -> bool:
         """False se il server ha già `massimo` voci (la voce già presente conta come fatta)."""
-        assert genere in GENERI_IGNORA
+        if genere not in GENERI_IGNORA:
+            raise ValueError(f"genere non ammesso: {genere}")
         async with self._pool.acquire() as conn:
             async with conn.transaction():
                 # Serializza gli inserimenti dello stesso server: il tetto vale anche in parallelo.

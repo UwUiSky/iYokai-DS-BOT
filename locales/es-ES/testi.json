@@ -4492,5 +4492,7 @@
   "sicurezza_modulo_cambiato": "Seguridad de **{server}**: el módulo `{modulo}` fue {stato} por {utente}. Si no lo esperabas, revisa los permisos de tu equipo.",
   "mar_solo_proprietario": "Solo el propietario del servidor puede vincular un bot con marca propia.",
   "mar_avviso_collegato": "{utente} ha vinculado un bot con marca propia ({nome}) a este servidor.",
-  "mar_avviso_rimosso": "{utente} ha desvinculado el bot con marca propia de este servidor."
+  "mar_avviso_rimosso": "{utente} ha desvinculado el bot con marca propia de este servidor.",
+  "owner_2fa_non_configurato": "Este comando necesita el segundo factor, pero OWNER_TOTP_SECRET no está definido en el .env: solo se puede hacer desde la consola.",
+  "owner_2fa_sbagliato": "Falta el código, es incorrecto o ya se usó. Escribe en la opción `codice` los 6 dígitos de tu app de autenticación."
 }

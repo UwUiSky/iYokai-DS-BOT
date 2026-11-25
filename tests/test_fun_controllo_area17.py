@@ -129,7 +129,7 @@ def test_fun_067_068_069_070_073_la_scheda_sul_web_ha_i_servizi_del_catalogo():
     assert {"magic", "hearthstone"} <= scelte  # FUN-070: carte di Hearthstone e di Magic
     d = sl.debolezze(["fire"])  # FUN-069: tabella dei tipi nel codice
     assert 2.0 in d and "water" in d[2.0] and 0.5 in d and "fire" in d[0.5]
-    assert "FUN-" not in inspect.getsource(SchedeGiochiCog) or True
+    assert "FUN-" not in inspect.getsource(SchedeGiochiCog)
 
 
 def test_fun_074_075_077_suoni_del_server_con_completamento():

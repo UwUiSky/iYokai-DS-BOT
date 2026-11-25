@@ -13,10 +13,21 @@ di discord.py).
 
 import discord
 import pytest
+from unittest.mock import AsyncMock
 
 from cogs.utility.owner_premium import OwnerPremiumCog
 from core.config import config
 from core.database import Database
+
+
+@pytest.fixture(autouse=True)
+def _secondo_fattore_concesso(monkeypatch):
+    """Il secondo fattore (TOTP, blocco A voce 12) ha i suoi test in test_secondo_fattore.py: qui si prova il resto."""
+    import cogs.utility.owner_premium as _owner
+
+    monkeypatch.setattr(_owner, "_richiedi_secondo_fattore", AsyncMock(return_value=True))
+
+
 
 _OWNER_ID = config.OWNER_ID  # valore reale già impostato dall'ambiente di test (conftest.py)
 

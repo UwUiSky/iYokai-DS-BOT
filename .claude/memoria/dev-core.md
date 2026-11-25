@@ -46,7 +46,8 @@ Scheda: /home/user/consiglio/schede/A_sicurezza.md. DB di prova iyokai_wsicurezz
 - FATTA voce 9 (SSRF Lavalink, D140): `link_diretto_ammesso` + `HOST_LINK_DIRETTI`, anche per brani `http` di playlist importate.
 - FATTA voce 10: `ip_del_client` unica (voto, Patreon, webhook custom), default proxy `127.0.0.1,::1`, `nessuno` + bind locale = il bot non parte. Test `test_ip_client_unico`.
 - FATTA voce 11 (D141): avviso VPN con solo il numero; tolta `verify_condividi_nome`.
-- PROSSIMO: voce 12 (assert -> ValueError ticket_repo.py:479; togli `or True` nei 5 test; secondo fattore TOTP per eval/shell/cog load/hot patch), poi 13 (cricchetti).
+- FATTE voci 12 e 13: 7 `assert` di produzione -> ValueError, 5 `or True` tolti (i test passano), secondo fattore TOTP (`core/secondo_fattore.py`, `OWNER_TOTP_SECRET`, opzione `codice` di eval/shell/load/reload-hotpatch), cricchetti `test_cricchetti_sicurezza` (assert, or True) e `test_web_panel_tabella_rotte`.
+- BLOCCO A FINITO: resta il riepilogo all'orchestratore. Smoke da fare dopo il merge: albero comandi, migrazioni 0980-0983.
 - Appunti: testi del pannello (ESITI) e `_assistente.py` restano in italiano nel codice (nessuna i18n del pannello); script chiavi lingue: scratchpad `chiavi.py`.
 
 ## Aperto

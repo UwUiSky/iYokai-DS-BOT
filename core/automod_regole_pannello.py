@@ -65,7 +65,8 @@ class ModaleCampi(BaseModal):
 
     def __init__(self, titolo: str, campi: list[discord.ui.TextInput], su_invio):
         super().__init__(title=titolo[:45], timeout=DURATA_PANNELLO_S)
-        assert len(campi) <= 5
+        if len(campi) > 5:
+            raise ValueError("una finestra di Discord ha al massimo 5 campi di testo")
         self._campi = campi
         self._su_invio = su_invio
         for c in campi:

@@ -4492,5 +4492,7 @@
   "sicurezza_modulo_cambiato": "Sicherheit von **{server}**: Das Modul `{modulo}` wurde von {utente} {stato}. Wenn du das nicht erwartet hast, prüfe die Berechtigungen deines Teams.",
   "mar_solo_proprietario": "Den Bot mit eigenem Namen kann nur der Serverbesitzer verbinden.",
   "mar_avviso_collegato": "{utente} hat einen Bot mit eigenem Namen ({nome}) mit diesem Server verbunden.",
-  "mar_avviso_rimosso": "{utente} hat den Bot mit eigenem Namen von diesem Server getrennt."
+  "mar_avviso_rimosso": "{utente} hat den Bot mit eigenem Namen von diesem Server getrennt.",
+  "owner_2fa_non_configurato": "Dieser Befehl braucht den zweiten Faktor, aber OWNER_TOTP_SECRET ist in der .env nicht gesetzt: Er geht nur über die Konsole.",
+  "owner_2fa_sbagliato": "Code fehlt, ist falsch oder wurde schon benutzt. Gib in der Option `codice` die 6 Ziffern deiner Authenticator-App an."
 }

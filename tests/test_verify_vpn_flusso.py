@@ -149,7 +149,7 @@ async def test_intestazioni_di_proxy_e_fuso_arrivano_dalla_richiesta(monkeypatch
     ok, _ = await _verifica(amb, 21, IP_PULITO, fuso="Europe/Rome")
     assert ok
     ok, _ = await _verifica(amb, 22, IP_PULITO, fuso="Europe/Rome", segnali_intestazioni=(logica.METODO_VIA,))
-    assert not ok and (await amb.repo.leggi(GUILD, 22))["metodo"] == "via,fuso" or True
+    assert not ok
     assert set((await amb.repo.leggi(GUILD, 22))["metodo"].split(",")) == {"via", "fuso"}
 
 

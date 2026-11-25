@@ -4492,5 +4492,7 @@
   "sicurezza_modulo_cambiato": "Security of **{server}**: the `{modulo}` module was {stato} by {utente}. If you did not expect this, check your staff's permissions.",
   "mar_solo_proprietario": "Only the server owner can link a branded bot.",
   "mar_avviso_collegato": "{utente} linked a branded bot ({nome}) to this server.",
-  "mar_avviso_rimosso": "{utente} unlinked the branded bot from this server."
+  "mar_avviso_rimosso": "{utente} unlinked the branded bot from this server.",
+  "owner_2fa_non_configurato": "This command needs the second factor, but OWNER_TOTP_SECRET is not set in .env: it can only be done from the console.",
+  "owner_2fa_sbagliato": "The code is missing, wrong or already used. Put the 6 digits from your authenticator app in the `codice` option."
 }

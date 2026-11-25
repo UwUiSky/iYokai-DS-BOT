@@ -476,7 +476,8 @@ class TicketRepository:
 
     async def _segna_una_volta(self, channel_id: int, colonna: str, valore_sql: str = "now()", *args) -> bool:
         """UPDATE ... SET colonna = valore WHERE colonna IS NULL: True solo alla prima volta (due eventi insieme: uno solo vince)."""
-        assert colonna in {"utente_scritto_at", "sollecito_at", "escalato_at", "standard_reply_id"}
+        if colonna not in {"utente_scritto_at", "sollecito_at", "escalato_at", "standard_reply_id"}:  # nomi solo da questo elenco fisso
+            raise ValueError(f"colonna non ammessa: {colonna}")
         esito = await self._pool.execute(
             f"UPDATE tickets SET {colonna} = {valore_sql} "
             f"WHERE channel_id = $1 AND status = 'open' AND {colonna} IS NULL",

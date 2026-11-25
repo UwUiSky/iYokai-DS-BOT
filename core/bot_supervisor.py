@@ -52,7 +52,8 @@ async def esegui_bot_isolati(voci: list[VoceBot], notifica=None) -> None:
     il bot critico, e allora ferma tutti gli altri.
     """
     critici = [v for v in voci if v.critico]
-    assert len(critici) == 1, "serve esattamente un bot critico"
+    if len(critici) != 1:
+        raise ValueError("serve esattamente un bot critico")
 
     task_critico = None
     altri = []
