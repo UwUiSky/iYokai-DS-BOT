@@ -24,8 +24,6 @@ def test_ogni_lingua_ha_la_sua_cartella_con_i_due_file():
     for lingua in i18n.LINGUE:
         assert isinstance(json.loads(i18n.percorso_testi(lingua).read_text(encoding="utf-8")), dict), lingua
         assert isinstance(json.loads(i18n.percorso_comandi(lingua).read_text(encoding="utf-8")), dict), lingua
-    for lingua in NUOVE:
-        assert json.loads(i18n.percorso_testi(lingua).read_text(encoding="utf-8")) == {}
 
 
 def test_ripiego_lingua_en_it(monkeypatch):
@@ -39,9 +37,23 @@ def test_ripiego_lingua_en_it(monkeypatch):
     assert i18n.t("zzz", "fr") == "zzz"
 
 
-def test_le_lingue_vuote_non_sono_disponibili_e_en_si_salva_come_en():
-    assert i18n.lingue_disponibili() == ("it", "en")
-    assert i18n.lingua_valida("en") and not i18n.lingua_valida("fr")
+def test_le_lingue_vuote_non_sono_disponibili_e_en_si_salva_come_en(monkeypatch):
+    catalogo = {l: {"a": "x"} for l in i18n.LINGUE}
+    catalogo["fr"] = {}  # una lingua ancora da tradurre
+    monkeypatch.setattr(i18n, "carica_catalogo", lambda forza=False: catalogo)
+    assert "fr" not in i18n.lingue_disponibili() and "en" in i18n.lingue_disponibili()
+    assert i18n.lingua_valida("en") and not i18n.lingua_valida("fr") and not i18n.lingua_valida("en-US")
+
+
+async def test_ogni_lingua_disponibile_si_salva_nel_database(clean_db):
+    """Una lingua che il bot offre deve passare il vincolo della tabella (migrazione 0973)."""
+    from core.repositories.user_language_repo import UserLanguageRepository
+
+    repo = UserLanguageRepository(pool_provider=lambda: clean_db)
+    tutte = tuple(i18n._SALVATI.get(l, l) for l in i18n.LINGUE)
+    for numero, lingua in enumerate(tutte):
+        await repo.set(990000 + numero, lingua)
+        assert await repo.get(990000 + numero) == lingua
 
 
 def test_un_testo_vuoto_vale_da_tradurre(tmp_path, monkeypatch):

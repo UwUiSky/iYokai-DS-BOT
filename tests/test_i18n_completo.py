@@ -40,11 +40,14 @@ def test_il_testo_inglese_non_e_una_copia_dell_italiano():
     assert uguali == []
 
 
-def test_t_riempie_i_segnaposto_e_non_solleva_mai():
+def test_t_riempie_i_segnaposto_e_non_solleva_mai(monkeypatch):
     assert i18n.t("err_attesa", "en", secondi=4) == "Wait 4 seconds before running this command again."
     assert "{secondi}" in i18n.t("err_attesa", "it")  # segnaposto mancante: resta com'è
     assert i18n.t("chiave_che_non_esiste", "en") == "chiave_che_non_esiste"
-    assert i18n.t("operation_cancelled", "fr") == _file("en")["operation_cancelled"]  # fr vuoto: ripiego en-US
+    catalogo = dict(i18n.carica_catalogo())
+    catalogo["fr"] = {}  # una lingua ancora da tradurre
+    monkeypatch.setattr(i18n, "carica_catalogo", lambda forza=False: catalogo)
+    assert i18n.t("operation_cancelled", "fr") == _file("en")["operation_cancelled"]  # vuota: ripiego en-US
 
 
 def test_locale_di_discord_a_lingua_del_bot():
@@ -73,8 +76,10 @@ async def test_la_lingua_personale_batte_quella_del_server_solo_se_privata(clean
     assert await i18n.lingua_risposta(None, 5) == "it"         # DM: l'utente
     assert await i18n.imposta_lingua_utente(5, "server") is None
     assert await i18n.lingua_risposta(900, 5) == "en"
+    assert await i18n.imposta_lingua_utente(5, "fr") == "fr"   # lingua tradotta: si salva (0973)
+    assert await i18n.lingua_risposta(900, 5) == "fr"
     with pytest.raises(ValueError):
-        await i18n.imposta_lingua_utente(5, "fr")
+        await i18n.imposta_lingua_utente(5, "pt-BR")           # lingua che il bot non ha
 
 
 @pytest.mark.asyncio
