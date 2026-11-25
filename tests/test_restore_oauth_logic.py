@@ -1,13 +1,16 @@
 """
 tests/test_restore_oauth_logic.py
 =====================================
-Test di core/restore_oauth_logic.py — logica pura, nessuna rete.
+Test di core/restore_oauth_logic.py — nessuna rete; i nonce sono nel database vero.
 SEC-3/SEC-19/BUG-21: state firmato, legato al destinatario, valido 7
 giorni, con nonce prenotato durante la callback e consumato solo a
 restore riuscito.
 """
 
+import time
 from urllib.parse import parse_qs, urlparse
+
+import pytest
 
 from core.oauth_crypto import generate_key
 from core.restore_oauth_logic import (
@@ -96,32 +99,70 @@ def _state_verificato() -> RestoreState:
     return decode_and_verify_state(encode_state(stato, CHIAVE), CHIAVE)
 
 
-def test_nonce_prenotato_non_si_puo_prenotare_una_seconda_volta():
+@pytest.fixture
+def nonce_db(monkeypatch, clean_db):
+    """I nonce stanno nel database vero (tabella restore_nonce), non in memoria."""
+    import core.database as database_module
+
+    monkeypatch.setattr(database_module.db, "_pool", clean_db)
+    return clean_db
+
+
+async def test_nonce_prenotato_non_si_puo_prenotare_una_seconda_volta(nonce_db):
     """Due callback in parallelo con lo stesso link: passa solo la prima."""
     stato = _state_verificato()
 
-    assert riserva_nonce(stato) is True
-    assert riserva_nonce(stato) is False
+    assert await riserva_nonce(stato) is True
+    assert await riserva_nonce(stato) is False
 
 
-def test_nonce_rilasciato_senza_consumo_resta_utilizzabile():
+async def test_nonce_rilasciato_senza_consumo_resta_utilizzabile(nonce_db):
     """Un errore temporaneo non brucia il link."""
     stato = _state_verificato()
 
-    assert riserva_nonce(stato) is True
-    rilascia_nonce(stato, consumato=False)
+    assert await riserva_nonce(stato) is True
+    await rilascia_nonce(stato, consumato=False)
 
-    assert riserva_nonce(stato) is True
+    assert await riserva_nonce(stato) is True
 
 
-def test_nonce_consumato_non_e_piu_utilizzabile():
+async def test_nonce_consumato_non_e_piu_utilizzabile(nonce_db):
     """Dopo un restore riuscito lo stesso link non funziona più."""
     stato = _state_verificato()
 
-    assert riserva_nonce(stato) is True
-    rilascia_nonce(stato, consumato=True)
+    assert await riserva_nonce(stato) is True
+    await rilascia_nonce(stato, consumato=True)
 
-    assert riserva_nonce(stato) is False
+    assert await riserva_nonce(stato) is False
+
+
+async def test_il_link_usato_resta_bloccato_dopo_un_riavvio(nonce_db):
+    """Il nonce è una riga nel database: una nuova «vita» del processo lo trova già usato."""
+    stato = _state_verificato()
+    assert await riserva_nonce(stato) is True
+    await rilascia_nonce(stato, consumato=True)
+    assert await nonce_db.fetchval("SELECT stato FROM restore_nonce WHERE nonce = $1", stato.nonce) == "usato"
+    # niente copie in memoria da cui dipendere: il modulo non ha più i vecchi insiemi
+    import core.restore_oauth_logic as modulo
+
+    assert not hasattr(modulo, "_nonces_usati") and not hasattr(modulo, "_nonces_in_corso")
+    assert await riserva_nonce(stato) is False
+
+
+async def test_un_link_in_corso_da_troppo_tempo_si_riprende(nonce_db):
+    """Il processo è morto a metà: dopo 5 minuti il link torna prenotabile; prima no."""
+    stato = _state_verificato()
+    assert await riserva_nonce(stato) is True
+    assert await riserva_nonce(stato, now=time.time() + 60) is False
+    assert await riserva_nonce(stato, now=time.time() + 6 * 60) is True
+
+
+async def test_due_prenotazioni_insieme_ne_passa_una_sola(nonce_db):
+    import asyncio
+
+    stato = _state_verificato()
+    esiti = await asyncio.gather(*[riserva_nonce(stato) for _ in range(8)])
+    assert esiti.count(True) == 1
 
 
 def test_encode_state_senza_chiave_solleva_errore_di_configurazione():

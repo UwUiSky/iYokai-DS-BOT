@@ -23,6 +23,7 @@ import discord
 from cogs.ai._comune import chiedi, taglia
 from core import ai_ricerca_logic as logica
 from core import command_search_logic as ricerca
+from core.config_schema import ImpostazioneNonValida
 from core.ai_servizio import RichiestaAI
 from core.ai_testi_logic import riconosci_lingua
 from core.command_access import Livello, puo_usare
@@ -153,7 +154,11 @@ class _AttivaModulo(discord.ui.Button):
         if interaction.guild_id is None or not await puo_usare(interaction, Livello.ADMIN):
             await interaction.response.send_message("Solo chi amministra il server può accendere un modulo.", ephemeral=True)
             return
-        await imposta_modulo(interaction.client, interaction.guild_id, self.modulo, True, interaction.user.id)
+        try:
+            await imposta_modulo(interaction.client, interaction.guild_id, self.modulo, True, interaction.user.id)
+        except ImpostazioneNonValida:  # modulo di sicurezza senza il livello SECURITY
+            await interaction.response.send_message("Per i moduli di sicurezza serve il permesso «Amministratore».", ephemeral=True)
+            return
         self.disabled = True
         await interaction.response.edit_message(view=self.view)
         await interaction.followup.send(f"Modulo «{self.modulo}» acceso.", ephemeral=True)
@@ -171,8 +176,11 @@ class _ConfiguraTutto(discord.ui.Button):
             return
         acceso = []
         for modulo in self.moduli:
-            if await imposta_modulo(interaction.client, interaction.guild_id, modulo, True, interaction.user.id):
-                acceso.append(modulo)
+            try:
+                if await imposta_modulo(interaction.client, interaction.guild_id, modulo, True, interaction.user.id):
+                    acceso.append(modulo)
+            except ImpostazioneNonValida:
+                continue  # modulo di sicurezza senza il livello SECURITY
         self.disabled = True
         await interaction.response.edit_message(view=self.view)
         intro = f"Moduli accesi: {', '.join(acceso)}.\n" if acceso else "I moduli necessari sono già accesi.\n"

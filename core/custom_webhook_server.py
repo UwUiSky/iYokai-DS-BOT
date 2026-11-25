@@ -33,7 +33,9 @@ from datetime import datetime, timezone
 import discord
 from aiohttp import web
 
+from core.config import config
 from core.redacted_access_log import RedactedAccessLogger
+from core.web_panel_logic import ip_del_client, proxy_fidati
 from core.webhook_rate_tracker import (
     WEBHOOK_RATE_LIMIT_MAX_REQUESTS,
     WEBHOOK_RATE_LIMIT_WINDOW_SECONDS,
@@ -43,24 +45,16 @@ from core.webhook_rate_tracker import (
 
 logger = logging.getLogger("iyokai.custom_webhook_server")
 
-_INDIRIZZI_LOCALI = ("127.0.0.1", "::1")
-
-
 def _ip_del_client(request: web.Request) -> str | None:
     """
-    L'IP da usare per il limite sui token inesistenti. Con il reverse
-    proxy sulla stessa macchina (installazione prevista: WEB_BIND_HOST
-    = 127.0.0.1) la connessione arriva sempre da 127.0.0.1, quindi si
-    prende l'ULTIMO indirizzo di X-Forwarded-For: è quello aggiunto dal
-    proxy, i precedenti li può scrivere il client. Se il proxy non
-    manda l'header restituisce None (nessun limite per IP): un limite
-    unico condiviso da tutti i client permetterebbe a uno solo di
-    bloccare gli altri.
+    L'IP da usare per il limite sui token inesistenti: la regola è una sola per tutti i server web
+    (`ip_del_client`, core/web_panel_logic.py). Se la richiesta arriva da un proxy fidato che non manda l'header
+    restituisce None (nessun limite per IP): un limite unico condiviso da tutti i client permetterebbe a uno solo
+    di bloccare gli altri.
     """
-    if request.remote not in _INDIRIZZI_LOCALI:
-        return request.remote
-    inoltrati = request.headers.get("X-Forwarded-For", "")
-    return inoltrati.rsplit(",", 1)[-1].strip() or None
+    if request.remote in proxy_fidati(config.WEB_PANEL_TRUSTED_PROXY) and not request.headers.get("X-Forwarded-For", "").strip():
+        return None
+    return ip_del_client(request)
 
 
 def _troppe_richieste(messaggio: str) -> web.Response:

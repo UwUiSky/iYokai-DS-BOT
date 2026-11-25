@@ -1281,7 +1281,7 @@ autore dei suggerimenti anonimi visibile solo agli admin, con registro; script d
 - **Lingua di partenza (CFG-029):** un server **nuovo** parte dalla lingua di Discord (italiano → `it`, inglese → `en`, ogni altra lingua → `en`, perché non ha ancora testi suoi). I server già presenti non cambiano.
 - **Posti premium di una persona (CFG-034, 035):** l'owner li concede con `/owner premium grant utente: posti:` (1-10, mensile, annuale o permanente; 0 li toglie); la persona li mette con `/admin-bot premium assegna` e li toglie con `togli-posto`; `stato` mostra chi ha messo il posto. Un server ha un solo posto; al massimo un cambio all'ora per persona; chi toglie può togliere solo un suo posto. Il controllo sta in `guild_has_premium_access`, mai dal lato utente. Tabelle 0720, nel registro dei dati come contabili (restano se la persona chiede la cancellazione).
 - **Esportazione e importazione (CFG-043):** l'esportazione aggiunge `riferimenti` (nome di ogni canale e ruolo citato). L'importazione tiene un ID solo se esiste nel server di arrivo, altrimenti cerca **un solo** canale o ruolo con lo stesso nome e tipo, altrimenti toglie la voce (e la conta nel messaggio). I controlli sui ruoli del bot e sul ruolo admin girano sul valore già rimappato. Le tabelle dei moduli (comandi personalizzati, pannelli, ecc.) **non** sono nel file: per quelle c'è il backup del server.
-- **Non fatte per scelta:** CFG-036 (Patreon: serve un account e una chiave dell'owner; resta la concessione a mano e i codici CFG-038), CFG-039 (premium col voto: serve la chiave di un sito di elenchi; mai legato all'NSFW), CFG-040 e 041 (piani, tetti e prezzi: il bot non conosce i prezzi, è una scelta commerciale dell'owner). CFG-015, 016, 017, 044 (alias, canali scorciatoia, prefisso, duplica) toccano i comandi personalizzati e i pannelli di altre aree. CFG-001, 002, 003, 006, 027 sono pagine del pannello web (`dev-web`).
+- **Non fatte per scelta:** CFG-036 (Patreon: **superata da D124 del 23/11/2026, VINCOLANTE: si prepara tutto, spento finché l'owner non mette le chiavi; fatta in D135 e resa sicura in D139**; qui restava solo la concessione a mano e i codici CFG-038), CFG-039 (premium col voto: serve la chiave di un sito di elenchi; mai legato all'NSFW), CFG-040 e 041 (piani, tetti e prezzi: il bot non conosce i prezzi, è una scelta commerciale dell'owner). CFG-015, 016, 017, 044 (alias, canali scorciatoia, prefisso, duplica) toccano i comandi personalizzati e i pannelli di altre aree. CFG-001, 002, 003, 006, 027 sono pagine del pannello web (`dev-web`).
 
 ## D98 — Benvenuto e ruoli (#123), giro r2ben (20/11/2026, opzione prudente, da confermare dall'owner)
 
@@ -1820,3 +1820,34 @@ Se il servizio non risponde, il lavoro si rifiuta con un messaggio chiaro e una 
 avatar, sfondi dei benvenuti e level-up non si disegnano con un ripiego, si saltano. Il servizio lavora
 al massimo su 3 file insieme, con 2 GB di memoria. Il cancello dei download (4 insieme, 48 MiB in volo)
 vale per i log dei messaggi; per ticket, ModMail e backup è il prossimo passo.
+
+## D140 — Ban globale con scala di affidabilità, spento di base, una rete sola (blocco A, voce 1), 25/11/2026, opzione consigliata, da confermare dall'owner
+
+Cambia il ban globale (SPEC §7.3) e lo unisce alla rete di protezione (D16, VER-025).
+- **Spento di base.** Un server senza riga in `global_ban_direction` non invia e non riceve. `/admin-sicurezza globalban enable` parte con «invia» e «ricevi» entrambi a falso: lo staff sceglie.
+- **Chi manda deve essere affidabile.** Il punteggio (0-100, `core/global_ban_logic.py`) conta: membri (almeno 50), età del server e del bot (bot da almeno 7 giorni), ritmo dei ban (ora e giorno), motivo (vuoto o generico pesa meno), prova (un caso collegato) e conferme di altri server. Sotto 55 il ban non parte. Il server bloccato dal proprietario del bot non parte mai.
+- **Raid e nuke.** Se l'anti-raid o l'anti-nuke del server sorgente sono scattati negli ultimi 15 minuti, nessun ban si propaga.
+- **Chi riceve.** Di base il ban arriva come PROPOSTA con i tasti Banna / Ignora, con il punteggio e il motivo (stesse proposte e stessi tasti della rete dei ban, `rete_ban_proposte`, categoria `ban_globale`). Ban automatico solo se lo staff di quel server ha scelto il modo automatico (`/admin-sicurezza rete`) E il punteggio è almeno 85. Tetto di 5 proposte al giorno per server che riceve.
+- **Coda.** Al massimo 2 propagazioni insieme, pausa tra un server e l'altro, al massimo 100 server per ban: i ban locali non passano di qui e hanno sempre la precedenza.
+- **Registro.** Ogni tentativo (anche rifiutato) lascia una riga in `global_ban_episodi` (migrazione 0980), tenuta 90 giorni.
+
+## D141 — Patreon: collegamento legato alla sessione, conferma allo spostamento, niente replay (blocco A, voce 4), 25/11/2026, opzione consigliata, da confermare dall'owner
+
+Chiude la contraddizione tra D96 (CFG-036 «non fatta») e D124 (CFG-036 «si prepara tutto, spento senza chiavi»): vale D124, D96 è annotata. Da chiudere **prima** di mettere le chiavi di Patreon.
+- **`state` legato alla sessione.** Lo stato OAuth porta l'impronta della sessione del pannello che l'ha creato; il ritorno da Patreon (`/patreon/callback`) legge lo stesso cookie del pannello e collega solo se coincide. Un link d'autorizzazione scritto da un altro e aperto da una vittima non collega niente (e lo stato si brucia).
+- **Conferma prima di spostare.** Se l'account Patreon è già di un'altra persona, il ritorno non lo sposta: salva i token cifrati in attesa (10 minuti, tabella `patreon_spostamenti`) e rimanda a `/premium?patreon=conferma`, dove la persona sceglie «Sì, sposta qui» o «No, annulla» (con CSRF). Solo con il sì l'account passa a lei e all'altra persona si toglie la concessione.
+- **Niente replay del webhook.** Un evento con la data dell'ultimo addebito più vecchia di quella già salvata si ignora; le impronte degli eventi visti si tengono 400 giorni (erano 30), così un evento vecchio rimandato non conta di nuovo.
+
+## D142 — Link diretti alla musica solo da host in elenco (blocco A, voce 9), 25/11/2026, opzione consigliata, da confermare dall'owner
+
+Lavalink scarica i link diretti (`sources.http`) da dentro la rete del server e segue i redirect: il controllo del bot sull'indirizzo scritto dall'utente (`url_e_sicuro`) non basta (redirect, DNS che cambia risposta).
+- **Cosa cambia per chi usa `/play`.** Un link diretto a un file audio passa solo da `cdn.discordapp.com`, `media.discordapp.net`, `upload.wikimedia.org`, `archive.org` e i suoi sotto-domini (https, niente porta né userinfo). I link delle fonti note (YouTube, SoundCloud, Bandcamp, Twitch, Vimeo, Spotify, Apple Music, Deezer) non cambiano. Gli altri host si rifiutano (nessun risultato). L'elenco è `HOST_LINK_DIRETTI` in `core/music_sources.py`.
+- **Playlist importate.** Un brano `http` di una playlist salvata o importata si suona solo se l'indirizzo è nello stesso elenco.
+- `url_e_sicuro` resta come seconda difesa; sull'host di Lavalink restano i blocchi in uscita delle reti private (README, «Rete»).
+
+## D143 — Storico VPN tra server: solo il numero (blocco A, voce 11), 25/11/2026, opzione consigliata, da confermare dall'owner
+
+Il «Lascia passare» di un server conta negli altri solo con 3 approvazioni di server, founder e admin diversi (D67): resta. Ma a un server si diceva anche quando, con quale metodo e (con il consenso del server dell'altra parte) in quale server la persona era stata lasciata passare: dati personali tra server senza base scritta né informativa.
+- **Scelta (opzione consigliata).** L'avviso agli admin dice **solo quanti server** hanno già accettato la persona. Mai nomi, date o metodi degli altri server. L'impostazione `verify_condividi_nome` (D65) si toglie: non ha più effetto.
+- **Resta.** Il proprietario del bot vede i dettagli (`/owner system storico-vpn`, pagina del proprietario del pannello) per la sicurezza della rete; le righe si tengono 180 giorni e `/utility privacy cancella` le toglie.
+- **Non si fa** l'altra opzione (base giuridica scritta con opt-out da `/privacy`): più lavoro per un dettaglio che gli admin non usano per decidere.

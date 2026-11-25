@@ -8,6 +8,7 @@ Ban globale, catalogo #117 e difetti trovati leggendo:
 - il registro delle propagazioni non conserva gli ID per sempre.
 """
 
+from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import discord
@@ -15,6 +16,8 @@ import pytest
 
 import cogs.security.global_ban as modulo
 from core.repositories.global_ban_repo import global_ban_repo
+from core.repositories.moderation_repo import moderation_repo
+from core.repositories.rete_repo import rete_repo
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member
 
 USER = 900000900
@@ -25,8 +28,17 @@ class _Ban:
         self.reason = reason
 
 
+MOTIVO = "Ha scritto nel canale trappola e mandato link"
+
+
 def _server(guild_id: int, ban_reason: str | None = "Ban globale — x") -> MagicMock:
+    """Un server grande e vecchio (punteggio alto), dove il bot può bannare."""
     s = fake_guild(guild_id=guild_id, name=f"S{guild_id}")
+    s.member_count = 600
+    s.created_at = discord.utils.utcnow() - timedelta(days=400)
+    s.me.joined_at = discord.utils.utcnow() - timedelta(days=90)
+    s.me.guild_permissions = discord.Permissions(ban_members=True)
+    s.owner = MagicMock(send=AsyncMock())  # l'avviso allo staff arriva al proprietario
     s.ban = AsyncMock()
     s.unban = AsyncMock()
     s.fetch_ban = AsyncMock(return_value=_Ban(ban_reason))
@@ -36,6 +48,8 @@ def _server(guild_id: int, ban_reason: str | None = "Ban globale — x") -> Magi
 @pytest.fixture
 def ambiente(clean_db, monkeypatch):
     monkeypatch.setattr(global_ban_repo, "_pool_provider", lambda: clean_db)
+    monkeypatch.setattr(rete_repo, "_pool_provider", lambda: clean_db)
+    monkeypatch.setattr(moderation_repo, "create_case", AsyncMock(return_value=1))
     attivi: set[int] = set()
     finto = MagicMock()
     finto.is_module_active_for_guild = AsyncMock(side_effect=lambda gid, _m: gid in attivi)
@@ -48,6 +62,13 @@ def ambiente(clean_db, monkeypatch):
     return attivi
 
 
+async def automatico(*ids):
+    """Lo staff di questi server ha scelto il ban automatico (serve punteggio alto: i server di prova lo hanno)."""
+    for gid in ids:
+        await rete_repo.imposta(gid, ban_modo="automatico")
+        await global_ban_repo.set_direction(gid, send=True, receive=True)  # la rete di base è spenta
+
+
 def _bot(*server):
     bot = MagicMock()
     bot.guilds = list(server)
@@ -58,26 +79,28 @@ def _bot(*server):
 async def test_chi_non_riceve_non_viene_bannato_e_chi_non_invia_non_propaga(ambiente):
     sorgente, riceve, non_riceve = _server(1), _server(2), _server(3)
     ambiente.update({1, 2, 3})
+    await automatico(1, 2, 3)
     await global_ban_repo.set_direction(3, send=True, receive=False)
-    propagati = await modulo.propagate_ban(_bot(sorgente, riceve, non_riceve), sorgente, USER, "x")
+    propagati = await modulo.propagate_ban(_bot(sorgente, riceve, non_riceve), sorgente, USER, MOTIVO, con_prova=True)
     assert propagati == [2]
     non_riceve.ban.assert_not_awaited()
 
     await global_ban_repo.set_direction(1, send=False, receive=True)
     riceve.ban.reset_mock()
-    assert await modulo.propagate_ban(_bot(sorgente, riceve, non_riceve), sorgente, USER, "x") == []
+    assert await modulo.propagate_ban(_bot(sorgente, riceve, non_riceve), sorgente, USER, MOTIVO, con_prova=True) == []
     riceve.ban.assert_not_awaited()
 
 
 async def test_solo_ricevere_e_permesso(ambiente):
     sorgente, riceve = _server(1), _server(2)
     ambiente.update({1, 2})
+    await automatico(1, 2)
     await global_ban_repo.set_direction(2, send=False, receive=True)
-    assert await modulo.propagate_ban(_bot(sorgente, riceve), sorgente, USER, "x") == [2]
+    assert await modulo.propagate_ban(_bot(sorgente, riceve), sorgente, USER, MOTIVO, con_prova=True) == [2]
     # ...e il server che riceve soltanto non propaga i propri ban.
     riceve.ban.reset_mock()
     sorgente.ban.reset_mock()
-    assert await modulo.propagate_ban(_bot(sorgente, riceve), riceve, USER, "x") == []
+    assert await modulo.propagate_ban(_bot(sorgente, riceve), riceve, USER, MOTIVO, con_prova=True) == []
     sorgente.ban.assert_not_awaited()
 
 
@@ -95,8 +118,8 @@ async def test_enable_salva_le_direzioni_e_rifiuta_di_spegnerle_tutte(ambiente):
     assert 7 in ambiente
 
 
-async def test_senza_riga_le_direzioni_sono_entrambe_attive(ambiente):
-    assert await global_ban_repo.get_direction(12345) == (True, True)
+async def test_senza_riga_le_direzioni_sono_spente(ambiente):
+    assert await global_ban_repo.get_direction(12345) == (False, False)
 
 
 async def test_revoca_toglie_il_ban_solo_dove_era_nostro(ambiente):
@@ -104,8 +127,9 @@ async def test_revoca_toglie_il_ban_solo_dove_era_nostro(ambiente):
     nostro = _server(2, "Ban globale — Spam trap")
     ripreso = _server(3, "Bannato a mano dallo staff")
     ambiente.update({1, 2, 3})
+    await automatico(1, 2, 3)
     bot = _bot(sorgente, nostro, ripreso)
-    assert await modulo.propagate_ban(bot, sorgente, USER, "x") == [2, 3]
+    assert await modulo.propagate_ban(bot, sorgente, USER, MOTIVO, con_prova=True) == [2, 3]
 
     assert await modulo.revoca_ban_propagati(bot, 1, USER) == 1
     nostro.unban.assert_awaited_once()
@@ -118,8 +142,9 @@ async def test_revoca_toglie_il_ban_solo_dove_era_nostro(ambiente):
 async def test_revoca_con_server_sparito_o_errore_non_si_ferma(ambiente):
     sorgente, rotto, buono = _server(1), _server(2, "Ban globale — x"), _server(3, "Ban globale — x")
     ambiente.update({1, 2, 3})
+    await automatico(1, 2, 3)
     bot = _bot(sorgente, rotto, buono)
-    await modulo.propagate_ban(bot, sorgente, USER, "x")
+    await modulo.propagate_ban(bot, sorgente, USER, MOTIVO, con_prova=True)
     rotto.unban.side_effect = discord.HTTPException(MagicMock(status=500), "boom")
     assert await modulo.revoca_ban_propagati(bot, 1, USER) == 1
     buono.unban.assert_awaited_once()
@@ -143,9 +168,10 @@ async def test_il_registro_toglie_le_voci_vecchie(ambiente, clean_db):
 async def test_controlla_utente_conta_i_server_senza_dirne_i_nomi(ambiente):
     sorgente_a, sorgente_b, riceve = _server(1), _server(2), _server(3)
     ambiente.update({1, 2, 3})
+    await automatico(1, 2, 3)
     bot = _bot(sorgente_a, sorgente_b, riceve)
-    await modulo.propagate_ban(bot, sorgente_a, USER, "x")
-    await modulo.propagate_ban(bot, sorgente_b, USER, "x")
+    await modulo.propagate_ban(bot, sorgente_a, USER, MOTIVO, con_prova=True)
+    await modulo.propagate_ban(bot, sorgente_b, USER, MOTIVO, con_prova=True)
 
     cog = modulo.GlobalBanCog(bot)
     interazione = fake_interaction(guild=fake_guild(guild_id=3))

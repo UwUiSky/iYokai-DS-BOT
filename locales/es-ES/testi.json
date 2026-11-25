@@ -1612,8 +1612,6 @@
   "verify_blocco_ticket": "Si crees que es un error, escríbeme un mensaje privado: abro un ticket con el equipo de {server} y adjunto el motivo.",
   "verify_vpn_storico_titolo": "Verificación: ya aceptado por otros servidores",
   "verify_vpn_storico_descrizione": "{utente} se ha verificado con VPN/proxy detectado ({metodo}), pero ya ha sido aceptado por {n} servidores a pesar de tener VPN/proxy detectado: puede usarla también para otras cosas. Aquí ha pasado.",
-  "verify_vpn_storico_riga": "• {data} · {metodo} · {esito}",
-  "verify_vpn_storico_esito": "dejado pasar",
   "amimg_avviso_canale": "{utente}, la imagen que has enviado parece sospechosa. Se ha avisado al equipo.",
   "amimg_azione_avvisato": "aviso en el canal",
   "amimg_azione_cancellato": "mensaje borrado",
@@ -4484,5 +4482,17 @@
   "crt_specie_6": "Oni",
   "crt_specie_7": "Karakasa",
   "crt_specie_8": "Bakeneko",
-  "err_sandbox_non_disponibile": "La comprobación segura de archivos no está disponible ahora mismo y la imagen no se ha procesado. Inténtalo de nuevo más tarde."
+  "err_sandbox_non_disponibile": "La comprobación segura de archivos no está disponible ahora mismo y la imagen no se ha procesado. Inténtalo de nuevo más tarde.",
+  "rete_cat_ban_globale": "baneo decidido por un servidor de la red",
+  "rete_ban_affidabilita_titolo": "Fiabilidad del servidor que informa",
+  "rete_ban_affidabilita_corpo": "Puntuación {punteggio}/100. Motivo del baneo: {motivo}",
+  "setup_guidato_ruolo_bot_negato": "Para elegir el rol de mod o de baneo del bot debes tener ya en Discord el permiso que ese rol daría («Aislar temporalmente a miembros» o «Banear miembros») o ser el propietario del servidor: no se ha guardado nada.",
+  "sicurezza_modulo_acceso": "activado",
+  "sicurezza_modulo_spento": "desactivado",
+  "sicurezza_modulo_cambiato": "Seguridad de **{server}**: el módulo `{modulo}` fue {stato} por {utente}. Si no lo esperabas, revisa los permisos de tu equipo.",
+  "mar_solo_proprietario": "Solo el propietario del servidor puede vincular un bot con marca propia.",
+  "mar_avviso_collegato": "{utente} ha vinculado un bot con marca propia ({nome}) a este servidor.",
+  "mar_avviso_rimosso": "{utente} ha desvinculado el bot con marca propia de este servidor.",
+  "owner_2fa_non_configurato": "Este comando necesita el segundo factor, pero OWNER_TOTP_SECRET no está definido en el .env: solo se puede hacer desde la consola.",
+  "owner_2fa_sbagliato": "Falta el código, es incorrecto o ya se usó. Escribe en la opción `codice` los 6 dígitos de tu app de autenticación."
 }

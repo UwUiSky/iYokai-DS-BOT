@@ -1612,8 +1612,6 @@
   "verify_blocco_ticket": "Si tu penses que c'est une erreur, écris-moi un message privé : j'ouvre un ticket avec l'équipe de {server} et j'y joins le motif.",
   "verify_vpn_storico_titolo": "Vérification : déjà acceptée par d'autres serveurs",
   "verify_vpn_storico_descrizione": "{utente} s'est vérifié avec un VPN/proxy détecté ({metodo}), mais a déjà été accepté par {n} serveurs malgré un VPN/proxy détecté : il peut aussi l'utiliser pour autre chose. Ici, il est passé.",
-  "verify_vpn_storico_riga": "• {data} · {metodo} · {esito}",
-  "verify_vpn_storico_esito": "laissé passer",
   "amimg_avviso_canale": "{utente}, l'image que tu as envoyée semble suspecte. L'équipe a été prévenue.",
   "amimg_azione_avvisato": "avis dans le salon",
   "amimg_azione_cancellato": "message supprimé",
@@ -4484,5 +4482,17 @@
   "crt_specie_6": "Oni",
   "crt_specie_7": "Karakasa",
   "crt_specie_8": "Bakeneko",
-  "err_sandbox_non_disponibile": "La vérification sécurisée des fichiers n'est pas disponible pour le moment, l'image n'a pas été traitée. Réessaie plus tard."
+  "err_sandbox_non_disponibile": "La vérification sécurisée des fichiers n'est pas disponible pour le moment, l'image n'a pas été traitée. Réessaie plus tard.",
+  "rete_cat_ban_globale": "bannissement décidé par un serveur du réseau",
+  "rete_ban_affidabilita_titolo": "Fiabilité du serveur signalant",
+  "rete_ban_affidabilita_corpo": "Score {punteggio}/100. Motif du bannissement : {motivo}",
+  "setup_guidato_ruolo_bot_negato": "Pour choisir le rôle mod ou ban du bot, tu dois déjà avoir sur Discord la permission que ce rôle donnerait («Exclure temporairement des membres» ou «Bannir des membres») ou être le propriétaire du serveur : rien n'a été enregistré.",
+  "sicurezza_modulo_acceso": "activé",
+  "sicurezza_modulo_spento": "désactivé",
+  "sicurezza_modulo_cambiato": "Sécurité de **{server}** : le module `{modulo}` a été {stato} par {utente}. Si tu ne t'y attendais pas, vérifie les permissions de ton équipe.",
+  "mar_solo_proprietario": "Seul le propriétaire du serveur peut lier un bot à son nom.",
+  "mar_avviso_collegato": "{utente} a lié un bot à son nom ({nome}) à ce serveur.",
+  "mar_avviso_rimosso": "{utente} a délié le bot à son nom de ce serveur.",
+  "owner_2fa_non_configurato": "Cette commande demande le second facteur, mais OWNER_TOTP_SECRET n'est pas défini dans le .env : cela ne se fait que depuis la console.",
+  "owner_2fa_sbagliato": "Code absent, faux ou déjà utilisé. Indique dans l'option `codice` les 6 chiffres de ton application d'authentification."
 }

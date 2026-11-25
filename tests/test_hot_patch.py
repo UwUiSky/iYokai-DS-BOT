@@ -17,6 +17,16 @@ from discord.ext import commands
 from core import hot_patch as hp
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member
 
+
+@pytest.fixture(autouse=True)
+def _secondo_fattore_concesso(monkeypatch):
+    """Il secondo fattore (TOTP, blocco A voce 12) ha i suoi test in test_secondo_fattore.py: qui si prova il resto."""
+    import cogs.utility.owner_premium as _owner
+
+    monkeypatch.setattr(_owner, "_richiedi_secondo_fattore", AsyncMock(return_value=True))
+
+
+
 pytestmark = pytest.mark.asyncio
 
 SHA = "a" * 40

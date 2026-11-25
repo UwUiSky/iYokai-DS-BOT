@@ -13,6 +13,7 @@ import hashlib
 import hmac
 import json
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 MAX_BYTE_CORPO = 256 * 1024
 EVENTI_AMMESSI = (
@@ -46,6 +47,26 @@ class EventoPatreon:
     patreon_id: str
     attivo: bool
     tiers: tuple[str, ...]
+    ultima_carica: datetime | None = None  # data dell'ultimo addebito scritta nell'evento: serve a scartare quelli vecchi
+
+
+class DaConfermare(Exception):
+    """L'account Patreon è già collegato a un'altra persona: la persona che torna da Patreon deve confermare lo spostamento."""
+
+    def __init__(self, discord_user_id: int) -> None:
+        super().__init__("conferma")
+        self.discord_user_id = discord_user_id
+
+
+def _data(valore) -> datetime | None:
+    """Una data ISO di Patreon (con fuso); qualsiasi altra cosa è «nessuna data»."""
+    if not isinstance(valore, str) or len(valore) > 40:
+        return None
+    try:
+        data = datetime.fromisoformat(valore.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return data if data.tzinfo else data.replace(tzinfo=timezone.utc)
 
 
 def _id(valore) -> str:
@@ -64,12 +85,14 @@ def leggi_evento(tipo: str | None, corpo: bytes) -> EventoPatreon | None:
         tiers = tuple(i for i in (_id(t.get("id")) for t in relazioni.get("currently_entitled_tiers", {}).get("data", [])) if i)
         stato = dati.get("attributes", {}).get("patron_status")
         member_id = _id(dati.get("id"))
+        carica = _data(dati.get("attributes", {}).get("last_charge_date"))
     except (ValueError, KeyError, TypeError, AttributeError):
         return None
     if not utente:
         return None
     eliminato = tipo.endswith(":delete")
-    return EventoPatreon(tipo, member_id, utente, attivo=(stato == STATO_ATTIVO) and not eliminato, tiers=() if eliminato else tiers)
+    return EventoPatreon(tipo, member_id, utente, attivo=(stato == STATO_ATTIVO) and not eliminato, tiers=() if eliminato else tiers,
+                         ultima_carica=carica)
 
 
 def livello_da_tiers(tiers, mappa: dict[str, str]) -> str | None:

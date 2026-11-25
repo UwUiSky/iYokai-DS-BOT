@@ -941,7 +941,11 @@ class SpamTrapCog(CogConGruppi, commands.Cog):
         #     Gira in parallelo ai passi seguenti (caso, purge, pulizia): con
         #     una rete grande ci vuole del tempo, e quei passi non ne dipendono.
         propagazione = asyncio.create_task(
-            propagate_ban(self.bot, guild, user.id, "Spam trap triggered")
+            propagate_ban(
+                self.bot, guild, user.id,
+                "Spam trap: ha scritto nel canale trappola",
+                con_prova=True,  # il caso del ban viene scritto subito dopo, qui sotto
+            )
         )
 
         try:

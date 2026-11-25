@@ -24,7 +24,7 @@ def _permessi(**kw):
 def _membro(uid, ruolo=1, moderate=False, admin=False):
     return SimpleNamespace(
         id=uid, top_role=ruolo, timeout=AsyncMock(),
-        guild_permissions=SimpleNamespace(moderate_members=moderate, administrator=admin),
+        roles=[], guild_permissions=SimpleNamespace(moderate_members=moderate, administrator=admin, manage_guild=False),
     )
 
 
@@ -46,9 +46,16 @@ def _mondo(permessi_canale=None, **membro_kw):
 
 
 @pytest.fixture
-def repo(monkeypatch, clean_db):
+async def repo(monkeypatch, clean_db):
+    import core.database as database_module
+
+    monkeypatch.setattr(database_module.db, "_pool", clean_db)  # i controlli del comando leggono il database vero
     r = DesktopRepository(pool_provider=lambda: clean_db)
     monkeypatch.setattr(ds, "desktop_repo", r)
+    monkeypatch.setattr(ds.moderation_repo, "create_case", AsyncMock(return_value=1))
+    for modulo in ds.MODULO_COMANDO.values():  # i moduli dei comandi sono accesi, come in un server che li usa
+        if modulo:
+            await database_module.db.set_module_active_for_guild(G, modulo, True)
     return r
 
 
@@ -120,3 +127,63 @@ async def test_il_bot_senza_permessi_lo_dice(repo):
     assert await ds.esegui(m.bot, ME, G, "timeout", {"target_id": ALTRO, "minuti": 5}) == ds.BOT_SENZA_PERMESSI
     assert await ds.esegui(m.bot, ME, G, "blocca_canale", {"channel_id": CANALE}) == ds.BOT_SENZA_PERMESSI
     assert await ds.esegui(m.bot, ME, G, "annuncio", {"channel_id": CANALE, "testo": "x"}) == ds.BOT_SENZA_PERMESSI
+
+
+# ---------------------------------------------------------------- blocco A, voce 7: gli stessi cancelli dei comandi
+async def test_modulo_spento_blocca_l_azione_come_il_comando(repo, clean_db):
+    from core.database import db
+
+    m = _mondo(moderate=True, ruolo=5)
+    m.altro.top_role = 1
+    await db.set_module_active_for_guild(G, "moderation_actions", False)
+    assert await ds.esegui(m.bot, ME, G, "timeout", {"target_id": ALTRO, "minuti": 5}) == ds.MODULO_SPENTO
+    m.altro.timeout.assert_not_awaited()
+    await db.set_module_active_for_guild(G, "moderation_channel_control", False)
+    assert await ds.esegui(m.bot, ME, G, "blocca_canale", {"channel_id": CANALE}) == ds.MODULO_SPENTO
+    m.canale.set_permissions.assert_not_awaited()
+    assert await ds.esegui(m.bot, ME, G, "annuncio", {"channel_id": CANALE, "testo": "ciao"}) == ds.OK  # nessun modulo
+
+
+async def test_la_politica_dei_comandi_del_server_vale_anche_dal_programma(repo):
+    from core import command_policy
+
+    m = _mondo(moderate=True, ruolo=5)
+    m.altro.top_role = 1
+    await command_policy.modifica_elenco(G, command_policy.CHIAVE_COMANDI_OFF, "mod-sanzioni timeout", aggiungi=True, changed_by=1)
+    assert await ds.esegui(m.bot, ME, G, "timeout", {"target_id": ALTRO, "minuti": 5}) == ds.POLITICA
+    m.altro.timeout.assert_not_awaited()
+    assert await ds.esegui(m.bot, ME, G, "blocca_canale", {"channel_id": CANALE}) == ds.OK  # un altro comando
+
+
+async def test_in_panico_agiscono_solo_proprietario_e_fidati(repo, monkeypatch):
+    from core import lockdown_service
+
+    m = _mondo(moderate=True, ruolo=5)
+    m.altro.top_role = 1
+    monkeypatch.setattr(lockdown_service, "panico_riservato", lambda g: True)
+    assert await ds.esegui(m.bot, ME, G, "timeout", {"target_id": ALTRO, "minuti": 5}) == ds.PANICO
+    m.altro.timeout.assert_not_awaited()
+
+
+async def test_il_timeout_dal_programma_scrive_il_caso(repo):
+    m = _mondo(moderate=True, ruolo=5)
+    m.altro.top_role = 1
+    assert await ds.esegui(m.bot, ME, G, "timeout", {"target_id": ALTRO, "minuti": 10, "motivo": "spam"}) == ds.OK
+    chiamata = ds.moderation_repo.create_case.await_args.kwargs
+    assert chiamata["user_id"] == ALTRO and chiamata["moderator_id"] == ME and chiamata["action_type"] == "timeout"
+    assert chiamata["duration_seconds"] == 600 and "spam" in chiamata["reason"]
+
+
+async def test_un_controllo_che_non_si_riesce_a_fare_non_e_un_via_libera(repo, monkeypatch):
+    from core import web_panel_accesso
+
+    m = _mondo(moderate=True, ruolo=5)
+    m.altro.top_role = 1
+    monkeypatch.setattr(web_panel_accesso, "policy_blocca", AsyncMock(side_effect=RuntimeError("rotto")))
+    assert await ds.esegui(m.bot, ME, G, "timeout", {"target_id": ALTRO, "minuti": 5}) == ds.NESSUN_PERMESSO
+    m.altro.timeout.assert_not_awaited()
+
+
+def test_ogni_azione_ha_il_suo_comando_e_il_suo_modulo():
+    """Cricchetto: un'azione nuova del programma deve dichiarare da quale comando prende i cancelli."""
+    assert set(ds.PERCORSO_COMANDO) == set(ds.MODULO_COMANDO) == set(ds.AZIONI)

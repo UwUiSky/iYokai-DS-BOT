@@ -26,6 +26,16 @@ from cogs.utility.owner_premium import (
 )
 from core.config import config
 
+
+@pytest.fixture(autouse=True)
+def _secondo_fattore_concesso(monkeypatch):
+    """Il secondo fattore (TOTP, blocco A voce 12) ha i suoi test in test_secondo_fattore.py: qui si prova il resto."""
+    import cogs.utility.owner_premium as _owner
+
+    monkeypatch.setattr(_owner, "_richiedi_secondo_fattore", AsyncMock(return_value=True))
+
+
+
 _OWNER_ID = config.OWNER_ID
 
 

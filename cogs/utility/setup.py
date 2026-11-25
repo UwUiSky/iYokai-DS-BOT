@@ -39,6 +39,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+from core.config_schema import ImpostazioneNonValida
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.bot_inviti import altri_bot
 from core.config_schema import imposta_modulo
@@ -147,7 +148,10 @@ class SetupView(BaseView):
             if active == era_attivo:
                 continue  # nessun cambiamento reale: non scrivere né loggare nulla
             # D16: stesso punto unico del pannello web (storico + evento `modules_updated`).
-            await imposta_modulo(interaction.client, self.guild_id, module_name, active, interaction.user.id)
+            try:
+                await imposta_modulo(interaction.client, self.guild_id, module_name, active, interaction.user.id)
+            except ImpostazioneNonValida:
+                continue  # modulo di sicurezza senza il livello SECURITY: resta com'era
 
         self.stop()
         await interaction.response.edit_message(

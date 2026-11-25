@@ -5,10 +5,9 @@ VPN e proxy nella verifica web (D64, D65): blocca subito chi si verifica da una 
 admin nel canale del registro della verifica con il bottone persistente «Lascia passare» (solo admin), che
 segna un'eccezione per quella persona e la ricorda nello storico condiviso (con founder e admin, D67). Se
 almeno 3 server diversi (founder diversi, admin diversi, in momenti diversi) l'hanno già lasciata passare, qui
-passa ma gli admin vedono «già accettato da N server» con lo storico (di base solo il numero; i nomi solo dei
-server con `verify_condividi_nome`). Sotto la soglia il «Lascia passare» vale solo nel server che l'ha dato. Nella tabella dell'esito solo metodo, esito e data; l'IP sta cifrato a parte e lo vede solo il proprietario (D67).
-Impostazioni (punto unico: SETTINGS_SCHEMA e `core/config_impostazioni.py`): `verify_blocca_vpn` (base vero),
-`verify_condividi_nome` (base falso).
+passa ma gli admin vedono «già accettato da N server»: SOLO il numero, mai nomi, date o metodi degli altri server
+(D143: l'informativa non dà una base per mostrare a un server la storia della persona altrove). Sotto la soglia il «Lascia passare» vale solo nel server che l'ha dato. Nella tabella dell'esito solo metodo, esito e data; l'IP sta cifrato a parte e lo vede solo il proprietario (D67).
+Impostazione (punto unico: SETTINGS_SCHEMA e `core/config_impostazioni.py`): `verify_blocca_vpn` (base vero).
 Funzioni coperte: SPEC §4.2 (VPN e proxy, D64, D65)
 Dipende da: core/verify_vpn.py, core/verify_ip.py, core/repositories/verify_vpn_repo.py
 """
@@ -30,8 +29,6 @@ from core.verify_vpn_logic import storico_basta, testo_metodi
 logger = logging.getLogger("iyokai.verify_vpn")
 
 SETTING_BLOCCA = "verify_blocca_vpn"
-SETTING_NOME = "verify_condividi_nome"
-RIGHE_STORICO = 10
 
 
 def _repo():
@@ -109,26 +106,17 @@ async def _avvisa(guild: discord.Guild, membro: discord.Member, metodi: str) -> 
 
 
 async def _avvisa_storico(bot, guild: discord.Guild, membro: discord.Member, metodi: str, precedenti) -> None:
+    """Avvisa gli admin: la persona è già stata accettata da N altri server. Solo il numero (D143), nient'altro."""
     canale = await _canale_log(guild)
     if canale is None:
         return
     server = {r["guild_id"] for r in precedenti}
-    righe = []
-    for r in list(precedenti)[:RIGHE_STORICO]:
-        riga = await testo_guild(
-            guild, "verify_vpn_storico_riga", data=r["creato_il"].date().isoformat(),
-            metodo=await _nomi_metodi(guild, r["metodo"] or ""), esito=await testo_guild(guild, "verify_vpn_storico_esito"),
-        )
-        altro = bot.get_guild(r["guild_id"])
-        if altro is not None and await db.get_guild_setting(altro.id, SETTING_NOME, False):
-            riga += " · " + altro.name[:60]  # il nome solo se quel server ha dato il consenso
-        righe.append(riga)
     testo = await testo_guild(
         guild, "verify_vpn_storico_descrizione", utente=membro.mention, metodo=await _nomi_metodi(guild, metodi), n=len(server)
     )
     embed = discord.Embed(
         title=await testo_guild(guild, "verify_vpn_storico_titolo"),
-        description=(testo + "\n" + "\n".join(righe))[:4000],
+        description=testo[:4000],
         color=discord.Color.orange(),
     )
     try:

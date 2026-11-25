@@ -1612,8 +1612,6 @@
   "verify_blocco_ticket": "誤りだと思う場合は、私にDMを送ってください。{server}のスタッフとのチケットを開き、理由を添付します。",
   "verify_vpn_storico_titolo": "認証：すでにほかのサーバーで承認済み",
   "verify_vpn_storico_descrizione": "{utente}がVPN/プロキシ検出（{metodo}）の状態で認証しましたが、VPN/プロキシが検出されたにもかかわらず、すでに{n}個のサーバーで承認されています。ほかの目的でも使っている可能性があります。ここでは通過しました。",
-  "verify_vpn_storico_riga": "• {data} · {metodo} · {esito}",
-  "verify_vpn_storico_esito": "通過",
   "amimg_avviso_canale": "{utente}さん、送信された画像は不審に見えます。スタッフに通知しました。",
   "amimg_azione_avvisato": "チャンネルでの通知",
   "amimg_azione_cancellato": "メッセージを削除",
@@ -4484,5 +4482,17 @@
   "crt_specie_6": "鬼",
   "crt_specie_7": "唐傘",
   "crt_specie_8": "化け猫",
-  "err_sandbox_non_disponibile": "ファイルの安全確認が今は使えないため、画像は処理されませんでした。しばらくしてからもう一度お試しください。"
+  "err_sandbox_non_disponibile": "ファイルの安全確認が今は使えないため、画像は処理されませんでした。しばらくしてからもう一度お試しください。",
+  "rete_cat_ban_globale": "ネットワーク内のサーバーによるBAN",
+  "rete_ban_affidabilita_titolo": "通報したサーバーの信頼度",
+  "rete_ban_affidabilita_corpo": "スコア {punteggio}/100。BANの理由：{motivo}",
+  "setup_guidato_ruolo_bot_negato": "ボットのモデレーターまたはBANロールを選ぶには、そのロールが与える権限（「メンバーをタイムアウト」または「メンバーをBAN」）をDiscordで既に持っているか、サーバーの所有者である必要があります。何も保存されていません。",
+  "sicurezza_modulo_acceso": "オン",
+  "sicurezza_modulo_spento": "オフ",
+  "sicurezza_modulo_cambiato": "**{server}** のセキュリティ：モジュール `{modulo}` が {utente} によって{stato}になりました。心当たりがない場合は、スタッフの権限を確認してください。",
+  "mar_solo_proprietario": "独自ブランドのボットを連携できるのは、サーバーの所有者だけです。",
+  "mar_avviso_collegato": "{utente} がこのサーバーに独自ブランドのボット（{nome}）を連携しました。",
+  "mar_avviso_rimosso": "{utente} がこのサーバーから独自ブランドのボットの連携を解除しました。",
+  "owner_2fa_non_configurato": "このコマンドには第2要素が必要ですが、.env に OWNER_TOTP_SECRET が設定されていません。コンソールからのみ実行できます。",
+  "owner_2fa_sbagliato": "コードがない、間違っている、または使用済みです。`codice` オプションに認証アプリの6桁を入力してください。"
 }

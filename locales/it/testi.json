@@ -1612,8 +1612,6 @@
   "verify_blocco_ticket": "Se pensi sia un errore, scrivimi un messaggio privato: apro un ticket con lo staff di {server} e allego il motivo.",
   "verify_vpn_storico_titolo": "Verifica: già accettato da altri server",
   "verify_vpn_storico_descrizione": "{utente} si è verificato con VPN/proxy rilevato ({metodo}), ma è già stato accettato da {n} server nonostante VPN/proxy rilevato: può usarla anche per altro. Qui è passato.",
-  "verify_vpn_storico_riga": "• {data} · {metodo} · {esito}",
-  "verify_vpn_storico_esito": "lasciato passare",
   "amimg_avviso_canale": "{utente}, l'immagine che hai inviato sembra sospetta. Lo staff è stato avvisato.",
   "amimg_azione_avvisato": "avviso nel canale",
   "amimg_azione_cancellato": "messaggio cancellato",
@@ -4484,5 +4482,17 @@
   "crt_specie_6": "Oni",
   "crt_specie_7": "Karakasa",
   "crt_specie_8": "Bakeneko",
-  "err_sandbox_non_disponibile": "Il controllo sicuro dei file non è disponibile in questo momento: l'immagine non è stata elaborata. Riprova più tardi."
+  "err_sandbox_non_disponibile": "Il controllo sicuro dei file non è disponibile in questo momento: l'immagine non è stata elaborata. Riprova più tardi.",
+  "rete_cat_ban_globale": "ban deciso da un server della rete",
+  "rete_ban_affidabilita_titolo": "Affidabilità del server che segnala",
+  "rete_ban_affidabilita_corpo": "Punteggio {punteggio}/100. Motivo del ban: {motivo}",
+  "setup_guidato_ruolo_bot_negato": "Per scegliere il ruolo mod o ban del bot devi avere già su Discord il permesso che quel ruolo darebbe («Metti in timeout i membri» o «Banna i membri») o essere il proprietario del server: non è stato salvato niente.",
+  "sicurezza_modulo_acceso": "acceso",
+  "sicurezza_modulo_spento": "spento",
+  "sicurezza_modulo_cambiato": "Sicurezza di **{server}**: il modulo `{modulo}` è stato {stato} da {utente}. Se non te lo aspettavi, controlla i permessi del tuo staff.",
+  "mar_solo_proprietario": "Il bot con marchio lo può collegare solo il proprietario del server.",
+  "mar_avviso_collegato": "{utente} ha collegato un bot con marchio proprio ({nome}) a questo server.",
+  "mar_avviso_rimosso": "{utente} ha scollegato il bot con marchio proprio da questo server.",
+  "owner_2fa_non_configurato": "Questo comando vuole il secondo fattore, ma OWNER_TOTP_SECRET non è impostato nel .env: si può fare solo da console.",
+  "owner_2fa_sbagliato": "Codice mancante, sbagliato o già usato. Scrivi nell'opzione `codice` le 6 cifre dell'app di autenticazione."
 }

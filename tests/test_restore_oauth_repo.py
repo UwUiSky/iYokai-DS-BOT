@@ -120,43 +120,58 @@ async def test_delete_token(repo):
 
 
 @pytest.mark.asyncio
-async def test_purge_expired_voluntary_leaves_cancella_solo_i_vecchi(repo, clean_db):
+async def test_la_pulizia_del_registro_toglie_i_token_di_chi_e_uscito_da_91_giorni(repo, clean_db):
+    """La promessa dei 90 giorni (SPEC §11.11) la mantiene la pulizia generale del registro dei dati."""
+    from core import retention_worker
+
     await repo.save_token(100, 1, "vecchio", "r", _scadenza())
     await repo.mark_left_voluntarily(100, 1)
     await clean_db.execute(
         "UPDATE restore_oauth_tokens SET left_at = now() - interval '91 days' "
         "WHERE source_guild_id = 100 AND user_id = 1"
     )
-
     await repo.save_token(100, 2, "recente", "r", _scadenza())
-    await repo.mark_left_voluntarily(100, 2)  # uscito oggi, ancora dentro i 90gg
+    await repo.mark_left_voluntarily(100, 2)  # uscito oggi, ancora dentro i 90 giorni
+    await repo.save_token(100, 3, "ancora_dentro", "r", _scadenza())  # non è mai uscito
 
-    cancellati = await repo.purge_expired_voluntary_leaves(retention_days=90)
+    tolte = await retention_worker.pulisci_scaduti(clean_db)
 
-    assert cancellati == 1
+    assert tolte.get("restore_oauth_tokens") == 1
     assert await repo.get_token(100, 1) is None
     assert await repo.get_token(100, 2) is not None
+    assert await repo.get_token(100, 3) is not None
 
 
 @pytest.mark.asyncio
-async def test_purge_non_tocca_kickati_o_bannati_anche_se_vecchi(repo, clean_db):
+async def test_la_pulizia_non_tocca_kickati_o_bannati_anche_se_vecchi(repo, clean_db):
+    from core import retention_worker
+
     await repo.save_token(100, 1, "a", "r", _scadenza())
     await repo.mark_kicked(100, 1)
     await repo.save_token(100, 2, "b", "r", _scadenza())
     await repo.mark_banned(100, 2)
-
-    # Anche forzando una left_at vecchissima (caso limite), la
-    # condizione status='active' esclude kickati/bannati dalla purge.
+    # Anche forzando una left_at vecchissima (caso limite), la condizione status='active' li esclude.
     await clean_db.execute(
-        "UPDATE restore_oauth_tokens SET left_at = now() - interval '9999 days' "
-        "WHERE source_guild_id = 100"
+        "UPDATE restore_oauth_tokens SET left_at = now() - interval '9999 days' WHERE source_guild_id = 100"
     )
 
-    cancellati = await repo.purge_expired_voluntary_leaves(retention_days=90)
-
-    assert cancellati == 0
+    assert "restore_oauth_tokens" not in await retention_worker.pulisci_scaduti(clean_db)
     assert await repo.get_token(100, 1) is not None
     assert await repo.get_token(100, 2) is not None
+
+
+def test_il_registro_dichiara_i_90_giorni_per_i_token_di_ripristino():
+    """Cricchetto: la scadenza sta nel registro (da lì la applica la pulizia e la legge l'informativa privacy)."""
+    from core.data_registry import REGISTRO
+
+    voce = next(t for t in REGISTRO if t.nome == "restore_oauth_tokens")
+    assert voce.scadenza is not None and voce.scadenza.giorni == 90 and voce.scadenza.colonna == "left_at"
+    assert "status = 'active'" in voce.scadenza.solo_se
+    # L'informativa privacy nasce dal registro: dice i 90 giorni e che è un token guilds.join.
+    from core.web_panel_logic import voci_privacy
+
+    riga = next(v for v in voci_privacy(REGISTRO, 90) if "guilds.join" in v["cosa"])
+    assert riga["durata"] == "tolto dopo 90 giorni"
 
 
 @pytest.mark.asyncio

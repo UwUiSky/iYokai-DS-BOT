@@ -1612,8 +1612,6 @@
   "verify_blocco_ticket": "If you think this is a mistake, send me a private message: I will open a ticket with the staff of {server} and attach the reason.",
   "verify_vpn_storico_titolo": "Verification: already accepted by other servers",
   "verify_vpn_storico_descrizione": "{utente} verified with a detected VPN/proxy ({metodo}), but was already accepted by {n} servers despite a detected VPN/proxy: they may use it for other things too. They passed here.",
-  "verify_vpn_storico_riga": "• {data} - {metodo} - {esito}",
-  "verify_vpn_storico_esito": "let through",
   "amimg_avviso_canale": "{utente}, the image you sent looks suspicious. The staff has been notified.",
   "amimg_azione_avvisato": "warning in the channel",
   "amimg_azione_cancellato": "message deleted",
@@ -4484,5 +4482,17 @@
   "crt_specie_6": "Oni",
   "crt_specie_7": "Karakasa",
   "crt_specie_8": "Bakeneko",
-  "err_sandbox_non_disponibile": "The safe file check is not available right now, so the image was not processed. Please try again later."
+  "err_sandbox_non_disponibile": "The safe file check is not available right now, so the image was not processed. Please try again later.",
+  "rete_cat_ban_globale": "ban decided by a server of the network",
+  "rete_ban_affidabilita_titolo": "Reliability of the reporting server",
+  "rete_ban_affidabilita_corpo": "Score {punteggio}/100. Ban reason: {motivo}",
+  "setup_guidato_ruolo_bot_negato": "To choose the bot mod or ban role you must already have, on Discord, the permission that role would give («Timeout Members» or «Ban Members») or be the server owner: nothing was saved.",
+  "sicurezza_modulo_acceso": "turned on",
+  "sicurezza_modulo_spento": "turned off",
+  "sicurezza_modulo_cambiato": "Security of **{server}**: the `{modulo}` module was {stato} by {utente}. If you did not expect this, check your staff's permissions.",
+  "mar_solo_proprietario": "Only the server owner can link a branded bot.",
+  "mar_avviso_collegato": "{utente} linked a branded bot ({nome}) to this server.",
+  "mar_avviso_rimosso": "{utente} unlinked the branded bot from this server.",
+  "owner_2fa_non_configurato": "This command needs the second factor, but OWNER_TOTP_SECRET is not set in .env: it can only be done from the console.",
+  "owner_2fa_sbagliato": "The code is missing, wrong or already used. Put the 6 digits from your authenticator app in the `codice` option."
 }

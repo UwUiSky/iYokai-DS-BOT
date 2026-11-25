@@ -16,6 +16,8 @@ from datetime import datetime, timezone
 
 from aiohttp import web
 
+from core.web_panel_logic import ip_del_client
+
 from core.redacted_access_log import RedactedAccessLogger
 from core.voto_logic import MAX_BYTE_CORPO, SITO_TOPGG, leggi_voto, segreto_valido, verifica
 from core.webhook_rate_tracker import webhook_rate_tracker
@@ -27,9 +29,7 @@ FINESTRA_SECONDI = 600
 
 
 def _ip(request: web.Request) -> str:
-    if request.remote in ("127.0.0.1", "::1"):  # dietro il reverse proxy: l'ultimo indirizzo lo scrive il proxy
-        return request.headers.get("X-Forwarded-For", "").rsplit(",", 1)[-1].strip() or "locale"
-    return request.remote or "ignoto"
+    return ip_del_client(request)  # una sola regola per tutti i server web (core/web_panel_logic.py)
 
 
 def build_app(*, segreto: str, registra, dopo_voto=None, sito: str = SITO_TOPGG) -> web.Application:

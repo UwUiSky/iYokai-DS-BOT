@@ -38,6 +38,22 @@ def raid_in_corso(guild_id: int, now: datetime | None = None) -> bool:
     return (adesso - ultimo).total_seconds() <= DURATA_RAID_SECONDI
 
 
+_ultimo_nuke: BoundedCache[int, datetime] = BoundedCache(max_size=5000)
+
+
+def segna_nuke(guild_id: int, now: datetime | None = None) -> None:
+    """L'anti-nuke ha appena fermato un attacco in questo server."""
+    _ultimo_nuke.set(guild_id, now or discord.utils.utcnow())
+
+
+def nuke_in_corso(guild_id: int, now: datetime | None = None) -> bool:
+    """Vero per `DURATA_RAID_SECONDI` dopo l'ultimo attacco fermato dall'anti-nuke."""
+    ultimo = _ultimo_nuke.get(guild_id)
+    if ultimo is None:
+        return False
+    return ((now or discord.utils.utcnow()) - ultimo).total_seconds() <= DURATA_RAID_SECONDI
+
+
 def azzera(guild_id: int) -> None:
     """Il blocco anti-raid è scaduto: il raid è finito."""
     _ultimo_ingresso.delete(guild_id)

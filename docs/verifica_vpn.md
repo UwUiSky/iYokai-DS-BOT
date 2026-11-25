@@ -46,9 +46,9 @@ browser in cloud, alcune reti aziendali) si sblocca con «Lascia passare».
 Tabelle (tutte nel registro dei dati, `/utility privacy cancella` le toglie): `verify_vpn` (esito, metodo, data; 30 giorni),
 `verify_blocchi` (ultimo blocco, server e motivo; 1 giorno), `verify_vpn_storico` (server, metodo, data, founder e admin dei
 «Lascia passare»; 180 giorni), `verify_ip` (vedi sotto). Il servizio esterno riceve l'IP: è scritto nell'informativa.
-Gli admin vedono solo il **numero** dei server che hanno già accettato la persona; i nomi solo dei server con
-`verify_condividi_nome` acceso; il proprietario del bot vede sempre i nomi con `/owner system storico-vpn` e nella
-pagina del proprietario del pannello (`/proprietario/storico-vpn`).
+Gli admin vedono solo il **numero** dei server che hanno già accettato la persona (D143): mai nomi, date o metodi degli
+altri server. Il proprietario del bot vede i dettagli con `/owner system storico-vpn` e nella pagina del proprietario
+del pannello (`/proprietario/storico-vpn`), per la sicurezza della rete.
 
 ## Soglia dello storico condiviso (D67)
 Il «Lascia passare» vale negli altri server solo con **almeno 3 approvazioni** di server diversi, a **un'ora di distanza**

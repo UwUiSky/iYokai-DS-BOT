@@ -97,8 +97,13 @@ async def test_scrittore_salva_ma_non_cambia_gli_accessi(ambiente):
     client = await _come(ambiente, SCRITTORE)
     try:
         csrf = await _csrf(client, f"/server/{GUILD}")
-        ok = await client.post(f"/server/{GUILD}/lingua", data={"csrf": csrf, "lingua": "en"}, allow_redirects=False)
-        assert ok.status == 302 and "esito=salvato" in ok.headers["Location"]
+        # Blocco A: lingua, moduli e ruoli del bot sono solo degli admin; la scrittura salva le impostazioni di un modulo.
+        lingua = await client.post(f"/server/{GUILD}/lingua", data={"csrf": csrf, "lingua": "en"}, allow_redirects=False)
+        assert lingua.status == 403 and await db.get_guild_language(GUILD) != "en"
+        ok = await client.post(
+            f"/server/{GUILD}/modulo/music", data={"csrf": csrf, "chiave": "x", "valore": "y"}, allow_redirects=False
+        )
+        assert ok.status == 302 and "esito=non_valido" in ok.headers["Location"]  # passa il controllo, il valore no
         assert (await client.get(f"/server/{GUILD}/accesso")).status == 403
         nega = await client.post(
             f"/server/{GUILD}/accesso", data={"csrf": csrf, "livello": "scrittura", "ruolo": str(R_ALTRO)}, allow_redirects=False

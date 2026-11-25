@@ -44,7 +44,8 @@ class LogEventiRepository:
 
     async def imposta(self, guild_id: int, spenti: frozenset[str]) -> None:
         """Sostituisce gli interruttori spenti del server."""
-        assert spenti <= frozenset(INTERRUTTORI)
+        if not spenti <= frozenset(INTERRUTTORI):
+            raise ValueError("interruttore dei log sconosciuto")
         async with self._pool.acquire() as conn:
             async with conn.transaction():
                 await conn.execute("DELETE FROM log_eventi_spenti WHERE guild_id=$1", guild_id)

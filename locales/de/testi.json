@@ -1612,8 +1612,6 @@
   "verify_blocco_ticket": "Wenn du glaubst, dass es ein Fehler ist, schreib mir eine private Nachricht: Ich öffne ein Ticket beim Team von {server} und hänge den Grund an.",
   "verify_vpn_storico_titolo": "Verifizierung: bereits von anderen Servern akzeptiert",
   "verify_vpn_storico_descrizione": "{utente} hat sich mit erkanntem VPN/Proxy verifiziert ({metodo}), wurde aber bereits von {n} Servern trotz erkanntem VPN/Proxy akzeptiert: Er kann es auch für anderes benutzen. Hier ist er durchgekommen.",
-  "verify_vpn_storico_riga": "• {data} · {metodo} · {esito}",
-  "verify_vpn_storico_esito": "durchgelassen",
   "amimg_avviso_canale": "{utente}, das Bild, das du gesendet hast, wirkt verdächtig. Das Team wurde benachrichtigt.",
   "amimg_azione_avvisato": "Hinweis im Kanal",
   "amimg_azione_cancellato": "Nachricht gelöscht",
@@ -4484,5 +4482,17 @@
   "crt_specie_6": "Oni",
   "crt_specie_7": "Karakasa",
   "crt_specie_8": "Bakeneko",
-  "err_sandbox_non_disponibile": "Die sichere Dateiprüfung ist gerade nicht verfügbar, das Bild wurde nicht verarbeitet. Bitte versuche es später noch einmal."
+  "err_sandbox_non_disponibile": "Die sichere Dateiprüfung ist gerade nicht verfügbar, das Bild wurde nicht verarbeitet. Bitte versuche es später noch einmal.",
+  "rete_cat_ban_globale": "Bann eines Servers im Netz",
+  "rete_ban_affidabilita_titolo": "Zuverlässigkeit des meldenden Servers",
+  "rete_ban_affidabilita_corpo": "Punktzahl {punteggio}/100. Bann-Grund: {motivo}",
+  "setup_guidato_ruolo_bot_negato": "Um die Mod- oder Bann-Rolle des Bots zu wählen, musst du die Berechtigung, die diese Rolle gäbe («Mitglieder timeouten» oder «Mitglieder bannen»), bereits auf Discord haben oder Serverbesitzer sein: Es wurde nichts gespeichert.",
+  "sicurezza_modulo_acceso": "eingeschaltet",
+  "sicurezza_modulo_spento": "ausgeschaltet",
+  "sicurezza_modulo_cambiato": "Sicherheit von **{server}**: Das Modul `{modulo}` wurde von {utente} {stato}. Wenn du das nicht erwartet hast, prüfe die Berechtigungen deines Teams.",
+  "mar_solo_proprietario": "Den Bot mit eigenem Namen kann nur der Serverbesitzer verbinden.",
+  "mar_avviso_collegato": "{utente} hat einen Bot mit eigenem Namen ({nome}) mit diesem Server verbunden.",
+  "mar_avviso_rimosso": "{utente} hat den Bot mit eigenem Namen von diesem Server getrennt.",
+  "owner_2fa_non_configurato": "Dieser Befehl braucht den zweiten Faktor, aber OWNER_TOTP_SECRET ist in der .env nicht gesetzt: Er geht nur über die Konsole.",
+  "owner_2fa_sbagliato": "Code fehlt, ist falsch oder wurde schon benutzt. Gib in der Option `codice` die 6 Ziffern deiner Authenticator-App an."
 }

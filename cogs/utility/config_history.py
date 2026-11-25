@@ -28,6 +28,7 @@ from core.command_access import (
     SETTING_ADMIN_ROLE,
     TipoRuolo,
     errore_ruolo_admin,
+    errore_ruolo_bot,
     leggi_ruolo,
     ruolo_valido_per_server,
 )
@@ -394,11 +395,18 @@ def errore_ruoli_del_bot(guild: discord.Guild, settings: dict) -> str | None:
 
 
 async def errore_cambio_ruolo_admin(guild: discord.Guild, autore, settings: dict) -> str | None:
-    """D28: un ruolo admin del bot nuovo lo sceglie solo chi ha «Amministratore» o il proprietario."""
-    nuovo = settings.get(SETTING_ADMIN_ROLE)
-    if nuovo is None:
-        return None  # nessun ruolo admin nel file: si toglie, e toglierlo non apre nulla
-    return errore_ruolo_admin(guild, autore, await leggi_ruolo(guild.id, TipoRuolo.ADMIN), nuovo)
+    """
+    D28 e blocco A: un ruolo admin, mod o ban del bot nuovo lo sceglie solo chi ha già il permesso che quel
+    ruolo darebbe (o il proprietario). Un ruolo assente nel file si toglie, e toglierlo non apre nulla.
+    """
+    for tipo in TipoRuolo:
+        nuovo = settings.get(tipo.value)
+        if nuovo is None:
+            continue
+        errore = errore_ruolo_bot(guild, tipo, autore, await leggi_ruolo(guild.id, tipo), nuovo)
+        if errore:
+            return errore
+    return None
 
 
 # Chiavi che decidono chi può fare cosa: le cambia solo il proprietario del server,

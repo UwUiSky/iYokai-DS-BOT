@@ -31,7 +31,6 @@ KNOWN_UNCALLED = frozenset(
         "guild_clan_repo.GuildClanRepository.get_donation_leaderboard",
         "guild_premium_repo.GuildPremiumRepository.purchased_tiers",
         "restore_oauth_repo.RestoreOAuthRepository.delete_token",
-        "restore_oauth_repo.RestoreOAuthRepository.purge_expired_voluntary_leaves",
     }
 )
 

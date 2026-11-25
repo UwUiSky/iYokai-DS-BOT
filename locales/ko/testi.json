@@ -1612,8 +1612,6 @@
   "verify_blocco_ticket": "잘못이라고 생각하면 저에게 DM을 보내 주세요. {server}의 스태프와 티켓을 열고 사유를 첨부할게요.",
   "verify_vpn_storico_titolo": "인증: 이미 다른 서버에서 승인됨",
   "verify_vpn_storico_descrizione": "{utente}이(가) VPN/프록시가 감지된 상태({metodo})로 인증했지만, VPN/프록시가 감지되었는데도 이미 {n}개 서버에서 승인되었어요. 다른 용도로도 쓰고 있을 수 있어요. 여기서는 통과했어요.",
-  "verify_vpn_storico_riga": "• {data} · {metodo} · {esito}",
-  "verify_vpn_storico_esito": "통과시킴",
   "amimg_avviso_canale": "{utente}님, 보내 주신 이미지가 의심스러워 보여요. 스태프에게 알렸어요.",
   "amimg_azione_avvisato": "채널에 알림",
   "amimg_azione_cancellato": "메시지 삭제",
@@ -4484,5 +4482,17 @@
   "crt_specie_6": "오니",
   "crt_specie_7": "가라카사",
   "crt_specie_8": "바케네코",
-  "err_sandbox_non_disponibile": "파일 안전 검사를 지금은 사용할 수 없어서 이미지를 처리하지 못했어요. 잠시 후 다시 시도해 주세요."
+  "err_sandbox_non_disponibile": "파일 안전 검사를 지금은 사용할 수 없어서 이미지를 처리하지 못했어요. 잠시 후 다시 시도해 주세요.",
+  "rete_cat_ban_globale": "네트워크 서버가 결정한 밴",
+  "rete_ban_affidabilita_titolo": "신고한 서버의 신뢰도",
+  "rete_ban_affidabilita_corpo": "점수 {punteggio}/100. 밴 사유: {motivo}",
+  "setup_guidato_ruolo_bot_negato": "봇의 관리자 또는 밴 역할을 고르려면 그 역할이 주는 권한(「멤버 타임아웃」 또는 「멤버 차단」)을 이미 디스코드에서 갖고 있거나 서버 소유자여야 해요. 아무것도 저장되지 않았어요.",
+  "sicurezza_modulo_acceso": "켜짐",
+  "sicurezza_modulo_spento": "꺼짐",
+  "sicurezza_modulo_cambiato": "**{server}** 보안: `{modulo}` 모듈이 {utente}님에 의해 {stato} 상태가 됐어요. 예상하지 못한 일이라면 스태프 권한을 확인하세요.",
+  "mar_solo_proprietario": "자체 브랜드 봇은 서버 소유자만 연결할 수 있어요.",
+  "mar_avviso_collegato": "{utente}님이 이 서버에 자체 브랜드 봇({nome})을 연결했어요.",
+  "mar_avviso_rimosso": "{utente}님이 이 서버에서 자체 브랜드 봇 연결을 해제했어요.",
+  "owner_2fa_non_configurato": "이 명령에는 2차 인증이 필요하지만 .env에 OWNER_TOTP_SECRET이 설정되어 있지 않아요. 콘솔에서만 할 수 있어요.",
+  "owner_2fa_sbagliato": "코드가 없거나 틀렸거나 이미 사용됐어요. `codice` 옵션에 인증 앱의 6자리 숫자를 입력하세요."
 }

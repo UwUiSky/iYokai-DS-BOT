@@ -25,7 +25,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from cogs.utility._owner_pagine import invia_a_pagine
-from core import bot_info, hot_patch
+from core import bot_info, hot_patch, secondo_fattore
 from core import chiave_soccorso as chiave_soccorso_logic
 from core.blacklist_exit import esci_dettaglio
 from core.command_groups import CogConGruppi, comando_di_gruppo
@@ -112,6 +112,21 @@ async def _reply_if_eval_disabled(interaction: discord.Interaction) -> bool:
     if config.ENABLE_EVAL:
         return False
     await interaction.response.send_message(_EVAL_DISABLED_MESSAGE, ephemeral=True)
+    return True
+
+
+async def _richiedi_secondo_fattore(interaction: discord.Interaction, codice: str | None) -> bool:
+    """
+    Blocco A, voce 12: i comandi che eseguono codice sulla macchina vogliono anche un codice TOTP (core/secondo_fattore.py).
+    True se il codice è giusto; altrimenti risponde (senza dire se il segreto manca o il codice è sbagliato oltre al
+    necessario) e False: il chiamante si ferma. Senza `OWNER_TOTP_SECRET` il comando si rifiuta: solo da console.
+    """
+    if not config.OWNER_TOTP_SECRET:
+        await interaction.response.send_message(await testo_per(interaction, "owner_2fa_non_configurato"), ephemeral=True)
+        return False
+    if not secondo_fattore.verifica_codice(config.OWNER_TOTP_SECRET, codice):
+        await interaction.response.send_message(await testo_per(interaction, "owner_2fa_sbagliato"), ephemeral=True)
+        return False
     return True
 
 
@@ -837,9 +852,10 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         descrizione="Esegue codice Python (con conferma).",
         sottogruppo=("system", "Sistema: codice, annunci, statistiche"),
     )
-    @app_commands.describe(code="Il codice Python da eseguire")
+    @app_commands.describe(code="Il codice Python da eseguire", codice="Codice a 6 cifre dell'app di autenticazione")
     async def eval_code(
-        self, interaction: discord.Interaction, code: app_commands.Range[str, 1, 4000]
+        self, interaction: discord.Interaction, code: app_commands.Range[str, 1, 4000],
+        codice: app_commands.Range[str, 6, 6] | None = None,
     ) -> None:
         if not _is_owner(interaction):
             await interaction.response.send_message(
@@ -847,6 +863,8 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
             )
             return
         if await _reply_if_eval_disabled(interaction):
+            return
+        if not await _richiedi_secondo_fattore(interaction, codice):
             return
 
         embed = discord.Embed(
@@ -863,9 +881,10 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         descrizione="Esegue un comando shell (con conferma).",
         sottogruppo=("system", "Sistema: codice, annunci, statistiche"),
     )
-    @app_commands.describe(command="Il comando shell da eseguire")
+    @app_commands.describe(command="Il comando shell da eseguire", codice="Codice a 6 cifre dell'app di autenticazione")
     async def shell_command(
-        self, interaction: discord.Interaction, command: app_commands.Range[str, 1, 4000]
+        self, interaction: discord.Interaction, command: app_commands.Range[str, 1, 4000],
+        codice: app_commands.Range[str, 6, 6] | None = None,
     ) -> None:
         if not _is_owner(interaction):
             await interaction.response.send_message(
@@ -873,6 +892,8 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
             )
             return
         if await _reply_if_eval_disabled(interaction):
+            return
+        if not await _richiedi_secondo_fattore(interaction, codice):
             return
 
         embed = discord.Embed(
@@ -1194,9 +1215,14 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         descrizione="Carica un'estensione (es. cogs.moderation.actions).",
         sottogruppo=("cog", "Carica, scarica e ricarica le estensioni"),
     )
-    @app_commands.describe(extension="Percorso del modulo, es. cogs.moderation.actions")
-    async def owner_cog_load(self, interaction: discord.Interaction, extension: app_commands.Range[str, 1, 100]) -> None:
+    @app_commands.describe(extension="Percorso del modulo, es. cogs.moderation.actions", codice="Codice a 6 cifre dell'app di autenticazione")
+    async def owner_cog_load(
+        self, interaction: discord.Interaction, extension: app_commands.Range[str, 1, 100],
+        codice: app_commands.Range[str, 6, 6] | None = None,
+    ) -> None:
         if await _reply_if_eval_disabled(interaction):
+            return
+        if not await _richiedi_secondo_fattore(interaction, codice):
             return
 
         try:
@@ -1258,6 +1284,7 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         commit="GitHub: «main» o SHA di un commit",
         file="Un .py o uno .zip con cogs/ e core/",
         registro="Sì: mostra gli ultimi aggiornamenti",
+        codice="Codice a 6 cifre dell'app di autenticazione (serve per l'aggiornamento da GitHub o da file)",
     )
     async def owner_cog_reload(
         self,
@@ -1266,12 +1293,13 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         commit: app_commands.Range[str, 4, 40] | None = None,
         file: discord.Attachment | None = None,
         registro: bool = False,
+        codice: app_commands.Range[str, 6, 6] | None = None,
     ) -> None:
         if registro:
             await self._mostra_registro_aggiornamenti(interaction)
             return
         if commit is not None or file is not None:
-            await self._aggiorna_a_caldo(interaction, extension, commit, file)
+            await self._aggiorna_a_caldo(interaction, extension, commit, file, codice)
             return
         if extension is None:
             await interaction.response.send_message("Indica il modulo da ricaricare.", ephemeral=True)
@@ -1311,8 +1339,9 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
         extension: str | None,
         commit: str | None,
         file: discord.Attachment | None,
+        codice: str | None = None,
     ) -> None:
-        """#141: aggiorna da GitHub o da file. Spento senza ENABLE_HOT_PATCH=1; solo OWNER_ID."""
+        """#141: aggiorna da GitHub o da file. Spento senza ENABLE_HOT_PATCH=1; solo OWNER_ID; con il codice TOTP."""
         if interaction.user.id != config.OWNER_ID:
             await interaction.response.send_message("Solo il proprietario del bot può farlo.", ephemeral=True)
             return
@@ -1323,6 +1352,8 @@ class OwnerPremiumCog(CogConGruppi, commands.Cog):
             return
         if commit is not None and file is not None:
             await interaction.response.send_message("Scegli una sola sorgente: GitHub oppure un file.", ephemeral=True)
+            return
+        if not await _richiedi_secondo_fattore(interaction, codice):
             return
         await interaction.response.defer(ephemeral=True)
         try:

@@ -45,6 +45,11 @@ def cookie_sicuro(url_pubblico: str) -> bool:
     return urlparse(url_pubblico).scheme == "https"
 
 
+def nome_cookie_sessione(url_pubblico: str) -> str:
+    """Il nome del cookie di sessione del pannello (`__Host-` su https). Lo stesso nome lo legge anche il ritorno da Patreon."""
+    return ("__Host-" if cookie_sicuro(url_pubblico) else "") + "iyokai_sessione"
+
+
 def origine(url_pubblico: str) -> str:
     parsed = urlparse(url_pubblico)
     return f"{parsed.scheme}://{parsed.netloc}"
@@ -149,6 +154,17 @@ def ip_cliente(remoto: str | None, inoltrato: str | None, fidati: frozenset[str]
     if remoto is not None and remoto in fidati and inoltrato:
         return inoltrato.split(",")[-1].strip() or remoto
     return remoto or "?"
+
+
+def ip_del_client(request) -> str:
+    """
+    L'UNICA funzione che dice l'IP di chi chiama, per tutti i server web del bot (pannello, voto, Patreon, webhook
+    custom): `X-Forwarded-For` vale solo se la connessione arriva da un proxy di `WEB_PANEL_TRUSTED_PROXY`
+    (di base 127.0.0.1 e ::1, il reverse proxy sulla stessa macchina). Mai un'altra copia di questa regola.
+    """
+    from core.config import config
+
+    return ip_cliente(request.remote, request.headers.get("X-Forwarded-For"), proxy_fidati(config.WEB_PANEL_TRUSTED_PROXY))
 
 
 # ------------------------------------------------- intestazioni di sicurezza

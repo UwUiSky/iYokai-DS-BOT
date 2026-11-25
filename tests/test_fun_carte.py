@@ -99,7 +99,7 @@ def test_vittoria_e_mazzo_che_si_rimescola():
         p.apri_scelta()
         p.scegli(p.giudice, 0)
         p.chiudi_round()
-        assert all(len(m) == 6 for u, m in p.mani.items() if u != p.giudice) or True
+        assert all(len(m) == 6 for u, m in p.mani.items() if u != p.giudice)
         if p.finita():
             break
     assert p.finita() and max(p.punti.values()) >= 2 and p.round <= cl.MAX_ROUND

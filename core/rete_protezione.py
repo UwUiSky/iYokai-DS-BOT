@@ -31,6 +31,8 @@ logger = logging.getLogger("iyokai.rete")
 
 _serrature: BoundedCache[int, asyncio.Lock] = BoundedCache(5_000)  # un utente alla volta: l'allarme arriva a raffica
 _ORIGINE_CASO = "rete"
+CATEGORIA_BAN_GLOBALE = "ban_globale"  # proposte che nascono dal ban globale (cogs/security/global_ban.py)
+PREFISSO_MOTIVO_BAN_GLOBALE = "Ban globale"
 
 
 @dataclass(frozen=True)
@@ -251,7 +253,11 @@ async def applica_ban(bot, guild: discord.Guild, proposta_id: int, deciso_da: in
     if rifiuto:
         await repo.decidi(proposta_id, "applicato", "fallito", deciso_da)
         return "gerarchia" if rifiuto == "gerarchia" else "fallito"
-    motivo = f"Rete dei ban ({proposta['categoria']}): ban deciso in un altro server aderente"[:512]
+    globale = proposta["categoria"] == CATEGORIA_BAN_GLOBALE
+    if globale:  # il prefisso serve alla revoca: tocca solo i ban messi dalla rete
+        motivo = f"{PREFISSO_MOTIVO_BAN_GLOBALE}: ban deciso in un altro server della rete"[:512]
+    else:
+        motivo = f"Rete dei ban ({proposta['categoria']}): ban deciso in un altro server aderente"[:512]
     try:
         await guild.ban(discord.Object(id=user_id), reason=motivo, delete_message_seconds=0)
     except discord.HTTPException:
@@ -263,6 +269,10 @@ async def applica_ban(bot, guild: discord.Guild, proposta_id: int, deciso_da: in
         logger.warning("Caso del ban di rete non scritto nel server %s.", guild.id)
         caso = None
     await repo.decidi(proposta_id, "applicato", "applicato", deciso_da, caso)
+    if globale:  # il registro del ban globale serve a «controlla», allo stato e alla revoca
+        from core.repositories.global_ban_repo import global_ban_repo
+
+        await global_ban_repo.log_propagation(proposta["guild_origine"], guild.id, user_id, motivo)
     if deciso_da is None:  # automatico: lo staff lo viene a sapere
         embed = discord.Embed(
             title=await testo_guild(guild, "rete_ban_auto_titolo"),

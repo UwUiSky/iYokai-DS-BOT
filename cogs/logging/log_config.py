@@ -328,7 +328,8 @@ class LogConfigCog(CogConGruppi, commands.Cog):
             await interaction.response.send_message(scelta, ephemeral=True)
             return
         genere, valore = scelta
-        assert genere in GENERI_IGNORA
+        if genere not in GENERI_IGNORA:
+            raise ValueError(f"genere non ammesso: {genere}")
         if azione == "aggiungi":
             if not await log_ignora_repo.aggiungi(guild_id, genere, valore, IGNORATI_MAX_PER_SERVER):
                 limite = (

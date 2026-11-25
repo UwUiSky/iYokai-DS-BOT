@@ -141,13 +141,31 @@ class ReteRepository:
         return r != "UPDATE 0"
 
     # --- rete dei ban --------------------------------------------------
-    async def crea_proposta(self, user_id: int, guild_origine: int, guild_dest: int, categoria: str) -> int | None:
+    async def crea_proposta(
+        self, user_id: int, guild_origine: int, guild_dest: int, categoria: str,
+        punteggio: int | None = None, codici: str | None = None,
+    ) -> int | None:
         """Id della proposta nuova, None se per quella terna esiste già (niente doppioni, niente catene)."""
         return await self._pool.fetchval(
-            "INSERT INTO rete_ban_proposte (user_id, guild_origine, guild_dest, categoria) VALUES ($1, $2, $3, $4) "
+            "INSERT INTO rete_ban_proposte (user_id, guild_origine, guild_dest, categoria, punteggio, codici) "
+            "VALUES ($1, $2, $3, $4, $5, $6) "
             "ON CONFLICT (user_id, guild_origine, guild_dest) DO NOTHING RETURNING id",
-            user_id, guild_origine, guild_dest, categoria,
+            user_id, guild_origine, guild_dest, categoria, punteggio, codici,
         )
+
+    async def proposte_ricevute_oggi(self, guild_dest: int) -> int:
+        """Proposte arrivate a questo server nell'ultimo giorno (tetto contro le raffiche)."""
+        return await self._pool.fetchval(
+            "SELECT count(*) FROM rete_ban_proposte WHERE guild_dest = $1 AND creata_il > now() - interval '1 day'", guild_dest,
+        )
+
+    async def chiudi_proposte_aperte(self, guild_origine: int, user_id: int, da: int | None) -> int:
+        """Appello accolto: le proposte non ancora decise di questa origine si chiudono come annullate."""
+        r = await self._pool.execute(
+            "UPDATE rete_ban_proposte SET stato = 'annullato', deciso_da = $3, deciso_il = now() "
+            "WHERE guild_origine = $1 AND user_id = $2 AND stato = 'proposta'", guild_origine, user_id, da,
+        )
+        return int(r.split()[-1])
 
     async def proposta(self, proposta_id: int) -> asyncpg.Record | None:
         return await self._pool.fetchrow("SELECT * FROM rete_ban_proposte WHERE id = $1", proposta_id)

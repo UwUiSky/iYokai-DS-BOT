@@ -28,6 +28,7 @@ import discord
 from core.command_access import (
     Livello,
     RuoloAdminNegato,
+    RuoloBotNegato,
     TipoRuolo,
     decidi_accesso,
     imposta_ruolo,
@@ -124,7 +125,7 @@ async def livello_accesso(guild: discord.Guild, user_id: int, *, chiedi_a_discor
     return accesso.livello_da_ruoli({r.id for r in membro.roles}, await accesso.leggi_ruoli(guild.id))
 
 
-def _e_esente_politica(guild: discord.Guild, membro, user_id: int) -> bool:
+def e_esente_politica(guild: discord.Guild, membro, user_id: int) -> bool:
     """Come la politica dei comandi: owner del bot, proprietario del server, «Gestisci server»."""
     permessi = getattr(membro, "guild_permissions", None)
     return user_id == config.OWNER_ID or user_id == guild.owner_id or bool(permessi is not None and permessi.manage_guild)
@@ -148,7 +149,7 @@ async def server_gestibile(
         membro = await _membro(guild, user_id, chiedi_a_discord=True)
         gruppo = accesso.percorso_comando(percorso)
         if membro is None or await accesso.policy_blocca(
-            guild, membro, gruppo, esente=_e_esente_politica(guild, membro, user_id)
+            guild, membro, gruppo, esente=e_esente_politica(guild, membro, user_id)
         ):
             return None
     return guild
@@ -273,7 +274,7 @@ async def applica_ruolo(guild: discord.Guild, tipo_nome: str, ruolo_id: int | No
         await imposta_ruolo(
             guild, tipo, ruolo, changed_by=user_id, autore=await _membro(guild, user_id, chiedi_a_discord=True)
         )
-    except RuoloAdminNegato:
+    except (RuoloAdminNegato, RuoloBotNegato):
         raise
     except ValueError as errore:
         raise ImpostazioneNonValida(str(errore)) from None
@@ -423,7 +424,7 @@ ESITI_MARCHIO_OK = frozenset({"mar_testo_ok", "mar_testo_azzerato", "mar_avviato
 # I soli testi del marchio che la pagina mostra da un codice nell'URL (nessuno ha segnaposto).
 ESITI_MARCHIO = ESITI_MARCHIO_OK | {
     "mar_richiede_premium", "mar_nessun_marchio", "mar_non_avviato", "mar_token_non_valido",
-    "mar_discord_non_risponde", "mar_chiave_mancante", "mar_gia_usato",
+    "mar_discord_non_risponde", "mar_chiave_mancante", "mar_gia_usato", "mar_solo_proprietario",
 }
 
 
@@ -476,7 +477,7 @@ async def applica_marchio(bot, guild: discord.Guild, azione: str, testo: str | N
     if gestore is None:
         return "marchio_non_disponibile"
     try:
-        esito = await wl.applica_azione(gestore, bot, guild.id, azione, testo)
+        esito = await wl.applica_azione(gestore, bot, guild.id, azione, testo, autore_id=user_id)
     except ValueError:
         return "non_valido"
     logger.info("Marchio del server %s: «%s» dal pannello da %s.", guild.id, azione, user_id)

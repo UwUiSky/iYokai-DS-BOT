@@ -249,7 +249,8 @@ async def check_can_moderate(
     del bot non conta: valgono gerarchia e ruoli immuni.
     """
     guild = interaction.guild
-    assert guild is not None  # già controllato da ensure_module_enabled
+    if guild is None:  # già controllato da ensure_module_enabled: qui non deve mai arrivare
+        raise ValueError("serve un server")
 
     moderator = guild.get_member(interaction.user.id)
     if moderator is None:

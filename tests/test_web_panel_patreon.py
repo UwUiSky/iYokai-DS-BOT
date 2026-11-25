@@ -60,9 +60,14 @@ async def test_collega_ha_csrf_e_manda_a_patreon_con_stato_monouso(con_patreon):
         url = urlparse(r.headers["Location"])
         assert url.netloc == "www.patreon.com"
         stato = parse_qs(url.query)["state"][0]
-        assert await patreon_service._consuma_stato(stato) == ADMIN  # lo stato è di chi ha cominciato
+        impronta = await con_patreon.pool.fetchval("SELECT sessione_impronta FROM patreon_stati")
+        assert impronta and len(impronta) == 64  # legato alla sessione del pannello
+        with pytest.raises(patreon_service.CollegamentoFallito):  # un'altra sessione non lo usa (e lo brucia)
+            await patreon_service._consuma_stato(stato, "b" * 64)
+        stato2 = parse_qs(urlparse((await client.post("/premium/patreon/collega", data={"csrf": csrf}, allow_redirects=False)).headers["Location"]).query)["state"][0]
+        assert await patreon_service._consuma_stato(stato2, impronta) == ADMIN  # lo stato è di chi ha cominciato
         with pytest.raises(patreon_service.CollegamentoFallito):  # e vale una volta sola
-            await patreon_service._consuma_stato(stato)
+            await patreon_service._consuma_stato(stato2, impronta)
     finally:
         await client.close()
 
@@ -82,5 +87,28 @@ async def test_scollega_toglie_il_collegamento_e_il_livello(con_patreon):
         assert await piani.livello_utente(ADMIN) == piani.GRATUITO
         testo = await (await client.get("/premium?patreon=ok")).text()
         assert "Collega Patreon" in testo and "Account Patreon collegato." in testo
+    finally:
+        await client.close()
+
+
+async def test_conferma_dello_spostamento_dal_pannello(con_patreon):
+    await con_patreon.pool.execute("INSERT INTO patreon_collegamenti (discord_user_id, patreon_id, token_cifrato) VALUES (999, 'p1', 'x')")
+    await con_patreon.pool.execute(
+        "INSERT INTO patreon_spostamenti (discord_user_id, patreon_id, token_cifrato, attivo, tiers, scade_il) "
+        "VALUES ($1, 'p1', 'y', false, '{}', now() + interval '5 minutes')", ADMIN,
+    )
+    client = await _client(con_patreon.app)
+    try:
+        await _entra(client)
+        testo = await (await client.get("/premium")).text()
+        assert "già collegato a un'altra persona" in testo and "Sì, sposta qui" in testo
+        csrf = await _csrf(client, "/premium")
+        assert (await client.post("/premium/patreon/sposta", data={"azione": "conferma"}, allow_redirects=False)).status == 403  # senza CSRF
+        assert await con_patreon.pool.fetchval("SELECT discord_user_id FROM patreon_collegamenti") == 999
+        r = await client.post("/premium/patreon/sposta", data={"csrf": csrf, "azione": "conferma"}, allow_redirects=False)
+        assert r.status == 302 and "patreon=spostato" in r.headers["Location"]
+        assert await con_patreon.pool.fetchval("SELECT discord_user_id FROM patreon_collegamenti") == ADMIN
+        r = await client.post("/premium/patreon/sposta", data={"csrf": csrf, "azione": "conferma"}, allow_redirects=False)
+        assert "patreon=scaduto" in r.headers["Location"]  # non c'è più niente da confermare
     finally:
         await client.close()

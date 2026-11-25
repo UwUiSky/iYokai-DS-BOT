@@ -35,6 +35,14 @@ CHIAVE = generate_key()
 UTENTE_AUTENTICATO_DEFAULT = 999
 
 
+@pytest.fixture(autouse=True)
+def _nonce_nel_database(monkeypatch, clean_db):
+    """I nonce dei link stanno nel database (blocco A, voce 6): il server di prova usa quello vero."""
+    import core.database as database_module
+
+    monkeypatch.setattr(database_module.db, "_pool", clean_db)
+
+
 class _FakeOrchestrator:
     def __init__(
         self, token=None, join_riesce: bool = True, utente_autenticato: int | None = UTENTE_AUTENTICATO_DEFAULT

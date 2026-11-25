@@ -2,17 +2,29 @@
 core/repositories/whitelabel_repo.py
 ====================================
 Bot con marchio proprio: token cifrato e stato (tabella `whitelabel_bots`, migrazione 0133, NF-38).
-Il token si legge in chiaro solo con `get_con_token`, per avviare il client.
+Il token si legge in chiaro solo con `get_con_token`, per avviare il client. Il cifrato è legato al server
+(dato associato `marchio:<id del server>`): copiato su un'altra riga non si decifra più. Le righe vecchie, senza
+dato associato, si leggono ancora e si riscrivono al primo uso.
 Funzioni coperte: SPEC §23 (NF-38)
 """
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 import asyncpg
+from cryptography.exceptions import InvalidTag
 
 from core.oauth_crypto import OAuthEncryptionNotConfigured, decrypt_token, encrypt_token
+
+
+logger = logging.getLogger("iyokai.whitelabel_repo")
+
+
+def aad_marchio(guild_id: int) -> bytes:
+    """Il dato associato al token cifrato: lega il cifrato a questo server."""
+    return f"marchio:{guild_id}".encode()
 
 
 class ChiaveNonConfigurata(RuntimeError):
@@ -66,7 +78,7 @@ class WhitelabelRepository:
     ) -> None:
         """Collega (o ricollega) il bot del server. Un token già usato da un altro server solleva UniqueViolationError."""
         try:
-            cifrato = encrypt_token(token, self._chiave())
+            cifrato = encrypt_token(token, self._chiave(), aad=aad_marchio(guild_id))
         except OAuthEncryptionNotConfigured as exc:
             raise ChiaveNonConfigurata(str(exc)) from exc
         await self._pool.execute(
@@ -91,7 +103,17 @@ class WhitelabelRepository:
         riga = await self._pool.fetchrow("SELECT * FROM whitelabel_bots WHERE guild_id = $1", guild_id)
         if riga is None:
             return None
-        return self._da_riga(riga), decrypt_token(riga["encrypted_token"], self._chiave())
+        chiave = self._chiave()
+        try:
+            return self._da_riga(riga), decrypt_token(riga["encrypted_token"], chiave, aad=aad_marchio(guild_id))
+        except InvalidTag:
+            token = decrypt_token(riga["encrypted_token"], chiave)  # riga vecchia, senza dato associato (se è alterata solleva)
+        await self._pool.execute(  # riscritta con il dato associato: la prossima lettura è quella nuova
+            "UPDATE whitelabel_bots SET encrypted_token = $2 WHERE guild_id = $1 AND encrypted_token = $3",
+            guild_id, encrypt_token(token, chiave, aad=aad_marchio(guild_id)), riga["encrypted_token"],
+        )
+        logger.info("Token del marchio del server %s riscritto con il dato associato.", guild_id)
+        return self._da_riga(riga), token
 
     async def elenco_abilitati(self) -> list[Marchio]:
         righe = await self._pool.fetch("SELECT * FROM whitelabel_bots WHERE enabled ORDER BY guild_id")

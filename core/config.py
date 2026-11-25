@@ -84,6 +84,26 @@ def _optional(name: str, default: str = "") -> str:
     return os.getenv(name, default).strip()
 
 
+def _proxy_fidati_da_ambiente() -> str:
+    """
+    `WEB_PANEL_TRUSTED_PROXY`: non impostata = 127.0.0.1 e ::1; «nessuno» = nessun proxy (vuoto). Con l'ascolto solo
+    in locale e nessun proxy fidato il bot rifiuta di partire: dietro il proxy tutti avrebbero lo stesso IP.
+    """
+    grezzo = os.getenv("WEB_PANEL_TRUSTED_PROXY", "").strip()
+    if not grezzo:
+        return "127.0.0.1,::1"
+    valore = "" if grezzo.lower() == "nessuno" else grezzo
+    host = os.getenv("WEB_BIND_HOST", "127.0.0.1").strip()
+    if not valore and host in ("127.0.0.1", "::1", "localhost"):
+        print(
+            "[CONFIG] ERRORE: WEB_BIND_HOST è locale ma WEB_PANEL_TRUSTED_PROXY è «nessuno»: dietro il reverse proxy "
+            "tutti avrebbero l'IP 127.0.0.1. Lascia il valore di base (127.0.0.1,::1) o scrivi l'IP del proxy.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    return valore
+
+
 def _optional_int(name: str, default: int) -> int:
     raw = os.getenv(name, "").strip()
     if not raw:
@@ -288,8 +308,10 @@ class Config:
     # Porta locale del pannello (indirizzo: WEB_BIND_HOST).
     WEB_PANEL_PORT: int = field(default=8422)
     # IP dei reverse proxy fidati, separati da virgola: solo da questi si legge
-    # X-Forwarded-For (limite di frequenza per IP). Vuoto = IP del socket.
-    WEB_PANEL_TRUSTED_PROXY: str = field(default="")
+    # X-Forwarded-For (limite di frequenza per IP). Di base 127.0.0.1 e ::1 (il reverse
+    # proxy sulla stessa macchina). «nessuno» = nessun proxy: con l'ascolto solo in locale
+    # il bot non parte (tutti avrebbero l'IP 127.0.0.1 e si bloccherebbero a vicenda).
+    WEB_PANEL_TRUSTED_PROXY: str = field(default="127.0.0.1,::1")
 
     # --- Restore utenti via OAuth2 (SPEC.md §11.11) ---------------------
     # Chiave di cifratura (AES-256-GCM) dei token OAuth altrui salvati
@@ -365,6 +387,9 @@ class Config:
     # Spento se non c'è ENABLE_HOT_PATCH=1. `HOT_PATCH_REPO` è "proprietario/repository"; il token serve solo se il
     # repository è privato (permesso di sola lettura sul contenuto).
     ENABLE_HOT_PATCH: bool = field(default=False)
+    # Segreto TOTP (base32) del secondo fattore di eval, shell, cog load e aggiornamento a caldo
+    # (core/secondo_fattore.py). Vuoto = quei comandi si rifiutano: si fanno solo da console.
+    OWNER_TOTP_SECRET: str = field(default="", repr=False)
     HOT_PATCH_REPO: str = field(default="UwUiSky/iYokai-DS-BOT")
     HOT_PATCH_GITHUB_TOKEN: str = field(default="", repr=False)
 
@@ -498,7 +523,7 @@ def _load_config() -> Config:
         WEB_PANEL_PUBLIC_URL=_optional("WEB_PANEL_PUBLIC_URL", ""),
         WEB_ALLEGATI_PUBLIC_URL=_optional("WEB_ALLEGATI_PUBLIC_URL", ""),
         WEB_PANEL_PORT=_optional_int("WEB_PANEL_PORT", 8422),
-        WEB_PANEL_TRUSTED_PROXY=_optional("WEB_PANEL_TRUSTED_PROXY", ""),
+        WEB_PANEL_TRUSTED_PROXY=_proxy_fidati_da_ambiente(),
         OAUTH_ENCRYPTION_KEY=_optional("OAUTH_ENCRYPTION_KEY", ""),
         VERIFY_IP_ENCRYPTION_KEY=_optional("VERIFY_IP_ENCRYPTION_KEY", ""),
         TICKET_TRASCRIZIONI_KEY=_optional("TICKET_TRASCRIZIONI_KEY", ""),
@@ -519,6 +544,7 @@ def _load_config() -> Config:
         SUPPORT_CHANNEL_ID=_optional_int("SUPPORT_CHANNEL_ID", 0),
         RADIO_STREAM_URL=_optional("RADIO_STREAM_URL", ""),
         ENABLE_HOT_PATCH=_optional_bool("ENABLE_HOT_PATCH", False),
+        OWNER_TOTP_SECRET=_optional("OWNER_TOTP_SECRET", ""),
         HOT_PATCH_REPO=_optional("HOT_PATCH_REPO", "UwUiSky/iYokai-DS-BOT"),
         HOT_PATCH_GITHUB_TOKEN=_optional("HOT_PATCH_GITHUB_TOKEN", ""),
         PREMIUM_ALPHA_UNLOCK_ALL=_optional_bool("PREMIUM_ALPHA_UNLOCK_ALL", in_sviluppo),
