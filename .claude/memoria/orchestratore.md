@@ -194,3 +194,6 @@ Ordine:
 4. Revisione a mano di tutto il codice (209k righe) da parte dell'orchestratore, area per area, senza agenti.
 5. Ultimo consiglio Vulture/Iron/Butcher. 6. Prove dal vivo con l'owner.
 Dopo il bot: app utente (non ancora fatta), programma desktop .exe, poi il sito. Server Oracle Linux (Debian o Ubuntu, 64 bit, forse ARM): controllare all'installazione.
+- 25/11 pomeriggio: main d6ac9813 = riordino + trad1 + trad2 + percorsi aggiornati nei testi tradotti (504 test mirati verdi). Corretto io: lista dei controlli condivisa nei comandi diretti.
+- In corso (schede in /home/user/consiglio/schede/): blocco-A sicurezza (agente abde6291215c77a35, wt-sicurezza, fix/sicurezza), blocco-B sandbox (a113e0ffe4935d65a, wt-sandbox, fix/sandbox), blocco-C autonomia (a47d3094ef4e2282f, wt-autonomia, fix/autonomia). Riprenderli per nome (blocco-A/B/C) o id.
+- Per il blocco D (traduzioni): oltre alle frasi scritte nel codice, i testi citano i percorsi italiani dei comandi mentre per l'inglese i nomi sono tradotti (/admin-levels, /coins): serve un segnaposto nei testi che il bot riempie con il percorso nella lingua di chi legge, poi traduzione di nomi/descrizioni/opzioni dei comandi in 8 lingue.
