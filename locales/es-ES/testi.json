@@ -4483,5 +4483,6 @@
   "crt_specie_5": "Nure-onna",
   "crt_specie_6": "Oni",
   "crt_specie_7": "Karakasa",
-  "crt_specie_8": "Bakeneko"
+  "crt_specie_8": "Bakeneko",
+  "err_sandbox_non_disponibile": "La comprobación segura de archivos no está disponible ahora mismo y la imagen no se ha procesado. Inténtalo de nuevo más tarde."
 }

@@ -4483,5 +4483,6 @@
   "crt_specie_5": "Nure-onna",
   "crt_specie_6": "Oni",
   "crt_specie_7": "Karakasa",
-  "crt_specie_8": "Bakeneko"
+  "crt_specie_8": "Bakeneko",
+  "err_sandbox_non_disponibile": "Il controllo sicuro dei file non è disponibile in questo momento: l'immagine non è stata elaborata. Riprova più tardi."
 }

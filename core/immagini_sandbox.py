@@ -21,6 +21,7 @@ import re
 import resource
 import shutil
 import signal
+import socket
 import struct
 import sys
 import tempfile
@@ -49,6 +50,12 @@ class Limiti:
     scrittura: int = 0  # byte che un file puo' avere: zero per le immagini, un tetto per le conversioni (file temporanei)
     uscita: int = MAX_USCITA
 
+
+# Pixel per i filtri e le schede del bot: l'immagine decodificata e ridotta torna come pixel grezzi (2048 x 2048 x 4 byte).
+MAX_USCITA_PIXEL = 18 * 1024 * 1024
+LIMITE_PIXEL = Limiti(memoria=1024 * 1024 * 1024, cpu=6, reale=12.0, uscita=MAX_USCITA_PIXEL)
+INSIEMI_PIXEL = ("std", "png")  # formati ammessi: quelli di sempre, oppure il solo PNG
+LATO_PIXEL_MIN, LATO_PIXEL_MAX = 16, 2048
 
 # Conversioni (D74): stessi criteri delle immagini, con piu' tempo e memoria per ffmpeg. Il tempo vero e' il tetto che conta.
 LIMITI_CONVERSIONE = {
@@ -88,10 +95,13 @@ def _imposta_limiti(limiti: Limiti):
 
 
 def _interfacce_reali() -> list[str]:
-    """I nomi delle interfacce di rete visibili al processo (da /sys/class/net). Illeggibile = non si sa = lista con un nome ignoto."""
+    """
+    I nomi delle interfacce di rete del namespace di rete del processo (`if_nameindex`: non dipende da /sys, che puo'
+    mostrare le interfacce del sistema). Illeggibile = non si sa = lista con un nome ignoto.
+    """
     try:
-        return sorted(os.listdir("/sys/class/net"))
-    except OSError:
+        return sorted(nome for _, nome in socket.if_nameindex())
+    except (OSError, AttributeError):
         return ["?"]
 
 
@@ -107,8 +117,9 @@ def rete_isolata() -> bool:
     return all(n == "lo" for n in _interfacce_di_rete())
 
 
-def comando_worker(nome: str) -> list[str]:
-    return [sys.executable, "-I", "-B", str(WORKER), nome]
+def comando_worker(nome: str, pixel: tuple[int, str] | None = None) -> list[str]:
+    base = [sys.executable, "-I", "-B", str(WORKER), nome]
+    return base + ["pixel", str(pixel[0]), pixel[1]] if pixel else base
 
 
 def comando_conversione(tipo: str, nome: str) -> list[str]:
@@ -131,22 +142,27 @@ def leggi_uscita(grezzo: bytes) -> tuple[dict, bytes]:
 
 async def esegui_locale(
     nome: str, limiti: Limiti | None = None, comando: list[str] | None = None, tipo: str | None = None,
+    pixel: tuple[int, str] | None = None,
 ) -> RisultatoSandbox:
     """
     SOLO PER IL SERVIZIO `iyokai-sandbox` (un test lo controlla): avvia il figlio con i limiti e ne legge l'esito.
     Senza isolamento di rete (`rete_isolata()` falso) non parte nulla e l'esito e' `non_isolata`.
     `comando` serve solo ai test. Con `tipo` (pdf, audio, video, testo) parte il processo delle conversioni, con una
-    cartella temporanea privata che il padre toglie sempre.
+    cartella temporanea privata che il padre toglie sempre. Con `pixel` = (lato, insieme di formati) il worker
+    rende i pixel grezzi dell'immagine ridotta a quel lato.
     """
+    if pixel is not None:
+        if tipo is not None or not (LATO_PIXEL_MIN <= pixel[0] <= LATO_PIXEL_MAX) or pixel[1] not in INSIEMI_PIXEL:
+            raise ValueError("richiesta di pixel non valida")
     if not rete_isolata():
         logger.error("Sandbox: il processo ha una rete (interfacce %s): lavoro rifiutato", _interfacce_di_rete())
         return RisultatoSandbox("non_isolata")
     if tipo is not None and tipo not in LIMITI_CONVERSIONE:
         raise ValueError("tipo di conversione non valido")
-    limiti = limiti or (LIMITI_CONVERSIONE[tipo] if tipo else Limiti())
+    limiti = limiti or (LIMITI_CONVERSIONE[tipo] if tipo else LIMITE_PIXEL if pixel else Limiti())
     if not NOME.fullmatch(nome):
         raise ValueError("nome di quarantena non valido")
-    argv = comando or (comando_conversione(tipo, nome) if tipo else comando_worker(nome))
+    argv = comando or (comando_conversione(tipo, nome) if tipo else comando_worker(nome, pixel))
     ambiente = {"PATH": os.environ.get("PATH", ""), "IYOKAI_QUARANTENA_DIR": os.environ.get("IYOKAI_QUARANTENA_DIR", "")}
     temporanea = tempfile.mkdtemp(prefix="iyokai-conv-") if tipo else None
     if temporanea:
@@ -235,6 +251,13 @@ def socket_servizio() -> str:
     return os.environ.get(VARIABILE_SOCKET) or SOCKET_SERVIZIO
 
 
+def richiesta_al_servizio(nome: str, tipo: str | None = None, pixel: tuple[int, str] | None = None) -> bytes:
+    """La riga che il bot manda al servizio: `nome`, `conv <tipo> <nome>` oppure `pixel <lato> <insieme> <nome>`."""
+    if pixel:
+        return f"pixel {pixel[0]} {pixel[1]} {nome}".encode("ascii")
+    return (f"conv {tipo} {nome}" if tipo else nome).encode("ascii")
+
+
 async def _chiedi_al_servizio(nome: str, limiti: Limiti, tipo: str | None = None) -> RisultatoSandbox | None:
     """Chiede il lavoro al servizio di sistema. None solo se non c'e' o non accetta il lavoro: chi chiama rifiuta."""
     percorso = socket_servizio()
@@ -245,8 +268,7 @@ async def _chiedi_al_servizio(nome: str, limiti: Limiti, tipo: str | None = None
     except (OSError, asyncio.TimeoutError):
         return None
     try:
-        richiesta = f"conv {tipo} {nome}" if tipo else nome
-        scrittore.write(richiesta.encode("ascii") + b"\n")
+        scrittore.write(richiesta_al_servizio(nome, tipo) + b"\n")
         await scrittore.drain()
     except OSError:
         scrittore.close()

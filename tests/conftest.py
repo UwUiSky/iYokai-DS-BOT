@@ -130,6 +130,9 @@ def _servizio_sandbox_di_prova(tmp_path_factory):
     from core import immagini_servizio as servizio
 
     percorso = str(tmp_path_factory.mktemp("sbx") / "sock")
+    quarantena = tmp_path_factory.mktemp("quarantena-di-prova")
+    precedente_q = os.environ.get("IYOKAI_QUARANTENA_DIR")
+    os.environ["IYOKAI_QUARANTENA_DIR"] = str(quarantena)
     anello = asyncio.new_event_loop()
     pronto = threading.Event()
 
@@ -150,6 +153,10 @@ def _servizio_sandbox_di_prova(tmp_path_factory):
     else:
         os.environ[sb.VARIABILE_SOCKET] = precedente
     anello.call_soon_threadsafe(anello.stop)
+    if precedente_q is None:
+        os.environ.pop("IYOKAI_QUARANTENA_DIR", None)
+    else:
+        os.environ["IYOKAI_QUARANTENA_DIR"] = precedente_q
 
 
 @pytest.fixture(autouse=True)

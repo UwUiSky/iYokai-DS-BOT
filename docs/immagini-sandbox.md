@@ -1,16 +1,33 @@
-# Sandbox delle immagini e delle conversioni (D61, D62, D74)
+# Sandbox obbligatoria per i file degli utenti (D61, D62, D74, blocco B)
 
-Il filtro immagini sospette non apre mai un allegato nel processo del bot. I byte vanno in una
-cartella di quarantena e un processo separato, nuovo per ogni immagine, li analizza con limiti di
-memoria (512 MiB), di CPU (4 s) e di tempo vero (8 s). Ci sono due modi.
+**Ogni file caricato da un utente** (immagini, avatar, sfondi, allegati dei log, PDF, audio, video, testo) si apre
+solo in un processo separato e blindato: il servizio di sistema `iyokai-sandbox`. Il processo del bot non apre mai
+quei byte e non importa nessun decoder (Pillow in lettura, pillow-heif, pypdf, ffmpeg): un test (`tests/test_sandbox_obbligatoria.py`)
+fallisce se qualcuno lo fa. Per ogni lavoro il servizio avvia un processo figlio nuovo, con limiti di memoria, di CPU e
+di tempo vero, senza file scrivibili (tranne una cartella temporanea privata per le conversioni) e senza rete.
 
-- **Modo A, consigliato:** servizio di sistema `iyokai-sandbox`. Utente senza permessi, niente rete,
-  quarantena in sola lettura.
-- **Modo B, ripiego:** il bot avvia da sé lo stesso processo con gli stessi limiti e prova `unshare -rn`
-  per togliere la rete. Il log del bot scrive una volta «sandbox ridotta». Il filtro funziona, ma senza
-  l'isolamento del sistema.
+**Niente ripiego.** Se il servizio non risponde, o se il suo processo ha una rete (manca `PrivateNetwork=yes`), il lavoro
+si rifiuta: l'utente legge «Il controllo sicuro dei file non è disponibile in questo momento», il log del bot scrive
+«Sandbox: servizio iyokai-sandbox non raggiungibile» e le immagini dei filtri restano «non analizzate» (messaggio tolto
+solo per gli account nuovi, vedi sotto). Non esiste più un «modo B» con lo stesso utente del bot.
 
-## Installazione del modo A (una volta, da root)
+Cosa passa dalla sandbox:
+
+- **Filtro immagini e copie degli allegati** (log, ticket, ModMail, backup): `core/immagini_pipeline.py` scrive i byte in
+  quarantena e chiede il lavoro al servizio.
+- **Schede, filtri e immagini dei comandi** (rank card, benvenuto, meme, avatar, sfondi, moneta, foto delle auto,
+  emoji e sticker, AI): `core/safe_image.apri_in_sandbox` manda i byte al servizio, che li decodifica, li riduce e rende
+  i soli pixel grezzi; il bot ricostruisce l'immagine con `Image.frombytes`, senza nessun decoder.
+- **PDF, audio, video, testo**: conversioni del servizio (`core/conversioni_worker.py`).
+
+## Cosa serve sul server
+
+Debian 11+ o Ubuntu 22.04+, x86_64 o arm64 (`aarch64`). Pacchetti: `python3-venv`, `ffmpeg` (con `ffprobe`, libx264,
+libopus, aac). Pillow, pillow-heif, pypdf e zxing-cpp hanno ruote per entrambe le architetture (`pip install -r requirements.txt`).
+Il servizio usa lo stesso ambiente virtuale del bot. `ProtectProc` e `ProtectKernelLogs` richiedono systemd 247+: su
+sistemi più vecchi sono ignorati con un avviso nel journal, il resto dell'isolamento vale lo stesso.
+
+## Installazione (una volta, da root)
 
 Percorsi d'esempio: il bot gira come utente `iyokai` e sta in `/opt/iyokai`. Adatta i nomi.
 
@@ -23,6 +40,17 @@ systemctl daemon-reload
 systemctl enable --now iyokai-sandbox
 systemctl status iyokai-sandbox
 ```
+
+Prova dopo l'installazione:
+
+```
+journalctl -u iyokai-sandbox -n 20          # «in ascolto su /run/iyokai-sbx/sock», nessun «ha una rete»
+systemd-analyze security iyokai-sandbox     # punteggio dell'isolamento (più basso = meglio)
+sudo -u iyokai test -S /run/iyokai-sbx/sock && echo "il bot raggiunge il socket"
+```
+
+Se nel journal compare «il processo ha una rete, ogni lavoro sarà rifiutato», l'unità non ha `PrivateNetwork=yes`:
+rimetti il file di `deploy/systemd/` e fai `systemctl daemon-reload && systemctl restart iyokai-sandbox`.
 
 Il bot scrive i file in quarantena (utente `iyokai`, file `0640`); il servizio li legge dal gruppo
 `iyokai-sbx`. Il socket è `/run/iyokai-sbx/sock` (`0660`, gruppo `iyokai-sbx`): per questo il bot entra nel
@@ -40,8 +68,8 @@ continuano a funzionare.
 
 Lo stesso servizio converte anche gli altri allegati, sempre in un processo nuovo per file
 (`core/conversioni_worker.py`), senza rete, con tetti di memoria, CPU e tempo vero, uscita al massimo di 10 MiB e
-scrittura solo in una cartella temporanea privata che il servizio toglie a ogni lavoro. **Solo il modo A**: senza
-servizio non c'è «sandbox ridotta» per questi parser e l'allegato resta una scheda.
+scrittura solo in una cartella temporanea privata che il servizio toglie a ogni lavoro. Senza
+servizio l'allegato resta una scheda.
 
 - **Serve `ffmpeg`** (con `ffprobe`, `libx264`, `libopus`, `aac`): `apt install ffmpeg`. Il servizio non ha rete:
   ffmpeg parte con `-protocol_whitelist file,pipe` e con il formato in entrata scelto dai byte.
@@ -67,6 +95,12 @@ I controlli sui byte e la libreria delle impronte girano sempre. Se il resto non
 messaggio resta e il log scrive «immagine non analizzata»; fa eccezione un account con meno di 7 giorni
 (o nel server da meno di 1 giorno): il messaggio si toglie e l'autore riceve «riprova fra poco».
 L'owner riceve al massimo un avviso ogni 10 minuti.
+
+## Download degli allegati dei log
+
+Prima di scaricare un allegato per il log (`core/allegati_cancello.py`) il bot controlla che ci sia posto: al massimo
+4 download insieme, 16 in attesa, 48 MiB di byte dichiarati in volo e la coda della sandbox sotto 50 lavori su 100.
+Sopra soglia l'allegato non si scarica: nel log resta la scheda (nome, tipo, peso) senza byte e senza anteprima.
 
 ## Aggiornamenti
 

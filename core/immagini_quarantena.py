@@ -75,6 +75,9 @@ def _scrivi(dati: bytes) -> VoceQuarantena:
     raise OSError("nome di quarantena non trovato")
 
 
+scrivi_file = _scrivi  # per chi deve solo depositare un file di passaggio (senza riga nel registro): lo toglie subito
+
+
 async def salva(dati: bytes, guild_id: int, sha256: str, ore: int = ORE_SOSPETTA) -> VoceQuarantena:
     """Scrive i byte cosi' come sono e li registra. Se la registrazione fallisce il file si toglie."""
     voce = await asyncio.to_thread(_scrivi, dati)

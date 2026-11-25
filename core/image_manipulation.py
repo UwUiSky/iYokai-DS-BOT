@@ -20,17 +20,19 @@ import io
 
 from PIL import Image, ImageFilter, ImageOps
 
-from core.safe_image import safe_open_image
+from core.safe_image import SandboxNonDisponibile, apri_in_sandbox
 
 
 def _load_image(image_bytes: bytes) -> Image.Image | None:
     try:
-        # SEC-11/SEC-20: safe_open_image rifiuta le immagini con troppi
+        # SEC-11/SEC-20: apri_in_sandbox rifiuta le immagini con troppi
         # pixel dichiarati (ImmagineTroppoGrande, presa dal catch ampio
         # sotto come qualunque altra immagine non valida) e restituisce
         # l'immagine già ridotta a 2048 px di lato massimo, PRIMA di
         # qualsiasi filtro.
-        img = safe_open_image(image_bytes)
+        img = apri_in_sandbox(image_bytes)
+    except SandboxNonDisponibile:
+        raise  # senza sandbox il lavoro si rifiuta: lo dice chi chiama
     except Exception:
         return None
 

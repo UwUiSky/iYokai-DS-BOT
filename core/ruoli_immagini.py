@@ -12,7 +12,7 @@ import io
 
 from PIL import Image
 
-from core.safe_image import safe_open_image
+from core.safe_image import apri_in_sandbox
 
 MAX_BYTE_COPIA = 3 * 1024 * 1024
 LATO_MENU = 1280
@@ -23,7 +23,7 @@ def ricodifica_per_menu(dati: bytes) -> bytes:
     PNG rifatto da zero (niente metadati dell'originale); se pesa troppo diventa JPEG, più piccolo se serve.
     Solleva ImmagineTroppoGrande, UnidentifiedImageError o ValueError (resta troppo pesante).
     """
-    immagine = safe_open_image(dati)
+    immagine = apri_in_sandbox(dati)
     immagine.thumbnail((LATO_MENU, LATO_MENU))
     if immagine.mode not in ("RGB", "RGBA"):
         immagine = immagine.convert("RGBA" if "A" in immagine.getbands() else "RGB")

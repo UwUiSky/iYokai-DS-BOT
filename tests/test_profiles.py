@@ -316,7 +316,7 @@ async def test_profilo_come_immagine_con_lo_sfondo_proprio(scena):
 
     buffer = io.BytesIO()
     Image.new("RGB", (1200, 900), (10, 200, 10)).save(buffer, format="PNG")
-    await scena.monete.set_sfondo_card(1, prepara_sfondo(buffer.getvalue()))
+    await scena.monete.set_sfondo_card(1, await asyncio.to_thread(prepara_sfondo, buffer.getvalue()))
     interazione = _interazione()
 
     await scena.comandi["level profilo"].callback(

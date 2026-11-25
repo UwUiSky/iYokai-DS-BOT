@@ -4483,5 +4483,6 @@
   "crt_specie_5": "濡女",
   "crt_specie_6": "鬼",
   "crt_specie_7": "唐伞妖",
-  "crt_specie_8": "猫又"
+  "crt_specie_8": "猫又",
+  "err_sandbox_non_disponibile": "文件安全检查目前不可用，图片没有被处理。请稍后再试。"
 }

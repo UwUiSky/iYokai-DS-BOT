@@ -15,7 +15,7 @@ import discord
 from core.repositories.leveling_repo import leveling_repo
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.repositories.rischio_repo import rischio_repo
-from core.safe_image import run_image_task
+from core.safe_image import SandboxNonDisponibile, run_image_task
 from core.wallet_card import render_wallet_card
 
 logger = logging.getLogger("iyokai.portafoglio")
@@ -32,7 +32,7 @@ async def invia_portafoglio(interaction: discord.Interaction, target: discord.ab
     immagine = await leveling_settings_repo.get_immagine_moneta(g)
     try:
         png = await run_image_task(render_wallet_card, target.display_name, totali.coins_total, banca, posizione, moneta, immagine)
-    except Exception:
+    except (SandboxNonDisponibile, Exception):
         logger.warning("Portafoglio non disegnato", exc_info=True)
         await interaction.followup.send(f"**{totali.coins_total}** {moneta} · banca **{banca}**")
         return

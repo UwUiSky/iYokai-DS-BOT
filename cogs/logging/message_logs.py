@@ -33,6 +33,7 @@ from core import allegati_sicuri, log_testi_servizio
 from core import channel_router as router
 from core import log_personalizza
 from core import log_webhook
+from core.allegati_cancello import cancello
 from core.config import config
 from core.channel_router import SETTING_LOG_CHANNEL, TIPO_MESSAGGI
 from core.database import db
@@ -198,10 +199,19 @@ class MessageLogsCog(commands.Cog):
                         a.content_type, a.size,
                     )
                     continue
-                await allegati_sicuri.salva(
-                    guild.id, message.channel.id, message.id, message.author.id, "log_messaggi", a.filename,
-                    await a.read(), content_type=a.content_type,
-                )
+                # Blocco B: il posto si chiede PRIMA di scaricare. Senza posto (raid, coda della sandbox piena)
+                # non si scarica nulla: resta la scheda con nome, tipo e peso.
+                async with cancello.posto(a.size or 0) as posto:
+                    if not posto:
+                        await allegati_sicuri.salva_senza_byte(
+                            guild.id, message.channel.id, message.id, message.author.id, "log_messaggi", a.filename,
+                            a.content_type, a.size or 0,
+                        )
+                        continue
+                    await allegati_sicuri.salva(
+                        guild.id, message.channel.id, message.id, message.author.id, "log_messaggi", a.filename,
+                        await a.read(), content_type=a.content_type,
+                    )
         except Exception:  # noqa: BLE001 - il log delle copie non deve mai rompere altro
             logger.warning("Copia degli allegati non riuscita", exc_info=True)
 

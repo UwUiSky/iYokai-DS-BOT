@@ -32,8 +32,8 @@ from core.safe_image import (
     ImmagineTroppoGrande,
     run_image_task,
     run_spam_trap_image_task,
-    safe_open_image,
 )
+from core.immagini_decodifica import safe_open_image  # il decoder vive solo nella sandbox: qui se ne provano i limiti
 
 
 @pytest.fixture(autouse=True)

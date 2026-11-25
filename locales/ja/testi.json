@@ -4483,5 +4483,6 @@
   "crt_specie_5": "濡れ女",
   "crt_specie_6": "鬼",
   "crt_specie_7": "唐傘",
-  "crt_specie_8": "化け猫"
+  "crt_specie_8": "化け猫",
+  "err_sandbox_non_disponibile": "ファイルの安全確認が今は使えないため、画像は処理されませんでした。しばらくしてからもう一度お試しください。"
 }

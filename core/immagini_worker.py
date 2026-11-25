@@ -6,6 +6,7 @@ stdout (lunghezza + JSON, poi lunghezza + PNG ricodificato). Parte con `python3 
 limiti di memoria, tempo e file messi da `core/immagini_sandbox.py`. Non parla con Discord né col
 database. Qualunque errore del decoder finisce in un esito «errore»: chi legge lo tratta da sospetto.
 Senza Pillow l'esito e' «non_disponibile» (manca la sandbox, non e' colpa dell'immagine).
+Con `<nome> pixel <lato> <std|png>` rende i pixel grezzi dell'immagine ridotta (per i filtri del bot).
 Apre PNG, JPEG, GIF, WEBP, BMP, TIFF, ICO, AVIF e HEIC (D74, HEIC con pillow-heif solo qui): sempre un solo fotogramma o pagina, uscita PNG dai soli pixel.
 Funzioni coperte: SPEC §6 (D62), §8.16 (D74)
 """
@@ -109,7 +110,8 @@ def _contenuto(img) -> tuple[dict, bytes]:
 
 
 def analizza(percorso: Path) -> tuple[dict, bytes]:
-    from core.safe_image import FORMATI_SANDBOX, ImmagineTroppoGrande, safe_open_image
+    from core.immagini_decodifica import safe_open_image
+    from core.safe_image import FORMATI_SANDBOX, ImmagineTroppoGrande
 
     try:
         dati = percorso.read_bytes()
@@ -142,7 +144,43 @@ def analizza(percorso: Path) -> tuple[dict, bytes]:
     return info, png
 
 
+def pixel(percorso: Path, lato: int, insieme: str) -> tuple[dict, bytes]:
+    """
+    I pixel grezzi (RGB o RGBA) dell'immagine ridotta a `lato`: il bot li ricostruisce con `Image.frombytes`,
+    senza mai aprire i byte dell'utente. Insieme `png`: solo PNG; `std`: i formati di sempre.
+    """
+    from core.immagini_decodifica import safe_open_image
+    from core.safe_image import FORMATI_AMMESSI, ImmagineTroppoGrande
+
+    formati = ("PNG",) if insieme == "png" else FORMATI_AMMESSI
+    try:
+        dati = percorso.read_bytes()
+        formato = Image.open(io.BytesIO(dati), formats=formati).format
+        img = safe_open_image(dati, max_side=lato, formati=formati)
+    except (ImmagineTroppoGrande, Image.DecompressionBombError):
+        return {"esito": "errore", "motivo": "troppo_grande"}, b""
+    except Image.UnidentifiedImageError:
+        return {"esito": "errore", "motivo": "formato"}, b""
+    except Exception as errore:  # decoder: qualunque cosa e' sospetta
+        return {"esito": "errore", "motivo": "decodifica", "dettaglio": type(errore).__name__}, b""
+    try:
+        modo = "RGBA" if "A" in img.getbands() or "transparency" in img.info else "RGB"
+        pronta = img.convert(modo)
+        info = {"esito": "ok", "formato": formato, "larghezza": pronta.size[0], "altezza": pronta.size[1], "modo": modo}
+        return info, pronta.tobytes()
+    except Exception as errore:
+        return {"esito": "errore", "motivo": "elaborazione", "dettaglio": type(errore).__name__}, b""
+
+
 def main(argv: list[str]) -> int:
+    if len(argv) == 5 and argv[2] == "pixel" and NOME.fullmatch(argv[1]) and argv[3].isascii() and argv[3].isdigit() and argv[4] in ("std", "png"):
+        if Image is None:
+            _scrivi({"esito": "non_disponibile", "motivo": "pillow"})
+            return 0
+        base = Path(os.environ.get("IYOKAI_QUARANTENA_DIR") or "/var/lib/iyokai/quarantena")
+        info, grezzo = pixel(base / argv[1], int(argv[3]), argv[4])
+        _scrivi(info, grezzo)
+        return 0
     if len(argv) != 2 or not NOME.fullmatch(argv[1]):
         _scrivi({"esito": "errore", "motivo": "nome"})
         return 2

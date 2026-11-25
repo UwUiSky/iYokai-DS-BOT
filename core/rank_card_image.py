@@ -5,7 +5,7 @@ Disegna la rank card (avatar, nome, livello, barra dell'XP, posizione e coin)
 e la card del profilo (con presentazione e collezione), con colore, tema e
 sfondo con un'immagine propria. Lavoro di Pillow: va chiamato fuori dal ciclo
 principale (core.safe_image.run_image_task); avatar e sfondi si aprono con
-safe_open_image (limite di pixel).
+apri_in_sandbox (limite di pixel).
 Funzioni coperte: SPEC §22.8 (NF-12), §23.16 (NF-40)
 """
 
@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from core.leveling_logic import colore_valido
-from core.safe_image import safe_open_image
+from core.safe_image import SandboxNonDisponibile, apri_in_sandbox
 
 LARGHEZZA = 800
 ALTEZZA = 240
@@ -75,8 +75,10 @@ class DatiRankCard:
 def colore_medio(image_bytes: bytes) -> str | None:
     """LIV-056: il colore medio di un'immagine (l'icona del server) come #RRGGBB, o None se non si apre."""
     try:
-        piccola = safe_open_image(image_bytes).convert("RGB").resize((1, 1), Image.LANCZOS)
+        piccola = apri_in_sandbox(image_bytes).convert("RGB").resize((1, 1), Image.LANCZOS)
         r, g, b = piccola.getpixel((0, 0))
+    except SandboxNonDisponibile:
+        raise  # senza sandbox il lavoro si rifiuta: lo dice chi chiama
     except Exception:
         return None
     return f"#{r:02X}{g:02X}{b:02X}"
@@ -141,8 +143,10 @@ def _avatar_tondo(avatar_bytes: bytes | None, colore_vuoto) -> Image.Image:
     quadrato = Image.new("RGB", (LATO_AVATAR, LATO_AVATAR), colore_vuoto)
     if avatar_bytes:
         try:
-            originale = safe_open_image(avatar_bytes)
+            originale = apri_in_sandbox(avatar_bytes)
             quadrato = originale.convert("RGB").resize((LATO_AVATAR, LATO_AVATAR))
+        except SandboxNonDisponibile:
+            raise  # senza sandbox il lavoro si rifiuta: lo dice chi chiama
         except Exception:  # file rotto, formato strano o troppo grande: si usa il cerchio pieno
             pass
     maschera = Image.new("L", (LATO_AVATAR * 4, LATO_AVATAR * 4), 0)
@@ -164,8 +168,10 @@ def prepara_sfondo(image_bytes: bytes) -> bytes:
     SfondoNonValido se non è un'immagine apribile in sicurezza.
     """
     try:
-        originale = safe_open_image(image_bytes)
+        originale = apri_in_sandbox(image_bytes)
         immagine = ImageOps.fit(originale.convert("RGB"), LATO_SFONDO, Image.LANCZOS)
+    except SandboxNonDisponibile:
+        raise  # senza sandbox il lavoro si rifiuta: lo dice chi chiama
     except Exception as errore:  # formato non ammesso, file rotto, troppi pixel
         raise SfondoNonValido(str(errore)) from errore
     for qualita in (85, 70, 55, 40):
@@ -184,8 +190,10 @@ def _tela(
     if sfondo_bytes:
         try:
             immagine = ImageOps.fit(
-                safe_open_image(sfondo_bytes).convert("RGB"), (larghezza, altezza), Image.LANCZOS
+                apri_in_sandbox(sfondo_bytes).convert("RGB"), (larghezza, altezza), Image.LANCZOS
             )
+        except SandboxNonDisponibile:
+            raise  # senza sandbox il lavoro si rifiuta: lo dice chi chiama
         except Exception:  # sfondo rotto: si disegna la card con il tema
             immagine = None
     if immagine is None:

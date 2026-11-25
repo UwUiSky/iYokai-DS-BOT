@@ -252,15 +252,15 @@ async def test_il_servizio_con_rete_risponde_non_isolata_e_il_bot_rifiuta(cartel
 
 def test_rete_isolata_legge_le_interfacce_vere(monkeypatch):
     monkeypatch.setattr(sb, "_interfacce_di_rete", sb._interfacce_reali)
-    monkeypatch.setattr(sb.os, "listdir", lambda p: ["lo"])
+    monkeypatch.setattr(sb.socket, "if_nameindex", lambda: [(1, "lo")])
     assert sb.rete_isolata()
-    monkeypatch.setattr(sb.os, "listdir", lambda p: ["lo", "enp3s0"])
+    monkeypatch.setattr(sb.socket, "if_nameindex", lambda: [(1, "lo"), (2, "enp3s0")])
     assert not sb.rete_isolata()
 
-    def rotto(p):
-        raise OSError("niente /sys")
+    def rotto():
+        raise OSError("niente interfacce")
 
-    monkeypatch.setattr(sb.os, "listdir", rotto)
+    monkeypatch.setattr(sb.socket, "if_nameindex", rotto)
     assert not sb.rete_isolata()  # nel dubbio si chiude
 
 
@@ -334,3 +334,21 @@ async def test_servizio_non_cambia_gruppo_al_socket_se_non_chiesto(tmp_path, mon
     finally:
         server.close()
         await server.wait_closed()
+
+
+def test_in_un_namespace_di_rete_vuoto_il_processo_risulta_isolato():
+    """Prova vera: `unshare -rn` toglie la rete, come PrivateNetwork=yes del servizio. Salta dove unshare non e' permesso."""
+    import shutil
+    import subprocess
+
+    if shutil.which("unshare") is None:
+        pytest.skip("manca unshare")
+    codice = "from core import immagini_sandbox as s; print(s.rete_isolata())"
+    radice = str(sb.WORKER.parent.parent)
+    prova = subprocess.run(["unshare", "-rn", "true"], capture_output=True)
+    if prova.returncode != 0:
+        pytest.skip("unshare non e' permesso qui")
+    fuori = subprocess.run([sys.executable, "-c", codice], cwd=radice, capture_output=True, text=True, timeout=30)
+    dentro = subprocess.run(["unshare", "-rn", sys.executable, "-c", codice], cwd=radice, capture_output=True, text=True, timeout=30)
+    assert dentro.stdout.strip() == "True"
+    assert fuori.stdout.strip() in ("True", "False")  # fuori dipende dalla macchina; dentro deve essere sempre isolato

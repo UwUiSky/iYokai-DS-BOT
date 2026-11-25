@@ -4483,5 +4483,6 @@
   "crt_specie_5": "누레온나",
   "crt_specie_6": "오니",
   "crt_specie_7": "가라카사",
-  "crt_specie_8": "바케네코"
+  "crt_specie_8": "바케네코",
+  "err_sandbox_non_disponibile": "파일 안전 검사를 지금은 사용할 수 없어서 이미지를 처리하지 못했어요. 잠시 후 다시 시도해 주세요."
 }

@@ -1,31 +1,29 @@
 """
 core/safe_image.py
-======================
-Punto unico per aprire in modo sicuro un'immagine arrivata da fuori
-(allegato Discord, avatar) con Pillow, e per eseguire i lavori Pillow
-fuori dall'event loop con un numero limitato di lavori insieme.
-
-Quattro limiti, tutti qui (SEC-11, SEC-20):
-- byte: un allegato oltre MAX_IMAGE_BYTES non va nemmeno scaricato
-  (il controllo lo fa il chiamante su `attachment.size`);
-- formato: solo quelli in FORMATI_AMMESSI (la sandbox degli allegati, D74,
-  aggiunge TIFF, ICO, AVIF e HEIC (HEIF) con FORMATI_SANDBOX), di cui è nota la memoria
-  usata dal decoder;
-- pixel dichiarati: oltre MAX_PIXELS l'immagine viene rifiutata PRIMA
-  di decodificarla (Image.open() legge solo l'header);
-- lato massimo: l'immagine aperta viene subito ridotta a MAX_SIDE,
-  così ogni filtro lavora su un'immagine piccola.
-
-Funzioni coperte: REVIEW.md SEC-11, SEC-20
+==================
+Il bot NON apre mai i byte di un utente (blocco B): `apri_in_sandbox` li manda al servizio `iyokai-sandbox`, che li
+decodifica in un processo a parte (`core/immagini_decodifica.py`, mai importato dal bot) e rende i soli pixel grezzi;
+qui si rifa' l'immagine con `Image.frombytes`, senza nessun decoder. Senza servizio il lavoro si rifiuta con
+`SandboxNonDisponibile`: niente ripiego. Qui stanno anche i limiti (byte, formati, pixel, lato) e la corsia dei lavori
+Pillow fuori dall'event loop, con un numero limitato di lavori insieme.
+Funzioni coperte: REVIEW.md SEC-11, SEC-20; SPEC §6 (D62)
+Dipende da: core/immagini_sandbox.py, core/immagini_servizio.py
 """
 
 from __future__ import annotations
 
 import asyncio
-import io
+import logging
+import socket
+import threading
+import time
 from typing import Callable, TypeVar
 
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
+
+from core import immagini_sandbox as sandbox
+
+logger = logging.getLogger("iyokai.immagini.safe")
 
 # Oltre questa dimensione un allegato non viene scaricato.
 MAX_IMAGE_BYTES = 8 * 1024 * 1024  # 8 MB
@@ -49,11 +47,11 @@ FORMATI_SANDBOX = FORMATI_AMMESSI + ("TIFF", "ICO", "AVIF", "HEIF")
 # così il tetto di memoria resta lo stesso.
 DIVISORE_PIXEL_DECODIFICA_PESANTE = 4
 
-# Lato più lungo dell'immagine restituita da safe_open_image.
+# Lato più lungo dell'immagine restituita da apri_in_sandbox.
 MAX_SIDE = 2048
 
 # Seconda linea di difesa: Pillow stesso avvisa/rifiuta oltre questo
-# limite nei punti che non passano da safe_open_image.
+# limite nei punti che non passano da apri_in_sandbox.
 Image.MAX_IMAGE_PIXELS = MAX_PIXELS
 
 # Al massimo 2 lavori immagine dei comandi /fun insieme, in tutto il
@@ -64,65 +62,11 @@ _SEMAFORO_FUN = asyncio.Semaphore(2)
 # alla volta), così un'ondata di /fun non ritarda i ban.
 _SEMAFORO_SPAM_TRAP = asyncio.Semaphore(1)
 
-# Per ridurre un'immagine con trasparenza Pillow lavora su una copia
-# "premoltiplicata" e, dentro thumbnail(), tiene in memoria anche
-# l'originale per tutto il ridimensionamento. safe_open_image fa la
-# copia da sé e lascia andare subito l'originale: su un'immagine RGBA
-# da 16 megapixel il picco scende da circa 170 a circa 130 MB.
-_PREMOLTIPLICATO = {"RGBA": "RGBa", "LA": "La"}
-
 T = TypeVar("T")
 
 
 class ImmagineTroppoGrande(Exception):
     """Le dimensioni dichiarate dall'immagine superano il limite consentito."""
-
-
-def _limite_pixel(img: Image.Image, max_pixels: int) -> int:
-    decodifica_pesante = img.format in ("WEBP", "AVIF", "HEIF") or bool(img.info.get("progressive"))
-    if decodifica_pesante:
-        return max_pixels // DIVISORE_PIXEL_DECODIFICA_PESANTE
-    return max_pixels
-
-
-def safe_open_image(
-    image_bytes: bytes, max_pixels: int = MAX_PIXELS, max_side: int = MAX_SIDE, formati: tuple[str, ...] = FORMATI_AMMESSI,
-) -> Image.Image:
-    """
-    Apre l'immagine controllando larghezza × altezza PRIMA di
-    decodificare i pixel: se superano il limite solleva
-    ImmagineTroppoGrande senza allocare nulla. Altrimenti restituisce
-    l'immagine caricata, con il lato più lungo ridotto a max_side.
-    Un formato fuori da `formati` (di norma FORMATI_AMMESSI) solleva UnidentifiedImageError.
-    """
-    try:
-        img = Image.open(io.BytesIO(image_bytes), formats=formati)
-    except Image.DecompressionBombError as errore:
-        # Oltre il doppio di Image.MAX_IMAGE_PIXELS è Pillow stesso a
-        # rifiutare, già in apertura.
-        raise ImmagineTroppoGrande(str(errore)) from errore
-
-    larghezza, altezza = img.size
-    limite = _limite_pixel(img, max_pixels)
-    if larghezza * altezza > limite:
-        raise ImmagineTroppoGrande(
-            f"Immagine {img.format} {larghezza}x{altezza} "
-            f"({larghezza * altezza} pixel) supera il limite di {limite} pixel."
-        )
-    # Solo JPEG: il decoder riduce già in lettura (1/2, 1/4, 1/8, mai
-    # sotto max_side), senza allocare l'immagine intera. Per gli altri
-    # formati draft() non fa nulla.
-    img.draft(None, (max_side, max_side))
-    img.load()
-    if max(img.size) <= max_side:
-        return img
-
-    modo = img.mode
-    if modo in _PREMOLTIPLICATO:
-        # Riassegnando `img` l'originale viene liberato subito.
-        img = img.convert(_PREMOLTIPLICATO[modo])
-    img.thumbnail((max_side, max_side))
-    return img.convert(modo) if img.mode != modo else img
 
 
 async def run_image_task(func: Callable[..., T], *args) -> T:
@@ -142,3 +86,102 @@ async def run_spam_trap_image_task(func: Callable[..., T], *args) -> T:
     """
     async with _SEMAFORO_SPAM_TRAP:
         return await asyncio.to_thread(func, *args)
+
+
+class SandboxNonDisponibile(Exception):
+    """La sandbox manca, e' ferma, e' piena o non e' isolata: il lavoro sull'immagine si rifiuta (nessun ripiego)."""
+
+
+# Al massimo tre richieste di pixel insieme dal bot (il servizio ne tiene tre): le altre aspettano un poco, poi si rifiutano.
+_POSTI_SANDBOX = threading.BoundedSemaphore(3)
+ATTESA_POSTO = 20.0
+_BYTE_PER_PIXEL = {"RGB": 3, "RGBA": 4}
+
+
+def _chiedi_pixel(nome: str, lato: int, insieme: str) -> sandbox.RisultatoSandbox:
+    """Una richiesta `pixel` al servizio, con socket bloccante e tempi stretti. Solleva SandboxNonDisponibile."""
+    limiti = sandbox.LIMITE_PIXEL
+    percorso = sandbox.socket_servizio()
+    scadenza = time.monotonic() + limiti.reale + 5.0
+    cliente = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        cliente.settimeout(2.0)
+        cliente.connect(percorso)
+        cliente.sendall(sandbox.richiesta_al_servizio(nome, pixel=(lato, insieme)) + b"\n")
+        pezzi, totale = [], 0
+        while True:
+            cliente.settimeout(max(0.1, scadenza - time.monotonic()))
+            blocco = cliente.recv(65536)
+            if not blocco:
+                break
+            totale += len(blocco)
+            if totale > limiti.uscita + 65536 or time.monotonic() > scadenza:
+                raise SandboxNonDisponibile("risposta troppo grande o troppo lenta")
+            pezzi.append(blocco)
+    except (OSError, socket.timeout) as errore:
+        logger.error("Sandbox: servizio non raggiungibile o muto (%s)", type(errore).__name__)
+        raise SandboxNonDisponibile("servizio non raggiungibile") from errore
+    finally:
+        cliente.close()
+    try:
+        info, grezzo = sandbox.leggi_uscita(b"".join(pezzi))
+    except ValueError as errore:
+        raise SandboxNonDisponibile("risposta illeggibile") from errore
+    return sandbox.RisultatoSandbox(str(info.get("stato", "errore")), info.get("info") or {}, grezzo, sandbox.MODO_SERVIZIO)
+
+
+def apri_in_sandbox(image_bytes: bytes, max_side: int = MAX_SIDE, formati: tuple[str, ...] = FORMATI_AMMESSI) -> Image.Image:
+    """
+    Rende un'immagine (RGB o RGBA, lato piu' lungo al massimo `max_side`) fatta dai soli pixel che la sandbox ha
+    decodificato. Va chiamata in un thread (`run_image_task`), mai nell'event loop: aspetta il servizio.
+    Solleva ImmagineTroppoGrande (troppi pixel), UnidentifiedImageError (formato o file non valido) oppure
+    SandboxNonDisponibile (servizio assente, fermo, pieno o non isolato).
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        pass
+    else:
+        raise RuntimeError("apri_in_sandbox blocca: va chiamata in un thread (run_image_task), non nell'event loop")
+    if not isinstance(image_bytes, (bytes, bytearray)) or len(image_bytes) > MAX_IMAGE_BYTES:
+        raise ImmagineTroppoGrande("file oltre il limite di byte")
+    insieme = {tuple(FORMATI_AMMESSI): "std", ("PNG",): "png"}.get(tuple(formati))
+    if insieme is None:
+        raise ValueError("insieme di formati non ammesso")
+    lato = max(sandbox.LATO_PIXEL_MIN, min(int(max_side), sandbox.LATO_PIXEL_MAX))
+    if not _POSTI_SANDBOX.acquire(timeout=ATTESA_POSTO):
+        logger.error("Sandbox: nessun posto libero entro %s s, immagine rifiutata", ATTESA_POSTO)
+        raise SandboxNonDisponibile("sandbox occupata")
+    try:
+        from core import immagini_quarantena as quarantena  # solo qui: il worker importa questo modulo e non ha il database
+
+        voce = quarantena.scrivi_file(bytes(image_bytes))
+        try:
+            risultato = _chiedi_pixel(voce.nome, lato, insieme)
+        finally:
+            voce.percorso.unlink(missing_ok=True)
+    except OSError as errore:
+        logger.error("Sandbox: quarantena non scrivibile (%s)", type(errore).__name__)
+        raise SandboxNonDisponibile("quarantena non scrivibile") from errore
+    finally:
+        _POSTI_SANDBOX.release()
+    return _immagine_da(risultato)
+
+
+def _immagine_da(r: sandbox.RisultatoSandbox) -> Image.Image:
+    if r.esito == "errore":
+        motivo = r.info.get("motivo")
+        if motivo == "troppo_grande":
+            raise ImmagineTroppoGrande("immagine oltre i limiti di pixel")
+        raise UnidentifiedImageError(f"immagine non valida ({motivo})")
+    if r.esito != "ok":
+        logger.error("Sandbox: esito %s, immagine rifiutata", r.esito)
+        raise SandboxNonDisponibile(r.esito)
+    modo, l, h = r.info.get("modo"), r.info.get("larghezza"), r.info.get("altezza")
+    if modo not in _BYTE_PER_PIXEL or not all(isinstance(v, int) and 0 < v <= sandbox.LATO_PIXEL_MAX for v in (l, h)):
+        raise SandboxNonDisponibile("risposta incoerente")
+    if len(r.png) != l * h * _BYTE_PER_PIXEL[modo]:
+        raise SandboxNonDisponibile("pixel incompleti")
+    img = Image.frombytes(modo, (l, h), r.png)
+    img.format = r.info.get("formato")
+    return img
