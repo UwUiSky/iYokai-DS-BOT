@@ -121,7 +121,7 @@ async def test_voice_rename_dichiara_da_1_a_100_caratteri():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     await bot.add_cog(VoiceTempCog(bot))
 
-    comando = bot.tree.get_command("voice").get_command("rename")
+    comando = bot.tree.get_command("vocali").get_command("rename")
     opzioni = {o["name"]: o for o in comando.to_dict(bot.tree)["options"]}
 
     assert opzioni["name"]["min_length"] == 1

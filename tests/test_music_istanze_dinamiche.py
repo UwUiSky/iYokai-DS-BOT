@@ -95,7 +95,7 @@ def test_main_crea_tanti_worker_quanti_i_token():
 def test_i_comandi_dei_server_non_toccano_il_player_del_bot_principale():
     """Fuori dalla sezione /owner radio, il voice_client usato è sempre quello di un worker."""
     sorgente = Path("cogs/music/player.py").read_text(encoding="utf-8")
-    inizio_radio = sorgente.index("# /owner radio")
+    inizio_radio = sorgente.index("# /owner-radio")
     fuori = sorgente[:inizio_radio]
     for riga in fuori.splitlines():
         if ".voice_client" in riga:
@@ -104,6 +104,5 @@ def test_i_comandi_dei_server_non_toccano_il_player_del_bot_principale():
 
 def test_i_comandi_radio_sono_solo_del_proprietario():
     sorgente = Path("cogs/music/player.py").read_text(encoding="utf-8")
-    radio = sorgente[sorgente.index("# /owner radio"):]
-    assert len(re.findall(r'"owner",\s*nome=', radio)) >= 5
-    assert "sottogruppo=RADIO" in radio
+    radio = sorgente[sorgente.index("# /owner-radio"):]
+    assert len(re.findall(r'"owner-radio",\s*nome=', radio)) >= 5

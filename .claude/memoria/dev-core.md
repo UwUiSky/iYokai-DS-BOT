@@ -4,7 +4,7 @@
 24/11/2026 · ramo `feat/riordino` (pubblicato) · riordino dei comandi per famiglie e 10 comandi diretti (D137, #122). Prima: r1infra, r1premium.
 
 ## In corso
-- Riordino finito nel codice: migrazione 0972, `core/comandi_diretti.py`, `/help`, `/owner-radio`, `/monete balance immagine`, traduzioni en-US, elenchi dei comandi, D137, CLAUDE.md. Resta solo il controllo dei test dei cog toccati (shard in `scratchpad/shard1.out` e `shard2.out`) e la prova su Discord (`VERIFICA_LIVE.md`, voce D137). Da unire dall'orchestratore.
+- Riordino finito nel codice: migrazione 0972, `core/comandi_diretti.py`, `/help`, `/owner-radio`, `/monete balance immagine`, traduzioni en-US, elenchi dei comandi, D137, CLAUDE.md. Test dei cog toccati (512 file) girati e sistemati (resolver D137 in `tests/support/percorsi.py`). Resta la prova su Discord (`VERIFICA_LIVE.md`, voce D137). Da unire dall'orchestratore.
 - Scheda successiva (NON fatta): alias a prefisso.
 - Restano: r1dep (#161), r1cfg (CFG-024 con dev-moderazione, 001/002/003/006/027 dev-web), r15immagini (`/admin-automod immagini`), #67 11.11, 11.12; #70 14.10, 14.12-14.14. Rimandato: permessi per ruolo dal pannello (OAuth).
 

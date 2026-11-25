@@ -48,12 +48,12 @@ def _inviato(interazione) -> dict:
 # Testi liberi: lunghezza massima dichiarata a Discord
 # ----------------------------------------------------------------------
 LUNGHEZZE_ATTESE = {
-    ("clan crea", "name"): 64,
-    ("clan crea", "tag"): 5,
-    ("clan info", "tag"): 5,
-    ("clan membri", "tag"): 5,
-    ("clan compra-canale", "nome"): 100,
-    ("clan tesoreria trasferisci", "tag_destinazione"): 5,
+    ("monete-clan crea", "name"): 64,
+    ("monete-clan crea", "tag"): 5,
+    ("monete-clan info", "tag"): 5,
+    ("monete-clan membri", "tag"): 5,
+    ("monete-clan compra-canale", "nome"): 100,
+    ("monete-clan tesoreria trasferisci", "tag_destinazione"): 5,
     ("admin-economia shop-add", "name"): 80,
     ("admin-economia shop-add", "description"): 200,
     ("admin-giveaway avvia", "prize"): 200,

@@ -31,8 +31,7 @@ async def test_music_cog_si_carica_anche_se_lavalink_non_e_raggiungibile():
     top = {c.name for c in bot.tree.get_commands()}
     assert "music" in top
     assert not top & {
-        "play", "skip", "stop", "pause", "resume", "queue", "volume", "disconnect",
-        "clear-queue", "shuffle", "loop", "nowplaying", "nonstop", "nonstop-main",
+        "volume", "disconnect", "clear-queue", "shuffle", "loop", "nowplaying", "nonstop", "nonstop-main",
     }
     # /owner non è globale: lo aggiunge main.py solo nel server dell'owner.
     assert "owner" not in top

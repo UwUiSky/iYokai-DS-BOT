@@ -66,7 +66,7 @@ async def test_albero_gif_ha_cinque_comandi_e_regge_i_limiti():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.none())
     await gifmod.setup(bot)
     assert percorsi_del_gruppo("gif") == {"reazione", "azione", "privacy", "cerca", "preferenze"}
-    assert len(GRUPPI["gif"].commands) <= 25
+    assert len(GRUPPI["immagini"].get_command("gif").commands) <= 25
     for nome in ("reazione", "azione", "privacy", "cerca", "preferenze"):
         comando_nel_gruppo("gif", nome).to_dict(bot.tree)
 
@@ -220,11 +220,11 @@ async def test_il_completamento_usa_solo_dati_locali_e_resta_nei_limiti():
 async def test_spegnere_le_azioni_nel_server_e_solo_la_politica_139():
     from core import command_policy as p
 
-    assert await p.modifica_elenco(ID, p.CHIAVE_COMANDI_OFF, "gif azione", aggiungi=True, changed_by=1)
+    assert await p.modifica_elenco(ID, p.CHIAVE_COMANDI_OFF, "immagini gif azione", aggiungi=True, changed_by=1)
     politica = await p.leggi_politica(ID)
     kw = dict(canali=[], ruoli=[], user_id=AUTORE, esente=False)
-    assert p.valuta(politica, percorso="gif azione", **kw) == p.MOTIVO_COMANDO_OFF
-    assert p.valuta(politica, percorso="gif reazione", **kw) is None
+    assert p.valuta(politica, percorso="immagini gif azione", **kw) == p.MOTIVO_COMANDO_OFF
+    assert p.valuta(politica, percorso="immagini gif reazione", **kw) is None
 
 
 async def test_ricambia_non_aggira_il_modulo_spento_ne_la_politica(cog):
@@ -232,7 +232,7 @@ async def test_ricambia_non_aggira_il_modulo_spento_ne_la_politica(cog):
 
     voce = gifmod.catalogo.trova("azione", "abbraccia")
     vista = gifmod.RicambiaView(cog, voce, AUTORE, BERS, "Ricambia")
-    assert await p.modifica_elenco(ID, p.CHIAVE_COMANDI_OFF, "gif azione", aggiungi=True, changed_by=1)
+    assert await p.modifica_elenco(ID, p.CHIAVE_COMANDI_OFF, "immagini gif azione", aggiungi=True, changed_by=1)
     it = _it(user_id=BERS)
     it.guild.get_member.return_value = fake_member(AUTORE, "autore")
     await vista._premuto(it)

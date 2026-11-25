@@ -1095,7 +1095,7 @@ def test_le_scelte_di_boost_sono_tre_e_nei_limiti():
 
     cog = LevelingCog.__new__(LevelingCog)
     registrati = registra_comandi_del_cog(cog, gruppi=costruisci_gruppi(), tree=None)
-    boost = [c for c in registrati if c.qualified_name in ("clan boost individuale", "clan boost gilda")]
+    boost = [c for c in registrati if c.qualified_name in ("monete-clan boost individuale", "monete-clan boost gilda")]
     assert len(boost) == 2
     for comando in boost:
         scelte = comando._params["tipo"].choices

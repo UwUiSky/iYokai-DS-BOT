@@ -22,7 +22,7 @@ async def test_anti_raid_cog_si_carica_correttamente():
     assert module is not None
     assert module.premium_capable is True
 
-    gruppo = bot.tree.get_command("admin-antiraid")
+    gruppo = bot.tree.get_command("admin-sicurezza-antiraid")
     assert gruppo is not None
 
     nomi_comandi = {c.name for c in gruppo.commands}
@@ -39,10 +39,10 @@ async def test_anti_raid_ricaricato_tre_volte_e_scaricato_non_lascia_comandi():
     bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
     for _ in range(3):
         await anti_raid_setup(bot)
-        assert GRUPPI["admin-antiraid"].get_command("enable") is not None
+        assert GRUPPI["admin-sicurezza-antiraid"].get_command("enable") is not None
         await bot.remove_cog("AntiRaidCog")
-        assert GRUPPI["admin-antiraid"].get_command("enable") is None
+        assert GRUPPI["admin-sicurezza-antiraid"].get_command("enable") is None
     await anti_raid_setup(bot)
     await bot.remove_cog("AntiRaidCog")
-    assert GRUPPI["admin-antiraid"].get_command("enable") is None
-    assert bot.tree.get_command("admin-antiraid") is None
+    assert GRUPPI["admin-sicurezza-antiraid"].get_command("enable") is None
+    assert bot.tree.get_command("admin-sicurezza-antiraid") is None

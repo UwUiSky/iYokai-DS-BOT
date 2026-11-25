@@ -180,7 +180,7 @@ async def test_utl_018_il_tag_manda_l_embed_salvato_con_il_testo(monkeypatch):
 
 
 def test_utl_036_i_comandi_di_gestione_dei_tag_sono_solo_per_chi_gestisce_il_server():
-    """UTL-036: il gruppo /admin-tag (crea, modifica, elimina, info, alias, divieti) si apre solo con «Gestire il server»."""
+    """UTL-036: il gruppo /admin-messaggi-tag (crea, modifica, elimina, info, alias, divieti) si apre solo con «Gestire il server»."""
     from core.command_groups import _DEFINIZIONI
-    descrizione, permesso, _livello = _DEFINIZIONI["admin-tag"]
+    descrizione, permesso, _livello = _DEFINIZIONI["admin-messaggi-tag"]
     assert permesso == "manage_guild"

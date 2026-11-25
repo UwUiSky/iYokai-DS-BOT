@@ -44,7 +44,9 @@ async def test_musica_e_radio_stanno_nei_gruppi_giusti():
         assert MUSIC_ATTESI <= percorsi_del_gruppo("music")
         assert RADIO_ATTESI <= percorsi_del_gruppo("owner")
         top = {c.name for c in bot.tree.get_commands()}
-        assert not top & VECCHI_TOP
+        from core.comandi_diretti import DIRETTI
+
+        assert not (top - set(DIRETTI)) & VECCHI_TOP  # D137: i dieci comandi diretti hanno gli stessi nomi
         assert "music" in top
         assert "owner" not in top  # /owner lo aggiunge main.py solo nel server dell'owner
     finally:
@@ -64,8 +66,8 @@ async def test_music_un_livello_di_sottogruppi_e_al_massimo_25_figli():
             assert not figlio.description.startswith("[")
         assert GRUPPI["music"].livello is None
         assert GRUPPI["owner"].livello is Livello.OWNER
-        radio = GRUPPI["owner"].get_command("radio")
-        assert radio is not None and not any(c.description.startswith("[") for c in radio.commands)
+        radio = GRUPPI["owner-radio"]
+        assert radio.commands and not any(c.description.startswith("[") for c in radio.commands)
     finally:
         await _scarica(bot)
 

@@ -14,6 +14,7 @@ import pytest
 from discord import app_commands
 from discord.ext import commands
 
+from core.comandi_diretti import ComandoDiretto
 from core.command_access import GruppoYokai, Livello
 
 MODULI = (
@@ -66,23 +67,23 @@ ATTESI: dict[tuple[str, str | None], set[str]] = {
     ("mod-ban", "massa"): {"ban", "unban", "kick", "entrati", "invito"},
     ("admin-sicurezza", None): {"heatmap", "score", "spamtrap"},
     ("admin-sicurezza", "escalation"): {"enable", "disable", "set-reset-days", "set-step", "remove-step", "reset", "status"},
-    ("admin-antinuke", None): {
+    ("admin-sicurezza-antinuke", None): {
         "enable", "limits", "trusted-add", "trusted-remove", "trusted-list", "punish-action", "recovery", "status",
         "guardie", "casi", "rilascia", "canale-allarmi",
     },
-    ("admin-antiraid", None): {
+    ("admin-sicurezza-antiraid", None): {
         "enable", "join-rate", "account-age", "username-check", "avatar-check",
         "lockdown-action", "alert-channel", "status", "quarantine-hold", "rilascia",
         "filtro-ingresso", "nomi-vietati", "segnali", "ping-ruoli", "elenco", "segnala", "livello",
     },
     ("admin-sicurezza", "panico"): {"attiva", "togli", "configura", "stato"},
     ("admin-sicurezza", "globalban"): {"enable", "disable", "status", "controlla"},
-    ("admin-sicurezza", "verify"): {
+    ("admin-sicurezza-verifica", None): {
         "setup", "panel", "whitelist-add", "whitelist-remove", "blacklist-add", "blacklist-remove",
         "opzioni", "manuale", "tentativi", "statistiche", "tempi", "invia",
     },
     ("admin-automod", None): {"sync", "mute-duration", "log-channel", "status", "violazioni", "violazione-togli", "riepilogo", "azzera", "regole", "gruppo", "immagini", "liste", "calore", "pulizia", "avviso"},
-    ("admin-filtri", None): {
+    ("admin-automod-filtri", None): {
         "invites", "anti-link-mode", "anti-link-domain", "anti-spam-messages", "anti-spam-emoji",
         "anti-spam-sticker", "anti-caps", "anti-zalgo", "phishing", "forma-testo", "anti-mention", "anti-attachment", "actions-set",
         "messaggi", "contenuto", "canale-media", "emergenza",
@@ -101,10 +102,11 @@ LIVELLI = {
     "mod-ban": Livello.MODBAN,
     "founder": Livello.FOUNDER,
     "admin-sicurezza": Livello.SECURITY,
-    "admin-antinuke": Livello.SECURITY,
-    "admin-antiraid": Livello.SECURITY,
+    "admin-sicurezza-verifica": Livello.SECURITY,
+    "admin-sicurezza-antinuke": Livello.SECURITY,
+    "admin-sicurezza-antiraid": Livello.SECURITY,
     "admin-automod": Livello.ADMIN,
-    "admin-filtri": Livello.ADMIN,
+    "admin-automod-filtri": Livello.ADMIN,
     "admin-log": Livello.LOG,
 }
 
@@ -152,14 +154,18 @@ async def test_il_gruppo_ha_il_livello_giusto(bot, gruppo):
 
 
 async def test_i_vecchi_nomi_di_primo_livello_sono_spariti(bot):
-    presenti = {c.name for c in bot.tree.get_commands()}
-    assert presenti.isdisjoint(VECCHI_NOMI)
+    from core.comandi_diretti import DIRETTI
+
+    presenti = {c.name for c in bot.tree.get_commands()} - set(DIRETTI)  # D137: i comandi diretti hanno nomi come `ban` e `kick`
+    assert presenti.isdisjoint(VECCHI_NOMI - {"ai"})  # `/ai` è il nuovo nome di `/assistente` (D137)
     # Il Verify mette anche /utility verifica (VER-010), il comando per i membri.
     assert presenti == set(LIVELLI) | {"utility"}
 
 
 async def test_nessun_prefisso_admin_e_nessun_check_di_permesso_locale(bot):
     for radice in bot.tree.get_commands():
+        if isinstance(radice, ComandoDiretto):
+            continue  # ha la stessa funzione del comando lungo, già controllato
         for nodo in radice.walk_commands():
             assert not nodo.description.startswith("["), nodo.qualified_name
             if isinstance(nodo, app_commands.Command):

@@ -51,7 +51,7 @@ async def test_report_si_carica_correttamente():
     from core.command_groups import GRUPPI
 
     assert GRUPPI["utility"].get_command("report") is not None
-    assert GRUPPI["admin-bot"].get_command("config").get_command("canale-report") is not None
+    assert GRUPPI["admin-bot-config"].get_command("canale-report") is not None
 
 
 async def test_clear_si_carica_e_parametri_leggibili_attraverso_decorator():

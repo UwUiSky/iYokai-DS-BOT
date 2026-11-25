@@ -50,8 +50,8 @@ def test_l_elenco_copre_tutte_le_famiglie_di_comandi():
     nomi = _nomi_dei_comandi()
     assert len(nomi) >= 35
     for atteso in ("monete daily", "monete shop buy", "monete cassa", "admin-economia assegna-lobby",
-                   "clan crea", "clan tesoreria dona", "clan boost gilda", "admin-giveaway avvia",
-                   "admin-ruoli premio aggiungi", "admin-economia cassa-premium"):
+                   "monete-clan crea", "monete-clan tesoreria dona", "monete-clan boost gilda", "admin-giveaway avvia",
+                   "admin-livelli premi aggiungi", "admin-economia cassa-premium"):
         assert atteso in nomi
 
 
