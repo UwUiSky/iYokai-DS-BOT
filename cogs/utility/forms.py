@@ -31,6 +31,7 @@ from core.premium import PremiumModule, registry
 from core.repositories.form_repo import Form, FormResponse, form_repo
 from core.role_safety import check_role_assignable, motivo_ruolo_automatico_non_assegnabile
 from core.ui_base import BaseModal, BaseView
+from core.ripristino_differito import ripristina_in_background
 
 logger = logging.getLogger("iyokai.forms")
 
@@ -311,5 +312,10 @@ async def setup(bot: commands.Bot) -> None:
     )
     cog = FormsCog(bot)
     await bot.add_cog(cog)
-    for r in await form_repo.list_pending():
-        bot.add_view(cog.costruisci_view(r.id), message_id=r.review_message_id)
+
+    async def ripristina_view() -> None:
+        for r in await form_repo.list_pending():
+            bot.add_view(cog.costruisci_view(r.id), message_id=r.review_message_id)
+
+    # Le view dei messaggi già pubblicati si rimettono in background: il setup() non legge il database.
+    ripristina_in_background("forms", ripristina_view)

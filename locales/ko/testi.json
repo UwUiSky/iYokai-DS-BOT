@@ -4484,5 +4484,9 @@
   "crt_specie_5": "누레온나",
   "crt_specie_6": "오니",
   "crt_specie_7": "가라카사",
-  "crt_specie_8": "바케네코"
+  "crt_specie_8": "바케네코",
+  "owner_servizi_caduti": "주의: 서비스 {n}개에 문제가 있습니다. 스스로 계속 다시 시도합니다.\n{elenco}",
+  "owner_servizi_tornati": "복구되었습니다: 서비스 {n}개가 다시 작동합니다.\n{elenco}",
+  "owner_avvio_incompleto": "시작이 불완전합니다. 서버에서 명령어가 사라지지 않도록 Discord와 동기화하지 않았습니다. 스스로 다시 시도합니다.\n불러오지 못한 모듈: {moduli}\n확인할 수 없는 동기화: {sync}",
+  "owner_avvio_completato": "시작이 완료되었습니다. 모든 모듈을 불러왔고 명령어를 동기화했습니다."
 }

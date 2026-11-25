@@ -28,6 +28,11 @@ SCOPE_GLOBALE = "global"
 SALTATA = "saltata"
 SINCRONIZZATA = "sincronizzata"
 ERRORE = "errore"
+# La sync non è stata fatta perché l'albero potrebbe essere incompleto o non verificabile:
+# una sync è una sovrascrittura in blocco, con un modulo mancante toglierebbe i suoi comandi a tutti i server.
+SALTATA_COG_FALLITI = "saltata_cog_falliti"
+NON_VERIFICABILE = "non_verificabile"
+DA_RITENTARE = frozenset({ERRORE, SALTATA_COG_FALLITI, NON_VERIFICABILE})
 
 
 def scope_guild(guild_id: int) -> str:
@@ -101,8 +106,9 @@ async def sincronizza_se_cambiato(
     try:
         salvata = await stato.leggi(scope)
     except Exception as exc:
-        logger.warning("Sync comandi [%s]: impronta salvata illeggibile (%s), sincronizzo.", scope, type(exc).__name__)
-        salvata = None
+        # Database lento o giù: non si sa se l'albero è cambiato. Meglio non sincronizzare e riprovare.
+        logger.warning("Sync comandi [%s]: impronta salvata illeggibile (%s), non sincronizzo.", scope, type(exc).__name__)
+        return NON_VERIFICABILE
     if salvata == impronta:
         logger.info("Sync comandi [%s]: albero invariato, sincronizzazione saltata.", scope)
         return SALTATA
@@ -129,12 +135,20 @@ async def sincronizza_all_avvio(
     guild_sviluppo_id: int | None,
     guild_owner_id: int | None,
     stato: StatoSync,
+    cog_falliti: Sequence[str] = (),
 ) -> dict[str, str]:
     """
     Sviluppo (`guild_sviluppo_id`): copia il globale nel server di prova e
     sincronizza solo quello. Produzione: globale, più il server dell'owner
     (`/owner`) se `guild_owner_id` c'è. Restituisce {ambito: esito}.
+    Se qualche cog non si è caricato (`cog_falliti`) non si sincronizza niente.
     """
+    if cog_falliti:
+        logger.error("Sync comandi saltata: cog non caricati (%s).", ", ".join(cog_falliti))
+        ambiti = [scope_guild(guild_sviluppo_id)] if guild_sviluppo_id else [SCOPE_GLOBALE]
+        if not guild_sviluppo_id and guild_owner_id:
+            ambiti.append(scope_guild(guild_owner_id))
+        return {ambito: SALTATA_COG_FALLITI for ambito in ambiti}
     if guild_sviluppo_id:
         guild = discord.Object(id=guild_sviluppo_id)
         tree.copy_global_to(guild=guild)

@@ -4484,5 +4484,9 @@
   "crt_specie_5": "Nure-onna",
   "crt_specie_6": "Oni",
   "crt_specie_7": "Karakasa",
-  "crt_specie_8": "Bakeneko"
+  "crt_specie_8": "Bakeneko",
+  "owner_servizi_caduti": "Attenzione: {n} servizi in difficoltà. Riprovo da solo.\n{elenco}",
+  "owner_servizi_tornati": "Tutto a posto: {n} servizi sono tornati a funzionare.\n{elenco}",
+  "owner_avvio_incompleto": "Avvio incompleto. Non ho sincronizzato i comandi con Discord, così i server non li perdono. Riprovo da solo.\nModuli non caricati: {moduli}\nSincronizzazione non verificabile: {sync}",
+  "owner_avvio_completato": "Avvio completato: tutti i moduli sono caricati e i comandi sono sincronizzati."
 }

@@ -4484,5 +4484,9 @@
   "crt_specie_5": "濡れ女",
   "crt_specie_6": "鬼",
   "crt_specie_7": "唐傘",
-  "crt_specie_8": "化け猫"
+  "crt_specie_8": "化け猫",
+  "owner_servizi_caduti": "警告：{n}件のサービスに問題があります。自動で再試行を続けます。\n{elenco}",
+  "owner_servizi_tornati": "復旧しました：{n}件のサービスが再び動いています。\n{elenco}",
+  "owner_avvio_incompleto": "起動が不完全です。サーバーからコマンドが消えないよう、Discordとの同期は行っていません。自動で再試行します。\n読み込めなかったモジュール：{moduli}\n確認できない同期：{sync}",
+  "owner_avvio_completato": "起動が完了しました。すべてのモジュールを読み込み、コマンドを同期しました。"
 }

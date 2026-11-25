@@ -101,14 +101,16 @@ def _dsn_e_pool() -> tuple[str | None, Any]:
 class GiroPeriodico(tasks.Loop):
     """Un `tasks.Loop` che non muore: errori contati, pause crescenti, stato nel database."""
 
-    def __init__(self, coro, *, subito: bool = False, **kw) -> None:
+    def __init__(self, coro, *, subito: bool = False, silenzioso: bool = False, **kw) -> None:
         self._originale = coro
         self._subito = subito
+        self._silenzioso = silenzioso  # niente avviso all'owner per le cadute di questo giro
         self.errori_consecutivi = 0
         self.ultimo_ok: datetime | None = None
         self.ultimo_errore: str | None = None
         self.ultimo_salvataggio: float | None = None
         self._avvisato = False
+        self._fermato = False  # fermato di proposito (stop/cancel): non è un guasto
         nome_task = kw.pop("name", None)
         self.nome = f"{coro.__module__}.{coro.__qualname__}"[:200]
         super().__init__(self._protetto_per(coro), name=nome_task or f"giro: {self.nome}", **kw)
@@ -158,7 +160,7 @@ class GiroPeriodico(tasks.Loop):
             exc_info=exc,
         )
         await self._salva()
-        if self.errori_consecutivi >= ERRORI_PER_AVVISO and not self._avvisato:
+        if self.errori_consecutivi >= ERRORI_PER_AVVISO and not self._avvisato and not self._silenzioso:
             self._avvisato = True
             for ascolta in ascoltatori_caduta:
                 _chiama(ascolta, self.nome, self.errori_consecutivi, self.ultimo_errore)
@@ -234,7 +236,7 @@ class GiroPeriodico(tasks.Loop):
         if obj is None:
             return self
         copia = GiroPeriodico(
-            self._originale, subito=self._subito, seconds=self._seconds, hours=self._hours,
+            self._originale, subito=self._subito, silenzioso=self._silenzioso, seconds=self._seconds, hours=self._hours,
             minutes=self._minutes, time=self._time, count=self.count, reconnect=self.reconnect,
             name=self._name,
         )
@@ -244,6 +246,18 @@ class GiroPeriodico(tasks.Loop):
         copia._error = self._error
         setattr(obj, self._originale.__name__, copia)
         return copia
+
+    def start(self, *args: Any, **kwargs: Any):
+        self._fermato = False
+        return super().start(*args, **kwargs)
+
+    def stop(self) -> None:
+        self._fermato = True
+        super().stop()
+
+    def cancel(self) -> None:
+        self._fermato = True
+        super().cancel()
 
     def stato(self) -> dict[str, Any]:
         """Stato leggibile, per /salute."""
@@ -267,13 +281,13 @@ def _chiama(funzione: Callable, *args) -> None:
 def giro_periodico(
     *, seconds: float = MISSING, minutes: float = MISSING, hours: float = MISSING,
     time=MISSING, count: int | None = None, reconnect: bool = True,
-    name: str | None = None, subito: bool = False,
+    name: str | None = None, subito: bool = False, silenzioso: bool = False,
 ):
-    """Decoratore al posto di `tasks.loop`: stessi parametri, più `subito=True` (niente attesa dopo il riavvio)."""
+    """Decoratore al posto di `tasks.loop`: stessi parametri, più `subito=True` (niente attesa dopo il riavvio) e `silenzioso=True` (niente DM all'owner)."""
 
     def decoratore(funzione):
         return GiroPeriodico(
-            funzione, subito=subito, seconds=seconds, minutes=minutes, hours=hours,
+            funzione, subito=subito, silenzioso=silenzioso, seconds=seconds, minutes=minutes, hours=hours,
             time=time, count=count, reconnect=reconnect, name=name,
         )
 
@@ -289,8 +303,8 @@ def giri_in_difficolta() -> list[str]:
     """Nomi dei giri avviati che si sono fermati o che sbagliano da più volte di fila."""
     nomi: list[str] = []
     for giro in GIRI.values():
-        if giro._task is None:
-            continue  # mai avviato: non è un guasto
+        if giro._task is None or giro._fermato:
+            continue  # mai avviato o fermato di proposito: non è un guasto
         if not giro.is_running() or giro.errori_consecutivi >= ERRORI_PER_AVVISO:
             nomi.append(giro.nome)
     return nomi

@@ -47,23 +47,33 @@ def discover_cog_modules(package_name: str = "cogs") -> list[str]:
     return modules
 
 
-async def load_all_cogs(bot: commands.Bot) -> None:
-    """
-    Carica tutti i cog scoperti. Se UNO fallisce, lo logga e
-    continua con gli altri — un cog rotto non deve impedire
-    l'avvio di tutto il resto del bot.
-    """
-    modules = discover_cog_modules()
-    loaded = 0
-    failed = 0
+async def carica_cog(bot: commands.Bot, module_path: str) -> bool:
+    """Carica un cog. True se è andato bene; un errore si scrive nel log e non si propaga."""
+    try:
+        await bot.load_extension(module_path)
+    except commands.ExtensionAlreadyLoaded:
+        return True
+    except Exception:
+        logger.exception("Impossibile caricare il cog: %s", module_path)
+        return False
+    logger.info("Cog caricato: %s", module_path)
+    return True
 
-    for module_path in modules:
-        try:
-            await bot.load_extension(module_path)
-            logger.info("Cog caricato: %s", module_path)
-            loaded += 1
-        except Exception:
-            logger.exception("Impossibile caricare il cog: %s", module_path)
-            failed += 1
 
-    logger.info("Caricamento cog completato: %d ok, %d falliti", loaded, failed)
+async def load_all_cogs(bot: commands.Bot) -> list[str]:
+    """
+    Carica tutti i cog scoperti. Se UNO fallisce, lo logga e continua con gli altri.
+    Restituisce i moduli che NON si sono caricati: chi chiama non deve sincronizzare i
+    comandi con Discord finché la lista non è vuota (la sync toglierebbe ai server i
+    comandi del modulo mancante) e deve riprovare a caricarli (core/avvio_sicuro.py).
+    """
+    falliti: list[str] = []
+    caricati = 0
+    for module_path in discover_cog_modules():
+        if await carica_cog(bot, module_path):
+            caricati += 1
+        else:
+            falliti.append(module_path)
+
+    logger.info("Caricamento cog completato: %d ok, %d falliti", caricati, len(falliti))
+    return falliti

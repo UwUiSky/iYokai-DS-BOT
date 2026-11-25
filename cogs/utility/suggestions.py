@@ -45,6 +45,7 @@ from core.suggestion_logic import (
     e_finale,
 )
 from core.ui_base import BaseModal, BaseView, _utente_o_server_in_blacklist
+from core.ripristino_differito import ripristina_in_background
 
 logger = logging.getLogger("iyokai.suggestions")
 
@@ -508,6 +509,10 @@ async def setup(bot: commands.Bot) -> None:
     # Ricostruzione delle View dinamiche persistenti per OGNI
     # suggestion ancora in sospeso, ad ogni avvio — stesso principio
     # già usato per i Role Menu.
-    for suggestion in await suggestion_repo.list_pending():
-        view = cog._build_decision_view(suggestion.id, suggestion.anonimo)
-        bot.add_view(view, message_id=suggestion.message_id)
+    async def ripristina_view() -> None:
+        for suggestion in await suggestion_repo.list_pending():
+            view = cog._build_decision_view(suggestion.id, suggestion.anonimo)
+            bot.add_view(view, message_id=suggestion.message_id)
+
+    # Si fa in background: il setup() non legge il database.
+    ripristina_in_background("suggestions", ripristina_view)

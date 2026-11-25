@@ -101,14 +101,14 @@ async def test_errore_di_sync_non_aggiorna_l_impronta_e_si_riprova(caplog):
     assert sano.chiamate == 1 and "global" in stato.valori
 
 
-async def test_stato_illeggibile_sincronizza_comunque():
+async def test_stato_illeggibile_non_sincronizza():
     class Rotto(StatoInMemoria):
         async def leggi(self, scope):
             raise RuntimeError("tabella assente")
 
     bot, sync = _bot(), Sync()
-    assert await sincronizza_se_cambiato("global", bot.tree.get_commands(), bot.tree, sync, Rotto()) == cs.SINCRONIZZATA
-    assert sync.chiamate == 1
+    assert await sincronizza_se_cambiato("global", bot.tree.get_commands(), bot.tree, sync, Rotto()) == cs.NON_VERIFICABILE
+    assert sync.chiamate == 0  # database lento: non si sa se l'albero è cambiato, meglio non toccare Discord
 
 
 async def test_salvataggio_fallito_non_blocca_l_avvio():

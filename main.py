@@ -54,6 +54,8 @@ from core.bot_supervisor import (
 from core.image_search_fetcher import image_search_fetcher
 from core.animal_fetcher import animal_fetcher
 from core.database import db
+from core.avvio_sicuro import avvia_ripresa_avvio, avvio_incompleto, avvisa_avvio_incompleto
+from core.avvisi_owner import collega_ai_giri
 from core.cog_manager import load_all_cogs
 from core.automod_eventi import chiede_intent_presenze
 from core.premium import reload_premium_flags_from_database
@@ -251,7 +253,7 @@ class iYokaiBot(commands.AutoShardedBot):
         È il posto corretto per caricare i cog e sincronizzare gli
         slash command.
         """
-        await load_all_cogs(self)
+        cog_falliti = await load_all_cogs(self)
 
         # NF-06: nomi e descrizioni dei comandi in inglese per chi ha Discord in inglese.
         await self.tree.set_translator(TraduttoreYokai())
@@ -335,12 +337,25 @@ class iYokaiBot(commands.AutoShardedBot):
         # database — stesso pattern di monthly_winners_announcer sopra.
         clan_leaderboard_announcer.start(self)
 
-        # Sincronizza gli slash command con Discord. In sviluppo,
-        # sincronizzare su una singola guild è istantaneo; la sync
-        # globale può richiedere fino a un'ora per propagarsi.
-        # `/owner` non è mai globale (mappa F7 §5): va solo nel server
-        # dell'owner. Si toglie dall'albero globale PRIMA di copy_global_to,
-        # così in sviluppo non compare due volte.
+        # Avvisi all'owner quando un giro cade o torna (core/avvisi_owner.py).
+        collega_ai_giri(self)
+
+        # Se un cog non si è caricato, o la sync non si può verificare, NON si sincronizza
+        # (toglierebbe comandi a tutti i server): DM all'owner e si riprova da soli.
+        esiti = await self._sincronizza_comandi(cog_falliti)
+        if avvio_incompleto(cog_falliti, esiti):
+            await avvisa_avvio_incompleto(self, cog_falliti, esiti)
+            avvia_ripresa_avvio(self, cog_falliti, self._sincronizza_comandi)
+
+    async def _sincronizza_comandi(self, cog_falliti: list[str]) -> dict[str, str]:
+        """
+        Sincronizza gli slash command con Discord. In sviluppo, sincronizzare su una
+        singola guild è istantaneo; la sync globale può richiedere fino a un'ora per
+        propagarsi. `/owner` non è mai globale (mappa F7 §5): va solo nel server
+        dell'owner. Si toglie dall'albero globale PRIMA di copy_global_to, così in
+        sviluppo non compare due volte. Si può richiamare più volte (riprova
+        dell'avvio): ogni passo è idempotente.
+        """
         for nome_owner in GRUPPI_SOLO_OWNER:
             self.tree.remove_command(nome_owner)
         owner_nel_server = bool(config.MAIN_GUILD_ID) and registra_owner(
@@ -356,13 +371,13 @@ class iYokaiBot(commands.AutoShardedBot):
             logger.warning("Comandi dei server non montati prima della sync.", exc_info=True)
         # Si sincronizza solo se l'albero è cambiato (impronta salvata nel
         # database): la sync è una sovrascrittura in blocco e ha un tetto
-        # giornaliero (mappa F7 §6). Un errore non ferma l'avvio: si riprova
-        # al prossimo.
-        await sincronizza_all_avvio(
+        # giornaliero (mappa F7 §6). Un errore non ferma l'avvio: si riprova.
+        return await sincronizza_all_avvio(
             self.tree,
             guild_sviluppo_id=config.MAIN_GUILD_ID if config.is_development else None,
             guild_owner_id=config.MAIN_GUILD_ID if owner_nel_server else None,
             stato=StatoSyncDatabase(db.pool),
+            cog_falliti=cog_falliti,
         )
 
     async def on_ready(self) -> None:

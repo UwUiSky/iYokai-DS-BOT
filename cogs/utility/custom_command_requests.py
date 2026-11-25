@@ -36,6 +36,7 @@ from core.repositories.custom_command_request_repo import (
 )
 from core.suggestion_logic import APPROVED, PENDING, REJECTED, can_decide
 from core.ui_base import BaseModal, BaseView
+from core.ripristino_differito import ripristina_in_background
 
 logger = logging.getLogger("iyokai.custom_command_requests")
 
@@ -290,6 +291,10 @@ async def setup(bot: commands.Bot) -> None:
     cog = CustomCommandRequestsCog(bot)
     await bot.add_cog(cog)
 
-    for request in await custom_command_request_repo.list_pending():
-        view = cog._build_decision_view(request.id)
-        bot.add_view(view, message_id=request.message_id)
+    async def ripristina_view() -> None:
+        for request in await custom_command_request_repo.list_pending():
+            view = cog._build_decision_view(request.id)
+            bot.add_view(view, message_id=request.message_id)
+
+    # Le view dei messaggi già pubblicati si rimettono in background: il setup() non legge il database.
+    ripristina_in_background("custom_command_requests", ripristina_view)

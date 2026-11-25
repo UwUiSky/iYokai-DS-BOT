@@ -84,6 +84,7 @@ from core.repositories.ruoli_extra_repo import RuoliExtraRepository
 from core.role_safety import check_role_assignable
 from core.ruoli_extra_logic import applica_extra_e_gruppo
 from core.ui_base import BaseView
+from core.ripristino_differito import ripristina_in_background
 
 logger = logging.getLogger("iyokai.role_menus")
 
@@ -1858,12 +1859,17 @@ async def setup(bot: commands.Bot) -> None:
     # in uso altrove (bot.add_view() va richiamato ad ogni avvio, non
     # solo alla prima pubblicazione), applicato qui al caso dinamico
     # per-messaggio tramite il parametro message_id di add_view().
-    for mode in ("button", "select"):
-        menus = await role_menu_repo.list_menus_by_mode(mode)
-        for menu in menus:
-            options = await role_menu_repo.get_options(menu.id)
-            if not options:
-                continue  # menu rimasto vuoto: niente View da registrare
-            view = await cog._build_view_for_menu(menu, options)
-            if view is not None:
-                bot.add_view(view, message_id=menu.message_id)
+    async def ripristina_view() -> None:
+        for mode in ("button", "select"):
+            menus = await role_menu_repo.list_menus_by_mode(mode)
+            for menu in menus:
+                options = await role_menu_repo.get_options(menu.id)
+                if not options:
+                    continue  # menu rimasto vuoto: niente View da registrare
+                view = await cog._build_view_for_menu(menu, options)
+                if view is not None:
+                    bot.add_view(view, message_id=menu.message_id)
+
+    # Si fa in background: il setup() non legge il database (con il database lento
+    # l'avvio restava fermo e la sync toglieva i comandi ai server).
+    ripristina_in_background("role_menus", ripristina_view)
