@@ -4488,5 +4488,6 @@
   "owner_servizi_caduti": "Atención: {n} servicios con problemas. Sigo reintentando solo.\n{elenco}",
   "owner_servizi_tornati": "Todo bien: {n} servicios vuelven a funcionar.\n{elenco}",
   "owner_avvio_incompleto": "Inicio incompleto. No he sincronizado los comandos con Discord, para que los servidores no los pierdan. Sigo reintentando solo.\nMódulos sin cargar: {moduli}\nSincronización no verificable: {sync}",
-  "owner_avvio_completato": "Inicio completado: todos los módulos están cargados y los comandos sincronizados."
+  "owner_avvio_completato": "Inicio completado: todos los módulos están cargados y los comandos sincronizados.",
+  "err_bot_occupato": "El bot está muy ocupado ahora mismo. Inténtalo de nuevo en unos segundos."
 }

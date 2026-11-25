@@ -54,6 +54,7 @@ from core.bot_supervisor import (
 from core.image_search_fetcher import image_search_fetcher
 from core.animal_fetcher import animal_fetcher
 from core.database import db
+from core.pool_db import CORSIA_EVENTI, corsia_db
 from core.avvio_sicuro import avvia_ripresa_avvio, avvio_incompleto, avvisa_avvio_incompleto
 from core.avvisi_owner import collega_ai_giri
 from core.cog_manager import load_all_cogs
@@ -388,6 +389,11 @@ class iYokaiBot(commands.AutoShardedBot):
             len(self.guilds),
             self.shard_count or 1,
         )
+
+    async def _run_event(self, coro, event_name: str, *args, **kwargs) -> None:
+        """Ogni evento del bot usa la corsia «eventi» del pool: non può prendersi tutte le connessioni."""
+        corsia_db.set(CORSIA_EVENTI)
+        await super()._run_event(coro, event_name, *args, **kwargs)
 
     async def on_error(self, event_method: str, /, *args, **kwargs) -> None:
         """

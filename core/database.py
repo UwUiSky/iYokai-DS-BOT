@@ -36,6 +36,7 @@ import asyncpg
 
 from core.bounded_cache import BoundedCache
 from core.config import config
+from core.pool_db import PoolConCorsie
 from core.premium_cache import invalida_cache_premium
 
 
@@ -114,10 +115,17 @@ class Database:
         if self._pool is not None:
             raise RuntimeError("Il pool del database è già aperto.")
 
-        self._pool = await asyncpg.create_pool(
-            dsn=config.DATABASE_URL,
+        # PoolConCorsie: attesa massima per ogni connessione e una corsia per gli eventi
+        # (core/pool_db.py). Gli argomenti sono quelli di asyncpg.create_pool.
+        self._pool = await PoolConCorsie(
+            config.DATABASE_URL,
             min_size=config.DB_POOL_MIN,
             max_size=config.DB_POOL_MAX,
+            max_queries=50000,
+            max_inactive_connection_lifetime=300.0,
+            loop=None,
+            connection_class=asyncpg.Connection,
+            record_class=asyncpg.Record,
             # Timeout di comando: se una query impiega più di 30s,
             # meglio fallire rumorosamente che bloccare il bot.
             command_timeout=30,

@@ -104,6 +104,10 @@ async def clean_db(db_pool):
 
     _db_singleton._modules_cache.clear()
     _db_singleton._settings_cache.clear()
+    # Blocco C: anche le sospensioni dal gioco stanno in memoria per 30 secondi.
+    from core import economia_sospensioni as _sospensioni
+
+    _sospensioni.dimentica_tutto()
 
     yield db_pool
 

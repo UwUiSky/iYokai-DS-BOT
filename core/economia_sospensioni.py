@@ -11,8 +11,10 @@ Funzioni coperte: ECO-160
 
 from __future__ import annotations
 
+import time
 from datetime import datetime, timedelta, timezone
 
+from core.bounded_cache import BoundedCache
 from core.database import db
 
 RADICI_DI_GIOCO = frozenset({"monete", "giochi", "monete-clan"})
@@ -20,6 +22,17 @@ MAX_MOTIVO = 200
 MAX_APPELLO = 500
 MAX_DURATA = timedelta(days=365)
 MAX_ELENCO = 25
+
+# Ogni comando di gioco controlla la sospensione: si tiene in memoria per 30 secondi (anche «nessuna
+# sospensione») così non è una query a ogni comando. Ogni scrittura la dimentica subito; il TTL copre
+# solo il caso di un altro processo (pannello web).
+TTL_CACHE_SECONDI = 30
+_cache: BoundedCache[tuple[int, int], tuple[float, object]] = BoundedCache(max_size=20_000)
+
+
+def dimentica_tutto() -> None:
+    """Svuota la copia in memoria (test, o dopo modifiche in blocco)."""
+    _cache.clear()
 
 
 def e_di_gioco(percorso: str) -> bool:
@@ -36,12 +49,15 @@ async def sospendi(guild_id: int, user_id: int, motivo: str, durata: timedelta |
         "appello_at = NULL, deciso_da = NULL",
         guild_id, user_id, motivo.strip()[:MAX_MOTIVO], fino_a, da,
     )
+    _cache.delete((guild_id, user_id))
 
 
 async def riabilita(guild_id: int, user_id: int) -> bool:
-    return (await db.pool.execute(
+    esito = await db.pool.execute(
         "DELETE FROM economia_sospensioni WHERE guild_id = $1 AND user_id = $2", guild_id, user_id
-    )).endswith(" 1")
+    )
+    _cache.delete((guild_id, user_id))
+    return esito.endswith(" 1")
 
 
 async def attiva(guild_id: int, user_id: int):
@@ -52,6 +68,21 @@ async def attiva(guild_id: int, user_id: int):
     )
 
 
+async def attiva_in_cache(guild_id: int, user_id: int):
+    """Come `attiva`, ma per 30 secondi risponde dalla memoria. Per il controllo che gira a ogni comando di gioco."""
+    chiave = (guild_id, user_id)
+    voce = _cache.get(chiave)
+    adesso = time.monotonic()
+    if voce is not None and adesso - voce[0] < TTL_CACHE_SECONDI:
+        riga = voce[1]
+    else:
+        riga = await attiva(guild_id, user_id)
+        _cache.set(chiave, (adesso, riga))
+    if riga is not None and riga["fino_a"] is not None and riga["fino_a"] <= datetime.now(timezone.utc):
+        return None  # scaduta mentre stava in memoria
+    return riga
+
+
 async def apri_appello(guild_id: int, user_id: int, testo: str) -> bool:
     """Registra la richiesta di revisione. Falso se non è sospeso o l'ha già chiesta (aperta o respinta)."""
     esito = await db.pool.execute(
@@ -59,6 +90,7 @@ async def apri_appello(guild_id: int, user_id: int, testo: str) -> bool:
         "WHERE guild_id = $1 AND user_id = $2 AND appello_stato = 'nessuno' AND (fino_a IS NULL OR fino_a > now())",
         guild_id, user_id, testo.strip()[:MAX_APPELLO],
     )
+    _cache.delete((guild_id, user_id))
     return esito.endswith(" 1")
 
 
@@ -75,6 +107,7 @@ async def decidi(guild_id: int, user_id: int, *, accogli: bool, da: int) -> bool
             "WHERE guild_id = $1 AND user_id = $2 AND appello_stato = 'aperto'",
             guild_id, user_id, da,
         )
+    _cache.delete((guild_id, user_id))
     return esito.endswith(" 1")
 
 

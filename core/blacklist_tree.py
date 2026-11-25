@@ -19,6 +19,7 @@ Dopo la blacklist si applica la politica dei comandi del server
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 import discord
@@ -39,6 +40,9 @@ from core.livelli_funzione import motivo_negato as motivo_negato_livello  # noqa
 # Discord accetta 15 menu del tasto destro per tipo (dal 03/03/2026, LIMITI.md §1.3); discord.py 2.7.1 ne conta ancora 5.
 LIMITE_MENU_PER_TIPO = 15
 
+# Discord vuole una risposta entro 3 secondi: ai controlli ne diamo 2,5.
+TEMPO_MASSIMO_CONTROLLI = 2.5
+
 
 class BlacklistAwareCommandTree(discord.app_commands.CommandTree):
     def add_command(self, command, /, *, guild=discord.utils.MISSING, guilds=discord.utils.MISSING, override=False):
@@ -58,6 +62,24 @@ class BlacklistAwareCommandTree(discord.app_commands.CommandTree):
         self._context_menus[chiave] = command
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        """
+        Discord vuole una risposta entro 3 secondi e questi controlli leggono il database fino a 6
+        volte. Se il database è occupato si rifiuta con «riprova tra poco» dopo 2,5 secondi, invece
+        di lasciare l'interazione senza risposta (il pool pieno durante un raid colpiva proprio i
+        comandi di moderazione).
+        """
+        try:
+            return await asyncio.wait_for(self._controlli(interaction), timeout=TEMPO_MASSIMO_CONTROLLI)
+        except asyncio.TimeoutError:
+            logger.warning("Controlli del comando oltre %.1f s: database occupato.", TEMPO_MASSIMO_CONTROLLI)
+            try:
+                if not interaction.response.is_done():
+                    await interaction.response.send_message(await testo_per(interaction, "err_bot_occupato"), ephemeral=True)
+            except discord.HTTPException:
+                pass
+            return False
+
+    async def _controlli(self, interaction: discord.Interaction) -> bool:
         if await blacklist_repo.is_user_blacklisted(interaction.user.id):
             try:
                 await interaction.response.send_message(

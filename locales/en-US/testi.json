@@ -4488,5 +4488,6 @@
   "owner_servizi_caduti": "Warning: {n} services are in trouble. I keep retrying by myself.\n{elenco}",
   "owner_servizi_tornati": "All good: {n} services are working again.\n{elenco}",
   "owner_avvio_incompleto": "Incomplete start. I did not sync the commands with Discord, so servers do not lose them. I keep retrying by myself.\nModules not loaded: {moduli}\nSync not verifiable: {sync}",
-  "owner_avvio_completato": "Start completed: all modules are loaded and the commands are synced."
+  "owner_avvio_completato": "Start completed: all modules are loaded and the commands are synced.",
+  "err_bot_occupato": "The bot is very busy right now. Try again in a few seconds."
 }

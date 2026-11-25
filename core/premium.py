@@ -30,6 +30,7 @@ a predisporre l'interruttore, che oggi resta spento ovunque.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import math
 from dataclasses import dataclass, field
@@ -499,6 +500,10 @@ async def handle_app_command_error(
         message = t("err_modulo_premium", lingua, modulo=error.display_name)
     elif isinstance(error, AccessoNegato):
         message = t(error.chiave, lingua) if error.chiave else error.messaggio
+    elif isinstance(getattr(error, "original", error), (asyncio.TimeoutError, TimeoutError)):
+        # Pool del database pieno (core/pool_db.py): non è un bug del comando, basta riprovare.
+        logger.warning("Comando fallito per attesa troppo lunga del database: %s", error)
+        message = t("err_bot_occupato", lingua)
     elif isinstance(error, (PremiumCheckOutsideGuildError, app_commands.NoPrivateMessage)):
         message = t("guild_only_command", lingua)
     elif isinstance(error, app_commands.MissingPermissions):

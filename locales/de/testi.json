@@ -4488,5 +4488,6 @@
   "owner_servizi_caduti": "Achtung: {n} Dienste haben Probleme. Ich versuche es von selbst weiter.\n{elenco}",
   "owner_servizi_tornati": "Alles in Ordnung: {n} Dienste laufen wieder.\n{elenco}",
   "owner_avvio_incompleto": "Unvollständiger Start. Ich habe die Befehle nicht mit Discord synchronisiert, damit die Server sie nicht verlieren. Ich versuche es von selbst weiter.\nNicht geladene Module: {moduli}\nSynchronisierung nicht prüfbar: {sync}",
-  "owner_avvio_completato": "Start abgeschlossen: Alle Module sind geladen und die Befehle sind synchronisiert."
+  "owner_avvio_completato": "Start abgeschlossen: Alle Module sind geladen und die Befehle sind synchronisiert.",
+  "err_bot_occupato": "Der Bot ist gerade sehr ausgelastet. Versuche es in ein paar Sekunden noch einmal."
 }

@@ -68,7 +68,7 @@ async def rifiuta_se_sospeso(interaction: discord.Interaction) -> bool:
             return False
         if not es.e_di_gioco(percorso_vero(interaction.command)):
             return False
-        sosp = await es.attiva(interaction.guild.id, interaction.user.id)
+        sosp = await es.attiva_in_cache(interaction.guild.id, interaction.user.id)
         if sosp is None:
             return False
         scade = f" Fino a {discord.utils.format_dt(sosp['fino_a'], 'f')}." if sosp["fino_a"] else ""

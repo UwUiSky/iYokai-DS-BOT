@@ -4488,5 +4488,6 @@
   "owner_servizi_caduti": "Attenzione: {n} servizi in difficoltà. Riprovo da solo.\n{elenco}",
   "owner_servizi_tornati": "Tutto a posto: {n} servizi sono tornati a funzionare.\n{elenco}",
   "owner_avvio_incompleto": "Avvio incompleto. Non ho sincronizzato i comandi con Discord, così i server non li perdono. Riprovo da solo.\nModuli non caricati: {moduli}\nSincronizzazione non verificabile: {sync}",
-  "owner_avvio_completato": "Avvio completato: tutti i moduli sono caricati e i comandi sono sincronizzati."
+  "owner_avvio_completato": "Avvio completato: tutti i moduli sono caricati e i comandi sono sincronizzati.",
+  "err_bot_occupato": "Il bot è molto occupato in questo momento. Riprova tra qualche secondo."
 }
