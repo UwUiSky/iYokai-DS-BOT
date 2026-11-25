@@ -4,5 +4,5 @@ Ramo feat/trad2. Strumenti temporanei: scratchpad/trad2 (show.py START END, merg
 - uk: FATTO 4486/4486, 0 segnaposto diversi.
 - ja: FATTO 4486/4486, 0 segnaposto diversi.
 - ko: FATTO 4486/4486, 0 segnaposto diversi.
-- zh-CN: fatte chiavi 0-2999. Prossimo: 3000.
+- zh-CN: fatte chiavi 0-3999. Prossimo: 4000.
 - Test: con ru piena falliscono 2 test di test_lingue_struttura (ru non e' piu' vuota): da riferire, non modificare.
