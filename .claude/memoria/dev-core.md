@@ -1,21 +1,24 @@
 # Memoria di dev-core
 
 ## Aggiornata
-24/11/2026 · ramo `fix/r1infra` (NON pushato) · giro r1infra: `/owner` a 6.333 (D132), chiavi AI proprie nel router, 8 descrizioni en-US, test i18n e riferimenti sistemati. Prima: r1premium (CFG-036, 040, 041, AI-003, UTL-110).
+24/11/2026 · ramo `feat/riordino` (pubblicato) · riordino dei comandi per famiglie e 10 comandi diretti (D137, #122). Prima: r1infra, r1premium.
 
 ## In corso
-- r1premium finito: da unire. Tocca `core/migrations/0910-0913`, `core/data_registry.py`, `core/config.py`, `core/premium.py`, `core/livelli_funzione.py`, `core/repositories/backup_struttura_repo.py` e `ticket_form_repo.py`, `cogs/utility/scheduled_messages.py`, `backup.py`, `cogs/tickets/tickets.py`, `locales/*/testi.json`. Smoke da fare: tree_invariants, data_registry, i18n, migrazioni 0910-0913, premium_*, livelli_funzione, ticket_form, backup, scheduled_messages.
-- Prossimo numero migrazione libero nel blocco: 0914 (il blocco finisce a 0919). Prossimo passo: pannello web: collegamento Patreon (`patreon_service.crea_stato`, `url_collegamento`, `scollega`) e livelli/limiti/prezzi.
-- r1med (`feat/r1med`, da unire): resta TKT-073 (Drive). r1doc (`feat/r1doc`, da unire): vedi `git log`; smoke in coda.
-- Restano: r1dep (#161), r1cfg (CFG-024 con dev-moderazione, 001/002/003/006/027 dev-web), r15immagini (`/admin-automod immagini` da agganciare), #67 11.11, 11.12; #70 14.10, 14.12-14.14.
-- Rimandato: permessi per ruolo dal pannello (OAuth), nascondere `/founder` agli admin.
+- Riordino finito nel codice: migrazione 0972, `core/comandi_diretti.py`, `/help`, `/owner-radio`, `/monete balance immagine`, traduzioni en-US, elenchi dei comandi, D137, CLAUDE.md. Resta solo il controllo dei test dei cog toccati (shard in `scratchpad/shard1.out` e `shard2.out`) e la prova su Discord (`VERIFICA_LIVE.md`, voce D137). Da unire dall'orchestratore.
+- Scheda successiva (NON fatta): alias a prefisso.
+- Restano: r1dep (#161), r1cfg (CFG-024 con dev-moderazione, 001/002/003/006/027 dev-web), r15immagini (`/admin-automod immagini`), #67 11.11, 11.12; #70 14.10, 14.12-14.14. Rimandato: permessi per ruolo dal pannello (OAuth).
 
 ## Fatto
+- Riordino D137 (24/11): 354 comandi spostati con un codemod sui decoratori `@comando_di_gruppo`; mappa 419 coppie nella 0972 (comandi spenti, ruoli richiesti, registro, ultimo comando, conteggio giornaliero); `GRUPPI_SOLO_OWNER`; peso con +30% (`caratteri_con_traduzioni`); tetto 100 globali, avviso 90; figli max 25.
 - r1premium (D59, D124, D127): `core/piani.py` (livelli, concessioni, limiti, prezzi, sconti), `ai_chiavi_proprie.py`, `piani_comandi.py`, `everyone_programmati.py`, `patreon_logic/service/server.py` + cog `utility/patreon.py`; `/owner premium piano`, `/admin-bot premium chiave`; test `test_piani`, `test_patreon`, `test_everyone_programmati`.
 - r1med: LOG-029 e 15 voci (0880-0888, D121). r1doc: LIV-013/046/053/061/090/091, CFG-011, VOC-017, MUS-043, FUN-030, AI-022.
 - r1cfg (D96), r15immagini (D62), r14lingue (D58), r13ruoli (D60), r13gruppi (D56/D57), r1collaudo (D109): vedi `git log`.
 
 ## Cose imparate
+- Comandi diretti: `ComandoDiretto` (core/comandi_diretti.py) copia permessi e livello del gruppo; ogni lettore del percorso (politica, statistiche, livelli funzione, traduttore) usa `percorso_vero(comando)`, mai `qualified_name`. Un test lo prova per la politica e le statistiche.
+- Un gruppo che spostato deve restare sempre acceso va in `PREFISSI_SEMPRE_APERTI` (`admin-bot-config`, `owner-radio`).
+- Codemod dei decoratori: prefissi vecchio→nuovo in una tabella, riscrittura per posizione AST; i testi nelle stringhe si riscrivono con tokenize (f-string incluse con Python 3.12+: `FSTRING_MIDDLE`).
+- `locales/en-US/comandi.json` si scrive con `indent=1` e `\n` finale; `nomi` non può avere segmenti senza comando (test).
 - Il livello di un server o di una persona passa solo da `piani.livello_server/livello_utente`; il limite di un modulo da `piani.limite_server_sicuro` (torna al predefinito se il database non risponde). `registra_bot` dà il bot ai repository.
 - `livelli_funzione`: VIP5/VIP20 sono alias di ULTRA/VIP (valori `ultra`, `vip` nel database dalla 0910).
 - `/owner` è a 6.333 su 8.000 (D132; un test lo tiene sotto 6.800). Il peso conta la traduzione più lunga: accorcia anche en-US. Gruppi di primo livello 60/60. Scelte di un'opzione: autocompletamento, non `choices` (pesano).

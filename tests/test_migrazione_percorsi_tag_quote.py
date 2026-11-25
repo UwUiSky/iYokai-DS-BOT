@@ -11,6 +11,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from tests.support.percorsi_d137 import dopo_d137
+
 DIR = Path(__file__).parent.parent / "core/migrations"
 SQL_0557 = (DIR / "0557_tag_opzioni.sql").read_text()
 SQL_0558 = (DIR / "0558_fun_quote_citazioni.sql").read_text()
@@ -81,8 +83,9 @@ async def test_percorsi_vecchi_spariti_e_nuovi_presenti_nell_albero():
     try:
         assert not falliti, falliti
         percorsi = set(percorsi_dei_comandi(list(GRUPPI.values())))
+        # D137 ha spostato ancora `/tag` e `/admin-tag tag`: si guarda dove sono finiti
         assert not [v for v in (*VECCHI_TAG, "fun quote") if v in percorsi]
-        assert not [n for n in (*VECCHI_TAG.values(), "fun citazioni caso") if n not in percorsi]
+        assert not [n for n in (*VECCHI_TAG.values(), "fun citazioni caso") if dopo_d137(n) not in percorsi]
     finally:
         await close_full_bot(bot)
         if creato:
