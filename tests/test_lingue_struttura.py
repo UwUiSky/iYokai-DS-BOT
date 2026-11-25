@@ -123,6 +123,7 @@ def test_il_prefisso_dello_staff_non_si_traduce(monkeypatch):
 def test_il_traduttore_manda_solo_le_chiavi_tradotte(monkeypatch):
     dati = tr.carica_tutte()
     monkeypatch.setitem(dati, "fr", {s: {} for s in tr.SEZIONI})
+    monkeypatch.setitem(dati, "de", {s: {} for s in tr.SEZIONI})   # una lingua senza chiavi tradotte
     dati["fr"]["descrizioni"]["mod-ban"] = "Bannit un membre."
     L = discord.app_commands.TranslationContextLocation
     comando = MagicMock(qualified_name="mod-ban")
