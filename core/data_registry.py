@@ -533,7 +533,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonne_utente=("user_id",), utente="cancella", esporta=True),
     _t("desktop_tokens", "Collegamento di iYokai Desktop (si conserva solo l'impronta del token)",
        colonne_utente=("user_id",), utente="cancella", esporta=True, escludi_dall_esportazione=("token_hash",),
-       nota="il token in chiaro non si salva: non si può esportare"),
+       scadenza=Scadenza("scade_il", 1), nota="il token in chiaro non si salva: non si può esportare; vale 90 giorni"),
     _t("desktop_prefs", "Avvisi di iYokai Desktop: menzioni e parole chiave",
        colonne_utente=("user_id",), utente="cancella", esporta=True),
     _t("desktop_eventi", "Menzioni, risposte e parole chiave mandate a iYokai Desktop (testo breve)",

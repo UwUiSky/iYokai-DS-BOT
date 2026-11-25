@@ -125,7 +125,7 @@ async def livello_accesso(guild: discord.Guild, user_id: int, *, chiedi_a_discor
     return accesso.livello_da_ruoli({r.id for r in membro.roles}, await accesso.leggi_ruoli(guild.id))
 
 
-def _e_esente_politica(guild: discord.Guild, membro, user_id: int) -> bool:
+def e_esente_politica(guild: discord.Guild, membro, user_id: int) -> bool:
     """Come la politica dei comandi: owner del bot, proprietario del server, «Gestisci server»."""
     permessi = getattr(membro, "guild_permissions", None)
     return user_id == config.OWNER_ID or user_id == guild.owner_id or bool(permessi is not None and permessi.manage_guild)
@@ -149,7 +149,7 @@ async def server_gestibile(
         membro = await _membro(guild, user_id, chiedi_a_discord=True)
         gruppo = accesso.percorso_comando(percorso)
         if membro is None or await accesso.policy_blocca(
-            guild, membro, gruppo, esente=_e_esente_politica(guild, membro, user_id)
+            guild, membro, gruppo, esente=e_esente_politica(guild, membro, user_id)
         ):
             return None
     return guild

@@ -81,6 +81,10 @@ def registra_rotte(app: web.Application, *, bot, ip, url_pannello: str, ponte, a
                 if not limite_errori.consenti(indirizzo):
                     return _errore(429, "troppe_richieste")
                 return _errore(401, "token_non_valido")
+            if not any(g.get_member(utente) is not None for g in bot.guilds):
+                # La persona non è più in nessun server con il bot (uscita, espulsa, bannata): il token non serve più.
+                await desktop_repo.revoca_token(utente)
+                return _errore(401, "token_revocato")
             if not limite_token.consenti(str(utente)):
                 return _errore(429, "troppe_richieste")
             request[CHIAVE_UTENTE] = utente

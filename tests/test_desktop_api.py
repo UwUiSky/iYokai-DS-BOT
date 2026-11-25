@@ -113,8 +113,10 @@ async def test_eventi_di_canali_che_non_vedi_piu_non_escono(mondo):
     mondo.guild.get_channel.return_value.permissions_for.return_value = SimpleNamespace(view_channel=False)
     assert (await (await mondo.client.get("/api/desktop/eventi", headers=_auth(mondo))).json())["eventi"] == []
     mondo.guild.get_channel.return_value.permissions_for.return_value = SimpleNamespace(view_channel=True)
-    mondo.guild.get_member.side_effect = lambda u: None  # uscito dal server
-    assert (await (await mondo.client.get("/api/desktop/eventi", headers=_auth(mondo))).json())["eventi"] == []
+    mondo.guild.get_member.side_effect = lambda u: None  # uscito dal server (e non è in nessun altro)
+    r = await mondo.client.get("/api/desktop/eventi", headers=_auth(mondo))
+    assert r.status == 401 and (await r.json())["errore"] == "token_revocato"  # blocco A: senza server il token si revoca
+    assert not await mondo.repo.collegato(ME)
 
 
 async def test_attesa_lunga_aspetta_poi_risponde_vuoto(mondo, monkeypatch):
@@ -219,3 +221,36 @@ async def test_eventi_di_un_thread_privato_solo_se_ne_fai_parte(mondo):
     assert (await (await mondo.client.get("/api/desktop/eventi", headers=_auth(mondo))).json())["eventi"] == []
     thread.get_member.return_value = SimpleNamespace(id=ME)
     assert len((await (await mondo.client.get("/api/desktop/eventi", headers=_auth(mondo))).json())["eventi"]) == 1
+
+
+# ---------------------------------------------------------------- blocco A, voce 7
+async def test_il_token_scade_dopo_90_giorni(mondo, clean_db):
+    assert await mondo.repo.utente_del_token(dl.impronta(mondo.token)) == ME
+    assert await clean_db.fetchval("SELECT scade_il - created_at > interval '89 days' FROM desktop_tokens")
+    await clean_db.execute("UPDATE desktop_tokens SET scade_il = now() - interval '1 second'")
+    r = await mondo.client.get("/api/desktop/io", headers=_auth(mondo))
+    assert r.status == 401 and (await r.json())["errore"] == "token_non_valido"
+    assert not await mondo.repo.collegato(ME)
+    await mondo.repo.imposta_token(ME, dl.impronta(mondo.token))  # `/desktop collega` di nuovo: vale ancora
+    assert (await mondo.client.get("/api/desktop/io", headers=_auth(mondo))).status == 200
+
+
+async def test_chi_non_e_piu_in_nessun_server_perde_il_token(mondo):
+    mondo.guild.get_member.side_effect = lambda u: None
+    r = await mondo.client.get("/api/desktop/io", headers=_auth(mondo))
+    assert r.status == 401 and (await r.json())["errore"] == "token_revocato"
+    mondo.guild.get_member.side_effect = lambda u: SimpleNamespace(id=u)  # anche rientrando, serve un token nuovo
+    assert (await mondo.client.get("/api/desktop/io", headers=_auth(mondo))).status == 401
+
+
+async def test_last_used_at_si_scrive_al_massimo_ogni_10_minuti(mondo, clean_db):
+    for _ in range(5):
+        assert (await mondo.client.get("/api/desktop/io", headers=_auth(mondo))).status == 200
+    primo = await clean_db.fetchval("SELECT last_used_at FROM desktop_tokens")
+    assert primo is not None
+    for _ in range(3):
+        await mondo.client.get("/api/desktop/io", headers=_auth(mondo))
+    assert await clean_db.fetchval("SELECT last_used_at FROM desktop_tokens") == primo  # nessuna scrittura in più
+    await clean_db.execute("UPDATE desktop_tokens SET last_used_at = now() - interval '11 minutes'")
+    await mondo.client.get("/api/desktop/io", headers=_auth(mondo))
+    assert await clean_db.fetchval("SELECT last_used_at > now() - interval '1 minute' FROM desktop_tokens")

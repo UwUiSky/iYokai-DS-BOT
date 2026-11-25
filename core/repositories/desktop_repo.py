@@ -16,6 +16,10 @@ import asyncpg
 from core.desktop_logic import MAX_EVENTI_PER_UTENTE
 
 
+VALIDITA_TOKEN_GIORNI = 90  # poi la persona rifà `/desktop collega`
+USO_OGNI_MINUTI = 10  # `last_used_at` si scrive al massimo una volta ogni 10 minuti per token (non a ogni richiesta)
+
+
 @dataclass(frozen=True)
 class PreferenzeDesktop:
     menzioni: bool = False
@@ -34,9 +38,10 @@ class DesktopRepository:
     async def imposta_token(self, user_id: int, impronta: str) -> None:
         """Un solo collegamento a persona: un token nuovo sostituisce il vecchio."""
         await self._pool.execute(
-            """INSERT INTO desktop_tokens (user_id, token_hash) VALUES ($1, $2)
-               ON CONFLICT (user_id) DO UPDATE SET token_hash = EXCLUDED.token_hash, created_at = now(), last_used_at = NULL""",
-            user_id, impronta,
+            """INSERT INTO desktop_tokens (user_id, token_hash, scade_il) VALUES ($1, $2, now() + make_interval(days => $3))
+               ON CONFLICT (user_id) DO UPDATE SET token_hash = EXCLUDED.token_hash, created_at = now(), last_used_at = NULL,
+                   scade_il = EXCLUDED.scade_il""",
+            user_id, impronta, VALIDITA_TOKEN_GIORNI,
         )
 
     async def revoca_token(self, user_id: int) -> bool:
@@ -44,12 +49,26 @@ class DesktopRepository:
         return esito.endswith(" 1")
 
     async def utente_del_token(self, impronta: str) -> int | None:
+        """
+        Di chi è il token, se esiste e non è scaduto. L'ultimo uso si scrive al massimo ogni `USO_OGNI_MINUTI`
+        minuti: una richiesta normale è una lettura sola, non una scrittura sul database.
+        """
         return await self._pool.fetchval(
-            "UPDATE desktop_tokens SET last_used_at = now() WHERE token_hash = $1 RETURNING user_id", impronta
+            """
+            WITH valido AS (
+                SELECT user_id FROM desktop_tokens WHERE token_hash = $1 AND scade_il > now()
+            ), segna AS (
+                UPDATE desktop_tokens SET last_used_at = now()
+                WHERE token_hash = $1 AND scade_il > now()
+                  AND (last_used_at IS NULL OR last_used_at < now() - make_interval(mins => $2))
+            )
+            SELECT user_id FROM valido
+            """,
+            impronta, USO_OGNI_MINUTI,
         )
 
     async def collegato(self, user_id: int) -> bool:
-        return bool(await self._pool.fetchval("SELECT 1 FROM desktop_tokens WHERE user_id = $1", user_id))
+        return bool(await self._pool.fetchval("SELECT 1 FROM desktop_tokens WHERE user_id = $1 AND scade_il > now()", user_id))
 
     # ---------------------------------------------------------------- avvisi
     async def preferenze(self, user_id: int) -> PreferenzeDesktop:
@@ -76,7 +95,7 @@ class DesktopRepository:
         messaggio. Dopo `scollega` non si salvano più testi di altri per nessuno.
         """
         righe = await self._pool.fetch(
-            "SELECT p.user_id, p.parole FROM desktop_prefs p JOIN desktop_tokens t ON t.user_id = p.user_id WHERE p.menzioni"
+            "SELECT p.user_id, p.parole FROM desktop_prefs p JOIN desktop_tokens t ON t.user_id = p.user_id AND t.scade_il > now() WHERE p.menzioni"
         )
         return {r["user_id"]: list(r["parole"]) for r in righe}
 
