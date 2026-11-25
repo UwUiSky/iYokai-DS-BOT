@@ -69,6 +69,10 @@ def crea_comando_diretto(
     diretto.guild_only = radice.guild_only
     diretto.allowed_contexts = radice.allowed_contexts
     diretto.allowed_installs = radice.allowed_installs
+    # La lista dei controlli arriva dalla funzione del cog ed è la stessa del comando lungo:
+    # si copia, così il controllo di livello qui sotto non finisce anche sul comando lungo
+    # (e non si accumula a ogni ricarica del cog).
+    diretto.checks = list(diretto.checks)
     livello = getattr(radice, "livello", None)
     if livello is not None:
 

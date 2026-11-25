@@ -139,3 +139,23 @@ async def test_togliere_il_cog_toglie_i_diretti(albero):
     await albero.remove_cog("MusicCog")
     assert albero.tree.get_command("play") is None
     assert albero.tree.get_command("queue") is None
+
+
+def test_il_controllo_di_livello_non_finisce_sul_comando_lungo():
+    """La lista dei controlli della funzione è condivisa: il diretto deve averne una sua."""
+    from discord import app_commands
+
+    from core.command_access import GruppoYokai, Livello
+    from core.comandi_diretti import crea_comando_diretto
+
+    async def cb(interaction):  # pragma: no cover
+        pass
+
+    cb.__discord_app_commands_checks__ = []
+    radice = GruppoYokai(name="mod-ban", description="d", livello=Livello.MODBAN)
+    lungo = app_commands.Command(name="ban", description="d", callback=cb)
+    radice.add_command(lungo)
+    for _ in range(2):  # due ricariche del cog
+        diretto = crea_comando_diretto("ban", lungo, cb, radice)
+    assert lungo.checks == [] and cb.__discord_app_commands_checks__ == []
+    assert len(diretto.checks) == 1
