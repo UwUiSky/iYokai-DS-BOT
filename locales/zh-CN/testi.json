@@ -1612,8 +1612,6 @@
   "verify_blocco_ticket": "如果你认为这是误判，请私信我：我会和 {server} 的管理团队开启一个工单，并附上原因。",
   "verify_vpn_storico_titolo": "验证：已被其他服务器接受",
   "verify_vpn_storico_descrizione": "{utente} 在检测到 VPN/代理（{metodo}）的情况下完成了验证，但尽管检测到 VPN/代理，他已被 {n} 个服务器接受：他可能也用于其他用途。在这里他通过了。",
-  "verify_vpn_storico_riga": "• {data} · {metodo} · {esito}",
-  "verify_vpn_storico_esito": "已放行",
   "amimg_avviso_canale": "{utente}，你发送的图片看起来可疑。已通知管理团队。",
   "amimg_azione_avvisato": "在频道中提醒",
   "amimg_azione_cancellato": "消息已删除",

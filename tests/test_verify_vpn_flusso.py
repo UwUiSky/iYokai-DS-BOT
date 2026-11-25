@@ -326,7 +326,7 @@ async def test_se_altri_server_l_hanno_accettata_qui_passa_e_gli_admin_vedono_il
     amb.log.send.assert_awaited_once()
     embed = amb.log.send.await_args.kwargs["embed"]
     assert "già stato accettato da 3 server nonostante VPN/proxy rilevato" in embed.description
-    assert "lasciato passare" in embed.description
+    assert "•" not in embed.description  # nessuna riga di dettaglio per server
     assert "Server Segreto" not in embed.description  # di base solo il numero
     assert (await amb.repo.leggi(GUILD, 90))["esito"] == "da_storico"
     await _verifica(amb, 90, IP_VPN)
@@ -334,17 +334,28 @@ async def test_se_altri_server_l_hanno_accettata_qui_passa_e_gli_admin_vedono_il
 
 
 @pytest.mark.asyncio
-async def test_il_nome_si_vede_solo_se_quel_server_ha_dato_il_consenso(monkeypatch, clean_db):
+async def test_gli_altri_server_non_si_nominano_mai_nemmeno_col_vecchio_consenso(monkeypatch, clean_db):
+    """D141: solo il numero. Un'impostazione `verify_condividi_nome` vecchia non fa più comparire nomi, date o metodi."""
     amb = _ambiente(monkeypatch, clean_db)
     await _prepara(clean_db)
     altro = fake_guild(guild_id=GUILD + 1, name="Server Aperto", owner_id=1)
-    chiuso = fake_guild(guild_id=GUILD + 2, name="Server Chiuso", owner_id=1)
-    amb.bot.get_guild = MagicMock(side_effect=lambda gid: {GUILD + 1: altro, GUILD + 2: chiuso}.get(gid, amb.guild))
+    amb.bot.get_guild = MagicMock(side_effect=lambda gid: {GUILD + 1: altro}.get(gid, amb.guild))
     await database_module.db.set_guild_setting(GUILD + 1, "verify_condividi_nome", True)
     await _tre_approvazioni(clean_db, 91, (GUILD + 1, GUILD + 2, GUILD + 3))
     await _verifica(amb, 91, IP_VPN)
     descrizione = amb.log.send.await_args.kwargs["embed"].description
-    assert "Server Aperto" in descrizione and "Server Chiuso" not in descrizione
+    assert "Server Aperto" not in descrizione and "3 server" in descrizione
+    assert "•" not in descrizione  # nessuna riga di dettaglio per server
+
+
+def test_il_testo_dell_avviso_dice_solo_il_numero():
+    import json
+
+    from core import verify_vpn_staff
+
+    assert not hasattr(verify_vpn_staff, "RIGHE_STORICO") and not hasattr(verify_vpn_staff, "SETTING_NOME")
+    assert "verify_condividi_nome" not in open("core/config_impostazioni.py", encoding="utf-8").read()
+    assert "verify_vpn_storico_riga" not in json.load(open("locales/it/testi.json", encoding="utf-8"))
 
 
 @pytest.mark.asyncio

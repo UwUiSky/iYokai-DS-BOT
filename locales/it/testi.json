@@ -1612,8 +1612,6 @@
   "verify_blocco_ticket": "Se pensi sia un errore, scrivimi un messaggio privato: apro un ticket con lo staff di {server} e allego il motivo.",
   "verify_vpn_storico_titolo": "Verifica: già accettato da altri server",
   "verify_vpn_storico_descrizione": "{utente} si è verificato con VPN/proxy rilevato ({metodo}), ma è già stato accettato da {n} server nonostante VPN/proxy rilevato: può usarla anche per altro. Qui è passato.",
-  "verify_vpn_storico_riga": "• {data} · {metodo} · {esito}",
-  "verify_vpn_storico_esito": "lasciato passare",
   "amimg_avviso_canale": "{utente}, l'immagine che hai inviato sembra sospetta. Lo staff è stato avvisato.",
   "amimg_azione_avvisato": "avviso nel canale",
   "amimg_azione_cancellato": "messaggio cancellato",

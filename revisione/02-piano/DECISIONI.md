@@ -1836,3 +1836,10 @@ Lavalink scarica i link diretti (`sources.http`) da dentro la rete del server e 
 - **Cosa cambia per chi usa `/play`.** Un link diretto a un file audio passa solo da `cdn.discordapp.com`, `media.discordapp.net`, `upload.wikimedia.org`, `archive.org` e i suoi sotto-domini (https, niente porta né userinfo). I link delle fonti note (YouTube, SoundCloud, Bandcamp, Twitch, Vimeo, Spotify, Apple Music, Deezer) non cambiano. Gli altri host si rifiutano (nessun risultato). L'elenco è `HOST_LINK_DIRETTI` in `core/music_sources.py`.
 - **Playlist importate.** Un brano `http` di una playlist salvata o importata si suona solo se l'indirizzo è nello stesso elenco.
 - `url_e_sicuro` resta come seconda difesa; sull'host di Lavalink restano i blocchi in uscita delle reti private (README, «Rete»).
+
+## D141 — Storico VPN tra server: solo il numero (blocco A, voce 11), 25/11/2026, opzione consigliata, da confermare dall'owner
+
+Il «Lascia passare» di un server conta negli altri solo con 3 approvazioni di server, founder e admin diversi (D67): resta. Ma a un server si diceva anche quando, con quale metodo e (con il consenso del server dell'altra parte) in quale server la persona era stata lasciata passare: dati personali tra server senza base scritta né informativa.
+- **Scelta (opzione consigliata).** L'avviso agli admin dice **solo quanti server** hanno già accettato la persona. Mai nomi, date o metodi degli altri server. L'impostazione `verify_condividi_nome` (D65) si toglie: non ha più effetto.
+- **Resta.** Il proprietario del bot vede i dettagli (`/owner system storico-vpn`, pagina del proprietario del pannello) per la sicurezza della rete; le righe si tengono 180 giorni e `/utility privacy cancella` le toglie.
+- **Non si fa** l'altra opzione (base giuridica scritta con opt-out da `/privacy`): più lavoro per un dettaglio che gli admin non usano per decidere.

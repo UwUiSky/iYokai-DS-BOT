@@ -45,7 +45,8 @@ Scheda: /home/user/consiglio/schede/A_sicurezza.md. DB di prova iyokai_wsicurezz
 - FATTA voce 8 (marchio): `collega_e_avvia` solo per il proprietario (`mar_solo_proprietario`), traccia nello storico + avviso `sicurezza` (`registra_modifica`), AAD `marchio:{guild_id}` con lettura delle righe vecchie e riscrittura. Test in `test_whitelabel_bot`, `test_panel_marchio`.
 - FATTA voce 9 (SSRF Lavalink, D140): `link_diretto_ammesso` + `HOST_LINK_DIRETTI`, anche per brani `http` di playlist importate.
 - FATTA voce 10: `ip_del_client` unica (voto, Patreon, webhook custom), default proxy `127.0.0.1,::1`, `nessuno` + bind locale = il bot non parte. Test `test_ip_client_unico`.
-- PROSSIMO: voce 11 (storico VPN tra server: scegliere opzione, scrivere decisione), poi 12, 13.
+- FATTA voce 11 (D141): avviso VPN con solo il numero; tolta `verify_condividi_nome`.
+- PROSSIMO: voce 12 (assert -> ValueError ticket_repo.py:479; togli `or True` nei 5 test; secondo fattore TOTP per eval/shell/cog load/hot patch), poi 13 (cricchetti).
 - Appunti: testi del pannello (ESITI) e `_assistente.py` restano in italiano nel codice (nessuna i18n del pannello); script chiavi lingue: scratchpad `chiavi.py`.
 
 ## Aperto

@@ -63,7 +63,6 @@ SCHEDE: dict[str, tuple[Campo, ...]] = {
         _c("verify_solo_sospetti", "Verifica solo gli account sospetti", BOOL),
         _c("verify_azione_eta", "Account troppo nuovo", SCELTA),
         _c("verify_blocca_vpn", "Blocca chi si verifica con VPN o proxy", BOOL),
-        _c("verify_condividi_nome", "Fatti nominare negli avvisi degli altri server (storico VPN)", BOOL),
         _c("verify_paesi", "Paesi del server (codici di 2 lettere, es. IT, CH)", TESTO),
         _c("verify_paesi_soglia", "Verifiche da fuori paese prima dell'attesa (0 = spento)", NUMERO),
         _c("verify_paesi_minuti", "Finestra della soglia (minuti, 1-1440)", NUMERO),

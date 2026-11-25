@@ -1612,8 +1612,6 @@
   "verify_blocco_ticket": "잘못이라고 생각하면 저에게 DM을 보내 주세요. {server}의 스태프와 티켓을 열고 사유를 첨부할게요.",
   "verify_vpn_storico_titolo": "인증: 이미 다른 서버에서 승인됨",
   "verify_vpn_storico_descrizione": "{utente}이(가) VPN/프록시가 감지된 상태({metodo})로 인증했지만, VPN/프록시가 감지되었는데도 이미 {n}개 서버에서 승인되었어요. 다른 용도로도 쓰고 있을 수 있어요. 여기서는 통과했어요.",
-  "verify_vpn_storico_riga": "• {data} · {metodo} · {esito}",
-  "verify_vpn_storico_esito": "통과시킴",
   "amimg_avviso_canale": "{utente}님, 보내 주신 이미지가 의심스러워 보여요. 스태프에게 알렸어요.",
   "amimg_azione_avvisato": "채널에 알림",
   "amimg_azione_cancellato": "메시지 삭제",

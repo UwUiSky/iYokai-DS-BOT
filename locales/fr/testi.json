@@ -1612,8 +1612,6 @@
   "verify_blocco_ticket": "Si tu penses que c'est une erreur, écris-moi un message privé : j'ouvre un ticket avec l'équipe de {server} et j'y joins le motif.",
   "verify_vpn_storico_titolo": "Vérification : déjà acceptée par d'autres serveurs",
   "verify_vpn_storico_descrizione": "{utente} s'est vérifié avec un VPN/proxy détecté ({metodo}), mais a déjà été accepté par {n} serveurs malgré un VPN/proxy détecté : il peut aussi l'utiliser pour autre chose. Ici, il est passé.",
-  "verify_vpn_storico_riga": "• {data} · {metodo} · {esito}",
-  "verify_vpn_storico_esito": "laissé passer",
   "amimg_avviso_canale": "{utente}, l'image que tu as envoyée semble suspecte. L'équipe a été prévenue.",
   "amimg_azione_avvisato": "avis dans le salon",
   "amimg_azione_cancellato": "message supprimé",

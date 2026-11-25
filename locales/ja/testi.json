@@ -1612,8 +1612,6 @@
   "verify_blocco_ticket": "誤りだと思う場合は、私にDMを送ってください。{server}のスタッフとのチケットを開き、理由を添付します。",
   "verify_vpn_storico_titolo": "認証：すでにほかのサーバーで承認済み",
   "verify_vpn_storico_descrizione": "{utente}がVPN/プロキシ検出（{metodo}）の状態で認証しましたが、VPN/プロキシが検出されたにもかかわらず、すでに{n}個のサーバーで承認されています。ほかの目的でも使っている可能性があります。ここでは通過しました。",
-  "verify_vpn_storico_riga": "• {data} · {metodo} · {esito}",
-  "verify_vpn_storico_esito": "通過",
   "amimg_avviso_canale": "{utente}さん、送信された画像は不審に見えます。スタッフに通知しました。",
   "amimg_azione_avvisato": "チャンネルでの通知",
   "amimg_azione_cancellato": "メッセージを削除",
