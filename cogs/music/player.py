@@ -2236,15 +2236,15 @@ async def _connetti_lavalink_in_background(bot: commands.Bot) -> None:
     try:
         task_principale = gestore.avvia(bot, MAIN_KEY)
         flotta = getattr(bot, "music_fleet", None)
-        # Lavalink caduto o riavviato: wavelink chiude il nodo dopo i suoi tentativi e questo evento
+        # Lavalink caduto o riavviato: wavelink smette dopo i suoi tentativi e questo evento
         # lo fa ripartire da solo (C7). Il controllo periodico fa da rete di sicurezza.
-        bot.add_listener(gestore.su_nodo_chiuso, "on_wavelink_node_closed")
+        bot.add_listener(gestore.su_nodo_disconnesso, "on_wavelink_node_disconnected")
         for worker in getattr(flotta, "worker_bots", []):
             gestore.avvia(worker, chiave_del_bot(worker))
             worker.add_listener(
                 functools.partial(_su_voce_del_worker, flotta, worker), "on_voice_state_update"
             )
-            worker.add_listener(gestore.su_nodo_chiuso, "on_wavelink_node_closed")
+            worker.add_listener(gestore.su_nodo_disconnesso, "on_wavelink_node_disconnected")
         avvia_sorveglianza(bot, gestore, flotta)
         await avvisa_se_manca_il_nodo_locale(gestore, task_principale)
     except Exception:

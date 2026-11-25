@@ -159,31 +159,36 @@ class MusicNodeManager:
                               str(getattr(nodo.status, "name", nodo.status)).lower(), len(getattr(nodo, "players", {}) or {})))
         return righe
 
-    async def su_nodo_chiuso(self, nodo: wavelink.Node, *_disconnessi) -> None:
+    async def su_nodo_disconnesso(self, payload) -> None:
         """
-        Evento `on_wavelink_node_closed`: Lavalink è caduto (o riavviato) e wavelink ha finito i suoi
-        tentativi. Il nodo si toglie dal Pool e si riparte a collegarlo da solo, con pause crescenti.
-        I player che c'erano su quel nodo sono già stati scollegati: gli slot li libera il controllo
-        periodico (`MusicFleet.libera_slot_persi`).
+        Evento `on_wavelink_node_disconnected` (wavelink 3.x): arriva anche quando il nodo ha solo perso la
+        connessione e wavelink la sta riprovando da solo (stato CONNECTING: non si tocca). Se invece wavelink ha
+        finito i suoi tentativi il nodo resta DISCONNECTED per sempre: qui lo si ricollega con pause crescenti.
+        I player che c'erano su quel nodo sono scollegati: gli slot li libera il controllo periodico
+        (`MusicFleet.libera_slot_persi`).
         """
+        nodo = payload.node
         client = self._client_di_nodo.get(nodo.identifier)
         if client is None:
             return  # un nodo che non è nostro
+        if nodo.status is not wavelink.NodeStatus.DISCONNECTED:
+            return  # wavelink lo sta ancora riprovando (CONNECTING) o è già tornato
         attivo = self._task_di_nodo.get(nodo.identifier)
         if attivo is not None and not attivo.done():
-            return  # lo sta già riprovando
+            return  # lo sta già riprovando il nostro ciclo
         logger.warning("Nodo Lavalink %s caduto: provo a ricollegarlo da solo.", nodo.identifier)
         self._lancia(client, nodo, pausa_iniziale=RIPARTENZA_DOPO_CADUTA)
 
     def riparti_nodi_caduti(self) -> int:
         """
-        Rete di sicurezza del controllo periodico: ogni nodo non collegato e senza un tentativo in corso
-        riparte (se l'evento di chiusura non è mai arrivato). Restituisce quanti ne ha fatti ripartire.
+        Rete di sicurezza del controllo periodico: ogni nodo DISCONNECTED e senza un tentativo in corso riparte
+        (se l'evento non è mai arrivato). Un nodo in CONNECTING lo sta provando wavelink: non si tocca.
+        Restituisce quanti ne ha fatti ripartire.
         """
         ripartiti = 0
         for nodi in self._nodi.values():
             for nodo in nodi:
-                if nodo.status is wavelink.NodeStatus.CONNECTED:
+                if nodo.status is not wavelink.NodeStatus.DISCONNECTED:
                     continue
                 attivo = self._task_di_nodo.get(nodo.identifier)
                 client = self._client_di_nodo.get(nodo.identifier)
@@ -225,8 +230,8 @@ class MusicNodeManager:
         wait = getattr(client, "wait_until_ready", None)
         if wait is not None:
             await wait()  # l'header User-Id richiede client.user
-        if getattr(nodo, "_has_closed", False):
-            await self._scarta(nodo)  # chiuso da wavelink ma ancora nel Pool: senza questo Pool.connect lo rifiuta
+        if nodo.identifier in wavelink.Pool.nodes:
+            await self._scarta(nodo)  # già nel Pool (caduto): senza toglierlo Pool.connect lo rifiuta
         await self._connetti(nodo, client)
         if not await self._attendi_connesso(nodo):
             logger.warning("Nodo Lavalink %s non raggiungibile: scartato.", nodo.identifier)

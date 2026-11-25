@@ -87,7 +87,7 @@ async def test_nodo_caduto_riparte_da_solo_e_il_preferito_torna_in_testa(monkeyp
     pubblico._has_closed = True
     assert g.node_for(MAIN_KEY).identifier.startswith("iyokai-local-node")  # si passa al locale
     with patch.object(MusicNodeManager, "_scarta", new=AsyncMock()):
-        await g.su_nodo_chiuso(pubblico)
+        await g.su_nodo_disconnesso(SimpleNamespace(node=pubblico))
         await asyncio.sleep(0.3)  # tenta e fallisce: riprova con pause
         assert pubblico.status is not wavelink.NodeStatus.CONNECTED
         # Lavalink torna.
