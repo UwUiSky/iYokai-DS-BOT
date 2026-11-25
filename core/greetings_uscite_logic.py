@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from core.bounded_cache import BoundedCache
 from core.controllo_link import e_link_pericoloso
 from core.safe_http import url_e_sicuro
-from core.safe_image import safe_open_image
+from core.safe_image import apri_in_sandbox
 
 MODO_ENTRAMBI = "entrambi"
 MODO_SOLO_BAN = "solo_ban"
@@ -76,16 +76,15 @@ async def valida_link(testo: str) -> str | None:
 
 def valida_file(dati: bytes) -> tuple[str | None, str | None]:
     """(estensione, errore) di un file caricato: formato e pixel controllati da safe_image (16 MP)."""
-    from PIL import Image, UnidentifiedImageError
+    from PIL import UnidentifiedImageError
 
-    from core.safe_image import FORMATI_AMMESSI, ImmagineTroppoGrande
+    from core.safe_image import ImmagineTroppoGrande
 
     if len(dati) > MAX_BYTE_GRAFICA:
         return None, "Il file pesa troppo: il limite è 3 MB."
     try:
-        # Il formato si legge dal file: l'immagine ridotta da safe_open_image può non averlo più.
-        formato = Image.open(io.BytesIO(dati), formats=FORMATI_AMMESSI).format
-        safe_open_image(dati)
+        # Il formato lo legge la sandbox dal file e lo riporta sull'immagine ricostruita.
+        formato = apri_in_sandbox(dati).format
     except ImmagineTroppoGrande:
         return None, "L'immagine ha troppi pixel: riducila (WebP fino a 4 megapixel, gli altri fino a 16)."
     except (UnidentifiedImageError, OSError):

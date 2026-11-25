@@ -55,7 +55,7 @@ from core.repositories.ruoli_extra_repo import RuoliExtraRepository
 from core.ruoli_extra_logic import scegli_immagine
 from core.repositories.saved_embed_repo import saved_embed_repo
 from core.embed_builder_logic import MAX_NOME as MAX_NOME_EMBED
-from core.safe_image import ImmagineTroppoGrande, run_image_task
+from core.safe_image import ImmagineTroppoGrande, SandboxNonDisponibile, run_image_task
 from core.security_raid_state import raid_in_corso
 from core.welcome_image import (
     ALLINEAMENTI,
@@ -372,7 +372,7 @@ async def _file_benvenuto(config, member: discord.Member) -> discord.File | None
             trasparente=config.welcome_image_transparent,
         )
         png = await run_image_task(render_welcome_image, dati, avatar, sfondo)
-    except Exception:
+    except (SandboxNonDisponibile, Exception):
         logger.exception("Immagine di benvenuto non disegnata nel server %s.", member.guild.id)
         return None
     return discord.File(io.BytesIO(png), filename="benvenuto.png")
@@ -929,6 +929,9 @@ class GreetingsCog(CogConGruppi, commands.Cog):
                 await interaction.followup.send(
                     await testo_per(interaction, "greetings_lo_sfondo_ha_troppi_pixel"), ephemeral=True
                 )
+                return
+            except SandboxNonDisponibile:
+                await interaction.followup.send(await testo_per(interaction, "err_sandbox_non_disponibile"), ephemeral=True)
                 return
             except Exception:
                 await interaction.followup.send(

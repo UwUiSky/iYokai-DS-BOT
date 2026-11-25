@@ -1668,7 +1668,6 @@
   "amimg_owner_serve_impronta": "Il faut une empreinte SHA-256 (64 caractères) ou les 6 premiers caractères.",
   "amimg_owner_solo_proprietario": "Seul le propriétaire du bot peut utiliser cette commande.",
   "amimg_owner_troppo_grande": "L'image est trop grande (8 Mo au maximum).",
-  "amimg_sandbox_ridotta": "Contrôle en mode réduit : le service d'isolation ne répond pas.",
   "clear_regex_serve_testo": "Avec « regex », écris aussi le texte dans « contains ».",
   "clear_regex_non_valida": "{motivo}",
   "clear_valore_non_valido": "{motivo}",
@@ -4484,5 +4483,6 @@
   "crt_specie_5": "Nure-onna",
   "crt_specie_6": "Oni",
   "crt_specie_7": "Karakasa",
-  "crt_specie_8": "Bakeneko"
+  "crt_specie_8": "Bakeneko",
+  "err_sandbox_non_disponibile": "La vérification sécurisée des fichiers n'est pas disponible pour le moment, l'image n'a pas été traitée. Réessaie plus tard."
 }

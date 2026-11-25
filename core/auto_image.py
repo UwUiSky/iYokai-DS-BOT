@@ -14,7 +14,7 @@ import io
 from PIL import Image, ImageDraw
 
 from core.auto_logic import LATO_FOTO
-from core.safe_image import safe_open_image
+from core.safe_image import apri_in_sandbox
 
 LARGHEZZA_CELLA = 480
 ALTEZZA_CELLA = 360
@@ -26,7 +26,7 @@ VINCITORE = (194, 74, 58)
 
 def riduci_foto(png: bytes, lato: int = LATO_FOTO) -> bytes:
     """Copia PNG con il lato più lungo al massimo `lato`, senza metadati. Solleva se l'immagine non si legge."""
-    img = safe_open_image(png, formati=("PNG",))
+    img = apri_in_sandbox(png, formati=("PNG",))
     img.thumbnail((lato, lato))
     if img.mode not in ("RGB", "RGBA"):
         img = img.convert("RGBA")
@@ -45,7 +45,7 @@ def affianca(foto_a: bytes | None, foto_b: bytes | None, vincitore: int = 0) -> 
         cella = (x0, MARGINE, x0 + LARGHEZZA_CELLA, MARGINE + ALTEZZA_CELLA)
         pennello.rectangle(cella, fill=VUOTO)
         if dati:
-            img = safe_open_image(dati, formati=("PNG",))
+            img = apri_in_sandbox(dati, formati=("PNG",))
             img.thumbnail((LARGHEZZA_CELLA, ALTEZZA_CELLA))
             if img.mode == "RGBA":
                 tela.paste(img, (x0 + (LARGHEZZA_CELLA - img.width) // 2, MARGINE + (ALTEZZA_CELLA - img.height) // 2), img)

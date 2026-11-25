@@ -7,6 +7,7 @@ tema, posizione in classifica e comando `/level rank`.
 Funzioni coperte: SPEC §22.8
 """
 
+import asyncio
 import io
 from unittest.mock import AsyncMock
 
@@ -415,7 +416,7 @@ async def test_server_con_sfondi_spenti_mostra_solo_il_tema(cog_rank, monkeypatc
     from core.repositories.leveling_settings_repo import leveling_settings_repo
 
     cog, repo = cog_rank
-    await repo.set_sfondo_card(1, prepara_sfondo(_immagine(800, 360)))
+    await repo.set_sfondo_card(1, await asyncio.to_thread(prepara_sfondo, _immagine(800, 360)))
     await leveling_settings_repo.set_options(100, card_images=False)
     usati = []
     vero = modulo.render_rank_card

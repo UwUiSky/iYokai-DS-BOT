@@ -8,7 +8,7 @@ default(size=...)`, disponibile da Pillow 10.1+): niente file .ttf
 da incorporare nel repository, stesso principio già seguito da
 core/server_stats_image.py (evitare dipendenze/asset aggiuntivi
 quando il font di sistema di Pillow basta). L'immagine di partenza
-passa da core.safe_image.safe_open_image (SEC-11, SEC-20): le
+passa da core.safe_image.apri_in_sandbox (SEC-11, SEC-20): le
 dimensioni dichiarate vengono controllate prima di decodificare i
 pixel e l'immagine arriva già ridotta a 2048 px di lato massimo.
 Funzioni coperte: SPEC.md §16.3, REVIEW.md SEC-11, SEC-20
@@ -21,7 +21,7 @@ import textwrap
 
 from PIL import Image, ImageDraw, ImageFont
 
-from core.safe_image import safe_open_image
+from core.safe_image import SandboxNonDisponibile, apri_in_sandbox
 
 FONT_SIZE_RATIO = 12  # dimensione font = altezza immagine / questo valore
 OUTLINE_WIDTH = 2
@@ -30,12 +30,14 @@ MAX_CHARS_PER_LINE = 20
 
 def _load_image(image_bytes: bytes) -> Image.Image | None:
     try:
-        # SEC-11/SEC-20: safe_open_image rifiuta le immagini con troppi
+        # SEC-11/SEC-20: apri_in_sandbox rifiuta le immagini con troppi
         # pixel dichiarati (ImmagineTroppoGrande, presa dal catch ampio
         # sotto come qualunque altra immagine non valida) e restituisce
         # l'immagine già ridotta a 2048 px di lato massimo, PRIMA di
         # qualsiasi filtro.
-        img = safe_open_image(image_bytes)
+        img = apri_in_sandbox(image_bytes)
+    except SandboxNonDisponibile:
+        raise  # senza sandbox il lavoro si rifiuta: lo dice chi chiama
     except Exception:
         return None
 

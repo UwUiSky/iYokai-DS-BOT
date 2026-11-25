@@ -19,7 +19,7 @@ from PIL import Image, ImageDraw
 from core.ai_testi_logic import ISTRUZIONI, nome_lingua
 from core.phishing_logic import domini_nel_testo, e_accorciatore, e_phishing, sembra_phishing
 from core.rank_card_image import carica_font, senza_quadrati, taglia_al_largo
-from core.safe_image import safe_open_image
+from core.safe_image import SandboxNonDisponibile, apri_in_sandbox
 
 MAX_TESTO_SEGNALIBRO = 500
 MAX_LINK_CONTROLLATI = 10
@@ -112,7 +112,9 @@ def citazione_png(testo: str, autore: str, avatar: bytes | None = None) -> bytes
     foto = Image.new("RGB", (lato, lato), (88, 101, 242))
     if avatar:
         try:
-            foto = safe_open_image(avatar).convert("RGB").resize((lato, lato))
+            foto = apri_in_sandbox(avatar).convert("RGB").resize((lato, lato))
+        except SandboxNonDisponibile:
+            raise  # senza sandbox il lavoro si rifiuta: lo dice chi chiama
         except Exception:  # noqa: BLE001 - file rotto o troppo grande: resta il cerchio pieno
             pass
     maschera = Image.new("L", (lato * 4, lato * 4), 0)

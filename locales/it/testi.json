@@ -1668,7 +1668,6 @@
   "amimg_owner_serve_impronta": "Serve un'impronta SHA-256 (64 caratteri) o i primi 6 caratteri.",
   "amimg_owner_solo_proprietario": "Solo il proprietario del bot può usare questo comando.",
   "amimg_owner_troppo_grande": "L'immagine è troppo grande (massimo 8 MB).",
-  "amimg_sandbox_ridotta": "Controllo in modalità ridotta: il servizio di isolamento non risponde.",
   "clear_regex_serve_testo": "Con «regex» scrivi anche il testo in «contains».",
   "clear_regex_non_valida": "{motivo}",
   "clear_valore_non_valido": "{motivo}",
@@ -4484,5 +4483,6 @@
   "crt_specie_5": "Nure-onna",
   "crt_specie_6": "Oni",
   "crt_specie_7": "Karakasa",
-  "crt_specie_8": "Bakeneko"
+  "crt_specie_8": "Bakeneko",
+  "err_sandbox_non_disponibile": "Il controllo sicuro dei file non è disponibile in questo momento: l'immagine non è stata elaborata. Riprova più tardi."
 }

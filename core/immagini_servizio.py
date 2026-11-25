@@ -15,6 +15,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import struct
 import sys
 from pathlib import Path
@@ -27,6 +28,7 @@ from core import immagini_sandbox as sb  # noqa: E402
 
 logger = logging.getLogger("iyokai.immagini.servizio")
 ATTESA_RIGA = 5.0
+_POSTI = asyncio.Semaphore(3)
 
 
 def impacchetta(r: sb.RisultatoSandbox) -> bytes:
@@ -38,15 +40,19 @@ async def gestisci(lettore: asyncio.StreamReader, scrittore: asyncio.StreamWrite
     try:
         riga = await asyncio.wait_for(lettore.readline(), ATTESA_RIGA)
         nome = riga.decode("ascii", "ignore").strip()
-        parti = nome.split(" ")
-        if len(parti) == 3 and parti[0] == "conv" and parti[1] in sb.LIMITI_CONVERSIONE and sb.NOME.fullmatch(parti[2]):
-            # D74: conversione di PDF, audio, video o testo (processo nuovo, cartella temporanea privata).
-            risposta = impacchetta(await sb.esegui_locale(parti[2], isola_rete=False, tipo=parti[1]))
-        elif not sb.NOME.fullmatch(nome):
-            risposta = impacchetta(sb.RisultatoSandbox("errore", {"motivo": "nome"}))
-        else:
-            # Il servizio ha gia' PrivateNetwork: niente `unshare` qui.
-            risposta = impacchetta(await sb.esegui_locale(nome, isola_rete=False))
+        async with _POSTI:  # al massimo tre figli insieme: il tetto di memoria dell'unita' vale per tutti
+            parti = nome.split(" ")
+            if len(parti) == 3 and parti[0] == "conv" and parti[1] in sb.LIMITI_CONVERSIONE and sb.NOME.fullmatch(parti[2]):
+                # D74: conversione di PDF, audio, video o testo (processo nuovo, cartella temporanea privata).
+                risposta = impacchetta(await sb.esegui_locale(parti[2], tipo=parti[1]))
+            elif len(parti) == 4 and parti[0] == "pixel" and re.fullmatch(r"[0-9]{1,4}", parti[1]) and parti[2] in sb.INSIEMI_PIXEL and sb.NOME.fullmatch(parti[3]) and sb.LATO_PIXEL_MIN <= int(parti[1]) <= sb.LATO_PIXEL_MAX:
+                # Pixel grezzi di un'immagine ridotta, per i filtri del bot: il bot non apre mai i byte di un utente.
+                risposta = impacchetta(await sb.esegui_locale(parti[3], pixel=(int(parti[1]), parti[2])))
+            elif not sb.NOME.fullmatch(nome):
+                risposta = impacchetta(sb.RisultatoSandbox("errore", {"motivo": "nome"}))
+            else:
+                # Il servizio ha PrivateNetwork: se la rete c'e', `esegui_locale` rifiuta.
+                risposta = impacchetta(await sb.esegui_locale(nome))
         scrittore.write(risposta)
         await scrittore.drain()
     except (asyncio.TimeoutError, ConnectionError):
@@ -90,6 +96,8 @@ def _dai_al_gruppo_del_bot(percorso: str) -> None:
 
 async def main() -> None:
     logging.basicConfig(level=logging.INFO)
+    if not sb.rete_isolata():
+        logger.error("Servizio sandbox: il processo ha una rete, ogni lavoro sara' rifiutato (serve PrivateNetwork=yes)")
     server = await serve(sb.socket_servizio())
     logger.info("Servizio sandbox in ascolto su %s", sb.socket_servizio())
     async with server:

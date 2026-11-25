@@ -18,7 +18,7 @@ from discord.ext import commands
 
 from core.command_groups import CogConGruppi, comando_di_gruppo
 from core.i18n import testo_per
-from core.safe_image import ImmagineTroppoGrande, run_image_task, safe_open_image
+from core.safe_image import ImmagineTroppoGrande, run_image_task, apri_in_sandbox
 from core.strumenti_server_logic import (
     AZIONI_THREAD, TIPI_ESPRESSIONE, nome_emoji_valido, nome_sticker_valido, posti_emoji_liberi, posti_sticker_liberi,
     puo_entrare_nel_vocale, trova_emoji, troppo_pesante,
@@ -127,7 +127,7 @@ class StrumentiServerCog(CogConGruppi, commands.Cog):
             if troppo_pesante(genere, len(dati)):
                 await self._dire(interaction, "strumenti_troppo_pesante", kb=256 if genere == "emoji" else 512)
                 return
-            await run_image_task(safe_open_image, dati)  # dimensioni e formato controllati prima di mandarla a Discord
+            await run_image_task(apri_in_sandbox, dati)  # dimensioni e formato controllati prima di mandarla a Discord
             motivo = f"Aggiunta da {interaction.user} ({interaction.user.id})"
             if genere == "emoji":
                 creata = await guild.create_custom_emoji(name=nome, image=dati, reason=motivo)

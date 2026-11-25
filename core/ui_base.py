@@ -16,7 +16,9 @@ import logging
 
 import discord
 
+from core.i18n import testo_per
 from core.repositories.blacklist_repo import blacklist_repo
+from core.safe_image import SandboxNonDisponibile
 
 logger = logging.getLogger("iyokai.ui_base")
 
@@ -48,12 +50,19 @@ async def _utente_o_server_in_blacklist(interaction: discord.Interaction) -> boo
     return False
 
 
-async def _rispondi_con_errore(interaction: discord.Interaction) -> None:
+async def _rispondi_con_errore(interaction: discord.Interaction, errore: BaseException | None = None) -> None:
+    """Risposta effimera a un errore di un componente. Se la sandbox non c'e' (blocco B) il messaggio lo dice chiaro."""
+    messaggio = _MESSAGGIO_ERRORE
+    if isinstance(errore, SandboxNonDisponibile):
+        try:
+            messaggio = await testo_per(interaction, "err_sandbox_non_disponibile")
+        except Exception:  # noqa: BLE001 - se i testi non rispondono resta il messaggio di sempre
+            pass
     try:
         if interaction.response.is_done():
-            await interaction.followup.send(_MESSAGGIO_ERRORE, ephemeral=True)
+            await interaction.followup.send(messaggio, ephemeral=True)
         else:
-            await interaction.response.send_message(_MESSAGGIO_ERRORE, ephemeral=True)
+            await interaction.response.send_message(messaggio, ephemeral=True)
     except discord.HTTPException:
         pass
 
@@ -68,7 +77,7 @@ class BaseView(discord.ui.View):
         logger.exception(
             "Errore in un componente UI (%s): %s", type(item).__name__ if item else "?", error
         )
-        await _rispondi_con_errore(interaction)
+        await _rispondi_con_errore(interaction, error)
 
 
 class BaseLayoutView(discord.ui.LayoutView):
@@ -83,7 +92,7 @@ class BaseLayoutView(discord.ui.LayoutView):
         logger.exception(
             "Errore in un componente UI (%s): %s", type(item).__name__ if item else "?", error
         )
-        await _rispondi_con_errore(interaction)
+        await _rispondi_con_errore(interaction, error)
 
 
 class BaseModal(discord.ui.Modal):
@@ -92,4 +101,4 @@ class BaseModal(discord.ui.Modal):
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         logger.exception("Errore in un modale: %s", error)
-        await _rispondi_con_errore(interaction)
+        await _rispondi_con_errore(interaction, error)

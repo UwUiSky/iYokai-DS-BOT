@@ -16,7 +16,7 @@ from pathlib import Path
 import discord
 from PIL import Image, ImageOps
 
-from core.safe_image import safe_open_image
+from core.safe_image import SandboxNonDisponibile, apri_in_sandbox
 
 LATO_MONETA = 128
 MAX_BYTE_MONETA = 65536
@@ -31,8 +31,10 @@ class MonetaNonValida(Exception):
 def prepara_moneta(image_bytes: bytes) -> bytes:
     """Ritaglia al centro a quadrato, riduce a LATO_MONETA e salva PNG sotto MAX_BYTE_MONETA."""
     try:
-        originale = safe_open_image(image_bytes)
+        originale = apri_in_sandbox(image_bytes)
         immagine = ImageOps.fit(originale.convert("RGBA"), (LATO_MONETA, LATO_MONETA), Image.LANCZOS)
+    except SandboxNonDisponibile:
+        raise  # senza sandbox il lavoro si rifiuta: lo dice chi chiama
     except Exception as errore:  # formato non ammesso, file rotto, troppi pixel
         raise MonetaNonValida(str(errore)) from errore
     for colori in (None, 128, 32):

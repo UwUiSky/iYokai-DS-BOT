@@ -392,6 +392,25 @@ async def test_non_copia_se_l_evento_e_spento_o_l_allegato_e_enorme(ambiente, co
     salva.assert_not_awaited()
 
 
+async def test_coda_della_sandbox_piena_non_scarica_nulla_resta_la_scheda(ambiente, copia, monkeypatch):
+    """Blocco B: il posto si chiede PRIMA di scaricare; sopra soglia solo la scheda senza byte."""
+    from core.allegati_cancello import CancelloDownload
+
+    cog, salva = copia
+    monkeypatch.setattr(modulo, "cancello", CancelloDownload(soglia_coda=0))  # coda sempre «piena»
+    senza_byte = AsyncMock()
+    monkeypatch.setattr(modulo.allegati_sicuri, "salva_senza_byte", senza_byte)
+    m = _messaggio()
+    m.guild = ambiente[4]
+    m.channel = fake_text_channel(channel_id=CANALE)
+    m.attachments = [_allegato(), _allegato("b.png")]
+    await cog.copia_allegati(m)
+    assert senza_byte.await_count == 2
+    salva.assert_not_awaited()
+    for a in m.attachments:
+        a.read.assert_not_awaited()
+
+
 async def test_log_del_cancellato_ha_link_e_anteprima_ricodificata_mai_l_originale(ambiente, monkeypatch):
     cog, canale_log, *_ = ambiente
     c = modulo.allegati_sicuri.Copia(7, "a.png", "png", 2048, "salvata", "ab" * 16, True)

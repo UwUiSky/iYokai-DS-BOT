@@ -1668,7 +1668,6 @@
   "amimg_owner_serve_impronta": "需要 SHA-256 指纹（64 个字符）或前 6 个字符。",
   "amimg_owner_solo_proprietario": "只有机器人所有者才能使用这个命令。",
   "amimg_owner_troppo_grande": "图片太大（最大 8 MB）。",
-  "amimg_sandbox_ridotta": "以精简模式检查：隔离服务没有响应。",
   "clear_regex_serve_testo": "使用「regex」时，也请在「contains」中填写文字。",
   "clear_regex_non_valida": "{motivo}",
   "clear_valore_non_valido": "{motivo}",
@@ -4484,5 +4483,6 @@
   "crt_specie_5": "濡女",
   "crt_specie_6": "鬼",
   "crt_specie_7": "唐伞妖",
-  "crt_specie_8": "猫又"
+  "crt_specie_8": "猫又",
+  "err_sandbox_non_disponibile": "文件安全检查目前不可用，图片没有被处理。请稍后再试。"
 }

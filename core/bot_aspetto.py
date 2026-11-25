@@ -14,7 +14,7 @@ import logging
 
 import discord
 
-from core.safe_image import MAX_IMAGE_BYTES, run_image_task, safe_open_image
+from core.safe_image import MAX_IMAGE_BYTES, SandboxNonDisponibile, apri_in_sandbox, run_image_task
 from core.web_panel_logic import LimiteFrequenza
 
 logger = logging.getLogger("iyokai.aspetto")
@@ -52,7 +52,7 @@ def _testo(valore: str | None, massimo: int) -> str | None:
 
 
 def _formato(dati: bytes) -> str | None:
-    return safe_open_image(dati).format
+    return apri_in_sandbox(dati).format
 
 
 async def controlla_immagine(dati: bytes) -> bytes:
@@ -61,6 +61,8 @@ async def controlla_immagine(dati: bytes) -> bytes:
         raise AspettoRifiutato("asp_immagine_grande")
     try:
         formato = await run_image_task(_formato, dati)
+    except SandboxNonDisponibile:
+        raise  # senza sandbox il lavoro si rifiuta: lo dice chi chiama
     except Exception as exc:  # noqa: BLE001 - file rotto, formato sconosciuto o troppi pixel
         raise AspettoRifiutato("asp_immagine_non_valida") from exc
     if formato not in FORMATI_PROFILO:

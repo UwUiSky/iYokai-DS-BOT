@@ -13,11 +13,12 @@ import io
 import json
 import random
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 from PIL import Image, ImageEnhance, ImageOps
 
-from core.safe_image import safe_open_image
+from core.safe_image import SandboxNonDisponibile, apri_in_sandbox
 
 MINA = -1
 # Livello -> (lato, mine). 9x9 = 81 celle: sotto i 2000 caratteri di un messaggio.
@@ -90,15 +91,29 @@ def tira_monete(quante: int, rng: random.Random) -> list[str]:
     return [rng.choice(("testa", "croce")) for _ in range(quante)]
 
 
+@lru_cache(maxsize=1)
+def _pixel_moneta_di_iyokai() -> tuple[str, tuple[int, int], bytes]:
+    """La moneta del bot (file del repository) passa dalla sandbox una volta sola: poi si tengono i pixel."""
+    img = apri_in_sandbox(_MONETA_BASE.read_bytes()).convert("RGBA")
+    return img.mode, img.size, img.tobytes()
+
+
+def _moneta_di_iyokai() -> Image.Image:
+    modo, misura, pixel = _pixel_moneta_di_iyokai()
+    return Image.frombytes(modo, misura, pixel)
+
+
 def striscia_monete(esiti: list[str], moneta: bytes | None = None) -> bytes:
     """
     PNG con una moneta per esito: la testa è la moneta del server, la croce la sua faccia scura e rovesciata.
     Se l'immagine non si apre ricade sulla moneta di iYokai. Pillow è sincrono: va chiamata con run_image_task.
     """
     try:
-        base = safe_open_image(moneta).convert("RGBA") if moneta else safe_open_image(_MONETA_BASE.read_bytes()).convert("RGBA")
+        base = apri_in_sandbox(moneta).convert("RGBA") if moneta else _moneta_di_iyokai()
+    except SandboxNonDisponibile:
+        raise  # senza sandbox il lavoro si rifiuta: niente moneta di ripiego
     except Exception:
-        base = safe_open_image(_MONETA_BASE.read_bytes()).convert("RGBA")
+        base = _moneta_di_iyokai()
     testa = ImageOps.fit(base, (LATO_MONETA, LATO_MONETA), Image.LANCZOS)
     croce = ImageOps.mirror(ImageEnhance.Brightness(testa).enhance(0.55))
     tela = Image.new("RGBA", (LATO_MONETA * len(esiti), LATO_MONETA), (0, 0, 0, 0))

@@ -118,6 +118,55 @@ async def clean_db(db_pool):
 # solo warning) come richiesto dal piano.
 # ============================================================================
 
+@pytest.fixture(scope="session", autouse=True)
+def _servizio_sandbox_di_prova(tmp_path_factory):
+    """
+    Il servizio `iyokai-sandbox` vero (core/immagini_servizio.py) in un thread, su un socket di prova: la sandbox
+    e' obbligatoria e senza servizio ogni lavoro sui file degli utenti viene rifiutato. I worker sono processi veri.
+    """
+    import threading
+
+    from core import immagini_sandbox as sb
+    from core import immagini_servizio as servizio
+
+    percorso = str(tmp_path_factory.mktemp("sbx") / "sock")
+    quarantena = tmp_path_factory.mktemp("quarantena-di-prova")
+    precedente_q = os.environ.get("IYOKAI_QUARANTENA_DIR")
+    os.environ["IYOKAI_QUARANTENA_DIR"] = str(quarantena)
+    anello = asyncio.new_event_loop()
+    pronto = threading.Event()
+
+    def corri():
+        asyncio.set_event_loop(anello)
+        anello.run_until_complete(servizio.serve(percorso))
+        pronto.set()
+        anello.run_forever()
+
+    filo = threading.Thread(target=corri, daemon=True, name="sandbox-di-prova")
+    filo.start()
+    pronto.wait(10)
+    precedente = os.environ.get(sb.VARIABILE_SOCKET)
+    os.environ[sb.VARIABILE_SOCKET] = percorso
+    yield percorso
+    if precedente is None:
+        os.environ.pop(sb.VARIABILE_SOCKET, None)
+    else:
+        os.environ[sb.VARIABILE_SOCKET] = precedente
+    anello.call_soon_threadsafe(anello.stop)
+    if precedente_q is None:
+        os.environ.pop("IYOKAI_QUARANTENA_DIR", None)
+    else:
+        os.environ["IYOKAI_QUARANTENA_DIR"] = precedente_q
+
+
+@pytest.fixture(autouse=True)
+def _rete_isolata_di_prova(monkeypatch):
+    """Nei test il processo ha la rete: si dichiara isolato il servizio di prova. I test del rifiuto lo rimettono com'e'."""
+    from core import immagini_sandbox as sb
+
+    monkeypatch.setattr(sb, "_interfacce_di_rete", lambda: ["lo"])
+
+
 _SESSIONI_NON_CHIUSE_PER_TEST: dict[str, int] = {}
 _ECCEZIONI_TASK_PER_TEST: dict[str, list[str]] = {}
 _ClientSession_init_originale = aiohttp.ClientSession.__init__
