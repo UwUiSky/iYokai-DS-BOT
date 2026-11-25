@@ -18,7 +18,7 @@ import discord
 import cogs.security.global_ban as modulo
 from core.repositories.global_ban_repo import global_ban_repo
 from tests.support.discord_fakes import fake_guild, fake_interaction, fake_member, fake_role
-from tests.test_global_ban_117 import USER, _bot, _server, ambiente  # noqa: F401  (fixture condivise)
+from tests.test_global_ban_117 import MOTIVO, USER, _bot, _server, ambiente, automatico  # noqa: F401  (fixture condivise)
 
 
 def _http(status=500):
@@ -30,8 +30,9 @@ def _http(status=500):
 async def test_un_unban_fallito_resta_da_ritentare(ambiente):
     a, b, c = _server(1), _server(2), _server(3)
     ambiente.update({1, 2, 3})
+    await automatico(1, 2, 3)
     bot = _bot(a, b, c)
-    await modulo.propagate_ban(bot, a, USER, "x")
+    await modulo.propagate_ban(bot, a, USER, MOTIVO, con_prova=True)
     b.unban.side_effect = _http()
 
     tolti = await modulo.revoca_ban_propagati(bot, 1, USER)
@@ -46,8 +47,9 @@ async def test_un_unban_fallito_resta_da_ritentare(ambiente):
 async def test_ban_dello_staff_di_quel_server_o_gia_sbannato_chiude_la_riga(ambiente):
     a, b, c = _server(1), _server(2, ban_reason="Spam: deciso dallo staff"), _server(3)
     ambiente.update({1, 2, 3})
+    await automatico(1, 2, 3)
     bot = _bot(a, b, c)
-    await modulo.propagate_ban(bot, a, USER, "x")
+    await modulo.propagate_ban(bot, a, USER, MOTIVO, con_prova=True)
     c.fetch_ban.side_effect = discord.NotFound(MagicMock(status=404, reason="x"), "no")
 
     assert await modulo.revoca_ban_propagati(bot, 1, USER) == 0
@@ -59,8 +61,9 @@ async def test_ban_dello_staff_di_quel_server_o_gia_sbannato_chiude_la_riga(ambi
 async def test_revoked_at_esclude_il_ban_dal_conteggio_della_rete(ambiente, clean_db):
     a, b = _server(1), _server(2)
     ambiente.update({1, 2})
+    await automatico(1, 2)
     bot = _bot(a, b)
-    await modulo.propagate_ban(bot, a, USER, "x")
+    await modulo.propagate_ban(bot, a, USER, MOTIVO, con_prova=True)
     assert (await global_ban_repo.network_summary(USER))[0] == 1
     await modulo.revoca_ban_propagati(bot, 1, USER)
     assert (await global_ban_repo.network_summary(USER))[0] == 0
@@ -70,9 +73,10 @@ async def test_revoked_at_esclude_il_ban_dal_conteggio_della_rete(ambiente, clea
 async def test_se_un_altro_server_lo_ha_ancora_bannato_lì_il_ban_resta(ambiente):
     a, b, c = _server(1), _server(2), _server(3)
     ambiente.update({1, 2, 3})
+    await automatico(1, 2, 3)
     bot = _bot(a, b, c)
-    await modulo.propagate_ban(bot, a, USER, "x")  # B e C
-    await modulo.propagate_ban(bot, c, USER, "x")  # da C: A e B
+    await modulo.propagate_ban(bot, a, USER, MOTIVO, con_prova=True)  # B e C
+    await modulo.propagate_ban(bot, c, USER, MOTIVO, con_prova=True)  # da C: A e B
 
     tolti = await modulo.revoca_ban_propagati(bot, 1, USER)  # appello solo in A
 
@@ -89,6 +93,7 @@ async def test_appello_accolto_a_meta_propagazione_ferma_i_ban_successivi(ambien
     a = _server(1)
     destinazioni = [_server(i) for i in (2, 3, 4)]
     ambiente.update({1, 2, 3, 4})
+    await automatico(1, 2, 3, 4)
     bot = _bot(a, *destinazioni)
     cancello = asyncio.Event()
     avviato = asyncio.Event()
@@ -99,7 +104,7 @@ async def test_appello_accolto_a_meta_propagazione_ferma_i_ban_successivi(ambien
 
     destinazioni[1].ban.side_effect = lento  # il server 3 e' lento
 
-    propagazione = asyncio.create_task(modulo.propagate_ban(bot, a, USER, "x"))
+    propagazione = asyncio.create_task(modulo.propagate_ban(bot, a, USER, MOTIVO, con_prova=True))
     await avviato.wait()
     revoca = asyncio.create_task(modulo.revoca_ban_propagati(bot, 1, USER))
     await asyncio.sleep(0.05)
@@ -120,6 +125,7 @@ async def test_appello_accolto_a_meta_propagazione_ferma_i_ban_successivi(ambien
 async def test_lo_staff_del_server_di_arrivo_non_viene_bannato(ambiente):
     a, admin_qui, normale = _server(1), _server(2), _server(3)
     ambiente.update({1, 2, 3})
+    await automatico(1, 2, 3)
     modulo.db.get_guild_setting = AsyncMock(return_value=[])
     admin_qui.get_member.return_value = fake_member(
         user_id=USER, guild_permissions=discord.Permissions(administrator=True)
@@ -129,7 +135,7 @@ async def test_lo_staff_del_server_di_arrivo_non_viene_bannato(ambiente):
         presente.get_member.return_value.top_role = fake_role(role_id=1, position=1)
         presente.me.top_role = fake_role(role_id=9, position=50)
 
-    propagati = await modulo.propagate_ban(_bot(a, admin_qui, normale), a, USER, "x")
+    propagati = await modulo.propagate_ban(_bot(a, admin_qui, normale), a, USER, MOTIVO, con_prova=True)
 
     assert propagati == [3]
     admin_qui.ban.assert_not_awaited()
@@ -138,6 +144,7 @@ async def test_lo_staff_del_server_di_arrivo_non_viene_bannato(ambiente):
 async def test_un_bot_o_un_ruolo_staff_configurato_non_viene_bannato(ambiente):
     a, con_bot, con_ruolo = _server(1), _server(2), _server(3)
     ambiente.update({1, 2, 3})
+    await automatico(1, 2, 3)
     staff = fake_role(role_id=77, position=1)
     modulo.db.get_guild_setting = AsyncMock(side_effect=lambda gid, *_a, **_k: [77] if gid == 3 else [])
     con_bot.get_member.return_value = fake_member(user_id=USER, bot=True)
@@ -146,7 +153,7 @@ async def test_un_bot_o_un_ruolo_staff_configurato_non_viene_bannato(ambiente):
         s.get_member.return_value.top_role = fake_role(role_id=1, position=1)
         s.me.top_role = fake_role(role_id=9, position=50)
 
-    assert await modulo.propagate_ban(_bot(a, con_bot, con_ruolo), a, USER, "x") == []
+    assert await modulo.propagate_ban(_bot(a, con_bot, con_ruolo), a, USER, MOTIVO, con_prova=True) == []
 
 
 # ---------------------------------------------------------------- registro
@@ -154,10 +161,11 @@ async def test_la_pulizia_del_registro_e_una_per_giro(ambiente, monkeypatch):
     a = _server(1)
     altri = [_server(i) for i in (2, 3, 4)]
     ambiente.update({1, 2, 3, 4})
+    await automatico(1, 2, 3, 4)
     pulizia = AsyncMock()
     monkeypatch.setattr(global_ban_repo, "purge_old", pulizia)
 
-    await modulo.propagate_ban(_bot(a, *altri), a, USER, "x")
+    await modulo.propagate_ban(_bot(a, *altri), a, USER, MOTIVO, con_prova=True)
 
     pulizia.assert_awaited_once()
 
@@ -171,13 +179,14 @@ async def test_il_registro_ha_gli_indici_per_utente_e_sorgente(clean_db):
 async def test_propagazione_annullata_non_lascia_un_ban_senza_riga(ambiente):
     a, b = _server(1), _server(2)
     ambiente.update({1, 2})
+    await automatico(1, 2)
     attesa = asyncio.Event()
 
     async def lento(*_a, **_k):
         await attesa.wait()
 
     b.ban.side_effect = lento
-    compito = asyncio.create_task(modulo.propagate_ban(_bot(a, b), a, USER, "x"))
+    compito = asyncio.create_task(modulo.propagate_ban(_bot(a, b), a, USER, MOTIVO, con_prova=True))
     await asyncio.sleep(0.05)
     compito.cancel()
     attesa.set()

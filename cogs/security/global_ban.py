@@ -36,10 +36,19 @@ from discord.ext import commands
 from core.command_groups import CogConGruppi, comando_di_gruppo
 
 from core.database import db
-from core.global_ban_logic import should_propagate_ban
-from core.i18n import testo_per
+from core.rete_protezione import PREFISSO_MOTIVO_BAN_GLOBALE
+from core.global_ban_logic import (
+    MAX_SERVER_PER_BAN,
+    decisione_propagazione,
+    modo_di_arrivo,
+    punteggio_affidabilita,
+    should_propagate_ban,
+)
+from core.i18n import testo_guild, testo_per
 from core.premium import PremiumModule, registry, requires_module
 from core.repositories.global_ban_repo import global_ban_repo
+from core.repositories.rete_repo import rete_repo
+from core.security_raid_state import nuke_in_corso, raid_in_corso
 from core.security_access import SETTING_STAFF_ROLES, is_staff_exempt, premium_sbloccato
 
 logger = logging.getLogger("iyokai.global_ban")
@@ -51,7 +60,7 @@ MODULE_GLOBAL_BAN = "global_ban"
 PAUSA_TRA_I_BAN = 0.2
 
 # Il motivo con cui i ban propagati partono: serve a riconoscerli quando si tolgono.
-PREFISSO_MOTIVO = "Ban globale"
+PREFISSO_MOTIVO = PREFISSO_MOTIVO_BAN_GLOBALE
 
 
 async def _aderisce(bot: commands.Bot, guild_id: int) -> bool:
@@ -100,31 +109,6 @@ def _lascia_episodio(chiave: tuple[int, int], episodio: _Episodio) -> None:
         del _episodi[chiave]
 
 
-async def _banna_e_registra(
-    target: discord.Guild, source_guild: discord.Guild, user_id: int, reason: str
-) -> bool:
-    """Un ban sul server di arrivo e la riga nel registro, come un'unica operazione."""
-    try:
-        await target.ban(
-            discord.Object(id=user_id),
-            reason=f"{PREFISSO_MOTIVO} — Spam Trap innescata su {source_guild.name}: {reason}"[:512],
-            delete_message_seconds=0,
-        )
-    except discord.Forbidden:
-        logger.warning(
-            "Ban globale: permessi insufficienti per bannare %s nel server %s.", user_id, target.id
-        )
-        return False
-    except discord.HTTPException:
-        logger.warning(
-            "Ban globale: errore HTTP bannando %s nel server %s (probabilmente già bannato).",
-            user_id, target.id,
-        )
-        return False
-    await global_ban_repo.log_propagation(source_guild.id, target.id, user_id, reason)
-    return True
-
-
 async def _staff_nel_server(target: discord.Guild, user_id: int) -> bool:
     """L'utente e' staff (admin/mod, un bot, ruolo staff) nel server di arrivo? Lo staff non si banna."""
     membro = target.get_member(user_id)
@@ -134,28 +118,74 @@ async def _staff_nel_server(target: discord.Guild, user_id: int) -> bool:
     return is_staff_exempt(membro, target, set(ruoli or ()))
 
 
+# Tetto di propagazioni che girano insieme: in un raid la coda non deve rallentare i ban locali,
+# che non passano di qui e quindi hanno sempre la precedenza sulle richieste a Discord.
+TETTO_PROPAGAZIONI_INSIEME = 2
+_coda_propagazioni = asyncio.Semaphore(TETTO_PROPAGAZIONI_INSIEME)
+
+CATEGORIA_RETE = "ban_globale"  # categoria della proposta nella rete dei ban (core/rete_protezione.py)
+TETTO_PROPOSTE_AL_GIORNO = 5  # proposte che un server può ricevere in un giorno, da tutti
+
+
+def _giorni_da(quando) -> int:
+    if quando is None:
+        return 0
+    return max(0, (discord.utils.utcnow() - quando).days)
+
+
+async def calcola_affidabilita(
+    source_guild: discord.Guild, user_id: int, reason: str, con_prova: bool
+) -> tuple[int, list[str], int]:
+    """Punteggio del server che manda il ban, i codici che hanno pesato e quanti ban ha già mandato oggi."""
+    ban_ora = await global_ban_repo.ban_propagati_dal_server(source_guild.id, 1)
+    ban_oggi = await global_ban_repo.ban_propagati_dal_server(source_guild.id, 24)
+    conferme = await global_ban_repo.conferme_altri_server(user_id, source_guild.id)
+    punteggio, codici = punteggio_affidabilita(
+        membri=source_guild.member_count or 0,
+        giorni_server=_giorni_da(source_guild.created_at),
+        giorni_bot=_giorni_da(getattr(source_guild.me, "joined_at", None)),
+        ban_ultima_ora=ban_ora + 1,  # il ban che sta partendo conta
+        ban_oggi=ban_oggi + 1,
+        motivo=reason,
+        con_prova=con_prova,
+        conferme=conferme,
+    )
+    return punteggio, codici, ban_oggi + 1
+
+
 async def propagate_ban(
-    bot: commands.Bot, source_guild: discord.Guild, user_id: int, reason: str
+    bot: commands.Bot, source_guild: discord.Guild, user_id: int, reason: str, *, con_prova: bool = False
 ) -> list[int]:
     """
     Chiamata dalla Spam Trap (§7.3) subito dopo un ban confermato.
-    Restituisce la lista degli ID dei server in cui il ban è stato
-    effettivamente propagato (per il log di chi ha chiamato).
+    Restituisce gli ID dei server a cui il ban è arrivato (proposta o ban).
 
-    Il server sorgente deve avere acceso "invia", quello di arrivo
-    "ricevi" (SIC-046). Chi nel server di arrivo e' staff (amministratore,
-    moderatore, ruolo staff della Spam Trap) o un bot non viene bannato
-    li': una Spam Trap altrui non puo' togliere un admin al suo server.
-
-    Best-effort: un fallimento (permessi insufficienti, rate limit,
-    utente già bannato lì) su UN server target non deve bloccare la
-    propagazione verso gli altri — viene solo loggato e saltato. Se nel
-    frattempo l'appello viene accolto (`revoca_ban_propagati`) si ferma.
+    Cancelli, in ordine: il server sorgente deve avere acceso «invia» (di base è spento);
+    non deve essere sotto raid o nuke in questo momento; deve essere abbastanza grande
+    e vecchio e non bannare a raffica (punteggio di affidabilità, vedi
+    core/global_ban_logic.py). Ogni tentativo lascia una riga nel registro, anche se
+    rifiutato. Nei server che hanno acceso «ricevi» il ban arriva come PROPOSTA con
+    i tasti Banna/Ignora (core/rete_protezione.py); il ban parte da solo solo se lo
+    staff di quel server ha scelto il modo automatico E il punteggio è alto.
+    Lo staff del server di arrivo e i bot non si propongono mai. Se qualcosa
+    fallisce su un server, si salta quello e si va avanti. Se nel frattempo
+    l'appello viene accolto (`revoca_ban_propagati`) la propagazione si ferma.
     """
     source_invia, _ = await _direzioni(bot, source_guild.id)
     if not source_invia:
         return []
-
+    punteggio, codici, ban_oggi = await calcola_affidabilita(source_guild, user_id, reason, con_prova)
+    rifiuto = decisione_propagazione(
+        punteggio=punteggio,
+        raid_o_nuke_in_corso=raid_in_corso(source_guild.id) or nuke_in_corso(source_guild.id),
+        invia=source_invia,
+        ban_oggi=ban_oggi,
+    ) or ("bloccato" if await rete_repo.e_bloccato(source_guild.id) else None)
+    if rifiuto:
+        await global_ban_repo.registra_episodio(source_guild.id, user_id, punteggio, codici, f"rifiutato:{rifiuto}")
+        logger.info("Ban globale: server %s rifiutato (%s, punteggio %s).", source_guild.id, rifiuto, punteggio)
+        return []
+    await global_ban_repo.registra_episodio(source_guild.id, user_id, punteggio, codici, "propagato")
     # La pulizia del registro vecchio una volta per giro, non a ogni riga.
     await global_ban_repo.purge_old()
 
@@ -163,9 +193,9 @@ async def propagate_ban(
     episodio = _prendi_episodio(chiave)
     propagati: list[int] = []
     try:
-        async with episodio.blocco:
+        async with _coda_propagazioni, episodio.blocco:
             for target in list(bot.guilds):
-                if episodio.revocato:
+                if episodio.revocato or len(propagati) >= MAX_SERVER_PER_BAN:
                     break
                 if target.id == source_guild.id:
                     continue
@@ -183,14 +213,52 @@ async def propagate_ban(
                     )
                     continue
                 # Il ban e la sua riga di registro non si spezzano se chi chiama viene annullato.
-                if not await asyncio.shield(_banna_e_registra(target, source_guild, user_id, reason)):
-                    continue
-                propagati.append(target.id)
+                if await asyncio.shield(_consegna(bot, source_guild, target, user_id, reason, punteggio, codici)):
+                    propagati.append(target.id)
                 if PAUSA_TRA_I_BAN:
                     await asyncio.sleep(PAUSA_TRA_I_BAN)
     finally:
         _lascia_episodio(chiave, episodio)
     return propagati
+
+
+async def _consegna(
+    bot: commands.Bot, source_guild: discord.Guild, target: discord.Guild, user_id: int,
+    reason: str, punteggio: int, codici: list[str],
+) -> bool:
+    """Un server di arrivo: proposta con i tasti, o ban automatico se scelto dallo staff e punteggio alto."""
+    from core import rete_protezione as rete
+    from core.rete_protezione_vista import crea_vista
+
+    if await rete_repo.proposte_ricevute_oggi(target.id) >= TETTO_PROPOSTE_AL_GIORNO:
+        return False
+    impostazioni = await rete_repo.impostazioni(target.id)
+    modo = modo_di_arrivo(punteggio=punteggio, il_server_vuole_automatico=impostazioni.ban_modo == "automatico")
+    proposta_id = await rete_repo.crea_proposta(
+        user_id, source_guild.id, target.id, CATEGORIA_RETE, punteggio, ",".join(codici)
+    )
+    if proposta_id is None:
+        return False  # già proposto da questo server: niente doppioni
+    if modo == "automatico":
+        return await rete.applica_ban(bot, target, proposta_id, None) == "ok"
+    motivo = discord.utils.escape_mentions(discord.utils.escape_markdown(reason))[:300]
+    embed = discord.Embed(
+        title=await testo_guild(target, "rete_ban_proposta_titolo"),
+        description=(await testo_guild(
+            target, "rete_ban_proposta_corpo", utente=f"<@{user_id}>", id=user_id,
+            categoria=await testo_guild(target, f"rete_cat_{CATEGORIA_RETE}"),
+        ))[:4096],
+        color=discord.Color.orange(),
+    )
+    embed.add_field(
+        name=await testo_guild(target, "rete_ban_affidabilita_titolo"),
+        value=(await testo_guild(target, "rete_ban_affidabilita_corpo", punteggio=punteggio, motivo=motivo or "-"))[:1024],
+        inline=False,
+    )
+    consegnato = await rete._manda_agli_owner(
+        bot, target, impostazioni, embed=embed, view=await crea_vista(target, "ap", proposta_id, 0)
+    )
+    return bool(consegnato)
 
 
 async def revoca_ban_propagati(bot: commands.Bot, source_guild_id: int, user_id: int) -> int:
@@ -209,6 +277,8 @@ async def revoca_ban_propagati(bot: commands.Bot, source_guild_id: int, user_id:
     chiusi: list[int] = []
     try:
         async with episodio.blocco:
+            # Le proposte non ancora decise non devono più poter essere accettate.
+            await rete_repo.chiudi_proposte_aperte(source_guild_id, user_id, None)
             for target_id in await global_ban_repo.active_propagations(source_guild_id, user_id):
                 target = bot.get_guild(target_id)
                 if target is None:
@@ -257,7 +327,7 @@ class GlobalBanCog(CogConGruppi, commands.Cog):
     )
     @requires_module(MODULE_GLOBAL_BAN)
     async def enable(
-        self, interaction: discord.Interaction, invia: bool = True, ricevi: bool = True
+        self, interaction: discord.Interaction, invia: bool = False, ricevi: bool = False
     ) -> None:
         if not invia and not ricevi:
             await interaction.response.send_message(

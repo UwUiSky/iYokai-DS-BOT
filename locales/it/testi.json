@@ -4484,5 +4484,8 @@
   "crt_specie_5": "Nure-onna",
   "crt_specie_6": "Oni",
   "crt_specie_7": "Karakasa",
-  "crt_specie_8": "Bakeneko"
+  "crt_specie_8": "Bakeneko",
+  "rete_cat_ban_globale": "ban deciso da un server della rete",
+  "rete_ban_affidabilita_titolo": "Affidabilità del server che segnala",
+  "rete_ban_affidabilita_corpo": "Punteggio {punteggio}/100. Motivo del ban: {motivo}"
 }

@@ -99,6 +99,8 @@ from core.security_quarantine import (
 from core.security_rate_tracker import security_rate_tracker
 from cogs.moderation._shared import ensure_module_enabled, try_dm
 
+from core.security_raid_state import segna_nuke
+
 logger = logging.getLogger("iyokai.anti_nuke")
 
 MODULE_ANTI_NUKE = "anti_nuke"
@@ -983,6 +985,7 @@ class AntiNukeCog(CogConGruppi, commands.Cog):
         quanti: str,
     ) -> None:
         reason = f"Anti-Nuke: {category} — {detail_suffix}"
+        segna_nuke(guild.id)  # il ban globale non parte da un server sotto attacco
         aperti = await security_repo.active_cases_for_actor(guild.id, actor_id)
         episodio = next(
             (

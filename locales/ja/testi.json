@@ -4484,5 +4484,8 @@
   "crt_specie_5": "濡れ女",
   "crt_specie_6": "鬼",
   "crt_specie_7": "唐傘",
-  "crt_specie_8": "化け猫"
+  "crt_specie_8": "化け猫",
+  "rete_cat_ban_globale": "ネットワーク内のサーバーによるBAN",
+  "rete_ban_affidabilita_titolo": "通報したサーバーの信頼度",
+  "rete_ban_affidabilita_corpo": "スコア {punteggio}/100。BANの理由：{motivo}"
 }

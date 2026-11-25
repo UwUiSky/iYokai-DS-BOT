@@ -4484,5 +4484,8 @@
   "crt_specie_5": "누레온나",
   "crt_specie_6": "오니",
   "crt_specie_7": "가라카사",
-  "crt_specie_8": "바케네코"
+  "crt_specie_8": "바케네코",
+  "rete_cat_ban_globale": "네트워크 서버가 결정한 밴",
+  "rete_ban_affidabilita_titolo": "신고한 서버의 신뢰도",
+  "rete_ban_affidabilita_corpo": "점수 {punteggio}/100. 밴 사유: {motivo}"
 }

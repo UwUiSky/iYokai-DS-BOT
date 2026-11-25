@@ -4484,5 +4484,8 @@
   "crt_specie_5": "Нуре-онна",
   "crt_specie_6": "Они",
   "crt_specie_7": "Каракаса",
-  "crt_specie_8": "Бакенеко"
+  "crt_specie_8": "Бакенеко",
+  "rete_cat_ban_globale": "бан, виданий сервером мережі",
+  "rete_ban_affidabilita_titolo": "Надійність сервера, що повідомив",
+  "rete_ban_affidabilita_corpo": "Оцінка {punteggio}/100. Причина бану: {motivo}"
 }

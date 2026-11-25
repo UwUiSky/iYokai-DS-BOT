@@ -105,11 +105,11 @@ class GlobalBanRepository:
         )
 
     async def get_direction(self, guild_id: int) -> tuple[bool, bool]:
-        """(invia, ricevi) del server; senza riga: entrambe."""
+        """(invia, ricevi) del server; senza riga: nessuna delle due (la rete è spenta di base)."""
         row = await self._pool.fetchrow(
             "SELECT send_bans, receive_bans FROM global_ban_direction WHERE guild_id = $1", guild_id
         )
-        return (True, True) if row is None else (row["send_bans"], row["receive_bans"])
+        return (False, False) if row is None else (row["send_bans"], row["receive_bans"])
 
     async def set_direction(self, guild_id: int, *, send: bool, receive: bool) -> None:
         await self._pool.execute(
@@ -120,6 +120,32 @@ class GlobalBanRepository:
                 SET send_bans = EXCLUDED.send_bans, receive_bans = EXCLUDED.receive_bans
             """,
             guild_id, send, receive,
+        )
+
+    async def registra_episodio(
+        self, source_guild_id: int, user_id: int, punteggio: int, codici: list[str], esito: str
+    ) -> None:
+        """Ogni tentativo di propagare un ban lascia una riga: ritmo, conferme e spiegazione allo staff."""
+        await self._pool.execute(
+            "INSERT INTO global_ban_episodi (source_guild_id, user_id, punteggio, codici, esito) VALUES ($1, $2, $3, $4, $5)",
+            source_guild_id, user_id, punteggio, ",".join(codici), esito,
+        )
+
+    async def ban_propagati_dal_server(self, source_guild_id: int, ore: int) -> int:
+        """Quanti utenti diversi questo server ha provato a propagare nelle ultime `ore` ore."""
+        return await self._pool.fetchval(
+            "SELECT count(DISTINCT user_id) FROM global_ban_episodi "
+            "WHERE source_guild_id = $1 AND creato_il > now() - make_interval(hours => $2)",
+            source_guild_id, ore,
+        )
+
+    async def conferme_altri_server(self, user_id: int, escludi_server: int, giorni: int = 30) -> int:
+        """Quanti ALTRI server hanno provato a propagare un ban per lo stesso utente (e passato il cancello)."""
+        return await self._pool.fetchval(
+            "SELECT count(DISTINCT source_guild_id) FROM global_ban_episodi "
+            "WHERE user_id = $1 AND source_guild_id <> $2 AND esito = 'propagato' "
+            "AND creato_il > now() - make_interval(days => $3)",
+            user_id, escludi_server, giorni,
         )
 
     async def active_propagations(self, source_guild_id: int, user_id: int) -> list[int]:

@@ -4484,5 +4484,8 @@
   "crt_specie_5": "濡女",
   "crt_specie_6": "鬼",
   "crt_specie_7": "唐伞妖",
-  "crt_specie_8": "猫又"
+  "crt_specie_8": "猫又",
+  "rete_cat_ban_globale": "网络内某服务器作出的封禁",
+  "rete_ban_affidabilita_titolo": "上报服务器的可信度",
+  "rete_ban_affidabilita_corpo": "得分 {punteggio}/100。封禁原因：{motivo}"
 }
