@@ -4,11 +4,10 @@ core/immagini_sandbox.py
 Esegue l'analisi di un'immagine in quarantena in un processo NUOVO per ogni immagine (D62), con
 tetti di memoria (512 MiB), tempo di CPU (4 s) e tempo vero (8 s, poi SIGKILL), niente file
 scrivibili e al massimo 6 MiB di uscita. Modo A: servizio di sistema `iyokai-sandbox` su socket
-Unix (utente senza permessi, niente rete). Modo B (ripiego, «sandbox ridotta»): stesso processo
-figlio avviato dal bot, con `unshare -rn` se il sistema lo permette. Ucciso, scaduto o illeggibile
-= sospetta: lo decide chi chiama.
-Con `converti` (D74) lo stesso schema vale per PDF, audio, video e testo (`core/conversioni_worker.py`): solo
-servizio di sistema, tetti propri per tipo (`LIMITI_CONVERSIONE`), scrittura solo in una cartella temporanea privata.
+Unix (utente senza permessi, niente rete). Niente ripiego (blocco B): il bot non avvia mai il worker da
+solo. Se il servizio non risponde l'esito e' `non_disponibile` e il lavoro si rifiuta. Il servizio stesso rifiuta
+di lavorare se il suo processo ha una rete (`non_isolata`). Ucciso, scaduto o illeggibile = sospetta: lo decide chi chiama.
+Con `converti` (D74) lo stesso schema vale per PDF, audio, video e testo (`core/conversioni_worker.py`): tetti propri per tipo (`LIMITI_CONVERSIONE`), scrittura solo in una cartella temporanea privata.
 Funzioni coperte: SPEC §6 (D62), §8.16 (D74)
 """
 
@@ -31,7 +30,6 @@ from pathlib import Path
 logger = logging.getLogger("iyokai.immagini.sandbox")
 
 MODO_SERVIZIO = "servizio"
-MODO_RIDOTTA = "ridotta"
 SOCKET_SERVIZIO = "/run/iyokai-sbx/sock"
 VARIABILE_SOCKET = "IYOKAI_SANDBOX_SOCKET"
 MAX_USCITA = 6 * 1024 * 1024
@@ -63,12 +61,13 @@ LIMITI_CONVERSIONE = {
 
 @dataclass
 class RisultatoSandbox:
-    """`esito`: ok, errore (il decoder ha rifiutato), ucciso_tempo, ucciso (memoria o crash), uscita_enorme, non_disponibile."""
+    """`esito`: ok, errore (il decoder ha rifiutato), ucciso_tempo, ucciso (memoria o crash), uscita_enorme,
+    non_disponibile (servizio assente o worker senza librerie), non_isolata (il processo ha una rete: si rifiuta)."""
 
     esito: str
     info: dict = field(default_factory=dict)
     png: bytes = b""
-    modo: str = MODO_RIDOTTA
+    modo: str = MODO_SERVIZIO
 
     @property
     def riuscita(self) -> bool:
@@ -88,23 +87,24 @@ def _imposta_limiti(limiti: Limiti):
     return pre
 
 
-_unshare_ok: bool | None = None
+def _interfacce_reali() -> list[str]:
+    """I nomi delle interfacce di rete visibili al processo (da /sys/class/net). Illeggibile = non si sa = lista con un nome ignoto."""
+    try:
+        return sorted(os.listdir("/sys/class/net"))
+    except OSError:
+        return ["?"]
 
 
-async def _unshare_funziona() -> bool:
-    """`unshare -rn` toglie la rete al figlio; su alcuni sistemi (AppArmor) non e' permesso."""
-    global _unshare_ok
-    if _unshare_ok is None:
-        _unshare_ok = False
-        if shutil.which("unshare"):
-            try:
-                p = await asyncio.create_subprocess_exec(
-                    "unshare", "-rn", "true", stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
-                )
-                _unshare_ok = (await asyncio.wait_for(p.wait(), 5)) == 0
-            except (OSError, asyncio.TimeoutError):
-                _unshare_ok = False
-    return _unshare_ok
+_interfacce_di_rete = _interfacce_reali  # i test sostituiscono questo nome
+
+
+def rete_isolata() -> bool:
+    """
+    Vero solo se il processo non ha rete: nessuna interfaccia oltre il loopback `lo` (con `PrivateNetwork=yes`
+    del servizio e' sempre cosi'). Il bot, che ha la rete, non supera mai questo controllo: per questo non puo'
+    avviare il worker da solo. Non si ripiega su `unshare`: o c'e' l'isolamento del sistema o non si lavora.
+    """
+    return all(n == "lo" for n in _interfacce_di_rete())
 
 
 def comando_worker(nome: str) -> list[str]:
@@ -130,21 +130,23 @@ def leggi_uscita(grezzo: bytes) -> tuple[dict, bytes]:
 
 
 async def esegui_locale(
-    nome: str, limiti: Limiti | None = None, comando: list[str] | None = None, isola_rete: bool = True,
-    tipo: str | None = None,
+    nome: str, limiti: Limiti | None = None, comando: list[str] | None = None, tipo: str | None = None,
 ) -> RisultatoSandbox:
     """
-    Avvia il figlio con i limiti e ne legge l'esito. `comando` serve solo ai test. Con `tipo` (pdf, audio, video,
-    testo) parte il processo delle conversioni, con una cartella temporanea privata che il padre toglie sempre.
+    SOLO PER IL SERVIZIO `iyokai-sandbox` (un test lo controlla): avvia il figlio con i limiti e ne legge l'esito.
+    Senza isolamento di rete (`rete_isolata()` falso) non parte nulla e l'esito e' `non_isolata`.
+    `comando` serve solo ai test. Con `tipo` (pdf, audio, video, testo) parte il processo delle conversioni, con una
+    cartella temporanea privata che il padre toglie sempre.
     """
+    if not rete_isolata():
+        logger.error("Sandbox: il processo ha una rete (interfacce %s): lavoro rifiutato", _interfacce_di_rete())
+        return RisultatoSandbox("non_isolata")
     if tipo is not None and tipo not in LIMITI_CONVERSIONE:
         raise ValueError("tipo di conversione non valido")
     limiti = limiti or (LIMITI_CONVERSIONE[tipo] if tipo else Limiti())
     if not NOME.fullmatch(nome):
         raise ValueError("nome di quarantena non valido")
     argv = comando or (comando_conversione(tipo, nome) if tipo else comando_worker(nome))
-    if isola_rete and comando is None and await _unshare_funziona():
-        argv = ["unshare", "-rn", *argv]
     ambiente = {"PATH": os.environ.get("PATH", ""), "IYOKAI_QUARANTENA_DIR": os.environ.get("IYOKAI_QUARANTENA_DIR", "")}
     temporanea = tempfile.mkdtemp(prefix="iyokai-conv-") if tipo else None
     if temporanea:
@@ -234,7 +236,7 @@ def socket_servizio() -> str:
 
 
 async def _chiedi_al_servizio(nome: str, limiti: Limiti, tipo: str | None = None) -> RisultatoSandbox | None:
-    """Modo A: il servizio di sistema. None solo se non c'e' o non accetta il lavoro (si passa al modo B)."""
+    """Chiede il lavoro al servizio di sistema. None solo se non c'e' o non accetta il lavoro: chi chiama rifiuta."""
     percorso = socket_servizio()
     if not os.path.exists(percorso):
         return None
@@ -249,8 +251,8 @@ async def _chiedi_al_servizio(nome: str, limiti: Limiti, tipo: str | None = None
     except OSError:
         scrittore.close()
         return None
-    # Da qui il servizio ha il lavoro: se tace o risponde male l'esito e' sospetto. Rifare la stessa immagine
-    # nella sandbox ridotta darebbe all'attacco un secondo tentativo con meno isolamento.
+    # Da qui il servizio ha il lavoro: se tace o risponde male l'esito e' sospetto. Non si rifa' mai la stessa
+    # immagine altrove: l'attacco non deve avere un secondo tentativo.
     try:
         grezzo = await asyncio.wait_for(lettore.read(limiti.uscita + 65536), limiti.reale + 5.0)
         # lettore.read puo' dare meno del totale: si legge fino alla chiusura
@@ -274,22 +276,21 @@ async def _chiedi_al_servizio(nome: str, limiti: Limiti, tipo: str | None = None
 
 
 async def analizza(nome: str, limiti: Limiti | None = None) -> RisultatoSandbox:
-    """Modo A se il servizio risponde, altrimenti modo B (sandbox ridotta, dichiarata nel log da chi chiama)."""
+    """Solo il servizio di sistema. Servizio assente o che non accetta il lavoro = `non_disponibile`: nessun ripiego."""
     limiti = limiti or Limiti()
     if not NOME.fullmatch(nome):
         raise ValueError("nome di quarantena non valido")
     risultato = await _chiedi_al_servizio(nome, limiti)
-    if risultato is not None:
-        return risultato
-    risultato = await esegui_locale(nome, limiti)
-    risultato.modo = MODO_RIDOTTA
+    if risultato is None:
+        logger.error("Sandbox: servizio iyokai-sandbox non raggiungibile, immagine rifiutata")
+        return RisultatoSandbox("non_disponibile")
     return risultato
 
 
 async def converti(tipo: str, nome: str, limiti: Limiti | None = None) -> RisultatoSandbox:
     """
-    Conversione sicura di un file in quarantena (D74). Solo il servizio di sistema: senza servizio non c'e' una
-    «sandbox ridotta» per i parser di PDF e video, e il risultato e' `non_disponibile` (resta la scheda).
+    Conversione sicura di un file in quarantena (D74). Solo il servizio di sistema: senza servizio il
+    risultato e' `non_disponibile` (resta la scheda).
     """
     if tipo not in LIMITI_CONVERSIONE:
         raise ValueError("tipo di conversione non valido")

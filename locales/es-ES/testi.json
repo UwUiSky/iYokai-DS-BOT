@@ -1668,7 +1668,6 @@
   "amimg_owner_serve_impronta": "Hace falta una huella SHA-256 (64 caracteres) o los primeros 6 caracteres.",
   "amimg_owner_solo_proprietario": "Solo el propietario del bot puede usar este comando.",
   "amimg_owner_troppo_grande": "La imagen es demasiado grande (máximo 8 MB).",
-  "amimg_sandbox_ridotta": "Comprobación en modo reducido: el servicio de aislamiento no responde.",
   "clear_regex_serve_testo": "Con «regex» escribe también el texto en «contains».",
   "clear_regex_non_valida": "{motivo}",
   "clear_valore_non_valido": "{motivo}",

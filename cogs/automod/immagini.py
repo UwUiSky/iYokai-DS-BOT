@@ -201,8 +201,6 @@ class ImmaginiCog(CogConGruppi, commands.Cog):
             embed.add_field(name=t("amimg_campo_impronta", lingua), value=f"`{esito.sha256[:16]}`", inline=True)
         embed.add_field(name=t("amimg_campo_motivo", lingua), value=self._motivi(esito, lingua) or "-", inline=False)
         embed.add_field(name=t("amimg_campo_azione", lingua), value=", ".join(eseguite) or t("amimg_azione_nessuna", lingua), inline=False)
-        if esito.modo_sandbox == "ridotta":
-            embed.set_footer(text=t("amimg_sandbox_ridotta", lingua))
         canale = guild_canale(message.guild, opzioni.canale_log_id)
         if canale is not None:
             try:

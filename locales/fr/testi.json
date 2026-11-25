@@ -1668,7 +1668,6 @@
   "amimg_owner_serve_impronta": "Il faut une empreinte SHA-256 (64 caractères) ou les 6 premiers caractères.",
   "amimg_owner_solo_proprietario": "Seul le propriétaire du bot peut utiliser cette commande.",
   "amimg_owner_troppo_grande": "L'image est trop grande (8 Mo au maximum).",
-  "amimg_sandbox_ridotta": "Contrôle en mode réduit : le service d'isolation ne répond pas.",
   "clear_regex_serve_testo": "Avec « regex », écris aussi le texte dans « contains ».",
   "clear_regex_non_valida": "{motivo}",
   "clear_valore_non_valido": "{motivo}",

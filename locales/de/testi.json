@@ -1668,7 +1668,6 @@
   "amimg_owner_serve_impronta": "Es braucht einen SHA-256-Fingerabdruck (64 Zeichen) oder die ersten 6 Zeichen.",
   "amimg_owner_solo_proprietario": "Nur der Besitzer des Bots kann diesen Befehl benutzen.",
   "amimg_owner_troppo_grande": "Das Bild ist zu groß (maximal 8 MB).",
-  "amimg_sandbox_ridotta": "Prüfung im reduzierten Modus: Der Isolationsdienst antwortet nicht.",
   "clear_regex_serve_testo": "Schreib mit „regex“ auch den Text in „contains“.",
   "clear_regex_non_valida": "{motivo}",
   "clear_valore_non_valido": "{motivo}",

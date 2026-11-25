@@ -207,25 +207,67 @@ async def test_servizio_rifiuta_nomi_strani(tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_senza_servizio_si_ripiega_sulla_sandbox_ridotta(cartella, tmp_path, monkeypatch):
+async def test_senza_servizio_il_lavoro_si_rifiuta_senza_ripiego(cartella, tmp_path, monkeypatch):
     monkeypatch.setenv(sb.VARIABILE_SOCKET, str(tmp_path / "non-esiste"))
+
+    async def locale(*a, **k):
+        raise AssertionError("il bot non deve avviare il worker da solo")
+
+    monkeypatch.setattr(sb, "esegui_locale", locale)
     r = await sb.analizza(_metti(cartella, f.png()))
-    assert r.riuscita and r.modo == sb.MODO_RIDOTTA
+    assert r.esito == "non_disponibile" and not r.riuscita and not r.png
 
 
 @pytest.mark.asyncio
-async def test_socket_morto_ripiega_senza_errori(cartella, tmp_path, monkeypatch):
+async def test_socket_morto_si_rifiuta_senza_ripiego(cartella, tmp_path, monkeypatch):
     morto = tmp_path / "morto"
     morto.write_bytes(b"")  # esiste, ma nessuno ascolta
     monkeypatch.setenv(sb.VARIABILE_SOCKET, str(morto))
     r = await sb.analizza(_metti(cartella, f.png()))
-    assert r.riuscita and r.modo == sb.MODO_RIDOTTA
+    assert r.esito == "non_disponibile"
 
 
 @pytest.mark.asyncio
-async def test_servizio_che_non_risponde_dopo_il_lavoro_non_ripiega_sulla_sandbox_ridotta(cartella, tmp_path, monkeypatch):
-    # Il servizio ha preso l'immagine e poi tace: rifarla nella sandbox ridotta darebbe all'attacco un secondo
-    # tentativo con meno isolamento. Esito sospetto, modo servizio.
+async def test_senza_isolamento_di_rete_il_worker_non_parte(cartella, monkeypatch):
+    # Cricchetto: se il processo ha una rete (interfaccia oltre `lo`) nessun worker parte, ne' dal servizio ne' da altrove.
+    monkeypatch.setattr(sb, "_interfacce_di_rete", lambda: ["lo", "eth0"])
+    assert not sb.rete_isolata()
+
+    async def mai(*a, **k):
+        raise AssertionError("il worker non deve partire")
+
+    monkeypatch.setattr(sb.asyncio, "create_subprocess_exec", mai)
+    r = await sb.esegui_locale(_metti(cartella, f.png()))
+    assert r.esito == "non_isolata" and not r.riuscita
+    r = await sb.esegui_locale(_metti(cartella, f.png()), tipo="testo")
+    assert r.esito == "non_isolata"
+
+
+@pytest.mark.asyncio
+async def test_il_servizio_con_rete_risponde_non_isolata_e_il_bot_rifiuta(cartella, monkeypatch):
+    monkeypatch.setattr(sb, "_interfacce_di_rete", lambda: ["lo", "wlan0"])
+    r = await sb.analizza(_metti(cartella, f.png()))
+    assert r.esito == "non_isolata"
+
+
+def test_rete_isolata_legge_le_interfacce_vere(monkeypatch):
+    monkeypatch.setattr(sb, "_interfacce_di_rete", sb._interfacce_reali)
+    monkeypatch.setattr(sb.os, "listdir", lambda p: ["lo"])
+    assert sb.rete_isolata()
+    monkeypatch.setattr(sb.os, "listdir", lambda p: ["lo", "enp3s0"])
+    assert not sb.rete_isolata()
+
+    def rotto(p):
+        raise OSError("niente /sys")
+
+    monkeypatch.setattr(sb.os, "listdir", rotto)
+    assert not sb.rete_isolata()  # nel dubbio si chiude
+
+
+@pytest.mark.asyncio
+async def test_servizio_che_non_risponde_dopo_il_lavoro_non_ripiega(cartella, tmp_path, monkeypatch):
+    # Il servizio ha preso l'immagine e poi tace: rifarla altrove darebbe all'attacco un secondo
+    # tentativo. Esito sospetto, modo servizio.
     percorso = str(tmp_path / "muto")
     fine = asyncio.Event()
 

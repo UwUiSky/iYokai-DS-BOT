@@ -1668,7 +1668,6 @@
   "amimg_owner_serve_impronta": "An SHA-256 fingerprint (64 characters) or its first 6 characters is needed.",
   "amimg_owner_solo_proprietario": "Only the bot owner can use this command.",
   "amimg_owner_troppo_grande": "The image is too large (8 MB at most).",
-  "amimg_sandbox_ridotta": "Reduced check mode: the isolation service is not responding.",
   "clear_regex_serve_testo": "With \"regex\", also write the pattern in \"contains\".",
   "clear_regex_non_valida": "{motivo}",
   "clear_valore_non_valido": "{motivo}",

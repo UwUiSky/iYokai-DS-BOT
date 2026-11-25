@@ -1668,7 +1668,6 @@
   "amimg_owner_serve_impronta": "SHA-256のフィンガープリント（64文字）か、最初の6文字が必要です。",
   "amimg_owner_solo_proprietario": "このコマンドを使えるのはボットのオーナーだけです。",
   "amimg_owner_troppo_grande": "画像が大きすぎます（最大8MB）。",
-  "amimg_sandbox_ridotta": "簡易モードでチェックしています。隔離サービスが応答しません。",
   "clear_regex_serve_testo": "「regex」を使う場合は、「contains」にもテキストを入力してください。",
   "clear_regex_non_valida": "{motivo}",
   "clear_valore_non_valido": "{motivo}",
