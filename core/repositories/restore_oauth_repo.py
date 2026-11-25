@@ -7,9 +7,10 @@ AES-256-GCM), mai in chiaro nel DB, con la retention concordata
 esplicitamente con l'utente:
 
 - Uscita SPONTANEA dell'utente dal server main → il token resta,
-  ma da quel momento decorre una scadenza (90 giorni, controllata
-  da purge_expired_left, non da qui): se non viene usato prima,
-  va cancellato.
+  ma da quel momento decorre una scadenza di 90 giorni: la applica la
+  pulizia del registro dei dati (core/data_registry.py, `scadenza` di
+  `restore_oauth_tokens`, eseguita da core/retention_worker.py), non
+  questo file.
 - KICK → il token viene PRESERVATO senza scadenza, ma marcato
   "kicked_flagged": se l'utente rientra nel server, il chiamante
   (listener on_member_join) può avvisare gli admin in chat.
@@ -310,26 +311,6 @@ class RestoreOAuthRepository:
             source_guild_id,
             user_id,
         )
-
-    async def purge_expired_voluntary_leaves(self, retention_days: int = 90) -> int:
-        """
-        Cancella i token di chi è uscito SPONTANEAMENTE più di
-        retention_days fa (default 90, SPEC.md §11.11) — mai quelli
-        di chi è stato kickato/bannato (status diverso da 'active',
-        left_at sempre NULL per loro: la UPDATE condition sopra lo
-        garantisce). Restituisce quanti ne sono stati cancellati.
-        """
-        risultato = await self._pool.execute(
-            """
-            DELETE FROM restore_oauth_tokens
-            WHERE status = $1
-              AND left_at IS NOT NULL
-              AND left_at < now() - ($2 || ' days')::interval
-            """,
-            STATUS_ACTIVE,
-            str(retention_days),
-        )
-        return int(risultato.split()[-1])
 
 
 def _get_pool():

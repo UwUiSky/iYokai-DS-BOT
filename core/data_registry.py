@@ -946,10 +946,12 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True,
        escludi_dall_esportazione=("encrypted_access_token", "encrypted_refresh_token"),
        nota="cancellare il token revoca il consenso"),
-    _t("restore_oauth_tokens", "Token OAuth per il ripristino degli utenti",
+    _t("restore_oauth_tokens", "Token OAuth (guilds.join) per il ripristino degli utenti: cifrati, tolti 90 giorni dopo l'uscita spontanea dal server",
        colonne_utente=("user_id",), colonna_server="source_guild_id", utente="cancella", esporta=True,
        escludi_dall_esportazione=("encrypted_access_token", "encrypted_refresh_token"),
-       nota="cancellare il token revoca il consenso"),
+       scadenza=Scadenza("left_at", 90, "status = 'active' AND left_at IS NOT NULL"),
+       nota="cancellare il token revoca il consenso; chi è stato espulso o bannato resta (serve a non farlo rientrare), "
+            "chi è uscito da solo perde il token dopo 90 giorni (SPEC §11.11)"),
     # ---------------------------------------------------------------- coda e configurazione
     _t("scheduled_actions", "Azioni differite (tempban, promemoria, messaggi)",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella",

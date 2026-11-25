@@ -167,13 +167,6 @@ class ReteRepository:
         )
         return int(r.split()[-1])
 
-    async def applicate_da_origine(self, guild_origine: int, user_id: int) -> list[asyncpg.Record]:
-        """Le proposte di questa origine che sono diventate ban veri (servono a toglierli dopo un appello)."""
-        return await self._pool.fetch(
-            "SELECT id, guild_dest FROM rete_ban_proposte WHERE guild_origine = $1 AND user_id = $2 AND stato = 'applicato'",
-            guild_origine, user_id,
-        )
-
     async def proposta(self, proposta_id: int) -> asyncpg.Record | None:
         return await self._pool.fetchrow("SELECT * FROM rete_ban_proposte WHERE id = $1", proposta_id)
 
