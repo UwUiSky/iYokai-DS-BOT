@@ -180,3 +180,17 @@
 - In corso: feat/riordino (dev-core: riordino + 10 diretti + D137), feat/trad1 (testi de/fr/es-ES), feat/trad2 (testi ru/uk/ja/ko/zh-CN). Worktree /home/user/wt-<nome>, DB iyokai_w<nome>.
 - Suite completa a blocchi su main 40d7002d: scratchpad/blocchi (riparte da sola dal blocco mancante: suite_blocchi.sh).
 - Dopo il riordino: alias a prefisso (tabella base + per server, prefissi nel primo setup, /admin-bot alias), traduzioni di comandi (nomi, descrizioni, opzioni) in 8 lingue, aggiornare i percorsi nei testi tradotti, COMMAND_LIST per lingua, poi wiki e pannello web con le lingue.
+
+## Piano dopo il consiglio (25/11, approvato dall'owner — lavorare in autonomia)
+Controllo automatico ogni ora (attività programmata «Ripresa automatica lavoro bot iYokai»). Rapporto del consiglio: scratchpad/consiglio/RAPPORTO_FINALE.md (14 critici, 23 seri, 17 migliorie).
+REGOLA NUOVA DELL'OWNER: ogni diff degli agenti si legge riga per riga prima del merge (non basta che i test passino); ogni regola dell'owner diventa un test-cricchetto.
+Ordine:
+1. Chiudere feat/riordino (agente a90efe93b5973b6d7), rivederlo a mano, unire con feat/trad1 (1babad93) e feat/trad2 (e4ea896b); test mirati; push main. Poi script che aggiorna i percorsi dei comandi nei testi tradotti di tutte le lingue.
+2. Tre blocchi in parallelo (un agente ciascuno, worktree e DB propri):
+   A sicurezza: ban globale con scala di affidabilità (età server, tempo con il bot, ritmo dei ban, raid/nuke, motivo e credibilità, conferme su altri server) usando core/rete_protezione_logic.py, spento di base, proposta con tasto nel server che riceve; pannello: tabella rotta→livello con ruolo vero, MOD/MODBAN solo da chi ha il permesso Discord, moduli di sicurezza solo livello SECURITY; Patreon state legato alla sessione + conferma; purga token guilds.join; nonce restore in DB; desktop token con scadenza; AAD marchio; assert→raise; via gli `or True`; SSRF Lavalink; IP dietro proxy; storico VPN.
+   B sandbox: ogni file degli utenti solo dal servizio iyokai-sandbox, niente ripiego; test AST.
+   C autonomia 24/7: classe GiroPeriodico per i 56 loop (+ test che vieta tasks.loop fuori); sync bloccata se un cog fallisce, niente I/O in setup; pool con timeout e code separate; musica: cambio nodo + ritorno al nodo originale + riconnessione + sessione con rilascio garantito; unit systemd con Restart=always, avvio dopo reboot, attesa DB, Lavalink facoltativo, /salute, avvisi in DM all'owner; spegnimento con timeout; retention a lotti; giveaway a stati; feed 403 con pausa; download log con semaforo; marchio con backoff; avvia.sh: Lavalink facoltativo, password non in argv.
+3. D traduzioni: tutte le frasi scritte nel codice in locales (10 lingue) + test AST.
+4. Revisione a mano di tutto il codice (209k righe) da parte dell'orchestratore, area per area, senza agenti.
+5. Ultimo consiglio Vulture/Iron/Butcher. 6. Prove dal vivo con l'owner.
+Dopo il bot: app utente (non ancora fatta), programma desktop .exe, poi il sito. Server Oracle Linux (Debian o Ubuntu, 64 bit, forse ARM): controllare all'installazione.
