@@ -54,6 +54,9 @@ from core.bot_supervisor import (
 from core.image_search_fetcher import image_search_fetcher
 from core.animal_fetcher import animal_fetcher
 from core.database import db
+from core.salute import avvia_misure as salute_avvia_misure
+from core.salute import build_app as salute_build_app
+from core.salute import start_server as salute_start_server
 from core.pool_db import CORSIA_EVENTI, corsia_db
 from core.avvio_sicuro import avvia_ripresa_avvio, avvio_incompleto, avvisa_avvio_incompleto
 from core.avvisi_owner import collega_ai_giri
@@ -340,6 +343,8 @@ class iYokaiBot(commands.AutoShardedBot):
 
         # Avvisi all'owner quando un giro cade o torna (core/avvisi_owner.py).
         collega_ai_giri(self)
+        # Ritardo del ciclo asyncio e metriche di salute nei log ogni 5 minuti.
+        salute_avvia_misure(self, lambda: db._pool)
 
         # Se un cog non si è caricato, o la sync non si può verificare, NON si sincronizza
         # (toglierebbe comandi a tutti i server): DM all'owner e si riprova da soli.
@@ -858,6 +863,13 @@ async def main() -> None:
             "WEB_PANEL_SECRET_KEY (32+ caratteri) e WEB_PANEL_PUBLIC_URL."
         )
 
+    # Controllo di salute (/salute) e misura del ritardo del ciclo. Locale: serve a systemd e ai monitor.
+    salute_runner = None
+    if config.SALUTE_PORT:
+        salute_runner = await salute_start_server(
+            salute_build_app(bot, lambda: db._pool), config.WEB_BIND_HOST, config.SALUTE_PORT
+        )
+
     async def _avvisa_owner(messaggio: str) -> None:
         owner = await bot.fetch_user(config.OWNER_ID)
         await owner.send(messaggio)
@@ -879,7 +891,7 @@ async def main() -> None:
     ]
     installa_gestori_segnali(asyncio.current_task())
     try:
-        await esegui_bot_isolati(voci, notifica=_avvisa_owner)
+        await esegui_bot_isolati(voci, notifica=_avvisa_owner, notifica_ripresa=_avvisa_owner)
     except asyncio.CancelledError:
         logger.info("Arresto richiesto (SIGTERM/SIGINT): chiusura ordinata.")
     finally:
@@ -893,6 +905,8 @@ async def main() -> None:
             await custom_webhook_runner.cleanup()
         if web_panel_runner is not None:
             await web_panel_runner.cleanup()
+        if salute_runner is not None:
+            await salute_runner.cleanup()
         await spegni_ordinatamente(
             [bot, creator, *([mod] if mod else []), *([nsfw] if nsfw else []), *([app] if app else []), *worker_bots],
             [

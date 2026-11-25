@@ -4489,5 +4489,8 @@
   "owner_servizi_tornati": "복구되었습니다: 서비스 {n}개가 다시 작동합니다.\n{elenco}",
   "owner_avvio_incompleto": "시작이 불완전합니다. 서버에서 명령어가 사라지지 않도록 Discord와 동기화하지 않았습니다. 스스로 다시 시도합니다.\n불러오지 못한 모듈: {moduli}\n확인할 수 없는 동기화: {sync}",
   "owner_avvio_completato": "시작이 완료되었습니다. 모든 모듈을 불러왔고 명령어를 동기화했습니다.",
-  "err_bot_occupato": "지금 봇이 매우 바쁩니다. 몇 초 후에 다시 시도해 주세요."
+  "err_bot_occupato": "지금 봇이 매우 바쁩니다. 몇 초 후에 다시 시도해 주세요.",
+  "owner_bot_fermato": "봇 「{nome}」이(가) 멈췄습니다. 스스로 다시 시작하며, 계속 실패하면 대기 시간을 점점 늘립니다.",
+  "owner_bot_tornato": "봇 「{nome}」이(가) 다시 작동합니다.",
+  "owner_bot_token_errato": "봇 「{nome}」이(가) 시작되지 않습니다. 토큰이 잘못되었습니다. 다시 시도하지 않습니다. .env 파일의 토큰을 고치고 다시 시작하세요."
 }

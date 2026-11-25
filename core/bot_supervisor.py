@@ -14,8 +14,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import signal
+import time
 from dataclasses import dataclass
 from typing import Awaitable, Callable
+
+import discord
+
+from core.giro_periodico import pausa_dopo_errori
+from core.i18n import t
 
 logger = logging.getLogger("iyokai.supervisor")
 
@@ -29,26 +35,60 @@ class VoceBot:
     critico: bool = False
 
 
-async def _supervisore(voce: VoceBot, notifica) -> None:
-    try:
-        await voce.avvio()
-    except asyncio.CancelledError:
-        raise
-    except Exception:
-        logger.exception("Il bot '%s' si è fermato per un errore", voce.nome)
-        if voce.critico:
-            raise  # il processo deve uscire con un errore
-        if notifica is not None:
-            try:
-                await notifica(f"⚠️ Il bot '{voce.nome}' si è fermato per un errore. Vedi i log.")
-            except Exception:
-                logger.warning("Impossibile avvisare l'owner della caduta di '%s'.", voce.nome)
+# Un bot secondario che resta su così a lungo dopo un riavvio è tornato davvero: si azzera il conto degli errori.
+STABILE_DOPO_SECONDI = 300.0
 
 
-async def esegui_bot_isolati(voci: list[VoceBot], notifica=None) -> None:
+async def _supervisore(voce: VoceBot, notifica, notifica_ripresa=None, pausa=pausa_dopo_errori) -> None:
     """
-    Avvia ogni bot in un task proprio. Un bot non critico che cade viene
-    solo registrato (e segnalato con `notifica`); finisce quando finisce
+    Tiene su un bot. Il principale che cade fa uscire il processo. Un bot secondario che cade (o si chiude
+    da solo) riparte con pause crescenti (5 s, 10 s, ... fino a 15 minuti): un solo avviso all'owner per
+    serie di cadute, e uno quando torna stabile. Un token sbagliato non si riprova: sarebbe inutile.
+    """
+    errori = 0
+    avvisato = False
+    while True:
+        inizio = time.monotonic()
+        try:
+            await voce.avvio()
+            if voce.critico:
+                return
+            logger.warning("Il bot '%s' si è chiuso: lo riavvio.", voce.nome)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            logger.exception("Il bot '%s' si è fermato per un errore", voce.nome)
+            if voce.critico:
+                raise  # il processo deve uscire con un errore
+            if isinstance(exc, discord.LoginFailure):
+                await _avvisa(notifica, t("owner_bot_token_errato", nome=voce.nome))
+                return  # il token è sbagliato: riprovare non serve
+        if time.monotonic() - inizio >= STABILE_DOPO_SECONDI:
+            if avvisato and notifica_ripresa is not None:
+                await _avvisa(notifica_ripresa, t("owner_bot_tornato", nome=voce.nome))
+            errori, avvisato = 0, False
+        errori += 1
+        if not avvisato:
+            avvisato = True
+            await _avvisa(notifica, t("owner_bot_fermato", nome=voce.nome))
+        attesa = pausa(errori)
+        logger.info("Il bot '%s' riparte tra %.0f secondi.", voce.nome, attesa)
+        await asyncio.sleep(attesa)
+
+
+async def _avvisa(notifica, testo: str) -> None:
+    if notifica is None:
+        return
+    try:
+        await notifica(testo)
+    except Exception:
+        logger.warning("Impossibile avvisare l'owner (DM chiusi o Discord non raggiungibile).")
+
+
+async def esegui_bot_isolati(voci: list[VoceBot], notifica=None, notifica_ripresa=None) -> None:
+    """
+    Avvia ogni bot in un task proprio. Un bot non critico che cade viene segnalato con `notifica`
+    e riavviato con pause crescenti (`notifica_ripresa` quando torna); finisce quando finisce
     il bot critico, e allora ferma tutti gli altri.
     """
     critici = [v for v in voci if v.critico]
@@ -57,7 +97,7 @@ async def esegui_bot_isolati(voci: list[VoceBot], notifica=None) -> None:
     task_critico = None
     altri = []
     for voce in voci:
-        task = asyncio.create_task(_supervisore(voce, notifica), name=voce.nome)
+        task = asyncio.create_task(_supervisore(voce, notifica, notifica_ripresa), name=voce.nome)
         if voce.critico:
             task_critico = task
         else:

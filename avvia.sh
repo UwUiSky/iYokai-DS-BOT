@@ -5,7 +5,8 @@
 #   1. controlla il file .env;
 #   2. prepara l'ambiente Python e installa i requisiti (solo se sono cambiati);
 #   3. controlla che il database PostgreSQL risponda (se è locale e DB_DOCKER=1 lo accende con Docker);
-#   4. accende il Lavalink locale (Docker) e aspetta che risponda;
+#   4. accende il Lavalink locale (Docker) e aspetta che risponda, ma Lavalink è FACOLTATIVO: se manca
+#      o non risponde c'è solo un avviso, il bot parte lo stesso e la musica si riattiva da sola quando Lavalink torna;
 #   5. avvia il bot.
 # Uso: ./avvia.sh            (con --senza-lavalink salta il punto 4)
 # Su Windows: avvia.ps1. Nessun segreto qui: password e chiavi si leggono dal .env.
@@ -13,13 +14,14 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-ATTESA_LAVALINK=300   # secondi; al primo avvio Lavalink scarica i plugin
+ATTESA_LAVALINK=90    # secondi al massimo: poi il bot parte lo stesso (Lavalink è facoltativo)
 ATTESA_DB=60          # secondi
 SENZA_LAVALINK=0
 [[ "${1:-}" == "--senza-lavalink" ]] && SENZA_LAVALINK=1
 
 info()  { printf '[avvio] %s\n' "$1"; }
 errore() { printf '[avvio] ERRORE: %s\n' "$1" >&2; exit 1; }
+avviso() { printf '[avvio] AVVISO: %s\n' "$1" >&2; }
 
 # Legge una variabile dal .env senza eseguirne il contenuto.
 leggi_env() {
@@ -89,8 +91,12 @@ HOST=$(leggi_env LAVALINK_HOST)
 PORTA=$(leggi_env LAVALINK_PORT); PORTA=${PORTA:-2333}
 PASSWORD=$(leggi_env LAVALINK_PASSWORD)
 
+# La password NON va sulla riga di comando (si vedrebbe con `ps`): curl la legge da stdin con --config.
+# printf è un comando interno della shell: gli argomenti non diventano un processo visibile.
 lavalink_risponde() {
-    curl -fsS -o /dev/null -m 3 -H "Authorization: $PASSWORD" "http://$HOST:$PORTA/version" 2>/dev/null
+    local pw=${PASSWORD//\\/\\\\}; pw=${pw//\"/\\\"}
+    printf 'header = "Authorization: %s"\n' "$pw" \
+        | curl -fsS -o /dev/null -m 3 --config - "http://$HOST:$PORTA/version" 2>/dev/null
 }
 
 if [[ $SENZA_LAVALINK -eq 1 ]]; then
@@ -98,11 +104,13 @@ if [[ $SENZA_LAVALINK -eq 1 ]]; then
 elif [[ "$HOST" != "127.0.0.1" && "$HOST" != "localhost" ]]; then
     info "Nessun Lavalink locale nel .env (LAVALINK_HOST=$HOST): uso i nodi indicati lì"
 else
-    [[ -n "$PASSWORD" && "$PASSWORD" != "CAMBIAMI" ]] || errore "imposta LAVALINK_PASSWORD nel .env."
-    if lavalink_risponde; then
+    if [[ -z "$PASSWORD" || "$PASSWORD" == "CAMBIAMI" ]]; then
+        avviso "LAVALINK_PASSWORD non è impostata nel .env: salto Lavalink. Il bot parte lo stesso, senza musica."
+    elif lavalink_risponde; then
         info "Lavalink è già acceso"
+    elif ! command -v docker >/dev/null; then
+        avviso "Lavalink locale non risponde e Docker non c'è. Il bot parte lo stesso: la musica si riattiva da sola quando Lavalink torna."
     else
-        command -v docker >/dev/null || errore "Lavalink locale non risponde e Docker non c'è. Installa Docker o avvia Lavalink a mano."
         info "Accendo Lavalink (Docker)"
         export LAVALINK_PASSWORD="$PASSWORD"
         for nome in MAIN_RADIO_LOCAL_FOLDER MUSICA_CARTELLA_OWNER SPOTIFY_CLIENT_ID SPOTIFY_CLIENT_SECRET \
@@ -110,14 +118,20 @@ else
             valore=$(leggi_env "$nome")
             [[ -n "$valore" ]] && export "$nome=$valore"
         done
-        (cd deploy/lavalink && docker compose up -d) || errore "docker compose non è partito."
-        info "Aspetto che Lavalink risponda (al massimo ${ATTESA_LAVALINK}s)"
-        inizio=$SECONDS
-        until lavalink_risponde; do
-            (( SECONDS - inizio < ATTESA_LAVALINK )) || errore "Lavalink non risponde dopo ${ATTESA_LAVALINK}s. Guarda: cd deploy/lavalink && docker compose logs lavalink"
-            sleep 3
-        done
-        info "Lavalink pronto in $(( SECONDS - inizio ))s"
+        if ! (cd deploy/lavalink && docker compose up -d); then
+            avviso "docker compose non è partito. Il bot parte lo stesso, senza musica per ora."
+        else
+            info "Aspetto che Lavalink risponda (al massimo ${ATTESA_LAVALINK}s)"
+            inizio=$SECONDS
+            until lavalink_risponde; do
+                if (( SECONDS - inizio >= ATTESA_LAVALINK )); then
+                    avviso "Lavalink non risponde dopo ${ATTESA_LAVALINK}s (guarda: cd deploy/lavalink && docker compose logs lavalink). Il bot parte lo stesso: la musica si riattiva da sola quando Lavalink risponde."
+                    break
+                fi
+                sleep 3
+            done
+            lavalink_risponde && info "Lavalink pronto in $(( SECONDS - inizio ))s"
+        fi
     fi
 fi
 

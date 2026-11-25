@@ -4,7 +4,8 @@
 #   1. controlla il file .env;
 #   2. prepara l'ambiente Python e installa i requisiti (solo se sono cambiati);
 #   3. controlla che il database PostgreSQL risponda (se è locale e DB_DOCKER=1 lo accende con Docker);
-#   4. accende il Lavalink locale (Docker Desktop) e aspetta che risponda;
+#   4. accende il Lavalink locale (Docker Desktop) e aspetta che risponda; Lavalink è FACOLTATIVO: se manca o non
+#      risponde c'è solo un avviso, il bot parte lo stesso e la musica si riattiva da sola quando Lavalink torna;
 #   5. avvia il bot.
 # Uso (PowerShell, dalla cartella del bot):  .\avvia.ps1   oppure  .\avvia.ps1 -SenzaLavalink
 # Se Windows blocca lo script: powershell -ExecutionPolicy Bypass -File .\avvia.ps1
@@ -15,11 +16,12 @@ param([switch]$SenzaLavalink)
 $ErrorActionPreference = "Stop"
 Set-Location -Path $PSScriptRoot
 
-$AttesaLavalink = 300   # secondi; al primo avvio Lavalink scarica i plugin
+$AttesaLavalink = 90    # secondi al massimo: poi il bot parte lo stesso (Lavalink è facoltativo)
 $AttesaDb = 60          # secondi
 
 function Info($testo) { Write-Host "[avvio] $testo" }
 function Errore($testo) { Write-Host "[avvio] ERRORE: $testo" -ForegroundColor Red; exit 1 }
+function Avviso($testo) { Write-Host "[avvio] AVVISO: $testo" -ForegroundColor Yellow }
 
 # Legge una variabile dal .env senza eseguirne il contenuto.
 function Leggi-Env($nome) {
@@ -104,13 +106,13 @@ if ($SenzaLavalink) {
 } elseif ($Host_ -ne "127.0.0.1" -and $Host_ -ne "localhost") {
     Info "Nessun Lavalink locale nel .env (LAVALINK_HOST=$Host_): uso i nodi indicati lì"
 } else {
-    if (-not $Password -or $Password -eq "CAMBIAMI") { Errore "imposta LAVALINK_PASSWORD nel .env." }
-    if (Lavalink-Risponde) {
+    if (-not $Password -or $Password -eq "CAMBIAMI") {
+        Avviso "LAVALINK_PASSWORD non è impostata nel .env: salto Lavalink. Il bot parte lo stesso, senza musica."
+    } elseif (Lavalink-Risponde) {
         Info "Lavalink è già acceso"
+    } elseif (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
+        Avviso "Lavalink locale non risponde e Docker non c'è. Il bot parte lo stesso: la musica si riattiva da sola quando Lavalink torna."
     } else {
-        if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
-            Errore "Lavalink locale non risponde e Docker non c'è. Installa Docker Desktop o avvia Lavalink a mano."
-        }
         Info "Accendo Lavalink (Docker)"
         $env:LAVALINK_PASSWORD = $Password
         foreach ($nome in "MAIN_RADIO_LOCAL_FOLDER","MUSICA_CARTELLA_OWNER","SPOTIFY_CLIENT_ID","SPOTIFY_CLIENT_SECRET","APPLE_MUSIC_TOKEN","TIDAL_TOKEN","YANDEX_MUSIC_TOKEN") {
@@ -121,16 +123,20 @@ if ($SenzaLavalink) {
         docker compose up -d
         $esito = $LASTEXITCODE
         Pop-Location
-        if ($esito -ne 0) { Errore "docker compose non è partito. Docker Desktop è acceso?" }
-        Info "Aspetto che Lavalink risponda (al massimo ${AttesaLavalink}s)"
-        $inizio = Get-Date
-        while (-not (Lavalink-Risponde)) {
-            if (((Get-Date) - $inizio).TotalSeconds -ge $AttesaLavalink) {
-                Errore "Lavalink non risponde dopo ${AttesaLavalink}s. Guarda: cd deploy\lavalink; docker compose logs lavalink"
+        if ($esito -ne 0) {
+            Avviso "docker compose non è partito (Docker Desktop è acceso?). Il bot parte lo stesso, senza musica per ora."
+        } else {
+            Info "Aspetto che Lavalink risponda (al massimo ${AttesaLavalink}s)"
+            $inizio = Get-Date
+            while (-not (Lavalink-Risponde)) {
+                if (((Get-Date) - $inizio).TotalSeconds -ge $AttesaLavalink) {
+                    Avviso "Lavalink non risponde dopo ${AttesaLavalink}s (guarda: cd deploy\lavalink; docker compose logs lavalink). Il bot parte lo stesso: la musica si riattiva da sola quando Lavalink risponde."
+                    break
+                }
+                Start-Sleep -Seconds 3
             }
-            Start-Sleep -Seconds 3
+            if (Lavalink-Risponde) { Info ("Lavalink pronto in {0:N0}s" -f ((Get-Date) - $inizio).TotalSeconds) }
         }
-        Info ("Lavalink pronto in {0:N0}s" -f ((Get-Date) - $inizio).TotalSeconds)
     }
 }
 

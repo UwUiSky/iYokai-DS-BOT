@@ -4489,5 +4489,8 @@
   "owner_servizi_tornati": "已恢复：{n} 项服务重新正常运行。\n{elenco}",
   "owner_avvio_incompleto": "启动不完整。为避免服务器丢失命令，我没有与 Discord 同步。我会自动重试。\n未加载的模块：{moduli}\n无法确认的同步：{sync}",
   "owner_avvio_completato": "启动完成：所有模块已加载，命令已同步。",
-  "err_bot_occupato": "机器人现在非常繁忙，请几秒后再试。"
+  "err_bot_occupato": "机器人现在非常繁忙，请几秒后再试。",
+  "owner_bot_fermato": "机器人「{nome}」已停止。我会自动重启，如果持续失败，等待时间会逐渐变长。",
+  "owner_bot_tornato": "机器人「{nome}」已恢复正常。",
+  "owner_bot_token_errato": "机器人「{nome}」无法启动：令牌错误。我不会重试，请修正 .env 文件中的令牌后重启。"
 }

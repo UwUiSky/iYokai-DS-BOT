@@ -1,0 +1,56 @@
+# Servizio di sistema del bot iYokai: parte all'avvio della macchina e si rialza da solo se cade.
+# Debian e Ubuntu, x86_64 e arm64. Installazione guidata: scripts/installa_servizio.sh (o vedi README.md qui accanto).
+# Lavalink è FACOLTATIVO: il bot parte anche senza e la musica si riattiva da sola quando Lavalink torna.
+[Unit]
+Description=iYokai bot Discord
+Documentation=file:/opt/iyokai/deploy/systemd/README.md
+# PostgreSQL serve: se è sulla stessa macchina si aspetta; se è altrove Wants non fa nulla di male.
+After=network-online.target postgresql.service
+Wants=network-online.target postgresql.service
+# Dopo 20 partenze fallite in 15 minuti systemd smette di riprovare: l'owner riceve il segnale dal monitor di /salute.
+StartLimitIntervalSec=900
+StartLimitBurst=20
+
+[Service]
+Type=simple
+User=iyokai
+Group=iyokai
+WorkingDirectory=/opt/iyokai
+ExecStart=/opt/iyokai/.venv/bin/python -u main.py
+Environment=PYTHONUNBUFFERED=1
+
+# Si rialza sempre, anche dopo una chiusura «pulita» per errore. L'attesa cresce a ogni caduta di fila
+# (da 5 secondi fino a 5 minuti) con systemd 254 o più (Ubuntu 24.04); con systemd più vecchio
+# (Debian 12) le due righe RestartSteps/RestartMaxDelaySec si ignorano e l'attesa resta 5 secondi.
+Restart=always
+RestartSec=5
+RestartSteps=6
+RestartMaxDelaySec=300
+
+# Lo spegnimento del bot ha un tempo massimo per ogni passo (core/bot_supervisor.py, in tutto meno di 60 s):
+# se per qualche motivo si blocca, systemd lo chiude con SIGKILL dopo 75 secondi.
+TimeoutStopSec=75
+KillMode=mixed
+KillSignal=SIGTERM
+
+# Tetti di risorse: un errore di memoria non deve spegnere il resto della macchina. Adatta ai tuoi numeri.
+MemoryHigh=3G
+MemoryMax=4G
+TasksMax=2048
+LimitNOFILE=65536
+LimitCORE=0
+
+# Il processo scrive solo in logs/ e data/ (il resto dell'installazione è in sola lettura).
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictRealtime=yes
+LockPersonality=yes
+ReadWritePaths=/opt/iyokai/logs /opt/iyokai/data
+
+[Install]
+WantedBy=multi-user.target

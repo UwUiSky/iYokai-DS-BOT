@@ -227,9 +227,24 @@ class GiroPeriodico(tasks.Loop):
             await asyncio.sleep(attesa)
 
     async def _call_loop_function(self, name: str, *args: Any, **kwargs: Any) -> None:
-        await super()._call_loop_function(name, *args, **kwargs)
-        if name == "before_loop":
-            await self._attesa_iniziale()
+        if name != "before_loop":
+            await super()._call_loop_function(name, *args, **kwargs)
+            return
+        # Anche la preparazione (di solito: aspettare il bot pronto) può fallire, per esempio con il
+        # database giù: in `tasks.Loop` il giro morirebbe prima di partire. Qui si riprova con pause crescenti.
+        errori = 0
+        while True:
+            try:
+                await super()._call_loop_function(name, *args, **kwargs)
+                break
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                errori += 1
+                pausa = pausa_dopo_errori(errori)
+                logger.exception("Preparazione del giro %s fallita (%d), riprovo tra %.0f s.", self.nome, errori, pausa)
+                await asyncio.sleep(pausa)
+        await self._attesa_iniziale()
 
     def __get__(self, obj, objtype):
         """Un cog crea una copia del giro per ogni sua istanza (come fa `tasks.Loop`)."""

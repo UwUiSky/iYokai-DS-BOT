@@ -326,3 +326,89 @@ async def test_main_con_due_sigterm_chiude_tutti_i_bot_i_loop_e_il_database(
     assert all(t.done() for t in loop_del_backup)
     assert main_module.backup_queue_worker._loop_task is None
     assert db._pool is None  # il pool è stato chiuso davvero
+
+
+# ---- blocco C: i bot secondari ripartono da soli con pause crescenti ----
+async def test_un_bot_secondario_riparte_con_pause_crescenti_e_un_solo_avviso(monkeypatch):
+    from core import bot_supervisor as bs
+
+    pause = []
+
+    async def senza_attesa(secondi):
+        pause.append(secondi)
+
+    monkeypatch.setattr(bs.asyncio, "sleep", senza_attesa)
+    avvisi, tentativi = [], []
+
+    async def notifica(messaggio):
+        avvisi.append(messaggio)
+
+    async def avvio():
+        tentativi.append(1)
+        if len(tentativi) < 5:
+            raise ConnectionError("rete giù")
+        raise asyncio.CancelledError  # al quinto giro si ferma il test
+
+    voce = VoceBot("music-2", avvio)
+    with pytest.raises(asyncio.CancelledError):
+        await bs._supervisore(voce, notifica)
+    assert len(tentativi) == 5
+    assert pause == [5.0, 10.0, 20.0, 40.0]  # raddoppiano
+    assert len(avvisi) == 1 and "music-2" in avvisi[0]  # un solo avviso per serie di cadute
+
+
+async def test_la_pausa_ha_un_tetto(monkeypatch):
+    from core import bot_supervisor as bs
+
+    assert bs.pausa_dopo_errori(1000) == 900.0
+
+
+async def test_token_sbagliato_non_si_riprova(monkeypatch):
+    import discord
+
+    from core import bot_supervisor as bs
+
+    avvisi, tentativi = [], []
+
+    async def notifica(messaggio):
+        avvisi.append(messaggio)
+
+    async def avvio():
+        tentativi.append(1)
+        raise discord.LoginFailure("token improprio")
+
+    await bs._supervisore(VoceBot("nsfw", avvio), notifica)
+    assert len(tentativi) == 1 and len(avvisi) == 1 and ".env" in avvisi[0]
+
+
+async def test_un_bot_chiuso_senza_errore_riparte_e_quando_resta_su_avvisa_il_ritorno(monkeypatch):
+    from core import bot_supervisor as bs
+
+    clock = {"t": 0.0}
+    monkeypatch.setattr(bs.time, "monotonic", lambda: clock["t"])
+
+    async def senza_attesa(secondi):
+        return None
+
+    monkeypatch.setattr(bs.asyncio, "sleep", senza_attesa)
+    avvisi, ripresi, giri = [], [], []
+
+    async def notifica(m):
+        avvisi.append(m)
+
+    async def ripresa(m):
+        ripresi.append(m)
+
+    async def avvio():
+        giri.append(1)
+        if len(giri) == 1:
+            return  # chiuso da solo
+        if len(giri) == 2:
+            clock["t"] += bs.STABILE_DOPO_SECONDI + 1  # il secondo giro dura a lungo...
+            return  # ...poi si chiude di nuovo
+        raise asyncio.CancelledError
+
+    with pytest.raises(asyncio.CancelledError):
+        await bs._supervisore(VoceBot("mod", avvio), notifica, ripresa)
+    # Prima serie: un avviso, poi «tornato» (il secondo giro è durato a lungo); poi cade di nuovo: nuova serie, nuovo avviso.
+    assert len(avvisi) == 2 and len(ripresi) == 1 and "mod" in ripresi[0]

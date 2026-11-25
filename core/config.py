@@ -313,6 +313,8 @@ class Config:
     # OAuth2 di Discord dopo che un utente autorizza il restore
     # (indirizzo: WEB_BIND_HOST, condiviso con il server webhook sotto).
     RESTORE_WEB_PORT: int = field(default=8420)
+    # Controllo di salute `/salute` (indirizzo: WEB_BIND_HOST, di base solo locale). 0 = spento.
+    SALUTE_PORT: int = field(default=8424)
 
     # --- Voto al bot su un sito di elenchi (D119, D120) ----------------
     # Segreto che il sito (es. top.gg) manda con ogni voto, e porta del piccolo server che lo riceve
@@ -511,6 +513,7 @@ def _load_config() -> Config:
         PATREON_WEBHOOK_SECRET=_optional("PATREON_WEBHOOK_SECRET", ""),
         PATREON_PORT=_optional_int("PATREON_PORT", 8423),
         RESTORE_WEB_PORT=_optional_int("RESTORE_WEB_PORT", 8420),
+        SALUTE_PORT=_optional_int("SALUTE_PORT", 8424),
         ALERTS_WEBHOOK_PORT=_optional_int("ALERTS_WEBHOOK_PORT", 8421),
         ALERTS_WEBHOOK_PUBLIC_BASE_URL=_optional("ALERTS_WEBHOOK_PUBLIC_BASE_URL", ""),
         WIKI_BASE_URL=_optional("WIKI_BASE_URL", ""),

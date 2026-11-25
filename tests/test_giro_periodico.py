@@ -195,3 +195,29 @@ def test_cricchetto_nessun_tasks_loop_fuori_da_giro_periodico():
             if isinstance(nodo, ast.ImportFrom) and nodo.module == "discord.ext.tasks":
                 fuori.append(f"{percorso.relative_to(RADICE)}:{nodo.lineno} (import)")
     assert not fuori, "usa core.giro_periodico.giro_periodico: " + ", ".join(fuori)
+
+
+async def test_errore_nella_preparazione_non_uccide_il_giro():
+    """`before_loop` che fallisce (database giù, bot non pronto) si riprova: in `tasks.Loop` il giro morirebbe."""
+    prove = []
+    chiamate = []
+
+    @gp.giro_periodico(seconds=0.01, subito=True)
+    async def lavoro():
+        chiamate.append(1)
+
+    @lavoro.before_loop
+    async def prepara():
+        prove.append(1)
+        if len(prove) < 3:
+            raise RuntimeError("database giù")
+
+    lavoro.start()
+    for _ in range(200):
+        if len(chiamate) >= 2:
+            break
+        await asyncio.sleep(0.02)
+    try:
+        assert len(prove) == 3 and len(chiamate) >= 2
+    finally:
+        lavoro.cancel()

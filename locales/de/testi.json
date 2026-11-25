@@ -4489,5 +4489,8 @@
   "owner_servizi_tornati": "Alles in Ordnung: {n} Dienste laufen wieder.\n{elenco}",
   "owner_avvio_incompleto": "Unvollständiger Start. Ich habe die Befehle nicht mit Discord synchronisiert, damit die Server sie nicht verlieren. Ich versuche es von selbst weiter.\nNicht geladene Module: {moduli}\nSynchronisierung nicht prüfbar: {sync}",
   "owner_avvio_completato": "Start abgeschlossen: Alle Module sind geladen und die Befehle sind synchronisiert.",
-  "err_bot_occupato": "Der Bot ist gerade sehr ausgelastet. Versuche es in ein paar Sekunden noch einmal."
+  "err_bot_occupato": "Der Bot ist gerade sehr ausgelastet. Versuche es in ein paar Sekunden noch einmal.",
+  "owner_bot_fermato": "Der Bot „{nome}“ wurde gestoppt. Ich starte ihn von selbst neu, mit immer längeren Pausen, falls er weiter ausfällt.",
+  "owner_bot_tornato": "Der Bot „{nome}“ läuft wieder.",
+  "owner_bot_token_errato": "Der Bot „{nome}“ startet nicht: Das Token ist falsch. Ich versuche es nicht erneut: Korrigiere das Token in der .env-Datei und starte neu."
 }

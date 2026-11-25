@@ -4489,5 +4489,8 @@
   "owner_servizi_tornati": "Tout va bien : {n} services fonctionnent de nouveau.\n{elenco}",
   "owner_avvio_incompleto": "Démarrage incomplet. Je n'ai pas synchronisé les commandes avec Discord, pour que les serveurs ne les perdent pas. Je réessaie tout seul.\nModules non chargés : {moduli}\nSynchronisation non vérifiable : {sync}",
   "owner_avvio_completato": "Démarrage terminé : tous les modules sont chargés et les commandes sont synchronisées.",
-  "err_bot_occupato": "Le bot est très occupé en ce moment. Réessaie dans quelques secondes."
+  "err_bot_occupato": "Le bot est très occupé en ce moment. Réessaie dans quelques secondes.",
+  "owner_bot_fermato": "Le bot « {nome} » s'est arrêté. Je le relance tout seul, avec des pauses de plus en plus longues s'il retombe.",
+  "owner_bot_tornato": "Le bot « {nome} » fonctionne de nouveau.",
+  "owner_bot_token_errato": "Le bot « {nome} » ne démarre pas : le token est faux. Je ne réessaie pas : corrige le token dans le fichier .env et redémarre."
 }
