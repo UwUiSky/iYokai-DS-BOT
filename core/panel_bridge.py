@@ -424,7 +424,7 @@ ESITI_MARCHIO_OK = frozenset({"mar_testo_ok", "mar_testo_azzerato", "mar_avviato
 # I soli testi del marchio che la pagina mostra da un codice nell'URL (nessuno ha segnaposto).
 ESITI_MARCHIO = ESITI_MARCHIO_OK | {
     "mar_richiede_premium", "mar_nessun_marchio", "mar_non_avviato", "mar_token_non_valido",
-    "mar_discord_non_risponde", "mar_chiave_mancante", "mar_gia_usato",
+    "mar_discord_non_risponde", "mar_chiave_mancante", "mar_gia_usato", "mar_solo_proprietario",
 }
 
 
@@ -477,7 +477,7 @@ async def applica_marchio(bot, guild: discord.Guild, azione: str, testo: str | N
     if gestore is None:
         return "marchio_non_disponibile"
     try:
-        esito = await wl.applica_azione(gestore, bot, guild.id, azione, testo)
+        esito = await wl.applica_azione(gestore, bot, guild.id, azione, testo, autore_id=user_id)
     except ValueError:
         return "non_valido"
     logger.info("Marchio del server %s: «%s» dal pannello da %s.", guild.id, azione, user_id)

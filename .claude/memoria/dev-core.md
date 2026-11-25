@@ -42,7 +42,8 @@ Scheda: /home/user/consiglio/schede/A_sicurezza.md. DB di prova iyokai_wsicurezz
 - FATTA voce 5: scadenza 90 giorni di `restore_oauth_tokens` nel registro dati (applicata da `pulisci_scaduti`); tolto il metodo morto `purge_expired_voluntary_leaves` e la voce da KNOWN_UNCALLED. Test in `test_restore_oauth_repo`.
 - FATTA voce 6: nonce del ripristino in `restore_nonce` (mig. 0982, async), limiti marchio/sincronia/esporta in `pannello_limiti` (`LimitePersistente`). Test: `test_restore_oauth_logic`, `test_pannello_limiti`.
 - FATTA voce 7 (Desktop): token a 90 giorni (mig. 0983), revoca se la persona non è più in nessun server, azioni dello staff con i cancelli dei comandi (modulo, panico, politica, caso del timeout), last_used_at ogni 10 minuti. Test in `test_desktop_api`, `test_desktop_staff`. Nota: il blocco/sblocco canale non scrive caso né programma lo sblocco (il comando sì).
-- PROSSIMO: voce 8 (marchio: solo proprietario del server, avviso nel log, AAD `marchio:{guild_id}`), poi 9, 10, 11, 12, 13.
+- FATTA voce 8 (marchio): `collega_e_avvia` solo per il proprietario (`mar_solo_proprietario`), traccia nello storico + avviso `sicurezza` (`registra_modifica`), AAD `marchio:{guild_id}` con lettura delle righe vecchie e riscrittura. Test in `test_whitelabel_bot`, `test_panel_marchio`.
+- PROSSIMO: voce 9 (SSRF Lavalink: host in lista bianca o scarico con safe_get), poi 10, 11, 12, 13.
 - Appunti: testi del pannello (ESITI) e `_assistente.py` restano in italiano nel codice (nessuna i18n del pannello); script chiavi lingue: scratchpad `chiavi.py`.
 
 ## Aperto

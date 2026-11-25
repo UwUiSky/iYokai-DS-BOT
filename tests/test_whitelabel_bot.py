@@ -239,7 +239,9 @@ async def test_comando_marchio(repo, monkeypatch):
     scelta = lambda v: app_commands.Choice(name=v, value=v)  # noqa: E731
 
     def nuova():
-        i = fake_interaction(guild=_guild(), user=fake_member(77))
+        g = _guild()
+        g.owner_id = 77  # il marchio lo collega solo il proprietario del server
+        i = fake_interaction(guild=g, user=fake_member(77))
         i.locale = discord.Locale.italian
         return i
 
@@ -292,3 +294,47 @@ async def test_senza_premium_il_comando_si_rifiuta(repo, monkeypatch):
     await cog.marchio.callback(cog, i, app_commands.Choice(name="imposta", value="imposta"), None)
     assert "premium" in i.response.send_message.call_args.args[0]
     i.response.send_modal.assert_not_called()
+
+
+# ---------------------------------------------------------------- blocco A, voce 8
+async def test_il_token_e_legato_al_server_e_le_righe_vecchie_si_riscrivono(repo, clean_db):
+    from cryptography.exceptions import InvalidTag
+
+    from core.oauth_crypto import decrypt_token, encrypt_token
+    from core.repositories.whitelabel_repo import aad_marchio
+
+    await repo.salva(500, "token-uno", 4242, 9000, "Bot", 1)
+    cifrato = await clean_db.fetchval("SELECT encrypted_token FROM whitelabel_bots WHERE guild_id = 500")
+    assert decrypt_token(cifrato, repo._chiave(), aad=aad_marchio(500)) == "token-uno"
+    with pytest.raises(InvalidTag):  # copiato su un altro server non si apre
+        decrypt_token(cifrato, repo._chiave(), aad=aad_marchio(600))
+    with pytest.raises(InvalidTag):
+        decrypt_token(cifrato, repo._chiave())
+    assert aad_marchio(500) == b"marchio:500"
+    # una riga scritta prima di questa regola (senza dato associato) si legge ancora e si riscrive
+    vecchio = encrypt_token("token-vecchio", repo._chiave())
+    await clean_db.execute("UPDATE whitelabel_bots SET encrypted_token = $1 WHERE guild_id = 500", vecchio)
+    assert (await repo.get_con_token(500))[1] == "token-vecchio"
+    nuovo = await clean_db.fetchval("SELECT encrypted_token FROM whitelabel_bots WHERE guild_id = 500")
+    assert nuovo != vecchio and decrypt_token(nuovo, repo._chiave(), aad=aad_marchio(500)) == "token-vecchio"
+    # un cifrato copiato dalla riga di un altro server non si legge
+    await repo.salva(600, "token-due", 4243, 9001, "Altro", 1)
+    copiato = await clean_db.fetchval("SELECT encrypted_token FROM whitelabel_bots WHERE guild_id = 600")
+    await clean_db.execute("UPDATE whitelabel_bots SET encrypted_token = $1 WHERE guild_id = 500", copiato)
+    with pytest.raises(InvalidTag):
+        await repo.get_con_token(500)
+
+
+async def test_collegare_e_scollegare_lascia_una_traccia_nello_storico(repo, clean_db, monkeypatch):
+    from core import web_panel_avvisi
+
+    monkeypatch.setattr("core.database.db._pool", clean_db)
+    avvisi = AsyncMock()
+    monkeypatch.setattr(web_panel_avvisi, "avvisa", avvisi)
+    guild = _guild()
+    bot = SimpleNamespace(get_guild=lambda g: guild)
+    await wl.registra_modifica(bot, guild, 77, "collegato", "Mio Bot")
+    await wl.registra_modifica(bot, guild, 77, "scollegato")
+    righe = await clean_db.fetch("SELECT key_name, new_value, changed_by FROM guild_config_history WHERE guild_id = 500 ORDER BY id")
+    assert [(r["key_name"], r["changed_by"]) for r in righe] == [("marchio", 77), ("marchio", 77)]
+    assert avvisi.await_count == 2 and avvisi.await_args_list[0].args[2] == "sicurezza"

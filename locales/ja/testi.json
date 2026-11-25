@@ -4491,5 +4491,8 @@
   "setup_guidato_ruolo_bot_negato": "ボットのモデレーターまたはBANロールを選ぶには、そのロールが与える権限（「メンバーをタイムアウト」または「メンバーをBAN」）をDiscordで既に持っているか、サーバーの所有者である必要があります。何も保存されていません。",
   "sicurezza_modulo_acceso": "オン",
   "sicurezza_modulo_spento": "オフ",
-  "sicurezza_modulo_cambiato": "**{server}** のセキュリティ：モジュール `{modulo}` が {utente} によって{stato}になりました。心当たりがない場合は、スタッフの権限を確認してください。"
+  "sicurezza_modulo_cambiato": "**{server}** のセキュリティ：モジュール `{modulo}` が {utente} によって{stato}になりました。心当たりがない場合は、スタッフの権限を確認してください。",
+  "mar_solo_proprietario": "独自ブランドのボットを連携できるのは、サーバーの所有者だけです。",
+  "mar_avviso_collegato": "{utente} がこのサーバーに独自ブランドのボット（{nome}）を連携しました。",
+  "mar_avviso_rimosso": "{utente} がこのサーバーから独自ブランドのボットの連携を解除しました。"
 }

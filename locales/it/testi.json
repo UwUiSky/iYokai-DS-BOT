@@ -4491,5 +4491,8 @@
   "setup_guidato_ruolo_bot_negato": "Per scegliere il ruolo mod o ban del bot devi avere già su Discord il permesso che quel ruolo darebbe («Metti in timeout i membri» o «Banna i membri») o essere il proprietario del server: non è stato salvato niente.",
   "sicurezza_modulo_acceso": "acceso",
   "sicurezza_modulo_spento": "spento",
-  "sicurezza_modulo_cambiato": "Sicurezza di **{server}**: il modulo `{modulo}` è stato {stato} da {utente}. Se non te lo aspettavi, controlla i permessi del tuo staff."
+  "sicurezza_modulo_cambiato": "Sicurezza di **{server}**: il modulo `{modulo}` è stato {stato} da {utente}. Se non te lo aspettavi, controlla i permessi del tuo staff.",
+  "mar_solo_proprietario": "Il bot con marchio lo può collegare solo il proprietario del server.",
+  "mar_avviso_collegato": "{utente} ha collegato un bot con marchio proprio ({nome}) a questo server.",
+  "mar_avviso_rimosso": "{utente} ha scollegato il bot con marchio proprio da questo server."
 }

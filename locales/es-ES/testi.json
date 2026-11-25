@@ -4491,5 +4491,8 @@
   "setup_guidato_ruolo_bot_negato": "Para elegir el rol de mod o de baneo del bot debes tener ya en Discord el permiso que ese rol daría («Aislar temporalmente a miembros» o «Banear miembros») o ser el propietario del servidor: no se ha guardado nada.",
   "sicurezza_modulo_acceso": "activado",
   "sicurezza_modulo_spento": "desactivado",
-  "sicurezza_modulo_cambiato": "Seguridad de **{server}**: el módulo `{modulo}` fue {stato} por {utente}. Si no lo esperabas, revisa los permisos de tu equipo."
+  "sicurezza_modulo_cambiato": "Seguridad de **{server}**: el módulo `{modulo}` fue {stato} por {utente}. Si no lo esperabas, revisa los permisos de tu equipo.",
+  "mar_solo_proprietario": "Solo el propietario del servidor puede vincular un bot con marca propia.",
+  "mar_avviso_collegato": "{utente} ha vinculado un bot con marca propia ({nome}) a este servidor.",
+  "mar_avviso_rimosso": "{utente} ha desvinculado el bot con marca propia de este servidor."
 }

@@ -4491,5 +4491,8 @@
   "setup_guidato_ruolo_bot_negato": "Um die Mod- oder Bann-Rolle des Bots zu wählen, musst du die Berechtigung, die diese Rolle gäbe («Mitglieder timeouten» oder «Mitglieder bannen»), bereits auf Discord haben oder Serverbesitzer sein: Es wurde nichts gespeichert.",
   "sicurezza_modulo_acceso": "eingeschaltet",
   "sicurezza_modulo_spento": "ausgeschaltet",
-  "sicurezza_modulo_cambiato": "Sicherheit von **{server}**: Das Modul `{modulo}` wurde von {utente} {stato}. Wenn du das nicht erwartet hast, prüfe die Berechtigungen deines Teams."
+  "sicurezza_modulo_cambiato": "Sicherheit von **{server}**: Das Modul `{modulo}` wurde von {utente} {stato}. Wenn du das nicht erwartet hast, prüfe die Berechtigungen deines Teams.",
+  "mar_solo_proprietario": "Den Bot mit eigenem Namen kann nur der Serverbesitzer verbinden.",
+  "mar_avviso_collegato": "{utente} hat einen Bot mit eigenem Namen ({nome}) mit diesem Server verbunden.",
+  "mar_avviso_rimosso": "{utente} hat den Bot mit eigenem Namen von diesem Server getrennt."
 }

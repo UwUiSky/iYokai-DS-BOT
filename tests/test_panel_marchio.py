@@ -16,7 +16,7 @@ from core import whitelabel_bot as wl
 from core.oauth_crypto import generate_key
 from core.repositories import whitelabel_repo as repo_modulo
 from core.repositories.whitelabel_repo import WhitelabelRepository
-from tests.test_web_panel_server import GUILD, _client, _csrf, _entra, ambiente  # noqa: F401
+from tests.test_web_panel_server import ADMIN, GUILD, _client, _csrf, _entra, ambiente  # noqa: F401
 
 TOKEN = ".".join(["MTIzNDU2Nzg5MDEyMzQ1Njc4", "abcdef", "ghijklmnopqrstuvwxyz0123456"])
 CHIAVE = generate_key()
@@ -38,6 +38,7 @@ def marchio(ambiente, monkeypatch):  # noqa: F811
     gestore = SimpleNamespace(avvia=AsyncMock(return_value=True), ferma=AsyncMock(), aggiorna_testo=AsyncMock())
     ambiente.bot.get_cog = lambda nome: SimpleNamespace(gestore=gestore) if nome == "MarchioCog" else None
     ambiente.bot.get_guild(GUILD).me = SimpleNamespace(id=1)
+    ambiente.bot.get_guild(GUILD).owner_id = ADMIN  # il marchio lo collega solo il proprietario del server
     return SimpleNamespace(repo=repo, gestore=gestore, ambiente=ambiente)
 
 
@@ -115,5 +116,19 @@ async def test_senza_premium_e_senza_cog(marchio, monkeypatch):
         assert await marchio.repo.get(GUILD) is None
         marchio.ambiente.bot.get_cog = lambda nome: None
         assert await _invia(client, {"azione": "testo", "testo": "x"}) == "marchio_non_disponibile"
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_un_admin_che_non_e_il_proprietario_non_collega_il_marchio(marchio):
+    """Blocco A, voce 8: «Gestisci server» non basta per mettere un bot proprio nel server."""
+    marchio.ambiente.bot.get_guild(GUILD).owner_id = 1  # l'admin che entra nel pannello non è il proprietario
+    client = await _client(marchio.ambiente.app)
+    try:
+        await _entra(client)
+        assert await _invia(client, {"azione": "collega", "token": TOKEN}) == "mar_solo_proprietario"
+        assert await marchio.repo.get(GUILD) is None
+        marchio.gestore.avvia.assert_not_awaited()
     finally:
         await client.close()

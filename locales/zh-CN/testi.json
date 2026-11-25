@@ -4491,5 +4491,8 @@
   "setup_guidato_ruolo_bot_negato": "要选择机器人的管理员或封禁角色，你必须已在 Discord 拥有该角色所赋予的权限（“对成员禁言”或“封禁成员”），或是服务器所有者：没有保存任何内容。",
   "sicurezza_modulo_acceso": "已开启",
   "sicurezza_modulo_spento": "已关闭",
-  "sicurezza_modulo_cambiato": "**{server}** 的安全：模块 `{modulo}` 已被 {utente} {stato}。如果这不在你的预期内，请检查你的管理团队权限。"
+  "sicurezza_modulo_cambiato": "**{server}** 的安全：模块 `{modulo}` 已被 {utente} {stato}。如果这不在你的预期内，请检查你的管理团队权限。",
+  "mar_solo_proprietario": "只有服务器所有者才能绑定自定义品牌机器人。",
+  "mar_avviso_collegato": "{utente} 已为此服务器绑定自定义品牌机器人（{nome}）。",
+  "mar_avviso_rimosso": "{utente} 已解除此服务器的自定义品牌机器人绑定。"
 }

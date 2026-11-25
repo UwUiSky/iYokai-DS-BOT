@@ -420,16 +420,43 @@ async def collega_e_avvia(gestore: GestoreMarchio, bot, guild, token: str, user_
     """
     Collega un token nuovo e riaccende il client (quello col token vecchio si ferma prima).
     Solleva `TokenRifiutato` con la chiave del messaggio, anche senza premium.
+    Lo collega SOLO il proprietario del server: il bot con marchio riceve le interazioni dello staff, un admin
+    qualunque non deve poterci mettere un bot suo. Un collegamento riuscito lascia una riga nello storico del server
+    e un avviso a chi lo ha chiesto.
     """
+    if user_id != getattr(guild, "owner_id", None):
+        raise TokenRifiutato("mar_solo_proprietario")
     if not await ha_premium(bot, guild.id):
         raise TokenRifiutato("mar_richiede_premium")
     marchio = await collega_marchio(guild, token, user_id, config=config)
     await gestore.ferma(guild.id)
     await gestore.avvia(guild.id)
+    await registra_modifica(bot, guild, user_id, "collegato", marchio.bot_name)
     return marchio
 
 
-async def applica_azione(gestore: GestoreMarchio, bot, guild_id: int, azione: str, testo: str | None = None) -> str:
+async def registra_modifica(bot, guild, user_id: int, cosa: str, nome_bot: str | None = None) -> None:
+    """
+    Una riga nello storico delle modifiche del server («marchio») e un avviso di sicurezza: chi cambia il bot con
+    marchio lascia una traccia. Mai un'eccezione: la traccia mancata non annulla l'azione già fatta.
+    """
+    from core import web_panel_avvisi
+    from core.database import db
+    from core.i18n import testo_guild
+
+    try:
+        await db._record_config_change(guild.id, user_id, "setting", "marchio", None, cosa if not nome_bot else f"{cosa}:{nome_bot}"[:200])
+        chiave = "mar_avviso_collegato" if cosa == "collegato" else "mar_avviso_rimosso"
+        await web_panel_avvisi.avvisa(
+            bot, guild, "sicurezza", await testo_guild(guild, chiave, utente=f"<@{user_id}>", nome=nome_bot or "-")
+        )
+    except Exception:  # noqa: BLE001
+        logger.warning("Traccia del marchio non scritta nel server %s.", getattr(guild, "id", "?"), exc_info=True)
+
+
+async def applica_azione(
+    gestore: GestoreMarchio, bot, guild_id: int, azione: str, testo: str | None = None, *, autore_id: int | None = None
+) -> str:
     """
     Una delle `AZIONI` su un marchio già collegato. Restituisce la chiave del messaggio per l'utente.
     ValueError per un'azione sconosciuta o un testo troppo lungo.
@@ -454,4 +481,7 @@ async def applica_azione(gestore: GestoreMarchio, bot, guild_id: int, azione: st
         return "mar_fermato"
     await gestore.ferma(guild_id)
     await whitelabel_repo.elimina(guild_id)
+    guild = bot.get_guild(guild_id)
+    if guild is not None and autore_id is not None:
+        await registra_modifica(bot, guild, autore_id, "scollegato")
     return "mar_rimosso"

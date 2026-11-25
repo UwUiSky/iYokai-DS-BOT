@@ -161,7 +161,7 @@ class MarchioCog(CogConGruppi, commands.Cog):
             await self._strumenti(interaction, azione.value)
             return
         if azione.value != "stato":
-            chiave = await applica_azione(self.gestore, self.bot, guild.id, azione.value, testo)
+            chiave = await applica_azione(self.gestore, self.bot, guild.id, azione.value, testo, autore_id=interaction.user.id)
             await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
             return
         attuale = await whitelabel_repo.get(guild.id)
