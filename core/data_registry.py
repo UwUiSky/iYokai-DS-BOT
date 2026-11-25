@@ -1154,7 +1154,7 @@ REGISTRO: tuple[TabellaDati, ...] = (
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True,
        scadenza=Scadenza("creato_il", 180),
        nota="vale negli altri server solo con 3 approvazioni di server, founder e admin diversi in ore diverse (D67); "
-            "gli altri server vedono solo il numero, mai nomi, date o metodi (D141); 180 giorni"),
+            "gli altri server vedono solo il numero, mai nomi, date o metodi (D143); 180 giorni"),
     _t("verify_ip", "IP della verifica web, cifrati: li vede solo il proprietario del bot (mai gli admin, mai i log)",
        colonne_utente=("user_id",), colonna_server="guild_id", utente="cancella", esporta=True,
        escludi_dall_esportazione=("ip_impronta", "ip_cifrato"), conserva_utente_se="motivo IN ('ban', 'kick')",

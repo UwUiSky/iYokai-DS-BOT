@@ -20,6 +20,8 @@ SEGRETO = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"  # "12345678901234567890" in base32
 @pytest.fixture(autouse=True)
 def _passo_pulito(monkeypatch):
     monkeypatch.setattr(sf, "_ultimo_passo_usato", 0)
+    monkeypatch.setattr(sf, "_errori_di_fila", 0)
+    monkeypatch.setattr(sf, "_bloccato_fino", 0.0)
 
 
 def test_vettore_della_rfc_6238():
@@ -91,3 +93,23 @@ async def test_il_hot_patch_non_parte_senza_il_codice(monkeypatch):
     await cog._aggiorna_a_caldo(i, None, "main", None, None)
     i.response.defer.assert_not_awaited()  # si è fermato prima di scaricare qualsiasi cosa
     assert i.response.send_message.await_count == 1
+
+
+def test_dopo_cinque_codici_sbagliati_si_blocca_anche_quello_giusto():
+    adesso = 1_800_000_000.0
+    giusto = sf.codice_al_passo(SEGRETO, int(adesso // 30))
+    sbagliato = "000000" if giusto != "000000" else "111111"
+    for _ in range(sf.MAX_ERRORI):
+        assert not sf.verifica_codice(SEGRETO, sbagliato, adesso=adesso)
+    assert sf.bloccato(adesso)
+    assert not sf.verifica_codice(SEGRETO, giusto, adesso=adesso)  # bloccato: anche il giusto no
+    dopo = adesso + sf.BLOCCO_SECONDI + 1
+    assert sf.verifica_codice(SEGRETO, sf.codice_al_passo(SEGRETO, int(dopo // 30)), adesso=dopo)
+
+
+def test_un_codice_giusto_azzera_gli_errori():
+    adesso = 1_800_000_000.0
+    for _ in range(sf.MAX_ERRORI - 1):
+        sf.verifica_codice(SEGRETO, "000001", adesso=adesso)
+    assert sf.verifica_codice(SEGRETO, sf.codice_al_passo(SEGRETO, int(adesso // 30)), adesso=adesso)
+    assert not sf.bloccato(adesso) and sf._errori_di_fila == 0

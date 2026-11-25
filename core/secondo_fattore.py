@@ -23,6 +23,18 @@ FINESTRA_PASSI = 1  # si accetta anche il passo prima e quello dopo (orologi leg
 
 _ultimo_passo_usato = 0  # un passo già accettato non vale una seconda volta
 
+# Tentativi sbagliati: dopo MAX_ERRORI di fila ogni codice si rifiuta (anche quello giusto) per BLOCCO_SECONDI.
+# Così chi avesse preso l'account Discord dell'owner non può provare tutti i codici a ripetizione.
+MAX_ERRORI = 5
+BLOCCO_SECONDI = 15 * 60
+_errori_di_fila = 0
+_bloccato_fino = 0.0
+
+
+def bloccato(adesso: float | None = None) -> bool:
+    """True se troppi codici sbagliati di fila hanno bloccato il secondo fattore per un po'."""
+    return (adesso if adesso is not None else time.time()) < _bloccato_fino
+
 
 def _chiave(segreto_base32: str) -> bytes | None:
     pulito = (segreto_base32 or "").replace(" ", "").replace("-", "").upper()
@@ -50,18 +62,25 @@ def verifica_codice(segreto_base32: str, codice: str | None, *, adesso: float | 
     True se il codice è giusto per questo momento (o il passo accanto) e non è già stato usato. Un codice giusto
     si consuma: il passo (e i precedenti) non valgono più. Segreto assente o storto, codice non di 6 cifre = False.
     """
-    global _ultimo_passo_usato
-
+    global _ultimo_passo_usato, _errori_di_fila, _bloccato_fino
+    momento = adesso if adesso is not None else time.time()
+    if bloccato(momento):
+        return False
     testo = (codice or "").strip()
     if not (testo.isascii() and testo.isdigit() and len(testo) == CIFRE) or _chiave(segreto_base32) is None:
         return False
-    centro = int((adesso if adesso is not None else time.time()) // PASSO_SECONDI)
+    centro = int(momento // PASSO_SECONDI)
     trovato = None
     for passo in range(centro - FINESTRA_PASSI, centro + FINESTRA_PASSI + 1):  # tutti i passi: tempo di calcolo costante
         atteso = codice_al_passo(segreto_base32, passo)
         if atteso is not None and hmac.compare_digest(atteso.encode(), testo.encode()) and passo > _ultimo_passo_usato:
             trovato = passo
     if trovato is None:
+        _errori_di_fila += 1
+        if _errori_di_fila >= MAX_ERRORI:
+            _errori_di_fila = 0
+            _bloccato_fino = momento + BLOCCO_SECONDI
         return False
+    _errori_di_fila = 0
     _ultimo_passo_usato = trovato
     return True

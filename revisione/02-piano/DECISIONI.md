@@ -1813,7 +1813,7 @@ Cambia D56 sui limiti e sposta i gruppi. Nessuna funzione si toglie: si sposta o
 - **Limiti (sostituiscono quelli di D56).** Comandi di primo livello globali: tetto 100 (limite Discord), avviso a 90, contando `/premium` e `/vip`; `/owner` e `/owner-radio` stanno solo nel server dell'owner. Figli: al massimo 25 per gruppo (18 resta un obiettivo, un avviso). Profondità 3. Peso: ogni gruppo si calcola come se ogni traduzione fosse più lunga del 30% della versione più lunga tra it ed en, per ogni campo (nome 32, descrizione 100, nome scelta 100; i valori delle scelte non si traducono), o con la traduzione vera se più lunga; limite 8.000, avviso a 6.800. Dopo il riordino: 54 gruppi globali, il più pesante `/admin-alert` a 7.478.
 - **Effetti da sapere.** Le sospensioni dei giochi (`RADICI_DI_GIOCO`) ora valgono anche per `/monete mercato` e `/giochi tela` (stanno sotto `monete` e `giochi`).
 
-## D138 — Ban globale con scala di affidabilità, spento di base, una rete sola (blocco A, voce 1), 25/11/2026, opzione consigliata, da confermare dall'owner
+## D140 — Ban globale con scala di affidabilità, spento di base, una rete sola (blocco A, voce 1), 25/11/2026, opzione consigliata, da confermare dall'owner
 
 Cambia il ban globale (SPEC §7.3) e lo unisce alla rete di protezione (D16, VER-025).
 - **Spento di base.** Un server senza riga in `global_ban_direction` non invia e non riceve. `/admin-sicurezza globalban enable` parte con «invia» e «ricevi» entrambi a falso: lo staff sceglie.
@@ -1823,21 +1823,21 @@ Cambia il ban globale (SPEC §7.3) e lo unisce alla rete di protezione (D16, VER
 - **Coda.** Al massimo 2 propagazioni insieme, pausa tra un server e l'altro, al massimo 100 server per ban: i ban locali non passano di qui e hanno sempre la precedenza.
 - **Registro.** Ogni tentativo (anche rifiutato) lascia una riga in `global_ban_episodi` (migrazione 0980), tenuta 90 giorni.
 
-## D139 — Patreon: collegamento legato alla sessione, conferma allo spostamento, niente replay (blocco A, voce 4), 25/11/2026, opzione consigliata, da confermare dall'owner
+## D141 — Patreon: collegamento legato alla sessione, conferma allo spostamento, niente replay (blocco A, voce 4), 25/11/2026, opzione consigliata, da confermare dall'owner
 
 Chiude la contraddizione tra D96 (CFG-036 «non fatta») e D124 (CFG-036 «si prepara tutto, spento senza chiavi»): vale D124, D96 è annotata. Da chiudere **prima** di mettere le chiavi di Patreon.
 - **`state` legato alla sessione.** Lo stato OAuth porta l'impronta della sessione del pannello che l'ha creato; il ritorno da Patreon (`/patreon/callback`) legge lo stesso cookie del pannello e collega solo se coincide. Un link d'autorizzazione scritto da un altro e aperto da una vittima non collega niente (e lo stato si brucia).
 - **Conferma prima di spostare.** Se l'account Patreon è già di un'altra persona, il ritorno non lo sposta: salva i token cifrati in attesa (10 minuti, tabella `patreon_spostamenti`) e rimanda a `/premium?patreon=conferma`, dove la persona sceglie «Sì, sposta qui» o «No, annulla» (con CSRF). Solo con il sì l'account passa a lei e all'altra persona si toglie la concessione.
 - **Niente replay del webhook.** Un evento con la data dell'ultimo addebito più vecchia di quella già salvata si ignora; le impronte degli eventi visti si tengono 400 giorni (erano 30), così un evento vecchio rimandato non conta di nuovo.
 
-## D140 — Link diretti alla musica solo da host in elenco (blocco A, voce 9), 25/11/2026, opzione consigliata, da confermare dall'owner
+## D142 — Link diretti alla musica solo da host in elenco (blocco A, voce 9), 25/11/2026, opzione consigliata, da confermare dall'owner
 
 Lavalink scarica i link diretti (`sources.http`) da dentro la rete del server e segue i redirect: il controllo del bot sull'indirizzo scritto dall'utente (`url_e_sicuro`) non basta (redirect, DNS che cambia risposta).
 - **Cosa cambia per chi usa `/play`.** Un link diretto a un file audio passa solo da `cdn.discordapp.com`, `media.discordapp.net`, `upload.wikimedia.org`, `archive.org` e i suoi sotto-domini (https, niente porta né userinfo). I link delle fonti note (YouTube, SoundCloud, Bandcamp, Twitch, Vimeo, Spotify, Apple Music, Deezer) non cambiano. Gli altri host si rifiutano (nessun risultato). L'elenco è `HOST_LINK_DIRETTI` in `core/music_sources.py`.
 - **Playlist importate.** Un brano `http` di una playlist salvata o importata si suona solo se l'indirizzo è nello stesso elenco.
 - `url_e_sicuro` resta come seconda difesa; sull'host di Lavalink restano i blocchi in uscita delle reti private (README, «Rete»).
 
-## D141 — Storico VPN tra server: solo il numero (blocco A, voce 11), 25/11/2026, opzione consigliata, da confermare dall'owner
+## D143 — Storico VPN tra server: solo il numero (blocco A, voce 11), 25/11/2026, opzione consigliata, da confermare dall'owner
 
 Il «Lascia passare» di un server conta negli altri solo con 3 approvazioni di server, founder e admin diversi (D67): resta. Ma a un server si diceva anche quando, con quale metodo e (con il consenso del server dell'altra parte) in quale server la persona era stata lasciata passare: dati personali tra server senza base scritta né informativa.
 - **Scelta (opzione consigliata).** L'avviso agli admin dice **solo quanti server** hanno già accettato la persona. Mai nomi, date o metodi degli altri server. L'impostazione `verify_condividi_nome` (D65) si toglie: non ha più effetto.

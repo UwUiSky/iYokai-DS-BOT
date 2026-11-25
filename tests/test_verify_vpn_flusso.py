@@ -335,7 +335,7 @@ async def test_se_altri_server_l_hanno_accettata_qui_passa_e_gli_admin_vedono_il
 
 @pytest.mark.asyncio
 async def test_gli_altri_server_non_si_nominano_mai_nemmeno_col_vecchio_consenso(monkeypatch, clean_db):
-    """D141: solo il numero. Un'impostazione `verify_condividi_nome` vecchia non fa più comparire nomi, date o metodi."""
+    """D143: solo il numero. Un'impostazione `verify_condividi_nome` vecchia non fa più comparire nomi, date o metodi."""
     amb = _ambiente(monkeypatch, clean_db)
     await _prepara(clean_db)
     altro = fake_guild(guild_id=GUILD + 1, name="Server Aperto", owner_id=1)

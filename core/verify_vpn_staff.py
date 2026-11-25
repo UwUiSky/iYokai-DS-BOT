@@ -6,7 +6,7 @@ admin nel canale del registro della verifica con il bottone persistente «Lascia
 segna un'eccezione per quella persona e la ricorda nello storico condiviso (con founder e admin, D67). Se
 almeno 3 server diversi (founder diversi, admin diversi, in momenti diversi) l'hanno già lasciata passare, qui
 passa ma gli admin vedono «già accettato da N server»: SOLO il numero, mai nomi, date o metodi degli altri server
-(D141: l'informativa non dà una base per mostrare a un server la storia della persona altrove). Sotto la soglia il «Lascia passare» vale solo nel server che l'ha dato. Nella tabella dell'esito solo metodo, esito e data; l'IP sta cifrato a parte e lo vede solo il proprietario (D67).
+(D143: l'informativa non dà una base per mostrare a un server la storia della persona altrove). Sotto la soglia il «Lascia passare» vale solo nel server che l'ha dato. Nella tabella dell'esito solo metodo, esito e data; l'IP sta cifrato a parte e lo vede solo il proprietario (D67).
 Impostazione (punto unico: SETTINGS_SCHEMA e `core/config_impostazioni.py`): `verify_blocca_vpn` (base vero).
 Funzioni coperte: SPEC §4.2 (VPN e proxy, D64, D65)
 Dipende da: core/verify_vpn.py, core/verify_ip.py, core/repositories/verify_vpn_repo.py
@@ -106,7 +106,7 @@ async def _avvisa(guild: discord.Guild, membro: discord.Member, metodi: str) -> 
 
 
 async def _avvisa_storico(bot, guild: discord.Guild, membro: discord.Member, metodi: str, precedenti) -> None:
-    """Avvisa gli admin: la persona è già stata accettata da N altri server. Solo il numero (D141), nient'altro."""
+    """Avvisa gli admin: la persona è già stata accettata da N altri server. Solo il numero (D143), nient'altro."""
     canale = await _canale_log(guild)
     if canale is None:
         return
