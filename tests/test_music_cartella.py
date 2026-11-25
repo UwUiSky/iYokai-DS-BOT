@@ -300,7 +300,7 @@ class _Musica:
     def __init__(self, nodo, nodo_locale):
         self.nodo, self.nodo_locale, self.risposte, self.risultato = nodo, nodo_locale, [], None
 
-    async def _controlli_base(self, interaction):
+    async def controlli_base(self, interaction):
         return True
 
     async def accoda(self, guild, membro, query, rispondi, *, interaction=None, cerca=None, **_):

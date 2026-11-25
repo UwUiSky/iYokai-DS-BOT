@@ -6,6 +6,7 @@ history, queue con quote per utente, play in cima. Logica pura
 in core/music_queue_logic.py; i comandi con un player finto.
 """
 
+from tests.support.flotta_finta import FlottaFinta
 import inspect
 import random
 from types import SimpleNamespace
@@ -162,7 +163,7 @@ def _cog(player, monkeypatch):
     guild_w = SimpleNamespace(voice_client=player)
     worker = SimpleNamespace(worker_index=1, get_guild=lambda gid: guild_w)
 
-    class _F:
+    class _F(FlottaFinta):
         async def get_worker_for_channel(self, g, c):
             return 1, worker
 
@@ -294,7 +295,7 @@ async def test_play_in_cima_mette_il_brano_per_primo_e_ricorda_chi_lo_ha_messo(m
     guild_w = SimpleNamespace(voice_client=player)
     worker = SimpleNamespace(worker_index=1, get_guild=lambda gid: guild_w)
 
-    class _F:
+    class _F(FlottaFinta):
         async def get_or_assign_worker_for_channel(self, g, c):
             return 1, worker
 
@@ -325,11 +326,11 @@ async def test_join_senza_nodi_libera_la_sessione(monkeypatch):
     worker = SimpleNamespace(worker_index=1, get_guild=lambda gid: guild_w)
     rilasci = []
 
-    class _F:
+    class _F(FlottaFinta):
         async def get_or_assign_worker_for_channel(self, g, c):
             return 1, worker
 
-        async def release_session(self, g, c):
+        async def release_session(self, g, c, worker_index=None):
             rilasci.append((g, c))
 
     gestore = SimpleNamespace(node_for=lambda k: None)

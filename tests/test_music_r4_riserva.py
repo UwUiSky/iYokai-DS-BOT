@@ -176,7 +176,7 @@ async def test_mus042_ripristina_usa_la_coda_del_canale_e_la_decodifica(monkeypa
     import cogs.music.playlist as pl
 
     cog = pm.MusicCog(bot=MagicMock())
-    cog._controlli_base = AsyncMock(return_value=True)
+    cog.controlli_base = AsyncMock(return_value=True)
     cog.accoda = AsyncMock()
     leggi = AsyncMock(return_value=[_b(1)])
     monkeypatch.setattr(pm.music_saved_queue_repo, "leggi", leggi)

@@ -9,6 +9,7 @@ controlli che le usano.
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
+from tests.support.flotta_finta import FlottaFinta
 import discord
 import pytest
 
@@ -201,14 +202,14 @@ def _cog_con_worker(player, monkeypatch, archivio):
     worker = SimpleNamespace(worker_index=1, get_guild=lambda gid: guild_w)
     rilasci = []
 
-    class _F:
+    class _F(FlottaFinta):
         async def get_worker_for_channel(self, g, c):
             return 1, worker
 
         async def get_or_assign_worker_for_channel(self, g, c):
             return 1, worker
 
-        async def release_session(self, g, c):
+        async def release_session(self, g, c, worker_index=None):
             rilasci.append((g, c))
 
     return MusicCog(bot=SimpleNamespace(music_fleet=_F(), music_nodes=None)), rilasci
@@ -278,8 +279,8 @@ async def test_a_coda_finita_il_bot_resta_se_il_server_lo_vuole(monkeypatch):
         async def disconnect(self):
             disconnessioni.append(1)
 
-    class _F:
-        async def release_session(self, g, c):
+    class _F(FlottaFinta):
+        async def release_session(self, g, c, worker_index=None):
             rilasci.append((g, c))
 
     archivio.valori[(900, SETTING_STAY_WHEN_QUEUE_ENDS)] = True
@@ -332,8 +333,8 @@ async def test_resta_a_coda_finita_non_trattiene_il_bot_in_un_canale_vuoto(monke
         async def disconnect(self):
             disc.append(1)
 
-    class _F:
-        async def release_session(self, g, c):
+    class _F(FlottaFinta):
+        async def release_session(self, g, c, worker_index=None):
             rilasci.append((g, c))
 
     await handle_inactive_player(_P(), _F())

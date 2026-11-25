@@ -46,6 +46,9 @@ MAIN_KEY = "main"
 # con pause crescenti (secondi); l'ultima si ripete.
 RETRY_PAUSES = (30.0, 60.0, 120.0, 300.0)
 
+# Dopo la caduta di un nodo si aspetta un attimo prima di ricollegarlo (Lavalink può essere in riavvio).
+RIPARTENZA_DOPO_CADUTA = 5.0
+
 
 def worker_key(worker_index: int) -> str:
     return f"w{worker_index}"
@@ -120,8 +123,8 @@ class MusicNodeManager:
             task.append(self._lancia(client, nodo))
         return task
 
-    def _lancia(self, client, nodo: wavelink.Node) -> asyncio.Task:
-        t = asyncio.create_task(self._collega_uno(client, nodo))
+    def _lancia(self, client, nodo: wavelink.Node, pausa_iniziale: float = 0.0) -> asyncio.Task:
+        t = asyncio.create_task(self._collega_uno(client, nodo, pausa_iniziale))
         self.tasks.add(t)
         self._task_di_nodo[nodo.identifier] = t
         t.add_done_callback(self.tasks.discard)
@@ -156,9 +159,54 @@ class MusicNodeManager:
                               str(getattr(nodo.status, "name", nodo.status)).lower(), len(getattr(nodo, "players", {}) or {})))
         return righe
 
-    async def _collega_uno(self, client, nodo: wavelink.Node) -> None:
+    async def su_nodo_chiuso(self, nodo: wavelink.Node, *_disconnessi) -> None:
+        """
+        Evento `on_wavelink_node_closed`: Lavalink è caduto (o riavviato) e wavelink ha finito i suoi
+        tentativi. Il nodo si toglie dal Pool e si riparte a collegarlo da solo, con pause crescenti.
+        I player che c'erano su quel nodo sono già stati scollegati: gli slot li libera il controllo
+        periodico (`MusicFleet.libera_slot_persi`).
+        """
+        client = self._client_di_nodo.get(nodo.identifier)
+        if client is None:
+            return  # un nodo che non è nostro
+        attivo = self._task_di_nodo.get(nodo.identifier)
+        if attivo is not None and not attivo.done():
+            return  # lo sta già riprovando
+        logger.warning("Nodo Lavalink %s caduto: provo a ricollegarlo da solo.", nodo.identifier)
+        self._lancia(client, nodo, pausa_iniziale=RIPARTENZA_DOPO_CADUTA)
+
+    def riparti_nodi_caduti(self) -> int:
+        """
+        Rete di sicurezza del controllo periodico: ogni nodo non collegato e senza un tentativo in corso
+        riparte (se l'evento di chiusura non è mai arrivato). Restituisce quanti ne ha fatti ripartire.
+        """
+        ripartiti = 0
+        for nodi in self._nodi.values():
+            for nodo in nodi:
+                if nodo.status is wavelink.NodeStatus.CONNECTED:
+                    continue
+                attivo = self._task_di_nodo.get(nodo.identifier)
+                client = self._client_di_nodo.get(nodo.identifier)
+                if client is None or (attivo is not None and not attivo.done()):
+                    continue
+                self._lancia(client, nodo, pausa_iniziale=RIPARTENZA_DOPO_CADUTA)
+                ripartiti += 1
+        return ripartiti
+
+    def stato_per_servizio(self) -> dict[str, bool]:
+        """{servizio Lavalink: almeno un nodo collegato}. Il servizio è l'indirizzo senza la chiave del bot."""
+        stato: dict[str, bool] = {}
+        for nodi in self._nodi.values():
+            for nodo in nodi:
+                base = nodo.identifier.split("@", 1)[0]
+                stato[base] = stato.get(base, False) or nodo.status is wavelink.NodeStatus.CONNECTED
+        return stato
+
+    async def _collega_uno(self, client, nodo: wavelink.Node, pausa_iniziale: float = 0.0) -> None:
         """Collega il nodo; se non riesce (o e' troppo vecchio) riprova con pause crescenti."""
         tentativo = 0
+        if pausa_iniziale:
+            await asyncio.sleep(pausa_iniziale)
         while True:
             try:
                 if await self._tenta(client, nodo):
@@ -177,6 +225,8 @@ class MusicNodeManager:
         wait = getattr(client, "wait_until_ready", None)
         if wait is not None:
             await wait()  # l'header User-Id richiede client.user
+        if getattr(nodo, "_has_closed", False):
+            await self._scarta(nodo)  # chiuso da wavelink ma ancora nel Pool: senza questo Pool.connect lo rifiuta
         await self._connetti(nodo, client)
         if not await self._attendi_connesso(nodo):
             logger.warning("Nodo Lavalink %s non raggiungibile: scartato.", nodo.identifier)

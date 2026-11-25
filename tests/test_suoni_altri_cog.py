@@ -59,7 +59,7 @@ class _SoundCog:
 
 
 class _Musica:
-    async def _controlli_base(self, interaction):
+    async def controlli_base(self, interaction):
         return True
 
 

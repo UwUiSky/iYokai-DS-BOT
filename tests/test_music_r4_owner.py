@@ -115,7 +115,7 @@ async def test_mus068_riconnetti_riparte_solo_i_nodi_non_collegati():
     gestore._client_di_nodo = {"a@main": client, "b@main": client}
     lanciati = []
 
-    async def _collega(c, n):
+    async def _collega(c, n, pausa=0.0):
         lanciati.append(n.identifier)
 
     gestore._collega_uno = _collega

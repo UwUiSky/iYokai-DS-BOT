@@ -36,6 +36,7 @@ from core.music_logic import (
     voice_join_problem,
 )
 from core.music_capitoli_player import PlayerCapitoli
+from core.music_fleet import MusicFleet
 from core.music_nodes import MAIN_KEY, MusicNodeManager, worker_key
 
 
@@ -447,8 +448,14 @@ class _FlottaDi:
     async def guild_has_session(self, guild_id):
         return True
 
-    async def release_session(self, guild_id, channel_id):
+    async def release_session(self, guild_id, channel_id, worker_index=None):
         self.rilasci.append((guild_id, channel_id))
+
+    # Come la flotta vera: il rilascio dello slot a ogni uscita è la sua `sessione`.
+    sessione = MusicFleet.sessione
+
+    def indice_di(self, worker_bot):
+        return getattr(worker_bot, "worker_index", None)
 
 
 @pytest.fixture
@@ -553,27 +560,27 @@ class _Vocale:
 
 @pytest.mark.asyncio
 async def test_canale_palco_ha_un_messaggio_chiaro():
-    player, errore = await MusicCog(bot=None)._entra_in_canale(_Palco(), object())
+    player, errore = await MusicCog(bot=None).entra_in_canale(_Palco(), object())
     assert player is None and "palco" in errore
 
 
 @pytest.mark.asyncio
 async def test_canale_pieno_ha_un_messaggio_chiaro():
-    player, errore = await MusicCog(bot=None)._entra_in_canale(_Vocale(), object())
+    player, errore = await MusicCog(bot=None).entra_in_canale(_Vocale(), object())
     assert player is None and errore == msg_canale_pieno(2, 2)
 
 
 @pytest.mark.asyncio
 async def test_canale_pieno_ma_il_bot_puo_muovere_membri_entra():
     canale = _Vocale(permessi=discord.Permissions(move_members=True))
-    player, errore = await MusicCog(bot=None)._entra_in_canale(canale, object())
+    player, errore = await MusicCog(bot=None).entra_in_canale(canale, object())
     assert errore is None and player is not None
 
 
 @pytest.mark.asyncio
 async def test_tempo_scaduto_ha_un_messaggio_chiaro():
     canale = _Vocale(permessi=discord.Permissions(administrator=True), errore=asyncio.TimeoutError())
-    player, errore = await MusicCog(bot=None)._entra_in_canale(canale, object())
+    player, errore = await MusicCog(bot=None).entra_in_canale(canale, object())
     assert player is None and "in tempo" in errore
 
 
@@ -794,7 +801,7 @@ async def test_radio_avviata_resta_in_un_canale_vuoto_e_usa_il_nodo_giusto(monke
         scelto.append(nodo)
         return player, None
 
-    cog._entra_in_canale = _entra
+    cog.entra_in_canale = _entra
 
     esito = await cog._avvia_radio(SimpleNamespace(id=5), object())
 

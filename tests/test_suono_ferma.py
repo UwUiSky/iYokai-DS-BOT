@@ -59,13 +59,13 @@ class _MusicaVoce(_Musica):
         self.privilegiato = privilegiato
         self.disconnessioni = 0
 
-    def _ascoltatori_umani(self, canale):
+    def ascoltatori_umani(self, canale):
         return list(self.umani)
 
-    async def _privilegi(self, interazione, impostazioni=None):
+    async def privilegi(self, interazione, impostazioni=None):
         return self.privilegiato
 
-    async def _entra_in_canale(self, canale, nodo, volume=None, sordo=True):
+    async def entra_in_canale(self, canale, nodo, volume=None, sordo=True):
         self.ingressi.append(sordo)
 
         async def _disconnetti():

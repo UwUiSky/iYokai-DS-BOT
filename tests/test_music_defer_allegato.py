@@ -78,13 +78,13 @@ def _cog_e_interazione(monkeypatch):
     async def _worker(guild_id, **kw):
         return SimpleNamespace(voice_client=player), None
 
-    cog._controlli_base = _sempre_si
+    cog.controlli_base = _sempre_si
     cog._get_worker_guild = _worker
 
     async def _privilegiato(*_a, **_kw):  # DJ/staff: salta senza voto (MUS-052), qui conta solo il defer
         return True
 
-    cog._privilegi = _privilegiato
+    cog.privilegi = _privilegiato
 
     async def _impostazioni(db, guild_id):
         return MusicSettings(max_volume=200)  # le impostazioni vere: anche DJ e voto
@@ -143,7 +143,7 @@ async def test_il_bot_entra_sordo():
             ricevuti.update(kw)
             return SimpleNamespace(autoplay=None)
 
-    player, errore = await MusicCog(bot=None)._entra_in_canale(_Canale(), object())
+    player, errore = await MusicCog(bot=None).entra_in_canale(_Canale(), object())
     assert errore is None
     assert ricevuti.get("self_deaf") is True
 
@@ -177,7 +177,7 @@ async def test_play_con_allegato_audio_accoda_il_suo_url():
     async def _accoda(guild, membro, query, rispondi, **kw):
         accodati.append(query)
 
-    cog._controlli_base = _sempre_si
+    cog.controlli_base = _sempre_si
     cog.accoda = _accoda
     interazione, _ = _interazione_play()
     allegato = SimpleNamespace(url="https://cdn.discordapp.com/a/b/canzone.mp3", content_type="audio/mpeg")
@@ -194,7 +194,7 @@ async def test_play_con_allegato_non_audio_rifiuta():
     async def _sempre_si(interaction, **_kw):
         return True
 
-    cog._controlli_base = _sempre_si
+    cog.controlli_base = _sempre_si
     interazione, risposte = _interazione_play()
     allegato = SimpleNamespace(url="https://cdn.discordapp.com/a/b/foto.png", content_type="image/png")
 
@@ -210,7 +210,7 @@ async def test_play_senza_query_ne_allegato_rifiuta():
     async def _sempre_si(interaction, **_kw):
         return True
 
-    cog._controlli_base = _sempre_si
+    cog.controlli_base = _sempre_si
     interazione, risposte = _interazione_play()
     await cog.play.callback(cog, interazione)
     assert "allega" in risposte[0]

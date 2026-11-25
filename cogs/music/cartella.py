@@ -177,7 +177,7 @@ class MusicCartellaCog(CogConGruppi, commands.Cog):
         if musica is None:
             await interaction.response.send_message(await testo_per(interaction, "soundboard_la_musica_non_disponibile_ora"), ephemeral=True)
             return
-        if not await musica._controlli_base(interaction):
+        if not await musica.controlli_base(interaction):
             return
         if not cartella_configurata() or not await anteprime_abilitate(interaction.user.id):
             await interaction.response.send_message(await testo_per(interaction, "music_anteprime_spente"), ephemeral=True)

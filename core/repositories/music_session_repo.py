@@ -126,12 +126,31 @@ class MusicSessionRepository:
             )
         )
 
-    async def release_session(self, guild_id: int, channel_id: int) -> None:
+    async def release_session(self, guild_id: int, channel_id: int, worker_index: int | None = None) -> None:
+        """
+        Libera lo slot del canale. Con `worker_index` toglie la riga SOLO se è ancora di quel worker:
+        un rilascio in ritardo non deve liberare lo slot che nel frattempo è andato a un altro bot.
+        """
+        if worker_index is None:
+            await self._pool.execute(
+                "DELETE FROM music_sessions WHERE guild_id = $1 AND channel_id = $2",
+                guild_id,
+                channel_id,
+            )
+            return
         await self._pool.execute(
-            "DELETE FROM music_sessions WHERE guild_id = $1 AND channel_id = $2",
+            "DELETE FROM music_sessions WHERE guild_id = $1 AND channel_id = $2 AND worker_index = $3",
             guild_id,
             channel_id,
+            worker_index,
         )
+
+    async def all_sessions(self) -> list[MusicSession]:
+        """Tutte le sessioni (al massimo una per worker per canale: poche decine)."""
+        righe = await self._pool.fetch(
+            "SELECT guild_id, channel_id, worker_index, assigned_at FROM music_sessions ORDER BY assigned_at LIMIT 500"
+        )
+        return [MusicSession(r["guild_id"], r["channel_id"], r["worker_index"], r["assigned_at"]) for r in righe]
 
     async def clear_all(self) -> None:
         """

@@ -90,7 +90,7 @@ class SoundboardCog(CogConGruppi, commands.Cog):
             vecchia.cancel()
         task = self._in_background(
             _esci_se_inattivo(
-                flotta, worker_guild, guild_id, canale_id, lock=musica._lock_canale(guild_id, canale_id)
+                flotta, worker_guild, guild_id, canale_id, lock=musica.blocco_canale(guild_id, canale_id)
             )
         )
         self._uscite[chiave] = task
@@ -146,7 +146,7 @@ class SoundboardCog(CogConGruppi, commands.Cog):
         if musica is None:
             await interaction.response.send_message(await testo_per(interaction, "soundboard_la_musica_non_disponibile_ora"), ephemeral=True)
             return
-        if not await musica._controlli_base(interaction):
+        if not await musica.controlli_base(interaction):
             return
         guild = interaction.guild
         resta = self.pausa.resta(guild.id, interaction.user.id)
@@ -189,7 +189,7 @@ class SoundboardCog(CogConGruppi, commands.Cog):
         if musica is None:
             await interaction.response.send_message(await testo_per(interaction, "soundboard_la_musica_non_disponibile_ora"), ephemeral=True)
             return
-        if not await musica._controlli_base(interaction):
+        if not await musica.controlli_base(interaction):
             return
         chiave = await self.ferma_suono(interaction, interaction.user.voice.channel.id)
         await interaction.response.send_message(await testo_per(interaction, chiave), ephemeral=True)
@@ -208,10 +208,10 @@ class SoundboardCog(CogConGruppi, commands.Cog):
         utente = interaction.user
         canale_utente = getattr(getattr(utente, "voice", None), "channel", None)
         canale_suono = guild.get_channel(canale_id)
-        umani = musica._ascoltatori_umani(canale_suono) if canale_suono is not None else []
+        umani = musica.ascoltatori_umani(canale_suono) if canale_suono is not None else []
         if canale_utente is not None and canale_utente.id != canale_id:
             return "suono_altro_canale"  # chi sta in un altro canale non ferma questo (nemmeno lo staff)
-        privilegiato = await musica._privilegi(interaction)
+        privilegiato = await musica.privilegi(interaction)
         if not puo_fermare_suono(privilegiato, suono.avviato_da, utente.id, umani):
             return "suono_non_tuo"
         if not suono.da_solo:
@@ -221,7 +221,7 @@ class SoundboardCog(CogConGruppi, commands.Cog):
         if player is None:
             self._in_corso.togli(guild.id, canale_id)
             return "suono_nessuno_in_corso"
-        async with musica._lock_canale(guild.id, canale_id):
+        async with musica.blocco_canale(guild.id, canale_id):
             if getattr(player, "playing", False) or not getattr(player.queue, "is_empty", True):
                 return "suono_con_musica"  # nel frattempo è partita della musica
             uscita = self._uscite.pop((guild.id, canale_id), None)
@@ -309,24 +309,24 @@ class SoundboardCog(CogConGruppi, commands.Cog):
         """Manda il suono dal bot musicale del canale (o dal primo libero). Restituisce il testo."""
         guild_id = interaction.guild.id
         flotta = self.bot.music_fleet
-        worker_bot, worker_guild, errore = await musica._get_worker(
+        worker_bot, worker_guild, errore = await musica.trova_worker(
             guild_id, auto_assign=True, interaction=interaction
         )
         if errore:
             return errore
-        async with musica._lock_canale(guild_id, canale_id):
+        async with musica.blocco_canale(guild_id, canale_id):
             player = worker_guild.voice_client
             temporaneo = False
             if player is None:
                 nodo = _nodo_del_bot(self.bot, worker_bot)
                 canale_worker = worker_guild.get_channel(canale_id)
                 if nodo is None or canale_worker is None:
-                    await musica._rilascia_se_libero(worker_guild, guild_id, canale_id)
+                    await musica.rilascia_se_libero(worker_guild, guild_id, canale_id)
                     return MSG_NESSUN_NODO if nodo is None else "Il music bot non vede il tuo canale."
                 # Un bot "sordo" non può mandare suoni: qui si entra con l'audio acceso.
-                player, errore = await musica._entra_in_canale(canale_worker, nodo, sordo=False)
+                player, errore = await musica.entra_in_canale(canale_worker, nodo, sordo=False)
                 if errore:
-                    await musica._rilascia_se_libero(worker_guild, guild_id, canale_id)
+                    await musica.rilascia_se_libero(worker_guild, guild_id, canale_id)
                     return errore
                 temporaneo = True
             canale = player.channel

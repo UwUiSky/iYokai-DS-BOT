@@ -87,7 +87,7 @@ class MusicControlloCog(CogConGruppi, commands.Cog):
             )
             return None
         traccia = player.queue[posizione - 1]
-        privilegiato = await musica._privilegi(interaction)
+        privilegiato = await musica.privilegi(interaction)
         if not puo_toccare_brano(privilegiato, requester_of(traccia), interaction.user.id):
             await interaction.response.send_message(await testo_per(interaction, "music_coda_solo_tuoi"), ephemeral=True)
             return None
@@ -180,9 +180,9 @@ class MusicControlloCog(CogConGruppi, commands.Cog):
     async def coda_subito(self, interaction: discord.Interaction, posizione: app_commands.Range[int, 1, 10000]) -> None:
         # MUS-023: interrompe il brano di tutti, quindi serve il privilegio (DJ, staff, da soli nel canale)
         musica = self._musica()
-        if musica is None or not await musica._controlli_base(interaction):
+        if musica is None or not await musica.controlli_base(interaction):
             return
-        if not await musica._privilegi(interaction):
+        if not await musica.privilegi(interaction):
             await interaction.response.send_message(await testo_per(interaction, "music_coda_subito_solo_dj"), ephemeral=True)
             return
         trovato = await self._brano_della_coda(interaction, posizione)
@@ -252,7 +252,7 @@ class MusicControlloCog(CogConGruppi, commands.Cog):
     async def brano_cerca(self, interaction: discord.Interaction, testo: app_commands.Range[str, 2, 100]) -> None:
         # MUS-013: il menu è tuo e scade dopo 60 secondi; i link si usano con /music play
         musica = self._musica()
-        if musica is None or not await musica._controlli_base(interaction):
+        if musica is None or not await musica.controlli_base(interaction):
             return
         if classify_query(testo) != QUERY_TESTO:
             await interaction.response.send_message(await testo_per(interaction, "music_cerca_solo_titoli"), ephemeral=True)
@@ -287,7 +287,7 @@ class MusicControlloCog(CogConGruppi, commands.Cog):
             return
 
         async def avvia(inter: discord.Interaction, scelto: Risultato) -> None:
-            if not await musica._controlli_base(inter):
+            if not await musica.controlli_base(inter):
                 return
             await inter.response.defer(ephemeral=True)
             await musica.accoda(inter.guild, inter.user, scelto.link, inter.followup.send, interaction=inter)

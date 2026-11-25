@@ -88,7 +88,7 @@ class MusicIndovinaCog(CogConGruppi, commands.Cog):
             await self._ferma(interaction)
             return
         musica = self.bot.get_cog("MusicCog")
-        if musica is None or not await musica._controlli_base(interaction):
+        if musica is None or not await musica.controlli_base(interaction):
             return
         rifiuto = await self._motivo_di_rifiuto(interaction, musica)
         if rifiuto is not None:

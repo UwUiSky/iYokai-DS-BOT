@@ -5,6 +5,7 @@ Catalogo MUS (issue #126) giro r5mus: MUS-065, jukebox (un prezzo in monete per 
 Logica dell'addebito e del rimborso, scritture sul database (cassa del server), impostazione e percorso di `accoda`.
 """
 
+from tests.support.flotta_finta import FlottaFinta
 import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock

@@ -201,7 +201,7 @@ class SuoniAltriCog(CogConGruppi, commands.Cog):
         if sound is None or musica is None:
             await interaction.response.send_message(await testo_per(interaction, "soundboard_la_musica_non_disponibile_ora"), ephemeral=True)
             return
-        if not await musica._controlli_base(interaction):
+        if not await musica.controlli_base(interaction):
             return
         utente = interaction.user
         canale = utente.voice.channel

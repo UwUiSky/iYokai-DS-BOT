@@ -18,7 +18,10 @@ limitata.
 
 from __future__ import annotations
 
+import asyncio
 import logging
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 import discord
 from discord.ext import commands
@@ -38,6 +41,9 @@ WORKER_INVITE_PERMISSIONS = discord.Permissions(
 
 
 logger = logging.getLogger("iyokai.music")
+
+# Una sessione appena assegnata ha questo tempo per far entrare il bot nel canale prima che il controllo la liberi.
+GRAZIA_SLOT_SECONDI = 90.0
 
 
 async def _resta_a_coda_finita(guild_id: int) -> bool:
@@ -159,10 +165,61 @@ class MusicFleet:
             scopes=["bot"],
         )
 
-    async def release_session(self, guild_id: int, channel_id: int) -> None:
+    async def release_session(self, guild_id: int, channel_id: int, worker_index: int | None = None) -> None:
         """Chiamata quando una sessione finisce (es. /music disconnect) —
-        libera il worker per il prossimo canale che ne ha bisogno."""
-        await music_session_repo.release_session(guild_id, channel_id)
+        libera il worker per il prossimo canale che ne ha bisogno.
+        Con `worker_index` si libera solo se lo slot è ancora di quel worker."""
+        await music_session_repo.release_session(guild_id, channel_id, worker_index)
+
+    def indice_di(self, worker_bot) -> int | None:
+        """L'indice (1-based) di un worker, o None se non è della flotta."""
+        for i, bot in enumerate(self._worker_bots, start=1):
+            if bot is worker_bot:
+                return i
+        return None
+
+    @asynccontextmanager
+    async def sessione(self, guild_id: int, channel_id: int, worker_bot, worker_guild):
+        """
+        Una richiesta musicale che ha preso uno slot: all'uscita, con qualunque esito (anche un errore
+        imprevisto o l'annullamento), se il worker non è in vocale lo slot si libera. Se è in vocale
+        resta: sotto un player che suona non si libera mai. Se il rilascio stesso fallisce (database
+        giù) ci pensa `libera_slot_persi`.
+        """
+        try:
+            yield
+        finally:
+            if worker_guild is not None and worker_guild.voice_client is None:
+                try:
+                    await asyncio.shield(self.release_session(guild_id, channel_id, self.indice_di(worker_bot)))
+                except Exception:
+                    logger.warning("Slot musicale %s/%s non rilasciato: lo libererà il controllo periodico.", guild_id, channel_id, exc_info=True)
+
+    async def libera_slot_persi(self, *, grazia_secondi: float = GRAZIA_SLOT_SECONDI) -> int:
+        """
+        Controllo periodico: libera gli slot dei worker che non sono più in vocale in quel canale
+        (errori, riavvii di un worker, player caduto con Lavalink). Una riga appena assegnata ha
+        `grazia_secondi` di tempo per far entrare il bot. Restituisce quanti slot ha liberato.
+        """
+        adesso = datetime.now(timezone.utc)
+        liberati = 0
+        for riga in await music_session_repo.all_sessions():
+            if (adesso - riga.assigned_at).total_seconds() < grazia_secondi:
+                continue
+            if not 1 <= riga.worker_index <= self.total_workers:
+                continue
+            worker = self.get_worker_bot(riga.worker_index)
+            if not worker.is_ready():
+                continue  # worker spento o in riconnessione: non si può sapere
+            guild = worker.get_guild(riga.guild_id)
+            voce = getattr(guild, "voice_client", None) if guild is not None else None
+            canale = getattr(voce, "channel", None)
+            if guild is not None and voce is not None and getattr(canale, "id", None) == riga.channel_id:
+                continue  # sessione viva
+            await music_session_repo.release_session(riga.guild_id, riga.channel_id, riga.worker_index)
+            logger.warning("Slot musicale perso liberato: server %s, canale %s, worker %s.", riga.guild_id, riga.channel_id, riga.worker_index)
+            liberati += 1
+        return liberati
 
 
 async def handle_inactive_player(player, fleet: MusicFleet) -> None:

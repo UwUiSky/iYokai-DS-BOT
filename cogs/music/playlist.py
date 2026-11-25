@@ -292,7 +292,7 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
         if musica is None:
             await interaction.response.send_message(await testo_per(interaction, "soundboard_la_musica_non_disponibile_ora"), ephemeral=True)
             return
-        if not await musica._controlli_base(interaction):
+        if not await musica.controlli_base(interaction):
             return
         proprietario = await self._proprietario(interaction, di, nome)  # MUS-086
         if proprietario is None:
@@ -653,7 +653,7 @@ class MusicPlaylistCog(CogConGruppi, commands.Cog):
         if musica is None or interaction.guild_id is None:
             await interaction.response.send_message(await testo_per(interaction, "soundboard_la_musica_non_disponibile_ora"), ephemeral=True)
             return
-        if not await musica._controlli_base(interaction):
+        if not await musica.controlli_base(interaction):
             return
         await interaction.response.defer()
         brani = await music_guild_playlist_repo.get(interaction.guild_id, nome)

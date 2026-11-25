@@ -12,6 +12,7 @@ e la ricerca sono mockati, come in tests/test_music_routing.py.
 
 from unittest.mock import AsyncMock, patch
 
+from tests.support.flotta_finta import FlottaFinta
 import discord
 import pytest
 import wavelink
@@ -128,7 +129,7 @@ class _FakeWorkerBot:
         return self._worker_guild
 
 
-class _FakeFleet:
+class _FakeFleet(FlottaFinta):
     def __init__(self, player) -> None:
         self._player = player
 

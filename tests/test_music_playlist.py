@@ -176,7 +176,7 @@ class _Musica:
     async def _giocatore_attivo(self, interaction):
         return self.player
 
-    async def _controlli_base(self, interaction):
+    async def controlli_base(self, interaction):
         return True
 
     async def accoda(self, guild, membro, query, rispondi, **kw):

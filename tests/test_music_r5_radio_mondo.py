@@ -282,7 +282,7 @@ async def test_pagina_che_non_risponde_da_un_errore_e_resta_dov_e():
 async def test_comando_radio_con_pausa_e_senza_voce(monkeypatch):
     import cogs.music.mondo as mondo
 
-    cog = mondo.MusicMondoCog(SimpleNamespace(get_cog=lambda n: SimpleNamespace(_controlli_base=AsyncMock(return_value=True))))
+    cog = mondo.MusicMondoCog(SimpleNamespace(get_cog=lambda n: SimpleNamespace(controlli_base=AsyncMock(return_value=True))))
     inter = SimpleNamespace(
         guild=SimpleNamespace(id=1), user=SimpleNamespace(id=5),
         response=SimpleNamespace(defer=AsyncMock(), send_message=AsyncMock()),

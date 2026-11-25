@@ -1,7 +1,7 @@
 """
 tests/test_music_guard_clauses.py
 =====================================
-Test di MusicCog._controlli_base() — la parte verificabile senza una
+Test di MusicCog.controlli_base() — la parte verificabile senza una
 connessione Lavalink/voce vera (vedi il limite dichiarato in cima a
 cogs/music/player.py). Contro PostgreSQL reale per il controllo del
 modulo attivo.
@@ -55,7 +55,7 @@ class _FakeMember:
 
 class _FakeRealMember(discord.Member):
     """Eredita davvero da discord.Member (senza chiamarne il
-    costruttore) — serve perché _controlli_base fa isinstance(...,
+    costruttore) — serve perché controlli_base fa isinstance(...,
     discord.Member), che un semplice oggetto finto senza questa
     eredità non supererebbe mai. discord.Member.voice è una PROPERTY
     di sola lettura che legge da self.guild._voice_state_for(...) -
@@ -85,7 +85,7 @@ async def test_fuori_da_un_server_rifiuta():
     cog = MusicCog(bot=None)
     interaction = _FakeInteraction(guild_id=None, user=_FakeMember(voice=None))
 
-    risultato = await cog._controlli_base(interaction)
+    risultato = await cog.controlli_base(interaction)
 
     assert risultato is False
     assert "solo dentro un server" in interaction.response.sent_messages[0]
@@ -106,7 +106,7 @@ async def test_modulo_disattivato_rifiuta(monkeypatch):
         cog = MusicCog(bot=None)
         interaction = _FakeInteraction(guild_id, user=_FakeMember(voice=None))
 
-        risultato = await cog._controlli_base(interaction)
+        risultato = await cog.controlli_base(interaction)
 
         assert risultato is False
         assert "non è attivo" in interaction.response.sent_messages[0]
@@ -130,7 +130,7 @@ async def test_utente_non_in_vocale_rifiuta(monkeypatch):
         cog = MusicCog(bot=None)
         interaction = _FakeInteraction(guild_id, user=_FakeRealMember(voice=None))
 
-        risultato = await cog._controlli_base(interaction)
+        risultato = await cog.controlli_base(interaction)
 
         assert risultato is False
         assert "canale vocale" in interaction.response.sent_messages[0]
@@ -154,7 +154,7 @@ async def test_tutti_i_controlli_passano(monkeypatch):
         interaction = _FakeInteraction(guild_id, user=_FakeRealMember(voice=object()))
 
         cog = MusicCog(bot=None)
-        risultato = await cog._controlli_base(interaction)
+        risultato = await cog.controlli_base(interaction)
 
         assert risultato is True
         assert interaction.response.sent_messages == []

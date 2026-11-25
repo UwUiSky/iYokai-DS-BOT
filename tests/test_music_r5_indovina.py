@@ -137,7 +137,7 @@ class _Mondo:
             return 11
 
         self.musica = SimpleNamespace(
-            _controlli_base=AsyncMock(return_value=True), accoda=accoda, _cerca_su=AsyncMock(),
+            controlli_base=AsyncMock(return_value=True), accoda=accoda, _cerca_su=AsyncMock(),
         )
 
 

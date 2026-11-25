@@ -77,19 +77,19 @@ class _Musica:
         self.ingressi: list = []
         self._lock = asyncio.Lock()
 
-    async def _controlli_base(self, interaction):
+    async def controlli_base(self, interaction):
         return True
 
-    async def _get_worker(self, guild_id, **kw):
+    async def trova_worker(self, guild_id, **kw):
         return SimpleNamespace(name="w1"), self.worker_guild, None
 
-    def _lock_canale(self, g, c):
+    def blocco_canale(self, g, c):
         return self._lock
 
-    async def _rilascia_se_libero(self, *a):
+    async def rilascia_se_libero(self, *a):
         pass
 
-    async def _entra_in_canale(self, canale, nodo, volume=None, sordo=True):
+    async def entra_in_canale(self, canale, nodo, volume=None, sordo=True):
         self.ingressi.append(sordo)
         player = SimpleNamespace(channel=canale, playing=False, queue=SimpleNamespace(is_empty=True))
         self.worker_guild.voice_client = player

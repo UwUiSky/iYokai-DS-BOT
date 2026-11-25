@@ -40,7 +40,7 @@ class MusicMondoCog(CogConGruppi, commands.Cog):
     @app_commands.describe(nome="Parte del nome della stazione (2-60 caratteri)")
     async def radio(self, interaction: discord.Interaction, nome: app_commands.Range[str, 2, NOME_MAX]) -> None:
         musica = self._musica()
-        if musica is None or not await musica._controlli_base(interaction):
+        if musica is None or not await musica.controlli_base(interaction):
             return
         pulito = nome_ricerca_valido(nome)
         if pulito is None:
@@ -71,7 +71,7 @@ class MusicMondoCog(CogConGruppi, commands.Cog):
             return await cerca_stazioni(n, pagina)
 
         async def avvia(inter: discord.Interaction, stazione) -> None:
-            if not await musica._controlli_base(inter):
+            if not await musica.controlli_base(inter):
                 return
             await inter.response.defer(ephemeral=True)
             await musica.accoda(
@@ -84,7 +84,7 @@ class MusicMondoCog(CogConGruppi, commands.Cog):
     @comando_di_gruppo("music", nome="genere", descrizione="Scegli una playlist per genere dal menu.")
     async def genere(self, interaction: discord.Interaction) -> None:
         musica = self._musica()
-        if musica is None or not await musica._controlli_base(interaction):
+        if musica is None or not await musica.controlli_base(interaction):
             return
         await interaction.response.defer(ephemeral=True)
         lingua = await lingua_interazione(interaction)
@@ -94,7 +94,7 @@ class MusicMondoCog(CogConGruppi, commands.Cog):
             return
 
         async def avvia(inter: discord.Interaction, voce) -> None:
-            if not await musica._controlli_base(inter):
+            if not await musica.controlli_base(inter):
                 return
             await inter.response.defer(ephemeral=True)
             await musica.accoda(inter.guild, inter.user, voce.link, inter.followup.send, interaction=inter)

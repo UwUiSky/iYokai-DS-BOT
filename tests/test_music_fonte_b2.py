@@ -273,7 +273,7 @@ def test_play_ha_l_opzione_fonte_con_sei_scelte():
 @pytest.mark.asyncio
 async def test_play_con_fonte_spenta_risponde_prima_del_defer(monkeypatch):
     cog = MusicCog(bot=None)
-    cog._controlli_base = AsyncMock(return_value=True)
+    cog.controlli_base = AsyncMock(return_value=True)
     cog.accoda = AsyncMock()
     i = MagicMock()
     i.response.send_message = AsyncMock()
@@ -289,7 +289,7 @@ async def test_play_con_fonte_spenta_risponde_prima_del_defer(monkeypatch):
 @pytest.mark.asyncio
 async def test_play_passa_la_fonte_ad_accoda():
     cog = MusicCog(bot=None)
-    cog._controlli_base = AsyncMock(return_value=True)
+    cog.controlli_base = AsyncMock(return_value=True)
     cog.accoda = AsyncMock()
     i = MagicMock()
     i.response.defer = AsyncMock()
