@@ -223,7 +223,7 @@ def worker_in_scena(monkeypatch, repo):
     monkeypatch.setattr(w, "giveaway_repo", repo)
     canale = _Canale()
 
-    async def trova(guild, channel_id):
+    async def trova(guild, channel_id, **_):
         return canale
 
     monkeypatch.setattr(w, "_canale_del_giveaway", trova)

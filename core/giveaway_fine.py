@@ -108,9 +108,15 @@ async def scrivi_nel_log(guild, canale_log_id: int | None, giveaway, vincitori: 
 
 
 async def concludi(
-    canale, guild, giveaway, vincitori: list[int], opzioni, lingua: str, *, vista=None, riestrazione: bool = False
+    canale, guild, giveaway, vincitori: list[int], opzioni, lingua: str, *, vista=None, riestrazione: bool = False,
+    solleva_se_discord_non_risponde: bool = False,
 ) -> None:
-    """Annuncia i vincitori e poi fa il resto (ruolo, messaggi privati, log). Ogni passo che fallisce non ferma gli altri."""
+    """
+    Annuncia i vincitori e poi fa il resto (ruolo, messaggi privati, log). Ogni passo che fallisce non ferma gli altri.
+    Con `solleva_se_discord_non_risponde` (il worker) un errore temporaneo dell'annuncio (Discord giù, limite di
+    richieste) esce PRIMA del resto: il chiamante riprova tutto al giro dopo. Un canale chiuso o sparito (403, 404)
+    non si riprova: si va avanti come prima.
+    """
     try:
         # Si avvisano solo i vincitori: il premio è testo libero (@everyone, ruoli).
         await canale.send(
@@ -120,10 +126,12 @@ async def concludi(
             ),
             **({"view": vista} if vista is not None else {}),
         )
-    except discord.HTTPException:
+    except discord.HTTPException as errore:
         logger.warning(
             "Impossibile annunciare la fine del giveaway %s nel canale %s.", giveaway.id, giveaway.channel_id
         )
+        if solleva_se_discord_non_risponde and not isinstance(errore, (discord.Forbidden, discord.NotFound)):
+            raise
     if guild is None or not hasattr(guild, "get_role"):
         return
     premio = await dai_ruolo_premio(guild, giveaway, vincitori)

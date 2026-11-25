@@ -14,6 +14,8 @@ main.py), non effimera come quella dei drop.
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -120,6 +122,10 @@ async def run_migrations(pool: asyncpg.Pool) -> None:
             ON giveaways (ended, ends_at);
         """
     )
+
+
+# Chiave del lock «fine di un giveaway»: la seconda parte è l'id del giveaway.
+_CHIAVE_FINE_GIVEAWAY = 7_150_001
 
 
 class GiveawayRepository:
@@ -239,6 +245,52 @@ class GiveawayRepository:
             "UPDATE giveaways SET ended = true WHERE id = $1 AND ended = false", giveaway_id
         )
         return result.endswith(" 1")
+
+    async def avvia_chiusura(self, giveaway_id: int) -> bool:
+        """
+        Il worker prende in carico la fine di un giveaway scaduto: lo chiude (nessuno può più entrare) e lo
+        mette in fase «estrazione». Vero solo per chi lo prende davvero (due giri insieme: uno solo).
+        """
+        result = await self._pool.execute(
+            "UPDATE giveaways SET ended = true, fase_fine = 'estrazione' WHERE id = $1 AND ended = false", giveaway_id
+        )
+        return result.endswith(" 1")
+
+    async def in_chiusura(self) -> list[tuple[Giveaway, str]]:
+        """I giveaway con la fine a metà (estrazione o annuncio da fare), con la fase. Al massimo 50 per giro."""
+        rows = await self._pool.fetch(
+            "SELECT * FROM giveaways WHERE ended AND fase_fine IN ('estrazione', 'annuncio') ORDER BY ends_at, id LIMIT 50"
+        )
+        return [(self._row_to_giveaway(r), r["fase_fine"]) for r in rows]
+
+    @asynccontextmanager
+    async def prendi_fine(self, giveaway_id: int):
+        """
+        Il «turno» per portare avanti la fine di un giveaway: un lock del database (valido anche tra processi).
+        Dà la fase attuale se il turno è preso, o None se un altro giro lo sta già facendo o è già finito.
+        Il lock sta su una connessione dedicata e si rilascia all'uscita.
+        """
+        async with self._pool.acquire() as conn:
+            preso = await conn.fetchval("SELECT pg_try_advisory_lock($1, $2)", _CHIAVE_FINE_GIVEAWAY, giveaway_id)
+            try:
+                if not preso:
+                    yield None
+                    return
+                fase = await conn.fetchval("SELECT fase_fine FROM giveaways WHERE id = $1 AND ended", giveaway_id)
+                yield fase if fase in ("estrazione", "annuncio") else None
+            finally:
+                if preso:
+                    await conn.fetchval("SELECT pg_advisory_unlock($1, $2)", _CHIAVE_FINE_GIVEAWAY, giveaway_id)
+
+    async def passa_a_fase(self, giveaway_id: int, fase: str) -> None:
+        """Avanza (o chiude, con «fatto» o «fallito») la fine di un giveaway."""
+        await self._pool.execute("UPDATE giveaways SET fase_fine = $2 WHERE id = $1", giveaway_id, fase)
+
+    async def conta_tentativo_fine(self, giveaway_id: int) -> int:
+        """Un tentativo di fine andato male: restituisce quanti sono in tutto."""
+        return await self._pool.fetchval(
+            "UPDATE giveaways SET tentativi_fine = tentativi_fine + 1 WHERE id = $1 RETURNING tentativi_fine", giveaway_id
+        )
 
     async def segna_errore(self, giveaway_id: int, errore: str) -> None:
         """
@@ -553,8 +605,11 @@ class GiveawayRepository:
             guild_id,
         )
 
-    async def segna_vincitori(self, giveaway_id: int, vincitori: list[int]) -> None:
-        """I vincitori attuali; quelli di prima diventano «scartati» e non si ripescano."""
+    async def segna_vincitori(self, giveaway_id: int, vincitori: list[int], fase_successiva: str | None = None) -> None:
+        """
+        I vincitori attuali; quelli di prima diventano «scartati» e non si ripescano. Con `fase_successiva`
+        (la fine a stati del worker) la fase avanza nella STESSA transazione: o i vincitori e la fase, o niente.
+        """
         async with self._pool.acquire() as conn:
             async with conn.transaction():
                 await conn.execute(
@@ -565,6 +620,8 @@ class GiveawayRepository:
                     "UPDATE giveaway_entries SET vincitore = TRUE WHERE giveaway_id = $1 AND user_id = ANY($2::bigint[])",
                     giveaway_id, vincitori,
                 )
+                if fase_successiva is not None:
+                    await conn.execute("UPDATE giveaways SET fase_fine = $2 WHERE id = $1", giveaway_id, fase_successiva)
 
     async def get_vincitori(self, giveaway_id: int) -> list[int]:
         rows = await self._pool.fetch(
