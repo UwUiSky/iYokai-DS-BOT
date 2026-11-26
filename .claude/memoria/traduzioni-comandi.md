@@ -12,7 +12,8 @@ quindi nelle descrizioni i termini che le citano (es. «accumula», «nessuno»,
 - en-US: nomi (completati), descrizioni, parametri, menu = FATTO.
 - de: nomi (842), descrizioni (1.346), parametri (2.412), menu (22) = FATTO.
 - es-ES: nomi (842), descrizioni, parametri, menu = FATTO.
-- fr, ja, ko, ru, uk, zh-CN: da fare (in quest'ordine).
+- fr: FATTO.
+- ja, ko, ru, uk, zh-CN: da fare (in quest'ordine).
 
 ## Prossimo passo
 Tradurre la lingua successiva dalla lista; commit e push dopo ogni lingua; aggiornare questa nota.
