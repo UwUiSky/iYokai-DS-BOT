@@ -1813,7 +1813,7 @@ Cambia D56 sui limiti e sposta i gruppi. Nessuna funzione si toglie: si sposta o
 - **Limiti (sostituiscono quelli di D56).** Comandi di primo livello globali: tetto 100 (limite Discord), avviso a 90, contando `/premium` e `/vip`; `/owner` e `/owner-radio` stanno solo nel server dell'owner. Figli: al massimo 25 per gruppo (18 resta un obiettivo, un avviso). Profondità 3. Peso: ogni gruppo si calcola come se ogni traduzione fosse più lunga del 30% della versione più lunga tra it ed en, per ogni campo (nome 32, descrizione 100, nome scelta 100; i valori delle scelte non si traducono), o con la traduzione vera se più lunga; limite 8.000, avviso a 6.800. Dopo il riordino: 54 gruppi globali, il più pesante `/admin-alert` a 7.478.
 - **Effetti da sapere.** Le sospensioni dei giochi (`RADICI_DI_GIOCO`) ora valgono anche per `/monete mercato` e `/giochi tela` (stanno sotto `monete` e `giochi`).
 
-## D138 — Il bot va avanti da solo, 24/7 (blocco C del consiglio), 25/11/2026, opzione consigliata, da confermare dall'owner
+## D144 — Il bot va avanti da solo, 24/7 (blocco C del consiglio), 25/11/2026, opzione consigliata, da confermare dall'owner
 
 Scelte che l'owner vede o sente (il resto è nel codice e nei test):
 - **Giri periodici.** Ogni lavoro in background passa da `core/giro_periodico.py`: un errore non lo ferma, dopo ogni errore aspetta 5 s, 10 s, 20 s... fino a 15 minuti. L'ultimo giro riuscito sta nel database (`giri_periodici`): dopo un riavvio i lavori lunghi (da 5 minuti in su) non ripartono tutti insieme ma aspettano il resto del loro intervallo, con un piccolo scarto. Con più processi sullo stesso database gira solo uno (lock di leadership).
