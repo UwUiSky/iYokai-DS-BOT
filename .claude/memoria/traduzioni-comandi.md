@@ -15,7 +15,8 @@ quindi nelle descrizioni i termini che le citano (es. «accumula», «nessuno»,
 - fr: FATTO.
 - ja: FATTO.
 - ko: FATTO.
-- ru, uk, zh-CN: da fare (in quest'ordine).
+- ru: FATTO.
+- uk, zh-CN: da fare (in quest'ordine).
 
 ## Prossimo passo
 Tradurre la lingua successiva dalla lista; commit e push dopo ogni lingua; aggiornare questa nota.
