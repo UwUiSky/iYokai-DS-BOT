@@ -19,7 +19,7 @@ from tests.test_command_tree_invariants import _albero_vero, _chiudi, _radici, _
 pytestmark = pytest.mark.asyncio
 
 # Cricchetto sulle descrizioni delle OPZIONI (comandi:opzione): si alza solo, mai si abbassa.
-MINIMO_PARAMETRI_TRADOTTI = 0
+MINIMO_PARAMETRI_TRADOTTI = 2400
 
 
 def _percorso(nodo) -> str:
@@ -139,7 +139,8 @@ async def test_il_traduttore_risponde_solo_in_inglese_e_il_payload_ha_le_localiz
         carico = await modban.get_translated_payload(bot.tree, bot.tree.translator)
         assert carico["description_localizations"]["en-US"] == tr.descrizione_inglese("mod-ban")
         assert carico["description_localizations"]["en-GB"] == tr.descrizione_inglese("mod-ban")
-        assert "it" not in carico["description_localizations"] and "fr" not in carico["description_localizations"]
+        assert "it" not in carico["description_localizations"]  # l'italiano è la base
+        assert carico["description_localizations"]["fr"] == tr.descrizione_tradotta("mod-ban", "fr")
         gestione = await bot.tree.get_command("admin-vocali").get_translated_payload(bot.tree, bot.tree.translator)
         assert gestione["name_localizations"]["en-US"] == "admin-voice"
         assert discord.Locale.italian.value == "it"

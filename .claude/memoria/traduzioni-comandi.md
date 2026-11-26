@@ -1,0 +1,23 @@
+# Traduzioni dei comandi (NF-06, #77)
+
+Lavoro di scrittura di `locales/<lingua>/comandi.json` (nomi, descrizioni, parametri, menu).
+Ramo: `feat/trad-comandi`. Lingue: en-US, de, es-ES, fr, ja, ko, ru, uk, zh-CN.
+Totali dell'albero vero: 841 segmenti di nome, 1.346 descrizioni, 2.412 opzioni, 22 menu.
+Testi unici da tradurre (descrizioni + opzioni): 3.379.
+
+Regola sulle scelte: i NOMI delle scelte (choices) restano in italiano e non si traducono,
+quindi nelle descrizioni i termini che le citano (es. «accumula», «nessuno», «togli») restano in italiano.
+
+## Stato
+- en-US: nomi (completati), descrizioni, parametri, menu = FATTO.
+- de: nomi (842), descrizioni (1.346), parametri (2.412), menu (22) = FATTO.
+- es-ES: nomi (842), descrizioni, parametri, menu = FATTO.
+- fr: FATTO.
+- ja: FATTO.
+- ko: FATTO.
+- ru: FATTO.
+- uk: FATTO (nomi 842, descrizioni 1.346, parametri 2.412, menu 22).
+- zh-CN: FATTO (nomi 842, descrizioni 1.346, parametri 2.412, menu 22). Tutte le lingue finite.
+
+## Prossimo passo
+Tradurre la lingua successiva dalla lista; commit e push dopo ogni lingua; aggiornare questa nota.

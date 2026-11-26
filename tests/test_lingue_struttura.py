@@ -123,6 +123,7 @@ def test_il_prefisso_dello_staff_non_si_traduce(monkeypatch):
 def test_il_traduttore_manda_solo_le_chiavi_tradotte(monkeypatch):
     dati = tr.carica_tutte()
     monkeypatch.setitem(dati, "fr", {s: {} for s in tr.SEZIONI})
+    monkeypatch.setitem(dati, "de", {s: {} for s in tr.SEZIONI})   # una lingua senza chiavi tradotte
     dati["fr"]["descrizioni"]["mod-ban"] = "Bannit un membre."
     L = discord.app_commands.TranslationContextLocation
     comando = MagicMock(qualified_name="mod-ban")
@@ -150,9 +151,10 @@ async def test_il_peso_conta_la_versione_piu_lunga_tra_le_lingue(monkeypatch):
     from discord import app_commands
 
     comando = app_commands.Command(name="ban", description="x" * 10, callback=_cb)
-    base = tr.caratteri_con_traduzioni(comando)
     dati = tr.carica_tutte()
-    monkeypatch.setitem(dati, "de", {s: {} for s in tr.SEZIONI})
+    for lingua in tr.LINGUE:   # nessuna traduzione vera: solo la stima +30% e poi la lingua di prova
+        monkeypatch.setitem(dati, lingua, {s: {} for s in tr.SEZIONI})
+    base = tr.caratteri_con_traduzioni(comando)
     dati["de"]["descrizioni"]["ban"] = "y" * 60
     dati["de"]["nomi"]["ban"] = "verbannen"
     # D137: nome 3 -> 4 (+30%), descrizione 10 -> 13; la traduzione vera più lunga vince sulla stima
