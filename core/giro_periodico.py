@@ -277,7 +277,7 @@ class GiroPeriodico(tasks.Loop):
         super().cancel()
 
     def stato(self) -> dict[str, Any]:
-        """Stato leggibile, per /salute."""
+        """Stato leggibile, per il controllo di salute."""
         return {
             "nome": self.nome,
             "vivo": self.is_running(),

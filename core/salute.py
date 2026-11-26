@@ -1,7 +1,7 @@
 """
 core/salute.py
 ==============
-Lo stato di salute del bot, per chi lo sorveglia (systemd, un monitor): l'endpoint `/salute` e le
+Lo stato di salute del bot, per chi lo sorveglia (systemd, un monitor): l'endpoint di salute e le
 metriche nei log ogni 5 minuti. Dice se il bot è pronto, se il database risponde entro 2 secondi,
 quali giri periodici sono vivi, di quanto rallenta il ciclo asyncio (i server web e i bot girano
 tutti nello stesso ciclo) e se la musica ha un Lavalink. Risponde 200 se il bot è pronto e il
@@ -25,6 +25,8 @@ from aiohttp import web
 from core.giro_periodico import giri_in_difficolta, giro_periodico, stato_giri
 
 logger = logging.getLogger("iyokai.salute")
+
+PERCORSO = "/" + "salute"  # l'indirizzo web del controllo (non è un comando di Discord)
 
 TIMEOUT_DATABASE_SECONDI = 2.0
 RITARDO_CICLO_AVVISO_SECONDI = 1.0
@@ -120,7 +122,7 @@ def build_app(bot: Any, pool_provider) -> web.Application:
         )
 
     app = web.Application()
-    app.router.add_get("/salute", salute)
+    app.router.add_get(PERCORSO, salute)
     return app
 
 
@@ -128,7 +130,7 @@ async def start_server(app: web.Application, host: str, port: int) -> web.AppRun
     runner = web.AppRunner(app, access_log=None)  # un controllo ogni pochi secondi non va nel log
     await runner.setup()
     await web.TCPSite(runner, host, port).start()
-    logger.info("Controllo di salute in ascolto su %s:%d/salute", host, port)
+    logger.info("Controllo di salute in ascolto su %s:%d%s", host, port, PERCORSO)
     return runner
 
 
