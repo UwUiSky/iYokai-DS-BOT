@@ -209,9 +209,11 @@ class GiroPeriodico(tasks.Loop):
         intervallo = self._intervallo_secondi()
         if self._subito or intervallo < 30:
             return
+        _, pool = _dsn_e_pool()
+        if pool is None:
+            return  # senza database non c'è un «ultimo giro» da rispettare: si parte subito
         attesa = random.uniform(0, min(30.0, intervallo * 0.1))
         if intervallo >= SOGLIA_RIPRESA_SECONDI:
-            _, pool = _dsn_e_pool()
             if pool is not None:
                 try:
                     ultimo = await asyncio.wait_for(

@@ -66,7 +66,7 @@ async def test_senza_voce_in_memoria_si_legge_il_registro_dopo_il_primo_giro():
     )
     g = _Guild([voce])
     assert await sa.resolve_voce(g, discord.AuditLogAction.channel_delete, 900) == (8, 900)
-    assert g.letture == 1  # solo al secondo tentativo: il primo guarda soltanto la memoria
+    assert g.letture == 1  # niente in memoria: si legge il registro (una volta, trovata subito)
 
 
 async def test_una_voce_vecchia_in_memoria_non_vale(monkeypatch):

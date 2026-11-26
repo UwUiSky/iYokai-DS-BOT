@@ -78,14 +78,12 @@ async def resolve_voce(
     blocchi l'evento.
     """
     now = discord.utils.utcnow()
-    for tentativo, attesa in enumerate(attese):
+    for attesa in attese:
         if attesa:
             await _aspetta(attesa)
         in_memoria = _voce_in_memoria(guild.id, action, target_id)
         if in_memoria is not None:
             return in_memoria
-        if tentativo == 0 and len(attese) > 1:
-            continue  # il primo giro guarda solo in memoria: la voce arriva da sola, di solito entro un secondo
         try:
             async for entry in guild.audit_logs(action=action, limit=10):
                 if (now - entry.created_at).total_seconds() > LOOKBACK_REGISTRO_SECONDI:
