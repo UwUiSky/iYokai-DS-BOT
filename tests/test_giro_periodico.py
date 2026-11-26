@@ -152,8 +152,10 @@ async def test_errore_salvato_nel_database(clean_db, monkeypatch):
     assert "guasto" in riga["testo_errore"]
 
 
-async def test_solo_il_leader_gira(clean_db):
+async def test_solo_il_leader_gira(clean_db, monkeypatch):
     """Con il lock già preso da un altro processo, questo non è leader e salta il giro."""
+    # Chiave propria: il lock vero può già essere tenuto dal singleton `leadership` di altri test della stessa sessione.
+    monkeypatch.setattr(gp, "CHIAVE_LEADERSHIP", 0x7E57_0001)
     dsn = os.environ["DATABASE_URL"]
     altro = await asyncpg.connect(dsn)
     try:

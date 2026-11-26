@@ -165,7 +165,7 @@ class FeedWatcherService:
             return False
         self._avvisi.riarma(("rss", sottoscrizione.id))
         if not self._freni.puo_provare(("rss", sottoscrizione.id), time.monotonic()):
-            return True  # in pausa dopo un rifiuto di Discord: niente richieste, niente 304 da evitare
+            return False  # in pausa dopo un rifiuto di Discord: niente richieste; resta da ritentare (niente ETag)
 
         opz = replace(await alert_options_repo.get("RSS", sottoscrizione.id), watch_button=False)
 
@@ -198,7 +198,7 @@ class FeedWatcherService:
                 self._freni.riuscito(("rss", sottoscrizione.id))
             except (discord.Forbidden, discord.NotFound):
                 await self._rifiutato(sottoscrizione)
-                return True  # non si ritenta nello stesso giro: la pausa decide quando
+                return False  # non si ritenta nello stesso giro: la pausa decide quando (e niente ETag)
             except discord.HTTPException:
                 # P3: invio fallito = niente avanzamento; la voce (e le
                 # successive, per mantenere l'ordine) si ritenta al giro dopo.

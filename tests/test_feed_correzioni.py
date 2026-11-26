@@ -138,6 +138,9 @@ async def test_invio_fallito_non_perde_le_voci(ambiente):
 
     canale.fallisci = False
     await servizio.tick(bot)
+    assert canale.sent_messages == []  # il rifiuto 403 mette la sottoscrizione in pausa: niente richieste ravvicinate
+    servizio._freni.dimentica(("rss", sid))  # passata la pausa
+    await servizio.tick(bot)
     assert [m for m in canale.sent_messages if "2" in m or "3" in m] and len(canale.sent_messages) == 2
     assert (await repo.list_subscriptions(100))[0].last_seen_entry_id == "post-3"
     await servizio.tick(bot)
