@@ -26,7 +26,10 @@ PROPRIETARIO = 1
 def mondo(monkeypatch, clean_db, reset_premium_registry):
     monkeypatch.setattr(database_module.db, "_pool", clean_db)
     for nome in MODULI_SICUREZZA:
-        registry.register(PremiumModule(nome, nome, "prova", category="security"))
+        # Se un altro test ha già importato il cog vero, il modulo è registrato con la sua dichiarazione:
+        # si usa quello (registrarne uno diverso con lo stesso nome è vietato dal registro).
+        if registry.get(nome) is None:
+            registry.register(PremiumModule(nome, nome, "prova", category="security"))
     guild = fake_guild(guild_id=GUILD, owner_id=PROPRIETARIO)
     guild.owner = MagicMock(send=AsyncMock())
     guild.get_role.return_value = None
