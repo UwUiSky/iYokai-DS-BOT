@@ -17,7 +17,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageOps
 
 from core.leveling_logic import colore_valido
 from core.rank_card_image import carica_font, senza_quadrati, taglia_al_largo
-from core.safe_image import safe_open_image
+from core.safe_image import SandboxNonDisponibile, apri_in_sandbox
 
 LARGHEZZA = 1024
 ALTEZZA = 400
@@ -67,7 +67,7 @@ def prepara_sfondo(image_bytes: bytes) -> bytes:
     (16 megapixel, 2048 px; solleva ImmagineTroppoGrande o UnidentifiedImageError),
     ritagliato alla misura del benvenuto e ricompresso in JPEG.
     """
-    img = safe_open_image(image_bytes).convert("RGB")
+    img = apri_in_sandbox(image_bytes).convert("RGB")
     img = ImageOps.fit(img, (LARGHEZZA, ALTEZZA), method=Image.LANCZOS)
     for qualita in (88, 75, 60):
         buffer = io.BytesIO()
@@ -92,10 +92,12 @@ def _sfumatura(modello: str) -> Image.Image:
 def _sfondo(modello: str, sfondo_bytes: bytes | None, opacita: int = OPACITA_DI_BASE) -> Image.Image:
     if sfondo_bytes:
         try:
-            img = ImageOps.fit(safe_open_image(sfondo_bytes).convert("RGB"), (LARGHEZZA, ALTEZZA), method=Image.LANCZOS)
+            img = ImageOps.fit(apri_in_sandbox(sfondo_bytes).convert("RGB"), (LARGHEZZA, ALTEZZA), method=Image.LANCZOS)
             # Un velo scuro: il testo si legge su qualunque sfondo.
             velo = Image.new("RGB", img.size, (0, 0, 0))
             return Image.blend(img, velo, 1 - max(0, min(opacita, 100)) / 100)
+        except SandboxNonDisponibile:
+            raise  # senza sandbox il lavoro si rifiuta: lo dice chi chiama
         except Exception:  # sfondo rotto: si usa il modello
             pass
     return _sfumatura(modello)
@@ -106,8 +108,10 @@ def _avatar(avatar_bytes: bytes | None, forma: str) -> Image.Image:
     if avatar_bytes:
         try:
             quadrato = ImageOps.fit(
-                safe_open_image(avatar_bytes).convert("RGB"), (LATO_AVATAR, LATO_AVATAR), method=Image.LANCZOS
+                apri_in_sandbox(avatar_bytes).convert("RGB"), (LATO_AVATAR, LATO_AVATAR), method=Image.LANCZOS
             )
+        except SandboxNonDisponibile:
+            raise  # senza sandbox il lavoro si rifiuta: lo dice chi chiama
         except Exception:  # avatar rotto: resta il riquadro grigio
             pass
     maschera = Image.new("L", (LATO_AVATAR * 4, LATO_AVATAR * 4), 0)

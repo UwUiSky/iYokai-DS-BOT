@@ -13,6 +13,7 @@ import io
 from PIL import Image, ImageDraw
 
 from core.rank_card_image import _compatto, carica_font, senza_quadrati, taglia_al_largo
+from core.safe_image import SandboxNonDisponibile, apri_in_sandbox
 
 LARGHEZZA, ALTEZZA = 720, 260
 FONDO = (7, 7, 11)  # void
@@ -39,8 +40,10 @@ def render_wallet_card(nome: str, contanti: int, banca: int, posizione: int | No
         d.text((48, 214), f"#{posizione} in classifica", font=f_piccolo, fill=SECONDARIO)
     if moneta_png:
         try:
-            m = Image.open(io.BytesIO(moneta_png)).convert("RGBA").resize((120, 120))
+            m = apri_in_sandbox(moneta_png).convert("RGBA").resize((120, 120))
             tela.paste(m, (LARGHEZZA - 160, 60), m)
+        except SandboxNonDisponibile:
+            raise  # senza sandbox il lavoro si rifiuta: lo dice chi chiama
         except Exception:  # un'immagine rovinata non ferma il portafoglio
             pass
     else:

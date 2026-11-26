@@ -3,7 +3,7 @@ core/fusione_logic.py
 =====================
 `/immagini fusione` (#131, D70, B11, FUN-057): due Pokémon, il nome fuso e le loro immagini ufficiali affiancate.
 Nessuna fusione disegnata: le fusioni dei fan sono opere senza licenza (D18). Le schede vengono da PokéAPI (cache
-comune), le immagini da raw.githubusercontent.com, aperte con `safe_open_image` e composte da Pillow in `run_image_task`.
+comune), le immagini da raw.githubusercontent.com, aperte con `apri_in_sandbox` e composte da Pillow in `run_image_task`.
 Funzioni coperte: SPEC §16 (FUN-057)
 Dipende da: core/schede_giochi_logic.py, core/safe_http.py, core/safe_image.py
 """
@@ -51,11 +51,11 @@ def indirizzo_ammesso(url: object) -> bool:
 
 def componi(png_a: bytes, png_b: bytes) -> bytes:
     """Le due immagini affiancate con un «+» in mezzo, su fondo trasparente (lavoro di Pillow: da `run_image_task`)."""
-    from core.safe_image import safe_open_image
+    from core.safe_image import apri_in_sandbox
 
     tela = Image.new("RGBA", (LATO * 2 + MARGINE * 3, LATO + MARGINE * 2), (0, 0, 0, 0))
     for i, dati in enumerate((png_a, png_b)):
-        img = safe_open_image(dati).convert("RGBA")
+        img = apri_in_sandbox(dati).convert("RGBA")
         img.thumbnail((LATO, LATO))
         x = MARGINE + i * (LATO + MARGINE) + (LATO - img.width) // 2
         tela.alpha_composite(img, (x, MARGINE + (LATO - img.height) // 2))

@@ -14,7 +14,7 @@ import io
 
 from PIL import Image, ImageFilter, UnidentifiedImageError
 
-from core.safe_image import ImmagineTroppoGrande, safe_open_image
+from core.safe_image import ImmagineTroppoGrande, apri_in_sandbox
 
 MAX_BYTES = 10 * 1024 * 1024
 MAX_LATO = 4096
@@ -33,7 +33,7 @@ def ripulisci(dati: bytes) -> bytes:
     ricodifica in PNG dai soli pixel (via ogni metadato). Sopra 9,5 MiB non si manda.
     """
     try:
-        img = safe_open_image(dati, max_side=MAX_LATO)
+        img = apri_in_sandbox(dati, max_side=MAX_LATO)
     except ImmagineTroppoGrande as exc:
         raise ImmagineNonValida("Immagine troppo grande.") from exc
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
@@ -53,7 +53,7 @@ def ingrandisci(dati: bytes, fattore: int = 2) -> tuple[bytes, str]:
     """
     try:
         # Punto unico (core/safe_image.py): formati ammessi, pixel controllati prima di decodificare.
-        img = safe_open_image(dati, max_side=MAX_LATO)
+        img = apri_in_sandbox(dati, max_side=MAX_LATO)
     except ImmagineTroppoGrande as exc:
         raise ImmagineNonValida("Immagine troppo grande da ingrandire.") from exc
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:

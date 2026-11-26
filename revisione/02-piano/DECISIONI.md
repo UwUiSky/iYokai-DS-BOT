@@ -1824,3 +1824,11 @@ Scelte che l'owner vede o sente (il resto è nel codice e nei test):
 - **Servizio di sistema.** `deploy/systemd/iyokai-bot.service`: si rialza sempre, attesa crescente da 5 s a 5 minuti (systemd 254+), tetti di memoria 3G/4G, spegnimento con tempo massimo (75 s), parte all'avvio della macchina, dopo PostgreSQL. `scripts/installa_servizio.sh`. Controllo di salute su `127.0.0.1:8424/salute` (`SALUTE_PORT`, 0 lo spegne): 200 se il bot è pronto e il database risponde in 2 s, 503 altrimenti.
 - **Spegnimento.** Ogni passo ha un tempo massimo (servizi 8 s, bot 15 s, sessioni 8 s, database 8 s); se il pool non si chiude lo si chiude a forza.
 - **Dati.** La pulizia dei dati scaduti e dei server usciti da 90 giorni va a lotti di 5.000 righe, con tempo massimo (2 minuti per server, 30 per giro) e ordine casuale: un server enorme avanza a ogni giro, uno che si inceppa non blocca gli altri. Il giveaway finisce a stati (estrazione, annuncio, fatto): un errore non perde il premio, si riprende al giro dopo (fino a 20 tentativi, poi `fallito` e DM all'owner). Le sottoscrizioni dei feed che ricevono 403/404 da Discord vanno in pausa crescente (10 minuti, 30, 2 ore, 6 ore) e al quinto rifiuto si mettono in pausa. I transcript dei ticket leggono la storia una volta sola, al massimo 10.000 messaggi (poi «troncato»).
+
+## D139 — Sandbox obbligatoria, niente ripiego grafico (25/11/2026, richiesta dell'owner)
+
+Ogni file degli utenti (immagini, allegati, avatar, sfondi) si apre solo nel servizio `iyokai-sandbox`.
+Se il servizio non risponde, il lavoro si rifiuta con un messaggio chiaro e una riga nel log: rank card,
+avatar, sfondi dei benvenuti e level-up non si disegnano con un ripiego, si saltano. Il servizio lavora
+al massimo su 3 file insieme, con 2 GB di memoria. Il cancello dei download (4 insieme, 48 MiB in volo)
+vale per i log dei messaggi; per ticket, ModMail e backup è il prossimo passo.

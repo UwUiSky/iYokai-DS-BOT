@@ -40,7 +40,7 @@ def _metti(cartella, dati: bytes) -> str:
 
 
 async def _converti(cartella, tipo: str, dati: bytes, limiti=None):
-    return await sb.esegui_locale(_metti(cartella, dati), limiti, isola_rete=False, tipo=tipo)
+    return await sb.esegui_locale(_metti(cartella, dati), limiti, tipo=tipo)
 
 
 def _salva(cartella, r, nome: str):

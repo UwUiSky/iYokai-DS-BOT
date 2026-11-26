@@ -46,6 +46,7 @@ from core.bot_stats import error_counter
 from core.command_access import AccessoNegato
 from core.i18n import lingua_interazione, t
 from core.premium_cache import invalida_cache_premium
+from core.safe_image import SandboxNonDisponibile
 
 logger = logging.getLogger("iyokai.premium")
 
@@ -514,6 +515,9 @@ async def handle_app_command_error(
         message = t("err_attesa", lingua, secondi=max(1, math.ceil(error.retry_after)))
     elif isinstance(error, app_commands.CheckFailure):
         message = t("err_non_consentito", lingua)
+    elif isinstance(getattr(error, "original", None), SandboxNonDisponibile):
+        # Blocco B: senza sandbox il lavoro sui file si rifiuta, con un messaggio chiaro (il log lo ha scritto la sandbox).
+        message = t("err_sandbox_non_disponibile", lingua)
     else:
         logger.error(
             "Errore non gestito in un comando slash: %s", error, exc_info=error

@@ -60,7 +60,6 @@ class EsitoImmagine:
 
 
 _cache: BoundedCache[tuple[int, str], tuple[float, int, EsitoImmagine]] = BoundedCache(MAX_VERDETTI_IN_CACHE)
-_modo_dichiarato = False
 
 
 def svuota_cache() -> None:
@@ -166,7 +165,6 @@ async def _prolunga(nome: str) -> None:
 
 
 async def _con_sandbox(dati: bytes, byte, guild_id: int) -> EsitoImmagine:
-    global _modo_dichiarato
     try:
         voce = await quarantena.salva(dati, guild_id, byte.sha256, ore=quarantena.ORE_PULITA)
     except Exception:
@@ -181,11 +179,8 @@ async def _con_sandbox(dati: bytes, byte, guild_id: int) -> EsitoImmagine:
         except Exception:
             logger.exception("Sandbox: errore imprevisto")
             return EsitoImmagine(PULITA, byte.sha256, non_analizzata=NON_ANALIZZATA_SANDBOX)
-        if risultato.esito == "non_disponibile":
+        if risultato.esito in ("non_disponibile", "non_isolata"):
             return EsitoImmagine(PULITA, byte.sha256, non_analizzata=NON_ANALIZZATA_SANDBOX)
-        if risultato.modo == sandbox.MODO_RIDOTTA and not _modo_dichiarato:
-            _modo_dichiarato = True
-            logger.warning("Filtro immagini: sandbox ridotta (servizio iyokai-sandbox non raggiungibile)")
         esito = await _esito_da_sandbox(risultato, byte.sha256, guild_id)
         tenere = esito.verdetto != PULITA
         if tenere:

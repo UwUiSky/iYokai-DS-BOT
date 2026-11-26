@@ -84,7 +84,7 @@ from core.rank_card_image import (
     render_rank_card,
 )
 from core.moneta_server import MonetaNonValida, aggiungi_moneta, prepara_moneta
-from core.safe_image import MAX_IMAGE_BYTES, run_image_task
+from core.safe_image import MAX_IMAGE_BYTES, SandboxNonDisponibile, run_image_task
 from core.greetings_embed_logic import embed_con_segnaposto
 from core.repositories.saved_embed_repo import saved_embed_repo
 from core.drop_logic import DEFAULT_DROP_CHANCE, DEFAULT_MAX_COINS, DEFAULT_MIN_COINS, should_trigger_drop
@@ -881,7 +881,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
                 avatar = None
             png = await run_image_task(render_levelup_card, member.display_name, new_level, avatar)
             return discord.File(io.BytesIO(png), filename="level-up.png")
-        except Exception:
+        except (SandboxNonDisponibile, Exception):
             logger.warning("Immagine del level-up non disegnata per %s.", member.id, exc_info=True)
             return None
 
@@ -1150,7 +1150,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             return noto or None  # "" = icona già provata e non leggibile
         try:
             colore = await run_image_task(colore_medio, await guild.icon.read())
-        except Exception:
+        except (SandboxNonDisponibile, Exception):
             colore = None
         self._colori_icona.set(chiave, colore or "")
         return colore
@@ -1610,7 +1610,7 @@ class LevelingCog(CogConGruppi, commands.Cog):
             )
         try:
             png = await run_image_task(render_rank_card, dati, avatar, immagine_sfondo)
-        except Exception:
+        except (SandboxNonDisponibile, Exception):
             logger.exception("Rank card non disegnata per %s: mando l'embed.", target.id)
             ai_cfg = await ai_repo.get_config(interaction.guild.id)  # nomi a tema (§25.69)
             embed = discord.Embed(

@@ -280,3 +280,21 @@ async def test_se_non_si_e_ancora_risposto_non_si_cerca_il_segnaposto():
     await handle_app_command_error(interaction, RuntimeError("boom"))
 
     assert len(interaction.response.sent_messages) == 1
+
+
+@pytest.mark.asyncio
+async def test_sandbox_ferma_da_un_messaggio_chiaro_e_non_quello_generico():
+    from discord import app_commands
+
+    from core.i18n import t
+    from core.safe_image import SandboxNonDisponibile
+
+    interaction = _FakeInteraction()
+    comando = type("C", (), {"name": "prova"})()
+    errore = app_commands.CommandInvokeError(comando, SandboxNonDisponibile("servizio"))  # type: ignore[arg-type]
+
+    await handle_app_command_error(interaction, errore)
+
+    messaggio, ephemeral = interaction.response.sent_messages[0]
+    assert messaggio == t("err_sandbox_non_disponibile", "it") and ephemeral is True
+    assert messaggio != t("err_imprevisto", "it")

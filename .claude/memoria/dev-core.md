@@ -59,3 +59,12 @@
 - Decisione D144 scritta; prova live `C-AUTONOMIA` in VERIFICA_LIVE.md.
 - Migrazioni del blocco C: 0984 (giri_periodici), 0985 (giveaway fase_fine). Edit a `tests/conftest.py`: `clean_db` svuota la cache delle sospensioni.
 - PROSSIMO: leggere l'esito di /tmp/claude-0/run_finale.txt (516 file, DB iyokai_wautonomia2) e correggere; poi rapporto.
+
+## Blocco B — Sandbox obbligatoria (25/11/2026, ramo fix/sandbox)
+Fatto (commit sul ramo):
+- B1 (c4ac1ad9): niente ripiego. `immagini_sandbox`: tolti `unshare`/modo ridotta; `rete_isolata()` (if_nameindex solo `lo`); `esegui_locale` risponde `non_isolata` se il processo ha rete; `analizza`/`converti` senza servizio = `non_disponibile`. conftest: servizio vero in un thread (session, autouse) + `_interfacce_di_rete` finto («lo»).
+- B2 (5f5f4ac0): `core/safe_image.apri_in_sandbox` (cliente sincrono, solo in thread) sostituisce `safe_open_image` ovunque; il decoder sta in `core/immagini_decodifica.py` (solo worker); nuova richiesta del servizio `pixel <lato> <std|png> <nome>` -> pixel grezzi, il bot fa `Image.frombytes`. `SandboxNonDisponibile` gestita in `core/premium.handle_app_command_error`, `ui_base._rispondi_con_errore`, wrapper di core (raise), chiave `err_sandbox_non_disponibile` in 10 lingue; tolta `amimg_sandbox_ridotta`.
+- B3: `core/allegati_cancello.py` + `cogs/logging/message_logs.py` (posto PRIMA del download; sopra soglia solo scheda).
+- B4: unita systemd + `docs/immagini-sandbox.md`.
+- Cricchetti: `tests/test_sandbox_obbligatoria.py` (AST: nessun Image.open/PdfReader/pillow_heif/ZipFile in lettura fuori da decodifica+worker+conversioni_worker; worker avviato solo dal servizio; gestori larghi con SandboxNonDisponibile prima; unita systemd), `tests/test_allegati_cancello.py`.
+Prossimo passo: blocco finito e pubblicato; resta la prova su Discord (servizio vero su Debian/Ubuntu) e la decisione su `conserva` dei ticket.

@@ -39,7 +39,7 @@ from core.repositories.immagini_segnalazioni_repo import SOGLIA_BLOCCO, immagini
 from core.repositories.leveling_settings_repo import leveling_settings_repo
 from core.repositories.partite_repo import EsitoApertura, partite_repo
 from core.repositories.sociale_repo import sociale_repo
-from core.safe_image import run_image_task
+from core.safe_image import SandboxNonDisponibile, run_image_task
 from core.ui_base import BaseView
 from core.giro_periodico import giro_periodico
 
@@ -286,7 +286,7 @@ class AutoCog(CogConGruppi, commands.Cog):
                 file = discord.File(io.BytesIO(png), filename="gara.png")
                 foto = [(chiave_foto(guild_id, a.user_id, a.sha_foto), al.PER_CHIAVE[a.modello].nome) for a, f in ((a1, f1), (a2, f2)) if f]
                 vista = SegnalaFotoView(foto, await testo_per(interaction, "auto_segnala", pubblica=True))
-            except Exception:
+            except (SandboxNonDisponibile, Exception):
                 logger.warning("Immagine della gara non creata", exc_info=True)
         return "\n".join(righe), file, vista
 
@@ -461,6 +461,9 @@ class AutoCog(CogConGruppi, commands.Cog):
             return
         try:
             png = await run_image_task(riduci_foto, copia[1])
+        except SandboxNonDisponibile:
+            await interaction.followup.send(await testo_per(interaction, "err_sandbox_non_disponibile"), ephemeral=True)
+            return
         except Exception:
             await interaction.followup.send(await testo_per(interaction, "auto_foto_no"), ephemeral=True)
             return
