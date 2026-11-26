@@ -116,6 +116,7 @@ from core.security_raid_state import DURATA_RAID_SECONDI, azzera, raid_in_corso,
 from core.security_rate_tracker import GUILD_WIDE_KEY, security_rate_tracker
 from cogs.moderation._shared import ensure_module_enabled, try_dm
 from core.giro_periodico import giro_periodico
+from core.blocchi_deboli import BlocchiDeboli
 
 logger = logging.getLogger("iyokai.anti_raid")
 
@@ -227,7 +228,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         # Un blocco per server sull'invio/modifica dell'avviso.
-        self._blocchi_avviso: dict[int, asyncio.Lock] = {}
+        self._blocchi_avviso = BlocchiDeboli()
         # Server -> ora dell'ultimo ingresso di raid segnalato.
         self._avvisi: BoundedCache[int, _Avviso] = BoundedCache(max_size=500)
         # Server in cui il ruolo di quarantena è già allineato ai canali.
@@ -1099,7 +1100,7 @@ class AntiRaidCog(CogConGruppi, commands.Cog):
         """
         # Un blocco per server: ingressi simultanei non devono mandare
         # un messaggio ciascuno prima che il primo sia stato salvato.
-        blocco = self._blocchi_avviso.setdefault(guild.id, asyncio.Lock())
+        blocco = self._blocchi_avviso.prendi(guild.id)
         async with blocco:
             avviso = self._avvisi.get(guild.id)
             episodio_in_corso = (

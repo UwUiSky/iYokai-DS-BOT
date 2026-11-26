@@ -66,6 +66,7 @@ from core.repositories.verify_blocchi_repo import verify_blocchi_repo
 from core.scheduler import in_seconds, scheduler
 from core.ticket_logic import build_transcript_text, format_transcript_line, split_text_by_size
 from core.ui_base import BaseView
+from core.blocchi_deboli import BlocchiDeboli
 
 logger = logging.getLogger("iyokai.modmail")
 
@@ -188,16 +189,14 @@ class ModMailCog(CogConGruppi, commands.Cog):
         self.bot = bot
         self._limitatore = logica.LimitatoreDM()
         # un DM alla volta per utente: due messaggi insieme si inoltrano in ordine, senza perderne
-        self._serrature: dict[int, asyncio.Lock] = {}
+        self._serrature = BlocchiDeboli()
         # utenti con un menu dei server ancora aperto (il loro messaggio aspetta la scelta)
         self._menu_aperti: set[int] = set()
         # canali ModMail di cui si sta leggendo la history per il transcript
         self._transcript_in_corso: set[int] = set()
 
     def _serratura(self, user_id: int) -> asyncio.Lock:
-        if len(self._serrature) > 2000:  # memoria limitata: si scartano solo le serrature libere
-            self._serrature = {u: s for u, s in self._serrature.items() if s.locked()}
-        return self._serrature.setdefault(user_id, asyncio.Lock())
+        return self._serrature.prendi(user_id)
 
     # ================================================================
     # DM in arrivo

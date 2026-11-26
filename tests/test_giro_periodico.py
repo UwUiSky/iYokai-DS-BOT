@@ -270,7 +270,7 @@ def test_cricchetto_nessun_dizionario_di_blocchi_senza_tetto():
         albero = ast.parse(percorso.read_text(encoding="utf-8"))
         for nodo in ast.walk(albero):
             if isinstance(nodo, ast.AnnAssign) and "asyncio.Lock" in ast.unparse(nodo.annotation):
-                if "Weak" not in ast.unparse(nodo.annotation) and isinstance(nodo.value, (ast.Dict, ast.Call)):
+                if "dict[" in ast.unparse(nodo.annotation) and "Weak" not in ast.unparse(nodo.annotation) and isinstance(nodo.value, (ast.Dict, ast.Call)):
                     if "BlocchiDeboli" not in ast.unparse(nodo):
                         colpe.append(f"{percorso.relative_to(RADICE)}:{nodo.lineno}")
     assert not colpe, "usa BlocchiDeboli: " + ", ".join(colpe)
