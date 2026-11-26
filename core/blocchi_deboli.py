@@ -28,5 +28,9 @@ class BlocchiDeboli:
             self._blocchi[chiave] = blocco
         return blocco
 
+    def clear(self) -> None:
+        """Dimentica tutti i blocchi (i test: un blocco resta legato al ciclo di eventi che lo ha usato)."""
+        self._blocchi.clear()
+
     def __len__(self) -> int:
         return len(self._blocchi)

@@ -91,7 +91,7 @@ async def test_postgresql_cade_a_meta_i_giri_non_muoiono_l_owner_e_avvisato_e_tu
         # --- PostgreSQL cade ---
         await proxy.interrompi()
         prima = len(letture)
-        await _aspetta(lambda: lavoro.errori_consecutivi >= gp.ERRORI_PER_AVVISO)
+        await _aspetta(lambda: lavoro.errori_consecutivi >= gp.ERRORI_PER_AVVISO and caduti, secondi=20)
         assert lavoro.is_running(), "il giro è morto alla prima eccezione di PostgreSQL"
         assert len(letture) == prima  # nessuna lettura riuscita a database giù
         assert caduti == [lavoro.nome]  # un solo avviso per la caduta, non uno a errore
